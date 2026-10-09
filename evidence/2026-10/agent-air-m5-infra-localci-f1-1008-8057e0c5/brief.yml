@@ -1,0 +1,46 @@
+task_id: localci-f1-1008
+mission: LOCALCI-SOVEREIGN (phase F, step F1)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  evidence_pack_lint's floor for this change set is 2 by its size term alone (churn 503 with this pack, 376 without it, over
+  the 400-line target once the gate's fix round landed), no hot-zone path. The change is the shadow merger, its tests and
+  mutants, a README paragraph and a spec status line; no workflow, credential, wrapper or plist changes, so the deploy is the
+  mirror's next fetch.
+l_level: L2
+gate_class: opus
+objective: >-
+  Spec Phase F, until READY the merge path stays shadow: after the enqueue step the tick journals one would_merge line per
+  decided PR, with the merge rehearsed by git merge-tree --write-tree on the mirror's refs/merger/base and the decided head,
+  the enqueue criterion reused, and the report counting the lines. Nothing of the executor (no merge commit, no ref, no push).
+constraints:
+  - The rehearsal writes objects only; the mirror's refs are byte-identical before and after.
+  - A git failure is journalled on the line as error (redacted) and never changes the decision or the tick's exit code.
+  - The PR body's text is never journalled, only whether it carries a Bites line.
+  - prune.py, test_prune.py, the README's prune section, the spec's B6 and B8 paragraphs, .github/ and every wrapper or plist are untouched.
+acceptance:
+  - text: A head that merges clean onto the mirror's main SHALL journal one would_merge line with ok true, clean true and merge_tree a 40-hex sha.
+    probe: "test_merger.py::test_a_clean_head_rehearses_to_a_tree_and_the_line_is_ok"
+  - text: A head that conflicts with main SHALL journal clean false, conflicts naming the path and ok false.
+    probe: "test_merger.py::test_a_head_that_conflicts_with_main_is_not_clean_and_names_the_path"
+  - text: WHEN refs/merger/base moved after the decision, base_current SHALL be false, ok false, and the rehearsal SHALL merge onto main as it is now.
+    probe: "test_merger.py::test_a_mirror_main_that_moved_after_the_decision_is_not_current"
+  - text: WHEN any enqueue sub-criterion is false the rehearsal SHALL still run and the line SHALL carry the criterion with ok false.
+    probe: "test_merger.py::test_a_false_sub_criterion_still_rehearses_the_merge_and_the_line_says_which"
+  - text: A merge-tree that raises or a head missing from the mirror SHALL give an error line (redacted) with ok false and the decision's exit code unchanged.
+    probe: "test_merger.py::test_a_merge_tree_failure_inside_a_tick_leaves_the_decision_and_its_exit_code_alone"
+  - text: The mirror's refs SHALL be identical before and after every rehearsal, and a tick SHALL push nothing.
+    probe: "test_merger.py::test_the_tick_journals_would_merge_with_a_tree_and_never_moves_a_ref_or_pushes"
+  - text: The report SHALL print would_merge=N (ok=M, conflicted=K, base_moved=J) and carry it in window.would_merge beside phase_f shadow.
+    probe: "test_merger_report.py::test_the_report_counts_would_merge_lines_in_the_window_and_says_phase_f_is_shadow"
+assumptions:
+  - text: The Pro mirror's git (2.50) supports merge-tree --write-tree with --name-only and -z, as M5's 2.54 does.
+    status: unverified
+    note: Pro was not touched by this lane. merge-tree --write-tree has existed since git 2.38.
+    probe: the first would_merge line on Pro carries a merge_tree sha and no error.
+consumer_map:
+  - scripts/localci/merger.py tick on Pro (launchd com.balizero.localci-merger) — the would_merge line in decisions.jsonl after each decision.
+  - scripts/localci/merger.py report on Pro — the would_merge count and phase_f in report.json.
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0

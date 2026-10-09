@@ -381,6 +381,26 @@ the blocking status), `checks` (per check status), `seal`, `runner_rc`, `hosted_
 (`why: fork`), `skipped` (`why: node | lease | head_moved | head_in_base`), `lease_reclaimed` (`stale`: the dead holder's
 record), `error` (the tick exits 1, nothing is decided — `gh` or `git` missing from PATH included).
 
+**Phase F, shadow (F1): `would_merge`.** After every `would_enqueue` / `enqueue_*` line of a decided PR the tick journals ONE
+`kind: "would_merge"` line (decisions that reach the enqueue step; CONFLICT, ERROR and skipped decisions carry none): the merge phase F will make, rehearsed with `git merge-tree --write-tree` of the mirror's
+`refs/merger/base` and the decided head. F1 merges nothing and pushes nothing: `merge-tree --write-tree` leaves objects in the
+mirror's object store, never a ref, a worktree or an index. A git failure lands on the line as `error` (redacted) with `ok` false
+and never changes the decision or the tick's exit code (a failed journal write is printed to stderr, never raised). The one
+network read is `git ls-remote origin refs/heads/<base>` (read-only, 30 s bound, no ref and no object written): the tick fetches the
+mirror once and a gate run can outlast several merges, so `base_current` asks GitHub, the authority until phase F proper. Fields: `pr`, `head_sha`, `base_sha` (the decision's), `mirror_main`
+(what `refs/merger/base` resolves to now, the base the merge is rehearsed on), `remote_main` (GitHub's main by `ls-remote`, null
+when unreadable), `base_current` (decision base == `remote_main`; false when `remote_main` is null), `head_unchanged`, `merge_tree` (the
+merged tree's sha, or null), `clean`, `conflicts` (paths, `[]` when clean), `criterion` (the enqueue path's own sub-criteria, with
+`label_privileged`), `armed_env`, `bites` (the PR body carries a `Bites:` line; the text is never kept), `ok` (every
+sub-criterion AND `base_current` AND `clean`), `lease_id`, `code_sha`. `merger.py report` prints
+`phase F shadow: would_merge=N (ok=M, conflicted=K, base_moved=J, errors=E)` (a git error counts only under `errors`, a conflict
+needs a tree and no error, a moved base needs a readable `remote_main`) and carries it in `window.would_merge` beside
+`phase_f: "shadow"`. An illustrative line (invented shas, not a Pro journal line):
+
+    {"kind": "would_merge", "pr": 8123, "head_sha": "<40 hex>", "base_sha": "<40 hex>", "mirror_main": "<same 40 hex>",
+     "remote_main": "<same 40 hex>", "base_current": true, "head_unchanged": true, "merge_tree": "<40 hex>", "clean": true, "conflicts": [], "bites": true,
+     "armed_env": false, "ok": false, "criterion": {"review_independent": false, "...": "..."}}
+
 Limits, stated: the runner plans `review.independent` and leaves it QUEUED (blocking) until a review is imported, so
 `overall` is never PASS in shadow today — the per-context columns are the comparison that carries information, and the report below sums them. A `kill -9`
 of a tick leaves its runner child running to the runner's own deadline; the next tick removes the candidate worktree under

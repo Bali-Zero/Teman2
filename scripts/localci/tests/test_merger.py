@@ -22,6 +22,7 @@ _spec.loader.exec_module(mg)
 REPO = "o/r"
 GIT_ENV = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 SEAL = "ab" * 32
+BODY = "Does a thing.\n\nBites: the launchd tick reads the mirror; observation: the first would_merge line\n"
 
 
 def g(cwd, *args) -> str:
@@ -88,7 +89,7 @@ class FakeGraphQL:
         names = [lb["name"] for lb in p["labels"]]
         return {"repository": {"pullRequest": {
             "id": f"PR_node_{p['number']}", "state": "OPEN", "isDraft": p["draft"], "isCrossRepository": False, "baseRefName": "main",
-            "headRefOid": p["head"]["sha"], "isInMergeQueue": False, "mergeQueueEntry": None, "labels": {"nodes": [{"name": n} for n in names]},
+            "headRefOid": p["head"]["sha"], "body": BODY, "isInMergeQueue": False, "mergeQueueEntry": None, "labels": {"nodes": [{"name": n} for n in names]},
             "timelineItems": {"nodes": [labelled(n, "maint") for n in names]}, **self.over}}}
 
     def mutations(self):
@@ -384,7 +385,7 @@ def test_a_recycled_pid_is_not_the_holder(world):
     (world.state / "lease.json").write_text(json.dumps({"host": mg.HOST, "pid": os.getpid(), "pid_start": "Thu Jan  1 00:00:00 1970", "lease_id": "old"}))
     world.gh.prs = [pr(1, world.head1)]
     assert world.tick() == 0
-    assert [r["kind"] for r in world.journal()] == ["lease_reclaimed", "decision", "would_enqueue"]
+    assert [r["kind"] for r in world.journal()] == ["lease_reclaimed", "decision", "would_enqueue", "would_merge"]
 
 
 def test_the_journal_is_private_and_a_torn_tail_does_not_swallow_the_next_decision(world):
@@ -486,7 +487,7 @@ def test_a_dead_holders_lease_is_reclaimed_journalled_and_released(world):
     world.gh.prs = [pr(1, world.head1)]
     assert world.tick() == 0
     kinds = [r["kind"] for r in world.journal()]
-    assert kinds == ["lease_reclaimed", "decision", "would_enqueue"] and world.journal()[0]["stale"]["lease_id"] == "stale"
+    assert kinds == ["lease_reclaimed", "decision", "would_enqueue", "would_merge"] and world.journal()[0]["stale"]["lease_id"] == "stale"
     assert world.journal()[0]["lease_id"] == world.journal()[1]["lease_id"] != "stale"
     assert not (world.state / "lease.json").exists()
 
@@ -680,7 +681,7 @@ def test_every_journal_line_carries_the_code_sha_it_ran(world, monkeypatch):
     code = "c" * 40
     assert mg.main(["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--remote-url", str(world.origin),
                     "--python", "py", "--code-sha", code]) == 0
-    assert [(r["kind"], r.get("code_sha")) for r in world.journal()] == [("decision", code), ("would_enqueue", code)]
+    assert [(r["kind"], r.get("code_sha")) for r in world.journal()] == [("decision", code), ("would_enqueue", code), ("would_merge", code)]
     assert mg.main(["tick", "--node", "elsewhere", "--repo", REPO, "--state-dir", str(world.state), "--code-sha", code]) == 0
     assert world.journal()[-1]["code_sha"] == code and world.journal()[-1]["why"] == "node"
     assert mg.main(["tick", "--node", "elsewhere", "--repo", REPO, "--state-dir", str(world.state)]) == 0
@@ -854,7 +855,7 @@ def test_a_tick_journals_would_enqueue_after_its_decision_and_names_the_non_exec
     world.runner.doc = {k: GOOD[k] for k in ("checks", "contexts")}
     world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]   # the arm label alone puts the PR in front of the merger
     assert world.tick() == 0
-    d, w = world.journal()
+    d, w, _ = world.journal()
     assert (d["kind"], d["executed_required"], d["non_executed"]) == ("decision", "1/2", {"CodeQL": "blocked"})
     assert (w["kind"], w["refused"], w["expected_head_oid"], w["candidate_sha"], w["base_sha"]) == ("would_enqueue", ["armed_env"], world.head1,
                                                                                                     d["candidate_sha"], world.base)
@@ -867,7 +868,7 @@ def test_an_armed_tick_enqueues_the_decided_head_once_and_a_decision_without_a_v
     world.runner.doc = {k: GOOD[k] for k in ("checks", "contexts")}
     world.gh.prs = [pr(1, world.head1, labels=[mg.ARM_LABEL]), pr(2, world.head2, labels=[mg.ARM_LABEL])]
     assert world.tick() == 0 and world.tick() == 0   # #1 decided and enqueued; #2 conflicts with main: no verdict, no criterion
-    assert [(r["kind"], r["pr"]) for r in world.journal()] == [("decision", 1), ("enqueued", 1), ("decision", 2)]
+    assert [(r["kind"], r["pr"]) for r in world.journal()] == [("decision", 1), ("enqueued", 1), ("would_merge", 1), ("decision", 2)]
     assert world.gql.mutations() == [{"pr": "PR_node_1", "oid": world.head1}]
 
 
@@ -876,7 +877,7 @@ def test_a_gate_error_vouches_for_nothing_and_never_enqueues(world, monkeypatch)
     monkeypatch.setattr(mg, "runner_exec", FakeRunner(bind={"seal": "cd" * 32}, doc={k: GOOD[k] for k in ("checks", "contexts")}))
     world.gh.prs = [pr(1, world.head1, labels=[mg.ARM_LABEL])]
     assert world.tick() == 0
-    d, line = world.journal()
+    d, line, _ = world.journal()
     assert d["error"] and line["kind"] == "enqueue_refused" and {"local_checks_clean", "review_independent", "executed_contexts_ok"} <= set(line["refused"])
     assert world.gql.mutations() == []
 
@@ -919,7 +920,7 @@ def test_a_tick_journals_each_contexts_coverage_beside_its_verdict(world):
     world.runner.doc = doc
     world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
     assert world.tick() == 0
-    d, w = world.journal()
+    d, w, _ = world.journal()
     assert d["contexts"] == {"ctx-a": "OK", "CodeQL": "BLOCKED"} and d["coverage"] == {"ctx-a": "partial", "CodeQL": "full"}
     assert d["executed_required"] == w["executed_required"] == "1/2 (partial: ctx-a)" and d["partial"] == w["partial"] == {"ctx-a": "partial"}
 
@@ -956,7 +957,7 @@ def test_a_tick_journals_a_change_map_skip_beside_its_verdict_and_only_there(wor
     world.runner.doc = doc
     world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
     assert world.tick() == 0
-    d, _ = world.journal()
+    d, *_ = world.journal()
     assert d["contexts"]["ctx-a"] == "OK" and d["skipped"] == {"ctx-a": "change_map"}
 
 
@@ -1032,4 +1033,203 @@ def test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why(world)
     assert mg.main([*args, "--host-free-gb", "59.4"]) == 0
     assert world.journal()[-1] == {**world.journal()[-1], "kind": "skipped", "why": "host_below_floor", "free_gb": 59.4, "floor_gb": 60.0}
     assert not [r for r in world.journal() if r["kind"] == "decision"]
-    assert mg.main([*args, "--host-free-gb", "60"]) == 0 and [r["kind"] for r in world.journal()][-2:] == ["decision", "would_enqueue"]
+    assert mg.main([*args, "--host-free-gb", "60"]) == 0 and [r["kind"] for r in world.journal()][-3:] == ["decision", "would_enqueue", "would_merge"]
+
+
+# ------------------------------------------------------------------ phase F, shadow: the merge rehearsed, never made (F1)
+class Mirror:
+    """A bare mirror as the tick leaves it: ``refs/merger/base`` = main, ``refs/merger/pr/7`` = the head under rehearsal."""
+
+    def __init__(self, tmp_path):
+        self.src, self.repo, self.state = tmp_path / "msrc", tmp_path / "mirror.git", tmp_path / "mstate"
+        self.state.mkdir()
+        self.src.mkdir()
+        g(self.src, "init", "-q", "-b", "main")
+        self.base0 = commit(self.src, {"a.txt": "a\n", "d.txt": "d\n"}, "base")
+        g(self.src, "checkout", "-q", "-b", "clean")
+        self.clean = commit(self.src, {"b.txt": "b\n"}, "adds b")
+        g(self.src, "checkout", "-q", "-b", "clash", self.base0)
+        self.clash = commit(self.src, {"a.txt": "clash\n"}, "edits a")
+        g(self.src, "checkout", "-q", "main")
+        self.base = commit(self.src, {"a.txt": "main\n"}, "main moves")
+        subprocess.run(["git", "clone", "-q", "--bare", str(self.src), str(self.repo)], check=True, env=GIT_ENV)
+        g(self.repo, "update-ref", "refs/merger/base", self.base)
+        for name, sha in (("clean", self.clean), ("clash", self.clash)):
+            g(self.repo, "update-ref", f"refs/merger/pr/{name}", sha)
+
+    def refs(self) -> str:
+        return g(self.repo, "for-each-ref", "--format=%(refname) %(objectname)")
+
+    def enq(self, head, *, base=None, **crit):
+        full = {k: True for k in mg.CRITERION} | crit
+        return {"kind": "would_enqueue", "pr": 7, "head_sha": head, "base_sha": base or self.base, "lease_id": "L", "criterion": full,
+                "armed_env": True, "bites": True, "ok": all(full.values())}
+
+    def step(self, head, **kw):
+        before = self.refs()
+        line = mg.merge_shadow_step(self.state, self.repo, self.enq(head, **kw))
+        assert self.refs() == before   # the rehearsal writes objects, never a ref: nothing to push either
+        assert mg.read_journal(self.state)[-1] == line
+        return line
+
+
+@pytest.fixture
+def mirror(tmp_path):
+    return Mirror(tmp_path)
+
+
+def test_a_clean_head_rehearses_to_a_tree_and_the_line_is_ok(mirror, capsys):
+    line = mirror.step(mirror.clean)
+    assert (line["kind"], line["ok"], line["clean"], line["conflicts"], line["base_current"], line["head_unchanged"]) == ("would_merge", True, True, [], True, True)
+    assert mg.is_sha(line["merge_tree"]) and line["mirror_main"] == line["remote_main"] == line["base_sha"] == mirror.base and "error" not in line
+    assert g(mirror.repo, "ls-tree", "--name-only", line["merge_tree"]).split() == ["a.txt", "b.txt", "d.txt"]   # main's a.txt plus the head's b.txt
+    assert (line["bites"], line["armed_env"], line["lease_id"]) == (True, True, "L") and all(line["criterion"].values())
+    assert "would_merge ok=True clean=True" in capsys.readouterr().out
+
+
+def test_a_head_that_conflicts_with_main_is_not_clean_and_names_the_path(mirror):
+    line = mirror.step(mirror.clash)
+    assert (line["ok"], line["clean"], line["conflicts"], line["base_current"]) == (False, False, ["a.txt"], True)
+    assert mg.is_sha(line["merge_tree"]) and "error" not in line
+
+
+def test_a_github_main_that_moved_after_the_tick_fetched_is_not_current_though_the_mirror_still_is(mirror):
+    g(mirror.src, "checkout", "-q", "main")
+    moved = commit(mirror.src, {"e.txt": "e\n"}, "main moves again")   # the mirror is NOT fetched: a gate run outlasted a merge
+    line = mirror.step(mirror.clean)
+    assert (line["base_current"], line["mirror_main"], line["remote_main"], line["base_sha"]) == (False, mirror.base, moved, mirror.base)
+    assert (line["clean"], line["ok"]) == (True, False) and "error" not in line
+
+
+def test_a_mirror_refetched_after_the_decision_is_rehearsed_on_its_own_main_and_is_not_current(mirror):
+    g(mirror.src, "checkout", "-q", "main")
+    moved = commit(mirror.src, {"e.txt": "e\n"}, "main moves again")
+    g(mirror.repo, "fetch", "-q", str(mirror.src), "+refs/heads/main:refs/merger/base")
+    line = mirror.step(mirror.clean)
+    assert (line["base_current"], line["mirror_main"], line["remote_main"], line["clean"], line["ok"]) == (False, moved, moved, True, False)
+    assert "e.txt" in g(mirror.repo, "ls-tree", "--name-only", line["merge_tree"]).split()   # the rehearsal merges onto the mirror's main as it is NOW
+
+
+def test_an_unreadable_origin_is_an_error_line_with_no_remote_main_and_never_current(mirror):
+    g(mirror.repo, "remote", "set-url", "origin", str(mirror.src / "nowhere"))
+    line = mirror.step(mirror.clean)
+    assert (line["remote_main"], line["base_current"], line["ok"]) == (None, False, False) and "ls-remote" in line["error"]
+    assert mg.is_sha(line["merge_tree"]) and line["clean"] is True   # the rehearsal does not depend on the network
+
+
+def test_a_slow_origin_times_out_into_an_error_line(mirror, monkeypatch):
+    real, seen = mg.git, {}
+
+    def slow(cwd, *args, **kw):
+        if args[0] == "ls-remote":
+            seen.update(kw)
+            raise subprocess.TimeoutExpired(["git", "ls-remote", "ghp_" + "D" * 24], kw["timeout"])
+        return real(cwd, *args, **kw)
+    monkeypatch.setattr(mg, "git", slow)
+    line = mirror.step(mirror.clean)
+    assert seen["timeout"] == mg.REMOTE_TIMEOUT_S <= 30 and (line["remote_main"], line["base_current"], line["ok"]) == (None, False, False)
+    assert "TimeoutExpired" in line["error"] and "ghp_" not in line["error"]
+
+
+@pytest.mark.parametrize("name", mg.CRITERION)
+def test_a_false_sub_criterion_still_rehearses_the_merge_and_the_line_says_which(mirror, name):
+    line = mirror.step(mirror.clean, **{name: False})
+    assert (line["ok"], line["clean"], mg.is_sha(line["merge_tree"])) == (False, True, True)
+    assert [k for k, v in line["criterion"].items() if not v] == [name]
+
+
+def test_a_head_the_enqueue_path_saw_move_is_not_ok_even_when_the_merge_is_clean(mirror):
+    line = mirror.step(mirror.clean, head_unchanged=False)
+    assert (line["head_unchanged"], line["clean"], line["ok"]) == (False, True, False)
+
+
+@pytest.mark.parametrize("tamper", [None, {}], ids=["no-criterion", "empty-criterion"])
+def test_a_line_without_a_criterion_is_never_ok(mirror, tamper):
+    enq = {**mirror.enq(mirror.clean), "criterion": tamper}
+    assert mg.merge_shadow_step(mirror.state, mirror.repo, enq)["ok"] is False
+
+
+def test_a_merge_tree_that_raises_is_journalled_redacted_and_not_ok(mirror, monkeypatch):
+    real = mg.git
+
+    def boom(cwd, *args, **kw):
+        if args[0] == "merge-tree":
+            raise OSError("merge-tree ghp_" + "C" * 24)
+        return real(cwd, *args, **kw)
+    monkeypatch.setattr(mg, "git", boom)
+    line = mirror.step(mirror.clean)
+    assert (line["ok"], line["merge_tree"], line["clean"]) == (False, None, False) and "OSError" in line["error"] and "ghp_" not in line["error"]
+
+
+def test_a_head_missing_from_the_mirror_is_an_error_line_not_a_raise(mirror):
+    line = mirror.step("9" * 40)
+    assert line["ok"] is False and line["merge_tree"] is None and "merge-tree failed" in line["error"]
+
+
+def test_a_mirror_without_its_base_ref_is_an_error_line_not_a_raise(mirror):
+    g(mirror.repo, "update-ref", "-d", "refs/merger/base")
+    line = mirror.step(mirror.clean)
+    assert line["ok"] is False and line["mirror_main"] is None and "error" in line
+
+
+def test_the_tick_journals_would_merge_with_a_tree_and_never_moves_a_ref_or_pushes(world, monkeypatch):
+    world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
+    pushes = []
+    real = mg.git
+    monkeypatch.setattr(mg, "git", lambda cwd, *a, **kw: pushes.append(a) or real(cwd, *a, **kw))
+    assert world.tick() == 0
+    w = world.journal()[-1]
+    assert w["kind"] == "would_merge" and w["ok"] is False and w["armed_env"] is False   # shadow: the real merge would also wait for the arm
+    assert (w["clean"], w["base_current"], w["head_unchanged"], w["mirror_main"], w["bites"]) == (True, True, True, world.base, True)
+    assert mg.is_sha(w["merge_tree"]) and w["criterion"]["review_independent"] is False and BODY not in json.dumps(w)
+    assert not [a for a in pushes if a[0] in ("push", "update-ref", "branch", "tag")]   # nothing pushed, no ref written by the rehearsal
+    refs = g(world.state / "repo.git", "for-each-ref", "--format=%(refname)").split()
+    assert not [r for r in refs if not r.startswith(("refs/merger/", "refs/heads/", "refs/remotes/", "refs/pull/"))]
+
+
+def test_a_merge_tree_failure_inside_a_tick_leaves_the_decision_and_its_exit_code_alone(world, monkeypatch):
+    world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
+    real = mg.git
+    monkeypatch.setattr(mg, "git", lambda cwd, *a, **kw: (_ for _ in ()).throw(OSError("no git")) if a[0] == "merge-tree" else real(cwd, *a, **kw))
+    assert world.tick() == 0
+    kinds = [r["kind"] for r in world.journal()]
+    assert kinds == ["decision", "would_enqueue", "would_merge"] and "no git" in world.journal()[-1]["error"] and world.journal()[0]["overall"] == "BLOCKED"
+
+
+@pytest.mark.parametrize("body,expected", [("Bites: x", True), ("text\n**Bites:** y", True), ("> bites : z", True), ("- Bites: w", True),
+                                           ("no such line", False), ("Bitesize: x", False), ("a Bites: mid-line", False), ("", False), (None, False)])
+def test_bites_is_a_flag_read_from_the_pr_body_line(enq, body, expected):
+    enq.gql.over["body"] = body
+    line = enq.run()
+    assert line["bites"] is expected and "body" not in line
+
+
+def test_a_journal_that_cannot_write_the_shadow_line_leaves_one_decision_and_rc_zero(world, monkeypatch, capsys):
+    world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
+    real = mg.journal
+
+    def full_disk(state, rec):
+        if rec.get("kind") == "would_merge":
+            raise OSError("No space left on device")
+        return real(state, rec)
+    monkeypatch.setattr(mg, "journal", full_disk)
+    assert world.tick() == 0
+    assert [r["kind"] for r in world.journal()] == ["decision", "would_enqueue"]   # no second, ERROR decision
+    assert "would_merge not journalled" in capsys.readouterr().err
+
+
+def test_a_github_main_that_moves_after_the_tick_fetch_makes_the_tick_line_not_current(world, monkeypatch):
+    world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
+    moved = {}
+    real = mg.run_gate
+
+    def gate_then_main_moves(*a, **kw):
+        res = real(*a, **kw)
+        g(world.src, "checkout", "-q", "main")
+        moved["sha"] = commit(world.src, {"z.txt": "z\n"}, "main moves during the gate")
+        g(world.origin, "fetch", "-q", str(world.src), "+refs/heads/main:refs/heads/main")
+        return res
+    monkeypatch.setattr(mg, "run_gate", gate_then_main_moves)
+    assert world.tick() == 0
+    w = world.journal()[-1]
+    assert (w["kind"], w["base_current"], w["mirror_main"], w["remote_main"], w["ok"]) == ("would_merge", False, world.base, moved["sha"], False)
