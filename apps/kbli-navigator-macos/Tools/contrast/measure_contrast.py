@@ -2,7 +2,10 @@
 """WCAG 2.x contrast for every (fg,bg) pair the KBLI Navigator views use, plus a PARITY check.
 TOKENS are the (day, night) defaults of Sources/Theme.swift `pick`/`pickAA` (R19 Direction-A,
 design loop 2026-10-09; contrastIncreased=false). Every TOKENS entry is re-read from Theme.swift and
-a differing pair or a missing token is a PARITY failure. Exit 1 on any FAIL or PARITY. Python 3.9.
+a differing pair or a missing token is a PARITY failure. SITE_PAIRS are also measured under Increase
+Contrast (dayHC/nightHC, the pickAA HC values and `contrastIncreased ?` redirects read from Theme.swift).
+Sources/ is scanned for literal white foregrounds, so a deleted census row cannot hide a live site:
+each hit outside WHITE_ALLOW is a WHITE failure. Exit 1 on any FAIL, PARITY or WHITE. Python 3.9.
 """
 import json, re, sys
 from pathlib import Path
@@ -44,9 +47,13 @@ def contrast_ratio(rgb1, rgb2):
     return (hi + 0.05) / (lo + 0.05)
 def composite(fg_rgb, alpha, bg_rgb):
     return tuple(round(fg_rgb[i]*alpha + bg_rgb[i]*(1-alpha)) for i in range(3))
+HC = {}  # token -> (dayHC, nightHC) or the token it redirects to under Increase Contrast
+
 def theme_rgb(token, theme):
-    idx = 0 if theme == "day" else 1
-    return hex_to_rgb(TOKENS[token][idx])
+    idx = 0 if theme.startswith("day") else 1
+    hc = HC.get(token) if theme.endswith("HC") else None
+    if isinstance(hc, str): return theme_rgb(hc, theme)
+    return hex_to_rgb(hc[idx] if hc else TOKENS[token][idx])
 def bg_rgb_for(spec, theme):
     if spec[0] == "solid": return theme_rgb(spec[1], theme)
     _, fg_tok, alpha, base_tok = spec
@@ -93,10 +100,43 @@ PAIRS = [
     ("riskInk/riskFillMediumLow", "riskInk", ("solid","riskFillMediumLow"), 4.5, "Theme.riskChip rank 2 — StatusBadge(risk:)"),
     ("riskInk/riskFillMediumHigh", "riskInk", ("solid","riskFillMediumHigh"), 4.5, "Theme.riskChip rank 3 — StatusBadge(risk:)"),
     ("riskInkOnHigh/riskFillHigh", "riskInkOnHigh", ("solid","riskFillHigh"), 4.5, "Theme.riskChip rank 4 — StatusBadge(risk:)"),
+    # (SITE_PAIRS below: the same chip painted at its live non-StatusBadge call sites)
     ("iconOnAccentFill/accent", "iconOnAccentFill", ("solid","accent"), 4.5, "ChatView send button: iconOnAccentFill on accent"),
     ("iconOnZantaraFill/zantara", "iconOnZantaraFill", ("solid","zantara"), 4.5, "BZLogo fallback glyph: iconOnZantaraFill on zantara"),
     ("muted/surfaceHi", "muted", ("solid","surfaceHi"), 4.5, "muted text on hover/inset surface"),
 ]
+
+# Live call sites that paint `Theme.riskChip` themselves (not through StatusBadge): every tier's pair
+# plus the unranked fallback (muted on wash), at each site, day / night / dayHC / nightHC.
+RISK_CHIP = [("riskInk", "riskFillLow", "rank 1"), ("riskInk", "riskFillMediumLow", "rank 2"),
+             ("riskInk", "riskFillMediumHigh", "rank 3"), ("riskInkOnHigh", "riskFillHigh", "rank 4"),
+             ("muted", "ink", "unranked")]
+SITES = ["KBLIRegistryView.swift:1541 scopeRow mini risk chip", "KBLIRegistryView.swift:1708 cellDetail risk chip"]
+SITE_PAIRS = [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5, "%s — Theme.riskChip %s" % (site, tier))
+              for site in SITES for fg, bg, tier in RISK_CHIP]
+
+# Literal white foregrounds: `.white`, `Color.white`, `NSColor.white`, `Color(white:`. `Theme.white` is a token.
+WHITE_RE = re.compile(r"(?<![\w.])\.white\b|\b(?:Color|NSColor)\.white\b|\bColor\(white:")
+# A hit allowed on purpose: (path relative to Sources/, stripped line) -> reason (e.g. photo overlay).
+WHITE_ALLOW = {}
+
+def white_sites(src):
+    hits = []
+    for f in sorted(Path(src).rglob("*.swift")):
+        for n, line in enumerate(f.read_text().splitlines(), 1):
+            key = (str(f.relative_to(src)), line.strip())
+            if not line.strip().startswith("//") and WHITE_RE.search(line) and not WHITE_ALLOW.get(key):
+                hits.append("WHITE %s:%d %s" % (key[0], n, key[1]))
+    return hits
+
+def parse_hc(path):
+    out = {}
+    for line in Path(path).read_text().splitlines():
+        m = re.search(r"static var (\w+): Color\s*\{\s*contrastIncreased \? (\w+) :", line)
+        h = re.search(r"static var (\w+): Color.*lightHC: 0x([0-9A-Fa-f]{6}), darkHC: 0x([0-9A-Fa-f]{6})", line)
+        if m: out[m.group(1)] = m.group(2)
+        elif h: out[h.group(1)] = (int(h.group(2), 16), int(h.group(3), 16))
+    return out
 
 THEME_RE = re.compile(r"static var (\w+): Color\s*\{\s*(?:contrastIncreased \? \w+ : )?pick(?:AA)?\(0x([0-9A-Fa-f]{6}), 0x([0-9A-Fa-f]{6})")
 
@@ -118,9 +158,12 @@ def parity(theme_path):
 def main():
     args = sys.argv[1:]
     theme_path = args[args.index("--theme") + 1] if "--theme" in args else Path(__file__).resolve().parents[2] / "Sources" / "Theme.swift"
+    src = args[args.index("--sources") + 1] if "--sources" in args else Path(__file__).resolve().parents[2] / "Sources"
+    HC.update(parse_hc(theme_path))
     results = []
-    for label, fg_tok, bg_spec, min_req, source in PAIRS:
-        for theme in ("day", "night"):
+    rows = [(p, ("day", "night")) for p in PAIRS] + [(p, ("day", "night", "dayHC", "nightHC")) for p in SITE_PAIRS]
+    for (label, fg_tok, bg_spec, min_req, source), themes in rows:
+        for theme in themes:
             fg = theme_rgb(fg_tok, theme)
             bg = bg_rgb_for(bg_spec, theme)
             ratio = round(contrast_ratio(fg, bg), 2)
@@ -138,7 +181,10 @@ def main():
         sys.stderr.write("  FAIL %s [%s] ratio=%s < %s\n" % (x["pair"], x["theme"], x["ratio"], x["min_required"]))
     for b in bad: sys.stderr.write(b + "\n")
     sys.stderr.write("PARITY=%d\n" % len(bad))
-    sys.exit(1 if fails or bad else 0)
+    white = white_sites(src) + ["WHITE-ALLOW %s:%s has no reason" % k for k, why in WHITE_ALLOW.items() if not why.strip()]
+    for w in white: sys.stderr.write(w + "\n")
+    sys.stderr.write("WHITE=%d\n" % len(white))
+    sys.exit(1 if fails or bad or white else 0)
 
 if __name__ == "__main__":
     main()
