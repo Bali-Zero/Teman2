@@ -67,7 +67,7 @@ receipts:
     exit: 0
     ts: "2026-10-09T02:49:17Z"
     seat: Claude Sonnet 5.5
-  - claim: The loader refuses floats and bools and the processing-time suite passes with the guard tests (Kimi LOW cure, 0438a94714).
+  - claim: The loader refuses floats and bools and the processing-time suite passes with the guard tests (Kimi LOW cure, da03398ef3).
     cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine/test_processing_times.py
     result: "36 passed in 11.15s"
     exit: 0
@@ -142,7 +142,7 @@ dissent:
   - seat: kimi-code/k3
     objection: "LOW: the snapshot loader accepted floats and bools."
     status: CONFIRMED
-    disposition: "cured in 0438a94714: whole numbers required, with guilt and innocence tests."
+    disposition: "cured in da03398ef3: whole numbers required, with guilt and innocence tests."
 owed:
   - "The Gear-3 final gate on the cured head."
 spend:
