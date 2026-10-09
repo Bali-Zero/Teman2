@@ -1,0 +1,24 @@
+task: >-
+  Follow-up owed by the final gate of #8134 (notice N1). The pro.disk_floor completion proof is bound to status
+  warning, but no test row pins that binding: a status-agnostic mutant of scripts/healer_receptor_registry.py stays
+  green, because the producer's error notes ("failed: ...", "free space unreadable") already fail the note-start
+  regex on their own. Add the one guilt row that a status-agnostic proof would get wrong: status error with a bare
+  measurement note must stay dead.
+lane: ops
+machine: m5
+date: 2026-10-09
+gear: 2
+gear_reason: >-
+  Measured floor 1 (one test row, no code). Gear 2 is declared above the floor so that harness-floor holds the
+  merge until the independent final gate signs it (campaign rule after #8079).
+acceptance:
+  A1:
+    text: >-
+      A fresh pro.disk_floor sidecar with status error and a bare "free_gb=<n>.<d> on /<path> (ok > <n>,
+      failed < <n>)" note stays dead.
+    probe: scripts/tests/test_healer_receptor_findings.py row D8.
+  A2:
+    text: >-
+      The mutant that ignores the status for pro.disk_floor goes red on row D8 and only on D8, and stays green on
+      the base test file; the unmutated registry passes every row.
+    probe: HEALER_REGISTRY_UNDER_TEST=<mutant> pytest on the base and head test files.
