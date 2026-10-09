@@ -16,7 +16,8 @@ pii_scan: clean
 pii_scan_note: "Pins and mutant fixtures hold public nav and footer labels, colours and route paths only. No client data, no external seat."
 provenance: >-
   Fresh worktree from origin/main c76bf4c723. Commit 1 carries #8183's 17 paths verbatim from
-  59d1a5e7f6. The mutations ran in a scratch worktree detached at c76bf4c723 with its own dev server,
+  59d1a5e7f6. A later commit drops #8183's brief.yml and pack.yml, because the Harness floor
+  resolves one pack per PR; #8183's evidence data files stay. The mutations ran in a scratch worktree detached at c76bf4c723 with its own dev server,
   edited by mutate.py, and reverted to a clean tree after each run.
 diff:
   net_lines: |
