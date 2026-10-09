@@ -1651,7 +1651,13 @@ function timeline(candidate: VisaOracleCandidateDisplay): OutcomeTimeline {
       basisDateIso: value.anchor_date,
       earliestDateIso: value.estimated_completion_from,
       latestDateIso: value.estimated_completion_to,
-      note: reasonMessage(value.reason_code),
+      ...(typeof value.working_days_min === "number" &&
+      typeof value.working_days_max === "number"
+        ? {
+            workingDaysMin: value.working_days_min,
+            workingDaysMax: value.working_days_max,
+          }
+        : {}),
     };
   }
   return { status: "UNAVAILABLE" };

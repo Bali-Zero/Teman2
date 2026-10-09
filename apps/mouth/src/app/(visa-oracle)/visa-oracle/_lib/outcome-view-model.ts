@@ -115,7 +115,9 @@ export type OutcomeTimeline =
       basisDateIso: string;
       earliestDateIso: string;
       latestDateIso: string;
-      note?: LocalizedText;
+      /** Bali Zero's typical window in Indonesian working days; absent from an older backend. */
+      workingDaysMin?: number;
+      workingDaysMax?: number;
     }
   | {
       status: "CONTACT_REQUIRED" | "UNAVAILABLE";

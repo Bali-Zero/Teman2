@@ -978,8 +978,17 @@ const en = {
   "outcome.status.CONTACT_REQUIRED": "Contact required",
   "outcome.status.NOT_OFFERED": "Not offered",
   "outcome.why_supported": "Why this path is supported",
-  "outcome.timeline_dates": "{{from}} to {{to}}",
-  "outcome.timeline_basis": "Calculated from the assessment date: {{date}}",
+  "outcome.timeline_none":
+    "Nothing to process in advance — entry is granted at the border.",
+  "outcome.timeline_within_one": "Typically within 1 working day",
+  "outcome.timeline_typical_exact": "Typically {{days}} working days",
+  "outcome.timeline_typical_range": "Typically {{min}}–{{max}} working days",
+  "outcome.timeline_if_today":
+    "If your documents are complete today: around {{from}} – {{to}}.",
+  "outcome.timeline_if_today_single":
+    "If your documents are complete today: around {{date}}.",
+  "outcome.timeline_indicative":
+    "Indicative Bali Zero timing in Indonesian working days, counted from complete documents. Ditjen Imigrasi sets the final pace; your advisor confirms the calendar before you book travel.",
   "outcome.document_status.CONDITIONAL": "Conditional",
   "outcome.document_status.UNKNOWN": "To be confirmed",
   // ENDING-ROUND E3: "abstained" is engine jargon.
@@ -1994,7 +2003,7 @@ const id: Record<Keys, string> = {
 
   "outcome.timeline_title": "Linimasa",
   "outcome.timeline_pending":
-    "Lama proses ditentukan oleh Ditjen Imigrasi dan bervariasi menurut kantor dan musim. Konsultan Bali Zero memastikan jadwal untuk kasus Anda sebelum Anda memesan perjalanan.",
+    "Lama proses ditentukan oleh Ditjen Imigrasi dan bervariasi menurut kantor dan musim. Konsultan Bali Zero akan mengonfirmasi jadwal untuk kasus Anda sebelum Anda memesan perjalanan.",
   "outcome.path_counter": "Jalur {{index}} dari {{total}}",
   "outcome.checked_on": "Diperiksa pada {{date}} berdasarkan sumber di atas.",
   "outcome.checked_on_plain": "Diperiksa pada {{date}}.",
@@ -2038,8 +2047,17 @@ const id: Record<Keys, string> = {
   "outcome.status.CONTACT_REQUIRED": "Perlu menghubungi kami",
   "outcome.status.NOT_OFFERED": "Tidak ditawarkan",
   "outcome.why_supported": "Mengapa jalur ini didukung",
-  "outcome.timeline_dates": "{{from}} sampai {{to}}",
-  "outcome.timeline_basis": "Dihitung dari tanggal penilaian: {{date}}",
+  "outcome.timeline_none":
+    "Tidak ada visa yang perlu diproses sebelumnya — izin masuk diberikan di perbatasan.",
+  "outcome.timeline_within_one": "Biasanya dalam 1 hari kerja",
+  "outcome.timeline_typical_exact": "Biasanya {{days}} hari kerja",
+  "outcome.timeline_typical_range": "Biasanya {{min}}–{{max}} hari kerja",
+  "outcome.timeline_if_today":
+    "Jika dokumen Anda lengkap hari ini: sekitar {{from}} – {{to}}.",
+  "outcome.timeline_if_today_single":
+    "Jika dokumen Anda lengkap hari ini: sekitar {{date}}.",
+  "outcome.timeline_indicative":
+    "Perkiraan waktu proses Bali Zero dalam hari kerja Indonesia, dihitung sejak dokumen lengkap. Waktu proses akhir ditentukan oleh Ditjen Imigrasi; konsultan Anda akan mengonfirmasi jadwal sebelum Anda memesan perjalanan.",
   "outcome.document_status.CONDITIONAL": "Bersyarat",
   "outcome.document_status.UNKNOWN": "Perlu dikonfirmasi",
   "outcome.needs_input_body": "Beberapa detail masih kurang:",

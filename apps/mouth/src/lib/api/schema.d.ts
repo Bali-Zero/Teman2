@@ -20127,6 +20127,10 @@ export interface components {
       /** Reason Code */
       reason_code: string;
       status: components["schemas"]["ProcessingTimelineStatus"];
+      /** Working Days Max */
+      working_days_max?: number | null;
+      /** Working Days Min */
+      working_days_min?: number | null;
     };
     /**
      * CandidateStayPolicyDTO

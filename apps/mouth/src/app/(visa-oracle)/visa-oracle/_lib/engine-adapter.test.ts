@@ -94,6 +94,36 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     },
   );
 
+  it("carries the working-day window into the timeline, and omits it from an older backend", () => {
+    for (const withWindow of [true, false]) {
+      const response = makeVisaOracleResponse();
+      Object.assign(response.display.candidates[0].processing_timeline, {
+        status: "AVAILABLE",
+        reason_code: "BALI_ZERO_TYPICAL_PROCESSING_TIME",
+        anchor_date: "2026-10-09",
+        estimated_completion_from: "2026-10-20",
+        estimated_completion_to: "2026-10-23",
+        ...(withWindow ? { working_days_min: 7, working_days_max: 10 } : {}),
+      });
+      const outcome = buildEngineOutcome(response);
+      if (outcome.state !== "SUPPORTED_CANDIDATES")
+        throw new Error("unexpected state");
+      const timeline = outcome.candidates[0].timeline;
+      expect(timeline).toMatchObject({
+        status: "AVAILABLE",
+        earliestDateIso: "2026-10-20",
+        latestDateIso: "2026-10-23",
+      });
+      expect("workingDaysMin" in timeline).toBe(withWindow);
+      if (withWindow) {
+        expect(timeline).toMatchObject({
+          workingDaysMin: 7,
+          workingDaysMax: 10,
+        });
+      }
+    }
+  });
+
   it("uses only processing/pricing/document assessments, never stay policy or mock content", () => {
     const outcome = buildEngineOutcome(makeVisaOracleResponse());
     expect(outcome.state).toBe("SUPPORTED_CANDIDATES");

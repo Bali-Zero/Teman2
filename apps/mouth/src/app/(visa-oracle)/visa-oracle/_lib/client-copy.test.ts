@@ -160,6 +160,42 @@ describe("client-visible copy", () => {
   });
 });
 
+describe("typical processing time copy", () => {
+  const KEYS = [
+    "outcome.timeline_none",
+    "outcome.timeline_within_one",
+    "outcome.timeline_typical_exact",
+    "outcome.timeline_typical_range",
+    "outcome.timeline_if_today",
+    "outcome.timeline_if_today_single",
+    "outcome.timeline_indicative",
+  ] as const;
+
+  it("exists in both languages and the superseded keys are gone", () => {
+    for (const language of ["en", "id"] as const) {
+      const table = dict[language] as Record<string, string>;
+      for (const key of KEYS) expect(table[key]?.length).toBeGreaterThan(0);
+      expect(table["outcome.timeline_dates"]).toBeUndefined();
+      expect(table["outcome.timeline_basis"]).toBeUndefined();
+    }
+    expect(dict.en["outcome.timeline_typical_range"]).toBe(
+      "Typically {{min}}–{{max}} working days",
+    );
+    expect(dict.id["outcome.timeline_typical_range"]).toBe(
+      "Biasanya {{min}}–{{max}} hari kerja",
+    );
+    expect(dict.id["outcome.timeline_none"]).toBe(
+      "Tidak ada visa yang perlu diproses sebelumnya — izin masuk diberikan di perbatasan.",
+    );
+    expect(dict.id["outcome.timeline_indicative"]).toMatch(
+      /^Perkiraan waktu proses Bali Zero .* akan mengonfirmasi jadwal /,
+    );
+    expect(dict.id["outcome.timeline_pending"]).toMatch(
+      /Konsultan Bali Zero akan mengonfirmasi jadwal/,
+    );
+  });
+});
+
 describe("nextStepsFor — one list per outcome state", () => {
   it.each(STATES)(
     "%s carries exactly three distinct, stable-id steps",
