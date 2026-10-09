@@ -1,0 +1,38 @@
+task_id: localci-phase-e-1010
+mission: LOCALCI-SOVEREIGN (phase E, prepared)
+colour: BLUE
+gear: 1
+gear_reason: >-
+  One new operator tool under scripts/localci (never run with --apply by a session), its tests, a mutant table of its own,
+  a README section and one spec paragraph. No hot-zone path, workflow, credential, wrapper or plist change; the lint floor
+  is 1 by path. The tool can rewrite branch protection when an operator applies it, so it went through an independent Opus
+  gate and Codex anyway.
+l_level: L2
+gate_class: opus
+objective: >-
+  Phase E of docs/specs/localci-sovereign-2026-10-07.md (the flip: remove the required checks and the merge queue, restrict
+  push to main to the merger identity) prepared as a script the operator applies after phase D is READY, so that day nothing
+  has to be designed. Read-only on 2026-10-10: main carries CLASSIC branch protection (14 required checks, strict false, a
+  pull request required with 0 approvals, enforce_admins true) besides the merge-queue-main ruleset; classic protection
+  exempts no deploy key, so the spec's phase F credential paragraph (a DeployKey bypass on merge-queue-main) alone would leave
+  the merger's push refused. The flip therefore rewrites the ruleset AND deletes the classic protection, in the safe order.
+constraints:
+  - Default is a read-only plan (GETs only); --apply needs the plan digest of the very state, a READY report (fresh, same repo, consistent window) and exactly one write deploy key that is the merger's.
+  - The pre-flip state is saved 0600 before the first write; the DELETE is sent only after the ruleset PUT's answer shows the target; both are re-read.
+  - Deletion and force-push stay forbidden by a ruleset nobody bypasses, which the flip requires; a classic setting it cannot restore is refused, never dropped.
+  - No session runs --apply; no ruleset or protection was written while building this.
+acceptance:
+  - text: The default run SHALL issue only GETs and SHALL name both writes in order with their bodies.
+    probe: "test_phase_e_flip.py::test_the_plan_reads_only_with_bare_gets_and_names_both_writes_in_order"
+  - text: --apply SHALL write nothing without the digest of the very state, a READY fresh consistent report, and exactly one write key that is the merger's.
+    probe: "test_phase_e_flip.py::test_apply_without_the_digest_of_this_very_state_writes_nothing, ::test_a_report_that_does_not_prove_ready_now_writes_nothing, ::test_anything_but_exactly_one_write_deploy_key_writes_nothing, ::test_the_one_write_key_must_be_the_mergers"
+  - text: The classic protection SHALL be deleted only after the ruleset PUT took, and the state SHALL be saved 0600 before the first write.
+    probe: "test_phase_e_flip.py::test_a_ruleset_write_that_answers_without_taking_sends_no_delete, ::test_a_failed_ruleset_write_sends_no_delete, ::test_the_flip_saves_the_state_before_its_first_write_and_reads_flipped_after"
+  - text: The saved state SHALL recreate the live classic protection field for field, and --rollback SHALL restore it and the ruleset and re-read both.
+    probe: "test_phase_e_flip.py::test_the_rollback_body_recreates_the_live_classic_protection_field_for_field, ::test_the_saved_state_restores_the_exact_classic_protection_and_ruleset, ::test_a_rollback_that_does_not_take_exits_3"
+  - text: Without an unbypassable deletion and force-push guard the flip SHALL write nothing.
+    probe: "test_phase_e_flip.py::test_without_an_unbypassable_deletion_and_force_push_guard_the_flip_writes_nothing"
+consumer_map:
+  - The operator at phase E (operator[gui]), following the README's arming order; the live plan against Bali-Zero/Teman2 is the observation on the PR.
+pii_scan: clean
+pii_scan_note: Branch-protection configuration, check names, ruleset ids and deploy-key fingerprints only; key material and key titles are never printed or saved. No client data was read or written.
