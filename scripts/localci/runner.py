@@ -1047,9 +1047,10 @@ def npm_inputs(wt: Path, cand: str, deps: dict) -> tuple[dict, str, str | None]:
 
 
 READER_RETRY_WAITS = (0, 10, 30)
+GATE_PENDING = "(gate_pending: host, at plan:"   # run_host_reader's reason for a verdict not posted yet (B12)
 
 
-def run_host_reader(argv: list, cwd: Path, timeout: int | None, no_verdict: str | None = None) -> dict:
+def run_host_reader(argv: list, cwd: Path, timeout: int | None, no_verdict: str | None = None, pending: str | None = None) -> dict:
     """A BASE reader of GitHub state (the harness gate verdict) at plan time, before any candidate code: python -I on the BASE copy,
     secrets stripped from its environment (gh answers with its stored login, a read). Its rc is frozen into the plan, so the seal
     covers it, and the driver folds it in at the step's position, where the step's own `if:` decides whether it counts."""
@@ -1060,6 +1061,9 @@ def run_host_reader(argv: list, cwd: Path, timeout: int | None, no_verdict: str 
         except (OSError, subprocess.TimeoutExpired) as e:
             return {"rc": None, "reason": f"host reader could not run: {type(e).__name__}"}
         out = r.stdout + r.stderr   # the reader's own error line, on stderr, line-anchored: a description it echoes (stdout) cannot fake it
+        if pending and r.returncode != 0 and any(ln.startswith(pending) for ln in r.stderr.splitlines()):   # B12: not posted yet, and a posting session takes minutes: no retry
+            return {"rc": None, "reason": f"gate_pending: host, at plan: BASE {Path(argv[2]).name} — no harness/fable-gate verdict posted on the head yet; "
+                    "asked again once it is", "log": out[-4000:]}
         if not (no_verdict and r.returncode != 0 and any(ln.startswith(no_verdict) for ln in r.stderr.splitlines())):
             return {"rc": r.returncode, "reason": f"host, at plan: BASE {Path(argv[2]).name} rc={r.returncode}", "log": out[-4000:]}
     return {"rc": None, "reason": f"host, at plan: BASE {Path(argv[2]).name} could not read GitHub ({no_verdict!r}, {len(READER_RETRY_WAITS)} tries): "
@@ -1190,7 +1194,7 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                 (tdir / argv[1]).parent.mkdir(parents=True, exist_ok=True)
                 (tdir / argv[1]).write_bytes(blob)
                 st["side"] = {"where": "host", "argv": [sys.executable, "-I", str(tdir / argv[1]), *argv[2:]], "base_sha256": sha256_bytes(blob)}
-                st["precomputed"] = run_host_reader(st["side"]["argv"], tdir, st.get("timeout_s"), ms.get("no_verdict_when"))
+                st["precomputed"] = run_host_reader(st["side"]["argv"], tdir, st.get("timeout_s"), ms.get("no_verdict_when"), ms.get("pending_when"))
         image_id, deps_note = iso["image_id"], ""
         if local.get("deps"):
             image_id, deps_note = plan_deps_image(wt, cand, iso, local["deps"], prefix, run_dir, re.sub(r"[^a-z0-9-]", "-", str(ctx["check"])[4:]))
@@ -2598,6 +2602,8 @@ def evaluate_contexts(view: dict, plan: dict) -> dict:
             out["results"][name]["no_verdict"] = host.group(0)
         elif s == "BLOCKED" and reason.startswith("judge_rewritten: "):   # a red read with a BASE judge the candidate rewrites (B5)
             out["results"][name]["no_verdict"] = "judge_rewritten"
+        elif s == "BLOCKED" and GATE_PENDING in reason:   # B12: the session has not posted its gate verdict yet — asked again once it has
+            out["results"][name]["no_verdict"] = "gate_pending"
         if not ok:
             (out["red"] if s == "FAIL" else out["blocked"]).append(name)
     return out

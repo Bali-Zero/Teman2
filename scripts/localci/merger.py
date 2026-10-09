@@ -233,14 +233,40 @@ def wants_merge(pr: dict) -> bool:
     return bool(pr.get("auto_merge")) or bool({LABEL, ARM_LABEL} & {lb.get("name") for lb in pr.get("labels") or [] if isinstance(lb, dict)})
 
 
-def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str) -> tuple[list[dict], list[dict]]:
+GATE_CONTEXT = "harness/fable-gate"
+GATE_PENDING_CAP = 3   # B12: decisions of one (pr, head, base) that found no gate verdict posted yet
+
+
+def gate_status_posted(repo: str, head: str) -> bool:
+    """B12: does ``head`` carry a ``harness/fable-gate`` commit status, in any state? One read-only GET (paged). Raises on a failed read."""
+    for page in range(1, hc.MAX_PAGES + 1):
+        batch = hc.gh_get(f"repos/{repo}/commits/{head}/statuses?per_page=100&page={page}")
+        if not isinstance(batch, list) or any(not isinstance(x, dict) for x in batch):
+            raise hc.CompareError(f"statuses page {page} of {head[:12]} is not a list of objects")
+        if any(x.get("context") == GATE_CONTEXT for x in batch):
+            return True
+        if len(batch) < 100:
+            return False
+    raise hc.CompareError(f"more than {hc.MAX_PAGES} pages of statuses on {head[:12]} — refusing a truncated read")
+
+
+def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_posted=None, capped: list | None = None) -> tuple[list[dict], list[dict]]:
     """(same-repo PRs to decide, in order; fork PRs to journal). Drafts and PRs that ask for no merge are not the merger's.
 
     Order: a head never decided at any base first, then the head whose last decision is oldest, then created_at —
-    `main` moves on every merge, so oldest-first alone would re-decide one PR at each new base and starve the rest."""
+    `main` moves on every merge, so oldest-first alone would re-decide one PR at each new base and starve the rest.
+
+    B12: a decision that found the gate verdict not posted yet (``gate_pending``) is no verdict, so its key is decided again —
+    only when ``gate_posted(pr, head)`` says the head now carries the status (a failed read, or no callable, is a no), and at most
+    ``GATE_PENDING_CAP`` times; a key past the cap is appended to ``capped`` and stays decided."""
     decided = {(r.get("pr"), r.get("head_sha"), r.get("base_sha")) for r in recs if (r.get("kind") == "decision" and not r.get("replay"))
                or r.get("why") == "head_in_base"}
     refused = {(r.get("pr"), r.get("head_sha")) for r in recs if r.get("kind") == "refused"}
+    pending: dict = {}   # key -> [decisions, newest one gate_pending?]
+    for r in recs:
+        if r.get("kind") == "decision" and not r.get("replay"):
+            k = (r.get("pr"), r.get("head_sha"), r.get("base_sha"))
+            pending[k] = [pending.get(k, [0, False])[0] + (r.get("gate_pending") is True), r.get("gate_pending") is True]
     last: dict = {}
     for r in recs:
         if r.get("kind") == "decision" and not r.get("replay"):
@@ -255,6 +281,16 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str) -> tuple
                 forks.append(pr)
         elif (n, head, base_sha) not in decided:
             todo.append(pr)
+        elif (count := pending.get((n, head, base_sha), [0, False]))[1]:
+            if count[0] >= GATE_PENDING_CAP:
+                if capped is not None:
+                    capped.append(pr)
+                continue
+            try:
+                if gate_posted is not None and gate_posted(n, head):
+                    todo.append(pr)
+            except (hc.CompareError, OSError) as exc:
+                print(f"merger: #{n} gate status not read — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
     todo.sort(key=lambda p: ((p["number"], head_of(p)) in last, last.get((p["number"], head_of(p)), ""), str(p.get("created_at")), p["number"]))
     return todo, forks
 
@@ -940,7 +976,8 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         else:
             hosted, live = hosted_summary(a.repo, a.base, status, head, run_dir, StaleJudge(repo_dir, base_sha))
         loc = local_side({} if gate.get("error") else status)
-        line = journal(state, {**rec, "candidate_sha": cand_sha, "overall": status.get("overall") or "ERROR", "error": gate.get("error"),
+        gate_pending = any(isinstance(v, dict) and v.get("no_verdict") == "gate_pending" for v in results.values())
+        line = journal(state, {**rec, **({"gate_pending": True} if gate_pending else {}), "candidate_sha": cand_sha, "overall": status.get("overall") or "ERROR", "error": gate.get("error"),
                                "contexts_status": ctx.get("status"), "contexts": {k: (v or {}).get("verdict") for k, v in results.items()},
                                "coverage": {k: (v or {}).get("coverage") for k, v in results.items()},
                                "skipped": {k: v["skipped"] for k, v in results.items() if isinstance((v or {}).get("skipped"), str)},
@@ -1020,7 +1057,12 @@ def tick(a, state: Path, lease_id: str) -> int:
     if not fetch_base(a, state, repo_dir, recs):
         return 1
     base_sha = git(repo_dir, "rev-parse", "refs/merger/base^{commit}").stdout.strip()
-    todo, forks = triage(open_prs(a.repo, a.base), a.repo, recs, base_sha)
+    capped: list = []
+    todo, forks = triage(open_prs(a.repo, a.base), a.repo, recs, base_sha, lambda n, head: gate_status_posted(a.repo, head), capped)
+    for pr in capped:   # B12: journalled once per key, however many ticks pass
+        key = {"pr": pr["number"], "head_sha": head_of(pr), "base_sha": base_sha}
+        if not any(r.get("kind") == "skipped" and r.get("why") == "gate_pending_cap" and all(r.get(k) == v for k, v in key.items()) for r in recs):
+            journal(state, {"kind": "skipped", "why": "gate_pending_cap", **key, "lease_id": lease_id})
     for pr in forks:
         journal(state, {"kind": "refused", "why": "fork", "pr": pr["number"], "head_sha": head_of(pr), "base_sha": base_sha, "lease_id": lease_id})
     last = [r for r in recs if r.get("kind") == "decision"][-1:]
@@ -1245,7 +1287,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
             rows.append({"ts": d.get("ts"), "pr": n, "head_sha": head, "hosted_sha": sha, "base_sha": d.get("base_sha"), "overall": d.get("overall"),
                          "github": github, "merged": prs[n].get("merged") is True, "class": classify(merger_side(d.get("overall")), github),
                          "compared_contexts": compared_ctx, "compared_partial": not_full["partial"], "compared_unrecorded": not_full["unrecorded"],
-                         "compared_skip_agreed": skip_agreed, "replay": d.get("replay") is True,
+                         "compared_skip_agreed": skip_agreed, "replay": d.get("replay") is True, "gate_pending": d.get("gate_pending") is True,
                          "merged_at": merged_at, "code_sha": d.get("code_sha"),
                          "elapsed_s": d.get("elapsed_s") if is_num(d.get("elapsed_s")) else None,
                          "compared_merge": merged_here and github != "PENDING" and d.get("contexts_status") == "ok"
@@ -1284,6 +1326,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
         if r["compared_merge"]:
             qualifying.setdefault(r["pr"], []).append(r["replay"])
     from_replays = sum(1 for flags in qualifying.values() if all(flags))   # a PR that also qualified before its merge is counted there
+    gate_pending_n = sum(1 for r in rows if r["gate_pending"])
     compared_partial = sum(len(r["compared_partial"]) for r in rows)
     compared_unrecorded = sum(len(r["compared_unrecorded"]) for r in rows)
     partial_names = sorted({n for r in rows for n in r["compared_partial"]})
@@ -1310,7 +1353,8 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
              "check_max_s": dict(sorted(check_max_s.items(), key=lambda kv: -kv[1]))}
     out = {"window": {"first": first, "last": last, "days": days, "decisions": len(rows), "distinct_prs": len({r["pr"] for r in rows}),
                       "merged_prs": len({r["pr"] for r in rows if r["merged"]}), "compared_merges": compared_merges,
-                      "replays": sum(1 for r in rows if r["replay"]), "compared_merges_from_replays": from_replays,
+                      "replays": sum(1 for r in rows if r["replay"]), "gate_pending": gate_pending_n,
+                      "compared_merges_from_replays": from_replays,
                       "compared_partial": compared_partial, "compared_unrecorded": compared_unrecorded, "partial_contexts": partial_names,
                       "compared_merges_full_only": compared_merges - len(with_partial), "compared_merges_with_partial": len(with_partial),
                       "compared_merges_partial_contexts": merged_partial_names, "compared_skip_agreed": compared_skip_agreed,
@@ -1335,6 +1379,8 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
           f"skipped={skipped or 0}")
     print(f"replays (B11): {w['replays']} replay decision(s) in the window; compared_merges={compared_merges} of which {from_replays} reached "
           f"the threshold only through a replay of the merge commit (a PR counts once)")
+    print(f"gate pending (B12): {gate_pending_n} decision(s) found no harness/fable-gate verdict posted yet — BLIND, not FALSE_RED; each is decided "
+          f"again once the status is on the head (at most {GATE_PENDING_CAP} per pr/head/base)")
     print(f"gaps: longest between decisions={decision_gap_h}h, longest between any journal lines={silence_h}h, "
           f"last line {last_line_age_h}h ago" + (f", {future_lines} line(s) dated in the future" if future_lines else "")
           + f"; code shas in the window: {[c[:12] for c in w['code_shas']] or 'none recorded'}, "
