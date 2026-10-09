@@ -1683,8 +1683,11 @@ function documents(candidate: VisaOracleCandidateDisplay): OutcomeDocument[] {
 /** Spread into the candidate: absent unless the engine sent `selected_duration_days`. */
 function duration(
   candidate: VisaOracleCandidateDisplay,
+  response: VisaOracleEvaluateResponse,
 ): { duration: OutcomeDuration } | Record<string, never> {
   if (candidate.selected_duration_days == null) return {};
+  // No matching quote, no label: a permit length is only shown beside its own price.
+  if (price(candidate, response).status !== "AVAILABLE") return {};
   return {
     duration: {
       selectedDays: candidate.selected_duration_days,
@@ -1698,13 +1701,40 @@ function duration(
   };
 }
 
+/**
+ * The quote that prices this candidate. Without a duration block it is the
+ * product's quote. With one, it must be the quote of the SELECTED option:
+ * same pricing key and, when the option carries an amount, the same amount.
+ * `null` when none matches, so the page never shows a duration beside the
+ * price of another one.
+ */
+function quoteFor(
+  candidate: VisaOracleCandidateDisplay,
+  response: VisaOracleEvaluateResponse,
+) {
+  const quotes = response.decision.quotes.filter(
+    (item) => item.product_version_id === candidate.product_version_id,
+  );
+  if (candidate.selected_duration_days == null) return quotes[0] ?? null;
+  const selected = (candidate.duration_options ?? []).find(
+    (option) => option.selected,
+  );
+  if (!selected) return null;
+  return (
+    quotes.find(
+      (item) =>
+        item.pricing_key.category === selected.pricing_key.category &&
+        item.pricing_key.item_key === selected.pricing_key.item_key &&
+        (selected.amount_idr == null || item.amount === selected.amount_idr),
+    ) ?? null
+  );
+}
+
 function price(
   candidate: VisaOracleCandidateDisplay,
   response: VisaOracleEvaluateResponse,
 ): OutcomePrice {
-  const quote = response.decision.quotes.find(
-    (item) => item.product_version_id === candidate.product_version_id,
-  );
+  const quote = quoteFor(candidate, response);
   if (
     candidate.pricing.status === "AVAILABLE" &&
     quote?.status === "AVAILABLE" &&
@@ -1983,7 +2013,7 @@ function buildValidatedOutcome(
           ),
           timeline: timeline(projected),
           price: price(projected, response),
-          ...duration(projected),
+          ...duration(projected, response),
           documents: documents(projected),
         } satisfies OutcomeCandidate;
       });

@@ -1,5 +1,5 @@
-import { render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { buildEngineOutcome } from "../_lib/engine-adapter";
 import type { Language } from "../_lib/flow";
 import { makeVisaOracleResponse } from "../_lib/visa-oracle-test-fixture";
@@ -11,13 +11,13 @@ const option = (days: number, amount: number | null, selected: boolean) => ({
   selected,
   status: "AVAILABLE",
   reason_code: "DURATION_OPTION",
-  pricing_key: days === 365 ? "E31A_1Y" : "E31A_2Y",
+  pricing_key: {
+    category: "visa",
+    item_key: days === 365 ? "E31A_1Y" : "E31A_2Y",
+  },
 });
 
-function priceText(
-  extra: Record<string, unknown>,
-  language: Language = "en",
-): string {
+function outcomeWith(extra: Record<string, unknown>) {
   const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
   const candidate = response.display.candidates[0];
   Object.assign(candidate, extra);
@@ -29,6 +29,9 @@ function priceText(
     catalog_sha256: "b".repeat(64),
     row_sha256: "c".repeat(64),
   };
+  const chosen = (
+    (extra.duration_options as ReturnType<typeof option>[] | undefined) ?? []
+  ).find((item) => item.selected);
   response.decision.quotes = [
     {
       quote_id: "55555555-5555-4555-8555-555555555555",
@@ -36,8 +39,8 @@ function priceText(
       product_code: candidate.product_code,
       status: "AVAILABLE",
       currency: "IDR",
-      amount: 15_000_000,
-      pricing_key: { category: "visa", item_key: "C1" },
+      amount: chosen?.amount_idr ?? 15_000_000,
+      pricing_key: chosen?.pricing_key ?? { category: "visa", item_key: "C1" },
       catalog_version: "2026.08",
       catalog_sha256: "b".repeat(64),
       row_sha256: "c".repeat(64),
@@ -46,11 +49,43 @@ function priceText(
       reason_code: "PRICE_AVAILABLE",
     },
   ];
-  const outcome = buildEngineOutcome(response);
+  return buildEngineOutcome(response);
+}
+
+function priceText(
+  extra: Record<string, unknown>,
+  language: Language = "en",
+): string {
   const { container } = render(
-    <OutcomeSheet language={language} outcome={outcome} facts={{}} />,
+    <OutcomeSheet
+      language={language}
+      outcome={outcomeWith(extra)}
+      facts={{}}
+    />,
   );
   return container.querySelector(".oracle-price")?.textContent ?? "";
+}
+
+async function copiedSummary(
+  extra: Record<string, unknown>,
+  language: Language = "en",
+): Promise<string> {
+  render(
+    <OutcomeSheet
+      language={language}
+      outcome={outcomeWith(extra)}
+      facts={{}}
+    />,
+  );
+  const writeText = navigator.clipboard.writeText as ReturnType<typeof vi.fn>;
+  writeText.mockClear();
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: language === "id" ? "Salin ringkasan" : "Copy summary",
+    }),
+  );
+  await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+  return writeText.mock.calls[0]?.[0] as string;
 }
 
 describe("OutcomeSheet — stay-permit duration under the price", () => {
@@ -123,5 +158,36 @@ describe("OutcomeSheet — stay-permit duration under the price", () => {
     const text = priceText({});
     expect(text).not.toMatch(/stay permit|Also available/);
     expect(text).toMatch(/Government fees and Bali Zero service included\.$/);
+  });
+
+  it("share summary: a candidate with a duration carries price and permit after its name", async () => {
+    const summary = await copiedSummary({
+      selected_duration_days: 730,
+      duration_options: [
+        option(365, 11_000_000, false),
+        option(730, 15_000_000, true),
+      ],
+    });
+    expect(summary).toMatch(/: IDR\s15,000,000 · 2-year stay permit$/m);
+  });
+
+  it("share summary: a candidate without a duration is unchanged", async () => {
+    const summary = await copiedSummary({});
+    expect(summary).not.toMatch(/stay permit|·/);
+    expect(summary).toMatch(/^[A-Z0-9]+ — .+$/m);
+  });
+
+  it("share summary reads in Indonesian", async () => {
+    const summary = await copiedSummary(
+      {
+        selected_duration_days: 365,
+        duration_options: [
+          option(365, 11_000_000, true),
+          option(730, 15_000_000, false),
+        ],
+      },
+      "id",
+    );
+    expect(summary).toMatch(/ · Izin tinggal 1 tahun$/m);
   });
 });
