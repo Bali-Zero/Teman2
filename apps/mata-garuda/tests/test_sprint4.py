@@ -54,6 +54,11 @@ TEST_STREAM = "garuda:test_sprint4"
 
 
 class TestCurlFetch:
+    @pytest.mark.live
+    @pytest.mark.skipif(
+        os.environ.get("MATA_GARUDA_LIVE_ENDPOINTS") != "1",
+        reason="set MATA_GARUDA_LIVE_ENDPOINTS=1 to run",
+    )
     def test_fetch_valid_url(self):
         result = _curl_fetch("https://peraturan.go.id/", timeout=10)
         assert not result.startswith("[ERROR]")

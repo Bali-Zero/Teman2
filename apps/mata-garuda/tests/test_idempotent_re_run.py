@@ -30,6 +30,8 @@ def tmp_registry(tmp_path, monkeypatch):
     monkeypatch.setenv("APOPTOSIS_AUDIT_LOG", str(fake_audit))
     monkeypatch.setattr(apo, "REGISTRY_TARGET", fake_target)
     monkeypatch.setattr(apo, "AUDIT_LOG", fake_audit)
+    # run_apoptosis() asks the live `nlm` CLI for each title; keep it offline.
+    monkeypatch.setattr(apo, "nlm_get_title", lambda u: None)
     return fake_target
 
 

@@ -44,6 +44,13 @@ jobs:
             apps/mata-garuda/pyproject.toml
             packages/cell-core/pyproject.toml
 
+      # tests/test_cron_wrapper_no_homefork.py execs /bin/zsh; ubuntu-latest ships none.
+      - name: Install zsh (the cron-wrapper tests exec /bin/zsh)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q zsh
+          test -x /bin/zsh
+
       # cell-core is imported by 5 test modules but not declared by mata-garuda.
       # tenacity/httpx/numpy/scikit-learn are the `foundations` extra minus the
       # heavy torch/transformers (tests mock them, imported lazily); pyyaml is
