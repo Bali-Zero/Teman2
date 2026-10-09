@@ -302,7 +302,7 @@ effect gives **at-least-once** delivery: it needs an idempotent side effect plus
 ## Hosted comparison (read-only)
 
 `hosted_compare.py` reads the contexts branch protection requires LIVE and the hosted check runs and commit statuses of the run's
-candidate sha, and names each required context `AGREE`, `FALSE_GREEN`, `FALSE_RED`, `LOCAL_BLIND` or `HOSTED_PENDING`. It also
+candidate sha, and names each required context `AGREE`, `FALSE_GREEN`, `FALSE_RED`, `LOCAL_BLIND`, `HOSTED_PENDING` or (B10) `HOSTED_STALE`. It also
 reports drift between the live required names and the names the run was planned with, and which required contexts pin no source
 app. Every call is a GET through `gh api`: it posts nothing and needs no arming, so the comparison the adapter was built for does
 not need the adapter armed. A local verdict counts only where the runner recorded a per-context `OK` or `FAIL`; anything else is
@@ -393,8 +393,8 @@ when unreadable), `base_current` (decision base == `remote_main`; false when `re
 merged tree's sha, or null), `clean`, `conflicts` (paths, `[]` when clean), `criterion` (the enqueue path's own sub-criteria, with
 `label_privileged`), `armed_env`, `bites` (the PR body carries a `Bites:` line; the text is never kept), `ok` (every
 sub-criterion AND `base_current` AND `clean`), `lease_id`, `code_sha`. `merger.py report` prints
-`phase F shadow: would_merge=N (ok=M, conflicted=K, base_moved=J, errors=E)` (a git error counts only under `errors`, a conflict
-needs a tree and no error, a moved base needs a readable `remote_main`) and carries it in `window.would_merge` beside
+`phase F shadow: would_merge=N (ok=M, conflicted=K, base_moved=J, errors=E)` (a conflict never counts a git error, which counts under `errors`;
+a conflict needs a tree and no error, a moved base needs a readable `remote_main`) and carries it in `window.would_merge` beside
 `phase_f: "shadow"`. An illustrative line (invented shas, not a Pro journal line):
 
     {"kind": "would_merge", "pr": 8123, "head_sha": "<40 hex>", "base_sha": "<40 hex>", "mirror_main": "<same 40 hex>",
@@ -445,6 +445,18 @@ count is vacuous today. The phase-D instrument is the CONTEXT level, in two part
   the very candidate the queue tested and pushed, which carries the `merge_group` runs (measured on #8012 → 56c6f70d86: 18
   merge_group workflow runs); any later `push` run of a same-named check on that commit counts too, red-dominant, which can
   only ADD a false green. Otherwise it is made on the head. A merged PR with no merge sha is exit 2.
+- **`HOSTED_STALE` (B10).** `hosted_compare` never reads a timestamp by itself; the merger hands it a `StaleJudge`. A compared row (AGREE,
+  FALSE_GREEN or FALSE_RED) whose hosted verdict completed BEFORE the base the local run used becomes `HOSTED_STALE` when main changed
+  between the main the hosted run merged (the newest first-parent commit of the decision's `base_sha` dated at or before the hosted
+  `completed_at`, `hosted_main`) and `base_sha` in a path the BASE `change_map.py` selects for that context (the matrix's `runs_when`; the
+  classifier runs as the runner runs it, `-I` and a stripped environment). The class is counted apart, never in AGREE, FALSE_GREEN or
+  FALSE_RED, never a compared context, and the row carries `hosted_completed_at`, `hosted_main`, `main_moved_paths` (the selected ones,
+  at most 20) and `main_moved_count`. Only on evidence: an unreadable `completed_at`, mirror, matrix or change_map, or a context with no
+  `runs_when`, keeps the class and sets `stale_check: "unknown (<why>)"`. The tick computes it going forward (the decision's
+  `hosted_compare.stale` / `stale_unknown`); for the past, the report re-reads each recorded FALSE_GREEN row's `hosted_compare.json`, reads the
+  head's check-runs once (a GET) and applies the same rule from the mirror, writing nothing, and prints
+  `false_green=N (recorded=R, reclassified HOSTED_STALE=S: [pr7961 Backend Tests (Python): main moved <paths> after hosted ran <ts>])`:
+  READY reads `N`, the remaining false greens. A recorded red that is no longer the hosted verdict is never reclassified.
 - **at tick time:** the `hosted_compare.counts.FALSE_GREEN` each decision line recorded. A red GitHub later re-ran green, or a
   context it stopped requiring, cannot erase a disagreement once seen.
 

@@ -72,6 +72,8 @@ _What this does not do._ It does not delete evidence of a decision (receipts tha
 
 _Open question (B9, written, not built)._ The deps recipe is per candidate tree, so PRs that never touch a lockfile still differ by the main lockfile they branched from; a recipe keyed on the merge result (candidate ∪ base) would let every PR that leaves the lockfile alone share main's image — B9, needs the hosted-compare evidence that the gate tests what hosted tests.
 
+**B10 (RULED 2026-10-09): a stale hosted verdict is `HOSTED_STALE`, never FALSE_GREEN.** The journal's only FALSE_GREEN of 84 decisions (2026-10-08T18:25:57Z, pr7961 `Backend Tests (Python)`) was hosted red from 2026-10-06T02:54Z on `refs/pull/7961/merge` of that day (`pip-audit` failing on pins main fixed in #7965 and #7996 afterwards) beside a local green on main of 10-08; the comparator joined on the PR head and compared no timestamp. A compared row whose hosted verdict completed before the base the local run used, with main changed in between in a path the BASE change_map selects for that context, is `HOSTED_STALE`: counted apart, never a compared context, only on evidence (otherwise the class is kept and `stale_check` says `unknown`); `merger.py report` re-reads recorded FALSE_GREEN rows with the same rule and READY reads the remainder. The ≥ 12 compared contexts of a compared merge are unchanged.
+
 Phase E never precedes D. If D shows a false green, the flip waits and the executor is fixed first. The operator reads `compared_merges`, never the age of the window: error lines and undecided ticks age a journal without proving anything.
 
 **Phase F — local main authority: the merger merges, GitHub stores** (RULED 2026-10-08, Zero's direct directive in session).
