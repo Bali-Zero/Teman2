@@ -687,8 +687,9 @@ check's source, the `merge-queue-main` ruleset, the ruleset that forbids deletio
 report; it prints the two writes of the flip with their exact bodies, what still blocks them, and a plan digest. The flip is
 (1) `PUT` the `merge-queue-main` ruleset with `merge_queue` replaced by `update` (`update_allows_fetch_and_merge` false) and the
 DeployKey bypass (`actor_id` null, `always`) as its only actor, then (2) `DELETE` the classic protection — sent only when
-GitHub's answer to (1) shows the ruleset enforced, with that one rule and that one actor, on the same conditions (a write that
-answers without taking stops the run, exit 3). The classic protection must go because it requires a pull request and the status
+GitHub's answer to (1) shows the ruleset enforced, with that one rule and that one actor, on the same conditions, AND a fresh
+read still shows it so, the guard, the one merger key and the scope (a write that does not take, or a guard or key that changed
+during the run, stops it before the DELETE: exit 3). The classic protection must go because it requires a pull request and the status
 checks, and classic protection exempts no deploy key: while it stands the merger's fast-forward push is refused (`push_refused`,
 a sticky halt). Between the two writes nobody can move `main`.
 Deletion and force-push stay forbidden by the `Copilot review for default branch` ruleset (`deletion`, `non_fast_forward`, no
@@ -698,21 +699,26 @@ bypass actor), which the flip requires.
 classic protection, the `merge-queue-main` ruleset, each guard ruleset whole, the write keys by id, date and fingerprint, and the
 writes — any of them that moved since the plan changes the digest); the report says `phase_e_ready: true`,
 is of the same repository, was generated within the last 2 hours (and not more than 5 minutes ahead), and its own window shows
-READY (`compared_merges` >= 50, `compared_days` >= 14, `FALSE_GREEN` 0 — a contradiction is refused); exactly one deploy key
-with write exists (the DeployKey bypass covers every write key of the repository) and it is the merger's: the sha256 of its type
-and blob equals that of `--key-pub` (default `~/.nuzantara-pilots/local-ci/merger/deploy_key.pub`; only the fingerprint is
-printed, never the key or its title); the live state is pre-flip (classic protection present, a `merge_queue` rule in the
+READY (`compared_merges` >= 50, `compared_days` >= 14, and `FALSE_GREEN` the integer 0 at every level the merger sums for READY —
+`counts`, `context_counts`, `recorded_context_false_green`; a contradiction is refused, a malformed report is refused, never
+raised); exactly one deploy key with write exists (the DeployKey bypass covers every write key of the repository; every page of
+the list is read) and it is the merger's: its `SHA256:` fingerprint — the form `ssh-keygen -lf` and GitHub's key page print —
+equals that of `--key-pub` (default `~/.nuzantara-pilots/local-ci/merger/deploy_key.pub`; only the fingerprint is printed,
+never the key or its title); the live state is pre-flip (classic protection present, a `merge_queue` rule in the
 ruleset); the ruleset covers the branch and nothing wider; and the deletion/force-push guard exists — an active ruleset that
 GitHub lists with an empty `bypass_actors` (an omitted field is unknown, not none) and whose exclusions name no pattern. Flipped
 is read by meaning: no classic protection, the ruleset enforced, covering the branch, one `update` rule that allows no
 fetch-and-merge, the DeployKey its one actor, always. An already flipped branch writes nothing and is re-judged — a second write
-key, a foreign key or a lost guard is exit 1 (`already flipped, but: …`); anything neither pre-flip nor flipped is `drifted` and
-refused. A classic setting this tool cannot restore exactly (push restrictions, signed commits, dismissal restrictions or bypass
+key, a foreign or unidentifiable key (an unreadable `--key-pub`), a lost guard or a ruleset widened beyond the branch is exit 1
+(`already flipped, but: …`); anything neither pre-flip nor flipped is `drifted` and refused. The classic protection reads as
+absent only on GitHub's `Branch not protected` 404; any other error, 404s included, refuses. A classic setting this tool cannot restore exactly (push restrictions, signed commits, dismissal restrictions or bypass
 allowances, which GitHub lists only when configured) is refused, never dropped. The
 pre-flip state is saved first (`<state-dir>/pre-flip-<UTC>.json`, directory 0700, file 0600, created exclusively — no save,
 no write); both resources are re-read after the writes and anything but `flipped` is exit 3 with the rollback command.
-`--rollback` restores the classic protection first and the ruleset second, under its own plan digest, then re-reads both:
-anything but the saved state is exit 3. The classic body is sent with `checks` only (GitHub refuses `contexts` beside it) and
+`--rollback` restores the classic protection first and the ruleset second, under its own plan digest: the ruleset write is sent
+only when GitHub's answer to the first shows the classic protection as saved (never the merge queue back without the checks),
+and both are re-read after — anything but the saved state is exit 3 (the checks compared as a set: GitHub may list them in
+another order). The classic body is sent with `checks` only (GitHub refuses `contexts` beside it) and
 `restrictions: null`. A check whose source is
 "any" is read as `app_id` null and saved as `-1` (an omitted `app_id` would pin the app that last reported it). Exit codes:
 0 plan printed, applied or nothing to do; 1 refused; 2 bad arguments; 3 a write failed or did not take.

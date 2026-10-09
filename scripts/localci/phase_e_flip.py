@@ -9,8 +9,8 @@ only writer of ``main`` (docs/specs/localci-sovereign-2026-10-07.md, §2 phase E
                          (``phase_e_ready`` true, generated within 2 h, same repo) and exactly one write deploy key exists,
                          the merger's (``--key-pub``). The pre-flip state is saved (0600) before the first write; then (1) the
                          ruleset loses the merge queue and gains ``update`` with the DeployKey bypass as its only actor, (2) only
-                         once GitHub's answer shows that, the classic protection is deleted; both are re-read and the run
-                         fails unless they read flipped
+                         once GitHub's answer and a fresh read show that, with the guard and the one key unchanged, the classic
+                         protection is deleted; both are re-read and the run fails unless they read flipped and safe
     --rollback FILE      the same two-step shape in reverse from a saved state, again only with --apply --confirm D, re-read
                          after and failed unless both read as saved
 
@@ -26,6 +26,8 @@ a GET through ``gh api``; the writes exist only behind the checks above.
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 import hashlib
 import json
 import os
@@ -51,6 +53,8 @@ CLASSIC_FLAGS = ("required_linear_history", "allow_force_pushes", "allow_deletio
                  "required_conversation_resolution", "lock_branch", "allow_fork_syncing")
 REVIEW_FIELDS = ("dismiss_stale_reviews", "require_code_owner_reviews", "require_last_push_approval", "required_approving_review_count")
 RULESET_FIELDS = ("name", "target", "enforcement", "conditions", "rules", "bypass_actors")
+MAX_PAGES = 20
+NOT_PROTECTED = "Branch not protected"   # GitHub's 404 for an unprotected branch; any other 404 is an error, never "absent"
 
 EXIT_OK, EXIT_REFUSED, EXIT_BAD_INPUT, EXIT_WRITE_FAILED = 0, 1, 2, 3
 _REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
@@ -67,17 +71,30 @@ def now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def gh(*args: str, body: dict | None = None, missing_ok: bool = False) -> Any:
-    """One ``gh api`` call. Without ``--method`` it is a GET; a 404 reads as None only where the caller allows it."""
+def gh(*args: str, body: dict | None = None, missing: str | None = None) -> Any:
+    """One ``gh api`` call. Without ``--method`` it is a GET; a 404 reads as None only when it carries the caller's message."""
     res = subprocess.run(["gh", "api", *args], input=None if body is None else json.dumps(body), capture_output=True, text=True)
     if res.returncode != 0:
-        if missing_ok and "(HTTP 404)" in res.stderr:
+        if missing and missing in res.stderr and "(HTTP 404)" in res.stderr:
             return None
         raise FlipError(f"gh api {' '.join(args)} failed (rc={res.returncode}): {res.stderr.strip()[-200:]}")
     try:
         return json.loads(res.stdout) if res.stdout.strip() else {}
     except json.JSONDecodeError as exc:
         raise FlipError(f"gh api {' '.join(args)} returned no JSON: {exc}") from exc
+
+
+def gh_all(path: str) -> list:
+    """Every page of a list endpoint: a count read from the first page of several is no count."""
+    out: list = []
+    for page in range(1, MAX_PAGES + 1):
+        batch = gh(f"{path}?per_page=100&page={page}")
+        if not isinstance(batch, list):
+            raise FlipError(f"gh api {path}: page {page} is not a list")
+        out += batch
+        if len(batch) < 100:
+            return out
+    raise FlipError(f"gh api {path}: more than {MAX_PAGES} pages — refusing a truncated count")
 
 
 def classic_body(doc: dict) -> dict:
@@ -128,9 +145,25 @@ def only_branch(rs: dict, branch: str, default_branch: str) -> bool:
 
 
 def key_fingerprint(material: str | None) -> str | None:
-    """sha256 of a public key's type and blob (no comment): names a key without printing it."""
+    """The key's ``SHA256:`` fingerprint as ``ssh-keygen -lf`` and GitHub's key page print it: names it without printing it."""
     parts = (material or "").split()
-    return hashlib.sha256(" ".join(parts[:2]).encode()).hexdigest()[:16] if len(parts) >= 2 else None
+    if len(parts) < 2:
+        return None
+    try:
+        blob = base64.b64decode(parts[1], validate=True)
+    except (binascii.Error, ValueError):
+        return None
+    return "SHA256:" + base64.b64encode(hashlib.sha256(blob).digest()).decode().rstrip("=")
+
+
+def same_classic(a: dict | None, b: dict | None) -> bool:
+    """Two classic bodies compared with their checks as a set: GitHub may list them in another order."""
+    def norm(x):
+        if not x or not x.get("required_status_checks"):
+            return x
+        rsc = x["required_status_checks"]
+        return {**x, "required_status_checks": {**rsc, "checks": sorted(rsc["checks"], key=lambda c: (c["context"], str(c["app_id"])))}}
+    return norm(a) == norm(b)
 
 
 def read_key_pub(path: Path) -> str | None:
@@ -150,16 +183,16 @@ def is_target(rs: dict) -> bool:
 
 
 def read_state(repo: str, branch: str) -> dict:
-    classic = gh(f"repos/{repo}/branches/{branch}/protection", missing_ok=True)
+    classic = gh(f"repos/{repo}/branches/{branch}/protection", missing=NOT_PROTECTED)
     default_branch = gh(f"repos/{repo}")["default_branch"]
-    full = [gh(f"repos/{repo}/rulesets/{r['id']}") for r in gh(f"repos/{repo}/rulesets?per_page=100")
+    full = [gh(f"repos/{repo}/rulesets/{r['id']}") for r in gh_all(f"repos/{repo}/rulesets")
             if r.get("source_type") == "Repository" and r.get("target") == "branch"]
     named = [r for r in full if r.get("name") == RULESET]
     if len(named) != 1:
         raise FlipError(f"{len(named)} repository rulesets named {RULESET!r}: expected exactly one")
     guards = [r for r in full if r is not named[0] and r.get("enforcement") == "active" and r.get("bypass_actors", None) == []
               and {"deletion", "non_fast_forward"} <= {x.get("type") for x in r.get("rules") or []} and covers(r, branch, default_branch)]
-    keys = gh(f"repos/{repo}/keys?per_page=100")
+    keys = gh_all(f"repos/{repo}/keys")
     return {"repo": repo, "branch": branch, "classic": None if classic is None else classic_body(classic),
             "ruleset_id": named[0]["id"], "ruleset": ruleset_body(named[0]),
             "ruleset_covers_branch": covers(named[0], branch, default_branch), "ruleset_only_branch": only_branch(named[0], branch, default_branch),
@@ -198,7 +231,9 @@ def read_report(path: Path, repo: str) -> tuple[list[str], str]:
         rep = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError) as exc:
         return [f"report {path} unreadable: {type(exc).__name__}"], f"report: unreadable ({path})"
-    win, counts = rep.get("window") or {}, rep.get("counts") or {}
+    if not isinstance(rep, dict):
+        return [f"report {path} is not a JSON object"], f"report: not an object ({path})"
+    win, counts, ctx = (rep.get(k) if isinstance(rep.get(k), dict) else {} for k in ("window", "counts", "context_counts"))
     gen = rep.get("generated_at")
     line = (f"report: phase_e_ready {json.dumps(rep.get('phase_e_ready'))} (generated {gen}): compared_merges "
             f"{win.get('compared_merges')}/{READY_MERGES}, compared_days {win.get('compared_days')}/{READY_DAYS}, "
@@ -211,12 +246,20 @@ def read_report(path: Path, repo: str) -> tuple[list[str], str]:
     if not (isinstance(gen, str) and _TS_RE.match(gen)):
         blockers.append("report carries no readable generated_at")
     else:
-        age = now() - datetime.strptime(gen, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-        if age > REPORT_MAX_AGE or age < -REPORT_MAX_SKEW:
+        try:
+            age = now() - datetime.strptime(gen, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        except ValueError:
+            age = None
+        if age is None:
+            blockers.append(f"report generated_at {gen} is no date")
+        elif age > REPORT_MAX_AGE or age < -REPORT_MAX_SKEW:
             blockers.append(f"report generated {gen} is outside the last {REPORT_MAX_AGE} — recompute it first")
     if rep.get("phase_e_ready") is True:
-        cm, cd, fg = win.get("compared_merges"), win.get("compared_days"), counts.get("FALSE_GREEN")
-        if not (isinstance(cm, int) and cm >= READY_MERGES and isinstance(cd, (int, float)) and cd >= READY_DAYS and fg == 0):
+        cm, cd = win.get("compared_merges"), win.get("compared_days")
+        # READY's FALSE_GREEN 0 is "at every level" (merger.py report): the decisions, the contexts and the recorded ones
+        fgs = (counts.get("FALSE_GREEN"), ctx.get("FALSE_GREEN"), rep.get("recorded_context_false_green"))
+        if not (type(cm) is int and cm >= READY_MERGES and type(cd) in (int, float) and cd >= READY_DAYS
+                and all(type(x) is int and x == 0 for x in fgs)):
             blockers.append("report says READY but its window does not show it: refusing the contradiction")
     return blockers, line
 
@@ -228,8 +271,8 @@ def plan_blockers(state: dict, flip: bool, merger_key: str | None) -> list[str]:
             out.append(f"live state is {p}, not pre-flip")
         if not state["ruleset_covers_branch"]:
             out.append(f"ruleset {RULESET!r} does not cover {state['branch']}: restricting it would not restrict the branch")
-        if not state["ruleset_only_branch"]:
-            out.append(f"ruleset {RULESET!r} includes more than {state['branch']}: its update rule would freeze those branches too")
+    if not state["ruleset_only_branch"]:
+        out.append(f"ruleset {RULESET!r} includes more than {state['branch']}: its update rule would freeze those branches too")
     if not state["guards"]:
         out.append("no active ruleset without bypass actors forbids deletion AND force-push on the branch: the flip would open both")
     if len(state["write_keys"]) != 1:
@@ -291,15 +334,16 @@ def save_state(state_dir: Path, state: dict, dig: str) -> Path:
 
 
 def execute(writes: list[dict], took: dict | None = None) -> None:
-    """The writes in order; ``took[i]`` judges write i's answer, and a write that answered without taking stops the rest."""
+    """The writes in order; ``took[i]`` judges write i's answer (None when it took, else why not), and a write that did not
+    take stops the rest."""
     for i, w in enumerate(writes, 1):
         args = ["--method", w["method"], w["path"]] + (["--input", "-"] if w["body"] is not None else [])
         try:
             answer = gh(*args, body=w["body"])
         except FlipError as exc:
             raise FlipError(f"write {i}/{len(writes)} failed: {exc}") from exc
-        if took and i in took and not took[i](answer):
-            raise FlipError(f"write {i}/{len(writes)} answered without taking: {w['method']} {w['path']}; nothing after it was sent")
+        if took and i in took and (why := took[i](answer)):
+            raise FlipError(f"write {i}/{len(writes)} did not take ({why}): {w['method']} {w['path']}; nothing after it was sent")
         print(f"  write {i}/{len(writes)} done: {w['method']} {w['path']}")
 
 
@@ -336,15 +380,25 @@ def run_flip(a: argparse.Namespace) -> int:
         return EXIT_REFUSED
     saved = save_state(a.state_dir, state, dig)
     print(f"pre-flip state saved: {saved}")
-    took = {1: lambda answer: isinstance(answer, dict) and is_target(answer) and answer.get("conditions") == state["ruleset"]["conditions"]}
-    try:   # the classic protection goes only once the ruleset's answer shows it restricted: never a branch with neither
-        execute(writes, took)
+    def ruleset_took(answer) -> str | None:
+        """The classic protection goes only once the ruleset is restricted AND, read again, the guard, the one key and the
+        scope still hold: never a branch with neither protection, nor one whose guard or key changed during the run."""
+        if not (isinstance(answer, dict) and is_target(answer) and answer.get("conditions") == state["ruleset"]["conditions"]):
+            return "the ruleset's answer is not the target"
+        mid = read_state(a.repo, a.branch)
+        if not (is_target(mid["ruleset"]) and mid["ruleset_covers_branch"]):
+            return "the ruleset does not read as the target"
+        return "; ".join(plan_blockers(mid, flip=False, merger_key=merger_key)) or None
+
+    try:
+        execute(writes, {1: ruleset_took})
         after = read_state(a.repo, a.branch)
     except FlipError as exc:
         print(f"FAILED: {exc}\n  restore with: {Path(sys.argv[0]).name} --rollback {saved} (plan first, then --apply --confirm)", file=sys.stderr)
         return EXIT_WRITE_FAILED
-    if phase(after) != "flipped":
-        print(f"FAILED: re-read after the writes says {phase(after)}, not flipped\n  restore with: --rollback {saved}", file=sys.stderr)
+    if phase(after) != "flipped" or (unsafe := plan_blockers(after, flip=False, merger_key=merger_key)):
+        why = f"says {phase(after)}, not flipped" if phase(after) != "flipped" else "is flipped, but: " + "; ".join(unsafe)
+        print(f"FAILED: re-read after the writes {why}\n  restore with: --rollback {saved}", file=sys.stderr)
         return EXIT_WRITE_FAILED
     print("flipped: the classic protection is gone and only the deploy key can update the branch")
     return EXIT_OK
@@ -376,13 +430,21 @@ def run_rollback(a: argparse.Namespace) -> int:
     if a.confirm != dig:
         print("REFUSED: --confirm does not match this plan's digest", file=sys.stderr)
         return EXIT_REFUSED
+    def classic_took(answer) -> str | None:
+        """The ruleset is restored only once the classic protection reads as saved: never the queue back without the checks."""
+        try:
+            back = classic_body(answer) if isinstance(answer, dict) else None
+        except FlipError as exc:
+            return str(exc)
+        return None if same_classic(back, saved["classic"]) else "the classic protection does not read as saved"
+
     try:
-        execute(writes)
+        execute(writes, {1: classic_took})
         after = read_state(a.repo, a.branch)
     except FlipError as exc:
         print(f"FAILED: {exc}", file=sys.stderr)
         return EXIT_WRITE_FAILED
-    if differ := [k for k in ("classic", "ruleset") if after[k] != saved[k]]:
+    if differ := [k for k, same in (("classic", same_classic(after["classic"], saved["classic"])), ("ruleset", after["ruleset"] == saved["ruleset"])) if not same]:
         print(f"FAILED: re-read after the rollback differs from the saved state in {differ}", file=sys.stderr)
         return EXIT_WRITE_FAILED
     print("rolled back: classic protection and the ruleset re-read as saved")
