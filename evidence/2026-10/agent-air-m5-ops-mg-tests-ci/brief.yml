@@ -1,0 +1,28 @@
+task: >-
+  No GitHub workflow runs apps/mata-garuda/tests/ (about 1150 tests), so a defect in the Mata Garuda cells, its feeders or
+  its Mini-hosted KG query API reaches main with no test executed (W108). Add one per-PR workflow that installs the app,
+  its undeclared internal dependency packages/cell-core and the test-time deps, and runs the suite with no
+  continue-on-error.
+lane: ops
+machine: m5
+date: 2026-10-09
+gear: 3
+gear_reason: >-
+  Measured floor 3, source the .github/workflows/ hot zone (one new workflow file). Gear 3 carries a pack and a sealed
+  council.
+acceptance:
+  A1:
+    text: >-
+      mata-garuda-tests runs on every PR and main push touching apps/mata-garuda, packages/cell-core,
+      scripts/pytest_guards, scripts/_redact_pii.py or the workflow, with no continue-on-error, and goes red on a failing test.
+    probe: this PR's own mata-garuda-tests job log (test counts) and the workflow text.
+  A2:
+    text: >-
+      The install is the minimal set the suite imports: cell-core editable, the app's dev extra, httpx, tenacity, numpy,
+      scikit-learn and pyyaml; torch and transformers are not installed (lazily imported and mocked by the tests).
+    probe: a scratch py3.11 venv with exactly that install runs the suite with 0 collection errors.
+  A3:
+    text: >-
+      No skip, xfail or deselect is added to make the job green; the only skips are the suite's own (live endpoints
+      without MATA_GARUDA_LIVE_ENDPOINTS=1, Redis-backed tests without Redis).
+    probe: git diff of apps/mata-garuda is empty in this PR; the job log's skip count equals the local count.
