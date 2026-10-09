@@ -677,7 +677,7 @@ silence is a `warning`, recovery `launchctl kickstart`. Arming (operator of Pro,
 
 ## Phase E flip (prepared; the operator applies)
 
-    python scripts/localci/phase_e_flip.py [--repo Bali-Zero/Teman2] [--branch main] [--report <report.json>] [--state-dir <dir>]
+    python scripts/localci/phase_e_flip.py [--repo Bali-Zero/Teman2] [--branch main] [--report <report.json>] [--state-dir <dir>] [--key-pub <deploy_key.pub>]
     python scripts/localci/phase_e_flip.py --apply --confirm <digest>          # operator[gui], after READY and the key
     python scripts/localci/phase_e_flip.py --rollback <pre-flip-*.json> [--apply --confirm <digest>]
 
@@ -686,31 +686,43 @@ Phase E of `docs/specs/localci-sovereign-2026-10-07.md` leaves the merger's depl
 check's source, the `merge-queue-main` ruleset, the ruleset that forbids deletion and force-push, the write deploy keys and the
 report; it prints the two writes of the flip with their exact bodies, what still blocks them, and a plan digest. The flip is
 (1) `PUT` the `merge-queue-main` ruleset with `merge_queue` replaced by `update` (`update_allows_fetch_and_merge` false) and the
-DeployKey bypass (`actor_id` null, `always`) as its only actor, then (2) `DELETE` the classic protection. The classic protection
-must go because it requires a pull request and the status checks, and classic protection exempts no deploy key: while it stands
-the merger's fast-forward push is refused (`push_refused`, a sticky halt). Between the two writes nobody can move `main`.
+DeployKey bypass (`actor_id` null, `always`) as its only actor, then (2) `DELETE` the classic protection — sent only when
+GitHub's answer to (1) shows the ruleset enforced, with that one rule and that one actor, on the same conditions (a write that
+answers without taking stops the run, exit 3). The classic protection must go because it requires a pull request and the status
+checks, and classic protection exempts no deploy key: while it stands the merger's fast-forward push is refused (`push_refused`,
+a sticky halt). Between the two writes nobody can move `main`.
 Deletion and force-push stay forbidden by the `Copilot review for default branch` ruleset (`deletion`, `non_fast_forward`, no
 bypass actor), which the flip requires.
 
-`--apply` writes nothing unless all of these hold, read fresh: `--confirm` equals the digest of a plan of this very state (live
-protection, rulesets, keys and the writes; anything that moved since the plan changes it); the report says `phase_e_ready: true`,
+`--apply` writes nothing unless all of these hold, read fresh: `--confirm` equals the digest of a plan of this very state (the
+classic protection, the `merge-queue-main` ruleset, each guard ruleset whole, the write keys by id, date and fingerprint, and the
+writes — any of them that moved since the plan changes the digest); the report says `phase_e_ready: true`,
 is of the same repository, was generated within the last 2 hours (and not more than 5 minutes ahead), and its own window shows
 READY (`compared_merges` >= 50, `compared_days` >= 14, `FALSE_GREEN` 0 — a contradiction is refused); exactly one deploy key
-with write exists (the DeployKey bypass covers every write key of the repository); the live state is pre-flip (classic
-protection present, a `merge_queue` rule in the ruleset; already flipped is exit 0 with nothing written, anything else is
-`drifted` and refused); the ruleset covers the branch; and the deletion/force-push guard exists. A classic setting this tool
-cannot restore exactly (push restrictions, signed commits, dismissal or bypass allowances) is refused, never dropped. The
+with write exists (the DeployKey bypass covers every write key of the repository) and it is the merger's: the sha256 of its type
+and blob equals that of `--key-pub` (default `~/.nuzantara-pilots/local-ci/merger/deploy_key.pub`; only the fingerprint is
+printed, never the key or its title); the live state is pre-flip (classic protection present, a `merge_queue` rule in the
+ruleset); the ruleset covers the branch and nothing wider; and the deletion/force-push guard exists — an active ruleset that
+GitHub lists with an empty `bypass_actors` (an omitted field is unknown, not none) and whose exclusions name no pattern. Flipped
+is read by meaning: no classic protection, the ruleset enforced, covering the branch, one `update` rule that allows no
+fetch-and-merge, the DeployKey its one actor, always. An already flipped branch writes nothing and is re-judged — a second write
+key, a foreign key or a lost guard is exit 1 (`already flipped, but: …`); anything neither pre-flip nor flipped is `drifted` and
+refused. A classic setting this tool cannot restore exactly (push restrictions, signed commits, dismissal restrictions or bypass
+allowances, which GitHub lists only when configured) is refused, never dropped. The
 pre-flip state is saved first (`<state-dir>/pre-flip-<UTC>.json`, directory 0700, file 0600, created exclusively — no save,
 no write); both resources are re-read after the writes and anything but `flipped` is exit 3 with the rollback command.
-`--rollback` restores the classic protection first and the ruleset second, under its own plan digest. A check whose source is
+`--rollback` restores the classic protection first and the ruleset second, under its own plan digest, then re-reads both:
+anything but the saved state is exit 3. The classic body is sent with `checks` only (GitHub refuses `contexts` beside it) and
+`restrictions: null`. A check whose source is
 "any" is read as `app_id` null and saved as `-1` (an omitted `app_id` would pin the app that last reported it). Exit codes:
 0 plan printed, applied or nothing to do; 1 refused; 2 bad arguments; 3 a write failed or did not take.
 
 **Arming order (phase F's checklist).** (1) Phase D READY: recompute the report on Pro (`merger.py report`, this section's
 freshness rule) and read `phase_e_ready`. (2) operator[secret]: the merger's deploy key generated on Pro
 (`~/.nuzantara-pilots/local-ci/merger/deploy_key`, 0600, never printed) and registered on the repository with write — the only
-write deploy key. (3) operator[gui]: the plan, read; then `--apply --confirm <digest>` from a checkout at `origin/main`, on a
-host whose `gh` is the owner's; keep the printed state file. (4) Only then `LOCALCI_MERGER_PHASE_F=1` in the tick's
+write deploy key; its `.pub` is what `--key-pub` reads. (3) operator[gui]: the plan, read; then `--apply --confirm <digest>` from
+a checkout at `origin/main`, on a host whose `gh` is the owner's (the ruleset and protection writes need admin), with the
+merger's `.pub` copied beside it if that host is not Pro; keep the printed state file. (4) Only then `LOCALCI_MERGER_PHASE_F=1` in the tick's
 environment: before (3) the first push is refused and halts. A session runs the plan only and never `--apply`.
 
 ## Tests

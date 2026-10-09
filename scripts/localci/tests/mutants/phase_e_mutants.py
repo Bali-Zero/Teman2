@@ -38,9 +38,10 @@ MUTANTS = {
     "pe-read-only-key-counts": (' for k in keys if k.get("read_only") is False]', " for k in keys]"),
     # deletion and force-push stay forbidden by a ruleset nobody bypasses
     "pe-guard-not-required": ('    if not state["guards"]:', "    if False:"),
-    "pe-guard-bypass-ignored": (' and not r.get("bypass_actors")', ""),
+    "pe-guard-bypass-ignored": (' and r.get("bypass_actors", None) == []', ""),
+    "pe-guard-bypass-unknown-read-as-none": ('r.get("bypass_actors", None) == []', 'not r.get("bypass_actors")'),
     "pe-guard-enforcement-ignored": (' r.get("enforcement") == "active" and', ""),
-    "pe-guard-exclude-ignored": (' and not names & set(ref.get("exclude") or [])', ""),
+    "pe-guard-exclude-ignored": (" and not names & set(exclude)", ""),
     "pe-ruleset-coverage-unchecked": ('        if not state["ruleset_covers_branch"]:', "        if False:"),
     # the writes: the right bodies, in the safe order, after the state is on disk, proven after
     "pe-bypass-on-pull-requests-only": ('"actor_type": "DeployKey", "bypass_mode": "always"', '"actor_type": "DeployKey", "bypass_mode": "pull_request"'),
@@ -54,6 +55,30 @@ MUTANTS = {
     "pe-unreadable-protection-read-as-absent": ('if missing_ok and "(HTTP 404)" in res.stderr:', "if missing_ok:"),
     "pe-rollback-repo-unchecked": ('if (saved["repo"], saved["branch"]) != (a.repo, a.branch):', "if False:"),
     "pe-rollback-ruleset-unchecked": ('if live["ruleset_id"] != saved["ruleset_id"]:', "if False:"),
+    "pe-rollback-unverified": ('if differ := [k for k in ("classic", "ruleset") if after[k] != saved[k]]:', "if differ := []:"),
+    "pe-restrictions-none-dropped": ('"required_pull_request_reviews": reviews, "restrictions": None}', '"required_pull_request_reviews": reviews}'),
+    "pe-contexts-sent-beside-checks": ('checks = {"strict": bool(rsc.get("strict")),', 'checks = {"strict": bool(rsc.get("strict")), "contexts": rsc.get("contexts"),'),
+    "pe-empty-dismissal-accepted": ("if reviews.get(key) is not None:", 'if any((reviews.get(key) or {}).get(k) for k in ("users", "teams", "apps")):'),
+    # the classic protection goes only after the ruleset's answer shows it restricted
+    "pe-ruleset-answer-unjudged": ("if took and i in took and not took[i](answer):", "if False:"),
+    "pe-ruleset-answer-not-passed": ("execute(writes, took)", "execute(writes)"),
+    "pe-enforcement-not-forced": ('rules=TARGET_RULES, bypass_actors=TARGET_BYPASS, enforcement="active")', "rules=TARGET_RULES, bypass_actors=TARGET_BYPASS)"),
+    # flipped is a meaning: enforced, covering, the one actor — and an old flip is re-judged, never trusted
+    "pe-flipped-ignores-enforcement": ('return (rs.get("enforcement") == "active" and len(rules) == 1', "return (len(rules) == 1"),
+    "pe-flipped-ignores-coverage": ('if state["classic"] is None and is_target(state["ruleset"]) and state["ruleset_covers_branch"]:',
+                                    'if state["classic"] is None and is_target(state["ruleset"]):'),
+    "pe-flipped-by-classic-alone": ('if state["classic"] is None and is_target(state["ruleset"]) and state["ruleset_covers_branch"]:',
+                                    'if state["classic"] is None:'),
+    "pe-flipped-extra-actor-accepted": ('and len(bypass) == 1 and bypass[0].get("actor_type") == "DeployKey"', 'and bypass[0].get("actor_type") == "DeployKey"'),
+    "pe-flipped-by-spelling": ('if state["classic"] is None and is_target(state["ruleset"]) and state["ruleset_covers_branch"]:',
+                               'if state["classic"] is None and state["ruleset"]["bypass_actors"] == TARGET_BYPASS and state["ruleset_covers_branch"]:'),
+    "pe-flipped-health-unchecked": ("if unsafe := plan_blockers(state, flip=False, merger_key=merger_key):", "if unsafe := []:"),
+    # the one write key is the merger's, the ruleset no wider than the branch, a pattern exclusion never trusted
+    "pe-key-identity-unchecked": ('elif state["write_keys"][0]["fingerprint"] != merger_key:', "elif False:"),
+    "pe-key-unreadable-unnamed": ("elif merger_key is None:", "elif False:"),
+    "pe-wider-ruleset-accepted": ('if not state["ruleset_only_branch"]:', "if False:"),
+    "pe-exclude-pattern-ignored": (" and not any(_GLOB.search(x) for x in exclude)", ""),
+    "pe-key-title-kept": ('"fingerprint": key_fingerprint(k.get("key"))}', '"fingerprint": key_fingerprint(k.get("key")), "title": k.get("title")}'),
 }
 
 

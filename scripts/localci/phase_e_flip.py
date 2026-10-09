@@ -6,11 +6,13 @@ only writer of ``main`` (docs/specs/localci-sovereign-2026-10-07.md, §2 phase E
                          ruleset that keeps deletion and force-push forbidden, the deploy keys and the report; prints the
                          current required set, the exact writes of the flip, what still blocks it, and the plan's digest
     --apply --confirm D  the flip, refused unless D is the digest the plan prints for this very state, the report is READY
-                         (``phase_e_ready`` true, generated within 2 h, same repo) and exactly one write deploy key exists. The
-                         pre-flip state is saved (0600) before the first write; then (1) the ruleset loses the merge queue and
-                         gains ``update`` with the DeployKey bypass as its only actor, (2) the classic protection is deleted;
-                         both are re-read and the run fails unless they read flipped
-    --rollback FILE      the same two-step shape in reverse from a saved state, again only with --apply --confirm D
+                         (``phase_e_ready`` true, generated within 2 h, same repo) and exactly one write deploy key exists,
+                         the merger's (``--key-pub``). The pre-flip state is saved (0600) before the first write; then (1) the
+                         ruleset loses the merge queue and gains ``update`` with the DeployKey bypass as its only actor, (2) only
+                         once GitHub's answer shows that, the classic protection is deleted; both are re-read and the run
+                         fails unless they read flipped
+    --rollback FILE      the same two-step shape in reverse from a saved state, again only with --apply --confirm D, re-read
+                         after and failed unless both read as saved
 
 Why the classic protection goes: it requires a pull request and the status checks on ``main``, and classic protection has no
 deploy-key exemption, so while it stands the merger's push is refused whatever a ruleset says. Deletion and force-push stay
@@ -39,6 +41,7 @@ DEFAULT_BRANCH = "main"
 RULESET = "merge-queue-main"
 DEFAULT_REPORT = Path.home() / ".nuzantara-pilots" / "local-ci" / "merger" / "report.json"
 DEFAULT_STATE_DIR = Path.home() / ".nuzantara-pilots" / "local-ci" / "phase-e"
+DEFAULT_KEY_PUB = Path.home() / ".nuzantara-pilots" / "local-ci" / "merger" / "deploy_key.pub"
 REPORT_MAX_AGE = timedelta(hours=2)
 REPORT_MAX_SKEW = timedelta(minutes=5)
 READY_MERGES, READY_DAYS = 50, 14   # phase D's READY as ruled 2026-10-07; read back from the report, never relaxed here
@@ -53,6 +56,7 @@ EXIT_OK, EXIT_REFUSED, EXIT_BAD_INPUT, EXIT_WRITE_FAILED = 0, 1, 2, 3
 _REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 _BRANCH_RE = re.compile(r"^[A-Za-z0-9_./-]+$")
 _TS_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+_GLOB = re.compile(r"[*?\[]")
 
 
 class FlipError(Exception):
@@ -93,9 +97,9 @@ def classic_body(doc: dict) -> dict:
                   "checks": [{"context": c["context"], "app_id": -1 if c.get("app_id") is None else c["app_id"]} for c in rsc["checks"]]}
     reviews = doc.get("required_pull_request_reviews")
     if reviews is not None:
-        for key in ("dismissal_restrictions", "bypass_pull_request_allowances"):
-            if any((reviews.get(key) or {}).get(k) for k in ("users", "teams", "apps")):
-                raise FlipError(f"required_pull_request_reviews.{key} is set: not restorable by this tool, refusing")
+        for key in ("dismissal_restrictions", "bypass_pull_request_allowances"):   # GET lists them only when configured
+            if reviews.get(key) is not None:
+                raise FlipError(f"required_pull_request_reviews.{key} is present: not restorable by this tool, refusing")
         reviews = {k: reviews[k] for k in REVIEW_FIELDS if k in reviews}
     body = {"required_status_checks": checks, "enforce_admins": bool((doc.get("enforce_admins") or {}).get("enabled")),
             "required_pull_request_reviews": reviews, "restrictions": None}
@@ -111,9 +115,38 @@ def ruleset_body(doc: dict) -> dict:
 
 
 def covers(rs: dict, branch: str, default_branch: str) -> bool:
+    """Included by name and excluded by nothing; a pattern in the exclude list counts as excluding (never evaluated here)."""
     ref = (rs.get("conditions") or {}).get("ref_name") or {}
     names = {f"refs/heads/{branch}", "~ALL", *(["~DEFAULT_BRANCH"] if branch == default_branch else [])}
-    return bool(names & set(ref.get("include") or [])) and not names & set(ref.get("exclude") or [])
+    exclude = ref.get("exclude") or []
+    return bool(names & set(ref.get("include") or [])) and not names & set(exclude) and not any(_GLOB.search(x) for x in exclude)
+
+
+def only_branch(rs: dict, branch: str, default_branch: str) -> bool:
+    include = set(((rs.get("conditions") or {}).get("ref_name") or {}).get("include") or [])
+    return bool(include) and include <= {f"refs/heads/{branch}", *(["~DEFAULT_BRANCH"] if branch == default_branch else [])}
+
+
+def key_fingerprint(material: str | None) -> str | None:
+    """sha256 of a public key's type and blob (no comment): names a key without printing it."""
+    parts = (material or "").split()
+    return hashlib.sha256(" ".join(parts[:2]).encode()).hexdigest()[:16] if len(parts) >= 2 else None
+
+
+def read_key_pub(path: Path) -> str | None:
+    try:
+        return key_fingerprint(path.read_text())
+    except OSError:
+        return None
+
+
+def is_target(rs: dict) -> bool:
+    """The flipped ruleset by meaning, not by spelling: enforced, one ``update`` rule allowing no fetch-and-merge, and the
+    DeployKey the one bypass actor, always."""
+    rules, bypass = rs.get("rules") or [], rs.get("bypass_actors") or []
+    return (rs.get("enforcement") == "active" and len(rules) == 1 and rules[0].get("type") == "update"
+            and (rules[0].get("parameters") or {}).get("update_allows_fetch_and_merge") is False
+            and len(bypass) == 1 and bypass[0].get("actor_type") == "DeployKey" and bypass[0].get("bypass_mode") == "always")
 
 
 def read_state(repo: str, branch: str) -> dict:
@@ -124,21 +157,21 @@ def read_state(repo: str, branch: str) -> dict:
     named = [r for r in full if r.get("name") == RULESET]
     if len(named) != 1:
         raise FlipError(f"{len(named)} repository rulesets named {RULESET!r}: expected exactly one")
-    guards = [r for r in full if r is not named[0] and r.get("enforcement") == "active" and not r.get("bypass_actors")
+    guards = [r for r in full if r is not named[0] and r.get("enforcement") == "active" and r.get("bypass_actors", None) == []
               and {"deletion", "non_fast_forward"} <= {x.get("type") for x in r.get("rules") or []} and covers(r, branch, default_branch)]
     keys = gh(f"repos/{repo}/keys?per_page=100")
     return {"repo": repo, "branch": branch, "classic": None if classic is None else classic_body(classic),
             "ruleset_id": named[0]["id"], "ruleset": ruleset_body(named[0]),
-            "ruleset_covers_branch": covers(named[0], branch, default_branch),
-            "guards": [{"id": g["id"], "name": g["name"]} for g in guards],
-            "write_keys": [{"id": k["id"], "title": k.get("title"), "created_at": k.get("created_at")} for k in keys if k.get("read_only") is False]}
+            "ruleset_covers_branch": covers(named[0], branch, default_branch), "ruleset_only_branch": only_branch(named[0], branch, default_branch),
+            "guards": [{"id": g["id"], **ruleset_body(g)} for g in guards],
+            "write_keys": [{"id": k["id"], "created_at": k.get("created_at"), "fingerprint": key_fingerprint(k.get("key"))}
+                           for k in keys if k.get("read_only") is False]}
 
 
 def phase(state: dict) -> str:
-    rules = [r.get("type") for r in state["ruleset"]["rules"]]
-    if state["classic"] is not None and "merge_queue" in rules:
+    if state["classic"] is not None and "merge_queue" in {r.get("type") for r in state["ruleset"]["rules"]}:
         return "pre-flip"
-    if state["classic"] is None and state["ruleset"]["rules"] == TARGET_RULES and state["ruleset"]["bypass_actors"] == TARGET_BYPASS:
+    if state["classic"] is None and is_target(state["ruleset"]) and state["ruleset_covers_branch"]:
         return "flipped"
     return "drifted"
 
@@ -188,17 +221,23 @@ def read_report(path: Path, repo: str) -> tuple[list[str], str]:
     return blockers, line
 
 
-def plan_blockers(state: dict, flip: bool) -> list[str]:
+def plan_blockers(state: dict, flip: bool, merger_key: str | None) -> list[str]:
     out = []
     if flip:
         if (p := phase(state)) != "pre-flip":
             out.append(f"live state is {p}, not pre-flip")
         if not state["ruleset_covers_branch"]:
             out.append(f"ruleset {RULESET!r} does not cover {state['branch']}: restricting it would not restrict the branch")
+        if not state["ruleset_only_branch"]:
+            out.append(f"ruleset {RULESET!r} includes more than {state['branch']}: its update rule would freeze those branches too")
     if not state["guards"]:
         out.append("no active ruleset without bypass actors forbids deletion AND force-push on the branch: the flip would open both")
     if len(state["write_keys"]) != 1:
         out.append(f"{len(state['write_keys'])} write deploy keys: the DeployKey bypass covers each one, exactly one must exist (operator[secret])")
+    elif merger_key is None:
+        out.append("the merger's public key (--key-pub) is unreadable: the one write deploy key cannot be identified as the merger's")
+    elif state["write_keys"][0]["fingerprint"] != merger_key:
+        out.append("the one write deploy key is not the merger's (its fingerprint differs from --key-pub)")
     return out
 
 
@@ -220,9 +259,11 @@ def describe(state: dict) -> list[str]:
             out += [f"    - {ch['context']}  [source: {'any' if ch['app_id'] == -1 else 'app ' + str(ch['app_id'])}]" for ch in rsc["checks"]]
     rs = state["ruleset"]
     out.append(f"ruleset {rs['name']!r} (id {state['ruleset_id']}, {rs['enforcement']}): rules {[r.get('type') for r in rs['rules']]}, "
-               f"bypass {[b.get('actor_type') for b in rs['bypass_actors']] or 'none'}")
+               f"bypass {[b.get('actor_type') for b in rs['bypass_actors']] or 'none'}, "
+               f"includes {((rs.get('conditions') or {}).get('ref_name') or {}).get('include')}")
     out.append("deletion/force-push guard: " + (", ".join(f"{g['name']!r} (id {g['id']})" for g in state["guards"]) or "NONE"))
-    out.append(f"write deploy keys: {len(state['write_keys'])}" + "".join(f"\n  - id {k['id']} {k['title']!r} created {k['created_at']}" for k in state["write_keys"]))
+    out.append(f"write deploy keys: {len(state['write_keys'])}" + "".join(
+        f"\n  - id {k['id']} created {k['created_at']} fingerprint {k['fingerprint']}" for k in state["write_keys"]))
     return out
 
 
@@ -249,13 +290,16 @@ def save_state(state_dir: Path, state: dict, dig: str) -> Path:
     return path
 
 
-def execute(writes: list[dict]) -> None:
+def execute(writes: list[dict], took: dict | None = None) -> None:
+    """The writes in order; ``took[i]`` judges write i's answer, and a write that answered without taking stops the rest."""
     for i, w in enumerate(writes, 1):
         args = ["--method", w["method"], w["path"]] + (["--input", "-"] if w["body"] is not None else [])
         try:
-            gh(*args, body=w["body"])
+            answer = gh(*args, body=w["body"])
         except FlipError as exc:
             raise FlipError(f"write {i}/{len(writes)} failed: {exc}") from exc
+        if took and i in took and not took[i](answer):
+            raise FlipError(f"write {i}/{len(writes)} answered without taking: {w['method']} {w['path']}; nothing after it was sent")
         print(f"  write {i}/{len(writes)} done: {w['method']} {w['path']}")
 
 
@@ -263,13 +307,18 @@ def run_flip(a: argparse.Namespace) -> int:
     state = read_state(a.repo, a.branch)
     writes = flip_writes(state)
     dig = digest(state, writes)
-    blockers = plan_blockers(state, flip=True)
+    merger_key = read_key_pub(a.key_pub)
+    blockers = plan_blockers(state, flip=True, merger_key=merger_key)
     rep_blockers, rep_line = read_report(a.report, a.repo)
     print(f"phase E flip — {a.repo} {a.branch} — {'APPLY' if a.apply else 'DRY RUN (nothing is written)'}")
     print(f"state: {phase(state)}")
     print("\n".join(describe(state)))
+    print(f"merger key (--key-pub): {merger_key or 'unreadable'}")
     print(rep_line)
     if phase(state) == "flipped":
+        if unsafe := plan_blockers(state, flip=False, merger_key=merger_key):
+            print("already flipped, but: " + "; ".join(unsafe), file=sys.stderr)
+            return EXIT_REFUSED
         print("already flipped: nothing to write")
         return EXIT_OK
     print("writes the flip makes, in order:")
@@ -287,8 +336,9 @@ def run_flip(a: argparse.Namespace) -> int:
         return EXIT_REFUSED
     saved = save_state(a.state_dir, state, dig)
     print(f"pre-flip state saved: {saved}")
-    try:
-        execute(writes)
+    took = {1: lambda answer: isinstance(answer, dict) and is_target(answer) and answer.get("conditions") == state["ruleset"]["conditions"]}
+    try:   # the classic protection goes only once the ruleset's answer shows it restricted: never a branch with neither
+        execute(writes, took)
         after = read_state(a.repo, a.branch)
     except FlipError as exc:
         print(f"FAILED: {exc}\n  restore with: {Path(sys.argv[0]).name} --rollback {saved} (plan first, then --apply --confirm)", file=sys.stderr)
@@ -328,10 +378,14 @@ def run_rollback(a: argparse.Namespace) -> int:
         return EXIT_REFUSED
     try:
         execute(writes)
+        after = read_state(a.repo, a.branch)
     except FlipError as exc:
         print(f"FAILED: {exc}", file=sys.stderr)
         return EXIT_WRITE_FAILED
-    print("rolled back: classic protection and the ruleset are as saved")
+    if differ := [k for k in ("classic", "ruleset") if after[k] != saved[k]]:
+        print(f"FAILED: re-read after the rollback differs from the saved state in {differ}", file=sys.stderr)
+        return EXIT_WRITE_FAILED
+    print("rolled back: classic protection and the ruleset re-read as saved")
     return EXIT_OK
 
 
@@ -341,6 +395,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--branch", default=DEFAULT_BRANCH, help=f"the branch the merger alone will update (default {DEFAULT_BRANCH})")
     ap.add_argument("--report", type=Path, default=DEFAULT_REPORT, help="the merger's report.json (READY is read from it)")
     ap.add_argument("--state-dir", type=Path, default=DEFAULT_STATE_DIR, help="where the pre-flip state is saved (0700/0600)")
+    ap.add_argument("--key-pub", type=Path, default=DEFAULT_KEY_PUB, help="the merger's deploy key, public half (identifies the one write key)")
     ap.add_argument("--rollback", type=Path, default=None, metavar="STATE", help="plan (or with --apply, make) the restore of a saved state")
     ap.add_argument("--apply", action="store_true", help="write; refused without --confirm and the preconditions")
     ap.add_argument("--confirm", default=None, metavar="DIGEST", help="the plan digest of the very state being changed")

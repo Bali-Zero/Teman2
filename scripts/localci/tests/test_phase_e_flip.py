@@ -13,6 +13,7 @@ import pytest
 from scripts.localci import phase_e_flip as pef
 
 REPO, NOW = "Bali-Zero/Teman2", datetime(2026, 10, 30, 12, 0, 0, tzinfo=timezone.utc)
+MERGER_PUB, OTHER_PUB = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAImerger", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIother"
 MQ, GUARD = 19779175, 20608865
 
 
@@ -55,7 +56,8 @@ def get_shape(body: dict) -> dict:
 class FakeGH:
     def __init__(self, tmp_path):
         self.classic, self.rulesets = _classic(), _rulesets()
-        self.keys = [{"id": 7, "title": "localci-merger", "read_only": False, "created_at": "2026-10-29T00:00:00Z", "key": "ssh-ed25519 AAAA"}]
+        self.keys = [{"id": 7, "title": "a person's name", "read_only": False, "created_at": "2026-10-29T00:00:00Z", "key": MERGER_PUB}]
+        self.ignore: set[tuple[str, str]] = set()
         self.calls: list[tuple[str, str, object]] = []
         self.classic_error: str | None = None
         self.honour_writes, self.fail = True, None
@@ -75,9 +77,9 @@ class FakeGH:
                 self.state_files_at_first_write = sorted(p.name for p in self.state_dir.glob("*")) if self.state_dir.exists() else []
             if self.fail and self.fail == (method, path):
                 return subprocess.CompletedProcess(argv, 1, "", "gh: Validation Failed (HTTP 422)")
-            if self.honour_writes:
+            if self.honour_writes and (method, path) not in self.ignore:
                 self._write(method, path, body)
-            return ok(None if method == "DELETE" else {})
+            return ok(self._answer(method, path))
         if path == f"repos/{REPO}/branches/main/protection":
             if self.classic_error:
                 return subprocess.CompletedProcess(argv, 1, "", self.classic_error)
@@ -101,6 +103,13 @@ class FakeGH:
             self.classic = get_shape(body)
         else:
             raise AssertionError(f"unexpected write {method} {path}")
+
+    def _answer(self, method, path):   # what GitHub answers a write with: the resource as it now stands
+        if method == "DELETE":
+            return None
+        if m := re.fullmatch(rf"repos/{REPO}/rulesets/(\d+)", path):
+            return self.rulesets[int(m.group(1))]
+        return self.classic
 
     def writes(self):
         return [(m, p, b) for m, p, b in self.calls if m != "GET"]
@@ -129,22 +138,23 @@ def report(tmp_path, **over) -> str:
     return str(path)
 
 
-def run(fake, tmp_path, capsys, *extra, rep=None):
-    rc = pef.main(["--report", rep or report(tmp_path), "--state-dir", str(fake.state_dir), *extra])
+def run(fake, tmp_path, capsys, *extra, rep=None, pub=MERGER_PUB):
+    (tmp_path / "deploy_key.pub").write_text(f"{pub} localci-merger@pro\n")
+    rc = pef.main(["--report", rep or report(tmp_path), "--state-dir", str(fake.state_dir), "--key-pub", str(tmp_path / "deploy_key.pub"), *extra])
     out = capsys.readouterr()
     return rc, out.out, out.err
 
 
-def plan_digest(fake, tmp_path, capsys, *extra, rep=None) -> str:
-    rc, out, _ = run(fake, tmp_path, capsys, *extra, rep=rep)
+def plan_digest(fake, tmp_path, capsys, *extra, rep=None, pub=MERGER_PUB) -> str:
+    rc, out, _ = run(fake, tmp_path, capsys, *extra, rep=rep, pub=pub)
     m = re.search(r"plan digest: ([0-9a-f]{16})", out)
     assert rc == 0 and m
     return m.group(1)
 
 
-def apply(fake, tmp_path, capsys, rep=None):
-    dig = plan_digest(fake, tmp_path, capsys, rep=rep)
-    return run(fake, tmp_path, capsys, "--apply", "--confirm", dig, rep=rep)
+def apply(fake, tmp_path, capsys, rep=None, pub=MERGER_PUB):
+    dig = plan_digest(fake, tmp_path, capsys, rep=rep, pub=pub)
+    return run(fake, tmp_path, capsys, "--apply", "--confirm", dig, rep=rep, pub=pub)
 
 
 def test_the_plan_reads_only_with_bare_gets_and_names_both_writes_in_order(fake, tmp_path, capsys):
@@ -229,8 +239,8 @@ def test_an_unreadable_report_writes_nothing(fake, tmp_path, capsys):
 
 @pytest.mark.parametrize("keys", [
     [],
-    [{"id": 7, "title": "a", "read_only": True, "created_at": "x"}],
-    [{"id": 7, "title": "a", "read_only": False, "created_at": "x"}, {"id": 8, "title": "b", "read_only": False, "created_at": "y"}],
+    [{"id": 7, "title": "a", "read_only": True, "created_at": "x", "key": MERGER_PUB}],
+    [{"id": 7, "title": "a", "read_only": False, "created_at": "x", "key": MERGER_PUB}, {"id": 8, "title": "b", "read_only": False, "created_at": "y", "key": OTHER_PUB}],
 ])
 def test_anything_but_exactly_one_write_deploy_key_writes_nothing(fake, tmp_path, capsys, keys):
     fake.keys = keys
@@ -244,6 +254,8 @@ def test_anything_but_exactly_one_write_deploy_key_writes_nothing(fake, tmp_path
     lambda g: g.update(rules=[{"type": "deletion"}]),
     lambda g: g.update(conditions={"ref_name": {"exclude": ["refs/heads/main"], "include": ["~ALL"]}}),
     lambda g: g.update(conditions={"ref_name": {"exclude": [], "include": ["refs/heads/main-old"]}}),
+    lambda g: g.update(conditions={"ref_name": {"exclude": ["refs/heads/m*"], "include": ["~DEFAULT_BRANCH"]}}),
+    lambda g: g.pop("bypass_actors"),   # GitHub omits it for a reader without write access: unknown is not "none"
 ])
 def test_without_an_unbypassable_deletion_and_force_push_guard_the_flip_writes_nothing(fake, tmp_path, capsys, mutate):
     mutate(fake.rulesets[GUARD])
@@ -264,10 +276,10 @@ def test_a_failed_second_write_exits_3_and_names_the_saved_state(fake, tmp_path,
     assert len(fake.writes()) == 2 and list(fake.state_dir.glob("pre-flip-*.json"))
 
 
-def test_writes_that_do_not_take_exit_3(fake, tmp_path, capsys):
-    fake.honour_writes = False
+def test_a_delete_that_does_not_take_fails_the_re_read_with_exit_3(fake, tmp_path, capsys):
+    fake.ignore = {("DELETE", f"repos/{REPO}/branches/main/protection")}
     rc, _, err = apply(fake, tmp_path, capsys)
-    assert rc == pef.EXIT_WRITE_FAILED and "not flipped" in err
+    assert rc == pef.EXIT_WRITE_FAILED and "says drifted, not flipped" in err and "--rollback" in err
 
 
 def test_an_already_flipped_branch_writes_nothing(fake, tmp_path, capsys):
@@ -287,6 +299,8 @@ def test_a_drifted_state_is_refused(fake, tmp_path, capsys):
     (lambda c: c.update(restrictions={"users": [{"login": "x"}], "teams": [], "apps": []}), "restricts who can push"),
     (lambda c: c.update(required_signatures={"enabled": True}), "signed commits"),
     (lambda c: c["required_pull_request_reviews"].update(dismissal_restrictions={"users": [{"login": "x"}], "teams": [], "apps": []}), "dismissal_restrictions"),
+    (lambda c: c["required_pull_request_reviews"].update(dismissal_restrictions={"users": [], "teams": [], "apps": []}), "dismissal_restrictions"),
+    (lambda c: c["required_pull_request_reviews"].update(bypass_pull_request_allowances={"users": [], "teams": [], "apps": []}), "bypass_pull_request_allowances"),
     (lambda c: c["required_status_checks"].pop("checks"), "no `checks` list"),
 ])
 def test_a_classic_setting_that_cannot_be_restored_is_refused_never_dropped(fake, tmp_path, capsys, mutate, says):
@@ -328,3 +342,102 @@ def test_a_classic_protection_that_cannot_be_read_is_never_read_as_absent(fake, 
     fake.classic_error = error
     rc, out, err = run(fake, tmp_path, capsys)
     assert rc == pef.EXIT_REFUSED and "branches/main/protection failed" in err and "absent" not in out and fake.writes() == []
+
+
+def test_the_rollback_body_recreates_the_live_classic_protection_field_for_field(fake, tmp_path, capsys):
+    apply(fake, tmp_path, capsys)
+    body = json.loads(next(fake.state_dir.glob("pre-flip-*.json")).read_text())["classic"]
+    assert body == {"required_status_checks": {"strict": False, "checks": [{"context": "Backend Tests (Python)", "app_id": -1},
+                                                                          {"context": "antidotes", "app_id": -1},
+                                                                          {"context": "catE-sovereignty-lint", "app_id": 15368}]},
+                    "enforce_admins": True, "restrictions": None,
+                    "required_pull_request_reviews": {"dismiss_stale_reviews": False, "require_code_owner_reviews": False,
+                                                      "require_last_push_approval": False, "required_approving_review_count": 0},
+                    **{k: False for k in pef.CLASSIC_FLAGS}}   # no `contexts` beside `checks`: GitHub refuses both at once
+
+
+def test_a_failed_ruleset_write_sends_no_delete(fake, tmp_path, capsys):
+    fake.fail = ("PUT", f"repos/{REPO}/rulesets/{MQ}")
+    rc, _, err = apply(fake, tmp_path, capsys)
+    assert rc == pef.EXIT_WRITE_FAILED and "write 1/2 failed" in err
+    assert [m for m, _, _ in fake.writes()] == ["PUT"] and fake.classic is not None
+
+
+def test_a_ruleset_write_that_answers_without_taking_sends_no_delete(fake, tmp_path, capsys):
+    fake.ignore = {("PUT", f"repos/{REPO}/rulesets/{MQ}")}
+    rc, _, err = apply(fake, tmp_path, capsys)
+    assert rc == pef.EXIT_WRITE_FAILED and "answered without taking" in err
+    assert [m for m, _, _ in fake.writes()] == ["PUT"] and fake.classic is not None
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda r: r.update(enforcement="evaluate"),
+    lambda r: r.update(enforcement="disabled"),
+    lambda r: r["rules"].append({"type": "deletion"}),
+    lambda r: r["bypass_actors"].append({"actor_id": 1, "actor_type": "RepositoryRole", "bypass_mode": "always"}),
+    lambda r: r.update(conditions={"ref_name": {"exclude": [], "include": ["refs/heads/release"]}}),
+])
+def test_a_flipped_ruleset_that_no_longer_restricts_the_branch_is_drifted_not_flipped(fake, tmp_path, capsys, mutate):
+    apply(fake, tmp_path, capsys)
+    mutate(fake.rulesets[MQ])
+    fake.calls.clear()
+    rc, out, _ = run(fake, tmp_path, capsys)
+    assert "state: drifted" in out and "already flipped" not in out and fake.writes() == []
+
+
+def test_a_flipped_ruleset_reads_flipped_by_meaning_not_by_spelling(fake, tmp_path, capsys):
+    apply(fake, tmp_path, capsys)
+    fake.rulesets[MQ]["bypass_actors"] = [{"actor_type": "DeployKey", "bypass_mode": "always"}]   # actor_id omitted on read
+    rc, out, _ = run(fake, tmp_path, capsys)
+    assert rc == 0 and "state: flipped" in out and "already flipped: nothing to write" in out
+
+
+@pytest.mark.parametrize("mutate, says", [
+    (lambda f: f.keys.append({"id": 9, "title": "x", "read_only": False, "created_at": "z", "key": OTHER_PUB}), "2 write deploy keys"),
+    (lambda f: f.rulesets[GUARD].update(enforcement="disabled"), "forbids deletion AND force-push"),
+])
+def test_an_already_flipped_branch_that_lost_a_safety_condition_says_so_and_exits_1(fake, tmp_path, capsys, mutate, says):
+    apply(fake, tmp_path, capsys)
+    mutate(fake)
+    fake.calls.clear()
+    rc, _, err = run(fake, tmp_path, capsys)
+    assert rc == pef.EXIT_REFUSED and "already flipped, but" in err and says in err and fake.writes() == []
+
+
+@pytest.mark.parametrize("pub, says", [
+    (OTHER_PUB, "is not the merger's"),
+    ("", "unreadable"),
+])
+def test_the_one_write_key_must_be_the_mergers(fake, tmp_path, capsys, pub, says):
+    rc, _, err = apply(fake, tmp_path, capsys, pub=pub)
+    assert rc == pef.EXIT_REFUSED and says in err and fake.writes() == []
+
+
+def test_a_merge_queue_ruleset_wider_than_the_branch_is_refused(fake, tmp_path, capsys):
+    fake.rulesets[MQ]["conditions"] = {"ref_name": {"exclude": [], "include": ["refs/heads/main", "~ALL"]}}
+    rc, _, err = apply(fake, tmp_path, capsys)
+    assert rc == pef.EXIT_REFUSED and "includes more than main" in err and fake.writes() == []
+
+
+def test_no_key_title_or_key_material_is_printed_or_saved(fake, tmp_path, capsys):
+    rc, out, err = apply(fake, tmp_path, capsys)
+    saved = next(fake.state_dir.glob("pre-flip-*.json")).read_text()
+    for text in (out, err, saved):
+        assert "a person's name" not in text and "AAAAC3Nza" not in text
+    assert pef.key_fingerprint(MERGER_PUB) in out
+
+
+def test_a_rollback_that_does_not_take_exits_3(fake, tmp_path, capsys):
+    apply(fake, tmp_path, capsys)
+    saved = next(fake.state_dir.glob("pre-flip-*.json"))
+    dig = plan_digest(fake, tmp_path, capsys, "--rollback", str(saved))
+    fake.calls.clear()
+    fake.honour_writes = False
+    rc, _, err = run(fake, tmp_path, capsys, "--rollback", str(saved), "--apply", "--confirm", dig)
+    assert rc == pef.EXIT_WRITE_FAILED and "differs from the saved state" in err
+
+
+def test_a_merge_queue_ruleset_in_evaluate_mode_is_flipped_to_active(fake, tmp_path, capsys):
+    fake.rulesets[MQ]["enforcement"] = "evaluate"
+    rc, _, _ = apply(fake, tmp_path, capsys)
+    assert rc == 0 and fake.writes()[0][2]["enforcement"] == "active" and fake.rulesets[MQ]["enforcement"] == "active"
