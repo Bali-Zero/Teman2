@@ -211,6 +211,14 @@ def configure_logging() -> None:
     if ring_handler not in root_logger.handlers:
         root_logger.addHandler(ring_handler)
 
+    # Redact URL-borne secrets (Redis passwords, Telegram tokens) on every handler
+    # just built. MUST come after the handlers exist: root's handlers were cleared
+    # above, so an earlier install (by a module imported before this ran) is gone,
+    # and the handler half is the only one that covers a logger nobody listed.
+    from backend.core.secret_log_redaction import install_secret_log_redaction
+
+    install_secret_log_redaction()
+
     # Log startup message
     logger = logging.getLogger("zantara.backend")
     logger.info(
