@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+import yaml
 
 # Add the mata-garuda package to sys.path so scripts/ + mata_garuda/ resolve
 _PACKAGE_PATH = Path(__file__).resolve().parents[1]
@@ -52,6 +54,33 @@ async def test_red_pulse_exits_zero_and_writes_warning(tmp_path, monkeypatch) ->
     payload = _sidecar(tmp_path)
     assert payload["status"] == "warning"
     assert payload["note"] == "pulse=red action=none pulse=2"
+
+
+@pytest.mark.asyncio
+async def test_red_pulse_action_is_reduced_to_one_note_token(tmp_path, monkeypatch) -> None:
+    """An action with spaces, slashes or a newline cannot break the note shape receptor A matches."""
+    monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(tmp_path))
+    mock_cell = MagicMock()
+    mock_result = MagicMock()
+    mock_result.pulse_number = 4
+    mock_result.health_status = "red"
+    mock_result.action_taken = "no items/x\nTraceback"
+    mock_result.halted = False
+    mock_cell.single_pulse = AsyncMock(return_value=mock_result)
+
+    assert await _run_one_pulse(lambda: mock_cell) == 0
+    note = _sidecar(tmp_path)["note"]
+    assert re.fullmatch(r"pulse=red action=[A-Za-z0-9_.-]+ pulse=4", note), note
+
+
+def test_organ_id_is_the_registry_entry_for_this_job() -> None:
+    """The id the runner writes is the id the registry declares for Pro's hourly job (the drift #8157 cured)."""
+    registry = Path(__file__).resolve().parents[3] / "apps" / "organism" / "organism" / "organs_registry.yaml"
+    organs = yaml.safe_load(registry.read_text())["organs"]
+    entry = next(o for o in organs if o["id"] == ORGAN_ID)
+    assert ORGAN_ID == "mata_garuda.sentinel_hourly.pro"
+    assert entry["runtime"] == "pro_launchd"
+    assert entry["owner_module"] == "apps/mata-garuda/scripts/run_sentinel_cell.py"
 
 
 @pytest.mark.asyncio

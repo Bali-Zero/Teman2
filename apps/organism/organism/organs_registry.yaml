@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 68007ed98b4a57ad76f1c60b91ce1fa3bcf491ef6746df55e1bd9ab7e1071aaa # pragma: allowlist secret
+checksum: ae6a3a3e9c2e505bf41e72045fd1738d2bcbd95ec85e6a18438fa2eff9bd62e8 # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -673,7 +673,7 @@ organs:
 - id: mata_garuda.sentinel_hourly.pro
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 3600
+  expected_hb_seconds: 7200
   owner_module: apps/mata-garuda/scripts/run_sentinel_cell.py
   dependencies:
   - infra.redis
