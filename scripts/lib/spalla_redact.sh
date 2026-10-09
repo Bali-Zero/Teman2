@@ -65,7 +65,9 @@ strip_data_file_deletes() {
 
 redact_for_external() {
     local input="$1"
-    if [[ -z "${input//[$'\t\r\n ']/}" ]]; then
+    # A regex match, never ${input//[class]/}: bash 3.2 (macOS /bin/bash) rewrites that substitution in
+    # quadratic time — an 8 KB diff took 58 s and a 70 KB one never reached the seat (2026-10-10).
+    if [[ ! "$input" =~ [^[:space:]] ]]; then
         printf '%s' "$input"
         return 0
     fi

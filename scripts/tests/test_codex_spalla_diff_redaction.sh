@@ -91,6 +91,19 @@ assert_eq "$CLEAN_OUT" "$CLEAN_DIFF" "strip_data_file_deletes: non-data-file dif
 CLEAN_REDACTED="$(redact_for_external "$CLEAN_OUT")"
 assert_eq "$CLEAN_REDACTED" "$CLEAN_OUT" "redact_for_external: PII-free diff is byte-identical"
 
+# ── speed: the blank check is linear (2026-10-10: bash 3.2's ${var//[class]/} was quadratic — an 8 KB
+#    diff took 58 s in it and a 70 KB one never reached the seat). 200 KB of whitespace (the blank path,
+#    returned as is) and 200 KB of text (the redactor path) must both finish well inside 30 s.
+BIG_BLANK="$(printf '%*s' 200000 '')"
+BIG_TEXT="$(printf 'line %06d of a large clean diff\n' $(seq 1 6000))"
+SPEED_START=$SECONDS
+BIG_BLANK_OUT="$(redact_for_external "$BIG_BLANK")"
+BIG_TEXT_OUT="$(redact_for_external "$BIG_TEXT")"
+SPEED_S=$((SECONDS - SPEED_START))
+assert_eq "${#BIG_BLANK_OUT}" "${#BIG_BLANK}" "redact_for_external: 200 KB of whitespace comes back as is"
+assert_eq "$BIG_TEXT_OUT" "$BIG_TEXT" "redact_for_external: a 200 KB clean diff comes back byte-identical"
+if [[ "$SPEED_S" -lt 30 ]]; then echo "ok: redact_for_external: 400 KB in ${SPEED_S} s"; else echo "FAIL: redact_for_external took ${SPEED_S} s on 400 KB (quadratic blank check?)" >&2; FAIL=1; fi
+
 # ── end-to-end guilt: the wrapper itself refuses on a PII-classed path ──
 # Skipped (not failed) when the codex CLI isn't installed/logged in on this
 # host — the refusal below fires before any `codex exec` call, so running
