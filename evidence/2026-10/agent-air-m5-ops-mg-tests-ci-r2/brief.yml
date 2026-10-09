@@ -40,3 +40,8 @@ acceptance:
     text: >-
       The cron-wrapper tests exec /bin/zsh: the job installs zsh and asserts /bin/zsh before the suite runs.
     probe: this PR's job log.
+  A6:
+    text: >-
+      A red of the new job on main raises the fleet's main-push failure alert: mata-garuda-tests is listed in
+      main-push-failure-watch.yml's workflows, and watcher-coverage passes.
+    probe: python3 scripts/check_watcher_coverage.py (the CI check job).

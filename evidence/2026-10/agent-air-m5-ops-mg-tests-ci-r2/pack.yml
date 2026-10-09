@@ -44,6 +44,13 @@ decisions:
   - >-
     Network tests are gated with the suite's own switch, not rewritten: their assertions stay as they were for live runs;
     mocking them properly is a follow-up.
+  - >-
+    Re-cut after the final gate's BLOCK (gate-8162, B1): the new workflow was not in main-push-failure-watch.yml's
+    workflows list, so watcher-coverage went red and a red of the job on main would have raised no alert. Listed now.
+    The new job is not a required context: a red on main blocks nothing, the watcher is what makes it heard.
+  - >-
+    Journal note: both council entries carry the append stamp 10:32:54Z; the Kimi entry's "10:4xZ" end time was an
+    estimate written before the stamp and is wrong. Both seats had answered before 10:32:54Z.
 dissent:
   - seat: codex-gpt-5.6-sol
     objection: The paths filter missed repo files the tests consume (the invalidation sweep script, the gap consumer plist).
@@ -120,4 +127,10 @@ receipts:
     result: "actionlint-ok"
     exit: 0
     ts: "2026-10-09T10:49:13Z"
+    seat: claude-opus-5.5 (imperator)
+  - claim: "R7 — watcher-coverage: every live workflow, the new one included, is covered by main-push-failure-watch.yml."
+    cmd: "python3 scripts/check_watcher_coverage.py"
+    result: "all 131 live workflow(s) covered (before the cure: 1 violation, mata-garuda-tests not covered)"
+    exit: 0
+    ts: "2026-10-09T11:07:22Z"
     seat: claude-opus-5.5 (imperator)
