@@ -746,6 +746,165 @@ def test_t9_live_false_positives_are_excluded_and_no_wider(tmp_path: Path) -> No
     assert _paths(findings) == real
 
 
+@pytest.mark.parametrize(
+    ("relpath", "content", "candidate"),
+    [
+        ("skills/bali-zero-brand/tokens.json", '{"palette":{},"typography":{}}', False),
+        (".claude/skills/synced/x/tokens.json", '{"palette":{}}', False),
+        (".claude/tokens.json", '{"palette":{}}', True),
+        (
+            "skills/x/tokens.json",
+            '{"github":{"access_token":"' + "fake_" + 'value"}}',
+            True,
+        ),
+        (
+            "skills/x/tokens.json",
+            '{"vendor":{"gh":"' + "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2" + '"}}',
+            True,
+        ),
+        (
+            "skills/x/tokens.json",
+            '{"$schema":"https://design-tokens.org/schema.json",'
+            '"meta":{"assets":"~/.claude/skills/bali-zero-brand/assets/"},'
+            '"color":{"primary":"#1A2B3C"},"font":{"body":"Inter, sans-serif"}}',
+            False,
+        ),
+        ("skills/x/tokens.json", "not json", True),
+        ("skills/x/tokens.json", '{"palette":"' + "x" * (256 * 1024) + '"}', True),
+        (".secrets/skills/x/tokens.json", '{"palette":{}}', True),
+        ("skills/x/tokens.yaml", "palette: {}", True),
+    ],
+    ids=[
+        "brand-design-tokens",
+        "synced-design-tokens",
+        "outside-skills",
+        "credential-marker",
+        "credential-value-under-innocent-key",
+        "urls-paths-colours-are-not-credentials",
+        "invalid-json",
+        "oversize",
+        "custody-wins",
+        "wrong-extension",
+    ],
+)
+def test_t9b_only_benign_skill_design_tokens_are_excluded(
+    tmp_path: Path, relpath: str, content: str, candidate: bool
+) -> None:
+    target = _touch(tmp_path / relpath, 0o644, content)
+
+    findings = audit.scan([tmp_path], max_depth=8)
+
+    assert (target in _paths(findings)) is candidate
+
+
+_PAT = "gh" + "p_" + "A1b2C3d4E5f6G7h8I9j0K1l2"
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        '{"passwd":"x1"}',
+        '{"credentials":{"user":"u","pass":"p"}}',
+        '{"credentials":{"user":"u"}}',
+        '{"pwd":"x1"}',
+        '{"passphrase":"x1"}',
+        '{"pass_word":"x1"}',
+        '{"bearer":"x1"}',
+        '{"Authorization":"x1"}',
+        '{"auth":"x1"}',
+        '{"token":"x1"}',
+        '{"id_token":"x1"}',
+        '{"pin":"1234"}',
+        '{"pass":"x1"}',
+        '{"authToken":"x1"}',
+        '{"' + _PAT + '":"x"}',
+        '{"dsn":"postgres://user:pw@host/db"}',
+        '{"' + "postgres://user:pw@host" + '":"x"}',
+        '{"a":' * 5000 + "1" + "}" * 5000,
+        "[" * 100000 + "]" * 100000,
+    ],
+    ids=[
+        "passwd",
+        "credentials-pass",
+        "credentials-only",
+        "pwd",
+        "passphrase",
+        "pass_word",
+        "bearer",
+        "authorization",
+        "auth",
+        "token",
+        "id_token",
+        "pin",
+        "pass",
+        "camel-authToken",
+        "pat-as-key",
+        "basic-auth-dsn-value",
+        "basic-auth-dsn-key",
+        "deep-object-recursion",
+        "deep-array-recursion",
+    ],
+)
+def test_t9d_credential_vocabulary_keys_and_values_stay_findings(
+    tmp_path: Path, content: str
+) -> None:
+    target = _touch(tmp_path / "skills" / "x" / "tokens.json", 0o644, content)
+
+    assert target in _paths(audit.scan([tmp_path], max_depth=8))
+
+
+def test_t9e_design_vocabulary_near_misses_are_not_credentials(tmp_path: Path) -> None:
+    content = '{"author":"A","spinner":{"pinned":"#fff"},"authority":"x","link":"https://example.com/a/b"}'
+    target = _touch(tmp_path / "skills" / "x" / "tokens.json", 0o644, content)
+
+    assert target not in _paths(audit.scan([tmp_path], max_depth=8))
+
+
+def test_t9f_padding_past_the_cap_is_not_design_tokens(tmp_path: Path) -> None:
+    content = '{"palette":{}}' + " " * (256 * 1024)
+    target = _touch(tmp_path / "skills" / "x" / "tokens.json", 0o644, content)
+
+    assert target in _paths(audit.scan([tmp_path], max_depth=8))
+
+
+def test_t9g_long_digitless_run_is_linear(tmp_path: Path) -> None:
+    import time
+
+    content = '{"palette":"' + "a" * (200 * 1024) + '"}'
+    target = _touch(tmp_path / "skills" / "x" / "tokens.json", 0o644, content)
+
+    started = time.monotonic()
+    findings = audit.scan([tmp_path], max_depth=8)
+
+    assert time.monotonic() - started < 5
+    assert target not in _paths(findings)
+
+
+def test_t9h_fifo_and_symlink_named_tokens_json_are_never_opened(tmp_path: Path) -> None:
+    skills = tmp_path / "skills" / "x"
+    skills.mkdir(parents=True)
+    os.mkfifo(skills / "tokens.json")
+    other = tmp_path / "skills" / "y"
+    other.mkdir()
+    real = _touch(tmp_path / "real.dat", 0o644, '{"palette":{}}')
+    (other / "tokens.json").symlink_to(real)
+
+    found = _paths(audit.scan([tmp_path], max_depth=8))
+
+    assert skills / "tokens.json" not in found
+    assert other / "tokens.json" not in found
+
+
+def test_t9c_the_tracked_brand_tokens_file_is_design_tokens(tmp_path: Path) -> None:
+    """The real Bali Zero brand file (the Mini healer's recurring chmod) is excluded."""
+    brand = Path(__file__).resolve().parents[2] / "skills" / "bali-zero-brand" / "tokens.json"
+    if not brand.is_file():
+        pytest.skip("brand tokens file not in this checkout")
+    target = _touch(tmp_path / "skills" / "bali-zero-brand" / "tokens.json", 0o644, brand.read_text())
+
+    assert target not in _paths(audit.scan([tmp_path], max_depth=8))
+
+
 def test_t10_plugin_marketplace_checkouts_are_walked(tmp_path: Path) -> None:
     """A directory's name does not prove its contents public: a credential
     inside a plugin marketplace checkout is found like any other."""

@@ -166,6 +166,48 @@ EXCLUDE_NAME_GLOBS: Tuple[str, ...] = (
 #: invariant — no name filter, no exclusion, no chain (see scan strict).
 CUSTODY_DIR_NAMES = frozenset({".secrets"})
 
+DESIGN_TOKENS_MAX_BYTES = 256 * 1024
+#: Substring markers: the credential vocabulary of SECRET_NAME_GLOBS
+#: (secret, credential, password, passwd, api key, token-ish) plus the words a
+#: credential-bearing JSON key is usually spelled with.
+_CREDENTIAL_JSON_KEY_RE = re.compile(
+    r"(secret|credential|passw(or)?d|pass[_-]?word|passphrase|pwd|bearer|"
+    r"authori[sz]ation|api[_-]?key|access[_-]?token|refresh[_-]?token|"
+    r"client[_-]?secret|private[_-]?key)",
+    re.IGNORECASE,
+)
+#: Short words that mark a credential only as a whole key segment
+#: (`auth`, `id_token`, `pass`, `pin`), never inside `author` or `spinner`.
+_CREDENTIAL_KEY_SEGMENTS = frozenset({"auth", "token", "pin", "pass"})
+_KEY_SEGMENT_SPLIT_RE = re.compile(r"[^a-z0-9]+")
+#: A credential VALUE under an innocent key: a run of 24+ token characters
+#: carrying both a letter and a digit (design tokens are colours, sizes,
+#: font names, URLs and paths — none has such a run). Runs are found by a
+#: linear scan; the letter+digit test is done per run in Python.
+_TOKEN_RUN_RE = re.compile(r"[A-Za-z0-9_+/=-]{24,}")
+#: Basic-auth credentials inside a URL, however short the password.
+_URL_USERINFO_RE = re.compile(r"://[^/@:\s]+:[^/@\s]+@")
+
+
+def _has_credential_shape(text: str) -> bool:
+    if _URL_USERINFO_RE.search(text):
+        return True
+    for run in _TOKEN_RUN_RE.finditer(text):
+        token = run.group()
+        if any(c.isdigit() for c in token) and any(c.isalpha() for c in token):
+            return True
+    return False
+
+
+def _is_credential_key(key: str) -> bool:
+    if _CREDENTIAL_JSON_KEY_RE.search(key):
+        return True
+    lowered = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", key).lower()
+    if _CREDENTIAL_KEY_SEGMENTS.intersection(_KEY_SEGMENT_SPLIT_RE.split(lowered)):
+        return True
+    return _has_credential_shape(key)
+
+
 #: `.env*` files are report-only: shown for a human, never chmod'ed.
 ENV_NAME_GLOBS: Tuple[str, ...] = (".env*", "*.env*")
 
@@ -300,6 +342,37 @@ def is_under_custody(path: Path) -> bool:
     fix_findings needs nothing but the path.
     """
     return any(part.lower() in CUSTODY_DIR_NAMES for part in Path(path).parent.parts)
+
+
+def is_design_tokens_file(path: Path) -> bool:
+    """Classify a bounded, credential-free skill `tokens.json` by content."""
+    if path.name.lower() != "tokens.json" or not any(
+        part.lower() == "skills" for part in path.parent.parts
+    ):
+        return False
+    try:
+        with path.open("rb") as stream:
+            raw = stream.read(DESIGN_TOKENS_MAX_BYTES + 1)
+        if len(raw) > DESIGN_TOKENS_MAX_BYTES:
+            return False
+        payload = json.loads(raw)
+    except (OSError, ValueError, RecursionError):
+        return False
+    if not isinstance(payload, dict):
+        return False
+
+    pending = [payload]
+    while pending:
+        value = pending.pop()
+        if isinstance(value, dict):
+            if any(_is_credential_key(key) for key in value):
+                return False
+            pending.extend(value.values())
+        elif isinstance(value, list):
+            pending.extend(value)
+        elif isinstance(value, str) and _has_credential_shape(value):
+            return False
+    return True
 
 
 # --------------------------------------------------------------------------
@@ -465,8 +538,8 @@ def scan(
     strict: bool = False,
 ) -> List[Finding]:
     """Scan `roots` for credential-like files with group/other permission
-    bits set. Returns findings sorted by path. Never opens file contents —
-    only os.lstat() (for mode + symlink/regular-file detection) is used.
+    bits set. Returns findings sorted by path. Content is read only for the
+    bounded design-token classification; credential values are never emitted.
 
     `stats` (optional dict) accumulates `roots_existing` and
     `files_traversed` so the caller can detect a BLIND scan (roots exist
@@ -504,6 +577,8 @@ def scan(
 
         mode_bits = stat.S_IMODE(lst.st_mode)
         if not mode_bits & 0o077:
+            continue
+        if not custody and is_design_tokens_file(candidate):
             continue
 
         if custody:
