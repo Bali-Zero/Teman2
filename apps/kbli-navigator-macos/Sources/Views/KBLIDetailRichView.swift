@@ -153,9 +153,9 @@ struct KBLIDetailRichView: View {
         let status = kbli.l4Bali?.status ?? ""
         return VStack(alignment: .leading, spacing: 9) {
             HStack(spacing: 8) {
-                StatusBadge(icon: "sparkle", label: lang.t("rich.gold"), color: Theme.yellow, compact: true)
+                StatusBadge(icon: "sparkle", label: lang.t("rich.gold"), tone: .neutral, compact: true)
                 StatusBadge(icon: Theme.kbliStatusSymbol(status), label: Theme.kbliStatusLabel(status),
-                            color: Theme.kbliStatusColor(status), compact: true)
+                            tone: Theme.tone(status), compact: true)
             }
             Text(kbli.kode)
                 .font(Theme.scalable(52, weight: .semibold, design: .monospaced))

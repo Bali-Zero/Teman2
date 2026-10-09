@@ -1528,21 +1528,21 @@ struct PP28ScalePanel: View {
                         .lineLimit(expanded ? nil : 1).multilineTextAlignment(.leading)
                     Spacer(minLength: 6)
                     // mini risk chips: a FIXED 4-slot grid in canonical Mikro→Besar order. Each present
-                    // scale shows its initial tinted by that scale's RISK (white-on-tint, legible — the
-                    // old dark-on-dark ~1.4:1 chip was unreadable). An ABSENT scale shows a dim "·"
+                    // scale shows its initial on that scale's `Theme.riskChip` (tiers differ by fill weight;
+                    // census rows in measure_contrast.py cite this line). An ABSENT scale shows a dim "·"
                     // placeholder so columns stay aligned and "not applicable" is explicit, never a
                     // silent blank that reads as "no data" (regulator-confusing).
                     HStack(spacing: 3) {
                         ForEach(Self.scaleOrder, id: \.self) { scale in
                             if let row = rows.first(where: { $0.element.skalaUsaha.contains(scale) })?.element {
-                                let c = Theme.riskColor(row.kategoriRisiko ?? "")
+                                let chip = Theme.riskChip(row.kategoriRisiko)
                                 Text(String(scale.prefix(2)))
                                     .font(Theme.scalable(9, weight: .heavy, design: .monospaced))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(chip.fg)
                                     .frame(minWidth: 16)
                                     .padding(.horizontal, 5).padding(.vertical, 2)
-                                    .background(c.opacity(0.55), in: Capsule())
-                                    .overlay(Capsule().strokeBorder(c.opacity(0.9), lineWidth: 0.5))
+                                    .background(chip.bg, in: Capsule())
+                                    .overlay(Capsule().strokeBorder(chip.border ?? .clear, lineWidth: 1))
                             } else {
                                 Text("·")
                                     .font(Theme.scalable(9, weight: .heavy, design: .monospaced))
@@ -1705,10 +1705,10 @@ struct PP28ScalePanel: View {
             HStack(spacing: 8) {
                 Text(s.skalaUsaha.map { Self.scaleLabel($0, isID: isID) }.joined(separator: "/")).font(Theme.scalable(12, weight: .heavy, design: .monospaced)).foregroundStyle(Theme.white)
                 if let risk = s.kategoriRisiko {
-                    Text(riskLabel(risk)).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(.white)
+                    Text(riskLabel(risk)).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(Theme.riskChip(risk).fg)
                         .padding(.horizontal, 8).padding(.vertical, 3)
-                        .background(Theme.riskColor(risk).opacity(0.45), in: Capsule())
-                        .overlay(Capsule().strokeBorder(Theme.riskColor(risk).opacity(0.85), lineWidth: 0.5))
+                        .background(Theme.riskChip(risk).bg, in: Capsule())
+                        .overlay(Capsule().strokeBorder(Theme.riskChip(risk).border ?? .clear, lineWidth: 1))
                 }
                 if let jw = s.jangkaWaktu, !jw.isEmpty {
                     Text(Self.formatJangkaWaktu(jw, isID: isID)).font(Theme.scalable(11, design: .monospaced)).foregroundStyle(Theme.muted)
