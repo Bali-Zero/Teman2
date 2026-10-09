@@ -624,7 +624,8 @@ The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and 
 - **Online discard (B8b).** Before the trim, the same real prune reads the VM's mount table (`colima ssh -- cat /proc/mounts`)
   and, if the data disk (`VM_DOCKER_MOUNT`, `/mnt/lima-colima`, `/dev/vdb1`, the sparse host file `~/.colima/_lima/_disks/colima/datadisk`)
   lacks the `discard` option, runs `sudo mount -o remount,discard /mnt/lima-colima` and reads it again; mount options do not
-  survive a VM restart, so every tick puts it back. Why: a sampler on Pro (2026-10-09, every 20 s) saw the datadisk's host allocation
+  survive a VM restart: the prune at the end of each tick puts it back for the next tick, so the first tick after a VM restart
+  runs without it. Why: a sampler on Pro (2026-10-09, every 20 s) saw the datadisk's host allocation
   climb to 54.0 GiB inside a tick while the VM used 36.6-40 GiB, 14-17 GiB of freed blocks returning only at the end-of-tick trim,
   and the host's free space fall to 104.0 GiB (100.3 GiB by another session's read) against the owner's floor of 100 GB. The mount point is matched as the
   field of a `/proc/mounts` line and `discard` as one of its comma-split options (`nodiscard` is off; a longer path is another

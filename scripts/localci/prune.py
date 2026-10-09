@@ -317,11 +317,12 @@ def _vm_discard_on(colima: str) -> tuple[bool | None, str | None]:
         return None, type(e).__name__
     if t.returncode != 0:
         return None, f"rc {t.returncode}"
+    found = None
     for line in t.stdout.splitlines():
         f = line.split()
         if len(f) >= 4 and f[1] == VM_DOCKER_MOUNT:
-            return "discard" in f[3].split(","), None
-    return None, "mount point not found"
+            found = "discard" in f[3].split(",")   # the LAST line for a mount point is the one in force (a stacked mount)
+    return (found, None) if found is not None else (None, "mount point not found")
 
 
 def keep_vm_discard(colima: str) -> dict:
