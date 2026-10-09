@@ -436,6 +436,7 @@ HOST_NO_VERDICT = ("host_disk_full", "host_disk_below_floor", "host_disk_unmeasu
 GATE = ("local_checks_clean", "review_independent", "executed_contexts_ok", "hosted_required_green", "head_unchanged", "same_repo",
         "not_draft", "base_main", "open", "not_in_queue", "first_enqueue")
 CRITERION = (*GATE, "label_privileged")   # the env flag, the arm's other half, is journalled apart
+REMOTE_TIMEOUT_S = 30   # the shadow's one network read
 BITES_RE = re.compile(r"^[ \t>*_-]*Bites\b[*_]*\s*:", re.M | re.I)   # the PR contract's `Bites:` line (bold or quoted forms included)
 ENQUEUE = ("mutation($pr: ID!, $oid: GitObjectID!) { enqueuePullRequest(input: {pullRequestId: $pr, expectedHeadOid: $oid}) {"
            " mergeQueueEntry { id position state } } }")
@@ -517,19 +518,32 @@ def enqueue_step(a, state: Path, rec: dict, loc: dict, live) -> dict:
     return out
 
 
-def merge_shadow_step(state: Path, repo_dir: Path, enq: dict) -> dict:
+def merge_shadow_step(state: Path, repo_dir: Path, enq: dict, base: str = "main") -> dict:
     """Phase F, shadow (spec Phase F, F1): rehearse the merge of the decided head onto the mirror's current main and journal ONE
     ``would_merge`` line. ``git merge-tree --write-tree`` is plumbing: it writes objects into the mirror's object store and never a
-    ref, a worktree or the index, and nothing here pushes. A failure of any git call lands on the line as ``error`` (``ok`` false);
-    nothing raises into the decision."""
+    ref, a worktree or the index, and nothing here pushes. ``base_current`` asks GitHub, the authority until phase F proper: a
+    read-only ``git ls-remote`` (no ref, no object) gives ``remote_main``, because the tick fetches the mirror once and a gate run
+    can outlast several merges. A failure of any git call lands on the line as ``error`` (``ok`` false); nothing raises into the
+    decision."""
     head, base_sha = enq["head_sha"], enq["base_sha"]
     crit = enq.get("criterion") if isinstance(enq.get("criterion"), dict) else {}
-    line = {"kind": "would_merge", "pr": enq["pr"], "head_sha": head, "base_sha": base_sha, "mirror_main": None, "base_current": False,
+    line = {"kind": "would_merge", "pr": enq["pr"], "head_sha": head, "base_sha": base_sha, "mirror_main": None, "remote_main": None, "base_current": False,
             "head_unchanged": crit.get("head_unchanged") is True, "merge_tree": None, "clean": False, "conflicts": [], "criterion": crit,
             "armed_env": enq.get("armed_env"), "bites": enq.get("bites") is True, "ok": False, "lease_id": enq.get("lease_id")}
+    errors = []
+    try:
+        res = git(repo_dir, "ls-remote", "origin", f"refs/heads/{base}", check=False, timeout=REMOTE_TIMEOUT_S)
+        fields = res.stdout.split()
+        if res.returncode != 0 or len(fields) != 2 or not is_sha(fields[0]) or fields[1] != f"refs/heads/{base}":
+            raise MergerError(f"git ls-remote origin refs/heads/{base} gave no main (rc={res.returncode}): {redact(res.stderr.strip()[-300:])}")
+        line["remote_main"] = fields[0]
+        line["base_current"] = line["remote_main"] == base_sha
+    except Stopped:
+        raise
+    except Exception as exc:  # noqa: BLE001 — an unreadable remote is a main that is not known to be current
+        errors.append(redact(f"{type(exc).__name__}: {exc}"))
     try:
         line["mirror_main"] = git(repo_dir, "rev-parse", "--verify", "--quiet", "refs/merger/base^{commit}").stdout.strip()
-        line["base_current"] = line["mirror_main"] == base_sha
         res = git(repo_dir, "merge-tree", "--write-tree", "--name-only", "-z", line["mirror_main"], head, check=False)
         parts = res.stdout.split("\0")
         if res.returncode not in (0, 1) or not is_sha(parts[0]):
@@ -541,7 +555,9 @@ def merge_shadow_step(state: Path, repo_dir: Path, enq: dict) -> dict:
     except Stopped:
         raise
     except Exception as exc:  # noqa: BLE001 — a shadow never raises into the decision
-        line["error"] = redact(f"{type(exc).__name__}: {exc}")
+        errors.append(redact(f"{type(exc).__name__}: {exc}"))
+    if errors:
+        line["error"] = "; ".join(errors)[-500:]
     line["ok"] = bool(crit) and all(crit.values()) and line["base_current"] and line["clean"]   # head_unchanged is one of crit's own terms
     out = journal(state, line)
     print(f"merger: #{out['pr']} would_merge ok={out['ok']} clean={out['clean']} base_current={out['base_current']} tree={str(out['merge_tree'])[:12]}")
@@ -596,7 +612,12 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
               f"run_dir={run_dir}")
         enq = enqueue_step(a, state, {"repo": a.repo, "pr": n, "head_sha": head, "base_sha": base_sha, "candidate_sha": cand_sha, "lease_id": lease_id},
                            loc, live)
-        merge_shadow_step(state, repo_dir, enq)
+        try:
+            merge_shadow_step(state, repo_dir, enq, a.base)
+        except Stopped:
+            raise
+        except Exception as exc:  # noqa: BLE001 — a shadow never turns a decision into a second, ERROR one
+            print(f"merger: #{n} would_merge not journalled — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
         return 0
     except (MergerError, OSError) as exc:   # a decision with no verdict: this (pr, head, base) is not retried, the next base is
         journal(state, {**rec, "overall": "ERROR", "error": redact(exc), "candidate_sha": None, "run_dir": None,
@@ -858,8 +879,9 @@ def cmd_report(a) -> int:
     enqueue = {k: sum(1 for r in window if r.get("kind") == k) for k in ("enqueued", "enqueue_refused", "enqueue_error")}
     enqueue["would_enqueue"] = sum(1 for r in window if r.get("kind") == "would_enqueue" and r.get("ok") is True)   # every sub-criterion true
     wm = [r for r in window if r.get("kind") == "would_merge"]   # phase F, shadow: the merge rehearsed, never made
-    would_merge = {"total": len(wm), "ok": sum(1 for r in wm if r.get("ok") is True), "conflicted": sum(1 for r in wm if r.get("clean") is False),
-                   "base_moved": sum(1 for r in wm if r.get("base_current") is False)}
+    would_merge = {"total": len(wm), "ok": sum(1 for r in wm if r.get("ok") is True), "conflicted": sum(1 for r in wm if r.get("clean") is False and is_sha(r.get("merge_tree")) and not r.get("error")),
+                   "base_moved": sum(1 for r in wm if r.get("base_current") is False and is_sha(r.get("remote_main"))),
+                   "errors": sum(1 for r in wm if r.get("error"))}
     timed = sorted((r["elapsed_s"], r["pr"]) for r in rows if r["elapsed_s"] is not None)
     ticks = {"timed": len(timed), "longest_s": timed[-1][0] if timed else None, "longest_pr": timed[-1][1] if timed else None,
              "median_s": round(median(t for t, _ in timed), 1) if timed else None,
@@ -896,7 +918,7 @@ def cmd_report(a) -> int:
     print("context-level (hosted_compare per decision): " + " ".join(f"{k.lower()}={v}" for k, v in ctx_counts.items())
           + f" | false_green recorded at tick time={recorded_fg}")
     print(f"phase F shadow: would_merge={would_merge['total']} (ok={would_merge['ok']}, conflicted={would_merge['conflicted']}, "
-          f"base_moved={would_merge['base_moved']}) — rehearsed with merge-tree, nothing merged, nothing pushed")
+          f"base_moved={would_merge['base_moved']}, errors={would_merge['errors']}) — rehearsed with merge-tree, nothing merged, nothing pushed")
     for h in hosted_red_merged:
         print(f"hosted_red_merged: #{h['pr']} merged at {h['merge_commit_sha'][:12]} with required red: {', '.join(h['red'])}")
     print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= 50 compared merges and >= 14 days between the first "
