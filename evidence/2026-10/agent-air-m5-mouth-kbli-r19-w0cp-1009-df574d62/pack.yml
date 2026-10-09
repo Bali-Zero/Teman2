@@ -1,0 +1,73 @@
+brief_ref: evidence/brief.yml
+seat_override: >-
+  Dispatch by the imperator, mission kbli-nav-design-loop Track W lot W0c' (BLUE), after the gate
+  BLOCK on #8167 was upheld (issuecomment-6079589026): two first-red causes, completeness and
+  instrument under-match. Spec and census only. The Dux built and ran every command; it does not
+  self-sign. A fresh Opus gate is commissioned by the imperator.
+plan_ref: >-
+  docs/plans/2026-10-08-kbli-navigator-design-loop.md section 1 row W2; the contract
+  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md section 8; gate BLOCK on #8167
+  (issuecomment-6079589026); Z-DECISIONI Q11 (explorer logo).
+lanes:
+  - lane: kbli-r19-w0cp-1009
+    role: build
+    seat: "claude-opus-5-5 (Dux)"
+pii_scan: clean
+pii_scan_note: "KBLI classification data is public. The stub fixture holds placeholder rows with invented text; the shared-drawer pin holds nav labels only. No client data, no external seat."
+provenance: >-
+  Fresh worktree from origin/main 04bd35301d; #8167's seven code, spec and fixture blobs
+  (f269209968) checked out onto it, then amended. #8161's head 51b2407f27 read through git archive
+  (the scan) and a detached probe worktree (the census at that head).
+diff:
+  net_lines: |
+    Census script +442 -9, its tests +322 -1, CI workflow +63 -1, contract +349 -3 (section 8
+    tables of 44 and 60 rows, prose, the Q11 logo ruling, 8.5 and 8.6). Fixtures are data: the
+    re-pinned main census, #8161's search rows, the stub rows and the shared-drawer pin. The rest
+    is this evidence pack. No apps/mouth file changes.
+  behaviour_change: >-
+    The opened walk now judges every painted ground under text by computed value, every scrim's
+    hue, and every background class by row or by its missing row; counts surfaces that render
+    outside the wrapper; opens the /kbli mobile nav drawer on two pages in three themes; pins the
+    shared drawer on two routes outside /kbli*; and freezes timers of 2 s or more so M repeats.
+receipts:
+  - claim: "Live census at origin/main: 25 surfaces open, the shared drawer is unchanged, the counts are the honest guilt."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --base-url http://localhost:3594 --json <scratch>"
+    result: "captures 30 ok; 0 / 128 / 0 / 51; opened-surfaces 25 ok, 0 failed; opened-outside-wrapper 10; opened-grounds-off-contract 88; shared-nav-drawer-drift 0; opened-text-below-4.5 398"
+    exit: 0
+    ts: "2026-10-09T17:27:00Z"
+    seat: claude-opus-5-5
+  - claim: "The same census at #8161's head counts the ink titles at 1.05:1 and the navy mobile nav drawer through its portal."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --base-url http://localhost:3595 --json <scratch>"
+    result: "captures 30 ok; 0 / 0 / 0 / 0; opened-surfaces 25 ok, 0 failed; opened-outside-wrapper 10; opened-grounds-off-contract 64; shared-nav-drawer-drift 0; opened-text-below-4.5 1240"
+    exit: 0
+    ts: "2026-10-09T17:27:00Z"
+    seat: claude-opus-5-5
+  - claim: "M and K repeat on origin/main: a second opened walk prints the same numbers."
+    cmd: "walk_opened on http://localhost:3594 (scratch driver importing the census)"
+    result: "opened-surfaces 25 ok; opened-outside-wrapper 10; opened-grounds-off-contract 88; shared-nav-drawer-drift 0; opened-text-below-4.5 398"
+    exit: 0
+    ts: "2026-10-09T17:45:00Z"
+    seat: claude-opus-5-5
+  - claim: "Every background class of the scope, imports included, is named; no dark slab is left."
+    cmd: "python3 -I surface_scan.py http://localhost:3594 main=<worktree>/apps/mouth/src 8161=<archive>/apps/mouth/src"
+    result: "92 rest classes: 49 section 5, 43 section 8.1 (bg-accent-warm, the 44th row, lives only in a stylesheet selector); unnamed-grounds 0; unnamed-dark-slabs 0; 3 state variants without a section 7 row, declared boundary-only in 8.6"
+    exit: 0
+    ts: "2026-10-09T17:05:00Z"
+    seat: claude-opus-5-5
+  - claim: "Census suite with the paint-verdict guilt and innocence through the real walk; the W1 test unchanged in outcome."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider; cd apps/mouth && R19_WRAPPER_BASE_URL=http://localhost:3594 npx vitest run src/test/r19-wrapper.test.ts"
+    result: "80 passed; Test Files 1 passed, Tests 5 passed 1 skipped"
+    exit: 0
+    ts: "2026-10-09T17:52:00Z"
+    seat: claude-opus-5-5
+dissent:
+  - seat: claude-opus-5-5
+    objection: "The W0c gate: the /kbli mobile nav drawer was neither named nor opened, and judge_grounds skipped every class without a section 8.1 row, so bg-[#1c1c1e]/95 and bg-zinc-900 printed K 0."
+    status: CONFIRMED
+    resolution: "Section 8.5 names the drawer and the portal ruling names all three portals; the walk opens it on /kbli and /kbli/55203; K now judges the composited painted ground under every text by value, scrims by hue, and any colour class without a row; the three gate spellings each count through the real walk."
+  - seat: claude-opus-5-5
+    objection: "The W0c gate: the explorer's rotating placeholder made M flake by one on origin/main."
+    status: CONFIRMED
+    resolution: "Every opened-walk context suppresses setInterval timers of 2 s or more; a browser test proves a 2.5 s rotation adds no pair, and fails with the freeze removed."
+grader: |
+  A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha.

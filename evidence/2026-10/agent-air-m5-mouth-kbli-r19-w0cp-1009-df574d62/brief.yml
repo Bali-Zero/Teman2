@@ -1,0 +1,32 @@
+task_id: kbli-r19-w0cp-1009
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, lot W0c' (Track W, BLUE), depth-1 successor of #8167 (W0c), whose
+  gate BLOCK was upheld on two first-red causes: the /kbli mobile nav drawer was unnamed and
+  never opened, and the opened-surface ground verdict judged class spellings rather than paint.
+  Spec and census only, no apps/mouth/src change. Carry #8167's blobs; make K judge every painted
+  ground by computed value; open and name the mobile nav drawer with the portal ruling for all
+  three portals and a census check that the shared drawer outside /kbli* is unchanged; freeze the
+  rotating placeholder so M is deterministic; rewrite section 8.3 to the owner's Q11 logo ruling;
+  name the six leftover classes.
+constraints:
+  - "No apps/mouth/src change. Contract sections 5 and 7 unchanged; section 8 amended in place, 8.5 and 8.6 added."
+  - "A second red for instrument under-match suspends the W0 census work."
+  - "No npm install or npm ci. Dev servers on ports 3594 (origin/main) and 3595 (#8161's head, a detached probe worktree), started and stopped by this lot."
+acceptance:
+  - text: "WHEN an opened surface paints a dark or translucent ground under text through a spelling with no row, an unnamed slab or an inline style, THEN opened-grounds-off-contract is at least 1; an elevated surface under ink counts 0."
+    probe: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k e2e"
+  - text: "WHEN the census runs live on origin/main, THEN 25 surfaces open, the shared drawer prints drift 0, and K and M repeat across runs."
+    probe: "python3 scripts/mouth/r19_wrapper_token_census.py"
+  - text: "WHEN the scan resolves every background class of the /kbli* sources and their imports, THEN none is unnamed."
+    probe: "python3 -I surface_scan.py"
+consumer_map:
+  - "r19-wrapper-census-tests / wrapper-census-states runs the live census on every apps/mouth PR, asserts captures 30 ok, opened-surfaces 25 ok and shared-nav-drawer-drift 0, and runs the browser guilt and innocence tests."
+  - "W2''' paints the named surfaces and asserts opened-outside-wrapper, opened-grounds-off-contract and opened-text-below-4.5 at 0 in the same job."
+risks:
+  - "The paint verdict names grounds by element path; a W2''' DOM change renames a line, never hides one."
+  - "The non-R19 MobileNav branch without the paper prop renders on no route, so no walk pins it; W2''' gates its change on the prop."
+grader: |
+  A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha.
