@@ -900,6 +900,38 @@ def test_t9f_padding_past_the_cap_is_not_design_tokens(tmp_path: Path) -> None:
     assert target in _paths(audit.scan([tmp_path], max_depth=8))
 
 
+def test_t9f_classifier_enforces_own_integer_digit_bound(tmp_path: Path) -> None:
+    setter = getattr(sys, "set_int_max_str_digits", None)
+    original_limit = sys.get_int_max_str_digits() if setter is not None else None
+    if setter is not None:
+        setter(0)
+    try:
+        target = tmp_path / "skills" / "x" / "tokens.json"
+        _touch(target, 0o644, '{"scale":' + "7" * 4300 + "}")
+        assert audit.is_design_tokens_file(target) is True
+
+        target.write_text('{"scale":' + "7" * 4301 + "}")
+        assert audit.is_design_tokens_file(target) is False
+    finally:
+        if setter is not None:
+            setter(original_limit)
+
+
+def test_t9f_design_tokens_byte_cap_is_inclusive(tmp_path: Path) -> None:
+    target = tmp_path / "skills" / "x" / "tokens.json"
+    prefix = '{"palette":"'
+    suffix = '"}'
+
+    at_cap = prefix + " " * (audit.DESIGN_TOKENS_MAX_BYTES - len(prefix) - len(suffix)) + suffix
+    _touch(target, 0o644, at_cap)
+    assert len(at_cap.encode()) == audit.DESIGN_TOKENS_MAX_BYTES
+    assert audit.is_design_tokens_file(target) is True
+
+    target.write_text(at_cap + " ")
+    assert target.stat().st_size == audit.DESIGN_TOKENS_MAX_BYTES + 1
+    assert audit.is_design_tokens_file(target) is False
+
+
 def test_t9g_long_digitless_run_is_linear(tmp_path: Path) -> None:
     import time
 
