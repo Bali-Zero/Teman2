@@ -203,17 +203,17 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
   [
     "assumption.secondhome_deposit_usd",
     "For this assessment, a bank-deposit amount you cannot confirm counts as zero. You can discuss it with a Bali Zero advisor.",
-    "Dalam penilaian ini, jumlah deposito bank yang belum dapat Anda pastikan dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "Dalam penilaian ini, jumlah deposito bank yang belum dapat Anda konfirmasi dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
   ],
   [
     "assumption.secondhome_property_value_usd",
     "For this assessment, a property value you cannot confirm counts as zero. You can discuss it with a Bali Zero advisor.",
-    "Dalam penilaian ini, nilai properti yang belum dapat Anda pastikan dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "Dalam penilaian ini, nilai properti yang belum dapat Anda konfirmasi dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
   ],
   [
     "assumption.secondhome_passive_income_usd",
     "For this assessment, passive monthly income you cannot confirm counts as zero. You can discuss it with a Bali Zero advisor.",
-    "Dalam penilaian ini, penghasilan pasif bulanan yang belum dapat Anda pastikan dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "Dalam penilaian ini, penghasilan pasif bulanan yang belum dapat Anda konfirmasi dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
   ],
   [
     "assumption.secondhome_state_bank",
@@ -310,6 +310,7 @@ const FALSE_CLAIMS: readonly RegExp[] = [
   /in front of a person/i,
   /before the assessment continues/i,
   /selalu ditangani manusia/i,
+  /yang belum dapat anda pastikan/i,
   /more than one citizenship, or another connection/i,
   /lebih dari satu kewarganegaraan, atau hubungan lain/i,
   /being re-checked by our team/i,

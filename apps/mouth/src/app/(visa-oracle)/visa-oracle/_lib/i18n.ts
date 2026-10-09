@@ -1755,11 +1755,11 @@ const id: Record<Keys, string> = {
   "assumption.remote_clients":
     "Anda belum yakin di mana klien Anda berada, jadi hal ini belum dipastikan. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.secondhome_deposit_usd":
-    "Dalam penilaian ini, jumlah deposito bank yang belum dapat Anda pastikan dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "Dalam penilaian ini, jumlah deposito bank yang belum dapat Anda konfirmasi dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.secondhome_property_value_usd":
-    "Dalam penilaian ini, nilai properti yang belum dapat Anda pastikan dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "Dalam penilaian ini, nilai properti yang belum dapat Anda konfirmasi dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.secondhome_passive_income_usd":
-    "Dalam penilaian ini, penghasilan pasif bulanan yang belum dapat Anda pastikan dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "Dalam penilaian ini, penghasilan pasif bulanan yang belum dapat Anda konfirmasi dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.secondhome_state_bank":
     "Jika Anda belum yakin apakah deposito berada di bank BUMN Indonesia, penilaian ini memperlakukan jawaban tersebut sebagai “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.secondhome_own_name":
