@@ -1,0 +1,30 @@
+task: >-
+  Pro's hourly sentinel (com.matagaruda.sentinel.hourly, apps/mata-garuda/scripts/run_sentinel_cell.py) wrote its heartbeat
+  under Mini's organ id mata_garuda.sentinel_daily.mini, had no registry entry of its own, and exited 1 on every red pulse
+  (about every other hour, action=no_items), so launchd and the state bridge recorded a failure for a completed run. Give it
+  its own organ id and registry entry, make a red pulse a warning with a stable note and exit 0, keep exceptions a fail with
+  exit 1, and teach the Pro healer's receptor A that this note is a completed run with a finding.
+lane: ops
+machine: m5
+date: 2026-10-09
+gear: 2
+gear_reason: >-
+  Measured floor 1. Gear 2 at least so that harness-floor holds the merge until the independent final gate
+  signs it (campaign rule after #8079).
+acceptance:
+  A1:
+    text: >-
+      A red pulse writes mata_garuda.sentinel_hourly.pro with status warning and a note starting
+      "pulse=red action=<token> pulse=<n>", and exits 0; green and yellow write ok; an exception in the pulse, in building
+      the cell, in the event loop or an interrupt writes fail (exit 1, a re-raise, or 130).
+    probe: apps/mata-garuda/tests/test_run_sentinel_cell.py (7 cases) and tests/test_heartbeat.py (existing callers unchanged).
+  A2:
+    text: >-
+      Receptor A on Pro reads that warning note as alive with findings; the same note under fail, a note without the shape,
+      the shape not at note start, or the shape on another organ stays dead.
+    probe: scripts/tests/test_healer_receptor_findings.py.
+  A3:
+    text: >-
+      The registry declares mata_garuda.sentinel_hourly.pro (pro_launchd, 3600 s, kickstart recovery) and the Mini daily
+      entry names its real owner module; organ conformance stays green.
+    probe: python3 infra/organ-conformance/check_organ_conformance.py.
