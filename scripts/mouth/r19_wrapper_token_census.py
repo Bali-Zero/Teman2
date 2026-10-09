@@ -9,8 +9,10 @@ RENDERED DOM of a local `next dev --webpack` — 5 pages x the 6 states of
 follows every var() chain where the browser resolves it (at the declaring
 element). It prints, as its LAST lines, `read-but-undefined: N` (one line per
 token the contract lacks), `colors-outside-direction-a: M` and, from the
-state contract (section 7), `state-rows-unseen: U` then `state-colors-off-contract: K`. The verdict is the
-printed line, never the exit code.
+state contract (section 7), `state-rows-unseen: U` then `state-colors-off-contract: K`. Then it opens
+the surfaces a click or a query reveals (section 8.4, the search and inspect APIs stubbed from a
+fixture) and prints `opened-surfaces: N ok, F failed`, `opened-outside-wrapper: P`,
+`opened-grounds-off-contract: G`, `shared-nav-drawer-drift: D` and, last, `opened-text-below-4.5: T`. The verdict is the printed line, never the exit code.
 
   python3 scripts/mouth/r19_wrapper_token_census.py [--base-url URL] [--json OUT]
   python3 scripts/mouth/r19_wrapper_token_census.py --replay CENSUS.jsonl
@@ -59,7 +61,14 @@ STATE_TOKEN = (r"^(?:(?:group-hover|group-focus-within|group-focus-visible|hover
                r"|right|justify|start|end|balance|pretty|wrap|nowrap|ellipsis|clip|solid|dashed|dotted|none)$).+)"
                r"|placeholder-.+|scrollbar-(?!(?:thin|none|auto|hide|gutter-.+)$).+)$")
 WALK = [("desktop", "light"), ("mobile", "system-dark")]
-RANK = {None: -1, "wrapper": 0, "above": 1, "nowhere": 2}  # where a var resolves, worst wins
+UBEGIN, UEND = "<!-- surfaces:begin -->", "<!-- surfaces:end -->"
+CBEGIN, CEND = "<!-- surface-classes:begin -->", "<!-- surface-classes:end -->"
+UHEADER = ["token", "surface", "ground", "value", "text", "contrast", "reason"]
+# opaque: a text-bearing ground (copper only as the action fill); scrim: a backdrop, ink at any alpha;
+# mark: a dot, caret or handle with no text, any role at alpha 1.
+GROUNDS = {"opaque": {"paper", "elevated", "wash", "copper"}, "scrim": {"ink"},
+           "mark": set(DIRECTION_A) | set(SEMANTIC)}
+RANK ={None: -1, "wrapper": 0, "above": 1, "nowhere": 2}  # where a var resolves, worst wins
 
 
 class ContractError(ValueError):
@@ -108,10 +117,10 @@ def _value(value: str, reason: str, where: str) -> str | None:
     return hx
 
 
-def parse_contract(text: str) -> dict[tuple[str, str], dict]:
-    if text.count(BEGIN) != 1 or text.count(END) != 1:
-        raise ContractError("expected exactly one contract:begin/end block")
-    lines = [ln.strip() for ln in text.split(BEGIN)[1].split(END)[0].splitlines()]
+def parse_contract(text: str, begin: str = BEGIN, end: str = END) -> dict[tuple[str, str], dict]:
+    if text.count(begin) != 1 or text.count(end) != 1:
+        raise ContractError(f"expected exactly one {begin} ... {end} block")
+    lines = [ln.strip() for ln in text.split(begin)[1].split(end)[0].splitlines()]
     lines = [ln for ln in lines if ln]
     if len(lines) < 3:
         raise ContractError("contract table has no rows")
@@ -132,6 +141,16 @@ def parse_contract(text: str) -> dict[tuple[str, str], dict]:
             raise ContractError(f"row {n}: duplicate {kind} {token}")
         rows[(kind, token)] = {"value": value, "hex": _value(value, reason, f"row {n}"), "reason": reason}
     return rows
+
+
+def load_contract(text: str) -> dict[tuple[str, str], dict]:
+    """Section 5 and the classes of section 8.2, one authority per token."""
+    rows = parse_contract(text)
+    extra = parse_contract(text, CBEGIN, CEND)
+    both = sorted(f"{k} {t}" for k, t in rows.keys() & extra.keys())
+    if both:
+        raise ContractError(f"section 8.2 repeats section 5 rows: {', '.join(both)}")
+    return {**rows, **extra}
 
 
 def parse_states(text: str, contract: dict | None = None) -> dict[str, dict]:
@@ -179,6 +198,71 @@ def parse_states(text: str, contract: dict | None = None) -> dict[str, dict]:
         main = (contract or {}).get(("class", token))
         if main and main["hex"] != row["hex"]:
             raise ContractError(f"{token}: state row {row['value']!r} contradicts section 5 {main['value']!r}")
+    return rows
+
+
+def split_variant(token: str) -> tuple[str, str]:
+    """(variant, utility), split at the last colon outside brackets, as STATE_JS does."""
+    depth, last = 0, -1
+    for i, ch in enumerate(token):
+        if ch in "[(":
+            depth += 1
+        elif ch in "])":
+            depth -= 1
+        elif ch == ":" and depth == 0:
+            last = i
+    return ("", token) if last < 0 else (token[:last], token[last + 1:])
+
+
+def parse_surfaces(text: str, contract: dict | None = None, states: dict | None = None) -> dict[str, dict]:
+    """The surfaces table of section 8: token -> row. Refused, never read as empty."""
+    if text.count(UBEGIN) != 1 or text.count(UEND) != 1:
+        raise ContractError("expected exactly one surfaces:begin/end block")
+    lines = [ln.strip() for ln in text.split(UBEGIN)[1].split(UEND)[0].splitlines()]
+    lines = [ln for ln in lines if ln]
+    if len(lines) < 3:
+        raise ContractError("surfaces table has no rows")
+    if [c.lower() for c in _cells(lines[0])] != UHEADER:
+        raise ContractError(f"surfaces header must be {UHEADER}, got {_cells(lines[0])}")
+    if not all(re.fullmatch(r":?-{3,}:?", c) for c in _cells(lines[1])) or len(_cells(lines[1])) != len(UHEADER):
+        raise ContractError("surfaces table: second line must be the 7-column separator")
+    roles = {**DIRECTION_A, **SEMANTIC}
+    rows: dict[str, dict] = {}
+    for n, line in enumerate(lines[2:], start=3):
+        cells = _cells(line)
+        if len(cells) != len(UHEADER):
+            raise ContractError(f"surface row {n}: {len(cells)} cells, expected {len(UHEADER)}")
+        token, surface, ground, value, text_roles, ratio, reason = cells
+        token, where = token.strip("`"), f"surface row {n}"
+        if not token or token in rows or not surface or not reason:
+            raise ContractError(f"{where}: empty or duplicate token {token!r}, or no surface / reason")
+        if split_variant(token)[0]:
+            raise ContractError(f"{where}: {token} carries a state variant; section 7 owns it")
+        if ("class", token) in (contract or {}) or token in (states or {}):
+            raise ContractError(f"{where}: {token} already has a section 5 or 7 row")
+        hx = _value(value, reason, where)
+        row = {"surface": surface, "ground": ground, "value": value, "hex": hx, "text": [], "reason": reason}
+        if hx is None:
+            if (ground, text_roles, ratio) != ("-", "-", "-"):
+                raise ContractError(f"{where}: a row that paints nothing has no ground, text or contrast")
+        else:
+            role = next((k for k, v in SEMANTIC.items() if v == hx), None) or value.split()[0]
+            if role not in GROUNDS.get(ground, ()):
+                raise ContractError(f"{where}: {value!r} is not a {ground!r} ground ({GROUNDS})")
+            if ground in ("scrim", "mark") or text_roles == "-":
+                if (text_roles, ratio) != ("-", "-"):
+                    raise ContractError(f"{where}: a scrim, a mark, or a ground with no text has no text / contrast")
+            else:
+                names = [r.strip() for r in text_roles.split(",")]
+                if not all(r in roles for r in names):
+                    raise ContractError(f"{where}: text roles {names} are not roles of section 3")
+                got = min(contrast(roles[r], hx) for r in names)
+                if ratio != f"{got:.2f}":
+                    raise ContractError(f"{where}: contrast {ratio} is not {got:.2f}")
+                if got < 4.5:
+                    raise ContractError(f"{where}: {token} carries text at {got:.2f}:1, below 4.5:1")
+                row["text"], row["ratio"] = names, got
+        rows[token] = row
     return rows
 
 
@@ -258,13 +342,25 @@ def dump(census: dict, path: Path) -> None:
     lines += [json.dumps({"read": k, **census["reads"][k]}, sort_keys=True) for k in sorted(census["reads"])]
     lines += [json.dumps({"color": k, **census["colors"][k]}, sort_keys=True) for k in sorted(census["colors"])]
     lines += [json.dumps({"state_ob": k, **census["state_obs"][k]}, sort_keys=True) for k in sorted(census["state_obs"])]
+    if "opened" in census:
+        lines[0] = json.dumps({**head, "opened_failed": census["opened_failed"]}, sort_keys=True)
+        lines += [json.dumps({"opened": f"{o['name']} {o['walk']}", **o}, sort_keys=True) for o in census["opened"]]
+        lines += [json.dumps({"shared": f"{o['name']} {o['walk']}", **o}, sort_keys=True)
+                  for o in census.get("shared", [])]
     path.write_text("\n".join(lines) + "\n")
 
 
 def load(path: Path) -> dict:
     head, *rows = [json.loads(ln) for ln in path.read_text().splitlines() if ln.strip()]
     census = {**head, "reads": {}, "colors": {}, "state_obs": {}}
+    if "opened_failed" in head:
+        census["opened"], census["shared"] = [], []
     for row in rows:
+        if "opened" in row or "shared" in row:
+            key = "opened" if "opened" in row else "shared"
+            row.pop(key)
+            census[key].append(row)
+            continue
         key = next(k for k in ("read", "color", "state_ob") if k in row)
         census[key + "s"][row.pop(key)] = row
     return census
@@ -750,6 +846,7 @@ def live(base: str) -> dict:
                             prev["count"] += c["count"]
                     ctx.close()
         walk_states(browser, m, base, census)
+        walk_opened(browser, m, base, census)
         browser.close()
     return census
 
@@ -802,6 +899,335 @@ def walk_states(browser, m, base: str, census: dict) -> None:
             ctx.close()
 
 
+# The opened-surface half (section 8.4): text contrast with opacity composited, and every
+# background class on the surface or its scrim, read where it paints.
+SURFACE_JS = r"""
+(selectors) => {
+  const ctx = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+  const parse = (c) => {
+    if (!c || c === "none" || c === "transparent") return null;
+    const am = c.match(/\/\s*([\d.]+)(%?)\s*\)$/);
+    let a = am ? parseFloat(am[1]) / (am[2] ? 100 : 1) : 1, m, p;
+    const opaque = c.replace(/\s*\/\s*[\d.]+%?\s*\)$/, ")");
+    if ((m = opaque.match(/^rgba?\(([^)]+)\)$/))) {
+      const q = m[1].split(/[\s,]+/).filter(Boolean).map(Number);
+      p = q.slice(0, 3); if (q.length > 3) a = q[3];
+    } else if ((m = opaque.match(/^color\(srgb ([^)]+)\)$/))) {
+      p = m[1].split(/\s+/).filter(Boolean).slice(0, 3).map((x) => Number(x) * 255);
+    } else {
+      ctx.clearRect(0, 0, 1, 1); ctx.fillStyle = "#000"; ctx.fillStyle = opaque; ctx.fillRect(0, 0, 1, 1);
+      const d = ctx.getImageData(0, 0, 1, 1).data;
+      p = [d[0], d[1], d[2]];
+    }
+    return a === 0 ? null : { rgb: p.map((x) => Math.max(0, Math.min(255, x))), a };
+  };
+  const hex = (rgb) => "#" + rgb.map((x) => Math.round(x).toString(16).padStart(2, "0")).join("").toUpperCase();
+  const over = (fg, bg, a) => fg.map((c, i) => c * a + bg[i] * (1 - a));
+  const srgb = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const lum = ([r, g, b]) => 0.2126 * srgb(r / 255) + 0.7152 * srgb(g / 255) + 0.0722 * srgb(b / 255);
+  const ratio = (x, y) => { const [h, l] = [lum(x), lum(y)].sort((u, v) => v - u); return (h + 0.05) / (l + 0.05); };
+  const classes = (el) => (el.getAttribute("class") || "").split(/\s+/).filter(Boolean);
+  // The ground under an element: every translucent layer down the ancestor chain, composited
+  // over the first opaque one (or white). A background image on the way makes it unmeasurable.
+  // `at` is the nearest element that paints a ground at all: the one a paint verdict names.
+  const ground = (el) => {
+    const layers = []; let imaged = false, at = null;
+    for (let n = el; n && n.nodeType === 1; n = n.parentElement) {
+      const cs = getComputedStyle(n);
+      const img = cs.backgroundImage && cs.backgroundImage !== "none", c = parse(cs.backgroundColor);
+      if ((img || c) && !at) at = n;
+      if (img) imaged = true;
+      if (c) { layers.push(c); if (c.a >= 1) break; }
+    }
+    let acc = [255, 255, 255];
+    for (const l of layers.reverse()) acc = over(l.rgb, acc, l.a);
+    return { rgb: acc, imaged, at: at || document.documentElement };
+  };
+  const path = (el) => {
+    const bits = [];
+    for (let n = el; n && n.nodeType === 1 && bits.length < 4; n = n.parentElement)
+      bits.unshift(n.tagName.toLowerCase() + classes(n).slice(0, 2).map((c) => "." + c).join(""));
+    return bits.join(">");
+  };
+  // The wrapper root as STATE_JS finds it; a portal that leaves it does not get the wrapper's tokens.
+  const wrapper = document.querySelector('[data-presentation="r19"]') || document.querySelector(".r19-direction-a")
+    || [...document.querySelectorAll("[style]")].find((e) => /--font-montserrat/.test(e.getAttribute("style")))
+    || (document.getElementById("kbli-explorer-jsonld") || {}).parentElement;
+  const roots = [...new Set(selectors.flatMap((s) => [...document.querySelectorAll(s)]))]
+    .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 1 && r.height > 1; });
+  const outside = roots.filter((r) => !(wrapper && wrapper.contains(r)) && !r.closest(".kbli-r19")).map(path);
+  const vw = innerWidth, vh = innerHeight;
+  const scrims = [...document.querySelectorAll("body *")].filter((el) => {
+    const r = el.getBoundingClientRect(), c = parse(getComputedStyle(el).backgroundColor);
+    return r.width >= vw * 0.95 && r.height >= vh * 0.95 && c && c.a < 1 && !roots.some((x) => el.contains(x))
+      && ![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+  });
+  const pairs = [], grounds = [], painted = new Map(), scrimPaint = [];
+  let unmeasurable = 0;
+  const seen = new Set();
+  for (const el of [...scrims, ...roots.flatMap((r) => [r, ...r.querySelectorAll("*")])]) {
+    if (seen.has(el)) continue;
+    seen.add(el);
+    const cs = getComputedStyle(el);
+    for (const t of classes(el)) {
+      if (!/^(bg|from|via|to)-/.test(t)) continue;
+      const c = parse(cs.backgroundColor);
+      grounds.push({ token: t, hex: c ? hex(c.rgb) : "transparent", a: c ? Math.round(c.a * 1000) / 1000 : 0,
+                     image: cs.backgroundImage !== "none", scrim: scrims.includes(el) });
+    }
+    if (scrims.includes(el)) {
+      const c = parse(cs.backgroundColor);
+      scrimPaint.push({ path: path(el), hex: hex(c.rgb), a: Math.round(c.a * 1000) / 1000 });
+      continue;
+    }
+    const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join(" ").trim();
+    const r = el.getBoundingClientRect();
+    if (!own || cs.visibility === "hidden" || cs.display === "none" || r.width <= 1 || r.height <= 1) continue;
+    let op = 1;
+    for (let n = el; n && n.nodeType === 1; n = n.parentElement) op *= parseFloat(getComputedStyle(n).opacity);
+    const fg = parse(cs.color), g = ground(el);
+    if (!fg || op < 0.1) continue;
+    const key = path(g.at) + " " + hex(g.rgb);
+    if (!painted.has(key)) painted.set(key, { path: path(g.at), hex: hex(g.rgb), image: g.imaged, text: own.slice(0, 24) });
+    if (g.imaged || (cs.backgroundClip === "text" && !parse(cs.webkitTextFillColor))) { unmeasurable++; continue; }
+    const colour = over(fg.rgb, g.rgb, fg.a * op);
+    pairs.push({ ratio: Math.round(ratio(colour, g.rgb) * 100) / 100, fg: hex(colour), bg: hex(g.rgb),
+                 text: own.slice(0, 40), cls: classes(el).slice(0, 4).join(" ") });
+  }
+  return { roots: roots.length, scrims: scrims.length, outside, pairs, grounds, unmeasurable,
+           painted: [...painted.values()], scrimPaint };
+}
+"""
+OPENED_FIXTURE = Path(__file__).resolve().parent / "tests/fixtures/r19_opened_surfaces.json"
+EXPLORER_SURFACES = ["main", "main ~ aside", '[class*="h-[70vh]"]']
+
+
+def _stub(ctx, fixture: dict, search_status: int = 200) -> None:
+    """Search and inspect answer from the fixture: the walk never needs the backend."""
+    def reply(route, body, status=200):
+        origin = route.request.headers.get("origin", "*")
+        route.fulfill(status=status, content_type="application/json", body=json.dumps(body),
+                      headers={"access-control-allow-origin": origin, "access-control-allow-credentials": "true"})
+    ctx.route("**/api/v1/kbli-notebook/search**",
+              lambda route: reply(route, fixture["search"]) if search_status == 200
+              else reply(route, {"detail": f"HTTP {search_status}"}, search_status))
+    ctx.route("**/api/v1/kbli-notebook/inspect/**",
+              lambda route: reply(route, {**fixture["inspect"], "code": route.request.url.rstrip("/").split("/")[-1]}))
+
+
+def _seed(ctx, fixture: dict) -> None:
+    msgs = [{**m, "results": fixture["search"]} if m.get("results") == "search" else m for m in fixture["messages"]]
+    ctx.add_init_script(f"sessionStorage.setItem('kbli-messages', {json.dumps(json.dumps(msgs))})")
+
+
+def _type_query(page) -> None:
+    box = page.locator('input[role="combobox"]').first
+    box.click()
+    box.fill("restaurant")
+    page.wait_for_selector('[role="listbox"]', state="attached", timeout=15000)
+    page.mouse.move(0, 0)
+
+
+def _active_row(page) -> None:
+    _type_query(page)
+    page.locator('input[role="combobox"]').first.press("ArrowDown")
+
+
+def _open_sector(page) -> None:
+    page.locator('a[href^="/kbli/sectors/"]').first.click()
+    page.wait_for_selector('[role="dialog"]', timeout=60000)
+
+
+def _open_compare(page) -> None:
+    page.locator('button[title="Compare codes"]').click()
+    for code in ("56101", "55130"):
+        page.locator("main button", has_text=code).first.click()
+    page.locator("button", has_text="Compare 2 codes").click()
+    page.wait_for_selector('[role="dialog"]', timeout=30000)
+
+
+def _open_black_book(page) -> None:
+    page.locator("button:visible", has_text="Ask about your codes").first.click()
+    page.wait_for_selector('[aria-labelledby="kbli-transition-title"]', timeout=30000)
+
+
+def _open_sidebar(page) -> None:
+    page.locator("main button:has(svg.lucide-menu)").first.click()
+
+
+def _open_mobile_nav(page) -> None:
+    page.locator('button[aria-label="Open menu"]:visible').first.click()
+    page.wait_for_selector('[role="dialog"]', timeout=30000)
+
+
+# name, page, walks ("all" = the six states), stub (search status or None), seed, opener, surface selectors
+SCENARIOS = [
+    ("search-dropdown", "/kbli", "all", 200, False, _type_query, ['div:has(> [role="listbox"])']),
+    ("search-active-row", "/kbli", "walk", 200, False, _active_row, ['div:has(> [role="listbox"])']),
+    ("search-error", "/kbli", "walk", 503, False, _type_query, ['div:has(> [role="listbox"])']),
+    ("sector-drawer", "/kbli", "walk", None, False, _open_sector, ['[role="dialog"]']),
+    ("explorer-answer-inspector", "/kbli-explorer?inspect=56101", "walk", 200, True, None, EXPLORER_SURFACES),
+    ("explorer-compare", "/kbli-explorer", "walk", 200, True, _open_compare, ['[role="dialog"]']),
+    ("explorer-black-book", "/kbli-explorer", "walk", 200, False, _open_black_book,
+     ['[aria-labelledby="kbli-transition-title"] > :last-child']),
+    ("explorer-mobile-sidebar", "/kbli-explorer", "mobile", 200, True, _open_sidebar, ["aside:has(h3)"]),
+    ("kbli-mobile-nav", "/kbli", "mobile-all", None, False, _open_mobile_nav, ['[role="dialog"]']),
+    ("kbli-code-mobile-nav", "/kbli/55203", "mobile-all", None, False, _open_mobile_nav, ['[role="dialog"]']),
+]
+# The same MobileNav drawer on a route outside /kbli*: it must stay as it is (section 8.5), so it is
+# fingerprinted against the pin taken on origin/main, never judged by the wrapper's rows.
+SHARED = [(f"shared-nav-drawer {path}", path, "shared", None, False, _open_mobile_nav, ['[role="dialog"]'])
+          for path in ("/tax-calendar", "/property/eligibility")]
+SHARED_PIN = Path(__file__).resolve().parent / "tests/fixtures/r19_shared_nav_drawer.json"
+# A text-bearing ground on an opened surface, judged by its composited computed value (section 8.4).
+TEXT_GROUNDS = ("paper", "elevated", "wash", "copper")
+# Background utilities that paint no colour: never a ground of their own.
+NON_COLOUR_BG = ("bg-gradient-", "bg-linear-", "bg-radial", "bg-conic", "bg-clip-", "bg-cover", "bg-contain",
+                 "bg-center", "bg-no-repeat", "bg-fixed", "bg-none", "bg-repeat", "bg-blend-", "bg-origin-",
+                 "bg-top", "bg-bottom", "bg-left", "bg-right", "bg-auto")
+# A rotating placeholder or carousel holds its first state, so the count does not depend on when it is read.
+FREEZE_JS = ("(() => { const si = window.setInterval;"
+             " window.setInterval = (fn, ms, ...a) => (Number(ms) >= 2000 ? 0 : si(fn, ms, ...a)); })()")
+
+
+def walk_opened(browser, m, base: str, census: dict) -> None:
+    """Opens each surface a click or a query reveals and measures it: section 8.4."""
+    fixture = json.loads(OPENED_FIXTURE.read_text())
+    census.setdefault("opened", [])
+    census.setdefault("opened_failed", [])
+    census.setdefault("shared", [])
+    walks = {"all": [(v, t) for v in m.VIEWPORTS for t in m.THEMES], "walk": WALK,
+             "mobile": [("mobile", "system-dark")], "mobile-all": [("mobile", t) for t in m.THEMES],
+             "shared": [("mobile", "light"), ("mobile", "system-dark")]}
+    for name, path, which, status, seed, opener, selectors in SCENARIOS + SHARED:
+        shared = which == "shared"
+        for vname, tname in walks[which]:
+            w, h = m.VIEWPORTS[vname]
+            scheme, forced = m.THEMES[tname]
+            ctx = browser.new_context(viewport={"width": w, "height": h}, color_scheme=scheme)
+            ctx.add_init_script(FREEZE_JS)
+            if status is not None:
+                _stub(ctx, fixture, status)
+            if seed:
+                _seed(ctx, fixture)
+            page = ctx.new_page()
+            try:
+                resp = page.goto(base + path, wait_until="load", timeout=180000)
+                if resp is None or resp.status >= 400:
+                    raise RuntimeError(f"HTTP {resp.status if resp else 'none'}")
+                page.wait_for_timeout(250)
+                if forced:
+                    page.evaluate("t => document.documentElement.setAttribute('data-theme', t)", forced)
+                page.wait_for_function("() => document.readyState === 'complete'", timeout=60000)
+                page.wait_for_timeout(1500)
+                if opener:
+                    opener(page)
+                page.add_style_tag(content="*,*::before,*::after{transition:none!important;animation:none!important}")
+                page.wait_for_timeout(2500)
+                res = page.evaluate(SURFACE_JS, selectors)
+                if not res["roots"] or not res["pairs"]:
+                    raise RuntimeError(f"surface never opened ({res['roots']} roots, {len(res['pairs'])} text pairs)")
+            except Exception as exc:  # a surface that did not open must never read as clean
+                census["opened_failed"].append(f"{name} {vname}/{tname}: {exc}".splitlines()[0][:200])
+                ctx.close()
+                continue
+            if shared:
+                census["shared"].append({"name": name, "walk": f"{vname}/{tname}", "fingerprint": sorted(
+                    {f"{p['fg']} on {p['bg']} {p['text']!r}" for p in res["pairs"]})})
+                ctx.close()
+                continue
+            census["opened"].append({
+                "name": name, "walk": f"{vname}/{tname}", "roots": res["roots"], "scrims": res["scrims"],
+                "outside": res["outside"], "pairs": len(res["pairs"]), "unmeasurable": res["unmeasurable"],
+                "min": min(p["ratio"] for p in res["pairs"]),
+                "below": [p for p in res["pairs"] if p["ratio"] < 4.5],
+                "grounds": sorted({json.dumps(g, sort_keys=True) for g in res["grounds"]}),
+                "painted": sorted({json.dumps(g, sort_keys=True) for g in res["painted"]}),
+                "scrim_paint": sorted({json.dumps(g, sort_keys=True) for g in res["scrimPaint"]})})
+            ctx.close()
+
+
+def judge_grounds(census: dict, surfaces: dict, contract: dict) -> list[str]:
+    """Every painted ground of an opened surface, by value; then each background class, by row (section 8.4)."""
+    allowed = {DIRECTION_A[r] for r in TEXT_GROUNDS}
+    off: dict[str, str] = {}
+    for o in census.get("opened", []):
+        on = f"on {o['name']} {o['walk']}"
+        for p in map(json.loads, o.get("painted", [])):
+            key = f"ground {p['hex']} {p['path']}"
+            if (p["hex"] not in allowed or p["image"]) and key not in off:
+                off[key] = (f"  ground {p['hex']}{' over an image' if p['image'] else ''} under {p['text']!r} "
+                            f"at {p['path']}, {on}")
+        for c in map(json.loads, o.get("scrim_paint", [])):
+            key = f"scrim {c['hex']} {c['path']}"
+            if c["hex"] != DIRECTION_A["ink"] and key not in off:
+                off[key] = f"  scrim {c['hex']} alpha {c['a']} at {c['path']} (a scrim is ink), {on}"
+        for g in map(json.loads, o["grounds"]):
+            t = g["token"]
+            if t.startswith(NON_COLOUR_BG) or t in off:
+                continue
+            row = surfaces.get(t)
+            if row is None:
+                if ("class", t) not in contract:
+                    off[t] = f"  {t}  has no section 5 or 8.1 row, painted {g['hex']} alpha {g['a']}, {on}"
+                continue
+            if row["hex"] is None:
+                bad = g["image"] if t.startswith(("from-", "via-", "to-")) else g["a"] > 0 or g["image"]
+            else:
+                bad = g["hex"] != row["hex"] or (row["ground"] != "scrim" and g["a"] < 1) or g["image"]
+            if bad:
+                off[t] = (f"  {t}  expected {row['value']} ({row['ground']}), painted {g['hex']} alpha {g['a']}"
+                          f"{' over an image' if g['image'] else ''}, {on}")
+    return [off[k] for k in sorted(off)]
+
+
+def shared_drift(census: dict, pin: dict | None) -> tuple[list[str], str]:
+    """The shared drawer outside /kbli* against its origin/main pin: lines, and the count or why there is none."""
+    shared = census.get("shared")
+    if shared is None or pin is None:
+        return [], "INCOMPLETE (no shared walk in this census)" if shared is None else "UNPINNED"
+    lines = []
+    for where, want in sorted(pin.items()):
+        got = next((s["fingerprint"] for s in shared if f"{s['name']} {s['walk']}" == where), None)
+        if got is None:
+            return [], f"INCOMPLETE ({where} not walked)"
+        lines += [f"  - {x}  ({where})" for x in sorted(set(want) - set(got))]
+        lines += [f"  + {x}  ({where})" for x in sorted(set(got) - set(want))]
+    return lines, str(len(lines))
+
+
+def opened_verdict(census: dict, surfaces: dict, contract: dict, pin: dict | None = None) -> list[str]:
+    opened, failed = census.get("opened"), census.get("opened_failed", [])
+    if opened is None:
+        return ["opened-surfaces: 0 ok, 0 failed (no opened walk in this census)",
+                "opened-outside-wrapper: INCOMPLETE (no opened walk)",
+                "opened-grounds-off-contract: INCOMPLETE (no opened walk)",
+                "shared-nav-drawer-drift: INCOMPLETE (no shared walk in this census)",
+                "opened-text-below-4.5: INCOMPLETE (no opened walk, not a verdict)"]
+    out = [f"opened-surfaces: {len(opened)} ok, {len(failed)} failed"]
+    out += [f"  {o['name']} {o['walk']}: {o['roots']} root(s), {o['scrims']} scrim(s), {o['pairs']} text pairs, "
+            f"min {o['min']:.2f}" + (f", {o['unmeasurable']} over an image" if o["unmeasurable"] else "")
+            for o in opened]
+    out += [f"  opened-failed: {f}" for f in failed]
+    tail = f" (INCOMPLETE: {len(failed)} surfaces failed to open, not a verdict)" if failed or not opened else ""
+    outside = [(o, r) for o in opened for r in o.get("outside", [])]
+    out += [f"  {r}  renders outside the wrapper ({o['name']} {o['walk']})" for o, r in outside]
+    out.append(f"opened-outside-wrapper: {len(outside)}{tail}")
+    off = judge_grounds(census, surfaces, contract)
+    out += off[:80] + ([f"  ... and {len(off) - 80} more"] if len(off) > 80 else [])
+    out.append(f"opened-grounds-off-contract: {len(off)}{tail}")
+    drift, count = shared_drift(census, pin)
+    out += drift
+    out.append(f"shared-nav-drawer-drift: {count}")
+    below = [(o, p) for o in opened for p in o["below"]]
+    out += [f"  {p['ratio']:.2f}  {p['fg']} on {p['bg']}  {p['text']!r}  {p['cls']}  ({o['name']} {o['walk']})"
+            for o, p in below[:60]]
+    if len(below) > 60:
+        out.append(f"  ... and {len(below) - 60} more")
+    out.append(f"opened-text-below-4.5: {len(below)}{tail}")
+    return out
+
+
 def start_server(port: int) -> subprocess.Popen:
     with socket.socket() as probe:  # never census some other checkout's server
         if probe.connect_ex(("127.0.0.1", port)) == 0:
@@ -836,7 +1262,7 @@ def main(argv: list[str]) -> int:
         print(json.dumps(export()))
         return 0
     try:
-        contract = parse_contract(a.contract.read_text())
+        contract = load_contract(a.contract.read_text())
     except ContractError as exc:
         print(f"contract: REFUSED — {exc}")
         print("read-but-undefined: REFUSED (contract unreadable)")
@@ -846,6 +1272,12 @@ def main(argv: list[str]) -> int:
     except ContractError as exc:
         print(f"states: REFUSED — {exc}")
         print("state-colors-off-contract: REFUSED (state table unreadable)")
+        return 2
+    try:
+        surfaces = parse_surfaces(a.contract.read_text(), contract, states)
+    except ContractError as exc:
+        print(f"surfaces: REFUSED — {exc}")
+        print("opened-text-below-4.5: REFUSED (surfaces table unreadable)")
         return 2
     if a.replay:
         census = load(a.replay)
@@ -858,7 +1290,8 @@ def main(argv: list[str]) -> int:
                 stop_server(proc)
     if a.json:
         dump(census, a.json)
-    print("\n".join(verdict(census, contract, states)))
+    pin = json.loads(SHARED_PIN.read_text()) if SHARED_PIN.exists() else None
+    print("\n".join(verdict(census, contract, states) + opened_verdict(census, surfaces, contract, pin)))
     return 0
 
 
