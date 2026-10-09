@@ -1,0 +1,400 @@
+import { describe, expect, it } from "vitest";
+import { dict } from "./i18n";
+
+// PR-C4-v3: the interview helper copy is judged against what the code does
+// (spec-interview-truth-table-c4v3, pack sha256 dcbc12cd…70cf). Each row is the
+// reviewed EN and ID sentence of one key. An older, false sentence fails here.
+const TRUTH: readonly (readonly [string, string, string])[] = [
+  [
+    "framing.body",
+    "Answer honestly, including “I don’t know.” Nothing here is filed; your answers decide which questions come next and which visas fit.",
+    "Jawab dengan jujur, termasuk “Saya tidak tahu.” Tidak ada yang diajukan di sini; jawaban Anda menentukan pertanyaan berikutnya dan visa mana yang sesuai.",
+  ],
+  [
+    "why.in_indonesia",
+    "Where you are now decides which questions come next and which options can apply to you.",
+    "Lokasi Anda saat ini menentukan pertanyaan berikutnya dan pilihan mana yang dapat berlaku bagi Anda.",
+  ],
+  [
+    "why.permit_expiry",
+    "We need the actual date to see how much time you have left. It can change which questions come next.",
+    "Kami memerlukan tanggal yang sebenarnya untuk melihat sisa waktu Anda. Tanggal ini dapat mengubah pertanyaan berikutnya.",
+  ],
+  [
+    "why.wants_onshore_conversion",
+    "Your yes or no tells us how you plan to proceed. It can change the questions that follow and exclude a visa that cannot be converted inside Indonesia.",
+    "Jawaban ya atau tidak Anda menunjukkan bagaimana Anda berencana melanjutkan. Jawaban ini dapat mengubah pertanyaan berikutnya dan mengecualikan visa yang tidak dapat dialihkan di dalam Indonesia.",
+  ],
+  [
+    "q.birth_date.hint",
+    "Your date of birth is checked against visa age limits and tells us whether to ask about a parent or guardian.",
+    "Tanggal lahir Anda diperiksa terhadap batas usia visa dan menentukan apakah kami perlu bertanya tentang orang tua atau wali.",
+  ],
+  [
+    "lane.urgent.notice",
+    "You have 1–2 days left. We will still check your options, but please contact a Bali Zero advisor today.",
+    "Waktu Anda tinggal 1–2 hari. Kami tetap memeriksa pilihan Anda, tetapi mohon hubungi konsultan Bali Zero hari ini.",
+  ],
+  [
+    "lane.bridging.notice",
+    "The date you entered is within seven days. We will still check your options; talk to a Bali Zero advisor soon about your next step.",
+    "Tanggal yang Anda masukkan tinggal tujuh hari atau kurang. Kami tetap memeriksa pilihan Anda; segera bicarakan langkah berikutnya dengan konsultan Bali Zero.",
+  ],
+  [
+    "why.trip_scope",
+    "If your purposes overlap, your result notes it so you can go through them with a Bali Zero advisor.",
+    "Jika tujuan Anda tumpang tindih, hasil Anda mencatatnya agar Anda dapat membahasnya dengan konsultan Bali Zero.",
+  ],
+  [
+    "why.sponsor_category",
+    "Who sponsors you can decide which follow-up questions we ask and which visas fit your situation.",
+    "Siapa yang mensponsori Anda dapat menentukan pertanyaan lanjutan yang kami ajukan dan visa mana yang sesuai dengan situasi Anda.",
+  ],
+  [
+    "q.business_activity.hint",
+    "Describe the activity, not a visa name. Meetings, negotiation, conferences and exploring investment can be assessed here; training or another activity needs a Bali Zero advisor.",
+    "Jelaskan kegiatannya, bukan nama visa. Rapat, negosiasi, konferensi, dan penjajakan investasi dapat dinilai di sini; pelatihan atau kegiatan lain memerlukan konsultan Bali Zero.",
+  ],
+  [
+    "why.business_activity",
+    "Exploring an investment is assessed as an investment plan, with its own questions. For training or another activity, this tool cannot name a visa; a Bali Zero advisor can help.",
+    "Penjajakan investasi dinilai sebagai rencana investasi, dengan pertanyaannya sendiri. Untuk pelatihan atau kegiatan lain, alat ini tidak dapat menyebutkan visa; konsultan Bali Zero dapat membantu.",
+  ],
+  [
+    "why.work_payer",
+    "Whether an Indonesian-registered company employs and pays you decides which work or remote-work visas can fit.",
+    "Apakah perusahaan yang terdaftar di Indonesia mempekerjakan dan menggaji Anda menentukan visa kerja atau visa kerja jarak jauh mana yang dapat sesuai.",
+  ],
+  [
+    "why.work_indonesia_compensation",
+    "Pay from an Indonesian source can exclude some visas, so this answer can change which visas fit. We ask where your pay comes from, not how much.",
+    "Penghasilan dari sumber Indonesia dapat mengecualikan beberapa visa, jadi jawaban ini dapat mengubah visa yang sesuai. Kami menanyakan asal penghasilan Anda, bukan jumlahnya.",
+  ],
+  [
+    "why.remote_employer_country",
+    "We record the country code exactly as you enter it and do not interpret it.",
+    "Kami mencatat kode negara persis seperti yang Anda masukkan dan tidak menafsirkannya.",
+  ],
+  [
+    "why.remote_pt_pma",
+    "A committed PT PMA can exclude the remote-worker visa, so this answer can change which visas fit. A yes does not mean approval.",
+    "Komitmen PT PMA dapat mengecualikan visa pekerja jarak jauh, jadi jawaban ini dapat mengubah visa yang sesuai. Jawaban ya tidak berarti persetujuan.",
+  ],
+  [
+    "why.investment_vehicle",
+    "Property or a bank deposit points to the Second Home visa. Your choice decides which route we look at and which questions come next.",
+    "Properti atau deposito bank mengarah ke Visa Rumah Kedua. Pilihan Anda menentukan jalur yang kami periksa dan pertanyaan berikutnya.",
+  ],
+  [
+    "why.investment_pt_pma",
+    "Your answer can decide whether the investor visa fits and which questions come next. No amount or status is assumed from it.",
+    "Jawaban Anda dapat menentukan apakah visa investor sesuai dan pertanyaan apa yang berikutnya. Tidak ada jumlah atau status yang diasumsikan dari jawaban ini.",
+  ],
+  [
+    "why.investment_amount_usd",
+    "We record the amount in the currency you chose. No threshold is shown or assumed here, and nothing is converted.",
+    "Kami mencatat jumlahnya dalam mata uang yang Anda pilih. Tidak ada ambang batas yang ditampilkan atau diasumsikan di sini, dan tidak ada yang dikonversi.",
+  ],
+  [
+    "why.retirement_basis",
+    "Your choice decides which questions come next and which retirement visas can fit your situation.",
+    "Pilihan Anda menentukan pertanyaan berikutnya dan visa pensiun mana yang dapat sesuai dengan situasi Anda.",
+  ],
+  [
+    "why.secondhome_property_value_usd",
+    "We record the exact value you give. Ownership and tenure are not assumed.",
+    "Kami mencatat nilai persis yang Anda berikan. Kepemilikan dan bentuk penguasaan tidak diasumsikan.",
+  ],
+  [
+    "q.diaspora_connection.hint",
+    "Choose the closest match. Your nationality is asked separately.",
+    "Pilih yang paling sesuai. Kewarganegaraan Anda ditanyakan secara terpisah.",
+  ],
+  [
+    "why.diaspora_connection",
+    "More than one citizenship, or another connection, means this tool cannot name a visa; a Bali Zero advisor can assess it with you.",
+    "Lebih dari satu kewarganegaraan, atau hubungan lain, berarti alat ini tidak dapat menyebutkan visa; konsultan Bali Zero dapat menilainya bersama Anda.",
+  ],
+  [
+    "why.diaspora_documents",
+    "This answer does not change which visas this tool finds for you.",
+    "Jawaban ini tidak mengubah visa yang ditemukan alat ini untuk Anda.",
+  ],
+  [
+    "q.other_purpose.hint",
+    "Choose the closest activity. Transit can be assessed here; for the others, a Bali Zero advisor can assess your plan with you.",
+    "Pilih kegiatan yang paling mendekati. Transit dapat dinilai di sini; untuk kegiatan lainnya, konsultan Bali Zero dapat menilai rencana Anda bersama Anda.",
+  ],
+  [
+    "why.other_purpose",
+    "Transit can be assessed here. The other activities cannot be assessed automatically, so this tool names no visa for them; a Bali Zero advisor can assess them with you.",
+    "Transit dapat dinilai di sini. Kegiatan lainnya tidak dapat dinilai secara otomatis, sehingga alat ini tidak menyebutkan visa untuk kegiatan tersebut; konsultan Bali Zero dapat menilainya bersama Anda.",
+  ],
+  [
+    "q.other_paid_activity.hint",
+    "A paid activity is treated as work, so a yes changes the questions that follow.",
+    "Kegiatan berbayar diperlakukan sebagai pekerjaan, jadi jawaban ya mengubah pertanyaan berikutnya.",
+  ],
+  [
+    "why.other_paid_activity",
+    "A yes is treated as work and a no as an unpaid activity; either answer decides which visas can fit.",
+    "Jawaban ya diperlakukan sebagai pekerjaan dan jawaban tidak sebagai kegiatan tidak berbayar; kedua jawaban menentukan visa mana yang dapat sesuai.",
+  ],
+  [
+    "why.category",
+    "Your direction decides which questions come next and which visas can fit your plan.",
+    "Arah tujuan Anda menentukan pertanyaan berikutnya dan visa mana yang dapat sesuai dengan rencana Anda.",
+  ],
+  [
+    "q.retirement_basis.hint",
+    "Pick the basis you can document today. It decides which questions come next.",
+    "Pilih dasar yang dapat Anda buktikan hari ini. Pilihan ini menentukan pertanyaan berikutnya.",
+  ],
+  [
+    "lane.expired.notice",
+    "Your permit has already expired. We will still check your options; please talk to a Bali Zero advisor about your next step.",
+    "Izin tinggal Anda sudah berakhir. Kami tetap memeriksa pilihan Anda; silakan bicarakan langkah berikutnya dengan konsultan Bali Zero.",
+  ],
+  [
+    "why.holds_stay_permit",
+    "Your answer decides which questions about your current permit come next.",
+    "Jawaban Anda menentukan pertanyaan berikutnya tentang izin tinggal Anda saat ini.",
+  ],
+  [
+    "q.review_gate.hint",
+    "Tick everything that applies. Every item you tick is reflected in your result; with a criminal record, this tool names no visa and a Bali Zero advisor can help.",
+    "Centang semua yang berlaku. Setiap item yang Anda centang tercermin dalam hasil Anda; dengan catatan kriminal, alat ini tidak menyebutkan visa dan konsultan Bali Zero dapat membantu.",
+  ],
+  [
+    "why.guardian_consent",
+    "The date of birth shows an applicant under 18, so we ask whether a parent or legal guardian is present. Without one, this tool names no visa.",
+    "Tanggal lahir menunjukkan pemohon berusia di bawah 18 tahun, jadi kami menanyakan apakah orang tua atau wali sah hadir. Tanpa mereka, alat ini tidak menyebutkan visa.",
+  ],
+  [
+    "q.current_status_code.opt.other",
+    "Another code — ask a Bali Zero advisor",
+    "Kode lain — tanyakan kepada konsultan Bali Zero",
+  ],
+];
+
+// Sentences the code proved false: a review that does not exist, a rule that
+// "does not exist yet", answers that "never reach" anything, a choice that
+// "only" selects questions, a direction that "only chooses".
+const FALSE_CLAIMS: readonly RegExp[] = [
+  /not counted in your plan/i,
+  /tidak dihitung dalam rencana/i,
+  /no current rule/i,
+  /belum ada aturan/i,
+  /context for our team/i,
+  /konteks untuk tim kami/i,
+  /goes to a bali zero advisor/i,
+  /for review\./i,
+  /may pass your case to a bali zero advisor/i,
+  /tidak dipakai untuk memutuskan apa pun secara otomatis/i,
+  /diteruskan ke konsultan bali zero untuk ditinjau/i,
+  /kasus anda dapat diteruskan ke konsultan/i,
+  /visa tidak dipilih berdasarkan/i,
+  /alat ini tidak pernah memilih visa/i,
+  /hanya menunjukkan proses/i,
+  /hanya mencatat apakah/i,
+  /always goes to a human/i,
+  /only chooses the next/i,
+  /only selects the next/i,
+  /shorter code list/i,
+  /needs human review/i,
+  /in front of a person/i,
+  /before the assessment continues/i,
+  /selalu ditangani manusia/i,
+  /hanya menentukan pertanyaan berikutnya/i,
+  /hanya memilih pertanyaan faktual/i,
+  /daftar kode yang lebih pendek/i,
+  /perlu tinjauan manusia/i,
+  /ditinjau seseorang/i,
+  /sebelum penilaian dilanjutkan/i,
+  /too close for an automated check/i,
+  /terlalu mepet untuk pemeriksaan otomatis/i,
+  /not used to decide anything automatically/i,
+  /we do not pick a visa from it/i,
+  /we only note whether/i,
+  /does not pick a conversion path/i,
+  /never chooses a visa for you/i,
+  /only tells us which process/i,
+  /only to check them/i,
+  /hanya dipakai untuk memeriksanya/i,
+];
+
+const FALSE_SAMPLES: readonly (readonly [string, string])[] = [
+  [
+    "en",
+    "Your choice decides which questions come next. A basis you do not choose, such as a bank deposit, is not counted in your plan.",
+  ],
+  [
+    "id",
+    "Pilihan Anda menentukan pertanyaan berikutnya. Dasar yang tidak Anda pilih, misalnya deposito bank, tidak dihitung dalam rencana Anda.",
+  ],
+  [
+    "en",
+    "We note the kind of sponsor you have. No current rule uses it yet; this only prepares us for rules that will.",
+  ],
+  [
+    "id",
+    "Kami mencatat jenis sponsor Anda. Belum ada aturan saat ini yang memakainya; ini hanya menyiapkan data untuk aturan yang akan datang.",
+  ],
+  [
+    "en",
+    "Overlapping purposes call for a Bali Zero advisor’s judgment, so this answer is not used to decide anything automatically.",
+  ],
+  [
+    "id",
+    "Tujuan yang tumpang tindih memerlukan penilaian konsultan Bali Zero, jadi jawaban ini tidak dipakai untuk memutuskan apa pun secara otomatis.",
+  ],
+  [
+    "en",
+    "You have 1–2 days left. That’s too close for an automated check — a Bali Zero advisor needs to look at this today.",
+  ],
+  [
+    "id",
+    "Waktu Anda tinggal 1–2 hari. Ini terlalu mepet untuk pemeriksaan otomatis — konsultan Bali Zero perlu melihat kasus ini hari ini.",
+  ],
+  [
+    "en",
+    "The date you entered is within seven days. We may pass your case to a Bali Zero advisor for review, and this tool will not choose a bridging or conversion route for you.",
+  ],
+  [
+    "id",
+    "Tanggal yang Anda masukkan tinggal tujuh hari atau kurang. Kasus Anda dapat diteruskan ke konsultan Bali Zero untuk ditinjau, dan alat ini tidak memilihkan jalur bridging atau konversi untuk Anda.",
+  ],
+  [
+    "en",
+    "We only use whether the employing entity is Indonesian. We do not pick a visa from it.",
+  ],
+  [
+    "id",
+    "Kami hanya memakai apakah pemberi kerja Anda adalah entitas Indonesia. Visa tidak dipilih berdasarkan hal itu.",
+  ],
+  [
+    "en",
+    "Answer honestly, including “I don’t know.” Nothing here is filed, and this tool never chooses a visa for you.",
+  ],
+  [
+    "id",
+    "Jawab dengan jujur, termasuk “Saya tidak tahu.” Tidak ada yang diajukan di sini, dan alat ini tidak pernah memilih visa untuk Anda.",
+  ],
+  [
+    "en",
+    "Your yes or no only tells us which process you intend to follow. It does not pick a conversion path for you.",
+  ],
+  [
+    "id",
+    "Jawaban ya atau tidak Anda hanya menunjukkan proses mana yang Anda maksud. Jawaban ini tidak memilihkan jalur konversi.",
+  ],
+  [
+    "en",
+    "Some visas have age rules; we use your date of birth only to check them.",
+  ],
+  [
+    "id",
+    "Beberapa visa punya syarat usia; tanggal lahir Anda hanya dipakai untuk memeriksanya.",
+  ],
+  [
+    "en",
+    "Describe the activity, not a visa name. Meetings, negotiation, conferences and looking into investing can be assessed here; training or another activity goes to a Bali Zero advisor for review.",
+  ],
+  [
+    "id",
+    "Jelaskan kegiatannya, bukan nama visa. Rapat, negosiasi, konferensi, dan penjajakan investasi dapat dinilai di sini; pelatihan atau kegiatan lain diteruskan ke konsultan Bali Zero untuk ditinjau.",
+  ],
+  [
+    "en",
+    "We only note whether your PT PMA commitment is concrete; a yes does not mean approval.",
+  ],
+  [
+    "id",
+    "Kami hanya mencatat apakah komitmen PT PMA Anda sudah konkret; jawaban ya tidak berarti disetujui.",
+  ],
+  [
+    "en",
+    "Your direction only chooses the next questions. It doesn’t decide whether a visa path is available — your answers do.",
+  ],
+  [
+    "id",
+    "Arah yang Anda pilih hanya menentukan pertanyaan berikutnya. Arah ini tidak menentukan apakah jalur visa tersedia — jawaban Anda yang menentukan.",
+  ],
+  [
+    "en",
+    "This only selects the next factual questions; it does not choose a visa.",
+  ],
+  [
+    "id",
+    "Ini hanya memilih pertanyaan faktual berikutnya; bukan memilih visa.",
+  ],
+  [
+    "en",
+    "Your permit has already expired. Overstay is fixable. It is not the end of your story here — this always goes to a human, and we won’t alarm you with a number on this screen.",
+  ],
+  [
+    "id",
+    "Izin tinggal Anda sudah berakhir. Overstay bisa diselesaikan. Ini bukan akhir cerita Anda di sini — kasus ini selalu ditangani manusia, dan kami tidak akan menampilkan angka yang menakutkan di layar ini.",
+  ],
+  [
+    "en",
+    "The E-code catalogue only applies to KITAS/KITAP holders; everyone else answers the shorter code list below.",
+  ],
+  [
+    "id",
+    "Katalog kode-E hanya berlaku untuk pemegang KITAS/KITAP; yang lain menjawab daftar kode yang lebih pendek di bawah.",
+  ],
+  [
+    "en",
+    "Tick everything that applies — an omission costs you more than a disclosure. Some of these, a criminal record among them, put your case in front of a person before any verdict; the others are attached to your result as conditions our team checks with you before submission.",
+  ],
+  [
+    "id",
+    "Centang semua yang berlaku — tidak menyebutkannya lebih merugikan Anda daripada menyebutkannya. Sebagian di antaranya, termasuk catatan kriminal, membuat kasus Anda ditinjau seseorang sebelum ada keputusan; sisanya menyertai hasil Anda sebagai kondisi tersurat yang ditelusuri tim kami bersama Anda sebelum pengajuan.",
+  ],
+  [
+    "en",
+    "An applicant under 18 cannot give this consent alone, so Bali Zero asks an adult to confirm they are present before the assessment continues.",
+  ],
+  [
+    "id",
+    "Pemohon di bawah 18 tahun tidak dapat memberikan persetujuan ini sendiri, sehingga Bali Zero meminta orang dewasa memastikan kehadirannya sebelum penilaian dilanjutkan.",
+  ],
+  ["en", "Another code — needs human review"],
+  ["id", "Kode lain — perlu tinjauan manusia"],
+];
+
+describe("interview helper copy tells the truth about what an answer does", () => {
+  it.each(TRUTH)(
+    "%s carries the reviewed EN and ID sentences",
+    (key, en, id) => {
+      expect(dict.en[key as keyof typeof dict.en]).toBe(en);
+      expect(dict.id[key as keyof typeof dict.id]).toBe(id);
+    },
+  );
+
+  it("no helper key carries a sentence the code proved false", () => {
+    const offenders: string[] = [];
+    for (const language of ["en", "id"] as const) {
+      for (const [key, value] of Object.entries(dict[language])) {
+        if (!/^(q|why|lane|framing|assumption)\./.test(key)) continue;
+        for (const re of FALSE_CLAIMS) {
+          // Verified TRUE by the truth table: the unchosen Second Home basis is zeroed.
+          if (
+            key === "why.secondhome_basis" &&
+            /counted|dihitung/.test(String(re))
+          )
+            continue;
+          if (re.test(value)) offenders.push(`${language}:${key} ~ ${re}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("the false-claim list is guilty on the old sentences (it would have failed the old copy)", () => {
+    for (const [, sample] of FALSE_SAMPLES) {
+      expect(FALSE_CLAIMS.some((re) => re.test(sample))).toBe(true);
+    }
+  });
+});

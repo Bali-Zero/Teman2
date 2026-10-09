@@ -38,7 +38,7 @@ describe("QuestionScreen country picker", () => {
       name: "Are you in Indonesia right now?",
     });
     const why = screen.getByText(
-      "Where you are now decides whether we look at permits you can get inside Indonesia or visas you apply for before travelling.",
+      "Where you are now decides which questions come next and which options can apply to you.",
     );
 
     expect(
