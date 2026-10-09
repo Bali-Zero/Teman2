@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """observe_visa_oracle_client_copy.py — bites: observation for the Visa Oracle client copy.
 
-Origin: PR-C1 (Visa Oracle result page speaks to the client).
+Origin: PR-C1 (Visa Oracle result page speaks to the client); PR-C2 added the four
+duration keys to the required set.
 
 # bites-observable — this script takes NO arguments: every path below is a literal in this
 # file, it only reads three source files and touches no network, no node and no git.
@@ -10,7 +11,7 @@ Scans the string literals of the three files that carry client-visible copy
 (`i18n.ts`, `engine-adapter.ts`, `outcome-fallbacks.ts`, under
 `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/`) and exits 1, printing file:line, if
 any literal still holds an internal note or engine jargon the owner ruled out. It also
-asserts that the three keys PR-C1 introduced exist in BOTH language blocks of the
+asserts that the keys PR-C1 and PR-C2 introduced exist in BOTH language blocks of the
 dictionary. Comments are skipped.
 """
 
@@ -41,6 +42,11 @@ REQUIRED_KEYS = (
     "outcome.timeline_pending",
     "outcome.checked_on",
     "outcome.path_counter",
+    # PR-C2: the stay-permit duration shown under the price.
+    "outcome.duration_years",
+    "outcome.duration_days",
+    "outcome.duration_alternative",
+    "outcome.duration_extension",
 )
 ID_BLOCK_MARKER = "const id: Record<Keys, string> = {"
 

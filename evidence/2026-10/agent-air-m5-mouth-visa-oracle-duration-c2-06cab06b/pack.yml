@@ -1,0 +1,111 @@
+gear: 2
+brief_ref: evidence/brief.yml
+pii_scan: clean
+ruling: >-
+  Owner, 2026-10-08, relayed by the team lead as PR-C2: since seq-26 the engine prices E31 by
+  stay-permit duration, and the public page must show which permit was priced and the alternative.
+lanes:
+  - lane: duration-c2-build
+    role: build
+    seat: Claude Opus 5.5 implementer (worktree mouth-visa-oracle-duration-c2).
+  - lane: duration-c2-ground-truth
+    role: ground_truth
+    seat: >-
+      the committed official price catalogue and the seq-26 engine answer verified live by the
+      team lead on 2026-10-08 (E31A 365 days 11,000,000 IDR, 730 days 15,000,000 IDR); no notebook,
+      no memory. The page asserts no figure of its own, it renders the engine's amounts.
+    nb: apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+    query_hash: "a9c37a23bdce45f060a160f714a994ed2792dd53585eb11882c7fe440fd38c8c" # pragma: allowlist secret — sha256 of that catalogue file
+bites:
+  consumer: >-
+    the CI harness, which runs this observer after the merge, and every visitor of
+    balizero.com/visa-oracle who reaches an E31 result: the observer proves the four duration
+    strings exist in both languages and the client copy carries no engine jargon.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_client_copy.py
+  expect: "contains:OK visa-oracle client copy"
+decisions:
+  - id: D-shadow-parity
+    decision: >-
+      The duration is not part of the shadow parity projection, because the gold preview
+      baseline cannot carry it. A comment in shadow-parity.ts names this PR.
+  - id: D-share-summary
+    decision: >-
+      The share summary had no price line, so a candidate with a duration gets
+      "price · permit label" appended after its name, and one without a duration is unchanged.
+  - id: D-label-keys
+    decision: >-
+      Two short-label keys (duration_label_years, duration_label_days) join the four spec keys,
+      because the "Also available" line needs "1 year" and "2 years" without the word permit.
+receipts:
+  - claim: The visa-oracle test subset is green, including the new _lib/duration.test.ts parser and adapter tests and _components/OutcomeSheet.duration.test.tsx sheet tests (apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.duration.test.tsx, apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/duration.test.ts), the i18n parity, shadow parity, client-copy census and no-path-doors tests.
+    cmd: cd apps/mouth && timeout 900 npx vitest run <duration, OutcomeSheet.duration, i18n, client-copy, shadow-parity, OutcomeSheet, no-path-doors, engine-adapter, engine-response tests>
+    result: "Test Files  9 passed (9); Tests  392 passed (392)"
+    exit: 0
+    ts: "2026-10-09T02:48:07Z"
+    seat: Claude Opus 5.5
+  - claim: The mouth typecheck is clean.
+    cmd: cd apps/mouth && npx tsc --noEmit -p tsconfig.json
+    result: "no output"
+    exit: 0
+    ts: "2026-10-09T02:48:28Z"
+    seat: Claude Opus 5.5
+  - claim: ESLint reports no error on the touched source files.
+    cmd: cd apps/mouth && npx eslint <touched source files>
+    result: "exit 0"
+    exit: 0
+    ts: "2026-10-09T02:48:34Z"
+    seat: Claude Opus 5.5
+  - claim: Prettier accepts every touched file including the stylesheet.
+    cmd: cd apps/mouth && npx prettier --check <touched files>
+    result: "exit 0"
+    exit: 0
+    ts: "2026-10-09T02:48:37Z"
+    seat: Claude Opus 5.5
+  - claim: The bites observer finds no banned phrase and both language blocks carry the seven PR-C1 and PR-C2 keys it requires.
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3326 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-09T02:48:37Z"
+    seat: Claude Opus 5.5
+  - claim: A mismatching quote shows the advisor line with no permit label, several quotes pick the selected option, and an inconsistent duration block is dropped (guilt and innocence tests in duration.test.ts).
+    cmd: cd apps/mouth && npx vitest run src/app/(visa-oracle)/visa-oracle/_lib/duration.test.ts
+    result: "13 passed (inside the 392 above)"
+    exit: 0
+    ts: "2026-10-09T02:48:07Z"
+    seat: Claude Opus 5.5
+  - claim: No e2e spec pins price-block text that this change touched.
+    cmd: grep -rn -i -E "stay permit|Also available|Government fees|oracle-price|price_all_inclusive" apps/mouth/e2e | wc -l
+    result: "0 hits"
+    exit: 0
+    ts: "2026-10-09T02:48:37Z"
+    seat: Claude Opus 5.5
+council_run: council-journal.jsonl
+council_note: >-
+  The Codex seat is registered as codex-gpt-5.6-sol, but the run used the CLI default model of
+  ~/.codex/config.toml, gpt-6-astra. The lint admits only roster seat ids, so the id is kept and
+  the real model is named here and in the journal.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    severity: HIGH
+    objection: The quote was matched by product id only, so a 1-year permit label could sit beside the 2-year price.
+    status: CONFIRMED
+    note: cured in f55dbca5ad, the quote must match the selected option's pricing key and amount, else the advisor line with no permit label.
+  - seat: codex-gpt-5.6-sol
+    severity: MEDIUM
+    objection: The duration block was not checked as a whole (order, one selected option, extension only with options).
+    status: CONFIRMED
+    note: cured in f55dbca5ad, an inconsistent block is dropped by the guard and never crashes the page.
+  - seat: codex-gpt-5.6-sol
+    severity: MEDIUM
+    objection: The new no-path-doors assertions never executed because no replay walk carries that code.
+    status: CONFIRMED
+    note: cured in f55dbca5ad, the assertions moved into the all-causes loop and two fixtures prove they can fail.
+  - seat: codex-gpt-5.6-sol
+    severity: LOW
+    objection: No regression test showed parity ignores the duration but still sees a price change.
+    status: CONFIRMED
+    note: cured in f55dbca5ad, shadow-parity.test.ts covers both directions.
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

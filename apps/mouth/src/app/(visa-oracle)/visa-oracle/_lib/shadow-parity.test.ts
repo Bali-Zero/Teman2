@@ -95,6 +95,68 @@ describe("shadow public-contract parity", () => {
   });
 });
 
+describe("shadow parity ignores the stay-permit duration (PR-C2)", () => {
+  function priced(amount: number, withDuration: boolean) {
+    const response = makeVisaOracleResponse();
+    const candidate = response.display.candidates[0];
+    candidate.pricing = {
+      status: "AVAILABLE",
+      reason_code: "PRICE_AVAILABLE",
+      evaluated_at: "2026-08-03T04:00:00Z",
+      catalog_last_updated: "2026-08-03",
+      catalog_sha256: "b".repeat(64),
+      row_sha256: "c".repeat(64),
+    };
+    const key = { category: "visa", item_key: "E31A_2Y" };
+    if (withDuration) {
+      candidate.selected_duration_days = 730;
+      candidate.extension_required = false;
+      candidate.duration_options = [
+        {
+          days: 730,
+          amount_idr: amount,
+          selected: true,
+          status: "AVAILABLE",
+          reason_code: "DURATION_OPTION",
+          pricing_key: key,
+        },
+      ];
+    }
+    response.decision.quotes = [
+      {
+        quote_id: "55555555-5555-4555-8555-555555555555",
+        product_version_id: candidate.product_version_id,
+        product_code: candidate.product_code,
+        status: "AVAILABLE",
+        currency: "IDR",
+        amount,
+        pricing_key: key,
+        catalog_version: "2026.08",
+        catalog_sha256: "b".repeat(64),
+        row_sha256: "c".repeat(64),
+        quoted_at: "2026-08-03T04:00:00Z",
+        valid_until: null,
+        reason_code: "PRICE_AVAILABLE",
+      },
+    ];
+    return response;
+  }
+
+  it("keeps parity true when only the duration fields differ", () => {
+    const baseline = buildEngineOutcome(priced(15_000_000, false));
+    const withDuration = priced(15_000_000, true);
+    withDuration.mode = "CURATED";
+    expect(shadowParityMatches(withDuration, baseline)).toBe(true);
+  });
+
+  it("makes parity false when the price differs", () => {
+    const baseline = buildEngineOutcome(priced(15_000_000, false));
+    const other = priced(11_000_000, true);
+    other.mode = "CURATED";
+    expect(shadowParityMatches(other, baseline)).toBe(false);
+  });
+});
+
 describe("QW-2 gold-oracle SHADOW baseline (independent, non-tautological)", () => {
   // Empirically verified against the real evaluator + policy-adapter chain
   // (see gold-oracle-baseline.ts's doc comment): a real SHADOW response for

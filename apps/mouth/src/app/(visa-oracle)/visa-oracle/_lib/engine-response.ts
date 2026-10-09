@@ -1,9 +1,7 @@
 import type { VisaOracleEvaluateResponse } from "./visa-oracle-contract";
 
 export type VisaOracleResponseErrorCode =
-  | "MALFORMED_RESPONSE"
-  | "RESPONSE_INVARIANT"
-  | "NON_ENGINE_MODE";
+  "MALFORMED_RESPONSE" | "RESPONSE_INVARIANT" | "NON_ENGINE_MODE";
 
 export class VisaOracleResponseError extends Error {
   constructor(public readonly code: VisaOracleResponseErrorCode) {
@@ -51,6 +49,65 @@ const PUBLIC_ID = /^[a-z0-9]{16,20}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const IDENTIFIER = /^[A-Za-z][A-Za-z0-9_.:-]{0,127}$/;
+
+/**
+ * The seq-26 duration block of one candidate, checked as a whole: strictly
+ * increasing unique `days`, exactly one selected option and it is the one
+ * `selected_duration_days` names, and `extension_required: true` only with
+ * options. Absent fields are valid (a pre-seq-26 response).
+ */
+function validDurationBlock(projected: JsonRecord): boolean {
+  const selectedDays = projected.selected_duration_days;
+  const options = projected.duration_options;
+  const extension = projected.extension_required;
+  if (extension != null && typeof extension !== "boolean") return false;
+  if (selectedDays == null && options == null) return extension !== true;
+  if (!Number.isSafeInteger(selectedDays) || (selectedDays as number) < 1) {
+    return false;
+  }
+  if (!Array.isArray(options) || options.length === 0) return false;
+  let previous = 0;
+  let selectedCount = 0;
+  for (const optionValue of options) {
+    if (
+      typeof optionValue !== "object" ||
+      optionValue === null ||
+      Array.isArray(optionValue)
+    ) {
+      return false;
+    }
+    const option = optionValue as JsonRecord;
+    if (
+      !Number.isSafeInteger(option.days) ||
+      (option.days as number) <= previous
+    ) {
+      return false;
+    }
+    previous = option.days as number;
+    if (
+      option.amount_idr != null &&
+      (!Number.isSafeInteger(option.amount_idr) ||
+        (option.amount_idr as number) < 0)
+    ) {
+      return false;
+    }
+    if (typeof option.selected !== "boolean") return false;
+    if (option.selected) {
+      selectedCount += 1;
+      if (option.days !== selectedDays) return false;
+    }
+    const key = option.pricing_key;
+    if (
+      typeof key !== "object" ||
+      key === null ||
+      typeof (key as JsonRecord).category !== "string" ||
+      typeof (key as JsonRecord).item_key !== "string"
+    ) {
+      return false;
+    }
+  }
+  return selectedCount === 1;
+}
 
 function malformed(): never {
   throw new VisaOracleResponseError("MALFORMED_RESPONSE");
@@ -439,6 +496,15 @@ export function parseVisaOracleEvaluateResponse(
         rowHash === null)
     ) {
       invariant();
+    }
+
+    // Duration pricing (seq-26): all three fields are optional, so a response
+    // from before that sequence parses unchanged. An inconsistent block is
+    // dropped, never thrown: the page must still render, without a duration.
+    if (!validDurationBlock(projected)) {
+      delete projected.selected_duration_days;
+      delete projected.duration_options;
+      delete projected.extension_required;
     }
   }
 

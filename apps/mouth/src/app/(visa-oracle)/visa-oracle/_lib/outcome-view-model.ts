@@ -143,7 +143,19 @@ export interface OutcomeCandidate {
   decisionReasons: readonly OutcomeReason[];
   timeline: OutcomeTimeline;
   price: OutcomePrice;
+  /** Present only when the engine priced a stay-permit duration (seq-26). */
+  duration?: OutcomeDuration;
   documents: readonly OutcomeDocument[];
+}
+
+export interface OutcomeDuration {
+  selectedDays: number;
+  options: readonly {
+    days: number;
+    amountIdr: number | null;
+    selected: boolean;
+  }[];
+  extensionRequired: boolean;
 }
 
 export interface OutcomeStep {

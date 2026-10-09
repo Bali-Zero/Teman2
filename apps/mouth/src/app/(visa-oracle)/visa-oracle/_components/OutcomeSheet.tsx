@@ -28,6 +28,7 @@ import {
   type LegalSupportStatus,
   type OperationalAvailabilityStatus,
   type OutcomeCandidate,
+  type OutcomeDuration,
   type OutcomePrice,
   type OutcomeReason,
   type OutcomeSource,
@@ -142,7 +143,18 @@ function buildShareSummary(
   }
   if (outcome.state === "SUPPORTED_CANDIDATES") {
     for (const candidate of outcome.candidates) {
-      lines.push(`${candidate.code} — ${localized(candidate.name, language)}`);
+      const name = `${candidate.code} — ${localized(candidate.name, language)}`;
+      if (candidate.duration) {
+        const parts = [
+          candidate.price.status === "AVAILABLE"
+            ? formatIDR(candidate.price.amount, language)
+            : null,
+          durationLabel(language, candidate.duration.selectedDays, "permit"),
+        ].filter((part): part is string => part !== null);
+        lines.push(`${name}: ${parts.join(" · ")}`);
+      } else {
+        lines.push(name);
+      }
     }
   }
   return lines.join("\n");
@@ -527,12 +539,31 @@ function Timeline({
   );
 }
 
+function durationLabel(
+  language: Language,
+  days: number,
+  style: "permit" | "short",
+): string {
+  const years = days % 365 === 0;
+  const count = years ? days / 365 : days;
+  const key = years
+    ? style === "permit"
+      ? "outcome.duration_years"
+      : "outcome.duration_label_years"
+    : style === "permit"
+      ? "outcome.duration_days"
+      : "outcome.duration_label_days";
+  return translate(language, key as I18nKey, { count });
+}
+
 function Price({
   language,
   price,
+  duration,
 }: {
   language: Language;
   price: OutcomePrice;
+  duration?: OutcomeDuration;
 }) {
   if (price.status !== "AVAILABLE") {
     return <p>{localized(price.message, language)}</p>;
@@ -542,9 +573,29 @@ function Price({
       <span className="oracle-price__value oracle-tabular-nums">
         {formatIDR(price.amount, language)}
       </span>
+      {duration && (
+        <span className="oracle-price__duration">
+          {durationLabel(language, duration.selectedDays, "permit")}
+        </span>
+      )}
       <span className="oracle-price__note">
         {translate(language, "outcome.price_all_inclusive")}
       </span>
+      {duration?.options
+        .filter((option) => !option.selected && option.amountIdr !== null)
+        .map((option) => (
+          <span key={option.days} className="oracle-price__note">
+            {translate(language, "outcome.duration_alternative" as I18nKey, {
+              label: durationLabel(language, option.days, "short"),
+              price: formatIDR(option.amountIdr as number, language),
+            })}
+          </span>
+        ))}
+      {duration?.extensionRequired && (
+        <span className="oracle-question__hint">
+          {translate(language, "outcome.duration_extension" as I18nKey)}
+        </span>
+      )}
       {price.validUntilIso && (
         <span className="oracle-question__hint">
           {translate(language, "outcome.price_valid_until" as I18nKey, {
@@ -642,7 +693,11 @@ function CandidateCard({
           <h3 className="oracle-outcome__section-title">
             {translate(language, "outcome.price_label")}
           </h3>
-          <Price language={language} price={candidate.price} />
+          <Price
+            language={language}
+            price={candidate.price}
+            duration={candidate.duration}
+          />
         </section>
       </div>
 

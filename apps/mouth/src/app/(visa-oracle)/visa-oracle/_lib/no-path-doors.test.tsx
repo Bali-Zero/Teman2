@@ -38,7 +38,12 @@ import {
 } from "../../../../../scripts/visa-oracle/generate-walk-corpus";
 import { DEFAULT_OUT_DIR } from "../../../../../scripts/visa-oracle/generate-walk-corpus.cli";
 import { OutcomeSheet } from "../_components/OutcomeSheet";
-import { buildEngineOutcome, buildNoPathDoors } from "./engine-adapter";
+import {
+  SUPPORT_REASON_COPY,
+  UNMAPPED_REASON_COPY,
+  buildEngineOutcome,
+  buildNoPathDoors,
+} from "./engine-adapter";
 import { CATEGORY_TO_PURPOSE } from "./fact-mapper";
 import replay from "./fixtures/no-path-doors.replay.json";
 import type { Language } from "./flow";
@@ -54,7 +59,7 @@ type ReplayWalk = (typeof replay.walks)[number];
 
 /** The catalogue sentence a named cause must replace (engine-adapter.ts). */
 const GENERIC_NO_PATH_COPY =
-  "No visa in our verified catalogue covers the purpose you described.";
+  SUPPORT_REASON_COPY.OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES.en;
 
 /** The JSON import widens an all-empty column to `never[]`; the codes are
  * plain strings and every consumer here reads them as such. */
@@ -273,6 +278,21 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     });
   }
 
+  // `offshore/work/sponsor_government/trade_office_only/employer_no` —
+  // surfaced by the same D12-rename corpus regeneration as the walk in the
+  // dead-end count above, last touched by #6663 (2026-09-16), unrelated to
+  // this PR. `engine-adapter.ts` only reconstructs
+  // `OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES` for two named
+  // combinations today (`paidActivityWithoutIndonesianPayerReason` and the
+  // Second Home threshold one, `FACT_DERIVED_NO_PATH_CODES`); a GOVERNMENT
+  // sponsor whose trade-office question resolves "no" and whose employer is
+  // not Indonesian matches neither, so the generic sentence is the accurate,
+  // measured behaviour today — writing it a bespoke cause is a product
+  // decision outside a wording-only mandate, not a defect this diff owns.
+  const WALKS_WITHOUT_A_NAMED_CAUSE_YET = new Set([
+    "offshore/work/sponsor_government/trade_office_only/employer_no",
+  ]);
+
   // The browser found this hole before this loop did (2026-09-13): a code with
   // no entry in SUPPORT_REASON_COPY rendered `Verified reason: AGE_BELOW_55`
   // at a real reader on 7 of the 15 dead ends. Every walk is checked now, not
@@ -294,44 +314,37 @@ describe("no-path doors — the evidence behind every named alternative", () => 
         expect(reason.message.id).not.toContain("Alasan terverifikasi:");
         expect(reason.message.en).not.toContain(reason.code);
         expect(reason.message.id.length).toBeGreaterThan(0);
+        // Every cause is a sentence of its own: never the unmapped fallback,
+        // and never the generic catalogue sentence unless the walk is one of
+        // the known walks that still has no bespoke cause.
+        expect(reason.message.en).not.toBe(UNMAPPED_REASON_COPY.en);
+        expect(reason.message.id).not.toBe(UNMAPPED_REASON_COPY.id);
+        if (!WALKS_WITHOUT_A_NAMED_CAUSE_YET.has(walk.label)) {
+          expect(reason.message.en).not.toBe(GENERIC_NO_PATH_COPY);
+        }
       }
     });
   }
 
-  // `offshore/work/sponsor_government/trade_office_only/employer_no` —
-  // surfaced by the same D12-rename corpus regeneration as the walk in the
-  // dead-end count above, last touched by #6663 (2026-09-16), unrelated to
-  // this PR. `engine-adapter.ts` only reconstructs
-  // `OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES` for two named
-  // combinations today (`paidActivityWithoutIndonesianPayerReason` and the
-  // Second Home threshold one, `FACT_DERIVED_NO_PATH_CODES`); a GOVERNMENT
-  // sponsor whose trade-office question resolves "no" and whose employer is
-  // not Indonesian matches neither, so the generic sentence is the accurate,
-  // measured behaviour today — writing it a bespoke cause is a product
-  // decision outside a wording-only mandate, not a defect this diff owns.
-  const WALKS_WITHOUT_A_NAMED_CAUSE_YET = new Set([
-    "offshore/work/sponsor_government/trade_office_only/employer_no",
-  ]);
+  // The assertions above can fail: an unmapped code really renders the
+  // unmapped fallback, and the generic code renders the generic sentence.
+  it("proves the fallback assertions bite: an unmapped code reads as the unmapped copy", () => {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons[0].code = "SOMETHING_NOT_IN_ANY_TABLE";
+    const outcome = buildEngineOutcome(response, { facts: {} });
+    if (outcome.state !== "NO_SUPPORTED_PATH") throw new Error("state");
+    expect(outcome.noPathReasons[0].message.en).toBe(UNMAPPED_REASON_COPY.en);
+    expect(outcome.noPathReasons[0].message.id).toBe(UNMAPPED_REASON_COPY.id);
+  });
 
-  for (const walk of replay.walks.filter(
-    (candidate) =>
-      noPathReasonCodes(candidate).includes(
-        "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
-      ) && !WALKS_WITHOUT_A_NAMED_CAUSE_YET.has(candidate.label),
-  )) {
-    it(`replaces the generic catalogue sentence with a named cause: ${walk.label}`, () => {
-      const outcome = outcomeFor(walk);
-      if (outcome.state !== "NO_SUPPORTED_PATH") {
-        throw new Error(`expected NO_SUPPORTED_PATH, got ${outcome.state}`);
-      }
-      for (const reason of outcome.noPathReasons) {
-        expect(reason.message.en).not.toContain(GENERIC_NO_PATH_COPY);
-        expect(reason.message.en).not.toContain("Verified reason:");
-        expect(reason.message.id).not.toContain("Alasan terverifikasi:");
-        expect(reason.message.id.length).toBeGreaterThan(0);
-      }
-    });
-  }
+  it("proves the generic code reads as the generic catalogue sentence without a named cause", () => {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons[0].code =
+      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES";
+    const outcome = buildEngineOutcome(response, { facts: {} });
+    if (outcome.state !== "NO_SUPPORTED_PATH") throw new Error("state");
+    expect(outcome.noPathReasons[0].message.en).toBe(GENERIC_NO_PATH_COPY);
+  });
 
   // Slice A7-B, 2026-09-21 (restored in the 2026-09-22 rework after the
   // rebase onto B5-1 overwrote it wholesale): `person.guardian_consent` had
