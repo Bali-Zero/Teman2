@@ -281,7 +281,7 @@ export function KBLISearch({
                     : "hover:bg-white/[0.04]",
                 )}
               >
-                <div className="flex-shrink-0 w-12 h-12 bg-[#dc2626]/10 rounded-lg flex items-center justify-center font-bold text-[#dc2626] border border-[#dc2626]/20 text-xs">
+                <div className="flex-shrink-0 w-12 h-12 bg-[#dc2626]/10 rounded-lg flex items-center justify-center font-bold text-[#fca5a5] border border-[#dc2626]/20 text-xs">
                   {result.code}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -310,7 +310,7 @@ export function KBLISearch({
                 <ChevronRight
                   className={cn(
                     "w-4 h-4 self-center text-zinc-400",
-                    index === activeIndex && "text-[#dc2626] animate-pulse",
+                    index === activeIndex && "text-[#fca5a5] animate-pulse",
                   )}
                 />
               </button>
