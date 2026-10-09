@@ -6,7 +6,11 @@ name: r19-wrapper-census-tests
 # guilt and innocence. Mission kbli-nav-design-loop, lot W0. Not a required
 # context. Lot W1 arms the live census in apps/mouth as the `wrapper-census-live`
 # job (src/test/r19-wrapper.test.ts, `npm test -- r19-wrapper`), with the guilt
-# and innocence fixtures.
+# and innocence fixtures. Lot W0c adds `wrapper-census-states`: the whole live
+# census, its state walk and the opened-surface walk of contract section 8.4
+# (search, drawer, inspector, modals, API stubbed from a fixture), plus the
+# browser guilt and innocence tests. On origin/main it asserts that every capture
+# and every surface opened, and prints the counts; W2''' asserts them at 0.
 
 on:
   pull_request:
@@ -60,3 +64,58 @@ jobs:
       - name: Live census, palette guard, guilt and innocence fixtures
         working-directory: apps/mouth
         run: npm test -- r19-wrapper
+
+  wrapper-census-states:
+    runs-on: ubuntu-latest
+    # The census's 30 captures, its 10-walk state pass and 19 opened surfaces, on a
+    # cold `next dev --webpack`, after npm install and the Chromium shell.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Restore node_modules
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            **/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-workspace-${{ hashFiles('package-lock.json') }}
+      - name: Install dependencies
+        run: npm install --no-fund
+      - name: Install Playwright for Python and its Chromium headless shell
+        run: |
+          python -m pip install --quiet pytest "playwright==1.60.0"
+          timeout 600 python -m playwright install --with-deps --only-shell chromium
+          shell=$(find "$HOME/.cache/ms-playwright" -path '*chromium_headless_shell-*' -name chrome-headless-shell -type f | sort | tail -1)
+          test -x "$shell"
+          echo "CHROME_HEADLESS=$shell" >> "$GITHUB_ENV"
+      - name: Browser guilt and innocence of the opened-surface walk
+        run: python -m pytest scripts/mouth/tests -q -p no:cacheprovider -k "e2e"
+      - name: Live census, state walk and opened surfaces (starts and stops its own dev server)
+        env:
+          CENSUS_DEV_LOG: ${{ runner.temp }}/next-dev.log
+        run: |
+          set -o pipefail
+          python scripts/mouth/r19_wrapper_token_census.py --port 3519 | tee "$RUNNER_TEMP/census.txt"
+      - name: Every capture and every surface opened
+        run: |
+          fail=0
+          for want in "captures: 30 ok, 0 failed" "opened-surfaces: 19 ok, 0 failed"; do
+            if grep -Fxq "$want" "$RUNNER_TEMP/census.txt"; then
+              echo "ok: $want"
+            else
+              echo "::error::the census did not print '$want'"
+              fail=1
+            fi
+          done
+          grep -E '^(read-but-undefined|colors-outside|state-rows-unseen|state-colors-off|opened-)' "$RUNNER_TEMP/census.txt" || true
+          if [ "$fail" -ne 0 ]; then
+            grep -E '^  (capture-failed|opened-failed|walk-failed):' "$RUNNER_TEMP/census.txt" || true
+            tail -40 "$RUNNER_TEMP/next-dev.log" || true
+          fi
+          exit "$fail"

@@ -50,7 +50,8 @@ system-dark and forced-dark).
 Limits, declared:
 
 - Drawers, modals and the sector panel paint only after a click, so they are not in the DOM
-  the census walks. Attribute and ARIA state variants such as `data-[state=open]:`,
+  the census walks. §8 (W0c) names their grounds and classes and opens them. Attribute and ARIA
+  state variants such as `data-[state=open]:`,
   `:checked` and `:disabled` are matched only as rendered. W1 adds those states.
 - `forced-colors` and `prefers-contrast` media are not among the six states.
 - Portals outside the wrapper are not inside it, `sonner` toasts included.
@@ -61,7 +62,7 @@ Limits, declared:
   capture rendered: search results, modals, error pages and other verdicts. They are outside
   this contract by construction. W1's added states will surface them.
 - `BZLogo` is a `next/image` PNG. Raster artwork carries no token, so it has no row. W2 picks
-  the variant that reads on paper.
+  the variant that reads on paper. §8.3 rules on it.
 - Geometry tokens are out of scope: radius, space and size. The type scale counts as
   geometry: `font-size`, `line-height` and `letter-spacing`.
 
@@ -487,7 +488,8 @@ python3 scripts/mouth/r19_wrapper_token_census.py --replay scripts/mouth/tests/f
 ```
 
 The verdict is the printed `read-but-undefined:` line, never the exit code.
-The last printed line is `state-colors-off-contract:`, after `colors-outside-direction-a:` and `state-rows-unseen:`; §7.5 defines both.
+`state-colors-off-contract:` follows `colors-outside-direction-a:` and `state-rows-unseen:`; §7.5 defines both.
+The opened-surface lines of §8.4 come last, and the last printed line is `opened-text-below-4.5:`.
 
 ## 7. Amendment 2026-10-09: the state contract (W0b)
 
@@ -648,3 +650,238 @@ hex, or when a state-variant colour class has no row. The census prints, after t
 lines, `state-rows-unseen: U` (painted rows whose class is in the DOM and was never observed,
 named) and then `state-colors-off-contract: N`. On `origin/main` N is the pre-W2 state: it is reported,
 not a gate. The exit for W2'' is U equal to 0 and N equal to 0.
+
+## 8. Amendment 2026-10-09: the surfaces a click opens (W0c)
+
+#8161 (W2'') was gate-blocked for a cause that is not contract fidelity. The wrapper sets
+`--color-white` to ink, as §5 says, but the `/kbli` search dropdown kept its unnamed ground
+`bg-[#1c1c1f]/95`. Result titles read 1.05:1 and descriptions 2.40:1, on a surface no walk had
+opened. §2 left drawers, modals, the sector panel and search results outside the census. This
+amendment names every background those surfaces paint, the classes on them and the artwork in
+the wrapper, and the census now opens them.
+
+### 8.1 The surfaces table
+
+**Scope, found mechanically.** The scope is every rest background class that §5 and §7 do not
+name:
+
+- `bg-*` colour utilities and the `from-`, `via-` and `to-` gradient stops;
+- in `components/kbli`, `app/kbli` and `app/kbli-explorer`, tests excluded;
+- on `origin/main` and on #8161's head (`51b2407f27`).
+
+`rg` lists them. Chrome resolves each one on a bare element outside any wrapper
+(`evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0c-1009-c19adc9e/surface_scan.py`).
+
+- The fence holds 87 rest background classes. 49 have a §5 row.
+- The other 38 are the rows below: the 35 background rows of #8161's `unmapped-left.tsv`, plus
+  three gradient stops that exist only on `origin/main` (`ZantaraChat.tsx`,
+  `ThinkingIndicator.tsx`).
+- A **dark slab** is a class on whose colour ink reads below 4.5:1 at an alpha of 0.5 or more,
+  or a gradient stop of such a colour. 31 classes qualify: 18 have a §5 row and 13 are rows
+  below. A class that reads a `--kbli-*` var resolves to main's dark value here, because the
+  scan runs outside the wrapper.
+- The scan prints `unnamed-grounds: 0` and `unnamed-dark-slabs: 0`.
+
+**Columns.** `token` is the class at rest; a state variant belongs to §7. `surface` says where
+the class paints. `ground` is one of four kinds:
+
+| ground   | what it is                                  | allowed value                                           | text                           |
+| -------- | ------------------------------------------- | ------------------------------------------------------- | ------------------------------ |
+| `opaque` | a text-bearing ground, painted at alpha 1   | paper, elevated or wash; copper only as the action fill | the roles of §3 that sit on it |
+| `scrim`  | the backdrop behind an open dialog or sheet | ink, at any alpha                                       | none                           |
+| `mark`   | a dot, caret or handle, painted at alpha 1  | any §3 role                                             | none                           |
+| `-`      | the class paints nothing                    | `not painted on this surface`                           | none                           |
+
+The scrim is the only translucency this section allows, because a scrim has to show the page it
+dims. For an `opaque` row, `contrast` is the lowest ratio of the listed roles on the value. The
+parser recomputes it to two decimals and refuses a row below 4.5:1.
+
+**Rules.**
+
+- A dark slab inside the wrapper is elevated or wash, never ink. Elevated is for a card: a
+  dropdown, drawer, modal, sheet or bar. Wash is for a pill or band on a card. This is the
+  §7.2 hero-band rule read the other way round.
+- A translucent tint under text becomes opaque wash, and the hue lives in the word, as the
+  `--kbli-pma-*-bg` rows of §5 already rule.
+
+**Portals.** The sector drawer and the comparison modal render through `Dialog.Portal` into
+`<body>`, outside `.kbli-r19`. A row here binds there too. W2''' must either mount them inside
+the wrapper or put the wrapper class on the portal content, so the tokens reach them.
+
+<!-- surfaces:begin -->
+
+| token                           | surface                                                                | ground | value                       | text                                                    | contrast | reason                                                                            |
+| ------------------------------- | ---------------------------------------------------------------------- | ------ | --------------------------- | ------------------------------------------------------- | -------- | --------------------------------------------------------------------------------- |
+| `bg-[#1c1c1f]/95`               | /kbli search dropdown                                                  | opaque | elevated #FFFCF7            | ink, muted                                              | 6.08     | dark slab: a floating list is a card, so elevated; titles ink, descriptions muted |
+| `bg-[#141416]/95`               | sector drawer panel                                                    | opaque | elevated #FFFCF7            | ink, muted, copper, open, restricted, closed            | 5.64     | dark slab: a drawer is a card, so elevated                                        |
+| `bg-[#0A0C10]`                  | comparison modal, mobile inspector sheet, inspector related-code cards | opaque | elevated #FFFCF7            | ink, muted, copper, structure, open, restricted, closed | 5.64     | dark slab: modal, sheet and the cards on them are cards, so elevated              |
+| `bg-[#0A0C10]/95`               | explorer compare bar                                                   | opaque | elevated #FFFCF7            | ink, copper                                             | 5.64     | dark slab: a sticky bar over the paper page is a card, so elevated                |
+| `bg-[#151921]`                  | explorer related-code buttons and risk pills                           | opaque | wash #EAE3D8                | ink, muted, copper                                      | 4.53     | dark slab: a pill on a card is a sunken band, so wash                             |
+| `bg-black/50`                   | explorer mobile inspector backdrop                                     | scrim  | ink #1D2C3B                 | -                                                       | -        | backdrop: dims the page behind an open sheet; no text sits on it                  |
+| `bg-black/70`                   | sector drawer and comparison modal backdrop                            | scrim  | ink #1D2C3B                 | -                                                       | -        | backdrop: dims the page behind an open dialog; no text sits on it                 |
+| `bg-black/90`                   | Black Book modal backdrop                                              | scrim  | ink #1D2C3B                 | -                                                       | -        | backdrop: dims the page behind an open dialog; no text sits on it                 |
+| `bg-[#dc2626]/10`               | search dropdown code chip                                              | opaque | wash #EAE3D8                | copper                                                  | 4.53     | red tint becomes wash; the code is copper                                         |
+| `bg-emerald-500/10`             | search dropdown verified PMA badge                                     | opaque | wash #EAE3D8                | open                                                    | 5.83     | verdict chip: the hue lives in the word                                           |
+| `bg-zinc-500/10`                | search dropdown unverified PMA badge                                   | opaque | wash #EAE3D8                | muted                                                   | 4.88     | neutral tint becomes wash                                                         |
+| `bg-amber-500/10`               | search dropdown risk badge, explorer legacy alert (warning)            | opaque | wash #EAE3D8                | ink, restricted                                         | 4.98     | amber tint becomes wash; the hue lives in the word                                |
+| `bg-amber-500/[0.08]`           | search dropdown error banner                                           | opaque | wash #EAE3D8                | restricted                                              | 4.98     | amber tint becomes wash; the message is restricted                                |
+| `bg-white/[0.02]`               | search dropdown footer                                                 | opaque | wash #EAE3D8                | muted                                                   | 4.88     | footer band of the list: sunken, so wash                                          |
+| `bg-red-500/10`                 | explorer legacy alert (critical)                                       | opaque | wash #EAE3D8                | ink, closed                                             | 6.36     | red tint becomes wash; the hue lives in the word                                  |
+| `bg-amber-500/20`               | explorer legacy alert icon tile (warning)                              | opaque | wash #EAE3D8                | -                                                       | -        | icon tile: no text on it                                                          |
+| `bg-red-500/20`                 | explorer legacy alert icon tile (critical)                             | opaque | wash #EAE3D8                | -                                                       | -        | icon tile: no text on it                                                          |
+| `bg-amber-500/5`                | explorer inspector card (what you need)                                | opaque | wash #EAE3D8                | ink, muted, restricted                                  | 4.88     | tinted card becomes wash                                                          |
+| `bg-blue-500/5`                 | explorer inspector card (what it means)                                | opaque | wash #EAE3D8                | ink, muted, structure                                   | 4.88     | tinted card becomes wash                                                          |
+| `bg-green-500/5`                | explorer inspector card (Bali context)                                 | opaque | wash #EAE3D8                | ink, muted, open                                        | 4.88     | tinted card becomes wash                                                          |
+| `bg-slate-400/10`               | /kbli/[code] unverified PMA verdict card                               | opaque | wash #EAE3D8                | ink, muted                                              | 4.88     | neutral tint becomes wash                                                         |
+| `bg-slate-400/5`                | /kbli/[code] licensing note                                            | opaque | wash #EAE3D8                | ink, muted                                              | 4.88     | neutral tint becomes wash                                                         |
+| `bg-accent-sand/15`             | explorer compare toggle, on                                            | opaque | wash #EAE3D8                | copper                                                  | 4.53     | accent tint becomes wash: no tinted copper slabs                                  |
+| `bg-accent-warm/20`             | Zantara chat avatar                                                    | opaque | wash #EAE3D8                | -                                                       | -        | avatar disc: an icon, no text                                                     |
+| `bg-[var(--kbli-accent)]/15`    | sector strip arrows and active chip                                    | opaque | wash #EAE3D8                | ink, copper                                             | 4.53     | accent tint becomes wash: no tinted copper slabs                                  |
+| `bg-[var(--kbli-bg-elevated)]`  | /kbli/[code] cards, provenance badge                                   | opaque | elevated #FFFCF7            | ink, muted, copper, open, restricted, closed            | 5.64     | reads --kbli-bg-elevated: elevated                                                |
+| `bg-[var(--kbli-bg-secondary)]` | /kbli/[code] sunken bands                                              | opaque | wash #EAE3D8                | ink, muted, copper                                      | 4.53     | reads --kbli-bg-secondary: wash                                                   |
+| `bg-accent-sand`                | explorer action buttons and the compare check                          | opaque | copper #A44B36              | elevated                                                | 5.64     | the one action fill: copper under elevated text, as --r19-cta-ink                 |
+| `bg-slate-500`                  | explorer status dot                                                    | mark   | muted #58626B               | -                                                       | -        | a dot, no text                                                                    |
+| `bg-white/20`                   | explorer sheet drag handle                                             | mark   | line-strong #A8ACA9         | -                                                       | -        | a handle, no text: visible on elevated                                            |
+| `bg-accent-warm/60`             | Zantara chat typing dots                                               | mark   | copper #A44B36              | -                                                       | -        | dots, no text                                                                     |
+| `from-[#0F1115]`                | explorer inspector header                                              | -      | not painted on this surface | -                                                       | -        | gradient stop: Direction A paints solid grounds; the header sits on its panel     |
+| `to-[#050507]`                  | explorer inspector header                                              | -      | not painted on this surface | -                                                       | -        | gradient stop: Direction A paints solid grounds; the header sits on its panel     |
+| `from-[#d4845a]/20`             | Zantara chat bubble                                                    | -      | not painted on this surface | -                                                       | -        | gradient stop: Direction A paints solid grounds and solid ink                     |
+| `to-[#d4845a]/5`                | Zantara chat bubble                                                    | -      | not painted on this surface | -                                                       | -        | gradient stop: Direction A paints solid grounds and solid ink                     |
+| `to-[#C4A473]`                  | explorer thinking indicator                                            | -      | not painted on this surface | -                                                       | -        | gradient stop: Direction A paints solid grounds and solid ink                     |
+| `bg-destructive/10`             | route error boundaries                                                 | -      | not painted on this surface | -                                                       | -        | no colour named destructive exists: the class paints nothing today                |
+| `bg-green-50`                   | TransitionBadge source comment                                         | -      | not painted on this surface | -                                                       | -        | named only in a source comment: no element carries it                             |
+
+<!-- surfaces:end -->
+
+Lowest text pair: 4.53:1, copper on wash: the dropdown code chip, a related-code pill and the
+compare toggle.
+
+### 8.2 The classes on those surfaces
+
+The scan also finds the non-background classes that the same surfaces carry unnamed. These
+are §5 rows in §5's format, parsed by the same parser between their own markers. The census
+reads them together with §5, and a token may appear in only one of the two tables. There are 41
+rows: 17 text colours, 17 borders and 7 shadows. Together, 8.1 and 8.2 name all 76 classes of
+#8161's `unmapped-left.tsv`.
+
+<!-- surface-classes:begin -->
+
+| kind  | token                                                                         | value                       | reason                                                                |
+| ----- | ----------------------------------------------------------------------------- | --------------------------- | --------------------------------------------------------------------- |
+| class | `border-[#dc2626]/20`                                                         | line #DAD8D1                | hairline on an opened surface                                         |
+| class | `border-[var(--kbli-accent)]/50`                                              | copper #A44B36              | active sector chip: the selection signal                              |
+| class | `border-[var(--kbli-pma-restricted)]/30`                                      | semantic #7A5A1E            | PMA restricted edge, as /20                                           |
+| class | `border-accent-sand/40`                                                       | line-strong #A8ACA9         | dashed underline of a tooltip term: visible, never a control boundary |
+| class | `border-accent-sand`                                                          | copper #A44B36              | selected compare card: the selection signal                           |
+| class | `border-amber-500/20`                                                         | line #DAD8D1                | hairline on an opened surface                                         |
+| class | `border-amber-500/30`                                                         | line #DAD8D1                | hairline on an opened surface                                         |
+| class | `border-blue-500/20`                                                          | line #DAD8D1                | hairline on an opened surface                                         |
+| class | `border-green-500/20`                                                         | line #DAD8D1                | hairline on an opened surface                                         |
+| class | `border-l-[#3b82f6]/50`                                                       | structure #233D52           | answer bubble left rule: the second accent                            |
+| class | `border-l-[#D4B483]`                                                          | copper #A44B36              | selected answer card left rule: the selection signal                  |
+| class | `border-l-white/10`                                                           | line #DAD8D1                | hairline on an opened surface                                         |
+| class | `border-red-500/30`                                                           | line #DAD8D1                | hairline on an opened surface                                         |
+| class | `border-slate-400/25`                                                         | line #DAD8D1                | hairline on an opened surface                                         |
+| class | `border-slate-400/30`                                                         | line #DAD8D1                | hairline on an opened surface                                         |
+| class | `border-white/20`                                                             | line #DAD8D1                | hairline on an opened surface                                         |
+| class | `border-white/[0.10]`                                                         | line #DAD8D1                | hairline on an opened surface                                         |
+| class | `shadow-[0_0_10px_rgba(212,132,90,0.2)]`                                      | not painted on this surface | shadow: Direction A is flat; cards separate by a 1px line             |
+| class | `shadow-[0_0_10px_rgba(212,180,131,0.3)]`                                     | not painted on this surface | shadow: Direction A is flat; cards separate by a 1px line             |
+| class | `shadow-[0_0_20px_rgba(220,38,38,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]` | not painted on this surface | shadow: Direction A is flat; cards separate by a 1px line             |
+| class | `shadow-[0_0_50px_rgba(212,180,131,0.1)]`                                     | not painted on this surface | shadow: Direction A is flat; cards separate by a 1px line             |
+| class | `shadow-[0_10px_60px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.04)]`   | not painted on this surface | shadow: Direction A is flat; cards separate by a 1px line             |
+| class | `shadow-[0_16px_48px_rgba(0,0,0,0.5)]`                                        | not painted on this surface | shadow: Direction A is flat; cards separate by a 1px line             |
+| class | `shadow-[0_4px_24px_rgba(0,0,0,0.3)]`                                         | not painted on this surface | shadow: Direction A is flat; cards separate by a 1px line             |
+| class | `text-[#777]`                                                                 | muted #58626B               | secondary text: explorer answer descriptions                          |
+| class | `text-[#BBB]`                                                                 | ink #1D2C3B                 | primary text: comparison modal and explorer answer                    |
+| class | `text-[#c98a3a]`                                                              | muted #58626B               | truncation note: secondary text                                       |
+| class | `text-[#dc2626]`                                                              | copper #A44B36              | search dropdown code: the accent colour                               |
+| class | `text-amber-200`                                                              | ink #1D2C3B                 | legacy alert body (warning): primary text                             |
+| class | `text-amber-300`                                                              | semantic #7A5A1E            | search error message: the amber word                                  |
+| class | `text-amber-500`                                                              | semantic #7A5A1E            | legacy alert icon (warning)                                           |
+| class | `text-blue-400`                                                               | structure #233D52           | inspector card heading (what it means): the second accent             |
+| class | `text-destructive`                                                            | not painted on this surface | no colour named destructive exists: the class paints nothing today    |
+| class | `text-emerald-400`                                                            | semantic #2E5E4E            | verified PMA badge, thinking indicator: the open word                 |
+| class | `text-green-400`                                                              | semantic #2E5E4E            | inspector card heading (Bali context)                                 |
+| class | `text-red-200`                                                                | ink #1D2C3B                 | legacy alert body (critical): primary text                            |
+| class | `text-red-500`                                                                | semantic #8E2F2A            | legacy alert icon and title (critical)                                |
+| class | `text-silver`                                                                 | not painted on this surface | no colour named silver exists: the text inherits the wrapper ink      |
+| class | `text-slate-400`                                                              | muted #58626B               | secondary text                                                        |
+| class | `text-white/70`                                                               | muted #58626B               | secondary text                                                        |
+| class | `text-zinc-500`                                                               | muted #58626B               | secondary text                                                        |
+
+<!-- surface-classes:end -->
+
+### 8.3 Artwork
+
+Raster artwork carries no token (§2). It still paints a ground when its file has no alpha
+channel. **Rule:** an image inside the wrapper has a transparent ground, or it is out of scope
+for a stated reason. The colour type comes from the PNG header (`IHDR`).
+
+| where                                                                                 | asset today                                                                                                                                                               | ruling                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| explorer sidebar, `app/kbli-explorer/page.tsx` `<img src="/images/logo-zantara.png">` | 1024x1024 PNG, colour type 2 (RGB, **no alpha**): a red 3 and a white om roundel on an opaque black square. The gate saw it as a heavy black square on the paper sidebar. | **Replace** with `BZLogo variant="mark"` (`/assets/logo/balizero-3-red.png`, 1000x1000 RGBA, transparent ground): the same red 3, with no square. The om roundel goes with the square. That is a brand call, listed for the owner. The alternative that also sits on paper is `variant="zantara"` (`/static/zantara-lotus.png`, RGBA), whose neon-blue artwork is off Direction A in spirit. |
+| `/kbli` nav, `NavShell logo={<BZLogo variant="full" />}`                              | `/assets/logo/balizero-logo-clean.png`, 512x512 RGBA: the black disc lockup, transparent outside the disc                                                                 | **Keep.** The disc is the lockup itself, not a ground behind other content.                                                                                                                                                                                                                                                                                                                  |
+| footer, `BZLogo variant="round"`                                                      | `app/v2/_components/Footer.tsx`                                                                                                                                           | **Out of scope.** It is the shared v2 footer, outside the `/kbli*` fence: changing it changes every route.                                                                                                                                                                                                                                                                                   |
+
+### 8.4 The census opens the surfaces
+
+After the state walk, the census runs an opened-surface walk. Each scenario loads its page in
+a fresh context and opens the surface with real input. The census waits 2.5 s with transitions
+and animations off, then measures. The search and inspect APIs answer from
+`scripts/mouth/tests/fixtures/r19_opened_surfaces.json` through Playwright route interception.
+The fixture holds placeholder rows and no client data. The walk therefore needs no backend, and
+it runs offline and in CI.
+
+| scenario                    | page                           | opened by                                                                                                                                                                           | walks                             |
+| --------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| `search-dropdown`           | `/kbli`                        | typing `restaurant` in the hero search                                                                                                                                              | all six states                    |
+| `search-active-row`         | `/kbli`                        | the same query, then ArrowDown                                                                                                                                                      | desktop/light, mobile/system-dark |
+| `search-error`              | `/kbli`                        | the same query, with the API answering 503                                                                                                                                          | the same two                      |
+| `sector-drawer`             | `/kbli`                        | a click on the first sector card (the intercepted route)                                                                                                                            | the same two                      |
+| `explorer-answer-inspector` | `/kbli-explorer?inspect=56101` | a seeded answer with two results (`sessionStorage` `kbli-messages`) and the inspect deep link: the answer, the legacy alert, and the inspector as a desktop panel or a mobile sheet | the same two                      |
+| `explorer-compare`          | `/kbli-explorer`               | the seeded answer, the compare toggle, two results, then "Compare 2 codes"                                                                                                          | the same two                      |
+| `explorer-black-book`       | `/kbli-explorer`               | "Ask about your codes"                                                                                                                                                              | the same two                      |
+| `explorer-mobile-sidebar`   | `/kbli-explorer`               | the menu button                                                                                                                                                                     | mobile/system-dark                |
+
+**What is measured.**
+
+- **Text.** Every visible element with its own text inside the surface. Its colour alpha is
+  multiplied by the opacity of every ancestor. The ground is every translucent background down
+  the ancestor chain, composited over the first opaque one. This is the rule `live_probe.py`
+  applies. The floor is 4.5:1 for all text. Text over a background image cannot be measured,
+  so it is counted and listed, never passed; the image is itself off contract by its row.
+- **Grounds.** Every background class on an element of the surface and of its scrim is read as
+  computed `background-color` with its alpha. A scrim is an element covering the viewport with
+  a translucent ground and no text. The class must paint its §8.1 row: the row's hex, at alpha
+  1 for `opaque` and `mark` rows, and nothing for a row that paints nothing. Classes with a §5
+  row keep §5's rest semantics, as in the W0 census.
+
+**What it prints.** These lines follow `state-colors-off-contract:`:
+
+1. `opened-surfaces: N ok, F failed`, then one line for each scenario and walk;
+2. `opened-grounds-off-contract: K`;
+3. last, `opened-text-below-4.5: M`.
+
+A surface that does not open is a failure. Any failure turns K and M INCOMPLETE, never 0.
+
+**Numbers measured by this lot.** These are reported, not a gate.
+
+| head          | `opened-surfaces:` | `opened-grounds-off-contract:` | `opened-text-below-4.5:` |
+| ------------- | ------------------ | ------------------------------ | ------------------------ |
+| `origin/main` | 19 ok, 0 failed    | 21                             | 386                      |
+| #8161's head  | 19 ok, 0 failed    | 19                             | 1234                     |
+
+- On `origin/main` the dropdown titles are white and readable. Its count comes from the red
+  code chip (3.31:1), the sector drawer's faded and zinc text, and the explorer's dark greys.
+- At #8161's head the dropdown titles read 1.05:1, the gate's number.
+- The exit for W2''' is F, K and M equal to 0.
+
+**Not reached by the walk.** These rows are named in 8.1 and 8.2 and judged when a later walk
+reaches them:
+
+- the `/kbli/[code]` variants for codes the census does not open (`bg-slate-400/10`,
+  `bg-slate-400/5`);
+- the Zantara chat bubbles;
+- the thinking indicator;
+- the route error boundaries.
