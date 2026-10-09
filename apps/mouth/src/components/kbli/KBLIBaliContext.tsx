@@ -46,8 +46,8 @@ export function KBLIBaliContext({ baliContext }: KBLIBaliContextProps) {
               ? "🏝"
               : "💡";
         const blockBg = isMistakes
-          ? "rgba(232, 168, 73, 0.03)"
-          : "rgba(212, 132, 90, 0.02)";
+          ? "var(--kbli-pma-restricted-bg)"
+          : "var(--kbli-accent-subtle)";
 
         return (
           <div
@@ -55,7 +55,7 @@ export function KBLIBaliContext({ baliContext }: KBLIBaliContextProps) {
             className="rounded-xl p-5"
             style={{
               background: blockBg,
-              border: `1px solid ${isMistakes ? "rgba(232, 168, 73, 0.1)" : "var(--kbli-border)"}`,
+              border: `1px solid ${isMistakes ? "var(--kbli-border)" : "var(--kbli-border)"}`,
             }}
           >
             {cardTitle && (

@@ -201,8 +201,8 @@ export function KBLISearch({
             activeIndex >= 0 ? optionId(activeIndex) : undefined
           }
           className={cn(
-            "w-full pl-12 pr-10 py-4 bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl text-white placeholder-zinc-400",
-            "shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)]",
+            "w-full pl-12 pr-10 py-4 bg-[var(--kbli-bg-surface)] backdrop-blur-xl border border-[var(--border)] rounded-2xl text-white placeholder-zinc-400",
+            "",
             "focus:outline-none focus:ring-2 focus:ring-[#dc2626] focus:border-white/[0.15] transition-all text-lg",
           )}
         />
@@ -238,10 +238,10 @@ export function KBLISearch({
               aria-label={`Search ${filter}`}
               aria-pressed={query === filter}
               className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-medium backdrop-blur-md border shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-300",
+                "px-3.5 py-1.5 rounded-full text-xs font-medium backdrop-blur-md border  transition-all duration-300",
                 query === filter
-                  ? "text-white bg-white/[0.10] border-red-500/30 shadow-[0_0_20px_rgba(220,38,38,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]"
-                  : "text-zinc-400 bg-white/[0.04] border-white/[0.06] hover:bg-white/[0.07] hover:text-white hover:border-red-500/30 hover:shadow-[0_0_20px_rgba(220,38,38,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]",
+                  ? "text-white bg-[var(--kbli-bg-surface)] border-red-500/30 shadow-[0_0_20px_rgba(220,38,38,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]"
+                  : "text-zinc-400 bg-[var(--kbli-bg-surface)] border-[var(--border)] hover:bg-white/[0.07] hover:text-white hover:border-accent-sand ",
               )}
             >
               {filter}
@@ -252,7 +252,7 @@ export function KBLISearch({
 
       {/* Results dropdown — also shown when there is a search error */}
       {isDropdownOpen && (
-        <div className="absolute z-50 w-full mt-2 bg-[#1c1c1f]/95 backdrop-blur-2xl border border-white/[0.08] rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute z-50 w-full mt-2 bg-[#1c1c1f]/95 backdrop-blur-2xl border border-[var(--border)] rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
           {/* Error banner — shown above results when search fails */}
           {searchError && (
             <div className="flex items-start gap-2 px-4 py-3 text-sm border-b border-amber-500/20 bg-amber-500/[0.08]">
@@ -277,7 +277,7 @@ export function KBLISearch({
                 className={cn(
                   "w-full flex items-start gap-4 px-4 py-3 text-left transition-all duration-200",
                   index === activeIndex
-                    ? "bg-white/[0.06]"
+                    ? "bg-[var(--kbli-bg-surface)]"
                     : "hover:bg-white/[0.04]",
                 )}
               >
@@ -316,11 +316,11 @@ export function KBLISearch({
               </button>
             ))}
           </div>
-          <div className="p-3 bg-white/[0.02] border-t border-white/[0.06] flex justify-between items-center text-[10px] text-zinc-400 uppercase tracking-widest font-bold">
+          <div className="p-3 bg-white/[0.02] border-t border-[var(--border)] flex justify-between items-center text-[10px] text-zinc-400 uppercase tracking-widest font-bold">
             <span>{results.length} KBLI codes found</span>
             <span className="flex items-center gap-1">
               Press{" "}
-              <kbd className="bg-white/[0.06] px-1.5 py-0.5 rounded border border-white/[0.1] text-zinc-400">
+              <kbd className="bg-[var(--kbli-bg-surface)] px-1.5 py-0.5 rounded border border-[color:var(--border-strong)] text-zinc-400">
                 ENTER
               </kbd>{" "}
               to see all

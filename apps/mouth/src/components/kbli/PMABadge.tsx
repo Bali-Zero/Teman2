@@ -172,7 +172,7 @@ export function PMABadge({
     >
       <span>{c.icon}</span>
       <span>{c.label}</span>
-      {suffix && <span className="opacity-70">{suffix}</span>}
+      {suffix && <span>{suffix}</span>}
     </span>
   );
 }

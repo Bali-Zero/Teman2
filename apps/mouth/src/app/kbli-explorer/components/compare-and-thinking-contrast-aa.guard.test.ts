@@ -20,10 +20,11 @@ const FILES = ["ComparisonModal.tsx", "ThinkingIndicator.tsx"].map((f) => ({
 const DARK_GREY = /(?<![\w-])text-\[#[3-6][0-9a-fA-F]{2}\]/g;
 
 describe("ComparisonModal and ThinkingIndicator text meets AA on dark", () => {
-  it("positive control: both files are read and carry arbitrary text colours", () => {
+  it("positive control: both files are read and carry arbitrary text colours or wrapper tokens", () => {
     for (const { f, src } of FILES) {
       expect(
-        src.match(/text-\[#[0-9a-fA-F]{3,6}\]/g)?.length ?? 0,
+        src.match(/text-\[(?:#[0-9a-fA-F]{3,6}|var\(--[a-z-]+\))\]/g)?.length ??
+          0,
         f,
       ).toBeGreaterThan(0);
     }

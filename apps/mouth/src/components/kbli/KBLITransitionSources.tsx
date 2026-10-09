@@ -46,9 +46,9 @@ export function KBLITransitionSources({
         <span
           className="mt-0.5 inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-bold"
           style={{
-            background: "rgba(139, 156, 247, 0.1)",
+            background: "var(--kbli-zantara-bg)",
             color: "var(--kbli-accent2)",
-            border: "1px solid rgba(139, 156, 247, 0.2)",
+            border: "1px solid var(--kbli-border)",
           }}
         >
           {bpsCodes.length > 0
@@ -84,8 +84,7 @@ export function KBLITransitionSources({
           className="mt-3 flex items-start gap-3 rounded-xl p-4"
           style={{
             background: "var(--kbli-bg-elevated)",
-            border:
-              "1px solid color-mix(in srgb, var(--kbli-border) 75%, transparent)",
+            border: "1px solid var(--kbli-border)",
           }}
           data-testid="pp28-transition-source"
         >

@@ -200,7 +200,7 @@ const InfoTooltip = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className={`absolute left-1/2 -translate-x-1/2 px-3 py-2 bg-surface-editorial-elevated border border-white/10 rounded text-xs text-[#CCC] w-52 z-50 text-center shadow-xl pointer-events-none ${
+            className={`absolute left-1/2 -translate-x-1/2 px-3 py-2 bg-surface-editorial-elevated border border-[var(--border)] rounded text-xs text-[var(--foreground)] w-52 z-50 text-center shadow-xl pointer-events-none ${
               above ? "bottom-full mb-2" : "top-full mt-2"
             }`}
           >
@@ -255,15 +255,15 @@ const SourceCard = ({
 }: {
   source: { id: string; title: string; type: string };
 }) => (
-  <div className="group flex items-center gap-4 p-4 rounded-lg bg-surface-deep/40 border border-white/5 hover:bg-[#151921] hover:border-accent-sand/30 transition-all duration-300 backdrop-blur-sm">
-    <div className="p-2.5 rounded bg-surface-editorial-elevated text-[#888] group-hover:text-accent-sand transition-colors border border-white/5">
+  <div className="group flex items-center gap-4 p-4 rounded-lg bg-slate-50 border border-[var(--border)] hover:bg-[#151921] hover:border-accent-sand transition-all duration-300 backdrop-blur-sm">
+    <div className="p-2.5 rounded bg-surface-editorial-elevated text-[var(--kbli-text-muted)] group-hover:text-accent-sand transition-colors border border-[var(--border)]">
       <BookOpen size={14} strokeWidth={1.5} />
     </div>
     <div>
       <h4 className="text-sm font-medium text-silver group-hover:text-white font-serif tracking-wide">
         {source.title}
       </h4>
-      <p className="text-[11px] uppercase tracking-widest text-[#666] mt-1">
+      <p className="text-[11px] uppercase tracking-widest text-[var(--kbli-text-muted)] mt-1">
         {source.type}
       </p>
     </div>
@@ -283,7 +283,7 @@ const ChatMessage = ({
     className={`flex gap-4 md:gap-6 ${role === "ai" ? "items-start" : "items-center flex-row-reverse"}`}
   >
     <div
-      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${role === "ai" ? "bg-surface-deep border-accent-sand/20 text-accent-sand" : "bg-surface-editorial-elevated border-white/10 text-slate-400"}`}
+      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${role === "ai" ? "bg-surface-deep border-accent-sand/20 text-accent-sand" : "bg-surface-editorial-elevated border-[var(--border)] text-slate-400"}`}
     >
       {role === "ai" ? (
         <Sparkles size={14} />
@@ -292,7 +292,7 @@ const ChatMessage = ({
       )}
     </div>
     <div
-      className={`max-w-[90%] md:max-w-[85%] ${role === "ai" ? "text-base md:text-lg font-light leading-relaxed" : "text-sm md:text-base font-medium text-white/90"}`}
+      className={`max-w-[90%] md:max-w-[85%] ${role === "ai" ? "text-base md:text-lg font-light leading-relaxed" : "text-sm md:text-base font-medium text-[var(--foreground)]"}`}
     >
       {content}
     </div>
@@ -321,14 +321,14 @@ const WelcomeOnboarding = ({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: 0.2 }}
-      className="mb-10 p-1 rounded-xl bg-gradient-to-r from-[#D4B483]/40 via-[#D4B483]/10 to-transparent border border-accent-sand/30"
+      className="mb-10 p-1 rounded-xl     border border-accent-sand/30"
     >
-      <div className="bg-[#050507] rounded-lg p-4 md:p-6 flex flex-col md:flex-row items-center gap-6 text-left">
+      <div className="bg-[var(--background)] rounded-lg p-4 md:p-6 flex flex-col md:flex-row items-center gap-6 text-left">
         <div className="flex-1">
           <h4 className="text-white font-serif text-lg mb-1">
             Are your company codes still valid?
           </h4>
-          <p className="text-[#888] text-xs leading-relaxed mb-4">
+          <p className="text-[var(--kbli-text-muted)] text-xs leading-relaxed mb-4">
             KBLI 2025 (Peraturan BPS 7/2025) replaced KBLI 2020 in December
             2025.
           </p>
@@ -346,10 +346,10 @@ const WelcomeOnboarding = ({
       </div>
     </motion.div>
 
-    <h1 className="text-2xl md:text-4xl font-serif text-[#F0F0F0] leading-tight mb-3">
+    <h1 className="text-2xl md:text-4xl font-serif text-[var(--foreground)] leading-tight mb-3">
       What business do you want to start in Indonesia?
     </h1>
-    <p className="text-sm md:text-base text-[#888] mb-8 md:mb-10">
+    <p className="text-sm md:text-base text-[var(--kbli-text-muted)] mb-8 md:mb-10">
       Describe your idea in any language and we&apos;ll find the right codes,
       licenses and requirements.
     </p>
@@ -361,12 +361,12 @@ const WelcomeOnboarding = ({
           <button
             key={chip.label}
             onClick={() => onChipClick(chip.query)}
-            className="group flex items-center gap-3 p-4 min-h-[44px] rounded-lg bg-surface-deep/60 border border-white/5 hover:border-accent-sand/40 hover:bg-[#151921] transition-all duration-200 text-left"
+            className="group flex items-center gap-3 p-4 min-h-[44px] rounded-lg bg-slate-50 border border-[var(--border)] hover:border-accent-sand hover:bg-[#151921] transition-all duration-200 text-left"
           >
-            <div className="p-2 rounded bg-surface-editorial-elevated text-[#888] group-hover:text-accent-sand transition-colors border border-white/5">
+            <div className="p-2 rounded bg-surface-editorial-elevated text-[var(--kbli-text-muted)] group-hover:text-accent-sand transition-colors border border-[var(--border)]">
               <Icon size={16} />
             </div>
-            <span className="text-sm text-[#CCC] group-hover:text-white transition-colors">
+            <span className="text-sm text-[var(--foreground)] group-hover:text-white transition-colors">
               {chip.label}
             </span>
           </button>
@@ -374,8 +374,8 @@ const WelcomeOnboarding = ({
       })}
     </div>
 
-    <div className="border-t border-white/5 pt-8 md:pt-10">
-      <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-6">
+    <div className="border-t border-[var(--border)] pt-8 md:pt-10">
+      <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--kbli-text-muted)] mb-6">
         How it works
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
@@ -391,10 +391,12 @@ const WelcomeOnboarding = ({
           },
         ].map((item) => (
           <div key={item.step} className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-accent-sand/10 border border-accent-sand/20 text-accent-sand text-xs flex items-center justify-center font-mono">
+            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-slate-50 border border-accent-sand/20 text-accent-sand text-xs flex items-center justify-center font-mono">
               {item.step}
             </span>
-            <p className="text-sm text-[#999] leading-relaxed">{item.text}</p>
+            <p className="text-sm text-[var(--kbli-text-muted)] leading-relaxed">
+              {item.text}
+            </p>
           </div>
         ))}
       </div>
@@ -464,7 +466,7 @@ const AIMessageContent = ({
       {isTyping && isLatest && (
         <button
           onClick={skip}
-          className="text-[11px] uppercase tracking-widest text-[#555] hover:text-accent-sand transition-colors"
+          className="text-[11px] uppercase tracking-widest text-[var(--kbli-text-muted)] hover:text-accent-sand transition-colors"
         >
           Skip &rarr;
         </button>
@@ -497,10 +499,10 @@ const AIMessageContent = ({
                           handleInspect(result.code);
                         }
                       }}
-                      className={`group w-full text-left p-4 min-h-[44px] rounded-lg bg-surface-deep/60 border transition-all duration-200 ${
+                      className={`group w-full text-left p-4 min-h-[44px] rounded-lg bg-slate-50 border transition-all duration-200 ${
                         isSelected
-                          ? "border-accent-sand bg-accent-sand/5"
-                          : "border-white/5 hover:border-accent-sand/40 hover:bg-[#151921]"
+                          ? "border-accent-sand bg-slate-50"
+                          : "border-[var(--border)] hover:border-accent-sand hover:bg-[#151921]"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
@@ -514,11 +516,14 @@ const AIMessageContent = ({
                               }`}
                             >
                               {isSelected && (
-                                <Check size={10} className="text-[#050507]" />
+                                <Check
+                                  size={10}
+                                  className="text-[var(--foreground)]"
+                                />
                               )}
                             </div>
                           )}
-                          <span className="font-mono text-sm tracking-wider text-accent-sand bg-accent-sand/10 px-2.5 py-0.5 rounded border border-accent-sand/20">
+                          <span className="font-mono text-sm tracking-wider text-accent-sand bg-slate-50 px-2.5 py-0.5 rounded border border-accent-sand/20">
                             {result.code}
                           </span>
                         </div>
@@ -547,7 +552,7 @@ const AIMessageContent = ({
                         {result.description}
                       </p>
                       {!compareMode && (
-                        <div className="flex items-center gap-1 mt-2 text-[11px] text-[#555] group-hover:text-accent-sand transition-colors">
+                        <div className="flex items-center gap-1 mt-2 text-[11px] text-[var(--kbli-text-muted)] group-hover:text-accent-sand transition-colors">
                           <span>View details</span>
                           <ChevronRight size={10} />
                         </div>
@@ -576,14 +581,14 @@ const AIMessageContent = ({
                 <button
                   key={code}
                   onClick={() => handleInspect(code)}
-                  className="group flex items-center gap-2 px-3 py-2 min-h-[44px] rounded bg-[#151921] border border-white/10 hover:border-accent-sand transition-all"
+                  className="group flex items-center gap-2 px-3 py-2 min-h-[44px] rounded bg-[#151921] border border-[var(--border)] hover:border-accent-sand transition-all"
                 >
                   <span className="font-mono text-accent-sand text-xs">
                     KBLI {code}
                   </span>
                   <ChevronRight
                     size={12}
-                    className="text-[#555] group-hover:text-accent-sand"
+                    className="text-[var(--kbli-text-muted)] group-hover:text-accent-sand"
                   />
                 </button>
               ))}
@@ -600,13 +605,13 @@ const AIMessageContent = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-white/5"
+              className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-[var(--border)]"
             >
               {msg.suggested_queries.map((sq: string, sqIdx: number) => (
                 <button
                   key={sqIdx}
                   onClick={() => handleSendMessage(sq)}
-                  className="group flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-full text-xs text-accent-sand bg-accent-sand/5 border border-accent-sand/20 hover:bg-accent-sand/10 hover:border-accent-sand/40 transition-all"
+                  className="group flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-full text-xs text-accent-sand bg-slate-50 border border-accent-sand/20 hover:bg-accent-sand/10 hover:border-accent-sand transition-all"
                 >
                   <ArrowRight
                     size={10}
@@ -641,21 +646,19 @@ const InspectorChoreographed = ({
     return (
       <div className="h-full flex flex-col items-center justify-center text-accent-sand">
         <Loader2 size={32} className="animate-spin mb-4" />
-        <p className="text-xs uppercase tracking-widest opacity-50">
-          Loading details...
-        </p>
+        <p className="text-xs uppercase tracking-widest">Loading details...</p>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-[#444] px-8 text-center">
+      <div className="h-full flex flex-col items-center justify-center text-[var(--kbli-text-muted)] px-8 text-center">
         <Search size={48} className="mb-6 opacity-20 stroke-1" />
-        <p className="text-sm font-medium text-[#666] mb-2">
+        <p className="text-sm font-medium text-[var(--kbli-text-muted)] mb-2">
           Click on any result to see full details
         </p>
-        <p className="text-xs text-[#444]">
+        <p className="text-xs text-[var(--kbli-text-muted)]">
           Licenses, restrictions, risk level and related business codes will
           appear here
         </p>
@@ -722,7 +725,7 @@ const InspectorChoreographed = ({
       {onClose && (
         <button
           onClick={onClose}
-          className="md:hidden absolute top-4 right-4 z-10 p-2 rounded-full bg-surface-editorial-elevated text-[#888]"
+          className="md:hidden absolute top-4 right-4 z-10 p-2 rounded-full bg-surface-editorial-elevated text-[var(--kbli-text-muted)]"
         >
           <X size={18} />
         </button>
@@ -737,7 +740,7 @@ const InspectorChoreographed = ({
         variants={container}
         initial="hidden"
         animate="show"
-        className="p-6 md:p-8 border-b border-white/5 bg-gradient-to-b from-[#0F1115] to-[#050507]"
+        className="p-6 md:p-8 border-b border-[var(--border)] bg-gradient-to-b from-[#0F1115] to-[#050507]"
       >
         {/* Header with copy/share buttons (2C) */}
         <div className="flex items-center justify-between mb-4">
@@ -749,7 +752,7 @@ const InspectorChoreographed = ({
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", stiffness: 200, damping: 15 }}
-              className="px-3 py-1 rounded text-xs font-mono tracking-wider bg-accent-sand/10 text-accent-sand border border-accent-sand/20"
+              className="px-3 py-1 rounded text-xs font-mono tracking-wider bg-slate-50 text-accent-sand border border-accent-sand/20"
             >
               KBLI {data.code}
             </motion.span>
@@ -765,7 +768,7 @@ const InspectorChoreographed = ({
           <div className="flex items-center gap-1">
             <button
               onClick={handleCopy}
-              className="p-2 rounded hover:bg-white/5 text-[#666] hover:text-accent-sand transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="p-2 rounded hover:bg-white/5 text-[var(--kbli-text-muted)] hover:text-accent-sand transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
               title="Copy details"
               aria-label="Copy details"
             >
@@ -775,7 +778,7 @@ const InspectorChoreographed = ({
         </div>
         <motion.h2
           variants={item}
-          className="text-2xl md:text-3xl font-serif text-[#F0F0F0] leading-tight mb-6"
+          className="text-2xl md:text-3xl font-serif text-[var(--foreground)] leading-tight mb-6"
         >
           {data.title}
         </motion.h2>
@@ -801,10 +804,10 @@ const InspectorChoreographed = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--kbli-text-muted)] mb-4 flex items-center gap-2">
             <FileText size={12} /> Official Description
           </h3>
-          <p className="text-sm text-[#CCC] leading-loose font-light border-l border-accent-sand/30 pl-5 italic">
+          <p className="text-sm text-[var(--foreground)] leading-loose font-light border-l border-accent-sand/30 pl-5 italic">
             &ldquo;{data.description}&rdquo;
           </p>
         </motion.section>
@@ -816,13 +819,13 @@ const InspectorChoreographed = ({
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
           >
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--kbli-text-muted)] mb-4 flex items-center gap-2">
               <Scale size={12} /> Required Licenses
             </h3>
             <div className="relative">
               {/* Vertical connecting line */}
               {sortedLicenses.length > 1 && (
-                <div className="absolute left-[11px] top-6 bottom-6 w-px bg-white/5" />
+                <div className="absolute left-[11px] top-6 bottom-6 w-px bg-[var(--kbli-bg-surface)]" />
               )}
               <div className="space-y-4">
                 {sortedLicenses.map((lic, idx) => (
@@ -834,14 +837,14 @@ const InspectorChoreographed = ({
                     className="flex gap-3"
                   >
                     {/* Step number */}
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-surface-deep border border-white/10 text-[11px] text-[#666] flex items-center justify-center font-mono z-10">
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-surface-deep border border-[var(--border)] text-[11px] text-[var(--kbli-text-muted)] flex items-center justify-center font-mono z-10">
                       {idx + 1}
                     </div>
                     <div
                       className={`group flex-1 p-4 bg-[#0A0C10] rounded hover:border-accent-sand/20 transition-all ${
                         idx === 0
                           ? "border-l-[3px] border border-accent-sand/30 border-l-[#D4B483]"
-                          : "border-l-2 border border-white/5 border-l-white/10"
+                          : "border-l-2 border border-[var(--border)] border-l-white/10"
                       }`}
                     >
                       <div className="flex justify-between items-start mb-2">
@@ -859,25 +862,27 @@ const InspectorChoreographed = ({
                             </span>
                           )}
                         </span>
-                        <span className="text-[11px] uppercase px-2 py-1 rounded-full bg-[#151921] text-[#888] border border-white/5">
+                        <span className="text-[11px] uppercase px-2 py-1 rounded-full bg-[#151921] text-[var(--kbli-text-muted)] border border-[var(--border)]">
                           {lic.sla}
                         </span>
                       </div>
-                      <div className="flex flex-col gap-1 text-xs text-[#666]">
+                      <div className="flex flex-col gap-1 text-xs text-[var(--kbli-text-muted)]">
                         <span>
                           Business Size:{" "}
-                          <span className="text-[#999]">
+                          <span className="text-[var(--kbli-text-muted)]">
                             {lic.scale.join(", ")}
                           </span>
                         </span>
                         <span>
                           Risk Level:{" "}
-                          <span className="text-[#999]">{lic.risk_level}</span>
+                          <span className="text-[var(--kbli-text-muted)]">
+                            {lic.risk_level}
+                          </span>
                         </span>
                       </div>
                       {lic.requirements.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-white/5">
-                          <p className="text-[11px] text-[#444] uppercase mb-2">
+                        <div className="mt-3 pt-3 border-t border-[var(--border)]">
+                          <p className="text-[11px] text-[var(--kbli-text-muted)] uppercase mb-2">
                             What you need to do:
                           </p>
                           <ul className="space-y-1">
@@ -886,7 +891,7 @@ const InspectorChoreographed = ({
                               return (
                                 <li
                                   key={ridx}
-                                  className="text-[11px] text-[#888] leading-tight"
+                                  className="text-[11px] text-[var(--kbli-text-muted)] leading-tight"
                                 >
                                   &bull; {duty.text}
                                   {duty.truncated && (
@@ -918,7 +923,7 @@ const InspectorChoreographed = ({
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--kbli-text-muted)] mb-4 flex items-center gap-2">
             <Activity size={12} /> Related Business Codes
           </h3>
           <div className="flex flex-wrap gap-2">
@@ -929,7 +934,7 @@ const InspectorChoreographed = ({
               <button
                 key={idx}
                 onClick={() => onInspect?.(rel)}
-                className="px-4 py-2 min-h-[44px] inline-flex items-center rounded-full bg-surface-deep text-xs text-[#888] border border-white/5 hover:border-accent-sand/30 hover:text-accent-sand cursor-pointer transition-all"
+                className="px-4 py-2 min-h-[44px] inline-flex items-center rounded-full bg-surface-deep text-xs text-[var(--kbli-text-muted)] border border-[var(--border)] hover:border-accent-sand hover:text-accent-sand cursor-pointer transition-all"
               >
                 {rel}
               </button>
@@ -1113,7 +1118,10 @@ export default function KBLIExplorerPage() {
   const currentPlaceholder = ROTATING_PLACEHOLDERS[placeholderIdx];
 
   return (
-    <div className="flex h-full font-sans overflow-x-hidden">
+    <div
+      data-presentation="r19"
+      className="flex h-full font-sans overflow-x-hidden"
+    >
       {/* MOBILE SIDEBAR BACKDROP */}
       <AnimatePresence>
         {sidebarOpen && (
@@ -1121,7 +1129,7 @@ export default function KBLIExplorerPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 z-30 md:hidden"
+            className="fixed inset-0 bg-slate-50 z-30 md:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
@@ -1132,8 +1140,8 @@ export default function KBLIExplorerPage() {
         className={`
           fixed md:relative z-40 md:z-20
           w-[280px] md:w-[320px] h-full
-          bg-[#080A0E] border-r border-white/5 flex flex-col
-          shadow-[5px_0_30px_rgba(0,0,0,0.3)]
+          bg-[var(--background)] border-r border-[var(--border)] flex flex-col
+          
           transition-transform duration-300
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
           hidden md:flex
@@ -1146,21 +1154,21 @@ export default function KBLIExplorerPage() {
               <img
                 src="/images/logo-zantara.png"
                 alt="Zantara Logo"
-                className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(212,180,131,0.2)]"
+                className="w-full h-full object-contain filter "
               />
             </div>
             <div className="flex flex-col">
               <span className="font-serif text-lg tracking-wide text-silver">
                 Zantara
               </span>
-              <span className="text-[11px] uppercase tracking-[0.3em] text-[#444] -mt-1">
+              <span className="text-[11px] uppercase tracking-[0.3em] text-[var(--kbli-text-muted)] -mt-1">
                 Business Code Guide
               </span>
             </div>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="md:hidden p-2 rounded text-[#888] hover:text-white min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="md:hidden p-2 rounded text-[var(--kbli-text-muted)] hover:text-white min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             <X size={18} />
           </button>
@@ -1168,12 +1176,12 @@ export default function KBLIExplorerPage() {
 
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8">
           <section>
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#333] mb-4 px-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--kbli-text-muted)] mb-4 px-2">
               2025 Transition
             </h3>
             <button
               onClick={() => setIsBlackBookOpen(true)}
-              className="w-full group p-4 rounded-lg bg-gradient-to-br from-[#D4B483]/20 to-[#0A0C10] border border-accent-sand/30 hover:border-accent-sand transition-all text-left"
+              className="w-full group p-4 rounded-lg    border border-accent-sand/30 hover:border-accent-sand transition-all text-left"
             >
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 rounded bg-surface-deep text-accent-sand border border-accent-sand/20">
@@ -1183,14 +1191,14 @@ export default function KBLIExplorerPage() {
                   ASK ABOUT YOUR CODES
                 </span>
               </div>
-              <p className="text-[11px] text-[#888] leading-tight group-hover:text-[#CCC] transition-colors">
+              <p className="text-[11px] text-[var(--kbli-text-muted)] leading-tight group-hover:text-white transition-colors">
                 Ask our team which KBLI 2025 code replaces yours.
               </p>
             </button>
           </section>
 
           <section>
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#333] mb-4 px-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--kbli-text-muted)] mb-4 px-2">
               Official Sources
             </h3>
             <div className="space-y-3">
@@ -1201,16 +1209,16 @@ export default function KBLIExplorerPage() {
           </section>
         </div>
 
-        <div className="p-4 border-t border-white/5">
+        <div className="p-4 border-t border-[var(--border)]">
           <div className="flex items-center gap-3 p-2 rounded">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#D4B483] to-[#8C7350] flex items-center justify-center text-[#050507] text-[11px] font-bold">
+            <div className="w-8 h-8 rounded-full bg-[var(--kbli-bg-surface)] border border-[var(--border)] flex items-center justify-center text-[var(--foreground)] text-[11px] font-bold">
               AZ
             </div>
             <div>
               <div className="text-xs font-medium text-silver">
                 Business Assistant
               </div>
-              <div className="text-[11px] text-[#555] uppercase tracking-wider">
+              <div className="text-[11px] text-[var(--kbli-text-muted)] uppercase tracking-wider">
                 Ready to help
               </div>
             </div>
@@ -1226,7 +1234,7 @@ export default function KBLIExplorerPage() {
             {/* Mobile hamburger */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden absolute -left-1 top-1/2 -translate-y-1/2 p-2 rounded text-[#888] hover:text-white z-10 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="md:hidden absolute -left-1 top-1/2 -translate-y-1/2 p-2 rounded text-[var(--kbli-text-muted)] hover:text-white z-10 min-h-[44px] min-w-[44px] flex items-center justify-center"
             >
               <Menu size={20} />
             </button>
@@ -1236,21 +1244,21 @@ export default function KBLIExplorerPage() {
                 type="text"
                 placeholder=""
                 aria-label="Ask a question about KBLI"
-                className="w-full bg-surface-deep/80 backdrop-blur-md text-silver placeholder-[#444] rounded-lg py-4 md:py-5 pl-12 md:pl-14 pr-28 border border-white/5 focus:border-accent-sand/30 focus:ring-1 focus:ring-[#D4B483]/30 focus:outline-none transition-all shadow-2xl font-light tracking-wide min-h-[44px]"
+                className="w-full bg-slate-50 backdrop-blur-md text-silver placeholder-zinc-400 rounded-lg py-4 md:py-5 pl-12 md:pl-14 pr-28 border border-[var(--border)] focus:border-accent-sand/30 focus:ring-1 focus:ring-[#D4B483]/30 focus:outline-none transition-all  font-light tracking-wide min-h-[44px]"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
               {/* Rotating placeholder overlay */}
               {!query && (
                 <span
-                  className="absolute left-12 md:left-14 top-1/2 -translate-y-1/2 text-[#444] font-light tracking-wide pointer-events-none text-sm md:text-base transition-opacity duration-300"
+                  className="absolute left-12 md:left-14 top-1/2 -translate-y-1/2 text-[var(--kbli-text-muted)] font-light tracking-wide pointer-events-none text-sm md:text-base transition-opacity duration-300"
                   style={{ opacity: placeholderVisible ? 1 : 0 }}
                 >
                   {currentPlaceholder}
                 </span>
               )}
               <Search
-                className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 text-[#444]"
+                className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 text-[var(--kbli-text-muted)]"
                 size={18}
                 strokeWidth={1.5}
               />
@@ -1266,7 +1274,7 @@ export default function KBLIExplorerPage() {
                     className={`p-2 rounded-md transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${
                       compareMode
                         ? "bg-accent-sand/15 text-accent-sand"
-                        : "hover:bg-surface-editorial-elevated text-[#555] hover:text-[#888]"
+                        : "hover:bg-surface-editorial-elevated text-[var(--kbli-text-muted)] hover:text-[#888]"
                     }`}
                     title={compareMode ? "Exit compare mode" : "Compare codes"}
                   >
@@ -1278,7 +1286,7 @@ export default function KBLIExplorerPage() {
                   <button
                     type="button"
                     onClick={handleClearConversation}
-                    className="p-2 rounded-md hover:bg-surface-editorial-elevated text-[#555] hover:text-[#888] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    className="p-2 rounded-md hover:bg-surface-editorial-elevated text-[var(--kbli-text-muted)] hover:text-[#888] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                     title="Clear conversation"
                     aria-label="Clear conversation"
                   >
@@ -1307,9 +1315,9 @@ export default function KBLIExplorerPage() {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="absolute top-full mt-2 left-0 w-full bg-surface-deep border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden"
+                  className="absolute top-full mt-2 left-0 w-full bg-surface-deep border border-[var(--border)] rounded-lg  z-50 overflow-hidden"
                 >
-                  <div className="p-2 border-b border-white/5 text-[11px] uppercase tracking-widest text-[#555] px-4">
+                  <div className="p-2 border-b border-[var(--border)] text-[11px] uppercase tracking-widest text-[var(--kbli-text-muted)] px-4">
                     Related Results
                   </div>
                   <div className="max-h-60 overflow-y-auto custom-scrollbar">
@@ -1320,7 +1328,7 @@ export default function KBLIExplorerPage() {
                           handleInspect(res.code);
                           setSearchResults([]);
                         }}
-                        className="w-full flex items-center gap-4 px-4 py-3 min-h-[44px] hover:bg-surface-editorial-elevated border-b border-white/5 last:border-0 text-left transition-colors"
+                        className="w-full flex items-center gap-4 px-4 py-3 min-h-[44px] hover:bg-surface-editorial-elevated border-b border-[var(--border)] last:border-0 text-left transition-colors"
                       >
                         <span className="font-mono text-accent-sand text-xs w-12">
                           {res.code}
@@ -1328,7 +1336,10 @@ export default function KBLIExplorerPage() {
                         <span className="text-sm text-silver truncate flex-1">
                           {res.title}
                         </span>
-                        <ChevronRight size={12} className="text-[#333]" />
+                        <ChevronRight
+                          size={12}
+                          className="text-[var(--kbli-text-muted)]"
+                        />
                       </button>
                     ))}
                   </div>
@@ -1369,7 +1380,7 @@ export default function KBLIExplorerPage() {
                         role={msg.role}
                         content={
                           msg.role === "user" ? (
-                            <p className="text-lg md:text-xl font-serif text-[#F0F0F0] leading-normal">
+                            <p className="text-lg md:text-xl font-serif text-[var(--foreground)] leading-normal">
                               {msg.content}
                             </p>
                           ) : (
@@ -1409,7 +1420,7 @@ export default function KBLIExplorerPage() {
               className="sticky bottom-0 left-0 right-0 p-4 bg-[#0A0C10]/95 backdrop-blur-lg border-t border-accent-sand/20 z-30"
             >
               <div className="max-w-3xl mx-auto flex items-center justify-between">
-                <span className="text-sm text-[#CCC]">
+                <span className="text-sm text-[var(--foreground)]">
                   <span className="text-accent-sand font-mono">
                     {compareSelection.length}
                   </span>{" "}
@@ -1417,7 +1428,7 @@ export default function KBLIExplorerPage() {
                 </span>
                 <button
                   onClick={() => setCompareOpen(true)}
-                  className="px-4 py-2 min-h-[44px] inline-flex items-center rounded-lg bg-accent-sand text-[#050507] text-sm font-medium hover:bg-[#C4A473] transition-colors"
+                  className="px-4 py-2 min-h-[44px] inline-flex items-center rounded-lg bg-accent-sand text-[var(--foreground)] text-sm font-medium hover:bg-[#C4A473] transition-colors"
                 >
                   Compare {compareSelection.length} codes &rarr;
                 </button>
@@ -1428,7 +1439,7 @@ export default function KBLIExplorerPage() {
       </main>
 
       {/* RIGHT PANEL: The Inspector — desktop fixed, mobile bottom sheet */}
-      <aside className="hidden xl:block w-[420px] bg-[#0A0C10]/90 backdrop-blur-2xl border-l border-white/5 relative z-20 shadow-[-5px_0_30px_rgba(0,0,0,0.2)]">
+      <aside className="hidden xl:block w-[420px] bg-[var(--background)] backdrop-blur-2xl border-l border-[var(--border)] relative z-20 ">
         <InspectorChoreographed
           data={activeKBLI}
           isLoading={isInspecting}
@@ -1452,7 +1463,7 @@ export default function KBLIExplorerPage() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="xl:hidden fixed bottom-0 left-0 right-0 h-[70vh] bg-[#0A0C10] border-t border-white/10 rounded-t-2xl z-50 overflow-hidden"
+              className="xl:hidden fixed bottom-0 left-0 right-0 h-[70vh] bg-[#0A0C10] border-t border-[var(--border)] rounded-t-2xl z-50 overflow-hidden"
             >
               <InspectorChoreographed
                 data={activeKBLI}

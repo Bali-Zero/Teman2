@@ -199,7 +199,7 @@ export default async function KBLICodePage({
           reviewCount: GOOGLE_REVIEW_COUNT,
         }}
       >
-        <article className="pb-28">
+        <article data-presentation="r19" className="pb-28">
           {/* BREADCRUMB */}
           <KBLIBreadcrumb items={breadcrumbs} />
 
@@ -221,7 +221,7 @@ export default async function KBLICodePage({
                 <div
                   className="absolute inset-0"
                   style={{
-                    background: `linear-gradient(to bottom, transparent 20%, rgba(0,0,0,0.15) 55%, var(--kbli-bg-base) 100%)`,
+                    background: "var(--kbli-bg-surface)",
                   }}
                 />
               </>
@@ -240,7 +240,7 @@ export default async function KBLICodePage({
                 <div
                   className="absolute inset-0"
                   style={{
-                    background: `linear-gradient(to bottom, transparent 30%, rgba(43,43,43,0.4) 60%, var(--kbli-bg-base) 100%)`,
+                    background: "var(--kbli-bg-surface)",
                   }}
                 />
               </>
@@ -262,9 +262,9 @@ export default async function KBLICodePage({
                 <span
                   className="inline-flex items-center rounded-full px-3.5 py-1 font-mono text-sm font-bold tracking-wide"
                   style={{
-                    background: "rgba(212, 132, 90, 0.15)",
+                    background: "var(--kbli-accent-subtle)",
                     color: "var(--kbli-accent)",
-                    border: "1px solid rgba(212, 132, 90, 0.25)",
+                    border: "1px solid var(--kbli-border)",
                     backdropFilter: "blur(8px)",
                   }}
                 >
@@ -280,20 +280,20 @@ export default async function KBLICodePage({
               {/* Title with text-shadow for visibility */}
               <h1
                 className={`font-black tracking-tight text-white ${isGold ? "text-3xl sm:text-4xl lg:text-5xl" : "text-2xl sm:text-3xl lg:text-4xl"}`}
-                style={{ textShadow: "0 2px 8px rgba(0,0,0,0.5)" }}
+                style={{ textShadow: "none" }}
               >
                 {kbli.titleEn}
               </h1>
               <p
-                className="mt-2 text-lg text-white/60"
-                style={{ textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}
+                className="mt-2 text-lg text-[var(--kbli-text-muted)]"
+                style={{ textShadow: "none" }}
               >
                 {kbli.titleId}
               </p>
 
               {/* Section line */}
               {sectionMeta && (
-                <p className="mt-3 text-sm text-white/40">
+                <p className="mt-3 text-sm text-[var(--kbli-text-muted)]">
                   {sectionMeta.icon} Section {kbli.section} —{" "}
                   {sectionMeta.nameEn}
                 </p>
@@ -551,9 +551,9 @@ export default async function KBLICodePage({
                   <span
                     className="mt-0.5 shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold"
                     style={{
-                      background: "rgba(139, 156, 247, 0.1)",
+                      background: "var(--kbli-zantara-bg)",
                       color: "var(--kbli-accent2)",
-                      border: "1px solid rgba(139, 156, 247, 0.2)",
+                      border: "1px solid var(--kbli-border)",
                     }}
                   >
                     2020 → 2025
@@ -569,8 +569,7 @@ export default async function KBLICodePage({
                 <div
                   className="absolute inset-0 rounded-2xl"
                   style={{
-                    background:
-                      "linear-gradient(135deg, rgba(212, 132, 90, 0.04), rgba(139, 156, 247, 0.02), transparent 60%)",
+                    background: "var(--kbli-bg-surface)",
                   }}
                 />
 
@@ -598,28 +597,16 @@ export default async function KBLICodePage({
                   href={article.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group relative mt-10 flex overflow-hidden rounded-2xl transition-all duration-300 hover:shadow-xl"
-                  style={{ border: "1px solid rgba(255,255,255,0.06)" }}
+                  className="group relative mt-10 flex overflow-hidden rounded-2xl transition-all duration-300 "
+                  style={{ border: "1px solid var(--kbli-border)" }}
                 >
                   <div
                     className="relative flex h-auto w-28 shrink-0 items-center justify-center overflow-hidden sm:w-36"
                     style={{
-                      background: `linear-gradient(135deg, ${article.gradient[0]}, ${article.gradient[1]})`,
+                      background: "var(--kbli-bg-secondary)",
                     }}
                   >
-                    <div
-                      className="absolute -right-4 -top-4 h-20 w-20 rounded-full opacity-20"
-                      style={{ background: article.gradient[1] }}
-                    />
-                    <div
-                      className="absolute -bottom-3 -left-3 h-14 w-14 rounded-full opacity-15"
-                      style={{ background: "white" }}
-                    />
-                    <div
-                      className="absolute right-2 bottom-2 h-8 w-8 rounded-full opacity-10"
-                      style={{ background: "white" }}
-                    />
-                    <span className="relative text-3xl drop-shadow-lg transition-transform duration-300 group-hover:scale-110 sm:text-4xl">
+                    <span className="relative text-3xl  transition-transform duration-300 group-hover:scale-110 sm:text-4xl">
                       {article.icon}
                     </span>
                   </div>
@@ -630,7 +617,7 @@ export default async function KBLICodePage({
                   >
                     <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--kbli-accent)]">
                       <span>Read Full Guide on Bali Zero</span>
-                      <span className="text-sm opacity-50 transition-transform duration-300 group-hover:translate-x-0.5">
+                      <span className="text-sm transition-transform duration-300 group-hover:translate-x-0.5">
                         ↗
                       </span>
                     </span>
@@ -709,7 +696,7 @@ export default async function KBLICodePage({
                                 <span
                                   className="ml-1.5 inline-flex rounded px-1 py-0.5 text-[9px] font-bold uppercase"
                                   style={{
-                                    background: "rgba(232, 168, 73, 0.1)",
+                                    background: "var(--kbli-pma-restricted-bg)",
                                     color: "var(--kbli-pma-restricted)",
                                   }}
                                 >
@@ -737,8 +724,8 @@ export default async function KBLICodePage({
                     <div
                       className="mt-5 rounded-xl p-4"
                       style={{
-                        background: "rgba(139, 156, 247, 0.04)",
-                        border: "1px solid rgba(139, 156, 247, 0.1)",
+                        background: "var(--kbli-zantara-bg)",
+                        border: "1px solid var(--kbli-border)",
                       }}
                     >
                       <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
@@ -812,9 +799,9 @@ export default async function KBLICodePage({
                       <span
                         className="mt-0.5 shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold"
                         style={{
-                          background: "rgba(139, 156, 247, 0.1)",
+                          background: "var(--kbli-zantara-bg)",
                           color: "var(--kbli-accent2)",
-                          border: "1px solid rgba(139, 156, 247, 0.2)",
+                          border: "1px solid var(--kbli-border)",
                         }}
                       >
                         What Changed
@@ -848,8 +835,7 @@ export default async function KBLICodePage({
                       <div
                         className="absolute inset-0 rounded-2xl"
                         style={{
-                          background:
-                            "linear-gradient(135deg, rgba(212, 132, 90, 0.04), rgba(139, 156, 247, 0.02), transparent 60%)",
+                          background: "var(--kbli-bg-surface)",
                         }}
                       />
                       <div className="relative px-6 py-10 sm:px-8 lg:px-10">
@@ -946,24 +932,16 @@ export default async function KBLICodePage({
                   href={article.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group relative mt-8 flex overflow-hidden rounded-2xl transition-all duration-300 hover:shadow-xl"
-                  style={{ border: "1px solid rgba(255,255,255,0.06)" }}
+                  className="group relative mt-8 flex overflow-hidden rounded-2xl transition-all duration-300 "
+                  style={{ border: "1px solid var(--kbli-border)" }}
                 >
                   <div
                     className="relative flex h-auto w-28 shrink-0 items-center justify-center overflow-hidden sm:w-36"
                     style={{
-                      background: `linear-gradient(135deg, ${article.gradient[0]}, ${article.gradient[1]})`,
+                      background: "var(--kbli-bg-secondary)",
                     }}
                   >
-                    <div
-                      className="absolute -right-4 -top-4 h-20 w-20 rounded-full opacity-20"
-                      style={{ background: article.gradient[1] }}
-                    />
-                    <div
-                      className="absolute -bottom-3 -left-3 h-14 w-14 rounded-full opacity-15"
-                      style={{ background: "white" }}
-                    />
-                    <span className="relative text-3xl drop-shadow-lg transition-transform duration-300 group-hover:scale-110 sm:text-4xl">
+                    <span className="relative text-3xl  transition-transform duration-300 group-hover:scale-110 sm:text-4xl">
                       {article.icon}
                     </span>
                   </div>
@@ -973,7 +951,7 @@ export default async function KBLICodePage({
                   >
                     <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--kbli-accent)]">
                       <span>Read Full Guide on Bali Zero</span>
-                      <span className="text-sm opacity-50 transition-transform duration-300 group-hover:translate-x-0.5">
+                      <span className="text-sm transition-transform duration-300 group-hover:translate-x-0.5">
                         ↗
                       </span>
                     </span>

@@ -44,19 +44,19 @@ export default function LegacyAlert({
           <h3 className="font-serif text-lg md:text-xl font-bold mb-1 tracking-tight">
             2025 COMPLIANCE ALERT: KBLI {code}
           </h3>
-          <p className="text-sm opacity-90 leading-relaxed mb-4">
+          <p className="text-sm leading-relaxed mb-4">
             <span className="font-bold uppercase tracking-wider">
               {entry.status}:
             </span>{" "}
             {entry.reason}
             <br />
-            <span className="mt-2 block italic opacity-80">{entry.impact}</span>
+            <span className="mt-2 block italic">{entry.impact}</span>
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={onOpenBlackBook}
-              className="group flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-accent-sand text-[#050507] text-sm font-bold hover:bg-[#C4A473] transition-all"
+              className="group flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-accent-sand text-[var(--foreground)] text-sm font-bold hover:bg-[#C4A473] transition-all"
             >
               <Send size={16} />
               <span>ASK WHICH CODE REPLACES IT</span>
