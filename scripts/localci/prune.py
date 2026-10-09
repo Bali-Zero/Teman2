@@ -39,6 +39,7 @@ BULK = ("call-graph.json", "higher-order-call-graph.json")   # Pysa's, 77-114 MB
 VERDICT = ("status.json", "hosted_compare.json", "state/plan.json")
 HOST_PATH = "/System/Volumes/Data" if os.path.isdir("/System/Volumes/Data") else "/"
 CANDIDATE_IMAGE = "localci-candidate:1"
+VM_DOCKER_MOUNT = "/mnt/lima-colima"   # B8b: the Colima VM's data disk (/dev/vdb1), bind-mounted on /var/lib/docker; online discard is kept on it
 MATRIX = Path(__file__).resolve().parent / "contexts_matrix.yaml"   # the BASE matrix the wrapper extracted beside this file
 
 
@@ -307,6 +308,46 @@ def builder_prune(docker: str, rec: dict, budget_gb: float) -> None:
     bp["rc"] = rc   # the last call's, as ruled; `runs` says how many there were
 
 
+def _vm_discard_on(colima: str) -> tuple[bool | None, str | None]:
+    """Whether the VM's data disk is mounted with `discard`: (True|False, None), or (None, why) when it cannot be read. The mount
+    point is matched as the second FIELD of a /proc/mounts line and `discard` as one of the comma-split options, never as text."""
+    try:
+        t = subprocess.run([colima, "ssh", "--", "cat", "/proc/mounts"], capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return None, type(e).__name__
+    if t.returncode != 0:
+        return None, f"rc {t.returncode}"
+    found = None
+    for line in t.stdout.splitlines():
+        f = line.split()
+        if len(f) >= 4 and f[1] == VM_DOCKER_MOUNT:
+            found = "discard" in f[3].split(",")   # the LAST line for a mount point is the one in force (a stacked mount)
+    return (found, None) if found is not None else (None, "mount point not found")
+
+
+def keep_vm_discard(colima: str) -> dict:
+    """B8b: the VM's data disk keeps online discard, so a finished leg's blocks return to the host as they are freed, not at the tick's
+    end. Mount options do not survive a VM restart; this puts the option back. Never raises: a measurement problem stops nothing."""
+    if os.environ.get("LOCALCI_VM_DISCARD") == "0":
+        return {"skipped": "LOCALCI_VM_DISCARD=0"}
+    out = {"before": None, "after": None, "remounted": False, "rc": None, "error": None}
+    out["before"], out["error"] = _vm_discard_on(colima)
+    out["after"] = out["before"]
+    if out["before"] is not False:
+        return out
+    out["remounted"] = True
+    try:
+        r = subprocess.run([colima, "ssh", "--", "sudo", "mount", "-o", "remount,discard", VM_DOCKER_MOUNT], capture_output=True, text=True, timeout=60)
+        out["rc"] = r.returncode
+        if r.returncode != 0:
+            out["error"] = (r.stderr or r.stdout).strip()[-160:] or f"rc {r.returncode}"
+    except (OSError, subprocess.TimeoutExpired) as e:
+        out["error"] = type(e).__name__
+    out["after"], why = _vm_discard_on(colima)
+    out["error"] = out["error"] or why
+    return out
+
+
 def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, colima: str = "colima", host_path: str = HOST_PATH,
           now_s: float | None = None, matrix: Path = MATRIX) -> dict:
     now_s = time.time() if now_s is None else now_s
@@ -372,6 +413,7 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
     rec["host_free_gb"]["after"] = host_free_gb(host_path)
     if fstrim and not dry:   # every real prune ends with a trim: a run's own containers and layers free blocks every tick, which
         # stay allocated in the host's sparse disk until trimmed (B7, measured 2026-10-08T15:16Z: 11.4 GiB back with no removal)
+        rec["vm_discard"] = keep_vm_discard(colima)   # before the trim: the trim then finds only what discard has not returned
         try:
             t = subprocess.run([colima, "ssh", "--", "sudo", "fstrim", "-av"], capture_output=True, text=True, timeout=900)
             rec["fstrim"] = {"rc": t.returncode, "tail": (t.stdout or t.stderr).strip()[-160:]}
@@ -379,4 +421,6 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
             rec["fstrim"] = {"rc": None, "tail": type(e).__name__}
         rec["host_free_gb"]["after_fstrim"] = host_free_gb(host_path)
     rec["failed"] = [k for k in ("builder_prune", "fstrim") if k in rec and rec[k]["rc"] != 0] + (["images"] if errors else [])
+    if rec.get("vm_discard", {}).get("remounted") and rec["vm_discard"]["after"] is not True:
+        rec["failed"].append("vm_discard")
     return rec
