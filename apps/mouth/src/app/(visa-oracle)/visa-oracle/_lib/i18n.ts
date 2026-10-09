@@ -464,7 +464,7 @@ const en = {
   "q.family_sponsor_permit_basis.opt.WORKING_HOLIDAY": "Working holiday",
   "q.family_sponsor_permit_basis.opt.OTHER": "Another basis",
   "why.family_sponsor_permit_basis":
-    "Some permit bases block a family-reunification permit from being layered on top of them. We can't verify your answer automatically, so our team reviews it directly rather than the system deciding on its own.",
+    "Some permit bases cannot have a family permit added on top of them. This tool cannot check your answer automatically; you can discuss it with a Bali Zero advisor.",
   "q.family_marriage_registered": "Is the marriage officially registered?",
   "q.family_marriage_registered.hint":
     "If your sponsor is your parent, this asks about your parents' marriage. Choose Not applicable if the family relationship involves no marriage.",
@@ -656,7 +656,7 @@ const en = {
 
   "notsure.trigger": "Not sure?",
   "assumption.in_indonesia":
-    "You weren’t sure where you are, so we recorded that as unresolved instead of assuming it, and a Bali Zero advisor confirms it with you.",
+    "You weren’t sure where you are, so we recorded that as unresolved instead of assuming it. You can discuss it with a Bali Zero advisor.",
   "assumption.permit_expiry":
     "You weren’t sure when your current stay permission expires, so no deadline was inferred.",
   "assumption.stay_days":
@@ -666,23 +666,23 @@ const en = {
   "assumption.remote_clients":
     "You weren’t sure where your clients are based, so this remains unresolved. You can discuss it with a Bali Zero advisor.",
   "assumption.secondhome_deposit_usd":
-    "You weren’t sure what bank deposit you can document, so we assessed this plan as if the deposit were zero; a Bali Zero advisor confirms the real figure with you.",
+    "You weren’t sure what bank deposit you can document, so we assessed this plan as if the deposit were zero. You can discuss it with a Bali Zero advisor.",
   "assumption.secondhome_property_value_usd":
-    "You weren’t sure what property value you can document, so we assessed this plan as if the property value were zero; a Bali Zero advisor confirms the real figure with you.",
+    "You weren’t sure what property value you can document, so we assessed this plan as if the property value were zero. You can discuss it with a Bali Zero advisor.",
   "assumption.secondhome_passive_income_usd":
-    "You weren’t sure what passive monthly income you can document, so we assessed this plan as if that income were zero; a Bali Zero advisor confirms the real figure with you.",
+    "You weren’t sure what passive monthly income you can document, so we assessed this plan as if that income were zero. You can discuss it with a Bali Zero advisor.",
   "assumption.secondhome_state_bank":
-    "You weren’t sure whether the deposit sits at an Indonesian state-owned bank, so we assessed this plan as if the answer were “no”; a Bali Zero advisor confirms it with you.",
+    "You weren’t sure whether the deposit sits at an Indonesian state-owned bank, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
   "assumption.secondhome_own_name":
-    "You weren’t sure whether the full deposit is held in your own name, so we assessed this plan as if the answer were “no”; a Bali Zero advisor confirms it with you.",
+    "You weren’t sure whether the full deposit is held in your own name, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
   "assumption.study_admission_confirmed":
-    "You weren’t sure whether an Indonesian institution has confirmed your admission, so we assessed this plan as if the answer were “no”; a Bali Zero advisor confirms it with you.",
+    "You weren’t sure whether an Indonesian institution has confirmed your admission, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
   "assumption.study_sponsor_confirmed":
-    "You weren’t sure whether the institution or study sponsor has confirmed support, so we assessed this plan as if the answer were “no”; a Bali Zero advisor confirms it with you.",
+    "You weren’t sure whether the institution or study sponsor has confirmed support, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
   "assumption.diaspora_documents":
-    "You weren’t sure whether you can document that connection, so we assessed this plan as if the answer were “no”; a Bali Zero advisor confirms it with you.",
+    "You weren’t sure whether you can document that connection, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
   "assumption.retirement_basis":
-    "You weren’t sure which basis you can document today, so we assessed this plan as if you had not chosen a basis yet; a Bali Zero advisor confirms it with you.",
+    "You weren’t sure which basis you can document today, so we assessed this plan as if you had not chosen a basis yet. You can discuss it with a Bali Zero advisor.",
   "assumption.retirement_penjamin_confirmed":
     "You weren’t sure whether you have a penjamin, so we assessed this plan as if the answer were “no”; Bali Zero can act as your penjamin.",
   "assumption.generic":
@@ -1559,7 +1559,7 @@ const id: Record<Keys, string> = {
   "q.family_sponsor_permit_basis.opt.WORKING_HOLIDAY": "Working holiday",
   "q.family_sponsor_permit_basis.opt.OTHER": "Dasar lain",
   "why.family_sponsor_permit_basis":
-    "Beberapa dasar izin dapat menghalangi penerbitan izin penyatuan keluarga di atasnya. Kami tidak dapat memverifikasi jawaban Anda secara otomatis, sehingga tim kami yang meninjau langsung, bukan sistem yang memutuskan sendiri.",
+    "Beberapa dasar izin tinggal tidak dapat menjadi dasar bagi izin keluarga. Alat ini tidak dapat memeriksa jawaban Anda secara otomatis; Anda dapat membahasnya dengan konsultan Bali Zero.",
   "q.family_marriage_registered": "Apakah pernikahan tercatat secara resmi?",
   "q.family_marriage_registered.hint":
     "Jika sponsor Anda adalah orang tua, pertanyaan ini mengenai pernikahan orang tua Anda. Pilih Tidak berlaku jika hubungan keluarga tidak melibatkan pernikahan.",
@@ -1745,7 +1745,7 @@ const id: Record<Keys, string> = {
 
   "notsure.trigger": "Tidak yakin?",
   "assumption.in_indonesia":
-    "Anda tidak yakin di mana posisi Anda, jadi kami mencatatnya sebagai hal yang belum dipastikan alih-alih menganggapnya, dan konsultan Bali Zero akan memastikannya bersama Anda.",
+    "Anda tidak yakin di mana posisi Anda, jadi kami mencatatnya sebagai hal yang belum dipastikan alih-alih menganggapnya. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.permit_expiry":
     "Anda belum yakin kapan izin tinggal saat ini berakhir, jadi tidak ada tenggat yang diperkirakan.",
   "assumption.stay_days":
@@ -1755,23 +1755,23 @@ const id: Record<Keys, string> = {
   "assumption.remote_clients":
     "Anda belum yakin di mana klien Anda berada, jadi hal ini belum dipastikan. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.secondhome_deposit_usd":
-    "Anda tidak yakin berapa deposito bank yang dapat Anda buktikan, jadi rencana ini kami nilai seolah depositonya nol; konsultan Bali Zero akan memastikan angka sebenarnya bersama Anda.",
+    "Anda tidak yakin berapa deposito bank yang dapat Anda buktikan, jadi rencana ini kami nilai seolah depositonya nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.secondhome_property_value_usd":
-    "Anda tidak yakin berapa nilai properti yang dapat Anda buktikan, jadi rencana ini kami nilai seolah nilai propertinya nol; konsultan Bali Zero akan memastikan angka sebenarnya bersama Anda.",
+    "Anda tidak yakin berapa nilai properti yang dapat Anda buktikan, jadi rencana ini kami nilai seolah nilai propertinya nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.secondhome_passive_income_usd":
-    "Anda tidak yakin berapa penghasilan pasif bulanan yang dapat Anda buktikan, jadi rencana ini kami nilai seolah penghasilan itu nol; konsultan Bali Zero akan memastikan angka sebenarnya bersama Anda.",
+    "Anda tidak yakin berapa penghasilan pasif bulanan yang dapat Anda buktikan, jadi rencana ini kami nilai seolah penghasilan itu nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.secondhome_state_bank":
-    "Anda tidak yakin apakah deposito itu ditempatkan di bank BUMN Indonesia, jadi rencana ini kami nilai seolah jawabannya “tidak”; konsultan Bali Zero akan memastikannya bersama Anda.",
+    "Anda tidak yakin apakah deposito itu ditempatkan di bank BUMN Indonesia, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.secondhome_own_name":
-    "Anda tidak yakin apakah seluruh deposito itu atas nama Anda sendiri, jadi rencana ini kami nilai seolah jawabannya “tidak”; konsultan Bali Zero akan memastikannya bersama Anda.",
+    "Anda tidak yakin apakah seluruh deposito itu atas nama Anda sendiri, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.study_admission_confirmed":
-    "Anda tidak yakin apakah institusi di Indonesia sudah mengonfirmasi penerimaan Anda, jadi rencana ini kami nilai seolah jawabannya “tidak”; konsultan Bali Zero akan memastikannya bersama Anda.",
+    "Anda tidak yakin apakah institusi di Indonesia sudah mengonfirmasi penerimaan Anda, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.study_sponsor_confirmed":
-    "Anda tidak yakin apakah institusi atau sponsor studi sudah mengonfirmasi dukungannya, jadi rencana ini kami nilai seolah jawabannya “tidak”; konsultan Bali Zero akan memastikannya bersama Anda.",
+    "Anda tidak yakin apakah institusi atau sponsor studi sudah mengonfirmasi dukungannya, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.diaspora_documents":
-    "Anda tidak yakin apakah Anda dapat membuktikan hubungan tersebut, jadi rencana ini kami nilai seolah jawabannya “tidak”; konsultan Bali Zero akan memastikannya bersama Anda.",
+    "Anda tidak yakin apakah Anda dapat membuktikan hubungan tersebut, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.retirement_basis":
-    "Anda tidak yakin dasar mana yang dapat Anda buktikan saat ini, jadi rencana ini kami nilai seolah Anda belum memilih dasar; konsultan Bali Zero akan memastikannya bersama Anda.",
+    "Anda tidak yakin dasar mana yang dapat Anda buktikan saat ini, jadi rencana ini kami nilai seolah Anda belum memilih dasar. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.retirement_penjamin_confirmed":
     "Anda tidak yakin apakah Anda sudah memiliki penjamin, jadi rencana ini kami nilai seolah jawabannya “tidak”; Bali Zero dapat bertindak sebagai penjamin Anda.",
   "assumption.generic":
