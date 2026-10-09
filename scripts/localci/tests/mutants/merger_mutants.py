@@ -43,6 +43,7 @@ REPLAY = "scripts/localci/tests/test_replay.py"
 PHASEF = "scripts/localci/tests/test_merger_phase_f.py"
 WRAPPER_T = tuple(f"{PHASEF}::{t}" for t in ("test_the_wrapper_fetches_into_its_own_ref_and_leaves_the_authoritative_base_alone",
                                                  "test_a_mirror_from_before_the_wrapper_ref_existed_runs_the_code_the_last_tick_ran"))
+GP = ("scripts/localci/tests/test_gate_pending.py",)   # B12
 ROOT = Path(__file__).resolve().parents[4]
 REPORT = "scripts/localci/tests/test_merger_report.py"
 TICK = "scripts/localci/tests/test_merger.py"
@@ -539,6 +540,20 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b5-report-skip-unread": (PY, '"skipped": skip.get(k)}', '"skipped": None}', REPORT_SKIP),
     "b5-report-window-uncounted": (PY, 'compared_skip_agreed = sum(len(r["compared_skip_agreed"]) for r in rows)', "compared_skip_agreed = 0", REPORT_SKIP),
     "b5-report-merges-uncounted": (PY, 'merged_skip_agreed = sum(', "merged_skip_agreed = 0 * sum(", REPORT_SKIP),
+    # B12: a gate verdict not posted yet is no verdict, and is asked again once it is posted
+    "b12-pending-retried": (RUNNER, "if pending and r.returncode != 0 and any(", "if pending and r.returncode != 0 and wait == READER_RETRY_WAITS[-1] and any(", GP),
+    "b12-pending-as-pass": (RUNNER, 'return {"rc": None, "reason": f"gate_pending: host', 'return {"rc": 0, "reason": f"gate_pending: host', GP),
+    "b12-pending-on-stdout": (RUNNER, "any(ln.startswith(pending) for ln in r.stderr.splitlines())", "any(ln.startswith(pending) for ln in out.splitlines())", GP),
+    "b12-pending-key-dropped": (RUNNER, 'ms.get("no_verdict_when"), ms.get("pending_when"))', 'ms.get("no_verdict_when"), None)', GP),
+    "b12-matrix-key-dropped": (MATRIX, 'pending_when: "::error::harness_gate_read: PENDING" #', "#", GP),
+    "b12-pending-unmarked": (RUNNER, 'out["results"][name]["no_verdict"] = "gate_pending"', "pass", GP),
+    "b12-decision-unmarked": (PY, '**({"gate_pending": True} if gate_pending else {})', "**{}", GP),
+    "b12-reeligible-without-status": (PY, "if gate_posted is not None and gate_posted(n, head):", "if True:", GP),
+    "b12-cap-ignored": (PY, "if count[0] >= GATE_PENDING_CAP:", "if False:", GP),
+    "b12-failed-read-eligible": (PY, "except (hc.CompareError, OSError) as exc:\n                print(f\"merger: #{n} gate status",
+                                 "except (hc.CompareError, OSError) as exc:\n                todo.append(pr)\n                print(f\"merger: #{n} gate status", GP),
+    "b12-status-context-any": (PY, 'if any(x.get("context") == GATE_CONTEXT for x in batch):', "if batch:", GP),
+    "b12-report-uncounted": (PY, 'gate_pending_n = sum(1 for r in rows if r["gate_pending"])', "gate_pending_n = 0", (REPORT,)),
 }
 
 
