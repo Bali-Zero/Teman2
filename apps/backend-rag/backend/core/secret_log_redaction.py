@@ -1,4 +1,12 @@
-"""Keep bot tokens out of logs that end up somewhere public.
+"""Keep secrets that ride inside URLs out of logs that end up somewhere public.
+
+Two shapes are cured today, by one mechanism: Telegram bot tokens (token in the URL
+path) and Redis connection strings (password in the URL userinfo). The second was
+found 2026-10-09: `crm_hgt_handlers` logged the full Upstash `REDIS_URL` at INFO, and
+Fly's log shipper archived it on a fleet machine. The cure is the channel, not the
+call site, so the call site was left as it was.
+
+TELEGRAM, the original autopsy follows.
 
 WHY THIS EXISTS (2026-08-12, measured on a live CI run, not hypothesised).
 `cron-llm-credit-sentinel.yml` runs hourly. On 2026-08-11 at 22:05Z its log —
@@ -44,6 +52,25 @@ import re
 TELEGRAM_TOKEN_RE = re.compile(r"(bot\d{5,}):[A-Za-z0-9_-]{20,}")
 REDACTED = r"\1:<redacted>"
 
+# `redis[s]://[user]:<password>@host...` — scheme, username and host are kept (they
+# say WHICH instance and authenticate nothing); only the password goes. The password
+# runs greedily to the last `@` of the whitespace-free token, so an unescaped `@`
+# inside it cannot leave a tail behind. MEASURED LIMIT of that greed: a credential-free
+# URL survives byte-identical alone (`redis://localhost:6379`) and when followed by
+# whitespace — the two shapes a log actually carries, both pinned by tests — but glue a
+# later `@` on with no space (`redis://h:6379,a@x.com`) and the span IS rewritten.
+# Over-redacting a log line is the cheaper error, so the greed stays; "no credential,
+# no match" holds for real log shapes, not for every string.
+REDIS_URL_RE = re.compile(r"(rediss?://[^:/@\s]*):[^\s]+@", re.IGNORECASE)
+REDIS_URL_REDACTED = r"\1:<redacted>@"
+
+# (cheap lowercase needle, pattern, replacement). The needle is a pre-filter only:
+# a line is scanned when ANY needle is present, and the regex alone decides.
+_REDACTIONS = (
+    ("bot", TELEGRAM_TOKEN_RE, REDACTED),
+    ("redis", REDIS_URL_RE, REDIS_URL_REDACTED),
+)
+
 # Loggers that print request URLs, BY THEIR EXACT NAME — measured, not guessed.
 # A logger's filters run only for records that ORIGINATE on it; they do NOT run
 # for records propagating up from children. So `"httpcore"` alone would have been
@@ -58,11 +85,11 @@ _URL_EMITTING_LOGGERS = (
     "urllib3.connectionpool",
 )
 
-_FILTER_MARKER = "_nuzantara_telegram_token_redaction"
+_FILTER_MARKER = "_nuzantara_secret_log_redaction"
 
 
-class TelegramTokenRedactionFilter(logging.Filter):
-    """Rewrite any record whose rendered message carries a Telegram token.
+class SecretRedactionFilter(logging.Filter):
+    """Rewrite any record whose rendered message carries a known URL-borne secret.
 
     A logging Filter that returns True always: it never drops a record, it only
     edits one. Dropping would be the silencing this module exists to avoid.
@@ -77,21 +104,31 @@ class TelegramTokenRedactionFilter(logging.Filter):
         except Exception:
             return True
 
-        if "bot" not in rendered:  # cheap reject for the overwhelming majority
+        lowered = rendered.lower()
+        # cheap reject for the overwhelming majority: skip unless SOME pattern could match
+        if not any(needle in lowered for needle, _, _ in _REDACTIONS):
             return True
 
-        redacted = TELEGRAM_TOKEN_RE.sub(REDACTED, rendered)
+        redacted = rendered
+        for _, pattern, replacement in _REDACTIONS:
+            redacted = pattern.sub(replacement, redacted)
         if redacted != rendered:
-            # Collapse to a literal message: the token may sit in msg OR in args
-            # (httpx uses %-formatting), and rewriting only one leaves the other
-            # to be re-rendered by the handler with the secret intact.
+            # Collapse to a literal message: the secret may sit in msg OR in args
+            # (%-formatting), and rewriting only one leaves the other to be
+            # re-rendered by the handler with the secret intact.
             record.msg = redacted
             record.args = ()
         return True
 
 
-def _new_filter() -> TelegramTokenRedactionFilter:
-    redactor = TelegramTokenRedactionFilter()
+# Historical names. COUNTED, not estimated: 16 production modules import
+# `install_telegram_token_redaction`, plus the census test and a lint. Renaming them
+# would be a 16-file diff for no behaviour change, so the old names stay as aliases.
+TelegramTokenRedactionFilter = SecretRedactionFilter
+
+
+def _new_filter() -> SecretRedactionFilter:
+    redactor = SecretRedactionFilter()
     setattr(redactor, _FILTER_MARKER, True)
     return redactor
 
@@ -100,7 +137,7 @@ def _already_filtered(holder: logging.Logger | logging.Handler) -> bool:
     return any(getattr(f, _FILTER_MARKER, False) for f in holder.filters)
 
 
-def install_telegram_token_redaction() -> None:
+def install_secret_log_redaction() -> None:
     """Attach the filter on two levels, because neither alone is enough. Idempotent.
 
     **Named loggers** catch the emitters we have measured, at the point the record
@@ -114,10 +151,11 @@ def install_telegram_token_redaction() -> None:
     ``test_telegram_token_never_reaches_a_log.py`` enforces that census.
 
     DECLARED LIMIT: a handler added to root *after* this call is not covered by
-    the handler half (the named-logger half still covers the known emitters). In
-    practice the entry points call `logging.basicConfig` at module import, before
-    any Telegram sender is imported — but a caller that reconfigures logging late
-    should call this again. It is idempotent by design so that is free.
+    the handler half (the named-logger half still covers the known emitters). That
+    limit is real, not theoretical: `configure_logging()` CLEARS root's handlers, so
+    any install that ran before it is silently discarded. The api/rag app therefore
+    calls this at the end of `configure_logging()`, after the handlers exist. A caller
+    that reconfigures logging late should call this again; it is idempotent.
     """
     for name in _URL_EMITTING_LOGGERS:
         target = logging.getLogger(name)
@@ -127,3 +165,8 @@ def install_telegram_token_redaction() -> None:
     for handler in logging.getLogger().handlers:
         if not _already_filtered(handler):
             handler.addFilter(_new_filter())
+
+
+# Historical name — every Telegram sender calls it at import time and the census test
+# looks for this exact call; both keep working, and both now also cure Redis URLs.
+install_telegram_token_redaction = install_secret_log_redaction
