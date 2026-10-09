@@ -40,6 +40,7 @@ FLOOR_SH, FLOOR_T = "scripts/ops/pro_disk_floor_tick.sh", "scripts/localci/tests
 
 STALE = "scripts/localci/tests/test_hosted_stale.py"
 REPLAY = "scripts/localci/tests/test_replay.py"
+PHASEF = "scripts/localci/tests/test_merger_phase_f.py"
 ROOT = Path(__file__).resolve().parents[4]
 REPORT = "scripts/localci/tests/test_merger_report.py"
 TICK = "scripts/localci/tests/test_merger.py"
@@ -286,7 +287,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "report-would-enqueue-any": (PY, 'r.get("kind") == "would_enqueue" and r.get("ok") is True', 'r.get("kind") == "would_enqueue"', (REPORT,)),
     # F1 (phase F, shadow): the rehearsed merge — one would_merge line, never a ref, never a push
     "f1-kind-string": (PY, '{"kind": "would_merge", "pr": enq["pr"]', '{"kind": "would_merged", "pr": enq["pr"]', (TICK,)),
-    "f1-step-not-called": (PY, "            merge_shadow_step(state, repo_dir, enq, a.base)\n", "            pass\n", (TICK,)),
+    "f1-step-not-called": (PY, "            merge_shadow_step(state, repo_dir, enq, a.base, a, line)\n", "            pass\n", (TICK,)),
     "f1-ok-ignores-criterion": (PY, "bool(crit) and all(crit.values()) and", "bool(crit) and True and", (TICK,)),
     "f1-ok-empty-criterion": (PY, "bool(crit) and all(crit.values()) and", "all(crit.values()) and", (TICK,)),
     "f1-ok-ignores-base-moved": (PY, 'and line["base_current"] and line["clean"]', 'and line["clean"]', (TICK,)),
@@ -320,7 +321,44 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "f1-report-ok-any": (PY, '"ok": sum(1 for r in wm if r.get("ok") is True)', '"ok": len(wm)', (REPORT,)),
     "f1-report-conflicted-inverted": (PY, 'sum(1 for r in wm if r.get("clean") is False and', 'sum(1 for r in wm if r.get("clean") is True and', (REPORT,)),
     "f1-report-base-moved-inverted": (PY, 'sum(1 for r in wm if r.get("base_current") is False and', 'sum(1 for r in wm if r.get("base_current") is True and', (REPORT,)),
-    "f1-report-phase-f-live": (PY, '"phase_f": "shadow"', '"phase_f": "live"', (REPORT,)),
+    "f1-report-phase-f-live": (PY, 'phase_f = "shadow" if not', 'phase_f = "live" if not', (REPORT,)),
+    # F2 (phase F, the executor): disarmed by construction — each arming condition is one rule, and the push is plain
+    "f2-ready-dropped": (PY, 'elif rep.get("phase_e_ready") is not True:', "elif False:", (PHASEF,)),
+    "f2-ready-unreadable-passes": (PY, 'if rep.get("refused"):', "if False:", (PHASEF,)),
+    "f2-ready-always": (PY, "report(argparse.Namespace(repo=a.repo, base=a.base, state_dir=str(state), since=None), emit=False)",
+                        "(0, {'phase_e_ready': True})", (PHASEF,)),
+    "f2-env-dropped": (PY, 'if os.environ.get(PHASE_F_ENV) != "1":', "if False:", (PHASEF,)),
+    "f2-key-mode-dropped": (PY, "if stat.S_IMODE(st.st_mode) != 0o600:", "if False:", (PHASEF,)),
+    "f2-key-owner-dropped": (PY, "if st.st_uid != os.geteuid():", "if False:", (PHASEF,)),
+    "f2-key-regular-dropped": (PY, "if not stat.S_ISREG(st.st_mode):", "if False:", (PHASEF,)),
+    "f2-key-missing-ignored": (PY, "    except FileNotFoundError:\n        return f\"{KEY_FILE} missing\"", "    except FileNotFoundError:\n        return None", (PHASEF,)),
+    "f2-halt-ignored": (PY, "if (reason := halt_reason(state)) is not None:", "if False and (reason := halt_reason(state)) is not None:", (PHASEF,)),
+    "f2-criterion-bypassed": (PY, 'if not (enq.get("ok") is True and crit and all(crit.values())):', "if False:", (PHASEF,)),
+    "f2-criterion-empty-passes": (PY, 'if not (enq.get("ok") is True and crit and all(crit.values())):', 'if not (enq.get("ok") is True and all(crit.values())):', (PHASEF,)),
+    "f2-queue-owner-ignored": (PY, 'if enq.get("kind") == "enqueued":', "if False:", (PHASEF,)),
+    "f2-base-current-ignored": (PY, 'if line.get("base_current") is not True:', "if False:", (PHASEF,)),
+    "f2-clean-ignored": (PY, 'if line.get("clean") is not True:', "if False:", (PHASEF,)),
+    "f2-mirror-main-ignored": (PY, 'if line.get("mirror_main") != line.get("base_sha"):', "if False:", (PHASEF,)),
+    "f2-head-reread-dropped": (PY, "if a is not None and not why:", "if False:", (PHASEF,)),
+    "f2-pr-state-ignored": (PY, 'if pull.get("state") != "OPEN":', "if False:", (PHASEF,)),
+    "f2-force-push": (PY, 'git(repo_dir, "push", "origin", f"{commit}:refs/heads/{base}"', 'git(repo_dir, "push", "--force", "origin", f"{commit}:refs/heads/{base}"', (PHASEF,)),
+    "f2-plus-refspec-push": (PY, 'f"{commit}:refs/heads/{base}", env={"GIT_SSH_COMMAND": ssh}', 'f"+{commit}:refs/heads/{base}", env={"GIT_SSH_COMMAND": ssh}', (PHASEF,)),
+    "f2-refusal-does-not-halt": (PY, 'halt(state, f"push of {commit} for #{n} refused: {err}")', "pass", (PHASEF,)),
+    "f2-refusal-moves-the-mirror": (PY, "    if err:\n        journal(state, {\"kind\": \"push_refused\"", "    if err and git(repo_dir, \"update-ref\", \"refs/merger/base\", commit, old, check=False):\n        journal(state, {\"kind\": \"push_refused\"", (PHASEF,)),
+    "f2-mirror-not-moved": (PY, 'updated = git(repo_dir, "update-ref", "refs/merger/base", commit, old, check=False).returncode == 0', "updated = False", (PHASEF,)),
+    "f2-parents-swapped": (PY, '"-p", old, "-p", head,', '"-p", head, "-p", old,', (PHASEF,)),
+    "f2-subject-without-number": (PY, 'subject = title if title.endswith(f"(#{n})") else f"{title} (#{n})"', "subject = title", (PHASEF,)),
+    "f2-bites-not-carried": (PY, "([bites] if bites else [])", "[]", (PHASEF,)),
+    "f2-key-in-the-runner-env": (PY, '"PYTHONDONTWRITEBYTECODE": "1"}', '"PYTHONDONTWRITEBYTECODE": "1", "GIT_SSH_COMMAND": "ssh -i " + str(base_wt.parent.parent / KEY_FILE)}', (PHASEF,)),
+    "f2-key-in-the-process-env": (PY, 'env={"GIT_SSH_COMMAND": ssh}', 'env=os.environ.setdefault("GIT_SSH_COMMAND", ssh) and {"GIT_SSH_COMMAND": ssh}', (PHASEF,)),
+    "f2-fetch-guard-dropped": (PY, "if anchor is None or halt_reason(state) is not None:", "if True:", (PHASEF,)),
+    "f2-fetch-guard-ignores-the-halt": (PY, "if anchor is None or halt_reason(state) is not None:", "if anchor is None:", (PHASEF,)),
+    "f2-fetch-anchor-is-unpushed": (PY, 'if r.get("kind") == "pushed" and is_sha(r.get("merge_commit"))', 'if r.get("kind") in ("pushed", "merged") and is_sha(r.get("merge_commit"))', (PHASEF,)),
+    "f2-fetch-guard-inverted": (PY, '"--is-ancestor", anchor, incoming, check=False).returncode == 0:', '"--is-ancestor", anchor, incoming, check=False).returncode != 0:', (PHASEF,)),
+    "f2-diverged-does-not-halt": (PY, 'halt(state, f"storage diverged:', 'print(f"storage diverged:', (PHASEF,)),
+    "f2-push-url-https": (PY, 'return a.push_url or (None if a.remote_url else f"git@github.com:{a.repo}.git")', "return a.push_url", (PHASEF,)),
+    "f2-report-quiet-writes": (PY, "    if not emit:\n        return (1 if fg else 0), out", "    if False:\n        return (1 if fg else 0), out", (PHASEF,)),
+    "f2-report-executor-uncounted": (PY, "n_merged, n_refused = (sum(1 for r in window if r.get(\"kind\") == k) for k in (\"merged\", \"push_refused\"))", "n_merged, n_refused = 0, 0", (PHASEF,)),
     # B10 (phase D): a hosted verdict given on an older main than the local run judged is HOSTED_STALE, only on evidence
     "b10-stale-without-path-test": (PY, 'return {"stale": bool(selected), "hosted_main": main,', 'return {"stale": bool(paths), "hosted_main": main,', (STALE,)),
     "b10-stale-any-flag": (PY, 'if cm.get("run_all") or flag in (cm.get("suggested_jobs") or []):', "if True:", (STALE,)),
