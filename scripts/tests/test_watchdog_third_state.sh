@@ -27,10 +27,12 @@ check() { # $1 label, $2 expected, $3 actual
 }
 
 # ---------------------------------------------------------------- healer receptor
-HEALERS="mini:$REPO/infra/healer/healer-run.sh:# Receptor 2:# Receptor 3:
+MINI_HEALER="${MINI_HEALER_UNDER_TEST:-$REPO/infra/healer/healer-run.sh}"
+HEALER_CHECKS="${HEALER_RUN_CHECKS_UNDER_TEST:-$REPO/scripts/healer_run_checks.py}"
+HEALERS="mini:$MINI_HEALER:# Receptor 2:# Receptor 3:
 pro:$REPO/infra/launchagents/wrappers/pro-healer.sh:# Receptor B:# Receptor C:"
-mkdir -p "$TMP/repo/scripts"
-cp "$REPO/scripts/healer_run_checks.py" "$TMP/repo/scripts/"
+mkdir -p "$TMP/repo/scripts" "$TMP/home"
+cp "$HEALER_CHECKS" "$TMP/repo/scripts/healer_run_checks.py"
 cat > "$TMP/repo/scripts/proprioception.py" <<'PY'
 import os, sys
 mode = os.environ["FAKE_MODE"]
@@ -44,6 +46,12 @@ elif mode == "healthy":
     print('{"probes": [{"status": "RECONCILED"}, {"status": "UNPROBEABLE"}]}')
 elif mode == "diverged":
     print('{"probes": [{"status": "DIVERGED"}, {"status": "RECONCILED"}, {"status": "DIVERGED"}]}')
+elif mode == "zero_session":
+    print('{"probes": [{"id": "owner-p0", "status": "DIVERGED", "severity": "P0", "cure": "owner"}, {"id": "session-p3", "status": "DIVERGED", "severity": "P3", "cure": "session"}, {"id": "pr-p1", "status": "DIVERGED", "severity": "P1", "cure": "pr"}]}')
+elif mode == "one_session":
+    print('{"probes": [{"id": "owner-p0", "status": "DIVERGED", "severity": "P0", "cure": "owner"}, {"id": "session-p1", "status": "DIVERGED", "severity": "P1", "cure": "session"}, {"id": "session-p3", "status": "DIVERGED", "severity": "P3", "cure": "session"}]}')
+elif mode == "summary_rc3":
+    print('{"probes": [{"id": "bad-severity", "status": "DIVERGED", "severity": "urgent", "cure": "session"}]}')
 elif mode == "legacy":
     print('{"probes": [{"verdict": "DIVERGED"}]}')
 sys.exit(int(os.environ.get("FAKE_EXIT", "0")))
@@ -58,16 +66,14 @@ run_receptor() { # $1 healer-spec, $2 mode, $3 exit code -> "ACT=.. REASONS=[..]
       awk -v s="$start" -v e="$end" 'index($0, s)==1{on=1} index($0, e)==1{on=0} on' "$script"
       echo 'echo "ACT=$ACTIONABLE REASONS=[${REASONS% }]"'
     } > "$TMP/driver.sh"
-    (cd "$TMP/repo" && FAKE_MODE="$2" FAKE_EXIT="$3" bash "$TMP/driver.sh" 2>/dev/null)
+    (cd "$TMP/repo" && HOME="$TMP/home" FAKE_MODE="$2" FAKE_EXIT="$3" bash "$TMP/driver.sh" 2>/dev/null)
 }
 
 while IFS= read -r spec; do
     [ -n "$spec" ] || continue
     name="${spec%%:*}"
-    case "$name" in  # the Pro twin names the session-curable share (receptor B cure gate)
-        pro) DIV2="proprioception:2/2-session-curable"; DIV1="proprioception:1/1-session-curable" ;;
-        *)   DIV2="proprioception:2-diverged"; DIV1="proprioception:1-diverged" ;;
-    esac
+    DIV2="proprioception:2/2-session-curable"
+    DIV1="proprioception:1/1-session-curable"
     check "$name healer: crash (exit 1, no output) is receptor-broken" \
         "ACT=1 REASONS=[proprioception-receptor-broken]" "$(run_receptor "$spec" crash 0)"
     check "$name healer: exit 2 with parsable JSON is receptor-broken" \
@@ -82,6 +88,12 @@ while IFS= read -r spec; do
         "ACT=1 REASONS=[$DIV2]" "$(run_receptor "$spec" diverged 0)"
     check "$name healer: legacy verdict schema still counted" \
         "ACT=1 REASONS=[$DIV1]" "$(run_receptor "$spec" legacy 0)"
+    check "$name healer: three divergences with no P0/P1 session cure stay silent" \
+        "ACT=0 REASONS=[]" "$(run_receptor "$spec" zero_session 0)"
+    check "$name healer: one P1 session cure among three names the share" \
+        "ACT=1 REASONS=[proprioception:1/3-session-curable]" "$(run_receptor "$spec" one_session 0)"
+    check "$name healer: summary rc 3 is receptor-broken" \
+        "ACT=1 REASONS=[proprioception-receptor-broken]" "$(run_receptor "$spec" summary_rc3 0)"
 done <<EOF
 $HEALERS
 EOF
