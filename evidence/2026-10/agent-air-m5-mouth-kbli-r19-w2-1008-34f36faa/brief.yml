@@ -1,0 +1,29 @@
+task_id: kbli-r19-w2-1008
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, lot W2a. Put /kbli and /kbli-explorer on the R19 wrapper
+  contract: the wrapper defines every token the W0 contract declares, the colour classes and
+  inline rgba literals the contract maps are rewritten to solid Direction-A roles, and the
+  routes carry data-presentation="r19", so the W1 palette test is judged and not skipped.
+constraints:
+  - "Scope fence: apps/mouth files under /kbli*, the wrapper token definitions, and one optional prop on MobileNav. No R19_VARS, globals.css, packages/core, contract table, W1 test or fixtures."
+  - "Contract wins inside the wrapper on the four values where main R19_VARS differs. The site-wide values are untouched."
+  - "No npm install or npm ci. Dev server on port 3571, started and stopped by this lot."
+acceptance:
+  - text: "WHEN the W1 test runs from apps/mouth, THEN it prints read-but-undefined 0, colors-outside-direction-a 0 and palette-outside-direction-a (r19 scope, 30/30 captures) 0."
+    probe: "cd apps/mouth && npm test -- r19-wrapper"
+  - text: "WHEN measure.PROBE_JS runs on the 5 pages in the 6 states, THEN no text pair is below its WCAG threshold."
+    probe: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w2-1008-34f36faa/live_probe.py <worktree> http://localhost:3571 <out.json>"
+  - text: "WHEN defects.PROBE_JS runs with its calibration controls, THEN the probe is trusted."
+    probe: "same driver as above"
+consumer_map:
+  - "r19-wrapper-census-tests / wrapper-census-live runs the W1 test on every apps/mouth PR and now judges the palette."
+  - "W3 re-measures the TrustBand labels and the footer tagline on balizero.com after promote."
+risks:
+  - "W2b, the remaining #7508 layout changes, is not carried: they introduce token reads the frozen contract does not define."
+  - "Interaction states and portals are not walked by the census. 61 colour classes outside the contract remain in source."
+grader: |
+  The Dux ran every exit command on the final content. A fresh Opus 5.5 gate session commissioned
+  by the imperator signs harness/fable-gate on the head sha.

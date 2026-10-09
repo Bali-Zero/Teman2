@@ -1,0 +1,136 @@
+contract_class	replacement	occurrences_on_main
+bg-[#050507]	bg-[var(--background)]	2
+bg-[#080A0E]	bg-[var(--background)]	1
+bg-[#0A0C10]/90	bg-[var(--background)]	1
+bg-[#1c1c1e]/60	bg-[var(--kbli-bg-surface)]	1
+bg-[#2A3241]/10	(removed: not painted)	1
+bg-[#3b82f6]/10	(removed: not painted)	1
+bg-[rgba(255,255,255,0.02)]	bg-[var(--kbli-bg-surface)]	1
+bg-[rgba(255,255,255,0.03)]	bg-[var(--kbli-bg-surface)]	2
+bg-[var(--kbli-accent)]/40	bg-[var(--kbli-ink)]	1
+bg-[var(--kbli-ink)]/80	bg-[var(--kbli-ink)]	1
+bg-accent-sand/10	bg-slate-50	4
+bg-accent-sand/5	bg-slate-50	3
+bg-accent-warm/10	bg-slate-50	2
+bg-black/20	bg-slate-50	1
+bg-black/60	bg-slate-50	2
+bg-gradient-to-br	(removed: not painted)	1
+bg-gradient-to-r	(removed: not painted)	4
+bg-gradient-to-tr	(removed: not painted)	1
+bg-linear-to-br	(removed: not painted)	2
+bg-linear-to-r	(removed: not painted)	1
+bg-surface-deep/40	bg-slate-50	1
+bg-surface-deep/60	bg-slate-50	2
+bg-surface-deep/80	bg-slate-50	1
+bg-white/2	bg-[var(--kbli-bg-surface)]	1
+bg-white/5	bg-[var(--kbli-bg-surface)]	8
+bg-white/[0.03]	bg-[var(--kbli-bg-surface)]	6
+bg-white/[0.04]	bg-[var(--kbli-bg-surface)]	4
+bg-white/[0.06]	bg-[var(--kbli-bg-surface)]	6
+bg-white/[0.08]	bg-[var(--kbli-bg-surface)]	2
+bg-white/[0.10]	bg-[var(--kbli-bg-surface)]	2
+border-[#1c1c1e]	border-[var(--border)]	1
+border-[rgba(212,132,90,0.2)]	border-[var(--border)]	1
+border-[rgba(255,255,255,0.06)]	border-[var(--border)]	1
+border-[rgba(255,255,255,0.07)]	border-[var(--border)]	1
+border-[var(--kbli-pma-closed)]/20	border-[var(--border)]	2
+border-[var(--kbli-pma-closed)]/30	border-[var(--border)]	2
+border-[var(--kbli-pma-open)]/20	border-[var(--border)]	3
+border-[var(--kbli-pma-open)]/30	border-[var(--border)]	1
+border-[var(--kbli-pma-restricted)]/20	border-[var(--border)]	3
+border-accent-sand/20	border-[var(--border)]	11
+border-accent-sand/30	border-[var(--border)]	6
+border-accent-warm/30	border-[var(--border)]	3
+border-white/10	border-[var(--border)]	13
+border-white/5	border-[var(--border)]	33
+border-white/[0.05]	border-[var(--border)]	2
+border-white/[0.06]	border-[var(--border)]	6
+border-white/[0.08]	border-[var(--border)]	11
+border-white/[0.14]	border-[color:var(--border-strong)]	1
+border-white/[0.1]	border-[color:var(--border-strong)]	2
+drop-shadow-[0_0_8px_rgba(212,180,131,0.2)]	(removed: not painted)	1
+drop-shadow-lg	(removed: not painted)	2
+drop-shadow-md	(removed: not painted)	1
+drop-shadow-sm	(removed: not painted)	1
+focus-within:bg-[#1c1c1e]	(removed: not painted)	1
+focus-within:border-accent-warm/40	(removed: not painted)	1
+focus-within:shadow-[0_0_20px_rgba(212,132,90,0.15)]	(removed: not painted)	1
+focus:border-accent-sand/30	(removed: not painted)	1
+focus:border-white/[0.15]	(removed: not painted)	1
+focus:ring-[#D4B483]/30	focus:ring-1	1
+focus:ring-[#dc2626]	focus:ring-1	1
+from-[#D4B483]	(removed: not painted)	2
+from-[#D4B483]/20	(removed: not painted)	1
+from-[#D4B483]/40	(removed: not painted)	1
+from-[#d4845a]	(removed: not painted)	3
+from-white	(removed: not painted)	1
+group-hover:bg-accent-warm/15	group-hover:bg-[color-mix(in_srgb,var(--accent-zantara)_10%,transparent)]	1
+group-hover:border-accent-warm/40	group-hover:border-[color:var(--accent-zantara)]	1
+group-hover:shadow-[0_0_25px_rgba(212,132,90,0.2),inset_0_1px_0_rgba(212,132,90,0.1)]	(removed: not painted)	1
+group-hover:text-[#CCC]	group-hover:text-white	1
+hover:bg-[#151921]	hover:bg-surface-editorial-elevated	3
+hover:bg-[#D01033]/90	(removed: not painted)	1
+hover:bg-[rgba(255,255,255,0.06)]	hover:bg-surface-editorial-elevated	1
+hover:bg-accent-warm/10	hover:bg-surface-editorial-elevated	1
+hover:bg-white/5	hover:bg-surface-editorial-elevated	2
+hover:bg-white/[0.05]	hover:bg-surface-editorial-elevated	2
+hover:bg-white/[0.06]	hover:bg-surface-editorial-elevated	3
+hover:bg-white/[0.07]	hover:bg-surface-editorial-elevated	1
+hover:border-[#D01033]/60	hover:border-accent-sand	1
+hover:border-[rgba(255,255,255,0.12)]	(removed: not painted)	1
+hover:border-[var(--kbli-accent)]/40	hover:border-accent-sand	1
+hover:border-accent-sand/30	hover:border-accent-sand	3
+hover:border-accent-sand/40	hover:border-accent-sand	3
+hover:border-accent-warm/40	hover:border-accent-sand	2
+hover:border-red-500/30	hover:border-accent-sand	1
+hover:border-white/[0.1]	(removed: not painted)	1
+hover:shadow-[0_0_15px_rgba(212,132,90,0.2)]	(removed: not painted)	1
+hover:shadow-[0_0_15px_rgba(212,132,90,0.4)]	(removed: not painted)	1
+hover:shadow-[0_0_20px_rgba(220,38,38,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]	(removed: not painted)	1
+hover:shadow-[0_0_40px_rgba(208,16,51,0.3)]	(removed: not painted)	1
+hover:shadow-[0_8px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)]	(removed: not painted)	1
+hover:shadow-[0_8px_32px_rgba(212,132,90,0.1)]	(removed: not painted)	1
+hover:shadow-[0_8px_32px_rgba(220,38,38,0.15)]	(removed: not painted)	1
+hover:shadow-[0_8px_40px_rgba(212,132,90,0.15),inset_0_1px_0_rgba(255,255,255,0.06)]	(removed: not painted)	1
+hover:shadow-xl	(removed: not painted)	2
+placeholder-[#444]	placeholder-zinc-400	1
+scrollbar-thumb-white/10	(removed: not painted)	1
+selection:bg-accent-sand/30	(removed: not painted)	1
+shadow-2xl	(removed: not painted)	3
+shadow-[-5px_0_30px_rgba(0,0,0,0.2)]	(removed: not painted)	1
+shadow-[0_0_15px_rgba(212,132,90,0.2)]	(removed: not painted)	1
+shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)]	(removed: not painted)	1
+shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)]	(removed: not painted)	1
+shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)]	(removed: not painted)	1
+shadow-[0_4px_24px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.04)]	(removed: not painted)	1
+shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)]	(removed: not painted)	1
+shadow-[0_8px_32px_rgba(0,0,0,0.4)]	(removed: not painted)	1
+shadow-[5px_0_30px_rgba(0,0,0,0.3)]	(removed: not painted)	1
+shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]	(removed: not painted)	1
+shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_8px_rgba(0,0,0,0.2)]	(removed: not painted)	1
+shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]	(removed: not painted)	1
+shadow-inner	(removed: not painted)	1
+shadow-md	(removed: not painted)	1
+shadow-sm	(removed: not painted)	3
+text-[#050507]	text-[var(--foreground)]	5
+text-[#333]	text-[var(--kbli-text-muted)]	3
+text-[#444]	text-[var(--kbli-text-muted)]	9
+text-[#555]	text-[var(--kbli-text-muted)]	16
+text-[#666]	text-[var(--kbli-text-muted)]	9
+text-[#888]	text-[var(--kbli-text-muted)]	27
+text-[#999]	text-[var(--kbli-text-muted)]	6
+text-[#CCC]	text-[var(--foreground)]	9
+text-[#F0F0F0]	text-[var(--foreground)]	5
+text-white/40	text-[var(--kbli-text-muted)]	1
+text-white/50	text-[var(--kbli-text-muted)]	1
+text-white/60	text-[var(--kbli-text-muted)]	1
+text-white/80	text-[var(--foreground)]	1
+text-white/90	text-[var(--foreground)]	2
+to-[#0A0C10]	(removed: not painted)	1
+to-[#3b82f6]	(removed: not painted)	2
+to-[#8C7350]	(removed: not painted)	1
+to-[#b36a46]	(removed: not painted)	1
+to-transparent	(removed: not painted)	1
+to-white/70	(removed: not painted)	1
+via-[#D4B483]/10	(removed: not painted)	1
+via-[#a855f7]	(removed: not painted)	2

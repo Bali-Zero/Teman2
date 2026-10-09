@@ -1,0 +1,50 @@
+== census (python3 scripts/mouth/r19_wrapper_token_census.py --base-url http://localhost:3571) ==
+captures: 30 ok, 0 failed
+  /kbli: 6/6 states, root [data-presentation=r19], elements [609]
+  /kbli/55203: 6/6 states, root [data-presentation=r19], elements [441]
+  /kbli/51101: 6/6 states, root [data-presentation=r19], elements [644]
+  /kbli/56101: 6/6 states, root [data-presentation=r19], elements [477]
+  /kbli-explorer: 6/6 states, root [data-presentation=r19], elements [139]
+reads: 156 tokens (var 68, class 68, rule 9, component 11)
+defined-above-wrapper: 0 (informational; resolved outside the wrapper today)
+read-but-undefined: 0
+colors-outside-direction-a: 0
+
+== npm test -- r19-wrapper (final head content) ==
+innocence fixture: GREEN — palette-outside-direction-a (r19 scope, 1/1 captures): 0
+  W0 replay: read-but-undefined: 0 / colors-outside-direction-a: 0
+guilt fixture: RED (expected) — palette-outside-direction-a (r19 scope, 1/1 captures): 1
+  colour #0F172A x1 background-color via --kbli-bg-base e.g. div on fixture:guilt desktop/light
+  W0 replay: colors-outside-direction-a: 1
+undeclared-read fixture: read-but-undefined: 1
+var --kbli-w1-undeclared  e.g. div>main>p on fixture:undeclared desktop/light
+census (W0 judge on this run):
+captures: 30 ok, 0 failed
+  /kbli: 6/6 states, root [data-presentation=r19], elements [609]
+  /kbli/55203: 6/6 states, root [data-presentation=r19], elements [441]
+  /kbli/51101: 6/6 states, root [data-presentation=r19], elements [624, 644]
+  /kbli/56101: 6/6 states, root [data-presentation=r19], elements [477]
+  /kbli-explorer: 6/6 states, root [data-presentation=r19], elements [139]
+reads: 156 tokens (var 68, class 68, rule 9, component 11)
+defined-above-wrapper: 0 (informational; resolved outside the wrapper today)
+read-but-undefined: 0
+colors-outside-direction-a: 0
+palette-outside-direction-a (r19 scope, 30/30 captures): 0
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  10:02:56
+   Duration  355.20s (transform 110ms, setup 1.01s, import 2.09s, tests 346.92s, environment 4.58s)
+
+== contrast, measure.PROBE_JS on live pages, 5 pages x 6 states ==
+states with failing pairs: 0 of 30
+horizontal scroll states: 0
+
+== defects.PROBE_JS ==
+innocence: CLEAN | guilt: ALL FIRE | trusted: True
+findings (pre-existing content classes): {"/kbli": {"duplicate_strings": 1}, "/kbli/55203": {"duplicate_strings": 3}, "/kbli/51101": {"duplicate_strings": 7, "heading_order": 1}, "/kbli/56101": {"duplicate_strings": 5}, "/kbli-explorer": {"heading_order": 2}}
+
+== the two #7508 reds, kbli/55203 desktop/light ==
+light footer_tagline ['rgb(29, 44, 59)', 'rgb(234, 227, 216)'] ratio 11.17
+light trustband_label_Rating ['rgb(88, 98, 107)', 'rgb(234, 227, 216)'] ratio 4.88
+light trustband_label_Google reviews ['rgb(88, 98, 107)', 'rgb(234, 227, 216)'] ratio 4.88

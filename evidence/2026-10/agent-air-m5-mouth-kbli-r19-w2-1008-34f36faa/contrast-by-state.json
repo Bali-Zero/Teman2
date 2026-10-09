@@ -1,0 +1,122 @@
+{
+  "/kbli mobile/light": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli mobile/system-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli mobile/forced-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli desktop/light": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli desktop/system-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli desktop/forced-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/55203 mobile/light": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/55203 mobile/system-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/55203 mobile/forced-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/55203 desktop/light": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/55203 desktop/system-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/55203 desktop/forced-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/51101 mobile/light": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/51101 mobile/system-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/51101 mobile/forced-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/51101 desktop/light": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/51101 desktop/system-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/51101 desktop/forced-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/56101 mobile/light": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/56101 mobile/system-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/56101 mobile/forced-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/56101 desktop/light": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/56101 desktop/system-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli/56101 desktop/forced-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli-explorer mobile/light": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli-explorer mobile/system-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli-explorer mobile/forced-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli-explorer desktop/light": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli-explorer desktop/system-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  },
+  "/kbli-explorer desktop/forced-dark": {
+    "failures": 0,
+    "unmeasurable_over_image": 0
+  }
+}

@@ -1,0 +1,56 @@
+brief_ref: evidence/brief.yml
+seat_override:
+  "Dispatch by the imperator, mission kbli-nav-design-loop/W2, BLUE. The mechanical rewrites were
+  done by a script generated from the contract table, not by a Sonnet subagent, because the
+  mapping is deterministic. The Dux reviewed every diff hunk class and ran the exit commands."
+plan_ref: "docs/plans/2026-10-08-kbli-navigator-design-loop.md §1, row W2; imperator rulings 1-8."
+lanes:
+  - lane: kbli-r19-w2-1008
+    role: build
+    seat: "claude-sonnet-5-5 (Dux)"
+pii_scan: clean
+pii_scan_note: "KBLI classification data is public. No client data, no external seat."
+provenance:
+  "#7508 (closed, branch agent/air-m5/mouth/ux-kbli-r19-0927, range a6fcae5afe..94b588cda1) was read,
+  not cherry-picked. Its paper-skin idea and its MobileNav nav-icon fix are re-derived here from the
+  W0 contract: the token block is generated from the contract rows, and MobileNav takes a paper
+  prop. Its landing redesign, search index, sector dial and CTAHandoff change are not carried."
+diff:
+  net_lines: |
+    35 files. 368 insertions and 390 deletions across existing files, plus 185 lines of new CSS.
+    Net under the 400-line target, so one PR. W2b is not opened.
+  behaviour_change: >-
+    /kbli, /kbli/[code] and /kbli-explorer paint on paper (R19 Direction A) in all three theme
+    states. Gradients, glows and shadows the contract calls not painted are removed. The hero band
+    keeps the ink ground with elevated text. Verdict chips are bordered words on elevated paper, not
+    tinted slabs. The WhatsApp CTA on code pages is copper, not green.
+receipts:
+  - claim: "W1 test on the final content: palette judged, 30 of 30 r19-scope captures, census 0 and 0."
+    cmd: "cd apps/mouth && npm test -- r19-wrapper"
+    result: "Test Files 1 passed (1); Tests 6 passed (6); palette-outside-direction-a (r19 scope, 30/30 captures): 0"
+    exit: 0
+    ts: "2026-10-09T10:09:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "W0 suite stays green."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider"
+    result: "12 passed"
+    exit: 0
+    ts: "2026-10-09T10:10:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Mouth unit tests for kbli, r19 and MobileNav, plus tsc."
+    cmd: "cd apps/mouth && npx vitest run compare-and-thinking kbli r19-colour; npx tsc --noEmit"
+    result: "76 files, 1738 tests passed; tsc clean"
+    exit: 0
+    ts: "2026-10-09T10:05:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Contrast and defects probes on the live dev server. See exit-outputs.txt."
+    cmd: "python3 live_probe.py"
+    result: "0 of 30 states with a failing text pair; defects probe trusted"
+    exit: 0
+    ts: "2026-10-09T10:00:00Z"
+    seat: claude-sonnet-5-5
+dissent:
+  - seat: claude-sonnet-5-5
+    objection: "measure.py and defects.py read static HTML files. The lead's exit commands cannot run on a live app as written."
+    status: CONFIRMED
+    resolution: "live_probe.py in this directory runs their PROBE_JS and calibration controls on the dev server. It reports the failing pairs, not a pair count."
