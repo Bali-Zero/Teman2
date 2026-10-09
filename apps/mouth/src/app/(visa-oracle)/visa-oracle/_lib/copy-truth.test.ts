@@ -275,6 +275,11 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
     "Some visas have age limits. We check your age against them.",
     "Beberapa visa memiliki batas usia. Kami memeriksa usia Anda terhadap batas tersebut.",
   ],
+  [
+    "assumption.retirement_penjamin_confirmed",
+    "If you are unsure whether you have a penjamin, this assessment treats that answer as “no”; Bali Zero can act as your penjamin.",
+    "Jika Anda belum yakin apakah Anda sudah memiliki penjamin, penilaian ini memperlakukan jawaban tersebut sebagai “tidak”; Bali Zero dapat bertindak sebagai penjamin Anda.",
+  ],
 ];
 
 // Sentences the code proved false: a review that does not exist, a rule that
@@ -738,6 +743,14 @@ const FALSE_SAMPLES: readonly (readonly [string, string])[] = [
     "id",
     "Anda tidak yakin dasar mana yang dapat Anda buktikan saat ini, jadi rencana ini kami nilai seolah Anda belum memilih dasar. Anda dapat membahasnya dengan konsultan Bali Zero.",
   ],
+  [
+    "en",
+    "You weren’t sure whether you have a penjamin, so we assessed this plan as if the answer were “no”; Bali Zero can act as your penjamin.",
+  ],
+  [
+    "id",
+    "Anda tidak yakin apakah Anda sudah memiliki penjamin, jadi rencana ini kami nilai seolah jawabannya “tidak”; Bali Zero dapat bertindak sebagai penjamin Anda.",
+  ],
 ];
 
 describe("interview helper copy tells the truth about what an answer does", () => {
@@ -756,12 +769,6 @@ describe("interview helper copy tells the truth about what an answer does", () =
         if (!/^(q|why|lane|framing|assumption)\./.test(key)) continue;
         for (const re of FALSE_CLAIMS) {
           // Verified TRUE by the truth table: the unchosen Second Home basis is zeroed.
-          // Not in the sweep: the penjamin note keeps its own past-tense wording.
-          if (
-            key === "assumption.retirement_penjamin_confirmed" &&
-            /assessed this plan|nilai seolah/.test(String(re))
-          )
-            continue;
           if (
             key === "why.secondhome_basis" &&
             /counted|dihitung/.test(String(re))
