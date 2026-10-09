@@ -49,6 +49,12 @@ decisions:
       2-C (7 keys) and the 9 addendum (16 rows) are applied byte-exactly in both languages; 2-C covers keys outside the
       original diff because they are visible and false on main. The dead keys of section 2-B are
       not touched here: deleting them is a separate PR.
+  - id: D-rebased-on-c3
+    decision: >-
+      Rebased onto main after C3 (#8129) merged, with no conflict. The observer requires C2's
+      duration keys, C3's timeline keys and the dotted-identifier guard together; the C3
+      strings in the dictionary are untouched. The shas cited here are the rebased ones, all
+      on this branch. The enumeration file was last run before the rebase and is unaffected by it.
   - id: D-no-promised-advisor
     decision: >-
       No interview sentence promises that a Bali Zero advisor confirms, reviews or checks
@@ -77,21 +83,21 @@ decisions:
 receipts:
   - claim: "The bites observer finds no banned phrase, word or dotted identifier in the dictionary, the atlas copy or the adapter copy."
     cmd: "python3 scripts/ci/observe_visa_oracle_client_copy.py"
-    result: "OK visa-oracle client copy: 3650 literals scanned, 0 banned"
+    result: "OK visa-oracle client copy: 3672 literals scanned, 0 banned"
     exit: 0
-    ts: "2026-10-09T04:37:02Z"
+    ts: "2026-10-09T04:41:01Z"
     seat: this session
   - claim: "The observer guard has guilt and innocence tests in both languages."
     cmd: "python3 -m pytest scripts/tests/test_observe_visa_oracle_client_copy.py -q"
     result: "4 passed"
     exit: 0
-    ts: "2026-10-09T04:37:03Z"
+    ts: "2026-10-09T04:41:02Z"
     seat: this session
   - claim: "The copy census, the new truth test, i18n parity, QuestionScreen, WhyWeAsk, OutcomeSheet and ConsentHandoff tests pass."
     cmd: "cd apps/mouth && npx vitest run <the seven test files>"
-    result: "Test Files  7 passed (7); Tests  218 passed (218)"
+    result: "Test Files  7 passed (7); Tests  227 passed (227)"
     exit: 0
-    ts: "2026-10-09T04:37:31Z"
+    ts: "2026-10-09T04:41:29Z"
     seat: this session
   - claim: "The enumeration file passes; run alone because it times out inside the full tree under machine load."
     cmd: "cd apps/mouth && npx vitest run src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts"
@@ -103,13 +109,13 @@ receipts:
     cmd: "cd apps/mouth && npx tsc --noEmit -p tsconfig.json"
     result: "no output"
     exit: 0
-    ts: "2026-10-09T04:37:20Z"
+    ts: "2026-10-09T04:41:19Z"
     seat: this session
   - claim: "Prettier accepts every touched TypeScript file."
     cmd: "cd apps/mouth && npx prettier --check <touched files>"
     result: "All matched files use Prettier code style!"
     exit: 0
-    ts: "2026-10-09T04:37:02Z"
+    ts: "2026-10-09T04:41:01Z"
     seat: this session
   - claim: "No e2e spec pins a replaced sentence of the 34 keys; two component tests that did were updated."
     cmd: "rg -n -F -f <old sentences of the 34 keys> apps/mouth/e2e apps/mouth/src (excluding the dictionary and the truth test)"
@@ -122,57 +128,57 @@ dissent:
     severity: HIGH
     objection: English strings said Bali Zero consultant while the live result page says advisor.
     status: CONFIRMED
-    note: cured in 3cdb1cb0cc, carried into this successor.
+    note: cured in 39b53ec230, carried into this successor.
   - seat: agy-gemini-3.1-pro
     severity: MEDIUM
     objection: The paid-up capital hint lost the promise that the exact amount is used.
     status: CONFIRMED
-    note: cured in 3cdb1cb0cc, carried into this successor.
+    note: cured in 39b53ec230, carried into this successor.
   - seat: fresh-opus-gate
     severity: HIGH
     objection: why.birth_date was false and two helper sentences printed internal field names (gate of the first successor).
     status: CONFIRMED
-    note: cured in 8c2f34b47c, carried into this successor.
+    note: cured in 1cb3fa1a75, carried into this successor.
   - seat: fresh-opus-gate
     severity: HIGH
     objection: why.retirement_basis claimed a basis not chosen is not counted, but passive income is checked on every basis and only the deposit is zeroed.
     status: CONFIRMED
-    note: cured in 9df4e13f4f from the truth table.
+    note: cured in 8bc93ccf8d from the truth table.
   - seat: fresh-opus-gate
     severity: HIGH
     objection: why.sponsor_category said no rule uses the sponsor type, but ten seq-26 rules read it.
     status: CONFIRMED
-    note: cured in 9df4e13f4f from the truth table.
+    note: cured in 8bc93ccf8d from the truth table.
   - seat: fresh-opus-gate
     severity: HIGH
     objection: The other-purpose and paid-activity hints were false for transit and for a yes that becomes an employment purpose.
     status: CONFIRMED
-    note: cured in 9df4e13f4f from the truth table.
+    note: cured in 8bc93ccf8d from the truth table.
   - seat: codex-gpt-5.6-sol
     severity: HIGH
     objection: The urgent-lane notice said 1 to 2 days left, but the lane also triggers at 0 days, when the permit expires today.
     status: CONFIRMED
-    note: cured in 26e4b81679; the journal note is codex-c4v3-verdict.txt (run 04:22 to 04:28Z, real model gpt-6-astra).
+    note: cured in 45aa046639; the journal note is codex-c4v3-verdict.txt (run 04:22 to 04:28Z, real model gpt-6-astra).
   - seat: codex-gpt-5.6-sol
     severity: HIGH
     objection: assumption.work_payer promised that a Bali Zero advisor confirms the point, but contact needs the visitor's consent and action.
     status: CONFIRMED
-    note: cured in 26e4b81679, the sentence now offers the advisor instead of promising a confirmation.
+    note: cured in 45aa046639, the sentence now offers the advisor instead of promising a confirmation.
   - seat: codex-gpt-5.6-sol
     severity: HIGH
     objection: assumption.remote_clients made the same promise of an advisor confirmation.
     status: CONFIRMED
-    note: cured in 26e4b81679, same wording as the work payer sentence.
+    note: cured in 45aa046639, same wording as the work payer sentence.
   - seat: codex-gpt-5.6-sol
     severity: HIGH
     objection: question.human_context_notice said the answer cannot select, rank, add or remove a visa, but context answers can change the evaluated purpose.
     status: CONFIRMED
-    note: cured in 26e4b81679, the sentence now says the answer may affect the questions or visa options shown.
+    note: cured in 45aa046639, the sentence now says the answer may affect the questions or visa options shown.
   - seat: codex-gpt-5.6-sol
     severity: MEDIUM
     objection: why.review_gate kept the internal phrase bear directly on the rules.
     status: CONFIRMED
-    note: cured in 26e4b81679, plain wording about immigration history and what the result notes.
+    note: cured in 45aa046639, plain wording about immigration history and what the result notes.
 spend:
   wall_clock_hours: 4
   adversarial_rounds: 4
