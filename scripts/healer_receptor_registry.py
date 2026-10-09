@@ -230,6 +230,10 @@ _COMPLETION_PROOF = {
     # meta_one_steward.py: a completed tick (a crash writes "error" + the exception text)
     "pro.meta_one_steward": ("warning", _note_proof(r"token=(?:alive|dead)$")),
     "cell.organism": ("fail", _pulse_proof),
+    # ops/pro_disk_floor_tick.sh: a completed df read writes the free GB at note start;
+    # 60-100 GB is `warning`. Under 60 GB is `error` ("failed: ...") and stays dead, so it
+    # still spawns; "skipped: ..." and "free space unreadable" never read the disk.
+    "pro.disk_floor": ("warning", _note_proof(r"free_gb=[0-9]+\.[0-9] on /\S+ \(ok > [0-9]+, failed < [0-9]+\)")),
 }
 
 
