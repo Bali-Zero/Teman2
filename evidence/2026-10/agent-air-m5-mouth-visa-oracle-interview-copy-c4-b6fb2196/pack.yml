@@ -11,6 +11,9 @@ lanes:
   - lane: interview-copy-build
     role: build
     seat: Claude Sonnet 5.5 implementer, worktree mouth-visa-oracle-interview-copy-c4 on M5.
+  - lane: interview-copy-review
+    role: review
+    seat: agy-gemini-3.1-pro (constructive copy review), one round, verdict BLOCK then cured.
   - lane: interview-copy-spec
     role: ground_truth
     seat: >-
@@ -46,7 +49,13 @@ receipts:
     cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
     result: "OK visa-oracle client copy: 3625 literals scanned, 0 banned"
     exit: 0
-    ts: "2026-10-09T02:09:25Z"
+    ts: "2026-10-09T02:32:06Z"
+    seat: this session
+  - claim: After the review cures, the copy census, i18n parity, QuestionScreen, WhyWeAsk and OutcomeSheet tests pass.
+    cmd: cd apps/mouth && npx vitest run <the five test files>
+    result: "Test Files  5 passed (5); Tests  147 passed (147)"
+    exit: 0
+    ts: "2026-10-09T02:32:06Z"
     seat: this session
   - claim: The visa-oracle test tree passes except two enumeration tests that timed out under machine load of about 100; that file passes alone.
     cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
@@ -56,21 +65,21 @@ receipts:
     seat: this session
   - claim: The two timed-out tests pass when their file runs alone, so the failure is load, not copy.
     cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts"
-    result: "Test Files  1 passed (1); Tests  40 passed (40)"
+    result: "Test Files  1 passed (1); Tests  40 passed (40) — full-subtree timeouts under load ~100, file passes alone"
     exit: 0
-    ts: "2026-10-09T02:26:12Z"
+    ts: "2026-10-09T02:33:32Z"
     seat: this session
   - claim: The mouth typecheck is clean.
     cmd: cd apps/mouth && npx tsc --noEmit -p tsconfig.json
     result: "no output"
     exit: 0
-    ts: "2026-10-09T02:09:55Z"
+    ts: "2026-10-09T02:32:14Z"
     seat: this session
   - claim: Prettier accepts every touched TypeScript file.
     cmd: cd apps/mouth && npx prettier --check <touched files>
     result: "All matched files use Prettier code style!"
     exit: 0
-    ts: "2026-10-09T02:09:58Z"
+    ts: "2026-10-09T02:32:06Z"
     seat: this session
   - claim: ESLint reports no error on the changed dictionary; the test files are ignored by the project config.
     cmd: cd apps/mouth && npx eslint --no-warn-ignored src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
@@ -90,7 +99,22 @@ receipts:
     exit: 0
     ts: "2026-10-09T02:10:10Z"
     seat: this session
-dissent: []
+dissent:
+  - seat: agy-gemini-3.1-pro
+    severity: HIGH
+    objection: Four English strings said "Bali Zero consultant" while the live result page says "Bali Zero advisor".
+    status: CONFIRMED
+    note: cured in 8570291a61, every EN string now says advisor; ID keeps konsultan Bali Zero.
+  - seat: agy-gemini-3.1-pro
+    severity: HIGH
+    objection: The trip-scope hint named an unbranded consultant, in EN and ID.
+    status: CONFIRMED
+    note: cured in 8570291a61, both languages now name the Bali Zero advisor.
+  - seat: agy-gemini-3.1-pro
+    severity: MEDIUM
+    objection: The paid-up capital hint lost the promise that the exact amount is used.
+    status: CONFIRMED
+    note: cured in 8570291a61, the exact-amount promise is restored in EN and ID.
 spend:
   wall_clock_hours: 2
-  adversarial_rounds: 0
+  adversarial_rounds: 1
