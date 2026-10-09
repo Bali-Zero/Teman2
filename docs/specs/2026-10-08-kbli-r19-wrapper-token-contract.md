@@ -288,7 +288,7 @@ than reading it as empty.
 | class     | `bg-white/[0.10]`                                                                       | elevated #FFFCF7            | card / glass panel ground                                                                                            |
 | class     | `border-[#1c1c1e]`                                                                      | line #DAD8D1                | hairline                                                                                                             |
 | class     | `border-[color:var(--border-strong)]`                                                   | line-strong #A8ACA9         | hover / focus edge                                                                                                   |
-| class     | `border-[rgba(212,132,90,0.2)]`                                                         | line #DAD8D1                | rest hairline: copper borders on every card and chip break the 8% accent budget (plan 2.4)                           |
+| class     | `border-[rgba(212,132,90,0.2)]`                                                         | line #DAD8D1                | rest hairline: copper is reserved for action, hover and focus (declared taste, R19 restraint)                        |
 | class     | `border-[rgba(255,255,255,0.06)]`                                                       | line #DAD8D1                | hairline                                                                                                             |
 | class     | `border-[rgba(255,255,255,0.07)]`                                                       | line #DAD8D1                | hairline                                                                                                             |
 | class     | `border-[var(--border)]`                                                                | line #DAD8D1                | hairline                                                                                                             |
@@ -298,9 +298,9 @@ than reading it as empty.
 | class     | `border-[var(--kbli-pma-open)]/20`                                                      | semantic #2E5E4E            | PMA open verdict                                                                                                     |
 | class     | `border-[var(--kbli-pma-open)]/30`                                                      | semantic #2E5E4E            | PMA open verdict                                                                                                     |
 | class     | `border-[var(--kbli-pma-restricted)]/20`                                                | semantic #7A5A1E            | PMA restricted / amber highlight                                                                                     |
-| class     | `border-accent-sand/20`                                                                 | line #DAD8D1                | rest hairline: copper borders on every card and chip break the 8% accent budget (plan 2.4)                           |
-| class     | `border-accent-sand/30`                                                                 | line #DAD8D1                | rest hairline: copper borders on every card and chip break the 8% accent budget (plan 2.4)                           |
-| class     | `border-accent-warm/30`                                                                 | line #DAD8D1                | rest hairline: copper borders on every card and chip break the 8% accent budget (plan 2.4)                           |
+| class     | `border-accent-sand/20`                                                                 | line #DAD8D1                | rest hairline: copper is reserved for action, hover and focus (declared taste, R19 restraint)                        |
+| class     | `border-accent-sand/30`                                                                 | line #DAD8D1                | rest hairline: copper is reserved for action, hover and focus (declared taste, R19 restraint)                        |
+| class     | `border-accent-warm/30`                                                                 | line #DAD8D1                | rest hairline: copper is reserved for action, hover and focus (declared taste, R19 restraint)                        |
 | class     | `border-slate-200`                                                                      | line #DAD8D1                | hairline                                                                                                             |
 | class     | `border-white/10`                                                                       | line #DAD8D1                | hairline                                                                                                             |
 | class     | `border-white/5`                                                                        | line #DAD8D1                | hairline                                                                                                             |
@@ -487,7 +487,7 @@ python3 scripts/mouth/r19_wrapper_token_census.py --replay scripts/mouth/tests/f
 ```
 
 The verdict is the printed `read-but-undefined:` line, never the exit code.
-The state line is the third printed line; §7.5 defines it.
+The last printed line is `state-colors-off-contract:`, after `colors-outside-direction-a:` and `state-rows-unseen:`; §7.5 defines both.
 
 ## 7. Amendment 2026-10-09: the state contract (W0b)
 
@@ -509,14 +509,15 @@ appears in the DOM. `state` is the variant that applies it. `property` is `color
   that is a control boundary (WCAG 1.4.11). A `hover` border is decorative and has no floor.
 - The table is the union of three sources: every state-variant colour class in the `/kbli*`
   sources on `origin/main` (components/kbli, app/kbli, app/kbli-explorer), the same set on
-  #8139's head (`1fc7c5ad29`), and the state rows of §5. That is 80 tokens, 68 painted
-  and 12 not painted. 17 of them are new to the contract.
+  #8139's head (`1fc7c5ad29`), and the state rows of §5. That is 81 tokens, 69 painted
+  and 12 not painted. 18 of them are new to the contract.
 - State rows also define their class for the `read-but-undefined` check.
 
 <!-- states:begin -->
 
 | token                                                                                   | state               | property   | value                       | against          | contrast | reason                                                                                             |
 | --------------------------------------------------------------------------------------- | ------------------- | ---------- | --------------------------- | ---------------- | -------- | -------------------------------------------------------------------------------------------------- |
+| `focus-visible:ring-2`                                                                  | focus-visible       | ring       | copper #A44B36              | paper #F7F4EE    | 5.26     | keyboard focus ring is copper                                                                      |
 | `focus-visible:ring-[var(--kbli-accent)]`                                               | focus-visible       | ring       | copper #A44B36              | paper #F7F4EE    | 5.26     | keyboard focus ring: copper 2px                                                                    |
 | `focus-within:bg-[#1c1c1e]`                                                             | focus-within        | background | wash #EAE3D8                | ink #1D2C3B      | 11.17    | hover and selection fills are the wash: no tinted slabs                                            |
 | `focus-within:border-accent-warm/40`                                                    | focus-within        | border     | copper #A44B36              | paper #F7F4EE    | 5.26     | hover and focus rule keeps the action hue                                                          |
@@ -616,13 +617,13 @@ Hero band text rule: text on a `--kbli-ink` ground is paper or elevated, never i
 
 ### 7.3 Rulings on the amendment candidates
 
-| candidate                                                                                                      | ruling         | reason                                                                                                                                       |
-| -------------------------------------------------------------------------------------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Copper rest borders (`border-[rgba(212,132,90,0.2)]`, `border-accent-sand/20`, `/30`, `border-accent-warm/30`) | CHANGE to line | A copper hairline on every card, chip and avatar adds up against the 8% budget (plan 2.4). §5 rows edited.                                   |
-| Copper hover and focus borders                                                                                 | KEEP copper    | One element at a time, 5.26:1 on paper: the action signal, inside the budget.                                                                |
-| PMA semantic borders (`border-[var(--kbli-pma-*)]/20`, `/30`)                                                  | KEEP           | The triad is excluded from the budget (plan 2.4) and each hue is at least 4.5:1 on paper.                                                    |
-| Wash hover (`hover:bg-*` becomes wash)                                                                         | KEEP           | Wash against ink is 11.17:1, copper text on it 4.53:1. `hover:bg-surface-editorial-elevated` resolves to elevated today and must paint wash. |
-| Explorer search frame (`border-accent-sand/30`, page.tsx line 324)                                             | CHANGE to line | It is the same rest copper border as the first row: one rule, one ruling.                                                                    |
+| candidate                                                                                                      | ruling                          | reason                                                                                                                                                                                                                                                     |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Copper rest borders (`border-[rgba(212,132,90,0.2)]`, `border-accent-sand/20`, `/30`, `border-accent-warm/30`) | CHANGE to line (declared taste) | Not a budget matter: on main at 1440x900 these classes cover at most 0.22% of a screen (0.216% worst, /kbli-explorer, 6 elements) against an 8% budget. Declared taste: copper is reserved for action, hover and focus, the R19 restraint. §5 rows edited. |
+| Copper hover and focus borders                                                                                 | KEEP copper                     | One element at a time, 5.26:1 on paper: the action signal.                                                                                                                                                                                                 |
+| PMA semantic borders (`border-[var(--kbli-pma-*)]/20`, `/30`)                                                  | KEEP                            | The triad is excluded from the budget (plan 2.4) and each hue is at least 4.5:1 on paper.                                                                                                                                                                  |
+| Wash hover (`hover:bg-*` becomes wash)                                                                         | KEEP                            | Wash against ink is 11.17:1, copper text on it 4.53:1. `hover:bg-surface-editorial-elevated` resolves to elevated today and must paint wash.                                                                                                               |
+| Explorer search frame (`border-accent-sand/30`, page.tsx line 324)                                             | CHANGE to line (declared taste) | It is the same rest copper border as the first row: one rule, one ruling.                                                                                                                                                                                  |
 
 ### 7.4 Selector rule
 
@@ -636,8 +637,11 @@ subject compound, so `.cls:is(.kbli-r19, .kbli-r19 *)` stays `class cls`.
 The census adds a state walk on `desktop/light` and `mobile/system-dark` for each of the five
 pages. Hover goes through `page.hover`, keyboard focus through Tab (up to 80 stops), and
 selection through a programmatic range. Each token that the table declares is read where its
-condition holds: computed `color`, `background-color`, border colour, ring or `::selection`,
-alpha dropped as in W1. A token counts as off contract when the observed hex is not the row's
+condition holds: computed `color`, `background-color`, border colour, ring, `scrollbar-color` or
+`::selection`. Alpha is dropped exactly: the rgb channels of the computed colour, unblended and not
+re-rounded through a canvas, so copper at 30% reads `#A44B36`, as W1's `slice(0, 7)` does. The
+variant is split at the last colon outside brackets, so `[color:var(--x)]` is a utility. A token counts as off contract when the observed hex is not the row's
 hex, or when a state-variant colour class has no row. The census prints, after the two W0
-lines, `state-colors-off-contract: N`. On `origin/main` N is the pre-W2 state: it is reported,
-not a gate. The gate for W2'' is N equal to 0.
+lines, `state-rows-unseen: U` (painted rows whose class is in the DOM and was never observed,
+named) and then `state-colors-off-contract: N`. On `origin/main` N is the pre-W2 state: it is reported,
+not a gate. The exit for W2'' is U equal to 0 and N equal to 0.
