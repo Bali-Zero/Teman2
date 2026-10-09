@@ -1,0 +1,152 @@
+{
+  "/kbli mobile/light": {
+    "failures": 0,
+    "min_ratio_all": 4.88,
+    "pairs": 143
+  },
+  "/kbli mobile/system-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.88,
+    "pairs": 143
+  },
+  "/kbli mobile/forced-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.88,
+    "pairs": 143
+  },
+  "/kbli desktop/light": {
+    "failures": 0,
+    "min_ratio_all": 4.88,
+    "pairs": 148
+  },
+  "/kbli desktop/system-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.88,
+    "pairs": 148
+  },
+  "/kbli desktop/forced-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.88,
+    "pairs": 148
+  },
+  "/kbli/55203 mobile/light": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 196
+  },
+  "/kbli/55203 mobile/system-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 196
+  },
+  "/kbli/55203 mobile/forced-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 196
+  },
+  "/kbli/55203 desktop/light": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 201
+  },
+  "/kbli/55203 desktop/system-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 201
+  },
+  "/kbli/55203 desktop/forced-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 201
+  },
+  "/kbli/51101 mobile/light": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 298
+  },
+  "/kbli/51101 mobile/system-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 298
+  },
+  "/kbli/51101 mobile/forced-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 298
+  },
+  "/kbli/51101 desktop/light": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 303
+  },
+  "/kbli/51101 desktop/system-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 303
+  },
+  "/kbli/51101 desktop/forced-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 303
+  },
+  "/kbli/56101 mobile/light": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 220
+  },
+  "/kbli/56101 mobile/system-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 220
+  },
+  "/kbli/56101 mobile/forced-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 220
+  },
+  "/kbli/56101 desktop/light": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 225
+  },
+  "/kbli/56101 desktop/system-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 225
+  },
+  "/kbli/56101 desktop/forced-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 225
+  },
+  "/kbli-explorer mobile/light": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 17
+  },
+  "/kbli-explorer mobile/system-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 17
+  },
+  "/kbli-explorer mobile/forced-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 17
+  },
+  "/kbli-explorer desktop/light": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 32
+  },
+  "/kbli-explorer desktop/system-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 32
+  },
+  "/kbli-explorer desktop/forced-dark": {
+    "failures": 0,
+    "min_ratio_all": 4.53,
+    "pairs": 32
+  }
+}

@@ -1,0 +1,28 @@
+task_id: kbli-r19-w2b-1009
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, lot W2a, depth-1 successor of the closed #8118 (gate BLOCK upheld).
+  Put /kbli and /kbli-explorer on the R19 wrapper contract with contract fidelity: every contract
+  class row that paints keeps its contract role, keyboard focus stays visible, and no text node
+  composites below 4.5:1 once element opacity is counted.
+constraints:
+  - "Scope fence: apps/mouth files under /kbli*, the wrapper token CSS, one optional prop on MobileNav. No R19_VARS, globals.css, packages/core, contract table, W1 test or fixtures."
+  - "Contract is the authority. No silent deviation and no contract edit. A contract role that looks wrong on paper ships anyway and is listed for an amendment lot."
+  - "No npm install or npm ci. Dev server on port 3571, started and stopped by this lot."
+acceptance:
+  - text: "WHEN the W1 test runs from apps/mouth, THEN read-but-undefined 0, colors-outside-direction-a 0 and palette-outside-direction-a (r19 scope, 30/30 captures) 0."
+    probe: "cd apps/mouth && npm test -- r19-wrapper"
+  - text: "WHEN live_probe.py runs on the 5 pages in 6 states with element opacity composited into the text colour, THEN no text pair is below its threshold and the defects probe is trusted."
+    probe: "python3 live_probe.py"
+  - text: "WHEN tab_walk.py presses Tab to the Zantara chat textarea and the search input, THEN each shows :focus-visible and a computed border, outline, shadow or fill change."
+    probe: "python3 tab_walk.py"
+consumer_map:
+  - "r19-wrapper-census-tests / wrapper-census-live runs the W1 test on every apps/mouth PR and judges the palette."
+  - "The gate reruns live_probe.py and tab_walk.py from this directory."
+risks:
+  - "Thirty contract rows keep their original class name and take their role from a scoped override in the wrapper CSS, because the frozen contract has no class token for the same state. A contract amendment lot could move them to tokens."
+  - "Contract roles that look heavy on paper ship as specified: solid copper borders on cards, solid PMA hue borders on verdict chips, wash hover fills."
+grader: |
+  A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha.

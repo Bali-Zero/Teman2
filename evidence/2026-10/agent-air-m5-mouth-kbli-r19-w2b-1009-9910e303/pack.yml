@@ -1,0 +1,63 @@
+brief_ref: evidence/brief.yml
+seat_override:
+  "Dispatch by the imperator, mission kbli-nav-design-loop/W2 successor, BLUE, rulings of the gate
+  BLOCK on #8118. The mechanical rewrites come from a script generated from the contract table,
+  because the mapping is deterministic. The Dux ran every exit command on the final content."
+plan_ref:
+  "docs/plans/2026-10-08-kbli-navigator-design-loop.md §1, row W2; gate BLOCK comment on #8118
+  (issuecomment-6073276765); imperator successor rulings 1-4."
+lanes:
+  - lane: kbli-r19-w2b-1009
+    role: build
+    seat: "claude-sonnet-5-5 (Dux)"
+pii_scan: clean
+pii_scan_note: "KBLI classification data is public. No client data, no external seat."
+provenance:
+  "#8118 (closed) was rebuilt from origin/main with its wrapper CSS, MobileNav prop and layouts
+  carried over verbatim. Its class rewrites were re-run with the 54 rows that resolve to the
+  contract hex and the 51 rows the contract declares not painted. The 30 other rows are restored
+  to their original class name. #7508 (range a6fcae5afe..94b588cda1) was read, not cherry-picked."
+diff:
+  net_lines: |
+    45 files, of which 8 are this evidence pack. The 37 code files carry 646 insertions and 393
+    deletions, and 185 of those insertions are the wrapper token CSS the closed PR also had. The
+    other new lines are the 30 scoped overrides and their comment.
+  behaviour_change: >-
+    /kbli, /kbli/[code] and /kbli-explorer paint on paper in all three theme states. The Zantara
+    chat input wrapper turns copper-bordered on a wash fill when focused. Copper and PMA-hue
+    borders, wash hover fills and the focus ring colour follow the contract role as solid colours.
+    Text that carried opacity-40 to opacity-80 is now full opacity. The Large badge no longer pulses.
+receipts:
+  - claim: "W1 test on the final content: palette judged, 30 of 30 r19-scope captures, census 0 and 0."
+    cmd: "cd apps/mouth && npm test -- r19-wrapper"
+    result: "Test Files 1 passed (1); Tests 6 passed (6); palette-outside-direction-a (r19 scope, 30/30 captures): 0"
+    exit: 0
+    ts: "2026-10-09T06:00:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Contrast with element opacity composited, and the defects probe with its controls."
+    cmd: "python3 live_probe.py"
+    result: "0 of 30 states with a failing text pair; min composited 4.53:1 over 5349 text pairs; defects probe trusted"
+    exit: 0
+    ts: "2026-10-09T05:40:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Keyboard focus is visible on the chat textarea and the search input."
+    cmd: "python3 tab_walk.py"
+    result: "TAB-WALK: PASS; chat textarea wrapper changes on :focus-within in 4 of 4 runs, search input changes in 2 of 2"
+    exit: 0
+    ts: "2026-10-09T05:45:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "W0 suite and mouth unit tests stay green."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider; cd apps/mouth && npx vitest run compare-and-thinking kbli r19-colour MobileNav; npx tsc --noEmit"
+    result: "12 passed; 77 files, 1743 tests passed; tsc clean"
+    exit: 0
+    ts: "2026-10-09T06:05:00Z"
+    seat: claude-sonnet-5-5
+dissent:
+  - seat: claude-opus-5-5
+    objection: "#8118 deleted 9 contract-painted rows and moved 21 to a different role, and the chat textarea lost its only focus indicator."
+    status: CONFIRMED
+    resolution: "The 30 rows keep their class name and paint their contract role through scoped overrides. tab_walk.py proves the focus indicator."
+  - seat: claude-sonnet-5-5
+    objection: "tab_walk.py first passed on a false signal: the textarea outline width changed while its outline style stayed none, and the wrapper had not finished its 150ms transition."
+    status: CONFIRMED
+    resolution: "The snapshot ignores outline width and colour when the style is none, and the walk waits 600ms before reading."

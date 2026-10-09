@@ -1,0 +1,55 @@
+== census: python3 scripts/mouth/r19_wrapper_token_census.py --base-url http://localhost:3571 ==
+captures: 30 ok, 0 failed
+  /kbli: 6/6 states, root [data-presentation=r19], elements [609]
+  /kbli/55203: 6/6 states, root [data-presentation=r19], elements [441]
+  /kbli/51101: 6/6 states, root [data-presentation=r19], elements [644]
+  /kbli/56101: 6/6 states, root [data-presentation=r19], elements [477]
+  /kbli-explorer: 6/6 states, root [data-presentation=r19], elements [139]
+reads: 191 tokens (var 69, class 100, rule 11, component 11)
+defined-above-wrapper: 0 (informational; resolved outside the wrapper today)
+read-but-undefined: 0
+
+== cd apps/mouth && npm test -- r19-wrapper ==
+innocence fixture: GREEN — palette-outside-direction-a (r19 scope, 1/1 captures): 0
+  W0 replay: read-but-undefined: 0 / colors-outside-direction-a: 0
+guilt fixture: RED (expected) — palette-outside-direction-a (r19 scope, 1/1 captures): 1
+  colour #0F172A x1 background-color via --kbli-bg-base e.g. div on fixture:guilt desktop/light
+  W0 replay: colors-outside-direction-a: 1
+undeclared-read fixture: read-but-undefined: 1
+var --kbli-w1-undeclared  e.g. div>main>p on fixture:undeclared desktop/light
+census (W0 judge on this run):
+captures: 30 ok, 0 failed
+  /kbli: 6/6 states, root [data-presentation=r19], elements [609]
+  /kbli/55203: 6/6 states, root [data-presentation=r19], elements [441]
+  /kbli/51101: 6/6 states, root [data-presentation=r19], elements [644]
+  /kbli/56101: 6/6 states, root [data-presentation=r19], elements [477]
+  /kbli-explorer: 6/6 states, root [data-presentation=r19], elements [139]
+reads: 191 tokens (var 69, class 100, rule 11, component 11)
+defined-above-wrapper: 0 (informational; resolved outside the wrapper today)
+read-but-undefined: 0
+colors-outside-direction-a: 0
+palette-outside-direction-a (r19 scope, 30/30 captures): 0
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  12:40:56
+   Duration  202.98s (transform 82ms, setup 236ms, import 344ms, tests 201.49s, environment 781ms)
+
+== python3 live_probe.py (measure.PROBE_JS with element opacity composited into the text colour) ==
+states with a text pair below its threshold: 0 of 30
+min composited contrast over all text, 30 states: 4.53:1
+text pairs measured: 5349
+horizontal-scroll states: 0
+
+== defects.PROBE_JS ==
+innocence: CLEAN | guilt: ALL FIRE | trusted: True
+findings: {"/kbli": {"duplicate_strings": 1}, "/kbli/55203": {"duplicate_strings": 3}, "/kbli/51101": {"duplicate_strings": 7, "heading_order": 1}, "/kbli/56101": {"duplicate_strings": 5}, "/kbli-explorer": {"heading_order": 2}}
+
+== python3 tab_walk.py ==
+/kbli light chat textarea: focus-visible=True changed-levels=[1]
+/kbli light search input: focus-visible=True changed-levels=[0]
+/kbli dark chat textarea: focus-visible=True changed-levels=[1]
+/kbli dark search input: focus-visible=True changed-levels=[0]
+/kbli/55203 light chat textarea: focus-visible=True changed-levels=[1]
+/kbli/55203 dark chat textarea: focus-visible=True changed-levels=[1]
+TAB-WALK: PASS
