@@ -12,19 +12,25 @@ pii_scan: clean
 pii_scan_note: Merger code, tests on synthetic git repos under tmp, a README paragraph and a spec status line. No client data was read or written; the journal line never carries the PR body's text.
 what_changed: |
   scripts/localci/merger.py: merge_shadow_step, called by decide right after enqueue_step, journals one {"kind":"would_merge"} line
-  per decided PR (pr, head_sha, base_sha, mirror_main, base_current, head_unchanged, merge_tree, clean, conflicts, the enqueue
+  per decision that reaches the enqueue step (CONFLICT, ERROR and skipped decisions carry none) (pr, head_sha, base_sha, mirror_main, remote_main, base_current, head_unchanged, merge_tree, clean, conflicts, the enqueue
   criterion reused from the enqueue line, armed_env, bites, ok, lease_id; code_sha and ts from journal()). The rehearsal is
   `git merge-tree --write-tree --name-only -z <mirror main> <head>`: plumbing that writes objects, never a ref. ok is the
   criterion conjunction and base_current and clean (head_unchanged is one of the criterion's own terms). Every failure is caught
   and journalled as a redacted error with ok false. PR_QUERY now reads the PR body and pr_side keeps only a bites flag
   (a Bites line anywhere at the start of a line, bold or quoted forms included), never the text. The report prints
-  "phase F shadow: would_merge=N (ok=M, conflicted=K, base_moved=J)" and carries window.would_merge and phase_f "shadow".
+  "phase F shadow: would_merge=N (ok=M, conflicted=K, base_moved=J, errors=E)" and carries window.would_merge and phase_f "shadow".
   README: the Phase F shadow paragraph with the line's shape and one illustrative example. Spec: one status sentence at the end
-  of Phase F, with #TBD for the shipping session.
+  of Phase F, dated 2026-10-09.
   Tests: 25 new cases in test_merger.py (a fake bare mirror: clean, conflict, base moved, every sub-criterion false, no/empty
   criterion, merge-tree raising, head missing, base ref missing, a whole tick, bites forms) and 2 in test_merger_report.py;
   eight existing assertions on the exact journal sequence of a tick gained the would_merge line. 23 mutant rules in their own
   block right after the C3a-2 enqueue rules.
+  Fix round after the independent gate (b82c6885c0, 8fbc895bdd): base_current asks GitHub through a read-only `git ls-remote
+  origin refs/heads/<base>` (30 s bound, no ref or object written) journalled as remote_main, because the tick fetches the mirror
+  once and a gate run outlasts merges; an unreadable remote gives remote_main null, base_current false, error, ok false. The report
+  counts a git error only under errors (a conflict needs a tree and no error, a moved base needs a readable remote_main). A failed
+  journal write in the shadow is printed to stderr and never raised, so no second ERROR decision line. Tests and mutant rules
+  for each.
 proof: |
   Every behaviour is produced by the committed code on fixtures under tmp (real git repos, GitHub and the runner faked); nothing
   ran on Pro and nothing was pushed. The shadow reaches Pro when the lead's gate merges and the launchd tick next extracts merger.py.
@@ -46,22 +52,22 @@ spend:
   adversarial_rounds: 0
   wall_clock_hours: 1
 receipts:
-  - claim: "The localci suite at 487462ec15 (F1 code and tests): 948 passed, 14 skipped (needs_docker), 1 warning, 194 s."
+  - claim: "The two merger test files at 8fbc895bdd (F1 plus the gate's fix round): 262 passed, 129 s."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-09T02:40:54Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Every f1-* rule (30) and the 19 neighbours (enqueue-* and report-would-enqueue-any) at the fix round's tree, run in four parallel sweeps plus one rerun of the rules whose text moved: all killed, no survivor, no error, none stale."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <the f1-* rules and the neighbours>
+    exit: 0
+    ts: "2026-10-09T02:36:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The full localci suite at 487462ec15, before the fix round: 948 passed, 14 skipped (needs_docker), 1 warning, 194 s. Not rerun after the fix round; the fix round touched only the two merger test files and merger.py."
     cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests -q -p no:cacheprovider
     exit: 0
     ts: "2026-10-08T18:46:00Z"
     seat: claude-opus-5-5 on M5
-  - claim: "The 23 F1 mutant rules at 487462ec15: 23/23 killed, no survivor, no error, none stale."
-    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <the 23 f1-* rules>
-    exit: 0
-    ts: "2026-10-08T18:46:00Z"
-    seat: claude-opus-5-5 on M5
-  - claim: "The 19 neighbouring rules (enqueue-* and report-would-enqueue-any) at 487462ec15: 19/19 killed, none stale."
-    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <the enqueue-* rules and report-would-enqueue-any>
-    exit: 0
-    ts: "2026-10-08T18:56:00Z"
-    seat: claude-opus-5-5 on M5
-  - claim: "One real would_merge line produced by the committed code on a fixture (test_merger.Mirror, invented repos under tmp): kind would_merge, ok true, clean true, base_current true, merge_tree a 40-hex sha (172ffec740aa...), conflicts [], bites true, refs of the mirror identical before and after (asserted in the script)."
+  - claim: "One real would_merge line produced by the committed code on a fixture (test_merger.Mirror, invented repos under tmp): kind would_merge, ok true, clean true, base_current true (before the fix round, when base_current compared to the mirror's main), merge_tree a 40-hex sha (172ffec740aa...), conflicts [], bites true, refs of the mirror identical before and after (asserted in the script)."
     cmd: PYTHONPATH=. python3 line.py (Mirror(tmp).enq(clean head) through merger.merge_shadow_step, then for-each-ref compared)
     exit: 0
     ts: "2026-10-08T18:42:01Z"
