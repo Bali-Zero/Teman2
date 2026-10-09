@@ -2583,6 +2583,19 @@ DEFAULT_REGISTRY: list[dict] = [
                     "bare `git worktree add` pushes with NO gate and reports a clean push",
     },
     {
+        "id": "push_witness", "type": "wrap",
+        "target": ["python3", "{repo}/scripts/push_witness_reconcile.py",
+                   "--json", "--since", "24"],
+        "class": "worktree<->gate",
+        "boundary": "origin agent-branch tips <-> runtime pre-push witness journal",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 30,
+        "severity": "P1", "cure": "pr",
+        "parse": "findings_list", "unwrap_key": "findings",
+        "verdict_key": "verdict", "ok_values": [],
+        "fix_hint": "an agent tip has no witness marker: a push skipped the trusted hook, or the hook "
+                    "warned it could not write its journal; find the pusher, never a session cure",
+    },
+    {
         "id": "launchd_liveness", "type": "wrap",
         "target": ["python3", "{repo}/scripts/launchd_liveness_detector.py", "--json"],
         "class": "wrapper<->payload",
