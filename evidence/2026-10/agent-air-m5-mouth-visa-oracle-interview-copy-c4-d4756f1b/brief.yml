@@ -1,0 +1,26 @@
+gear: 2
+gear_reason: >-
+  Client copy only: dictionary strings in two languages, the tests that pin them and one CI
+  observer. No tree logic, no engine contract, no data written, no deploy beyond the normal
+  Vercel build of the mouth app.
+ruling: >-
+  Zero, 2026-10-08/09 — no internal language reaches the client, and nothing false. PR-C1
+  cleaned the result page; the interview helper copy still spoke machinery or promised things
+  the code does not do.
+mission: >-
+  The Visa Oracle interview explains why it asks in the visitor's own words, and every sentence
+  about what an answer does is true against the flow, the mapping and the signed seq-26 pack.
+objective: >-
+  No interview, lane, assumption or atlas string carries engine, interface, field-name or
+  decision-fact language in either language; 54 helper sentences follow the per-key truth
+  table; the census, the truth test and the CI observer fail if a banned or false sentence
+  comes back.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts (114 keys rewritten, EN and ID twins)
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/copy-truth.test.ts (new, 52 equality rows plus false-claim guilt checks)
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/client-copy.test.ts (census covers the interview copy and the atlas)
+  - scripts/ci/observe_visa_oracle_client_copy.py and its Python test (observer covers the interview copy, the atlas and dotted identifiers)
+  - component tests that pinned a replaced sentence, and one consent line (advisor)
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 5
