@@ -161,31 +161,31 @@ const SECTION_STYLES: Record<
 > = {
   obligations: {
     accentColor: "var(--kbli-accent)",
-    iconBg: "rgba(212, 132, 90, 0.1)",
+    iconBg: "var(--kbli-accent-subtle)",
     iconColor: "var(--kbli-accent)",
     topBorder: "var(--kbli-accent)",
   },
   authority: {
     accentColor: "var(--kbli-accent2)",
-    iconBg: "rgba(139, 156, 247, 0.1)",
+    iconBg: "var(--kbli-zantara-bg)",
     iconColor: "var(--kbli-accent2)",
     topBorder: "var(--kbli-accent2)",
   },
   pma: {
     accentColor: "var(--kbli-pma-open)",
-    iconBg: "rgba(94, 196, 144, 0.1)",
+    iconBg: "var(--kbli-pma-open-bg)",
     iconColor: "var(--kbli-pma-open)",
     topBorder: "var(--kbli-pma-open)",
   },
   note: {
     accentColor: "var(--kbli-amber)",
-    iconBg: "rgba(232, 168, 73, 0.1)",
+    iconBg: "var(--kbli-pma-restricted-bg)",
     iconColor: "var(--kbli-amber)",
     topBorder: "var(--kbli-amber)",
   },
   default: {
     accentColor: "var(--kbli-accent)",
-    iconBg: "rgba(212, 132, 90, 0.08)",
+    iconBg: "var(--kbli-accent-subtle)",
     iconColor: "var(--kbli-accent)",
     topBorder: "var(--kbli-border)",
   },
@@ -408,7 +408,7 @@ function TierTabs({
   return (
     <div
       className="flex gap-1 rounded-lg p-1"
-      style={{ background: "rgba(255,255,255,0.04)" }}
+      style={{ background: "var(--kbli-bg-surface)" }}
     >
       {tiers.map((tier, i) => (
         <button
@@ -416,7 +416,7 @@ function TierTabs({
           onClick={() => onSelect(i)}
           className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
             activeTier === i
-              ? "bg-[var(--kbli-bg-surface)] text-[var(--foreground)] shadow-sm"
+              ? "bg-[var(--kbli-bg-surface)] text-[var(--foreground)] "
               : "text-[var(--foreground-muted)] hover:text-[var(--foreground-secondary)]"
           }`}
         >
@@ -457,7 +457,7 @@ function TierDetail({ tier }: { tier: KBLILicenseByScale }) {
                   <span
                     className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold"
                     style={{
-                      background: "rgba(212, 132, 90, 0.1)",
+                      background: "var(--kbli-accent-subtle)",
                       color: "var(--kbli-accent)",
                     }}
                   >
@@ -569,25 +569,22 @@ function RegulatoryAlert({ markdown }: { markdown: string }) {
     <div
       className="relative overflow-hidden rounded-xl border px-6 py-5"
       style={{
-        background:
-          "linear-gradient(135deg, rgba(232, 113, 108, 0.08), rgba(232, 168, 73, 0.04), rgba(232, 113, 108, 0.03) 80%)",
-        borderColor: "rgba(232, 113, 108, 0.25)",
+        background: "var(--kbli-bg-surface)",
+        borderColor: "var(--kbli-border)",
       }}
     >
       {/* Glow orb */}
       <div
         className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full"
         style={{
-          background:
-            "radial-gradient(circle, rgba(232,113,108,0.1) 0%, transparent 70%)",
+          background: "none",
         }}
       />
       {/* Second glow for emphasis */}
       <div
         className="pointer-events-none absolute -bottom-12 -left-12 h-32 w-32 rounded-full"
         style={{
-          background:
-            "radial-gradient(circle, rgba(232,113,108,0.06) 0%, transparent 70%)",
+          background: "none",
         }}
       />
 
@@ -596,8 +593,8 @@ function RegulatoryAlert({ markdown }: { markdown: string }) {
           <span
             className="flex h-7 w-7 items-center justify-center rounded-lg text-base"
             style={{
-              background: "rgba(232, 113, 108, 0.15)",
-              border: "1px solid rgba(232, 113, 108, 0.25)",
+              background: "var(--kbli-pma-closed-bg)",
+              border: "1px solid var(--kbli-border)",
             }}
           >
             ⚠
@@ -617,8 +614,8 @@ function RegulatoryAlert({ markdown }: { markdown: string }) {
                 key={i}
                 className="rounded-lg px-4 py-3 kbli-prose"
                 style={{
-                  background: "rgba(232, 113, 108, 0.04)",
-                  border: "1px solid rgba(232, 113, 108, 0.1)",
+                  background: "var(--kbli-pma-closed-bg)",
+                  border: "1px solid var(--kbli-border)",
                 }}
               >
                 <ReactMarkdown>{warning.trim()}</ReactMarkdown>
@@ -693,38 +690,38 @@ function AuthorityFlow({ body }: { body: string }) {
 /** Step colors — 7 shades cycling through amber→orange→teal palette */
 const STEP_COLORS = [
   {
-    bg: "rgba(212, 132, 90, 0.12)",
-    border: "rgba(212, 132, 90, 0.25)",
+    bg: "var(--kbli-bg-surface)",
+    border: "var(--kbli-border)",
     num: "var(--kbli-accent)",
   },
   {
-    bg: "rgba(212, 132, 90, 0.08)",
-    border: "rgba(212, 132, 90, 0.18)",
+    bg: "var(--kbli-bg-surface)",
+    border: "var(--kbli-border)",
     num: "var(--kbli-accent)",
   },
   {
-    bg: "rgba(139, 156, 247, 0.08)",
-    border: "rgba(139, 156, 247, 0.18)",
+    bg: "var(--kbli-zantara-bg)",
+    border: "var(--kbli-border)",
     num: "var(--kbli-accent2)",
   },
   {
-    bg: "rgba(139, 156, 247, 0.10)",
-    border: "rgba(139, 156, 247, 0.22)",
+    bg: "var(--kbli-zantara-bg)",
+    border: "var(--kbli-border)",
     num: "var(--kbli-accent2)",
   },
   {
-    bg: "rgba(94, 196, 144, 0.08)",
-    border: "rgba(94, 196, 144, 0.18)",
+    bg: "var(--kbli-pma-open-bg)",
+    border: "var(--kbli-border)",
     num: "var(--kbli-pma-open)",
   },
   {
-    bg: "rgba(94, 196, 144, 0.10)",
-    border: "rgba(94, 196, 144, 0.22)",
+    bg: "var(--kbli-pma-open-bg)",
+    border: "var(--kbli-border)",
     num: "var(--kbli-pma-open)",
   },
   {
-    bg: "rgba(232, 168, 73, 0.08)",
-    border: "rgba(232, 168, 73, 0.20)",
+    bg: "var(--kbli-pma-restricted-bg)",
+    border: "var(--kbli-border)",
     num: "var(--kbli-amber)",
   },
 ];
@@ -860,7 +857,7 @@ function StepList({
           >
             <span
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black mt-0.5"
-              style={{ background: color.border, color: color.num }}
+              style={{ background: "var(--kbli-bg-base)", color: color.num }}
             >
               {step.num}
             </span>
@@ -1058,8 +1055,8 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
         <div
           className="rounded-xl border px-5 py-4"
           style={{
-            background: "rgba(232, 113, 108, 0.06)",
-            borderColor: "rgba(232, 113, 108, 0.25)",
+            background: "var(--kbli-pma-closed-bg)",
+            borderColor: "var(--kbli-border)",
           }}
         >
           <div className="mb-1.5 flex items-center gap-2">
@@ -1087,8 +1084,8 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
         <div
           className="rounded-xl border px-5 py-4"
           style={{
-            background: "rgba(232, 113, 108, 0.06)",
-            borderColor: "rgba(232, 113, 108, 0.25)",
+            background: "var(--kbli-pma-closed-bg)",
+            borderColor: "var(--kbli-border)",
           }}
         >
           <div className="mb-1.5 flex items-center gap-2">
@@ -1126,8 +1123,8 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
         <div
           className="rounded-xl border px-5 py-4"
           style={{
-            background: "rgba(232, 168, 73, 0.06)",
-            borderColor: "rgba(232, 168, 73, 0.25)",
+            background: "var(--kbli-pma-restricted-bg)",
+            borderColor: "var(--kbli-border)",
           }}
         >
           <div className="mb-1.5 flex items-center gap-2">
@@ -1155,8 +1152,8 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
         <div
           className="rounded-xl border px-5 py-4"
           style={{
-            background: "rgba(232, 168, 73, 0.06)",
-            borderColor: "rgba(232, 168, 73, 0.25)",
+            background: "var(--kbli-pma-restricted-bg)",
+            borderColor: "var(--kbli-border)",
           }}
         >
           <div className="mb-1.5 flex items-center gap-2">
@@ -1188,8 +1185,8 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
         <div
           className="rounded-xl border px-5 py-4"
           style={{
-            background: "rgba(232, 168, 73, 0.06)",
-            borderColor: "rgba(232, 168, 73, 0.25)",
+            background: "var(--kbli-pma-restricted-bg)",
+            borderColor: "var(--kbli-border)",
           }}
         >
           <div className="mb-1.5 flex items-center gap-2">
@@ -1241,8 +1238,8 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
         <div
           className="rounded-xl border px-5 py-4"
           style={{
-            background: "rgba(232, 168, 73, 0.06)",
-            borderColor: "rgba(232, 168, 73, 0.25)",
+            background: "var(--kbli-pma-restricted-bg)",
+            borderColor: "var(--kbli-border)",
           }}
         >
           <div className="mb-1.5 flex items-center gap-2">
@@ -1406,8 +1403,8 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
                     background: currentTier.timeframe
                       .toLowerCase()
                       .includes("otomatis")
-                      ? "rgba(94, 196, 144, 0.08)"
-                      : "rgba(232, 168, 73, 0.08)",
+                      ? "var(--kbli-pma-open-bg)"
+                      : "var(--kbli-pma-restricted-bg)",
                     color: currentTier.timeframe
                       .toLowerCase()
                       .includes("otomatis")
@@ -1422,7 +1419,7 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
                 <span
                   className="rounded-full px-2.5 py-0.5 text-xs font-medium"
                   style={{
-                    background: "rgba(94, 196, 144, 0.08)",
+                    background: "var(--kbli-pma-open-bg)",
                     color: "var(--kbli-pma-open)",
                   }}
                 >
@@ -1450,8 +1447,8 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
             <div
               className="rounded-xl border px-5 py-4"
               style={{
-                background: "rgba(232, 168, 73, 0.06)",
-                borderColor: "rgba(232, 168, 73, 0.25)",
+                background: "var(--kbli-pma-restricted-bg)",
+                borderColor: "var(--kbli-border)",
               }}
             >
               <div className="mb-1.5 flex items-center gap-2">

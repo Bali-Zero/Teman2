@@ -6,7 +6,9 @@ name: r19-wrapper-census-tests
 # guilt and innocence. Mission kbli-nav-design-loop, lot W0. Not a required
 # context. Lot W1 arms the live census in apps/mouth as the `wrapper-census-live`
 # job (src/test/r19-wrapper.test.ts, `npm test -- r19-wrapper`), with the guilt
-# and innocence fixtures.
+# and innocence fixtures. Lot W2'' arms the state walk (contract section 7.5) as
+# `wrapper-census-states`. Both live jobs judge the PRINTED verdict lines, never
+# an exit code (contract section 6).
 
 on:
   pull_request:
@@ -59,4 +61,68 @@ jobs:
         run: npx playwright install --with-deps --only-shell chromium
       - name: Live census, palette guard, guilt and innocence fixtures
         working-directory: apps/mouth
-        run: npm test -- r19-wrapper
+        run: |
+          set -o pipefail
+          npm test -- r19-wrapper 2>&1 | tee "$RUNNER_TEMP/w1.txt"
+      - name: The palette line is printed JUDGED and 0
+        run: |
+          want="palette-outside-direction-a (r19 scope, 30/30 captures): 0"
+          if ! grep -Fxq "$want" "$RUNNER_TEMP/w1.txt"; then
+            echo "::error::the W1 run did not print '$want'"
+            grep -E '^palette-outside-direction-a' "$RUNNER_TEMP/w1.txt" || true
+            exit 1
+          fi
+          echo "$want"
+
+  wrapper-census-states:
+    runs-on: ubuntu-latest
+    # Measured on M5 at the W2'' head: the census's 30 captures plus the 10-walk
+    # state pass took 195 s and 259 s on a warm dev server, and the W1 job's cold
+    # compile with 30 captures took 200 s. CI adds npm install, the Chromium shell
+    # (its apt step once took 17 min, see tests.yml) and a cold compile.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Restore node_modules
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            **/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-workspace-${{ hashFiles('package-lock.json') }}
+      - name: Install dependencies
+        run: npm install --no-fund
+      - name: Install Playwright for Python and its Chromium headless shell
+        run: |
+          python -m pip install --quiet "playwright==1.60.0"
+          timeout 600 python -m playwright install --with-deps --only-shell chromium
+          shell=$(find "$HOME/.cache/ms-playwright" -path '*chromium_headless_shell-*' -name chrome-headless-shell -type f | sort | tail -1)
+          test -x "$shell"
+          echo "CHROME_HEADLESS=$shell" >> "$GITHUB_ENV"
+      - name: Live census with the state walk (starts and stops its own dev server)
+        env:
+          CENSUS_DEV_LOG: ${{ runner.temp }}/next-dev.log
+        run: python scripts/mouth/r19_wrapper_token_census.py --port 3519 | tee "$RUNNER_TEMP/census.txt"
+      - name: The four verdict lines are printed and 0
+        run: |
+          fail=0
+          for want in "read-but-undefined: 0" "colors-outside-direction-a: 0" \
+                      "state-rows-unseen: 0" "state-colors-off-contract: 0"; do
+            if grep -Fxq "$want" "$RUNNER_TEMP/census.txt"; then
+              echo "ok: $want"
+            else
+              echo "::error::the census did not print '$want'"
+              fail=1
+            fi
+          done
+          if [ "$fail" -ne 0 ]; then
+            grep -E '^(captures|read-but-undefined|colors-outside|state-rows-unseen|state-colors-off)' "$RUNNER_TEMP/census.txt" || true
+            tail -40 "$RUNNER_TEMP/next-dev.log" || true
+          fi
+          exit "$fail"

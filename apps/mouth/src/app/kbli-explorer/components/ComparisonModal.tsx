@@ -63,7 +63,9 @@ export default function ComparisonModal({
         return (
           <div className="space-y-1">
             {detail.licenses.length === 0 ? (
-              <span className="text-xs text-[#888]">None</span>
+              <span className="text-xs text-[var(--kbli-text-muted)]">
+                None
+              </span>
             ) : (
               detail.licenses.map((l, i) => (
                 <div key={i} className="text-xs text-[#BBB]">
@@ -74,7 +76,11 @@ export default function ComparisonModal({
           </div>
         );
       case "Sector":
-        return <span className="text-xs text-[#999]">{detail.sector}</span>;
+        return (
+          <span className="text-xs text-[var(--kbli-text-muted)]">
+            {detail.sector}
+          </span>
+        );
     }
   }
 
@@ -94,21 +100,21 @@ export default function ComparisonModal({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 z-50 w-[95vw] max-w-4xl max-h-[85vh] bg-[#0A0C10] border border-white/10 rounded-xl shadow-2xl overflow-hidden flex flex-col"
+            className="fixed top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 z-50 w-[95vw] max-w-4xl max-h-[85vh] bg-[#0A0C10] border border-[var(--border)] rounded-xl overflow-hidden flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-white/5">
+            <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
               <div>
-                <Dialog.Title className="text-lg font-serif text-[#F0F0F0]">
+                <Dialog.Title className="text-lg font-serif text-[var(--foreground)]">
                   Compare KBLI Codes
                 </Dialog.Title>
-                <Dialog.Description className="text-xs text-[#888] mt-1">
+                <Dialog.Description className="text-xs text-[var(--kbli-text-muted)] mt-1">
                   Side-by-side comparison of {codes.length} business codes
                 </Dialog.Description>
               </div>
               <Dialog.Close asChild>
                 <button
-                  className="p-2 rounded-lg hover:bg-surface-editorial-elevated text-[#888] hover:text-white transition-colors"
+                  className="p-2 rounded-lg hover:bg-surface-editorial-elevated text-[var(--kbli-text-muted)] hover:text-white transition-colors"
                   aria-label="Close comparison"
                 >
                   <X size={18} />
@@ -127,13 +133,13 @@ export default function ComparisonModal({
                 <table className="w-full border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left text-[11px] uppercase tracking-widest text-[#888] py-3 px-3 border-b border-white/5 w-28">
+                      <th className="text-left text-[11px] uppercase tracking-widest text-[var(--kbli-text-muted)] py-3 px-3 border-b border-[var(--border)] w-28">
                         Field
                       </th>
                       {details.map((d, i) => (
                         <th
                           key={i}
-                          className="text-left text-[11px] uppercase tracking-widest text-accent-sand py-3 px-3 border-b border-white/5"
+                          className="text-left text-[11px] uppercase tracking-widest text-accent-sand py-3 px-3 border-b border-[var(--border)]"
                         >
                           {d?.code || codes[i]}
                         </th>
@@ -144,9 +150,9 @@ export default function ComparisonModal({
                     {COLUMNS.map((col) => (
                       <tr
                         key={col}
-                        className="border-b border-white/5 last:border-0"
+                        className="border-b border-[var(--border)] last:border-0"
                       >
-                        <td className="py-3 px-3 text-xs text-[#888] font-medium align-top whitespace-nowrap">
+                        <td className="py-3 px-3 text-xs text-[var(--kbli-text-muted)] font-medium align-top whitespace-nowrap">
                           {col}
                         </td>
                         {details.map((d, i) => (
@@ -154,7 +160,9 @@ export default function ComparisonModal({
                             {d ? (
                               getCellValue(d, col)
                             ) : (
-                              <span className="text-xs text-[#888]">Error</span>
+                              <span className="text-xs text-[var(--kbli-text-muted)]">
+                                Error
+                              </span>
                             )}
                           </td>
                         ))}

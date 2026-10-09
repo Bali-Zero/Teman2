@@ -56,7 +56,8 @@ def test_innocence_the_committed_contract_defines_every_live_read(census):
 
 
 def test_the_two_reds_of_7508_are_in_the_census(census):
-    assert census["reads"]["var --color-text-secondary"]["defined"] == "above"
+    # Since W2'' the fixture is the walk at the wrapper's head: the alias resolves on the wrapper.
+    assert census["reads"]["var --color-text-secondary"]["defined"] == "wrapper"
     assert "class brand-tagline" in census["reads"]
 
 
@@ -287,15 +288,19 @@ def test_the_rest_copper_borders_were_ruled_to_line():
         assert contract[("class", token)]["hex"] == census_mod.DIRECTION_A["line"], token
 
 
-def test_the_origin_main_walk_is_the_pre_w2_number(census):
-    """The fixture is the live walk on origin/main 4443d209f1: 10 walks, 51 state classes off contract, 0 unseen.
-    W2'' regenerates it and the pin moves to 0."""
+def test_the_w2_walk_is_zero(census):
+    """The fixture is the live walk at the W2'' head (it was origin/main 4443d209f1 with 51 off, 0 unseen):
+    10 walks, every verdict line 0, and the rows the #8139 gate caught now paint their own hex."""
     assert len(census["walks"]) == 10 and census["walk_failed"] == []
     out = verdict(census)
-    assert out[-1] == "state-colors-off-contract: 51"
-    assert "state-rows-unseen: 0" in out
-    assert any(ln.strip().startswith("hover:bg-surface-editorial-elevated  expected #EAE3D8") for ln in out)
-    assert any(ln.strip().startswith("group-hover:text-[color:var(--accent-zantara)]  expected #233D52") for ln in out)
+    assert out[-1] == "state-colors-off-contract: 0"
+    for line in ("state-rows-unseen: 0", "read-but-undefined: 0", "colors-outside-direction-a: 0"):
+        assert line in out
+    caught = {"hover:bg-surface-editorial-elevated": "#EAE3D8", "group-hover:text-[color:var(--accent-zantara)]": "#233D52",
+              "group-hover:bg-[color-mix(in_srgb,var(--accent-zantara)_10%,transparent)]": "#EAE3D8",
+              "selection:bg-accent-sand/30": "#EAE3D8", "selection:text-accent-sand": "#1D2C3B"}
+    for token, hx in caught.items():
+        assert census["state_obs"][token]["observed"] == [hx], token
 
 
 # ---- the real walk, end to end, on a page we write --------------------------------------------

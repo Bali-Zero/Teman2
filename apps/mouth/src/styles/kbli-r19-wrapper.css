@@ -1,0 +1,359 @@
+/*
+ * /kbli* on R19 Direction A: the wrapper defines every custom property the
+ * pages read (docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md, W0).
+ * Declared on the wrapper itself with literals: a var() alias resolves where it
+ * is declared, so an alias set at :root (--color-text-secondary: var(--text-secondary))
+ * would keep the dark value inside this wrapper.
+ * The four values where main R19_VARS differs from the contract
+ * (--text-secondary, --border-strong, --r19-cta-ink, --footer-bg) take the
+ * contract value here; the site-wide R19_VARS is not touched.
+ */
+@font-face {
+  font-family: "R19 Fraunces";
+  src: url("/fonts/fraunces-r19-latin.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "R19 Manrope";
+  src: url("/fonts/manrope-r19-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+.kbli-r19 {
+  color-scheme: light;
+  --accent-funnel: #a44b36;
+  --accent-funnel-text: #a44b36;
+  --accent-sand: #a44b36;
+  --accent-warm: #a44b36;
+  --accent-whatsapp-ink: #fffcf7;
+  --accent-zantara: #233d52;
+  --background: #f7f4ee;
+  --border: #dad8d1;
+  --border-default: #dad8d1;
+  --border-strong: #a8aca9;
+  --border-subtle: #dad8d1;
+  --color-accent-sand: #a44b36;
+  --color-accent-warm: #a44b36;
+  --color-amber-400: #7a5a1e;
+  --color-black: #eae3d8;
+  --color-border-subtle: #dad8d1;
+  --color-green-500: #2e5e4e;
+  --color-purple-500: #233d52;
+  --color-red-500: #a44b36;
+  --color-slate-200: #dad8d1;
+  --color-slate-50: #eae3d8;
+  --color-slate-500: #58626b;
+  --color-surface-deep: #eae3d8;
+  --color-surface-editorial-elevated: #fffcf7;
+  --color-text-secondary: #58626b;
+  --color-white: #1d2c3b;
+  --color-zinc-100: #1d2c3b;
+  --color-zinc-300: #1d2c3b;
+  --color-zinc-400: #58626b;
+  --color-zinc-500: #58626b;
+  --cta-primary-bg: #a44b36;
+  --drop-shadow-lg: none;
+  --drop-shadow-md: none;
+  --drop-shadow-sm: none;
+  --font-mono: "R19 Manrope", Arial, sans-serif;
+  --font-montserrat: "R19 Manrope", Arial, sans-serif;
+  --font-sans: "R19 Manrope", Arial, sans-serif;
+  --font-serif: "R19 Fraunces", Georgia, serif;
+  --font-weight-black: 450;
+  --font-weight-bold: 400;
+  --font-weight-extrabold: 450;
+  --font-weight-light: 400;
+  --font-weight-medium: 400;
+  --font-weight-semibold: 400;
+  --footer-bg: #eae3d8;
+  --footer-border: #dad8d1;
+  --footer-icon-color: #58626b;
+  --foreground: #1d2c3b;
+  --foreground-muted: #58626b;
+  --foreground-secondary: #58626b;
+  --kbli-accent: #a44b36;
+  --kbli-accent-glow: transparent;
+  --kbli-accent-hover: #a44b36;
+  --kbli-accent-muted: #eae3d8;
+  --kbli-accent-subtle: #eae3d8;
+  --kbli-accent2: #233d52;
+  --kbli-accent2-glow: transparent;
+  --kbli-amber: #7a5a1e;
+  --kbli-amber-glow: transparent;
+  --kbli-bg-base: #f7f4ee;
+  --kbli-bg-card: #fffcf7;
+  --kbli-bg-card-hover: #eae3d8;
+  --kbli-bg-elevated: #fffcf7;
+  --kbli-bg-input: #fffcf7;
+  --kbli-bg-primary: #f7f4ee;
+  --kbli-bg-secondary: #eae3d8;
+  --kbli-bg-surface: #fffcf7;
+  --kbli-bg-surface-hover: #eae3d8;
+  --kbli-border: #dad8d1;
+  --kbli-border-accent: #a8aca9;
+  --kbli-border-hover: #a8aca9;
+  --kbli-ink: #1d2c3b;
+  --kbli-map-merged: #7a5a1e;
+  --kbli-map-new: #2e5e4e;
+  --kbli-map-renamed: #233d52;
+  --kbli-map-unchanged: #58626b;
+  --kbli-pma-closed: #8e2f2a;
+  --kbli-pma-closed-bg: #fffcf7;
+  --kbli-pma-open: #2e5e4e;
+  --kbli-pma-open-bg: #fffcf7;
+  --kbli-pma-restricted: #7a5a1e;
+  --kbli-pma-restricted-bg: #fffcf7;
+  --kbli-risk-high: #8e2f2a;
+  --kbli-risk-low: #2e5e4e;
+  --kbli-risk-medium-high: #7a5a1e;
+  --kbli-risk-medium-low: #233d52;
+  --kbli-shadow-card: 0 0 0 1px #dad8d1;
+  --kbli-shadow-card-hover: 0 0 0 1px #a8aca9;
+  --kbli-shadow-glow: none;
+  --kbli-text-muted: #58626b;
+  --kbli-text-primary: #1d2c3b;
+  --kbli-text-secondary: #58626b;
+  --kbli-zantara: #233d52;
+  --kbli-zantara-bg: #eae3d8;
+  --kbli-zantara-glow: none;
+  --nav-bg: #f7f4ee;
+  --nav-border: #dad8d1;
+  --r19-active-bg: #eae3d8;
+  --r19-active-border: #a8aca9;
+  --r19-control-border: #58626b;
+  --r19-copper: #a44b36;
+  --r19-copper-hover: #a44b36;
+  --r19-cta-ink: #fffcf7;
+  --r19-focus: #a44b36;
+  --r19-ink: #1d2c3b;
+  --r19-ink-muted: #58626b;
+  --r19-line: #dad8d1;
+  --r19-line-strong: #a8aca9;
+  --r19-muted: #58626b;
+  --r19-paper: #f7f4ee;
+  --r19-shadow-header: none;
+  --r19-slate: #233d52;
+  --r19-structure: #233d52;
+  --r19-surface: #fffcf7;
+  --r19-wash: #eae3d8;
+  --surface-base: #f7f4ee;
+  --surface-deep: #eae3d8;
+  --surface-editorial-elevated: #fffcf7;
+  --surface-elevated: #fffcf7;
+  --surface-overlay: #f7f4ee;
+  --surface-raised: #fffcf7;
+  --surface-subtle: #eae3d8;
+  --text-on-accent: #fffcf7;
+  --text-primary: #1d2c3b;
+  --text-secondary: #58626b;
+  --text-tertiary: #58626b;
+  font-synthesis-weight: none;
+  font-variant-ligatures: no-common-ligatures;
+}
+
+/*
+ * Every override below matches :is(.kbli-r19, .kbli-r19 *) (contract section 7.4):
+ * a descendant-only scope cannot reach a class carried by the wrapper element
+ * itself. The class stays the subject compound, so the census still names the
+ * class and not a new compound selector.
+ *
+ * Two global class rules hard-code a dark-theme colour (globals.css
+ * .brand-tagline, kbli-theme.css .kbli-flag-title). The flag title sits on the
+ * ink hero band, so it paints elevated (contract section 7.2).
+ */
+.brand-tagline:is(.kbli-r19, .kbli-r19 *) {
+  color: var(--kbli-text-primary);
+  text-shadow: none;
+  font-family: var(--font-serif);
+  font-weight: 450;
+}
+
+.kbli-flag-title:is(.kbli-r19, .kbli-r19 *) {
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: var(--kbli-bg-elevated);
+  animation: none;
+}
+
+/*
+ * FunnelFrame stamps data-funnel="kbli" below the wrapper and
+ * packages/core/tokens/semantic.css re-points the accent at gold there,
+ * which would shadow the wrapper's copper for everything inside the frame.
+ */
+[data-funnel="kbli"]:is(.kbli-r19, .kbli-r19 *) {
+  --accent-funnel: #a44b36;
+  --accent-funnel-text: #a44b36;
+  --text-on-accent: #fffcf7;
+}
+
+/*
+ * Contract classes the pages keep by name because no Direction-A class token for
+ * the same paint exists in the frozen contract: each paints its contract role as
+ * an opaque colour, so every judge reads the role itself. The rest borders the
+ * dark skin drew in copper paint line (section 7.3).
+ */
+.bg-\[var\(--kbli-accent\)\]\/40:is(.kbli-r19, .kbli-r19 *) {
+  background-color: var(--kbli-accent);
+}
+.border-\[rgba\(212\,132\,90\,0\.2\)\]:is(.kbli-r19, .kbli-r19 *) {
+  border-color: var(--kbli-border);
+}
+.border-\[var\(--kbli-pma-closed\)\]\/20:is(.kbli-r19, .kbli-r19 *) {
+  border-color: var(--kbli-pma-closed);
+}
+.border-\[var\(--kbli-pma-closed\)\]\/30:is(.kbli-r19, .kbli-r19 *) {
+  border-color: var(--kbli-pma-closed);
+}
+.border-\[var\(--kbli-pma-open\)\]\/20:is(.kbli-r19, .kbli-r19 *) {
+  border-color: var(--kbli-pma-open);
+}
+.border-\[var\(--kbli-pma-open\)\]\/30:is(.kbli-r19, .kbli-r19 *) {
+  border-color: var(--kbli-pma-open);
+}
+.border-\[var\(--kbli-pma-restricted\)\]\/20:is(.kbli-r19, .kbli-r19 *) {
+  border-color: var(--kbli-pma-restricted);
+}
+.border-accent-sand\/20:is(.kbli-r19, .kbli-r19 *) {
+  border-color: var(--kbli-border);
+}
+.border-accent-sand\/30:is(.kbli-r19, .kbli-r19 *) {
+  border-color: var(--kbli-border);
+}
+.border-accent-warm\/30:is(.kbli-r19, .kbli-r19 *) {
+  border-color: var(--kbli-border);
+}
+.scrollbar-thumb-white\/10:is(.kbli-r19, .kbli-r19 *) {
+  scrollbar-color: var(--kbli-border) transparent;
+}
+
+/* State rows (contract section 7.1). Hover and focus fills are the wash. */
+.focus-within\:bg-\[\#1c1c1e\]:is(.kbli-r19, .kbli-r19 *):focus-within {
+  background-color: var(--kbli-bg-secondary);
+}
+.focus-within\:border-accent-warm\/40:is(.kbli-r19, .kbli-r19 *):focus-within {
+  border-color: var(--kbli-accent);
+}
+.focus\:border-accent-sand\/30:is(.kbli-r19, .kbli-r19 *):focus {
+  border-color: var(--kbli-accent);
+}
+.focus\:border-white\/\[0\.15\]:is(.kbli-r19, .kbli-r19 *):focus {
+  border-color: var(--r19-control-border);
+}
+.focus\:ring-\[\#D4B483\]\/30:is(.kbli-r19, .kbli-r19 *):focus {
+  --tw-ring-color: var(--kbli-accent);
+}
+.focus\:ring-\[\#dc2626\]:is(.kbli-r19, .kbli-r19 *):focus {
+  --tw-ring-color: var(--kbli-accent);
+}
+.group-hover\:bg-accent-warm\/15:is(.kbli-r19, .kbli-r19 *):is(
+    :where(.group):hover *
+  ) {
+  background-color: var(--kbli-bg-secondary);
+}
+.group-hover\:border-accent-warm\/40:is(.kbli-r19, .kbli-r19 *):is(
+    :where(.group):hover *
+  ) {
+  border-color: var(--kbli-accent);
+}
+.group-hover\:bg-\[color-mix\(in_srgb\,var\(--accent-zantara\)_10\%\,transparent\)\]:is(
+    .kbli-r19,
+    .kbli-r19 *
+  ):is(:where(.group):hover *) {
+  background-color: var(--kbli-bg-secondary);
+}
+.group-focus-visible\:bg-\[color-mix\(in_srgb\,var\(--accent-zantara\)_10\%\,transparent\)\]:is(
+    .kbli-r19,
+    .kbli-r19 *
+  ):is(:where(.group):focus-visible *) {
+  background-color: var(--kbli-bg-secondary);
+}
+.hover\:bg-\[\#151921\]:is(.kbli-r19, .kbli-r19 *):hover {
+  background-color: var(--kbli-bg-secondary);
+}
+.hover\:bg-\[\#D01033\]\/90:is(.kbli-r19, .kbli-r19 *):hover {
+  background-color: var(--kbli-accent);
+}
+.hover\:bg-\[rgba\(255\,255\,255\,0\.06\)\]:is(.kbli-r19, .kbli-r19 *):hover {
+  background-color: var(--kbli-bg-secondary);
+}
+.hover\:bg-accent-warm\/10:is(.kbli-r19, .kbli-r19 *):hover {
+  background-color: var(--kbli-bg-secondary);
+}
+.hover\:bg-surface-editorial-elevated:is(.kbli-r19, .kbli-r19 *):hover {
+  background-color: var(--kbli-bg-secondary);
+}
+.hover\:bg-white\/5:is(.kbli-r19, .kbli-r19 *):hover {
+  background-color: var(--kbli-bg-secondary);
+}
+.hover\:bg-white\/\[0\.05\]:is(.kbli-r19, .kbli-r19 *):hover {
+  background-color: var(--kbli-bg-secondary);
+}
+.hover\:bg-white\/\[0\.06\]:is(.kbli-r19, .kbli-r19 *):hover {
+  background-color: var(--kbli-bg-secondary);
+}
+.hover\:bg-white\/\[0\.07\]:is(.kbli-r19, .kbli-r19 *):hover {
+  background-color: var(--kbli-bg-secondary);
+}
+.hover\:border-\[rgba\(255\,255\,255\,0\.12\)\]:is(
+    .kbli-r19,
+    .kbli-r19 *
+  ):hover {
+  border-color: var(--kbli-border-hover);
+}
+.hover\:border-white\/\[0\.1\]:is(.kbli-r19, .kbli-r19 *):hover {
+  border-color: var(--kbli-border-hover);
+}
+
+/*
+ * State rows that paint through the modals, the search results and the
+ * inspector. Without these, Tailwind paints them translucent (copper or ink at
+ * 4-60%) or in a dark-skin literal. Each one also outranks a rest-border
+ * override on the same element, which is why the opaque copper hover border
+ * is declared here even though its Tailwind colour already resolves to copper.
+ */
+.hover\:bg-\[\#252932\]:is(.kbli-r19, .kbli-r19 *):hover,
+.hover\:bg-\[var\(--kbli-accent\)\]\/20:is(.kbli-r19, .kbli-r19 *):hover,
+.hover\:bg-accent-sand\/10:is(.kbli-r19, .kbli-r19 *):hover,
+.hover\:bg-white\/\[0\.04\]:is(.kbli-r19, .kbli-r19 *):hover,
+.hover\:bg-white\/\[0\.08\]:is(.kbli-r19, .kbli-r19 *):hover,
+.hover\:bg-white\/\[0\.10\]:is(.kbli-r19, .kbli-r19 *):hover {
+  background-color: var(--kbli-bg-secondary);
+}
+.hover\:bg-\[\#C4A473\]:is(.kbli-r19, .kbli-r19 *):hover {
+  background-color: var(--kbli-accent);
+}
+.hover\:text-\[\#888\]:is(.kbli-r19, .kbli-r19 *):hover {
+  color: var(--kbli-text-primary);
+}
+.hover\:border-accent-sand:is(.kbli-r19, .kbli-r19 *):hover,
+.hover\:border-accent-sand\/20:is(.kbli-r19, .kbli-r19 *):hover,
+.hover\:border-accent-warm\/40:is(.kbli-r19, .kbli-r19 *):hover,
+.hover\:border-\[var\(--kbli-accent\)\]\/40:is(.kbli-r19, .kbli-r19 *):hover,
+.hover\:border-\[var\(--kbli-accent\)\]\/60:is(.kbli-r19, .kbli-r19 *):hover {
+  border-color: var(--kbli-accent);
+}
+
+/*
+ * Selection is wash under ink. The carrier's own ::selection is reached through
+ * :is(). Tailwind paints every descendant's ::selection through
+ * `.cls *::selection`, so that form is re-declared with the same selector inside
+ * @scope (.kbli-r19), whose plain selectors match below the root only: the
+ * explorer carries both classes on the wrapper's content child, not on the
+ * wrapper itself.
+ */
+.selection\:bg-accent-sand\/30:is(.kbli-r19, .kbli-r19 *)::selection {
+  background-color: var(--kbli-bg-secondary);
+}
+.selection\:text-accent-sand:is(.kbli-r19, .kbli-r19 *)::selection {
+  color: var(--kbli-text-primary);
+}
+@scope (.kbli-r19) {
+  .selection\:bg-accent-sand\/30 *::selection {
+    background-color: var(--kbli-bg-secondary);
+  }
+  .selection\:text-accent-sand *::selection {
+    color: var(--kbli-text-primary);
+  }
+}

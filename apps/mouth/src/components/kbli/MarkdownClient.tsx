@@ -15,7 +15,7 @@ const kbliComponents: Components = {
           className="inline-flex items-center gap-1 font-mono font-bold text-[var(--kbli-accent)] transition-colors hover:text-[var(--kbli-accent-hover)]"
         >
           {children}
-          <span className="text-[10px] opacity-50">→</span>
+          <span className="text-[10px]">→</span>
         </Link>
       );
     }

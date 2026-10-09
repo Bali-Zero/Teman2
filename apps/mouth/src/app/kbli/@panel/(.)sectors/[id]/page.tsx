@@ -56,7 +56,7 @@ export default async function SectorPanelPage({
         </div>
       }
     >
-      <header className="shrink-0 border-b border-white/[0.06] px-5 pb-4 pr-14 pt-5">
+      <header className="shrink-0 border-b border-[var(--border)] px-5 pb-4 pr-14 pt-5">
         <div className="flex items-start gap-3">
           <span className="text-3xl leading-none" aria-hidden>
             {meta.icon}

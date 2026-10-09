@@ -46,7 +46,7 @@ export function KBLIEditorial({
         <aside
           className="mb-8 rounded-2xl p-6 lg:float-right lg:ml-8 lg:w-72"
           style={{
-            background: "rgba(212, 132, 90, 0.04)",
+            background: "var(--kbli-accent-subtle)",
             border: "1px solid var(--kbli-border)",
           }}
         >

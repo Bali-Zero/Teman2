@@ -324,7 +324,7 @@ export function KBLISectorOffcanvas({
           onCloseAutoFocus={restoreFocus}
           onClickCapture={notePendingHop}
           className="kbli-panel-content fixed z-[510] flex flex-col overflow-hidden
-                     border-white/[0.08] bg-[#141416]/95 backdrop-blur-2xl
+                     border-[var(--border)] bg-[#141416]/95 backdrop-blur-2xl
                      shadow-[0_10px_60px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.04)]
                      inset-x-0 bottom-0 top-16 rounded-t-3xl border-t
                      sm:inset-y-0 sm:left-auto sm:right-0 sm:top-0 sm:w-[600px] sm:max-w-[92vw]
@@ -337,8 +337,8 @@ export function KBLISectorOffcanvas({
 
           <Dialog.Close
             aria-label="Close sector panel"
-            className="absolute right-4 top-4 z-10 rounded-full border border-white/[0.08]
-                       bg-white/[0.04] p-2 text-zinc-400 backdrop-blur-md transition-all
+            className="absolute right-4 top-4 z-10 rounded-full border border-[var(--border)]
+                       bg-[var(--kbli-bg-surface)] p-2 text-zinc-400 backdrop-blur-md transition-all
                        hover:bg-white/[0.10] hover:text-white
                        focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--kbli-accent)]"
           >
