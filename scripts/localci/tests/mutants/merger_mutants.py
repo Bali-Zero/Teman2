@@ -38,6 +38,7 @@ B6_WRAP = tuple(f"{MERGER_T}::{t}" for t in ("test_the_tick_decides_first_then_p
 B6_FLOOR = (f"{MERGER_T}::test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why",)
 FLOOR_SH, FLOOR_T = "scripts/ops/pro_disk_floor_tick.sh", "scripts/localci/tests/test_disk_floor.py"
 
+STALE = "scripts/localci/tests/test_hosted_stale.py"
 ROOT = Path(__file__).resolve().parents[4]
 REPORT = "scripts/localci/tests/test_merger_report.py"
 TICK = "scripts/localci/tests/test_merger.py"
@@ -303,6 +304,26 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "f1-report-conflicted-inverted": (PY, 'sum(1 for r in wm if r.get("clean") is False and', 'sum(1 for r in wm if r.get("clean") is True and', (REPORT,)),
     "f1-report-base-moved-inverted": (PY, 'sum(1 for r in wm if r.get("base_current") is False and', 'sum(1 for r in wm if r.get("base_current") is True and', (REPORT,)),
     "f1-report-phase-f-live": (PY, '"phase_f": "shadow"', '"phase_f": "live"', (REPORT,)),
+    # B10 (phase D): a hosted verdict given on an older main than the local run judged is HOSTED_STALE, only on evidence
+    "b10-stale-without-path-test": (PY, 'return {"stale": bool(selected), "hosted_main": main,', 'return {"stale": bool(paths), "hosted_main": main,', (STALE,)),
+    "b10-stale-any-flag": (PY, 'if cm.get("run_all") or flag in (cm.get("suggested_jobs") or []):', "if True:", (STALE,)),
+    "b10-stale-before-flag-read": (PY, "        if not isinstance(self._flags[name], str):\n            raise", "        if False:\n            raise", (STALE,)),
+    "b10-stale-main-after": (PY, 'f"--before={completed_at}"', 'f"--after={completed_at}"', (STALE,)),
+    "b10-stale-on-unreadable-time": (HC, 'return {**base, "stale": None, "stale_check": "unknown (the hosted verdict carries no readable completed_at)"}',
+                                     'return {**base, "stale": True, "stale_check": "unknown (the hosted verdict carries no readable completed_at)"}', (STALE,)),
+    "b10-stale-on-judge-failure": (HC, 'return {**base, "stale": None, "stale_check": f"unknown ({type(exc).__name__}',
+                                   'return {**base, "stale": True, "stale_check": f"unknown ({type(exc).__name__}', (STALE,)),
+    "b10-agree-left-as-agree": (HC, 'if reading.get("stale") is True:\n            reading["class_before"]', 'if reading.get("stale") is True and klass != "AGREE":\n            reading["class_before"]', (STALE,)),
+    "b10-stale-counts-as-compared": (HC, 'COMPARED = ("AGREE", "FALSE_GREEN", "FALSE_RED")', 'COMPARED = ("AGREE", "FALSE_GREEN", "FALSE_RED", "HOSTED_STALE")', (STALE,)),
+    "b10-oldest-entry-times-the-verdict": (HC, "when = max(stamps) if", "when = min(stamps) if", (STALE,)),
+    "b10-judge-unwired-in-the-tick": (PY, "run_dir, StaleJudge(repo_dir, base_sha))", "run_dir, None)", (TICK,)),
+    "b10-tick-drops-the-stale-rows": (PY, '**({"stale": stale} if stale else {})', "**{}", (STALE,)),
+    "b10-report-compare-without-judge": (PY, 'rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"], stale_judge=judge)\n                for k, v',
+                                         'rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"])\n                for k, v', (REPORT,)),
+    "b10-report-reclassifies-without-evidence": (PY, 'if reading["stale"] is True:\n            out.append', 'if True:\n            out.append', (REPORT,)),
+    "b10-report-reclassifies-a-red-that-went": (PY, 'if h["verdict"] != "RED":\n            continue', "if False:\n            continue", (REPORT,)),
+    "b10-report-never-subtracts": (PY, "recorded_fg += raw - len(got)", "recorded_fg += raw", (REPORT,)),
+    "b10-report-hides-the-raw-count": (PY, "recorded_raw += raw\n", "recorded_raw += raw - len(got)\n", (REPORT,)),
     # the launchd wrapper
     "sh-code-flag-always": (SH, 'if grep -q -- "--code-sha" "$CODE/merger.py"; then', "if true; then", (TICK,)),
     "sh-code-flag-never": (SH, 'if grep -q -- "--code-sha" "$CODE/merger.py"; then', "if false; then", (TICK,)),
