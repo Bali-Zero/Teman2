@@ -1,8 +1,11 @@
 task_id: localci-phase-e-1010
 mission: LOCALCI-SOVEREIGN (phase E, prepared)
 colour: BLUE
-gear: 2
-gear_reason: The lint's floor is 2 by size (about 1600 net lines, most of them tests); no hot-zone path.
+gear: 3
+gear_reason:
+  The lint's floor is 3 by size (about 2080 net lines, most of them tests, against the 1828 threshold); no hot-zone
+  path. One new operator tool under scripts/localci, never run with --apply by a session, its tests, its own mutant table,
+  a README section and a spec paragraph with the ruling's addendum.
 l_level: L2
 gate_class: opus
 objective:
@@ -25,11 +28,14 @@ lanes:
   - lane: localci-phase-e-1010-gate-opus
     role: review
     seat:
-      "claude-opus-5-5, four fresh read-only seats (rounds 1-4: CONFIRMED each, MEDIUMs then LOWs; tests and sweep run from
-      round 2)"
+      claude-opus-5-5, fresh read-only seats (rounds 1-4 CONFIRMED; round 5 BLOCKED on the declared gear only, LOWs fixed;
+      round 6 on the final diff)
   - lane: localci-phase-e-1010-council-codex
     role: review
-    seat: "codex-gpt-5.6 read-only xhigh (rounds 2-4: BLOCKER each; round 4's first BLOCKER is the third of one cause)"
+    seat: codex-gpt-5.6 (read-only, xhigh), rounds 1-6 on the full diff; round 6 journaled
+  - lane: localci-phase-e-1010-council-kimi
+    role: review
+    seat: kimi-code/k3 via scripts/kimi_client.py (no tools, scrubbed env), round 6 on the full diff; journaled
 pii_scan: clean
 pii_scan_note: Branch-protection configuration, check names, ruleset ids and key fingerprints only; no client data.
 what_changed:
@@ -40,7 +46,7 @@ what_changed:
 
   layered-rule checks (rules/branches); the write discipline W1-W4 (expected states, fresh reads with retries, exit 3 after
 
-  the first write); --rollback. Tests (101, fake gh with exact argv, pagination, mid-run peer changes) and mutants
+  the first write); --rollback. Tests (126, fake gh with exact argv, pagination, mid-run peer changes) and mutants
 
   (phase_e_mutants.py, 79/79). README section "Phase E flip" with the write discipline and the arming order; one spec
 
@@ -68,14 +74,14 @@ spend:
   adversarial_rounds: 5
   wall_clock_hours: 5.5
 receipts:
-  - claim: 119 passed (test_phase_e_flip.py) after the round-5 Codex findings.
+  - claim: 126 passed (test_phase_e_flip.py) after the round-5 gate findings.
     cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_phase_e_flip.py -q -p no:cacheprovider
     exit: 0
     ts: "2026-10-10T22:05:00Z"
     seat: claude-opus-5-5 on M5
   - claim:
-      "Mutants 89/89 killed after the round-5 Codex findings (one rule dropped as equivalent: the guard's enforcement
-      check, which the GitHub-side proof already covers); survivors, errors, stale none."
+      "Mutants 94/94 killed after the round-5 gate findings (one rule dropped as equivalent: the guard's enforcement check,
+      which the GitHub-side proof already covers); survivors, errors, stale none."
     cmd: python3 scripts/localci/tests/mutants/phase_e_mutants.py
     exit: 0
     ts: "2026-10-10T22:06:00Z"
@@ -162,6 +168,18 @@ dissent:
     objection: "LOW: the big-integer test truncated its report before reading it and did not pass it to the run."
     status: CONFIRMED
     resolution: "Fixed: the test reads, then writes, passes rep=path and asserts the huge window is read back with no blocker."
+  - seat: claude-opus-5-5 gate round 5 at 17494ed131 and cf9a7edefb
+    objection:
+      "MEDIUM: gear 2 declared below the size floor 3 (Harness floor recompute would fail); LOWs: the rollback's quiescence
+      check and Ctrl-C handling untested, its exit-3 message without the state file and command, a hand-edited saved ruleset
+      not validated, the ruleset-id check in diverges untested, stale counts in the pack."
+    status: CONFIRMED
+    resolution:
+      "Gear 3 declared in brief and pack with a council journal (Codex and Kimi on the full diff). The rollback validates
+      both saved bodies before planning; its exit 3 prints the state file and the full re-run command. Tests: test_a_rollback_without_the_quiescence_declaration_writes_nothing,
+      test_ctrl_c_after_the_rollbacks_first_write_is_exit_3_with_the_state_file, test_a_hand_edited_state_file_is_refused_before_any_write
+      (4 cases), test_a_ruleset_recreated_under_a_new_id_before_the_first_write_writes_nothing; mutants pe-quiescence-unrequired-rollback,
+      pe-w4-rollback-ctrl-c-escapes, pe-rollback-saved-ruleset-unchecked, pe-rollback-saved-classic-unchecked, pe-diverges-ruleset-id-ignored."
 residuals:
   - "Accepted by the ruling: GitHub's REST API has no compare-and-swap for rulesets or branch protection; a sub-second window
     remains between W1's read and its write. Quiescence (--quiescent, operator-declared) takes concurrent writers out of scope;
@@ -171,7 +189,7 @@ residuals:
     at the first --apply (main frozen-safe), recovered by --rollback."
   - "No post-flip watcher: a write key added later is covered by the DeployKey bypass; the read-only plan run on a schedule
     ('already flipped, but') is a possible follow-up."
-  - "Size: about 1900 lines (mostly tests) against the ~400 guideline; one concern."
+  - "Size: about 2080 net lines (mostly tests) against the ~400 guideline; one concern, gear 3 by size."
 brief_ref: evidence/brief.yml
 plan_ref:
   Mandate (2) of the LOCALCI lead's message of 2026-10-10 (prepared, never applied phase E flip), from origin/main
@@ -179,3 +197,4 @@ plan_ref:
 appetite_exceeded:
   Four review rounds then a spec ruling (the three reds of one class were specified, not patched) and a fifth
   gate on the full diff.
+council_run: council-journal.jsonl

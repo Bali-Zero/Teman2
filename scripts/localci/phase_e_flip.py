@@ -513,6 +513,13 @@ def run_rollback(a: argparse.Namespace) -> int:
         raise FlipError(f"{a.rollback} unreadable: {type(exc).__name__}") from exc
     if (saved["repo"], saved["branch"]) != (a.repo, a.branch):
         raise FlipError(f"{a.rollback} is for {saved['repo']} {saved['branch']}, not {a.repo} {a.branch}")
+    # both bodies whole before anything is planned: a hand-edited file must fail here, never between the two writes
+    classic_fields = {"required_status_checks", "enforce_admins", "required_pull_request_reviews", "restrictions"}
+    if not classic_fields <= set(saved["classic"]):
+        raise FlipError(f"{a.rollback}: the saved classic protection lacks {sorted(classic_fields - set(saved['classic']))}")
+    if not isinstance(saved["ruleset"], dict) or ruleset_body(saved["ruleset"]) != saved["ruleset"] or not (
+            isinstance(saved["ruleset"]["rules"], list) and all(isinstance(r, dict) for r in saved["ruleset"]["rules"])):
+        raise FlipError(f"{a.rollback}: the saved ruleset is not a whole ruleset body")
     live = read_state(a.repo, a.branch)
     if live["ruleset_id"] != saved["ruleset_id"]:
         raise FlipError(f"ruleset {RULESET!r} is now id {live['ruleset_id']}, the saved state names {saved['ruleset_id']}")
@@ -558,8 +565,10 @@ def run_rollback(a: argparse.Namespace) -> int:
             print(f"REFUSED: {type(exc).__name__}: {exc}\n  nothing was written", file=sys.stderr)
             return EXIT_REFUSED
         print(f"FAILED: {type(exc).__name__}: {exc}\n  the branch is as the last write left it — still flipped if write 1 did "
-              "not take, frozen (classic protection and the key-only ruleset) if it did: run the plan again, or restore the state "
-              "file's `ruleset` by hand", file=sys.stderr)
+              "not take, frozen (classic protection and the key-only ruleset) if it did. The state file is unchanged: "
+              f"{a.rollback}\n  re-run: python scripts/localci/phase_e_flip.py --repo {a.repo} --branch {a.branch} --rollback "
+              f"{a.rollback} (plan first, then --apply --confirm <digest> --quiescent), or restore its `ruleset` by hand",
+              file=sys.stderr)
         return EXIT_WRITE_FAILED
     print("rolled back: classic protection and the ruleset re-read as saved")
     return EXIT_OK

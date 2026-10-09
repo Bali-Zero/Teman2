@@ -133,6 +133,13 @@ MUTANTS = {
                              '            "branch_rules": sorted(([r.get("ruleset_id"), r.get("type"), r.get("ruleset_source_type"), r.get("parameters")] for r in []),'),
     "pe-guard-not-proven-by-github": ('proven = [g for g in state["guards"] if {(g["id"], "deletion"), (g["id"], "non_fast_forward")} <= {tuple(x[:2]) for x in state["branch_rules"]}]',
                                       'proven = state["guards"]'),
+    "pe-quiescence-unrequired-rollback": ("    if not a.quiescent:\n        print(\"REFUSED: \" + QUIESCENCE, file=sys.stderr)\n        return EXIT_REFUSED\n    # the intended states",
+                                          "    if False:\n        print(\"REFUSED: \" + QUIESCENCE, file=sys.stderr)\n        return EXIT_REFUSED\n    # the intended states"),
+    "pe-w4-rollback-ctrl-c-escapes": ("    except BaseException as exc:   # W4\n", "    except Exception as exc:   # W4\n"),
+    "pe-rollback-saved-ruleset-unchecked": ('    if not isinstance(saved["ruleset"], dict) or ruleset_body(saved["ruleset"]) != saved["ruleset"] or not (',
+                                            '    if False and ('),
+    "pe-rollback-saved-classic-unchecked": ("    if not classic_fields <= set(saved[\"classic\"]):", "    if False:"),
+    "pe-diverges-ruleset-id-ignored": ('fresh["ruleset_id"] != expected["ruleset_id"] or not same_ruleset', "not same_ruleset"),
     "pe-key-title-kept": ('"fingerprint": key_fingerprint(k.get("key"))}', '"fingerprint": key_fingerprint(k.get("key")), "title": k.get("title")}'),
 }
 

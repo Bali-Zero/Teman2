@@ -914,3 +914,67 @@ def test_a_parameter_of_an_inherited_rule_changed_before_the_first_write_writes_
     monkeypatch.setattr(pef, "save_state", save_then_change)
     rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
     assert rc == pef.EXIT_REFUSED and "changed since plan" in err and "'branch_rules'" in err and fake.writes() == []
+
+
+def flipped_with_saved(fake, tmp_path, capsys):
+    apply(fake, tmp_path, capsys)
+    saved = next(fake.state_dir.glob("pre-flip-*.json"))
+    return saved, plan_digest(fake, tmp_path, capsys, "--rollback", str(saved))
+
+
+def test_a_rollback_without_the_quiescence_declaration_writes_nothing(fake, tmp_path, capsys):
+    saved, dig = flipped_with_saved(fake, tmp_path, capsys)
+    fake.calls.clear()
+    rc, _, err = run(fake, tmp_path, capsys, "--rollback", str(saved), "--apply", "--confirm", dig, quiescent=False)
+    assert rc == pef.EXIT_REFUSED and "--quiescent" in err and fake.writes() == []
+
+
+def test_ctrl_c_after_the_rollbacks_first_write_is_exit_3_with_the_state_file(fake, tmp_path, capsys):
+    saved, dig = flipped_with_saved(fake, tmp_path, capsys)
+    fake.calls.clear()
+    def interrupt(f, m, p):
+        if m == "PUT":
+            raise KeyboardInterrupt
+    fake.after_write = interrupt
+    try:
+        rc, _, err = run(fake, tmp_path, capsys, "--rollback", str(saved), "--apply", "--confirm", dig)
+    except KeyboardInterrupt:
+        pytest.fail("Ctrl-C after the rollback's first write escaped W4")
+    assert rc == pef.EXIT_WRITE_FAILED and "KeyboardInterrupt" in err and [m for m, _, _ in fake.writes()] == ["PUT"]
+    assert str(saved) in err and "--repo Bali-Zero/Teman2 --branch main --rollback" in err and "--quiescent" in err
+
+
+@pytest.mark.parametrize("damage, says", [
+    (lambda d: d["ruleset"].pop("rules"), "lacks ['rules']"),
+    (lambda d: d["ruleset"].update(rules="update"), "not a whole ruleset body"),
+    (lambda d: d["ruleset"].update(extra=1), "not a whole ruleset body"),
+    (lambda d: d["classic"].pop("restrictions"), "lacks ['restrictions']"),
+])
+def test_a_hand_edited_state_file_is_refused_before_any_write(fake, tmp_path, capsys, damage, says):
+    apply(fake, tmp_path, capsys)
+    saved = next(fake.state_dir.glob("pre-flip-*.json"))
+    doc = json.loads(saved.read_text())
+    damage(doc)
+    edited = tmp_path / "edited.json"
+    edited.write_text(json.dumps(doc))
+    fake.calls.clear()
+    rc, out, err = run(fake, tmp_path, capsys, "--rollback", str(edited))   # the plan itself refuses: no digest to confirm
+    assert rc == pef.EXIT_REFUSED and says in err and "plan digest" not in out
+    live = pef.read_state("Bali-Zero/Teman2", "main")
+    dig = pef.digest(live, pef.rollback_writes(doc))   # the digest an unchecked plan would have printed
+    rc, _, err = run(fake, tmp_path, capsys, "--rollback", str(edited), "--apply", "--confirm", dig)
+    assert rc == pef.EXIT_REFUSED and says in err and fake.writes() == []
+
+
+def test_a_ruleset_recreated_under_a_new_id_before_the_first_write_writes_nothing(fake, tmp_path, capsys, monkeypatch):
+    fake.rulesets[MQ]["enforcement"] = "evaluate"   # no rule applied to the branch: only the id tells the two apart
+    dig = plan_digest(fake, tmp_path, capsys)
+    real_save = pef.save_state
+    def save_then_recreate(*args):
+        path = real_save(*args)
+        rs = fake.rulesets.pop(MQ)
+        fake.rulesets[777] = {**rs, "id": 777}
+        return path
+    monkeypatch.setattr(pef, "save_state", save_then_recreate)
+    rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
+    assert rc == pef.EXIT_REFUSED and "before write 1/2: changed since plan" in err and fake.writes() == []
