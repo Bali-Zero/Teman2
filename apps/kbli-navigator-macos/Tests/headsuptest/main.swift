@@ -39,6 +39,24 @@ MainActor.assumeIsolated {
     for c in 1...7 { ck((census[c] ?? 0) == want[c]!, "class \(c): \(census[c] ?? 0) == \(want[c]!)") }
     ck(census.values.reduce(0, +) == 1559 && records.count == 1559, "total 1559")
 
+    // N5: a moved code is NAMED, against the committed membership (Tests/headsuptest/classes.txt,
+    // one line per class, for the anchored dataset). Regenerate with HEADSUP_WRITE_CLASSES=<path>.
+    let env = ProcessInfo.processInfo.environment
+    if let out = env["HEADSUP_WRITE_CLASSES"] {
+        let lines = (1...7).map { c in ([String(c)] + records.filter { cls($0) == c }.map(\.kode)).joined(separator: " ") }
+        try? (lines.joined(separator: "\n") + "\n").write(toFile: out, atomically: true, encoding: .utf8)
+        print("wrote \(out)"); exit(0)
+    }
+    let root = env["KBLI_APP_ROOT"] ?? FileManager.default.currentDirectoryPath
+    var frozen: [String: Int] = [:]
+    for line in ((try? String(contentsOfFile: root + "/Tests/headsuptest/classes.txt", encoding: .utf8)) ?? "").split(separator: "\n") {
+        let f = line.split(separator: " ").map(String.init)
+        if let c = f.first.flatMap(Int.init) { for code in f.dropFirst() { frozen[code] = c } }
+    }
+    let moved = records.compactMap { k in frozen[k.kode] == cls(k) ? nil : "\(k.kode): class \(frozen[k.kode].map(String.init) ?? "none") → \(cls(k))" }
+    let gone = Set(frozen.keys).subtracting(records.map(\.kode)).sorted()
+    ck(frozen.count == 1559 && moved.isEmpty && gone.isEmpty, "every code in its committed class (moved: \(moved.prefix(10)), gone: \(gone.prefix(10)))")
+
     print("\nthe open pair appears iff TERBUKA and Bali open (both directions, both languages):")
     var openBad: [String] = []
     for k in records {
@@ -86,6 +104,31 @@ MainActor.assumeIsolated {
         ck(en.sentence == k.pmaKondisi && k.pmaKondisi != nil, "51101: sentence == pma_kondisi verbatim")
         ck(en.sentence == id.sentence && en.label == id.label, "51101: identical in en and id (no Kutipan prefix)")
     } else { ck(false, "51101 present") }
+
+    // B3 (0b1 ruling): 448 codes change against the pre-Q10 predicates, frozen here as on main 27ca6fb108:
+    // detail card `cannotProceed = baliBlocked || nationallyClosed` (KBLIDetailRichView.swift:193) → the
+    // rich.verdict.blocked/open label; dossier `l4Bali.blocked == true` (KBLIDossierView.swift:88) → that
+    // label + dossier.holding.blocked/open. The changed set must be exactly classes 2–6, in en and id.
+    print("\nchanged against the frozen pre-Q10 predicates:")
+    let cls26 = Set(records.filter { (2...6).contains(cls($0)) }.map(\.kode))
+    for isID in [false, true] {
+        let t = tbl(isID)
+        var detail = Set<String>(), dossier = Set<String>()
+        for k in records {
+            let v = KBLIVerdict.of(record: k)
+            let baliBlocked: Bool = { if case .blocked = v.bali { return true } else { return false } }()
+            let nationallyClosed: Bool = { if case .closed = v.national { return true } else { return false } }()
+            let blocked = k.l4Bali?.blocked == true
+            let r = hu(k, isID)
+            if r.label != t[(baliBlocked || nationallyClosed) ? "rich.verdict.blocked" : "rich.verdict.open"]! { detail.insert(k.kode) }
+            if r.label != t[blocked ? "rich.verdict.blocked" : "rich.verdict.open"]!
+                || r.sentence != t[blocked ? "dossier.holding.blocked" : "dossier.holding.open"]! { dossier.insert(k.kode) }
+        }
+        for (name, got) in [("detail card", detail), ("dossier", dossier)] {
+            ck(got.count == 448 && got == cls26, "[\(isID ? "id" : "en")] \(name): \(got.count) changed == 448 == classes 2–6 "
+               + "(extra: \(got.subtracting(cls26).sorted().prefix(5)), missing: \(cls26.subtracting(got).sorted().prefix(5)))")
+        }
+    }
 
     print("\nclass-5 membership:")
     let wantFive = Set("25200 30400 50111 50112 50113 50121 50122 50123 50124 50125 50126 50131 50132 50133 50134 50135 50211 50212 50213 50221 50222 50223 51101 51102 53200 65111 65112 65121 65122 65201 65202".split(separator: " ").map(String.init))
