@@ -1,0 +1,90 @@
+# Gear-3 evidence pack — receptor A's findings table gets a named CI executor, and the pro.disk_floor proof is pinned to its status.
+# Written by the imperator session (Claude Opus 5.5, M5), builder and shipper of this PR. Every receipt is a command this
+# writer ran on 2026-10-09; scratch under ~/.agent/campaign-20261005/work/imperator-dfrow/ (not committed).
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+ruling: >-
+  Campaign rule after #8079: every shipper declares at least gear 2 so harness-floor holds for the independent final gate.
+  The workflow edit floors this PR at 3, so it carries this pack and a sealed council.
+mission: >-
+  Close notice N1 of #8134's final gate (no row pinned the pro.disk_floor proof to status warning), and give the findings
+  table a CI step that can go red: until now only the continue-on-error scripts/tests sweep collected it (W108).
+lanes:
+  - lane: build-verify-ship
+    role: build
+    seat: >-
+      claude-opus-5.5 (imperator) built row D8, the workflow step and trigger paths, brief, pack and mutants.
+  - lane: council
+    role: review
+    seat: >-
+      Sealed council: the Dux position was written to council-brief.md at 05:15:00Z before any seat was asked; Codex O2
+      (codex-gpt-5.6-sol roster seat, ~/.codex-o2, read-only sandbox) answered 05:15-05:16Z, Kimi k3 05:15-05:23Z, both on
+      a scratch export of the base with the patch applied. Verbatim notes in council-journal.jsonl.
+seat_diversity: >-
+  Three families: Anthropic (builder and shipper), OpenAI (Codex O2), Moonshot (Kimi k3). tp1-qwen3.8-max is 429 until
+  2026-10-11T16:00Z (campaign rules: do not retry). The final gate is a fresh Claude session outside this chain.
+pii_scan: clean
+bites:
+  consumer: >-
+    The watchdog-third-state workflow, whose "Receptor helper unit tests" step now runs
+    scripts/tests/test_healer_receptor_findings.py on every PR that touches the registry, the findings table, the shared
+    conftest or the workflow itself.
+  observation: >-
+    On this PR's head the watchdog-third-state job log names test_healer_receptor_findings.py and reports its pass count.
+    The job is deliberately not a required context, so a red is visible on the PR and read by the final gate; it is not
+    a branch-protection block.
+decisions:
+  - >-
+    D8 is the one row only the status binding decides: the producer's own error notes start with "failed: " or "free space
+    unreadable" and already fail the note-start regex, so they cannot pin the status.
+  - >-
+    The findings table joins the existing pytest step of watchdog-third-state, next to its sibling healer tests, instead of a
+    new workflow; pyyaml is installed because the registry imports yaml lazily.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      The job is not a required context: a red cannot block a merge through branch protection.
+    status: CONFIRMED
+    resolution: >-
+      Declared, not changed: making a context required is a branch-protection decision outside this PR. The body says
+      "can go red", not "blocks"; the final gate reads every red log on its head.
+  - seat: kimi-code/k3
+    objection: >-
+      scripts/tests/conftest.py is loaded for this step and can break all three test files without triggering the workflow.
+    status: CONFIRMED
+    resolution: >-
+      Cured. scripts/tests/conftest.py is in the pull_request paths filter.
+  - seat: kimi-code/k3
+    objection: >-
+      The corpus pins its own note strings, so a producer note-format change (scripts/ops/pro_disk_floor_tick.sh, e.g. %.1f to
+      %.2f) silently disarms the proof while the corpus stays green, and triggers no workflow.
+    status: PLAUSIBLE
+    resolution: >-
+      Declared, not cured here: a drift there makes a completed read look dead, which spawns a healer session (loud, the safe
+      direction), never a silent pass. A producer-format contract test is a separate concern.
+receipts:
+  - claim: "R1 — the findings table passes on this head, D8 included."
+    cmd: "python3 -m pytest -q -p no:cacheprovider scripts/tests/test_healer_receptor_findings.py"
+    result: "5 passed"
+    exit: 0
+    ts: "2026-10-09T05:18:25Z"
+    seat: claude-opus-5.5 (imperator)
+  - claim: "R2 — the disk_floor status-agnostic mutant (HEALER_REGISTRY_UNDER_TEST) is red on D8 only with the head tests and green with the base tests."
+    cmd: "HEALER_REGISTRY_UNDER_TEST=mut_status_agnostic.py pytest <head tests> ; same with the base test file"
+    result: "head: 1 failed, 4 passed, rows: D8-disk-measurement-under-error-innocence ; base: 5 passed"
+    exit: 0
+    ts: "2026-10-09T05:18:26Z"
+    seat: claude-opus-5.5 (imperator)
+  - claim: "R3 — the workflow step's exact pytest invocation passes locally."
+    cmd: "python3 -m pytest -q -p no:cacheprovider scripts/tests/test_healer_run_checks.py scripts/tests/test_pro_healer_receptors.py scripts/tests/test_healer_receptor_findings.py"
+    result: "94 passed, 17 subtests passed"
+    exit: 0
+    ts: "2026-10-09T05:18:28Z"
+    seat: claude-opus-5.5 (imperator)
+  - claim: "R4 — guards: actionlint clean, ruff clean, diff --check clean; the step has no continue-on-error and names the file."
+    cmd: "actionlint .github/workflows/watchdog-third-state.yml ; ruff check <test> ; git diff --check HEAD ; yaml read of the step"
+    result: "actionlint-ok ; All checks passed! ; diffcheck-clean ; continue-on-error False, file named True"
+    exit: 0
+    ts: "2026-10-09T05:19:20Z"
+    seat: claude-opus-5.5 (imperator)

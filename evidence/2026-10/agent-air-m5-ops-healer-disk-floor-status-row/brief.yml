@@ -3,14 +3,16 @@ task: >-
   warning, but no test row pins that binding: a status-agnostic mutant of scripts/healer_receptor_registry.py stays
   green, because the producer's error notes ("failed: ...", "free space unreadable") already fail the note-start
   regex on their own. Add the one guilt row that a status-agnostic proof would get wrong: status error with a bare
-  measurement note must stay dead.
+  measurement note must stay dead. The file had no blocking executor (only the continue-on-error scripts/tests
+  sweep collected it, W108), so it is also named in watchdog-third-state.yml next to its sibling healer tests.
 lane: ops
 machine: m5
 date: 2026-10-09
-gear: 2
+gear: 3
 gear_reason: >-
-  Measured floor 1 (one test row, no code). Gear 2 is declared above the floor so that harness-floor holds the
-  merge until the independent final gate signs it (campaign rule after #8079).
+  Measured floor 3, source the .github/workflows/ hot zone: the PR adds one step input to watchdog-third-state.yml.
+  The change cannot disarm a gate (it only adds a test file to an existing pytest step and two trigger paths), but
+  a workflow edit is hot-zone by rule, so the PR carries a Gear-3 pack and council.
 acceptance:
   A1:
     text: >-
@@ -22,3 +24,8 @@ acceptance:
       The mutant that ignores the status for pro.disk_floor goes red on row D8 and only on D8, and stays green on
       the base test file; the unmutated registry passes every row.
     probe: HEALER_REGISTRY_UNDER_TEST=<mutant> pytest on the base and head test files.
+  A3:
+    text: >-
+      watchdog-third-state runs scripts/tests/test_healer_receptor_findings.py on this PR, and on every later PR that
+      touches the registry or that test file, in a step that can go red.
+    probe: the job log of watchdog-third-state on this head names the file and reports its passed count.
