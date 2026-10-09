@@ -1,5 +1,5 @@
 # Gear-3 evidence pack — PR-C3, the result page shows Bali Zero's typical processing time.
-# Every receipt is a command this session ran on 2026-10-09 between 02:05Z and 02:50Z with the clock
+# Every receipt is a command this session ran on 2026-10-09 between 02:05Z and 03:20Z with the clock
 # captured in the same shell invocation. Review, merge and deploy belong to the orchestrator.
 gear: 3
 brief_ref: evidence/brief.yml
@@ -67,11 +67,29 @@ receipts:
     exit: 0
     ts: "2026-10-09T02:49:17Z"
     seat: Claude Sonnet 5.5
+  - claim: The loader refuses floats and bools and the processing-time suite passes with the guard tests (Kimi LOW cure, 0438a94714).
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine/test_processing_times.py
+    result: "36 passed in 11.15s"
+    exit: 0
+    ts: "2026-10-09T03:19:27Z"
+    seat: Claude Sonnet 5.5
+  - claim: Lint on the backend visa engine and the processing-time tests is clean after the loader cure.
+    cmd: apps/backend-rag/.venv/bin/ruff check apps/backend-rag/backend/services/visa_engine apps/backend-rag/backend/tests/services/visa_engine/test_processing_times.py
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-10-09T03:19:28Z"
+    seat: Claude Sonnet 5.5
+  - claim: eslint is clean on the five non-test mouth files touched.
+    cmd: apps/mouth eslint OutcomeSheet.tsx engine-adapter.ts engine-response.ts i18n.ts outcome-view-model.ts
+    result: "no output"
+    exit: 0
+    ts: "2026-10-09T02:53:02Z"
+    seat: Claude Sonnet 5.5
 council_run: council-journal.jsonl
 seat_fallback_reason: >-
-  agy-gemini-3.1-pro filled the second review seat at the orchestrator's choice. The implementer
-  did not observe which titolare it replaced or why; the orchestrator must confirm or correct this
-  line with the arsenal probe result before the final gate.
+  agy-gemini-3.1-pro sat in the seat of the titolare tp1-qwen3.8-max, observed QUOTA_DEAD by the
+  arsenal probe (~/.organism/arsenal/last.json, 2026-10-09T01:11:38Z, M5). The two available
+  titolari, codex-gpt-5.6-sol and kimi-code/k3, both reviewed this diff and are in the journal.
 dissent:
   - seat: codex-gpt-5.6-sol
     objection: "MEDIUM: the snapshot coverage test read only rulepack-prod-026.source.json, so a product added in a later pack would silently get UNKNOWN."
@@ -85,8 +103,24 @@ dissent:
     objection: "LOW: the instant-product sentence should say no visa to process, and the pending paragraph should use akan mengonfirmasi like the new hint."
     status: CONFIRMED
     disposition: "cured in the cure commit: outcome.timeline_none and outcome.timeline_pending (Indonesian) aligned."
+  - seat: kimi-code/k3
+    objection: "LOW: the endpoint happy-path test accepts AVAILABLE or UNKNOWN and passes on the old code."
+    status: PLAUSIBLE
+    note: "kept on purpose so the test stays robust to the calendar; AVAILABLE is pinned by the processing-time unit and display tests with fixed anchors."
+  - seat: kimi-code/k3
+    objection: "LOW: idempotency replay revalidates with extra=forbid, so an old binary replaying a new AVAILABLE response fails during a rollback."
+    status: PLAUSIBLE
+    note: "rollback-window only and self-healing; not cured here, noted in the PR body."
+  - seat: kimi-code/k3
+    objection: "LOW: min=0 on a weekend or holiday anchor shows that day as the earliest date (B1 only; A1 renders no dates)."
+    status: PLAUSIBLE
+    note: "kept; min=0 is the anchor day per the owner's spec, and the e-VOA is issued online on any day."
+  - seat: kimi-code/k3
+    objection: "LOW: the snapshot loader accepted floats and bools."
+    status: CONFIRMED
+    disposition: "cured in 0438a94714: whole numbers required, with guilt and innocence tests."
 owed:
   - "The Gear-3 final gate on the cured head."
 spend:
   wall_clock_hours: 2
-  adversarial_rounds: 0
+  adversarial_rounds: 2
