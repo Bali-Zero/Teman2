@@ -1,0 +1,5 @@
+explorer sidebar <img>	apps/mouth/public/images/logo-zantara.png	1024x1024	colour type 2 (RGB)	NO alpha: the file paints its own ground
+BZLogo full (/kbli nav)	apps/mouth/public/assets/logo/balizero-logo-clean.png	512x512	colour type 6 (RGBA)	transparent ground possible
+BZLogo mark (8.3 ruling)	apps/mouth/public/assets/logo/balizero-3-red.png	1000x1000	colour type 6 (RGBA)	transparent ground possible
+BZLogo round (v2 footer)	apps/mouth/public/assets/logo/balizero-logo-circle.png	512x512	colour type 6 (RGBA)	transparent ground possible
+BZLogo zantara	apps/mouth/public/static/zantara-lotus.png	256x256	colour type 6 (RGBA)	transparent ground possible
