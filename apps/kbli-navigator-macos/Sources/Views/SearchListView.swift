@@ -304,6 +304,10 @@ struct SearchListView: View {
             } else {
                 VStack(spacing: 0) {
                     filterBar
+                    // §4: below the collapse width the editorial moment survives as the PadiLine.
+                    PadiLine(width: 760)
+                        .padding(.vertical, 16)
+                        .frame(maxWidth: .infinity)
                     tableBody
                         .frame(maxWidth: 760)
                         .frame(maxWidth: .infinity)
