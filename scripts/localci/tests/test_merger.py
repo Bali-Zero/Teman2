@@ -1233,3 +1233,14 @@ def test_a_github_main_that_moves_after_the_tick_fetch_makes_the_tick_line_not_c
     assert world.tick() == 0
     w = world.journal()[-1]
     assert (w["kind"], w["base_current"], w["mirror_main"], w["remote_main"], w["ok"]) == ("would_merge", False, world.base, moved["sha"], False)
+
+
+def test_the_tick_hands_the_stale_judge_the_mirror_and_the_decided_base(world, monkeypatch):
+    world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
+    seen = []
+    real = mg.hosted_summary
+    monkeypatch.setattr(mg, "hosted_summary", lambda *a, **kw: seen.append((a, kw)) or real(*a, **kw))
+    assert world.tick() == 0
+    ((args, kw),) = seen
+    judge = kw.get("judge") if "judge" in kw else args[5]
+    assert isinstance(judge, mg.StaleJudge) and judge.base == world.base and judge.repo == world.state / "repo.git"

@@ -9,13 +9,18 @@ commit statuses of the run's candidate sha) with the local per-context verdict a
     FALSE_RED       local red, hosted green
     LOCAL_BLIND     hosted has a verdict, local has none (BLOCKED / UNCOVERED / unmapped)
     HOSTED_PENDING  hosted has no complete verdict from the required source — nothing to compare
+    HOSTED_STALE    (B10) the hosted verdict completed BEFORE the base the local run used, and main changed in between in a path
+                    the BASE change_map selects for that context: the two sides judged different trees, so the pair is neither an
+                    AGREE nor a FALSE_GREEN and is never counted as compared. Decided by a caller-supplied ``stale_judge`` (this
+                    module has no git); without one, or when the judge cannot read its evidence, the row keeps its class and says so
 
 The hosted verdict of a context is order-free and RED-DOMINANT: red if ANY entry GitHub lists
 under that name for the commit is red (the latest attempt of each check; a red that a re-run
 replaced is not listed) (GitHub requires a same-named check and status to both pass, and a
 later green from another event does not erase a red); green only when at least one entry from
 the REQUIRED source (the pinned ``app_id``, or any source when none is pinned) is complete and
-none is pending. No timestamp is compared.
+none is pending. The class never reads a timestamp; only the optional ``stale_judge`` (B10) does, from the ``completed_at`` of the
+entries that decided the verdict.
 
 Each row carries the context's COVERAGE as the BASE runner recorded it from the BASE matrix (``full``, ``partial`` with its
 note, or ``unrecorded`` for a status.json that predates it): the class is the same, but a partial AGREE is an agreement on a
@@ -41,7 +46,7 @@ from pathlib import Path
 
 DEFAULT_REPO = "Bali-Zero/Teman2"
 DEFAULT_BRANCH = "main"
-CLASSES = ("AGREE", "FALSE_GREEN", "FALSE_RED", "LOCAL_BLIND", "HOSTED_PENDING")
+CLASSES = ("AGREE", "FALSE_GREEN", "FALSE_RED", "LOCAL_BLIND", "HOSTED_PENDING", "HOSTED_STALE")
 COMPARED = ("AGREE", "FALSE_GREEN", "FALSE_RED")   # a local verdict set beside a hosted one
 COVERAGES = ("full", "partial")   # anything else a status.json says (or omits) is "unrecorded", which is never full
 # skipped/neutral satisfy a required check on GitHub, so they are green FOR THE GATE; the raw conclusions stay in the row.
@@ -54,6 +59,7 @@ EXIT_FOUND = 1
 EXIT_BAD_INPUT = 2
 EXIT_INCOMPLETE = 3
 
+_TS_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 _SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 _REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 _BRANCH_RE = re.compile(r"^[A-Za-z0-9_./-]+$")
@@ -74,11 +80,11 @@ def hosted_entries(check_runs: list, statuses: list) -> dict:
         concl = run.get("conclusion") if run.get("status") == "completed" else None
         app = run.get("app") if isinstance(run.get("app"), dict) else {}
         by.setdefault(run.get("name"), []).append({"verdict": _verdict(concl), "conclusion": concl, "app_id": app.get("id"),
-                                                   "source": app.get("slug") or "check-run"})
+                                                   "source": app.get("slug") or "check-run", "completed_at": run.get("completed_at")})
     for st in statuses:
         state = st.get("state")
         by.setdefault(st.get("context"), []).append({"verdict": _verdict(None if state == "pending" else state), "conclusion": state,
-                                                     "app_id": None, "source": "commit-status"})
+                                                     "app_id": None, "source": "commit-status", "completed_at": st.get("updated_at")})
     return by
 
 
@@ -94,8 +100,11 @@ def hosted_verdict(entries: list, app_id) -> dict:
         verdict = "PENDING"
     else:
         verdict = "GREEN"
+    decisive = [e for e in entries if e["verdict"] == "RED"] if verdict == "RED" else counted   # the entries that made the verdict
+    stamps = [e.get("completed_at") for e in decisive]
+    when = max(stamps) if verdict != "PENDING" and stamps and all(isinstance(t, str) and _TS_RE.match(t) for t in stamps) else None
     return {"verdict": verdict, "entries": len(entries), "counted": len(counted), "sources": sorted({e["source"] for e in entries}),
-            "conclusions": sorted({str(e["conclusion"]) for e in entries})}
+            "conclusions": sorted({str(e["conclusion"]) for e in entries}), "completed_at": when}
 
 
 def local_verdicts(status: dict) -> dict:
@@ -156,7 +165,26 @@ def required_names(required_checks) -> list[str]:
     return names  # type: ignore[return-value]
 
 
-def compare(status: dict, required_checks, check_runs, statuses) -> dict:
+def stale_reading(judge, name: str, completed_at) -> dict:
+    """B10: what ``judge(name, completed_at)`` makes of one compared row. Total: a judge that cannot read its evidence, raises, or
+    answers in any other shape gives ``stale_check: unknown (<why>)`` and the row keeps its class — an absence of proof never hides a red."""
+    base = {"hosted_completed_at": completed_at, "hosted_main": None, "main_moved_paths": [], "main_moved_count": 0}
+    if not isinstance(completed_at, str):
+        return {**base, "stale": None, "stale_check": "unknown (the hosted verdict carries no readable completed_at)"}
+    try:
+        got = judge(name, completed_at)
+        stale = got.get("stale")
+        if stale not in (True, False, None):
+            raise CompareError(f"the judge answered stale={stale!r}")
+    except Exception as exc:  # noqa: BLE001 — see the docstring
+        return {**base, "stale": None, "stale_check": f"unknown ({type(exc).__name__}: {str(exc)[-200:]})"}
+    if stale is None:
+        return {**base, "stale": None, "stale_check": f"unknown ({str(got.get('why'))[-300:]})"}
+    return {**base, "stale": stale, "stale_check": "stale" if stale else "fresh", "hosted_main": got.get("hosted_main"),
+            "main_moved_paths": list(got.get("main_moved_paths") or [])[:20], "main_moved_count": int(got.get("main_moved_count") or 0)}
+
+
+def compare(status: dict, required_checks, check_runs, statuses, stale_judge=None) -> dict:
     names = required_names(required_checks)
     if not isinstance(check_runs, list) or not isinstance(statuses, list) or any(not isinstance(x, dict) for x in check_runs + statuses):
         raise CompareError("check_runs / statuses are not lists of objects")
@@ -166,7 +194,12 @@ def compare(status: dict, required_checks, check_runs, statuses) -> dict:
         name, app_id = chk["context"], chk.get("app_id")
         h = hosted_verdict(hosted.get(name, []), app_id)
         lo = local.get(name, {"verdict": "BLIND", "detail": "unmapped", "coverage": "unrecorded", "coverage_note": None})
-        rows.append({"context": name, "class": classify(lo["verdict"], h["verdict"]), "hosted": h["verdict"], "hosted_entries": h["entries"],
+        klass = classify(lo["verdict"], h["verdict"])
+        reading = stale_reading(stale_judge, name, h["completed_at"]) if stale_judge is not None and klass in COMPARED else {}
+        if reading.get("stale") is True:
+            reading["class_before"], klass = klass, "HOSTED_STALE"   # every compared class: a stale GREEN beside a local GREEN is no AGREE either
+        reading.pop("stale", None)
+        rows.append({**reading, "context": name, "class": klass, "hosted": h["verdict"], "hosted_entries": h["entries"],
                      "hosted_counted": h["counted"], "hosted_sources": h["sources"], "hosted_conclusions": h["conclusions"],
                      "local": lo["verdict"], "local_detail": lo["detail"], "coverage": lo["coverage"], "coverage_note": lo["coverage_note"],
                      "app_id": app_id, "source_pinned": is_pinned(app_id), **skip_reading(lo, h)})

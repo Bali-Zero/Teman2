@@ -345,17 +345,95 @@ def run_gate(a, base_wt: Path, cand: Path, run_dir: Path, base_sha: str, cand_sh
     return {**out, "status": status}
 
 
-def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path) -> tuple[dict, dict | None]:
+class StaleJudge:
+    """B10 (spec phase D): was a hosted verdict given on a tree the local run did not judge? Called by ``hc.compare`` for a compared
+    row as ``judge(context, completed_at)``. The hosted run merged the PR onto main AS OF its ``completed_at`` (the newest first-parent
+    commit of the decision's base dated at or before it); when main changed from there to the base in a path the BASE change_map
+    selects for that context, the two sides judged different trees. The paths are classified by the BASE's own change_map.py, run as
+    the runner runs it (``-I``, a stripped environment), and ``runs_when`` is the BASE matrix's flag for the context: the same inputs
+    as ``skip: agreed: change_map``. Reads only (git show, rev-list, diff in the mirror); anything it cannot read raises, which
+    ``hc.stale_reading`` turns into ``stale_check: unknown`` with the row's class kept."""
+    MAP = "scripts/ci/change_map.py"
+    DRIVER = ("import json, sys; sys.path.insert(0, sys.argv[1]); import change_map\n"
+              "out = {}\n"
+              "for p in json.load(sys.stdin):\n"
+              "    cm = change_map.classify([p])\n"
+              "    out[p] = {k: cm.get(k) for k in ('mode', 'reason', 'run_all', 'suggested_jobs')}\n"
+              "json.dump(out, sys.stdout)\n")
+
+    def __init__(self, repo_dir: Path, base_sha: str):
+        self.repo, self.base = repo_dir, str(base_sha)
+        self._flags: dict | None = None
+        self._moved: dict = {}
+        self._cms: dict = {}
+
+    def _runner(self):
+        spec = importlib.util.spec_from_file_location("localci_runner_b10", Path(__file__).resolve().parent / "runner.py")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = mod
+        spec.loader.exec_module(mod)
+        return mod
+
+    def flag_of(self, name: str) -> str:
+        if self._flags is None:
+            import yaml   # the merger's venv carries PyYAML, as prune.py needs it
+            doc = yaml.safe_load(git(self.repo, "show", f"{self.base}:{MATRIX}", timeout=60).stdout)
+            self._flags = {c["name"]: (c.get("local") or {}).get("runs_when") for c in doc["contexts"]}
+        if name not in self._flags:
+            raise MergerError(f"{name!r} is not a context of the BASE matrix")
+        if not isinstance(self._flags[name], str):
+            raise MergerError(f"{name!r} declares no runs_when in the BASE matrix: the change_map does not select it")
+        return self._flags[name]
+
+    def classified(self, paths: list[str]) -> dict:
+        todo = sorted(p for p in paths if p not in self._cms)
+        if todo:
+            with tempfile.TemporaryDirectory(prefix="merger-b10-") as tmp:
+                (Path(tmp) / "change_map.py").write_text(git(self.repo, "show", f"{self.base}:{self.MAP}", timeout=60).stdout)
+                res = subprocess.run([sys.executable, "-I", "-c", self.DRIVER, tmp], input=json.dumps(todo), capture_output=True, text=True,
+                                     timeout=120, env=self._runner().trusted_env())
+            if res.returncode != 0:
+                raise MergerError(f"the BASE change_map could not classify (rc={res.returncode}): {redact(res.stderr.strip()[-200:])}")
+            self._cms.update(json.loads(res.stdout))
+        return self._cms
+
+    def __call__(self, name: str, completed_at: str) -> dict:
+        flag = self.flag_of(name)
+        if completed_at not in self._moved:
+            main = git(self.repo, "rev-list", "-1", "--first-parent", f"--before={completed_at}", self.base, timeout=60).stdout.strip()
+            if not is_sha(main):
+                raise MergerError(f"no first-parent commit of base {self.base[:12]} is dated at or before {completed_at}")
+            paths = [x for x in git(self.repo, "diff", "--name-only", "-z", main, self.base, timeout=120).stdout.split("\0") if x]
+            self._moved[completed_at] = (main, paths)
+        main, paths = self._moved[completed_at]
+        if not paths:
+            return {"stale": False, "hosted_main": main}
+        runner, cms = self._runner(), self.classified(paths)
+        selected = []
+        for p in paths:
+            cm = cms.get(p)
+            if not isinstance(cm, dict) or runner.change_map_status(cm) != "PASS":
+                raise MergerError(f"the BASE change_map did not vouch for {p!r}")
+            if cm.get("run_all") or flag in (cm.get("suggested_jobs") or []):
+                selected.append(p)
+        return {"stale": bool(selected), "hosted_main": main, "main_moved_paths": selected[:20], "main_moved_count": len(selected)}
+
+
+def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path, judge=None) -> tuple[dict, dict | None]:
     """The comparison journalled beside the verdict, and the hosted document it read (None when the read or the comparison failed)."""
     out = {"sha": head, "note": HEAD_NOTE}
     try:
         live = hc.fetch_live(repo, base, head)
-        rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"])
+        rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"], stale_judge=judge)
         rep.update(source="live", repo=repo, branch=base, **out)
         atomic_write(run_dir / "hosted_compare.json", json.dumps(rep, indent=2) + "\n")
     except Exception as exc:  # noqa: BLE001 — a failed comparison is recorded beside the gate's verdict, never loses it
         return {**out, "error": redact(f"{type(exc).__name__}: {exc}")}, None
-    return {**out, "agreement": rep["agreement"], "counts": rep["counts"], "drift": rep["drift"], "exit": hc.exit_code(rep)}, live
+    stale = [{k: r[k] for k in ("context", "class_before", "hosted_completed_at", "hosted_main", "main_moved_paths", "main_moved_count")}
+             for r in rep["rows"] if r["class"] == "HOSTED_STALE"]
+    unknown = {r["context"]: r["stale_check"] for r in rep["rows"] if str(r.get("stale_check", "")).startswith("unknown")}
+    return {**out, "agreement": rep["agreement"], "counts": rep["counts"], "drift": rep["drift"], "exit": hc.exit_code(rep),
+            **({"stale": stale} if stale else {}), **({"stale_unknown": unknown} if unknown else {})}, live
 
 
 # ------------------------------------------------------------------ the enqueue path (C3a-2): GitHub's queue, only when both gates hold
@@ -596,7 +674,7 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         status = gate["status"]
         ctx = status.get("contexts") if isinstance(status.get("contexts"), dict) and not gate.get("error") else {}   # an unvouched status lends no verdict
         results = ctx.get("results") if isinstance(ctx.get("results"), dict) else {}
-        hosted, live = hosted_summary(a.repo, a.base, status, head, run_dir)
+        hosted, live = hosted_summary(a.repo, a.base, status, head, run_dir, StaleJudge(repo_dir, base_sha))
         loc = local_side({} if gate.get("error") else status)
         line = journal(state, {**rec, "candidate_sha": cand_sha, "overall": status.get("overall") or "ERROR", "error": gate.get("error"),
                                "contexts_status": ctx.get("status"), "contexts": {k: (v or {}).get("verdict") for k, v in results.items()},
@@ -781,7 +859,8 @@ def cmd_report(a) -> int:
     parents: dict = {}
     rows = []
     ctx_counts = dict.fromkeys(hc.CLASSES, 0)
-    recorded_fg = 0
+    recorded_fg, recorded_raw, reclassified, kept_fg = 0, 0, [], []   # B10: a recorded FALSE_GREEN the evidence shows was a stale hosted verdict
+    judges: dict = {}
     check_max_s: dict = {}   # the slowest run of each check in the window: where a tick's time goes
     try:
         if a.since and not _SINCE_RE.fullmatch(a.since):
@@ -807,7 +886,14 @@ def cmd_report(a) -> int:
             live = lives[sha]
             github = github_side(live)
             # what the tick saw is kept: a red GitHub later re-ran green, or a context it no longer requires, cannot erase it
-            recorded_fg += recorded_false_green(d)
+            raw = recorded_false_green(d)
+            judge = judges.setdefault(str(d.get("base_sha")), StaleJudge(state / "repo.git", str(d.get("base_sha"))))
+            got, why_kept = reclassify_recorded(a, d, judge) if raw else ([], [])
+            got = got[:raw]
+            recorded_raw += raw
+            reclassified += got
+            kept_fg += why_kept[:max(raw - len(got), 0)]
+            recorded_fg += raw - len(got)
             for k, v in (d.get("durations") if isinstance(d.get("durations"), dict) else {}).items():
                 if is_num(v):
                     check_max_s[k] = max(check_max_s.get(k, 0), v)
@@ -818,7 +904,7 @@ def cmd_report(a) -> int:
                 skip = d.get("skipped") if isinstance(d.get("skipped"), dict) else {}   # B5; a line before it records none: an execution
                 status = {"candidate_sha": d.get("candidate_sha"), "contexts": {"status": d["contexts_status"], "results": {
                     k: {"verdict": v, "coverage": cov.get(k), "skipped": skip.get(k)} for k, v in (d.get("contexts") or {}).items()}}}
-                rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"])
+                rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"], stale_judge=judge)
                 for k, v in rep["counts"].items():
                     ctx_counts[k] += v
                 compared_ctx = rep["coverage"]["compared_full"]   # a partial AGREE is an agreement on a subset: shown, never counted
@@ -896,7 +982,8 @@ def cmd_report(a) -> int:
                       "last_line_age_h": last_line_age_h, "future_lines": future_lines, "errors": errors, "skipped": skipped,
                       "decisions_without_code_sha": without_code_sha, "enqueue": enqueue, "would_merge": would_merge,
                       "code_shas": sorted({r["code_sha"] for r in rows if is_sha(r["code_sha"])}), "ticks": ticks},
-           "counts": counts, "hosted_red_merged": hosted_red_merged, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "phase_e_ready": ready, "phase_f": "shadow", "rows": rows,
+           "counts": counts, "hosted_red_merged": hosted_red_merged, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "recorded_false_green_as_journalled": recorded_raw,
+           "recorded_reclassified_hosted_stale": reclassified, "recorded_kept_false_green": kept_fg, "phase_e_ready": ready, "phase_f": "shadow", "rows": rows,
            "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
     atomic_write(state / "report.json", json.dumps(out, indent=2) + "\n")
     print(f"{'PR':7} {'HEAD':12} {'BASE':12} {'MERGER':11} {'GITHUB':7} {'MERGED':6} CLASS")
@@ -916,14 +1003,18 @@ def cmd_report(a) -> int:
           f"slowest checks: {slow}")
     print("pr-level: " + " ".join(f"{k.lower()}={v}" for k, v in counts.items()))
     print("context-level (hosted_compare per decision): " + " ".join(f"{k.lower()}={v}" for k, v in ctx_counts.items())
-          + f" | false_green recorded at tick time={recorded_fg}")
+          + f" | false_green recorded at tick time={recorded_raw} (still false_green={recorded_fg})")
     print(f"phase F shadow: would_merge={would_merge['total']} (ok={would_merge['ok']}, conflicted={would_merge['conflicted']}, "
           f"base_moved={would_merge['base_moved']}, errors={would_merge['errors']}) — rehearsed with merge-tree, nothing merged, nothing pushed")
+    stale_note = (f"(recorded={recorded_raw}, reclassified HOSTED_STALE={len(reclassified)}: ["
+                  + ", ".join(f"pr{x['pr']} {x['context']}: main moved {', '.join(x['main_moved_paths'][:3])}"
+                              + (", …" if x["main_moved_count"] > 3 else "") + f" after hosted ran {x['hosted_completed_at']}" for x in reclassified) + "]"
+                  + f", kept={len(kept_fg)}: [" + ", ".join(f"pr{x['pr']} {x['context'] or 'all rows'}: {x['why']}" for x in kept_fg) + "])")
     for h in hosted_red_merged:
         print(f"hosted_red_merged: #{h['pr']} merged at {h['merge_commit_sha'][:12]} with required red: {', '.join(h['red'])}")
     print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= 50 compared merges and >= 14 days between the first "
           f"and last compared merge (a merge counts when GitHub merged the decided candidate and >= {MIN_COMPARED_CONTEXTS} contexts were "
-          f"compared, >= {MIN_COMPARED_FULL} of them full and at most {MAX_COMPARED_PARTIAL} partial); now false_green={fg}, "
+          f"compared, >= {MIN_COMPARED_FULL} of them full and at most {MAX_COMPARED_PARTIAL} partial); now false_green={fg} {stale_note}, "
           f"compared_merges={compared_merges} (full_only={compared_merges - len(with_partial)}, with_partial={len(with_partial)}: "
           f"{merged_partial_names}), {merged_skip_agreed} of their full contexts were skip agreements (the classifier's decision compared, "
           f"not an execution), compared_days={compared_days}; of the contexts compared, {compared_partial} were partial "
@@ -950,6 +1041,34 @@ def recorded_false_green(d: dict) -> int:
     if type(value) is not int or value < 0:
         raise hc.CompareError(f"#{d.get('pr')} at {d.get('ts')}: recorded FALSE_GREEN {value!r} is not a count")
     return value
+
+
+def reclassify_recorded(a, d: dict, judge) -> tuple[list[dict], list[dict]]:
+    """B10, the past: re-read a decision's recorded FALSE_GREEN rows (its run dir's hosted_compare.json) and apply the stale rule from
+    the mirror. Read-only: GETs (branch protection, the check-runs and the statuses of the head), git reads in the mirror, nothing
+    written anywhere. Returns ``(reclassified, kept)``: a row is reclassified only when the red the tick saw is still the hosted
+    verdict AND the judge found the evidence; every other recorded row is kept WITH its reason, and a read that fails keeps them all."""
+    pr, head = d.get("pr"), d.get("head_sha")
+    try:
+        doc = json.loads((Path(str(d["run_dir"])) / "hosted_compare.json").read_text())
+        rows = [r for r in doc["rows"] if r.get("class") == "FALSE_GREEN"]
+        live = hc.fetch_live(a.repo, a.base, str(head))
+        hosted = hc.hosted_entries(live["check_runs"], live["statuses"])
+    except Exception as exc:  # noqa: BLE001 — unreadable evidence leaves the recorded false green where it is, and says why
+        return [], [{"pr": pr, "context": None, "head_sha": head, "why": redact(f"unknown ({type(exc).__name__}: {exc})")}]
+    out, kept = [], []
+    for r in rows:
+        h = hc.hosted_verdict(hosted.get(r["context"], []), r.get("app_id"))
+        if h["verdict"] != "RED":
+            kept.append({"pr": pr, "context": r["context"], "head_sha": head, "why": f"the hosted verdict is now {h['verdict']}, not the red the tick recorded"})
+            continue
+        reading = hc.stale_reading(judge, r["context"], h["completed_at"])
+        if reading["stale"] is True:
+            out.append({"pr": pr, "context": r["context"], "head_sha": head, **{k: reading[k] for k in (
+                "hosted_completed_at", "hosted_main", "main_moved_paths", "main_moved_count")}})
+        else:
+            kept.append({"pr": pr, "context": r["context"], "head_sha": head, "why": reading["stale_check"]})
+    return out, kept
 
 
 def _days(first: str, last: str) -> float:

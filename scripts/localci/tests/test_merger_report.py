@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from . import stale_fixture as sf
+
 _MODULE = Path(__file__).resolve().parent.parent / "merger.py"
 _spec = importlib.util.spec_from_file_location("merger_report_under_test", _MODULE)
 mg = importlib.util.module_from_spec(_spec)
@@ -36,6 +38,7 @@ class FakeGH:
     def __init__(self, pulls: dict, checks: dict, parents: dict | None = None):
         self.pulls, self.checks, self.paths, self.parents = pulls, checks, [], {M: [BASE], **(parents or {})}
         self.required = CTX
+        self.done = None   # completed_at of the check-runs: one value, or {context: value}
 
     def __call__(self, path):
         self.paths.append(path)
@@ -51,7 +54,8 @@ class FakeGH:
         concl = self.checks[sha]   # one conclusion for every context, or {context: conclusion} with "success" for the rest
         by = concl if isinstance(concl, dict) else dict.fromkeys(self.required, concl)
         return {"check_runs": [{"name": c, "status": "completed" if by.get(c, "success") else "in_progress", "conclusion": by.get(c, "success"),
-                                "head_sha": sha, "app": {"id": 15368, "slug": "github-actions"}} for c in self.required]}
+                                "head_sha": sha, "app": {"id": 15368, "slug": "github-actions"},
+                                "completed_at": self.done.get(c) if isinstance(self.done, dict) else self.done} for c in self.required]}
 
 
 def pull(head, merged=False, state="open", merge_commit=M, merged_at="2026-10-07T09:00:00Z"):
@@ -88,7 +92,7 @@ def test_every_class_on_its_own_fixture(tmp_path, monkeypatch):
     rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
     assert [r["class"] for r in rep["rows"]] == ["AGREE", "FALSE_RED", "PENDING", "AGREE", "BLIND"]
     assert rc == 0 and rep["window"]["merged_prs"] == 2 and rep["window"]["distinct_prs"] == 4 and rep["window"]["compared_merges"] == 1
-    assert rep["context_counts"] == {"AGREE": 2 * K, "FALSE_GREEN": 0, "FALSE_RED": K, "LOCAL_BLIND": K, "HOSTED_PENDING": K}
+    assert rep["context_counts"] == {"AGREE": 2 * K, "FALSE_GREEN": 0, "FALSE_RED": K, "LOCAL_BLIND": K, "HOSTED_PENDING": K, "HOSTED_STALE": 0}
     assert rep["rows"][0]["hosted_sha"] == M and rep["rows"][2]["hosted_sha"] == D   # a merged candidate is judged where the queue judged it
 
 
@@ -545,3 +549,81 @@ def test_a_skip_here_beside_a_hosted_run_is_partial_so_it_cannot_make_up_the_ful
 def test_a_line_journalled_before_b5_reads_its_skips_as_executions(tmp_path, monkeypatch):
     rc, rep = _merged_with_skips(tmp_path, monkeypatch, ("ctx-01",), ("ctx-01",), journal_skips=False)
     assert rc == 0 and rep["rows"][0]["compared_skip_agreed"] == [] and rep["rows"][0]["compared_merge"] is True
+
+
+# ------------------------------------------------------------------ B10: a recorded FALSE_GREEN that was a stale hosted verdict
+BEFORE_LOCK, AFTER_LOCK = "2026-10-06T02:54:00Z", "2026-10-06T05:00:00Z"
+
+
+def _stale_world(tmp_path, monkeypatch, done, *, mirror=True, run_doc=True):
+    """pr1: local green, the tick recorded one FALSE_GREEN on sf.CTX_BACKEND (hosted red since ``done``); the mirror knows main's history."""
+    shas = sf.make_main(tmp_path / "state" / "repo.git") if mirror else {"base": "f" * 40}
+    gh = FakeGH({1: pull(A)}, {A: {sf.CTX_BACKEND: "failure"}})
+    gh.required, gh.done = (*CTX, sf.CTX_BACKEND), {sf.CTX_BACKEND: done}
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    if run_doc:
+        (run_dir / "hosted_compare.json").write_text(json.dumps({"rows": [{"context": sf.CTX_BACKEND, "class": "FALSE_GREEN", "app_id": 15368}]}))
+    d = {**decision(1, A, "BLOCKED", contexts=dict.fromkeys(gh.required, "OK")), "base_sha": shas["base"], "run_dir": str(run_dir),
+         "hosted_compare": {"counts": {"FALSE_GREEN": 1}}}
+    return d, gh
+
+
+def test_a_recorded_false_green_with_evidence_of_a_stale_hosted_verdict_is_reclassified_and_named(tmp_path, monkeypatch, capsys):
+    d, gh = _stale_world(tmp_path, monkeypatch, BEFORE_LOCK)
+    rc, rep = run_report(tmp_path, monkeypatch, [d], gh)
+    assert rc == 0 and rep["recorded_context_false_green"] == 0 and rep["recorded_false_green_as_journalled"] == 1 and rep["phase_e_ready"] is False
+    (x,) = rep["recorded_reclassified_hosted_stale"]
+    assert (x["pr"], x["context"], x["main_moved_paths"], x["main_moved_count"], x["hosted_completed_at"]) == (1, sf.CTX_BACKEND, [sf.LOCK], 1, BEFORE_LOCK)
+    assert rep["context_counts"]["HOSTED_STALE"] == 1 and rep["context_counts"]["FALSE_GREEN"] == 0   # the fresh comparison judges it too
+    out = capsys.readouterr().out
+    assert (f"false_green=0 (recorded=1, reclassified HOSTED_STALE=1: [pr1 {sf.CTX_BACKEND}: main moved {sf.LOCK} after hosted ran {BEFORE_LOCK}], kept=0: [])"
+            in out)
+
+
+@pytest.mark.parametrize("kw,done", [({"mirror": False}, BEFORE_LOCK), ({}, AFTER_LOCK), ({"run_doc": False}, BEFORE_LOCK), ({}, None)],
+                         ids=["no-mirror", "main-moved-only-unselected-paths", "no-run-dir-record", "no-completed-at"])
+def test_a_recorded_false_green_without_the_evidence_stays_a_false_green(tmp_path, monkeypatch, capsys, kw, done):
+    d, gh = _stale_world(tmp_path, monkeypatch, done, **kw)
+    rc, rep = run_report(tmp_path, monkeypatch, [d], gh)
+    assert rc == 1 and rep["recorded_context_false_green"] == 1 and rep["recorded_reclassified_hosted_stale"] == []
+    assert "reclassified HOSTED_STALE=0: [], kept=1: [" in capsys.readouterr().out
+
+
+def test_the_remaining_false_greens_are_what_ready_reads(tmp_path, monkeypatch, capsys):
+    d, gh = _stale_world(tmp_path, monkeypatch, BEFORE_LOCK)
+    other = {**decision(2, B, "BLOCKED"), "hosted_compare": {"counts": {"FALSE_GREEN": 2}}}   # no evidence for this one
+    gh.pulls[2], gh.checks[B] = pull(B), "success"
+    rc, rep = run_report(tmp_path, monkeypatch, [d, other], gh)
+    assert rc == 1 and rep["recorded_context_false_green"] == 2 and rep["recorded_false_green_as_journalled"] == 3
+    assert "false_green=2 (recorded=3, reclassified HOSTED_STALE=1:" in capsys.readouterr().out
+
+
+def test_a_recorded_false_green_whose_hosted_red_has_since_gone_is_not_reclassified_on_a_green_timestamp(tmp_path, monkeypatch):
+    d, gh = _stale_world(tmp_path, monkeypatch, BEFORE_LOCK)
+    gh.checks[A] = "success"   # re-run green after the tick saw red: its completed_at says nothing about the red that was recorded
+    rc, rep = run_report(tmp_path, monkeypatch, [d], gh)
+    assert rc == 1 and rep["recorded_context_false_green"] == 1 and rep["recorded_reclassified_hosted_stale"] == []
+
+
+@pytest.mark.parametrize("kw,done,mutate,why", [
+    ({"mirror": False}, BEFORE_LOCK, None, "unknown ("),
+    ({}, AFTER_LOCK, None, "fresh"),
+    ({"run_doc": False}, BEFORE_LOCK, None, "unknown (FileNotFoundError"),
+    ({}, None, None, "no readable completed_at"),
+    ({}, BEFORE_LOCK, "green", "now GREEN, not the red the tick recorded")],
+    ids=["mirror-unreadable", "fresh", "run-dir-unreadable", "no-completed-at", "red-gone"])
+def test_a_recorded_false_green_that_is_kept_says_why_in_the_line_and_the_json(tmp_path, monkeypatch, capsys, kw, done, mutate, why):
+    d, gh = _stale_world(tmp_path, monkeypatch, done, **kw)
+    if mutate == "green":
+        gh.checks[A] = "success"
+    rc, rep = run_report(tmp_path, monkeypatch, [d], gh)
+    (k,) = rep["recorded_kept_false_green"]
+    assert rc == 1 and k["pr"] == 1 and why in k["why"] and k["context"] in (sf.CTX_BACKEND, None)
+    out = capsys.readouterr().out
+    assert "kept=1: [pr1 " in out and why in out and "reclassified HOSTED_STALE=0: []" in out
+
+
+def test_a_reclassified_false_green_is_not_listed_as_kept(tmp_path, monkeypatch):
+    d, gh = _stale_world(tmp_path, monkeypatch, BEFORE_LOCK)
+    assert run_report(tmp_path, monkeypatch, [d], gh)[1]["recorded_kept_false_green"] == []
