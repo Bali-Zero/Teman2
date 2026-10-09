@@ -151,7 +151,7 @@ const en = {
     "Your date of birth is checked against visa age limits and tells us whether to ask about a parent or guardian.",
   "q.birth_date.label": "Date of birth",
   "why.birth_date":
-    "Some visas have age limits, such as a minimum age for the retirement visa or a child visa that ends at 18; we check your age against them.",
+    "Some visas have age limits. We check your age against them.",
   "q.guardian_consent":
     "Is a parent or legal guardian filling this in with you?",
   "q.guardian_consent.help":
@@ -586,7 +586,7 @@ const en = {
   "q.diaspora_connection.opt.family": "My connection is through family",
   "q.diaspora_connection.opt.other": "Another connection",
   "why.diaspora_connection":
-    "More than one citizenship, or another connection, means this tool cannot name a visa; a Bali Zero advisor can assess it with you.",
+    "Choosing the multiple-citizenship or ‘another connection’ answer means this tool cannot name a visa; you can discuss your situation with a Bali Zero advisor.",
   "q.diaspora_documents": "Can you document that connection?",
   "q.diaspora_documents.hint":
     "Do not upload documents here; answer only whether evidence exists.",
@@ -666,23 +666,23 @@ const en = {
   "assumption.remote_clients":
     "You weren’t sure where your clients are based, so this remains unresolved. You can discuss it with a Bali Zero advisor.",
   "assumption.secondhome_deposit_usd":
-    "You weren’t sure what bank deposit you can document, so we assessed this plan as if the deposit were zero. You can discuss it with a Bali Zero advisor.",
+    "For this assessment, a bank-deposit amount you cannot confirm counts as zero. You can discuss it with a Bali Zero advisor.",
   "assumption.secondhome_property_value_usd":
-    "You weren’t sure what property value you can document, so we assessed this plan as if the property value were zero. You can discuss it with a Bali Zero advisor.",
+    "For this assessment, a property value you cannot confirm counts as zero. You can discuss it with a Bali Zero advisor.",
   "assumption.secondhome_passive_income_usd":
-    "You weren’t sure what passive monthly income you can document, so we assessed this plan as if that income were zero. You can discuss it with a Bali Zero advisor.",
+    "For this assessment, passive monthly income you cannot confirm counts as zero. You can discuss it with a Bali Zero advisor.",
   "assumption.secondhome_state_bank":
-    "You weren’t sure whether the deposit sits at an Indonesian state-owned bank, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
+    "If you are unsure whether the deposit is at an Indonesian state-owned bank, this assessment treats that answer as “no”. You can discuss it with a Bali Zero advisor.",
   "assumption.secondhome_own_name":
-    "You weren’t sure whether the full deposit is held in your own name, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
+    "If you are unsure whether the entire deposit is in your own name, this assessment treats that answer as “no”. You can discuss it with a Bali Zero advisor.",
   "assumption.study_admission_confirmed":
-    "You weren’t sure whether an Indonesian institution has confirmed your admission, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
+    "If you are unsure whether your admission is confirmed, this assessment treats that answer as “no”. You can discuss it with a Bali Zero advisor.",
   "assumption.study_sponsor_confirmed":
-    "You weren’t sure whether the institution or study sponsor has confirmed support, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
+    "If you are unsure whether your study sponsor has confirmed support, this assessment treats that answer as “no”. You can discuss it with a Bali Zero advisor.",
   "assumption.diaspora_documents":
-    "You weren’t sure whether you can document that connection, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
+    "If you are unsure whether you can document the connection, your answer is treated as “no”. You can discuss it with a Bali Zero advisor.",
   "assumption.retirement_basis":
-    "You weren’t sure which basis you can document today, so we assessed this plan as if you had not chosen a basis yet. You can discuss it with a Bali Zero advisor.",
+    "If you are unsure which basis you can document, the basis is treated as undecided. You can discuss it with a Bali Zero advisor.",
   "assumption.retirement_penjamin_confirmed":
     "You weren’t sure whether you have a penjamin, so we assessed this plan as if the answer were “no”; Bali Zero can act as your penjamin.",
   "assumption.generic":
@@ -997,7 +997,7 @@ const en = {
   "outcome.source_dates":
     "In force since {{effective}} · last checked {{observed}}",
   "outcome.freshness.CURRENT": "Current",
-  "outcome.freshness.STALE": "Being re-checked by our team",
+  "outcome.freshness.STALE": "This source needs to be checked again.",
   "outcome.freshness.UNKNOWN": "Check status unknown",
   "outcome.provenance.CLIENT_GUARD.title": "A person will review this",
   "outcome.provenance.CLIENT_GUARD.body":
@@ -1244,7 +1244,7 @@ const id: Record<Keys, string> = {
     "Tanggal lahir Anda diperiksa terhadap batas usia visa dan menentukan apakah kami perlu bertanya tentang orang tua atau wali.",
   "q.birth_date.label": "Tanggal lahir",
   "why.birth_date":
-    "Beberapa visa punya batas usia, misalnya usia minimum untuk visa pensiun atau visa anak yang berakhir di usia 18; kami memeriksa usia Anda terhadap batas tersebut.",
+    "Beberapa visa memiliki batas usia. Kami memeriksa usia Anda terhadap batas tersebut.",
   "q.guardian_consent":
     "Apakah orang tua atau wali sah mengisi ini bersama Anda?",
   "q.guardian_consent.help":
@@ -1684,7 +1684,7 @@ const id: Record<Keys, string> = {
   "q.diaspora_connection.opt.family": "Hubungan saya melalui keluarga",
   "q.diaspora_connection.opt.other": "Hubungan lain",
   "why.diaspora_connection":
-    "Lebih dari satu kewarganegaraan, atau hubungan lain, berarti alat ini tidak dapat menyebutkan visa; konsultan Bali Zero dapat menilainya bersama Anda.",
+    "Jika Anda memilih jawaban tentang lebih dari satu kewarganegaraan atau ‘hubungan lain’, alat ini tidak dapat menyebutkan visa; Anda dapat membahas situasi Anda dengan konsultan Bali Zero.",
   "q.diaspora_documents": "Apakah Anda dapat membuktikan hubungan tersebut?",
   "q.diaspora_documents.hint":
     "Jangan unggah dokumen di sini; jawab hanya apakah bukti tersedia.",
@@ -1755,23 +1755,23 @@ const id: Record<Keys, string> = {
   "assumption.remote_clients":
     "Anda belum yakin di mana klien Anda berada, jadi hal ini belum dipastikan. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.secondhome_deposit_usd":
-    "Anda tidak yakin berapa deposito bank yang dapat Anda buktikan, jadi rencana ini kami nilai seolah depositonya nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "Dalam penilaian ini, jumlah deposito bank yang belum dapat Anda pastikan dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.secondhome_property_value_usd":
-    "Anda tidak yakin berapa nilai properti yang dapat Anda buktikan, jadi rencana ini kami nilai seolah nilai propertinya nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "Dalam penilaian ini, nilai properti yang belum dapat Anda pastikan dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.secondhome_passive_income_usd":
-    "Anda tidak yakin berapa penghasilan pasif bulanan yang dapat Anda buktikan, jadi rencana ini kami nilai seolah penghasilan itu nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "Dalam penilaian ini, penghasilan pasif bulanan yang belum dapat Anda pastikan dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.secondhome_state_bank":
-    "Anda tidak yakin apakah deposito itu ditempatkan di bank BUMN Indonesia, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "Jika Anda belum yakin apakah deposito berada di bank BUMN Indonesia, penilaian ini memperlakukan jawaban tersebut sebagai “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.secondhome_own_name":
-    "Anda tidak yakin apakah seluruh deposito itu atas nama Anda sendiri, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "Jika Anda belum yakin apakah seluruh deposito atas nama Anda sendiri, penilaian ini memperlakukan jawaban tersebut sebagai “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.study_admission_confirmed":
-    "Anda tidak yakin apakah institusi di Indonesia sudah mengonfirmasi penerimaan Anda, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "Jika Anda belum yakin apakah penerimaan Anda sudah dikonfirmasi, penilaian ini memperlakukan jawaban tersebut sebagai “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.study_sponsor_confirmed":
-    "Anda tidak yakin apakah institusi atau sponsor studi sudah mengonfirmasi dukungannya, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "Jika Anda belum yakin apakah sponsor studi sudah mengonfirmasi dukungannya, penilaian ini memperlakukan jawaban tersebut sebagai “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.diaspora_documents":
-    "Anda tidak yakin apakah Anda dapat membuktikan hubungan tersebut, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "Jika Anda belum yakin apakah Anda dapat membuktikan hubungan tersebut dengan dokumen, jawaban Anda diperlakukan sebagai “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.retirement_basis":
-    "Anda tidak yakin dasar mana yang dapat Anda buktikan saat ini, jadi rencana ini kami nilai seolah Anda belum memilih dasar. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "Jika Anda belum yakin dasar mana yang dapat Anda buktikan dengan dokumen, dasar tersebut diperlakukan sebagai belum dipilih. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.retirement_penjamin_confirmed":
     "Anda tidak yakin apakah Anda sudah memiliki penjamin, jadi rencana ini kami nilai seolah jawabannya “tidak”; Bali Zero dapat bertindak sebagai penjamin Anda.",
   "assumption.generic":
@@ -2066,7 +2066,7 @@ const id: Record<Keys, string> = {
   "outcome.source_dates":
     "Berlaku sejak {{effective}} · terakhir diperiksa {{observed}}",
   "outcome.freshness.CURRENT": "Terkini",
-  "outcome.freshness.STALE": "Sedang diperiksa ulang oleh tim kami",
+  "outcome.freshness.STALE": "Sumber ini perlu diperiksa kembali.",
   "outcome.freshness.UNKNOWN": "Status pemeriksaan tidak diketahui",
   "outcome.provenance.CLIENT_GUARD.title": "Akan ditinjau oleh seseorang",
   "outcome.provenance.CLIENT_GUARD.body":

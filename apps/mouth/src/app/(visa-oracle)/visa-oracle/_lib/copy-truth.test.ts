@@ -112,8 +112,8 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
   ],
   [
     "why.diaspora_connection",
-    "More than one citizenship, or another connection, means this tool cannot name a visa; a Bali Zero advisor can assess it with you.",
-    "Lebih dari satu kewarganegaraan, atau hubungan lain, berarti alat ini tidak dapat menyebutkan visa; konsultan Bali Zero dapat menilainya bersama Anda.",
+    "Choosing the multiple-citizenship or ‘another connection’ answer means this tool cannot name a visa; you can discuss your situation with a Bali Zero advisor.",
+    "Jika Anda memilih jawaban tentang lebih dari satu kewarganegaraan atau ‘hubungan lain’, alat ini tidak dapat menyebutkan visa; Anda dapat membahas situasi Anda dengan konsultan Bali Zero.",
   ],
   [
     "why.diaspora_documents",
@@ -202,48 +202,48 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
   ],
   [
     "assumption.secondhome_deposit_usd",
-    "You weren’t sure what bank deposit you can document, so we assessed this plan as if the deposit were zero. You can discuss it with a Bali Zero advisor.",
-    "Anda tidak yakin berapa deposito bank yang dapat Anda buktikan, jadi rencana ini kami nilai seolah depositonya nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "For this assessment, a bank-deposit amount you cannot confirm counts as zero. You can discuss it with a Bali Zero advisor.",
+    "Dalam penilaian ini, jumlah deposito bank yang belum dapat Anda pastikan dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
   ],
   [
     "assumption.secondhome_property_value_usd",
-    "You weren’t sure what property value you can document, so we assessed this plan as if the property value were zero. You can discuss it with a Bali Zero advisor.",
-    "Anda tidak yakin berapa nilai properti yang dapat Anda buktikan, jadi rencana ini kami nilai seolah nilai propertinya nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "For this assessment, a property value you cannot confirm counts as zero. You can discuss it with a Bali Zero advisor.",
+    "Dalam penilaian ini, nilai properti yang belum dapat Anda pastikan dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
   ],
   [
     "assumption.secondhome_passive_income_usd",
-    "You weren’t sure what passive monthly income you can document, so we assessed this plan as if that income were zero. You can discuss it with a Bali Zero advisor.",
-    "Anda tidak yakin berapa penghasilan pasif bulanan yang dapat Anda buktikan, jadi rencana ini kami nilai seolah penghasilan itu nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "For this assessment, passive monthly income you cannot confirm counts as zero. You can discuss it with a Bali Zero advisor.",
+    "Dalam penilaian ini, penghasilan pasif bulanan yang belum dapat Anda pastikan dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
   ],
   [
     "assumption.secondhome_state_bank",
-    "You weren’t sure whether the deposit sits at an Indonesian state-owned bank, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
-    "Anda tidak yakin apakah deposito itu ditempatkan di bank BUMN Indonesia, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "If you are unsure whether the deposit is at an Indonesian state-owned bank, this assessment treats that answer as “no”. You can discuss it with a Bali Zero advisor.",
+    "Jika Anda belum yakin apakah deposito berada di bank BUMN Indonesia, penilaian ini memperlakukan jawaban tersebut sebagai “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
   ],
   [
     "assumption.secondhome_own_name",
-    "You weren’t sure whether the full deposit is held in your own name, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
-    "Anda tidak yakin apakah seluruh deposito itu atas nama Anda sendiri, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "If you are unsure whether the entire deposit is in your own name, this assessment treats that answer as “no”. You can discuss it with a Bali Zero advisor.",
+    "Jika Anda belum yakin apakah seluruh deposito atas nama Anda sendiri, penilaian ini memperlakukan jawaban tersebut sebagai “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
   ],
   [
     "assumption.study_admission_confirmed",
-    "You weren’t sure whether an Indonesian institution has confirmed your admission, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
-    "Anda tidak yakin apakah institusi di Indonesia sudah mengonfirmasi penerimaan Anda, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "If you are unsure whether your admission is confirmed, this assessment treats that answer as “no”. You can discuss it with a Bali Zero advisor.",
+    "Jika Anda belum yakin apakah penerimaan Anda sudah dikonfirmasi, penilaian ini memperlakukan jawaban tersebut sebagai “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
   ],
   [
     "assumption.study_sponsor_confirmed",
-    "You weren’t sure whether the institution or study sponsor has confirmed support, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
-    "Anda tidak yakin apakah institusi atau sponsor studi sudah mengonfirmasi dukungannya, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "If you are unsure whether your study sponsor has confirmed support, this assessment treats that answer as “no”. You can discuss it with a Bali Zero advisor.",
+    "Jika Anda belum yakin apakah sponsor studi sudah mengonfirmasi dukungannya, penilaian ini memperlakukan jawaban tersebut sebagai “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
   ],
   [
     "assumption.diaspora_documents",
-    "You weren’t sure whether you can document that connection, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
-    "Anda tidak yakin apakah Anda dapat membuktikan hubungan tersebut, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "If you are unsure whether you can document the connection, your answer is treated as “no”. You can discuss it with a Bali Zero advisor.",
+    "Jika Anda belum yakin apakah Anda dapat membuktikan hubungan tersebut dengan dokumen, jawaban Anda diperlakukan sebagai “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
   ],
   [
     "assumption.retirement_basis",
-    "You weren’t sure which basis you can document today, so we assessed this plan as if you had not chosen a basis yet. You can discuss it with a Bali Zero advisor.",
-    "Anda tidak yakin dasar mana yang dapat Anda buktikan saat ini, jadi rencana ini kami nilai seolah Anda belum memilih dasar. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "If you are unsure which basis you can document, the basis is treated as undecided. You can discuss it with a Bali Zero advisor.",
+    "Jika Anda belum yakin dasar mana yang dapat Anda buktikan dengan dokumen, dasar tersebut diperlakukan sebagai belum dipilih. Anda dapat membahasnya dengan konsultan Bali Zero.",
   ],
   [
     "why.family_sponsor_permit_basis",
@@ -264,6 +264,16 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
     "outcome.freshness.UNKNOWN",
     "Check status unknown",
     "Status pemeriksaan tidak diketahui",
+  ],
+  [
+    "outcome.freshness.STALE",
+    "This source needs to be checked again.",
+    "Sumber ini perlu diperiksa kembali.",
+  ],
+  [
+    "why.birth_date",
+    "Some visas have age limits. We check your age against them.",
+    "Beberapa visa memiliki batas usia. Kami memeriksa usia Anda terhadap batas tersebut.",
   ],
 ];
 
@@ -295,6 +305,14 @@ const FALSE_CLAIMS: readonly RegExp[] = [
   /in front of a person/i,
   /before the assessment continues/i,
   /selalu ditangani manusia/i,
+  /more than one citizenship, or another connection/i,
+  /lebih dari satu kewarganegaraan, atau hubungan lain/i,
+  /being re-checked by our team/i,
+  /sedang diperiksa ulang oleh tim kami/i,
+  /child visa that ends at 18/i,
+  /visa anak yang berakhir di usia 18/i,
+  /we assessed this plan as if/i,
+  /rencana ini kami nilai seolah/i,
   /code list above/i,
   /registered above/i,
   /daftar kode di atas/i,
@@ -630,6 +648,96 @@ const FALSE_SAMPLES: readonly (readonly [string, string])[] = [
   ],
   ["en", "Last check date unknown"],
   ["id", "Tanggal pemeriksaan terakhir tidak diketahui"],
+  ["en", "Being re-checked by our team"],
+  ["id", "Sedang diperiksa ulang oleh tim kami"],
+  [
+    "en",
+    "Some visas have age limits, such as a minimum age for the retirement visa or a child visa that ends at 18; we check your age against them.",
+  ],
+  [
+    "id",
+    "Beberapa visa punya batas usia, misalnya usia minimum untuk visa pensiun atau visa anak yang berakhir di usia 18; kami memeriksa usia Anda terhadap batas tersebut.",
+  ],
+  [
+    "en",
+    "More than one citizenship, or another connection, means this tool cannot name a visa; a Bali Zero advisor can assess it with you.",
+  ],
+  [
+    "id",
+    "Lebih dari satu kewarganegaraan, atau hubungan lain, berarti alat ini tidak dapat menyebutkan visa; konsultan Bali Zero dapat menilainya bersama Anda.",
+  ],
+  [
+    "en",
+    "You weren’t sure what bank deposit you can document, so we assessed this plan as if the deposit were zero. You can discuss it with a Bali Zero advisor.",
+  ],
+  [
+    "id",
+    "Anda tidak yakin berapa deposito bank yang dapat Anda buktikan, jadi rencana ini kami nilai seolah depositonya nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
+  ],
+  [
+    "en",
+    "You weren’t sure what property value you can document, so we assessed this plan as if the property value were zero. You can discuss it with a Bali Zero advisor.",
+  ],
+  [
+    "id",
+    "Anda tidak yakin berapa nilai properti yang dapat Anda buktikan, jadi rencana ini kami nilai seolah nilai propertinya nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
+  ],
+  [
+    "en",
+    "You weren’t sure what passive monthly income you can document, so we assessed this plan as if that income were zero. You can discuss it with a Bali Zero advisor.",
+  ],
+  [
+    "id",
+    "Anda tidak yakin berapa penghasilan pasif bulanan yang dapat Anda buktikan, jadi rencana ini kami nilai seolah penghasilan itu nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
+  ],
+  [
+    "en",
+    "You weren’t sure whether the deposit sits at an Indonesian state-owned bank, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
+  ],
+  [
+    "id",
+    "Anda tidak yakin apakah deposito itu ditempatkan di bank BUMN Indonesia, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
+  ],
+  [
+    "en",
+    "You weren’t sure whether the full deposit is held in your own name, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
+  ],
+  [
+    "id",
+    "Anda tidak yakin apakah seluruh deposito itu atas nama Anda sendiri, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
+  ],
+  [
+    "en",
+    "You weren’t sure whether an Indonesian institution has confirmed your admission, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
+  ],
+  [
+    "id",
+    "Anda tidak yakin apakah institusi di Indonesia sudah mengonfirmasi penerimaan Anda, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
+  ],
+  [
+    "en",
+    "You weren’t sure whether the institution or study sponsor has confirmed support, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
+  ],
+  [
+    "id",
+    "Anda tidak yakin apakah institusi atau sponsor studi sudah mengonfirmasi dukungannya, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
+  ],
+  [
+    "en",
+    "You weren’t sure whether you can document that connection, so we assessed this plan as if the answer were “no”. You can discuss it with a Bali Zero advisor.",
+  ],
+  [
+    "id",
+    "Anda tidak yakin apakah Anda dapat membuktikan hubungan tersebut, jadi rencana ini kami nilai seolah jawabannya “tidak”. Anda dapat membahasnya dengan konsultan Bali Zero.",
+  ],
+  [
+    "en",
+    "You weren’t sure which basis you can document today, so we assessed this plan as if you had not chosen a basis yet. You can discuss it with a Bali Zero advisor.",
+  ],
+  [
+    "id",
+    "Anda tidak yakin dasar mana yang dapat Anda buktikan saat ini, jadi rencana ini kami nilai seolah Anda belum memilih dasar. Anda dapat membahasnya dengan konsultan Bali Zero.",
+  ],
 ];
 
 describe("interview helper copy tells the truth about what an answer does", () => {
@@ -648,6 +756,12 @@ describe("interview helper copy tells the truth about what an answer does", () =
         if (!/^(q|why|lane|framing|assumption)\./.test(key)) continue;
         for (const re of FALSE_CLAIMS) {
           // Verified TRUE by the truth table: the unchosen Second Home basis is zeroed.
+          // Not in the sweep: the penjamin note keeps its own past-tense wording.
+          if (
+            key === "assumption.retirement_penjamin_confirmed" &&
+            /assessed this plan|nilai seolah/.test(String(re))
+          )
+            continue;
           if (
             key === "why.secondhome_basis" &&
             /counted|dihitung/.test(String(re))
