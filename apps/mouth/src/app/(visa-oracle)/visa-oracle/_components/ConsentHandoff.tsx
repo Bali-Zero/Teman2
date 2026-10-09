@@ -52,7 +52,7 @@ const COPY = {
     consent:
       "I consent to open WhatsApp with a minimal Visa Oracle receipt. My interview answers are not included.",
     consultationConsent:
-      "I consent to open WhatsApp to speak with a Bali Zero consultant. My interview answers are not included.",
+      "I consent to open WhatsApp to speak with a Bali Zero advisor. My interview answers are not included.",
     guardian:
       "I confirm that I am the parent or legal guardian and consent to this handoff for the minor.",
     guardianFirst:

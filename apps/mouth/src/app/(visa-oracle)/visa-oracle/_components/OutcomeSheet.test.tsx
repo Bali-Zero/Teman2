@@ -405,7 +405,7 @@ describe("OutcomeSheet — honest five-state rendering", () => {
 
     expect(screen.getByText("Preview data")).toBeInTheDocument();
     expect(
-      screen.getByText(/only for testing the interface/i),
+      screen.getByText(/only for testing and is not a recommendation/i),
     ).toBeInTheDocument();
     expect(screen.queryByText("Test path")).not.toBeInTheDocument();
     expect(screen.queryByText("Fixture document")).not.toBeInTheDocument();
@@ -1697,10 +1697,10 @@ describe("OutcomeSheet — ENDING-ROUND friendly ending surface (E4/E5/E6/E7/E8)
     )
       .map((el) => el.textContent)
       .join(" ");
-    expect(printOnlyText).toMatch(/observed/i);
+    expect(printOnlyText).toMatch(/last checked/i);
     expect(printOnlyText).toMatch(/Checked on .+ against the sources above\./);
     const visible = visibleText(container);
-    expect(visible).not.toMatch(/observed/i);
+    expect(visible).not.toMatch(/last checked/i);
     expect(visible).not.toMatch(/Checked on/);
   });
 

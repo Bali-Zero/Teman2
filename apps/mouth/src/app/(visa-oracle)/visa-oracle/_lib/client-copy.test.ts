@@ -10,6 +10,7 @@ import {
   nextStepsFor,
 } from "./engine-adapter";
 import { buildEngineOutcome } from "./engine-adapter";
+import { ATLAS_COPY } from "./atlas-scenes";
 import { dict } from "./i18n";
 import { makeVisaOracleResponse } from "./visa-oracle-test-fixture";
 import {
@@ -28,6 +29,8 @@ const STATES: readonly OutcomeState[] = [
   "NO_SUPPORTED_PATH",
   "TEMPORARILY_UNAVAILABLE",
 ];
+
+const DOTTED_IDENTIFIER = /\b[a-z]+\.[a-z]+_[a-z_]+\b/;
 
 // Words that belong to the engine, not to a client. Indonesian equivalents
 // are listed beside their English twin.
@@ -53,6 +56,29 @@ const BANNED: readonly RegExp[] = [
   /\bheld\b/i,
   /\bditahan\b/i,
   /\bseseorang\b/i,
+  // PR-C4: the interview speaks to the visitor, not to an engineer.
+  /\binterface\b/i,
+  /\bantarmuka\b/i,
+  /decision facts?/i,
+  /\bfakta (mesin|keputusan)\b/i,
+  /\bfakta\b/i,
+  /\benums?\b/i,
+  /\bclosed-/i,
+  /\breceives\b/i,
+  /\bmenerima\b.*\bmesin\b/i,
+  /\babstain/i,
+  /\bpayload\b/i,
+  /\brouting\b/i,
+  /\broutes (?:the|this|next)\b/i,
+  /\bboolean\b/i,
+  /dikirim ke mesin/i,
+  /\bunchanged\b/i,
+  /\btanpa perubahan\b/i,
+  /\bfields?\b/i,
+  /\blabels?\b/i,
+  /\bfacts?\b/i,
+  // A dotted engine identifier (work.indonesia_source_compensation) is never copy.
+  DOTTED_IDENTIFIER,
 ];
 
 // Exact phrases that are ordinary language, not engine voice: a deposit "held
@@ -66,12 +92,24 @@ const ALLOWED_PHRASES: readonly string[] = [
   "ditinjau seseorang",
   "a licensed visa agency or a person in Indonesia",
   "biro visa berlisensi atau seseorang di Indonesia",
+  "The result reflects only the facts you entered",
+  "some routes depend on facts this tool does not ask",
+  // The template variable name, not copy.
+  "{{facts}}",
+  // Ordinary language in the interview: a deposit or investment "held",
+  // a citizenship "held".
+  "held only in capital-market instruments",
+  "held in my own name",
+  "deposit held at an Indonesian state-owned bank",
+  "or have held more than one citizenship",
+  "seseorang dengan reputasi internasional",
 ];
 
+// `{{name}}` / `{{plural:a|b}}` are template placeholders, not copy.
 function withoutAllowed(value: string): string {
   return ALLOWED_PHRASES.reduce(
     (text, phrase) => text.split(phrase).join(" "),
-    value,
+    value.replace(/\{\{[^}]*\}\}/g, " "),
   );
 }
 
@@ -84,12 +122,28 @@ const BANNED_IN_DICT: readonly RegExp[] = [
   /\boperasional\b/i,
 ];
 
+// PR-C4: the interview's own helper copy (question hints, "why we ask",
+// lane notices, assumptions, process panel) is client-visible too.
+const INTERVIEW_PREFIXES: readonly string[] = [
+  "framing.",
+  "q.",
+  "why.",
+  "lane.",
+  "assumption.",
+  "process.",
+  "whyweask.",
+  "confirmation.",
+  "question.",
+];
+
 function clientStrings(): { where: string; value: string; strict?: boolean }[] {
   const rows: { where: string; value: string; strict?: boolean }[] = [];
   for (const language of ["en", "id"] as const) {
     for (const [key, value] of Object.entries(dict[language])) {
       if (key.startsWith("outcome.") || key.startsWith("verdict.")) {
         rows.push({ where: `${language}:${key}`, value, strict: true });
+      } else if (INTERVIEW_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+        rows.push({ where: `${language}:${key}`, value });
       }
     }
     for (const state of STATES) {
@@ -107,8 +161,9 @@ function clientStrings(): { where: string; value: string; strict?: boolean }[] {
     })) {
       rows.push({ where: `${language}:reason.${name}`, value: copy[language] });
     }
-    // TODO(PR-C4): the interview `q.*` / `why.*` helper strings still speak
-    // engine and stay out of this census until that sweep lands.
+    for (const [key, value] of Object.entries(ATLAS_COPY[language])) {
+      rows.push({ where: `${language}:atlas.${key}`, value });
+    }
     for (const [name, elements] of Object.entries(REVIEW_REASON_ELEMENTS)) {
       for (const [part, copy] of Object.entries(elements ?? {})) {
         rows.push({
@@ -139,13 +194,29 @@ function clientStrings(): { where: string; value: string; strict?: boolean }[] {
 }
 
 describe("client-visible copy", () => {
-  it("never carries engine jargon in outcome/verdict copy, next steps, reasons or fallbacks", () => {
+  it("never carries engine jargon in outcome/verdict copy, the interview helper copy, the atlas, next steps, reasons or fallbacks", () => {
     const offenders = clientStrings().flatMap(({ where, value, strict }) =>
       [...BANNED, ...(strict ? BANNED_IN_DICT : [])]
         .filter((re) => re.test(withoutAllowed(value)))
         .map((re) => `${where} ~ ${re} :: ${value.slice(0, 80)}`),
     );
     expect(offenders).toEqual([]);
+  });
+
+  it("the dotted-identifier guard names a leaked field and spares placeholders and plain prose", () => {
+    for (const leaked of [
+      "The answer maps directly to work.indonesia_source_compensation.",
+      "Ini dipetakan ke investment.pt_pma_committed dan tidak menyiratkan persetujuan.",
+    ]) {
+      expect(DOTTED_IDENTIFIER.test(withoutAllowed(leaked))).toBe(true);
+    }
+    for (const innocent of [
+      "Your answer sets {{plural:this detail|these details}}, which we use:",
+      "Used to decide: {{facts}}",
+      "Enter the amount, e.g. 5.000 per month. Ask Dr. Smith.",
+    ]) {
+      expect(DOTTED_IDENTIFIER.test(withoutAllowed(innocent))).toBe(false);
+    }
   });
 
   it("never leaks an internal note into the price or timeline copy", () => {
