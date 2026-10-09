@@ -311,7 +311,7 @@ extension Snapshot {
             // The live result list for --code typed as a query, no selection (no preview sheet).
             state.query = code
             state.selected = nil
-            content = AnyView(SearchListView()
+            content = AnyView(SearchResultsBand()
                 .environmentObject(state).environmentObject(lang)
                 .frame(width: w, height: h, alignment: .top))
         default:
@@ -456,5 +456,17 @@ extension Snapshot {
 
         visit(root)
         return out
+    }
+}
+
+/// Off-screen twin of the live search pane: the field bar over the results, with the focus binding
+/// the live window gets from RootView.
+private struct SearchResultsBand: View {
+    @FocusState private var focus: RootFocus?
+    var body: some View {
+        VStack(spacing: 0) {
+            SearchFieldBar(focusedField: $focus) { }
+            SearchListView(focusedField: $focus)
+        }
     }
 }

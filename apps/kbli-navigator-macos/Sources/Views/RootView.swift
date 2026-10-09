@@ -10,7 +10,7 @@ enum RootFocus: Hashable { case search, list }
 /// from D3a, 2026-08-11): the native source-list sidebar (Codes / Library / Assistant) stays, and
 /// the second pane is the section itself — the register table with its verdict sheet, the Library
 /// list+detail pair, or the chat. The search field is pinned above the register
-/// (`searchHeader` — CUSTOM since D3a.1, see its doc-comment: D3a's native `.searchable` hoisted
+/// (`SearchFieldBar` — CUSTOM since D3a.1, see its doc-comment: D3a's native `.searchable` hoisted
 /// into the trailing window toolbar instead).
 /// Brand header (logo + wordmark + tagline) tops the sidebar. Language (EN/ID) and
 /// theme (☀/☾) live in the trailing window toolbar — D3a.1 briefly moved language to the bottom
@@ -44,7 +44,7 @@ struct RootView: View {
     @State private var columns: NavigationSplitViewVisibility = .all
     /// D2 keyboard model: which of {search field, code list} currently holds keyboard focus. D3a
     /// briefly targeted the native `.searchable` field via `.searchFocused`; D3a.1 reverted to a
-    /// custom TextField's plain `.focused` (see `searchHeader`) — same enum, same downstream
+    /// custom TextField's plain `.focused` (see `SearchFieldBar`) — same enum, same downstream
     /// wiring (⌘K, `/`) either way.
     @FocusState private var focusedField: RootFocus?
     @AppStorage("rowDensity") private var rowDensity: RowDensity = .comfortable
@@ -228,7 +228,7 @@ struct RootView: View {
         .listStyle(.sidebar)
     }
 
-    // MARK: content column (browser / media list / chat) — search (`searchHeader`) lives on a
+    // MARK: content column (browser / media list / chat) — search (`SearchFieldBar`) lives on a
     // `.safeAreaInset(edge: .top)` scoped to the `.search` case only (not the outer Group), so the
     // field simply isn't part of the view tree while Media/Chat are showing — no dead search bar
     // that types into nothing.
@@ -240,7 +240,9 @@ struct RootView: View {
                 // D3a keyboard model: ⌘K (Commands menu) and `/` (SearchListView's list) both still
                 // land here via the same RootFocus.search case. Return still hands off to the list.
                 SearchListView(focusedField: $focusedField)
-                    .safeAreaInset(edge: .top) { searchHeader }
+                    .safeAreaInset(edge: .top) {
+                        SearchFieldBar(focusedField: $focusedField) { handOffToList() }
+                    }
             case .media:
                 // The Library keeps its two panes — the list that was the content column and the
                 // detail that was the detail column — inside the single main pane.
@@ -253,58 +255,6 @@ struct RootView: View {
             }
         }
         .background(Theme.antracite)
-    }
-
-    /// D3a.1 (2026-08-11, Zero's call): back to a CUSTOM field pinned ABOVE the list, replacing
-    /// D3a's `.searchable`. Root cause of the move: on macOS, `.searchable` attached inside a
-    /// `NavigationSplitView` column hoists into the trailing WINDOW TOOLBAR by SDK convention —
-    /// there is no `SearchFieldPlacement` that lands it inline in the CONTENT column specifically
-    /// (`.sidebar` targets the actual navigation sidebar, a different column entirely; `.toolbar` /
-    /// `.automatic` are both the trailing-toolbar behavior Zero flagged as wrong — "finita nel
-    /// terzo quadrante, sopra il detail"). So option (a) from the team-lead's brief (a placement
-    /// value) isn't reachable on this SDK/layout combination; this is option (b) — a custom compact
-    /// field, same visual language as the existing scope-filter TextField
-    /// (`KBLIRegistryView.scopeSearch`): icon + plain field + hairline border, Xcode-filter-bar
-    /// style. `rowDensity` ("other options") rides in the SAME header row, right of the field,
-    /// since it only ever applied to this section anyway (sector/code rows) — team-lead's own
-    /// framing, "anche con lingua e altre opzioni", asked for search's options to move WITH it.
-    /// Bonus, not the goal: this also regains D3a's DECLARED GAP 2 (down-arrow → list) — a custom
-    /// TextField exposes `.onKeyPress` directly, which the system searchable field never did on any
-    /// OS version — and drops DECLARED GAP 1 entirely (no more macOS 15 `#available` branch needed).
-    private var searchHeader: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 7) {
-                Image(systemName: "magnifyingglass").font(Theme.scalable(12)).foregroundStyle(Theme.faint)
-                TextField(lang.t("search.placeholder"), text: $state.query)
-                    .textFieldStyle(.plain).font(Theme.scalable(13)).foregroundStyle(Theme.white)
-                    .focused($focusedField, equals: .search)
-                    .onSubmit { handOffToList() }
-                    .onKeyPress(.downArrow) { handOffToList(); return .handled }
-                if !state.query.isEmpty {
-                    Button { state.query = "" } label: {
-                        Image(systemName: "xmark.circle.fill").font(Theme.scalable(12)).foregroundStyle(Theme.faint)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 10).padding(.vertical, 7)
-            .background(Theme.inkLift, in: RoundedRectangle(cornerRadius: Theme.radiusMd))
-            .overlay(RoundedRectangle(cornerRadius: Theme.radiusMd).strokeBorder(Theme.hairline, lineWidth: 1))
-
-            // Small toolbar icon twin of ⌘⇧D — relocated here from the window toolbar (D3a.1),
-            // right next to the field it applies to (sector/code row height).
-            Button {
-                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.12)) { rowDensity.toggle() }
-            } label: {
-                Image(systemName: rowDensity == .compact ? "rectangle.expand.vertical" : "rectangle.compress.vertical")
-                    .font(Theme.scalable(12))
-            }
-            .buttonStyle(.plain)
-            .help(rowDensity == .compact ? "Comfortable density" : "Compact density")
-        }
-        .padding(.horizontal, 12).padding(.top, 10).padding(.bottom, 8)
-        .background(Theme.ink.opacity(0.9))
-        .overlay(alignment: .bottom) { Rectangle().fill(Theme.hairline).frame(height: 1) }
     }
 
     /// Move keyboard focus from the search field into the code list. The initial highlight is the

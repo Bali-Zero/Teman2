@@ -476,3 +476,36 @@ struct GuillocheField: View {
     }
 }
 
+
+// MARK: - Padi line (search-results editorial baseline)
+
+/// A 1.25 pt gold baseline of the given width with a small "^" chevron grain every 24 pt (two 7×9
+/// strokes from x = 12 + 24k, apex up, sitting on the baseline). Decorative only: same guardrails
+/// as every motif in this file; carries no text. Lives in its own layout slot, never over text.
+struct PadiLine: View {
+    var width: CGFloat
+
+    var body: some View {
+        if Theme.decorationsVisible {
+            Canvas { ctx, size in
+                let base = size.height - 0.625
+                var line = Path()
+                line.move(to: CGPoint(x: 0, y: base))
+                line.addLine(to: CGPoint(x: size.width, y: base))
+                ctx.stroke(line, with: .color(Theme.gold), lineWidth: 1.25)
+                var grain = Path()
+                var x: CGFloat = 12
+                while x + 7 <= size.width {
+                    grain.move(to: CGPoint(x: x, y: base))
+                    grain.addLine(to: CGPoint(x: x + 3.5, y: base - 9))
+                    grain.addLine(to: CGPoint(x: x + 7, y: base))
+                    x += 24
+                }
+                ctx.stroke(grain, with: .color(Theme.gold), lineWidth: 1)
+            }
+            .frame(width: width, height: 12)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
+    }
+}

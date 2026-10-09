@@ -67,6 +67,18 @@ let out: [String: Any] = MainActor.assumeIsolated {
             violations.append("\(name).swift contains a literal copy: \(n.prefix(60))")
         }
     }
+    // Each redesigned view must still ask the canonical functions (append one line per view).
+    let mustCall: [String: [String]] = [
+        "Sources/Views/SearchListView.swift": ["KBLIVerdict.headsUp(", "primaryTitle("],
+    ]
+    for (file, calls) in mustCall.sorted(by: { $0.key < $1.key }) {
+        guard let src = try? String(contentsOfFile: "\(appRoot)/\(file)", encoding: .utf8) else {
+            err("probe: cannot read \(file)"); continue
+        }
+        for call in calls where !src.contains(call) {
+            violations.append("\(file) lacks the required call \(call)")
+        }
+    }
     return ["codes": codes, "balanced_rejoin": rejoin, "probe_violations": violations]
 }
 
