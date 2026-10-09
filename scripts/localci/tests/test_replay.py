@@ -86,12 +86,12 @@ def rw(tmp_path, monkeypatch):
     return w
 
 
-def test_replays_and_pr_decisions_alternate_oldest_merge_first_and_a_replayed_commit_is_not_asked_again(rw):
+def test_replays_and_pr_decisions_alternate_newest_merge_first_and_a_replayed_commit_is_not_asked_again(rw):
     for _ in range(5):
         assert rw.tick() == 0
     ds = rw.decisions()
-    assert [(bool(d.get("replay")), d["pr"]) for d in ds] == [(False, 3), (True, 11), (False, 4), (True, 12)]   # then nothing is left to do
-    assert [d["merge_commit"] for d in ds if d.get("replay")] == [rw.m["m1"], rw.m["m2"]]
+    assert [(bool(d.get("replay")), d["pr"]) for d in ds] == [(False, 3), (True, 12), (False, 4), (True, 11)]   # then nothing is left to do
+    assert [d["merge_commit"] for d in ds if d.get("replay")] == [rw.m["m2"], rw.m["m1"]]   # B11b: the newest merge first
     assert [d["schedule"] for d in ds if d.get("replay")] == ["alternation: the previous decision was not a replay"] * 2
 
 
@@ -104,9 +104,9 @@ def test_a_replay_turn_with_no_pull_request_to_decide_still_replays_and_says_why
 
 
 def test_the_replay_judges_the_merge_commit_with_its_first_parent_as_the_base_never_the_commits_own_matrix(rw):
-    rw.tick()
-    rw.tick()
-    plan = [c for c in rw.runner.calls if c["sub"] == "plan"][1]
+    for _ in range(4):   # PR 3, M2, PR 4, M1
+        rw.tick()
+    plan = next(c for c in rw.runner.calls if c["sub"] == "plan" and c["worktree_head"] == rw.m["m1"])
     first_parent = rw.m["m0"]
     assert g(rw.state / "repo.git", "rev-list", "--parents", "-n1", rw.m["m1"]).split()[1:] == [first_parent, rw.m["side"]]   # M1 is a real merge
     assert plan["cwd"] == rw.state / "base" / first_parent and plan["cwd_head"] == first_parent and plan["worktree_head"] == rw.m["m1"]
@@ -117,17 +117,17 @@ def test_the_replay_judges_the_merge_commit_with_its_first_parent_as_the_base_ne
 
 def test_the_replay_line_carries_the_decision_fields_and_enqueues_and_rehearses_nothing(rw):
     rw.tick()
-    mutations = len(rw.gql.mutations())
+    mutations, before = len(rw.gql.mutations()), len(mg.read_journal(rw.state))
     rw.tick()
     kinds_after = [r["kind"] for r in mg.read_journal(rw.state)]
     d = rw.decisions()[1]
     assert d["replay"] is True and (d["pr"], d["merge_commit"], d["base_sha"], d["candidate_sha"], d["head_sha"]) == (
-        11, rw.m["m1"], rw.m["m0"], rw.m["m1"], rw.heads[11])
+        12, rw.m["m2"], rw.m["m1"], rw.m["m2"], rw.heads[12])
     assert {"contexts", "coverage", "skipped", "hosted_compare", "run_dir", "seal", "lease_id", "elapsed_s"} <= set(d)
-    assert d["hosted_compare"]["sha"] == rw.m["m1"] and d["hosted_compare"]["note"].startswith("B11 replay")
+    assert d["hosted_compare"]["sha"] == rw.m["m2"] and d["hosted_compare"]["note"].startswith("B11 replay")
     assert "stale" not in d["hosted_compare"] and "stale_unknown" not in d["hosted_compare"]   # the same tree: nothing to judge
     assert kinds_after[-1] == "decision"
-    assert not [k for k in kinds_after[kinds_after.index("skipped"):] if k in ("would_enqueue", "would_merge", "enqueued")]
+    assert not [k for k in kinds_after[before:] if k in ("would_enqueue", "would_merge", "enqueued")]   # the replay tick's own lines
     assert len(rw.gql.mutations()) == mutations and not any(c[0] == mg.ENQUEUE for c in rw.gql.calls[-1:])
 
 
@@ -140,9 +140,22 @@ def test_a_commit_github_does_not_confirm_is_journalled_once_and_never_asked_aga
     assert 14 not in rw.hub.reads   # the side commit is reachable only through M1's second parent: off the first-parent line
 
 
+def test_a_merge_github_still_shows_open_is_not_journalled_unmapped_and_is_replayed_once_github_shows_it(rw):
+    rw.hub.pulls[12] = {**merged_pull("6" * 40, rw.heads[12]), "merged": False, "state": "open"}   # the fetch saw M2 before the API did
+    for _ in range(2):
+        rw.tick()
+    assert [(bool(d.get("replay")), d["pr"]) for d in rw.decisions()] == [(False, 3), (True, 11)]   # M2 passed over, M1 replayed
+    assert not [r for r in mg.read_journal(rw.state) if r["kind"] == "skipped" and r.get("pr") == 12]
+    rw.hub.pulls[12] = merged_pull(rw.m["m2"], rw.heads[12])
+    for _ in range(2):
+        rw.tick()
+    assert [(bool(d.get("replay")), d["pr"]) for d in rw.decisions()][2:] == [(False, 4), (True, 12)]
+    assert rw.decisions()[-1]["merge_commit"] == rw.m["m2"]
+
+
 def test_a_pull_that_cannot_be_read_falls_back_to_a_pr_decision(rw, capsys):
     rw.tick()
-    rw.hub.pulls[13] = rw.hub.pulls[11] = None
+    rw.hub.pulls[12] = None   # the newest merge's pull, the first one the replay turn reads
     assert rw.tick() == 0
     ds = rw.decisions()
     assert [bool(d.get("replay")) for d in ds] == [False, False] and ds[1]["pr"] == 4
@@ -182,25 +195,25 @@ def _runner_that_raises(monkeypatch, rw, exc, when):
 
 @pytest.mark.parametrize("exc", [RuntimeError("boom ghp_" + "E" * 36), subprocess.TimeoutExpired(["git"], 5)], ids=["runtime-error", "timeout"])
 def test_a_replay_that_crashes_is_an_error_line_so_the_alternation_advances_and_the_retry_bound_holds(rw, monkeypatch, exc):
-    _runner_that_raises(monkeypatch, rw, exc, lambda cand: cand == rw.m["m1"])
+    _runner_that_raises(monkeypatch, rw, exc, lambda cand: cand == rw.m["m2"])
     rcs = []
     for _ in range(7):
         rcs.append(rw.tick())
         if rcs[-1]:   # the failed key is decided again two ticks later
             _next_second()
     ds = rw.decisions()
-    # each failed replay is a decision line, so the next tick decides a PR; after two the commit is left and M2 is reached
+    # each failed replay is a decision line, so the next tick decides a PR; after two the commit is left and M1 is reached
     assert [(bool(d.get("replay")), d["pr"], d["overall"] == "ERROR") for d in ds] == [
-        (False, 3, False), (True, 11, True), (False, 4, False), (True, 11, True), (True, 12, False)]
+        (False, 3, False), (True, 12, True), (False, 4, False), (True, 12, True), (True, 11, False)]
     assert rcs == [0, 1, 0, 1, 0, 0, 0] and not [r for r in mg.read_journal(rw.state) if r["kind"] == "error"]
     crashed = [d for d in ds if d["overall"] == "ERROR"]
-    assert {d["merge_commit"] for d in crashed} == {rw.m["m1"]} and all(d["error"].startswith(type(exc).__name__ + ": ") for d in crashed)
+    assert {d["merge_commit"] for d in crashed} == {rw.m["m2"]} and all(d["error"].startswith(type(exc).__name__ + ": ") for d in crashed)
     assert all("ghp_" not in d["error"] and d["candidate_sha"] is None for d in crashed)
 
 
 def test_a_stop_during_a_replay_is_no_verdict_and_the_same_replay_is_decided_next(rw, monkeypatch):
     rw.tick()
-    _runner_that_raises(monkeypatch, rw, mg.Stopped("stopped (signal 15)"), lambda cand: cand == rw.m["m1"])
+    _runner_that_raises(monkeypatch, rw, mg.Stopped("stopped (signal 15)"), lambda cand: cand == rw.m["m2"])
     assert rw.tick() == 1
     assert [bool(d.get("replay")) for d in rw.decisions()] == [False]   # a stop is never an ERROR replay: it does not spend a retry
     assert [r["error"] for r in mg.read_journal(rw.state) if r["kind"] == "error"] == ["stopped (signal 15)"]
@@ -208,7 +221,7 @@ def test_a_stop_during_a_replay_is_no_verdict_and_the_same_replay_is_decided_nex
     _next_second()
     assert rw.tick() == 0
     d = rw.decisions()[-1]
-    assert (d.get("replay"), d["merge_commit"], d["overall"] != "ERROR") == (True, rw.m["m1"], True)
+    assert (d.get("replay"), d["merge_commit"], d["overall"] != "ERROR") == (True, rw.m["m2"], True)
 
 
 def test_a_pr_decision_that_crashes_outside_the_gate_errors_is_no_decision_as_before(rw, monkeypatch):

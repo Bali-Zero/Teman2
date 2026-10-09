@@ -339,7 +339,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     # B11 (phase D): the merger also judges the exact commit GitHub merged — a replay, BASE = its first parent, alternating with PR decisions
     "b11-base-is-the-merge-commit": (PY, '"base_sha": parents.split()[0]', '"base_sha": sha', (REPLAY,)),
     "b11-alternation-off": (PY, 'after_replay = bool(last and last[0].get("replay"))', "after_replay = False", (REPLAY,)),
-    "b11-newest-merge-first": (PY, "for line in reversed(log):", "for line in log:", (REPLAY,)),
+    "b11-open-pull-journalled-unmapped": (PY, 'if isinstance(p, dict) and p.get("state") == "open":\n                    continue', 'if False:\n                    continue', (REPLAY,)),
+    "b11-oldest-merge-first": (PY, "for line in log:   # newest first (B11b)", "for line in reversed(log):   # (B11b)", (REPLAY,)),
     "b11-replayed-again": (PY, "if sha in done or not m or not parents.split():", "if not m or not parents.split():", (REPLAY,)),
     "b11-unconfirmed-commit-replayed": (PY, 'p.get("merged") is True and p.get("merge_commit_sha") == sha and head_of(p)', 'p.get("merged") is True and head_of(p)', (REPLAY,)),
     "b11-stale-judge-on-a-replay": (PY, "hosted_summary(a.repo, a.base, status, cand_sha, run_dir, None, REPLAY_NOTE)",

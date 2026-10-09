@@ -731,9 +731,10 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
 
 
 def replay_pending(a, state: Path, repo_dir: Path, recs: list[dict]) -> dict | None:
-    """B11: the OLDEST merge commit on the mirror's first-parent line, from the first PR decision of the journal on, that carries a PR
+    """B11: the NEWEST merge commit on the mirror's first-parent line, from the first PR decision of the journal on, that carries a PR
     number GitHub confirms (the PR is merged AND its ``merge_commit_sha`` is this commit) and has no replay yet. A commit that fails the
-    confirmation is journalled once (``skipped: replay_unmapped``) and never asked again; an ERROR replay is retried once. Any read that
+    confirmation is journalled once (``skipped: replay_unmapped``) and never asked again — unless GitHub still shows its PR open (newest
+    first, a merge can be seconds old at the fetch): then it is asked again on the next replay turn; an ERROR replay is retried once. Any read that
     fails returns None: a replay turn that cannot find its work falls back to a PR decision."""
     firsts = [str(r["ts"]) for r in recs if r.get("kind") == "decision" and not r.get("replay") and r.get("ts")]
     if not firsts:
@@ -743,7 +744,8 @@ def replay_pending(a, state: Path, repo_dir: Path, recs: list[dict]) -> dict | N
             or (r.get("kind") == "skipped" and r.get("why") == "replay_unmapped")} | {m for m, k in errors.items() if k >= 2}
     try:
         log = git(repo_dir, "log", "--first-parent", "--format=%H%x00%P%x00%s", f"--after={min(firsts)}", "refs/merger/base").stdout.splitlines()
-        for line in reversed(log):
+        for line in log:   # newest first (B11b): main takes more merges a day than the gate decides, so oldest-first never reaches the
+            # present — live 2026-10-09, 81 merges of 10-07/10-08 stood before the first base a PR decision compared 12 contexts on
             sha, parents, subject = (line.split("\0") + ["", ""])[:3]
             m = PR_SUBJECT.search(subject)
             if sha in done or not m or not parents.split():
@@ -751,6 +753,8 @@ def replay_pending(a, state: Path, repo_dir: Path, recs: list[dict]) -> dict | N
             n = int(m[1])
             p = hc.gh_get(f"repos/{a.repo}/pulls/{n}")
             if not (isinstance(p, dict) and p.get("merged") is True and p.get("merge_commit_sha") == sha and head_of(p)):
+                if isinstance(p, dict) and p.get("state") == "open":
+                    continue   # B11b: a merge seconds old that GitHub does not show yet — asked again next turn, never journalled unmapped
                 journal(state, {"kind": "skipped", "why": "replay_unmapped", "merge_commit": sha, "pr": n})
                 continue
             return {"merge_commit": sha, "base_sha": parents.split()[0], "pr": n, "head": head_of(p)}
