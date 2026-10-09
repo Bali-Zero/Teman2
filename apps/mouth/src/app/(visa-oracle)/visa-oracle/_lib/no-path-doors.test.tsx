@@ -38,7 +38,12 @@ import {
 } from "../../../../../scripts/visa-oracle/generate-walk-corpus";
 import { DEFAULT_OUT_DIR } from "../../../../../scripts/visa-oracle/generate-walk-corpus.cli";
 import { OutcomeSheet } from "../_components/OutcomeSheet";
-import { buildEngineOutcome, buildNoPathDoors } from "./engine-adapter";
+import {
+  SUPPORT_REASON_COPY,
+  UNMAPPED_REASON_COPY,
+  buildEngineOutcome,
+  buildNoPathDoors,
+} from "./engine-adapter";
 import { CATEGORY_TO_PURPOSE } from "./fact-mapper";
 import replay from "./fixtures/no-path-doors.replay.json";
 import type { Language } from "./flow";
@@ -54,7 +59,7 @@ type ReplayWalk = (typeof replay.walks)[number];
 
 /** The catalogue sentence a named cause must replace (engine-adapter.ts). */
 const GENERIC_NO_PATH_COPY =
-  "No visa in our verified catalogue covers the purpose you described.";
+  SUPPORT_REASON_COPY.OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES.en;
 
 /** The JSON import widens an all-empty column to `never[]`; the codes are
  * plain strings and every consumer here reads them as such. */
@@ -327,7 +332,9 @@ describe("no-path doors — the evidence behind every named alternative", () => 
       for (const reason of outcome.noPathReasons) {
         expect(reason.message.en).not.toContain(GENERIC_NO_PATH_COPY);
         expect(reason.message.en).not.toContain("Verified reason:");
+        expect(reason.message.en).not.toBe(UNMAPPED_REASON_COPY.en);
         expect(reason.message.id).not.toContain("Alasan terverifikasi:");
+        expect(reason.message.id).not.toBe(UNMAPPED_REASON_COPY.id);
         expect(reason.message.id.length).toBeGreaterThan(0);
       }
     });

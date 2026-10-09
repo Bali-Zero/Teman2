@@ -937,6 +937,13 @@ const en = {
   "outcome.price_label": "All-inclusive price",
   "outcome.price_all_inclusive":
     "Government fees and Bali Zero service included.",
+  "outcome.duration_years": "{{count}}-year stay permit",
+  "outcome.duration_days": "{{count}}-day stay permit",
+  "outcome.duration_alternative": "Also available: {{label}} — {{price}}",
+  "outcome.duration_extension":
+    "Your planned stay is longer than the longest permit here — ask your advisor about renewal before it expires.",
+  "outcome.duration_label_years": "{{count}} {{plural:year|years}}",
+  "outcome.duration_label_days": "{{count}} days",
   "outcome.price_valid_until": "Quote valid until {{date}}",
   // Finding #17 (adversarial review 2026-07-17): "Free"/WhatsApp summary
   // header were hardcoded English/Indonesian ternaries in OutcomeSheet.tsx
@@ -1994,6 +2001,13 @@ const id: Record<Keys, string> = {
   "outcome.price_label": "Harga all-inclusive",
   "outcome.price_all_inclusive":
     "Sudah termasuk biaya pemerintah dan jasa Bali Zero.",
+  "outcome.duration_years": "Izin tinggal {{count}} tahun",
+  "outcome.duration_days": "Izin tinggal {{count}} hari",
+  "outcome.duration_alternative": "Pilihan lain: {{label}} — {{price}}",
+  "outcome.duration_extension":
+    "Rencana tinggal Anda lebih lama dari izin terpanjang di sini — tanyakan perpanjangan kepada konsultan Anda sebelum izin berakhir.",
+  "outcome.duration_label_years": "{{count}} tahun",
+  "outcome.duration_label_days": "{{count}} hari",
   "outcome.price_valid_until": "Penawaran berlaku hingga {{date}}",
   "outcome.price_free": "Gratis",
   "outcome.whatsapp_summary_header": "Ringkasan keputusan Visa Oracle:",

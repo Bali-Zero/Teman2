@@ -1021,6 +1021,10 @@ html[data-oracle-theme-bootstrap="dark"]
   font-weight: 700;
   color: var(--oracle-ink);
 }
+.oracle-price__duration {
+  font-size: var(--text-sm);
+  color: var(--oracle-ink-muted);
+}
 .oracle-price__note {
   font-size: var(--text-xs);
   color: var(--oracle-ink-faint);

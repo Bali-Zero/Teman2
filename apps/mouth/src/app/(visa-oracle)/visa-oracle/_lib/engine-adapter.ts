@@ -18,6 +18,7 @@ import type {
   OutcomeReason,
   OutcomeSource,
   OutcomeTimeline,
+  OutcomeDuration,
   OutcomeViewModel,
   NoSupportedPathAlternative,
   ServiceAvailabilityStatus,
@@ -1679,6 +1680,24 @@ function documents(candidate: VisaOracleCandidateDisplay): OutcomeDocument[] {
   return result;
 }
 
+/** Spread into the candidate: absent unless the engine sent `selected_duration_days`. */
+function duration(
+  candidate: VisaOracleCandidateDisplay,
+): { duration: OutcomeDuration } | Record<string, never> {
+  if (candidate.selected_duration_days == null) return {};
+  return {
+    duration: {
+      selectedDays: candidate.selected_duration_days,
+      options: (candidate.duration_options ?? []).map((option) => ({
+        days: option.days,
+        amountIdr: option.amount_idr ?? null,
+        selected: option.selected,
+      })),
+      extensionRequired: candidate.extension_required === true,
+    },
+  };
+}
+
 function price(
   candidate: VisaOracleCandidateDisplay,
   response: VisaOracleEvaluateResponse,
@@ -1964,6 +1983,7 @@ function buildValidatedOutcome(
           ),
           timeline: timeline(projected),
           price: price(projected, response),
+          ...duration(projected),
           documents: documents(projected),
         } satisfies OutcomeCandidate;
       });

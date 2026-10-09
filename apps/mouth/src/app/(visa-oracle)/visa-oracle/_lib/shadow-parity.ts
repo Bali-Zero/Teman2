@@ -64,6 +64,8 @@ function semanticProjection(outcome: OutcomeViewModel) {
             }
           : candidate.price,
       timeline: candidate.timeline,
+      // `candidate.duration` is deliberately NOT projected (PR-C2): the gold
+      // preview baseline has no duration pricing to compare it with.
       documents: candidate.documents.map((document) => ({
         label: document.label,
         status: document.status,

@@ -1,9 +1,7 @@
 import type { VisaOracleEvaluateResponse } from "./visa-oracle-contract";
 
 export type VisaOracleResponseErrorCode =
-  | "MALFORMED_RESPONSE"
-  | "RESPONSE_INVARIANT"
-  | "NON_ENGINE_MODE";
+  "MALFORMED_RESPONSE" | "RESPONSE_INVARIANT" | "NON_ENGINE_MODE";
 
 export class VisaOracleResponseError extends Error {
   constructor(public readonly code: VisaOracleResponseErrorCode) {
@@ -439,6 +437,26 @@ export function parseVisaOracleEvaluateResponse(
         rowHash === null)
     ) {
       invariant();
+    }
+
+    // Duration pricing (seq-26): all three fields are optional, so a response
+    // from before that sequence parses unchanged.
+    if (projected.selected_duration_days != null) {
+      integer(projected.selected_duration_days, 1);
+    }
+    if (
+      projected.extension_required != null &&
+      typeof projected.extension_required !== "boolean"
+    ) {
+      malformed();
+    }
+    if (projected.duration_options != null) {
+      for (const optionValue of array(projected.duration_options)) {
+        const option = record(optionValue);
+        integer(option.days, 1);
+        if (option.amount_idr != null) integer(option.amount_idr, 0);
+        if (typeof option.selected !== "boolean") malformed();
+      }
     }
   }
 
