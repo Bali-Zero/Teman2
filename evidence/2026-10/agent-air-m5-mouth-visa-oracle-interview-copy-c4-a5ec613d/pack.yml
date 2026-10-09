@@ -38,8 +38,9 @@ decisions:
     decision: >-
       Successor of #8119 (gate BLOCK: why.birth_date became false once seq-26 rules exclude on
       age alone, and two helper sentences still printed internal field names). The branch was
-      armed and frozen, so the work restarts from a fresh origin/main with the three commits
-      cherry-picked and one cure commit on top.
+      armed and frozen, so the work restarts from a fresh origin/main: the commits were
+      cherry-picked from #8119's branch, then rebased onto main with C2. The shas cited in the
+      dissent notes are the rebased ones, all on this branch.
   - id: D-rebased-on-c2
     decision: >-
       Rebased onto main after C2 (#8124) merged. The observer keeps C2's four required duration
@@ -109,27 +110,27 @@ dissent:
     severity: HIGH
     objection: Four English strings said "Bali Zero consultant" while the live result page says "Bali Zero advisor".
     status: CONFIRMED
-    note: cured in 7281ad88b0, every EN string now says advisor; ID keeps konsultan Bali Zero.
+    note: cured in c86c5f2859, every EN string now says advisor; ID keeps konsultan Bali Zero.
   - seat: agy-gemini-3.1-pro
     severity: HIGH
     objection: The trip-scope hint named an unbranded consultant, in EN and ID.
     status: CONFIRMED
-    note: cured in 7281ad88b0, both languages now name the Bali Zero advisor.
+    note: cured in c86c5f2859, both languages now name the Bali Zero advisor.
   - seat: agy-gemini-3.1-pro
     severity: MEDIUM
     objection: The paid-up capital hint lost the promise that the exact amount is used.
     status: CONFIRMED
-    note: cured in 7281ad88b0, the exact-amount promise is restored in EN and ID.
+    note: cured in c86c5f2859, the exact-amount promise is restored in EN and ID.
   - seat: fresh-opus-gate
     severity: HIGH
     objection: why.birth_date said age alone never decides eligibility, which is false since seq-26 has rules that exclude on age.
     status: CONFIRMED
-    note: cured in 7d35db88d4, the sentence now names the minimum age for the retirement visa and the child visa that ends at 18.
+    note: cured in e6e346039a, the sentence now names the minimum age for the retirement visa and the child visa that ends at 18.
   - seat: fresh-opus-gate
     severity: HIGH
     objection: why.remote_compensation and why.remote_pt_pma still printed internal field names.
     status: CONFIRMED
-    note: cured in 7d35db88d4, both rewritten in plain words and a dotted-identifier guard added to the census and the observer.
+    note: cured in e6e346039a, both rewritten in plain words and a dotted-identifier guard added to the census and the observer.
 
 spend:
   wall_clock_hours: 2
