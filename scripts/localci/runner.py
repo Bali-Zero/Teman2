@@ -1047,7 +1047,6 @@ def npm_inputs(wt: Path, cand: str, deps: dict) -> tuple[dict, str, str | None]:
 
 
 READER_RETRY_WAITS = (0, 10, 30)
-GATE_PENDING = "(gate_pending: host, at plan:"   # run_host_reader's reason for a verdict not posted yet (B12)
 
 
 def run_host_reader(argv: list, cwd: Path, timeout: int | None, no_verdict: str | None = None, pending: str | None = None) -> dict:
@@ -1063,7 +1062,7 @@ def run_host_reader(argv: list, cwd: Path, timeout: int | None, no_verdict: str 
         out = r.stdout + r.stderr   # the reader's own error line, on stderr, line-anchored: a description it echoes (stdout) cannot fake it
         if pending and r.returncode != 0 and any(ln.startswith(pending) for ln in r.stderr.splitlines()):   # B12: not posted yet, and a posting session takes minutes: no retry
             return {"rc": None, "reason": f"gate_pending: host, at plan: BASE {Path(argv[2]).name} — no harness/fable-gate verdict posted on the head yet; "
-                    "asked again once it is", "log": out[-4000:]}
+                    "asked again once it is", "log": out[-4000:], "gate_pending": True}   # the flag, frozen in the plan, marks the context: never the text
         if not (no_verdict and r.returncode != 0 and any(ln.startswith(no_verdict) for ln in r.stderr.splitlines())):
             return {"rc": r.returncode, "reason": f"host, at plan: BASE {Path(argv[2]).name} rc={r.returncode}", "log": out[-4000:]}
     return {"rc": None, "reason": f"host, at plan: BASE {Path(argv[2]).name} could not read GitHub ({no_verdict!r}, {len(READER_RETRY_WAITS)} tries): "
@@ -2077,8 +2076,18 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
     if rc is None or rc < 0 or rc == 2 or got is None or [s["name"] for s in got] != [s["name"] for s in steps] or rc != want:
         out["infra"] = ("ERROR", f"{label}: driver rc={rc}, junit {'unreadable' if got is None else f'{len(got)} case(s), expected rc {want}'} — no verdict")
         return out
+    for s, planned in zip(got, steps):   # B12: the flag the plan froze, carried to the step it answered — never read from the junit's text
+        if s["status"] == "BLOCKED" and (planned.get("precomputed") or {}).get("gate_pending") is True:
+            s["gate_pending"] = True
     out.update(rc=rc, steps=got, cpu=round(sum(s["cpu"] for s in got), 3))
     return out
+
+
+def gate_pending_of(status: str, steps: list) -> bool:
+    """B12: a context is gate_pending only when it is BLOCKED and EVERY step that did not pass is a reader whose plan-frozen answer was
+    "no verdict posted yet": another BLOCKED step (or a red one) stays BLOCKED after the post, so deciding again would change nothing."""
+    bad = [s for s in steps if s["status"] not in ("PASS", "NOT_APPLICABLE")]
+    return status == "BLOCKED" and bool(bad) and all(s.get("gate_pending") is True for s in bad)
 
 
 def _run_egress(name: str, spec: dict, job: dict, st: dict, slug: str, cfg_base: dict, base_extra: dict, env: dict, inner: list,
@@ -2136,7 +2145,7 @@ def _execute_jobs(name: str, spec: dict, run_dir: Path, plan: dict, log: Path) -
         fh.writelines(f"# {r['label']}: rc={r['rc']} {r['seconds']}s cpu={r['cpu']}s log={r['log']}\n" for r in legs)
     return {"status": status, "reason": reason + " [contained: candidate-produced junit]", "rc": max(r["rc"] for r in legs),
             "duration_s": round(time.monotonic() - t0, 3), "counts": None, "steps": combined, "log": str(log), "isolation": "container",
-            "jobs": [{k: x[k] for k in ("label", "rc", "seconds", "cpu")} for x in legs]}
+            "jobs": [{k: x[k] for k in ("label", "rc", "seconds", "cpu")} for x in legs], **({"gate_pending": True} if gate_pending_of(status, combined) else {})}
 
 
 def execute(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int) -> dict:
@@ -2448,11 +2457,13 @@ def cmd_run(a):
                 b = st["binding"]
                 if ident["candidate_sha"] != b["candidate_sha"] or ident["tree_sha"] != b["tree_sha"] or ident["dirty"]:
                     c.update(status="BLOCKED", reason=f"worktree moved: HEAD={ident['candidate_sha'][:12]} tree={ident['tree_sha'][:12]} dirty={ident['dirty']}", at=now())
+                    c.pop("gate_pending", None)
                     store.save(st)
                     continue
                 attempt = c.get("attempts", 0) + 1
                 started = now()
                 c.update(status="RUNNING", reason="executing", at=started, pid=os.getpid(), pid_started=proc_start(os.getpid()), started_at=started, attempts=attempt)
+                c.pop("gate_pending", None)   # B12: a flag is this attempt's answer, never an earlier one's
                 store.save(st)
                 try:
                     res = execute(name, spec, run_dir, plan, a.timeout)
@@ -2477,7 +2488,7 @@ def cmd_run(a):
                 atomic_write(rp, json.dumps(receipt, indent=2, sort_keys=True))
                 c.setdefault("history", []).append({"attempt": attempt, "status": res["status"], "reason": res["reason"], "started_at": started, "ended_at": now(), "pid": os.getpid()})
                 c.update(status=res["status"], reason=res["reason"], at=now(), receipt=str(rp), rc=res.get("rc"), duration_s=res.get("duration_s"), counts=res.get("counts"), log=res.get("log"),
-                         steps=res.get("steps"))
+                         steps=res.get("steps"), **({"gate_pending": True} if res.get("gate_pending") is True else {}))
                 c.pop("pid", None)
                 c.pop("pid_started", None)
                 store.save(st)
@@ -2602,7 +2613,7 @@ def evaluate_contexts(view: dict, plan: dict) -> dict:
             out["results"][name]["no_verdict"] = host.group(0)
         elif s == "BLOCKED" and reason.startswith("judge_rewritten: "):   # a red read with a BASE judge the candidate rewrites (B5)
             out["results"][name]["no_verdict"] = "judge_rewritten"
-        elif s == "BLOCKED" and GATE_PENDING in reason:   # B12: the session has not posted its gate verdict yet — asked again once it has
+        elif s == "BLOCKED" and view[chk].get("gate_pending") is True:   # B12: the structured flag of the context's result, never its text
             out["results"][name]["no_verdict"] = "gate_pending"
         if not ok:
             (out["red"] if s == "FAIL" else out["blocked"]).append(name)
