@@ -1,0 +1,209 @@
+{
+  "set": "after",
+  "pr_slug": "0a1-fonts",
+  "date": "2026-10-09",
+  "purpose": "The after-set of design-loop PR 0a1-fonts: the 24 band renders of this head, pinned by digest and compared 1:1 with baseline-2026-10-09-before/manifest.json. The PNGs are not committed (the root .gitignore ignores *.png on purpose).",
+  "rendered_from": "the code commit 53faa64248 of this PR; this manifest is docs-only and does not enter the app bundle, so the head renders the same bytes",
+  "host": "Pro, Xcode 26.3, build-only worktree detached at the commit under proof",
+  "build": "KBLI_BOOK_PDF_DIR=~/.local/share/nuzantara/kbli-navigator/book-pdfs ./build.sh --variant internal",
+  "render": "\"build/KBLI Navigator - INTERNAL.app/Contents/MacOS/KBLINavigator\" --snapshot-band <band> --theme <theme> --lang <lang> --code <code> <file>",
+  "canvas_pt": [1280, 800],
+  "gallery": "M5 ~/BATTAGLIA-20261008/PREVIEW-kbli-nav-design/app-after/0a1-fonts/",
+  "hash_form": "sha256:<64 hex>, the digest form of apps/mouth/data/kbli-dataset-version.json",
+  "png_count": 24,
+  "changed_vs_before": 24,
+  "renders": [
+    {
+      "band": "search-results",
+      "theme": "day",
+      "lang": "en",
+      "code": "55203",
+      "file": "search-results-day-en.png",
+      "sha256": "sha256:bbaede4460ec3fd7e07622daaaa1206f872b1202215a4da746cbcad801743f42"
+    },
+    {
+      "band": "search-results",
+      "theme": "day",
+      "lang": "id",
+      "code": "55203",
+      "file": "search-results-day-id.png",
+      "sha256": "sha256:4bd22aecd97508ef05c5d5571ded54beff34dd7ef89367c143180d06042ed3eb"
+    },
+    {
+      "band": "search-results",
+      "theme": "night",
+      "lang": "en",
+      "code": "55203",
+      "file": "search-results-night-en.png",
+      "sha256": "sha256:2fec969b93591d2b1a041e8149b17c32c3fd673981848cd5b6176544ebd35f1b"
+    },
+    {
+      "band": "search-results",
+      "theme": "night",
+      "lang": "id",
+      "code": "55203",
+      "file": "search-results-night-id.png",
+      "sha256": "sha256:297c54079b2135ea4ff6eb0e5ee3c8373bee5d725b23e8dbb2df4f0998b58471"
+    },
+    {
+      "band": "registry-table",
+      "theme": "day",
+      "lang": "en",
+      "code": "55203",
+      "file": "registry-table-day-en.png",
+      "sha256": "sha256:839b26e10876b9c7828b92b54decdda1c0d55e7ba768952a13294993d0143511"
+    },
+    {
+      "band": "registry-table",
+      "theme": "day",
+      "lang": "id",
+      "code": "55203",
+      "file": "registry-table-day-id.png",
+      "sha256": "sha256:410c8d91080a038a3ea4d08adc96cd607b72ccae553aa4206f0671390f454da6"
+    },
+    {
+      "band": "registry-table",
+      "theme": "night",
+      "lang": "en",
+      "code": "55203",
+      "file": "registry-table-night-en.png",
+      "sha256": "sha256:65ef0936d176e75cd0bcaec331aabf6030c81fca87d87fdcad540fb753119359"
+    },
+    {
+      "band": "registry-table",
+      "theme": "night",
+      "lang": "id",
+      "code": "55203",
+      "file": "registry-table-night-id.png",
+      "sha256": "sha256:8e2406fa699be828ff31359492e5dad4f4f7200e724a8349d807811a97f9f628"
+    },
+    {
+      "band": "detail-card",
+      "theme": "day",
+      "lang": "en",
+      "code": "55203",
+      "file": "detail-card-day-en.png",
+      "sha256": "sha256:ff25a0f10fd4c18d80a2e33139038ac43e134d07761f7898fe9ae93d0ffdb09f"
+    },
+    {
+      "band": "detail-card",
+      "theme": "day",
+      "lang": "id",
+      "code": "55203",
+      "file": "detail-card-day-id.png",
+      "sha256": "sha256:3beeeb1ad7b18a812b5a72fe83f0cbab82a0fdf7aa782d2d9d307e31826fce80"
+    },
+    {
+      "band": "detail-card",
+      "theme": "night",
+      "lang": "en",
+      "code": "55203",
+      "file": "detail-card-night-en.png",
+      "sha256": "sha256:e410c4d63fc4378e1c069b9ab14b52d2767113c3763123914bbbe493e44172f4"
+    },
+    {
+      "band": "detail-card",
+      "theme": "night",
+      "lang": "id",
+      "code": "55203",
+      "file": "detail-card-night-id.png",
+      "sha256": "sha256:603a16928cdb1d2ba8fbdb983b71d6e326cc007a72c70d5fc6a1565d87fc21c8"
+    },
+    {
+      "band": "dossier",
+      "theme": "day",
+      "lang": "en",
+      "code": "51101",
+      "file": "dossier-day-en.png",
+      "sha256": "sha256:2b37c505bcb3a27c539fcd6216be3d38b2879327e86550a28c586860f56cad6b"
+    },
+    {
+      "band": "dossier",
+      "theme": "day",
+      "lang": "id",
+      "code": "51101",
+      "file": "dossier-day-id.png",
+      "sha256": "sha256:997182bd04484b01e85fa197b6891e8c71e42249dbfabbf33017edcb583547ff"
+    },
+    {
+      "band": "dossier",
+      "theme": "night",
+      "lang": "en",
+      "code": "51101",
+      "file": "dossier-night-en.png",
+      "sha256": "sha256:5698c07d30de7409f1da616b232b3e489be74a2f557605c209189c32ad04506d"
+    },
+    {
+      "band": "dossier",
+      "theme": "night",
+      "lang": "id",
+      "code": "51101",
+      "file": "dossier-night-id.png",
+      "sha256": "sha256:c74bf83128337fc6f9495470eb60891bdfa35a69bff7d192db4262a047ce2eb0"
+    },
+    {
+      "band": "sheet-ledger",
+      "theme": "day",
+      "lang": "en",
+      "code": "56101",
+      "file": "sheet-ledger-day-en.png",
+      "sha256": "sha256:309fa4f43ce52bd6f1522714022f7baf5225ddc0d3fde51dee18b404ccad25e1"
+    },
+    {
+      "band": "sheet-ledger",
+      "theme": "day",
+      "lang": "id",
+      "code": "56101",
+      "file": "sheet-ledger-day-id.png",
+      "sha256": "sha256:2424de92166339ca484fc24b6c1bab5e4a01f1c57f4e9586ab5755a5cb730023"
+    },
+    {
+      "band": "sheet-ledger",
+      "theme": "night",
+      "lang": "en",
+      "code": "56101",
+      "file": "sheet-ledger-night-en.png",
+      "sha256": "sha256:ee6582659ddd3dec65bf2a3af7709b5920d5f7f07d79dbd244f8730ad6cc2ae4"
+    },
+    {
+      "band": "sheet-ledger",
+      "theme": "night",
+      "lang": "id",
+      "code": "56101",
+      "file": "sheet-ledger-night-id.png",
+      "sha256": "sha256:44b2979aae90b17914a4454e8171635ddf188474d680fa91d0ae619518923c7f"
+    },
+    {
+      "band": "chat",
+      "theme": "day",
+      "lang": "en",
+      "code": "51101",
+      "file": "chat-day-en.png",
+      "sha256": "sha256:34affb9f97532c07740fb737dc4481a3930327b393c7439d65e34c72a3dbcc48"
+    },
+    {
+      "band": "chat",
+      "theme": "day",
+      "lang": "id",
+      "code": "51101",
+      "file": "chat-day-id.png",
+      "sha256": "sha256:d8a04707d003cfe0db12ace35ac0d12f48510632f6e3a384c3843ec64d3c11ff"
+    },
+    {
+      "band": "chat",
+      "theme": "night",
+      "lang": "en",
+      "code": "51101",
+      "file": "chat-night-en.png",
+      "sha256": "sha256:5aaaf15adf488bbf454a1d950a4bd6e8571e8bfc3f190565b61e97293925742b"
+    },
+    {
+      "band": "chat",
+      "theme": "night",
+      "lang": "id",
+      "code": "51101",
+      "file": "chat-night-id.png",
+      "sha256": "sha256:6d854413aa5fa1b91ef6c231d6a24a9bb475a5320c61b8d7b4c31cf75124ca19"
+    }
+  ]
+}
