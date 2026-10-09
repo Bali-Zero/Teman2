@@ -32,8 +32,8 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
   ],
   [
     "lane.urgent.notice",
-    "You have 1–2 days left. We will still check your options, but please contact a Bali Zero advisor today.",
-    "Waktu Anda tinggal 1–2 hari. Kami tetap memeriksa pilihan Anda, tetapi mohon hubungi konsultan Bali Zero hari ini.",
+    "Your permit expires today or within the next two days. We will still check your options, but please contact a Bali Zero advisor today.",
+    "Izin tinggal Anda berakhir hari ini atau dalam dua hari ke depan. Kami tetap memeriksa pilihan Anda, tetapi mohon hubungi konsultan Bali Zero hari ini.",
   ],
   [
     "lane.bridging.notice",
@@ -175,6 +175,26 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
     "Another code — ask a Bali Zero advisor",
     "Kode lain — tanyakan kepada konsultan Bali Zero",
   ],
+  [
+    "assumption.work_payer",
+    "You weren’t sure who pays you, so this remains unresolved. You can discuss it with a Bali Zero advisor.",
+    "Anda belum yakin siapa yang menggaji Anda, jadi hal ini belum dipastikan. Anda dapat membahasnya dengan konsultan Bali Zero.",
+  ],
+  [
+    "assumption.remote_clients",
+    "You weren’t sure where your clients are based, so this remains unresolved. You can discuss it with a Bali Zero advisor.",
+    "Anda belum yakin di mana klien Anda berada, jadi hal ini belum dipastikan. Anda dapat membahasnya dengan konsultan Bali Zero.",
+  ],
+  [
+    "question.human_context_notice",
+    "This answer may affect the questions or visa options shown.",
+    "Jawaban ini dapat memengaruhi pertanyaan atau pilihan visa yang ditampilkan.",
+  ],
+  [
+    "why.review_gate",
+    "Your immigration history can affect your options, and everything you select is noted in your result.",
+    "Riwayat keimigrasian Anda dapat memengaruhi pilihan Anda, dan semua yang Anda pilih dicatat dalam hasil Anda.",
+  ],
 ];
 
 // Sentences the code proved false: a review that does not exist, a rule that
@@ -205,6 +225,16 @@ const FALSE_CLAIMS: readonly RegExp[] = [
   /in front of a person/i,
   /before the assessment continues/i,
   /selalu ditangani manusia/i,
+  /kami tetap menilai semua yang bisa dinilai/i,
+  /we still assessed everything we could/i,
+  /1–2 days left/i,
+  /confirms this point with you/i,
+  /bear directly on the rules/i,
+  /for our team.s context only/i,
+  /tinggal 1–2 hari/i,
+  /akan memastikan poin ini/i,
+  /berpengaruh langsung pada aturan/i,
+  /hanya untuk konteks tim kami/i,
   /hanya menentukan pertanyaan berikutnya/i,
   /hanya memilih pertanyaan faktual/i,
   /daftar kode yang lebih pendek/i,
@@ -362,6 +392,46 @@ const FALSE_SAMPLES: readonly (readonly [string, string])[] = [
   ],
   ["en", "Another code — needs human review"],
   ["id", "Kode lain — perlu tinjauan manusia"],
+  [
+    "en",
+    "You have 1–2 days left. We will still check your options, but please contact a Bali Zero advisor today.",
+  ],
+  [
+    "id",
+    "Waktu Anda tinggal 1–2 hari. Kami tetap memeriksa pilihan Anda, tetapi mohon hubungi konsultan Bali Zero hari ini.",
+  ],
+  [
+    "en",
+    "You weren’t sure who pays you, so we recorded that as unresolved; we still assessed everything we could, and a Bali Zero advisor confirms this point with you.",
+  ],
+  [
+    "id",
+    "Anda tidak yakin siapa yang menggaji Anda, jadi kami mencatatnya sebagai hal yang belum dipastikan; kami tetap menilai semua yang bisa dinilai, dan konsultan Bali Zero akan memastikan poin ini bersama Anda.",
+  ],
+  [
+    "en",
+    "You weren’t sure where your clients sit, so we recorded that as unresolved; we still assessed everything we could, and a Bali Zero advisor confirms this point with you.",
+  ],
+  [
+    "id",
+    "Anda tidak yakin di mana klien Anda berada, jadi kami mencatatnya sebagai hal yang belum dipastikan; kami tetap menilai semua yang bisa dinilai, dan konsultan Bali Zero akan memastikannya bersama Anda.",
+  ],
+  [
+    "en",
+    "For our team’s context only — this answer cannot select, rank, add or remove a visa for you.",
+  ],
+  [
+    "id",
+    "Hanya untuk konteks tim kami — jawaban ini tidak dapat memilih, mengurutkan, menambah, atau menghapus visa untuk Anda.",
+  ],
+  [
+    "en",
+    "Every item here is taken into account: the three immigration-history ones bear directly on the rules, and all of them must be reflected in your result.",
+  ],
+  [
+    "id",
+    "Setiap item di sini diperhitungkan: tiga item riwayat keimigrasian berpengaruh langsung pada aturan, dan semuanya harus tercermin dalam hasil Anda.",
+  ],
 ];
 
 describe("interview helper copy tells the truth about what an answer does", () => {
