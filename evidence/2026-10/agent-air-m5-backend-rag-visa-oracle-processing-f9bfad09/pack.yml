@@ -85,6 +85,30 @@ receipts:
     exit: 0
     ts: "2026-10-09T02:53:02Z"
     seat: Claude Sonnet 5.5
+  - claim: Post-rebase onto main with C2 merged (06c3346702), the duration rendering and the timeline variants both survive and the mouth type check is clean.
+    cmd: apps/mouth tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-09T03:23:58Z"
+    seat: Claude Sonnet 5.5
+  - claim: Post-rebase the OutcomeSheet, duration, engine-adapter, engine-response, i18n, client-copy and shadow-parity tests pass together.
+    cmd: vitest run OutcomeSheet.test.tsx OutcomeSheet.duration.test.tsx duration.test.ts engine-adapter.test.ts engine-response.test.ts i18n.test.ts client-copy.test.ts shadow-parity.test.ts
+    result: "8 files passed, 329 tests passed"
+    exit: 0
+    ts: "2026-10-09T03:24:08Z"
+    seat: Claude Sonnet 5.5
+  - claim: Post-rebase the observer requires both C2's duration keys and the timeline keys in both language blocks.
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3348 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-09T03:24:08Z"
+    seat: Claude Sonnet 5.5
+  - claim: Post-rebase the processing-time tests, schema snapshot tripwire, duration options and happy path pass.
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine/test_processing_times.py backend/tests/services/visa_engine/test_schema_contracts.py backend/tests/services/visa_engine/test_duration_options.py backend/tests/services/visa_engine/test_evaluate_endpoint.py::test_happy_path_http_end_to_end
+    result: "214 passed in 26.23s"
+    exit: 0
+    ts: "2026-10-09T03:24:47Z"
+    seat: Claude Sonnet 5.5
 council_run: council-journal.jsonl
 seat_fallback_reason: >-
   agy-gemini-3.1-pro sat in the seat of the titolare tp1-qwen3.8-max, observed QUOTA_DEAD by the
