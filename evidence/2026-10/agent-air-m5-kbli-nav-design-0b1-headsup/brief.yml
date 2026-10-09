@@ -1,0 +1,32 @@
+task_id: kbli-nav-design-0b1-headsup
+mission: kbli-nav-design-loop (Track A, build, PR 0b-1)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  evidence_pack_lint's floor for this change set is 2 by its size term alone, with no hot-zone path. The commit adds
+  709 lines. 316 of them are the frozen content-pack subset (JSON data, equal to the contest kit's pack for 55203,
+  51101 and 56101). 198 are the two test programs and 60 the content-check tools; the source change is 135 lines.
+  The after-set digest manifest adds 208 lines of JSON evidence.
+l_level: L1
+gate_class: opus
+objective: >-
+  SPEC-swiftui §2 and §7 row 0b (Q6 extended by Q10; OQ-12..15). KBLIVerdict.headsUp(record:isID:) is the one
+  heads-up projection: canonical words only, and the open pair only where pma_status is TERBUKA and the Bali verdict
+  is open. Class census on the bundled 1,559 records: 135 Bali-blocked HEADS UP, 21 TERBATAS · 0%, 0 national
+  undetermined, 395 NOT DETERMINED, 31 TERBATAS · cap%, 1 special (47221), 976 open. The 448 codes in classes 2–6 lose
+  the derived open pair. No view calls the projection yet; each View PR migrates its own surface. The content gate
+  proves the 55203 / 51101 / 56101 strings byte-identical to the content pack (51101's heads-up = the canonical pair).
+  No KBLI fact, verdict, cap, basis or Bali overlay changes; the canonical dataset is not written.
+constraints:
+  - Canonical words and existing localisation keys only; no new sentence (the TERTUTUP route sentence is the existing one, moved verbatim).
+  - No raw l4_bali status token is printed (K2, OQ-13).
+  - No view changes, so the 24 band renders equal 0a-2''s after-set.
+acceptance:
+  - text: The class census SHALL be 135 / 21 / 0 / 395 / 31 / 1 / 976 over 1,559 records, and the open pair SHALL appear iff TERBUKA and Bali open.
+    probe: "Pro: Tools/design/content_check.sh step 3 (headsuptest) — all checks pass"
+  - text: Every leaf of 55203, 51101, 56101 (en and id) SHALL equal the content pack; 51101's heads-up SHALL be the canonical pair, never the pack's open pair.
+    probe: "Pro: content_check.sh step 1 → 'content: 3 frozen codes identical (51101 heads-up = canonical pair)'; step 2 rejects an edited pack"
+  - text: A derived open SHALL fail the gate.
+    probe: "Pro guilt: headsUpClass mutated so TERBATAS maps to class 7 → content_check.sh rc=1 (class census and open-pair checks fail)"
+  - text: The head SHALL build both variants and render all 24 bands equal to baseline-2026-10-09-after/0b1-headsup/manifest.json.
+    probe: "Pro build-only mirror detached at the head: INTERNAL_RC=0, BKPM_RC=0, rendered=24 failed=0, manifest_match=24/24"
