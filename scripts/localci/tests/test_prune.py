@@ -292,9 +292,108 @@ def test_every_real_prune_ends_with_fstrim_even_with_no_removal_and_the_host_is_
     state, docker = world(tmp_path, [image("a" * 16, 10, "backend-tests")])   # nothing to remove
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--fstrim", "--colima", str(colima)]) == 0
     line = journal(state)[-1]
-    assert line["images"]["removed"] == [] and (tmp_path / "colima.log").read_text() == "ssh -- sudo fstrim -av\n"
+    assert line["images"]["removed"] == [] and (tmp_path / "colima.log").read_text().splitlines()[-1] == "ssh -- sudo fstrim -av"
     assert line["fstrim"] == {"rc": 0, "tail": "/: 11.4 GiB (12240656384 bytes) trimmed"} and line["failed"] == []
     assert set(line["host_free_gb"]) == {"before", "after", "after_fstrim"}
+
+
+COLIMA = r'''#!{py}
+import json, sys, time
+st = json.load(open({st!r}))
+a = sys.argv[1:]
+open({log!r}, "a").write(" ".join(a) + "\n")
+if a[2:] == ["cat", "/proc/mounts"]:
+    if st.get("hang"):
+        time.sleep(30)
+    print(st.get("mounts", "").replace("OPTS", st["opts"]))
+elif a[2:5] == ["sudo", "mount", "-o"]:
+    if st.get("remount_rc"):
+        print("mount: permission denied", file=sys.stderr)
+        sys.exit(st["remount_rc"])
+    st["opts"] = st["opts"] + ",discard"
+    json.dump(st, open({st!r}, "w"))
+else:
+    print("/: 1.0 GiB (1073741824 bytes) trimmed")
+'''
+MOUNTS = ("/dev/vda1 / ext4 rw,relatime 0 0\n/dev/vdc1 /mnt/lima-colima-old ext4 rw,discard 0 0\n"
+          "/dev/vdb1 /mnt/lima-colima ext4 OPTS 0 0\n/dev/vdb1 /var/lib/docker ext4 OPTS 0 0")   # the longer path comes first
+
+
+def vm(tmp_path: Path, opts: str | None = "rw,relatime", **st) -> tuple[Path, str, list]:
+    """A fake colima over a /proc/mounts whose data disk carries `opts`; returns (state, docker, a reader of colima's calls)."""
+    sf = tmp_path / "vm.json"
+    sf.write_text(json.dumps({"opts": opts, "mounts": MOUNTS if opts is not None else "/dev/vda1 / ext4 rw 0 0", **st}))
+    exe = tmp_path / "colima"
+    exe.write_text(COLIMA.format(py=sys.executable, st=str(sf), log=str(tmp_path / "colima.log")))
+    exe.chmod(0o755)
+    state, docker = world(tmp_path, [image("a" * 16, 10, "backend-tests")])
+    log = tmp_path / "colima.log"
+    return state, docker, str(exe), (lambda: log.read_text().splitlines() if log.exists() else [])
+
+
+def run_prune(state, docker, colima, *extra) -> int:
+    return mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--fstrim", "--colima", colima, *extra])
+
+
+REMOUNT = "ssh -- sudo mount -o remount,discard /mnt/lima-colima"
+
+
+def test_b8b_a_disk_already_mounted_with_discard_is_not_remounted(tmp_path):   # innocence
+    state, docker, colima, read = vm(tmp_path, "rw,relatime,discard")
+    assert run_prune(state, docker, colima) == 0
+    assert read() == ["ssh -- cat /proc/mounts", "ssh -- sudo fstrim -av"]
+    assert journal(state)[-1]["vm_discard"] == {"before": True, "after": True, "remounted": False, "rc": None, "error": None}
+
+
+def test_b8b_a_disk_mounted_without_discard_is_remounted_once_before_the_trim(tmp_path):   # guilt + order
+    state, docker, colima, read = vm(tmp_path)
+    assert run_prune(state, docker, colima) == 0
+    assert read() == ["ssh -- cat /proc/mounts", REMOUNT, "ssh -- cat /proc/mounts", "ssh -- sudo fstrim -av"]
+    line = journal(state)[-1]
+    assert line["vm_discard"] == {"before": False, "after": True, "remounted": True, "rc": 0, "error": None} and line["failed"] == []
+
+
+def test_b8b_nodiscard_is_off_and_a_longer_mount_point_is_not_the_data_disk(tmp_path):
+    state, docker, colima, read = vm(tmp_path, "rw,nodiscard,relatime")   # /mnt/lima-colima-old carries discard: it is not the disk
+    assert run_prune(state, docker, colima) == 0
+    assert REMOUNT in read() and journal(state)[-1]["vm_discard"]["before"] is False
+
+
+def test_b8b_a_failed_remount_fails_the_prune_but_the_trim_still_runs(tmp_path):
+    state, docker, colima, read = vm(tmp_path, remount_rc=1)
+    assert run_prune(state, docker, colima) == 1
+    line = journal(state)[-1]
+    assert line["vm_discard"]["after"] is False and line["vm_discard"]["rc"] == 1 and "permission denied" in line["vm_discard"]["error"]
+    assert line["failed"] == ["vm_discard"] and line["fstrim"]["rc"] == 0 and read()[-1] == "ssh -- sudo fstrim -av"
+
+
+def test_b8b_an_unreadable_mount_table_is_journalled_never_raised_and_nothing_is_remounted(tmp_path, monkeypatch):
+    state, docker, colima, read = vm(tmp_path, hang=True)
+    real = pm.subprocess.run
+    monkeypatch.setattr(pm.subprocess, "run", lambda cmd, **kw: real(cmd, **{**kw, "timeout": 1}) if "/proc/mounts" in cmd else real(cmd, **kw))
+    assert run_prune(state, docker, colima) == 0
+    line = journal(state)[-1]
+    assert line["vm_discard"] == {"before": None, "after": None, "remounted": False, "rc": None, "error": "TimeoutExpired"}
+    assert REMOUNT not in read() and read()[-1] == "ssh -- sudo fstrim -av" and line["failed"] == []
+
+
+def test_b8b_a_mount_table_without_the_data_disk_is_null_and_not_remounted(tmp_path):
+    state, docker, colima, read = vm(tmp_path, None)
+    assert run_prune(state, docker, colima) == 0
+    assert journal(state)[-1]["vm_discard"]["before"] is None and REMOUNT not in read()
+
+
+def test_b8b_the_kill_switch_makes_no_colima_call_for_the_mount(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOCALCI_VM_DISCARD", "0")
+    state, docker, colima, read = vm(tmp_path)
+    assert run_prune(state, docker, colima) == 0
+    assert journal(state)[-1]["vm_discard"] == {"skipped": "LOCALCI_VM_DISCARD=0"} and read() == ["ssh -- sudo fstrim -av"]
+
+
+def test_b8b_a_dry_run_has_no_vm_discard_and_makes_no_colima_call(tmp_path):
+    state, docker, colima, read = vm(tmp_path)
+    assert run_prune(state, docker, colima, "--dry-run") == 0
+    assert "vm_discard" not in journal(state)[-1] and read() == []
 
 
 def test_a_dry_run_and_a_lease_skipped_prune_never_trim(tmp_path):   # B7 innocence
