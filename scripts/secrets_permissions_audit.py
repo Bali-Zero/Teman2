@@ -171,15 +171,18 @@ DESIGN_TOKENS_MAX_BYTES = 256 * 1024
 #: (secret, credential, password, passwd, api key, token-ish) plus the words a
 #: credential-bearing JSON key is usually spelled with.
 _CREDENTIAL_JSON_KEY_RE = re.compile(
-    r"(secret|credential|passw(or)?d|pass[_-]?word|passphrase|pwd|bearer|"
+    r"(secret|credential|passw(or)?d|pass[_-]?word|passphrase|passcode|pwd|bearer|"
     r"authori[sz]ation|api[_-]?key|access[_-]?token|refresh[_-]?token|"
     r"client[_-]?secret|private[_-]?key)",
     re.IGNORECASE,
 )
 #: Short words that mark a credential only as a whole key segment
 #: (`auth`, `id_token`, `pass`, `pin`), never inside `author` or `spinner`.
-_CREDENTIAL_KEY_SEGMENTS = frozenset({"auth", "token", "pin", "pass"})
+_CREDENTIAL_KEY_SEGMENTS = frozenset(
+    {"auth", "token", "pin", "pass", "pw", "pswd"}
+)
 _KEY_SEGMENT_SPLIT_RE = re.compile(r"[^a-z0-9]+")
+_MAX_JSON_INTEGER_DIGITS = 4300
 #: A credential VALUE under an innocent key: a run of 24+ token characters
 #: carrying both a letter and a digit (design tokens are colours, sizes,
 #: font names, URLs and paths — none has such a run). Runs are found by a
@@ -205,7 +208,18 @@ def _is_credential_key(key: str) -> bool:
     lowered = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", key).lower()
     if _CREDENTIAL_KEY_SEGMENTS.intersection(_KEY_SEGMENT_SPLIT_RE.split(lowered)):
         return True
+    # A `token` glued to its prefix (apitoken, csrftoken, APIToken): the
+    # segment rule cannot see it. tokenColor(s) stays a finding (fail-safe).
+    if lowered.endswith("token"):
+        return True
     return _has_credential_shape(key)
+
+
+def _bounded_json_int(value: str) -> int:
+    """Keep Python 3.9 aligned with 3.11's default integer-string cap."""
+    if len(value.lstrip("-")) > _MAX_JSON_INTEGER_DIGITS:
+        raise ValueError("JSON integer exceeds the design-token safety bound")
+    return int(value)
 
 
 #: `.env*` files are report-only: shown for a human, never chmod'ed.
@@ -351,11 +365,25 @@ def is_design_tokens_file(path: Path) -> bool:
     ):
         return False
     try:
-        with path.open("rb") as stream:
-            raw = stream.read(DESIGN_TOKENS_MAX_BYTES + 1)
+        flags = os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(path, flags)
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                return False
+            remaining = DESIGN_TOKENS_MAX_BYTES + 1
+            chunks = []
+            while remaining:
+                chunk = os.read(fd, remaining)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                remaining -= len(chunk)
+            raw = b"".join(chunks)
+        finally:
+            os.close(fd)
         if len(raw) > DESIGN_TOKENS_MAX_BYTES:
             return False
-        payload = json.loads(raw)
+        payload = json.loads(raw, parse_int=_bounded_json_int)
     except (OSError, ValueError, RecursionError):
         return False
     if not isinstance(payload, dict):
