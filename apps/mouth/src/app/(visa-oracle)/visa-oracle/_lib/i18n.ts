@@ -15,7 +15,7 @@ import type { Language } from "./flow";
 const en = {
   "framing.title": "A map, not an application",
   "framing.body":
-    "Answer honestly, including “I don’t know.” Nothing here is filed, and the interface never chooses a visa path on its own.",
+    "Answer honestly, including “I don’t know.” Nothing here is filed, and this tool never chooses a visa for you.",
   "framing.cta": "Start",
 
   "q.in_indonesia": "Are you in Indonesia right now?",
@@ -23,14 +23,14 @@ const en = {
   "q.in_indonesia.opt.yes": "Yes, I’m here",
   "q.in_indonesia.opt.no": "No, I’m planning ahead",
   "why.in_indonesia":
-    "Your current location tells the engine whether this is an onshore situation or a future plan.",
+    "Where you are now decides whether we look at permits you can get inside Indonesia or visas you apply for before travelling.",
 
   "q.permit_expiry": "When does your current stay permit expire?",
   "q.permit_expiry.hint":
     "The date on your visa or ITAS/KITAS — not your passport.",
   "q.permit_expiry.label": "Expiry date",
   "why.permit_expiry":
-    "The engine needs the date itself to assess timing; this interface does not infer a filing route from it.",
+    "We need the actual date to judge how much time you have left. It is not used to pick a filing route for you.",
   "q.current_status_code": "What code appears on your current stay permit?",
   "q.current_status_code.hint":
     "Enter the exact printed code. Use Not sure rather than translating a permit name.",
@@ -45,7 +45,7 @@ const en = {
   "q.current_status_code.opt.ITK_PERALIHAN": "ITK Peralihan",
   "q.current_status_code.opt.other": "Another code — needs human review",
   "why.current_status_code":
-    "The engine receives the printed status code unchanged; the interface never guesses it from the permit name.",
+    "We use the code exactly as printed on your permit. We never guess it from the permit’s name.",
   "q.holds_stay_permit":
     "Do you currently hold a limited or permanent stay permit (KITAS / KITAP)?",
   "why.holds_stay_permit":
@@ -101,7 +101,7 @@ const en = {
   "q.stay_permit_code.opt.E33F": "E33F — Second Home Visa — Elderly 1-Year",
   "q.stay_permit_code.opt.E33G": "E33G — Second Home Visa — Remote Worker",
   "why.stay_permit_code":
-    "The engine receives the printed code unchanged, the same as the code list above — the interface never guesses it from the permit name.",
+    "We use the code exactly as printed, the same as in the code list above. We never guess it from the permit’s name.",
 
   "q.renewal_paid": "Have you paid for the renewal of this stay permit?",
   "q.renewal_paid.hint":
@@ -114,7 +114,7 @@ const en = {
     "Enter 0 if there is no active overstay. Do not include past overstay history here.",
   "q.overstay_days.label": "Current overstay",
   "why.overstay_days":
-    "Active overstay days are a separate safety-critical fact. They are never derived from the expiry date in the browser.",
+    "Days of overstay are asked separately because they weigh heavily on what is possible. We never work them out from the expiry date.",
   "q.wants_onshore_conversion":
     "Are you asking to change status without leaving Indonesia?",
   "q.wants_onshore_conversion.hint":
@@ -128,7 +128,7 @@ const en = {
   "q.wants_onshore_conversion.offshore.hint":
     "Answer about the process you intend to follow after you arrive, not whether it will be approved.",
   "why.wants_onshore_conversion":
-    "This exact yes/no process fact is sent without choosing a conversion path.",
+    "Your yes or no only tells us which process you intend to follow. It does not pick a conversion path for you.",
   "q.application_channel":
     "Which application channel are you actually pursuing?",
   "q.application_channel.hint":
@@ -137,7 +137,7 @@ const en = {
   "q.application_channel.opt.ONSHORE_CONVERSION": "Onshore status conversion",
   "q.application_channel.opt.STATUS_BRIDGING": "Status bridging process",
   "why.application_channel":
-    "The selected closed-enum channel is sent unchanged. The interface never assigns a channel from your dates.",
+    "We use the channel you choose as it is. We never assign one from your dates.",
   "q.application_channel.conflict":
     "That channel doesn’t match your earlier answer about changing status without leaving Indonesia. Go back and correct one of the two answers — we won’t guess which one is right.",
 
@@ -146,13 +146,13 @@ const en = {
     "Choose each passport country. The stored answer remains a language-independent country code.",
   "q.nationalities.label": "Passport countries",
   "why.nationalities":
-    "Nationality is checked as an exact decision fact. Multiple nationalities stay separate and are never guessed.",
+    "Nationality is checked exactly as you give it. Several nationalities are kept separate and never guessed.",
   "q.birth_date": "What is your date of birth?",
   "q.birth_date.hint":
-    "We send the date as a decision fact; the engine derives age consistently.",
+    "Some visas have age rules; we use your date of birth only to check them.",
   "q.birth_date.label": "Date of birth",
   "why.birth_date":
-    "Some paths distinguish adults and minors. The interface does not calculate eligibility from your age.",
+    "Some visas treat adults and minors differently. Your age alone never decides whether you are eligible.",
   "q.guardian_consent":
     "Is a parent or legal guardian filling this in with you?",
   "q.guardian_consent.help":
@@ -163,9 +163,9 @@ const en = {
   "lane.expired.notice":
     "Your permit has already expired. Overstay is fixable. It is not the end of your story here — this always goes to a human, and we won’t alarm you with a number on this screen.",
   "lane.urgent.notice":
-    "You have 1–2 days left. That’s too close for an automated routing — a Bali Zero advisor needs to look at this today.",
+    "You have 1–2 days left. That’s too close for an automated check — a Bali Zero advisor needs to look at this today.",
   "lane.bridging.notice":
-    "The date you entered is within seven days. The engine may abstain and ask for human review; this interface will not select a bridge or conversion route.",
+    "The date you entered is within seven days. We may pass your case to a Bali Zero consultant for review, and this tool will not choose a bridging or conversion route for you.",
   "lane.extend.notice":
     "You have time to compare Extend and Convert side by side.",
   "lane.planning.notice": "Plenty of runway — this is planning, not urgency.",
@@ -196,13 +196,13 @@ const en = {
   "q.trip_scope.opt.single": "Yes — one main purpose",
   "q.trip_scope.opt.multiple": "No — two or more purposes overlap",
   "why.trip_scope":
-    "Overlapping purposes need context from a person. This answer is not translated into an engine fact.",
+    "Overlapping purposes call for a consultant’s judgment, so this answer is not used to decide anything automatically.",
   "q.entry_pattern": "How do you expect to enter Indonesia?",
   "q.entry_pattern.hint": "Choose the pattern you are actually planning.",
   "q.entry_pattern.opt.SINGLE": "One entry",
   "q.entry_pattern.opt.MULTIPLE": "More than one entry",
   "why.entry_pattern":
-    "The engine receives SINGLE or MULTIPLE exactly as selected.",
+    "We use your choice of single or multiple entry exactly as selected.",
 
   "q.sponsor_category": "Who sponsors your stay in Indonesia?",
   "q.sponsor_category.hint":
@@ -215,26 +215,26 @@ const en = {
   "q.sponsor_category.opt.INVESTMENT": "An investment or company I own",
   "q.sponsor_category.opt.GOVERNMENT": "A government body",
   "why.sponsor_category":
-    "The sponsor category is recorded as its own exact fact. No rule in the current pack reads it yet — this only prepares the ground for rules that will.",
+    "We note the kind of sponsor you have. No current rule uses it yet; this only prepares us for rules that will.",
 
   "q.sponsor_government_invitation":
     "Do you hold a written invitation from an Indonesian central-government body, issued to you for your special expertise?",
   "q.sponsor_government_invitation.hint":
     "Answer no if the invitation is not in writing yet, or does not come from an Indonesian central-government body.",
   "why.sponsor_government_invitation":
-    "The engine receives only your yes or no answer about a government invitation.",
+    "Only your yes or no about a government invitation is used here.",
   "q.sponsor_government_collaboration":
     "Do you have a confirmed collaboration commitment with an Indonesian government body or institution, based on your special expertise?",
   "q.sponsor_government_collaboration.hint":
     "A discussion or a proposal that is not confirmed yet counts as no.",
   "why.sponsor_government_collaboration":
-    "The engine receives only your yes or no answer about a confirmed government collaboration.",
+    "Only your yes or no about a confirmed government collaboration is used here.",
   "q.sponsor_world_figure_invitation":
     "Has an Indonesian government body invited you as a world figure — a person of international standing?",
   "q.sponsor_world_figure_invitation.hint":
     "Answer yes only if a government body has invited you in that capacity.",
   "why.sponsor_world_figure_invitation":
-    "The engine receives only your yes or no answer about a world-figure invitation.",
+    "Only your yes or no about a world-figure invitation is used here.",
   // One clause, not two: the wire fact `sponsor.diplomatic_household` is a
   // single boolean, and the earlier wording ("Is your employer a foreign
   // diplomat posted in Indonesia, AND is the role in that diplomat's
@@ -246,16 +246,16 @@ const en = {
   "q.sponsor_diplomatic_household.hint":
     "Answer no if you would work for anyone other than the diplomat's own household.",
   "why.sponsor_diplomatic_household":
-    "The engine receives only your yes or no answer about a diplomatic household role.",
+    "Only your yes or no about a diplomatic household role is used here.",
   "q.sponsor_trade_office":
     "Is your sponsor a foreign trade or economic representative office in Indonesia?",
   "q.sponsor_trade_office.hint":
     "Answer no if your sponsor is any other kind of organisation.",
   "why.sponsor_trade_office":
-    "The engine receives only your yes or no answer about the sponsor being a trade office.",
+    "Only your yes or no about the sponsor being a trade office is used here.",
   "q.business_activity": "What will you mainly do on the business trip?",
   "q.business_activity.hint":
-    "Describe the activity, not a visa name. Meetings, negotiation, conferences and looking into investing are decided here; training or another activity is sent to a human reviewer.",
+    "Describe the activity, not a visa name. Meetings, negotiation, conferences and looking into investing can be assessed here; training or another activity goes to a Bali Zero consultant for review.",
   "q.business_activity.opt.meetings": "Meetings or site visits",
   "q.business_activity.opt.negotiation": "Negotiation or signing",
   "q.business_activity.opt.conference": "Conference or trade event",
@@ -264,20 +264,20 @@ const en = {
   "q.business_activity.opt.training": "Giving or receiving training",
   "q.business_activity.opt.other": "Another business activity",
   "why.business_activity":
-    "Only one answer changes what the engine receives: exploring whether to invest or open a business is sent as an investment purpose, and we then ask the few questions that decide it. Otherwise this detail only decides whether a human reviewer has to look at your trip — training and “another business activity” do, the other answers do not.",
+    "Exploring whether to invest or open a business is treated as an investment purpose, and we then ask the few questions that decide it. Any other answer here only decides whether a Bali Zero consultant has to look at your trip: training and “another business activity” do, the others do not.",
   "q.business_sponsor_confirmed":
     "Has a company sponsor or guarantor confirmed they will support the process?",
   "q.business_sponsor_confirmed.hint":
     "A conversation or possible partner is not a confirmed sponsor.",
   "why.business_sponsor_confirmed":
-    "Sponsor confirmation is sent as its own boolean decision fact.",
+    "Whether your sponsor has confirmed is recorded as its own yes or no.",
 
   "q.work_payer":
     "Will an Indonesian-registered company employ and pay you here?",
   "q.work_payer.hint":
     "Not “do you need a work KITAS” — who actually pays you.",
   "why.work_payer":
-    "The engine receives only whether the employing entity is Indonesian; the interface does not infer a visa from it.",
+    "We only use whether the employing entity is Indonesian. We do not pick a visa from it.",
   "q.work_payer.opt.yes": "Yes, an Indonesian entity pays me",
   "q.work_payer.opt.no": "No, I’m paid from abroad",
 
@@ -286,19 +286,19 @@ const en = {
   "q.work_indonesia_compensation.hint":
     "Answer about the source of payment, not the currency or bank account.",
   "why.work_indonesia_compensation":
-    "This maps directly to the compensation-source fact; amount and eligibility are not inferred.",
+    "This tells us where your pay comes from. The amount and your eligibility are not worked out from it.",
   "q.work_sponsor_confirmed":
     "Has an Indonesian work sponsor confirmed they will support the process?",
   "q.work_sponsor_confirmed.hint":
     "A conversation or possible employer is not a confirmed sponsor.",
   "why.work_sponsor_confirmed":
-    "The engine receives only your yes or no answer about sponsor confirmation.",
+    "Only your yes or no about the sponsor’s confirmation is used here.",
 
   "q.remote_clients": "Where do your clients or employer sit?",
   "q.remote_clients.hint":
     "This is what separates a remote-worker lane from a work lane.",
   "why.remote_clients":
-    "The engine receives whether you serve Indonesian clients; it does not infer this from where you live.",
+    "We only use whether you serve Indonesian clients. We do not assume it from where you live.",
   "q.remote_clients.opt.foreign": "Abroad — they pay me from outside Indonesia",
   "q.remote_clients.opt.indonesian":
     "Indonesia — I’m effectively employed here",
@@ -316,7 +316,7 @@ const en = {
     "Enter one two-letter ISO country code, for example IT.",
   "q.remote_employer_country.label": "Employer country code",
   "why.remote_employer_country":
-    "The engine receives the country code exactly as entered; the interface does not classify it.",
+    "We use the country code exactly as you enter it and do not interpret it.",
   "q.remote_pt_pma":
     "Is this remote-work plan tied to a committed Indonesian PT PMA?",
   "q.remote_pt_pma.hint":
@@ -325,8 +325,7 @@ const en = {
     "This maps directly to investment.pt_pma_committed and does not imply approval.",
 
   "q.investment_vehicle": "What is the concrete basis of your plan?",
-  "q.investment_vehicle.hint":
-    "This routes the next factual questions and is not sent to the engine.",
+  "q.investment_vehicle.hint": "This only decides which questions come next.",
   "q.investment_vehicle.opt.pt_pma": "A committed Indonesian PT PMA",
   "q.investment_vehicle.opt.property": "A qualifying property arrangement",
   "q.investment_vehicle.opt.bank_deposit": "A bank deposit in my own name",
@@ -336,7 +335,7 @@ const en = {
     "Capital-market investments only, such as listed shares or bonds",
   "q.investment_vehicle.opt.undecided": "I have not chosen a basis yet",
   "why.investment_vehicle":
-    "This label only chooses which exact facts to ask next. It never chooses a visa path.",
+    "This only decides which questions we ask next. It never chooses a visa path.",
   "q.investment_currency": "Which currency can you commit an amount in?",
   "q.investment_currency.hint":
     "This only decides which amount question comes next. No conversion is ever performed between currencies.",
@@ -349,27 +348,27 @@ const en = {
   "q.investment_pt_pma.hint":
     "Answer no for an idea, early discussion, or uncommitted plan.",
   "why.investment_pt_pma":
-    "The engine receives a boolean commitment fact, with no inferred amount or status.",
+    "We only note whether your commitment is concrete. No amount or status is assumed from it.",
   "q.investment_capital_idr": "What investment capital is committed?",
   "q.investment_capital_idr.hint":
     "Enter the exact whole-rupiah amount you can support with evidence.",
   "q.investment_capital_idr.label": "Committed investment capital",
   "why.investment_capital_idr":
-    "The amount is sent as a financial decision fact. No threshold is shown or inferred here.",
+    "The amount is used exactly as you enter it. No threshold is shown or assumed here.",
   "q.investment_amount_usd":
     "What investment amount is committed, in US dollars?",
   "q.investment_amount_usd.hint":
     "Enter the exact whole-dollar amount you can support with evidence.",
   "q.investment_amount_usd.label": "Committed investment amount",
   "why.investment_amount_usd":
-    "The amount is sent as a financial decision fact, in the currency you chose. No threshold is shown or inferred here, and no conversion is performed.",
+    "The amount is used in the currency you chose. No threshold is shown or assumed here, and nothing is converted.",
   "q.investment_paid_up_capital_idr":
     "How much paid-up capital is already documented?",
   "q.investment_paid_up_capital_idr.hint":
     "Enter a whole-rupiah amount; use Not sure rather than estimating.",
   "q.investment_paid_up_capital_idr.label": "Documented paid-up capital",
   "why.investment_paid_up_capital_idr":
-    "The engine receives the exact amount separately from planned investment capital.",
+    "The paid-up amount is kept separate from your planned investment capital.",
   "q.investment_role": "What role would you hold in the company?",
   "q.investment_role.hint": "Choose the exact proposed-role description.",
   "q.investment_role.opt.SHAREHOLDER_DIRECTOR": "Shareholder and director",
@@ -378,38 +377,37 @@ const en = {
   "q.investment_role.opt.EMPLOYEE": "Employee",
   "q.investment_role.opt.NO_OPERATIONAL_ROLE": "No operational role",
   "q.investment_role.opt.OTHER": "Another role",
-  "why.investment_role":
-    "The selected closed-enum value is sent unchanged to investment.proposed_role.",
+  "why.investment_role": "The role you choose is used exactly as selected.",
   "q.investment_establishes_company":
     "Will you establish a company in Indonesia as part of this investment?",
   "q.investment_establishes_company.hint":
     "A subsidiary set up in Indonesia, including one of a company abroad, counts as a company. Answer no if the investment does not involve setting up a company in Indonesia.",
   "why.investment_establishes_company":
-    "The engine receives only your yes or no answer about establishing a company.",
+    "Only your yes or no about establishing a company is used here.",
   "q.investment_foreign_branch":
     "Are you establishing a branch or a subsidiary of a company that already exists outside Indonesia?",
   "q.investment_foreign_branch.hint":
     "Answer no if the company does not already exist outside Indonesia.",
   "why.investment_foreign_branch":
-    "The engine receives only your yes or no answer about a branch or subsidiary of a foreign company.",
+    "Only your yes or no about a branch or subsidiary of a foreign company is used here.",
   "q.investment_ikn_subsidiary":
     "Will the company you are establishing be a subsidiary located in the new capital, IKN (Ibu Kota Nusantara)?",
   "q.investment_ikn_subsidiary.hint":
     "Answer no for a company located anywhere else in Indonesia.",
   "why.investment_ikn_subsidiary":
-    "The engine receives only your yes or no answer about a subsidiary in IKN.",
+    "Only your yes or no about a subsidiary in IKN is used here.",
   "q.investment_capital_market_only":
     "Is your investment held only in capital-market instruments, without establishing a company?",
   "q.investment_capital_market_only.hint":
     "Answer no if any part of the investment is outside the capital market.",
   "why.investment_capital_market_only":
-    "The engine receives only your yes or no answer about a capital-market-only investment.",
+    "Only your yes or no about a capital-market-only investment is used here.",
   "q.investment_meets_threshold":
     "Does your investment meet every published financial minimum for the route you chose — the capital amount, and the annual turnover where that route publishes one?",
   "q.investment_meets_threshold.hint":
     "If you do not know the published minimum for your route, answer no: the Oracle never assumes it is met.",
   "why.investment_meets_threshold":
-    "The engine receives only your yes or no answer. No amount is shown or inferred here.",
+    "Only your yes or no is used here. No amount is shown or assumed here.",
   "q.unit.idr": "IDR",
   "q.unit.usd": "USD",
   "q.unit.usd_month": "USD per month",
@@ -423,8 +421,7 @@ const en = {
   "q.family_relation.opt.DEPENDENT": "Other dependent",
   "q.family_relation.opt.STEPCHILD": "Stepchild",
   "q.family_relation.opt.OTHER": "Another relationship",
-  "why.family_relation":
-    "The selected closed-enum relationship is sent unchanged to the engine.",
+  "why.family_relation": "Your relationship is used exactly as selected.",
   "q.marital_status": "What is your current marital status?",
   "q.marital_status.hint": "Choose your current legal status.",
   "q.marital_status.opt.SINGLE": "Single",
@@ -432,15 +429,14 @@ const en = {
   "q.marital_status.opt.DIVORCED": "Divorced",
   "q.marital_status.opt.WIDOWED": "Widowed",
   "q.marital_status.opt.OTHER": "Another status",
-  "why.marital_status":
-    "The engine receives the closed-enum status exactly as selected.",
+  "why.marital_status": "Your marital status is used exactly as selected.",
   "q.family_sponsor_nationalities":
     "Which nationalities appear on your sponsor’s passports?",
   "q.family_sponsor_nationalities.hint":
     "Choose each passport country. The answer stays separate from your own nationalities.",
   "q.family_sponsor_nationalities.label": "Sponsor passport countries",
   "why.family_sponsor_nationalities":
-    "Sponsor nationality is a separate engine fact and is never copied from your own passports.",
+    "Your sponsor’s nationality is asked separately and is never copied from your own passports.",
   "q.family_sponsor_status_code":
     "Which stay permit does your sponsor currently hold?",
   "q.family_sponsor_status_code.hint":
@@ -473,31 +469,31 @@ const en = {
   "q.family_marriage_registered.hint":
     "If your sponsor is your parent, this asks about your parents' marriage. Choose Not applicable if the family relationship involves no marriage.",
   "why.family_marriage_registered":
-    "The engine receives yes, no, or UNKNOWN; no registration status is inferred.",
+    "We use your answer as given — yes, no or not sure. We do not assume whether the marriage is registered.",
   "q.family_stepchild_marriage_certificate_confirmed":
     "Can you provide the marriage certificate of your Indonesian parent and their foreign spouse?",
   "q.family_stepchild_marriage_certificate_confirmed.hint":
     "This is the marriage certificate for the mixed Indonesian–foreign marriage the stepchild relationship comes from.",
   "why.family_stepchild_marriage_certificate_confirmed":
-    "The engine checks this evidence fact directly; it is not inferred from the marriage-registered answer above.",
+    "We ask about this document directly. It is not assumed from your answer about the marriage being registered above.",
   "q.family_stepchild_birth_certificate_confirmed":
     "Can you provide the stepchild's birth certificate?",
   "q.family_stepchild_birth_certificate_confirmed.hint":
     "The birth certificate should show the biological parent who is part of the mixed marriage.",
   "why.family_stepchild_birth_certificate_confirmed":
-    "Birth-certificate evidence is sent as its own boolean decision fact.",
+    "Birth-certificate evidence is recorded as its own yes or no.",
   "q.family_sponsor_confirmed":
     "Has the family sponsor confirmed they will support the process?",
   "q.family_sponsor_confirmed.hint":
     "Choose yes only after the sponsor has agreed.",
   "why.family_sponsor_confirmed":
-    "Sponsor confirmation is sent as its own boolean decision fact.",
+    "Your sponsor’s confirmation is recorded as its own yes or no.",
   "q.retirement_penjamin_confirmed":
     "Do you have a penjamin — a licensed visa agency or a person in Indonesia — who will sponsor your retirement KITAS?",
   "q.retirement_penjamin_confirmed.hint":
     "If not, Bali Zero can act as your penjamin.",
   "why.retirement_penjamin_confirmed":
-    "Penjamin confirmation is sent as its own boolean decision fact.",
+    "The penjamin’s confirmation is recorded as its own yes or no.",
 
   "q.retirement_basis": "Which basis can you document today?",
   "q.retirement_basis.hint":
@@ -508,7 +504,7 @@ const en = {
   "q.retirement_basis.opt.family_sponsor": "A confirmed family sponsor",
   "q.retirement_basis.opt.undecided": "I have not chosen a basis",
   "why.retirement_basis":
-    "There is no matching engine fact for this label. It only routes the next exact inputs.",
+    "This only decides which questions come next. It is not used for anything else.",
   "q.retirement_undecided_basis": "Which of these can you document today?",
   "q.retirement_undecided_basis.hint":
     "Pick whichever basis you can support with evidence. If neither applies, say so — a person is not needed to answer that.",
@@ -518,43 +514,43 @@ const en = {
     "A confirmed family sponsor",
   "q.retirement_undecided_basis.opt.still_unsure": "I still can't say",
   "why.retirement_undecided_basis":
-    "There is no matching engine fact for this label either. It only routes the next exact inputs, same as the basis question above.",
+    "This also only decides which questions come next, the same as the basis question above.",
   "q.secondhome_basis": "Which Second Home basis can you document today?",
   "q.secondhome_basis.hint":
     "Pick the one you can evidence now. Use Not sure rather than guessing.",
   "q.secondhome_basis.opt.bank_deposit": "A bank deposit held in my own name",
   "q.secondhome_basis.opt.property": "A qualifying property",
   "why.secondhome_basis":
-    "This only decides which evidence questions follow; the engine receives the evidence itself, never this label.",
+    "This only decides which evidence questions follow. We use the evidence you give, not this choice.",
   "q.secondhome_deposit_usd": "What bank deposit can you document?",
   "q.secondhome_deposit_usd.hint":
     "Enter the exact whole-dollar amount; use Not sure rather than estimating.",
   "q.secondhome_deposit_usd.label": "Documented bank deposit",
   "why.secondhome_deposit_usd":
-    "The exact amount maps to secondhome.bank_deposit_usd; no threshold is shown here.",
+    "We use the exact amount you give. No threshold is shown here.",
   "q.secondhome_state_bank":
     "Is the deposit held at an Indonesian state-owned bank?",
   "q.secondhome_state_bank.hint": "Answer from the bank documentation.",
   "why.secondhome_state_bank":
-    "This yes/no value is sent separately from the deposit amount.",
+    "Your yes or no is recorded separately from the deposit amount.",
   "q.secondhome_own_name": "Is the full deposit held in your own name?",
   "q.secondhome_own_name.hint": "Do not combine accounts or account holders.",
   "why.secondhome_own_name":
-    "This yes/no value is sent separately; the interface never assumes ownership.",
+    "Your yes or no is recorded separately. We never assume ownership.",
   "q.secondhome_property_value_usd":
     "What property value can you document for this plan?",
   "q.secondhome_property_value_usd.hint":
     "Enter the exact whole-dollar value supported by documents.",
   "q.secondhome_property_value_usd.label": "Documented property value",
   "why.secondhome_property_value_usd":
-    "The engine receives the exact value; ownership and tenure are not inferred.",
+    "We use the exact value you give. Ownership and tenure are not assumed.",
   "q.secondhome_passive_income_usd":
     "What passive monthly income can you document?",
   "q.secondhome_passive_income_usd.hint":
     "Enter the exact whole-dollar monthly amount.",
   "q.secondhome_passive_income_usd.label": "Documented passive income",
   "why.secondhome_passive_income_usd":
-    "The monthly amount maps directly to the engine fact and is never estimated from assets.",
+    "The monthly amount is used as you enter it and is never estimated from your assets.",
 
   "q.study_level": "What level of study are you planning?",
   "q.study_level.hint": "Choose the level shown by the institution.",
@@ -565,23 +561,23 @@ const en = {
   "q.study_level.opt.POSTGRADUATE": "Postgraduate degree",
   "q.study_level.opt.RESEARCH": "Research",
   "q.study_level.opt.OTHER": "Another level",
-  "why.study_level": "The closed-enum study level is sent unchanged.",
+  "why.study_level": "Your study level is used exactly as selected.",
   "q.study_admission_confirmed":
     "Has an Indonesian institution confirmed your admission?",
   "q.study_admission_confirmed.hint":
     "An application in progress is not confirmed admission.",
   "why.study_admission_confirmed":
-    "Admission confirmation is sent as a separate yes/no fact.",
+    "Admission confirmation is recorded as its own yes or no.",
   "q.study_sponsor_confirmed":
     "Has the institution or study sponsor confirmed support?",
   "q.study_sponsor_confirmed.hint":
     "Choose yes only if the sponsor has agreed.",
   "why.study_sponsor_confirmed":
-    "Sponsor confirmation is sent separately from admission.",
+    "Sponsor confirmation is recorded separately from admission.",
 
   "q.diaspora_connection": "What is your connection to Indonesia?",
   "q.diaspora_connection.hint":
-    "This is human context only; nationality remains a separate exact fact.",
+    "This is context for our team only. Your nationality is asked separately.",
   "q.diaspora_connection.opt.former_wni": "I am a former Indonesian citizen",
   "q.diaspora_connection.opt.descendant":
     "I am a descendant of an Indonesian citizen",
@@ -590,7 +586,7 @@ const en = {
   "q.diaspora_connection.opt.family": "My connection is through family",
   "q.diaspora_connection.opt.other": "Another connection",
   "why.diaspora_connection":
-    "The engine has no diaspora-connection fact. This answer is retained only for human context.",
+    "No rule is based on a diaspora connection, so this answer is kept only as context for our team.",
   "q.diaspora_documents": "Can you document that connection?",
   "q.diaspora_documents.hint":
     "Do not upload documents here; answer only whether evidence exists.",
@@ -599,7 +595,7 @@ const en = {
 
   "q.other_purpose": "Which activity is closest to your plan?",
   "q.other_purpose.hint":
-    "This context is not translated into an engine purpose or product code.",
+    "This context is not turned into a purpose or a visa choice.",
   "q.other_purpose.opt.transit": "Transit",
   "q.other_purpose.opt.medical": "Medical treatment or support",
   "q.other_purpose.opt.volunteer": "Volunteer activity",
@@ -609,12 +605,12 @@ const en = {
   "q.other_purpose.opt.crew": "Transport crew",
   "q.other_purpose.opt.other": "Something not listed",
   "why.other_purpose":
-    "There is no one-to-one engine fact for these labels, so this remains human context.",
+    "No single rule matches these options, so the answer stays as context for our team.",
   "q.other_paid_activity": "Will any part of this activity be paid?",
   "q.other_paid_activity.hint":
-    "This is human context only; it is not converted into an employment fact.",
+    "This is context for our team only. It is not turned into an employment answer.",
   "why.other_paid_activity":
-    "The engine has no exact matching fact for this broad question, so the answer cannot support a recommendation.",
+    "No exact rule fits this broad question, so the answer cannot support a recommendation.",
 
   "q.stay_days": "How many days do you plan to stay?",
   "q.stay_days.hint":
@@ -622,7 +618,7 @@ const en = {
   "q.stay_days.label": "Planned stay",
   "q.stay_days.unit": "days",
   "why.stay_days":
-    "The decision engine checks your exact planned duration instead of guessing from a broad range.",
+    "We check your exact planned stay instead of guessing from a broad range.",
 
   "q.review_gate": "Is there anything else we should know?",
   // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M6): the lead no longer promises
@@ -631,7 +627,7 @@ const en = {
   "q.review_gate.hint":
     "Tick everything that applies — an omission costs you more than a disclosure. Some of these, a criminal record among them, put your case in front of a person before any verdict; the others are attached to your result as conditions our team checks with you before submission.",
   "why.review_gate":
-    "Every item here reaches the engine: the three immigration-history ones as a fact the rules read, all of them as a disclosure the result must account for.",
+    "Every item here is taken into account: the three immigration-history ones bear directly on the rules, and all of them must be reflected in your result.",
   "q.review_gate.opt.none": "None of these apply to me",
   "q.review_gate.opt.flagged": "One or more applies",
   // Finding #5 (adversarial review 2026-07-17): "none" is now a first-class
@@ -666,9 +662,9 @@ const en = {
   "assumption.stay_days":
     "You weren’t sure about the planned stay, so no duration was inferred.",
   "assumption.work_payer":
-    "You weren’t sure who pays you, so we recorded that as unresolved; the engine still assessed everything it could, and a Bali Zero advisor confirms this point with you.",
+    "You weren’t sure who pays you, so we recorded that as unresolved; we still assessed everything we could, and a Bali Zero advisor confirms this point with you.",
   "assumption.remote_clients":
-    "You weren’t sure where your clients sit, so we recorded that as unresolved; the engine still assessed everything it could, and a Bali Zero advisor confirms this point with you.",
+    "You weren’t sure where your clients sit, so we recorded that as unresolved; we still assessed everything we could, and a Bali Zero advisor confirms this point with you.",
   "assumption.secondhome_deposit_usd":
     "You weren’t sure what bank deposit you can document, so we assessed this plan as if the deposit were zero; a Bali Zero advisor confirms the real figure with you.",
   "assumption.secondhome_property_value_usd":
@@ -694,11 +690,11 @@ const en = {
 
   "whyweask.trigger": "Why we ask",
   "whyweask.trigger.aria": "Why we ask this question",
-  "whyweask.fact_prefix": "Decision input: {{facts}}",
+  "whyweask.fact_prefix": "Used to decide: {{facts}}",
   "whyweask.review_only":
-    "Review signal; only these listed facts can be transmitted: {{facts}}",
+    "Flagged for review; only these details are used: {{facts}}",
   "whyweask.human_context":
-    "Human context only — not transmitted as an engine fact.",
+    "For our team’s context only — not used to decide anything.",
 
   "back.button": "Back",
   "question.continue": "Continue",
@@ -805,7 +801,7 @@ const en = {
   "process.phase.intent": "What you came for",
   "process.phase.details": "The details of that purpose",
   "process.phase.review": "Safety check and your answers",
-  "process.phase.outcome": "The engine’s answer",
+  "process.phase.outcome": "Your result",
   "process.phase_status.done": "complete",
   "process.phase_status.current": "open now",
   "process.phase_status.partial": "in progress",
@@ -813,19 +809,19 @@ const en = {
   "process.phase_status.pruned": "not on this branch",
   "process.decides_title": "What this question decides",
   "process.decides_fact":
-    "Your answer sets {{plural:this fact|these facts}}, read by the engine:",
+    "Your answer sets {{plural:this detail|these details}}, which we use:",
   "process.decides_review":
-    "Your answer is a safety signal: it can send this case to a person, and the engine never reads it as eligibility.",
+    "Your answer is a safety signal: it can send this case to a Bali Zero consultant, and it is never read as eligibility.",
   "process.decides_context":
-    "No engine fact is attached to this question. It steers what you are asked next, and can still feed a fact the engine derives from your answers together.",
+    "This question does not set a detail on its own. It steers what you are asked next, and can still count toward something we work out from your answers together.",
   "process.decides_none":
-    "No question is open. The engine has the answers you confirmed.",
+    "No question is open. We have the answers you confirmed.",
   "process.decides_awaiting":
-    "No question is open. Your answers are confirmed; the engine’s reply is not on screen yet.",
+    "No question is open. Your answers are confirmed; your result is not on screen yet.",
   "process.decides_framing":
     "Nothing is answered yet. Every question says what its answer decides before you answer it.",
   "process.decides_confirmation":
-    "No question is open. Confirming these answers is what asks the engine — and asks it again if you have already been here.",
+    "No question is open. Confirming these answers is what checks your case — and checks it again if you have already been here.",
   "process.categories_title": "Purpose branches",
   "process.category_status.current": "open — being asked now",
   "process.category_status.done": "answered",
@@ -835,15 +831,15 @@ const en = {
     "{{count}} {{plural:branch|branches}} closed when you chose “{{category}}”. Nothing you answer inside it can reopen them — go back to the purpose question to change branch.",
   "process.pruned_none":
     "Every purpose branch is still open. Choosing one closes the others.",
-  "process.candidates_title": "Products the engine named",
+  "process.candidates_title": "Options we found for you",
   "process.candidates_pending":
-    "No product is named yet. The engine is asked only after you confirm your answers — this interface never decides eligibility on its own.",
+    "No option is named yet. We only check your case after you confirm your answers — this tool never decides eligibility on its own.",
   "process.candidates_none":
-    "The engine named no product for these answers. The outcome below says why.",
+    "We found no option for these answers. The result below explains why.",
   "process.candidates_undecided":
-    "The engine did not name a product for these answers. The outcome below says why.",
+    "We could not name an option for these answers. The result below explains why.",
   "process.candidates_follow_up":
-    "The engine has your answers and named a fact it still needs before it can decide. This question asks for it.",
+    "We have your answers and need one more detail before we can decide. This question asks for it.",
   "process.outcome_node":
     "You are at the last node of this tree: the outcome below is that node, not a separate page.",
   "process.jump_title": "Jump back to an answer",
@@ -860,7 +856,7 @@ const en = {
   "confirmation.title": "Here’s what you told us",
   "confirmation.your_answers": "Your answers",
   "confirmation.group.location": "Current situation",
-  "confirmation.group.identity": "Identity facts",
+  "confirmation.group.identity": "About you",
   "confirmation.group.intent": "Your intent",
   "confirmation.group.details": "Branch details",
   "confirmation.group.review": "Review signals",
@@ -998,10 +994,11 @@ const en = {
   "outcome.not_retryable":
     "A Bali Zero advisor needs to look at this before you continue.",
   "outcome.sources_title": "Sources used for this decision",
-  "outcome.source_dates": "Effective {{effective}} · observed {{observed}}",
+  "outcome.source_dates":
+    "In force since {{effective}} · last checked {{observed}}",
   "outcome.freshness.CURRENT": "Current",
-  "outcome.freshness.STALE": "Stale — review required",
-  "outcome.freshness.UNKNOWN": "Freshness unknown",
+  "outcome.freshness.STALE": "Being re-checked by our team",
+  "outcome.freshness.UNKNOWN": "Last check date unknown",
   "outcome.provenance.CLIENT_GUARD.title": "A person will review this",
   "outcome.provenance.CLIENT_GUARD.body":
     "Your answers need a person’s review before a path can be shown.",
@@ -1013,7 +1010,7 @@ const en = {
     "This assessment was recorded for verification; no visa path is shown in this mode.",
   "outcome.provenance.PREVIEW.title": "Preview data",
   "outcome.provenance.PREVIEW.body":
-    "This content exists only for testing the interface and is not a recommendation.",
+    "This content exists only for testing and is not a recommendation.",
   // ENDING-ROUND E8: "Assumptions & caveats, dated" read as a provenance
   // stamp; the dates themselves move to `.oracle-print-only`.
   "outcome.assumptions_receipt_title": "What we assumed",
@@ -1112,7 +1109,7 @@ type Keys = keyof typeof en;
 const id: Record<Keys, string> = {
   "framing.title": "Peta, bukan permohonan",
   "framing.body":
-    "Jawab dengan jujur, termasuk “Saya tidak tahu.” Tidak ada yang diajukan di sini, dan antarmuka tidak pernah memilih jalur visa sendiri.",
+    "Jawab dengan jujur, termasuk “Saya tidak tahu.” Tidak ada yang diajukan di sini, dan alat ini tidak pernah memilih visa untuk Anda.",
   "framing.cta": "Mulai",
 
   "q.in_indonesia": "Apakah Anda sedang berada di Indonesia sekarang?",
@@ -1121,14 +1118,14 @@ const id: Record<Keys, string> = {
   "q.in_indonesia.opt.yes": "Ya, saya di sini",
   "q.in_indonesia.opt.no": "Belum, saya sedang merencanakan",
   "why.in_indonesia":
-    "Lokasi Anda saat ini memberi tahu mesin apakah ini situasi onshore atau rencana mendatang.",
+    "Lokasi Anda saat ini menentukan apakah kami melihat izin yang bisa diurus di dalam Indonesia atau visa yang diajukan sebelum berangkat.",
 
   "q.permit_expiry": "Kapan izin tinggal Anda saat ini berakhir?",
   "q.permit_expiry.hint":
     "Tanggal pada visa atau ITAS/KITAS Anda — bukan paspor.",
   "q.permit_expiry.label": "Tanggal berakhir",
   "why.permit_expiry":
-    "Mesin membutuhkan tanggalnya untuk menilai waktu; antarmuka tidak menyimpulkan jalur pengajuan darinya.",
+    "Kami memerlukan tanggalnya untuk menilai sisa waktu Anda. Tanggal ini tidak dipakai untuk memilihkan jalur pengajuan.",
   "q.current_status_code":
     "Kode apa yang tercantum pada izin tinggal Anda saat ini?",
   "q.current_status_code.hint":
@@ -1146,7 +1143,7 @@ const id: Record<Keys, string> = {
   "q.current_status_code.opt.ITK_PERALIHAN": "ITK Peralihan",
   "q.current_status_code.opt.other": "Kode lain — perlu tinjauan manusia",
   "why.current_status_code":
-    "Mesin menerima kode status yang tercetak tanpa perubahan; antarmuka tidak pernah menebaknya dari nama izin.",
+    "Kami memakai kode persis seperti yang tercetak pada izin Anda. Kode ini tidak pernah ditebak dari nama izin.",
   "q.holds_stay_permit":
     "Apakah Anda saat ini memegang izin tinggal terbatas atau tetap (KITAS / KITAP)?",
   "why.holds_stay_permit":
@@ -1199,7 +1196,7 @@ const id: Record<Keys, string> = {
   "q.stay_permit_code.opt.E33F": "E33F — Visa Rumah Kedua Lansia untuk 1 Tahun",
   "q.stay_permit_code.opt.E33G": "E33G — Visa Rumah Kedua Pekerja Jarak Jauh",
   "why.stay_permit_code":
-    "Mesin menerima kode yang tercetak tanpa perubahan, sama seperti daftar kode di atas — antarmuka tidak pernah menebaknya dari nama izin.",
+    "Kami memakai kode persis seperti yang tercetak, sama seperti pada daftar kode di atas. Kode ini tidak pernah ditebak dari nama izin.",
 
   "q.renewal_paid": "Apakah Anda sudah membayar perpanjangan izin tinggal ini?",
   "q.renewal_paid.hint":
@@ -1212,7 +1209,7 @@ const id: Record<Keys, string> = {
     "Masukkan 0 jika tidak ada overstay aktif. Jangan masukkan riwayat overstay lama di sini.",
   "q.overstay_days.label": "Overstay saat ini",
   "why.overstay_days":
-    "Jumlah hari overstay aktif adalah fakta safety-critical terpisah. Nilai ini tidak pernah dihitung dari tanggal berakhir di browser.",
+    "Jumlah hari overstay ditanyakan tersendiri karena sangat memengaruhi pilihan yang tersedia. Jumlah ini tidak pernah dihitung dari tanggal berakhir.",
   "q.wants_onshore_conversion":
     "Apakah Anda ingin mengubah status tanpa meninggalkan Indonesia?",
   "q.wants_onshore_conversion.hint":
@@ -1222,7 +1219,7 @@ const id: Record<Keys, string> = {
   "q.wants_onshore_conversion.offshore.hint":
     "Jawab tentang proses yang Anda rencanakan setelah tiba, bukan apakah proses itu akan disetujui.",
   "why.wants_onshore_conversion":
-    "Fakta proses ya atau tidak ini dikirim tanpa memilih jalur konversi.",
+    "Jawaban ya atau tidak Anda hanya menunjukkan proses mana yang Anda maksud. Jawaban ini tidak memilihkan jalur konversi.",
   "q.application_channel":
     "Kanal permohonan mana yang benar-benar Anda jalani?",
   "q.application_channel.hint":
@@ -1232,7 +1229,7 @@ const id: Record<Keys, string> = {
   "q.application_channel.opt.ONSHORE_CONVERSION": "Konversi status onshore",
   "q.application_channel.opt.STATUS_BRIDGING": "Proses status bridging",
   "why.application_channel":
-    "Kanal enum tertutup yang dipilih dikirim tanpa perubahan. Antarmuka tidak menetapkan kanal dari tanggal Anda.",
+    "Kami memakai kanal yang Anda pilih apa adanya. Kanal tidak pernah ditetapkan dari tanggal Anda.",
   "q.application_channel.conflict":
     "Kanal ini tidak sesuai dengan jawaban Anda sebelumnya tentang mengubah status tanpa meninggalkan Indonesia. Kembali dan perbaiki salah satu dari kedua jawaban — kami tidak akan menebak mana yang benar.",
 
@@ -1241,13 +1238,13 @@ const id: Record<Keys, string> = {
     "Pilih setiap negara paspor. Jawaban tersimpan tetap berupa kode negara yang tidak bergantung pada bahasa.",
   "q.nationalities.label": "Negara paspor",
   "why.nationalities":
-    "Kewarganegaraan diperiksa sebagai fakta keputusan yang tepat. Beberapa kewarganegaraan tetap terpisah dan tidak ditebak.",
+    "Kewarganegaraan diperiksa persis seperti yang Anda berikan. Beberapa kewarganegaraan tetap dipisahkan dan tidak pernah ditebak.",
   "q.birth_date": "Kapan tanggal lahir Anda?",
   "q.birth_date.hint":
-    "Tanggal dikirim sebagai fakta keputusan; mesin menghitung usia secara konsisten.",
+    "Beberapa visa punya syarat usia; tanggal lahir Anda hanya dipakai untuk memeriksanya.",
   "q.birth_date.label": "Tanggal lahir",
   "why.birth_date":
-    "Beberapa jalur membedakan orang dewasa dan anak. Antarmuka tidak menghitung kelayakan dari usia Anda.",
+    "Beberapa visa membedakan orang dewasa dan anak. Usia Anda saja tidak pernah menentukan kelayakan.",
   "q.guardian_consent":
     "Apakah orang tua atau wali sah mengisi ini bersama Anda?",
   "q.guardian_consent.help":
@@ -1258,9 +1255,9 @@ const id: Record<Keys, string> = {
   "lane.expired.notice":
     "Izin tinggal Anda sudah berakhir. Overstay bisa diselesaikan. Ini bukan akhir cerita Anda di sini — kasus ini selalu ditangani manusia, dan kami tidak akan menampilkan angka yang menakutkan di layar ini.",
   "lane.urgent.notice":
-    "Waktu Anda tinggal 1–2 hari. Ini terlalu mepet untuk penelusuran otomatis — konsultan Bali Zero perlu melihat kasus ini hari ini.",
+    "Waktu Anda tinggal 1–2 hari. Ini terlalu mepet untuk pemeriksaan otomatis — konsultan Bali Zero perlu melihat kasus ini hari ini.",
   "lane.bridging.notice":
-    "Tanggal yang Anda masukkan tinggal tujuh hari atau kurang. Mesin dapat menahan keputusan untuk tinjauan manusia; antarmuka tidak memilih jalur bridging atau konversi.",
+    "Tanggal yang Anda masukkan tinggal tujuh hari atau kurang. Kasus Anda dapat diteruskan ke konsultan Bali Zero untuk ditinjau, dan alat ini tidak memilihkan jalur bridging atau konversi untuk Anda.",
   "lane.extend.notice":
     "Anda masih punya waktu untuk membandingkan Extend dan Convert.",
   "lane.planning.notice":
@@ -1292,13 +1289,13 @@ const id: Record<Keys, string> = {
   "q.trip_scope.opt.single": "Ya — satu tujuan utama",
   "q.trip_scope.opt.multiple": "Tidak — dua tujuan atau lebih tumpang tindih",
   "why.trip_scope":
-    "Tujuan yang tumpang tindih membutuhkan konteks manusia. Jawaban ini tidak diterjemahkan menjadi fakta mesin.",
+    "Tujuan yang tumpang tindih memerlukan penilaian konsultan, jadi jawaban ini tidak dipakai untuk memutuskan apa pun secara otomatis.",
   "q.entry_pattern": "Bagaimana Anda berencana masuk ke Indonesia?",
   "q.entry_pattern.hint": "Pilih pola yang benar-benar Anda rencanakan.",
   "q.entry_pattern.opt.SINGLE": "Satu kali masuk",
   "q.entry_pattern.opt.MULTIPLE": "Lebih dari satu kali masuk",
   "why.entry_pattern":
-    "Mesin menerima SINGLE atau MULTIPLE persis seperti pilihan Anda.",
+    "Pilihan masuk satu kali atau berkali-kali kami pakai persis seperti yang Anda pilih.",
 
   "q.sponsor_category":
     "Siapa yang mensponsori masa tinggal Anda di Indonesia?",
@@ -1313,41 +1310,41 @@ const id: Record<Keys, string> = {
   "q.sponsor_category.opt.INVESTMENT": "Investasi atau perusahaan milik saya",
   "q.sponsor_category.opt.GOVERNMENT": "Instansi pemerintah",
   "why.sponsor_category":
-    "Kategori sponsor dicatat sebagai fakta tersendiri. Belum ada aturan dalam rule pack saat ini yang membacanya — ini hanya menyiapkan data untuk aturan yang akan datang.",
+    "Kami mencatat jenis sponsor Anda. Belum ada aturan saat ini yang memakainya; ini hanya menyiapkan data untuk aturan yang akan datang.",
 
   "q.sponsor_government_invitation":
     "Apakah Anda memiliki undangan tertulis dari instansi pemerintah pusat Indonesia yang diberikan kepada Anda sebagai tenaga ahli?",
   "q.sponsor_government_invitation.hint":
     "Jawab tidak jika undangan belum tertulis, atau tidak berasal dari instansi pemerintah pusat Indonesia.",
   "why.sponsor_government_invitation":
-    "Mesin hanya menerima jawaban ya atau tidak tentang undangan pemerintah.",
+    "Hanya jawaban ya atau tidak Anda tentang undangan pemerintah yang dipakai di sini.",
   "q.sponsor_government_collaboration":
     "Apakah Anda memiliki komitmen kolaborasi yang terkonfirmasi dengan instansi atau lembaga pemerintah Indonesia, berdasarkan keahlian khusus Anda?",
   "q.sponsor_government_collaboration.hint":
     "Diskusi atau usulan yang belum dikonfirmasi dihitung sebagai tidak.",
   "why.sponsor_government_collaboration":
-    "Mesin hanya menerima jawaban ya atau tidak tentang kolaborasi pemerintah yang terkonfirmasi.",
+    "Hanya jawaban ya atau tidak Anda tentang kolaborasi pemerintah yang terkonfirmasi yang dipakai di sini.",
   "q.sponsor_world_figure_invitation":
     "Apakah instansi pemerintah Indonesia mengundang Anda sebagai tokoh dunia — seseorang dengan reputasi internasional?",
   "q.sponsor_world_figure_invitation.hint":
     "Jawab ya hanya jika instansi pemerintah telah mengundang Anda dalam kapasitas tersebut.",
   "why.sponsor_world_figure_invitation":
-    "Mesin hanya menerima jawaban ya atau tidak tentang undangan sebagai tokoh dunia.",
+    "Hanya jawaban ya atau tidak Anda tentang undangan sebagai tokoh dunia yang dipakai di sini.",
   "q.sponsor_diplomatic_household":
     "Apakah posisi ini berada di rumah tangga diplomat asing yang bertugas di Indonesia?",
   "q.sponsor_diplomatic_household.hint":
     "Jawab tidak jika Anda akan bekerja untuk pihak selain rumah tangga diplomat tersebut.",
   "why.sponsor_diplomatic_household":
-    "Mesin hanya menerima jawaban ya atau tidak tentang posisi di rumah tangga diplomat.",
+    "Hanya jawaban ya atau tidak Anda tentang posisi di rumah tangga diplomat yang dipakai di sini.",
   "q.sponsor_trade_office":
     "Apakah penjamin Anda adalah kantor perwakilan dagang atau ekonomi asing di Indonesia?",
   "q.sponsor_trade_office.hint":
     "Jawab tidak jika penjamin Anda adalah jenis organisasi lain.",
   "why.sponsor_trade_office":
-    "Mesin hanya menerima jawaban ya atau tidak tentang penjamin berupa kantor perwakilan dagang.",
+    "Hanya jawaban ya atau tidak Anda tentang penjamin berupa kantor perwakilan dagang yang dipakai di sini.",
   "q.business_activity": "Apa kegiatan utama Anda dalam perjalanan bisnis?",
   "q.business_activity.hint":
-    "Jelaskan kegiatannya, bukan nama visa. Rapat, negosiasi, konferensi, dan penjajakan investasi diputuskan di sini; pelatihan atau kegiatan lain dikirim ke peninjau manusia.",
+    "Jelaskan kegiatannya, bukan nama visa. Rapat, negosiasi, konferensi, dan penjajakan investasi dapat dinilai di sini; pelatihan atau kegiatan lain diteruskan ke konsultan Bali Zero untuk ditinjau.",
   "q.business_activity.opt.meetings": "Rapat atau kunjungan lokasi",
   "q.business_activity.opt.negotiation": "Negosiasi atau penandatanganan",
   "q.business_activity.opt.conference": "Konferensi atau pameran dagang",
@@ -1356,20 +1353,20 @@ const id: Record<Keys, string> = {
   "q.business_activity.opt.training": "Memberi atau menerima pelatihan",
   "q.business_activity.opt.other": "Kegiatan bisnis lainnya",
   "why.business_activity":
-    "Hanya satu jawaban yang mengubah apa yang diterima mesin: menjajaki peluang berinvestasi atau membuka usaha dikirim sebagai tujuan investasi, lalu kami menanyakan beberapa pertanyaan yang memutuskannya. Selain itu, rincian ini hanya menentukan apakah peninjau manusia perlu melihat perjalanan Anda — pelatihan dan “kegiatan bisnis lainnya” perlu, jawaban lainnya tidak.",
+    "Menjajaki peluang berinvestasi atau membuka usaha diperlakukan sebagai tujuan investasi, lalu kami menanyakan beberapa pertanyaan yang menentukannya. Jawaban lain di sini hanya menentukan apakah konsultan Bali Zero perlu meninjau perjalanan Anda: pelatihan dan “kegiatan bisnis lainnya” perlu, jawaban lainnya tidak.",
   "q.business_sponsor_confirmed":
     "Apakah sponsor perusahaan atau penjamin sudah mengonfirmasi dukungan proses?",
   "q.business_sponsor_confirmed.hint":
     "Percakapan atau calon mitra belum berarti sponsor sudah dikonfirmasi.",
   "why.business_sponsor_confirmed":
-    "Konfirmasi sponsor dikirim sebagai fakta keputusan boolean tersendiri.",
+    "Apakah sponsor Anda sudah mengonfirmasi dicatat sebagai jawaban ya atau tidak tersendiri.",
 
   "q.work_payer":
     "Apakah perusahaan berbadan hukum Indonesia yang mempekerjakan dan menggaji Anda di sini?",
   "q.work_payer.hint":
     "Bukan “apakah Anda butuh KITAS kerja” — tapi siapa yang benar-benar menggaji Anda.",
   "why.work_payer":
-    "Mesin hanya menerima apakah entitas pemberi kerja merupakan entitas Indonesia; antarmuka tidak menyimpulkan visa darinya.",
+    "Kami hanya memakai apakah pemberi kerja Anda adalah entitas Indonesia. Visa tidak dipilih berdasarkan hal itu.",
   "q.work_payer.opt.yes": "Ya, entitas Indonesia yang menggaji saya",
   "q.work_payer.opt.no": "Tidak, saya digaji dari luar negeri",
 
@@ -1378,19 +1375,19 @@ const id: Record<Keys, string> = {
   "q.work_indonesia_compensation.hint":
     "Jawab tentang sumber pembayaran, bukan mata uang atau rekening bank.",
   "why.work_indonesia_compensation":
-    "Ini dipetakan langsung ke fakta sumber kompensasi; jumlah dan kelayakan tidak disimpulkan.",
+    "Ini menunjukkan dari mana penghasilan Anda berasal. Jumlah dan kelayakan tidak disimpulkan darinya.",
   "q.work_sponsor_confirmed":
     "Apakah sponsor kerja Indonesia sudah mengonfirmasi dukungan proses?",
   "q.work_sponsor_confirmed.hint":
     "Percakapan atau calon pemberi kerja belum berarti sponsor sudah dikonfirmasi.",
   "why.work_sponsor_confirmed":
-    "Mesin hanya menerima jawaban ya atau tidak tentang konfirmasi sponsor.",
+    "Hanya jawaban ya atau tidak Anda tentang konfirmasi sponsor yang dipakai di sini.",
 
   "q.remote_clients": "Di mana klien atau pemberi kerja Anda berada?",
   "q.remote_clients.hint":
     "Ini yang membedakan jalur pekerja remote dari jalur kerja biasa.",
   "why.remote_clients":
-    "Mesin menerima apakah Anda melayani klien Indonesia; hal ini tidak disimpulkan dari tempat tinggal Anda.",
+    "Kami hanya memakai apakah Anda melayani klien Indonesia. Hal ini tidak diasumsikan dari tempat tinggal Anda.",
   "q.remote_clients.opt.foreign":
     "Luar negeri — mereka menggaji saya dari luar Indonesia",
   "q.remote_clients.opt.indonesian":
@@ -1409,7 +1406,7 @@ const id: Record<Keys, string> = {
     "Masukkan satu kode negara ISO dua huruf, misalnya IT.",
   "q.remote_employer_country.label": "Kode negara pemberi kerja",
   "why.remote_employer_country":
-    "Mesin menerima kode negara persis seperti yang dimasukkan; antarmuka tidak mengklasifikasikannya.",
+    "Kami memakai kode negara persis seperti yang Anda masukkan dan tidak menafsirkannya.",
   "q.remote_pt_pma":
     "Apakah rencana kerja remote ini terikat pada komitmen PT PMA Indonesia?",
   "q.remote_pt_pma.hint":
@@ -1418,8 +1415,7 @@ const id: Record<Keys, string> = {
     "Ini dipetakan langsung ke investment.pt_pma_committed dan tidak menyiratkan persetujuan.",
 
   "q.investment_vehicle": "Apa dasar konkret rencana Anda?",
-  "q.investment_vehicle.hint":
-    "Ini hanya mengarahkan pertanyaan faktual berikutnya dan tidak dikirim ke mesin.",
+  "q.investment_vehicle.hint": "Ini hanya menentukan pertanyaan berikutnya.",
   "q.investment_vehicle.opt.pt_pma": "Komitmen PT PMA Indonesia",
   "q.investment_vehicle.opt.property": "Pengaturan properti",
   "q.investment_vehicle.opt.bank_deposit": "Deposito bank atas nama saya",
@@ -1429,7 +1425,7 @@ const id: Record<Keys, string> = {
     "Hanya investasi pasar modal, seperti saham tercatat atau obligasi",
   "q.investment_vehicle.opt.undecided": "Saya belum memilih dasar",
   "why.investment_vehicle":
-    "Label ini hanya menentukan fakta persis yang ditanyakan berikutnya. Label ini tidak pernah memilih jalur visa.",
+    "Ini hanya menentukan pertanyaan yang kami ajukan berikutnya. Jawaban ini tidak pernah memilih jalur visa.",
   "q.investment_currency":
     "Dalam mata uang apa Anda dapat mengomitmenkan jumlah investasi?",
   "q.investment_currency.hint":
@@ -1443,28 +1439,28 @@ const id: Record<Keys, string> = {
   "q.investment_pt_pma.hint":
     "Jawab tidak untuk ide, pembicaraan awal, atau rencana tanpa komitmen.",
   "why.investment_pt_pma":
-    "Mesin menerima fakta komitmen boolean, tanpa menyimpulkan jumlah atau status.",
+    "Kami hanya mencatat apakah komitmen Anda sudah konkret. Jumlah atau status tidak diasumsikan darinya.",
   "q.investment_capital_idr":
     "Berapa modal investasi yang sudah dikomitmenkan?",
   "q.investment_capital_idr.hint":
     "Masukkan jumlah rupiah bulat yang dapat didukung bukti.",
   "q.investment_capital_idr.label": "Modal investasi yang dikomitmenkan",
   "why.investment_capital_idr":
-    "Jumlah dikirim sebagai fakta keputusan finansial. Tidak ada ambang yang ditampilkan atau disimpulkan di sini.",
+    "Jumlah dipakai persis seperti yang Anda masukkan. Tidak ada ambang batas yang ditampilkan atau diasumsikan di sini.",
   "q.investment_amount_usd":
     "Berapa jumlah investasi yang dikomitmenkan, dalam dolar AS?",
   "q.investment_amount_usd.hint":
     "Masukkan jumlah dolar utuh yang tepat dan dapat Anda dukung dengan bukti.",
   "q.investment_amount_usd.label": "Jumlah investasi yang dikomitmenkan",
   "why.investment_amount_usd":
-    "Jumlah ini dikirim sebagai fakta keputusan finansial, dalam mata uang yang Anda pilih. Tidak ada ambang yang ditampilkan atau disimpulkan di sini, dan tidak ada konversi yang dilakukan.",
+    "Jumlah dipakai dalam mata uang yang Anda pilih. Tidak ada ambang batas yang ditampilkan atau diasumsikan di sini, dan tidak ada konversi yang dilakukan.",
   "q.investment_paid_up_capital_idr":
     "Berapa modal disetor yang sudah terdokumentasi?",
   "q.investment_paid_up_capital_idr.hint":
     "Masukkan jumlah rupiah bulat; pilih Tidak yakin daripada memperkirakan.",
   "q.investment_paid_up_capital_idr.label": "Modal disetor terdokumentasi",
   "why.investment_paid_up_capital_idr":
-    "Mesin menerima jumlah persis, terpisah dari modal investasi yang direncanakan.",
+    "Jumlah modal disetor dipisahkan dari modal investasi yang Anda rencanakan.",
   "q.investment_role": "Peran apa yang akan Anda pegang di perusahaan?",
   "q.investment_role.hint": "Pilih deskripsi peran yang tepat.",
   "q.investment_role.opt.SHAREHOLDER_DIRECTOR": "Pemegang saham dan direktur",
@@ -1474,37 +1470,37 @@ const id: Record<Keys, string> = {
   "q.investment_role.opt.NO_OPERATIONAL_ROLE": "Tanpa peran operasional",
   "q.investment_role.opt.OTHER": "Peran lain",
   "why.investment_role":
-    "Nilai enum tertutup yang dipilih dikirim tanpa perubahan ke investment.proposed_role.",
+    "Peran yang Anda pilih dipakai persis seperti pilihan Anda.",
   "q.investment_establishes_company":
     "Apakah Anda akan mendirikan perusahaan di Indonesia sebagai bagian dari investasi ini?",
   "q.investment_establishes_company.hint":
     "Anak perusahaan yang didirikan di Indonesia, termasuk anak perusahaan dari perusahaan di luar negeri, dihitung sebagai perusahaan. Jawab tidak jika investasi ini tidak melibatkan pendirian perusahaan di Indonesia.",
   "why.investment_establishes_company":
-    "Mesin hanya menerima jawaban ya atau tidak tentang pendirian perusahaan.",
+    "Hanya jawaban ya atau tidak Anda tentang pendirian perusahaan yang dipakai di sini.",
   "q.investment_foreign_branch":
     "Apakah Anda mendirikan kantor cabang atau anak perusahaan dari perusahaan yang sudah ada di luar Indonesia?",
   "q.investment_foreign_branch.hint":
     "Jawab tidak jika perusahaan tersebut belum ada di luar Indonesia.",
   "why.investment_foreign_branch":
-    "Mesin hanya menerima jawaban ya atau tidak tentang kantor cabang atau anak perusahaan dari perusahaan asing.",
+    "Hanya jawaban ya atau tidak Anda tentang kantor cabang atau anak perusahaan dari perusahaan asing yang dipakai di sini.",
   "q.investment_ikn_subsidiary":
     "Apakah perusahaan yang Anda dirikan merupakan anak perusahaan yang berlokasi di Ibu Kota Nusantara (IKN)?",
   "q.investment_ikn_subsidiary.hint":
     "Jawab tidak untuk perusahaan yang berlokasi di tempat lain di Indonesia.",
   "why.investment_ikn_subsidiary":
-    "Mesin hanya menerima jawaban ya atau tidak tentang anak perusahaan di IKN.",
+    "Hanya jawaban ya atau tidak Anda tentang anak perusahaan di IKN yang dipakai di sini.",
   "q.investment_capital_market_only":
     "Apakah investasi Anda hanya ditempatkan pada instrumen pasar modal, tanpa mendirikan perusahaan?",
   "q.investment_capital_market_only.hint":
     "Jawab tidak jika ada bagian investasi di luar pasar modal.",
   "why.investment_capital_market_only":
-    "Mesin hanya menerima jawaban ya atau tidak tentang investasi yang hanya di pasar modal.",
+    "Hanya jawaban ya atau tidak Anda tentang investasi yang hanya di pasar modal yang dipakai di sini.",
   "q.investment_meets_threshold":
     "Apakah investasi Anda memenuhi seluruh batas minimum keuangan yang dipublikasikan untuk jalur yang Anda pilih — jumlah modal, dan omzet tahunan jika jalur tersebut mensyaratkannya?",
   "q.investment_meets_threshold.hint":
     "Jika Anda tidak mengetahui batas minimum yang dipublikasikan untuk jalur Anda, jawab tidak: Oracle tidak pernah menganggapnya terpenuhi.",
   "why.investment_meets_threshold":
-    "Mesin hanya menerima jawaban ya atau tidak. Tidak ada jumlah yang ditampilkan atau disimpulkan di sini.",
+    "Hanya jawaban ya atau tidak Anda yang dipakai di sini. Tidak ada jumlah yang ditampilkan atau diasumsikan di sini.",
   "q.unit.idr": "IDR",
   "q.unit.usd": "USD",
   "q.unit.usd_month": "USD per bulan",
@@ -1519,7 +1515,7 @@ const id: Record<Keys, string> = {
   "q.family_relation.opt.STEPCHILD": "Anak tiri",
   "q.family_relation.opt.OTHER": "Hubungan lain",
   "why.family_relation":
-    "Hubungan enum tertutup yang dipilih dikirim tanpa perubahan ke mesin.",
+    "Hubungan yang Anda pilih dipakai persis seperti pilihan Anda.",
   "q.marital_status": "Apa status perkawinan Anda saat ini?",
   "q.marital_status.hint": "Pilih status hukum Anda saat ini.",
   "q.marital_status.opt.SINGLE": "Belum menikah",
@@ -1528,14 +1524,14 @@ const id: Record<Keys, string> = {
   "q.marital_status.opt.WIDOWED": "Duda atau janda",
   "q.marital_status.opt.OTHER": "Status lain",
   "why.marital_status":
-    "Mesin menerima status enum tertutup persis seperti yang dipilih.",
+    "Status pernikahan Anda dipakai persis seperti pilihan Anda.",
   "q.family_sponsor_nationalities":
     "Kewarganegaraan apa yang tercantum di paspor sponsor Anda?",
   "q.family_sponsor_nationalities.hint":
     "Pilih setiap negara paspor. Jawaban tetap terpisah dari kewarganegaraan Anda.",
   "q.family_sponsor_nationalities.label": "Negara paspor sponsor",
   "why.family_sponsor_nationalities":
-    "Kewarganegaraan sponsor adalah fakta mesin terpisah dan tidak pernah disalin dari paspor Anda.",
+    "Kewarganegaraan sponsor ditanyakan terpisah dan tidak pernah disalin dari paspor Anda.",
   "q.family_sponsor_status_code":
     "Izin tinggal apa yang saat ini dimiliki sponsor Anda?",
   "q.family_sponsor_status_code.hint":
@@ -1567,31 +1563,31 @@ const id: Record<Keys, string> = {
   "q.family_marriage_registered.hint":
     "Jika sponsor Anda adalah orang tua, pertanyaan ini mengenai pernikahan orang tua Anda. Pilih Tidak berlaku jika hubungan keluarga tidak melibatkan pernikahan.",
   "why.family_marriage_registered":
-    "Mesin menerima ya, tidak, atau UNKNOWN; status pencatatan tidak disimpulkan.",
+    "Kami memakai jawaban Anda apa adanya — ya, tidak, atau tidak tahu. Status pencatatan pernikahan tidak diasumsikan.",
   "q.family_stepchild_marriage_certificate_confirmed":
     "Dapatkah Anda memberikan akta nikah orang tua WNI Anda dan pasangan WNA-nya?",
   "q.family_stepchild_marriage_certificate_confirmed.hint":
     "Ini adalah akta nikah untuk pernikahan campuran WNI-WNA yang menjadi dasar hubungan anak tiri.",
   "why.family_stepchild_marriage_certificate_confirmed":
-    "Mesin memeriksa fakta bukti ini secara langsung; tidak disimpulkan dari jawaban pernikahan tercatat di atas.",
+    "Kami menanyakan dokumen ini secara langsung. Dokumen ini tidak diasumsikan dari jawaban pernikahan tercatat di atas.",
   "q.family_stepchild_birth_certificate_confirmed":
     "Dapatkah Anda memberikan akta lahir anak tiri?",
   "q.family_stepchild_birth_certificate_confirmed.hint":
     "Akta lahir sebaiknya menunjukkan orang tua kandung yang merupakan bagian dari pernikahan campuran.",
   "why.family_stepchild_birth_certificate_confirmed":
-    "Bukti akta lahir dikirim sebagai fakta keputusan boolean tersendiri.",
+    "Bukti akta lahir dicatat sebagai jawaban ya atau tidak tersendiri.",
   "q.family_sponsor_confirmed":
     "Apakah sponsor keluarga sudah mengonfirmasi dukungan proses?",
   "q.family_sponsor_confirmed.hint":
     "Pilih ya hanya setelah sponsor menyetujuinya.",
   "why.family_sponsor_confirmed":
-    "Konfirmasi sponsor dikirim sebagai fakta keputusan boolean tersendiri.",
+    "Konfirmasi sponsor dicatat sebagai jawaban ya atau tidak tersendiri.",
   "q.retirement_penjamin_confirmed":
     "Apakah Anda sudah memiliki penjamin — biro visa berlisensi atau seseorang di Indonesia — yang akan mensponsori KITAS pensiun Anda?",
   "q.retirement_penjamin_confirmed.hint":
     "Jika belum, Bali Zero dapat bertindak sebagai penjamin Anda.",
   "why.retirement_penjamin_confirmed":
-    "Konfirmasi penjamin dikirim sebagai fakta keputusan boolean tersendiri.",
+    "Konfirmasi penjamin dicatat sebagai jawaban ya atau tidak tersendiri.",
 
   "q.retirement_basis": "Dasar mana yang dapat Anda buktikan saat ini?",
   "q.retirement_basis.hint":
@@ -1602,7 +1598,7 @@ const id: Record<Keys, string> = {
   "q.retirement_basis.opt.family_sponsor": "Sponsor keluarga yang dikonfirmasi",
   "q.retirement_basis.opt.undecided": "Saya belum memilih dasar",
   "why.retirement_basis":
-    "Tidak ada fakta mesin yang cocok untuk label ini. Label hanya mengarahkan input persis berikutnya.",
+    "Ini hanya menentukan pertanyaan berikutnya dan tidak dipakai untuk hal lain.",
   "q.retirement_undecided_basis":
     "Yang mana dari berikut yang dapat Anda buktikan saat ini?",
   "q.retirement_undecided_basis.hint":
@@ -1614,7 +1610,7 @@ const id: Record<Keys, string> = {
   "q.retirement_undecided_basis.opt.still_unsure":
     "Saya masih belum bisa memastikan",
   "why.retirement_undecided_basis":
-    "Tidak ada fakta mesin yang cocok untuk label ini juga. Hanya mengarahkan input persis berikutnya, sama seperti pertanyaan dasar di atas.",
+    "Ini juga hanya menentukan pertanyaan berikutnya, sama seperti pertanyaan dasar di atas.",
   "q.secondhome_basis":
     "Dasar Second Home mana yang dapat Anda buktikan saat ini?",
   "q.secondhome_basis.hint":
@@ -1622,36 +1618,36 @@ const id: Record<Keys, string> = {
   "q.secondhome_basis.opt.bank_deposit": "Deposito bank atas nama saya",
   "q.secondhome_basis.opt.property": "Properti yang memenuhi syarat",
   "why.secondhome_basis":
-    "Ini hanya menentukan pertanyaan bukti berikutnya; mesin menerima buktinya sendiri, bukan label ini.",
+    "Ini hanya menentukan pertanyaan bukti berikutnya. Yang kami pakai adalah bukti yang Anda berikan, bukan pilihan ini.",
   "q.secondhome_deposit_usd": "Berapa deposito bank yang dapat Anda buktikan?",
   "q.secondhome_deposit_usd.hint":
     "Masukkan jumlah dolar bulat yang tepat; pilih Tidak yakin daripada memperkirakan.",
   "q.secondhome_deposit_usd.label": "Deposito bank terdokumentasi",
   "why.secondhome_deposit_usd":
-    "Jumlah persis dipetakan ke secondhome.bank_deposit_usd; tidak ada ambang yang ditampilkan di sini.",
+    "Kami memakai jumlah persis yang Anda berikan. Tidak ada ambang batas yang ditampilkan di sini.",
   "q.secondhome_state_bank": "Apakah deposito berada di bank BUMN Indonesia?",
   "q.secondhome_state_bank.hint": "Jawab berdasarkan dokumen bank.",
   "why.secondhome_state_bank":
-    "Nilai ya atau tidak ini dikirim terpisah dari jumlah deposito.",
+    "Jawaban ya atau tidak Anda dicatat terpisah dari jumlah deposito.",
   "q.secondhome_own_name": "Apakah seluruh deposito atas nama Anda sendiri?",
   "q.secondhome_own_name.hint":
     "Jangan gabungkan rekening atau pemilik rekening.",
   "why.secondhome_own_name":
-    "Nilai ya atau tidak ini dikirim terpisah; antarmuka tidak pernah mengasumsikan kepemilikan.",
+    "Jawaban ya atau tidak Anda dicatat terpisah. Kami tidak pernah mengasumsikan kepemilikan.",
   "q.secondhome_property_value_usd":
     "Berapa nilai properti yang dapat Anda buktikan untuk rencana ini?",
   "q.secondhome_property_value_usd.hint":
     "Masukkan nilai dolar bulat yang didukung dokumen.",
   "q.secondhome_property_value_usd.label": "Nilai properti terdokumentasi",
   "why.secondhome_property_value_usd":
-    "Mesin menerima nilai persis. Kepemilikan dan bentuk penguasaan tidak disimpulkan dari izin tinggal.",
+    "Kami memakai nilai persis yang Anda berikan. Kepemilikan dan bentuk penguasaan tidak diasumsikan dari izin tinggal.",
   "q.secondhome_passive_income_usd":
     "Berapa penghasilan pasif bulanan yang dapat Anda buktikan?",
   "q.secondhome_passive_income_usd.hint":
     "Masukkan jumlah bulanan dolar bulat yang tepat.",
   "q.secondhome_passive_income_usd.label": "Penghasilan pasif terdokumentasi",
   "why.secondhome_passive_income_usd":
-    "Jumlah bulanan dipetakan langsung ke fakta mesin dan tidak pernah diperkirakan dari aset.",
+    "Jumlah bulanan dipakai persis seperti yang Anda masukkan dan tidak pernah diperkirakan dari aset.",
 
   "q.study_level": "Tingkat studi apa yang Anda rencanakan?",
   "q.study_level.hint": "Pilih tingkat yang ditunjukkan oleh institusi.",
@@ -1662,23 +1658,23 @@ const id: Record<Keys, string> = {
   "q.study_level.opt.POSTGRADUATE": "Pascasarjana",
   "q.study_level.opt.RESEARCH": "Riset",
   "q.study_level.opt.OTHER": "Tingkat lain",
-  "why.study_level": "Tingkat studi enum tertutup dikirim tanpa perubahan.",
+  "why.study_level": "Tingkat studi Anda dipakai persis seperti pilihan Anda.",
   "q.study_admission_confirmed":
     "Apakah institusi Indonesia sudah mengonfirmasi penerimaan Anda?",
   "q.study_admission_confirmed.hint":
     "Permohonan yang masih diproses belum berarti penerimaan terkonfirmasi.",
   "why.study_admission_confirmed":
-    "Konfirmasi penerimaan dikirim sebagai fakta ya atau tidak tersendiri.",
+    "Konfirmasi penerimaan dicatat sebagai jawaban ya atau tidak tersendiri.",
   "q.study_sponsor_confirmed":
     "Apakah institusi atau sponsor studi sudah mengonfirmasi dukungan?",
   "q.study_sponsor_confirmed.hint":
     "Pilih ya hanya jika sponsor sudah menyetujui.",
   "why.study_sponsor_confirmed":
-    "Konfirmasi sponsor dikirim terpisah dari penerimaan.",
+    "Konfirmasi sponsor dicatat terpisah dari penerimaan.",
 
   "q.diaspora_connection": "Apa hubungan Anda dengan Indonesia?",
   "q.diaspora_connection.hint":
-    "Ini hanya konteks manusia; kewarganegaraan tetap menjadi fakta persis terpisah.",
+    "Ini hanya konteks untuk tim kami. Kewarganegaraan Anda ditanyakan terpisah.",
   "q.diaspora_connection.opt.former_wni": "Saya mantan warga negara Indonesia",
   "q.diaspora_connection.opt.descendant":
     "Saya keturunan warga negara Indonesia",
@@ -1687,7 +1683,7 @@ const id: Record<Keys, string> = {
   "q.diaspora_connection.opt.family": "Hubungan saya melalui keluarga",
   "q.diaspora_connection.opt.other": "Hubungan lain",
   "why.diaspora_connection":
-    "Mesin tidak memiliki fakta hubungan diaspora. Jawaban ini hanya disimpan sebagai konteks manusia.",
+    "Tidak ada aturan yang didasarkan pada hubungan diaspora, jadi jawaban ini hanya disimpan sebagai konteks untuk tim kami.",
   "q.diaspora_documents": "Apakah Anda dapat membuktikan hubungan tersebut?",
   "q.diaspora_documents.hint":
     "Jangan unggah dokumen di sini; jawab hanya apakah bukti tersedia.",
@@ -1696,7 +1692,7 @@ const id: Record<Keys, string> = {
 
   "q.other_purpose": "Kegiatan mana yang paling dekat dengan rencana Anda?",
   "q.other_purpose.hint":
-    "Konteks ini tidak diterjemahkan menjadi tujuan mesin atau kode produk.",
+    "Konteks ini tidak diubah menjadi tujuan atau pilihan visa.",
   "q.other_purpose.opt.transit": "Transit",
   "q.other_purpose.opt.medical": "Perawatan atau pendampingan medis",
   "q.other_purpose.opt.volunteer": "Kegiatan sukarela",
@@ -1706,12 +1702,12 @@ const id: Record<Keys, string> = {
   "q.other_purpose.opt.crew": "Awak transportasi",
   "q.other_purpose.opt.other": "Hal lain yang tidak tercantum",
   "why.other_purpose":
-    "Tidak ada fakta mesin satu-ke-satu untuk label ini, sehingga tetap menjadi konteks manusia.",
+    "Tidak ada satu aturan yang cocok dengan pilihan ini, jadi jawaban ini tetap menjadi konteks untuk tim kami.",
   "q.other_paid_activity": "Apakah ada bagian kegiatan ini yang dibayar?",
   "q.other_paid_activity.hint":
-    "Ini hanya konteks manusia; tidak dikonversi menjadi fakta ketenagakerjaan.",
+    "Ini hanya konteks untuk tim kami. Jawaban ini tidak diubah menjadi jawaban ketenagakerjaan.",
   "why.other_paid_activity":
-    "Mesin tidak memiliki fakta persis untuk pertanyaan luas ini, sehingga jawabannya tidak dapat mendukung rekomendasi.",
+    "Tidak ada aturan yang tepat untuk pertanyaan luas ini, sehingga jawabannya tidak dapat mendukung rekomendasi.",
 
   "q.stay_days": "Berapa hari Anda berencana tinggal?",
   "q.stay_days.hint":
@@ -1719,13 +1715,13 @@ const id: Record<Keys, string> = {
   "q.stay_days.label": "Rencana masa tinggal",
   "q.stay_days.unit": "hari",
   "why.stay_days":
-    "Mesin keputusan memeriksa durasi persis yang Anda rencanakan tanpa menebak dari rentang yang luas.",
+    "Kami memeriksa durasi persis yang Anda rencanakan, bukan menebak dari rentang yang luas.",
 
   "q.review_gate": "Ada hal lain yang perlu kami ketahui?",
   "q.review_gate.hint":
     "Centang semua yang berlaku — tidak menyebutkannya lebih merugikan Anda daripada menyebutkannya. Sebagian di antaranya, termasuk catatan kriminal, membuat kasus Anda ditinjau seseorang sebelum ada keputusan; sisanya menyertai hasil Anda sebagai kondisi tersurat yang ditelusuri tim kami bersama Anda sebelum pengajuan.",
   "why.review_gate":
-    "Setiap item di sini sampai ke mesin: tiga item riwayat keimigrasian sebagai fakta yang dibaca aturan ini, dan semuanya sebagai pengungkapan yang harus diperhitungkan dalam hasil.",
+    "Setiap item di sini diperhitungkan: tiga item riwayat keimigrasian berpengaruh langsung pada aturan, dan semuanya harus tercermin dalam hasil Anda.",
   "q.review_gate.opt.none": "Tidak ada yang berlaku bagi saya",
   "q.review_gate.opt.flagged": "Satu atau lebih berlaku",
   "q.review_gate.item.none": "Tidak ada yang berlaku bagi saya",
@@ -1754,9 +1750,9 @@ const id: Record<Keys, string> = {
   "assumption.stay_days":
     "Anda belum yakin tentang rencana masa tinggal, jadi tidak ada durasi yang diperkirakan.",
   "assumption.work_payer":
-    "Anda tidak yakin siapa yang menggaji Anda, jadi kami mencatatnya sebagai hal yang belum dipastikan; mesin tetap menilai semua yang bisa dinilai, dan konsultan Bali Zero akan memastikan poin ini bersama Anda.",
+    "Anda tidak yakin siapa yang menggaji Anda, jadi kami mencatatnya sebagai hal yang belum dipastikan; kami tetap menilai semua yang bisa dinilai, dan konsultan Bali Zero akan memastikan poin ini bersama Anda.",
   "assumption.remote_clients":
-    "Anda tidak yakin di mana klien Anda berada, jadi kami mencatatnya sebagai hal yang belum dipastikan; mesin tetap menilai semua yang bisa dinilai, dan konsultan Bali Zero akan memastikannya bersama Anda.",
+    "Anda tidak yakin di mana klien Anda berada, jadi kami mencatatnya sebagai hal yang belum dipastikan; kami tetap menilai semua yang bisa dinilai, dan konsultan Bali Zero akan memastikannya bersama Anda.",
   "assumption.secondhome_deposit_usd":
     "Anda tidak yakin berapa deposito bank yang dapat Anda buktikan, jadi rencana ini kami nilai seolah depositonya nol; konsultan Bali Zero akan memastikan angka sebenarnya bersama Anda.",
   "assumption.secondhome_property_value_usd":
@@ -1782,11 +1778,11 @@ const id: Record<Keys, string> = {
 
   "whyweask.trigger": "Mengapa kami tanyakan ini",
   "whyweask.trigger.aria": "Mengapa kami menanyakan pertanyaan ini",
-  "whyweask.fact_prefix": "Input keputusan: {{facts}}",
+  "whyweask.fact_prefix": "Dipakai untuk memutuskan: {{facts}}",
   "whyweask.review_only":
-    "Sinyal tinjauan; hanya fakta yang tercantum ini yang dapat dikirim: {{facts}}",
+    "Ditandai untuk ditinjau; hanya rincian berikut yang dipakai: {{facts}}",
   "whyweask.human_context":
-    "Hanya konteks manusia — tidak dikirim sebagai fakta mesin.",
+    "Hanya untuk konteks tim kami — tidak dipakai untuk memutuskan apa pun.",
 
   "back.button": "Kembali",
   "question.continue": "Lanjutkan",
@@ -1893,7 +1889,7 @@ const id: Record<Keys, string> = {
   "process.phase.intent": "Tujuan kedatangan Anda",
   "process.phase.details": "Rincian tujuan tersebut",
   "process.phase.review": "Pemeriksaan keamanan dan jawaban Anda",
-  "process.phase.outcome": "Jawaban mesin",
+  "process.phase.outcome": "Hasil Anda",
   "process.phase_status.done": "selesai",
   "process.phase_status.current": "sedang berjalan",
   "process.phase_status.partial": "sedang berlangsung",
@@ -1901,19 +1897,19 @@ const id: Record<Keys, string> = {
   "process.phase_status.pruned": "bukan cabang ini",
   "process.decides_title": "Yang ditentukan pertanyaan ini",
   "process.decides_fact":
-    "Jawaban Anda menetapkan fakta berikut, yang dibaca mesin:",
+    "Jawaban Anda menetapkan rincian berikut, yang kami pakai:",
   "process.decides_review":
-    "Jawaban Anda adalah sinyal keamanan: kasus ini dapat diteruskan ke petugas, dan mesin tidak pernah membacanya sebagai kelayakan.",
+    "Jawaban Anda adalah sinyal keamanan: kasus ini dapat diteruskan ke konsultan Bali Zero, dan tidak pernah dibaca sebagai kelayakan.",
   "process.decides_context":
-    "Tidak ada fakta mesin yang melekat pada pertanyaan ini. Pertanyaan ini mengarahkan pertanyaan berikutnya, dan masih dapat menjadi bagian dari fakta yang diturunkan mesin dari jawaban Anda secara keseluruhan.",
+    "Pertanyaan ini tidak menetapkan rincian tersendiri. Pertanyaan ini mengarahkan pertanyaan berikutnya, dan masih dapat menjadi bagian dari sesuatu yang kami simpulkan dari jawaban Anda secara keseluruhan.",
   "process.decides_none":
-    "Tidak ada pertanyaan yang terbuka. Mesin sudah menerima jawaban yang Anda konfirmasi.",
+    "Tidak ada pertanyaan yang terbuka. Kami sudah menerima jawaban yang Anda konfirmasi.",
   "process.decides_awaiting":
-    "Tidak ada pertanyaan yang terbuka. Jawaban Anda sudah dikonfirmasi; balasan mesin belum tampil di layar.",
+    "Tidak ada pertanyaan yang terbuka. Jawaban Anda sudah dikonfirmasi; hasil Anda belum tampil di layar.",
   "process.decides_framing":
     "Belum ada yang dijawab. Setiap pertanyaan menjelaskan apa yang ditentukan jawabannya sebelum Anda menjawab.",
   "process.decides_confirmation":
-    "Tidak ada pertanyaan yang terbuka. Mengonfirmasi jawaban inilah yang menanyakan mesin — dan menanyakannya lagi jika Anda pernah ke sini.",
+    "Tidak ada pertanyaan yang terbuka. Mengonfirmasi jawaban inilah yang memeriksa kasus Anda — dan memeriksanya lagi jika Anda pernah ke sini.",
   "process.categories_title": "Cabang tujuan",
   "process.category_status.current": "terbuka — sedang ditanyakan",
   "process.category_status.done": "sudah dijawab",
@@ -1923,15 +1919,15 @@ const id: Record<Keys, string> = {
     "{{count}} cabang ditutup ketika Anda memilih “{{category}}”. Jawaban di dalam cabang ini tidak dapat membukanya kembali — kembali ke pertanyaan tujuan untuk mengganti cabang.",
   "process.pruned_none":
     "Semua cabang tujuan masih terbuka. Memilih satu akan menutup yang lain.",
-  "process.candidates_title": "Produk yang disebut mesin",
+  "process.candidates_title": "Pilihan yang kami temukan untuk Anda",
   "process.candidates_pending":
-    "Belum ada produk yang disebut. Mesin baru ditanya setelah Anda mengonfirmasi jawaban — antarmuka ini tidak pernah memutuskan kelayakan sendiri.",
+    "Belum ada pilihan yang disebut. Kami baru memeriksa kasus Anda setelah Anda mengonfirmasi jawaban — alat ini tidak pernah memutuskan kelayakan sendiri.",
   "process.candidates_none":
-    "Mesin tidak menyebut produk apa pun untuk jawaban ini. Hasil di bawah menjelaskan alasannya.",
+    "Kami tidak menemukan pilihan untuk jawaban ini. Hasil di bawah menjelaskan alasannya.",
   "process.candidates_undecided":
-    "Mesin tidak menyebut produk untuk jawaban ini. Hasil di bawah menjelaskan alasannya.",
+    "Kami belum dapat menyebut pilihan untuk jawaban ini. Hasil di bawah menjelaskan alasannya.",
   "process.candidates_follow_up":
-    "Mesin sudah menerima jawaban Anda dan menyebut fakta yang masih diperlukan sebelum dapat memutuskan. Pertanyaan ini menanyakan fakta tersebut.",
+    "Kami sudah menerima jawaban Anda dan masih memerlukan satu rincian lagi sebelum dapat memutuskan. Pertanyaan ini menanyakannya.",
   "process.outcome_node":
     "Anda berada di simpul terakhir pohon ini: hasil di bawah adalah simpul tersebut, bukan halaman terpisah.",
   "process.jump_title": "Kembali ke sebuah jawaban",
@@ -1947,7 +1943,7 @@ const id: Record<Keys, string> = {
   "confirmation.title": "Berikut yang Anda sampaikan",
   "confirmation.your_answers": "Jawaban Anda",
   "confirmation.group.location": "Situasi saat ini",
-  "confirmation.group.identity": "Fakta identitas",
+  "confirmation.group.identity": "Tentang Anda",
   "confirmation.group.intent": "Tujuan Anda",
   "confirmation.group.details": "Rincian cabang",
   "confirmation.group.review": "Sinyal tinjauan",
@@ -2066,10 +2062,11 @@ const id: Record<Keys, string> = {
   "outcome.not_retryable":
     "Konsultan Bali Zero perlu memeriksanya sebelum Anda melanjutkan.",
   "outcome.sources_title": "Sumber yang digunakan untuk keputusan ini",
-  "outcome.source_dates": "Berlaku {{effective}} · diamati {{observed}}",
+  "outcome.source_dates":
+    "Berlaku sejak {{effective}} · terakhir diperiksa {{observed}}",
   "outcome.freshness.CURRENT": "Terkini",
-  "outcome.freshness.STALE": "Kedaluwarsa — perlu ditinjau",
-  "outcome.freshness.UNKNOWN": "Kesegaran sumber belum diketahui",
+  "outcome.freshness.STALE": "Sedang diperiksa ulang oleh tim kami",
+  "outcome.freshness.UNKNOWN": "Tanggal pemeriksaan terakhir tidak diketahui",
   "outcome.provenance.CLIENT_GUARD.title": "Akan ditinjau oleh seseorang",
   "outcome.provenance.CLIENT_GUARD.body":
     "Jawaban Anda perlu ditinjau seseorang sebelum jalur dapat ditampilkan.",
@@ -2082,7 +2079,7 @@ const id: Record<Keys, string> = {
     "Penilaian ini dicatat untuk verifikasi; tidak ada jalur visa yang ditampilkan dalam mode ini.",
   "outcome.provenance.PREVIEW.title": "Data pratinjau",
   "outcome.provenance.PREVIEW.body":
-    "Konten ini hanya untuk menguji antarmuka dan bukan rekomendasi.",
+    "Konten ini hanya untuk pengujian dan bukan rekomendasi.",
   "outcome.assumptions_receipt_title": "Yang kami asumsikan",
   "outcome.assumptions_receipt_empty":
     "Tidak ada asumsi yang diperlukan — semua jawaban diberikan langsung.",
