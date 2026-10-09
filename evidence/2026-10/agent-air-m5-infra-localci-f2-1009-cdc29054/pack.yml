@@ -64,7 +64,7 @@ bites:
     alone (the wrapper's own fetch lands in refs/merger/wrapper, both holding GitHub's main while the shadow runs). The armed path's
     live proof is owed to the day READY holds.
 ground:
-  ts: "2026-10-10T19:20:00Z"
+  ts: "2026-10-09T19:20:00Z"
   siblings: >-
     Worktree from origin/main 60c2a5c245. Other lanes on scripts/localci: dux-localci-b11, b11b, b8b (replay, prune), not the F path.
 spend:
@@ -74,38 +74,43 @@ receipts:
   - claim: "test_merger.py, test_merger_report.py, test_replay.py, test_merger_phase_f.py: 340 passed, 197 s (before the precheck); includes test_merger_phase_f.py::test_every_condition_true_makes_the_merge_commit_pushes_it_and_moves_the_mirror, test_one_false_condition_alone_means_no_merge_no_push_and_the_line_names_it, test_a_push_origin_rejects_is_push_refused_halts_for_good_and_the_mirror_keeps_its_main, test_the_key_never_reaches_the_journal_the_output_the_halt_file_or_anything_the_runner_sees and test_a_github_main_that_lost_the_last_pushed_merge_is_storage_diverged_and_halts_instead_of_being_taken."
     cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py scripts/localci/tests/test_replay.py scripts/localci/tests/test_merger_phase_f.py -q -p no:cacheprovider
     exit: 0
-    ts: "2026-10-10T19:12:00Z"
+    ts: "2026-10-09T19:12:00Z"
     seat: claude-opus-5-5 on M5
   - claim: "35 f2-* rules plus f1-step-not-called and f1-report-phase-f-live: 36/37 killed, survivor f2-criterion-empty-passes (an empty criterion with ok true); a test was added."
     cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <f2-* rules> f1-step-not-called f1-report-phase-f-live
     exit: 1
-    ts: "2026-10-10T18:50:00Z"
+    ts: "2026-10-09T18:50:00Z"
     seat: claude-opus-5-5 on M5
   - claim: "After the added test: f2-criterion-empty-passes plus every f1-* and b11-* rule: 51/51 killed; survivors none, errors none, stale none."
     cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only f2-criterion-empty-passes <every f1-* and b11-* rule from --list>
     exit: 0
-    ts: "2026-10-10T19:12:00Z"
+    ts: "2026-10-09T19:12:00Z"
     seat: claude-opus-5-5 on M5
   - claim: "After the READY precheck (ready_precheck, READY_MIN_MERGES/READY_MIN_DAYS shared with the report; spy tests: young journal and few PRs call no report, old journal calls it): the same 4 files give 344 passed, 167 s."
     cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py scripts/localci/tests/test_replay.py scripts/localci/tests/test_merger_phase_f.py -q -p no:cacheprovider
     exit: 0
-    ts: "2026-10-10T19:50:00Z"
+    ts: "2026-10-09T19:50:00Z"
     seat: claude-opus-5-5 on M5
   - claim: "13/13 killed: five f2-precheck-* rules, f2-ready-dropped, f2-ready-always, f2-ready-unreadable-passes and the ready-* rules re-anchored on the shared constants; no stale rule among the 359."
     cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <those 13 rules>
     exit: 0
-    ts: "2026-10-10T19:50:00Z"
+    ts: "2026-10-09T19:50:00Z"
     seat: claude-opus-5-5 on M5
   - claim: "Fix round (M1-M3, L1-L7): test_merger_phase_f.py, test_merger.py, test_merger_report.py, test_replay.py: 381 passed, 211 s (the run preceded one test-comment edit)."
     cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger_phase_f.py scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py scripts/localci/tests/test_replay.py -q -p no:cacheprovider
     exit: 0
-    ts: "2026-10-10T21:00:00Z"
+    ts: "2026-10-09T21:00:00Z"
     seat: claude-opus-5-5 on M5
   - claim: "41/41 killed (25 new f2-* rules of the fix round, f2-enqueue-kind-only-enqueued, and 15 neighbours/re-anchored f2-* rules); survivors none, errors none, stale none. The f1-*/b11-* set was not re-run by the lead's ruling (51/51 at the previous round; code untouched except through the arming path)."
     cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <those 41 rules>
     exit: 0
-    ts: "2026-10-10T21:40:00Z"
+    ts: "2026-10-09T21:40:00Z"
     seat: claude-opus-5-5 on M5
+  - claim: "Independent gate re-check (Opus 5.5, outside the chain) CONFIRMED ebeb6b72df: 381 passed (144 s) on the 4 files, 6/6 mutants killed (f2-ready-dropped, f2-wrapper-fetches-base, f2-ready-evaluated-despite-local-false, f2-precheck-no-slack, f2-halt-after-the-journal, f2-tree-check-dropped). Its LOWs L-a and L-c closed by the lead after it: the push ssh also refuses the system-wide known_hosts (-o GlobalKnownHostsFile=/dev/null, mutant f2-ssh-global-known-hosts-read), and the arming checklist gains the step 'live wrapper re-installed (cmp -s against origin/main) and LOCALCI_MERGER_ARMED unset' before the env. Then test_merger_phase_f.py 86 passed and 3/3 ssh mutants killed."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger_phase_f.py -q -p no:cacheprovider && python3 scripts/localci/tests/mutants/merger_mutants.py --only f2-ssh-global-known-hosts-read f2-ssh-known-hosts-unpinned f2-ssh-config-not-nulled
+    exit: 0
+    ts: "2026-10-09T22:00:00Z"
+    seat: claude-opus-5-5 on M5 (lead)
 dissent: []
 residuals:
   - "The armed path is proven on fakes only; its live proof is owed to the day READY holds."
