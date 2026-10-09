@@ -1,0 +1,755 @@
+{
+  "contrast": {
+    "/kbli mobile/light": {
+      "failures": 0,
+      "pairs": 143,
+      "min_ratio_all": 4.88,
+      "min_pair": {
+        "path": "div>section>div>div",
+        "px": 16,
+        "weight": 400,
+        "ratio": 4.88,
+        "need": 4.5,
+        "text": "Rating",
+        "opacity": 1,
+        "fg": [88, 98, 107],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli mobile/system-dark": {
+      "failures": 0,
+      "pairs": 143,
+      "min_ratio_all": 4.88,
+      "min_pair": {
+        "path": "div>section>div>div",
+        "px": 16,
+        "weight": 400,
+        "ratio": 4.88,
+        "need": 4.5,
+        "text": "Rating",
+        "opacity": 1,
+        "fg": [88, 98, 107],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli mobile/forced-dark": {
+      "failures": 0,
+      "pairs": 143,
+      "min_ratio_all": 4.88,
+      "min_pair": {
+        "path": "div>section>div>div",
+        "px": 16,
+        "weight": 400,
+        "ratio": 4.88,
+        "need": 4.5,
+        "text": "Rating",
+        "opacity": 1,
+        "fg": [88, 98, 107],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli desktop/light": {
+      "failures": 0,
+      "pairs": 148,
+      "min_ratio_all": 4.88,
+      "min_pair": {
+        "path": "div>section>div>div",
+        "px": 16,
+        "weight": 400,
+        "ratio": 4.88,
+        "need": 4.5,
+        "text": "Rating",
+        "opacity": 1,
+        "fg": [88, 98, 107],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli desktop/system-dark": {
+      "failures": 0,
+      "pairs": 148,
+      "min_ratio_all": 4.88,
+      "min_pair": {
+        "path": "div>section>div>div",
+        "px": 16,
+        "weight": 400,
+        "ratio": 4.88,
+        "need": 4.5,
+        "text": "Rating",
+        "opacity": 1,
+        "fg": [88, 98, 107],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli desktop/forced-dark": {
+      "failures": 0,
+      "pairs": 148,
+      "min_ratio_all": 4.88,
+      "min_pair": {
+        "path": "div>section>div>div",
+        "px": 16,
+        "weight": 400,
+        "ratio": 4.88,
+        "need": 4.5,
+        "text": "Rating",
+        "opacity": 1,
+        "fg": [88, 98, 107],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/55203 mobile/light": {
+      "failures": 0,
+      "pairs": 196,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 55203",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/55203 mobile/system-dark": {
+      "failures": 0,
+      "pairs": 196,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 55203",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/55203 mobile/forced-dark": {
+      "failures": 0,
+      "pairs": 196,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 55203",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/55203 desktop/light": {
+      "failures": 0,
+      "pairs": 201,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 55203",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/55203 desktop/system-dark": {
+      "failures": 0,
+      "pairs": 201,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 55203",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/55203 desktop/forced-dark": {
+      "failures": 0,
+      "pairs": 201,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 55203",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/51101 mobile/light": {
+      "failures": 0,
+      "pairs": 298,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 51101",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/51101 mobile/system-dark": {
+      "failures": 0,
+      "pairs": 298,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 51101",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/51101 mobile/forced-dark": {
+      "failures": 0,
+      "pairs": 298,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 51101",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/51101 desktop/light": {
+      "failures": 0,
+      "pairs": 303,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 51101",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/51101 desktop/system-dark": {
+      "failures": 0,
+      "pairs": 303,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 51101",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/51101 desktop/forced-dark": {
+      "failures": 0,
+      "pairs": 303,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 51101",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/56101 mobile/light": {
+      "failures": 0,
+      "pairs": 220,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 56101",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/56101 mobile/system-dark": {
+      "failures": 0,
+      "pairs": 220,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 56101",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/56101 mobile/forced-dark": {
+      "failures": 0,
+      "pairs": 220,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 56101",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/56101 desktop/light": {
+      "failures": 0,
+      "pairs": 225,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 56101",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/56101 desktop/system-dark": {
+      "failures": 0,
+      "pairs": 225,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 56101",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli/56101 desktop/forced-dark": {
+      "failures": 0,
+      "pairs": 225,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.relative.-mx-4>div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center",
+        "px": 14,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "KBLI 56101",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": [
+        ["Google reviews", 4.88],
+        ["Rating", 4.88],
+        ["Your Bali, from Zero.", 11.17]
+      ]
+    },
+    "/kbli-explorer mobile/light": {
+      "failures": 0,
+      "pairs": 17,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.border-t.border-[var(--border)]>div.grid.grid-cols-1>div.flex.items-start>span.flex-shrink-0.w-7",
+        "px": 12,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "1",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": []
+    },
+    "/kbli-explorer mobile/system-dark": {
+      "failures": 0,
+      "pairs": 17,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.border-t.border-[var(--border)]>div.grid.grid-cols-1>div.flex.items-start>span.flex-shrink-0.w-7",
+        "px": 12,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "1",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": []
+    },
+    "/kbli-explorer mobile/forced-dark": {
+      "failures": 0,
+      "pairs": 17,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.border-t.border-[var(--border)]>div.grid.grid-cols-1>div.flex.items-start>span.flex-shrink-0.w-7",
+        "px": 12,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "1",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": []
+    },
+    "/kbli-explorer desktop/light": {
+      "failures": 0,
+      "pairs": 32,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.border-t.border-[var(--border)]>div.grid.grid-cols-1>div.flex.items-start>span.flex-shrink-0.w-7",
+        "px": 12,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "1",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": []
+    },
+    "/kbli-explorer desktop/system-dark": {
+      "failures": 0,
+      "pairs": 32,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.border-t.border-[var(--border)]>div.grid.grid-cols-1>div.flex.items-start>span.flex-shrink-0.w-7",
+        "px": 12,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "1",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": []
+    },
+    "/kbli-explorer desktop/forced-dark": {
+      "failures": 0,
+      "pairs": 32,
+      "min_ratio_all": 4.53,
+      "min_pair": {
+        "path": "div.border-t.border-[var(--border)]>div.grid.grid-cols-1>div.flex.items-start>span.flex-shrink-0.w-7",
+        "px": 12,
+        "weight": 400,
+        "ratio": 4.53,
+        "need": 4.5,
+        "text": "1",
+        "opacity": 1,
+        "fg": [164, 75, 54],
+        "bg": [234, 227, 216]
+      },
+      "text_with_opacity_below_1": 0,
+      "unmeasurable_over_image": 0,
+      "horizontal_scroll": false,
+      "reds_of_7508": []
+    }
+  },
+  "defects": {
+    "innocence": "CLEAN",
+    "guilt": "ALL FIRE",
+    "trusted": true,
+    "findings": {
+      "/kbli": {
+        "duplicate_strings": 1
+      },
+      "/kbli/55203": {
+        "duplicate_strings": 3
+      },
+      "/kbli/51101": {
+        "duplicate_strings": 7,
+        "heading_order": 1
+      },
+      "/kbli/56101": {
+        "duplicate_strings": 5
+      },
+      "/kbli-explorer": {
+        "heading_order": 2
+      }
+    }
+  },
+  "shots": [
+    "kbli-mobile-light.png",
+    "kbli-mobile-system-dark.png",
+    "kbli-mobile-forced-dark.png",
+    "kbli-desktop-light.png",
+    "kbli-desktop-system-dark.png",
+    "kbli-desktop-forced-dark.png",
+    "kbli-55203-mobile-light.png",
+    "kbli-55203-mobile-system-dark.png",
+    "kbli-55203-mobile-forced-dark.png",
+    "kbli-55203-desktop-light.png",
+    "kbli-55203-desktop-system-dark.png",
+    "kbli-55203-desktop-forced-dark.png",
+    "kbli-51101-mobile-light.png",
+    "kbli-51101-mobile-system-dark.png",
+    "kbli-51101-mobile-forced-dark.png",
+    "kbli-51101-desktop-light.png",
+    "kbli-51101-desktop-system-dark.png",
+    "kbli-51101-desktop-forced-dark.png",
+    "kbli-56101-mobile-light.png",
+    "kbli-56101-mobile-system-dark.png",
+    "kbli-56101-mobile-forced-dark.png",
+    "kbli-56101-desktop-light.png",
+    "kbli-56101-desktop-system-dark.png",
+    "kbli-56101-desktop-forced-dark.png",
+    "kbli-explorer-mobile-light.png",
+    "kbli-explorer-mobile-system-dark.png",
+    "kbli-explorer-mobile-forced-dark.png",
+    "kbli-explorer-desktop-light.png",
+    "kbli-explorer-desktop-system-dark.png",
+    "kbli-explorer-desktop-forced-dark.png"
+  ]
+}

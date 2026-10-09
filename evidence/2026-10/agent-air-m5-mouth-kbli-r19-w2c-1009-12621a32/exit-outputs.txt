@@ -1,0 +1,124 @@
+All runs on M5, 2026-10-09 WITA. Code: c64efecb10 (rebased onto origin/main 1c7e989c85; the 5 main commits
+between the base and it touch no apps/mouth, scripts/mouth or workflow path). The dev server is
+`next dev --webpack -p 3587`, started and stopped by this lot, unless the command starts its own.
+
+== 1. Live census with the state walk (the fixture is this dump)
+$ python3 scripts/mouth/r19_wrapper_token_census.py --base-url http://localhost:3587 --json <scratch>/census3.jsonl
+captures: 30 ok, 0 failed
+  /kbli: 6/6 states, root [data-presentation=r19], elements [609]
+  /kbli/55203: 6/6 states, root [data-presentation=r19], elements [441]
+  /kbli/51101: 6/6 states, root [data-presentation=r19], elements [624, 644]
+  /kbli/56101: 6/6 states, root [data-presentation=r19], elements [477]
+  /kbli-explorer: 6/6 states, root [data-presentation=r19], elements [139]
+reads: 192 tokens (var 70, class 100, rule 11, component 11)
+defined-above-wrapper: 0 (informational; resolved outside the wrapper today)
+read-but-undefined: 0
+colors-outside-direction-a: 0
+state-rows-unseen: 0
+state-colors-off-contract: 0
+real 259,23
+user 169,09
+sys 29,28
+
+== 2. The committed fixture replayed
+$ python3 scripts/mouth/r19_wrapper_token_census.py --replay scripts/mouth/tests/fixtures/r19_wrapper_census.jsonl | tail -4
+read-but-undefined: 0
+colors-outside-direction-a: 0
+state-rows-unseen: 0
+state-colors-off-contract: 0
+
+== 3. W1 test with its own dev server (run before the prettier reformat of the wrapper CSS, whitespace only)
+$ cd apps/mouth && npm test -- r19-wrapper
+
+> mouth@5.2.0 test
+> vitest r19-wrapper
+
+
+ RUN  v4.1.11 /Users/balizero/nuzantara/.worktrees/mouth-kbli-r19-w2c-1009/apps/mouth
+
+innocence fixture: GREEN — palette-outside-direction-a (r19 scope, 1/1 captures): 0
+  W0 replay: read-but-undefined: 0 / colors-outside-direction-a: 0
+guilt fixture: RED (expected) — palette-outside-direction-a (r19 scope, 1/1 captures): 1
+  colour #0F172A x1 background-color via --kbli-bg-base e.g. div on fixture:guilt desktop/light
+  W0 replay: colors-outside-direction-a: 1
+undeclared-read fixture: read-but-undefined: 1
+var --kbli-w1-undeclared  e.g. div>main>p on fixture:undeclared desktop/light
+census (W0 judge on this run):
+captures: 30 ok, 0 failed
+  /kbli: 6/6 states, root [data-presentation=r19], elements [609]
+  /kbli/55203: 6/6 states, root [data-presentation=r19], elements [441]
+  /kbli/51101: 6/6 states, root [data-presentation=r19], elements [644]
+  /kbli/56101: 6/6 states, root [data-presentation=r19], elements [477]
+  /kbli-explorer: 6/6 states, root [data-presentation=r19], elements [139]
+reads: 192 tokens (var 70, class 100, rule 11, component 11)
+defined-above-wrapper: 0 (informational; resolved outside the wrapper today)
+read-but-undefined: 0
+colors-outside-direction-a: 0
+state-rows-unseen: INCOMPLETE (no judged walk)
+state-colors-off-contract: INCOMPLETE (0 walks failed, 0 ok, not a verdict)
+palette-outside-direction-a (r19 scope, 30/30 captures): 0
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  16:45:40
+   Duration  197.83s (transform 142ms, setup 624ms, import 883ms, tests 194.50s, environment 1.46s)
+
+real 199,20
+user 282,16
+sys 40,95
+exit 0
+
+== 4. Row-by-row probe: section 7.1 state rows and section 5 rest rows, injected in the wrapper on /kbli
+$ python3 state_rows_probe.py <repo> http://localhost:3587 state-rows-probe.json
+painted state rows: 69 | generated at this head: 60 (of which in a source that renders in the wrapper: 58) | no stylesheet rule names the class: 9
+  not generated group-hover:text-[#CCC]: in no apps/mouth source
+  not generated hover:border-[#D01033]/60: in no apps/mouth source
+  not generated hover:border-accent-sand/30: in no apps/mouth source
+  not generated hover:border-accent-sand/40: in no apps/mouth source
+  not generated hover:border-red-500/30: in no apps/mouth source
+  not generated placeholder-[#444]: in no apps/mouth source
+  not generated prose-a:text-accent-warm: in the source, no Tailwind rule (variant or plugin missing)
+  not generated prose-p:text-zinc-300: in the source, no Tailwind rule (variant or plugin missing)
+  not generated prose-strong:text-white: in the source, no Tailwind rule (variant or plugin missing)
+state-rows-probed-unseen: 0
+
+state-rows-probed-translucent: 0
+state-rows-probed-off-contract: 0
+rest class rows (section 5, no state variant, painted or type): 102 | judged (generated and in a source that renders in the wrapper): 56 | generated for other pages only (0 occurrences where the wrapper renders): 18 | no stylesheet rule: 28
+rest-rows-probed-translucent: 0
+
+
+rest-rows-probed-off-contract: 0
+
+== 5. Contrast with element opacity composited, 5 pages x 6 states (also renders the 30 PNGs)
+$ python3 live_probe.py <repo> http://localhost:3587 contrast.json
+contrast states with failures: 0 of 30 | min composited ratio over all text: 4.53 | text pairs measured: 5349
+defects: CLEAN | ALL FIRE | trusted: True
+{"/kbli": {"duplicate_strings": 1}, "/kbli/55203": {"duplicate_strings": 3}, "/kbli/51101": {"duplicate_strings": 7, "heading_order": 1}, "/kbli/56101": {"duplicate_strings": 5}, "/kbli-explorer": {"heading_order": 2}}
+
+== 6. Keyboard focus
+$ python3 tab_walk.py <repo> http://localhost:3587
+/kbli light chat textarea: focus-visible=True changed-levels=[1]
+/kbli light search input: focus-visible=True changed-levels=[0]
+/kbli dark chat textarea: focus-visible=True changed-levels=[1]
+/kbli dark search input: focus-visible=True changed-levels=[0]
+/kbli/55203 light chat textarea: focus-visible=True changed-levels=[1]
+/kbli/55203 dark chat textarea: focus-visible=True changed-levels=[1]
+TAB-WALK: PASS
+
+== 7. Colour classes the contract does not name
+$ python3 unmapped_scan.py <repo> unmapped-left.tsv http://localhost:3587
+unmapped colour classes in the fence: 76
+rendered on the five walked pages (desktop/light): 1
+  text-silver  rule=False  on /kbli-explorer
+
+== 8. Ledger of every contract class row
+$ python3 class_ledger.py <repo> origin/main contract-class-ledger.tsv state-rows-probe.json
+contract class rows: 224 (section 5 class 206, state table 81, both 63)
+  kept-by-name-no-rule-generated: 3 rows, 3 occurrences on origin/main, 3 here
+  kept-by-name-not-painted: 2 rows, 10 occurrences on origin/main, 9 here
+  kept-by-name-resolves-through-wrapper-token: 62 rows, 592 occurrences on origin/main, 825 here
+  kept-by-name-scoped-override: 44 rows, 83 occurrences on origin/main, 94 here
+  not-in-fence-source: 8 rows, 0 occurrences on origin/main, 0 here
+  removed-contract-not-painted: 51 rows, 66 occurrences on origin/main, 0 here
+  rewritten-to-contract-class: 54 rows, 233 occurrences on origin/main, 0 here

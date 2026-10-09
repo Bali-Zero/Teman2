@@ -1,0 +1,225 @@
+contract_class	table	contract_value	category	wrapper_override	occurrences_main	occurrences_head
+bg-[#050507]	5	paper #F7F4EE	rewritten-to-contract-class	no	2	0
+bg-[#080A0E]	5	paper #F7F4EE	rewritten-to-contract-class	no	1	0
+bg-[#0A0C10]/90	5	paper #F7F4EE	rewritten-to-contract-class	no	1	0
+bg-[#1c1c1e]/60	5	elevated #FFFCF7	rewritten-to-contract-class	no	1	0
+bg-[#2A3241]/10	5	not painted on this surface	removed-contract-not-painted	no	1	0
+bg-[#3b82f6]/10	5	not painted on this surface	removed-contract-not-painted	no	1	0
+bg-[rgba(255,255,255,0.02)]	5	elevated #FFFCF7	rewritten-to-contract-class	no	1	0
+bg-[rgba(255,255,255,0.03)]	5	elevated #FFFCF7	rewritten-to-contract-class	no	2	0
+bg-[var(--background)]	5	paper #F7F4EE	kept-by-name-resolves-through-wrapper-token	no	0	6
+bg-[var(--kbli-accent)]/40	5	copper #A44B36	kept-by-name-scoped-override	yes	1	1
+bg-[var(--kbli-bg-surface)]	5	elevated #FFFCF7	kept-by-name-resolves-through-wrapper-token	no	1	36
+bg-[var(--kbli-ink)]	5	ink #1D2C3B	kept-by-name-resolves-through-wrapper-token	no	1	5
+bg-[var(--kbli-ink)]/80	5	ink #1D2C3B	rewritten-to-contract-class	no	1	0
+bg-[var(--kbli-pma-closed-bg)]	5	elevated #FFFCF7	kept-by-name-resolves-through-wrapper-token	no	4	4
+bg-[var(--kbli-pma-open-bg)]	5	elevated #FFFCF7	kept-by-name-resolves-through-wrapper-token	no	4	4
+bg-[var(--kbli-pma-restricted-bg)]	5	elevated #FFFCF7	kept-by-name-resolves-through-wrapper-token	no	4	4
+bg-accent-sand/10	5	wash #EAE3D8	rewritten-to-contract-class	no	4	0
+bg-accent-sand/5	5	wash #EAE3D8	rewritten-to-contract-class	no	3	0
+bg-accent-warm/10	5	wash #EAE3D8	rewritten-to-contract-class	no	2	0
+bg-black/20	5	wash #EAE3D8	rewritten-to-contract-class	no	1	0
+bg-black/60	5	wash #EAE3D8	rewritten-to-contract-class	no	2	0
+bg-gradient-to-br	5	not painted on this surface	removed-contract-not-painted	no	1	0
+bg-gradient-to-r	5	not painted on this surface	removed-contract-not-painted	no	4	0
+bg-gradient-to-tr	5	not painted on this surface	removed-contract-not-painted	no	1	0
+bg-green-500	5	semantic #2E5E4E	kept-by-name-resolves-through-wrapper-token	no	1	1
+bg-linear-to-br	5	not painted on this surface	removed-contract-not-painted	no	2	0
+bg-linear-to-r	5	not painted on this surface	removed-contract-not-painted	no	1	0
+bg-slate-50	5	wash #EAE3D8	kept-by-name-resolves-through-wrapper-token	no	1	16
+bg-surface-deep	5	wash #EAE3D8	kept-by-name-resolves-through-wrapper-token	no	10	10
+bg-surface-deep/40	5	wash #EAE3D8	rewritten-to-contract-class	no	1	0
+bg-surface-deep/60	5	wash #EAE3D8	rewritten-to-contract-class	no	2	0
+bg-surface-deep/80	5	wash #EAE3D8	rewritten-to-contract-class	no	1	0
+bg-surface-editorial-elevated	5	elevated #FFFCF7	kept-by-name-resolves-through-wrapper-token	no	10	10
+bg-white	5	ink #1D2C3B	kept-by-name-resolves-through-wrapper-token	no	1	1
+bg-white/2	5	elevated #FFFCF7	rewritten-to-contract-class	no	1	0
+bg-white/5	5	elevated #FFFCF7	rewritten-to-contract-class	no	8	0
+bg-white/[0.03]	5	elevated #FFFCF7	rewritten-to-contract-class	no	6	0
+bg-white/[0.04]	5	elevated #FFFCF7	rewritten-to-contract-class	no	4	0
+bg-white/[0.06]	5	elevated #FFFCF7	rewritten-to-contract-class	no	6	0
+bg-white/[0.08]	5	elevated #FFFCF7	rewritten-to-contract-class	no	2	0
+bg-white/[0.10]	5	elevated #FFFCF7	rewritten-to-contract-class	no	2	0
+border-[#1c1c1e]	5	line #DAD8D1	rewritten-to-contract-class	no	1	0
+border-[color:var(--border-strong)]	5	line-strong #A8ACA9	kept-by-name-resolves-through-wrapper-token	no	0	3
+border-[rgba(212,132,90,0.2)]	5	line #DAD8D1	kept-by-name-scoped-override	yes	1	1
+border-[rgba(255,255,255,0.06)]	5	line #DAD8D1	rewritten-to-contract-class	no	1	0
+border-[rgba(255,255,255,0.07)]	5	line #DAD8D1	rewritten-to-contract-class	no	1	0
+border-[var(--border)]	5	line #DAD8D1	kept-by-name-resolves-through-wrapper-token	no	27	96
+border-[var(--kbli-border)]	5	line #DAD8D1	kept-by-name-resolves-through-wrapper-token	no	3	3
+border-[var(--kbli-pma-closed)]/20	5	semantic #8E2F2A	kept-by-name-scoped-override	yes	2	2
+border-[var(--kbli-pma-closed)]/30	5	semantic #8E2F2A	kept-by-name-scoped-override	yes	2	2
+border-[var(--kbli-pma-open)]/20	5	semantic #2E5E4E	kept-by-name-scoped-override	yes	3	3
+border-[var(--kbli-pma-open)]/30	5	semantic #2E5E4E	kept-by-name-scoped-override	yes	1	1
+border-[var(--kbli-pma-restricted)]/20	5	semantic #7A5A1E	kept-by-name-scoped-override	yes	3	3
+border-accent-sand/20	5	line #DAD8D1	kept-by-name-scoped-override	yes	11	11
+border-accent-sand/30	5	line #DAD8D1	kept-by-name-scoped-override	yes	6	6
+border-accent-warm/30	5	line #DAD8D1	kept-by-name-scoped-override	yes	3	3
+border-slate-200	5	line #DAD8D1	kept-by-name-resolves-through-wrapper-token	no	1	1
+border-white/10	5	line #DAD8D1	rewritten-to-contract-class	no	13	0
+border-white/5	5	line #DAD8D1	rewritten-to-contract-class	no	33	0
+border-white/[0.05]	5	line #DAD8D1	rewritten-to-contract-class	no	2	0
+border-white/[0.06]	5	line #DAD8D1	rewritten-to-contract-class	no	6	0
+border-white/[0.08]	5	line #DAD8D1	rewritten-to-contract-class	no	11	0
+border-white/[0.14]	5	line-strong #A8ACA9	rewritten-to-contract-class	no	1	0
+border-white/[0.1]	5	line-strong #A8ACA9	rewritten-to-contract-class	no	2	0
+brand-tagline	5	ink #1D2C3B	not-in-fence-source	yes	0	0
+drop-shadow-[0_0_8px_rgba(212,180,131,0.2)]	5	not painted on this surface	removed-contract-not-painted	no	1	0
+drop-shadow-lg	5	not painted on this surface	removed-contract-not-painted	no	2	0
+drop-shadow-md	5	not painted on this surface	removed-contract-not-painted	no	1	0
+drop-shadow-sm	5	not painted on this surface	removed-contract-not-painted	no	1	0
+filter	5	not painted on this surface	kept-by-name-not-painted	no	9	8
+focus-visible:ring-2	7.1	copper #A44B36	kept-by-name-resolves-through-wrapper-token	no	5	5
+focus-visible:ring-[var(--kbli-accent)]	7.1	copper #A44B36	kept-by-name-resolves-through-wrapper-token	no	5	5
+focus-within:bg-[#1c1c1e]	5+7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	1	1
+focus-within:border-accent-warm/40	5+7.1	copper #A44B36	kept-by-name-scoped-override	yes	1	1
+focus-within:shadow-[0_0_20px_rgba(212,132,90,0.15)]	5+7.1	not painted on this surface	removed-contract-not-painted	no	1	0
+focus:border-accent-sand/30	5+7.1	copper #A44B36	kept-by-name-scoped-override	yes	1	1
+focus:border-white/[0.15]	5+7.1	muted #58626B	kept-by-name-scoped-override	yes	1	1
+focus:ring-1	5+7.1	copper #A44B36	kept-by-name-resolves-through-wrapper-token	no	1	1
+focus:ring-2	5+7.1	copper #A44B36	kept-by-name-resolves-through-wrapper-token	no	1	1
+focus:ring-[#D4B483]/30	5+7.1	copper #A44B36	kept-by-name-scoped-override	yes	1	1
+focus:ring-[#dc2626]	5+7.1	copper #A44B36	kept-by-name-scoped-override	yes	1	1
+font-black	5	type Fraunces 450 display	kept-by-name-resolves-through-wrapper-token	no	4	4
+font-bold	5	type Manrope 400 15px/1.75	kept-by-name-resolves-through-wrapper-token	no	97	97
+font-extrabold	5	type Fraunces 450 display	kept-by-name-resolves-through-wrapper-token	no	2	2
+font-light	5	type Manrope 400 15px/1.75	kept-by-name-resolves-through-wrapper-token	no	6	6
+font-medium	5	type Manrope 400 15px/1.75	kept-by-name-resolves-through-wrapper-token	no	48	48
+font-mono	5	type Manrope 400 15px/1.75	kept-by-name-resolves-through-wrapper-token	no	19	19
+font-sans	5	type Manrope 400 15px/1.75	kept-by-name-resolves-through-wrapper-token	no	2	3
+font-semibold	5	type Manrope 400 15px/1.75	kept-by-name-resolves-through-wrapper-token	no	38	38
+font-serif	5	type Fraunces 450 display	kept-by-name-resolves-through-wrapper-token	no	11	11
+from-[#D4B483]	5	not painted on this surface	removed-contract-not-painted	no	2	0
+from-[#D4B483]/20	5	not painted on this surface	removed-contract-not-painted	no	1	0
+from-[#D4B483]/40	5	not painted on this surface	removed-contract-not-painted	no	1	0
+from-[#d4845a]	5	not painted on this surface	removed-contract-not-painted	no	3	0
+from-white	5	not painted on this surface	removed-contract-not-painted	no	1	0
+group-focus-visible:bg-[color-mix(in_srgb,var(--accent-zantara)_10%,transparent)]	5+7.1	wash #EAE3D8	not-in-fence-source	yes	0	0
+group-focus-visible:border-[color:var(--accent-zantara)]	5+7.1	structure #233D52	not-in-fence-source	no	0	0
+group-focus-visible:text-[color:var(--accent-zantara)]	5+7.1	structure #233D52	not-in-fence-source	no	0	0
+group-focus-within:text-zinc-300	5+7.1	ink #1D2C3B	kept-by-name-resolves-through-wrapper-token	no	1	1
+group-hover:bg-[color-mix(in_srgb,var(--accent-zantara)_10%,transparent)]	5+7.1	wash #EAE3D8	not-in-fence-source	yes	0	0
+group-hover:bg-accent-warm/15	5+7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	1	1
+group-hover:border-[color:var(--accent-zantara)]	5+7.1	structure #233D52	not-in-fence-source	no	0	0
+group-hover:border-accent-warm/40	5+7.1	copper #A44B36	kept-by-name-scoped-override	yes	1	1
+group-hover:shadow-[0_0_25px_rgba(212,132,90,0.2),inset_0_1px_0_rgba(212,132,90,0.1)]	5+7.1	not painted on this surface	removed-contract-not-painted	no	1	0
+group-hover:text-[#CCC]	5+7.1	ink #1D2C3B	rewritten-to-contract-class	no	1	0
+group-hover:text-[color:var(--accent-zantara)]	5+7.1	structure #233D52	not-in-fence-source	no	0	0
+group-hover:text-[var(--kbli-accent)]	5+7.1	copper #A44B36	kept-by-name-resolves-through-wrapper-token	no	4	4
+group-hover:text-accent-sand	5+7.1	copper #A44B36	kept-by-name-resolves-through-wrapper-token	no	4	4
+group-hover:text-accent-warm	5+7.1	copper #A44B36	kept-by-name-resolves-through-wrapper-token	no	2	2
+group-hover:text-white	5+7.1	ink #1D2C3B	kept-by-name-resolves-through-wrapper-token	no	5	6
+group-hover:text-zinc-300	5+7.1	ink #1D2C3B	kept-by-name-resolves-through-wrapper-token	no	1	1
+hover:bg-[#151921]	5+7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	3	3
+hover:bg-[#252932]	7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	1	1
+hover:bg-[#C4A473]	7.1	copper #A44B36	kept-by-name-scoped-override	yes	3	3
+hover:bg-[#D01033]/90	5+7.1	copper #A44B36	kept-by-name-scoped-override	yes	1	1
+hover:bg-[rgba(255,255,255,0.06)]	5+7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	1	1
+hover:bg-[var(--kbli-accent)]/20	7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	1	1
+hover:bg-accent-sand/10	7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	1	1
+hover:bg-accent-warm/10	5+7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	1	1
+hover:bg-surface-editorial-elevated	5+7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	5	5
+hover:bg-white/5	5+7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	2	2
+hover:bg-white/[0.04]	7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	1	1
+hover:bg-white/[0.05]	5+7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	2	2
+hover:bg-white/[0.06]	5+7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	3	3
+hover:bg-white/[0.07]	5+7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	1	1
+hover:bg-white/[0.08]	7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	2	2
+hover:bg-white/[0.10]	7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	1	1
+hover:border-[#D01033]/60	5+7.1	copper #A44B36	rewritten-to-contract-class	no	1	0
+hover:border-[rgba(255,255,255,0.12)]	5+7.1	line-strong #A8ACA9	kept-by-name-scoped-override	yes	1	1
+hover:border-[var(--kbli-accent)]/40	5+7.1	copper #A44B36	rewritten-to-contract-class	yes	1	0
+hover:border-[var(--kbli-accent)]/60	7.1	copper #A44B36	kept-by-name-scoped-override	yes	1	1
+hover:border-accent-sand	5+7.1	copper #A44B36	kept-by-name-scoped-override	yes	2	13
+hover:border-accent-sand/20	7.1	copper #A44B36	kept-by-name-scoped-override	yes	2	2
+hover:border-accent-sand/30	5+7.1	copper #A44B36	rewritten-to-contract-class	no	3	0
+hover:border-accent-sand/40	5+7.1	copper #A44B36	rewritten-to-contract-class	no	3	0
+hover:border-accent-warm/40	5+7.1	copper #A44B36	rewritten-to-contract-class	yes	2	0
+hover:border-red-500/30	5+7.1	copper #A44B36	rewritten-to-contract-class	no	1	0
+hover:border-white/[0.1]	5+7.1	line-strong #A8ACA9	kept-by-name-scoped-override	yes	1	1
+hover:shadow-[0_0_15px_rgba(212,132,90,0.2)]	5+7.1	not painted on this surface	removed-contract-not-painted	no	1	0
+hover:shadow-[0_0_15px_rgba(212,132,90,0.4)]	5+7.1	not painted on this surface	removed-contract-not-painted	no	1	0
+hover:shadow-[0_0_20px_rgba(220,38,38,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]	5+7.1	not painted on this surface	removed-contract-not-painted	no	1	0
+hover:shadow-[0_0_40px_rgba(208,16,51,0.3)]	5+7.1	not painted on this surface	removed-contract-not-painted	no	1	0
+hover:shadow-[0_8px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)]	5+7.1	not painted on this surface	removed-contract-not-painted	no	1	0
+hover:shadow-[0_8px_32px_rgba(212,132,90,0.1)]	5+7.1	not painted on this surface	removed-contract-not-painted	no	1	0
+hover:shadow-[0_8px_32px_rgba(220,38,38,0.15)]	5+7.1	not painted on this surface	removed-contract-not-painted	no	1	0
+hover:shadow-[0_8px_40px_rgba(212,132,90,0.15),inset_0_1px_0_rgba(255,255,255,0.06)]	5+7.1	not painted on this surface	removed-contract-not-painted	no	1	0
+hover:shadow-xl	5+7.1	not painted on this surface	removed-contract-not-painted	no	2	0
+hover:text-[#888]	7.1	ink #1D2C3B	kept-by-name-scoped-override	yes	2	2
+hover:text-[var(--foreground-secondary)]	5+7.1	muted #58626B	kept-by-name-resolves-through-wrapper-token	no	7	7
+hover:text-[var(--kbli-accent)]	5+7.1	copper #A44B36	kept-by-name-resolves-through-wrapper-token	no	2	2
+hover:text-[var(--kbli-accent-hover)]	7.1	copper #A44B36	kept-by-name-resolves-through-wrapper-token	no	2	2
+hover:text-accent-sand	7.1	copper #A44B36	kept-by-name-resolves-through-wrapper-token	no	4	4
+hover:text-accent-warm	5+7.1	copper #A44B36	kept-by-name-resolves-through-wrapper-token	no	3	3
+hover:text-white	5+7.1	ink #1D2C3B	kept-by-name-resolves-through-wrapper-token	no	11	11
+hover:text-zinc-300	7.1	ink #1D2C3B	kept-by-name-resolves-through-wrapper-token	no	1	1
+kbli-flag-title	5	elevated #FFFCF7	kept-by-name-scoped-override	yes	1	1
+placeholder-[#444]	5+7.1	muted #58626B	rewritten-to-contract-class	no	1	0
+placeholder-zinc-400	5+7.1	muted #58626B	kept-by-name-resolves-through-wrapper-token	no	1	2
+placeholder-zinc-500	5+7.1	muted #58626B	kept-by-name-resolves-through-wrapper-token	no	1	1
+prose-a:text-accent-warm	7.1	copper #A44B36	kept-by-name-no-rule-generated	no	1	1
+prose-p:text-zinc-300	7.1	ink #1D2C3B	kept-by-name-no-rule-generated	no	1	1
+prose-strong:text-white	7.1	ink #1D2C3B	kept-by-name-no-rule-generated	no	1	1
+scrollbar-thumb-white/10	5+7.1	line #DAD8D1	kept-by-name-scoped-override	yes	1	1
+scrollbar-track-transparent	5+7.1	not painted on this surface	kept-by-name-not-painted	no	1	1
+selection:bg-accent-sand/30	5+7.1	wash #EAE3D8	kept-by-name-scoped-override	yes	1	1
+selection:text-accent-sand	5+7.1	ink #1D2C3B	kept-by-name-scoped-override	yes	1	1
+shadow-2xl	5	not painted on this surface	removed-contract-not-painted	no	3	0
+shadow-[-5px_0_30px_rgba(0,0,0,0.2)]	5	not painted on this surface	removed-contract-not-painted	no	1	0
+shadow-[0_0_15px_rgba(212,132,90,0.2)]	5	not painted on this surface	removed-contract-not-painted	no	1	0
+shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)]	5	not painted on this surface	removed-contract-not-painted	no	1	0
+shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)]	5	not painted on this surface	removed-contract-not-painted	no	1	0
+shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)]	5	not painted on this surface	removed-contract-not-painted	no	1	0
+shadow-[0_4px_24px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.04)]	5	not painted on this surface	removed-contract-not-painted	no	1	0
+shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)]	5	not painted on this surface	removed-contract-not-painted	no	1	0
+shadow-[0_8px_32px_rgba(0,0,0,0.4)]	5	not painted on this surface	removed-contract-not-painted	no	1	0
+shadow-[5px_0_30px_rgba(0,0,0,0.3)]	5	not painted on this surface	removed-contract-not-painted	no	1	0
+shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]	5	not painted on this surface	removed-contract-not-painted	no	1	0
+shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_8px_rgba(0,0,0,0.2)]	5	not painted on this surface	removed-contract-not-painted	no	1	0
+shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]	5	not painted on this surface	removed-contract-not-painted	no	1	0
+shadow-inner	5	not painted on this surface	removed-contract-not-painted	no	1	0
+shadow-md	5	not painted on this surface	removed-contract-not-painted	no	1	0
+shadow-sm	5	not painted on this surface	removed-contract-not-painted	no	3	0
+text-[#050507]	5	ink #1D2C3B	rewritten-to-contract-class	no	5	0
+text-[#333]	5	muted #58626B	rewritten-to-contract-class	no	3	0
+text-[#444]	5	muted #58626B	rewritten-to-contract-class	no	9	0
+text-[#555]	5	muted #58626B	rewritten-to-contract-class	no	16	0
+text-[#666]	5	muted #58626B	rewritten-to-contract-class	no	9	0
+text-[#888]	5	muted #58626B	rewritten-to-contract-class	no	27	0
+text-[#999]	5	muted #58626B	rewritten-to-contract-class	no	6	0
+text-[#CCC]	5	ink #1D2C3B	rewritten-to-contract-class	no	9	0
+text-[#F0F0F0]	5	ink #1D2C3B	rewritten-to-contract-class	no	5	0
+text-[color:var(--footer-icon-color,rgba(255,255,255,0.72))]	5	muted #58626B	not-in-fence-source	no	0	0
+text-[var(--accent-whatsapp-ink)]	5	elevated #FFFCF7	kept-by-name-resolves-through-wrapper-token	no	1	7
+text-[var(--foreground)]	5	ink #1D2C3B	kept-by-name-resolves-through-wrapper-token	no	10	33
+text-[var(--foreground-muted)]	5	muted #58626B	kept-by-name-resolves-through-wrapper-token	no	53	53
+text-[var(--foreground-secondary)]	5	muted #58626B	kept-by-name-resolves-through-wrapper-token	no	36	36
+text-[var(--kbli-accent)]	5	copper #A44B36	kept-by-name-resolves-through-wrapper-token	no	19	20
+text-[var(--kbli-amber)]	5	semantic #7A5A1E	kept-by-name-resolves-through-wrapper-token	no	1	1
+text-[var(--kbli-pma-closed)]	5	semantic #8E2F2A	kept-by-name-resolves-through-wrapper-token	no	4	4
+text-[var(--kbli-pma-open)]	5	semantic #2E5E4E	kept-by-name-resolves-through-wrapper-token	no	4	4
+text-[var(--kbli-pma-restricted)]	5	semantic #7A5A1E	kept-by-name-resolves-through-wrapper-token	no	4	4
+text-[var(--kbli-text-muted)]	5	muted #58626B	kept-by-name-resolves-through-wrapper-token	no	11	83
+text-[var(--kbli-text-primary)]	5	ink #1D2C3B	kept-by-name-resolves-through-wrapper-token	no	5	5
+text-accent-sand	5	copper #A44B36	kept-by-name-resolves-through-wrapper-token	no	26	26
+text-accent-warm	5	copper #A44B36	kept-by-name-resolves-through-wrapper-token	no	6	6
+text-amber-400	5	semantic #7A5A1E	kept-by-name-resolves-through-wrapper-token	no	4	4
+text-slate-500	5	muted #58626B	kept-by-name-resolves-through-wrapper-token	no	1	1
+text-white	5	ink #1D2C3B	kept-by-name-resolves-through-wrapper-token	no	20	18
+text-white/40	5	muted #58626B	rewritten-to-contract-class	no	1	0
+text-white/50	5	muted #58626B	rewritten-to-contract-class	no	1	0
+text-white/60	5	muted #58626B	rewritten-to-contract-class	no	1	0
+text-white/80	5	ink #1D2C3B	rewritten-to-contract-class	no	1	0
+text-white/90	5	ink #1D2C3B	rewritten-to-contract-class	no	2	0
+text-zinc-100	5	ink #1D2C3B	kept-by-name-resolves-through-wrapper-token	no	1	1
+text-zinc-300	5	ink #1D2C3B	kept-by-name-resolves-through-wrapper-token	no	3	3
+text-zinc-400	5	muted #58626B	kept-by-name-resolves-through-wrapper-token	no	27	25
+to-[#0A0C10]	5	not painted on this surface	removed-contract-not-painted	no	1	0
+to-[#3b82f6]	5	not painted on this surface	removed-contract-not-painted	no	2	0
+to-[#8C7350]	5	not painted on this surface	removed-contract-not-painted	no	1	0
+to-[#b36a46]	5	not painted on this surface	removed-contract-not-painted	no	1	0
+to-transparent	5	not painted on this surface	removed-contract-not-painted	no	1	0
+to-white/70	5	not painted on this surface	removed-contract-not-painted	no	1	0
+via-[#D4B483]/10	5	not painted on this surface	removed-contract-not-painted	no	1	0
+via-[#a855f7]	5	not painted on this surface	removed-contract-not-painted	no	2	0

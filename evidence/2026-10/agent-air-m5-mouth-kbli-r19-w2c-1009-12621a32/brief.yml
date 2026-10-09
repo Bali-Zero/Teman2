@@ -1,0 +1,31 @@
+task_id: kbli-r19-w2c-1009
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, lot W2'' (Track W, BLUE), successor of the closed #8139 (gate BLOCK)
+  and #8118. Put /kbli, /kbli/[code] and /kbli-explorer onto the R19 wrapper token contract with
+  contract fidelity row by row, the section 7 state table included: every hover, focus and
+  selection colour paints its row's hex, opaque; the census state walk reads 0 unseen and 0 off
+  contract, and it runs in CI on every apps/mouth PR.
+constraints:
+  - "Contract is the authority, row by row, section 7 included. No contract edit; a role that looks wrong ships and is listed as an amendment candidate."
+  - "Fence: the /kbli* wrapper files, the 3 route files, the wrapper token CSS, the CI job, the census fixture and its pinned test, evidence. The MobileNav paper prop was accepted on #8139."
+  - "No npm install or npm ci. Dev server on port 3587, started and stopped by this lot."
+acceptance:
+  - text: "WHEN the census runs live at this head, THEN read-but-undefined 0, colors-outside-direction-a 0, state-rows-unseen 0 and state-colors-off-contract 0."
+    probe: "python3 scripts/mouth/r19_wrapper_token_census.py"
+  - text: "WHEN the W1 test runs, THEN palette-outside-direction-a (r19 scope, 30/30 captures) prints 0."
+    probe: "cd apps/mouth && npm test -- r19-wrapper"
+  - text: "WHEN every painted state row whose class Tailwind generates is injected in the wrapper and driven into its state, THEN each paints its row hex with no alpha."
+    probe: "python3 state_rows_probe.py"
+  - text: "WHEN live_probe.py composites element opacity into the text colour on 5 pages x 6 states, THEN no text pair is below its threshold."
+    probe: "python3 live_probe.py"
+consumer_map:
+  - "r19-wrapper-census-tests / wrapper-census-states runs the live census with its state walk on every apps/mouth PR and asserts the four printed verdict lines."
+  - "r19-wrapper-census-tests / wrapper-census-live asserts the printed palette line, JUDGED on 30/30 captures."
+risks:
+  - "Contract roles that look heavy or flat on paper ship as specified and are listed as amendment candidates."
+  - "Colour classes the contract does not name still paint where the walk does not reach (modals, search results, error pages, chat answers): unmapped-left.tsv names each with its reason."
+grader: |
+  A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha.

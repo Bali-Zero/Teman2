@@ -1,0 +1,76 @@
+brief_ref: evidence/2026-10/agent-air-m5-mouth-kbli-r19-w2c-1009-12621a32/brief.yml
+seat_override: >-
+  Dispatch by the imperator, mission kbli-nav-design-loop Track W lot W2'' (BLUE), successor of the
+  closed #8139 and #8118, rulings 1-11 of the dispatch. The Dux built and ran every exit command; it
+  does not self-sign. A fresh Opus gate is commissioned by the imperator.
+plan_ref: >-
+  docs/plans/2026-10-08-kbli-navigator-design-loop.md section 1 row W2; the contract
+  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md sections 5 and 7; gate BLOCK on #8139
+  (issuecomment-6074830792) and on #8118 (issuecomment-6073276765).
+lanes:
+  - lane: kbli-r19-w2c-1009
+    role: build
+    seat: "claude-opus-5-5 (Dux)"
+pii_scan: clean
+pii_scan_note: "KBLI classification data is public. No client data, no external seat."
+provenance: >-
+  #8139's head 1fc7c5ad29 code blobs (37 files) were checked out onto fresh origin/main; none of
+  them had changed on main since #8139's merge-base. Its wrapper CSS overrides were rewritten to the
+  section 7.4 selector, the section 7 rows were added, and the explorer selection classes moved to
+  the wrapper's content child. #8139's evidence scripts live_probe.py and tab_walk.py were carried;
+  live_probe.py gains three result fields (min pairs, the two #7508 reds by name, faded text).
+diff:
+  net_lines: |
+    Code and CI: apps +724 -394 (net 330, of which the wrapper CSS is 359 lines and its token
+    block 131 of them), workflow +68 -2, census test +13 -8. The census fixture is a regenerated
+    data file (+192 -445). The rest is this evidence pack.
+  behaviour_change: >-
+    /kbli, /kbli/[code] and /kbli-explorer paint on paper in all three theme states. Hover and focus
+    fills are wash, hover and focus rules copper, rest borders line, selection wash under ink, the
+    footer's Zantara row hovers to a wash ground with structure ink, and every state colour is opaque.
+receipts:
+  - claim: "Live census at this content: every verdict line 0, including the state walk."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --base-url http://localhost:3587 --json <scratch>"
+    result: "read-but-undefined: 0; colors-outside-direction-a: 0; state-rows-unseen: 0; state-colors-off-contract: 0 (30 captures, 10 walks)"
+    exit: 0
+    ts: "2026-10-09T08:57:00Z"
+    seat: claude-opus-5-5
+  - claim: "W1 test: palette JUDGED on 30/30 r19 captures."
+    cmd: "cd apps/mouth && npm test -- r19-wrapper"
+    result: "Tests 6 passed (6); palette-outside-direction-a (r19 scope, 30/30 captures): 0"
+    exit: 0
+    ts: "2026-10-09T08:49:00Z"
+    seat: claude-opus-5-5
+  - claim: "Every painted state row Tailwind generates, and every section 5 rest row that can render in the wrapper, paints its row hex with no alpha."
+    cmd: "python3 state_rows_probe.py <repo> http://localhost:3587 state-rows-probe.json"
+    result: "state rows 60 generated (58 reachable): 0 unseen, 0 translucent, 0 off; rest rows 56 judged: 0 translucent, 0 off"
+    exit: 0
+    ts: "2026-10-09T09:09:00Z"
+    seat: claude-opus-5-5
+  - claim: "No text node composites below its threshold; keyboard focus visible on the chat textarea and the search input."
+    cmd: "python3 live_probe.py <repo> http://localhost:3587 out.json; python3 tab_walk.py <repo> http://localhost:3587"
+    result: "0 of 30 states with failures, min composited 4.53 over 5349 pairs, 0 text pairs under opacity < 1; TAB-WALK: PASS"
+    exit: 0
+    ts: "2026-10-09T09:13:00Z"
+    seat: claude-opus-5-5
+  - claim: "W0 suite, touched-area vitest and tsc stay green."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider; cd apps/mouth && npx vitest run src/app/kbli-explorer src/app/kbli src/components/kbli src/app/v2/_components src/components/r19 src/test/r19-colour-guard; npx tsc --noEmit -p tsconfig.json"
+    result: "45 passed; 44 files, 1079 tests passed; tsc 0 lines"
+    exit: 0
+    ts: "2026-10-09T09:06:00Z"
+    seat: claude-opus-5-5
+dissent:
+  - seat: claude-opus-5-5
+    objection: "#8139's gate: the selection override could not match the element carrying the class, hover:bg-surface-editorial-elevated painted elevated, the footer tint painted structure at 10%, and the body was not exact."
+    status: CONFIRMED
+    resolution: "Section 7.4 selector on every override, the selection classes on a descendant of the wrapper with an @scope descendant form, the two hovers painted wash; the census state walk now judges all of it and runs in CI."
+  - seat: claude-opus-5-5
+    objection: "The first census at this head named hover:border-accent-sand painting line on hover: the unlayered rest-border override outranked Tailwind's layered hover utility on the same element."
+    status: CONFIRMED
+    resolution: "The copper hover borders that share an element with a rest-border override get their own opaque state override, which outranks the rest one; the second census read 0."
+  - seat: claude-opus-5-5
+    objection: "A first full touched-area vitest run failed one timing test (800 components under 2 s took 2.56 s) at load average 23."
+    status: CONFIRMED
+    resolution: "Unrelated to this diff: the file is untouched by it; the test passed alone, and the full touched-area run passed 1079/1079 at load 16."
+grader: |
+  A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha.
