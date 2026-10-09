@@ -214,7 +214,9 @@ def read_state(repo: str, branch: str) -> dict:
     applied = gh_all(f"repos/{repo}/rules/branches/{branch}")   # every rule GitHub applies to the branch, inherited ones included
     return {"repo": repo, "branch": branch, "default_branch": default_branch,
             "classic": None if classic is None else classic_body(classic),
-            "branch_rules": sorted(([r.get("ruleset_id"), r.get("type")] for r in applied), key=str),
+            # each applied rule whole — its ruleset, type, source and parameters: a changed parameter is a changed state
+            "branch_rules": sorted(([r.get("ruleset_id"), r.get("type"), r.get("ruleset_source_type"), r.get("parameters")] for r in applied),
+                                   key=lambda x: json.dumps(x, sort_keys=True)),
             "ruleset_id": named[0]["id"], "ruleset": ruleset_body(named[0]),
             "ruleset_covers_branch": covers(named[0], branch, default_branch), "ruleset_only_branch": only_branch(named[0], branch, default_branch),
             "guards": [{"id": g["id"], **ruleset_body(g)} for g in guards],
@@ -244,10 +246,17 @@ def rollback_writes(saved: dict) -> list[dict]:
 def with_ruleset(state: dict, rs: dict) -> dict:
     """The state as it must read once the ruleset is ``rs``: its scope and the rules GitHub applies to the branch follow it."""
     rid, default = state["ruleset_id"], state["default_branch"]
-    own = [[rid, r.get("type")] for r in rs["rules"]] if rs.get("enforcement") == "active" else []
+    own = [[rid, r.get("type"), "Repository", r.get("parameters")] for r in rs["rules"]] if rs.get("enforcement") == "active" else []
     return {**state, "ruleset": rs, "ruleset_covers_branch": covers(rs, state["branch"], default),
             "ruleset_only_branch": only_branch(rs, state["branch"], default),
-            "branch_rules": sorted([*(x for x in state["branch_rules"] if x[0] != rid), *own], key=str)}
+            "branch_rules": sorted([*(x for x in state["branch_rules"] if x[0] != rid), *own], key=lambda x: json.dumps(x, sort_keys=True))}
+
+
+def applied_rules(state: dict) -> list:
+    """The rules GitHub applies to the branch, compared whole except the ruleset's own, whose parameters the ruleset itself is
+    judged on (a read-back may spell them otherwise): its entries keep their ruleset and type only."""
+    rid = state["ruleset_id"]
+    return sorted((x[:2] if x[0] == rid else x for x in state["branch_rules"]), key=lambda x: json.dumps(x, sort_keys=True))
 
 
 def diverges(fresh: dict, expected: dict) -> list[str]:
@@ -259,7 +268,9 @@ def diverges(fresh: dict, expected: dict) -> list[str]:
     same_ruleset = (is_target(rf) and all(rf.get(k) == rx.get(k) for k in ("name", "target", "conditions"))) if is_target(rx) else rf == rx
     if fresh["ruleset_id"] != expected["ruleset_id"] or not same_ruleset:
         out.append(f"ruleset {RULESET!r}")
-    out += [k for k in ("guards", "write_keys", "ruleset_covers_branch", "ruleset_only_branch", "branch_rules") if fresh[k] != expected[k]]
+    out += [k for k in ("guards", "write_keys", "ruleset_covers_branch", "ruleset_only_branch") if fresh[k] != expected[k]]
+    if applied_rules(fresh) != applied_rules(expected):
+        out.append("branch_rules")
     return out
 
 
@@ -344,11 +355,11 @@ def plan_blockers(state: dict, flip: bool, merger_key: str | None) -> list[str]:
     if not state["ruleset_only_branch"]:
         out.append(f"ruleset {RULESET!r} includes more than {state['branch']}: its update rule would freeze those branches too")
     # a guard counts only when GitHub's own rules/branches shows its deletion and non_fast_forward on the branch
-    proven = [g for g in state["guards"] if {(g["id"], "deletion"), (g["id"], "non_fast_forward")} <= {tuple(x) for x in state["branch_rules"]}]
+    proven = [g for g in state["guards"] if {(g["id"], "deletion"), (g["id"], "non_fast_forward")} <= {tuple(x[:2]) for x in state["branch_rules"]}]
     if not proven:
         out.append("no active ruleset without bypass actors forbids deletion AND force-push on the branch, as GitHub applies it "
                    "(rules/branches): the flip would open both")
-    if beside := [f"{t} (ruleset {rid})" for rid, t in state["branch_rules"] if rid != state["ruleset_id"] and t not in ALLOWED_BESIDE]:
+    if beside := [f"{t} (ruleset {rid})" for rid, t, *_ in state["branch_rules"] if rid != state["ruleset_id"] and t not in ALLOWED_BESIDE]:
         out.append("rules beside the ruleset's own would also stop the merger's push (rules layer, a bypass exempts only its own "
                    "ruleset): " + ", ".join(beside))
     if len(state["write_keys"]) != 1:

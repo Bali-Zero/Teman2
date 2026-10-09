@@ -68,14 +68,14 @@ spend:
   adversarial_rounds: 5
   wall_clock_hours: 5.5
 receipts:
-  - claim: 118 passed (test_phase_e_flip.py) at the ruling round.
+  - claim: 119 passed (test_phase_e_flip.py) after the round-5 Codex findings.
     cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_phase_e_flip.py -q -p no:cacheprovider
     exit: 0
     ts: "2026-10-10T22:05:00Z"
     seat: claude-opus-5-5 on M5
   - claim:
-      "Mutants 86/86 killed at the ruling round (one rule dropped as equivalent: the guard's enforcement check, which
-      the GitHub-side proof already covers); survivors, errors, stale none."
+      "Mutants 89/89 killed after the round-5 Codex findings (one rule dropped as equivalent: the guard's enforcement
+      check, which the GitHub-side proof already covers); survivors, errors, stale none."
     cmd: python3 scripts/localci/tests/mutants/phase_e_mutants.py
     exit: 0
     ts: "2026-10-10T22:06:00Z"
@@ -141,6 +141,27 @@ dissent:
     objection: "LOW: an integer like 10**400 makes math.isfinite raise OverflowError."
     status: CONFIRMED
     resolution: "Fixed: an int window is compared as an int, a float must be finite. Test test_a_huge_integer_window_is_read_without_a_crash."
+  - seat: codex-gpt-5.6 (read-only, xhigh) at 17494ed131
+    objection:
+      "MEDIUM: W1 kept only ruleset id and type of the applied rules, so an inherited rule's changed parameter (e.g.
+      review_on_push) passed as unchanged."
+    status: CONFIRMED
+    resolution:
+      "Fixed: applied rules are kept whole (ruleset, type, source, parameters) and compared whole, except the ruleset's
+      own rules, which the ruleset itself is judged on. Test test_a_parameter_of_an_inherited_rule_changed_before_the_first_write_writes_nothing;
+      mutants pe-applied-rule-parameters-dropped, pe-applied-rules-compared-by-type-only."
+  - seat: codex-gpt-5.6 (read-only, xhigh) at 17494ed131
+    objection:
+      "MEDIUM: the fake accepted a classic body with an integer where GitHub's schema wants a boolean (Python 1 ==
+      True)."
+    status: CONFIRMED
+    resolution:
+      "Fixed: the fake checks the JSON types of every classic PUT body (booleans, integers, strings, restrictions
+      null). Mutant pe-enforce-admins-as-int."
+  - seat: codex-gpt-5.6 (read-only, xhigh) at 17494ed131
+    objection: "LOW: the big-integer test truncated its report before reading it and did not pass it to the run."
+    status: CONFIRMED
+    resolution: "Fixed: the test reads, then writes, passes rep=path and asserts the huge window is read back with no blocker."
 residuals:
   - "Accepted by the ruling: GitHub's REST API has no compare-and-swap for rulesets or branch protection; a sub-second window
     remains between W1's read and its write. Quiescence (--quiescent, operator-declared) takes concurrent writers out of scope;

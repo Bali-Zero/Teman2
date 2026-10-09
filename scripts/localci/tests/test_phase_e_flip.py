@@ -119,7 +119,8 @@ class FakeGH:
         if m := re.fullmatch(rf"repos/{REPO}/rulesets/(\d+)", path):
             return ok(self.rulesets[int(m.group(1))])
         if m := re.fullmatch(rf"repos/{REPO}/rules/branches/main\?per_page=100&page=(\d+)", path):
-            applied = [{"type": r["type"], "ruleset_id": rid, "ruleset_source_type": "Repository"}
+            applied = [{"type": r["type"], "ruleset_id": rid, "ruleset_source_type": rs.get("source_type", "Repository"),
+                        **({"parameters": r["parameters"]} if "parameters" in r else {})}
                        for rid, rs in self.rulesets.items() if rs["enforcement"] == "active" and rs["target"] == "branch"
                        and rid not in self.hidden_from_branch_rules
                        and {"refs/heads/main", "~DEFAULT_BRANCH", "~ALL"} & set(((rs.get("conditions") or {}).get("ref_name") or {}).get("include") or [])
@@ -140,6 +141,19 @@ class FakeGH:
         if method == "PUT" and path.endswith("/protection"):
             assert {"required_status_checks", "enforce_admins", "required_pull_request_reviews", "restrictions"} <= set(body), sorted(body)
             assert not (body["required_status_checks"] or {}).get("contexts"), "contexts beside checks"
+            # JSON types as GitHub's schema states them: a Python 1 == True would hide an integer where a boolean belongs
+            is_bool = lambda v: type(v) is bool                                   # noqa: E731
+            is_int = lambda v: type(v) is int                                     # noqa: E731
+            assert body["enforce_admins"] is None or is_bool(body["enforce_admins"]), body["enforce_admins"]
+            assert all(body.get(k) is None or is_bool(body[k]) for k in FLAGS), {k: body.get(k) for k in FLAGS}
+            rsc = body["required_status_checks"]
+            if rsc is not None:
+                assert is_bool(rsc["strict"]) and all(type(c["context"]) is str and is_int(c["app_id"]) for c in rsc["checks"]), rsc
+            rev = body["required_pull_request_reviews"]
+            if rev is not None:
+                assert is_int(rev["required_approving_review_count"]), rev
+                assert all(is_bool(rev[k]) for k in ("dismiss_stale_reviews", "require_code_owner_reviews", "require_last_push_approval") if k in rev), rev
+            assert body["restrictions"] is None
 
     def _write(self, method, path, body):
         if method == "PUT" and (m := re.fullmatch(rf"repos/{REPO}/rulesets/(\d+)", path)):
@@ -880,6 +894,23 @@ def test_a_report_without_a_since_key_is_refused(fake, tmp_path, capsys):
 
 def test_a_huge_integer_window_is_read_without_a_crash(fake, tmp_path, capsys):
     path = report(tmp_path)
-    open(path, "w").write(open(path).read().replace('"compared_days": 14.3', '"compared_days": ' + "1" + "0" * 400))
-    rc, out, _ = run(fake, tmp_path, capsys)
-    assert rc == 0 and "plan digest" in out
+    text = open(path).read().replace('"compared_days": 14.3', '"compared_days": ' + "1" + "0" * 400)
+    assert "0" * 400 in text
+    open(path, "w").write(text)
+    rc, out, _ = run(fake, tmp_path, capsys, rep=path)
+    assert rc == 0 and "compared_days 1" + "0" * 400 in out and "blockers for --apply: none" in out
+
+
+def test_a_parameter_of_an_inherited_rule_changed_before_the_first_write_writes_nothing(fake, tmp_path, capsys, monkeypatch):
+    fake.rulesets[88] = {"id": 88, "name": "org-copilot", "target": "branch", "source_type": "Organization", "enforcement": "active",
+                         "conditions": {"ref_name": {"exclude": [], "include": ["~ALL"]}}, "bypass_actors": [],
+                         "rules": [{"type": "copilot_code_review", "parameters": {"review_on_push": False}}]}
+    dig = plan_digest(fake, tmp_path, capsys)
+    real_save = pef.save_state
+    def save_then_change(*args):
+        path = real_save(*args)
+        fake.rulesets[88]["rules"][0]["parameters"]["review_on_push"] = True
+        return path
+    monkeypatch.setattr(pef, "save_state", save_then_change)
+    rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
+    assert rc == pef.EXIT_REFUSED and "changed since plan" in err and "'branch_rules'" in err and fake.writes() == []
