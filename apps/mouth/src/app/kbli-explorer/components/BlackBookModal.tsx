@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Send } from "lucide-react";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
+import { trackKBLICTA } from "@/lib/analytics";
 
 interface BlackBookModalProps {
   isOpen: boolean;
@@ -89,6 +90,7 @@ export default function BlackBookModal({
               <div className="space-y-3">
                 <a
                   href={buildWhatsAppLink("kbli")}
+                  onClick={() => trackKBLICTA("consult_click")}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 w-full py-4 bg-accent-sand text-[#050507] font-bold rounded-lg hover:bg-[#C4A473] transition-all"
