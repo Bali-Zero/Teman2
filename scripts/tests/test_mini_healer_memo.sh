@@ -86,6 +86,7 @@ post() { # $1 session-log text, $2 fingerprint-present(1/0), $3 total
 }
 state_field() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2],"-"))' \
     "$TMP/home/.organism/healer/mini-memo.json" "$1" 2>/dev/null || echo "-"; }
+builder_failed() { grep -c '^healer_memo check (rc=1): no fingerprint (receptor-state builder failed)' "$TMP/healer.log"; }
 reset() { rm -f "$TMP/home/.organism/healer/mini-memo.json"; }
 # ---- 1. first tick: no state -> spawn; fingerprint set; total = one per reason token
 reset
@@ -136,6 +137,7 @@ rearm; check "proprioception cure boundary moved -> spawn" "SPAWN" \
 rearm; check "new reason token -> spawn" "SPAWN" "$(REASONS_IN="$REASONS_BASE main-required-red:ci" pre)"
 rearm; check "ledger unreadable -> spawn (fail-open)" "SPAWN" "$(LEDGER=crash pre)"
 check "ledger unreadable logs the empty-fingerprint spawn" 1 "$(grep -c 'fail-open, spawning anyway' "$TMP/healer.log")"
+check "ledger unreadable: the builder-failed path ran" 1 "$(builder_failed)"
 rearm; check "convergence (ACTIONABLE=0) never memoizes" "SPAWN" "$(ACT=0 pre)"
 rearm; pre >/dev/null; pre >/dev/null; pre >/dev/null
 check "skip streak budget (3) is spent -> spawn again" "SPAWN" "$(pre)"
@@ -143,6 +145,12 @@ check "skip streak budget (3) is spent -> spawn again" "SPAWN" "$(pre)"
 # council cures (2026-10-09): content behind constant tokens, the uncapped board, no export
 rearm; check "HIGH change hidden by the hook's byte cap -> spawn" "SPAWN" "$(ESC="$ESC_B" pre)"
 rearm; check "board unreadable -> spawn (fail-open)" "SPAWN" "$(ESC='not-json' pre)"
+check "board unreadable: the builder-failed path ran" 1 "$(builder_failed)"
+check "board unreadable: logged fail-open" 1 "$(grep -c 'fail-open, spawning anyway' "$TMP/healer.log")"
+rearm; check "board empty -> spawn (fail-open)" "SPAWN" \
+    "$(ESC='{"hookSpecificOutput":{"additionalContext":""}}' pre)"
+check "board empty: the builder-failed path ran" 1 "$(builder_failed)"
+check "board empty: logged fail-open" 1 "$(grep -c 'fail-open, spawning anyway' "$TMP/healer.log")"
 rearm; check "ledger row text changed, same set -> spawn" "SPAWN" "$(HEAD_TXT=h2 pre)"
 REASONS_OUT="$REASONS_BASE garuda-outbox-undrained"
 { echo "ACTIONABLE=1; REASONS=\"$REASONS_OUT\"; LOG=\"$TMP/healer.log\"; MODEL=m; MAX_WALL_S=1"
@@ -155,6 +163,8 @@ rearm_out() { FP="$FP_OUT" post "HEALER_VERDICT: incurable 0/$TOTAL_OUT" 1 "$TOT
 rearm_out; check "outbox counts unchanged -> memoized" "" "$(REASONS_IN="$REASONS_OUT" pre)"
 rearm_out; check "outbox counts changed -> spawn" "SPAWN" "$(REASONS_IN="$REASONS_OUT" OUTBOX="$OUTBOX_B" pre)"
 rearm_out; check "outbox verdict unreadable -> spawn (fail-open)" "SPAWN" "$(REASONS_IN="$REASONS_OUT" OUTBOX='{}' pre)"
+check "outbox verdict unreadable: the builder-failed path ran" 1 "$(builder_failed)"
+check "outbox verdict unreadable: logged fail-open" 1 "$(grep -c 'fail-open, spawning anyway' "$TMP/healer.log")"
 
 # memo tool broken -> check errors -> spawn
 rearm
