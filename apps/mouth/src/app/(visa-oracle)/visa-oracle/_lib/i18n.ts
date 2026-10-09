@@ -162,7 +162,7 @@ const en = {
   "lane.expired.notice":
     "Your permit has already expired. We will still check your options; please talk to a Bali Zero advisor about your next step.",
   "lane.urgent.notice":
-    "You have 1–2 days left. We will still check your options, but please contact a Bali Zero advisor today.",
+    "Your permit expires today or within the next two days. We will still check your options, but please contact a Bali Zero advisor today.",
   "lane.bridging.notice":
     "The date you entered is within seven days. We will still check your options; talk to a Bali Zero advisor soon about your next step.",
   "lane.extend.notice":
@@ -627,7 +627,7 @@ const en = {
   "q.review_gate.hint":
     "Tick everything that applies. Every item you tick is reflected in your result; with a criminal record, this tool names no visa and a Bali Zero advisor can help.",
   "why.review_gate":
-    "Every item here is taken into account: the three immigration-history ones bear directly on the rules, and all of them must be reflected in your result.",
+    "Your immigration history can affect your options, and everything you select is noted in your result.",
   "q.review_gate.opt.none": "None of these apply to me",
   "q.review_gate.opt.flagged": "One or more applies",
   // Finding #5 (adversarial review 2026-07-17): "none" is now a first-class
@@ -662,9 +662,9 @@ const en = {
   "assumption.stay_days":
     "You weren’t sure about the planned stay, so no duration was inferred.",
   "assumption.work_payer":
-    "You weren’t sure who pays you, so we recorded that as unresolved; we still assessed everything we could, and a Bali Zero advisor confirms this point with you.",
+    "You weren’t sure who pays you, so this remains unresolved. You can discuss it with a Bali Zero advisor.",
   "assumption.remote_clients":
-    "You weren’t sure where your clients sit, so we recorded that as unresolved; we still assessed everything we could, and a Bali Zero advisor confirms this point with you.",
+    "You weren’t sure where your clients are based, so this remains unresolved. You can discuss it with a Bali Zero advisor.",
   "assumption.secondhome_deposit_usd":
     "You weren’t sure what bank deposit you can document, so we assessed this plan as if the deposit were zero; a Bali Zero advisor confirms the real figure with you.",
   "assumption.secondhome_property_value_usd":
@@ -699,7 +699,7 @@ const en = {
   "back.button": "Back",
   "question.continue": "Continue",
   "question.human_context_notice":
-    "For our team’s context only — this answer cannot select, rank, add or remove a visa for you.",
+    "This answer may affect the questions or visa options shown.",
   "question.invalid_country_codes":
     "Choose a country from the verified list, or select Not listed.",
   "question.country_picker.placeholder": "Choose a country",
@@ -1255,7 +1255,7 @@ const id: Record<Keys, string> = {
   "lane.expired.notice":
     "Izin tinggal Anda sudah berakhir. Kami tetap memeriksa pilihan Anda; silakan bicarakan langkah berikutnya dengan konsultan Bali Zero.",
   "lane.urgent.notice":
-    "Waktu Anda tinggal 1–2 hari. Kami tetap memeriksa pilihan Anda, tetapi mohon hubungi konsultan Bali Zero hari ini.",
+    "Izin tinggal Anda berakhir hari ini atau dalam dua hari ke depan. Kami tetap memeriksa pilihan Anda, tetapi mohon hubungi konsultan Bali Zero hari ini.",
   "lane.bridging.notice":
     "Tanggal yang Anda masukkan tinggal tujuh hari atau kurang. Kami tetap memeriksa pilihan Anda; segera bicarakan langkah berikutnya dengan konsultan Bali Zero.",
   "lane.extend.notice":
@@ -1722,7 +1722,7 @@ const id: Record<Keys, string> = {
   "q.review_gate.hint":
     "Centang semua yang berlaku. Setiap item yang Anda centang tercermin dalam hasil Anda; dengan catatan kriminal, alat ini tidak menyebutkan visa dan konsultan Bali Zero dapat membantu.",
   "why.review_gate":
-    "Setiap item di sini diperhitungkan: tiga item riwayat keimigrasian berpengaruh langsung pada aturan, dan semuanya harus tercermin dalam hasil Anda.",
+    "Riwayat keimigrasian Anda dapat memengaruhi pilihan Anda, dan semua yang Anda pilih dicatat dalam hasil Anda.",
   "q.review_gate.opt.none": "Tidak ada yang berlaku bagi saya",
   "q.review_gate.opt.flagged": "Satu atau lebih berlaku",
   "q.review_gate.item.none": "Tidak ada yang berlaku bagi saya",
@@ -1751,9 +1751,9 @@ const id: Record<Keys, string> = {
   "assumption.stay_days":
     "Anda belum yakin tentang rencana masa tinggal, jadi tidak ada durasi yang diperkirakan.",
   "assumption.work_payer":
-    "Anda tidak yakin siapa yang menggaji Anda, jadi kami mencatatnya sebagai hal yang belum dipastikan; kami tetap menilai semua yang bisa dinilai, dan konsultan Bali Zero akan memastikan poin ini bersama Anda.",
+    "Anda belum yakin siapa yang menggaji Anda, jadi hal ini belum dipastikan. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.remote_clients":
-    "Anda tidak yakin di mana klien Anda berada, jadi kami mencatatnya sebagai hal yang belum dipastikan; kami tetap menilai semua yang bisa dinilai, dan konsultan Bali Zero akan memastikannya bersama Anda.",
+    "Anda belum yakin di mana klien Anda berada, jadi hal ini belum dipastikan. Anda dapat membahasnya dengan konsultan Bali Zero.",
   "assumption.secondhome_deposit_usd":
     "Anda tidak yakin berapa deposito bank yang dapat Anda buktikan, jadi rencana ini kami nilai seolah depositonya nol; konsultan Bali Zero akan memastikan angka sebenarnya bersama Anda.",
   "assumption.secondhome_property_value_usd":
@@ -1788,7 +1788,7 @@ const id: Record<Keys, string> = {
   "back.button": "Kembali",
   "question.continue": "Lanjutkan",
   "question.human_context_notice":
-    "Hanya untuk konteks tim kami — jawaban ini tidak dapat memilih, mengurutkan, menambah, atau menghapus visa untuk Anda.",
+    "Jawaban ini dapat memengaruhi pertanyaan atau pilihan visa yang ditampilkan.",
   "question.invalid_country_codes":
     "Pilih negara dari daftar terverifikasi, atau pilih Tidak tercantum.",
   "question.country_picker.placeholder": "Pilih negara",
