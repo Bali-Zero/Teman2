@@ -1,0 +1,33 @@
+task_id: kbli-nav-design-0b2-harness
+mission: kbli-nav-design-loop (Track A, build, PR 0b-2)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  evidence_pack_lint's floor for this change set is 2 by its size term alone, with no hot-zone path. The code churns
+  256 lines (+188/−68 across Snapshot.swift, AppState.swift, render_set.sh, png_census.py, measure_contrast.py and
+  headsuptest, plus 7 data lines of class membership). The after-set digest manifest adds 322 lines of JSON evidence
+  (35 renders).
+l_level: L1
+gate_class: opus
+objective: >-
+  SPEC-swiftui §7 row 0b, the harness. Every band is a page at the live width: --width (default 1280), --height
+  (default 800), top-anchored. Band PNGs are written in sRGB. render_set.sh renders the 24-band set plus narrow/,
+  xxl/ and tall/; png_census.py measures C5/C8, with C8 under xxl/ reported VACUOUS, never a pass. Bindings carried:
+  F2 (the KBLI 56101 lockup no longer cut by the top edge); B1 (tall/ frames the ledger's risk chips at
+  KBLIRegistryView.swift:1541/:1708, day and night); B3 (headsuptest asserts 448 changed against the frozen pre-Q10
+  predicates, exactly classes 2–6, in en and id); N1–N3 (the white scan's escaped spellings with a self-test, a
+  line-number-keyed allowlist, and parity of the census sites and RISK_CHIP against the code); N5 (a moved code is
+  named). Presentation and tooling only: no KBLI fact, verdict, cap, basis or Bali overlay changes.
+constraints:
+  - Default renders keep their contract (--width 1280, --height 800); the 24-band set changes only by the page framing and sRGB.
+  - The pre-Q10 predicates are frozen inline in the test, never re-derived from the views that will lose them.
+  - No PNG is committed; the after-set ships as a sha256 manifest and the PNGs live in the M5 gallery.
+acceptance:
+  - text: The head SHALL build both variants and render_set.sh SHALL render 35 PNGs with 0 failures, equal to the manifest.
+    probe: "Pro build-only mirror detached at the head: INTERNAL_RC=0, BKPM_RC=0, RENDER_SET_RC=0 35 PNGs, manifest_match=35/35"
+  - text: The sheet-ledger band SHALL show the full KBLI 56101 lockup (F2) in day-en and day-id.
+    probe: "first ink row of sheet-ledger-day-{en,id} at 7 px (was 0 px, cut, in 0b-1's set); visual crop in the gallery"
+  - text: headsuptest SHALL assert 448 changed vs the frozen pre-Q10 predicates (B3) and name a moved code (N5).
+    probe: "Pro: head rc=0; mutant class 6 → open pair rc=1 naming 47221 missing; dataset copy with 01111 opened rc=1 naming '01111: class 1 → 7'"
+  - text: The white scan SHALL catch every listed spelling and admit one line per allowlist reason (N1–N2); census sites and RISK_CHIP SHALL match the code (N3).
+    probe: "Pro scan_guilt: 12 spellings injected at :1541 → rc=1 WHITE …:1541 each; allow for :1541 only → rc=1 naming :1709; stale allow → rc=1; RISK_CHIP drift → PARITY rc=1; moved site → PARITY rc=1"
