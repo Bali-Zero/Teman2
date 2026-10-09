@@ -1,0 +1,40 @@
+task: >-
+  The push witness. The trusted pre-push hook (.husky/pre-push, also carried by the unattended pushers' trusted
+  bundle) appends one JSON marker per pushed ref after its last check passed; scripts/push_witness_reconcile.py
+  finds this host's origin agent-branch tips that carry no exact marker; a proprioception probe push_witness
+  (P1, cure pr) reports them. It replaces the static judgement of a pusher's text, which #7985 and #8076 showed
+  to be undecidable (15+ shapes where the lint said TRUSTED and git skipped the hook).
+lane: ops
+machine: m5
+date: 2026-10-09
+gear: 3
+gear_reason: >-
+  Measured floor 2, source "size" (scripts/evidence_pack_lint.py --print-floor on the five changed files). Gear 3
+  is declared above the floor because the change edits the trusted hook itself, the gate every push on every host
+  passes through, and the entity that decides whether a push was gated.
+acceptance:
+  A1:
+    text: >-
+      A push that runs the hook to the end leaves exactly one marker per ref with the exact tip sha, the remote ref,
+      the origin URL without userinfo, the trust root and the sha256 of the hook file; a push that skips the hook
+      (core.hooksPath=/dev/null, --no-verify) leaves none and reads NO-WITNESS; a failed check leaves none; a
+      journal that cannot be written warns and the push still lands.
+    probe: scripts/tests/test_push_witness.py on a scratch bare remote, under /bin/sh, /bin/bash 3.2 and a real bundle.
+  A2:
+    text: >-
+      The reconciler never accuses a gated push: linked worktrees are trusted roots, tips before the witness epoch
+      or (within 7 days of it) whose tree has no witness code are "uncovered", a run error is one RECONCILE-ERROR
+      finding with exit 0; and it judges a backdated commit by the time its push was observed.
+    probe: the same test file plus a mutant battery on scratch mirrors, each mutant killed by a named test.
+  A3:
+    text: >-
+      On this M5 the probe reports 0 findings before the first marker exists, and after the first witnessed push
+      its tip reads witnessed.
+    probe: python3 scripts/proprioception.py --probes push_witness --json --no-report --no-fetch.
+out_of_scope: >-
+  Retiring the static lint of #8076 (it stays a known-shape check). Pushes from Pro and Mini are judged by their
+  own journals once they run this hook; no cross-host journal. The healer does not act on cure "pr".
+assumptions:
+  - text: Gear 3 needs the independent final-gate verdict on the head SHA; the imperator commissions it.
+    status: unverified
+    probe: gh pr checks <pr> after the gate verdict is posted.
