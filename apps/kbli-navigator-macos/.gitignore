@@ -12,3 +12,8 @@ Resources/kbli-reason-i18n.json
 Resources/kbli-balicontext-i18n-id.json
 *.pdf
 bali-threshold-images-2026-06-23/
+
+# Design evidence sets ARE tracked: the root .gitignore ignores *.png repo-wide (and *.PNG,
+# which a case-insensitive checkout also matches against .png), so the before/after snapshot
+# sets under docs/design/ are re-included here.
+!docs/design/**/*.png

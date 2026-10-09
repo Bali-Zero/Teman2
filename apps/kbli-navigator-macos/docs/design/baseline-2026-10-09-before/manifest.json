@@ -1,0 +1,26 @@
+{
+  "source_commit": "a42254dbe4 (origin/main, PR #8125)",
+  "rendered_on": "Pro (nuzantara@Nuzantara), Xcode 26.3, build.sh --variant internal",
+  "variant": "internal",
+  "codes": {
+    "search-results": "55203",
+    "registry-table": "55203",
+    "detail-card": "55203",
+    "dossier": "51101",
+    "sheet-ledger": "56101",
+    "chat": "51101"
+  },
+  "bands": [
+    "search-results",
+    "registry-table",
+    "detail-card",
+    "dossier",
+    "sheet-ledger",
+    "chat"
+  ],
+  "themes": ["day", "night"],
+  "langs": ["en", "id"],
+  "canvas_pt": [1280, 800],
+  "png_count": 24,
+  "dataset": "the anchor of Resources/DATASET_MANIFEST.json (1559 records), resolved by build.sh"
+}
