@@ -3,8 +3,9 @@ mission: LOCALCI-SOVEREIGN (phase F, step F2)
 colour: BLUE
 gear: 2
 gear_reason: >-
-  The first code path in the merger that can write a ref and push to GitHub, though disarmed by construction (five independent
-  conditions, none true on Pro today). No hot-zone path, workflow, plist or wrapper change; the lint floor is 2.
+  The first code path in the merger that can write a ref and push to GitHub, though disarmed by construction (independent
+  conditions, none true on Pro today). Fix round: the launchd wrapper now fetches into its own ref (a wrapper change, installed on Pro in
+  ~/.nuzantara-cron/ and to be re-installed after merge by the lead); no hot-zone path, workflow or plist change; the lint floor is 2.
 l_level: L2
 gate_class: opus
 objective: >-
@@ -43,14 +44,25 @@ what_changed: |
   fetch_base (storage_diverged guard), push_url_of; merge_shadow_step journals phase_f on the would_merge line; PR_QUERY gains title.
   test_merger_phase_f.py: 46 tests on real git repos with a bare origin. merger_mutants.py: 35 f2-* rules, two f1 rules re-anchored.
   README phase F executor section; spec status line and arming checklist.
+  Fix round (the gate's findings M1-M3, L1-L7): localci_merger_tick.sh fetches into refs/merger/wrapper and reads its code and sha from
+  it (refs/merger/base is fetch_base's alone; a pre-F2 mirror falls back to base read-only). phase_f_arming evaluates the local
+  conditions first and READY (precheck then report) only when LOCALCI_MERGER_PHASE_F=1 and all of them hold, else "READY not
+  evaluated"; the precheck window gets READY_SPAN_SLACK_DAYS = 1; the enqueue step must be would_enqueue; the PR re-read also requires
+  not in queue, not draft, base == the tick's base, ARM_LABEL present; judged_tree: F1's merge tree must equal the judged candidate's;
+  push_ssh_command adds -F /dev/null, IdentityAgent=none, a pinned UserKnownHostsFile and StrictHostKeyChecking=yes; halt before the
+  push_refused journal, and a Stopped or other interrupted push halts before it propagates; halt_reason catches ValueError and the
+  report uses lexists; --push-url refuses any userinfo on a non-ssh scheme. README/spec: ARMED unset in phase F, known_hosts pinning,
+  phase_e_flip.py lands in its own PR, the key path (never content) can appear in a refused push's error.
 proof: |
   Tests and mutants on M5 against temporary repos; nothing ran on Pro and nothing was pushed. Not armed anywhere.
 bites:
   consumer: The launchd tick com.balizero.localci-merger on Pro (would_merge lines in decisions.jsonl).
   observation: >-
-    Owed after merge and the tick's next extraction: every would_merge line on Pro carries phase_f {armed: false, why: [...]} naming
-    at least "READY false" and "LOCALCI_MERGER_PHASE_F unset" (and "deploy_key missing") — the disarmed state proven live. The armed
-    path's live proof is owed to the day READY holds.
+    Owed after merge, the wrapper's re-install on Pro and the tick's next extraction: every would_merge line on Pro carries phase_f
+    {armed: false, why: [...]} naming "LOCALCI_MERGER_PHASE_F unset" and "READY not evaluated" (and "deploy_key missing") — the
+    disarmed state proven live, with no full report run by a disarmed tick; and refs/merger/base on Pro is moved by merger.py's fetch
+    alone (the wrapper's own fetch lands in refs/merger/wrapper, both holding GitHub's main while the shadow runs). The armed path's
+    live proof is owed to the day READY holds.
 ground:
   ts: "2026-10-10T19:20:00Z"
   siblings: >-
@@ -84,12 +96,24 @@ receipts:
     exit: 0
     ts: "2026-10-10T19:50:00Z"
     seat: claude-opus-5-5 on M5
+  - claim: "Fix round (M1-M3, L1-L7): test_merger_phase_f.py, test_merger.py, test_merger_report.py, test_replay.py: 381 passed, 211 s (the run preceded one test-comment edit)."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger_phase_f.py scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py scripts/localci/tests/test_replay.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-10T21:00:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "41/41 killed (25 new f2-* rules of the fix round, f2-enqueue-kind-only-enqueued, and 15 neighbours/re-anchored f2-* rules); survivors none, errors none, stale none. The f1-*/b11-* set was not re-run by the lead's ruling (51/51 at the previous round; code untouched except through the arming path)."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <those 41 rules>
+    exit: 0
+    ts: "2026-10-10T21:40:00Z"
+    seat: claude-opus-5-5 on M5
 dissent: []
 residuals:
   - "The armed path is proven on fakes only; its live proof is owed to the day READY holds."
   - "READY precheck avoids the full report until day 14 (journal alone, no GitHub read, only ever short-circuits to false); the report's cost after day 14 is ~4 min per tick on Pro, measured 2026-10-09 by the lead."
   - "A push_refused can be a plain race (a commit reaching GitHub's main between ls-remote and the push); it halts by the brief's rule until an operator clears it."
-  - "The mirror's push URL defaults to git@github.com:<repo>.git on the default fetch URL; the wrapper is untouched."
+  - "The mirror's push URL defaults to git@github.com:<repo>.git on the default fetch URL."
+  - "The wrapper changed in the fix round: the live copy in ~/.nuzantara-cron/ on Pro must be re-installed after merge (the lead does it); until then Pro's wrapper still force-fetches refs/merger/base, harmless while nothing has pushed."
+  - "known_hosts must be pinned by the operator before the first armed push; without it the strict ssh refuses and the push halts."
   - "GitHub may close the PR as merged with a merge_commit_sha that is not our merge commit, so B11 would journal that replay unmapped."
 brief_ref: evidence/brief.yml
 plan_ref: >-
