@@ -39,12 +39,17 @@ def _classic() -> dict:
             **{k: dict(off) for k in FLAGS}}
 
 
+# the live merge_queue parameters (GET repos/Bali-Zero/Teman2/rulesets/19779175, 2026-10-10); GitHub requires all seven on PUT
+MQ_PARAMS = (("check_response_timeout_minutes", 90), ("grouping_strategy", "HEADGREEN"), ("max_entries_to_build", 5),
+             ("max_entries_to_merge", 4), ("merge_method", "SQUASH"), ("min_entries_to_merge", 1), ("min_entries_to_merge_wait_minutes", 2))
+REQUIRED_PARAMS = {"merge_queue": {k for k, _ in MQ_PARAMS}, "update": {"update_allows_fetch_and_merge"}}
+
+
 def _rulesets() -> dict:
     cond = {"ref_name": {"exclude": [], "include": ["refs/heads/main"]}}
     return {MQ: {"id": MQ, "name": "merge-queue-main", "target": "branch", "source_type": "Repository", "enforcement": "active",
                  "conditions": cond, "bypass_actors": [], "_links": {}, "node_id": "n",
-                 "rules": [{"type": "merge_queue", "parameters": {"merge_method": "SQUASH", "grouping_strategy": "HEADGREEN",
-                                                                  "check_response_timeout_minutes": 90}}]},
+                 "rules": [{"type": "merge_queue", "parameters": dict(MQ_PARAMS)}]},
             GUARD: {"id": GUARD, "name": "Copilot review for default branch", "target": "branch", "source_type": "Repository",
                     "enforcement": "active", "bypass_actors": [], "conditions": {"ref_name": {"exclude": [], "include": ["~DEFAULT_BRANCH"]}},
                     "rules": [{"type": "deletion"}, {"type": "non_fast_forward"}, {"type": "copilot_code_review", "parameters": {}}]}}
@@ -68,6 +73,8 @@ class FakeGH:
         self.classic, self.rulesets = _classic(), _rulesets()
         self.keys = [{"id": 7, "title": "a person's name", "read_only": False, "created_at": "2026-10-29T00:00:00Z", "key": MERGER_PUB}]
         self.ignore: set[tuple[str, str]] = set()
+        self.hidden_from_branch_rules: set[int] = set()   # rulesets whose rules GitHub does not apply to the branch
+        self.list_omits: set[str] = set()                  # fields the rulesets list leaves out (its details keep them)
         self.after_write = None          # called after each honoured write: a peer changing GitHub mid-run
         self.answer_override: dict = {}  # (method, path) -> what GitHub answers instead of the resource
         self.calls: list[tuple[str, str, object]] = []
@@ -88,6 +95,7 @@ class FakeGH:
         self.calls.append((method, path, body))
         ok = lambda doc: subprocess.CompletedProcess(argv, 0, json.dumps(doc) if doc is not None else "", "")   # noqa: E731
         if method != "GET":
+            self._validate(method, path, body)
             if self.state_files_at_first_write is None:
                 self.state_files_at_first_write = sorted(p.name for p in self.state_dir.glob("*")) if self.state_dir.exists() else []
             if self.fail and self.fail == (method, path):
@@ -104,7 +112,7 @@ class FakeGH:
         if path == f"repos/{REPO}":
             return ok({"default_branch": "main"})
         if m := re.fullmatch(rf"repos/{REPO}/(rulesets|keys)\?per_page=100&page=(\d+)", path):
-            items = ([{k: r[k] for k in ("id", "name", "source_type", "target", "enforcement")} for r in self.rulesets.values()]
+            items = ([{k: r[k] for k in ("id", "name", "source_type", "target", "enforcement") if k not in self.list_omits} for r in self.rulesets.values()]
                      if m.group(1) == "rulesets" else self.keys)
             page = int(m.group(2))
             return ok(items[(page - 1) * 100: page * 100])
@@ -113,11 +121,25 @@ class FakeGH:
         if m := re.fullmatch(rf"repos/{REPO}/rules/branches/main\?per_page=100&page=(\d+)", path):
             applied = [{"type": r["type"], "ruleset_id": rid, "ruleset_source_type": "Repository"}
                        for rid, rs in self.rulesets.items() if rs["enforcement"] == "active" and rs["target"] == "branch"
+                       and rid not in self.hidden_from_branch_rules
                        and {"refs/heads/main", "~DEFAULT_BRANCH", "~ALL"} & set(((rs.get("conditions") or {}).get("ref_name") or {}).get("include") or [])
                        for r in rs["rules"]]
             page = int(m.group(1))
             return ok(applied[(page - 1) * 100: page * 100])
         raise AssertionError(f"unexpected GET {path}")
+
+    def _validate(self, method, path, body):
+        """What GitHub's REST API refuses: an incomplete ruleset body, a rule without its required parameters, a DeployKey
+        actor with an id or a pull-request mode, a classic body without its four required fields or with contexts and checks."""
+        if method == "PUT" and "/rulesets/" in path:
+            assert set(body) == {"name", "target", "enforcement", "conditions", "rules", "bypass_actors"}, sorted(body)
+            for r in body["rules"]:
+                assert REQUIRED_PARAMS.get(r["type"], set()) <= set(r.get("parameters") or {}), r
+            for b in body["bypass_actors"]:
+                assert b["actor_type"] != "DeployKey" or (b["actor_id"] is None and b["bypass_mode"] != "pull_request"), b
+        if method == "PUT" and path.endswith("/protection"):
+            assert {"required_status_checks", "enforce_admins", "required_pull_request_reviews", "restrictions"} <= set(body), sorted(body)
+            assert not (body["required_status_checks"] or {}).get("contexts"), "contexts beside checks"
 
     def _write(self, method, path, body):
         if method == "PUT" and (m := re.fullmatch(rf"repos/{REPO}/rulesets/(\d+)", path)):
@@ -165,9 +187,10 @@ def report(tmp_path, **over) -> str:
     return str(path)
 
 
-def run(fake, tmp_path, capsys, *extra, rep=None, pub=MERGER_PUB):
+def run(fake, tmp_path, capsys, *extra, rep=None, pub=MERGER_PUB, quiescent=True):
     (tmp_path / "deploy_key.pub").write_text(f"{pub} localci-merger@pro\n")
-    rc = pef.main(["--report", rep or report(tmp_path), "--state-dir", str(fake.state_dir), "--key-pub", str(tmp_path / "deploy_key.pub"), *extra])
+    q = ["--quiescent"] if quiescent and "--apply" in extra else []   # the operator's declaration, RULED 2026-10-10
+    rc = pef.main(["--report", rep or report(tmp_path), "--state-dir", str(fake.state_dir), "--key-pub", str(tmp_path / "deploy_key.pub"), *extra, *q])
     out = capsys.readouterr()
     return rc, out.out, out.err
 
@@ -306,7 +329,7 @@ def test_a_failed_second_write_exits_3_and_names_the_saved_state(fake, tmp_path,
 def test_a_delete_that_does_not_take_fails_the_re_read_with_exit_3(fake, tmp_path, capsys):
     fake.ignore = {("DELETE", f"repos/{REPO}/branches/main/protection")}
     rc, _, err = apply(fake, tmp_path, capsys)
-    assert rc == pef.EXIT_WRITE_FAILED and "after write 2/2: a fresh read differs from the expected state in ['classic protection']" in err
+    assert rc == pef.EXIT_WRITE_FAILED and "after write 2/2: a fresh read differs from the intended state in ['classic protection']" in err
     assert "--rollback" in err and fake.pauses == [pef.READ_DELAY_S] * (pef.READ_RETRIES - 1)   # read again before it counts
 
 
@@ -462,7 +485,7 @@ def test_a_rollback_that_does_not_take_exits_3(fake, tmp_path, capsys):
     fake.calls.clear()
     fake.ignore = {("PUT", f"repos/{REPO}/rulesets/{MQ}")}   # the classic write takes, the ruleset write does not
     rc, _, err = run(fake, tmp_path, capsys, "--rollback", str(saved), "--apply", "--confirm", dig)
-    assert rc == pef.EXIT_WRITE_FAILED and "after write 2/2: a fresh read differs" in err and "ruleset 'merge-queue-main'" in err
+    assert rc == pef.EXIT_WRITE_FAILED and "write 2/2 did not take (the ruleset's answer is not as saved)" in err
 
 
 def test_a_merge_queue_ruleset_in_evaluate_mode_is_flipped_to_active(fake, tmp_path, capsys):
@@ -586,7 +609,7 @@ def test_a_ruleset_answer_that_the_re_read_does_not_confirm_stops_the_delete(fak
     target = {**pef.ruleset_body(fake.rulesets[MQ]), "rules": pef.TARGET_RULES, "bypass_actors": pef.TARGET_BYPASS}
     fake.ignore, fake.answer_override = {("PUT", path)}, {("PUT", path): target}   # the answer says target, GitHub kept the queue
     rc, _, err = apply(fake, tmp_path, capsys)
-    assert rc == pef.EXIT_WRITE_FAILED and "before write 2/2: a fresh read differs" in err and [m for m, _, _ in fake.writes()] == ["PUT"]
+    assert rc == pef.EXIT_WRITE_FAILED and "after write 1/2: a fresh read differs" in err and [m for m, _, _ in fake.writes()] == ["PUT"]
 
 
 def test_a_key_added_after_the_delete_fails_the_final_re_read(fake, tmp_path, capsys):
@@ -610,7 +633,7 @@ def test_a_rollback_whose_classic_protection_vanishes_after_its_write_never_rest
             f.classic = None
     fake.after_write = vanish
     rc, _, err = run(fake, tmp_path, capsys, "--rollback", str(saved), "--apply", "--confirm", dig)
-    assert rc == pef.EXIT_WRITE_FAILED and "before write 2/2: a fresh read differs" in err
+    assert rc == pef.EXIT_WRITE_FAILED and "after write 1/2: a fresh read differs" in err
     assert [p for _, p, _ in fake.writes()] == [f"repos/{REPO}/branches/main/protection"] and pef.is_target(fake.rulesets[MQ])
 
 
@@ -665,7 +688,7 @@ def test_an_unexpected_error_after_the_first_write_is_exit_3_with_the_rollback(f
     calls = {"n": 0}
     def broken(repo, branch):
         calls["n"] += 1
-        if calls["n"] > 1:   # the plan's read passes; the first fresh read after the write breaks
+        if calls["n"] > 2:   # the plan's read and W1's read before write 1 pass; W5's read after it breaks
             raise KeyError("ruleset_id")
         return real(repo, branch)
     monkeypatch.setattr(pef, "read_state", broken)
@@ -701,3 +724,162 @@ def test_a_merge_queue_ruleset_that_also_forbids_deletion_is_not_its_own_guard(f
     del fake.rulesets[GUARD]
     rc, _, err = apply(fake, tmp_path, capsys)
     assert rc == pef.EXIT_REFUSED and "forbids deletion AND force-push" in err and fake.writes() == []
+
+
+def test_apply_without_the_quiescence_declaration_writes_nothing(fake, tmp_path, capsys):
+    dig = plan_digest(fake, tmp_path, capsys)
+    rc, out, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig, quiescent=False)
+    assert rc == pef.EXIT_REFUSED and "--quiescent" in err and "RULED 2026-10-10" in err and fake.writes() == []
+    assert not fake.state_dir.exists()
+
+
+def test_the_plan_states_the_quiescence_precondition(fake, tmp_path, capsys):
+    _, out, _ = run(fake, tmp_path, capsys)
+    assert "no session, peer or cron writes rulesets or branch protection" in out
+
+
+@pytest.mark.parametrize("change, says", [
+    (lambda f: f.rulesets[MQ]["conditions"]["ref_name"]["include"].append("refs/heads/release"), "ruleset 'merge-queue-main'"),
+    (lambda f: f.keys.append({"id": 9, "title": "x", "read_only": False, "created_at": "z", "key": OTHER_PUB}), "'write_keys'"),
+    (lambda f: f.classic["required_status_checks"]["checks"].append({"context": "late", "app_id": None}), "'classic protection'"),
+])
+def test_a_change_between_the_plan_and_the_first_write_writes_nothing(fake, tmp_path, capsys, monkeypatch, change, says):
+    dig = plan_digest(fake, tmp_path, capsys)
+    real_save = pef.save_state
+    def save_then_change(*args):   # a peer writes while the state file is being saved: W1 reads again before write 1
+        path = real_save(*args)
+        change(fake)
+        return path
+    monkeypatch.setattr(pef, "save_state", save_then_change)
+    rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
+    assert rc == pef.EXIT_REFUSED and "before write 1/2: changed since plan" in err and says in err
+    assert "nothing was written" in err and fake.writes() == []
+
+
+def test_a_rollback_whose_state_changes_before_its_first_write_writes_nothing(fake, tmp_path, capsys, monkeypatch):
+    apply(fake, tmp_path, capsys)
+    saved = next(fake.state_dir.glob("pre-flip-*.json"))
+    dig = plan_digest(fake, tmp_path, capsys, "--rollback", str(saved))
+    fake.calls.clear()
+    real_read = pef.read_state
+    calls = {"n": 0}
+    def read_then_change(repo, branch):
+        calls["n"] += 1
+        if calls["n"] == 2:   # the rollback's plan read is 1; before W1's read a peer adds a key
+            fake.keys.append({"id": 9, "title": "x", "read_only": False, "created_at": "z", "key": OTHER_PUB})
+        return real_read(repo, branch)
+    monkeypatch.setattr(pef, "read_state", read_then_change)
+    rc, _, err = run(fake, tmp_path, capsys, "--rollback", str(saved), "--apply", "--confirm", dig)
+    assert rc == pef.EXIT_REFUSED and "before write 1/2: changed since plan" in err and fake.writes() == []
+
+
+def test_an_error_on_the_read_before_the_first_write_writes_nothing(fake, tmp_path, capsys, monkeypatch):
+    dig = plan_digest(fake, tmp_path, capsys)
+    real = pef.read_state
+    calls = {"n": 0}
+    def broken(repo, branch):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise pef.FlipError("gh api repos/x failed (rc=1): HTTP 502")
+        return real(repo, branch)
+    monkeypatch.setattr(pef, "read_state", broken)
+    rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
+    assert rc == pef.EXIT_REFUSED and "could not be read again" in err and fake.writes() == []
+
+
+def test_a_read_that_fails_once_after_a_write_is_read_again(fake, tmp_path, capsys, monkeypatch):
+    dig = plan_digest(fake, tmp_path, capsys)
+    real = pef.read_state
+    calls = {"n": 0}
+    def flaky(repo, branch):
+        calls["n"] += 1
+        if calls["n"] == 3:   # W5's first read after write 1 fails once
+            raise pef.FlipError("gh api repos/x failed (rc=1): HTTP 502")
+        return real(repo, branch)
+    monkeypatch.setattr(pef, "read_state", flaky)
+    rc, out, _ = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
+    assert rc == 0 and "flipped:" in out and fake.pauses == [pef.READ_DELAY_S]
+
+
+def test_ctrl_c_after_the_first_write_is_exit_3_with_the_rollback(fake, tmp_path, capsys, monkeypatch):
+    dig = plan_digest(fake, tmp_path, capsys)
+    def interrupt(f, m, p):
+        if m == "PUT":
+            raise KeyboardInterrupt
+    fake.after_write = interrupt
+    try:
+        rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
+    except KeyboardInterrupt:   # caught here so an escape fails this test instead of interrupting pytest
+        pytest.fail("Ctrl-C after the first write escaped W4")
+    assert rc == pef.EXIT_WRITE_FAILED and "KeyboardInterrupt" in err and "--rollback" in err and "--repo Bali-Zero/Teman2 --branch main" in err
+
+
+def test_a_guard_that_github_does_not_apply_to_the_branch_is_no_guard(fake, tmp_path, capsys):
+    fake.hidden_from_branch_rules = {GUARD}
+    rc, _, err = apply(fake, tmp_path, capsys)
+    assert rc == pef.EXIT_REFUSED and "as GitHub applies it" in err and fake.writes() == []
+
+
+def test_a_rulesets_list_without_target_is_read_through_the_details(fake, tmp_path, capsys):
+    fake.list_omits = {"target"}
+    rc, out, _ = run(fake, tmp_path, capsys)
+    assert rc == 0 and "state: pre-flip" in out and "blockers for --apply: none" in out
+
+
+def test_the_rollback_ruleset_body_is_the_live_one_field_for_field(fake, tmp_path, capsys):
+    apply(fake, tmp_path, capsys)
+    saved = next(fake.state_dir.glob("pre-flip-*.json"))
+    dig = plan_digest(fake, tmp_path, capsys, "--rollback", str(saved))
+    fake.calls.clear()
+    run(fake, tmp_path, capsys, "--rollback", str(saved), "--apply", "--confirm", dig)
+    body = [b for m, p, b in fake.writes() if "/rulesets/" in p][0]
+    assert body == {"name": "merge-queue-main", "target": "branch", "enforcement": "active", "bypass_actors": [],
+                    "conditions": {"ref_name": {"exclude": [], "include": ["refs/heads/main"]}},
+                    "rules": [{"type": "merge_queue", "parameters": dict(MQ_PARAMS)}]}   # written out here, never from the module
+
+
+def test_a_key_swapped_for_a_foreign_one_after_the_ruleset_write_stops_the_delete(fake, tmp_path, capsys):
+    dig = plan_digest(fake, tmp_path, capsys)
+    def swap(f, m, p):
+        if m == "PUT":
+            f.keys[0]["key"] = OTHER_PUB
+    fake.after_write = swap
+    rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
+    assert rc == pef.EXIT_WRITE_FAILED and "'write_keys'" in err and [m for m, _, _ in fake.writes()] == ["PUT"]
+
+
+def test_a_saved_ruleset_in_evaluate_mode_rolls_back(fake, tmp_path, capsys):
+    fake.rulesets[MQ]["enforcement"] = "evaluate"
+    apply(fake, tmp_path, capsys)
+    saved = next(fake.state_dir.glob("pre-flip-*.json"))
+    assert json.loads(saved.read_text())["ruleset"]["enforcement"] == "evaluate"
+    dig = plan_digest(fake, tmp_path, capsys, "--rollback", str(saved))
+    rc, out, _ = run(fake, tmp_path, capsys, "--rollback", str(saved), "--apply", "--confirm", dig)
+    assert rc == 0 and fake.rulesets[MQ]["enforcement"] == "evaluate"
+
+
+def test_a_target_read_back_on_pull_requests_only_is_not_the_target(fake, tmp_path, capsys):
+    dig = plan_digest(fake, tmp_path, capsys)
+    def weaken(f, m, p):   # the answer reads as the target; the ruleset GitHub keeps bypasses on pull requests only
+        if m == "PUT" and "/rulesets/" in p:
+            f.answer_override = {(m, p): copy.deepcopy(f.rulesets[MQ])}
+            f.rulesets[MQ]["bypass_actors"] = [{"actor_id": None, "actor_type": "DeployKey", "bypass_mode": "pull_request"}]
+    fake.after_write = weaken
+    rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
+    assert rc == pef.EXIT_WRITE_FAILED and "after write 1/2" in err and [m for m, _, _ in fake.writes()] == ["PUT"]
+
+
+def test_a_report_without_a_since_key_is_refused(fake, tmp_path, capsys):
+    path = report(tmp_path)
+    doc = json.loads(open(path).read())
+    del doc["since"]
+    open(path, "w").write(json.dumps(doc))
+    rc, _, err = apply(fake, tmp_path, capsys, rep=path)
+    assert rc == pef.EXIT_REFUSED and "carries no `since`" in err and fake.writes() == []
+
+
+def test_a_huge_integer_window_is_read_without_a_crash(fake, tmp_path, capsys):
+    path = report(tmp_path)
+    open(path, "w").write(open(path).read().replace('"compared_days": 14.3', '"compared_days": ' + "1" + "0" * 400))
+    rc, out, _ = run(fake, tmp_path, capsys)
+    assert rc == 0 and "plan digest" in out
