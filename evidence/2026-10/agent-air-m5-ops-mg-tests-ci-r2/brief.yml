@@ -13,8 +13,11 @@ gear_reason: >-
 acceptance:
   A1:
     text: >-
-      mata-garuda-tests runs on every PR and main push touching apps/mata-garuda, packages/cell-core,
-      scripts/pytest_guards, scripts/_redact_pii.py or the workflow, with no continue-on-error, and goes red on a failing test.
+      mata-garuda-tests runs on every PR and main push touching apps/mata-garuda, packages/cell-core, or a repo file the
+      suite measurably reads (an audit hook on open events plus a code read for exists-only checks): scripts/pytest_guards,
+      scripts/_redact_pii.py, scripts/lib/yaml_strict.py, scripts/lib/codex_seat.py, scripts/mata_garuda_invalidation_sweep.py,
+      agent-library/config/redaction-rules.yaml, infra/launchagents/com.matagaruda.*, infra/launchagents/host-pins.json,
+      docs/mata-garuda, or the workflow; with no continue-on-error, and it goes red on a failing test.
     probe: this PR's own mata-garuda-tests job log (test counts) and the workflow text.
   A2:
     text: >-
@@ -23,10 +26,11 @@ acceptance:
     probe: a scratch py3.11 venv with exactly that install runs the suite with 0 collection errors.
   A3:
     text: >-
-      No skip, xfail or deselect hides a failure. Exactly one test joins the suite's own live convention: test_sprint4's
-      test_fetch_valid_url fetches https://peraturan.go.id/ for real and now runs only with MATA_GARUDA_LIVE_ENDPOINTS=1,
-      like tests/integration/test_feeder_endpoints_live_*. Every other skip is the suite's own (live endpoints, Redis).
-    probe: the job log's skip count is the base local count plus one.
+      No skip, xfail or deselect hides a failure. The five network tests of tests/test_sprint4.py (TestCurlFetch,
+      TestCheckSource, TestScrapeRegulations: real DNS and HTTP to government sites, two of them passing even with curl
+      missing) join the suite's own live convention and run only with MATA_GARUDA_LIVE_ENDPOINTS=1, like
+      tests/integration/test_feeder_endpoints_live_*. Every other skip is the suite's own (live endpoints, Redis).
+    probe: the job log's skip count is the base count plus five.
   A4:
     text: >-
       No test reaches the real nlm CLI: test_idempotent_re_run's fixture stubs nlm_get_title, which three tests left live,

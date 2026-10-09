@@ -8,6 +8,13 @@ on:
       - "packages/cell-core/**"
       - "scripts/pytest_guards/**"
       - "scripts/_redact_pii.py"
+      - "scripts/lib/yaml_strict.py"
+      - "scripts/lib/codex_seat.py"
+      - "scripts/mata_garuda_invalidation_sweep.py"
+      - "agent-library/config/redaction-rules.yaml"
+      - "infra/launchagents/com.matagaruda.*"
+      - "infra/launchagents/host-pins.json"
+      - "docs/mata-garuda/**"
       - ".github/workflows/mata-garuda-tests.yml"
   pull_request:
     branches: [main]
@@ -16,6 +23,13 @@ on:
       - "packages/cell-core/**"
       - "scripts/pytest_guards/**"
       - "scripts/_redact_pii.py"
+      - "scripts/lib/yaml_strict.py"
+      - "scripts/lib/codex_seat.py"
+      - "scripts/mata_garuda_invalidation_sweep.py"
+      - "agent-library/config/redaction-rules.yaml"
+      - "infra/launchagents/com.matagaruda.*"
+      - "infra/launchagents/host-pins.json"
+      - "docs/mata-garuda/**"
       - ".github/workflows/mata-garuda-tests.yml"
 
 concurrency:

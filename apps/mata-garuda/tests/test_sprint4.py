@@ -64,6 +64,11 @@ class TestCurlFetch:
         assert not result.startswith("[ERROR]")
         assert "peraturan" in result.lower()
 
+    @pytest.mark.live
+    @pytest.mark.skipif(
+        os.environ.get("MATA_GARUDA_LIVE_ENDPOINTS") != "1",
+        reason="set MATA_GARUDA_LIVE_ENDPOINTS=1 to run",
+    )
     def test_fetch_invalid_url(self):
         result = _curl_fetch("https://thisdomaindoesnotexist12345.com/", timeout=3)
         assert "[ERROR]" in result
@@ -98,16 +103,31 @@ class TestExtractRegulations:
 
 
 class TestCheckSource:
+    @pytest.mark.live
+    @pytest.mark.skipif(
+        os.environ.get("MATA_GARUDA_LIVE_ENDPOINTS") != "1",
+        reason="set MATA_GARUDA_LIVE_ENDPOINTS=1 to run",
+    )
     def test_check_peraturan(self):
         result = check_regulation_source("https://peraturan.go.id/")
         assert "[OK]" in result or "[WARNING]" in result
 
+    @pytest.mark.live
+    @pytest.mark.skipif(
+        os.environ.get("MATA_GARUDA_LIVE_ENDPOINTS") != "1",
+        reason="set MATA_GARUDA_LIVE_ENDPOINTS=1 to run",
+    )
     def test_check_unreachable(self):
         result = check_regulation_source("https://thisdomaindoesnotexist12345.com/")
         assert "[ERROR]" in result or "[WARNING]" in result
 
 
 class TestScrapeRegulations:
+    @pytest.mark.live
+    @pytest.mark.skipif(
+        os.environ.get("MATA_GARUDA_LIVE_ENDPOINTS") != "1",
+        reason="set MATA_GARUDA_LIVE_ENDPOINTS=1 to run",
+    )
     def test_scrape_returns_string(self):
         result = scrape_regulations(limit=3)
         assert isinstance(result, str)
