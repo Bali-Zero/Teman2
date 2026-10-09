@@ -536,8 +536,9 @@ The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and 
   `localci-deps-base:*` and every `service_images` stand-in value of the BASE matrix (`contexts_matrix.yaml`, extracted by the
   wrapper at the tick's sha; read, never hardcoded: today `postgres:15`, `redis:7`) — is never in a removal set and each of
   its images present is journalled under `kept` with its rule. While a plan or the matrix cannot be read, no image is removed;
-  a half-written plan still names the tags its text names. Created is read to the nanosecond; images built at the same
-  instant rank together.
+  a half-written plan still names the tags its text names. Created is read to the nanosecond and as a UTC instant, honouring a
+  trailing `Z` or `±HH:MM`/`±HHMM` offset (Pro's docker prints local time with `+08:00`; B8a) — no offset reads as UTC, anything
+  else as undated; images built at the same instant rank together.
 - **VM floor (B8, amended).** After the cap, the builder prune and the run trim, while the VM's free GB
   (`vm_free_gb.after`) is under `VM_MIN_FREE_GB` (15; `LOCALCI_VM_MIN_FREE_GB` overrides it, a value that is not a finite
   number ≥ 0 reads as 15), images go fewest plan references of the last 48 h first, ties to the oldest, the builder pruned

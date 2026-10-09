@@ -619,3 +619,47 @@ def test_b8_the_build_cache_is_pruned_to_a_budget_not_by_age(tmp_path):
 def test_b8_the_build_cache_size_is_read_from_system_df_and_an_unreadable_one_is_none(tmp_path, cache, gb):
     _, docker = world(tmp_path, [], cache=cache)
     assert pm.build_cache_gb(docker) == gb
+
+
+# B8a (Pro, 2026-10-09T02:49:24Z: B8's first live floor removal journalled "built -5.3 h ago"): docker on Pro prints Created
+# in local time with its offset, `2026-10-08T20:00:21.883530525+08:00`, and _ts dropped the offset.
+@pytest.mark.parametrize("text, utc", [
+    ("2026-10-08T20:00:21.883530525+08:00", "2026-10-08T12:00:21.883530525Z"),
+    ("2026-10-08T06:30:00-05:30", "2026-10-08T12:00:00Z"),
+    ("2026-10-08T20:00:21+0800", "2026-10-08T12:00:21Z"),
+    ("2026-10-08T12:00:21.5", "2026-10-08T12:00:21.5Z"),   # no offset reads as UTC, as before
+])
+def test_b8a_created_is_read_as_a_utc_instant_whatever_its_offset(text, utc):
+    assert pm._ts(text) == pm._ts(utc) and pm._ts(utc) is not None
+
+
+@pytest.mark.parametrize("text", ["", "garbage", "2026-10-08T20:00:21+8", "2026-10-08T20:00:21+25:00", "2026-10-08T20:00:21+08:60",
+                                  "2026-13-08T20:00:21Z", "2026-10-08T20:00:21Z trailing"])
+def test_b8a_a_malformed_created_is_none(text):
+    assert pm._ts(text) is None
+
+
+def test_b8a_nanoseconds_still_order_two_builds_of_one_second():
+    assert pm._ts("2026-10-08T20:00:21.900000000+08:00") - pm._ts("2026-10-08T20:00:21.100000000+08:00") == pytest.approx(0.8)
+
+
+def local8(age_h: float) -> str:   # Pro's shape: local time, nanoseconds, +08:00
+    return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(NOW - age_h * H + 8 * H)) + ".883530525+08:00"
+
+
+def test_b8a_an_image_dated_in_utc_and_one_dated_in_local_time_are_ordered_by_their_instants(tmp_path):
+    utc_new = image("a" * 16, 2, "e2e-tests")
+    local_old = {**image("b" * 16, 5, "e2e-tests"), "created": local8(5)}   # dropping +08:00 made it read 3 h in the future
+    d = decided(*world(tmp_path, [utc_new, local_old]))
+    assert d[utc_new["tag"]]["rule"] == "the newest image of recipe e2e-tests" and d[local_old["tag"]]["remove"] is True
+
+
+def test_b8a_a_floor_removal_of_images_dated_with_an_offset_journals_their_true_age(tmp_path):
+    old = {**image("a" * 16, 20, "e2e-tests", gb=1.0), "created": local8(20)}
+    new = {**image("b" * 16, 1, "e2e-tests", gb=1.0), "created": local8(1)}
+    plans = {"pr1-x-20261008T100000Z": (2, {"ctx.e2e-tests": new["tag"]}), "pr2-x-20261008T110000Z": (3, {"ctx.e2e-tests": new["tag"]}),
+             "pr3-x-20261008T120000Z": (4, {"ctx.e2e-tests": old["tag"]})}
+    line = prune_line(*world(tmp_path, [old, new], plans, vm_avail_kb=kb(1)))
+    assert [r["rule"] for r in line["images"]["removed"]] == [
+        "vm floor: VM free 1 GB < 15 GB after the cap; 1 plan(s) of the last 48 h name it, built 20.0 h ago",
+        "vm floor: VM free 2 GB < 15 GB after the cap; 2 plan(s) of the last 48 h name it, built 1.0 h ago"]

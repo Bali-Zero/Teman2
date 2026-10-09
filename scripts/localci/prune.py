@@ -83,10 +83,19 @@ def stand_ins(matrix: Path) -> frozenset:
     return frozenset(found)
 
 
+TS_RE = re.compile(r"(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(\.\d+)?(?:Z|([+-])(\d\d):?(\d\d))?")
+
+
 def _ts(text: str) -> float | None:
-    m = re.match(r"(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(\.\d+)?", text or "")
-    try:   # docker's Created carries nanoseconds: two builds in one second are still ordered
-        return calendar.timegm(time.strptime(m.group(1), "%Y-%m-%dT%H:%M:%S")) + float(m.group(2) or 0) if m else None
+    """docker's Created as a UTC instant. RFC 3339 with nanoseconds (two builds in one second are still ordered) and a trailing
+    `Z` or `±HH:MM` / `±HHMM` offset: Pro's docker prints local time with `+08:00`, and dropping it made every image 8 h younger
+    than it is (B8a, measured 2026-10-09T02:49:24Z: "built -5.3 h ago"). No offset reads as UTC; anything else is None."""
+    m = TS_RE.fullmatch((text or "").strip())
+    if not m or (m.group(3) and (int(m.group(4)) > 23 or int(m.group(5)) > 59)):
+        return None
+    off_s = (1 if m.group(3) == "+" else -1) * (int(m.group(4)) * 3600 + int(m.group(5)) * 60) if m.group(3) else 0
+    try:
+        return calendar.timegm(time.strptime(m.group(1), "%Y-%m-%dT%H:%M:%S")) + float(m.group(2) or 0) - off_s
     except ValueError:
         return None
 
