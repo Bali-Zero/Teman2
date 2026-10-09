@@ -1,0 +1,11 @@
+task_id: mouth-kbli-r19-state-spec-1009
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Lot W0b of mission kbli-nav-design-loop: state the hover, focus and selection
+  colours of the /kbli* R19 wrapper contract and teach the read-only census to
+  judge them. Docs and scripts only, no apps/mouth source, no hot-zone path.
+  Gear is 2 via the SIZE term alone: the replay fixture (a live census dump) and
+  the state table are data. The gear-2 verdict is not asserted here; a fresh
+  gate reads the diff and posts it.
