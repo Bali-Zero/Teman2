@@ -327,7 +327,11 @@ extension Snapshot {
         host.frame = NSRect(x: 0, y: 0, width: w, height: h)
         guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return true }
         host.cacheDisplay(in: host.bounds, to: rep)
-        if let data = rep.representation(using: .png, properties: [:]) {
+        // Written in sRGB, so a pixel reads the token's own hex: the cache comes back tagged
+        // Generic RGB (paper F7F4EE read F5F1EA, lineSoft DAD8D1 read D1CFC7), which a colour-managed
+        // viewer shows right but a pixel census (png_census.py) cannot match.
+        let srgb = rep.converting(to: .sRGB, renderingIntent: .default) ?? rep
+        if let data = srgb.representation(using: .png, properties: [:]) {
             try? data.write(to: URL(fileURLWithPath: out))
             FileHandle.standardError.write("band snapshot written: \(out)\n".data(using: .utf8)!)
         }
