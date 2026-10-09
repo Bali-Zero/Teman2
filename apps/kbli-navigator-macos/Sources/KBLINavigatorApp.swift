@@ -1,4 +1,5 @@
 import AppKit
+import CoreText
 import SwiftUI
 
 /// Phase-2 (design §2, R5-2/R6-2): runs the codex-runner launch sweep once per app launch (any
@@ -36,16 +37,35 @@ struct KBLINavigatorApp: App {
     @AppStorage("rowDensity") private var rowDensity: RowDensity = .comfortable
 
     init() {
+        // R19 type (spec §1.5): the bundled cuts are registered for this process before any view —
+        // live or snapshot — asks for one. `ATSApplicationFontsPath` (Info.plist) is the second route;
+        // a cut it already registered makes this call report a harmless "already registered".
+        Self.registerBundledFonts()
         // Off-screen QA snapshot mode (no GUI session needed). Must run before the scene.
         // `--snapshot-band` (design-baseline renderer, 2026-09-17) is checked FIRST and is a
         // distinct flag from legacy `--snapshot`, so both keep working independently.
         if CommandLine.arguments.contains("--snapshot-band") {
+            // A band must never fall back to a system face silently: no bundled serif, no render.
+            guard NSFont(name: Theme.FontName.display, size: 12) != nil else {
+                FileHandle.standardError.write("font not registered: \(Theme.FontName.display)\n".data(using: .utf8)!)
+                exit(4)
+            }
             MainActor.assumeIsolated { _ = Snapshot.runBandIfRequested() }
             exit(0)
         }
         if CommandLine.arguments.contains("--snapshot") {
             MainActor.assumeIsolated { _ = Snapshot.runIfRequested() }
             exit(0)
+        }
+    }
+
+    /// Registers every `.ttf` under `Contents/Resources/Fonts` for this process only (no install).
+    private static func registerBundledFonts() {
+        guard let dir = Bundle.main.resourceURL?.appendingPathComponent("Fonts", isDirectory: true),
+              let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+        else { return }
+        for url in files where url.pathExtension.lowercased() == "ttf" {
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
         }
     }
 

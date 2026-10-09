@@ -367,15 +367,46 @@ enum Theme {
     // role, not pixel-identical output (title's old 26pt vs .title's own ~28pt default, etc.); the
     // goal is preserving RELATIVE hierarchy, which `scalable(_:)` below formalizes for every other
     // call site in the app using the same size→style ladder.
-    static let titleFont   = Font.system(.title, design: .default, weight: .bold)         // was 26
-    static let headingFont = Font.system(.headline, design: .default, weight: .semibold)  // was 17
-    static let bodyFont    = Font.system(.body, design: .default, weight: .regular)       // was 13
-    static let monoFont    = Font.system(.body, design: .monospaced, weight: .medium)     // was 12
+    //
+    // R19 type (2026-10-09, design loop spec §1.5–1.6): every role and every `scalable` call now
+    // paints one of the five bundled static cuts (Resources/Fonts, cut by Tools/fonts/
+    // make_instances.py) at its NOMINAL size, `relativeTo:` the same text style as before — the
+    // macOS text-style default no longer substitutes the size the call site states.
+    static let titleFont   = face(26, weight: .bold, design: nil, relativeTo: .title)
+    static let headingFont = face(17, weight: .semibold, design: nil, relativeTo: .headline)
+    static let bodyFont    = face(13, weight: .regular, design: nil, relativeTo: .body)
+    static let monoFont    = face(12, weight: .medium, design: .monospaced, relativeTo: .body)
     /// Small ALL-CAPS labels (facts-row captions, section eyebrows) — the "micro-label" role.
-    static let microFont   = Font.system(.caption2, design: .default, weight: .medium)     // was 10
-    static let numberFont  = Font.system(.title3, design: .rounded, weight: .semibold)    // was 15
-    /// Big "premium amount" face for the detail hero (SF Pro Rounded, like a fintech figure).
-    static let bigNumberFont = Font.system(.largeTitle, design: .rounded, weight: .bold)  // was 30
+    static let microFont   = face(10, weight: .medium, design: nil, relativeTo: .caption2)
+    static let numberFont  = face(15, weight: .semibold, design: .rounded, relativeTo: .title3)
+    /// Big "premium amount" face for the detail hero (tabular Manrope figures).
+    static let bigNumberFont = face(30, weight: .bold, design: .rounded, relativeTo: .largeTitle)
+
+    /// PostScript names of the five bundled cuts (spec §1.5). Fraunces is the R19 serif, Manrope the sans.
+    enum FontName {
+        static let display  = "KBLIFraunces-Display"  // ≥ 48 pt (opsz 144)
+        static let title    = "KBLIFraunces-Title"    // 27–36 pt (opsz 36)
+        static let text     = "KBLIFraunces-Text"     // 20–25 pt, pull-quotes (opsz 20)
+        static let regular  = "KBLIManrope-Regular"
+        static let semiBold = "KBLIManrope-SemiBold"
+    }
+
+    /// Fraunces display cut, for the ≥ 48 pt mastheads.
+    static func display(_ size: CGFloat) -> Font { .custom(FontName.display, size: size, relativeTo: .largeTitle) }
+    /// Fraunces title cut, for 27–36 pt titles and cap figures.
+    static func title(_ size: CGFloat) -> Font { .custom(FontName.title, size: size, relativeTo: .title) }
+    /// Fraunces text cut, for 20–25 pt section titles and pull-quotes.
+    static func serif(_ size: CGFloat) -> Font { .custom(FontName.text, size: size, relativeTo: .title3) }
+
+    /// The one family dispatch every role and `scalable` call goes through: `.serif` → the Fraunces
+    /// text cut; default/rounded/nil → Manrope, SemiBold from `.semibold` up; `.monospaced` →
+    /// Manrope with tabular digits (R19 figures). No synthetic weight or slant is ever applied.
+    private static func face(_ size: CGFloat, weight: Font.Weight, design: Font.Design?, relativeTo style: Font.TextStyle) -> Font {
+        if design == .serif { return .custom(FontName.text, size: size, relativeTo: style) }
+        let heavy: Set<Font.Weight> = [.semibold, .bold, .heavy, .black]
+        let font = Font.custom(heavy.contains(weight) ? FontName.semiBold : FontName.regular, size: size, relativeTo: style)
+        return design == .monospaced ? font.monospacedDigit() : font
+    }
 
     /// Dynamic-Type-aware replacement for the ~190 call sites that used to write
     /// `.font(.system(size: N, weight: W, design: D))` directly with a frozen point size. Maps N
@@ -412,7 +443,7 @@ enum Theme {
         case ..<29:   style = .title
         default:      style = .largeTitle
         }
-        return .system(style, design: design, weight: weight)
+        return face(size, weight: weight, design: design, relativeTo: style)
     }
 
     // MARK: Radii (--kbli-radius-*)
