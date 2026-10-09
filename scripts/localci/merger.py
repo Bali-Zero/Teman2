@@ -48,6 +48,7 @@ ARM_LABEL, ARM_ENV, ARM_ROLES = "localci:merge-shadow-ok", "LOCALCI_MERGER_ARMED
 AUTHOR = "localci-merger"
 PHASE_E = "phase E not armed: see docs/specs/localci-sovereign-2026-10-07.md"
 REPLAY_NOTE = "B11 replay: the hosted verdict is read on the merge commit GitHub put on main, the very candidate judged here"
+REPLAY_KEPT = "replay: the same tree on both sides, never stale"
 PR_SUBJECT = re.compile(r"\(#(\d+)\)\s*$")   # the merge queue's subject: `<title> (#<pr>)`
 HEAD_NOTE = "hosted verdict read on the PR head sha: the queue's verdict lands on a merge-group commit the merger cannot see"
 MATRIX = "scripts/localci/contexts_matrix.yaml"
@@ -715,10 +716,15 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         except Exception as exc:  # noqa: BLE001 — a shadow never turns a decision into a second, ERROR one
             print(f"merger: #{n} would_merge not journalled — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
         return 0
-    except (MergerError, OSError) as exc:   # a decision with no verdict: this (pr, head, base) is not retried, the next base is
-        journal(state, {**rec, "overall": "ERROR", "error": redact(exc), "candidate_sha": None, "run_dir": None,
+    except Stopped:
+        raise
+    except Exception as exc:  # noqa: BLE001 — a decision with no verdict: this (pr, head, base) is not retried, the next base is
+        if not (replay or isinstance(exc, (MergerError, OSError))):
+            raise   # a replay journals ANY failure as its ERROR line: the alternation advances and its retry bound holds
+        why = exc if isinstance(exc, (MergerError, OSError)) else f"{type(exc).__name__}: {exc}"
+        journal(state, {**rec, "overall": "ERROR", "error": redact(why), "candidate_sha": None, "run_dir": None,
                         "elapsed_s": round(time.monotonic() - t0, 1)})
-        print(f"merger: #{n} ERROR — {redact(exc)}", file=sys.stderr)
+        print(f"merger: #{n} ERROR — {redact(why)}", file=sys.stderr)
         return 1
     finally:
         drop_worktree(repo_dir, cand)
@@ -949,7 +955,10 @@ def cmd_report(a) -> int:
             # what the tick saw is kept: a red GitHub later re-ran green, or a context it no longer requires, cannot erase it
             raw = recorded_false_green(d)
             judge = None if d.get("replay") else judges.setdefault(str(d.get("base_sha")), StaleJudge(state / "repo.git", str(d.get("base_sha"))))
-            got, why_kept = reclassify_recorded(a, d, judge) if raw and judge else ([], [])   # a replay's hosted verdict is on its own tree
+            if raw and judge is None:   # a replay's hosted verdict is on its own tree: every recorded row is kept, and says why
+                got, why_kept = [], [{"pr": d.get("pr"), "context": None, "head_sha": d.get("head_sha"), "why": REPLAY_KEPT}]
+            else:
+                got, why_kept = reclassify_recorded(a, d, judge) if raw else ([], [])
             got = got[:raw]
             recorded_raw += raw
             reclassified += got
