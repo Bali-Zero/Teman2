@@ -17,10 +17,10 @@ objective: >-
   comes back.
 scope:
   - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts (114 keys rewritten, EN and ID twins)
-  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/copy-truth.test.ts (new, 52 equality rows plus false-claim guilt checks)
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/copy-truth.test.ts (new, 54 equality rows plus false-claim guilt checks)
   - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/client-copy.test.ts (census covers the interview copy and the atlas)
   - scripts/ci/observe_visa_oracle_client_copy.py and its Python test (observer covers the interview copy, the atlas and dotted identifiers)
   - component tests that pinned a replaced sentence, and one consent line (advisor)
 appetite:
   wall_clock_hours: 4
-  adversarial_rounds: 5
+  adversarial_rounds: 6

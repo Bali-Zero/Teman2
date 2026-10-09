@@ -18,10 +18,15 @@ lanes:
       the per-key truth table (scratchpad spec-interview-truth-table-c4v3.md), derived from the
       flow, the fact mapping, the question tree and the signed seq-26 pack.
     nb: "/private/tmp/claude-501/-Users-balizero-nuzantara/97393d09-3316-4ddc-a999-9e558d25a8dd/scratchpad/spec-interview-truth-table-c4v3.md (no notebook: the truth table is derived from the code on disk)"
-    query_hash: "5b5f745ab907ffe11e1c945ed33daf7fb873f3f1e7112c1139d7d5c655c8603a" # pragma: allowlist secret — sha256 of that spec file
+    query_hash: "035dcca8d8400e1e2df6bfd971de759a2f9b4515ba6d28ec34261579e15eef3c" # pragma: allowlist secret — sha256 of that spec file
   - lane: interview-copy-review
     role: review
     seat: agy-gemini-3.1-pro (constructive copy review on the predecessor), cured.
+  - lane: interview-copy-sweep
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (red-team, read-only full sweep of all 114 changed keys); the CLI ran its
+      configured default model gpt-6-astra, run 05:14 to 05:25Z, verdict file codex-c4v4-verdict.txt.
   - lane: interview-copy-gate
     role: review
     seat: fresh-opus-gate (final on-disk gates of the two predecessor PRs), cured in this successor.
@@ -46,7 +51,7 @@ decisions:
       The copy follows spec-interview-truth-table-c4v3.md (scratchpad), whose rows were derived
       from flow.ts, fact-mapper.ts, tree.ts and the signed pack rulepack-prod-026 with sha256
       dcbc12cd5844301c18c89bf9311d061fe6ad718ebbe13755afc9dd5b01c070cf. Section 2-A (27 keys),
-      2-C (7 keys) and the 9 addendum (16 rows) and the 10 addendum (4 keys) are applied byte-exactly in both languages; 2-C covers keys outside the
+      2-C (7 keys) and the 9 addendum (16 rows) the 10 addendum (4 keys) and the 11 addendum (12 keys) are applied byte-exactly in both languages; 2-C covers keys outside the
       original diff because they are visible and false on main. The dead keys of section 2-B are
       not touched here: deleting them is a separate PR.
   - id: D-successor-of-8140
@@ -92,43 +97,43 @@ receipts:
     cmd: "python3 scripts/ci/observe_visa_oracle_client_copy.py"
     result: "OK visa-oracle client copy: 3672 literals scanned, 0 banned"
     exit: 0
-    ts: "2026-10-09T05:10:09Z"
+    ts: "2026-10-09T05:27:05Z"
     seat: this session
   - claim: "The observer guard has guilt and innocence tests in both languages."
     cmd: "python3 -m pytest scripts/tests/test_observe_visa_oracle_client_copy.py -q"
     result: "4 passed"
     exit: 0
-    ts: "2026-10-09T05:10:09Z"
+    ts: "2026-10-09T05:27:05Z"
     seat: this session
   - claim: "The copy census, the new truth test, i18n parity, QuestionScreen, WhyWeAsk, OutcomeSheet and ConsentHandoff tests pass."
     cmd: "cd apps/mouth && npx vitest run <the seven test files>"
-    result: "Test Files  7 passed (7); Tests  230 passed (230)"
+    result: "Test Files  7 passed (7); Tests  232 passed (232)"
     exit: 0
-    ts: "2026-10-09T05:11:12Z"
+    ts: "2026-10-09T05:27:18Z"
     seat: this session
   - claim: "The enumeration file passes; run alone because it times out inside the full tree under machine load."
     cmd: "cd apps/mouth && npx vitest run src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts"
     result: "Test Files  1 passed (1); Tests  40 passed (40)"
     exit: 0
-    ts: "2026-10-09T05:12:27Z"
+    ts: "2026-10-09T05:28:14Z"
     seat: this session
   - claim: "The mouth typecheck is clean."
     cmd: "cd apps/mouth && npx tsc --noEmit -p tsconfig.json"
     result: "no output"
     exit: 0
-    ts: "2026-10-09T05:11:03Z"
+    ts: "2026-10-09T05:27:13Z"
     seat: this session
   - claim: "Prettier accepts every touched TypeScript file."
     cmd: "cd apps/mouth && npx prettier --check <touched files>"
     result: "All matched files use Prettier code style!"
     exit: 0
-    ts: "2026-10-09T05:10:08Z"
+    ts: "2026-10-09T05:27:05Z"
     seat: this session
   - claim: "No e2e spec pins a replaced sentence of the 34 keys; two component tests that did were updated."
     cmd: "rg -n -F -f <old sentences of the 34 keys> apps/mouth/e2e apps/mouth/src (excluding the dictionary and the truth test)"
     result: "no pin left (the only hit is a generic result-page condition notice in engine-adapter.ts, not one of these keys)"
     exit: 0
-    ts: "2026-10-09T05:12:27Z"
+    ts: "2026-10-09T05:28:14Z"
     seat: this session
 dissent:
   - seat: agy-gemini-3.1-pro
@@ -206,6 +211,26 @@ dissent:
     objection: outcome.freshness.UNKNOWN said last check date unknown, but the badge shows when a check date is in the future.
     status: CONFIRMED
     note: cured in 47e6a32952, the badge reads check status unknown.
+  - seat: codex-gpt-5.6-sol
+    severity: HIGH
+    objection: outcome.freshness.STALE said the source is being re-checked by our team, but nothing establishes that anyone is re-checking it.
+    status: CONFIRMED
+    note: cured in 240593d1a3; the journal note is codex-c4v4-verdict.txt (run 05:14 to 05:25Z, real model gpt-6-astra). The badge now says the source needs to be checked again.
+  - seat: codex-gpt-5.6-sol
+    severity: MEDIUM
+    objection: why.birth_date said a child visa ends at 18, but the exclusion applies at assessment and does not end an issued visa.
+    status: CONFIRMED
+    note: cured in 240593d1a3, the sentence now only says some visas have age limits and we check the age against them.
+  - seat: codex-gpt-5.6-sol
+    severity: LOW
+    objection: why.diaspora_connection spoke of multiple passports as such, but the restriction follows the selected answer.
+    status: CONFIRMED
+    note: cured in 240593d1a3, the sentence names the answer chosen.
+  - seat: codex-gpt-5.6-sol
+    severity: LOW
+    objection: Nine assumption notes used the past tense although they appear before the assessment runs.
+    status: CONFIRMED
+    note: cured in 240593d1a3, present tense, with the advisor offer kept.
 spend:
   wall_clock_hours: 4
-  adversarial_rounds: 5
+  adversarial_rounds: 6
