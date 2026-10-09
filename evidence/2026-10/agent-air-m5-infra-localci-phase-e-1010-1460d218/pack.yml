@@ -1,10 +1,9 @@
 task_id: localci-phase-e-1010
 mission: LOCALCI-SOVEREIGN (phase E, prepared)
 colour: BLUE
-gear: 1
+gear: 2
 gear_reason: >-
-  One new operator tool under scripts/localci (never run with --apply by a session), its tests, its own mutant table, a
-  README section and one spec paragraph. No hot-zone path; the lint floor is 1 by path.
+  The lint's floor is 2 by size (about 1600 net lines, most of them tests); no hot-zone path.
 l_level: L2
 gate_class: opus
 objective: >-
@@ -19,6 +18,16 @@ acceptance:
     probe: "test_phase_e_flip.py::test_a_guard_or_key_that_changes_after_the_ruleset_write_stops_the_delete, ::test_a_rollback_whose_classic_protection_vanishes_after_its_write_never_restores_the_queue"
 consumer_map:
   - The operator at phase E (operator[gui]), following the README's arming order.
+lanes:
+  - lane: localci-phase-e-1010
+    role: build
+    seat: "claude-opus-5-5 on M5 (wrote the tool, tests, mutants and docs; four fix rounds; suspended at the third red for one cause)"
+  - lane: localci-phase-e-1010-gate-opus
+    role: review
+    seat: "claude-opus-5-5, four fresh read-only seats (rounds 1-4: CONFIRMED each, MEDIUMs then LOWs; tests and sweep run from round 2)"
+  - lane: localci-phase-e-1010-council-codex
+    role: review
+    seat: "codex-gpt-5.6 read-only xhigh (rounds 2-4: BLOCKER each; round 4's first BLOCKER is the third of one cause)"
 pii_scan: clean
 pii_scan_note: Branch-protection configuration, check names, ruleset ids and key fingerprints only; no client data.
 what_changed: |

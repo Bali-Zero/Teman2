@@ -1,12 +1,11 @@
 task_id: localci-phase-e-1010
 mission: LOCALCI-SOVEREIGN (phase E, prepared)
 colour: BLUE
-gear: 1
+gear: 2
 gear_reason: >-
-  One new operator tool under scripts/localci (never run with --apply by a session), its tests, a mutant table of its own,
-  a README section and one spec paragraph. No hot-zone path, workflow, credential, wrapper or plist change; the lint floor
-  is 1 by path. The tool can rewrite branch protection when an operator applies it, so it went through an independent Opus
-  gate and Codex anyway.
+  The lint's floor is 2 by size (about 1600 net lines, most of them tests); no hot-zone path. One new operator tool
+  under scripts/localci, never run with --apply by a session, its tests, its own mutant table, a README section and
+  one spec paragraph.
 l_level: L2
 gate_class: opus
 objective: >-
