@@ -30,6 +30,10 @@ It runs the predicates that already own this ban:
       runs it: scan the target files against a COPY of `.secrets.baseline`,
       apply the repo's own auto-triage, then fail on any unaudited residue.
 
+P3 does not scan `.secrets.baseline` itself (that exact path only): it is the
+scanner's ledger of hashes, and scanning it made every audit commit need the
+kill switch. A namesake in another directory is still scanned.
+
 P1 and P2 are transcribed from the workflow; `scripts/tests/test_ban_predicates.py`
 asserts each transcription is byte-identical to the regex the workflow runs, so
 a drifting copy fails rather than lies.
@@ -118,6 +122,25 @@ def _excluded(grep_line: str, exclude: str) -> bool:
 
 def _grep_line(path: str, lineno: int, text: str) -> str:
     return f"./{path}:{lineno}:{text}"
+
+
+# The baseline is the scanner's own LEDGER, not a file that can carry a secret:
+# detect-secrets stores per finding only `filename`, `hashed_secret` (a SHA-1),
+# `is_secret`, `is_verified`, `line_number` and `type` - never the value. Handed
+# to the scanner as a target, its ~14.6k hashed rows are read as high-entropy
+# strings, so auditing a false positive demanded the kill switch (#7156, #8041).
+# Excluded by PATH ENTITY - exactly this repo-relative file - and from P3 only;
+# P1/P2 are suffix-gated to .py/.sh and never reached it.
+BASELINE_REL = ".secrets.baseline"
+
+
+def _is_the_baseline(rel: str) -> bool:
+    """True only for the repo's own `.secrets.baseline`, never a namesake.
+
+    `docs/.secrets.baseline` and `x.secrets.baseline` are different files and
+    stay scanned: a substring or glob here would be a hiding place.
+    """
+    return os.path.normpath(rel) == BASELINE_REL
 
 
 def _git(*args: str) -> str:
@@ -306,6 +329,9 @@ def detect_secrets_predicate(
         else:
             indexed = list(enumerate(paths))
             cwd = REPO_ROOT
+        indexed = [(i, rel) for i, rel in indexed if not _is_the_baseline(rel)]
+        if not indexed and all(_is_the_baseline(p) for p in paths):
+            return [], None
         if not indexed:
             return [], (SKIP_NO_BLOB, 0)
         targets = [rel for _, rel in indexed]
