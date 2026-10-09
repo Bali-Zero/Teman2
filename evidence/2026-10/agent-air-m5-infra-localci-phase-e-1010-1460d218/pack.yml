@@ -92,7 +92,7 @@ residuals:
   - "The open spec question (for the LOCALCI lead and the operator): GitHub's REST API has no compare-and-swap for rulesets or branch protection, so any flip has a read-to-write window before EVERY write, the first included. Either W1 extends to a fresh read before the first write and the README names the residual sub-second window as accepted, or the flip is specified to run only on a quiesced repository (operator-only, no session or peer running), which makes peer changes out of scope."
   - "Opus gate LOWs at afd5b11035 not yet answered: KeyboardInterrupt after write 1 escapes W4; a read that errors is not retried; the README overstates W1 for the DELETE race; no post-flip watcher (a scheduled read-only plan as a probe); the FAILED rollback hint omits --repo/--branch; three comparisons not pinned (key swap, evaluate-mode rollback, bypass_mode read-back)."
   - "Size: about 1480 lines (mostly tests) against the ~400 guideline; one concern."
-brief_ref: evidence/2026-10/agent-air-m5-infra-localci-phase-e-1010-1460d218/brief.yml
+brief_ref: evidence/brief.yml
 plan_ref: >-
   Mandate (2) of the LOCALCI lead's message of 2026-10-10 (prepared, never applied phase E flip), from origin/main
   323853ba30.
