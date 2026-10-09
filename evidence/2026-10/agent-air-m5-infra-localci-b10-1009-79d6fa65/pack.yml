@@ -38,9 +38,11 @@ bites:
     `merger.py report` on Pro (report.json and its phase E line).
   observation: >-
     Owed after merge and the tick's next extraction (this lane does not ship): on Pro, `merger.py report` prints
-    false_green=N (recorded=R, reclassified HOSTED_STALE=S: [pr7961 Backend Tests (Python): main moved ... after hosted ran
-    2026-10-06T02:54...]) with S at least 1 for the 2026-10-08T18:25:57Z decision and N one lower than before, report.json carries
-    recorded_reclassified_hosted_stale with that row, and the next decision whose hosted run is older than its base journals a
+    reclassified HOSTED_STALE=2 naming both recorded rows, pr7961 (2026-10-08T18:25:57Z) and pr7962 (2026-10-08T19:25:16Z), each
+    `Backend Tests (Python): main moved ... after hosted ran 2026-10-06T02:...`, report.json carries them under
+    recorded_reclassified_hosted_stale, and any recorded row it keeps is listed with its reason under kept. The remaining
+    false_green=N drops by those two recorded rows AND by whatever the live per-context recompute moves to HOSTED_STALE
+    (context_counts.HOSTED_STALE in report.json); the next decision whose hosted run is older than its base journals a
     hosted_compare.stale or stale_unknown entry.
 ground:
   ts: "2026-10-09T02:50:00Z"
@@ -65,6 +67,16 @@ receipts:
     cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_hosted_stale.py::test_main_moved_a_selected_path_after_hosted_ran_is_stale_with_the_commit_and_the_selected_path_only scripts/localci/tests/test_hosted_stale.py::test_main_moved_only_in_unselected_paths_is_fresh scripts/localci/tests/test_hosted_stale.py::test_a_stale_hosted_verdict_beside_a_local_green_is_neither_a_false_green_nor_an_agree scripts/localci/tests/test_hosted_stale.py::test_a_judge_without_evidence_leaves_the_class_and_says_unknown scripts/localci/tests/test_merger_report.py::test_a_recorded_false_green_with_evidence_of_a_stale_hosted_verdict_is_reclassified_and_named scripts/localci/tests/test_merger_report.py::test_the_remaining_false_greens_are_what_ready_reads scripts/localci/tests/test_merger.py::test_the_tick_hands_the_stale_judge_the_mirror_and_the_decided_base -q -p no:cacheprovider
     exit: 0
     ts: "2026-10-09T04:14:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Fix round at the committed tree: test_merger.py, test_merger_report.py, test_hosted_stale.py, test_hosted_compare.py: 352 passed, 107 s."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py scripts/localci/tests/test_hosted_stale.py scripts/localci/tests/test_hosted_compare.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-09T04:50:34Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Fix round: every b10-* rule (21, among them the 5 added: first-parent dropped, blind per-path classification, three unsaid kept reasons) killed, none stale, in three sweeps."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <the b10-* rules>
+    exit: 0
+    ts: "2026-10-09T04:49:00Z"
     seat: claude-opus-5-5 on M5
 dissent: []
 residuals:
