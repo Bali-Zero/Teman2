@@ -26,6 +26,14 @@ def _load(name: str):
 pm, mg = _load("prune"), _load("merger")
 NOW = time.time()
 H = 3600
+
+
+@pytest.fixture(autouse=True)
+def _clock_at_now(monkeypatch):
+    """Every fixture date is NOW minus an age, and the prune reads time.time() when it runs: in a long suite the minutes between
+    this module's import and a test add to every age, and a 0.1 h rounding reads "built 20.1 h ago" for a 20 h image (M5, full
+    localci suite, 2026-10-09). The clock is held at NOW for each test; subprocess timeouts run on the monotonic clock."""
+    monkeypatch.setattr(time, "time", lambda: NOW)
 FAKE = r'''#!{py}
 import json, sys
 world = json.load(open({world!r}))
