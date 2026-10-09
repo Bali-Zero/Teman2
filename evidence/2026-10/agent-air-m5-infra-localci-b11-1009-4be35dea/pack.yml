@@ -21,6 +21,14 @@ what_changed: |
   credited to the replay).
   README and spec: the replay, the alternation and the measurement. Tests: test_replay.py (8), 6 in test_merger_report.py, and
   FakeRunner now binds the status to the decision in progress. 12 mutant rules in their own block after the B10 rules.
+  4b806bcf0c (fix) and 65b139224a (test) are the fix round after the lead's gate at c2fc46c875 (CONFIRMED, five LOWs): decide
+  journals ANY non-Stopped failure of a replay (subprocess.TimeoutExpired included) as its ERROR decision line with replay and
+  merge_commit, recorded as `<Type>: <msg>` when it is not a gate error, so the alternation advances and the two-attempt bound
+  holds; Stopped still propagates and a PR decision keeps its rule (MergerError/OSError its ERROR line, anything else to the
+  tick). The report lists a replay's recorded FALSE_GREEN under kept with why "replay: the same tree on both sides, never stale".
+  The test fixture's M1 is now a real two-parent merge whose second parent is a confirmed `(#14)` commit with another matrix.
+  README: merged_here holds while GitHub's merge_commit_sha for the PR still equals the replayed commit at report time. Spec:
+  FALSE_GREEN 0 moved out of the per-merge threshold parenthesis, stated as phase D's global READY term. 6 new mutant rules.
 proof: |
   Every behaviour is produced by the committed code on fixtures under tmp (real git repos with merge commits, GitHub and the runner
   faked); nothing ran on Pro and nothing was pushed. It reaches Pro when the tick next extracts merger.py from main.
@@ -38,7 +46,7 @@ ground:
     sit right after the B10 block.
 spend:
   adversarial_rounds: 0
-  wall_clock_hours: 1.5
+  wall_clock_hours: 2.0
 receipts:
   - claim: "The touched test files at the committed tree: test_merger.py, test_merger_report.py, test_replay.py, test_hosted_stale.py, test_hosted_compare.py: 366 passed, 202 s."
     cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py scripts/localci/tests/test_replay.py scripts/localci/tests/test_hosted_stale.py scripts/localci/tests/test_hosted_compare.py -q -p no:cacheprovider
@@ -50,8 +58,20 @@ receipts:
     exit: 0
     ts: "2026-10-09T06:55:00Z"
     seat: claude-opus-5-5 on M5
+  - claim: "The fix round's tree, 65b139224a: test_merger.py, test_merger_report.py, test_replay.py, test_hosted_stale.py, test_hosted_compare.py: 370 passed, 185 s, among them test_replay.py::test_a_replay_that_crashes_is_an_error_line_so_the_alternation_advances_and_the_retry_bound_holds[runtime-error|timeout] (decisions PR 3, ERROR replay 11, PR 4, ERROR replay 11, replay 12; rcs 0,1,0,1,0,0,0; no tick error line), test_replay.py::test_a_stop_during_a_replay_is_no_verdict_and_the_same_replay_is_decided_next, test_replay.py::test_a_pr_decision_that_crashes_outside_the_gate_errors_is_no_decision_as_before and test_merger_report.py::test_a_false_green_in_a_replay_is_a_false_green_and_never_reclassified_as_stale (kept=1 with the replay reason)."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py scripts/localci/tests/test_replay.py scripts/localci/tests/test_hosted_stale.py scripts/localci/tests/test_hosted_compare.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-09T08:49:34Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Every b11-* rule on the fix round's tree, the 12 of the build and the 6 the fix round adds (b11-second-parent-base, b11-not-first-parent-line, b11-replay-crash-unjournalled, b11-any-crash-journalled, b11-replay-stop-journalled, b11-replay-false-green-unlisted): 18/18 killed; survivors none, errors none, stale none."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <the 18 b11-* rules>
+    exit: 0
+    ts: "2026-10-09T08:50:40Z"
+    seat: claude-opus-5-5 on M5
 dissent: []
 residuals:
+  - "The full mutant sweep was not rerun after the fix round: the 18 b11-* rules were run with --only, every rule's text present exactly once."
+  - "A run dir is named to the second, so the same key decided again within one second meets the last attempt's directory (EEXIST, an OSError: an ERROR line). Ticks are minutes apart on Pro; the fix round's tests wait for the next second before re-deciding a key. Not changed here."
   - "No adversarial round: the lint's gear-2 floor comes from its size term alone and asks for none; the independent gate is the lead's."
   - "A PR that already reached the threshold before its merge is still replayed (selection asks only for no replay yet); the report counts it once."
   - "A merge commit whose subject lacks the (#N) suffix is never replayed; the suffix is the merge queue's own."

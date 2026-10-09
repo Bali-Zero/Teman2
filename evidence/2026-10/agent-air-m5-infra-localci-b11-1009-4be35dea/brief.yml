@@ -26,6 +26,10 @@ acceptance:
     probe: "test_merger_report.py::test_a_pr_that_qualified_before_its_merge_and_by_a_replay_counts_once_and_is_not_credited_to_the_replay"
   - text: A replay below the threshold SHALL NOT count.
     probe: "test_merger_report.py::test_a_replay_below_the_threshold_is_not_a_compared_merge"
+  - text: A replay that fails for any reason but a stop SHALL be its ERROR decision line, so the next tick decides a PR and the two-attempt bound holds; a stop SHALL stay no verdict.
+    probe: "test_replay.py::test_a_replay_that_crashes_is_an_error_line_so_the_alternation_advances_and_the_retry_bound_holds"
+  - text: A replay's recorded FALSE_GREEN SHALL count in N and be listed under kept with its reason.
+    probe: "test_merger_report.py::test_a_false_green_in_a_replay_is_a_false_green_and_never_reclassified_as_stale"
 assumptions:
   - text: The merge queue's commit subject ends with the PR number in parentheses.
     status: unverified
