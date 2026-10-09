@@ -59,17 +59,16 @@ struct KBLIDetailView: View {
 
     private var hero: some View {
         let status = kbli.l4Bali?.status ?? ""
-        let color = Theme.kbliStatusColor(status)
         return VStack(alignment: .leading, spacing: 14) {
             // status + national PMA badges, soft-tinted (the real PMABadge pattern)
             HStack(spacing: 8) {
                 StatusBadge(icon: Theme.kbliStatusSymbol(status),
                             label: Theme.kbliStatusLabel(status),
-                            color: color)
+                            tone: Theme.tone(status))
                 if let pma = kbli.pmaStatus, pma.isEmpty == false {
                     StatusBadge(icon: "globe.asia.australia",
                                 label: lang.t("detail.national") + " " + pma,
-                                color: Theme.muted)
+                                tone: .neutral)
                 }
             }
             // big rounded code (premium figure)
@@ -183,7 +182,7 @@ struct KBLIDetailView: View {
                             Spacer()
                             if let risk = ps.kategoriRisiko, risk.isEmpty == false {
                                 StatusBadge(icon: "gauge.medium", label: risk,
-                                            color: Theme.riskColor(risk), compact: true)
+                                            risk: risk, compact: true)
                             }
                         }
                         // big premium stats row (permit + processing time)

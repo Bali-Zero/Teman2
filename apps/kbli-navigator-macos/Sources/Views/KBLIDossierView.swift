@@ -76,9 +76,9 @@ struct KBLIDossierView: View {
     private var badgeRow: some View {
         let status = kbli.l4Bali?.status ?? ""
         return HStack(spacing: 8) {
-            StatusBadge(icon: "sparkle", label: lang.t("rich.gold"), color: Theme.yellow, compact: true)
+            StatusBadge(icon: "sparkle", label: lang.t("rich.gold"), tone: .neutral, compact: true)
             StatusBadge(icon: Theme.kbliStatusSymbol(status), label: Theme.kbliStatusLabel(status),
-                        color: Theme.kbliStatusColor(status), compact: true)
+                        tone: Theme.tone(status), compact: true)
         }
     }
 
