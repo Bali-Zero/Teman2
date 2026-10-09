@@ -407,6 +407,21 @@ decision(s) ...; compared_merges=C of which R reached the threshold only through
 `window.compared_merges_from_replays`). A replay's recorded FALSE_GREEN is never re-read for staleness: it counts in `N` and is listed
 under `kept` as `pr<N> all rows: replay: the same tree on both sides, never stale`.
 
+**A gate verdict not posted yet is no verdict (B12).** `ctx.harness-floor` reads the real `harness/fable-gate` verdict with BASE's
+`harness_gate_read.py` on the host, at plan time. A pull request whose session has not posted that status yet makes the reader exit 1 with the
+stderr line `::error::harness_gate_read: PENDING` (measured on Pro 2026-10-09: 10 of the gate's 12 `FALSE_RED` decisions). The step's
+`pending_when` (beside `no_verdict_when`, matrix key) maps that line, **line-anchored on stderr** and on a non-zero exit, to `rc: None`
+with the reason `gate_pending: host, at plan: ...`: the step, the context and `overall` are BLOCKED, never PASS and never FAIL, so
+`hosted_compare` and the report read the context as BLIND, not `FALSE_RED`, and `executed_contexts_ok` still refuses a merge on it. Unlike
+CANNOT-VERIFY it is **not retried**: a posting session takes minutes, not the 40 s of the retry waits. A real verdict line
+(`verdict = 'failure'`, REWORK, BLOCK) stays FAIL, and the same text on stdout cannot fake it. `status.json` names the context
+(`no_verdict: gate_pending`) and the decision line records `gate_pending: true`. `triage` never re-decides the same `(pr, head, base)`, and
+posting a status moves neither head nor base, so a `gate_pending` key becomes eligible again **only when the head now carries a
+`harness/fable-gate` commit status in any state**: one read-only GET per such PR per tick (`repos/{repo}/commits/{head}/statuses`); a failed
+read is not eligible this tick. At most 3 `gate_pending` decisions per key; past the cap the key stays decided and `skipped: gate_pending_cap`
+is journalled once. Replays (B11) are unaffected: they judge a commit GitHub already merged (its gate was posted before it merged), their
+lines carry `replay: true`, and `triage` reads only non-replay decisions. `merger.py report` prints `gate pending (B12): N decision(s)`.
+
 **Phase F, shadow (F1): `would_merge`.** After every `would_enqueue` / `enqueue_*` line of a decided PR the tick journals ONE
 `kind: "would_merge"` line (decisions that reach the enqueue step; CONFLICT, ERROR and skipped decisions carry none): the merge phase F will make, rehearsed with `git merge-tree --write-tree` of the mirror's
 `refs/merger/base` and the decided head. F1 merges nothing and pushes nothing: `merge-tree --write-tree` leaves objects in the
