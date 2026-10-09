@@ -41,6 +41,9 @@ struct KBLI: Codable, Identifiable, Hashable {
     // construction, so they are never given a Swift field at all (no silent partial decode of
     // fields we don't want to risk exposing later).
     let pmaKondisi: String?
+    /// Decode-only (spec §2/§3.5): the official legal basis string of the ownership position,
+    /// carried verbatim for the content check; no view reads it yet.
+    let pmaOfficialBasis: String?
     let pmaNota: String?
     let pmaVerificationStatus: String?
     let bpsAncestors: BpsAncestors?
@@ -67,6 +70,7 @@ struct KBLI: Codable, Identifiable, Hashable {
         case statusMapping = "status_mapping"
         case intel = "intel_2026"
         case pmaKondisi = "pma_kondisi"
+        case pmaOfficialBasis = "pma_official_basis"
         case pmaNota = "pma_nota"
         case pmaVerificationStatus = "pma_verification_status"
         case bpsAncestors = "bps_2020_ancestors"
@@ -96,6 +100,7 @@ struct KBLI: Codable, Identifiable, Hashable {
         statusMapping = try? c.decode(String.self, forKey: .statusMapping)
         intel = try? c.decode(Intel2026.self, forKey: .intel)
         pmaKondisi = try? c.decode(String.self, forKey: .pmaKondisi)
+        pmaOfficialBasis = try? c.decode(String.self, forKey: .pmaOfficialBasis)
         pmaNota = try? c.decode(String.self, forKey: .pmaNota)
         pmaVerificationStatus = try? c.decode(String.self, forKey: .pmaVerificationStatus)
         bpsAncestors = try? c.decode(BpsAncestors.self, forKey: .bpsAncestors)

@@ -407,6 +407,73 @@ struct KBLIVerdict: Equatable {
             return "—"
         }
     }
+
+    /// Heads-up class (spec §2): 1 Bali-blocked · 2 nationally closed · 3 national undetermined ·
+    /// 4 Bali undetermined · 5 TERBATAS cap>0, Bali open · 6 TERBATAS special cap · 7 TERBUKA, Bali open.
+    /// First match wins, on the derived axes (never raw strings). After the first four tests the Bali
+    /// axis is open and the national axis is open or restricted, so the last switch is exhaustive.
+    var headsUpClass: Int {
+        if case .blocked = bali { return 1 }
+        switch national {
+        case .closed: return 2
+        case .undetermined: return 3
+        case .open, .restricted: break
+        }
+        if case .undetermined = bali { return 4 }
+        switch national {
+        case .restricted(let cap): return cap != nil ? 5 : 6
+        case .open: return 7
+        case .closed: return 2
+        case .undetermined: return 3
+        }
+    }
+
+    /// The ONE heads-up label + sentence + tone every surface renders (Q6 extended by Q10): canonical
+    /// words only, never a derived "open" — the open pair survives only in class 7.
+    @MainActor
+    static func headsUp(record k: KBLI, isID: Bool) -> (label: String, sentence: String?, tone: Theme.Tone) {
+        let v = KBLIVerdict.of(record: k)
+        func t(_ key: String) -> String {
+            let table = LanguageManager.strings[isID ? .id : .en] ?? LanguageManager.strings[.en]!
+            return table[key] ?? LanguageManager.strings[.en]?[key] ?? key
+        }
+        func nonEmpty(_ s: String?) -> String? { (s?.isEmpty == false) ? s : nil }
+        switch v.headsUpClass {
+        case 1:
+            return (t("rich.verdict.blocked"), t("dossier.holding.blocked"), .closed)
+        case 2:
+            if (k.pmaStatus ?? "").uppercased() == "TERTUTUP" {
+                let sentence: String
+                if let route = k.pmaRouteTo, !route.isEmpty {
+                    sentence = isID
+                        ? "Untuk PMA, daftarkan \(route) (versi swasta) sebagai gantinya."
+                        : "For a PMA, register \(route) (the private-sector version) instead."
+                } else {
+                    sentence = isID
+                        ? "Hanya badan usaha milik Indonesia 100% yang diizinkan."
+                        : "Only a 100% Indonesian-owned entity is permitted."
+                }
+                return ("TERTUTUP", sentence, .closed)
+            }
+            let cap = k.pmaMaxAsing.map(String.init) ?? "—"
+            return ("\(k.pmaStatus ?? "—") · \(cap)%", nonEmpty(k.pmaKondisi), .closed)
+        case 3:
+            return (VerdictBadge(state: .undeterminedNational, isID: isID).text, v.headlineReason, .neutral)
+        case 4:
+            let reason = nonEmpty(k.l4Bali?.reason).map { OverlayStore.shared.displayReason($0, isID: isID) }
+            return (VerdictBadge(state: .undetermined, isID: isID).text, reason, .neutral)
+        case 5:
+            let cap = v.nationalCap.map(String.init) ?? "—"
+            return ("\(k.pmaStatus ?? "TERBATAS") · \(cap)%", nonEmpty(k.pmaKondisi), .restricted)
+        case 6:
+            return (k.pmaStatus ?? "TERBATAS", nonEmpty(k.pmaKondisi), .restricted)
+        case 7:
+            return (t("rich.verdict.open"), t("dossier.holding.open"), .open)
+        default:
+            // Unreachable (headsUpClass is 1…7); fail closed — never a derived "open".
+            return (VerdictBadge(state: .undetermined, isID: isID).text, nil, .neutral)
+        }
+    }
 }
 
 // MARK: - Adapters

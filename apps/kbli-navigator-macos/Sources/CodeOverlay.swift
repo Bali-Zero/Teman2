@@ -59,6 +59,10 @@ struct CodeOverlay: Codable, Hashable {
 
 /// Loads + serves the overlay bundle. Pure data, offline, no PII.
 final class OverlayStore {
+    /// One shared instance: `init()` reads its JSON files, so surfaces that only need
+    /// `displayReason` share this rather than each parsing the bundle again.
+    static let shared = OverlayStore()
+
     private let byCode: [String: [String: CodeOverlay]]   // code → lang → overlay
     /// Dataset-string translation map: the dataset's scope names / obligations / requirements are
     /// Indonesian-only, so the EN card showed Indonesian ("macaronic"). This maps each Indonesian
@@ -144,6 +148,29 @@ final class OverlayStore {
     func reasonString(_ rawReason: String, isID: Bool) -> String {
         guard let pair = reasonI18n[rawReason] else { return rawReason }
         return (isID ? pair["id"] : pair["en"]) ?? rawReason
+    }
+
+    /// The ONE display path for an `l4_bali.reason`: the en translation table, and in Indonesian
+    /// the registry sheet's labelled-quote fallback (`RegistryVerdictSheet.swift:39-43`) when the
+    /// reason has no id translation, so half-translated prose never blends into an id surface.
+    func displayReason(_ raw: String, isID: Bool) -> String {
+        guard isID else { return reasonString(raw, isID: false) }
+        let t = reasonString(raw, isID: true)
+        return t != raw ? t : "Kutipan catatan (EN): \(raw)"
+    }
+
+    /// The PRIMARY title every surface shows, lifted verbatim from the ledger's `primaryTitle`
+    /// (`KBLIRegistryView.swift:173-184`). ID → the strict Indonesian overlay title, else the raw
+    /// `judul`. EN → the curated overlay title when it is not just the Indonesian `judul` again, else
+    /// the army-translated `judul` — never Indonesian in an English card. The content pack's frozen
+    /// titles ("Villa Rental" for 55203) are this function's output, not `KBLIStore.judulEN`'s.
+    func primaryTitle(_ k: KBLI, isID: Bool) -> String {
+        if isID { return overlayStrict(k.kode, lang: "id")?.title ?? k.judul }
+        if let t = overlay(k.kode, lang: "en")?.title,
+           t.trimmingCharacters(in: .whitespaces) != k.judul.trimmingCharacters(in: .whitespaces) {
+            return t
+        }
+        return dataString(k.judul, isID: false)
     }
 
     /// FALLBACK Bali-verdict subtitle template — consumed ONLY when the per-code, cured
