@@ -1,11 +1,12 @@
 task_id: localci-f1-1008
 mission: LOCALCI-SOVEREIGN (phase F, step F1)
 colour: BLUE
-gear: 1
+gear: 2
 gear_reason: >-
-  evidence_pack_lint floors this change at gear 1: it touches the shadow merger, its tests, a README paragraph and the spec
-  status line, and no hot-zone path (no workflow, plist, wrapper, credential or branch protection). The shadow writes one
-  journal line and objects in the mirror's own object store; it merges nothing and pushes nothing.
+  evidence_pack_lint's floor for this change set is 2 by its size term alone (churn 503 with this pack, 376 without it, over
+  the 400-line target once the gate's fix round landed), no hot-zone path. The change is the shadow merger, its tests and
+  mutants, a README paragraph and a spec status line; no workflow, credential, wrapper or plist changes, so the deploy is the
+  mirror's next fetch.
 l_level: L2
 gate_class: opus
 objective: >-

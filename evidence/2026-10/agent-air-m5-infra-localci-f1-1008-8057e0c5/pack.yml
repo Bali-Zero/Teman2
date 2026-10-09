@@ -1,5 +1,4 @@
 brief_ref: evidence/brief.yml
-council_run: none
 plan_ref: >-
   Mandate LOCALCI-SOVEREIGN phase F, step F1, from the lead's build message of 2026-10-08 (spec Phase F paragraph: "until then
   phase F's merge path stays shadow: would_merge lines, no merge in the mirror, no push"), to the Dux implementer, from origin/main
@@ -74,7 +73,7 @@ receipts:
     seat: claude-opus-5-5 on M5
 dissent: []
 residuals:
-  - "No council round ran (gear 1 floor, 60-minute build budget): the gate session reviews on disk."
+  - "No adversarial round: the lint's gear-2 floor comes from its size term alone and asks for none; the independent gate is the lead's."
   - "The shadow rehearses the merge as a plain two-parent merge-tree of the head onto main; the real phase F merge is --no-ff with a message, so the tree is the same but the commit is not rehearsed."
   - "A SIGALRM tick watchdog that fires inside the shadow is raised as MergerError and caught by the shadow's own handler, journalled as an error line; the alarm is single-shot, so the tick ends normally."
   - "ok does not include armed_env: the line says in armed_env what the real merge would still wait for. The enqueue criterion's first_enqueue and not_in_queue terms are enqueue-specific and are reused as ruled."
