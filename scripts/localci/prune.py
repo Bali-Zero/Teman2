@@ -27,7 +27,8 @@ DEPS_PREFIX = "localci-deps:"
 NEVER = ("localci-candidate:", "localci-deps-base:")
 REF_WINDOW_H = 48           # a plan this young names its images
 MAX_IMAGES_PER_RECIPE = 2   # per recipe: the newest, and the one most plans of the last 48 h name
-VM_MIN_FREE_GB = 15.0       # B8: under it after the cap, slot-2 images go oldest first (env LOCALCI_VM_MIN_FREE_GB)
+VM_MIN_FREE_GB = 15.0       # B8: under it after the cap every deps image but the never-list and the lease run's goes, fewest 48 h
+                            # plan references first, ties oldest, the newest included (env LOCALCI_VM_MIN_FREE_GB)
 BUILDER_CACHE_GB = 4        # B8: the build cache is kept to this budget (env LOCALCI_BUILDER_CACHE_GB), not by age
 FULL_DAYS, VERDICT_DAYS = 7, 30
 RECIPE_LABEL = "org.nuzantara.localci.recipe"
@@ -103,7 +104,7 @@ def plan_refs(runs: Path, now_s: float) -> tuple[dict, dict, dict, list, set]:
     any of which may name an image, so none is removed while one exists — and what the run in progress names (a run of the
     last 48 h with no status.json yet). A half-written plan still names what its text names."""
     recent, ids, recipes, unreadable, in_progress = {}, {}, {}, [], set()
-    named = {}   # tag or image id -> how many plans of the last 48 h name it (B8: slot 2 goes to the most named)
+    named = {}   # tag or image id -> the plans of the last 48 h that name it (B8: an image's count is the union, tag or id)
     for plan in sorted(runs.glob("*/state/plan.json")) if runs.is_dir() else []:
         try:
             raw = plan.read_text(errors="replace")
@@ -125,7 +126,7 @@ def plan_refs(runs: Path, now_s: float) -> tuple[dict, dict, dict, list, set]:
             for iid in ID_RE.findall(raw):
                 ids[iid] = min(ids.get(iid, age_h), age_h)
             for ref in set(TAG_RE.findall(raw)) | set(ID_RE.findall(raw)):
-                named[ref] = named.get(ref, 0) + 1
+                named.setdefault(ref, set()).add(str(plan))
             if not (plan.parent.parent / "status.json").exists():
                 in_progress |= set(TAG_RE.findall(raw)) | set(ID_RE.findall(raw))
     return recent, ids, {t: sorted(r)[0] for t, r in recipes.items()}, unreadable, in_progress, named
@@ -174,7 +175,7 @@ def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, 
         if im["created"] is not None and (im["recipe"] not in newest or im["created"] > newest[im["recipe"]]["created"]):
             newest[im["recipe"]] = im
     ref_of = lambda im: min([h for h in (recent.get(im["tag"]), ids.get(im["id"])) if h is not None], default=None)  # noqa: E731
-    count_of = lambda im: max(named.get(im["tag"], 0), named.get(im["id"], 0))  # noqa: E731
+    count_of = lambda im: len(set(named.get(im["tag"], ())) | set(named.get(im["id"], ())))  # noqa: E731  distinct plans, tag OR id
     out = {}
     for r, ims in by_recipe.items():
         top, slots = newest.get(r), {}   # image id -> slot number
@@ -311,7 +312,8 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
         errors.append({"matrix": str(matrix), "error": f"unreadable ({type(exc).__name__}): no image is removed without the stand-in list"})
     tags = all_tags(docker)
     decided = image_decisions(deps_images(docker, tags), recent, ids, recipes, now_s, in_progress, keep, named)
-    for d in decided if errors else []:
+    blind = bool(errors)   # an unreadable plan or matrix; a refused removal below is an error too, but it blinds nothing
+    for d in decided if blind else []:
         d.update(remove=False, rule=f"kept: {len(errors)} input(s) unreadable, see errors") if d["remove"] else None
     never_kept = [{"tag": t, "rule": never_rule(t, keep)} for t in tags if protected(t, keep)]
     removed = []
@@ -328,7 +330,7 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
     rec["vm_free_gb"]["after"] = vm_free_gb(docker, state)
     floor = _env_gb("LOCALCI_VM_MIN_FREE_GB", VM_MIN_FREE_GB)   # B8: the VM's free space outranks the slots
     rec["vm_floor"] = {"floor_gb": floor, "removed": 0}
-    if dry or errors:
+    if dry or blind:
         rec["vm_floor"]["skipped"] = "dry run" if dry else "an input is unreadable"
     elif rec["vm_free_gb"]["after"] is None:
         rec["vm_floor"]["skipped"] = "the VM's free space is unmeasured"

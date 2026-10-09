@@ -538,6 +538,27 @@ def test_b8_equal_references_under_the_floor_evict_the_oldest_first_and_an_undat
     assert line["images"]["removed"][2]["rule"].endswith("1 plan(s) of the last 48 h name it, undated")
 
 
+def test_b8_a_refused_cap_removal_is_journalled_and_the_floor_still_acts_on_the_others(tmp_path):   # gate MEDIUM, 470fdba320
+    imgs = [image("a" * 16, 100, "e2e-tests", gb=2.0), image("b" * 16, 50, "e2e-tests", gb=2.0), image("c" * 16, 1, "e2e-tests", gb=2.0)]
+    plans = {"pr1-x-20261008T100000Z": (5, {"ctx.e2e-tests": imgs[1]["tag"]}), "pr2-x-20261008T110000Z": (4, {"ctx.e2e-tests": imgs[2]["tag"]})}
+    state, docker = world(tmp_path, imgs, plans, vm_avail_kb=kb(1), busy=[imgs[0]["tag"]])   # a stopped container holds the cap's image
+    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 1
+    line = journal(state)[-1]
+    assert [e["tag"] for e in line["images"]["errors"]] == [imgs[0]["tag"]] and line["failed"] == ["images"]
+    assert "skipped" not in line["vm_floor"] and line["vm_floor"]["removed"] == 2
+    assert [r["tag"] for r in line["images"]["removed"]] == [imgs[1]["tag"], imgs[2]["tag"]]   # 1 plan each: the older first
+
+
+def test_b8_an_image_named_by_tag_in_one_plan_and_by_id_in_another_counts_two_plans_and_one_plan_naming_both_counts_one(tmp_path):
+    img, other, newest = image("a" * 16, 30, "e2e-tests"), image("b" * 16, 20, "e2e-tests"), image("c" * 16, 1, "e2e-tests")
+    plans = {"pr1-x-20261008T010000Z": (12, {"ctx.e2e-tests": img["tag"]}), "pr2-x-20261008T020000Z": (10, {"ctx.e2e-tests": img["id"]}),
+             "pr3-x-20261008T030000Z": (8, {"ctx.e2e-tests": other["tag"], "ctx.e2e-b": other["id"]}),
+             "pr4-x-20261008T040000Z": (2, {"ctx.e2e-tests": newest["tag"]})}
+    d = decided(*world(tmp_path, [img, other, newest], plans))
+    assert (d[img["tag"]]["refs"], d[other["tag"]]["refs"]) == (2, 1)
+    assert d[img["tag"]]["slot"] == 2 and d[other["tag"]]["remove"] is True   # two plans outrank one younger
+
+
 def test_b8_above_the_floor_the_newest_of_a_recipe_is_never_removed_even_named_by_no_plan(tmp_path):   # innocence
     state, docker, imgs = two_recipes_with_slot_2(tmp_path, 20)
     line = prune_line(state, docker)

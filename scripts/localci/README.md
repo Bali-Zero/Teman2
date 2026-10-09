@@ -542,9 +542,9 @@ The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and 
   (`vm_free_gb.after`) is under `VM_MIN_FREE_GB` (15; `LOCALCI_VM_MIN_FREE_GB` overrides it, a value that is not a finite
   number ≥ 0 reads as 15), images go fewest plan references of the last 48 h first, ties to the oldest, the builder pruned
   and the free GB re-read after each, until the floor is met or nothing removable is left. Under the floor the newest of a
-  recipe is NOT protected: only the never-list and what the lease run names are. A 60 GiB VM holds one image per recipe plus
-  a build's scratch when three recipes are live (Pro, 2026-10-08T17:26Z), so the floor, not the slots, is the rule that
-  holds. Each removal's rule reads `vm floor: VM free X GB < 15 GB after the cap; N plan(s) of the last 48 h name it, built
+  recipe is NOT protected: only the never-list and what the lease run names are. A 60 GiB VM holds at most ONE image per recipe
+  plus the scratch of one build when three recipes are live; the floor, not the slots, is the rule that holds (Pro,
+  2026-10-08T17:26Z). Each removal's rule reads `vm floor: VM free X GB < 15 GB after the cap; N plan(s) of the last 48 h name it, built
   H h ago` (`undated` without a readable `Created`); the line carries
   `vm_floor {floor_gb, removed, met}`, or `skipped` on a dry run, an unreadable input, or an unmeasured VM.
 - **Builder cache.** Every prune that is not a dry run runs `docker builder prune -af --keep-storage 4GB` on the current
