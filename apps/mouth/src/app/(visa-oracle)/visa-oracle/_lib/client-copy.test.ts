@@ -30,6 +30,8 @@ const STATES: readonly OutcomeState[] = [
   "TEMPORARILY_UNAVAILABLE",
 ];
 
+const DOTTED_IDENTIFIER = /\b[a-z]+\.[a-z]+_[a-z_]+\b/;
+
 // Words that belong to the engine, not to a client. Indonesian equivalents
 // are listed beside their English twin.
 const BANNED: readonly RegExp[] = [
@@ -75,6 +77,8 @@ const BANNED: readonly RegExp[] = [
   /\bfields?\b/i,
   /\blabels?\b/i,
   /\bfacts?\b/i,
+  // A dotted engine identifier (work.indonesia_source_compensation) is never copy.
+  DOTTED_IDENTIFIER,
 ];
 
 // Exact phrases that are ordinary language, not engine voice: a deposit "held
@@ -101,10 +105,11 @@ const ALLOWED_PHRASES: readonly string[] = [
   "seseorang dengan reputasi internasional",
 ];
 
+// `{{name}}` / `{{plural:a|b}}` are template placeholders, not copy.
 function withoutAllowed(value: string): string {
   return ALLOWED_PHRASES.reduce(
     (text, phrase) => text.split(phrase).join(" "),
-    value,
+    value.replace(/\{\{[^}]*\}\}/g, " "),
   );
 }
 
@@ -196,6 +201,22 @@ describe("client-visible copy", () => {
         .map((re) => `${where} ~ ${re} :: ${value.slice(0, 80)}`),
     );
     expect(offenders).toEqual([]);
+  });
+
+  it("the dotted-identifier guard names a leaked field and spares placeholders and plain prose", () => {
+    for (const leaked of [
+      "The answer maps directly to work.indonesia_source_compensation.",
+      "Ini dipetakan ke investment.pt_pma_committed dan tidak menyiratkan persetujuan.",
+    ]) {
+      expect(DOTTED_IDENTIFIER.test(withoutAllowed(leaked))).toBe(true);
+    }
+    for (const innocent of [
+      "Your answer sets {{plural:this detail|these details}}, which we use:",
+      "Used to decide: {{facts}}",
+      "Enter the amount, e.g. 5.000 per month. Ask Dr. Smith.",
+    ]) {
+      expect(DOTTED_IDENTIFIER.test(withoutAllowed(innocent))).toBe(false);
+    }
   });
 
   it("never leaks an internal note into the price or timeline copy", () => {
