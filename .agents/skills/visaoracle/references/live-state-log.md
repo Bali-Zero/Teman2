@@ -7,6 +7,23 @@ CURRENT POSITION block in SKILL.md in the same commit.
 
 Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE STATE — CURRENT POSITION.
 
+- 2026-10-09 (M5, client-copy chain C2, C3, C4): **the result page now shows the priced
+  stay-permit length and Bali Zero's typical processing time.** C2 #8124 (`06c3346702`, merged
+  03:22:12Z): under the price "2-year stay permit" and "Also available: 1 year — IDR 11,000,000";
+  live 03:31:23Z on balizero.com/visa-oracle, headless replay of the owner's scenario (Singapore
+  spouse of an E23 holder, 500 days); Vercel built production without a promote. C3 #8129
+  (`1d5a508366`, merged 04:33:53Z): Fly deployed the merge-queue batch head `68b70014a3`, which
+  contains it (`/health` build_sha at 04:51Z); live 04:52:41Z, same scenario: "Typically 7–10
+  working days / If your documents are complete today: around 20 Oct 2026 – 23 Oct 2026 /
+  Indicative Bali Zero timing…". Source: the committed snapshot
+  `backend/data/bali_zero_processing_times_2026.json` of production
+  `visa_types.processing_time_normal`, 37 products; BRIDGING stays UNKNOWN. C4 (interview helper
+  copy): #8119 and #8128 were closed after fresh-gate BLOCKs on false sentences; a per-key truth
+  table was then written from `flow.ts`, `fact-mapper.ts`, `tree.ts` and the seq-26 pack;
+  successor #8140: `<C4_OUTCOME>`. Census unchanged (seq-26): 99 SUPPORTED / 13 NO_PATH /
+  1 NEEDS_INPUT / 3 HUMAN_REVIEW of 116 walks. The iQOO device check was blocked (wireless ADB on
+  Pro refused, zero mDNS services). Open: see the 2026-10-09 rows in `PENDING-ARMS.md`.
+
 - 2026-10-08 (afternoon, M5, result-page copy PR-C1 #8102 `11f47173a0`, organ hardening PR-O2
   #8100 `fa15d34f7e`): **the client stops seeing internal copy, and the organ's first false
   positive is cured.** Zero's own test of the public page (PDF, 18:32 WITA) showed the price
