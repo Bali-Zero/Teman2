@@ -25,3 +25,15 @@ acceptance:
       Each guard is load-bearing: dropping the value check, the key check, the skills component, the custody
       precedence, or shortening the value run to 8 turns a row red.
     probe: five scratch mutants, results in the PR body.
+  A4:
+    text: >-
+      Cure round of gate-8136, B1: every key the module's own credential vocabulary names (passwd, credential(s),
+      pwd, passphrase, pass_word, bearer, authorization; auth/token/pin/pass as whole segments, camelCase split) and
+      every key or value with a credential shape (a 24+ letter+digit run, a basic-auth userinfo in a URL) keeps a
+      tokens.json a finding; the tracked brand file still matches none of them (302 keys, 214 values, 0 hits).
+    probe: rows t9d (19 shapes) and t9e (near-miss design words) plus t9c.
+  A5:
+    text: >-
+      Cure round, B2 and cost: a parse failure of any kind, RecursionError included, keeps the file a finding and
+      scan() completes; the value check is linear (a 256 KiB digitless value in milliseconds, was minutes).
+    probe: rows t9d deep-object/deep-array, t9f (padding past the cap), t9g (timed), t9h (FIFO and symlink never opened).

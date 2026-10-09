@@ -167,15 +167,46 @@ EXCLUDE_NAME_GLOBS: Tuple[str, ...] = (
 CUSTODY_DIR_NAMES = frozenset({".secrets"})
 
 DESIGN_TOKENS_MAX_BYTES = 256 * 1024
+#: Substring markers: the credential vocabulary of SECRET_NAME_GLOBS
+#: (secret, credential, password, passwd, api key, token-ish) plus the words a
+#: credential-bearing JSON key is usually spelled with.
 _CREDENTIAL_JSON_KEY_RE = re.compile(
-    r"(secret|password|api[_-]?key|access[_-]?token|refresh[_-]?token|"
+    r"(secret|credential|passw(or)?d|pass[_-]?word|passphrase|pwd|bearer|"
+    r"authori[sz]ation|api[_-]?key|access[_-]?token|refresh[_-]?token|"
     r"client[_-]?secret|private[_-]?key)",
     re.IGNORECASE,
 )
+#: Short words that mark a credential only as a whole key segment
+#: (`auth`, `id_token`, `pass`, `pin`), never inside `author` or `spinner`.
+_CREDENTIAL_KEY_SEGMENTS = frozenset({"auth", "token", "pin", "pass"})
+_KEY_SEGMENT_SPLIT_RE = re.compile(r"[^a-z0-9]+")
 #: A credential VALUE under an innocent key: a run of 24+ token characters
 #: carrying both a letter and a digit (design tokens are colours, sizes,
-#: font names, URLs and paths — none has such a run).
-_CREDENTIAL_VALUE_RE = re.compile(r"(?=[A-Za-z0-9_+/=-]*[0-9])(?=[A-Za-z0-9_+/=-]*[A-Za-z])[A-Za-z0-9_+/=-]{24,}")
+#: font names, URLs and paths — none has such a run). Runs are found by a
+#: linear scan; the letter+digit test is done per run in Python.
+_TOKEN_RUN_RE = re.compile(r"[A-Za-z0-9_+/=-]{24,}")
+#: Basic-auth credentials inside a URL, however short the password.
+_URL_USERINFO_RE = re.compile(r"://[^/@:\s]+:[^/@\s]+@")
+
+
+def _has_credential_shape(text: str) -> bool:
+    if _URL_USERINFO_RE.search(text):
+        return True
+    for run in _TOKEN_RUN_RE.finditer(text):
+        token = run.group()
+        if any(c.isdigit() for c in token) and any(c.isalpha() for c in token):
+            return True
+    return False
+
+
+def _is_credential_key(key: str) -> bool:
+    if _CREDENTIAL_JSON_KEY_RE.search(key):
+        return True
+    lowered = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", key).lower()
+    if _CREDENTIAL_KEY_SEGMENTS.intersection(_KEY_SEGMENT_SPLIT_RE.split(lowered)):
+        return True
+    return _has_credential_shape(key)
+
 
 #: `.env*` files are report-only: shown for a human, never chmod'ed.
 ENV_NAME_GLOBS: Tuple[str, ...] = (".env*", "*.env*")
@@ -325,7 +356,7 @@ def is_design_tokens_file(path: Path) -> bool:
         if len(raw) > DESIGN_TOKENS_MAX_BYTES:
             return False
         payload = json.loads(raw)
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+    except (OSError, ValueError, RecursionError):
         return False
     if not isinstance(payload, dict):
         return False
@@ -334,12 +365,12 @@ def is_design_tokens_file(path: Path) -> bool:
     while pending:
         value = pending.pop()
         if isinstance(value, dict):
-            if any(_CREDENTIAL_JSON_KEY_RE.search(key) for key in value):
+            if any(_is_credential_key(key) for key in value):
                 return False
             pending.extend(value.values())
         elif isinstance(value, list):
             pending.extend(value)
-        elif isinstance(value, str) and _CREDENTIAL_VALUE_RE.search(value):
+        elif isinstance(value, str) and _has_credential_shape(value):
             return False
     return True
 

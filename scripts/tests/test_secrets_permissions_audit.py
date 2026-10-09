@@ -797,6 +797,104 @@ def test_t9b_only_benign_skill_design_tokens_are_excluded(
     assert (target in _paths(findings)) is candidate
 
 
+_PAT = "gh" + "p_" + "A1b2C3d4E5f6G7h8I9j0K1l2"
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        '{"passwd":"x1"}',
+        '{"credentials":{"user":"u","pass":"p"}}',
+        '{"credentials":{"user":"u"}}',
+        '{"pwd":"x1"}',
+        '{"passphrase":"x1"}',
+        '{"pass_word":"x1"}',
+        '{"bearer":"x1"}',
+        '{"Authorization":"x1"}',
+        '{"auth":"x1"}',
+        '{"token":"x1"}',
+        '{"id_token":"x1"}',
+        '{"pin":"1234"}',
+        '{"pass":"x1"}',
+        '{"authToken":"x1"}',
+        '{"' + _PAT + '":"x"}',
+        '{"dsn":"postgres://user:pw@host/db"}',
+        '{"' + "postgres://user:pw@host" + '":"x"}',
+        '{"a":' * 5000 + "1" + "}" * 5000,
+        "[" * 100000 + "]" * 100000,
+    ],
+    ids=[
+        "passwd",
+        "credentials-pass",
+        "credentials-only",
+        "pwd",
+        "passphrase",
+        "pass_word",
+        "bearer",
+        "authorization",
+        "auth",
+        "token",
+        "id_token",
+        "pin",
+        "pass",
+        "camel-authToken",
+        "pat-as-key",
+        "basic-auth-dsn-value",
+        "basic-auth-dsn-key",
+        "deep-object-recursion",
+        "deep-array-recursion",
+    ],
+)
+def test_t9d_credential_vocabulary_keys_and_values_stay_findings(
+    tmp_path: Path, content: str
+) -> None:
+    target = _touch(tmp_path / "skills" / "x" / "tokens.json", 0o644, content)
+
+    assert target in _paths(audit.scan([tmp_path], max_depth=8))
+
+
+def test_t9e_design_vocabulary_near_misses_are_not_credentials(tmp_path: Path) -> None:
+    content = '{"author":"A","spinner":{"pinned":"#fff"},"authority":"x","link":"https://example.com/a/b"}'
+    target = _touch(tmp_path / "skills" / "x" / "tokens.json", 0o644, content)
+
+    assert target not in _paths(audit.scan([tmp_path], max_depth=8))
+
+
+def test_t9f_padding_past_the_cap_is_not_design_tokens(tmp_path: Path) -> None:
+    content = '{"palette":{}}' + " " * (256 * 1024)
+    target = _touch(tmp_path / "skills" / "x" / "tokens.json", 0o644, content)
+
+    assert target in _paths(audit.scan([tmp_path], max_depth=8))
+
+
+def test_t9g_long_digitless_run_is_linear(tmp_path: Path) -> None:
+    import time
+
+    content = '{"palette":"' + "a" * (200 * 1024) + '"}'
+    target = _touch(tmp_path / "skills" / "x" / "tokens.json", 0o644, content)
+
+    started = time.monotonic()
+    findings = audit.scan([tmp_path], max_depth=8)
+
+    assert time.monotonic() - started < 5
+    assert target not in _paths(findings)
+
+
+def test_t9h_fifo_and_symlink_named_tokens_json_are_never_opened(tmp_path: Path) -> None:
+    skills = tmp_path / "skills" / "x"
+    skills.mkdir(parents=True)
+    os.mkfifo(skills / "tokens.json")
+    other = tmp_path / "skills" / "y"
+    other.mkdir()
+    real = _touch(tmp_path / "real.dat", 0o644, '{"palette":{}}')
+    (other / "tokens.json").symlink_to(real)
+
+    found = _paths(audit.scan([tmp_path], max_depth=8))
+
+    assert skills / "tokens.json" not in found
+    assert other / "tokens.json" not in found
+
+
 def test_t9c_the_tracked_brand_tokens_file_is_design_tokens(tmp_path: Path) -> None:
     """The real Bali Zero brand file (the Mini healer's recurring chmod) is excluded."""
     brand = Path(__file__).resolve().parents[2] / "skills" / "bali-zero-brand" / "tokens.json"
