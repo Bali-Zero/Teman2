@@ -40,6 +40,10 @@ decisions:
       age alone, and two helper sentences still printed internal field names). The branch was
       armed and frozen, so the work restarts from a fresh origin/main with the three commits
       cherry-picked and one cure commit on top.
+  - id: D-rebased-on-c2
+    decision: >-
+      Rebased onto main after C2 (#8124) merged. The observer keeps C2's four required duration
+      keys verbatim and the dotted-identifier guard; only the docstring conflicted.
   - id: D-identifier-guard
     decision: >-
       A dotted engine identifier inside a sentence is banned by both the census test and the
@@ -60,21 +64,21 @@ decisions:
 receipts:
   - claim: "The bites observer, now with the dotted-identifier guard, finds no banned phrase or word in the dictionary, the atlas copy or the adapter copy."
     cmd: "python3 scripts/ci/observe_visa_oracle_client_copy.py"
-    result: "OK visa-oracle client copy: 3625 literals scanned, 0 banned"
+    result: "OK visa-oracle client copy: 3650 literals scanned, 0 banned"
     exit: 0
-    ts: "2026-10-09T02:44:37Z"
+    ts: "2026-10-09T03:24:06Z"
     seat: this session
   - claim: "The observer's guard has guilt and innocence tests: a leaked identifier and the engine word are caught in both languages; placeholders and plain copy pass."
     cmd: "python3 -m pytest scripts/tests/test_observe_visa_oracle_client_copy.py -q"
     result: "4 passed"
     exit: 0
-    ts: "2026-10-09T02:49:17Z"
+    ts: "2026-10-09T03:24:15Z"
     seat: this session
-  - claim: "The copy census (with the identifier guard and its guilt test), i18n parity, QuestionScreen, WhyWeAsk, OutcomeSheet and ConsentHandoff tests pass."
-    cmd: "cd apps/mouth && npx vitest run <the six test files>"
-    result: "Test Files  6 passed (6); Tests  167 passed (167)"
+  - claim: "After the rebase onto main with C2, the copy census (with the identifier guard and its guilt test) and the i18n parity test pass."
+    cmd: "cd apps/mouth && npx vitest run client-copy.test.ts, then i18n.test.ts"
+    result: "client-copy: 13 passed; i18n: 9 passed"
     exit: 0
-    ts: "2026-10-09T02:44:41Z"
+    ts: "2026-10-09T03:24:25Z"
     seat: this session
   - claim: "The enumeration file, which times out inside the full tree under machine load of about 100, passes alone."
     cmd: "cd apps/mouth && npx vitest run src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts"
@@ -86,13 +90,13 @@ receipts:
     cmd: "cd apps/mouth && npx tsc --noEmit -p tsconfig.json"
     result: "no output"
     exit: 0
-    ts: "2026-10-09T02:47:18Z"
+    ts: "2026-10-09T03:24:52Z"
     seat: this session
   - claim: "Prettier accepts every touched TypeScript file."
     cmd: "cd apps/mouth && npx prettier --check <touched files>"
     result: "All matched files use Prettier code style!"
     exit: 0
-    ts: "2026-10-09T02:50:02Z"
+    ts: "2026-10-09T03:25:18Z"
     seat: this session
   - claim: "No e2e spec pins a replaced sentence."
     cmd: "rg -c -e <the replaced sentences> apps/mouth/e2e | wc -l"
