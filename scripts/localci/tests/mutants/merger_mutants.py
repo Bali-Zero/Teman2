@@ -39,6 +39,7 @@ B6_FLOOR = (f"{MERGER_T}::test_the_tick_refuses_to_start_a_run_under_the_floor_a
 FLOOR_SH, FLOOR_T = "scripts/ops/pro_disk_floor_tick.sh", "scripts/localci/tests/test_disk_floor.py"
 
 STALE = "scripts/localci/tests/test_hosted_stale.py"
+REPLAY = "scripts/localci/tests/test_replay.py"
 ROOT = Path(__file__).resolve().parents[4]
 REPORT = "scripts/localci/tests/test_merger_report.py"
 TICK = "scripts/localci/tests/test_merger.py"
@@ -335,6 +336,20 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b10-report-kept-unsaid": (PY, '"why": reading["stale_check"]})', '"why": ""})', (REPORT,)),
     "b10-report-read-failure-unsaid": (PY, '"why": redact(f"unknown ({type(exc).__name__}: {exc})")}]', '"why": ""}]', (REPORT,)),
     "b10-report-red-gone-unsaid": (PY, "the hosted verdict is now {h['verdict']}, not the red the tick recorded", "kept", (REPORT,)),
+    # B11 (phase D): the merger also judges the exact commit GitHub merged — a replay, BASE = its first parent, alternating with PR decisions
+    "b11-base-is-the-merge-commit": (PY, '"base_sha": parents.split()[0]', '"base_sha": sha', (REPLAY,)),
+    "b11-alternation-off": (PY, 'after_replay = bool(last and last[0].get("replay"))', "after_replay = False", (REPLAY,)),
+    "b11-newest-merge-first": (PY, "for line in reversed(log):", "for line in log:", (REPLAY,)),
+    "b11-replayed-again": (PY, "if sha in done or not m or not parents.split():", "if not m or not parents.split():", (REPLAY,)),
+    "b11-unconfirmed-commit-replayed": (PY, 'p.get("merged") is True and p.get("merge_commit_sha") == sha and head_of(p)', 'p.get("merged") is True and head_of(p)', (REPLAY,)),
+    "b11-stale-judge-on-a-replay": (PY, "hosted_summary(a.repo, a.base, status, cand_sha, run_dir, None, REPLAY_NOTE)",
+                                    "hosted_summary(a.repo, a.base, status, cand_sha, run_dir, StaleJudge(repo_dir, base_sha), REPLAY_NOTE)", (REPLAY,)),
+    "b11-replay-enqueues": (PY, "        if replay:\n            return 0\n        enq = ", "        if False:\n            return 0\n        enq = ", (REPLAY,)),
+    "b11-replay-counted-without-threshold": (PY, 'and compared_enough(compared_ctx, len(not_full["partial"]))})', 'and (d.get("replay") is True or compared_enough(compared_ctx, len(not_full["partial"]))) })', (REPORT,)),
+    "b11-pr-counted-twice": (PY, 'merges = sorted({r["pr"]: r["merged_at"] for r in rows if r["compared_merge"]}.values())', 'merges = sorted(r["merged_at"] for r in rows if r["compared_merge"])', (REPORT,)),
+    "b11-unconfirmed-merge-commit-trusted": (PY, 'return mc if pr.get("merged") is True and is_sha(mc) and pr.get("merge_commit_sha") == mc else', "return mc if True else", (REPORT,)),
+    "b11-replay-judged-for-stale": (PY, 'judge = None if d.get("replay") else judges.setdefault', "judge = judges.setdefault", (REPORT,)),
+    "b11-replay-credit-to-any": (PY, "if all(flags))   # a PR that also qualified", "if any(flags))   # a PR that also qualified", (REPORT,)),
     # the launchd wrapper
     "sh-code-flag-always": (SH, 'if grep -q -- "--code-sha" "$CODE/merger.py"; then', "if true; then", (TICK,)),
     "sh-code-flag-never": (SH, 'if grep -q -- "--code-sha" "$CODE/merger.py"; then', "if false; then", (TICK,)),

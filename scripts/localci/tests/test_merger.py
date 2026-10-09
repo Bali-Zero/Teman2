@@ -121,8 +121,9 @@ class FakeRunner:
         if sub == "run":
             time.sleep(self.sleep)
             return subprocess.CompletedProcess(argv, 0, self.run_out, "")
-        plan = self.calls[0]["argv"]
-        bind = {"candidate_sha": self.calls[0].get("worktree_head"), "base_sha": plan[plan.index("--base") + 1], "seal": SEAL, **self.bind}
+        first = [c for c in self.calls if c["sub"] == "plan"][-1]   # the decision in progress: a tick may run several in a test
+        plan = first["argv"]
+        bind = {"candidate_sha": first.get("worktree_head"), "base_sha": plan[plan.index("--base") + 1], "seal": SEAL, **self.bind}
         (run_dir / "status.json").write_text(json.dumps({"overall": self.overall, **bind,
                                                          "contexts": {"status": "ok", "results": {"ctx-a": {"verdict": "OK", "mapping": "executed"}}},
                                                          "checks": {"policy.change_map": {"status": "PASS", "duration_s": 12.5}}, **self.doc}))

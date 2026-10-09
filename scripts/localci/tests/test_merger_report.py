@@ -627,3 +627,51 @@ def test_a_recorded_false_green_that_is_kept_says_why_in_the_line_and_the_json(t
 def test_a_reclassified_false_green_is_not_listed_as_kept(tmp_path, monkeypatch):
     d, gh = _stale_world(tmp_path, monkeypatch, BEFORE_LOCK)
     assert run_report(tmp_path, monkeypatch, [d], gh)[1]["recorded_kept_false_green"] == []
+
+
+# ------------------------------------------------------------------ B11: a replay of the merge commit counts as a compared merge
+def replay_of(pr_n, head, merge_commit=M, **kw):
+    """A replay decision: the candidate IS the merge commit, the base its first parent, the head recorded only."""
+    return {**decision(pr_n, head, "BLOCKED", **kw), "replay": True, "merge_commit": merge_commit, "candidate_sha": merge_commit}
+
+
+def test_a_replay_that_meets_the_threshold_is_a_compared_merge_counted_as_a_replay(tmp_path, monkeypatch, capsys):
+    gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: "success"})
+    rc, rep = run_report(tmp_path, monkeypatch, [replay_of(1, A)], gh)
+    row = rep["rows"][0]
+    assert rc == 0 and row["replay"] is True and row["compared_merge"] is True and row["hosted_sha"] == M
+    assert (rep["window"]["compared_merges"], rep["window"]["compared_merges_from_replays"], rep["window"]["replays"]) == (1, 1, 1)
+    assert "replays (B11): 1 replay decision(s) in the window; compared_merges=1 of which 1 reached the threshold only through a replay" in capsys.readouterr().out
+
+
+def test_a_pr_that_qualified_before_its_merge_and_by_a_replay_counts_once_and_is_not_credited_to_the_replay(tmp_path, monkeypatch):
+    gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: "success"})
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(1, A, "BLOCKED"), replay_of(1, A, ts="2026-10-08T09:00:00Z")], gh)
+    assert [r["compared_merge"] for r in rep["rows"]] == [True, True]
+    assert (rep["window"]["compared_merges"], rep["window"]["compared_merges_from_replays"]) == (1, 0)
+
+
+def test_two_replays_of_two_prs_count_two(tmp_path, monkeypatch):
+    m2 = "2" * 40
+    gh = FakeGH({1: pull(A, merged=True), 2: pull(B, merged=True, merge_commit=m2, merged_at="2026-10-07T10:00:00Z")}, {A: "success", B: "success", M: "success", m2: "success"})
+    rc, rep = run_report(tmp_path, monkeypatch, [replay_of(1, A), replay_of(2, B, m2)], gh)
+    assert (rep["window"]["compared_merges"], rep["window"]["compared_merges_from_replays"]) == (2, 2)
+
+
+def test_a_replay_below_the_threshold_is_not_a_compared_merge(tmp_path, monkeypatch):
+    gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: "success"})
+    rc, rep = run_report(tmp_path, monkeypatch, [replay_of(1, A, contexts=dict.fromkeys(CTX[:-1], "OK"))], gh)
+    assert rep["rows"][0]["compared_merge"] is False and rep["window"]["compared_merges"] == 0 == rep["window"]["compared_merges_from_replays"]
+
+
+def test_a_replay_of_a_commit_that_is_not_the_prs_merge_commit_compares_nothing_as_merged(tmp_path, monkeypatch):
+    gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: "success"})
+    rc, rep = run_report(tmp_path, monkeypatch, [replay_of(1, A, "3" * 40)], gh)
+    assert rep["rows"][0]["compared_merge"] is False and rep["rows"][0]["hosted_sha"] == A
+
+
+def test_a_false_green_in_a_replay_is_a_false_green_and_never_reclassified_as_stale(tmp_path, monkeypatch):
+    gh = FakeGH({1: pull(A, merged=True)}, {A: "success", M: "failure"})
+    d = {**replay_of(1, A), "hosted_compare": {"counts": {"FALSE_GREEN": 1}}}
+    rc, rep = run_report(tmp_path, monkeypatch, [d], gh)
+    assert rc == 1 and rep["recorded_context_false_green"] == 1 and rep["recorded_reclassified_hosted_stale"] == [] and rep["recorded_kept_false_green"] == []
