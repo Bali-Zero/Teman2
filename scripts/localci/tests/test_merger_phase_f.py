@@ -10,7 +10,7 @@ import subprocess
 
 import pytest
 
-from .test_merger import GIT_ENV, REPO, FakeRunner, g, commit, mg, pr, world  # noqa: F401 — `world` is a fixture
+from .test_merger import GIT_ENV, REPO, FakeRunner, g, commit, mg, mirror_world, pr, world, wrap  # noqa: F401 — `world` is a fixture
 
 CTX = tuple(f"ctx-{i:02d}" for i in range(mg.MIN_COMPARED_CONTEXTS))
 M, OLD_BASE = "1" * 40, "f" * 40
@@ -88,6 +88,18 @@ def fw(world, monkeypatch):  # noqa: F811
     return world
 
 
+def SSH_COMMAND(w):
+    """The one ssh the push may run: no user config, no agent, the deploy key alone, and only the host key pinned in the state dir."""
+    return (f"ssh -F /dev/null -o IdentityAgent=none -i {w.key} -o IdentitiesOnly=yes -o BatchMode=yes "
+            f"-o UserKnownHostsFile={w.state / mg.KNOWN_HOSTS_FILE} -o StrictHostKeyChecking=yes")
+
+
+def full_pull(w, **over):
+    """The PR as the moment-of-merging re-read sees it when nothing is wrong."""
+    return {"headRefOid": w.head1, "state": "OPEN", "isInMergeQueue": False, "isDraft": False, "baseRefName": "main",
+            "labels": {"nodes": [{"name": mg.ARM_LABEL}]}, **over}
+
+
 def assert_nothing_merged(w, why_part=None):
     assert w.pushes == [] and not {"merged", "pushed", "push_refused"} & set(w.kinds())
     assert "localci-merger" not in g(w.origin, "log", "--format=%an|%cn", "refs/heads/main") and g(w.mirror, "rev-parse", "refs/merger/base") == w.base
@@ -119,7 +131,7 @@ def test_every_condition_true_makes_the_merge_commit_pushes_it_and_moves_the_mir
     assert not (fw.state / mg.HALT_FILE).exists()
     ((argv, env),) = fw.pushes
     assert argv == ("push", "origin", f"{mc}:refs/heads/main")   # plain: no force, no lease, no plus
-    assert env["GIT_SSH_COMMAND"] == f"ssh -i {fw.key} -o IdentitiesOnly=yes -o BatchMode=yes"
+    assert env["GIT_SSH_COMMAND"] == SSH_COMMAND(fw)
     assert "merged" in capsys.readouterr().out
 
 
@@ -133,7 +145,7 @@ def test_the_key_never_reaches_the_journal_the_output_the_halt_file_or_anything_
     assert set(env) == {"GIT_SSH_COMMAND"} and "GIT_SSH_COMMAND" not in os.environ
     for call in fw.runner.calls:
         assert not [k for k, v in call["env"].items() if k == "GIT_SSH_COMMAND" or str(fw.key) in str(v)]
-    assert not any(str(fw.key) in json.dumps(r) for r in fw.journal())   # not even the path: the journal names conditions, not the key
+    assert not any(str(fw.key) in json.dumps(r) for r in fw.journal())   # the armed path journals conditions, not the key's path; a REFUSED push's error may carry the path (ssh names the identity file), never the content
 
 
 def test_the_key_content_is_never_opened_by_the_merger(fw, monkeypatch):
@@ -174,6 +186,19 @@ def _key_foreign(w, monkeypatch):
     monkeypatch.setattr(mg.os, "geteuid", lambda: me + 1)
 
 
+def _judged_tree_differs(w, monkeypatch):
+    """The merge rehearsal yields a tree other than the one the gate judged (what a merge=union attribute can do)."""
+    real = mg.git
+
+    def git(cwd, *a, **kw):
+        res = real(cwd, *a, **kw)
+        if a and a[0] == "merge-tree":
+            other = real(cwd, "rev-parse", f"{w.base}^{{tree}}").stdout.strip()
+            return subprocess.CompletedProcess(res.args, res.returncode, other + "\0", res.stderr)
+        return res
+    monkeypatch.setattr(mg, "git", git)
+
+
 def _halt(w):
     (w.state / mg.HALT_FILE).write_text("an operator put it here\n")
 
@@ -208,19 +233,35 @@ DISARM = [
     ("criterion-label", lambda w, mp: w.gql.over.update(timelineItems={"nodes": []}), "criterion false: label_privileged"),
     ("halt-file", lambda w, mp: _halt(w), f"{mg.HALT_FILE} present: an operator put it here"),
     ("base-moved-in-the-gate", _main_moves_during_the_gate, "base_current false"),
-    ("head-moved-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: {"headRefOid": "8" * 40, "state": "OPEN"}), "head_unchanged false"),
-    ("pr-closed-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: {"headRefOid": w.head1, "state": "CLOSED"}), "PR state CLOSED"),
+    ("head-moved-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, headRefOid="8" * 40)), "head_unchanged false"),
+    ("pr-closed-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, state="CLOSED")), "PR state CLOSED"),
+    ("pr-in-the-queue-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, isInMergeQueue=True)), "in GitHub's merge queue now"),
+    ("pr-queue-unknown-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: {k: v for k, v in full_pull(w).items() if k != "isInMergeQueue"}),
+     "in GitHub's merge queue now"),
+    ("pr-draft-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, isDraft=True)), "a draft now"),
+    ("pr-retargeted-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, baseRefName="release")), "PR base 'release', not 'main'"),
+    ("label-gone-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, labels={"nodes": []})), f"label {mg.ARM_LABEL} absent at the moment"),
+    ("enqueue-step-enqueued", lambda w, mp: mp.setenv(mg.ARM_ENV, "1"), "not 'would_enqueue'"),
+    ("halt-file-not-utf8", lambda w, mp: (w.state / mg.HALT_FILE).write_bytes(b"\xff\xfe\x00 not text"), f"{mg.HALT_FILE} present: unreadable"),
+    ("halt-file-a-directory", lambda w, mp: (w.state / mg.HALT_FILE).mkdir(), f"{mg.HALT_FILE} present: unreadable"),
+    ("tree-differs-from-the-judged-candidate", lambda w, mp: _judged_tree_differs(w, mp), "merged tree differs from the judged candidate tree"),
     ("pr-unreadable-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: (_ for _ in ()).throw(mg.GraphQLError("boom"))), "head re-read failed"),
 ]
 
 
 @pytest.mark.parametrize("name,break_it,why", DISARM, ids=[d[0] for d in DISARM])
 def test_one_false_condition_alone_means_no_merge_no_push_and_the_line_names_it(fw, monkeypatch, name, break_it, why):
+    calls = _spy_report(monkeypatch)
     break_it(fw, monkeypatch)
     tick_with(fw)
     assert_nothing_merged(fw, why)
     others = [x for x in fw.wm()["phase_f"]["why"] if why not in x]
-    assert others == [], others   # alone: nothing else is reported false
+    if name.startswith("ready-"):   # every local condition held, so READY was evaluated and is the one thing false
+        assert others == [], others
+    elif name.startswith(("pr-", "head-", "label-")):   # READY was evaluated and true; the re-read at the moment of merging is what says no
+        assert others == [] and calls == [{"emit": False}], (others, calls)
+    else:   # a local condition is false: no minutes of report to learn a no
+        assert others == ["READY not evaluated"] and calls == [], (others, calls)
 
 
 def test_the_default_tick_is_the_f1_shadow_with_one_new_field_naming_why_it_is_disarmed(world, monkeypatch):
@@ -439,7 +480,7 @@ def test_the_quiet_report_writes_no_file_and_prints_nothing(fw, capsys):
 def test_the_thresholds_exist_once_the_tick_reads_the_reports_own_function():
     src = (mg.Path(mg.__file__)).read_text()
     assert src.count("READY_MIN_MERGES, READY_MIN_DAYS = 50, 14") == 1   # 14 days is defined once
-    assert "days < READY_MIN_DAYS" in src and "decided < READY_MIN_MERGES" in src   # the precheck reads the same constants
+    assert "days + READY_SPAN_SLACK_DAYS < READY_MIN_DAYS" in src and "decided < READY_MIN_MERGES" in src   # the precheck reads the same constants
     assert "compared_merges >= READY_MIN_MERGES and compared_days >= READY_MIN_DAYS" in src
     assert "report(argparse.Namespace(" in src   # the tick calls it; there is no second ready computation
 
@@ -449,6 +490,21 @@ def test_the_push_url_defaults_to_the_deploy_keys_ssh_form_only_on_the_github_fe
     assert mg.push_url_of(ns()) == "git@github.com:Bali-Zero/Teman2.git"
     assert mg.push_url_of(argparse.Namespace(repo="o/r", remote_url="/tmp/origin.git", push_url=None)) is None
     assert mg.push_url_of(argparse.Namespace(repo="o/r", remote_url=None, push_url="ssh://git@host/r.git")) == "ssh://git@host/r.git"
+
+
+@pytest.mark.parametrize("url", ["https://u:p@github.com/o/r.git", "https://token@github.com/o/r.git", "HTTPS://token@github.com/o/r.git",
+                                 "http://u@host/r.git", "git://u:p@host/r.git", "https://:p@github.com/o/r.git"])
+def test_a_push_url_that_carries_any_userinfo_on_a_non_ssh_scheme_is_refused(world, url, capsys):
+    assert mg.main(["tick", "--node", mg.HOST, "--state-dir", str(world.state), "--remote-url", str(world.origin), "--push-url", url]) == 2
+    assert "carries credentials" in capsys.readouterr().err and not (world.state / "repo.git").exists()
+
+
+@pytest.mark.parametrize("url", ["ssh://git@github.com/o/r.git", "git@github.com:o/r.git", "https://github.com/o/r.git", "ssh://git@host:22/r.git"])
+def test_an_ssh_user_or_a_bare_url_is_a_push_url_phase_f_accepts(world, url):
+    world.gh.prs = []
+    assert mg.main(["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--remote-url", str(world.origin), "--push-url", url,
+                    "--python", "py"]) == 0
+    assert g(world.state / "repo.git", "remote", "get-url", "--push", "origin") == url
 
 
 def test_a_push_url_that_carries_a_password_is_refused_and_an_ssh_user_is_not(world):
@@ -473,7 +529,7 @@ def test_a_journal_younger_than_the_window_is_not_ready_and_the_full_report_is_n
     assert fw.tick() == 0
     assert calls == []
     (why,) = [x for x in fw.wm()["phase_f"]["why"] if x.startswith("READY")]
-    assert re.fullmatch(r"READY false: journal window \d\.\d days < 14", why) and why.startswith("READY false: journal window 3.")
+    assert re.fullmatch(r"READY false: journal window \d\.\d days \(\+1 of slack\) < 14", why) and why.startswith("READY false: journal window 3.")
     assert_nothing_merged(fw, "journal window")
 
 
@@ -497,3 +553,164 @@ def test_the_precheck_never_says_ready_and_an_unreadable_journal_rules_nothing_o
     assert mg.ready_precheck(fw.state) is None
     (fw.state / "decisions.jsonl").write_text("")
     assert mg.ready_precheck(fw.state) == "READY false: no decision in the journal"
+
+
+def test_the_precheck_window_starts_a_day_before_the_first_decision_so_it_never_says_false_while_ready_is_true(fw):
+    """merged_at can precede its own decision line by up to one tick: at 13 days of journal the report's span can already be 14."""
+    def first_decision_ago(days, delta_s):
+        import time
+        at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(int(time.time()) - days * 86400 + delta_s))
+        lines = [json.loads(ln) for ln in (fw.state / "decisions.jsonl").read_text().splitlines()]
+        lines[0]["ts"] = at
+        for r in lines[1:]:
+            r["ts"] = max(r["ts"], at)
+        (fw.state / "decisions.jsonl").write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in lines))
+    fw.hub.seed(fw.state, age=2)
+    first_decision_ago(13, -120)   # a hair OVER 13 days: with the day of slack the window is 14: undecided, the report decides
+    assert mg.ready_precheck(fw.state) is None
+    first_decision_ago(13, 120)    # a hair UNDER 13 days: 13.99 even with the slack: false
+    assert mg.ready_precheck(fw.state).startswith("READY false: journal window 12.9 days (+1 of slack) < 14")
+    assert mg.READY_SPAN_SLACK_DAYS == 1
+
+
+def test_a_halt_file_that_is_a_dangling_symlink_is_still_a_halt_in_the_report(fw):
+    a = argparse.Namespace(repo=REPO, base="main", state_dir=str(fw.state), since=None)
+    (fw.state / mg.HALT_FILE).symlink_to(fw.state / "nowhere")
+    assert not (fw.state / mg.HALT_FILE).exists() and mg.halt_reason(fw.state) == "unreadable"
+    assert mg.report(a, emit=False)[1]["phase_f_halted"] is True
+
+
+def test_a_non_utf8_halt_file_halts_and_the_fetch_is_not_the_guarded_one(fw):
+    (fw.state / mg.HALT_FILE).write_bytes(b"\xff\xfe not text")
+    assert mg.halt_reason(fw.state) == "unreadable"
+    assert fw.tick() == 0   # a ValueError out of the halt read must not crash the tick
+    assert_nothing_merged(fw, f"{mg.HALT_FILE} present: unreadable")
+
+
+def test_the_pr_gate_reads_after_the_local_ones_and_a_clean_pull_arms(fw, monkeypatch):
+    """Innocence for the re-read: every local condition and every re-read field right means armed."""
+    monkeypatch.setattr(mg, "pr_view", lambda a, n: full_pull(fw))
+    assert fw.tick() == 0 and fw.wm()["phase_f"] == {"armed": True, "why": []} and fw.kinds()[-1] == "pushed"
+
+
+def test_ready_is_not_evaluated_when_the_env_half_is_missing_and_the_why_says_so(fw, monkeypatch):
+    calls = _spy_report(monkeypatch)
+    monkeypatch.delenv(mg.PHASE_F_ENV)
+    assert fw.tick() == 0 and calls == []
+    assert fw.wm()["phase_f"]["why"] == [f"{mg.PHASE_F_ENV} unset", "READY not evaluated"]
+
+
+def test_a_missing_judged_candidate_is_a_disarmed_step(fw):
+    fw.gh.prs = []
+    assert fw.tick() == 0   # the mirror now holds the base
+    a = argparse.Namespace(repo=REPO, base="main")
+    enq = {"kind": "would_enqueue", "pr": 1, "head_sha": fw.head1, "base_sha": fw.base, "criterion": {k: True for k in mg.CRITERION}, "ok": True}
+    line = {"base_sha": fw.base, "mirror_main": fw.base, "base_current": True, "clean": True, "merge_tree": "5" * 40}
+    for cand, why in ((None, "judged candidate tree unreadable"), ("7" * 40, "judged candidate tree unreadable"), (fw.base, "merged tree differs from the judged candidate tree")):
+        _, pf = mg.phase_f_arming(a, fw.state, fw.mirror, {**enq, "candidate_sha": cand}, line, "main")
+        assert not pf["armed"] and why in pf["why"], (cand, pf)
+
+
+# ------------------------------------------------------------------ the push: halt before the journal, and on any interruption
+def test_the_halt_is_written_before_push_refused_is_journalled(fw, monkeypatch):
+    _origin_moves_before_the_push(fw, monkeypatch)
+    seen = []
+    real = mg.journal
+
+    def spy(state, rec):
+        if rec.get("kind") == "push_refused":
+            seen.append((fw.state / mg.HALT_FILE).exists())
+        return real(state, rec)
+    monkeypatch.setattr(mg, "journal", spy)
+    assert fw.tick() == 0 and seen == [True]
+
+
+def test_a_journal_that_fails_on_push_refused_still_leaves_the_halt(fw, monkeypatch):
+    _origin_moves_before_the_push(fw, monkeypatch)
+    real = mg.journal
+
+    def broken(state, rec):
+        if rec.get("kind") == "push_refused":
+            raise OSError("disk full")
+        return real(state, rec)
+    monkeypatch.setattr(mg, "journal", broken)
+    try:
+        fw.tick()
+    except OSError:
+        pass
+    assert (fw.state / mg.HALT_FILE).exists()
+
+
+@pytest.mark.parametrize("exc", [mg.Stopped("SIGTERM"), KeyboardInterrupt()], ids=["stopped", "keyboard-interrupt"])
+def test_a_push_interrupted_halts_first_and_the_interruption_still_propagates(fw, monkeypatch, exc):
+    real = mg.git
+
+    def interrupted(cwd, *a, **kw):
+        if a and a[0] == "push":
+            raise exc
+        return real(cwd, *a, **kw)
+    monkeypatch.setattr(mg, "git", interrupted)
+    try:
+        fw.tick()
+    except BaseException as caught:  # noqa: BLE001 — what is asserted is that it was not swallowed into a success
+        assert caught is exc or isinstance(caught, type(exc))
+    assert (fw.state / mg.HALT_FILE).exists() and "interrupted" in json.loads((fw.state / mg.HALT_FILE).read_text())["why"]
+    assert {"pushed", "push_refused"}.isdisjoint(fw.kinds()) and g(fw.mirror, "rev-parse", "refs/merger/base") == fw.base
+
+
+def test_a_stopped_tick_before_the_push_halts_nothing(fw, monkeypatch):
+    real = mg.git
+
+    def stopped(cwd, *a, **kw):
+        if a and a[0] == "commit-tree":
+            raise mg.Stopped("SIGTERM")
+        return real(cwd, *a, **kw)
+    monkeypatch.setattr(mg, "git", stopped)
+    try:
+        fw.tick()
+    except mg.Stopped:
+        pass
+    assert not (fw.state / mg.HALT_FILE).exists() and fw.pushes == []
+
+
+# ------------------------------------------------------------------ the launchd wrapper never moves refs/merger/base
+def test_the_wrapper_fetches_into_its_own_ref_and_leaves_the_authoritative_base_alone(tmp_path):
+    src, origin, _, env = mirror_world(tmp_path)
+    mirror = tmp_path / "state" / "repo.git"
+    assert wrap(env).returncode == 0
+    v1 = g(origin, "rev-parse", "main")
+    assert g(mirror, "rev-parse", "refs/merger/wrapper") == v1
+    assert subprocess.run(["git", "-C", str(mirror), "rev-parse", "--verify", "--quiet", "refs/merger/base"], env=GIT_ENV).returncode != 0   # merger.py's, never the wrapper's
+    g(src, "checkout", "-q", "-b", "pushed")
+    pushed = commit(src, {"pushed.txt": "a merge phase F pushed\n"}, "phase F merge")
+    g(mirror, "fetch", "-q", str(src), "+pushed:refs/merger/base")   # the mirror's authority: the last pushed merge
+    g(src, "checkout", "-q", "main")
+    commit(src, {"scripts/localci/merger.py": "v2 --code-sha\n"}, "github main without our merge")
+    g(src, "push", "-q", str(origin), "main")
+    v2 = g(origin, "rev-parse", "main")
+    assert wrap(env).returncode == 0
+    assert g(mirror, "rev-parse", "refs/merger/base") == pushed   # untouched: fetch_base's guard still has its anchor to compare
+    assert g(mirror, "rev-parse", "refs/merger/wrapper") == v2 and (tmp_path / "code").read_text() == "v2 --code-sha\n"
+    assert f"--code-sha={v2}" in (tmp_path / "args").read_text().split()
+
+
+def test_a_mirror_from_before_the_wrapper_ref_existed_runs_the_code_the_last_tick_ran(tmp_path):
+    src, origin, _, env = mirror_world(tmp_path)
+    mirror = tmp_path / "state" / "repo.git"
+    assert wrap(env).returncode == 0
+    v1 = g(mirror, "rev-parse", "refs/merger/wrapper")
+    g(mirror, "update-ref", "refs/merger/base", v1)
+    g(mirror, "update-ref", "-d", "refs/merger/wrapper")
+    origin.rename(tmp_path / "gone.git")
+    res = wrap(env)
+    assert res.returncode == 0 and "fetch failed" in res.stderr and (tmp_path / "code").read_text() == "v1 --code-sha\n"
+    assert f"--code-sha={v1}" in (tmp_path / "args").read_text().split()
+
+
+@pytest.mark.parametrize("kind", ["enqueued", "enqueue_error", "enqueue_refused", "enqueue_skipped", None])
+def test_only_a_would_enqueue_step_can_be_merged_by_phase_f(fw, kind):
+    a = argparse.Namespace(repo=REPO, base="main")
+    enq = {"kind": kind, "pr": 1, "head_sha": fw.head1, "base_sha": fw.base, "criterion": {k: True for k in mg.CRITERION}, "ok": True}
+    line = {"base_sha": fw.base, "mirror_main": fw.base, "base_current": True, "clean": True}
+    _, pf = mg.phase_f_arming(a, fw.state, fw.mirror, enq, line, "main")
+    assert not pf["armed"] and any("not 'would_enqueue'" in x and "merge queue" in x for x in pf["why"]), pf
