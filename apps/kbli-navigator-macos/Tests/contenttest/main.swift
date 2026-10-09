@@ -70,6 +70,7 @@ let out: [String: Any] = MainActor.assumeIsolated {
     // Each redesigned view must still ask the canonical functions (append one line per view).
     let mustCall: [String: [String]] = [
         "Sources/Views/SearchListView.swift": ["KBLIVerdict.headsUp(", "OverlayStore.shared.primaryTitle("],
+        "Sources/Views/KBLIRegistryTable.swift": ["Theme.riskChip(", "Theme.chip("],
     ]
     for (file, calls) in mustCall.sorted(by: { $0.key < $1.key }) {
         guard let src = try? String(contentsOfFile: "\(appRoot)/\(file)", encoding: .utf8) else {

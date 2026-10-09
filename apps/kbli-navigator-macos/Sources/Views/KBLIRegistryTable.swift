@@ -54,37 +54,25 @@ struct VerdictBadge: View {
         }
     }
 
-    private var isUndetermined: Bool { state == .undetermined || state == .undeterminedNational }
-
-    private var color: Color {
+    /// Opaque chip (spec §1.3): the tone's own fill and ink, radius 2, no stroke, no opacity tint.
+    private var tone: Theme.Tone {
         switch state {
-        case .open: return Theme.pmaOpen
-        case .blocked, .closedNational: return Theme.pmaClosed
-        case .undetermined, .undeterminedNational: return Theme.faint
+        case .open: return .open
+        case .blocked, .closedNational: return .closed
+        case .undetermined, .undeterminedNational: return .neutral
         }
     }
 
     var body: some View {
+        let c = Theme.chip(tone)
         Text(text)
             .font(Theme.scalable(compact ? 9 : 10, weight: .heavy, design: .monospaced))
             .tracking(0.6)
-            .foregroundStyle(isUndetermined ? Theme.muted : color)
-            .lineLimit(2).multilineTextAlignment(.center)
+            .foregroundStyle(c.fg)
+            .multilineTextAlignment(.center)
             .padding(.horizontal, 8).padding(.vertical, 4)
             .frame(maxWidth: .infinity)
-            .background {
-                if isUndetermined {
-                    // No fill: an undetermined axis gets no colour to argue with.
-                    RoundedRectangle(cornerRadius: Theme.radiusSm, style: .continuous)
-                        .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
-                        .foregroundStyle(Theme.hairlineHi)
-                } else {
-                    RoundedRectangle(cornerRadius: Theme.radiusSm, style: .continuous)
-                        .fill(color.opacity(0.13))
-                        .overlay(RoundedRectangle(cornerRadius: Theme.radiusSm, style: .continuous)
-                            .strokeBorder(color.opacity(0.35), lineWidth: 1))
-                }
-            }
+            .background(c.bg, in: RoundedRectangle(cornerRadius: 2))
             .accessibilityElement()
             .accessibilityLabel(voiceOverLabel)
     }
@@ -116,23 +104,22 @@ struct RiskCell: View {
     var body: some View {
         switch risk {
         case .known(let label):
+            let c = Theme.riskChip(label)
             Text(Theme.riskShortLabel(label, isID: isID))
                 .font(Theme.scalable(compact ? 9 : 10, weight: .semibold, design: .monospaced))
-                .foregroundStyle(Theme.riskColor(label))
-                .lineLimit(1)
+                .foregroundStyle(c.fg)
                 .padding(.horizontal, 8).padding(.vertical, 4)
                 .frame(maxWidth: .infinity)
-                .background(RoundedRectangle(cornerRadius: Theme.radiusSm, style: .continuous)
-                    .fill(Theme.riskColor(label).opacity(0.12))
-                    .overlay(RoundedRectangle(cornerRadius: Theme.radiusSm, style: .continuous)
-                        .strokeBorder(Theme.riskColor(label).opacity(0.30), lineWidth: 1)))
+                .background(c.bg, in: RoundedRectangle(cornerRadius: 2))
+                .overlay {
+                    if let b = c.border { RoundedRectangle(cornerRadius: 2).strokeBorder(b, lineWidth: 1) }
+                }
                 .accessibilityElement()
                 .accessibilityLabel((isID ? "Risiko OSS: " : "OSS risk: ") + label)
         case .absent:
             Text(Self.absentText(isID: isID))
                 .font(Theme.scalable(compact ? 9 : 10).italic())
                 .foregroundStyle(Theme.faint)
-                .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement()
                 .accessibilityLabel(isID ? "Risiko OSS: tidak ada kelas pada catatan"
@@ -164,13 +151,14 @@ struct KBLIRegistryRow: View {
         let badgeState = VerdictBadge.state(for: v)
         HStack(spacing: 12) {
             Text(kbli.kode)
-                .font(Theme.scalable(compact ? 11 : 12, weight: .semibold, design: .monospaced))
-                .foregroundStyle(Theme.accent)
+                .font(Theme.scalable(13, weight: .regular, design: .monospaced))
+                .foregroundStyle(Theme.muted)
                 .frame(width: compact ? 52 : 58, alignment: .leading)
             Text(kbli.judul)
-                .font(Theme.scalable(compact ? 11 : 12.5))
+                .font(Theme.scalable(13))
+                .lineSpacing(4)
                 .foregroundStyle(Theme.white)
-                .lineLimit(1).truncationMode(.tail)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .help(kbli.judul)
             VerdictBadge(state: badgeState, isID: isID, compact: compact)
@@ -179,20 +167,19 @@ struct KBLIRegistryRow: View {
                 .frame(width: compact ? 116 : 132)
         }
         .padding(.horizontal, 10)
+        .padding(.vertical, compact ? 4 : 8)
         .frame(minHeight: density.rowHeight)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(rowFill, in: RoundedRectangle(cornerRadius: Theme.radiusSm, style: .continuous))
+        .background(rowFill)
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.lineSoft).frame(height: 1) }
         .overlay(alignment: .leading) {
-            if isSelected {
-                RoundedRectangle(cornerRadius: 1.5).fill(Theme.accent).frame(width: 2.5).padding(.vertical, 3)
-            }
+            if isSelected { Rectangle().fill(Theme.accent).frame(width: 3) }
         }
-        .overlay(RoundedRectangle(cornerRadius: Theme.radiusSm, style: .continuous)
-            .strokeBorder(isSelected && isListFocused ? Theme.accent : .clear, lineWidth: 2))
+        .overlay(Rectangle().strokeBorder(isSelected && isListFocused ? Theme.accent : .clear, lineWidth: 2))
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.12), value: hovering)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.12), value: isSelected)
+        .animation(Theme.motion(reduceMotion), value: hovering)
+        .animation(Theme.motion(reduceMotion), value: isSelected)
         .accessibilityElement(children: .combine)
         // The old `List(selection:)` gave the selected row this trait for free; a LazyVStack does
         // not (council round 1, codex-gpt-5.6-sol).
@@ -200,9 +187,7 @@ struct KBLIRegistryRow: View {
     }
 
     private var rowFill: Color {
-        if isSelected { return Theme.accent.opacity(0.13) }
-        if hovering { return Theme.scrim }
-        return .clear
+        isSelected || hovering ? Theme.wash : .clear
     }
 }
 
