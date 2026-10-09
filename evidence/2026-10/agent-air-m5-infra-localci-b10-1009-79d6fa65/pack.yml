@@ -1,0 +1,78 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN step B10, from the lead's message of 2026-10-09 (rule B10 RULED by the lead after the lead read the journal
+  on Pro and GitHub: the only FALSE_GREEN of 84 decisions, pr7961 Backend Tests (Python), was a hosted run of 2026-10-06 on an older
+  main), to the Dux implementer, from origin/main 11d0d5ebfa, 60-minute budget. Build only; a separate session gates and ships.
+lanes:
+  - lane: localci-b10-build
+    role: build
+    seat: "claude-opus-5-5 (BLUE Dux implementer, M5; Pro, GitHub and the journal not touched: the measurement is the lead's)"
+pii_scan: clean
+pii_scan_note: Comparator and merger code, tests on synthetic git repos under tmp, a README bullet and a spec paragraph. The pr number and context names are the repository's own CI metadata; no client data was read or written.
+what_changed: |
+  scripts/localci/hosted_compare.py: class HOSTED_STALE (counted apart, outside COMPARED); hosted_entries keeps each entry's
+  completed_at; hosted_verdict returns the completed_at of the entries that decided the verdict (the reds when red, else the counted
+  ones; None when any is unreadable); compare takes an optional stale_judge: a compared row (AGREE, FALSE_GREEN, FALSE_RED) whose
+  judge answers stale becomes HOSTED_STALE with class_before, hosted_completed_at, hosted_main, main_moved_paths (at most 20) and
+  main_moved_count; a judge that cannot answer, raises or answers in any other shape keeps the class with stale_check
+  "unknown (<why>)". Without a judge nothing changes.
+  scripts/localci/merger.py: StaleJudge reads, in the mirror, the BASE matrix (runs_when per context), the newest first-parent commit of
+  base_sha dated at or before the hosted completed_at, the paths between it and base_sha, and classifies each path with the BASE
+  scripts/ci/change_map.py run as the runner runs it (-I, trusted_env from the runner module that sits beside merger.py);
+  hosted_summary passes the judge and journals stale / stale_unknown beside the counts; decide builds it from the mirror and the
+  decided base. The report applies the judge to its own comparison and, for each decision with a recorded FALSE_GREEN, re-reads the
+  run dir's hosted_compare.json and the head's check-runs (one GET), reclassifies a row only when the red is still the hosted verdict
+  and the evidence holds, and prints false_green=N (recorded=R, reclassified HOSTED_STALE=S: [...]); the JSON carries
+  recorded_context_false_green (the remainder), recorded_false_green_as_journalled and recorded_reclassified_hosted_stale.
+  README: the HOSTED_STALE bullet and the corrected F1 residual (a conflict never counts a git error). Spec: one B10 paragraph before
+  "Phase E never precedes D".
+  Tests: test_hosted_stale.py (new, 25 cases on a fake mirror with dated main, the compare classes, the tick summary) and
+  tests/stale_fixture.py; 5 cases in test_merger_report.py, 1 in test_merger.py. 16 mutant rules in their own block after the F1 rules.
+proof: |
+  Every behaviour is produced by the committed code on fixtures under tmp (real git repos with dated commits and the real
+  change_map.py, GitHub faked); nothing ran on Pro and nothing was pushed. It reaches Pro when the tick next extracts merger.py and
+  hosted_compare.py from main.
+bites:
+  consumer: >-
+    The launchd tick com.balizero.localci-merger on Pro (decisions.jsonl and the run dir's hosted_compare.json) and
+    `merger.py report` on Pro (report.json and its phase E line).
+  observation: >-
+    Owed after merge and the tick's next extraction (this lane does not ship): on Pro, `merger.py report` prints
+    false_green=N (recorded=R, reclassified HOSTED_STALE=S: [pr7961 Backend Tests (Python): main moved ... after hosted ran
+    2026-10-06T02:54...]) with S at least 1 for the 2026-10-08T18:25:57Z decision and N one lower than before, report.json carries
+    recorded_reclassified_hosted_stale with that row, and the next decision whose hosted run is older than its base journals a
+    hosted_compare.stale or stale_unknown entry.
+ground:
+  ts: "2026-10-09T02:50:00Z"
+  siblings: >-
+    Worktree from origin/main 11d0d5ebfa (F1 merged as #8123). B8 appends its mutant rules at the end of merger_mutants.py in another
+    worktree; the B10 rules sit right after the F1 block.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 1
+receipts:
+  - claim: "The touched test files at ed16d11af5: test_merger.py, test_merger_report.py, test_hosted_stale.py, test_hosted_compare.py: 341 passed, 234 s."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py scripts/localci/tests/test_hosted_stale.py scripts/localci/tests/test_hosted_compare.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-09T03:24:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The 16 b10-* rules and their 11 neighbours (every hc-* and report-* rule) at the committed rules: 27/27 killed, no survivor, no error, none stale (three parallel sweeps)."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <the b10-*, hc-* and report-* rules>
+    exit: 0
+    ts: "2026-10-09T03:28:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The brief's seven acceptance probes, run one node id at a time at ed16d11af5: test_hosted_stale.py::test_main_moved_a_selected_path_after_hosted_ran_is_stale_with_the_commit_and_the_selected_path_only; test_hosted_stale.py::test_main_moved_only_in_unselected_paths_is_fresh; test_hosted_stale.py::test_a_stale_hosted_verdict_beside_a_local_green_is_neither_a_false_green_nor_an_agree; test_hosted_stale.py::test_a_judge_without_evidence_leaves_the_class_and_says_unknown; test_merger_report.py::test_a_recorded_false_green_with_evidence_of_a_stale_hosted_verdict_is_reclassified_and_named; test_merger_report.py::test_the_remaining_false_greens_are_what_ready_reads; test_merger.py::test_the_tick_hands_the_stale_judge_the_mirror_and_the_decided_base. Each passed."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_hosted_stale.py::test_main_moved_a_selected_path_after_hosted_ran_is_stale_with_the_commit_and_the_selected_path_only scripts/localci/tests/test_hosted_stale.py::test_main_moved_only_in_unselected_paths_is_fresh scripts/localci/tests/test_hosted_stale.py::test_a_stale_hosted_verdict_beside_a_local_green_is_neither_a_false_green_nor_an_agree scripts/localci/tests/test_hosted_stale.py::test_a_judge_without_evidence_leaves_the_class_and_says_unknown scripts/localci/tests/test_merger_report.py::test_a_recorded_false_green_with_evidence_of_a_stale_hosted_verdict_is_reclassified_and_named scripts/localci/tests/test_merger_report.py::test_the_remaining_false_greens_are_what_ready_reads scripts/localci/tests/test_merger.py::test_the_tick_hands_the_stale_judge_the_mirror_and_the_decided_base -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-09T04:14:00Z"
+    seat: claude-opus-5-5 on M5
+dissent: []
+residuals:
+  - "No adversarial round: the lint's gear-2 floor comes from its size term alone and asks for none; the independent gate is the lead's."
+  - "A context with no runs_when in the BASE matrix is selected by no path: its stale hosted verdict stays unknown and keeps its class. Narrow on purpose; an always-run context would make every old hosted run stale."
+  - "The PR-level class (merger vs GitHub's red-dominant verdict on the queue commit or head) is not judged for staleness; only the per-context rows are. A stale red at PR level still counts under counts.FALSE_GREEN."
+  - "The enqueue criterion's hosted_required_green still reads the live verdicts as they are: a stale hosted red on the PR head keeps refusing an enqueue."
+  - "The report reclassifies a recorded row only when the head's check-run is still red at report time and still carries the same completed_at evidence; a hosted re-run since then leaves the recorded false green where it is."
+  - "The judge classifies paths one by one with the BASE change_map; a diff of many thousands of paths costs one subprocess, not one per path, but the whole list goes through stdin."
+  - "PyYAML in Pro's merger venv is assumed (prune.py already needs it); without it every context reads unknown."
+  - "The spec paragraph is longer than the one sentence the lead asked for, because it carries the pr7961 measurement."

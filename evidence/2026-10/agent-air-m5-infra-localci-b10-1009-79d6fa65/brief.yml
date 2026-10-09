@@ -1,0 +1,52 @@
+task_id: localci-b10-1009
+mission: LOCALCI-SOVEREIGN (phase D, step B10)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  evidence_pack_lint's floor for this change set is 2 by its size term alone (churn 510 without this pack, over the 400-line
+  target), no hot-zone path. The change is the comparator's new class, the merger's judge and report line, their tests and mutants,
+  a README bullet and a spec paragraph; no workflow, credential, wrapper or plist changes, so the deploy is the mirror's next fetch.
+l_level: L2
+gate_class: opus
+objective: >-
+  The journal's only FALSE_GREEN of 84 decisions (2026-10-08T18:25:57Z, pr7961 Backend Tests (Python)) was a stale hosted verdict:
+  hosted ran on 2026-10-06 on the merge of the PR with main of that day, main fixed the failing pins afterwards, and the comparator
+  joins on the PR head and compares no timestamp. Rule B10: a compared row whose hosted verdict completed before the base the local
+  run used, with main changed in between in a path the BASE change_map selects for that context, is HOSTED_STALE, only on evidence;
+  the tick computes it, the report re-reads recorded false greens with the same rule, READY reads the remainder.
+constraints:
+  - Only on evidence: an unreadable completed_at, mirror, matrix or change_map, or a context with no runs_when, keeps the class and says unknown.
+  - The change_map is the BASE copy run as the runner runs it (-I, stripped environment); the judge re-implements none of its logic.
+  - Read-only: git show, rev-list and diff in the mirror, one GET of the head's check-runs; the report writes nothing to the journal.
+  - A recorded red that is no longer the hosted verdict is never reclassified.
+  - No new file is needed by the launchd wrapper: the judge lives in merger.py and loads the runner that already sits beside it.
+acceptance:
+  - text: Main moved a selected path after hosted completed SHALL be HOSTED_STALE with hosted_main, the selected paths (at most 20) and their count.
+    probe: "test_hosted_stale.py::test_main_moved_a_selected_path_after_hosted_ran_is_stale_with_the_commit_and_the_selected_path_only"
+  - text: Main moved only in unselected paths, or hosted completed after the base, SHALL leave the class unchanged.
+    probe: "test_hosted_stale.py::test_main_moved_only_in_unselected_paths_is_fresh"
+  - text: A stale hosted GREEN beside a local GREEN, and a stale hosted RED beside a local GREEN, SHALL both be HOSTED_STALE and never a compared context.
+    probe: "test_hosted_stale.py::test_a_stale_hosted_verdict_beside_a_local_green_is_neither_a_false_green_nor_an_agree"
+  - text: An unreadable completed_at, a judge that raises or a mirror that is unreadable SHALL keep the class and set stale_check unknown.
+    probe: "test_hosted_stale.py::test_a_judge_without_evidence_leaves_the_class_and_says_unknown"
+  - text: "The report SHALL reclassify a recorded FALSE_GREEN with evidence, keep one without, and print false_green=N (recorded=R, reclassified HOSTED_STALE=S: [...])."
+    probe: "test_merger_report.py::test_a_recorded_false_green_with_evidence_of_a_stale_hosted_verdict_is_reclassified_and_named"
+  - text: READY SHALL read the remaining false greens.
+    probe: "test_merger_report.py::test_the_remaining_false_greens_are_what_ready_reads"
+  - text: The tick SHALL hand the judge the mirror and the decided base.
+    probe: "test_merger.py::test_the_tick_hands_the_stale_judge_the_mirror_and_the_decided_base"
+assumptions:
+  - text: Pro's merger venv carries PyYAML (the judge reads the BASE matrix with it, as prune.py does).
+    status: unverified
+    note: prune.py imports yaml the same way; a missing module makes every context unknown, never a wrong class.
+    probe: the first decision after the merge journals stale or stale_unknown, never an exception.
+  - text: A context with no runs_when is selected by no path, so a stale verdict on it stays unknown.
+    status: verified
+    note: Ruled narrowly on purpose (an always-run context would make every old hosted run stale); the row says why.
+    probe: test_hosted_stale.py::test_a_judge_that_cannot_find_its_evidence_raises
+consumer_map:
+  - scripts/localci/merger.py tick on Pro (launchd com.balizero.localci-merger) — the decision's hosted_compare.stale / stale_unknown and run_dir/hosted_compare.json rows.
+  - scripts/localci/merger.py report on Pro — the false_green line, recorded_reclassified_hosted_stale and context_counts.HOSTED_STALE in report.json.
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
