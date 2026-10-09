@@ -1,0 +1,316 @@
+{
+  "about": "The frozen subset of the design-loop content pack of 2026-10-09 (contest kit content-pack.json, sha256 prefix 7f3a4b37, see the kit's pack.sha): the three frozen codes, verbatim. Tools/design/content_check.py compares the app against it leaf by leaf.",
+  "frozen": ["55203", "51101", "56101"],
+  "codes": {
+    "55203": {
+      "bali_status": "CHIUSO_PMA_NO_BESAR",
+      "basis": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.15, entry 48, row \"Vila\" (ex-KBLI 2020 55193) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "cap": "0",
+      "en": {
+        "bali_reason": "Allocated to Koperasi/UMKM by Perpres 49/2021 Lampiran II (dialokasikan column): a PT PMA cannot take this bidang usaha. Perpres 49/2021 Lampiran II p.15, entry 48 sub-row *Vila*, KBLI 55193, *dialokasikan* [Perpres annex, not an OSS scale inference]",
+        "heads_up": [
+          "HEADS UP — the verdict",
+          "A PT PMA cannot register this code in Bali."
+        ],
+        "rows": [
+          {
+            "authority": ["Bupati/Walikota"],
+            "permits": [],
+            "risk": "Menengah Rendah",
+            "scale": ["Mikro"],
+            "term": "Otomatis"
+          },
+          {
+            "authority": ["Bupati/Walikota"],
+            "permits": [],
+            "risk": "Menengah Rendah",
+            "scale": ["Kecil"],
+            "term": "Otomatis"
+          },
+          {
+            "authority": ["Bupati/Walikota"],
+            "permits": [],
+            "risk": "Menengah Rendah",
+            "scale": ["Menengah"],
+            "term": "Otomatis"
+          }
+        ],
+        "title": "Villa Rental"
+      },
+      "id": {
+        "bali_reason": "Kutipan catatan (EN): Allocated to Koperasi/UMKM by Perpres 49/2021 Lampiran II (dialokasikan column): a PT PMA cannot take this bidang usaha. Perpres 49/2021 Lampiran II p.15, entry 48 sub-row *Vila*, KBLI 55193, *dialokasikan* [Perpres annex, not an OSS scale inference]",
+        "heads_up": [
+          "PERHATIAN — putusan",
+          "PT PMA tidak dapat mendaftarkan kode ini di Bali."
+        ],
+        "rows": [
+          {
+            "authority": ["Bupati/Walikota"],
+            "permits": [],
+            "risk": "Menengah Rendah",
+            "scale": ["Mikro"],
+            "term": "Otomatis"
+          },
+          {
+            "authority": ["Bupati/Walikota"],
+            "permits": [],
+            "risk": "Menengah Rendah",
+            "scale": ["Kecil"],
+            "term": "Otomatis"
+          },
+          {
+            "authority": ["Bupati/Walikota"],
+            "permits": [],
+            "risk": "Menengah Rendah",
+            "scale": ["Menengah"],
+            "term": "Otomatis"
+          }
+        ],
+        "title": "Aktivitas Vila"
+      },
+      "verdict": "TERBATAS"
+    },
+    "51101": {
+      "bali_status": "OK_or_HIGHER_RISK",
+      "basis": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #31",
+      "cap": "49",
+      "en": {
+        "bali_reason": "OSS risk at the Besar (large) scale is Medium-High/High → not blocked by the Bali moratorium",
+        "heads_up": [
+          "YOU CAN DO THIS — the verdict",
+          "Open to foreign ownership."
+        ],
+        "rows": [
+          {
+            "authority": ["Menteri/Kepala Badan"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Mikro"],
+            "term": "7"
+          },
+          {
+            "authority": ["Menteri/Kepala Badan"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Kecil"],
+            "term": "7"
+          },
+          {
+            "authority": ["Menteri/Kepala Badan"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Menengah"],
+            "term": "7"
+          },
+          {
+            "authority": ["Menteri/Kepala Badan", "Menteri/Kepala Badan"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Besar"],
+            "term": "7"
+          },
+          {
+            "authority": ["Menteri/Kepala Badan"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Mikro"],
+            "term": "7"
+          },
+          {
+            "authority": ["Menteri/Kepala Badan"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Kecil"],
+            "term": "7"
+          },
+          {
+            "authority": ["Menteri/Kepala Badan"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Menengah"],
+            "term": "7"
+          },
+          {
+            "authority": ["Menteri/Kepala Badan", "Menteri/Kepala Badan"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Besar"],
+            "term": "7"
+          }
+        ],
+        "title": "Scheduled Commercial Air Passenger Transport"
+      },
+      "id": {
+        "bali_reason": "Risiko OSS pada skala Besar adalah Menengah-Tinggi/Tinggi → tidak terblokir oleh moratorium Bali",
+        "heads_up": ["BISA — putusan", "Terbuka untuk kepemilikan asing."],
+        "rows": [
+          {
+            "authority": ["Menteri/Kepala Badan"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Mikro"],
+            "term": "7"
+          },
+          {
+            "authority": ["Menteri/Kepala Badan"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Kecil"],
+            "term": "7"
+          },
+          {
+            "authority": ["Menteri/Kepala Badan"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Menengah"],
+            "term": "7"
+          },
+          {
+            "authority": ["Menteri/Kepala Badan", "Menteri/Kepala Badan"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Besar"],
+            "term": "7"
+          },
+          {
+            "authority": ["Menteri/Kepala Badan"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Mikro"],
+            "term": "7"
+          },
+          {
+            "authority": ["Menteri/Kepala Badan"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Kecil"],
+            "term": "7"
+          },
+          {
+            "authority": ["Menteri/Kepala Badan"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Menengah"],
+            "term": "7"
+          },
+          {
+            "authority": ["Menteri/Kepala Badan", "Menteri/Kepala Badan"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Besar"],
+            "term": "7"
+          }
+        ],
+        "title": "Angkutan Udara Niaga Berjadwal untuk Penumpang"
+      },
+      "verdict": "TERBATAS"
+    },
+    "56101": {
+      "bali_status": "OK_or_HIGHER_RISK",
+      "basis": "Perpres 10/2021 Pasal 3(1)(d) + 3(2) (as amended by Perpres 49/2021): the residual category — «Bidang Usaha yang tidak termasuk dalam huruf a, huruf b, dan huruf c» — «dapat diusahakan oleh semua Penanam Modal». Derived from the instrument by ABSENCE, not from a row that names this code: over the BPS 2020→2025 crosswalk the code is on no Lampiran I (prioritas), Lampiran II (dialokasikan/kemitraan Koperasi-UMKM) or Lampiran III (persyaratan tertentu, foreign-ownership caps included) row — tested against Lampiran III BOTH by code through the crosswalk AND by activity title, because BPS re-scopes numbers between vintages while a cap attaches to the ACTIVITY the annex names — no body article names it (Pasal 2(2) closed list, Pasal 6(3a) alcohol trade) and no Pasal 11(2) sector-law referral reaches its SECTOR — the article's unit is «Bidang Usaha keuangan dan Bidang Usaha perbankan», so the whole of KBLI divisions 64, 65 and 66 is withheld from this lane, not merely the six codes the carve-out artifact enumerates. No instrument maps the 5-digit code; the residual article IS the locator. Open to all Penanam Modal, max foreign 100%. Scope: this is the Perpres investment axis only — sector statutes OUTSIDE the Perpres were not swept per code, and where that gap is load-bearing (divisions 09, 35, 49-53, 61: migas, ketenagalistrikan, pelayaran, penerbangan, pos, telekomunikasi) the codes are withheld from this lane rather than published under it. Four Pasal 2(2) items close an ACTIVITY and name no code (narkotika golongan I; perjudian/kasino; CITES species and koral; industri senjata kimia and bahan perusak lapisan ozon): they are tested here by the state's OWN per-code markers — the licensing requirement for a «Surat Pernyataan tidak memproduksi senjata kimia … Bahan Perusak Ozon/BPO», plus the hand-held exclusions for the alcohol, tobacco, explosives and CITES chains — and none of them reaches a code in this lot. This basis does not clear a closed ACTIVITY carried on under an open code. The OSS licensing gate (risk tier, scale, zoning, and for a PMA the Pasal 7(1) >Rp10bn Usaha Besar test) is a separate question this basis does not answer.",
+      "cap": "100",
+      "en": {
+        "bali_reason": "OSS risk at the Besar (large) scale is Medium-High/High → not blocked by the Bali moratorium",
+        "heads_up": [
+          "YOU CAN DO THIS — the verdict",
+          "Open to foreign ownership."
+        ],
+        "rows": [
+          {
+            "authority": ["Bupati/Walikota"],
+            "permits": [],
+            "risk": "Menengah Rendah",
+            "scale": ["Mikro"],
+            "term": "Otomatis"
+          },
+          {
+            "authority": ["Gubernur"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Kecil"],
+            "term": "14"
+          },
+          {
+            "authority": ["Gubernur"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Menengah"],
+            "term": "14"
+          },
+          {
+            "authority": ["Menteri/Kepala Badan", "Gubernur"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Besar"],
+            "term": "14"
+          },
+          {
+            "authority": ["Bupati/Walikota"],
+            "permits": [],
+            "risk": "Menengah Rendah",
+            "scale": ["Mikro"],
+            "term": "Otomatis"
+          },
+          {
+            "authority": ["Bupati/Walikota"],
+            "permits": [],
+            "risk": "Menengah Rendah",
+            "scale": ["Kecil"],
+            "term": "Otomatis"
+          }
+        ],
+        "title": "Food Service Activities in Permanent Premises"
+      },
+      "id": {
+        "bali_reason": "Risiko OSS pada skala Besar adalah Menengah-Tinggi/Tinggi → tidak terblokir oleh moratorium Bali",
+        "heads_up": ["BISA — putusan", "Terbuka untuk kepemilikan asing."],
+        "rows": [
+          {
+            "authority": ["Bupati/Walikota"],
+            "permits": [],
+            "risk": "Menengah Rendah",
+            "scale": ["Mikro"],
+            "term": "Otomatis"
+          },
+          {
+            "authority": ["Gubernur"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Kecil"],
+            "term": "14"
+          },
+          {
+            "authority": ["Gubernur"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Menengah"],
+            "term": "14"
+          },
+          {
+            "authority": ["Menteri/Kepala Badan", "Gubernur"],
+            "permits": [],
+            "risk": "Menengah Tinggi",
+            "scale": ["Besar"],
+            "term": "14"
+          },
+          {
+            "authority": ["Bupati/Walikota"],
+            "permits": [],
+            "risk": "Menengah Rendah",
+            "scale": ["Mikro"],
+            "term": "Otomatis"
+          },
+          {
+            "authority": ["Bupati/Walikota"],
+            "permits": [],
+            "risk": "Menengah Rendah",
+            "scale": ["Kecil"],
+            "term": "Otomatis"
+          }
+        ],
+        "title": "Aktivitas Penyediaan Makanan di Bangunan Tetap"
+      },
+      "verdict": "TERBUKA"
+    }
+  }
+}
