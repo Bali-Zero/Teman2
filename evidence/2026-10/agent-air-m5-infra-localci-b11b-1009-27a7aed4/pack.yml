@@ -90,3 +90,6 @@ residuals:
 brief_ref: evidence/brief.yml
 plan_ref: >-
   Mandate LOCALCI-SOVEREIGN step B11b, from the lead message of 2026-10-09, from origin/main 9d3def7cfe (B11 merge). Nothing is pushed.
+appetite_exceeded: >-
+  Wall clock only: the build fit the declared 0.5 hours; the independent gate's fix round (LOW-1, a just-merged commit whose PR
+  GitHub still shows open, and LOW-2, a spec word) adds 0.3, observed 0.8. No adversarial round.
