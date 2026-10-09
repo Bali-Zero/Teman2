@@ -92,6 +92,15 @@ Phase E never precedes D. If D shows a false green, the flip waits and the execu
 **What stays with Subhi.** The showroom export (which capability, its closure, its acceptance from a clean checkout) and when the old repository is deleted. The local CI runs the showroom's checks the same way (a second `contexts_matrix.yaml` for that repository, BASE-trusted, receipts and seals) — a phase G once the first export exists.
 
 _Status._ F1 (shadow `would_merge` lines, the merge rehearsed with `git merge-tree --write-tree` against GitHub's main read with `git ls-remote`, no ref written, nothing pushed) shipped 2026-10-09.
+_Status._ F2 (the executor, disarmed by construction) built 2026-10-10: `merger.py` merges and pushes only when ALL hold at the moment of merging, each failing one named in `phase_f.why` on the `would_merge` line — `LOCALCI_MERGER_PHASE_F=1`; READY recomputed in the tick by the report's own function; `<state>/deploy_key` a regular file, 0600, owned by the running user; the C3a-2 criterion as `enqueue_step` computed it; F1's `clean` and `base_current`; the PR head re-read; no sticky `<state>/phase_f_halt`. The merge commit is made with `commit-tree` (parents: base, head; subject `<title> (#N)`), the push is plain (a rejection is `push_refused` plus the sticky halt), and the fetch refuses to rewind a main phase F pushed (`storage_diverged`, halt). Not armed anywhere: the armed path's live proof is owed to the day READY holds.
+
+**Arming checklist (phase F proper) — all after READY, in this order, the first three are operator gestures.**
+
+1. Generate the write deploy key on Pro (`<state>/deploy_key`, 0600, owned by the tick's user, never printed) and register its public half on the repository with write.
+2. Allow actor type `DeployKey` to bypass the ruleset `merge-queue-main`.
+3. Flip phase E (the merger's enqueue stops being the path into GitHub's queue; with phase F the queue is not used).
+4. Put `LOCALCI_MERGER_PHASE_F=1` in the tick's environment (the launchd plist). Until it is set, and until `merger.py report` reads `phase E READY`, every `would_merge` line says `armed: false` and names why.
+   To stop: remove the env, or `touch <state>/phase_f_halt`. To resume after a `push_refused` or `storage_diverged`: read the reason in the halt file and the journal, reconcile GitHub's main with the mirror, then remove the file.
 
 ## 3. What is lost, and what covers it
 

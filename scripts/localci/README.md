@@ -432,6 +432,42 @@ Limits, stated: the runner plans `review.independent` and leaves it QUEUED (bloc
 of a tick leaves its runner child running to the runner's own deadline; the next tick removes the candidate worktree under
 it, so that orphan run is never journalled.
 
+**Phase F, the executor (F2): disarmed by construction.** The same call that journals `would_merge` also decides, now, whether to MERGE. Every
+`would_merge` line carries `phase_f: {armed, why}`; `armed` is true only when ALL of these hold, checked at that moment, and `why` names
+each one that does not (a disarmed tick does exactly what F1 did and adds only this field):
+
+| condition | `why` when false |
+| --- | --- |
+| env `LOCALCI_MERGER_PHASE_F=1` in the tick's environment | `LOCALCI_MERGER_PHASE_F unset` |
+| phase D READY, recomputed from the journal by `report(emit=False)` — the report's own function, so the thresholds (>= 50 compared merges over >= 14 days, 0 FALSE_GREEN) exist once | `READY false` / `READY unreadable: ...` |
+| `<state>/deploy_key` exists, is a regular file (a symlink is not), mode exactly 0600, owned by the running user — read with `lstat` only, its content is never opened | `deploy_key missing` / `mode 0644, not 0600` / `not a regular file` / `not owned by the running user` |
+| the decision meets the C3a-2 criterion exactly as `enqueue_step` computed it (`enq["criterion"]`, every sub-criterion incl. `label_privileged`), and GitHub's merge queue does not already hold the PR (a tick that enqueued it leaves the merge to the queue) | `criterion false: <names>` / `GitHub's merge queue has this PR ...` |
+| F1's `would_merge`: `clean`, `base_current` (GitHub's main by `ls-remote` == the decided base), the mirror's `refs/merger/base` == the decided base | `merge not clean` / `base_current false` / `mirror main is not the decided base` |
+| the PR re-read at the moment of merging (one GraphQL read, made only when nothing above already says no): head == the decided head and state OPEN | `head_unchanged false: ...` / `PR state ...` / `head re-read failed: ...` |
+| no sticky halt file `<state>/phase_f_halt` | `phase_f_halt present: <reason>` |
+
+When armed: (1) the merge commit is made in the mirror with `git commit-tree` on the tree F1 rehearsed — it writes an object and no ref, so
+nothing half-written can exist — parents `refs/merger/base` (first) then the decided head, author and committer `localci-merger`, subject
+`<PR title> (#<N>)` (B11's `PR_SUBJECT` recognises it), body = the decision's `ts`, lease id and `run_dir` plus the PR body's `Bites:` line;
+(2) `kind: merged` is journalled (`pr`, `head_sha`, `base_sha`, `merge_commit`, `tree`, `decision_ts`, `run_dir`, `lease_id`); (3)
+`git push origin <merge_commit>:refs/heads/main`, plain, never forced: any rejection, error or timeout is `kind: push_refused` (redacted
+stderr tail) plus the **sticky halt file** `<state>/phase_f_halt` — no further merge until an operator removes it, and the mirror keeps its
+`refs/merger/base`; a push that landed moves `refs/merger/base` to the merge commit and journals `kind: pushed` (`mirror_updated`). A
+failure making the commit is `kind: merge_error`: nothing pushed, no halt, the next decision retries. The key reaches ONLY the push
+subprocess, as `GIT_SSH_COMMAND="ssh -i <state>/deploy_key -o IdentitiesOnly=yes -o BatchMode=yes"`; the runner's env is an allowlist
+and never sees it. The push goes to `--push-url` (default, on the GitHub fetch URL: `git@github.com:<repo>.git`, the ssh form a deploy key
+is registered for; `git remote set-url --push` on the mirror).
+
+The fetch no longer rewinds an authoritative main: once a `pushed` line exists and the halt file is absent, the tick fetches GitHub's main
+into `refs/merger/incoming` and takes it only when it is a descendant of (or equal to) the last `pushed` merge commit; otherwise it
+journals `kind: storage_diverged`, writes the halt file, keeps `refs/merger/base` and exits 1. (A merge made but never pushed is no
+anchor. While the halt file exists the fetch is the plain one of before, and the guard fires again the first tick after an operator
+removes the halt, until GitHub's main again contains the last pushed merge.) Clearing a halt is an operator act after reading why: a
+`push_refused` can be a plain race (a commit reached GitHub's main between the `ls-remote` and the push).
+
+Report: `phase_f` reads `shadow` until the window holds a `merged` or `push_refused` line, then `armed (N merged, M refused)`;
+`phase_f_halted` and the line `phase F executor: ...` (with `HALTED` when the file exists) say the rest; the READY line is unchanged.
+
 ### Report (phase D's instrument)
 
     python scripts/localci/merger.py report [--repo Bali-Zero/Teman2] [--base main] [--state-dir ...] [--since 2026-10-07]
