@@ -20,7 +20,7 @@ Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE S
   `visa_types.processing_time_normal`, 37 products; BRIDGING stays UNKNOWN. C4 (interview helper
   copy): #8119 and #8128 were closed after fresh-gate BLOCKs on false sentences; a per-key truth
   table was then written from `flow.ts`, `fact-mapper.ts`, `tree.ts` and the seq-26 pack;
-  successor #8140: `<C4_OUTCOME>`. Census unchanged (seq-26): 99 SUPPORTED / 13 NO_PATH /
+  successors: PR-C4 #8148 merged 2026-10-09T06:27:43Z (`4443d209f1`). Vercel dpl `mouth-jounkfl8j` was aliased about 06:34Z by an automatic promotion, a few minutes after READY. Live 06:34:46Z: on balizero.com/visa-oracle, "Why we ask" on the direction question reads "Your direction decides which questions come next and which visas can fit your plan." and the old "only chooses the next questions" is gone; the full replay still shows the C3 timing and the C2 duration. Predecessors #8119, #8128, #8140 and #8145 were closed after fresh-gate BLOCKs on false sentences, a lost "above" reference, and a red suite. The fix was a per-key truth table written from the code, a Codex full sweep of every changed key (97 rendered + 17 never rendered of 114/115), and the full visa-oracle vitest subtree before push. Rule now in force: an advisor is offered, never promised. Census unchanged (seq-26): 99 SUPPORTED / 13 NO_PATH /
   1 NEEDS_INPUT / 3 HUMAN_REVIEW of 116 walks. The iQOO device check was blocked (wireless ADB on
   Pro refused, zero mDNS services). Open: see the 2026-10-09 rows in `PENDING-ARMS.md`.
 
