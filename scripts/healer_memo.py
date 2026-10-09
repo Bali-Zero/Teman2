@@ -98,6 +98,10 @@ def fingerprint(receptor_state: dict) -> str:
         str(item) for item in (receptor_state.get("receptor_failures") or [])
     )
 
+    observations = sorted(
+        str(item) for item in (receptor_state.get("observations") or [])
+    )
+
     canonical = {
         "dead_organs": [list(t) for t in dead_tuples],
         "diverged_probes": diverged,
@@ -106,6 +110,8 @@ def fingerprint(receptor_state: dict) -> str:
         "arsenal_new_dead": arsenal_new_dead,
         "receptor_failures": receptor_failures,
     }
+    if observations:  # optional axis (Mini healer): absent keeps every existing hash byte-identical
+        canonical["observations"] = observations
     blob = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
