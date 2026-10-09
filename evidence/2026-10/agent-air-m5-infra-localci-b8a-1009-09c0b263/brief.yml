@@ -1,0 +1,35 @@
+task_id: localci-b8a-1009
+mission: LOCALCI-SOVEREIGN (phase B, step B8a)
+colour: BLUE
+gear: 1
+gear_reason: >-
+  evidence_pack_lint's floor for this change set is 1 (no hot-zone path, a small churn). One parser in the merger's own
+  prune: docker's Created now honours its offset. No workflow, credential, wrapper or plist changes.
+l_level: L2
+gate_class: opus
+objective: >-
+  From the lead's measurement on Pro (2026-10-09T02:49:24Z, B8's first live prune journalled "built -5.3 h ago"): the
+  prune reads an image's Created as a UTC instant, honouring a trailing Z or ±HH:MM / ±HHMM offset, so a floor removal
+  journals the image's true age and images whose Created carry different offsets are ordered by their instants.
+constraints:
+  - A Created without any offset still reads as UTC; nanoseconds are kept.
+  - A malformed Created is None, which the prune already treats as undated.
+  - localci_merger_tick.sh is unchanged; no .github/ file, no push, nothing on Pro.
+acceptance:
+  - text: '"2026-10-08T20:00:21.883530525+08:00" SHALL read as the instant "2026-10-08T12:00:21.883530525Z"; -05:30 and +0800 likewise; no offset as UTC.'
+    probe: "test_prune.py::test_b8a_created_is_read_as_a_utc_instant_whatever_its_offset"
+  - text: A malformed Created (bad offset, trailing text, impossible date) SHALL be None.
+    probe: "test_prune.py::test_b8a_a_malformed_created_is_none"
+  - text: A floor removal of images dated with +08:00 SHALL journal "built H h ago" equal to their true age, never negative.
+    probe: "test_prune.py::test_b8a_a_floor_removal_of_images_dated_with_an_offset_journals_their_true_age"
+  - text: An image dated in UTC and one dated in local time SHALL be ordered by their instants.
+    probe: "test_prune.py::test_b8a_an_image_dated_in_utc_and_one_dated_in_local_time_are_ordered_by_their_instants"
+assumptions:
+  - text: Pro's docker prints Created in RFC 3339 with nanoseconds and a ±HH:MM offset.
+    status: verified
+    note: The lead's measurement at 2026-10-09T02:49:24Z quotes `2026-10-08T20:00:21.883530525+08:00` from `docker image inspect --format {{.Created}}` on Pro.
+consumer_map:
+  - scripts/localci/merger.py prune, run by the launchd tick on Pro — the image ordering and the floor's "built H h ago" in decisions.jsonl.
+appetite:
+  wall_clock_hours: 0.4
+  adversarial_rounds: 0
