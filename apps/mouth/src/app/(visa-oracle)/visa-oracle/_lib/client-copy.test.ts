@@ -184,6 +184,15 @@ describe("typical processing time copy", () => {
     expect(dict.id["outcome.timeline_typical_range"]).toBe(
       "Biasanya {{min}}–{{max}} hari kerja",
     );
+    expect(dict.id["outcome.timeline_none"]).toBe(
+      "Tidak ada visa yang perlu diproses sebelumnya — izin masuk diberikan di perbatasan.",
+    );
+    expect(dict.id["outcome.timeline_indicative"]).toMatch(
+      /^Perkiraan waktu proses Bali Zero .* akan mengonfirmasi jadwal /,
+    );
+    expect(dict.id["outcome.timeline_pending"]).toMatch(
+      /Konsultan Bali Zero akan mengonfirmasi jadwal/,
+    );
   });
 });
 

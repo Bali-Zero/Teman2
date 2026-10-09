@@ -1,5 +1,5 @@
 # Gear-3 evidence pack — PR-C3, the result page shows Bali Zero's typical processing time.
-# Every receipt is a command this session ran on 2026-10-09 between 02:05Z and 02:38Z with the clock
+# Every receipt is a command this session ran on 2026-10-09 between 02:05Z and 02:50Z with the clock
 # captured in the same shell invocation. Review, merge and deploy belong to the orchestrator.
 gear: 3
 brief_ref: evidence/brief.yml
@@ -20,8 +20,8 @@ lanes:
       production visa_types.processing_time_normal read by the orchestrator on 2026-10-09 and
       committed as backend/data/bali_zero_processing_times_2026.json with each product's source text.
     nb: apps/backend-rag/backend/data/bali_zero_processing_times_2026.json
-    query_hash: "0000000000000000000000000000000000000000000000000000000000000000" # pragma: allowlist secret
-    note: no notebook was queried; the hash is a placeholder for a source that is a database column read.
+    query_hash: "6e7e7b72ea2b4f1afb79d1fcffa650cd58d37f6b1ebd3b277feec2df79f89b06" # pragma: allowlist secret
+    note: query_hash = sha256 of the committed snapshot file; no notebook was queried, the source is a database column read.
 bites:
   consumer: >-
     the evaluate path (_build_display) reading the committed snapshot for every candidate, and the
@@ -33,38 +33,60 @@ bites:
 receipts:
   - claim: The new processing-time tests (backend/tests/services/visa_engine/test_processing_times.py::TestDisplayTimeline and ::TestTimelineDto), the schema snapshot tripwire, the duration tests, the walk census and the happy-path endpoint test pass.
     cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine/test_processing_times.py backend/tests/services/visa_engine/test_schema_contracts.py backend/tests/services/visa_engine/test_duration_options.py backend/tests/services/visa_engine/test_interview_walk_census.py backend/tests/services/visa_engine/test_evaluate_endpoint.py::test_happy_path_http_end_to_end
-    result: "242 passed, 14 skipped in 140.86s"
+    result: "205 passed in 21.37s (cure run; focused set without the walk census)"
     exit: 0
-    ts: "2026-10-09T02:05:12Z"
+    ts: "2026-10-09T02:48:25Z"
     seat: Claude Sonnet 5.5
   - claim: Lint on the touched backend code and tests is clean.
     cmd: apps/backend-rag/.venv/bin/ruff check apps/backend-rag/backend/services/visa_engine apps/backend-rag/backend/tests/services/visa_engine/test_processing_times.py apps/backend-rag/backend/tests/services/visa_engine/test_evaluate_endpoint.py
     result: "All checks passed!"
     exit: 0
-    ts: "2026-10-09T02:05:12Z"
+    ts: "2026-10-09T02:48:33Z"
     seat: Claude Sonnet 5.5
   - claim: The client copy observer finds the seven new timeline keys in both language blocks and no banned phrase.
     cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
     result: "OK visa-oracle client copy: 3323 literals scanned, 0 banned"
     exit: 0
-    ts: "2026-10-09T02:05:12Z"
+    ts: "2026-10-09T02:48:33Z"
     seat: Claude Sonnet 5.5
   - claim: The mouth type check is clean on the regenerated API types and the new rendering.
     cmd: apps/mouth tsc --noEmit -p .
     result: "no output"
     exit: 0
-    ts: "2026-10-09T02:13:25Z"
+    ts: "2026-10-09T02:48:55Z"
     seat: Claude Sonnet 5.5
-  - claim: The visa-oracle vitest subset (apps/mouth OutcomeSheet.test.tsx 'Bali Zero typical processing time') passes except one load timeout in an unrelated enumeration test, which passes alone.
-    cmd: vitest run "src/app/(visa-oracle)" ; vitest run "src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts"
-    result: "full subset 1223 passed 1 failed (enumerate-interview-space, 120s timeout while the machine was shared); that file alone 40 passed"
+  - claim: The visa-oracle vitest files touching copy and the timeline (apps/mouth OutcomeSheet.test.tsx 'Bali Zero typical processing time', i18n, client-copy, engine-adapter, engine-response) pass on the cured strings. The earlier full subset run had one load timeout in enumerate-interview-space.test.ts, which passed alone (40 passed, 2026-10-09T02:37:08Z).
+    cmd: vitest run i18n.test.ts client-copy.test.ts OutcomeSheet.test.tsx engine-adapter.test.ts engine-response.test.ts
+    result: "5 files passed, 297 tests passed"
     exit: 0
-    ts: "2026-10-09T02:37:08Z"
+    ts: "2026-10-09T02:48:41Z"
+    seat: Claude Sonnet 5.5
+  - claim: After the import-order fix the processing-time test file passes with the widened coverage and the negative test.
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine/test_processing_times.py
+    result: "27 passed in 9.74s"
+    exit: 0
+    ts: "2026-10-09T02:49:17Z"
     seat: Claude Sonnet 5.5
 council_run: council-journal.jsonl
-dissent: []
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro filled the second review seat at the orchestrator's choice. The implementer
+  did not observe which titolare it replaced or why; the orchestrator must confirm or correct this
+  line with the arsenal probe result before the final gate.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM: the snapshot coverage test read only rulepack-prod-026.source.json, so a product added in a later pack would silently get UNKNOWN."
+    status: CONFIRMED
+    disposition: "cured in the cure commit: coverage is asserted against the highest signed pack and every newer prod source on disk, BRIDGING the single named exclusion, plus a negative test feeding an unmapped product id through the same helper."
+  - seat: agy-gemini-3.1-pro
+    objection: "HIGH: the Indonesian outcome.timeline_indicative hint read as machine-translated."
+    status: CONFIRMED
+    disposition: "cured in the cure commit with the reviewer's wording."
+  - seat: agy-gemini-3.1-pro
+    objection: "LOW: the instant-product sentence should say no visa to process, and the pending paragraph should use akan mengonfirmasi like the new hint."
+    status: CONFIRMED
+    disposition: "cured in the cure commit: outcome.timeline_none and outcome.timeline_pending (Indonesian) aligned."
 owed:
-  - "Council review and the Gear-3 final gate; the orchestrator fills dissent."
+  - "The Gear-3 final gate on the cured head."
 spend:
   wall_clock_hours: 2
   adversarial_rounds: 0

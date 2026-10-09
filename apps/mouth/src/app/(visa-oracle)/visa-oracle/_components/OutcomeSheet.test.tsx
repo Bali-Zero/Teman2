@@ -518,7 +518,9 @@ describe("OutcomeSheet — Bali Zero typical processing time", () => {
     renderTimeline({ ...WINDOW, workingDaysMin: 20, workingDaysMax: 30 }, "id");
     expect(screen.getByText("Biasanya 20–30 hari kerja")).toBeInTheDocument();
     expect(
-      screen.getByText(/^Perkiraan waktu Bali Zero dalam hari kerja Indonesia/),
+      screen.getByText(
+        /^Perkiraan waktu proses Bali Zero dalam hari kerja Indonesia/,
+      ),
     ).toBeInTheDocument();
   });
 

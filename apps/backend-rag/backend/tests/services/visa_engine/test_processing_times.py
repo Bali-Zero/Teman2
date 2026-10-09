@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from datetime import date, datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,6 +12,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
+from backend.scripts.visa_engine.review_hold_inventory import load_highest_signed_pack
 from backend.services.visa_engine import processing_times
 from backend.services.visa_engine.api_models import (
     CandidateProcessingTimelineDTO,
@@ -28,14 +30,46 @@ def _decision(evaluated_at: datetime) -> Any:
     return SimpleNamespace(evaluated_at=evaluated_at, observed_at=_OBSERVED)
 
 
+_NO_CATALOGUE_TIME = frozenset({"BRIDGING"})
+
+
+def unmapped_products(product_codes: Iterable[str]) -> set[str]:
+    """Pack products that neither have a catalogue window nor are the named exclusion."""
+
+    return {
+        code
+        for code in product_codes
+        if code not in _NO_CATALOGUE_TIME and typical_window(code) is None
+    }
+
+
+def _pack_product_codes() -> dict[str, set[str]]:
+    """Product codes of the highest signed pack and of every newer prod source on disk."""
+
+    highest = load_highest_signed_pack()
+    found = {f"signed seq-{highest.sequence}": {str(p.product_code) for p in highest.products}}
+    for path in sorted(_PACKS.glob("rulepack-prod-*.source.json")):
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        if raw["sequence"] > highest.sequence:
+            found[path.name] = {p["product_code"] for p in raw["products"]}
+    return found
+
+
 class TestSnapshot:
-    def test_covers_every_seq26_product_except_bridging(self) -> None:
-        pack = json.loads((_PACKS / "rulepack-prod-026.source.json").read_text(encoding="utf-8"))
-        codes = {p["product_code"] for p in pack["products"]}
-        snapshot = json.loads(Path(processing_times._SNAPSHOT).read_text(encoding="utf-8"))
-        assert set(snapshot["products"]) == codes - {"BRIDGING"}
+    def test_covers_every_product_of_the_signed_pack_and_every_newer_source(self) -> None:
+        for label, codes in _pack_product_codes().items():
+            assert unmapped_products(codes) == set(), label
         assert typical_window("BRIDGING") is None
         assert typical_window("NOPE") is None
+
+    def test_the_snapshot_holds_exactly_the_signed_pack_minus_the_named_exclusion(self) -> None:
+        snapshot = json.loads(Path(processing_times._SNAPSHOT).read_text(encoding="utf-8"))
+        signed = next(iter(_pack_product_codes().values()))
+        assert set(snapshot["products"]) == signed - _NO_CATALOGUE_TIME
+
+    def test_a_product_missing_from_the_snapshot_is_reported(self) -> None:
+        assert unmapped_products({"C1", "BRIDGING", "E99Z"}) == {"E99Z"}
+        assert unmapped_products({"C1", "BRIDGING"}) == set()
 
     @pytest.mark.parametrize(
         ("code", "window"),

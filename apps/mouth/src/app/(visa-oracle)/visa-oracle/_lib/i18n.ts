@@ -2003,7 +2003,7 @@ const id: Record<Keys, string> = {
 
   "outcome.timeline_title": "Linimasa",
   "outcome.timeline_pending":
-    "Lama proses ditentukan oleh Ditjen Imigrasi dan bervariasi menurut kantor dan musim. Konsultan Bali Zero memastikan jadwal untuk kasus Anda sebelum Anda memesan perjalanan.",
+    "Lama proses ditentukan oleh Ditjen Imigrasi dan bervariasi menurut kantor dan musim. Konsultan Bali Zero akan mengonfirmasi jadwal untuk kasus Anda sebelum Anda memesan perjalanan.",
   "outcome.path_counter": "Jalur {{index}} dari {{total}}",
   "outcome.checked_on": "Diperiksa pada {{date}} berdasarkan sumber di atas.",
   "outcome.checked_on_plain": "Diperiksa pada {{date}}.",
@@ -2048,7 +2048,7 @@ const id: Record<Keys, string> = {
   "outcome.status.NOT_OFFERED": "Tidak ditawarkan",
   "outcome.why_supported": "Mengapa jalur ini didukung",
   "outcome.timeline_none":
-    "Tidak ada yang perlu diproses sebelumnya — izin masuk diberikan di perbatasan.",
+    "Tidak ada visa yang perlu diproses sebelumnya — izin masuk diberikan di perbatasan.",
   "outcome.timeline_within_one": "Biasanya dalam 1 hari kerja",
   "outcome.timeline_typical_exact": "Biasanya {{days}} hari kerja",
   "outcome.timeline_typical_range": "Biasanya {{min}}–{{max}} hari kerja",
@@ -2057,7 +2057,7 @@ const id: Record<Keys, string> = {
   "outcome.timeline_if_today_single":
     "Jika dokumen Anda lengkap hari ini: sekitar {{date}}.",
   "outcome.timeline_indicative":
-    "Perkiraan waktu Bali Zero dalam hari kerja Indonesia, dihitung sejak dokumen lengkap. Ditjen Imigrasi menentukan kecepatan akhirnya; konsultan Anda memastikan jadwalnya sebelum Anda memesan perjalanan.",
+    "Perkiraan waktu proses Bali Zero dalam hari kerja Indonesia, dihitung sejak dokumen lengkap. Waktu proses akhir ditentukan oleh Ditjen Imigrasi; konsultan Anda akan mengonfirmasi jadwal sebelum Anda memesan perjalanan.",
   "outcome.document_status.CONDITIONAL": "Bersyarat",
   "outcome.document_status.UNKNOWN": "Perlu dikonfirmasi",
   "outcome.needs_input_body": "Beberapa detail masih kurang:",
