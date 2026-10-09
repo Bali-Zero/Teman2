@@ -1,0 +1,59 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN step B11, from the lead's message of 2026-10-09 (rule B11 RULED by the lead after the report on Pro showed
+  17 of 26 merged PRs merged onto a main that had moved), to the Dux implementer, from origin/main 4443d209f1, 90-minute budget.
+  Build only; a separate session gates and ships.
+lanes:
+  - lane: localci-b11-build
+    role: build
+    seat: "claude-opus-5-5 (BLUE Dux implementer, M5; Pro and GitHub not touched)"
+pii_scan: clean
+pii_scan_note: Merger code, tests on synthetic git repos under tmp, a README paragraph and a spec paragraph. PR numbers are the repository's own metadata; no client data was read or written.
+what_changed: |
+  scripts/localci/merger.py: decide takes an optional replay (merge_commit, schedule): the candidate is the merge commit, the BASE its
+  first parent, the hosted comparison is read on the merge commit's sha without a stale judge, and nothing is enqueued or rehearsed;
+  the line is a decision with replay true, merge_commit, schedule. replay_pending picks the oldest merge commit on the mirror's
+  first-parent line since the journal's first PR decision whose subject ends (#N) and which GitHub confirms (merged, merge_commit_sha
+  equals the commit); an unconfirmed commit is journalled once (skipped replay_unmapped), an ERROR replay is retried once. tick
+  alternates: a replay when the previous decision was not one, or when no PR is waiting. triage ignores replay lines. queue_sha returns
+  the merge commit for a confirmed replay, else the head. The report marks replay rows, skips the stale reclassification for them,
+  counts a PR once, and prints and records replays and compared_merges_from_replays (a PR that qualified before its merge is not
+  credited to the replay).
+  README and spec: the replay, the alternation and the measurement. Tests: test_replay.py (8), 6 in test_merger_report.py, and
+  FakeRunner now binds the status to the decision in progress. 12 mutant rules in their own block after the B10 rules.
+proof: |
+  Every behaviour is produced by the committed code on fixtures under tmp (real git repos with merge commits, GitHub and the runner
+  faked); nothing ran on Pro and nothing was pushed. It reaches Pro when the tick next extracts merger.py from main.
+bites:
+  consumer: >-
+    The launchd tick com.balizero.localci-merger on Pro (decisions.jsonl) and `merger.py report` on Pro (report.json and its output).
+  observation: >-
+    Owed after merge and the tick's next extraction (this lane does not ship): on Pro, decisions.jsonl gains lines with replay true,
+    a merge_commit, base_sha equal to its first parent and schedule set, alternating with PR decisions; `merger.py report` prints
+    the replays (B11) line with replays at least 1, and compared_merges rises as replayed merges meet the threshold.
+ground:
+  ts: "2026-10-09T05:30:00Z"
+  siblings: >-
+    Worktree from origin/main 4443d209f1. B8 appends mutant rules at the end of merger_mutants.py in another worktree; the B11 rules
+    sit right after the B10 block.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 1.5
+receipts:
+  - claim: "The touched test files at the committed tree: test_merger.py, test_merger_report.py, test_replay.py, test_hosted_stale.py, test_hosted_compare.py: 366 passed, 202 s."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py scripts/localci/tests/test_replay.py scripts/localci/tests/test_hosted_stale.py scripts/localci/tests/test_hosted_compare.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-09T06:46:40Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The 12 b11-* rules: 12/12 killed, none stale. Their 35 neighbours (every b10-*, report-*, tick-*, pr-number-* and f1-* rule that touches decide, tick or the report): 35/35 killed, none stale."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <the b11-* rules and the neighbours>
+    exit: 0
+    ts: "2026-10-09T06:55:00Z"
+    seat: claude-opus-5-5 on M5
+dissent: []
+residuals:
+  - "No adversarial round; the independent gate is the lead's."
+  - "A PR that already reached the threshold before its merge is still replayed (selection asks only for no replay yet); the report counts it once."
+  - "A merge commit whose subject lacks the (#N) suffix is never replayed; the suffix is the merge queue's own."
+  - "Each replay checks out the first parent as the base worktree, so the next PR decision recreates its own base worktree (a checkout, not a rebuild)."
+  - "Replay cost: one gate run per merged PR, about 14 a day against 30 to 60 ticks a day, shared with PR decisions by alternation."

@@ -1,0 +1,39 @@
+task_id: localci-b11-1009
+mission: LOCALCI-SOVEREIGN (phase D, step B11)
+colour: BLUE
+gear: 1
+gear_reason: >-
+  evidence_pack_lint's floor for this change set is 1 (churn 363 without this pack, no hot-zone path). The change is the merger's
+  replay of the commit GitHub merged, the report's counting of it, tests, mutants, a README paragraph and a spec paragraph; no
+  workflow, credential, wrapper or plist changes, so the deploy is the mirror's next fetch.
+l_level: L2
+gate_class: opus
+objective: >-
+  Measured on Pro (report of 2026-10-09T06:33Z): of 26 merged PRs only 9 were merged by GitHub onto the base the local gate decided,
+  so compared_merges stood at 1 after two days and phase D was unreachable. Rule B11: the merger also judges the exact main commit
+  that merged a PR (candidate = the merge commit, BASE = its first parent, hosted verdict on the same sha), alternating with PR
+  decisions; a replay meeting the unchanged thresholds is a compared merge, a PR counting once.
+constraints:
+  - The BASE of a replay is the merge commit's first parent; the candidate never supplies its own judge.
+  - A replay enqueues nothing, rehearses nothing and writes nothing to GitHub; its hosted comparison is never stale-judged.
+  - Phase D's thresholds, the PR decisions, F1, B10, prune and every wrapper are unchanged.
+acceptance:
+  - text: Replays and PR decisions SHALL alternate, oldest merge commit first, each merge commit replayed once.
+    probe: "test_replay.py::test_replays_and_pr_decisions_alternate_oldest_merge_first_and_a_replayed_commit_is_not_asked_again"
+  - text: The replay SHALL judge the merge commit with its first parent as the BASE, never the commit's own matrix.
+    probe: "test_replay.py::test_the_replay_judges_the_merge_commit_with_its_first_parent_as_the_base_never_the_commits_own_matrix"
+  - text: A replay that meets the threshold SHALL be a compared merge, counted once per PR, and the report SHALL say how many came from replays.
+    probe: "test_merger_report.py::test_a_pr_that_qualified_before_its_merge_and_by_a_replay_counts_once_and_is_not_credited_to_the_replay"
+  - text: A replay below the threshold SHALL NOT count.
+    probe: "test_merger_report.py::test_a_replay_below_the_threshold_is_not_a_compared_merge"
+assumptions:
+  - text: The merge queue's commit subject ends with the PR number in parentheses.
+    status: unverified
+    note: GitHub confirms every candidate (merged, merge_commit_sha equals the commit); a commit without the pattern is simply never replayed.
+    probe: the first replay line on Pro carries a merge_commit and a pr.
+consumer_map:
+  - scripts/localci/merger.py tick on Pro (launchd com.balizero.localci-merger) — decision lines with replay true in decisions.jsonl.
+  - scripts/localci/merger.py report on Pro — window.replays and window.compared_merges_from_replays in report.json.
+appetite:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 0
