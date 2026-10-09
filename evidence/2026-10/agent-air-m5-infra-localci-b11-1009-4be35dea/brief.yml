@@ -1,11 +1,11 @@
 task_id: localci-b11-1009
 mission: LOCALCI-SOVEREIGN (phase D, step B11)
 colour: BLUE
-gear: 1
+gear: 2
 gear_reason: >-
-  evidence_pack_lint's floor for this change set is 1 (churn 363 without this pack, no hot-zone path). The change is the merger's
-  replay of the commit GitHub merged, the report's counting of it, tests, mutants, a README paragraph and a spec paragraph; no
-  workflow, credential, wrapper or plist changes, so the deploy is the mirror's next fetch.
+  evidence_pack_lint's floor for this change set is 2 by its size term alone (churn 363 without this pack, over the 400-line target
+  with it), no hot-zone path. The change is the merger's replay of the commit GitHub merged, the report's counting of it, tests,
+  mutants, a README paragraph and a spec paragraph; no workflow, credential, wrapper or plist changes.
 l_level: L2
 gate_class: opus
 objective: >-

@@ -52,7 +52,7 @@ receipts:
     seat: claude-opus-5-5 on M5
 dissent: []
 residuals:
-  - "No adversarial round; the independent gate is the lead's."
+  - "No adversarial round: the lint's gear-2 floor comes from its size term alone and asks for none; the independent gate is the lead's."
   - "A PR that already reached the threshold before its merge is still replayed (selection asks only for no replay yet); the report counts it once."
   - "A merge commit whose subject lacks the (#N) suffix is never replayed; the suffix is the merge queue's own."
   - "Each replay checks out the first parent as the base worktree, so the next PR decision recreates its own base worktree (a checkout, not a rebuild)."
