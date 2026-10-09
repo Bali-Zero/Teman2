@@ -69,3 +69,6 @@ residuals:
   - "Merges older than the newest unreplayed one are never replayed unless the gate catches up; they are not owed, phase D counts compared merges."
   - "The first live replay's order, and that the newest base compares its contexts, is observable only after merge on Pro; owed as the Bites observation."
   - "The mutant run is the lead's, taken before the commits on the same working tree; this lane did not rerun it."
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN step B11b, from the lead message of 2026-10-09, from origin/main 9d3def7cfe (B11 merge). Nothing is pushed.
