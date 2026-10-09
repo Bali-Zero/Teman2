@@ -26,11 +26,13 @@ STALE = 3 * EXPECTED_HB + 30
 KBLI = "detector_rc=1 result=divergence log=/x/kbli.log"
 PULSE = {"pulse_count": 7, "tier": 1, "action": None}
 
-KB, LD, MT, CL, VS, DF = (
+KB, LD, MT, SH, CL, VS, DF = (
     "pro.kbli_surface_conformance", "pro.launchd_liveness", "pro.meta_one_steward",
-    "cell.organism", "pro.visa_freshness_sentinel", "pro.disk_floor",
+    "mata_garuda.sentinel_hourly.pro", "cell.organism",
+    "pro.visa_freshness_sentinel", "pro.disk_floor",
 )
 DISK = "free_gb=74.9 on /System/Volumes/Data (ok > 100, failed < 60)"
+SENTINEL_RED = "pulse=red action=no_items pulse=42"
 
 # row: (organ id, status, age_s, sidecar extra, expected bucket)
 ROWS = {
@@ -49,6 +51,16 @@ ROWS = {
     "M4-meta-token-suffix-innocence": (MT, "warning", FRESH, {"note": "token=deadline"}, "dead"),
     "M5-meta-crash-text-innocence": (MT, "error", FRESH, {"note": "token=dead"}, "dead"),
     "M6-meta-wrapper-crash-innocence": (MT, "error", FRESH, {"note": "wrapper rc=1"}, "dead"),
+    "H1-sentinel-red-pulse-guilt": (
+        SH, "warning", FRESH, {"note": SENTINEL_RED}, "findings"),
+    "H2-sentinel-red-shape-wrong-status-innocence": (
+        SH, "fail", FRESH, {"note": SENTINEL_RED}, "dead"),
+    "H3-sentinel-note-without-shape-innocence": (
+        SH, "warning", FRESH, {"note": "red pulse completed"}, "dead"),
+    "H4-sentinel-shape-not-at-note-start-innocence": (
+        SH, "warning", FRESH, {"note": f"see {SENTINEL_RED}"}, "dead"),
+    "H5-sentinel-proof-on-another-organ-innocence": (
+        VS, "warning", FRESH, {"note": SENTINEL_RED}, "dead"),
     "C1-cell-completed-pulse-guilt": (
         CL, "fail", FRESH, {"metadata": {"pulse_count": 7, "tier": 1, "action": None}}, "findings"),
     "C2-cell-pulse-threw-innocence": (
