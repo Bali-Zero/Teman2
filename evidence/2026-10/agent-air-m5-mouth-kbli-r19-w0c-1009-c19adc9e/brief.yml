@@ -1,0 +1,33 @@
+task_id: kbli-r19-w0c-1009
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, lot W0c (Track W, BLUE): spec and census only, no apps/mouth/src
+  change. #8161 (W2'') was gate-blocked for a non-fidelity cause: under the wrapper's ink
+  --color-white the /kbli search dropdown kept its unnamed dark ground bg-[#1c1c1f]/95 and its
+  titles read 1.05:1. Name every surface a click opens in the R19 wrapper contract (section 8:
+  grounds, the classes on them, artwork), and make the census open those surfaces and judge
+  their text contrast and grounds.
+constraints:
+  - "No apps/mouth/src change. Contract sections 5 and 7 are unchanged; section 8 is new and two section 2 limit bullets point to it."
+  - "Dark slabs found mechanically with rg and resolved by Chrome, never by sampling."
+  - "The census stubs the search and inspect APIs with Playwright route interception from a committed placeholder fixture: offline and in CI, no client data."
+  - "No npm install or npm ci. Dev servers on ports 3592 (origin/main) and 3593 (#8161's head, a detached probe worktree), started and stopped by this lot."
+acceptance:
+  - text: "WHEN the contract is parsed, THEN the surfaces table names the search dropdown, the sector drawer, the inspector and the comparison modal grounds opaque, every text-bearing row clears 4.5:1, and a mutated table is refused."
+    probe: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider"
+  - text: "WHEN the scan resolves every background class of the /kbli* sources on origin/main and on #8161's head, THEN no dark slab and no ground is left unnamed."
+    probe: "python3 -I surface_scan.py"
+  - text: "WHEN the census opens the surfaces on origin/main, THEN every surface opens and the counts are printed; on #8161's head the ink titles on the dark dropdown count."
+    probe: "python3 scripts/mouth/r19_wrapper_token_census.py"
+  - text: "WHEN a local surface paints ink on the dark dropdown ground, THEN the walk counts it; painted elevated it counts 0."
+    probe: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k e2e"
+consumer_map:
+  - "r19-wrapper-census-tests / wrapper-census-states runs the live census with the state walk and the opened-surface walk on every apps/mouth PR, asserts that every capture and every surface opened, and runs the browser guilt and innocence tests."
+  - "W2''' paints the named surfaces and asserts opened-grounds-off-contract 0 and opened-text-below-4.5 0 in the same job."
+risks:
+  - "The explorer logo ruling drops the om roundel with the black square; that is a brand call listed for the owner."
+  - "Scenario selectors are structural (role, aria, element); a W2''' rewrite that removes them fails the walk loudly (INCOMPLETE), never silently."
+grader: |
+  A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha.

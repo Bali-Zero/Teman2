@@ -1,0 +1,114 @@
+captures: 30 ok, 0 failed
+  /kbli: 6/6 states, root [data-presentation=r19], elements [609]
+  /kbli/55203: 6/6 states, root [data-presentation=r19], elements [441]
+  /kbli/51101: 6/6 states, root [data-presentation=r19], elements [644]
+  /kbli/56101: 6/6 states, root [data-presentation=r19], elements [477]
+  /kbli-explorer: 6/6 states, root [data-presentation=r19], elements [139]
+reads: 192 tokens (var 70, class 100, rule 11, component 11)
+defined-above-wrapper: 0 (informational; resolved outside the wrapper today)
+read-but-undefined: 0
+colors-outside-direction-a: 0
+state-rows-unseen: 0
+state-colors-off-contract: 0
+opened-surfaces: 19 ok, 0 failed
+  search-dropdown mobile/light: 1 root(s), 0 scrim(s), 13 text pairs, min 1.05
+  search-dropdown mobile/system-dark: 1 root(s), 0 scrim(s), 13 text pairs, min 1.05
+  search-dropdown mobile/forced-dark: 1 root(s), 0 scrim(s), 13 text pairs, min 1.05
+  search-dropdown desktop/light: 1 root(s), 0 scrim(s), 13 text pairs, min 1.05
+  search-dropdown desktop/system-dark: 1 root(s), 0 scrim(s), 13 text pairs, min 1.05
+  search-dropdown desktop/forced-dark: 1 root(s), 0 scrim(s), 13 text pairs, min 1.05
+  search-active-row desktop/light: 1 root(s), 0 scrim(s), 13 text pairs, min 1.05
+  search-active-row mobile/system-dark: 1 root(s), 0 scrim(s), 13 text pairs, min 1.05
+  search-error desktop/light: 1 root(s), 0 scrim(s), 4 text pairs, min 2.40
+  search-error mobile/system-dark: 1 root(s), 0 scrim(s), 4 text pairs, min 2.40
+  sector-drawer desktop/light: 1 root(s), 1 scrim(s), 1347 text pairs, min 2.19
+  sector-drawer mobile/system-dark: 1 root(s), 1 scrim(s), 1347 text pairs, min 2.19
+  explorer-answer-inspector desktop/light: 2 root(s), 0 scrim(s), 36 text pairs, min 1.15, 4 over an image
+  explorer-answer-inspector mobile/system-dark: 2 root(s), 1 scrim(s), 36 text pairs, min 1.15, 4 over an image
+  explorer-compare desktop/light: 1 root(s), 1 scrim(s), 23 text pairs, min 5.67
+  explorer-compare mobile/system-dark: 1 root(s), 1 scrim(s), 23 text pairs, min 5.67
+  explorer-black-book desktop/light: 1 root(s), 1 scrim(s), 5 text pairs, min 2.47
+  explorer-black-book mobile/system-dark: 1 root(s), 1 scrim(s), 5 text pairs, min 2.47
+  explorer-mobile-sidebar mobile/system-dark: 1 root(s), 0 scrim(s), 13 text pairs, min 4.88
+  bg-[#0A0C10]  expected elevated #FFFCF7 (opaque), painted #0A0C10 alpha 1, on explorer-answer-inspector desktop/light
+  bg-[#141416]/95  expected elevated #FFFCF7 (opaque), painted #141416 alpha 0.95, on sector-drawer desktop/light
+  bg-[#151921]  expected wash #EAE3D8 (opaque), painted #151921 alpha 1, on explorer-answer-inspector desktop/light
+  bg-[#1c1c1f]/95  expected elevated #FFFCF7 (opaque), painted #1C1C1F alpha 0.95, on search-dropdown mobile/light
+  bg-[#dc2626]/10  expected wash #EAE3D8 (opaque), painted #DC2626 alpha 0.1, on search-dropdown mobile/light
+  bg-[var(--kbli-accent)]/15  expected wash #EAE3D8 (opaque), painted #D4845A alpha 0.15, on sector-drawer desktop/light
+  bg-amber-500/10  expected wash #EAE3D8 (opaque), painted #FE9A00 alpha 0.1, on search-dropdown mobile/light
+  bg-amber-500/[0.08]  expected wash #EAE3D8 (opaque), painted #FE9A00 alpha 0.08, on search-error desktop/light
+  bg-black/50  expected ink #1D2C3B (scrim), painted #EAE3D8 alpha 0.5, on explorer-answer-inspector mobile/system-dark
+  bg-black/70  expected ink #1D2C3B (scrim), painted #040406 alpha 0.7, on sector-drawer desktop/light
+  bg-black/90  expected ink #1D2C3B (scrim), painted #EAE3D8 alpha 0.9, on explorer-black-book desktop/light
+  bg-emerald-500/10  expected wash #EAE3D8 (opaque), painted #00BC7D alpha 0.1, on search-dropdown mobile/light
+  bg-red-500/10  expected wash #EAE3D8 (opaque), painted #A44B36 alpha 0.1, on explorer-answer-inspector desktop/light
+  bg-red-500/20  expected wash #EAE3D8 (opaque), painted #A44B36 alpha 0.2, on explorer-answer-inspector desktop/light
+  bg-white/20  expected line-strong #A8ACA9 (mark), painted #1D2C3B alpha 0.2, on explorer-answer-inspector mobile/system-dark
+  bg-white/[0.02]  expected wash #EAE3D8 (opaque), painted #1D2C3B alpha 0.02, on search-dropdown mobile/light
+  bg-zinc-500/10  expected wash #EAE3D8 (opaque), painted #58626B alpha 0.1, on search-dropdown mobile/light
+  from-[#0F1115]  expected not painted on this surface (-), painted transparent alpha 0 over an image, on explorer-answer-inspector desktop/light
+  to-[#050507]  expected not painted on this surface (-), painted transparent alpha 0 over an image, on explorer-answer-inspector desktop/light
+opened-grounds-off-contract: 19
+  2.91  #DC2626 on #392729  '56101'  flex-shrink-0 w-12 h-12 bg-[#dc2626]/10  (search-dropdown mobile/light)
+  1.05  #1D2C3B on #272729  'Restaurant'  font-semibold truncate text-white  (search-dropdown mobile/light)
+  2.40  #58626B on #272729  'Census fixture row: a verified PMA verdi'  text-sm text-zinc-400 line-clamp-1  (search-dropdown mobile/light)
+  1.97  #7A5A1E on #3C3225  'Low'  text-[10px] px-1.5 py-0.5 rounded  (search-dropdown mobile/light)
+  2.91  #DC2626 on #392729  '55130'  flex-shrink-0 w-12 h-12 bg-[#dc2626]/10  (search-dropdown mobile/light)
+  1.05  #1D2C3B on #272729  'Villa'  font-semibold truncate text-white  (search-dropdown mobile/light)
+  2.40  #58626B on #272729  'Census fixture row: an unverified PMA ve'  text-sm text-zinc-400 line-clamp-1  (search-dropdown mobile/light)
+  2.22  #58626B on #2C2D30  'PMA not verified'  text-[10px] px-1.5 py-0.5 rounded  (search-dropdown mobile/light)
+  1.97  #7A5A1E on #3C3225  'Medium Low'  text-[10px] px-1.5 py-0.5 rounded  (search-dropdown mobile/light)
+  2.40  #58626B on #27272A  '2 KBLI codes found'    (search-dropdown mobile/light)
+  2.40  #58626B on #27272A  'Press   to see all'  flex items-center gap-1  (search-dropdown mobile/light)
+  2.91  #DC2626 on #392729  '56101'  flex-shrink-0 w-12 h-12 bg-[#dc2626]/10  (search-dropdown mobile/system-dark)
+  1.05  #1D2C3B on #272729  'Restaurant'  font-semibold truncate text-white  (search-dropdown mobile/system-dark)
+  2.40  #58626B on #272729  'Census fixture row: a verified PMA verdi'  text-sm text-zinc-400 line-clamp-1  (search-dropdown mobile/system-dark)
+  1.97  #7A5A1E on #3C3225  'Low'  text-[10px] px-1.5 py-0.5 rounded  (search-dropdown mobile/system-dark)
+  2.91  #DC2626 on #392729  '55130'  flex-shrink-0 w-12 h-12 bg-[#dc2626]/10  (search-dropdown mobile/system-dark)
+  1.05  #1D2C3B on #272729  'Villa'  font-semibold truncate text-white  (search-dropdown mobile/system-dark)
+  2.40  #58626B on #272729  'Census fixture row: an unverified PMA ve'  text-sm text-zinc-400 line-clamp-1  (search-dropdown mobile/system-dark)
+  2.22  #58626B on #2C2D30  'PMA not verified'  text-[10px] px-1.5 py-0.5 rounded  (search-dropdown mobile/system-dark)
+  1.97  #7A5A1E on #3C3225  'Medium Low'  text-[10px] px-1.5 py-0.5 rounded  (search-dropdown mobile/system-dark)
+  2.40  #58626B on #27272A  '2 KBLI codes found'    (search-dropdown mobile/system-dark)
+  2.40  #58626B on #27272A  'Press   to see all'  flex items-center gap-1  (search-dropdown mobile/system-dark)
+  2.91  #DC2626 on #392729  '56101'  flex-shrink-0 w-12 h-12 bg-[#dc2626]/10  (search-dropdown mobile/forced-dark)
+  1.05  #1D2C3B on #272729  'Restaurant'  font-semibold truncate text-white  (search-dropdown mobile/forced-dark)
+  2.40  #58626B on #272729  'Census fixture row: a verified PMA verdi'  text-sm text-zinc-400 line-clamp-1  (search-dropdown mobile/forced-dark)
+  1.97  #7A5A1E on #3C3225  'Low'  text-[10px] px-1.5 py-0.5 rounded  (search-dropdown mobile/forced-dark)
+  2.91  #DC2626 on #392729  '55130'  flex-shrink-0 w-12 h-12 bg-[#dc2626]/10  (search-dropdown mobile/forced-dark)
+  1.05  #1D2C3B on #272729  'Villa'  font-semibold truncate text-white  (search-dropdown mobile/forced-dark)
+  2.40  #58626B on #272729  'Census fixture row: an unverified PMA ve'  text-sm text-zinc-400 line-clamp-1  (search-dropdown mobile/forced-dark)
+  2.22  #58626B on #2C2D30  'PMA not verified'  text-[10px] px-1.5 py-0.5 rounded  (search-dropdown mobile/forced-dark)
+  1.97  #7A5A1E on #3C3225  'Medium Low'  text-[10px] px-1.5 py-0.5 rounded  (search-dropdown mobile/forced-dark)
+  2.40  #58626B on #27272A  '2 KBLI codes found'    (search-dropdown mobile/forced-dark)
+  2.40  #58626B on #27272A  'Press   to see all'  flex items-center gap-1  (search-dropdown mobile/forced-dark)
+  2.91  #DC2626 on #392729  '56101'  flex-shrink-0 w-12 h-12 bg-[#dc2626]/10  (search-dropdown desktop/light)
+  1.05  #1D2C3B on #272729  'Restaurant'  font-semibold truncate text-white  (search-dropdown desktop/light)
+  2.40  #58626B on #272729  'Census fixture row: a verified PMA verdi'  text-sm text-zinc-400 line-clamp-1  (search-dropdown desktop/light)
+  1.97  #7A5A1E on #3C3225  'Low'  text-[10px] px-1.5 py-0.5 rounded  (search-dropdown desktop/light)
+  2.91  #DC2626 on #392729  '55130'  flex-shrink-0 w-12 h-12 bg-[#dc2626]/10  (search-dropdown desktop/light)
+  1.05  #1D2C3B on #272729  'Villa'  font-semibold truncate text-white  (search-dropdown desktop/light)
+  2.40  #58626B on #272729  'Census fixture row: an unverified PMA ve'  text-sm text-zinc-400 line-clamp-1  (search-dropdown desktop/light)
+  2.22  #58626B on #2C2D30  'PMA not verified'  text-[10px] px-1.5 py-0.5 rounded  (search-dropdown desktop/light)
+  1.97  #7A5A1E on #3C3225  'Medium Low'  text-[10px] px-1.5 py-0.5 rounded  (search-dropdown desktop/light)
+  2.40  #58626B on #27272A  '2 KBLI codes found'    (search-dropdown desktop/light)
+  2.40  #58626B on #27272A  'Press   to see all'  flex items-center gap-1  (search-dropdown desktop/light)
+  2.91  #DC2626 on #392729  '56101'  flex-shrink-0 w-12 h-12 bg-[#dc2626]/10  (search-dropdown desktop/system-dark)
+  1.05  #1D2C3B on #272729  'Restaurant'  font-semibold truncate text-white  (search-dropdown desktop/system-dark)
+  2.40  #58626B on #272729  'Census fixture row: a verified PMA verdi'  text-sm text-zinc-400 line-clamp-1  (search-dropdown desktop/system-dark)
+  1.97  #7A5A1E on #3C3225  'Low'  text-[10px] px-1.5 py-0.5 rounded  (search-dropdown desktop/system-dark)
+  2.91  #DC2626 on #392729  '55130'  flex-shrink-0 w-12 h-12 bg-[#dc2626]/10  (search-dropdown desktop/system-dark)
+  1.05  #1D2C3B on #272729  'Villa'  font-semibold truncate text-white  (search-dropdown desktop/system-dark)
+  2.40  #58626B on #272729  'Census fixture row: an unverified PMA ve'  text-sm text-zinc-400 line-clamp-1  (search-dropdown desktop/system-dark)
+  2.22  #58626B on #2C2D30  'PMA not verified'  text-[10px] px-1.5 py-0.5 rounded  (search-dropdown desktop/system-dark)
+  1.97  #7A5A1E on #3C3225  'Medium Low'  text-[10px] px-1.5 py-0.5 rounded  (search-dropdown desktop/system-dark)
+  2.40  #58626B on #27272A  '2 KBLI codes found'    (search-dropdown desktop/system-dark)
+  2.40  #58626B on #27272A  'Press   to see all'  flex items-center gap-1  (search-dropdown desktop/system-dark)
+  2.91  #DC2626 on #392729  '56101'  flex-shrink-0 w-12 h-12 bg-[#dc2626]/10  (search-dropdown desktop/forced-dark)
+  1.05  #1D2C3B on #272729  'Restaurant'  font-semibold truncate text-white  (search-dropdown desktop/forced-dark)
+  2.40  #58626B on #272729  'Census fixture row: a verified PMA verdi'  text-sm text-zinc-400 line-clamp-1  (search-dropdown desktop/forced-dark)
+  1.97  #7A5A1E on #3C3225  'Low'  text-[10px] px-1.5 py-0.5 rounded  (search-dropdown desktop/forced-dark)
+  2.91  #DC2626 on #392729  '55130'  flex-shrink-0 w-12 h-12 bg-[#dc2626]/10  (search-dropdown desktop/forced-dark)
+  ... and 1174 more
+opened-text-below-4.5: 1234

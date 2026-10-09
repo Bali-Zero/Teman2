@@ -1,0 +1,65 @@
+brief_ref: evidence/brief.yml
+seat_override: >-
+  Dispatch by the imperator, mission kbli-nav-design-loop Track W lot W0c (BLUE), after the gate
+  BLOCK on #8161 was upheld for a non-fidelity cause (issuecomment-6078648076). Spec and census
+  only. The Dux built and ran every command; it does not self-sign. A fresh Opus gate is
+  commissioned by the imperator.
+plan_ref: >-
+  docs/plans/2026-10-08-kbli-navigator-design-loop.md section 1 row W2; the contract
+  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md, new section 8; gate BLOCK on #8161
+  (issuecomment-6078648076).
+lanes:
+  - lane: kbli-r19-w0c-1009
+    role: build
+    seat: "claude-opus-5-5 (Dux)"
+pii_scan: clean
+pii_scan_note: "KBLI classification data is public. The stub fixture holds placeholder rows with invented text. No client data, no external seat."
+provenance: >-
+  Fresh worktree from origin/main 9d3def7cfe. #8161's head 51b2407f27 was read through git archive
+  (the scan) and a detached probe worktree (the census at that head); none of its blobs are
+  in this diff.
+diff:
+  net_lines: |
+    Census script +347 -9, its tests +189 -1, CI workflow +60 -1, contract +240 -3 (two tables
+    of 38 and 41 rows, plus prose). The re-pinned census fixture and the two new fixtures
+    are data. The rest is this evidence pack. No apps/mouth file changes.
+  behaviour_change: >-
+    The census opens 8 surfaces (19 scenario-walks) with the search and inspect APIs stubbed, and
+    prints opened-surfaces, opened-grounds-off-contract and opened-text-below-4.5 last. The new CI
+    job runs it on every apps/mouth PR together with the browser guilt and innocence tests.
+receipts:
+  - claim: "The live census at origin/main opens every surface and counts the guilt honestly: titles readable, the red code chip not."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --base-url http://localhost:3592 --json <scratch>"
+    result: "captures 30 ok; read-but-undefined 0; colors-outside-direction-a 128; state-rows-unseen 0; state-colors-off-contract 51; opened-surfaces 19 ok, 0 failed; opened-grounds-off-contract 21; opened-text-below-4.5 386"
+    exit: 0
+    ts: "2026-10-09T10:35:37Z"
+    seat: claude-opus-5-5
+  - claim: "The same census at #8161's head counts the BLOCK: dropdown titles ink on near-black at 1.05:1."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --base-url http://localhost:3593 --json <scratch>"
+    result: "captures 30 ok; the four W2 lines 0/0/0/0; opened-surfaces 19 ok, 0 failed; opened-grounds-off-contract 19; opened-text-below-4.5 1234; Restaurant 1.05 #1D2C3B on #272729"
+    exit: 0
+    ts: "2026-10-09T10:35:43Z"
+    seat: claude-opus-5-5
+  - claim: "Every background class of the /kbli* sources, on origin/main and on #8161's head, is named; no dark slab is left."
+    cmd: "python3 -I surface_scan.py http://localhost:3592 main=<worktree>/apps/mouth/src 8161=<archive>/apps/mouth/src"
+    result: "87 rest background classes: 49 section 5, 38 section 8.1; unnamed-grounds 0; unnamed-dark-slabs 0"
+    exit: 0
+    ts: "2026-10-09T10:31:00Z"
+    seat: claude-opus-5-5
+  - claim: "Census suite with guilt and innocence, browser tests included; the W1 test is unchanged in outcome."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider; cd apps/mouth && R19_WRAPPER_BASE_URL=http://localhost:3592 npx vitest run src/test/r19-wrapper.test.ts"
+    result: "66 passed; Test Files 1 passed, Tests 5 passed 1 skipped"
+    exit: 0
+    ts: "2026-10-09T10:39:00Z"
+    seat: claude-opus-5-5
+dissent:
+  - seat: claude-opus-5-5
+    objection: "The gate on #8161: the wrapper's ink --color-white sat on the unnamed dark dropdown ground; the census never opened the dropdown, the drawer or the modals."
+    status: CONFIRMED
+    resolution: "Section 8 names every ground and class on those surfaces, the census opens them with the APIs stubbed, and the CI job runs the walk on every apps/mouth PR."
+  - seat: claude-opus-5-5
+    objection: "The first opened walk on origin/main failed the Black Book scenario on mobile: the first matching button is in the hidden desktop sidebar."
+    status: CONFIRMED
+    resolution: "The opener clicks the first visible button; the second walk opened 19 of 19."
+grader: |
+  A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha.
