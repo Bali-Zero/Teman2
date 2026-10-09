@@ -9,6 +9,7 @@ from __future__ import annotations
 import copy
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -540,8 +541,8 @@ def paint(hexv: str, path: str = "div.absolute.z-50", image: bool = False) -> di
     return {"path": path, "hex": hexv, "image": image, "text": "Restaurant"}
 
 
-def verdict_of(census: dict, pin: dict | None = None) -> list[str]:
-    return census_mod.opened_verdict(census, SURFACES, ROWS, pin)
+def verdict_of(census: dict, pin: dict | None = None, touched: list[str] | None = None) -> list[str]:
+    return census_mod.opened_verdict(census, SURFACES, ROWS, pin, touched)
 
 
 def lines_of(out: list[str], prefix: str) -> str:
@@ -617,34 +618,133 @@ def test_guilt_a_portal_outside_the_wrapper_is_counted():
     assert "  html>body>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav desktop/light)" in out
 
 
-def shared(fingerprints: dict) -> dict:
+def shared(fingerprints: dict, failed: list[str] | None = None) -> dict:
     return {"opened": [opened("x", None, [pair(13.91, INK, ELEVATED)], [paint(ELEVATED)])], "opened_failed": [],
+            "shared_failed": failed or [],
             "shared": [{"name": k.rsplit(" ", 1)[0], "walk": k.rsplit(" ", 1)[1], "fingerprint": v}
                        for k, v in fingerprints.items()]}
 
 
-def test_innocence_the_shared_drawer_as_pinned_has_no_drift():
-    assert lines_of(verdict_of(shared(PIN), PIN), "shared-nav-drawer-drift:") == "shared-nav-drawer-drift: 0"
+def drift_of(fingerprints: dict) -> tuple[list[str], str]:
+    return census_mod.shared_drift(shared(fingerprints), PIN)
 
 
-def test_guilt_a_shared_drawer_painted_paper_outside_kbli_drifts():
-    where = "shared-nav-drawer /tax-calendar mobile/light"
-    moved = {**PIN, where: [x.replace("on #F2EAE3", "on #EAE3D8") for x in PIN[where]]}
-    out = verdict_of(shared(moved), PIN)
-    assert lines_of(out, "shared-nav-drawer-drift:") == "shared-nav-drawer-drift: 8"
-    assert f"  + #1D2C3B on #EAE3D8 'Home'  ({where})" in out
+MUTANTS = json.loads((FIXTURE.parent / "r19_shared_mutants.json").read_text())
+MOBILE_NAV_FILE = "apps/mouth/src/app/v2/_components/MobileNav.tsx"
 
 
-def test_a_shared_walk_missing_or_unpinned_never_prints_zero():
+def test_innocence_i9_every_shared_component_as_pinned_has_no_drift():
+    """I9: origin/main unmodified, walked live on a second dev server (the scratch tree, before any mutation)."""
+    assert lines_of(verdict_of(shared(PIN), PIN), "shared-component-drift:") == "shared-component-drift: 0"
+    assert drift_of(MUTANTS["I9"]["shared"]) == ([], "0")
+
+
+def test_guilt_g27_an_ungated_paper_repaint_of_the_non_r19_drawer_drifts_on_v2_and_visa():
+    """Mutation A: `background: isR19 ? "var(--nav-bg)" : "#F7F4EE"` in MobileNav.tsx, the #8183 gap."""
+    lines, count = drift_of(MUTANTS["A"]["shared"])
+    assert int(count) >= 1
+    for route in ("/v2", "/visa/second-home", "/v2/news"):
+        where = f"MobileNav non-R19 {route} mobile/light"
+        assert any(ln.startswith("  - ") and "'Menu'" in ln and ln.endswith(f"({where})") for ln in lines), route
+        assert any(ln.startswith("  + ") and " on #F7F4EE 'Menu'" in ln and ln.endswith(f"({where})")
+                   for ln in lines), route
+    assert not [ln for ln in lines if "MobileNav R19 " in ln or "NavShell" in ln or "Footer" in ln]
+
+
+def test_guilt_g28_a_deeper_item_tint_on_every_branch_drifts_on_v2_and_tax_calendar():
+    """Mutation B: the item ground `color-mix(… 6% …)` becomes 40% on both branches."""
+    lines, count = drift_of(MUTANTS["B"]["shared"])
+    assert int(count) >= 1
+    for where in ("MobileNav non-R19 /v2 mobile/light", "MobileNav R19 /tax-calendar mobile/light"):
+        assert any(ln.startswith("  + ") and "'Home'" in ln and ln.endswith(f"({where})") for ln in lines), where
+
+
+def test_innocence_i10_a_paper_repaint_gated_on_the_prop_moves_only_kbli():
+    """W2''''s intended change on a scratch tree: D stays 0 and /kbli's drawer, judged by K, is repainted."""
+    assert drift_of(MUTANTS["I10"]["shared"]) == ([], "0")
+    painted = {g["hex"] for g in MUTANTS["I10"]["kbli_painted"]}
+    assert census_mod.DIRECTION_A["paper"] in painted
+    assert census_mod.DIRECTION_A["paper"] not in {g["hex"] for g in MUTANTS["I9"]["kbli_painted"]}
+
+
+def test_guilt_g29_mobile_nav_edited_with_the_v2_pin_removed_is_unpinned():
+    partial = {k: v for k, v in PIN.items() if " /v2 " not in k}
+    lines, count = census_mod.shared_unpinned([MOBILE_NAV_FILE], partial)
+    assert count == "1"
+    assert lines == [f"  {MOBILE_NAV_FILE}  MobileNav non-R19: no pin for MobileNav non-R19 /v2 mobile/light, "
+                     "MobileNav non-R19 /v2 mobile/system-dark"]
+    out = verdict_of(shared(PIN), partial, [MOBILE_NAV_FILE])
+    assert lines_of(out, "shared-touched-unpinned:") == "shared-touched-unpinned: 1"
+
+
+def test_a_pin_taken_on_the_wrong_branch_does_not_cover_its_pair():
+    where = "MobileNav non-R19 /visa/second-home mobile/system-dark"
+    wrong = {**PIN, where: [x.replace("branch non-R19", "branch R19") for x in PIN[where]]}
+    lines, count = census_mod.shared_unpinned([MOBILE_NAV_FILE], wrong)
+    assert count == "1" and lines[0].endswith(f"no pin for {where}")
+
+
+def test_a_branch_that_flips_at_run_time_is_drift():
+    where = "MobileNav non-R19 /v2 mobile/light"
+    flipped = {**PIN, where: [x.replace("branch non-R19", "branch R19") for x in PIN[where]]}
+    lines, count = drift_of(flipped)
+    assert count == "2" and lines == [f"  - branch non-R19  ({where})", f"  + branch R19  ({where})"]
+
+
+@pytest.mark.parametrize("touched", ["packages/core/components/BZLogo.tsx", "apps/mouth/src/components/ui/button.tsx",
+                                     "apps/mouth/src/components/providers/LazyToaster.tsx"])
+def test_guilt_a_shared_file_with_no_pin_is_unpinned_by_construction(touched):
+    lines, count = census_mod.shared_unpinned([touched, "scripts/mouth/r19_wrapper_token_census.py"], PIN)
+    assert count == "1" and lines == [f"  {touched}  has no pinned pair: an edit to it is unpinned by construction"]
+
+
+def test_innocence_a_diff_that_touches_no_shared_file_or_a_pinned_one_counts_zero():
+    for touched in ([], ["docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md"], list(census_mod.SHARED_MATRIX)[:4]):
+        assert census_mod.shared_unpinned(touched, PIN) == ([], "0"), touched
+
+
+@pytest.mark.parametrize("touched", [None, "cannot diff against origin/main: unknown revision"])
+def test_no_diff_never_prints_zero(touched):
+    assert "INCOMPLETE" in census_mod.shared_unpinned(touched, PIN)[1]
+
+
+def test_a_shared_walk_missing_failed_or_unpinned_never_prints_zero():
     partial = {k: v for k, v in PIN.items() if "/tax-calendar" not in k}
-    assert "INCOMPLETE" in lines_of(verdict_of(shared(partial), PIN), "shared-nav-drawer-drift:")
-    assert lines_of(verdict_of(shared(PIN), None), "shared-nav-drawer-drift:") == "shared-nav-drawer-drift: UNPINNED"
+    assert "INCOMPLETE" in drift_of(partial)[1]
+    assert "INCOMPLETE" in census_mod.shared_drift(shared(PIN, ["Footer editorial /v2 mobile/light: HTTP 500"]), PIN)[1]
+    assert lines_of(verdict_of(shared(PIN), None), "shared-component-drift:") == "shared-component-drift: UNPINNED"
+    extra = {**PIN, "MobileNav R19 /blog mobile/light": ["branch R19"]}
+    assert drift_of(extra) == (["  ? MobileNav R19 /blog mobile/light  walked, not in the pin"], "1")
 
 
-def test_the_pin_holds_two_routes_outside_kbli_in_two_walks():
-    assert sorted(PIN) == [f"shared-nav-drawer {r} mobile/{t}" for r in ("/property/eligibility", "/tax-calendar")
-                           for t in ("light", "system-dark")]
-    assert all(len(v) == 7 for v in PIN.values())
+def test_the_pin_covers_every_pair_of_the_matrix_on_the_branch_it_claims():
+    want = sorted(k for pair, routes in census_mod.SHARED_PAIRS.items() for r in routes
+                  for k in census_mod.pin_keys(pair, r))
+    assert sorted(PIN) == want and len(want) == 20
+    for key, prints in PIN.items():
+        pair = " ".join(key.split()[:2])
+        branch = census_mod.BRANCH_OF.get(pair)
+        assert [x for x in prints if x.startswith("branch ")] == ([f"branch {branch}"] if branch else []), key
+        assert len(prints) > 1, key
+    assert {r for r in census_mod.MOBILE_NAV["MobileNav non-R19"]} >= {"/v2", "/visa/second-home"}
+
+
+def test_touched_files_reads_committed_and_uncommitted_changes_since_the_merge_base(tmp_path):
+    def git(*a):
+        subprocess.run(["git", *a], cwd=tmp_path, check=True, capture_output=True)
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "t@example.invalid")
+    git("config", "user.name", "t")
+    for f in ("a.txt", "b.txt", "c.txt"):
+        (tmp_path / f).write_text("0\n")
+    git("add", ".")
+    git("commit", "-qm", "base")
+    git("checkout", "-qb", "lot")
+    (tmp_path / "a.txt").write_text("1\n")
+    git("commit", "-qam", "lot")
+    (tmp_path / "b.txt").write_text("1\n")
+    assert census_mod.touched_files("main", tmp_path) == ["a.txt", "b.txt"]
+    assert census_mod.touched_files("no-such-ref", tmp_path).startswith("cannot diff against no-such-ref")
 
 
 @pytest.mark.parametrize("census", [{"opened": [], "opened_failed": ["sector-drawer mobile/system-dark: timeout"]},
@@ -652,7 +752,8 @@ def test_the_pin_holds_two_routes_outside_kbli_in_two_walks():
                          ids=["a surface failed to open", "nothing opened", "no opened walk"])
 def test_an_incomplete_opened_walk_never_prints_zero(census):
     out = verdict_of(census)
-    for prefix in ("opened-outside-wrapper:", "opened-grounds-off-contract:", "opened-text-below-4.5:"):
+    for prefix in ("opened-outside-wrapper:", "opened-grounds-off-contract:", "shared-touched-unpinned:",
+                   "shared-component-drift:", "opened-text-below-4.5:"):
         assert "INCOMPLETE" in lines_of(out, prefix), prefix
 
 
@@ -752,11 +853,12 @@ def test_e2e_a_rotating_text_holds_its_first_state(tmp_path, monkeypatch):
 
 def test_the_origin_main_opened_walk_is_the_guilt(census):
     """Main today: every surface opens; the dropdown titles are white and readable, the red code chip is not."""
-    out = verdict_of(census, PIN)
+    out = verdict_of(census, PIN, [])
     assert out[0] == "opened-surfaces: 25 ok, 0 failed"
     assert lines_of(out, "opened-outside-wrapper:") == "opened-outside-wrapper: 10"
     assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 88"
-    assert lines_of(out, "shared-nav-drawer-drift:") == "shared-nav-drawer-drift: 0"
+    assert lines_of(out, "shared-touched-unpinned:") == "shared-touched-unpinned: 0"
+    assert lines_of(out, "shared-component-drift:") == "shared-component-drift: 0"
     assert out[-1] == "opened-text-below-4.5: 398"
     drop = next(o for o in census["opened"] if o["name"] == "search-dropdown" and o["walk"] == "desktop/light")
     assert [(p["ratio"], p["fg"], p["text"]) for p in drop["below"]] == [(3.31, "#DC2626", "56101"),

@@ -651,7 +651,7 @@ lines, `state-rows-unseen: U` (painted rows whose class is in the DOM and was ne
 named) and then `state-colors-off-contract: N`. On `origin/main` N is the pre-W2 state: it is reported,
 not a gate. The exit for W2'' is U equal to 0 and N equal to 0.
 
-## 8. Amendment 2026-10-09: the surfaces a click opens (W0c, W0c')
+## 8. Amendment 2026-10-09: the surfaces a click opens (W0c, W0c', W0d-1)
 
 #8161 (W2'') was gate-blocked for a cause that is not contract fidelity. The wrapper sets
 `--color-white` to ink, as §5 says, but the `/kbli` search dropdown kept its unnamed ground
@@ -664,6 +664,11 @@ W0c (#8167) was gate-blocked in turn on two counts. The `/kbli` mobile nav drawe
 named nor opened, and the ground verdict judged class spellings rather than paint, so a dark
 slab under a spelling with no row counted 0. W0c' adds the drawer (§8.5), judges every painted
 ground by its computed value (§8.4) and follows the owner's ruling on the explorer logo (§8.3).
+
+W0c' (#8183) was gate-blocked for the same cause, under-match. Its drift pin held only drawers on
+the R19 branch, yet `/v2` and `/v2/news` render the non-R19 branch that W2''' edits, so an
+ungated paper repaint printed D 0. The W0 census lot was suspended and specified
+(`SPEC-W0d-census.md`, mission kit), and W0d-1 implements its shared-component matrix (§8.5).
 
 ### 8.1 The surfaces table
 
@@ -883,19 +888,19 @@ is read. The search and inspect APIs answer from
 The fixture holds placeholder rows and no client data. The walk therefore needs no backend, and
 it runs offline and in CI.
 
-| scenario                    | page                                     | opened by                                                                                                                                                                           | walks                             |
-| --------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| `search-dropdown`           | `/kbli`                                  | typing `restaurant` in the hero search                                                                                                                                              | all six states                    |
-| `search-active-row`         | `/kbli`                                  | the same query, then ArrowDown                                                                                                                                                      | desktop/light, mobile/system-dark |
-| `search-error`              | `/kbli`                                  | the same query, with the API answering 503                                                                                                                                          | the same two                      |
-| `sector-drawer`             | `/kbli`                                  | a click on the first sector card (the intercepted route)                                                                                                                            | the same two                      |
-| `explorer-answer-inspector` | `/kbli-explorer?inspect=56101`           | a seeded answer with two results (`sessionStorage` `kbli-messages`) and the inspect deep link: the answer, the legacy alert, and the inspector as a desktop panel or a mobile sheet | the same two                      |
-| `explorer-compare`          | `/kbli-explorer`                         | the seeded answer, the compare toggle, two results, then "Compare 2 codes"                                                                                                          | the same two                      |
-| `explorer-black-book`       | `/kbli-explorer`                         | "Ask about your codes"                                                                                                                                                              | the same two                      |
-| `explorer-mobile-sidebar`   | `/kbli-explorer`                         | the menu button                                                                                                                                                                     | mobile/system-dark                |
-| `kbli-mobile-nav`           | `/kbli`                                  | the nav's hamburger (`button[aria-label="Open menu"]`)                                                                                                                              | mobile, all three themes          |
-| `kbli-code-mobile-nav`      | `/kbli/55203`                            | the same                                                                                                                                                                            | mobile, all three themes          |
-| `shared-nav-drawer`         | `/tax-calendar`, `/property/eligibility` | the same; fingerprinted against its pin, never judged by the wrapper's rows (§8.5)                                                                                                  | mobile/light, mobile/system-dark  |
+| scenario                    | page                                   | opened by                                                                                                                                                                           | walks                                                    |
+| --------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `search-dropdown`           | `/kbli`                                | typing `restaurant` in the hero search                                                                                                                                              | all six states                                           |
+| `search-active-row`         | `/kbli`                                | the same query, then ArrowDown                                                                                                                                                      | desktop/light, mobile/system-dark                        |
+| `search-error`              | `/kbli`                                | the same query, with the API answering 503                                                                                                                                          | the same two                                             |
+| `sector-drawer`             | `/kbli`                                | a click on the first sector card (the intercepted route)                                                                                                                            | the same two                                             |
+| `explorer-answer-inspector` | `/kbli-explorer?inspect=56101`         | a seeded answer with two results (`sessionStorage` `kbli-messages`) and the inspect deep link: the answer, the legacy alert, and the inspector as a desktop panel or a mobile sheet | the same two                                             |
+| `explorer-compare`          | `/kbli-explorer`                       | the seeded answer, the compare toggle, two results, then "Compare 2 codes"                                                                                                          | the same two                                             |
+| `explorer-black-book`       | `/kbli-explorer`                       | "Ask about your codes"                                                                                                                                                              | the same two                                             |
+| `explorer-mobile-sidebar`   | `/kbli-explorer`                       | the menu button                                                                                                                                                                     | mobile/system-dark                                       |
+| `kbli-mobile-nav`           | `/kbli`                                | the nav's hamburger (`button[aria-label="Open menu"]`)                                                                                                                              | mobile, all three themes                                 |
+| `kbli-code-mobile-nav`      | `/kbli/55203`                          | the same                                                                                                                                                                            | mobile, all three themes                                 |
+| shared components           | the ten pins of §8.5, outside `/kbli*` | the hamburger for MobileNav; none for NavShell and Footer, read at rest                                                                                                             | mobile/light and mobile/system-dark; NavShell on desktop |
 
 **What is measured.**
 
@@ -924,17 +929,19 @@ it runs offline and in CI.
 1. `opened-surfaces: N ok, F failed`, then one line for each scenario and walk;
 2. `opened-outside-wrapper: P`, one line per surface root outside the wrapper;
 3. `opened-grounds-off-contract: K`, one line per distinct off ground, scrim or class;
-4. `shared-nav-drawer-drift: D` (§8.5);
-5. last, `opened-text-below-4.5: M`.
+4. `shared-touched-unpinned: N` (§8.5);
+5. `shared-component-drift: D` (§8.5);
+6. last, `opened-text-below-4.5: M`.
 
 A surface that does not open is a failure. Any failure turns P, K and M INCOMPLETE, never 0.
 
-**Numbers measured by this lot.** These are reported, not a gate.
+**Numbers measured.** These are reported, not a gate. `origin/main` is measured by W0d-1 at
+`c76bf4c723`; #8161's head was last measured by W0c', against its two-route pin.
 
-| head          | `opened-surfaces:` | `opened-outside-wrapper:` | `opened-grounds-off-contract:` | `shared-nav-drawer-drift:` | `opened-text-below-4.5:` |
-| ------------- | ------------------ | ------------------------- | ------------------------------ | -------------------------- | ------------------------ |
-| `origin/main` | 25 ok, 0 failed    | 10                        | 88                             | 0                          | 398                      |
-| #8161's head  | 25 ok, 0 failed    | 10                        | 64                             | 0                          | 1240                     |
+| head          | `opened-surfaces:` | `opened-outside-wrapper:` | `opened-grounds-off-contract:` | `shared-touched-unpinned:` | `shared-component-drift:` | `opened-text-below-4.5:` |
+| ------------- | ------------------ | ------------------------- | ------------------------------ | -------------------------- | ------------------------- | ------------------------ |
+| `origin/main` | 25 ok, 0 failed    | 10                        | 88                             | 0                          | 0                         | 398                      |
+| #8161's head  | 25 ok, 0 failed    | 10                        | 64                             | not measured               | not measured              | 1240                     |
 
 - On `origin/main` the dropdown titles are white and readable. Its count comes from these:
   - the red code chip (3.31:1);
@@ -946,7 +953,7 @@ A surface that does not open is a failure. Any failure turns P, K and M INCOMPLE
 - P is 10 on both heads. It counts the sector drawer and the comparison modal twice each, and
   the mobile nav drawer six times, because all three are portals into `<body>`.
 - Three runs on `origin/main` printed the same K (88) and M (398).
-- The exit for W2''' is F, P, K, M and D equal to 0.
+- The exit for W2''' is F, P, K, N, D and M equal to 0.
 
 **Not reached by the walk.** These rows are named in 8.1 and 8.2 and judged when a later walk
 reaches them:
@@ -957,31 +964,82 @@ reaches them:
 - the thinking indicator;
 - the route error and loading boundaries (`components/ui/button.tsx`, `skeleton.tsx`).
 
-### 8.5 The shared mobile nav drawer
+### 8.5 The shared components (W0d-1)
 
-`MobileNav` lives in `app/v2/_components/MobileNav.tsx` and serves every public route.
+`/kbli*` mounts components that also serve routes outside it. A `/kbli*` lot that edits one of
+them repaints those routes too. Each component has one or more **branches**, the paint it takes
+in a given context. The census pins one route per (component, branch) pair outside `/kbli*`,
+taken on `origin/main`, and requires a pin for every pair of every shared file a lot touches.
 
-- On an R19 route it paints its own drawer (`data-presentation="r19-drawer"`, `R19_VARS`).
-- Elsewhere it reads `--nav-bg` and its siblings from the page.
-- `/kbli` mounts it with the `paper` prop (#8161). Through its portal the drawer leaves the
-  wrapper, so `--nav-bg` resolves to the navy of the page outside it: `#0F1B31`, with
-  `#11203D` items and a `#3A6DFF` Get Started at 4.36:1 (system-dark).
+**The matrix.** Paths are relative to `apps/mouth/src/` unless they start with `packages/`.
+
+| file                                                                                                                                                                                                                          | mounts outside `/kbli*`                                                                           | pair: pinned routes                                                                                                         | `/kbli*` takes                                                 |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `app/v2/_components/MobileNav.tsx`                                                                                                                                                                                            | `/v2`, `/v2/news`, `/visa/*`, BlogNav, `/property/eligibility`, `/tax-calendar`                   | MobileNav non-R19: `/v2`, `/visa/second-home`, `/v2/news`; MobileNav R19: `/tax-calendar`, `/property/eligibility`, `/news` | the non-R19 branch on `origin/main`; the `paper` prop at #8161 |
+| `packages/core/components/NavShell.tsx`, `NavShell.module.css`                                                                                                                                                                | `/v2`, `/v2/news`, `/visa/*` (default); `/tax-calendar`, `/property/eligibility`, BlogNav (paper) | NavShell default: `/v2`; NavShell paper: `/tax-calendar`                                                                    | default                                                        |
+| `app/v2/_components/Footer.tsx`                                                                                                                                                                                               | `/v2`, `/v2/news`, the blog layout, the marketing home, `not-found`                               | Footer editorial: `/v2`; Footer R19 blog: `/news`                                                                           | the wrapper's tokens                                           |
+| `packages/core/components/BZLogo.tsx`, `components/lead/WhatsAppLeadButton.tsx`, `packages/core/components/FunnelFrame.tsx`, `components/ui/button.tsx`, `components/ui/skeleton.tsx`, `components/providers/LazyToaster.tsx` | many routes each                                                                                  | none                                                                                                                        | unpinned by construction                                       |
+
+`NavShell.module.css` is NavShell's own stylesheet, so it is listed with it. MobileNav's non-R19
+branch **with** `paper` renders only on `/kbli*`, so K judges it (§8.4) and D does not.
+
+**Measured on `origin/main`.** The census reads each branch at run time, on the hydrated surface,
+never from the server HTML, because the server markers do not always match the hydrated paint
+(the spec found this on `/visa/voa`). MobileNav's branch is the drawer's `data-presentation`;
+NavShell's is its `paper` class; Footer has none, and its paint follows the route.
+
+| route                                             | MobileNav branch | drawer ground, light / system-dark | Get Started ground    |
+| ------------------------------------------------- | ---------------- | ---------------------------------- | --------------------- |
+| `/v2`, `/v2/news`                                 | non-R19          | `#C0C3C8` / `#0F1B31`              | `#FF2D4C` / `#3A6DFF` |
+| `/visa/second-home`                               | non-R19          | `#FDFCFB` / `#1C273C`              | `#FF2D4C` / `#3A6DFF` |
+| `/kbli`, `/kbli/55203`                            | non-R19          | `#C0C3C8` / `#0F1B31`              | `#FF2D4C` / `#3A6DFF` |
+| `/tax-calendar`, `/property/eligibility`, `/news` | R19              | `#F7F4EE`                          | `#A44B36`             |
+
+- NavShell renders the default branch on `/v2` and the paper branch on `/tax-calendar`.
+- The Footer's ground is `#F4F4F5` (light) and `#162D50` (system-dark) on `/v2`, and `#EEE9E1`
+  on `/news`.
+- W0c' said that `/kbli` is the only route on the non-R19 branch. That was **false**: `/v2`,
+  `/v2/news` and `/visa/second-home` render it too.
 
 **Ruling.** The §8.2 `MobileNav paper` rows bind the drawer **only** under the `paper` prop, and
-the drawer obeys the §8.1 Portal ruling. Every other route's drawer stays as it is.
+the drawer obeys the §8.1 Portal ruling. Every route outside `/kbli*` keeps its pinned paint.
 
-**Measured on `origin/main` at 390x844.** `/tax-calendar`, `/property/eligibility` and `/news`
-render the R19 drawer. `/kbli` is the only route that renders the non-R19 branch.
+**`shared-component-drift: D`.**
 
-**The census check.** The census pins the drawer of `/tax-calendar` and `/property/eligibility`
-(mobile/light, mobile/system-dark) from `origin/main` in
-`scripts/mouth/tests/fixtures/r19_shared_nav_drawer.json`. The pin holds each text pair as
-foreground on composited ground, plus the label. The census prints `shared-nav-drawer-drift: D`,
-the pairs that appeared or disappeared since the pin. D is 0 on `origin/main` by construction,
-and W2''' must keep it at 0.
+- The pins live in `scripts/mouth/tests/fixtures/r19_shared_component_pins.json`: ten (pair,
+  route) pins, two walks each.
+- Every pin is walked at mobile/light and mobile/system-dark. NavShell is the exception and is
+  walked on desktop, because at 390px its bar holds no text of its own: a raster logo, links
+  hidden below `md`, and an icon trigger.
+- A walk's fingerprint holds:
+  - each text pair, as foreground on composited ground plus the label;
+  - each text over an image, as its own colour and alpha plus the label;
+  - the branch.
+- D counts the entries that appeared or vanished since the pin, plus any walk that is not in
+  the pin.
+- A pinned walk that is missing or failed turns D INCOMPLETE, never 0.
 
-The non-R19 branch without `paper` renders on no route today, so no walk can pin it. W2''' gates
-its change on the `paper` prop.
+**`shared-touched-unpinned: N`.**
+
+- The census lists the files the tree changed since its merge base with a base ref: in CI the
+  pull request's base (the merge commit's first parent), locally `origin/main`, committed or not.
+- It intersects that list with the matrix's file column.
+- Every touched file needs a pin for every pair it serves, taken on the branch the pair claims.
+  Otherwise the census prints one line naming the file and the pair, and counts it.
+- A file with no pair is unpinned by construction, so W2''' must not edit it. A deliberate edit
+  first adds its pins in a W0 lot.
+- When git cannot diff, N is INCOMPLETE.
+
+**Proof, on a scratch tree of `origin/main` served by its own dev server.** The rows below are
+replayed from `scripts/mouth/tests/fixtures/r19_shared_mutants.json` by the test suite.
+
+| row             | change to `MobileNav.tsx`                                                                      | result                                                          |
+| --------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| I9              | none                                                                                           | D 0                                                             |
+| G27, mutation A | `background: isR19 ? "var(--nav-bg)" : "#F7F4EE"`, ungated                                     | D 72, all on `/v2`, `/v2/news` and `/visa/second-home`          |
+| G28, mutation B | the item tint `color-mix(… 6% …)` becomes 40%, both branches                                   | D 108, on all six MobileNav pins                                |
+| I10             | the drawer painted `#F7F4EE` only under a new `paper` prop, which `app/kbli/layout.tsx` passes | D 0; the `/kbli` drawers now paint `#F7F4EE`, and K judges them |
+| G29             | `MobileNav.tsx` touched, with the `/v2` pins removed                                           | `shared-touched-unpinned: 1`, naming MobileNav non-R19          |
 
 ### 8.6 Boundary-only classes
 

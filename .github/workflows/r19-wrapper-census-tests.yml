@@ -10,8 +10,10 @@ name: r19-wrapper-census-tests
 # census, its state walk and the opened-surface walk of contract section 8.4
 # (search, drawer, inspector, modals, API stubbed from a fixture), plus the
 # browser guilt and innocence tests. On origin/main it asserts that every capture
-# and every surface opened and that the shared mobile nav drawer outside /kbli*
-# kept its pinned paint (section 8.5), and prints the counts; W2''' asserts them at 0.
+# and every surface opened, that every shared component outside /kbli* kept its
+# pinned paint and that no touched shared file lacks a pin (section 8.5, lot W0d-1),
+# and prints the counts; W2''' asserts them at 0. A W0d lot changes no file under
+# apps/mouth/src, and census-replay checks that on its branch (spec SPEC-W0d §5).
 
 on:
   pull_request:
@@ -34,6 +36,15 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The merge commit and its first parent, the base: the W0d fence diffs the two.
+          fetch-depth: 2
+      - name: A W0d census lot changes no file under apps/mouth/src
+        if: github.event_name == 'pull_request' && contains(github.head_ref, '/kbli-r19-w0d')
+        run: |
+          n=$(git diff --name-only HEAD^1 HEAD | grep -c '^apps/mouth/src' || true)
+          echo "files changed under apps/mouth/src: $n"
+          test "$n" -eq 0
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
@@ -68,12 +79,15 @@ jobs:
 
   wrapper-census-states:
     runs-on: ubuntu-latest
-    # The census's 30 captures, its 10-walk state pass, 25 opened surfaces and 4
-    # shared-drawer walks, on a cold `next dev --webpack`, after npm install and the
-    # Chromium shell.
+    # The census's 30 captures, its 10-walk state pass, 25 opened surfaces and 20
+    # shared-component walks, on a cold `next dev --webpack`, after npm install and
+    # the Chromium shell.
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
+        with:
+          # shared-touched-unpinned diffs the merge commit against its first parent, the base.
+          fetch-depth: 2
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
@@ -101,14 +115,16 @@ jobs:
       - name: Live census, state walk and opened surfaces (starts and stops its own dev server)
         env:
           CENSUS_DEV_LOG: ${{ runner.temp }}/next-dev.log
+          # A dispatch has no base to diff: it reads the working tree only.
+          DIFF_BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || 'HEAD' }}
         run: |
           set -o pipefail
-          python scripts/mouth/r19_wrapper_token_census.py --port 3519 | tee "$RUNNER_TEMP/census.txt"
-      - name: Every capture and every surface opened, the shared drawer unchanged
+          python scripts/mouth/r19_wrapper_token_census.py --port 3519 --diff-base "$DIFF_BASE" | tee "$RUNNER_TEMP/census.txt"
+      - name: Every capture and every surface opened, every shared component pinned and unchanged
         run: |
           fail=0
           for want in "captures: 30 ok, 0 failed" "opened-surfaces: 25 ok, 0 failed" \
-                      "shared-nav-drawer-drift: 0"; do
+                      "shared-touched-unpinned: 0" "shared-component-drift: 0"; do
             if grep -Fxq "$want" "$RUNNER_TEMP/census.txt"; then
               echo "ok: $want"
             else
@@ -118,7 +134,8 @@ jobs:
           done
           grep -E '^(read-but-undefined|colors-outside|state-rows-unseen|state-colors-off|opened-|shared-)' "$RUNNER_TEMP/census.txt" || true
           if [ "$fail" -ne 0 ]; then
-            grep -E '^  (capture-failed|opened-failed|walk-failed):' "$RUNNER_TEMP/census.txt" || true
+            grep -E '^  (capture-failed|opened-failed|walk-failed|shared-failed):' "$RUNNER_TEMP/census.txt" || true
+            grep -E '^  [-+?] |^  (apps|packages)/' "$RUNNER_TEMP/census.txt" || true
             tail -40 "$RUNNER_TEMP/next-dev.log" || true
           fi
           exit "$fail"

@@ -12,9 +12,11 @@ token the contract lacks), `colors-outside-direction-a: M` and, from the
 state contract (section 7), `state-rows-unseen: U` then `state-colors-off-contract: K`. Then it opens
 the surfaces a click or a query reveals (section 8.4, the search and inspect APIs stubbed from a
 fixture) and prints `opened-surfaces: N ok, F failed`, `opened-outside-wrapper: P`,
-`opened-grounds-off-contract: G`, `shared-nav-drawer-drift: D` and, last, `opened-text-below-4.5: T`. The verdict is the printed line, never the exit code.
+`opened-grounds-off-contract: G`, then, for the shared components outside /kbli* (section 8.5),
+`shared-touched-unpinned: N` and `shared-component-drift: D`, and, last, `opened-text-below-4.5: T`.
+The verdict is the printed line, never the exit code.
 
-  python3 scripts/mouth/r19_wrapper_token_census.py [--base-url URL] [--json OUT]
+  python3 scripts/mouth/r19_wrapper_token_census.py [--base-url URL] [--json OUT] [--diff-base REF]
   python3 scripts/mouth/r19_wrapper_token_census.py --replay CENSUS.jsonl
   python3 scripts/mouth/r19_wrapper_token_census.py --export
 """
@@ -343,7 +345,8 @@ def dump(census: dict, path: Path) -> None:
     lines += [json.dumps({"color": k, **census["colors"][k]}, sort_keys=True) for k in sorted(census["colors"])]
     lines += [json.dumps({"state_ob": k, **census["state_obs"][k]}, sort_keys=True) for k in sorted(census["state_obs"])]
     if "opened" in census:
-        lines[0] = json.dumps({**head, "opened_failed": census["opened_failed"]}, sort_keys=True)
+        lines[0] = json.dumps({**head, "opened_failed": census["opened_failed"],
+                               "shared_failed": census.get("shared_failed", [])}, sort_keys=True)
         lines += [json.dumps({"opened": f"{o['name']} {o['walk']}", **o}, sort_keys=True) for o in census["opened"]]
         lines += [json.dumps({"shared": f"{o['name']} {o['walk']}", **o}, sort_keys=True)
                   for o in census.get("shared", [])]
@@ -962,7 +965,7 @@ SURFACE_JS = r"""
     return r.width >= vw * 0.95 && r.height >= vh * 0.95 && c && c.a < 1 && !roots.some((x) => el.contains(x))
       && ![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
   });
-  const pairs = [], grounds = [], painted = new Map(), scrimPaint = [];
+  const pairs = [], grounds = [], painted = new Map(), scrimPaint = [], imaged = [];
   let unmeasurable = 0;
   const seen = new Set();
   for (const el of [...scrims, ...roots.flatMap((r) => [r, ...r.querySelectorAll("*")])]) {
@@ -989,13 +992,17 @@ SURFACE_JS = r"""
     if (!fg || op < 0.1) continue;
     const key = path(g.at) + " " + hex(g.rgb);
     if (!painted.has(key)) painted.set(key, { path: path(g.at), hex: hex(g.rgb), image: g.imaged, text: own.slice(0, 24) });
-    if (g.imaged || (cs.backgroundClip === "text" && !parse(cs.webkitTextFillColor))) { unmeasurable++; continue; }
+    if (g.imaged || (cs.backgroundClip === "text" && !parse(cs.webkitTextFillColor))) {
+      unmeasurable++;
+      imaged.push({ fg: hex(fg.rgb), a: Math.round(fg.a * op * 100) / 100, text: own.slice(0, 40) });
+      continue;
+    }
     const colour = over(fg.rgb, g.rgb, fg.a * op);
     pairs.push({ ratio: Math.round(ratio(colour, g.rgb) * 100) / 100, fg: hex(colour), bg: hex(g.rgb),
                  text: own.slice(0, 40), cls: classes(el).slice(0, 4).join(" ") });
   }
   return { roots: roots.length, scrims: scrims.length, outside, pairs, grounds, unmeasurable,
-           painted: [...painted.values()], scrimPaint };
+           painted: [...painted.values()], scrimPaint, imaged };
 }
 """
 OPENED_FIXTURE = Path(__file__).resolve().parent / "tests/fixtures/r19_opened_surfaces.json"
@@ -1074,11 +1081,55 @@ SCENARIOS = [
     ("kbli-mobile-nav", "/kbli", "mobile-all", None, False, _open_mobile_nav, ['[role="dialog"]']),
     ("kbli-code-mobile-nav", "/kbli/55203", "mobile-all", None, False, _open_mobile_nav, ['[role="dialog"]']),
 ]
-# The same MobileNav drawer on a route outside /kbli*: it must stay as it is (section 8.5), so it is
-# fingerprinted against the pin taken on origin/main, never judged by the wrapper's rows.
-SHARED = [(f"shared-nav-drawer {path}", path, "shared", None, False, _open_mobile_nav, ['[role="dialog"]'])
-          for path in ("/tax-calendar", "/property/eligibility")]
-SHARED_PIN = Path(__file__).resolve().parent / "tests/fixtures/r19_shared_nav_drawer.json"
+# Section 8.5: the shared components /kbli* mounts, keyed by file. Each (component, branch) pair names the
+# routes outside /kbli* that pin it, fingerprinted on origin/main and never judged by the wrapper's rows. A
+# file with no pair has no pin: an edit to it is unpinned by construction.
+MOBILE_NAV = {"MobileNav non-R19": ("/v2", "/visa/second-home", "/v2/news"),
+              "MobileNav R19": ("/tax-calendar", "/property/eligibility", "/news")}
+NAV_SHELL = {"NavShell default": ("/v2",), "NavShell paper": ("/tax-calendar",)}
+SHARED_MATRIX = {
+    "apps/mouth/src/app/v2/_components/MobileNav.tsx": MOBILE_NAV,
+    "packages/core/components/NavShell.tsx": NAV_SHELL,
+    "packages/core/components/NavShell.module.css": NAV_SHELL,
+    "apps/mouth/src/app/v2/_components/Footer.tsx": {"Footer editorial": ("/v2",), "Footer R19 blog": ("/news",)},
+    "packages/core/components/BZLogo.tsx": {},
+    "apps/mouth/src/components/lead/WhatsAppLeadButton.tsx": {},
+    "packages/core/components/FunnelFrame.tsx": {},
+    "apps/mouth/src/components/ui/button.tsx": {},
+    "apps/mouth/src/components/ui/skeleton.tsx": {},
+    "apps/mouth/src/components/providers/LazyToaster.tsx": {},
+}
+# The branch a pair claims, read at run time on the hydrated surface, never from the server HTML.
+BRANCH_OF = {"MobileNav non-R19": "non-R19", "MobileNav R19": "R19", "NavShell default": "default",
+             "NavShell paper": "paper"}
+BRANCH_JS = """(component) => {
+  if (component === "MobileNav") {
+    const d = document.querySelector('[role="dialog"]');
+    return d ? (d.getAttribute("data-presentation") === "r19-drawer" ? "R19" : "non-R19") : "closed";
+  }
+  if (component === "NavShell") {
+    const n = document.querySelector("nav:has(> [data-nav-logo])");
+    return n ? ([...n.classList].some((c) => /(^|_)paper(_|$)/.test(c)) ? "paper" : "default") : "absent";
+  }
+  return null;
+}"""
+# How each component is reached: opener, surface selectors, walks. NavShell is pinned on desktop because
+# at 390px its bar holds no text of its own (a raster logo, links hidden below md, an icon trigger).
+SHARED_SURFACE = {"MobileNav": (_open_mobile_nav, ['[role="dialog"]'], "shared"),
+                  "NavShell": (None, ["nav:has(> [data-nav-logo])"], "shared-desktop"),
+                  "Footer": (None, ["footer:has(.footer-grid)"], "shared")}
+SHARED_WALKS = {"shared": [("mobile", "light"), ("mobile", "system-dark")],
+                "shared-desktop": [("desktop", "light"), ("desktop", "system-dark")]}
+SHARED_PAIRS = {pair: routes for pairs in SHARED_MATRIX.values() for pair, routes in pairs.items()}
+SHARED = [(f"{pair} {route}", route, SHARED_SURFACE[pair.split()[0]][2], None, False,
+           *SHARED_SURFACE[pair.split()[0]][:2]) for pair, routes in SHARED_PAIRS.items() for route in routes]
+SHARED_PIN = Path(__file__).resolve().parent / "tests/fixtures/r19_shared_component_pins.json"
+
+
+def pin_keys(pair: str, route: str) -> list[str]:
+    """The pin entries one (pair, route) needs: one per walk of its component."""
+    which = SHARED_SURFACE[pair.split()[0]][2]
+    return [f"{pair} {route} {v}/{t}" for v, t in SHARED_WALKS[which]]
 # A text-bearing ground on an opened surface, judged by its composited computed value (section 8.4).
 TEXT_GROUNDS = ("paper", "elevated", "wash", "copper")
 # Background utilities that paint no colour: never a ground of their own.
@@ -1096,11 +1147,12 @@ def walk_opened(browser, m, base: str, census: dict) -> None:
     census.setdefault("opened", [])
     census.setdefault("opened_failed", [])
     census.setdefault("shared", [])
+    census.setdefault("shared_failed", [])
     walks = {"all": [(v, t) for v in m.VIEWPORTS for t in m.THEMES], "walk": WALK,
              "mobile": [("mobile", "system-dark")], "mobile-all": [("mobile", t) for t in m.THEMES],
-             "shared": [("mobile", "light"), ("mobile", "system-dark")]}
+             **SHARED_WALKS}
     for name, path, which, status, seed, opener, selectors in SCENARIOS + SHARED:
-        shared = which == "shared"
+        shared = which in SHARED_WALKS
         for vname, tname in walks[which]:
             w, h = m.VIEWPORTS[vname]
             scheme, forced = m.THEMES[tname]
@@ -1127,13 +1179,17 @@ def walk_opened(browser, m, base: str, census: dict) -> None:
                 res = page.evaluate(SURFACE_JS, selectors)
                 if not res["roots"] or not res["pairs"]:
                     raise RuntimeError(f"surface never opened ({res['roots']} roots, {len(res['pairs'])} text pairs)")
+                branch = page.evaluate(BRANCH_JS, name.split()[0]) if shared else None
             except Exception as exc:  # a surface that did not open must never read as clean
-                census["opened_failed"].append(f"{name} {vname}/{tname}: {exc}".splitlines()[0][:200])
+                failed = census["shared_failed" if shared else "opened_failed"]
+                failed.append(f"{name} {vname}/{tname}: {exc}".splitlines()[0][:200])
                 ctx.close()
                 continue
             if shared:
                 census["shared"].append({"name": name, "walk": f"{vname}/{tname}", "fingerprint": sorted(
-                    {f"{p['fg']} on {p['bg']} {p['text']!r}" for p in res["pairs"]})})
+                    {f"{p['fg']} on {p['bg']} {p['text']!r}" for p in res["pairs"]}
+                    | {f"{i['fg']} at alpha {i['a']} over an image {i['text']!r}" for i in res["imaged"]}
+                    | ({f"branch {branch}"} if branch else set()))})
                 ctx.close()
                 continue
             census["opened"].append({
@@ -1182,27 +1238,66 @@ def judge_grounds(census: dict, surfaces: dict, contract: dict) -> list[str]:
 
 
 def shared_drift(census: dict, pin: dict | None) -> tuple[list[str], str]:
-    """The shared drawer outside /kbli* against its origin/main pin: lines, and the count or why there is none."""
-    shared = census.get("shared")
+    """Every shared component outside /kbli* against its origin/main pin: lines, and the count or why there
+    is none. A text pair (foreground on composited ground, label), a text over an image (its own colour and
+    alpha, label) or a branch that appeared or vanished is one line."""
+    shared, failed = census.get("shared"), census.get("shared_failed", [])
     if shared is None or pin is None:
         return [], "INCOMPLETE (no shared walk in this census)" if shared is None else "UNPINNED"
-    lines = []
+    lines = [f"  shared-failed: {f}" for f in failed]
+    if failed:
+        return lines, f"INCOMPLETE ({len(failed)} shared walks failed, not a verdict)"
+    walked = {f"{s['name']} {s['walk']}": s["fingerprint"] for s in shared}
     for where, want in sorted(pin.items()):
-        got = next((s["fingerprint"] for s in shared if f"{s['name']} {s['walk']}" == where), None)
+        got = walked.get(where)
         if got is None:
             return [], f"INCOMPLETE ({where} not walked)"
         lines += [f"  - {x}  ({where})" for x in sorted(set(want) - set(got))]
         lines += [f"  + {x}  ({where})" for x in sorted(set(got) - set(want))]
+    lines += [f"  ? {where}  walked, not in the pin" for where in sorted(set(walked) - set(pin))]
     return lines, str(len(lines))
 
 
-def opened_verdict(census: dict, surfaces: dict, contract: dict, pin: dict | None = None) -> list[str]:
+def touched_files(base: str = "origin/main", root: Path = ROOT) -> list[str] | str:
+    """The files this tree changed since its merge base with `base`, committed or not; a reason if git cannot say."""
+    def git(*args: str) -> str:
+        return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, check=True).stdout
+    try:
+        merge_base = git("merge-base", base, "HEAD").strip()
+        names = git("diff", "--name-only", f"{merge_base}...HEAD") + git("diff", "--name-only", "HEAD")
+    except (OSError, subprocess.CalledProcessError) as exc:
+        return f"cannot diff against {base}: {str(getattr(exc, 'stderr', '') or exc).strip()[:120]}"
+    return sorted({n for n in names.splitlines() if n})
+
+
+def shared_unpinned(touched: list[str] | str | None, pin: dict | None) -> tuple[list[str], str]:
+    """Each touched shared file must have a pin for every (component, branch) pair it serves, taken on the
+    branch the pair claims (section 8.5): one line per file and pair that lacks one."""
+    if touched is None or isinstance(touched, str):
+        return [], f"INCOMPLETE ({touched or 'no diff against the base'}, not a verdict)"
+    pin, lines = pin or {}, []
+    for f in sorted(set(touched) & set(SHARED_MATRIX)):
+        if not SHARED_MATRIX[f]:
+            lines.append(f"  {f}  has no pinned pair: an edit to it is unpinned by construction")
+        for pair, routes in SHARED_MATRIX[f].items():
+            want = BRANCH_OF.get(pair)
+            missing = [k for r in routes for k in pin_keys(pair, r)
+                       if k not in pin or (want and f"branch {want}" not in pin[k])]
+            if missing:
+                lines.append(f"  {f}  {pair}: no pin for {', '.join(missing)}")
+    return lines, str(len(lines))
+
+
+def opened_verdict(census: dict, surfaces: dict, contract: dict, pin: dict | None = None,
+                   touched: list[str] | str | None = None) -> list[str]:
     opened, failed = census.get("opened"), census.get("opened_failed", [])
+    unpinned, unpinned_count = shared_unpinned(touched, pin)
     if opened is None:
         return ["opened-surfaces: 0 ok, 0 failed (no opened walk in this census)",
                 "opened-outside-wrapper: INCOMPLETE (no opened walk)",
                 "opened-grounds-off-contract: INCOMPLETE (no opened walk)",
-                "shared-nav-drawer-drift: INCOMPLETE (no shared walk in this census)",
+                *unpinned, f"shared-touched-unpinned: {unpinned_count}",
+                "shared-component-drift: INCOMPLETE (no shared walk in this census)",
                 "opened-text-below-4.5: INCOMPLETE (no opened walk, not a verdict)"]
     out = [f"opened-surfaces: {len(opened)} ok, {len(failed)} failed"]
     out += [f"  {o['name']} {o['walk']}: {o['roots']} root(s), {o['scrims']} scrim(s), {o['pairs']} text pairs, "
@@ -1216,9 +1311,11 @@ def opened_verdict(census: dict, surfaces: dict, contract: dict, pin: dict | Non
     off = judge_grounds(census, surfaces, contract)
     out += off[:80] + ([f"  ... and {len(off) - 80} more"] if len(off) > 80 else [])
     out.append(f"opened-grounds-off-contract: {len(off)}{tail}")
+    out += unpinned
+    out.append(f"shared-touched-unpinned: {unpinned_count}")
     drift, count = shared_drift(census, pin)
     out += drift
-    out.append(f"shared-nav-drawer-drift: {count}")
+    out.append(f"shared-component-drift: {count}")
     below = [(o, p) for o in opened for p in o["below"]]
     out += [f"  {p['ratio']:.2f}  {p['fg']} on {p['bg']}  {p['text']!r}  {p['cls']}  ({o['name']} {o['walk']})"
             for o, p in below[:60]]
@@ -1257,6 +1354,8 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--export", action="store_true",
                     help="print the probe, pages, six states and palette as JSON for the armed apps/mouth test")
     ap.add_argument("--contract", type=Path, default=CONTRACT)
+    ap.add_argument("--diff-base", default="origin/main",
+                    help="the ref whose merge base with HEAD shared-touched-unpinned diffs against")
     a = ap.parse_args(argv)
     if a.export:
         print(json.dumps(export()))
@@ -1291,7 +1390,8 @@ def main(argv: list[str]) -> int:
     if a.json:
         dump(census, a.json)
     pin = json.loads(SHARED_PIN.read_text()) if SHARED_PIN.exists() else None
-    print("\n".join(verdict(census, contract, states) + opened_verdict(census, surfaces, contract, pin)))
+    touched = touched_files(a.diff_base)
+    print("\n".join(verdict(census, contract, states) + opened_verdict(census, surfaces, contract, pin, touched)))
     return 0
 
 
