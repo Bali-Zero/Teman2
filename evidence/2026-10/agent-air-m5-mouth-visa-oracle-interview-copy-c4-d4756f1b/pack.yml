@@ -18,7 +18,7 @@ lanes:
       the per-key truth table (scratchpad spec-interview-truth-table-c4v3.md), derived from the
       flow, the fact mapping, the question tree and the signed seq-26 pack.
     nb: "/private/tmp/claude-501/-Users-balizero-nuzantara/97393d09-3316-4ddc-a999-9e558d25a8dd/scratchpad/spec-interview-truth-table-c4v3.md (no notebook: the truth table is derived from the code on disk)"
-    query_hash: "035dcca8d8400e1e2df6bfd971de759a2f9b4515ba6d28ec34261579e15eef3c" # pragma: allowlist secret — sha256 of that spec file
+    query_hash: "c42aa8975a93052a966e4154dde3ea8c3d27f5f1b2b72fde4d3671d255c9c8d2" # pragma: allowlist secret — sha256 of that spec file
   - lane: interview-copy-review
     role: review
     seat: agy-gemini-3.1-pro (constructive copy review on the predecessor), cured.
@@ -51,7 +51,7 @@ decisions:
       The copy follows spec-interview-truth-table-c4v3.md (scratchpad), whose rows were derived
       from flow.ts, fact-mapper.ts, tree.ts and the signed pack rulepack-prod-026 with sha256
       dcbc12cd5844301c18c89bf9311d061fe6ad718ebbe13755afc9dd5b01c070cf. Section 2-A (27 keys),
-      2-C (7 keys) and the 9 addendum (16 rows) the 10 addendum (4 keys) and the 11 addendum (12 keys) are applied byte-exactly in both languages; 2-C covers keys outside the
+      2-C (7 keys) and the 9 addendum (16 rows) the 10 addendum (4 keys) and the 11 addendum (13 keys) are applied byte-exactly in both languages; 2-C covers keys outside the
       original diff because they are visible and false on main. The dead keys of section 2-B are
       not touched here: deleting them is a separate PR.
   - id: D-successor-of-8140
@@ -60,6 +60,13 @@ decisions:
       visitor never gave on that path: the code list above and the marriage registered above).
       Built on a fresh origin/main that already holds C2 and C3; the v3 code commits were
       cherry-picked without their evidence commits and the spec addendum 10 applied on top.
+  - id: D-penjamin-note-present-tense
+    decision: >-
+      Row 13 of the 11 addendum rewrites the penjamin assumption note in the present tense,
+      keeping the owner's service wording that Bali Zero can act as the penjamin (PR-M ruling).
+      Its not-sure handling was checked in the question tree and the fact mapper: the answer
+      becomes no. The past-tense assumption wording is now banned across every assumption key by
+      the truth test, and the conservative handling of that note is no longer a special case.
   - id: D-no-reference-to-unseen-answer
     decision: >-
       A helper text never refers to an earlier answer (above, earlier, di atas, sebelumnya)
@@ -97,7 +104,7 @@ receipts:
     cmd: "python3 scripts/ci/observe_visa_oracle_client_copy.py"
     result: "OK visa-oracle client copy: 3672 literals scanned, 0 banned"
     exit: 0
-    ts: "2026-10-09T05:27:05Z"
+    ts: "2026-10-09T05:30:15Z"
     seat: this session
   - claim: "The observer guard has guilt and innocence tests in both languages."
     cmd: "python3 -m pytest scripts/tests/test_observe_visa_oracle_client_copy.py -q"
@@ -117,6 +124,12 @@ receipts:
     exit: 0
     ts: "2026-10-09T05:28:14Z"
     seat: this session
+  - claim: "After the penjamin row, the truth test (now banning the past-tense assumption wording on all assumption keys), the copy census and the i18n parity test pass."
+    cmd: "cd apps/mouth && npx vitest run copy-truth.test.ts client-copy.test.ts i18n.test.ts"
+    result: "Test Files  3 passed (3); Tests  80 passed (80)"
+    exit: 0
+    ts: "2026-10-09T05:30:18Z"
+    seat: this session
   - claim: "The mouth typecheck is clean."
     cmd: "cd apps/mouth && npx tsc --noEmit -p tsconfig.json"
     result: "no output"
@@ -127,7 +140,7 @@ receipts:
     cmd: "cd apps/mouth && npx prettier --check <touched files>"
     result: "All matched files use Prettier code style!"
     exit: 0
-    ts: "2026-10-09T05:27:05Z"
+    ts: "2026-10-09T05:30:15Z"
     seat: this session
   - claim: "No e2e spec pins a replaced sentence of the 34 keys; two component tests that did were updated."
     cmd: "rg -n -F -f <old sentences of the 34 keys> apps/mouth/e2e apps/mouth/src (excluding the dictionary and the truth test)"
