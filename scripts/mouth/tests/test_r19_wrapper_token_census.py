@@ -288,9 +288,126 @@ def test_the_rest_copper_borders_were_ruled_to_line():
 
 
 def test_the_origin_main_walk_is_the_pre_w2_number(census):
-    """The fixture is the live walk on origin/main a906625f63: 10 walks, 46 state classes off contract.
+    """The fixture is the live walk on origin/main 263b7916c2: 10 walks, 51 state classes off contract, 0 unseen.
     W2'' regenerates it and the pin moves to 0."""
     assert len(census["walks"]) == 10 and census["walk_failed"] == []
     out = verdict(census)
-    assert out[-1] == "state-colors-off-contract: 46"
+    assert out[-1] == "state-colors-off-contract: 51"
+    assert "state-rows-unseen: 0" in out
     assert any(ln.strip().startswith("hover:bg-surface-editorial-elevated  expected #EAE3D8") for ln in out)
+    assert any(ln.strip().startswith("group-hover:text-[color:var(--accent-zantara)]  expected #233D52") for ln in out)
+
+
+# ---- the real walk, end to end, on a page we write --------------------------------------------
+
+import functools  # noqa: E402
+import http.server  # noqa: E402
+import threading  # noqa: E402
+
+
+def unseen(out: list[str]) -> tuple[str, list[str]]:
+    at = next(i for i, ln in enumerate(out) if ln.startswith("state-rows-unseen:"))
+    named = []
+    for ln in out[at + 1 :]:
+        if not ln.startswith("  "):
+            break
+        named.append(ln.strip())
+    return out[at], named
+
+
+def test_innocence_a_painted_row_that_was_observed_is_not_unseen():
+    assert unseen(state_verdict(clean_obs())) == ("state-rows-unseen: 0", [])
+
+
+def test_guilt_a_painted_row_in_the_dom_but_never_observed_is_named():
+    walk = clean_obs()
+    walk["state_obs"]["group-hover:text-[color:var(--accent-zantara)]"]["observed"] = []
+    line, named = unseen(state_verdict(walk))
+    assert line == "state-rows-unseen: 1"
+    assert named[0].startswith("group-hover:text-[color:var(--accent-zantara)]  (group-hover color)")
+
+
+def test_a_row_that_paints_nothing_is_never_unseen():
+    walk = clean_obs()
+    assert walk["state_obs"]["hover:shadow-xl"]["observed"] == []
+    assert unseen(state_verdict(walk))[0] == "state-rows-unseen: 0"
+
+
+def _chrome_ready() -> bool:
+    try:
+        import playwright.sync_api  # noqa: F401
+        return Path(census_mod._load_measure().CHROME).exists()
+    except Exception:
+        return False
+
+
+needs_browser = pytest.mark.skipif(not _chrome_ready(), reason="no Playwright / headless Chrome on this machine")
+
+
+def _css_class(token: str) -> str:
+    return "." + re.sub(r"([^\w-])", r"\\\1", token)
+
+
+def walk_page(tmp_path, monkeypatch, body: str, css: str) -> dict:
+    """Runs the real walk_states() on one local page whose wrapper is [data-presentation=r19]."""
+    from playwright.sync_api import sync_playwright
+    (tmp_path / "g.html").write_text(
+        f'<!doctype html><style>*{{border:0 solid transparent}}{css}</style>'
+        f'<div data-presentation="r19">{body}</div>')
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(tmp_path))
+    handler.log_message = lambda *a, **k: None
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    monkeypatch.setattr(census_mod, "PAGES", ["/g.html"])
+    census = {"walks": [], "walk_failed": [], "state_obs": {}}
+    m = census_mod._load_measure()
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(executable_path=m.CHROME)
+            census_mod.walk_states(browser, m, f"http://127.0.0.1:{server.server_port}", census)
+            browser.close()
+    finally:
+        server.shutdown()
+    assert census["walk_failed"] == [] and len(census["walks"]) == 2
+    return census
+
+
+BRACKET = "group-hover:text-[color:var(--accent-zantara)]"
+
+
+def bracket_page(colour: str) -> tuple[str, str]:
+    body = f'<a class="group" href="#x"><span class="{BRACKET}">label</span></a>'
+    return body, f".group:hover {_css_class(BRACKET)}{{color:{colour}}}"
+
+
+@needs_browser
+def test_e2e_guilt_a_bracket_typed_class_painting_the_wrong_hue_counts_one(tmp_path, monkeypatch):
+    census = walk_page(tmp_path, monkeypatch, *bracket_page("#A44B36"))  # the row says structure #233D52
+    lines, count = census_mod.judge_states(census, STATES)
+    assert count == 1 and lines[0].startswith(f"  {BRACKET}  expected #233D52, painted #A44B36")
+
+
+@needs_browser
+def test_e2e_innocence_a_bracket_typed_class_painting_its_row_counts_zero(tmp_path, monkeypatch):
+    census = walk_page(tmp_path, monkeypatch, *bracket_page("#233D52"))
+    assert census["state_obs"][BRACKET]["observed"] == ["#233D52"]
+    assert census_mod.judge_states(census, STATES)[1] == 0
+
+
+@needs_browser
+def test_e2e_copper_at_30_percent_reads_the_copper_hex(tmp_path, monkeypatch):
+    token = "hover:border-accent-warm/40"
+    body = f'<a class="{token}" href="#x" style="border-width:2px">label</a>'
+    css = f"{_css_class(token)}:hover{{border-color:rgba(164,75,54,0.3)}}"
+    census = walk_page(tmp_path, monkeypatch, body, css)
+    assert census["state_obs"][token]["observed"] == ["#A44B36"]
+    assert census_mod.judge_states(census, STATES)[1] == 0
+
+
+@needs_browser
+def test_e2e_a_color_mix_paint_keeps_its_hue(tmp_path, monkeypatch):
+    token = "group-hover:bg-[color-mix(in_srgb,var(--accent-zantara)_10%,transparent)]"
+    body = f'<a class="group" href="#x"><span class="{token}">label</span></a>'
+    css = f".group:hover {_css_class(token)}{{background:color-mix(in srgb,#EAE3D8 10%,transparent)}}"
+    census = walk_page(tmp_path, monkeypatch, body, css)
+    assert census["state_obs"][token]["observed"] == ["#EAE3D8"]

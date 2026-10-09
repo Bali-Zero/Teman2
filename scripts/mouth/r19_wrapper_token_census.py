@@ -9,7 +9,7 @@ RENDERED DOM of a local `next dev --webpack` — 5 pages x the 6 states of
 follows every var() chain where the browser resolves it (at the declaring
 element). It prints, as its LAST lines, `read-but-undefined: N` (one line per
 token the contract lacks), `colors-outside-direction-a: M` and, from the
-state contract (section 7), `state-colors-off-contract: K`. The verdict is the
+state contract (section 7), `state-rows-unseen: U` then `state-colors-off-contract: K`. The verdict is the
 printed line, never the exit code.
 
   python3 scripts/mouth/r19_wrapper_token_census.py [--base-url URL] [--json OUT]
@@ -199,6 +199,13 @@ def judge_states(census: dict, states: dict) -> tuple[list[str], int]:
     return off, len(off)
 
 
+def unseen_rows(census: dict, states: dict) -> list[str]:
+    """Painted state rows whose class is in the DOM but was never observed: a 0 must not hide them."""
+    return [f"  {t}  ({states[t]['state']} {states[t]['prop']}), e.g. {ob['selector']} on {ob['page']} {ob['walk']}"
+            for t, ob in sorted(census.get("state_obs", {}).items())
+            if t in states and states[t]["hex"] and not ob["observed"]]
+
+
 def verdict(census: dict, contract: dict, states: dict | None = None) -> list[str]:
     reads, colors = census["reads"], census["colors"]
     failed = census.get("failed", [])
@@ -231,9 +238,13 @@ def verdict(census: dict, contract: dict, states: dict | None = None) -> list[st
         out.append("state-colors-off-contract: REFUSED (no state table)")
     elif not census.get("walks") or walk_failed:
         out += [f"  walk-failed: {f}" for f in walk_failed]
+        out.append("state-rows-unseen: INCOMPLETE (no judged walk)")
         out.append(f"state-colors-off-contract: INCOMPLETE ({len(walk_failed)} walks failed, "
                    f"{len(census.get('walks', []))} ok, not a verdict)")
     else:
+        unseen = unseen_rows(census, states)
+        out.append(f"state-rows-unseen: {len(unseen)}")
+        out += unseen
         lines, count = judge_states(census, states)
         out += lines
         out.append(f"state-colors-off-contract: {count}")
@@ -530,12 +541,31 @@ STATE_JS = r"""
   style.textContent = "*,*::before,*::after{transition:none!important;animation:none!important}";
   document.head.append(style);
   const ctx = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+  // The rgb channels of the computed colour, unblended and unrounded of alpha: copper at 30% reads
+  // #A44B36 exactly as W1's slice(0,7) does. A canvas round-trip un-premultiplies and drifts.
   const hex = (c) => {
-    ctx.clearRect(0, 0, 1, 1); ctx.fillStyle = "#000"; ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1);
-    const d = ctx.getImageData(0, 0, 1, 1).data;
-    return d[3] === 0 ? "transparent" : "#" + [d[0], d[1], d[2]].map((x) => x.toString(16).padStart(2, "0")).join("").toUpperCase();
+    let p, m;
+    if ((m = c.match(/^rgba?\(([^)]+)\)$/))) p = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+    else if ((m = c.match(/^color\(srgb ([^)]+)\)$/))) { p = m[1].split(/[\s/]+/).filter(Boolean).map(Number); p = [p[0] * 255, p[1] * 255, p[2] * 255, p[3]]; }
+    else {
+      ctx.clearRect(0, 0, 1, 1); ctx.fillStyle = "#000"; ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1);
+      const d = ctx.getImageData(0, 0, 1, 1).data;
+      p = [d[0], d[1], d[2], d[3] / 255];
+    }
+    return p.length > 3 && p[3] === 0 ? "transparent"
+      : "#" + p.slice(0, 3).map((x) => Math.round(x).toString(16).padStart(2, "0")).join("").toUpperCase();
   };
-  const split = (t) => { const i = t.lastIndexOf(":"); return i < 0 ? ["", t] : [t.slice(0, i), t.slice(i + 1)]; };
+  // The variant is everything before the last colon OUTSIDE brackets: `[color:var(--x)]` is a utility.
+  const split = (t) => {
+    let depth = 0, last = -1;
+    for (let i = 0; i < t.length; i++) {
+      const ch = t[i];
+      if (ch === "[" || ch === "(") depth++;
+      else if (ch === "]" || ch === ")") depth--;
+      else if (ch === ":" && depth === 0) last = i;
+    }
+    return last < 0 ? ["", t] : [t.slice(0, last), t.slice(last + 1)];
+  };
   const group = (el) => el.closest(".group");
   const COND = {
     "hover": (el) => el.matches(":hover"),
@@ -588,7 +618,12 @@ STATE_JS = r"""
       const state = variant || (util.startsWith("placeholder-") ? "placeholder" : "scrollbar");
       const prop = state === "placeholder" ? "color" : state === "scrollbar" ? "scrollbar" : PROP[util.split("-")[0]] || "shadow";
       const live = state in COND ? COND[state](el) : state === "selection" || state === "placeholder" || state.startsWith("prose-");
-      if (!live || prop === "shadow" || prop === "scrollbar") { seen(token, state, prop, el, []); continue; }
+      if (prop === "scrollbar") {
+        const parts = [...getComputedStyle(el).scrollbarColor.matchAll(/rgba?\([^)]+\)|color\([^)]+\)/g)].map((m) => hex(m[0]));
+        seen(token, state, prop, el, util.startsWith("scrollbar-thumb") && parts[0] ? [parts[0]] : []);
+        continue;
+      }
+      if (!live || prop === "shadow") { seen(token, state, prop, el, []); continue; }
       seen(token, state, prop, el, read(el, state, util));
     }
   };
