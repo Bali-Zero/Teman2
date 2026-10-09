@@ -18,19 +18,24 @@ lanes:
       the per-key truth table (scratchpad spec-interview-truth-table-c4v3.md), derived from the
       flow, the fact mapping, the question tree and the signed seq-26 pack.
     nb: "/private/tmp/claude-501/-Users-balizero-nuzantara/97393d09-3316-4ddc-a999-9e558d25a8dd/scratchpad/spec-interview-truth-table-c4v3.md (no notebook: the truth table is derived from the code on disk)"
-    query_hash: "d46eb356e10633e975b794251814dfb37056522dad1156eeafe635e8dd73785b" # pragma: allowlist secret — sha256 of that spec file
+    query_hash: "535ddc94997637427960046d2b857ee5bba8a1eefbe13778e3cb0ebb9015c7ed" # pragma: allowlist secret — sha256 of that spec file
   - lane: interview-copy-review
     role: review
     seat: agy-gemini-3.1-pro (constructive copy review on the predecessor), cured.
   - lane: interview-copy-gate
     role: review
     seat: fresh-opus-gate (final on-disk gates of the two predecessor PRs), cured in this successor.
+  - lane: interview-copy-redteam
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (red-team, read-only); the CLI ran its configured default model
+      gpt-6-astra, run 04:22 to 04:28Z, verdict file codex-c4v3-verdict.txt.
 pii_scan: clean
 bites:
   consumer: >-
     the CI harness, which runs this observer after the merge, and every visitor of
     balizero.com/visa-oracle who opens a "why we ask" hint: the observer proves the copy they
-    read carries no engine, interface or field-name language, and the truth test proves the 34
+    read carries no engine, interface or field-name language, and the truth test proves the 39
     sentences about what an answer does still match the reviewed text.
   where: ci
   observe: python3 scripts/ci/observe_visa_oracle_client_copy.py
@@ -40,10 +45,16 @@ decisions:
     decision: >-
       The copy follows spec-interview-truth-table-c4v3.md (scratchpad), whose rows were derived
       from flow.ts, fact-mapper.ts, tree.ts and the signed pack rulepack-prod-026 with sha256
-      dcbc12cd5844301c18c89bf9311d061fe6ad718ebbe13755afc9dd5b01c070cf. Section 2-A (27 keys) and
-      2-C (7 keys) are applied byte-exactly in both languages; 2-C covers keys outside the
+      dcbc12cd5844301c18c89bf9311d061fe6ad718ebbe13755afc9dd5b01c070cf. Section 2-A (27 keys),
+      2-C (7 keys) and the 9 addendum (5 keys) are applied byte-exactly in both languages; 2-C covers keys outside the
       original diff because they are visible and false on main. The dead keys of section 2-B are
       not touched here: deleting them is a separate PR.
+  - id: D-no-promised-advisor
+    decision: >-
+      No interview sentence promises that a Bali Zero advisor confirms, reviews or checks
+      something the code does not guarantee; the advisor is offered, never promised. The same
+      pattern remains in ten other assumption sentences and one family sentence that this
+      PR does not touch and the lead was told about.
   - id: D-successor-of-8128
     decision: >-
       Successor of the closed PR 8128 (gate BLOCK on three HIGH truth findings: the retirement
@@ -65,43 +76,43 @@ receipts:
     cmd: "python3 scripts/ci/observe_visa_oracle_client_copy.py"
     result: "OK visa-oracle client copy: 3650 literals scanned, 0 banned"
     exit: 0
-    ts: "2026-10-09T04:15:19Z"
+    ts: "2026-10-09T04:30:20Z"
     seat: this session
   - claim: "The observer guard has guilt and innocence tests in both languages."
     cmd: "python3 -m pytest scripts/tests/test_observe_visa_oracle_client_copy.py -q"
     result: "4 passed"
     exit: 0
-    ts: "2026-10-09T04:15:21Z"
+    ts: "2026-10-09T04:30:21Z"
     seat: this session
   - claim: "The copy census, the new truth test, i18n parity, QuestionScreen, WhyWeAsk, OutcomeSheet and ConsentHandoff tests pass."
     cmd: "cd apps/mouth && npx vitest run <the seven test files>"
-    result: "Test Files  7 passed (7); Tests  203 passed (203)"
+    result: "Test Files  7 passed (7); Tests  207 passed (207)"
     exit: 0
-    ts: "2026-10-09T04:18:53Z"
+    ts: "2026-10-09T04:30:31Z"
     seat: this session
   - claim: "The enumeration file passes; run alone because it times out inside the full tree under machine load."
     cmd: "cd apps/mouth && npx vitest run src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts"
     result: "Test Files  1 passed (1); Tests  40 passed (40)"
     exit: 0
-    ts: "2026-10-09T04:20:27Z"
+    ts: "2026-10-09T04:31:15Z"
     seat: this session
   - claim: "The mouth typecheck is clean."
     cmd: "cd apps/mouth && npx tsc --noEmit -p tsconfig.json"
     result: "no output"
     exit: 0
-    ts: "2026-10-09T04:18:41Z"
+    ts: "2026-10-09T04:30:28Z"
     seat: this session
   - claim: "Prettier accepts every touched TypeScript file."
     cmd: "cd apps/mouth && npx prettier --check <touched files>"
     result: "All matched files use Prettier code style!"
     exit: 0
-    ts: "2026-10-09T04:15:18Z"
+    ts: "2026-10-09T04:30:20Z"
     seat: this session
   - claim: "No e2e spec pins a replaced sentence of the 34 keys; two component tests that did were updated."
     cmd: "rg -n -F -f <old sentences of the 34 keys> apps/mouth/e2e apps/mouth/src (excluding the dictionary and the truth test)"
     result: "no pin left (the only hits are an unrelated condition-notice suffix in engine-adapter.test.ts)"
     exit: 0
-    ts: "2026-10-09T04:21:00Z"
+    ts: "2026-10-09T04:31:15Z"
     seat: this session
 dissent:
   - seat: agy-gemini-3.1-pro
@@ -134,6 +145,31 @@ dissent:
     objection: The other-purpose and paid-activity hints were false for transit and for a yes that becomes an employment purpose.
     status: CONFIRMED
     note: cured in 9df4e13f4f from the truth table.
+  - seat: codex-gpt-5.6-sol
+    severity: HIGH
+    objection: The urgent-lane notice said 1 to 2 days left, but the lane also triggers at 0 days, when the permit expires today.
+    status: CONFIRMED
+    note: cured in 26e4b81679; the journal note is codex-c4v3-verdict.txt (run 04:22 to 04:28Z, real model gpt-6-astra).
+  - seat: codex-gpt-5.6-sol
+    severity: HIGH
+    objection: assumption.work_payer promised that a Bali Zero advisor confirms the point, but contact needs the visitor's consent and action.
+    status: CONFIRMED
+    note: cured in 26e4b81679, the sentence now offers the advisor instead of promising a confirmation.
+  - seat: codex-gpt-5.6-sol
+    severity: HIGH
+    objection: assumption.remote_clients made the same promise of an advisor confirmation.
+    status: CONFIRMED
+    note: cured in 26e4b81679, same wording as the work payer sentence.
+  - seat: codex-gpt-5.6-sol
+    severity: HIGH
+    objection: question.human_context_notice said the answer cannot select, rank, add or remove a visa, but context answers can change the evaluated purpose.
+    status: CONFIRMED
+    note: cured in 26e4b81679, the sentence now says the answer may affect the questions or visa options shown.
+  - seat: codex-gpt-5.6-sol
+    severity: MEDIUM
+    objection: why.review_gate kept the internal phrase bear directly on the rules.
+    status: CONFIRMED
+    note: cured in 26e4b81679, plain wording about immigration history and what the result notes.
 spend:
   wall_clock_hours: 4
-  adversarial_rounds: 3
+  adversarial_rounds: 4

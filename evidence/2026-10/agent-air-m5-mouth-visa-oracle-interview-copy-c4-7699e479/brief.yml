@@ -12,15 +12,15 @@ mission: >-
   about what an answer does is true against the flow, the mapping and the signed seq-26 pack.
 objective: >-
   No interview, lane, assumption or atlas string carries engine, interface, field-name or
-  decision-fact language in either language; 34 helper sentences follow the per-key truth
+  decision-fact language in either language; 39 helper sentences follow the per-key truth
   table; the census, the truth test and the CI observer fail if a banned or false sentence
   comes back.
 scope:
   - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts (103 keys rewritten, EN and ID twins)
-  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/copy-truth.test.ts (new, 34 equality rows plus false-claim guilt checks)
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/copy-truth.test.ts (new, 38 equality rows plus false-claim guilt checks)
   - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/client-copy.test.ts (census covers the interview copy and the atlas)
   - scripts/ci/observe_visa_oracle_client_copy.py and its Python test (observer covers the interview copy, the atlas and dotted identifiers)
   - component tests that pinned a replaced sentence, and one consent line (advisor)
 appetite:
   wall_clock_hours: 4
-  adversarial_rounds: 3
+  adversarial_rounds: 4
