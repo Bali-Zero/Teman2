@@ -15,7 +15,9 @@ objective: >-
 constraints:
   - A real verdict line (failure, REWORK, BLOCK) stays FAIL; a pending line on stdout, or with exit 0, is not pending.
   - A missing verdict at merge time still blocks (executed_contexts_ok false).
-  - The re-decision reads one commit-status list per gate_pending PR per tick, read-only; a failed read is not eligible.
+  - The re-decision reads one commit-status list and one check-run list per pending context per gate_pending PR per tick, read-only; a failed read is not eligible.
+  - A key is re-opened only when the hosted run of each pending context completed after the newest harness/fable-gate post, and only for a BLOCKED decision.
+  - The context is marked gate_pending from a structured flag frozen in the plan, never from its reason text.
   - Replays (B11) are unaffected.
 acceptance:
   - text: A reader whose stderr line starts with the pending marker SHALL give rc None at once (no retry sleep) and the step, context and overall SHALL be BLOCKED.
@@ -24,6 +26,14 @@ acceptance:
     probe: "test_gate_pending.py::test_a_real_verdict_line_stays_a_verdict"
   - text: A gate_pending key SHALL be decided again only with the harness/fable-gate status on the head, not on a failed read, and at most 3 times.
     probe: "test_gate_pending.py::test_the_cap_stays_decided_and_is_journalled_once"
+  - text: A gate_pending key SHALL NOT be decided again while the hosted run of a pending context completed before the post or is still in progress.
+    probe: "test_gate_pending.py::test_the_first_decision_journals_gate_pending_and_the_next_follows_the_post_and_the_hosted_rerun"
+  - text: A decision whose overall is not BLOCKED SHALL carry no gate_pending mark and SHALL never be re-opened.
+    probe: "test_gate_pending.py::test_a_red_decision_with_a_pending_gate_journals_no_pending_mark_and_is_never_decided_again"
+  - text: The context SHALL be marked from the plan-frozen flag only, never from its reason, and never beside a second BLOCKED step.
+    probe: "test_gate_pending.py::test_the_mark_is_the_plan_frozen_flag_however_long_the_reason_and_never_a_second_blocked_steps"
+  - text: The matrix's pending_when SHALL be the prefix of the BASE reader's not-posted stderr line and of none of its posted states.
+    probe: "test_gate_pending.py::test_the_matrix_pending_line_is_the_base_readers_own_not_posted_line_and_never_a_posted_states"
   - text: The report SHALL count gate_pending decisions and class a BLOCKED context BLIND, not FALSE_RED.
     probe: "test_merger_report.py::test_gate_pending_decisions_are_counted_blind_never_false_red_and_the_report_says_so"
 consumer_map:
@@ -42,23 +52,42 @@ what_changed: |
   gate_status_posted (one GET of repos/{repo}/commits/{head}/statuses, paged, context harness/fable-gate) says so, at most
   GATE_PENDING_CAP = 3; tick journals skipped gate_pending_cap once per key; report counts gate_pending decisions and prints one line.
   tests/test_gate_pending.py (27 tests), one report test, 12 b12-* mutant rules; README section and spec addendum.
+
+  Fix round (gate CONFIRMED 3d7146932a with one MEDIUM and five LOW findings):
+  MEDIUM: merger.py gate_ready = gate_posted_at (newest updated_at/created_at of the head's harness/fable-gate statuses) AND, for every
+  context the decision found pending, hosted_rerun_after: the check runs named exactly as that context (GET
+  repos/{repo}/commits/{head}/check-runs?check_name=<name>&filter=latest, paged and bounded by gh_pages over hc.gh_get), latest attempt per
+  check suite, all completed after the post. None, in progress, completed at or before the post, or a failed read: not eligible. The name
+  is the decision's gate_pending_contexts, the context names of the plan's contexts_map (the BASE matrix entry), never a literal in code.
+  L1: decide journals gate_pending (and gate_pending_contexts) only when overall is BLOCKED; triage also honours it only on a BLOCKED line.
+  L2: Bites restated below. L3: run_host_reader's pending answer carries gate_pending: true, frozen in the plan's precomputed; _run_leg
+  copies it onto the BLOCKED step it answered; gate_pending_of marks the context result only when it is BLOCKED and every step that did not
+  pass is such a read; the run keeps the flag of the current attempt only (dropped at RUNNING and on worktree moved); evaluate_contexts reads
+  the flag, and the GATE_PENDING text constant is gone. L4: a test runs BASE scripts/ci/harness_gate_read.py main() with its two reads
+  stubbed: the not-posted stderr line starts with the matrix pending_when, the posted states pending/failure/error do not. L5: the report
+  counts gate_pending on non-replay rows only and its line says "(replays not counted)".
+  Also: the waits fixture records the runner's own sleep instead of patching time.sleep for every thread (a cross-thread sleep made one
+  test fail once in a combined run), and a pre-existing ruff F811 on the world fixture is silenced like pending_world's.
+  tests/test_gate_pending.py now 65 tests, one more report test, 26 b12-* mutant rules (14 new, 3 re-anchored).
 proof: |
   Tests and mutants on M5 against temporary repos and fake GitHub reads; nothing ran on Pro and nothing was pushed.
 bites:
   consumer: The launchd tick com.balizero.localci-merger on Pro (decisions.jsonl) and its report.
   observation: >-
-    Owed after merge and the next extraction on Pro: the first PR decided while its harness/fable-gate status is absent journals
-    gate_pending: true with ctx.harness-floor BLOCKED (contexts map) and `merger.py report` classes that row BLIND, not FALSE_RED; after
-    the session posts the status, a second decision of the same (pr, head_sha, base_sha) follows within a tick, and `skipped:
-    gate_pending_cap` appears only past three.
+    Owed after merge and the next extraction on Pro. Primary: the first decision of a PR whose harness/fable-gate status is absent journals
+    gate_pending: true with gate_pending_contexts ["Harness floor recompute"] and overall BLOCKED, ctx.harness-floor BLOCKED in its contexts
+    map, and `merger.py report` classes that row BLIND, not FALSE_RED. Secondary: after the session posts the status and the hosted
+    "Harness floor recompute" run completes again after it, a second decision of the same (pr, head_sha, base_sha) comes on the key's next
+    turn while the base is unchanged (a re-opened key sorts last and B11's alternation may put a replay first; main moves about every
+    30 min), never before that hosted run, and `skipped: gate_pending_cap` appears only past three.
 ground:
   ts: "2026-10-09T22:50:00Z"
   siblings: >-
     Worktree from origin/main e69001e301. Other lanes on scripts/localci: b11, b8b, f2; this one touches run_host_reader, evaluate_contexts,
     triage, decide and report, with additive hunks only.
 spend:
-  adversarial_rounds: 0
-  wall_clock_hours: 0.6
+  adversarial_rounds: 1
+  wall_clock_hours: 1.6
 receipts:
   - claim: "test_merger.py, test_merger_report.py, test_replay.py, test_merger_phase_f.py, test_service_contexts.py, test_host_disk.py, test_judge_rewritten.py, test_hosted_compare.py, test_shard_workers.py, test_gate_pending.py: 667 passed, 1 skipped, 235 s."
     cmd: PYTHONPATH=. python3 -m pytest <those 10 files> -q -p no:cacheprovider
@@ -75,11 +104,28 @@ receipts:
     exit: 0
     ts: "2026-10-09T23:07:00Z"
     seat: claude-opus-5-5 on M5
+  - claim: "Fix round: the same six files plus test_service_contexts.py, test_host_disk.py, test_judge_rewritten.py, test_runner.py: 802 passed, 3 skipped, 483 s."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_gate_pending.py scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py scripts/localci/tests/test_hosted_compare.py scripts/localci/tests/test_replay.py scripts/localci/tests/test_merger_phase_f.py scripts/localci/tests/test_service_contexts.py scripts/localci/tests/test_host_disk.py scripts/localci/tests/test_judge_rewritten.py scripts/localci/tests/test_runner.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-09T23:48:46Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Fix round: 26/26 b12-* mutant rules killed (14 new, 3 re-anchored) and 4/4 neighbours (hc-no-verdict-unnamed, b5-judge-no-verdict-unnamed, b11-replayed-again, tick-coverage-not-journalled); survivors none, errors none, stale none."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <the 26 b12-* rules and the 4 neighbours, in three batches of 10>
+    exit: 0
+    ts: "2026-10-09T23:55:44Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "ruff check on merger.py, runner.py, test_gate_pending.py, test_merger_report.py, merger_mutants.py: all checks passed."
+    cmd: ruff check <those 5 files>
+    exit: 0
+    ts: "2026-10-09T23:56:38Z"
+    seat: claude-opus-5-5 on M5
 dissent: []
 residuals:
   - "Live proof on Pro is owed to the first extraction after merge: the Bites observation above."
-  - "A context BLOCKED for another reason in the same job as the pending reader is marked gate_pending only when the pending mark is in its reason; it is still BLOCKED either way."
-  - "The re-decision costs one commit-status GET per gate_pending PR per tick, at most three decisions per key."
+  - "The re-decision costs one commit-status GET and one check-run GET per pending context per gate_pending PR per tick, at most three decisions per key."
+  - "Eligibility trusts GitHub's check-run completed_at against the status's updated_at: two clocks of the same service, compared as UTC strings to the second; a re-run completing in the same second as the post is not eligible (strictly after)."
+  - "A PR whose session posts the status but never runs `gh run rerun` stays not eligible: the key waits for its next head or base, as before B12."
+  - "The c.pop of gate_pending on the worktree-moved and RUNNING transitions covers the paths that change a check's status; other BLOCKED transitions (trusted rerun refused, plan-time dirty) start from QUEUED/INTERRUPTED states that never carry the flag."
 brief_ref: evidence/brief.yml
 plan_ref: >-
   Mandate LOCALCI-SOVEREIGN step B12, from the lead message of 2026-10-10, from origin/main e69001e301. Nothing is pushed.
