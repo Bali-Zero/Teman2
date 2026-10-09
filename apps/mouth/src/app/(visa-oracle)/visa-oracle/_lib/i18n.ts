@@ -142,8 +142,7 @@ const en = {
     "That channel doesn’t match your earlier answer about changing status without leaving Indonesia. Go back and correct one of the two answers — we won’t guess which one is right.",
 
   "q.nationalities": "Which nationalities appear on your passports?",
-  "q.nationalities.hint":
-    "Choose each passport country. The stored answer remains a language-independent country code.",
+  "q.nationalities.hint": "Choose each passport country.",
   "q.nationalities.label": "Passport countries",
   "why.nationalities":
     "Nationality is checked exactly as you give it. Several nationalities are kept separate and never guessed.",
@@ -152,7 +151,7 @@ const en = {
     "Some visas have age rules; we use your date of birth only to check them.",
   "q.birth_date.label": "Date of birth",
   "why.birth_date":
-    "Some visas treat adults and minors differently. Your age alone never decides whether you are eligible.",
+    "Some visas have age limits, such as a minimum age for the retirement visa or a child visa that ends at 18; we check your age against them.",
   "q.guardian_consent":
     "Is a parent or legal guardian filling this in with you?",
   "q.guardian_consent.help":
@@ -309,7 +308,7 @@ const en = {
   "q.remote_compensation.hint":
     "This asks where payment originates, not how much you earn.",
   "why.remote_compensation":
-    "The answer maps directly to work.indonesia_source_compensation.",
+    "We only use whether any of your pay comes from an Indonesian source, not how much.",
   "q.remote_employer_country":
     "Where is your remote employer or main client registered?",
   "q.remote_employer_country.hint":
@@ -322,10 +321,11 @@ const en = {
   "q.remote_pt_pma.hint":
     "Choose yes only for a real commitment, not a company you may form later.",
   "why.remote_pt_pma":
-    "This maps directly to investment.pt_pma_committed and does not imply approval.",
+    "We only note whether your PT PMA commitment is concrete; a yes does not mean approval.",
 
   "q.investment_vehicle": "What is the concrete basis of your plan?",
-  "q.investment_vehicle.hint": "This only decides which questions come next.",
+  "q.investment_vehicle.hint":
+    "Your choice decides which route we look at and which questions come next.",
   "q.investment_vehicle.opt.pt_pma": "A committed Indonesian PT PMA",
   "q.investment_vehicle.opt.property": "A qualifying property arrangement",
   "q.investment_vehicle.opt.bank_deposit": "A bank deposit in my own name",
@@ -335,7 +335,7 @@ const en = {
     "Capital-market investments only, such as listed shares or bonds",
   "q.investment_vehicle.opt.undecided": "I have not chosen a basis yet",
   "why.investment_vehicle":
-    "This only decides which questions we ask next. It never chooses a visa path.",
+    "Property or a bank deposit points to the Second Home visa; the other choices keep the investment route. Then we ask only the questions that decide it.",
   "q.investment_currency": "Which currency can you commit an amount in?",
   "q.investment_currency.hint":
     "This only decides which amount question comes next. No conversion is ever performed between currencies.",
@@ -504,7 +504,7 @@ const en = {
   "q.retirement_basis.opt.family_sponsor": "A confirmed family sponsor",
   "q.retirement_basis.opt.undecided": "I have not chosen a basis",
   "why.retirement_basis":
-    "This only decides which questions come next. It is not used for anything else.",
+    "Your choice decides which questions come next. A basis you do not choose, such as a bank deposit, is not counted in your plan.",
   "q.retirement_undecided_basis": "Which of these can you document today?",
   "q.retirement_undecided_basis.hint":
     "Pick whichever basis you can support with evidence. If neither applies, say so — a person is not needed to answer that.",
@@ -514,14 +514,14 @@ const en = {
     "A confirmed family sponsor",
   "q.retirement_undecided_basis.opt.still_unsure": "I still can't say",
   "why.retirement_undecided_basis":
-    "This also only decides which questions come next, the same as the basis question above.",
+    "As with the basis question above, this decides which questions come next.",
   "q.secondhome_basis": "Which Second Home basis can you document today?",
   "q.secondhome_basis.hint":
     "Pick the one you can evidence now. Use Not sure rather than guessing.",
   "q.secondhome_basis.opt.bank_deposit": "A bank deposit held in my own name",
   "q.secondhome_basis.opt.property": "A qualifying property",
   "why.secondhome_basis":
-    "This only decides which evidence questions follow. We use the evidence you give, not this choice.",
+    "Your choice decides which evidence questions follow. The basis you do not choose is not counted in your plan; we use the evidence you give.",
   "q.secondhome_deposit_usd": "What bank deposit can you document?",
   "q.secondhome_deposit_usd.hint":
     "Enter the exact whole-dollar amount; use Not sure rather than estimating.",
@@ -591,7 +591,7 @@ const en = {
   "q.diaspora_documents.hint":
     "Do not upload documents here; answer only whether evidence exists.",
   "why.diaspora_documents":
-    "This is human context only and cannot improve automated eligibility.",
+    "This is context for our team only; it does not change what this tool finds for you.",
 
   "q.other_purpose": "Which activity is closest to your plan?",
   "q.other_purpose.hint":
@@ -699,7 +699,7 @@ const en = {
   "back.button": "Back",
   "question.continue": "Continue",
   "question.human_context_notice":
-    "Human context only — this answer cannot select, rank, add, or remove a visa path.",
+    "For our team’s context only — this answer cannot select, rank, add or remove a visa for you.",
   "question.invalid_country_codes":
     "Choose a country from the verified list, or select Not listed.",
   "question.country_picker.placeholder": "Choose a country",
@@ -841,7 +841,7 @@ const en = {
   "process.candidates_follow_up":
     "We have your answers and need one more detail before we can decide. This question asks for it.",
   "process.outcome_node":
-    "You are at the last node of this tree: the outcome below is that node, not a separate page.",
+    "You have reached the end of the questions: the result below is your answer, not a separate page.",
   "process.jump_title": "Jump back to an answer",
   "process.jump_aria": "Jump back to {{question}} — you answered {{answer}}",
   "process.jump_empty": "No answer to jump back to yet.",
@@ -1225,8 +1225,7 @@ const id: Record<Keys, string> = {
     "Kanal ini tidak sesuai dengan jawaban Anda sebelumnya tentang mengubah status tanpa meninggalkan Indonesia. Kembali dan perbaiki salah satu dari kedua jawaban — kami tidak akan menebak mana yang benar.",
 
   "q.nationalities": "Kewarganegaraan apa yang tercantum di paspor Anda?",
-  "q.nationalities.hint":
-    "Pilih setiap negara paspor. Jawaban tersimpan tetap berupa kode negara yang tidak bergantung pada bahasa.",
+  "q.nationalities.hint": "Pilih setiap negara paspor Anda.",
   "q.nationalities.label": "Negara paspor",
   "why.nationalities":
     "Kewarganegaraan diperiksa persis seperti yang Anda berikan. Beberapa kewarganegaraan tetap dipisahkan dan tidak pernah ditebak.",
@@ -1235,7 +1234,7 @@ const id: Record<Keys, string> = {
     "Beberapa visa punya syarat usia; tanggal lahir Anda hanya dipakai untuk memeriksanya.",
   "q.birth_date.label": "Tanggal lahir",
   "why.birth_date":
-    "Beberapa visa membedakan orang dewasa dan anak. Usia Anda saja tidak pernah menentukan kelayakan.",
+    "Beberapa visa punya batas usia, misalnya usia minimum untuk visa pensiun atau visa anak yang berakhir di usia 18; kami memeriksa usia Anda terhadap batas tersebut.",
   "q.guardian_consent":
     "Apakah orang tua atau wali sah mengisi ini bersama Anda?",
   "q.guardian_consent.help":
@@ -1390,7 +1389,7 @@ const id: Record<Keys, string> = {
   "q.remote_compensation.hint":
     "Pertanyaan ini menanyakan asal pembayaran, bukan jumlah penghasilan.",
   "why.remote_compensation":
-    "Jawaban dipetakan langsung ke work.indonesia_source_compensation.",
+    "Kami hanya memakai apakah ada bagian gaji Anda yang berasal dari sumber di Indonesia, bukan jumlahnya.",
   "q.remote_employer_country":
     "Di negara mana pemberi kerja atau klien utama Anda terdaftar?",
   "q.remote_employer_country.hint":
@@ -1403,10 +1402,11 @@ const id: Record<Keys, string> = {
   "q.remote_pt_pma.hint":
     "Pilih ya hanya untuk komitmen nyata, bukan perusahaan yang mungkin dibentuk nanti.",
   "why.remote_pt_pma":
-    "Ini dipetakan langsung ke investment.pt_pma_committed dan tidak menyiratkan persetujuan.",
+    "Kami hanya mencatat apakah komitmen PT PMA Anda sudah konkret; jawaban ya tidak berarti disetujui.",
 
   "q.investment_vehicle": "Apa dasar konkret rencana Anda?",
-  "q.investment_vehicle.hint": "Ini hanya menentukan pertanyaan berikutnya.",
+  "q.investment_vehicle.hint":
+    "Pilihan Anda menentukan jalur mana yang kami lihat dan pertanyaan apa yang muncul berikutnya.",
   "q.investment_vehicle.opt.pt_pma": "Komitmen PT PMA Indonesia",
   "q.investment_vehicle.opt.property": "Pengaturan properti",
   "q.investment_vehicle.opt.bank_deposit": "Deposito bank atas nama saya",
@@ -1416,7 +1416,7 @@ const id: Record<Keys, string> = {
     "Hanya investasi pasar modal, seperti saham tercatat atau obligasi",
   "q.investment_vehicle.opt.undecided": "Saya belum memilih dasar",
   "why.investment_vehicle":
-    "Ini hanya menentukan pertanyaan yang kami ajukan berikutnya. Jawaban ini tidak pernah memilih jalur visa.",
+    "Properti atau deposito bank mengarah ke visa Second Home; pilihan lainnya tetap di jalur investasi. Setelah itu kami hanya menanyakan pertanyaan yang menentukannya.",
   "q.investment_currency":
     "Dalam mata uang apa Anda dapat mengomitmenkan jumlah investasi?",
   "q.investment_currency.hint":
@@ -1589,7 +1589,7 @@ const id: Record<Keys, string> = {
   "q.retirement_basis.opt.family_sponsor": "Sponsor keluarga yang dikonfirmasi",
   "q.retirement_basis.opt.undecided": "Saya belum memilih dasar",
   "why.retirement_basis":
-    "Ini hanya menentukan pertanyaan berikutnya dan tidak dipakai untuk hal lain.",
+    "Pilihan Anda menentukan pertanyaan berikutnya. Dasar yang tidak Anda pilih, misalnya deposito bank, tidak dihitung dalam rencana Anda.",
   "q.retirement_undecided_basis":
     "Yang mana dari berikut yang dapat Anda buktikan saat ini?",
   "q.retirement_undecided_basis.hint":
@@ -1601,7 +1601,7 @@ const id: Record<Keys, string> = {
   "q.retirement_undecided_basis.opt.still_unsure":
     "Saya masih belum bisa memastikan",
   "why.retirement_undecided_basis":
-    "Ini juga hanya menentukan pertanyaan berikutnya, sama seperti pertanyaan dasar di atas.",
+    "Seperti pertanyaan dasar di atas, ini menentukan pertanyaan berikutnya.",
   "q.secondhome_basis":
     "Dasar Second Home mana yang dapat Anda buktikan saat ini?",
   "q.secondhome_basis.hint":
@@ -1609,7 +1609,7 @@ const id: Record<Keys, string> = {
   "q.secondhome_basis.opt.bank_deposit": "Deposito bank atas nama saya",
   "q.secondhome_basis.opt.property": "Properti yang memenuhi syarat",
   "why.secondhome_basis":
-    "Ini hanya menentukan pertanyaan bukti berikutnya. Yang kami pakai adalah bukti yang Anda berikan, bukan pilihan ini.",
+    "Pilihan Anda menentukan pertanyaan bukti berikutnya. Dasar yang tidak Anda pilih tidak dihitung dalam rencana Anda; yang kami pakai adalah bukti yang Anda berikan.",
   "q.secondhome_deposit_usd": "Berapa deposito bank yang dapat Anda buktikan?",
   "q.secondhome_deposit_usd.hint":
     "Masukkan jumlah dolar bulat yang tepat; pilih Tidak yakin daripada memperkirakan.",
@@ -1679,7 +1679,7 @@ const id: Record<Keys, string> = {
   "q.diaspora_documents.hint":
     "Jangan unggah dokumen di sini; jawab hanya apakah bukti tersedia.",
   "why.diaspora_documents":
-    "Ini hanya konteks manusia dan tidak dapat meningkatkan kelayakan otomatis.",
+    "Ini hanya konteks untuk tim kami; tidak mengubah hasil yang ditemukan alat ini.",
 
   "q.other_purpose": "Kegiatan mana yang paling dekat dengan rencana Anda?",
   "q.other_purpose.hint":
@@ -1778,7 +1778,7 @@ const id: Record<Keys, string> = {
   "back.button": "Kembali",
   "question.continue": "Lanjutkan",
   "question.human_context_notice":
-    "Hanya konteks manusia — jawaban ini tidak dapat memilih, mengurutkan, menambah, atau menghapus jalur visa.",
+    "Hanya untuk konteks tim kami — jawaban ini tidak dapat memilih, mengurutkan, menambah, atau menghapus visa untuk Anda.",
   "question.invalid_country_codes":
     "Pilih negara dari daftar terverifikasi, atau pilih Tidak tercantum.",
   "question.country_picker.placeholder": "Pilih negara",
@@ -1920,7 +1920,7 @@ const id: Record<Keys, string> = {
   "process.candidates_follow_up":
     "Kami sudah menerima jawaban Anda dan masih memerlukan satu rincian lagi sebelum dapat memutuskan. Pertanyaan ini menanyakannya.",
   "process.outcome_node":
-    "Anda berada di simpul terakhir pohon ini: hasil di bawah adalah simpul tersebut, bukan halaman terpisah.",
+    "Anda sudah sampai di akhir pertanyaan: hasil di bawah adalah jawaban Anda, bukan halaman terpisah.",
   "process.jump_title": "Kembali ke sebuah jawaban",
   "process.jump_aria": "Kembali ke {{question}} — Anda menjawab {{answer}}",
   "process.jump_empty": "Belum ada jawaban untuk dituju.",

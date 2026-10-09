@@ -14,7 +14,7 @@ Scans the string literals of the files that carry client-visible copy (`i18n.ts`
 any literal still holds an internal note or engine jargon the owner ruled out. In
 `i18n.ts` and `atlas-scenes.ts` the whole-word jargon list (engine, interface, mesin,
 antarmuka, decision fact, enum...) applies too, with an exact-phrase allowlist for the
-ordinary-language uses; a dotted dictionary key is never copy and is skipped. It also
+ordinary-language uses; a dotted dictionary key is never copy and is skipped, but a dotted engine identifier inside a sentence is banned. It also
 asserts that the keys PR-C1 and PR-C2 introduced exist in BOTH language blocks of the
 dictionary. Comments are skipped.
 """
@@ -67,6 +67,7 @@ BANNED_WORDS = tuple(
         r"\bfields?\b",
         r"\blabels?\b",
         r"\bfacts?\b",
+        r"\b[a-z]+\.[a-z]+_[a-z_]+\b",
     )
 )
 # Exact phrases that are ordinary language, never a bare word (mirrors the vitest census).
@@ -75,6 +76,7 @@ ALLOWED_PHRASES = (
     "some routes depend on facts this tool does not ask",
     "{{facts}}",
 )
+PLACEHOLDER = re.compile(r"\{\{[^}]*\}\}")
 DOTTED_KEY = re.compile(r"^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$")
 REQUIRED_KEYS = (
     "outcome.timeline_pending",
@@ -146,7 +148,7 @@ def main() -> int:
                 if phrase.lower() in low:
                     problems.append(f"{name}:{line}: banned phrase {phrase!r}")
             if name in WORD_FILES and not DOTTED_KEY.match(text):
-                visible = text
+                visible = PLACEHOLDER.sub(" ", text)
                 for allowed in ALLOWED_PHRASES:
                     visible = visible.replace(allowed, " ")
                 for word in BANNED_WORDS:
