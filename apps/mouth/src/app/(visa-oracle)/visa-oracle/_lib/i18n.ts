@@ -165,7 +165,7 @@ const en = {
   "lane.urgent.notice":
     "You have 1–2 days left. That’s too close for an automated check — a Bali Zero advisor needs to look at this today.",
   "lane.bridging.notice":
-    "The date you entered is within seven days. We may pass your case to a Bali Zero consultant for review, and this tool will not choose a bridging or conversion route for you.",
+    "The date you entered is within seven days. We may pass your case to a Bali Zero advisor for review, and this tool will not choose a bridging or conversion route for you.",
   "lane.extend.notice":
     "You have time to compare Extend and Convert side by side.",
   "lane.planning.notice": "Plenty of runway — this is planning, not urgency.",
@@ -196,7 +196,7 @@ const en = {
   "q.trip_scope.opt.single": "Yes — one main purpose",
   "q.trip_scope.opt.multiple": "No — two or more purposes overlap",
   "why.trip_scope":
-    "Overlapping purposes call for a consultant’s judgment, so this answer is not used to decide anything automatically.",
+    "Overlapping purposes call for a Bali Zero advisor’s judgment, so this answer is not used to decide anything automatically.",
   "q.entry_pattern": "How do you expect to enter Indonesia?",
   "q.entry_pattern.hint": "Choose the pattern you are actually planning.",
   "q.entry_pattern.opt.SINGLE": "One entry",
@@ -255,7 +255,7 @@ const en = {
     "Only your yes or no about the sponsor being a trade office is used here.",
   "q.business_activity": "What will you mainly do on the business trip?",
   "q.business_activity.hint":
-    "Describe the activity, not a visa name. Meetings, negotiation, conferences and looking into investing can be assessed here; training or another activity goes to a Bali Zero consultant for review.",
+    "Describe the activity, not a visa name. Meetings, negotiation, conferences and looking into investing can be assessed here; training or another activity goes to a Bali Zero advisor for review.",
   "q.business_activity.opt.meetings": "Meetings or site visits",
   "q.business_activity.opt.negotiation": "Negotiation or signing",
   "q.business_activity.opt.conference": "Conference or trade event",
@@ -264,7 +264,7 @@ const en = {
   "q.business_activity.opt.training": "Giving or receiving training",
   "q.business_activity.opt.other": "Another business activity",
   "why.business_activity":
-    "Exploring whether to invest or open a business is treated as an investment purpose, and we then ask the few questions that decide it. Any other answer here only decides whether a Bali Zero consultant has to look at your trip: training and “another business activity” do, the others do not.",
+    "Exploring whether to invest or open a business is treated as an investment purpose, and we then ask the few questions that decide it. Any other answer here only decides whether a Bali Zero advisor has to look at your trip: training and “another business activity” do, the others do not.",
   "q.business_sponsor_confirmed":
     "Has a company sponsor or guarantor confirmed they will support the process?",
   "q.business_sponsor_confirmed.hint":
@@ -368,7 +368,7 @@ const en = {
     "Enter a whole-rupiah amount; use Not sure rather than estimating.",
   "q.investment_paid_up_capital_idr.label": "Documented paid-up capital",
   "why.investment_paid_up_capital_idr":
-    "The paid-up amount is kept separate from your planned investment capital.",
+    "We use the exact paid-up amount you give, kept separate from your planned investment capital.",
   "q.investment_role": "What role would you hold in the company?",
   "q.investment_role.hint": "Choose the exact proposed-role description.",
   "q.investment_role.opt.SHAREHOLDER_DIRECTOR": "Shareholder and director",
@@ -811,7 +811,7 @@ const en = {
   "process.decides_fact":
     "Your answer sets {{plural:this detail|these details}}, which we use:",
   "process.decides_review":
-    "Your answer is a safety signal: it can send this case to a Bali Zero consultant, and it is never read as eligibility.",
+    "Your answer is a safety signal: it can send this case to a Bali Zero advisor, and it is never read as eligibility.",
   "process.decides_context":
     "This question does not set a detail on its own. It steers what you are asked next, and can still count toward something we work out from your answers together.",
   "process.decides_none":
@@ -1280,7 +1280,7 @@ const id: Record<Keys, string> = {
   "q.trip_scope.opt.single": "Ya — satu tujuan utama",
   "q.trip_scope.opt.multiple": "Tidak — dua tujuan atau lebih tumpang tindih",
   "why.trip_scope":
-    "Tujuan yang tumpang tindih memerlukan penilaian konsultan, jadi jawaban ini tidak dipakai untuk memutuskan apa pun secara otomatis.",
+    "Tujuan yang tumpang tindih memerlukan penilaian konsultan Bali Zero, jadi jawaban ini tidak dipakai untuk memutuskan apa pun secara otomatis.",
   "q.entry_pattern": "Bagaimana Anda berencana masuk ke Indonesia?",
   "q.entry_pattern.hint": "Pilih pola yang benar-benar Anda rencanakan.",
   "q.entry_pattern.opt.SINGLE": "Satu kali masuk",
@@ -1451,7 +1451,7 @@ const id: Record<Keys, string> = {
     "Masukkan jumlah rupiah bulat; pilih Tidak yakin daripada memperkirakan.",
   "q.investment_paid_up_capital_idr.label": "Modal disetor terdokumentasi",
   "why.investment_paid_up_capital_idr":
-    "Jumlah modal disetor dipisahkan dari modal investasi yang Anda rencanakan.",
+    "Kami memakai jumlah persis yang Anda berikan, dipisahkan dari modal investasi yang Anda rencanakan.",
   "q.investment_role": "Peran apa yang akan Anda pegang di perusahaan?",
   "q.investment_role.hint": "Pilih deskripsi peran yang tepat.",
   "q.investment_role.opt.SHAREHOLDER_DIRECTOR": "Pemegang saham dan direktur",
