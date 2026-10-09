@@ -91,18 +91,76 @@ assert_eq "$CLEAN_OUT" "$CLEAN_DIFF" "strip_data_file_deletes: non-data-file dif
 CLEAN_REDACTED="$(redact_for_external "$CLEAN_OUT")"
 assert_eq "$CLEAN_REDACTED" "$CLEAN_OUT" "redact_for_external: PII-free diff is byte-identical"
 
-# ── speed: the blank check is linear (2026-10-10: bash 3.2's ${var//[class]/} was quadratic — an 8 KB
-#    diff took 58 s in it and a 70 KB one never reached the seat). 200 KB of whitespace (the blank path,
-#    returned as is) and 200 KB of text (the redactor path) must both finish well inside 30 s.
-BIG_BLANK="$(printf '%*s' 200000 '')"
-BIG_TEXT="$(printf 'line %06d of a large clean diff\n' $(seq 1 6000))"
+# ── blank means tab, CR, LF and space only, in every locale: everything else reaches the redactor ──
+#    A stub redactor makes the path visible (a clean body comes back identical either way). Under a UTF-8
+#    locale an invalid byte fails a [^[:space:]] match, so a body starting with one read as blank and its
+#    email left the machine unredacted (Codex, 2026-10-10); \v, \f and NBSP are not blank either.
+STUB_DIR="$(mktemp -d "${TMPDIR:-/tmp}/spalla-stub.XXXXXX")"
+printf 'import sys\nsys.stdin.buffer.read()\nsys.stdout.write("REDACTOR-RAN")\n' > "$STUB_DIR/stub.py"
+for LOC in C en_US.UTF-8; do
+    for CASE in empty spaces tab-cr-lf vt ff nbsp invalid-byte text; do
+        case "$CASE" in
+            empty) BODY="" WANT=blank ;;
+            spaces) BODY="     " WANT=blank ;;
+            tab-cr-lf) BODY=$'\t\r\n \t' WANT=blank ;;   # no trailing newline: $(...) would strip it
+            vt) BODY=$'\v' WANT=redactor ;;
+            ff) BODY=$'\f' WANT=redactor ;;
+            nbsp) BODY=$'\xc2\xa0' WANT=redactor ;;
+            invalid-byte) BODY=$'\xff'"someone@example.org" WANT=redactor ;;
+            text) BODY="x" WANT=redactor ;;
+        esac
+        # a child bash started in the locale, so the library meets it as a caller's shell would
+        GOT="$(LC_ALL="$LOC" SPALLA_REDACTOR_PY="$STUB_DIR/stub.py" bash -c '. "$1/scripts/lib/spalla_redact.sh"; redact_for_external "$2"' _ "$REPO_ROOT" "$BODY")"
+        if [[ "$WANT" == blank ]]; then
+            assert_eq "$GOT" "$BODY" "redact_for_external [$LOC]: the $CASE body is blank and comes back as is"
+        else
+            assert_eq "$GOT" "REDACTOR-RAN" "redact_for_external [$LOC]: the $CASE body goes through the redactor"
+        fi
+    done
+done
+rm -f "$STUB_DIR/stub.py" && rmdir "$STUB_DIR"
+# the real redactor on such a body: refused (fail-closed) or redacted, never returned with the email
+set +e
+INVALID_OUT="$(LC_ALL=en_US.UTF-8 bash -c '. "$1/scripts/lib/spalla_redact.sh"; redact_for_external "$2"' _ "$REPO_ROOT" $'\xff'"someone@example.org $(printf 'filler line %03d\n' $(seq 1 40))" 2>/dev/null)"
+INVALID_RC=$?
+set -e
+if [[ "$INVALID_RC" -ne 0 || "$INVALID_OUT" != *"someone@example.org"* ]]; then
+    echo "ok: redact_for_external [en_US.UTF-8]: an invalid-byte body never leaves with its email (rc=$INVALID_RC)"
+else
+    echo "FAIL: redact_for_external returned an invalid-byte body with its email unredacted" >&2
+    FAIL=1
+fi
+
+# ── large bodies, in /bin/bash (macOS: 3.2, the affected interpreter) under a 60 s watchdog, so a
+#    quadratic regression fails here instead of hanging (2026-10-10: bash 3.2's ${var//[class]/} was
+#    quadratic — an 8 KB diff took 58 s in it and a 70 KB one never reached the seat). 200 KB of
+#    whitespace comes back as is; 200 KB of clean text comes back byte-identical; and an email deep
+#    inside a 200 KB body is removed, so a passthrough of large bodies cannot pass for the redactor.
+SPEED_PROBE='. "$1/scripts/lib/spalla_redact.sh"
+blank="$(printf "%*s" 200000 "")"
+text="$(printf "line %06d of a large clean diff\n" $(seq 1 6000))"
+pii="$(printf "line %06d of a large diff\n" $(seq 1 3000))
+contact someone@example.org for the plan
+$(printf "line %06d of a large diff\n" $(seq 3001 6000))"
+a="$(redact_for_external "$blank")"
+b="$(redact_for_external "$text" 2>/dev/null)"
+c="$(redact_for_external "$pii" 2>/dev/null)"
+[[ "${#a}" -eq 200000 ]] || echo "blank-not-whole"
+[[ "$b" == "$text" ]] || echo "text-not-identical"
+[[ "$c" != *someone@example.org* && "$c" == *"line 006000 of a large diff"* ]] || echo "pii-not-redacted"
+echo PROBE-DONE'
 SPEED_START=$SECONDS
-BIG_BLANK_OUT="$(redact_for_external "$BIG_BLANK")"
-BIG_TEXT_OUT="$(redact_for_external "$BIG_TEXT")"
+set +e
+SPEED_OUT="$(perl -e 'alarm 60; exec @ARGV' /bin/bash -c "$SPEED_PROBE" probe "$REPO_ROOT")"
+SPEED_RC=$?
+set -e
 SPEED_S=$((SECONDS - SPEED_START))
-assert_eq "${#BIG_BLANK_OUT}" "${#BIG_BLANK}" "redact_for_external: 200 KB of whitespace comes back as is"
-assert_eq "$BIG_TEXT_OUT" "$BIG_TEXT" "redact_for_external: a 200 KB clean diff comes back byte-identical"
-if [[ "$SPEED_S" -lt 30 ]]; then echo "ok: redact_for_external: 400 KB in ${SPEED_S} s"; else echo "FAIL: redact_for_external took ${SPEED_S} s on 400 KB (quadratic blank check?)" >&2; FAIL=1; fi
+if [[ "$SPEED_RC" -eq 0 && "$SPEED_OUT" == "PROBE-DONE" ]]; then
+    echo "ok: redact_for_external: three 200 KB bodies (blank, clean, one email) right in ${SPEED_S} s under /bin/bash $(/bin/bash -c 'echo $BASH_VERSION')"
+else
+    echo "FAIL: redact_for_external on three 200 KB bodies: rc=$SPEED_RC (142 = the 60 s watchdog fired: quadratic blank check?) out='${SPEED_OUT//$'\n'/ }'" >&2
+    FAIL=1
+fi
 
 # ── end-to-end guilt: the wrapper itself refuses on a PII-classed path ──
 # Skipped (not failed) when the codex CLI isn't installed/logged in on this

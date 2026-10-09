@@ -65,9 +65,12 @@ strip_data_file_deletes() {
 
 redact_for_external() {
     local input="$1"
+    # Blank means only tab, CR, LF and space, the same four bytes as ever, judged byte by byte in the C locale
+    # (in a subshell, so the caller's locale is untouched): under a UTF-8 locale an invalid byte fails any
+    # bracket match, and [^[:space:]] would read such a body as blank and skip the redactor (Codex, 2026-10-10).
     # A regex match, never ${input//[class]/}: bash 3.2 (macOS /bin/bash) rewrites that substitution in
     # quadratic time — an 8 KB diff took 58 s and a 70 KB one never reached the seat (2026-10-10).
-    if [[ ! "$input" =~ [^[:space:]] ]]; then
+    if ( LC_ALL=C; nonblank=$'[^\t\r\n ]'; [[ ! "$input" =~ $nonblank ]] ); then
         printf '%s' "$input"
         return 0
     fi
