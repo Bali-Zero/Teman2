@@ -21,7 +21,7 @@ what_changed: |
   scripts/ci/change_map.py run as the runner runs it (-I, trusted_env from the runner module that sits beside merger.py);
   hosted_summary passes the judge and journals stale / stale_unknown beside the counts; decide builds it from the mirror and the
   decided base. The report applies the judge to its own comparison and, for each decision with a recorded FALSE_GREEN, re-reads the
-  run dir's hosted_compare.json and the head's check-runs (one GET), reclassifies a row only when the red is still the hosted verdict
+  run dir's hosted_compare.json and the head's check-runs through read-only GETs, reclassifies a row only when the red is still the hosted verdict
   and the evidence holds, and prints false_green=N (recorded=R, reclassified HOSTED_STALE=S: [...]); the JSON carries
   recorded_context_false_green (the remainder), recorded_false_green_as_journalled and recorded_reclassified_hosted_stale.
   README: the HOSTED_STALE bullet and the corrected F1 residual (a conflict never counts a git error). Spec: one B10 paragraph before

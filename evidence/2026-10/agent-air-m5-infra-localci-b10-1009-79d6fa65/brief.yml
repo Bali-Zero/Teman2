@@ -17,7 +17,7 @@ objective: >-
 constraints:
   - Only on evidence: an unreadable completed_at, mirror, matrix or change_map, or a context with no runs_when, keeps the class and says unknown.
   - The change_map is the BASE copy run as the runner runs it (-I, stripped environment); the judge re-implements none of its logic.
-  - Read-only: git show, rev-list and diff in the mirror, one GET of the head's check-runs; the report writes nothing to the journal.
+  - Read-only: git show, rev-list and diff in the mirror, read-only GETs of the head (branch protection, check-runs, statuses); the report writes nothing to the journal.
   - A recorded red that is no longer the hosted verdict is never reclassified.
   - No new file is needed by the launchd wrapper: the judge lives in merger.py and loads the runner that already sits beside it.
 acceptance:
