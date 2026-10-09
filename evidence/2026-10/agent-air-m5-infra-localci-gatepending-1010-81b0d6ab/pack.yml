@@ -1,0 +1,86 @@
+task_id: localci-gatepending-1010
+mission: LOCALCI-SOVEREIGN (phase B, step B12)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  A change to the runner's host-reader verdict mapping and to the merger's triage: it can turn a FAIL into a BLOCKED and make a
+  decided key decided again. No hot-zone path, workflow, plist or wrapper change; the lint floor is 2.
+l_level: L2
+gate_class: opus
+objective: >-
+  A gate verdict not posted yet is no verdict, and is asked again once it is posted. The harness gate reader's
+  ::error::harness_gate_read: PENDING stderr line (matrix key pending_when, line-anchored, not retried) makes the step, the context and
+  overall BLOCKED, never FAIL; the decision records gate_pending; triage decides the same (pr, head, base) again only when the head carries a
+  harness/fable-gate status, at most 3 times; the report counts them and reads them BLIND, not FALSE_RED.
+constraints:
+  - A real verdict line (failure, REWORK, BLOCK) stays FAIL; a pending line on stdout, or with exit 0, is not pending.
+  - A missing verdict at merge time still blocks (executed_contexts_ok false).
+  - The re-decision reads one commit-status list per gate_pending PR per tick, read-only; a failed read is not eligible.
+  - Replays (B11) are unaffected.
+acceptance:
+  - text: A reader whose stderr line starts with the pending marker SHALL give rc None at once (no retry sleep) and the step, context and overall SHALL be BLOCKED.
+    probe: "test_gate_pending.py::test_a_pending_reader_is_no_verdict_and_is_not_retried"
+  - text: A real failure verdict SHALL stay FAIL, and the pending text on stdout only SHALL not fake it.
+    probe: "test_gate_pending.py::test_a_real_verdict_line_stays_a_verdict"
+  - text: A gate_pending key SHALL be decided again only with the harness/fable-gate status on the head, not on a failed read, and at most 3 times.
+    probe: "test_gate_pending.py::test_the_cap_stays_decided_and_is_journalled_once"
+  - text: The report SHALL count gate_pending decisions and class a BLOCKED context BLIND, not FALSE_RED.
+    probe: "test_merger_report.py::test_gate_pending_decisions_are_counted_blind_never_false_red_and_the_report_says_so"
+consumer_map:
+  - scripts/localci/merger.py tick (the launchd tick com.balizero.localci-merger on Pro) — gate_pending on the decision lines of decisions.jsonl, and the report's class column.
+pii_scan: clean
+pii_scan_note: Runner and merger code, tests on temporary git repos and fake GitHub reads, mutant rules and documentation. No client data was read or written.
+lanes:
+  - lane: localci-gatepending-1010
+    role: build
+    seat: claude-opus-5-5 (Dux implementer on M5)
+what_changed: |
+  runner.py: run_host_reader takes `pending` (matrix key pending_when): on a non-zero exit with a stderr line starting with it, it returns
+  rc None with reason "gate_pending: host, at plan: ..." at once (no retry); evaluate_contexts names a BLOCKED context whose reason carries
+  that mark `no_verdict: gate_pending`. contexts_matrix.yaml: pending_when on the harness-floor reader step.
+  merger.py: decide journals gate_pending: true; triage takes gate_posted/capped and decides a gate_pending key again only when
+  gate_status_posted (one GET of repos/{repo}/commits/{head}/statuses, paged, context harness/fable-gate) says so, at most
+  GATE_PENDING_CAP = 3; tick journals skipped gate_pending_cap once per key; report counts gate_pending decisions and prints one line.
+  tests/test_gate_pending.py (27 tests), one report test, 12 b12-* mutant rules; README section and spec addendum.
+proof: |
+  Tests and mutants on M5 against temporary repos and fake GitHub reads; nothing ran on Pro and nothing was pushed.
+bites:
+  consumer: The launchd tick com.balizero.localci-merger on Pro (decisions.jsonl) and its report.
+  observation: >-
+    Owed after merge and the next extraction on Pro: the first PR decided while its harness/fable-gate status is absent journals
+    gate_pending: true with ctx.harness-floor BLOCKED (contexts map) and `merger.py report` classes that row BLIND, not FALSE_RED; after
+    the session posts the status, a second decision of the same (pr, head_sha, base_sha) follows within a tick, and `skipped:
+    gate_pending_cap` appears only past three.
+ground:
+  ts: "2026-10-09T22:50:00Z"
+  siblings: >-
+    Worktree from origin/main e69001e301. Other lanes on scripts/localci: b11, b8b, f2; this one touches run_host_reader, evaluate_contexts,
+    triage, decide and report, with additive hunks only.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 0.6
+receipts:
+  - claim: "test_merger.py, test_merger_report.py, test_replay.py, test_merger_phase_f.py, test_service_contexts.py, test_host_disk.py, test_judge_rewritten.py, test_hosted_compare.py, test_shard_workers.py, test_gate_pending.py: 667 passed, 1 skipped, 235 s."
+    cmd: PYTHONPATH=. python3 -m pytest <those 10 files> -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-09T23:03:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "12/12 b12-* mutant rules killed; survivors none, errors none, stale none."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <the 12 b12-* rules>
+    exit: 0
+    ts: "2026-10-09T23:00:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "6/6 neighbour rules killed: hc-no-verdict-unnamed, b5-judge-no-verdict-unnamed, b11-replayed-again, b11-alternation-off, tick-coverage-not-journalled, f1-rehearses-on-decided-base."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <those 6 rules>
+    exit: 0
+    ts: "2026-10-09T23:07:00Z"
+    seat: claude-opus-5-5 on M5
+dissent: []
+residuals:
+  - "Live proof on Pro is owed to the first extraction after merge: the Bites observation above."
+  - "A context BLOCKED for another reason in the same job as the pending reader is marked gate_pending only when the pending mark is in its reason; it is still BLOCKED either way."
+  - "The re-decision costs one commit-status GET per gate_pending PR per tick, at most three decisions per key."
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN step B12, from the lead message of 2026-10-10, from origin/main e69001e301. Nothing is pushed.
+appetite_exceeded: none
