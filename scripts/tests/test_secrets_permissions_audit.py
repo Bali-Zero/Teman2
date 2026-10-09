@@ -10,12 +10,18 @@ import importlib.util
 import os
 import stat
 import sys
+import threading
 from pathlib import Path
 from types import ModuleType
 
 import pytest
 
-_MODULE_PATH = Path(__file__).parents[1] / "secrets_permissions_audit.py"
+_MODULE_PATH = Path(
+    os.environ.get(
+        "SECRETS_PERMISSIONS_AUDIT_MODULE",
+        str(Path(__file__).parents[1] / "secrets_permissions_audit.py"),
+    )
+)
 
 
 def _load_module(open_chain: bool = True) -> ModuleType:
@@ -816,10 +822,22 @@ _PAT = "gh" + "p_" + "A1b2C3d4E5f6G7h8I9j0K1l2"
         '{"id_token":"x1"}',
         '{"pin":"1234"}',
         '{"pass":"x1"}',
+        '{"pw":"x1"}',
+        '{"pswd":"x1"}',
+        '{"passcode":"x1"}',
         '{"authToken":"x1"}',
+        '{"token_id":"x1"}',
+        '{"github_token_v2":"x1"}',
+        '{"apitoken":"x1"}',
+        '{"authtoken":"x1"}',
+        '{"idtoken":"x1"}',
+        '{"csrftoken":"x1"}',
+        '{"APIToken":"x1"}',
+        '{"JWTToken":"x1"}',
         '{"' + _PAT + '":"x"}',
         '{"dsn":"postgres://user:pw@host/db"}',
         '{"' + "postgres://user:pw@host" + '":"x"}',
+        '{"a": ' + "7" * 5000 + "}",
         '{"a":' * 5000 + "1" + "}" * 5000,
         "[" * 100000 + "]" * 100000,
     ],
@@ -837,10 +855,22 @@ _PAT = "gh" + "p_" + "A1b2C3d4E5f6G7h8I9j0K1l2"
         "id_token",
         "pin",
         "pass",
+        "pw",
+        "pswd",
+        "passcode",
         "camel-authToken",
+        "token-segment-not-terminal",
+        "token-segment-mid-key",
+        "apitoken",
+        "authtoken",
+        "idtoken",
+        "csrftoken",
+        "acronym-APIToken",
+        "acronym-JWTToken",
         "pat-as-key",
         "basic-auth-dsn-value",
         "basic-auth-dsn-key",
+        "huge-integer-value-error",
         "deep-object-recursion",
         "deep-array-recursion",
     ],
@@ -854,7 +884,10 @@ def test_t9d_credential_vocabulary_keys_and_values_stay_findings(
 
 
 def test_t9e_design_vocabulary_near_misses_are_not_credentials(tmp_path: Path) -> None:
-    content = '{"author":"A","spinner":{"pinned":"#fff"},"authority":"x","link":"https://example.com/a/b"}'
+    content = (
+        '{"author":"A","spinner":{"pinned":"#fff"},"authority":"x",'
+        '"link":"https://example.com/a/b","tokens":{}}'
+    )
     target = _touch(tmp_path / "skills" / "x" / "tokens.json", 0o644, content)
 
     assert target not in _paths(audit.scan([tmp_path], max_depth=8))
@@ -883,7 +916,9 @@ def test_t9g_long_digitless_run_is_linear(tmp_path: Path) -> None:
 def test_t9h_fifo_and_symlink_named_tokens_json_are_never_opened(tmp_path: Path) -> None:
     skills = tmp_path / "skills" / "x"
     skills.mkdir(parents=True)
-    os.mkfifo(skills / "tokens.json")
+    fifo = skills / "tokens.json"
+    if hasattr(os, "mkfifo"):
+        os.mkfifo(fifo)
     other = tmp_path / "skills" / "y"
     other.mkdir()
     real = _touch(tmp_path / "real.dat", 0o644, '{"palette":{}}')
@@ -891,8 +926,62 @@ def test_t9h_fifo_and_symlink_named_tokens_json_are_never_opened(tmp_path: Path)
 
     found = _paths(audit.scan([tmp_path], max_depth=8))
 
-    assert skills / "tokens.json" not in found
+    if hasattr(os, "mkfifo"):
+        assert fifo not in found
     assert other / "tokens.json" not in found
+
+
+def _assert_design_tokens_classifier_returns_false_bounded(path: Path) -> None:
+    results = []
+    errors = []
+
+    def classify() -> None:
+        try:
+            results.append(audit.is_design_tokens_file(path))
+        except Exception as exc:  # pragma: no cover - asserted below
+            errors.append(exc)
+
+    thread = threading.Thread(target=classify, daemon=True)
+    thread.start()
+    thread.join(timeout=5)
+
+    assert not thread.is_alive(), "is_design_tokens_file blocked on a non-regular file"
+    assert not errors
+    assert results == [False]
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="os.mkfifo is unavailable")
+def test_t9h_classifier_rejects_fifo_without_blocking(tmp_path: Path) -> None:
+    target = tmp_path / "skills" / "x" / "tokens.json"
+    target.parent.mkdir(parents=True)
+    os.mkfifo(target)
+
+    _assert_design_tokens_classifier_returns_false_bounded(target)
+
+
+def test_t9h_classifier_rejects_symlink_without_following(tmp_path: Path) -> None:
+    real = _touch(tmp_path / "real.json", 0o644, '{"palette":{}}')
+    target = tmp_path / "skills" / "x" / "tokens.json"
+    target.parent.mkdir(parents=True)
+    target.symlink_to(real)
+
+    _assert_design_tokens_classifier_returns_false_bounded(target)
+
+
+def test_t9h_classifier_rejects_a_descriptor_that_is_not_a_regular_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The S_ISREG gate on the opened descriptor, alone: valid tokens content behind a non-regular fstat."""
+    target = _touch(tmp_path / "skills" / "x" / "tokens.json", 0o644, '{"palette":{}}')
+    assert audit.is_design_tokens_file(target) is True
+    real_fstat = os.fstat
+
+    def fifo_fstat(fd: int) -> os.stat_result:
+        st = real_fstat(fd)
+        return os.stat_result((stat.S_IFIFO | 0o644,) + tuple(st)[1:])
+
+    monkeypatch.setattr(audit.os, "fstat", fifo_fstat)
+    assert audit.is_design_tokens_file(target) is False
 
 
 def test_t9c_the_tracked_brand_tokens_file_is_design_tokens(tmp_path: Path) -> None:
