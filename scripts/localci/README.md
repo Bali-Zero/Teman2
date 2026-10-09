@@ -467,6 +467,8 @@ removes the halt, until GitHub's main again contains the last pushed merge.) The
 
 READY precheck: before the full report (about 4 minutes on Pro's journal, hundreds of GitHub reads) the tick asks the journal alone whether READY can be true yet — the first decision to now under `READY_MIN_DAYS`, or fewer than `READY_MIN_MERGES` distinct decided PRs (both constants are the report's own) — and says `READY false: journal window N.N days < 14` without running it. The precheck only ever short-circuits to false; past it the full report decides.
 
+Arming order (spec §2 phase F): (1) phase D READY; (2) the deploy key generated on Pro at `<state>/deploy_key` (0600) and registered with write — operator[secret]; (3) the phase E flip, `scripts/localci/phase_e_flip.py --apply` (in a separate PR): `merge-queue-main` restricted with the DeployKey bypass, then `main`'s classic protection (14 required checks, reviews, `enforce_admins`), which no deploy key bypasses, deleted — operator[gui]; (4) `LOCALCI_MERGER_PHASE_F=1` in the tick's environment, only after (3): before it the first push is refused and writes the sticky halt.
+
 Report: `phase_f` reads `shadow` until the window holds a `merged` or `push_refused` line, then `armed (N merged, M refused)`;
 `phase_f_halted` and the line `phase F executor: ...` (with `HALTED` when the file exists) say the rest; the READY line is unchanged.
 
