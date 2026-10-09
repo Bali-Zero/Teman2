@@ -26,10 +26,11 @@ STALE = 3 * EXPECTED_HB + 30
 KBLI = "detector_rc=1 result=divergence log=/x/kbli.log"
 PULSE = {"pulse_count": 7, "tier": 1, "action": None}
 
-KB, LD, MT, CL, VS = (
+KB, LD, MT, CL, VS, DF = (
     "pro.kbli_surface_conformance", "pro.launchd_liveness", "pro.meta_one_steward",
-    "cell.organism", "pro.visa_freshness_sentinel",
+    "cell.organism", "pro.visa_freshness_sentinel", "pro.disk_floor",
 )
+DISK = "free_gb=74.9 on /System/Volumes/Data (ok > 100, failed < 60)"
 
 # row: (organ id, status, age_s, sidecar extra, expected bucket)
 ROWS = {
@@ -68,6 +69,16 @@ ROWS = {
     "P1-prose-is-not-proof-innocence": (
         KB, "error", FRESH, {"note": "detector completed with findings"}, "dead"),
     "P2-shape-not-at-note-start-innocence": (KB, "error", FRESH, {"note": f"see {KBLI}"}, "dead"),
+    "D1-disk-warning-guilt": (DF, "warning", FRESH, {"note": f"{DISK}; biggest: ~/.colima 61.0GB"}, "findings"),
+    "D2-disk-skipped-run-innocence": (
+        DF, "warning", FRESH, {"note": "skipped: previous run alive (pid 123), free space not read"}, "dead"),
+    "D3-disk-under-floor-still-pages-innocence": (DF, "error", FRESH, {"note": f"failed: {DISK}"}, "dead"),
+    "D4-disk-unreadable-innocence": (
+        DF, "error", FRESH, {"note": "free space unreadable: df -Pk /System/Volumes/Data gave no number"}, "dead"),
+    "D5-disk-shape-not-at-note-start-innocence": (DF, "warning", FRESH, {"note": f"see {DISK}"}, "dead"),
+    "D6-disk-proof-on-another-organ-innocence": (VS, "warning", FRESH, {"note": DISK}, "dead"),
+    "D7-disk-number-missing-innocence": (
+        DF, "warning", FRESH, {"note": "free_gb= on /System/Volumes/Data (ok > 100, failed < 60)"}, "dead"),
     "S1-stale-beats-proof": (KB, "error", STALE, {"note": KBLI}, "dead"),
     "S2-healthy-status-stays-ok": (KB, "ok", 10, {"note": KBLI}, "ok"),
 }

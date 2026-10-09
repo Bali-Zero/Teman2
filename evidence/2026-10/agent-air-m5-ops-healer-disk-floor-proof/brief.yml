@@ -1,0 +1,30 @@
+task: >-
+  The Pro healer spawns a capped LLM session on every tick because receptor A classes the organ pro.disk_floor
+  (born 2026-10-08, LOCALCI-SOVEREIGN B6, producer scripts/ops/pro_disk_floor_tick.sh) as dead: its sidecar reads
+  status warning with a completed df measurement in the note, and the closed completion-proof allowlist of
+  scripts/healer_receptor_registry.py does not know this producer. Add one allowlist entry so a completed
+  60-100 GB read is alive-with-findings; under 60 GB (status error) and every no-read path stay dead.
+lane: ops
+machine: m5
+date: 2026-10-09
+gear: 2
+gear_reason: >-
+  Measured floor 1 (no hot-zone path: one allowlist line plus tests). Gear 2 is declared above the floor so that
+  harness-floor holds the merge until the independent final gate signs it (campaign rule after #8079, which merged
+  at floor 1 before its gate).
+acceptance:
+  A1:
+    text: >-
+      A fresh pro.disk_floor sidecar with status warning whose note starts with
+      "free_gb=<n>.<d> on /<path> (ok > <n>, failed < <n>)" lands in findings, not dead.
+    probe: scripts/tests/test_healer_receptor_findings.py row D1.
+  A2:
+    text: >-
+      Every other producer shape stays dead: skipped run, df unreadable, under the floor (error, "failed: ..."),
+      the shape not at note start, the number missing, the same note on another organ.
+    probe: rows D2-D7 of the same table.
+  A3:
+    text: >-
+      On Pro's real sidecars (read-only, 2026-10-09 04:3xZ) base reports dead [pro.disk_floor], dead_session 1;
+      head reports dead [], findings + pro.disk_floor, dead_session 0.
+    probe: side-by-side run of base and head registry under the checkout's yaml venv; output in the PR body.
