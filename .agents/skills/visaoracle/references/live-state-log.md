@@ -23,6 +23,10 @@ Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE S
   successors: PR-C4 #8148 merged 2026-10-09T06:27:43Z (`4443d209f1`). Vercel dpl `mouth-jounkfl8j` was aliased about 06:34Z by an automatic promotion, a few minutes after READY. Live 06:34:46Z: on balizero.com/visa-oracle, "Why we ask" on the direction question reads "Your direction decides which questions come next and which visas can fit your plan." and the old "only chooses the next questions" is gone; the full replay still shows the C3 timing and the C2 duration. Predecessors #8119, #8128, #8140 and #8145 were closed after fresh-gate BLOCKs on false sentences, a lost "above" reference, and a red suite. The fix was a per-key truth table written from the code, a Codex full sweep of every changed key (97 rendered + 17 never rendered of 114/115), and the full visa-oracle vitest subtree before push. Rule now in force: an advisor is offered, never promised. Census unchanged (seq-26): 99 SUPPORTED / 13 NO_PATH /
   1 NEEDS_INPUT / 3 HUMAN_REVIEW of 116 walks. The iQOO device check was blocked (wireless ADB on
   Pro refused, zero mDNS services). Open: see the 2026-10-09 rows in `PENDING-ARMS.md`.
+  The C4-v5 evidence pack (`evidence/2026-10/agent-air-m5-mouth-visa-oracle-interview-copy-c4-28847009/pack.yml`)
+  cites rotated cure commits in 14 dissent notes; the pack stays as a historical record. Correct
+  mapping: Gemini `b8972352eb`, #8119 gate `2789839fec`, #8128 truth table `57513c5823`, #8140 gate
+  `b1f106c796`, Codex v4 sweep `c5de6ed034`. Its builder seat should read `claude-sonnet-5`.
 
 - 2026-10-08 (afternoon, M5, result-page copy PR-C1 #8102 `11f47173a0`, organ hardening PR-O2
   #8100 `fa15d34f7e`): **the client stops seeing internal copy, and the organ's first false
