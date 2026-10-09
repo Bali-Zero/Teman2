@@ -5,6 +5,11 @@
 # identified; it was reported to the imperator, the worktree stayed unchanged afterwards, and those hunks were re-read, tested and
 # owned here. Every receipt below is a command this writer ran on 2026-10-09; scratch under
 # ~/.agent/campaign-20261005/work/dux-push-witness-ship-2/ (not committed).
+# RE-CUT (2026-10-09, imperator session, Claude Opus 5.5, M5): #8120 (head 7eb8fa552c) was BLOCKED by gate-8120 (fresh
+# read-only session) on two reds the PR caused: prepush-guards (the split-string region guard ran into the receipt's `exit 0`)
+# and the healer cure table (push_witness: pr missing). #8120 was armed, so frozen: this branch carries its commit unchanged
+# from fresh origin/main (evidence dir renamed for the new lane), then one cure commit: region re-anchored, cure row added,
+# committer dates batched, URL-prefix rows, journal deletion declared, the witness suite wired into prepush-guards.
 gear: 3
 brief_ref: evidence/brief.yml
 council_run: council-journal.jsonl
@@ -162,3 +167,39 @@ receipts:
     exit: 0
     ts: "2026-10-09T02:32:46Z"
     seat: claude-opus-5.5 (dux-push-witness-ship-2)
+  - claim: "R9 — cure round, gate-8120 B1: the region the split-string guard executes stops before the runtime receipt; prepush-guards' corpus is green as __main__ (the way CI runs it) and under pytest."
+    cmd: "python3 scripts/tests/test_prepush_honest_verdict.py ; pytest scripts/tests/test_pro_healer_receptors.py scripts/tests/test_prepush_honest_verdict.py"
+    result: "rc=0 pass=19 fail=0 ; 58 passed, 17 subtests passed"
+    exit: 0
+    ts: "2026-10-09T04:54:41Z"
+    seat: claude-opus-5.5 (imperator, re-cut)
+  - claim: "R10 — cure round, gate-8120 B2 and neighbours: the cure table pins push_witness as pr; healer and proprioception suites green; registry selftest OK."
+    cmd: "pytest scripts/tests/test_healer_run_checks.py scripts/tests/test_proprioception*.py ; proprioception.py --selftest"
+    result: "222 passed ; SELFTEST OK — registry valid (23 probes), parser guards hold, redaction holds"
+    exit: 0
+    ts: "2026-10-09T04:55:54Z"
+    seat: claude-opus-5.5 (imperator, re-cut)
+  - claim: "R11 — cure round: the witness suite is green with the URL-prefix rows (gate N4) and the two-tip batched-date test (gate N1)."
+    cmd: "python3 -m pytest -q -p no:cacheprovider scripts/tests/test_push_witness.py"
+    result: "28 passed"
+    exit: 0
+    ts: "2026-10-09T04:54:10Z"
+    seat: claude-opus-5.5 (imperator, re-cut)
+  - claim: "R12 — cure round mutants on a 10-file scratch mirror: control green, each cure's mutant red on its named test. A positional date mapping is an equivalent mutant (git prints --no-walk=unsorted in the order given) and was replaced by one date for every tip."
+    cmd: "python3 mutants.py <worktree> (work/imperator-8120r2/mutants.py)"
+    result: "M0 control GREEN ; M1 region to EOF RED (split_string_echo, region_ends_before_the_runtime_receipt) ; M2 probe cure session RED (static_cures, healer_never_counts) ; M3 one date for every tip RED (many_tips) ; M4 url startswith RED (origin-plus-slash, origin-plus-suffix)"
+    exit: 0
+    ts: "2026-10-09T04:58:50Z"
+    seat: claude-opus-5.5 (imperator, re-cut)
+  - claim: "R13 — gate N1 cost: 300 synthetic tips, a counting git shim on PATH, same refs file and journal for both reconcilers."
+    cmd: "PATH=<shim>:$PATH python3 -I <reconciler> --json --refs-file refs.json (300 refs) --since 24"
+    result: "base 7eb8fa552c: 303 git calls, 5.64 s ; this head: 4 git calls, 0.17 s ; same verdicts (checked 300, findings 300); load 5.55"
+    exit: 0
+    ts: "2026-10-09T04:52:00Z"
+    seat: claude-opus-5.5 (imperator, re-cut)
+  - claim: "R14 — guards on the cure: diff --check clean, ruff findings equal to base (2 pre-existing E741 in test_prepush_honest_verdict.py), prettier clean, sh -n clean, hook byte-identical to 7eb8fa552c, actionlint clean; floor 3, brief gear 3."
+    cmd: "git diff --check HEAD ; ruff check <4 files> ; npx --no-install prettier --check docs/specs/push-witness.md ; sh -n .husky/pre-push ; git diff --stat 7eb8fa552c -- .husky/pre-push ; actionlint .github/workflows/prepush-guards.yml ; evidence_pack_lint.py --print-floor"
+    result: "rc=0 ; Found 2 errors (base: Found 2 errors) ; All matched files use Prettier code style! ; rc=0 ; (empty) ; actionlint-ok ; 3"
+    exit: 0
+    ts: "2026-10-09T04:56:10Z"
+    seat: claude-opus-5.5 (imperator, re-cut)

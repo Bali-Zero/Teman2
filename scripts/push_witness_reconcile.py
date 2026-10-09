@@ -76,10 +76,22 @@ def load_refs(repo: Path, host: str, refs_file: Path | None) -> list[tuple[str, 
     return sorted((name, sha.lower()) for raw_name, sha in refs
                   if (name := branch_name(raw_name)).startswith(prefix) and SHA.fullmatch(sha))
 
-def commit_time(repo: Path, sha: str) -> datetime:
-    if not SHA.fullmatch(sha):
-        raise ValueError(f"invalid full commit sha: {sha!r}")
-    return parse_time(git(repo, "show", "-s", "--format=%cI", sha, "--").strip())
+def commit_times(repo: Path, shas: list[str], chunk: int = 500) -> dict[str, datetime]:
+    """Committer dates for every tip in a few git calls, not one per ref."""
+    for sha in shas:
+        if not SHA.fullmatch(sha):
+            raise ValueError(f"invalid full commit sha: {sha!r}")
+    unique, times = sorted(set(shas)), {}
+    for start in range(0, len(unique), chunk):
+        out = git(repo, "show", "-s", "--no-walk=unsorted", "--format=%H %cI",
+                  *unique[start:start + chunk], "--")
+        for line in out.splitlines():
+            sha, _, stamp = line.partition(" ")
+            times[sha.lower()] = parse_time(stamp)
+    missing = [sha for sha in unique if sha not in times]
+    if missing:
+        raise ValueError(f"no committer date for {missing[0]}")
+    return times
 
 def load_journal(path: Path) -> tuple[list[dict[str, Any]], int]:
     if not path.exists():
@@ -130,8 +142,10 @@ def reconcile(repo: Path, journal: Path, host: str, refs_file: Path | None,
     common = (repo / git(repo, "rev-parse", "--git-common-dir").strip()).resolve()
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
     findings, checked, witnessed = result["findings"], 0, 0
-    for branch, sha in load_refs(repo, host, refs_file):
-        committed = commit_time(repo, sha)
+    refs = load_refs(repo, host, refs_file)
+    dates = commit_times(repo, [sha for _, sha in refs])
+    for branch, sha in refs:
+        committed = dates[sha]
         observed = observed_time(common, branch, sha)
         result["unobserved"] += observed is None  # no reflog: the committer date is the only clock
         seen = max(committed, observed or committed)

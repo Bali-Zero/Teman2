@@ -61,6 +61,9 @@ Declared remainders:
 
 - A host owner can forge a marker by writing the journal directly; host-owner
   integrity is the trust boundary.
+- The same owner can delete or replace the journal: an empty journal reads
+  `no witness epoch yet` and a replaced one starts a new epoch, so both silence
+  the probe instead of raising it. Host-owner integrity covers this too.
 - A failed witnessed attempt followed by a bypassed retry of the same ref and
   SHA can reuse the earlier marker; the journal is not a remote push receipt.
 - A marker binds a SHA and a ref, not one push: re-pointing a branch around the

@@ -171,10 +171,29 @@ def test_a_valid_marker_wins_over_a_foreign_one_whatever_hostname_it_recorded(pu
     result = reconcile(repo, witness_dir, sha, tmp_path)
     assert (result["witnessed"], result["findings"]) == (1, [])
 
-def test_a_marker_url_must_equal_the_origin_push_url(push_repo, tmp_path: Path):
+@pytest.mark.parametrize("shape", ["origin-minus-suffix", "origin-plus-suffix", "origin-plus-slash"])
+def test_a_marker_url_must_equal_the_origin_push_url(push_repo, tmp_path: Path, shape: str):
     repo, witness_dir, _, sha = push_repo
-    journal(witness_dir, marker(sha, repo, origin_url(repo).removesuffix(".git")))
+    url = {"origin-minus-suffix": origin_url(repo).removesuffix(".git"),
+           "origin-plus-suffix": origin_url(repo) + "-evil",
+           "origin-plus-slash": origin_url(repo) + "/"}[shape]
+    journal(witness_dir, marker(sha, repo, url))
     assert reconcile(repo, witness_dir, sha, tmp_path)["findings"][0]["verdict"] == "NO-WITNESS"
+
+def test_many_tips_each_keep_their_own_committer_date(push_repo, tmp_path: Path):
+    repo, witness_dir, env, sha = push_repo
+    old_env = {**env, "GIT_AUTHOR_DATE": "2000-01-01T00:00:00Z", "GIT_COMMITTER_DATE": "2000-01-01T00:00:00Z"}
+    git(repo, "-c", "core.hooksPath=/dev/null", "commit", "-q", "--allow-empty", "-m", "old", env=old_env)
+    old_sha = git(repo, "rev-parse", "HEAD").stdout.strip()
+    other = BRANCH.replace("witness-test", "witness-other")
+    journal(witness_dir, marker(sha, repo, origin_url(repo)))
+    refs = tmp_path / "refs.json"  # one batched date lookup: the old tip must keep its own date, the new one its own
+    refs.write_text(json.dumps([[BRANCH, sha], [other.replace("witness-other", "a-old"), old_sha]]),
+                    encoding="utf-8")
+    proc = run([sys.executable, "-I", str(RECONCILER), "--json", "--host", "air-m5", "--repo-root",
+                str(repo), "--journal", str(witness_dir / "journal.jsonl"), "--refs-file", str(refs)], repo)
+    result = json.loads(proc.stdout)
+    assert (result["checked"], result["witnessed"], result["findings"]) == (1, 1, [])
 
 def test_forced_push_over_a_witnessed_tip_is_no_witness(push_repo, tmp_path: Path):
     repo, witness_dir, env, sha = push_repo
