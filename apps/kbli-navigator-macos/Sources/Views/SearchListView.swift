@@ -530,7 +530,7 @@ private struct QueryResultRow: View {
         // The canonical `pma_max_asing`, not `nationalCap`: a closed axis carries no cap, and 55203's
         // frozen cap is "0", which must read 0% — "—" only when the record states no number.
         let cap = kbli.pmaMaxAsing
-        let other = isID ? OverlayStore.shared.primaryTitle(kbli, isID: false) : kbli.judul
+        let other = OverlayStore.shared.primaryTitle(kbli, isID: !isID)
         return VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .firstTextBaseline, spacing: 16) {
                 Text(kbli.kode).font(Theme.title(27)).foregroundStyle(Theme.structure)
