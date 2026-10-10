@@ -1,0 +1,52 @@
+task_id: kbli-nav-design-en1c-q16
+mission: kbli-nav-design-loop (Track A, build, lot EN-1c — Q16 closed for the ledger, chat and card)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Set to the floor evidence_pack_lint computes for this change set by its size term, with no hot-zone path. The code
+  (Sources, Tests, Tools) is +308/−52, net +256: en_purity.py (the analyser), LabelBook.swift (originalLabel,
+  isEnglishText, fieldNames, humanise), contenttest (the curated-language and closed-set exports), content_check.py
+  (the pin) and content_check.sh (one flag). The pin JSON (+81) and this brief are evidence. One View-text change
+  (humanise, below); the 35 renders are byte-identical.
+l_level: L1
+gate_class: opus
+objective: >-
+  Lead ruling Q20 (2026-10-10): the instrument lot that closes Q16 for the PR 5/6/3 Views before they land, with the
+  #8227 gate's bindings (i), (ii) and its Q16 gaps 1–7. (1) One curated-language rule: en_purity reads a basis or note
+  by LabelBook.isEnglishText (the clause rule over the whole text, "(;—" blanked — PR 5's BasisBlock.isOriginal rule),
+  and census --curated proves Swift and Python identical on every record, naming the codes #8227's rule read
+  otherwise. (2) The analyser loads kbli-overlay.json: the Indonesian a curated overlay sentence quotes in (…) is bound
+  to that sentence (C6); a curated overlay line or sentence drawn whole is curated prose (Q17's last sentence, ruling
+  1) — never an Indonesian-only one, one carrying the raw official title, or one with a Q17 value of the record left
+  in it. Q17: each of the record's own kewenangan / perizinan / non-numeric jangka_waktu values outside (…) is a gap
+  the View fills with English, the original in parentheses after it at most (gap 4, gap 1 in prose); one inside
+  (…), quotes or a longer name ("Instruksi Gubernur Bali No. 6/2025") is the curator's original. The 22 curated
+  Bali reasons with a status word or record key (gap 3): the record's own status word and every enum or record key
+  are gaps that hold the pinned English word; the View (LabelBook.humanise) draws the record's own status word in
+  English by exact match against pma_status and a record key as its LabelBook.field label. (3) LabelBook.originalLabel.
+  (4) Per statute field: its value under the original label (innocence), another record's value under it, the value
+  unlabelled and the value under another field's label (guilt). (5) The fallback partition covers every occurrence;
+  a label lends itself only to the line next to it, or to a text forming one run of lines with it (binding 3), and a
+  line another record span holds is no piece of another text. (6) #8227 gate (i) closed-set maps pinned, (ii) the
+  statute field names read as raw by the never-drawn check. No KBLI fact, verdict, cap, basis or overlay changes.
+constraints:
+  - Renders byte-identical to en1b-labelbook (the humanise change reaches no rendered band).
+  - "Every binding of #8224 and #8227 stays green; binding 3's guilt (label / EN title / raw title) still fails."
+  - The drawn-text changes are listed in the PR body with their codes; the one invented pair ("cap verified" /
+    "batas terverifikasi") is listed for Zero.
+  - No PNG is committed.
+acceptance:
+  - text: The full census SHALL keep the seven gated surfaces at 0 and print the parity probe at 722/722 bases and 120/120 notes.
+    probe: "Pro: EN_CENSUS=full content_check.sh rc=0; 'parity: basis language … 722/722' naming the codes #8227's rule read otherwise"
+  - text: A Swift/Python disagreement SHALL fail the run naming the code.
+    probe: "Pro: content_check of a copy whose LabelBook.isEnglishText blanks '(—' only — rc=1, EN-SELFTEST … differs … <code>"
+  - text: A closed-set map edited without its pin SHALL fail.
+    probe: "Pro: content_check of a copy with LabelBook.pmaStatus TERBUKA -> Closed — rc=1, DIFF LabelBook.pmaStatus[TERBUKA]"
+  - text: A View that leaves the record's own status word raw in its curated Bali reason SHALL fail a gated surface.
+    probe: "Pro: a copy without humanise's own-status rule, encensus over the 22 codes — rc=1, registry-sheet names 69102"
+  - text: Each statute field, each Q17 gap and each curated-reason gap SHALL have its guilt and innocence rows.
+    probe: "M5/Pro: en_purity self-test 0 lines; static self-test 0 lines; the new rows escape the e77b00f714 analyser"
+  - text: PR 5 (app-gate-0a1's p5-ledger-v2) on this head SHALL leave in sheet-ledger only what its own View must fix.
+    probe: "Pro: PR 5 cherry-picked (no commit) on this head, full census, the ledger residual attributed by source"
+  - text: The head SHALL build both variants and render 35 PNGs byte-identical to en1b-labelbook.
+    probe: "Pro build-only mirror: INTERNAL_RC=0, BKPM_RC=0, RENDER_SET_RC=0, 35/35 = en1b-labelbook"

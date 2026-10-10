@@ -32,5 +32,10 @@ for code in pack["frozen"]:
     walk("." + code, want, got)
 diffs += ["DIFF balanced_rejoin.%s: false" % c for c, ok in app.get("balanced_rejoin", {}).items() if not ok]
 diffs += ["DIFF probe: " + v for v in app.get("probe_violations", [])]
+pin = json.load(open(root + "/docs/design/labelbook-pin-2026-10-10.json"))["maps"]   # #8227 gate (i)
+for m in sorted(set(pin) | set(app.get("labelbook_maps", {}))):
+    want, got = pin.get(m, {}), app.get("labelbook_maps", {}).get(m, {})
+    diffs += ["DIFF LabelBook.%s[%s]: pinned %r, app %r" % (m, k, want.get(k), got.get(k))
+              for k in sorted(set(want) | set(got)) if want.get(k) != got.get(k)]
 print("\n".join(diffs) if diffs else "content: 3 frozen codes identical (51101 heads-up = canonical pair)")
 sys.exit(1 if diffs else 0)

@@ -30,7 +30,18 @@ enum LabelBook {
     /// distinct `pma_kondisi` values are English already ("national capital owner must retain single
     /// majority", 51101) and stay as written — the label must not call English Indonesian.
     static func original(_ text: String, isID: Bool) -> String {
-        isID || isEnglish(text) ? text : "Original (Bahasa Indonesia): “\(text)”"
+        isID || isEnglish(text) ? text : "\(originalLabel): “\(text)”"
+    }
+
+    /// The label of an original, inline (`original(_:isID:)`) or on its own line above the text. One
+    /// spelling, so the census binds the text to it.
+    static let originalLabel = "Original (Bahasa Indonesia)"
+
+    /// A curated basis or note, judged on its WHOLE text: 695 of the 722 bases are English analysis quoting the
+    /// statute in «…», and their opening clause is a citation with no function word in it, so the clause rule is
+    /// read over the text with its clause marks blanked. en_purity reads by the same rule (census --curated).
+    static func isEnglishText(_ text: String) -> Bool {
+        isEnglish(String(text.map { "(;—".contains($0) ? " " : $0 }))
     }
 
     /// The opening clause decides, up to the first " — ", "(" or ";": a record's Indonesian legal phrase
@@ -108,12 +119,19 @@ enum LabelBook {
     /// The human name of a record key the provenance strip cites, so the strip says what the rule
     /// read without printing the key itself.
     static func field(_ key: String, isID: Bool) -> String {
+        guard let n = fieldNames[key] else { return key }
+        return isID ? n.id : n.en
+    }
+
+    /// Pinned with the other closed-set maps in docs/design/labelbook-pin-2026-10-10.json (contenttest).
+    static let fieldNames: [String: (en: String, id: String)] = {
         let names: [String: (en: String, id: String)] = [
             "pma_status": ("PMA status", "Status PMA"),
             "pma_max_asing": ("foreign cap", "batas modal asing"),
             "pma_cap_special": ("special-condition cap", "batas dengan syarat khusus"),
             "pma_kondisi": ("condition", "syarat"),
             "pma_route_to": ("private-sector route", "rute swasta"),
+            "pma_cap_verified": ("cap verified", "batas terverifikasi"),
             "pma_cap_verified=false": ("cap not verified", "batas belum diverifikasi"),
             "l4_bali=∅": ("no Bali block on this record", "catatan ini tidak memiliki blok Bali"),
             "l4_bali.status": ("Bali status", "Status Bali"),
@@ -124,9 +142,8 @@ enum LabelBook {
             "per_skala": ("licensing rows", "baris perizinan"),
             "kategori_risiko": ("risk class", "kelas risiko"),
         ]
-        guard let n = names[key] else { return key }
-        return isID ? n.id : n.en
-    }
+        return names
+    }()
 
     static func yesNo(_ b: Bool, isID: Bool) -> String { b ? (isID ? "ya" : "yes") : (isID ? "tidak" : "no") }
 
@@ -144,24 +161,30 @@ enum LabelBook {
     private static let enumToken = try! NSRegularExpression(pattern: "\\b[A-Za-z]+(?:_[A-Za-z]+)+\\b")
 
     /// A sentence composed upstream (a `KBLIVerdict` reason, an `l4_bali.reason`), made drawable. In
-    /// both languages a Bali-status enum inside it becomes its label. In English the record's own
-    /// `pma_kondisi` becomes the labelled original, and the status word that opens one of the rule's
-    /// own national reasons (`KBLIVerdict.nationalVerdict`) becomes its English word. Nothing else is
-    /// touched: a curated reason is content, even when it opens with a status word.
+    /// both languages a Bali-status enum or a record key inside it becomes its label. In English the
+    /// record's own status word becomes its English word wherever the sentence says it — by exact match
+    /// against `pma_status` (Q17), so 86201's curated "TERTUTUP to WNA" (a TERBUKA record) stays — and
+    /// the record's own `pma_kondisi` becomes the labelled original. Nothing else is touched: a curated
+    /// reason is content.
     static func humanise(_ s: String, record k: KBLI, isID: Bool) -> String {
         var out = s
         for m in enumToken.matches(in: s, range: NSRange(s.startIndex..., in: s)).reversed() {
-            guard let r = Range(m.range, in: out), KBLIVerdict.knownBaliStatuses.contains(out[r].uppercased())
-            else { continue }
-            out.replaceSubrange(r, with: baliStatus(String(out[r]), isID: isID))
+            guard let r = Range(m.range, in: out) else { continue }
+            let t = String(out[r])
+            if KBLIVerdict.knownBaliStatuses.contains(t.uppercased()) {
+                out.replaceSubrange(r, with: baliStatus(t, isID: isID))
+            } else if fieldNames[t] != nil {
+                out.replaceSubrange(r, with: field(t, isID: isID))
+            }
         }
         guard !isID else { return out }
+        let own = (k.pmaStatus ?? "").trimmingCharacters(in: .whitespaces).uppercased()
+        if ["TERBUKA", "TERBATAS", "TERTUTUP"].contains(own) {
+            out = out.replacingOccurrences(of: "\\b\(own)\\b", with: pmaStatus(own, isID: false),
+                                           options: .regularExpression)
+        }
         if let kondisi = k.pmaKondisi, kondisi.isEmpty == false, out.contains(kondisi) {
             out = out.replacingOccurrences(of: kondisi, with: original(kondisi, isID: false))
-        }
-        for (word, rest) in [("TERTUTUP", " — closed to foreign capital nationally"),
-                             ("TERBATAS", " with no foreign-ownership cap recorded")] where out.hasPrefix(word + rest) {
-            out = pmaStatus(word, isID: false) + out.dropFirst(word.count)
         }
         return out
     }
