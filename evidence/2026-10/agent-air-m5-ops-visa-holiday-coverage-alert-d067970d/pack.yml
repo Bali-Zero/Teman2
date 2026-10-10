@@ -1,5 +1,5 @@
 gear: 1
-brief_ref: evidence/2026-10/agent-air-m5-ops-visa-holiday-coverage-alert-d067970d/brief.yml
+brief_ref: evidence/brief.yml
 pii_scan: clean
 lanes:
   - lane: holiday-coverage-build
