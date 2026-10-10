@@ -214,7 +214,7 @@ class FakeGH:
                 assert b["actor_type"] != "DeployKey" or (b["actor_id"] is None and b["bypass_mode"] != "pull_request"), b
         if method == "PUT" and path.endswith("/protection"):
             assert {"required_status_checks", "enforce_admins", "required_pull_request_reviews", "restrictions"} <= set(body), sorted(body)
-            assert not (body["required_status_checks"] or {}).get("contexts"), "contexts beside checks"
+            assert "contexts" not in (body["required_status_checks"] or {}), "contexts beside checks (even empty)"
             # JSON types as GitHub's schema states them: a Python 1 == True would hide an integer where a boolean belongs
             is_bool = lambda v: type(v) is bool                                   # noqa: E731
             is_int = lambda v: type(v) is int                                     # noqa: E731
@@ -899,6 +899,7 @@ def test_ctrl_c_after_the_first_write_is_exit_3_with_the_rollback(fake, tmp_path
         rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
     except KeyboardInterrupt:   # caught here so an escape fails this test instead of interrupting pytest
         pytest.fail("Ctrl-C after the first write escaped W4")
+    assert "had been sent" not in err   # W4's own handler, not main's fallback, owns a failure inside the write loop
     assert rc == pef.EXIT_WRITE_FAILED and "KeyboardInterrupt" in err and "--rollback" in err and "--repo Bali-Zero/Teman2 --branch main" in err
 
 
@@ -1020,6 +1021,7 @@ def test_ctrl_c_after_the_rollbacks_first_write_is_exit_3_with_the_state_file(fa
         rc, _, err = run(fake, tmp_path, capsys, "--rollback", str(saved), "--apply", "--confirm", dig)
     except KeyboardInterrupt:
         pytest.fail("Ctrl-C after the rollback's first write escaped W4")
+    assert "had been sent" not in err   # W4's own handler owns it
     assert rc == pef.EXIT_WRITE_FAILED and "KeyboardInterrupt" in err and [m for m, _, _ in fake.writes()] == ["PUT"]
     assert str(saved) in err and "--repo Bali-Zero/Teman2 --branch main --rollback" in err and "--quiescent" in err
 
@@ -1139,9 +1141,10 @@ def classic_put_body(**rsc) -> dict:
 
 def test_the_fake_refuses_contexts_beside_checks_and_takes_checks_alone(fake):
     fake._validate("PUT", "repos/Bali-Zero/Teman2/branches/main/protection", classic_put_body(checks=[{"context": "a", "app_id": -1}]))
-    with pytest.raises(AssertionError):
-        fake._validate("PUT", "repos/Bali-Zero/Teman2/branches/main/protection",
-                       classic_put_body(checks=[{"context": "a", "app_id": -1}], contexts=["a"]))
+    for contexts in (["a"], []):   # the key itself, empty or not (Codex round 8)
+        with pytest.raises(AssertionError):
+            fake._validate("PUT", "repos/Bali-Zero/Teman2/branches/main/protection",
+                           classic_put_body(checks=[{"context": "a", "app_id": -1}], contexts=contexts))
 
 
 @pytest.mark.parametrize("damage", [
@@ -1226,6 +1229,8 @@ def test_a_failure_of_the_tools_own_output_after_the_writes_is_exit_3(fake, tmp_
     rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
     assert rc == pef.EXIT_WRITE_FAILED and "had been sent" in err and "nothing was written" not in err
     assert [m for m, _, _ in fake.writes()] == ["PUT", "DELETE"]
+    saved = next(fake.state_dir.glob("pre-flip-*.json"))
+    assert f"The state file: {saved}" in err and f"--repo Bali-Zero/Teman2 --branch main --rollback {saved}" in err
 
 
 def test_a_failure_of_the_tools_own_output_after_a_rollback_is_exit_3(fake, tmp_path, capsys, monkeypatch):
@@ -1239,3 +1244,16 @@ def test_a_failure_of_the_tools_own_output_after_a_rollback_is_exit_3(fake, tmp_
     monkeypatch.setattr(pef, "print", broken_success, raising=False)
     rc, _, err = run(fake, tmp_path, capsys, "--rollback", str(saved), "--apply", "--confirm", dig)
     assert rc == pef.EXIT_WRITE_FAILED and "had been sent" in err and [m for m, _, _ in fake.writes()] == ["PUT", "PUT"]
+    assert f"The state file: {saved}" in err and f"--rollback {saved}" in err   # the file used, not --state-dir
+
+
+@pytest.mark.parametrize("age_minutes, refused", [(116, True), (114, False)])
+def test_apply_wants_a_report_that_cannot_expire_between_the_two_writes(fake, tmp_path, capsys, age_minutes, refused):
+    rep = report(tmp_path, generated_at=(NOW - timedelta(minutes=age_minutes)).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    dig = plan_digest(fake, tmp_path, capsys, rep=rep)   # the plan itself accepts it: inside the 2 h limit
+    rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig, rep=rep)
+    if refused:
+        assert rc == pef.EXIT_REFUSED and "cannot expire between the two writes" in err and fake.writes() == []
+        assert not fake.state_dir.exists()
+    else:
+        assert rc == 0 and [m for m, _, _ in fake.writes()] == ["PUT", "DELETE"]

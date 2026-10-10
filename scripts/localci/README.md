@@ -738,7 +738,8 @@ write sent against a state nobody re-read — on draft #8191; the cause is speci
   write intended; a read that differs or fails is read again (3 reads, 2 s apart) before it counts. On a mismatch the run
   stops, writes nothing further, and prints the rollback state file.
 - *W1 for the report.* Before every write of the flip the report is read again and must still prove READY (fresh, the
-  branch's, the whole journal, FALSE_GREEN 0); otherwise the run stops before that write. This narrows the window, it does
+  branch's, the whole journal, FALSE_GREEN 0); otherwise the run stops before that write. `--apply` wants a report at least
+  5 minutes inside its 2-hour age limit, so it cannot expire between the two writes and leave the branch frozen. This narrows the window, it does
   not close it: a READY that turns false between that read and the write is the same residual as GitHub's, and quiescence
   covers it.
 - *W2, nothing else blocks the key.* Rules layer, and a bypass exempts only its own ruleset: beside `merge-queue-main`'s rule,

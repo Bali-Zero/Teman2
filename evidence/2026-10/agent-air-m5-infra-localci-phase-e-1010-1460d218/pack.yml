@@ -44,7 +44,7 @@ what_changed:
   "scripts/localci/phase_e_flip.py (new): plan by default; --apply/--confirm digest; READY report checks (fresh,\
   \ same repo,\nbase = branch, since null, finite, FALSE_GREEN 0 at every level); exactly one write key matching --key-pub;\
   \ guard and\nlayered-rule checks (rules/branches); the write discipline W1-W4 (expected states, fresh reads with retries,\
-  \ exit 3 after\nthe first write); --rollback. Tests (151, fake gh with exact argv, pagination, mid-run peer changes) and\
+  \ exit 3 after\nthe first write); --rollback. Tests (153, fake gh with exact argv, pagination, mid-run peer changes) and\
   \ mutants\n(phase_e_mutants.py, 105/105). README section \"Phase E flip\" with the write discipline and the arming order;\
   \ one spec\nparagraph.\n The fake gh validates every PUT body against GitHub's own request schemas, vendored in scripts/localci/tests/fixtures/github_rest_put_schemas.json\
   \ (github/rest-api-description @ 10efa1c8d0, MIT notice beside it, test-only, one declared deviation pinned by a test)."
@@ -66,28 +66,28 @@ ground:
   ts: "2026-10-09T19:25:45Z"
   siblings: Worktree from origin/main 323853ba30. The phase F executor (F2) is the lead's lane; merger.py and prune.py untouched.
 spend:
-  adversarial_rounds: 7
+  adversarial_rounds: 8
   wall_clock_hours: 5.5
 receipts:
-  - claim: 151 passed (test_phase_e_flip.py) after the round-7 findings and the schema-specified fake.
+  - claim: 153 passed (test_phase_e_flip.py) after the round-8 findings.
     cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_phase_e_flip.py -q -p no:cacheprovider
     exit: 0
-    ts: "2026-10-10T00:51:41Z"
+    ts: "2026-10-10T01:36:37Z"
     seat: claude-opus-5-5 on M5
   - claim:
-      "Mutants 105/105 killed after the round-7 findings (one rule dropped as equivalent: the guard's enforcement check,
+      "Mutants 107/107 killed after the round-8 findings (one rule dropped as equivalent: the guard's enforcement check,
       which the GitHub-side proof already covers); survivors, errors, stale none."
     cmd: python3 scripts/localci/tests/mutants/phase_e_mutants.py
     exit: 0
-    ts: "2026-10-10T00:51:41Z"
+    ts: "2026-10-10T01:36:37Z"
     seat: claude-opus-5-5 on M5
   - claim:
-      Independent Opus gates CONFIRMED rounds 1-4, 6 and 7; round 5 BLOCKED on the declared gear only. Codex BLOCKER rounds
-      2-4 of one class, RULED by the lead; MEDIUM rounds 5-7, fixed, the fake's laxity specified by GitHub's schema at its third
+      Independent Opus gates CONFIRMED rounds 1-4 and 6-8; round 5 BLOCKED on the declared gear only. Codex BLOCKER rounds
+      2-4 of one class, RULED by the lead; MEDIUM rounds 5-8, fixed, the fake's laxity specified by GitHub's schema at its third
       red. Kimi round 6 BLOCKER refuted.
     cmd: fresh read-only subagents; codex exec --sandbox read-only -c model_reasoning_effort=xhigh on the redacted diff
     exit: 0
-    ts: "2026-10-10T00:58:00Z"
+    ts: "2026-10-10T01:24:00Z"
     seat: claude-opus-5-5 (independent seats), codex-gpt-5.6
   - claim:
       "Live read-only plan: pre-flip, 14 checks, guard proven via rules/branches, 0 write keys, report not READY and stale
@@ -252,6 +252,19 @@ dissent:
       run_flip and run_rollback record the sent writes on the namespace; main returns exit 3 with the plan hint whenever
       a write had been sent, and guards its own output. Tests test_a_failure_of_the_tools_own_output_after_the_writes_is_exit_3,
       ..._after_a_rollback_is_exit_3; mutants pe-flip-sent-not-tracked, pe-rollback-sent-not-tracked.
+  - seat: codex-gpt-5.6-sol round 8 and claude-opus-5-5 gate round 8 (724031bf0e)
+    objection:
+      "Codex MEDIUM / Opus LOW: the fake's contexts deviation checked the value, so contexts: [] beside checks passed.
+      Both LOW: after a send the outer handler named --state-dir, not the state file used, and gave no restore command. Opus
+      LOW: a report planned near its 2 h limit could expire between the writes and freeze the branch."
+    status: CONFIRMED
+    resolution:
+      "The fake refuses the contexts key itself beside checks, empty or not; the outer handler names the state file
+      actually used (the saved one, or the rollback's) with the full restore command; --apply wants a report at least 5 minutes
+      inside its age limit. Tests: the deviation test's empty-contexts case, the two output-failure tests now assert the file
+      and command, test_apply_wants_a_report_that_cannot_expire_between_the_two_writes (2 cases); mutants pe-apply-margin-unchecked,
+      pe-after-send-state-file-lost. The Opus round-8 gate verified the vendored extract against the pinned upstream file (identical),
+      the validator against jsonschema on 9090 bodies (0 disagreements) and the lead's three conditions (met)."
 residuals:
   - "Accepted by the ruling: GitHub's REST API has no compare-and-swap for rulesets or branch protection; a sub-second window
     remains between W1's read and its write. Quiescence (--quiescent, operator-declared) takes concurrent writers out of scope;

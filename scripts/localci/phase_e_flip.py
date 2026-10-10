@@ -53,6 +53,7 @@ DEFAULT_REPORT = Path.home() / ".nuzantara-pilots" / "local-ci" / "merger" / "re
 DEFAULT_STATE_DIR = Path.home() / ".nuzantara-pilots" / "local-ci" / "phase-e"
 DEFAULT_KEY_PUB = Path.home() / ".nuzantara-pilots" / "local-ci" / "merger" / "deploy_key.pub"
 REPORT_MAX_AGE = timedelta(hours=2)
+APPLY_MARGIN = timedelta(minutes=5)   # --apply wants a report this much younger, so it cannot expire between the two writes
 REPORT_MAX_SKEW = timedelta(minutes=5)
 READY_MERGES, READY_DAYS = 50, 14   # phase D's READY as ruled 2026-10-07; read back from the report, never relaxed here
 TARGET_RULES = [{"type": "update", "parameters": {"update_allows_fetch_and_merge": False}}]
@@ -306,7 +307,7 @@ def _no_constant(name: str):
     raise ValueError(f"non-standard JSON constant {name}")
 
 
-def read_report(path: Path, repo: str, branch: str) -> tuple[list[str], str]:
+def read_report(path: Path, repo: str, branch: str, max_age: timedelta = REPORT_MAX_AGE) -> tuple[list[str], str]:
     """(blockers, one summary line). READY is the report's own field; the numbers beside it are read back so a report that
     says READY without them is refused, not believed."""
     try:
@@ -340,8 +341,8 @@ def read_report(path: Path, repo: str, branch: str) -> tuple[list[str], str]:
             age = None
         if age is None:
             blockers.append(f"report generated_at {gen} is no date")
-        elif age > REPORT_MAX_AGE or age < -REPORT_MAX_SKEW:
-            blockers.append(f"report generated {gen} is outside the last {REPORT_MAX_AGE} — recompute it first")
+        elif age > max_age or age < -REPORT_MAX_SKEW:
+            blockers.append(f"report generated {gen} is outside the last {max_age} — recompute it first")
     if rep.get("phase_e_ready") is True:
         cm, cd = win.get("compared_merges"), win.get("compared_days")
         # READY's FALSE_GREEN 0 is "at every level" (merger.py report): the decisions, the contexts and the recorded ones
@@ -490,7 +491,12 @@ def run_flip(a: argparse.Namespace) -> int:
     if all_blockers:
         print("REFUSED: " + "; ".join(all_blockers), file=sys.stderr)
         return EXIT_REFUSED
+    if margin := read_report(a.report, a.repo, a.branch, max_age=REPORT_MAX_AGE - APPLY_MARGIN)[0]:
+        print(f"REFUSED: --apply wants a report at least {APPLY_MARGIN} inside its age limit, so it cannot expire between "
+              f"the two writes and freeze the branch: {'; '.join(margin)}", file=sys.stderr)
+        return EXIT_REFUSED
     saved = save_state(a.state_dir, state, dig)
+    a.state_file = saved
     print(f"pre-flip state saved: {saved}")
     # the intended states: the confirmed one, the ruleset as the target, then no classic protection
     expect_mid = with_ruleset(state, writes[0]["body"])
@@ -575,7 +581,7 @@ def run_rollback(a: argparse.Namespace) -> int:
         return None if ok else "the ruleset's answer is not as saved"
 
     sent: list = []
-    a.sent = sent
+    a.sent, a.state_file = sent, a.rollback
     try:
         execute(a.repo, a.branch, writes, expected, {1: classic_took, 2: ruleset_back}, sent)
     except BaseException as exc:   # W4
@@ -608,14 +614,16 @@ def main(argv: list[str] | None = None) -> int:
     if not _REPO_RE.match(a.repo) or not _BRANCH_RE.match(a.branch):
         print("bad --repo or --branch", file=sys.stderr)
         return EXIT_BAD_INPUT
-    a.sent = []
+    a.sent, a.state_file = [], None
     try:
         return run_rollback(a) if a.rollback else run_flip(a)
     except (Exception, KeyboardInterrupt) as exc:   # Ctrl-C included
         try:
             if a.sent:   # after a send, W4's handler owns every failure — this is one outside it (its own output, say)
                 print(f"FAILED: {type(exc).__name__}: {exc}\n  write(s) {a.sent} had been sent: run the plan (no --apply) to "
-                      f"read the branch as it is; the state file is in {a.state_dir}", file=sys.stderr)
+                      f"read the branch as it is. The state file: {a.state_file}\n  restore with: python "
+                      f"scripts/localci/phase_e_flip.py --repo {a.repo} --branch {a.branch} --rollback {a.state_file} (plan "
+                      "first, then --apply --confirm <digest> --quiescent)", file=sys.stderr)
             else:
                 print(f"REFUSED: {type(exc).__name__ + ': ' if not isinstance(exc, FlipError) else ''}{exc}"
                       f"{'' if isinstance(exc, FlipError) else ' (nothing was written)'}", file=sys.stderr)
