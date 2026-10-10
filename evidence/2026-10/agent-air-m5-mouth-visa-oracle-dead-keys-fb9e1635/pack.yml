@@ -1,0 +1,60 @@
+# Gear-1 evidence pack - deletion of the never-rendered Visa Oracle interview keys.
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Team lead mandate, 2026-10-10 - the keys have had no renderer since PR #7659.
+mission: >-
+  No dead, possibly-false interview copy stays in the public dictionary.
+lanes:
+  - lane: dead-keys-build
+    role: build
+    seat: Claude Sonnet 5.5 implementer (worktree mouth-visa-oracle-dead-keys).
+  - lane: dead-keys-ground-truth
+    role: ground_truth
+    seat: >-
+      exact-key grep over apps/mouth/src, apps/mouth/e2e and scripts/ci returned zero references
+      outside i18n.ts for every deleted key (one pin in copy-truth.test.ts, removed); no dynamic
+      key construction found; no notebook, no memory, no regulatory figure asserted.
+    nb: none
+    query_hash: "0000000000000000000000000000000000000000000000000000000000000000" # pragma: allowlist secret
+    note: no notebook query; ground truth is the repo grep
+pii_scan: clean
+bites:
+  consumer: the public Visa Oracle page (mouth) and the client-copy observer that scans every shipped literal.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_client_copy.py
+  expect: "contains:0 banned"
+decisions:
+  - id: D-count
+    decision: >-
+      The mandate said 13 process.* keys; the checkout holds 42, all with zero references, so all 42
+      are deleted (the rule was "every process.* key").
+receipts:
+  - claim: The whole visa-oracle subtree is green after the deletion.
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
+    result: "Test Files 48 passed (48); Tests 1307 passed (1307)"
+    exit: 0
+    ts: "2026-10-10T03:35:02Z"
+    seat: Claude Sonnet 5.5
+  - claim: Typecheck is clean.
+    cmd: cd apps/mouth && npx tsc --noEmit -p tsconfig.json
+    result: "no output"
+    exit: 0
+    ts: "2026-10-10T03:36:56Z"
+    seat: Claude Sonnet 5.5
+  - claim: The client-copy observer finds nothing banned.
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3488 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-10T03:36:09Z"
+    seat: Claude Sonnet 5.5
+  - claim: The observer's own tests pass.
+    cmd: python3 -m pytest scripts/tests/test_observe_visa_oracle_client_copy.py
+    result: "4 passed in 0.34s"
+    exit: 0
+    ts: "2026-10-10T03:36:10Z"
+    seat: Claude Sonnet 5.5
+dissent: []
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 0

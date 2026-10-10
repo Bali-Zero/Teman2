@@ -186,11 +186,6 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
     "Anda belum yakin di mana klien Anda berada, jadi hal ini belum dipastikan. Anda dapat membahasnya dengan konsultan Bali Zero.",
   ],
   [
-    "question.human_context_notice",
-    "This answer may affect the questions or visa options shown.",
-    "Jawaban ini dapat memengaruhi pertanyaan atau pilihan visa yang ditampilkan.",
-  ],
-  [
     "why.review_gate",
     "Your immigration history can affect your options, and everything you select is noted in your result.",
     "Riwayat keimigrasian Anda dapat memengaruhi pilihan Anda, dan semua yang Anda pilih dicatat dalam hasil Anda.",

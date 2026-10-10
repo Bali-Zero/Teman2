@@ -690,16 +690,9 @@ const en = {
 
   "whyweask.trigger": "Why we ask",
   "whyweask.trigger.aria": "Why we ask this question",
-  "whyweask.fact_prefix": "Used to decide: {{facts}}",
-  "whyweask.review_only":
-    "Flagged for review; only these details are used: {{facts}}",
-  "whyweask.human_context":
-    "For our team’s context only — not used to decide anything.",
 
   "back.button": "Back",
   "question.continue": "Continue",
-  "question.human_context_notice":
-    "This answer may affect the questions or visa options shown.",
   "question.invalid_country_codes":
     "Choose a country from the verified list, or select Not listed.",
   "question.country_picker.placeholder": "Choose a country",
@@ -792,62 +785,6 @@ const en = {
   "tree.sr_status.current": "current step",
   "tree.sr_status.pending": "not yet reached",
   "tree.sr_status.pruned": "different interview branch",
-
-  "process.label": "Where you are in this process",
-  "process.step_of": "{{current}} of {{total}} answered",
-  "process.phases_label": "Stages",
-  "process.phase.location": "Where you are",
-  "process.phase.identity": "Who you are",
-  "process.phase.intent": "What you came for",
-  "process.phase.details": "The details of that purpose",
-  "process.phase.review": "Safety check and your answers",
-  "process.phase.outcome": "Your result",
-  "process.phase_status.done": "complete",
-  "process.phase_status.current": "open now",
-  "process.phase_status.partial": "in progress",
-  "process.phase_status.pending": "not started",
-  "process.phase_status.pruned": "not on this branch",
-  "process.decides_title": "What this question decides",
-  "process.decides_fact":
-    "Your answer sets {{plural:this detail|these details}}, which we use:",
-  "process.decides_review":
-    "Your answer is a safety signal: it can send this case to a Bali Zero advisor, and it is never read as eligibility.",
-  "process.decides_context":
-    "This question does not set a detail on its own. It steers what you are asked next, and can still count toward something we work out from your answers together.",
-  "process.decides_none":
-    "No question is open. We have the answers you confirmed.",
-  "process.decides_awaiting":
-    "No question is open. Your answers are confirmed; your result is not on screen yet.",
-  "process.decides_framing":
-    "Nothing is answered yet. Every question says what its answer decides before you answer it.",
-  "process.decides_confirmation":
-    "No question is open. Confirming these answers is what checks your case — and checks it again if you have already been here.",
-  "process.categories_title": "Purpose branches",
-  "process.category_status.current": "open — being asked now",
-  "process.category_status.done": "answered",
-  "process.category_status.pruned": "closed",
-  "process.category_status.pending": "still open",
-  "process.pruned_because":
-    "{{count}} {{plural:branch|branches}} closed when you chose “{{category}}”. Nothing you answer inside it can reopen them — go back to the purpose question to change branch.",
-  "process.pruned_none":
-    "Every purpose branch is still open. Choosing one closes the others.",
-  "process.candidates_title": "Options we found for you",
-  "process.candidates_pending":
-    "No option is named yet. We only check your case after you confirm your answers — this tool never decides eligibility on its own.",
-  "process.candidates_none":
-    "We found no option for these answers. The result below explains why.",
-  "process.candidates_undecided":
-    "We could not name an option for these answers. The result below explains why.",
-  "process.candidates_follow_up":
-    "We have your answers and need one more detail before we can decide. This question asks for it.",
-  "process.outcome_node":
-    "You have reached the end of the questions: the result below is your answer, not a separate page.",
-  "process.jump_title": "Jump back to an answer",
-  "process.jump_aria": "Jump back to {{question}} — you answered {{answer}}",
-  "process.jump_empty": "No answer to jump back to yet.",
-  "process.answer_unsure": "Not sure",
-  "process.announce_prune":
-    "You chose {{category}}. {{count}} of the other purpose {{plural:branch|branches}} closed.",
 
   "paths.counter.label": "{{count}} interview {{plural:branch|branches}}",
   "paths.counter.aria":
@@ -1082,10 +1019,6 @@ const en = {
   "footer.disclaimer":
     "Visa Oracle is private decision support. It is not a government service, approval, or filing — Ditjen Imigrasi decides. Unknown or complex cases go to human review.",
   "footer.privacy": "Visa Oracle privacy policy",
-  "process.branch_preview_more":
-    "and {{count}} more {{plural:question|questions}}",
-  "process.branch_reopen_aria":
-    "Switch to {{category}} — reopens this branch and asks its questions",
   "tree.investment_currency": "Investment currency",
   "tree.investment_amount_usd": "Investment amount",
   "tree.retirement_undecided_basis": "Long-stay route",
@@ -1779,16 +1712,9 @@ const id: Record<Keys, string> = {
 
   "whyweask.trigger": "Mengapa kami tanyakan ini",
   "whyweask.trigger.aria": "Mengapa kami menanyakan pertanyaan ini",
-  "whyweask.fact_prefix": "Dipakai untuk memutuskan: {{facts}}",
-  "whyweask.review_only":
-    "Ditandai untuk ditinjau; hanya rincian berikut yang dipakai: {{facts}}",
-  "whyweask.human_context":
-    "Hanya untuk konteks tim kami — tidak dipakai untuk memutuskan apa pun.",
 
   "back.button": "Kembali",
   "question.continue": "Lanjutkan",
-  "question.human_context_notice":
-    "Jawaban ini dapat memengaruhi pertanyaan atau pilihan visa yang ditampilkan.",
   "question.invalid_country_codes":
     "Pilih negara dari daftar terverifikasi, atau pilih Tidak tercantum.",
   "question.country_picker.placeholder": "Pilih negara",
@@ -1881,62 +1807,6 @@ const id: Record<Keys, string> = {
   "tree.sr_status.current": "langkah saat ini",
   "tree.sr_status.pending": "belum tercapai",
   "tree.sr_status.pruned": "cabang wawancara berbeda",
-
-  "process.label": "Posisi Anda dalam proses ini",
-  "process.step_of": "{{current}} dari {{total}} terjawab",
-  "process.phases_label": "Tahapan",
-  "process.phase.location": "Posisi Anda",
-  "process.phase.identity": "Identitas Anda",
-  "process.phase.intent": "Tujuan kedatangan Anda",
-  "process.phase.details": "Rincian tujuan tersebut",
-  "process.phase.review": "Pemeriksaan keamanan dan jawaban Anda",
-  "process.phase.outcome": "Hasil Anda",
-  "process.phase_status.done": "selesai",
-  "process.phase_status.current": "sedang berjalan",
-  "process.phase_status.partial": "sedang berlangsung",
-  "process.phase_status.pending": "belum dimulai",
-  "process.phase_status.pruned": "bukan cabang ini",
-  "process.decides_title": "Yang ditentukan pertanyaan ini",
-  "process.decides_fact":
-    "Jawaban Anda menetapkan rincian berikut, yang kami pakai:",
-  "process.decides_review":
-    "Jawaban Anda adalah sinyal keamanan: kasus ini dapat diteruskan ke konsultan Bali Zero, dan tidak pernah dibaca sebagai kelayakan.",
-  "process.decides_context":
-    "Pertanyaan ini tidak menetapkan rincian tersendiri. Pertanyaan ini mengarahkan pertanyaan berikutnya, dan masih dapat menjadi bagian dari sesuatu yang kami simpulkan dari jawaban Anda secara keseluruhan.",
-  "process.decides_none":
-    "Tidak ada pertanyaan yang terbuka. Kami sudah menerima jawaban yang Anda konfirmasi.",
-  "process.decides_awaiting":
-    "Tidak ada pertanyaan yang terbuka. Jawaban Anda sudah dikonfirmasi; hasil Anda belum tampil di layar.",
-  "process.decides_framing":
-    "Belum ada yang dijawab. Setiap pertanyaan menjelaskan apa yang ditentukan jawabannya sebelum Anda menjawab.",
-  "process.decides_confirmation":
-    "Tidak ada pertanyaan yang terbuka. Mengonfirmasi jawaban inilah yang memeriksa kasus Anda — dan memeriksanya lagi jika Anda pernah ke sini.",
-  "process.categories_title": "Cabang tujuan",
-  "process.category_status.current": "terbuka — sedang ditanyakan",
-  "process.category_status.done": "sudah dijawab",
-  "process.category_status.pruned": "ditutup",
-  "process.category_status.pending": "masih terbuka",
-  "process.pruned_because":
-    "{{count}} cabang ditutup ketika Anda memilih “{{category}}”. Jawaban di dalam cabang ini tidak dapat membukanya kembali — kembali ke pertanyaan tujuan untuk mengganti cabang.",
-  "process.pruned_none":
-    "Semua cabang tujuan masih terbuka. Memilih satu akan menutup yang lain.",
-  "process.candidates_title": "Pilihan yang kami temukan untuk Anda",
-  "process.candidates_pending":
-    "Belum ada pilihan yang disebut. Kami baru memeriksa kasus Anda setelah Anda mengonfirmasi jawaban — alat ini tidak pernah memutuskan kelayakan sendiri.",
-  "process.candidates_none":
-    "Kami tidak menemukan pilihan untuk jawaban ini. Hasil di bawah menjelaskan alasannya.",
-  "process.candidates_undecided":
-    "Kami belum dapat menyebut pilihan untuk jawaban ini. Hasil di bawah menjelaskan alasannya.",
-  "process.candidates_follow_up":
-    "Kami sudah menerima jawaban Anda dan masih memerlukan satu rincian lagi sebelum dapat memutuskan. Pertanyaan ini menanyakannya.",
-  "process.outcome_node":
-    "Anda sudah sampai di akhir pertanyaan: hasil di bawah adalah jawaban Anda, bukan halaman terpisah.",
-  "process.jump_title": "Kembali ke sebuah jawaban",
-  "process.jump_aria": "Kembali ke {{question}} — Anda menjawab {{answer}}",
-  "process.jump_empty": "Belum ada jawaban untuk dituju.",
-  "process.answer_unsure": "Tidak yakin",
-  "process.announce_prune":
-    "Anda memilih {{category}}. {{count}} cabang tujuan lainnya ditutup.",
 
   "paths.counter.label": "{{count}} cabang wawancara",
   "paths.counter.aria": "{{count}} cabang wawancara tersisa",
@@ -2141,9 +2011,6 @@ const id: Record<Keys, string> = {
   "footer.disclaimer":
     "Visa Oracle adalah alat bantu keputusan privat. Ini bukan layanan pemerintah, persetujuan, atau pengajuan — Ditjen Imigrasi yang memutuskan. Kasus yang tidak diketahui atau kompleks ditinjau manusia.",
   "footer.privacy": "Kebijakan privasi Visa Oracle",
-  "process.branch_preview_more": "dan {{count}} pertanyaan lagi",
-  "process.branch_reopen_aria":
-    "Beralih ke {{category}} — membuka kembali cabang ini dan menanyakan pertanyaannya",
   "tree.investment_currency": "Mata uang investasi",
   "tree.investment_amount_usd": "Jumlah investasi",
   "tree.retirement_undecided_basis": "Jalur tinggal panjang",
