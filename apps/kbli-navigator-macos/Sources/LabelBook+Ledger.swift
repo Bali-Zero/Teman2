@@ -36,10 +36,13 @@ extension LabelBook {
     ]
 
     /// Q17: a pipeline token quoted inside curated English prose becomes its label by exact match, never by
-    /// pattern (`per_skala` is `field`'s own name for it); and each of the record's own closed-set values the
-    /// prose quotes where it stands alone reads in English: an office or a licence keeps its original in
-    /// parentheses (none when the curator's own gloss follows: "Regent / Mayor (district/city head)"), a term
-    /// does not. One inside (…), quotes or a longer name ("Instruksi Gubernur Bali") is the curator's original.
+    /// pattern (`per_skala` is `field`'s own name for it). Each of the record's own closed-set values — a
+    /// `kewenangan` office, the `perizinan` licence, a non-numeric `jangka_waktu` term — and its own `judul` (lead,
+    /// 2026-10-11) reads in English with its original in parentheses after it ("Regent / Mayor (Bupati/Walikota)",
+    /// "<English title> (<official title>)"), wherever it stands alone. It does not when it is the whole of a (…) —
+    /// the curator's own original —, a title anywhere inside one, inside quotes, or a word of a longer name
+    /// ("Instruksi Gubernur Bali"); inside a longer parenthesis an office is prose like any other (#8232 F2:
+    /// "(outside Jakarta: Bupati/Walikota)"). The same rule en_purity reads (HARNESS-REQUESTS R19).
     static func ledgerProse(_ s: String, record k: KBLI, isID: Bool) -> String {
         guard !isID else { return s }
         let t = [("BPS_ONLY", "BPS-only"), ("per_skala", field("per_skala", isID: false))]
@@ -53,28 +56,43 @@ extension LabelBook {
                 guard let r = Range(m.range, in: line), let gap = gaps.first(where: { $0.raw == String(line[r]) }) else { continue }
                 let pre = line[..<r.lowerBound], post = line[r.upperBound...]
                 let n = { (c: Character) in pre.filter { $0 == c }.count }
-                if n("(") > n(")") || n("\"") % 2 == 1 || n("“") > n("”")
+                let alone = pre.range(of: "\\(\\s*$", options: .regularExpression) != nil
+                    && post.range(of: "^\\s*\\)", options: .regularExpression) != nil
+                if n("(") > n(")") && (gap.isTitle || alone) || n("\"") % 2 == 1 || n("“") > n("”")
                     || pre.range(of: "[A-Z][a-z]+ $", options: .regularExpression) != nil
                     || post.range(of: "^ [A-Z][a-z]", options: .regularExpression) != nil { continue }
-                let glossed = post.hasPrefix(" (") || post.hasPrefix("(")
-                out.replaceSubrange(Range(m.range, in: out)!, with: gap.keepsOriginal && !glossed ? "\(gap.en) (\(gap.raw))" : gap.en)
+                out.replaceSubrange(Range(m.range, in: out)!, with: "\(gap.en) (\(gap.original))")
             }
             return out
         }.joined(separator: "\n")
     }
 
-    /// The record's `kewenangan` offices, `perizinan` licences and non-numeric `jangka_waktu` terms that have an
-    /// English here, longest first, so "Bupati/Walikota" is read before a shorter value inside it.
-    private static func closedValues(_ k: KBLI) -> [(raw: String, en: String, keepsOriginal: Bool)] {
-        var out: [String: (String, Bool)] = [:]
+    /// The record's `kewenangan` offices, `perizinan` licence, non-numeric `jangka_waktu` terms and `judul` that have
+    /// an English here, longest first, so "Bupati/Walikota" is read before a shorter value inside it.
+    private static func closedValues(_ k: KBLI) -> [(raw: String, en: String, original: String, isTitle: Bool)] {
+        var out: [String: (String, String, Bool)] = [:]
         for p in k.perSkala {
-            for v in p.kewenanganLevels where authorityRank(v) > 0 { out[v.trimmingCharacters(in: .whitespaces)] = (authority(v, isID: false), true) }
-            for v in p.perizinanList where v == "NIB dan Sertifikat Standar" { out[v] = ("NIB + Standard Certificate", true) }
+            for v in p.kewenanganLevels.map({ $0.trimmingCharacters(in: .whitespaces) }) where authorityRank(v) > 0 {
+                out[v] = (authority(v, isID: false), v, false)
+            }
+            for v in p.perizinanList where v == "NIB dan Sertifikat Standar" { out[v] = ("NIB + Standard Certificate", v, false) }
             if let v = p.jangkaWaktu?.trimmingCharacters(in: .whitespaces), v.contains(where: \.isLetter), term(v, isID: false) != v {
-                out[v] = (term(v, isID: false), false)
+                out[v] = (term(v, isID: false), v, false)
             }
         }
-        return out.sorted { $0.key.count > $1.key.count }.map { ($0.key, $0.value.0, $0.value.1) }
+        let j = k.judul.trimmingCharacters(in: .whitespaces)
+        if !j.isEmpty, title(k, isID: false) != j { out[j] = (title(k, isID: false), officialTitle(k), true) }
+        return out.sorted { $0.key.count > $1.key.count }.map { ($0.key, $0.value.0, $0.value.1, $0.value.2) }
+    }
+
+    /// The roadmap's incorporation step, which the View writes for every code (scaleAwareStep): a PT PMA route only
+    /// where a Besar row exists and the code is not nationally closed. English: "sole proprietorship" stands for
+    /// "Perorangan" (listed for Zero).
+    static func incorporationStep(foreignRoute: Bool, isID: Bool) -> String {
+        foreignRoute
+            ? (isID ? "PT PMDN (lokal) atau PT PMA (asing) — akta notaris, AHU" : "PT PMDN (local) or PT PMA (foreign) — notary deed, AHU")
+            : (isID ? "PT PMDN / CV / Perorangan (lokal, WNI) — akta notaris, AHU"
+                    : "PT PMDN / CV / sole proprietorship (local, WNI) — notary deed, AHU")
     }
 
     /// The roadmap's step duration, a closed set (Q17, exact match): its one Indonesian value, "Otomatis", is a
