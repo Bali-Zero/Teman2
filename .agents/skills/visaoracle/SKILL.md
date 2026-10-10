@@ -154,6 +154,10 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   (indicative)"); 46 never-rendered interview keys deleted EN+ID (#8205, live 04:43:15Z: 0 of 33 chunks carry
   them); the freshness sentinel's holiday-coverage lane (#8206) alerts the owner 60 days before the working-day
   estimate runs out of loaded decrees (today `OK first_gap=2027-11-19 year_to_load=2028`, real tick 05:23:44Z).
+  Later the same day: the shared summary keeps the price for candidates without duration options (#8218, live
+  08:25Z: "B1 — Visa on Arrival — Tourism (B1): IDR 750,000 · Typically within 1 working day (indicative)");
+  an i18n dead-key census guards the dictionary (#8233: 102 unrendered keys frozen, the 46 deleted ones
+  tombstoned); the holiday lane keeps naming the gap day and escalates a blind probe after 4 ticks (#8221).
 - **SUPERSEDED by seq-27 (history): seq-26 since 2026-10-08T10:08:02Z (activation `1c7ac00b-7c5e-44e9-8efc-392d03fb47ef`, PR #8081,
   merge `f43d4ac0a0`).** E31A–J now offer 1 or 2 years as a duration option on the same
   product: 365 maps to the existing key, 730 to the "2 Years" sibling, one all-inclusive price

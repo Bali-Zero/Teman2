@@ -18,6 +18,14 @@ Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE S
   #8206 holiday-coverage lane in the freshness sentinel, owner-routed (`visa-holiday-coverage` in
   `OWNER_FAMILIES`), WITA day; Pro fast-forwarded. Fly deploy of `2478b87561` (pack file + coverage module,
   no runtime change) followed the merges. iQOO: developer mode re-enabled by the owner, pairing not yet done.
+  Afternoon follow-ups (each gated by a fresh Opus session, then armed): #8218 share summary keeps the price
+  when a candidate has no duration options (it was dropped for most non-E31 products; live 08:25Z on the
+  promoted deploy); #8219 mouth Vitest cap really applies (`maxWorkers: 2`, the old `poolOptions` was ignored
+  since Vitest 4); #8221 holiday lane L1/L3/L4 (Pro tick 16:56 WITA on the new code, still
+  `OK first_gap=2027-11-19`); #8233 i18n dead-key census (gate made it strip comments before scanning); #8231
+  Pro `~/scripts/tg_notify.py` declared and aligned as a symlink (a copied file would have routed board rows
+  into an unread spool). M5 rebooted mid-afternoon; the census and tg_notify lanes were finished by the
+  orchestrator from their committed worktrees.
 
 - 2026-10-09 (M5, client-copy chain C2, C3, C4): **the result page now shows the priced
   stay-permit length and Bali Zero's typical processing time.** C2 #8124 (`06c3346702`, merged
