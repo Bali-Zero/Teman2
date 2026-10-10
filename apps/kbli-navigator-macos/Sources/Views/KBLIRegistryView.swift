@@ -1613,8 +1613,8 @@ struct PP28ScalePanel: View {
             }
             // legend + tapped-cell detail (full scope description shows in the tapped cell's detail)
             HStack(spacing: 10) {
-                legendDot(Theme.riskLow, isID ? "R" : "L"); legendDot(Theme.riskMediumLow, "MR")
-                legendDot(Theme.riskMediumHigh, "MT"); legendDot(Theme.riskHigh, isID ? "T" : "H")
+                legendChip("Rendah", isID ? "R" : "L"); legendChip("Menengah Rendah", "MR")
+                legendChip("Menengah Tinggi", "MT"); legendChip("Tinggi", isID ? "T" : "H")
                 Text(isID ? "— ketuk sel untuk detail" : "— tap a cell for detail")
                     .font(Theme.scalable(10)).foregroundStyle(Theme.faint)
             }.padding(.top, 2)
@@ -1639,16 +1639,18 @@ struct PP28ScalePanel: View {
     private func cell(scope: String, scale: String) -> some View {
         Group {
             if let hit = rowFor(scope: scope, scale: scale) {
-                let color = Theme.riskColor(hit.row.kategoriRisiko ?? "")
+                // The tier is the chip's fill weight (spec §1.3 ramp), as in the registry's RiskCell;
+                // the selected cell adds a 2 pt copper ring, the selection colour of every table.
                 let selected = (matrixSel ?? defaultCell) == hit.idx
+                let chip = Theme.riskChip(hit.row.kategoriRisiko)
                 Button { matrixSel = (matrixSel == hit.idx ? nil : hit.idx) } label: {
                     Text(riskAbbr(hit.row.kategoriRisiko))
+                        .foregroundStyle(chip.fg)
                         .font(Theme.scalable(11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(color)
                         .frame(maxWidth: .infinity, minHeight: 30)
-                        .background(color.opacity(selected ? 0.30 : 0.12),
-                                    in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(selected ? color : .clear, lineWidth: 1.5))
+                        .background(chip.bg, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(selected ? Theme.accent : (chip.border ?? .clear),
+                                                                                lineWidth: selected ? 2 : 1))
                 }.buttonStyle(.plain)
             } else {
                 // combination does not exist (real fact: e.g. no "Warung" at Besar scale)
@@ -1658,11 +1660,13 @@ struct PP28ScalePanel: View {
         }
     }
 
-    private func legendDot(_ c: Color, _ t: String) -> some View {
-        HStack(spacing: 3) {
-            Circle().fill(c).frame(width: 7, height: 7)
-            Text(t).font(Theme.scalable(9, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.faint)
-        }
+    /// One tier of the matrix legend, drawn as the cells draw it: the riskChip fill, ink and border.
+    private func legendChip(_ tier: String, _ t: String) -> some View {
+        let chip = Theme.riskChip(tier)
+        return Text(t).font(Theme.scalable(9, weight: .semibold, design: .monospaced)).foregroundStyle(chip.fg)
+            .padding(.horizontal, 5).padding(.vertical, 1)
+            .background(chip.bg, in: RoundedRectangle(cornerRadius: 2))
+            .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(chip.border ?? .clear, lineWidth: 1))
     }
 
     /// Detail for one tapped (scope, scale) cell: scope label + scale + risk + duties + requirements.

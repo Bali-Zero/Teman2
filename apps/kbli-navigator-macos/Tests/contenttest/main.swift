@@ -70,6 +70,7 @@ let out: [String: Any] = MainActor.assumeIsolated {
     // Each redesigned view must still ask the canonical functions (append one line per view).
     let mustCall: [String: [String]] = [
         "Sources/Views/SearchListView.swift": ["KBLIVerdict.headsUp(", "OverlayStore.shared.primaryTitle("],
+        "Sources/Views/KBLIRegistryTable.swift": ["Theme.riskChip(", "Theme.chip("],
     ]
     for (file, calls) in mustCall.sorted(by: { $0.key < $1.key }) {
         guard let src = try? String(contentsOfFile: "\(appRoot)/\(file)", encoding: .utf8) else {
@@ -77,6 +78,23 @@ let out: [String: Any] = MainActor.assumeIsolated {
         }
         for call in calls where !src.contains(call) {
             violations.append("\(file) lacks the required call \(call)")
+        }
+    }
+    // …and must not read the raw field a canonical function replaces: `.judul` as a whole word, on any line,
+    // comments included. Listed only for a view with no such read at its redesign (append one line per view).
+    let mustNotRead: [String: [String]] = [
+        "Sources/Views/SearchListView.swift": ["judul"],
+    ]
+    for (file, fields) in mustNotRead.sorted(by: { $0.key < $1.key }) {
+        guard let src = try? String(contentsOfFile: "\(appRoot)/\(file)", encoding: .utf8) else {
+            err("probe: cannot read \(file)"); continue
+        }
+        for field in fields {
+            let re = try! NSRegularExpression(pattern: "\\.\(field)\\b")
+            for (n, line) in src.components(separatedBy: "\n").enumerated()
+            where re.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)) != nil {
+                violations.append("\(file):\(n + 1) reads the raw .\(field): \(line.trimmingCharacters(in: .whitespaces).prefix(80))")
+            }
         }
     }
     return ["codes": codes, "balanced_rejoin": rejoin, "probe_violations": violations]

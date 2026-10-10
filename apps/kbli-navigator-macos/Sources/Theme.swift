@@ -475,6 +475,13 @@ enum Theme {
     /// context — the residual risk (a taller code/title line inside an unchanged-height row at
     /// large accessibility sizes) is real and NOT resolved by this pass; flagged for a live GUI
     /// check, not silently accepted.
+    /// Extra leading that puts `size` pt type on a `line` pt line (spec "13/20"). SwiftUI's
+    /// `lineSpacing` adds to the face's natural height, which for the bundled cuts (hhea, no line
+    /// gap) is Manrope 1.366 em and Fraunces 1.233 em.
+    static func leading(_ size: CGFloat, _ line: CGFloat, serif: Bool = false) -> CGFloat {
+        max(0, line - size * (serif ? 1.233 : 1.366))
+    }
+
     static func scalable(_ size: CGFloat, weight: Font.Weight = .regular, design: Font.Design? = nil) -> Font {
         let style: Font.TextStyle
         switch size {

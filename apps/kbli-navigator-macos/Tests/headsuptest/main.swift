@@ -106,7 +106,7 @@ MainActor.assumeIsolated {
     } else { ck(false, "51101 present") }
 
     // B3 (0b1 ruling): 448 codes change against the pre-Q10 predicates, frozen here as on main 27ca6fb108:
-    // detail card `cannotProceed = baliBlocked || nationallyClosed` (KBLIDetailRichView.swift:193) → the
+    // detail card `cannotProceed = baliBlocked || nationallyClosed` (KBLIDetailRichView.swift:189-193) → the
     // rich.verdict.blocked/open label; dossier `l4Bali.blocked == true` (KBLIDossierView.swift:88) → that
     // label + dossier.holding.blocked/open. The changed set must be exactly classes 2–6, in en and id.
     print("\nchanged against the frozen pre-Q10 predicates:")
@@ -114,15 +114,19 @@ MainActor.assumeIsolated {
     for isID in [false, true] {
         let t = tbl(isID)
         var detail = Set<String>(), dossier = Set<String>()
-        for k in records {
-            let v = KBLIVerdict.of(record: k)
+        for kbli in records {
+            // KBLIDetailRichView.swift:189-193 at 27ca6fb108, byte for byte after the indentation:
+            let v = KBLIVerdict.of(record: kbli)
             let baliBlocked: Bool = { if case .blocked = v.bali { return true } else { return false } }()
             let nationallyClosed: Bool = { if case .closed = v.national { return true } else { return false } }()
-            let blocked = k.l4Bali?.blocked == true
-            let r = hu(k, isID)
-            if r.label != t[(baliBlocked || nationallyClosed) ? "rich.verdict.blocked" : "rich.verdict.open"]! { detail.insert(k.kode) }
+            // Any of these means a foreign-owned PMA cannot freely register this code as-is.
+            let cannotProceed = baliBlocked || nationallyClosed
+            // KBLIDossierView.swift:88 at 27ca6fb108, byte for byte after the indentation:
+            let blocked = kbli.l4Bali?.blocked == true
+            let r = hu(kbli, isID)
+            if r.label != t[cannotProceed ? "rich.verdict.blocked" : "rich.verdict.open"]! { detail.insert(kbli.kode) }
             if r.label != t[blocked ? "rich.verdict.blocked" : "rich.verdict.open"]!
-                || r.sentence != t[blocked ? "dossier.holding.blocked" : "dossier.holding.open"]! { dossier.insert(k.kode) }
+                || r.sentence != t[blocked ? "dossier.holding.blocked" : "dossier.holding.open"]! { dossier.insert(kbli.kode) }
         }
         for (name, got) in [("detail card", detail), ("dossier", dossier)] {
             ck(got.count == 448 && got == cls26, "[\(isID ? "id" : "en")] \(name): \(got.count) changed == 448 == classes 2–6 "

@@ -66,19 +66,19 @@ PAIRS = [
     ("white/ink", "white", ("solid","ink"), 4.5, "RootView.swift:120 .background(Theme.ink)"),
     ("white/inkLift", "white", ("solid","inkLift"), 4.5, "GlassCard fill Theme.inkLift"),
     ("muted/antracite", "muted", ("solid","antracite"), 4.5, "RootView.swift:340 .foregroundStyle(Theme.muted) on window bg"),
-    ("muted/ink", "muted", ("solid","ink"), 4.5, "SearchListView.swift:437/442 on Theme.ink; = neutral chip (Theme.chip(.neutral): muted on wash)"),
+    ("muted/ink", "muted", ("solid","ink"), 4.5, "SearchListView.swift:419/348 rail facet labels on Theme.wash (= ink); KBLIRegistryTable.swift:71 neutral VerdictBadge (Theme.chip(.neutral): muted on wash)"),
     ("muted/inkLift", "muted", ("solid","inkLift"), 4.5, "KBLIDossierView.swift:60/100 on card"),
     ("faint/antracite", "faint", ("solid","antracite"), 4.5, "RootView.swift:142 on window bg; SearchFieldBar.swift:48 density glyph on the bar"),
     ("faint/ink", "faint", ("solid","ink"), 4.5, "RegistryVerdictSheet.swift:93/108 on Theme.ink"),
-    ("faint/inkLift", "faint", ("solid","inkLift"), 4.5, "KBLIDetailView.swift:102/207 on card"),
+    ("faint/inkLift", "faint", ("solid","inkLift"), 4.5, "KBLIDetailView.swift:101/206 on card"),
     ("accent/antracite", "accent", ("solid","antracite"), 4.5, "KBLIDetailRichView.swift:379 accent link on window"),
-    ("accent/inkLift", "accent", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:137/2023 accent on card"),
+    ("accent/inkLift", "accent", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:137/2027 accent on card"),
     ("zantara/antracite", "zantara", ("solid","antracite"), 4.5, "ChatView.swift:48/105/117 zantara label on window"),
     ("zantara/ink", "zantara", ("solid","ink"), 4.5, "KBLIDetailRichView.swift:358/366 zantara on ink"),
     ("statutory/inkLift", "statutory", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:992 statutory pill text"),
     ("statutory/ink", "statutory", ("solid","ink"), 4.5, "KBLIRegistryView.swift:1567/1601 statutory on ink"),
     ("yellow/antracite", "yellow", ("solid","antracite"), 4.5, "KBLIRegistryView.swift:481/893 yellow on window"),
-    ("yellow/inkLift", "yellow", ("solid","inkLift"), 4.5, "KBLIDetailView.swift:93 gold-tier label on card"),
+    ("yellow/inkLift", "yellow", ("solid","inkLift"), 4.5, "KBLIDetailView.swift:92 gold-tier label on card"),
     ("white/ink@0.6-on-antracite", "white", ("composite","ink",0.6,"antracite"), 4.5, "ChatView.swift:61/180 header/footer strip"),
     ("faint/ink@0.6-on-antracite", "faint", ("composite","ink",0.6,"antracite"), 4.5, "ChatView.swift:53 on header strip"),
     ("muted/ink@0.6-on-antracite", "muted", ("composite","ink",0.6,"antracite"), 4.5, "ChatView.swift:58/90 on header/footer strip"),
@@ -112,25 +112,76 @@ PAIRS = [
 RISK_CHIP = [("riskInk", "riskFillLow", "rank 1"), ("riskInk", "riskFillMediumLow", "rank 2"),
              ("riskInk", "riskFillMediumHigh", "rank 3"), ("riskInkOnHigh", "riskFillHigh", "rank 4"),
              ("muted", "ink", "unranked")]
-SITES = ["KBLIRegistryView.swift:1541 scopeRow mini risk chip", "KBLIRegistryView.swift:1708 cellDetail risk chip"]
+SITES = ["KBLIRegistryView.swift:1541 scopeRow mini risk chip", "KBLIRegistryView.swift:1712 cellDetail risk chip",
+         "KBLIRegistryView.swift:1648 riskMatrix cell", "KBLIRegistryView.swift:1666 riskMatrix legend chip",
+         "KBLIRegistryTable.swift:110 RiskCell, the registry table's OSS-risk column"]
 SITE_PAIRS = [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5, "%s — Theme.riskChip %s" % (site, tier))
               for site in SITES for fg, bg, tier in RISK_CHIP]
+# Tone-chip ink painted straight on a row's ground: the ruled heads-up label of the search results, Theme.chip(tone).fg
+# on antracite at rest and on wash (= ink) when selected or hovered. CHIP_FG mirrors Theme.chip's switch (PARITY).
+CHIP_FG = [("chipOpenFg", "open"), ("chipRestrictedFg", "restricted"), ("chipClosedFg", "closed"), ("muted", "neutral")]
+CHIP_SITES = ["SearchListView.swift:655 ruled heads-up label"]
+SITE_PAIRS += [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5,
+                "%s on %s — Theme.chip(.%s).fg" % (site, ground, tone))
+               for site in CHIP_SITES for fg, tone in CHIP_FG
+               for bg, ground in (("antracite", "the row at rest"), ("ink", "wash (= ink), selected or hovered"))]
 
-# Literal white (or grey-scale) colours: `.white`, `Color.white`, `NSColor.white`, any `white:` / `…White:`
-# initialiser (`Color(white:`, `Color.init(white:`, `.init(white:`, `Color(.sRGB, white:`, `NSColor(white:alpha:)`,
-# `NSColor(calibratedWhite:`), `Color(red: 1, green: 1, blue: 1)` and `Color(hex: 0xFFFFFF)`. A grey `white:` is
-# flagged too, on purpose: a literal is not a token. `Theme.white` is a token.
-WHITE_RE = re.compile(r"(?<![\w.])\.white\b|\b(?:Color|NSColor)\.white\b"
-                      r"|(?:\b(?:Color|NSColor)(?:\.init)?|(?<!\w)\.init)\s*\((?:\s*\.\w+\s*,)?\s*\w*[wW]hite\s*:"
-                      r"|\b(?:Color|NSColor)(?:\.init)?\s*\((?:\s*\.\w+\s*,)?\s*red\s*:\s*1(?:\.0*)?\s*,\s*green\s*:\s*1(?:\.0*)?\s*,\s*blue\s*:\s*1(?:\.0*)?\b"
+# Literal white (or grey-scale) colours: `.white`, `Color.white`, `NSColor.white`, `CGColor.white`, any `white:` /
+# `…White:` initialiser (`Color(white:`, `Color.init(white:`, `.init(white:`, `Color(.sRGB, white:`,
+# `NSColor(white:alpha:)`, `NSColor(calibratedWhite:`), `CGColor(gray:`, a 1/1/1 `red:` / `srgbRed:` /
+# `calibratedRed:` / `deviceRed:` initialiser, a `hue:` initialiser at saturation 0 and brightness 1, and
+# `Color(hex: 0xFFFFFF)`. A grey `white:` is flagged too, on purpose: a literal is not a token. `Theme.white` is a token.
+ONE = r"\s*1(?:\.0*)?(?![\w.])"
+WHITE_RE = re.compile(r"(?<![\w.])\.white\b|\b(?:Color|NSColor|CGColor)\.white\b"
+                      r"|(?:\b(?:Color|NSColor|CGColor)(?:\.init)?|(?<!\w)\.init)\s*\((?:\s*\.\w+\s*,)?\s*(?:\w*[wW]hite|gray)\s*:"
+                      r"|\b(?:Color|NSColor|CGColor)(?:\.init)?\s*\((?:\s*\.\w+\s*,)?\s*(?:red|srgbRed|calibratedRed|deviceRed)\s*:"
+                      + ONE + r"\s*,\s*green\s*:" + ONE + r"\s*,\s*blue\s*:" + ONE +
+                      r"|\b(?:Color|NSColor)(?:\.init)?\s*\((?:\s*\.\w+\s*,)?\s*(?:hue|calibratedHue|deviceHue)\s*:\s*[\d.]+\s*,"
+                      r"\s*saturation\s*:\s*0(?:\.0*)?(?![\w.])\s*,\s*brightness\s*:" + ONE +
                       r"|\bColor(?:\.init)?\s*\(\s*hex\s*:\s*0x[fF]{6}(?:[fF]{2})?\b")
 # Self-test, run on every invocation: each GUILT spelling must hit, no INNOCENT line may.
 WHITE_GUILT = ["Text(x).foregroundStyle(.white)", "Color.white", "NSColor.white", "Color(white: 1)", "Color( white: 1)",
                "Color.init(white: 1)", ".foregroundStyle(.init(white: 1))", "Color(.sRGB, white: 1, opacity: 1)",
                "NSColor(white: 1, alpha: 1)", "NSColor(calibratedWhite: 1, alpha: 1)", "Color(red: 1, green: 1, blue: 1)",
-               "Color(red:1.0,green:1.0,blue:1.0)", "Color(hex: 0xFFFFFF)", "Color(hex:0xffffffff)"]
+               "Color(red:1.0,green:1.0,blue:1.0)", "Color(hex: 0xFFFFFF)", "Color(hex:0xffffffff)",
+               "NSColor(srgbRed:1,green:1,blue:1,alpha:1)", "NSColor(calibratedRed: 1, green: 1, blue: 1, alpha: 1)",
+               "NSColor(deviceRed: 1.0, green: 1, blue: 1, alpha: 1)", "CGColor.white", "CGColor(gray: 1, alpha: 1)",
+               "CGColor(red: 1, green: 1, blue: 1, alpha: 1)", "Color(hue:0,saturation:0,brightness:1)",
+               "NSColor(calibratedHue: 0.5, saturation: 0, brightness: 1.0, alpha: 1)"]
 WHITE_INNOCENT = ["Text(x).foregroundStyle(Theme.white)", "CharacterSet.whitespaces", "Color(red: 1, green: 0.5, blue: 1)",
-                  "Color(red: 1, green: 1, blue: 10)", "Color(hex: 0xF7F4EE)", "Color(hex: isDark ? dark : light)"]
+                  "Color(red: 1, green: 1, blue: 10)", "Color(hex: 0xF7F4EE)", "Color(hex: isDark ? dark : light)",
+                  "NSColor(srgbRed: 1, green: 0.9, blue: 1, alpha: 1)", "Color(red: 1, green: 1, blue: 1.5)",
+                  "Color(hue: 0, saturation: 0.2, brightness: 1)", "Color(hue: 0, saturation: 0, brightness: 0.5)",
+                  "CGColor.black", "Text(\"https://x.y\") // Color.white"]
+# Comments never paint, in any form: a full-line, trailing or block comment holding a white spelling is not a hit,
+# and code after a string that contains "//" or "/*" is still scanned. Each COMMENT case is (source, must_hit).
+WHITE_COMMENT = [("// Color.white", False), ("let a = 1 // Color.white", False), ("let a = 1 /* Color.white */", False),
+                 ("/*\n  Color.white\n*/", False), ("/* a /* nested */ Color.white */", False),
+                 ("/* x */ Color.white", True), ('let s = "//"; let c = Color.white', True),
+                 ('let s = "/*"; let c = Color.white', True)]
+
+def code_lines(text):
+    """The text's lines with comments removed (Swift: `//`, nested `/* */`); string literals kept intact."""
+    out, depth, in_ml = [], 0, False
+    for line in text.splitlines():
+        buf, i, n, in_str = [], 0, len(line), False
+        while i < n:
+            if depth:
+                if line.startswith("/*", i): depth += 1; i += 2
+                elif line.startswith("*/", i): depth -= 1; i += 2
+                else: i += 1
+            elif in_ml or in_str:
+                if in_ml and line.startswith('"""', i): in_ml = False; buf.append('"""'); i += 3; continue
+                c = line[i]; buf.append(c); i += 1
+                if c == "\\" and i < n: buf.append(line[i]); i += 1
+                elif c == '"' and in_str: in_str = False
+            elif line.startswith('"""', i): in_ml = True; buf.append('"""'); i += 3
+            elif line.startswith("//", i): break
+            elif line.startswith("/*", i): depth = 1; i += 2
+            else:
+                in_str = line[i] == '"'; buf.append(line[i]); i += 1
+        out.append("".join(buf))
+    return out
 # A hit allowed on purpose: (path relative to Sources/, line number, stripped line) -> reason (e.g. photo overlay).
 # Keyed by line NUMBER too, so one reason admits one line; an entry that matches no hit is stale and fails.
 WHITE_ALLOW = {}
@@ -138,14 +189,17 @@ WHITE_ALLOW = {}
 def white_sites(src):
     hits, used = [], set()
     for f in sorted(Path(src).rglob("*.swift")):
-        for n, line in enumerate(f.read_text().splitlines(), 1):
+        text = f.read_text()
+        for n, (line, code) in enumerate(zip(text.splitlines(), code_lines(text)), 1):
             key = (str(f.relative_to(src)), n, line.strip())
-            if line.strip().startswith("//") or not WHITE_RE.search(line): continue
+            if not WHITE_RE.search(code): continue
             if WHITE_ALLOW.get(key, "").strip(): used.add(key)
             else: hits.append("WHITE %s:%d %s" % key)
     hits += ["WHITE-ALLOW %s:%d stale or without a reason" % k[:2] for k in WHITE_ALLOW if k not in used]
     hits += ["WHITE-SELFTEST missed: %s" % g for g in WHITE_GUILT if not WHITE_RE.search(g)]
-    return hits + ["WHITE-SELFTEST false hit: %s" % i for i in WHITE_INNOCENT if WHITE_RE.search(i)]
+    hits += ["WHITE-SELFTEST false hit: %s" % i for i in WHITE_INNOCENT if any(WHITE_RE.search(c) for c in code_lines(i))]
+    return hits + ["WHITE-SELFTEST comment %r: hit=%s, want %s" % (t, not w, w) for t, w in WHITE_COMMENT
+                   if any(WHITE_RE.search(c) for c in code_lines(t)) != w]
 
 def site_parity(src, theme_path):
     """RISK_CHIP must equal Theme.riskChip's switch (aliases resolved), and each SITES line must paint riskChip's fg."""
@@ -155,11 +209,15 @@ def site_parity(src, theme_path):
     code = {k: (alias.get(fg, fg), alias.get(bg, bg)) for k, fg, bg in re.findall(r"(case \d|default):\s*return \((\w+), (\w+)", body)}
     table = {("case " + t.split()[1]) if t.startswith("rank") else "default": (fg, bg) for fg, bg, t in RISK_CHIP}
     if code != table: bad.append("PARITY RISK_CHIP %s != Theme.riskChip %s" % (sorted(table.items()), sorted(code.items())))
-    for site in SITES:
-        name, n = site.split()[0].split(":"); n = int(n)
-        lines = next(Path(src).rglob(name)).read_text().splitlines()
-        if ".fg)" not in lines[n - 1] or "Theme.riskChip(" not in "\n".join(lines[max(0, n - 4):n]):
-            bad.append("PARITY site %s does not paint Theme.riskChip(…).fg: %s" % (site.split()[0], lines[n - 1].strip()))
+    body = text[text.find("static func chip("):]; body = body[:body.find("\n    }\n")]
+    tones = {t: alias.get(fg, fg) for t, fg in re.findall(r"case \.(\w+):\s*return \((\w+), \w+\)", body)}
+    if tones != {t: fg for fg, t in CHIP_FG}: bad.append("PARITY CHIP_FG %s != Theme.chip %s" % (sorted(CHIP_FG), sorted(tones.items())))
+    for sites, fn in ((SITES, "Theme.riskChip("), (CHIP_SITES, "Theme.chip(")):
+        for site in sites:
+            name, n = site.split()[0].split(":"); n = int(n)
+            lines = next(Path(src).rglob(name)).read_text().splitlines()
+            if ".fg)" not in lines[n - 1] or fn not in "\n".join(lines[max(0, n - 4):n]):
+                bad.append("PARITY site %s does not paint %s…).fg: %s" % (site.split()[0], fn, lines[n - 1].strip()))
     return bad
 
 def parse_hc(path):

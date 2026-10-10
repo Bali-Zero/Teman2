@@ -140,14 +140,12 @@ struct SearchListView: View {
                 queryLayout
                     .frame(maxHeight: (sheetExpanded && state.selected != nil) ? 132 : .infinity)
             } else {
-                filterBar
-                columnHeader
-                // Expanded, the sheet takes the pane and the table keeps a three-row peek: a dossier
+                // Expanded, the sheet takes the pane and the table keeps a peek: a dossier
                 // squeezed under a full-height table was a strip nobody could read (render of
                 // 68112 at 1440x1400, K2 2026-09-14). Collapse gives the table its height back.
-                tableBody
-                    .frame(maxHeight: (sheetExpanded && state.selected != nil) ? 132 : .infinity)
-                footerBar          // the census stays visible ABOVE the sheet, never under it
+                // Browse mode keeps 300 pt (the header block alone is ~150 pt of it).
+                browseLayout
+                    .frame(maxHeight: (sheetExpanded && state.selected != nil) ? 300 : .infinity)
             }
             sheetLayer
         }
@@ -213,18 +211,24 @@ struct SearchListView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     let firstID = visibleRows.first?.id
-                    LazyVStack(spacing: searching ? 0 : 1) {
+                    let groupStarts = searching ? [] : groupStartIDs
+                    LazyVStack(spacing: 0) {
                         ForEach(visibleRows) { k in
-                            tableRow(k, firstID: firstID)
-                                .id(k.id)
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    state.selected = k
-                                    focusedField.wrappedValue = .list
-                                }
+                            // Group headers are not rows: no id of their own, outside the tap
+                            // target, so selection ids, arrow order and `scrollTo` never see them.
+                            VStack(spacing: 0) {
+                                if groupStarts.contains(k.id) { groupHeader(k) }
+                                tableRow(k, firstID: firstID)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        state.selected = k
+                                        focusedField.wrappedValue = .list
+                                    }
+                            }
+                            .id(k.id)
                         }
                     }
-                    .padding(.horizontal, searching ? 0 : 6).padding(.vertical, 4)
+                    .padding(.vertical, 4)
                 }
                 // A `List` scrolled its selection into view for free; a LazyVStack does not, so
                 // arrow-key navigation used to continue invisibly past the viewport (council
@@ -294,11 +298,11 @@ struct SearchListView: View {
                         PadiLine(width: 760)
                         tableBody
                     }
-                    .padding(.top, 24)
+                    .padding(.top, 8)
                     .frame(width: 760)
 
                     censusText
-                        .padding(.top, 48).padding(.leading, 32)
+                        .padding(.top, 48).padding(.horizontal, 32)
                         .frame(minWidth: 200, maxWidth: .infinity, alignment: .topLeading)
                 }
             } else {
@@ -320,13 +324,104 @@ struct SearchListView: View {
         }
     }
 
-    private func facet<P: View>(_ title: String, @ViewBuilder _ picker: () -> P) -> some View {
-        VStack(alignment: .trailing, spacing: 4) {
+    // MARK: browse mode (spec §3.2, §4) — rail · display header · grouped table
+
+    private static let browseBreakpoint: CGFloat = 880
+
+    private var browseLayout: some View {
+        GeometryReader { geo in
+            if geo.size.width >= Self.browseBreakpoint {
+                HStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        VStack(alignment: .leading, spacing: 24) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                facet(isID ? "SEKTOR" : "SECTOR", align: .leading) { sectorPicker }
+                                sectorCaption
+                            }
+                            facet("BALI", align: .leading) { baliPicker }
+                            facet(isID ? "RISIKO OSS" : "OSS RISK", align: .leading) { riskPicker }
+                        }
+                        .tint(Theme.accent)
+                        Spacer(minLength: 24)
+                        PadiLine(width: 200)
+                        PadiLine(width: 120).padding(.top, 12).padding(.bottom, 32)
+                    }
+                    .padding(.horizontal, 24).padding(.top, 24)
+                    .frame(width: 248).frame(maxHeight: .infinity)
+                    .background(Theme.wash)
+
+                    VStack(alignment: .leading, spacing: 0) {
+                        browseHeader.frame(height: 92)
+                        browseRule
+                        columnHeader
+                        tableBody
+                    }
+                    .padding(.top, 24).padding(.trailing, 32).padding(.leading, 40)
+                }
+            } else {
+                VStack(spacing: 0) {
+                    filterBar
+                    VStack(alignment: .leading, spacing: 0) {
+                        browseHeader.frame(minHeight: 92)
+                        browseRule
+                        PadiLine(width: 200).padding(.top, 12)
+                        PadiLine(width: 120).padding(.top, 12)
+                        columnHeader
+                        tableBody
+                    }
+                    .padding(.top, 16).padding(.horizontal, 16)
+                }
+            }
+        }
+    }
+
+    private var browseHeader: some View {
+        HStack(alignment: .lastTextBaseline) {
+            Text(lang.t("nav.section.codes"))
+                .font(Theme.display(64)).foregroundStyle(Theme.white)
+                .fixedSize()
+            Spacer(minLength: 16)
+            censusText
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: 360, alignment: .trailing)
+        }
+    }
+
+    private var browseRule: some View {
+        Rectangle().fill(Theme.structure).frame(height: 2)
+    }
+
+    /// First row of every two-digit code group (the first row of the table included).
+    private var groupStartIDs: Set<String> {
+        var out = Set<String>()
+        var prev: Substring?
+        for k in visibleRows {
+            let g = k.kode.prefix(2)
+            if g != prev { out.insert(k.id) }
+            prev = g
+        }
+        return out
+    }
+
+    private func groupHeader(_ k: KBLI) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(String(k.kode.prefix(2)))
+                .font(Theme.scalable(12, weight: .semibold)).foregroundStyle(Theme.muted)
+                .padding(.leading, 10)
+            Rectangle().fill(Theme.lineStrong).frame(height: 1)
+        }
+        .padding(.top, 16)
+        .accessibilityHidden(true)
+    }
+
+    private func facet<P: View>(_ title: String, align: HorizontalAlignment = .trailing,
+                                @ViewBuilder _ picker: () -> P) -> some View {
+        VStack(alignment: align, spacing: 4) {
             Text(title)
                 .font(Theme.scalable(11, weight: .semibold)).tracking(0.9)
                 .foregroundStyle(Theme.muted)
                 .accessibilityHidden(true)
-            picker().frame(width: 200, alignment: .trailing)
+            picker().frame(width: 200, alignment: align == .leading ? .leading : .trailing)
         }
     }
 
@@ -376,11 +471,24 @@ struct SearchListView: View {
                                   set: { state.browsedSector = $0 })) {
             Text(isID ? "Semua sektor" : "All sectors").tag(String?.none)
             ForEach(state.store.sectors) { sec in
-                Text("\(sec.letter) — \(isID ? sec.id_ : sec.en) (\(sec.count))").tag(String?.some(sec.letter))
+                Text(sectorLabel(sec)).tag(String?.some(sec.letter))
             }
         } label: { EmptyView() }
         .pickerStyle(.menu).controlSize(.small).frame(maxWidth: 260)
         .accessibilityLabel(isID ? "Saring menurut sektor" : "Filter by sector")
+    }
+
+    private func sectorLabel(_ sec: KBLIStore.Sector) -> String { "\(sec.letter) — \(isID ? sec.id_ : sec.en) (\(sec.count))" }
+
+    /// AppKit truncates a long sector label in the rail's 200 pt picker, so the selected label is repeated
+    /// in full under it, wrapping. VoiceOver already hears it from the picker.
+    @ViewBuilder private var sectorCaption: some View {
+        if let sec = state.store.sectors.first(where: { $0.letter == state.browsedSector }) {
+            Text(sectorLabel(sec)).font(Theme.scalable(12)).foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(width: 200, alignment: .leading)
+                .accessibilityHidden(true)
+        }
     }
 
     private var baliPicker: some View {
@@ -414,34 +522,10 @@ struct SearchListView: View {
             Text("BALI").frame(width: rowDensity == .compact ? 116 : 132, alignment: .center)
             Text(isID ? "RISIKO OSS" : "OSS RISK").frame(width: rowDensity == .compact ? 116 : 132, alignment: .center)
         }
-        .font(Theme.scalable(9.5, weight: .heavy, design: .monospaced)).tracking(0.9)
-        .foregroundStyle(Theme.faint)
-        .padding(.horizontal, 16).padding(.vertical, 7)
-        .overlay(alignment: .bottom) { Rectangle().fill(Theme.hairline).frame(height: 1) }
+        .font(Theme.scalable(11, weight: .semibold)).tracking(0.9)
+        .foregroundStyle(Theme.muted)
+        .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, 4)
         .accessibilityHidden(true)   // the rows carry their own combined labels
-    }
-
-    /// The census: what is on screen, and what the WHOLE catalogue says about the two axes this
-    /// app used to fabricate. Both counts come from `RegistryCensus` (every record, one rule) —
-    /// not from a constant that could outlive the corpus it described.
-    private var footerBar: some View {
-        let census = RegistryCensus.cached(for: state.store)
-        let matched = matchedRows     // one pass per render, not three
-        // The total is what this table actually holds — NOT `results.total`, which counts matches
-        // the search never returned (the store caps a query at 300 rows) and which, next to a
-        // filtered row set, was simply a different number about a different thing (council round 1,
-        // codex-gpt-5.6-sol). The cap itself is stated in the line instead of hidden by it.
-        let total = matched.count
-        return HStack(spacing: 12) {
-            Text(censusLine(total: total, census: census))
-                .font(Theme.scalable(11)).foregroundStyle(Theme.muted)
-                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 16).padding(.vertical, 9)
-        .background(Theme.ink.opacity(0.9))
-        .overlay(alignment: .top) { Rectangle().fill(Theme.hairline).frame(height: 1) }
-        .accessibilityElement(children: .combine)
     }
 
     /// Two populations, and the line names both: what the table holds now, then the CATALOGUE —
