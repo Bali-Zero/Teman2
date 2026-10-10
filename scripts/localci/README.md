@@ -439,29 +439,38 @@ session posts `harness/fable-gate` AFTER GitHub's `pull_request` run of `Harness
 re-runs that job; when the local gate decides the PR between the post and the re-run (typically at a NEW base, main moves about every
 30 min), the local reader reads `success` while GitHub still lists the pre-post red, and the row would be journalled a context FALSE_GREEN
 that B10's tree-drift rule never clears — one honest race holding READY for 14 days. The merger hands `hosted_compare.compare` a second
-judge beside B10's (`gate_judge=GateJudge(repo, stale_judge, plan_at)`, called `judge(context, hosted, statuses)`; B10's
+judge beside B10's (`gate_judge=GateJudge(repo, stale_judge, plan_at, reads)`, called `judge(context, hosted, statuses)`; B10's
 `judge(context, completed_at)` is unchanged). It applies only to a compared row whose hosted verdict is RED and whose context is
-**gate-reading: its BASE matrix entry has a step (its own or one of its jobs') with `pending_when`** — structural, never a name. The row is
-`HOSTED_STALE` with `stale_why: "gate_posted_after_hosted"`, `hosted_completed_at`, `gate_posted_at` and `plan_at` only when both hold:
-(a) every red entry of that name is a check run, and the newest of them completed strictly BEFORE the newest `harness/fable-gate` status
-(the head's combined status) whose `updated_at` is at or before the run's plan time — `plan_at`, the run dir's `state/plan.json`
-`created_at`, stamped once the plan's host reads (the gate reader among them) are done; (b) each red run's annotations
-(`GET repos/{repo}/check-runs/{id}/annotations`, read-only, paged, bounded) carry at least one failure annotation whose message starts with
-the matrix's `pending_when` minus its `::error::` prefix (GitHub turns `::error::msg` into a failure annotation whose message is `msg`), at
-most one `Process completed with exit code N.` (the runner's own line for the step that failed: the log of #7526's PENDING red carried
-exactly those two `##[error]` lines, receipt R8 of `evidence/2026-10/agent-air-m5-ci-bites-head-tree-v3-ac882ce3`; the annotations API
-itself was not read for B12b, the tests use fakes), and no other failure annotation; `notice` and `warning` do not count, any other level does. A red for any
-other reason, a red commit status, a red completed at or after the post, a status dated only after the plan (with the combined status,
-an earlier post it replaced is not seen: kept), or a hosted GREEN keeps its class (`gate_check: fresh (<why>)`). A plan time, matrix,
-status time or annotation read that cannot be read is `gate_check` and `stale_check: unknown (<why>)`, the class kept. `HOSTED_STALE` is
-not compared, exactly as B10's; no local verdict, check or READY threshold changes. **Where it is judged:** the tick's `hosted_summary`
-(the decision's `hosted_compare.stale` entry carries the three B12b keys); the report's own per-decision comparison; and the report's
-re-judgement of recorded tick-time FALSE_GREEN rows, which finds the red the tick saw again among EVERY attempt of the head's check runs of
-that name (`check-runs?check_name=<name>&filter=all`: a re-run after the post hides it from the latest) — the red runs completed at or
-before the row's recorded `hosted_completed_at`, one of them at it — and judges it the same way, so a row recorded before B12b is
-reclassified on the same evidence, and is listed as `pr<N> <context>: hosted ran <ts>, before the gate post at <ts> the local run read
-(gate_posted_after_hosted)`. A recorded row it keeps carries the ground's word as `gate` beside its B10 `why`. Replays are never judged
-on it. The PR-level class (merger vs GitHub) is still not judged for staleness (B10's residual).
+**gate-reading: its BASE matrix entry has ONE step (its own or one of its jobs') with `pending_when`**, named by its `workflow_step` —
+structural, never a context name. The row is `HOSTED_STALE` with `stale_why: "gate_posted_after_hosted"`, `hosted_completed_at`,
+`gate_posted_at` and `plan_at` only when all hold: (a) **the local run read a success**: the newest `harness/fable-gate` status (the head's
+combined status) whose `updated_at` is at or before the run's plan time (`plan_at`, the run dir's `state/plan.json` `created_at`, stamped
+once the plan's host reads are done) is `success`, AND the plan froze rc 0 for that context's reader step (`frozen_reads(run_dir)`: the
+`precomputed` answer of every planned job step whose side is `host`, under the seal) — a `failure`/`error` post, or a frozen answer that is
+not rc 0, beside a local verdict is a REAL disagreement and keeps its class; (b) every red entry of that name is a check run concluded
+`failure` (not `cancelled`/`timed_out`/…), the newest of them completed strictly BEFORE that status; (c) each red run failed on the PENDING
+read and nothing else, on two independent readings: its annotations (`GET repos/{repo}/check-runs/{id}/annotations`, paged; 50 or more
+raw entries is GitHub's per-job cap, so a list that long may be cut and is unknown) carry at least one failure annotation whose message
+starts with the matrix's `pending_when` minus its `::error::` prefix, at most one `Process completed with exit code N.`, and no other
+failure (`notice`/`warning` do not count, any other level does); AND its job (`GET repos/{repo}/actions/jobs/{id}`, whose `check_run_url`
+must end in `/check-runs/{id}`, so the identity of job and check run is checked on every read, not assumed) lists the reader step exactly
+once, it is the job's ONLY step concluded other than `success`/`skipped`, and every step the BASE matrix lists after it is `skipped` (the
+runner's own `Post …` / `Complete job` steps run after a failure and conclude `success`, so only the matrix's later steps are required
+skipped). The annotation shape was read from #7526's PENDING log (receipt R8 of `evidence/2026-10/agent-air-m5-ci-bites-head-tree-v3-ac882ce3`);
+neither API was called for B12b, the tests use fakes. Any other red, a red commit status, a red completed at or after the post, a status
+dated only after the plan (with the combined status, an earlier post it replaced is not seen: kept), or a hosted GREEN keeps its class
+(`gate_check: fresh (<why>)`). A plan time, frozen reads, matrix, status time, annotation or job read that cannot be read or matched is
+`gate_check` and `stale_check: unknown (<why>)`, the class kept; without B10's judge the row's `stale_check` is the gate judge's own word.
+`HOSTED_STALE` is not compared, exactly as B10's; no local verdict, check or READY threshold changes. **Where it is judged:** the tick's
+`hosted_summary` (the decision's `hosted_compare.stale` entry carries the B12b keys; a B10 entry still carries all of B10's, a missing one
+raises as before), and every RED row of `hosted_compare.json` journals `hosted_red`, the red entries it stood on (`id`, `conclusion`,
+`completed_at`; a status has id null); the report's own per-decision comparison; and the report's re-judgement of recorded tick-time
+FALSE_GREEN rows, which finds EVERY recorded red run again by its id among every attempt of the head's check runs of that name
+(`check-runs?check_name=<name>&filter=all`: a re-run after the post hides it from the latest), one of them completed at the row's
+`hosted_completed_at`, and judges them the same way (a recorded status is judged as one) — a row without `hosted_red` (journalled before
+this rule) or a recorded run no longer listed red is `gate: unknown` and kept. A reclassified row is listed as `pr<N> <context>: hosted ran
+<ts>, before the gate post at <ts> the local run read (gate_posted_after_hosted)`; a kept one carries the ground's word as `gate` beside its
+B10 `why`. Replays are never judged on it. The PR-level class (merger vs GitHub) is still not judged for staleness (B10's residual).
 
 **Phase F, shadow (F1): `would_merge`.** After every `would_enqueue` / `enqueue_*` line of a decided PR the tick journals ONE
 `kind: "would_merge"` line (decisions that reach the enqueue step; CONFLICT, ERROR and skipped decisions carry none): the merge phase F will make, rehearsed with `git merge-tree --write-tree` of the mirror's
