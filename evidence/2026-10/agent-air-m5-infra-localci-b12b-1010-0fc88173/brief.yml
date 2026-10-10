@@ -1,0 +1,41 @@
+task_id: localci-b12b-1010
+mission: LOCALCI-SOVEREIGN (phase B, step B12b)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  A change to how the comparator and the report class a hosted verdict: it can move a context FALSE_GREEN to HOSTED_STALE, which
+  READY reads. No hot-zone path, workflow, plist or wrapper change; no local verdict, check or threshold changes; the lint floor is 2.
+l_level: L2
+gate_class: opus
+objective: >-
+  A hosted verdict given before the gate verdict the local run read is stale, not a disagreement. For a compared row whose hosted verdict
+  is RED and whose context is gate-reading (its BASE matrix entry has a pending_when step), the row is HOSTED_STALE with stale_why
+  gate_posted_after_hosted only when every red is a check run that completed before the newest harness/fable-gate status dated at or
+  before the run's plan time, and each red run's failure annotations are the reader's PENDING line plus at most the runner's exit-code
+  line. The tick, the report's comparison and its re-judgement of recorded FALSE_GREEN rows apply it, read-only and fail closed.
+constraints:
+  - Gate-reading is structural (a pending_when step in the BASE matrix entry, its own steps or its jobs'), never a context name.
+  - A hosted RED for any other reason stays FALSE_GREEN; a hosted GREEN, a non-gate-reading context and a replay are untouched.
+  - A failed or partial annotation read, a missing plan time, an unreadable matrix or status time is unknown and the class is kept.
+  - HOSTED_STALE is not compared, exactly as B10's; B10's judge(context, completed_at) contract is unchanged.
+  - Every GitHub call is a GET; nothing is written to GitHub.
+acceptance:
+  - text: A pre-post PENDING red beside a local green SHALL be HOSTED_STALE with stale_why gate_posted_after_hosted, alone or beside B10's judge.
+    probe: "test_gate_stale.py::test_a_pre_post_pending_red_beside_a_local_green_is_hosted_stale"
+  - text: A pre-post red carrying any other failure annotation SHALL stay FALSE_GREEN.
+    probe: "test_gate_stale.py::test_a_red_that_is_not_the_pending_read_alone_stays_a_false_green"
+  - text: A red completed at or after the post SHALL stay FALSE_GREEN and no annotation SHALL be read.
+    probe: "test_gate_stale.py::test_a_red_completed_at_or_after_the_post_stays_a_false_green_and_no_annotation_is_read"
+  - text: A hosted GREEN, and a context with no pending_when step whatever its name, SHALL be unaffected.
+    probe: "test_gate_stale.py::test_a_context_that_reads_no_gate_is_unaffected_whatever_its_name"
+  - text: An annotation read failure SHALL keep the class with stale_check unknown; so SHALL a missing plan time.
+    probe: "test_gate_stale.py::test_an_annotation_read_failure_keeps_the_class_and_says_unknown"
+  - text: Only a status dated at or before the plan time SHALL count as the one the local run read.
+    probe: "test_gate_stale.py::test_the_gate_post_is_the_newest_at_or_before_the_plan_time"
+  - text: The report SHALL reclassify a recorded FALSE_GREEN of this shape and keep one of another shape, saying why.
+    probe: "test_gate_stale.py::test_the_report_keeps_a_recorded_false_green_of_another_shape_and_says_why"
+consumer_map:
+  - scripts/localci/merger.py tick (the launchd tick com.balizero.localci-merger on Pro) — hosted_compare.stale on decision lines and the run dir's hosted_compare.json.
+  - scripts/localci/merger.py report on Pro, run by hand — recorded_reclassified_hosted_stale, recorded_kept_false_green and the phase E line.
+pii_scan: clean
+pii_scan_note: Comparator and merger code, tests on temporary git repos and fake GitHub reads, mutant rules and documentation. No client data was read or written.

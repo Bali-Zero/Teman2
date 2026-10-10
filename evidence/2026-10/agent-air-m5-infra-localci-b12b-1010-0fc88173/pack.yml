@@ -1,0 +1,135 @@
+task_id: localci-b12b-1010
+mission: LOCALCI-SOVEREIGN (phase B, step B12b)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  A change to how the comparator and the report class a hosted verdict: it can move a context FALSE_GREEN to HOSTED_STALE, which
+  READY reads. No hot-zone path, workflow, plist or wrapper change; no local verdict, check or threshold changes; the lint floor is 2.
+l_level: L2
+gate_class: opus
+objective: >-
+  A hosted verdict given before the gate verdict the local run read is stale, not a disagreement: the B12 gate's residual, where the
+  session posts harness/fable-gate after GitHub's pull_request run of Harness floor recompute already failed on the PENDING read, and a
+  local decision between the post and the re-run journals a context FALSE_GREEN that B10's tree-drift rule never clears.
+constraints:
+  - Gate-reading is structural (a pending_when step in the BASE matrix entry, its own steps or its jobs'), never a context name.
+  - A hosted RED for any other reason stays FALSE_GREEN; a hosted GREEN, a non-gate-reading context and a replay are untouched.
+  - A failed or partial annotation read, a missing plan time, an unreadable matrix or status time is unknown and the class is kept.
+  - HOSTED_STALE is not compared, exactly as B10's; B10's judge(context, completed_at) contract is unchanged.
+  - Every GitHub call is a GET; nothing is written to GitHub.
+acceptance:
+  - text: A pre-post PENDING red beside a local green SHALL be HOSTED_STALE with stale_why gate_posted_after_hosted, alone or beside B10's judge.
+    probe: "test_gate_stale.py::test_a_pre_post_pending_red_beside_a_local_green_is_hosted_stale"
+  - text: A pre-post red carrying any other failure annotation SHALL stay FALSE_GREEN.
+    probe: "test_gate_stale.py::test_a_red_that_is_not_the_pending_read_alone_stays_a_false_green"
+  - text: A red completed at or after the post SHALL stay FALSE_GREEN and no annotation SHALL be read.
+    probe: "test_gate_stale.py::test_a_red_completed_at_or_after_the_post_stays_a_false_green_and_no_annotation_is_read"
+  - text: A hosted GREEN, and a context with no pending_when step whatever its name, SHALL be unaffected.
+    probe: "test_gate_stale.py::test_a_context_that_reads_no_gate_is_unaffected_whatever_its_name"
+  - text: An annotation read failure SHALL keep the class with stale_check unknown; so SHALL a missing plan time.
+    probe: "test_gate_stale.py::test_an_annotation_read_failure_keeps_the_class_and_says_unknown"
+  - text: Only a status dated at or before the plan time SHALL count as the one the local run read.
+    probe: "test_gate_stale.py::test_the_gate_post_is_the_newest_at_or_before_the_plan_time"
+  - text: The report SHALL reclassify a recorded FALSE_GREEN of this shape and keep one of another shape, saying why.
+    probe: "test_gate_stale.py::test_the_report_keeps_a_recorded_false_green_of_another_shape_and_says_why"
+consumer_map:
+  - scripts/localci/merger.py tick (the launchd tick com.balizero.localci-merger on Pro) — hosted_compare.stale on decision lines and the run dir's hosted_compare.json.
+  - scripts/localci/merger.py report on Pro, run by hand — recorded_reclassified_hosted_stale, recorded_kept_false_green and the phase E line.
+pii_scan: clean
+pii_scan_note: >-
+  Comparator and merger code, tests on temporary git repos and fake GitHub reads, mutant rules and documentation. No client data was
+  read or written. A grep for an email shape or a 16-digit run over the touched code and doc hunks found none added by this change
+  (three pre-existing README lines about git@ and token@ URL forms, no person).
+lanes:
+  - lane: localci-b12b-1010
+    role: build
+    seat: claude-opus-5-5 (Dux implementer on M5)
+what_changed: |
+  hosted_compare.py: hosted_entries keeps each check run's id (a status carries None); hosted_verdict also returns `red`, the red
+  entries with id and completed_at. compare takes an optional gate_judge, a second judge beside B10's (B10's judge(context,
+  completed_at) is unchanged): for a compared row B10 did not already call stale, gate_reading asks judge(context, hosted, statuses),
+  totally (raise or a bad shape -> gate_check unknown), and with_gate composes the two grounds: stale when either is, else unknown
+  when either is, else fresh. A B12b-stale row is HOSTED_STALE with stale_why gate_posted_after_hosted, hosted_completed_at,
+  gate_posted_at and plan_at; the class_before / not-compared handling is B10's own line, unchanged.
+  merger.py: StaleJudge reads the BASE matrix once (contexts()) for flag_of and the new pending_of (the pending_when lines of a
+  context's steps and its jobs' steps; [] for a context the BASE matrix does not carry). GateJudge(repo, matrix, plan_at,
+  annotations): None for a hosted verdict that is not RED or a context with no pending_when step; otherwise (a) every red is a check
+  run whose newest completed_at is strictly before the newest harness/fable-gate status (the head's combined status) whose updated_at
+  is at or before plan_at, and (b) each red run's annotations (GET repos/{repo}/check-runs/{id}/annotations through gh_pages, paged,
+  at most hc.MAX_PAGES) carry at least one failure whose message starts with pending_when minus `::error::`, at most one
+  `Process completed with exit code N.`, and no other failure (notice and warning do not count; any other level does). plan_time(run_dir)
+  reads state/plan.json created_at. decide hands hosted_summary gate=GateJudge(a.repo, judge, plan_time(run_dir)); hosted_summary's
+  stale entries carry the B12b keys when present. The report builds one GateJudge per non-replay decision (shared annotation cache),
+  passes it to its own comparison and to reclassify_recorded, whose new recorded_gate finds the recorded red again among every attempt
+  of the head's runs of that name (check-runs?check_name=<name>&filter=all, red, completed at or before the row's hosted_completed_at,
+  one of them at it; a red commit status of that name is added as a non-run) and judges it with hc.gate_reading; a stale row is
+  reclassified with stale_why, a kept row carries the ground's word as `gate`, and the phase E line names both shapes.
+  tests/test_gate_stale.py (43 tests), one tick wiring test in test_merger.py, 11 b12b-* mutant rules, 2 B10 rules re-anchored
+  (b10-judge-unwired-in-the-tick, b10-report-compare-without-judge). README section and spec addendum.
+proof: |
+  Tests and mutants on M5 against temporary repos and fake GitHub reads; nothing ran on Pro, nothing was pushed, no GitHub call was made.
+bites:
+  consumer: The launchd tick com.balizero.localci-merger on Pro (decisions.jsonl and the run dir's hosted_compare.json) and `merger.py report` run by hand on Pro.
+  observation: >-
+    Owed after merge and the tick's next extraction on Pro (this lane does not ship). Primary: the first decision whose
+    `Harness floor recompute` row sits beside a pre-post PENDING red journals it under hosted_compare.stale with class_before
+    FALSE_GREEN, stale_why gate_posted_after_hosted, hosted_completed_at, gate_posted_at and plan_at, and counts.FALSE_GREEN without
+    it. Fallback, if no such race occurs in the window: `merger.py report` on Pro re-judges the recorded tick-time FALSE_GREEN rows.
+    What the code path does with the two named so far (B10's pack: pr7961 and pr7962, `Backend Tests (Python)`, both journalled
+    2026-10-08): that context's BASE matrix entry has no pending_when step, so recorded_gate returns {} and B12b changes nothing for
+    them — they stay where B10's rule puts them (reclassified HOSTED_STALE with main_moved_paths when the head's red is still listed with
+    the recorded completed_at, otherwise kept with B10's reason and no `gate` key). A recorded `Harness floor recompute` row of this
+    shape is reclassified only when its hosted_compare.json row carries hosted_completed_at (every row journalled since B10), its run
+    dir's state/plan.json survives retention, and the red run is listed under filter=all with only the PENDING and exit-code
+    annotations; otherwise it is kept with `(gate: unknown (...))` or `(gate: fresh (...))` on the phase E line. Not observed: this
+    lane did not read Pro's journal.
+ground:
+  ts: "2026-10-10T00:22:05Z"
+  siblings: >-
+    Worktree from origin/main e1d0d1d6e3 (includes B12 #8194). This lane touches hosted_compare.compare/hosted_entries/hosted_verdict,
+    StaleJudge's matrix read, hosted_summary, decide's hosted call, the report and reclassify_recorded, with additive hunks only.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 0.6
+receipts:
+  - claim: "test_hosted_compare.py, test_merger.py, test_merger_report.py, test_gate_pending.py, test_replay.py, test_merger_phase_f.py, test_hosted_stale.py (B10), test_gate_stale.py: 568 passed, 243 s."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_hosted_compare.py scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py scripts/localci/tests/test_gate_pending.py scripts/localci/tests/test_replay.py scripts/localci/tests/test_merger_phase_f.py scripts/localci/tests/test_hosted_stale.py scripts/localci/tests/test_gate_stale.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-10T00:51:50Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "10/10 b12b-* rules killed against test_gate_stale.py: any-red-stale, extra-annotation-ignored, newest-post-any-time, annotation-read-fails-stale, context-by-name, report-not-rejudged, green-stale, post-same-second-stale, status-red-read-as-run, report-red-not-found-judged; survivors none, errors none, stale none."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <those 10 rules>
+    exit: 0
+    ts: "2026-10-10T00:36:49Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "b12b-gate-unwired-in-the-tick killed against test_merger.py."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only b12b-gate-unwired-in-the-tick
+    exit: 0
+    ts: "2026-10-10T00:43:12Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "4/4 B10 neighbours killed: b10-report-compare-without-judge (re-anchored), b10-agree-left-as-agree, b10-report-reclassifies-a-red-that-went (00:37:38Z), b10-judge-unwired-in-the-tick (re-anchored, 00:46:59Z)."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <those rules, in two runs>
+    exit: 0
+    ts: "2026-10-10T00:46:59Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "py_compile of hosted_compare.py and merger.py rc 0; ruff check on hosted_compare.py, merger.py, test_gate_stale.py: all checks passed; test_gate_stale.py, test_hosted_stale.py, test_hosted_compare.py: 119 passed."
+    cmd: python3 -m py_compile <2 files>; ruff check <3 files>; PYTHONPATH=. python3 -m pytest <3 files> -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-10T00:52:33Z"
+    seat: claude-opus-5-5 on M5
+dissent: []
+residuals:
+  - "Live proof on Pro is owed to the first extraction after merge: the Bites observation above."
+  - "The annotation shape is read from GitHub's documented workflow-command behaviour and from receipt R8 of evidence/2026-10/agent-air-m5-ci-bites-head-tree-v3-ac882ce3 (the log of #7526's PENDING red carried exactly the PENDING line and `Process completed with exit code 1.` as its ##[error] lines); the annotations API itself was not called by this lane. If GitHub's real annotations differ (another title, a truncated message, a second runner line), the judgement answers fresh and the FALSE_GREEN is kept: the error direction is a kept red, never a hidden one."
+  - "The head's statuses come from the combined status (newest per context): when the newest harness/fable-gate status postdates the plan, an earlier post it replaced is not seen and the row is kept."
+  - "plan_at is stamped after the plan's host reads, so it bounds the read from above by the planning time; condition (b) is what proves the hosted run read no status at all."
+  - "The report's re-judgement of a recorded row needs the run dir's state/plan.json: a run dir removed by retention gives gate unknown and the row is kept."
+  - "The PR-level class (merger vs GitHub) is still not judged for staleness (B10's residual, unchanged): a PASS beside the pre-post red stays a PR-level FALSE_GREEN until GitHub's re-run."
+  - "Net 570 lines (code 156, tests 383, docs 31): over the ~400 contract, from the 355-line test file; the code and doc delta is 187."
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN step B12b, from the lead message of 2026-10-10, from origin/main e1d0d1d6e3, 75-minute budget. Build only;
+  nothing is pushed.
+appetite_exceeded: >-
+  Lines only: 570 net against the contract's ~400, the excess in tests (383 net, guilt and innocence per guard). Time within the
+  75-minute budget.
