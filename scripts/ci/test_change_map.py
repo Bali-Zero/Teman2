@@ -139,6 +139,38 @@ class ChangeMapTests(unittest.TestCase):
                         ["backend-tests", "frontend-tests", "e2e-tests"],
                     )
 
+    def test_guilt_openapi_writer_edit_also_runs_frontend(self) -> None:
+        # Council finding (codex-gpt-5.6-sol, schema-dts-freshness arming PR,
+        # 2026-10-05): tests.yml's required mouth leg renders
+        # apps/mouth/src/lib/api/schema.d.ts from this exact script's output
+        # and mutation-pins the render; a writer-only edit must not skip
+        # frontend-tests (the backend pin test guards the schema dict, not
+        # this file's bytes).
+        result = cm.classify(["apps/backend-rag/scripts/generate_openapi.py"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["reason"], "classified")
+        self.assertTrue(result["domains"]["backend_python"])
+        self.assertTrue(result["domains"]["mouth"])
+        self.assertEqual(
+            result["suggested_jobs"],
+            ["backend-tests", "frontend-tests", "e2e-tests"],
+        )
+
+    def test_innocence_sibling_backend_scripts_do_not_couple_to_frontend(
+        self,
+    ) -> None:
+        # The coupling above is an EXACT path, not a prefix on
+        # apps/backend-rag/scripts/ — sibling scripts have no mouth consumer.
+        for path in (
+            "apps/backend-rag/scripts/wr2_image_generator.py",
+            "apps/backend-rag/scripts/some_future_script.py",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertFalse(result["domains"]["mouth"])
+                self.assertNotIn("frontend-tests", result["suggested_jobs"])
+
     def test_garuda_contract_prefix_keeps_unknown_siblings_fail_open(self) -> None:
         for path in (
             "products/garuda-voa/contracts-extra/openapi.yaml",
