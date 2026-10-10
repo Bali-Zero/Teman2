@@ -203,6 +203,7 @@ def selftest():
              ("OSS risk is Bidang usaha tertutup untuk asing at the Besar scale, so the moratorium applies", 1, r3),
              ("Cari kode KBLI · 26 codes shown · catalogue of 1,559", 1, None),          # the gate's mut1
              ("CodesSemua sektor · 26 codes shown", 1, None),                             # mut2, glued by PDFKit
+             ("CodesSemua · 26 codes shown", 1, None),                                    # its only Indonesian, glued
              ("Codes26 codes shown · catalogue of 1,559: 395 not determined", 0, None),
              ("Search code or activity…\nCari kode atau kegiatan…", 1, None)]             # mut3, the placeholder
     bad = []
