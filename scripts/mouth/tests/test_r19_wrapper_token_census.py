@@ -1292,6 +1292,17 @@ def test_the_parts_judged_together_print_the_full_runs_verdict_byte_for_byte(tmp
         assert replay(capsys, parts_file(tmp_path, census_mod.load(FIXTURE), order)) == whole
 
 
+def test_a_live_census_and_its_dump_print_the_same_colour_lines(tmp_path):
+    """A live run keeps its colours in the order it met them, its dump sorts them by hex: colours tied on their
+    count print by hex either way, so the single job's live verdict is the aggregate's text."""
+    census = census_mod.load(FIXTURE)
+    counts = [c["count"] for c in census["colors"].values()]
+    assert len(counts) > len(set(counts))
+    census["colors"] = dict(reversed(census["colors"].items()))
+    census_mod.dump(census, tmp_path / "c.jsonl")
+    assert verdict(census) == verdict(census_mod.load(tmp_path / "c.jsonl"))
+
+
 DROPS = {"capture": ("captures", lambda c: (c["page"], c["state"]) == ("/kbli-explorer", "mobile/forced-dark"),
                      "capture /kbli-explorer mobile/forced-dark", "read-but-undefined: 0 (INCOMPLETE: 1 captures "
                      "failed, not a verdict)"),

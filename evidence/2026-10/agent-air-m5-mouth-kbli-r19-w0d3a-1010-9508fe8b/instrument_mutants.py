@@ -16,6 +16,7 @@ M = [
  ("M10 failed key misparsed", C, '"failed": lambda f: "capture " + f.split(": ", 1)[0],', '"failed": lambda f: "capture " + f.rsplit(": ", 1)[0],'),
  ("M11 empty file crashes", C, "    if not docs:\n        viewports", "    if False:\n        viewports"),
  ("M12 missing never INCOMPLETE on S", C, 'tail = f" (INCOMPLETE: {len(missing)} scenarios not received, not a verdict)" if missing else ""', 'tail = ""'),
+ ("M13 colour ties by insertion order", C, 'key=lambda h: (-colors[h]["count"], h))', 'key=lambda h: -colors[h]["count"])'),
  ("W1 matrix drops a part", W, "part: ${{ fromJSON(inputs.parts || '[\"rest\",\"kbli\",\"explorer\",\"shared\"]') }}", "part: ${{ fromJSON(inputs.parts || '[\"rest\",\"kbli\",\"explorer\"]') }}"),
  ("W2 aggregate skipped after a red part", W, "    if: ${{ !cancelled() }}\n", ""),
  ("W3 S line not asserted", W, 'for want in "scenarios-off-manifest: 0" "captures', 'for want in "captures'),

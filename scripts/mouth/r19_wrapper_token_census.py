@@ -315,7 +315,8 @@ def verdict(census: dict, contract: dict, states: dict | None = None) -> list[st
     above = sorted(k for k, r in reads.items() if r["kind"] == "var" and r["defined"] != "wrapper")
     out.append(f"defined-above-wrapper: {len(above)} (informational; resolved outside the wrapper today)")
     allowed = {r["hex"] for r in contract.values() if r["hex"]} | set(DIRECTION_A.values())
-    outside = sorted((h for h in colors if h[:7] not in allowed), key=lambda h: -colors[h]["count"])
+    # Ties by hex, as a replay reads them back: a live run and its dump print the same text (section 9).
+    outside = sorted((h for h in colors if h[:7] not in allowed), key=lambda h: (-colors[h]["count"], h))
     for h in outside:
         c = colors[h]
         out.append(f"  colour {h} x{c['count']} {c['prop']} e.g. {c['selector']} on {c['page']} {c['state']}")
