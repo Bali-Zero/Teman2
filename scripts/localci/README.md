@@ -144,10 +144,12 @@ verdict on the candidate (the step is BLOCKED, never green; a vulnerability find
 overridden with `""` in the matrix (the run never holds them, and never reads the operator's); the parity gaps say what that
 can change.
 
-### Capacity on Pro (measured 2026-10-07, Colima aarch64, 4 CPU, 8 GiB, 60 GiB)
+### Capacity on Pro (measured 2026-10-07, Colima aarch64, 4 CPU, 8 GiB, 60 GiB; resized 2026-10-10 to 8 CPU, 16 GiB, 80 GiB)
 
-Checks run one after another and so do a service context's legs (parallelism 1): the backend shards take up to 6 GiB each
-and the VM has 8. In-sandbox CPU is the driver's `RUSAGE_CHILDREN` per step; a sibling lane's runs shared the host.
+Checks run one after another and so do a service context's legs (parallelism 1): the backend shards take up to 12 GiB each
+(6 GiB before the resize) and the VM has 16. Pro has 14 cores and 48 GiB; the resize is `colima.yaml` (`cpu: 8`, `memory: 16`,
+`disk: 80`, backup `colima.yaml.bak-20261010`) and a `colima stop`, after which launchd's `homebrew.mxcl.colima` (`colima start -f`,
+KeepAlive) brings the VM back with it, between two merger ticks with the merger job booted out. In-sandbox CPU is the driver's `RUSAGE_CHILDREN` per step; a sibling lane's runs shared the host.
 
 | check | wall s | in-sandbox CPU s | legs (wall / CPU s) |
 |---|---|---|---|
@@ -161,8 +163,9 @@ and the VM has 8. In-sandbox CPU is the driver's `RUSAGE_CHILDREN` per step; a s
 **Shard workers (B4).** `pytest -n auto` starts one xdist worker per CPU, 4 on this VM, and one worker peaks ~2.1 GB
 anon-rss: 4 x 2.1 GB exceeds the leg's 6g memory cgroup (no swap), the kernel OOM-killed a worker, xdist printed
 `[gwN] node down: Not properly terminated` and shard 2 hung to its 1800 s kill in 4 of 5 merger runs (2026-10-07/08).
-The matrix's backend-shard job sets `PYTEST_XDIST_AUTO_NUM_WORKERS=2`: the same command and tests, files whole per worker,
-coverage `full`. Hosted runs 4 workers on 16 GB; the cap is a local capacity adaptation that goes the day the VM is resized.
+Until the 2026-10-10 resize the matrix's backend-shard job set `PYTEST_XDIST_AUTO_NUM_WORKERS=2`. It now sets `4`, hosted's
+count (its 4-CPU runner starts 4 under `-n auto`), under a 12g cgroup: the same command and tests, files whole per worker,
+coverage `full`. The line stays, because on the 8-CPU VM `-n auto` would start 8 workers, which is not hosted's run.
 A leg killed on timeout after such a line says so in its reason (worker, log line) and stays ERROR, never FAIL.
 
 The deps image (`localci-deps:<digest16>`, 9.85 GB: 294 aarch64 wheels, node 24, the fetched files) is built once per
