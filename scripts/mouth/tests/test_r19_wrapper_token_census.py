@@ -641,6 +641,35 @@ def test_one_verdict_state_per_walk_and_its_reason(row, state):
     assert (f"{w['state']} ({w['reason']})" if w["reason"] else w["state"]) == state
 
 
+class ThemePage:
+    """A page whose data-theme reads `seq` in turn: what hydration left, then what holds after it is forced."""
+    def __init__(self, *seq):
+        self.seq, self.set = list(seq), []
+
+    def evaluate(self, js, arg=None):
+        if arg is not None:
+            self.set.append(arg)
+            return None
+        return self.seq.pop(0)
+
+    def wait_for_timeout(self, ms):
+        pass
+
+
+@pytest.mark.parametrize("seq,forced,raises,sets", [(("light",), "light", False, []), (("dark", "light"), "light", False,
+                                                    ["light"]), (("dark", "dark"), "light", True, ["light"]),
+                                                    ((), None, False, [])],
+                         ids=["held", "hydrated over, forced again", "the page keeps its own", "system theme"])
+def test_a_forced_theme_holds_after_hydration_or_the_walk_fails_naming_it(seq, forced, raises, sets):
+    page = ThemePage(*seq)
+    if raises:
+        with pytest.raises(RuntimeError, match=r"^theme: the page hydrated data-theme='dark' over 'light'$"):
+            census_mod.force_theme(page, forced)
+    else:
+        census_mod.force_theme(page, forced)
+    assert page.set == sets
+
+
 def test_an_over_image_only_walk_fails_yet_its_grounds_are_listed():
     out = verdict_of({"opened": [walk("x", [run("#16161A", fg="#F5F6F7", image="gradient")])]})
     assert out[0] == "opened-surfaces: 0 ok, 1 failed"
@@ -898,6 +927,18 @@ def appended(html: str, reveal: str = REVEAL) -> str:
 
 
 SCRIM = '<div style="position:fixed;inset:0;background:{};z-index:5"></div>'
+AT_BOTTOM = "position:absolute;left:7px;top:calc(100vh - 34px);padding:8px;"
+TALL = "body{min-height:300vh}"
+GLOW = ("; document.body.insertAdjacentHTML('beforeend', `<div style=\"position:fixed;left:0;bottom:0;width:64px;"
+        "height:64px;filter:blur(6px) saturate(1.2);z-index:30\"><svg width='64' height='64'><circle cx='32' cy='32' "
+        "r='8' fill='#25D366'/></svg></div>`)")
+EDGE = ("; document.body.insertAdjacentHTML('beforeend', `<div style=\"position:fixed;left:0;bottom:0;width:44px;"
+        "height:64px;filter:blur(6px);z-index:30\"><div style=\"width:44px;height:64px;background:#25D366\">"
+        "</div></div>`)")
+DEV = ("; document.body.insertAdjacentHTML('beforeend', `<nextjs-portal style=\"display:block;position:fixed;left:0;"
+       "bottom:0;width:140px;height:60px;background:#111111;z-index:40\"></nextjs-portal>`)")
+REHYDRATE = ("<script>setTimeout(() => { const h = document.documentElement;"
+             " if (h.getAttribute('data-theme') === 'light') h.setAttribute('data-theme', 'dark'); }, 300)</script>")
 LIFTED = "position:relative;z-index:10;background:#FFFCF7;padding:16px"
 TOOLTIP = ('<span role="button" style="position:relative;color:#1D2C3B">KBLI<span style="position:absolute;left:0;'
            'top:28px;background:#A44B36;color:#FFFCF7;padding:4px;white-space:nowrap">Business code</span></span>')
@@ -987,10 +1028,10 @@ CASES = [
      (0, 0, 0, "ok", None)),
     ("G24-ink", surface(LIFTED, p(INK)), "", appended(SCRIM.format("#1D2C3B")), ["#s"],
      (0, 1, 0, "ok", "  scrim #1D2C3B alpha 1 at ")),
-    # A 1.5% texture over the whole page, as `body::after` paints it, is faint: no ground and no occluder.
+    # A 1.5% texture laid over the page, not fixed, is faint: no ground and no occluder.
     ("faint", surface("background:#FFFCF7;padding:16px", p(INK)), "",
-     appended('<div style="position:fixed;inset:0;background-image:linear-gradient(45deg,#A0A0A0,#E0E0E0);opacity:.015;'
-              'pointer-events:none;z-index:99"></div>'), ["#s"], (0, 0, 0, "ok", None)),
+     appended('<div style="position:absolute;inset:0;background-image:linear-gradient(45deg,#A0A0A0,#E0E0E0);'
+              'opacity:.015;pointer-events:none;z-index:99"></div>'), ["#s"], (0, 0, 0, "ok", None)),
     # The page's colour-dodge glow, a fixed pseudo-element over the viewport, blends: no ground, B approximate.
     ("glow", surface("padding:16px", p(INK)),
      "body::before{content:'';position:fixed;inset:0;background:radial-gradient(60% 40% at 50% 0%,"
@@ -1004,6 +1045,29 @@ CASES = [
     ("texture-under", surface("position:relative;z-index:1;background:rgba(255,252,247,0.5);padding:16px", p(INK)),
      "body{min-height:3000px}body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(#000,"
      "#000);opacity:.023;pointer-events:none;z-index:0}", REVEAL, ["#s"], (0, 0, 0, "ok", None)),
+    # The #8202 gate: a floating button's blurred glow at the viewport's bottom-left, fixed, over a run there. Every
+    # point is under the glow's filtered box but off its circle: the run is read again in the middle (G and I).
+    ("G-badge", surface(f"{AT_BOTTOM}background:#222222", p(LIGHT, "Villa")), TALL, REVEAL + GLOW, ["#s"],
+     (0, 1, 0, "ok", "  ground #222222 under 'Villa'")),
+    ("I-badge", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")), TALL, REVEAL + GLOW, ["#s"],
+     (0, 0, 0, "ok", None)),
+    # A glow whose box ends inside the run: the points past its edge are left, and its blur reaches them.
+    ("I-badge-edge", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK)), TALL, REVEAL + EDGE, ["#s"],
+     (0, 0, 0, "ok", None)),
+    # The dev server's indicator is never painted: on a page that cannot scroll, the run under it is read.
+    ("I-dev-indicator", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")), "", REVEAL + DEV, ["#s"],
+     (0, 0, 0, "ok", None)),
+    # An opener whose first click lands before hydration, so the surface is not there or the opener throws: the page
+    # is loaded and opened once more. The count lives in sessionStorage, which a reload keeps.
+    ("I-opener-twice", surface("background:#FFFCF7;padding:16px", p(INK)), "",
+     "sessionStorage.n = +(sessionStorage.n || 0) + 1; if (+sessionStorage.n > 1) { " + REVEAL + " }", ["#s"],
+     (0, 0, 0, "ok", None)),
+    ("I-opener-throws", surface("background:#FFFCF7;padding:16px", p(INK)), "",
+     "sessionStorage.n = +(sessionStorage.n || 0) + 1; if (+sessionStorage.n === 1) throw new Error('early'); "
+     + REVEAL, ["#s"], (0, 0, 0, "ok", None)),
+    # A page that hydrates its own theme over the forced light one is forced again before it is read.
+    ("I-theme-hydrated", surface("background:#FFFCF7;padding:16px", p(INK)) + REHYDRATE,
+     "[data-theme=dark] #s{background:#111111!important}", REVEAL, ["#s"], (0, 0, 0, "ok", None)),
 ]
 
 
@@ -1115,15 +1179,15 @@ def test_e2e_i11_two_walks_print_the_same_verdict(tmp_path, monkeypatch):
 
 def test_the_origin_main_opened_walk_is_the_guilt(census):
     """Main today, by pixels: every surface opens; the dropdown titles are white and readable, the red code chips
-    are not; the resolvers disagree on two runs (the page texture over the footer, a pictograph chip)."""
+    are not; the resolvers agree on every run once the dev indicator is hidden and the glow retargets."""
     out = verdict_of(census, PIN, [])
     assert out[0] == "opened-surfaces: 25 ok, 0 failed"
     assert lines_of(out, "opened-outside-wrapper:") == "opened-outside-wrapper: 10"
-    assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 143"
-    assert lines_of(out, "ground-resolver-disagree:") == "ground-resolver-disagree: 2"
+    assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 140"
+    assert lines_of(out, "ground-resolver-disagree:") == "ground-resolver-disagree: 0"
     assert lines_of(out, "shared-touched-unpinned:") == "shared-touched-unpinned: 0"
     assert lines_of(out, "shared-component-drift:") == "shared-component-drift: 0"
-    assert out[-1] == "opened-text-below-4.5: 685"
+    assert out[-1] == "opened-text-below-4.5: 680"
     drop = next(o for o in census["opened"] if o["name"] == "search-dropdown" and o["walk"] == "desktop/light")
     below = [(round(census_mod.contrast(census_mod.text_colour(r), r["a"]), 2), r["fg"], r["text"])
              for r in drop["runs"] if r["state"] == "ok" and r["fg"]
@@ -1133,7 +1197,7 @@ def test_the_origin_main_opened_walk_is_the_guilt(census):
 
 def test_the_origin_main_page_grounds_name_the_consultation_card_over_its_gradient(census):
     """G25 on main: KBLIConsultationCTA's inline gradient puts its text over an image, on every state of 55203."""
-    assert census_mod.page_verdict(census)[-1] == "page-grounds-off-contract: 449"
+    assert census_mod.page_verdict(census)[-1] == "page-grounds-off-contract: 438"
     card = {c["state"] for c in census["captures"] if c["page"] == "/kbli/55203"
             for ln in c["page_off"].values()
             if "over-image (gradient)" in ln and "section.rp-dark-island.mt-12>div.rounded-2xl" in ln}

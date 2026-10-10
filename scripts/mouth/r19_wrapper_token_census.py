@@ -826,6 +826,7 @@ def live(base: str) -> dict:
                         page.wait_for_function("() => document.readyState === 'complete'", timeout=60000)
                         quiet(page)
                         page.wait_for_timeout(1500)
+                        force_theme(page, forced)
                         res = page.evaluate(PROBE_JS, core)
                         if not res.get("root"):
                             raise RuntimeError("wrapper root not found")
@@ -1002,6 +1003,10 @@ RESOLVE_JS = r"""
     return false;
   };
   // Resolver B at one point. An element above the run's own that paints is an occluder: the point is dropped.
+  // So is a fixed or sticky element outside the roots that paints anything at all, a faint layer or a filter
+  // included (a floating button's blurred glow): the run is then read again in the middle of the viewport.
+  const overlay = (el) => position(el) && !roots.some((r) => r.contains(el)) && opacity(el) > 0
+    && (layersOf(el).some((l) => l.a > 0) || cs(el).filter !== "none" || (cs(el).backdropFilter || "none") !== "none");
   const canvasRgb = () => {
     for (const el of [document.documentElement, document.body]) {
       const c = el && parse(cs(el).backgroundColor);
@@ -1015,7 +1020,7 @@ RESOLVE_JS = r"""
     for (let a = runEl; a && i < 0; a = a.parentElement) i = st.indexOf(a);
     if (i < 0) return { missed: true };
     for (let k = 0; k < i; k++)
-      if (!runEl.contains(st[k]) && layersOf(st[k]).some((l) => !l.faint))
+      if (!runEl.contains(st[k]) && (layersOf(st[k]).some((l) => !l.faint) || overlay(st[k])))
         return { occluded: path(st[k]), fixed: position(st[k]) };
     const ls = st.slice(i).flatMap(layersOf);
     let k = ls.findIndex((l) => l.kind === "color" && l.a >= 0.999);
@@ -1083,7 +1088,8 @@ RESOLVE_JS = r"""
   }
   roots.forEach((r) => r.setAttribute("data-census-root", ""));
   const st = document.createElement("style");
-  st.textContent = "*{pointer-events:auto!important;scroll-behavior:auto!important}[data-census-root],[data-census-root] *,"
+  st.textContent = "nextjs-portal{display:none!important}"
+    + "*{pointer-events:auto!important;scroll-behavior:auto!important}[data-census-root],[data-census-root] *,"
     + "[data-census-root] *::before,[data-census-root] *::after{color:transparent!important;"
     + "-webkit-text-fill-color:transparent!important;text-decoration-color:transparent!important;"
     + "caret-color:transparent!important;text-shadow:none!important}";
@@ -1144,8 +1150,11 @@ RESOLVE_JS = r"""
         const r = runs[i], { pts, bs } = r.trial;
         const keep = pts.map((p, k) => [p, bs[k]]).filter(([, b]) => !b.occluded && !b.missed);
         const occ = bs.find((b) => b.occluded);
+        // Under a fixed overlay, even at one point, the run waits to be read in the middle of the viewport:
+        // a blur or a shadow reaches past the overlay's box onto the points that are left.
+        if (occ && occ.fixed && this.target !== i) continue;
         if (!keep.length) {
-          if (occ && (this.target === i || !occ.fixed)) { r.state = "occluded"; r.occludedBy = occ.occluded; }
+          if (occ) { r.state = "occluded"; r.occludedBy = occ.occluded; }
           continue;
         }
         const A = sample(keep.map(([p]) => p)), B = keep.map(([, b]) => b);
@@ -1198,6 +1207,46 @@ CAPS = {"opened": 250, "shared": 250, "page": 250}
 STILL = (100, 10)
 IMAGES_JS = ("() => [...document.images].every((i) => { const r = i.getBoundingClientRect();"
              " return i.complete || r.bottom < 0 || r.top > innerHeight; })")
+
+
+ROOTS_JS = """(sels) => [...new Set(sels.flatMap((s) => [...document.querySelectorAll(s)]))]
+  .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 1 && r.height > 1; }).length"""
+THEME_JS = "() => document.documentElement.getAttribute('data-theme')"
+
+
+def force_theme(page, forced: str | None) -> None:
+    """A forced theme holds after hydration: a page that hydrated its own theme over it is forced again, and a
+    page that keeps its own is never read under the wrong one."""
+    if not forced or page.evaluate(THEME_JS) == forced:
+        return
+    page.evaluate("t => document.documentElement.setAttribute('data-theme', t)", forced)
+    page.wait_for_timeout(SETTLE["ready"])
+    got = page.evaluate(THEME_JS)
+    if got != forced:
+        raise RuntimeError(f"theme: the page hydrated data-theme={got!r} over {forced!r}")
+
+
+def open_page(page, url: str, forced: str | None, opener, selectors: list[str]) -> bool:
+    """Loads the page under its theme and opens the surface; True when a root is there to read."""
+    resp = page.goto(url, wait_until="load", timeout=180000)
+    if resp is None or resp.status >= 400:
+        raise RuntimeError(f"load: HTTP {resp.status if resp else 'none'}")
+    page.wait_for_timeout(SETTLE["load"])
+    if forced:
+        page.evaluate("t => document.documentElement.setAttribute('data-theme', t)", forced)
+    page.wait_for_function("() => document.readyState === 'complete'", timeout=60000)
+    quiet(page)
+    page.wait_for_timeout(SETTLE["ready"])
+    force_theme(page, forced)
+    if opener:
+        try:
+            opener(page)
+        except Exception as exc:  # the reason names the opener, never "never opened" bare
+            raise RuntimeError(f"opener: {exc}".splitlines()[0][:160]) from exc
+    page.add_style_tag(content="*,*::before,*::after{transition:none!important;animation:none!important}")
+    page.wait_for_timeout(SETTLE["open"])
+    force_theme(page, forced)
+    return bool(page.evaluate(ROOTS_JS, selectors))
 
 
 def quiet(page) -> None:
@@ -1483,22 +1532,16 @@ def walk_opened(browser, m, base: str, census: dict) -> None:
             row: dict = {"name": name, "walk": f"{vname}/{tname}", "roots": 0, "runs": []}
             branch = None
             try:
-                resp = page.goto(base + path, wait_until="load", timeout=180000)
-                if resp is None or resp.status >= 400:
-                    raise RuntimeError(f"load: HTTP {resp.status if resp else 'none'}")
-                page.wait_for_timeout(SETTLE["load"])
-                if forced:
-                    page.evaluate("t => document.documentElement.setAttribute('data-theme', t)", forced)
-                page.wait_for_function("() => document.readyState === 'complete'", timeout=60000)
-                quiet(page)
-                page.wait_for_timeout(SETTLE["ready"])
-                if opener:
-                    try:
-                        opener(page)
-                    except Exception as exc:  # the reason names the opener, never "never opened" bare
-                        raise RuntimeError(f"opener: {exc}".splitlines()[0][:160]) from exc
-                page.add_style_tag(content="*,*::before,*::after{transition:none!important;animation:none!important}")
-                page.wait_for_timeout(SETTLE["open"])
+                # Under load a click can land before hydration: the surface never opens, closes again, or a link
+                # navigates away. The page is loaded and opened once more before the walk fails.
+                try:
+                    opened = open_page(page, base + path, forced, opener, selectors)
+                except Exception:
+                    if not opener:
+                        raise
+                    opened = False
+                if opener and not opened:
+                    open_page(page, base + path, forced, opener, selectors)
                 branch = page.evaluate(BRANCH_JS, name.split()[0]) if shared else None
                 row.update(resolve(page, "shared" if shared else "opened", selectors))
             except Exception as exc:  # a surface that did not open must never read as clean

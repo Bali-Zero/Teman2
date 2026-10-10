@@ -916,10 +916,16 @@ by the painters (`SPEC-W0d-census.md` §2).
   run's ground is the median of its samples, and a spread over 6 on any channel is non-uniform.
   A run below the fold is scrolled to the centre and captured there. Each position is read once
   two captures 100 ms apart are identical, so a section a script reveals on scroll has
-  finished, and each page is read once its network has been idle for 500 ms.
+  finished, and each page is read once its network has been idle for 500 ms. The dev server's
+  indicator (`nextjs-portal`) is never painted: the census always runs on `next dev`, CI
+  included, and the indicator sits over the viewport's bottom-left corner (W0d-2').
 - **Resolver B, the painters, names.** `elementsFromPoint` runs with `pointer-events:auto`
   forced, so an overlay that ignores the pointer is still seen. An element outside the run that
-  paints above it occludes that point. Below the run, each element adds its `::after` and
+  paints above it occludes that point. So does a fixed or sticky element outside the roots that
+  paints anything at all, a faint layer or a filter included, such as a floating button's
+  blurred glow. A run with even one point under such an overlay is read again once it is
+  brought to the middle of the viewport, because a blur reaches past the overlay's box onto
+  the points that are left (W0d-2'). Below the run, each element adds its `::after` and
   `::before`, its replaced content (`img`, `video`, `canvas`, `iframe`, `object`, `embed`, a
   painted SVG shape), its background image and its background colour. A layer's alpha is its own
   times every opacity above it. Layers composite down to the first opaque colour, then the
@@ -968,12 +974,16 @@ by the painters (`SPEC-W0d-census.md` §2).
 
 - `ok`: at least one root, and at least one run measured by A;
 - `failed:never-opened (<reason>)`: the page failed to load (`load: …`), the opener threw
-  (`opener: …`), there were 0 roots or 0 text runs, or every run was occluded (`0 measurable, N
-occluded`);
+  (`opener: …`), the page hydrated its own theme over the forced one (`theme: …`), there were 0
+  roots or 0 text runs, or every run was occluded (`0 measurable, N occluded`);
 - `failed:over-image-only (N runs)`: the surface opened, but every measured run is over an
   image. Its grounds are still listed under K.
 
 Any failed walk, or any walk over the scroll cap, turns P, K, R and M INCOMPLETE, never 0.
+Two gestures keep a loaded runner from failing a walk that would open (W0d-2'). When an opener
+throws or leaves no root, the page is loaded and opened once more, because under load a click
+can land before hydration: the surface never opens, closes again, or a link navigates away. A forced theme that hydration replaced is forced again
+before the page is read, at rest and opened alike; a page that keeps its own fails the walk.
 
 **What it prints.** `page-grounds-off-contract: G` follows `state-colors-off-contract:`. It
 lists each distinct ground, painter and cause found at rest, and is INCOMPLETE when a capture
@@ -987,14 +997,16 @@ failed or its walk ran over the cap. Then:
 6. `shared-component-drift: D` (§8.5);
 7. last, `opened-text-below-4.5: M`.
 
-**Numbers measured (W0d-2).** These are reported, not a gate. `origin/main` is `463ec63b76`
-(`apps/mouth` and `packages/core` are unchanged through `f75a4fee92`). It was walked twice, 43 s
-apart, and the two verdict texts are identical (I11). #8161's head, `51b2407f27`, was walked for
-its three search scenarios only.
+**Numbers measured (W0d-2').** These are reported, not a gate. `origin/main` is `0c76eb94ed`
+(`apps/mouth` and `packages/core` are unchanged through `c49b7e84ac`). It was walked twice on an
+M5, 38 s apart, and the two verdict texts are identical (I11). #8161's head, `51b2407f27`, was
+walked for its three search scenarios only. CI walks the same tree on Linux in
+`wrapper-census-states`; its numbers differ by a few lines, because the fonts lay the pages out
+differently, and each CI run is named with its job id in the PR.
 
 | head                      | `page-grounds-off-contract:` | `opened-surfaces:` | `opened-outside-wrapper:` | `opened-grounds-off-contract:` | `ground-resolver-disagree:` | `shared-touched-unpinned:` | `shared-component-drift:` | `opened-text-below-4.5:` |
 | ------------------------- | ---------------------------- | ------------------ | ------------------------- | ------------------------------ | --------------------------- | -------------------------- | ------------------------- | ------------------------ |
-| `origin/main`             | 449                          | 25 ok, 0 failed    | 10                        | 143                            | 2                           | 0                          | 0                         | 685                      |
+| `origin/main`, M5         | 438                          | 25 ok, 0 failed    | 10                        | 140                            | 0                           | 0                          | 0                         | 680                      |
 | #8161's head, search only | not measured                 | 10 ok, 0 failed    | 0                         | 21                             | 0                           | not measured               | not measured              | 108                      |
 
 - W0d-1 printed K 88 and M 398 on `origin/main` from the DOM composite. The pixels read every
@@ -1007,12 +1019,21 @@ its three search scenarios only.
 - At #8161's head the dropdown titles read 1.04:1 and 1.03:1 on `#282729` and `#28282A`, the
   gate's number, now by the pixels.
 - G counts `KBLIConsultationCTA` over its inline gradient on every state of `/kbli/55203`.
-- R is 2 on `origin/main`:
-  - the page texture (`body::after`, fixed, `z-index: 0`) paints over the footer, which is not
-    positioned, and darkens it by four levels; B cannot place a pseudo-element in the stacking
-    order;
-  - a `❓` chip in the sector drawer reads three levels darker than its `#F8FAFC`
-    (system-dark).
+- R is 0 on `origin/main`. W0d-2 printed 2, and named the wrong cause (the page texture):
+  - both runs were read at the viewport's bottom-left, where two fixed overlays sit: the dev
+    server's indicator (`nextjs-portal`) and the floating button's blurred glow (`filter:
+blur(6px)`, a box 64px wide that the pixels see and the painter stack did not). They were
+    `'News'` in the `/kbli` footer (pixels `#F0F0F1`, painters `#F4F4F5`) and a `❓` chip in the
+    sector drawer (pixels `#F5F7F9`, painters `#F8FAFC`);
+  - read in the middle of the viewport, both agree with the painters, the texture included.
+    The same corner was in the shared pin: the `/news` footer pinned `'News'` on `#E2DED6`,
+    where it reads `#EEE9E1`. On #8202, CI read the same `'News'` as `#EFEAE2` and the copyright
+    line there as over an image, and printed `shared-component-drift: 8`;
+  - W0d-2' hides the indicator and makes a fixed or sticky overlay occlude, so the run is read
+    again in the middle of the viewport. G falls by 11 and K by 3 for the same reason.
+- R 0 is reachable by construction for W2''': no overlay of the instrument's own runner is ever
+  painted, and a page's own fixed overlay never decides a run it covers. A disagreement left in
+  W2''' is a ground the painters cannot name, which W2''' fixes in the page.
 - P is 10. It counts the sector drawer and the comparison modal twice each, and the mobile nav
   drawer six times, because all three are portals into `<body>`.
 - The exit for W2''' is G, F, P, K, R, N, D and M equal to 0.
@@ -1098,8 +1119,8 @@ the drawer obeys the §8.1 Portal ruling. Every route outside `/kbli*` keeps its
   - the branch.
 - D counts the entries that appeared or vanished since the pin, plus any walk that is not in
   the pin. An entry whose colours moved by 2 or less per channel is the same entry, §8.4's
-  tolerance: the page texture over the footer moves the pixels by a level from one walk to the
-  next (W0d-2 measured 36 such entries on `/news` between two dev servers of the same tree).
+  tolerance: a ground the pixels read can move by a level from one walk to the next (W0d-2 saw
+  36 such one-level moves in `/news`'s footer between two dev servers of the same tree).
 - A pinned walk that is missing or failed turns D INCOMPLETE, never 0.
 
 **`shared-touched-unpinned: N`.**
