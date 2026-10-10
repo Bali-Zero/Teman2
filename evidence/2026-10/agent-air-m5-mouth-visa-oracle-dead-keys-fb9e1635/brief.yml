@@ -7,7 +7,10 @@ ruling: >-
   Team lead mandate, 2026-10-10 - two fresh gates on PR #8148 measured the keys as unrendered since
   PR #7659 (d5fd476ac4); owner rule: nothing false may stay ready to ship.
 mission: >-
-  The public Visa Oracle dictionary carries no interview key that no component renders.
+  The public Visa Oracle dictionary no longer carries the 46 named interview keys that no component
+  renders (42 process.*, 3 whyweask.*, question.human_context_notice). It is not a census of every
+  unrendered key: a raw census at this head still finds ~99 keys with no literal reference and no
+  dynamic builder (tree.*, some outcome.*, verdict.eligibility.*, ...), left to a ledgered follow-up.
 objective: >-
   46 dead keys (42 process.*, 3 whyweask.*, 1 question.human_context_notice)
   are gone from EN and ID with parity kept, and the whole visa-oracle subtree stays green.
