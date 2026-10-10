@@ -56,7 +56,7 @@ const SERIF: React.CSSProperties = {
   fontWeight: 450,
 };
 const EYEBROW =
-  "text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--tx-secondary)]";
+  "text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--tx-secondary)]";
 const SECTION_H2 = "text-[24px] leading-[1.14] tracking-[-0.02em]";
 const HAIRLINE = "border border-[var(--bz-border)]";
 const CARD = `rounded-lg bg-[var(--bz-surface)] ${HAIRLINE}`;
@@ -77,7 +77,7 @@ function StatePill({ tone, label }: { tone: PillTone; label: string }) {
   return (
     <span
       className={cn(
-        "inline-flex h-6 items-center gap-[7px] whitespace-nowrap rounded-full border px-[10px] text-[10px] font-semibold uppercase tracking-[0.12em]",
+        "inline-flex h-6 items-center gap-[7px] whitespace-nowrap rounded-full border px-[10px] text-[11px] font-semibold uppercase tracking-[0.12em]",
         PILL_TONE[tone],
       )}
     >

@@ -67,7 +67,7 @@ export function TimelineItem({
       />
 
       <div
-        className="text-[10px] font-semibold uppercase tracking-[0.12em] tabular-nums text-[var(--tx-secondary)]"
+        className="text-[11px] font-semibold uppercase tracking-[0.12em] tabular-nums text-[var(--tx-secondary)]"
         title={formatDate(entry.occurredAt, {
           weekday: "long",
           month: "long",
@@ -93,7 +93,7 @@ export function TimelineItem({
           onClick={() => {
             window.location.href = "/portal/chat";
           }}
-          className="mt-1.5 inline-flex w-fit cursor-pointer items-center text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--bz-copper-text)] transition-colors hover:text-[var(--tx-pure)]"
+          className="mt-1.5 inline-flex w-fit cursor-pointer items-center text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--bz-copper-text)] transition-colors hover:text-[var(--tx-pure)]"
         >
           Reply <ChevronRight className="w-3 h-3 ml-1" />
         </button>
