@@ -522,3 +522,25 @@ def test_a_sync_that_writes_a_new_lock_bounds_the_cache_and_a_hit_survives(w):
     assert w.run() == 0
     assert w.npm_calls() == 1
     assert (d / fresh).stat().st_mtime > 1  # the hit refreshed it
+
+
+def _side_ref(w, ref="refs/merger/base"):
+    """A commit reachable only from `ref`, the way the LOCALCI mirror keeps its base: main stays behind."""
+    git(w.canon, "checkout", "-q", "-b", "side")
+    w.canon_commit({"apps/mouth/side.txt": "s\n"}, "only on the side ref")
+    git(w.canon, "update-ref", ref, "side")
+    git(w.canon, "checkout", "-q", "main")
+
+
+def test_the_source_ref_comes_from_the_environment(w, monkeypatch):
+    _side_ref(w)
+    monkeypatch.setenv("ZERO_SYNC_CANONICAL_REF", "refs/merger/base")
+    assert w.run() == 0
+    assert "apps/mouth/side.txt" in w.zero_files()
+
+
+def test_without_the_environment_the_source_ref_stays_main(w, monkeypatch):
+    _side_ref(w)
+    monkeypatch.delenv("ZERO_SYNC_CANONICAL_REF", raising=False)
+    assert w.run() == 0
+    assert "apps/mouth/side.txt" not in w.zero_files()

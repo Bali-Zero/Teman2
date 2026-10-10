@@ -35,6 +35,9 @@ manifests have no PR gate.
 
 ## Operating
 - Dry run: `python3 scripts/zero_sync/zero_sync.py --dry-run --no-ci-check --state-dir <dir>` (no push, no heartbeat; exit 3 if it would refuse).
+- Source: `ZERO_SYNC_CANONICAL_URL` and `ZERO_SYNC_CANONICAL_REF` in the job env (defaults: Teman2, `main`).
+  Cutover gate 3 sets them to the LOCALCI mirror and `refs/merger/base`, the only ref the merger advances there
+  (`docs/runbooks/zero-cutover.md`).
 - Stop: `MINI_ZERO_SYNC_ENABLED=false` in the job env, or `launchctl bootout gui/$(id -u)/com.nuzantara.zero-sync`.
 - A keep path missing from canonical is a hard error naming the path: edit zero's `.slim/keep_paths.txt`.
 - Mass-change guard: a sync deleting more than 25% of zero's product files stops (exit 1); if the perimeter cut is
