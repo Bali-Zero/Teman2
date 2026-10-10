@@ -1,19 +1,23 @@
-"""Replayable mutation sweep for the phase E flip (phase_e_flip.py) against test_phase_e_flip.py — the same harness, rules and
-verdicts as merger_mutants.py (one textual rule on a temporary copy; KILLED only on a pytest failure; STALE when the rule's
-text no longer occurs exactly once), kept in its own table so the flip's lane never edits the merger's.
+"""Replayable mutation sweep for the phase E flip (phase_e_flip.py) against test_phase_e_flip.py, and for its step 1
+(hand_report.sh, and the tick's extraction it must equal) against test_hand_report.py — the same harness, rules and verdicts
+as merger_mutants.py (one textual rule on a temporary copy; KILLED only on a pytest failure; STALE when the rule's text no
+longer occurs exactly once), kept in its own table so the flip's lane never edits the merger's.
 
     python3 scripts/localci/tests/mutants/phase_e_mutants.py [--only NAME ...] [--list]
 """
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 import tempfile
 from pathlib import Path
 
-from merger_mutants import copy_tree, run_tests, verdict
+from merger_mutants import ROOT, copy_tree, run_tests, verdict
 
 PEF, T = "scripts/localci/phase_e_flip.py", ("scripts/localci/tests/test_phase_e_flip.py",)
+HR, TICK, TH = "scripts/localci/hand_report.sh", "scripts/localci/localci_merger_tick.sh", ("scripts/localci/tests/test_hand_report.py",)
+PLIST = "infra/launchagents/com.balizero.localci-merger.plist"   # test_hand_report.py reads launchd's PATH from it
 
 # name: (text that must occur once in phase_e_flip.py, replacement) — every rule must turn the test file red
 MUTANTS = {
@@ -163,14 +167,36 @@ MUTANTS = {
     "pe-key-title-kept": ('"fingerprint": key_fingerprint(k.get("key"))}', '"fingerprint": key_fingerprint(k.get("key")), "title": k.get("title")}'),
 }
 
+# name: (file, text that must occur once in it, replacement) — every rule must turn test_hand_report.py red
+HAND_MUTANTS = {
+    "hr-ref-order-swapped": (HR, 'REF=refs/merger/wrapper\nSHA="$(git -C "$STATE/repo.git" rev-parse --verify --quiet "$REF^{commit}")" \\\n'
+                                 '  || { REF=refs/merger/base;',
+                             'REF=refs/merger/base\nSHA="$(git -C "$STATE/repo.git" rev-parse --verify --quiet "$REF^{commit}")" \\\n'
+                                 '  || { REF=refs/merger/wrapper;'),
+    "hr-partial-scrub": (HR, 'exec env -i HOME="$HOME"', 'exec env -u GH_TOKEN -u GIT_DIR -u PYTHONPATH HOME="$HOME"'),
+    "hr-sentinel-presettable": (HR, 'if [ "${LOCALCI_HAND_REPORT_CLEAN:-}" != "$$" ]; then', 'if [ -z "${LOCALCI_HAND_REPORT_CLEAN:-}" ]; then'),
+    "hr-path-without-homebrew": (HR, 'PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"', 'PATH="/usr/bin:/bin"'),
+    "hr-not-isolated": (HR, '"$STATE/venv/bin/python" -I ', '"$STATE/venv/bin/python" '),
+    "hr-git-isolation-dropped": (HR, "export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_ATTR_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0", ":"),
+    "hr-git-config-count-unexported": (HR, "export GIT_CONFIG_COUNT=3 ", "GIT_CONFIG_COUNT=3 "),
+    "hr-no-cleanup": (HR, "trap 'rm -rf \"$CODE\"' EXIT\n", ""),
+    "hr-runner-dropped": (HR, "merger.py hosted_compare.py runner.py prune.py", "merger.py hosted_compare.py prune.py"),
+    "hr-repo-dropped": (HR, " report --repo Bali-Zero/Teman2 --state-dir", " report --state-dir"),
+    # the comparison must see a file the tick starts to extract, in any shape
+    "tick-adds-a-literal-show": (TICK, 'HB_NEW="$(mktemp', 'git -C "$STATE/repo.git" show "$SHA:scripts/localci/newdep.py" > "$CODE/newdep.py"\nHB_NEW="$(mktemp'),
+    "tick-adds-an-indented-loop": (TICK, 'HB_NEW="$(mktemp', 'if true; then\n  for f in newdep.py; do\n    git -C "$STATE/repo.git" show '
+                                         '"$SHA:scripts/localci/$f" > "$CODE/$f"\n  done\nfi\nHB_NEW="$(mktemp'),
+}
+
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Mutation sweep for the phase E flip against its tests.")
     ap.add_argument("--only", nargs="+", metavar="NAME", help="run only these mutants")
     ap.add_argument("--list", action="store_true", help="print the table and exit")
     a = ap.parse_args(argv)
-    names = a.only or list(MUTANTS)
-    if unknown := [n for n in names if n not in MUTANTS]:
+    table = {**{n: (PEF, *r) for n, r in MUTANTS.items()}, **HAND_MUTANTS}
+    names = a.only or list(table)
+    if unknown := [n for n in names if n not in table]:
         print(f"unknown mutant(s): {unknown}", file=sys.stderr)
         return 2
     if a.list:
@@ -179,20 +205,23 @@ def main(argv: list[str] | None = None) -> int:
     with tempfile.TemporaryDirectory(prefix="phase-e-mutants-") as tmp:
         tree = Path(tmp)
         copy_tree(tree)
-        original = (tree / PEF).read_text()
-        if (rc := run_tests(tree, T)) != 0:
+        (tree / PLIST).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / PLIST, tree / PLIST)
+        originals = {f: (tree / f).read_text() for f in (PEF, HR, TICK)}
+        if (rc := run_tests(tree, T + TH)) != 0:
             print(f"baseline: the unmutated copy gives pytest exit {rc} — nothing to measure", file=sys.stderr)
             return 2
         survived, stale, errors = [], [], []
         for n in names:
-            old, new = MUTANTS[n]
+            f, old, new = table[n]
+            original = originals[f]
             if original.count(old) != 1 or old == new:
                 stale.append(n)
                 print(f"{n:42} STALE (the rule's text occurs {original.count(old)} times)", flush=True)
                 continue
-            (tree / PEF).write_text(original.replace(old, new))
-            v = verdict(run_tests(tree, T))
-            (tree / PEF).write_text(original)
+            (tree / f).write_text(original.replace(old, new))
+            v = verdict(run_tests(tree, T if f == PEF else TH))
+            (tree / f).write_text(original)
             if v == "SURVIVED":
                 survived.append(n)
             elif v != "KILLED":

@@ -753,7 +753,7 @@ silence is a `warning`, recovery `launchctl kickstart`. Arming (operator of Pro,
 
 ## Phase E flip (prepared; the operator applies)
 
-    bash scripts/localci/hand_report.sh   # step 1, on Pro, immediately before --apply: the report (about 4 minutes)
+    bash scripts/localci/hand_report.sh   # step 1, on Pro, immediately before --apply: the report (about 6 minutes)
     # step 2, the plan (read it); step 3, the apply with the plan's digest
     python scripts/localci/phase_e_flip.py [--repo Bali-Zero/Teman2] [--branch main] [--report <report.json>] [--state-dir <dir>] [--key-pub <deploy_key.pub>]
     python scripts/localci/phase_e_flip.py --apply --confirm <digest> --quiescent   # operator[gui], after READY and the key
@@ -761,10 +761,12 @@ silence is a `warning`, recovery `launchctl kickstart`. Arming (operator of Pro,
 
 Step 1 recomputes `report.json`, which nothing regenerates on a schedule (since F2 the tick judges READY in memory and writes
 no report). `hand_report.sh` runs the merger's own `merger.py report` the way the tick runs it: the code read from the mirror's
-ref (`refs/merger/wrapper`, else `refs/merger/base`), the same files extracted beside it — the report's stale-verdict judge loads
-`runner.py`, and without it every hosted-stale row would stay FALSE_GREEN and READY could never be true; a test keeps the list
-equal to the tick's — the merger's venv with `-I`, and launchd's environment (HOME and PATH only). A "refusing" exit (a tick
-was appending to the journal) writes nothing: run it again.
+ref (`refs/merger/wrapper`, else `refs/merger/base`, resolved once), the same files extracted beside it — the report's
+stale-verdict judge loads `runner.py`, and without it every hosted-stale row would stay FALSE_GREEN and READY could never be
+true; a test keeps the list equal to the tick's, and a file missing at that commit fails the run — the merger's venv with `-I`,
+launchd's environment (HOME and PATH only) and the tick's git isolation. `merger report: refusing — <reason>` writes nothing:
+read the reason — a tick appending to the journal at that moment is transient, run it again; an unreadable journal line needs
+repair first.
 
 Phase E of `docs/specs/localci-sovereign-2026-10-07.md` leaves the merger's deploy key as the only writer of `main`. Without
 `--apply` the script only reads (GETs through `gh api`): the classic protection of the branch with its required set and each
