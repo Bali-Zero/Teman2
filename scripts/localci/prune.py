@@ -296,7 +296,8 @@ def build_cache_gb(docker: str) -> float | None:
 MAX_USED_RE = re.compile(r"--max-used-space\b")
 KEEP_STORAGE_RE = re.compile(r"--keep-storage\b")
 TOTAL_RE = re.compile(r"^Total:\s*([0-9]+(?:\.[0-9]+)?)\s*(B|kB|KB|MB|GB|TB)\s*$", re.M)
-INEFFECTIVE_SLACK_GB = 1.0   # above the budget by more than this, with nothing freed, a prune that exited 0 did not work
+DEPRECATED_RE = re.compile(r"deprecated|has been changed to", re.I)
+DU_LINE_RE = re.compile(r"^(Shared|Private|Reclaimable|Total):\s*([0-9]+(?:\.[0-9]+)?)\s*(B|kB|KB|MB|GB|TB)\s*$", re.M)
 
 
 def builder_prune_flag(docker: str) -> str:
@@ -317,34 +318,54 @@ def prune_total_gb(output: str) -> float | None:
     return round(float(m.group(1)) * SIZE_UNITS[m.group(2)] / 1e9, 3) if m else None
 
 
+def flag_deprecated(output: str, flag: str) -> bool:
+    """Whether a line of the call's output NAMES the flag we passed and says it is deprecated or changed (buildx 0.34: `Flag
+    --keep-storage has been deprecated, keep-storage flag has been changed to reserved-space`). Another flag's warning, or the
+    word `deprecated` on a line that does not name ours, is not this."""
+    named = re.compile(rf"--{re.escape(flag)}(?![\w-])")
+    return any(named.search(ln) and DEPRECATED_RE.search(ln) for ln in (output or "").splitlines())
+
+
+def buildx_du_gb(docker: str) -> dict | None:
+    """The summary of `docker buildx du` in GB: {shared, private, reclaimable, total}. buildx prints no `Shared:` (and no
+    `Private:`) when nothing is shared, and then everything is private. A measurement: unreadable or unparsed is None."""
+    try:
+        r = _docker(docker, "buildx", "du", timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return du_summary_gb(r.stdout or "") if r.returncode == 0 else None
+
+
+def du_summary_gb(output: str) -> dict | None:
+    got = {k: round(float(n) * SIZE_UNITS[u] / 1e9, 3) for k, n, u in DU_LINE_RE.findall(output or "")}
+    if "Total" not in got or "Reclaimable" not in got:
+        return None
+    shared = got.get("Shared", 0.0)
+    return {"shared": shared, "private": got.get("Private", round(got["Total"] - shared, 3)), "reclaimable": got["Reclaimable"], "total": got["Total"]}
+
+
 def builder_prune(docker: str, rec: dict, budget_gb: float) -> None:
     """`docker builder prune -af --max-used-space`: `-a` because the entries are the layers of images that exist, which are not
     dangling — without it nothing went (Pro, 2026-10-08T17:26Z: 0 B of a 21.8 GB cache). Run after image removals, so the entries
-    tied to them go. The flag is chosen once per prune run (B13). rc, tail and freed_gb are the last call's, `runs` the count;
+    tied to them go. The flag is chosen once per prune run (B13). rc and tail are the last call's, `runs` the count, `freed_gb` the sum
+    of buildx's `Total:` over the calls; `deprecated_flag` is true when any call said the flag we passed is deprecated or changed;
     the cache size is journalled before the first and after the last."""
     if "builder_prune" not in rec:
         rec["builder_prune"] = {"rc": 0, "keep_storage_gb": budget_gb, "flag": builder_prune_flag(docker),
-                                "cache_gb": {"before": build_cache_gb(docker)}, "runs": 0}
+                                "freed_gb": None, "deprecated_flag": False, "cache_gb": {"before": build_cache_gb(docker)}, "runs": 0}
     bp = rec["builder_prune"]
     try:
         b = _docker(docker, "builder", "prune", "-af", f"--{bp['flag']}", f"{budget_gb:g}GB", timeout=600)
-        rc, tail, freed = b.returncode, (b.stdout or b.stderr).strip()[-120:], prune_total_gb(f"{b.stdout}\n{b.stderr}")
+        out = f"{b.stdout}\n{b.stderr}"
+        rc, tail, freed = b.returncode, (b.stdout or b.stderr).strip()[-120:], prune_total_gb(out)
+        bp["deprecated_flag"] = bp["deprecated_flag"] or flag_deprecated(out, bp["flag"])
     except (OSError, subprocess.SubprocessError) as e:
         rc, tail, freed = None, type(e).__name__, None
     bp["runs"] += 1
     bp["tail"] = tail
-    bp["freed_gb"] = freed
+    if freed is not None:
+        bp["freed_gb"] = round((bp["freed_gb"] or 0.0) + freed, 3)
     bp["rc"] = rc   # the last call's, as ruled; `runs` says how many there were
-
-
-def builder_prune_verdict(bp: dict, budget_gb: float) -> None:
-    """Exit 0 is not a prune that worked: rc 0, the cache still above its budget by more than a GB, and buildx reporting 0 B
-    freed is `ineffective` (Pro, 2026-10-10: 22.83 GB against 4, every call green). Bytes shared with an image that exists are
-    not freeable, so a call that did free something is never flagged; no `Total:` line or an unread cache says nothing."""
-    after, freed = bp["cache_gb"].get("after"), bp.get("freed_gb")
-    bp["ineffective"] = bp["rc"] == 0 and after is not None and freed == 0 and after > budget_gb + INEFFECTIVE_SLACK_GB
-    if bp["ineffective"]:
-        bp["why"] = f"rc 0 but buildx freed 0 B and the cache is {after:g} GB against a {budget_gb:g} GB budget (--{bp['flag']})"
 
 
 def _vm_discard_on(colima: str) -> tuple[bool | None, str | None]:
@@ -447,7 +468,7 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
         rec["vm_floor"]["met"] = rec["vm_free_gb"]["after"] is not None and rec["vm_free_gb"]["after"] >= floor
     if "builder_prune" in rec:
         rec["builder_prune"]["cache_gb"]["after"] = build_cache_gb(docker)
-        builder_prune_verdict(rec["builder_prune"], cache_budget)
+        rec["builder_prune"]["du_gb"] = buildx_du_gb(docker)   # a measurement, never a verdict: BuildKit's cap accounting is opaque
     rec["images"] = {"removed" if not dry else "would_remove": removed, "errors": errors,
                      "kept": [{"tag": d["tag"], "rule": d["rule"]} for d in decided if not d["remove"]] + never_kept}
     rec["host_free_gb"]["after"] = host_free_gb(host_path)
@@ -460,7 +481,7 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
         except (OSError, subprocess.TimeoutExpired) as e:
             rec["fstrim"] = {"rc": None, "tail": type(e).__name__}
         rec["host_free_gb"]["after_fstrim"] = host_free_gb(host_path)
-    rec["failed"] = [k for k in ("builder_prune", "fstrim") if k in rec and (rec[k]["rc"] != 0 or rec[k].get("ineffective"))] + (["images"] if errors else [])
+    rec["failed"] = [k for k in ("builder_prune", "fstrim") if k in rec and (rec[k]["rc"] != 0 or rec[k].get("deprecated_flag"))] + (["images"] if errors else [])
     if rec.get("vm_discard", {}).get("remounted") and rec["vm_discard"]["after"] is not True:
         rec["failed"].append("vm_discard")
     return rec
