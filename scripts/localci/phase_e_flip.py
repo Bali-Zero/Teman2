@@ -53,7 +53,8 @@ DEFAULT_REPORT = Path.home() / ".nuzantara-pilots" / "local-ci" / "merger" / "re
 DEFAULT_STATE_DIR = Path.home() / ".nuzantara-pilots" / "local-ci" / "phase-e"
 DEFAULT_KEY_PUB = Path.home() / ".nuzantara-pilots" / "local-ci" / "merger" / "deploy_key.pub"
 REPORT_MAX_AGE = timedelta(hours=2)
-APPLY_MARGIN = timedelta(minutes=5)   # --apply wants a report this much younger, so it cannot expire between the two writes
+APPLY_MARGIN = timedelta(minutes=5)   # the plan and --apply want a report this much younger, so it does not expire during a
+                                      # normal run (seconds); the per-write re-read keeps the full limit
 REPORT_MAX_SKEW = timedelta(minutes=5)
 READY_MERGES, READY_DAYS = 50, 14   # phase D's READY as ruled 2026-10-07; read back from the report, never relaxed here
 TARGET_RULES = [{"type": "update", "parameters": {"update_allows_fetch_and_merge": False}}]
@@ -341,8 +342,11 @@ def read_report(path: Path, repo: str, branch: str, max_age: timedelta = REPORT_
             age = None
         if age is None:
             blockers.append(f"report generated_at {gen} is no date")
-        elif age > max_age or age < -REPORT_MAX_SKEW:
-            blockers.append(f"report generated {gen} is outside the last {max_age} — recompute it first")
+        elif age > max_age:
+            blockers.append(f"report generated {gen} is older than {max_age} — run the report now on Pro (README: phase E, step 1)")
+        elif age < -REPORT_MAX_SKEW:
+            blockers.append(f"report generated {gen} is more than {REPORT_MAX_SKEW} ahead of this host's clock — check the "
+                            "clocks, then run the report now on Pro (README: phase E, step 1)")
     if rep.get("phase_e_ready") is True:
         cm, cd = win.get("compared_merges"), win.get("compared_days")
         # READY's FALSE_GREEN 0 is "at every level" (merger.py report): the decisions, the contexts and the recorded ones
@@ -462,7 +466,8 @@ def run_flip(a: argparse.Namespace) -> int:
     dig = digest(state, writes)
     merger_key = read_key_pub(a.key_pub)
     blockers = plan_blockers(state, flip=True, merger_key=merger_key)
-    rep_blockers, rep_line = read_report(a.report, a.repo, a.branch)
+    # the plan and --apply judge the same age (2 h less the margin), so a plan that says "none" never meets a refusing apply
+    rep_blockers, rep_line = read_report(a.report, a.repo, a.branch, max_age=REPORT_MAX_AGE - APPLY_MARGIN)
     print(f"phase E flip — {a.repo} {a.branch} — {'APPLY' if a.apply else 'DRY RUN (nothing is written)'}")
     print(f"state: {phase(state)}")
     print("\n".join(describe(state)))
@@ -490,10 +495,6 @@ def run_flip(a: argparse.Namespace) -> int:
         return EXIT_REFUSED
     if all_blockers:
         print("REFUSED: " + "; ".join(all_blockers), file=sys.stderr)
-        return EXIT_REFUSED
-    if margin := read_report(a.report, a.repo, a.branch, max_age=REPORT_MAX_AGE - APPLY_MARGIN)[0]:
-        print(f"REFUSED: --apply wants a report at least {APPLY_MARGIN} inside its age limit, so it cannot expire between "
-              f"the two writes and freeze the branch: {'; '.join(margin)}", file=sys.stderr)
         return EXIT_REFUSED
     saved = save_state(a.state_dir, state, dig)
     a.state_file = saved

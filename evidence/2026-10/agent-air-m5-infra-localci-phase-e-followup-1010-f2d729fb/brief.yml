@@ -1,0 +1,31 @@
+task_id: localci-phase-e-followup-1010
+mission: LOCALCI-SOVEREIGN (phase E, prepared — round-9 follow-up)
+colour: BLUE
+gear: 1
+gear_reason: >-
+  The three LOWs the round-9 gate left on #8191, and the lead's runbook request: one age judgement for the plan and --apply,
+  a test pinning the per-write re-read to the full limit, wording, and the report command as the runbook's first step. No
+  hot-zone path; the lint floor is 1 by size.
+l_level: L2
+gate_class: opus
+objective: >-
+  #8191 merged the prepared phase E flip with three LOWs from its last gate: the plan said "blockers for --apply: none" for a
+  report 115-120 minutes old while --apply refused it; nothing pinned the per-write report re-read to the full 2-hour limit;
+  "cannot expire" overstated a run that is bounded, not instantaneous. The LOCALCI lead added: report.json is written only by a
+  hand `merger.py report` (no tick regenerates it since F2), so the runbook's first step must be that command on Pro, run
+  immediately before --apply, and the plan's blocker must say "run the report now".
+constraints:
+  - Only the report's age judgement, its message and the docs change; W1/W5, Q, the writes, the rollback and the guard are unchanged.
+  - The plan and --apply judge the same age (2 h less 5 min); the re-read before each write keeps the full 2 h.
+  - A session runs the plan only; nothing is applied and no report is recomputed on Pro by this lane.
+acceptance:
+  - text: The plan's blocker line and --apply SHALL agree on a report 116 minutes old (both refuse, saying to run the report now) and on one 114 minutes old (both accept).
+    probe: "test_phase_e_flip.py::test_apply_wants_a_report_that_cannot_expire_between_the_two_writes"
+  - text: The re-read before each write SHALL judge the full 2-hour limit (a 114-minute report with the clock moving 4 minutes mid-run flips).
+    probe: "test_phase_e_flip.py::test_the_re_read_before_each_write_keeps_the_full_age_limit"
+  - text: The README's phase E usage SHALL start with the report command on Pro, as the tick extracts and runs merger.py.
+    probe: "README.md phase E usage block; checked on Pro read-only (refs, files, venv, PATH tools)"
+consumer_map:
+  - The operator's phase E plan and apply (scripts/localci/phase_e_flip.py), and the README's phase E runbook.
+pii_scan: clean
+pii_scan_note: Branch-protection tooling, timestamps and a shell recipe. No client data.
