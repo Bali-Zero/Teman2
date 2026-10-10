@@ -526,3 +526,46 @@ huruf	statute	letter (sub-item)
 undang	statute	law (undang-undang)
 perundang	statute	legislation
 ketentuan	statute	provision
+# EN-1a' (2026-10-10), from the known corpus. The words below make en_purity's self-test hold: every one of the 1,559
+# ID official titles drawn unlabelled holds a lexicon word (27 held none), and every ID-only word of the gated
+# surfaces' Indonesian dump is a lexicon word. Each was checked against the English corpus (kbli-data-i18n-en.json):
+# where it occurs there it is an Indonesian name or original the English text quotes.
+penangkaran	domain	captive breeding
+satwa	domain	wildlife, animals
+pemungutan	domain	collection, harvesting (of a resource)
+produksi	domain	production
+kompos	domain	compost
+organik	domain	organic
+pembongkaran	domain	demolition, dismantling
+pengecatan	domain	painting (the work)
+pengelola	domain	operator, manager
+penjaminan	domain	guarantee, underwriting
+reasuransi	domain	reinsurance
+bursa	domain	exchange (bourse)
+berjangka	domain	futures, fixed-term
+kepialangan	domain	brokerage
+pemeringkatan	domain	rating (of securities)
+penilaian	domain	valuation, assessment
+harga	domain	price
+emisi	domain	issuance (of securities)
+jajak	domain	survey, poll
+pendapat	domain	opinion
+opini	domain	opinion
+publik	domain	public
+angkatan	domain	armed-forces branch
+kepolisian	domain	the police force
+suaka	domain	sanctuary, reserve
+margasatwa	domain	wildlife
+lindung	domain	protected
+pantai	domain	beach, coast
+tirta	domain	water (in tourism names)
+wisata	domain	tourism
+cari	ui	search
+ditampilkan	ui	shown, displayed
+ditentukan	ui	determined
+katalog	ui	catalogue
+kelas	ui	class
+kode	ui	code
+sektor	ui	sector
+minu	ui	"minum" (drink), cut short where the sector pop-up truncates its title
+risiko	risk	risk
