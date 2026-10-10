@@ -87,12 +87,15 @@ CLAIM = {
         r"\s*\.\s*|\s*[\[(]dot[\])]\s*|\s+dot\s+", ".", re.sub(r"\s*[\[(]at[\])]\s*|\s+at\s+", "@", v))),
     "id_number": lambda v: re.search(
         r"(?i)(?:passport|paspor|kitas|kitap|document|dokumen|nomor|national)\w*\W*(?=(?:[A-Z]*\d){6})[A-Z0-9]{6,16}\b"
-        r"|(?:nik|ktp|kk|npwp)\W*\d{6,16}\b|(?<!\d)\d{15,16}(?!\d)|\b[A-Z]\d{7}\b|\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b",
+        r"|(?:nik|ktp|kk|npwp)\W*\d{6,16}\b|(?:card|card_number|cc|pan|kartu|nomor_kartu)\W*(?:\d[ -]*){13,19}"
+        r"|(?<!\d)(?:4|5[1-5]|2[2-7]|3[47]|60|62|64|65|35)\d{11,18}(?!\d)"
+        r"|(?<!\d)\d{15,16}(?!\d)|\b[A-Z]\d{7}\b"
+        r"|\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30}\b",
         re.sub(r"(?<=\d)[.\- ](?=\d)", "", v)),
     "crm_name": lambda v: re.search(r"[A-Z][a-z]+ [A-Z][a-z]+", v),
     "pii_other": lambda v: re.search(
-        r"(?i)(?:tanggal_lahir|tgl_lahir|dob|birth_?date|alamat|address|telegram|ig_handle|instagram|social)\w*\W+(?!<?(?:YYYY|placeholder))\S"
-        r"|\b[A-Z]{1,2} \d{1,4} [A-Z]{1,3}\b", v),
+        r"(?i)(?<![\w])(?:tanggal_lahir|tgl_lahir|dob|birthdate|birth_date|alamat|address|telegram|ig_handle|instagram|social)"
+        r"\s*[:=]\s*[\"']?(?!<?(?:YYYY|placeholder))\S|\b(?:B|DK|AB|AD|L|N|KB|DA|PA|PB) \d{1,4} [A-Z]{1,3}\b", v),
 }
 
 
@@ -138,9 +141,9 @@ def test_every_row_reconstructs(row):
         assert build(setup["path_construct"])
 
 
-# A remainder row sits OUTSIDE the vocabularies the claim regexes mirror: its `rule:` phrase pins it instead.
+# A remainder or catch-all row may sit outside the finite claim regexes; its `rule:` phrase pins it instead.
 GUILT_CONTENT = [r for r in ROWS if r["kind"] == "guilt" and r.get("expected_reason") in CONTENT_REASONS
-                 and not (r.get("limit") and "rule" in r)]
+                 and not (r.get("limit") and "rule" in r) and r["id"] != "lim_01"]
 
 
 @pytest.mark.parametrize("row", GUILT_CONTENT, ids=[r["id"] for r in GUILT_CONTENT])
@@ -195,13 +198,20 @@ def test_receipt_coverage_and_declared_limits_match_the_spec():
     named = set(re.findall(r"`limit:([a-z0-9_]+)`", spec))
     assert limits and limits == named, (sorted(limits), sorted(named))
     assert len(limits) == 21, len(limits)
-    assert len(ROWS) == 354, len(ROWS)
+    assert len(ROWS) == 370, len(ROWS)
 
 
-ADOPTED = {"lim_pan": "id_number", "lim_iban": "id_number", "rem_pii_other": "pii_other",
-           "rem_pii_other_address": "pii_other", "rem_pii_other_messaging": "pii_other",
-           "rem_pii_other_social": "pii_other", "rem_pii_other_plate": "pii_other"}
-ADOPTED_INNOCENCE = {"adopt_innocent_pan", "adopt_innocent_iban", "adopt_innocent_dob"}
+ADOPTED = {"lim_pan": "id_number", "lim_iban": "id_number", "lim_01": "pii_other",
+           "rem_pii_other": "pii_other", "rem_pii_other_address": "pii_other",
+           "rem_pii_other_messaging": "pii_other", "rem_pii_other_social": "pii_other",
+           "rem_pii_other_plate": "pii_other", "adopt_pan_hyphen": "id_number",
+           "adopt_pan_label_contiguous": "id_number", "adopt_pan_unlabelled_grouped": "id_number",
+           "adopt_pan_amex_grouped": "id_number", "adopt_pan_19_grouped": "id_number",
+           "adopt_iban_unspaced": "id_number", "adopt_iban_lowercase": "id_number"}
+ADOPTED_INNOCENCE = {"innocent_15", "adopt_innocent_pan", "adopt_innocent_iban", "adopt_innocent_dob",
+                     "adopt_innocent_timestamp", "adopt_innocent_zero_pan", "adopt_innocent_ip_address",
+                     "adopt_innocent_mac_address", "adopt_innocent_bind_address", "adopt_innocent_decorator",
+                     "adopt_innocent_npm_scope", "adopt_innocent_plate_prose"}
 
 
 def test_the_adopted_pii_scopes_are_asserted_guilt_with_an_innocence_row_each():
@@ -209,8 +219,67 @@ def test_the_adopted_pii_scopes_are_asserted_guilt_with_an_innocence_row_each():
     for rid, reason in ADOPTED.items():
         row = by_id[rid]
         assert row["kind"] == "guilt" and "limit" not in row and row["expected_reason"] == reason, rid
-    assert {r["id"] for r in ROWS if r["source"] == "adopt-2026-10-10"} == ADOPTED_INNOCENCE
+    assert len(ADOPTED) == 15 and len(ADOPTED_INNOCENCE) == 12
     assert all(by_id[i]["kind"] == "innocence" for i in ADOPTED_INNOCENCE)
+
+
+PAN_GUILT = {"lim_pan", "rem_card_label", "adopt_pan_hyphen", "adopt_pan_label_contiguous",
+             "adopt_pan_unlabelled_grouped", "adopt_pan_amex_grouped", "adopt_pan_19_grouped"}
+IBAN_GUILT = {"lim_iban", "adopt_iban_unspaced", "adopt_iban_lowercase"}
+
+
+def _digits(row):
+    return "".join(re.findall(r"\d", materialise(row)))
+
+
+def _luhn(value):
+    digits = [int(c) for c in value]
+    total = sum((n * 2 - 9 if n > 4 else n * 2) if (len(digits) - i) % 2 == 0 else n
+                for i, n in enumerate(digits))
+    return total % 10 == 0
+
+
+def _major_card_issuer(value):
+    prefix2, prefix3, prefix4, prefix6 = (int(value[:n]) for n in (2, 3, 4, 6))
+    return (value.startswith("4") or 51 <= prefix2 <= 55 or 2221 <= prefix4 <= 2720
+            or prefix2 in {34, 37, 62, 65} or prefix4 == 6011 or 622126 <= prefix6 <= 622925
+            or 644 <= prefix3 <= 649 or 3528 <= prefix4 <= 3589)
+
+
+def _iban(row):
+    value = materialise(row)
+    match = re.search(r"(?i)\b([A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30})\b", value)
+    assert match, row["id"]
+    return match.group(1).replace(" ", "").upper()
+
+
+def _mod97(iban):
+    rearranged = iban[4:] + iban[:4]
+    numeric = "".join(str(ord(c) - 55) if c.isalpha() else c for c in rearranged)
+    return int(numeric) % 97 == 1
+
+
+def test_pan_and_iban_checksum_contracts_and_innocent_exclusions():
+    by_id = {r["id"]: r for r in ROWS}
+    assert all(_luhn(_digits(by_id[rid])) for rid in PAN_GUILT)
+    assert all(_major_card_issuer(_digits(by_id[rid])) for rid in PAN_GUILT)
+    assert not _luhn(_digits(by_id["adopt_innocent_pan"]))
+    assert all(_luhn(_digits(by_id[rid])) for rid in
+               {"innocent_15", "adopt_innocent_timestamp", "adopt_innocent_zero_pan"})
+    assert not any(_major_card_issuer(_digits(by_id[rid])) for rid in
+                   {"innocent_15", "adopt_innocent_timestamp", "adopt_innocent_zero_pan"})
+    assert all(_mod97(_iban(by_id[rid])) for rid in IBAN_GUILT)
+    assert not _mod97(_iban(by_id["adopt_innocent_iban"]))
+
+
+def test_the_adoption_decision_and_financial_id_grammars_are_normative():
+    spec = " ".join(SPEC.read_text(encoding="utf-8").split())
+    assert "8. Decision (2026-10-10): items 6 and 7 were adopted" in spec
+    assert "A PAN is 13–19 digits, passes the Luhn check, has a major-network issuer prefix" in spec
+    assert "An IBAN is two ASCII letters, two check digits and 11–30 ASCII letters or digits" in spec
+    assert "`card_number`, `cc`, `pan`, `kartu`, `nomor_kartu` and `iban`" in spec
+    assert "`dob`, `birthdate`, `birth_date`, `alamat`, `address`, `telegram`, `ig_handle`, `instagram` and `social`" in spec
+    assert "personal data outside this label list and the examples above is GUILTY rather than a declared remainder" in spec
 
 
 def test_every_rule_phrase_is_in_the_spec_and_every_remainder_carries_one():
@@ -222,12 +291,15 @@ def test_every_rule_phrase_is_in_the_spec_and_every_remainder_carries_one():
     assert not unpinned, unpinned
 
 
-def test_the_vocabulary_table_names_a_limit_row_for_each_of_its_18_vocabularies():
+def test_the_vocabulary_table_declares_an_outside_outcome_for_each_of_its_21_vocabularies():
     section = SPEC.read_text(encoding="utf-8").split("## Closed vocabularies and their remainders", 1)[1].split("\n## ", 1)[0]
     table = [line for line in section.splitlines() if line.startswith("| ") and not line.startswith(("| Vocabulary", "| ---"))]
     limits = {r["id"] for r in ROWS if r.get("limit")}
-    named = [set(re.findall(r"`([a-z0-9_]+)`", line.split("|")[3])) for line in table]
-    assert len(table) == 18 and all(ids and ids <= limits for ids in named), (len(table), named)
+    outcomes = [line.split("|")[3] for line in table]
+    named = [set(re.findall(r"`([a-z0-9_]+)`", outcome)) for outcome in outcomes]
+    assert len(table) == 21, len(table)
+    assert all((ids and ids <= limits | {"pii_other"}) or "GUILTY" in outcome or "innocent" in outcome
+               for ids, outcome in zip(named, outcomes)), list(zip(named, outcomes))
 
 
 BARE_TOKEN_FAMILY = re.compile(
