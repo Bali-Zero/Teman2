@@ -1,0 +1,36 @@
+task_id: kbli-nav-design-en1a-census
+mission: kbli-nav-design-loop (Track A, build, lot EN-1a — the en-purity instrument)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  evidence_pack_lint's floor for this change set is 2 by its size term alone, with no hot-zone path. The churn is
+  944 lines (+921/−23), of which 528 are the lexicon's data rows (word, group, English gloss); the code is
+  Tests/encensus (98), Tools/design/en_purity.py (260), content_check.sh, and two census seams in SearchListView.swift
+  and RegistryVerdictSheet.swift.
+l_level: L1
+gate_class: opus
+objective: >-
+  Z-DECISIONI Q12 (2026-10-10, "in English it's English") and its rulings 1-5, first half: the instrument. Tests/encensus
+  renders every View a code reaches through ImageRenderer into a PDF context and dumps the text PDFKit reads back, per
+  (code, view); content_check step 4 runs it (fast: the three frozen codes plus a stratified sample of 106 codes covering
+  every heads-up class, sector and Bali status; full: all 1,559 x 8 Views) and Tools/design/en_purity.py counts the
+  Indonesian left in English — lexicon words outside allowlisted spans, raw official titles, and pipeline keys that no
+  span allowlists — per View and category, with examples, the allowlist count by reason, and a synthetic self-test.
+  Step 5 is the never-drawn static check (tooltips, VoiceOver labels, Text(verbatim:), raw field interpolation). This lot
+  gates what is already clean (the two chromes, SearchFieldBar) and counts the rest; EN-1b applies the projection and
+  joins the four built Views. Presentation only: no KBLI fact, verdict, cap, basis or Bali overlay changes.
+constraints:
+  - No View changes appearance; the 35 renders equal PR 2's after-set manifest byte for byte.
+  - The lexicon carries a reason per entry (its English gloss); the allowlist carries a reason per span kind.
+  - No PNG is committed.
+acceptance:
+  - text: The head SHALL build both variants and its 35 renders SHALL equal PR 2's after-set (no visual change).
+    probe: "Pro build-only mirror at the head: INTERNAL_RC=0, BKPM_RC=0, RENDER_SET_RC=0, manifest_match=35/35 vs pr2-registry"
+  - text: content_check SHALL run the census and the never-drawn check and stay green with the gated chromes at 0.
+    probe: "Pro: content_check.sh rc=0; step 4 prints en-indonesian-strings per View (registry-chrome 0, search-chrome 0 GATED)"
+  - text: The full census SHALL count every View of all 1,559 codes in English.
+    probe: "Pro: encensus --mode full then en_purity census — per-View counts, the baseline EN-1b must take to 0"
+  - text: The analyzer SHALL hold its guilt and innocence cases (raw title, someone else's title, unlabelled original, enum, locator, swapped lines plus an extra piece).
+    probe: "en_purity.py self-test runs before every census; 0 EN-SELFTEST lines"
+  - text: The contrast and token gates SHALL stay green.
+    probe: "Pro: measure_contrast rc=0 (FAIL=0 PARITY=0 WHITE=0), derive --check rc=0, png_census 0 FAIL"
