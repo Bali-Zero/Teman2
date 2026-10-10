@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { dict } from "./i18n";
 
@@ -10,8 +11,9 @@ import { dict } from "./i18n";
 // re-added, without being named in UNRENDERED_ALLOWLIST.
 //
 // What counts as a reference (scanned: every non-test .ts/.tsx under
-// (visa-oracle)/, plus any other non-test src file importing this dictionary;
-// i18n.ts itself is excluded):
+// (visa-oracle)/visa-oracle/, plus any other non-test src file importing this
+// dictionary; i18n.ts itself is excluded; comments are stripped first, so a key
+// named only in a comment is not a reference):
 //   1. EXACT   - the key as a whole quoted literal: "q.in_indonesia".
 //   2. TEMPLATE - a template literal with a static prefix, e.g.
 //      `lane.${lane}.notice` or `q.stay_permit_code.opt.${key}`. Each ${...}
@@ -29,6 +31,10 @@ import { dict } from "./i18n";
 // outcome.document_status.CONDITIONAL/UNKNOWN: the adapter only emits
 // REQUIRED); and a template whose interpolation spans several dotted segments
 // is flagged, loudly, until the call site is split or the key allowlisted.
+// Rule 2 is also wide on purpose: `q.${id}` and `why.${id}` in tree.ts cover
+// every question id that appears as a literal (~119 keys plus their .hint),
+// so such a key stays "referenced" while its question id survives anywhere,
+// even after its last exact reference is removed.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ORACLE_ROOT = path.resolve(HERE, "..");
@@ -234,6 +240,20 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
+const printer = ts.createPrinter({ removeComments: true });
+
+/** The file's code with every comment removed (literals keep their text). */
+function withoutComments(file: string): string {
+  const source = ts.createSourceFile(
+    file,
+    readFileSync(file, "utf8"),
+    ts.ScriptTarget.Latest,
+    false,
+    file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  return printer.printFile(source);
+}
+
 function scannedSources(): string[] {
   const i18nFile = path.join(HERE, "i18n.ts");
   const files = new Set(walk(ORACLE_ROOT));
@@ -243,7 +263,7 @@ function scannedSources(): string[] {
       files.add(file);
   }
   files.delete(i18nFile);
-  return [...files].map((file) => readFileSync(file, "utf8"));
+  return [...files].map((file) => withoutComments(file));
 }
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
