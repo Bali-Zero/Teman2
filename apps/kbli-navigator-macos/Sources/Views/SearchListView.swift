@@ -334,7 +334,10 @@ struct SearchListView: View {
                 HStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: 0) {
                         VStack(alignment: .leading, spacing: 24) {
-                            facet(isID ? "SEKTOR" : "SECTOR", align: .leading) { sectorPicker }
+                            VStack(alignment: .leading, spacing: 6) {
+                                facet(isID ? "SEKTOR" : "SECTOR", align: .leading) { sectorPicker }
+                                sectorCaption
+                            }
                             facet("BALI", align: .leading) { baliPicker }
                             facet(isID ? "RISIKO OSS" : "OSS RISK", align: .leading) { riskPicker }
                         }
@@ -468,11 +471,24 @@ struct SearchListView: View {
                                   set: { state.browsedSector = $0 })) {
             Text(isID ? "Semua sektor" : "All sectors").tag(String?.none)
             ForEach(state.store.sectors) { sec in
-                Text("\(sec.letter) — \(isID ? sec.id_ : sec.en) (\(sec.count))").tag(String?.some(sec.letter))
+                Text(sectorLabel(sec)).tag(String?.some(sec.letter))
             }
         } label: { EmptyView() }
         .pickerStyle(.menu).controlSize(.small).frame(maxWidth: 260)
         .accessibilityLabel(isID ? "Saring menurut sektor" : "Filter by sector")
+    }
+
+    private func sectorLabel(_ sec: KBLIStore.Sector) -> String { "\(sec.letter) — \(isID ? sec.id_ : sec.en) (\(sec.count))" }
+
+    /// AppKit truncates a long sector label in the rail's 200 pt picker, so the selected label is repeated
+    /// in full under it, wrapping. VoiceOver already hears it from the picker.
+    @ViewBuilder private var sectorCaption: some View {
+        if let sec = state.store.sectors.first(where: { $0.letter == state.browsedSector }) {
+            Text(sectorLabel(sec)).font(Theme.scalable(12)).foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(width: 200, alignment: .leading)
+                .accessibilityHidden(true)
+        }
     }
 
     private var baliPicker: some View {
