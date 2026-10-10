@@ -455,9 +455,18 @@ class StaleJudge:
 
     def __init__(self, repo_dir: Path, base_sha: str):
         self.repo, self.base = repo_dir, str(base_sha)
+        self._doc: list | None = None
         self._flags: dict | None = None
+        self._pending: dict | None = None
         self._moved: dict = {}
         self._cms: dict = {}
+
+    def contexts(self) -> list:
+        """The BASE matrix's contexts, read once from the mirror (``git show <base>:<MATRIX>``); unreadable raises."""
+        if self._doc is None:
+            import yaml   # the merger's venv carries PyYAML, as prune.py needs it
+            self._doc = yaml.safe_load(git(self.repo, "show", f"{self.base}:{MATRIX}", timeout=60).stdout)["contexts"]
+        return self._doc
 
     def _runner(self):
         spec = importlib.util.spec_from_file_location("localci_runner_b10", Path(__file__).resolve().parent / "runner.py")
@@ -468,9 +477,7 @@ class StaleJudge:
 
     def flag_of(self, name: str) -> str:
         if self._flags is None:
-            import yaml   # the merger's venv carries PyYAML, as prune.py needs it
-            doc = yaml.safe_load(git(self.repo, "show", f"{self.base}:{MATRIX}", timeout=60).stdout)
-            self._flags = {c["name"]: (c.get("local") or {}).get("runs_when") for c in doc["contexts"]}
+            self._flags = {c["name"]: (c.get("local") or {}).get("runs_when") for c in self.contexts()}
         if name not in self._flags:
             raise MergerError(f"{name!r} is not a context of the BASE matrix")
         if not isinstance(self._flags[name], str):
@@ -488,6 +495,24 @@ class StaleJudge:
                 raise MergerError(f"the BASE change_map could not classify (rc={res.returncode}): {redact(res.stderr.strip()[-200:])}")
             self._cms.update(json.loads(res.stdout))
         return self._cms
+
+    def pending_of(self, name: str) -> list[dict]:
+        """B12b: the gate-reading steps the BASE matrix declares for ``name``, each step carrying a ``pending_when`` line in the context's
+        own steps or one of its jobs': ``{"step": its workflow_step (None when it names none), "line": the pending_when line, "later": the
+        workflow_step names listed after it in the same list}``. A context with one reads the gate verdict: structural, never a name.
+        [] for every other context, and for a name the BASE matrix does not carry."""
+        if self._pending is None:
+            def lists(local: dict) -> list:   # a context's own steps, and those of each of its jobs, as the runner plans them
+                return [local.get("steps") or [], *(j.get("steps") or [] for j in local.get("jobs") or [] if isinstance(j, dict))]
+            self._pending = {}
+            for c in self.contexts():
+                found = []
+                for steps in lists(c.get("local") or {}):
+                    names = [st.get("workflow_step") if isinstance(st, dict) and isinstance(st.get("workflow_step"), str) else None for st in steps]
+                    found += [{"step": names[i], "line": st["pending_when"], "later": [n for n in names[i + 1:] if n is not None]}
+                              for i, st in enumerate(steps) if isinstance(st, dict) and isinstance(st.get("pending_when"), str)]
+                self._pending[c["name"]] = found
+        return self._pending.get(name, [])
 
     def __call__(self, name: str, completed_at: str) -> dict:
         flag = self.flag_of(name)
@@ -511,18 +536,151 @@ class StaleJudge:
         return {"stale": bool(selected), "hosted_main": main, "main_moved_paths": selected[:20], "main_moved_count": len(selected)}
 
 
-def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path, judge=None, note: str = HEAD_NOTE) -> tuple[dict, dict | None]:
+class GateJudge:
+    """B12b: was the hosted RED of a gate-reading context its reader's PENDING read, given before the gate verdict the local run read?
+    Called by ``hc.compare`` for a compared row as ``judge(context, hosted, statuses)`` (``hosted`` is ``hc.hosted_verdict``'s answer,
+    ``statuses`` the head's combined status); None when the ground does not apply: a hosted verdict that is not RED, or a context whose
+    BASE matrix entry declares no ``pending_when`` step. Stale when all hold: (a) the local run read a success: the newest
+    ``harness/fable-gate`` status dated at or before its plan time (``plan_at``, ``state/plan.json`` ``created_at``) is ``success`` and the
+    plan froze rc 0 for that context's reader step (``reads``, ``frozen_reads``); (b) every red entry is a check run concluded
+    ``failure``, the newest of them completed BEFORE that status; (c) each red run failed on the PENDING read and nothing else: its
+    failure annotations (GET ``check-runs/{id}/annotations``, paged, under GitHub's per-job cap) are at least one message starting with
+    ``pending_when`` minus its ``::error::`` prefix (GitHub turns ``::error::msg`` into a failure annotation whose message is ``msg``)
+    and at most one ``Process completed with exit code N.``, and its job (GET ``actions/jobs/{id}``, whose ``check_run_url`` names that
+    check run) failed on the reader step alone, every step the BASE matrix lists after it skipped. Anything it cannot read raises:
+    ``hc.gate_reading`` keeps the class and says unknown."""
+    EXIT_LINE = re.compile(r"Process completed with exit code \d+\.")
+    ANN_CAP = 50   # GitHub keeps at most 50 annotations per job: a list that long may be cut, so it proves nothing
+
+    def __init__(self, repo: str, matrix: StaleJudge, plan_at, reads, cache: dict | None = None):
+        self.repo, self.matrix, self.plan_at, self.reads = repo, matrix, plan_at, reads
+        self._cache = {} if cache is None else cache   # (kind, run id) -> a read; the report shares one across decisions
+
+    def failures(self, rid: int) -> list[str]:
+        if ("annotations", rid) not in self._cache:
+            raw = gh_pages(f"repos/{self.repo}/check-runs/{rid}/annotations")
+            if len(raw) >= self.ANN_CAP:
+                raise MergerError(f"check run {rid} carries {len(raw)} annotations, at GitHub's per-job cap of {self.ANN_CAP}: the list may be cut")
+            self._cache[("annotations", rid)] = [str(x.get("message")) for x in raw
+                                                 if x.get("annotation_level") not in ("notice", "warning")]   # an unknown level counts as a failure
+        return self._cache[("annotations", rid)]
+
+    def job_steps(self, rid: int) -> list[dict]:
+        if ("job", rid) not in self._cache:
+            job = hc.gh_get(f"repos/{self.repo}/actions/jobs/{rid}")
+            url = job.get("check_run_url") if isinstance(job, dict) else None
+            if not isinstance(url, str) or not url.endswith(f"/check-runs/{rid}"):
+                raise MergerError(f"actions job {rid} does not name check run {rid} as its own (check_run_url {url!r})")
+            steps = job.get("steps")
+            if not isinstance(steps, list) or not steps or any(not isinstance(x, dict) for x in steps):
+                raise MergerError(f"actions job {rid} carries no steps")
+            self._cache[("job", rid)] = steps
+        return self._cache[("job", rid)]
+
+    def __call__(self, name: str, hosted: dict, statuses: list) -> dict | None:
+        if hosted["verdict"] != "RED":
+            return None   # B12b: a green or a pending hosted verdict is no PENDING read
+        pending = self.matrix.pending_of(name)
+        if not pending:
+            return None   # B12b: the BASE matrix gives this context no gate-reading step
+        if len(pending) != 1 or pending[0]["step"] is None or not pending[0]["line"].startswith("::error::"):
+            raise MergerError(f"{name!r}: the BASE matrix must give one pending_when step, named by its workflow_step, whose line is an ::error:: line")
+        p = pending[0]
+        if not is_ts(self.plan_at):
+            raise MergerError("the run's plan time (state/plan.json created_at) is unreadable")
+        if not isinstance(self.reads, dict):
+            raise MergerError("the reader answers the run's plan froze (state/plan.json checks) are unreadable")
+        gate = [x for x in statuses if isinstance(x, dict) and x.get("context") == GATE_CONTEXT]
+        if any(not is_ts(x.get("updated_at")) for x in gate):
+            raise MergerError(f"a {GATE_CONTEXT} status carries no readable updated_at")
+        read = [x for x in gate if x["updated_at"] <= self.plan_at]
+        if not read:
+            return {"stale": False, "why": f"no {GATE_CONTEXT} status dated at or before the plan time {self.plan_at}"}
+        posted = max(x["updated_at"] for x in read)
+        states = sorted({str(x.get("state")) for x in read if x["updated_at"] == posted})
+        if states != ["success"]:
+            return {"stale": False, "why": f"the {GATE_CONTEXT} status the local run read ({posted}) is {'/'.join(states)}, not success: "
+                                           "the local verdict beside it is a real disagreement"}
+        rcs = (self.reads.get(name) or {}).get(p["step"]) or []
+        if not rcs or any(type(rc) is not int or rc != 0 for rc in rcs):
+            return {"stale": False, "why": f"the plan froze {rcs} for the reader step {p['step']!r}, not rc 0: the local run read no success"}
+        red = hosted.get("red") or []
+        if not red or not is_ts(hosted.get("completed_at")):
+            raise MergerError("a RED hosted verdict without its red entries or their completed_at")
+        if any(type(e.get("id")) is not int for e in red):
+            return {"stale": False, "why": "a red that is no check run (a commit status) decides the hosted verdict"}
+        if any(e.get("conclusion") != "failure" for e in red):
+            return {"stale": False, "why": f"a red concluded {sorted({str(e.get('conclusion')) for e in red})}, not failure: no reader's exit"}
+        if not hosted["completed_at"] < posted:
+            return {"stale": False, "why": f"hosted completed at {hosted['completed_at']}, not before the {GATE_CONTEXT} post at {posted}"}
+        mark = p["line"].removeprefix("::error::")
+        for e in red:
+            fails = self.failures(e["id"])
+            ours = [m for m in fails if m.startswith(mark)]
+            exits = [m for m in fails if self.EXIT_LINE.fullmatch(m)]
+            if not ours or len(fails) > len(ours) + len(exits) or len(exits) > 1:
+                return {"stale": False, "why": f"check run {e['id']} failed on more than the PENDING read: {len(fails)} failure "
+                                               f"annotation(s), {len(ours)} of them the reader's PENDING line"}
+            steps = self.job_steps(e["id"])
+            names = [x.get("name") for x in steps]
+            if names.count(p["step"]) != 1:
+                raise MergerError(f"actions job {e['id']} lists the reader step {p['step']!r} {names.count(p['step'])} time(s), not once")
+            failed = [x.get("name") for x in steps if x.get("conclusion") not in ("success", "skipped")]
+            ran = [x.get("name") for x in steps[names.index(p["step"]) + 1:] if x.get("name") in p["later"] and x.get("conclusion") != "skipped"]
+            if failed != [p["step"]] or ran:
+                return {"stale": False, "why": f"actions job {e['id']} did not fail on the reader step alone: failed {failed}, ran after it {ran}"}
+        return {"stale": True, "gate_posted_at": posted, "plan_at": self.plan_at}
+
+
+def plan_time(run_dir) -> str | None:
+    """B12b: when the local run was planned — its ``state/plan.json`` ``created_at``, stamped once the plan's host reads (the gate reader
+    among them) are done, so no status posted after it was read. None when the file or the field is unreadable."""
+    try:
+        t = json.loads((Path(str(run_dir)) / "state" / "plan.json").read_text()).get("created_at")
+    except (OSError, ValueError, AttributeError):
+        return None
+    return t if is_ts(t) else None
+
+
+def frozen_reads(run_dir) -> dict | None:
+    """B12b: what the local run's plan froze for each host reader it ran at plan time (``state/plan.json``, under the seal): ``{context:
+    {step name: [rc, ...]}}`` from every planned job step whose side is ``host`` and that carries a ``precomputed`` answer (rc None: no
+    verdict). None when the plan or its checks cannot be read."""
+    try:
+        out: dict = {}
+        for spec in json.loads((Path(str(run_dir)) / "state" / "plan.json").read_text())["checks"].values():
+            for st in (s for j in spec.get("jobs") or [] for s in j["steps"]):
+                if (st.get("side") or {}).get("where") == "host" and isinstance(st.get("precomputed"), dict):
+                    out.setdefault(spec["context"], {}).setdefault(st["name"], []).append(st["precomputed"].get("rc"))
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
+    return out
+
+
+B10_KEYS = ("context", "class_before", "hosted_completed_at", "hosted_main", "main_moved_paths", "main_moved_count")
+B12B_KEYS = ("context", "class_before", "hosted_completed_at", "stale_why", "gate_posted_at", "plan_at")
+
+
+def stale_entry(r: dict) -> dict:
+    """One HOSTED_STALE row as the decision line journals it: every B10 key on a B10 row (a missing one raises, as before B12b); a B12b
+    row carries its own keys, and B10's too when its judge also ran."""
+    if r.get("stale_why") == "gate_posted_after_hosted":
+        return {**{k: r[k] for k in B10_KEYS if k in r}, **{k: r[k] for k in B12B_KEYS}}
+    return {k: r[k] for k in B10_KEYS}
+
+
+def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path, judge=None, note: str = HEAD_NOTE,
+                   gate=None) -> tuple[dict, dict | None]:
     """The comparison journalled beside the verdict, and the hosted document it read (None when the read or the comparison failed)."""
     out = {"sha": head, "note": note}
     try:
         live = hc.fetch_live(repo, base, head)
-        rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"], stale_judge=judge)
+        rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"], stale_judge=judge, gate_judge=gate)
         rep.update(source="live", repo=repo, branch=base, **out)
         atomic_write(run_dir / "hosted_compare.json", json.dumps(rep, indent=2) + "\n")
     except Exception as exc:  # noqa: BLE001 — a failed comparison is recorded beside the gate's verdict, never loses it
         return {**out, "error": redact(f"{type(exc).__name__}: {exc}")}, None
-    stale = [{k: r[k] for k in ("context", "class_before", "hosted_completed_at", "hosted_main", "main_moved_paths", "main_moved_count")}
-             for r in rep["rows"] if r["class"] == "HOSTED_STALE"]
+    stale = [stale_entry(r) for r in rep["rows"] if r["class"] == "HOSTED_STALE"]
     unknown = {r["context"]: r["stale_check"] for r in rep["rows"] if str(r.get("stale_check", "")).startswith("unknown")}
     return {**out, "agreement": rep["agreement"], "counts": rep["counts"], "drift": rep["drift"], "exit": hc.exit_code(rep),
             **({"stale": stale} if stale else {}), **({"stale_unknown": unknown} if unknown else {})}, live
@@ -1017,7 +1175,8 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         if replay:   # the hosted verdict is on the very tree judged here: nothing can be stale
             hosted, live = hosted_summary(a.repo, a.base, status, cand_sha, run_dir, None, REPLAY_NOTE)
         else:
-            hosted, live = hosted_summary(a.repo, a.base, status, head, run_dir, StaleJudge(repo_dir, base_sha))
+            judge = StaleJudge(repo_dir, base_sha)
+            hosted, live = hosted_summary(a.repo, a.base, status, head, run_dir, judge, gate=GateJudge(a.repo, judge, plan_time(run_dir), frozen_reads(run_dir)))
         loc = local_side({} if gate.get("error") else status)
         pending_ctx = sorted(k for k, v in results.items() if isinstance(v, dict) and v.get("no_verdict") == "gate_pending")
         gate_pending = bool(pending_ctx) and status.get("overall") == "BLOCKED"   # B12: on a FAIL the missing gate verdict changes nothing
@@ -1272,6 +1431,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
     ctx_counts = dict.fromkeys(hc.CLASSES, 0)
     recorded_fg, recorded_raw, reclassified, kept_fg = 0, 0, [], []   # B10: a recorded FALSE_GREEN the evidence shows was a stale hosted verdict
     judges: dict = {}
+    gate_reads: dict = {}   # B12b: one annotation and one job read per hosted check run, whichever decisions name it
     check_max_s: dict = {}   # the slowest run of each check in the window: where a tick's time goes
     try:
         if a.since and not _SINCE_RE.fullmatch(a.since):
@@ -1299,10 +1459,11 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
             # what the tick saw is kept: a red GitHub later re-ran green, or a context it no longer requires, cannot erase it
             raw = recorded_false_green(d)
             judge = None if d.get("replay") else judges.setdefault(str(d.get("base_sha")), StaleJudge(state / "repo.git", str(d.get("base_sha"))))
+            gate = None if judge is None else GateJudge(a.repo, judge, plan_time(d.get("run_dir")), frozen_reads(d.get("run_dir")), gate_reads)   # B12b, never on a replay
             if raw and judge is None:   # a replay's hosted verdict is on its own tree: every recorded row is kept, and says why
                 got, why_kept = [], [{"pr": d.get("pr"), "context": None, "head_sha": d.get("head_sha"), "why": REPLAY_KEPT}]
             else:
-                got, why_kept = reclassify_recorded(a, d, judge) if raw else ([], [])
+                got, why_kept = reclassify_recorded(a, d, judge, gate) if raw else ([], [])
             got = got[:raw]
             recorded_raw += raw
             reclassified += got
@@ -1318,7 +1479,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
                 skip = d.get("skipped") if isinstance(d.get("skipped"), dict) else {}   # B5; a line before it records none: an execution
                 status = {"candidate_sha": d.get("candidate_sha"), "contexts": {"status": d["contexts_status"], "results": {
                     k: {"verdict": v, "coverage": cov.get(k), "skipped": skip.get(k)} for k, v in (d.get("contexts") or {}).items()}}}
-                rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"], stale_judge=judge)
+                rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"], stale_judge=judge, gate_judge=gate)
                 for k, v in rep["counts"].items():
                     ctx_counts[k] += v
                 compared_ctx = rep["coverage"]["compared_full"]   # a partial AGREE is an agreement on a subset: shown, never counted
@@ -1440,9 +1601,12 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
           f"base_moved={would_merge['base_moved']}, errors={would_merge['errors']}) — rehearsed with merge-tree, nothing merged, nothing pushed")
     print(f"phase F executor: {phase_f}" + (f" — HALTED ({state / HALT_FILE}): no merge until an operator removes it" if out["phase_f_halted"] else ""))
     stale_note = (f"(recorded={recorded_raw}, reclassified HOSTED_STALE={len(reclassified)}: ["
-                  + ", ".join(f"pr{x['pr']} {x['context']}: main moved {', '.join(x['main_moved_paths'][:3])}"
-                              + (", …" if x["main_moved_count"] > 3 else "") + f" after hosted ran {x['hosted_completed_at']}" for x in reclassified) + "]"
-                  + f", kept={len(kept_fg)}: [" + ", ".join(f"pr{x['pr']} {x['context'] or 'all rows'}: {x['why']}" for x in kept_fg) + "])")
+                  + ", ".join(f"pr{x['pr']} {x['context']}: " + (
+                      f"hosted ran {x['hosted_completed_at']}, before the gate post at {x['gate_posted_at']} the local run read (gate_posted_after_hosted)"
+                      if x.get("stale_why") == "gate_posted_after_hosted" else f"main moved {', '.join(x['main_moved_paths'][:3])}"
+                      + (", …" if x["main_moved_count"] > 3 else "") + f" after hosted ran {x['hosted_completed_at']}") for x in reclassified) + "]"
+                  + f", kept={len(kept_fg)}: [" + ", ".join(f"pr{x['pr']} {x['context'] or 'all rows'}: {x['why']}"
+                                                            + (f" (gate: {x['gate']})" if x.get("gate") else "") for x in kept_fg) + "])")
     for h in hosted_red_merged:
         print(f"hosted_red_merged: #{h['pr']} merged at {h['merge_commit_sha'][:12]} with required red: {', '.join(h['red'])}")
     print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= 50 compared merges and >= 14 days between the first "
@@ -1476,11 +1640,39 @@ def recorded_false_green(d: dict) -> int:
     return value
 
 
-def reclassify_recorded(a, d: dict, judge) -> tuple[list[dict], list[dict]]:
+def recorded_gate(a, gate: GateJudge, head: str, r: dict, statuses: list) -> dict:
+    """B12b, the past: the hosted reds a recorded FALSE_GREEN row stood on, as the tick journalled them (the row's ``hosted_red``), each
+    run found again by its id among EVERY attempt of the head's check runs of that name (``filter=all``: a re-run after the post hides it
+    from the latest) and judged by ``gate`` as the tick would have judged it (``hc.gate_reading``); a recorded red commit status is judged
+    as one. {} when the context reads no gate; a row that journals no reds, a recorded run no longer listed red, or a failed read is
+    unknown and the row is kept."""
+    name, at, recorded = r["context"], r.get("hosted_completed_at"), r.get("hosted_red")
+    try:
+        if not gate.matrix.pending_of(name):
+            return {}
+        if not is_ts(at) or not isinstance(recorded, list) or not recorded or any(not isinstance(e, dict) or e.get("id") is not None and type(e.get("id")) is not int for e in recorded):
+            raise MergerError("the recorded row journals no hosted_completed_at or no hosted_red: the reds it stood on cannot be found again")
+        runs = gh_pages(f"repos/{a.repo}/commits/{head}/check-runs?check_name={quote(name, safe='')}&filter=all", "check_runs")
+    except Exception as exc:  # noqa: BLE001 — an unreadable ground keeps the row, and says why
+        return {"gate_check": redact(f"unknown ({type(exc).__name__}: {exc})")}
+    listed = {x.get("id"): x for x in runs if x.get("name") == name and x.get("status") == "completed" and x.get("conclusion") in hc.HOSTED_RED}
+    red = [{"id": None, "conclusion": e.get("conclusion"), "completed_at": e.get("completed_at")} if e.get("id") is None else
+           {"id": e["id"], "conclusion": listed[e["id"]].get("conclusion"), "completed_at": listed[e["id"]].get("completed_at")}
+           for e in recorded if e.get("id") is None or e.get("id") in listed]
+    if len(red) != len(recorded):
+        return {"gate_check": f"unknown (a red {name} run the tick recorded is no longer listed red on the head)"}
+    if not any(e["completed_at"] == at for e in red):
+        return {"gate_check": f"unknown (no red {name} run completed at the recorded {at} is listed on the head)"}
+    return hc.gate_reading(gate, name, {"verdict": "RED", "completed_at": at, "red": red}, statuses)
+
+
+def reclassify_recorded(a, d: dict, judge, gate: GateJudge | None = None) -> tuple[list[dict], list[dict]]:
     """B10, the past: re-read a decision's recorded FALSE_GREEN rows (its run dir's hosted_compare.json) and apply the stale rule from
     the mirror. Read-only: GETs (branch protection, the check-runs and the statuses of the head), git reads in the mirror, nothing
     written anywhere. Returns ``(reclassified, kept)``: a row is reclassified only when the red the tick saw is still the hosted
-    verdict AND the judge found the evidence; every other recorded row is kept WITH its reason, and a read that fails keeps them all."""
+    verdict AND the judge found the evidence, or (B12b, ``gate``) when that red, found again by ``recorded_gate``, was the gate reader's
+    PENDING read given before the gate post the local run read; every other recorded row is kept WITH its reason (and ``gate``, the B12b
+    ground's word, when it applied), and a read that fails keeps them all."""
     pr, head = d.get("pr"), d.get("head_sha")
     try:
         doc = json.loads((Path(str(d["run_dir"])) / "hosted_compare.json").read_text())
@@ -1491,16 +1683,21 @@ def reclassify_recorded(a, d: dict, judge) -> tuple[list[dict], list[dict]]:
         return [], [{"pr": pr, "context": None, "head_sha": head, "why": redact(f"unknown ({type(exc).__name__}: {exc})")}]
     out, kept = [], []
     for r in rows:
+        g = recorded_gate(a, gate, str(head), r, live["statuses"]) if gate is not None else {}
+        if g.get("stale") is True:   # B12b: the red the tick saw was the PENDING read, given before the gate post the local run read
+            out.append({"pr": pr, "context": r["context"], "head_sha": head, **{k: g[k] for k in ("stale_why", "hosted_completed_at", "gate_posted_at", "plan_at")}})
+            continue
+        gk = {"gate": g["gate_check"]} if g else {}
         h = hc.hosted_verdict(hosted.get(r["context"], []), r.get("app_id"))
         if h["verdict"] != "RED":
-            kept.append({"pr": pr, "context": r["context"], "head_sha": head, "why": f"the hosted verdict is now {h['verdict']}, not the red the tick recorded"})
+            kept.append({"pr": pr, "context": r["context"], "head_sha": head, **gk, "why": f"the hosted verdict is now {h['verdict']}, not the red the tick recorded"})
             continue
         reading = hc.stale_reading(judge, r["context"], h["completed_at"])
         if reading["stale"] is True:
             out.append({"pr": pr, "context": r["context"], "head_sha": head, **{k: reading[k] for k in (
                 "hosted_completed_at", "hosted_main", "main_moved_paths", "main_moved_count")}})
         else:
-            kept.append({"pr": pr, "context": r["context"], "head_sha": head, "why": reading["stale_check"]})
+            kept.append({"pr": pr, "context": r["context"], "head_sha": head, **gk, "why": reading["stale_check"]})
     return out, kept
 
 

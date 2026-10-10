@@ -44,6 +44,7 @@ PHASEF = "scripts/localci/tests/test_merger_phase_f.py"
 WRAPPER_T = tuple(f"{PHASEF}::{t}" for t in ("test_the_wrapper_fetches_into_its_own_ref_and_leaves_the_authoritative_base_alone",
                                                  "test_a_mirror_from_before_the_wrapper_ref_existed_runs_the_code_the_last_tick_ran"))
 GP = ("scripts/localci/tests/test_gate_pending.py",)   # B12
+GS = ("scripts/localci/tests/test_gate_stale.py",)   # B12b
 ROOT = Path(__file__).resolve().parents[4]
 REPORT = "scripts/localci/tests/test_merger_report.py"
 TICK = "scripts/localci/tests/test_merger.py"
@@ -410,10 +411,10 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b10-agree-left-as-agree": (HC, 'if reading.get("stale") is True:\n            reading["class_before"]', 'if reading.get("stale") is True and klass != "AGREE":\n            reading["class_before"]', (STALE,)),
     "b10-stale-counts-as-compared": (HC, 'COMPARED = ("AGREE", "FALSE_GREEN", "FALSE_RED")', 'COMPARED = ("AGREE", "FALSE_GREEN", "FALSE_RED", "HOSTED_STALE")', (STALE,)),
     "b10-oldest-entry-times-the-verdict": (HC, "when = max(stamps) if", "when = min(stamps) if", (STALE,)),
-    "b10-judge-unwired-in-the-tick": (PY, "run_dir, StaleJudge(repo_dir, base_sha))", "run_dir, None)", (TICK,)),
+    "b10-judge-unwired-in-the-tick": (PY, "run_dir, judge, gate=GateJudge(", "run_dir, None, gate=GateJudge(", (TICK,)),
     "b10-tick-drops-the-stale-rows": (PY, '**({"stale": stale} if stale else {})', "**{}", (STALE,)),
-    "b10-report-compare-without-judge": (PY, 'rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"], stale_judge=judge)\n                for k, v',
-                                         'rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"])\n                for k, v', (REPORT,)),
+    "b10-report-compare-without-judge": (PY, 'live["statuses"], stale_judge=judge, gate_judge=gate)\n                for k, v',
+                                         'live["statuses"], gate_judge=gate)\n                for k, v', (REPORT,)),
     "b10-report-reclassifies-without-evidence": (PY, 'if reading["stale"] is True:\n            out.append', 'if True:\n            out.append', (REPORT,)),
     "b10-report-reclassifies-a-red-that-went": (PY, 'if h["verdict"] != "RED":\n            kept.append(', "if False:\n            kept.append(", (REPORT,)),
     "b10-report-never-subtracts": (PY, "recorded_fg += raw - len(got)", "recorded_fg += raw", (REPORT,)),
@@ -423,6 +424,36 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b10-report-kept-unsaid": (PY, '"why": reading["stale_check"]})', '"why": ""})', (REPORT,)),
     "b10-report-read-failure-unsaid": (PY, '"why": redact(f"unknown ({type(exc).__name__}: {exc})")}]', '"why": ""}]', (REPORT,)),
     "b10-report-red-gone-unsaid": (PY, "the hosted verdict is now {h['verdict']}, not the red the tick recorded", "kept", (REPORT,)),
+    # B12b: a hosted RED of a gate-reading context that was its reader's PENDING read, given before the gate post the local run read
+    "b12b-any-red-stale": (PY, "if not ours or len(fails) > len(ours) + len(exits) or len(exits) > 1:", "if False:", GS),
+    "b12b-extra-annotation-ignored": (PY, "if not ours or len(fails) > len(ours) + len(exits) or len(exits) > 1:", "if not ours:", GS),
+    "b12b-newest-post-any-time": (PY, 'read = [x for x in gate if x["updated_at"] <= self.plan_at]', "read = gate", GS),
+    "b12b-annotation-read-fails-stale": (HC, 'return {"gate_check": f"unknown ({type(exc).__name__}: {str(exc)[-200:]})"}',
+                                         'return {"stale": True, "gate_check": f"unknown ({type(exc).__name__}: {str(exc)[-200:]})"}', GS),
+    "b12b-context-by-name": (PY, "pending = self.matrix.pending_of(name)\n        if not pending:",
+                             'pending = [{"step": "Gear >= 2 — read the real gate verdict", "line": "::error::harness_gate_read: PENDING", "later": []}] '
+                             'if name == "Harness floor recompute" else []\n        if not pending:', GS),
+    "b12b-report-not-rejudged": (PY, 'g = recorded_gate(a, gate, str(head), r, live["statuses"]) if gate is not None else {}', "g = {}", GS),
+    "b12b-green-stale": (PY, 'if hosted["verdict"] != "RED":\n            return None', "if False:\n            return None", GS),
+    "b12b-post-same-second-stale": (PY, 'if not hosted["completed_at"] < posted:', 'if not hosted["completed_at"] <= posted:', GS),
+    "b12b-status-red-read-as-run": (PY, 'if any(type(e.get("id")) is not int for e in red):', "if False:", GS),
+    "b12b-report-red-not-found-judged": (PY, 'if not any(e["completed_at"] == at for e in red):', "if False:", GS),
+    "b12b-gate-unwired-in-the-tick": (PY, "gate=GateJudge(a.repo, judge, plan_time(run_dir), frozen_reads(run_dir))", "gate=None", (TICK,)),
+    # B12b fix round: the local run read a success the plan froze; the job failed on the reader step alone; a failure conclusion; the
+    # report finds the tick's own reds by id; a row says what ran; a B10 row is journalled whole
+    "b12b-anchor-state-ignored": (PY, 'if states != ["success"]:', "if False:", GS),
+    "b12b-frozen-read-ignored": (PY, "if not rcs or any(type(rc) is not int or rc != 0 for rc in rcs):", "if False:", GS),
+    "b12b-other-step-failed-stale": (PY, 'if failed != [p["step"]] or ran:', "if ran:", GS),
+    "b12b-later-step-ran-stale": (PY, 'if failed != [p["step"]] or ran:', 'if failed != [p["step"]]:', GS),
+    "b12b-annotation-cap-ignored": (PY, "if len(raw) >= self.ANN_CAP:", "if False:", GS),
+    "b12b-jobs-read-fails-stale": (PY, '            steps = self.job_steps(e["id"])\n',
+                                   '            try:\n                steps = self.job_steps(e["id"])\n            except Exception:\n                continue\n', GS),
+    "b12b-job-of-another-run": (PY, 'if not isinstance(url, str) or not url.endswith(f"/check-runs/{rid}"):', "if False:", GS),
+    "b12b-conclusion-ignored": (PY, 'if any(e.get("conclusion") != "failure" for e in red):', "if False:", GS),
+    "b12b-report-red-ids-ignored": (PY, "if len(red) != len(recorded):", "if False:", GS),
+    "b12b-report-red-unjournalled": (HC, '**({"hosted_red": h["red"]} if h["verdict"] == "RED" else {})', "**{}", GS),
+    "b12b-stale-check-without-b10": (HC, '"stale_check": gate["gate_check"]}\n', '"stale_check": "fresh"}\n', GS),
+    "b12b-b10-row-tolerated": (PY, "    return {k: r[k] for k in B10_KEYS}\n", "    return {k: r[k] for k in B10_KEYS if k in r}\n", GS),
     # B11 (phase D): the merger also judges the exact commit GitHub merged — a replay, BASE = its first parent, alternating with PR decisions
     "b11-base-is-the-merge-commit": (PY, '"base_sha": parents.split()[0]', '"base_sha": sha', (REPLAY,)),
     "b11-alternation-off": (PY, 'after_replay = bool(last and last[0].get("replay"))', "after_replay = False", (REPLAY,)),
