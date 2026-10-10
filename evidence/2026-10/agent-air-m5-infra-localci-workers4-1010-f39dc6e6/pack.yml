@@ -1,0 +1,66 @@
+task_id: localci-workers4-1010
+mission: LOCALCI-SOVEREIGN (speed lever 1)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  A capacity line of the BASE matrix following the gate VM's resize; no workflow, hot-zone path, plist or wrapper change.
+l_level: L2
+gate_class: opus
+objective: >-
+  Backend shards back to hosted's four xdist workers under a 12g cgroup on the resized 8-CPU / 16 GiB gate VM.
+constraints:
+  - The cap line stays on backend-shard alone; nothing else in the matrix changes.
+acceptance:
+  - text: The real backend plan SHALL give every shard leg four workers and no other job any.
+    probe: "test_shard_workers.py::test_the_real_backend_plan_gives_every_shard_leg_four_workers_and_no_other_job_any"
+  - text: The cap SHALL be declared once, on backend-shard, as "4".
+    probe: "test_shard_workers.py::test_the_cap_is_declared_once_on_the_backend_shard_job_and_nowhere_else_in_the_matrix"
+  - text: The Backend Tests context's memory cgroup SHALL be 12g.
+    probe: "test_shard_workers.py::test_the_backend_cgroup_holds_four_workers"
+consumer_map:
+  - scripts/localci/runner.py (the merger tick on Pro) — the backend-shard legs' job env and the context's docker --memory.
+pii_scan: clean
+pii_scan_note: A matrix capacity line, its tests, mutant rules and README text. No client data was read or written.
+lanes:
+  - lane: localci-workers4-1010
+    role: build
+    seat: claude-opus-5-5 (lead on M5)
+what_changed: |
+  contexts_matrix.yaml: Backend Tests (Python) local.memory 6g -> 12g; backend-shard env PYTEST_XDIST_AUTO_NUM_WORKERS "2" -> "4", its
+  comment rewritten (hosted's count; why the line stays on the 8-CPU VM; the B4 history). test_shard_workers.py: expectations at 4,
+  the probe step tests 4, a new test pins the 12g cgroup. Mutants: b4-cap-value-4 becomes b4-cap-value-8 and b4-cap-value-2, the
+  other b4-cap rules re-anchored on "4", new b4-memory-back-to-6g. README "Capacity on Pro" and "Shard workers (B4)" updated.
+proof: |
+  Tests and mutants on M5. On Pro, before this PR: the VM was resized at 08:14Z (colima list 8 CPU / 16GiB / 80GiB; docker info
+  NCPU=8 MemTotal=16734461952), so the 12g cgroup fits; the ext4 data filesystem's growth to 80 GiB waits on an offline e2fsck.
+bites:
+  consumer: The merger tick on Pro running Backend Tests (Python) from the BASE matrix after this merge.
+  observation: >-
+    The first backend-tests run after merge: every shard leg's log shows four xdist workers (gw0..gw3) and no "node down" line, the
+    leg's docker --memory is 12g, and the shard legs' wall seconds are recorded beside B1's 321/288/475 s at 4 workers and 6g.
+ground:
+  ts: "2026-10-10T08:24:05Z"
+  siblings: >-
+    Worktree from origin/main. B13 (#8214, prune.py) merged before; no other open lane touches contexts_matrix.yaml.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 0.4
+receipts:
+  - claim: "test_shard_workers.py: 15 passed; with test_service_contexts.py the earlier run gave 157 passed, 1 skipped before the probe fix."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_shard_workers.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-10T08:24:05Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Mutants --only b4-cap-key-misspelt b4-cap-value-8 b4-cap-value-2 b4-cap-dropped b4-cap-leaks-to-static b4-memory-back-to-6g: 6/6 killed."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only b4-cap-key-misspelt b4-cap-value-8 b4-cap-value-2 b4-cap-dropped b4-cap-leaks-to-static b4-memory-back-to-6g
+    exit: 0
+    ts: "2026-10-10T08:24:05Z"
+    seat: claude-opus-5-5 on M5
+dissent: []
+residuals:
+  - "The four-worker wall on Pro is unmeasured until the first run after merge (Bites)."
+  - "The VM's data filesystem still reads 59G of the 80 GiB partition until the offline e2fsck and resize2fs complete."
+appetite_exceeded: none
+plan_ref: >-
+  Owner directive 2026-10-10 ("velocizzare"), speed research lever 1, lead's ruling: 8 CPU / 16 GiB (not 24: swap on the host's disk).
+brief_ref: evidence/brief.yml
