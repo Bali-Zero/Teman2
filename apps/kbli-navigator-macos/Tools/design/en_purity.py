@@ -230,7 +230,8 @@ def gapped(s, rx, spec, in_parens=True, names=()):
     the gap keep its match as the original, in parentheses after its English."""
     pat, keep, at = [], [], 0
     for m in (rx.finditer(s) if rx else []) if in_parens else standalone(s, rx, names):
-        pat += [flex(s[at:m.start()]), r"([\s\S]{1,80}?)"]; keep.append((spec(m.group()), None if in_parens else m.group()))
+        pat += [flex(s[at:m.start()]), r"([\s\S]{1,%d}?)" % (80 + 2 * len(m.group()))]   # a title's English + itself
+        keep.append((spec(m.group()), None if in_parens else m.group()))
         at = m.end()
     end = r"(?=\n|$)" if keep and not s[at:].strip() else flex(s[at:])   # a gap closing `s` runs to its line's end (R15)
     return re.compile("".join(pat) + end), tuple(keep) or None
@@ -355,7 +356,8 @@ def analyse(row, rec, unknown=False):
     """[(line, category, tokens)] for the Indonesian strings of one dump, and [(reason, tokens)] for allowlisted spans.
     unknown=True (a gated dump) also flags a word outside the spans that is neither English (ref) nor a lexicon word:
     a novel Indonesian word drawn in English must not pass for want of a lexicon entry (#8224 gate binding 1)."""
-    lines = [" ".join(l.split()) for l in row["text"].split("\n")]
+    # Emphasis markup a View draws literally ("**live fish**") is no word: the overlay's prose is read without it.
+    lines = [" ".join(re.sub(r"\*\*|__", "", l).split()) for l in row["text"].split("\n")]
     text = "\n".join(lines); starts, p = [], 0
     for l in lines: starts.append(p); p += len(l) + 1
     line_of = lambda i: max(0, next((n for n, s in enumerate(starts) if s > i), len(starts)) - 1)
@@ -615,6 +617,7 @@ def selftest():
              ("Authority: Regent/Mayor (Gubernur)", 1, r19), ("Authority: Bupati/Walikota", 1, r19),
              ("Villa Activities (Aktivitas Vila) — villa rental for guests.", 0, r19),
              ("Aktivitas Vila — villa rental for guests.", 1, r19),
+             ("Villa Activities (Aktivitas\nVila) — **villa rental** for guests.", 0, r19),      # wrapped, markup
              ("A villa needs its self-assessment (Dokumen Standar usaha Aktivitas Vila).", 0, r19),
              ("A villa needs its self-assessment (Dokumen Standar usaha Villa Activities (Aktivitas Vila)).", 1, r19),
              ("Meals come from a Penyediaan Makanan nearby.", 0, r19),
