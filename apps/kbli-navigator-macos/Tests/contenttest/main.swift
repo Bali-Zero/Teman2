@@ -70,7 +70,8 @@ let out: [String: Any] = MainActor.assumeIsolated {
     // Each redesigned view must still ask the canonical functions (append one line per view).
     let mustCall: [String: [String]] = [
         "Sources/Views/SearchListView.swift": ["KBLIVerdict.headsUp(", "OverlayStore.shared.primaryTitle("],
-        "Sources/Views/KBLIRegistryTable.swift": ["Theme.riskChip(", "Theme.chip("],
+        "Sources/Views/KBLIRegistryTable.swift": ["Theme.riskChip(", "Theme.chip(", "LabelBook.title("],
+        "Sources/Views/RegistryVerdictSheet.swift": ["LabelBook.title(", "LabelBook.humanise("],
     ]
     for (file, calls) in mustCall.sorted(by: { $0.key < $1.key }) {
         guard let src = try? String(contentsOfFile: "\(appRoot)/\(file)", encoding: .utf8) else {
@@ -84,6 +85,8 @@ let out: [String: Any] = MainActor.assumeIsolated {
     // comments included. Listed only for a view with no such read at its redesign (append one line per view).
     let mustNotRead: [String: [String]] = [
         "Sources/Views/SearchListView.swift": ["judul"],
+        "Sources/Views/KBLIRegistryTable.swift": ["judul"],
+        "Sources/Views/RegistryVerdictSheet.swift": ["judul"],
     ]
     for (file, fields) in mustNotRead.sorted(by: { $0.key < $1.key }) {
         guard let src = try? String(contentsOfFile: "\(appRoot)/\(file)", encoding: .utf8) else {

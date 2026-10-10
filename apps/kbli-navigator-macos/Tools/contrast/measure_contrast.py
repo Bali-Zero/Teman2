@@ -69,10 +69,10 @@ PAIRS = [
     ("muted/ink", "muted", ("solid","ink"), 4.5, "SearchListView.swift:419/348 rail facet labels on Theme.wash (= ink); KBLIRegistryTable.swift:71 neutral VerdictBadge (Theme.chip(.neutral): muted on wash)"),
     ("muted/inkLift", "muted", ("solid","inkLift"), 4.5, "KBLIDossierView.swift:60/100 on card"),
     ("faint/antracite", "faint", ("solid","antracite"), 4.5, "RootView.swift:142 on window bg; SearchFieldBar.swift:48 density glyph on the bar"),
-    ("faint/ink", "faint", ("solid","ink"), 4.5, "RegistryVerdictSheet.swift:98/113 on Theme.ink"),
+    ("faint/ink", "faint", ("solid","ink"), 4.5, "RegistryVerdictSheet.swift:96/111 on Theme.ink"),
     ("faint/inkLift", "faint", ("solid","inkLift"), 4.5, "KBLIDetailView.swift:101/206 on card"),
     ("accent/antracite", "accent", ("solid","antracite"), 4.5, "KBLIDetailRichView.swift:379 accent link on window"),
-    ("accent/inkLift", "accent", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:137/2027 accent on card"),
+    ("accent/inkLift", "accent", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:137/2014 accent on card"),
     ("zantara/antracite", "zantara", ("solid","antracite"), 4.5, "ChatView.swift:48/105/117 zantara label on window"),
     ("zantara/ink", "zantara", ("solid","ink"), 4.5, "KBLIDetailRichView.swift:358/366 zantara on ink"),
     ("statutory/inkLift", "statutory", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:979 statutory pill text"),
@@ -120,7 +120,7 @@ SITE_PAIRS = [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5, "
 # Tone-chip ink painted straight on a row's ground: the ruled heads-up label of the search results, Theme.chip(tone).fg
 # on antracite at rest and on wash (= ink) when selected or hovered. CHIP_FG mirrors Theme.chip's switch (PARITY).
 CHIP_FG = [("chipOpenFg", "open"), ("chipRestrictedFg", "restricted"), ("chipClosedFg", "closed"), ("muted", "neutral")]
-CHIP_SITES = ["SearchListView.swift:655 ruled heads-up label"]
+CHIP_SITES = ["SearchListView.swift:661 ruled heads-up label"]
 SITE_PAIRS += [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5,
                 "%s on %s — Theme.chip(.%s).fg" % (site, ground, tone))
                for site in CHIP_SITES for fg, tone in CHIP_FG

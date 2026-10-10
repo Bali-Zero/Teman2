@@ -115,7 +115,7 @@ struct RiskCell: View {
                     if let b = c.border { RoundedRectangle(cornerRadius: 2).strokeBorder(b, lineWidth: 1) }
                 }
                 .accessibilityElement()
-                .accessibilityLabel((isID ? "Risiko OSS: " : "OSS risk: ") + label)
+                .accessibilityLabel((isID ? "Risiko OSS: " : "OSS risk: ") + LabelBook.risk(label, isID: isID))
         case .absent:
             Text(Self.absentText(isID: isID))
                 .font(Theme.scalable(compact ? 9 : 10).italic())
@@ -149,18 +149,19 @@ struct KBLIRegistryRow: View {
     var body: some View {
         let v = verdict
         let badgeState = VerdictBadge.state(for: v)
+        let title = LabelBook.title(kbli, isID: isID)
         HStack(spacing: 12) {
             Text(kbli.kode)
                 .font(Theme.scalable(13, weight: .regular, design: .monospaced))
                 .foregroundStyle(Theme.muted)
                 .frame(width: compact ? 52 : 58, alignment: .leading)
-            Text(kbli.judul)
+            Text(title)
                 .font(Theme.scalable(13))
                 .lineSpacing(Theme.leading(13, 20))
                 .foregroundStyle(Theme.white)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .help(kbli.judul)
+                .help(title)
             VerdictBadge(state: badgeState, isID: isID, compact: compact)
                 .frame(width: compact ? 116 : 132)
             RiskCell(risk: v.risk, isID: isID, compact: compact)
@@ -290,77 +291,82 @@ enum RegistryFormat {
 /// sheet's three axis cards — it costs no extra file and closes the one gap the panel named
 /// against "a" (sources bundled into a single quote block instead of exploded per axis).
 ///
-/// These strings are FIELD LOCATORS, not prose: they name the record key the verdict was read
-/// from and the value it held, so a reader can check the dataset instead of trusting the card.
+/// Each line names the record fields the verdict was read from and the value each held, so a reader
+/// can check the dataset instead of trusting the card. Q12 (2026-10-10): it names them in the
+/// reader's language — the keys and the Italian enums are pipeline keys, never drawn; every word
+/// comes from `LabelBook`.
 enum AxisSource {
     /// Council round 1 (codex-gpt-5.6-sol) named a real defect here: the first version mixed
     /// fields `KBLIVerdictInput` consumes with fields it does not (`pma_source`, `confidence`,
     /// the moratorium block) and omitted two it does (`pma_kondisi`, `pma_route_to`). A source
     /// line that names a field the rule never read is not provenance, it is decoration. So each
     /// line now has two halves: what the RULE READ, then what the RECORD CITES beside it.
-    ///
-    /// The field keys and values are locators and stay verbatim in both languages; the connecting
-    /// words are the reader's language (council K2 round 1, both seats: they were English on the
-    /// Indonesian sheet).
     private static func compose(read: [String], cites: [String], isID: Bool) -> String {
         let a = read.joined(separator: " · ")
         guard cites.isEmpty == false else { return a }
         return a + (isID ? "  ·  dikutip catatan: " : "  ·  cited by the record: ") + cites.joined(separator: " · ")
     }
 
+    private static func pair(_ key: String, _ value: String, isID: Bool) -> String {
+        "\(LabelBook.field(key, isID: isID)): \(value)"
+    }
+
     static func national(_ k: KBLI, isID: Bool = false) -> String {
-        var read: [String] = ["pma_status=\(k.pmaStatus ?? "∅")",
-                              "pma_max_asing=\(k.pmaMaxAsing.map(String.init) ?? "∅")"]
-        if k.pmaCapSpecial == true { read.append("pma_cap_special=true") }
+        var read: [String] = [pair("pma_status", LabelBook.pmaStatus(k.pmaStatus ?? "∅", isID: isID), isID: isID),
+                              pair("pma_max_asing", k.pmaMaxAsing.map { "\($0)%" } ?? "∅", isID: isID)]
+        if k.pmaCapSpecial == true { read.append(LabelBook.field("pma_cap_special", isID: isID)) }
         // `pma_kondisi` is consumed by the rule on exactly two branches (a special cap, a 0% cap).
         if k.pmaCapSpecial == true || k.pmaMaxAsing == 0 {
-            let kondisi = (k.pmaKondisi?.isEmpty == false) ? k.pmaKondisi! : "∅"
-            read.append("pma_kondisi=\(kondisi)")   // read on this branch even when it is empty
+            let kondisi = (k.pmaKondisi?.isEmpty == false) ? LabelBook.original(k.pmaKondisi!, isID: isID) : "∅"
+            read.append(pair("pma_kondisi", kondisi, isID: isID))   // read on this branch even when it is empty
         }
         if (k.pmaStatus ?? "").uppercased() == "TERTUTUP" {
             let route = (k.pmaRouteTo?.isEmpty == false) ? k.pmaRouteTo! : "∅"
-            read.append("pma_route_to=\(route)")
+            read.append(pair("pma_route_to", route, isID: isID))
         }
         var cites: [String] = []
         if let src = k.pmaSource, src.isEmpty == false { cites.append(src) }
-        if k.pmaCapVerified == false { cites.append("pma_cap_verified=false") }
+        if k.pmaCapVerified == false { cites.append(LabelBook.field("pma_cap_verified=false", isID: isID)) }
         return compose(read: read, cites: cites, isID: isID)
     }
 
     static func bali(_ k: KBLI, isID: Bool = false) -> String {
-        guard let l4 = k.l4Bali else {
-            return isID ? "l4_bali=∅ (catatan ini tidak memiliki blok Bali)" : "l4_bali=∅ (no Bali block on this record)"
-        }
-        var read: [String] = ["l4_bali.status=\(l4.status)", "blocked=\(l4.blocked)"]
+        guard let l4 = k.l4Bali else { return LabelBook.field("l4_bali=∅", isID: isID) }
+        var read: [String] = [pair("l4_bali.status", LabelBook.baliStatus(l4.status, isID: isID), isID: isID),
+                              pair("l4_bali.blocked", LabelBook.yesNo(l4.blocked, isID: isID), isID: isID)]
         // Present/absent, NOT "the sentence above": when a national closure dominates, the
         // sentence above is the national reason and this one is not on screen at all (council
         // round 2, codex-gpt-5.6-sol).
-        read.append("reason=" + ((l4.reason?.isEmpty == false) ? "✓" : "∅"))   // symbols: language-free
+        read.append(pair("l4_bali.reason", (l4.reason?.isEmpty == false) ? "✓" : "∅", isID: isID))   // symbols: language-free
         var cites: [String] = []
-        if let c = l4.confidence, c.isEmpty == false { cites.append("confidence=\(c)") }
+        if let c = l4.confidence, c.isEmpty == false {
+            cites.append(pair("l4_bali.confidence", LabelBook.confidence(c, isID: isID), isID: isID))
+        }
         if let m = l4.moratorium {
-            if let eff = m.effective { cites.append("moratorium.effective=\(eff)") }
+            if let eff = m.effective { cites.append(pair("moratorium.effective", eff, isID: isID)) }
             if let s = m.source, s.isEmpty == false { cites.append(s) }
         }
         return compose(read: read, cites: cites, isID: isID)
     }
 
     /// Takes the VERDICT, not just the record: the label printed here is the one the rule chose
-    /// (`riskLabelRaw`), so the locator can never name a different row than the axis above it.
+    /// (`riskLabelRaw`), so the line can never name a different row than the axis above it.
     /// The ledger ("n of m rows carry a class") is the honest per-scale count either way.
     static func risk(_ k: KBLI, verdict v: KBLIVerdict, isID: Bool = false) -> String {
         let rows = k.perSkala.count
         let withCat = k.perSkala.filter { ($0.kategoriRisiko ?? "").isEmpty == false }.count
-        if rows == 0 { return isID ? "per_skala=[] (0 baris)" : "per_skala=[] (0 rows)" }
+        if rows == 0 { return pair("per_skala", "0", isID: isID) }
         let ledger = isID ? "(\(withCat) dari \(rows) baris memiliki kelas)" : "(\(withCat) of \(rows) rows carry a class)"
-        guard let chosen = v.riskLabelRaw else { return "per_skala.kategori_risiko=∅ \(ledger)" }
+        let risk = LabelBook.field("kategori_risiko", isID: isID)
+        guard let chosen = v.riskLabelRaw else { return "\(risk): ∅ \(ledger)" }
         let fromBesar = k.perSkala.contains { row in
             row.skalaUsaha.contains { $0.lowercased().contains("besar") } && row.kategoriRisiko == chosen
         }
-        let where_ = fromBesar ? "per_skala[Besar]"
-            : (isID ? "per_skala[tertinggi lintas skala — tidak ada baris Besar yang memilikinya]"
-                    : "per_skala[highest across scales — no Besar row carries one]")
-        return "\(where_).kategori_risiko=\(chosen) \(ledger)"
+        let large = LabelBook.scale("Besar", isID: isID)
+        let where_ = fromBesar ? (isID ? "\(risk) pada skala \(large)" : "\(risk) at \(large) scale")
+            : (isID ? "\(risk) tertinggi lintas skala (tidak ada baris \(large) yang memilikinya)"
+                    : "\(risk), highest across scales (no \(large)-scale row carries one)")
+        return "\(where_): \(LabelBook.risk(chosen, isID: isID)) \(ledger)"
     }
 }
 

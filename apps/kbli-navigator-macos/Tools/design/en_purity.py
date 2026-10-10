@@ -23,10 +23,12 @@ from collections import Counter, defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(os.path.dirname(HERE))
 # The Views held to 0, and the files the never-drawn check gates (each View joins both as its lot lands).
-GATED = ["search-chrome", "registry-chrome", "search-field"]
-STATIC = ["Sources/Views/SearchFieldBar.swift"]
-REPORTED = ["Sources/Views/SearchListView.swift", "Sources/Views/KBLIRegistryTable.swift",
-            "Sources/Views/RegistryVerdictSheet.swift"]   # EN-1b brings them to 0 and moves them to STATIC
+GATED = ["search-chrome", "registry-chrome", "search-field",
+         "search-row", "search-peak", "registry-row", "registry-sheet"]                  # EN-1b (Q12)
+STATIC = ["Sources/Views/SearchFieldBar.swift",
+          "Sources/Views/SearchListView.swift", "Sources/Views/KBLIRegistryTable.swift",
+          "Sources/Views/RegistryVerdictSheet.swift"]                                    # EN-1b (Q12)
+REPORTED = []
 
 LEX = {}
 for line in open(os.path.join(HERE, "en_lexicon.tsv"), encoding="utf-8"):

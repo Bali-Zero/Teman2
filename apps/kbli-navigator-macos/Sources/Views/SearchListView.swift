@@ -602,7 +602,7 @@ struct QueryResultRow: View {
     }
 
     private func statusChip() -> some View {
-        Text(kbli.pmaStatus ?? "—")
+        Text(LabelBook.pmaStatus(kbli.pmaStatus, isID: isID))
             .font(Theme.scalable(11, weight: .semibold))
             .foregroundStyle(Theme.chip(Theme.tone(kbli.pmaStatus ?? "")).fg)
             .padding(.vertical, 4).padding(.horizontal, 8)
@@ -614,7 +614,7 @@ struct QueryResultRow: View {
         // The canonical `pma_max_asing`, not `nationalCap`: a closed axis carries no cap, and 55203's
         // frozen cap is "0", which must read 0% — "—" only when the record states no number.
         let cap = kbli.pmaMaxAsing
-        let other = OverlayStore.shared.primaryTitle(kbli, isID: !isID)
+        let other = isID ? LabelBook.title(kbli, isID: false) : LabelBook.officialTitle(kbli)
         return VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .firstTextBaseline, spacing: 16) {
                 Text(kbli.kode).font(Theme.title(27)).foregroundStyle(Theme.structure)
@@ -627,8 +627,14 @@ struct QueryResultRow: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text(title).font(Theme.title(36)).foregroundStyle(Theme.white)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(other).font(Theme.scalable(15)).foregroundStyle(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 2) {
+                    // Q12 ruling 3: the Indonesian title under an English one says what it is.
+                    if !isID {
+                        Text(LabelBook.officialTitleLabel).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
+                    }
+                    Text(other).font(Theme.scalable(15)).foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             HStack(spacing: 0) {
                 Rectangle().fill(c.fg).frame(width: 4)
