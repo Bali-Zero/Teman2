@@ -313,6 +313,9 @@ on:
       # own first run, which is the coverage gate doing exactly its job: a new
       # push-to-main workflow that nothing watches is a red nobody would see.
       - VOA probe organ tests
+      # Added 2026-10-10 (zero-sync-tests.yml, the canonical -> FastLabsNet/zero mirror organ's offline corpus).
+      # Listed by its declared name:, caught by check_watcher_coverage.py on that PR's own first run.
+      - Zero sync tests
       # Added 2026-08-29 (Handoff H3, token-contrast-tests.yml): ADVISORY job
       # (continue-on-error: true — see the workflow's own header comment).
       # check_watcher_coverage.py's contract is name-set membership against
