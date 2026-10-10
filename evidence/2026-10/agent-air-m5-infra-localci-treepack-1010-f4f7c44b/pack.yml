@@ -54,7 +54,7 @@ ground:
     Worktree from origin/main 1abf4de128. #8225 (contexts_matrix.yaml, workers 4) merged before; pro.janitor (another session) does not
     touch runner.py or steps_driver.py.
 spend:
-  adversarial_rounds: 0
+  adversarial_rounds: 1
   wall_clock_hours: 1.2
 receipts:
   - claim: "Probe 3 on Pro, the driver's sequence in the real deps image on the real tree: add -A -f 18.7 s, repack -a -d 38.0 s, start->exit 57.2 s."
@@ -67,21 +67,40 @@ receipts:
     exit: 0
     ts: "2026-10-10T09:10:00Z"
     seat: claude-sonnet-5 executor on Pro (approximate time, from its 09:10:08Z report)
-  - claim: "Probe 5 on Pro, B14's own code (bb0be64333 runner.py and steps_driver.py): build_tree_pack 6.5 s (28947 objects, 845204008 bytes); index_tree 69.02 s without the pack vs 8.49 s with it; same HEAD^{tree} 1ff71a213ba8, same ls-files -s hash 4c1d7af418f39063, status 0, 0 loose, shipped pack removed in the sandbox; no probe container left."
+  - claim: "Probe 5 on Pro, B14's own code (bb0be64333 runner.py and steps_driver.py), sandbox --network none --user 65534 --memory 4g (no --pids-limit/--cap-drop; copy-in by runner.stream_tree_tar into docker cp -a): build_tree_pack 6.5 s (28947 objects, 845204008 bytes); without the pack copy-in 12.2 s + start->exit 70.1 s (index_tree 69.02 s), with it copy-in 14.7 s + start->exit 8.8 s (index_tree 8.49 s), i.e. 82.3 s -> 23.5 s per container; same HEAD^{tree} 1ff71a213ba8, same ls-files -s hash 4c1d7af418f39063, status 0, 0 loose, shipped pack removed in the sandbox; no probe container left."
     cmd: "~/b6deploy/speedprobe/speedprobe5.py rt5 <cand> <deps image>"
     exit: 0
     ts: "2026-10-10T09:34:40Z"
     seat: claude-opus-5-5 on Pro (lead)
-  - claim: "test_tree_pack.py 18 passed; full scripts/localci/tests 1509 passed, 14 skipped; 8/8 b14 mutants killed; ruff clean."
+  - claim: "On M5 (a local subset of the hosted verdict; the PR's hosted suite is still to run): test_tree_pack.py 18 passed; full scripts/localci/tests 1509 passed, 14 skipped; 8/8 b14 mutants killed; ruff clean."
     cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests -q -p no:cacheprovider
     exit: 0
     ts: "2026-10-10T09:30:12Z"
     seat: claude-sonnet-5 implementer on M5 (time of its commit)
-dissent: []
+  - claim: "Fix round 8c2d66f4c7 on M5 (local subset of the hosted verdict): full scripts/localci/tests 1518 passed, 14 skipped; test_tree_pack.py 24 passed; mutants b14-stale-pack-kept, b14-stale-pack-swept-too-young, b14-sidecar-crash, b14-pack-not-removed-at-run-end, b8-cache-by-age all KILLED; ruff clean."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-10T14:14:26Z"
+    seat: claude-sonnet-5 implementer on M5 (the fix commit's time; the run preceded it)
+dissent:
+  - seat: claude-opus-5-5 independent gate (round 1, CONFIRMED with findings)
+    objection: >-
+      MEDIUM: a SIGKILL, OOM or reboot skips cmd_run's finally and leaks the 845 MB pack per run dir for 7 days (prune's BULK did not
+      name it); LOW: add -A -f re-hashes every file (the docs said "only what the pack lacks"); a malformed sidecar raised instead of
+      falling back; the receipts lacked the 82 s -> 23.5 s claim and the M5-subset note.
+    status: CONFIRMED
+    resolution: >-
+      8c2d66f4c7: prune.trim_runs sweeps state/tree.pack* of any run dir aged >= 24 h (key trimmed_pack; younger runs keep theirs);
+      tree_pack_for catches AttributeError/KeyError/TypeError and both call sites go through tree_pack_ship_safe (any failure = the
+      fallback line, never a raise out of the leg); docstring and README say add -A -f re-hashes everything and must stay. Evidence
+      receipts amended.
 residuals:
+  - "A run killed by SIGKILL, OOM or a reboot leaves its pack until the prune's 24 h sweep (trimmed_pack), at most one per killed run."
   - "A reused pack is re-checked by commit and size, not sha256 (hashing 845 MB per container costs more than it saves); state/ is outside every sandbox and index-pack verifies every object, so a damaged pack is no verdict, never a wrong one."
   - "The sandbox repo holds two packs instead of one, and in contained-steps checks with overrides the candidate's own blob at an overridden path is present unreferenced: invisible to porcelain, and content the candidate already has."
-  - "The copy-in grows by the 845 MB pack (~+6 s per container), inside the measured net (82 s -> 23.5 s on probe 5)."
+  - "The copy-in grows by the 845 MB pack (~+2.5 s per container on probe 5), inside the measured net (82.3 s -> 23.5 s)."
+  - "The Pro probe scripts live off-repo (~/b6deploy/speedprobe on Pro, candidate checkout and deps image named at run time); the receipts' cmds are not re-runnable from the repo alone. The README's numbers are probe 4's (the shell form), probe 5's (B14's own code) are in its receipt."
+  - "index-pack's memory was measured only under --memory 4g (probe 5, rc 0); backend legs run under 12g, other contexts 4g-7g."
 appetite_exceeded: none
 plan_ref: >-
   Owner directive 2026-10-10 ("velocizzare"); the lead's per-leg measurement (docker events and probes 1-5) found index_tree, not the
