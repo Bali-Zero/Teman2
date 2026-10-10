@@ -1,137 +1,357 @@
 {
   "A": {
+    "kbli_painted": [
+      {
+        "hex": "#3A6DFF",
+        "text": "Get Started",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#3A6DFF",
+        "text": "Get Started",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#EBECEF",
+        "text": "Home",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#EBECEF",
+        "text": "Home",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#EBECEF",
+        "text": "Property",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#EBECEF",
+        "text": "Property",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#EBECEF",
+        "text": "Tax",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#EBECEF",
+        "text": "Tax",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#EBECEF",
+        "text": "Visa",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#EBECEF",
+        "text": "Visa",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Home",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Home",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Home",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Home",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Property",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Property",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Property",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Property",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Tax",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Tax",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Tax",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Tax",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Visa",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Visa",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Visa",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Visa",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Login",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Login",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Login",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Login",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Login",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Login",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Menu",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Menu",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Menu",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Menu",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Menu",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Menu",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#FF2D4C",
+        "text": "Get Started",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#FF2D4C",
+        "text": "Get Started",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#FF2D4C",
+        "text": "Get Started",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#FF2D4C",
+        "text": "Get Started",
+        "where": "kbli-mobile-nav mobile/light"
+      }
+    ],
     "shared": {
       "Footer R19 blog /news mobile/light": [
         "#1D2C3B on #EEE9E1 '+62 821 3454 721'",
-        "#1D2C3B on #EEE9E1 '@Balizerobot'",
-        "#1D2C3B on #EEE9E1 'Bali, Indonesia'",
         "#1D2C3B on #EEE9E1 'Your Bali, from Zero.'",
-        "#1D2C3B on #EEE9E1 'zantara@balizero.com'",
-        "#435464 on #EEE9E1 'About'",
-        "#435464 on #EEE9E1 'Business'",
-        "#435464 on #EEE9E1 'Company Setup'",
-        "#435464 on #EEE9E1 'Company'",
-        "#435464 on #EEE9E1 'Cookie Policy'",
-        "#435464 on #EEE9E1 'Email'",
-        "#435464 on #EEE9E1 'Get in touch'",
-        "#435464 on #EEE9E1 'Golden Visa'",
+        "#1D2C3B on #EFE9E1 '@Balizerobot'",
+        "#1D2C3B on #EFE9E1 'zantara@balizero.com'",
+        "#1D2C3B on #EFEAE2 '+62 821 3454 721'",
+        "#1D2C3B on #EFEAE2 'Bali, Indonesia'",
+        "#435464 on #E2DED6 'News'",
+        "#435464 on #EDE8E0 'Cookie Policy'",
+        "#435464 on #EDE8E1 'Terms of Service'",
+        "#435464 on #EDE9E0 'Get in touch'",
+        "#435464 on #EDE9E1 'Team'",
         "#435464 on #EEE9E1 'Living'",
-        "#435464 on #EEE9E1 'Location'",
-        "#435464 on #EEE9E1 'News'",
-        "#435464 on #EEE9E1 'Phone'",
         "#435464 on #EEE9E1 'Privacy Policy'",
         "#435464 on #EEE9E1 'Property DD'",
-        "#435464 on #EEE9E1 'Property'",
-        "#435464 on #EEE9E1 'Services'",
-        "#435464 on #EEE9E1 'Tax & Compliance'",
-        "#435464 on #EEE9E1 'Taxes'",
-        "#435464 on #EEE9E1 'Team'",
-        "#435464 on #EEE9E1 'Telegram'",
-        "#435464 on #EEE9E1 'Terms of Service'",
-        "#435464 on #EEE9E1 'Visa & Immigration'",
         "#435464 on #EEE9E1 'Visas'",
         "#435464 on #EEE9E1 'WhatsApp'",
-        "#435464 on #EEE9E1 'Your trusted partner for business, immig'",
-        "#435464 on #EEE9E1 '\u00a9 2026 Bali Zero. All rights reserved.'"
+        "#435464 on #EEE9E1 '\u00a9 2026 Bali Zero. All rights reserved.'",
+        "#435464 on #EEE9E2 'Property'",
+        "#435464 on #EEE9E2 'Tax & Compliance'",
+        "#435464 on #EEE9E2 'Taxes'",
+        "#435464 on #EEEAE1 'Company Setup'",
+        "#435464 on #EEEAE2 'Golden Visa'",
+        "#435464 on #EEEAE2 'Your trusted partner for business, immig'",
+        "#435464 on #EFEAE2 'About'",
+        "#435464 on #EFEAE2 'Business'",
+        "#435464 on #EFEAE2 'Company'",
+        "#435464 on #EFEAE2 'Email'",
+        "#435464 on #EFEAE2 'Location'",
+        "#435464 on #EFEAE2 'Phone'",
+        "#435464 on #EFEAE2 'Services'",
+        "#435464 on #EFEAE2 'Telegram'",
+        "#435464 on #EFEAE2 'Visa & Immigration'",
+        "root #EDE9E1"
       ],
       "Footer R19 blog /news mobile/system-dark": [
         "#1D2C3B on #EEE9E1 '+62 821 3454 721'",
-        "#1D2C3B on #EEE9E1 '@Balizerobot'",
-        "#1D2C3B on #EEE9E1 'Bali, Indonesia'",
         "#1D2C3B on #EEE9E1 'Your Bali, from Zero.'",
-        "#1D2C3B on #EEE9E1 'zantara@balizero.com'",
-        "#435464 on #EEE9E1 'About'",
-        "#435464 on #EEE9E1 'Business'",
-        "#435464 on #EEE9E1 'Company Setup'",
-        "#435464 on #EEE9E1 'Company'",
-        "#435464 on #EEE9E1 'Cookie Policy'",
-        "#435464 on #EEE9E1 'Email'",
-        "#435464 on #EEE9E1 'Get in touch'",
-        "#435464 on #EEE9E1 'Golden Visa'",
+        "#1D2C3B on #EFE9E1 '@Balizerobot'",
+        "#1D2C3B on #EFE9E1 'zantara@balizero.com'",
+        "#1D2C3B on #EFEAE2 '+62 821 3454 721'",
+        "#1D2C3B on #EFEAE2 'Bali, Indonesia'",
+        "#435464 on #E2DED6 'News'",
+        "#435464 on #EDE8E0 'Cookie Policy'",
+        "#435464 on #EDE8E1 'Terms of Service'",
+        "#435464 on #EDE9E0 'Get in touch'",
+        "#435464 on #EDE9E1 'Team'",
         "#435464 on #EEE9E1 'Living'",
-        "#435464 on #EEE9E1 'Location'",
-        "#435464 on #EEE9E1 'News'",
-        "#435464 on #EEE9E1 'Phone'",
         "#435464 on #EEE9E1 'Privacy Policy'",
         "#435464 on #EEE9E1 'Property DD'",
-        "#435464 on #EEE9E1 'Property'",
-        "#435464 on #EEE9E1 'Services'",
-        "#435464 on #EEE9E1 'Tax & Compliance'",
-        "#435464 on #EEE9E1 'Taxes'",
-        "#435464 on #EEE9E1 'Team'",
-        "#435464 on #EEE9E1 'Telegram'",
-        "#435464 on #EEE9E1 'Terms of Service'",
-        "#435464 on #EEE9E1 'Visa & Immigration'",
         "#435464 on #EEE9E1 'Visas'",
         "#435464 on #EEE9E1 'WhatsApp'",
-        "#435464 on #EEE9E1 'Your trusted partner for business, immig'",
-        "#435464 on #EEE9E1 '\u00a9 2026 Bali Zero. All rights reserved.'"
+        "#435464 on #EEE9E1 '\u00a9 2026 Bali Zero. All rights reserved.'",
+        "#435464 on #EEE9E2 'Property'",
+        "#435464 on #EEE9E2 'Tax & Compliance'",
+        "#435464 on #EEE9E2 'Taxes'",
+        "#435464 on #EEEAE1 'Company Setup'",
+        "#435464 on #EEEAE2 'Golden Visa'",
+        "#435464 on #EEEAE2 'Your trusted partner for business, immig'",
+        "#435464 on #EFEAE2 'About'",
+        "#435464 on #EFEAE2 'Business'",
+        "#435464 on #EFEAE2 'Company'",
+        "#435464 on #EFEAE2 'Email'",
+        "#435464 on #EFEAE2 'Location'",
+        "#435464 on #EFEAE2 'Phone'",
+        "#435464 on #EFEAE2 'Services'",
+        "#435464 on #EFEAE2 'Telegram'",
+        "#435464 on #EFEAE2 'Visa & Immigration'",
+        "root #EDE9E1"
       ],
       "Footer editorial /v2 mobile/light": [
+        "#1C1C1E on #F3F3F4 'zantara@balizero.com'",
+        "#1C1C1E on #F3F4F4 '+62 821 3454 721'",
         "#1C1C1E on #F4F4F5 '+62 821 3454 721'",
         "#1C1C1E on #F4F4F5 '@Balizerobot'",
         "#1C1C1E on #F4F4F5 'Bali, Indonesia'",
-        "#1C1C1E on #F4F4F5 'zantara@balizero.com'",
+        "#676768 on #F3F3F4 'Tax & Compliance'",
+        "#676768 on #F3F3F4 'Visa & Immigration'",
+        "#676768 on #F4F4F4 'Property'",
+        "#676768 on #F4F4F4 'Team'",
+        "#676768 on #F4F4F4 'Visas'",
+        "#676769 on #F3F3F5 'Property DD'",
+        "#676769 on #F3F4F5 'Golden Visa'",
         "#676769 on #F4F4F5 'About'",
         "#676769 on #F4F4F5 'Business'",
         "#676769 on #F4F4F5 'Company Setup'",
-        "#676769 on #F4F4F5 'Golden Visa'",
         "#676769 on #F4F4F5 'Living'",
-        "#676769 on #F4F4F5 'Property DD'",
-        "#676769 on #F4F4F5 'Property'",
-        "#676769 on #F4F4F5 'Tax & Compliance'",
         "#676769 on #F4F4F5 'Taxes'",
-        "#676769 on #F4F4F5 'Team'",
-        "#676769 on #F4F4F5 'Visa & Immigration'",
-        "#676769 on #F4F4F5 'Visas'",
-        "#6C6C6D on #F4F4F5 'Company'",
-        "#6C6C6D on #F4F4F5 'Cookie Policy'",
+        "#6B6B6D on #F3F3F4 'News'",
+        "#6B6B6D on #F3F3F4 'WhatsApp'",
+        "#6B6B6D on #F3F3F5 'Company'",
+        "#6B6B6D on #F3F3F5 'Cookie Policy'",
+        "#6C6B6D on #F4F3F4 'Terms of Service'",
+        "#6C6B6D on #F4F3F5 'Location'",
+        "#6C6B6D on #F4F3F5 'Telegram'",
+        "#6C6C6D on #F4F4F4 'Privacy Policy'",
         "#6C6C6D on #F4F4F5 'Email'",
         "#6C6C6D on #F4F4F5 'Get in touch'",
-        "#6C6C6D on #F4F4F5 'Location'",
-        "#6C6C6D on #F4F4F5 'News'",
         "#6C6C6D on #F4F4F5 'Phone'",
-        "#6C6C6D on #F4F4F5 'Privacy Policy'",
         "#6C6C6D on #F4F4F5 'Services'",
-        "#6C6C6D on #F4F4F5 'Telegram'",
-        "#6C6C6D on #F4F4F5 'Terms of Service'",
-        "#6C6C6D on #F4F4F5 'WhatsApp'",
         "#6C6C6D on #F4F4F5 'Your trusted partner for business, immig'",
         "#6C6C6D on #F4F4F5 '\u00a9 2026 Bali Zero. All rights reserved.'",
-        "#FFFFFF on #F4F4F5 'Your Bali, from Zero.'"
+        "#FFFFFF on #F3F3F4 'Your Bali, from Zero.'",
+        "root over-image"
       ],
       "Footer editorial /v2 mobile/system-dark": [
-        "#B4BCC7 on #162D50 'About'",
-        "#B4BCC7 on #162D50 'Business'",
-        "#B4BCC7 on #162D50 'Company Setup'",
-        "#B4BCC7 on #162D50 'Golden Visa'",
-        "#B4BCC7 on #162D50 'Living'",
-        "#B4BCC7 on #162D50 'Property DD'",
-        "#B4BCC7 on #162D50 'Property'",
-        "#B4BCC7 on #162D50 'Tax & Compliance'",
-        "#B4BCC7 on #162D50 'Taxes'",
-        "#B4BCC7 on #162D50 'Team'",
-        "#B4BCC7 on #162D50 'Visa & Immigration'",
-        "#B4BCC7 on #162D50 'Visas'",
-        "#D0D5DC on #162D50 'Company'",
-        "#D0D5DC on #162D50 'Cookie Policy'",
-        "#D0D5DC on #162D50 'Email'",
-        "#D0D5DC on #162D50 'Get in touch'",
-        "#D0D5DC on #162D50 'Location'",
-        "#D0D5DC on #162D50 'News'",
-        "#D0D5DC on #162D50 'Phone'",
-        "#D0D5DC on #162D50 'Privacy Policy'",
-        "#D0D5DC on #162D50 'Services'",
-        "#D0D5DC on #162D50 'Telegram'",
-        "#D0D5DC on #162D50 'Terms of Service'",
-        "#D0D5DC on #162D50 'WhatsApp'",
-        "#D0D5DC on #162D50 'Your trusted partner for business, immig'",
-        "#D0D5DC on #162D50 '\u00a9 2026 Bali Zero. All rights reserved.'",
-        "#F6F7F8 on #162D50 '+62 821 3454 721'",
-        "#F6F7F8 on #162D50 '@Balizerobot'",
-        "#F6F7F8 on #162D50 'Bali, Indonesia'",
-        "#F6F7F8 on #162D50 'zantara@balizero.com'",
-        "#FFFFFF on #162D50 'Your Bali, from Zero.'"
+        "#B5BCC7 on #182E51 'Tax & Compliance'",
+        "#B5BCC8 on #172E52 'About'",
+        "#B5BCC8 on #172E52 'Company Setup'",
+        "#B5BCC8 on #172E52 'Property DD'",
+        "#B5BCC8 on #172E52 'Visa & Immigration'",
+        "#B5BCC8 on #172F53 'Business'",
+        "#B5BCC8 on #182F52 'Golden Visa'",
+        "#B5BCC8 on #182F52 'Living'",
+        "#B5BCC8 on #182F52 'Team'",
+        "#B5BCC8 on #182F53 'Property'",
+        "#B5BCC8 on #182F53 'Taxes'",
+        "#B5BCC8 on #182F53 'Visas'",
+        "#D1D5DC on #172E51 'Cookie Policy'",
+        "#D1D5DC on #172E51 'News'",
+        "#D1D5DC on #172E51 'Terms of Service'",
+        "#D1D5DC on #172E51 'WhatsApp'",
+        "#D1D5DC on #172E52 'Get in touch'",
+        "#D1D5DC on #172F51 'Privacy Policy'",
+        "#D1D5DC on #172F52 'Phone'",
+        "#D1D5DC on #172F52 '\u00a9 2026 Bali Zero. All rights reserved.'",
+        "#D1D5DC on #182E52 'Location'",
+        "#D1D5DC on #182E52 'Telegram'",
+        "#D1D5DC on #182F52 'Email'",
+        "#D1D5DD on #172F53 'Services'",
+        "#D1D5DD on #172F53 'Your trusted partner for business, immig'",
+        "#D1D5DD on #182E53 'Company'",
+        "#F6F7F8 on #172E52 '+62 821 3454 721'",
+        "#F6F7F8 on #172E52 'Bali, Indonesia'",
+        "#F6F7F8 on #172E52 'zantara@balizero.com'",
+        "#F6F7F8 on #172F52 '+62 821 3454 721'",
+        "#F6F7F8 on #172F52 '@Balizerobot'",
+        "#FFFFFF on #172E52 'Your Bali, from Zero.'",
+        "root over-image"
       ],
       "MobileNav R19 /news mobile/light": [
         "#1D2C3B on #F2EAE3 'Business'",
@@ -144,7 +364,8 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root over-image"
       ],
       "MobileNav R19 /news mobile/system-dark": [
         "#1D2C3B on #F2EAE3 'Business'",
@@ -157,7 +378,8 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root over-image"
       ],
       "MobileNav R19 /property/eligibility mobile/light": [
         "#1D2C3B on #F2EAE3 'Home'",
@@ -167,7 +389,8 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root #F7F4EE"
       ],
       "MobileNav R19 /property/eligibility mobile/system-dark": [
         "#1D2C3B on #F2EAE3 'Home'",
@@ -177,7 +400,8 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root #F7F4EE"
       ],
       "MobileNav R19 /tax-calendar mobile/light": [
         "#1D2C3B on #F2EAE3 'Home'",
@@ -187,7 +411,8 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root #F7F4EE"
       ],
       "MobileNav R19 /tax-calendar mobile/system-dark": [
         "#1D2C3B on #F2EAE3 'Home'",
@@ -197,67 +422,74 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root #F7F4EE"
       ],
       "MobileNav non-R19 /v2 mobile/light": [
-        "#1C1B1C on #F7E8E4 'Business'",
-        "#1C1B1C on #F7E8E4 'Home'",
-        "#1C1B1C on #F7E8E4 'News'",
-        "#1C1B1C on #F7E8E4 'Property'",
-        "#1C1B1C on #F7E8E4 'Tax'",
-        "#1C1B1C on #F7E8E4 'Visa'",
+        "#1C1B1C on #F7E9E4 'Business'",
+        "#1C1B1C on #F7E9E4 'Home'",
+        "#1C1B1C on #F7E9E4 'News'",
+        "#1C1B1C on #F7E9E4 'Property'",
+        "#1C1B1C on #F7E9E4 'Tax'",
+        "#1C1B1C on #F7E9E4 'Visa'",
         "#686766 on #F7F4EE 'Login'",
         "#6D6C6A on #F7F4EE 'Menu'",
         "#FFFFFF on #FF2D4C 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #F7F4EE"
       ],
       "MobileNav non-R19 /v2 mobile/system-dark": [
         "#FCFBFA on #F7F4EE 'Login'",
         "#FDFDFC on #F7F4EE 'Menu'",
-        "#FEFEFE on #ECECEF 'Business'",
-        "#FEFEFE on #ECECEF 'Home'",
-        "#FEFEFE on #ECECEF 'News'",
-        "#FEFEFE on #ECECEF 'Property'",
-        "#FEFEFE on #ECECEF 'Tax'",
-        "#FEFEFE on #ECECEF 'Visa'",
+        "#FEFEFE on #EBECEF 'Business'",
+        "#FEFEFE on #EBECEF 'Home'",
+        "#FEFEFE on #EBECEF 'News'",
+        "#FEFEFE on #EBECEF 'Property'",
+        "#FEFEFE on #EBECEF 'Tax'",
+        "#FEFEFE on #EBECEF 'Visa'",
         "#FFFFFF on #3A6DFF 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #F7F4EE"
       ],
       "MobileNav non-R19 /v2/news mobile/light": [
-        "#1C1B1C on #F7E8E4 'Home'",
-        "#1C1B1C on #F7E8E4 'News'",
+        "#1C1B1C on #F7E9E4 'Home'",
+        "#1C1B1C on #F7E9E4 'News'",
         "#686766 on #F7F4EE 'Login'",
         "#6D6C6A on #F7F4EE 'Menu'",
         "#FFFFFF on #FF2D4C 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #F7F4EE"
       ],
       "MobileNav non-R19 /v2/news mobile/system-dark": [
         "#FCFBFA on #F7F4EE 'Login'",
         "#FDFDFC on #F7F4EE 'Menu'",
-        "#FEFEFE on #ECECEF 'Home'",
-        "#FEFEFE on #ECECEF 'News'",
+        "#FEFEFE on #EBECEF 'Home'",
+        "#FEFEFE on #EBECEF 'News'",
         "#FFFFFF on #3A6DFF 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #F7F4EE"
       ],
       "MobileNav non-R19 /visa/second-home mobile/light": [
-        "#1C1B1C on #F7E8E4 'Home'",
-        "#1C1B1C on #F7E8E4 'KBLI'",
-        "#1C1B1C on #F7E8E4 'Property'",
-        "#1C1B1C on #F7E8E4 'Tax'",
+        "#1C1B1C on #F7E9E4 'Home'",
+        "#1C1B1C on #F7E9E4 'KBLI'",
+        "#1C1B1C on #F7E9E4 'Property'",
+        "#1C1B1C on #F7E9E4 'Tax'",
         "#686766 on #F7F4EE 'Login'",
         "#6D6C6A on #F7F4EE 'Menu'",
         "#FFFFFF on #FF2D4C 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #F7F4EE"
       ],
       "MobileNav non-R19 /visa/second-home mobile/system-dark": [
         "#FCFBFA on #F7F4EE 'Login'",
         "#FDFDFC on #F7F4EE 'Menu'",
-        "#FEFEFE on #ECECEF 'Home'",
-        "#FEFEFE on #ECECEF 'KBLI'",
-        "#FEFEFE on #ECECEF 'Property'",
-        "#FEFEFE on #ECECEF 'Tax'",
+        "#FEFEFE on #EBECEF 'Home'",
+        "#FEFEFE on #EBECEF 'KBLI'",
+        "#FEFEFE on #EBECEF 'Property'",
+        "#FEFEFE on #EBECEF 'Tax'",
         "#FFFFFF on #3A6DFF 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #F7F4EE"
       ],
       "NavShell default /v2 desktop/light": [
         "#6A6A6A on #FCFBF9 'Login'",
@@ -269,19 +501,26 @@
         "#6F6F6F on #FCFBF9 'Visa'",
         "#FFE0E4 on #FF2D4C 'via WhatsApp'",
         "#FFFFFF on #FF2D4C 'Get Started'",
-        "branch default"
+        "branch default",
+        "root #FCFBF9"
       ],
       "NavShell default /v2 desktop/system-dark": [
+        "#B2B6BE on #0F1C34 'Login'",
+        "#CFD2D6 on #0F1C34 'Business'",
+        "#CFD2D6 on #0F1C34 'Home'",
+        "#CFD2D6 on #0F1C34 'News'",
+        "#CFD2D6 on #0F1C34 'Property'",
+        "#CFD2D6 on #0F1C34 'Tax'",
+        "#CFD2D6 on #0F1C34 'Visa'",
         "#E1E9FF on #3A6DFF 'via WhatsApp'",
-        "#FFFFFF at alpha 0.68 over an image 'Login'",
-        "#FFFFFF at alpha 0.8 over an image 'Business'",
-        "#FFFFFF at alpha 0.8 over an image 'Home'",
-        "#FFFFFF at alpha 0.8 over an image 'News'",
-        "#FFFFFF at alpha 0.8 over an image 'Property'",
-        "#FFFFFF at alpha 0.8 over an image 'Tax'",
-        "#FFFFFF at alpha 0.8 over an image 'Visa'",
         "#FFFFFF on #3A6DFF 'Get Started'",
-        "branch default"
+        "branch default",
+        "root #0F1C34"
+      ],
+      "NavShell default /v2 mobile/light": ["branch default", "root #FCFBF9"],
+      "NavShell default /v2 mobile/system-dark": [
+        "branch default",
+        "root #0F1C34"
       ],
       "NavShell paper /tax-calendar desktop/light": [
         "#435464 on #F7F4EE 'Home'",
@@ -289,7 +528,8 @@
         "#435464 on #F7F4EE 'Property'",
         "#435464 on #F7F4EE 'Visa'",
         "#FFFFFF on #A44B36 'WhatsApp'",
-        "branch paper"
+        "branch paper",
+        "root #F7F4EE"
       ],
       "NavShell paper /tax-calendar desktop/system-dark": [
         "#435464 on #F7F4EE 'Home'",
@@ -297,269 +537,510 @@
         "#435464 on #F7F4EE 'Property'",
         "#435464 on #F7F4EE 'Visa'",
         "#FFFFFF on #A44B36 'WhatsApp'",
-        "branch paper"
+        "branch paper",
+        "root #F7F4EE"
+      ],
+      "NavShell paper /tax-calendar mobile/light": [
+        "branch paper",
+        "root #F7F4EE"
+      ],
+      "NavShell paper /tax-calendar mobile/system-dark": [
+        "branch paper",
+        "root #F7F4EE"
       ]
     }
   },
   "B": {
+    "kbli_painted": [
+      {
+        "hex": "#090A0C",
+        "text": "Login",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#0A0A0C",
+        "text": "Menu",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#0A0A0C",
+        "text": "Menu",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#0B0B0E",
+        "text": "Login",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#0E192F",
+        "text": "Menu",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#0E192F",
+        "text": "Menu",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#0E1A30",
+        "text": "Login",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#0F1A30",
+        "text": "Login",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#1F3A81",
+        "text": "Tax",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#1F3A81",
+        "text": "Visa",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#1F3A82",
+        "text": "Home",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#203A81",
+        "text": "Visa",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#203B81",
+        "text": "Property",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#203B81",
+        "text": "Tax",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#203B82",
+        "text": "Home",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#203B82",
+        "text": "Property",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#3A6DFF",
+        "text": "Get Started",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#3A6DFF",
+        "text": "Get Started",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#6A1624",
+        "text": "Visa",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#6A1724",
+        "text": "Home",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#6B1725",
+        "text": "Property",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#6B1725",
+        "text": "Tax",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#6C1722",
+        "text": "Visa",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#6C1927",
+        "text": "Home",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#6E1824",
+        "text": "Property",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#6F1925",
+        "text": "Tax",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#CDCDCE",
+        "text": "Menu",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#CDCDCE",
+        "text": "Menu",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#D6828E",
+        "text": "Visa",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#D6828F",
+        "text": "Home",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#D7828E",
+        "text": "Visa",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#D7838F",
+        "text": "Property",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#D7838F",
+        "text": "Tax",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#D78491",
+        "text": "Home",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#D8838F",
+        "text": "Property",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#D9848F",
+        "text": "Tax",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#D9D9D8",
+        "text": "Login",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#DADAD9",
+        "text": "Login",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#FF2D4C",
+        "text": "Get Started",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#FF2D4C",
+        "text": "Get Started",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#FF2D4C",
+        "text": "Get Started",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#FF2D4C",
+        "text": "Get Started",
+        "where": "kbli-mobile-nav mobile/light"
+      }
+    ],
     "shared": {
       "Footer R19 blog /news mobile/light": [
         "#1D2C3B on #EEE9E1 '+62 821 3454 721'",
-        "#1D2C3B on #EEE9E1 '@Balizerobot'",
-        "#1D2C3B on #EEE9E1 'Bali, Indonesia'",
         "#1D2C3B on #EEE9E1 'Your Bali, from Zero.'",
-        "#1D2C3B on #EEE9E1 'zantara@balizero.com'",
-        "#435464 on #EEE9E1 'About'",
-        "#435464 on #EEE9E1 'Business'",
-        "#435464 on #EEE9E1 'Company Setup'",
-        "#435464 on #EEE9E1 'Company'",
-        "#435464 on #EEE9E1 'Cookie Policy'",
-        "#435464 on #EEE9E1 'Email'",
-        "#435464 on #EEE9E1 'Get in touch'",
-        "#435464 on #EEE9E1 'Golden Visa'",
+        "#1D2C3B on #EFE9E1 '@Balizerobot'",
+        "#1D2C3B on #EFE9E1 'zantara@balizero.com'",
+        "#1D2C3B on #EFEAE2 '+62 821 3454 721'",
+        "#1D2C3B on #EFEAE2 'Bali, Indonesia'",
+        "#435464 on #E2DED6 'News'",
+        "#435464 on #EDE8E0 'Cookie Policy'",
+        "#435464 on #EDE8E1 'Terms of Service'",
+        "#435464 on #EDE9E0 'Get in touch'",
+        "#435464 on #EDE9E1 'Team'",
         "#435464 on #EEE9E1 'Living'",
-        "#435464 on #EEE9E1 'Location'",
-        "#435464 on #EEE9E1 'News'",
-        "#435464 on #EEE9E1 'Phone'",
         "#435464 on #EEE9E1 'Privacy Policy'",
         "#435464 on #EEE9E1 'Property DD'",
-        "#435464 on #EEE9E1 'Property'",
-        "#435464 on #EEE9E1 'Services'",
-        "#435464 on #EEE9E1 'Tax & Compliance'",
-        "#435464 on #EEE9E1 'Taxes'",
-        "#435464 on #EEE9E1 'Team'",
-        "#435464 on #EEE9E1 'Telegram'",
-        "#435464 on #EEE9E1 'Terms of Service'",
-        "#435464 on #EEE9E1 'Visa & Immigration'",
         "#435464 on #EEE9E1 'Visas'",
         "#435464 on #EEE9E1 'WhatsApp'",
-        "#435464 on #EEE9E1 'Your trusted partner for business, immig'",
-        "#435464 on #EEE9E1 '\u00a9 2026 Bali Zero. All rights reserved.'"
+        "#435464 on #EEE9E1 '\u00a9 2026 Bali Zero. All rights reserved.'",
+        "#435464 on #EEE9E2 'Property'",
+        "#435464 on #EEE9E2 'Tax & Compliance'",
+        "#435464 on #EEE9E2 'Taxes'",
+        "#435464 on #EEEAE1 'Company Setup'",
+        "#435464 on #EEEAE2 'Golden Visa'",
+        "#435464 on #EEEAE2 'Your trusted partner for business, immig'",
+        "#435464 on #EFEAE2 'About'",
+        "#435464 on #EFEAE2 'Business'",
+        "#435464 on #EFEAE2 'Company'",
+        "#435464 on #EFEAE2 'Email'",
+        "#435464 on #EFEAE2 'Location'",
+        "#435464 on #EFEAE2 'Phone'",
+        "#435464 on #EFEAE2 'Services'",
+        "#435464 on #EFEAE2 'Telegram'",
+        "#435464 on #EFEAE2 'Visa & Immigration'",
+        "root #EDE9E1"
       ],
       "Footer R19 blog /news mobile/system-dark": [
         "#1D2C3B on #EEE9E1 '+62 821 3454 721'",
-        "#1D2C3B on #EEE9E1 '@Balizerobot'",
-        "#1D2C3B on #EEE9E1 'Bali, Indonesia'",
         "#1D2C3B on #EEE9E1 'Your Bali, from Zero.'",
-        "#1D2C3B on #EEE9E1 'zantara@balizero.com'",
-        "#435464 on #EEE9E1 'About'",
-        "#435464 on #EEE9E1 'Business'",
-        "#435464 on #EEE9E1 'Company Setup'",
-        "#435464 on #EEE9E1 'Company'",
-        "#435464 on #EEE9E1 'Cookie Policy'",
-        "#435464 on #EEE9E1 'Email'",
-        "#435464 on #EEE9E1 'Get in touch'",
-        "#435464 on #EEE9E1 'Golden Visa'",
+        "#1D2C3B on #EFE9E1 '@Balizerobot'",
+        "#1D2C3B on #EFE9E1 'zantara@balizero.com'",
+        "#1D2C3B on #EFEAE2 '+62 821 3454 721'",
+        "#1D2C3B on #EFEAE2 'Bali, Indonesia'",
+        "#435464 on #E2DED6 'News'",
+        "#435464 on #EDE8E0 'Cookie Policy'",
+        "#435464 on #EDE8E1 'Terms of Service'",
+        "#435464 on #EDE9E0 'Get in touch'",
+        "#435464 on #EDE9E1 'Team'",
         "#435464 on #EEE9E1 'Living'",
-        "#435464 on #EEE9E1 'Location'",
-        "#435464 on #EEE9E1 'News'",
-        "#435464 on #EEE9E1 'Phone'",
         "#435464 on #EEE9E1 'Privacy Policy'",
         "#435464 on #EEE9E1 'Property DD'",
-        "#435464 on #EEE9E1 'Property'",
-        "#435464 on #EEE9E1 'Services'",
-        "#435464 on #EEE9E1 'Tax & Compliance'",
-        "#435464 on #EEE9E1 'Taxes'",
-        "#435464 on #EEE9E1 'Team'",
-        "#435464 on #EEE9E1 'Telegram'",
-        "#435464 on #EEE9E1 'Terms of Service'",
-        "#435464 on #EEE9E1 'Visa & Immigration'",
         "#435464 on #EEE9E1 'Visas'",
         "#435464 on #EEE9E1 'WhatsApp'",
-        "#435464 on #EEE9E1 'Your trusted partner for business, immig'",
-        "#435464 on #EEE9E1 '\u00a9 2026 Bali Zero. All rights reserved.'"
+        "#435464 on #EEE9E1 '\u00a9 2026 Bali Zero. All rights reserved.'",
+        "#435464 on #EEE9E2 'Property'",
+        "#435464 on #EEE9E2 'Tax & Compliance'",
+        "#435464 on #EEE9E2 'Taxes'",
+        "#435464 on #EEEAE1 'Company Setup'",
+        "#435464 on #EEEAE2 'Golden Visa'",
+        "#435464 on #EEEAE2 'Your trusted partner for business, immig'",
+        "#435464 on #EFEAE2 'About'",
+        "#435464 on #EFEAE2 'Business'",
+        "#435464 on #EFEAE2 'Company'",
+        "#435464 on #EFEAE2 'Email'",
+        "#435464 on #EFEAE2 'Location'",
+        "#435464 on #EFEAE2 'Phone'",
+        "#435464 on #EFEAE2 'Services'",
+        "#435464 on #EFEAE2 'Telegram'",
+        "#435464 on #EFEAE2 'Visa & Immigration'",
+        "root #EDE9E1"
       ],
       "Footer editorial /v2 mobile/light": [
+        "#1C1C1E on #F3F3F4 'zantara@balizero.com'",
+        "#1C1C1E on #F3F4F4 '+62 821 3454 721'",
         "#1C1C1E on #F4F4F5 '+62 821 3454 721'",
         "#1C1C1E on #F4F4F5 '@Balizerobot'",
         "#1C1C1E on #F4F4F5 'Bali, Indonesia'",
-        "#1C1C1E on #F4F4F5 'zantara@balizero.com'",
+        "#676768 on #F3F3F4 'Tax & Compliance'",
+        "#676768 on #F3F3F4 'Visa & Immigration'",
+        "#676768 on #F4F4F4 'Property'",
+        "#676768 on #F4F4F4 'Team'",
+        "#676768 on #F4F4F4 'Visas'",
+        "#676769 on #F3F3F5 'Property DD'",
+        "#676769 on #F3F4F5 'Golden Visa'",
         "#676769 on #F4F4F5 'About'",
         "#676769 on #F4F4F5 'Business'",
         "#676769 on #F4F4F5 'Company Setup'",
-        "#676769 on #F4F4F5 'Golden Visa'",
         "#676769 on #F4F4F5 'Living'",
-        "#676769 on #F4F4F5 'Property DD'",
-        "#676769 on #F4F4F5 'Property'",
-        "#676769 on #F4F4F5 'Tax & Compliance'",
         "#676769 on #F4F4F5 'Taxes'",
-        "#676769 on #F4F4F5 'Team'",
-        "#676769 on #F4F4F5 'Visa & Immigration'",
-        "#676769 on #F4F4F5 'Visas'",
-        "#6C6C6D on #F4F4F5 'Company'",
-        "#6C6C6D on #F4F4F5 'Cookie Policy'",
+        "#6B6B6D on #F3F3F4 'News'",
+        "#6B6B6D on #F3F3F4 'WhatsApp'",
+        "#6B6B6D on #F3F3F5 'Company'",
+        "#6B6B6D on #F3F3F5 'Cookie Policy'",
+        "#6C6B6D on #F4F3F4 'Terms of Service'",
+        "#6C6B6D on #F4F3F5 'Location'",
+        "#6C6B6D on #F4F3F5 'Telegram'",
+        "#6C6C6D on #F4F4F4 'Privacy Policy'",
         "#6C6C6D on #F4F4F5 'Email'",
         "#6C6C6D on #F4F4F5 'Get in touch'",
-        "#6C6C6D on #F4F4F5 'Location'",
-        "#6C6C6D on #F4F4F5 'News'",
         "#6C6C6D on #F4F4F5 'Phone'",
-        "#6C6C6D on #F4F4F5 'Privacy Policy'",
         "#6C6C6D on #F4F4F5 'Services'",
-        "#6C6C6D on #F4F4F5 'Telegram'",
-        "#6C6C6D on #F4F4F5 'Terms of Service'",
-        "#6C6C6D on #F4F4F5 'WhatsApp'",
         "#6C6C6D on #F4F4F5 'Your trusted partner for business, immig'",
         "#6C6C6D on #F4F4F5 '\u00a9 2026 Bali Zero. All rights reserved.'",
-        "#FFFFFF on #F4F4F5 'Your Bali, from Zero.'"
+        "#FFFFFF on #F3F3F4 'Your Bali, from Zero.'",
+        "root over-image"
       ],
       "Footer editorial /v2 mobile/system-dark": [
-        "#B4BCC7 on #162D50 'About'",
-        "#B4BCC7 on #162D50 'Business'",
-        "#B4BCC7 on #162D50 'Company Setup'",
-        "#B4BCC7 on #162D50 'Golden Visa'",
-        "#B4BCC7 on #162D50 'Living'",
-        "#B4BCC7 on #162D50 'Property DD'",
-        "#B4BCC7 on #162D50 'Property'",
-        "#B4BCC7 on #162D50 'Tax & Compliance'",
-        "#B4BCC7 on #162D50 'Taxes'",
-        "#B4BCC7 on #162D50 'Team'",
-        "#B4BCC7 on #162D50 'Visa & Immigration'",
-        "#B4BCC7 on #162D50 'Visas'",
-        "#D0D5DC on #162D50 'Company'",
-        "#D0D5DC on #162D50 'Cookie Policy'",
-        "#D0D5DC on #162D50 'Email'",
-        "#D0D5DC on #162D50 'Get in touch'",
-        "#D0D5DC on #162D50 'Location'",
-        "#D0D5DC on #162D50 'News'",
-        "#D0D5DC on #162D50 'Phone'",
-        "#D0D5DC on #162D50 'Privacy Policy'",
-        "#D0D5DC on #162D50 'Services'",
-        "#D0D5DC on #162D50 'Telegram'",
-        "#D0D5DC on #162D50 'Terms of Service'",
-        "#D0D5DC on #162D50 'WhatsApp'",
-        "#D0D5DC on #162D50 'Your trusted partner for business, immig'",
-        "#D0D5DC on #162D50 '\u00a9 2026 Bali Zero. All rights reserved.'",
-        "#F6F7F8 on #162D50 '+62 821 3454 721'",
-        "#F6F7F8 on #162D50 '@Balizerobot'",
-        "#F6F7F8 on #162D50 'Bali, Indonesia'",
-        "#F6F7F8 on #162D50 'zantara@balizero.com'",
-        "#FFFFFF on #162D50 'Your Bali, from Zero.'"
+        "#B5BCC7 on #182E51 'Tax & Compliance'",
+        "#B5BCC8 on #172E52 'About'",
+        "#B5BCC8 on #172E52 'Company Setup'",
+        "#B5BCC8 on #172E52 'Property DD'",
+        "#B5BCC8 on #172E52 'Visa & Immigration'",
+        "#B5BCC8 on #172F53 'Business'",
+        "#B5BCC8 on #182F52 'Golden Visa'",
+        "#B5BCC8 on #182F52 'Living'",
+        "#B5BCC8 on #182F52 'Team'",
+        "#B5BCC8 on #182F53 'Property'",
+        "#B5BCC8 on #182F53 'Taxes'",
+        "#B5BCC8 on #182F53 'Visas'",
+        "#D1D5DC on #172E51 'Cookie Policy'",
+        "#D1D5DC on #172E51 'News'",
+        "#D1D5DC on #172E51 'Terms of Service'",
+        "#D1D5DC on #172E51 'WhatsApp'",
+        "#D1D5DC on #172E52 'Get in touch'",
+        "#D1D5DC on #172F51 'Privacy Policy'",
+        "#D1D5DC on #172F52 'Phone'",
+        "#D1D5DC on #172F52 '\u00a9 2026 Bali Zero. All rights reserved.'",
+        "#D1D5DC on #182E52 'Location'",
+        "#D1D5DC on #182E52 'Telegram'",
+        "#D1D5DC on #182F52 'Email'",
+        "#D1D5DD on #172F53 'Services'",
+        "#D1D5DD on #172F53 'Your trusted partner for business, immig'",
+        "#D1D5DD on #182E53 'Company'",
+        "#F6F7F8 on #172E52 '+62 821 3454 721'",
+        "#F6F7F8 on #172E52 'Bali, Indonesia'",
+        "#F6F7F8 on #172E52 'zantara@balizero.com'",
+        "#F6F7F8 on #172F52 '+62 821 3454 721'",
+        "#F6F7F8 on #172F52 '@Balizerobot'",
+        "#FFFFFF on #172E52 'Your Bali, from Zero.'",
+        "root over-image"
       ],
       "MobileNav R19 /news mobile/light": [
-        "#1D2C3B on #D6B0A4 'Business'",
-        "#1D2C3B on #D6B0A4 'Home'",
-        "#1D2C3B on #D6B0A4 'News'",
-        "#1D2C3B on #D6B0A4 'Property'",
-        "#1D2C3B on #D6B0A4 'Tax'",
-        "#1D2C3B on #D6B0A4 'Team'",
-        "#1D2C3B on #D6B0A4 'Visa'",
+        "#1D2C3B on #D6B0A5 'Business'",
+        "#1D2C3B on #D6B0A5 'Home'",
+        "#1D2C3B on #D6B0A5 'News'",
+        "#1D2C3B on #D6B0A5 'Property'",
+        "#1D2C3B on #D6B0A5 'Tax'",
+        "#1D2C3B on #D6B0A5 'Team'",
+        "#1D2C3B on #D6B0A5 'Visa'",
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root over-image"
       ],
       "MobileNav R19 /news mobile/system-dark": [
-        "#1D2C3B on #D6B0A4 'Business'",
-        "#1D2C3B on #D6B0A4 'Home'",
-        "#1D2C3B on #D6B0A4 'News'",
-        "#1D2C3B on #D6B0A4 'Property'",
-        "#1D2C3B on #D6B0A4 'Tax'",
-        "#1D2C3B on #D6B0A4 'Team'",
-        "#1D2C3B on #D6B0A4 'Visa'",
+        "#1D2C3B on #D6B0A5 'Business'",
+        "#1D2C3B on #D6B0A5 'Home'",
+        "#1D2C3B on #D6B0A5 'News'",
+        "#1D2C3B on #D6B0A5 'Property'",
+        "#1D2C3B on #D6B0A5 'Tax'",
+        "#1D2C3B on #D6B0A5 'Team'",
+        "#1D2C3B on #D6B0A5 'Visa'",
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root over-image"
       ],
       "MobileNav R19 /property/eligibility mobile/light": [
-        "#1D2C3B on #D6B0A4 'Home'",
-        "#1D2C3B on #D6B0A4 'KBLI'",
-        "#1D2C3B on #D6B0A4 'Tax'",
-        "#1D2C3B on #D6B0A4 'Visa'",
+        "#1D2C3B on #D6B0A5 'Home'",
+        "#1D2C3B on #D6B0A5 'KBLI'",
+        "#1D2C3B on #D6B0A5 'Tax'",
+        "#1D2C3B on #D6B0A5 'Visa'",
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root #F7F4EE"
       ],
       "MobileNav R19 /property/eligibility mobile/system-dark": [
-        "#1D2C3B on #D6B0A4 'Home'",
-        "#1D2C3B on #D6B0A4 'KBLI'",
-        "#1D2C3B on #D6B0A4 'Tax'",
-        "#1D2C3B on #D6B0A4 'Visa'",
+        "#1D2C3B on #D6B0A5 'Home'",
+        "#1D2C3B on #D6B0A5 'KBLI'",
+        "#1D2C3B on #D6B0A5 'Tax'",
+        "#1D2C3B on #D6B0A5 'Visa'",
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root #F7F4EE"
       ],
       "MobileNav R19 /tax-calendar mobile/light": [
-        "#1D2C3B on #D6B0A4 'Home'",
-        "#1D2C3B on #D6B0A4 'KBLI'",
-        "#1D2C3B on #D6B0A4 'Property'",
-        "#1D2C3B on #D6B0A4 'Visa'",
+        "#1D2C3B on #D6B0A5 'Home'",
+        "#1D2C3B on #D6B0A5 'KBLI'",
+        "#1D2C3B on #D6B0A5 'Property'",
+        "#1D2C3B on #D6B0A5 'Visa'",
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root #F7F4EE"
       ],
       "MobileNav R19 /tax-calendar mobile/system-dark": [
-        "#1D2C3B on #D6B0A4 'Home'",
-        "#1D2C3B on #D6B0A4 'KBLI'",
-        "#1D2C3B on #D6B0A4 'Property'",
-        "#1D2C3B on #D6B0A4 'Visa'",
+        "#1D2C3B on #D6B0A5 'Home'",
+        "#1D2C3B on #D6B0A5 'KBLI'",
+        "#1D2C3B on #D6B0A5 'Property'",
+        "#1D2C3B on #D6B0A5 'Visa'",
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root #F7F4EE"
       ],
       "MobileNav non-R19 /v2 mobile/light": [
-        "#1A1316 on #D98796 'Business'",
-        "#1A1316 on #D98796 'Home'",
-        "#1A1316 on #D98796 'News'",
-        "#1A1316 on #D98796 'Property'",
-        "#1A1316 on #D98796 'Tax'",
-        "#1A1316 on #D98796 'Visa'",
-        "#525357 on #C0C3C8 'Login'",
-        "#56575A on #C0C3C8 'Menu'",
+        "#191315 on #D7838E 'Visa'",
+        "#1A1316 on #D88490 'Business'",
+        "#1A1316 on #D88490 'News'",
+        "#1A1316 on #DA8692 'Property'",
+        "#1A1316 on #DA8692 'Tax'",
+        "#1A1316 on #E18C97 'Home'",
+        "#525254 on #C0C0C2 'Login'",
+        "#5F5F60 on #D6D6D6 'Menu'",
         "#FFFFFF on #FF2D4C 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root over-image"
       ],
       "MobileNav non-R19 /v2 mobile/system-dark": [
-        "#B2B6BD on #0F1B31 'Login'",
-        "#CFD1D6 on #0F1B31 'Menu'",
-        "#F6F7FA on #203C83 'Business'",
-        "#F6F7FA on #203C83 'Home'",
-        "#F6F7FA on #203C83 'News'",
-        "#F6F7FA on #203C83 'Property'",
-        "#F6F7FA on #203C83 'Tax'",
-        "#F6F7FA on #203C83 'Visa'",
+        "#B2B6BC on #0F1A2F 'Login'",
+        "#CFD1D5 on #0E192F 'Menu'",
+        "#F6F7FA on #203B81 'Visa'",
+        "#F6F7FA on #203B82 'Business'",
+        "#F6F7FA on #203B82 'News'",
+        "#F6F7FA on #203B82 'Property'",
+        "#F6F7FA on #203B82 'Tax'",
+        "#F6F7FA on #223C83 'Home'",
         "#FFFFFF on #3A6DFF 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #0E192F"
       ],
       "MobileNav non-R19 /v2/news mobile/light": [
-        "#1A1316 on #D98796 'Home'",
-        "#1A1316 on #D98796 'News'",
-        "#525357 on #C0C3C8 'Login'",
-        "#56575A on #C0C3C8 'Menu'",
+        "#1B1417 on #E5909C 'News'",
+        "#1B1417 on #EA96A1 'Home'",
+        "#5D5D5E on #DCDCDB 'Login'",
+        "#605F60 on #D7D6D6 'Menu'",
         "#FFFFFF on #FF2D4C 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #DCDCDB"
       ],
       "MobileNav non-R19 /v2/news mobile/system-dark": [
-        "#B2B6BD on #0F1B31 'Login'",
-        "#CFD1D6 on #0F1B31 'Menu'",
-        "#F6F7FA on #203C83 'Home'",
+        "#B2B6BD on #0E1A31 'Login'",
+        "#CFD1D5 on #0E192F 'Menu'",
+        "#F6F7FA on #203B83 'Home'",
         "#F6F7FA on #203C83 'News'",
         "#FFFFFF on #3A6DFF 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #0E1A30"
       ],
       "MobileNav non-R19 /visa/second-home mobile/light": [
-        "#1D1619 on #FEA9B5 'Home'",
-        "#1D1619 on #FEA9B5 'KBLI'",
-        "#1D1619 on #FEA9B5 'Property'",
-        "#1D1619 on #FEA9B5 'Tax'",
-        "#6B6A6B on #FDFCFB 'Login'",
-        "#6F6F70 on #FDFCFB 'Menu'",
+        "#09090B at alpha 0.6 over an image 'Login'",
+        "#1B1417 on #E995A1 'Tax'",
+        "#1B1417 on #EA95A1 'KBLI'",
+        "#1B1417 on #EA96A1 'Property'",
+        "#1B1417 on #EA96A2 'Home'",
+        "#5E5E5F on #D3D3D3 'Menu'",
         "#FFFFFF on #FF2D4C 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #DEDEDE"
       ],
       "MobileNav non-R19 /visa/second-home mobile/system-dark": [
-        "#B6BAC0 on #1C273C 'Login'",
-        "#D2D4D8 on #1C273C 'Menu'",
-        "#F6F7FA on #28438A 'Home'",
-        "#F6F7FA on #28438A 'KBLI'",
-        "#F6F7FA on #28438A 'Property'",
-        "#F6F7FA on #28438A 'Tax'",
+        "#B4B7BE on #151E34 'Login'",
+        "#CFD1D5 on #0E1A2F 'Menu'",
+        "#F6F7FA on #233E85 'Tax'",
+        "#F6F7FA on #243E85 'KBLI'",
+        "#F6F7FA on #243F85 'Property'",
+        "#F6F7FA on #243F86 'Home'",
         "#FFFFFF on #3A6DFF 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root over-image"
       ],
       "NavShell default /v2 desktop/light": [
         "#6A6A6A on #FCFBF9 'Login'",
@@ -571,19 +1052,26 @@
         "#6F6F6F on #FCFBF9 'Visa'",
         "#FFE0E4 on #FF2D4C 'via WhatsApp'",
         "#FFFFFF on #FF2D4C 'Get Started'",
-        "branch default"
+        "branch default",
+        "root #FCFBF9"
       ],
       "NavShell default /v2 desktop/system-dark": [
+        "#B2B6BE on #0F1C34 'Login'",
+        "#CFD2D6 on #0F1C34 'Business'",
+        "#CFD2D6 on #0F1C34 'Home'",
+        "#CFD2D6 on #0F1C34 'News'",
+        "#CFD2D6 on #0F1C34 'Property'",
+        "#CFD2D6 on #0F1C34 'Tax'",
+        "#CFD2D6 on #0F1C34 'Visa'",
         "#E1E9FF on #3A6DFF 'via WhatsApp'",
-        "#FFFFFF at alpha 0.68 over an image 'Login'",
-        "#FFFFFF at alpha 0.8 over an image 'Business'",
-        "#FFFFFF at alpha 0.8 over an image 'Home'",
-        "#FFFFFF at alpha 0.8 over an image 'News'",
-        "#FFFFFF at alpha 0.8 over an image 'Property'",
-        "#FFFFFF at alpha 0.8 over an image 'Tax'",
-        "#FFFFFF at alpha 0.8 over an image 'Visa'",
         "#FFFFFF on #3A6DFF 'Get Started'",
-        "branch default"
+        "branch default",
+        "root #0F1C34"
+      ],
+      "NavShell default /v2 mobile/light": ["branch default", "root #FCFBF9"],
+      "NavShell default /v2 mobile/system-dark": [
+        "branch default",
+        "root #0F1C34"
       ],
       "NavShell paper /tax-calendar desktop/light": [
         "#435464 on #F7F4EE 'Home'",
@@ -591,7 +1079,8 @@
         "#435464 on #F7F4EE 'Property'",
         "#435464 on #F7F4EE 'Visa'",
         "#FFFFFF on #A44B36 'WhatsApp'",
-        "branch paper"
+        "branch paper",
+        "root #F7F4EE"
       ],
       "NavShell paper /tax-calendar desktop/system-dark": [
         "#435464 on #F7F4EE 'Home'",
@@ -599,7 +1088,16 @@
         "#435464 on #F7F4EE 'Property'",
         "#435464 on #F7F4EE 'Visa'",
         "#FFFFFF on #A44B36 'WhatsApp'",
-        "branch paper"
+        "branch paper",
+        "root #F7F4EE"
+      ],
+      "NavShell paper /tax-calendar mobile/light": [
+        "branch paper",
+        "root #F7F4EE"
+      ],
+      "NavShell paper /tax-calendar mobile/system-dark": [
+        "branch paper",
+        "root #F7F4EE"
       ]
     }
   },
@@ -607,157 +1105,355 @@
     "kbli_painted": [
       {
         "hex": "#3A6DFF",
-        "path": "body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center"
+        "text": "Get Started",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
       },
       {
-        "hex": "#ECECEF",
-        "path": "div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4"
+        "hex": "#3A6DFF",
+        "text": "Get Started",
+        "where": "kbli-mobile-nav mobile/system-dark"
       },
       {
-        "hex": "#F7E8E4",
-        "path": "div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4"
+        "hex": "#EBECEF",
+        "text": "Home",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#EBECEF",
+        "text": "Home",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#EBECEF",
+        "text": "Property",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#EBECEF",
+        "text": "Property",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#EBECEF",
+        "text": "Tax",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#EBECEF",
+        "text": "Tax",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#EBECEF",
+        "text": "Visa",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#EBECEF",
+        "text": "Visa",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Home",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Home",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Home",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Home",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Property",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Property",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Property",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Property",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Tax",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Tax",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Tax",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Tax",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Visa",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Visa",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Visa",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7E9E4",
+        "text": "Visa",
+        "where": "kbli-mobile-nav mobile/light"
       },
       {
         "hex": "#F7F4EE",
-        "path": "html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed"
+        "text": "Login",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Login",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Login",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Login",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Login",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Login",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Menu",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Menu",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Menu",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Menu",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Menu",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#F7F4EE",
+        "text": "Menu",
+        "where": "kbli-mobile-nav mobile/system-dark"
       },
       {
         "hex": "#FF2D4C",
-        "path": "body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center"
+        "text": "Get Started",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#FF2D4C",
+        "text": "Get Started",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#FF2D4C",
+        "text": "Get Started",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#FF2D4C",
+        "text": "Get Started",
+        "where": "kbli-mobile-nav mobile/light"
       }
     ],
     "shared": {
       "Footer R19 blog /news mobile/light": [
         "#1D2C3B on #EEE9E1 '+62 821 3454 721'",
-        "#1D2C3B on #EEE9E1 '@Balizerobot'",
-        "#1D2C3B on #EEE9E1 'Bali, Indonesia'",
         "#1D2C3B on #EEE9E1 'Your Bali, from Zero.'",
-        "#1D2C3B on #EEE9E1 'zantara@balizero.com'",
-        "#435464 on #EEE9E1 'About'",
-        "#435464 on #EEE9E1 'Business'",
-        "#435464 on #EEE9E1 'Company Setup'",
-        "#435464 on #EEE9E1 'Company'",
-        "#435464 on #EEE9E1 'Cookie Policy'",
-        "#435464 on #EEE9E1 'Email'",
-        "#435464 on #EEE9E1 'Get in touch'",
-        "#435464 on #EEE9E1 'Golden Visa'",
+        "#1D2C3B on #EFE9E1 '@Balizerobot'",
+        "#1D2C3B on #EFE9E1 'zantara@balizero.com'",
+        "#1D2C3B on #EFEAE2 '+62 821 3454 721'",
+        "#1D2C3B on #EFEAE2 'Bali, Indonesia'",
+        "#435464 on #E2DED6 'News'",
+        "#435464 on #EDE8E0 'Cookie Policy'",
+        "#435464 on #EDE8E1 'Terms of Service'",
+        "#435464 on #EDE9E0 'Get in touch'",
+        "#435464 on #EDE9E1 'Team'",
         "#435464 on #EEE9E1 'Living'",
-        "#435464 on #EEE9E1 'Location'",
-        "#435464 on #EEE9E1 'News'",
-        "#435464 on #EEE9E1 'Phone'",
         "#435464 on #EEE9E1 'Privacy Policy'",
         "#435464 on #EEE9E1 'Property DD'",
-        "#435464 on #EEE9E1 'Property'",
-        "#435464 on #EEE9E1 'Services'",
-        "#435464 on #EEE9E1 'Tax & Compliance'",
-        "#435464 on #EEE9E1 'Taxes'",
-        "#435464 on #EEE9E1 'Team'",
-        "#435464 on #EEE9E1 'Telegram'",
-        "#435464 on #EEE9E1 'Terms of Service'",
-        "#435464 on #EEE9E1 'Visa & Immigration'",
         "#435464 on #EEE9E1 'Visas'",
         "#435464 on #EEE9E1 'WhatsApp'",
-        "#435464 on #EEE9E1 'Your trusted partner for business, immig'",
-        "#435464 on #EEE9E1 '\u00a9 2026 Bali Zero. All rights reserved.'"
+        "#435464 on #EEE9E1 '\u00a9 2026 Bali Zero. All rights reserved.'",
+        "#435464 on #EEE9E2 'Property'",
+        "#435464 on #EEE9E2 'Tax & Compliance'",
+        "#435464 on #EEE9E2 'Taxes'",
+        "#435464 on #EEEAE1 'Company Setup'",
+        "#435464 on #EEEAE2 'Golden Visa'",
+        "#435464 on #EEEAE2 'Your trusted partner for business, immig'",
+        "#435464 on #EFEAE2 'About'",
+        "#435464 on #EFEAE2 'Business'",
+        "#435464 on #EFEAE2 'Company'",
+        "#435464 on #EFEAE2 'Email'",
+        "#435464 on #EFEAE2 'Location'",
+        "#435464 on #EFEAE2 'Phone'",
+        "#435464 on #EFEAE2 'Services'",
+        "#435464 on #EFEAE2 'Telegram'",
+        "#435464 on #EFEAE2 'Visa & Immigration'",
+        "root #EDE9E1"
       ],
       "Footer R19 blog /news mobile/system-dark": [
         "#1D2C3B on #EEE9E1 '+62 821 3454 721'",
-        "#1D2C3B on #EEE9E1 '@Balizerobot'",
-        "#1D2C3B on #EEE9E1 'Bali, Indonesia'",
         "#1D2C3B on #EEE9E1 'Your Bali, from Zero.'",
-        "#1D2C3B on #EEE9E1 'zantara@balizero.com'",
-        "#435464 on #EEE9E1 'About'",
-        "#435464 on #EEE9E1 'Business'",
-        "#435464 on #EEE9E1 'Company Setup'",
-        "#435464 on #EEE9E1 'Company'",
-        "#435464 on #EEE9E1 'Cookie Policy'",
-        "#435464 on #EEE9E1 'Email'",
-        "#435464 on #EEE9E1 'Get in touch'",
-        "#435464 on #EEE9E1 'Golden Visa'",
+        "#1D2C3B on #EFE9E1 '@Balizerobot'",
+        "#1D2C3B on #EFE9E1 'zantara@balizero.com'",
+        "#1D2C3B on #EFEAE2 '+62 821 3454 721'",
+        "#1D2C3B on #EFEAE2 'Bali, Indonesia'",
+        "#435464 on #E2DED6 'News'",
+        "#435464 on #EDE8E0 'Cookie Policy'",
+        "#435464 on #EDE8E1 'Terms of Service'",
+        "#435464 on #EDE9E0 'Get in touch'",
+        "#435464 on #EDE9E1 'Team'",
         "#435464 on #EEE9E1 'Living'",
-        "#435464 on #EEE9E1 'Location'",
-        "#435464 on #EEE9E1 'News'",
-        "#435464 on #EEE9E1 'Phone'",
         "#435464 on #EEE9E1 'Privacy Policy'",
         "#435464 on #EEE9E1 'Property DD'",
-        "#435464 on #EEE9E1 'Property'",
-        "#435464 on #EEE9E1 'Services'",
-        "#435464 on #EEE9E1 'Tax & Compliance'",
-        "#435464 on #EEE9E1 'Taxes'",
-        "#435464 on #EEE9E1 'Team'",
-        "#435464 on #EEE9E1 'Telegram'",
-        "#435464 on #EEE9E1 'Terms of Service'",
-        "#435464 on #EEE9E1 'Visa & Immigration'",
         "#435464 on #EEE9E1 'Visas'",
         "#435464 on #EEE9E1 'WhatsApp'",
-        "#435464 on #EEE9E1 'Your trusted partner for business, immig'",
-        "#435464 on #EEE9E1 '\u00a9 2026 Bali Zero. All rights reserved.'"
+        "#435464 on #EEE9E1 '\u00a9 2026 Bali Zero. All rights reserved.'",
+        "#435464 on #EEE9E2 'Property'",
+        "#435464 on #EEE9E2 'Tax & Compliance'",
+        "#435464 on #EEE9E2 'Taxes'",
+        "#435464 on #EEEAE1 'Company Setup'",
+        "#435464 on #EEEAE2 'Golden Visa'",
+        "#435464 on #EEEAE2 'Your trusted partner for business, immig'",
+        "#435464 on #EFEAE2 'About'",
+        "#435464 on #EFEAE2 'Business'",
+        "#435464 on #EFEAE2 'Company'",
+        "#435464 on #EFEAE2 'Email'",
+        "#435464 on #EFEAE2 'Location'",
+        "#435464 on #EFEAE2 'Phone'",
+        "#435464 on #EFEAE2 'Services'",
+        "#435464 on #EFEAE2 'Telegram'",
+        "#435464 on #EFEAE2 'Visa & Immigration'",
+        "root #EDE9E1"
       ],
       "Footer editorial /v2 mobile/light": [
+        "#1C1C1E on #F3F3F4 'zantara@balizero.com'",
+        "#1C1C1E on #F3F4F4 '+62 821 3454 721'",
         "#1C1C1E on #F4F4F5 '+62 821 3454 721'",
         "#1C1C1E on #F4F4F5 '@Balizerobot'",
         "#1C1C1E on #F4F4F5 'Bali, Indonesia'",
-        "#1C1C1E on #F4F4F5 'zantara@balizero.com'",
+        "#676768 on #F3F3F4 'Tax & Compliance'",
+        "#676768 on #F3F3F4 'Visa & Immigration'",
+        "#676768 on #F4F4F4 'Property'",
+        "#676768 on #F4F4F4 'Team'",
+        "#676768 on #F4F4F4 'Visas'",
+        "#676769 on #F3F3F5 'Property DD'",
+        "#676769 on #F3F4F5 'Golden Visa'",
         "#676769 on #F4F4F5 'About'",
         "#676769 on #F4F4F5 'Business'",
         "#676769 on #F4F4F5 'Company Setup'",
-        "#676769 on #F4F4F5 'Golden Visa'",
         "#676769 on #F4F4F5 'Living'",
-        "#676769 on #F4F4F5 'Property DD'",
-        "#676769 on #F4F4F5 'Property'",
-        "#676769 on #F4F4F5 'Tax & Compliance'",
         "#676769 on #F4F4F5 'Taxes'",
-        "#676769 on #F4F4F5 'Team'",
-        "#676769 on #F4F4F5 'Visa & Immigration'",
-        "#676769 on #F4F4F5 'Visas'",
-        "#6C6C6D on #F4F4F5 'Company'",
-        "#6C6C6D on #F4F4F5 'Cookie Policy'",
+        "#6B6B6D on #F3F3F4 'News'",
+        "#6B6B6D on #F3F3F4 'WhatsApp'",
+        "#6B6B6D on #F3F3F5 'Company'",
+        "#6B6B6D on #F3F3F5 'Cookie Policy'",
+        "#6C6B6D on #F4F3F4 'Terms of Service'",
+        "#6C6B6D on #F4F3F5 'Location'",
+        "#6C6B6D on #F4F3F5 'Telegram'",
+        "#6C6C6D on #F4F4F4 'Privacy Policy'",
         "#6C6C6D on #F4F4F5 'Email'",
         "#6C6C6D on #F4F4F5 'Get in touch'",
-        "#6C6C6D on #F4F4F5 'Location'",
-        "#6C6C6D on #F4F4F5 'News'",
         "#6C6C6D on #F4F4F5 'Phone'",
-        "#6C6C6D on #F4F4F5 'Privacy Policy'",
         "#6C6C6D on #F4F4F5 'Services'",
-        "#6C6C6D on #F4F4F5 'Telegram'",
-        "#6C6C6D on #F4F4F5 'Terms of Service'",
-        "#6C6C6D on #F4F4F5 'WhatsApp'",
         "#6C6C6D on #F4F4F5 'Your trusted partner for business, immig'",
         "#6C6C6D on #F4F4F5 '\u00a9 2026 Bali Zero. All rights reserved.'",
-        "#FFFFFF on #F4F4F5 'Your Bali, from Zero.'"
+        "#FFFFFF on #F3F3F4 'Your Bali, from Zero.'",
+        "root over-image"
       ],
       "Footer editorial /v2 mobile/system-dark": [
-        "#B4BCC7 on #162D50 'About'",
-        "#B4BCC7 on #162D50 'Business'",
-        "#B4BCC7 on #162D50 'Company Setup'",
-        "#B4BCC7 on #162D50 'Golden Visa'",
-        "#B4BCC7 on #162D50 'Living'",
-        "#B4BCC7 on #162D50 'Property DD'",
-        "#B4BCC7 on #162D50 'Property'",
-        "#B4BCC7 on #162D50 'Tax & Compliance'",
-        "#B4BCC7 on #162D50 'Taxes'",
-        "#B4BCC7 on #162D50 'Team'",
-        "#B4BCC7 on #162D50 'Visa & Immigration'",
-        "#B4BCC7 on #162D50 'Visas'",
-        "#D0D5DC on #162D50 'Company'",
-        "#D0D5DC on #162D50 'Cookie Policy'",
-        "#D0D5DC on #162D50 'Email'",
-        "#D0D5DC on #162D50 'Get in touch'",
-        "#D0D5DC on #162D50 'Location'",
-        "#D0D5DC on #162D50 'News'",
-        "#D0D5DC on #162D50 'Phone'",
-        "#D0D5DC on #162D50 'Privacy Policy'",
-        "#D0D5DC on #162D50 'Services'",
-        "#D0D5DC on #162D50 'Telegram'",
-        "#D0D5DC on #162D50 'Terms of Service'",
-        "#D0D5DC on #162D50 'WhatsApp'",
-        "#D0D5DC on #162D50 'Your trusted partner for business, immig'",
-        "#D0D5DC on #162D50 '\u00a9 2026 Bali Zero. All rights reserved.'",
-        "#F6F7F8 on #162D50 '+62 821 3454 721'",
-        "#F6F7F8 on #162D50 '@Balizerobot'",
-        "#F6F7F8 on #162D50 'Bali, Indonesia'",
-        "#F6F7F8 on #162D50 'zantara@balizero.com'",
-        "#FFFFFF on #162D50 'Your Bali, from Zero.'"
+        "#B5BCC7 on #182E51 'Tax & Compliance'",
+        "#B5BCC8 on #172E52 'About'",
+        "#B5BCC8 on #172E52 'Company Setup'",
+        "#B5BCC8 on #172E52 'Property DD'",
+        "#B5BCC8 on #172E52 'Visa & Immigration'",
+        "#B5BCC8 on #172F53 'Business'",
+        "#B5BCC8 on #182F52 'Golden Visa'",
+        "#B5BCC8 on #182F52 'Living'",
+        "#B5BCC8 on #182F52 'Team'",
+        "#B5BCC8 on #182F53 'Property'",
+        "#B5BCC8 on #182F53 'Taxes'",
+        "#B5BCC8 on #182F53 'Visas'",
+        "#D1D5DC on #172E51 'Cookie Policy'",
+        "#D1D5DC on #172E51 'News'",
+        "#D1D5DC on #172E51 'Terms of Service'",
+        "#D1D5DC on #172E51 'WhatsApp'",
+        "#D1D5DC on #172E52 'Get in touch'",
+        "#D1D5DC on #172F51 'Privacy Policy'",
+        "#D1D5DC on #172F52 'Phone'",
+        "#D1D5DC on #172F52 '\u00a9 2026 Bali Zero. All rights reserved.'",
+        "#D1D5DC on #182E52 'Location'",
+        "#D1D5DC on #182E52 'Telegram'",
+        "#D1D5DC on #182F52 'Email'",
+        "#D1D5DD on #172F53 'Services'",
+        "#D1D5DD on #172F53 'Your trusted partner for business, immig'",
+        "#D1D5DD on #182E53 'Company'",
+        "#F6F7F8 on #172E52 '+62 821 3454 721'",
+        "#F6F7F8 on #172E52 'Bali, Indonesia'",
+        "#F6F7F8 on #172E52 'zantara@balizero.com'",
+        "#F6F7F8 on #172F52 '+62 821 3454 721'",
+        "#F6F7F8 on #172F52 '@Balizerobot'",
+        "#FFFFFF on #172E52 'Your Bali, from Zero.'",
+        "root over-image"
       ],
       "MobileNav R19 /news mobile/light": [
         "#1D2C3B on #F2EAE3 'Business'",
@@ -770,7 +1466,8 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root over-image"
       ],
       "MobileNav R19 /news mobile/system-dark": [
         "#1D2C3B on #F2EAE3 'Business'",
@@ -783,7 +1480,8 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root over-image"
       ],
       "MobileNav R19 /property/eligibility mobile/light": [
         "#1D2C3B on #F2EAE3 'Home'",
@@ -793,7 +1491,8 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root #F7F4EE"
       ],
       "MobileNav R19 /property/eligibility mobile/system-dark": [
         "#1D2C3B on #F2EAE3 'Home'",
@@ -803,7 +1502,8 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root #F7F4EE"
       ],
       "MobileNav R19 /tax-calendar mobile/light": [
         "#1D2C3B on #F2EAE3 'Home'",
@@ -813,7 +1513,8 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root #F7F4EE"
       ],
       "MobileNav R19 /tax-calendar mobile/system-dark": [
         "#1D2C3B on #F2EAE3 'Home'",
@@ -823,67 +1524,74 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root #F7F4EE"
       ],
       "MobileNav non-R19 /v2 mobile/light": [
-        "#18171A on #C4BAC1 'Business'",
-        "#18171A on #C4BAC1 'Home'",
-        "#18171A on #C4BAC1 'News'",
-        "#18171A on #C4BAC1 'Property'",
-        "#18171A on #C4BAC1 'Tax'",
-        "#18171A on #C4BAC1 'Visa'",
-        "#525357 on #C0C3C8 'Login'",
-        "#56575A on #C0C3C8 'Menu'",
+        "#09090B at alpha 0.92 over an image 'Business'",
+        "#09090B at alpha 0.92 over an image 'Visa'",
+        "#181719 on #C2B6B7 'News'",
+        "#181719 on #C5BABB 'Property'",
+        "#181719 on #C6BABB 'Tax'",
+        "#19181A on #D0C2C2 'Home'",
+        "#525254 on #C0C0C2 'Login'",
+        "#5F5F60 on #D6D6D6 'Menu'",
         "#FFFFFF on #FF2D4C 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root over-image"
       ],
       "MobileNav non-R19 /v2 mobile/system-dark": [
-        "#B2B6BD on #0F1B31 'Login'",
-        "#CFD1D6 on #0F1B31 'Menu'",
-        "#F5F6F7 on #11203D 'Business'",
-        "#F5F6F7 on #11203D 'Home'",
-        "#F5F6F7 on #11203D 'News'",
-        "#F5F6F7 on #11203D 'Property'",
-        "#F5F6F7 on #11203D 'Tax'",
-        "#F5F6F7 on #11203D 'Visa'",
+        "#B2B6BC on #0F1A2F 'Login'",
+        "#CFD1D5 on #0E192F 'Menu'",
+        "#F5F6F7 on #101E3A 'Business'",
+        "#F5F6F7 on #101E3A 'News'",
+        "#F5F6F7 on #101E3A 'Visa'",
+        "#F5F6F7 on #111F3B 'Property'",
+        "#F5F6F7 on #111F3B 'Tax'",
+        "#F6F6F7 on #13213D 'Home'",
         "#FFFFFF on #3A6DFF 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #0E192F"
       ],
       "MobileNav non-R19 /v2/news mobile/light": [
-        "#18171A on #C4BAC1 'Home'",
-        "#18171A on #C4BAC1 'News'",
-        "#525357 on #C0C3C8 'Login'",
-        "#56575A on #C0C3C8 'Menu'",
+        "#19181A on #D6C9CA 'News'",
+        "#1A191B on #DED2D2 'Home'",
+        "#5D5D5E on #DCDCDB 'Login'",
+        "#605F60 on #D7D6D6 'Menu'",
         "#FFFFFF on #FF2D4C 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #DCDCDB"
       ],
       "MobileNav non-R19 /v2/news mobile/system-dark": [
-        "#B2B6BD on #0F1B31 'Login'",
-        "#CFD1D6 on #0F1B31 'Menu'",
-        "#F5F6F7 on #11203D 'Home'",
+        "#B2B6BD on #0E1A31 'Login'",
+        "#CFD1D5 on #0E192F 'Menu'",
+        "#F5F6F7 on #101F3C 'Home'",
         "#F5F6F7 on #11203D 'News'",
         "#FFFFFF on #3A6DFF 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #0E1A30"
       ],
       "MobileNav non-R19 /visa/second-home mobile/light": [
-        "#1D1B1D on #FDF0F1 'Home'",
-        "#1D1B1D on #FDF0F1 'KBLI'",
-        "#1D1B1D on #FDF0F1 'Property'",
-        "#1D1B1D on #FDF0F1 'Tax'",
-        "#6B6A6B on #FDFCFB 'Login'",
-        "#6F6F70 on #FDFCFB 'Menu'",
+        "#09090B at alpha 0.6 over an image 'Login'",
+        "#1A191B on #DDD1D1 'Tax'",
+        "#1A191B on #DED1D2 'KBLI'",
+        "#1A191B on #DED2D2 'Property'",
+        "#1A191B on #DFD3D3 'Home'",
+        "#5E5E5F on #D3D3D3 'Menu'",
         "#FFFFFF on #FF2D4C 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #DEDEDE"
       ],
       "MobileNav non-R19 /visa/second-home mobile/system-dark": [
-        "#B6BAC0 on #1C273C 'Login'",
-        "#D2D4D8 on #1C273C 'Menu'",
-        "#F6F7F8 on #1E2B47 'Home'",
-        "#F6F7F8 on #1E2B47 'KBLI'",
-        "#F6F7F8 on #1E2B47 'Property'",
-        "#F6F7F8 on #1E2B47 'Tax'",
+        "#B4B7BE on #151E34 'Login'",
+        "#CFD1D5 on #0E1A2F 'Menu'",
+        "#F6F6F7 on #162440 'Home'",
+        "#F6F6F7 on #162440 'KBLI'",
+        "#F6F6F7 on #162440 'Property'",
+        "#F6F6F7 on #162440 'Tax'",
         "#FFFFFF on #3A6DFF 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root over-image"
       ],
       "NavShell default /v2 desktop/light": [
         "#6A6A6A on #FCFBF9 'Login'",
@@ -895,19 +1603,26 @@
         "#6F6F6F on #FCFBF9 'Visa'",
         "#FFE0E4 on #FF2D4C 'via WhatsApp'",
         "#FFFFFF on #FF2D4C 'Get Started'",
-        "branch default"
+        "branch default",
+        "root #FCFBF9"
       ],
       "NavShell default /v2 desktop/system-dark": [
+        "#B2B6BE on #0F1C34 'Login'",
+        "#CFD2D6 on #0F1C34 'Business'",
+        "#CFD2D6 on #0F1C34 'Home'",
+        "#CFD2D6 on #0F1C34 'News'",
+        "#CFD2D6 on #0F1C34 'Property'",
+        "#CFD2D6 on #0F1C34 'Tax'",
+        "#CFD2D6 on #0F1C34 'Visa'",
         "#E1E9FF on #3A6DFF 'via WhatsApp'",
-        "#FFFFFF at alpha 0.68 over an image 'Login'",
-        "#FFFFFF at alpha 0.8 over an image 'Business'",
-        "#FFFFFF at alpha 0.8 over an image 'Home'",
-        "#FFFFFF at alpha 0.8 over an image 'News'",
-        "#FFFFFF at alpha 0.8 over an image 'Property'",
-        "#FFFFFF at alpha 0.8 over an image 'Tax'",
-        "#FFFFFF at alpha 0.8 over an image 'Visa'",
         "#FFFFFF on #3A6DFF 'Get Started'",
-        "branch default"
+        "branch default",
+        "root #0F1C34"
+      ],
+      "NavShell default /v2 mobile/light": ["branch default", "root #FCFBF9"],
+      "NavShell default /v2 mobile/system-dark": [
+        "branch default",
+        "root #0F1C34"
       ],
       "NavShell paper /tax-calendar desktop/light": [
         "#435464 on #F7F4EE 'Home'",
@@ -915,7 +1630,8 @@
         "#435464 on #F7F4EE 'Property'",
         "#435464 on #F7F4EE 'Visa'",
         "#FFFFFF on #A44B36 'WhatsApp'",
-        "branch paper"
+        "branch paper",
+        "root #F7F4EE"
       ],
       "NavShell paper /tax-calendar desktop/system-dark": [
         "#435464 on #F7F4EE 'Home'",
@@ -923,177 +1639,372 @@
         "#435464 on #F7F4EE 'Property'",
         "#435464 on #F7F4EE 'Visa'",
         "#FFFFFF on #A44B36 'WhatsApp'",
-        "branch paper"
+        "branch paper",
+        "root #F7F4EE"
+      ],
+      "NavShell paper /tax-calendar mobile/light": [
+        "branch paper",
+        "root #F7F4EE"
+      ],
+      "NavShell paper /tax-calendar mobile/system-dark": [
+        "branch paper",
+        "root #F7F4EE"
       ]
     }
   },
   "I9": {
     "kbli_painted": [
       {
-        "hex": "#0F141E",
-        "path": "html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed"
+        "hex": "#090A0C",
+        "text": "Login",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
       },
       {
-        "hex": "#0F1B31",
-        "path": "html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed"
+        "hex": "#0A0A0C",
+        "text": "Menu",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
       },
       {
-        "hex": "#11203D",
-        "path": "div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4"
+        "hex": "#0A0A0C",
+        "text": "Menu",
+        "where": "kbli-mobile-nav mobile/forced-dark"
       },
       {
-        "hex": "#1E1521",
-        "path": "div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4"
+        "hex": "#0B0B0E",
+        "text": "Login",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#0E192F",
+        "text": "Menu",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#0E192F",
+        "text": "Menu",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#0E1A30",
+        "text": "Login",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#0F1A30",
+        "text": "Login",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#101E39",
+        "text": "Visa",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#101E3A",
+        "text": "Home",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#101E3A",
+        "text": "Home",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#101E3A",
+        "text": "Property",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#101E3A",
+        "text": "Property",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#101E3A",
+        "text": "Tax",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#101E3A",
+        "text": "Tax",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#101E3A",
+        "text": "Visa",
+        "where": "kbli-mobile-nav mobile/system-dark"
+      },
+      {
+        "hex": "#160A0D",
+        "text": "Visa",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#160B0D",
+        "text": "Home",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#170B0E",
+        "text": "Tax",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#180C0F",
+        "text": "Property",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#190B0B",
+        "text": "Visa",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#190E12",
+        "text": "Home",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#1C0D0E",
+        "text": "Property",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#1D0E0E",
+        "text": "Tax",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
       },
       {
         "hex": "#3A6DFF",
-        "path": "body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center"
+        "text": "Get Started",
+        "where": "kbli-code-mobile-nav mobile/system-dark"
       },
       {
-        "hex": "#C0C3C8",
-        "path": "html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed"
+        "hex": "#3A6DFF",
+        "text": "Get Started",
+        "where": "kbli-mobile-nav mobile/system-dark"
       },
       {
-        "hex": "#C4BAC1",
-        "path": "div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4"
+        "hex": "#BFB3B4",
+        "text": "Visa",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#BFB3B5",
+        "text": "Home",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#C0B4B5",
+        "text": "Tax",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#C0B4B6",
+        "text": "Property",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#C1B3B3",
+        "text": "Visa",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#C1B6B8",
+        "text": "Home",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#C3B5B5",
+        "text": "Property",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#C4B6B5",
+        "text": "Tax",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#CDCDCE",
+        "text": "Menu",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#CDCDCE",
+        "text": "Menu",
+        "where": "kbli-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#D9D9D8",
+        "text": "Login",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#DADAD9",
+        "text": "Login",
+        "where": "kbli-mobile-nav mobile/light"
       },
       {
         "hex": "#FF2D4C",
-        "path": "body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center"
+        "text": "Get Started",
+        "where": "kbli-code-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#FF2D4C",
+        "text": "Get Started",
+        "where": "kbli-code-mobile-nav mobile/light"
+      },
+      {
+        "hex": "#FF2D4C",
+        "text": "Get Started",
+        "where": "kbli-mobile-nav mobile/forced-dark"
+      },
+      {
+        "hex": "#FF2D4C",
+        "text": "Get Started",
+        "where": "kbli-mobile-nav mobile/light"
       }
     ],
     "shared": {
       "Footer R19 blog /news mobile/light": [
         "#1D2C3B on #EEE9E1 '+62 821 3454 721'",
-        "#1D2C3B on #EEE9E1 '@Balizerobot'",
-        "#1D2C3B on #EEE9E1 'Bali, Indonesia'",
         "#1D2C3B on #EEE9E1 'Your Bali, from Zero.'",
-        "#1D2C3B on #EEE9E1 'zantara@balizero.com'",
-        "#435464 on #EEE9E1 'About'",
-        "#435464 on #EEE9E1 'Business'",
-        "#435464 on #EEE9E1 'Company Setup'",
-        "#435464 on #EEE9E1 'Company'",
-        "#435464 on #EEE9E1 'Cookie Policy'",
-        "#435464 on #EEE9E1 'Email'",
-        "#435464 on #EEE9E1 'Get in touch'",
-        "#435464 on #EEE9E1 'Golden Visa'",
+        "#1D2C3B on #EFE9E1 '@Balizerobot'",
+        "#1D2C3B on #EFE9E1 'zantara@balizero.com'",
+        "#1D2C3B on #EFEAE2 '+62 821 3454 721'",
+        "#1D2C3B on #EFEAE2 'Bali, Indonesia'",
+        "#435464 on #E2DED6 'News'",
+        "#435464 on #EDE8E0 'Cookie Policy'",
+        "#435464 on #EDE8E1 'Terms of Service'",
+        "#435464 on #EDE9E0 'Get in touch'",
+        "#435464 on #EDE9E1 'Team'",
         "#435464 on #EEE9E1 'Living'",
-        "#435464 on #EEE9E1 'Location'",
-        "#435464 on #EEE9E1 'News'",
-        "#435464 on #EEE9E1 'Phone'",
         "#435464 on #EEE9E1 'Privacy Policy'",
         "#435464 on #EEE9E1 'Property DD'",
-        "#435464 on #EEE9E1 'Property'",
-        "#435464 on #EEE9E1 'Services'",
-        "#435464 on #EEE9E1 'Tax & Compliance'",
-        "#435464 on #EEE9E1 'Taxes'",
-        "#435464 on #EEE9E1 'Team'",
-        "#435464 on #EEE9E1 'Telegram'",
-        "#435464 on #EEE9E1 'Terms of Service'",
-        "#435464 on #EEE9E1 'Visa & Immigration'",
         "#435464 on #EEE9E1 'Visas'",
         "#435464 on #EEE9E1 'WhatsApp'",
-        "#435464 on #EEE9E1 'Your trusted partner for business, immig'",
-        "#435464 on #EEE9E1 '\u00a9 2026 Bali Zero. All rights reserved.'"
+        "#435464 on #EEE9E1 '\u00a9 2026 Bali Zero. All rights reserved.'",
+        "#435464 on #EEE9E2 'Property'",
+        "#435464 on #EEE9E2 'Tax & Compliance'",
+        "#435464 on #EEE9E2 'Taxes'",
+        "#435464 on #EEEAE1 'Company Setup'",
+        "#435464 on #EEEAE2 'Golden Visa'",
+        "#435464 on #EEEAE2 'Your trusted partner for business, immig'",
+        "#435464 on #EFEAE2 'About'",
+        "#435464 on #EFEAE2 'Business'",
+        "#435464 on #EFEAE2 'Company'",
+        "#435464 on #EFEAE2 'Email'",
+        "#435464 on #EFEAE2 'Location'",
+        "#435464 on #EFEAE2 'Phone'",
+        "#435464 on #EFEAE2 'Services'",
+        "#435464 on #EFEAE2 'Telegram'",
+        "#435464 on #EFEAE2 'Visa & Immigration'",
+        "root #EDE9E1"
       ],
       "Footer R19 blog /news mobile/system-dark": [
         "#1D2C3B on #EEE9E1 '+62 821 3454 721'",
-        "#1D2C3B on #EEE9E1 '@Balizerobot'",
-        "#1D2C3B on #EEE9E1 'Bali, Indonesia'",
         "#1D2C3B on #EEE9E1 'Your Bali, from Zero.'",
-        "#1D2C3B on #EEE9E1 'zantara@balizero.com'",
-        "#435464 on #EEE9E1 'About'",
-        "#435464 on #EEE9E1 'Business'",
-        "#435464 on #EEE9E1 'Company Setup'",
-        "#435464 on #EEE9E1 'Company'",
-        "#435464 on #EEE9E1 'Cookie Policy'",
-        "#435464 on #EEE9E1 'Email'",
-        "#435464 on #EEE9E1 'Get in touch'",
-        "#435464 on #EEE9E1 'Golden Visa'",
+        "#1D2C3B on #EFE9E1 '@Balizerobot'",
+        "#1D2C3B on #EFE9E1 'zantara@balizero.com'",
+        "#1D2C3B on #EFEAE2 '+62 821 3454 721'",
+        "#1D2C3B on #EFEAE2 'Bali, Indonesia'",
+        "#435464 on #E2DED6 'News'",
+        "#435464 on #EDE8E0 'Cookie Policy'",
+        "#435464 on #EDE8E1 'Terms of Service'",
+        "#435464 on #EDE9E0 'Get in touch'",
+        "#435464 on #EDE9E1 'Team'",
         "#435464 on #EEE9E1 'Living'",
-        "#435464 on #EEE9E1 'Location'",
-        "#435464 on #EEE9E1 'News'",
-        "#435464 on #EEE9E1 'Phone'",
         "#435464 on #EEE9E1 'Privacy Policy'",
         "#435464 on #EEE9E1 'Property DD'",
-        "#435464 on #EEE9E1 'Property'",
-        "#435464 on #EEE9E1 'Services'",
-        "#435464 on #EEE9E1 'Tax & Compliance'",
-        "#435464 on #EEE9E1 'Taxes'",
-        "#435464 on #EEE9E1 'Team'",
-        "#435464 on #EEE9E1 'Telegram'",
-        "#435464 on #EEE9E1 'Terms of Service'",
-        "#435464 on #EEE9E1 'Visa & Immigration'",
         "#435464 on #EEE9E1 'Visas'",
         "#435464 on #EEE9E1 'WhatsApp'",
-        "#435464 on #EEE9E1 'Your trusted partner for business, immig'",
-        "#435464 on #EEE9E1 '\u00a9 2026 Bali Zero. All rights reserved.'"
+        "#435464 on #EEE9E1 '\u00a9 2026 Bali Zero. All rights reserved.'",
+        "#435464 on #EEE9E2 'Property'",
+        "#435464 on #EEE9E2 'Tax & Compliance'",
+        "#435464 on #EEE9E2 'Taxes'",
+        "#435464 on #EEEAE1 'Company Setup'",
+        "#435464 on #EEEAE2 'Golden Visa'",
+        "#435464 on #EEEAE2 'Your trusted partner for business, immig'",
+        "#435464 on #EFEAE2 'About'",
+        "#435464 on #EFEAE2 'Business'",
+        "#435464 on #EFEAE2 'Company'",
+        "#435464 on #EFEAE2 'Email'",
+        "#435464 on #EFEAE2 'Location'",
+        "#435464 on #EFEAE2 'Phone'",
+        "#435464 on #EFEAE2 'Services'",
+        "#435464 on #EFEAE2 'Telegram'",
+        "#435464 on #EFEAE2 'Visa & Immigration'",
+        "root #EDE9E1"
       ],
       "Footer editorial /v2 mobile/light": [
+        "#1C1C1E on #F3F3F4 'zantara@balizero.com'",
+        "#1C1C1E on #F3F4F4 '+62 821 3454 721'",
         "#1C1C1E on #F4F4F5 '+62 821 3454 721'",
         "#1C1C1E on #F4F4F5 '@Balizerobot'",
         "#1C1C1E on #F4F4F5 'Bali, Indonesia'",
-        "#1C1C1E on #F4F4F5 'zantara@balizero.com'",
+        "#676768 on #F3F3F4 'Tax & Compliance'",
+        "#676768 on #F3F3F4 'Visa & Immigration'",
+        "#676768 on #F4F4F4 'Property'",
+        "#676768 on #F4F4F4 'Team'",
+        "#676768 on #F4F4F4 'Visas'",
+        "#676769 on #F3F3F5 'Property DD'",
+        "#676769 on #F3F4F5 'Golden Visa'",
         "#676769 on #F4F4F5 'About'",
         "#676769 on #F4F4F5 'Business'",
         "#676769 on #F4F4F5 'Company Setup'",
-        "#676769 on #F4F4F5 'Golden Visa'",
         "#676769 on #F4F4F5 'Living'",
-        "#676769 on #F4F4F5 'Property DD'",
-        "#676769 on #F4F4F5 'Property'",
-        "#676769 on #F4F4F5 'Tax & Compliance'",
         "#676769 on #F4F4F5 'Taxes'",
-        "#676769 on #F4F4F5 'Team'",
-        "#676769 on #F4F4F5 'Visa & Immigration'",
-        "#676769 on #F4F4F5 'Visas'",
-        "#6C6C6D on #F4F4F5 'Company'",
-        "#6C6C6D on #F4F4F5 'Cookie Policy'",
+        "#6B6B6D on #F3F3F4 'News'",
+        "#6B6B6D on #F3F3F4 'WhatsApp'",
+        "#6B6B6D on #F3F3F5 'Company'",
+        "#6B6B6D on #F3F3F5 'Cookie Policy'",
+        "#6C6B6D on #F4F3F4 'Terms of Service'",
+        "#6C6B6D on #F4F3F5 'Location'",
+        "#6C6B6D on #F4F3F5 'Telegram'",
+        "#6C6C6D on #F4F4F4 'Privacy Policy'",
         "#6C6C6D on #F4F4F5 'Email'",
         "#6C6C6D on #F4F4F5 'Get in touch'",
-        "#6C6C6D on #F4F4F5 'Location'",
-        "#6C6C6D on #F4F4F5 'News'",
         "#6C6C6D on #F4F4F5 'Phone'",
-        "#6C6C6D on #F4F4F5 'Privacy Policy'",
         "#6C6C6D on #F4F4F5 'Services'",
-        "#6C6C6D on #F4F4F5 'Telegram'",
-        "#6C6C6D on #F4F4F5 'Terms of Service'",
-        "#6C6C6D on #F4F4F5 'WhatsApp'",
         "#6C6C6D on #F4F4F5 'Your trusted partner for business, immig'",
         "#6C6C6D on #F4F4F5 '\u00a9 2026 Bali Zero. All rights reserved.'",
-        "#FFFFFF on #F4F4F5 'Your Bali, from Zero.'"
+        "#FFFFFF on #F3F3F4 'Your Bali, from Zero.'",
+        "root over-image"
       ],
       "Footer editorial /v2 mobile/system-dark": [
-        "#B4BCC7 on #162D50 'About'",
-        "#B4BCC7 on #162D50 'Business'",
-        "#B4BCC7 on #162D50 'Company Setup'",
-        "#B4BCC7 on #162D50 'Golden Visa'",
-        "#B4BCC7 on #162D50 'Living'",
-        "#B4BCC7 on #162D50 'Property DD'",
-        "#B4BCC7 on #162D50 'Property'",
-        "#B4BCC7 on #162D50 'Tax & Compliance'",
-        "#B4BCC7 on #162D50 'Taxes'",
-        "#B4BCC7 on #162D50 'Team'",
-        "#B4BCC7 on #162D50 'Visa & Immigration'",
-        "#B4BCC7 on #162D50 'Visas'",
-        "#D0D5DC on #162D50 'Company'",
-        "#D0D5DC on #162D50 'Cookie Policy'",
-        "#D0D5DC on #162D50 'Email'",
-        "#D0D5DC on #162D50 'Get in touch'",
-        "#D0D5DC on #162D50 'Location'",
-        "#D0D5DC on #162D50 'News'",
-        "#D0D5DC on #162D50 'Phone'",
-        "#D0D5DC on #162D50 'Privacy Policy'",
-        "#D0D5DC on #162D50 'Services'",
-        "#D0D5DC on #162D50 'Telegram'",
-        "#D0D5DC on #162D50 'Terms of Service'",
-        "#D0D5DC on #162D50 'WhatsApp'",
-        "#D0D5DC on #162D50 'Your trusted partner for business, immig'",
-        "#D0D5DC on #162D50 '\u00a9 2026 Bali Zero. All rights reserved.'",
-        "#F6F7F8 on #162D50 '+62 821 3454 721'",
-        "#F6F7F8 on #162D50 '@Balizerobot'",
-        "#F6F7F8 on #162D50 'Bali, Indonesia'",
-        "#F6F7F8 on #162D50 'zantara@balizero.com'",
-        "#FFFFFF on #162D50 'Your Bali, from Zero.'"
+        "#B5BCC7 on #182E51 'Tax & Compliance'",
+        "#B5BCC8 on #172E52 'About'",
+        "#B5BCC8 on #172E52 'Company Setup'",
+        "#B5BCC8 on #172E52 'Property DD'",
+        "#B5BCC8 on #172E52 'Visa & Immigration'",
+        "#B5BCC8 on #172F53 'Business'",
+        "#B5BCC8 on #182F52 'Golden Visa'",
+        "#B5BCC8 on #182F52 'Living'",
+        "#B5BCC8 on #182F52 'Team'",
+        "#B5BCC8 on #182F53 'Property'",
+        "#B5BCC8 on #182F53 'Taxes'",
+        "#B5BCC8 on #182F53 'Visas'",
+        "#D1D5DC on #172E51 'Cookie Policy'",
+        "#D1D5DC on #172E51 'News'",
+        "#D1D5DC on #172E51 'Terms of Service'",
+        "#D1D5DC on #172E51 'WhatsApp'",
+        "#D1D5DC on #172E52 'Get in touch'",
+        "#D1D5DC on #172F51 'Privacy Policy'",
+        "#D1D5DC on #172F52 'Phone'",
+        "#D1D5DC on #172F52 '\u00a9 2026 Bali Zero. All rights reserved.'",
+        "#D1D5DC on #182E52 'Location'",
+        "#D1D5DC on #182E52 'Telegram'",
+        "#D1D5DC on #182F52 'Email'",
+        "#D1D5DD on #172F53 'Services'",
+        "#D1D5DD on #172F53 'Your trusted partner for business, immig'",
+        "#D1D5DD on #182E53 'Company'",
+        "#F6F7F8 on #172E52 '+62 821 3454 721'",
+        "#F6F7F8 on #172E52 'Bali, Indonesia'",
+        "#F6F7F8 on #172E52 'zantara@balizero.com'",
+        "#F6F7F8 on #172F52 '+62 821 3454 721'",
+        "#F6F7F8 on #172F52 '@Balizerobot'",
+        "#FFFFFF on #172E52 'Your Bali, from Zero.'",
+        "root over-image"
       ],
       "MobileNav R19 /news mobile/light": [
         "#1D2C3B on #F2EAE3 'Business'",
@@ -1106,7 +2017,8 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root over-image"
       ],
       "MobileNav R19 /news mobile/system-dark": [
         "#1D2C3B on #F2EAE3 'Business'",
@@ -1119,7 +2031,8 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root over-image"
       ],
       "MobileNav R19 /property/eligibility mobile/light": [
         "#1D2C3B on #F2EAE3 'Home'",
@@ -1129,7 +2042,8 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root #F7F4EE"
       ],
       "MobileNav R19 /property/eligibility mobile/system-dark": [
         "#1D2C3B on #F2EAE3 'Home'",
@@ -1139,7 +2053,8 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root #F7F4EE"
       ],
       "MobileNav R19 /tax-calendar mobile/light": [
         "#1D2C3B on #F2EAE3 'Home'",
@@ -1149,7 +2064,8 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root #F7F4EE"
       ],
       "MobileNav R19 /tax-calendar mobile/system-dark": [
         "#1D2C3B on #F2EAE3 'Home'",
@@ -1159,67 +2075,74 @@
         "#435464 on #F7F4EE 'Login'",
         "#435464 on #F7F4EE 'Menu'",
         "#FFFFFF on #A44B36 'Get Started'",
-        "branch R19"
+        "branch R19",
+        "root #F7F4EE"
       ],
       "MobileNav non-R19 /v2 mobile/light": [
-        "#18171A on #C4BAC1 'Business'",
-        "#18171A on #C4BAC1 'Home'",
-        "#18171A on #C4BAC1 'News'",
-        "#18171A on #C4BAC1 'Property'",
-        "#18171A on #C4BAC1 'Tax'",
-        "#18171A on #C4BAC1 'Visa'",
-        "#525357 on #C0C3C8 'Login'",
-        "#56575A on #C0C3C8 'Menu'",
+        "#09090B at alpha 0.92 over an image 'Business'",
+        "#09090B at alpha 0.92 over an image 'Visa'",
+        "#181719 on #C2B6B7 'News'",
+        "#181719 on #C5BABB 'Property'",
+        "#181719 on #C6BABB 'Tax'",
+        "#19181A on #D0C2C2 'Home'",
+        "#525254 on #C0C0C2 'Login'",
+        "#5F5F60 on #D6D6D6 'Menu'",
         "#FFFFFF on #FF2D4C 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root over-image"
       ],
       "MobileNav non-R19 /v2 mobile/system-dark": [
-        "#B2B6BD on #0F1B31 'Login'",
-        "#CFD1D6 on #0F1B31 'Menu'",
-        "#F5F6F7 on #11203D 'Business'",
-        "#F5F6F7 on #11203D 'Home'",
-        "#F5F6F7 on #11203D 'News'",
-        "#F5F6F7 on #11203D 'Property'",
-        "#F5F6F7 on #11203D 'Tax'",
-        "#F5F6F7 on #11203D 'Visa'",
+        "#B2B6BC on #0F1A2F 'Login'",
+        "#CFD1D5 on #0E192F 'Menu'",
+        "#F5F6F7 on #101E3A 'Business'",
+        "#F5F6F7 on #101E3A 'News'",
+        "#F5F6F7 on #101E3A 'Visa'",
+        "#F5F6F7 on #111F3B 'Property'",
+        "#F5F6F7 on #111F3B 'Tax'",
+        "#F6F6F7 on #13213D 'Home'",
         "#FFFFFF on #3A6DFF 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #0E192F"
       ],
       "MobileNav non-R19 /v2/news mobile/light": [
-        "#18171A on #C4BAC1 'Home'",
-        "#18171A on #C4BAC1 'News'",
-        "#525357 on #C0C3C8 'Login'",
-        "#56575A on #C0C3C8 'Menu'",
+        "#19181A on #D6C9CA 'News'",
+        "#1A191B on #DED2D2 'Home'",
+        "#5D5D5E on #DCDCDB 'Login'",
+        "#605F60 on #D7D6D6 'Menu'",
         "#FFFFFF on #FF2D4C 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #DCDCDB"
       ],
       "MobileNav non-R19 /v2/news mobile/system-dark": [
-        "#B2B6BD on #0F1B31 'Login'",
-        "#CFD1D6 on #0F1B31 'Menu'",
-        "#F5F6F7 on #11203D 'Home'",
+        "#B2B6BD on #0E1A31 'Login'",
+        "#CFD1D5 on #0E192F 'Menu'",
+        "#F5F6F7 on #101F3C 'Home'",
         "#F5F6F7 on #11203D 'News'",
         "#FFFFFF on #3A6DFF 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #0E1A30"
       ],
       "MobileNav non-R19 /visa/second-home mobile/light": [
-        "#1D1B1D on #FDF0F1 'Home'",
-        "#1D1B1D on #FDF0F1 'KBLI'",
-        "#1D1B1D on #FDF0F1 'Property'",
-        "#1D1B1D on #FDF0F1 'Tax'",
-        "#6B6A6B on #FDFCFB 'Login'",
-        "#6F6F70 on #FDFCFB 'Menu'",
+        "#09090B at alpha 0.6 over an image 'Login'",
+        "#1A191B on #DDD1D1 'Tax'",
+        "#1A191B on #DED1D2 'KBLI'",
+        "#1A191B on #DED2D2 'Property'",
+        "#1A191B on #DFD3D3 'Home'",
+        "#5E5E5F on #D3D3D3 'Menu'",
         "#FFFFFF on #FF2D4C 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root #DEDEDE"
       ],
       "MobileNav non-R19 /visa/second-home mobile/system-dark": [
-        "#B6BAC0 on #1C273C 'Login'",
-        "#D2D4D8 on #1C273C 'Menu'",
-        "#F6F7F8 on #1E2B47 'Home'",
-        "#F6F7F8 on #1E2B47 'KBLI'",
-        "#F6F7F8 on #1E2B47 'Property'",
-        "#F6F7F8 on #1E2B47 'Tax'",
+        "#B4B7BE on #151E34 'Login'",
+        "#CFD1D5 on #0E1A2F 'Menu'",
+        "#F6F6F7 on #162440 'Home'",
+        "#F6F6F7 on #162440 'KBLI'",
+        "#F6F6F7 on #162440 'Property'",
+        "#F6F6F7 on #162440 'Tax'",
         "#FFFFFF on #3A6DFF 'Get Started'",
-        "branch non-R19"
+        "branch non-R19",
+        "root over-image"
       ],
       "NavShell default /v2 desktop/light": [
         "#6A6A6A on #FCFBF9 'Login'",
@@ -1231,19 +2154,26 @@
         "#6F6F6F on #FCFBF9 'Visa'",
         "#FFE0E4 on #FF2D4C 'via WhatsApp'",
         "#FFFFFF on #FF2D4C 'Get Started'",
-        "branch default"
+        "branch default",
+        "root #FCFBF9"
       ],
       "NavShell default /v2 desktop/system-dark": [
+        "#B2B6BE on #0F1C34 'Login'",
+        "#CFD2D6 on #0F1C34 'Business'",
+        "#CFD2D6 on #0F1C34 'Home'",
+        "#CFD2D6 on #0F1C34 'News'",
+        "#CFD2D6 on #0F1C34 'Property'",
+        "#CFD2D6 on #0F1C34 'Tax'",
+        "#CFD2D6 on #0F1C34 'Visa'",
         "#E1E9FF on #3A6DFF 'via WhatsApp'",
-        "#FFFFFF at alpha 0.68 over an image 'Login'",
-        "#FFFFFF at alpha 0.8 over an image 'Business'",
-        "#FFFFFF at alpha 0.8 over an image 'Home'",
-        "#FFFFFF at alpha 0.8 over an image 'News'",
-        "#FFFFFF at alpha 0.8 over an image 'Property'",
-        "#FFFFFF at alpha 0.8 over an image 'Tax'",
-        "#FFFFFF at alpha 0.8 over an image 'Visa'",
         "#FFFFFF on #3A6DFF 'Get Started'",
-        "branch default"
+        "branch default",
+        "root #0F1C34"
+      ],
+      "NavShell default /v2 mobile/light": ["branch default", "root #FCFBF9"],
+      "NavShell default /v2 mobile/system-dark": [
+        "branch default",
+        "root #0F1C34"
       ],
       "NavShell paper /tax-calendar desktop/light": [
         "#435464 on #F7F4EE 'Home'",
@@ -1251,7 +2181,8 @@
         "#435464 on #F7F4EE 'Property'",
         "#435464 on #F7F4EE 'Visa'",
         "#FFFFFF on #A44B36 'WhatsApp'",
-        "branch paper"
+        "branch paper",
+        "root #F7F4EE"
       ],
       "NavShell paper /tax-calendar desktop/system-dark": [
         "#435464 on #F7F4EE 'Home'",
@@ -1259,7 +2190,16 @@
         "#435464 on #F7F4EE 'Property'",
         "#435464 on #F7F4EE 'Visa'",
         "#FFFFFF on #A44B36 'WhatsApp'",
-        "branch paper"
+        "branch paper",
+        "root #F7F4EE"
+      ],
+      "NavShell paper /tax-calendar mobile/light": [
+        "branch paper",
+        "root #F7F4EE"
+      ],
+      "NavShell paper /tax-calendar mobile/system-dark": [
+        "branch paper",
+        "root #F7F4EE"
       ]
     }
   }

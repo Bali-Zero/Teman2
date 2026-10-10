@@ -651,7 +651,7 @@ lines, `state-rows-unseen: U` (painted rows whose class is in the DOM and was ne
 named) and then `state-colors-off-contract: N`. On `origin/main` N is the pre-W2 state: it is reported,
 not a gate. The exit for W2'' is U equal to 0 and N equal to 0.
 
-## 8. Amendment 2026-10-09: the surfaces a click opens (W0c, W0c', W0d-1)
+## 8. Amendment 2026-10-09: the surfaces a click opens (W0c, W0c', W0d-1, W0d-2)
 
 #8161 (W2'') was gate-blocked for a cause that is not contract fidelity. The wrapper sets
 `--color-white` to ink, as §5 says, but the `/kbli` search dropdown kept its unnamed ground
@@ -668,7 +668,8 @@ ground by its computed value (§8.4) and follows the owner's ruling on the explo
 W0c' (#8183) was gate-blocked for the same cause, under-match. Its drift pin held only drawers on
 the R19 branch, yet `/v2` and `/v2/news` render the non-R19 branch that W2''' edits, so an
 ungated paper repaint printed D 0. The W0 census lot was suspended and specified
-(`SPEC-W0d-census.md`, mission kit), and W0d-1 implements its shared-component matrix (§8.5).
+(`SPEC-W0d-census.md`, mission kit). W0d-1 implements its shared-component matrix (§8.5), and
+W0d-2 its ground algorithm, the pixels and the painters (§8.4).
 
 ### 8.1 The surfaces table
 
@@ -902,58 +903,119 @@ it runs offline and in CI.
 | `kbli-code-mobile-nav`      | `/kbli/55203`                          | the same                                                                                                                                                                            | mobile, all three themes                                 |
 | shared components           | the ten pins of §8.5, outside `/kbli*` | the hamburger for MobileNav; none for NavShell and Footer, read at rest                                                                                                             | mobile/light and mobile/system-dark; NavShell on desktop |
 
-**What is measured.**
+**What is measured (W0d-2).** The ground under every text run is read twice, by the pixels and
+by the painters (`SPEC-W0d-census.md` §2).
 
-- **Text.** Every visible element with its own text inside the surface. Its colour alpha is
-  multiplied by the opacity of every ancestor. The ground is every translucent background down
-  the ancestor chain, composited over the first opaque one. This is the rule `live_probe.py`
-  applies. The floor is 4.5:1 for all text. Text over a background image cannot be measured,
-  so it is counted and listed, never passed; the image is itself off contract by its row.
-- **Grounds, by paint.** For each measured text, the census finds the element that paints its
-  nearest ground, whether by a class, an inline style or a CSS module, and composites the
-  ground as for the text. The composited value must be one of the text-bearing grounds of §3:
-  paper, elevated, wash, or copper as the action fill. Any other value is off contract, and so
-  is any background image under text, whatever paints it. Each is named by its computed hex and
-  the path of the element that paints it. Ink is not a text-bearing ground on an opened surface
-  (§8.1).
-- **Scrims.** A scrim is an element covering the viewport with a translucent ground and no
-  text. It must compute to ink, at any alpha.
+- **Text runs.** A run is one own text node of a visible element inside a surface root: opacity
+  product at least 0.1, not `visibility:hidden`, a box larger than 1px. Its boxes are the node's
+  Range client rects, so an icon beside it never pollutes the sample. Each box is sampled at its
+  centre and at its four corners, inset by min(2px, 25%).
+- **Resolver A, the pixels, decides.** Motion is frozen and the active element blurred. Every
+  text inside the roots turns transparent (colour, fill, decoration, caret, shadow). The viewport
+  is captured with CDP `Page.captureScreenshot` at device scale 1 and decoded in the page. A
+  run's ground is the median of its samples, and a spread over 6 on any channel is non-uniform.
+  A run below the fold is scrolled to the centre and captured there. Each position is read once
+  two captures 100 ms apart are identical, so a section a script reveals on scroll has
+  finished, and each page is read once its network has been idle for 500 ms.
+- **Resolver B, the painters, names.** `elementsFromPoint` runs with `pointer-events:auto`
+  forced, so an overlay that ignores the pointer is still seen. An element outside the run that
+  paints above it occludes that point. Below the run, each element adds its `::after` and
+  `::before`, its replaced content (`img`, `video`, `canvas`, `iframe`, `object`, `embed`, a
+  painted SVG shape), its background image and its background colour. A layer's alpha is its own
+  times every opacity above it. Layers composite down to the first opaque colour, then the
+  `html`/`body` canvas, then white. A blend mode, a backdrop filter or a filter makes B
+  approximate. The painter a line names is the topmost layer.
+- **Agreement.** A and B agree within ±2 per channel. A run on which they do not, while B is
+  neither approximate nor over an image, is listed under `ground-resolver-disagree`, so a painter
+  B cannot see shows there instead of passing.
+- **Grounds.** A run's ground, as A reads it, must be within ±2 per channel of paper, elevated or
+  wash. Copper is a ground only for its own action: the painter is or sits inside `a`, `button`
+  or `[role=button]`, the run is inside that action, and the painter's box lies within the
+  action's box, ±1px. Ink is never a ground on an opened surface (§8.1). Text over an image is
+  off contract, named by its cause: the topmost layer is an image, a gradient or replaced
+  content, the text is clipped to its background, or A is non-uniform. Each distinct ground,
+  painter and cause is one line.
+- **Scrims.** A scrim is an element without text that covers at least 95% of the viewport,
+  outside the roots, and paints a ground. It must be ink at an alpha below 1.
 - **Classes.** Every background class on the surface or its scrim must paint its §8.1 row: the
   row's hex, at alpha 1 for `opaque` and `mark` rows, and nothing for a row that paints
   nothing. A colour class with no §5 or §8.1 row is off contract by its name.
 - **Portals.** Each surface root that is neither inside the census's wrapper root nor carries
   `.kbli-r19` is counted.
+- **Contrast.** M uses A's ground. The text colour is the computed colour times the opacity
+  product, composited over that ground. The floor is 4.5:1 for all text.
+- **At rest.** The same resolvers read every text run inside the wrapper on each of the 30 rest
+  captures. There, ink is a ground too, but only under elevated or paper text (§7.2's flag and
+  hero band).
 
-**What it prints.** These lines follow `state-colors-off-contract:`:
+**Declared deviations from `SPEC-W0d-census.md` §2.** Each was forced by a measurement on
+`origin/main`, and each has a test.
 
-1. `opened-surfaces: N ok, F failed`, then one line for each scenario and walk;
+- **A pseudo-element is a layer only when its box covers its host**, 90% each way. B cannot tell
+  where a smaller one sits: the `/kbli/51101` list bullets (`li::before`) would name a copper
+  dot as the ground of the whole item. A smaller pseudo-element that does sit under text still
+  shows, because A reads it and disagrees with B.
+- **Over an image means the topmost layer.** An image seen only through a translucent colour
+  makes B approximate, and A's spread decides whether it shows. An image layer whose alpha
+  cannot move a channel by 6 (`body::after`, the page's 1.5% noise texture) is faint: it names
+  no ground and never occludes. Taken literally, §2.3's rule put every run on every page over
+  an image.
+- **The scroll cap is 250 positions, not 8.** The sector drawer holds about 1,700 runs and needs
+  39 positions on desktop and 77 on mobile. A walk over the cap is still INCOMPLETE.
+- **Rest captures are 30, not 54.** The four routes §1.a adds come with W0d-3.
+
+**Verdict states.** Each walk prints one state:
+
+- `ok`: at least one root, and at least one run measured by A;
+- `failed:never-opened (<reason>)`: the page failed to load (`load: …`), the opener threw
+  (`opener: …`), there were 0 roots or 0 text runs, or every run was occluded (`0 measurable, N
+occluded`);
+- `failed:over-image-only (N runs)`: the surface opened, but every measured run is over an
+  image. Its grounds are still listed under K.
+
+Any failed walk, or any walk over the scroll cap, turns P, K, R and M INCOMPLETE, never 0.
+
+**What it prints.** `page-grounds-off-contract: G` follows `state-colors-off-contract:`. It
+lists each distinct ground, painter and cause found at rest, and is INCOMPLETE when a capture
+failed or its walk ran over the cap. Then:
+
+1. `opened-surfaces: N ok, F failed`, then one line for each scenario and walk, with its state;
 2. `opened-outside-wrapper: P`, one line per surface root outside the wrapper;
 3. `opened-grounds-off-contract: K`, one line per distinct off ground, scrim or class;
-4. `shared-touched-unpinned: N` (§8.5);
-5. `shared-component-drift: D` (§8.5);
-6. last, `opened-text-below-4.5: M`.
+4. `ground-resolver-disagree: R`, one line per run on which A and B disagree;
+5. `shared-touched-unpinned: N` (§8.5);
+6. `shared-component-drift: D` (§8.5);
+7. last, `opened-text-below-4.5: M`.
 
-A surface that does not open is a failure. Any failure turns P, K and M INCOMPLETE, never 0.
+**Numbers measured (W0d-2).** These are reported, not a gate. `origin/main` is `463ec63b76`
+(`apps/mouth` and `packages/core` are unchanged through `f75a4fee92`). It was walked twice, 43 s
+apart, and the two verdict texts are identical (I11). #8161's head, `51b2407f27`, was walked for
+its three search scenarios only.
 
-**Numbers measured.** These are reported, not a gate. `origin/main` is measured by W0d-1 at
-`c76bf4c723`; #8161's head was last measured by W0c', against its two-route pin.
+| head                      | `page-grounds-off-contract:` | `opened-surfaces:` | `opened-outside-wrapper:` | `opened-grounds-off-contract:` | `ground-resolver-disagree:` | `shared-touched-unpinned:` | `shared-component-drift:` | `opened-text-below-4.5:` |
+| ------------------------- | ---------------------------- | ------------------ | ------------------------- | ------------------------------ | --------------------------- | -------------------------- | ------------------------- | ------------------------ |
+| `origin/main`             | 449                          | 25 ok, 0 failed    | 10                        | 143                            | 2                           | 0                          | 0                         | 685                      |
+| #8161's head, search only | not measured                 | 10 ok, 0 failed    | 0                         | 21                             | 0                           | not measured               | not measured              | 108                      |
 
-| head          | `opened-surfaces:` | `opened-outside-wrapper:` | `opened-grounds-off-contract:` | `shared-touched-unpinned:` | `shared-component-drift:` | `opened-text-below-4.5:` |
-| ------------- | ------------------ | ------------------------- | ------------------------------ | -------------------------- | ------------------------- | ------------------------ |
-| `origin/main` | 25 ok, 0 failed    | 10                        | 88                             | 0                          | 0                         | 398                      |
-| #8161's head  | 25 ok, 0 failed    | 10                        | 64                             | not measured               | not measured              | 1240                     |
-
-- On `origin/main` the dropdown titles are white and readable. Its count comes from these:
-  - the red code chip (3.31:1);
-  - the sector drawer's faded and zinc text;
-  - the explorer's dark greys;
-  - the `/kbli` mobile nav drawer: a 3.66:1 red Get Started (light and forced-dark) and a
-    4.36:1 blue one (system-dark).
-- At #8161's head the dropdown titles read 1.05:1, the gate's number.
-- P is 10 on both heads. It counts the sector drawer and the comparison modal twice each, and
-  the mobile nav drawer six times, because all three are portals into `<body>`.
-- Three runs on `origin/main` printed the same K (88) and M (398).
-- The exit for W2''' is F, P, K, N, D and M equal to 0.
+- W0d-1 printed K 88 and M 398 on `origin/main` from the DOM composite. The pixels read every
+  run: a run over an image now lists its ground, and a ground off by a few levels is its own
+  line.
+- On `origin/main` the dropdown titles are white on `#1C1C1F` (17.0:1), and the red code chips
+  read 3.30:1 and 3.26:1. M also counts the sector drawer's faded and zinc text, the explorer's
+  dark greys, and the `/kbli` mobile nav drawer's Get Started: 3.66:1 red (light and
+  forced-dark) and 4.36:1 blue (system-dark).
+- At #8161's head the dropdown titles read 1.04:1 and 1.03:1 on `#282729` and `#28282A`, the
+  gate's number, now by the pixels.
+- G counts `KBLIConsultationCTA` over its inline gradient on every state of `/kbli/55203`.
+- R is 2 on `origin/main`:
+  - the page texture (`body::after`, fixed, `z-index: 0`) paints over the footer, which is not
+    positioned, and darkens it by four levels; B cannot place a pseudo-element in the stacking
+    order;
+  - a `❓` chip in the sector drawer reads three levels darker than its `#F8FAFC`
+    (system-dark).
+- P is 10. It counts the sector drawer and the comparison modal twice each, and the mobile nav
+  drawer six times, because all three are portals into `<body>`.
+- The exit for W2''' is G, F, P, K, R, N, D and M equal to 0.
 
 **Not reached by the walk.** These rows are named in 8.1 and 8.2 and judged when a later walk
 reaches them:
@@ -973,31 +1035,47 @@ taken on `origin/main`, and requires a pin for every pair of every shared file a
 
 **The matrix.** Paths are relative to `apps/mouth/src/` unless they start with `packages/`.
 
-| file                                                                                                                                                                                                                          | mounts outside `/kbli*`                                                                           | pair: pinned routes                                                                                                         | `/kbli*` takes                                                 |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `app/v2/_components/MobileNav.tsx`                                                                                                                                                                                            | `/v2`, `/v2/news`, `/visa/*`, BlogNav, `/property/eligibility`, `/tax-calendar`                   | MobileNav non-R19: `/v2`, `/visa/second-home`, `/v2/news`; MobileNav R19: `/tax-calendar`, `/property/eligibility`, `/news` | the non-R19 branch on `origin/main`; the `paper` prop at #8161 |
-| `packages/core/components/NavShell.tsx`, `NavShell.module.css`                                                                                                                                                                | `/v2`, `/v2/news`, `/visa/*` (default); `/tax-calendar`, `/property/eligibility`, BlogNav (paper) | NavShell default: `/v2`; NavShell paper: `/tax-calendar`                                                                    | default                                                        |
-| `app/v2/_components/Footer.tsx`                                                                                                                                                                                               | `/v2`, `/v2/news`, the blog layout, the marketing home, `not-found`                               | Footer editorial: `/v2`; Footer R19 blog: `/news`                                                                           | the wrapper's tokens                                           |
-| `packages/core/components/BZLogo.tsx`, `components/lead/WhatsAppLeadButton.tsx`, `packages/core/components/FunnelFrame.tsx`, `components/ui/button.tsx`, `components/ui/skeleton.tsx`, `components/providers/LazyToaster.tsx` | many routes each                                                                                  | none                                                                                                                        | unpinned by construction                                       |
+| file                                                                                                                                                                                                                          | mounts outside `/kbli*`                                                                                                                                | pair: pinned routes                                                                                                         | `/kbli*` takes                                                 |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `app/v2/_components/MobileNav.tsx`                                                                                                                                                                                            | `/v2`, `/v2/news`, `/visa/*`, BlogNav, `/property/eligibility`, `/tax-calendar`                                                                        | MobileNav non-R19: `/v2`, `/visa/second-home`, `/v2/news`; MobileNav R19: `/tax-calendar`, `/property/eligibility`, `/news` | the non-R19 branch on `origin/main`; the `paper` prop at #8161 |
+| `packages/core/components/NavShell.tsx`, `NavShell.module.css`                                                                                                                                                                | `/v2`, `/v2/news`, `/visa/*` (default); `/tax-calendar`, `/property/eligibility`, BlogNav (paper)                                                      | NavShell default: `/v2`; NavShell paper: `/tax-calendar`                                                                    | default                                                        |
+| `app/v2/_components/Footer.tsx`                                                                                                                                                                                               | `/v2`, `/v2/news`, the blog layout, the marketing home, `not-found`                                                                                    | Footer editorial: `/v2`; Footer R19 blog: `/news`                                                                           | the wrapper's tokens                                           |
+| `packages/core/components/BZLogo.tsx`, `components/lead/WhatsAppLeadButton.tsx`, `packages/core/components/FunnelFrame.tsx`, `components/ui/button.tsx`, `components/ui/skeleton.tsx`, `components/providers/LazyToaster.tsx` | many routes each                                                                                                                                       | none                                                                                                                        | unpinned by construction                                       |
+| `components/r19/R19Presentation.module.css`, `components/r19/presentation.ts` (`R19_VARS`)                                                                                                                                    | every R19 surface: the blog layout, `/tax-calendar`, `/property/eligibility`, the marketing home, `not-found`, MobileNav's R19 branch, the Zantara FAB | none                                                                                                                        | unpinned by construction (W0d-2)                               |
 
 `NavShell.module.css` is NavShell's own stylesheet, so it is listed with it. MobileNav's non-R19
-branch **with** `paper` renders only on `/kbli*`, so K judges it (§8.4) and D does not.
+branch **with** `paper` renders only on `/kbli*`, so K judges it (§8.4) and D does not. The two
+R19 presentation files paint every R19 surface, far beyond the drawer pins, so an edit to either
+is unpinned by construction.
 
 **Measured on `origin/main`.** The census reads each branch at run time, on the hydrated surface,
 never from the server HTML, because the server markers do not always match the hydrated paint
 (the spec found this on `/visa/voa`). MobileNav's branch is the drawer's `data-presentation`;
 NavShell's is its `paper` class; Footer has none, and its paint follows the route.
 
-| route                                             | MobileNav branch | drawer ground, light / system-dark | Get Started ground    |
-| ------------------------------------------------- | ---------------- | ---------------------------------- | --------------------- |
-| `/v2`, `/v2/news`                                 | non-R19          | `#C0C3C8` / `#0F1B31`              | `#FF2D4C` / `#3A6DFF` |
-| `/visa/second-home`                               | non-R19          | `#FDFCFB` / `#1C273C`              | `#FF2D4C` / `#3A6DFF` |
-| `/kbli`, `/kbli/55203`                            | non-R19          | `#C0C3C8` / `#0F1B31`              | `#FF2D4C` / `#3A6DFF` |
-| `/tax-calendar`, `/property/eligibility`, `/news` | R19              | `#F7F4EE`                          | `#A44B36`             |
+W0d-1 listed the drawer's own ground, composited from the DOM. W0d-2 reads, with the pixels, the
+ground under the drawer's `Home` item, which carries the item tint over the drawer:
+
+| route                                             | MobileNav branch | under `Home`, light / system-dark (pixels) | W0d-1, drawer (DOM)   | Get Started ground    |
+| ------------------------------------------------- | ---------------- | ------------------------------------------ | --------------------- | --------------------- |
+| `/v2`                                             | non-R19          | `#D0C2C2` / `#13213D`                      | `#C0C3C8` / `#0F1B31` | `#FF2D4C` / `#3A6DFF` |
+| `/v2/news`                                        | non-R19          | `#DED2D2` / `#101F3C`                      | `#C0C3C8` / `#0F1B31` | `#FF2D4C` / `#3A6DFF` |
+| `/visa/second-home`                               | non-R19          | `#DFD3D3` / `#162440`                      | `#FDFCFB` / `#1C273C` | `#FF2D4C` / `#3A6DFF` |
+| `/kbli`, `/kbli/55203`                            | non-R19          | `#BFB3B5`, `#C1B6B8` / `#101E3A`           | `#C0C3C8` / `#0F1B31` | `#FF2D4C` / `#3A6DFF` |
+| `/tax-calendar`, `/property/eligibility`, `/news` | R19              | `#F2EAE3`                                  | `#F7F4EE`             | `#A44B36`             |
+
+**Which ground is the truth (gate note on #8189).** The pixels. In light the non-R19 drawer
+computes `rgba(255, 255, 255, 0.72)` with `backdrop-filter: blur(16px)`; `rgba(14, 26, 48,
+0.94)` is its system-dark (editorial) value. W0d-1's `#C4BAC1` under the items composited the
+6% item tint and the 0.72 white over the body's navy `#1D273B`. The backdrop, however, blurs the
+page behind the drawer, not the body colour. So on `/v2` the pixels read `#C2B6B7` to `#D0C2C2`
+under the items, `Business` and `Visa` read non-uniform, and the drawer root reads over-image.
+B is approximate there (a backdrop filter), so R does not count the difference. In system-dark
+the pixels read `#101E3A` to `#13213D` under the items, against B's `#111F3C` under `Home`.
 
 - NavShell renders the default branch on `/v2` and the paper branch on `/tax-calendar`.
-- The Footer's ground is `#F4F4F5` (light) and `#162D50` (system-dark) on `/v2`, and `#EEE9E1`
-  on `/news`.
+- The Footer reads `#F3F3F4` to `#F4F4F5` (light) and `#172E51` to `#182F52` (system-dark)
+  under its text on `/v2`, and `#EDE9E1` at its root on `/news`.
 - W0c' said that `/kbli` is the only route on the non-R19 branch. That was **false**: `/v2`,
   `/v2/news` and `/visa/second-home` render it too.
 
@@ -1007,16 +1085,21 @@ the drawer obeys the §8.1 Portal ruling. Every route outside `/kbli*` keeps its
 **`shared-component-drift: D`.**
 
 - The pins live in `scripts/mouth/tests/fixtures/r19_shared_component_pins.json`: ten (pair,
-  route) pins, two walks each.
-- Every pin is walked at mobile/light and mobile/system-dark. NavShell is the exception and is
-  walked on desktop, because at 390px its bar holds no text of its own: a raster logo, links
-  hidden below `md`, and an icon trigger.
+  route) pins, two walks each and four for NavShell, 24 walks in all.
+- Every pin is walked at mobile/light and mobile/system-dark. NavShell is walked on desktop as
+  well. At 390px its bar holds no text of its own (a raster logo, links hidden below `md`, an
+  icon trigger), so its mobile pins are **ground-only**: the pixels read the bar's own ground
+  at its centre and corners, `#FCFBF9` (light) and `#0F1C34` (system-dark) on `/v2`, and
+  `#F7F4EE` on `/tax-calendar`.
 - A walk's fingerprint holds:
-  - each text pair, as foreground on composited ground plus the label;
+  - each text pair, as foreground on the ground the pixels read, plus the label;
   - each text over an image, as its own colour and alpha plus the label;
+  - the root's own ground, read by the pixels (W0d-2);
   - the branch.
 - D counts the entries that appeared or vanished since the pin, plus any walk that is not in
-  the pin.
+  the pin. An entry whose colours moved by 2 or less per channel is the same entry, §8.4's
+  tolerance: the page texture over the footer moves the pixels by a level from one walk to the
+  next (W0d-2 measured 36 such entries on `/news` between two dev servers of the same tree).
 - A pinned walk that is missing or failed turns D INCOMPLETE, never 0.
 
 **`shared-touched-unpinned: N`.**
@@ -1031,12 +1114,13 @@ the drawer obeys the §8.1 Portal ruling. Every route outside `/kbli*` keeps its
 - When git cannot diff, N is INCOMPLETE.
 
 **Proof, on a scratch tree of `origin/main` served by its own dev server.** The rows below are
-replayed from `scripts/mouth/tests/fixtures/r19_shared_mutants.json` by the test suite.
+replayed from `scripts/mouth/tests/fixtures/r19_shared_mutants.json` by the test suite. W0d-2
+walked them again with the pixel oracle (W0d-1 printed D 72 for mutation A).
 
 | row             | change to `MobileNav.tsx`                                                                      | result                                                          |
 | --------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
 | I9              | none                                                                                           | D 0                                                             |
-| G27, mutation A | `background: isR19 ? "var(--nav-bg)" : "#F7F4EE"`, ungated                                     | D 72, all on `/v2`, `/v2/news` and `/visa/second-home`          |
+| G27, mutation A | `background: isR19 ? "var(--nav-bg)" : "#F7F4EE"`, ungated                                     | D 84, all on `/v2`, `/v2/news` and `/visa/second-home`          |
 | G28, mutation B | the item tint `color-mix(… 6% …)` becomes 40%, both branches                                   | D 108, on all six MobileNav pins                                |
 | I10             | the drawer painted `#F7F4EE` only under a new `paper` prop, which `app/kbli/layout.tsx` passes | D 0; the `/kbli` drawers now paint `#F7F4EE`, and K judges them |
 | G29             | `MobileNav.tsx` touched, with the `/v2` pins removed                                           | `shared-touched-unpinned: 1`, naming MobileNav non-R19          |
