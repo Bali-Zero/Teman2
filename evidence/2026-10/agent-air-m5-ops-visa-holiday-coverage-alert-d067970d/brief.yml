@@ -1,0 +1,27 @@
+task_id: visa-holiday-coverage-alert
+gear: 1
+gear_reason: >-
+  Measured: scripts/evidence_pack_lint.py --print-floor on the changed files prints 1. One sentinel lane, one probe, one backend helper
+  and tests; no hot-zone path, workflow, plist or wrapper change.
+l_level: L2
+gate_class: opus
+objective: >-
+  Since PR 8129 processing_times.estimate() returns None when a working-day walk reaches a year whose national holiday decree is not in
+  id_holidays (2026 and 2027 loaded), and the result page falls back to the neutral "processing times vary" paragraph (E23 from about
+  2027-11-19). The 2028 decree does not exist yet, so the cure is an alert: the Visa Oracle freshness sentinel computes the first anchor day
+  on which any product's maximum window cannot be estimated and re-alerts daily from 60 days before it until the next decree is loaded.
+acceptance:
+  - text: With only 2026 loaded, a gap 30 days away is WARN, 100 days is OK, the gap day and the past are STALE (HIGH).
+    probe: "apps/backend-rag/backend/tests/services/visa_engine/test_holiday_coverage.py"
+  - text: With today's real data the first gap is in November 2027 and the outcome is OK.
+    probe: "python3 scripts/visa_freshness_sentinel.py --coverage-only --dry-run"
+  - text: WARN and STALE re-alert daily, a failed send is not a delivery, and neither lane's OK resolves the other lane's row.
+    probe: "scripts/tests/test_visa_holiday_coverage_lane.py"
+pii_scan: clean
+pii_scan_note: Holiday decree dates and product codes only; no client data.
+bites:
+  consumer: The launchd tick com.nuzantara.visa-freshness-sentinel on Pro (every 6 h, runs scripts/visa_freshness_sentinel.py).
+  observation: >-
+    python3 scripts/ci/observe_visa_holiday_coverage.py prints today's HOLIDAY_COVERAGE line (OK, first_gap=2027-11-19) and proves the OK,
+    WARN and STALE tiers by moving the clock around the gap it reads. After delivery to Pro the real tick adds a holiday_coverage block
+    to the sentinel's JSON and logs the same line.

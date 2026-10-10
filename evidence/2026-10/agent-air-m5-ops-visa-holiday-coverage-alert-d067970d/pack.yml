@@ -1,0 +1,53 @@
+gear: 1
+brief_ref: evidence/2026-10/agent-air-m5-ops-visa-holiday-coverage-alert-d067970d/brief.yml
+pii_scan: clean
+lanes:
+  - lane: holiday-coverage-build
+    role: build
+    seat: Claude Sonnet 5.5 (implementer, worktree ops-visa-holiday-coverage-alert)
+  - lane: holiday-decree-ground-truth
+    role: ground_truth
+    seat: >-
+      the committed decree table itself, read by the code under test (loaded years 2026 and 2027); no notebook, no memory.
+    nb: apps/backend-rag/backend/data/id_holidays.py (DECREED_YEARS, HOLIDAY_DATES)
+    query_hash: "b5b47924a007fa637b80b7232173e93bdcfbeb1e838bdccd68d9dbb722afa4ac" # pragma: allowlist secret
+bites:
+  consumer: The launchd tick com.nuzantara.visa-freshness-sentinel on Pro (every 6 h, scripts/visa_freshness_sentinel.py).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_holiday_coverage.py
+  expect: "contains:holiday coverage observed: OK 100d, WARN 30d, STALE 0d"
+receipts:
+  - claim: "Sentinel suites: the new lane (13 tests) and the existing sentinel suite pass together."
+    cmd: python3 -m pytest scripts/tests/test_visa_holiday_coverage_lane.py scripts/tests/test_visa_freshness_sentinel.py
+    result: "75 passed in 6.23s "
+    exit: 0
+    ts: "2026-10-10T03:34:25Z"
+    seat: Claude Sonnet 5.5 on M5
+  - claim: "Backend: the coverage helper tests (guilt and innocence with a fake loaded-years set) and the existing processing_times suite pass."
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_holiday_coverage.py backend/tests/services/visa_engine/test_processing_times.py"
+    result: "44 passed in 5.05s"
+    exit: 0
+    ts: "2026-10-10T03:34:31Z"
+    seat: Claude Sonnet 5.5 on M5
+  - claim: "Bites observation: today's real data puts the first gap in November 2027 (OK) and the clock moved around it turns the tiers OK, WARN, STALE."
+    cmd: python3 scripts/ci/observe_visa_holiday_coverage.py
+    result: "first line: HOLIDAY_COVERAGE OK first_gap=2027-11-19 days_left=405 product=E23 year_to_load=2028; last line: holiday coverage observed: OK 100d, WARN 30d, STALE 0d (WARN and STALE would send)"
+    exit: 0
+    ts: "2026-10-10T03:34:39Z"
+    seat: Claude Sonnet 5.5 on M5
+  - claim: "The sentinel runs the lane under Pro's bare interpreter and an empty environment (no venv, no settings): the dry-run outcome line."
+    cmd: env -i PATH=/usr/bin:/bin /usr/bin/python3 scripts/visa_freshness_sentinel.py --coverage-only --dry-run
+    result: "HOLIDAY_COVERAGE OK first_gap=2027-11-19 days_left=405 product=E23 year_to_load=2028 alert=ok-resets-ladder"
+    exit: 0
+    ts: "2026-10-10T03:34:40Z"
+    seat: Claude Sonnet 5.5 on M5
+dissent:
+  - seat: Claude Sonnet 5.5 (builder self-review, not an independent reviewer)
+    objection: >-
+      WARN and STALE are p0 and re-alert daily, so the gap alert repeats from 60 days out for as long as the 2028 decree is missing; and the
+      lane does not change the sentinel's exit code, so the Pro heartbeat stays ok while the alert is open.
+    status: PLAUSIBLE
+    disposition: >-
+      Both are by design: a daily nag is the point, and a non-zero exit would put a standing false red on the heartbeat that the healer
+      kickstarts (the comment on ANOMALY in main() records that trap). The board row (HIGH, job visa-holiday-coverage:persistent) is the
+      standing surface. A fresh-session gate is still owed.
