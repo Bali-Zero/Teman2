@@ -219,15 +219,19 @@ class Record:
             spans.append((re.compile(r"Original \(Bahasa Indonesia\):?\s*“?" + flex(v) + "”?"), t, R_ORIGINAL, False, None))
             en = (i18n or {}).get(v)
             if en: spans += carried(en, v, (re.compile(flex(en)), en), R_PAREN, R_NAME, quotes=True)
-        verdict = ((overlay or {}).get("en") or {}).get("verdict") or ""
-        for para in re.split(r"\n+|(?<=[.!?])\s+(?=[A-Z])", re.sub(r"\*\*|__", "", verdict)):   # a View draws sentences
-            para = " ".join(para.lstrip("-• ").split())
+        verdict = re.sub(r"\*\*|__", "", ((overlay or {}).get("en") or {}).get("verdict") or "")
+        lines_ = [" ".join(l.lstrip("-• ").split()) for l in verdict.split("\n") if l.strip()]
+        sentences = [x for l in lines_ for x in re.split(r"(?<=[.!?])\s+(?=[A-Z])", l)]
+        for para in sentences:   # a View draws a line of the verdict or one sentence of it
             for m in re.finditer(r"\([^()]+\)", para):
                 if lexical(m.group()):
                     spans.append((re.compile(flex(m.group())), m.group(), R_OVERLAY, False, (re.compile(flex(para)), para)))
-            # Ruling 1 (curated prose stays, counted by reason): the rest of a sentence drawn whole — never one that
-            # carries the record's official title, which is drawn only under its label (ruling 3).
-            if english(para) and lexical(para) and not (self.title_re and self.title_re.search(para)):
+        # Ruling 1 (curated prose stays, counted by reason): a line or sentence of the English verdict drawn whole —
+        # never one that is Indonesian only, nor one that carries the record's official title (ruling 3: under its
+        # label only).
+        for para in dict.fromkeys(lines_ + sentences):
+            toks = [w.lower() for _, w in words(para)]
+            if lexical(para) and any(t not in LEX for t in toks) and not (self.title_re and self.title_re.search(para)):
                 spans.append((re.compile(flex(para)), para, R_PROSE, False, None))
         self.spans = spans
 
@@ -322,7 +326,7 @@ def selftest():
     r7 = Record({"judul": "Aktivitas Vila"}, {}, {}, {"en": {"verdict": "**All scales**: Medium-High risk (Menengah Tinggi)"
                 " for Large-Scale PT PMA. NIB + Verified Standard Certificate required.\n\n**Zoning:** Green zone only.\n"
                 "- Risk: Menengah Rendah for the Mikro and Kecil scales, with the Sertifikat Standar issued automatically.\n"
-                "- The Aktivitas Vila code is open to the Mikro and Kecil scales of the market."}})
+                "- The Aktivitas Vila code is open to the Mikro and Kecil scales of the market.\n- Rendah Menengah Tinggi"}})
     r6 = Record({"judul": "Aktivitas Vila", "per_skala": [{"persyaratan": [v6]}], "pma_official_basis": b6}, {},
                 {"Wajib memiliki sertifikat dari Pemerintah Daerah": "Must hold a certificate (sertifikat) from the Pemerintah Daerah"})
     cases = [("Villa Rental\nOfficial title (Bahasa Indonesia)\nAktivitas Vila", 0, r),
@@ -383,6 +387,7 @@ def selftest():
              # ruling 1: a curated verdict sentence drawn whole; a piece of it, or one carrying the raw title, is not
              ("Risk: Menengah Rendah for the Mikro and Kecil scales, with the Sertifikat Standar issued automatically.", 0, r7),
              ("Risk: Menengah Rendah", 1, r7),
+             ("Rendah Menengah Tinggi", 1, r7),                                                  # Indonesian only
              ("The Aktivitas Vila code is open to the Mikro and Kecil scales of the market.", 1, r7)]
     for (group, field), (own, other) in zip(STATUTE, STATUTE_ROWS):   # each statute field: its own value under the
         rec = {"judul": "Aktivitas Vila"}                               # label, and another's under the same label
