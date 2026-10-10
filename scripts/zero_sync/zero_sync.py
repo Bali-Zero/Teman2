@@ -69,6 +69,9 @@ class Repo:
         # Bounded by default: in a partial clone even cat-file/ls-tree can lazily fetch from the network.
         e = dict(os.environ)
         e["GIT_TERMINAL_PROMPT"] = "0"
+        # GIT_CONFIG makes `git config` read ONLY that file while push/fetch keep the normal config: the
+        # URL-rewrite check would then read a different configuration than the push uses.
+        e.pop("GIT_CONFIG", None)
         if env:
             e.update(env)
         try:

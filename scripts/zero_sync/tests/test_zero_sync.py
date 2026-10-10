@@ -442,3 +442,13 @@ def test_the_push_is_a_compare_and_swap_on_the_exact_fetched_tip(w, monkeypatch)
     assert w.run() == 0
     assert seen and seen[0][1] == f"--force-with-lease=refs/heads/main:{tip}"
     assert git(w.zero_bare, "rev-parse", "main^") == tip  # a fast-forward child of that tip, nothing else
+
+
+def test_a_git_config_override_cannot_hide_a_rewrite_from_the_check(w, tmp_path, monkeypatch):
+    cfg = tmp_path / "gitconfig"
+    cfg.write_text(f'[url "{w.canon_url}"]\n\tpushInsteadOf = {w.zero_url}\n')
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(cfg))
+    empty = tmp_path / "empty.cfg"
+    empty.write_text("")
+    monkeypatch.setenv("GIT_CONFIG", str(empty))  # would blind `git config` alone
+    assert w.run() == 2
