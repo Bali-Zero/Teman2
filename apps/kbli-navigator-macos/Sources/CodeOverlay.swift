@@ -151,7 +151,7 @@ final class OverlayStore {
     }
 
     /// The ONE display path for an `l4_bali.reason`: the en translation table, and in Indonesian
-    /// the registry sheet's labelled-quote fallback (`RegistryVerdictSheet.swift:39-43`) when the
+    /// the registry sheet's labelled-quote fallback (`RegistryVerdictSheet.swift:42-46`) when the
     /// reason has no id translation, so half-translated prose never blends into an id surface.
     func displayReason(_ raw: String, isID: Bool) -> String {
         guard isID else { return reasonString(raw, isID: false) }

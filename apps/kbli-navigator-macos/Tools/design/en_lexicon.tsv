@@ -1,0 +1,571 @@
+# en_lexicon.tsv — the words Tools/design/en_purity.py reads as Indonesian in an English View (Q12, 2026-10-10).
+# word <TAB> group <TAB> English gloss. The gloss is the entry's reason: the word is Indonesian, not English, so
+# drawn in an English View it is untranslated text. The group names the census category. Checked on 2026-10-10:
+# no entry occurs in any English primary title (OverlayStore.primaryTitle, isID false, 1559/1559).
+yang	function	which, that
+dan	function	and
+di	function	at, in
+ke	function	to
+dari	function	from
+untuk	function	for
+dengan	function	with
+pada	function	on, at
+dalam	function	in, inside
+atau	function	or
+ini	function	this
+itu	function	that
+oleh	function	by
+tidak	function	not
+adalah	function	is
+sebagai	function	as
+juga	function	also
+akan	function	will
+serta	function	as well as
+bagi	function	for
+tentang	function	about
+hanya	function	only
+lain	function	other
+lainnya	function	others
+yaitu	function	namely
+setiap	function	every
+sudah	function	already
+telah	function	has (perfect)
+belum	function	not yet
+wajib	function	mandatory
+harus	function	must
+dapat	function	can, may
+melalui	function	through
+kecuali	function	except
+sesuai	function	according to
+berdasarkan	function	based on
+termasuk	function	including
+merupakan	function	constitutes
+maupun	function	as well as
+selain	function	besides
+tanpa	function	without
+atas	function	on, over
+bila	function	if
+jika	function	if
+apabila	function	if
+antara	function	between
+seperti	function	such as
+lihat	function	see
+baik	function	both, good
+secara	function	in a manner
+misalnya	function	for example
+sejenisnya	function	the like
+bukan	function	not (noun negation)
+macam	function	kind, sort
+berupa	function	in the form of
+sendiri	function	own, self
+kepada	function	to (a person)
+kembali	function	again, back
+menjadi	function	to become
+tersebut	function	the said
+terkait	function	related
+berkaitan	function	related to
+terhadap	function	towards, against
+sebagainya	function	and so on
+lebih	function	more
+semua	function	all
+seluruh	function	entire
+suatu	function	a certain
+berikut	function	following
+biasanya	function	usually
+dimaksud	function	referred to
+utamanya	function	mainly
+dll	function	etc.
+ytdl	function	n.e.c. (not elsewhere classified)
+satu	function	one
+dua	function	two
+baru	function	new
+ulang	function	re-, repeated
+aktivitas	domain	activity
+kegiatan	domain	activity
+usaha	domain	business
+perdagangan	domain	trade
+eceran	domain	retail
+industri	domain	industry
+jasa	domain	services
+penyediaan	domain	provision
+pengolahan	domain	processing
+pembuatan	domain	manufacture
+budidaya	domain	cultivation
+pertanian	domain	agriculture
+perkebunan	domain	plantation
+peternakan	domain	animal husbandry
+perikanan	domain	fishery
+kehutanan	domain	forestry
+pertambangan	domain	mining
+penggalian	domain	quarrying
+pengadaan	domain	procurement, supply
+konstruksi	domain	construction
+pengangkutan	domain	transport
+pergudangan	domain	warehousing
+akomodasi	domain	accommodation
+makanan	domain	food
+minuman	domain	beverage
+makan	domain	to eat
+minum	domain	to drink
+keuangan	domain	finance
+asuransi	domain	insurance
+penyewaan	domain	rental
+sewa	domain	rent
+pendidikan	domain	education
+kesehatan	domain	health
+kesenian	domain	arts
+hiburan	domain	entertainment
+rekreasi	domain	recreation
+bangunan	domain	building
+tetap	domain	permanent
+rumah	domain	house
+tangga	domain	household (rumah tangga)
+restoran	domain	restaurant
+warung	domain	food stall
+vila	domain	villa
+bintang	domain	star (hotel class)
+remaja	domain	youth
+perkemahan	domain	camping ground
+persinggahan	domain	stopover
+karavan	domain	caravan
+taman	domain	park
+intermediasi	domain	intermediation
+manajemen	domain	management
+agen	domain	agent
+perjalanan	domain	travel
+penanaman	domain	planting, investing (penanaman modal)
+modal	domain	capital
+asing	domain	foreign
+negeri	domain	country, domestic
+kemitraan	domain	partnership
+bidang	domain	field (bidang usaha)
+dialokasikan	domain	allocated
+koperasi	domain	cooperative
+perizinan	domain	licensing
+berusaha	domain	doing business
+izin	domain	permit
+sertifikat	domain	certificate
+standar	domain	standard
+persyaratan	domain	requirements
+kewajiban	domain	obligation
+pernyataan	domain	statement
+mandiri	domain	self- (self-declaration)
+verifikasi	domain	verification
+pemenuhan	domain	fulfilment
+nomor	domain	number
+induk	domain	master (nomor induk)
+pelaku	domain	actor, operator
+produk	domain	product
+barang	domain	goods
+alat	domain	tool, equipment
+bahan	domain	material
+hasil	domain	product, yield
+skala	domain	scale
+nasional	domain	national
+internasional	domain	international
+sosial	domain	social
+kantor	domain	office
+pusat	domain	centre, head
+cabang	domain	branch
+daerah	domain	region
+wilayah	domain	territory
+lokasi	domain	location
+tempat	domain	place
+pelayanan	domain	service
+pengelolaan	domain	management
+pemanfaatan	domain	utilisation
+limbah	domain	waste
+lingkungan	domain	environment
+hidup	domain	life (lingkungan hidup)
+teknis	domain	technical
+umum	domain	general, public
+khusus	domain	special
+memiliki	domain	has, owns
+melakukan	domain	performs
+menyediakan	domain	provides
+memenuhi	domain	fulfils
+menerapkan	domain	applies
+mengajukan	domain	submits
+mencakup	domain	covers
+subgolongan	domain	subgroup
+golongan	domain	group
+mesin	domain	machine
+peralatan	domain	equipment
+listrik	domain	electricity
+layanan	domain	service
+pengoperasian	domain	operation
+logam	domain	metal
+dilakukan	domain	carried out
+berbagai	domain	various
+angkutan	domain	transport
+fasilitas	domain	facility
+pemeliharaan	domain	maintenance
+transportasi	domain	transportation
+tanaman	domain	crops, plants
+olahraga	domain	sport
+hewan	domain	animal
+pengembangan	domain	development
+kertas	domain	paper
+kendaraan	domain	vehicle
+kereta	domain	train, carriage
+desain	domain	design
+menghasilkan	domain	produces
+tenaga	domain	power, labour
+kulit	domain	leather, skin
+menggunakan	domain	uses
+perlengkapan	domain	supplies, fittings
+bentuk	domain	form
+dasar	domain	basic
+perangkat	domain	device
+daya	domain	power
+penyimpanan	domain	storage
+proses	domain	process
+plastik	domain	plastic
+karet	domain	rubber
+tanah	domain	land, soil
+alam	domain	nature
+penumpang	domain	passenger
+reparasi	domain	repair
+komputer	domain	computer
+perawatan	domain	care, upkeep
+buah	domain	fruit
+pemasangan	domain	installation
+bagian	domain	part
+jenis	domain	type
+perusahaan	domain	company
+keperluan	domain	needs, purpose
+kain	domain	cloth
+penyelenggaraan	domain	organisation, holding
+swasta	domain	private
+penelitian	domain	research
+elektronik	domain	electronic
+bermotor	domain	motorised
+jaringan	domain	network
+kaca	domain	glass
+informasi	domain	information
+pelatihan	domain	training
+tekstil	domain	textile
+baja	domain	steel
+pakaian	domain	clothing
+gedung	domain	building
+digunakan	domain	used
+jalan	domain	road
+lahan	domain	land plot
+pembangunan	domain	construction, development
+kontrak	domain	contract
+diselenggarakan	domain	organised
+pipa	domain	pipe
+ilmu	domain	science
+mobil	domain	car
+pesawat	domain	aircraft
+distribusi	domain	distribution
+sumber	domain	source
+pihak	domain	party
+anak	domain	child
+papan	domain	board
+berbasis	domain	based
+lunak	domain	soft (perangkat lunak)
+bekas	domain	second-hand
+penjualan	domain	sales
+kabel	domain	cable
+telekomunikasi	domain	telecommunication
+organisasi	domain	organisation
+biji	domain	seed, grain
+teknik	domain	engineering
+pembersihan	domain	cleaning
+meliputi	domain	includes
+pokok	domain	principal, staple
+nama	domain	name
+komunikasi	domain	communication
+penerbitan	domain	publishing
+budi	domain	cultivation (budi daya)
+tangan	domain	hand
+lampu	domain	lamp
+besi	domain	iron
+kimia	domain	chemical
+luar	domain	outside
+televisi	domain	television
+sertifikasi	domain	certification
+pemanenan	domain	harvesting
+langsung	domain	direct
+pengawetan	domain	preservation
+keamanan	domain	security
+balas	domain	return (balas jasa)
+serat	domain	fibre
+sepatu	domain	shoe
+lembaran	domain	sheet
+komponen	domain	component
+seni	domain	art
+benih	domain	seed
+musik	domain	music
+sipil	domain	civil
+berbahaya	domain	hazardous
+sayuran	domain	vegetables
+penunjang	domain	support
+tepung	domain	flour
+aset	domain	asset
+tujuan	domain	purpose
+pemberian	domain	provision, granting
+gigi	domain	teeth, dental
+permainan	domain	game
+pemerintahan	domain	governance
+rangkaian	domain	series, circuit
+daging	domain	meat
+buatan	domain	made, artificial
+penyedia	domain	provider
+pascapanen	domain	post-harvest
+sejenis	domain	similar
+susu	domain	milk
+instalasi	domain	installation
+buku	domain	book
+klien	domain	client
+pengumpulan	domain	collection
+manusia	domain	human
+teknologi	domain	technology
+administrasi	domain	administration
+komersial	domain	commercial
+radiasi	domain	radiation
+pembibitan	domain	breeding, nursery
+medis	domain	medical
+diklasifikasikan	domain	classified
+tembakau	domain	tobacco
+energi	domain	energy
+bijih	domain	ore
+cetak	domain	print
+uang	domain	money
+tercakup	domain	covered
+panas	domain	heat
+perairan	domain	waters
+konten	domain	content
+roda	domain	wheel
+transaksi	domain	transaction
+telepon	domain	telephone
+pribadi	domain	personal
+suku	domain	part (suku cadang)
+cadang	domain	spare (suku cadang)
+pendapatan	domain	income
+memberikan	domain	gives
+cara	domain	way, method
+pabrik	domain	factory
+mengandung	domain	contains
+iklan	domain	advertisement
+keagamaan	domain	religious
+bunga	domain	flower, interest
+furnitur	domain	furniture
+transmisi	domain	transmission
+perencanaan	domain	planning
+dikelola	domain	managed
+operasional	domain	operational
+konsultansi	domain	consultancy
+ternak	domain	livestock
+bibit	domain	seedling
+zat	domain	substance
+penerbangan	domain	aviation
+kawasan	domain	area, zone
+cair	domain	liquid
+pintu	domain	door
+perkakas	domain	tools
+gambar	domain	picture
+radioaktif	domain	radioactive
+pekerjaan	domain	work
+klub	domain	club
+pembayaran	domain	payment
+siap	domain	ready
+mentah	domain	raw
+bisnis	domain	business
+pengetahuan	domain	knowledge
+pembiayaan	domain	financing
+usia	domain	age
+potong	domain	cut
+bawah	domain	below
+mulia	domain	precious (logam mulia)
+pupuk	domain	fertiliser
+kotak	domain	box
+buahan	domain	fruits (buah-buahan)
+sawit	domain	oil palm
+suara	domain	sound
+pembangkit	domain	power plant
+pengujian	domain	testing
+pengion	domain	ionising
+penyeberangan	domain	crossing, ferry
+saluran	domain	channel
+bubuk	domain	powder
+rokok	domain	cigarette
+bergerak	domain	mobile, moving
+perantara	domain	intermediary
+pelanggan	domain	customer
+laboratorium	domain	laboratory
+tradisional	domain	traditional
+meja	domain	table
+pengemasan	domain	packaging
+dinding	domain	wall
+optik	domain	optical
+stasiun	domain	station
+komoditas	domain	commodity
+olahan	domain	processed
+infrastruktur	domain	infrastructure
+pasir	domain	sand
+farmasi	domain	pharmacy
+dokumen	domain	document
+waktu	domain	time
+pelabuhan	domain	port
+penyiapan	domain	preparation
+lanjut	domain	further
+kartu	domain	card
+aplikasi	domain	application
+sarana	domain	means, facility
+prinsip	domain	principle
+komisi	domain	commission
+lantai	domain	floor
+profesional	domain	professional
+fotografi	domain	photography
+pencetakan	domain	printing
+kawat	domain	wire
+tabung	domain	tube
+uap	domain	steam
+kamera	domain	camera
+pengiriman	domain	shipping
+hunian	domain	residence
+estat	domain	estate
+pengawasan	domain	supervision
+kursi	domain	chair
+rekaman	domain	recording
+dilengkapi	domain	equipped
+kedokteran	domain	medicine
+jauh	domain	far, remote
+disabilitas	domain	disability
+pertunjukan	domain	performance
+perbaikan	domain	repair
+perhiasan	domain	jewellery
+satelit	domain	satellite
+padi	domain	rice paddy
+sungai	domain	river
+garam	domain	salt
+tahun	domain	year
+penggunaan	domain	use
+penggilingan	domain	milling
+mainan	domain	toy
+bantuan	domain	assistance
+peserta	domain	participant
+pensiun	domain	pension
+berasal	domain	originates
+kebutuhan	domain	needs
+budaya	domain	culture
+baterai	domain	battery
+pariwisata	domain	tourism
+penempatan	domain	placement
+telur	domain	egg
+pengeringan	domain	drying
+alami	domain	natural
+dilindungi	domain	protected
+metode	domain	method
+kapur	domain	lime, chalk
+bayi	domain	baby
+negara	domain	state
+pemotongan	domain	cutting, slaughter
+kuda	domain	horse
+bulu	domain	feather, fur
+konsultasi	domain	consultation
+kosmetik	domain	cosmetic
+pembakaran	domain	burning
+tidur	domain	sleep
+ruangan	domain	room
+instrumen	domain	instrument
+kargo	domain	cargo
+penyelenggara	domain	organiser
+jagung	domain	maize
+kemasan	domain	packaging
+benang	domain	thread
+jahit	domain	sew
+keramik	domain	ceramic
+pengguna	domain	user
+perorangan	domain	individual
+perbankan	domain	banking
+investasi	domain	investment
+kopi	domain	coffee
+binatang	domain	animal
+pengepakan	domain	packing
+jembatan	domain	bridge
+pompa	domain	pump
+unggas	domain	poultry
+pemasaran	domain	marketing
+otomatis	domain	automatic
+aksesori	domain	accessory
+terbuka	verdict	open
+terbatas	verdict	restricted
+tertutup	verdict	closed
+diblokir	verdict	blocked
+dibuka	verdict	opened
+ditutup	verdict	closed (verb)
+rendah	risk	low
+tinggi	risk	high
+mikro	scale	micro
+kecil	scale	small
+menengah	scale	medium
+besar	scale	large
+menteri	authority	minister
+gubernur	authority	governor
+bupati	authority	regent
+walikota	authority	mayor
+wali	authority	guardian (wali kota)
+kepala	authority	head
+badan	authority	agency, body
+kementerian	authority	ministry
+lembaga	authority	institution
+pemerintah	authority	government
+provinsi	authority	province
+kabupaten	authority	regency
+kota	authority	city
+pejabat	authority	official
+peraturan	statute	regulation
+presiden	statute	president
+lampiran	statute	annex
+pasal	statute	article
+ayat	statute	paragraph
+huruf	statute	letter (sub-item)
+undang	statute	law (undang-undang)
+perundang	statute	legislation
+ketentuan	statute	provision
+# EN-1a' (2026-10-10), from the known corpus. The words below make en_purity's self-test hold: every one of the 1,559
+# ID official titles drawn unlabelled holds a lexicon word (27 held none), and every ID-only word of the gated
+# surfaces' Indonesian dump is a lexicon word. Each was checked against the English corpus (kbli-data-i18n-en.json):
+# where it occurs there it is an Indonesian name or original the English text quotes.
+penangkaran	domain	captive breeding
+satwa	domain	wildlife, animals
+pemungutan	domain	collection, harvesting (of a resource)
+produksi	domain	production
+kompos	domain	compost
+organik	domain	organic
+pembongkaran	domain	demolition, dismantling
+pengecatan	domain	painting (the work)
+pengelola	domain	operator, manager
+penjaminan	domain	guarantee, underwriting
+reasuransi	domain	reinsurance
+bursa	domain	exchange (bourse)
+berjangka	domain	futures, fixed-term
+kepialangan	domain	brokerage
+pemeringkatan	domain	rating (of securities)
+penilaian	domain	valuation, assessment
+harga	domain	price
+emisi	domain	issuance (of securities)
+jajak	domain	survey, poll
+pendapat	domain	opinion
+opini	domain	opinion
+publik	domain	public
+angkatan	domain	armed-forces branch
+kepolisian	domain	the police force
+suaka	domain	sanctuary, reserve
+margasatwa	domain	wildlife
+lindung	domain	protected
+pantai	domain	beach, coast
+tirta	domain	water (in tourism names)
+wisata	domain	tourism
+cari	ui	search
+ditampilkan	ui	shown, displayed
+ditentukan	ui	determined
+katalog	ui	catalogue
+kelas	ui	class
+kode	ui	code
+sektor	ui	sector
+minu	ui	"minum" (drink), cut short where the sector pop-up truncates its title
+risiko	risk	risk
