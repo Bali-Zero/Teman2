@@ -102,6 +102,7 @@ SCOPE = ("pratinjau gagal unduh unggah simpan batalkan pengaturan beranda keluar
 # The English word of each closed-set key, from LabelBook's pin (#8227 gate (i)): a curated reason's gap holds it.
 PIN = os.path.join(ROOT, "docs", "design", "labelbook-pin-2026-10-10.json")
 WORD = {k: v[0] for m in ("pmaStatus", "baliStatus", "field") for k, v in json.load(open(PIN))["maps"][m].items()}
+PMA_WORD = {k: v[0] for k, v in json.load(open(PIN))["maps"]["pmaStatus"].items()}   # humanise's own-status word
 CLAUSE_EN = set("the of and to in for with on by or from as at is are not only must may any no".split())
 CLAUSE_ID = set("yang dan di ke dari untuk dengan pada dalam atau oleh tidak bukan bagi serta hanya".split())
 IDENT_RE = re.compile(r"\b[A-Za-z0-9]+(?:_[A-Za-z0-9]+)+\b")
@@ -215,6 +216,12 @@ def closed(rec):
     if lexical(rec.get("judul") or ""): vals.add(rec["judul"].strip())   # Q17 extends to judul (lead, 2026-10-11)
     return sorted(vals, key=len, reverse=True)
 
+def in_name(s, m):
+    """A match that is a word of a longer name: a Capitalised word right before or after it, not a function word
+    ("The Aktivitas Vila code" is the title alone)."""
+    name = re.findall(r"([A-Z][a-z]+) $", s[:m.start()]) + re.findall(r"^ ([A-Z][a-z]+)", s[m.end():])
+    return any(w.lower() not in EN_FUNCTION for w in name)
+
 def standalone(s, rx, names=()):
     """The matches of `rx` in `s` that stand alone (Q17): not the whole of a (…) — the curator's own original —, nor
     a title (`names`) anywhere inside one; inside a longer (…) a value is prose like any other (#8232 F2). Never
@@ -223,7 +230,7 @@ def standalone(s, rx, names=()):
         pre, post = s[:m.start()], s[m.end():]
         alone = re.search(r"\(\s*$", pre) and re.match(r"\s*\)", post)
         if (pre.count("(") > pre.count(")") and (alone or m.group() in names) or pre.count('"') % 2
-                or pre.count("“") > pre.count("”") or re.search(r"[A-Z][a-z]+ $", pre) or re.match(r" [A-Z][a-z]", post)):
+                or pre.count("“") > pre.count("”") or in_name(s, m)):
             continue
         yield m
 
@@ -328,11 +335,16 @@ class Record:
         prose = [en.get(f) for f in OVERLAY_PROSE] + [x.get(f) for g, f in (("related", "note"), ("roadmap", "detail"))
                                                      for x in en.get(g) or [] if isinstance(x, dict)]
         intel = rec.get("intel_2026") if isinstance(rec.get("intel_2026"), dict) else {}
-        prose += [intel.get(f) for f in INTEL_PROSE] + [l.split("—", 1)[1] for l in str(intel.get("youllAlsoNeed") or "")
-                                                       .split("\n") if "—" in l]
-        prose = re.sub(r"\*\*|__|" + PICTO, "", "\n".join(x for x in prose if isinstance(x, str)))
+        prose += [intel.get(f) for f in INTEL_PROSE]
+        for row in str(intel.get("youllAlsoNeed") or "").split("\n"):   # "<code> — <note>": a code is drawn apart,
+            prose += [x for x in row.split("—", 1) if not re.fullmatch(r"[-•*\s]*\d{5}\W*", x)]   # any other head is prose
+        prose = re.sub(r"\*+|__|" + PICTO, "", "\n".join(x for x in prose if isinstance(x, str)))
         lines_ = [" ".join(l.lstrip("-• ").split()) for l in prose.split("\n") if l.strip()]
         sentences = [x for l in lines_ for x in re.split(r"(?<=[.!?])\s+(?=[A-Z])", l)]
+        status = (rec.get("pma_status") or "").strip().upper()
+        if status in STATUS:   # a template the View draws through humanise: the record's own status word in English
+            hum = lambda t: re.sub(r"(?<!\w)%s(?!\w)" % status, PMA_WORD[status], t)
+            lines_ += [hum(l) for l in lines_ if hum(l) != l]; sentences += [hum(x) for x in sentences if hum(x) != x]
         q17 = closed(rec)   # each of the record's own values that stands alone is a gap the View fills with its English
         q17 = re.compile("|".join(r"(?<!\w)%s(?!\w)" % re.escape(v) for v in q17)) if q17 else None
         names = (self.judul.strip(),) if self.judul else ()
@@ -348,6 +360,8 @@ class Record:
             toks = [w.lower() for _, w in words(para)]   # English by a word English writes, never by the lexicon
             bare = para   # the title where it is a gap is the View's to fill (Q17 on judul): only a raw one bars the line
             for m in reversed(list(standalone(para, q17, names))): bare = bare[:m.start()] + bare[m.end():]
+            if self.title_re:   # nor does a title that is a word of a longer name ("Suaka Margasatwa Rawa Singkil")
+                bare = self.title_re.sub(lambda m: "" if in_name(bare, m) else m.group(), bare)
             if lexical(para) and any(map(english_word, toks)) and not (self.title_re and self.title_re.search(bare)):
                 rx, keep = gapped(para, q17, lambda t: None, False, names)
                 spans.append((rx, para, R_PROSE, keep, None))
@@ -362,8 +376,8 @@ def analyse(row, rec, unknown=False):
     """[(line, category, tokens)] for the Indonesian strings of one dump, and [(reason, tokens)] for allowlisted spans.
     unknown=True (a gated dump) also flags a word outside the spans that is neither English (ref) nor a lexicon word:
     a novel Indonesian word drawn in English must not pass for want of a lexicon entry (#8224 gate binding 1)."""
-    # Emphasis markup a View draws literally ("**live fish**") is no word: the overlay's prose is read without it.
-    lines = [" ".join(re.sub(r"\*\*|__", "", l).split()) for l in row["text"].split("\n")]
+    # Emphasis markup a View draws literally ("**live fish**", "*koperasi*") is no word: prose is read without it.
+    lines = [" ".join(re.sub(r"\*+|__", "", l).split()) for l in row["text"].split("\n")]
     text = "\n".join(lines); starts, p = [], 0
     for l in lines: starts.append(p); p += len(l) + 1
     line_of = lambda i: max(0, next((n for n, s in enumerate(starts) if s > i), len(starts)) - 1)
@@ -498,7 +512,8 @@ def selftest():
                   "moratorium does not apply"}}, {})
     r20 = Record({"judul": "Pengolahan Kopi", "intel_2026": {
         "whatItMeans": "Pengolahan Kopi covers the industrial processing of coffee, with quicklime (kapur tohor) for drying.",
-        "whoThisIsFor": "Small stalls (warung) are allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II.",
+        "whoThisIsFor": "Small stalls (warung) are allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II. "
+                        "Roasters such as Pengolahan Kopi Gayo sell abroad.",
         "youllAlsoNeed": "- **85312** — the privately-run equivalent, Pendidikan Menengah Pertama Umum Swasta",
         "whatChanged": "Wajib memiliki izin usaha.",
         "zantaraOpener": "Looking into Pengolahan Kopi (10761)? Nationally this carries PMA status: Open."}}, {})
@@ -643,7 +658,9 @@ def selftest():
              ("85312\nthe privately-run equivalent, Pendidikan Menengah Pertama Umum Swasta", 0, r20),
              ("Looking into Coffee Processing (10761)? Nationally this carries PMA status: Open.", 0, r20),
              ("Looking into Pengolahan Kopi (10761)? Nationally this carries PMA status: Open.", 1, r20),
-             ("Wajib memiliki izin usaha.", 1, r20)]
+             ("Wajib memiliki izin usaha.", 1, r20),
+             ("Roasters such as Pengolahan Kopi Gayo sell abroad.", 0, r20),                    # a title in a name
+             ("Roasters such as Pengolahan Kopi sell abroad.", 1, r20)]
     for (group, field), (own, other) in zip(STATUTE, STATUTE_ROWS):   # each statute field: its own value under the
         rec = {"judul": "Aktivitas Vila"}                               # label, another's under the same label, its
         (rec.setdefault(group, [{}])[0] if group else rec)[field] = [own] if field in ("persyaratan", "kewajiban") else own
