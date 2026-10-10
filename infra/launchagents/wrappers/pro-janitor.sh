@@ -50,7 +50,9 @@ fi
 
 # G10_single_instance — pidfile + liveness probe + trap cleanup (the payload also holds a flock)
 OLDPID="$(cat "$PIDFILE" 2>/dev/null)"
-if [ -f "$PIDFILE" ] && [[ "$OLDPID" =~ ^[0-9]+$ ]] && kill -0 "$OLDPID" 2>/dev/null; then
+# an old pidfile is trusted only if its pid is alive AND is a pro-janitor (the pid may have been recycled by anything else)
+if [ -f "$PIDFILE" ] && [[ "$OLDPID" =~ ^[0-9]+$ ]] && kill -0 "$OLDPID" 2>/dev/null \
+    && ps -p "$OLDPID" -o command= 2>/dev/null | grep -q 'pro-janitor'; then
     log "previous run still alive (pid $OLDPID) — skipping"
     heartbeat "warning" "skipped: previous run alive"   # never ok unread
     exit 0
@@ -71,6 +73,7 @@ log "payload rc=$RC: $NOTE"
 
 case "$RC" in
     0)  heartbeat "ok" "$NOTE" ;;
+    12) heartbeat "disabled" "kill switch" ;;   # the payload found the kill switch (env or file) at its start
     10) heartbeat "warning" "$NOTE" ;;   # a rule error, BLACK or an invalid state: the VM-side trough is localci's
     11) heartbeat "warning" "skipped: previous run alive" ;;   # the payload's flock is held
     *)  heartbeat "error" "$NOTE" ;;   # G9: failure is VISIBLE in the sidecar too

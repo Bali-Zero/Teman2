@@ -74,11 +74,12 @@ class Box:
         """lsof -F n +D <root>: lists the canary the janitor holds open (unless `canary` is False), plus `extra`; `err` is
         shell run with stdout going to stderr; `pre` runs first and may change the tree, as a concurrent process would.
         The default exit code is 1: with +D that is the healthy result (Pro, lsof 4.91, 2026-10-10). Argv is recorded."""
-        body = f'echo "$*" >> "{self.tmp}/lsof.argv"\nfor a; do R="$a"; done\n' + pre + "\n"
+        body = (f'echo "$*" >> "{self.tmp}/lsof.argv"\nfor a; do R="$a"; done\n'
+                'CAN=$(ls -A "$R" 2>/dev/null | grep "^[.]pro-janitor-canary-$PPID-")\n' + pre + "\n")   # read before `pre` moves things
         if err:
             body += f"( {err} ) >&2\n"
         if canary:
-            body += 'echo "n$R/.pro-janitor-canary-$PPID"\n'
+            body += 'for c in $CAN; do echo "n$R/$c"; done\n'
         return self.tool("lsof", rc=rc, body=body + extra, record=False)
 
     def verbs(self):
@@ -874,8 +875,13 @@ def test_wrapper_node_guard_and_kill_switch_are_visible_disabled(tmp_path, host,
     assert not (home / "logs" / "pro-janitor" / "journal.jsonl").exists()
 
 
+def janitor_lookalike():
+    """A live process whose command line contains `pro-janitor`, as the wrapper's own would."""
+    return subprocess.Popen(["/usr/bin/python3", "-c", "import time; time.sleep(30)", "pro-janitor"])
+
+
 def test_wrapper_second_instance_exits_without_running(tmp_path):
-    alive = subprocess.Popen(["sleep", "30"])
+    alive = janitor_lookalike()
     (tmp_path / "nuzantara-pro-janitor.pid").write_text(str(alive.pid))
     try:
         _, hb, home = wrap(tmp_path)
@@ -884,6 +890,17 @@ def test_wrapper_second_instance_exits_without_running(tmp_path):
         alive.wait()
     assert hb["status"] == "warning" and hb["note"] == "skipped: previous run alive"
     assert not (home / "logs" / "pro-janitor" / "journal.jsonl").exists()
+
+
+def test_wrapper_ignores_a_pidfile_whose_live_pid_is_not_a_janitor(tmp_path):
+    other = subprocess.Popen(["sleep", "30"])   # a recycled pid: alive, but not ours
+    (tmp_path / "nuzantara-pro-janitor.pid").write_text(str(other.pid))
+    try:
+        _, hb, home = wrap(tmp_path)
+    finally:
+        other.kill()
+        other.wait()
+    assert hb["status"] == "ok" and "tier=GREEN" in hb["note"]
 
 
 def test_plist_is_a_dry_run_one_shot_with_no_keepalive():
@@ -1222,14 +1239,16 @@ def stale_setup(box):
         p.wait()
         dead.append(p.pid)
     live = subprocess.Popen(["sleep", "30"])
-    files = {"dead": root / f".pro-janitor-canary-{dead[0]}", "live": root / f".pro-janitor-canary-{live.pid}",
-             "full": root / f".pro-janitor-canary-{dead[1]}", "link": root / f".pro-janitor-canary-{dead[2]}",
-             "alpha": root / ".pro-janitor-canary-abc"}
+    h = "0123456789abcdef"
+    files = {"dead": root / f".pro-janitor-canary-{dead[0]}-{h}", "live": root / f".pro-janitor-canary-{live.pid}-{h}",
+             "full": root / f".pro-janitor-canary-{dead[1]}-{h}", "link": root / f".pro-janitor-canary-{dead[2]}-{h}",
+             "alpha": root / ".pro-janitor-canary-abc", "old-format": root / f".pro-janitor-canary-{dead[0]}"}
     files["dead"].write_bytes(b"")
     files["live"].write_bytes(b"")
     files["full"].write_bytes(b"x")
     files["link"].symlink_to(box.tmp / "target")
     files["alpha"].write_bytes(b"")
+    files["old-format"].write_bytes(b"")
     return files, live
 
 
@@ -1241,7 +1260,7 @@ def test_stale_canaries_of_dead_pids_are_swept_and_nothing_else(box):
         live.kill()
         live.wait()
     assert {k: os.path.lexists(v) for k, v in files.items()} == {
-        "dead": False, "live": True, "full": True, "link": True, "alpha": True}
+        "dead": False, "live": True, "full": True, "link": True, "alpha": True, "old-format": True}
 
 
 def test_dry_run_sweeps_nothing(box):
@@ -1274,7 +1293,7 @@ def test_an_oserror_in_the_removal_loop_is_contained_and_the_first_removal_is_st
 
     def flaky(path):
         calls.append(path)
-        if len(calls) == 2:
+        if len(calls) == 4:   # sweep, the plan probe, candidate 1, candidate 2
             raise FileNotFoundError(2, "the root vanished")
         return real(path)
     monkeypatch.setattr(pj, "open_anchored", flaky)
@@ -1399,7 +1418,7 @@ def test_an_n_record_that_is_not_an_absolute_path_makes_the_scan_incomplete(box)
 
 def test_a_planted_canary_with_a_huge_pid_cannot_crash_the_run(box):
     root = two_chromiums(box)
-    planted = root / ".pro-janitor-canary-9999999999"
+    planted = root / ".pro-janitor-canary-9999999999-0123456789abcdef"
     planted.write_bytes(b"")
     r = box.run("110", apply=True)
     assert r.returncode == 0 and planted.exists() and box.rules()["playwright-old"]["status"] == "done"
@@ -1430,21 +1449,46 @@ def test_the_caps_default_to_10_gb_and_200000_objects(box, monkeypatch):
 
 
 @pytest.mark.parametrize("how", ["env", "file"])
-def test_the_kill_switch_at_start_does_nothing_and_exits_0(box, how):
+def test_the_kill_switch_at_start_does_nothing_and_exits_12(box, how):
     if how == "file":
         box.state.mkdir()
         (box.state / "disabled").write_text("")
     r = box.run("100", apply=True, **({"PRO_JANITOR_ENABLED": "false"} if how == "env" else {}))
-    assert r.returncode == 0 and box.calls() == [] and box.last()["disabled"] is True and "rules" not in box.last()
+    assert r.returncode == 12 and box.calls() == [] and box.last()["disabled"] is True and "rules" not in box.last()
 
 
-def test_the_kill_switch_file_created_during_candidate_1_keeps_candidate_2_untouched(box):
+def test_the_kill_switch_file_created_during_candidate_1_stops_it_and_leaves_candidate_2_untouched(box):
     root, _ = two_old(box)
     box.lsof = box.fake_lsof(pre=nth(box, 2, f'touch "{box.state}/disabled"'))
     r = box.run("110", apply=True)
     res = box.rules()["playwright-old"]
-    assert [(e["name"], e["state"]) for e in res["entries"]] == [("chromium-998", "removed")] and res["stopped"] == "kill-switch"
-    assert (root / "chromium-999").is_dir() and r.returncode == 0
+    assert [(e["name"], e["state"]) for e in res["entries"]] == [("chromium-998", "failed:stopped")] and res["stopped"] == "kill-switch"
+    assert (root / "chromium-999").is_dir() and (root / "chromium-998" / "data.bin").exists() and r.returncode == 10
+    assert not (root / "__dirlock").exists()
+
+
+def test_the_kill_switch_is_read_while_a_candidate_is_walked_at_most_once_a_second(tmp_path, monkeypatch):
+    root, victim, rec, dev = plain_tree(tmp_path, files=tuple(f"f{i}" for i in range(6)))
+    for k, v in {"PRO_JANITOR_HOME": str(tmp_path), "PRO_JANITOR_STATE_DIR": str(tmp_path / "st")}.items():
+        monkeypatch.setenv(k, v)
+    (tmp_path / "st").mkdir()
+    env = pj.Env()
+    t = {"now": 0.0}
+    monkeypatch.setattr(pj, "mono", lambda: t["now"])
+    reads, real_killed = [], env.killed
+    env.killed = lambda: (reads.append(t["now"]), real_killed())[1]
+    real_unlink, n = os.unlink, [0]
+
+    def unlink(path, *a, **k):
+        n[0] += 1
+        t["now"] += 0.4   # three unlinks per second of walk
+        if n[0] == 2:
+            (tmp_path / "st" / "disabled").write_text("")
+        return real_unlink(path, *a, **k)
+    monkeypatch.setattr(os, "unlink", unlink)
+    got = candidate(root, rec, dev, env=env)
+    assert got[0] == "failed:stopped" and n[0] >= 3 and len(list((victim / "sub").iterdir())) >= 2 and victim.is_dir()
+    assert all(b - a >= 1.0 for a, b in zip(reads, reads[1:]))   # throttled: never twice within a second
 
 
 def test_the_lock_is_held_around_each_candidate_and_gone_afterwards(box):
@@ -1501,24 +1545,111 @@ def test_a_lock_whose_identity_changes_mid_walk_fails_the_candidate_and_leaves_t
     assert got[0] == "failed:lock-lost" and (root / "__dirlock").is_dir() and (root / "lock.old").is_dir() and victim.is_dir()
 
 
-def test_the_lock_mtime_is_refreshed_while_the_walk_runs(tmp_path, monkeypatch):
-    root, victim, rec, dev = plain_tree(tmp_path, files=tuple(f"f{i}" for i in range(6)))
+def test_the_keepalive_thread_refreshes_the_lock_mtime_on_its_own(tmp_path):
+    root, victim, rec, dev = plain_tree(tmp_path)
     rfd = os.open(root, os.O_RDONLY | os.O_DIRECTORY)
-    ticks = iter(range(0, 10**6, 3))   # a slow walk: every monotonic reading is 3 s after the last
-    monkeypatch.setattr(time, "monotonic", lambda: next(ticks))
-    lock = pj.Lock(rfd, 2)
+    lock = pj.Lock(rfd, 0.05)
     lock.take()
-    os.utime(root / "__dirlock", (1000, 1000))
+    try:
+        os.utime(root / "__dirlock", (1000, 1000))
+        for _ in range(100):
+            time.sleep(0.05)
+            if os.stat(root / "__dirlock").st_mtime > 1000 + 3600:
+                break
+        mtime = os.stat(root / "__dirlock").st_mtime
+        thread = lock._thread
+    finally:
+        lock.release()
+        os.close(rfd)
+    assert mtime > 1000 + 3600 and not thread.is_alive() and thread.daemon and not (root / "__dirlock").exists()
+
+
+def test_the_lock_is_refreshed_during_a_slow_lsof(box):
+    root, _ = two_old(box)
+    rec = box.tmp / "mtimes.rec"
+    box.lsof = box.fake_lsof(pre=f'if [ -d "{root}/__dirlock" ]; then stat -f %m "{root}/__dirlock" >> "{rec}"; sleep 2.5; '
+                                 f'stat -f %m "{root}/__dirlock" >> "{rec}"; fi')
+    box.run("110", apply=True, PRO_JANITOR_LOCK_REFRESH="0.3")
+    m = [int(x) for x in rec.read_text().split()]
+    assert len(m) == 4 and m[1] >= m[0] + 2 and m[3] >= m[2] + 2   # each held-lock lsof call: start, then 2.5 s later
+    assert states(box) == [("chromium-998", "removed"), ("chromium-999", "removed")]
+
+
+class Clock(object):
+    def __init__(self):
+        self.t = 1000.0
+
+    def __call__(self):
+        return self.t
+
+
+def lock_tree(tmp_path, files):
+    root, victim, rec, dev = plain_tree(tmp_path, files=files)
+    rfd = os.open(root, os.O_RDONLY | os.O_DIRECTORY)
+    return root, victim, rec, dev, rfd
+
+
+def test_a_stall_longer_than_8_seconds_before_an_unlink_refuses_it_and_every_later_one(tmp_path, monkeypatch):
+    clk = Clock()
+    root, victim, rec, dev, rfd = lock_tree(tmp_path, ("o1", "o2", "o3", "o4", "o5"))
+    lock = pj.Lock(rfd, 2, clock=clk)   # the real thread never fires inside this test (2 s)
+    lock.take()
+    patch_hook = os.stat
+
     seen = []
-    real_utime = os.utime
-    monkeypatch.setattr(os, "utime", lambda *a, **k: (seen.append(1), real_utime(*a, **k))[1])
+
+    def stat_(path, *a, **k):
+        if k.get("dir_fd") is not None and path == "o3":
+            seen.append(1)
+            if len(seen) == 2:   # the walk's stat (the first was the audit's)
+                clk.t += 9   # a stat that stalls 9 s: the lock may have been taken over by an installer meanwhile
+        return patch_hook(path, *a, **k)
+    monkeypatch.setattr(os, "stat", stat_)
     try:
         got = pj.remove_candidate(rfd, "victim", rec, dev, NOW, None, lock)
-        mtime = os.stat(root / "__dirlock").st_mtime
-        lock.release()
     finally:
+        monkeypatch.undo()
+        lock.release()
         os.close(rfd)
-    assert got[0] == "removed" and len(seen) >= 3 and mtime > 1000 + 3600   # refreshed to "now", far past the 1000 we set
+    left = sorted(p.name for p in (victim / "sub").iterdir())
+    assert got[0] == "failed:lock-stale" and left == ["o3", "o4", "o5"] and not (root / "__dirlock").exists()
+
+
+def test_a_dead_keepalive_thread_refuses_the_next_unlink_as_lock_stale_and_the_lock_is_released(tmp_path, monkeypatch):
+    root, victim, rec, dev, rfd = lock_tree(tmp_path, ("o1", "o2", "o3"))
+    lock = pj.Lock(rfd, 0.05)
+    lock.take()
+    real_utime = os.utime
+
+    def boom(*a, **k):
+        raise RuntimeError("the keepalive blew up")   # not even an OSError
+    monkeypatch.setattr(os, "utime", boom)
+    for _ in range(100):
+        if not lock._thread.is_alive():
+            break
+        time.sleep(0.02)
+    monkeypatch.setattr(os, "utime", real_utime)
+    try:
+        dead = not lock._thread.is_alive() and lock.failed
+        got = pj.remove_candidate(rfd, "victim", rec, dev, NOW, None, lock)
+    finally:
+        lock.release()
+        os.close(rfd)
+    assert dead and got[0] == "failed:lock-stale" and (victim / "sub" / "o1").exists() and not (root / "__dirlock").exists()
+
+
+def test_a_stopped_keepalive_is_not_assumed_alive(tmp_path):
+    root, victim, rec, dev, rfd = lock_tree(tmp_path, ("o1",))
+    lock = pj.Lock(rfd, 2)
+    lock.take()
+    lock._stop.set()
+    lock._thread.join(timeout=5)
+    try:
+        got = pj.remove_candidate(rfd, "victim", rec, dev, NOW, None, lock)
+    finally:
+        lock.release()
+        os.close(rfd)
+    assert got[0] == "failed:lock-stale" and (victim / "sub" / "o1").exists()
 
 
 def test_our_lock_is_gone_after_success_and_after_failure(box):
@@ -1639,3 +1770,193 @@ def test_wrapper_appends_the_payload_raw_output_capped_to_run_log_only(tmp_path)
     log = (home / "logs" / "pro-janitor" / "run.log").read_text()
     raw = (home / ".organism" / "last_seen" / "pro.janitor.json").read_text()
     assert "Traceback secret-path" in log and log.count("A") <= 64 * 1024 and "Traceback" not in raw and "/Users" not in raw
+
+
+# ---------------------------------------------------------------- the last conformance pass
+
+def test_the_installation_marker_goes_first_then_a_cap_leaves_a_half_deleted_revision(box):
+    root = pw_root(box)
+    mk(root / "chromium-1243", 30)
+    mk(root / "chromium-998", 30, files=("INSTALLATION_COMPLETE", "0.bin", "1.bin", "2.bin", "3.bin"))   # the marker sorts after the digits
+    box.run("110", apply=True, PRO_JANITOR_MAX_OBJECTS="2")
+    left = sorted(p.name for p in (root / "chromium-998").iterdir())
+    assert states(box) == [("chromium-998", "failed:capped")] and "INSTALLATION_COMPLETE" not in left and len(left) == 3
+
+
+def test_the_installation_marker_is_the_first_object_unlinked(tmp_path, monkeypatch):
+    root, victim, rec, dev = plain_tree(tmp_path)
+    for n in ("INSTALLATION_COMPLETE", "0first.bin"):   # plain name order would put 0first.bin before the marker
+        (victim / n).write_bytes(b"")
+        os.utime(victim / n, (NOW - 30 * DAY,) * 2)
+    order, real = [], os.unlink
+    monkeypatch.setattr(os, "unlink", lambda path, *a, **k: (order.append(path), real(path, *a, **k))[1])
+    got = candidate(root, rec, dev)
+    assert got[0] == "removed" and order[0] == "INSTALLATION_COMPLETE" and len(order) == 5
+
+
+def test_the_wrapper_maps_the_payload_exit_12_to_disabled(tmp_path):
+    wrap(tmp_path)
+    home = tmp_path / "whome"
+    (home / ".nuzantara-cron" / "pro_janitor.py").write_text('print("pro_janitor: disabled by the kill switch")\nimport sys\nsys.exit(12)\n')
+    b = tmp_path / "wbin"
+    subprocess.run(["/bin/bash", str(WRAPPER)], env={"HOME": str(home), "TMPDIR": str(tmp_path), "PATH": f"{b}:/usr/bin:/bin"},
+                   capture_output=True, text=True, timeout=60)
+    hb = json.loads((home / ".organism" / "last_seen" / "pro.janitor.json").read_text())
+    assert hb["status"] == "disabled" and hb["note"] == "kill switch"
+
+
+def test_canary_names_are_unique_per_probe_and_a_live_pid_canary_blocks_nothing(box):
+    root = two_chromiums(box)
+    live = subprocess.Popen(["sleep", "30"])
+    planted = root / f".pro-janitor-canary-{live.pid}-0123456789abcdef"
+    planted.write_bytes(b"")
+    seen = box.tmp / "canaries.rec"
+    box.lsof = box.fake_lsof(pre=f'ls -A "$R" | grep "^[.]pro-janitor-canary-" >> "{seen}"')
+    try:
+        box.run("110", apply=True)
+        box.run("110", apply=True, now=NOW + 99 * DAY)
+    finally:
+        live.kill()
+        live.wait()
+    import re as _re
+    names = [n for n in seen.read_text().split() if str(live.pid) not in n]
+    assert planted.exists() and box.rules()["playwright-old"]["status"] in ("done", "skipped:no-candidates")
+    assert names and all(_re.fullmatch(r"\.pro-janitor-canary-\d+-[0-9a-f]{16}", n) for n in names) and len(set(names)) == len(names)
+    assert not [p for p in root.iterdir() if p.name.startswith(".pro-janitor-canary-") and str(live.pid) not in p.name]
+
+
+def test_a_directory_at_state_json_is_invalid_and_unwritable_it_warns_and_leaves_no_temp_file(box):
+    box.state.mkdir()
+    (box.state / "state.json").mkdir()
+    r = box.run("125", apply=True)
+    ln = box.last()
+    assert r.returncode == 10 and ln["state_invalid"] is True and ln["state_unwritable"] is True and box.calls() == []
+    assert sorted(os.listdir(box.state)) == ["lock", "state.json"] and (box.state / "state.json").is_dir()
+
+
+def test_an_oversized_state_json_is_invalid_not_read(box):
+    box.state.mkdir()
+    (box.state / "state.json").write_text('{"tier":"GREEN","rules":{},"pad":"' + "x" * (1024 * 1024) + '"}')
+    r = box.run("125", apply=True)
+    assert r.returncode == 10 and box.last()["state_invalid"] is True and box.calls() == []
+    assert json.loads((box.state / "state.json").read_text())["tier"] == "AMBER"
+
+
+def test_a_directory_at_the_journal_path_exits_1_with_a_clean_note_and_no_traceback(box):
+    box.journal.mkdir()
+    r = box.run("125")
+    assert r.returncode == 1 and r.stdout.strip() == "pro_janitor: journal unwritable" and "Traceback" not in r.stderr
+
+
+def test_the_wrapper_reports_an_unwritable_journal_as_error_without_a_traceback(tmp_path):
+    wrap(tmp_path)
+    home = tmp_path / "whome"
+    jp = home / "logs" / "pro-janitor" / "journal.jsonl"
+    if jp.exists():
+        jp.unlink()   # the first (priming) run wrote one
+    jp.mkdir(parents=True)
+    b = tmp_path / "wbin"
+    subprocess.run(["/bin/bash", str(WRAPPER)], env={"HOME": str(home), "TMPDIR": str(tmp_path), "PATH": f"{b}:/usr/bin:/bin",
+                                                     "PRO_JANITOR_FREE_GB_SEQ": "200"}, capture_output=True, text=True, timeout=60)
+    raw = (home / ".organism" / "last_seen" / "pro.janitor.json").read_text()
+    hb = json.loads(raw)
+    assert hb["status"] == "error" and hb["note"] == "pro_janitor: journal unwritable" and "Traceback" not in raw
+
+
+def test_the_name_must_still_be_the_directory_we_emptied_when_the_final_rmdir_comes(tmp_path, monkeypatch):
+    root, victim, rec, dev = plain_tree(tmp_path)
+    real = pj.remove_children
+
+    def then_a_swap(fd, w, depth=0):
+        real(fd, w, depth)
+        if depth == 0:   # the emptied directory is moved away and an empty one of the same name takes its place
+            os.rename(victim, tmp_path / "moved")
+            os.mkdir(victim)
+    monkeypatch.setattr(pj, "remove_children", then_a_swap)
+    state, _ = candidate(root, rec, dev)
+    assert state == "failed:changed" and victim.is_dir() and (tmp_path / "moved").is_dir()
+
+
+def test_a_subdirectory_swapped_before_its_rmdir_is_left_in_place(tmp_path, monkeypatch):
+    root, victim, rec, dev = plain_tree(tmp_path)
+    real, done = pj.remove_children, []
+
+    def then_a_swap(fd, w, depth=0):
+        real(fd, w, depth)
+        if depth == 1 and not done:
+            done.append(1)
+            os.rename(victim / "sub", tmp_path / "moved-sub")
+            os.mkdir(victim / "sub")
+    monkeypatch.setattr(pj, "remove_children", then_a_swap)
+    state, _ = candidate(root, rec, dev)
+    assert state == "failed:changed" and (victim / "sub").is_dir()
+
+
+def test_candidates_found_open_at_plan_time_are_journaled_skipped_open(box):
+    root = pw_root(box)
+    mk(root / "chromium-1243", 30)
+    mk(root / "chromium-998", 30)
+    mk(root / "chromium-999", 30)
+    box.lsof = box.fake_lsof(extra=f'echo "n{root}/chromium-998/data.bin"')
+    box.run("110", apply=True)
+    assert states(box) == [("chromium-998", "skipped:open"), ("chromium-999", "removed")] and (root / "chromium-998").is_dir()
+
+
+def test_a_dry_run_also_lists_the_open_ones_as_skipped_open(box):
+    root = pw_root(box)
+    mk(root / "chromium-1243", 30)
+    mk(root / "chromium-998", 30)
+    box.lsof = box.fake_lsof(extra=f'echo "n{root}/chromium-998/data.bin"')
+    box.run("110")
+    assert box.rules()["playwright-old"]["status"] == "skipped:in-use" and states(box) == [("chromium-998", "skipped:open")]
+
+
+def test_a_dirlock_older_than_an_hour_makes_the_run_exit_10(box):
+    root = two_chromiums(box)
+    (root / "__dirlock").mkdir()
+    os.utime(root / "__dirlock", (NOW - 7200, NOW - 7200))
+    r = box.run("110", apply=True)
+    assert r.returncode == 10 and box.rules()["playwright-old"]["stale_dirlock"] is True
+
+
+def test_each_rule_journals_its_own_freed_fs_bytes_apart_from_the_directory_rules_unlinked_bytes(box, monkeypatch):
+    root = two_chromiums(box)
+    links(box)
+    for k, v in {"PRO_JANITOR_HOME": str(box.home), "PRO_JANITOR_STATE_DIR": str(box.state), "PRO_JANITOR_JOURNAL": str(box.journal),
+                 "PRO_JANITOR_NOW": str(NOW), "PRO_JANITOR_UV": str(box.uv), "PRO_JANITOR_NPM": str(box.npm),
+                 "PRO_JANITOR_LSOF": str(box.lsof), "PRO_JANITOR_FREE_GB_SEQ": "110", "PRO_JANITOR_APPLY": "true",
+                 "PRO_JANITOR_TOOL_TIMEOUT": "20"}.items():
+        monkeypatch.setenv(k, v)
+    readings = iter([1000, 1500,   # uv-prune: before, after  (+500)
+                     1500, 1500,   # npm-verify               (0)
+                     1500, 1520])  # playwright-old           (+20)
+    monkeypatch.setattr(pj.Env, "fs_free_bytes", lambda self: next(readings))
+    assert pj.main() == 0
+    rules = {r["id"]: r for r in box.lines()[-1]["rules"]}
+    assert (rules["uv-prune"]["freed_fs_bytes"], rules["npm-verify"]["freed_fs_bytes"], rules["playwright-old"]["freed_fs_bytes"]) == (500, 0, 20)
+    assert "unlinked_bytes" not in rules["uv-prune"] and rules["playwright-old"]["unlinked_bytes"] == 10
+
+
+@pytest.mark.parametrize("name,nth_stat,left", [("sub", 3, ("sub",)), ("victim", 1, ())])
+def test_a_stall_before_an_rmdir_is_refused_too(tmp_path, monkeypatch, name, nth_stat, left):
+    clk = Clock()
+    root, victim, rec, dev, rfd = lock_tree(tmp_path, ("o1", "o2"))
+    lock = pj.Lock(rfd, 2, clock=clk)
+    lock.take()
+    real, seen = os.stat, []
+
+    def stat_(path, *a, **k):
+        if k.get("dir_fd") is not None and path == name:
+            seen.append(1)
+            if len(seen) == nth_stat:   # the stat that re-checks the name just before its rmdir
+                clk.t += 9
+        return real(path, *a, **k)
+    monkeypatch.setattr(os, "stat", stat_)
+    try:
+        got = pj.remove_candidate(rfd, "victim", rec, dev, NOW, None, lock)
+    finally:
+        monkeypatch.undo()
+        lock.release()
+        os.close(rfd)
+    assert got[0] == "failed:lock-stale" and victim.is_dir() and (victim / "sub").exists() == bool(left)
+    assert not (victim / "sub" / "o1").exists() and not (root / "__dirlock").exists()
