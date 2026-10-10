@@ -69,11 +69,14 @@ redact_for_external() {
     # (in a subshell, so the caller's locale is untouched): under a UTF-8 locale an invalid byte fails any
     # bracket match, and [^[:space:]] would read such a body as blank and skip the redactor (Codex, 2026-10-10).
     # The caller's attributes are shed first (an integer LC_ALL turns "C" into 0) and every step is chained:
-    # a step that fails — a readonly LC_ALL — makes the body non-blank, so it goes to the redactor.
-    # A regex match, never ${input//[class]/}: bash 3.2 (macOS /bin/bash) rewrites that substitution in
-    # quadratic time — an 8 KB diff took 58 s and a 70 KB one never reached the seat (2026-10-10).
-    if ( unset LC_ALL nonblank 2>/dev/null; LC_ALL=C && nonblank=$'[^\t\r\n ]' && [[ "$LC_ALL" == C ]] &&
-         [[ ! "$input" =~ $nonblank ]] ); then
+    # a step that fails — a readonly LC_ALL — makes the body non-blank, so it goes to the redactor. The C
+    # locale is proven by what it does (a two-byte character counts as two), not by how LC_ALL reads (a
+    # bash >= 4.3 nameref spells C while the locale stays UTF-8); only a regex status of exactly 1 (no
+    # match) is blank, never an error. A regex match, never ${input//[class]/}: bash 3.2 (macOS /bin/bash)
+    # rewrites that substitution in quadratic time — 8 KB took 58 s, 70 KB never reached the seat (2026-10-10).
+    if ( unset LC_ALL nonblank probe status 2>/dev/null
+         LC_ALL=C && probe=$'\xc3\xa9' && [[ ${#probe} -eq 2 ]] && nonblank=$'[^\t\r\n ]' && status=0 &&
+             { [[ "$input" =~ $nonblank ]] || status=$?; } && [[ "$status" -eq 1 ]] ); then
         printf '%s' "$input"
         return 0
     fi

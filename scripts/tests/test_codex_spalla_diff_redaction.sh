@@ -96,19 +96,21 @@ assert_eq "$CLEAN_REDACTED" "$CLEAN_OUT" "redact_for_external: PII-free diff is 
 #    locale an invalid byte fails a [^[:space:]] match, so a body starting with one read as blank and its
 #    email left the machine unredacted (Codex, 2026-10-10); \v, \f and NBSP are not blank either. Each case
 #    runs in a child bash started in the locale; the UTF-8 leg uses a locale this host really activates.
+# every child runs the interpreter the consumer runs on macOS (bash 3.2), whatever bash is first on PATH
+TEST_BASH=/bin/bash
 STUB_DIR="$(mktemp -d "${TMPDIR:-/tmp}/spalla-stub.XXXXXX")"
 printf 'import sys\nsys.stdin.buffer.read()\nsys.stdout.write("REDACTOR-RAN")\n' > "$STUB_DIR/stub.py"
 in_child() {   # in_child <env assignments...> -- <shell prelude> <body>
     local -a envs=()
     while [[ "$1" != -- ]]; do envs+=("$1"); shift; done
     shift
-    env ${envs[@]+"${envs[@]}"} SPALLA_REDACTOR_PY="$STUB_DIR/stub.py" bash -c "$1"'
+    env ${envs[@]+"${envs[@]}"} SPALLA_REDACTOR_PY="$STUB_DIR/stub.py" "$TEST_BASH" -c "$1"'
 . "$1/scripts/lib/spalla_redact.sh"; redact_for_external "$2"' _ "$REPO_ROOT" "$2"
 }
 UTF8_LOC=""
 for L in en_US.UTF-8 C.UTF-8; do
     # a locale is active when a two-byte character counts as one
-    if [[ "$(LC_ALL="$L" bash -c 'x=$'"'"'\xc3\xa9'"'"'; echo ${#x}' 2>/dev/null)" == 1 ]]; then UTF8_LOC="$L"; break; fi
+    if [[ "$(LC_ALL="$L" "$TEST_BASH" -c 'x=$'"'"'\xc3\xa9'"'"'; echo ${#x}' 2>/dev/null)" == 1 ]]; then UTF8_LOC="$L"; break; fi
 done
 LOCALES=(C)
 if [[ -n "$UTF8_LOC" ]]; then LOCALES+=("$UTF8_LOC"); else echo "SKIP: no UTF-8 locale is active on this host; the matrix runs in C only" >&2; fi
@@ -139,13 +141,14 @@ if [[ -n "$UTF8_LOC" ]]; then
     assert_eq "$GOT" "REDACTOR-RAN" "redact_for_external: an integer LC_ALL in the caller does not make an invalid byte blank"
     GOT="$(in_child -- "readonly LC_ALL=$UTF8_LOC;" $'\xff'"someone@example.org" 2>/dev/null)"
     assert_eq "$GOT" "REDACTOR-RAN" "redact_for_external: a readonly LC_ALL in the caller sends an invalid byte to the redactor"
-    GOT="$(in_child -- "readonly LC_ALL=$UTF8_LOC;" "   " 2>/dev/null)"
-    assert_eq "$GOT" "REDACTOR-RAN" "redact_for_external: a readonly LC_ALL in the caller sends even a blank body to the redactor"
 fi
+# in any locale: a judgement that cannot be made (here LC_ALL cannot be set) is not "blank"
+GOT="$(in_child -- "readonly LC_ALL=${UTF8_LOC:-C};" "   " 2>/dev/null)"
+assert_eq "$GOT" "REDACTOR-RAN" "redact_for_external: a readonly LC_ALL in the caller sends even a blank body to the redactor"
 rm -f "$STUB_DIR/stub.py" && rmdir "$STUB_DIR"
 # the real redactor on such a body: refused (fail-closed) or redacted, never returned with the email
 set +e
-INVALID_OUT="$(LC_ALL="${UTF8_LOC:-C}" bash -c '. "$1/scripts/lib/spalla_redact.sh"; redact_for_external "$2"' _ "$REPO_ROOT" $'\xff'"someone@example.org $(printf 'filler line %03d\n' $(seq 1 40))" 2>/dev/null)"
+INVALID_OUT="$(LC_ALL="${UTF8_LOC:-C}" "$TEST_BASH" -c '. "$1/scripts/lib/spalla_redact.sh"; redact_for_external "$2"' _ "$REPO_ROOT" $'\xff'"someone@example.org $(printf 'filler line %03d\n' $(seq 1 40))" 2>/dev/null)"
 INVALID_RC=$?
 set -e
 if [[ "$INVALID_RC" -ne 0 || "$INVALID_OUT" != *"someone@example.org"* ]]; then
@@ -154,12 +157,13 @@ else
     echo "FAIL: redact_for_external returned an invalid-byte body with its email unredacted" >&2
     FAIL=1
 fi
-# the library never goes back to the substitution that was quadratic on bash 3.2 (a Linux bash 5 would not show it)
-if grep -n -E '^[^#]*\$\{input//' "$REPO_ROOT/scripts/lib/spalla_redact.sh" >&2; then   # code lines, not comments
-    echo "FAIL: spalla_redact.sh substitutes over \$input again (quadratic on bash 3.2)" >&2
+# the library never goes back to the substitution that was quadratic on bash 3.2 (a Linux bash 5 would not show
+# it): no ${var//...} over any variable on a line that is not a comment (a line's first non-blank is not #)
+if grep -n -E '^[[:space:]]*[^#[:space:]].*\$\{[A-Za-z_][A-Za-z0-9_]*//' "$REPO_ROOT/scripts/lib/spalla_redact.sh" >&2; then
+    echo "FAIL: spalla_redact.sh uses a \${var//...} substitution in code (quadratic on bash 3.2)" >&2
     FAIL=1
 else
-    echo "ok: spalla_redact.sh has no \${input//...} substitution"
+    echo "ok: spalla_redact.sh has no \${var//...} substitution in code"
 fi
 
 # ── large bodies, in /bin/bash (macOS: 3.2, the affected interpreter) under a 60 s watchdog that kills the
@@ -177,7 +181,7 @@ $(printf "line %06d of a large diff\n" $(seq 3751 7500))"
 a="$(redact_for_external "$blank")" || echo "blank-rc"
 b="$(redact_for_external "$text" 2>/dev/null)" || echo "text-rc"
 c="$(redact_for_external "$pii" 2>/dev/null)" || echo "pii-rc"
-[[ "${#a}" -eq 200000 ]] || echo "blank-not-whole"
+[[ "$a" == "$blank" ]] || echo "blank-not-identical"
 [[ "$b" == "$text" ]] || echo "text-not-identical"
 [[ "$c" != *someone@example.org* ]] || echo "pii-not-redacted"
 lines() { printf "%s\n" "$1" | sed -n "$2"; }
