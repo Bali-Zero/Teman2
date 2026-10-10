@@ -101,7 +101,7 @@ let out: [String: Any] = MainActor.assumeIsolated {
         }
     }
     // Lead ruling on EN-1 (2026-10-10): a search row's chip says the status word and the line beside it only
-    // the cap — never "Restricted Restricted · 49%". Every code in both languages, and the row's own call.
+    // the cap ("49%"), never the word again. Every code in both languages, and the row's own call.
     let words = ["TERBUKA", "TERBATAS", "TERTUTUP"].flatMap { w in
         [false, true].map { LabelBook.pmaStatus(w, isID: $0).lowercased() }
     }
