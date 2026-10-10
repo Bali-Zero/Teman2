@@ -1248,7 +1248,7 @@ def test_a_failure_of_the_tools_own_output_after_a_rollback_is_exit_3(fake, tmp_
 
 
 @pytest.mark.parametrize("age_minutes, refused", [(116, True), (114, False)])
-def test_apply_wants_a_report_that_cannot_expire_between_the_two_writes(fake, tmp_path, capsys, age_minutes, refused):
+def test_the_plan_and_apply_agree_on_a_report_near_its_age_limit(fake, tmp_path, capsys, age_minutes, refused):
     rep = report(tmp_path, generated_at=(NOW - timedelta(minutes=age_minutes)).strftime("%Y-%m-%dT%H:%M:%SZ"))
     rc, out, _ = run(fake, tmp_path, capsys, rep=rep)
     # the plan says what --apply will say (round-9 LOW: a plan read "none" and the apply refused)

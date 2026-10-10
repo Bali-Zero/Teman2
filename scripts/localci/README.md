@@ -753,15 +753,18 @@ silence is a `warning`, recovery `launchctl kickstart`. Arming (operator of Pro,
 
 ## Phase E flip (prepared; the operator applies)
 
-    # step 1, on Pro, immediately before --apply: run the report (about 4 minutes, hundreds of GETs). Nothing regenerates
-    # report.json on a schedule: since F2 the tick judges READY in memory and writes no report.
-    STATE=~/.nuzantara-pilots/local-ci/merger; CODE="$(mktemp -d)"
-    for f in merger.py hosted_compare.py; do git -C "$STATE/repo.git" show "refs/merger/base:scripts/localci/$f" > "$CODE/$f"; done
-    PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin "$STATE/venv/bin/python" -I "$CODE/merger.py" report --repo Bali-Zero/Teman2 --state-dir "$STATE"
+    bash scripts/localci/hand_report.sh   # step 1, on Pro, immediately before --apply: the report (about 4 minutes)
     # step 2, the plan (read it); step 3, the apply with the plan's digest
     python scripts/localci/phase_e_flip.py [--repo Bali-Zero/Teman2] [--branch main] [--report <report.json>] [--state-dir <dir>] [--key-pub <deploy_key.pub>]
     python scripts/localci/phase_e_flip.py --apply --confirm <digest> --quiescent   # operator[gui], after READY and the key
     python scripts/localci/phase_e_flip.py --rollback <pre-flip-*.json> [--apply --confirm <digest> --quiescent]
+
+Step 1 recomputes `report.json`, which nothing regenerates on a schedule (since F2 the tick judges READY in memory and writes
+no report). `hand_report.sh` runs the merger's own `merger.py report` the way the tick runs it: the code read from the mirror's
+ref (`refs/merger/wrapper`, else `refs/merger/base`), the same files extracted beside it — the report's stale-verdict judge loads
+`runner.py`, and without it every hosted-stale row would stay FALSE_GREEN and READY could never be true; a test keeps the list
+equal to the tick's — the merger's venv with `-I`, and launchd's environment (HOME and PATH only). A "refusing" exit (a tick
+was appending to the journal) writes nothing: run it again.
 
 Phase E of `docs/specs/localci-sovereign-2026-10-07.md` leaves the merger's deploy key as the only writer of `main`. Without
 `--apply` the script only reads (GETs through `gh api`): the classic protection of the branch with its required set and each
@@ -845,8 +848,8 @@ write sent against a state nobody re-read — on draft #8191; the cause is speci
   out of scope, and W5 detects a lost race after the fact. A review finding of that class beyond W1/W5 is out of scope by
   this ruling.
 
-**Arming order (phase F's checklist).** (1) Phase D READY: recompute the report on Pro (`merger.py report`, this section's
-freshness rule) and read `phase_e_ready`. (2) operator[secret]: the merger's deploy key generated on Pro
+**Arming order (phase F's checklist).** (1) Phase D READY: recompute the report on Pro (`bash scripts/localci/hand_report.sh`
+from an `origin/main` checkout, the phase E section's step 1) and read `phase_e_ready`. (2) operator[secret]: the merger's deploy key generated on Pro
 (`~/.nuzantara-pilots/local-ci/merger/deploy_key`, 0600, never printed) and registered on the repository with write — the only
 write deploy key; its `.pub` is what `--key-pub` reads. (3) operator[gui]: the plan, read; then `--apply --confirm <digest> --quiescent` (with no session, peer or cron writing GitHub settings) from
 a checkout at `origin/main`, on a host whose `gh` is the owner's (the ruleset and protection writes need admin), with the

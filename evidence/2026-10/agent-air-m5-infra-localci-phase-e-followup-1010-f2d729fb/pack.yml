@@ -1,23 +1,34 @@
 task_id: localci-phase-e-followup-1010
 mission: LOCALCI-SOVEREIGN (phase E, prepared — round-9 follow-up)
 colour: BLUE
-gear: 1
-gear_reason: >-
-  The round-9 LOWs of #8191 and the lead's runbook request: one age judgement for plan and --apply, a test pinning the per-write
-  re-read to the full limit, wording, the report command as step 1. No hot-zone path; the lint floor is 1 by size.
+gear: 2
+gear_reason:
+  "The lint's floor is 2 by size (the new hand_report.sh, its test and the evidence beside the age change); no
+  hot-zone path. The round-9 LOWs of PR 8191, the lead's runbook request (step 1, the report on Pro, as a versioned script)
+  and the gate's MEDIUM on the first recipe."
 l_level: L2
 gate_class: opus
 brief_ref: evidence/brief.yml
-objective: >-
-  The plan and --apply judge the report's age the same way (2 h less 5 min), the refusal says to run the report now on Pro, the
-  per-write re-read keeps the full 2 h (pinned by a test), and the README's phase E usage starts with the report command.
+objective:
+  The plan and --apply judge the report's age the same way (2 h less 5 min), the refusal says to run the report now
+  on Pro, the per-write re-read keeps the full 2 h (pinned by a test), and the README's phase E usage starts with the report
+  command.
 acceptance:
-  - text: The plan's blocker line and --apply SHALL agree on a report 116 minutes old (both refuse, saying to run the report now) and on one 114 minutes old (both accept).
-    probe: "test_phase_e_flip.py::test_apply_wants_a_report_that_cannot_expire_between_the_two_writes"
-  - text: The re-read before each write SHALL judge the full 2-hour limit (a 114-minute report with the clock moving 4 minutes mid-run flips).
-    probe: "test_phase_e_flip.py::test_the_re_read_before_each_write_keeps_the_full_age_limit"
-  - text: The README's phase E usage SHALL start with the report command on Pro, as the tick extracts and runs merger.py.
-    probe: "README.md phase E usage block; checked on Pro read-only (refs, files, venv, PATH tools)"
+  - text:
+      The plan's blocker line and --apply SHALL agree on a report 116 minutes old (both refuse, saying to run the report
+      now) and on one 114 minutes old (both accept).
+    probe: test_phase_e_flip.py::test_the_plan_and_apply_agree_on_a_report_near_its_age_limit
+  - text:
+      The re-read before each write SHALL judge the full 2-hour limit (a 114-minute report with the clock moving 4 minutes
+      mid-run flips).
+    probe: test_phase_e_flip.py::test_the_re_read_before_each_write_keeps_the_full_age_limit
+  - text:
+      Step 1 SHALL be scripts/localci/hand_report.sh, which runs the mirror's merger.py report with exactly the files the
+      tick extracts, in launchd's environment, and a report from it on Pro's journal SHALL reclassify the hosted-stale rows
+      as the live report does.
+    probe:
+      test_hand_report.py::test_the_hand_report_extracts_exactly_the_files_the_tick_extracts, ::test_the_hand_report_runs_the_mirrors_merger_report_with_the_ticks_files_in_launchds_environment;
+      a run on Pro into a scratch state dir
 consumer_map:
   - The operator's phase E plan and apply (scripts/localci/phase_e_flip.py), and the README's phase E runbook.
 lanes:
@@ -29,52 +40,108 @@ lanes:
     seat: claude-opus-5-5, a fresh read-only seat on the finished diff
 pii_scan: clean
 pii_scan_note: Branch-protection tooling, timestamps and a shell recipe. No client data.
-what_changed: |
-  scripts/localci/phase_e_flip.py: read_report's age blocker splits into "older than <limit> — run the report now on Pro (README:
-  phase E, step 1)" and "ahead of this host's clock"; run_flip's plan reads the report with max_age 2 h less APPLY_MARGIN, so the
-  plan's blocker line and --apply agree; the separate apply-time margin check is gone (the plan's read is the apply's); the
+what_changed:
+  'scripts/localci/phase_e_flip.py: read_report''s age blocker splits into "older than <limit> — run the report
+  now on Pro (README:
+
+  phase E, step 1)" and "ahead of this host''s clock"; run_flip''s plan reads the report with max_age 2 h less APPLY_MARGIN,
+  so the
+
+  plan''s blocker line and --apply agree; the separate apply-time margin check is gone (the plan''s read is the apply''s);
+  the
+
   per-write re-read (still_ready) keeps the full 2 h; the APPLY_MARGIN comment says "does not expire during a normal run".
-  scripts/localci/README.md: the phase E usage starts with step 1, the report command on Pro (code extracted from
-  refs/merger/base like the tick, the merger venv's python -I, Homebrew PATH), then the plan and the apply; the precondition
-  paragraph and W1-for-the-report state the shared limit and the full-limit re-read. Tests: the margin test asserts the plan's
+
+  scripts/localci/hand_report.sh (new): phase E step 1, the report the tick''s way — code from refs/merger/wrapper (else
+
+  refs/merger/base), the tick''s five files beside merger.py (runner.py included: the stale-verdict judge loads it), the merger
+
+  venv''s python -I, launchd''s environment (env -i HOME PATH), the extracted code removed on exit; test_hand_report.py keeps
+
+  its file list equal to the tick''s and runs it against a fake mirror. scripts/localci/README.md: the phase E usage starts
+  with
+
+  step 1 (the script), then the plan and the apply; the precondition
+
+  paragraph and W1-for-the-report state the shared limit and the full-limit re-read. Tests: the margin test asserts the plan''s
+
   blocker line matches the apply; a new test pins the re-read to the full limit; the age-message expectations follow the new
-  text. Mutants: pe-plan-margin-ignored, pe-recheck-uses-margin, pe-report-ahead-accepted; pe-report-age-unchecked repointed.
-proof: |
-  Tests and mutants on fixtures (fake gh); the README recipe checked on Pro read-only; a live read-only plan with Pro's current
+
+  text. The margin test is renamed test_the_plan_and_apply_agree_on_a_report_near_its_age_limit. Mutants: pe-plan-margin-ignored,
+  pe-recheck-uses-margin, pe-report-ahead-accepted; pe-report-age-unchecked repointed.
+
+  '
+proof:
+  "Tests and mutants on fixtures (fake gh); the README recipe checked on Pro read-only; a live read-only plan with Pro's
+  current
+
   report.json. Nothing was applied, no report was recomputed, nothing written to GitHub settings.
+
+  "
 bites:
   consumer: The operator's phase E plan (scripts/localci/phase_e_flip.py) and its README runbook.
-  observation: >-
-    Made before arming with this branch's code, read-only against live GitHub and Pro's report.json (generated
-    2026-10-09T22:48:19Z): the plan's blocker line reads "report generated 2026-10-09T22:48:19Z is older than 1:55:00 — run
-    the report now on Pro (README: phase E, step 1)"; rc 0, nothing written, the state directory never created.
+  observation:
+    "Made before arming with this branch's code: (1) the live read-only plan against GitHub and Pro's report.json
+    (generated 2026-10-09T22:48:19Z) reads 'older than 1:55:00 — run the report now on Pro (README: phase E, step 1)', rc
+    0, nothing written; (2) step 1 itself, hand_report.sh on Pro into a scratch state dir, produced a report with recorded_context_false_green
+    0 and both hosted-stale rows reclassified, where the old recipe produced 2 false FALSE_GREEN."
 ground:
   ts: "2026-10-10T02:02:05Z"
-  siblings: Worktree from origin/main 6151369650 (#8191's merge). The phase F executor is the lead's lane; merger.py untouched.
+  siblings: Worktree from origin/main 6151369650 (PR 8191's merge). The phase F executor is the lead's lane; merger.py untouched.
 spend:
-  adversarial_rounds: 1
-  wall_clock_hours: 0.6
+  adversarial_rounds: 2
+  wall_clock_hours: 1.5
 receipts:
-  - claim: "test_phase_e_flip.py: 154 passed."
-    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_phase_e_flip.py -q -p no:cacheprovider
+  - claim: "test_phase_e_flip.py and test_hand_report.py: 157 passed."
+    cmd:
+      PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_phase_e_flip.py scripts/localci/tests/test_hand_report.py
+      -q -p no:cacheprovider
     exit: 0
-    ts: "2026-10-10T02:12:00Z"
+    ts: "2026-10-10T03:14:00Z"
     seat: claude-opus-5-5 on M5
   - claim: "phase_e_mutants.py: 108/108 killed; survivors, errors, stale none."
     cmd: python3 scripts/localci/tests/mutants/phase_e_mutants.py
     exit: 0
     ts: "2026-10-10T02:13:00Z"
     seat: claude-opus-5-5 on M5
-  - claim: "The README recipe's ref, files, interpreter and tools exist on Pro (refs/merger/base:scripts/localci/{merger.py,hosted_compare.py}, venv python 3.11.11, gh/docker/git on the Homebrew PATH, a report subcommand)."
-    cmd: ssh pro 'git -C $STATE/repo.git cat-file -e ...; test -x $STATE/venv/bin/python; command -v gh docker git'
-    exit: 0
-    ts: "2026-10-10T02:14:00Z"
-    seat: claude-opus-5-5 on M5
-  - claim: "Live read-only plan with this branch's code: blocker line 'older than 1:55:00 — run the report now on Pro (README: phase E, step 1)'; rc 0; state directory never created."
+  - claim:
+      "Live read-only plan with this branch's code: blocker line 'older than 1:55:00 — run the report now on Pro (README:
+      phase E, step 1)'; rc 0; state directory never created."
     cmd: PYTHONPATH=. python3 scripts/localci/phase_e_flip.py --report <copy of Pro's report.json> --state-dir <scratch>
     exit: 0
     ts: "2026-10-10T02:16:00Z"
     seat: claude-opus-5-5 on M5
-dissent: []
-residuals:
-  - "The report recipe was checked for its parts on Pro, not run (it takes about 4 minutes and rewrites report.json, which the lead's lane owns)."
+  - claim:
+      "Guilt on test_hand_report.py: the old two-file list fails 3 of 3; without env -i, 2 of 3 fail; the cure passes 3
+      of 3."
+    cmd: sed the loop / the env -i in scripts/localci/hand_report.sh, run the tests, restore from a copy
+    exit: 0
+    ts: "2026-10-10T03:12:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim:
+      "On Pro, into scratch state dirs symlinking the real mirror, journal and venv (report.json, lease and install backups
+      left out): hand_report.sh (code 12 chars from refs/merger/wrapper) gave recorded_context_false_green 0, 2 rows reclassified
+      hosted-stale, HOSTED_STALE 73, compared 13 merges over 1.378 days, not READY, rc 0 in 366 s; the old two-file recipe beside
+      it gave recorded_context_false_green 2, 0 reclassified, HOSTED_STALE 0. The lead's report.json was untouched (mtime 2026-10-09T22:48Z);
+      the scratch dirs were removed."
+    cmd:
+      "ssh pro: bash /tmp/hand_report_fu.sh /tmp/localci-hand-report-proof-new; the old recipe into /tmp/localci-hand-report-proof-old;
+      python3 -I json read of both report.json"
+    exit: 0
+    ts: "2026-10-10T03:22:00Z"
+    seat: claude-opus-5-5 on M5
+dissent:
+  - seat: claude-opus-5-5 gate (19c1b807ba)
+    objection:
+      "MEDIUM: the README recipe extracted merger.py and hosted_compare.py only; merger.py report's stale-verdict
+      judge loads runner.py beside it, so a report built by the recipe would keep Pro's 2 recorded FALSE_GREEN (reclassified
+      hosted-stale only by that judge) and READY could never be true — and it would overwrite the lead's report.json with a
+      false alarm. LOWs: the tick reads refs/merger/wrapper first, not base; the recipe inherited the caller's environment;
+      the temp dir was never removed; no word on a refusing run."
+    status: CONFIRMED
+    resolution:
+      "The recipe became scripts/localci/hand_report.sh: the tick's ref order and its five files, launchd's environment,
+      the temp dir removed on exit, 'run it again' on refusing. test_hand_report.py pins the file list to the tick's (guilt:
+      the old two-file list fails 3 of 3) and the scrub (guilt: without env -i, 2 fail). Proof: a run on Pro into a scratch
+      state dir beside the old recipe's run (receipts)."
+residuals: []

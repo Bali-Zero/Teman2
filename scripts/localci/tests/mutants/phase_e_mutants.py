@@ -28,7 +28,7 @@ MUTANTS = {
     "pe-ready-not-required": ('if rep.get("phase_e_ready") is not True:', "if False:"),
     "pe-ready-truthy": ('if rep.get("phase_e_ready") is not True:', 'if not rep.get("phase_e_ready"):'),
     "pe-report-repo-unchecked": ('if rep.get("repo") != repo:', "if False:"),
-        "pe-report-age-unchecked": ("        elif age > max_age:", "        elif False:"),
+    "pe-report-age-unchecked": ("        elif age > max_age:", "        elif False:"),
     "pe-window-merges-unchecked": ("cm >= READY_MERGES", "cm >= 0"),
     "pe-window-days-unchecked": ("cd >= READY_DAYS", "cd >= 0"),
     "pe-window-false-green-unchecked": ("and all(type(x) is int and x == 0 for x in fgs)", "and True"),
