@@ -65,6 +65,7 @@ R_NAME = "an Indonesian proper name a record's English text (description, statut
 R_QUOTE = "an Indonesian term the English of a record's statute field quotes («…», “…”)"
 R_BASIS = "the record's own legal basis or note, written in English: its Indonesian words are the instrument's terms"
 R_OVERLAY = "the Indonesian a sentence of the record's curated English verdict quotes in parentheses (C6)"
+R_PROSE = "a sentence of the record's curated English verdict, drawn whole: its Indonesian terms are curated prose (ruling 1)"
 # Q16: the record's statute fields a View may draw — each value quoted under its label, or its translation drawn whole.
 # STATUTE_ROWS: the self-test's own value and another record's value of the same field, both Indonesian.
 STATUTE = (("per_skala", "persyaratan"), ("per_skala", "kewajiban"), ("per_skala", "scope_uraian"),
@@ -224,6 +225,10 @@ class Record:
             for m in re.finditer(r"\([^()]+\)", para):
                 if lexical(m.group()):
                     spans.append((re.compile(flex(m.group())), m.group(), R_OVERLAY, False, (re.compile(flex(para)), para)))
+            # Ruling 1 (curated prose stays, counted by reason): the rest of a sentence drawn whole — never one that
+            # carries the record's official title, which is drawn only under its label (ruling 3).
+            if english(para) and lexical(para) and not (self.title_re and self.title_re.search(para)):
+                spans.append((re.compile(flex(para)), para, R_PROSE, False, None))
         self.spans = spans
 
 def analyse(row, rec):
@@ -315,7 +320,9 @@ def selftest():
     b6 = ("Perpres 10/2021 Pasal 3(1)(d) (as amended by Perpres 49/2021): the residual category — «Bidang Usaha yang tidak"
           " termasuk dalam huruf a» — open to foreign capital")
     r7 = Record({"judul": "Aktivitas Vila"}, {}, {}, {"en": {"verdict": "**All scales**: Medium-High risk (Menengah Tinggi)"
-                " for Large-Scale PT PMA. NIB + Verified Standard Certificate required.\n\n**Zoning:** Green zone only."}})
+                " for Large-Scale PT PMA. NIB + Verified Standard Certificate required.\n\n**Zoning:** Green zone only.\n"
+                "- Risk: Menengah Rendah for the Mikro and Kecil scales, with the Sertifikat Standar issued automatically.\n"
+                "- The Aktivitas Vila code is open to the Mikro and Kecil scales of the market."}})
     r6 = Record({"judul": "Aktivitas Vila", "per_skala": [{"persyaratan": [v6]}], "pma_official_basis": b6}, {},
                 {"Wajib memiliki sertifikat dari Pemerintah Daerah": "Must hold a certificate (sertifikat) from the Pemerintah Daerah"})
     cases = [("Villa Rental\nOfficial title (Bahasa Indonesia)\nAktivitas Vila", 0, r),
@@ -372,7 +379,11 @@ def selftest():
               "yang tidak Pertanian Jagung\ntermasuk dalam huruf a» — open to foreign capital", 1, r6),
              # C6: the tier word a curated verdict sentence quotes in (…), inside that sentence only
              ("All scales: Medium-High risk (Menengah Tinggi) for Large-Scale PT PMA.", 0, r7),
-             ("Risk class (Menengah Tinggi)", 1, r7)]
+             ("Risk class (Menengah Tinggi)", 1, r7),
+             # ruling 1: a curated verdict sentence drawn whole; a piece of it, or one carrying the raw title, is not
+             ("Risk: Menengah Rendah for the Mikro and Kecil scales, with the Sertifikat Standar issued automatically.", 0, r7),
+             ("Risk: Menengah Rendah", 1, r7),
+             ("The Aktivitas Vila code is open to the Mikro and Kecil scales of the market.", 1, r7)]
     for (group, field), (own, other) in zip(STATUTE, STATUTE_ROWS):   # each statute field: its own value under the
         rec = {"judul": "Aktivitas Vila"}                               # label, and another's under the same label
         (rec.setdefault(group, [{}])[0] if group else rec)[field] = [own] if field in ("persyaratan", "kewajiban") else own
