@@ -3,7 +3,7 @@
   "pr_slug": "en1b-labelbook",
   "date": "2026-10-10",
   "purpose": "The after-set of design-loop PR en1b-labelbook: the 24 band renders pinned by digest and compared 1:1 with baseline-2026-10-09-before/manifest.json, plus the render set's narrow/, xxl/ and tall/ renders. The PNGs are not committed (the root .gitignore ignores *.png on purpose).",
-  "rendered_from": "the code commit 9c6dddaff1 of this PR; this manifest is docs-only and does not enter the app bundle, so the head renders the same bytes",
+  "rendered_from": "the code commit bf61458b43 of this PR (the last that touches Sources/); this manifest is docs-only and does not enter the app bundle, so the head renders the same bytes",
   "host": "Pro, Xcode 26.3, build-only worktree detached at the commit under proof",
   "build": "KBLI_BOOK_PDF_DIR=~/.local/share/nuzantara/kbli-navigator/book-pdfs ./build.sh --variant internal",
   "render": "OUT=<dir> Tools/design/render_set.sh (each file: --snapshot-band <band> --theme <theme> --lang <lang> --code <code> [flags] <file>)",
