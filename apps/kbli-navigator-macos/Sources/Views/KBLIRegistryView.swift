@@ -169,7 +169,7 @@ struct KBLIRegistryView: View {
     }
 
     private var matrix: some View {
-        ScaleMatrix(scales: kbli.perSkala, isID: isID, mode: .ledger, tr: { overlays.dataString($0, isID: isID) })
+        ScaleMatrix(scales: kbli.perSkala, isID: isID, mode: .ledger)
     }
 
     private var headsUp: some View { HeadsUpBlock(KBLIVerdict.headsUp(record: kbli, isID: isID)) }
@@ -256,14 +256,10 @@ struct KBLIRegistryView: View {
         return overlays.dataString(kbli.judul, isID: false)
     }
 
-    /// The secondary (italic) title = the OTHER language's name. In EN we show the Indonesian
-    /// `judul`; in ID we show the English overlay title, else the army-translated `judul`.
+    /// The secondary (italic) title in Indonesian = the English name: the English overlay title, else the
+    /// army-translated `judul`. (In English the line is `LabelBook.officialTitle`, under its label.)
     private var secondaryTitle: String {
-        if isID {
-            return overlays.overlay(kbli.kode, lang: "en")?.title ?? overlays.dataString(kbli.judul, isID: false)
-        } else {
-            return kbli.judul   // the Indonesian name (always present in the dataset)
-        }
+        OverlayStore.shared.overlay(kbli.kode, lang: "en")?.title ?? OverlayStore.shared.dataString(kbli.judul, isID: false)
     }
 
     // MARK: 2 · VERDICT PILL STRIP — the 2-second scan
@@ -328,10 +324,7 @@ struct KBLIRegistryView: View {
     /// in Indonesian the rule's sentence is QUOTED and labelled as such instead of being blended in.
     /// The record's own `l4_bali.reason`, translated where `kbli-reason-i18n` has it and QUOTED
     /// with a label where it does not — never blended untranslated into an Indonesian card.
-    private func recordReason(_ r: String) -> String {
-        let shown = overlays.reasonString(r, isID: isID)
-        return (isID && shown == r) ? "Kutipan catatan (EN): \(r)" : shown
-    }
+    private func recordReason(_ r: String) -> String { OverlayStore.shared.displayReason(r, isID: isID) }
 
     private func quotedRuleReason(_ r: String?) -> String? {
         guard let r, r.isEmpty == false else { return nil }
@@ -513,7 +506,7 @@ struct KBLIRegistryView: View {
     // `?? "Menengah Rendah"` fallback the other two had already dropped: 217 records carry no
     // `per_skala` at all, and the Risk Level row asserted a government tier for every one of them
     // while the Risk Class cell on the same card honestly said "—". One reader, one answer.
-    private func riskLabel(_ r: String) -> String { Theme.RiskTier.label(r, isID: isID) }
+    private func riskLabel(_ r: String) -> String { LabelBook.riskTier(r, isID: isID) }
 
     /// The rule's risk label (highest Besar class, else highest across scales), read through
     /// `KBLIVerdict` — the SAME source `riskClassFactValue`/`riskClassFactColor` read, so the risk
@@ -665,9 +658,10 @@ struct KBLIRegistryView: View {
         // panel's own scopeKey collapse — 90 dataset codes have N scopes all named the same).
         let scopeN = Set(kbli.perSkala.map { s -> String in
             let u = (s.scopeUraian ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            return u.isEmpty ? "idx:\(s.scopeIndex ?? 0)" : "u:\(u.lowercased())"
+            return u.isEmpty ? "idx:\(s.scopeIndex ?? 0)" : "u:" + u.lowercased()   // an identity, never drawn
         }).count
-        let scaleN = Set(kbli.perSkala.flatMap { $0.skalaUsaha }).count
+        let scales = Set(kbli.perSkala.flatMap { $0.skalaUsaha })
+        let scaleN = scales.count
         let label = scopeN > 1
             ? "PP 28/2025 · \(scopeN) \(isID ? "RUANG LINGKUP" : "SCOPES") × \(scaleN) \(isID ? "SKALA" : "SCALES")"
             : "PP 28/2025 · \(scaleN) \(isID ? "SKALA" : "SCALES")"
@@ -679,8 +673,7 @@ struct KBLIRegistryView: View {
                                 : (isID ? "Risiko, proses & kewajiban PER SKALA (Mikro→Besar)"
                                         : "Risk, processing & duties PER SCALE (Micro→Large)"),
                            defaultOpen: true) {   // primary info — every scale matters, not just PMA/Besar
-            PP28ScalePanel(scales: kbli.perSkala, isID: isID, riskLabel: riskLabel,
-                           tr: { overlays.dataString($0, isID: isID) })
+            PP28ScalePanel(scales: kbli.perSkala, isID: isID)
         }
     }
 
@@ -1087,9 +1080,9 @@ struct KBLIRegistryView: View {
         // <judul-ID> …"), which is macaronic in the EN card. The template uses the translated title,
         // so EN is fully English and ID fully Indonesian, with no invented regulatory content.
         if isID {
-            return "Tertarik dengan \(kbli.judul) (\(kbli.kode))? Mari saya bantu menelusurinya."
+            return "Tertarik dengan \(OverlayStore.shared.dataString(kbli.judul, isID: true)) (\(kbli.kode))? Mari saya bantu menelusurinya."
         }
-        return "Looking into \(overlays.dataString(kbli.judul, isID: false)) (\(kbli.kode))? Let me walk you through it."
+        return "Looking into \(OverlayStore.shared.dataString(kbli.judul, isID: false)) (\(kbli.kode))? Let me walk you through it."
     }
 }
 
@@ -1287,10 +1280,6 @@ struct FlowPills: View {
 struct PP28ScalePanel: View {
     let scales: [PerSkala]
     let isID: Bool
-    let riskLabel: (String) -> String
-    /// Translate a dataset (Indonesian) string to the current language (EN → English, ID → unchanged).
-    /// Bound to OverlayStore.dataString so scope names / obligations / requirements aren't macaronic.
-    var tr: (String) -> String = { $0 }
     @State private var matrixSel: Int? = nil // selected cell = index into `scales` (matrix path)
 
     static let scaleOrder = ["Mikro", "Kecil", "Menengah", "Besar"]
@@ -1333,7 +1322,7 @@ struct PP28ScalePanel: View {
     /// else the raw index (so genuinely-unlabelled scopes stay distinct).
     private func scopeKey(_ s: PerSkala) -> String {
         let u = (s.scopeUraian ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        return u.isEmpty ? "idx:\(s.scopeIndex ?? 0)" : "u:\(u.lowercased())"
+        return u.isEmpty ? "idx:\(s.scopeIndex ?? 0)" : "u:" + u.lowercased()   // an identity, never drawn
     }
     /// First-seen ordered list of DISTINCT scope keys (post-collapse). This is the count the
     /// card shows and the rows the matrix/list render.
@@ -1365,7 +1354,7 @@ struct PP28ScalePanel: View {
             } else {
                 // D1: the top grid's risk × scale matrix; a chip selects the cell whose duties follow.
                 // Six or more scopes: the matrix's filterable list, each scope's detail on expand.
-                ScaleMatrix(scales: scales, isID: isID, mode: .ledger, tr: tr, selection: $matrixSel,
+                ScaleMatrix(scales: scales, isID: isID, mode: .ledger, selection: $matrixSel,
                             expanded: { AnyView(cellDetail($0)) })
                 if scopeIndices.count < ScaleMatrix.listFrom, let mi = matrixSel ?? defaultCell, mi < scales.count {
                     cellDetail(scales[mi])
@@ -1386,9 +1375,9 @@ struct PP28ScalePanel: View {
     private func cellDetail(_ s: PerSkala) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Text(s.skalaUsaha.map { Self.scaleLabel($0, isID: isID) }.joined(separator: "/")).font(Theme.scalable(12, weight: .heavy, design: .monospaced)).foregroundStyle(Theme.white)
+                Text(LabelBook.scales(s.skalaUsaha, isID: isID)).font(Theme.scalable(12, weight: .heavy, design: .monospaced)).foregroundStyle(Theme.white)
                 if let risk = s.kategoriRisiko {
-                    Text(riskLabel(risk)).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(Theme.riskChip(risk).fg)
+                    Text(LabelBook.riskTier(risk, isID: isID)).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(Theme.riskChip(risk).fg)
                         .padding(.horizontal, 8).padding(.vertical, 3)
                         .background(Theme.riskChip(risk).bg, in: Capsule())
                         .overlay(Capsule().strokeBorder(Theme.riskChip(risk).border ?? .clear, lineWidth: 1))
@@ -1410,21 +1399,21 @@ struct PP28ScalePanel: View {
                 }
             }
             if let su = s.scopeUraian, !su.isEmpty {
-                if LabelBook.isOriginal(su, drawn: tr(su), isID: isID) { OriginalLabel() }
-                Text(tr(su)).font(Theme.scalable(11)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                if LabelBook.isOriginal(su, drawn: LabelBook.data(su, isID: isID), isID: isID) { OriginalLabel() }
+                Text(LabelBook.data(su, isID: isID)).font(Theme.scalable(11)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
             }
             // De-duplicate then translate to the display language (EN→English, ID→unchanged).
             // (e.g. the OJK reporting line repeated twice — a regulator reads it as sloppy.)
             // An item with no English source is drawn verbatim under its label (Q12 ruling 4).
             let duties = Self.dedupKeepingOrder(s.kewajiban.map(Self.stripHTML).filter { !$0.isEmpty })
             if !duties.isEmpty {
-                scaleList(title: isID ? "KEWAJIBAN PASCA-IZIN" : "POST-LICENSE OBLIGATIONS", items: duties.map(tr),
-                          originals: Set(duties.filter { LabelBook.isOriginal($0, drawn: tr($0), isID: isID) }), tint: Theme.yellow)
+                scaleList(title: isID ? "KEWAJIBAN PASCA-IZIN" : "POST-LICENSE OBLIGATIONS", items: duties.map { LabelBook.data($0, isID: isID) },
+                          originals: Set(duties.filter { LabelBook.isOriginal($0, drawn: LabelBook.data($0, isID: isID), isID: isID) }), tint: Theme.yellow)
             }
             let reqs = Self.dedupKeepingOrder(s.persyaratan.map(Self.stripHTML).filter { !$0.isEmpty })
             if !reqs.isEmpty {
-                scaleList(title: isID ? "PERSYARATAN" : "REQUIREMENTS", items: reqs.map(tr),
-                          originals: Set(reqs.filter { LabelBook.isOriginal($0, drawn: tr($0), isID: isID) }), tint: Theme.statutory)
+                scaleList(title: isID ? "PERSYARATAN" : "REQUIREMENTS", items: reqs.map { LabelBook.data($0, isID: isID) },
+                          originals: Set(reqs.filter { LabelBook.isOriginal($0, drawn: LabelBook.data($0, isID: isID), isID: isID) }), tint: Theme.statutory)
             }
         }
         .padding(.top, 4)

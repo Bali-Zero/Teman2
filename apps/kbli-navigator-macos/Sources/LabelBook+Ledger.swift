@@ -95,6 +95,17 @@ extension LabelBook {
                     : "PT PMDN / CV / sole proprietorship (local, WNI) — notary deed, AHU")
     }
 
+    /// A dataset string the ledger draws (a scope title, an obligation, a requirement) in the reader's language: the
+    /// one `OverlayStore.dataString` table, curated English or the string as written (then under `OriginalLabel`).
+    static func data(_ raw: String, isID: Bool) -> String { OverlayStore.shared.dataString(raw, isID: isID) }
+
+    /// A row's scales, "Micro/Small": `scale` per name, in the row's order.
+    static func scales(_ raw: [String], isID: Bool) -> String { raw.map { scale($0, isID: isID) }.joined(separator: "/") }
+
+    /// A risk row's tier on the ledger's chips: its full name ("Medium-Low Risk") and the matrix's letters ("MR").
+    static func riskTier(_ raw: String, isID: Bool) -> String { Theme.RiskTier.label(raw, isID: isID) }
+    static func riskAbbr(_ raw: String?, isID: Bool) -> String { Theme.RiskTier.abbr(raw, isID: isID) }
+
     /// The roadmap's step duration, a closed set (Q17, exact match): its one Indonesian value, "Otomatis", is a
     /// `jangka_waktu` word and reads as `term` draws it; "1–2w", "post-license" and the rest stay as written.
     static func roadmapDuration(_ raw: String, isID: Bool) -> String {
