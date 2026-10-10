@@ -1,0 +1,107 @@
+brief_ref: evidence/brief.yml
+seat_override: >-
+  Dispatched by the imperator: mission kbli-nav-design-loop, Track W, lot W0d-3a (BLUE), ruling
+  Q21's first lot. The Dux (w2-dux-3) built and ran every command. It does not self-sign; the
+  imperator commissions a fresh Opus gate.
+plan_ref: >-
+  ~/BATTAGLIA-20261008/DYNAMIC-WORKFLOW-kbli-nav-design/Z-DECISIONI.md Q21; the #8228 gate comment
+  ("Notes for W0d-3", point 6, the CI budget) and W0d-3-BRIEF-NOTES.md point 4; the contract
+  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md, new section 9.
+lanes:
+  - lane: kbli-r19-w0d3a-1010
+    role: build
+    seat: "claude-opus-5-5 (Dux)"
+pii_scan: clean
+pii_scan_note: "Census dumps, verdict texts and mutant outputs hold public page labels, colours, CSS paths and route paths only. No client data, no external seat."
+provenance: >-
+  Fresh worktree from origin/main eeaef24d68. The uncommitted W0d-3 work of w2-dux-2 (+893/-75)
+  was protected first as a local commit (875957b0bb on agent/air-m5/mouth/kbli-r19-w0d3-1010, not
+  pushed): it carries W0d-3b's content and no sharding, so this lot was built new rather than
+  carved from it. The instrument mutants ran in this worktree, each restored before the next, and
+  the census and workflow are byte-identical to HEAD afterwards.
+diff:
+  net_lines: |
+    About 471 net beyond evidence:
+      - census script +303 -161, of which about 128 lines are the capture loop moved into
+        capture_pages() and the walk loops re-indented (+176 -34 ignoring whitespace);
+      - tests +208;
+      - workflow +78 -17;
+      - contract +60 (section 9).
+    No fixture changes. No apps/mouth/src file.
+  behaviour_change: >-
+    The census runs the scenarios of one list, in the same order as before; `--part` runs one
+    part's. Its first printed line is now `scenarios-off-manifest: S`, and every other line is
+    unchanged. In CI the single wrapper-census-states job becomes four wrapper-census-part jobs
+    and an aggregate that keeps the name. The aggregate asserts the four lines asserted before,
+    plus S 0, and fails on a red part. The browser guilt and innocence tests move into the
+    explorer part.
+receipts:
+  - claim: "The offline suite passes: the partition, the byte-for-byte replay of the parts, and every guilt and innocence row of section 9."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'"
+    result: "142 passed, 53 deselected (at 05f1e61c6f, with the colour-tie and route-wait rows)"
+    exit: 0
+    ts: "2026-10-10T15:07:19Z"
+    seat: claude-opus-5-5
+  - claim: "The whole suite, browser rows included, passes on M5 through walk_states() and walk_opened() over the one list."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider"
+    result: "193 passed in 143.12s (at 9db02cddc7; the two fixes after it add offline rows and change no browser path)"
+    exit: 0
+    ts: "2026-10-10T14:27:41Z"
+    seat: claude-opus-5-5
+  - claim: "The armed apps/mouth test still reads the probe, pages and states through --export."
+    cmd: "cd apps/mouth && npm test -- r19-wrapper --run --reporter=dot"
+    result: "Test Files 1 passed; Tests 5 passed, 1 skipped (96.62s)"
+    exit: 0
+    ts: "2026-10-10T14:23:44Z"
+    seat: claude-opus-5-5
+  - claim: "Every instrument mutation fails the suite: 14 on the census, 5 on the workflow."
+    cmd: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3a-1010-9508fe8b/instrument_mutants.py (instrument-mutants.txt)"
+    result: "19 of 19 killed, in a detached scratch worktree at 05f1e61c6f (removed after, git status clean)"
+    exit: 0
+    ts: "2026-10-10T15:03:59Z"
+    seat: claude-opus-5-5
+  - claim: "The fence: no file under apps/mouth/src."
+    cmd: "git diff --name-only origin/main...HEAD | grep -c '^apps/mouth/src'"
+    result: "0"
+    exit: 1
+    ts: "2026-10-10T14:25:18Z"
+    seat: claude-opus-5-5
+  - claim: "CI, sharded, on d8c22d7cc6: four parts and the aggregate green; the aggregate prints scenarios-off-manifest 0 and passes its five asserts."
+    cmd: "gh workflow run r19-wrapper-census-tests.yml --ref agent/air-m5/mouth/kbli-r19-w0d3a-1010 (run 38059717705; aggregate job 114238278027)"
+    result: "success, 14:28:12Z-14:43:47Z (15m35s). phase-seconds: rest capture 729, walk 80; kbli opened 691; explorer opened 55; shared shared 349. 458 lines: S 0; captures 30 ok; 0 / 128 / 0 / 51; G 437; opened-surfaces 25 ok, 0 failed; P 10; K 138; R 0; N 0; D 0; M 677."
+    exit: 0
+    ts: "2026-10-10T14:43:47Z"
+    seat: claude-opus-5-5
+  - claim: "CI, sharded, on b2d0149b1c (the colour-tie fix): the aggregate prints the same 458 lines as on d8c22d7cc6."
+    cmd: "gh workflow run r19-wrapper-census-tests.yml --ref agent/air-m5/mouth/kbli-r19-w0d3a-1010 (run 38061122903; aggregate job 114242196901)"
+    result: "success, 14:49:34Z-15:05:24Z; cmp with run 38059717705's aggregate: identical. On d8c22d7cc6 the single-job dispatch (run 38059723819) replayed to the same 458 lines (aggregate job 114240730095), and its live print (job 114235340272) differed only in the order of 73 tied colour lines."
+    exit: 0
+    ts: "2026-10-10T15:05:24Z"
+    seat: claude-opus-5-5
+  - claim: "M5, the four parts one after another on port 3521, judged together: byte-identical to the replay of the committed fixture, W0d-2''s M5 full run."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --part <rest|kbli|explorer|shared> --json <part>.jsonl; cat the four; --replay; cmp with --replay of the fixture under a parts header"
+    result: "458 lines, identical; S 0, captures 30 ok, G 438, opened 25 ok, K 140, R 0, N 0, D 0, M 680. phase-seconds: rest capture 678, walk 73; kbli opened 660; explorer opened 58; shared shared 313 (the rerun after the route-wait fix)."
+    exit: 0
+    ts: "2026-10-10T15:06:54Z"
+    seat: claude-opus-5-5
+dissent:
+  - seat: claude-opus-5-5
+    objection: "On M5 the first run of the shared part failed its first walk: net::ERR_CONNECTION_REFUSED at /v2. The part loads no page of PAGES, so it waited for nothing and met the dev server before it listened. The aggregate said so (shared-component-drift INCOMPLETE). CI's slower browser start had hidden it."
+    status: CONFIRMED
+    resolution: "routes_of(): a part waits for every route its scenarios load (05f1e61c6f). The full run now also waits for the six shared routes. A row checks each part's routes, and the mutant that waits for pages only fails it. The rerun of the shared part on M5 is clean, and the four-part aggregate equals the fixture."
+  - seat: claude-opus-5-5
+    objection: "Against W0d-2''s single-job CI print (run 38041731589), the sharded aggregate holds the same 457 lines plus S, but 73 of them sit elsewhere: all colour lines. A live census keeps its colours in the order it met them, a dump sorts them by hex, and the outside-colour lines were sorted by count alone, so ties kept either order."
+    status: CONFIRMED
+    resolution: "Ties sort by hex (ed5ab177e9), the order a replay already printed; a row reverses the colours' order and requires the same verdict, and the mutant that sorts by count alone fails it. The second CI pair compares the live single job with the aggregate on that head."
+  - seat: claude-opus-5-5
+    objection: "A missing part only lowers the counts: with `kbli` absent, opened-surfaces reads 7 ok, 0 failed and the ground counts fall, with no INCOMPLETE anywhere. Comparing what arrived with what each part claims would not see it either, because the absent part claims nothing."
+    status: CONFIRMED
+    resolution: "The aggregate checks what it received against the whole list, not against the parts that arrived. Each scenario no part reported is entered as failed, so every count it feeds reads INCOMPLETE. The rows: a missing part (each of the four), no dump at all, and a dropped scenario of each kind."
+  - seat: claude-opus-5-5
+    objection: "Concatenating the parts puts kbli's opened walks before explorer's. A full run interleaves them, explorer's four scenarios sitting between sector-drawer and the two mobile navs, and the first-seen examples of the ground lines depend on that order."
+    status: CONFIRMED
+    resolution: "Every entry is put back at its index in the one list before the census is judged. The byte-for-byte test concatenates the parts in two different orders; the no-reorder mutant fails it."
+  - seat: claude-opus-5-5
+    objection: "Filtering the existing nested loops by part would let a loop and the list drift apart. A scenario the loop runs but the list lacks would be silently dropped from every part."
+    status: CONFIRMED
+    resolution: "live(), capture_pages(), walk_states() and walk_opened() iterate the list itself, so a full run and the parts run the same scenarios by construction. A scenario a dump reports but the list lacks prints `unexpected:`."
