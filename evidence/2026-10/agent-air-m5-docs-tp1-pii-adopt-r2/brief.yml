@@ -13,11 +13,11 @@ objective: >-
 acceptance:
   A1:
     text: >-
-      The spec adopts both scopes (threat-model items 6 and 7) and records the decision line with date, decider, delegation and reversibility; the declared-limits list and the vocabulary table lose the seven converted rows.
+      The spec adopts both scopes fail-closed for every shape a declared grammar recognises (items 6 and 7), records the decision line (item 8), gives PAN and IBAN one entity grammar in National IDs with a closed label list and its remainder, and makes personal data no grammar recognises a declared limit (lim_01, rem_pii_other_label) with a named mitigation.
     probe: >-
       python3 -m pytest -q -p no:cacheprovider scripts/tp1max/test_screen_corpus.py
   A2:
     text: >-
-      The seven rows (lim_pan, lim_iban, rem_pii_other and its four witnesses) are asserted guilt rows without limit: true, the test pins 21 limits and 354 rows, and three innocence rows (Luhn-failing card, IBAN with a bad checksum, placeholder date of birth) exist; re-marking an adopted row as a limit or deleting an innocence row turns the test red.
+      The corpus asserts the adopted rows and their innocence rows (ISBN, Luhn-failing card, bad-checksum IBAN, contiguous timestamp, placeholder birth date, technical address labels); the test computes Luhn, issuer prefix and mod-97 from every PAN/IBAN row, pins the decision line and grammar sentences, and pins 371 rows and 23 limits.
     probe: >-
-      the corpus test, plus the two mutants run by the builder (both red)
+      python3 -m pytest -q scripts/tp1max/test_screen_corpus.py, plus mutants: a PAN guilt row made Luhn-invalid, the innocence card made valid, a wrong IBAN checksum, the ISBN row deleted or given a Visa prefix, the decision line deleted, an adopted row or a remainder re-marked, a remainder's table line deleted — each red.
