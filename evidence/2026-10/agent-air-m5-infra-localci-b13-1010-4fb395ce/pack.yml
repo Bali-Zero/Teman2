@@ -51,16 +51,16 @@ bites:
   consumer: The merger tick's prune on Pro (the builder_prune object of the prune line in the journal) and the organ's failed list.
   observation: >-
     Already shown by the live call (Pro, 2026-10-10 ~04:05Z): one `-af --max-used-space 4GB` printed Total: 12.53GB where the old flag
-    freed 0 B. Owed after merge: the first prune line on Pro carries builder_prune.flag "max-used-space", freed_gb > 0 or a du_gb
-    block, and no deprecated_flag; if buildx ever deprecates the flag again the line says deprecated_flag true and failed names
-    builder_prune.
+    freed 0 B. Owed after merge, all three together: the first prune line on Pro carries builder_prune.flag "max-used-space",
+    deprecated_flag false, and a non-null du_gb (a null du_gb there is the first sign the parser does not match Pro's real `buildx du`
+    text). freed_gb may legitimately be 0 on a quiet tick and is not part of the proof.
 ground:
   ts: "2026-10-10T03:14:51Z"
   siblings: >-
     Worktree from origin/main f75a4fee92. Other lanes on scripts/localci touch merger.py and runner.py; this one touches prune.py and its
     tests, README and spec only.
 spend:
-  adversarial_rounds: 0
+  adversarial_rounds: 2
   wall_clock_hours: 0.9
 receipts:
   - claim: "test_prune.py: 116 passed (34 b13 cases among them)."
@@ -83,13 +83,23 @@ receipts:
     exit: 0
     ts: "2026-10-10T04:33:38Z"
     seat: claude-sonnet-5-5 on M5
-dissent: []
+dissent:
+  - seat: claude-opus-5-5 independent gate (round 1)
+    objection: >-
+      NO-GO on 5d825fdb96: the size-based ineffective rule compares a cache count that includes shared records and would mark the
+      prune failed on every tick.
+    status: CONFIRMED
+    resolution: >-
+      The lead's live run on Pro refuted the gate's proposed private-bytes rule too (12.53 GB freed, Private 10.16 -> 9.615 GB, still
+      above the 4 GB cap): every size rule was removed, and the prune now fails only on a deprecation notice that names the flag we
+      passed. Gate round 2 and a fresh gate CONFIRMED 67e49b79b1.
 residuals:
   - "Live proof on Pro is owed to the first prune after merge: the Bites observation above."
   - "freed_gb is buildx's record-size sum, not disk bytes: live, 12.53 GB 'freed' against about 2-3 GB of VM data disk (39G to 37G used)."
   - "BuildKit's cap accounting is opaque: after --max-used-space 4GB, 10.29 GB stayed reclaimable on Pro. du_gb records it; no rule judges it, so a cache above budget is never a failure by itself."
   - "An old daemon (BuildKit before 0.17) ignores max-used-space and -a then empties the cache: a rebuild cost, never a wrong verdict."
-  - "A deprecation notice reworded so that it no longer says deprecated or has been changed to, or no longer names the flag, is not caught."
+  - "A deprecation notice reworded so that it no longer says deprecated or has been changed to, or no longer names the flag, is not caught; nor is a flag re-meant in place without pflag's MarkDeprecated, or by the daemon."
+  - "An OLD buildx client (help lists only --keep-storage) against a NEW daemon (BuildKit 0.17 or later) sends keep-storage, which the daemon may read as reserved-space: the same no-op as B13, with no notice. Not live on Pro (client 0.34.1)."
 appetite_exceeded: none
 plan_ref: >-
   Mandate LOCALCI-SOVEREIGN step B13, from the lead message of 2026-10-10, from origin/main f75a4fee92. Nothing is pushed.
