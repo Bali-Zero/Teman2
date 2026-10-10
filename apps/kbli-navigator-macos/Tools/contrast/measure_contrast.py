@@ -75,9 +75,9 @@ PAIRS = [
     ("accent/inkLift", "accent", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:137/2027 accent on card"),
     ("zantara/antracite", "zantara", ("solid","antracite"), 4.5, "ChatView.swift:48/105/117 zantara label on window"),
     ("zantara/ink", "zantara", ("solid","ink"), 4.5, "KBLIDetailRichView.swift:358/366 zantara on ink"),
-    ("statutory/inkLift", "statutory", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:992 statutory pill text"),
-    ("statutory/ink", "statutory", ("solid","ink"), 4.5, "KBLIRegistryView.swift:1567/1601 statutory on ink"),
-    ("yellow/antracite", "yellow", ("solid","antracite"), 4.5, "KBLIRegistryView.swift:481/893 yellow on window"),
+    ("statutory/inkLift", "statutory", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:979 statutory pill text"),
+    ("statutory/ink", "statutory", ("solid","ink"), 4.5, "KBLIRegistryView.swift:1554/1588 statutory on ink"),
+    ("yellow/antracite", "yellow", ("solid","antracite"), 4.5, "KBLIRegistryView.swift:481/880 yellow on window"),
     ("yellow/inkLift", "yellow", ("solid","inkLift"), 4.5, "KBLIDetailView.swift:92 gold-tier label on card"),
     ("white/ink@0.6-on-antracite", "white", ("composite","ink",0.6,"antracite"), 4.5, "ChatView.swift:61/180 header/footer strip"),
     ("faint/ink@0.6-on-antracite", "faint", ("composite","ink",0.6,"antracite"), 4.5, "ChatView.swift:53 on header strip"),
@@ -112,8 +112,8 @@ PAIRS = [
 RISK_CHIP = [("riskInk", "riskFillLow", "rank 1"), ("riskInk", "riskFillMediumLow", "rank 2"),
              ("riskInk", "riskFillMediumHigh", "rank 3"), ("riskInkOnHigh", "riskFillHigh", "rank 4"),
              ("muted", "ink", "unranked")]
-SITES = ["KBLIRegistryView.swift:1541 scopeRow mini risk chip", "KBLIRegistryView.swift:1712 cellDetail risk chip",
-         "KBLIRegistryView.swift:1648 riskMatrix cell", "KBLIRegistryView.swift:1666 riskMatrix legend chip",
+SITES = ["KBLIRegistryView.swift:1528 scopeRow mini risk chip", "KBLIRegistryView.swift:1699 cellDetail risk chip",
+         "KBLIRegistryView.swift:1635 riskMatrix cell", "KBLIRegistryView.swift:1653 riskMatrix legend chip",
          "KBLIRegistryTable.swift:110 RiskCell, the registry table's OSS-risk column"]
 SITE_PAIRS = [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5, "%s — Theme.riskChip %s" % (site, tier))
               for site in SITES for fg, bg, tier in RISK_CHIP]
