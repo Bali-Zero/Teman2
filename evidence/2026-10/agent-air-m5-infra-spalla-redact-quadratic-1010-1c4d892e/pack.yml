@@ -30,14 +30,14 @@ consumer_map:
 pii_scan: clean
 pii_scan_note: A shell library line and a test with generated filler text. No client data was read or written.
 plan_ref:
-  Branch agent/air-m5/infra/spalla-redact-quadratic-1010 from origin/main; four commits (4b14c0fa5a the linear check,
+  Branch agent/air-m5/infra/spalla-redact-quadratic-1010 from origin/main; code commits (4b14c0fa5a the linear check,
   cd9fa5d3d8 byte-wise in the C locale, 189f5d0731 caller attributes and the hardened probe, f036f7d571 the locale proven
   by behaviour); a council (Codex, Kimi) each round and fresh Opus gates.
 lanes:
   - lane: spalla-redact-build
     role: build
     seat:
-      claude-opus-5-5 (interactive session on M5; all four commits; the first pack draft by a claude-sonnet subagent of
+      claude-opus-5-5 (interactive session on M5; every code commit; the first pack draft by a claude-sonnet subagent of
       that session)
   - lane: spalla-redact-gate
     role: review
