@@ -21,12 +21,12 @@ provenance: >-
   the census and workflow are byte-identical to HEAD afterwards.
 diff:
   net_lines: |
-    About 455 net beyond evidence:
-      - census script +298 -161, of which about 128 lines are the capture loop moved into
-        capture_pages() and the walk loops re-indented (+170 -33 ignoring whitespace);
-      - tests +198;
+    About 471 net beyond evidence:
+      - census script +303 -161, of which about 128 lines are the capture loop moved into
+        capture_pages() and the walk loops re-indented (+176 -34 ignoring whitespace);
+      - tests +208;
       - workflow +78 -17;
-      - contract +59 (section 9).
+      - contract +60 (section 9).
     No fixture changes. No apps/mouth/src file.
   behaviour_change: >-
     The census runs the scenarios of one list, in the same order as before; `--part` runs one
@@ -38,13 +38,13 @@ diff:
 receipts:
   - claim: "The offline suite passes: the partition, the byte-for-byte replay of the parts, and every guilt and innocence row of section 9."
     cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'"
-    result: "141 passed, 53 deselected (at ed5ab177e9, with the colour-tie row)"
+    result: "142 passed, 53 deselected (at 05f1e61c6f, with the colour-tie and route-wait rows)"
     exit: 0
-    ts: "2026-10-10T14:48:21Z"
+    ts: "2026-10-10T15:07:19Z"
     seat: claude-opus-5-5
   - claim: "The whole suite, browser rows included, passes on M5 through walk_states() and walk_opened() over the one list."
     cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider"
-    result: "193 passed in 143.12s (at 9db02cddc7; ed5ab177e9 adds one offline row and changes no browser path)"
+    result: "193 passed in 143.12s (at 9db02cddc7; the two fixes after it add offline rows and change no browser path)"
     exit: 0
     ts: "2026-10-10T14:27:41Z"
     seat: claude-opus-5-5
@@ -54,11 +54,11 @@ receipts:
     exit: 0
     ts: "2026-10-10T14:23:44Z"
     seat: claude-opus-5-5
-  - claim: "Every instrument mutation fails the suite: 13 on the census, 5 on the workflow."
+  - claim: "Every instrument mutation fails the suite: 14 on the census, 5 on the workflow."
     cmd: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3a-1010-9508fe8b/instrument_mutants.py (instrument-mutants.txt)"
-    result: "18 of 18 killed, in a detached scratch worktree at ed5ab177e9 (removed after, git status clean)"
+    result: "19 of 19 killed, in a detached scratch worktree at 05f1e61c6f (removed after, git status clean)"
     exit: 0
-    ts: "2026-10-10T14:47:58Z"
+    ts: "2026-10-10T15:03:59Z"
     seat: claude-opus-5-5
   - claim: "The fence: no file under apps/mouth/src."
     cmd: "git diff --name-only origin/main...HEAD | grep -c '^apps/mouth/src'"
@@ -72,7 +72,23 @@ receipts:
     exit: 0
     ts: "2026-10-10T14:43:47Z"
     seat: claude-opus-5-5
+  - claim: "CI, sharded, on b2d0149b1c (the colour-tie fix): the aggregate prints the same 458 lines as on d8c22d7cc6."
+    cmd: "gh workflow run r19-wrapper-census-tests.yml --ref agent/air-m5/mouth/kbli-r19-w0d3a-1010 (run 38061122903; aggregate job 114242196901)"
+    result: "success, 14:49:34Z-15:05:24Z; cmp with run 38059717705's aggregate: identical. On d8c22d7cc6 the single-job dispatch (run 38059723819) replayed to the same 458 lines (aggregate job 114240730095), and its live print (job 114235340272) differed only in the order of 73 tied colour lines."
+    exit: 0
+    ts: "2026-10-10T15:05:24Z"
+    seat: claude-opus-5-5
+  - claim: "M5, the four parts one after another on port 3521, judged together: byte-identical to the replay of the committed fixture, W0d-2''s M5 full run."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --part <rest|kbli|explorer|shared> --json <part>.jsonl; cat the four; --replay; cmp with --replay of the fixture under a parts header"
+    result: "458 lines, identical; S 0, captures 30 ok, G 438, opened 25 ok, K 140, R 0, N 0, D 0, M 680. phase-seconds: rest capture 678, walk 73; kbli opened 660; explorer opened 58; shared shared 313 (the rerun after the route-wait fix)."
+    exit: 0
+    ts: "2026-10-10T15:06:54Z"
+    seat: claude-opus-5-5
 dissent:
+  - seat: claude-opus-5-5
+    objection: "On M5 the first run of the shared part failed its first walk: net::ERR_CONNECTION_REFUSED at /v2. The part loads no page of PAGES, so it waited for nothing and met the dev server before it listened. The aggregate said so (shared-component-drift INCOMPLETE). CI's slower browser start had hidden it."
+    status: CONFIRMED
+    resolution: "routes_of(): a part waits for every route its scenarios load (05f1e61c6f). The full run now also waits for the six shared routes. A row checks each part's routes, and the mutant that waits for pages only fails it. The rerun of the shared part on M5 is clean, and the four-part aggregate equals the fixture."
   - seat: claude-opus-5-5
     objection: "Against W0d-2''s single-job CI print (run 38041731589), the sharded aggregate holds the same 457 lines plus S, but 73 of them sit elsewhere: all colour lines. A live census keeps its colours in the order it met them, a dump sorts them by hex, and the outside-colour lines were sorted by count alone, so ties kept either order."
     status: CONFIRMED
