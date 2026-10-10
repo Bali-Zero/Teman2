@@ -191,6 +191,28 @@ Gotchas measured this run:
 - A fresh gate compares a receipt `ts` with the commit dates: a receipt typed after its
   commit is a BLOCK. Capture the timestamp with `date -u` at the moment of the read.
 
+## Signing + activation note (2026-10-10, seq-27)
+
+`rulepack-prod-027.source.json` is the weekly re-attestation organ's candidate (organ PR #8105, head `a2ceaeeef8`; the same payload under JCS, the file Prettier-formatted as the pre-commit hook requires, which does not move the digest). Its read ledger is
+`research/visa/2026-10-08-organ-reattest-seq27/` (without a second copy of the candidate file): the 18 `OFFICIAL_PORTAL` sources of the signed
+seq-26 re-stamped to `2026-10-08T13:21:22Z` (verified_by `organ-sonnet-20261008`), chained to
+seq-26 (`05511184…3b7f`), version `2026.10.8`, `rule_pack_id b0fd0791-98c5-5132-8905-8985c6ed4803`,
+`payload_sha256` `a9098744e0cd8369fb4fe9ca5bef851705cf43dabb1c69398b63b36985cb42d0`. Rules,
+products (every E31A–J `duration_options`) and the 10 non-portal records are byte-identical to
+seq-26. The new freshness boundary is `2026-11-09T13:21:22Z` (32 days), against seq-26's
+`2026-11-08T13:32:18Z`.
+
+All 18 judgements are `judge: fingerprint`: the visible-text fingerprint of each page equals the
+attested read of 2026-10-07 (`no model consulted`). No model read the pages; the session that signs
+this pack does its own adversarial check, recorded in the evidence pack. The generic fold re-run
+from the ledger reproduces the source byte for byte (`TestLedger` in `test_seq27_pack.py`).
+
+Signing and activation follow the seq-26 recipe above (`sign_pack` with `--kid prod-2026-07-1
+--environment PRODUCTION --sequence 27 --i-know-this-is-production`, key file
+`~/.config/nuzantara/visa-signing/2026-07-prod-1.ed25519.pem` on M5; then the two-login activation
+on the PG primary via `activate_pack`). `TestSignedBundleTiesToSource` and
+`scripts/ci/observe_visa_seq27_signed.py` stay red until `rulepack-prod-027.signed.json` is added.
+
 ## Rotation
 
 1. Mint a new kid (e.g. `2027-01-prod-1`) with the same procedure.

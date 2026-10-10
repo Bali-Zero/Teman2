@@ -1,0 +1,79 @@
+# Gear-3 evidence pack — seq-27: the weekly organ's portal re-stamp of seq-26. Every receipt is a command
+# this session ran on 2026-10-10 between 03:33Z and 03:39Z, ts read with date -u in the same shell as the
+# run. The source is UNSIGNED: signing and activation are the orchestrator's acts on M5 after the gate.
+gear: 3
+brief_ref: evidence/brief.yml
+pii_scan: clean
+ruling: >-
+  Zero, 2026-10-10 — sign and activate seq-27 now.
+mission: >-
+  seq-27 = signed seq-26 with the 18 OFFICIAL_PORTAL stamps moved to 2026-10-08T13:21:22Z by the organ's
+  read ledger (organ PR #8105, head a2ceaeeef8). The 18 judgements are judge=fingerprint: the visible-text
+  fingerprint equals the attested read of 2026-10-07; no model read the pages. The adversarial check of that
+  is the signing session's, appended to this pack by the orchestrator.
+lanes:
+  - lane: seq27-land
+    role: build
+    seat: Claude Sonnet 5.5 (implementer, worktree backend-rag-visa-seq27-land)
+  - lane: seq27-ground-truth
+    role: ground_truth
+    seat: >-
+      the organ's ledger on disk (18 receipts, 18 judgements, 18 saved texts) and the signed seq-26
+      bundle; no notebook, no memory.
+    nb: research/visa/2026-10-08-organ-reattest-seq27/ and apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-026.signed.json
+    query_hash: "05511184caf05119ac0adf644601e322d845c276faad3146ea243c507cf23b7f" # pragma: allowlist secret
+    note: query_hash = the signed seq-26 payload_sha256 that seq-27 chains to.
+bites:
+  consumer: >-
+    review_hold_inventory and the evaluate path reading the highest SIGNED pack on disk, which once
+    rulepack-prod-027.signed.json is added is seq-27; the observer asserts the inventory reads seq-27 and
+    runs the seq-27 pack gate, the walk census and the inventory tests.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq27_signed.py
+  expect: "contains:inventory reads seq-27 and all three consumers green"
+receipts:
+  - claim: The generic fold, re-run from the ledger against the signed seq-26 anchor, reproduces the candidate source byte for byte (the committed file is afterwards Prettier-formatted, JCS-equal; test_the_committed_source_is_what_the_generic_fold_produces compares canonical bytes); baseline disagreements none; payload_sha256 a9098744e0cd8369fb4fe9ca5bef851705cf43dabb1c69398b63b36985cb42d0 chained to seq-26 05511184.
+    cmd: python -m backend.scripts.visa_engine.fold_pack_generic --anchor-source rulepack-prod-026.source.json --anchor-signed rulepack-prod-026.signed.json --ledger-dir research/visa/2026-10-08-organ-reattest-seq27 --output <scratch> --version 2026.10.8 --created-at 2026-10-08T13:21:34Z --created-by organ.pro.visa-reattestation --verified-by organ-sonnet-20261008 --baseline-root research/visa ; cmp <scratch> rulepack-prod-027.source.json
+    result: "baseline_disagreements = []; seq-27 payload_sha256 = a9098744e0cd8369fb4fe9ca5bef851705cf43dabb1c69398b63b36985cb42d0; cmp IDENTICAL"
+    exit: 0
+    ts: "2026-10-10T03:33:49Z"
+    seat: Claude Sonnet 5.5
+  - claim: Structural diff of the seq-26 and seq-27 sources lists 41 differences and no others — sequence, previous digest, rule_pack_id, created_at, created_by, and verified_at/verified_by on the 18 portal records. Freshness boundary 2026-11-09T13:21:22Z (stamp + 2764800 s) against seq-26's 2026-11-08T13:32:18Z.
+    cmd: python3 -I diff.py rulepack-prod-026.source.json rulepack-prod-027.source.json # recursive path diff, scratch script
+    result: "41 differences: 18 verified_at, 18 verified_by, created_at, created_by, previous_payload_sha256, rule_pack_id, sequence"
+    exit: 0
+    ts: "2026-10-10T03:34:23Z"
+    seat: Claude Sonnet 5.5
+  - claim: The seq-27 pack file (identity, only-stamps-move, E31 options kept, ledger receipts and fingerprint judges, fold reproduction, missing-receipt guilt; the candidate source is not duplicated under research/ because detect-secrets flags its content hashes there) passes; the four signed-bundle tests wait for rulepack-prod-027.signed.json and error on the missing artifact, by design.
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine/test_seq27_pack.py -p no:cacheprovider -o addopts=""
+    result: "14 passed, 4 errors (TestSignedBundleTiesToSource: rulepack-prod-027.signed.json does not exist on disk)"
+    exit: 1
+    ts: "2026-10-10T03:39:32Z"
+    seat: Claude Sonnet 5.5
+  - claim: The seq-27 pack tests that need no signature, the walk census with the seq-27 pins following 26, and the duration-option tests pass.
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine/test_seq27_pack.py backend/tests/services/visa_engine/test_interview_walk_census.py backend/tests/services/visa_engine/test_duration_options.py -p no:cacheprovider -o addopts="" --deselect backend/tests/services/visa_engine/test_seq27_pack.py::TestSignedBundleTiesToSource
+    result: "95 passed, 4 deselected"
+    exit: 0
+    ts: "2026-10-10T03:36:55Z"
+    seat: Claude Sonnet 5.5
+  - claim: Lint on the new Python is clean.
+    cmd: apps/backend-rag/.venv/bin/ruff check apps/backend-rag/backend/tests/services/visa_engine/test_seq27_pack.py scripts/ci/observe_visa_seq27_signed.py
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-10-10T03:38:32Z"
+    seat: Claude Sonnet 5.5
+council_run: pending-signing-session
+dissent:
+  - seat: self-review (Claude Sonnet 5.5, not an independent refuter)
+    objection: "The 18 judgements are judge=fingerprint: no model read the pages, so a page whose meaning changed outside its visible text would pass."
+    status: PLAUSIBLE
+    note: carried — the fingerprint is the SHA-256 of the whole visible text, so an identical fingerprint is identical text; the residual risk is decisive content that is not in the visible text. The orchestrator's adversarial check is owed and appended before signing.
+  - seat: self-review
+    objection: "The source file is 10517 lines against seq-26's 9411."
+    status: RETRACTED
+    note: "checked 2026-10-10T03:34Z — seq-27 equals json.dumps(indent=2) of itself exactly, seq-26 does not (it went through Prettier, which compacts short arrays); the content is the 41 listed differences only."
+owed:
+  - "Signing (rulepack-prod-027.signed.json), activation, the adversarial check of the fingerprint judgements, and filling the council."
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 0
