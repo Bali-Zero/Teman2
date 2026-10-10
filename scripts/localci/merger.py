@@ -39,6 +39,7 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
+from urllib.parse import quote
 
 _spec = importlib.util.spec_from_file_location("localci_hosted_compare", Path(__file__).resolve().parent / "hosted_compare.py")
 hc = importlib.util.module_from_spec(_spec)
@@ -233,14 +234,82 @@ def wants_merge(pr: dict) -> bool:
     return bool(pr.get("auto_merge")) or bool({LABEL, ARM_LABEL} & {lb.get("name") for lb in pr.get("labels") or [] if isinstance(lb, dict)})
 
 
-def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str) -> tuple[list[dict], list[dict]]:
+GATE_CONTEXT = "harness/fable-gate"
+GATE_PENDING_CAP = 3   # B12: decisions of one (pr, head, base) that found no gate verdict posted yet
+
+
+def gh_pages(path: str, key: str | None = None) -> list:
+    """B12: every page of one read-only GET through ``hc.gh_get`` (``path`` may carry its own query), at most ``hc.MAX_PAGES``; ``key``
+    names the list in an object page, None reads a bare list. A failed, malformed or truncated read raises ``hc.CompareError``."""
+    out: list = []
+    for page in range(1, hc.MAX_PAGES + 1):
+        doc = hc.gh_get(f"{path}{'&' if '?' in path else '?'}per_page=100&page={page}")
+        batch = doc if key is None else doc.get(key) if isinstance(doc, dict) else None
+        if not isinstance(batch, list) or any(not isinstance(x, dict) for x in batch):
+            raise hc.CompareError(f"{path.split('?')[0]} page {page} is not a list of objects")
+        out += batch
+        if len(batch) < 100:
+            return out
+    raise hc.CompareError(f"more than {hc.MAX_PAGES} pages of {path.split('?')[0]} — refusing a truncated read")
+
+
+def gate_posted_at(repo: str, head: str) -> str | None:
+    """B12: when ``head`` last got a ``harness/fable-gate`` commit status, in any state (its newest updated_at, else created_at); None when
+    it carries none. A status without a readable timestamp raises: the post cannot be ordered against the hosted re-run."""
+    stamps = [x.get("updated_at") or x.get("created_at") for x in gh_pages(f"repos/{repo}/commits/{head}/statuses") if x.get("context") == GATE_CONTEXT]
+    if any(not isinstance(t, str) or not hc._TS_RE.match(t) for t in stamps):
+        raise hc.CompareError(f"a {GATE_CONTEXT} status on {head[:12]} carries no readable timestamp")
+    return max(stamps) if stamps else None
+
+
+def hosted_rerun_after(repo: str, head: str, name: str, posted_at: str) -> bool:
+    """B12: did the hosted check run(s) named ``name`` on ``head`` complete AFTER the gate status was posted? The latest attempt of each
+    check (one per check suite) counts. None at all, one still running, or one completed at or before the post is a no: hosted still
+    holds the pre-post PENDING red, and a local OK decided beside it would be journalled a FALSE_GREEN that nothing clears."""
+    latest: dict = {}
+    for r in gh_pages(f"repos/{repo}/commits/{head}/check-runs?check_name={quote(name, safe='')}&filter=latest", "check_runs"):
+        suite = r["check_suite"].get("id") if isinstance(r.get("check_suite"), dict) else None
+        rid = r.get("id") if isinstance(r.get("id"), int) else -1
+        if r.get("name") == name and (suite not in latest or rid > latest[suite][0]):
+            latest[suite] = (rid, r)
+    if not latest:
+        return False
+    for _, r in latest.values():
+        if r.get("status") != "completed":
+            return False   # B12: still running — no hosted verdict on the post yet
+        if not (isinstance(r.get("completed_at"), str) and hc._TS_RE.match(r["completed_at"]) and r["completed_at"] > posted_at):
+            return False   # B12: completed before the post — the hosted PENDING red still stands
+    return True
+
+
+def gate_ready(repo: str, head: str, names: list) -> bool:
+    """B12: may a gate_pending key be decided again? Only when the head carries a harness/fable-gate status AND every context the decision
+    found pending (its GitHub name, as the BASE matrix named it in the plan) completed on GitHub after that post. Raises on a failed read."""
+    posted = gate_posted_at(repo, head)
+    return posted is not None and all(hosted_rerun_after(repo, head, nm, posted) for nm in names)
+
+
+def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_ready=None, capped: list | None = None) -> tuple[list[dict], list[dict]]:
     """(same-repo PRs to decide, in order; fork PRs to journal). Drafts and PRs that ask for no merge are not the merger's.
 
     Order: a head never decided at any base first, then the head whose last decision is oldest, then created_at —
-    `main` moves on every merge, so oldest-first alone would re-decide one PR at each new base and starve the rest."""
+    `main` moves on every merge, so oldest-first alone would re-decide one PR at each new base and starve the rest.
+
+    B12: a BLOCKED decision that found the gate verdict not posted yet (``gate_pending``) is no verdict, so its key is decided again —
+    only when ``gate_ready(pr, head, contexts)`` says the head now carries the status AND the hosted run of each pending context completed
+    after it (a failed read, or no callable, is a no), and at most ``GATE_PENDING_CAP`` times; a key past the cap is appended to
+    ``capped`` and stays decided."""
     decided = {(r.get("pr"), r.get("head_sha"), r.get("base_sha")) for r in recs if (r.get("kind") == "decision" and not r.get("replay"))
                or r.get("why") == "head_in_base"}
     refused = {(r.get("pr"), r.get("head_sha")) for r in recs if r.get("kind") == "refused"}
+    pending: dict = {}   # key -> [pending decisions, the newest decision's pending contexts, None when it was not pending]
+    for r in recs:
+        if r.get("kind") == "decision" and not r.get("replay"):
+            k = (r.get("pr"), r.get("head_sha"), r.get("base_sha"))
+            mark = r.get("gate_pending") is True and r.get("overall") == "BLOCKED"   # a FAIL elsewhere is a verdict: deciding again changes nothing
+            names = r.get("gate_pending_contexts")
+            ok = mark and isinstance(names, list) and bool(names) and all(isinstance(x, str) for x in names)
+            pending[k] = [pending.get(k, [0, None])[0] + mark, names if ok else None]
     last: dict = {}
     for r in recs:
         if r.get("kind") == "decision" and not r.get("replay"):
@@ -255,6 +324,16 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str) -> tuple
                 forks.append(pr)
         elif (n, head, base_sha) not in decided:
             todo.append(pr)
+        elif (count := pending.get((n, head, base_sha), [0, None]))[1]:
+            if count[0] >= GATE_PENDING_CAP:
+                if capped is not None:
+                    capped.append(pr)
+                continue
+            try:
+                if gate_ready is not None and gate_ready(n, head, count[1]):
+                    todo.append(pr)
+            except (hc.CompareError, OSError) as exc:
+                print(f"merger: #{n} gate status or hosted re-run not read — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
     todo.sort(key=lambda p: ((p["number"], head_of(p)) in last, last.get((p["number"], head_of(p)), ""), str(p.get("created_at")), p["number"]))
     return todo, forks
 
@@ -940,7 +1019,9 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         else:
             hosted, live = hosted_summary(a.repo, a.base, status, head, run_dir, StaleJudge(repo_dir, base_sha))
         loc = local_side({} if gate.get("error") else status)
-        line = journal(state, {**rec, "candidate_sha": cand_sha, "overall": status.get("overall") or "ERROR", "error": gate.get("error"),
+        pending_ctx = sorted(k for k, v in results.items() if isinstance(v, dict) and v.get("no_verdict") == "gate_pending")
+        gate_pending = bool(pending_ctx) and status.get("overall") == "BLOCKED"   # B12: on a FAIL the missing gate verdict changes nothing
+        line = journal(state, {**rec, **({"gate_pending": True, "gate_pending_contexts": pending_ctx} if gate_pending else {}), "candidate_sha": cand_sha, "overall": status.get("overall") or "ERROR", "error": gate.get("error"),
                                "contexts_status": ctx.get("status"), "contexts": {k: (v or {}).get("verdict") for k, v in results.items()},
                                "coverage": {k: (v or {}).get("coverage") for k, v in results.items()},
                                "skipped": {k: v["skipped"] for k, v in results.items() if isinstance((v or {}).get("skipped"), str)},
@@ -1020,7 +1101,12 @@ def tick(a, state: Path, lease_id: str) -> int:
     if not fetch_base(a, state, repo_dir, recs):
         return 1
     base_sha = git(repo_dir, "rev-parse", "refs/merger/base^{commit}").stdout.strip()
-    todo, forks = triage(open_prs(a.repo, a.base), a.repo, recs, base_sha)
+    capped: list = []
+    todo, forks = triage(open_prs(a.repo, a.base), a.repo, recs, base_sha, lambda n, head, names: gate_ready(a.repo, head, names), capped)
+    for pr in capped:   # B12: journalled once per key, however many ticks pass
+        key = {"pr": pr["number"], "head_sha": head_of(pr), "base_sha": base_sha}
+        if not any(r.get("kind") == "skipped" and r.get("why") == "gate_pending_cap" and all(r.get(k) == v for k, v in key.items()) for r in recs):
+            journal(state, {"kind": "skipped", "why": "gate_pending_cap", **key, "lease_id": lease_id})
     for pr in forks:
         journal(state, {"kind": "refused", "why": "fork", "pr": pr["number"], "head_sha": head_of(pr), "base_sha": base_sha, "lease_id": lease_id})
     last = [r for r in recs if r.get("kind") == "decision"][-1:]
@@ -1245,7 +1331,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
             rows.append({"ts": d.get("ts"), "pr": n, "head_sha": head, "hosted_sha": sha, "base_sha": d.get("base_sha"), "overall": d.get("overall"),
                          "github": github, "merged": prs[n].get("merged") is True, "class": classify(merger_side(d.get("overall")), github),
                          "compared_contexts": compared_ctx, "compared_partial": not_full["partial"], "compared_unrecorded": not_full["unrecorded"],
-                         "compared_skip_agreed": skip_agreed, "replay": d.get("replay") is True,
+                         "compared_skip_agreed": skip_agreed, "replay": d.get("replay") is True, "gate_pending": d.get("gate_pending") is True,
                          "merged_at": merged_at, "code_sha": d.get("code_sha"),
                          "elapsed_s": d.get("elapsed_s") if is_num(d.get("elapsed_s")) else None,
                          "compared_merge": merged_here and github != "PENDING" and d.get("contexts_status") == "ok"
@@ -1284,6 +1370,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
         if r["compared_merge"]:
             qualifying.setdefault(r["pr"], []).append(r["replay"])
     from_replays = sum(1 for flags in qualifying.values() if all(flags))   # a PR that also qualified before its merge is counted there
+    gate_pending_n = sum(1 for r in rows if r["gate_pending"] and not r["replay"])   # a replay is never decided again
     compared_partial = sum(len(r["compared_partial"]) for r in rows)
     compared_unrecorded = sum(len(r["compared_unrecorded"]) for r in rows)
     partial_names = sorted({n for r in rows for n in r["compared_partial"]})
@@ -1310,7 +1397,8 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
              "check_max_s": dict(sorted(check_max_s.items(), key=lambda kv: -kv[1]))}
     out = {"window": {"first": first, "last": last, "days": days, "decisions": len(rows), "distinct_prs": len({r["pr"] for r in rows}),
                       "merged_prs": len({r["pr"] for r in rows if r["merged"]}), "compared_merges": compared_merges,
-                      "replays": sum(1 for r in rows if r["replay"]), "compared_merges_from_replays": from_replays,
+                      "replays": sum(1 for r in rows if r["replay"]), "gate_pending": gate_pending_n,
+                      "compared_merges_from_replays": from_replays,
                       "compared_partial": compared_partial, "compared_unrecorded": compared_unrecorded, "partial_contexts": partial_names,
                       "compared_merges_full_only": compared_merges - len(with_partial), "compared_merges_with_partial": len(with_partial),
                       "compared_merges_partial_contexts": merged_partial_names, "compared_skip_agreed": compared_skip_agreed,
@@ -1335,6 +1423,9 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
           f"skipped={skipped or 0}")
     print(f"replays (B11): {w['replays']} replay decision(s) in the window; compared_merges={compared_merges} of which {from_replays} reached "
           f"the threshold only through a replay of the merge commit (a PR counts once)")
+    print(f"gate pending (B12): {gate_pending_n} decision(s) found no harness/fable-gate verdict posted yet (replays not counted) — BLIND, not "
+          f"FALSE_RED; each key is decided again once the status is on the head and the hosted run completed after it (at most "
+          f"{GATE_PENDING_CAP} per pr/head/base)")
     print(f"gaps: longest between decisions={decision_gap_h}h, longest between any journal lines={silence_h}h, "
           f"last line {last_line_age_h}h ago" + (f", {future_lines} line(s) dated in the future" if future_lines else "")
           + f"; code shas in the window: {[c[:12] for c in w['code_shas']] or 'none recorded'}, "

@@ -43,6 +43,7 @@ REPLAY = "scripts/localci/tests/test_replay.py"
 PHASEF = "scripts/localci/tests/test_merger_phase_f.py"
 WRAPPER_T = tuple(f"{PHASEF}::{t}" for t in ("test_the_wrapper_fetches_into_its_own_ref_and_leaves_the_authoritative_base_alone",
                                                  "test_a_mirror_from_before_the_wrapper_ref_existed_runs_the_code_the_last_tick_ran"))
+GP = ("scripts/localci/tests/test_gate_pending.py",)   # B12
 ROOT = Path(__file__).resolve().parents[4]
 REPORT = "scripts/localci/tests/test_merger_report.py"
 TICK = "scripts/localci/tests/test_merger.py"
@@ -539,6 +540,39 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b5-report-skip-unread": (PY, '"skipped": skip.get(k)}', '"skipped": None}', REPORT_SKIP),
     "b5-report-window-uncounted": (PY, 'compared_skip_agreed = sum(len(r["compared_skip_agreed"]) for r in rows)', "compared_skip_agreed = 0", REPORT_SKIP),
     "b5-report-merges-uncounted": (PY, 'merged_skip_agreed = sum(', "merged_skip_agreed = 0 * sum(", REPORT_SKIP),
+    # B12: a gate verdict not posted yet is no verdict, and is asked again once it is posted
+    "b12-pending-retried": (RUNNER, "if pending and r.returncode != 0 and any(", "if pending and r.returncode != 0 and wait == READER_RETRY_WAITS[-1] and any(", GP),
+    "b12-pending-as-pass": (RUNNER, 'return {"rc": None, "reason": f"gate_pending: host', 'return {"rc": 0, "reason": f"gate_pending: host', GP),
+    "b12-pending-on-stdout": (RUNNER, "any(ln.startswith(pending) for ln in r.stderr.splitlines())", "any(ln.startswith(pending) for ln in out.splitlines())", GP),
+    "b12-pending-key-dropped": (RUNNER, 'ms.get("no_verdict_when"), ms.get("pending_when"))', 'ms.get("no_verdict_when"), None)', GP),
+    "b12-matrix-key-dropped": (MATRIX, 'pending_when: "::error::harness_gate_read: PENDING" #', "#", GP),
+    "b12-pending-unmarked": (RUNNER, 'out["results"][name]["no_verdict"] = "gate_pending"', "pass", GP),
+    "b12-decision-unmarked": (PY, '**({"gate_pending": True, "gate_pending_contexts": pending_ctx} if gate_pending else {})', "**{}", GP),
+    "b12-reeligible-without-status": (PY, "if gate_ready is not None and gate_ready(n, head, count[1]):", "if True:", GP),
+    "b12-cap-ignored": (PY, "if count[0] >= GATE_PENDING_CAP:", "if False:", GP),
+    "b12-failed-read-eligible": (PY, "except (hc.CompareError, OSError) as exc:\n                print(f\"merger: #{n} gate status",
+                                 "except (hc.CompareError, OSError) as exc:\n                todo.append(pr)\n                print(f\"merger: #{n} gate status", GP),
+    "b12-status-context-any": (PY, ' if x.get("context") == GATE_CONTEXT]', "]", GP),
+    "b12-report-uncounted": (PY, 'gate_pending_n = sum(1 for r in rows if r["gate_pending"] and not r["replay"])', "gate_pending_n = 0", (REPORT,)),
+    # B12 fix round: a re-decision waits for the hosted re-run after the post; red is never re-opened; the mark is a flag, never text
+    "b12-hosted-rerun-ignored": (PY, "return posted is not None and all(hosted_rerun_after(repo, head, nm, posted) for nm in names)",
+                                 "return posted is not None", GP),
+    "b12-hosted-in-progress-eligible": (PY, "return False   # B12: still running", "continue   # B12: still running", GP),
+    "b12-hosted-before-post-eligible": (PY, "return False   # B12: completed before the post", "continue   # B12: completed before the post", GP),
+    "b12-hosted-every-attempt": (PY, "latest[suite] = (rid, r)", "latest[(suite, rid)] = (rid, r)", GP),
+    "b12-hosted-oldest-post": (PY, "return max(stamps) if stamps else None", "return min(stamps) if stamps else None", GP),
+    "b12-pending-on-red-journalled": (PY, 'gate_pending = bool(pending_ctx) and status.get("overall") == "BLOCKED"', "gate_pending = bool(pending_ctx)", GP),
+    "b12-pending-on-red-reopened": (PY, 'mark = r.get("gate_pending") is True and r.get("overall") == "BLOCKED"', 'mark = r.get("gate_pending") is True', GP),
+    "b12-mark-by-text": (RUNNER, 'elif s == "BLOCKED" and view[chk].get("gate_pending") is True:',
+                         'elif s == "BLOCKED" and "(gate_pending: host, at plan:" in reason:', GP),
+    "b12-mark-any-blocked": (RUNNER, 'all(s.get("gate_pending") is True for s in bad)', 'any(s.get("gate_pending") is True for s in bad)', GP),
+    "b12-step-flag-from-text": (RUNNER, 'if s["status"] == "BLOCKED" and (planned.get("precomputed") or {}).get("gate_pending") is True:',
+                                'if s["status"] == "BLOCKED" and "gate_pending: host" in s["reason"]:', GP),
+    "b12-state-flag-dropped": (RUNNER, 'steps=res.get("steps"), **({"gate_pending": True} if res.get("gate_pending") is True else {}))',
+                               'steps=res.get("steps"))', GP),
+    "b12-state-flag-kept": (RUNNER, 'c.pop("gate_pending", None)   # B12: a flag is', 'pass   # B12: a flag is', GP),
+    "b12-state-flag-kept-moved": (RUNNER, 'c.pop("gate_pending", None)\n                    store.save(st)', 'store.save(st)', GP),
+    "b12-report-replay-counted": (PY, 'r["gate_pending"] and not r["replay"])', 'r["gate_pending"])', (REPORT,)),
 }
 
 

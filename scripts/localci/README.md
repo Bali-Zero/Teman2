@@ -407,6 +407,33 @@ decision(s) ...; compared_merges=C of which R reached the threshold only through
 `window.compared_merges_from_replays`). A replay's recorded FALSE_GREEN is never re-read for staleness: it counts in `N` and is listed
 under `kept` as `pr<N> all rows: replay: the same tree on both sides, never stale`.
 
+**A gate verdict not posted yet is no verdict (B12).** `ctx.harness-floor` reads the real `harness/fable-gate` verdict with BASE's
+`harness_gate_read.py` on the host, at plan time. A pull request whose session has not posted that status yet makes the reader exit 1 with the
+stderr line `::error::harness_gate_read: PENDING` (measured on Pro 2026-10-09: 10 of the gate's 12 `FALSE_RED` decisions). The step's
+`pending_when` (beside `no_verdict_when`, matrix key) maps that line, **line-anchored on stderr** and on a non-zero exit, to `rc: None`
+with the reason `gate_pending: host, at plan: ...` and the structured flag `gate_pending: true`, frozen in the plan's `precomputed`: the
+step, the context and `overall` are BLOCKED, never PASS and never FAIL, so `hosted_compare` and the report read the context as BLIND, not
+`FALSE_RED`, and `executed_contexts_ok` still refuses a merge on it. Unlike CANNOT-VERIFY it is **not retried**: a posting session takes
+minutes, not the 40 s of the retry waits. A real verdict line (`verdict = 'failure'`, REWORK, BLOCK) stays FAIL, and the same text on stdout
+cannot fake it. **The mark is the flag, never text**: `_run_leg` copies the plan's flag onto the BLOCKED step it answered, and the context
+result carries `gate_pending: true` only when it is BLOCKED and every step that did not pass is such a read (a second BLOCKED step, or a red
+one, stays BLOCKED after the post); the check's state keeps the flag of its current attempt only, and `evaluate_contexts` names the context
+`no_verdict: gate_pending` from it, never from its 600-character reason. A test runs BASE `scripts/ci/harness_gate_read.py` and checks that
+its not-posted stderr line starts with the matrix's `pending_when` and that its posted states (`pending`, `failure`, `error`) do not.
+The decision line records `gate_pending: true` and `gate_pending_contexts` (the GitHub names, as the BASE matrix named them in the plan)
+**only when its `overall` is BLOCKED**: on a FAIL elsewhere the missing gate verdict changes nothing. `triage` never re-decides the same
+`(pr, head, base)`, and posting a status moves neither head nor base, so a `gate_pending` key becomes eligible again **only when both hold**:
+the head carries a `harness/fable-gate` commit status in any state (`repos/{repo}/commits/{head}/statuses`), and every hosted check run named
+as a pending context (`repos/{repo}/commits/{head}/check-runs?check_name=<name>&filter=latest`, the latest attempt per check suite)
+**completed after that status's newest `updated_at`**. Until the session runs `gh run rerun`, hosted still holds the pre-post PENDING red, and
+a local OK decided beside it would be journalled a FALSE_GREEN that nothing clears. No run, one still in progress, one completed before the
+post, or a failed read: not eligible this tick. Both reads are read-only GETs through `hosted_compare.gh_get`, paged and bounded like the
+hosted compare's. At most 3 `gate_pending` decisions per key; past the cap the key stays decided and `skipped: gate_pending_cap` is journalled
+once. Replays (B11) are unaffected: they judge a commit GitHub already merged (its gate was posted before it merged), their lines carry
+`replay: true`, and `triage` reads only non-replay decisions. `merger.py report` prints `gate pending (B12): N decision(s)`, counting
+non-replay decisions only. A re-opened key sorts last in `triage` and B11's alternation may put a replay first, so the second decision comes
+on the key's next turn while the base is unchanged — not necessarily the next tick.
+
 **Phase F, shadow (F1): `would_merge`.** After every `would_enqueue` / `enqueue_*` line of a decided PR the tick journals ONE
 `kind: "would_merge"` line (decisions that reach the enqueue step; CONFLICT, ERROR and skipped decisions carry none): the merge phase F will make, rehearsed with `git merge-tree --write-tree` of the mirror's
 `refs/merger/base` and the decided head. F1 merges nothing and pushes nothing: `merge-tree --write-tree` leaves objects in the

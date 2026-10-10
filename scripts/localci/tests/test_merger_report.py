@@ -678,3 +678,23 @@ def test_a_false_green_in_a_replay_is_a_false_green_and_never_reclassified_as_st
     (k,) = rep["recorded_kept_false_green"]
     assert (k["pr"], k["why"]) == (1, "replay: the same tree on both sides, never stale")
     assert "kept=1: [pr1 all rows: replay: the same tree on both sides, never stale]" in capsys.readouterr().out
+
+
+def test_gate_pending_decisions_are_counted_blind_never_false_red_and_the_report_says_so(tmp_path, monkeypatch, capsys):
+    gh = FakeGH({2: pull(B), 3: pull(C)}, {B: "success", C: "success", M: "success"})
+    pending = {**decision(2, B, "BLOCKED", ctx="BLOCKED"), "gate_pending": True}
+    recs = [pending, decision(2, B, "PASS", ts="2026-10-07T08:30:00Z"), decision(3, C, "BLOCKED", ctx="BLOCKED")]
+    rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
+    assert [r["class"] for r in rep["rows"]] == ["BLIND", "AGREE", "BLIND"] and rep["counts"]["FALSE_RED"] == 0 and rc == 0
+    assert [r["gate_pending"] for r in rep["rows"]] == [True, False, False] and rep["window"]["gate_pending"] == 1
+    assert rep["context_counts"]["FALSE_RED"] == 0 and rep["context_counts"]["LOCAL_BLIND"] == 2 * K
+    assert "gate pending (B12): 1 decision(s) found no harness/fable-gate verdict" in capsys.readouterr().out
+
+
+def test_the_gate_pending_count_is_of_non_replay_decisions_only_and_the_line_says_so(tmp_path, monkeypatch, capsys):
+    gh = FakeGH({1: pull(A, merged=True), 2: pull(B)}, {A: "success", B: "success", M: "success"})
+    recs = [{**decision(2, B, "BLOCKED", ctx="BLOCKED"), "gate_pending": True},
+            {**replay_of(1, A, ts="2026-10-08T09:00:00Z"), "gate_pending": True}]   # a replay is never decided again: not counted
+    rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
+    assert [r["gate_pending"] for r in rep["rows"]] == [True, True] and rep["window"]["gate_pending"] == 1
+    assert "gate pending (B12): 1 decision(s) found no harness/fable-gate verdict posted yet (replays not counted)" in capsys.readouterr().out
