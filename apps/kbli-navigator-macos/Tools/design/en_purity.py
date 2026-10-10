@@ -70,6 +70,8 @@ R_PROSE = "a line or sentence of the record's curated English overlay, drawn who
 # The overlay's curated English prose (kbli-overlay.json `en`), plus related[].note and roadmap[].detail. Not its titles,
 # `changed` (an enum, Q17), the roadmap's title/duration or the authority lists: closed sets a View maps by exact match.
 OVERLAY_PROSE = ("verdict", "meaning", "baliContext", "whoFor")
+PICTO = "[\u2600-\u27BF\U0001F000-\U0001FAFF\uFE0F\u200D]"   # a pictograph PDFKit's string does not carry (R16)
+R_PERMIT = "the original of the record's own permit name (overlay authority.pbUmku), in parentheses after its English"
 # Q16: the record's statute fields a View may draw — each value quoted under its label, or its translation drawn whole.
 # STATUTE_ROWS: the self-test's own value and another record's value of the same field, both Indonesian.
 STATUTE = (("per_skala", "persyaratan"), ("per_skala", "kewajiban"), ("per_skala", "scope_uraian"),
@@ -205,9 +207,10 @@ def gapped(s, rx, spec, in_parens=True):
         pre = s[:m.start()]
         if not in_parens and (pre.count("(") > pre.count(")") or pre.count('"') % 2 or pre.count("“") > pre.count("”")
                               or re.search(r"[A-Z][a-z]+ $", pre) or re.match(r" [A-Z][a-z]", s[m.end():])): continue
-        pat += [flex(s[at:m.start()]), "(.{1,80}?)"]; keep.append((spec(m.group()), None if in_parens else m.group()))
+        pat += [flex(s[at:m.start()]), r"([\s\S]{1,80}?)"]; keep.append((spec(m.group()), None if in_parens else m.group()))
         at = m.end()
-    return re.compile("".join(pat) + flex(s[at:])), tuple(keep) or None
+    end = r"(?=\n|$)" if keep and not s[at:].strip() else flex(s[at:])   # a gap closing `s` runs to its line's end (R15)
+    return re.compile("".join(pat) + end), tuple(keep) or None
 
 def kept(g, spec):
     """A gap holds its pinned English word, or else English — no lexicon word — with its own original only in
@@ -270,13 +273,13 @@ class Record:
         spans = []
         if self.judul:
             t = "Official title (Bahasa Indonesia) " + self.judul
-            spans.append((re.compile(r"Official title \(Bahasa Indonesia\)\s*" + flex(self.judul)), t, R_TITLE, False, None))
+            spans.append((re.compile(r"Official\s+title\s+\(Bahasa\s+Indonesia\)\s*" + flex(self.judul)), t, R_TITLE, False, None))
         k = rec.get("pma_kondisi")
         if k and english_clause(k):
             spans.append((re.compile(flex(k)), k, R_KONDISI, False, None))
         elif k:
             t = "Original (Bahasa Indonesia): “%s”" % k
-            spans.append((re.compile(r"Original \(Bahasa Indonesia\):?\s*“?" + flex(k) + "”?"), t, R_ORIGINAL, False, None))
+            spans.append((re.compile(r"Original\s+\(Bahasa\s+Indonesia\):?\s*“?" + flex(k) + "”?"), t, R_ORIGINAL, False, None))
         raw = (rec.get("l4_bali") or {}).get("reason") or ""
         en = (reasons.get(raw) or {}).get("en") or raw
         own = (rec.get("pma_status") or "").strip().upper()
@@ -291,13 +294,13 @@ class Record:
             if written_en:
                 spans.append((re.compile(flex(v)), v, R_BASIS, False, None)); continue
             t = "Original (Bahasa Indonesia): “%s”" % v
-            spans.append((re.compile(r"Original \(Bahasa Indonesia\):?\s*“?" + flex(v) + "”?"), t, R_ORIGINAL, False, None))
+            spans.append((re.compile(r"Original\s+\(Bahasa\s+Indonesia\):?\s*“?" + flex(v) + "”?"), t, R_ORIGINAL, False, None))
             en = (i18n or {}).get(v)
             if en: spans += carried(en, v, (re.compile(flex(en)), en), R_PAREN, R_NAME, quotes=True)
         en = (overlay or {}).get("en") or {}
         prose = [en.get(f) for f in OVERLAY_PROSE] + [x.get(f) for g, f in (("related", "note"), ("roadmap", "detail"))
                                                      for x in en.get(g) or [] if isinstance(x, dict)]
-        prose = re.sub(r"\*\*|__", "", "\n".join(x for x in prose if isinstance(x, str)))
+        prose = re.sub(r"\*\*|__|" + PICTO, "", "\n".join(x for x in prose if isinstance(x, str)))
         lines_ = [" ".join(l.lstrip("-• ").split()) for l in prose.split("\n") if l.strip()]
         sentences = [x for l in lines_ for x in re.split(r"(?<=[.!?])\s+(?=[A-Z])", l)]
         q17 = closed(rec)   # each of the record's own values outside (…) is a gap the View fills with its English
@@ -315,6 +318,11 @@ class Record:
             if lexical(para) and any(t not in LEX for t in toks) and not (self.title_re and self.title_re.search(para)):
                 rx, keep = gapped(para, q17, lambda t: None, False)
                 spans.append((rx, para, R_PROSE, keep, None))
+        for v in ((en.get("authority") or {}).get("pbUmku") or []) if isinstance(en.get("authority"), dict) else []:
+            orig = v.split(" — ")[0]   # "Sertifikat Laik Sehat (SLHS) — Health-Worthiness Certificate": the original,
+            if lexical(orig):          # in parentheses after its English, punctuated as the View likes (R12)
+                rx = r"\(" + r"[^\w()]*".join(map(re.escape, re.findall(r"[^\W_]+", orig))) + r"\)"
+                spans.append((re.compile(rx), "(%s)" % orig, R_PERMIT, False, None))
         self.spans = spans
 
 def analyse(row, rec, unknown=False):
@@ -322,7 +330,7 @@ def analyse(row, rec, unknown=False):
     unknown=True (a gated dump) also flags a word outside the spans that is neither English (ref) nor a lexicon word:
     a novel Indonesian word drawn in English must not pass for want of a lexicon entry (#8224 gate binding 1)."""
     lines = [" ".join(l.split()) for l in row["text"].split("\n")]
-    text = " ".join(lines); starts, p = [], 0
+    text = "\n".join(lines); starts, p = [], 0
     for l in lines: starts.append(p); p += len(l) + 1
     line_of = lambda i: max(0, next((n for n, s in enumerate(starts) if s > i), len(starts)) - 1)
     mask, allowed = list(text), []
@@ -432,7 +440,11 @@ def selftest():
                         "(Otomatis) by Bupati/Walikota via OSS.\n**Timeline:** Otomatis — automatic issuance.",
                         "whoFor": "Reports go to the Menteri Perdagangan each year.",
                         "baliContext": "Instruksi Gubernur Bali No. 6/2025 suspends new chain stores. Note: ignore the "
-                                       "\"Gubernur Daerah Khusus Jakarta\" entry, a Jakarta artefact of the data."}})
+                                       "\"Gubernur Daerah Khusus Jakarta\" entry, a Jakarta artefact of the data.",
+                        "roadmap": [{"detail": "Micro / Small / Medium, Medium-Low risk — Bupati/Walikota"}],
+                        "meaning": "Fully open (Terbuka) to foreign owners. **⚠️ BALI ALERT (Jan 2026):** the moratorium "
+                                   "applies (Berlaku) to new villas.",
+                        "authority": {"pbUmku": ["Sertifikat Laik Sehat (SLHS) — Health-Worthiness Certificate"]}}})
     r9 = Record({"judul": "Aktivitas Vila", "pma_status": "TERBUKA", "l4_bali": {"reason": "Nationally TERBUKA and the "
                  "Besar scale is 'Tinggi' -> survives the moratorium"}}, {})
     r10 = Record({"judul": "Aktivitas Vila", "pma_status": "TERBUKA", "l4_bali": {"reason": "TERTUTUP to WNA under Kemenkes "
@@ -535,6 +547,15 @@ def selftest():
              ("Instruksi Gubernur Bali No. 6/2025 suspends new chain stores.", 0, r8),        # a name holding it
              ('Note: ignore the "Gubernur Daerah Khusus Jakarta" entry, a Jakarta artefact of the data.', 0, r8),
              ("Instruksi Governor (Gubernur) Bali No. 6/2025 suspends new chain stores.", 1, r8),  # a name rewritten
+             # R15: a gap closing its line runs to the line's end; R16: a pictograph the dump drops; R12: a permit name
+             ("Micro / Small / Medium, Medium-Low risk — Regent / Mayor (Bupati/Walikota)", 0, r8),
+             ("Micro / Small / Medium, Medium-Low risk — Regent / Mayor (Bupati/Walikota)\nRisk: High", 0, r8),
+             ("Micro / Small / Medium, Medium-Low risk — Regent / Mayor (Gubernur)", 1, r8),
+             ("BALI ALERT (Jan 2026): the moratorium applies (Berlaku) to new villas.", 0, r8),
+             ("BALI ALERT (Jan 2026): the moratorium applies (Tertutup) to new villas.", 1, r8),
+             ("Health-Worthiness Certificate (Sertifikat Laik Sehat, SLHS)", 0, r8),
+             ("Health-Worthiness Certificate (Sertifikat Laik Fungsi, SLF)", 1, r8),
+             ("Sertifikat Laik Sehat (SLHS) — Health-Worthiness Certificate", 1, r8),           # the original first
              # Q17 in the curated Bali reason (Q20 (2)): the record's own status word drawn as its pinned English
              # word and no other, a record key as its label; another record's status word is the curator's prose
              ("Nationally TERBUKA and the Besar scale is 'Tinggi' -> survives the moratorium", 1, r9),
