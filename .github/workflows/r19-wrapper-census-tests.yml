@@ -15,7 +15,9 @@ name: r19-wrapper-census-tests
 # and prints the counts, among them the grounds read by the pixels and by the
 # painters, at rest and opened, and where the two disagree (lot W0d-2); W2'''
 # asserts them at 0. A W0d lot changes no file under apps/mouth/src, and
-# census-replay checks that on its branch (spec SPEC-W0d §5).
+# census-replay checks that on its branch (spec SPEC-W0d §5). Since lot W0d-3a
+# the live census runs in parts, one `wrapper-census-part` job each, and
+# `wrapper-census-states` judges their dumps together (contract section 9).
 
 on:
   pull_request:
@@ -27,6 +29,11 @@ on:
       - "packages/core/**"
       - ".claude/skills/design/strumenti/measure.py"
   workflow_dispatch:
+    inputs:
+      parts:
+        description: 'The census parts, a JSON list; ["full"] runs the whole census in one job, as before W0d-3a'
+        type: string
+        default: '["rest","kbli","explorer","shared"]'
 
 permissions:
   contents: read
@@ -79,18 +86,20 @@ jobs:
         working-directory: apps/mouth
         run: npm test -- r19-wrapper
 
-  wrapper-census-states:
+  wrapper-census-part:
     runs-on: ubuntu-latest
-    # The census's 30 captures, its 10-walk state pass, the ground of every text run
-    # at rest and on 25 opened surfaces (a screenshot per scroll position: ~20 min
-    # on an M5) and 24 shared-component walks, on a cold
-    # `next dev --webpack`, after npm install and the Chromium shell.
-    timeout-minutes: 75
+    # One part of the live census (contract section 9) on its own cold `next dev --webpack`, after npm
+    # install and the Chromium shell. `rest` takes the 30 captures (a screenshot per scroll position of
+    # every page in six states) and the 10-walk state pass; `kbli` and `explorer` the 25 opened surfaces
+    # of their pages; `shared` the 24 shared-component walks. A part that fails or runs out of time
+    # dumps nothing, and the aggregate reads its scenarios as missing.
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        part: ${{ fromJSON(inputs.parts || '["rest","kbli","explorer","shared"]') }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          # shared-touched-unpinned diffs the merge commit against its first parent, the base.
-          fetch-depth: 2
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
@@ -113,20 +122,65 @@ jobs:
           shell=$(find "$HOME/.cache/ms-playwright" -path '*chromium_headless_shell-*' -name chrome-headless-shell -type f | sort | tail -1)
           test -x "$shell"
           echo "CHROME_HEADLESS=$shell" >> "$GITHUB_ENV"
-      - name: Browser guilt and innocence of the opened-surface walk
-        run: python -m pytest scripts/mouth/tests -q -p no:cacheprovider -k "e2e"
-      - name: Live census, state walk and opened surfaces (starts and stops its own dev server)
+      - name: Live census, this part's scenarios (starts and stops its own dev server)
         env:
-          CENSUS_DEV_LOG: ${{ runner.temp }}/next-dev.log
+          PART: ${{ matrix.part }}
+          CENSUS_DEV_LOG: ${{ runner.temp }}/part/next-dev-${{ matrix.part }}.log
+        run: |
+          mkdir -p "$RUNNER_TEMP/part"
+          part=()
+          [ "$PART" = full ] || part=(--part "$PART")
+          # The verdict is the aggregate's; a part prints its own scenarios only, and its phase-seconds on stderr.
+          python scripts/mouth/r19_wrapper_token_census.py --port 3519 --diff-base HEAD "${part[@]}" \
+            --json "$RUNNER_TEMP/part/census-$PART.jsonl"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: census-part-${{ matrix.part }}
+          path: ${{ runner.temp }}/part/
+          if-no-files-found: error
+          retention-days: 7
+      # After the census, so a red here never costs the aggregate this part's scenarios.
+      - name: Browser guilt and innocence of the opened-surface walk
+        if: matrix.part == 'explorer'
+        run: python -m pytest scripts/mouth/tests -q -p no:cacheprovider -k "e2e"
+
+  wrapper-census-states:
+    needs: wrapper-census-part
+    # Every part's dump judged as one census: a part that failed still reaches here, as missing scenarios.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # shared-touched-unpinned diffs the merge commit against its first parent, the base.
+          fetch-depth: 2
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Download the parts' dumps
+        uses: actions/download-artifact@v8
+        with:
+          pattern: census-part-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/parts
+      - name: The parts judged as one census, against the one scenario list
+        env:
           # A dispatch has no base to diff: it reads the working tree only.
           DIFF_BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || 'HEAD' }}
         run: |
           set -o pipefail
-          python scripts/mouth/r19_wrapper_token_census.py --port 3519 --diff-base "$DIFF_BASE" | tee "$RUNNER_TEMP/census.txt"
-      - name: Every capture and every surface opened, every shared component pinned and unchanged
+          shopt -s nullglob
+          cat /dev/null "$RUNNER_TEMP"/parts/*.jsonl > "$RUNNER_TEMP/census.jsonl"
+          python scripts/mouth/r19_wrapper_token_census.py --replay "$RUNNER_TEMP/census.jsonl" \
+            --diff-base "$DIFF_BASE" | tee "$RUNNER_TEMP/census.txt"
+      - name: Every scenario received, every capture and every surface opened, every shared component pinned and unchanged
+        env:
+          PARTS_RESULT: ${{ needs.wrapper-census-part.result }}
         run: |
           fail=0
-          for want in "captures: 30 ok, 0 failed" "opened-surfaces: 25 ok, 0 failed" \
+          for want in "scenarios-off-manifest: 0" "captures: 30 ok, 0 failed" "opened-surfaces: 25 ok, 0 failed" \
                       "shared-touched-unpinned: 0" "shared-component-drift: 0"; do
             if grep -Fxq "$want" "$RUNNER_TEMP/census.txt"; then
               echo "ok: $want"
@@ -135,10 +189,17 @@ jobs:
               fail=1
             fi
           done
-          grep -E '^(read-but-undefined|colors-outside|state-rows-unseen|state-colors-off|page-grounds|opened-|ground-resolver|shared-)' "$RUNNER_TEMP/census.txt" || true
+          if [ "$PARTS_RESULT" != success ]; then
+            echo "::error::wrapper-census-part concluded '$PARTS_RESULT': a part, or the browser tests, did not pass"
+            fail=1
+          fi
+          grep -E '^(scenarios-|read-but-undefined|colors-outside|state-rows-unseen|state-colors-off|page-grounds|opened-|ground-resolver|shared-)' "$RUNNER_TEMP/census.txt" || true
           if [ "$fail" -ne 0 ]; then
+            grep -E '^  (missing|twice|unexpected): ' "$RUNNER_TEMP/census.txt" || true
             grep -E '^  (capture-failed|walk-failed|shared-failed):|^  [a-z-]+ [a-z]+/[a-z-]+: failed:' "$RUNNER_TEMP/census.txt" || true
             grep -E '^  [-+?] |^  (apps|packages)/' "$RUNNER_TEMP/census.txt" || true
-            tail -40 "$RUNNER_TEMP/next-dev.log" || true
+            for log in "$RUNNER_TEMP"/parts/next-dev-*.log; do
+              [ -f "$log" ] && { echo "== $log"; tail -40 "$log"; }
+            done
           fi
           exit "$fail"

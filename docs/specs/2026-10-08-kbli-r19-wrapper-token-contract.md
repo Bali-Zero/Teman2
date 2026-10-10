@@ -1159,3 +1159,62 @@ The three `hover:` variants of `components/ui/button.tsx` render only inside the
 
 They have no §7 row, and the scan lists them as the only state-variant background classes
 without one. The lot that walks the boundaries adds their §7 rows.
+
+## 9. Amendment 2026-10-10: the census in parts (W0d-3a)
+
+In one CI job the census took 28 min 39 s on its 30 captures (W0d-2'), against a 75-minute
+timeout, and W0d-3 grows it to 54 captures and 51 walks. CI therefore runs it in parts, side by
+side. Every count it prints is unchanged.
+
+**The one list.** `scenarios()` lists every scenario of a full run in the order the run takes
+them, each with the one part that runs it:
+
+| part       | scenarios                                                            | count |
+| ---------- | -------------------------------------------------------------------- | ----- |
+| `rest`     | the 30 captures (5 pages in 6 states) and the 10 state walks of §7.5 | 40    |
+| `kbli`     | the opened-surface walks of §8.4 on `/kbli` and `/kbli/55203`        | 18    |
+| `explorer` | the opened-surface walks of §8.4 on `/kbli-explorer`                 | 7     |
+| `shared`   | the shared-component walks of §8.5                                   | 24    |
+
+`--part P` runs the scenarios of P and nothing else. With no `--part`, the census runs the whole
+list in one job, as before.
+
+**The aggregate.** Each part dumps what it walked (`--json`). `--replay` over the dumps,
+concatenated in any order, folds the parts in the order of the table. A token that two parts
+read folds as one run folds it. Every entry then goes back to where a full run takes it, and the
+census is judged as one.
+
+**What it prints.** The first line is `scenarios-off-manifest: S`. S counts:
+
+- each scenario no part reported, done or failed (`missing:`);
+- each scenario reported twice (`twice:`);
+- each scenario that is not on the list (`unexpected:`).
+
+Each is named on its own line. A missing scenario is entered as failed, whether it is a
+capture, a state walk, an opened walk or a shared walk. Every count it feeds then reads
+INCOMPLETE, never 0, and so does S.
+
+A live part answers for its own scenarios. A replay answers for the whole list, whatever it
+holds. A dump from before the parts has no list, and its replay prints no S line.
+
+**In CI.**
+
+- `wrapper-census-part (<part>)` runs one job per part, with fail-fast off and a 40-minute
+  timeout each. Each job prints `phase-seconds:` for its part on stderr, never in the verdict.
+- `wrapper-census-states` keeps its name. It downloads the dumps and replays them. It then asserts
+  these five lines exactly:
+  - `scenarios-off-manifest: 0`;
+  - `captures: 30 ok, 0 failed`;
+  - `opened-surfaces: 25 ok, 0 failed`;
+  - `shared-touched-unpinned: 0`;
+  - `shared-component-drift: 0`.
+- The aggregate also fails when any part job did not succeed. The browser guilt and innocence
+  tests run in the `explorer` job, after its census.
+- The aggregate runs after a failed part, and reads that part's scenarios as missing.
+- A dispatch with `parts` set to `["full"]` runs the whole census in one job. That is the
+  reference the proof compares against.
+
+**The proof.** On the same commit, the aggregate's verdict text is byte-identical to the verdict
+of the single-job full run. Offline, a test cuts the full fixture into the four parts' dumps,
+concatenates them in another order and replays them. The result is the same text as the full
+dump's replay, and that text is the earlier verdict under its first line.

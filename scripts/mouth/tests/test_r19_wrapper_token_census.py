@@ -6,6 +6,7 @@ browser and no dev server.
 """
 from __future__ import annotations
 
+import collections
 import copy
 import json
 import re
@@ -1219,3 +1220,189 @@ def test_guilt_8161s_head_reads_ink_titles_on_the_dark_dropdown():
     assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 21"
     assert lines_of(out, "ground-resolver-disagree:") == "ground-resolver-disagree: 0"
     assert out[-1] == "opened-text-below-4.5: 108"
+
+
+# Section 9 (W0d-3a): the census in parts. The fixture is one full run; cut by part, it is what the four
+# `wrapper-census-part` jobs dump for the aggregate.
+UNITS = census_mod.scenarios(*census_mod.measure_literals())
+WORKFLOW = (census_mod.ROOT / ".github/workflows/r19-wrapper-census-tests.yml").read_text()
+EXIT_LINES = ["scenarios-off-manifest: 0", "captures: 30 ok, 0 failed", "opened-surfaces: 25 ok, 0 failed",
+              "shared-touched-unpinned: 0", "shared-component-drift: 0"]
+
+
+def cut(census: dict) -> dict[str, dict]:
+    """The full census as each part dumps it: an entry goes with the part that runs its scenario, the reads,
+    colours and state classes with `rest`, and a part that walks no surface dumps no opened walk."""
+    part_of = collections.defaultdict(lambda: "kbli", {f"{k} {n}": part for part, k, n, _ in UNITS})  # off-list: kbli
+    out = {}
+    for p in census_mod.PARTS:
+        sub = {**{k: census[k] for k in ("schema", "pages", "states")}, "parts": [p],
+               **{k: census[k] if p == "rest" else {} for k in ("reads", "colors", "state_obs")}}
+        for k, see in census_mod.SCENARIO_OF.items():
+            if k in census and (p != "rest" or k not in ("opened", "shared", "shared_failed")):
+                sub[k] = [x for x in census[k] if part_of[see(x)] == p]
+        out[p] = sub
+    return out
+
+
+def parts_file(tmp_path, census: dict, order=("shared", "explorer", "rest", "kbli")) -> Path:
+    parts = cut(census)
+    for p in order:
+        census_mod.dump(parts[p], tmp_path / f"census-{p}.jsonl")
+    path = tmp_path / "census.jsonl"
+    path.write_text("".join((tmp_path / f"census-{p}.jsonl").read_text() for p in order))
+    return path
+
+
+def replay(capsys, path: Path) -> str:
+    assert census_mod.main(["--replay", str(path), "--diff-base", "HEAD"]) == 0
+    return capsys.readouterr().out
+
+
+def test_the_parts_cut_from_one_list_cover_it_once():
+    keys = [f"{kind} {name}" for _, kind, name, _ in UNITS]
+    by_part = {p: {f"{k} {n}" for q, k, n, _ in UNITS if q == p} for p in census_mod.PARTS}
+    assert len(keys) == len(set(keys)) == 30 + 10 + 25 + 24
+    assert {q for q, *_ in UNITS} == set(census_mod.PARTS) and all(by_part.values())
+    assert set().union(*by_part.values()) == set(keys)
+    assert all(not (by_part[a] & by_part[b]) for a in by_part for b in by_part if a < b)
+    assert {p: len(v) for p, v in by_part.items()} == {"rest": 40, "kbli": 18, "explorer": 7, "shared": 24}
+
+
+def test_the_workflow_runs_every_part_and_judges_them_after_any_failure():
+    parts = json.dumps(list(census_mod.PARTS), separators=(",", ":"))
+    assert f"part: ${{{{ fromJSON(inputs.parts || '{parts}') }}}}" in WORKFLOW
+    assert f"default: '{parts}'" in WORKFLOW
+    job = WORKFLOW[WORKFLOW.index("\n  wrapper-census-states:\n"):]
+    assert "    needs: wrapper-census-part\n" in job and "    if: ${{ !cancelled() }}\n" in job
+    assert "--replay \"$RUNNER_TEMP/census.jsonl\"" in job
+
+
+def test_the_parts_judged_together_print_the_full_runs_verdict_byte_for_byte(tmp_path, capsys):
+    """The W0d-3a proof, offline: one full run's dump, cut into the four parts' dumps and concatenated in another
+    order, replays to the very text of the full dump, which is today's verdict under its first line."""
+    legacy = replay(capsys, FIXTURE)
+    full = census_mod.load(FIXTURE)
+    full["parts"] = ["full"]
+    census_mod.dump(full, tmp_path / "full.jsonl")
+    whole = replay(capsys, tmp_path / "full.jsonl")
+    assert whole == "scenarios-off-manifest: 0\n" + legacy
+    assert all(want in whole.splitlines() for want in EXIT_LINES)
+    for order in (census_mod.PARTS, ("shared", "explorer", "rest", "kbli")):
+        assert replay(capsys, parts_file(tmp_path, census_mod.load(FIXTURE), order)) == whole
+
+
+DROPS = {"capture": ("captures", lambda c: (c["page"], c["state"]) == ("/kbli-explorer", "mobile/forced-dark"),
+                     "capture /kbli-explorer mobile/forced-dark", "read-but-undefined: 0 (INCOMPLETE: 1 captures "
+                     "failed, not a verdict)"),
+         "walk": ("walks", lambda w: w == "/kbli/56101 mobile/system-dark", "walk /kbli/56101 mobile/system-dark",
+                  "state-colors-off-contract: INCOMPLETE (1 walks failed, 9 ok, not a verdict)"),
+         "opened": ("opened", lambda o: (o["name"], o["walk"]) == ("explorer-compare", "desktop/light"),
+                    "opened explorer-compare desktop/light", "opened-surfaces: 24 ok, 1 failed"),
+         "shared": ("shared", lambda s: (s["name"], s["walk"]) == ("Footer R19 blog /news", "mobile/light"),
+                    "shared Footer R19 blog /news mobile/light",
+                    "shared-component-drift: INCOMPLETE (1 shared walks failed, not a verdict)")}
+
+
+@pytest.mark.parametrize("kind", DROPS)
+def test_guilt_a_scenario_no_part_ran_is_missing_and_its_counts_never_read_zero(tmp_path, capsys, kind):
+    where, hit, key, line = DROPS[kind]
+    census = census_mod.load(FIXTURE)
+    census[where] = [x for x in census[where] if not hit(x)]
+    out = replay(capsys, parts_file(tmp_path, census)).splitlines()
+    assert out[:2] == ["scenarios-off-manifest: 1 (INCOMPLETE: 1 scenarios not received, not a verdict)",
+                       f"  missing: {key}"]
+    assert line in out
+
+
+@pytest.mark.parametrize("part", census_mod.PARTS)
+def test_guilt_a_missing_part_is_every_one_of_its_scenarios_missing(tmp_path, capsys, part):
+    order = [p for p in census_mod.PARTS if p != part]
+    out = replay(capsys, parts_file(tmp_path, census_mod.load(FIXTURE), order)).splitlines()
+    n = sum(q == part for q, *_ in UNITS)
+    assert out[0] == f"scenarios-off-manifest: {n} (INCOMPLETE: {n} scenarios not received, not a verdict)"
+    assert sum(ln.startswith("  missing: ") for ln in out) == n
+    assert not set(EXIT_LINES) <= set(out)
+
+
+def test_guilt_no_dump_at_all_is_the_whole_list_missing(tmp_path, capsys):
+    (tmp_path / "census.jsonl").write_text("")
+    out = replay(capsys, tmp_path / "census.jsonl").splitlines()
+    assert out[0] == "scenarios-off-manifest: 89 (INCOMPLETE: 89 scenarios not received, not a verdict)"
+    assert "captures: 0 ok, 30 failed" in out and "opened-surfaces: 0 ok, 25 failed" in out
+
+
+def test_guilt_a_part_twice_and_a_scenario_off_the_list_are_named(tmp_path, capsys):
+    path = parts_file(tmp_path, census_mod.load(FIXTURE))
+    path.write_text(path.read_text() + (tmp_path / "census-explorer.jsonl").read_text())
+    out = replay(capsys, path).splitlines()
+    assert out[0] == "scenarios-off-manifest: 7" and "  twice: opened explorer-compare desktop/light" in out
+    census = census_mod.load(FIXTURE)
+    census["opened"][0]["name"] = "ghost-surface"
+    out = replay(capsys, parts_file(tmp_path, census)).splitlines()
+    assert out[:3] == ["scenarios-off-manifest: 2 (INCOMPLETE: 1 scenarios not received, not a verdict)",
+                       "  missing: opened search-dropdown mobile/light",
+                       "  unexpected: opened ghost-surface mobile/light"]
+
+
+def test_a_token_two_parts_read_folds_as_one_run_folds_it(tmp_path):
+    """Parts fold in the order of PARTS, whatever the order of the file: the first part's example stands unless a
+    later part reads the token from worse (RANK), and the counts add up."""
+    head = {"schema": 1, "pages": ["/kbli"], "states": ["desktop/light"], "captures": [], "failed": [],
+            "walks": [], "walk_failed": []}
+    def read(token, defined, selector, count):
+        return {"read": f"var {token}", "kind": "var", "token": token, "defined": defined, "selector": selector,
+                "count": count, "page": "/kbli", "state": "desktop/light"}
+    docs = [({**head, "parts": ["rest"]}, [read("--tie", "above", "a", 2), read("--worse", "wrapper", "a", 1)]),
+            ({**head, "parts": ["kbli"]}, [read("--tie", "above", "b", 3), read("--worse", "nowhere", "b", 1)])]
+    (tmp_path / "c.jsonl").write_text("".join(json.dumps(h) + "\n" + "".join(json.dumps(r) + "\n" for r in rows)
+                                              for h, rows in reversed(docs)))
+    census = census_mod.load(tmp_path / "c.jsonl")
+    assert census["parts"] == ["rest", "kbli"]
+    assert {t: tuple(census["reads"][f"var {t}"][k] for k in ("count", "defined", "selector"))
+            for t in ("--tie", "--worse")} == {"--tie": (5, "above", "a"), "--worse": (2, "nowhere", "b")}
+
+
+def test_innocence_a_failed_scenario_is_received_not_missing(tmp_path, capsys):
+    census = census_mod.load(FIXTURE)
+    gone = census["captures"].pop(7)
+    census["failed"].append(f"{gone['page']} {gone['state']}: opener: Timeout 30000ms: waiting for x: y")
+    out = replay(capsys, parts_file(tmp_path, census)).splitlines()
+    assert out[:2] == ["scenarios-off-manifest: 0", "captures: 29 ok, 1 failed"]
+
+
+def exit_step() -> str:
+    """The aggregate's assert step, as CI runs it."""
+    body = re.search(r"\n      - name: Every scenario received[^\n]*\n(?:        env:\n(?:          .*\n)+)?"
+                     r"        run: \|\n((?:          .*\n|\n)+)", WORKFLOW).group(1)
+    return "\n".join(ln[10:] for ln in body.splitlines())
+
+
+def run_exit_step(tmp_path, log: str, result: str = "success") -> subprocess.CompletedProcess:
+    (tmp_path / "census.txt").write_text(log)
+    return subprocess.run(["bash", "-c", exit_step()], capture_output=True, text=True,
+                          env={"RUNNER_TEMP": str(tmp_path), "PARTS_RESULT": result, "PATH": "/usr/bin:/bin"})
+
+
+def test_innocence_the_exit_step_passes_the_parts_judged_together(tmp_path, capsys):
+    r = run_exit_step(tmp_path, replay(capsys, parts_file(tmp_path, census_mod.load(FIXTURE))))
+    assert r.returncode == 0, r.stdout
+    assert [ln for ln in r.stdout.splitlines() if ln.startswith("ok: ")] == [f"ok: {w}" for w in EXIT_LINES]
+
+
+@pytest.mark.parametrize("want", EXIT_LINES)
+def test_guilt_the_exit_step_fails_a_log_carrying_1(tmp_path, capsys, want):
+    log = replay(capsys, parts_file(tmp_path, census_mod.load(FIXTURE)))
+    bad = re.sub(r"\b0(?= failed$)|(?<=: )0$", "1", want)
+    r = run_exit_step(tmp_path, log.replace(want + "\n", bad + "\n"))
+    assert r.returncode == 1 and f"::error::the census did not print '{want}'" in r.stdout, r.stdout
+
+
+def test_guilt_the_exit_step_fails_a_missing_scenario_and_a_red_part(tmp_path, capsys):
+    census = census_mod.load(FIXTURE)
+    census["shared"] = census["shared"][1:]
+    r = run_exit_step(tmp_path, replay(capsys, parts_file(tmp_path, census)))
+    assert r.returncode == 1 and r.stdout.count("::error::") == 2, r.stdout
+    assert "  missing: shared MobileNav non-R19 /v2 mobile/light" in r.stdout
+    r = run_exit_step(tmp_path, replay(capsys, parts_file(tmp_path, census_mod.load(FIXTURE))), "failure")
+    assert r.returncode == 1 and "::error::wrapper-census-part concluded 'failure'" in r.stdout, r.stdout

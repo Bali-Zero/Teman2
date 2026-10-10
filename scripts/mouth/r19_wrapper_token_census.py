@@ -19,7 +19,11 @@ A ground is read twice: by the pixels of a screenshot with the text made transpa
 and by the painter stack under the text (it names the painter); R counts where they disagree.
 The verdict is the printed line, never the exit code.
 
-  python3 scripts/mouth/r19_wrapper_token_census.py [--base-url URL] [--json OUT] [--diff-base REF]
+The census runs whole, or in the parts CI runs side by side (`--part`, section 9): each part dumps what it
+walked, and `--replay` over the dumps concatenated judges them as one census, first printing
+`scenarios-off-manifest: S`, what was received against the one scenario list the parts are cut from.
+
+  python3 scripts/mouth/r19_wrapper_token_census.py [--base-url URL] [--part PART] [--json OUT] [--diff-base REF]
   python3 scripts/mouth/r19_wrapper_token_census.py --replay CENSUS.jsonl
   python3 scripts/mouth/r19_wrapper_token_census.py --export
 """
@@ -27,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import collections
 import importlib.util
 import json
 import os
@@ -342,7 +347,8 @@ def verdict(census: dict, contract: dict, states: dict | None = None) -> list[st
 
 def dump(census: dict, path: Path) -> None:
     """JSON Lines: a header, then one read / colour per line, sorted by token."""
-    head = {k: census[k] for k in ("schema", "pages", "states", "captures", "failed", "walks", "walk_failed")}
+    head = {k: census[k] for k in ("schema", "pages", "states", "captures", "failed", "walks", "walk_failed",
+                                   "parts", "seconds") if k in census}
     lines = [json.dumps(head, sort_keys=True)]
     lines += [json.dumps({"read": k, **census["reads"][k]}, sort_keys=True) for k in sorted(census["reads"])]
     lines += [json.dumps({"color": k, **census["colors"][k]}, sort_keys=True) for k in sorted(census["colors"])]
@@ -357,18 +363,54 @@ def dump(census: dict, path: Path) -> None:
 
 
 def load(path: Path) -> dict:
-    head, *rows = [json.loads(ln) for ln in path.read_text().splitlines() if ln.strip()]
-    census = {**head, "reads": {}, "colors": {}, "state_obs": {}}
-    if head.get("opened_walked"):
-        census["opened"], census["shared"] = [], []
-    for row in rows:
-        if "opened" in row or "shared" in row:
-            key = "opened" if "opened" in row else "shared"
-            row.pop(key)
-            census[key].append(row)
-            continue
-        key = next(k for k in ("read", "color", "state_ob") if k in row)
-        census[key + "s"][row.pop(key)] = row
+    """One dump, or the dumps of the CI parts concatenated in any order (section 9). The parts are folded in
+    the order of PARTS, a token two parts read as one run folds it; against_scenarios() then puts every
+    scenario back where one full run takes it. No dump at all is a census of the parts, every scenario missing."""
+    docs: list[list[dict]] = []
+    for ln in path.read_text().splitlines():
+        if ln.strip():
+            row = json.loads(ln)
+            if "schema" in row:
+                docs.append([row])
+            elif not docs:
+                raise ValueError(f"{path}: a row before any header")
+            else:
+                docs[-1].append(row)
+    if not docs:
+        viewports, themes = measure_literals()
+        docs = [[{"schema": 1, "pages": PAGES, "states": [f"{v}/{t}" for v in viewports for t in themes],
+                  "captures": [], "failed": [], "walks": [], "walk_failed": [], "parts": []}]]
+    rank = {p: i for i, p in enumerate(("full",) + PARTS)}
+    docs.sort(key=lambda d: min((rank.get(p, len(rank)) for p in d[0].get("parts", [])), default=-1))
+    census: dict = {"reads": {}, "colors": {}, "state_obs": {}}
+    for head, *rows in docs:
+        for k, v in head.items():
+            if k in ("captures", "failed", "walks", "walk_failed", "shared_failed", "parts"):
+                census.setdefault(k, []).extend(v)
+            elif k == "seconds":
+                census.setdefault(k, {}).update(v)
+            elif census.setdefault(k, v) != v:
+                raise ValueError(f"{path}: the dumps disagree on {k}")
+        if head.get("opened_walked"):
+            census.setdefault("opened", [])
+            census.setdefault("shared", [])
+        for row in rows:
+            if "opened" in row or "shared" in row:
+                key = "opened" if "opened" in row else "shared"
+                row.pop(key)
+                census[key].append(row)
+                continue
+            key = next(k for k in ("read", "color", "state_ob") if k in row)
+            name = row.pop(key)
+            prev = census[key + "s"].get(name)
+            if prev is None:
+                census[key + "s"][name] = row
+                continue
+            prev["count"] += row["count"]
+            if key == "read" and RANK[row["defined"]] > RANK[prev["defined"]]:
+                prev.update({k: row[k] for k in ("defined", "selector", "page", "state")})
+            if key == "state_ob":
+                prev["observed"] += [v for v in row["observed"] if v not in prev["observed"]]
     return census
 
 
@@ -767,8 +809,8 @@ def core_components() -> list[str]:
     return sorted(names)
 
 
-def export() -> dict:
-    """The probe, pages, six states and palette, for the armed apps/mouth test."""
+def measure_literals() -> tuple[dict, dict]:
+    """measure.py's VIEWPORTS and THEMES, read without importing it (it imports Playwright)."""
     found = {}
     for node in ast.parse(MEASURE.read_text()).body:
         if isinstance(node, ast.Assign):
@@ -778,9 +820,15 @@ def export() -> dict:
     for name in ("VIEWPORTS", "THEMES"):
         if name not in found:
             raise SystemExit(f"{MEASURE}: top-level {name} literal not found")
+    return found["VIEWPORTS"], found["THEMES"]
+
+
+def export() -> dict:
+    """The probe, pages, six states and palette, for the armed apps/mouth test."""
+    viewports, themes = measure_literals()
     states = [{"name": f"{v}/{t}", "width": w, "height": h, "scheme": scheme, "forced": forced}
-              for v, (w, h) in found["VIEWPORTS"].items()
-              for t, (scheme, forced) in found["THEMES"].items()]
+              for v, (w, h) in viewports.items()
+              for t, (scheme, forced) in themes.items()]
     return {"probe": PROBE_JS, "pages": PAGES, "core": core_components(), "states": states,
             "direction_a": DIRECTION_A, "semantic": SEMANTIC,
             "semantic_on_paper": {k: round(contrast(h, DIRECTION_A["paper"]), 2) for k, h in SEMANTIC.items()}}
@@ -798,119 +846,138 @@ def _wait(url: str, seconds: int) -> None:
     raise SystemExit(f"dev server never answered {url}")
 
 
-def live(base: str) -> dict:
+def live(base: str, part: str | None = None) -> dict:
+    """One full census, or the scenarios of one part (section 9): either way the scenarios run in the order
+    of the one list, scenarios()."""
     from playwright.sync_api import sync_playwright
     m = _load_measure()
+    units = [u for u in scenarios(m.VIEWPORTS, m.THEMES) if part in (None, u[0])]
     census: dict = {"schema": 1, "pages": PAGES, "captures": [], "failed": [], "reads": {}, "colors": {},
-                    "state_obs": {}, "walks": [], "walk_failed": [],
+                    "state_obs": {}, "walks": [], "walk_failed": [], "parts": [part or "full"],
                     "states": [f"{v}/{t}" for v in m.VIEWPORTS for t in m.THEMES]}
-    core = core_components()
+    loads = {how[0] if kind in ("capture", "walk") else how[0][1].split("?")[0] for _, kind, _, how in units}
     for p in PAGES:
-        _wait(base + p, 300)
+        if p in loads:
+            _wait(base + p, 300)
+    seconds = {}
     with sync_playwright() as pw:
         browser = pw.chromium.launch(executable_path=m.CHROME)
-        for page_path in PAGES:
-            for vname, (w, h) in m.VIEWPORTS.items():
-                for tname, (scheme, forced) in m.THEMES.items():
-                    state = f"{vname}/{tname}"
-                    ctx = browser.new_context(viewport={"width": w, "height": h}, color_scheme=scheme)
-                    ctx.add_init_script(FREEZE_JS)
-                    page = ctx.new_page()
-                    try:
-                        resp = page.goto(base + page_path, wait_until="load", timeout=180000)
-                        if resp is None or resp.status >= 400:
-                            raise RuntimeError(f"HTTP {resp.status if resp else 'none'}")
-                        page.wait_for_timeout(250)
-                        if forced:
-                            page.evaluate("t => document.documentElement.setAttribute('data-theme', t)", forced)
-                        page.wait_for_function("() => document.readyState === 'complete'", timeout=60000)
-                        quiet(page)
-                        page.wait_for_timeout(1500)
-                        force_theme(page, forced)
-                        res = page.evaluate(PROBE_JS, core)
-                        if not res.get("root"):
-                            raise RuntimeError("wrapper root not found")
-                    except Exception as exc:  # a failed capture must never read as clean
-                        census["failed"].append(f"{page_path} {state}: {exc}".splitlines()[0][:200])
-                        ctx.close()
-                        continue
-                    census["captures"].append({"page": page_path, "state": state, "root": res["root"],
-                                               "elements": res["elements"], "rules": res["rules"],
-                                               "skipped_sheets": res["skipped"]})
-                    try:
-                        census["captures"][-1].update(page_grounds(page, f"{page_path} {state}"))
-                    except Exception as exc:  # a page that was not read through is never clean
-                        census["captures"][-1].update(page_incomplete=True,
-                                                      page_error=str(exc).splitlines()[0][:160])
-                    for r in res["reads"]:
-                        key = f"{r['kind']} {r['token']}"
-                        prev = census["reads"].get(key)
-                        if prev is None:
-                            census["reads"][key] = {**r, "page": page_path, "state": state}
-                        else:
-                            prev["count"] += r["count"]
-                            if RANK[r["defined"]] > RANK[prev["defined"]]:
-                                prev.update(defined=r["defined"], selector=r["selector"], page=page_path, state=state)
-                    for c in res["colors"]:
-                        prev = census["colors"].get(c["hex"])
-                        if prev is None:
-                            census["colors"][c["hex"]] = {**{k: c[k] for k in ("count", "prop", "selector")},
-                                                          "page": page_path, "state": state}
-                        else:
-                            prev["count"] += c["count"]
-                    ctx.close()
-        walk_states(browser, m, base, census)
-        walk_opened(browser, m, base, census)
+        for kind, run in (("capture", capture_pages), ("walk", walk_states), ("opened", walk_opened),
+                          ("shared", walk_opened)):
+            todo = [u for u in units if u[1] == kind]
+            if todo:
+                clock = time.monotonic()
+                run(browser, m, base, census, todo)
+                seconds[kind] = round(time.monotonic() - clock)
         browser.close()
+    census["seconds"] = {part or "full": seconds}
     return census
 
 
-def walk_states(browser, m, base: str, census: dict) -> None:
-    """Hover through page.hover, focus through Tab, selection through a range: section 7.5."""
-    for page_path in PAGES:
-        for vname, tname in WALK:
-            w, h = m.VIEWPORTS[vname]
-            scheme, forced = m.THEMES[tname]
-            name = f"{page_path} {vname}/{tname}"
-            ctx = browser.new_context(viewport={"width": w, "height": h}, color_scheme=scheme)
-            page = ctx.new_page()
-            try:
-                resp = page.goto(base + page_path, wait_until="load", timeout=180000)
-                if resp is None or resp.status >= 400:
-                    raise RuntimeError(f"HTTP {resp.status if resp else 'none'}")
-                page.wait_for_timeout(250)
-                if forced:
-                    page.evaluate("t => document.documentElement.setAttribute('data-theme', t)", forced)
-                page.wait_for_function("() => document.readyState === 'complete'", timeout=60000)
-                page.wait_for_timeout(1500)
-                if not page.evaluate(STATE_JS, STATE_TOKEN).get("root"):
-                    raise RuntimeError("wrapper root not found")
-                page.evaluate("() => window.__r19s.observe()")  # presence, placeholder, selection
-                for i in range(min(page.evaluate("() => window.__r19s.targets()"), 150)):
-                    try:
-                        page.hover(f'[data-r19-hover="{i}"]', timeout=2000)
-                    except Exception:  # covered or off-screen: that target is skipped, never faked
-                        continue
-                    page.evaluate("() => window.__r19s.observe()")
-                page.mouse.move(0, 0)
-                page.evaluate("() => window.__r19s.blur()")
-                for _ in range(80):
-                    page.keyboard.press("Tab")
-                    page.evaluate("() => window.__r19s.observe()")
-                found = page.evaluate("() => window.__r19s.collect()")
-            except Exception as exc:  # a failed walk must never read as clean
-                census["walk_failed"].append(f"{name}: {exc}".splitlines()[0][:200])
-                ctx.close()
-                continue
-            census["walks"].append(name)
-            for ob in found:
-                prev = census["state_obs"].get(ob["token"])
-                if prev is None:
-                    census["state_obs"][ob["token"]] = {**ob, "page": page_path, "walk": f"{vname}/{tname}"}
-                else:
-                    prev["count"] += ob["count"]
-                    prev["observed"] += [v for v in ob["observed"] if v not in prev["observed"]]
+def capture_pages(browser, m, base: str, census: dict, units: list | None = None) -> None:
+    """Each page in each of the six states: the tokens read, the colours painted, the grounds at rest."""
+    core = core_components()
+    for _, kind, _, (page_path, vname, tname) in scenarios(m.VIEWPORTS, m.THEMES) if units is None else units:
+        if kind != "capture":
+            continue
+        w, h = m.VIEWPORTS[vname]
+        scheme, forced = m.THEMES[tname]
+        state = f"{vname}/{tname}"
+        ctx = browser.new_context(viewport={"width": w, "height": h}, color_scheme=scheme)
+        ctx.add_init_script(FREEZE_JS)
+        page = ctx.new_page()
+        try:
+            resp = page.goto(base + page_path, wait_until="load", timeout=180000)
+            if resp is None or resp.status >= 400:
+                raise RuntimeError(f"HTTP {resp.status if resp else 'none'}")
+            page.wait_for_timeout(250)
+            if forced:
+                page.evaluate("t => document.documentElement.setAttribute('data-theme', t)", forced)
+            page.wait_for_function("() => document.readyState === 'complete'", timeout=60000)
+            quiet(page)
+            page.wait_for_timeout(1500)
+            force_theme(page, forced)
+            res = page.evaluate(PROBE_JS, core)
+            if not res.get("root"):
+                raise RuntimeError("wrapper root not found")
+        except Exception as exc:  # a failed capture must never read as clean
+            census["failed"].append(f"{page_path} {state}: {exc}".splitlines()[0][:200])
             ctx.close()
+            continue
+        census["captures"].append({"page": page_path, "state": state, "root": res["root"],
+                                   "elements": res["elements"], "rules": res["rules"],
+                                   "skipped_sheets": res["skipped"]})
+        try:
+            census["captures"][-1].update(page_grounds(page, f"{page_path} {state}"))
+        except Exception as exc:  # a page that was not read through is never clean
+            census["captures"][-1].update(page_incomplete=True,
+                                          page_error=str(exc).splitlines()[0][:160])
+        for r in res["reads"]:
+            key = f"{r['kind']} {r['token']}"
+            prev = census["reads"].get(key)
+            if prev is None:
+                census["reads"][key] = {**r, "page": page_path, "state": state}
+            else:
+                prev["count"] += r["count"]
+                if RANK[r["defined"]] > RANK[prev["defined"]]:
+                    prev.update(defined=r["defined"], selector=r["selector"], page=page_path, state=state)
+        for c in res["colors"]:
+            prev = census["colors"].get(c["hex"])
+            if prev is None:
+                census["colors"][c["hex"]] = {**{k: c[k] for k in ("count", "prop", "selector")},
+                                              "page": page_path, "state": state}
+            else:
+                prev["count"] += c["count"]
+        ctx.close()
+
+
+def walk_states(browser, m, base: str, census: dict, units: list | None = None) -> None:
+    """Hover through page.hover, focus through Tab, selection through a range: section 7.5."""
+    for _, kind, _, (page_path, vname, tname) in scenarios(m.VIEWPORTS, m.THEMES) if units is None else units:
+        if kind != "walk":
+            continue
+        w, h = m.VIEWPORTS[vname]
+        scheme, forced = m.THEMES[tname]
+        name = f"{page_path} {vname}/{tname}"
+        ctx = browser.new_context(viewport={"width": w, "height": h}, color_scheme=scheme)
+        page = ctx.new_page()
+        try:
+            resp = page.goto(base + page_path, wait_until="load", timeout=180000)
+            if resp is None or resp.status >= 400:
+                raise RuntimeError(f"HTTP {resp.status if resp else 'none'}")
+            page.wait_for_timeout(250)
+            if forced:
+                page.evaluate("t => document.documentElement.setAttribute('data-theme', t)", forced)
+            page.wait_for_function("() => document.readyState === 'complete'", timeout=60000)
+            page.wait_for_timeout(1500)
+            if not page.evaluate(STATE_JS, STATE_TOKEN).get("root"):
+                raise RuntimeError("wrapper root not found")
+            page.evaluate("() => window.__r19s.observe()")  # presence, placeholder, selection
+            for i in range(min(page.evaluate("() => window.__r19s.targets()"), 150)):
+                try:
+                    page.hover(f'[data-r19-hover="{i}"]', timeout=2000)
+                except Exception:  # covered or off-screen: that target is skipped, never faked
+                    continue
+                page.evaluate("() => window.__r19s.observe()")
+            page.mouse.move(0, 0)
+            page.evaluate("() => window.__r19s.blur()")
+            for _ in range(80):
+                page.keyboard.press("Tab")
+                page.evaluate("() => window.__r19s.observe()")
+            found = page.evaluate("() => window.__r19s.collect()")
+        except Exception as exc:  # a failed walk must never read as clean
+            census["walk_failed"].append(f"{name}: {exc}".splitlines()[0][:200])
+            ctx.close()
+            continue
+        census["walks"].append(name)
+        for ob in found:
+            prev = census["state_obs"].get(ob["token"])
+            if prev is None:
+                census["state_obs"][ob["token"]] = {**ob, "page": page_path, "walk": f"{vname}/{tname}"}
+            else:
+                prev["count"] += ob["count"]
+                prev["observed"] += [v for v in ob["observed"] if v not in prev["observed"]]
+        ctx.close()
 
 
 # The opened-surface half (section 8.4): text contrast with opacity composited, and every
@@ -1498,6 +1565,68 @@ def pin_keys(pair: str, route: str) -> list[str]:
     """The pin entries one (pair, route) needs: one per walk of its component."""
     which = SHARED_SURFACE[pair.split()[0]][2]
     return [f"{pair} {route} {v}/{t}" for v, t in SHARED_WALKS[which]]
+
+
+# Section 9 (W0d-3a): the parts CI runs side by side. `rest` reads the pages at rest (captures and state walks),
+# `kbli` and `explorer` open the surfaces of their pages, `shared` walks the shared components.
+PARTS = ("rest", "kbli", "explorer", "shared")
+
+
+def scenarios(viewports: dict, themes: dict) -> list[tuple[str, str, str, tuple]]:
+    """The one list: every scenario of a full census as (part, kind, name, how), in the order a full run takes
+    them. Each part runs its own scenarios and nothing else; the aggregate is checked against this list."""
+    out = [("rest", "capture", f"{p} {v}/{t}", (p, v, t)) for p in PAGES for v in viewports for t in themes]
+    out += [("rest", "walk", f"{p} {v}/{t}", (p, v, t)) for p in PAGES for v, t in WALK]
+    walks = {"all": [(v, t) for v in viewports for t in themes], "walk": WALK,
+             "mobile": [("mobile", "system-dark")], "mobile-all": [("mobile", t) for t in themes], **SHARED_WALKS}
+    for sc in SCENARIOS + SHARED:
+        name, path, which = sc[:3]
+        part = "shared" if which in SHARED_WALKS else "explorer" if path.startswith("/kbli-explorer") else "kbli"
+        out += [(part, "shared" if part == "shared" else "opened", f"{name} {v}/{t}", (sc, v, t))
+                for v, t in walks[which]]
+    return out
+
+
+# The scenario each entry of a census reports, done or failed: "<kind> <name>" as scenarios() names it.
+SCENARIO_OF = {"captures": lambda c: f"capture {c['page']} {c['state']}",
+               "failed": lambda f: "capture " + f.split(": ", 1)[0],
+               "walks": lambda w: f"walk {w}",
+               "walk_failed": lambda f: "walk " + f.split(": ", 1)[0],
+               "opened": lambda o: f"opened {o['name']} {o['walk']}",
+               "shared": lambda s: f"shared {s['name']} {s['walk']}",
+               "shared_failed": lambda f: "shared " + f.split(": ", 1)[0]}
+NOT_RECEIVED = "not received from any part"
+
+
+def against_scenarios(census: dict, units: list) -> list[str]:
+    """`scenarios-off-manifest: S`: the scenarios the census received against the one list, and the lines naming
+    each one missing, received twice or not on the list. A missing scenario is entered as failed, so every count
+    it feeds reads INCOMPLETE and never 0; then every entry goes back to where a full run takes it. A dump from
+    before the parts has no list to be checked against."""
+    if "parts" not in census:
+        return []
+    want = {f"{kind} {name}": i for i, (_, kind, name, _) in enumerate(units)}
+    got = collections.Counter(see(x) for k, see in SCENARIO_OF.items() for x in census.get(k, []))
+    missing = [k for k in want if k not in got]
+    for key in missing:
+        kind, name = key.split(" ", 1)
+        if kind == "opened":
+            surface, walk = name.rsplit(" ", 1)
+            row = {"name": surface, "walk": walk, "roots": 0, "runs": [], "error": NOT_RECEIVED}
+            row["state"], row["reason"] = walk_state(row)
+            census.setdefault("opened", []).append(row)
+            continue
+        if kind == "shared":
+            census.setdefault("shared", [])
+        where = {"capture": "failed", "walk": "walk_failed", "shared": "shared_failed"}[kind]
+        census.setdefault(where, []).append(f"{name}: {NOT_RECEIVED}")
+    for k, see in SCENARIO_OF.items():
+        if k in census:
+            census[k].sort(key=lambda x: want.get(see(x), len(want)))
+    lines = ([f"  missing: {k}" for k in missing] + [f"  twice: {k}" for k, n in sorted(got.items()) if n > 1]
+             + [f"  unexpected: {k}" for k in sorted(got) if k not in want])
+    tail = f" (INCOMPLETE: {len(missing)} scenarios not received, not a verdict)" if missing else ""
+    return [f"scenarios-off-manifest: {len(lines)}{tail}"] + lines
 # Background utilities that paint no colour: never a ground of their own.
 NON_COLOUR_BG = ("bg-gradient-", "bg-linear-", "bg-radial", "bg-conic", "bg-clip-", "bg-cover", "bg-contain",
                  "bg-center", "bg-no-repeat", "bg-fixed", "bg-none", "bg-repeat", "bg-blend-", "bg-origin-",
@@ -1507,54 +1636,53 @@ FREEZE_JS = ("(() => { const si = window.setInterval;"
              " window.setInterval = (fn, ms, ...a) => (Number(ms) >= 2000 ? 0 : si(fn, ms, ...a)); })()")
 
 
-def walk_opened(browser, m, base: str, census: dict) -> None:
+def walk_opened(browser, m, base: str, census: dict, units: list | None = None) -> None:
     """Opens each surface a click or a query reveals and resolves the ground of every text run on it:
     section 8.4. A shared component outside /kbli* is fingerprinted instead (section 8.5)."""
     fixture = json.loads(OPENED_FIXTURE.read_text())
     census.setdefault("opened", [])
     census.setdefault("shared", [])
     census.setdefault("shared_failed", [])
-    walks = {"all": [(v, t) for v in m.VIEWPORTS for t in m.THEMES], "walk": WALK,
-             "mobile": [("mobile", "system-dark")], "mobile-all": [("mobile", t) for t in m.THEMES],
-             **SHARED_WALKS}
-    for name, path, which, status, seed, opener, selectors in SCENARIOS + SHARED:
+    for _, kind, _, (sc, vname, tname) in scenarios(m.VIEWPORTS, m.THEMES) if units is None else units:
+        if kind not in ("opened", "shared"):
+            continue
+        name, path, which, status, seed, opener, selectors = sc
         shared = which in SHARED_WALKS
-        for vname, tname in walks[which]:
-            w, h = m.VIEWPORTS[vname]
-            scheme, forced = m.THEMES[tname]
-            ctx = browser.new_context(viewport={"width": w, "height": h}, color_scheme=scheme)
-            ctx.add_init_script(FREEZE_JS)
-            if status is not None:
-                _stub(ctx, fixture, status)
-            if seed:
-                _seed(ctx, fixture)
-            page = ctx.new_page()
-            row: dict = {"name": name, "walk": f"{vname}/{tname}", "roots": 0, "runs": []}
-            branch = None
+        w, h = m.VIEWPORTS[vname]
+        scheme, forced = m.THEMES[tname]
+        ctx = browser.new_context(viewport={"width": w, "height": h}, color_scheme=scheme)
+        ctx.add_init_script(FREEZE_JS)
+        if status is not None:
+            _stub(ctx, fixture, status)
+        if seed:
+            _seed(ctx, fixture)
+        page = ctx.new_page()
+        row: dict = {"name": name, "walk": f"{vname}/{tname}", "roots": 0, "runs": []}
+        branch = None
+        try:
+            # Under load a click can land before hydration: the surface never opens, closes again, or a link
+            # navigates away. The page is loaded and opened once more before the walk fails.
             try:
-                # Under load a click can land before hydration: the surface never opens, closes again, or a link
-                # navigates away. The page is loaded and opened once more before the walk fails.
-                try:
-                    opened = open_page(page, base + path, forced, opener, selectors)
-                except Exception:
-                    if not opener:
-                        raise
-                    opened = False
-                if opener and not opened:
-                    open_page(page, base + path, forced, opener, selectors)
-                branch = page.evaluate(BRANCH_JS, name.split()[0]) if shared else None
-                row.update(resolve(page, "shared" if shared else "opened", selectors))
-            except Exception as exc:  # a surface that did not open must never read as clean
-                row["error"] = str(exc).splitlines()[0][:200]
-            ctx.close()
-            row["state"], row["reason"] = walk_state(row)
-            if shared:
-                if row["state"] != "ok" and not row.get("rootGround"):
-                    census["shared_failed"].append(f"{name} {row['walk']}: {row['state']} ({row['reason']})")
-                    continue
-                census["shared"].append({"name": name, "walk": row["walk"], "fingerprint": fingerprint(row, branch)})
+                opened = open_page(page, base + path, forced, opener, selectors)
+            except Exception:
+                if not opener:
+                    raise
+                opened = False
+            if opener and not opened:
+                open_page(page, base + path, forced, opener, selectors)
+            branch = page.evaluate(BRANCH_JS, name.split()[0]) if shared else None
+            row.update(resolve(page, "shared" if shared else "opened", selectors))
+        except Exception as exc:  # a surface that did not open must never read as clean
+            row["error"] = str(exc).splitlines()[0][:200]
+        ctx.close()
+        row["state"], row["reason"] = walk_state(row)
+        if shared:
+            if row["state"] != "ok" and not row.get("rootGround"):
+                census["shared_failed"].append(f"{name} {row['walk']}: {row['state']} ({row['reason']})")
                 continue
-            census["opened"].append(row)
+            census["shared"].append({"name": name, "walk": row["walk"], "fingerprint": fingerprint(row, branch)})
+            continue
+        census["opened"].append(row)
 
 
 def fingerprint(row: dict, branch: str | None) -> list[str]:
@@ -1795,13 +1923,16 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--base-url", help="reuse a running dev server (default: start one)")
     ap.add_argument("--port", type=int, default=3419)
     ap.add_argument("--json", type=Path, help="dump the census (JSON Lines) for offline replay")
-    ap.add_argument("--replay", type=Path, help="judge a dumped census, no browser")
+    ap.add_argument("--replay", type=Path, help="judge a dumped census, or the parts' dumps concatenated, no browser")
+    ap.add_argument("--part", choices=PARTS, help="run the scenarios of one part only (section 9); default: all")
     ap.add_argument("--export", action="store_true",
                     help="print the probe, pages, six states and palette as JSON for the armed apps/mouth test")
     ap.add_argument("--contract", type=Path, default=CONTRACT)
     ap.add_argument("--diff-base", default="origin/main",
                     help="the ref whose merge base with HEAD shared-touched-unpinned diffs against")
     a = ap.parse_args(argv)
+    if a.part and a.replay:
+        ap.error("--part runs a live part; --replay judges what the parts dumped")
     if a.export:
         print(json.dumps(export()))
         return 0
@@ -1828,15 +1959,20 @@ def main(argv: list[str]) -> int:
     else:
         proc = None if a.base_url else start_server(a.port)
         try:
-            census = live((a.base_url or f"http://localhost:{a.port}").rstrip("/"))
+            census = live((a.base_url or f"http://localhost:{a.port}").rstrip("/"), a.part)
         finally:
             if proc:
                 stop_server(proc)
     if a.json:
         dump(census, a.json)
+    # The CI budget: how long each part took, on stderr, never in the verdict text.
+    for part, seconds in census.get("seconds", {}).items():
+        print(f"phase-seconds: {part} " + ", ".join(f"{k} {v}" for k, v in seconds.items()), file=sys.stderr)
+    # A live part answers for its own scenarios; a replay, whatever it holds, for the whole list.
+    received = against_scenarios(census, [u for u in scenarios(*measure_literals()) if a.part in (None, u[0])])
     pin = json.loads(SHARED_PIN.read_text()) if SHARED_PIN.exists() else None
     touched = touched_files(a.diff_base)
-    print("\n".join(verdict(census, contract, states) + page_verdict(census)
+    print("\n".join(received + verdict(census, contract, states) + page_verdict(census)
                     + opened_verdict(census, surfaces, contract, pin, touched)))
     return 0
 
