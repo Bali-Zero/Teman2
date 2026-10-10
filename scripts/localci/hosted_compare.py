@@ -22,7 +22,7 @@ replaced is not listed) (GitHub requires a same-named check and status to both p
 later green from another event does not erase a red); green only when at least one entry from
 the REQUIRED source (the pinned ``app_id``, or any source when none is pinned) is complete and
 none is pending. The class never reads a timestamp; only the optional ``stale_judge`` (B10) and ``gate_judge`` (B12b) do, from the
-``completed_at`` of the entries that decided the verdict (and, for B12b, the statuses' ``updated_at`` and the red runs' annotations).
+``completed_at`` of the entries that decided the verdict (and, for B12b, the statuses' ``updated_at`` and ``state``, the plan's frozen reader answers, and the red runs' annotations and jobs).
 
 Each row carries the context's COVERAGE as the BASE runner recorded it from the BASE matrix (``full``, ``partial`` with its
 note, or ``unrecorded`` for a status.json that predates it): the class is the same, but a partial AGREE is an agreement on a
@@ -107,7 +107,8 @@ def hosted_verdict(entries: list, app_id) -> dict:
     when = max(stamps) if verdict != "PENDING" and stamps and all(isinstance(t, str) and _TS_RE.match(t) for t in stamps) else None
     return {"verdict": verdict, "entries": len(entries), "counted": len(counted), "sources": sorted({e["source"] for e in entries}),
             "conclusions": sorted({str(e["conclusion"]) for e in entries}), "completed_at": when,
-            "red": [{"id": e.get("id"), "completed_at": e.get("completed_at")} for e in entries if e["verdict"] == "RED"]}   # B12b: a status has no id
+            "red": [{"id": e.get("id"), "conclusion": e.get("conclusion"), "completed_at": e.get("completed_at")}
+                    for e in entries if e["verdict"] == "RED"]}   # B12b: a status has no id
 
 
 def local_verdicts(status: dict) -> dict:
@@ -207,10 +208,13 @@ def gate_reading(judge, name: str, h: dict, statuses: list) -> dict:
 
 
 def with_gate(reading: dict, gate: dict) -> dict:
-    """B10's reading and B12b's on one row: stale when either ground is, else unknown when either is, else fresh."""
+    """B10's reading and B12b's on one row: stale when either ground is, else unknown when either is, else fresh; with no B10 reading
+    (no ``stale_judge``), what the gate judge said and nothing it did not."""
     if not gate or gate.get("stale") is True:
         return {**reading, **gate}
-    prior = str(reading.get("stale_check") or "fresh")
+    if "stale_check" not in reading:   # no B10 judge ran: the row's stale_check is the gate judge's word alone
+        return {**reading, "gate_check": gate["gate_check"], "stale_check": gate["gate_check"]}
+    prior = str(reading["stale_check"])
     return {**reading, "gate_check": gate["gate_check"],
             "stale_check": gate["gate_check"] if gate["gate_check"].startswith("unknown") and not prior.startswith("unknown") else prior}
 
@@ -235,7 +239,8 @@ def compare(status: dict, required_checks, check_runs, statuses, stale_judge=Non
         rows.append({**reading, "context": name, "class": klass, "hosted": h["verdict"], "hosted_entries": h["entries"],
                      "hosted_counted": h["counted"], "hosted_sources": h["sources"], "hosted_conclusions": h["conclusions"],
                      "local": lo["verdict"], "local_detail": lo["detail"], "coverage": lo["coverage"], "coverage_note": lo["coverage_note"],
-                     "app_id": app_id, "source_pinned": is_pinned(app_id), **skip_reading(lo, h)})
+                     "app_id": app_id, "source_pinned": is_pinned(app_id), **skip_reading(lo, h),
+                     **({"hosted_red": h["red"]} if h["verdict"] == "RED" else {})})   # B12b: the report finds these very runs again
     counts = {k: sum(1 for r in rows if r["class"] == k) for k in CLASSES}
     compared = [r for r in rows if r["class"] in COMPARED]
     coverage = {"compared_full": sum(1 for r in compared if r["coverage"] == "full"),
