@@ -179,6 +179,19 @@ let out: [String: Any] = MainActor.assumeIsolated {
     if !loud.isEmpty {
         violations.append("verdict stack: the Bali chip's casing differs from the national chip's in \(loud.count) rows, e.g. \(loud.prefix(3))")
     }
+    // Q17 in the ledger's curated prose: the record's own office or term, standing alone, reads in English (guilt);
+    // one in (…), quotes or a longer name, and every Indonesian line, stays as written (innocence).
+    if let k = store.all.first(where: { $0.kode == "01111" }) {
+        for (raw, want, isID) in [
+            ("Authority: Bupati/Walikota. Timeline: Otomatis.", "Authority: Regent / Mayor (Bupati/Walikota). Timeline: Instant.", false),
+            ("Issued by Gubernur (Bali = Gubernur Bali).", "Issued by Governor (Bali = Gubernur Bali).", false),
+            ("Instruksi Gubernur Bali No. 6/2025 applies (Bupati/Walikota).", "Instruksi Gubernur Bali No. 6/2025 applies (Bupati/Walikota).", false),
+            ("Note the \"Gubernur Daerah Khusus Jakarta\" entry.", "Note the \"Gubernur Daerah Khusus Jakarta\" entry.", false),
+            ("Kewenangan: Bupati/Walikota.", "Kewenangan: Bupati/Walikota.", true)] {
+            let got = LabelBook.ledgerProse(raw, record: k, isID: isID)
+            if got != want { violations.append("ledgerProse (Q17) 01111: \"\(raw)\" → \"\(got)\", want \"\(want)\"") }
+        }
+    } else { violations.append("ledgerProse: no 01111") }
     return ["codes": codes, "balanced_rejoin": rejoin, "probe_violations": violations, "curated_language": curated,
             "labelbook_maps": maps]
 }

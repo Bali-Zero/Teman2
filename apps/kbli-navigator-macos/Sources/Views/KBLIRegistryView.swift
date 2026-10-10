@@ -481,12 +481,18 @@ struct KBLIRegistryView: View {
         }
     }
 
+    /// The Bali context both plates draw: curated, its record's own closed-set values in English (Q17), else the
+    /// dataset's intel.
+    private var baliContext: String? {
+        ovStrict?.baliContext.map { LabelBook.ledgerProse($0, record: kbli, isID: isID) }
+            ?? kbli.intel?.baliContext.map { overlays.baliContextString($0, isID: isID) }
+    }
+
     /// Extract the SHORT punchy bullets from baliContext markdown for the teaser. Returns them
     /// ALL — the teaser shows 3 and `ExpandableList` owns the cap, so the count on the button is
     /// the real one (68 codes carry more than 3; 68112 carries 31).
     private var baliTeaserBullets: [String]? {
-        let bc = ovStrict?.baliContext ?? kbli.intel?.baliContext.map { overlays.baliContextString($0, isID: isID) }
-        guard let bc else { return nil }
+        guard let bc = baliContext else { return nil }
         var out: [String] = []
         for line in bc.split(separator: "\n") {
             let s = line.trimmingCharacters(in: .whitespaces)
@@ -529,7 +535,7 @@ struct KBLIRegistryView: View {
 
     // MARK: 3 · DESCRIPTION — prose on ivory
     private var description: some View {
-        let text = ovStrict?.meaning ?? LabelBook.uraian(kbli, isID: isID)
+        let text = ovStrict?.meaning.map { LabelBook.ledgerProse($0, record: kbli, isID: isID) } ?? LabelBook.uraian(kbli, isID: isID)
         return VStack(alignment: .leading, spacing: 10) {
             SectionLabel(rail: Theme.muted, text: isID ? "Deskripsi" : "Description")
             // Q12 ruling 3: a curated meaning that opens with the official Indonesian title says what it is (46201…).
@@ -719,7 +725,9 @@ struct KBLIRegistryView: View {
             let axes = VerdictAxes(KBLIVerdict.of(record: kbli))
             let blocked = axes.openInBali == false
             let shownSteps = steps.map { scaleAwareStep($0) }.map {
-                CodeOverlay.Step(title: $0.title, detail: $0.detail, duration: $0.duration.map { LabelBook.roadmapDuration($0, isID: isID) })
+                CodeOverlay.Step(title: LabelBook.ledgerProse($0.title, record: kbli, isID: isID),
+                                 detail: $0.detail.map { LabelBook.ledgerProse($0, record: kbli, isID: isID) },
+                                 duration: $0.duration.map { LabelBook.roadmapDuration($0, isID: isID) })
             }
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(rail: Theme.accent,
@@ -858,7 +866,7 @@ struct KBLIRegistryView: View {
 
     // MARK: 8 · BALI INTELLIGENCE — the authority peak (tinted plate)
     @ViewBuilder private var baliIntel: some View {
-        if let bc = ovStrict?.baliContext ?? kbli.intel?.baliContext.map({ overlays.baliContextString($0, isID: isID) }), !bc.isEmpty {
+        if let bc = baliContext, !bc.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 Label(isID ? "GOLD-TIER INTEL · BALI" : "GOLD-TIER INTEL · BALI", systemImage: "star.fill")
                     .font(Theme.scalable(11, weight: .heavy, design: .monospaced)).tracking(0.6)
@@ -1062,7 +1070,7 @@ struct KBLIRegistryView: View {
             t = t.replacingOccurrences(of: #"Timeline: (\d+) Hari Kerja"#, with: "Timeline: $1 working days", options: .regularExpression)
             t = t.replacingOccurrences(of: #"Timeline: (\d+) Hari"#, with: "Timeline: $1 days", options: .regularExpression)
             t = t.replacingOccurrences(of: "NIB dan Sertifikat Standar", with: "NIB + Standard Certificate")
-            t = LabelBook.ledgerProse(t, isID: false)
+            t = LabelBook.ledgerProse(t, record: kbli, isID: false)
         }
         return t
     }
