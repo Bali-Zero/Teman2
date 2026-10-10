@@ -7,6 +7,18 @@ CURRENT POSITION block in SKILL.md in the same commit.
 
 Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE STATE — CURRENT POSITION.
 
+- 2026-10-10 (M5, Zero: "sign and launch now" + "occupati tutto tu"): **seq-27 active, three copy/ops PRs live.**
+  seq-27: organ candidate #8105 landed byte-for-byte, signed on M5 03:42:26Z, first landing PR #8204 closed
+  after the fresh gate caught a mislabelled council seat (the Codex run used the `~/.codex` default
+  `gpt-6-astra`; `codex exec` needs `-m gpt-5.6-sol` to sit the titolare seat) — successor #8209 merged
+  05:22:27Z (`2478b87561`), activated 05:23Z from Pro (two-login ceremony, `activation_id 471bddfa-…`, ceremony
+  roles 0), sentinel `OK pack_sequence 27` at 05:23:44Z, `/evaluate` sequence 27 at 05:25:27Z; organ PR #8105
+  closed as superseded. #8205 deleted 46 dead interview keys (the earlier count of 17 was the truth table's
+  scope; all 42 `process.*` were orphaned by #7659). #8207 share summary + typical time (indicative, no dates).
+  #8206 holiday-coverage lane in the freshness sentinel, owner-routed (`visa-holiday-coverage` in
+  `OWNER_FAMILIES`), WITA day; Pro fast-forwarded. Fly deploy of `2478b87561` (pack file + coverage module,
+  no runtime change) followed the merges. iQOO: developer mode re-enabled by the owner, pairing not yet done.
+
 - 2026-10-09 (M5, client-copy chain C2, C3, C4): **the result page now shows the priced
   stay-permit length and Bali Zero's typical processing time.** C2 #8124 (`06c3346702`, merged
   03:22:12Z): under the price "2-year stay permit" and "Also available: 1 year — IDR 11,000,000";
