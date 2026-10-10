@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 # PJ_PAYLOAD / PJ_WRAPPER point the suite at a scratch copy: that is how a guilt mutation proves a test bites
 PAYLOAD = Path(os.environ.get("PJ_PAYLOAD", ROOT / "scripts" / "ops" / "pro_janitor.py"))
 WRAPPER = Path(os.environ.get("PJ_WRAPPER", ROOT / "infra" / "launchagents" / "wrappers" / "pro-janitor.sh"))
-PLIST = ROOT / "infra" / "launchagents" / "com.nuzantara.janitor.plist"
+PLIST = Path(os.environ.get("PJ_PLIST", ROOT / "infra" / "launchagents" / "com.nuzantara.janitor.plist"))
 NOW = 1_800_000_000
 DAY = 86400
 
@@ -52,7 +52,7 @@ class Box:
         self.tmp = tmp
         self.home = tmp / "home"
         self.home.mkdir()
-        self.state = tmp / "state"
+        self.state = self.home / ".state-jt"
         self.journal = tmp / "journal.jsonl"
         self.bin = tmp / "bin"
         self.bin.mkdir()
@@ -70,12 +70,15 @@ class Box:
         p.chmod(0o755)
         return p
 
-    def fake_lsof(self, extra="", canary=True, rc=0, pre=""):
-        """lsof -w -F n +D <root>: lists the canary the janitor holds open (unless `canary` is False), plus `extra`; `pre`
-        runs first and may change the tree, as a concurrent process would."""
-        body = 'for a; do R="$a"; done\n' + pre + "\n"
+    def fake_lsof(self, extra="", canary=True, rc=1, pre="", err=""):
+        """lsof -F n +D <root>: lists the canary the janitor holds open (unless `canary` is False), plus `extra`; `err` is
+        shell run with stdout going to stderr; `pre` runs first and may change the tree, as a concurrent process would.
+        The default exit code is 1: with +D that is the healthy result (Pro, lsof 4.91, 2026-10-10). Argv is recorded."""
+        body = f'echo "$*" >> "{self.tmp}/lsof.argv"\nfor a; do R="$a"; done\n' + pre + "\n"
+        if err:
+            body += f"( {err} ) >&2\n"
         if canary:
-            body += 'for f in "$R"/.pro-janitor-canary-*; do echo "n$f"; done\n'
+            body += 'echo "n$R/.pro-janitor-canary-$PPID"\n'
         return self.tool("lsof", rc=rc, body=body + extra, record=False)
 
     def verbs(self):
@@ -272,7 +275,10 @@ def state_file(box, text):
 
 @pytest.mark.parametrize("bad", ["garbage", "[]", '{"tier":"PURPLE","rules":{}}', '{"tier":"GREEN"}',
                                  '{"tier":"GREEN","rules":{"uv-prune":NaN}}', '{"tier":"GREEN","rules":{"uv-prune":true}}',
-                                 '{"tier":"GREEN","rules":{"uv-prune":"x"}}', '{"tier":"GREEN","rules":[]}', ""])
+                                 '{"tier":"GREEN","rules":{"uv-prune":"x"}}', '{"tier":"GREEN","rules":[]}', "",
+                                 '{"tier":"GREEN","rules":{"uv-prune":1' + "0" * 400 + '}}',   # 10**400: float() overflows
+                                 '{"tier":"GREEN","rules":{"uv-prune":-1}}', '{"tier":"GREEN","rules":{"uv-prune":5000000000}}',
+                                 '{"tier":"GREEN","rules":{"uv-prune":1e999}}'])
 def test_an_invalid_state_forces_dry_run_warns_and_is_rewritten_valid(box, bad):
     state_file(box, bad)
     r = box.run("125", apply=True)
@@ -290,14 +296,21 @@ def test_cooldown_stamps_in_the_future_are_dropped_and_small_skew_is_kept(box):
     assert box.cooldowns()["uv-prune"] == NOW
 
 
-def test_state_is_written_atomically_and_fsynced(box, monkeypatch):
-    calls = []
-    real = os.fsync
-    monkeypatch.setattr(os, "fsync", lambda fd: (calls.append(fd), real(fd))[1])
+def test_state_is_written_atomically_exclusively_and_fsynced_with_its_directory(box, monkeypatch):
+    fsyncs, opens = [], []
+    real_fsync, real_open = os.fsync, os.open
+    monkeypatch.setattr(os, "fsync", lambda fd: (fsyncs.append(fd), real_fsync(fd))[1])
+    monkeypatch.setattr(os, "open", lambda path, flags, *a, **k: (opens.append((str(path), flags)), real_open(path, flags, *a, **k))[1])
+    box.state.mkdir()
     env = pj.Env.__new__(pj.Env)
     env.state_dir = str(box.state)
     pj.save_state(env, {"tier": "GREEN", "rules": {}})
-    assert calls and sorted(os.listdir(box.state)) == ["state.json"]
+    tmp = [f for p_, f in opens if os.path.basename(p_).startswith(".state.")]
+    want = os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_WRONLY
+    assert len(tmp) == 1 and tmp[0] & want == want
+    assert len(fsyncs) == 2   # the file, then the directory
+    assert any(f & os.O_DIRECTORY for p_, f in opens if p_ == str(box.state))
+    assert sorted(os.listdir(box.state)) == ["state.json"]
 
 
 def test_a_second_run_while_the_lock_is_held_exits_11_touching_nothing(box):
@@ -677,7 +690,7 @@ def blocked_case(box, how):
 @pytest.mark.parametrize("how,status", [
     ("symlinked-entry", "skipped:no-candidates"), ("git", "skipped:no-candidates"),
     ("young-deep", "skipped:no-candidates"), ("symlink-leaves", "skipped:no-candidates"),
-    ("open", "skipped:in-use"), ("lsof-fails", "error:lsof-unreadable"), ("lsof-missing", "error:lsof-unreadable"),
+    ("open", "skipped:in-use"), ("lsof-fails", "error:lsof-incomplete"), ("lsof-missing", "error:lsof-unreadable"),
     ("lsof-no-canary", "error:lsof-incomplete"), ("lsof-rc1-empty", "error:lsof-incomplete"),
     ("lsof-huge", "error:lsof-incomplete"), ("git-upper", "skipped:no-candidates"),
 ])
@@ -759,9 +772,9 @@ time.sleep(300)
     t.chmod(0o755)
     t0 = time.monotonic()
     try:
-        r = box.run("100", apply=True, PRO_JANITOR_TOOL_TIMEOUT="1")
+        r = box.run("100", apply=True, PRO_JANITOR_TOOL_TIMEOUT="3")   # only the hanging uv is slow; npm has room under load
         took = time.monotonic() - t0
-        assert took < 1 + 10 + 5 and r.returncode == 10
+        assert took < 3 + 10 + 5 and r.returncode == 10
         rules = box.rules()
         assert rules["uv-prune"]["status"] == "error:timeout" and rules["npm-verify"]["status"] == "done"
         assert "playwright-old" in rules   # later rules still run
@@ -874,6 +887,7 @@ def test_wrapper_second_instance_exits_without_running(tmp_path):
 def test_plist_is_a_dry_run_one_shot_with_no_keepalive():
     pl = plistlib.loads(PLIST.read_bytes())
     assert pl["StartInterval"] == 600 and pl["RunAtLoad"] is True and "KeepAlive" not in pl
+    assert pl["ProcessType"] == "Background" and pl["LowPriorityIO"] is True   # a 10-minute I/O scanner on a workstation
     assert pl["EnvironmentVariables"]["PRO_JANITOR_APPLY"] == "false"
     assert pl["EnvironmentVariables"]["PATH"] == "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
     assert pl["ProgramArguments"] == ["/bin/bash", "/Users/nuzantara/scripts/pro-janitor.sh"]
@@ -923,3 +937,331 @@ def test_the_heartbeat_note_is_the_payloads_summary_line_or_the_rc_never_a_trace
     hb = json.loads(raw)
     assert hb["status"] == status and hb["note"] == note and "/Users" not in raw and "Traceback" not in raw
     assert sorted(os.listdir(home / ".organism" / "last_seen")) == ["pro.janitor.json"]   # atomic: no tmp left behind
+
+
+# ---------------------------------------------------------------- round 3: fd-anchored removal and the last look
+
+def nth(box, n, cmd):
+    """A lsof `pre` hook that runs `cmd` only on the n-th lsof call (1 = the plan's probe, 2 = the first candidate's
+    last look, ...)."""
+    cnt = box.tmp / "cnt"
+    return (f'c=$(cat "{cnt}" 2>/dev/null || echo 0); c=$((c+1)); echo $c > "{cnt}"; '
+            f'if [ "$c" = "{n}" ]; then {cmd}; fi')
+
+
+def counted(box):
+    cnt = box.tmp / "cnt"
+    return f'c=$(cat "{cnt}" 2>/dev/null || echo 0); c=$((c+1)); echo $c > "{cnt}"'
+
+
+def test_a_swapped_ancestor_of_the_root_is_never_followed_and_the_decoy_survives(box):
+    import shutil as _sh
+    root = pw_root(box)
+    mk(root / "chromium-1243", 30)
+    mk(root / "chromium-999", 30)
+    links(box)
+    caches = root.parent
+    decoy = box.tmp / "decoy"
+    _sh.copytree(caches, decoy, symlinks=True)
+    box.lsof = box.fake_lsof(pre=nth(box, 2, f'mv "{caches}" "{caches}.orig" && ln -s "{decoy}" "{caches}"'))
+    r = box.run("110", apply=True)
+    res = box.rules()["playwright-old"]
+    assert (decoy / "ms-playwright" / "chromium-999" / "data.bin").exists()
+    assert (Path(str(caches) + ".orig") / "ms-playwright" / "chromium-999" / "data.bin").exists()
+    assert res["entries"] == [{"name": "chromium-999", "bytes": 0, "state": "failed"}] and r.returncode == 10
+
+
+def test_open_anchored_refuses_a_symlinked_ancestor_and_returns_the_real_directory(tmp_path):
+    real = tmp_path / "real" / "a"
+    real.mkdir(parents=True)
+    (tmp_path / "link").symlink_to(tmp_path / "real")
+    with pytest.raises(OSError):
+        pj.open_anchored(str(tmp_path / "link" / "a"))
+    fd = pj.open_anchored(str(real))
+    try:
+        assert os.fstat(fd).st_ino == os.stat(real).st_ino
+    finally:
+        os.close(fd)
+
+
+def test_a_candidate_replaced_by_a_different_real_dir_of_the_same_name_survives(box):
+    root = pw_root(box)
+    mk(root / "chromium-1243", 30)
+    victim = root / "chromium-999"
+    mk(victim, 30)
+    box.lsof = box.fake_lsof(pre=nth(box, 2, f'mv "{victim}" "{victim}.orig"; mkdir "{victim}"; echo new > "{victim}/new.bin"'))
+    r = box.run("110", apply=True)
+    assert (victim / "new.bin").exists() and (Path(str(victim) + ".orig") / "data.bin").exists()
+    assert box.rules()["playwright-old"]["entries"] == [{"name": "chromium-999", "bytes": 0, "state": "failed"}] and r.returncode == 10
+
+
+def fake_mount_stat(monkeypatch, name):
+    """No unprivileged real mount exists in a test, so the mount is simulated: for the directory entry `name`, os.stat (by
+    dir_fd) AND os.fstat of the fd opened on it both report another st_dev, exactly as a mounted filesystem would."""
+    real_stat, real_open, real_fstat = os.stat, os.open, os.fstat
+    mnt_fds = set()
+
+    def bump(r):
+        vals = list(r)[:10]
+        vals[2] += 1
+        return os.stat_result(vals)
+
+    def fstat(fd):
+        r = real_fstat(fd)
+        return bump(r) if fd in mnt_fds else r
+
+    def op(path, flags, *a, **k):
+        fd = real_open(path, flags, *a, **k)
+        if k.get("dir_fd") is not None and path == name:
+            mnt_fds.add(fd)
+        return fd
+
+    def stat_(path, *a, **k):
+        r = real_stat(path, *a, **k)
+        return bump(r) if k.get("dir_fd") is not None and path == name else r
+    monkeypatch.setattr(os, "stat", stat_)
+    monkeypatch.setattr(os, "open", op)
+    monkeypatch.setattr(os, "fstat", fstat)
+
+
+def deep_tree(tmp_path):
+    top = tmp_path / "victim"
+    mk(top / "a" / "mnt", 30, files=("inner.bin",))
+    mk(top / "a", 30, files=("sibling.bin",))
+    return top
+
+
+def test_remove_children_never_descends_into_another_device(tmp_path, monkeypatch):
+    top = deep_tree(tmp_path)
+    fd = os.open(top, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        with monkeypatch.context() as m:
+            fake_mount_stat(m, "mnt")
+            fails = pj.remove_children(fd, os.stat(top).st_dev)
+    finally:
+        os.close(fd)
+    assert fails >= 1 and (top / "a" / "mnt" / "inner.bin").exists() and not (top / "a" / "sibling.bin").exists()
+
+
+def test_a_device_change_deep_inside_a_candidate_fails_the_audit_and_removes_nothing(tmp_path, monkeypatch):
+    top = deep_tree(tmp_path)
+    root_fd = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        st = os.stat(top)
+        with monkeypatch.context() as m:
+            fake_mount_stat(m, "mnt")
+            got = pj.remove_candidate(root_fd, "victim", (st.st_dev, st.st_ino), st.st_dev, NOW)
+    finally:
+        os.close(root_fd)
+    assert got == ("failed", 0) and (top / "a" / "mnt" / "inner.bin").exists() and (top / "a" / "sibling.bin").exists()
+
+
+def test_a_symlink_inside_a_candidate_is_unlinked_never_its_target(tmp_path):
+    top = tmp_path / "victim"
+    mk(top, 30)
+    outside = tmp_path / "outside"
+    mk(outside, 30)
+    (top / "link").symlink_to(outside)
+    root_fd = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        st = os.stat(top)
+        got = pj.remove_candidate(root_fd, "victim", (st.st_dev, st.st_ino), st.st_dev, NOW)
+    finally:
+        os.close(root_fd)
+    assert got[0] == "removed" and not top.exists() and (outside / "data.bin").exists()
+
+
+def test_without_fd_support_the_dir_rule_is_skipped(box, monkeypatch):
+    mk(pw_root(box) / "chromium-999", 30)
+    mk(pw_root(box) / "chromium-1243", 30)
+    monkeypatch.setenv("PRO_JANITOR_HOME", str(box.home))
+    monkeypatch.setattr(pj, "fd_supported", lambda: False)
+    assert pj.dir_rule(pj.Env(), pj.RULES[2], True) == ("skipped:no-fd-support", [])
+    assert (pw_root(box) / "chromium-999").is_dir()
+
+
+def two_old(box):
+    root = pw_root(box)
+    mk(root / "chromium-1243", 30)
+    mk(root / "chromium-998", 30)
+    mk(root / "chromium-999", 30)
+    pkg = box.tmp / "pkgs" / "late"
+    pkg.mkdir(parents=True)
+    (pkg / "browsers.json").write_text(json.dumps({"browsers": [pb("chromium", 999)]}))
+    return root, pkg
+
+
+def states(box):
+    return [(e["name"], e["state"]) for e in box.rules()["playwright-old"]["entries"]]
+
+
+def test_a_candidate_pinned_after_the_first_removal_is_skipped_pinned_late(box):
+    root, pkg = two_old(box)
+    box.lsof = box.fake_lsof(pre=nth(box, 3, f'echo "{pkg}" > "{root}/.links/late"'))
+    r = box.run("110", apply=True)
+    assert states(box) == [("chromium-998", "removed"), ("chromium-999", "skipped:pinned-late")]
+    assert not (root / "chromium-998").exists() and (root / "chromium-999").is_dir()
+    assert box.rules()["playwright-old"]["status"] == "done" and r.returncode == 0
+
+
+def test_a_candidate_opened_after_the_first_removal_is_skipped_open(box):
+    root, _ = two_old(box)
+    box.lsof = box.fake_lsof(pre=counted(box), extra=f'[ "$(cat "{box.tmp}/cnt")" = 3 ] && echo "n{root}/chromium-999/data.bin"')
+    box.run("110", apply=True)
+    assert states(box) == [("chromium-998", "removed"), ("chromium-999", "skipped:open")] and (root / "chromium-999").is_dir()
+
+
+def test_an_install_lock_appearing_after_the_first_removal_skips_the_rest(box):
+    root, _ = two_old(box)
+    box.lsof = box.fake_lsof(pre=nth(box, 3, f'touch "{root}/__dirlock"'))
+    box.run("110", apply=True)
+    assert states(box) == [("chromium-998", "removed"), ("chromium-999", "skipped:install-in-progress")]
+    assert (root / "chromium-999").is_dir()
+
+
+def test_a_root_that_vanishes_mid_loop_still_journals_the_first_removal(box):
+    root, _ = two_old(box)
+    box.lsof = box.fake_lsof(pre=nth(box, 3, f'mv "{root}" "{root}.gone"'))
+    r = box.run("110", apply=True)
+    assert states(box) == [("chromium-998", "removed"), ("chromium-999", "failed")]
+    assert box.rules()["playwright-old"]["status"] == "error:rmtree-partial" and r.returncode == 10
+    assert not (Path(str(root) + ".gone") / "chromium-998").exists() and (Path(str(root) + ".gone") / "chromium-999").is_dir()
+
+
+@pytest.mark.parametrize("rc,canary,err,status", [
+    (1, True, "", "done"),                                     # +D: rc 1 is the normal healthy result
+    (0, True, "", "done"),
+    (1, True, "echo \"lsof: WARNING: can't opendir(/x): Permission denied\"", "error:lsof-incomplete"),
+    (1, False, "", "error:lsof-incomplete"),
+    (2, True, "", "error:lsof-incomplete"),
+    (1, True, "head -c 70000 /dev/zero | tr '\\0' x", "error:lsof-incomplete"),   # stderr over its 64 KiB cap
+])
+def test_the_lsof_scan_is_complete_iff_rc_0_or_1_and_the_canary_and_empty_stderr(box, rc, canary, err, status):
+    root = two_chromiums(box)
+    box.lsof = box.fake_lsof(rc=rc, canary=canary, err=err)
+    r = box.run("110", apply=True)
+    assert box.rules()["playwright-old"]["status"] == status
+    assert (not (root / "chromium-1100").exists()) == (status == "done") and r.returncode == (0 if status == "done" else 10)
+    assert "Permission denied" not in box.journal.read_text() + r.stdout   # stderr is tested, never kept
+
+
+def test_lsof_is_run_without_w_so_that_warnings_reach_stderr(box):
+    two_chromiums(box)
+    box.run("110", apply=True)
+    argv = (box.tmp / "lsof.argv").read_text().splitlines()
+    assert argv and all(a.split()[:3] == ["-F", "n", "+D"] and "-w" not in a.split() for a in argv)
+
+
+def test_a_failed_free_space_read_after_an_action_stops_everything_and_warns(box):
+    r = box.run("125,ERR", apply=True)
+    ln = box.last()
+    assert r.returncode == 10 and ln["free_read_failed"] is True and ln["free_gb_after"] is None
+    assert box.verbs() == ["uv cache prune"] and [x["id"] for x in ln["rules"]] == ["uv-prune"]
+    assert box.cooldowns() == {"uv-prune": NOW}
+
+
+def test_a_failed_first_free_space_read_is_exit_1(box):
+    assert box.run("ERR").returncode == 1
+
+
+def test_a_symlinked_state_dir_is_unusable_exit_1(box):
+    other = box.tmp / "elsewhere"
+    other.mkdir()
+    box.state.symlink_to(other)
+    r = box.run("125", apply=True)
+    assert r.returncode == 1 and "state dir unusable" in r.stdout and not box.journal.exists()
+    assert list(other.iterdir()) == []
+
+
+def test_a_state_dir_outside_home_is_unusable_exit_1(box):
+    r = box.run("125", PRO_JANITOR_STATE_DIR=str(box.tmp / "st-out"))
+    assert r.returncode == 1 and "state dir unusable" in r.stdout and not (box.tmp / "st-out").exists()
+
+
+def test_a_lock_that_cannot_be_opened_is_unusable_not_alive(box):
+    box.state.mkdir()
+    (box.state / "lock").symlink_to(box.tmp / "nowhere")   # O_NOFOLLOW refuses it
+    r = box.run("125")
+    assert r.returncode == 1 and "lock unusable" in r.stdout
+
+
+def test_a_flock_error_other_than_contention_is_exit_1_not_11(box, monkeypatch, capsys):
+    import fcntl
+    for k, v in {"PRO_JANITOR_HOME": str(box.home), "PRO_JANITOR_STATE_DIR": str(box.state),
+                 "PRO_JANITOR_JOURNAL": str(box.journal), "PRO_JANITOR_FREE_GB_SEQ": "200"}.items():
+        monkeypatch.setenv(k, v)
+
+    def boom(fd, op):
+        raise PermissionError(13, "denied")
+    monkeypatch.setattr(fcntl, "flock", boom)
+    assert pj.main() == 1 and "lock unusable" in capsys.readouterr().out
+
+
+def stale_setup(box):
+    root = pw_root(box)
+    root.mkdir(parents=True)
+    dead = []
+    for _ in range(3):
+        p = subprocess.Popen(["true"])
+        p.wait()
+        dead.append(p.pid)
+    live = subprocess.Popen(["sleep", "30"])
+    files = {"dead": root / f".pro-janitor-canary-{dead[0]}", "live": root / f".pro-janitor-canary-{live.pid}",
+             "full": root / f".pro-janitor-canary-{dead[1]}", "link": root / f".pro-janitor-canary-{dead[2]}",
+             "alpha": root / ".pro-janitor-canary-abc"}
+    files["dead"].write_bytes(b"")
+    files["live"].write_bytes(b"")
+    files["full"].write_bytes(b"x")
+    files["link"].symlink_to(box.tmp / "target")
+    files["alpha"].write_bytes(b"")
+    return files, live
+
+
+def test_stale_canaries_of_dead_pids_are_swept_and_nothing_else(box):
+    files, live = stale_setup(box)
+    try:
+        box.run("110", apply=True)
+    finally:
+        live.kill()
+        live.wait()
+    assert {k: os.path.lexists(v) for k, v in files.items()} == {
+        "dead": False, "live": True, "full": True, "link": True, "alpha": True}
+
+
+def test_dry_run_sweeps_nothing(box):
+    files, live = stale_setup(box)
+    try:
+        box.run("110")
+    finally:
+        live.kill()
+        live.wait()
+    assert files["dead"].exists()
+
+
+def test_a_pin_with_leading_zeros_protects_the_numerically_equal_dir(box):
+    root = pw_root(box)
+    mk(root / "chromium-1243", 30)
+    mk(root / "chromium-1100", 30)
+    mk(root / "chromium-1050", 30)
+    links(box, [pb("chromium", "01100")])
+    box.run("110", apply=True)
+    assert (root / "chromium-1100").is_dir() and not (root / "chromium-1050").exists()
+
+
+def test_an_oserror_in_the_removal_loop_is_contained_and_the_first_removal_is_still_returned(box, monkeypatch):
+    root, _ = two_old(box)
+    links(box)
+    for k, v in {"PRO_JANITOR_HOME": str(box.home), "PRO_JANITOR_LSOF": str(box.lsof), "PRO_JANITOR_NOW": str(NOW),
+                 "PRO_JANITOR_TOOL_TIMEOUT": "20"}.items():
+        monkeypatch.setenv(k, v)
+    real, calls = pj.open_anchored, []
+
+    def flaky(path):
+        calls.append(path)
+        if len(calls) == 2:
+            raise FileNotFoundError(2, "the root vanished")
+        return real(path)
+    monkeypatch.setattr(pj, "open_anchored", flaky)
+    status, entries = pj.dir_rule(pj.Env(), pj.RULES[2], True)
+    assert [(e["name"], e["state"]) for e in entries] == [("chromium-998", "removed"), ("chromium-999", "failed")]
+    assert status == "error:rmtree-partial" and not (root / "chromium-998").exists() and (root / "chromium-999").is_dir()

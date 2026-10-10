@@ -5,8 +5,9 @@ Run every 10 minutes by ~/scripts/pro-janitor.sh as `/usr/bin/python3 -I` (Pytho
 Reads free space on the Data volume, moves between tiers with hysteresis and runs ONLY the three allowlisted rules.
 Nothing else is ever removed. Dry-run unless PRO_JANITOR_APPLY=true.
 
-Exit codes (the wrapper maps them to the heartbeat): 0 ran clean; 10 warning (final tier BLACK, any rule error, or an
-invalid state.json that forced a dry-run); 2 bad config; 1 free space unreadable; 11 another run holds the lock.
+Exit codes (the wrapper maps them to the heartbeat): 0 ran clean; 10 warning (final tier BLACK, any rule error, an
+invalid state.json that forced a dry-run, or a free-space read that failed after an action); 2 bad config; 1 state dir,
+lock or free space unusable; 11 another run holds the lock.
 """
 from __future__ import annotations
 
@@ -16,7 +17,6 @@ import math
 import os
 import re
 import select
-import shutil
 import signal
 import stat
 import subprocess
@@ -48,6 +48,7 @@ DIGITS_RE = re.compile(r"[0-9]+", re.ASCII)
 LINK_CAP = 64 * 1024
 JSON_CAP = 1024 * 1024
 LSOF_CAP = 16 * 1024 * 1024
+LSOF_ERR_CAP = 64 * 1024
 
 
 class ConfigError(Exception):
@@ -80,10 +81,10 @@ class Env(object):
         self.seq = None
         if seq:
             try:
-                self.seq = [float(x) for x in seq.split(",")]
+                self.seq = [None if x.strip() == "ERR" else float(x) for x in seq.split(",")]   # ERR: a failed reading
             except ValueError:
                 raise ConfigError("PRO_JANITOR_FREE_GB_SEQ is not a list of numbers")
-            if not all(math.isfinite(x) for x in self.seq):
+            if not all(x is None or math.isfinite(x) for x in self.seq):
                 raise ConfigError("PRO_JANITOR_FREE_GB_SEQ is not finite")
         self._i = 0
 
@@ -91,6 +92,8 @@ class Env(object):
         if self.seq is not None:
             v = self.seq[min(self._i, len(self.seq) - 1)]
             self._i += 1
+            if v is None:
+                raise OSError("free space reading failed")
             return v
         st = os.statvfs(self.df_path)
         v = (st.f_bavail * st.f_frsize) / 1e9
@@ -120,7 +123,13 @@ def next_tier(current, free):
 # ---------------------------------------------------------------- state / journal
 
 def is_num(x):
-    return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
+    """A timestamp: a real finite number in [0, 4e9]. 10**400 (JSON ints are unbounded) must not raise out of here."""
+    if not isinstance(x, (int, float)) or isinstance(x, bool):
+        return False
+    try:
+        return math.isfinite(x) and 0 <= x <= 4e9
+    except OverflowError:
+        return False
 
 
 def load_state(env):
@@ -142,19 +151,54 @@ def load_state(env):
             if k in RULE_IDS and v <= env.now + 60:
                 rules[k] = v
         return {"tier": s["tier"], "rules": rules}, False
-    except (OSError, ValueError, RecursionError):
+    except (OSError, ValueError, RecursionError, OverflowError):
         return fresh, True
 
 
+class StateDirError(Exception):
+    pass
+
+
+def ensure_state_dir(env):
+    """The state dir must be a real directory under HOME (no symlink anywhere on the way); it is created if missing."""
+    sd = os.path.abspath(env.state_dir)
+    rel = os.path.relpath(sd, env.home)
+    if rel.startswith("..") or os.path.isabs(rel) or rel == ".":
+        raise StateDirError("outside HOME")
+    try:
+        os.makedirs(sd, mode=0o700, exist_ok=True)
+    except OSError:
+        raise StateDirError("not creatable")
+    if real_root(env, rel) is None:
+        raise StateDirError("symlinked or not a directory")
+
+
 def save_state(env, state):
-    os.makedirs(env.state_dir, exist_ok=True)
-    path = os.path.join(env.state_dir, "state.json")
-    tmp = path + ".tmp.%d" % os.getpid()
-    with open(tmp, "w") as f:
-        json.dump(state, f, sort_keys=True)
-        f.flush()
-        os.fsync(f.fileno())
+    """Temp file created O_EXCL|O_NOFOLLOW under a random name (a planted symlink or file is never followed or reused),
+    fsynced, renamed over state.json, then the directory is fsynced."""
+    sd = env.state_dir
+    path = os.path.join(sd, "state.json")
+    tmp = os.path.join(sd, ".state.%s" % os.urandom(8).hex())
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    try:
+        data = json.dumps(state, sort_keys=True).encode("utf-8")
+        while data:
+            data = data[os.write(fd, data):]
+        os.fsync(fd)
+    except BaseException:
+        os.close(fd)
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+    os.close(fd)
     os.replace(tmp, path)
+    dfd = os.open(sd, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(dfd)
+    finally:
+        os.close(dfd)
 
 
 def append_journal(env, line):
@@ -165,36 +209,43 @@ def append_journal(env, line):
 
 # ---------------------------------------------------------------- subprocess with a real deadline
 
-def run_deadline(argv, timeout, env, cap=None):
-    """-> (rc, status, stdout); status ok|timeout|overflow|spawn. Stdout/stderr go to DEVNULL unless `cap` asks for a pipe
-    (lsof), read with the deadline and capped. The child leads its own process group; on the deadline or overflow: TERM the
-    group, wait 5 s, KILL the group, reap. A grandchild that left the group (setsid) is not ours to kill."""
+def run_deadline(argv, timeout, env, cap=None, err_cap=None):
+    """-> (rc, status, stdout, stderr); status ok|timeout|overflow|spawn. Stdout/stderr go to DEVNULL unless a cap asks for a
+    pipe (lsof), read with the deadline and capped; stderr is only ever tested for emptiness, never journaled or printed.
+    The child leads its own process group; on the deadline or an overflow: TERM the group, wait 5 s, KILL the group, reap.
+    A grandchild that left the group (setsid) is not ours to kill."""
     try:
         p = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE if cap else subprocess.DEVNULL,
-                             stderr=subprocess.DEVNULL, start_new_session=True, env=env)
+                             stderr=subprocess.PIPE if err_cap else subprocess.DEVNULL, start_new_session=True, env=env)
     except OSError:
-        return None, "spawn", b""
+        return None, "spawn", b"", b""
     deadline = time.monotonic() + timeout
     status = "ok"
-    out = b""
-    if cap:
-        fd = p.stdout.fileno()
-        chunks, n = [], 0
-        while True:
+    bufs = {}
+    if cap or err_cap:
+        open_fds = {}
+        if cap:
+            open_fds[p.stdout.fileno()] = ("out", cap)
+        if err_cap:
+            open_fds[p.stderr.fileno()] = ("err", err_cap)
+        bufs = {"out": [], "err": []}
+        sizes = {"out": 0, "err": 0}
+        while open_fds and status == "ok":
             left = deadline - time.monotonic()
             if left <= 0:
                 status = "timeout"
                 break
-            if select.select([fd], [], [], min(left, 1.0))[0]:
+            for fd in select.select(list(open_fds), [], [], min(left, 1.0))[0]:
+                kind, limit = open_fds[fd]
                 b = os.read(fd, 65536)
                 if not b:
-                    break
-                n += len(b)
-                if n > cap:
+                    del open_fds[fd]
+                    continue
+                sizes[kind] += len(b)
+                if sizes[kind] > limit:
                     status = "overflow"
                     break
-                chunks.append(b)
-        out = b"".join(chunks)
+                bufs[kind].append(b)
     if status == "ok":
         try:
             p.wait(timeout=max(deadline - time.monotonic(), 0.01))
@@ -214,9 +265,12 @@ def run_deadline(argv, timeout, env, cap=None):
         except OSError:
             pass
         p.wait()
-    if p.stdout:
-        p.stdout.close()
-    return (p.returncode if status == "ok" else None), status, out
+    for f in (p.stdout, p.stderr):
+        if f:
+            f.close()
+    out = b"".join(bufs.get("out", []))
+    err = b"".join(bufs.get("err", []))
+    return (p.returncode if status == "ok" else None), status, out, err
 
 
 # ---------------------------------------------------------------- directory rules
@@ -347,61 +401,201 @@ def pinned_revisions(root):
                         and DIGITS_RE.fullmatch(rev)):
                     raise LinksUnreadable("bad browser")
                 fam = name.replace("-", "_")
-                pins.add("%s-%s" % (fam, rev))
+                pins.add((fam, int(rev)))   # numeric: "0123" and "123" are the same revision
                 ov = b.get("revisionOverrides", {})
                 if not isinstance(ov, dict):
                     raise LinksUnreadable("bad overrides")
                 for k, v in ov.items():
                     if not (isinstance(k, str) and isinstance(v, str) and DIGITS_RE.fullmatch(v)):
                         raise LinksUnreadable("bad overrides")
-                    pins.add("%s-%s" % (fam, v))
+                    pins.add((fam, int(v)))
     except (OSError, ValueError, UnicodeError, RecursionError):
         raise LinksUnreadable("unreadable")
     return pins
 
 
 def lsof_probe(env, root):
-    """Open paths under root, or an error status. A canary file held open by us must show up in the output: if it does not,
-    lsof's answer is incomplete and nothing may be removed on its strength."""
+    """Open paths under root, or an error status. Measured on Pro (2026-10-10, lsof 4.91): with +D every file under the dir
+    is a search target and any file that is not open makes lsof exit 1, so rc 1 is the normal healthy result; an incomplete
+    scan shows on stderr, and only when -w is not given. The scan is complete iff rc is 0 or 1 AND the canary we hold open
+    is in the output AND stderr is empty (stderr carries paths: it is tested, never kept)."""
     canary = os.path.join(root, ".pro-janitor-canary-%d" % os.getpid())
     try:
         fd = os.open(canary, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
     except OSError:
         return "error:lsof-incomplete", None
     try:
-        rc, st, out = run_deadline([env.lsof, "-w", "-F", "n", "+D", root], env.timeout, tool_env(env), cap=LSOF_CAP)
+        rc, st, out, err = run_deadline([env.lsof, "-F", "n", "+D", root], env.timeout, tool_env(env),
+                                        cap=LSOF_CAP, err_cap=LSOF_ERR_CAP)
     finally:
         os.close(fd)
         try:
             os.unlink(canary)
         except OSError:
             pass
-    if st == "overflow":
-        return "error:lsof-incomplete", None
-    if st != "ok" or rc not in (0, 1):
+    if st == "spawn":
         return "error:lsof-unreadable", None
+    if st != "ok" or rc not in (0, 1) or err:
+        return "error:lsof-incomplete", None
     opened = [ln[1:] for ln in out.decode("utf-8", "replace").splitlines() if ln.startswith("n")]
     if canary not in opened:
         return "error:lsof-incomplete", None
     return None, [os.path.realpath(o) for o in opened]
 
 
-def root_state(root):
+DIRFLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+MAX_DEPTH = 64
+CANARY_RE = re.compile(r"\.pro-janitor-canary-(?P<pid>[0-9]{1,10})", re.ASCII)
+
+
+def fd_supported():
+    return (all(f in os.supports_dir_fd for f in (os.open, os.stat, os.unlink, os.rmdir))
+            and os.scandir in os.supports_fd and os.stat in os.supports_follow_symlinks)
+
+
+def open_anchored(path):
+    """Open an absolute directory by walking from "/" one component at a time with O_NOFOLLOW: no ancestor can be a symlink
+    at open time, and nothing is resolved by pathname afterwards."""
+    fd = os.open("/", os.O_RDONLY | os.O_DIRECTORY)
     try:
-        return os.path.realpath(root) == root and not os.path.islink(root) and lstat_dir(root) is not None
+        for comp in [c for c in path.split("/") if c]:
+            nfd = os.open(comp, DIRFLAGS, dir_fd=fd)
+            os.close(fd)
+            fd = nfd
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def audit_fd(fd, root_dev, depth=0):
+    """(ok, reason, youngest_mtime, bytes) of the tree under an open directory fd, walked fd-relative, symlinks never followed."""
+    if depth > MAX_DEPTH:
+        return False, "too-deep", 0, 0
+    youngest = os.fstat(fd).st_mtime
+    total = 0
+    with os.scandir(fd) as it:
+        names = [e.name for e in it]
+    for n in names:
+        if n.casefold() == ".git":
+            return False, "has-git", 0, 0
+        s = os.stat(n, dir_fd=fd, follow_symlinks=False)
+        youngest = max(youngest, s.st_mtime)
+        total += s.st_size
+        if stat.S_ISDIR(s.st_mode):
+            if s.st_dev != root_dev:
+                return False, "other-filesystem", 0, 0
+            cfd = os.open(n, DIRFLAGS, dir_fd=fd)
+            try:
+                c = os.fstat(cfd)
+                if (c.st_dev, c.st_ino) != (s.st_dev, s.st_ino):
+                    return False, "changed", 0, 0
+                ok, why, y, t = audit_fd(cfd, root_dev, depth + 1)
+            finally:
+                os.close(cfd)
+            if not ok:
+                return False, why, 0, 0
+            youngest = max(youngest, y)
+            total += t
+    return True, "", youngest, total
+
+
+def remove_children(fd, root_dev, depth=0):
+    """Remove everything under the open directory fd, fd-relative. A symlink is unlinked itself, never its target; a
+    directory on another device is never entered. Returns the number of failures (0 = all gone)."""
+    if depth > MAX_DEPTH:
+        return 1
+    fails = 0
+    with os.scandir(fd) as it:
+        names = [e.name for e in it]
+    for n in names:
+        try:
+            s = os.stat(n, dir_fd=fd, follow_symlinks=False)
+            if stat.S_ISDIR(s.st_mode):
+                if s.st_dev != root_dev:
+                    fails += 1
+                    continue
+                cfd = os.open(n, DIRFLAGS, dir_fd=fd)
+                try:
+                    c = os.fstat(cfd)
+                    if (c.st_dev, c.st_ino) != (s.st_dev, s.st_ino):
+                        fails += 1
+                        continue
+                    sub = remove_children(cfd, root_dev, depth + 1)
+                finally:
+                    os.close(cfd)
+                if sub:
+                    fails += sub
+                    continue
+                os.rmdir(n, dir_fd=fd)
+            else:
+                os.unlink(n, dir_fd=fd)
+        except OSError:
+            fails += 1
+    return fails
+
+
+def remove_candidate(root_fd, name, rec, root_dev, now):
+    """(state, bytes). The candidate is opened relative to the verified root fd and must be the very inode recorded at plan
+    time, on the root's device; it is audited and emptied through that fd and removed with rmdir(dir_fd): no pathname is
+    resolved after the plan."""
+    cfd = os.open(name, DIRFLAGS, dir_fd=root_fd)
+    try:
+        st = os.fstat(cfd)
+        if (st.st_dev, st.st_ino) != rec or st.st_dev != root_dev:
+            return "failed", 0
+        ok, why, youngest, size = audit_fd(cfd, root_dev)
+        if not ok or now - youngest <= SEVEN_DAYS:
+            return "failed", 0
+        if remove_children(cfd, root_dev):
+            return "failed", 0
+    finally:
+        os.close(cfd)
+    os.rmdir(name, dir_fd=root_fd)
+    return "removed", size
+
+
+def sweep_stale_canaries(root):
+    """Remove our own leftover canaries: regular, zero-byte, exactly .pro-janitor-canary-<pid>, with a pid that is gone.
+    `kill(pid, 0)` only asks; nothing is ever signalled."""
+    try:
+        names = os.listdir(root)
     except OSError:
-        return False
+        return
+    for n in names:
+        m = CANARY_RE.fullmatch(n)
+        if not m or int(m.group("pid")) == os.getpid():
+            continue
+        try:
+            os.kill(int(m.group("pid")), 0)
+            continue   # alive
+        except ProcessLookupError:
+            pass
+        except OSError:
+            continue   # EPERM: alive, someone else's
+        p = os.path.join(root, n)
+        try:
+            st = os.lstat(p)
+            if stat.S_ISREG(st.st_mode) and st.st_size == 0:
+                os.unlink(p)
+        except OSError:
+            pass
 
 
 def dir_rule(env, rule, apply_):
     """Returns (status, entries). Entries are tool revision names + bytes only."""
+    if not fd_supported():
+        return "skipped:no-fd-support", []
     root = real_root(env, rule["root"])
     if root is None:
         return "skipped:root-missing-or-symlinked", []
     try:
-        root_dev = os.lstat(root).st_dev
+        rst = os.lstat(root)
     except OSError:
         return "error:root-unreadable", []
+    root_dev, root_id = rst.st_dev, (rst.st_dev, rst.st_ino)
+    if apply_:
+        sweep_stale_canaries(root)
     if os.path.lexists(os.path.join(root, "__dirlock")):
         return "skipped:install-in-progress", []
     try:
@@ -412,22 +606,26 @@ def dir_rule(env, rule, apply_):
     for fam, items in sorted(families(root).items()):
         newest = max(k for k, _, _ in items)
         for k, name, path in sorted(items):
-            if k == newest or name in pins:
+            if k == newest or (fam, k) in pins:
+                continue
+            try:
+                ls = os.lstat(path)
+            except OSError:
                 continue
             ok, why, youngest, size = audit_tree(path, root_dev, env.now)
             if not ok or env.now - youngest <= SEVEN_DAYS:
                 continue
-            cands.append((name, path, size))
+            cands.append((name, path, size, (ls.st_dev, ls.st_ino)))
     if not cands:
         return "skipped:no-candidates", []
-    bad, opened = lsof_probe(env, root)   # one probe per rule root
+    bad, opened = lsof_probe(env, root)   # the plan's probe
     if bad:
         return bad, []
-    free_cands = [(n, p, sz) for n, p, sz in cands if not any(o == p or o.startswith(p + os.sep) for o in opened)]
+    free_cands = [c for c in cands if not any(o == c[1] or o.startswith(c[1] + os.sep) for o in opened)]
     if not free_cands:
         return "skipped:in-use", []
     if not apply_:
-        return "dry-run", [{"name": n, "bytes": sz} for n, _, sz in free_cands]
+        return "dry-run", [{"name": n, "bytes": sz} for n, _, sz, _ in free_cands]
     # the registry and the install lock are read again at the last moment: an install may have started since
     if os.path.lexists(os.path.join(root, "__dirlock")):
         return "skipped:install-in-progress", []
@@ -437,24 +635,39 @@ def dir_rule(env, rule, apply_):
     except LinksUnreadable:
         return "skipped:link-registry-unreadable", []
     entries = []
-    for name, path, _ in free_cands:
+    for name, path, _, rec in free_cands:
         ent = {"name": name, "bytes": 0, "state": "failed"}
         entries.append(ent)
-        if not root_state(root) or os.lstat(root).st_dev != root_dev:
-            continue
-        if lstat_dir(path) is None or os.path.islink(path) or os.path.realpath(path) != path:
-            continue
-        ok, why, youngest, size = audit_tree(path, root_dev, env.now)
-        if not ok or env.now - youngest <= SEVEN_DAYS:
-            continue
-        ent["bytes"] = size
-        errors = []
-        shutil.rmtree(path, onerror=lambda func, p, exc: errors.append(p))
-        if not errors and not os.path.lexists(path):
-            ent["state"] = "removed"
-    if all(e["state"] == "removed" for e in entries):
+        try:
+            # per candidate, the last look: lsof again, then the lock and the pins, then fd-anchored removal
+            bad, opened2 = lsof_probe(env, root)
+            if bad:
+                continue
+            if any(o == path or o.startswith(path + os.sep) for o in opened2):
+                ent["state"] = "skipped:open"
+                continue
+            if os.path.lexists(os.path.join(root, "__dirlock")):
+                ent["state"] = "skipped:install-in-progress"
+                continue
+            m = PW_RE.fullmatch(name)
+            if (m.group("family"), int(m.group("rev"))) in pinned_revisions(root):
+                ent["state"] = "skipped:pinned-late"
+                continue
+            rfd = open_anchored(root)
+            try:
+                st = os.fstat(rfd)
+                if (st.st_dev, st.st_ino) != root_id:
+                    continue
+                ent["state"], ent["bytes"] = remove_candidate(rfd, name, rec, root_dev, env.now)
+            finally:
+                os.close(rfd)
+        except (OSError, LinksUnreadable):
+            pass
+    if any(e["state"] == "failed" for e in entries):
+        return "error:rmtree-partial", entries
+    if any(e["state"] == "removed" for e in entries):
         return "done", entries
-    return "error:rmtree-partial", entries
+    return entries[0]["state"], entries
 
 
 def tool_env(env):
@@ -477,7 +690,7 @@ def tool_rule(env, rule, apply_):
         return "dry-run", []
     if not (os.path.isfile(exe) and os.access(exe, os.X_OK)):
         return "error:tool-missing", []
-    rc, st, _ = run_deadline(argv, env.timeout, tenv)
+    rc, st, _, _ = run_deadline(argv, env.timeout, tenv)
     if st == "timeout":
         return "error:timeout", []
     if st != "ok":
@@ -496,18 +709,26 @@ def iso(ts):
 def main():
     try:
         env = Env()
-        os.makedirs(env.state_dir, exist_ok=True)
-        lock = os.open(os.path.join(env.state_dir, "lock"), os.O_RDWR | os.O_CREAT, 0o600)
-        try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
-            print("pro_janitor: previous run alive")
-            return 11
-        state, invalid = load_state(env)
-        free0 = env.free_gb()
     except ConfigError as e:
         print("pro_janitor: bad config: %s" % e)
         return 2
+    try:
+        ensure_state_dir(env)
+    except StateDirError as e:
+        print("pro_janitor: state dir unusable: %s" % e)
+        return 1
+    try:
+        lock = os.open(os.path.join(env.state_dir, "lock"), os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print("pro_janitor: previous run alive")
+        return 11
+    except OSError:
+        print("pro_janitor: lock unusable")
+        return 1
+    try:
+        state, invalid = load_state(env)
+        free0 = env.free_gb()
     except OSError as e:
         print("pro_janitor: free space unreadable: %s" % e.__class__.__name__)
         return 1
@@ -518,6 +739,7 @@ def main():
     results = []
     free = free0
     stopped = False
+    free_failed = False
     for rule in RULES:
         if cur < rule["tier"]:
             continue
@@ -539,6 +761,7 @@ def main():
             try:
                 after = env.free_gb()
             except OSError:
+                free_failed = True   # no reading, no further action: stop here and say so
                 break
             res["delta_gb"] = round(after - free, 3)
             free = after
@@ -553,7 +776,7 @@ def main():
     state["tier"] = tier
     save_state(env, state)
     line = {"ts": iso(env.now), "mode": "apply" if apply_ else "dry-run", "free_gb_before": round(free0, 3),
-            "free_gb_after": round(free, 3), "tier_prev": prev, "tier": tier, "rules": results}
+            "free_gb_after": None if free_failed else round(free, 3), "tier_prev": prev, "tier": tier, "rules": results}
     if tier != prev:
         line["transition"] = "%s->%s" % (prev, tier)
     if len(seen) > 1:
@@ -562,12 +785,15 @@ def main():
         line["stopped_at_exit_mark"] = True
     if invalid:
         line["state_invalid"] = True
+    if free_failed:
+        line["free_read_failed"] = True
     append_journal(env, line)
     errs = [r for r in results if r["status"].startswith("error")]
     print("pro_janitor: tier=%s mode=%s free=%.1fGB%s%s rules=%s" % (
-        tier, line["mode"], free0, "" if free == free0 else "->%.1fGB" % free, " state_invalid" if invalid else "",
+        tier, line["mode"], free0, "" if free == free0 else "->%.1fGB" % free,
+        (" state_invalid" if invalid else "") + (" free_read_failed" if free_failed else ""),
         ",".join("%s:%s" % (r["id"], r["status"]) for r in results) or "none"))
-    return 10 if (tier == "BLACK" or errs or invalid) else 0
+    return 10 if (tier == "BLACK" or errs or invalid or free_failed) else 0
 
 
 if __name__ == "__main__":

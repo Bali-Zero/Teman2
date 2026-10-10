@@ -78,28 +78,13 @@ first written would have deleted browsers pinned by live installs, measured on P
 their headless shells, ffmpeg-1011, webkit-2359). There is no puppeteer rule: puppeteer has no registry of which project uses
 which version.
 
-A directory rule removes an entry only if: the root is a real directory (no symlink) under `$HOME`; the entry is a real directory
-on the root's filesystem whose name is `<family>-<ASCII digits>` for an allowlisted family (`chromium`,
-`chromium_headless_shell`, `chromium_tip_of_tree`, `firefox`, `firefox_beta`, `webkit`, `ffmpeg`, `winldd`; any other name is
-never a candidate); nothing below it is a symlink that leaves it, a `.git` (any case: APFS folds it), or open; its youngest mtime
-is older than 7 days; it is not pinned; and it is not the newest of its family. "Open" comes from one `lsof -w -F n +D <root>`
-per rule root, capped at 16 MiB, with a canary: the janitor holds `<root>/.pro-janitor-canary-<pid>` open (`O_EXCL|O_NOFOLLOW`,
-removed in a `finally`) and the canary's path must appear in the output, else `error:lsof-incomplete` and nothing is removed (a
-probe that cannot run is `error:lsof-unreadable`). Open files are matched to entries by realpath prefix. Immediately before each
-removal the entry is audited again (real directory, not a symlink, `realpath` unchanged, the root unchanged, same device, no
-`.git`, nothing young, no escaping symlink) and only then `shutil.rmtree`d; each entry is journaled `removed` or `failed` with
-its bytes, and the rule is `done` only if every candidate was removed, else `error:rmtree-partial`.
+A directory rule removes an entry only if: the root is a real directory (no symlink) under `$HOME`; the entry is a real directory on the root's filesystem whose name is `<family>-<ASCII digits>` for an allowlisted family (`chromium`, `chromium_headless_shell`, `chromium_tip_of_tree`, `firefox`, `firefox_beta`, `webkit`, `ffmpeg`, `winldd`; any other name is never a candidate); nothing below it is a symlink that leaves it, a `.git` (any case: APFS folds it), or open; its youngest mtime is older than 7 days; it is not pinned; and it is not the newest of its family. "Open" comes from one `lsof -F n +D <root>` (never `-w`) per rule root, capped at 16 MiB, with a canary: the janitor holds `<root>/.pro-janitor-canary-<pid>` open (`O_EXCL|O_NOFOLLOW`, removed in a `finally`) and the scan is complete iff rc is 0 or 1, the canary's path appears in the output, and stderr is empty (stderr is read capped at 64 KiB, tested and never journaled or printed: it carries paths); anything else - a stderr warning, no canary, another rc, a timeout, an oversized stdout or stderr - is `error:lsof-incomplete` and nothing is removed (a probe that cannot be started is `error:lsof-unreadable`). Measured on Pro, 2026-10-10, lsof 4.91: with `+D` every file under the dir is a search target and any file that is not open makes lsof exit 1, so rc 1 is the normal healthy result (a temp dir with an open canary: rc 1, canary listed, stderr empty; the real ms-playwright root: rc 1, 30 open-file lines, stderr empty); an incomplete scan shows only on stderr, and only without `-w` (a dir with an unreadable subdir: rc 1, one `can't opendir ... Permission denied` line). Open files are matched to entries by realpath prefix. Removal is fd-anchored and never resolves a pathname after the plan. At plan time the `(st_dev, st_ino)` of the root and of each candidate is recorded. To remove, the root is opened by walking from `/` one component at a time with `O_NOFOLLOW` (no ancestor can be a symlink at open time) and must be the recorded inode; each candidate is opened `O_NOFOLLOW|O_DIRECTORY` relative to that fd and must be the recorded inode on the root's device. It is audited through the fd (no `.git` in any case, nothing younger than 7 days, no other device, depth-bounded), emptied by a fd-relative recursion (`stat`/`open`/`unlink`/`rmdir` with `dir_fd`; a symlink is unlinked itself, never its target; another device is never entered) and removed with `rmdir(dir_fd)`; `shutil.rmtree` on a path is not used. Without `dir_fd` support the rule is `skipped:no-fd-support`. Immediately before EACH candidate the last look repeats: lsof again (canary held, same completeness rule), then `__dirlock`, then the pins; a candidate now open, pinned or under an install lock is journaled `skipped:open`, `skipped:pinned-late` or `skipped:install-in-progress` and the loop goes on. Each entry is journaled `removed`, `failed` or one of those skips, with its bytes; the rule is `error:rmtree-partial` if any entry failed, else `done` if any was removed. At the start of an applied run, stale canaries of ours (regular, zero bytes, exactly `.pro-janitor-canary-<digits>`, pid gone per `kill(pid, 0)`, nothing ever signalled) are swept.
 
-**Modes.** Dry-run by default: the run decides and journals what it would do and removes nothing (the lsof canary is the one
-file it creates, and deletes). `PRO_JANITOR_APPLY=true` in the plist acts. Kill switch `PRO_JANITOR_ENABLED=false` (heartbeat
-`disabled`). The node guard exits off Pro. A second run while one is alive exits: the payload takes `flock` on
-`<state_dir>/lock` and exits 11 without touching state or journal (the wrapper also keeps its pidfile, and writes `warning`,
-never `ok`, when it skips).
+**Modes.** Dry-run by default: the run decides and journals what it would do and removes nothing (the lsof canary is the one file it creates, and deletes). `PRO_JANITOR_APPLY=true` in the plist acts. Kill switch `PRO_JANITOR_ENABLED=false` (heartbeat `disabled`). The node guard exits off Pro. A second run while one is alive exits: the payload takes `flock` on `<state_dir>/lock` and exits 11 without touching state or journal (the wrapper also keeps its pidfile, and writes `warning`, never `ok`, when it skips).
 
-**State** (`~/.local/state/nuzantara/pro-janitor/state.json`): the tier and each rule's last-run time, written atomically
-(temp file, fsync, rename). Every number must be finite (a non-finite `PRO_JANITOR_NOW` is a config error, exit 2); cooldown
-stamps more than 60 s in the future are dropped. An existing but invalid `state.json` forces that tick to dry-run (no removal,
-no tool run), journals `state_invalid: true`, exits 10 and rewrites the state valid.
+A cooldown is stamped on an attempted action even when it failed (`error:rc=`, `error:timeout`, `error:rmtree-partial`): that is anti-thrash, and the next attempt waits for the cooldown instead of hammering a broken tool every ten minutes. Pins and candidate revisions are compared numerically as `(family, int(revision))`, so `01100` protects `chromium-1100`.
+
+**State** (`~/.local/state/nuzantara/pro-janitor/state.json`): the tier and each rule's last-run time, written atomically (temp file, fsync, rename). Every number must be finite (a non-finite `PRO_JANITOR_NOW` is a config error, exit 2); cooldown stamps more than 60 s in the future are dropped. An existing but invalid `state.json` forces that tick to dry-run (no removal, no tool run), journals `state_invalid: true`, exits 10 and rewrites the state valid. Every timestamp must be a finite number in [0, 4e9] (a JSON integer such as `10**400` is invalid, not an exception). The state dir must be a real directory under `$HOME` (else exit 1, `state dir unusable`); the temp file is created `O_EXCL|O_NOFOLLOW` under a random name, fsynced, renamed, and the directory fsynced. The lock is `flock`: contention is exit 11, any other error exit 1 (`lock unusable`).
 
 **Journal** (`~/logs/pro-janitor/journal.jsonl`, one line per tick): ts, mode, free before and after, the previous and the final
 tier, a `transition` field when the tier changed (the lead correlates these with the merger tick's journal), `tiers_seen` when
@@ -107,11 +92,7 @@ it changed mid-run, and per rule acted on: id, status (`done`, `dry-run`, `skipp
 and for directory rules the entries by name (tool cache revisions, never a user path) with their bytes and, when applied, their
 `removed`/`failed` state.
 
-**Exit codes and heartbeat** (`~/.organism/last_seen/pro.janitor.json`, written atomically): payload exit 0 is `ok` whatever the
-tier; 10 (a rule error, the final tier BLACK, or an invalid state) and 11 (lock held) are `warning` (BLACK is the page: free GB,
-freed GB, "the VM-side trough is localci's"); anything else is `error`; `disabled` for the kill switch or the wrong node. The
-note is the payload's own `pro_janitor: ...` summary line when it is printable ASCII, otherwise `payload rc=N`; a traceback, and
-the paths in it, never reach the sidecar.
+**Exit codes and heartbeat** (`~/.organism/last_seen/pro.janitor.json`, written atomically): payload exit 0 is `ok` whatever the tier; 10 (a rule error, the final tier BLACK, or an invalid state) and 11 (lock held) are `warning` (BLACK is the page: free GB, freed GB, "the VM-side trough is localci's"); anything else is `error`; `disabled` for the kill switch or the wrong node. The note is the payload's own `pro_janitor: ...` summary line when it is printable ASCII, otherwise `payload rc=N`; a traceback, and the paths in it, never reach the sidecar. A free-space read that fails after an action stops all further actions, is journaled `free_read_failed: true` with `free_gb_after` null, and exits 10, never 0.
 
 ## Rollout
 
