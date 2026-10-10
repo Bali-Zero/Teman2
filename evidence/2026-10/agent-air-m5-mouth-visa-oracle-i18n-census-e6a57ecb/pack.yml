@@ -1,0 +1,45 @@
+# Gear-1 evidence pack - the Visa Oracle i18n dead-key census.
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Team lead mandate, 2026-10-10 - the census is the missing arming step of the dead-keys chain.
+mission: >-
+  A dead i18n key cannot be added, or re-added, without a failing test naming it.
+lanes:
+  - lane: i18n-census-build
+    role: build
+    seat: Claude Sonnet 5.5 implementer (worktree mouth-visa-oracle-i18n-census).
+  - lane: i18n-census-ground-truth
+    role: ground_truth
+    seat: >-
+      exact-key and template-literal grep over apps/mouth/src and apps/mouth/e2e; the 46 tombstones are the key names removed in bf953020ed; no notebook, no memory, no regulatory figure asserted.
+    nb: none
+    query_hash: "0000000000000000000000000000000000000000000000000000000000000000" # pragma: allowlist secret
+    note: no notebook query; ground truth is the repo grep
+pii_scan: clean
+bites:
+  consumer: the mouth Vitest run in the required Frontend Tests check.
+  where: ci
+  observe: cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/i18n-census.test.ts"
+  expect: "contains:5 passed"
+decisions:
+  - id: D-rule
+    decision: >-
+      A template literal vouches only for keys whose interpolated segment is one dotted segment that also appears as a quoted literal in the scanned sources; a leading-interpolation suffix such as .hint derives from a referenced base key.
+receipts:
+  - claim: The census passes on the clean tree.
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/i18n-census.test.ts"
+    result: "Test Files 1 passed (1); Tests 5 passed (5)"
+    exit: 0
+    ts: "2026-10-10T15:36:00Z"
+    seat: Claude Sonnet 5.5
+  - claim: Re-adding question.human_context_notice to EN and ID fails two census tests with the key named.
+    cmd: probe edit of i18n.ts, vitest run, then restore
+    result: "Tests 2 failed | 3 passed (5)"
+    exit: 1
+    ts: "2026-10-10T15:34:00Z"
+    seat: Claude Sonnet 5.5
+dissent: []
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
