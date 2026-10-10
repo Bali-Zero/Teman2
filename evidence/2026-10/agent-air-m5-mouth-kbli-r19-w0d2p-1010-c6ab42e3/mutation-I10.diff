@@ -1,0 +1,38 @@
+diff --git a/apps/mouth/src/app/kbli/layout.tsx b/apps/mouth/src/app/kbli/layout.tsx
+index d3a70ffddc..40f83ef3fb 100644
+--- a/apps/mouth/src/app/kbli/layout.tsx
++++ b/apps/mouth/src/app/kbli/layout.tsx
+@@ -26,7 +26,7 @@ export default function KBLILayout({
+       <NavShell
+         logo={<BZLogo variant="full" />}
+         items={navItems}
+-        slotAfter={<MobileNav items={navItems} funnel="kbli" />}
++        slotAfter={<MobileNav items={navItems} funnel="kbli" paper />}
+         actions={
+           <WhatsAppLeadButton
+             source="kbli_navigator"
+diff --git a/apps/mouth/src/app/v2/_components/MobileNav.tsx b/apps/mouth/src/app/v2/_components/MobileNav.tsx
+index 08c3ae40dd..cc0ad42e36 100644
+--- a/apps/mouth/src/app/v2/_components/MobileNav.tsx
++++ b/apps/mouth/src/app/v2/_components/MobileNav.tsx
+@@ -13,9 +13,10 @@ import { buildWhatsAppLink, type Funnel } from "@/lib/whatsapp-utm";
+ interface MobileNavProps {
+   items: { label: string; href: string }[];
+   funnel: Funnel;
++  paper?: boolean;
+ }
+ 
+-export function MobileNav({ items, funnel }: MobileNavProps) {
++export function MobileNav({ items, funnel, paper }: MobileNavProps) {
+   const isR19 = useR19();
+   const [open, setOpen] = useState(false);
+   useEffect(() => {
+@@ -71,7 +72,7 @@ export function MobileNav({ items, funnel }: MobileNavProps) {
+             ...(isR19 ? R19_VARS : {}),
+             fontFamily: isR19 ? "var(--font-sans)" : undefined,
+             color: "var(--text-primary)",
+-            background: "var(--nav-bg)",
++            background: paper ? "#F7F4EE" : "var(--nav-bg)",
+             borderRight: "1px solid var(--nav-border)",
+             backdropFilter: "blur(16px)",
+             WebkitBackdropFilter: "blur(16px)",

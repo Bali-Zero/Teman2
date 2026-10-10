@@ -1,0 +1,42 @@
+task_id: kbli-r19-w0d2p-1010
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, Track W, lot W0d-2': the depth-1 cure of W0d-2 (#8202, closed
+  after GATE: BLOCK). W0d-2' is W0d-2's content, carried from a fresh origin/main, plus the five
+  cure points the gate and the imperator ordered:
+    1. resolver A never paints the dev server's indicator (nextjs-portal{display:none!important}
+       in the capture style);
+    2. a sample point under any fixed or sticky element outside the roots is occluded, faint
+       layers and filters included, so the run is read again in the middle of the viewport; a
+       guilt row and an innocence row put a fixed glowing badge at the bottom-left over a run;
+    3. the shared walk survives a loaded runner: an opener that throws or leaves 0 roots gets
+       the page loaded and opened once more, and a forced theme that hydration replaced is
+       forced again before the page is read, or the walk fails naming it;
+    4. the pins regenerated, and shared-component-drift 0 proven in the CI job on two runs;
+    5. contract section 8.4's R attribution corrected and the numbers re-measured, with R 0
+       reachable by construction for W2'''.
+  No line changes under apps/mouth/src.
+constraints:
+  - "Zero files under apps/mouth/src (spec section 5); census-replay asserts it on every W0d branch."
+  - "Nothing that belongs to W0d-3: the occluded-run ambiguity, gradient and backdrop scrims, hover in _open_sector, the CI budget and gate note 4 on #8189 go to W0d-3's brief."
+  - "No npm install or npm ci. Dev servers on 3598 (this tree), 3599 (a scratch worktree of origin/main for the mutations) and 3600 (a probe worktree at #8161's head), started and stopped by this lot."
+acceptance:
+  - text: "WHEN each guilt row runs through the real walk on local HTML, THEN it is red as its row says; WHEN each innocence row runs, THEN it prints 0. This includes the fixed glowing badge over a run (guilt G-badge, innocence I-badge and I-badge-edge), the dev indicator (I-dev-indicator), an opener that needs a second load (I-opener-twice, I-opener-throws) and a page that hydrates its own theme (I-theme-hydrated)."
+    probe: "python3 -m pytest scripts/mouth/tests -q -k 'e2e_guilt_and_innocence or page_grounds_at_rest'"
+  - text: "WHEN origin/main is censused twice, 38 s apart, THEN the two verdict texts are identical (I11), and the census prints captures 30 ok, opened-surfaces 25 ok 0 failed, ground-resolver-disagree 0 and shared-touched-unpinned 0."
+    probe: "python3 scripts/mouth/r19_wrapper_token_census.py (twice), then diff"
+  - text: "WHEN mutation A or B is served, THEN D is 84 or 108; WHEN I9 or I10 is served on a second dev server, THEN D is 0 against the regenerated pin."
+    probe: "python3 -m pytest scripts/mouth/tests -q -k 'r19_presentation or g27 or g28 or i9 or i10'"
+  - text: "WHEN wrapper-census-states runs in CI on this branch, twice, THEN both print shared-component-drift: 0 and pass every assert."
+    probe: "gh workflow run r19-wrapper-census-tests.yml --ref agent/air-m5/mouth/kbli-r19-w0d2p-1010"
+consumer_map:
+  - "r19-wrapper-census-tests / wrapper-census-states runs the live census on every apps/mouth, packages/core and census PR. It asserts captures, opened-surfaces, shared-touched-unpinned and shared-component-drift with grep -Fxq, and it prints page-grounds-off-contract and ground-resolver-disagree with the other counts. W2''' is judged on all of them at 0."
+  - "r19-wrapper-census-tests / census-replay runs the guilt and innocence suite, and on a W0d branch it asserts 0 files changed under apps/mouth/src."
+risks:
+  - "A run under a page's own fixed overlay is now read at the middle of the viewport: the sector drawer needs 40 positions on desktop and 91 on mobile (77 before), under the cap of 250."
+  - "The retry loads the page a second time only when the first open failed; a surface that never opens still fails, with the second attempt's reason."
+  - "CI and M5 lay pages out with different fonts, so their counts differ by a few lines; both are reported."
+grader: |
+  A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha.

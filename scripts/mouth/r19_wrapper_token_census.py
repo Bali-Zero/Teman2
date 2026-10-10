@@ -9,11 +9,14 @@ RENDERED DOM of a local `next dev --webpack` — 5 pages x the 6 states of
 follows every var() chain where the browser resolves it (at the declaring
 element). It prints, as its LAST lines, `read-but-undefined: N` (one line per
 token the contract lacks), `colors-outside-direction-a: M` and, from the
-state contract (section 7), `state-rows-unseen: U` then `state-colors-off-contract: K`. Then it opens
-the surfaces a click or a query reveals (section 8.4, the search and inspect APIs stubbed from a
-fixture) and prints `opened-surfaces: N ok, F failed`, `opened-outside-wrapper: P`,
-`opened-grounds-off-contract: G`, then, for the shared components outside /kbli* (section 8.5),
-`shared-touched-unpinned: N` and `shared-component-drift: D`, and, last, `opened-text-below-4.5: T`.
+state contract (section 7), `state-rows-unseen: U` then `state-colors-off-contract: K`, and the
+ground under every text run at rest, `page-grounds-off-contract: G`. Then it opens the surfaces a
+click or a query reveals (section 8.4, the search and inspect APIs stubbed from a fixture) and
+prints `opened-surfaces: N ok, F failed`, `opened-outside-wrapper: P`, `opened-grounds-off-contract: K`,
+`ground-resolver-disagree: R`, then, for the shared components outside /kbli* (section 8.5),
+`shared-touched-unpinned: N` and `shared-component-drift: D`, and, last, `opened-text-below-4.5: M`.
+A ground is read twice: by the pixels of a screenshot with the text made transparent (they decide)
+and by the painter stack under the text (it names the painter); R counts where they disagree.
 The verdict is the printed line, never the exit code.
 
   python3 scripts/mouth/r19_wrapper_token_census.py [--base-url URL] [--json OUT] [--diff-base REF]
@@ -345,8 +348,8 @@ def dump(census: dict, path: Path) -> None:
     lines += [json.dumps({"color": k, **census["colors"][k]}, sort_keys=True) for k in sorted(census["colors"])]
     lines += [json.dumps({"state_ob": k, **census["state_obs"][k]}, sort_keys=True) for k in sorted(census["state_obs"])]
     if "opened" in census:
-        lines[0] = json.dumps({**head, "opened_failed": census["opened_failed"],
-                               "shared_failed": census.get("shared_failed", [])}, sort_keys=True)
+        lines[0] = json.dumps({**head, "opened_walked": True, "shared_failed": census.get("shared_failed", [])},
+                              sort_keys=True)
         lines += [json.dumps({"opened": f"{o['name']} {o['walk']}", **o}, sort_keys=True) for o in census["opened"]]
         lines += [json.dumps({"shared": f"{o['name']} {o['walk']}", **o}, sort_keys=True)
                   for o in census.get("shared", [])]
@@ -356,7 +359,7 @@ def dump(census: dict, path: Path) -> None:
 def load(path: Path) -> dict:
     head, *rows = [json.loads(ln) for ln in path.read_text().splitlines() if ln.strip()]
     census = {**head, "reads": {}, "colors": {}, "state_obs": {}}
-    if "opened_failed" in head:
+    if head.get("opened_walked"):
         census["opened"], census["shared"] = [], []
     for row in rows:
         if "opened" in row or "shared" in row:
@@ -811,6 +814,7 @@ def live(base: str) -> dict:
                 for tname, (scheme, forced) in m.THEMES.items():
                     state = f"{vname}/{tname}"
                     ctx = browser.new_context(viewport={"width": w, "height": h}, color_scheme=scheme)
+                    ctx.add_init_script(FREEZE_JS)
                     page = ctx.new_page()
                     try:
                         resp = page.goto(base + page_path, wait_until="load", timeout=180000)
@@ -820,7 +824,9 @@ def live(base: str) -> dict:
                         if forced:
                             page.evaluate("t => document.documentElement.setAttribute('data-theme', t)", forced)
                         page.wait_for_function("() => document.readyState === 'complete'", timeout=60000)
+                        quiet(page)
                         page.wait_for_timeout(1500)
+                        force_theme(page, forced)
                         res = page.evaluate(PROBE_JS, core)
                         if not res.get("root"):
                             raise RuntimeError("wrapper root not found")
@@ -831,6 +837,11 @@ def live(base: str) -> dict:
                     census["captures"].append({"page": page_path, "state": state, "root": res["root"],
                                                "elements": res["elements"], "rules": res["rules"],
                                                "skipped_sheets": res["skipped"]})
+                    try:
+                        census["captures"][-1].update(page_grounds(page, f"{page_path} {state}"))
+                    except Exception as exc:  # a page that was not read through is never clean
+                        census["captures"][-1].update(page_incomplete=True,
+                                                      page_error=str(exc).splitlines()[0][:160])
                     for r in res["reads"]:
                         key = f"{r['kind']} {r['token']}"
                         prev = census["reads"].get(key)
@@ -904,8 +915,11 @@ def walk_states(browser, m, base: str, census: dict) -> None:
 
 # The opened-surface half (section 8.4): text contrast with opacity composited, and every
 # background class on the surface or its scrim, read where it paints.
-SURFACE_JS = r"""
-(selectors) => {
+# Section 8.4 (W0d-2, SPEC-W0d section 2): the ground under each text run, found by two resolvers. A, the
+# pixel oracle, reads a screenshot taken with the text made transparent; B, the painter stack, walks
+# elementsFromPoint down to the first opaque layer and names who paints. A decides; B names the painter.
+RESOLVE_JS = r"""
+(args) => {
   const ctx = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
   const parse = (c) => {
     if (!c || c === "none" || c === "transparent") return null;
@@ -926,85 +940,435 @@ SURFACE_JS = r"""
   };
   const hex = (rgb) => "#" + rgb.map((x) => Math.round(x).toString(16).padStart(2, "0")).join("").toUpperCase();
   const over = (fg, bg, a) => fg.map((c, i) => c * a + bg[i] * (1 - a));
-  const srgb = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
-  const lum = ([r, g, b]) => 0.2126 * srgb(r / 255) + 0.7152 * srgb(g / 255) + 0.0722 * srgb(b / 255);
-  const ratio = (x, y) => { const [h, l] = [lum(x), lum(y)].sort((u, v) => v - u); return (h + 0.05) / (l + 0.05); };
   const classes = (el) => (el.getAttribute("class") || "").split(/\s+/).filter(Boolean);
-  // The ground under an element: every translucent layer down the ancestor chain, composited
-  // over the first opaque one (or white). A background image on the way makes it unmeasurable.
-  // `at` is the nearest element that paints a ground at all: the one a paint verdict names.
-  const ground = (el) => {
-    const layers = []; let imaged = false, at = null;
-    for (let n = el; n && n.nodeType === 1; n = n.parentElement) {
-      const cs = getComputedStyle(n);
-      const img = cs.backgroundImage && cs.backgroundImage !== "none", c = parse(cs.backgroundColor);
-      if ((img || c) && !at) at = n;
-      if (img) imaged = true;
-      if (c) { layers.push(c); if (c.a >= 1) break; }
-    }
-    let acc = [255, 255, 255];
-    for (const l of layers.reverse()) acc = over(l.rgb, acc, l.a);
-    return { rgb: acc, imaged, at: at || document.documentElement };
-  };
   const path = (el) => {
     const bits = [];
     for (let n = el; n && n.nodeType === 1 && bits.length < 4; n = n.parentElement)
       bits.unshift(n.tagName.toLowerCase() + classes(n).slice(0, 2).map((c) => "." + c).join(""));
     return bits.join(">");
   };
-  // The wrapper root as STATE_JS finds it; a portal that leaves it does not get the wrapper's tokens.
+  const styles = new Map();
+  const cs = (el, pseudo = "") => {
+    let m = styles.get(el);
+    if (!m) styles.set(el, (m = {}));
+    return m[pseudo] || (m[pseudo] = getComputedStyle(el, pseudo || null));
+  };
+  const opacities = new Map();
+  const opacity = (el) => {
+    if (!el || el.nodeType !== 1) return 1;
+    if (!opacities.has(el)) opacities.set(el, parseFloat(cs(el).opacity) * opacity(el.parentElement));
+    return opacities.get(el);
+  };
+  // The layers one element paints at a point, top first: ::after, ::before, replaced content, its
+  // background image, its background colour. Alpha is the layer's times every opacity above it. A pseudo-
+  // element is a layer only when its box covers its host's, or the viewport's when it is fixed (90% each
+  // way): B cannot see where a smaller one sits, and A will disagree if it is under the text. An image
+  // whose alpha moves no channel by 6 (the page's 1.5% noise texture), or that blends into what lies
+  // below it (the page's colour-dodge glow), is faint: it names no ground and only makes B approximate.
+  const REPLACED = new Set(["IMG", "VIDEO", "CANVAS", "IFRAME", "OBJECT", "EMBED"]);
+  const layers = new Map();
+  const layersOf = (el) => {
+    if (layers.has(el)) return layers.get(el);
+    const out = [], s = cs(el), op = opacity(el);
+    const approx = s.mixBlendMode !== "normal" || (s.backdropFilter || "none") !== "none" || s.filter !== "none";
+    for (const pseudo of ["::after", "::before"]) {
+      const p = cs(el, pseudo);
+      if (!p.content || p.content === "none" || p.content === "normal") continue;
+      const host = el.getBoundingClientRect();
+      const [w, h] = p.position === "fixed" ? [innerWidth, innerHeight] : [host.width, host.height];
+      if (!(parseFloat(p.width) >= w * 0.9 && parseFloat(p.height) >= h * 0.9)) continue;
+      const blend = p.mixBlendMode !== "normal";
+      const own = approx || blend || p.filter !== "none" || (p.backdropFilter || "none") !== "none";
+      if (p.backgroundImage !== "none")
+        out.push({ el, pseudo, kind: p.backgroundImage.includes("gradient") ? "gradient" : "image", a: op * parseFloat(p.opacity),
+                   approx: own, blend });
+      const c = parse(p.backgroundColor);
+      if (c) out.push({ el, pseudo, kind: "color", rgb: c.rgb, a: c.a * op * parseFloat(p.opacity), approx: own });
+    }
+    if (REPLACED.has(el.tagName)) out.push({ el, kind: el.tagName.toLowerCase(), a: op, approx });
+    else if (el instanceof SVGElement && el.tagName.toLowerCase() !== "svg" && (parse(s.fill) || parse(s.stroke)))
+      out.push({ el, kind: "svg", a: op, approx });
+    if (s.backgroundImage !== "none")
+      out.push({ el, kind: s.backgroundImage.includes("gradient") ? "gradient" : "image", a: op, approx,
+                 blend: s.mixBlendMode !== "normal" });
+    const c = parse(s.backgroundColor);
+    if (c) out.push({ el, kind: "color", rgb: c.rgb, a: c.a * op, approx });
+    for (const l of out) if (l.kind !== "color" && (l.a * 255 < 6 || l.blend)) l.faint = true;
+    layers.set(el, out);
+    return out;
+  };
+  const position = (el) => {
+    for (let n = el; n && n.nodeType === 1; n = n.parentElement)
+      if (["fixed", "sticky"].includes(cs(n).position)) return true;
+    return false;
+  };
+  // Resolver B at one point. An element above the run's own that paints is an occluder: the point is dropped.
+  // So is a fixed or sticky element outside the roots that paints anything at all, a faint layer or a filter
+  // included (a floating button's blurred glow): the run is then read again in the middle of the viewport.
+  const overlay = (el) => position(el) && !roots.some((r) => r.contains(el)) && opacity(el) > 0
+    && (layersOf(el).some((l) => l.a > 0) || cs(el).filter !== "none" || (cs(el).backdropFilter || "none") !== "none");
+  const canvasRgb = () => {
+    for (const el of [document.documentElement, document.body]) {
+      const c = el && parse(cs(el).backgroundColor);
+      if (c && c.a >= 0.999) return c.rgb;
+    }
+    return [255, 255, 255];
+  };
+  const pointB = (x, y, runEl) => {
+    const st = document.elementsFromPoint(x, y);
+    let i = -1;
+    for (let a = runEl; a && i < 0; a = a.parentElement) i = st.indexOf(a);
+    if (i < 0) return { missed: true };
+    for (let k = 0; k < i; k++)
+      if (!runEl.contains(st[k]) && (layersOf(st[k]).some((l) => !l.faint) || overlay(st[k])))
+        return { occluded: path(st[k]), fixed: position(st[k]) };
+    const ls = st.slice(i).flatMap(layersOf);
+    let k = ls.findIndex((l) => l.kind === "color" && l.a >= 0.999);
+    const base = k >= 0 ? ls[k].rgb : canvasRgb();
+    if (k < 0) k = ls.length;
+    const above = ls.slice(0, k);
+    let acc = base;
+    for (const l of above.slice().reverse()) if (l.kind === "color") acc = over(l.rgb, acc, l.a);
+    // Over an image when the text sits on an image, gradient or replaced painter. An image seen only through
+    // translucent colour makes B approximate: A's spread then says whether it shows.
+    const top = ls.find((l) => !l.faint), direct = top && top.kind !== "color" ? top.kind : null;
+    const seen = above.some((l) => l.kind !== "color");
+    return { rgb: acc, image: direct, approx: above.some((l) => l.approx) || (k < ls.length && ls[k].approx) || (seen && !direct),
+             painter: top ? path(top.el) + (top.pseudo || "") : "canvas", painterEl: top ? top.el : null };
+  };
+  // Copper is a ground only for its own action: the painter is or sits inside a, button or [role=button],
+  // the run is inside that same action, and the painter's border box lies within the action's (+-1px).
+  const actionOf = (painterEl, runEl) => {
+    const a = painterEl && painterEl.closest("a,button,[role=button]");
+    if (!a || !a.contains(runEl)) return "off";
+    const p = painterEl.getBoundingClientRect(), q = a.getBoundingClientRect();
+    return p.left >= q.left - 1 && p.top >= q.top - 1 && p.right <= q.right + 1 && p.bottom <= q.bottom + 1 ? "ok" : "box";
+  };
   const wrapper = document.querySelector('[data-presentation="r19"]') || document.querySelector(".r19-direction-a")
     || [...document.querySelectorAll("[style]")].find((e) => /--font-montserrat/.test(e.getAttribute("style")))
     || (document.getElementById("kbli-explorer-jsonld") || {}).parentElement;
-  const roots = [...new Set(selectors.flatMap((s) => [...document.querySelectorAll(s)]))]
+  const roots = (args.mode === "page" ? [wrapper].filter(Boolean)
+    : [...new Set(args.selectors.flatMap((s) => [...document.querySelectorAll(s)]))])
     .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 1 && r.height > 1; });
   const outside = roots.filter((r) => !(wrapper && wrapper.contains(r)) && !r.closest(".kbli-r19")).map(path);
   const vw = innerWidth, vh = innerHeight;
-  const scrims = [...document.querySelectorAll("body *")].filter((el) => {
-    const r = el.getBoundingClientRect(), c = parse(getComputedStyle(el).backgroundColor);
-    return r.width >= vw * 0.95 && r.height >= vh * 0.95 && c && c.a < 1 && !roots.some((x) => el.contains(x))
-      && ![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+  // A scrim: no text, covering 95% of the viewport, behind a surface root, painting any colour.
+  const scrims = args.mode !== "opened" ? [] : [...document.querySelectorAll("body *")].filter((el) => {
+    const r = el.getBoundingClientRect();
+    return r.width >= vw * 0.95 && r.height >= vh * 0.95 && parse(cs(el).backgroundColor)
+      && !roots.some((x) => el.contains(x) || x.contains(el)) && !el.textContent.trim();
   });
-  const pairs = [], grounds = [], painted = new Map(), scrimPaint = [], imaged = [];
-  let unmeasurable = 0;
-  const seen = new Set();
-  for (const el of [...scrims, ...roots.flatMap((r) => [r, ...r.querySelectorAll("*")])]) {
-    if (seen.has(el)) continue;
-    seen.add(el);
-    const cs = getComputedStyle(el);
+  const grounds = [];
+  for (const el of [...scrims, ...roots.flatMap((r) => [r, ...r.querySelectorAll("*")])])
     for (const t of classes(el)) {
       if (!/^(bg|from|via|to)-/.test(t)) continue;
-      const c = parse(cs.backgroundColor);
+      const c = parse(cs(el).backgroundColor);
       grounds.push({ token: t, hex: c ? hex(c.rgb) : "transparent", a: c ? Math.round(c.a * 1000) / 1000 : 0,
-                     image: cs.backgroundImage !== "none", scrim: scrims.includes(el) });
+                     image: cs(el).backgroundImage !== "none", scrim: scrims.includes(el) });
     }
-    if (scrims.includes(el)) {
-      const c = parse(cs.backgroundColor);
-      scrimPaint.push({ path: path(el), hex: hex(c.rgb), a: Math.round(c.a * 1000) / 1000 });
-      continue;
+  const scrimPaint = scrims.map((el) => { const c = parse(cs(el).backgroundColor);
+    return { path: path(el), hex: hex(c.rgb), a: Math.round(c.a * opacity(el) * 1000) / 1000 }; });
+  // The runs: every non-empty own text node of a visible element (opacity product >= 0.1), read before
+  // the text is made transparent.
+  const runs = [], seen = new Set();
+  for (const root of roots) {
+    const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let t = tw.nextNode(); t; t = tw.nextNode()) {
+      const el = t.parentElement, text = t.textContent.trim();
+      if (!text || !el || seen.has(t)) continue;
+      seen.add(t);
+      const s = cs(el), box = el.getBoundingClientRect();
+      if (s.visibility === "hidden" || box.width <= 1 || box.height <= 1 || opacity(el) < 0.1) continue;
+      const fg = parse(s.color);
+      const clip = s.backgroundClip === "text" && !parse(s.webkitTextFillColor);
+      if (!fg && !clip) continue;
+      runs.push({ node: t, el, text: text.slice(0, 40), path: path(el), fg: fg ? hex(fg.rgb) : null,
+                  fa: fg ? Math.round(fg.a * opacity(el) * 100) / 100 : 0, clip, state: "pending" });
     }
-    const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join(" ").trim();
-    const r = el.getBoundingClientRect();
-    if (!own || cs.visibility === "hidden" || cs.display === "none" || r.width <= 1 || r.height <= 1) continue;
-    let op = 1;
-    for (let n = el; n && n.nodeType === 1; n = n.parentElement) op *= parseFloat(getComputedStyle(n).opacity);
-    const fg = parse(cs.color), g = ground(el);
-    if (!fg || op < 0.1) continue;
-    const key = path(g.at) + " " + hex(g.rgb);
-    if (!painted.has(key)) painted.set(key, { path: path(g.at), hex: hex(g.rgb), image: g.imaged, text: own.slice(0, 24) });
-    if (g.imaged || (cs.backgroundClip === "text" && !parse(cs.webkitTextFillColor))) {
-      unmeasurable++;
-      imaged.push({ fg: hex(fg.rgb), a: Math.round(fg.a * op * 100) / 100, text: own.slice(0, 40) });
-      continue;
-    }
-    const colour = over(fg.rgb, g.rgb, fg.a * op);
-    pairs.push({ ratio: Math.round(ratio(colour, g.rgb) * 100) / 100, fg: hex(colour), bg: hex(g.rgb),
-                 text: own.slice(0, 40), cls: classes(el).slice(0, 4).join(" ") });
   }
-  return { roots: roots.length, scrims: scrims.length, outside, pairs, grounds, unmeasurable,
-           painted: [...painted.values()], scrimPaint, imaged };
+  roots.forEach((r) => r.setAttribute("data-census-root", ""));
+  const st = document.createElement("style");
+  st.textContent = "nextjs-portal{display:none!important}"
+    + "*{pointer-events:auto!important;scroll-behavior:auto!important}[data-census-root],[data-census-root] *,"
+    + "[data-census-root] *::before,[data-census-root] *::after{color:transparent!important;"
+    + "-webkit-text-fill-color:transparent!important;text-decoration-color:transparent!important;"
+    + "caret-color:transparent!important;text-shadow:none!important}";
+  document.head.appendChild(st);
+  if (!args.focus && document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  const median = (xs) => { const s = xs.slice().sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
+  const box = (rect, el) => {
+    const e = el.getBoundingClientRect();
+    const l = Math.max(rect.left, e.left), t = Math.max(rect.top, e.top), r = Math.min(rect.right, e.right),
+          b = Math.min(rect.bottom, e.bottom);
+    return r - l > 1 && b - t > 1 ? { l, t, r, b } : null;
+  };
+  const points = ({ l, t, r, b }) => {
+    const dx = Math.min(2, (r - l) * 0.25), dy = Math.min(2, (b - t) * 0.25);
+    return [[(l + r) / 2, (t + b) / 2], [l + dx, t + dy], [r - dx, t + dy], [l + dx, b - dy], [r - dx, b - dy]];
+  };
+  const inView = ([x, y]) => x >= 0 && y >= 0 && x < innerWidth && y < innerHeight;
+  window.__census = {
+    runs, pending: runs.map((_, i) => i), target: -1, current: [], root: args.mode === "shared" ? roots[0] : null,
+    rootGround: null, rootPts: null,
+    step() {
+      this.current = [];
+      for (const i of this.pending) {
+        const r = runs[i];
+        const g = document.createRange();
+        g.selectNodeContents(r.node);
+        const boxes = [...g.getClientRects()].map((q) => box(q, r.el)).filter(Boolean);
+        const inside = boxes.length && boxes.every((q) => q.t >= 0 && q.l >= 0 && q.b <= innerHeight && q.r <= innerWidth);
+        if (!inside && this.target !== i) continue;
+        const pts = boxes.flatMap(points).filter(inView);
+        if (!pts.length) continue;
+        r.trial = { pts, bs: pts.map(([x, y]) => pointB(x, y, r.el)) };
+        this.current.push(i);
+      }
+      this.rootPts = null;
+      if (this.root && !this.rootGround) {
+        const q = this.root.getBoundingClientRect();
+        const v = box({ left: 0, top: 0, right: innerWidth, bottom: innerHeight }, this.root);
+        if (v && q.width > 1) this.rootPts = points(v).filter(inView);
+      }
+      return { selected: this.current.length, root: !!(this.rootPts && this.rootPts.length) };
+    },
+    async decode(b64) {
+      const bin = atob(b64), bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const bmp = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
+      const cv = document.createElement("canvas");
+      cv.width = bmp.width; cv.height = bmp.height;
+      const g = cv.getContext("2d", { willReadFrequently: true });
+      g.drawImage(bmp, 0, 0);
+      const data = g.getImageData(0, 0, cv.width, cv.height).data;
+      const px = ([x, y]) => { const o = (Math.floor(y) * cv.width + Math.floor(x)) * 4; return [data[o], data[o + 1], data[o + 2]]; };
+      const sample = (pts) => {
+        const rgb = pts.map(px), ch = [0, 1, 2].map((c) => rgb.map((p) => p[c]));
+        return { rgb: ch.map(median), spread: Math.max(...ch.map((xs) => Math.max(...xs) - Math.min(...xs))) };
+      };
+      for (const i of this.current) {
+        const r = runs[i], { pts, bs } = r.trial;
+        const keep = pts.map((p, k) => [p, bs[k]]).filter(([, b]) => !b.occluded && !b.missed);
+        const occ = bs.find((b) => b.occluded);
+        // Under a fixed overlay, even at one point, the run waits to be read in the middle of the viewport:
+        // a blur or a shadow reaches past the overlay's box onto the points that are left.
+        if (occ && occ.fixed && this.target !== i) continue;
+        if (!keep.length) {
+          if (occ) { r.state = "occluded"; r.occludedBy = occ.occluded; }
+          continue;
+        }
+        const A = sample(keep.map(([p]) => p)), B = keep.map(([, b]) => b);
+        const ch = [0, 1, 2].map((c) => median(B.map((b) => b.rgb[c])));
+        const lead = B[0];
+        Object.assign(r, { state: "ok", a: hex(A.rgb), spread: A.spread, b: hex(ch), image: (B.find((b) => b.image) || {}).image || null,
+                           approx: B.some((b) => b.approx), painter: lead.painter, action: actionOf(lead.painterEl, r.el) });
+      }
+      if (this.rootPts && this.rootPts.length) {
+        const R = sample(this.rootPts);
+        this.rootGround = R.spread > 6 ? "over-image" : hex(R.rgb);
+      }
+      this.pending = this.pending.filter((i) => runs[i].state === "pending");
+    },
+    // Brings the first pending run to the middle of the viewport. A run already brought once that is
+    // still pending cannot be measured: it is occluded, or unreached (clipped out of view).
+    bring() {
+      while (this.pending.length) {
+        const i = this.pending[0], r = runs[i];
+        if (this.target === i) {
+          r.state = r.trial && r.trial.bs.some((b) => b.occluded) ? "occluded" : "unreached";
+          this.pending.shift();
+          continue;
+        }
+        this.target = i;
+        (r.el.nodeType === 1 ? r.el : r.node.parentElement).scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+        return true;
+      }
+      return false;
+    },
+    result() {
+      return {
+        runs: runs.map(({ text, path: p, fg, fa, clip, state: s, a, spread, b, image, approx, painter, action, occludedBy }) =>
+          ({ text, path: p, fg, fa, clip, state: s === "pending" ? "unreached" : s, a: a || null, spread: spread ?? null,
+             b: b || null, image: image || null, approx: !!approx, painter: painter || p, action: action || null,
+             occludedBy: occludedBy || null })),
+        rootGround: this.rootGround,
+      };
+    },
+  };
+  return { roots: roots.length, outside, scrims: scrims.length, grounds, scrimPaint, runs: runs.length };
 }
 """
+SETTLE = {"load": 250, "ready": 1500, "open": 2500, "scroll": 150}
+# Scroll positions a walk may take before it is INCOMPLETE. The spec says 8; the sector drawer needs 77 on
+# mobile (contract section 8.4, a declared deviation), so every walk gets room for the longest code page.
+CAPS = {"opened": 250, "shared": 250, "page": 250}
+# A position is read once two captures 100 ms apart are identical: a section a script reveals or animates
+# in on scroll has finished. After 10 tries the last capture is read as it paints.
+STILL = (100, 10)
+IMAGES_JS = ("() => [...document.images].every((i) => { const r = i.getBoundingClientRect();"
+             " return i.complete || r.bottom < 0 || r.top > innerHeight; })")
+
+
+ROOTS_JS = """(sels) => [...new Set(sels.flatMap((s) => [...document.querySelectorAll(s)]))]
+  .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 1 && r.height > 1; }).length"""
+THEME_JS = "() => document.documentElement.getAttribute('data-theme')"
+
+
+def force_theme(page, forced: str | None) -> None:
+    """A forced theme holds after hydration: a page that hydrated its own theme over it is forced again, and a
+    page that keeps its own is never read under the wrong one."""
+    if not forced or page.evaluate(THEME_JS) == forced:
+        return
+    page.evaluate("t => document.documentElement.setAttribute('data-theme', t)", forced)
+    page.wait_for_timeout(SETTLE["ready"])
+    got = page.evaluate(THEME_JS)
+    if got != forced:
+        raise RuntimeError(f"theme: the page hydrated data-theme={got!r} over {forced!r}")
+
+
+def open_page(page, url: str, forced: str | None, opener, selectors: list[str]) -> bool:
+    """Loads the page under its theme and opens the surface; True when a root is there to read."""
+    resp = page.goto(url, wait_until="load", timeout=180000)
+    if resp is None or resp.status >= 400:
+        raise RuntimeError(f"load: HTTP {resp.status if resp else 'none'}")
+    page.wait_for_timeout(SETTLE["load"])
+    if forced:
+        page.evaluate("t => document.documentElement.setAttribute('data-theme', t)", forced)
+    page.wait_for_function("() => document.readyState === 'complete'", timeout=60000)
+    quiet(page)
+    page.wait_for_timeout(SETTLE["ready"])
+    force_theme(page, forced)
+    if opener:
+        try:
+            opener(page)
+        except Exception as exc:  # the reason names the opener, never "never opened" bare
+            raise RuntimeError(f"opener: {exc}".splitlines()[0][:160]) from exc
+    page.add_style_tag(content="*,*::before,*::after{transition:none!important;animation:none!important}")
+    page.wait_for_timeout(SETTLE["open"])
+    force_theme(page, forced)
+    return bool(page.evaluate(ROOTS_JS, selectors))
+
+
+def quiet(page) -> None:
+    """No request for 500 ms after the load: a section a client fetch renders is in the page before it is read."""
+    try:
+        page.wait_for_load_state("networkidle", timeout=10000)
+    except Exception:  # a page that keeps polling is read as it stands
+        pass
+
+
+def still(page, cdp) -> str:
+    """The viewport, captured until two captures in a row are the same (STILL)."""
+    shot = cdp.send("Page.captureScreenshot", {"format": "png"})["data"]
+    for _ in range(STILL[1]):
+        page.wait_for_timeout(STILL[0])
+        last, shot = shot, cdp.send("Page.captureScreenshot", {"format": "png"})["data"]
+        if shot == last:
+            break
+    return shot
+
+
+def resolve(page, mode: str, selectors: list[str] | None = None, focus: bool = False) -> dict:
+    """Both resolvers over every text run of the surface roots (mode opened or shared) or of the wrapper
+    (mode page), scrolling run by run: SPEC-W0d section 2."""
+    page.evaluate("() => document.fonts.ready.then(() => true)")  # a late webfont moves every box
+    meta = page.evaluate(RESOLVE_JS, {"mode": mode, "selectors": selectors or [], "focus": focus})
+    cdp = page.context.new_cdp_session(page)
+    positions, incomplete = 0, False
+    try:
+        while True:
+            step = page.evaluate("() => window.__census.step()")
+            if step["selected"] or step["root"]:
+                if positions == CAPS[mode]:
+                    incomplete = True
+                    break
+                positions += 1
+                page.evaluate("b => window.__census.decode(b)", still(page, cdp))
+            if not page.evaluate("() => window.__census.bring()"):
+                break
+            page.wait_for_timeout(SETTLE["scroll"])
+            try:
+                page.wait_for_function(IMAGES_JS, timeout=3000)
+            except Exception:  # an image that never loads is read as it paints
+                pass
+    finally:
+        cdp.detach()
+    return {**meta, **page.evaluate("() => window.__census.result()"), "positions": positions,
+            "incomplete": incomplete}
+
+
+def near(a: str, b: str, tol: int = 2) -> bool:
+    """Each 8-bit sRGB channel within tol (section 8.4, SPEC-W0d section 2.5)."""
+    return all(abs(int(a[i:i + 2], 16) - int(b[i:i + 2], 16)) <= tol for i in (1, 3, 5))
+
+
+def text_colour(r: dict) -> str:
+    """The run's colour times its opacity, composited over A's ground."""
+    if not r["fg"]:
+        return r["a"]
+    f, g = (tuple(int(h[i:i + 2], 16) for i in (1, 3, 5)) for h in (r["fg"], r["a"]))
+    return "#" + "".join(f"{round(x * r['fa'] + y * (1 - r['fa'])):02X}" for x, y in zip(f, g))
+
+
+def over_image(r: dict) -> str | None:
+    if r["clip"]:
+        return "text clipped to a background"
+    return r["image"] or ("non-uniform" if r["spread"] > 6 else None)
+
+
+def run_verdict(r: dict, page_level: bool = False) -> str | None:
+    """None when a measured run's ground is on contract, else why not (SPEC-W0d sections 2.5 and 2.6)."""
+    if over_image(r):
+        return "over-image"
+    if any(near(r["a"], DIRECTION_A[x]) for x in ("paper", "elevated", "wash")):
+        return None
+    if near(r["a"], DIRECTION_A["copper"]):
+        return {"ok": None, "box": "copper off an action (outside the action box)"}.get(r["action"],
+                                                                                       "copper off an action")
+    if page_level and near(r["a"], DIRECTION_A["ink"]) and any(near(text_colour(r), DIRECTION_A[x])
+                                                             for x in ("elevated", "paper")):
+        return None
+    return "off"
+
+
+def judge_runs(runs: list[dict], where: str, page_level: bool = False) -> tuple[dict, dict]:
+    """The off-contract grounds and the resolver disagreements of measured runs, keyed by painter and hex."""
+    off, disagree = {}, {}
+    for r in runs:
+        if r["state"] != "ok":
+            continue
+        why = run_verdict(r, page_level)
+        if why:
+            img = f" over-image ({over_image(r)})" if why == "over-image" else ""
+            tail = f" ({why})" if why.startswith("copper") else ""
+            off.setdefault(f"ground {r['a']} {r['painter']} {why}",
+                           f"  ground {r['a']}{img} under {r['text']!r} at {r['painter']}{tail}, on {where}")
+        if r["b"] and not r["approx"] and not r["image"] and not near(r["a"], r["b"]):
+            disagree.setdefault(f"{r['a']} {r['b']} {r['painter']}",
+                                f"  disagree {r['a']} (pixels) vs {r['b']} (DOM) under {r['text']!r} "
+                                f"at {r['painter']}, on {where}")
+    return off, disagree
+
+
+def walk_state(row: dict) -> tuple[str, str]:
+    """One verdict state per scenario-walk (SPEC-W0d section 2.7); the reason names which."""
+    runs = row.get("runs", [])
+    ok = [r for r in runs if r["state"] == "ok"]
+    measured = [r for r in ok if not over_image(r)]
+    occluded = sum(r["state"] == "occluded" for r in runs)
+    if row.get("error"):
+        return "failed:never-opened", row["error"]
+    if not row.get("roots"):
+        return "failed:never-opened", "0 roots"
+    if not runs:
+        return "failed:never-opened", "0 text runs"
+    if measured:
+        return "ok", ""
+    if ok:
+        return "failed:over-image-only", f"{len(ok)} runs"
+    return "failed:never-opened", f"0 measurable, {occluded} occluded"
+
+
 OPENED_FIXTURE = Path(__file__).resolve().parent / "tests/fixtures/r19_opened_surfaces.json"
 EXPLORER_SURFACES = ["main", "main ~ aside", '[class*="h-[70vh]"]']
 
@@ -1098,6 +1462,9 @@ SHARED_MATRIX = {
     "apps/mouth/src/components/ui/button.tsx": {},
     "apps/mouth/src/components/ui/skeleton.tsx": {},
     "apps/mouth/src/components/providers/LazyToaster.tsx": {},
+    # The R19 drawer's own styles also paint every other R19 surface, far beyond the drawer pins.
+    "apps/mouth/src/components/r19/R19Presentation.module.css": {},
+    "apps/mouth/src/components/r19/presentation.ts": {},
 }
 # The branch a pair claims, read at run time on the hydrated surface, never from the server HTML.
 BRANCH_OF = {"MobileNav non-R19": "non-R19", "MobileNav R19": "R19", "NavShell default": "default",
@@ -1113,13 +1480,14 @@ BRANCH_JS = """(component) => {
   }
   return null;
 }"""
-# How each component is reached: opener, surface selectors, walks. NavShell is pinned on desktop because
-# at 390px its bar holds no text of its own (a raster logo, links hidden below md, an icon trigger).
+# How each component is reached: opener, surface selectors, walks. NavShell is pinned on desktop, where its
+# links show, and at 390px, where the bar holds no text of its own and the pin is its root ground alone.
 SHARED_SURFACE = {"MobileNav": (_open_mobile_nav, ['[role="dialog"]'], "shared"),
-                  "NavShell": (None, ["nav:has(> [data-nav-logo])"], "shared-desktop"),
+                  "NavShell": (None, ["nav:has(> [data-nav-logo])"], "shared-nav"),
                   "Footer": (None, ["footer:has(.footer-grid)"], "shared")}
 SHARED_WALKS = {"shared": [("mobile", "light"), ("mobile", "system-dark")],
-                "shared-desktop": [("desktop", "light"), ("desktop", "system-dark")]}
+                "shared-nav": [("desktop", "light"), ("desktop", "system-dark"), ("mobile", "light"),
+                               ("mobile", "system-dark")]}
 SHARED_PAIRS = {pair: routes for pairs in SHARED_MATRIX.values() for pair, routes in pairs.items()}
 SHARED = [(f"{pair} {route}", route, SHARED_SURFACE[pair.split()[0]][2], None, False,
            *SHARED_SURFACE[pair.split()[0]][:2]) for pair, routes in SHARED_PAIRS.items() for route in routes]
@@ -1130,8 +1498,6 @@ def pin_keys(pair: str, route: str) -> list[str]:
     """The pin entries one (pair, route) needs: one per walk of its component."""
     which = SHARED_SURFACE[pair.split()[0]][2]
     return [f"{pair} {route} {v}/{t}" for v, t in SHARED_WALKS[which]]
-# A text-bearing ground on an opened surface, judged by its composited computed value (section 8.4).
-TEXT_GROUNDS = ("paper", "elevated", "wash", "copper")
 # Background utilities that paint no colour: never a ground of their own.
 NON_COLOUR_BG = ("bg-gradient-", "bg-linear-", "bg-radial", "bg-conic", "bg-clip-", "bg-cover", "bg-contain",
                  "bg-center", "bg-no-repeat", "bg-fixed", "bg-none", "bg-repeat", "bg-blend-", "bg-origin-",
@@ -1142,10 +1508,10 @@ FREEZE_JS = ("(() => { const si = window.setInterval;"
 
 
 def walk_opened(browser, m, base: str, census: dict) -> None:
-    """Opens each surface a click or a query reveals and measures it: section 8.4."""
+    """Opens each surface a click or a query reveals and resolves the ground of every text run on it:
+    section 8.4. A shared component outside /kbli* is fingerprinted instead (section 8.5)."""
     fixture = json.loads(OPENED_FIXTURE.read_text())
     census.setdefault("opened", [])
-    census.setdefault("opened_failed", [])
     census.setdefault("shared", [])
     census.setdefault("shared_failed", [])
     walks = {"all": [(v, t) for v in m.VIEWPORTS for t in m.THEMES], "walk": WALK,
@@ -1163,69 +1529,71 @@ def walk_opened(browser, m, base: str, census: dict) -> None:
             if seed:
                 _seed(ctx, fixture)
             page = ctx.new_page()
+            row: dict = {"name": name, "walk": f"{vname}/{tname}", "roots": 0, "runs": []}
+            branch = None
             try:
-                resp = page.goto(base + path, wait_until="load", timeout=180000)
-                if resp is None or resp.status >= 400:
-                    raise RuntimeError(f"HTTP {resp.status if resp else 'none'}")
-                page.wait_for_timeout(250)
-                if forced:
-                    page.evaluate("t => document.documentElement.setAttribute('data-theme', t)", forced)
-                page.wait_for_function("() => document.readyState === 'complete'", timeout=60000)
-                page.wait_for_timeout(1500)
-                if opener:
-                    opener(page)
-                page.add_style_tag(content="*,*::before,*::after{transition:none!important;animation:none!important}")
-                page.wait_for_timeout(2500)
-                res = page.evaluate(SURFACE_JS, selectors)
-                if not res["roots"] or not res["pairs"]:
-                    raise RuntimeError(f"surface never opened ({res['roots']} roots, {len(res['pairs'])} text pairs)")
+                # Under load a click can land before hydration: the surface never opens, closes again, or a link
+                # navigates away. The page is loaded and opened once more before the walk fails.
+                try:
+                    opened = open_page(page, base + path, forced, opener, selectors)
+                except Exception:
+                    if not opener:
+                        raise
+                    opened = False
+                if opener and not opened:
+                    open_page(page, base + path, forced, opener, selectors)
                 branch = page.evaluate(BRANCH_JS, name.split()[0]) if shared else None
+                row.update(resolve(page, "shared" if shared else "opened", selectors))
             except Exception as exc:  # a surface that did not open must never read as clean
-                failed = census["shared_failed" if shared else "opened_failed"]
-                failed.append(f"{name} {vname}/{tname}: {exc}".splitlines()[0][:200])
-                ctx.close()
-                continue
-            if shared:
-                census["shared"].append({"name": name, "walk": f"{vname}/{tname}", "fingerprint": sorted(
-                    {f"{p['fg']} on {p['bg']} {p['text']!r}" for p in res["pairs"]}
-                    | {f"{i['fg']} at alpha {i['a']} over an image {i['text']!r}" for i in res["imaged"]}
-                    | ({f"branch {branch}"} if branch else set()))})
-                ctx.close()
-                continue
-            census["opened"].append({
-                "name": name, "walk": f"{vname}/{tname}", "roots": res["roots"], "scrims": res["scrims"],
-                "outside": res["outside"], "pairs": len(res["pairs"]), "unmeasurable": res["unmeasurable"],
-                "min": min(p["ratio"] for p in res["pairs"]),
-                "below": [p for p in res["pairs"] if p["ratio"] < 4.5],
-                "grounds": sorted({json.dumps(g, sort_keys=True) for g in res["grounds"]}),
-                "painted": sorted({json.dumps(g, sort_keys=True) for g in res["painted"]}),
-                "scrim_paint": sorted({json.dumps(g, sort_keys=True) for g in res["scrimPaint"]})})
+                row["error"] = str(exc).splitlines()[0][:200]
             ctx.close()
+            row["state"], row["reason"] = walk_state(row)
+            if shared:
+                if row["state"] != "ok" and not row.get("rootGround"):
+                    census["shared_failed"].append(f"{name} {row['walk']}: {row['state']} ({row['reason']})")
+                    continue
+                census["shared"].append({"name": name, "walk": row["walk"], "fingerprint": fingerprint(row, branch)})
+                continue
+            census["opened"].append(row)
+
+
+def fingerprint(row: dict, branch: str | None) -> list[str]:
+    """What a shared pin holds: each measured run as its colour on A's ground (or its own colour over an
+    image), the ground of the surface root itself, and the branch."""
+    prints = set()
+    for r in row.get("runs", []):
+        if r["state"] != "ok":
+            continue
+        if over_image(r):
+            prints.add(f"{r['fg']} at alpha {r['fa']} over an image {r['text']!r}")
+        else:
+            prints.add(f"{text_colour(r)} on {r['a']} {r['text']!r}")
+    if row.get("rootGround"):
+        prints.add(f"root {row['rootGround']}")
+    if branch:
+        prints.add(f"branch {branch}")
+    return sorted(prints)
 
 
 def judge_grounds(census: dict, surfaces: dict, contract: dict) -> list[str]:
-    """Every painted ground of an opened surface, by value; then each background class, by row (section 8.4)."""
-    allowed = {DIRECTION_A[r] for r in TEXT_GROUNDS}
+    """Every run's ground by its pixels, every scrim by its hue, then each background class by its row
+    (section 8.4)."""
     off: dict[str, str] = {}
     for o in census.get("opened", []):
-        on = f"on {o['name']} {o['walk']}"
-        for p in map(json.loads, o.get("painted", [])):
-            key = f"ground {p['hex']} {p['path']}"
-            if (p["hex"] not in allowed or p["image"]) and key not in off:
-                off[key] = (f"  ground {p['hex']}{' over an image' if p['image'] else ''} under {p['text']!r} "
-                            f"at {p['path']}, {on}")
-        for c in map(json.loads, o.get("scrim_paint", [])):
+        on = f"{o['name']} {o['walk']}"
+        off.update({k: v for k, v in judge_runs(o.get("runs", []), on)[0].items() if k not in off})
+        for c in o.get("scrimPaint", []):
             key = f"scrim {c['hex']} {c['path']}"
-            if c["hex"] != DIRECTION_A["ink"] and key not in off:
-                off[key] = f"  scrim {c['hex']} alpha {c['a']} at {c['path']} (a scrim is ink), {on}"
-        for g in map(json.loads, o["grounds"]):
+            if (not near(c["hex"], DIRECTION_A["ink"]) or c["a"] >= 1) and key not in off:
+                off[key] = f"  scrim {c['hex']} alpha {c['a']} at {c['path']} (a scrim is ink, translucent), on {on}"
+        for g in o.get("grounds", []):
             t = g["token"]
             if t.startswith(NON_COLOUR_BG) or t in off:
                 continue
             row = surfaces.get(t)
             if row is None:
                 if ("class", t) not in contract:
-                    off[t] = f"  {t}  has no section 5 or 8.1 row, painted {g['hex']} alpha {g['a']}, {on}"
+                    off[t] = f"  {t}  has no section 5 or 8.1 row, painted {g['hex']} alpha {g['a']}, on {on}"
                 continue
             if row["hex"] is None:
                 bad = g["image"] if t.startswith(("from-", "via-", "to-")) else g["a"] > 0 or g["image"]
@@ -1233,14 +1601,68 @@ def judge_grounds(census: dict, surfaces: dict, contract: dict) -> list[str]:
                 bad = g["hex"] != row["hex"] or (row["ground"] != "scrim" and g["a"] < 1) or g["image"]
             if bad:
                 off[t] = (f"  {t}  expected {row['value']} ({row['ground']}), painted {g['hex']} alpha {g['a']}"
-                          f"{' over an image' if g['image'] else ''}, {on}")
+                          f"{' over an image' if g['image'] else ''}, on {on}")
     return [off[k] for k in sorted(off)]
+
+
+def disagreements(census: dict) -> list[str]:
+    """Runs whose pixel ground and DOM ground differ by more than the tolerance: the instrument's self-check."""
+    out: dict[str, str] = {}
+    for o in census.get("opened", []):
+        for k, v in judge_runs(o.get("runs", []), f"{o['name']} {o['walk']}")[1].items():
+            out.setdefault(k, v)
+    for c in census.get("captures", []):
+        for k, v in c.get("page_disagree", {}).items():
+            out.setdefault(k, v)
+    return [out[k] for k in sorted(out)]
+
+
+def page_grounds(page, where: str) -> dict:
+    """The resolvers on every text run of the wrapper at rest (SPEC-W0d section 2.6)."""
+    page.add_style_tag(content="*,*::before,*::after{transition:none!important;animation:none!important}")
+    page.wait_for_timeout(SETTLE["scroll"])
+    res = resolve(page, "page")
+    off, disagree = judge_runs(res["runs"], where, page_level=True)
+    return {"page_off": off, "page_disagree": disagree, "page_runs": len(res["runs"]),
+            "page_positions": res["positions"],
+            "page_incomplete": res["incomplete"] or not res["roots"],
+            "page_unreached": sum(r["state"] == "unreached" for r in res["runs"])}
+
+
+def page_verdict(census: dict) -> list[str]:
+    """`page-grounds-off-contract: G`: each distinct painter and hex, or over-image, under wrapper text at rest."""
+    caps, failed = census.get("captures", []), census.get("failed", [])
+    off: dict[str, str] = {}
+    for c in caps:
+        for k, v in c.get("page_off", {}).items():
+            off.setdefault(k, v)
+    short = [c for c in caps if "page_off" not in c or c.get("page_incomplete")]
+    tail = (f" (INCOMPLETE: {len(failed)} captures failed, {len(short)} not read through, not a verdict)"
+            if failed or short or not caps else "")
+    lines = [off[k] for k in sorted(off)]
+    return lines[:80] + ([f"  ... and {len(lines) - 80} more"] if len(lines) > 80 else []) + [
+        f"page-grounds-off-contract: {len(off)}{tail}"]
+
+
+PRINT = re.compile(r"^(#[0-9A-F]{6}) on (#[0-9A-F]{6}) (.*)$|^root (#[0-9A-F]{6})$")
+
+
+def same_print(a: str, b: str) -> bool:
+    """Two fingerprint entries are one within section 8.4's tolerance, 2 per channel: a ground the pixels read
+    moves a level when the page behind a translucent surface, or the page texture over it, shifts."""
+    ma, mb = PRINT.match(a), PRINT.match(b)
+    if a == b or not (ma and mb):
+        return a == b
+    if ma.group(4) or mb.group(4):
+        return bool(ma.group(4) and mb.group(4)) and near(ma.group(4), mb.group(4))
+    return ma.group(3) == mb.group(3) and near(ma.group(1), mb.group(1)) and near(ma.group(2), mb.group(2))
 
 
 def shared_drift(census: dict, pin: dict | None) -> tuple[list[str], str]:
     """Every shared component outside /kbli* against its origin/main pin: lines, and the count or why there
-    is none. A text pair (foreground on composited ground, label), a text over an image (its own colour and
-    alpha, label) or a branch that appeared or vanished is one line."""
+    is none. A text pair (foreground on the ground the pixels read, label), a text over an image (its own
+    colour and alpha, label), the root's ground or a branch that appeared or vanished is one line; an entry
+    whose colours moved by 2 or less per channel is the same entry."""
     shared, failed = census.get("shared"), census.get("shared_failed", [])
     if shared is None or pin is None:
         return [], "INCOMPLETE (no shared walk in this census)" if shared is None else "UNPINNED"
@@ -1252,8 +1674,14 @@ def shared_drift(census: dict, pin: dict | None) -> tuple[list[str], str]:
         got = walked.get(where)
         if got is None:
             return [], f"INCOMPLETE ({where} not walked)"
-        lines += [f"  - {x}  ({where})" for x in sorted(set(want) - set(got))]
-        lines += [f"  + {x}  ({where})" for x in sorted(set(got) - set(want))]
+        gone, left = sorted(set(want) - set(got)), sorted(set(got) - set(want))
+        for x in list(gone):
+            hit = next((y for y in left if same_print(x, y)), None)
+            if hit is not None:
+                gone.remove(x)
+                left.remove(hit)
+        lines += [f"  - {x}  ({where})" for x in gone]
+        lines += [f"  + {x}  ({where})" for x in left]
     lines += [f"  ? {where}  walked, not in the pin" for where in sorted(set(walked) - set(pin))]
     return lines, str(len(lines))
 
@@ -1290,35 +1718,52 @@ def shared_unpinned(touched: list[str] | str | None, pin: dict | None) -> tuple[
 
 def opened_verdict(census: dict, surfaces: dict, contract: dict, pin: dict | None = None,
                    touched: list[str] | str | None = None) -> list[str]:
-    opened, failed = census.get("opened"), census.get("opened_failed", [])
+    opened = census.get("opened")
     unpinned, unpinned_count = shared_unpinned(touched, pin)
     if opened is None:
         return ["opened-surfaces: 0 ok, 0 failed (no opened walk in this census)",
                 "opened-outside-wrapper: INCOMPLETE (no opened walk)",
                 "opened-grounds-off-contract: INCOMPLETE (no opened walk)",
+                "ground-resolver-disagree: INCOMPLETE (no opened walk)",
                 *unpinned, f"shared-touched-unpinned: {unpinned_count}",
                 "shared-component-drift: INCOMPLETE (no shared walk in this census)",
                 "opened-text-below-4.5: INCOMPLETE (no opened walk, not a verdict)"]
-    out = [f"opened-surfaces: {len(opened)} ok, {len(failed)} failed"]
-    out += [f"  {o['name']} {o['walk']}: {o['roots']} root(s), {o['scrims']} scrim(s), {o['pairs']} text pairs, "
-            f"min {o['min']:.2f}" + (f", {o['unmeasurable']} over an image" if o["unmeasurable"] else "")
-            for o in opened]
-    out += [f"  opened-failed: {f}" for f in failed]
-    tail = f" (INCOMPLETE: {len(failed)} surfaces failed to open, not a verdict)" if failed or not opened else ""
+    ok = [o for o in opened if o["state"] == "ok"]
+    failed = [o for o in opened if o["state"] != "ok"]
+    short = [o for o in opened if o.get("incomplete")]
+    out = [f"opened-surfaces: {len(ok)} ok, {len(failed)} failed"]
+    below = []
+    for o in opened:
+        runs = o.get("runs", [])
+        measured = [r for r in runs if r["state"] == "ok"]
+        pairs = [(contrast(text_colour(r), r["a"]), r) for r in measured if r["fg"]]
+        below += [(ratio, r, o) for ratio, r in pairs if ratio < 4.5]
+        out.append(f"  {o['name']} {o['walk']}: {o['state']}" + (f" ({o['reason']})" if o["reason"] else "")
+                   + f", {o['roots']} root(s), {o.get('scrims', 0)} scrim(s), {len(measured)} runs"
+                   + (f", min {min(p for p, _ in pairs):.2f}" if pairs else "")
+                   + "".join(f", {n} {what}" for n, what in (
+                       (sum(bool(over_image(r)) for r in measured), "over an image"),
+                       (sum(r["state"] == "occluded" for r in runs), "occluded"),
+                       (sum(r["state"] == "unreached" for r in runs), "unreached")) if n)
+                   + f", {o.get('positions', 0)} position(s)" + (", INCOMPLETE" if o.get("incomplete") else ""))
+    tail = (f" (INCOMPLETE: {len(failed)} walks failed, {len(short)} over the scroll cap, not a verdict)"
+            if failed or short or not opened else "")
     outside = [(o, r) for o in opened for r in o.get("outside", [])]
     out += [f"  {r}  renders outside the wrapper ({o['name']} {o['walk']})" for o, r in outside]
     out.append(f"opened-outside-wrapper: {len(outside)}{tail}")
     off = judge_grounds(census, surfaces, contract)
     out += off[:80] + ([f"  ... and {len(off) - 80} more"] if len(off) > 80 else [])
     out.append(f"opened-grounds-off-contract: {len(off)}{tail}")
+    disagree = disagreements(census)
+    out += disagree[:40] + ([f"  ... and {len(disagree) - 40} more"] if len(disagree) > 40 else [])
+    out.append(f"ground-resolver-disagree: {len(disagree)}{tail}")
     out += unpinned
     out.append(f"shared-touched-unpinned: {unpinned_count}")
     drift, count = shared_drift(census, pin)
     out += drift
     out.append(f"shared-component-drift: {count}")
-    below = [(o, p) for o in opened for p in o["below"]]
-    out += [f"  {p['ratio']:.2f}  {p['fg']} on {p['bg']}  {p['text']!r}  {p['cls']}  ({o['name']} {o['walk']})"
-            for o, p in below[:60]]
+    out += [f"  {ratio:.2f}  {text_colour(r)} on {r['a']}  {r['text']!r}  {r['path']}  ({o['name']} {o['walk']})"
+            for ratio, r, o in below[:60]]
     if len(below) > 60:
         out.append(f"  ... and {len(below) - 60} more")
     out.append(f"opened-text-below-4.5: {len(below)}{tail}")
@@ -1391,7 +1836,8 @@ def main(argv: list[str]) -> int:
         dump(census, a.json)
     pin = json.loads(SHARED_PIN.read_text()) if SHARED_PIN.exists() else None
     touched = touched_files(a.diff_base)
-    print("\n".join(verdict(census, contract, states) + opened_verdict(census, surfaces, contract, pin, touched)))
+    print("\n".join(verdict(census, contract, states) + page_verdict(census)
+                    + opened_verdict(census, surfaces, contract, pin, touched)))
     return 0
 
 

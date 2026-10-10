@@ -12,8 +12,10 @@ name: r19-wrapper-census-tests
 # browser guilt and innocence tests. On origin/main it asserts that every capture
 # and every surface opened, that every shared component outside /kbli* kept its
 # pinned paint and that no touched shared file lacks a pin (section 8.5, lot W0d-1),
-# and prints the counts; W2''' asserts them at 0. A W0d lot changes no file under
-# apps/mouth/src, and census-replay checks that on its branch (spec SPEC-W0d §5).
+# and prints the counts, among them the grounds read by the pixels and by the
+# painters, at rest and opened, and where the two disagree (lot W0d-2); W2'''
+# asserts them at 0. A W0d lot changes no file under apps/mouth/src, and
+# census-replay checks that on its branch (spec SPEC-W0d §5).
 
 on:
   pull_request:
@@ -79,10 +81,11 @@ jobs:
 
   wrapper-census-states:
     runs-on: ubuntu-latest
-    # The census's 30 captures, its 10-walk state pass, 25 opened surfaces and 20
-    # shared-component walks, on a cold `next dev --webpack`, after npm install and
-    # the Chromium shell.
-    timeout-minutes: 45
+    # The census's 30 captures, its 10-walk state pass, the ground of every text run
+    # at rest and on 25 opened surfaces (a screenshot per scroll position: ~20 min
+    # on an M5) and 24 shared-component walks, on a cold
+    # `next dev --webpack`, after npm install and the Chromium shell.
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v7
         with:
@@ -132,9 +135,9 @@ jobs:
               fail=1
             fi
           done
-          grep -E '^(read-but-undefined|colors-outside|state-rows-unseen|state-colors-off|opened-|shared-)' "$RUNNER_TEMP/census.txt" || true
+          grep -E '^(read-but-undefined|colors-outside|state-rows-unseen|state-colors-off|page-grounds|opened-|ground-resolver|shared-)' "$RUNNER_TEMP/census.txt" || true
           if [ "$fail" -ne 0 ]; then
-            grep -E '^  (capture-failed|opened-failed|walk-failed|shared-failed):' "$RUNNER_TEMP/census.txt" || true
+            grep -E '^  (capture-failed|walk-failed|shared-failed):|^  [a-z-]+ [a-z]+/[a-z-]+: failed:' "$RUNNER_TEMP/census.txt" || true
             grep -E '^  [-+?] |^  (apps|packages)/' "$RUNNER_TEMP/census.txt" || true
             tail -40 "$RUNNER_TEMP/next-dev.log" || true
           fi

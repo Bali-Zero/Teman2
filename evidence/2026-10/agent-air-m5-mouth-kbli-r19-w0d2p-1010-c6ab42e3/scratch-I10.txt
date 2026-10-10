@@ -1,0 +1,54 @@
+opened-surfaces: 6 ok, 0 failed
+  kbli-mobile-nav mobile/light: ok, 1 root(s), 1 scrim(s), 7 runs, min 3.66, 1 position(s)
+  kbli-mobile-nav mobile/system-dark: ok, 1 root(s), 1 scrim(s), 7 runs, min 1.06, 1 position(s)
+  kbli-mobile-nav mobile/forced-dark: ok, 1 root(s), 1 scrim(s), 7 runs, min 1.05, 1 position(s)
+  kbli-code-mobile-nav mobile/light: ok, 1 root(s), 1 scrim(s), 7 runs, min 3.66, 1 position(s)
+  kbli-code-mobile-nav mobile/system-dark: ok, 1 root(s), 1 scrim(s), 7 runs, min 1.06, 1 position(s)
+  kbli-code-mobile-nav mobile/forced-dark: ok, 1 root(s), 1 scrim(s), 7 runs, min 1.05, 1 position(s)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav mobile/light)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav mobile/system-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav mobile/forced-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-code-mobile-nav mobile/light)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-code-mobile-nav mobile/system-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-code-mobile-nav mobile/forced-dark)
+opened-outside-wrapper: 6
+  ground #3A6DFF under 'Get Started' at body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center, on kbli-mobile-nav mobile/system-dark
+  ground #EBECEF under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/system-dark
+  ground #F7E9E4 under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/light
+  ground #FF2D4C under 'Get Started' at body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center, on kbli-mobile-nav mobile/light
+  scrim #000000 alpha 0.45 at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div (a scrim is ink, translucent), on kbli-mobile-nav mobile/light
+opened-grounds-off-contract: 5
+ground-resolver-disagree: 0
+shared-touched-unpinned: 0
+shared-component-drift: 0
+  3.66  #FFFFFF on #FF2D4C  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-mobile-nav mobile/light)
+  1.08  #FDFDFC on #F7F4EE  'Menu'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.flex.items-center>span.text-[11px].font-bold  (kbli-mobile-nav mobile/system-dark)
+  1.17  #FEFEFE on #EBECEF  'Home'  div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4  (kbli-mobile-nav mobile/system-dark)
+  1.17  #FEFEFE on #EBECEF  'Visa'  div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4  (kbli-mobile-nav mobile/system-dark)
+  1.17  #FEFEFE on #EBECEF  'Tax'  div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4  (kbli-mobile-nav mobile/system-dark)
+  1.17  #FEFEFE on #EBECEF  'Property'  div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4  (kbli-mobile-nav mobile/system-dark)
+  4.36  #FFFFFF on #3A6DFF  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-mobile-nav mobile/system-dark)
+  1.06  #FCFBFA on #F7F4EE  'Login'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-mobile-nav mobile/system-dark)
+  1.05  #FBFAF6 on #F7F4EE  'Menu'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.flex.items-center>span.text-[11px].font-bold  (kbli-mobile-nav mobile/forced-dark)
+  1.17  #FEFDFD on #F7E9E4  'Home'  div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4  (kbli-mobile-nav mobile/forced-dark)
+  1.17  #FEFDFD on #F7E9E4  'Visa'  div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4  (kbli-mobile-nav mobile/forced-dark)
+  1.17  #FEFDFD on #F7E9E4  'Tax'  div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4  (kbli-mobile-nav mobile/forced-dark)
+  1.17  #FEFDFD on #F7E9E4  'Property'  div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4  (kbli-mobile-nav mobile/forced-dark)
+  3.66  #FFFFFF on #FF2D4C  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-mobile-nav mobile/forced-dark)
+  1.05  #FBFAF6 on #F7F4EE  'Login'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-mobile-nav mobile/forced-dark)
+  3.66  #FFFFFF on #FF2D4C  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-code-mobile-nav mobile/light)
+  1.08  #FDFDFC on #F7F4EE  'Menu'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.flex.items-center>span.text-[11px].font-bold  (kbli-code-mobile-nav mobile/system-dark)
+  1.17  #FEFEFE on #EBECEF  'Home'  div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4  (kbli-code-mobile-nav mobile/system-dark)
+  1.17  #FEFEFE on #EBECEF  'Visa'  div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4  (kbli-code-mobile-nav mobile/system-dark)
+  1.17  #FEFEFE on #EBECEF  'Tax'  div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4  (kbli-code-mobile-nav mobile/system-dark)
+  1.17  #FEFEFE on #EBECEF  'Property'  div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4  (kbli-code-mobile-nav mobile/system-dark)
+  4.36  #FFFFFF on #3A6DFF  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-code-mobile-nav mobile/system-dark)
+  1.06  #FCFBFA on #F7F4EE  'Login'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-code-mobile-nav mobile/system-dark)
+  1.05  #FBFAF6 on #F7F4EE  'Menu'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.flex.items-center>span.text-[11px].font-bold  (kbli-code-mobile-nav mobile/forced-dark)
+  1.17  #FEFDFD on #F7E9E4  'Home'  div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4  (kbli-code-mobile-nav mobile/forced-dark)
+  1.17  #FEFDFD on #F7E9E4  'Visa'  div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4  (kbli-code-mobile-nav mobile/forced-dark)
+  1.17  #FEFDFD on #F7E9E4  'Tax'  div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4  (kbli-code-mobile-nav mobile/forced-dark)
+  1.17  #FEFDFD on #F7E9E4  'Property'  div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4  (kbli-code-mobile-nav mobile/forced-dark)
+  3.66  #FFFFFF on #FF2D4C  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-code-mobile-nav mobile/forced-dark)
+  1.05  #FBFAF6 on #F7F4EE  'Login'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-code-mobile-nav mobile/forced-dark)
+opened-text-below-4.5: 30
