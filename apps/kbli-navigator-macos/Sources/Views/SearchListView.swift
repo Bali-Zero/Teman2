@@ -24,6 +24,7 @@ struct SearchListView: View {
     /// parameter RootView passes.
     var focusedField: FocusState<RootFocus?>.Binding = FocusState<RootFocus?>().projectedValue
     @AppStorage("rowDensity") private var rowDensity: RowDensity = .comfortable
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// QA hooks (same convention as `KBLI_OPEN_ALL` / `KBLI_SHEET_EXPANDED`): the third state and
     /// the classless records are a handful of rows in 1,559, so an off-screen snapshot has to be
@@ -135,14 +136,19 @@ struct SearchListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            filterBar
-            columnHeader
-            // Expanded, the sheet takes the pane and the table keeps a three-row peek: a dossier
-            // squeezed under a full-height table was a strip nobody could read (render of
-            // 68112 at 1440x1400, K2 2026-09-14). Collapse gives the table its height back.
-            tableBody
-                .frame(maxHeight: (sheetExpanded && state.selected != nil) ? 132 : .infinity)
-            footerBar          // the census stays visible ABOVE the sheet, never under it
+            if searching {
+                queryLayout
+                    .frame(maxHeight: (sheetExpanded && state.selected != nil) ? 132 : .infinity)
+            } else {
+                filterBar
+                columnHeader
+                // Expanded, the sheet takes the pane and the table keeps a three-row peek: a dossier
+                // squeezed under a full-height table was a strip nobody could read (render of
+                // 68112 at 1440x1400, K2 2026-09-14). Collapse gives the table its height back.
+                tableBody
+                    .frame(maxHeight: (sheetExpanded && state.selected != nil) ? 132 : .infinity)
+                footerBar          // the census stays visible ABOVE the sheet, never under it
+            }
             sheetLayer
         }
         .background(Theme.antracite)
@@ -206,9 +212,10 @@ struct SearchListView: View {
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(spacing: 1) {
+                    let firstID = visibleRows.first?.id
+                    LazyVStack(spacing: searching ? 0 : 1) {
                         ForEach(visibleRows) { k in
-                            row(k, isSelected: state.selected?.id == k.id, isListFocused: listHasFocus, isID: isID)
+                            tableRow(k, firstID: firstID)
                                 .id(k.id)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
@@ -217,14 +224,14 @@ struct SearchListView: View {
                                 }
                         }
                     }
-                    .padding(.horizontal, 6).padding(.vertical, 4)
+                    .padding(.horizontal, searching ? 0 : 6).padding(.vertical, 4)
                 }
                 // A `List` scrolled its selection into view for free; a LazyVStack does not, so
                 // arrow-key navigation used to continue invisibly past the viewport (council
                 // round 1, codex-gpt-5.6-sol).
                 .onChange(of: state.selected?.id) { _, id in
                     guard let id else { return }
-                    withAnimation(.easeInOut(duration: 0.12)) { proxy.scrollTo(id, anchor: .center) }
+                    withAnimation(Theme.motion(reduceMotion)) { proxy.scrollTo(id, anchor: .center) }
                 }
             }
             .background(Theme.antracite)
@@ -257,6 +264,80 @@ struct SearchListView: View {
         return .handled
     }
 
+    @ViewBuilder private func tableRow(_ k: KBLI, firstID: String?) -> some View {
+        let selected = state.selected?.id == k.id
+        if searching {
+            QueryResultRow(kbli: k, isFirst: k.id == firstID, isSelected: selected, isID: isID)
+        } else {
+            row(k, isSelected: selected, isListFocused: listHasFocus, isID: isID)
+        }
+    }
+
+    // MARK: query mode (spec §3.1) — facets · peak card + spine · census
+
+    private static let wideBreakpoint: CGFloat = 1160
+
+    private var queryLayout: some View {
+        GeometryReader { geo in
+            if geo.size.width >= Self.wideBreakpoint {
+                HStack(alignment: .top, spacing: 0) {
+                    VStack(alignment: .trailing, spacing: 12) {
+                        facet(isID ? "SEKTOR" : "SECTOR") { sectorPicker }
+                        facet("BALI") { baliPicker }
+                        facet(isID ? "RISIKO OSS" : "OSS RISK") { riskPicker }
+                    }
+                    .tint(Theme.accent)
+                    .padding(.top, 48).padding(.trailing, 32)
+                    .frame(minWidth: 200, maxWidth: .infinity, alignment: .topTrailing)
+
+                    VStack(alignment: .leading, spacing: 16) {
+                        PadiLine(width: 760)
+                        tableBody
+                    }
+                    .padding(.top, 24)
+                    .frame(width: 760)
+
+                    censusText
+                        .padding(.top, 48).padding(.leading, 32)
+                        .frame(minWidth: 200, maxWidth: .infinity, alignment: .topLeading)
+                }
+            } else {
+                VStack(spacing: 0) {
+                    filterBar
+                    // §4: below the collapse width the editorial moment survives as the PadiLine.
+                    PadiLine(width: 760)
+                        .padding(.vertical, 16)
+                        .frame(maxWidth: .infinity)
+                    tableBody
+                        .frame(maxWidth: 760)
+                        .frame(maxWidth: .infinity)
+                    censusText
+                        .frame(maxWidth: 760, alignment: .leading)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                }
+            }
+        }
+    }
+
+    private func facet<P: View>(_ title: String, @ViewBuilder _ picker: () -> P) -> some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            Text(title)
+                .font(Theme.scalable(11, weight: .semibold)).tracking(0.9)
+                .foregroundStyle(Theme.muted)
+                .accessibilityHidden(true)
+            picker().frame(width: 200, alignment: .trailing)
+        }
+    }
+
+    private var censusText: some View {
+        let census = RegistryCensus.cached(for: state.store)
+        return Text(censusLine(total: matchedRows.count, census: census))
+            .font(Theme.scalable(12)).foregroundStyle(Theme.muted)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .combine)
+    }
+
     // MARK: a single code row (shared with Snapshot.swift's off-screen QA renders)
 
     func row(_ k: KBLI, isSelected: Bool = false, isListFocused: Bool = false, isID: Bool = false) -> some View {
@@ -273,37 +354,49 @@ struct SearchListView: View {
     private var filterBar: some View {
         HStack(spacing: 10) {
             filterTitle(isID ? "SEKTOR" : "SECTOR", active: state.browsedSector != nil)
-            Picker(selection: Binding(get: { state.browsedSector },
-                                      set: { state.browsedSector = $0 })) {
-                Text(isID ? "Semua sektor" : "All sectors").tag(String?.none)
-                ForEach(state.store.sectors) { sec in
-                    Text("\(sec.letter) — \(isID ? sec.id_ : sec.en) (\(sec.count))").tag(String?.some(sec.letter))
-                }
-            } label: { EmptyView() }
-            .pickerStyle(.menu).controlSize(.small).frame(maxWidth: 260)
-            .accessibilityLabel(isID ? "Saring menurut sektor" : "Filter by sector")
+            sectorPicker
 
             Spacer(minLength: 0)
 
             filterTitle("BALI", active: baliFilter != .all)
-            Picker(selection: $baliFilter) {
-                ForEach(BaliFilter.allCases) { f in Text(f.title(isID)).tag(f) }
-            } label: { EmptyView() }
-            .pickerStyle(.menu).controlSize(.small).frame(maxWidth: 190)
-            .accessibilityLabel(isID ? "Saring menurut putusan Bali" : "Filter by Bali verdict")
+            baliPicker
 
             filterTitle(isID ? "RISIKO OSS" : "OSS RISK", active: riskFilter != .all)
-            Picker(selection: $riskFilter) {
-                ForEach(RiskFilter.allCases) { f in Text(f.title(isID)).tag(f) }
-            } label: { EmptyView() }
-            .pickerStyle(.menu).controlSize(.small).frame(maxWidth: 190)
-            .accessibilityLabel(isID ? "Saring menurut kelas risiko OSS" : "Filter by OSS risk class")
+            riskPicker
         }
         .tint(Theme.accent)
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 14).padding(.vertical, 7)
         .background(Theme.ink.opacity(0.9))
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.hairline).frame(height: 1) }
+    }
+
+    private var sectorPicker: some View {
+        Picker(selection: Binding(get: { state.browsedSector },
+                                  set: { state.browsedSector = $0 })) {
+            Text(isID ? "Semua sektor" : "All sectors").tag(String?.none)
+            ForEach(state.store.sectors) { sec in
+                Text("\(sec.letter) — \(isID ? sec.id_ : sec.en) (\(sec.count))").tag(String?.some(sec.letter))
+            }
+        } label: { EmptyView() }
+        .pickerStyle(.menu).controlSize(.small).frame(maxWidth: 260)
+        .accessibilityLabel(isID ? "Saring menurut sektor" : "Filter by sector")
+    }
+
+    private var baliPicker: some View {
+        Picker(selection: $baliFilter) {
+            ForEach(BaliFilter.allCases) { f in Text(f.title(isID)).tag(f) }
+        } label: { EmptyView() }
+        .pickerStyle(.menu).controlSize(.small).frame(maxWidth: 190)
+        .accessibilityLabel(isID ? "Saring menurut putusan Bali" : "Filter by Bali verdict")
+    }
+
+    private var riskPicker: some View {
+        Picker(selection: $riskFilter) {
+            ForEach(RiskFilter.allCases) { f in Text(f.title(isID)).tag(f) }
+        } label: { EmptyView() }
+        .pickerStyle(.menu).controlSize(.small).frame(maxWidth: 190)
+        .accessibilityLabel(isID ? "Saring menurut kelas risiko OSS" : "Filter by OSS risk class")
     }
 
     private func filterTitle(_ text: String, active: Bool) -> some View {
@@ -390,5 +483,110 @@ struct SearchListView: View {
             Text(msg).font(Theme.bodyFont).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
         }
         .padding(24).frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.antracite)
+    }
+}
+
+// MARK: - one result in query mode (spec §3.1)
+
+/// The first hit is the peak card, every other hit a ruled row. Text wraps (no line limits); the
+/// selection / tap handling stays with `SearchListView.tableBody`.
+private struct QueryResultRow: View {
+    @EnvironmentObject var lang: LanguageManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let kbli: KBLI
+    let isFirst: Bool
+    let isSelected: Bool
+    let isID: Bool
+    @State private var hovered = false
+
+    var body: some View {
+        let hu = KBLIVerdict.headsUp(record: kbli, isID: isID)
+        let title = OverlayStore.shared.primaryTitle(kbli, isID: isID)
+        Group {
+            if isFirst { peak(hu: hu, title: title) } else { ruled(hu: hu, title: title) }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(isSelected || hovered ? Theme.wash : Color.clear)
+        .overlay(alignment: .leading) {
+            if isSelected { Rectangle().fill(Theme.accent).frame(width: 3) }
+        }
+        .onHover { hovered = $0 }
+        .animation(Theme.motion(reduceMotion), value: hovered)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(kbli.kode) \(title) \(hu.label)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func statusChip() -> some View {
+        Text(kbli.pmaStatus ?? "—")
+            .font(Theme.scalable(11, weight: .semibold))
+            .foregroundStyle(Theme.chip(Theme.tone(kbli.pmaStatus ?? "")).fg)
+            .padding(.vertical, 4).padding(.horizontal, 8)
+            .background(Theme.chip(Theme.tone(kbli.pmaStatus ?? "")).bg, in: RoundedRectangle(cornerRadius: 2))
+    }
+
+    private func peak(hu: (label: String, sentence: String?, tone: Theme.Tone), title: String) -> some View {
+        let c = Theme.chip(hu.tone)
+        // The canonical `pma_max_asing`, not `nationalCap`: a closed axis carries no cap, and 55203's
+        // frozen cap is "0", which must read 0% — "—" only when the record states no number.
+        let cap = kbli.pmaMaxAsing
+        let other = OverlayStore.shared.primaryTitle(kbli, isID: !isID)
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .firstTextBaseline, spacing: 16) {
+                Text(kbli.kode).font(Theme.title(27)).foregroundStyle(Theme.structure)
+                statusChip()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(cap.map { "\($0)%" } ?? "—").font(Theme.title(36)).foregroundStyle(Theme.white)
+                    Text(lang.t("rich.fact.pma")).font(Theme.scalable(12)).foregroundStyle(Theme.muted)
+                }
+            }
+            VStack(alignment: .leading, spacing: 12) {
+                Text(title).font(Theme.title(36)).foregroundStyle(Theme.white)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(other).font(Theme.scalable(15)).foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack(spacing: 0) {
+                Rectangle().fill(c.fg).frame(width: 4)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(hu.label).font(Theme.scalable(12, weight: .semibold)).foregroundStyle(c.fg)
+                    if let sentence = hu.sentence {
+                        Text(sentence).font(Theme.serif(20)).foregroundStyle(c.fg)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(16)
+                Spacer(minLength: 0)
+            }
+            .background(c.bg)
+        }
+        .padding(24)
+        .background(Theme.inkLift, in: RoundedRectangle(cornerRadius: 2))
+        .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(Theme.lineSoft, lineWidth: 1))
+    }
+
+    private func ruled(hu: (label: String, sentence: String?, tone: Theme.Tone), title: String) -> some View {
+        let c = Theme.chip(hu.tone)
+        let line: Text = {
+            let label = Text(hu.label).font(Theme.scalable(13, weight: .semibold)).foregroundColor(c.fg)
+            guard let sentence = hu.sentence else { return label }
+            return label + Text("  ") + Text(sentence).font(Theme.scalable(13)).foregroundColor(Theme.muted)
+        }()
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(kbli.kode).font(Theme.serif(20)).foregroundStyle(Theme.muted)
+                Text(title).font(Theme.serif(20)).foregroundStyle(Theme.white)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                statusChip()
+                Text(KBLIVerdict.of(record: kbli).ownershipLine(isID: isID))
+                    .font(Theme.scalable(12)).foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            line.fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.top, 16)
+        .overlay(alignment: .top) { Rectangle().fill(Theme.lineStrong).frame(height: 1) }
+        .padding(.bottom, 8)
     }
 }
