@@ -70,6 +70,9 @@ R_PROSE = "a line or sentence of the record's curated English overlay, drawn who
 # The overlay's curated English prose (kbli-overlay.json `en`), plus related[].note and roadmap[].detail. Not its titles,
 # `changed` (an enum, Q17), the roadmap's title/duration or the authority lists: closed sets a View maps by exact match.
 OVERLAY_PROSE = ("verdict", "meaning", "baliContext", "whoFor")
+# The record's intel_2026 editorial prose the detail card draws, read the same way (R17): youllAlsoNeed's rows
+# "- <code> — <note>" draw the code apart, so the note is the prose.
+INTEL_PROSE = ("whatItMeans", "whoThisIsFor", "whatChanged", "zantaraOpener")
 PICTO = "[\u2600-\u27BF\U0001F000-\U0001FAFF\uFE0F\u200D]"   # a pictograph PDFKit's string does not carry (R16)
 R_PERMIT = "the original of the record's own permit name (overlay authority.pbUmku), in parentheses after its English"
 # Q16: the record's statute fields a View may draw — each value quoted under its label, or its translation drawn whole.
@@ -324,6 +327,9 @@ class Record:
         en = (overlay or {}).get("en") or {}
         prose = [en.get(f) for f in OVERLAY_PROSE] + [x.get(f) for g, f in (("related", "note"), ("roadmap", "detail"))
                                                      for x in en.get(g) or [] if isinstance(x, dict)]
+        intel = rec.get("intel_2026") if isinstance(rec.get("intel_2026"), dict) else {}
+        prose += [intel.get(f) for f in INTEL_PROSE] + [l.split("—", 1)[1] for l in str(intel.get("youllAlsoNeed") or "")
+                                                       .split("\n") if "—" in l]
         prose = re.sub(r"\*\*|__|" + PICTO, "", "\n".join(x for x in prose if isinstance(x, str)))
         lines_ = [" ".join(l.lstrip("-• ").split()) for l in prose.split("\n") if l.strip()]
         sentences = [x for l in lines_ for x in re.split(r"(?<=[.!?])\s+(?=[A-Z])", l)]
@@ -490,6 +496,12 @@ def selftest():
                                     "Standar usaha Aktivitas Vila). Meals come from a Penyediaan Makanan nearby."}})
     r13 = Record({"judul": "Aktivitas Vila", "l4_bali": {"reason": "Open under the scope_extra_rule of the record, so the "
                   "moratorium does not apply"}}, {})
+    r20 = Record({"judul": "Pengolahan Kopi", "intel_2026": {
+        "whatItMeans": "Pengolahan Kopi covers the industrial processing of coffee, with quicklime (kapur tohor) for drying.",
+        "whoThisIsFor": "Small stalls (warung) are allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II.",
+        "youllAlsoNeed": "- **85312** — the privately-run equivalent, Pendidikan Menengah Pertama Umum Swasta",
+        "whatChanged": "Wajib memiliki izin usaha.",
+        "zantaraOpener": "Looking into Pengolahan Kopi (10761)? Nationally this carries PMA status: Open."}}, {})
     j12 = "Aktivitas Perawatan untuk Penyandang Disabilitas Mental atau Penyalahgunaan Obat oleh Pemerintah"
     r12 = Record({"judul": j12, "pma_official_basis": 'Perpres 10/2021 Pasal 2(1)(b): the title "%s" names the activity as '
                   'carried out by the Pemerintah; not an investable field' % j12}, {})
@@ -621,7 +633,17 @@ def selftest():
              ("A villa needs its self-assessment (Dokumen Standar usaha Aktivitas Vila).", 0, r19),
              ("A villa needs its self-assessment (Dokumen Standar usaha Villa Activities (Aktivitas Vila)).", 1, r19),
              ("Meals come from a Penyediaan Makanan nearby.", 0, r19),
-             ("Meals come from a Food Provision (Penyediaan Makanan) nearby.", 1, r19)]
+             ("Meals come from a Food Provision (Penyediaan Makanan) nearby.", 1, r19),
+             # R17: the card's intel_2026 prose is curated prose, its record's own title a gap; F1 holds for it
+             ("Coffee Processing (Pengolahan Kopi) covers the industrial processing of coffee, with quicklime (kapur "
+              "tohor) for drying.", 0, r20),
+             ("Pengolahan Kopi covers the industrial processing of coffee, with quicklime (kapur tohor) for drying.", 1, r20),
+             ("Small stalls (warung) are allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II.", 0, r20),
+             ("Small stalls (warung) are allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II.", 1, r8),
+             ("85312\nthe privately-run equivalent, Pendidikan Menengah Pertama Umum Swasta", 0, r20),
+             ("Looking into Coffee Processing (10761)? Nationally this carries PMA status: Open.", 0, r20),
+             ("Looking into Pengolahan Kopi (10761)? Nationally this carries PMA status: Open.", 1, r20),
+             ("Wajib memiliki izin usaha.", 1, r20)]
     for (group, field), (own, other) in zip(STATUTE, STATUTE_ROWS):   # each statute field: its own value under the
         rec = {"judul": "Aktivitas Vila"}                               # label, another's under the same label, its
         (rec.setdefault(group, [{}])[0] if group else rec)[field] = [own] if field in ("persyaratan", "kewajiban") else own
