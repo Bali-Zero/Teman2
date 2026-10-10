@@ -23,7 +23,8 @@ PEND = "::error::harness_gate_read: PENDING"
 CTX_GATE, CTX_JOB, CTX_NAMED = "Gate Reading Check", "Job Gate Check", "Harness floor recompute"   # the last one reads NO gate here
 MATRIX_YAML = f"""contexts:
   - name: "{CTX_GATE}"
-    local: {{check: ctx.gate, steps: [{{workflow_step: Kill switch}}, {{workflow_step: Read the gate, side: host, pending_when: "{PEND}"}}]}}
+    local: {{check: ctx.gate, steps: [{{workflow_step: Kill switch}}, {{workflow_step: Read the gate, side: host, pending_when: "{PEND}"}},
+                                     {{workflow_step: Bites}}]}}
   - name: "{CTX_JOB}"
     local: {{check: ctx.job, jobs: [{{job_id: j, steps: [{{workflow_step: Read, side: host, pending_when: "{PEND}"}}]}}]}}
   - name: "{CTX_NAMED}"
@@ -34,6 +35,16 @@ POSTED = "2026-10-10T01:10:00Z"      # the session posts harness/fable-gate
 PLAN = "2026-10-10T01:20:00Z"        # the local run is planned: its reader reads the post
 LATER = "2026-10-10T01:30:00Z"       # after the plan: a re-post, or the hosted re-run
 EXIT1 = "Process completed with exit code 1."
+GEAR = "Gear >= 2 — read the real gate verdict"   # the real matrix's reader step of CTX_NAMED
+READS = {CTX_GATE: {"Read the gate": [0]}, CTX_JOB: {"Read": [0]}, CTX_NAMED: {GEAR: [0]}}   # what the plan froze: each reader read a success
+GATE_STEPS = [("Set up job", "success"), ("Kill switch", "success"), ("Read the gate", "failure"), ("Bites", "skipped"),
+              ("Post Run actions/checkout@v4", "success"), ("Complete job", "success")]   # the runner's own steps run after a failure
+
+
+def job(rid=11, steps=GATE_STEPS) -> dict:
+    """What GET actions/jobs/{id} answers for the job behind check run ``rid``."""
+    return {"id": rid, "check_run_url": f"https://api.github.com/repos/{REPO}/check-runs/{rid}",
+            "steps": [{"name": n, "status": "completed", "conclusion": c, "number": i} for i, (n, c) in enumerate(steps, 1)]}
 
 
 def reader_line(state) -> str:
@@ -69,9 +80,11 @@ def make_mirror(path: Path, matrix: str = MATRIX_YAML) -> str:
 
 
 class GH:
-    """Read-only GETs: the annotations of a check run (a list, or an exception to raise) and every attempt of the head's check runs."""
+    """Read-only GETs: the annotations and the job of a check run (each a document, or an exception to raise) and every attempt of the
+    head's check runs."""
     def __init__(self):
         self.ann: dict = {11: PENDING_ANNS}
+        self.jobs: dict = {11: job()}
         self.all_runs: list = []
         self.paths: list = []
         self.extra: dict = {}
@@ -80,6 +93,11 @@ class GH:
         self.paths.append(path)
         if "/annotations" in path:
             got = self.ann[int(path.split("/")[4])]
+            if isinstance(got, Exception):
+                raise got
+            return got
+        if "/actions/jobs/" in path:
+            got = self.jobs[int(path.rsplit("/", 1)[1])]
             if isinstance(got, Exception):
                 raise got
             return got
@@ -105,21 +123,22 @@ def run(rid=11, ctx=CTX_GATE, conclusion="failure", at=HOSTED_AT):
             "app": {"id": 15368, "slug": "github-actions"}}
 
 
-def gate_status(at, state="success"):
+def gate_status(at, state):
     return {"context": mg.GATE_CONTEXT, "state": state, "updated_at": at}
 
 
-def judged(m, *, ctx=CTX_GATE, conclusion="failure", at=HOSTED_AT, posted=(POSTED,), plan_at=PLAN, runs=None, statuses=None, local="OK",
-           stale_judge=None):
-    gate = mg.GateJudge(REPO, m["matrix"], plan_at)
+def judged(m, *, ctx=CTX_GATE, conclusion="failure", at=HOSTED_AT, posted=((POSTED, "success"),), plan_at=PLAN, reads=READS, runs=None,
+           statuses=None, local="OK", stale_judge=None):
+    gate = mg.GateJudge(REPO, m["matrix"], plan_at, reads)
     status = {"candidate_sha": "c" * 40, "contexts": {"status": "ok", "results": {ctx: {"verdict": local, "coverage": "full"}}}}
     rep = hc.compare(status, [{"context": ctx, "app_id": 15368}], [run(ctx=ctx, conclusion=conclusion, at=at)] if runs is None else runs,
-                     [gate_status(t) for t in posted] + list(statuses or []), stale_judge=stale_judge, gate_judge=gate)
+                     [gate_status(*x) for x in posted] + list(statuses or []), stale_judge=stale_judge, gate_judge=gate)
     (row,) = rep["rows"]
     return rep, row
 
 
 ANN_PATH = f"repos/{REPO}/check-runs/11/annotations?per_page=100&page=1"
+JOB_PATH = f"repos/{REPO}/actions/jobs/11"
 
 
 # ------------------------------------------------------------------ guilt: the race, and only the race
@@ -130,7 +149,7 @@ def test_a_pre_post_pending_red_beside_a_local_green_is_hosted_stale(m, with_b10
         "HOSTED_STALE", "FALSE_GREEN", "stale", "stale", "gate_posted_after_hosted")
     assert (row["hosted_completed_at"], row["gate_posted_at"], row["plan_at"]) == (HOSTED_AT, POSTED, PLAN)
     assert rep["counts"]["FALSE_GREEN"] == 0 and rep["counts"]["HOSTED_STALE"] == 1 and rep["coverage"]["compared_full"] == 0
-    assert hc.exit_code(rep) == 0 and m["gh"].paths == [ANN_PATH]   # one bounded, read-only GET of the red run's annotations
+    assert hc.exit_code(rep) == 0 and m["gh"].paths == [ANN_PATH, JOB_PATH]   # bounded, read-only GETs of the red run's annotations and job
 
 
 def test_a_pre_post_pending_red_beside_a_local_red_is_no_agreement_either(m):
@@ -138,6 +157,7 @@ def test_a_pre_post_pending_red_beside_a_local_red_is_no_agreement_either(m):
 
 
 def test_a_gate_reading_step_inside_a_job_makes_the_context_gate_reading(m):
+    m["gh"].jobs[11] = job(steps=[("Set up job", "success"), ("Read", "failure"), ("Complete job", "success")])
     assert judged(m, ctx=CTX_JOB)[1]["class"] == "HOSTED_STALE"
 
 
@@ -170,7 +190,7 @@ def test_a_red_completed_at_or_after_the_post_stays_a_false_green_and_no_annotat
 
 def test_two_red_runs_are_judged_on_the_newest_and_each_must_be_the_pending_read(m):
     runs = [run(11, at="2026-10-10T00:40:00Z"), run(12, at=HOSTED_AT)]
-    m["gh"].ann[12] = PENDING_ANNS
+    m["gh"].ann[12], m["gh"].jobs[12] = PENDING_ANNS, job(12)
     assert judged(m, runs=runs)[1]["class"] == "HOSTED_STALE"
     m["gh"].ann[12] = PENDING_ANNS + [{"annotation_level": "failure", "message": "boom"}]
     assert judged(m, runs=runs)[1]["class"] == "FALSE_GREEN"
@@ -195,7 +215,7 @@ def test_a_context_that_reads_no_gate_is_unaffected_whatever_its_name(m, ctx):
 
 def test_without_a_gate_judge_the_rows_are_what_they_were(m):
     status = {"candidate_sha": "c" * 40, "contexts": {"status": "ok", "results": {CTX_GATE: {"verdict": "OK", "coverage": "full"}}}}
-    (row,) = hc.compare(status, [{"context": CTX_GATE, "app_id": 15368}], [run()], [gate_status(POSTED)])["rows"]
+    (row,) = hc.compare(status, [{"context": CTX_GATE, "app_id": 15368}], [run()], [gate_status(POSTED, "success")])["rows"]
     assert row["class"] == "FALSE_GREEN" and "gate_check" not in row
 
 
@@ -226,17 +246,17 @@ def test_the_plan_time_is_the_plans_created_at_and_nothing_else(tmp_path):
 
 def test_an_unreadable_base_matrix_keeps_the_class(tmp_path, monkeypatch):
     monkeypatch.setattr(hc, "gh_get", GH())
-    gate = mg.GateJudge(REPO, mg.StaleJudge(tmp_path / "nowhere.git", "f" * 40), PLAN)
+    gate = mg.GateJudge(REPO, mg.StaleJudge(tmp_path / "nowhere.git", "f" * 40), PLAN, READS)
     status = {"candidate_sha": "c" * 40, "contexts": {"status": "ok", "results": {CTX_GATE: {"verdict": "OK", "coverage": "full"}}}}
-    (row,) = hc.compare(status, [{"context": CTX_GATE, "app_id": 15368}], [run()], [gate_status(POSTED)], gate_judge=gate)["rows"]
+    (row,) = hc.compare(status, [{"context": CTX_GATE, "app_id": 15368}], [run()], [gate_status(POSTED, "success")], gate_judge=gate)["rows"]
     assert row["class"] == "FALSE_GREEN" and row["stale_check"].startswith("unknown (")
 
 
 # ------------------------------------------------------------------ which post the local run read
 @pytest.mark.parametrize("posted,klass,why", [
-    ((LATER,), "FALSE_GREEN", f"fresh (no {mg.GATE_CONTEXT} status dated at or before the plan time {PLAN})"),
-    ((POSTED, LATER), "HOSTED_STALE", None),                           # the newest at or before the plan is the one read
-    (("2026-10-10T00:50:00Z", LATER), "FALSE_GREEN", "fresh (hosted completed at"),   # that one predates the hosted red
+    (((LATER, "success"),), "FALSE_GREEN", f"fresh (no {mg.GATE_CONTEXT} status dated at or before the plan time {PLAN})"),
+    (((POSTED, "success"), (LATER, "failure")), "HOSTED_STALE", None),        # the newest at or before the plan is the one read
+    ((("2026-10-10T00:50:00Z", "success"), (LATER, "success")), "FALSE_GREEN", "fresh (hosted completed at"),   # that one predates the red
     ((), "FALSE_GREEN", "fresh (no ")], ids=["only-after-the-plan", "one-before-one-after", "before-the-hosted-run", "never-posted"])
 def test_the_gate_post_is_the_newest_at_or_before_the_plan_time(m, posted, klass, why):
     _, row = judged(m, posted=posted)
@@ -255,30 +275,35 @@ def test_the_base_readers_own_line_as_github_annotates_it_is_what_the_real_matri
     repo = tmp_path / "real"
     base = make_mirror(repo, real)
     matrix = mg.StaleJudge(repo, base)
-    assert matrix.pending_of(CTX_NAMED) == [PEND] and matrix.pending_of("Backend Tests (Python)") == []
+    (p,) = matrix.pending_of(CTX_NAMED)
+    assert (p["step"], p["line"]) == (GEAR, PEND) and "Bites contract — parse this PR's evidence pack" in p["later"]
+    assert matrix.pending_of("Backend Tests (Python)") == []
     gh = GH()
     gh.ann[11] = [annotation(reader_line(state)), {"annotation_level": "failure", "message": EXIT1}]
+    gh.jobs[11] = job(steps=[("Set up job", "success"), ("Kill switch", "success"), (GEAR, "failure"),
+                             ("Bites contract — parse this PR's evidence pack", "skipped"), ("Complete job", "success")])
     monkeypatch.setattr(hc, "gh_get", gh)
     status = {"candidate_sha": "c" * 40, "contexts": {"status": "ok", "results": {CTX_NAMED: {"verdict": "OK", "coverage": "full"}}}}
-    (row,) = hc.compare(status, [{"context": CTX_NAMED, "app_id": 15368}], [run(ctx=CTX_NAMED)], [gate_status(POSTED)],
-                        gate_judge=mg.GateJudge(REPO, matrix, PLAN))["rows"]
+    (row,) = hc.compare(status, [{"context": CTX_NAMED, "app_id": 15368}], [run(ctx=CTX_NAMED)], [gate_status(POSTED, "success")],
+                        gate_judge=mg.GateJudge(REPO, matrix, PLAN, READS))["rows"]
     assert row["class"] == klass
 
 
 # ------------------------------------------------------------------ the tick journals it
 def test_the_tick_journals_the_gate_stale_row_and_the_run_dir_keeps_its_evidence(m, tmp_path, monkeypatch):
     monkeypatch.setattr(hc, "fetch_live", lambda *a: {"required_checks": [{"context": CTX_GATE, "app_id": 15368}], "check_runs": [run()],
-                                                      "statuses": [gate_status(POSTED)]})
+                                                      "statuses": [gate_status(POSTED, "success")]})
     run_dir = tmp_path / "run"
     (run_dir / "state").mkdir(parents=True)
     status = {"candidate_sha": "c" * 40, "contexts": {"status": "ok", "results": {CTX_GATE: {"verdict": "OK", "coverage": "full"}}}}
-    summary, live = mg.hosted_summary(REPO, "main", status, HEAD, run_dir, m["matrix"], gate=mg.GateJudge(REPO, m["matrix"], PLAN))
+    summary, live = mg.hosted_summary(REPO, "main", status, HEAD, run_dir, m["matrix"], gate=mg.GateJudge(REPO, m["matrix"], PLAN, READS))
     assert summary["counts"]["HOSTED_STALE"] == 1 and summary["counts"]["FALSE_GREEN"] == 0 and summary["exit"] == 0 and live is not None
     assert summary["stale"] == [{"context": CTX_GATE, "class_before": "FALSE_GREEN", "hosted_completed_at": HOSTED_AT, "hosted_main": None,
                                  "main_moved_paths": [], "main_moved_count": 0, "stale_why": "gate_posted_after_hosted",
                                  "gate_posted_at": POSTED, "plan_at": PLAN}]
     (row,) = json.loads((run_dir / "hosted_compare.json").read_text())["rows"]
     assert row["class"] == "HOSTED_STALE" and row["stale_why"] == "gate_posted_after_hosted"
+    assert row["hosted_red"] == [{"id": 11, "conclusion": "failure", "completed_at": HOSTED_AT}]   # the reds the report finds again by id
     assert mg.recorded_false_green({"hosted_compare": summary}) == 0
 
 
@@ -286,7 +311,13 @@ def test_the_tick_journals_the_gate_stale_row_and_the_run_dir_keeps_its_evidence
 A = HEAD
 
 
-def report_world(tmp_path, monkeypatch, *, anns=None, rerun=True, recorded_at=HOSTED_AT, plan=True):
+def plan_doc(rc=0) -> dict:
+    """A plan.json as the runner writes it for CTX_GATE: the reader step's answer frozen under ``precomputed``."""
+    return {"created_at": PLAN, "checks": {"ctx.gate": {"kind": "contained_jobs", "context": CTX_GATE, "jobs": [{"job_id": "j", "steps": [
+        {"name": "Kill switch"}, {"name": "Read the gate", "side": {"where": "host"}, "precomputed": {"rc": rc, "reason": "host, at plan"}}]}]}}}
+
+
+def report_world(tmp_path, monkeypatch, *, anns=None, rerun=True, recorded_at=HOSTED_AT, plan=True, recorded_red=None):
     """pr1, open: the tick recorded one FALSE_GREEN on CTX_GATE beside the pre-post PENDING red (run 11); the session then re-ran the job
     (run 12, green, after the post) unless ``rerun`` is False."""
     state = tmp_path / "state"
@@ -295,8 +326,10 @@ def report_world(tmp_path, monkeypatch, *, anns=None, rerun=True, recorded_at=HO
     run_dir = tmp_path / "run"
     (run_dir / "state").mkdir(parents=True)
     if plan:
-        (run_dir / "state" / "plan.json").write_text(json.dumps({"created_at": PLAN}))
-    row = {"context": CTX_GATE, "class": "FALSE_GREEN", "app_id": 15368, **({"hosted_completed_at": recorded_at} if recorded_at else {})}
+        (run_dir / "state" / "plan.json").write_text(json.dumps(plan_doc()))
+    red = [{"id": 11, "conclusion": "failure", "completed_at": recorded_at}] if recorded_red is None else recorded_red
+    row = {"context": CTX_GATE, "class": "FALSE_GREEN", "app_id": 15368, **({"hosted_completed_at": recorded_at} if recorded_at else {}),
+           **({"hosted_red": red} if red != "absent" else {})}
     (run_dir / "hosted_compare.json").write_text(json.dumps({"rows": [row]}))
     d = {"kind": "decision", "ts": "2026-10-10T01:25:00Z", "pr": 1, "head_sha": A, "base_sha": base, "candidate_sha": "9" * 40, "overall": "PASS",
          "contexts_status": "ok", "contexts": {CTX_GATE: "OK"}, "coverage": {CTX_GATE: "full"}, "run_dir": str(run_dir),
@@ -310,7 +343,7 @@ def report_world(tmp_path, monkeypatch, *, anns=None, rerun=True, recorded_at=HO
     gh.extra = {f"repos/{REPO}/pulls/1": {"merged": False, "state": "open", "head": {"sha": A}, "merge_commit_sha": None, "merged_at": None},
                 f"repos/{REPO}/branches/main/protection/required_status_checks": {"checks": [{"context": CTX_GATE, "app_id": 15368}]},
                 f"repos/{REPO}/commits/{A}/check-runs?": {"check_runs": latest},
-                f"repos/{REPO}/commits/{A}/status?": {"statuses": [gate_status(POSTED)]}}
+                f"repos/{REPO}/commits/{A}/status?": {"statuses": [gate_status(POSTED, "success")]}}
     monkeypatch.setattr(hc, "gh_get", gh)
     rc = mg.main(["report", "--repo", REPO, "--state-dir", str(state)])
     return rc, json.loads((state / "report.json").read_text())
@@ -335,11 +368,19 @@ def test_the_reports_own_comparison_judges_a_pre_post_red_not_yet_rerun(tmp_path
 
 @pytest.mark.parametrize("kw,gate_why", [
     ({"anns": PENDING_ANNS + [{"annotation_level": "failure", "message": "boom"}]}, "fresh (check run 11 failed on more than the PENDING read"),
-    ({"recorded_at": None}, "unknown (MergerError: the recorded row carries no hosted_completed_at"),
+    ({"recorded_at": None}, "unknown (MergerError: the recorded row journals no hosted_completed_at or no hosted_red"),
+    ({"recorded_red": "absent"}, "unknown (MergerError: the recorded row journals no hosted_completed_at or no hosted_red"),
+    ({"recorded_red": [{"id": 11, "conclusion": "failure", "completed_at": HOSTED_AT}, {"id": 13, "conclusion": "failure",
+                                                                                         "completed_at": "2026-10-10T00:50:00Z"}]},
+     "unknown (a red Gate Reading Check run the tick recorded is no longer listed red on the head)"),
+    ({"recorded_red": [{"id": 11, "conclusion": "failure", "completed_at": HOSTED_AT}, {"id": None, "conclusion": "failure",
+                                                                                         "completed_at": HOSTED_AT}]},
+     "fresh (a red that is no check run (a commit status)"),
     ({"recorded_at": "2026-10-10T00:59:00Z"}, "unknown (no red Gate Reading Check run completed at the recorded"),
     ({"plan": False}, "unknown (MergerError: the run's plan time"),
     ({"anns": hc.CompareError("annotations unreadable")}, "unknown (CompareError: annotations unreadable")],
-    ids=["another-failure", "pre-b10-row", "red-not-found", "no-plan", "annotations-unreadable"])
+    ids=["another-failure", "pre-b10-row", "pre-fix-row", "a-recorded-run-gone", "a-recorded-status", "red-not-found", "no-plan",
+         "annotations-unreadable"])
 def test_the_report_keeps_a_recorded_false_green_of_another_shape_and_says_why(tmp_path, monkeypatch, capsys, kw, gate_why):
     rc, rep = report_world(tmp_path, monkeypatch, **kw)
     assert rc == 1 and rep["recorded_context_false_green"] == 1 and rep["recorded_reclassified_hosted_stale"] == []
@@ -353,3 +394,115 @@ def test_the_report_reads_every_attempt_only_for_a_gate_reading_context(tmp_path
     paths = hc.gh_get.paths
     assert sum("filter=all" in p for p in paths) == 1 and all(p.startswith("repos/") for p in paths)
     assert f"check_name={CTX_GATE.replace(' ', '%20')}" in next(p for p in paths if "filter=all" in p)
+
+
+# ------------------------------------------------------------------ fix round: the local run read a success, and the plan froze it
+@pytest.mark.parametrize("state", ["failure", "error", "pending"])
+def test_a_posted_verdict_that_is_no_success_beside_a_local_green_stays_a_false_green(m, state):
+    _, row = judged(m, posted=((POSTED, state),))
+    assert row["class"] == "FALSE_GREEN" and m["gh"].paths == []
+    assert row["gate_check"].startswith(f"fresh (the {mg.GATE_CONTEXT} status the local run read ({POSTED}) is {state}, not success")
+
+
+def test_the_anchor_is_the_newest_post_at_or_before_the_plan_whatever_an_older_one_said(m):
+    assert judged(m, posted=(("2026-10-10T01:05:00Z", "success"), (POSTED, "failure")))[1]["class"] == "FALSE_GREEN"
+    assert judged(m, posted=(("2026-10-10T01:05:00Z", "failure"), (POSTED, "success")))[1]["class"] == "HOSTED_STALE"
+
+
+@pytest.mark.parametrize("reads", [{CTX_GATE: {"Read the gate": [1]}}, {CTX_GATE: {"Read the gate": [None]}}, {CTX_GATE: {"Read the gate": [0, 1]}},
+                                   {CTX_GATE: {"Read the gate": [False]}}, {CTX_GATE: {"Another step": [0]}}, {}],
+                         ids=["rc-1", "no-verdict", "one-answer-red", "a-bool", "another-step", "absent"])
+def test_a_success_anchor_whose_frozen_reader_answer_is_not_rc_0_stays_a_false_green(m, reads):
+    _, row = judged(m, reads=reads)
+    assert row["class"] == "FALSE_GREEN" and row["gate_check"].startswith("fresh (the plan froze") and m["gh"].paths == []
+
+
+def test_frozen_reads_that_cannot_be_read_keep_the_class_and_say_unknown(m):
+    _, row = judged(m, reads=None)
+    assert row["class"] == "FALSE_GREEN" and row["stale_check"].startswith("unknown (MergerError: the reader answers the run's plan froze")
+
+
+def test_frozen_reads_are_the_plans_host_reader_answers_and_nothing_else(tmp_path):
+    (tmp_path / "state").mkdir()
+    assert mg.frozen_reads(tmp_path) is None and mg.frozen_reads(None) is None
+    for bad in ("{not json", json.dumps({"created_at": PLAN}), json.dumps({"checks": {"c": {"context": CTX_GATE, "jobs": [{}]}}})):
+        (tmp_path / "state" / "plan.json").write_text(bad)
+        assert mg.frozen_reads(tmp_path) is None
+    doc = plan_doc()
+    doc["checks"]["ctx.gate"]["jobs"][0]["steps"].append({"name": "pip-audit", "side": {"where": "egress"}, "precomputed": {"rc": 0}})
+    doc["checks"]["ctx.other"] = {"kind": "record", "status": "NOT_APPLICABLE", "reason": "change_map"}
+    (tmp_path / "state" / "plan.json").write_text(json.dumps(doc))
+    assert mg.frozen_reads(tmp_path) == {CTX_GATE: {"Read the gate": [0]}}
+
+
+@pytest.mark.usefixtures("fake_env")
+def test_frozen_reads_read_the_runners_own_plan_of_a_host_reader(tmp_path, monkeypatch):
+    from . import fixture_repo as fr
+    from .test_service_contexts import HOST_BASE, READER, host_ctx, planned_svc
+    spec = planned_svc(tmp_path, monkeypatch, fr.CANDIDATE_FILES, host_ctx(["$PY", READER]), {**HOST_BASE, READER: "raise SystemExit(0)\n"})
+    run_dir = tmp_path / "b12b-run"
+    (run_dir / "state").mkdir(parents=True)
+    (run_dir / "state" / "plan.json").write_text(json.dumps({"created_at": PLAN, "checks": {"ctx.svc": spec}}))
+    assert mg.frozen_reads(run_dir) == {spec["context"]: {"verdict": [0]}}
+
+
+# ------------------------------------------------------------------ fix round: the job failed on the reader step alone
+@pytest.mark.parametrize("steps", [
+    [("Kill switch", "failure"), ("Read the gate", "failure"), ("Bites", "skipped")],
+    [("Kill switch", "success"), ("Read the gate", "failure"), ("Bites", "skipped"), ("Complete job", "failure")],
+    [("Kill switch", "cancelled"), ("Read the gate", "failure"), ("Bites", "skipped")],
+    [("Kill switch", "success"), ("Read the gate", "success"), ("Bites", "failure")]],
+    ids=["an-earlier-step-failed", "a-runner-step-failed", "a-step-cancelled", "another-step-is-the-failure"])
+def test_a_job_that_failed_on_another_step_stays_a_false_green(m, steps):
+    m["gh"].jobs[11] = job(steps=steps)
+    _, row = judged(m)
+    assert row["class"] == "FALSE_GREEN" and row["gate_check"].startswith("fresh (actions job 11 did not fail on the reader step alone")
+
+
+def test_a_step_the_matrix_lists_after_the_reader_that_ran_stays_a_false_green(m):
+    m["gh"].jobs[11] = job(steps=[("Kill switch", "success"), ("Read the gate", "failure"), ("Bites", "success")])
+    _, row = judged(m)
+    assert row["class"] == "FALSE_GREEN" and row["gate_check"].endswith("failed ['Read the gate'], ran after it ['Bites'])")
+
+
+@pytest.mark.parametrize("doc,why", [
+    (hc.CompareError("gh api actions/jobs/11 failed (rc=1)"), "unknown (CompareError: gh api actions/jobs/11"),
+    ({**job(), "check_run_url": f"https://api.github.com/repos/{REPO}/check-runs/99"}, "unknown (MergerError: actions job 11 does not name check run 11"),
+    ({k: v for k, v in job().items() if k != "steps"}, "unknown (MergerError: actions job 11 carries no steps"),
+    (job(steps=[("Kill switch", "success"), ("Read the real gate", "failure")]),
+     "unknown (MergerError: actions job 11 lists the reader step 'Read the gate' 0 time(s)")],
+    ids=["read-fails", "another-check-run", "no-steps", "step-renamed"])
+def test_a_job_that_cannot_be_read_or_matched_keeps_the_class_and_says_unknown(m, doc, why):
+    m["gh"].jobs[11] = doc
+    _, row = judged(m)
+    assert row["class"] == "FALSE_GREEN" and row["stale_check"].startswith(why) and "class_before" not in row
+
+
+@pytest.mark.parametrize("extra,klass", [(47, "HOSTED_STALE"), (48, "FALSE_GREEN")], ids=["49-under-the-cap", "50-at-the-cap"])
+def test_an_annotation_list_at_githubs_per_job_cap_proves_nothing(m, extra, klass):
+    m["gh"].ann[11] = PENDING_ANNS + [{"annotation_level": "warning", "message": f"w{i}"} for i in range(extra)]
+    _, row = judged(m)
+    assert row["class"] == klass
+    assert klass == "HOSTED_STALE" or row["stale_check"].startswith("unknown (MergerError: check run 11 carries 50 annotations")
+
+
+# ------------------------------------------------------------------ fix round: the conclusion, and what the row says ran
+@pytest.mark.parametrize("conclusion", ["cancelled", "timed_out", "startup_failure"])
+def test_a_red_that_is_no_failure_conclusion_stays_a_false_green(m, conclusion):
+    _, row = judged(m, conclusion=conclusion)
+    assert row["class"] == "FALSE_GREEN" and m["gh"].paths == []
+    assert row["gate_check"].startswith(f"fresh (a red concluded ['{conclusion}'], not failure")
+
+
+def test_without_a_b10_judge_the_rows_stale_check_is_what_the_gate_judge_said(m):
+    _, row = judged(m, posted=((POSTED, "failure"),))
+    assert row["stale_check"] == row["gate_check"] and row["stale_check"].startswith(f"fresh (the {mg.GATE_CONTEXT} status")
+
+
+def test_a_b10_stale_row_missing_a_key_is_refused_and_a_b12b_row_needs_only_its_own():
+    b10 = {"context": "X", "class_before": "FALSE_GREEN", "hosted_completed_at": HOSTED_AT, "main_moved_paths": [], "main_moved_count": 0}
+    with pytest.raises(KeyError):
+        mg.stale_entry(b10)
+    b12b = {"context": "X", "class_before": "FALSE_GREEN", "hosted_completed_at": HOSTED_AT, "stale_why": "gate_posted_after_hosted",
+            "gate_posted_at": POSTED, "plan_at": PLAN}
+    assert mg.stale_entry(b12b) == b12b and mg.stale_entry({**b10, "hosted_main": None}) == {**b10, "hosted_main": None}
