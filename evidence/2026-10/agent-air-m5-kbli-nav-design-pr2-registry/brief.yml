@@ -1,0 +1,33 @@
+task_id: kbli-nav-design-pr2-registry
+mission: kbli-nav-design-loop (Track A, build, PR 2 registry-table)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  evidence_pack_lint's floor for this change set is 2 by its size term alone, with no hot-zone path. The code churns
+  436 lines (+299/−137, net +162) across SearchListView.swift (browse mode), KBLIRegistryTable.swift, KBLIRegistryView.swift
+  (risk matrix), Theme.swift (Theme.leading), measure_contrast.py, png_census.py, contenttest and headsuptest. The after-set
+  digest manifest adds its JSON evidence.
+l_level: L1
+gate_class: opus
+objective: >-
+  SPEC-swiftui §3.2 and §4. SearchListView's browse mode becomes set A's filter-rail table: a 248 pt rail on wash with the
+  stacked pickers and a PadiLine pair; a display(64) "Codes"/"Kode" header with the census; a 2 pt structure rule; the
+  column header; and wrapping rows with opaque chip(tone) verdicts, riskChip risk cells, lineSoft rules and group breaks.
+  It carries B2/N4 (risk tiers by fill weight, including the sheet's matrix legend and cells), B4 (png_census C8 counts
+  only row rules, narrow judged, xxl VACUOUS), N8 (white-scan escapes and comment consistency) and N9 (byte-equal frozen
+  predicates). Presentation only: no KBLI fact, verdict, cap, basis or Bali overlay changes.
+constraints:
+  - Query mode (PR 1's spine) is untouched; the two PRs share SearchListView.swift and stay serialized.
+  - Every row reads the canonical chips (Theme.chip, Theme.riskChip); contenttest's probe requires both in KBLIRegistryTable.swift.
+  - No PNG is committed; the after-set ships as a sha256 manifest and the PNGs live in the M5 gallery.
+acceptance:
+  - text: The head SHALL build both variants and render_set.sh SHALL render 35 PNGs with 0 failures, equal to the manifest.
+    probe: "Pro build-only mirror detached at the head: INTERNAL_RC=0, BKPM_RC=0, RENDER_SET_RC=0, manifest_match=35/35"
+  - text: png_census SHALL report 0 FAIL, C8 >= 12 on all four registry-table PNGs and on narrow counting only row rules, and xxl VACUOUS (B4).
+    probe: "Pro: png_census rc=0 with row-rule y-positions per PNG; four detector mutants each fail the synthetic self-test"
+  - text: The four OSS-risk tiers SHALL differ by fill in the registry and in the sheet's matrix legend and cells (B2/N4).
+    probe: "registry-table renders and tall/sheet-ledger-56101; measure_contrast PARITY on the three new riskChip sites"
+  - text: The white scan SHALL flag the N8 spellings and treat every comment form alike, and headsuptest SHALL hold main's predicates byte for byte (N9).
+    probe: "Pro: scan guilt N8.1-6 WHITE=1, N8.c1-4 WHITE=0, N8.c5 WHITE=1; n9_check block at headsuptest:119 and :125"
+  - text: The frozen content and the contrast and token gates SHALL stay green.
+    probe: "Pro: content_check.sh rc=0, measure_contrast rc=0 (FAIL=0 PARITY=0 WHITE=0), derive --check rc=0"
