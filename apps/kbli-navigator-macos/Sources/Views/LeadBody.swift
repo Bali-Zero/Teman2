@@ -63,11 +63,11 @@ struct LeadBody: View {
     }
 }
 
-/// The line an English View draws above record text that has no English source (Q12 ruling 4). One spelling, so
-/// the census binds the text to it; EN-1b's LabelBook constant replaces the literal when it lands.
+/// The line an English View draws above record text that has no English source (Q12 ruling 4): LabelBook's one
+/// spelling, so the census binds the text to it.
 struct OriginalLabel: View {
     var body: some View {
-        Text("Original (Bahasa Indonesia)").font(Theme.scalable(11)).foregroundStyle(Theme.muted)
+        Text(LabelBook.originalLabel).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
     }
 }
 
@@ -78,12 +78,9 @@ struct BasisBlock: View {
     let isID: Bool
     var columns: Int = 1
 
-    /// Judged on the whole text: 695 of the 722 bases are English analysis quoting the statute in «…», and their
-    /// opening clause is a citation with no function word in it, so LabelBook's opening-clause rule is read over
-    /// the text with its clause marks blanked.
-    static func isOriginal(_ basis: String) -> Bool {
-        !LabelBook.isEnglish(String(basis.map { "(;—".contains($0) ? " " : $0 }))
-    }
+    /// Judged on the whole text by LabelBook's curated-language rule, the one en_purity's parity probe reads
+    /// (census --curated): Swift and Python decide every basis alike, so the label goes where the census binds it.
+    static func isOriginal(_ basis: String) -> Bool { !LabelBook.isEnglishText(basis) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
