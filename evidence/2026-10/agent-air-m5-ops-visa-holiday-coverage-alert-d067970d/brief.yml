@@ -1,8 +1,9 @@
 task_id: visa-holiday-coverage-alert
-gear: 1
+gear: 2
 gear_reason: >-
-  Measured: scripts/evidence_pack_lint.py --print-floor on the changed files prints 1. One sentinel lane, one probe, one backend helper
-  and tests; no hot-zone path, workflow, plist or wrapper change.
+  Floor 2: the pre-push recompute with the numstat (blast radius ~670 lines) floors this diff at 2; --print-floor on the file list alone
+  had printed 1. One sentinel lane, one probe, one backend helper and tests; no hot-zone path, workflow, plist or wrapper change.
+  Gear 2's adversarial seat is the fresh on-disk gate.
 l_level: L2
 gate_class: opus
 objective: >-
