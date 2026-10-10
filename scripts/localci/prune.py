@@ -293,19 +293,58 @@ def build_cache_gb(docker: str) -> float | None:
     return None
 
 
-def builder_prune(docker: str, rec: dict, budget_gb: float) -> None:
-    """`docker builder prune -af --keep-storage`: `-a` because the entries are the layers of images that exist, which are not
-    dangling — without it nothing went (Pro, 2026-10-08T17:26Z: 0 B of a 21.8 GB cache). Run after image removals, so the entries
-    tied to them go. rc and tail are the last call's, `runs` the count; the cache size is journalled before the first and after the last."""
-    bp = rec.setdefault("builder_prune", {"rc": 0, "keep_storage_gb": budget_gb, "cache_gb": {"before": build_cache_gb(docker)}, "runs": 0})
+MAX_USED_RE = re.compile(r"--max-used-space\b")
+KEEP_STORAGE_RE = re.compile(r"--keep-storage\b")
+TOTAL_RE = re.compile(r"^Total:\s*([0-9]+(?:\.[0-9]+)?)\s*(B|kB|KB|MB|GB|TB)\s*$", re.M)
+INEFFECTIVE_SLACK_GB = 1.0   # above the budget by more than this, with nothing freed, a prune that exited 0 did not work
+
+
+def builder_prune_flag(docker: str) -> str:
+    """The flag that means "keep at most this much cache", read from the installed buildx's own help. buildx >= 0.34 deprecated
+    `--keep-storage` into `--reserved-space` (a floor, not a cap), so it exits 0 having freed nothing; `--max-used-space` is the
+    old meaning. Old buildx lists only `--keep-storage`; a help that cannot be read says nothing, and rc then decides."""
     try:
-        b = _docker(docker, "builder", "prune", "-af", "--keep-storage", f"{budget_gb:g}GB", timeout=600)
-        rc, tail = b.returncode, (b.stdout or b.stderr).strip()[-120:]
+        h = _docker(docker, "builder", "prune", "--help", timeout=30)
+        text = f"{h.stdout or ''}\n{h.stderr or ''}" if h.returncode == 0 else ""
+    except (OSError, subprocess.SubprocessError):
+        text = ""
+    return "keep-storage" if KEEP_STORAGE_RE.search(text) and not MAX_USED_RE.search(text) else "max-used-space"
+
+
+def prune_total_gb(output: str) -> float | None:
+    """buildx's own `Total:` line (`Total:\t3.867GB`, `Total:\t0B`) in GB; None when the output has none."""
+    m = TOTAL_RE.search(output or "")
+    return round(float(m.group(1)) * SIZE_UNITS[m.group(2)] / 1e9, 3) if m else None
+
+
+def builder_prune(docker: str, rec: dict, budget_gb: float) -> None:
+    """`docker builder prune -af --max-used-space`: `-a` because the entries are the layers of images that exist, which are not
+    dangling — without it nothing went (Pro, 2026-10-08T17:26Z: 0 B of a 21.8 GB cache). Run after image removals, so the entries
+    tied to them go. The flag is chosen once per prune run (B13). rc, tail and freed_gb are the last call's, `runs` the count;
+    the cache size is journalled before the first and after the last."""
+    if "builder_prune" not in rec:
+        rec["builder_prune"] = {"rc": 0, "keep_storage_gb": budget_gb, "flag": builder_prune_flag(docker),
+                                "cache_gb": {"before": build_cache_gb(docker)}, "runs": 0}
+    bp = rec["builder_prune"]
+    try:
+        b = _docker(docker, "builder", "prune", "-af", f"--{bp['flag']}", f"{budget_gb:g}GB", timeout=600)
+        rc, tail, freed = b.returncode, (b.stdout or b.stderr).strip()[-120:], prune_total_gb(f"{b.stdout}\n{b.stderr}")
     except (OSError, subprocess.SubprocessError) as e:
-        rc, tail = None, type(e).__name__
+        rc, tail, freed = None, type(e).__name__, None
     bp["runs"] += 1
     bp["tail"] = tail
+    bp["freed_gb"] = freed
     bp["rc"] = rc   # the last call's, as ruled; `runs` says how many there were
+
+
+def builder_prune_verdict(bp: dict, budget_gb: float) -> None:
+    """Exit 0 is not a prune that worked: rc 0, the cache still above its budget by more than a GB, and buildx reporting 0 B
+    freed is `ineffective` (Pro, 2026-10-10: 22.83 GB against 4, every call green). Bytes shared with an image that exists are
+    not freeable, so a call that did free something is never flagged; no `Total:` line or an unread cache says nothing."""
+    after, freed = bp["cache_gb"].get("after"), bp.get("freed_gb")
+    bp["ineffective"] = bp["rc"] == 0 and after is not None and freed == 0 and after > budget_gb + INEFFECTIVE_SLACK_GB
+    if bp["ineffective"]:
+        bp["why"] = f"rc 0 but buildx freed 0 B and the cache is {after:g} GB against a {budget_gb:g} GB budget (--{bp['flag']})"
 
 
 def _vm_discard_on(colima: str) -> tuple[bool | None, str | None]:
@@ -408,6 +447,7 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
         rec["vm_floor"]["met"] = rec["vm_free_gb"]["after"] is not None and rec["vm_free_gb"]["after"] >= floor
     if "builder_prune" in rec:
         rec["builder_prune"]["cache_gb"]["after"] = build_cache_gb(docker)
+        builder_prune_verdict(rec["builder_prune"], cache_budget)
     rec["images"] = {"removed" if not dry else "would_remove": removed, "errors": errors,
                      "kept": [{"tag": d["tag"], "rule": d["rule"]} for d in decided if not d["remove"]] + never_kept}
     rec["host_free_gb"]["after"] = host_free_gb(host_path)
@@ -420,7 +460,7 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
         except (OSError, subprocess.TimeoutExpired) as e:
             rec["fstrim"] = {"rc": None, "tail": type(e).__name__}
         rec["host_free_gb"]["after_fstrim"] = host_free_gb(host_path)
-    rec["failed"] = [k for k in ("builder_prune", "fstrim") if k in rec and rec[k]["rc"] != 0] + (["images"] if errors else [])
+    rec["failed"] = [k for k in ("builder_prune", "fstrim") if k in rec and (rec[k]["rc"] != 0 or rec[k].get("ineffective"))] + (["images"] if errors else [])
     if rec.get("vm_discard", {}).get("remounted") and rec["vm_discard"]["after"] is not True:
         rec["failed"].append("vm_discard")
     return rec
