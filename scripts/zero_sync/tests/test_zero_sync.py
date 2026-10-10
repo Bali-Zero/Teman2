@@ -158,10 +158,18 @@ def test_zero_owned_prefix_is_exclusive_even_if_keep_names_canonical_file(w):
     assert w.zero_show(".github/workflows/ci.yml") == "zero ci"
 
 
-def test_local_path_preserved_when_canonical_has_a_file_there(w):
+def test_local_path_that_shadows_canonical_content_is_refused(w, capsys):
     w.canon_commit({"apps/backend-rag/data/team.synthetic.json": "canonical version\n"}, "same path")
-    assert w.run() == 0
-    assert w.zero_show("apps/backend-rag/data/team.synthetic.json") == "synthetic"
+    tip = w.zero_tip()
+    assert w.run() == 1
+    assert w.zero_tip() == tip
+    assert "shadows canonical content" in capsys.readouterr().out
+
+
+def test_a_local_directory_over_a_keep_path_is_refused_not_frozen(w, capsys):
+    w.zero_commit({".slim/local_paths.txt": LOCAL + "apps/mouth\n"}, "local over a keep path")
+    assert w.run() == 1
+    assert "shadows canonical content" in capsys.readouterr().out
 
 
 def test_workspace_pruning_and_lock_regeneration_cached(w):

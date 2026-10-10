@@ -237,6 +237,13 @@ def build_tree(repo: Repo, state: Path, canon_ref: str, zero_ref: str, npm_cmd: 
     for k in keep:
         if not any(p == k or p.startswith(k + "/") for p in canon):
             raise SyncError(f"keep path absent from canonical: {k} (maintain .slim/keep_paths.txt)")
+    for lp in local:
+        # A local path is a file that exists ONLY on zero. One that shadows canonical content would freeze
+        # that subtree on zero's copy forever, with every later run reporting "up to date".
+        shadowed = [p for p in canon if p == lp or p.startswith(lp + "/")]
+        if shadowed:
+            raise SyncError(f"local path {lp} shadows canonical content ({shadowed[0]}): a local path must exist "
+                            "only on zero; remove it from local_paths.txt or add the canonical file to cut_paths.txt")
     entries = {p: v for p, v in canon.items() if p not in ROOT_FILES}
     entries = {p: v for p, v in entries.items()
                if not any(p == c or p.startswith(c + "/") for c in cut)}
