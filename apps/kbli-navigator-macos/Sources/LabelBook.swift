@@ -30,7 +30,18 @@ enum LabelBook {
     /// distinct `pma_kondisi` values are English already ("national capital owner must retain single
     /// majority", 51101) and stay as written — the label must not call English Indonesian.
     static func original(_ text: String, isID: Bool) -> String {
-        isID || isEnglish(text) ? text : "Original (Bahasa Indonesia): “\(text)”"
+        isID || isEnglish(text) ? text : "\(originalLabel): “\(text)”"
+    }
+
+    /// The label of an original, inline (`original(_:isID:)`) or on its own line above the text. One
+    /// spelling, so the census binds the text to it.
+    static let originalLabel = "Original (Bahasa Indonesia)"
+
+    /// A curated basis or note, judged on its WHOLE text: 695 of the 722 bases are English analysis quoting the
+    /// statute in «…», and their opening clause is a citation with no function word in it, so the clause rule is
+    /// read over the text with its clause marks blanked. en_purity reads by the same rule (census --curated).
+    static func isEnglishText(_ text: String) -> Bool {
+        isEnglish(String(text.map { "(;—".contains($0) ? " " : $0 }))
     }
 
     /// The opening clause decides, up to the first " — ", "(" or ";": a record's Indonesian legal phrase

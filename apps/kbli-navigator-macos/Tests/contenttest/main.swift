@@ -119,7 +119,19 @@ let out: [String: Any] = MainActor.assumeIsolated {
        src.contains("ownershipLine(") {
         violations.append("SearchListView.swift calls ownershipLine( — the search row's chip already says its status word; the line beside it is LabelBook.cap(")
     }
-    return ["codes": codes, "balanced_rejoin": rejoin, "probe_violations": violations]
+    // The curated basis and note language, every record, for en_purity's parity probe (census --curated).
+    var curated: [String: [String: String]] = [:]
+    for k in store.all {
+        var c: [String: String] = [:]
+        if let b = k.pmaOfficialBasis, !b.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            c["basis"] = LabelBook.isEnglishText(b) ? "en" : "id"
+        }
+        if let n = k.pmaNota, !n.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            c["nota"] = LabelBook.isEnglishText(n) ? "en" : "id"
+        }
+        if !c.isEmpty { curated[k.kode] = c }
+    }
+    return ["codes": codes, "balanced_rejoin": rejoin, "probe_violations": violations, "curated_language": curated]
 }
 
 guard let data = try? JSONSerialization.data(withJSONObject: out,

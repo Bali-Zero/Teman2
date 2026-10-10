@@ -35,7 +35,7 @@ if "$T/headsuptest"; then echo "step 3 ok: headsuptest"; else echo "step 3 FAILE
 if "$T/encensus" "$T/en-census.jsonl" --lang en --mode "${EN_CENSUS:-fast}" 2> "$T/encensus.err" \
    && "$T/encensus" "$T/id-surfaces.jsonl" --lang id --mode "${EN_CENSUS:-fast}" \
         --views "$(python3 Tools/design/en_purity.py gated)" 2>> "$T/encensus.err" \
-   && python3 Tools/design/en_purity.py census "$T/en-census.jsonl" --id "$T/id-surfaces.jsonl"; then
+   && python3 Tools/design/en_purity.py census "$T/en-census.jsonl" --id "$T/id-surfaces.jsonl" --curated "$T/out.json"; then
   echo "step 4 ok: en-purity census (${EN_CENSUS:-fast})"
 else echo "step 4 FAILED: en-purity census ($T/encensus.err)"; rc=1; fi
 if python3 Tools/design/en_purity.py static; then echo "step 5 ok: never-drawn"; else echo "step 5 FAILED"; rc=1; fi
