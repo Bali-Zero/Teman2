@@ -64,8 +64,11 @@ R_PAREN = "the Indonesian original a record's English text (description, statute
 R_NAME = "an Indonesian proper name a record's English text (description, statute field) carries over from its source"
 R_QUOTE = "an Indonesian term the English of a record's statute field quotes («…», “…”)"
 R_BASIS = "the record's own legal basis or note, written in English: its Indonesian words are the instrument's terms"
-R_OVERLAY = "the Indonesian a sentence of the record's curated English verdict quotes in parentheses (C6)"
-R_PROSE = "a sentence of the record's curated English verdict, drawn whole: its Indonesian terms are curated prose (ruling 1)"
+R_OVERLAY = "the Indonesian a sentence of the record's curated English overlay quotes in parentheses (C6)"
+R_PROSE = "a line or sentence of the record's curated English overlay, drawn whole: its Indonesian terms are curated prose (ruling 1)"
+# The overlay's curated English prose (kbli-overlay.json `en`), plus related[].note and roadmap[].detail. Not its titles,
+# `changed` (an enum, Q17), the roadmap's title/duration or the authority lists: closed sets a View maps by exact match.
+OVERLAY_PROSE = ("verdict", "meaning", "baliContext", "whoFor")
 # Q16: the record's statute fields a View may draw — each value quoted under its label, or its translation drawn whole.
 # STATUTE_ROWS: the self-test's own value and another record's value of the same field, both Indonesian.
 STATUTE = (("per_skala", "persyaratan"), ("per_skala", "kewajiban"), ("per_skala", "scope_uraian"),
@@ -219,8 +222,11 @@ class Record:
             spans.append((re.compile(r"Original \(Bahasa Indonesia\):?\s*“?" + flex(v) + "”?"), t, R_ORIGINAL, False, None))
             en = (i18n or {}).get(v)
             if en: spans += carried(en, v, (re.compile(flex(en)), en), R_PAREN, R_NAME, quotes=True)
-        verdict = re.sub(r"\*\*|__", "", ((overlay or {}).get("en") or {}).get("verdict") or "")
-        lines_ = [" ".join(l.lstrip("-• ").split()) for l in verdict.split("\n") if l.strip()]
+        en = (overlay or {}).get("en") or {}
+        prose = [en.get(f) for f in OVERLAY_PROSE] + [x.get(f) for g, f in (("related", "note"), ("roadmap", "detail"))
+                                                     for x in en.get(g) or [] if isinstance(x, dict)]
+        prose = re.sub(r"\*\*|__", "", "\n".join(x for x in prose if isinstance(x, str)))
+        lines_ = [" ".join(l.lstrip("-• ").split()) for l in prose.split("\n") if l.strip()]
         sentences = [x for l in lines_ for x in re.split(r"(?<=[.!?])\s+(?=[A-Z])", l)]
         for para in sentences:   # a View draws a line of the verdict or one sentence of it
             for m in re.finditer(r"\([^()]+\)", para):
@@ -326,7 +332,8 @@ def selftest():
     r7 = Record({"judul": "Aktivitas Vila"}, {}, {}, {"en": {"verdict": "**All scales**: Medium-High risk (Menengah Tinggi)"
                 " for Large-Scale PT PMA. NIB + Verified Standard Certificate required.\n\n**Zoning:** Green zone only.\n"
                 "- Risk: Menengah Rendah for the Mikro and Kecil scales, with the Sertifikat Standar issued automatically.\n"
-                "- The Aktivitas Vila code is open to the Mikro and Kecil scales of the market.\n- Rendah Menengah Tinggi"}})
+                "- The Aktivitas Vila code is open to the Mikro and Kecil scales of the market.\n- Rendah Menengah Tinggi",
+                "meaning": "Bakery production for the market (roti dan kue). Aktivitas Vila — villa rental for guests."}})
     r6 = Record({"judul": "Aktivitas Vila", "per_skala": [{"persyaratan": [v6]}], "pma_official_basis": b6}, {},
                 {"Wajib memiliki sertifikat dari Pemerintah Daerah": "Must hold a certificate (sertifikat) from the Pemerintah Daerah"})
     cases = [("Villa Rental\nOfficial title (Bahasa Indonesia)\nAktivitas Vila", 0, r),
@@ -388,6 +395,8 @@ def selftest():
              ("Risk: Menengah Rendah for the Mikro and Kecil scales, with the Sertifikat Standar issued automatically.", 0, r7),
              ("Risk: Menengah Rendah", 1, r7),
              ("Rendah Menengah Tinggi", 1, r7),                                                  # Indonesian only
+             ("Bakery production for the market (roti dan kue).", 0, r7),                         # meaning, (…)
+             ("Aktivitas Vila — villa rental for guests.", 1, r7),                                 # the raw title inline
              ("The Aktivitas Vila code is open to the Mikro and Kecil scales of the market.", 1, r7)]
     for (group, field), (own, other) in zip(STATUTE, STATUTE_ROWS):   # each statute field: its own value under the
         rec = {"judul": "Aktivitas Vila"}                               # label, and another's under the same label
