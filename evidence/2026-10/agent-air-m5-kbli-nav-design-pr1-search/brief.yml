@@ -25,6 +25,8 @@ acceptance:
   - text: The search-results band SHALL show SearchFieldBar with the query 55203 visible above the results (B5).
     probe: "search-results-{day,night}-{en,id}.png and narrow/search-results-day-en.png, visual crop in the gallery"
   - text: The frozen content SHALL stay byte-identical and the probe SHALL require the canonical calls in SearchListView.
-    probe: "Pro: content_check.sh rc=0; probe guilt (headsUp call removed from a copy) → rc=1"
+    probe:
+      "Pro: content_check.sh rc=0; probe guilt on copies → rc=1 each: KBLIVerdict.headsUp( through a typealias,
+      OverlayStore.shared.primaryTitle( through a typealias, and a file-local primaryTitle shadow reading judul"
   - text: The contrast and token gates SHALL stay green.
     probe: "Pro: measure_contrast rc=0 (FAIL=0 PARITY=0 WHITE=0), derive --check rc=0"

@@ -3,7 +3,7 @@
   "pr_slug": "pr1-search",
   "date": "2026-10-09",
   "purpose": "The after-set of design-loop PR pr1-search: the 24 band renders pinned by digest and compared 1:1 with baseline-2026-10-09-before/manifest.json, plus the render set's narrow/, xxl/ and tall/ renders. The PNGs are not committed (the root .gitignore ignores *.png on purpose).",
-  "rendered_from": "the code commit 6b25d304b0 of this PR; this manifest is docs-only and does not enter the app bundle, so the head renders the same bytes",
+  "rendered_from": "the code commit 88263e13cf of this PR; this manifest is docs-only and does not enter the app bundle, so the head renders the same bytes",
   "host": "Pro, Xcode 26.3, build-only worktree detached at the commit under proof",
   "build": "KBLI_BOOK_PDF_DIR=~/.local/share/nuzantara/kbli-navigator/book-pdfs ./build.sh --variant internal",
   "render": "OUT=<dir> Tools/design/render_set.sh (each file: --snapshot-band <band> --theme <theme> --lang <lang> --code <code> [flags] <file>)",
@@ -20,7 +20,7 @@
       "lang": "en",
       "code": "55203",
       "file": "search-results-day-en.png",
-      "sha256": "sha256:53be266059a4d922e2b86e67fd18a36ad9e08422ef0ca2818fa084f77d17758f"
+      "sha256": "sha256:f3fbc64707b2fcdc752386c269ff53e92cb104be72b4311ac7af77e6d2afb7db"
     },
     {
       "band": "search-results",
@@ -28,7 +28,7 @@
       "lang": "id",
       "code": "55203",
       "file": "search-results-day-id.png",
-      "sha256": "sha256:4cf830ef200e7afa6b53ee1adbc1c45a752d8892f29d97f88c6ba216d1891ef3"
+      "sha256": "sha256:06bf81b05e05571ef66c2dfb2646ede03e3a751c75d96cf20ca88831c49390a9"
     },
     {
       "band": "search-results",
@@ -36,7 +36,7 @@
       "lang": "en",
       "code": "55203",
       "file": "search-results-night-en.png",
-      "sha256": "sha256:eac1e4a1aaf19a24f2510bd690ff3950219024d0f1e9099eb5237a5f1570c2ce"
+      "sha256": "sha256:257bde084a6589b52c72bcb4cc435212a715b9f207280cee7647ac39b1457107"
     },
     {
       "band": "search-results",
@@ -44,7 +44,7 @@
       "lang": "id",
       "code": "55203",
       "file": "search-results-night-id.png",
-      "sha256": "sha256:05db3f7cdce130f073e7f0db8e234c71c5d9460c5204c9e0176ed4ba0bfecf09"
+      "sha256": "sha256:165392aa2ba1fefe1a4d9ad0243889e585eff6ea22a305d85aa8e593c59e111f"
     },
     {
       "band": "registry-table",
@@ -256,7 +256,7 @@
       "code": "55203",
       "flags": "--width 948",
       "file": "narrow/search-results-day-en.png",
-      "sha256": "sha256:74b71f5a284bc377aa07db6c77fde8919a30572041ddeb8b08a2faeb66bc7a88"
+      "sha256": "sha256:dc9653ca741bb01d4e2c049a56b97509a325def8d2c40a19dc671d7a1bb23d44"
     },
     {
       "set": "narrow",
