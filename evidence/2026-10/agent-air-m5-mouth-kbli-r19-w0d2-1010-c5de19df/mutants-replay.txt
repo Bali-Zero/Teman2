@@ -1,0 +1,21 @@
+I9: shared-component-drift: 0; /kbli drawers paint #F7F4EE: False
+  walks drifted: []
+A: shared-component-drift: 84; /kbli drawers paint #F7F4EE: True
+  walks drifted: ['MobileNav non-R19 /v2 mobile/light', 'MobileNav non-R19 /v2 mobile/system-dark', 'MobileNav non-R19 /v2/news mobile/light', 'MobileNav non-R19 /v2/news mobile/system-dark', 'MobileNav non-R19 /visa/second-home mobile/light', 'MobileNav non-R19 /visa/second-home mobile/system-dark']
+  - #09090B at alpha 0.92 over an image 'Business'  (MobileNav non-R19 /v2 mobile/light)
+  - #09090B at alpha 0.92 over an image 'Visa'  (MobileNav non-R19 /v2 mobile/light)
+  - #181719 on #C2B6B7 'News'  (MobileNav non-R19 /v2 mobile/light)
+  - #181719 on #C5BABB 'Property'  (MobileNav non-R19 /v2 mobile/light)
+  - #181719 on #C6BABB 'Tax'  (MobileNav non-R19 /v2 mobile/light)
+  - #19181A on #D0C2C2 'Home'  (MobileNav non-R19 /v2 mobile/light)
+B: shared-component-drift: 108; /kbli drawers paint #F7F4EE: False
+  walks drifted: ['MobileNav R19 /news mobile/light', 'MobileNav R19 /news mobile/system-dark', 'MobileNav R19 /property/eligibility mobile/light', 'MobileNav R19 /property/eligibility mobile/system-dark', 'MobileNav R19 /tax-calendar mobile/light', 'MobileNav R19 /tax-calendar mobile/system-dark', 'MobileNav non-R19 /v2 mobile/light', 'MobileNav non-R19 /v2 mobile/system-dark', 'MobileNav non-R19 /v2/news mobile/light', 'MobileNav non-R19 /v2/news mobile/system-dark', 'MobileNav non-R19 /visa/second-home mobile/light', 'MobileNav non-R19 /visa/second-home mobile/system-dark']
+  - #1D2C3B on #F2EAE3 'Business'  (MobileNav R19 /news mobile/light)
+  - #1D2C3B on #F2EAE3 'Home'  (MobileNav R19 /news mobile/light)
+  - #1D2C3B on #F2EAE3 'News'  (MobileNav R19 /news mobile/light)
+  - #1D2C3B on #F2EAE3 'Property'  (MobileNav R19 /news mobile/light)
+  - #1D2C3B on #F2EAE3 'Tax'  (MobileNav R19 /news mobile/light)
+  - #1D2C3B on #F2EAE3 'Team'  (MobileNav R19 /news mobile/light)
+I10: shared-component-drift: 0; /kbli drawers paint #F7F4EE: True
+  walks drifted: []
+(['  apps/mouth/src/app/v2/_components/MobileNav.tsx  MobileNav non-R19: no pin for MobileNav non-R19 /v2 mobile/light, MobileNav non-R19 /v2 mobile/system-dark'], '1')

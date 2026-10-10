@@ -1,0 +1,40 @@
+task_id: kbli-r19-w0d2-1010
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, Track W, lot W0d-2: the second of the three lots that implement
+  SPEC-W0d-census.md. W0d-2 builds the spec's ground algorithm (section 2):
+    - resolver A, the pixel oracle: text made transparent, a CDP capture at device scale 1,
+      the median of five samples per box, non-uniform above a spread of 6;
+    - resolver B, the painter stack: elementsFromPoint with pointer-events forced, occluders,
+      pseudo-elements, replaced content, images and colours composited to the first opaque layer;
+    - agreement within 2 per channel, counted as ground-resolver-disagree;
+    - copper only inside its own action box; scrims are translucent ink; over-image off contract;
+    - one verdict state per walk (ok, failed:never-opened, failed:over-image-only), INCOMPLETE
+      never 0;
+    - page-grounds-off-contract on every rest capture.
+  It also carries the #8189 gate notes 1, 2, 3 and 5: the pin regenerated on origin/main with I9
+  green, the /v2 drawer's true ground named, a ground-only NavShell pin at 390px, the two R19
+  presentation files unpinned by construction with a guilt test, and shared_walk.py taking the
+  worktree as an argument. No line changes under apps/mouth/src.
+constraints:
+  - "Zero files under apps/mouth/src (spec section 5); census-replay asserts it on every W0d branch."
+  - "Gate note 4 (the two wrong section 8.5 cells) belongs to W0d-3 and is not touched here."
+  - "No npm install or npm ci. Dev servers on 3598 (this tree, origin/main source), 3599 (a scratch worktree of origin/main for the mutations) and 3600 (a probe worktree at #8161's head), started and stopped by this lot."
+acceptance:
+  - text: "WHEN each SPEC-W0d section 3 row G1-G26 runs through the real walk on local HTML, THEN it is red as the table says; WHEN I1-I8 run, THEN they print 0."
+    probe: "python3 -m pytest scripts/mouth/tests -q -k 'e2e_guilt_and_innocence or page_grounds_at_rest'"
+  - text: "WHEN origin/main is censused twice, 43 s apart, THEN the two verdict texts are identical (I11), and the census prints captures 30 ok, opened-surfaces 25 ok 0 failed, shared-touched-unpinned 0 and shared-component-drift 0."
+    probe: "python3 scripts/mouth/r19_wrapper_token_census.py (twice), then diff"
+  - text: "WHEN R19Presentation.module.css is edited in a scratch repository, THEN shared-touched-unpinned is 1 naming the file (gate note 3); WHEN mutation A or B is served, THEN D is 84 or 108; WHEN I9 or I10 is served, THEN D is 0."
+    probe: "python3 -m pytest scripts/mouth/tests -q -k 'r19_presentation or g27 or g28 or i9 or i10'"
+consumer_map:
+  - "r19-wrapper-census-tests / wrapper-census-states runs the live census on every apps/mouth, packages/core and census PR. It asserts captures, opened-surfaces, shared-touched-unpinned and shared-component-drift with grep -Fxq, and it prints page-grounds-off-contract and ground-resolver-disagree with the other counts. W2''' is judged on all of them at 0."
+  - "r19-wrapper-census-tests / census-replay runs the guilt and innocence suite (G1-G29, I1-I11 and the gate-note tests), and on a W0d branch it asserts 0 files changed under apps/mouth/src."
+risks:
+  - "Four declared deviations from SPEC-W0d section 2 (contract section 8.4): a pseudo-element is a layer only when it covers its host or the viewport; over-image means the topmost non-faint layer; the scroll cap is 250, not 8; 30 rest captures, not 54 (W0d-3 adds the routes)."
+  - "D now matches a pinned entry within 2 per channel: the page texture moves the pixels by a level between two servers of the same tree (36 entries on /news before the tolerance)."
+  - "The census runs ~20 min on an M5; the CI job's timeout rises from 45 to 75 min."
+grader: |
+  A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha.

@@ -1,0 +1,84 @@
+brief_ref: evidence/brief.yml
+seat_override: >-
+  Dispatched by the imperator: mission kbli-nav-design-loop, Track W, lot W0d-2 (BLUE), implemented
+  from SPEC-W0d-census.md (section 2, section 3 rows G1-G26, I1-I8 and I11, section 5 row W0d-2)
+  and the #8189 gate notes 1, 2, 3 and 5. The Dux built and ran every command. It does not
+  self-sign; the imperator commissions a fresh Opus gate.
+plan_ref: >-
+  ~/BATTAGLIA-20261008/DYNAMIC-WORKFLOW-kbli-nav-design/SPEC-W0d-census.md; the contract
+  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md sections 8.4 and 8.5; the gate PASS on
+  #8189 and its five notes.
+lanes:
+  - lane: kbli-r19-w0d2-1010
+    role: build
+    seat: "claude-opus-5-5 (Dux)"
+pii_scan: clean
+pii_scan_note: "Census outputs, pins and mutant fixtures hold public page labels, colours, CSS paths and route paths only. The search and inspect fixtures are the placeholder rows of r19_opened_surfaces.json. No client data, no external seat."
+provenance: >-
+  Fresh worktree from origin/main 463ec63b76 (#8189 merged). apps/mouth and packages/core are
+  unchanged on origin/main through f75a4fee92. The mutations ran in a scratch worktree detached at
+  origin/main 4400fed02e with its own dev server (3599), edited by mutate.py and reverted after
+  each walk (git status clean at the end). #8161's search scenarios ran in a probe worktree
+  detached at 51b2407f27 (3600).
+diff:
+  net_lines: |
+    About 770 net beyond fixtures and evidence, over the ~450 the spec estimated:
+      - census script +533 -130;
+      - tests +414 -136;
+      - contract +154 -70;
+      - CI workflow +11 -8.
+    Why: the four declared deviations and the determinism work (a still capture per position,
+    a network-quiet wait, fixed pseudo-elements, faint and blended layers, tolerant drift
+    matching) were each forced by a measurement on origin/main, and each ships with a test;
+    the e2e table carries eight rows beyond SPEC-W0d section 3.
+    Fixtures are data: the main census dump, the 24-walk pin, the four mutant walks and the
+    #8161 search walk. No apps/mouth/src file.
+  behaviour_change: >-
+    Every ground is read by the pixels (A decides) and by the painter stack (B names). The census
+    prints page-grounds-off-contract after state-colors-off-contract, a state per opened walk,
+    and ground-resolver-disagree after opened-grounds-off-contract. NavShell gets ground-only pins
+    at 390px; the R19 presentation files are unpinned by construction; D matches within 2 per
+    channel. CI keeps its four asserts and its timeout rises to 75 minutes.
+receipts:
+  - claim: "Live census at origin/main: every capture and surface opens, no touched shared file lacks a pin, no shared component drifted."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --base-url http://localhost:3598 --json <scratch> (census-origin-main.txt)"
+    result: "captures 30 ok; 0 / 128 / 0 / 51; page-grounds-off-contract 449; opened-surfaces 25 ok, 0 failed; P 10; K 143; R 2; N 0; D 0; M 685"
+    exit: 0
+    ts: "2026-10-10T02:36:36Z"
+    seat: claude-opus-5-5
+  - claim: "I11: a second run started 43 s later prints the same verdict text."
+    cmd: "diff census-origin-main.txt census-origin-main-second-run.txt (i11.txt)"
+    result: "no difference, exit 0"
+    exit: 0
+    ts: "2026-10-10T02:37:02Z"
+    seat: claude-opus-5-5
+  - claim: "#8161's head, search scenarios: the BLOCK read by the pixels."
+    cmd: "python3 shared_walk.py <worktree> http://localhost:3600 opened <out> search-dropdown,search-active-row,search-error (census-8161-search.txt)"
+    result: "opened-surfaces 10 ok, 0 failed; K 21; R 0; M 108; the titles read 1.04:1 and 1.03:1 on #282729 and #28282A"
+    exit: 0
+    ts: "2026-10-10T02:40:14Z"
+    seat: claude-opus-5-5
+  - claim: "G27 and G28 are red; I9 and I10 are green, walked on the scratch tree with the final census and replayed against the new pin."
+    cmd: "python3 mutants.py <worktree> http://localhost:3599 <fixture> (scratch-*.txt, mutants-replay.txt)"
+    result: "I9 D 0. A D 84, all on /v2, /v2/news and /visa/second-home. B D 108, on all six MobileNav pins. I10 D 0, and the /kbli drawers paint #F7F4EE. G29 shared-touched-unpinned 1."
+    exit: 0
+    ts: "2026-10-10T03:06:14Z"
+    seat: claude-opus-5-5
+  - claim: "The suite passes, and every instrument mutation fails it."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider; python3 instrument_mutants.py <copy> (instrument-mutants.txt)"
+    result: "160 passed; 12 of 12 mutations killed (forced pointer-events, pseudo layers, copper box, opaque scrim, small pseudo, occluders, faint image, blended image, fixed pseudo, transparent text, over-image rule, drift tolerance)"
+    exit: 0
+    ts: "2026-10-10T03:26:11Z"
+    seat: claude-opus-5-5
+  - claim: "Gate note 1: the /v2 light drawer computes rgba(255,255,255,0.72) with a 16px backdrop blur; the pixels are the truth."
+    cmd: "python3 drawer_v2.py <worktree> http://localhost:3598 (drawer-v2.txt)"
+    result: "light: drawer rgba(255, 255, 255, 0.72), blur(16px); under Home A #D0C2C2 spread 5, B approximate. system-dark: drawer rgba(14, 26, 48, 0.94); under Home A #13213D, B #111F3C."
+    exit: 0
+    ts: "2026-10-10T02:41:28Z"
+    seat: claude-opus-5-5
+  - claim: "W1's live vitest still passes against the same server."
+    cmd: "R19_WRAPPER_BASE_URL=http://localhost:3598 npx vitest run src/test/r19-wrapper.test.ts"
+    result: "5 passed, 1 skipped"
+    exit: 0
+    ts: "2026-10-10T03:08:46Z"
+    seat: claude-opus-5-5

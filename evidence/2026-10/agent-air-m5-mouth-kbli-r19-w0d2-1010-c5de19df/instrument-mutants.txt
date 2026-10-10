@@ -1,0 +1,13 @@
+no forced pointer-events                 KILLED  1 failed, 50 passed, 109 deselected in 90.94s (0:01:30)  ['G17']
+no pseudo layers                         KILLED  3 failed, 48 passed, 109 deselected in 90.08s (0:01:30)  ['G14', 'G15', 'texture-under']
+copper box always ok                     KILLED  1 failed, 50 passed, 109 deselected in 92.84s (0:01:32)  ['G21']
+opaque scrim allowed                     KILLED  1 failed, 50 passed, 109 deselected in 94.54s (0:01:34)  ['G24-ink']
+small pseudo is a layer                  KILLED  1 failed, 50 passed, 109 deselected in 98.94s (0:01:38)  ['bullet']
+no occluders                             KILLED  1 failed, 50 passed, 109 deselected in 130.70s (0:02:10)  ['G22']
+faint image is a layer                   KILLED  1 failed, 50 passed, 109 deselected in 96.38s (0:01:36)  ['faint']
+blended image is a ground                KILLED  1 failed, 50 passed, 109 deselected in 89.74s (0:01:29)  ['glow']
+fixed pseudo against its host            KILLED  1 failed, 50 passed, 109 deselected in 93.70s (0:01:33)  ['texture-under']
+text not transparent                     KILLED  32 failed, 19 passed, 109 deselected in 88.48s (0:01:28)  ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G10']
+image only under translucent colour      KILLED  5 failed, 46 passed, 109 deselected in 87.62s (0:01:27)  ['G8', 'G9', 'G18', 'G25', 'G26']
+drift without tolerance                  KILLED  3 failed, 48 passed, 109 deselected in 104.02s (0:01:44)  ['ground +2', 'text +2', 'root +2']
+exit 0
