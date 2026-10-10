@@ -137,9 +137,24 @@ interesting points spawn round N+1 research. No round limit. Opus 5.5 orchestrat
 hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5); Sonnet implements; research outputs persisted under `research/visa/` in the worktree
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
-## LIVE STATE — CURRENT POSITION (updated 2026-10-09; update on every state change)
+## LIVE STATE — CURRENT POSITION (updated 2026-10-10; update on every state change)
 
-- **Active production pack: seq-26 since 2026-10-08T10:08:02Z (activation `1c7ac00b-7c5e-44e9-8efc-392d03fb47ef`, PR #8081,
+- **Active production pack: seq-27 since 2026-10-10T05:23Z (activation `471bddfa-0423-4fa1-b11f-2d9617615a19`,
+  PR #8209, merge `2478b87561`; successor of #8204; supersedes organ candidate #8105).** seq-26 with only the 18
+  `OFFICIAL_PORTAL` stamps moved to `2026-10-08T13:21:22Z` by the weekly organ; rules, products and prices
+  byte-identical. Signed on M5 (kid `prod-2026-07-1`, `signed_at 2026-10-10T03:42:26Z`, payload
+  `a9098744e0cd8369fb4fe9ca5bef851705cf43dabb1c69398b63b36985cb42d0`, chained to seq-26). The 18 judgements
+  are `judge: fingerprint` (no model read the pages); checked by an independent adversarial seat (live re-read,
+  18/18 identical) and a council (codex-gpt-5.6-sol + kimi-code/k3, PASS). **Boundary now 2026-11-09T13:21:22Z**
+  (APPROACHING from 2026-11-07T13:21:23Z). Prove-live: sentinel tick 05:23:44Z `OK, pack_sequence 27`;
+  `/evaluate` (synthetic_driver) 05:25:27Z `sequence=27 rule_pack_id b0fd0791…`. Open: seq-28 before the new
+  boundary (`PENDING-ARMS.md`).
+- **Client copy, 2026-10-10:** the Copy/Share summary carries the typical processing time, marked indicative,
+  no dates (#8207, live 05:00:30Z: "… IDR 15,000,000 · 2-year stay permit · Typically 7–10 working days
+  (indicative)"); 46 never-rendered interview keys deleted EN+ID (#8205, live 04:43:15Z: 0 of 33 chunks carry
+  them); the freshness sentinel's holiday-coverage lane (#8206) alerts the owner 60 days before the working-day
+  estimate runs out of loaded decrees (today `OK first_gap=2027-11-19 year_to_load=2028`, real tick 05:23:44Z).
+- **SUPERSEDED by seq-27 (history): seq-26 since 2026-10-08T10:08:02Z (activation `1c7ac00b-7c5e-44e9-8efc-392d03fb47ef`, PR #8081,
   merge `f43d4ac0a0`).** E31A–J now offer 1 or 2 years as a duration option on the same
   product: 365 maps to the existing key, 730 to the "2 Years" sibling, one all-inclusive price
   per option, never PNBP (Zero's ruling 2026-10-08); `stay_policy FIXED_DAYS 365..730`. Signed on
