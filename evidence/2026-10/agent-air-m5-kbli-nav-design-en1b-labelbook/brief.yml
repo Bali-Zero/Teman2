@@ -4,7 +4,7 @@ colour: BLUE
 gear: 2
 gear_reason: >-
   Set to the floor evidence_pack_lint computes for this change set by its size term, with no hot-zone path. The code
-  churns 334 lines (+246/−88, net +158) across LabelBook.swift (new), KBLIVerdict.swift (headsUp only),
+  churns 350 lines (+262/−88, net +174) across LabelBook.swift (new, 156), KBLIVerdict.swift (headsUp only),
   SearchListView.swift, KBLIRegistryTable.swift, RegistryVerdictSheet.swift, KBLIRegistryView.swift (the authority
   table delegates), headsuptest, contenttest, content_check.py, en_purity.py and measure_contrast's citations; the
   after-set digest manifest adds its JSON evidence.
