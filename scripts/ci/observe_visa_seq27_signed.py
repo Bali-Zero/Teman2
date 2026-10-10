@@ -7,7 +7,8 @@
 # `scripts/ci/bites_parse.py::_guard_observable_script` sets for a script
 # reachable from a pack.yml `observe:` line).
 
-The seq-27 sibling of ``observe_visa_seq26_signed.py``: it observes the SIGNING of
+The seq-27 successor of ``observe_visa_seq26_signed.py`` (renamed in this PR, as #8081 renamed
+the seq-25 one): it observes the SIGNING of
 seq-27 (the weekly organ's portal re-stamp of seq-26; rules and products unchanged), and it
 is the executable consumer the per-PR pack declares in its `bites:` block
 (`observe:` this script, `expect: contains:` its success-only final line — the
