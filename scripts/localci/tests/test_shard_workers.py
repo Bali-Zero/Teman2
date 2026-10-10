@@ -1,4 +1,5 @@
-"""B4: the backend shards run two xdist workers under their 6g cgroup, and a leg killed on timeout names a dead xdist worker."""
+"""B4: the backend shards run hosted's four xdist workers under their 12g cgroup (two under 6g before the 2026-10-10 VM resize),
+and a leg killed on timeout names a dead xdist worker."""
 from __future__ import annotations
 
 import json
@@ -51,13 +52,13 @@ def _step(job: dict, name: str) -> dict:
     return next(s for s in job["steps"] if s["name"] == name)
 
 
-def test_the_real_backend_plan_gives_every_shard_leg_two_workers_and_no_other_job_any(monkeypatch, tmp_path, base_repo):
-    # guilt: before B4 the sharded step ran `-n auto` = 4 workers under the 6g cgroup and the kernel OOM-killed one
+def test_the_real_backend_plan_gives_every_shard_leg_four_workers_and_no_other_job_any(monkeypatch, tmp_path, base_repo):
+    # guilt: without the line, `-n auto` on the 8-CPU VM starts 8 workers, which is not hosted's 4 and exceeds the 12g cgroup
     spec = _plan(monkeypatch, tmp_path, *base_repo, "Backend Tests (Python)")
     jobs = {j["job_id"]: j for j in spec["jobs"]}
     shard = jobs["backend-shard"]
-    assert [leg.get("shard") for leg in shard["legs"]] == [1, 2, 3] and shard["job_env"][VAR] == "2"
-    assert _step(shard, "Run unit tests (sharded)")["env"][VAR] == "2" and "-n auto --dist loadfile" in _step(shard, "Run unit tests (sharded)")["script"]
+    assert [leg.get("shard") for leg in shard["legs"]] == [1, 2, 3] and shard["job_env"][VAR] == "4"
+    assert _step(shard, "Run unit tests (sharded)")["env"][VAR] == "4" and "-n auto --dist loadfile" in _step(shard, "Run unit tests (sharded)")["script"]
     for jid in ("backend-static", "backend-tests"):   # innocence: the static job and the fan-in keep xdist's own count
         assert VAR not in jobs[jid]["job_env"] and all(VAR not in (s.get("env") or {}) for s in jobs[jid]["steps"]), jid
 
@@ -71,8 +72,13 @@ def test_the_cap_is_declared_once_on_the_backend_shard_job_and_nowhere_else_in_t
     doc = yaml.safe_load(MATRIX.read_text())
     hits = [(c["name"], j.get("job_id"), j["env"]) for c in doc["contexts"] for j in [c["local"], *(c["local"].get("jobs") or [])]
             if VAR in (j.get("env") or {})]
-    assert hits == [("Backend Tests (Python)", "backend-shard", {VAR: "2"})]   # a string, as a workflow env value is: 4 x 2.1 GB > 6g, 2 x 2.1 GB fits
+    assert hits == [("Backend Tests (Python)", "backend-shard", {VAR: "4"})]   # a string, as a workflow env value is: hosted's 4, and 4 x 2.1 GB fits 12g
     assert MATRIX.read_text().count(VAR) == 2   # the env line and its comment
+
+
+def test_the_backend_cgroup_holds_four_workers():
+    # guilt: four workers x ~2.1 GB anon-rss under the old 6g cgroup is the B4 OOM kill; innocence: 12g holds them, inside the 16 GiB VM
+    assert _ctx("Backend Tests (Python)")["local"]["memory"] == "12g"
 
 
 def test_a_shard_leg_hands_the_cap_to_its_sandbox_and_the_driver_sets_it_on_the_pytest_step(monkeypatch, tmp_path, base_repo):
@@ -92,12 +98,12 @@ def test_a_shard_leg_hands_the_cap_to_its_sandbox_and_the_driver_sets_it_on_the_
     runner._run_leg("ctx.backend-tests", spec, shard, {"shard": 2}, run_dir, {"run_id": "r", "worktree": str(base_repo[0])}, {"changes": {}}, {},
                     runner._gh_expr())
     cfg = seen["cfg"]
-    assert cfg["job_env"][VAR] == "2" and _step(cfg, "Run unit tests (sharded)")["env"][VAR] == "2" and cfg["expr"]["matrix"] == {"shard": 2}
+    assert cfg["job_env"][VAR] == "4" and _step(cfg, "Run unit tests (sharded)")["env"][VAR] == "4" and cfg["expr"]["matrix"] == {"shard": 2}
     # the cap does not ride `docker create --env=`: the container env stays these two, and the job env travels in steps.json
     assert seen["env"] == {"HOME": "/tmp", "LANG": "C.UTF-8"}
     # the driver, as the sandbox runs it, puts the job env on the step's process environment (the pytest the step starts inherits it)
     probe = {"context": "t", "root": str(tmp_path), "env": {}, "job_env": cfg["job_env"], "expr": cfg["expr"],
-             "steps": [{"name": "workers", "argv": ["bash", "-e", "{0}"], "script": f'test "${VAR}" = 2\n'}]}
+             "steps": [{"name": "workers", "argv": ["bash", "-e", "{0}"], "script": f'test "${VAR}" = 4\n'}]}
     for job_env, want in ((cfg["job_env"], "PASS"), ({}, "FAIL")):
         (tmp_path / "steps.json").write_text(json.dumps({**probe, "job_env": job_env}))
         subprocess.run([sys.executable, "-I", str(runner.STEPS_DRIVER), str(tmp_path / "steps.json"), str(tmp_path / "j.xml")], capture_output=True,

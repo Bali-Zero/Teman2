@@ -1,0 +1,27 @@
+task_id: localci-workers4-1010
+mission: LOCALCI-SOVEREIGN (speed lever 1)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  A capacity line of the BASE matrix (the backend shards' xdist worker count and the context's memory cgroup), following the gate VM's
+  resize on Pro. No workflow, hot-zone path, plist or wrapper change; the command and the tests the shards run are unchanged.
+l_level: L2
+gate_class: opus
+objective: >-
+  The backend shards run hosted's four xdist workers again (PYTEST_XDIST_AUTO_NUM_WORKERS "2" -> "4") under a 12g cgroup (was 6g),
+  now that the gate VM has 8 CPUs and 16 GiB (resized 2026-10-10 from 4 CPU / 8 GiB). The same command, the same tests, files whole
+  per worker; the local run moves closer to hosted's.
+constraints:
+  - The cap line stays (on the 8-CPU VM -n auto would start 8 workers, not hosted's 4); it stays on backend-shard alone.
+  - Nothing else in the matrix changes.
+acceptance:
+  - text: The real backend plan SHALL give every shard leg four workers and no other job any.
+    probe: "test_shard_workers.py::test_the_real_backend_plan_gives_every_shard_leg_four_workers_and_no_other_job_any"
+  - text: The cap SHALL be declared once, on backend-shard, as "4".
+    probe: "test_shard_workers.py::test_the_cap_is_declared_once_on_the_backend_shard_job_and_nowhere_else_in_the_matrix"
+  - text: The Backend Tests context's memory cgroup SHALL be 12g.
+    probe: "test_shard_workers.py::test_the_backend_cgroup_holds_four_workers"
+consumer_map:
+  - scripts/localci/runner.py (the merger tick on Pro) — the backend-shard legs' job env and the context's docker --memory.
+pii_scan: clean
+pii_scan_note: A matrix capacity line, its tests, mutant rules and README text. No client data was read or written.
