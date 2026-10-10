@@ -202,7 +202,8 @@ let out: [String: Any] = MainActor.assumeIsolated {
     } else { violations.append("ledgerProse: no 01111") }
     // The ledger's curated meaning draws its markdown emphasis, never its asterisks (3-h-1, 46206's "**live fish …**"):
     // a pair draws its words emphasised (guilt); a spaced or unclosed "*" stays (innocence); and over every curated
-    // meaning, both languages, a line draws its source minus the "*" markers, nothing else and no link.
+    // meaning, both languages, a line draws its source minus the "*" markers, nothing else and no link. 18 of the
+    // overlay's 22 emphasised meanings belong to a 2025 code (64921, 86903, 96120 and 96130 have no record to draw).
     for (raw, want, marked) in [("**Live fish** go by air.", "Live fish go by air.", "Live fish"),
                                 ("This is *not* a lease.", "This is not a lease.", "not"),
                                 ("Spirits >20%, 5 * 3 rows.", "Spirits >20%, 5 * 3 rows.", ""),
@@ -225,7 +226,7 @@ let out: [String: Any] = MainActor.assumeIsolated {
             }
         }
     }
-    if emphasised.count != 22 { violations.append("ledgerInline: \(emphasised.count) curated meanings draw emphasis, pinned 22") }
+    if emphasised.count != 18 { violations.append("ledgerInline: \(emphasised.count) curated meanings draw emphasis, pinned 18") }
     if !unfaithful.isEmpty { violations.append("ledgerInline changes \(unfaithful.count) meaning lines beyond their markers, e.g. \(unfaithful.prefix(3))") }
     return ["codes": codes, "balanced_rejoin": rejoin, "probe_violations": violations, "curated_language": curated,
             "labelbook_maps": maps]
