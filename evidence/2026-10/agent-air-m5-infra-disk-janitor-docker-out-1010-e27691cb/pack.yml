@@ -1,0 +1,138 @@
+task_id: disk-janitor-docker-out-1010
+mission: LOCALCI-SOVEREIGN (Pro disk janitor, step 1 of 3)
+colour: BLUE
+gear: 3
+gear_reason:
+  The lint floor is 3 by path (scripts/disk_janitor.sh and its wrapper are hot-zone); the change removes steps
+  from a daily APPLY organ that deletes files on Pro.
+l_level: L2
+gate_class: opus
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+objective:
+  "pro.disk_janitor touches nothing inside Colima: the docker image, volume and builder prunes, the age prune of
+  tagged images and colima fstrim leave, so the VM has one owner, scripts/localci/prune.py (the lead's ruling)."
+acceptance:
+  - text:
+      A full --apply run SHALL invoke no docker, docker-compose, colima, limactl or nerdctl, and its receipt and log SHALL
+      name none of them.
+    probe: "scripts/test_disk_janitor.sh TEST 10: the recording shims, the receipt and log checks"
+  - text:
+      No executable line of scripts/disk_janitor.sh SHALL call docker or the VM, by name, by path or through the docker
+      socket.
+    probe: "scripts/test_disk_janitor.sh TEST 10: the static detector with its nine probed forms"
+consumer_map:
+  - launchd organ pro.disk_janitor on Pro (com.nuzantara.disk-janitor, daily), its receipts in ~/logs/disk-janitor.receipts.jsonl.
+lanes:
+  - lane: disk-janitor-docker-out-1010
+    role: build
+    seat: claude-sonnet-5 implementer, directed and reviewed by claude-opus-5-5 on M5
+  - lane: disk-janitor-docker-out-1010-gate
+    role: review
+    seat: claude-opus-5-5, fresh read-only seats (gate on bfddfd6aac, re-gate on 2a2e6b49ea)
+  - lane: disk-janitor-docker-out-1010-council
+    role: review
+    seat: codex-gpt-5.6-sol and kimi-code/k3 (council-journal.jsonl)
+pii_scan: clean
+pii_scan_note: A bash janitor, its test fixtures under tmp and a wrapper comment. No client data.
+what_changed:
+  "scripts/disk_janitor.sh: docker_unused_images, the docker image/volume/builder prunes, colima_fstrim, the DOCKER_RC
+
+  probe and to_epoch leave, with the knobs DOCKER_DAYS, DOCKER_KEEP, TOOL_TIMEOUT and FSTRIM_TIMEOUT and their range
+
+  checks; TOOLS_SEEN probes uv, brew and restic; the header's docker policy becomes one line naming prune.py as the VM's
+
+  one owner. The uv step (with its pgrep lock check) is byte-identical; its fix belongs to the new organ.
+
+  scripts/test_disk_janitor.sh: the docker/colima-only cases leave; TEST 10 adds recording shims for docker,
+
+  docker-compose, colima, limactl and nerdctl that a full --apply must leave untouched, receipt and log checks, a static
+
+  detector of any executable line that calls docker or the VM (by name, by path, through the docker socket or the colima
+
+  ssh config) with nine probed forms and its innocence cases, and a check that the removed knobs are inert.
+
+  infra/launchagents/wrappers/pro-disk-janitor.sh: two comment lines no longer list docker.
+
+  "
+proof:
+  "The suite on fixtures under tmp (recording shims, never a real tool). The Opus gate compared receipts of main and
+  of
+
+  this branch on one fixture: same top-level keys, same scratch/codex/logarch counts, only the two docker/colima steps and
+
+  their tool words gone; main's run reached the fakes 3 times in dry-run and 7 in apply, this branch's none. Read-only on
+
+  Pro: the plist passes no removed knob, nothing on Pro reads the removed step names, and ~/nuzantara follows main.
+
+  "
+bites:
+  consumer: launchd organ pro.disk_janitor on Pro (its daily APPLY run and receipt).
+  observation:
+    'Owed after merge: Pro''s ~/nuzantara follows main by itself and the wrapper runs $HOME/nuzantara/scripts/disk_janitor.sh,
+    so the next run is the new code. Its receipt in ~/logs/disk-janitor.receipts.jsonl carries tools "uv restic brew" and
+    no docker_unused_images or colima_fstrim step (the last receipt before this, 2026-10-09T11:32:55Z, carried both). The
+    canon wrapper is copied to ~/scripts/pro-disk-janitor.sh and cmp-checked, so the declared pair does not drift.'
+ground:
+  ts: "2026-10-10T05:40:00Z"
+  siblings:
+    Worktree from origin/main f93382db7c. The new pro.janitor organ is a separate lane (infra-pro-janitor-1010) that
+    does not touch these files. The LOCALCI lead owns prune.py and the VM.
+spend:
+  adversarial_rounds: 2
+  wall_clock_hours: 0.8
+receipts:
+  - claim:
+      "scripts/test_disk_janitor.sh on this branch: PASS=110 FAIL=0 (origin/main's version: PASS=134 FAIL=0; the docker-only
+      cases leave, the guard cases arrive)."
+    cmd: /bin/bash scripts/test_disk_janitor.sh
+    exit: 0
+    ts: "2026-10-10T05:35:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim:
+      "Guilt on a widened guard: an inserted `bounded 5 /opt/homebrew/bin/docker info` turns 1 check red, `limactl list`
+      6; the cure restored and cmp-checked. Earlier, a re-added `docker volume prune -f` turned 3 red."
+    cmd: insert the line in the tools section of scripts/disk_janitor.sh, run the suite, restore from a copy
+    exit: 0
+    ts: "2026-10-10T05:37:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim:
+      "Pro, read-only: the disk-janitor plist has no EnvironmentVariables; ~/nuzantara is at main and its disk_janitor.sh
+      equals main's (sha256 d9e0347c4ea980d5…)."
+    cmd: ssh pro 'git -C ~/nuzantara log -1; shasum -a 256 ~/nuzantara/scripts/disk_janitor.sh'
+    exit: 0
+    ts: "2026-10-10T05:20:00Z"
+    seat: claude-opus-5-5 on M5
+dissent:
+  - seat: codex-gpt-5.6-sol (bfddfd6aac)
+    objection: "MEDIUM: the static guard misses absolute-path calls; LOW: the shim self-test wrote dc_calls by hand."
+    status: CONFIRMED
+    resolution: "2a2e6b49ea: DC_RE allows a path prefix and names every client; the shims are invoked and must record."
+  - seat: kimi-code/k3 (bfddfd6aac)
+    objection:
+      "MEDIUM: the same hole, plus docker-compose, limactl and ./docker; LOW: confirm no removed knob is still expanded
+      under set -u."
+    status: CONFIRMED
+    resolution: 2a2e6b49ea covers every form; the suite runs green under set -u, so no removed knob is expanded.
+  - seat: claude-opus-5-5 gate (bfddfd6aac)
+    objection:
+      "CONFIRMED with LOWs: the static guard's leading class missed /, - and the socket/lima forms; the wrapper's
+      comment hunk makes the declared pair drift on Pro until the live copy is updated."
+    status: CONFIRMED
+    resolution: The guard in 2a2e6b49ea; the wrapper is copied to Pro and cmp-checked at deploy (bites).
+  - seat: claude-opus-5-5 re-gate (2a2e6b49ea)
+    objection:
+      "CONFIRMED, no BLOCKER/MEDIUM: 27 probes through DC_RE caught every listed form and stayed quiet on comments,
+      the .colima root and ~/.docker paths; a silenced limactl shim turns the suite red; guilt with /opt/homebrew/bin/docker
+      (FAIL=1) and nerdctl (FAIL=4). LOWs: the shim summary label checks the last shim only (the per-shim line still fails);
+      the detector does not name bare lima, podman or DOCKER_HOST."
+    status: CONFIRMED
+    resolution:
+      "Kept as residuals: none is a path the janitor can regress through, and every per-shim failure already turns
+      the suite red."
+residuals:
+  - "uv cache prune is still skipped whenever any process named uv is alive (pgrep -x uv): explained in docs/specs/pro-janitor-2026-10-10.md
+    and fixed by the new organ, which owns the uv cache."
+  - "The static detector names docker, docker-compose, colima, limactl, lima-colima and nerdctl; bare lima, podman and DOCKER_HOST
+    are not named (the re-gate: no realistic regression path). The shim summary line checks the last shim; each per-shim line
+    fails on its own."
