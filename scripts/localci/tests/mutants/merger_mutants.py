@@ -120,7 +120,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "ready-days-boundary": (PY, "READY_MIN_MERGES, READY_MIN_DAYS = 50, 14", "READY_MIN_MERGES, READY_MIN_DAYS = 50, 13.999", (REPORT,)),
     "days-float": (PY, "return (int(_epoch(last) - _epoch(first)) * 1000 // 86400) / 1000",
                    "return round((_epoch(last) - _epoch(first)) / 86400, 3)", (REPORT,)),
-    # B4: two xdist workers on the backend shards and nowhere else; a timeout after a dead worker names it and stays no verdict
+    # B4: hosted's four xdist workers on the backend shards (two before the 2026-10-10 VM resize) and nowhere else; a timeout after a dead worker names it and stays no verdict
     "b4-cap-key-misspelt": (MATRIX, 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "4" }', 'env: { PYTEST_XDIST_AUTO_NUM_WORKER: "4" }', SW_CAP),
     "b4-cap-value-8": (MATRIX, 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "4" }', 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "8" }', SW_CAP),
     "b4-cap-value-2": (MATRIX, 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "4" }', 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "2" }', SW_CAP),

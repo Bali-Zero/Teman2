@@ -153,7 +153,7 @@ KeepAlive) brings the VM back with it, between two merger ticks with the merger 
 
 | check | wall s | in-sandbox CPU s | legs (wall / CPU s) |
 |---|---|---|---|
-| ctx.backend-tests | 1318 | 1365 | static 150/51 · shard 1 321/370 · shard 2 288/472 · shard 3 475/455 · fan-in 85/17 — shards at 4 xdist workers; since B4 they run 2, wall not yet re-measured |
+| ctx.backend-tests | 1318 | 1365 | static 150/51 · shard 1 321/370 · shard 2 288/472 · shard 3 475/455 · fan-in 85/17 — shards at 4 xdist workers under 6g, before B4; B4 ran 2 until the 2026-10-10 resize, and now 4 under 12g again, wall not yet re-measured |
 | ctx.harness-floor | 67 | 0.5 | one leg; the Gear ≥ 2 reader ran at plan |
 | ctx.e2e-tests | 320 | 207 | one leg: backend + Next.js build + 134 Playwright specs (PR-B2, 1df44b9b65) |
 | ctx.frontend-tests-mouth | 297 | 515 | the (mouth, true) leg: contract check, tsc, vitest with coverage, core, admin, wa-mirror |
