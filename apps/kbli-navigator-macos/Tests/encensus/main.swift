@@ -7,9 +7,12 @@ import SwiftUI
 // code reaches through ImageRenderer into a PDF context and writes the text PDFKit reads back: what is DRAWN,
 // accessibility-hidden labels included. ImageRenderer leaves out what AppKit draws (a text field's placeholder,
 // a pop-up's title), so the chromes and the search field also host the View once and read those controls.
-// One JSON line per (code, view): {"code","view","text"}. `fast` is the three frozen codes plus a stratified
-// sample (every heads-up class, sector and Bali status, and every 26th record); `full` is all 1,559; `--codes
-// none` dumps the chromes only. The dataset comes from the bundle path, as in the app.
+// One JSON line per (code, view): {"code","view","text","anchors"}. The anchors (Q19) are what the View must draw —
+// its code, and the last thing it draws — so a dump that holds them is the whole View: a View whose text sits in a
+// ScrollView ImageRenderer leaves unexpanded reads INCOMPLETE, never 0. Two probes prove it on every run: the same
+// text in a ScrollView (INCOMPLETE) and plain (complete). `fast` is the three frozen codes plus a stratified sample
+// (every heads-up class, sector, Bali status and LabelBook branch, and every 26th record); `full` is all 1,559;
+// `--codes none` dumps the chromes only. The dataset comes from the bundle path, as in the app.
 
 func err(_ s: String) { FileHandle.standardError.write(Data((s + "\n").utf8)) }
 
@@ -75,47 +78,63 @@ let rc: Int32 = MainActor.assumeIsolated {
         pick = Set(all.map(\.kode))
     } else {
         pick = ["55203", "51101", "56101"]
-        var perClass: [Int: Int] = [:], sectors = Set<String>(), bali = Set<String>()
+        var perClass: [Int: Int] = [:], sectors = Set<String>(), bali = Set<String>(), taken = Set<String>()
         for (i, k) in all.enumerated() {
             let c = KBLIVerdict.of(record: k).headsUpClass
             if perClass[c, default: 0] < 3 { perClass[c, default: 0] += 1; pick.insert(k.kode) }
             if let s = KBLIStore.sectorLetter(for: k.kode), sectors.insert(s).inserted { pick.insert(k.kode) }
             if let b = k.l4Bali?.status, bali.insert(b).inserted { pick.insert(k.kode) }
+            // one code per branch a LabelBook map takes on this record (#8227 gate (v): 02101/03120's cap not verified)
+            let branches = ["pma:\(k.pmaStatus ?? "∅")", "cap:\(k.pmaMaxAsing.map { $0 == 0 || $0 == 100 ? "\($0)" : "x" } ?? "∅")",
+                            "verified:\(k.pmaCapVerified.map(String.init) ?? "∅")", "special:\(k.pmaCapSpecial ?? false)",
+                            "route:\(k.pmaRouteTo != nil)", "bali:\(k.l4Bali != nil)", "conf:\(k.l4Bali?.confidence ?? "∅")",
+                            "blocked:\(k.l4Bali?.blocked ?? false)", "moratorium:\(k.l4Bali?.moratorium != nil)"]
+                + k.perSkala.flatMap { r in ["risk:\(r.kategoriRisiko ?? "∅")", "auth:\(r.kewenangan ?? "∅")"]
+                    + r.skalaUsaha.map { "scale:\($0)" } }
+            if branches.contains(where: { taken.insert($0).inserted }) { pick.insert(k.kode) }
             if i % 26 == 0 { pick.insert(k.kode) }
         }
     }
     FileManager.default.createFile(atPath: args[1], contents: nil)
     guard let fh = FileHandle(forWritingAtPath: args[1]) else { err("cannot write \(args[1])"); return 2 }
-    @MainActor func emit(_ code: String, _ view: String, _ v: some View, height: CGFloat? = nil) {
-        if let views, !views.contains(view) { return }
+    @MainActor func emit(_ code: String, _ view: String, _ v: some View, height: CGFloat? = nil, anchors: [String] = []) {
+        if let views, !views.contains(view), !view.hasPrefix("probe-") { return }
         let hosted = AnyView(v.environmentObject(state).environmentObject(lang))
         var text = pdfText(hosted, height: height)
         if code == "-" { text += "\n" + appKitText(hosted, height: height ?? 800).joined(separator: "\n") }
-        if let d = try? JSONSerialization.data(withJSONObject: ["code": code, "view": view, "text": text],
+        if let d = try? JSONSerialization.data(withJSONObject: ["code": code, "view": view, "text": text, "anchors": anchors],
                                                options: [.sortedKeys]) {
             fh.write(d); fh.write(Data("\n".utf8))
         }
     }
-    // The chrome, once: the registry browsing a sector, and the search pane with a query, no code open.
+    let probe = "Census anchor probe, drawn whole"
+    emit("-", "probe-scrollview", ScrollView { Text(probe) }, height: 200, anchors: [probe])
+    emit("-", "probe-plain", Text(probe), height: 200, anchors: [probe])
+    // The chrome, once: the registry browsing a sector, and the search pane with a query, no code open. Its rows sit
+    // in a ScrollView, so they are censused per code below as registry-row, search-row and search-peak (#8227 (vi)).
     state.selected = nil
     state.browsedSector = "I"
-    emit("-", "registry-chrome", SearchListView(), height: 800)
+    let sector = isID ? "SEKTOR" : "SECTOR"
+    emit("-", "registry-chrome", SearchListView(), height: 800, anchors: [sector])
     state.browsedSector = nil
     state.query = "55203"
-    emit("-", "search-chrome", SearchListView(), height: 800)
+    emit("-", "search-chrome", SearchListView(), height: 800, anchors: [sector])
     state.query = ""
-    emit("-", "search-field", FieldBand(), height: 120)   // empty: the placeholder is what is drawn
+    emit("-", "search-field", FieldBand(), height: 120, anchors: [lang.t("search.placeholder")])   // empty: the placeholder
     let codes = all.filter { pick.contains($0.kode) }
     for (n, k) in codes.enumerated() {
-        emit(k.kode, "registry-row", KBLIRegistryRow(kbli: k, isID: isID))
-        emit(k.kode, "registry-sheet", RegistryVerdictSheet(kbli: k, expanded: .constant(false), onClose: {}, scrolls: false))
-        emit(k.kode, "search-peak", QueryResultRow(kbli: k, isFirst: true, isSelected: false, isID: isID))
-        emit(k.kode, "search-row", QueryResultRow(kbli: k, isFirst: false, isSelected: false, isID: isID))
-        emit(k.kode, "detail-card", KBLIDetailRichView(kbli: k, scrolls: false))
-        emit(k.kode, "dossier", KBLIDossierView(kbli: k, variant: .claude, scrolls: false))
-        emit(k.kode, "sheet-ledger", KBLIRegistryView(kbli: k, scrolls: false))
+        let c = [k.kode]   // the code; then the last thing each View draws, from the View's own source
+        emit(k.kode, "registry-row", KBLIRegistryRow(kbli: k, isID: isID), anchors: c)
+        emit(k.kode, "registry-sheet", RegistryVerdictSheet(kbli: k, expanded: .constant(false), onClose: {}, scrolls: false),
+             anchors: c + [isID ? "Buka dosir lengkap" : "Open the full dossier"])
+        emit(k.kode, "search-peak", QueryResultRow(kbli: k, isFirst: true, isSelected: false, isID: isID), anchors: c)
+        emit(k.kode, "search-row", QueryResultRow(kbli: k, isFirst: false, isSelected: false, isID: isID), anchors: c)
+        emit(k.kode, "detail-card", KBLIDetailRichView(kbli: k, scrolls: false), anchors: c + [lang.t("rich.cta.title")])
+        emit(k.kode, "dossier", KBLIDossierView(kbli: k, variant: .claude, scrolls: false), anchors: c + ["Bali Zero · KBLI 2025"])
+        emit(k.kode, "sheet-ledger", KBLIRegistryView(kbli: k, scrolls: false),
+             anchors: c + [isID ? "Tanya tentang \(k.kode)…" : "Ask about \(k.kode)…"])
         state.chatContextCode = k
-        emit(k.kode, "chat", ChatView(), height: 800)
+        emit(k.kode, "chat", ChatView(), height: 800, anchors: c)   // the code it is asked about
         state.chatContextCode = nil
         if n % 200 == 0 { err("encensus \(n)/\(codes.count)") }
     }
