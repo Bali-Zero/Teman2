@@ -80,6 +80,14 @@ STATUTE_ROWS = (("Memiliki izin usaha yang masih berlaku", "Memiliki sertifikat 
                 ("Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #3",
                  "Perpres 49/2021 Lampiran II (Bidang Usaha yang dialokasikan untuk Koperasi dan UMKM) entry #7"),
                 ("Sektor prioritas: Pertanian sayuran daun", "Sektor prioritas: Industri pengolahan ikan"))
+# Q17: the record's closed-set values curated prose may quote. A View draws each as its English, with the original
+# in parentheses after it at most ("Regent/Mayor (Bupati/Walikota)"); one the curator already put in (…) after
+# English is that form already. The record's own status word inside its curated Bali reason is drawn as its English.
+CLOSED = (("per_skala", "kewenangan"), ("per_skala", "perizinan"), ("per_skala", "jangka_waktu"))
+STATUS = ("TERBUKA", "TERBATAS", "TERTUTUP")
+# The English word of each closed-set key, from LabelBook's pin (#8227 gate (i)): a curated reason's gap holds it.
+PIN = os.path.join(ROOT, "docs", "design", "labelbook-pin-2026-10-10.json")
+WORD = {k: v[0] for m in ("pmaStatus", "baliStatus", "field") for k, v in json.load(open(PIN))["maps"][m].items()}
 CLAUSE_EN = set("the of and to in for with on by or from as at is are not only must may any no".split())
 CLAUSE_ID = set("yang dan di ke dari untuk dengan pada dalam atau oleh tidak bukan bagi serta hanya".split())
 IDENT_RE = re.compile(r"\b[A-Za-z0-9]+(?:_[A-Za-z0-9]+)+\b")
@@ -154,6 +162,33 @@ def statute(rec):
                     for x in (v, strip_html(v)): out.setdefault(x, group is None and english_text(x))
     return list(out.items())
 
+def closed(rec):
+    """The record's own Q17 closed-set values that hold an Indonesian word, longest first."""
+    vals = {v.strip() for group, field in CLOSED for row in rec.get(group) or [] if isinstance(row, dict)
+            for v in (row.get(field) if isinstance(row.get(field), list) else [row.get(field)])
+            if isinstance(v, str) and lexical(v)}
+    return sorted(vals, key=len, reverse=True)
+
+def gapped(s, rx, spec, in_parens=True):
+    """`s` as drawn, each match of `rx` a gap a View fills: (pattern, `spec(match)` per gap — the English word the
+    pinned map gives, else None). in_parens=False leaves a match the curator put in (…) as written, and lets the
+    gap keep its match as the original, in parentheses after its English (Q17)."""
+    pat, keep, at = [], [], 0
+    for m in rx.finditer(s) if rx else []:
+        if not in_parens and s[:m.start()].count("(") > s[:m.start()].count(")"): continue
+        pat += [flex(s[at:m.start()]), "(.{1,80}?)"]; keep.append((spec(m.group()), None if in_parens else m.group()))
+        at = m.end()
+    return re.compile("".join(pat) + flex(s[at:])), tuple(keep) or None
+
+def kept(g, spec):
+    """A gap holds its pinned English word, or else English — no lexicon word — with its own original only in
+    parentheses after it (Q17)."""
+    word, original = spec
+    if word: return " ".join(g.split()) == word
+    m = original and re.search(r"\(([^()]*)\)\s*$", g)
+    if m and key(m.group(1)) == key(original): g = g[:m.start()]
+    return bool(g.strip()) and not lexical(g)
+
 def carried(en, own, block, reason_paren, reason_name, quotes=False):
     """The spans an English text earns for the Indonesian it carries from `own`: its parenthesised originals, the
     longest Capitalised runs `own` holds verbatim, and (statute) its quoted terms — each inside `block` only."""
@@ -193,8 +228,9 @@ def partition(k, pieces, label=0):
     return go(0, []) or []
 
 class Record:
-    """The record-bound allow spans of one code, compiled once: (pattern, the whole text as drawn, reason, gapped,
-    within) — `within` is the (pattern, whole) of the drawn text the span must sit inside, or None."""
+    """The record-bound allow spans of one code, compiled once: (pattern, the whole text as drawn, reason, keep,
+    within) — `keep` is `gapped`'s per-gap originals or None, `within` the (pattern, whole[, keep]) of the drawn
+    text the span must sit inside, or None."""
     def __init__(self, rec, reasons, i18n=None, overlay=None):
         self.judul = rec.get("judul") or ""
         self.title_re = re.compile(flex(self.judul)) if self.judul else None
@@ -210,8 +246,11 @@ class Record:
             spans.append((re.compile(r"Original \(Bahasa Indonesia\):?\s*“?" + flex(k) + "”?"), t, R_ORIGINAL, False, None))
         raw = (rec.get("l4_bali") or {}).get("reason") or ""
         en = (reasons.get(raw) or {}).get("en") or raw
-        if en and english(en):   # an enum inside it is drawn as its label: a short run, checked lexicon-free
-            spans.append((re.compile("(.{1,40}?)".join(flex(p) for p in IDENT_RE.split(en))), en, R_REASON, True, None))
+        own = (rec.get("pma_status") or "").strip().upper()
+        if en and english(en):   # an enum or record key inside it is drawn as its label, the record's own status word
+            tokens = IDENT_RE.pattern + (r"|\b%s\b" % own if own in STATUS else "")   # as its English (Q17)
+            rx, keep = gapped(en, re.compile(tokens), lambda t: WORD.get(t.upper(), WORD.get(t)))
+            spans.append((rx, en, R_REASON, keep, None))
         desc, own = (i18n or {}).get(rec.get("uraian") or "", ""), rec.get("uraian") or ""
         if desc:   # parentheses and names: inside the description only
             spans += carried(desc, own, (re.compile(flex(desc)), desc), R_PAREN, R_NAME)
@@ -228,17 +267,21 @@ class Record:
         prose = re.sub(r"\*\*|__", "", "\n".join(x for x in prose if isinstance(x, str)))
         lines_ = [" ".join(l.lstrip("-• ").split()) for l in prose.split("\n") if l.strip()]
         sentences = [x for l in lines_ for x in re.split(r"(?<=[.!?])\s+(?=[A-Z])", l)]
+        q17 = closed(rec)   # each of the record's own values outside (…) is a gap the View fills with its English
+        q17 = re.compile("|".join(r"(?<!\w)%s(?!\w)" % re.escape(v) for v in q17)) if q17 else None
         for para in sentences:   # a View draws a line of the verdict or one sentence of it
+            rx, keep = gapped(para, q17, lambda t: None, False)
             for m in re.finditer(r"\([^()]+\)", para):
                 if lexical(m.group()):
-                    spans.append((re.compile(flex(m.group())), m.group(), R_OVERLAY, False, (re.compile(flex(para)), para)))
+                    spans.append((re.compile(flex(m.group())), m.group(), R_OVERLAY, False, (rx, para, keep)))
         # Ruling 1 (curated prose stays, counted by reason): a line or sentence of the English verdict drawn whole —
         # never one that is Indonesian only, nor one that carries the record's official title (ruling 3: under its
-        # label only).
+        # label only), nor one with a Q17 value of the record left in it.
         for para in dict.fromkeys(lines_ + sentences):
             toks = [w.lower() for _, w in words(para)]
             if lexical(para) and any(t not in LEX for t in toks) and not (self.title_re and self.title_re.search(para)):
-                spans.append((re.compile(flex(para)), para, R_PROSE, False, None))
+                rx, keep = gapped(para, q17, lambda t: None, False)
+                spans.append((rx, para, R_PROSE, keep, None))
         self.spans = spans
 
 def analyse(row, rec):
@@ -250,9 +293,10 @@ def analyse(row, rec):
     mask, allowed = list(text), []
     lkeys = [(n, key(l)) for n, l in enumerate(lines) if key(l)]
     spans = [(m.span(), r) for rx, r in ALLOW_RE for m in rx.finditer(text)]
-    def drawn(rx, whole, gapped=False):   # [(span)], and the hull of each occurrence, every occurrence
-        found = [m.span() for m in rx.finditer(text) if not (gapped and any(lexical(g) for g in m.groups()))]
+    def drawn(rx, whole, keep=None):   # [(span)], and the hull of each occurrence, every occurrence
+        found = [m.span() for m in rx.finditer(text) if not keep or all(map(kept, m.groups(), keep))]
         hulls = list(found)
+        if keep: return found, hulls   # a gap is judged in its pattern only: the source's own words are what it bars
         # PDFKit orders lines by geometry and splits runs at a font change, so a wrapped text can come back
         # with its lines swapped, cut ("m²" / ".") or interleaved with a neighbour's: then lines that partition it
         # exactly are allowed, each line once, as often as the text is drawn.
@@ -287,8 +331,8 @@ def analyse(row, rec):
             free = [pc for pc in free if pc not in parts]
         return found, hulls
     hulls_of = {}
-    for rx, whole, r, gapped, within in (rec.spans if rec else []):
-        found = drawn(rx, whole, gapped)[0]
+    for rx, whole, r, keep, within in (rec.spans if rec else []):
+        found = drawn(rx, whole, keep)[0]
         if found and within:   # a carried-over name or quoted original belongs to the English text that carries it
             if within[1] not in hulls_of: hulls_of[within[1]] = drawn(*within)[1]
             hulls = hulls_of[within[1]]
@@ -334,6 +378,18 @@ def selftest():
                 "- Risk: Menengah Rendah for the Mikro and Kecil scales, with the Sertifikat Standar issued automatically.\n"
                 "- The Aktivitas Vila code is open to the Mikro and Kecil scales of the market.\n- Rendah Menengah Tinggi",
                 "meaning": "Bakery production for the market (roti dan kue). Aktivitas Vila — villa rental for guests."}})
+    r8 = Record({"judul": "Aktivitas Vila", "per_skala": [{"kewenangan": "Bupati/Walikota", "jangka_waktu": "Otomatis"},
+                                                          {"kewenangan": "Gubernur", "jangka_waktu": "7"}]}, {}, {},
+                {"en": {"verdict": "**Authority:** Bupati/Walikota (district/city head). NIB issued automatically "
+                        "(Otomatis) by Bupati/Walikota via OSS.\n**Timeline:** Otomatis — automatic issuance.",
+                        "whoFor": "Reports go to the Menteri Perdagangan each year."}})
+    r9 = Record({"judul": "Aktivitas Vila", "pma_status": "TERBUKA", "l4_bali": {"reason": "Nationally TERBUKA and the "
+                 "Besar scale is 'Tinggi' -> survives the moratorium"}}, {})
+    r10 = Record({"judul": "Aktivitas Vila", "pma_status": "TERBUKA", "l4_bali": {"reason": "TERTUTUP to WNA under Kemenkes "
+                  "health law; for PMA use 86103 (klinik, TERBATAS 67%)"}}, {})
+    r10.spans += Record({"pma_status": "TERBUKA", "l4_bali": {"reason": "PMA open (outside all three lampiran; "
+                                                                        "pma_cap_verified) with a partnership for the community"}}, {}).spans
+    r11 = Record({"judul": "Aktivitas Vila", "per_skala": [{"jangka_waktu": "Sesuai ketentuan OJK/BI"}]}, {})
     r6 = Record({"judul": "Aktivitas Vila", "per_skala": [{"persyaratan": [v6]}], "pma_official_basis": b6}, {},
                 {"Wajib memiliki sertifikat dari Pemerintah Daerah": "Must hold a certificate (sertifikat) from the Pemerintah Daerah"})
     cases = [("Villa Rental\nOfficial title (Bahasa Indonesia)\nAktivitas Vila", 0, r),
@@ -397,13 +453,36 @@ def selftest():
              ("Rendah Menengah Tinggi", 1, r7),                                                  # Indonesian only
              ("Bakery production for the market (roti dan kue).", 0, r7),                         # meaning, (…)
              ("Aktivitas Vila — villa rental for guests.", 1, r7),                                 # the raw title inline
-             ("The Aktivitas Vila code is open to the Mikro and Kecil scales of the market.", 1, r7)]
+             ("The Aktivitas Vila code is open to the Mikro and Kecil scales of the market.", 1, r7),
+             # Q17 in curated prose: the record's own kewenangan / jangka_waktu drawn as its English, the original in
+             # (…) after it at most; one the curator put in (…) stays; a value that is not the record's stays prose
+             ("Authority: Bupati/Walikota (district/city head).", 1, r8),
+             ("Authority: Regent/Mayor (Bupati/Walikota) (district/city head).", 0, r8),
+             ("Authority: Regent/Mayor (district/city head).", 0, r8),
+             ("Authority: Regent/Mayor (Gubernur) (district/city head).", 1, r8),          # another value's original
+             ("Authority: (Bupati/Walikota) (district/city head).", 1, r8),                 # the original alone
+             ("NIB issued automatically (Otomatis) by Regent/Mayor (Bupati/Walikota) via OSS.", 0, r8),
+             ("NIB issued automatically (Otomatis) by Bupati/Walikota via OSS.", 1, r8),
+             ("Timeline: Otomatis — automatic issuance.", 1, r8),
+             ("Timeline: Instant — automatic issuance.", 0, r8),
+             ("Reports go to the Menteri Perdagangan each year.", 0, r8),
+             # Q17 in the curated Bali reason (Q20 (2)): the record's own status word drawn as its pinned English
+             # word and no other, a record key as its label; another record's status word is the curator's prose
+             ("Nationally TERBUKA and the Besar scale is 'Tinggi' -> survives the moratorium", 1, r9),
+             ("Nationally Open and the Besar scale is 'Tinggi' -> survives the moratorium", 0, r9),
+             ("Nationally Restricted and the Besar scale is 'Tinggi' -> survives the moratorium", 1, r9),
+             ("TERTUTUP to WNA under Kemenkes health law; for PMA use 86103 (klinik, TERBATAS 67%)", 0, r10),
+             ("PMA open (outside all three lampiran; cap verified) with a partnership for the community", 0, r10),
+             ("PMA open (outside all three lampiran; pma_cap_verified) with a partnership for the community", 1, r10),
+             # Q16 gap 1: a non-numeric jangka_waktu is a closed set (curated English), never a labelled original
+             ("Term\nSesuai ketentuan OJK/BI", 1, r11), ("Term\nOriginal (Bahasa Indonesia)\nSesuai ketentuan OJK/BI", 1, r11),
+             ("Term\nAs set by OJK/BI rules", 0, r11)]
     for (group, field), (own, other) in zip(STATUTE, STATUTE_ROWS):   # each statute field: its own value under the
-        rec = {"judul": "Aktivitas Vila"}                               # label, and another's under the same label
+        rec = {"judul": "Aktivitas Vila"}                               # label, another's under the same label, its
         (rec.setdefault(group, [{}])[0] if group else rec)[field] = [own] if field in ("persyaratan", "kewajiban") else own
-        rr = Record(rec, {})
+        rr = Record(rec, {})                                            # own under another field's label (Q20 (4))
         cases += [("Original (Bahasa Indonesia)\n" + own, 0, rr), ("Original (Bahasa Indonesia)\n" + other, 1, rr),
-                  ("Scope\n" + own, 1, rr)]
+                  ("Scope\n" + own, 1, rr), ("Official title (Bahasa Indonesia)\n" + own, 1, rr)]
     bad = []
     for text, want, rr in cases:
         got = len(analyse({"text": text}, rr)[0])
