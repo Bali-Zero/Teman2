@@ -113,6 +113,18 @@ class Repo:
         return self.run("hash-object", "-w", "--stdin", input=data)
 
 
+def url_rewrites(repo: "Repo", urls: list[str]) -> list[str]:
+    """url.<base>.insteadOf / pushInsteadOf rules (any config level) that would rewrite one of `urls`.
+    A rewrite applied to the push alone would bypass every identity check made on the fetch."""
+    out = repo.run("config", "--get-regexp", r"^url\..*\.(push)?insteadof$", check=False)
+    hits = []
+    for line in out.splitlines():
+        key, _, prefix = line.partition(" ")
+        if prefix and any(u.startswith(prefix) for u in urls):
+            hits.append(f"{key} {prefix}")
+    return hits
+
+
 def norm_url(u: str) -> str:
     """Identity of a repository URL, whatever its transport: https://host/o/r(.git), ssh://user@host/o/r,
     user@host:o/r and file:///path all reduce to "host/o/r" (or "file:/path"), so the never-push-to-canonical
@@ -371,6 +383,10 @@ def sync(a, hb) -> int:
     repo = Repo(state / "repo.git")
     if not (state / "repo.git").exists():
         subprocess.run(["git", "init", "--bare", "-q", str(state / "repo.git")], check=True)
+    rewrites = url_rewrites(repo, [a.canonical_url, a.zero_url])
+    if rewrites:
+        raise SyncError("git URL rewriting applies to the sync's URLs (" + "; ".join(rewrites) + "): refusing, "
+                        "the push destination could differ from the repository the checks read", EXIT_USAGE)
     repo.run("config", "remote.canonical.url", a.canonical_url)
     repo.run("config", "remote.canonical.promisor", "true")
     repo.run("config", "remote.canonical.partialclonefilter", "blob:none")
@@ -442,7 +458,11 @@ def sync(a, hb) -> int:
     missing = [l[1:] for l in repo.run("rev-list", "--objects", "--missing=print", new, "--not", zero_ref,
                                        check=False).splitlines() if l.startswith("?")]
     prefetch(repo, missing)
-    p = repo.run("push", a.zero_url, f"{new}:refs/heads/main", check=False, raw=True, timeout=NET_TIMEOUT)
+    # Compare-and-swap on the exact tip we built on: the remote main must still BE zero_tip (not merely an
+    # ancestor of `new`), so the update is a fast-forward from that tip and nothing else. Any repository
+    # whose main is not zero's fetched tip (canonical included) refuses it as stale.
+    p = repo.run("push", f"--force-with-lease=refs/heads/main:{zero_tip}", a.zero_url, f"{new}:refs/heads/main",
+                 check=False, raw=True, timeout=NET_TIMEOUT)
     if p.returncode != 0:
         err = p.stderr.decode(errors="replace")
         # Only a lost race is retryable. A "[remote rejected]" (ruleset, GH006, hook declined) is permanent,

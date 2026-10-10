@@ -416,3 +416,29 @@ def test_a_target_without_the_slim_manifests_is_not_zero(w, tmp_path, capsys):
     assert rc == 2
     assert git(impostor, "rev-parse", "main") == before
     assert "not zero" in capsys.readouterr().out
+
+
+def test_a_push_rewrite_toward_canonical_is_refused_before_anything_runs(w, tmp_path, monkeypatch, capsys):
+    cfg = tmp_path / "gitconfig"
+    cfg.write_text(f'[url "{w.canon_url}"]\n\tpushInsteadOf = {w.zero_url}\n')
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(cfg))
+    canon_before = git(w.canon, "rev-parse", "main")
+    assert w.run() == 2
+    assert git(w.canon, "rev-parse", "main") == canon_before
+    assert "URL rewriting" in capsys.readouterr().out
+
+
+def test_the_push_is_a_compare_and_swap_on_the_exact_fetched_tip(w, monkeypatch):
+    seen = []
+    real = zs.Repo.run
+
+    def spy(self, *args, **kw):
+        if args and args[0] == "push":
+            seen.append(args)
+        return real(self, *args, **kw)
+
+    monkeypatch.setattr(zs.Repo, "run", spy)
+    tip = w.zero_tip()
+    assert w.run() == 0
+    assert seen and seen[0][1] == f"--force-with-lease=refs/heads/main:{tip}"
+    assert git(w.zero_bare, "rev-parse", "main^") == tip  # a fast-forward child of that tip, nothing else
