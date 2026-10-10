@@ -27,7 +27,10 @@ objective: >-
   instrument requests on the ledger: R12 (the record's own permit name keeps its original in parentheses), R15 (a
   gap closing its line runs to the line's end), R16 (a pictograph is not text), and R19 — the lead's 2026-10-11 Q17
   reading: a value that is the whole of a (…) stays, inside a longer (…) it is a gap (#8232 F2), and the record's
-  own judul is a gap drawn "<English title> (<official title>)", a title inside (…) or another code's never.
+  own judul is a gap drawn "<English title> (<official title>)", a title inside (…) or another code's never. (10)
+  R17: the card's intel_2026 prose (whatItMeans, whoThisIsFor, whatChanged, zantaraOpener, youllAlsoNeed's notes)
+  is curated prose read like the overlay's, under the F1 limit. (11) Emphasis markup a View draws literally ("**")
+  is no word, and a gap holds 80 characters plus twice its value (a title's English and the title).
 constraints:
   - No Sources file changes; renders byte-identical by construction.
   - "Every binding of #8224 and #8227 stays green, and EN-1c's guilts still fail."
@@ -46,3 +49,5 @@ acceptance:
     probe: "M5: en_purity self-test 0 lines; the b1/b2/b5/64993/F1/F2/R12/R15/R16/R19 rows disagree with main's analyser"
   - text: PR 5 on this head SHALL leave in sheet-ledger only what its own View must fix.
     probe: "Pro: PR 5 (p5-ledger-v3) applied without a commit, full census; sheet-ledger 0, the residual it had on EN-1c gone"
+  - text: The prepared stack (PR 5, 6, 3) on this head SHALL show each View's residual by its true number.
+    probe: "Pro: p3-card-v3 (5+6+3) applied without a commit, full census; sheet-ledger, chat-rail and detail-card printed"
