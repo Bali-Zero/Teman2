@@ -17,4 +17,6 @@ reserved by their respective owners:
   - Third-party and government datasets, which keep their original terms
     (e.g. data/source_documents/, the KBLI datasets under
     apps/kbli-navigator-macos/Resources/).
-  - Any file carrying its own licence header, which keeps it.
+  - Any file carrying its own licence header, and any package whose manifest
+    declares its own licence (e.g. apps/mata-garuda and
+    apps/nuzantara-mcp-advanced, MIT), which keep it.

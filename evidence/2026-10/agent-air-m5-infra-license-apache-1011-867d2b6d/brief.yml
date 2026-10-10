@@ -1,0 +1,26 @@
+task_id: license-apache-1011
+mission: LOCALCI-SOVEREIGN (the CodeQL contexts' licence precondition)
+colour: BLUE
+gear: 1
+gear_reason: >-
+  A licence grant: LICENSE (the unmodified Apache-2.0 text), NOTICE (holder and exclusions) and the root package's licence field.
+  No code, workflow, hot-zone path or check changes; the owner took the decision.
+l_level: L2
+gate_class: opus
+objective: >-
+  Release Bali-Zero/Teman2 under Apache-2.0, as the owner decided on 2026-10-11, so that the repo is an "Open Source Codebase"
+  under the GitHub CodeQL Terms (a codebase released under an OSI-approved licence, hosted on GitHub.com: CodeQL databases may then
+  be generated for automated analysis and CI). That is the precondition for deciding the two required CodeQL contexts locally.
+constraints:
+  - The LICENSE text is the official Apache-2.0 text, byte for byte.
+  - NOTICE excludes what the holder does not own or does not license (brand, photographs of people, generated images and audio, third-party and government datasets, files and packages with their own licence).
+  - No legal entity is invented: the holder is the name the repo's footers use.
+acceptance:
+  - text: LICENSE SHALL be the official text (sha256 cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30 of https://www.apache.org/licenses/LICENSE-2.0.txt).
+    probe: "shasum -a 256 LICENSE"
+  - text: GitHub SHALL detect the repo's licence as Apache-2.0 after merge.
+    probe: "gh repo view Bali-Zero/Teman2 --json licenseInfo --jq .licenseInfo.spdxId"
+consumer_map:
+  - GitHub's licence detection (repo licenseInfo) and the GitHub CodeQL Terms' Open Source Codebase condition, read by the CodeQL-local lane next.
+pii_scan: clean
+pii_scan_note: Licence text, a NOTICE naming directories (no client data) and one package.json field.
