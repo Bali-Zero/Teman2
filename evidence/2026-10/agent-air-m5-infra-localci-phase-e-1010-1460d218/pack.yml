@@ -41,20 +41,13 @@ lanes:
 pii_scan: clean
 pii_scan_note: Branch-protection configuration, check names, ruleset ids and key fingerprints only; no client data.
 what_changed:
-  'scripts/localci/phase_e_flip.py (new): plan by default; --apply/--confirm digest; READY report checks (fresh,
-  same repo,
-
-  base = branch, since null, finite, FALSE_GREEN 0 at every level); exactly one write key matching --key-pub; guard and
-
-  layered-rule checks (rules/branches); the write discipline W1-W4 (expected states, fresh reads with retries, exit 3 after
-
-  the first write); --rollback. Tests (135, fake gh with exact argv, pagination, mid-run peer changes) and mutants
-
-  (phase_e_mutants.py, 99/99). README section "Phase E flip" with the write discipline and the arming order; one spec
-
-  paragraph.
-
-  '
+  "scripts/localci/phase_e_flip.py (new): plan by default; --apply/--confirm digest; READY report checks (fresh,\
+  \ same repo,\nbase = branch, since null, finite, FALSE_GREEN 0 at every level); exactly one write key matching --key-pub;\
+  \ guard and\nlayered-rule checks (rules/branches); the write discipline W1-W4 (expected states, fresh reads with retries,\
+  \ exit 3 after\nthe first write); --rollback. Tests (151, fake gh with exact argv, pagination, mid-run peer changes) and\
+  \ mutants\n(phase_e_mutants.py, 105/105). README section \"Phase E flip\" with the write discipline and the arming order;\
+  \ one spec\nparagraph.\n The fake gh validates every PUT body against GitHub's own request schemas, vendored in scripts/localci/tests/fixtures/github_rest_put_schemas.json\
+  \ (github/rest-api-description @ 10efa1c8d0, MIT notice beside it, test-only, one declared deviation pinned by a test)."
 proof:
   "Fakes only; no ruleset or protection was written. The live read-only plan against Bali-Zero/Teman2 (2026-10-10):
 
@@ -73,27 +66,28 @@ ground:
   ts: "2026-10-09T19:25:45Z"
   siblings: Worktree from origin/main 323853ba30. The phase F executor (F2) is the lead's lane; merger.py and prune.py untouched.
 spend:
-  adversarial_rounds: 5
+  adversarial_rounds: 7
   wall_clock_hours: 5.5
 receipts:
-  - claim: 135 passed (test_phase_e_flip.py) after the round-6 council and gate findings.
+  - claim: 151 passed (test_phase_e_flip.py) after the round-7 findings and the schema-specified fake.
     cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_phase_e_flip.py -q -p no:cacheprovider
     exit: 0
-    ts: "2026-10-10T00:24:00Z"
+    ts: "2026-10-10T00:51:41Z"
     seat: claude-opus-5-5 on M5
   - claim:
-      "Mutants 99/99 killed after the round-6 findings (one rule dropped as equivalent: the guard's enforcement check,
+      "Mutants 105/105 killed after the round-7 findings (one rule dropped as equivalent: the guard's enforcement check,
       which the GitHub-side proof already covers); survivors, errors, stale none."
     cmd: python3 scripts/localci/tests/mutants/phase_e_mutants.py
     exit: 0
-    ts: "2026-10-10T00:24:00Z"
+    ts: "2026-10-10T00:51:41Z"
     seat: claude-opus-5-5 on M5
   - claim:
-      Independent Opus gates CONFIRMED rounds 1-4 and 6; round 5 BLOCKED on the declared gear only. Codex BLOCKER rounds
-      2-4 of one class, then RULED by the lead; MEDIUM rounds 5-6, fixed. Kimi round 6 BLOCKER refuted.
+      Independent Opus gates CONFIRMED rounds 1-4, 6 and 7; round 5 BLOCKED on the declared gear only. Codex BLOCKER rounds
+      2-4 of one class, RULED by the lead; MEDIUM rounds 5-7, fixed, the fake's laxity specified by GitHub's schema at its third
+      red. Kimi round 6 BLOCKER refuted.
     cmd: fresh read-only subagents; codex exec --sandbox read-only -c model_reasoning_effort=xhigh on the redacted diff
     exit: 0
-    ts: "2026-10-10T00:16:00Z"
+    ts: "2026-10-10T00:58:00Z"
     seat: claude-opus-5-5 (independent seats), codex-gpt-5.6
   - claim:
       "Live read-only plan: pre-flip, 14 checks, guard proven via rules/branches, 0 write keys, report not READY and stale
@@ -101,6 +95,16 @@ receipts:
     cmd: PYTHONPATH=. python3 scripts/localci/phase_e_flip.py --report <copy of Pro's report.json> --state-dir <scratch>
     exit: 0
     ts: "2026-10-09T22:08:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim:
+      The two PUT request schemas extracted from github/rest-api-description @ 10efa1c8d0f77aa233c967763d0230284bb8e282
+      (file sha256 ba5ddc1e...db194, MIT); the test validator agrees with jsonschema 4.26 (nullable mapped to anyOf null) on
+      459/459 valid and mutated bodies; the four bodies the tool writes are valid.
+    cmd:
+      curl the pinned api.github.com.json; python3 -I extract.py (refs resolved, description/example/title/x-github dropped);
+      python3 -I crosscheck.py
+    exit: 0
+    ts: "2026-10-10T00:50:00Z"
     seat: claude-opus-5-5 on M5
 dissent:
   - seat: codex-gpt-5.6 (read-only, xhigh) at afd5b11035
@@ -222,6 +226,32 @@ dissent:
     resolution:
       Counts and timestamps corrected; the comment now names the checksum as the refusal of an edited file; the exit-3
       text names the third outcome.
+  - seat: codex-gpt-5.6-sol round 7 (9efbb981dd)
+    objection:
+      "MEDIUM: READY is not re-read before the writes (a report turned false during the save, or one expiring before
+      W1, passes). MEDIUM: the fake still accepts bodies outside GitHub's schema (a rule-type typo, exclude as a string). LOW:
+      Ctrl-C before any write escapes as a traceback."
+    status: CONFIRMED
+    resolution:
+      "W1 extended to the report: before every write the flip re-reads it and stops if it no longer proves READY (README:
+      this narrows the window, quiescence covers the rest). The fake's laxity was the third red of one cause (rounds 5, 6,
+      7), so it was specified, not patched — RULED 2026-10-10 by the lead with three conditions, all met: only the two request
+      schemas vendored with source repo, commit, both sha256 and the MIT notice; the contexts deviation pinned by its own test;
+      the validator test-only (phase_e_flip.py never reads the fixture, asserted). The validator agrees with jsonschema 4.26
+      on 459/459 valid and mutated bodies. main refuses Ctrl-C before a write as exit 1. Tests: test_a_report_that_stops_proving_ready_before_the_first_write_writes_nothing,
+      ..._after_the_ruleset_write_sends_no_delete, test_gitHubs_schema_refuses_a_ruleset_body_out_of_it (7 cases), test_every_body_the_flip_and_its_rollback_write_is_in_gitHubs_schema,
+      test_the_contexts_deviation_is_still_needed_and_is_the_only_one, test_the_vendored_schemas_are_the_extract_their_source_names,
+      test_ctrl_c_during_the_plans_reads_is_refused_without_a_traceback; mutants pe-report-not-rechecked, pe-ruleset-rule-type-typo,
+      pe-ruleset-exclude-string, pe-main-ctrl-c-escapes."
+  - seat: claude-opus-5-5 gate round 7 (9efbb981dd)
+    objection:
+      "LOW: main's catch-all is not pre-write by construction — a failing success or FAILED print after a send reported
+      'nothing was written', exit 1. LOW: Ctrl-C during the plan's reads is a traceback, against the README."
+    status: CONFIRMED
+    resolution:
+      run_flip and run_rollback record the sent writes on the namespace; main returns exit 3 with the plan hint whenever
+      a write had been sent, and guards its own output. Tests test_a_failure_of_the_tools_own_output_after_the_writes_is_exit_3,
+      ..._after_a_rollback_is_exit_3; mutants pe-flip-sent-not-tracked, pe-rollback-sent-not-tracked.
 residuals:
   - "Accepted by the ruling: GitHub's REST API has no compare-and-swap for rulesets or branch protection; a sub-second window
     remains between W1's read and its write. Quiescence (--quiescent, operator-declared) takes concurrent writers out of scope;

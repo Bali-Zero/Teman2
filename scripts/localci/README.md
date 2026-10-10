@@ -737,6 +737,10 @@ write sent against a state nobody re-read — on draft #8191; the cause is speci
 - *W5, after every write.* GitHub's answer must show the write took, and a fresh read after it is compared with the state the
   write intended; a read that differs or fails is read again (3 reads, 2 s apart) before it counts. On a mismatch the run
   stops, writes nothing further, and prints the rollback state file.
+- *W1 for the report.* Before every write of the flip the report is read again and must still prove READY (fresh, the
+  branch's, the whole journal, FALSE_GREEN 0); otherwise the run stops before that write. This narrows the window, it does
+  not close it: a READY that turns false between that read and the write is the same residual as GitHub's, and quiescence
+  covers it.
 - *W2, nothing else blocks the key.* Rules layer, and a bypass exempts only its own ruleset: beside `merge-queue-main`'s rule,
   every rule GitHub applies to the branch must be `deletion`, `non_fast_forward` or `copilot_code_review`; any other refuses
   the plan. The guard counts only when `rules/branches` shows its `deletion` and `non_fast_forward` on the branch.
@@ -745,8 +749,9 @@ write sent against a state nobody re-read — on draft #8191; the cause is speci
 - *W4, a write sent is a write owned.* Once a write has been sent, any failure — a refused write, a mismatch, an unexpected
   error, Ctrl-C — is exit 3 with the state file and the full rollback command, never a traceback that reads as "refused".
   When a rollback stops after its classic write, the branch is frozen, not open (classic protection and the key-only
-  ruleset): run the plan again, or restore the state file's `ruleset` by hand. Before any write, every failure is exit 1
-  ("REFUSED", nothing written), never a traceback.
+  ruleset): run the plan again, or restore the state file's `ruleset` by hand. Before any write, every failure — Ctrl-C included — is exit 1
+  ("REFUSED", nothing written), never a traceback; a failure after a write was sent is exit 3 even when it happens outside
+  the write loop (the tool's own output failing, say).
 - *The state file is sealed.* The flip saves it 0600 with a sha256 of its canonical JSON; `--rollback` refuses, before any
   plan, a file whose checksum does not match its content — one edited since — and then checks the shape of both bodies.
 - *Residual, accepted and documented.* GitHub's REST API offers no compare-and-swap (no `If-Match`) for rulesets or branch
@@ -775,7 +780,11 @@ any other exit (nothing collected, a collection error) is ERROR, never a kill. I
 caller's `-k` cannot deselect the guilt. A rule whose text no longer occurs exactly once is STALE, not skipped. Exit 0 only
 when every test-file set passes unmutated and every mutant is killed; `--only NAME` and `--list` narrow it.
 `python3 scripts/localci/tests/mutants/phase_e_mutants.py` is the same sweep, harness and verdicts for `phase_e_flip.py`
-against `test_phase_e_flip.py`, in its own table.
+against `test_phase_e_flip.py`, in its own table. That suite's fake `gh` refuses any PUT body GitHub's own published request
+schema refuses: the two schemas are vendored in `scripts/localci/tests/fixtures/github_rest_put_schemas.json` (from
+github/rest-api-description at a pinned commit, with the source file's and the extract's sha256; MIT, its notice beside the
+file), read by the tests only. One deviation is declared and pinned by a test: the schema lists the deprecated `contexts` as
+required in `required_status_checks`, while GitHub refuses `contexts` beside `checks`.
 
 **Hosted run.** `.github/workflows/localci-tests.yml` runs this suite on every pull request that touches `scripts/localci/**`, the
 workflow, ancestor pytest configuration or conftests at the repository root or in `scripts/`, or one of the real-repo files the suite

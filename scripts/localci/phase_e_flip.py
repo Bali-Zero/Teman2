@@ -428,7 +428,7 @@ def save_state(state_dir: Path, state: dict, dig: str) -> Path:
     return path
 
 
-def execute(repo: str, branch: str, writes: list[dict], expected: list[dict], took: dict, sent: list) -> None:
+def execute(repo: str, branch: str, writes: list[dict], expected: list[dict], took: dict, sent: list, recheck=None) -> None:
     """The writes in order under the RULED write discipline. ``expected[0]`` is the confirmed state and ``expected[i]`` the
     state write i intends. W1: immediately before write i a fresh read must equal ``expected[i-1]`` — else "changed since
     plan" and nothing is written; ``took[i]`` judges write i's answer (None when it took, else why not); W5: after it a
@@ -441,6 +441,8 @@ def execute(repo: str, branch: str, writes: list[dict], expected: list[dict], to
             raise FlipError(f"before write {i}/{n}: the object could not be read again ({exc}); nothing written by this step") from exc
         if differ := diverges(fresh, expected[i - 1]):
             raise FlipError(f"before write {i}/{n}: changed since plan: {differ}; nothing written by this step")
+        if recheck is not None and (why := recheck()):   # W1 for the precondition that is not GitHub's: READY, read again
+            raise FlipError(f"before write {i}/{n}: the report no longer proves READY ({why}); nothing written by this step")
         args = ["--method", w["method"], w["path"]] + (["--input", "-"] if w["body"] is not None else [])
         sent.append(i)   # from here the write may have landed, whatever the answer says
         try:
@@ -497,9 +499,13 @@ def run_flip(a: argparse.Namespace) -> int:
         ok = isinstance(answer, dict) and is_target(answer) and answer.get("conditions") == state["ruleset"]["conditions"]
         return None if ok else "the ruleset's answer is not the target"
 
+    def still_ready() -> str:
+        return "; ".join(read_report(a.report, a.repo, a.branch)[0])
+
     sent: list = []
+    a.sent = sent   # main reads it: a failure outside W4's handler after a send is still exit 3
     try:
-        execute(a.repo, a.branch, writes, expected, {1: ruleset_took}, sent)
+        execute(a.repo, a.branch, writes, expected, {1: ruleset_took}, sent, recheck=still_ready)
     except BaseException as exc:   # W4: Ctrl-C included — a write sent is a write owned, never a traceback that reads as "refused"
         if not sent:
             print(f"REFUSED: {type(exc).__name__}: {exc}\n  nothing was written; the state file {saved} is unused", file=sys.stderr)
@@ -569,6 +575,7 @@ def run_rollback(a: argparse.Namespace) -> int:
         return None if ok else "the ruleset's answer is not as saved"
 
     sent: list = []
+    a.sent = sent
     try:
         execute(a.repo, a.branch, writes, expected, {1: classic_took, 2: ruleset_back}, sent)
     except BaseException as exc:   # W4
@@ -601,14 +608,20 @@ def main(argv: list[str] | None = None) -> int:
     if not _REPO_RE.match(a.repo) or not _BRANCH_RE.match(a.branch):
         print("bad --repo or --branch", file=sys.stderr)
         return EXIT_BAD_INPUT
+    a.sent = []
     try:
         return run_rollback(a) if a.rollback else run_flip(a)
-    except FlipError as exc:
-        print(f"REFUSED: {exc}", file=sys.stderr)
-        return EXIT_REFUSED
-    except Exception as exc:   # pre-write by construction: after a write is sent, run_* own every failure (W4) and exit 3
-        print(f"REFUSED: {type(exc).__name__}: {exc} (nothing was written)", file=sys.stderr)
-        return EXIT_REFUSED
+    except (Exception, KeyboardInterrupt) as exc:   # Ctrl-C included
+        try:
+            if a.sent:   # after a send, W4's handler owns every failure — this is one outside it (its own output, say)
+                print(f"FAILED: {type(exc).__name__}: {exc}\n  write(s) {a.sent} had been sent: run the plan (no --apply) to "
+                      f"read the branch as it is; the state file is in {a.state_dir}", file=sys.stderr)
+            else:
+                print(f"REFUSED: {type(exc).__name__ + ': ' if not isinstance(exc, FlipError) else ''}{exc}"
+                      f"{'' if isinstance(exc, FlipError) else ' (nothing was written)'}", file=sys.stderr)
+        except OSError:
+            pass
+        return EXIT_WRITE_FAILED if a.sent else EXIT_REFUSED
 
 
 if __name__ == "__main__":

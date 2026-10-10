@@ -9,6 +9,7 @@ import re
 import stat
 import subprocess
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
@@ -43,6 +44,57 @@ def _classic() -> dict:
 MQ_PARAMS = (("check_response_timeout_minutes", 90), ("grouping_strategy", "HEADGREEN"), ("max_entries_to_build", 5),
              ("max_entries_to_merge", 4), ("merge_method", "SQUASH"), ("min_entries_to_merge", 1), ("min_entries_to_merge_wait_minutes", 2))
 REQUIRED_PARAMS = {"merge_queue": {k for k, _ in MQ_PARAMS}, "update": {"update_allows_fetch_and_merge"}}
+
+
+# GitHub's own request schemas for the two writes (github/rest-api-description, MIT; source, hashes and licence in
+# fixtures/): FakeGH refuses a body GitHub's schema refuses, so a test cannot pass on a body GitHub would answer 422.
+# Test-only: phase_e_flip.py never reads them. RULED 2026-10-10 (lead): the fake's laxity is specified by GitHub's
+# schema, not by a reading of it, after three review reds of that one cause.
+SCHEMA_FILE = Path(__file__).parent / "fixtures" / "github_rest_put_schemas.json"
+PUT_SCHEMAS = json.loads(SCHEMA_FILE.read_text())
+PUT_RULESET_SCHEMA = PUT_SCHEMAS["schemas"]["PUT /repos/{owner}/{repo}/rulesets/{ruleset_id}"]
+VENDORED_PROTECTION_SCHEMA = PUT_SCHEMAS["schemas"]["PUT /repos/{owner}/{repo}/branches/{branch}/protection"]
+# DECLARED DEVIATION, pinned by test_the_contexts_deviation_is_still_needed_and_is_the_only_one: the schema lists the
+# deprecated `contexts` as required in required_status_checks, but GitHub refuses `contexts` beside `checks` ("only one of
+# contexts and checks"), and the flip sends `checks`; the fake requires `strict` only there.
+PUT_PROTECTION_SCHEMA = copy.deepcopy(VENDORED_PROTECTION_SCHEMA)
+_rsc = PUT_PROTECTION_SCHEMA["properties"]["required_status_checks"]
+_rsc["required"] = [k for k in _rsc["required"] if k != "contexts"]
+
+_JSON_TYPES = {"string": lambda v: type(v) is str, "integer": lambda v: type(v) is int, "boolean": lambda v: type(v) is bool,
+               "number": lambda v: type(v) in (int, float), "object": lambda v: type(v) is dict, "array": lambda v: type(v) is list}
+
+
+def schema_errors(value, schema: dict, at: str = "$") -> list[str]:
+    """The OpenAPI 3.0 subset the two vendored schemas use — type (+nullable), enum, required, properties, items, oneOf
+    (exactly one branch), minimum, maximum; format, default and deprecated are annotations. Cross-checked against
+    jsonschema 4.26 on 459 valid and mutated bodies (all agree) when it was written."""
+    if value is None and schema.get("nullable"):
+        return []
+    if "oneOf" in schema:
+        n = sum(not schema_errors(value, sub, at) for sub in schema["oneOf"])
+        if n != 1:
+            return [f"{at}: matches {n} of the {len(schema['oneOf'])} oneOf branches"]
+    kind = schema.get("type")
+    if kind is not None and not _JSON_TYPES[kind](value):
+        return [f"{at}: {type(value).__name__} where the schema wants {kind}"]
+    if "enum" in schema and value not in schema["enum"]:
+        return [f"{at}: {value!r} is not one of {schema['enum']}"]
+    if type(value) in (int, float):
+        if "minimum" in schema and value < schema["minimum"]:
+            return [f"{at}: {value} < minimum {schema['minimum']}"]
+        if "maximum" in schema and value > schema["maximum"]:
+            return [f"{at}: {value} > maximum {schema['maximum']}"]
+    errors: list[str] = []
+    if type(value) is dict:
+        errors += [f"{at}: lacks required {k!r}" for k in schema.get("required", []) if k not in value]
+        for k, sub in (schema.get("properties") or {}).items():
+            if k in value:
+                errors += schema_errors(value[k], sub, f"{at}.{k}")
+    if type(value) is list and "items" in schema:
+        for i, x in enumerate(value):
+            errors += schema_errors(x, schema["items"], f"{at}[{i}]")
+    return errors
 
 
 def _rulesets() -> dict:
@@ -130,6 +182,13 @@ class FakeGH:
         raise AssertionError(f"unexpected GET {path}")
 
     def _validate(self, method, path, body):
+        if method == "PUT":
+            schema = PUT_RULESET_SCHEMA if "/rulesets/" in path else PUT_PROTECTION_SCHEMA
+            errors = schema_errors(body, schema)
+            assert not errors, f"GitHub's schema refuses this body: {errors[:3]}"
+        self._validate_semantics(method, path, body)
+
+    def _validate_semantics(self, method, path, body):
         """What GitHub's REST API refuses: an incomplete ruleset body, a rule without its required parameters, a DeployKey
         actor with an id or a pull-request mode, a classic body without its four required fields or with contexts and checks."""
         if method == "PUT" and "/rulesets/" in path:
@@ -1053,3 +1112,130 @@ def test_a_parameter_of_the_wrong_json_type_never_reaches_github(fake, tmp_path,
     assert rc == pef.EXIT_WRITE_FAILED and "FAILED: AssertionError" in err
     assert [p for m, p, _ in fake.writes()] == ["repos/Bali-Zero/Teman2/branches/main/protection", "repos/Bali-Zero/Teman2/rulesets/19779175"]
     assert fake.rulesets[MQ]["rules"][0]["type"] == "update"   # refused: the ruleset is still the key-only one
+
+
+def test_the_vendored_schemas_are_the_extract_their_source_names():
+    src = PUT_SCHEMAS["_source"]
+    canon = json.dumps(PUT_SCHEMAS["schemas"], sort_keys=True, separators=(",", ":")).encode()
+    assert hashlib.sha256(canon).hexdigest() == src["schemas_sha256"]   # an edit to the fixture by hand fails here
+    assert src["repo"] == "github/rest-api-description" and re.fullmatch(r"[0-9a-f]{40}", src["commit"])
+    assert (SCHEMA_FILE.parent / "github_rest_put_schemas.LICENSE.md").read_text().startswith("MIT License")
+    assert "github_rest_put_schemas" not in Path(pef.__file__).read_text()   # test-only: the flip never reads the fixture
+
+
+def test_the_contexts_deviation_is_still_needed_and_is_the_only_one():
+    vendored = VENDORED_PROTECTION_SCHEMA["properties"]["required_status_checks"]["required"]
+    assert "contexts" in vendored, "the vendored schema no longer requires contexts: drop the deviation"
+    assert PUT_PROTECTION_SCHEMA["properties"]["required_status_checks"]["required"] == [k for k in vendored if k != "contexts"]
+    waived = copy.deepcopy(PUT_PROTECTION_SCHEMA)
+    waived["properties"]["required_status_checks"]["required"] = vendored
+    assert waived == VENDORED_PROTECTION_SCHEMA   # nothing else differs from what GitHub publishes
+
+
+def classic_put_body(**rsc) -> dict:
+    return {"required_status_checks": {"strict": False, **rsc}, "enforce_admins": True, "required_pull_request_reviews": None,
+            "restrictions": None}
+
+
+def test_the_fake_refuses_contexts_beside_checks_and_takes_checks_alone(fake):
+    fake._validate("PUT", "repos/Bali-Zero/Teman2/branches/main/protection", classic_put_body(checks=[{"context": "a", "app_id": -1}]))
+    with pytest.raises(AssertionError):
+        fake._validate("PUT", "repos/Bali-Zero/Teman2/branches/main/protection",
+                       classic_put_body(checks=[{"context": "a", "app_id": -1}], contexts=["a"]))
+
+
+@pytest.mark.parametrize("damage", [
+    lambda b: b["rules"].append({"type": "non_fast_foward"}),                  # Codex round 7: a rule type GitHub does not have
+    lambda b: b["conditions"]["ref_name"].update(exclude=""),                   # Codex round 7: a string where a list belongs
+    lambda b: b["rules"][0]["parameters"].update(merge_method="FAST"),
+    lambda b: b["rules"][0]["parameters"].update(max_entries_to_build="5"),
+    lambda b: b.update(enforcement="on"),
+    lambda b: b["bypass_actors"].append({"actor_type": "Robot", "bypass_mode": "always"}),
+    lambda b: b["rules"][0].pop("type"),
+])
+def test_gitHubs_schema_refuses_a_ruleset_body_out_of_it(damage):
+    body = {"name": "merge-queue-main", "target": "branch", "enforcement": "active", "bypass_actors": [],
+            "conditions": {"ref_name": {"exclude": [], "include": ["refs/heads/main"]}},
+            "rules": [{"type": "merge_queue", "parameters": dict(MQ_PARAMS)}]}
+    assert schema_errors(body, PUT_RULESET_SCHEMA) == []
+    damage(body)
+    assert schema_errors(body, PUT_RULESET_SCHEMA)
+
+
+def test_every_body_the_flip_and_its_rollback_write_is_in_gitHubs_schema(fake, tmp_path, capsys):
+    apply(fake, tmp_path, capsys)
+    saved = next(fake.state_dir.glob("pre-flip-*.json"))
+    dig = plan_digest(fake, tmp_path, capsys, "--rollback", str(saved))
+    run(fake, tmp_path, capsys, "--rollback", str(saved), "--apply", "--confirm", dig)
+    bodies = [(p, b) for m, p, b in fake.writes() if m == "PUT"]
+    assert len(bodies) == 3
+    for p, b in bodies:
+        assert schema_errors(b, PUT_RULESET_SCHEMA if "/rulesets/" in p else PUT_PROTECTION_SCHEMA) == [], p
+
+
+def _make_not_ready(path: str) -> None:
+    doc = json.loads(open(path).read())
+    doc["phase_e_ready"] = False
+    open(path, "w").write(json.dumps(doc))
+
+
+def test_a_report_that_stops_proving_ready_before_the_first_write_writes_nothing(fake, tmp_path, capsys, monkeypatch):
+    rep = report(tmp_path)
+    dig = plan_digest(fake, tmp_path, capsys, rep=rep)
+    real_save = pef.save_state
+    def save_then_unready(*args):
+        path = real_save(*args)
+        _make_not_ready(rep)
+        return path
+    monkeypatch.setattr(pef, "save_state", save_then_unready)
+    rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig, rep=rep)
+    assert rc == pef.EXIT_REFUSED and "before write 1/2: the report no longer proves READY" in err and fake.writes() == []
+
+
+def test_a_report_that_stops_proving_ready_after_the_ruleset_write_sends_no_delete(fake, tmp_path, capsys):
+    rep = report(tmp_path)
+    dig = plan_digest(fake, tmp_path, capsys, rep=rep)
+    def unready(f, m, p):
+        if m == "PUT":
+            _make_not_ready(rep)
+    fake.after_write = unready
+    rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig, rep=rep)
+    assert rc == pef.EXIT_WRITE_FAILED and "before write 2/2: the report no longer proves READY" in err
+    assert [m for m, _, _ in fake.writes()] == ["PUT"]
+
+
+def test_ctrl_c_during_the_plans_reads_is_refused_without_a_traceback(fake, tmp_path, capsys, monkeypatch):
+    def interrupt(repo, branch):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(pef, "read_state", interrupt)
+    try:
+        rc, _, err = run(fake, tmp_path, capsys)
+    except KeyboardInterrupt:
+        pytest.fail("Ctrl-C before any write escaped main")
+    assert rc == pef.EXIT_REFUSED and "KeyboardInterrupt" in err and "nothing was written" in err
+
+
+def test_a_failure_of_the_tools_own_output_after_the_writes_is_exit_3(fake, tmp_path, capsys, monkeypatch):
+    dig = plan_digest(fake, tmp_path, capsys)
+    real_print = print
+    def broken_success(*args, **kwargs):
+        if args and str(args[0]).startswith("flipped:"):
+            raise BrokenPipeError("stdout closed")
+        real_print(*args, **kwargs)
+    monkeypatch.setattr(pef, "print", broken_success, raising=False)
+    rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
+    assert rc == pef.EXIT_WRITE_FAILED and "had been sent" in err and "nothing was written" not in err
+    assert [m for m, _, _ in fake.writes()] == ["PUT", "DELETE"]
+
+
+def test_a_failure_of_the_tools_own_output_after_a_rollback_is_exit_3(fake, tmp_path, capsys, monkeypatch):
+    saved, dig = flipped_with_saved(fake, tmp_path, capsys)
+    fake.calls.clear()
+    real_print = print
+    def broken_success(*args, **kwargs):
+        if args and str(args[0]).startswith("rolled back:"):
+            raise BrokenPipeError("stdout closed")
+        real_print(*args, **kwargs)
+    monkeypatch.setattr(pef, "print", broken_success, raising=False)
+    rc, _, err = run(fake, tmp_path, capsys, "--rollback", str(saved), "--apply", "--confirm", dig)
+    assert rc == pef.EXIT_WRITE_FAILED and "had been sent" in err and [m for m, _, _ in fake.writes()] == ["PUT", "PUT"]
