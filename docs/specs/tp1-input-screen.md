@@ -13,14 +13,15 @@ Why it exists: the final gate blocked the screen three times (#7927 B1: 31 leake
 3. Never leaves, in any grouping or reversible encoding that a declared rule covers: credential values; client PII — phone numbers, personal e-mail addresses, national-ID and passport numbers, personal names in CRM-like records (the four enumerated entities). What no rule covers is a declared remainder (item 7, Declared limits).
 4. May leave: ordinary source, exact role mailboxes on the project's own domains, RFC-reserved example addresses, prose that names a secret family without a value.
 5. The screen decides on entities and context, fails closed, and counts every refusal; a public repo is no exception to the output boundary.
-6. Declared out of scope: payment card numbers (PAN) and IBANs, personal financial data that UU PDP 27/2022 classifies as specific personal data — owner decision pending (UU PDP art. 4(2)(f)). Rows `lim_pan` and `lim_iban` are declared limits; if the owner adopts them they join `id_number`.
-7. Any other personal data outside the four enumerated entities, whatever its category, is a DECLARED LIMIT of this screen — for example a date of birth, a postal address, a messaging or social handle, a vehicle plate, location coordinates, religion or marital status, health notes, financial data other than the PAN and IBAN of item 6, such as a bank account number or a salary, or a record that combines such data with a name; owner decision pending (UU PDP art. 4(2) and 4(3)); such files are queued unless another rule fires.
+6. Payment card numbers (PAN) and IBANs are adopted into `id_number`, fail-closed: a file holding one is not queued. They are personal financial data that UU PDP 27/2022 classifies as specific personal data (art. 4(2)(f)). A PAN is a Luhn-valid number of 13–19 digits, grouped by spaces or hyphens or contiguous under a card label; an IBAN is two letters, two check digits and 11–30 letters or digits whose ISO 13616 mod-97 check passes. A card-like number that fails Luhn and an IBAN-shaped string that fails its checksum are innocent.
+7. Any other personal data outside the four enumerated entities, whatever its category, is SKIPPED as `pii_other`, fail-closed — for example a date of birth, a postal address, a messaging or social handle, a vehicle plate, location coordinates, religion or marital status, health notes, financial data other than the PAN and IBAN of item 6, such as a bank account number or a salary, or a record that combines such data with a name (UU PDP art. 4(2) and 4(3)); a label with a whole-value placeholder (`tanggal_lahir: YYYY-MM-DD`) is innocent.
+8. Decision (2026-10-10): items 6 and 7 were adopted by the imperator session under the owner's explicit delegation ("fai tutto tu e decidi tu al meglio"); the owner can reverse it. Why: Builder Contract §4 makes PII an OUTPUT boundary with no cloud whose terms make cleartext PII acceptable, and UU PDP art. 4(2)(f) and 4(2)-(3) name these categories; TP1 is outside the trust boundary; the cost of a false block is only a file not sent.
 
 ## Contract and decision order
 
 The screen judges one candidate: `(path, bytes)` read from the working tree at build time — the bytes
 that would leave, not the committed blob. It returns `queue` or `skip(reason)`. Order: structural
-checks; bounded read; UTF-8 decode; decoded views; credential rules; PII rules. The first reason wins. Within PII, the unique precedence is phone → e-mail → `id_number` → `crm_name`; therefore `nomor_telepon` resolves to phone even though `nomor` is also an ID label.
+checks; bounded read; UTF-8 decode; decoded views; credential rules; PII rules. The first reason wins. Within PII, the unique precedence is phone → e-mail → `id_number` → `crm_name` → `pii_other`; therefore `nomor_telepon` resolves to phone even though `nomor` is also an ID label.
 The path is screened as text together with the content, because it leaves in the job id and the prompt.
 
 Builder policy is separate from the screen: candidate selection (`EXT`, `ROOTS`, `SKIP_PATH`, counted as
@@ -258,7 +259,7 @@ and doubling an adversarial input from 64 KiB to 512 KiB must grow time by no mo
 The builder prints one summary line, keys sorted, zero-count reasons optional:
 
     {"jobs": N, "skipped": {"binary": 0, "crm_name": 0, "email": 0, "empty": 0, "excluded_path": 0,
-     "id_number": 0, "not_regular": 0, "oversized": 0, "phone": 0, "screen_error": 0, "secret": 0,
+     "id_number": 0, "not_regular": 0, "oversized": 0, "phone": 0, "pii_other": 0, "screen_error": 0, "secret": 0,
      "short": 0, "symlink": 0, "unreadable": 0, "unsafe_path": 0}, "prompt_chars": M}
 
 Invariant: `jobs + sum(skipped) ==` the number of tracked paths under `ROOTS` with an `EXT` suffix, plus
@@ -271,27 +272,26 @@ Declared limits. A closed list without a remainder is a spec defect, and so is a
 is cured by naming the remainder it fell into, not by a row chasing the shape. Rows that pin a rule carry `rule:`, a
 phrase quoted verbatim from this spec; the schema test fails when the phrase is missing, so deleting a PINNED phrase turns its row red (every remainder row carries one); rule text that no row quotes is not covered by this check.
 
-| Vocabulary                     | Section                               | Remainder                                 |
-| ------------------------------ | ------------------------------------- | ----------------------------------------- |
-| name stems (Tier P/S/K)        | Named assignments                     | `rem_stem`                                |
-| property words                 | Named assignments                     | `rem_property`                            |
-| all-digit Tier P threshold (6) | Named assignments                     | `rem_short_digits`                        |
-| Tier S floor (16, mixed)       | Named assignments                     | `lim_04`                                  |
-| Tier K floor (20)              | Named assignments                     | `rem_tierk_short`                         |
-| type-shaped identifiers        | Annotations and references            | `lim_03`                                  |
-| placeholder words              | Literals, references and placeholders | `rem_placeholder`                         |
-| assignment carriers            | Assignment carriers                   | `rem_carrier`                             |
-| CLI flags and contexts         | Credential-bearing contexts           | `rem_cli`                                 |
-| credential families            | Credential families                   | `g7988_10`                                |
-| decoded views and depth        | Decoded views                         | `rem_views`, `r2x_11`                     |
-| phone shapes and labels        | Phones                                | `rem_phone_label`                         |
-| phone grouping chains          | Phones                                | `rem_slash_phone`                         |
-| ID labels                      | National IDs                          | `rem_id_label`; unlabelled: `g7971n_05`   |
-| ID number grammar              | National IDs                          | `rem_id_grammar`                          |
-| CRM name grammar and structure | National IDs                          | `rem_crm_mononym`; outside CRM: `lim_01`  |
-| CRM name keys                  | National IDs                          | `rem_crm_key`                             |
-| e-mail spellings               | E-mail                                | `lim_02`                                  |
-| PII enumeration                | Threat model                          | `rem_pii_other` (+ `lim_pan`, `lim_iban`) |
+| Vocabulary                     | Section                               | Remainder                                |
+| ------------------------------ | ------------------------------------- | ---------------------------------------- |
+| name stems (Tier P/S/K)        | Named assignments                     | `rem_stem`                               |
+| property words                 | Named assignments                     | `rem_property`                           |
+| all-digit Tier P threshold (6) | Named assignments                     | `rem_short_digits`                       |
+| Tier S floor (16, mixed)       | Named assignments                     | `lim_04`                                 |
+| Tier K floor (20)              | Named assignments                     | `rem_tierk_short`                        |
+| type-shaped identifiers        | Annotations and references            | `lim_03`                                 |
+| placeholder words              | Literals, references and placeholders | `rem_placeholder`                        |
+| assignment carriers            | Assignment carriers                   | `rem_carrier`                            |
+| CLI flags and contexts         | Credential-bearing contexts           | `rem_cli`                                |
+| credential families            | Credential families                   | `g7988_10`                               |
+| decoded views and depth        | Decoded views                         | `rem_views`, `r2x_11`                    |
+| phone shapes and labels        | Phones                                | `rem_phone_label`                        |
+| phone grouping chains          | Phones                                | `rem_slash_phone`                        |
+| ID labels                      | National IDs                          | `rem_id_label`; unlabelled: `g7971n_05`  |
+| ID number grammar              | National IDs                          | `rem_id_grammar`                         |
+| CRM name grammar and structure | National IDs                          | `rem_crm_mononym`; outside CRM: `lim_01` |
+| CRM name keys                  | National IDs                          | `rem_crm_key`                            |
+| e-mail spellings               | E-mail                                | `lim_02`                                 |
 
 The e-mail allowlist is the one closed list whose outside is GUILTY (everything not allowed is skipped), so it needs no
 remainder.
@@ -324,9 +324,6 @@ and those rows differ. Everything not listed here is a defect when it leaks.
 - `limit:rem_id_grammar` — a number under an ID label outside the 6–16 / ≥ 6-digit grammar.
 - `limit:rem_crm_mononym` — a CRM name outside the 2–6-word grammar (one word, seven or more, a non-letter start).
 - `limit:rem_crm_key` — a 2–6-word personal name under an unlisted name key in a CRM-shaped record (`nama_lengkap`, `customerName`).
-- `limit:rem_pii_other`, `limit:rem_pii_other_address`, `limit:rem_pii_other_messaging`, `limit:rem_pii_other_social`, `limit:rem_pii_other_plate` — five witnesses for the catch-all personal-data remainder of threat-model item 7 (date of birth, postal address, messaging handle, social handle, vehicle plate); its other examples share these rows; PAN and IBAN stay on item 6 (`lim_pan`, `lim_iban`).
-- `limit:lim_pan` — a payment card number: out of scope, owner decision pending (UU PDP art. 4(2)(f)).
-- `limit:lim_iban` — an IBAN: out of scope, owner decision pending (UU PDP art. 4(2)(f)).
 
 Fail-closed bounds are not limits: oversized, binary, unsafe-path, unreadable and `screen_error` files
 are refused and asserted as such. Encrypted, compressed or hashed values are not cleartext and are out of scope.
@@ -337,7 +334,7 @@ are refused and asserted as such. Encrypted, compressed or hashed values are not
    skipped with exactly its `expected_reason`; every innocence row is queued (100 %); limit rows are
    reported, not asserted. Structural rows run through the builder in a temporary directory.
 2. `test_screen_corpus.py` stays green: schema, reconstruction, claimed shapes, source counts
-   (31 + 16 + 12 receipt leaks, 6 untested rules, ≥ 30 innocence rows), this limit list, and a corpus
+   (31 + 16 + 12 receipt leaks, 6 untested rules, ≥ 30 innocence rows), this limit list (21 declared limits), the pinned adoption rows of items 6 and 7 (7 asserted guilt rows, 3 innocence rows), and a corpus
    file with no token-, DSN- or phone-shaped literal; every innocence row, MATERIALISED, carries no
    credential family and no Indonesian mobile (the schema test asserts both). The implementation test
    does the same before asserting that the row queues.
