@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """en_purity.py — the en-purity gate (Q12, Z-DECISIONI 2026-10-10: "in English it's English"). Python 3.9, stdlib.
 
-census <encensus.jsonl> --id <encensus-id.jsonl>  (Tests/encensus output, English and the Indonesian dump of the
-  gated surfaces; dataset from env KBLI_JSON). A STRING is one drawn line of one (code, view). It is Indonesian when,
+census <encensus.jsonl> --id <encensus-id.jsonl> [--curated <contenttest.json>]  (Tests/encensus output, English and
+  the Indonesian dump of the gated surfaces; dataset from env KBLI_JSON; --curated proves the curated basis/note
+  language rule identical in Swift and Python). A STRING is one drawn line of one (code, view). It is Indonesian when,
   outside the allowlisted spans, it holds a word of Tools/design/en_lexicon.tsv (word, group, English gloss: the gloss
   is the reason the word is not English), the code's raw official title, or a pipeline key — a snake_case identifier
   or a `key=` locator, which no span allowlists (ruling 1). Words are read as drawn, split where PDFKit glued two runs
   ("CodesSemua"). The allowlist is ALLOW below plus spans checked against THIS code's record: its official title
   under its label (ruling 3), its pma_kondisi under the original label (ruling 4) or as written when English, its
   curated English Bali reason (an enum in it may stand only as a short lexicon-free label), and the Indonesian an
-  English description quotes in parentheses. Prints `en-indonesian-strings: N` per view and category and the
+  English text (description, statute field, curated overlay verdict) quotes in parentheses, and the record's statute
+  fields (Q16) under the original label or as their own translation. Prints `en-indonesian-strings: N` per view and category and the
   allowlisted spans by reason; exit 1 when a GATED view holds any string. The self-test runs first, synthetic and
   over the known corpus: all 1,559 ID titles drawn unlabelled are flagged, every ID-only word of the gated surfaces
   is a lexicon word, and the English titles and descriptions flag nothing (innocence, measured).
@@ -62,9 +64,18 @@ R_PAREN = "the Indonesian original a record's English text (description, statute
 R_NAME = "an Indonesian proper name a record's English text (description, statute field) carries over from its source"
 R_QUOTE = "an Indonesian term the English of a record's statute field quotes («…», “…”)"
 R_BASIS = "the record's own legal basis or note, written in English: its Indonesian words are the instrument's terms"
-# Q16: the record's statute fields a View may draw — each value quoted under its label, or its translation drawn whole
+R_OVERLAY = "the Indonesian tier or scale word the record's curated English verdict quotes in parentheses (C6)"
+# Q16: the record's statute fields a View may draw — each value quoted under its label, or its translation drawn whole.
+# STATUTE_ROWS: the self-test's own value and another record's value of the same field, both Indonesian.
 STATUTE = (("per_skala", "persyaratan"), ("per_skala", "kewajiban"), ("per_skala", "scope_uraian"),
            ("ruang_lingkup", "uraian"), (None, "pma_official_basis"), (None, "pma_nota"))
+STATUTE_ROWS = (("Memiliki izin usaha yang masih berlaku", "Memiliki sertifikat laik fungsi bangunan"),
+                ("Menyampaikan laporan kegiatan usaha", "Menjamin keamanan dan keselamatan alat"),
+                ("Selain terasi ikan", "Pembuatan terasi ikan"),
+                ("Kegiatan usaha pengolahan ikan", "Kegiatan usaha perdagangan ikan"),
+                ("Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #3",
+                 "Perpres 49/2021 Lampiran II (Bidang Usaha yang dialokasikan untuk Koperasi dan UMKM) entry #7"),
+                ("Sektor prioritas: Pertanian sayuran daun", "Sektor prioritas: Industri pengolahan ikan"))
 CLAUSE_EN = set("the of and to in for with on by or from as at is are not only must may any no".split())
 CLAUSE_ID = set("yang dan di ke dari untuk dengan pada dalam atau oleh tidak bukan bagi serta hanya".split())
 IDENT_RE = re.compile(r"\b[A-Za-z0-9]+(?:_[A-Za-z0-9]+)+\b")
@@ -98,6 +109,26 @@ def english_clause(s):
     head = [w.lower() for w in WORD_RE.findall(re.split(r" — |[(;]", s)[0])]
     return sum(w in CLAUSE_EN for w in head) > sum(w in CLAUSE_ID for w in head)
 
+def english_text(s):
+    """LabelBook.isEnglishText: a curated basis or note is judged on its WHOLE text — the opening-clause rule over the
+    text with its clause marks "(;—" blanked, since a basis opens with a citation that holds no function word. The
+    View draws by this rule, so the instrument reads by it; census --curated proves the two agree record by record."""
+    return english_clause(re.sub(r"[(;—]", " ", s))
+
+def parity(ds, path):
+    """(printed lines, failures): the language LabelBook.isEnglishText gave each curated basis and note (contenttest's
+    `curated_language`) against english_text, and the codes #8227's `english` rule would have read otherwise."""
+    swift = json.load(open(path)).get("curated_language") or {}
+    out, bad = [], []
+    for field, name in (("pma_official_basis", "basis"), ("pma_nota", "nota")):
+        vals = {c: r[field] for c, r in ds.items() if isinstance(r.get(field), str) and r[field].strip()}
+        same = [c for c, v in vals.items() if (swift.get(c) or {}).get(name) == ("en" if english_text(v) else "id")]
+        moved = sorted(c for c, v in vals.items() if english(v) != english_text(v))
+        out.append("parity: %s language, LabelBook.isEnglishText = english_text: %d/%d; the #8227 rule read otherwise: %s"
+                   % (name, len(same), len(vals), ", ".join(moved) or "none"))
+        bad += ["EN-SELFTEST %s language differs between Swift and Python: %s" % (name, c) for c in sorted(set(vals) - set(same))]
+    return out, bad
+
 def key(s): return "".join(c for c in s if c.isalnum())
 
 def strip_html(s):
@@ -116,7 +147,7 @@ def statute(rec):
             vals = row.get(field) if isinstance(row, dict) else None
             for v in vals if isinstance(vals, list) else [vals]:
                 if isinstance(v, str) and v.strip():
-                    for x in (v, strip_html(v)): out.setdefault(x, group is None and english(x))
+                    for x in (v, strip_html(v)): out.setdefault(x, group is None and english_text(x))
     return list(out.items())
 
 def carried(en, own, block, reason_paren, reason_name, quotes=False):
@@ -137,15 +168,22 @@ def carried(en, own, block, reason_paren, reason_name, quotes=False):
             i = j or i + 1
     return spans
 
-def partition(k, pieces):
-    """CONTIGUOUS lines whose keys, in some order and each used once, spell exactly `k`. A span's label leads it, so
-    the label line is always among them, and next to the rest (#8224 gate binding 3: a label lends itself to nothing
-    drawn elsewhere); a duplicate or a missing piece leaves no partition."""
+LABELS = ("Official title (Bahasa Indonesia)", "Original (Bahasa Indonesia)")
+
+def partition(k, pieces, label=0):
+    """Pieces (id, key, line) whose keys, in some order and each used once, spell exactly `k`. A label leads its span
+    and lends itself only to what is drawn NEXT to it (#8224 gate binding 3): every piece that ends inside the
+    label's `label` characters sits on the line next to the piece after it. The text's own pieces may lie anywhere in
+    the dump — PDFKit interleaves a multi-column text with its neighbours' lines — so the exact tiling of the
+    record's own text is the evidence. A duplicate or a missing piece leaves no partition."""
     def go(p, used):
-        if p == len(k): return used if max(used) - min(used) + 1 == len(used) else None
-        for n, kk in pieces:
-            if n not in used and k.startswith(kk, p):
-                got = go(p + len(kk), used + [n])
+        if p == len(k):
+            ends, at = [], 0
+            for u in used: at += len(u[1]); ends.append(at)
+            return used if all(abs(used[i][2] - used[i + 1][2]) == 1 for i in range(len(used) - 1) if ends[i] <= label) else None
+        for pc in pieces:
+            if pc not in used and k.startswith(pc[1], p):
+                got = go(p + len(pc[1]), used + [pc])
                 if got: return got
         return None
     return go(0, []) or []
@@ -153,7 +191,7 @@ def partition(k, pieces):
 class Record:
     """The record-bound allow spans of one code, compiled once: (pattern, the whole text as drawn, reason, gapped,
     within) — `within` is the (pattern, whole) of the drawn text the span must sit inside, or None."""
-    def __init__(self, rec, reasons, i18n=None):
+    def __init__(self, rec, reasons, i18n=None, overlay=None):
         self.judul = rec.get("judul") or ""
         self.title_re = re.compile(flex(self.judul)) if self.judul else None
         spans = []
@@ -165,7 +203,7 @@ class Record:
             spans.append((re.compile(flex(k)), k, R_KONDISI, False, None))
         elif k:
             t = "Original (Bahasa Indonesia): “%s”" % k
-            spans.append((re.compile(r"Original \(Bahasa Indonesia\):\s*“" + flex(k) + "”"), t, R_ORIGINAL, False, None))
+            spans.append((re.compile(r"Original \(Bahasa Indonesia\):?\s*“?" + flex(k) + "”?"), t, R_ORIGINAL, False, None))
         raw = (rec.get("l4_bali") or {}).get("reason") or ""
         en = (reasons.get(raw) or {}).get("en") or raw
         if en and english(en):   # an enum inside it is drawn as its label: a short run, checked lexicon-free
@@ -177,9 +215,15 @@ class Record:
             if written_en:
                 spans.append((re.compile(flex(v)), v, R_BASIS, False, None)); continue
             t = "Original (Bahasa Indonesia): “%s”" % v
-            spans.append((re.compile(r"Original \(Bahasa Indonesia\):\s*“" + flex(v) + "”"), t, R_ORIGINAL, False, None))
+            spans.append((re.compile(r"Original \(Bahasa Indonesia\):?\s*“?" + flex(v) + "”?"), t, R_ORIGINAL, False, None))
             en = (i18n or {}).get(v)
             if en: spans += carried(en, v, (re.compile(flex(en)), en), R_PAREN, R_NAME, quotes=True)
+        verdict = ((overlay or {}).get("en") or {}).get("verdict") or ""
+        for para in re.split(r"\n+|(?<=[.!?])\s+(?=[A-Z])", re.sub(r"\*\*|__", "", verdict)):   # a View draws sentences
+            para = " ".join(para.lstrip("-• ").split())
+            for m in re.finditer(r"\([^()]+\)", para):
+                if lexical(m.group()):
+                    spans.append((re.compile(flex(m.group())), m.group(), R_OVERLAY, False, (re.compile(flex(para)), para)))
         self.spans = spans
 
 def analyse(row, rec):
@@ -191,15 +235,42 @@ def analyse(row, rec):
     mask, allowed = list(text), []
     lkeys = [(n, key(l)) for n, l in enumerate(lines) if key(l)]
     spans = [(m.span(), r) for rx, r in ALLOW_RE for m in rx.finditer(text)]
-    def drawn(rx, whole, gapped=False):   # [(span)], and the hull of each occurrence
+    def drawn(rx, whole, gapped=False):   # [(span)], and the hull of each occurrence, every occurrence
         found = [m.span() for m in rx.finditer(text) if not (gapped and any(lexical(g) for g in m.groups()))]
-        if found: return found, found
+        hulls = list(found)
         # PDFKit orders lines by geometry and splits runs at a font change, so a wrapped text can come back
-        # with its lines swapped or cut ("m²" / "."): then contiguous lines that partition it exactly are allowed.
+        # with its lines swapped, cut ("m²" / ".") or interleaved with a neighbour's: then lines that partition it
+        # exactly are allowed, each line once, as often as the text is drawn.
         k = key(whole)
-        parts = partition(k, [(n, lk) for n, lk in lkeys if lk in k])
-        found = [(starts[n], starts[n] + len(lines[n])) for n in parts]
-        return found, [(min(found)[0], max(found)[1])] if found else []
+        lab = next((len(key(l)) for l in LABELS if whole.startswith(l)), 0)
+        taken = lambda a, b: any(x < b and a < y for x, y in found)
+        free = [(n, lk, n, (starts[n], starts[n] + len(lines[n]))) for n, lk in lkeys
+                if lk in k and not taken(starts[n], starts[n] + len(lines[n]))]
+        glued = False
+        while free:
+            parts = partition(k, free, lab)
+            if not parts and not glued and not lab:
+                # PDFKit glues runs that share a baseline across cells ("…the reserved bidang" + "BALI VERDICT"): an
+                # unlabelled text may then use the longest head or tail of a line next to its own lines, at a word
+                # boundary; the rest of that line is judged on its own.
+                glued, near = True, {m for _, _, n, _ in free for m in (n - 1, n + 1)}
+                for n in sorted(near - {pc[2] for pc in free}):
+                    if not 0 <= n < len(lines) or taken(starts[n], starts[n] + len(lines[n])): continue
+                    ws = lines[n].split(" ")
+                    for j in range(len(ws) - 1, 0, -1):
+                        head = " ".join(ws[:j])
+                        if len(key(head)) >= 12 and key(head) in k:
+                            free.append(((n, "head"), key(head), n, (starts[n], starts[n] + len(head)))); break
+                    for j in range(1, len(ws)):
+                        tail = " ".join(ws[j:])
+                        if len(key(tail)) >= 12 and key(tail) in k:
+                            free.append(((n, "tail"), key(tail), n, (starts[n] + len(lines[n]) - len(tail), starts[n] + len(lines[n])))); break
+                continue
+            if not parts: break
+            got = [pc[3] for pc in parts]
+            found += got; hulls.append((min(got)[0], max(got)[1]))
+            free = [pc for pc in free if pc not in parts]
+        return found, hulls
     hulls_of = {}
     for rx, whole, r, gapped, within in (rec.spans if rec else []):
         found = drawn(rx, whole, gapped)[0]
@@ -243,6 +314,8 @@ def selftest():
     v6 = "Wajib memiliki <b>sertifikat</b> dari Pemerintah Daerah"
     b6 = ("Perpres 10/2021 Pasal 3(1)(d) (as amended by Perpres 49/2021): the residual category — «Bidang Usaha yang tidak"
           " termasuk dalam huruf a» — open to foreign capital")
+    r7 = Record({"judul": "Aktivitas Vila"}, {}, {}, {"en": {"verdict": "**All scales**: Medium-High risk (Menengah Tinggi)"
+                " for Large-Scale PT PMA. NIB + Verified Standard Certificate required.\n\n**Zoning:** Green zone only."}})
     r6 = Record({"judul": "Aktivitas Vila", "per_skala": [{"persyaratan": [v6]}], "pma_official_basis": b6}, {},
                 {"Wajib memiliki sertifikat dari Pemerintah Daerah": "Must hold a certificate (sertifikat) from the Pemerintah Daerah"})
     cases = [("Villa Rental\nOfficial title (Bahasa Indonesia)\nAktivitas Vila", 0, r),
@@ -286,7 +359,26 @@ def selftest():
              ("Requirements\nWajib memiliki sertifikat dari Pemerintah Daerah", 1, r6),                  # unlabelled
              ("Original (Bahasa Indonesia): “\nRequirements\nWajib memiliki sertifikat dari Pemerintah Daerah”", 1, r6),
              (b6, 0, r6),
-             ("Basis: «Bidang Usaha yang tidak termasuk dalam huruf a»", 1, r6)]                        # a piece of it
+             ("Basis: «Bidang Usaha yang tidak termasuk dalam huruf a»", 1, r6),                       # a piece of it
+             # EN-1c: the label on its own line (PR 5's OriginalLabel), next to its text, whose lines may then
+             # interleave with a neighbour's; a label away from its text lends itself to nothing
+             ("Original (Bahasa Indonesia)\nWajib memiliki sertifikat\nRisk Medium-Low\ndari Pemerintah Daerah", 0, r6),
+             ("Original (Bahasa Indonesia)\nRisk Medium-Low\nWajib memiliki sertifikat dari Pemerintah Daerah", 1, r6),
+             # an English basis drawn as lead + columns, a body line glued to a neighbour's heading on its baseline;
+             # a glued tail that is not the basis stays judged
+             ("Perpres 10/2021 Pasal 3(1)(d) (as amended by Perpres 49/2021): the residual category\n— «Bidang Usaha "
+              "yang tidak BALI VERDICT\nTerm Instant\ntermasuk dalam huruf a» — open to foreign capital", 0, r6),
+             ("Perpres 10/2021 Pasal 3(1)(d) (as amended by Perpres 49/2021): the residual category\n— «Bidang Usaha "
+              "yang tidak Pertanian Jagung\ntermasuk dalam huruf a» — open to foreign capital", 1, r6),
+             # C6: the tier word a curated verdict sentence quotes in (…), inside that sentence only
+             ("All scales: Medium-High risk (Menengah Tinggi) for Large-Scale PT PMA.", 0, r7),
+             ("Risk class (Menengah Tinggi)", 1, r7)]
+    for (group, field), (own, other) in zip(STATUTE, STATUTE_ROWS):   # each statute field: its own value under the
+        rec = {"judul": "Aktivitas Vila"}                               # label, and another's under the same label
+        (rec.setdefault(group, [{}])[0] if group else rec)[field] = [own] if field in ("persyaratan", "kewajiban") else own
+        rr = Record(rec, {})
+        cases += [("Original (Bahasa Indonesia)\n" + own, 0, rr), ("Original (Bahasa Indonesia)\n" + other, 1, rr),
+                  ("Scope\n" + own, 1, rr)]
     bad = []
     for text, want, rr in cases:
         got = len(analyse({"text": text}, rr)[0])
@@ -344,22 +436,25 @@ def corpus(ds, i18n, reasons, rows, id_rows):
     out.append("innocence: `modal` in the English corpus %d (a lexicon word: the app has no English modal)" % modal)
     return out, bad
 
-def census(path, id_path, n_ex):
+def census(path, id_path, n_ex, curated=None):
     fails = selftest()
     ds = {r["kode_kbli_2025"]: r for r in json.load(open(os.environ["KBLI_JSON"]))["data"]}
     reasons = json.load(open(os.path.join(ROOT, "Resources", "kbli-reason-i18n.json")))
     i18n = json.load(open(os.path.join(ROOT, "Resources", "kbli-data-i18n-en.json")))
+    overlay = json.load(open(os.path.join(ROOT, "Resources", "kbli-overlay.json")))
     recs, rows = {}, [json.loads(l) for l in open(path)]
     id_rows = [json.loads(l) for l in open(id_path)] if id_path else []
     lines, bad = corpus(ds, i18n, reasons, rows, id_rows)
     fails += bad
+    if curated:
+        more, bad = parity(ds, curated); lines += more; fails += bad
     for f in fails: print(f)
     for l in lines: print(l)
     by_view, by_cat, allow_by, allow_gated = Counter(), Counter(), Counter(), Counter()
     distinct, examples = set(), defaultdict(list)
     for row in rows:
         c = row["code"]
-        if c in ds and c not in recs: recs[c] = Record(ds[c], reasons, i18n)
+        if c in ds and c not in recs: recs[c] = Record(ds[c], reasons, i18n, overlay.get(c))
         hits, allowed = analyse(row, recs.get(c))
         for r, _ in allowed:
             allow_by[r] += 1
@@ -617,7 +712,8 @@ if __name__ == "__main__":
     a = sys.argv[1:]
     if a[:1] == ["census"] and len(a) > 1:
         sys.exit(census(a[1], a[a.index("--id") + 1] if "--id" in a else None,
-                        int(a[a.index("--examples") + 1]) if "--examples" in a else 3))
+                        int(a[a.index("--examples") + 1]) if "--examples" in a else 3,
+                        a[a.index("--curated") + 1] if "--curated" in a else None))
     if a[:1] == ["gated"]:
         print(",".join(GATED)); sys.exit(0)
     if a[:1] == ["static"]:
