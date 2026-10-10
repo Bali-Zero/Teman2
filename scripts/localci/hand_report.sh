@@ -13,7 +13,7 @@
 # Usage: bash scripts/localci/hand_report.sh [STATE_DIR]   (default ~/.nuzantara-pilots/local-ci/merger)
 set -euo pipefail
 if [ "${LOCALCI_HAND_REPORT_CLEAN:-}" != "$$" ]; then   # the exec keeps the pid: a caller cannot pre-set the sentinel
-  exec env -i HOME="$HOME" PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" LOCALCI_HAND_REPORT_CLEAN="$$" /bin/bash "$0" "$@"
+  exec /usr/bin/env -i HOME="$HOME" PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" LOCALCI_HAND_REPORT_CLEAN="$$" /bin/bash "$0" "$@"
 fi
 STATE="${1:-$HOME/.nuzantara-pilots/local-ci/merger}"
 export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_ATTR_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0   # the tick's isolation

@@ -13,6 +13,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 LOCALCI = Path(__file__).resolve().parents[1]
 SCRIPT = LOCALCI / "hand_report.sh"
 TICK = LOCALCI / "localci_merger_tick.sh"
@@ -25,6 +27,8 @@ def extracted(text: str) -> set[str]:
     """Every file a script extracts from scripts/localci/ with `git show "<rev>:scripts/localci/<x>"`: the literal names, and
     the names of the `for f in ...; do` loop each `$f` show sits in. A show the parse cannot place fails the test, so a new
     extraction shape is never silently left out of the comparison."""
+    shows = SHOW_RE.findall(text)   # any other shape (unquoted, cat-file, a flag, a split quote) fails here, never left out
+    assert text.count(":scripts/localci/") == len(shows), "a scripts/localci/ extraction the parse cannot read"
     names: set[str] = set()
     loops = [(m.start(), text.index("done", m.end()), m.group(1).split()) for m in LOOP_RE.finditer(text)]
     for m in SHOW_RE.finditer(text):
@@ -41,6 +45,13 @@ def test_the_hand_report_extracts_exactly_the_files_the_tick_extracts():
     tick = extracted(TICK.read_text())
     assert {"merger.py", "hosted_compare.py", "runner.py"} <= tick   # the parse itself still sees the tick's loops
     assert extracted(SCRIPT.read_text()) == tick
+
+
+@pytest.mark.parametrize("line", ['git show --no-textconv "$SHA:scripts/localci/a.py" > a', "git show $SHA:scripts/localci/b.py > b",
+                                  'git cat-file -p "$SHA:scripts/localci/c.py" > c', 'git show "$SHA":scripts/localci/d.py > d'])
+def test_an_extraction_the_parse_cannot_read_fails_it(line):
+    with pytest.raises(AssertionError, match="cannot read"):
+        extracted(line + "\n")
 
 
 def test_the_parse_sees_every_extraction_shape():

@@ -173,17 +173,18 @@ HAND_MUTANTS = {
                                  '  || { REF=refs/merger/base;',
                              'REF=refs/merger/base\nSHA="$(git -C "$STATE/repo.git" rev-parse --verify --quiet "$REF^{commit}")" \\\n'
                                  '  || { REF=refs/merger/wrapper;'),
-    "hr-partial-scrub": (HR, 'exec env -i HOME="$HOME"', 'exec env -u GH_TOKEN -u GIT_DIR -u PYTHONPATH HOME="$HOME"'),
+    "hr-partial-scrub": (HR, 'exec /usr/bin/env -i HOME="$HOME"', 'exec /usr/bin/env -u GH_TOKEN -u GIT_DIR -u PYTHONPATH HOME="$HOME"'),
     "hr-sentinel-presettable": (HR, 'if [ "${LOCALCI_HAND_REPORT_CLEAN:-}" != "$$" ]; then', 'if [ -z "${LOCALCI_HAND_REPORT_CLEAN:-}" ]; then'),
     "hr-path-without-homebrew": (HR, 'PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"', 'PATH="/usr/bin:/bin"'),
     "hr-not-isolated": (HR, '"$STATE/venv/bin/python" -I ', '"$STATE/venv/bin/python" '),
     "hr-git-isolation-dropped": (HR, "export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_ATTR_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0", ":"),
-    "hr-git-config-count-unexported": (HR, "export GIT_CONFIG_COUNT=3 ", "GIT_CONFIG_COUNT=3 "),
+    "hr-git-config-overrides-unexported": (HR, "export GIT_CONFIG_COUNT=3 ", "GIT_CONFIG_COUNT=3 "),   # COUNT and its 6 keys
     "hr-no-cleanup": (HR, "trap 'rm -rf \"$CODE\"' EXIT\n", ""),
     "hr-runner-dropped": (HR, "merger.py hosted_compare.py runner.py prune.py", "merger.py hosted_compare.py prune.py"),
     "hr-repo-dropped": (HR, " report --repo Bali-Zero/Teman2 --state-dir", " report --state-dir"),
     # the comparison must see a file the tick starts to extract, in any shape
     "tick-adds-a-literal-show": (TICK, 'HB_NEW="$(mktemp', 'git -C "$STATE/repo.git" show "$SHA:scripts/localci/newdep.py" > "$CODE/newdep.py"\nHB_NEW="$(mktemp'),
+    "tick-adds-a-cat-file": (TICK, 'HB_NEW="$(mktemp', 'git -C "$STATE/repo.git" cat-file -p "$SHA:scripts/localci/newdep.py" > "$CODE/newdep.py"\nHB_NEW="$(mktemp'),
     "tick-adds-an-indented-loop": (TICK, 'HB_NEW="$(mktemp', 'if true; then\n  for f in newdep.py; do\n    git -C "$STATE/repo.git" show '
                                          '"$SHA:scripts/localci/$f" > "$CODE/$f"\n  done\nfi\nHB_NEW="$(mktemp'),
 }

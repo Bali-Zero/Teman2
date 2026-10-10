@@ -48,14 +48,15 @@ what_changed:
   not expire during a normal run". scripts/localci/hand_report.sh (new): phase E step 1, the report the tick''s way — code
   from refs/merger/wrapper (else refs/merger/base), resolved once to one SHA; the tick''s five files beside merger.py (runner.py
   included: the stale-verdict judge loads it), a missing one failing the run; the merger venv''s python -I; launchd''s environment
-  (env -i HOME PATH, re-exec sentinel bound to the pid) and the tick''s git isolation; the extracted code removed on exit.
-  test_hand_report.py keeps its file list equal to every extraction in the tick (loops at any indent and literal shows; an
-  unplaceable show fails), and runs it against a fake mirror: argv, files, wrapper-over-base preference, base fallback, the
-  whole environment against an allowlist, launchd''s PATH read from the plist, python -I, cleanup. phase_e_mutants.py gains
-  12 hand_report/tick rules. scripts/localci/README.md: the phase E usage starts with step 1 (the script), then the plan and
-  the apply; the precondition paragraph and W1-for-the-report state the shared limit and the full-limit re-read. Tests: the
-  margin test asserts the plan''s blocker line matches the apply; a new test pins the re-read to the full limit; the age-message
-  expectations follow the new text. The margin test is renamed test_the_plan_and_apply_agree_on_a_report_near_its_age_limit.
+  (env -i HOME PATH, re-exec through /usr/bin/env, sentinel bound to the pid) and the tick''s git isolation; the extracted
+  code removed on exit. test_hand_report.py keeps its file list equal to every extraction in the tick (loops at any indent
+  and literal shows; an unplaceable show fails), and runs it against a fake mirror: argv, files, wrapper-over-base preference,
+  base fallback, the whole environment against an allowlist, launchd''s PATH read from the plist, python -I, cleanup. phase_e_mutants.py
+  gains 13 hand_report/tick rules. A scripts/localci/ extraction in a shape the parse cannot read (unquoted, cat-file, a flag,
+  a split quote) fails the parse; the re-exec goes through /usr/bin/env. scripts/localci/README.md: the phase E usage starts
+  with step 1 (the script), then the plan and the apply; the precondition paragraph and W1-for-the-report state the shared
+  limit and the full-limit re-read. Tests: the margin test asserts the plan''s blocker line matches the apply; a new test
+  pins the re-read to the full limit; the age-message expectations follow the new text. The margin test is renamed test_the_plan_and_apply_agree_on_a_report_near_its_age_limit.
   Mutants: pe-plan-margin-ignored, pe-recheck-uses-margin, pe-report-ahead-accepted; pe-report-age-unchecked repointed.'
 proof:
   "Tests and mutants on fixtures (fake gh); the README recipe checked on Pro read-only; a live read-only plan with Pro's
@@ -78,14 +79,14 @@ spend:
   adversarial_rounds: 2
   wall_clock_hours: 1.5
 receipts:
-  - claim: "test_phase_e_flip.py and test_hand_report.py: 159 passed."
+  - claim: "test_phase_e_flip.py and test_hand_report.py: 163 passed."
     cmd:
       PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_phase_e_flip.py scripts/localci/tests/test_hand_report.py
       -q -p no:cacheprovider
     exit: 0
     ts: "2026-10-10T03:14:00Z"
     seat: claude-opus-5-5 on M5
-  - claim: "phase_e_mutants.py: 120/120 killed (108 phase_e_flip, 12 hand_report and tick); survivors, errors, stale none."
+  - claim: "phase_e_mutants.py: 121/121 killed (108 phase_e_flip, 13 hand_report and tick); survivors, errors, stale none."
     cmd: python3 scripts/localci/tests/mutants/phase_e_mutants.py
     exit: 0
     ts: "2026-10-10T02:13:00Z"
@@ -106,10 +107,11 @@ receipts:
     seat: claude-opus-5-5 on M5
   - claim:
       "On Pro, into scratch state dirs symlinking the real mirror, journal and venv (report.json, lease and install backups
-      left out): hand_report.sh (code 12 chars from refs/merger/wrapper) gave recorded_context_false_green 0, 2 rows reclassified
-      hosted-stale, HOSTED_STALE 73, compared 13 merges over 1.378 days, not READY, rc 0 in 366 s; the old two-file recipe beside
-      it gave recorded_context_false_green 2, 0 reclassified, HOSTED_STALE 0. The lead's report.json was untouched (mtime 2026-10-09T22:48Z);
-      the scratch dirs were removed."
+      left out): hand_report.sh as of b1edd531b1 (code from refs/merger/wrapper; the later commits change the ref read to one
+      resolved SHA, the git isolation to the tick's, the sentinel and /usr/bin/env — not what the report computes) gave recorded_context_false_green
+      0, 2 rows reclassified hosted-stale, HOSTED_STALE 73, compared 13 merges over 1.378 days, not READY, rc 0 in 366 s; the
+      old two-file recipe beside it gave recorded_context_false_green 2, 0 reclassified, HOSTED_STALE 0. The lead's report.json
+      was untouched (mtime 2026-10-09T22:48Z); the scratch dirs were removed."
     cmd:
       "ssh pro: bash /tmp/hand_report_fu.sh /tmp/localci-hand-report-proof-new; the old recipe into /tmp/localci-hand-report-proof-old;
       python3 -I json read of both report.json"
@@ -149,4 +151,14 @@ dissent:
       "All LOWs and NITs answered in the third commit; the 9 test-gap mutants plus 3 more are rules in phase_e_mutants.py
       and all killed; the extraction resolves one SHA; the sentinel is the pid. gh under env -i: verified on Pro once it was
       back (receipts)."
+  - seat: claude-opus-5-5 final gate (7875ddb004)
+    objection:
+      "CONFIRMED, no BLOCKER/MEDIUM. LOW: extracted() still returned set() for four shapes (show --no-textconv, unquoted,
+      cat-file, a split quote) against a docstring that says never silently. NITs: env found through the caller's PATH; a mutant
+      name narrower than its effect; the Pro proof ran the script as of b1edd531b1."
+    status: CONFIRMED
+    resolution:
+      "The gate's prescribed fix: extracted() asserts every ':scripts/localci/' in the text is a show it reads
+      (a parametrized test with the four shapes; a cat-file mutant on the tick); /usr/bin/env; the mutant renamed; the proof
+      receipt names the script's commit."
 residuals: []
