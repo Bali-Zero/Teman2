@@ -64,7 +64,7 @@ R_PAREN = "the Indonesian original a record's English text (description, statute
 R_NAME = "an Indonesian proper name a record's English text (description, statute field) carries over from its source"
 R_QUOTE = "an Indonesian term the English of a record's statute field quotes («…», “…”)"
 R_BASIS = "the record's own legal basis or note, written in English: its Indonesian words are the instrument's terms"
-R_OVERLAY = "the Indonesian tier or scale word the record's curated English verdict quotes in parentheses (C6)"
+R_OVERLAY = "the Indonesian a sentence of the record's curated English verdict quotes in parentheses (C6)"
 # Q16: the record's statute fields a View may draw — each value quoted under its label, or its translation drawn whole.
 # STATUTE_ROWS: the self-test's own value and another record's value of the same field, both Indonesian.
 STATUTE = (("per_skala", "persyaratan"), ("per_skala", "kewajiban"), ("per_skala", "scope_uraian"),
