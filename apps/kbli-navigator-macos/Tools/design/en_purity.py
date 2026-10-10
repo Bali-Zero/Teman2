@@ -151,8 +151,9 @@ def words(s):
 def lexical(s): return [w.lower() for _, w in words(s) if w.lower() in LEX]
 
 def flex(s):
-    """A pattern for `s` as drawn: any whitespace run may be a line break, and a break may follow / or a dash."""
-    out = []
+    """A pattern for `s` as drawn: any whitespace run may be a line break, and a break may follow / or a dash.
+    Emphasis markup is read as nothing, as analyse() reads the drawn lines."""
+    out, s = [], re.sub(r"\*+|__", "", s)
     for part in re.split(r"(\s+)", s):
         if not part: continue
         if part.isspace(): out.append(r"\s+"); continue
@@ -520,6 +521,8 @@ def selftest():
     j12 = "Aktivitas Perawatan untuk Penyandang Disabilitas Mental atau Penyalahgunaan Obat oleh Pemerintah"
     r12 = Record({"judul": j12, "pma_official_basis": 'Perpres 10/2021 Pasal 2(1)(b): the title "%s" names the activity as '
                   'carried out by the Pemerintah; not an investable field' % j12}, {})
+    r21 = Record({"judul": "Aktivitas Vila", "pma_status": "TERBUKA", "l4_bali": {"reason": "A PT PMA can satisfy it: "
+                  "private parties enter by permit (PP 36/2010 Pasal 8(3): *perorangan, badan usaha, koperasi*)."}}, {})
     r6 = Record({"judul": "Aktivitas Vila", "per_skala": [{"persyaratan": [v6]}], "pma_official_basis": b6}, {},
                 {"Wajib memiliki sertifikat dari Pemerintah Daerah": "Must hold a certificate (sertifikat) from the Pemerintah Daerah"})
     cases = [("Villa Rental\nOfficial title (Bahasa Indonesia)\nAktivitas Vila", 0, r),
@@ -660,7 +663,11 @@ def selftest():
              ("Looking into Pengolahan Kopi (10761)? Nationally this carries PMA status: Open.", 1, r20),
              ("Wajib memiliki izin usaha.", 1, r20),
              ("Roasters such as Pengolahan Kopi Gayo sell abroad.", 0, r20),                    # a title in a name
-             ("Roasters such as Pengolahan Kopi sell abroad.", 1, r20)]
+             ("Roasters such as Pengolahan Kopi sell abroad.", 1, r20),
+             ("A PT PMA can satisfy it: private parties enter by permit (PP 36/2010 Pasal 8(3): *perorangan, badan\n"
+              "usaha, koperasi*).", 0, r21),                                                   # italics in a reason
+             ("A PT PMA can satisfy it: private parties enter by permit (PP 36/2010 Pasal 8(3): *perorangan, badan\n"
+              "usaha, koperasi*). Kewajiban berlaku.", 1, r21)]
     for (group, field), (own, other) in zip(STATUTE, STATUTE_ROWS):   # each statute field: its own value under the
         rec = {"judul": "Aktivitas Vila"}                               # label, another's under the same label, its
         (rec.setdefault(group, [{}])[0] if group else rec)[field] = [own] if field in ("persyaratan", "kewajiban") else own
