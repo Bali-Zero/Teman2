@@ -1,5 +1,5 @@
-# Gear-1 evidence pack - the Visa Oracle i18n dead-key census.
-gear: 1
+# Gear-2 evidence pack - the Visa Oracle i18n dead-key census.
+gear: 2
 brief_ref: evidence/brief.yml
 ruling: >-
   Team lead mandate, 2026-10-10 - the census is the missing arming step of the dead-keys chain.
@@ -45,7 +45,27 @@ receipts:
     exit: 0
     ts: "2026-10-10T15:05:00Z"
     seat: Claude Opus 5.5 orchestrator
-dissent: []
+dissent:
+  - seat: codex-gpt-5.6-sol (read-only review, rollout 2026-10-10T15-37-27, model verified in the rollout file)
+    objection: >-
+      HIGH - outcome.document_status.CONDITIONAL and .UNKNOWN count as referenced because the values appear as quoted
+      type-union members, while the only production adapter emits status REQUIRED; the census cannot see they never render.
+    status: PLAUSIBLE
+    disposition: >-
+      Accepted as a static-analysis limit, documented in the test header (Known limits). Proving reachability needs data-flow
+      analysis, out of scope for a census; the two keys are a follow-up for the dead-key triage.
+  - seat: codex-gpt-5.6-sol (same review)
+    objection: >-
+      MEDIUM - a multi-segment interpolation such as outcome.${tail} with tail "provenance.CLIENT_GUARD.title" would be flagged
+      as unreferenced although it renders; the template rule assumes one dotted segment.
+    status: PLAUSIBLE
+    disposition: >-
+      Fails loud, never silent: such a spelling turns the census red and names the key, so the author either keeps the
+      one-segment spelling or extends the rule. Documented in the header.
+  - seat: codex-gpt-5.6-sol (same review)
+    objection: MEDIUM - nothing stops the allowlist from growing back.
+    status: RETRACTED
+    disposition: Cured in 65e7a23dad - ALLOWLIST_CEILING = 102 pins the allowlist size.
 spend:
   wall_clock_hours: 2
   adversarial_rounds: 1
