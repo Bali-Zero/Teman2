@@ -125,7 +125,9 @@ OUTCOME_CANNOT_VERIFY = "CANNOT_VERIFY"
 # Holiday-coverage lane (a second check with its own state and board row; see the lane block below)
 OUTCOME_COVERAGE_WARN = "HOLIDAY_GAP_WARN"
 OUTCOME_COVERAGE_STALE = "HOLIDAY_GAP_STALE"
-COVERAGE_OUTCOMES = (OUTCOME_COVERAGE_WARN, OUTCOME_COVERAGE_STALE)
+# A coverage probe that has been unable to answer for COVERAGE_BLIND_TICKS ticks in a row.
+OUTCOME_COVERAGE_BLIND = "HOLIDAY_GAP_BLIND"
+COVERAGE_OUTCOMES = (OUTCOME_COVERAGE_WARN, OUTCOME_COVERAGE_STALE, OUTCOME_COVERAGE_BLIND)
 
 # The single read-only SELECT this sentinel is allowed to run — a byte-for-byte
 # mirror of repository.py::load_active_rule_pack's WHERE clause (see module
@@ -874,6 +876,7 @@ def sanitize_state(
         "board_last_ts": lambda v: _is_num(v) and v <= horizon,
         "cond_start_ts": lambda v: _is_num(v) and v <= horizon,
         "route_ts": lambda v: _is_num(v) and v <= horizon,
+        "cannot_verify_streak": lambda v: isinstance(v, int) and not isinstance(v, bool) and 0 <= v < 10**6,
     }
     # `next_due_ts` is deliberately NOT a stored field any more: it is derived from
     # `telegram_last_delivered_ts` on every load, so a corrupt or stale stored value
@@ -938,6 +941,13 @@ def _escalation_open(verdict: Verdict, now_ts: float, count: int, force: bool) -
                 "Visa Oracle processing-time estimates fall back to 'not available' once a "
                 "working-day walk reaches an undecreed year; cure is loading that year's SKB 3 "
                 "Menteri decree into backend/data/id_holidays.py (DECREED_YEARS).",
+            )
+            if verdict.coverage is not None and verdict.outcome != OUTCOME_COVERAGE_BLIND
+            else (
+                COVERAGE_ESCALATION_JOB,
+                "visa_holiday_coverage_blind",
+                "The holiday-coverage probe could not answer for several ticks in a row; run "
+                "scripts/visa_holiday_coverage_probe.py by hand on Pro and fix what it prints.",
             )
             if verdict.coverage is not None
             else (
@@ -1045,7 +1055,8 @@ def _run_alert_cycle(
 
     cond = _condition(verdict)
     if state.get("condition") != cond:
-        state = {"condition": cond, "delivered_streak": 0, "cond_start_ts": now_ts}
+        kept = {k: state[k] for k in ("cannot_verify_streak",) if k in state}
+        state = {"condition": cond, "delivered_streak": 0, "cond_start_ts": now_ts, **kept}
     cond_start = state.setdefault("cond_start_ts", now_ts)
 
     # BOARD channel: the sentinel's own row, on its own clock. It never depends on Telegram.
@@ -1115,6 +1126,12 @@ def _coverage_year(verdict: Verdict) -> Any:
 
 def format_coverage_text(verdict: Verdict) -> str:
     cov = verdict.coverage or {}
+    if verdict.outcome == OUTCOME_COVERAGE_BLIND:
+        return (
+            f"Visa Oracle holiday coverage — BLIND: the coverage probe has not answered for "
+            f"{cov.get('streak')} ticks in a row ({cov.get('error')}); nobody knows whether the "
+            f"next holiday decree is loaded. Fix the probe (scripts/visa_holiday_coverage_probe.py)."
+        )
     if verdict.outcome not in COVERAGE_OUTCOMES:
         return (
             "Visa Oracle holiday coverage — CANNOT_VERIFY: "
@@ -1171,11 +1188,52 @@ def build_coverage_verdict(now: datetime, runner: Any = None) -> Verdict:
     return Verdict(outcome=outcome, now=now, warn_seconds=0, coverage=cov)
 
 
+# A single failed probe is noise (a pull in flight, a reboot); a day of them is a blind lane. One
+# tick per CADENCE_S, so N ticks span REALERT_MAX_GAP_S: the longest the pack lane tolerates between
+# deliveries, and well under the weekly digest a bare CANNOT_VERIFY would otherwise wait for.
+COVERAGE_BLIND_TICKS = REALERT_MAX_GAP_S // CADENCE_S
+
+
+def apply_cannot_verify_streak(
+    verdict: Verdict, now_ts: float, state_path: Path, dry_run: bool = False
+) -> Verdict:
+    """Count consecutive CANNOT_VERIFY ticks in the lane's own state file. The Nth becomes a
+    BLIND verdict (persistent, p0, owner family, board row, non-zero exit); any other outcome
+    resets the count, so only an unbroken run escalates."""
+    if verdict.coverage is None:
+        return verdict
+    state, _ = sanitize_state(load_state(state_path), now_ts, log=False)
+    streak = state.get("cannot_verify_streak", 0)
+    if verdict.outcome != OUTCOME_CANNOT_VERIFY:
+        if streak and not dry_run and verdict.outcome != OUTCOME_OK:
+            state.pop("cannot_verify_streak")
+            save_state(state_path, state)
+        return verdict
+    streak += 1
+    if not dry_run:
+        save_state(state_path, {**state, "cannot_verify_streak": streak})
+    if streak < COVERAGE_BLIND_TICKS:
+        return verdict
+    return Verdict(
+        outcome=OUTCOME_COVERAGE_BLIND, now=verdict.now, warn_seconds=0,
+        coverage={**(verdict.coverage or {}), "streak": streak}, reason=verdict.reason,
+    )
+
+
 def coverage_state_path() -> Path:
     override = os.environ.get("VISA_HOLIDAY_COVERAGE_STATE")
     if override:
         return Path(override)
     return _state_path().with_name("visa_holiday_coverage.json")
+
+
+COVERAGE_BLIND_RC = 4
+
+
+def _coverage_tick(now: datetime, dry_run: bool) -> Verdict:
+    return apply_cannot_verify_streak(
+        build_coverage_verdict(now), now.timestamp(), coverage_state_path(), dry_run
+    )
 
 
 def coverage_line(verdict: Verdict, decision: dict[str, Any] | None = None) -> str:
@@ -1227,20 +1285,20 @@ def main(argv: list[str] | None = None) -> int:
         now = datetime.now(timezone.utc)
 
     if args.coverage_only:
-        cov_verdict = build_coverage_verdict(now)
+        cov_verdict = _coverage_tick(now, args.dry_run)
         cov_decision = run_alert_cycle(
             cov_verdict, dry_run=args.dry_run, now_ts=now.timestamp(),
             state_path=coverage_state_path(),
         )
         print(coverage_line(cov_verdict, cov_decision))
-        return 0
+        return COVERAGE_BLIND_RC if cov_verdict.outcome == OUTCOME_COVERAGE_BLIND else 0
 
     verdict = build_verdict(now, args.warn_seconds)
     decision = run_alert_cycle(
         verdict, dry_run=args.dry_run, now_ts=now.timestamp()
     )
     # The coverage lane runs after the pack lane on every tick, whatever the pack said.
-    cov_verdict = build_coverage_verdict(now)
+    cov_verdict = _coverage_tick(now, args.dry_run)
     cov_decision = run_alert_cycle(
         cov_verdict, dry_run=args.dry_run, now_ts=now.timestamp(),
         state_path=coverage_state_path(),
@@ -1280,6 +1338,9 @@ def main(argv: list[str] | None = None) -> int:
         # SILENCE (`severity_on_silence: warning`), not by a fresh error
         # heartbeat, so this does not put the healer in a kickstart loop.
         return 3
+    # Last, so the pack lane's own code wins; the wrapper writes `heartbeat "error" "rc=4"`.
+    if cov_verdict.outcome == OUTCOME_COVERAGE_BLIND:
+        return COVERAGE_BLIND_RC
     return 0
 
 
