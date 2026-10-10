@@ -368,6 +368,7 @@ build; rm -rf "$H/.ollama"; DISK_JANITOR_HOME="$H/" bash "$SCRIPT" --check-path 
 echo "═══ TEST 10: tool steps — uv, restic, brew (recording fakes, df-delta receipt); docker/colima are NOT this janitor's ═══"
 # Recording FAKES of uv/restic/brew/pgrep go first on PATH: no real tool is ever reached. docker and colima
 # are faked too, into their OWN record file ($ROOT/dc_calls): the janitor must never touch them at all.
+DC_TOOLS="docker docker-compose colima limactl nerdctl"   # every docker/VM client: faked into $ROOT/dc_calls
 mkfake(){ # $1 tool  $2 body. FAKE_HANG="<tool>:<verb words>" makes that call ignore ALRM+TERM and sleep 31 s (hang.sh)
   printf '#!/bin/sh\n[ -n "$FAKE_HANG" ] && trap "" ALRM TERM\necho "%s $*" >> %s/calls\n[ -n "$FAKE_HANG" ] && case "%s:$1 $2" in "$FAKE_HANG"*) exec %s/hang.sh ;; esac\n%s\n' "$1" "$ROOT" "$1" "$FAKEBIN" "$2" > "$FAKEBIN/$1"
 }
@@ -376,7 +377,7 @@ fake_tools(){
   printf '#!/bin/sh\ntrap "" ALRM TERM\necho $$ >> %s/hang.pid\nsleep 31 &\necho $! >> %s/hang.pid\nwait\n' "$ROOT" "$ROOT" > "$FAKEBIN/hang.sh"
   printf '#!/bin/sh\necho "pgrep $*" >> %s/calls\nexit 1\n' "$ROOT" > "$FAKEBIN/pgrep"   # no uv process holds the cache lock (the host may run one)
   for t in uv restic brew; do mkfake "$t" 'exit 0'; done
-  for t in docker colima; do printf '#!/bin/sh\necho "%s $*" >> %s/dc_calls\nexit 0\n' "$t" "$ROOT" > "$FAKEBIN/$t"; done
+  for t in $DC_TOOLS; do printf '#!/bin/sh\necho "%s $*" >> %s/dc_calls\nexit 0\n' "$t" "$ROOT" > "$FAKEBIN/$t"; done
   chmod +x "$FAKEBIN"/*
 }
 truns(){ DISK_JANITOR_HOME="$H" DISK_JANITOR_TMP_ROOT="$T" DISK_JANITOR_TOOLS=true DISK_JANITOR_QDRANT_RETENTION="" DISK_JANITOR_LOG="$ROOT/j.log" DISK_JANITOR_JOURNAL="$ROOT/j.jsonl" PATH="$FAKEBIN:$PATH" bash "$SCRIPT" "$@" 2>&1; }
@@ -394,14 +395,25 @@ receipt_names_dc(){ grep -qi 'docker\|colima' "$ROOT/j.jsonl"; }
 { ! receipt_names_dc; } && ok "receipt carries no docker or colima step or tool word" || no "receipt names docker/colima: $(tail -1 "$ROOT/j.jsonl")"
 echo "$OUT" | grep -qi 'docker\|colima' && no "a docker/colima word reached a log line" || ok "no docker/colima word in the apply log"
 # innocence: the detectors DO fire on a docker-touching run (a recorded call; a receipt naming a step), so the checks above cannot be vacuous
-printf 'docker volume prune -f\n' > "$ROOT/dc_calls"; dc_touched && ok "innocence: the call detector fires on a recorded docker call" || no "call detector blind"
+for t in $DC_TOOLS; do rm -f "$ROOT/dc_calls"; "$FAKEBIN/$t" probe >/dev/null 2>&1; dc_touched || no "innocence: the $t shim records nothing"; done
+dc_touched && ok "innocence: each docker/VM shim records its own call (the call detector reads real shim output)" || no "call detector blind"
 cp "$ROOT/j.jsonl" "$ROOT/j.bak"; printf '{"steps":{"colima_fstrim":{"status":"done"}}}\n' >> "$ROOT/j.jsonl"; receipt_names_dc && ok "innocence: the receipt detector fires on a colima_fstrim step" || no "receipt detector blind"
 cp "$ROOT/j.bak" "$ROOT/j.jsonl"; rm -f "$ROOT/dc_calls"
 # Static: no executable line of the script invokes docker or colima (comments and the .colima protected path excluded)
-exec_invokes_dc(){ sed -e '/^[[:space:]]*#/d' -e 's/[[:space:]]#.*$//' -e 's#\.colima##g' "$1" | grep -Eq '(^|[^A-Za-z0-9_./-])(docker|colima)([^A-Za-z0-9_-]|$)'; }
-{ ! exec_invokes_dc "$SCRIPT"; } && ok "static: disk_janitor.sh has no executable line invoking docker or colima" || no "disk_janitor.sh still names docker/colima on an executable line: $(sed -e '/^[[:space:]]*#/d' -e 's#\.colima##g' "$SCRIPT" | grep -nE '(^|[^A-Za-z0-9_./-])(docker|colima)([^A-Za-z0-9_-]|$)' | head -3)"
+DC_RE='(^|[^A-Za-z0-9_.])(docker(-compose)?|colima|limactl|lima-colima|nerdctl)([^A-Za-z0-9_-]|$)'   # a path prefix (/opt/homebrew/bin/, ./) still matches
+exec_invokes_dc(){ sed -e '/^[[:space:]]*#/d' -e 's/[[:space:]]#.*$//' -e 's#\$JH/\.colima"#"#g' "$1" | grep -Eq "$DC_RE"; }
+{ ! exec_invokes_dc "$SCRIPT"; } && ok "static: disk_janitor.sh has no executable line invoking docker or colima" || no "disk_janitor.sh still names docker/colima on an executable line: $(sed -e '/^[[:space:]]*#/d' -e 's#\$JH/\.colima"#"#g' "$SCRIPT" | grep -nE "$DC_RE" | head -3)"
 printf 'x=1\n  bounded 5 docker volume prune -f\n' > "$ROOT/probe1.sh"; printf 'PROTECTED_ROOTS=("$JH/.colima")\n# docker is mentioned in a comment\nrun colima ssh -- fstrim # trailing\n' > "$ROOT/probe2.sh"
 printf 'PROTECTED_ROOTS=("$JH/.colima")\n# docker only in a comment\nx=1 # colima trailing comment\n' > "$ROOT/probe3.sh"
+dc_forms_caught=1
+for form in 'bounded 5 /opt/homebrew/bin/docker info' '/usr/local/bin/colima status' './docker ps' 'docker-compose up -d' \
+            'limactl shell colima' 'nerdctl image prune' 'curl --unix-socket /var/run/docker.sock http://x/images' \
+            'ssh -F "$JH/.colima/_lima/colima/ssh.config" lima-colima true' 'D=1; docker image prune -f'; do
+  printf '%s\n' "$form" > "$ROOT/probe4.sh"; exec_invokes_dc "$ROOT/probe4.sh" || { dc_forms_caught=0; no "static detector misses: $form"; }
+done
+printf 'x="$JH/.docker/config.json"\nPROTECTED_ROOTS=("$JH/.colima")\n' > "$ROOT/probe5.sh"
+{ [ "$dc_forms_caught" = 1 ] && ! exec_invokes_dc "$ROOT/probe5.sh"; } \
+  && ok "innocence: the static detector catches absolute paths, compose, lima, nerdctl, the docker socket and the colima ssh config; a ~/.docker path is quiet" || no "static detector blind or over-matching on paths"
 { exec_invokes_dc "$ROOT/probe1.sh" && exec_invokes_dc "$ROOT/probe2.sh" && ! exec_invokes_dc "$ROOT/probe3.sh"; } \
   && ok "innocence: the static detector fires on docker/colima commands, stays quiet on comments and the .colima path" || no "static detector blind or over-matching"
 build; fake_tools; printf '#!/bin/sh\necho "uv $*" >> %s/calls\nexit 0\n' "$ROOT" > "$FAKEBIN/uv"; printf '#!/bin/sh\nexit 0\n' > "$FAKEBIN/pgrep"   # a uv process is alive: it holds the cache lock
