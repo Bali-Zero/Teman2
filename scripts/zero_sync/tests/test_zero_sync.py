@@ -390,3 +390,29 @@ def test_every_git_call_is_bounded_by_default():
     import inspect
 
     assert inspect.signature(zs.Repo.run).parameters["timeout"].default == zs.NET_TIMEOUT
+
+
+def test_cutting_the_canonical_file_lets_the_local_copy_win(w):
+    w.canon_commit({"apps/backend-rag/data/team.synthetic.json": "canonical version\n"}, "same path")
+    w.zero_commit({".slim/cut_paths.txt": CUT + "apps/backend-rag/data/team.synthetic.json\n"}, "cut it")
+    assert w.run() == 0  # the README's recovery for a shadowing local path really recovers
+    assert w.zero_show("apps/backend-rag/data/team.synthetic.json") == "synthetic"
+
+
+def test_a_remote_rejection_that_mentions_non_fast_forward_is_still_permanent(w):
+    hook = w.zero_bare / "hooks" / "pre-receive"
+    hook.write_text("#!/bin/sh\necho 'policy: non-fast-forward pushes are disabled' >&2\nexit 1\n")
+    hook.chmod(0o755)
+    assert w.run() == 1
+    assert w.hb()["status"] == "error"
+
+
+def test_a_target_without_the_slim_manifests_is_not_zero(w, tmp_path, capsys):
+    impostor = tmp_path / "impostor.git"
+    subprocess.run(["git", "clone", "-q", "--bare", str(w.canon), str(impostor)], check=True)
+    before = git(impostor, "rev-parse", "main")
+    rc = zs.main(["--state-dir", str(w.state), "--canonical-url", w.canon_url, "--zero-url", f"file://{impostor}",
+                  "--npm-cmd", w.npm, "--no-ci-check"])
+    assert rc == 2
+    assert git(impostor, "rev-parse", "main") == before
+    assert "not zero" in capsys.readouterr().out
