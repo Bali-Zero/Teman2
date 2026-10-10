@@ -1,0 +1,48 @@
+task_id: kbli-nav-design-p3h1-census
+mission: kbli-nav-design-loop (Track A, build, lot PR 3-h-1 — the census-coverage half of the harness lot)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Set to the floor evidence_pack_lint computes for this change set by its size term, with no hot-zone path. Tools and
+  Tests only: en_purity.py (the analyser), Tests/encensus (anchors, probes, the branch sample), en_lexicon.tsv (two
+  words) and en_ui_words.tsv (new, the English UI words). No Sources file changes, so no drawn string and no render
+  changes.
+l_level: L1
+gate_class: opus
+objective: >-
+  PR 3-h, first half (lead ruling Q20 order: EN-1c → 3-h → PR 5): the en-purity census proves its own coverage before
+  PR 5/6/3 land on it. (1) #8224 gate binding 1: the ID-only self-test reads an ID dump against an English reference
+  (the app's English corpus plus en_ui_words.tsv), not against the same surface's EN dump, so an Indonesian literal
+  drawn in both modes is no longer subtracted; a gated English dump flags a word that is neither English nor a
+  lexicon word; a 30-word scope probe proves both. (2) Binding 2: a run PDFKit glued with no case change splits where
+  both halves are known words. (3) Binding 5: an unpinned enum gap holds English. (4) #8227 gate (iii): the
+  never-drawn check follows a closure stored in a name and called later. (5) #8227 gate (v): the fast sample takes
+  one code per LabelBook branch. (6) Q19 and #8227 gate (vi): encensus declares each View's anchors (its code, and
+  the last thing it draws); a dump missing one is INCOMPLETE, never 0; the census reports every View's completeness
+  and names a BLIND one (chat); a gated View with an INCOMPLETE dump fails; two probes (the same text in a ScrollView
+  and plain) prove on every run that an unexpanded ScrollView reads INCOMPLETE. (7) EN-1c's instrument residual: a
+  carried name PDFKit swapped across a wrapped line matches every copy (64993). (8) The #8232 gate's 3-h-1 bindings:
+  F1, an overlay line is curated prose only when it holds a word English writes (66125 "Kewajiban: Berbentuk badan
+  hukum." is counted); berbentuk, hukum, miliar and juta join the lexicon; 02102 is in the fast sample. (9) a-prep-3's
+  instrument requests on the ledger: R12 (the record's own permit name keeps its original in parentheses), R15 (a
+  gap closing its line runs to the line's end), R16 (a pictograph is not text), and R19 — the lead's 2026-10-11 Q17
+  reading: a value that is the whole of a (…) stays, inside a longer (…) it is a gap (#8232 F2), and the record's
+  own judul is a gap drawn "<English title> (<official title>)", a title inside (…) or another code's never.
+constraints:
+  - No Sources file changes; renders byte-identical by construction.
+  - "Every binding of #8224 and #8227 stays green, and EN-1c's guilts still fail."
+  - Every new self-test row is shown to escape the EN-1c analyser on main.
+  - No PNG is committed.
+acceptance:
+  - text: The full census SHALL keep the seven gated surfaces at 0 with the unknown-word rule on, and print every View's anchor completeness.
+    probe: "Pro: EN_CENSUS=full content_check.sh rc=0; 'anchors (Q19)' lists 11 views, chat BLIND, the rest complete"
+  - text: A gated View whose content moves into an unexpanded ScrollView SHALL fail as INCOMPLETE.
+    probe: "Pro: a copy whose RegistryVerdictSheet always scrolls — rc=1, FAIL: registry-sheet has N INCOMPLETE dumps"
+  - text: A novel Indonesian literal drawn in both modes on a gated View SHALL fail.
+    probe: "Pro: a copy drawing Text(\"Pratinjau gagal\") on the registry sheet — rc=1, EN registry-sheet unknown words and EN-SELFTEST ID-only word"
+  - text: A raw field drawn through a stored closure SHALL fail the never-drawn check.
+    probe: "Pro: a copy with let later = { kbli.judul }; Text(later()) on the registry sheet — rc=1, step 5 names the line"
+  - text: The new self-test rows SHALL bite.
+    probe: "M5: en_purity self-test 0 lines; the b1/b2/b5/64993/F1/F2/R12/R15/R16/R19 rows disagree with main's analyser"
+  - text: PR 5 on this head SHALL leave in sheet-ledger only what its own View must fix.
+    probe: "Pro: PR 5 (p5-ledger-v3) applied without a commit, full census; sheet-ledger 0, the residual it had on EN-1c gone"
