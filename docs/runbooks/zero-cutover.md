@@ -44,6 +44,19 @@ access.
 | 8   | export: Zero runs `gh auth refresh -h github.com -s admin:org,delete_repo` (interactive); `POST /orgs/Bali-Zero/migrations` with `repositories: ["Teman2"]` (issues, PRs, reviews, comments, releases, wiki); download the archive, check PR/issue counts against the API, store it on Mini (`0700` directory, never in git) together with `git bundle create --all` of the mirror | Zero (scope) + session                                                      | archive and bundle verified (`git bundle verify`), counts match                        |
 | 9   | delete `Bali-Zero/Teman2`                                                                                                                                                                                                                                                                                                                                                          | **Zero's explicit go at that moment** — no standing authorization covers it | `gh api repos/Bali-Zero/Teman2` returns 404                                            |
 
+## Dry runs already made
+
+- **Gate 3, 2026-10-10, on Mini.** `zero_sync.py --dry-run --state-dir <tmp> --canonical-url
+ssh://pro/Users/nuzantara/.nuzantara-pilots/local-ci/merger/repo.git --canonical-ref refs/merger/base`
+  read the mirror over Tailscale SSH, passed the content identity checks and printed
+  `zero-sync: up to date (canonical ed59bc4180)`, the same commit as Teman2's `main`. Its state directory
+  was removed afterwards.
+- **Precondition it surfaced.** While phase F is shadow, nothing maintains the mirror's `refs/heads/main`: it
+  read `56c6f70d86` (2026-10-07), and the merger's current base is `refs/merger/base`. The wrapper changes
+  only the URL, and the payload's `--canonical-ref` defaults to `main`. So flip gate 3 only when
+  `git ls-remote <mirror> refs/heads/main` equals Teman2's `main`, which holds once phase F pushes it
+  (gate 1). Before that, the sync would read an old tree as canonical.
+
 ## Never
 
 - Upload `FLY_API_TOKEN` to zero before gate 5: `fly-deploy.yml` would deploy production from
