@@ -117,6 +117,14 @@ SITES = ["KBLIRegistryView.swift:1541 scopeRow mini risk chip", "KBLIRegistryVie
          "KBLIRegistryTable.swift:110 RiskCell, the registry table's OSS-risk column"]
 SITE_PAIRS = [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5, "%s — Theme.riskChip %s" % (site, tier))
               for site in SITES for fg, bg, tier in RISK_CHIP]
+# Tone-chip ink painted straight on a row's ground: the ruled heads-up label of the search results, Theme.chip(tone).fg
+# on antracite at rest and on wash (= ink) when selected or hovered. CHIP_FG mirrors Theme.chip's switch (PARITY).
+CHIP_FG = [("chipOpenFg", "open"), ("chipRestrictedFg", "restricted"), ("chipClosedFg", "closed"), ("muted", "neutral")]
+CHIP_SITES = ["SearchListView.swift:655 ruled heads-up label"]
+SITE_PAIRS += [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5,
+                "%s on %s — Theme.chip(.%s).fg" % (site, ground, tone))
+               for site in CHIP_SITES for fg, tone in CHIP_FG
+               for bg, ground in (("antracite", "the row at rest"), ("ink", "wash (= ink), selected or hovered"))]
 
 # Literal white (or grey-scale) colours: `.white`, `Color.white`, `NSColor.white`, `CGColor.white`, any `white:` /
 # `…White:` initialiser (`Color(white:`, `Color.init(white:`, `.init(white:`, `Color(.sRGB, white:`,
@@ -201,11 +209,15 @@ def site_parity(src, theme_path):
     code = {k: (alias.get(fg, fg), alias.get(bg, bg)) for k, fg, bg in re.findall(r"(case \d|default):\s*return \((\w+), (\w+)", body)}
     table = {("case " + t.split()[1]) if t.startswith("rank") else "default": (fg, bg) for fg, bg, t in RISK_CHIP}
     if code != table: bad.append("PARITY RISK_CHIP %s != Theme.riskChip %s" % (sorted(table.items()), sorted(code.items())))
-    for site in SITES:
-        name, n = site.split()[0].split(":"); n = int(n)
-        lines = next(Path(src).rglob(name)).read_text().splitlines()
-        if ".fg)" not in lines[n - 1] or "Theme.riskChip(" not in "\n".join(lines[max(0, n - 4):n]):
-            bad.append("PARITY site %s does not paint Theme.riskChip(…).fg: %s" % (site.split()[0], lines[n - 1].strip()))
+    body = text[text.find("static func chip("):]; body = body[:body.find("\n    }\n")]
+    tones = {t: alias.get(fg, fg) for t, fg in re.findall(r"case \.(\w+):\s*return \((\w+), \w+\)", body)}
+    if tones != {t: fg for fg, t in CHIP_FG}: bad.append("PARITY CHIP_FG %s != Theme.chip %s" % (sorted(CHIP_FG), sorted(tones.items())))
+    for sites, fn in ((SITES, "Theme.riskChip("), (CHIP_SITES, "Theme.chip(")):
+        for site in sites:
+            name, n = site.split()[0].split(":"); n = int(n)
+            lines = next(Path(src).rglob(name)).read_text().splitlines()
+            if ".fg)" not in lines[n - 1] or fn not in "\n".join(lines[max(0, n - 4):n]):
+                bad.append("PARITY site %s does not paint %s…).fg: %s" % (site.split()[0], fn, lines[n - 1].strip()))
     return bad
 
 def parse_hc(path):
