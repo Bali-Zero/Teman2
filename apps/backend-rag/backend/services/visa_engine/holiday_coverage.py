@@ -22,9 +22,18 @@ __all__ = ["WARN_WITHIN_DAYS", "assess", "first_unestimable_anchor"]
 WARN_WITHIN_DAYS = 60
 
 
+def _blocked_by(anchor: date, longest: dict[str, int]) -> str | None:
+    for code, high in sorted(longest.items(), key=lambda kv: -kv[1]):
+        if processing_times.estimate(anchor, (high, high)) is None:
+            return code
+    return None
+
+
 def first_unestimable_anchor(today: date) -> tuple[date, str] | None:
-    """First anchor day >= ``today`` on which some product's maximum window has no estimate,
-    with the product code that fails first. None only when the products have no windows."""
+    """The first anchor day of the gap that ``today`` is in or ahead of, with the product code that
+    fails first. Once ``today`` is already inside the gap the answer stays the day it began (walked
+    back to the first loaded year; with no year loaded at all it reads as ``today``), so an alert that
+    names the date never slides forward with the clock. None only when the products have no windows."""
     longest: dict[str, int] = {}
     for code, (_, high) in sorted(processing_times.product_windows().items()):
         if high not in longest.values():  # one probe per distinct maximum is enough
@@ -36,11 +45,27 @@ def first_unestimable_anchor(today: date) -> tuple[date, str] | None:
     last = date(max(loaded, default=today.year - 1) + 1, 1, 1)
     anchor = today
     while anchor <= max(last, today):
-        for code, high in sorted(longest.items(), key=lambda kv: -kv[1]):
-            if processing_times.estimate(anchor, (high, high)) is None:
-                return anchor, code
+        code = _blocked_by(anchor, longest)
+        if code is not None:
+            return (_gap_start(anchor, code, longest) if anchor == today else (anchor, code))
         anchor += timedelta(days=1)
     return None
+
+
+def _gap_start(today: date, code: str, longest: dict[str, int]) -> tuple[date, str]:
+    """Walk back from a ``today`` already inside the gap to the day it began. The walk stops at the
+    first loaded year's 1 January: with nothing estimable before that, the gap has no knowable
+    start and ``today`` is the honest answer (no year loaded at all)."""
+    loaded = holiday_years_loaded()
+    floor = date(min(loaded), 1, 1) if loaded else today
+    gap, first = today, code
+    while gap > floor:
+        before = gap - timedelta(days=1)
+        blocked = _blocked_by(before, longest)
+        if blocked is None:
+            return gap, first
+        gap, first = before, blocked
+    return today, code
 
 
 def assess(today: date) -> dict[str, Any]:

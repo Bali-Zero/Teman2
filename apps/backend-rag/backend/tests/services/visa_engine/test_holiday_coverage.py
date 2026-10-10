@@ -23,14 +23,17 @@ def _gap_with_only_2026(monkeypatch: pytest.MonkeyPatch) -> date:
     return found[0]
 
 
-def test_real_data_first_gap_is_in_november_2027_and_is_ok():
+def test_real_data_first_gap_is_in_the_last_loaded_year_and_is_ok():
+    # Data-relative: loading the next decree moves every expectation below by itself.
+    loaded = holiday_coverage.holiday_years_loaded()
+    last = max(loaded)
     result = assess(date(2026, 10, 10))
+    gap = date.fromisoformat(result["first_gap"])
     assert result["outcome"] == "OK"
-    assert result["years_loaded"] == [2026, 2027]
-    assert date.fromisoformat(result["first_gap"]).year == 2027
-    assert date.fromisoformat(result["first_gap"]).month == 11
-    assert result["year_to_load"] == 2028
-    assert result["product"] == "E23"
+    assert result["years_loaded"] == sorted(loaded)
+    assert gap.year == last and gap > date(last, 1, 1)
+    assert result["year_to_load"] == last + 1
+    assert result["product"] in processing_times.product_windows()
 
 
 def test_the_gap_day_is_exactly_the_first_day_some_product_cannot_be_estimated(monkeypatch):
@@ -64,6 +67,19 @@ def test_the_gap_day_itself_and_the_past_are_stale(monkeypatch):
     gap = _gap_with_only_2026(monkeypatch)
     assert assess(gap)["outcome"] == "STALE"
     assert assess(gap + timedelta(days=200))["outcome"] == "STALE"
+
+
+def test_guilt_after_the_gap_day_the_alert_still_names_the_day_it_began(monkeypatch):
+    gap = _gap_with_only_2026(monkeypatch)
+    for later in (1, 30, 200, 400, 800):
+        result = assess(gap + timedelta(days=later))
+        assert result["first_gap"] == gap.isoformat()
+        assert result["days_left"] == -later
+
+
+def test_innocence_before_the_gap_the_answer_is_the_same_day(monkeypatch):
+    gap = _gap_with_only_2026(monkeypatch)
+    assert assess(gap - timedelta(days=1))["first_gap"] == gap.isoformat()
 
 
 def test_an_undecreed_current_year_is_stale_today(monkeypatch):

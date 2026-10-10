@@ -145,13 +145,15 @@ def test_a_probe_that_raises_is_cannot_verify():
     assert vfs.build_coverage_verdict(NOW, runner=boom).outcome == vfs.OUTCOME_CANNOT_VERIFY
 
 
-def test_real_probe_with_todays_data_puts_the_gap_in_november_2027_and_is_ok():
+def test_real_probe_with_todays_data_puts_the_gap_in_the_last_loaded_year_and_is_ok():
+    # Data-relative: the 2028 decree moves `years_loaded` and this expectation with it.
+    probe = _real_probe("2026-10-10")
     out = subprocess.run(
         [sys.executable, str(REPO / "scripts" / "visa_freshness_sentinel.py"),
          "--coverage-only", "--dry-run", "--now", "2026-10-10T00:00:00Z"],
         capture_output=True, text=True, check=True,
     ).stdout.strip()
-    assert out.startswith("HOLIDAY_COVERAGE OK first_gap=2027-11-")
+    assert out.startswith(f"HOLIDAY_COVERAGE OK first_gap={max(probe['years_loaded'])}-")
 
 
 def test_visa_holiday_coverage_is_an_owner_routed_family_by_default(monkeypatch):
@@ -225,3 +227,117 @@ def test_at_the_wita_day_boundary_of_the_gap_the_lane_is_stale_like_the_page():
     assert vfs.build_coverage_verdict(eve).outcome == vfs.OUTCOME_COVERAGE_STALE
     before = eve - timedelta(minutes=31)
     assert vfs.build_coverage_verdict(before).outcome == vfs.OUTCOME_COVERAGE_WARN
+
+
+# --- L1: the STALE text keeps naming the day the gap began, not the day the clock reads ---
+
+
+def _real_probe(today: str) -> dict:
+    out = subprocess.run(
+        [sys.executable, str(REPO / "scripts" / "visa_holiday_coverage_probe.py"), "--today", today],
+        capture_output=True, text=True, check=True,
+    ).stdout
+    return json.loads(out)
+
+
+def test_guilt_stale_text_after_the_gap_still_names_the_gap_day_not_today():
+    gap = datetime.fromisoformat(_real_probe("2026-10-10")["first_gap"]).date()
+    later = (gap + timedelta(days=45)).isoformat()
+    cov = _real_probe(later)
+    assert cov["outcome"] == "STALE" and cov["first_gap"] == gap.isoformat() != later
+    verdict = vfs.build_coverage_verdict(NOW, runner=lambda cmd: json.dumps(cov))
+    text = vfs.format_coverage_text(verdict)
+    assert f"since {gap.isoformat()}" in text and f"before {gap.isoformat()}" in text
+    assert later not in text
+
+
+# --- L3: a probe that stays blind reaches the exit code, the heartbeat and the owner path ---
+
+
+def _blind_runner(cmd):
+    raise OSError("probe gone")
+
+
+def _tick(tmp_path, gw, n, runner=_blind_runner, dry_run=False):
+    now = datetime.fromtimestamp(T0 + n * vfs.CADENCE_S, tz=timezone.utc)
+    verdict = vfs.apply_cannot_verify_streak(
+        vfs.build_coverage_verdict(now, runner=runner), now.timestamp(),
+        tmp_path / "coverage_state.json", dry_run,
+    )
+    return verdict, _cycle(verdict, tmp_path, gw, now.timestamp(), dry_run)
+
+
+def test_n_is_a_day_of_ticks():
+    assert vfs.COVERAGE_BLIND_TICKS == 4
+
+
+def test_innocence_fewer_than_n_cannot_verifies_stay_digest_quiet(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    for n in range(vfs.COVERAGE_BLIND_TICKS - 1):
+        verdict, _ = _tick(tmp_path, gw, n)
+        assert verdict.outcome == vfs.OUTCOME_CANNOT_VERIFY
+    assert all(call[call.index("--tier") + 1] == "digest" for call in _calls(tmp_path))
+
+
+def test_guilt_n_in_a_row_escalates_p0_with_a_board_row_and_a_nonzero_rc(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    for n in range(vfs.COVERAGE_BLIND_TICKS):
+        verdict, decision = _tick(tmp_path, gw, n)
+    assert verdict.outcome == vfs.OUTCOME_COVERAGE_BLIND
+    assert decision["would_send"] is True
+    last = _calls(tmp_path)[-1]
+    assert last[last.index("--tier") + 1] == "p0"
+    assert "BLIND" in last[-1] and "4 ticks" in last[-1]
+    assert vfs.COVERAGE_BLIND_RC == 4
+    from scripts.sentinel_lib import escalations as esc
+
+    assert esc.is_job_open(vfs.COVERAGE_ESCALATION_JOB)
+
+
+def test_the_streak_survives_the_escalation_so_the_next_tick_is_still_blind(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    for n in range(vfs.COVERAGE_BLIND_TICKS + 2):
+        verdict, _ = _tick(tmp_path, gw, n)
+        assert n < vfs.COVERAGE_BLIND_TICKS - 1 or verdict.outcome == vfs.OUTCOME_COVERAGE_BLIND
+
+
+def test_an_ok_resets_the_count_and_resolves_the_row(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    for n in range(vfs.COVERAGE_BLIND_TICKS):
+        _tick(tmp_path, gw, n)
+    ok, _ = _tick(tmp_path, gw, 10, runner=lambda cmd: _answer("OK", 400))
+    assert ok.outcome == vfs.OUTCOME_OK
+    from scripts.sentinel_lib import escalations as esc
+
+    assert not esc.is_job_open(vfs.COVERAGE_ESCALATION_JOB)
+    for n in range(11, 11 + vfs.COVERAGE_BLIND_TICKS - 1):
+        verdict, _ = _tick(tmp_path, gw, n)
+        assert verdict.outcome == vfs.OUTCOME_CANNOT_VERIFY
+
+
+def test_a_warn_in_between_breaks_the_run(tmp_path, monkeypatch):
+    _board(tmp_path, monkeypatch)
+    gw = _write_fake_gateway(tmp_path, _FAKE_LADDER_GATEWAY)
+    for n in range(vfs.COVERAGE_BLIND_TICKS - 1):
+        _tick(tmp_path, gw, n)
+    _tick(tmp_path, gw, 9, runner=lambda cmd: _answer("WARN", 30))
+    verdict, _ = _tick(tmp_path, gw, 10)
+    assert verdict.outcome == vfs.OUTCOME_CANNOT_VERIFY
+
+
+def test_main_exits_4_for_a_blind_lane(tmp_path, monkeypatch):
+    monkeypatch.setenv("VISA_HOLIDAY_COVERAGE_STATE", str(tmp_path / "cov.json"))
+    monkeypatch.setenv("VISA_COVERAGE_PYTHON", str(tmp_path / "no-such-python"))
+    rcs = [
+        vfs.main(["--coverage-only", "--dry-run", "--now", "2026-10-10T00:00:00Z"])
+        for _ in range(vfs.COVERAGE_BLIND_TICKS)
+    ]
+    assert rcs == [0] * vfs.COVERAGE_BLIND_TICKS  # dry-run never persists the streak
+    monkeypatch.setenv("VISA_FRESHNESS_STATE", str(tmp_path / "pack.json"))
+    state = {"cannot_verify_streak": vfs.COVERAGE_BLIND_TICKS - 1}
+    (tmp_path / "cov.json").write_text(json.dumps(state))
+    assert vfs.main(["--coverage-only", "--dry-run", "--now", "2026-10-10T00:00:00Z"]) == 4
