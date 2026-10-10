@@ -21,8 +21,8 @@ bites:
   consumer: >-
     the Copy / Share summary buttons of the public Visa Oracle result page (OutcomeSheet).
   where: ci
-  observe: cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.duration.test.tsx"
-  expect: "contains:passed"
+  observe: python3 scripts/ci/observe_visa_oracle_client_copy.py
+  expect: "contains:0 banned"
 receipts:
   - claim: The duration and OutcomeSheet suites pass, including price-without-duration and neither-price-nor-duration.
     cmd: cd apps/mouth && npx vitest run OutcomeSheet.duration.test.tsx OutcomeSheet.test.tsx
