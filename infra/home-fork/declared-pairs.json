@@ -1231,6 +1231,12 @@
       "live": "~/Library/LaunchAgents/com.nuzantara.disk-janitor.plist",
       "repo": "infra/launchagents/com.nuzantara.disk-janitor.plist",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/tg_notify.py",
+      "repo": "scripts/tg_notify.py",
+      "machines": ["pro"],
+      "_note": "The Telegram gateway. Declared 2026-10-10: the HOME copy on Pro was a real file byte-identical to repo commit 36baefb85e (2026-08-17) and had no declaration, so it silently missed the later routing work (the 'act' tier, OWNER_FAMILIES, board routing). Consumers measured on Pro: 13 ~/scripts/*.sh that resolve the gateway sibling-first via dirname \"$0\" (cron-runner, cron-state, cron-agent, runtime-reconcile, login-healthcheck, launchd-liveness-detector, audit-launchd-daily and others) and 4 ~/scripts/*.py that resolve Path(__file__).resolve().parent (intel-lake-outbox-drain, machine_boot_report, mos-plus-compression-worker, redis_liveness_check — the last two have no fallback, so never delete this path). Align it as a SYMLINK to ~/nuzantara/scripts/tg_notify.py, never as a copied file: the gateway resolves its board as Path(__file__).resolve().parents[1]/'shared', and a real file in ~/scripts has no sibling shared/, so routed rows would land in ~/.organism/tg_spool/escalations_local.jsonl, which nothing reads. Through the symlink they land on ~/nuzantara/shared/escalations_pro.jsonl (precedent: ~/scripts/wa-mirror-attention-telegram.py and ~/scripts/cron-state.sh are already symlinks into the checkout)."
     }
   ],
   "allow": [
