@@ -1000,13 +1000,15 @@ failed or its walk ran over the cap. Then:
 **Numbers measured (W0d-2').** These are reported, not a gate. `origin/main` is `0c76eb94ed`
 (`apps/mouth` and `packages/core` are unchanged through `c49b7e84ac`). It was walked twice on an
 M5, 38 s apart, and the two verdict texts are identical (I11). #8161's head, `51b2407f27`, was
-walked for its three search scenarios only. CI walks the same tree on Linux in
-`wrapper-census-states`; its numbers differ by a few lines, because the fonts lay the pages out
-differently, and each CI run is named with its job id in the PR.
+walked for its three search scenarios only. CI walked the same tree on Linux in
+`wrapper-census-states`, twice on two runners, and the two verdict texts are identical; its
+numbers differ from the M5's by a few lines, because the runner lays the pages out differently
+(the #8202 gate traced it to the Linux fonts).
 
 | head                      | `page-grounds-off-contract:` | `opened-surfaces:` | `opened-outside-wrapper:` | `opened-grounds-off-contract:` | `ground-resolver-disagree:` | `shared-touched-unpinned:` | `shared-component-drift:` | `opened-text-below-4.5:` |
 | ------------------------- | ---------------------------- | ------------------ | ------------------------- | ------------------------------ | --------------------------- | -------------------------- | ------------------------- | ------------------------ |
 | `origin/main`, M5         | 438                          | 25 ok, 0 failed    | 10                        | 140                            | 0                           | 0                          | 0                         | 680                      |
+| `origin/main`, CI         | 437                          | 25 ok, 0 failed    | 10                        | 138                            | 0                           | 0                          | 0                         | 677                      |
 | #8161's head, search only | not measured                 | 10 ok, 0 failed    | 0                         | 21                             | 0                           | not measured               | not measured              | 108                      |
 
 - W0d-1 printed K 88 and M 398 on `origin/main` from the DOM composite. The pixels read every

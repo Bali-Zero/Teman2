@@ -29,6 +29,8 @@ acceptance:
     probe: "python3 scripts/mouth/r19_wrapper_token_census.py (twice), then diff"
   - text: "WHEN mutation A or B is served, THEN D is 84 or 108; WHEN I9 or I10 is served on a second dev server, THEN D is 0 against the regenerated pin."
     probe: "python3 -m pytest scripts/mouth/tests -q -k 'r19_presentation or g27 or g28 or i9 or i10'"
+  - text: "WHEN wrapper-census-states runs in CI on this branch, twice, THEN both print shared-component-drift: 0 and pass every assert."
+    probe: "gh workflow run r19-wrapper-census-tests.yml --ref agent/air-m5/mouth/kbli-r19-w0d2p-1010"
 consumer_map:
   - "r19-wrapper-census-tests / wrapper-census-states runs the live census on every apps/mouth, packages/core and census PR. It asserts captures, opened-surfaces, shared-touched-unpinned and shared-component-drift with grep -Fxq, and it prints page-grounds-off-contract and ground-resolver-disagree with the other counts. W2''' is judged on all of them at 0."
   - "r19-wrapper-census-tests / census-replay runs the guilt and innocence suite, and on a W0d branch it asserts 0 files changed under apps/mouth/src."
