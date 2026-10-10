@@ -47,7 +47,7 @@ receipts:
     ts: "2026-10-10T02:36:36Z"
     seat: claude-opus-5-5
   - claim: "I11: a second run started 43 s later prints the same verdict text."
-    cmd: "diff census-origin-main.txt census-origin-main-second-run.txt (i11.txt)"
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py (twice), then diff census-origin-main.txt census-origin-main-second-run.txt (i11.txt)"
     result: "no difference, exit 0"
     exit: 0
     ts: "2026-10-10T02:37:02Z"
@@ -82,3 +82,32 @@ receipts:
     exit: 0
     ts: "2026-10-10T03:08:46Z"
     seat: claude-opus-5-5
+  - claim: "G1-G26 are red and I1-I8 print 0 through the real walk on local HTML, with the eight rows added beyond the spec's table."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -k 'e2e_guilt_and_innocence or page_grounds_at_rest'"
+    result: "40 passed"
+    exit: 0
+    ts: "2026-10-10T03:38:32Z"
+    seat: claude-opus-5-5
+  - claim: "Gate note 3 and the shared-component rows replay green against the new pin."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -k 'r19_presentation or g27 or g28 or i9 or i10'"
+    result: "5 passed"
+    exit: 0
+    ts: "2026-10-10T03:38:33Z"
+    seat: claude-opus-5-5
+dissent:
+  - seat: claude-opus-5-5
+    objection: "Section 2.3 taken literally put every run on every page over an image: the page's 1.5% noise texture (body::after) and its colour-dodge glow (body::before) are image layers above the body colour."
+    status: CONFIRMED
+    resolution: "Over-image means the topmost layer that is not faint; an image whose alpha cannot move a channel by 6, or that blends, names no ground and only makes B approximate. Declared in contract 8.4; the faint, glow and texture-under rows test it."
+  - seat: claude-opus-5-5
+    objection: "The spec's cap of 8 scroll positions makes the sector drawer INCOMPLETE on every walk: it holds about 1,700 runs and needs 39 positions on desktop and 77 on mobile."
+    status: CONFIRMED
+    resolution: "The cap is 250 for every walk, declared in contract 8.4; a walk over it is still INCOMPLETE (unit test)."
+  - seat: claude-opus-5-5
+    objection: "I11 failed twice before it held: the sticky WhatsApp bar read spread 6 and 7 on two runs, the sector drawer's letter links landed at different scroll positions, and one /kbli/51101 capture rendered 624 elements instead of 644."
+    status: CONFIRMED
+    resolution: "Each position is read once two captures 100 ms apart are identical, scrolling is instant, fonts are awaited, and each page waits for 500 ms of network idle. Runs 8 and 9, 43 s apart, print identical text (i11.txt)."
+  - seat: claude-opus-5-5
+    objection: "I9 on a second dev server printed D 36: the footer on /news moved by one level under the page texture, and exact-hex fingerprints called that drift."
+    status: CONFIRMED
+    resolution: "A pinned entry matches within 2 per channel, section 8.4's tolerance (contract 8.5); I9 prints D 0, mutations A and B still print 84 and 108, and removing the tolerance fails the suite."
