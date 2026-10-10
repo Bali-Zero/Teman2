@@ -4,9 +4,9 @@ colour: BLUE
 gear: 2
 gear_reason: >-
   evidence_pack_lint's floor for this change set is 2 by its size term alone, with no hot-zone path. The churn is
-  944 lines (+921/−23), of which 528 are the lexicon's data rows (word, group, English gloss); the code is
-  Tests/encensus (98), Tools/design/en_purity.py (260), content_check.sh, and two census seams in SearchListView.swift
-  and RegistryVerdictSheet.swift.
+  999 lines: 528 are the lexicon's data rows (word, group, English gloss), 36 this brief, and the code and tests
+  churn 435 (+412/−23, net +389) — Tests/encensus (98), Tools/design/en_purity.py (279), content_check.sh, two census
+  seams in SearchListView.swift and RegistryVerdictSheet.swift, and three line citations that follow them.
 l_level: L1
 gate_class: opus
 objective: >-
@@ -30,7 +30,7 @@ acceptance:
     probe: "Pro: content_check.sh rc=0; step 4 prints en-indonesian-strings per View (registry-chrome 0, search-chrome 0 GATED)"
   - text: The full census SHALL count every View of all 1,559 codes in English.
     probe: "Pro: encensus --mode full then en_purity census — per-View counts, the baseline EN-1b must take to 0"
-  - text: The analyzer SHALL hold its guilt and innocence cases (raw title, someone else's title, unlabelled original, enum, locator, swapped lines plus an extra piece).
+  - text: The analyzer SHALL hold its guilt and innocence cases (raw title, someone else's title, unlabelled original, enum, locator, swapped lines plus an extra piece, an English condition as written and its Indonesian term alone).
     probe: "en_purity.py self-test runs before every census; 0 EN-SELFTEST lines"
   - text: The contrast and token gates SHALL stay green.
     probe: "Pro: measure_contrast rc=0 (FAIL=0 PARITY=0 WHITE=0), derive --check rc=0, png_census 0 FAIL"
