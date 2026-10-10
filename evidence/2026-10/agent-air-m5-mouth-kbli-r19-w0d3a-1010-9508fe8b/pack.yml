@@ -21,10 +21,10 @@ provenance: >-
   the census and workflow are byte-identical to HEAD afterwards.
 diff:
   net_lines: |
-    About 443 net beyond evidence:
-      - census script +296 -160, of which about 128 lines are the capture loop moved into
-        capture_pages() and the walk loops re-indented (+168 -32 ignoring whitespace);
-      - tests +187;
+    About 455 net beyond evidence:
+      - census script +298 -161, of which about 128 lines are the capture loop moved into
+        capture_pages() and the walk loops re-indented (+170 -33 ignoring whitespace);
+      - tests +198;
       - workflow +78 -17;
       - contract +59 (section 9).
     No fixture changes. No apps/mouth/src file.
@@ -38,13 +38,13 @@ diff:
 receipts:
   - claim: "The offline suite passes: the partition, the byte-for-byte replay of the parts, and every guilt and innocence row of section 9."
     cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'"
-    result: "140 passed, 53 deselected"
+    result: "141 passed, 53 deselected (at ed5ab177e9, with the colour-tie row)"
     exit: 0
-    ts: "2026-10-10T14:24:50Z"
+    ts: "2026-10-10T14:48:21Z"
     seat: claude-opus-5-5
   - claim: "The whole suite, browser rows included, passes on M5 through walk_states() and walk_opened() over the one list."
     cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider"
-    result: "193 passed in 143.12s"
+    result: "193 passed in 143.12s (at 9db02cddc7; ed5ab177e9 adds one offline row and changes no browser path)"
     exit: 0
     ts: "2026-10-10T14:27:41Z"
     seat: claude-opus-5-5
@@ -54,11 +54,11 @@ receipts:
     exit: 0
     ts: "2026-10-10T14:23:44Z"
     seat: claude-opus-5-5
-  - claim: "Every instrument mutation fails the suite: 12 on the census, 5 on the workflow."
+  - claim: "Every instrument mutation fails the suite: 13 on the census, 5 on the workflow."
     cmd: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3a-1010-9508fe8b/instrument_mutants.py (instrument-mutants.txt)"
-    result: "17 of 17 killed; census and workflow restored byte-identical to HEAD"
+    result: "18 of 18 killed, in a detached scratch worktree at ed5ab177e9 (removed after, git status clean)"
     exit: 0
-    ts: "2026-10-10T14:24:39Z"
+    ts: "2026-10-10T14:47:58Z"
     seat: claude-opus-5-5
   - claim: "The fence: no file under apps/mouth/src."
     cmd: "git diff --name-only origin/main...HEAD | grep -c '^apps/mouth/src'"
@@ -66,7 +66,17 @@ receipts:
     exit: 1
     ts: "2026-10-10T14:25:18Z"
     seat: claude-opus-5-5
+  - claim: "CI, sharded, on d8c22d7cc6: four parts and the aggregate green; the aggregate prints scenarios-off-manifest 0 and passes its five asserts."
+    cmd: "gh workflow run r19-wrapper-census-tests.yml --ref agent/air-m5/mouth/kbli-r19-w0d3a-1010 (run 38059717705; aggregate job 114238278027)"
+    result: "success, 14:28:12Z-14:43:47Z (15m35s). phase-seconds: rest capture 729, walk 80; kbli opened 691; explorer opened 55; shared shared 349. 458 lines: S 0; captures 30 ok; 0 / 128 / 0 / 51; G 437; opened-surfaces 25 ok, 0 failed; P 10; K 138; R 0; N 0; D 0; M 677."
+    exit: 0
+    ts: "2026-10-10T14:43:47Z"
+    seat: claude-opus-5-5
 dissent:
+  - seat: claude-opus-5-5
+    objection: "Against W0d-2''s single-job CI print (run 38041731589), the sharded aggregate holds the same 457 lines plus S, but 73 of them sit elsewhere: all colour lines. A live census keeps its colours in the order it met them, a dump sorts them by hex, and the outside-colour lines were sorted by count alone, so ties kept either order."
+    status: CONFIRMED
+    resolution: "Ties sort by hex (ed5ab177e9), the order a replay already printed; a row reverses the colours' order and requires the same verdict, and the mutant that sorts by count alone fails it. The second CI pair compares the live single job with the aggregate on that head."
   - seat: claude-opus-5-5
     objection: "A missing part only lowers the counts: with `kbli` absent, opened-surfaces reads 7 ok, 0 failed and the ground counts fall, with no INCOMPLETE anywhere. Comparing what arrived with what each part claims would not see it either, because the absent part claims nothing."
     status: CONFIRMED

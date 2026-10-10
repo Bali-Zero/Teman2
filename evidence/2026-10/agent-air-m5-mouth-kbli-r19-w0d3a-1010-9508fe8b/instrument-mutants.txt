@@ -10,6 +10,7 @@ M9 check after verdict | KILLED | test_the_parts_judged_together_print_the_full_
 M10 failed key misparsed | KILLED | test_innocence_a_failed_scenario_is_received_not_
 M11 empty file crashes | KILLED | test_guilt_no_dump_at_all_is_the_whole_list_missi
 M12 missing never INCOMPLETE on S | KILLED | test_guilt_a_scenario_no_part_ran_is_missing_and_
+M13 colour ties by insertion order | KILLED | test_a_live_census_and_its_dump_print_the_same_co
 W1 matrix drops a part | KILLED | test_the_workflow_runs_every_part_and_judges_them
 W2 aggregate skipped after a red part | KILLED | test_the_workflow_runs_every_part_and_judges_them
 W3 S line not asserted | KILLED | test_innocence_the_exit_step_passes_the_parts_jud
