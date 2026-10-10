@@ -76,7 +76,7 @@ receipts:
   - claim: "5/5 killed (b13-deprecation-ignored, b13-deprecation-any-flag, b13-deprecated-flag-kept, b13-help-ignored, b13-total-unparsed); survivors none, errors none, stale none."
     cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only b13-deprecation-ignored b13-deprecation-any-flag b13-deprecated-flag-kept b13-help-ignored b13-total-unparsed
     exit: 0
-    ts: "2026-10-10T04:27:00Z"
+    ts: "2026-10-10T04:39:07Z"
     seat: claude-sonnet-5-5 on M5
   - claim: "2/2 killed (b8-cache-by-age, b7-fstrim-on-dry-run); survivors none, errors none, stale none."
     cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only b8-cache-by-age b7-fstrim-on-dry-run
