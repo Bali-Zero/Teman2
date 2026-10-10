@@ -24,6 +24,11 @@ import { dict } from "./i18n";
 //      static suffix (`${promptKey}.hint`) makes <referenced key>.<suffix>
 //      referenced; the base key must itself be referenced by rule 1 or 2.
 // Anything else needs an entry in UNRENDERED_ALLOWLIST with a reason.
+// Known limits (static analysis cannot see them): a template vouches for an
+// enum member that is declared but never produced at runtime (for example
+// outcome.document_status.CONDITIONAL/UNKNOWN: the adapter only emits
+// REQUIRED); and a template whose interpolation spans several dotted segments
+// is flagged, loudly, until the call site is split or the key allowlisted.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ORACLE_ROOT = path.resolve(HERE, "..");
@@ -78,6 +83,9 @@ const TOMBSTONES: readonly string[] = [
   "whyweask.human_context",
   "whyweask.review_only",
 ];
+
+/** The allowlist may only shrink: lower this with it, never raise it. */
+const ALLOWLIST_CEILING = 102;
 
 const UNRENDERED_ALLOWLIST: readonly {
   reason: string;
@@ -309,6 +317,14 @@ describe("visa-oracle i18n dead-key census", () => {
       stale,
       `allowlisted keys that were deleted or are now referenced (remove them from UNRENDERED_ALLOWLIST):\n${stale.join("\n")}`,
     ).toEqual([]);
+  });
+
+  it("never grows the allowlist, repeats a key, or leaves a group unexplained", () => {
+    const all = UNRENDERED_ALLOWLIST.flatMap((g) => g.keys);
+    expect(new Set(all).size, "duplicate allowlist entry").toBe(all.length);
+    expect(all.length).toBeLessThanOrEqual(ALLOWLIST_CEILING);
+    for (const group of UNRENDERED_ALLOWLIST)
+      expect(group.reason.trim().length).toBeGreaterThan(0);
   });
 
   it("never brings back a key #8205 deleted", () => {

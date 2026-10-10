@@ -21,7 +21,7 @@ bites:
   consumer: the mouth Vitest run in the required Frontend Tests check.
   where: ci
   observe: cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/i18n-census.test.ts"
-  expect: "contains:5 passed"
+  expect: "contains:6 passed"
 decisions:
   - id: D-rule
     decision: >-
@@ -29,7 +29,7 @@ decisions:
 receipts:
   - claim: The census passes on the clean tree.
     cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/i18n-census.test.ts"
-    result: "Test Files 1 passed (1); Tests 5 passed (5)"
+    result: "Test Files 1 passed (1); Tests 6 passed (6)"
     exit: 0
     ts: "2026-10-10T15:36:00Z"
     seat: Claude Sonnet 5.5
