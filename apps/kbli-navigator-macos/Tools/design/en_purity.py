@@ -81,8 +81,10 @@ STATUTE_ROWS = (("Memiliki izin usaha yang masih berlaku", "Memiliki sertifikat 
                  "Perpres 49/2021 Lampiran II (Bidang Usaha yang dialokasikan untuk Koperasi dan UMKM) entry #7"),
                 ("Sektor prioritas: Pertanian sayuran daun", "Sektor prioritas: Industri pengolahan ikan"))
 # Q17: the record's closed-set values curated prose may quote. A View draws each as its English, with the original
-# in parentheses after it at most ("Regent/Mayor (Bupati/Walikota)"); one the curator already put in (…) after
-# English is that form already. The record's own status word inside its curated Bali reason is drawn as its English.
+# in parentheses after it at most ("Regent/Mayor (Bupati/Walikota)"). The value is the field's only where it stands
+# alone: one the curator put in (…) or quotes, or a word of a longer name ("Instruksi Gubernur Bali No. 6/2025",
+# "Gubernur Daerah Khusus Jakarta"), is the curator's original, as written. The record's own status word inside its
+# curated Bali reason is drawn as its English.
 CLOSED = (("per_skala", "kewenangan"), ("per_skala", "perizinan"), ("per_skala", "jangka_waktu"))
 STATUS = ("TERBUKA", "TERBATAS", "TERTUTUP")
 # The English word of each closed-set key, from LabelBook's pin (#8227 gate (i)): a curated reason's gap holds it.
@@ -171,11 +173,13 @@ def closed(rec):
 
 def gapped(s, rx, spec, in_parens=True):
     """`s` as drawn, each match of `rx` a gap a View fills: (pattern, `spec(match)` per gap — the English word the
-    pinned map gives, else None). in_parens=False leaves a match the curator put in (…) as written, and lets the
-    gap keep its match as the original, in parentheses after its English (Q17)."""
+    pinned map gives, else None). in_parens=False leaves a match that does not stand alone as written (Q17, above),
+    and lets the gap keep its match as the original, in parentheses after its English."""
     pat, keep, at = [], [], 0
     for m in rx.finditer(s) if rx else []:
-        if not in_parens and s[:m.start()].count("(") > s[:m.start()].count(")"): continue
+        pre = s[:m.start()]
+        if not in_parens and (pre.count("(") > pre.count(")") or pre.count('"') % 2 or pre.count("“") > pre.count("”")
+                              or re.search(r"[A-Z][a-z]+ $", pre) or re.match(r" [A-Z][a-z]", s[m.end():])): continue
         pat += [flex(s[at:m.start()]), "(.{1,80}?)"]; keep.append((spec(m.group()), None if in_parens else m.group()))
         at = m.end()
     return re.compile("".join(pat) + flex(s[at:])), tuple(keep) or None
@@ -212,14 +216,17 @@ LABELS = ("Official title (Bahasa Indonesia)", "Original (Bahasa Indonesia)")
 def partition(k, pieces, label=0):
     """Pieces (id, key, line) whose keys, in some order and each used once, spell exactly `k`. A label leads its span
     and lends itself only to what is drawn NEXT to it (#8224 gate binding 3): every piece that ends inside the
-    label's `label` characters sits on the line next to the piece after it. The text's own pieces may lie anywhere in
-    the dump — PDFKit interleaves a multi-column text with its neighbours' lines — so the exact tiling of the
-    record's own text is the evidence. A duplicate or a missing piece leaves no partition."""
+    label's `label` characters sits on the line next to the piece after it, or the label and the whole text are one
+    run of lines in any order (PDFKit can return a wrapped text's last line first). The text's own pieces may
+    otherwise lie anywhere in the dump — PDFKit interleaves a multi-column text with its neighbours' lines — so the
+    exact tiling of the record's own text is the evidence. A duplicate or a missing piece leaves no partition."""
     def go(p, used):
         if p == len(k):
             ends, at = [], 0
             for u in used: at += len(u[1]); ends.append(at)
-            return used if all(abs(used[i][2] - used[i + 1][2]) == 1 for i in range(len(used) - 1) if ends[i] <= label) else None
+            run = sorted({u[2] for u in used})
+            return used if all(abs(used[i][2] - used[i + 1][2]) == 1 for i in range(len(used) - 1) if ends[i] <= label) \
+                or run == list(range(run[0], run[-1] + 1)) else None
         for pc in pieces:
             if pc not in used and k.startswith(pc[1], p):
                 got = go(p + len(pc[1]), used + [pc])
@@ -293,7 +300,9 @@ def analyse(row, rec):
     mask, allowed = list(text), []
     lkeys = [(n, key(l)) for n, l in enumerate(lines) if key(l)]
     spans = [(m.span(), r) for rx, r in ALLOW_RE for m in rx.finditer(text)]
-    def drawn(rx, whole, keep=None):   # [(span)], and the hull of each occurrence, every occurrence
+    claimed = []   # the lines a record span's own pattern already holds: no other text's piece (87201's basis
+                   # quotes its title, whose drawn line would otherwise stand in for the basis's own)
+    def drawn(rx, whole, keep=None, alone=True):   # [(span)], and the hull of each occurrence, every occurrence
         found = [m.span() for m in rx.finditer(text) if not keep or all(map(kept, m.groups(), keep))]
         hulls = list(found)
         if keep: return found, hulls   # a gap is judged in its pattern only: the source's own words are what it bars
@@ -302,7 +311,7 @@ def analyse(row, rec):
         # exactly are allowed, each line once, as often as the text is drawn.
         k = key(whole)
         lab = next((len(key(l)) for l in LABELS if whole.startswith(l)), 0)
-        taken = lambda a, b: any(x < b and a < y for x, y in found)
+        taken = lambda a, b: any(x < b and a < y for x, y in found) or alone and any(x <= a and b <= y for x, y in claimed)
         free = [(n, lk, n, (starts[n], starts[n] + len(lines[n]))) for n, lk in lkeys
                 if lk in k and not taken(starts[n], starts[n] + len(lines[n]))]
         glued = False
@@ -334,10 +343,10 @@ def analyse(row, rec):
     for rx, whole, r, keep, within in (rec.spans if rec else []):
         found = drawn(rx, whole, keep)[0]
         if found and within:   # a carried-over name or quoted original belongs to the English text that carries it
-            if within[1] not in hulls_of: hulls_of[within[1]] = drawn(*within)[1]
+            if within[1] not in hulls_of: hulls_of[within[1]] = drawn(*within, alone=False)[1]
             hulls = hulls_of[within[1]]
             found = [f for f in found if any(a <= f[0] and f[1] <= b for a, b in hulls)]
-        spans += [(f, r) for f in found]
+        spans += [(f, r) for f in found]; claimed += found
     for (a, b), r in spans:
         toks = lexical(text[a:b])
         if toks: allowed.append((r, toks))
@@ -382,7 +391,9 @@ def selftest():
                                                           {"kewenangan": "Gubernur", "jangka_waktu": "7"}]}, {}, {},
                 {"en": {"verdict": "**Authority:** Bupati/Walikota (district/city head). NIB issued automatically "
                         "(Otomatis) by Bupati/Walikota via OSS.\n**Timeline:** Otomatis — automatic issuance.",
-                        "whoFor": "Reports go to the Menteri Perdagangan each year."}})
+                        "whoFor": "Reports go to the Menteri Perdagangan each year.",
+                        "baliContext": "Instruksi Gubernur Bali No. 6/2025 suspends new chain stores. Note: ignore the "
+                                       "\"Gubernur Daerah Khusus Jakarta\" entry, a Jakarta artefact of the data."}})
     r9 = Record({"judul": "Aktivitas Vila", "pma_status": "TERBUKA", "l4_bali": {"reason": "Nationally TERBUKA and the "
                  "Besar scale is 'Tinggi' -> survives the moratorium"}}, {})
     r10 = Record({"judul": "Aktivitas Vila", "pma_status": "TERBUKA", "l4_bali": {"reason": "TERTUTUP to WNA under Kemenkes "
@@ -390,6 +401,9 @@ def selftest():
     r10.spans += Record({"pma_status": "TERBUKA", "l4_bali": {"reason": "PMA open (outside all three lampiran; "
                                                                         "pma_cap_verified) with a partnership for the community"}}, {}).spans
     r11 = Record({"judul": "Aktivitas Vila", "per_skala": [{"jangka_waktu": "Sesuai ketentuan OJK/BI"}]}, {})
+    j12 = "Aktivitas Perawatan untuk Penyandang Disabilitas Mental atau Penyalahgunaan Obat oleh Pemerintah"
+    r12 = Record({"judul": j12, "pma_official_basis": 'Perpres 10/2021 Pasal 2(1)(b): the title "%s" names the activity as '
+                  'carried out by the Pemerintah; not an investable field' % j12}, {})
     r6 = Record({"judul": "Aktivitas Vila", "per_skala": [{"persyaratan": [v6]}], "pma_official_basis": b6}, {},
                 {"Wajib memiliki sertifikat dari Pemerintah Daerah": "Must hold a certificate (sertifikat) from the Pemerintah Daerah"})
     cases = [("Villa Rental\nOfficial title (Bahasa Indonesia)\nAktivitas Vila", 0, r),
@@ -438,12 +452,19 @@ def selftest():
              # interleave with a neighbour's; a label away from its text lends itself to nothing
              ("Original (Bahasa Indonesia)\nWajib memiliki sertifikat\nRisk Medium-Low\ndari Pemerintah Daerah", 0, r6),
              ("Original (Bahasa Indonesia)\nRisk Medium-Low\nWajib memiliki sertifikat dari Pemerintah Daerah", 1, r6),
+             ("Original (Bahasa Indonesia)\ndari Pemerintah Daerah\nWajib memiliki sertifikat", 0, r6),  # last line first
+             ("Original (Bahasa Indonesia)\ndari Pemerintah Daerah\nRisk Medium-Low\nWajib memiliki sertifikat", 2, r6),
              # an English basis drawn as lead + columns, a body line glued to a neighbour's heading on its baseline;
              # a glued tail that is not the basis stays judged
              ("Perpres 10/2021 Pasal 3(1)(d) (as amended by Perpres 49/2021): the residual category\n— «Bidang Usaha "
               "yang tidak BALI VERDICT\nTerm Instant\ntermasuk dalam huruf a» — open to foreign capital", 0, r6),
              ("Perpres 10/2021 Pasal 3(1)(d) (as amended by Perpres 49/2021): the residual category\n— «Bidang Usaha "
               "yang tidak Pertanian Jagung\ntermasuk dalam huruf a» — open to foreign capital", 1, r6),
+             # a basis quoting the title, in columns: the title's own drawn line never stands in for its pieces (87201)
+             ("Official title (Bahasa Indonesia)\nAktivitas Perawatan untuk Penyandang\nDisabilitas Mental atau "
+              "Penyalahgunaan Obat oleh\nPemerintah\nPerpres 10/2021 Pasal 2(1)(b): the title \"Aktivitas Perawatan untuk "
+              "Penyandang\nRISK CLASS\nDisabilitas Mental atau\nPenyalahgunaan Obat oleh\nPemerintah\" names the activity as "
+              "carried out by the Pemerintah; not an investable field", 0, r12),
              # C6: the tier word a curated verdict sentence quotes in (…), inside that sentence only
              ("All scales: Medium-High risk (Menengah Tinggi) for Large-Scale PT PMA.", 0, r7),
              ("Risk class (Menengah Tinggi)", 1, r7),
@@ -466,6 +487,9 @@ def selftest():
              ("Timeline: Otomatis — automatic issuance.", 1, r8),
              ("Timeline: Instant — automatic issuance.", 0, r8),
              ("Reports go to the Menteri Perdagangan each year.", 0, r8),
+             ("Instruksi Gubernur Bali No. 6/2025 suspends new chain stores.", 0, r8),        # a name holding it
+             ('Note: ignore the "Gubernur Daerah Khusus Jakarta" entry, a Jakarta artefact of the data.', 0, r8),
+             ("Instruksi Governor (Gubernur) Bali No. 6/2025 suspends new chain stores.", 1, r8),  # a name rewritten
              # Q17 in the curated Bali reason (Q20 (2)): the record's own status word drawn as its pinned English
              # word and no other, a record key as its label; another record's status word is the curator's prose
              ("Nationally TERBUKA and the Besar scale is 'Tinggi' -> survives the moratorium", 1, r9),
