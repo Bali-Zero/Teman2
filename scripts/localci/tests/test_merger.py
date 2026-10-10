@@ -1245,3 +1245,16 @@ def test_the_tick_hands_the_stale_judge_the_mirror_and_the_decided_base(world, m
     ((args, kw),) = seen
     judge = kw.get("judge") if "judge" in kw else args[5]
     assert isinstance(judge, mg.StaleJudge) and judge.base == world.base and judge.repo == world.state / "repo.git"
+
+
+def test_the_tick_hands_the_gate_judge_the_stale_judges_matrix_and_the_runs_own_plan_time(world, monkeypatch):
+    world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
+    seen, asked = [], []
+    real = mg.hosted_summary
+    monkeypatch.setattr(mg, "hosted_summary", lambda *a, **kw: seen.append((a, kw)) or real(*a, **kw))
+    monkeypatch.setattr(mg, "plan_time", lambda run_dir: asked.append(Path(run_dir)) or "2026-10-10T01:20:00Z")   # unit-tested in test_gate_stale
+    assert world.tick() == 0
+    ((args, kw),) = seen
+    gate = kw.get("gate")
+    assert isinstance(gate, mg.GateJudge) and gate.matrix is args[5] and gate.repo == REPO
+    assert asked == [Path(args[4])] and gate.plan_at == "2026-10-10T01:20:00Z"   # the plan of THIS decision's run dir
