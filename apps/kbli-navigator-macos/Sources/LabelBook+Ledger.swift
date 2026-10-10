@@ -101,12 +101,13 @@ extension LabelBook {
         !isID && raw == "Otomatis" ? term(raw, isID: false) : raw
     }
 
-    /// An overlay permit name (`authority.pbUmku`, a closed set, Q17): English first, the original in
-    /// parentheses. One curated value opens with the Indonesian name; every other value stays as written.
+    /// An overlay permit name (`authority.pbUmku`, a closed set the instrument maps by exact match): English first,
+    /// as the other values ("TDUP — Tourism Business Registration") read. The one curated value that opens with the
+    /// Indonesian name keeps its acronym; the name itself stays on the same sheet, in the post-license obligation
+    /// "Have a Health Worthiness Certificate (Sertifikat Laik Sehat)" (55203). Every other value stays as written.
     static func permitName(_ raw: String, isID: Bool) -> String {
         guard !isID else { return raw }
-        return ["Sertifikat Laik Sehat (SLHS) — Health-Worthiness Certificate":
-                    "Health-Worthiness Certificate (Sertifikat Laik Sehat, SLHS)"][raw] ?? raw
+        return ["Sertifikat Laik Sehat (SLHS) — Health-Worthiness Certificate": "Health-Worthiness Certificate (SLHS)"][raw] ?? raw
     }
 
     /// A record string with no English source, met by an English reader (Q12 ruling 4): the source came back
