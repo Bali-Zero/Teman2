@@ -682,13 +682,23 @@ The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and 
   2026-10-08T17:26Z). Each removal's rule reads `vm floor: VM free X GB < 15 GB after the cap; N plan(s) of the last 48 h name it, built
   H h ago` (`undated` without a readable `Created`); the line carries
   `vm_floor {floor_gb, removed, met}`, or `skipped` on a dry run, an unreadable input, or an unmeasured VM.
-- **Builder cache.** Every prune that is not a dry run runs `docker builder prune -af --keep-storage 4GB` on the current
+- **Builder cache.** Every prune that is not a dry run runs `docker builder prune -af --max-used-space 4GB` (the flag is chosen per B13 below) on the current
   builder, the one the runner's `docker build` uses (`colima` on Pro; `localci-isolated` is not the runner's), after the
   cap's removals and again after each floor removal. `-a` because the entries are the layers of images that exist, which are
   not dangling: without it the prune removed 0 B of a 16.93 GB cache (17:23Z); with it, after three removals, 20.98 GB (17:27Z). The budget is `BUILDER_CACHE_GB` (4;
-  `LOCALCI_BUILDER_CACHE_GB` overrides it); the line journals `builder_prune {rc, keep_storage_gb, tail}` of the last call,
+  `LOCALCI_BUILDER_CACHE_GB` overrides it); the line journals `builder_prune {rc, keep_storage_gb, flag, freed_gb, ineffective, tail}` of the last call,
   `runs` the number of calls, and `cache_gb {before, after}` read from `docker system df` before the first and after the last.
   It read `--filter until=24h` until B8: on Pro at 17:20Z that kept 16.9 GB of cache with 0.5 GB reclaimable.
+- **Builder cache, B13.** buildx 0.34 turned `--keep-storage` into `--reserved-space` (a floor to keep, not a cap): on Pro
+  (buildx v0.34.1, docker client 29.5.2, server 29.2.1; 2026-10-10 ~03:10Z) `builder prune -af --keep-storage 4GB` printed the
+  deprecation notice, `Total: 0B` and exited 0 against a 22.83 GB cache (`docker buildx du`: Shared 18.96 GB, Private 3.867 GB,
+  Reclaimable 22.03 GB); the journal read `rc 0, cache 22.83 -> 22.83`, and at 01:14Z every heavy leg was
+  `host_disk_below_floor 11.8GB<12GB`. Now the flag is read ONCE per prune run from `docker builder prune --help` (30 s bound):
+  `--max-used-space` when listed, `--keep-storage` only when the help lists that and not the new one (old buildx), and
+  `--max-used-space` when the help cannot be read (rc then decides). The line journals `flag`, `freed_gb` (buildx's own `Total:` line
+  of the last call, `null` when absent) and `ineffective`: true, with a `why`, when rc is 0, the cache after the last call is above
+  the budget by more than 1 GB and buildx freed 0 B; `failed` then names `builder_prune` and the organ is not green. Bytes shared
+  with an image that exists are not freeable, so a call that freed anything is never flagged; `buildx du` is not read.
 - **Run directories.** Age from the timestamp in the run's name; an undated directory is never touched. Under 7 days a
   run is whole. From 7 days `logs/` and every `call-graph.json` and `higher-order-call-graph.json` go. From 30 days only
   `status.json`, `hosted_compare.json` and `state/plan.json` stay. `decisions.jsonl` is never touched, and a `runs/` that is a
@@ -720,7 +730,7 @@ One journal line per prune (its shape; the numbers below are illustrative, not m
                 "kept": [{"tag": "localci-deps:…", "rule": "the newest image of recipe e2e-tests"},
                          {"tag": "localci-deps:…", "rule": "slot 2 of 2 of recipe e2e-tests: named by 4 plan(s) of the last 48 h, the youngest 1.4 h ago"},
                          {"tag": "postgres:15", "rule": "service stand-in of the BASE matrix: never pruned"}], "errors": []},
-     "builder_prune": {"rc": 0, "keep_storage_gb": 4.0, "cache_gb": {"before": 21.8, "after": 4.0}, "runs": 2, "tail": "Total: 3.9GB"},
+     "builder_prune": {"rc": 0, "keep_storage_gb": 4.0, "flag": "max-used-space", "freed_gb": 3.9, "ineffective": false, "cache_gb": {"before": 21.8, "after": 4.0}, "runs": 2, "tail": "Total: 3.9GB"},
      "vm_floor": {"floor_gb": 15.0, "removed": 1, "met": true},
      "runs": {"trimmed_7d": ["pr8060-…-20261001T063148Z"], "trimmed_30d": [], "freed_gb": 0.63},
      "fstrim": {"rc": 0, "tail": "/: 9.6 GiB (10307921510 bytes) trimmed"}, "failed": []}
