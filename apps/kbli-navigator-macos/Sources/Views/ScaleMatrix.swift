@@ -57,7 +57,7 @@ struct ScaleMatrix: View {
     }
 
     static func term(_ s: PerSkala, isID: Bool) -> String? {
-        s.jangkaWaktu.flatMap { $0.isEmpty ? nil : PP28ScalePanel.formatJangkaWaktu($0, isID: isID) }
+        s.jangkaWaktu.flatMap { $0.isEmpty ? nil : LabelBook.term($0, isID: isID) }
     }
 
     /// Every string a cell draws, one entry per (scope, scale, row) — the function `contenttest` prints.
@@ -99,23 +99,29 @@ struct ScaleMatrix: View {
                 ForEach(scs) { sc in
                     if scs.count > 1 {
                         GridRow {
-                            Text(tr(sc.uraian ?? ""))
-                                .font(Theme.scalable(13, weight: .semibold)).foregroundStyle(Theme.white)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.top, 16).padding(.bottom, 8)
-                                .gridCellColumns(ncols)
+                            VStack(alignment: .leading, spacing: 2) {
+                                if isOriginal(sc) { OriginalLabel() }
+                                Text(tr(sc.uraian ?? ""))
+                                    .font(Theme.scalable(13, weight: .semibold)).foregroundStyle(Theme.white)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, 16).padding(.bottom, 8)
+                            .gridCellColumns(ncols)
                         }
                     }
                     line(lang.t("detail.risk"), sc, top: 12) { chip($0) }
                     line(lang.t("detail.term"), sc, top: 4, bottom: mode == .compact ? 12 : 0) { e in
                         Text(Self.term(e.row, isID: isID) ?? Theme.absent)
                             .font(Theme.scalable(13)).monospacedDigit().foregroundStyle(Theme.white)
+                            .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                     }
                     if mode == .ledger {
                         line(lang.t("detail.authority"), sc, top: 4, bottom: 12) { e in
-                            VStack(spacing: 2) {
-                                ForEach(Self.authorities(e.row, isID: isID), id: \.self) { a in
+                            // Two authorities are two entries: a short rule between them, each text as written.
+                            VStack(spacing: 6) {
+                                ForEach(Array(Self.authorities(e.row, isID: isID).enumerated()), id: \.offset) { i, a in
+                                    if i > 0 { Rectangle().fill(Theme.lineStrong).frame(width: 24, height: 1) }
                                     Text(a).font(Theme.scalable(13)).foregroundStyle(Theme.muted)
                                         .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                                 }
@@ -189,6 +195,12 @@ struct ScaleMatrix: View {
         }
     }
 
+    /// An English reader meeting a scope title with no English source sees it under its label (Q12 ruling 4).
+    private func isOriginal(_ sc: Scope) -> Bool {
+        let u = sc.uraian ?? ""
+        return !u.isEmpty && LabelBook.isOriginal(u, drawn: tr(u), isID: isID)
+    }
+
     // MARK: six or more scopes — the filterable list
 
     private static let col: CGFloat = 56
@@ -241,6 +253,7 @@ struct ScaleMatrix: View {
     private func listRow(_ sc: Scope) -> some View {
         let isOpen = open.contains(sc.id)
         return VStack(alignment: .leading, spacing: 8) {
+            if isOriginal(sc) { OriginalLabel().padding(.leading, 20) }
             Button {
                 if isOpen { open.remove(sc.id) } else { open.insert(sc.id) }
             } label: {

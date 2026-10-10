@@ -189,13 +189,12 @@ struct KBLIRegistryView: View {
             }
             Rectangle().fill(Theme.lineSoft).frame(height: 1).padding(.vertical, 8)
             Text(lang.t("detail.bali")).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(Theme.muted)
-            let bali = VerdictBadge(state: baliState(v), isID: isID)
-            chip(bali.text, Theme.chip(baliState(v) == .open ? .open : baliState(v) == .blocked ? .closed : .neutral))
-                .accessibilityLabel(bali.voiceOverLabel)
+            let bali = LabelBook.baliChip(v, isID: isID)
+            chip(bali.word, Theme.chip(bali.tone)).accessibilityLabel(bali.voiceOver)
             if let reason = verdictSubtitle(v) {
                 LeadBody(text: LabelBook.humanise(reason, record: kbli, isID: isID), kind: .reason).padding(.top, 4)
             }
-            if baliState(v) == .undetermined {
+            if case .undetermined = v.bali {
                 Text(isID
                      ? "Tidak ada verdikt yang dapat dinyatakan dari catatan ini — jangan diperlakukan sebagai terbuka maupun tertutup."
                      : "No verdict can be stated from these records — do not read this as open or as closed.")
@@ -220,30 +219,13 @@ struct KBLIRegistryView: View {
             .background(c.bg, in: RoundedRectangle(cornerRadius: 2))
     }
 
-    /// The Bali axis alone (D14): the chip under `detail.bali` never states the national position.
-    private func baliState(_ v: KBLIVerdict) -> VerdictBadge.State {
-        switch v.bali {
-        case .open: return .open
-        case .blocked: return .blocked
-        case .undetermined: return .undetermined
-        }
-    }
-
     /// The legal basis across the three columns (§3.5 full-width row, D4): citation lead, then the body
-    /// in BalancedColumns. In English an Indonesian basis is the labelled original (Q12 ruling 4).
+    /// in BalancedColumns.
     @ViewBuilder private func basisRow(columns: Int) -> some View {
         if let basis = kbli.pmaOfficialBasis, !basis.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 Rectangle().fill(Theme.structure).frame(height: 2)
-                Text(isID ? "Dasar Hukum" : "Legal Basis").font(Theme.scalable(11, weight: .semibold)).tracking(0.88)
-                    .foregroundStyle(Theme.muted)
-                // Q12 ruling 4, judged on the whole text: 695 of the 722 bases are English analysis quoting
-                // the statute in «…», and their opening clause is a citation with no function word in it, so
-                // LabelBook's opening-clause rule is read over the text with its clause marks blanked.
-                if !isID && !LabelBook.isEnglish(String(basis.map { "(;—".contains($0) ? " " : $0 })) {
-                    Text("Original (Bahasa Indonesia)").font(Theme.scalable(11)).foregroundStyle(Theme.muted)
-                }
-                LeadBody(text: basis, kind: .basis, columns: columns, gutter: 32)
+                BasisBlock(basis: basis, isID: isID, columns: columns)
             }
         }
     }
@@ -1073,6 +1055,7 @@ struct KBLIRegistryView: View {
             t = t.replacingOccurrences(of: #"Timeline: (\d+) Hari"#, with: "Timeline: $1 days", options: .regularExpression)
             t = t.replacingOccurrences(of: "NIB dan Sertifikat Standar", with: "NIB + Standard Certificate")
             t = t.replacingOccurrences(of: "Authority: Bupati/Walikota", with: "Authority: Regent/Mayor")
+            t = LabelBook.ledgerProse(t, isID: false)
         }
         return t
     }
@@ -1403,7 +1386,8 @@ struct PP28ScalePanel: View {
                         .overlay(Capsule().strokeBorder(Theme.riskChip(risk).border ?? .clear, lineWidth: 1))
                 }
                 if let jw = s.jangkaWaktu, !jw.isEmpty {
-                    Text(Self.formatJangkaWaktu(jw, isID: isID)).font(Theme.scalable(11, design: .monospaced)).foregroundStyle(Theme.muted)
+                    Text(LabelBook.term(jw, isID: isID)).font(Theme.scalable(11, design: .monospaced)).foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             // Licensing AUTHORITY for THIS scale (Zero 2026-06-30): moved here from the Authority table,
@@ -1418,23 +1402,27 @@ struct PP28ScalePanel: View {
                 }
             }
             if let su = s.scopeUraian, !su.isEmpty {
+                if LabelBook.isOriginal(su, drawn: tr(su), isID: isID) { OriginalLabel() }
                 Text(tr(su)).font(Theme.scalable(11)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
             }
             // De-duplicate then translate to the display language (EN→English, ID→unchanged).
             // (e.g. the OJK reporting line repeated twice — a regulator reads it as sloppy.)
-            let duties = Self.dedupKeepingOrder(s.kewajiban.map(Self.stripHTML).filter { !$0.isEmpty }).map(tr)
+            // An item with no English source is drawn verbatim under its label (Q12 ruling 4).
+            let duties = Self.dedupKeepingOrder(s.kewajiban.map(Self.stripHTML).filter { !$0.isEmpty })
             if !duties.isEmpty {
-                scaleList(title: isID ? "KEWAJIBAN PASCA-IZIN" : "POST-LICENSE OBLIGATIONS", items: duties, tint: Theme.yellow)
+                scaleList(title: isID ? "KEWAJIBAN PASCA-IZIN" : "POST-LICENSE OBLIGATIONS", items: duties.map(tr),
+                          originals: Set(duties.filter { LabelBook.isOriginal($0, drawn: tr($0), isID: isID) }), tint: Theme.yellow)
             }
-            let reqs = Self.dedupKeepingOrder(s.persyaratan.map(Self.stripHTML).filter { !$0.isEmpty }).map(tr)
+            let reqs = Self.dedupKeepingOrder(s.persyaratan.map(Self.stripHTML).filter { !$0.isEmpty })
             if !reqs.isEmpty {
-                scaleList(title: isID ? "PERSYARATAN" : "REQUIREMENTS", items: reqs, tint: Theme.statutory)
+                scaleList(title: isID ? "PERSYARATAN" : "REQUIREMENTS", items: reqs.map(tr),
+                          originals: Set(reqs.filter { LabelBook.isOriginal($0, drawn: tr($0), isID: isID) }), tint: Theme.statutory)
             }
         }
         .padding(.top, 4)
     }
 
-    private func scaleList(title: String, items: [String], tint: Color) -> some View {
+    private func scaleList(title: String, items: [String], originals: Set<String>, tint: Color) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(Theme.scalable(10, weight: .heavy, design: .monospaced)).tracking(0.5).foregroundStyle(tint)
             // 1090 scale rows carry more than 8 obligations (05101 carries 34). The old
@@ -1444,7 +1432,10 @@ struct PP28ScalePanel: View {
                 ForEach(Array(shown.enumerated()), id: \.offset) { _, t in
                     HStack(alignment: .top, spacing: 8) {
                         Text("›").font(Theme.scalable(13, weight: .bold, design: .monospaced)).foregroundStyle(tint)
-                        Text(t).font(Theme.scalable(13)).foregroundStyle(Theme.white).fixedSize(horizontal: false, vertical: true)
+                        VStack(alignment: .leading, spacing: 2) {
+                            if originals.contains(t) { OriginalLabel() }
+                            Text(t).font(Theme.scalable(13)).foregroundStyle(Theme.white).fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
             }

@@ -62,3 +62,35 @@ struct LeadBody: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 }
+
+/// The line an English View draws above record text that has no English source (Q12 ruling 4). One spelling, so
+/// the census binds the text to it; EN-1b's LabelBook constant replaces the literal when it lands.
+struct OriginalLabel: View {
+    var body: some View {
+        Text("Original (Bahasa Indonesia)").font(Theme.scalable(11)).foregroundStyle(Theme.muted)
+    }
+}
+
+/// The legal basis under its heading (D4): "Legal Basis" / "Dasar Hukum", the original's label when an English
+/// reader meets an Indonesian basis (Q12 ruling 4), then LeadBody. The ledger's full-width row; the chat rail next.
+struct BasisBlock: View {
+    let basis: String
+    let isID: Bool
+    var columns: Int = 1
+
+    /// Judged on the whole text: 695 of the 722 bases are English analysis quoting the statute in «…», and their
+    /// opening clause is a citation with no function word in it, so LabelBook's opening-clause rule is read over
+    /// the text with its clause marks blanked.
+    static func isOriginal(_ basis: String) -> Bool {
+        !LabelBook.isEnglish(String(basis.map { "(;—".contains($0) ? " " : $0 }))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(isID ? "Dasar Hukum" : "Legal Basis").font(Theme.scalable(11, weight: .semibold)).tracking(0.88)
+                .foregroundStyle(Theme.muted)
+            if !isID && Self.isOriginal(basis) { OriginalLabel() }
+            LeadBody(text: basis, kind: .basis, columns: columns, gutter: 32)
+        }
+    }
+}
