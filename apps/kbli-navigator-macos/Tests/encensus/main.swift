@@ -84,11 +84,13 @@ let rc: Int32 = MainActor.assumeIsolated {
             if perClass[c, default: 0] < 3 { perClass[c, default: 0] += 1; pick.insert(k.kode) }
             if let s = KBLIStore.sectorLetter(for: k.kode), sectors.insert(s).inserted { pick.insert(k.kode) }
             if let b = k.l4Bali?.status, bali.insert(b).inserted { pick.insert(k.kode) }
-            // one code per branch a LabelBook map takes on this record (#8227 gate (v): 02101/03120's cap not verified)
+            // one code per branch a LabelBook map takes on this record (#8227 gate (v): 02101/03120's cap not verified;
+            // the EN-1c gate (d): 02102, whose Bali reason holds a record key humanise draws as its field label)
             let branches = ["pma:\(k.pmaStatus ?? "∅")", "cap:\(k.pmaMaxAsing.map { $0 == 0 || $0 == 100 ? "\($0)" : "x" } ?? "∅")",
                             "verified:\(k.pmaCapVerified.map(String.init) ?? "∅")", "special:\(k.pmaCapSpecial ?? false)",
                             "route:\(k.pmaRouteTo != nil)", "bali:\(k.l4Bali != nil)", "conf:\(k.l4Bali?.confidence ?? "∅")",
-                            "blocked:\(k.l4Bali?.blocked ?? false)", "moratorium:\(k.l4Bali?.moratorium != nil)"]
+                            "blocked:\(k.l4Bali?.blocked ?? false)", "moratorium:\(k.l4Bali?.moratorium != nil)",
+                            "reason-key:\(LabelBook.fieldNames.keys.contains { k.l4Bali?.reason?.contains($0) == true })"]
                 + k.perSkala.flatMap { r in ["risk:\(r.kategoriRisiko ?? "∅")", "auth:\(r.kewenangan ?? "∅")"]
                     + r.skalaUsaha.map { "scale:\($0)" } }
             if branches.contains(where: { taken.insert($0).inserted }) { pick.insert(k.kode) }

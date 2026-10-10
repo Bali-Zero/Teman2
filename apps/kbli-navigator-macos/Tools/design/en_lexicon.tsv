@@ -612,3 +612,7 @@ ya	function	yes
 diverifikasi	verdict	verified
 batas	ui	limit, cap (the provenance strip: "batas modal asing")
 lintas	ui	across ("kelas risiko tertinggi lintas skala")
+berbentuk	function	in the form of ("Berbentuk badan hukum", overlay prose)
+hukum	statute	law, legal ("badan hukum", a legal entity)
+miliar	domain	billion ("IDR 100 miliar")
+juta	domain	million

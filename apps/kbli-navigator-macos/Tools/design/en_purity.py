@@ -117,6 +117,17 @@ def ref():
 
 def known(w): return w in LEX or w in PROPER or w in ref()
 
+_ENG = []
+def english_word(w):
+    """A word English writes: an English function word, or no lexicon word and more frequent in the corpus's English
+    (the translation table's values, en_ui_words) than in its Indonesian sources (its keys) — "Regent" and "risk",
+    never "hukum", which English text only carries inside a quoted name (the EN-1c gate's F1)."""
+    if not _ENG:
+        i18n = json.load(open(os.path.join(ROOT, "Resources", "kbli-data-i18n-en.json")))
+        en, idn = (Counter(w.lower() for t in side for w in WORD_RE.findall(t)) for side in (i18n.values(), i18n))
+        _ENG.append({w for w in ref() if w not in LEX and en[w] + (w not in en) > idn[w]} | EN_FUNCTION)
+    return w in _ENG[0]
+
 def words(s):
     """(offset, word) as drawn: a lower→Upper boundary splits what PDFKit glued ("CodesSemua"); digits never join.
     A run glued with no case change ("Codessektor", "RISIKOOSS") splits where both halves are known words, one a
@@ -314,8 +325,8 @@ class Record:
         # never one that is Indonesian only, nor one that carries the record's official title (ruling 3: under its
         # label only), nor one with a Q17 value of the record left in it.
         for para in dict.fromkeys(lines_ + sentences):
-            toks = [w.lower() for _, w in words(para)]
-            if lexical(para) and any(t not in LEX for t in toks) and not (self.title_re and self.title_re.search(para)):
+            toks = [w.lower() for _, w in words(para)]   # English by a word only English writes, never by the lexicon
+            if lexical(para) and any(map(english_word, toks)) and not (self.title_re and self.title_re.search(para)):
                 rx, keep = gapped(para, q17, lambda t: None, False)
                 spans.append((rx, para, R_PROSE, keep, None))
         for v in ((en.get("authority") or {}).get("pbUmku") or []) if isinstance(en.get("authority"), dict) else []:
@@ -444,7 +455,10 @@ def selftest():
                         "roadmap": [{"detail": "Micro / Small / Medium, Medium-Low risk — Bupati/Walikota"}],
                         "meaning": "Fully open (Terbuka) to foreign owners. **⚠️ BALI ALERT (Jan 2026):** the moratorium "
                                    "applies (Berlaku) to new villas.",
-                        "authority": {"pbUmku": ["Sertifikat Laik Sehat (SLHS) — Health-Worthiness Certificate"]}}})
+                        "authority": {"pbUmku": ["Sertifikat Laik Sehat (SLHS) — Health-Worthiness Certificate"]},
+                        "related": [{"note": "Kewajiban: Berbentuk badan hukum.\nAuthority: Gubernur Daerah Khusus Jakarta "
+                                    "(outside Jakarta: Bupati/Walikota). Mikro / Kecil / Menengah scale: Medium-Low risk "
+                                    "(Menengah Rendah)."}]}})
     r9 = Record({"judul": "Aktivitas Vila", "pma_status": "TERBUKA", "l4_bali": {"reason": "Nationally TERBUKA and the "
                  "Besar scale is 'Tinggi' -> survives the moratorium"}}, {})
     r10 = Record({"judul": "Aktivitas Vila", "pma_status": "TERBUKA", "l4_bali": {"reason": "TERTUTUP to WNA under Kemenkes "
@@ -556,6 +570,11 @@ def selftest():
              ("Health-Worthiness Certificate (Sertifikat Laik Sehat, SLHS)", 0, r8),
              ("Health-Worthiness Certificate (Sertifikat Laik Fungsi, SLF)", 1, r8),
              ("Sertifikat Laik Sehat (SLHS) — Health-Worthiness Certificate", 1, r8),           # the original first
+             # EN-1c gate F1: an Indonesian-only overlay line is no prose; F2: a value inside (…) stays as written
+             ("Kewajiban: Berbentuk badan hukum.", 1, r8),
+             ("Mikro / Kecil / Menengah scale: Medium-Low risk (Menengah Rendah).", 0, r8),
+             ("Authority: Gubernur Daerah Khusus Jakarta (outside Jakarta: Bupati/Walikota).", 0, r8),
+             ("Authority: Gubernur Daerah Khusus Jakarta (outside Jakarta: Regent / Mayor (Bupati/Walikota)).", 1, r8),
              # Q17 in the curated Bali reason (Q20 (2)): the record's own status word drawn as its pinned English
              # word and no other, a record key as its label; another record's status word is the curator's prose
              ("Nationally TERBUKA and the Besar scale is 'Tinggi' -> survives the moratorium", 1, r9),
