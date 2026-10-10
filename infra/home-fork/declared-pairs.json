@@ -1236,7 +1236,7 @@
       "live": "~/scripts/tg_notify.py",
       "repo": "scripts/tg_notify.py",
       "machines": ["pro"],
-      "_note": "The Telegram gateway. Declared 2026-10-10: the HOME copy on Pro was byte-identical to repo commit 36baefb85e (2026-08-17) and had no declaration, so it silently missed the later routing work (the 'act' tier, OWNER_FAMILIES, board routing). Consumers measured on Pro: every ~/scripts/*.sh that resolves the gateway sibling-first via dirname \"$0\" (cron-runner, cron-agent, cron-state, pro-healer, runtime-reconcile, login-healthcheck, launchd-liveness-detector, audit-launchd-daily and others) runs THIS copy, not the repo's; scripts that name ~/nuzantara/scripts/tg_notify.py directly are unaffected. The live copy is a real file and must be re-synced by hand after a merge that changes the repo twin."
+      "_note": "The Telegram gateway. Declared 2026-10-10: the HOME copy on Pro was byte-identical to repo commit 36baefb85e (2026-08-17) and had no declaration, so it silently missed the later routing work (the 'act' tier, OWNER_FAMILIES, board routing). Consumers measured on Pro: every ~/scripts/*.sh that resolves the gateway sibling-first via dirname \"$0\" (cron-runner, cron-agent, cron-state, runtime-reconcile, login-healthcheck, launchd-liveness-detector, audit-launchd-daily and others) runs THIS copy, not the repo's; scripts that name ~/nuzantara/scripts/tg_notify.py directly are unaffected. The live copy is a real file and must be re-synced by hand after a merge that changes the repo twin."
     }
   ],
   "allow": [
