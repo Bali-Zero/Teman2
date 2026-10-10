@@ -16,6 +16,7 @@ import fcntl
 import hashlib
 import json
 import os
+import posixpath
 import re
 import shutil
 import subprocess
@@ -32,6 +33,7 @@ TRAILER = "Zero-Sync-Canonical"
 TRAILER_RE = re.compile(rf"^{TRAILER}: ([0-9a-f]{{40}})[ \t]*$", re.M)
 DEEPEN_DEPTH = 200
 NPM_TIMEOUT = 600
+NET_TIMEOUT = 1800  # the first full zero fetch took ~10 min on M5; a hung fetch/push must still end the run, or it holds the lock and every later tick no-ops
 
 EXIT_OK, EXIT_ERROR, EXIT_USAGE, EXIT_DIVERGED, EXIT_REJECTED = 0, 1, 2, 3, 4
 
@@ -66,13 +68,16 @@ class Repo:
         e["GIT_TERMINAL_PROMPT"] = "0"
         if env:
             e.update(env)
-        p = subprocess.run(
-            ["git", "--git-dir", self.git_dir, *args],
-            input=input if isinstance(input, bytes) or input is None else input.encode(),
-            capture_output=True,
-            env=e,
-            timeout=timeout,
-        )
+        try:
+            p = subprocess.run(
+                ["git", "--git-dir", self.git_dir, *args],
+                input=input if isinstance(input, bytes) or input is None else input.encode(),
+                capture_output=True,
+                env=e,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            raise SyncError(f"git {args[0]} timed out after {timeout}s") from None
         if check and p.returncode != 0:
             tail = p.stderr.decode(errors="replace").strip()[-600:]
             raise SyncError(f"git {args[0]} failed (rc={p.returncode}): {tail}")
@@ -138,7 +143,7 @@ def prune_workspaces(text: str, exists) -> tuple[str, list[str]]:
     for w in ws:
         if not isinstance(w, str) or any(c in w for c in "*?[]{}!"):
             raise SyncError(f"workspace glob/odd entry not supported: {w!r}")
-    kept = [w for w in ws if exists(w)]
+    kept = [w for w in ws if exists(posixpath.normpath(w))]
     m = re.search(r'("workspaces"\s*:\s*\[)(.*?)(\])', text, re.S)
     if not m:
         raise SyncError("cannot locate the workspaces array in package.json text")
@@ -227,7 +232,8 @@ def build_tree(repo: Repo, state: Path, canon_ref: str, zero_ref: str, npm_cmd: 
         entries["package.json"] = (mode, repo.hash_blob(pruned))
         if "package-lock.json" in canon:
             lmode, loid = canon["package-lock.json"]
-            ws = {f"{w}/package.json": entries[f"{w}/package.json"][1] for w in kept_ws}
+            ws = {f"{posixpath.normpath(w)}/package.json": entries[f"{posixpath.normpath(w)}/package.json"][1]
+                  for w in kept_ws}
             lock = regen_lock(repo, state, npm_cmd, pruned, loid, ws)
             entries["package-lock.json"] = (lmode, repo.hash_blob(lock))
 
@@ -288,7 +294,7 @@ def prior_subjects(repo: Repo, prev: str | None, canon_sha: str, keep: list[str]
         if not reachable():
             # depth-1 left the tip as a shallow boundary: deepen (bounded) only to list subjects
             repo.run("fetch", "--no-tags", f"--depth={DEEPEN_DEPTH}", "--filter=blob:none", "canonical",
-                     f"+{remote_ref}:{canon_ref}", check=False)
+                     f"+{remote_ref}:{canon_ref}", check=False, timeout=NET_TIMEOUT)
             if not reachable():
                 return fallback
         out = repo.run("log", "--format=%h %s", "-n", "50", f"{prev}..{canon_sha}", "--", *keep, check=False)
@@ -323,8 +329,8 @@ def sync(a, hb) -> int:
     repo.run("config", "remote.canonical.partialclonefilter", "blob:none")
     canon_ref, zero_ref = "refs/canonical/main", "refs/zero/main"
     repo.run("fetch", "--no-tags", "--depth=1", "--filter=blob:none", "canonical",
-             f"+{a.canonical_ref}:{canon_ref}")
-    repo.run("fetch", "--no-tags", a.zero_url, f"+refs/heads/main:{zero_ref}")
+             f"+{a.canonical_ref}:{canon_ref}", timeout=NET_TIMEOUT)
+    repo.run("fetch", "--no-tags", a.zero_url, f"+refs/heads/main:{zero_ref}", timeout=NET_TIMEOUT)
     canon_sha = repo.run("rev-parse", f"{canon_ref}^{{commit}}")
     zero_tip = repo.run("rev-parse", f"{zero_ref}^{{commit}}")
     short = canon_sha[:10]
@@ -373,10 +379,11 @@ def sync(a, hb) -> int:
     missing = [l[1:] for l in repo.run("rev-list", "--objects", "--missing=print", new, "--not", zero_ref,
                                        check=False).splitlines() if l.startswith("?")]
     prefetch(repo, missing)
-    p = repo.run("push", a.zero_url, f"{new}:refs/heads/main", check=False, raw=True)
+    p = repo.run("push", a.zero_url, f"{new}:refs/heads/main", check=False, raw=True, timeout=NET_TIMEOUT)
     if p.returncode != 0:
         err = p.stderr.decode(errors="replace")
-        if re.search(r"rejected|non-fast-forward|fetch first|stale info", err):
+        # Only a lost race is retryable. A "[remote rejected]" (ruleset, GH006, hook declined) is permanent.
+        if re.search(r"non-fast-forward|fetch first|stale info", err):
             note = "push rejected: zero main moved, retry next tick"
             print("zero-sync: " + note); hb("warning", note)
             return EXIT_REJECTED
@@ -391,7 +398,7 @@ def prefetch(repo: Repo, oids: list[str]):
         return
     repo.run("-c", "fetch.negotiationAlgorithm=noop", "fetch", "canonical", "--no-tags",
              "--no-write-fetch-head", "--recurse-submodules=no", "--filter=blob:none", "--stdin",
-             input=("\n".join(oids) + "\n").encode())
+             input=("\n".join(oids) + "\n").encode(), timeout=NET_TIMEOUT)
 
 
 def main(argv=None) -> int:
@@ -417,8 +424,10 @@ def main(argv=None) -> int:
         lockf = open(state / "lock", "w")
         try:
             fcntl.flock(lockf, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
+        except BlockingIOError:
+            # Bounded by NET_TIMEOUT/NPM_TIMEOUT, a run never spans a tick for long; say so anyway.
             print("zero-sync: already running")
+            hb("warning", "previous run still holds the lock")
             return EXIT_OK
         try:
             return sync(a, hb)

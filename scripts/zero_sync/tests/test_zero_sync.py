@@ -299,3 +299,32 @@ def test_second_instance_exits_zero_already_running(w, capsys):
         assert w.run() == 0
     assert "already running" in capsys.readouterr().out
     assert "apps/mouth/a.txt" not in w.zero_files()
+    assert w.hb()["status"] == "warning"  # a lock held across ticks must not read as a quiet success
+
+
+def test_permanent_remote_rejection_is_an_error_not_a_retryable_race(w, capsys):
+    hook = w.zero_bare / "hooks" / "pre-receive"
+    hook.write_text("#!/bin/sh\necho 'protected branch hook declined' >&2\nexit 1\n")
+    hook.chmod(0o755)
+    tip = w.zero_tip()
+    assert w.run() == 1
+    assert w.zero_tip() == tip
+    assert w.hb()["status"] == "error"
+    assert "push failed" in capsys.readouterr().out
+
+
+def test_hung_network_call_ends_the_run_with_an_error(w, monkeypatch):
+    real = zs.subprocess.run
+    timeouts = []
+
+    def hanging(cmd, *a, **k):
+        if "fetch" in cmd:
+            timeouts.append(k.get("timeout"))
+            raise subprocess.TimeoutExpired(cmd, k.get("timeout"))
+        return real(cmd, *a, **k)
+
+    monkeypatch.setattr(zs.subprocess, "run", hanging)
+    assert w.run() == 1
+    assert timeouts == [zs.NET_TIMEOUT]  # without a bound the fetch hangs and holds the lock forever
+    hb = w.hb()
+    assert hb["status"] == "error" and "git fetch timed out" in hb["note"]

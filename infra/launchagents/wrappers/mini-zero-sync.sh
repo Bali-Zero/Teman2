@@ -58,21 +58,21 @@ if [ ! -f "$PAYLOAD" ]; then
     exit 0
 fi
 
+# The payload writes the heartbeat on every outcome it reaches. A run that never reached one (a
+# SyntaxError on this interpreter, a failed cd, a broken heartbeat import) must not look like the last
+# good run: compare the sidecar against a marker touched before the run, whatever the exit code.
+MARKER="$LOG_DIR/.run-start"
+touch "$MARKER"
+
 # rc captured from the command itself, never through a pipe, errexit-immune.
 OUT=""
 RC=0
 OUT=$(cd "$REPO" && /usr/bin/python3 "$PAYLOAD" 2>&1) || RC=$?
 printf '%s\n' "$OUT" >> "$LOG"
 
-case "$RC" in
-    0|1|3|4)
-        : # 0 synced/no-op/already running, 1 error, 3 divergence refused, 4 push rejected:
-          # the payload already wrote the matching heartbeat.
-        ;;
-    *)
-        heartbeat "error" "payload did not run cleanly rc=$RC"   # e.g. 2 usage, 127 no interpreter
-        ;;
-esac
+if [ -z "$(find "$SIDECAR_DIR/$ORGAN_ID.json" -newer "$MARKER" 2>/dev/null)" ]; then
+    heartbeat "error" "payload wrote no heartbeat rc=$RC"   # e.g. 2 usage, 127 no interpreter, import crash
+fi
 
 log "run done rc=$RC"
 exit 0
