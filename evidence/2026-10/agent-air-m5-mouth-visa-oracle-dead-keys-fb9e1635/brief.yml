@@ -1,0 +1,22 @@
+slug: agent-air-m5-mouth-visa-oracle-dead-keys-fb9e1635
+gear: 1
+gear_reason: >-
+  Pure deletion of i18n keys that no component renders; the guard is the existing i18n parity and
+  copy-truth suites plus the client-copy observer.
+ruling: >-
+  Team lead mandate, 2026-10-10 - two fresh gates on PR #8148 measured the keys as unrendered since
+  PR #7659 (d5fd476ac4); owner rule: nothing false may stay ready to ship.
+mission: >-
+  The public Visa Oracle dictionary no longer carries the 46 named interview keys that no component
+  renders (42 process.*, 3 whyweask.*, question.human_context_notice). It is not a census of every
+  unrendered key: a raw census at this head still finds ~99 keys with no literal reference and no
+  dynamic builder (tree.*, some outcome.*, verdict.eligibility.*, ...), left to a ledgered follow-up.
+objective: >-
+  46 dead keys (42 process.*, 3 whyweask.*, 1 question.human_context_notice)
+  are gone from EN and ID with parity kept, and the whole visa-oracle subtree stays green.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts (delete dead keys, EN and ID)
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/copy-truth.test.ts (drop the existence pin of question.human_context_notice)
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
