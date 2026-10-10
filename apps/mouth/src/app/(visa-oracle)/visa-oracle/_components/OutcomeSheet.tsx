@@ -184,7 +184,7 @@ function buildShareSummary(
       const name = `${candidate.code} — ${localized(candidate.name, language)}`;
       const timing = shareTimingText(language, candidate.timeline);
       const parts = [
-        candidate.duration && candidate.price.status === "AVAILABLE"
+        candidate.price.status === "AVAILABLE"
           ? formatIDR(candidate.price.amount, language)
           : null,
         candidate.duration
