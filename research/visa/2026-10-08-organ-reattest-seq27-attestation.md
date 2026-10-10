@@ -7,7 +7,7 @@ sources:
   - apps/backend-rag/backend/scripts/visa_engine/portal_read_receipt.py
   - apps/backend-rag/backend/scripts/visa_engine/portal_judge.py
   - apps/backend-rag/backend/scripts/visa_engine/fold_pack_generic.py
-adversarial_review: pending-session
+adversarial_review: seq27-adversary (independent read-only check, PASS) + council codex-gpt-5.6-sol PASS + kimi-code/k3 PASS — recorded in evidence/2026-10/agent-air-m5-backend-rag-visa-seq27-land-bd6772fa/
 ---
 
 # Organ re-attestation 2026-10-08 — candidate seq-27 (unsigned)
