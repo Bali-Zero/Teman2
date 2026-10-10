@@ -1,0 +1,80 @@
+{
+  "purpose": "#8227 gate (i): LabelBook's closed-set maps, every key as [English, Indonesian], pinned so a map edited without this file fails content_check step 1 (TERBUKA -> \"Closed\" passed all five steps before). Regenerate from contenttest's labelbook_maps only with the change that justifies it.",
+  "pinned": "2026-10-10",
+  "maps": {
+    "baliStatus": {
+      "APERTO_BALI_RISCHIO_ALTO": [
+        "Open in Bali (high-risk tier)",
+        "Terbuka di Bali (risiko tinggi)"
+      ],
+      "ATTENZIONE_FASCIA_BALI": [
+        "Verify on OSS (Bali risk tier)",
+        "Periksa di OSS (kelas risiko Bali)"
+      ],
+      "BLOCCATO_DIPENDE_SCOPE": ["Depends on scope", "Tergantung lingkup"],
+      "CHIUSO_BALI": ["Closed in Bali", "Tertutup di Bali"],
+      "CHIUSO_BALI_PROPOSTO": [
+        "Proposed closed (Bali)",
+        "Diusulkan tertutup (Bali)"
+      ],
+      "CHIUSO_MORATORIA_BALI": [
+        "Closed (Bali moratorium)",
+        "Tertutup (moratorium Bali)"
+      ],
+      "CHIUSO_PMA_NO_BESAR": [
+        "Closed to PMA (Large scale)",
+        "Tertutup PMA (skala Besar)"
+      ],
+      "CHIUSO_REGOLATORE_SETTORIALE": [
+        "Closed (sector regulator)",
+        "Tertutup (regulator sektoral)"
+      ],
+      "NON_CLASSIFICABILE": [
+        "Not classifiable",
+        "Tidak dapat diklasifikasikan"
+      ],
+      "OK_OR_HIGHER_RISK": ["Open (verify risk)", "Terbuka (cek risiko)"],
+      "TERBATAS": ["Restricted", "Terbatas"],
+      "TERTUTUP": ["Closed to PMA", "Tertutup"]
+    },
+    "confidence": {
+      "HIGH": ["high", "tinggi"],
+      "LOW": ["low", "rendah"],
+      "MEDIUM": ["medium", "sedang"]
+    },
+    "field": {
+      "kategori_risiko": ["risk class", "kelas risiko"],
+      "l4_bali.blocked": ["blocked", "diblokir"],
+      "l4_bali.confidence": ["confidence", "keyakinan"],
+      "l4_bali.reason": ["reason", "alasan"],
+      "l4_bali.status": ["Bali status", "Status Bali"],
+      "l4_bali=∅": [
+        "no Bali block on this record",
+        "catatan ini tidak memiliki blok Bali"
+      ],
+      "moratorium.effective": ["moratorium effective", "moratorium berlaku"],
+      "per_skala": ["licensing rows", "baris perizinan"],
+      "pma_cap_special": [
+        "special-condition cap",
+        "batas dengan syarat khusus"
+      ],
+      "pma_cap_verified=false": [
+        "cap not verified",
+        "batas belum diverifikasi"
+      ],
+      "pma_kondisi": ["condition", "syarat"],
+      "pma_max_asing": ["foreign cap", "batas modal asing"],
+      "pma_route_to": ["private-sector route", "rute swasta"],
+      "pma_status": ["PMA status", "Status PMA"]
+    },
+    "pmaStatus": {
+      "TERBATAS": ["Restricted", "TERBATAS"],
+      "TERBUKA": ["Open", "TERBUKA"],
+      "TERTUTUP": ["Closed", "TERTUTUP"]
+    },
+    "yesNo": {
+      "false": ["no", "tidak"],
+      "true": ["yes", "ya"]
+    }
+  }
+}

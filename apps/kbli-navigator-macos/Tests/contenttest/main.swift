@@ -119,6 +119,15 @@ let out: [String: Any] = MainActor.assumeIsolated {
        src.contains("ownershipLine(") {
         violations.append("SearchListView.swift calls ownershipLine( — the search row's chip already says its status word; the line beside it is LabelBook.cap(")
     }
+    // The closed-set maps, every key in both languages, for content_check.py's pin (#8227 gate (i)): a map edited
+    // without its pin fails, whatever else reads LabelBook's own words.
+    var maps: [String: [String: [String]]] = [:]
+    let both = { (f: (Bool) -> String) in [f(false), f(true)] }
+    for w in ["TERBUKA", "TERBATAS", "TERTUTUP"] { maps["pmaStatus", default: [:]][w] = both { LabelBook.pmaStatus(w, isID: $0) } }
+    for s in KBLIVerdict.knownBaliStatuses { maps["baliStatus", default: [:]][s] = both { LabelBook.baliStatus(s, isID: $0) } }
+    for c in ["HIGH", "MEDIUM", "LOW"] { maps["confidence", default: [:]][c] = both { LabelBook.confidence(c, isID: $0) } }
+    for f in LabelBook.fieldNames.keys { maps["field", default: [:]][f] = both { LabelBook.field(f, isID: $0) } }
+    for b in [true, false] { maps["yesNo", default: [:]][String(b)] = both { LabelBook.yesNo(b, isID: $0) } }
     // The curated basis and note language, every record, for en_purity's parity probe (census --curated).
     var curated: [String: [String: String]] = [:]
     for k in store.all {
@@ -131,7 +140,8 @@ let out: [String: Any] = MainActor.assumeIsolated {
         }
         if !c.isEmpty { curated[k.kode] = c }
     }
-    return ["codes": codes, "balanced_rejoin": rejoin, "probe_violations": violations, "curated_language": curated]
+    return ["codes": codes, "balanced_rejoin": rejoin, "probe_violations": violations, "curated_language": curated,
+            "labelbook_maps": maps]
 }
 
 guard let data = try? JSONSerialization.data(withJSONObject: out,

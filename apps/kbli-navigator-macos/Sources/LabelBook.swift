@@ -119,6 +119,12 @@ enum LabelBook {
     /// The human name of a record key the provenance strip cites, so the strip says what the rule
     /// read without printing the key itself.
     static func field(_ key: String, isID: Bool) -> String {
+        guard let n = fieldNames[key] else { return key }
+        return isID ? n.id : n.en
+    }
+
+    /// Pinned with the other closed-set maps in docs/design/labelbook-pin-2026-10-10.json (contenttest).
+    static let fieldNames: [String: (en: String, id: String)] = {
         let names: [String: (en: String, id: String)] = [
             "pma_status": ("PMA status", "Status PMA"),
             "pma_max_asing": ("foreign cap", "batas modal asing"),
@@ -135,9 +141,8 @@ enum LabelBook {
             "per_skala": ("licensing rows", "baris perizinan"),
             "kategori_risiko": ("risk class", "kelas risiko"),
         ]
-        guard let n = names[key] else { return key }
-        return isID ? n.id : n.en
-    }
+        return names
+    }()
 
     static func yesNo(_ b: Bool, isID: Bool) -> String { b ? (isID ? "ya" : "yes") : (isID ? "tidak" : "no") }
 
