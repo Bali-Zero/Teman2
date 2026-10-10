@@ -863,8 +863,13 @@ class TestInnocence:
 #: against the CURRENT highest signed pack). Both are supported only from
 #: seq-20 onward: E33G needed ``review.e33g.income-evidence`` retired and
 #: D2__121D needed the 60->180 stay-day cap, neither of which exists in
-#: seq-19 or earlier. This seq-19-scoped gate excludes them by name — not
-#: by loosening the assertion that the remaining 18 must all pass.
+#: seq-19 or earlier. The gold-coverage-7 lane then grew the corpus 20 -> 27
+#: (E31E/E31G/E31H/E31J/E33/E33E/E33F); all seven replay against seq-19 as
+#: well — E33F's persona carries ``family.sponsor_confirmed`` KNOWN true,
+#: which seq-19/seq-20's ``el.e33f.retirement`` still requires (the
+#: requirement was dropped from the pack only at seq-24). This seq-19-scoped
+#: gate excludes the two PR-5 names only — not by loosening the assertion
+#: that the remaining 25 must all pass.
 _SEQ19_UNSUPPORTED_COVERAGE_PERSONAS = frozenset({"E33G.json", "D2__121D.json"})
 
 
@@ -878,8 +883,8 @@ def _coverage_persona_specs() -> list[tuple[str, dict[str, Any]]]:
 
 
 class TestGoldCoverageReplay:
-    def test_corpus_has_eighteen_personas(self) -> None:
-        assert len(_coverage_persona_specs()) == 18
+    def test_corpus_has_twenty_five_personas(self) -> None:
+        assert len(_coverage_persona_specs()) == 25
 
     @pytest.mark.parametrize(
         "name,spec", _coverage_persona_specs(), ids=[n for n, _ in _coverage_persona_specs()]

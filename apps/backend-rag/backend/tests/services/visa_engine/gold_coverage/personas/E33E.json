@@ -1,0 +1,44 @@
+{
+  "expected_candidates": ["E33E"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "67-year-old Canadian retiree with USD 60,000 on deposit at a state-owned Indonesian bank in her own name and USD 3,500 monthly passive income, applying offshore for the 5-year elderly Second Home permit",
+  "overrides": {
+    "intent.desired_entry_date": {
+      "status": "KNOWN",
+      "value": "2026-11-01"
+    },
+    "intent.entry_pattern": {
+      "status": "KNOWN",
+      "value": "MULTIPLE"
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["RETIREMENT"]
+    },
+    "intent.stay_days": {
+      "status": "KNOWN",
+      "value": 1825
+    },
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "1959-03-15"
+    },
+    "secondhome.bank_deposit_at_state_bank": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "secondhome.bank_deposit_in_own_name": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "secondhome.bank_deposit_usd": {
+      "status": "KNOWN",
+      "value": 60000
+    },
+    "secondhome.passive_monthly_income_usd": {
+      "status": "KNOWN",
+      "value": 3500
+    }
+  },
+  "product_code": "E33E"
+}

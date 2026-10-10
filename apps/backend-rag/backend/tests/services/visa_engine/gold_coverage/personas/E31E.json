@@ -1,0 +1,52 @@
+{
+  "expected_candidates": ["E31E"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "12-year-old Dutch girl, single, joining her father who holds an E23 work KITAS in Jakarta; guardian consent confirmed, applying offshore for a 1-year dependent stay permit",
+  "overrides": {
+    "intent.desired_entry_date": {
+      "status": "KNOWN",
+      "value": "2026-11-01"
+    },
+    "intent.entry_pattern": {
+      "status": "KNOWN",
+      "value": "MULTIPLE"
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["FAMILY"]
+    },
+    "intent.stay_days": {
+      "status": "KNOWN",
+      "value": 365
+    },
+    "family.relation_to_sponsor": {
+      "status": "KNOWN",
+      "value": "PARENT"
+    },
+    "family.sponsor_confirmed": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "family.sponsor_status_code": {
+      "status": "KNOWN",
+      "value": "E23"
+    },
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "2014-06-20"
+    },
+    "person.guardian_consent": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "person.marital_status": {
+      "status": "KNOWN",
+      "value": "SINGLE"
+    },
+    "sponsor.type": {
+      "status": "KNOWN",
+      "value": "INDIVIDUAL"
+    }
+  },
+  "product_code": "E31E"
+}

@@ -1,0 +1,40 @@
+{
+  "expected_candidates": ["E33F"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "63-year-old New Zealand retiree with USD 3,200 monthly passive pension income, applying offshore for the 1-year elderly Second Home permit",
+  "overrides": {
+    "intent.desired_entry_date": {
+      "status": "KNOWN",
+      "value": "2026-11-01"
+    },
+    "intent.entry_pattern": {
+      "status": "KNOWN",
+      "value": "MULTIPLE"
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["RETIREMENT"]
+    },
+    "intent.stay_days": {
+      "status": "KNOWN",
+      "value": 365
+    },
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "1963-08-08"
+    },
+    "family.sponsor_confirmed": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "secondhome.passive_monthly_income_usd": {
+      "status": "KNOWN",
+      "value": 3200
+    },
+    "sponsor.type": {
+      "status": "KNOWN",
+      "value": "INDIVIDUAL"
+    }
+  },
+  "product_code": "E33F"
+}
