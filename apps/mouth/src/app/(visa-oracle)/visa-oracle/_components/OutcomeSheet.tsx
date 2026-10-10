@@ -121,6 +121,44 @@ function answerRows(language: Language, facts: OracleFacts) {
   });
 }
 
+function typicalTimingText(
+  language: Language,
+  min: number | undefined,
+  max: number | undefined,
+): string | null {
+  if (min === undefined || max === undefined) return null;
+  if (min === 0 && max === 1) {
+    return translate(language, "outcome.timeline_within_one" as I18nKey);
+  }
+  if (min === max) {
+    return translate(language, "outcome.timeline_typical_exact" as I18nKey, {
+      days: String(min),
+    });
+  }
+  return translate(language, "outcome.timeline_typical_range" as I18nKey, {
+    min: String(min),
+    max: String(max),
+  });
+}
+
+/** Timing for the shared text: no dates (read later), never for UNKNOWN. */
+function shareTimingText(
+  language: Language,
+  timeline: OutcomeTimeline,
+): string | null {
+  if (timeline.status !== "AVAILABLE") return null;
+  const { workingDaysMin: min, workingDaysMax: max } = timeline;
+  if (min === 0 && max === 0) {
+    return translate(language, "outcome.timeline_none" as I18nKey);
+  }
+  const typical = typicalTimingText(language, min, max);
+  return typical === null
+    ? null
+    : translate(language, "outcome.share_timing_indicative" as I18nKey, {
+        typical,
+      });
+}
+
 function buildShareSummary(
   language: Language,
   outcome: OutcomeViewModel,
@@ -144,17 +182,17 @@ function buildShareSummary(
   if (outcome.state === "SUPPORTED_CANDIDATES") {
     for (const candidate of outcome.candidates) {
       const name = `${candidate.code} — ${localized(candidate.name, language)}`;
-      if (candidate.duration) {
-        const parts = [
-          candidate.price.status === "AVAILABLE"
-            ? formatIDR(candidate.price.amount, language)
-            : null,
-          durationLabel(language, candidate.duration.selectedDays, "permit"),
-        ].filter((part): part is string => part !== null);
-        lines.push(`${name}: ${parts.join(" · ")}`);
-      } else {
-        lines.push(name);
-      }
+      const timing = shareTimingText(language, candidate.timeline);
+      const parts = [
+        candidate.duration && candidate.price.status === "AVAILABLE"
+          ? formatIDR(candidate.price.amount, language)
+          : null,
+        candidate.duration
+          ? durationLabel(language, candidate.duration.selectedDays, "permit")
+          : null,
+        timing,
+      ].filter((part): part is string => part !== null);
+      lines.push(parts.length > 0 ? `${name}: ${parts.join(" · ")}` : name);
     }
   }
   return lines.join("\n");
@@ -523,29 +561,7 @@ function Timeline({
   const locale = localeFor(language);
   const from = formatIsoDateForDisplay(timeline.earliestDateIso, locale);
   const to = formatIsoDateForDisplay(timeline.latestDateIso, locale);
-  let typical: string | null = null;
-  if (min !== undefined && max !== undefined) {
-    if (min === 0 && max === 1) {
-      typical = translate(language, "outcome.timeline_within_one" as I18nKey);
-    } else if (min === max) {
-      typical = translate(
-        language,
-        "outcome.timeline_typical_exact" as I18nKey,
-        {
-          days: String(min),
-        },
-      );
-    } else {
-      typical = translate(
-        language,
-        "outcome.timeline_typical_range" as I18nKey,
-        {
-          min: String(min),
-          max: String(max),
-        },
-      );
-    }
-  }
+  const typical = typicalTimingText(language, min, max);
   return (
     <div className="oracle-timeline">
       {typical && <p>{typical}</p>}

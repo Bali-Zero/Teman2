@@ -1,0 +1,47 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-09/10 — honest, refined client copy; one all-inclusive price; no promise the code
+  does not keep.
+mission: >-
+  The Visa Oracle share summary carries the typical processing time, indicative, without dates.
+lanes:
+  - lane: share-timing
+    role: build
+    seat: Claude Sonnet 5.5 implementer, worktree mouth-visa-oracle-share-timing on M5.
+pii_scan: clean
+bites:
+  consumer: >-
+    the Copy / Share summary buttons of the public Visa Oracle result page (OutcomeSheet), and the
+    CI observer that scans every client-facing literal of the oracle for banned wording.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_client_copy.py
+  expect: "contains:0 banned"
+receipts:
+  - claim: The whole Visa Oracle subtree passes, including the new share-summary timing tests (range, within one, exact, visa-free, UNKNOWN, missing working days; EN and ID), the i18n parity and the client-copy census.
+    cmd: cd apps/mouth && timeout 900 npx vitest run "src/app/(visa-oracle)"
+    result: "Test Files 48 passed (48), Tests 1314 passed (1314)"
+    exit: 0
+    ts: "2026-10-10T03:43:38Z"
+    seat: this session
+  - claim: The mouth type check is clean.
+    cmd: cd apps/mouth && npx tsc --noEmit -p tsconfig.json
+    result: "no output"
+    exit: 0
+    ts: "2026-10-10T03:43:52Z"
+    seat: this session
+  - claim: The client-copy observer scans every oracle literal, including the new key, and finds no banned wording.
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3676 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-10T03:43:52Z"
+    seat: this session
+decisions:
+  - id: D-no-dates
+    decision: >-
+      The shared text carries no dates: a message is read later, so "if complete today" would be wrong.
+      Only the working-day sentence plus indicative is appended; visa-free carries the border sentence.
+  - id: D-timing-independent-of-duration
+    decision: >-
+      The timing part is appended to the candidate line even for a product with no duration label.
+dissent: []

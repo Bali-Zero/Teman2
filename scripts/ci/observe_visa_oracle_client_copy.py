@@ -87,6 +87,7 @@ REQUIRED_KEYS = (
     "outcome.timeline_if_today",
     "outcome.timeline_if_today_single",
     "outcome.timeline_indicative",
+    "outcome.share_timing_indicative",
     "outcome.checked_on",
     "outcome.path_counter",
     # PR-C2: the stay-permit duration shown under the price.
