@@ -299,6 +299,42 @@ def test_a_dry_run_trims_nothing_a_run_without_a_dated_name_is_never_touched_and
     assert (undated / "logs" / "x.log").exists() and (outside / "keep.txt").read_text() == "keep" and not (week / "logs").exists()
 
 
+PACK_FILES = ("state/tree.pack", "state/tree.pack.part", "state/tree.pack.json")
+
+
+def packed_run(runs: Path, age_h: float) -> Path:
+    stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime(NOW - age_h * H))
+    run = runs / f"pr1-{'a' * 12}-{'b' * 12}-{stamp}"
+    for rel in RUN_FILES + PACK_FILES:
+        (run / rel).parent.mkdir(parents=True, exist_ok=True)
+        (run / rel).write_text(rel)
+    return run
+
+
+def test_b14_a_pack_a_dead_run_left_goes_after_24_hours_and_nothing_else_of_a_young_run_does(tmp_path):
+    runs = tmp_path / "runs"
+    stale, young = packed_run(runs, 25), packed_run(runs, 23)
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert files(stale) == set(RUN_FILES) and files(young) == set(RUN_FILES) | set(PACK_FILES)
+    assert out["trimmed_pack"] == [stale.name] and out["trimmed_7d"] == [] and out["trimmed_30d"] == [] and out["freed_gb"] >= 0
+
+
+def test_b14_an_eight_day_run_loses_its_pack_with_its_logs_and_call_graphs(tmp_path):
+    runs = tmp_path / "runs"
+    week = packed_run(runs, 8 * 24)
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert files(week) == SEVEN_DAY_KEEPS and out["trimmed_7d"] == [week.name] and out["trimmed_pack"] == []
+
+
+def test_b14_a_dry_run_removes_no_pack_and_a_run_without_one_is_not_listed(tmp_path):
+    runs = tmp_path / "runs"
+    stale = packed_run(runs, 25)
+    out = pm.trim_runs(runs, NOW, dry=True)
+    assert out["trimmed_pack"] == [stale.name] and files(stale) == set(RUN_FILES) | set(PACK_FILES)
+    clean = run_dir(tmp_path / "other", 25 / 24)
+    assert pm.trim_runs(tmp_path / "other", NOW, dry=False)["trimmed_pack"] == [] and files(clean) == set(RUN_FILES)
+
+
 def test_prune_journals_the_trim_and_never_touches_the_decisions_journal(tmp_path):
     state, docker = world(tmp_path, [image("a" * 16, 10, "backend-tests")])
     (state / "decisions.jsonl").write_text('{"kind": "decision", "ts": "2026-09-01T00:00:00Z"}\n')

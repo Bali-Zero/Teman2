@@ -36,6 +36,8 @@ TAG_RE = re.compile(r"localci-deps:[0-9a-f]{16}\b")
 ID_RE = re.compile(r"sha256:[0-9a-f]{64}")
 RUN_TS_RE = re.compile(r"-(\d{8}T\d{6}Z)$")
 BULK = ("call-graph.json", "higher-order-call-graph.json")   # Pysa's, 77-114 MB each (Pro, 2026-10-08); taint-output.json is the verdict
+TREE_PACK = ("tree.pack", "tree.pack.part", "tree.pack.json")   # B14's ~845 MB pack: the run's `finally` removes it, a SIGKILL or reboot does not
+TREE_PACK_STALE_H = 24   # a live run can last hours; a pack older than a day belongs to a run that is gone
 VERDICT = ("status.json", "hosted_compare.json", "state/plan.json")
 HOST_PATH = "/System/Volumes/Data" if os.path.isdir("/System/Volumes/Data") else "/"
 CANDIDATE_IMAGE = "localci-candidate:1"
@@ -223,21 +225,24 @@ def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, 
 
 
 def trim_runs(runs: Path, now_s: float, dry: bool) -> dict:
-    """7 days full; then `logs/` and the Pysa call graphs go; after 30 days only VERDICT stays. Symlinks are removed as links."""
-    out = {"trimmed_7d": [], "trimmed_30d": [], "freed_gb": 0.0}
+    """7 days full; then `logs/` and the Pysa call graphs go; after 30 days only VERDICT stays. A run older than TREE_PACK_STALE_H
+    loses a tree pack its `finally` never removed, whatever its age. Symlinks are removed as links."""
+    out = {"trimmed_7d": [], "trimmed_30d": [], "trimmed_pack": [], "freed_gb": 0.0}
     if runs.is_symlink():   # the prune never leaves the merger's state dir: a linked runs/ is someone else's tree
         return {**out, "refused": f"{runs} is a symlink"}
     freed = 0
     for run in sorted(p for p in runs.iterdir() if p.is_dir() and not p.is_symlink()) if runs.is_dir() else []:
         age_h = run_age_h(run, now_s)
-        if age_h is None or age_h < FULL_DAYS * 24:
+        if age_h is None or age_h < TREE_PACK_STALE_H:
             continue
+        full = age_h < FULL_DAYS * 24
         doomed = []
         for root, dirs, files in os.walk(run):
             rel_root = Path(root).relative_to(run)
             for f in files + [d for d in dirs if (Path(root) / d).is_symlink()]:
                 rel = (rel_root / f).as_posix()
-                if (age_h >= VERDICT_DAYS * 24 and rel not in VERDICT) or (age_h < VERDICT_DAYS * 24 and (rel == "logs" or rel.startswith("logs/") or f in BULK)):
+                pack = rel_root.as_posix() == "state" and f in TREE_PACK
+                if pack or (not full and ((age_h >= VERDICT_DAYS * 24 and rel not in VERDICT) or (age_h < VERDICT_DAYS * 24 and (rel == "logs" or rel.startswith("logs/") or f in BULK)))):
                     doomed.append(Path(root) / f)
         if not doomed:
             continue
@@ -245,11 +250,14 @@ def trim_runs(runs: Path, now_s: float, dry: bool) -> dict:
             freed += p.lstat().st_size
             if not dry:
                 p.unlink()
-        if not dry:
+        if not dry and not full:   # a young run keeps its layout: only the pack goes
             for root, dirs, _ in sorted(os.walk(run, topdown=False), key=lambda w: -len(w[0])):
                 if root != str(run) and not os.listdir(root):
                     os.rmdir(root)
-        out["trimmed_30d" if age_h >= VERDICT_DAYS * 24 else "trimmed_7d"].append(run.name)
+        if full:
+            out["trimmed_pack"].append(run.name)
+        else:
+            out["trimmed_30d" if age_h >= VERDICT_DAYS * 24 else "trimmed_7d"].append(run.name)
     out["freed_gb"] = round(freed / 1e9, 2)
     return out
 

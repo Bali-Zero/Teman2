@@ -1449,16 +1449,20 @@ def isolation_of(plan: dict) -> dict:
     return plan.get("isolation") or {"mode": "none", "reason": "plan predates isolation evidence (runner < 0.3.0)"}
 
 
-def _tar_add(tf: tarfile.TarFile, name: str, data: bytes | None = None, mode: int = 0o644, link: str | None = None) -> None:
+def _tar_add(tf: tarfile.TarFile, name: str, data: bytes | None = None, mode: int = 0o644, link: str | None = None, src: Path | None = None) -> None:
     ti = tarfile.TarInfo(name)
     ti.uid = ti.gid = SANDBOX_UID
     ti.mtime = int(time.time())   # a checkout writes its files now; mtime 0 made every file 56 years old to an age-reading test
-    if data is None and link is None:
+    if data is None and link is None and src is None:
         ti.type, ti.mode = tarfile.DIRTYPE, 0o755
         tf.addfile(ti)
     elif link is not None:
         ti.type, ti.linkname, ti.mode = tarfile.SYMTYPE, link, 0o777
         tf.addfile(ti)
+    elif src is not None:   # a host file streamed from disk, never read whole into memory (the tree pack is hundreds of MB)
+        with open(src, "rb") as fh:
+            ti.size, ti.mode = os.fstat(fh.fileno()).st_size, mode
+            tf.addfile(ti, fh)
     else:
         ti.size, ti.mode = len(data), mode
         tf.addfile(ti, io.BytesIO(data))
@@ -1473,10 +1477,11 @@ def safe_tree_path(rel: str) -> str:
 
 
 def stream_tree_tar(wt: Path, commit: str, sink, overrides: dict[str, bytes], extra: dict[str, bytes], group: list | None = None,
-                    timeout: float | None = None, paths: set | None = None) -> int:
+                    timeout: float | None = None, paths: set | None = None, files: dict[str, Path] | None = None) -> int:
     """Tar `commit`'s tree from the OBJECT STORE into `sink` under w/ — never the checkout (ignored files such as .env or a venv stay
     out) and never `git archive` (it honours the candidate's export-ignore). `overrides` replace blobs (BASE test files); `extra` lands
-    outside w/. Owned by the sandbox uid so candidate tests can write where they could in a checkout."""
+    outside w/; `files` (name -> host path) land outside w/ streamed from disk (B14: the tree pack). Owned by the sandbox uid so
+    candidate tests can write where they could in a checkout."""
     listing = subprocess.run(["git", "-C", str(wt), "ls-tree", "-r", "-z", "--full-tree", commit], capture_output=True, check=True, timeout=timeout).stdout.decode()
     entries = []
     for rec in listing.split("\0"):
@@ -1486,12 +1491,15 @@ def stream_tree_tar(wt: Path, commit: str, sink, overrides: dict[str, bytes], ex
             if kind == "blob" and (paths is None or rel in paths):   # `paths`: an egress side step gets only the files it reads
                 entries.append((mode, oid, safe_tree_path(rel)))
     parents = lambda paths, top: {f"{top}{q}" for n in paths for q in Path(n).parents if str(q) != "."}   # noqa: E731
-    dirs = sorted({"w", "out"} | parents({rel for _, _, rel in entries} | set(overrides), "w/") | parents(extra, ""))
+    files = files or {}
+    dirs = sorted({"w", "out"} | parents({rel for _, _, rel in entries} | set(overrides), "w/") | parents(set(extra) | set(files), ""))
     tf = tarfile.open(fileobj=sink, mode="w|")
     for d in dirs:
         _tar_add(tf, d)
     for x in sorted(extra):
         _tar_add(tf, x, extra[x])
+    for x in sorted(files):
+        _tar_add(tf, x, src=files[x])
     cat = subprocess.Popen(["git", "-C", str(wt), "cat-file", "--batch"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     if group is not None:
         group.append(cat)   # the caller's watchdog kills it with the copy process: a blocked read ends at EOF
@@ -1524,6 +1532,94 @@ def stream_tree_tar(wt: Path, commit: str, sink, overrides: dict[str, bytes], ex
         _tar_add(tf, f"w/{rel}", blob)
     tf.close()
     return len(entries)
+
+
+TREE_PACK_TIMEOUT_S = 300
+_TREE_PACK_LOCK = threading.Lock()
+_TREE_PACK_FAILED: dict[tuple[str, str], str] = {}   # (run dir, commit) -> why: a failed build is not retried by every later container of the run
+
+
+def build_tree_pack(wt: Path, commit: str, dest: Path, timeout: float) -> dict:
+    """B14: one pack of `commit`'s tree objects (every blob and subtree, plus the root tree) for the sandboxes to index from, so no
+    container re-hashes and re-packs the whole tree itself. Same entity set `stream_tree_tar` ships (a gitlink is skipped). pack-objects
+    streams straight into `dest`: the pack is never held in memory. Any failure removes the partial file and raises."""
+    part = dest.with_name(dest.name + ".part")
+    try:
+        root = subprocess.run(["git", "-C", str(wt), "rev-parse", f"{commit}^{{tree}}"], capture_output=True, text=True, check=True, timeout=timeout).stdout.strip()
+        listing = subprocess.run(["git", "-C", str(wt), "ls-tree", "-r", "-t", "-z", "--full-tree", commit], capture_output=True, check=True,
+                                 timeout=timeout).stdout.decode("utf-8", "surrogateescape")
+        oids = {root}
+        for rec in listing.split("\0"):
+            if rec:
+                _mode, kind, oid = rec.split("\t", 1)[0].split(" ")
+                if kind in ("blob", "tree"):
+                    oids.add(oid)
+        with open(part, "wb") as fh:
+            subprocess.run(["git", "-C", str(wt), "pack-objects", "--stdout", "-q"], input="".join(f"{o}\n" for o in sorted(oids)).encode(), stdout=fh,
+                           stderr=subprocess.PIPE, check=True, timeout=timeout)
+        h = hashlib.sha256()
+        with open(part, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                h.update(chunk)
+        os.replace(part, dest)
+        return {"tree": root, "objects": len(oids), "bytes": dest.stat().st_size, "sha256": h.hexdigest()}
+    except BaseException:
+        part.unlink(missing_ok=True)
+        dest.unlink(missing_ok=True)
+        raise
+
+
+def tree_pack_for(run_dir: Path, plan: dict) -> tuple[Path | None, dict | None, str | None]:
+    """The run's tree pack, built lazily by the first git_index container and reused by every later one (state/tree.pack beside a json
+    sidecar). A reused pack is re-checked against its sidecar by commit and SIZE (not sha256: hashing hundreds of MB per container
+    costs more than the container saves; the pack lives in the run's private state, which no sandbox mounts; the sandbox's own
+    `index-pack` verifies every object's hash and the tree it names). -> (pack, sidecar, None) or (None, None, why): a pack that cannot
+    be built only costs the speed, never a verdict."""
+    pack, side, sha = run_dir / "state" / "tree.pack", run_dir / "state" / "tree.pack.json", plan.get("candidate_sha")
+    key = (str(run_dir), sha)
+    with _TREE_PACK_LOCK:
+        if key in _TREE_PACK_FAILED:
+            return None, None, _TREE_PACK_FAILED[key]
+        try:
+            if not sha:
+                raise ValueError("the plan names no candidate commit")
+            meta = json.loads(side.read_text()) if side.exists() and pack.exists() else None
+            if meta and meta.get("commit") == sha and pack.stat().st_size == meta.get("bytes"):
+                return pack, meta, None
+            meta = {**build_tree_pack(Path(plan["worktree"]), sha, pack, TREE_PACK_TIMEOUT_S), "commit": sha}
+            atomic_write(side, json.dumps(meta))
+            return pack, meta, None
+        except (OSError, subprocess.SubprocessError, RuntimeError, ValueError, AttributeError, KeyError, TypeError) as e:   # a sidecar that is not a dict, or lacks a key
+            pack.unlink(missing_ok=True)
+            side.unlink(missing_ok=True)
+            why = f"{type(e).__name__}: {str(e).strip()[:160]}"
+            _TREE_PACK_FAILED[key] = why
+            return None, None, why
+
+
+def tree_pack_ship(run_dir: Path, plan: dict) -> tuple[dict | None, dict[str, Path], str | None]:
+    """-> (the steps.json `tree_pack` entry, the host files to tar into the sandbox, the log line saying the pack is unavailable)."""
+    pack, meta, why = tree_pack_for(run_dir, plan)
+    if pack is None:
+        return None, {}, f"# tree pack: unavailable ({why}) — the sandbox indexes the tree itself\n"
+    return {"path": "/cfg/tree.pack", "tree": meta["tree"]}, {"cfg/tree.pack": pack}, None
+
+
+def tree_pack_ship_safe(run_dir: Path, plan: dict) -> tuple[dict | None, dict[str, Path], str | None]:
+    """The pack is a speed-up: whatever its machinery raises, the leg falls back to indexing the tree itself and says so."""
+    try:
+        return tree_pack_ship(run_dir, plan)
+    except Exception as e:   # noqa: BLE001
+        return None, {}, f"# tree pack: unavailable ({type(e).__name__}: {str(e).strip()[:160]}) \u2014 the sandbox indexes the tree itself\n"
+
+
+def remove_tree_pack(run_dir: Path) -> None:
+    """The pack is hundreds of MB and run dirs are kept as evidence: it goes when the run ends, whatever the verdicts were."""
+    for name in ("tree.pack", "tree.pack.part", "tree.pack.json"):
+        (run_dir / "state" / name).unlink(missing_ok=True)
+    with _TREE_PACK_LOCK:
+        for k in [k for k in _TREE_PACK_FAILED if k[0] == str(run_dir)]:
+            del _TREE_PACK_FAILED[k]
 
 
 def _gb(x: float) -> str:
@@ -1617,7 +1713,7 @@ def xdist_dead_worker(log: Path) -> tuple[str, int] | None:
 
 def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: list[str], overrides: dict[str, bytes], extra: dict[str, bytes],
                       env: dict, log: Path, junit: Path, timeout: int, workdir: str = "/w", network: str = "none", image_id: str | None = None,
-                      memory: str = "4g", collect=None, paths: set | None = None) -> tuple[int | None, str | None]:
+                      memory: str = "4g", collect=None, paths: set | None = None, files: dict[str, Path] | None = None) -> tuple[int | None, str | None]:
     """Run candidate code in a fresh container: no bind mount, no network, no capability, non-root, no host environment.
     The tree goes in as a tar stream and only the junit comes out; the host run dir, receipts, credentials and the Pysa
     home are not reachable from inside. Returns (rc, error)."""
@@ -1646,7 +1742,7 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
             t_end = time.monotonic() + COPY_TIMEOUT_S
             try:
                 watchdog.start()
-                n = stream_tree_tar(Path(plan["worktree"]), plan["candidate_sha"], cp.stdin, overrides, extra, group, COPY_TIMEOUT_S, paths)
+                n = stream_tree_tar(Path(plan["worktree"]), plan["candidate_sha"], cp.stdin, overrides, extra, group, COPY_TIMEOUT_S, paths, files)
                 cp.stdin.close()
                 cp.wait(timeout=max(1.0, t_end - time.monotonic()))
             except (OSError, subprocess.SubprocessError, RuntimeError, ValueError) as e:
@@ -1713,6 +1809,8 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
     workdir = "/w" if str(rel) == "." else f"/w/{rel.as_posix()}"
     overrides: dict[str, bytes] = {}
     extra: dict[str, bytes] = {}
+    files: dict[str, Path] = {}
+    pack_note, tp = None, None
     for rel in spec.get("trusted_files") or []:
         bp = run_dir / "state" / "trusted" / "base_files" / rel
         blob = bp.read_bytes() if bp.exists() else None   # an empty __init__.py is a blob too
@@ -1732,9 +1830,11 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
         hist = spec.get("history") or {"added": [], "base": []}
         for (rel, _mode, oid), blob in zip(hist["base"], read_blobs(Path(plan["worktree"]), [o for _, _, o in hist["base"]])):
             extra[f"cfg/base/{rel}"] = blob
+        if spec.get("git_index"):
+            tp, files, pack_note = tree_pack_ship_safe(run_dir, plan)
         extra["cfg/steps.json"] = json.dumps({"context": spec["context"], "root": workdir, "git_index": spec.get("git_index"), "history": spec.get("history"),
                                               "path_prefix": spec.get("path_prefix") or "", "venv": bool(spec.get("venv")), "env": spec["env"],
-                                              "steps": spec["steps"]}).encode()
+                                              "steps": spec["steps"], **({"tree_pack": tp} if tp else {})}).encode()
         inner = ["python", "-I", "/cfg/steps_driver.py", "/cfg/steps.json", "/out/junit.xml"]
     else:
         extra["cfg/pytest-trusted.ini"] = b"[pytest]\npythonpath = /w\n"
@@ -1742,9 +1842,10 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
                  "--junitxml=/out/junit.xml", *[f"/w/{r}" for r in overrides]]
     with open(log, "w") as fh:
         fh.write(f"# {now()} container cmd={' '.join(inner)}\n")
+        fh.write(pack_note or "")
     t0 = time.monotonic()
     try:
-        rc, err = execute_contained(name, spec, run_dir, plan, inner, overrides, extra, env, log, junit, timeout, workdir)
+        rc, err = execute_contained(name, spec, run_dir, plan, inner, overrides, extra, env, log, junit, timeout, workdir, files=files)
     except ContainerCleanupError:
         raise
     except (OSError, subprocess.SubprocessError, RuntimeError) as e:
@@ -2031,8 +2132,9 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
             for aname, files in sorted(arts.items()):
                 if fnmatch.fnmatchcase(aname, X.substitute(em["pattern"] or em["name"], ctx)):
                     extra.update({f"w/{dest}/{'' if em['merge'] else aname + '/'}{rel}": b for rel, b in files.items()})
+    tp, files, pack_note = tree_pack_ship_safe(run_dir, plan)
     extra["cfg/steps.json"] = json.dumps({**cfg_base, "context": f"{spec['context']} / {label}", "git_index": True, "history": spec.get("history"),
-                                          "checkout": job.get("checkout"), "steps": steps}).encode()
+                                          "checkout": job.get("checkout"), "steps": steps, **({"tree_pack": tp} if tp else {})}).encode()
     uploads = [(X.substitute(em["name"], ctx), X.substitute(em["path"], ctx)) for em in (s.get("emulate") or {} for s in steps) if em.get("action") == "upload"]
 
     def collect(docker: str, ctr: str) -> str | None:
@@ -2047,6 +2149,7 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
     try:
         with open(log, "w") as fh:
             fh.write(f"# {now()} {label}: image {job['image_id'][:19]} services {[s['name'] for s in job['services']]}\n")
+            fh.write(pack_note or "")
         if (floor := disk_floor_refusal(iso["docker"], iso["image_id"], run_dir)):   # before any container of this leg exists
             with open(log, "a") as fh:
                 fh.write(f"# not started: {floor}\n")
@@ -2058,7 +2161,7 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
             return out
         rc, err = execute_contained(f"{name}.{slug}", spec, run_dir, plan, inner, {}, extra, env, log, junit, job["timeout_s"], "/w",
                                     network=f"container:{owner}" if owner else "none", image_id=job["image_id"], memory=spec.get("memory", "4g"),
-                                    collect=collect if uploads else None)
+                                    collect=collect if uploads else None, files=files)
     finally:
         for c in ctrs:
             try:
@@ -2496,6 +2599,7 @@ def cmd_run(a):
             if names:
                 seal_now("end of run")
     finally:
+        remove_tree_pack(run_dir)
         for s, h in old.items():
             signal.signal(s, h)
 

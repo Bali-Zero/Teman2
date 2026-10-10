@@ -173,6 +173,22 @@ recipe: 394 s cold at plan (download, install, export), then a cache hit while t
 E2E and Visa Oracle smoke share one recipe (the backend closure plus node 24, the root lock's npm cache, chromium and
 postgresql-client: 11.9 GB, its Python layers shared with Backend Tests'); Frontend Tests' node-only recipe is 1.4 GB.
 
+### Sandbox git index (B14)
+
+Every sandbox whose steps config has `git_index: true` indexes the tree as a git commit before its first step, and that time is
+counted in no step. Measured on Pro (the real 26,551-blob, 1.4 GB candidate tree, the deps image, uid 65534, network none, 8 CPU):
+`git add -A -f` 19.3 s, then `git repack -a -d` 42.8 s, 62.8 s start to exit, about 19 of the 49 minutes of a tick over ~20 such
+containers. Now the host builds ONE pack of the candidate tree's objects (`ls-tree -r -t -z` blobs and subtrees plus the root
+tree into `pack-objects --stdout`, streamed to disk: 7.8 s, 29,761 objects, 845 MB) lazily at the first git_index container, under
+`state/tree.pack` with a json sidecar, reused by every later container of the run (size and commit re-checked, not the sha256) and
+removed in the run's `finally` (verdicts or a crash); what a SIGKILL or a reboot leaves is swept by the prune once the run is 24 h old. It is tarred into the sandbox as `cfg/tree.pack` and named by the steps config's
+`tree_pack` key; egress sandboxes and containers without `git_index` never get it. The driver runs `index-pack --stdin` (every
+object's hash verified), requires the named tree to be in it, `read-tree`s it, and only then `add -A -f` (2.8 s: `read-tree` leaves zeroed stat data, so it re-hashes every file and only skips writing the
+objects the pack has, which is why the pack cannot change the commit, and why the `add` must stay), the history block, the commit and `repack -d`. Start to exit 9.5 s (copy-in 13.9 s vs 7.5 s), same
+`HEAD^{tree}`, same 26,551 files, clean status, 0 loose objects: about 47 s saved per container. A pack that does not verify raises
+in the driver (no verdict, never a silent fallback); a pack the host cannot build ships nothing, writes `# tree pack: unavailable
+(<why>) — the sandbox indexes the tree itself` in the log, and the driver takes the old path: speed is lost, never a verdict.
+
 ## What a verdict covers, and what is no verdict (B3)
 
 **Coverage travels with the verdict.** Each matrix entry declares `coverage: full` (the default when absent) or
