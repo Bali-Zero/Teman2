@@ -37,6 +37,12 @@ _ = NSApplication.shared
     return PDFDocument(data: data as Data)?.string ?? ""
 }
 
+/// SearchFieldBar with the focus binding RootView gives it, as Snapshot's SearchResultsBand does.
+struct FieldBand: View {
+    @FocusState private var focus: RootFocus?
+    var body: some View { SearchFieldBar(focusedField: $focus) {} }
+}
+
 /// The strings AppKit draws inside a hosted SwiftUI View: a text field's value, or its placeholder when empty;
 /// a button's title; a pop-up's selected item. The controls exist once the host has drawn, as in Snapshot.
 @MainActor func appKitText(_ v: AnyView, height: CGFloat) -> [String] {
@@ -98,7 +104,7 @@ let rc: Int32 = MainActor.assumeIsolated {
     state.query = "55203"
     emit("-", "search-chrome", SearchListView(), height: 800)
     state.query = ""
-    emit("-", "search-field", SearchFieldBar(), height: 120)   // empty: the placeholder is what is drawn
+    emit("-", "search-field", FieldBand(), height: 120)   // empty: the placeholder is what is drawn
     let codes = all.filter { pick.contains($0.kode) }
     for (n, k) in codes.enumerated() {
         emit(k.kode, "registry-row", KBLIRegistryRow(kbli: k, isID: isID))
