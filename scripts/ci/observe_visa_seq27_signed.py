@@ -12,7 +12,7 @@ the seq-25 one): it observes the SIGNING of
 seq-27 (the weekly organ's portal re-stamp of seq-26; rules and products unchanged), and it
 is the executable consumer the per-PR pack declares in its `bites:` block
 (`observe:` this script, `expect: contains:` its success-only final line — the
-intermediate `highest signed sequence=26` line prints before the tests run). Fails loud
+intermediate `highest signed sequence=27` line prints before the tests run). Fails loud
 on the first red step:
 
 1. ``review_hold_inventory --json`` must report ``sequence == 27`` — the

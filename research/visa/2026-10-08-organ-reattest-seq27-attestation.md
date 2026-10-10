@@ -53,12 +53,15 @@ the build lane:
   a live re-read on 2026-10-10 with the organ's own fetch/extract gave 18/18 HTTP 200, equal
   fingerprint, key phrase present; every product and rule claim is still supported by the saved
   text. PASS.
-- **codex** (codex-gpt-5.6-sol, council): 41 leaf differences = identity + 18×2 stamps; Ed25519
+- **codex** (gpt-5.6-sol, council titolare; `codex exec -m gpt-5.6-sol`, 2026-10-10T04:20–04:32Z): 41 leaf differences = identity + 18×2 stamps; Ed25519
   OK on seq-26 and seq-27; the tests reject a changed rule, a wrong chain, a missing receipt and
   a false fingerprint judgement. PASS.
 - **kimi** (kimi-code/k3, council): bundle verifies under the production key and chains to
   seq-26; 18/18 receipts and judgements hold; the CSRF-token regex matches nothing in the 18
   texts, so the hash covers the whole text. PASS.
+
+An earlier Codex run (03:45–03:53Z) went out on the account default model `gpt-6-astra`; it
+also returned PASS and is recorded under that name as advisory, outside the quorum.
 
 Residual, accepted: the fingerprint ignores a changed 40-character alphanumeric token (none of
 these pages carries one that matters). Record:
