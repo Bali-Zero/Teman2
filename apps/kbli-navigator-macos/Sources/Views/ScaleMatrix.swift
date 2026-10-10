@@ -16,8 +16,6 @@ struct ScaleMatrix: View {
     let scales: [PerSkala]
     let isID: Bool
     var mode: Mode = .compact
-    /// Scope titles to the display language (`OverlayStore.dataString`).
-    var tr: (String) -> String = { $0 }
     /// When set, a chip is a button selecting its `scales` index (the PP28 block's cell detail).
     var selection: Binding<Int?>? = nil
     /// What an expanded row of the six-or-more list shows for each of its entries.
@@ -37,7 +35,7 @@ struct ScaleMatrix: View {
         var order: [String] = [], rows: [String: [(Int, PerSkala)]] = [:]
         for (i, s) in scales.enumerated() {
             let u = (s.scopeUraian ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            let key = u.isEmpty ? "idx:\(s.scopeIndex ?? 0)" : "u:\(u.lowercased())"
+            let key = u.isEmpty ? "idx:\(s.scopeIndex ?? 0)" : "u:" + u.lowercased()   // an identity, never drawn
             if rows[key] == nil { order.append(key) }
             rows[key, default: []].append((i, s))
         }
@@ -57,7 +55,8 @@ struct ScaleMatrix: View {
     }
 
     static func term(_ s: PerSkala, isID: Bool) -> String? {
-        s.jangkaWaktu.flatMap { $0.isEmpty ? nil : LabelBook.term($0, isID: isID) }
+        guard let j = s.jangkaWaktu, !j.isEmpty else { return nil }
+        return LabelBook.term(j, isID: isID)
     }
 
     /// Every string a cell draws, one entry per (scope, scale, row) — the function `contenttest` prints.
@@ -101,7 +100,7 @@ struct ScaleMatrix: View {
                         GridRow {
                             VStack(alignment: .leading, spacing: 2) {
                                 if isOriginal(sc) { OriginalLabel() }
-                                Text(tr(sc.uraian ?? ""))
+                                Text(LabelBook.data(sc.uraian ?? "", isID: isID))
                                     .font(Theme.scalable(13, weight: .semibold)).foregroundStyle(Theme.white)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
@@ -181,7 +180,7 @@ struct ScaleMatrix: View {
     private func chip(_ e: (idx: Int, row: PerSkala)) -> some View {
         let c = Theme.riskChip(e.row.kategoriRisiko)
         let selected = selection?.wrappedValue == e.idx
-        let face = Text(e.row.kategoriRisiko.map { LabelBook.risk($0, isID: isID) } ?? Theme.absent)
+        let face = (e.row.kategoriRisiko.map { Text(LabelBook.risk($0, isID: isID)) } ?? Text(Theme.absent))
             .font(Theme.scalable(11, weight: .semibold)).foregroundStyle(c.fg)
             .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, 4).padding(.horizontal, 8)
@@ -198,7 +197,7 @@ struct ScaleMatrix: View {
     /// An English reader meeting a scope title with no English source sees it under its label (Q12 ruling 4).
     private func isOriginal(_ sc: Scope) -> Bool {
         let u = sc.uraian ?? ""
-        return !u.isEmpty && LabelBook.isOriginal(u, drawn: tr(u), isID: isID)
+        return !u.isEmpty && LabelBook.isOriginal(u, drawn: LabelBook.data(u, isID: isID), isID: isID)
     }
 
     // MARK: six or more scopes — the filterable list
@@ -207,7 +206,7 @@ struct ScaleMatrix: View {
 
     private func list(_ scs: [Scope]) -> some View {
         let q = query.lowercased()
-        let shown = q.isEmpty ? scs : scs.filter { tr($0.uraian ?? "").lowercased().contains(q) || ($0.uraian ?? "").lowercased().contains(q) }
+        let shown = q.isEmpty ? scs : scs.filter { LabelBook.data($0.uraian ?? "", isID: isID).lowercased().contains(q) || ($0.uraian ?? "").lowercased().contains(q) }
         return VStack(alignment: .leading, spacing: 8) {
             Text(isID ? "\(scs.count) RUANG LINGKUP" : "\(scs.count) ACTIVITY SCOPES")
                 .font(Theme.scalable(11, weight: .semibold)).tracking(0.88).foregroundStyle(Theme.muted)
@@ -260,7 +259,7 @@ struct ScaleMatrix: View {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Image(systemName: isOpen ? "chevron.down" : "chevron.right")
                         .font(Theme.scalable(11, weight: .semibold)).foregroundStyle(Theme.structure)
-                    Text(tr(sc.uraian ?? "")).font(Theme.scalable(13, weight: .semibold)).foregroundStyle(Theme.white)
+                    Text(LabelBook.data(sc.uraian ?? "", isID: isID)).font(Theme.scalable(13, weight: .semibold)).foregroundStyle(Theme.white)
                         .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     ForEach(Self.order, id: \.self) { scale in
@@ -291,7 +290,7 @@ struct ScaleMatrix: View {
 
     private func abbrChip(_ raw: String?) -> some View {
         let c = Theme.riskChip(raw)
-        return Text(Theme.RiskTier.abbr(raw, isID: isID))
+        return Text(LabelBook.riskAbbr(raw, isID: isID))
             .font(Theme.scalable(11, weight: .semibold)).foregroundStyle(c.fg)
             .padding(.vertical, 2).padding(.horizontal, 6)
             .background(c.bg, in: RoundedRectangle(cornerRadius: 2))
@@ -300,8 +299,7 @@ struct ScaleMatrix: View {
 
     /// An expanded entry by default: its scales, tier word, term and (ledger) authorities.
     private func entryLine(_ s: PerSkala) -> some View {
-        let parts = [s.skalaUsaha.map { LabelBook.scale($0, isID: isID) }.joined(separator: "/"),
-                     s.kategoriRisiko.map { LabelBook.risk($0, isID: isID) } ?? "",
+        let parts = [LabelBook.scales(s.skalaUsaha, isID: isID), LabelBook.risk(s.kategoriRisiko ?? "", isID: isID),
                      Self.term(s, isID: isID) ?? ""]
             + (mode == .ledger ? Self.authorities(s, isID: isID) : [])
         return Text(parts.filter { !$0.isEmpty }.joined(separator: " · "))
