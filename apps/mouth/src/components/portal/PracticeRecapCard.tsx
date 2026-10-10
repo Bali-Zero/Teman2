@@ -49,7 +49,7 @@ export function PracticeRecapCard({
     <div
       className={`border-l-[3px] border-[var(--bz-copper)] bg-[var(--bz-card)] rounded-r-[0.5rem] px-6 py-5 ${className ?? ""}`}
     >
-      <span className="block text-[10px] font-[650] uppercase tracking-[.14em] text-[var(--tx-secondary)]">
+      <span className="block text-[11px] font-[650] uppercase tracking-[.14em] text-[var(--tx-secondary)]">
         Your update
       </span>
 

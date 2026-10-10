@@ -209,7 +209,7 @@ export function PortalNotificationsList({
                   </p>
                 )}
                 <p
-                  className="text-[10px] mt-1"
+                  className="text-[11px] mt-1"
                   style={{ color: "var(--bz-text-3)" }}
                   suppressHydrationWarning
                 >
