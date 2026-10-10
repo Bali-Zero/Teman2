@@ -23,10 +23,12 @@ from collections import Counter, defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(os.path.dirname(HERE))
 # The Views held to 0, and the files the never-drawn check gates (each View joins both as its lot lands).
-GATED = ["search-chrome", "registry-chrome", "search-field"]
-STATIC = ["Sources/Views/SearchFieldBar.swift"]
-REPORTED = ["Sources/Views/SearchListView.swift", "Sources/Views/KBLIRegistryTable.swift",
-            "Sources/Views/RegistryVerdictSheet.swift"]   # EN-1b brings them to 0 and moves them to STATIC
+GATED = ["search-chrome", "registry-chrome", "search-field",
+         "search-row", "search-peak", "registry-row", "registry-sheet"]                  # EN-1b (Q12)
+STATIC = ["Sources/Views/SearchFieldBar.swift",
+          "Sources/Views/SearchListView.swift", "Sources/Views/KBLIRegistryTable.swift",
+          "Sources/Views/RegistryVerdictSheet.swift"]                                    # EN-1b (Q12)
+REPORTED = ["Sources/Views/KBLIDetailRichView.swift"]   # #8224 gate binding 4: `pmaRisk`; PR 3 brings it to 0
 
 LEX = {}
 for line in open(os.path.join(HERE, "en_lexicon.tsv"), encoding="utf-8"):
@@ -34,7 +36,9 @@ for line in open(os.path.join(HERE, "en_lexicon.tsv"), encoding="utf-8"):
         w, g, gloss = line.rstrip("\n").split("\t"); LEX[w] = g
 # Words an Indonesian dump of a gated surface may hold that no English dump does and that are not Indonesian.
 PROPER = {"kbli": "the classification's name", "oss": "the licensing system's name", "bali": "the island",
-          "pma": "the company type", "pt": "the company form", "zantara": "the assistant's name"}
+          "pma": "the company type", "pt": "the company form", "zantara": "the assistant's name",
+          "en": "the language tag an Indonesian line puts on English it quotes: Kutipan catatan (EN)",
+          "data": "spelled alike in English and Indonesian, so never evidence of either"}
 EN_FUNCTION = set("the of and to in for is a an with on this that by or from as at be not are it its into under only any no "
                   "has have can cannot must may your you which who what when where".split())
 ALLOW = [  # (regex, reason) — masked before the lexicon is read; never masks a pipeline key
@@ -54,8 +58,13 @@ R_TITLE = "official title, under its label (ruling 3)"
 R_ORIGINAL = "legal text with no English source, quoted under its label (ruling 4)"
 R_REASON = "the record's curated English Bali reason: its Indonesian words are the cited instrument's terms"
 R_KONDISI = "the record's own condition, written in English: its Indonesian words are the instrument's terms"
-R_PAREN = "the Indonesian original the record's English description quotes in parentheses"
-R_NAME = "an Indonesian proper name the record's English description carries over from its Indonesian one"
+R_PAREN = "the Indonesian original a record's English text (description, statute field) quotes in parentheses"
+R_NAME = "an Indonesian proper name a record's English text (description, statute field) carries over from its source"
+R_QUOTE = "an Indonesian term the English of a record's statute field quotes («…», “…”)"
+R_BASIS = "the record's own legal basis or note, written in English: its Indonesian words are the instrument's terms"
+# Q16: the record's statute fields a View may draw — each value quoted under its label, or its translation drawn whole
+STATUTE = (("per_skala", "persyaratan"), ("per_skala", "kewajiban"), ("per_skala", "scope_uraian"),
+           ("ruang_lingkup", "uraian"), (None, "pma_official_basis"), (None, "pma_nota"))
 CLAUSE_EN = set("the of and to in for with on by or from as at is are not only must may any no".split())
 CLAUSE_ID = set("yang dan di ke dari untuk dengan pada dalam atau oleh tidak bukan bagi serta hanya".split())
 IDENT_RE = re.compile(r"\b[A-Za-z0-9]+(?:_[A-Za-z0-9]+)+\b")
@@ -91,11 +100,49 @@ def english_clause(s):
 
 def key(s): return "".join(c for c in s if c.isalnum())
 
+def strip_html(s):
+    """KBLIRegistryView.stripHTML: a View draws a statute value with its markup gone."""
+    s = re.sub(r"<[^>]+>", " ", s)
+    for a, b in (("&nbsp;", " "), ("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"), ("&quot;", '"')): s = s.replace(a, b)
+    return " ".join(s.split())
+
+def statute(rec):
+    """The record's statute values (Q16), each once, as the data holds them and as a View strips them: [(value,
+    written in English)]. A statute field is the instrument's Indonesian; a basis or note is the curator's, and English
+    when it reads so (`english`: an opening citation is no clause)."""
+    out = {}
+    for group, field in STATUTE:
+        for row in (rec.get(group) or []) if group else [rec]:
+            vals = row.get(field) if isinstance(row, dict) else None
+            for v in vals if isinstance(vals, list) else [vals]:
+                if isinstance(v, str) and v.strip():
+                    for x in (v, strip_html(v)): out.setdefault(x, group is None and english(x))
+    return list(out.items())
+
+def carried(en, own, block, reason_paren, reason_name, quotes=False):
+    """The spans an English text earns for the Indonesian it carries from `own`: its parenthesised originals, the
+    longest Capitalised runs `own` holds verbatim, and (statute) its quoted terms — each inside `block` only."""
+    spans = []
+    for m in re.finditer(r"\([^()]+\)", en):
+        if lexical(m.group()): spans.append((re.compile(flex(m.group())), m.group(), reason_paren, False, block))
+    if quotes:
+        for m in re.finditer(r"«[^»]+»|“[^”]+”|\"[^\"]+\"", en):
+            if lexical(m.group()): spans.append((re.compile(flex(m.group())), m.group(), R_QUOTE, False, block))
+    for m in re.finditer(r"[A-Z][\w-]*(?:\s+[A-Z][\w-]*)+", en):   # a run of Capitalised words: the longest parts
+        ws, i = m.group().split(), 0                                   # the Indonesian text holds verbatim
+        while i < len(ws) - 1:
+            j = next((j for j in range(len(ws), i + 1, -1)
+                      if lexical(" ".join(ws[i:j])) and " ".join(ws[i:j]) in own), None)
+            if j: spans.append((re.compile(flex(" ".join(ws[i:j]))), " ".join(ws[i:j]), reason_name, False, block))
+            i = j or i + 1
+    return spans
+
 def partition(k, pieces):
-    """Lines whose keys, in some order and each used once, spell exactly `k`. A span's label leads it, so the label
-    line is always among them; a duplicate or a missing piece leaves no partition."""
+    """CONTIGUOUS lines whose keys, in some order and each used once, spell exactly `k`. A span's label leads it, so
+    the label line is always among them, and next to the rest (#8224 gate binding 3: a label lends itself to nothing
+    drawn elsewhere); a duplicate or a missing piece leaves no partition."""
     def go(p, used):
-        if p == len(k): return used
+        if p == len(k): return used if max(used) - min(used) + 1 == len(used) else None
         for n, kk in pieces:
             if n not in used and k.startswith(kk, p):
                 got = go(p + len(kk), used + [n])
@@ -104,34 +151,35 @@ def partition(k, pieces):
     return go(0, []) or []
 
 class Record:
-    """The record-bound allow spans of one code, compiled once: (pattern, the whole text as drawn, reason, gapped)."""
+    """The record-bound allow spans of one code, compiled once: (pattern, the whole text as drawn, reason, gapped,
+    within) — `within` is the (pattern, whole) of the drawn text the span must sit inside, or None."""
     def __init__(self, rec, reasons, i18n=None):
         self.judul = rec.get("judul") or ""
         self.title_re = re.compile(flex(self.judul)) if self.judul else None
         spans = []
         if self.judul:
             t = "Official title (Bahasa Indonesia) " + self.judul
-            spans.append((re.compile(r"Official title \(Bahasa Indonesia\)\s*" + flex(self.judul)), t, R_TITLE, False))
+            spans.append((re.compile(r"Official title \(Bahasa Indonesia\)\s*" + flex(self.judul)), t, R_TITLE, False, None))
         k = rec.get("pma_kondisi")
         if k and english_clause(k):
-            spans.append((re.compile(flex(k)), k, R_KONDISI, False))
+            spans.append((re.compile(flex(k)), k, R_KONDISI, False, None))
         elif k:
             t = "Original (Bahasa Indonesia): “%s”" % k
-            spans.append((re.compile(r"Original \(Bahasa Indonesia\):\s*“" + flex(k) + "”"), t, R_ORIGINAL, False))
+            spans.append((re.compile(r"Original \(Bahasa Indonesia\):\s*“" + flex(k) + "”"), t, R_ORIGINAL, False, None))
         raw = (rec.get("l4_bali") or {}).get("reason") or ""
         en = (reasons.get(raw) or {}).get("en") or raw
         if en and english(en):   # an enum inside it is drawn as its label: a short run, checked lexicon-free
-            spans.append((re.compile("(.{1,40}?)".join(flex(p) for p in IDENT_RE.split(en))), en, R_REASON, True))
+            spans.append((re.compile("(.{1,40}?)".join(flex(p) for p in IDENT_RE.split(en))), en, R_REASON, True, None))
         desc, own = (i18n or {}).get(rec.get("uraian") or "", ""), rec.get("uraian") or ""
-        for m in re.finditer(r"\([^()]+\)", desc):
-            if lexical(m.group()): spans.append((re.compile(flex(m.group())), m.group(), R_PAREN, False))
-        for m in re.finditer(r"[A-Z][\w-]*(?:\s+[A-Z][\w-]*)+", desc):   # a run of Capitalised words: the longest
-            ws, i = m.group().split(), 0                                    # parts the ID description holds verbatim
-            while i < len(ws) - 1:
-                j = next((j for j in range(len(ws), i + 1, -1)
-                          if lexical(" ".join(ws[i:j])) and " ".join(ws[i:j]) in own), None)
-                if j: spans.append((re.compile(flex(" ".join(ws[i:j]))), " ".join(ws[i:j]), R_NAME, False))
-                i = j or i + 1
+        if desc:   # parentheses and names: inside the description only
+            spans += carried(desc, own, (re.compile(flex(desc)), desc), R_PAREN, R_NAME)
+        for v, written_en in statute(rec):   # Q16: label-bound originals, field-bound translations
+            if written_en:
+                spans.append((re.compile(flex(v)), v, R_BASIS, False, None)); continue
+            t = "Original (Bahasa Indonesia): “%s”" % v
+            spans.append((re.compile(r"Original \(Bahasa Indonesia\):\s*“" + flex(v) + "”"), t, R_ORIGINAL, False, None))
+            en = (i18n or {}).get(v)
+            if en: spans += carried(en, v, (re.compile(flex(en)), en), R_PAREN, R_NAME, quotes=True)
         self.spans = spans
 
 def analyse(row, rec):
@@ -141,15 +189,24 @@ def analyse(row, rec):
     for l in lines: starts.append(p); p += len(l) + 1
     line_of = lambda i: max(0, next((n for n, s in enumerate(starts) if s > i), len(starts)) - 1)
     mask, allowed = list(text), []
+    lkeys = [(n, key(l)) for n, l in enumerate(lines) if key(l)]
     spans = [(m.span(), r) for rx, r in ALLOW_RE for m in rx.finditer(text)]
-    for rx, whole, r, gapped in (rec.spans if rec else []):
+    def drawn(rx, whole, gapped=False):   # [(span)], and the hull of each occurrence
         found = [m.span() for m in rx.finditer(text) if not (gapped and any(lexical(g) for g in m.groups()))]
-        if not found:
-            # PDFKit orders lines by geometry and splits runs at a font change, so a wrapped text can come back
-            # with its lines swapped or cut ("m²" / "."): then lines that partition it exactly are allowed.
-            k = key(whole)
-            parts = partition(k, [(n, key(l)) for n, l in enumerate(lines) if key(l) and key(l) in k])
-            found = [(starts[n], starts[n] + len(lines[n])) for n in parts]
+        if found: return found, found
+        # PDFKit orders lines by geometry and splits runs at a font change, so a wrapped text can come back
+        # with its lines swapped or cut ("m²" / "."): then contiguous lines that partition it exactly are allowed.
+        k = key(whole)
+        parts = partition(k, [(n, lk) for n, lk in lkeys if lk in k])
+        found = [(starts[n], starts[n] + len(lines[n])) for n in parts]
+        return found, [(min(found)[0], max(found)[1])] if found else []
+    hulls_of = {}
+    for rx, whole, r, gapped, within in (rec.spans if rec else []):
+        found = drawn(rx, whole, gapped)[0]
+        if found and within:   # a carried-over name or quoted original belongs to the English text that carries it
+            if within[1] not in hulls_of: hulls_of[within[1]] = drawn(*within)[1]
+            hulls = hulls_of[within[1]]
+            found = [f for f in found if any(a <= f[0] and f[1] <= b for a, b in hulls)]
         spans += [(f, r) for f in found]
     for (a, b), r in spans:
         toks = lexical(text[a:b])
@@ -181,6 +238,13 @@ def selftest():
     r = Record(rec, {})
     r2 = Record({"judul": "Industri Senjata", "pma_kondisi": "may exceed 49% with Menteri Pertahanan approval"}, {})
     r3 = Record({"judul": "Aktivitas Vila", "l4_bali": {"reason": "OSS risk is CHIUSO_BALI at the Besar scale, so the moratorium applies"}}, {})
+    u5 = "Kegiatan TNI Angkatan Darat dalam pertahanan negara"
+    r5 = Record({"judul": "Aktivitas Pertahanan", "uraian": u5}, {}, {u5: "Activities of the TNI Angkatan Darat in national defence"})
+    v6 = "Wajib memiliki <b>sertifikat</b> dari Pemerintah Daerah"
+    b6 = ("Perpres 10/2021 Pasal 3(1)(d) (as amended by Perpres 49/2021): the residual category — «Bidang Usaha yang tidak"
+          " termasuk dalam huruf a» — open to foreign capital")
+    r6 = Record({"judul": "Aktivitas Vila", "per_skala": [{"persyaratan": [v6]}], "pma_official_basis": b6}, {},
+                {"Wajib memiliki sertifikat dari Pemerintah Daerah": "Must hold a certificate (sertifikat) from the Pemerintah Daerah"})
     cases = [("Villa Rental\nOfficial title (Bahasa Indonesia)\nAktivitas Vila", 0, r),
              ("55203 Aktivitas Vila", 1, r),                                            # a raw title
              ("Official title (Bahasa Indonesia)\nAktivitas Hotel", 1, r),              # someone else's title
@@ -205,7 +269,24 @@ def selftest():
              ("CodesSemua sektor · 26 codes shown", 1, None),                             # mut2, glued by PDFKit
              ("CodesSemua · 26 codes shown", 1, None),                                    # its only Indonesian, glued
              ("Codes26 codes shown · catalogue of 1,559: 395 not determined", 0, None),
-             ("Search code or activity…\nCari kode atau kegiatan…", 1, None)]             # mut3, the placeholder
+             ("Search code or activity…\nCari kode atau kegiatan…", 1, None),            # mut3, the placeholder
+             # #8224 gate binding 3: a label lends itself only to what is drawn next to it; a carried-over name is
+             # allowed only inside the description that carries it
+             ("Official title (Bahasa Indonesia)\nVilla Rental\nAktivitas Vila", 1, r),
+             ("Villa Rental\nAktivitas Vila\nOfficial title (Bahasa Indonesia)", 0, r),     # PDFKit's swap, adjacent
+             ("Activities of the TNI Angkatan Darat in national defence", 0, r5),
+             ("Activities of the TNI Angkatan\nDarat in national defence", 0, r5),
+             ("Ask the TNI Angkatan Darat\nActivities of the TNI Angkatan Darat in national defence", 1, r5),
+             # Q16 (#8224 gate binding 7): a statute value is allowed under its label or as its own translation,
+             # its carried-over terms inside that translation only; a field written in English, drawn whole
+             ("Requirements\nMust hold a certificate (sertifikat) from the Pemerintah Daerah", 0, r6),
+             ("Requirements\nMust hold a certificate\n(sertifikat) from the Pemerintah Daerah", 0, r6),
+             ("Ask the Pemerintah Daerah\nMust hold a certificate (sertifikat) from the Pemerintah Daerah", 1, r6),
+             ("Original (Bahasa Indonesia): “Wajib memiliki sertifikat dari Pemerintah Daerah”", 0, r6),   # as stripped
+             ("Requirements\nWajib memiliki sertifikat dari Pemerintah Daerah", 1, r6),                  # unlabelled
+             ("Original (Bahasa Indonesia): “\nRequirements\nWajib memiliki sertifikat dari Pemerintah Daerah”", 1, r6),
+             (b6, 0, r6),
+             ("Basis: «Bidang Usaha yang tidak termasuk dalam huruf a»", 1, r6)]                        # a piece of it
     bad = []
     for text, want, rr in cases:
         got = len(analyse({"text": text}, rr)[0])
@@ -219,8 +300,21 @@ def corpus(ds, i18n, reasons, rows, id_rows):
     missed = [t for t in titles if not analyse({"text": t}, None)[0]]
     out.append("self-test: ID official titles drawn unlabelled, flagged with no record: %d/%d" % (len(titles) - len(missed), len(titles)))
     bad += ["EN-SELFTEST title not flagged: %s" % t for t in missed]
-    gated = lambda rs: {w.lower() for r in rs if r["view"] in GATED for _, w in words(r["text"])}
-    only = sorted(gated(id_rows) - gated(rows) - set(PROPER))
+    routes = [r["pma_route_to"] for r in ds.values() if r.get("pma_route_to")]
+    out.append("self-test: pma_route_to values that are KBLI codes (drawn as such): %d/%d"
+               % (sum(bool(re.fullmatch(r"\d{5}", v)) for v in routes), len(routes)))
+    bad += ["EN-SELFTEST pma_route_to is not a KBLI code, so the never-drawn check must read it: %s" % v
+            for v in routes if not re.fullmatch(r"\d{5}", v)]
+    def own(code):   # a dump's own record content, in either language: its title, condition and Bali reason
+        r = ds.get(code) or {}
+        raw = (r.get("l4_bali") or {}).get("reason") or ""
+        return {w.lower() for _, w in words(" ".join([r.get("judul") or "", r.get("pma_kondisi") or "", raw,
+                                                         (reasons.get(raw) or {}).get("id") or ""]))}
+    en_words = {w.lower() for r in rows if r["view"] in GATED for _, w in words(r["text"])}
+    only = set()
+    for r in id_rows:   # record content is the titles check's and the record spans' to judge, not the lexicon's
+        if r["view"] in GATED: only |= {w.lower() for _, w in words(r["text"])} - en_words - own(r["code"])
+    only = sorted(only - set(PROPER))
     miss = [w for w in only if w not in LEX]
     out.append("self-test: ID-only words of the gated surfaces (%s) in the lexicon: %d/%d"
                % (", ".join(sorted({r["view"] for r in id_rows if r["view"] in GATED})), len(only) - len(miss), len(only)))
@@ -233,6 +327,19 @@ def corpus(ds, i18n, reasons, rows, id_rows):
     dflag = [d for d, r in descs if analyse({"text": d}, Record(r, reasons, i18n))[0]]
     out.append("innocence: English descriptions flagged outside their record-bound spans %d/%d" % (len(dflag), len(descs)))
     bad += ["EN-SELFTEST English text flagged: %s" % t[:80] for t in flagged + dflag]
+    # Q16 (#8224 gate binding 7): every English statute text a record holds, drawn alone with that record
+    seen, sflag = {}, []
+    for code, r in ds.items():
+        for v, written_en in statute(r):
+            en = v if written_en else i18n.get(v)
+            if en and en not in seen: seen[en] = code
+    recs = {}
+    for en, code in seen.items():
+        if code not in recs: recs[code] = Record(ds[code], reasons, i18n)
+        if analyse({"text": en}, recs[code])[0]: sflag.append(en)
+    out.append("innocence: English statute texts (Q16) flagged with their own record: %d/%d (%d with no record)"
+               % (len(sflag), len(seen), sum(bool(analyse({"text": en}, None)[0]) for en in seen)))
+    bad += ["EN-SELFTEST English statute text flagged with its own record: %s" % t[:80] for t in sflag]
     modal = sum(len(re.findall(r"\bmodal\b", t, re.I)) for t in en_titles + [d for d, _ in descs])
     out.append("innocence: `modal` in the English corpus %d (a lexicon word: the app has no English modal)" % modal)
     return out, bad
@@ -280,12 +387,13 @@ def census(path, id_path, n_ex):
     return 1 if fails else 0
 
 # --- the never-drawn check -------------------------------------------------------------------------------------
-SINK_RE = re.compile(r"(?<![\w.])(Text|Label|TextField|SecureField|Button|Toggle|Link|Menu)\("
+SINK_RE = re.compile(r"(?<![\w.])(Text|Label|TextField|SecureField|Button|Toggle|Link|Menu|Picker)\("
                      r"|\.(help|navigationTitle|navigationSubtitle|accessibilityLabel|accessibilityValue|accessibilityHint)\(")
 UNSEEN = {"help", "accessibilityLabel", "accessibilityValue", "accessibilityHint"}   # never drawn: vetted values only
 LOCALISER_RE = re.compile(r"(?:LabelBook\.\w+|Theme\.(?:riskShortLabel|kbliStatusLabel)|PP28ScalePanel\.scaleLabel"
                           r"|OverlayStore\.shared\.(?:primaryTitle|displayReason|dataString)|KBLIVerdict\.headsUp|lang\.t)\(")
-RAW_RE = re.compile(r"\.(?:judul|uraian|pmaStatus|pmaKondisi|pmaSource|pmaRouteTo|pmaNota|statusMapping|ruangLingkup"
+# `pmaRouteTo` is not here: it holds a KBLI code, as `kode` does — `corpus()` fails the run the day a value is not one.
+RAW_RE = re.compile(r"\.(?:judul|uraian|pmaStatus|pmaKondisi|pmaSource|pmaNota|statusMapping|ruangLingkup"
                     r"|kategoriRisiko|skalaUsaha|riskLabelRaw)\b|\.l4Bali[?!]?\.(?:status|reason)\b")
 BIND_RE = re.compile(r"\b(?:let|var)\s+([A-Za-z_]\w*)(?:\s*:[^=\n{]+)?\s*=\s*([^\n]*(?:\n\s*(?:\?\?|\?|:|\.|\+|&&|\|\|)[^\n]*)*)")
 SAFE = {  # identifier chains an unseen sink may read, each with its reason
@@ -313,11 +421,14 @@ def balanced(src, i, open_="(", close=")"):
     return j
 
 def code_only(arg):
-    """Literal text removed (interpolations kept), localiser calls removed whole."""
+    """Literal text removed (interpolations kept), localiser calls removed whole — but `lang.t`'s argument stays:
+    it is a key, and a missing key is drawn as itself."""
     out, j = [], 0
     while j < len(arg):
         m = LOCALISER_RE.match(arg, j)
-        if m: j = balanced(arg, m.end() - 1); out.append(" "); continue
+        if m:
+            k = balanced(arg, m.end() - 1)
+            out.append(" " + (code_only(arg[m.end():k - 1]) if m.group().startswith("lang.t") else "") + " "); j = k; continue
         if arg[j] == '"':
             j += 1
             while j < len(arg) and arg[j] != '"':
@@ -340,12 +451,24 @@ def first_arg(code):
 def flow(code):
     """The part of literal-free code whose VALUE flows on: a closure, a count, an emptiness test and a comparison
     read a field without passing its text (a count of risk rows is a number, not a risk word)."""
-    while True:
-        new = re.sub(r"\{[^{}]*\}", " ", code)
+    while True:   # map, compactMap and flatMap pass their closure's value on; any other closure does not
+        new = re.sub(r"\.(map|compactMap|flatMap)\s*\{([^{}]*)\}", r".\1(\2)", code)
+        new = re.sub(r"\{[^{}]*\}", " ", new)
         if new == code: break
         code = new
-    code = re.sub(r"[A-Za-z_][\w.?!]*\.(?:count|isEmpty)\b", " ", code)
+    code = re.sub(r"[\w.?!$]*(?:\([^()]*\)[\w.?!]*)*\.(?:count|isEmpty)\b", " ", code)
     return re.sub(r"[\w.?!)\]]+\s*(?:==|!=)\s*[\w.?!(\[]*", " ", code)
+
+def split_top(code):
+    """Top-level comma-separated pieces of an argument or parameter list."""
+    out, depth, start, instr = [], 0, 0, False
+    for j, ch in enumerate(code):
+        if ch == '"': instr = not instr
+        elif instr: continue
+        elif ch in "([{": depth += 1
+        elif ch in ")]}": depth -= 1
+        elif ch == "," and depth == 0: out.append(code[start:j]); start = j + 1
+    return out + [code[start:]] if code.strip() else out
 
 CHAIN_RE = re.compile(r"(?<![.\w])[A-Za-z_]\w*(?:\??\.[A-Za-z_]\w*)*")
 
@@ -372,13 +495,22 @@ def scan(src):
         return b["kind"] if b else None
     def vetted(chain, at):   # SAFE, a type (its arguments are chains of their own), or bound to vetted code in scope
         return chain in SAFE or chain in KEYWORDS or chain[0].isupper() or kind(chain.split(".")[0].rstrip("?"), at) == "vetted"
-    for _ in range(3):   # a name bound to a tainted name is tainted, to a fixpoint for short chains
-        for b in binds:
-            chains = CHAIN_RE.findall(flow(b["code"]))
-            if RAW_RE.search(flow(b["code"])) or any(kind(c.split(".")[0].rstrip("?"), b["at"]) == "raw" for c in chains):
-                b["kind"] = "raw"
-            elif re.search(r"\.l4Bali\b", b["code"]): b["kind"] = "holder"
-            elif all(vetted(c, b["at"]) for c in chains): b["kind"] = "vetted"
+    # Text-valued helpers — a function returning String, a computed String property — pass a raw field through their
+    # return; any helper passes one through a parameter a call site feeds it.
+    helpers = []
+    for m in re.finditer(r"\bfunc\s+([A-Za-z_]\w*)\s*(?:<[^>]*>)?\s*\(", src):
+        pe = balanced(src, m.end() - 1); ob = src.find("{", pe)
+        if ob < 0: continue
+        params = [re.split(r"\s+", x.split(":")[0].strip()) for x in split_top(src[m.end():pe - 1]) if ":" in x]
+        helpers.append({"name": m.group(1), "at": m.start(), "ob": ob, "end": balanced(src, ob, "{", "}"),
+                        "line": lineno(m.start()), "text": bool(re.search(r"->\s*(?:String|Substring)\b", src[pe:ob])),
+                        "params": [(p[0], p[-1]) for p in params], "raw": False, "call": True})
+    for m in re.finditer(r"\bvar\s+([A-Za-z_]\w*)\s*:\s*(String|Substring)\??\s*\{", src):
+        helpers.append({"name": m.group(1), "at": m.start(), "ob": m.end() - 1, "end": balanced(src, m.end() - 1, "{", "}"),
+                        "line": lineno(m.start()), "text": True, "params": [], "raw": False, "call": False})
+    def uses(h, code):   # called (a func) or read bare (a property), on no receiver but Self/self
+        return re.finditer(r"(?:(?<![\w.])|(?<=\bSelf\.)|(?<=\bself\.))%s\b%s"
+                           % (h["name"], r"\s*\(" if h["call"] else r"(?!\s*\()"), code)
     def raw_reads(code, at):
         code = flow(code)
         for r in RAW_RE.finditer(code): yield "the raw record field `%s`" % r.group().strip(".")
@@ -386,13 +518,38 @@ def scan(src):
             b = resolve(m.group(1), at)
             if b and (b["kind"] == "raw" or (b["kind"] == "holder" and m.group(2))):
                 yield "`%s`, bound to a raw record field at :%d" % (m.group(), b["line"])
+        for h in helpers:   # a local name shadows a helper's
+            if h["raw"] and any(not resolve(h["name"], at) for _ in uses(h, code)):
+                yield "`%s`, which returns a raw record field (:%d)" % (h["name"], h["line"])
+    for _ in range(4):   # to a fixpoint for short chains: bindings, helper returns, helper parameters
+        for b in binds:
+            if b.get("param"): continue   # a parameter a call site fed a raw field: raw for good
+            chains = CHAIN_RE.findall(flow(b["code"]))
+            if any(raw_reads(b["code"], b["at"])): b["kind"] = "raw"
+            elif re.search(r"\.l4Bali\b", b["code"]): b["kind"] = "holder"
+            elif all(vetted(c, b["at"]) for c in chains): b["kind"] = "vetted"
+        for h in helpers:
+            body = src[h["ob"] + 1:h["end"] - 1]
+            rets = [(r.start(), r.group(1)) for r in re.finditer(r"\breturn\b([^\n]*)", body)] or [(0, body)]
+            if h["text"] and any(any(raw_reads(code_only(e), h["ob"] + 1 + i)) for i, e in rets): h["raw"] = True
+            for c in uses(h, src) if h["call"] else ():
+                if src[max(0, c.start() - 5):c.start()] == "func ": continue   # the declaration itself
+                args = split_top(src[c.end():balanced(src, c.end() - 1) - 1])
+                for n, arg in enumerate(args):
+                    lab = re.match(r"\s*([A-Za-z_]\w*)\s*:(?!:)", arg)
+                    match = [p for p in h["params"] if lab and p[0] == lab.group(1)] or \
+                            ([h["params"][n]] if n < len(h["params"]) and not lab else [])
+                    if match and any(raw_reads(code_only(arg[lab.end():] if lab else arg), c.start())) \
+                            and not resolve(match[0][1], h["ob"] + 1):
+                        binds.append({"name": match[0][1], "at": h["ob"], "end": h["end"], "code": "",
+                                      "line": lineno(c.start()), "kind": "raw", "param": True})
     out = []
     for m in SINK_RE.finditer(src):
         end = balanced(src, m.end() - 1); arg = src[m.end():end - 1]
         if m.group(1) == "Text" and arg.lstrip().startswith("verbatim:"):
             out.append((lineno(m.start()), "Text(verbatim:) draws a string no localiser saw"))
         name = m.group(1) or m.group(2)
-        body = code_only(arg) if m.group(2) else first_arg(code_only(arg))
+        body = code_only(arg) if m.group(2) or m.group(1) in ("TextField", "SecureField") else first_arg(code_only(arg))
         reads = list(raw_reads(body, m.start()))
         out += [(lineno(m.start()), "%s(…) draws %s" % ("." * bool(m.group(2)) + name, what)) for what in reads]
         if m.group(2) in UNSEEN and not reads:
@@ -414,13 +571,32 @@ def static_selftest():
              "func f() {\n guard let l4 = k.l4Bali else { return }\n Text(l4.status)\n}",
              "func f() {\n let t = isID\n ? kbli.judul : x\n Text(t)\n}",
              "func a() {\n let title = LabelBook.title(k, isID: i)\n}\nfunc b() {\n Text(\"x\").help(title)\n}",
-             "func f() {\n let k = (r.pmaKondisi?.isEmpty == false) ? r.pmaKondisi! : x\n Text(\"\\(k)\")\n}"]
+             "func f() {\n let k = (r.pmaKondisi?.isEmpty == false) ? r.pmaKondisi! : x\n Text(\"\\(k)\")\n}",
+             # #8224 gate binding 4: map-family closures, computed properties, helper parameters, TextField text:,
+             # a raw field as a localiser key, Picker titles
+             'Text(state.selected.map { $0.judul } ?? "")', "Text(rows.map { $0.judul }.joined())",
+             "Text(rows.compactMap { $0.kategoriRisiko }.first ?? x)", "Text(rows.flatMap { $0.skalaUsaha }.joined())",
+             'var shown: String { state.selected?.judul ?? "" }\nvar body: some View { Text(shown) }',
+             'static func pmaRisk(_ k: KBLI) -> String {\n let cats = k.perSkala.compactMap { $0.kategoriRisiko }\n'
+             ' return cats.first ?? "-"\n}\nvar body: some View { Text(Self.pmaRisk(kbli)) }',
+             "func cap(_ s: String) -> some View { Text(s) }\nvar body: some View { cap(kbli.judul) }",
+             "func cap(line s: String) -> some View { Text(s) }\nvar body: some View { cap(line: kbli.judul) }",
+             'TextField("Code", text: .constant(kbli.judul))', "Text(lang.t(kbli.judul))",
+             "Picker(kbli.judul, selection: $s) { }"]
     innocent = ["func a() {\n let title = LabelBook.title(k, isID: i)\n Text(title).help(title)\n}",
                 'TextField(lang.t("search.placeholder"), text: $q)', "Text(LabelBook.pmaStatus(kbli.pmaStatus, isID: isID))",
                 "func a() {\n let t = kbli.judul\n _ = t\n}\nfunc b() {\n let t = lang.t(\"x\")\n Text(t)\n}",
                 'Button("Clear") { state.query = kbli.judul }',
                 'func f() {\n let n = rows.filter { $0.kategoriRisiko != nil }.count\n Text("\\(n) rows")\n}', "x.help(isID ? lang.t(\"a\") : lang.t(\"b\"))",
-                'func a() {\n let hu = KBLIVerdict.headsUp(record: k, isID: i)\n Text("x").accessibilityLabel("\\(kbli.kode) \\(hu.label)")\n}']
+                'func a() {\n let hu = KBLIVerdict.headsUp(record: k, isID: i)\n Text("x").accessibilityLabel("\\(kbli.kode) \\(hu.label)")\n}',
+                # the binding-4 rules stay on the entity: a count of a map, a helper fed only vetted text, a local name
+                # shadowing a raw helper, a helper of the same name on another receiver
+                'Text("\\(rows.map { $0.judul }.count) titles")', "Text(rows.map { $0.kode }.joined())",
+                "func cap(_ s: String) -> some View { Text(s) }\nvar body: some View { cap(LabelBook.title(k, isID: i)) }",
+                'static func risk(_ k: KBLI) -> String { k.perSkala.first?.kategoriRisiko ?? "" }\n'
+                'func f() {\n let risk = LabelBook.field("x", isID: i)\n Text("\\(risk)")\n}',
+                "static func risk(_ k: KBLI, v: V) -> String {\n let rows = k.perSkala.count\n Text(\"\\(rows)\")\n"
+                " return LabelBook.risk(v.riskLabelRaw, isID: i)\n}"]
     bad = ["NEVER-DRAWN-SELFTEST guilt not caught: %r" % g for g in guilt if not scan(g)]
     bad += ["NEVER-DRAWN-SELFTEST innocent flagged: %r %s" % (s, scan(s)) for s in innocent if scan(s)]
     return bad
@@ -432,7 +608,7 @@ def static(app_root):
     for rel in STATIC + REPORTED:
         for line, msg in scan(open(os.path.join(app_root, rel), encoding="utf-8").read()):
             if rel in STATIC: gated += 1; print("never-drawn: %s:%d %s" % (os.path.basename(rel), line, msg))
-            else: reported += 1; print("never-drawn (reported, gated by EN-1b): %s:%d %s" % (os.path.basename(rel), line, msg))
+            else: reported += 1; print("never-drawn (reported, gated by PR 3): %s:%d %s" % (os.path.basename(rel), line, msg))
     print("never-drawn: %d finding(s) in %d gated files; %d reported in %d files (self-test %s, SAFE %d values)"
           % (gated, len(STATIC), reported, len(REPORTED), "FAILED" if bad else "ok", len(SAFE)))
     return 1 if bad or gated else 0
@@ -442,6 +618,8 @@ if __name__ == "__main__":
     if a[:1] == ["census"] and len(a) > 1:
         sys.exit(census(a[1], a[a.index("--id") + 1] if "--id" in a else None,
                         int(a[a.index("--examples") + 1]) if "--examples" in a else 3))
+    if a[:1] == ["gated"]:
+        print(",".join(GATED)); sys.exit(0)
     if a[:1] == ["static"]:
         sys.exit(static(a[1] if len(a) > 1 else ROOT))
     print(__doc__); sys.exit(2)

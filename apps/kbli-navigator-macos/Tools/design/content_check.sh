@@ -2,13 +2,16 @@
 # Compile contenttest + headsuptest + encensus against Sources/ and run the content gate (spec §7) and the
 # en-purity gate (Q12): the text census of the drawn Views (fast sample; EN_CENSUS=full for all 1,559 codes) and
 # the never-drawn static check. Run from anywhere; operates on the app root. Its binaries and outputs live in a
-# fresh directory under THIS app's ignored build/ (never deleted), so a concurrent run in another worktree or
+# fresh directory under THIS app's ignored build/ (removed on exit), so a concurrent run in another worktree or
 # session can neither be picked up nor overwrite them: every path below is $T's, by construction.
 cd "$(dirname "$0")/../.." || exit 2
 APP=$PWD; XC=/Applications/Xcode.app
 export KBLI_JSON=$APP/Resources/KBLI_2025_FINAL_CLEAN.json KBLI_APP_ROOT=$APP
 mkdir -p "$APP/build" && T=$(mktemp -d "$APP/build/content-check.XXXXXX") || exit 2
-mkdir -p "$T/Contents"; ln -s "$APP/Resources" "$T/Contents/Resources"; echo "content_check: work dir $T"
+mkdir -p "$T/Contents"; ln -s "$APP/Resources" "$T/Contents/Resources"
+# ~26 MB per run: removed on any exit unless KEEP_WORK=1 keeps it for a post-mortem (#8224 gate binding 6).
+if [ "${KEEP_WORK:-0}" = 1 ]; then echo "content_check: work dir $T (kept, KEEP_WORK=1)"
+else trap 'rm -rf -- "$T"' EXIT; echo "content_check: work dir $T (removed on exit; KEEP_WORK=1 keeps it)"; fi
 SRC=(${(f)"$(find Sources -name '*.swift' ! -name KBLINavigatorApp.swift | sort)"})
 build() { swiftc -sdk "$(xcrun --sdk macosx --show-sdk-path)" -target arm64-apple-macosx14.0 \
   -external-plugin-path "$XC/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins#$XC/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-plugin-server" \
@@ -30,7 +33,8 @@ if python3 Tools/design/content_check.py --pack "$T/pack-guilt.json" < "$T/out.j
 else echo "guilt control: edited pack rejected"; fi
 if "$T/headsuptest"; then echo "step 3 ok: headsuptest"; else echo "step 3 FAILED"; rc=1; fi
 if "$T/encensus" "$T/en-census.jsonl" --lang en --mode "${EN_CENSUS:-fast}" 2> "$T/encensus.err" \
-   && "$T/encensus" "$T/id-surfaces.jsonl" --lang id --codes none 2>> "$T/encensus.err" \
+   && "$T/encensus" "$T/id-surfaces.jsonl" --lang id --mode "${EN_CENSUS:-fast}" \
+        --views "$(python3 Tools/design/en_purity.py gated)" 2>> "$T/encensus.err" \
    && python3 Tools/design/en_purity.py census "$T/en-census.jsonl" --id "$T/id-surfaces.jsonl"; then
   echo "step 4 ok: en-purity census (${EN_CENSUS:-fast})"
 else echo "step 4 FAILED: en-purity census ($T/encensus.err)"; rc=1; fi

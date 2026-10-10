@@ -569,3 +569,44 @@ kode	ui	code
 sektor	ui	sector
 minu	ui	"minum" (drink), cut short where the sector pop-up truncates its title
 risiko	risk	risk
+# EN-1b (2026-10-10): the ID-only words of the four Views EN-1b gates (search row, search peak, registry row, registry
+# sheet), from their Indonesian dump minus their English one, each dump's own record content left to the record spans.
+# None occurs in the English corpus; where Localization.swift holds one, it is that table's Indonesian side.
+ada	function	there is, exists
+alasan	ui	reason
+baris	ui	row(s)
+bawa	function	bring, take
+berlaku	statute	in force, effective
+bisa	function	can, may
+buka	ui	open (as a command)
+catatan	ui	record, note
+cek	ui	check
+dikutip	ui	quoted, cited
+dinyatakan	function	stated, declared
+diperlakukan	function	treated
+dosir	ui	dossier
+jangan	function	do not
+kepemilikan	domain	ownership
+keyakinan	ui	confidence
+kutipan	ui	quotation
+lengkap	ui	complete, full
+lingkup	domain	scope
+maks	ui	max (abbreviated)
+memilikinya	function	has one, carries it
+mendaftarkan	domain	to register
+nas	verdict	"nas(ional)", national, as the verdict badge abbreviates it
+penerapan	domain	application, implementation
+perhatian	ui	attention, heads-up
+periksa	ui	check, verify
+putusan	verdict	verdict, ruling
+rute	ui	route
+sedang	ui	medium (a confidence level); currently
+sektoral	domain	sectoral
+syarat	statute	condition, requirement
+tanya	ui	ask
+tercatat	function	recorded
+tergantung	function	depends on
+tertinggi	risk	highest
+verdikt	verdict	verdict (the app's Indonesian spelling)
+ya	function	yes
+diverifikasi	verdict	verified

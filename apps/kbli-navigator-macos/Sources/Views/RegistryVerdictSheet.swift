@@ -32,17 +32,15 @@ struct RegistryVerdictSheet: View {
     @EnvironmentObject var lang: LanguageManager
 
     private var isID: Bool { lang.lang == .id }
-    /// Loaded once, not per render: `OverlayStore()` reads its JSON files in `init`.
-    private static let reasons = OverlayStore()
 
     /// The sentence under the headline, in the reader's language where the record has one. The
     /// rule's reasons and most `l4_bali.reason` strings exist in English only; blended into an
     /// Indonesian sheet they read as half-translated prose, so in Indonesian an untranslated reason
-    /// is shown as a LABELLED quote of the record instead (the card's `quotedRuleReason` twin).
+    /// is shown as a LABELLED quote of the record instead (the card's `quotedRuleReason` twin). In
+    /// English the reason is the translation table's, as the search rows show it — no longer the raw
+    /// record string, which is Italian for some codes (Q12).
     private func displayedReason(_ r: String) -> String {
-        guard isID else { return r }
-        let translated = Self.reasons.reasonString(r, isID: true)
-        return translated != r ? translated : "Kutipan catatan (EN): \(r)"
+        LabelBook.humanise(OverlayStore.shared.displayReason(r, isID: isID), record: kbli, isID: isID)
     }
     private var verdict: KBLIVerdict { KBLIVerdict.of(record: kbli) }
 
@@ -111,7 +109,7 @@ struct RegistryVerdictSheet: View {
             Text("KBLI \(kbli.kode) · 2025")
                 .font(Theme.scalable(11, weight: .semibold, design: .monospaced)).tracking(1.0)
                 .foregroundStyle(Theme.faint)
-            Text(kbli.judul)
+            Text(LabelBook.title(kbli, isID: isID))
                 .font(Theme.scalable(26, weight: .bold, design: .serif))
                 .foregroundStyle(Theme.white)
                 .fixedSize(horizontal: false, vertical: true)
