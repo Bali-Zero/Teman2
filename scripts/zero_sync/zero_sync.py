@@ -17,6 +17,7 @@ import hashlib
 import json
 import os
 import posixpath
+import signal
 import re
 import shutil
 import subprocess
@@ -30,9 +31,10 @@ DEFAULT_ZERO = "https://github.com/FastLabsNet/zero.git"
 ZERO_OWNED_PREFIXES = (".github", ".slim")
 ROOT_FILES = ("package.json", "package-lock.json")
 TRAILER = "Zero-Sync-Canonical"
-TRAILER_RE = re.compile(rf"^{TRAILER}: ([0-9a-f]{{40}})[ \t]*$", re.M)
 DEEPEN_DEPTH = 200
 NPM_TIMEOUT = 600
+MASS_CHANGE_FRACTION = 0.25
+RUN_BUDGET = 3300  # whole-run watchdog (s): under two ticks, so a wedged run always ends with a heartbeat
 NET_TIMEOUT = 1800  # the first full zero fetch took ~10 min on M5; a hung fetch/push must still end the run, or it holds the lock and every later tick no-ops
 
 EXIT_OK, EXIT_ERROR, EXIT_USAGE, EXIT_DIVERGED, EXIT_REJECTED = 0, 1, 2, 3, 4
@@ -63,7 +65,8 @@ class Repo:
     def __init__(self, git_dir: Path):
         self.git_dir = str(git_dir)
 
-    def run(self, *args, input=None, env=None, check=True, raw=False, timeout=None):
+    def run(self, *args, input=None, env=None, check=True, raw=False, timeout=NET_TIMEOUT):
+        # Bounded by default: in a partial clone even cat-file/ls-tree can lazily fetch from the network.
         e = dict(os.environ)
         e["GIT_TERMINAL_PROMPT"] = "0"
         if env:
@@ -111,8 +114,20 @@ class Repo:
 
 
 def norm_url(u: str) -> str:
-    u = u.strip().rstrip("/").lower()
-    return u[:-4] if u.endswith(".git") else u
+    """Identity of a repository URL, whatever its transport: https://host/o/r(.git), ssh://user@host/o/r,
+    user@host:o/r and file:///path all reduce to "host/o/r" (or "file:/path"), so the never-push-to-canonical
+    guard cannot be dodged by naming the same repository in another syntax."""
+    u = u.strip().rstrip("/")
+    if u.lower().endswith(".git"):
+        u = u[:-4]
+    if u.startswith("file://"):
+        return "file:" + os.path.normpath(u[len("file://"):])
+    m = re.match(r"^[a-z][a-z0-9+.-]*://(?:[^@/]+@)?([^/:]+)(?::\d+)?/(.+)$", u, re.I)
+    if not m:
+        m = re.match(r"^(?:[^@/]+@)?([^/:]+):(.+)$", u)  # scp-like user@host:o/r
+    if not m:
+        return u.lower()
+    return f"{m.group(1).lower()}/{m.group(2).strip('/').lower()}"
 
 
 def read_manifest(text: str) -> list[str]:
@@ -156,7 +171,12 @@ def prune_workspaces(text: str, exists) -> tuple[str, list[str]]:
         new_body = "\n" + ",\n".join(indent + json.dumps(w) for w in kept) + "\n" + close_indent
     else:
         new_body = ""
-    return text[: m.start(2)] + new_body + text[m.end(2):], kept
+    new_text = text[: m.start(2)] + new_body + text[m.end(2):]
+    expected = dict(data, workspaces=kept)
+    if json.loads(new_text) != expected:
+        # The first "workspaces": [ in the text was not the root one (e.g. a nested object before it).
+        raise SyncError("textual workspace prune did not touch the root workspaces array; refusing")
+    return new_text, kept
 
 
 def regen_lock(repo: Repo, state: Path, npm_cmd: str, pruned: bytes, lock_oid: str,
@@ -208,6 +228,11 @@ def build_tree(repo: Repo, state: Path, canon_ref: str, zero_ref: str, npm_cmd: 
         return read_manifest(p.stdout.decode())
 
     keep, cut, local = manifest("keep_paths.txt"), manifest("cut_paths.txt"), manifest("local_paths.txt")
+    if not keep:
+        raise SyncError("zero's .slim/keep_paths.txt lists no path: refusing to export an empty perimeter")
+    for lp in local:
+        if lp in ROOT_FILES:
+            raise SyncError(f"local_paths.txt lists {lp}, which the sync derives from canonical; remove the entry")
     canon = repo.ls_tree(canon_ref, [*keep, *ROOT_FILES])
     for k in keep:
         if not any(p == k or p.startswith(k + "/") for p in canon):
@@ -249,17 +274,32 @@ def build_tree(repo: Repo, state: Path, canon_ref: str, zero_ref: str, npm_cmd: 
     return tree, entries
 
 
+def sync_trailer(repo: Repo, sha: str) -> str | None:
+    """Canonical sha of a sync commit, or None. Both must hold: committer name zero-sync, and the value
+    parsed by git as a TRAILER (last paragraph). A line quoted in a hotfix body is not a trailer, and a
+    GitHub squash or merge is committed by GitHub."""
+    out = repo.run("show", "-s", f"--format=%cn%x1f%(trailers:key={TRAILER},valueonly,separator=%x1f)", sha)
+    committer, _, values = out.partition("\x1f")
+    if committer != "zero-sync":
+        return None
+    for v in values.split("\x1f"):
+        v = v.strip()
+        if re.fullmatch(r"[0-9a-f]{40}", v):
+            return v
+    return None
+
+
 def walk_unsynced(repo: Repo, zero_ref: str):
     """Non-sync commits on zero's first-parent chain newer than the last sync commit.
     Returns (commits, prev_canonical_sha or None, tip_is_sync). The root commit is the import
     baseline and is never counted as a direct change."""
-    out = repo.run("log", "--first-parent", "--format=%H%x1f%P%x1f%B%x1e", zero_ref)
+    out = repo.run("log", "--first-parent", "--format=%H%x1f%P", zero_ref)
     commits, prev, tip_sync = [], None, False
-    for i, rec in enumerate(r for r in out.split("\x1e") if r.strip()):
-        sha, parents, body = rec.strip("\n").split("\x1f", 2)
-        m = TRAILER_RE.search(body)
-        if m:
-            prev, tip_sync = m.group(1), i == 0
+    for i, rec in enumerate(r for r in out.splitlines() if r.strip()):
+        sha, parents = rec.split("\x1f", 1)
+        canon = sync_trailer(repo, sha)
+        if canon:
+            prev, tip_sync = canon, i == 0
             break
         if parents.strip():
             commits.append((sha.strip(), parents.split()[0]))
@@ -336,12 +376,21 @@ def sync(a, hb) -> int:
     short = canon_sha[:10]
 
     red = False
-    if not a.no_ci_check and TRAILER_RE.search(repo.run("show", "-s", "--format=%B", zero_tip)):
+    if not a.no_ci_check and sync_trailer(repo, zero_tip):
         red = ci_red(a.zero_url, zero_tip)
     ci_note = f"; zero CI red on {zero_tip[:10]}" if red else ""
     status_ok = "warning" if red else "ok"
 
     tree, entries = build_tree(repo, state, canon_ref, zero_ref, a.npm_cmd)
+    if tree != repo.run("rev-parse", f"{zero_ref}^{{tree}}") and not a.allow_mass_change:
+        # A bad manifest edit on zero (no PR gate there) must not wipe the products in one fast-forward.
+        local_now = read_manifest(repo.run("cat-file", "blob", f"{zero_ref}:.slim/local_paths.txt"))
+        before = [p for p in repo.ls_tree(zero_ref) if not is_owned(p, local_now)]
+        after = {p for p in entries if not is_owned(p, local_now)}
+        gone = [p for p in before if p not in after]
+        if before and len(gone) > MASS_CHANGE_FRACTION * len(before):
+            raise SyncError(f"mass-change guard: the sync would delete {len(gone)} of {len(before)} product files "
+                            f"(e.g. {gone[0]}); re-run by hand with --allow-mass-change if the perimeter cut is intended")
     if tree == repo.run("rev-parse", f"{zero_ref}^{{tree}}"):
         msg = f"zero-sync: up to date (canonical {short}){ci_note}"
         print(msg); hb(status_ok, f"up to date (canonical {short}){ci_note}")
@@ -364,8 +413,8 @@ def sync(a, hb) -> int:
         return EXIT_OK
 
     if bad:
-        note = f"divergence refused: {len(bad)} path(s) changed on zero: " + ", ".join(bad[:10])
-        print("zero-sync: " + note); hb("error", note)
+        print(f"zero-sync: divergence refused: {len(bad)} path(s) changed on zero: " + ", ".join(bad))
+        hb("error", f"divergence refused: {len(bad)} path(s) changed on zero, e.g. " + ", ".join(bad[:3]))
         return EXIT_DIVERGED
 
     subjects = prior_subjects(repo, prev, canon_sha, keep, canon_ref, a.canonical_ref)
@@ -410,6 +459,8 @@ def main(argv=None) -> int:
     ap.add_argument("--zero-url", default=os.environ.get("ZERO_SYNC_ZERO_URL", DEFAULT_ZERO))
     ap.add_argument("--npm-cmd", default="npm")
     ap.add_argument("--no-ci-check", action="store_true")
+    ap.add_argument("--allow-mass-change", action="store_true",
+                    help="accept a sync that deletes more than a quarter of zero's product files (intended cut)")
     a = ap.parse_args(argv)
     heartbeat = _load_heartbeat()
     hb = (lambda *x, **k: None) if a.dry_run else (lambda s, n="": heartbeat(ORGAN_ID, s, n))
@@ -429,9 +480,15 @@ def main(argv=None) -> int:
             print("zero-sync: already running")
             hb("warning", "previous run still holds the lock")
             return EXIT_OK
+        def _over_budget(signum, frame):
+            raise SyncError(f"run exceeded its {RUN_BUDGET}s budget")
+
+        signal.signal(signal.SIGALRM, _over_budget)
+        signal.alarm(RUN_BUDGET)
         try:
             return sync(a, hb)
         finally:
+            signal.alarm(0)
             fcntl.flock(lockf, fcntl.LOCK_UN)
             lockf.close()
     except SyncError as exc:

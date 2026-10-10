@@ -328,3 +328,57 @@ def test_hung_network_call_ends_the_run_with_an_error(w, monkeypatch):
     assert timeouts == [zs.NET_TIMEOUT]  # without a bound the fetch hangs and holds the lock forever
     hb = w.hb()
     assert hb["status"] == "error" and "git fetch timed out" in hb["note"]
+
+
+def test_refuses_the_same_repository_named_in_another_url_syntax(w, capsys):
+    rc = zs.main(["--state-dir", str(w.state), "--canonical-url", "https://github.com/Bali-Zero/Teman2.git",
+                  "--zero-url", "git@github.com:Bali-Zero/Teman2.git", "--no-ci-check"])
+    assert rc == 2 and "equal" in capsys.readouterr().out
+
+
+def test_an_empty_keep_manifest_is_refused_not_exported(w, capsys):
+    w.zero_commit({".slim/keep_paths.txt": "# nothing left\n"}, "emptied keep")
+    tip = w.zero_tip()
+    assert w.run() == 1
+    assert w.zero_tip() == tip
+    assert w.hb()["status"] == "error"
+    assert "empty perimeter" in capsys.readouterr().out
+
+
+def test_mass_deletion_needs_an_explicit_flag(w, capsys):
+    assert w.run() == 0
+    assert "apps/mouth/a.txt" in w.zero_files()
+    w.zero_commit({".slim/keep_paths.txt": "packages/core\n"}, "narrowed keep by mistake")
+    tip = w.zero_tip()
+    assert w.run() == 1
+    assert w.zero_tip() == tip
+    assert "mass-change guard" in capsys.readouterr().out
+    assert w.run("--allow-mass-change") == 0
+    assert "apps/mouth/a.txt" not in w.zero_files()
+    assert "packages/core/package.json" in w.zero_files()
+
+
+def test_a_quoted_trailer_in_a_direct_commit_is_not_a_sync(w):
+    assert w.run() == 0
+    fake = "Zero-Sync-Canonical: " + "a" * 40
+    w.zero_commit({"apps/mouth/a.txt": "hotfix on zero\n"}, f"hotfix\n\n{fake}")
+    assert w.run() == 3  # still refused: the line is a quote, not a sync commit made by zero-sync
+    assert w.zero_show("apps/mouth/a.txt") == "hotfix on zero"
+
+
+def test_local_paths_cannot_claim_a_derived_root_file(w, capsys):
+    w.zero_commit({".slim/local_paths.txt": LOCAL + "package-lock.json\n"}, "claim the lock")
+    assert w.run() == 1
+    assert "derives from canonical" in capsys.readouterr().out
+
+
+def test_prune_refuses_when_the_first_workspaces_array_is_not_the_root_one():
+    text = '{\n  "config": {\n    "workspaces": [\n      "apps/a"\n    ]\n  },\n  "workspaces": [\n    "apps/a",\n    "apps/b"\n  ]\n}\n'
+    with pytest.raises(zs.SyncError, match="root workspaces"):
+        zs.prune_workspaces(text, lambda w: w == "apps/a")
+
+
+def test_every_git_call_is_bounded_by_default():
+    import inspect
+
+    assert inspect.signature(zs.Repo.run).parameters["timeout"].default == zs.NET_TIMEOUT
