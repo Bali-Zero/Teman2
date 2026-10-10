@@ -526,23 +526,21 @@ class TestTeamKnowledgeTool:
         parsed = json.loads(result)
         assert "error" in parsed
 
-    def test_get_data_file_path_returns_none_if_not_found(self):
+    def test_load_team_data_with_no_source(self):
         from backend.services.rag.agentic.tools import TeamKnowledgeTool
 
         tool = TeamKnowledgeTool(db_pool=None)
-        with patch("pathlib.Path.exists", return_value=False):
-            result = tool._get_data_file_path()
-        # Path.exists patched False for every candidate path -> deterministic None
-        assert result is None
-
-    def test_load_team_data_with_no_file(self):
-        from backend.services.rag.agentic.tools import TeamKnowledgeTool
-
-        tool = TeamKnowledgeTool(db_pool=None)
-        tool._data_file = None
-        with patch.object(tool, "_get_data_file_path", return_value=None):
+        with patch("backend.core.team_roster.load_team_roster", return_value=[]):
             result = tool._load_team_data()
         assert result == []
+
+    def test_load_team_data_malformed_source_degrades(self):
+        from backend.core.team_roster import TeamRosterError
+        from backend.services.rag.agentic.tools import TeamKnowledgeTool
+
+        tool = TeamKnowledgeTool(db_pool=None)
+        with patch("backend.core.team_roster.load_team_roster", side_effect=TeamRosterError("x")):
+            assert tool._load_team_data() == []
 
 
 # ============================================================================

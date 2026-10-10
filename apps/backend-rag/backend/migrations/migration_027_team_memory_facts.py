@@ -12,7 +12,6 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from pathlib import Path
 
 import asyncpg
 
@@ -231,15 +230,14 @@ async def apply_migration(database_url: str = None):
         return False
 
     # Load team members JSON
-    team_file = Path(__file__).parent.parent / "data" / "team_members.json"
-    if not team_file.exists():
-        logger.error(f"Team members file not found: {team_file}")
+    from backend.core.team_roster import load_team_roster, team_roster_source
+
+    team_members = load_team_roster()
+    if not team_members:
+        logger.error("Team roster not found (no TEAM_MEMBERS_JSON/TEAM_MEMBERS_FILE/default file)")
         return False
 
-    with open(team_file) as f:
-        team_members = json.load(f)
-
-    logger.info(f"Loaded {len(team_members)} team members from {team_file}")
+    logger.info(f"Loaded {len(team_members)} team members from {team_roster_source()}")
 
     try:
         conn = await asyncpg.connect(database_url)

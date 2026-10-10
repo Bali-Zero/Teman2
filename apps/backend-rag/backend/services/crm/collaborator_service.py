@@ -8,16 +8,16 @@ Replaces the legacy identity layers with a transparent, easy-to-edit dataset.
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any
+
+from backend.core.team_roster import DEFAULT_ROSTER_PATH, load_team_roster
 
 logger = logging.getLogger(__name__)
 
-DATA_PATH = Path(__file__).parent.parent.parent / "data" / "team_members.json"
+DATA_PATH = DEFAULT_ROSTER_PATH  # kept for importers; loading goes through load_team_roster()
 
 
 @dataclass
@@ -89,11 +89,12 @@ class CollaboratorService:
     """
 
     def __init__(self) -> None:
-        if not DATA_PATH.exists():
-            raise FileNotFoundError(f"Team data file not found: {DATA_PATH}")
-
-        with DATA_PATH.open("r", encoding="utf-8") as f:
-            raw_members = json.load(f)
+        raw_members = load_team_roster()
+        if not raw_members:
+            raise FileNotFoundError(
+                "Team roster not found: tried env TEAM_MEMBERS_JSON, env TEAM_MEMBERS_FILE, "
+                f"and {DATA_PATH}"
+            )
 
         self.members: list[CollaboratorProfile] = [
             CollaboratorProfile(
