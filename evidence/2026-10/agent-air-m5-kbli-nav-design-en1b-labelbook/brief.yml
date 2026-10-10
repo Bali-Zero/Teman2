@@ -14,14 +14,15 @@ objective: >-
   Z-DECISIONI Q12 rulings 1-5, second half: LabelBook, the one projection from the dataset's keys to the words a reader
   sees (status, Bali-status enum, risk, scale and authority words; the provenance strip's field names; titles and
   descriptions from kbli-data-i18n-en.json through primaryTitle; "Official title (Bahasa Indonesia)"; the "Original
-  (Bahasa Indonesia)" label for legal text with no English source), applied to the four built Views: search row, search
+  (Bahasa Indonesia)" label for Indonesian legal text with no English source, never put on the five English
+  pma_kondisi values), applied to the four built Views: search row, search
   peak, registry row and registry sheet with its provenance strip. Italian enums and field=value locators are never
   drawn in either language; Indonesian is otherwise unchanged. en_purity GATED and STATIC gain the four Views. Not in
   this lot: detail card, dossier, sheet ledger, chat (PRs 3-6, each bound to 0 for its View). Presentation only: no KBLI
   fact, verdict, cap, basis or Bali overlay changes.
 constraints:
   - English changes only by translation, labelling or the reason table the search rows already used; Indonesian only by enum and locator humanisation, proven by an id-mode census diff.
-  - The frozen 55203 and 56101 strings stay byte-identical; 51101's heads-up pair changes per Q12 (en Restricted · 49% and the labelled original; id unchanged).
+  - The frozen 55203 and 56101 strings stay byte-identical; 51101's heads-up label changes per Q12 (en Restricted · 49%); its condition is English already and stays verbatim, unlabelled, in both languages.
   - No PNG is committed; the after-set ships as a sha256 manifest and the PNGs live in the M5 gallery.
 acceptance:
   - text: The full census SHALL find 0 Indonesian strings in English in the six gated Views, with the allowlist counted by reason.
