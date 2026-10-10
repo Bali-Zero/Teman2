@@ -1,0 +1,81 @@
+brief_ref: evidence/brief.yml
+seat_override: >-
+  Dispatched by the imperator: mission kbli-nav-design-loop, Track W, lot W0d-3a (BLUE), ruling
+  Q21's first lot. The Dux (w2-dux-3) built and ran every command. It does not self-sign; the
+  imperator commissions a fresh Opus gate.
+plan_ref: >-
+  ~/BATTAGLIA-20261008/DYNAMIC-WORKFLOW-kbli-nav-design/Z-DECISIONI.md Q21; the #8228 gate comment
+  ("Notes for W0d-3", point 6, the CI budget) and W0d-3-BRIEF-NOTES.md point 4; the contract
+  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md, new section 9.
+lanes:
+  - lane: kbli-r19-w0d3a-1010
+    role: build
+    seat: "claude-opus-5-5 (Dux)"
+pii_scan: clean
+pii_scan_note: "Census dumps, verdict texts and mutant outputs hold public page labels, colours, CSS paths and route paths only. No client data, no external seat."
+provenance: >-
+  Fresh worktree from origin/main eeaef24d68. The uncommitted W0d-3 work of w2-dux-2 (+893/-75)
+  was protected first as a local commit (875957b0bb on agent/air-m5/mouth/kbli-r19-w0d3-1010, not
+  pushed): it carries W0d-3b's content and no sharding, so this lot was built new rather than
+  carved from it. The instrument mutants ran in this worktree, each restored before the next, and
+  the census and workflow are byte-identical to HEAD afterwards.
+diff:
+  net_lines: |
+    About 443 net beyond evidence:
+      - census script +296 -160, of which about 128 lines are the capture loop moved into
+        capture_pages() and the walk loops re-indented (+168 -32 ignoring whitespace);
+      - tests +187;
+      - workflow +78 -17;
+      - contract +59 (section 9).
+    No fixture changes. No apps/mouth/src file.
+  behaviour_change: >-
+    The census runs the scenarios of one list, in the same order as before; `--part` runs one
+    part's. Its first printed line is now `scenarios-off-manifest: S`, and every other line is
+    unchanged. In CI the single wrapper-census-states job becomes four wrapper-census-part jobs
+    and an aggregate that keeps the name. The aggregate asserts the four lines asserted before,
+    plus S 0, and fails on a red part. The browser guilt and innocence tests move into the
+    explorer part.
+receipts:
+  - claim: "The offline suite passes: the partition, the byte-for-byte replay of the parts, and every guilt and innocence row of section 9."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'"
+    result: "140 passed, 53 deselected"
+    exit: 0
+    ts: "2026-10-10T14:24:50Z"
+    seat: claude-opus-5-5
+  - claim: "The whole suite, browser rows included, passes on M5 through walk_states() and walk_opened() over the one list."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider"
+    result: "193 passed in 143.12s"
+    exit: 0
+    ts: "2026-10-10T14:27:41Z"
+    seat: claude-opus-5-5
+  - claim: "The armed apps/mouth test still reads the probe, pages and states through --export."
+    cmd: "cd apps/mouth && npm test -- r19-wrapper --run --reporter=dot"
+    result: "Test Files 1 passed; Tests 5 passed, 1 skipped (96.62s)"
+    exit: 0
+    ts: "2026-10-10T14:23:44Z"
+    seat: claude-opus-5-5
+  - claim: "Every instrument mutation fails the suite: 12 on the census, 5 on the workflow."
+    cmd: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3a-1010-9508fe8b/instrument_mutants.py (instrument-mutants.txt)"
+    result: "17 of 17 killed; census and workflow restored byte-identical to HEAD"
+    exit: 0
+    ts: "2026-10-10T14:24:39Z"
+    seat: claude-opus-5-5
+  - claim: "The fence: no file under apps/mouth/src."
+    cmd: "git diff --name-only origin/main...HEAD | grep -c '^apps/mouth/src'"
+    result: "0"
+    exit: 1
+    ts: "2026-10-10T14:25:18Z"
+    seat: claude-opus-5-5
+dissent:
+  - seat: claude-opus-5-5
+    objection: "A missing part only lowers the counts: with `kbli` absent, opened-surfaces reads 7 ok, 0 failed and the ground counts fall, with no INCOMPLETE anywhere. Comparing what arrived with what each part claims would not see it either, because the absent part claims nothing."
+    status: CONFIRMED
+    resolution: "The aggregate checks what it received against the whole list, not against the parts that arrived. Each scenario no part reported is entered as failed, so every count it feeds reads INCOMPLETE. The rows: a missing part (each of the four), no dump at all, and a dropped scenario of each kind."
+  - seat: claude-opus-5-5
+    objection: "Concatenating the parts puts kbli's opened walks before explorer's. A full run interleaves them, explorer's four scenarios sitting between sector-drawer and the two mobile navs, and the first-seen examples of the ground lines depend on that order."
+    status: CONFIRMED
+    resolution: "Every entry is put back at its index in the one list before the census is judged. The byte-for-byte test concatenates the parts in two different orders; the no-reorder mutant fails it."
+  - seat: claude-opus-5-5
+    objection: "Filtering the existing nested loops by part would let a loop and the list drift apart. A scenario the loop runs but the list lacks would be silently dropped from every part."
+    status: CONFIRMED
+    resolution: "live(), capture_pages(), walk_states() and walk_opened() iterate the list itself, so a full run and the parts run the same scenarios by construction. A scenario a dump reports but the list lacks prints `unexpected:`."
