@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: ae6a3a3e9c2e505bf41e72045fd1738d2bcbd95ec85e6a18438fa2eff9bd62e8 # pragma: allowlist secret
+checksum: 9ae1e81b9fbec9775b32f1f1923404afa2675bf918c8a24c160c4d0487e8ecac # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2762,6 +2762,26 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/mini.vercel_autopromote.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.zero_sync
+  runtime: mini_launchd
+  type: cron
+  # 3600 = 2x this organ's own 1800s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale.
+  expected_hb_seconds: 3600
+  owner_module: infra/launchagents/wrappers/mini-zero-sync.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.zero-sync
+  severity_on_silence: warning
+  notes: one-way mirror of canonical main into the product-only FastLabsNet/zero main
+    (scripts/zero_sync/zero_sync.py); refuses and says so when zero was changed directly
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.zero_sync.json
     timestamp_field: ts
     status_field: status
 - id: mini.voa_probe
