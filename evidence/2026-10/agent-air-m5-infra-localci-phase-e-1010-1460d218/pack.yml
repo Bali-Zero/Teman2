@@ -1,0 +1,285 @@
+task_id: localci-phase-e-1010
+mission: LOCALCI-SOVEREIGN (phase E, prepared)
+colour: BLUE
+gear: 3
+gear_reason:
+  The lint's floor is 3 by size (about 2080 net lines, most of them tests, against the 1828 threshold); no hot-zone
+  path. One new operator tool under scripts/localci, never run with --apply by a session, its tests, its own mutant table,
+  a README section and a spec paragraph with the ruling's addendum.
+l_level: L2
+gate_class: opus
+objective:
+  "Phase E prepared as scripts/localci/phase_e_flip.py: a read-only plan by default; the operator's --apply rewrites
+  merge-queue-main (merge queue out, update in, the DeployKey bypass its only actor) and then deletes main's classic protection,
+  which the flip needs as much as the ruleset (it requires a pull request and the 14 checks and exempts no deploy key)."
+acceptance:
+  - text: The default run SHALL issue only GETs and SHALL name both writes in order with their bodies.
+    probe: test_phase_e_flip.py::test_the_plan_reads_only_with_bare_gets_and_names_both_writes_in_order
+  - text: Every write after the first SHALL be sent only against a fresh read equal to the expected state (W1).
+    probe: test_phase_e_flip.py::test_a_guard_or_key_that_changes_after_the_ruleset_write_stops_the_delete, ::test_a_rollback_whose_classic_protection_vanishes_after_its_write_never_restores_the_queue
+consumer_map:
+  - The operator at phase E (operator[gui]), following the README's arming order.
+lanes:
+  - lane: localci-phase-e-1010
+    role: build
+    seat:
+      claude-opus-5-5 on M5 (wrote the tool, tests, mutants and docs; four fix rounds; suspended at the third red for one
+      cause)
+  - lane: localci-phase-e-1010-gate-opus
+    role: review
+    seat:
+      "claude-opus-5-5, fresh read-only seats: rounds 1-4 CONFIRMED; round 5 BLOCKED on the declared gear only; round 6
+      CONFIRMED (4 LOWs, fixed); a final seat on the last delta"
+  - lane: localci-phase-e-1010-council-codex
+    role: review
+    seat: codex-gpt-5.6 (read-only, xhigh), rounds 1-6 on the full diff; round 6 journaled; a final round on the last delta
+  - lane: localci-phase-e-1010-council-kimi
+    role: review
+    seat:
+      kimi-code/k3 via scripts/kimi_client.py (no tools, scrubbed env, 1800 s), round 6 on the script, README and spec diff;
+      journaled
+pii_scan: clean
+pii_scan_note: Branch-protection configuration, check names, ruleset ids and key fingerprints only; no client data.
+what_changed:
+  "scripts/localci/phase_e_flip.py (new): plan by default; --apply/--confirm digest; READY report checks (fresh,\
+  \ same repo,\nbase = branch, since null, finite, FALSE_GREEN 0 at every level); exactly one write key matching --key-pub;\
+  \ guard and\nlayered-rule checks (rules/branches); the write discipline W1-W4 (expected states, fresh reads with retries,\
+  \ exit 3 after\nthe first write); --rollback. Tests (153, fake gh with exact argv, pagination, mid-run peer changes) and\
+  \ mutants\n(phase_e_mutants.py, 105/105). README section \"Phase E flip\" with the write discipline and the arming order;\
+  \ one spec\nparagraph.\n The fake gh validates every PUT body against GitHub's own request schemas, vendored in scripts/localci/tests/fixtures/github_rest_put_schemas.json\
+  \ (github/rest-api-description @ 10efa1c8d0, MIT notice beside it, test-only, one declared deviation pinned by a test)."
+proof:
+  "Fakes only; no ruleset or protection was written. The live read-only plan against Bali-Zero/Teman2 (2026-10-10):
+
+  state pre-flip, 14 required checks with their sources, merge-queue-main id 19779175, guard 20608865, 0 write deploy
+
+  keys, report not READY and stale -> three blockers, as expected.
+
+  "
+bites:
+  consumer: The operator at phase E.
+  observation:
+    "Owed and made before arming: the live read-only plan quoted on the PR (pre-flip, 14 checks, guard proven via
+    rules/branches, 0 write keys, report not READY -> blocked, nothing written). At phase E: the operator's apply ending
+    'flipped:'."
+ground:
+  ts: "2026-10-09T19:25:45Z"
+  siblings: Worktree from origin/main 323853ba30. The phase F executor (F2) is the lead's lane; merger.py and prune.py untouched.
+spend:
+  adversarial_rounds: 8
+  wall_clock_hours: 5.5
+receipts:
+  - claim: 153 passed (test_phase_e_flip.py) after the round-8 findings.
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_phase_e_flip.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-10T01:36:37Z"
+    seat: claude-opus-5-5 on M5
+  - claim:
+      "Mutants 107/107 killed after the round-8 findings (one rule dropped as equivalent: the guard's enforcement check,
+      which the GitHub-side proof already covers); survivors, errors, stale none."
+    cmd: python3 scripts/localci/tests/mutants/phase_e_mutants.py
+    exit: 0
+    ts: "2026-10-10T01:36:37Z"
+    seat: claude-opus-5-5 on M5
+  - claim:
+      Independent Opus gates CONFIRMED rounds 1-4 and 6-8; round 5 BLOCKED on the declared gear only. Codex BLOCKER rounds
+      2-4 of one class, RULED by the lead; MEDIUM rounds 5-8, fixed, the fake's laxity specified by GitHub's schema at its third
+      red. Kimi round 6 BLOCKER refuted.
+    cmd: fresh read-only subagents; codex exec --sandbox read-only -c model_reasoning_effort=xhigh on the redacted diff
+    exit: 0
+    ts: "2026-10-10T01:24:00Z"
+    seat: claude-opus-5-5 (independent seats), codex-gpt-5.6
+  - claim:
+      "Live read-only plan: pre-flip, 14 checks, guard proven via rules/branches, 0 write keys, report not READY and stale
+      -> blocked; nothing written (the state dir was never created)."
+    cmd: PYTHONPATH=. python3 scripts/localci/phase_e_flip.py --report <copy of Pro's report.json> --state-dir <scratch>
+    exit: 0
+    ts: "2026-10-09T22:08:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim:
+      The two PUT request schemas extracted from github/rest-api-description @ 10efa1c8d0f77aa233c967763d0230284bb8e282
+      (file sha256 ba5ddc1e...db194, MIT); the test validator agrees with jsonschema 4.26 (nullable mapped to anyOf null) on
+      459/459 valid and mutated bodies; the four bodies the tool writes are valid.
+    cmd:
+      curl the pinned api.github.com.json; python3 -I extract.py (refs resolved, description/example/title/x-github dropped);
+      python3 -I crosscheck.py
+    exit: 0
+    ts: "2026-10-10T00:50:00Z"
+    seat: claude-opus-5-5 on M5
+dissent:
+  - seat: codex-gpt-5.6 (read-only, xhigh) at afd5b11035
+    objection:
+      "BLOCKER: W1 excludes the first write — a state changed between the plan's read and the first PUT (e.g. during
+      save_state) is overwritten; the rollback likewise."
+    status: CONFIRMED
+    resolution:
+      "RULED 2026-10-10 by the lead (README 'Write discipline — RULED'): Q quiescence declared with --quiescent,
+      W1 a fresh read before every write, the first included ('changed since plan', no write), W5 a read-back after every
+      write. Tests: test_a_change_between_the_plan_and_the_first_write_writes_nothing (3 cases), test_a_rollback_whose_state_changes_before_its_first_write_writes_nothing."
+  - seat: codex-gpt-5.6 (read-only, xhigh) at afd5b11035
+    objection:
+      "BLOCKER: the guard is trusted from its ruleset document; its deletion and non_fast_forward rules are not required
+      in rules/branches (the update rule is)."
+    status: CONFIRMED
+    resolution:
+      "Fixed: a guard counts only when rules/branches shows its deletion and non_fast_forward. Test test_a_guard_that_github_does_not_apply_to_the_branch_is_no_guard;
+      mutant pe-guard-not-proven-by-github."
+  - seat: codex-gpt-5.6 (read-only, xhigh) at afd5b11035
+    objection: "MEDIUM: the rulesets list may omit `target` (GitHub's example does); filter on the details, not the list."
+    status: CONFIRMED
+    resolution:
+      "Fixed: details are read for every repository ruleset and filtered on the detail. Test test_a_rulesets_list_without_target_is_read_through_the_details;
+      mutant pe-list-target-trusted."
+  - seat: codex-gpt-5.6 (read-only, xhigh) at afd5b11035
+    objection:
+      "MEDIUM: tests build the expected ruleset body with the code's own ruleset_body; a body missing a required merge_queue
+      parameter passes. Build expectations independently and validate bodies in the fake."
+    status: CONFIRMED
+    resolution:
+      "Fixed: MQ_PARAMS carries the seven live merge_queue parameters; the fake validates every PUT body as GitHub
+      does (required fields and parameters, DeployKey actor shape, classic fields, no contexts beside checks); test_the_rollback_ruleset_body_is_the_live_one_field_for_field
+      writes the expected body out."
+  - seat: codex-gpt-5.6 (read-only, xhigh) at afd5b11035
+    objection: "MEDIUM: the rollback's second PUT answer is not judged, only the final read."
+    status: CONFIRMED
+    resolution:
+      "Fixed: took[2] compares the answer with the saved ruleset. Test test_a_rollback_that_does_not_take_exits_3;
+      mutant pe-rollback-second-answer-unjudged."
+  - seat: codex-gpt-5.6 (read-only, xhigh) at afd5b11035
+    objection: "MEDIUM: a report without `since` reads as since null; require the key."
+    status: CONFIRMED
+    resolution: "Fixed: a missing since key is refused. Test test_a_report_without_a_since_key_is_refused; mutant pe-w3-since-key-optional."
+  - seat: codex-gpt-5.6 (read-only, xhigh) at afd5b11035
+    objection: "LOW: an integer like 10**400 makes math.isfinite raise OverflowError."
+    status: CONFIRMED
+    resolution: "Fixed: an int window is compared as an int, a float must be finite. Test test_a_huge_integer_window_is_read_without_a_crash."
+  - seat: codex-gpt-5.6 (read-only, xhigh) at 17494ed131
+    objection:
+      "MEDIUM: W1 kept only ruleset id and type of the applied rules, so an inherited rule's changed parameter (e.g.
+      review_on_push) passed as unchanged."
+    status: CONFIRMED
+    resolution:
+      "Fixed: applied rules are kept whole (ruleset, type, source, parameters) and compared whole, except the ruleset's
+      own rules, which the ruleset itself is judged on. Test test_a_parameter_of_an_inherited_rule_changed_before_the_first_write_writes_nothing;
+      mutants pe-applied-rule-parameters-dropped, pe-applied-rules-compared-by-type-only."
+  - seat: codex-gpt-5.6 (read-only, xhigh) at 17494ed131
+    objection:
+      "MEDIUM: the fake accepted a classic body with an integer where GitHub's schema wants a boolean (Python 1 ==
+      True)."
+    status: CONFIRMED
+    resolution:
+      "Fixed: the fake checks the JSON types of every classic PUT body (booleans, integers, strings, restrictions
+      null). Mutant pe-enforce-admins-as-int."
+  - seat: codex-gpt-5.6 (read-only, xhigh) at 17494ed131
+    objection: "LOW: the big-integer test truncated its report before reading it and did not pass it to the run."
+    status: CONFIRMED
+    resolution: "Fixed: the test reads, then writes, passes rep=path and asserts the huge window is read back with no blocker."
+  - seat: claude-opus-5-5 gate round 5 at 17494ed131 and cf9a7edefb
+    objection:
+      "MEDIUM: gear 2 declared below the size floor 3 (Harness floor recompute would fail); LOWs: the rollback's quiescence
+      check and Ctrl-C handling untested, its exit-3 message without the state file and command, a hand-edited saved ruleset
+      not validated, the ruleset-id check in diverges untested, stale counts in the pack."
+    status: CONFIRMED
+    resolution:
+      "Gear 3 declared in brief and pack with a council journal (Codex and Kimi on the full diff). The rollback validates
+      both saved bodies before planning; its exit 3 prints the state file and the full re-run command. Tests: test_a_rollback_without_the_quiescence_declaration_writes_nothing,
+      test_ctrl_c_after_the_rollbacks_first_write_is_exit_3_with_the_state_file, test_a_hand_edited_state_file_is_refused_before_any_write
+      (4 cases), test_a_ruleset_recreated_under_a_new_id_before_the_first_write_writes_nothing; mutants pe-quiescence-unrequired-rollback,
+      pe-w4-rollback-ctrl-c-escapes, pe-rollback-saved-ruleset-unchecked, pe-rollback-saved-classic-unchecked, pe-diverges-ruleset-id-ignored."
+  - seat: codex-gpt-5.6-sol round 6 (e599a06db7)
+    objection:
+      "MEDIUM: the rollback's saved-state validation is incomplete (a removed rule parameter or classic flag passes
+      the plan; write 1 lands, write 2 fails: exit 3, frozen). MEDIUM: the fake does not check ruleset parameter types (True
+      for 1 passes). LOW: a non-UTF-8 .pub raises UnicodeDecodeError."
+    status: CONFIRMED
+    resolution:
+      The flip seals the state file with a sha256 of its canonical JSON; --rollback refuses an edited file before
+      any plan, then checks shapes. The fake checks types and enums of every ruleset part (name, target, enforcement, ref names,
+      rule types and parameters, bypass actors). read_key_pub treats a non-text file as no key. Tests test_a_state_file_edited_since_the_flip_saved_it_is_refused_before_any_plan
+      (5 cases), test_the_flip_seals_the_state_it_saves, test_a_parameter_of_the_wrong_json_type_never_reaches_github, test_a_key_file_that_is_not_text_is_no_key;
+      mutants pe-state-checksum-unchecked, pe-state-checksum-not-saved, pe-ruleset-bool-for-int, pe-key-pub-not-text-crashes.
+  - seat: kimi-code/k3 round 6 (e599a06db7)
+    objection:
+      "BLOCKER claimed: W2 admits deletion/non_fast_forward rules of another ruleset without judging its bypass actors,
+      so an admin-bypassed second ruleset would let that actor delete or force-push main."
+    status: RETRACTED
+    resolution:
+      "Refuted by the session: GitHub layers rules and a bypass exempts its actor only from its own ruleset; the guard
+      is proven to apply to the branch (rules/branches shows its deletion and non_fast_forward) and has no bypass actor, so
+      deletion and force-push stay forbidden to everyone whatever a second ruleset allows. Kimi's own text states the exemption
+      is per ruleset."
+  - seat: kimi-code/k3 round 6 (e599a06db7)
+    objection:
+      "LOW: is_target ignores actor_id. LOW: non-FlipError errors before any write (gh missing, a KeyError) exit by
+      traceback."
+    status: PLAUSIBLE
+    resolution:
+      "Traceback fixed: main turns any pre-write exception into REFUSED, exit 1 (test test_an_error_before_any_write_is_refused_without_a_traceback,
+      mutant pe-pre-write-error-traceback). actor_id kept as is: GitHub defines no per-key DeployKey bypass (the actor names
+      all deploy keys; exactly one write key is the control), and a stricter read-back on an unverified shape would only stop
+      the apply."
+  - seat: claude-opus-5-5 gate round 6 (e599a06db7)
+    objection:
+      "LOW: stale counts in what_changed; receipt timestamps not the runs'; the saved-state comment claims more than
+      the shape check does; the rollback's exit-3 text omits the both-writes-landed outcome."
+    status: CONFIRMED
+    resolution:
+      Counts and timestamps corrected; the comment now names the checksum as the refusal of an edited file; the exit-3
+      text names the third outcome.
+  - seat: codex-gpt-5.6-sol round 7 (9efbb981dd)
+    objection:
+      "MEDIUM: READY is not re-read before the writes (a report turned false during the save, or one expiring before
+      W1, passes). MEDIUM: the fake still accepts bodies outside GitHub's schema (a rule-type typo, exclude as a string). LOW:
+      Ctrl-C before any write escapes as a traceback."
+    status: CONFIRMED
+    resolution:
+      "W1 extended to the report: before every write the flip re-reads it and stops if it no longer proves READY (README:
+      this narrows the window, quiescence covers the rest). The fake's laxity was the third red of one cause (rounds 5, 6,
+      7), so it was specified, not patched — RULED 2026-10-10 by the lead with three conditions, all met: only the two request
+      schemas vendored with source repo, commit, both sha256 and the MIT notice; the contexts deviation pinned by its own test;
+      the validator test-only (phase_e_flip.py never reads the fixture, asserted). The validator agrees with jsonschema 4.26
+      on 459/459 valid and mutated bodies. main refuses Ctrl-C before a write as exit 1. Tests: test_a_report_that_stops_proving_ready_before_the_first_write_writes_nothing,
+      ..._after_the_ruleset_write_sends_no_delete, test_gitHubs_schema_refuses_a_ruleset_body_out_of_it (7 cases), test_every_body_the_flip_and_its_rollback_write_is_in_gitHubs_schema,
+      test_the_contexts_deviation_is_still_needed_and_is_the_only_one, test_the_vendored_schemas_are_the_extract_their_source_names,
+      test_ctrl_c_during_the_plans_reads_is_refused_without_a_traceback; mutants pe-report-not-rechecked, pe-ruleset-rule-type-typo,
+      pe-ruleset-exclude-string, pe-main-ctrl-c-escapes."
+  - seat: claude-opus-5-5 gate round 7 (9efbb981dd)
+    objection:
+      "LOW: main's catch-all is not pre-write by construction — a failing success or FAILED print after a send reported
+      'nothing was written', exit 1. LOW: Ctrl-C during the plan's reads is a traceback, against the README."
+    status: CONFIRMED
+    resolution:
+      run_flip and run_rollback record the sent writes on the namespace; main returns exit 3 with the plan hint whenever
+      a write had been sent, and guards its own output. Tests test_a_failure_of_the_tools_own_output_after_the_writes_is_exit_3,
+      ..._after_a_rollback_is_exit_3; mutants pe-flip-sent-not-tracked, pe-rollback-sent-not-tracked.
+  - seat: codex-gpt-5.6-sol round 8 and claude-opus-5-5 gate round 8 (724031bf0e)
+    objection:
+      "Codex MEDIUM / Opus LOW: the fake's contexts deviation checked the value, so contexts: [] beside checks passed.
+      Both LOW: after a send the outer handler named --state-dir, not the state file used, and gave no restore command. Opus
+      LOW: a report planned near its 2 h limit could expire between the writes and freeze the branch."
+    status: CONFIRMED
+    resolution:
+      "The fake refuses the contexts key itself beside checks, empty or not; the outer handler names the state file
+      actually used (the saved one, or the rollback's) with the full restore command; --apply wants a report at least 5 minutes
+      inside its age limit. Tests: the deviation test's empty-contexts case, the two output-failure tests now assert the file
+      and command, test_apply_wants_a_report_that_cannot_expire_between_the_two_writes (2 cases); mutants pe-apply-margin-unchecked,
+      pe-after-send-state-file-lost. The Opus round-8 gate verified the vendored extract against the pinned upstream file (identical),
+      the validator against jsonschema on 9090 bodies (0 disagreements) and the lead's three conditions (met)."
+residuals:
+  - "Accepted by the ruling: GitHub's REST API has no compare-and-swap for rulesets or branch protection; a sub-second window
+    remains between W1's read and its write. Quiescence (--quiescent, operator-declared) takes concurrent writers out of scope;
+    W5 detects a lost race."
+  - "Two GitHub shapes are assumed, verified only against the fake: the ruleset GET echoes update_allows_fetch_and_merge false,
+    and rules/branches lists rules regardless of the caller's bypass. Wrong either way, the failure is a deterministic W5 stop
+    at the first --apply (main frozen-safe), recovered by --rollback."
+  - "No post-flip watcher: a write key added later is covered by the DeployKey bypass; the read-only plan run on a schedule
+    ('already flipped, but') is a possible follow-up."
+  - "Size: about 2080 net lines (mostly tests) against the ~400 guideline; one concern, gear 3 by size."
+brief_ref: evidence/brief.yml
+plan_ref:
+  Mandate (2) of the LOCALCI lead's message of 2026-10-10 (prepared, never applied phase E flip), from origin/main
+  323853ba30.
+appetite_exceeded:
+  Four review rounds then a spec ruling (the three reds of one class were specified, not patched) and a fifth
+  gate on the full diff.
+council_run: council-journal.jsonl

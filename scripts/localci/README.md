@@ -751,6 +751,100 @@ silence is a `warning`, recovery `launchctl kickstart`. Arming (operator of Pro,
     launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.nuzantara.disk-floor.plist
     cat ~/.organism/last_seen/pro.disk_floor.json   # RunAtLoad: the first heartbeat lands at bootstrap
 
+## Phase E flip (prepared; the operator applies)
+
+    python scripts/localci/phase_e_flip.py [--repo Bali-Zero/Teman2] [--branch main] [--report <report.json>] [--state-dir <dir>] [--key-pub <deploy_key.pub>]
+    python scripts/localci/phase_e_flip.py --apply --confirm <digest> --quiescent   # operator[gui], after READY and the key
+    python scripts/localci/phase_e_flip.py --rollback <pre-flip-*.json> [--apply --confirm <digest> --quiescent]
+
+Phase E of `docs/specs/localci-sovereign-2026-10-07.md` leaves the merger's deploy key as the only writer of `main`. Without
+`--apply` the script only reads (GETs through `gh api`): the classic protection of the branch with its required set and each
+check's source, the `merge-queue-main` ruleset, the ruleset that forbids deletion and force-push, the write deploy keys and the
+report; it prints the two writes of the flip with their exact bodies, what still blocks them, and a plan digest. The flip is
+(1) `PUT` the `merge-queue-main` ruleset with `merge_queue` replaced by `update` (`update_allows_fetch_and_merge` false) and the
+DeployKey bypass (`actor_id` null, `always`) as its only actor, then (2) `DELETE` the classic protection — sent only when
+GitHub's answer to (1) shows the ruleset enforced, with that one rule and that one actor, on the same conditions, AND a fresh
+read still shows it so, the guard, the one merger key and the scope (a write that does not take, or a guard or key that changed
+during the run, stops it before the DELETE: exit 3). The classic protection must go because it requires a pull request and the status
+checks, and classic protection exempts no deploy key: while it stands the merger's fast-forward push is refused (`push_refused`,
+a sticky halt). Between the two writes nobody can move `main`.
+Deletion and force-push stay forbidden by the `Copilot review for default branch` ruleset (`deletion`, `non_fast_forward`, no
+bypass actor), which the flip requires.
+
+`--apply` writes nothing unless all of these hold, read fresh: `--confirm` equals the digest of a plan of this very state (the
+classic protection, the `merge-queue-main` ruleset, each guard ruleset whole, the write keys by id, date and fingerprint, and the
+writes — any of them that moved since the plan changes the digest); the report says `phase_e_ready: true`,
+is of the same repository, was generated within the last 2 hours (and not more than 5 minutes ahead), and its own window shows
+READY (`compared_merges` >= 50, `compared_days` >= 14, and `FALSE_GREEN` the integer 0 at every level the merger sums for READY —
+`counts`, `context_counts`, `recorded_context_false_green`; a contradiction is refused, a malformed report is refused, never
+raised); exactly one deploy key with write exists (the DeployKey bypass covers every write key of the repository; every page of
+the list is read) and it is the merger's: its `SHA256:` fingerprint — the form `ssh-keygen -lf` and GitHub's key page print —
+equals that of `--key-pub` (default `~/.nuzantara-pilots/local-ci/merger/deploy_key.pub`; only the fingerprint is printed,
+never the key or its title); the live state is pre-flip (classic protection present, a `merge_queue` rule in the
+ruleset); the ruleset covers the branch and nothing wider; and the deletion/force-push guard exists — an active ruleset that
+GitHub lists with an empty `bypass_actors` (an omitted field is unknown, not none) and whose exclusions name no pattern. Flipped
+is read by meaning: no classic protection, the ruleset enforced, covering the branch, one `update` rule that allows no
+fetch-and-merge, the DeployKey its one actor, always. An already flipped branch writes nothing and is re-judged — a second write
+key, a foreign or unidentifiable key (an unreadable `--key-pub`), a lost guard or a ruleset widened beyond the branch is exit 1
+(`already flipped, but: …`); anything neither pre-flip nor flipped is `drifted` and refused. The classic protection reads as
+absent only on GitHub's `Branch not protected` 404; any other error, 404s included, refuses. A classic setting this tool cannot restore exactly (push restrictions, signed commits, dismissal restrictions or bypass
+allowances, which GitHub lists only when configured) is refused, never dropped. The
+pre-flip state is saved first (`<state-dir>/pre-flip-<UTC>.json`, directory 0700, file 0600, created exclusively — no save,
+no write); both resources are re-read after the writes and anything but `flipped` is exit 3 with the rollback command.
+`--rollback` restores the classic protection first and the ruleset second, under its own plan digest: the ruleset write is sent
+only when GitHub's answer to the first shows the classic protection as saved (never the merge queue back without the checks),
+and both are re-read after — anything but the saved state is exit 3 (the checks compared as a set: GitHub may list them in
+another order). The classic body is sent with `checks` only (GitHub refuses `contexts` beside it) and
+`restrictions: null`. A check whose source is
+"any" is read as `app_id` null and saved as `-1` (an omitted `app_id` would pin the app that last reported it). Exit codes:
+0 plan printed, applied or nothing to do; 1 refused; 2 bad arguments; 3 a write failed or did not take.
+
+**Write discipline — RULED 2026-10-10** (LOCALCI-SOVEREIGN lead, a spec decision after three review reds of one class — a
+write sent against a state nobody re-read — on draft #8191; the cause is specified here, not patched).
+- *Q, quiescence.* A precondition of `--apply`, declared by the operator who runs it with `--quiescent`: phase E's apply is an
+  operator[gui] gesture, and no session, peer or cron writes rulesets or branch protection of the repository during the run.
+  The script states it in every plan and refuses `--apply` without the declaration; it does not try to enforce it.
+- *W1, before every write.* Immediately before EVERY write, the first included, a fresh read is compared with the state the
+  plan confirmed (the digest's state), advanced by the writes already made — component by component: the classic protection
+  (its checks as a set), the `merge-queue-main` ruleset (the target by meaning), the guard rulesets whole, the write keys, the
+  ruleset's scope, and every rule GitHub applies to the branch (`rules/branches/<branch>`, inherited ones included). On a
+  difference the run stops before writing, makes no write, and names what "changed since plan" (exit 1 when nothing was
+  sent yet, exit 3 after).
+- *W5, after every write.* GitHub's answer must show the write took, and a fresh read after it is compared with the state the
+  write intended; a read that differs or fails is read again (3 reads, 2 s apart) before it counts. On a mismatch the run
+  stops, writes nothing further, and prints the rollback state file.
+- *W1 for the report.* Before every write of the flip the report is read again and must still prove READY (fresh, the
+  branch's, the whole journal, FALSE_GREEN 0); otherwise the run stops before that write. `--apply` wants a report at least
+  5 minutes inside its 2-hour age limit, so it cannot expire between the two writes and leave the branch frozen. This narrows the window, it does
+  not close it: a READY that turns false between that read and the write is the same residual as GitHub's, and quiescence
+  covers it.
+- *W2, nothing else blocks the key.* Rules layer, and a bypass exempts only its own ruleset: beside `merge-queue-main`'s rule,
+  every rule GitHub applies to the branch must be `deletion`, `non_fast_forward` or `copilot_code_review`; any other refuses
+  the plan. The guard counts only when `rules/branches` shows its `deletion` and `non_fast_forward` on the branch.
+- *W3, READY is the branch's and the whole journal's.* The report's `base` is the branch and it carries `since: null` (a
+  missing key is refused); its numbers are finite JSON numbers (`Infinity` and `NaN` are refused at parse).
+- *W4, a write sent is a write owned.* Once a write has been sent, any failure — a refused write, a mismatch, an unexpected
+  error, Ctrl-C — is exit 3 with the state file and the full rollback command, never a traceback that reads as "refused".
+  When a rollback stops after its classic write, the branch is frozen, not open (classic protection and the key-only
+  ruleset): run the plan again, or restore the state file's `ruleset` by hand. Before any write, every failure — Ctrl-C included — is exit 1
+  ("REFUSED", nothing written), never a traceback; a failure after a write was sent is exit 3 even when it happens outside
+  the write loop (the tool's own output failing, say).
+- *The state file is sealed.* The flip saves it 0600 with a sha256 of its canonical JSON; `--rollback` refuses, before any
+  plan, a file whose checksum does not match its content — one edited since — and then checks the shape of both bodies.
+- *Residual, accepted and documented.* GitHub's REST API offers no compare-and-swap (no `If-Match`) for rulesets or branch
+  protection, so a sub-second window remains between W1's read and the write it guards. Quiescence takes concurrent writers
+  out of scope, and W5 detects a lost race after the fact. A review finding of that class beyond W1/W5 is out of scope by
+  this ruling.
+
+**Arming order (phase F's checklist).** (1) Phase D READY: recompute the report on Pro (`merger.py report`, this section's
+freshness rule) and read `phase_e_ready`. (2) operator[secret]: the merger's deploy key generated on Pro
+(`~/.nuzantara-pilots/local-ci/merger/deploy_key`, 0600, never printed) and registered on the repository with write — the only
+write deploy key; its `.pub` is what `--key-pub` reads. (3) operator[gui]: the plan, read; then `--apply --confirm <digest> --quiescent` (with no session, peer or cron writing GitHub settings) from
+a checkout at `origin/main`, on a host whose `gh` is the owner's (the ruleset and protection writes need admin), with the
+merger's `.pub` and a report.json under 2 hours old copied beside it if that host is not Pro (`--key-pub`, `--report`); keep the
+printed state file. (4) Only then `LOCALCI_MERGER_PHASE_F=1` in the tick's
+environment: before (3) the first push is refused and halts. A session runs the plan only and never `--apply`.
+
 ## Tests
 
 `PYTHONPATH=<worktree> python -m pytest scripts/localci/tests -q` (real temporary git repos; the hypothesis state machine
@@ -762,6 +856,12 @@ is never touched) and must turn its test file red: KILLED means pytest ran and a
 any other exit (nothing collected, a collection error) is ERROR, never a kill. Inherited `PYTEST_*` options are dropped, so a
 caller's `-k` cannot deselect the guilt. A rule whose text no longer occurs exactly once is STALE, not skipped. Exit 0 only
 when every test-file set passes unmutated and every mutant is killed; `--only NAME` and `--list` narrow it.
+`python3 scripts/localci/tests/mutants/phase_e_mutants.py` is the same sweep, harness and verdicts for `phase_e_flip.py`
+against `test_phase_e_flip.py`, in its own table. That suite's fake `gh` refuses any PUT body GitHub's own published request
+schema refuses: the two schemas are vendored in `scripts/localci/tests/fixtures/github_rest_put_schemas.json` (from
+github/rest-api-description at a pinned commit, with the source file's and the extract's sha256; MIT, its notice beside the
+file), read by the tests only. One deviation is declared and pinned by a test: the schema lists the deprecated `contexts` as
+required in `required_status_checks`, while GitHub refuses `contexts` beside `checks`.
 
 **Hosted run.** `.github/workflows/localci-tests.yml` runs this suite on every pull request that touches `scripts/localci/**`, the
 workflow, ancestor pytest configuration or conftests at the repository root or in `scripts/`, or one of the real-repo files the suite
