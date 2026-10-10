@@ -21,7 +21,7 @@ objective: >-
   this lot: detail card, dossier, sheet ledger, chat (PRs 3-6, each bound to 0 for its View). Presentation only: no KBLI
   fact, verdict, cap, basis or Bali overlay changes.
 constraints:
-  - English changes only by translation, labelling or the reason table the search rows already used; Indonesian only by enum and locator humanisation, proven by an id-mode census diff.
+  - English changes only by translation, labelling or the reason table the search rows already used; Indonesian only by enum and locator humanisation, proven by an id-mode census diff — and, in both languages, the search row's line beside the status chip keeps only the cap (lead ruling 4 on EN-1, 2026-10-10).
   - The frozen 55203 and 56101 strings stay byte-identical; 51101's heads-up label changes per Q12 (en Restricted · 49%); its condition is English already and stays verbatim, unlabelled, in both languages.
   - No PNG is committed; the after-set ships as a sha256 manifest and the PNGs live in the M5 gallery.
 acceptance:
@@ -29,8 +29,10 @@ acceptance:
     probe: "Pro: encensus --mode full --lang en then en_purity census rc=0 (search-row, search-peak, registry-row, registry-sheet and both chromes 0)"
   - text: The never-drawn check SHALL find nothing in the four View files, and each guilt SHALL fail naming its problem.
     probe: "Pro: G1 raw judul in the registry row, G2 the raw l4_bali.status in the provenance strip, G3 .help(kbli.judul) — each rc=1, named"
-  - text: Indonesian SHALL be byte-identical except enum and locator humanisation.
+  - text: Indonesian SHALL be byte-identical except enum and locator humanisation and the search row's cap line.
     probe: "Pro: id-mode census of the gated Views at EN-1a and at this head, diffed line by line"
+  - text: A search row SHALL never say its status word twice, for any code in either language.
+    probe: "Pro: contenttest over all 1,559 codes x en/id rc=0; guilts (the row back on ownershipLine; LabelBook.cap returning ownershipLine) each rc=1, named"
   - text: The head SHALL build both variants and render 35 PNGs equal to the manifest; only English renders change.
     probe: "Pro build-only mirror: INTERNAL_RC=0, BKPM_RC=0, RENDER_SET_RC=0, manifest_match=35/35, 7 changed vs pr2-registry, all en"
   - text: The frozen content and the contrast and token gates SHALL stay green.
