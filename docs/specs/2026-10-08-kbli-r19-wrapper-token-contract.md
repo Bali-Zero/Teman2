@@ -1177,7 +1177,8 @@ them, each with the one part that runs it:
 | `shared`   | the shared-component walks of §8.5                                   | 24    |
 
 `--part P` runs the scenarios of P and nothing else. With no `--part`, the census runs the whole
-list in one job, as before.
+list in one job, as before. Either way the server answers every route the scenarios load before
+the first walk.
 
 **The aggregate.** Each part dumps what it walked (`--json`). `--replay` over the dumps,
 concatenated in any order, folds the parts in the order of the table. A token that two parts

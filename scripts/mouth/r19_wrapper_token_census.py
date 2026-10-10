@@ -856,10 +856,8 @@ def live(base: str, part: str | None = None) -> dict:
     census: dict = {"schema": 1, "pages": PAGES, "captures": [], "failed": [], "reads": {}, "colors": {},
                     "state_obs": {}, "walks": [], "walk_failed": [], "parts": [part or "full"],
                     "states": [f"{v}/{t}" for v in m.VIEWPORTS for t in m.THEMES]}
-    loads = {how[0] if kind in ("capture", "walk") else how[0][1].split("?")[0] for _, kind, _, how in units}
-    for p in PAGES:
-        if p in loads:
-            _wait(base + p, 300)
+    for p in routes_of(units):
+        _wait(base + p, 300)
     seconds = {}
     with sync_playwright() as pw:
         browser = pw.chromium.launch(executable_path=m.CHROME)
@@ -873,6 +871,13 @@ def live(base: str, part: str | None = None) -> dict:
         browser.close()
     census["seconds"] = {part or "full": seconds}
     return census
+
+
+def routes_of(units: list) -> list[str]:
+    """Every route the scenarios load, in order: the server answers each one before the first walk (a part whose
+    scenarios load no page of PAGES, `shared`, would otherwise race the dev server's start)."""
+    return list(dict.fromkeys(how[0] if kind in ("capture", "walk") else how[0][1].split("?")[0]
+                              for _, kind, _, how in units))
 
 
 def capture_pages(browser, m, base: str, census: dict, units: list | None = None) -> None:

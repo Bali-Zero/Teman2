@@ -1269,6 +1269,16 @@ def test_the_parts_cut_from_one_list_cover_it_once():
     assert {p: len(v) for p, v in by_part.items()} == {"rest": 40, "kbli": 18, "explorer": 7, "shared": 24}
 
 
+def test_each_part_waits_for_every_route_it_loads():
+    """On M5 the `shared` part's first walk met a server not yet listening (net::ERR_CONNECTION_REFUSED at /v2):
+    a part waits for the routes its scenarios load, not for the ones of PAGES it happens to hold."""
+    shared = {sc[1] for sc in census_mod.SHARED}
+    assert all(census_mod.routes_of([u for u in UNITS if u[0] == p]) for p in census_mod.PARTS)
+    assert set(census_mod.routes_of([u for u in UNITS if u[0] == "shared"])) == shared
+    assert census_mod.routes_of(UNITS)[:5] == census_mod.PAGES and set(census_mod.routes_of(UNITS)) == {
+        *census_mod.PAGES, *shared}
+
+
 def test_the_workflow_runs_every_part_and_judges_them_after_any_failure():
     parts = json.dumps(list(census_mod.PARTS), separators=(",", ":"))
     assert f"part: ${{{{ fromJSON(inputs.parts || '{parts}') }}}}" in WORKFLOW
