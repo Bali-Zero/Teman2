@@ -34,6 +34,7 @@ TRAILER = "Zero-Sync-Canonical"
 DEEPEN_DEPTH = 200
 NPM_TIMEOUT = 600
 MASS_CHANGE_FRACTION = 0.25
+LOCK_CACHE_KEEP = 8  # lock_cache/ entries kept, by last use: one per distinct npm version + root manifests
 RUN_BUDGET = 3300  # whole-run watchdog (s): under two ticks, so a wedged run always ends with a heartbeat
 NET_TIMEOUT = 1800  # the first full zero fetch took ~10 min on M5; a hung fetch/push must still end the run, or it holds the lock and every later tick no-ops
 
@@ -220,6 +221,7 @@ def regen_lock(repo: Repo, state: Path, npm_cmd: str, pruned: bytes, lock_oid: s
         h.update(b"\0" + p.encode() + b"=" + ws_entries[p].encode())
     cache = state / "lock_cache" / f"{h.hexdigest()}.json"
     if cache.is_file():
+        os.utime(cache)  # last use, so pruning keeps what the current inputs still need
         return cache.read_bytes()
     with tempfile.TemporaryDirectory(prefix="zero-sync-lock-") as tmp:
         t = Path(tmp)
@@ -242,7 +244,15 @@ def regen_lock(repo: Repo, state: Path, npm_cmd: str, pruned: bytes, lock_oid: s
     tmpc = cache.with_suffix(f".tmp{os.getpid()}")
     tmpc.write_bytes(out)
     os.replace(tmpc, cache)
+    prune_lock_cache(cache.parent)
     return out
+
+
+def prune_lock_cache(d: Path, keep: int = LOCK_CACHE_KEEP) -> None:
+    """Bound lock_cache/: one ~1 MB entry per distinct input would otherwise accumulate forever."""
+    entries = sorted(d.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+    for f in entries[keep:]:
+        f.unlink(missing_ok=True)
 
 
 def build_tree(repo: Repo, state: Path, canon_ref: str, zero_ref: str, npm_cmd: str):

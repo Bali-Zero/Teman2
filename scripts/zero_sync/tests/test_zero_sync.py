@@ -490,3 +490,35 @@ def test_a_roster_the_cut_names_does_not_trip_the_deny(w):
     w.zero_commit({".slim/cut_paths.txt": CUT + "apps/backend-rag/backend/data/team_members.json\n"}, "cut it")
     assert w.run() == 0
     assert "apps/backend-rag/backend/data/team_members.json" not in w.zero_files()
+
+
+def _aged_entries(d, n):
+    import os
+    d.mkdir(parents=True, exist_ok=True)
+    for i in range(n):
+        f = d / f"{i:02d}.json"
+        f.write_text("lock")
+        os.utime(f, (1_000_000 + i, 1_000_000 + i))  # 00 oldest, n-1 newest
+
+
+def test_the_lock_cache_keeps_only_the_most_recently_used_entries(tmp_path):
+    d = tmp_path / "lock_cache"
+    _aged_entries(d, 12)
+    zs.prune_lock_cache(d)
+    assert sorted(f.name for f in d.glob("*.json")) == [f"{i:02d}.json" for i in range(4, 12)]
+
+
+def test_a_sync_that_writes_a_new_lock_bounds_the_cache_and_a_hit_survives(w):
+    d = w.state / "lock_cache"
+    _aged_entries(d, zs.LOCK_CACHE_KEEP + 3)
+    assert w.run() == 0
+    assert w.npm_calls() == 1
+    names = {f.name for f in d.glob("*.json")}
+    assert len(names) == zs.LOCK_CACHE_KEEP
+    fresh = (names - {f"{i:02d}.json" for i in range(zs.LOCK_CACHE_KEEP + 3)}).pop()
+    import os
+    os.utime(d / fresh, (1, 1))  # make the live entry look ancient
+    w.canon_commit({"apps/mouth/a.txt": "a2\n"}, "touch mouth only")  # lock inputs unchanged -> cache hit
+    assert w.run() == 0
+    assert w.npm_calls() == 1
+    assert (d / fresh).stat().st_mtime > 1  # the hit refreshed it
