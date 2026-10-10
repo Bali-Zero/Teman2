@@ -5,9 +5,11 @@ import SwiftUI
 // Tests/encensus — the text census of the en-purity gate (Q12, Tools/design/en_purity.py).
 // `encensus <out.jsonl> [--lang en|id] [--mode fast|full] [--codes a,b] [--views v1,v2]` renders each View a
 // code reaches through ImageRenderer into a PDF context and writes the text PDFKit reads back: what is DRAWN,
-// accessibility-hidden labels included. One JSON line per (code, view): {"code","view","text"}. `fast` is the
-// three frozen codes plus a stratified sample (every heads-up class, sector and Bali status, and every 26th
-// record); `full` is all 1,559. The dataset comes from the bundle path, as in the app.
+// accessibility-hidden labels included. ImageRenderer leaves out what AppKit draws (a text field's placeholder,
+// a pop-up's title), so the chromes and the search field also host the View once and read those controls.
+// One JSON line per (code, view): {"code","view","text"}. `fast` is the three frozen codes plus a stratified
+// sample (every heads-up class, sector and Bali status, and every 26th record); `full` is all 1,559; `--codes
+// none` dumps the chromes only. The dataset comes from the bundle path, as in the app.
 
 func err(_ s: String) { FileHandle.standardError.write(Data((s + "\n").utf8)) }
 
@@ -33,6 +35,23 @@ _ = NSApplication.shared
         ctx.beginPDFPage(nil); draw(ctx); ctx.endPDFPage(); ctx.closePDF()
     }
     return PDFDocument(data: data as Data)?.string ?? ""
+}
+
+/// The strings AppKit draws inside a hosted SwiftUI View: a text field's value, or its placeholder when empty;
+/// a button's title; a pop-up's selected item. The controls exist once the host has drawn, as in Snapshot.
+@MainActor func appKitText(_ v: AnyView, height: CGFloat) -> [String] {
+    let host = NSHostingView(rootView: v.frame(width: 1280, height: height, alignment: .top))
+    host.frame = NSRect(x: 0, y: 0, width: 1280, height: height)
+    if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) { host.cacheDisplay(in: host.bounds, to: rep) }
+    var out: [String] = []
+    func walk(_ view: NSView) {
+        if let p = view as? NSPopUpButton { out.append(p.titleOfSelectedItem ?? "") }
+        else if let b = view as? NSButton { out.append(b.title) }
+        else if let f = view as? NSTextField { out.append(f.stringValue.isEmpty ? f.placeholderString ?? "" : f.stringValue) }
+        view.subviews.forEach(walk)
+    }
+    walk(host)
+    return out.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
 }
 
 let rc: Int32 = MainActor.assumeIsolated {
@@ -63,7 +82,9 @@ let rc: Int32 = MainActor.assumeIsolated {
     guard let fh = FileHandle(forWritingAtPath: args[1]) else { err("cannot write \(args[1])"); return 2 }
     @MainActor func emit(_ code: String, _ view: String, _ v: some View, height: CGFloat? = nil) {
         if let views, !views.contains(view) { return }
-        let text = pdfText(AnyView(v.environmentObject(state).environmentObject(lang)), height: height)
+        let hosted = AnyView(v.environmentObject(state).environmentObject(lang))
+        var text = pdfText(hosted, height: height)
+        if code == "-" { text += "\n" + appKitText(hosted, height: height ?? 800).joined(separator: "\n") }
         if let d = try? JSONSerialization.data(withJSONObject: ["code": code, "view": view, "text": text],
                                                options: [.sortedKeys]) {
             fh.write(d); fh.write(Data("\n".utf8))
@@ -77,6 +98,7 @@ let rc: Int32 = MainActor.assumeIsolated {
     state.query = "55203"
     emit("-", "search-chrome", SearchListView(), height: 800)
     state.query = ""
+    emit("-", "search-field", SearchFieldBar(), height: 120)   // empty: the placeholder is what is drawn
     let codes = all.filter { pick.contains($0.kode) }
     for (n, k) in codes.enumerated() {
         emit(k.kode, "registry-row", KBLIRegistryRow(kbli: k, isID: isID))
