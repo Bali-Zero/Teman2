@@ -36,11 +36,45 @@ extension LabelBook {
     ]
 
     /// Q17: a pipeline token quoted inside curated English prose becomes its label by exact match, never by
-    /// pattern. `per_skala` is `field`'s own name for it.
-    static func ledgerProse(_ s: String, isID: Bool) -> String {
+    /// pattern (`per_skala` is `field`'s own name for it); and each of the record's own closed-set values the
+    /// prose quotes where it stands alone reads in English: an office or a licence keeps its original in
+    /// parentheses (none when the curator's own gloss follows: "Regent / Mayor (district/city head)"), a term
+    /// does not. One inside (…), quotes or a longer name ("Instruksi Gubernur Bali") is the curator's original.
+    static func ledgerProse(_ s: String, record k: KBLI, isID: Bool) -> String {
         guard !isID else { return s }
-        return [("BPS_ONLY", "BPS-only"), ("per_skala", field("per_skala", isID: false))]
+        let t = [("BPS_ONLY", "BPS-only"), ("per_skala", field("per_skala", isID: false))]
             .reduce(s) { $0.replacingOccurrences(of: $1.0, with: $1.1) }
+        let gaps = closedValues(k)
+        guard !gaps.isEmpty, let rx = try? NSRegularExpression(pattern: gaps.map {
+            "(?<!\\w)" + NSRegularExpression.escapedPattern(for: $0.raw) + "(?!\\w)" }.joined(separator: "|")) else { return t }
+        return t.components(separatedBy: "\n").map { line in
+            var out = line
+            for m in rx.matches(in: line, range: NSRange(line.startIndex..., in: line)).reversed() {
+                guard let r = Range(m.range, in: line), let gap = gaps.first(where: { $0.raw == String(line[r]) }) else { continue }
+                let pre = line[..<r.lowerBound], post = line[r.upperBound...]
+                let n = { (c: Character) in pre.filter { $0 == c }.count }
+                if n("(") > n(")") || n("\"") % 2 == 1 || n("“") > n("”")
+                    || pre.range(of: "[A-Z][a-z]+ $", options: .regularExpression) != nil
+                    || post.range(of: "^ [A-Z][a-z]", options: .regularExpression) != nil { continue }
+                let glossed = post.hasPrefix(" (") || post.hasPrefix("(")
+                out.replaceSubrange(Range(m.range, in: out)!, with: gap.keepsOriginal && !glossed ? "\(gap.en) (\(gap.raw))" : gap.en)
+            }
+            return out
+        }.joined(separator: "\n")
+    }
+
+    /// The record's `kewenangan` offices, `perizinan` licences and non-numeric `jangka_waktu` terms that have an
+    /// English here, longest first, so "Bupati/Walikota" is read before a shorter value inside it.
+    private static func closedValues(_ k: KBLI) -> [(raw: String, en: String, keepsOriginal: Bool)] {
+        var out: [String: (String, Bool)] = [:]
+        for p in k.perSkala {
+            for v in p.kewenanganLevels where authorityRank(v) > 0 { out[v.trimmingCharacters(in: .whitespaces)] = (authority(v, isID: false), true) }
+            for v in p.perizinanList where v == "NIB dan Sertifikat Standar" { out[v] = ("NIB + Standard Certificate", true) }
+            if let v = p.jangkaWaktu?.trimmingCharacters(in: .whitespaces), v.contains(where: \.isLetter), term(v, isID: false) != v {
+                out[v] = (term(v, isID: false), false)
+            }
+        }
+        return out.sorted { $0.key.count > $1.key.count }.map { ($0.key, $0.value.0, $0.value.1) }
     }
 
     /// The roadmap's step duration, a closed set (Q17, exact match): its one Indonesian value, "Otomatis", is a
