@@ -1,0 +1,89 @@
+task_id: localci-treepack-1010
+mission: LOCALCI-SOVEREIGN (phase B, step B14 — speed)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  The sandbox's git-index setup (harness code), not any check's logic; the repo a step sees is proven identical.
+l_level: L2
+gate_class: opus
+objective: >-
+  One pack of the candidate tree per run, shipped to every git_index sandbox and indexed there, instead of 62.8-69 s of add -A -f +
+  repack -a -d per container.
+constraints:
+  - The repo a step sees is identical; a bad pack raises (no verdict); a failed build takes today's path; the pack never outlives its run.
+acceptance:
+  - text: With and without the pack, the sandbox repo SHALL agree on HEAD^{tree}, ls-files -s, an empty status, zero loose objects and fsck, without and with history, with an artifact and an override in /w.
+    probe: "test_tree_pack.py (equivalence cases)"
+  - text: A pack of another tree, a truncated pack and a corrupt pack SHALL make the driver raise (rc 2, no junit).
+    probe: "test_tree_pack.py (guilt cases)"
+  - text: The pack SHALL ship iff git_index, never to egress, streamed from disk; a failed build SHALL ship nothing, log one line and not be retried in the run; the pack SHALL be removed when the run ends, also on an interrupt.
+    probe: "test_tree_pack.py (runner cases)"
+consumer_map:
+  - scripts/localci/runner.py (the merger tick on Pro) — every git_index sandbox (contained-steps checks and service-context legs).
+pii_scan: clean
+pii_scan_note: Harness code, tests on synthetic git repos, mutant rules and documentation. The Pro probes read the merger's candidate tree (repo code) only.
+lanes:
+  - lane: localci-treepack-1010
+    role: build
+    seat: claude-sonnet-5 (implementer on M5, on the lead's spec)
+  - lane: localci-treepack-1010
+    role: measure
+    seat: claude-opus-5-5 (lead; probes on Pro)
+what_changed: |
+  runner.py: build_tree_pack (ls-tree -r -t of the candidate commit, blobs and trees plus the root tree, into pack-objects --stdout,
+  streamed to state/tree.pack.part then os.replace; sidecar with tree, objects, bytes, sha256; 300 s bound); tree_pack_for builds it once
+  per run under a lock, reuses it by commit and size, and remembers a failed build for the run; tree_pack_ship gives the steps.json
+  tree_pack entry and the file to tar, or the one-line fallback log; stream_tree_tar/execute_contained take files= (a host file tarred
+  from disk in chunks, uid SANDBOX_UID, 0644); _execute_candidate_contained (when git_index) and _run_leg ship it, _run_egress never;
+  cmd_run's finally removes the pack, .part and sidecar. steps_driver.py index_tree: with tree_pack, index-pack --stdin, cat-file -t
+  check (RuntimeError), unlink the shipped file, read-tree, then today's add/history/commit, and repack -d instead of -a -d; without
+  the key, today's code. Tests: test_tree_pack.py (18). Mutants: 8 b14 rules. README "Sandbox git index (B14)"; one spec line.
+proof: |
+  Unit and real-git tests on M5; on Pro the lead ran B14's own runner.build_tree_pack and steps_driver.index_tree in the real deps
+  image on the real candidate tree, with and without the pack (receipts below). Nothing was pushed before the gate.
+bites:
+  consumer: The merger tick on Pro, every git_index sandbox of the first candidate decided after this merge.
+  observation: >-
+    In the first run after merge: no "# tree pack: unavailable" line in its logs; state/tree.pack absent once the run ended; the fan-in
+    leg (backend-tests job) runs about 25 s outside its steps instead of ~70 (its log's rc= seconds minus the steps' seconds); the
+    candidate's total check time recorded beside pr8213's 2945 s; and its verdicts agree with the hosted compare as before (no new
+    FALSE_GREEN or FALSE_RED attributable to the index).
+ground:
+  ts: "2026-10-10T09:11:26Z"
+  siblings: >-
+    Worktree from origin/main 1abf4de128. #8225 (contexts_matrix.yaml, workers 4) merged before; pro.janitor (another session) does not
+    touch runner.py or steps_driver.py.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 1.2
+receipts:
+  - claim: "Probe 3 on Pro, the driver's sequence in the real deps image on the real tree: add -A -f 18.7 s, repack -a -d 38.0 s, start->exit 57.2 s."
+    cmd: "~/b6deploy/speedprobe/speedprobe3.py rt <cand> <deps image> driver"
+    exit: 0
+    ts: "2026-10-10T09:03:15Z"
+    seat: claude-opus-5-5 on Pro (lead)
+  - claim: "Probe 4 on Pro, the cure in shell form: host pack-objects 7.8 s (29761 objects, 845 MB); driver start->exit 62.8 s vs pack 9.5 s; same HEAD^{tree} 5e00cc69b5de, 26551 files, status 0, same fsck, 0 loose."
+    cmd: "~/b6deploy/speedprobe/speedprobe4.py rt <cand> <deps image>"
+    exit: 0
+    ts: "2026-10-10T09:10:00Z"
+    seat: claude-sonnet-5 executor on Pro (approximate time, from its 09:10:08Z report)
+  - claim: "Probe 5 on Pro, B14's own code (bb0be64333 runner.py and steps_driver.py): build_tree_pack 6.5 s (28947 objects, 845204008 bytes); index_tree 69.02 s without the pack vs 8.49 s with it; same HEAD^{tree} 1ff71a213ba8, same ls-files -s hash 4c1d7af418f39063, status 0, 0 loose, shipped pack removed in the sandbox; no probe container left."
+    cmd: "~/b6deploy/speedprobe/speedprobe5.py rt5 <cand> <deps image>"
+    exit: 0
+    ts: "2026-10-10T09:34:40Z"
+    seat: claude-opus-5-5 on Pro (lead)
+  - claim: "test_tree_pack.py 18 passed; full scripts/localci/tests 1509 passed, 14 skipped; 8/8 b14 mutants killed; ruff clean."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-10T09:30:12Z"
+    seat: claude-sonnet-5 implementer on M5 (time of its commit)
+dissent: []
+residuals:
+  - "A reused pack is re-checked by commit and size, not sha256 (hashing 845 MB per container costs more than it saves); state/ is outside every sandbox and index-pack verifies every object, so a damaged pack is no verdict, never a wrong one."
+  - "The sandbox repo holds two packs instead of one, and in contained-steps checks with overrides the candidate's own blob at an overridden path is present unreferenced: invisible to porcelain, and content the candidate already has."
+  - "The copy-in grows by the 845 MB pack (~+6 s per container), inside the measured net (82 s -> 23.5 s on probe 5)."
+appetite_exceeded: none
+plan_ref: >-
+  Owner directive 2026-10-10 ("velocizzare"); the lead's per-leg measurement (docker events and probes 1-5) found index_tree, not the
+  copy-in, as the ~55-70 s each git_index container spends outside its steps.
+brief_ref: evidence/brief.yml
