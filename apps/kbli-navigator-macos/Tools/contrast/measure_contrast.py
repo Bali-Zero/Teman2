@@ -66,19 +66,19 @@ PAIRS = [
     ("white/ink", "white", ("solid","ink"), 4.5, "RootView.swift:120 .background(Theme.ink)"),
     ("white/inkLift", "white", ("solid","inkLift"), 4.5, "GlassCard fill Theme.inkLift"),
     ("muted/antracite", "muted", ("solid","antracite"), 4.5, "RootView.swift:340 .foregroundStyle(Theme.muted) on window bg"),
-    ("muted/ink", "muted", ("solid","ink"), 4.5, "SearchListView.swift:437/442 on Theme.ink; = neutral chip (Theme.chip(.neutral): muted on wash)"),
+    ("muted/ink", "muted", ("solid","ink"), 4.5, "SearchListView.swift:419/348 rail facet labels on Theme.wash (= ink); KBLIRegistryTable.swift:71 neutral VerdictBadge (Theme.chip(.neutral): muted on wash)"),
     ("muted/inkLift", "muted", ("solid","inkLift"), 4.5, "KBLIDossierView.swift:60/100 on card"),
     ("faint/antracite", "faint", ("solid","antracite"), 4.5, "RootView.swift:142 on window bg; SearchFieldBar.swift:48 density glyph on the bar"),
     ("faint/ink", "faint", ("solid","ink"), 4.5, "RegistryVerdictSheet.swift:93/108 on Theme.ink"),
-    ("faint/inkLift", "faint", ("solid","inkLift"), 4.5, "KBLIDetailView.swift:102/207 on card"),
+    ("faint/inkLift", "faint", ("solid","inkLift"), 4.5, "KBLIDetailView.swift:101/206 on card"),
     ("accent/antracite", "accent", ("solid","antracite"), 4.5, "KBLIDetailRichView.swift:379 accent link on window"),
-    ("accent/inkLift", "accent", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:137/2023 accent on card"),
+    ("accent/inkLift", "accent", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:137/2027 accent on card"),
     ("zantara/antracite", "zantara", ("solid","antracite"), 4.5, "ChatView.swift:48/105/117 zantara label on window"),
     ("zantara/ink", "zantara", ("solid","ink"), 4.5, "KBLIDetailRichView.swift:358/366 zantara on ink"),
     ("statutory/inkLift", "statutory", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:992 statutory pill text"),
     ("statutory/ink", "statutory", ("solid","ink"), 4.5, "KBLIRegistryView.swift:1567/1601 statutory on ink"),
     ("yellow/antracite", "yellow", ("solid","antracite"), 4.5, "KBLIRegistryView.swift:481/893 yellow on window"),
-    ("yellow/inkLift", "yellow", ("solid","inkLift"), 4.5, "KBLIDetailView.swift:93 gold-tier label on card"),
+    ("yellow/inkLift", "yellow", ("solid","inkLift"), 4.5, "KBLIDetailView.swift:92 gold-tier label on card"),
     ("white/ink@0.6-on-antracite", "white", ("composite","ink",0.6,"antracite"), 4.5, "ChatView.swift:61/180 header/footer strip"),
     ("faint/ink@0.6-on-antracite", "faint", ("composite","ink",0.6,"antracite"), 4.5, "ChatView.swift:53 on header strip"),
     ("muted/ink@0.6-on-antracite", "muted", ("composite","ink",0.6,"antracite"), 4.5, "ChatView.swift:58/90 on header/footer strip"),
@@ -112,7 +112,9 @@ PAIRS = [
 RISK_CHIP = [("riskInk", "riskFillLow", "rank 1"), ("riskInk", "riskFillMediumLow", "rank 2"),
              ("riskInk", "riskFillMediumHigh", "rank 3"), ("riskInkOnHigh", "riskFillHigh", "rank 4"),
              ("muted", "ink", "unranked")]
-SITES = ["KBLIRegistryView.swift:1541 scopeRow mini risk chip", "KBLIRegistryView.swift:1708 cellDetail risk chip"]
+SITES = ["KBLIRegistryView.swift:1541 scopeRow mini risk chip", "KBLIRegistryView.swift:1712 cellDetail risk chip",
+         "KBLIRegistryView.swift:1648 riskMatrix cell", "KBLIRegistryView.swift:1666 riskMatrix legend chip",
+         "KBLIRegistryTable.swift:110 RiskCell, the registry table's OSS-risk column"]
 SITE_PAIRS = [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5, "%s — Theme.riskChip %s" % (site, tier))
               for site in SITES for fg, bg, tier in RISK_CHIP]
 
