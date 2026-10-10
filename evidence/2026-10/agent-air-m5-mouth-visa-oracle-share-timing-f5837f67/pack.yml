@@ -9,6 +9,15 @@ lanes:
   - lane: share-timing
     role: build
     seat: Claude Sonnet 5.5 implementer, worktree mouth-visa-oracle-share-timing on M5.
+  - lane: share-timing-ground-truth
+    role: ground_truth
+    seat: >-
+      the committed Bali Zero processing-time catalogue that the engine's estimate reads (landed by #8129);
+      no notebook, no memory. The shared line asserts no figure of its own, it repeats the working-day
+      range the engine returns for the candidate, marked indicative, without dates.
+    nb: apps/backend-rag/backend/data/bali_zero_processing_times_2026.json
+    query_hash: "6e7e7b72ea2b4f1afb79d1fcffa650cd58d37f6b1ebd3b277feec2df79f89b06" # pragma: allowlist secret
+    note: query_hash = sha256 of the catalogue file at origin/main.
 pii_scan: clean
 bites:
   consumer: >-
