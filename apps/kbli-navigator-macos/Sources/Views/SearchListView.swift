@@ -298,11 +298,11 @@ struct SearchListView: View {
                         PadiLine(width: 760)
                         tableBody
                     }
-                    .padding(.top, 24)
+                    .padding(.top, 8)
                     .frame(width: 760)
 
                     censusText
-                        .padding(.top, 48).padding(.leading, 32)
+                        .padding(.top, 48).padding(.horizontal, 32)
                         .frame(minWidth: 200, maxWidth: .infinity, alignment: .topLeading)
                 }
             } else {
