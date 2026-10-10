@@ -20,8 +20,8 @@ pii_scan: clean
 bites:
   consumer: the mouth Vitest run in the required Frontend Tests check.
   where: ci
-  observe: cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/i18n-census.test.ts"
-  expect: "contains:6 passed"
+  observe: python3 scripts/ci/observe_visa_oracle_i18n_census.py
+  expect: "contains:census holds"
 decisions:
   - id: D-rule
     decision: >-
@@ -39,6 +39,12 @@ receipts:
     exit: 1
     ts: "2026-10-10T15:34:00Z"
     seat: Claude Sonnet 5.5
+  - claim: The bites observer passes on the clean tree and fails when a deleted key is re-added.
+    cmd: python3 scripts/ci/observe_visa_oracle_i18n_census.py
+    result: "clean tree: Tests 6 passed (6), census holds, exit 0; with question.human_context_notice re-added to EN and ID: FAILED (2 failed | 4 passed (6))"
+    exit: 0
+    ts: "2026-10-10T15:05:00Z"
+    seat: Claude Opus 5.5 orchestrator
 dissent: []
 spend:
   wall_clock_hours: 2
