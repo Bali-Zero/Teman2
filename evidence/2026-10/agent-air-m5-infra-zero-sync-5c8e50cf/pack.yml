@@ -67,11 +67,11 @@ decisions:
       lock check is `npm ci --dry-run`, which accepts both npm 10 and 11 output (verified), and a version change
       only produces a lock-only sync commit that zero's CI validates.
 receipts:
-  - claim: "R1 — floor 3 via the path term (workflow, plist, wrapper); every other file computes 1."
-    cmd: git diff --name-only origin/main...HEAD | python3 -c 'import evidence_pack_lint as e; ... e.compute_floor([f])' (from scripts/)
-    result: "3 .github/workflows/zero-sync-tests.yml, 3 com.nuzantara.zero-sync.plist, 3 mini-zero-sync.sh, 1 for the other 7"
+  - claim: "R1 — floor 3 via the path term (two workflows, plist, wrapper); every other non-evidence file computes 1."
+    cmd: git diff --name-only origin/main...HEAD | grep -v ^evidence/ | python3 -c 'import evidence_pack_lint as e; ... e.compute_floor([f])' (from scripts/)
+    result: "3 main-push-failure-watch.yml, 3 zero-sync-tests.yml, 3 com.nuzantara.zero-sync.plist, 3 mini-zero-sync.sh, 1 for the other 7"
     exit: 0
-    ts: "2026-10-10T03:20:00Z"
+    ts: "2026-10-10T03:28:23Z"
     seat: Claude Opus 5.5 (orchestrator, M5)
   - claim: "R2 — the push gate demanded this pack."
     cmd: git push -u origin HEAD (husky pre-push, preflight_pack)
