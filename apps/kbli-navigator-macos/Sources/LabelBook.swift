@@ -131,6 +131,7 @@ enum LabelBook {
             "pma_cap_special": ("special-condition cap", "batas dengan syarat khusus"),
             "pma_kondisi": ("condition", "syarat"),
             "pma_route_to": ("private-sector route", "rute swasta"),
+            "pma_cap_verified": ("cap verified", "batas terverifikasi"),
             "pma_cap_verified=false": ("cap not verified", "batas belum diverifikasi"),
             "l4_bali=∅": ("no Bali block on this record", "catatan ini tidak memiliki blok Bali"),
             "l4_bali.status": ("Bali status", "Status Bali"),
@@ -160,24 +161,30 @@ enum LabelBook {
     private static let enumToken = try! NSRegularExpression(pattern: "\\b[A-Za-z]+(?:_[A-Za-z]+)+\\b")
 
     /// A sentence composed upstream (a `KBLIVerdict` reason, an `l4_bali.reason`), made drawable. In
-    /// both languages a Bali-status enum inside it becomes its label. In English the record's own
-    /// `pma_kondisi` becomes the labelled original, and the status word that opens one of the rule's
-    /// own national reasons (`KBLIVerdict.nationalVerdict`) becomes its English word. Nothing else is
-    /// touched: a curated reason is content, even when it opens with a status word.
+    /// both languages a Bali-status enum or a record key inside it becomes its label. In English the
+    /// record's own status word becomes its English word wherever the sentence says it — by exact match
+    /// against `pma_status` (Q17), so 86201's curated "TERTUTUP to WNA" (a TERBUKA record) stays — and
+    /// the record's own `pma_kondisi` becomes the labelled original. Nothing else is touched: a curated
+    /// reason is content.
     static func humanise(_ s: String, record k: KBLI, isID: Bool) -> String {
         var out = s
         for m in enumToken.matches(in: s, range: NSRange(s.startIndex..., in: s)).reversed() {
-            guard let r = Range(m.range, in: out), KBLIVerdict.knownBaliStatuses.contains(out[r].uppercased())
-            else { continue }
-            out.replaceSubrange(r, with: baliStatus(String(out[r]), isID: isID))
+            guard let r = Range(m.range, in: out) else { continue }
+            let t = String(out[r])
+            if KBLIVerdict.knownBaliStatuses.contains(t.uppercased()) {
+                out.replaceSubrange(r, with: baliStatus(t, isID: isID))
+            } else if fieldNames[t] != nil {
+                out.replaceSubrange(r, with: field(t, isID: isID))
+            }
         }
         guard !isID else { return out }
+        let own = (k.pmaStatus ?? "").trimmingCharacters(in: .whitespaces).uppercased()
+        if ["TERBUKA", "TERBATAS", "TERTUTUP"].contains(own) {
+            out = out.replacingOccurrences(of: "\\b\(own)\\b", with: pmaStatus(own, isID: false),
+                                           options: .regularExpression)
+        }
         if let kondisi = k.pmaKondisi, kondisi.isEmpty == false, out.contains(kondisi) {
             out = out.replacingOccurrences(of: kondisi, with: original(kondisi, isID: false))
-        }
-        for (word, rest) in [("TERTUTUP", " — closed to foreign capital nationally"),
-                             ("TERBATAS", " with no foreign-ownership cap recorded")] where out.hasPrefix(word + rest) {
-            out = pmaStatus(word, isID: false) + out.dropFirst(word.count)
         }
         return out
     }

@@ -58,6 +58,7 @@
         "special-condition cap",
         "batas dengan syarat khusus"
       ],
+      "pma_cap_verified": ["cap verified", "batas terverifikasi"],
       "pma_cap_verified=false": [
         "cap not verified",
         "batas belum diverifikasi"
