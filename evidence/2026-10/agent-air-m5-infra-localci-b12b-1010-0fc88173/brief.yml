@@ -34,6 +34,10 @@ acceptance:
     probe: "test_gate_stale.py::test_the_gate_post_is_the_newest_at_or_before_the_plan_time"
   - text: The report SHALL reclassify a recorded FALSE_GREEN of this shape and keep one of another shape, saying why.
     probe: "test_gate_stale.py::test_the_report_keeps_a_recorded_false_green_of_another_shape_and_says_why"
+  - text: A posted failure/error anchor, or a frozen reader answer that is not rc 0, beside a local OK SHALL stay FALSE_GREEN.
+    probe: "test_gate_stale.py::test_a_success_anchor_whose_frozen_reader_answer_is_not_rc_0_stays_a_false_green"
+  - text: A red whose job failed on any other step, or ran a later matrix step, SHALL stay FALSE_GREEN; an unreadable or unmatched job SHALL be unknown.
+    probe: "test_gate_stale.py::test_a_job_that_failed_on_another_step_stays_a_false_green"
 consumer_map:
   - scripts/localci/merger.py tick (the launchd tick com.balizero.localci-merger on Pro) — hosted_compare.stale on decision lines and the run dir's hosted_compare.json.
   - scripts/localci/merger.py report on Pro, run by hand — recorded_reclassified_hosted_stale, recorded_kept_false_green and the phase E line.
