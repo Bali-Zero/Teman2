@@ -500,7 +500,10 @@ LOCALISER_RE = re.compile(r"(?:LabelBook\.\w+|Theme\.(?:riskShortLabel|kbliStatu
                           r"|OverlayStore\.shared\.(?:primaryTitle|displayReason|dataString)|KBLIVerdict\.headsUp|lang\.t)\(")
 # `pmaRouteTo` is not here: it holds a KBLI code, as `kode` does — `corpus()` fails the run the day a value is not one.
 RAW_RE = re.compile(r"\.(?:judul|uraian|pmaStatus|pmaKondisi|pmaSource|pmaNota|statusMapping|ruangLingkup"
-                    r"|kategoriRisiko|skalaUsaha|riskLabelRaw)\b|\.l4Bali[?!]?\.(?:status|reason)\b")
+                    r"|kategoriRisiko|skalaUsaha|riskLabelRaw"
+                    r"|persyaratan|kewajiban|scopeUraian|pmaOfficialBasis|jangkaWaktu|perizinan|perizinanList"
+                    r"|kewenangan|kewenanganLevels)\b"                     # Q16's statute fields (#8227 gate (ii))
+                    r"|\.l4Bali[?!]?\.(?:status|reason)\b")
 BIND_RE = re.compile(r"\b(?:let|var)\s+([A-Za-z_]\w*)(?:\s*:[^=\n{]+)?\s*=\s*([^\n]*(?:\n\s*(?:\?\?|\?|:|\.|\+|&&|\|\|)[^\n]*)*)")
 SAFE = {  # identifier chains an unseen sink may read, each with its reason
     "isID": "the language switch", "expanded": "a Bool", "compact": "a Bool", "rowDensity": "a density enum",
@@ -688,7 +691,10 @@ def static_selftest():
              "func cap(_ s: String) -> some View { Text(s) }\nvar body: some View { cap(kbli.judul) }",
              "func cap(line s: String) -> some View { Text(s) }\nvar body: some View { cap(line: kbli.judul) }",
              'TextField("Code", text: .constant(kbli.judul))', "Text(lang.t(kbli.judul))",
-             "Picker(kbli.judul, selection: $s) { }"]
+             "Picker(kbli.judul, selection: $s) { }",
+             # #8227 gate (ii): a statute field drawn raw
+             'Text(kbli.pmaOfficialBasis ?? "")', "Text(row.persyaratan.first ?? x)", "Text(row.jangkaWaktu ?? x)",
+             "Text(row.kewenanganLevels.joined())"]
     innocent = ["func a() {\n let title = LabelBook.title(k, isID: i)\n Text(title).help(title)\n}",
                 'TextField(lang.t("search.placeholder"), text: $q)', "Text(LabelBook.pmaStatus(kbli.pmaStatus, isID: isID))",
                 "func a() {\n let t = kbli.judul\n _ = t\n}\nfunc b() {\n let t = lang.t(\"x\")\n Text(t)\n}",
