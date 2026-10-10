@@ -43,6 +43,20 @@ extension LabelBook {
             .reduce(s) { $0.replacingOccurrences(of: $1.0, with: $1.1) }
     }
 
+    /// The roadmap's step duration, a closed set (Q17, exact match): its one Indonesian value, "Otomatis", is a
+    /// `jangka_waktu` word and reads as `term` draws it; "1–2w", "post-license" and the rest stay as written.
+    static func roadmapDuration(_ raw: String, isID: Bool) -> String {
+        !isID && raw == "Otomatis" ? term(raw, isID: false) : raw
+    }
+
+    /// An overlay permit name (`authority.pbUmku`, a closed set, Q17): English first, the original in
+    /// parentheses. One curated value opens with the Indonesian name; every other value stays as written.
+    static func permitName(_ raw: String, isID: Bool) -> String {
+        guard !isID else { return raw }
+        return ["Sertifikat Laik Sehat (SLHS) — Health-Worthiness Certificate":
+                    "Health-Worthiness Certificate (Sertifikat Laik Sehat, SLHS)"][raw] ?? raw
+    }
+
     /// A record string with no English source, met by an English reader (Q12 ruling 4): the source came back
     /// unchanged from the translation table and does not read as English.
     static func isOriginal(_ source: String, drawn: String, isID: Bool) -> Bool {

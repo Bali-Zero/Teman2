@@ -529,10 +529,15 @@ struct KBLIRegistryView: View {
 
     // MARK: 3 · DESCRIPTION — prose on ivory
     private var description: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let text = ovStrict?.meaning ?? LabelBook.uraian(kbli, isID: isID)
+        return VStack(alignment: .leading, spacing: 10) {
             SectionLabel(rail: Theme.muted, text: isID ? "Deskripsi" : "Description")
+            // Q12 ruling 3: a curated meaning that opens with the official Indonesian title says what it is (46201…).
+            if !isID && text.hasPrefix(LabelBook.officialTitle(kbli)) {
+                Text(LabelBook.officialTitleLabel).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
+            }
             // D9: the dataset's own "- " lists hang (the curated meaning, when there is one, is prose).
-            UraianLines(text: ovStrict?.meaning ?? LabelBook.uraian(kbli, isID: isID))
+            UraianLines(text: text)
                 .frame(maxWidth: 640, alignment: .leading)
         }
     }
@@ -702,7 +707,7 @@ struct KBLIRegistryView: View {
             ? (isID ? "PT PMDN (lokal) atau PT PMA (asing) — akta notaris, AHU"
                     : "PT PMDN (local) or PT PMA (foreign) — notary deed, AHU")
             : (isID ? "PT PMDN / CV / Perorangan (lokal, WNI) — akta notaris, AHU"
-                    : "PT PMDN / CV / Perorangan (local, WNI) — notary deed, AHU")
+                    : "PT PMDN / CV / sole proprietorship (local, WNI) — notary deed, AHU")
         return CodeOverlay.Step(title: title, detail: detail, duration: step.duration)
     }
 
@@ -713,7 +718,9 @@ struct KBLIRegistryView: View {
             // Bali flag is false — was handed a "Registration Roadmap" as if the path were open.
             let axes = VerdictAxes(KBLIVerdict.of(record: kbli))
             let blocked = axes.openInBali == false
-            let shownSteps = steps.map { scaleAwareStep($0) }
+            let shownSteps = steps.map { scaleAwareStep($0) }.map {
+                CodeOverlay.Step(title: $0.title, detail: $0.detail, duration: $0.duration.map { LabelBook.roadmapDuration($0, isID: isID) })
+            }
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(rail: Theme.accent,
                              text: blocked ? (isID ? "Prosedur Nasional (Referensi)" : "National Procedure (Reference)")
@@ -790,7 +797,7 @@ struct KBLIRegistryView: View {
             }
         }
         if !out.isEmpty { return out }
-        if let pb = ov?.authority?.pbUmku, !pb.isEmpty { return pb }
+        if let pb = ov?.authority?.pbUmku, !pb.isEmpty { return pb.map { LabelBook.permitName($0, isID: isID) } }
         return nil
     }
 
@@ -1046,7 +1053,8 @@ struct KBLIRegistryView: View {
     /// Cosmetic cleanup for the curated verdict when used as the chat opener: the army-generated
     /// verdicts carry raw markdown bold (`**`) that SwiftUI `Text` renders literally (321/322
     /// codes), and 84 embed dataset-Indonesian timeline tokens ("Otomatis" / "7 Hari") in the EN
-    /// prose. Bounded, shape-anchored replacements only — never free-text translation.
+    /// prose. Bounded, shape-anchored replacements only — never free-text translation. An office name stays
+    /// as the curated line writes it ("Authority: Bupati/Walikota", ruling 1): a pattern is not Q17's exact match.
     private func cleanOpener(_ s: String) -> String {
         var t = s.replacingOccurrences(of: "**", with: "")
         if !isID {
@@ -1054,7 +1062,6 @@ struct KBLIRegistryView: View {
             t = t.replacingOccurrences(of: #"Timeline: (\d+) Hari Kerja"#, with: "Timeline: $1 working days", options: .regularExpression)
             t = t.replacingOccurrences(of: #"Timeline: (\d+) Hari"#, with: "Timeline: $1 days", options: .regularExpression)
             t = t.replacingOccurrences(of: "NIB dan Sertifikat Standar", with: "NIB + Standard Certificate")
-            t = t.replacingOccurrences(of: "Authority: Bupati/Walikota", with: "Authority: Regent/Mayor")
             t = LabelBook.ledgerProse(t, isID: false)
         }
         return t
