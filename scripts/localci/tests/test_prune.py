@@ -37,9 +37,14 @@ def _clock_at_now(monkeypatch):
 FAKE = r'''#!{py}
 import json, sys
 world = json.load(open({world!r}))
-open({log!r}, "a").write(" ".join(sys.argv[1:]) + "\n")
 a = sys.argv[1:]
-if a[:2] == ["image", "ls"]:
+if "--help" not in a:   # the flag probe is not a call the tests count
+    open({log!r}, "a").write(" ".join(a) + "\n")
+if a[:2] == ["builder", "prune"] and "--help" in a:   # buildx's own help; `help` overrides it, `help_fails` makes it unreadable
+    if world.get("help_fails"):
+        sys.exit(1)
+    print(world.get("help", "Flags:\n  -a, --all\n      --max-used-space bytes   Maximum amount of disk space allowed to keep for cache\n      --reserved-space bytes\n      --min-free-space bytes"))
+elif a[:2] == ["image", "ls"]:
     print("\n".join([im["tag"] for im in world["images"]] + world.get("others", [])))
 elif a[:2] == ["image", "inspect"]:
     im = next((i for i in world["images"] if i["tag"] == a[-1]), None)
@@ -61,7 +66,7 @@ elif a[:2] == ["builder", "prune"] and world.get("builder_rcs"):   # one exit co
 elif a[:2] == ["builder", "prune"] and "cache_after" in world:
     world["cache"] = world["cache_after"]
     json.dump(world, open({world!r}, "w"))
-    print("Total: 12.93GB")
+    print("Total: " + world.get("total", "12.93GB"))
 elif a[:1] == ["run"] and "df" in a:
     if world.get("df_fails"):
         sys.exit(125)
@@ -189,7 +194,7 @@ def test_prune_removes_by_tag_prunes_the_builder_and_journals_what_went_by_which
     assert line["images"]["kept"] == [{"tag": imgs[1]["tag"], "rule": "the newest image of recipe backend-tests"}] and line["images"]["errors"] == []
     assert line["vm_free_gb"] == {"before": 32.4, "after": 32.4} and set(line["host_free_gb"]) == {"before", "after"}
     rm = [c for c in calls(tmp_path) if c.startswith(("image rm", "builder prune"))]
-    assert rm == [f"image rm {imgs[0]['tag']}", "builder prune -af --keep-storage 4GB"]   # by explicit tag, never -a, never until= on images
+    assert rm == [f"image rm {imgs[0]['tag']}", "builder prune -af --max-used-space 4GB"]   # by explicit tag, never -a, never until= on images
     assert "merger prune: images_removed=1 image_errors=0" in capsys.readouterr().out
 
 
@@ -205,7 +210,7 @@ def test_a_dry_run_removes_nothing_and_journals_the_would_list(tmp_path):
 def test_the_builder_is_pruned_with_nothing_to_remove_and_an_image_in_use_is_an_error_never_forced(tmp_path):
     state, docker = world(tmp_path, [image("a" * 16, 10, "backend-tests")])
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 0
-    assert [c for c in calls(tmp_path) if c.startswith("builder")] == ["builder prune -af --keep-storage 4GB"]
+    assert [c for c in calls(tmp_path) if c.startswith("builder")] == ["builder prune -af --max-used-space 4GB"]
     assert journal(state)[-1]["images"]["removed"] == [] and journal(state)[-1]["failed"] == []
     imgs = [image("b" * 16, 80, "backend-tests"), image("c" * 16, 10, "backend-tests")]
     state, docker = world(tmp_path / "busy", imgs, busy=[imgs[0]["tag"]])
@@ -637,8 +642,8 @@ def test_b8_under_the_vm_floor_the_fewest_references_go_first_even_the_newest_of
     assert {k["tag"] for k in line["images"]["kept"]} == {im["e_old"]["tag"], im["f_new"]["tag"]}   # 4 and 3 references stay
     assert line["vm_floor"] == {"floor_gb": 15.0, "removed": 4, "met": True} and line["vm_free_gb"]["after"] == 18.5
     seq = [c for c in calls(tmp_path) if c.startswith(("image rm", "builder prune"))]
-    assert seq == ["builder prune -af --keep-storage 4GB"] + [x for k in ("b_old", "e_new", "f_old", "b_new")
-                                                              for x in (f"image rm {im[k]['tag']}", "builder prune -af --keep-storage 4GB")]
+    assert seq == ["builder prune -af --max-used-space 4GB"] + [x for k in ("b_old", "e_new", "f_old", "b_new")
+                                                              for x in (f"image rm {im[k]['tag']}", "builder prune -af --max-used-space 4GB")]
     assert line["builder_prune"]["runs"] == 5
 
 
@@ -730,7 +735,7 @@ def test_b8_the_floor_and_the_cache_budget_read_the_environment(tmp_path, monkey
     state, docker, imgs = two_recipes_with_slot_2(tmp_path, 20)
     line = prune_line(state, docker)
     assert line["vm_floor"]["floor_gb"] == 25.0 and [r["tag"] for r in line["images"]["removed"]] == [imgs[1]["tag"]]   # 0 references first
-    assert "builder prune -af --keep-storage 6GB" in calls(tmp_path) and line["builder_prune"]["keep_storage_gb"] == 6.0
+    assert "builder prune -af --max-used-space 6GB" in calls(tmp_path) and line["builder_prune"]["keep_storage_gb"] == 6.0
     for bad in ("inf", "nan", "-3", "lots"):
         monkeypatch.setenv("LOCALCI_VM_MIN_FREE_GB", bad)
         assert pm._env_gb("LOCALCI_VM_MIN_FREE_GB", pm.VM_MIN_FREE_GB) == 15.0
@@ -739,8 +744,8 @@ def test_b8_the_floor_and_the_cache_budget_read_the_environment(tmp_path, monkey
 def test_b8_the_build_cache_is_pruned_to_a_budget_not_by_age(tmp_path):
     state, docker = world(tmp_path, [image("a" * 16, 2, "e2e-tests")], cache="16.93GB", cache_after="4GB")
     line = prune_line(state, docker)
-    assert "builder prune -af --keep-storage 4GB" in calls(tmp_path) and not [c for c in calls(tmp_path) if "until=" in c]
-    assert line["builder_prune"] == {"rc": 0, "keep_storage_gb": 4, "cache_gb": {"before": 16.93, "after": 4.0}, "runs": 1,
+    assert "builder prune -af --max-used-space 4GB" in calls(tmp_path) and not [c for c in calls(tmp_path) if "until=" in c]
+    assert line["builder_prune"] == {"rc": 0, "keep_storage_gb": 4, "flag": "max-used-space", "freed_gb": 12.93, "ineffective": False, "cache_gb": {"before": 16.93, "after": 4.0}, "runs": 1,
                                      "tail": "Total: 12.93GB"}
 
 
@@ -792,3 +797,70 @@ def test_b8a_a_floor_removal_of_images_dated_with_an_offset_journals_their_true_
     assert [r["rule"] for r in line["images"]["removed"]] == [
         "vm floor: VM free 1 GB < 15 GB after the cap; 1 plan(s) of the last 48 h name it, built 20.0 h ago",
         "vm floor: VM free 2 GB < 15 GB after the cap; 2 plan(s) of the last 48 h name it, built 1.0 h ago"]
+
+
+OLD_HELP = "Flags:\n  -a, --all\n      --keep-storage bytes   Amount of disk space to keep for cache"
+
+
+def builder_argv(tmp_path: Path) -> str:
+    return next(c for c in calls(tmp_path) if c.startswith("builder prune"))
+
+
+def test_b13_a_buildx_that_lists_max_used_space_is_pruned_with_it_and_the_line_says_so(tmp_path):
+    state, docker = world(tmp_path, [image("a" * 16, 2, "e2e-tests")], cache="16.93GB", cache_after="4GB")
+    line = prune_line(state, docker)
+    assert builder_argv(tmp_path) == "builder prune -af --max-used-space 4GB" and line["builder_prune"]["flag"] == "max-used-space"
+
+
+def test_b13_an_old_buildx_whose_help_lacks_it_keeps_keep_storage(tmp_path):   # innocence
+    state, docker = world(tmp_path, [image("a" * 16, 2, "e2e-tests")], cache="16.93GB", cache_after="4GB", help=OLD_HELP)
+    line = prune_line(state, docker)
+    assert builder_argv(tmp_path) == "builder prune -af --keep-storage 4GB" and line["builder_prune"]["flag"] == "keep-storage"
+
+
+@pytest.mark.parametrize("extra", [{"help_fails": True}, {"help": ""}, {"help": "Flags:\n  -a, --all"}])
+def test_b13_a_help_that_cannot_be_read_uses_max_used_space_and_rc_decides(tmp_path, extra):
+    state, docker = world(tmp_path, [image("a" * 16, 2, "e2e-tests")], cache="16.93GB", cache_after="4GB", **extra)
+    assert prune_line(state, docker)["builder_prune"]["flag"] == "max-used-space" and "--max-used-space" in builder_argv(tmp_path)
+
+
+def test_b13_the_help_is_read_once_per_prune_run_not_per_call(tmp_path):
+    state, docker, _ = three_recipes(tmp_path, 14.5)
+    assert prune_line(state, docker)["builder_prune"]["runs"] > 1
+    assert len({c for c in calls(tmp_path) if c.startswith("builder prune")}) == 1
+
+
+@pytest.mark.parametrize("out, gb", [("Total:\t3.867GB", 3.867), ("Total:\t0B", 0.0), ("Total: 512MB", 0.512), ("Total:\t1.5kB", 0.0),
+                                      ("Flag --keep-storage has been deprecated\nTotal:\t2GB\n", 2.0), ("", None), ("deleted: abc", None)])
+def test_b13_the_total_line_is_parsed_into_gb_and_an_absent_one_is_none(out, gb):
+    assert pm.prune_total_gb(out) == gb
+
+
+def test_b13_the_journal_carries_what_was_freed(tmp_path):
+    state, docker = world(tmp_path, [image("a" * 16, 2, "e2e-tests")], cache="22.83GB", cache_after="4GB", total="18.83GB")
+    assert prune_line(state, docker)["builder_prune"]["freed_gb"] == 18.83
+
+
+def test_b13_a_prune_that_exits_0_frees_0_b_and_leaves_the_cache_over_budget_is_ineffective_and_failed(tmp_path):   # guilt
+    state, docker = world(tmp_path, [image("a" * 16, 2, "e2e-tests")], cache="22.83GB", cache_after="22.83GB", total="0B")
+    line = prune_line(state, docker)
+    assert line["builder_prune"]["rc"] == 0 and line["builder_prune"]["ineffective"] is True and "freed 0 B" in line["builder_prune"]["why"]
+    assert "builder_prune" in line["failed"]
+
+
+@pytest.mark.parametrize("world_kw", [
+    {"cache": "22.83GB", "cache_after": "4GB", "total": "18.83GB"},    # effective
+    {"cache": "4.9GB", "cache_after": "4.9GB", "total": "0B"},          # 0 B but within the 1 GB slack
+    {"cache": "4GB", "cache_after": "4GB", "total": "0B"},              # 0 B and already at budget
+    {"cache": "22.83GB", "cache_after": "10GB", "total": "12.83GB"},    # partial: shared bytes stay, something went
+])
+def test_b13_an_effective_prune_or_one_within_budget_is_not_ineffective(tmp_path, world_kw):   # innocence
+    state, docker = world(tmp_path, [image("a" * 16, 2, "e2e-tests")], **world_kw)
+    line = prune_line(state, docker)
+    assert line["builder_prune"]["ineffective"] is False and "why" not in line["builder_prune"] and line["failed"] == []
+
+
+def test_b13_no_total_line_or_an_unread_cache_never_claims_ineffective(tmp_path):
+    state, docker = world(tmp_path, [image("a" * 16, 2, "e2e-tests")], cache="22.83GB")   # a prune that prints nothing
+    line = prune_line(state, docker)
+    assert line["builder_prune"]["freed_gb"] is None and line["builder_prune"]["ineffective"] is False
