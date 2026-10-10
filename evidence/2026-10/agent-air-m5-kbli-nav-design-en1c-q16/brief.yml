@@ -4,32 +4,37 @@ colour: BLUE
 gear: 2
 gear_reason: >-
   Set to the floor evidence_pack_lint computes for this change set by its size term, with no hot-zone path. The code
-  churns en_purity.py (the analyser), LabelBook.swift (originalLabel and isEnglishText only), contenttest (the
-  curated-language export) and content_check.sh (one flag). No View changes; renders are byte-identical.
+  churns en_purity.py (the analyser), LabelBook.swift (originalLabel, isEnglishText, fieldNames only), contenttest
+  (the curated-language and closed-set exports), content_check.py (the pin) and content_check.sh (one flag); the pin
+  JSON and this brief are evidence. No View changes; renders are byte-identical.
 l_level: L1
 gate_class: opus
 objective: >-
   Lead ruling A on EN-1b (2026-10-10): the instrument lot that closes Q16 for the PR 5/6/3 Views before they land.
   (1) One curated-language rule: en_purity reads a basis or note by LabelBook.isEnglishText (the clause rule over the
   whole text, "(;—" blanked), and census --curated proves Swift and Python identical on every record. (2) R6 / item
-  10: the analyser loads kbli-overlay.json; the Indonesian a curated verdict sentence quotes in (…) is a span bound
-  to that sentence (C6). (3) R5: LabelBook.originalLabel. (4) A guilt row per statute field: its own value under
-  the label, another record's value under the same label, the value unlabelled. (5) The fallback partition covers
-  every occurrence; a label lends itself only to the line next to it (binding 3), while the text's own pieces may
-  interleave with a neighbour's lines or share a glued line with one — PDFKit's reading of a multi-column basis.
-  Presentation and instrument only: no KBLI fact, verdict, cap, basis or Bali overlay changes.
+  10: the analyser loads kbli-overlay.json; the Indonesian a curated overlay sentence quotes in (…) is a span bound
+  to that sentence (C6); a curated overlay line or sentence drawn whole is counted as curated prose (ruling 1), never
+  an Indonesian-only one nor one carrying the raw official title. (3) R5: LabelBook.originalLabel. (4) A guilt row per
+  statute field. (5) The fallback partition covers every occurrence; a label lends itself only to the line next to it
+  (binding 3), while the text's own pieces may interleave with a neighbour's lines or share a glued line with one —
+  PDFKit's reading of a multi-column basis. (6) The #8227 gate's (i) closed-set maps pinned and (ii) the statute
+  field names read as raw by the never-drawn check. Instrument only: no KBLI fact, verdict, cap, basis or Bali overlay
+  changes.
 constraints:
-  - No View changes and no rendered byte changes; LabelBook.original draws the same string.
+  - No View changes and no rendered byte changes; LabelBook.original and field draw the same strings.
   - Every binding of #8224 and #8227 stays green; binding 3's guilt (label / EN title / raw title) still fails.
   - No PNG is committed.
 acceptance:
   - text: The full census SHALL keep the seven gated surfaces at 0 and print the parity probe at 722/722 bases and 120/120 notes.
     probe: "Pro: EN_CENSUS=full content_check.sh rc=0; 'parity: basis language … 722/722' naming the codes #8227's rule read otherwise"
   - text: A Swift/Python disagreement SHALL fail the run naming the code.
-    probe: "Pro: content_check of a copy whose LabelBook.isEnglishText blanks one mark less — rc=1, EN-SELFTEST … differs … <code>"
+    probe: "Pro: content_check of a copy whose LabelBook.isEnglishText blanks '(—' only — rc=1, EN-SELFTEST … differs … <code>"
+  - text: A closed-set map edited without its pin SHALL fail.
+    probe: "Pro: content_check of a copy with LabelBook.pmaStatus TERBUKA -> Closed — rc=1, DIFF LabelBook.pmaStatus[TERBUKA]"
   - text: PR 5 (app-gate-0a1's p5-ledger-v2) on this head SHALL leave in sheet-ledger only what its own View must fix.
     probe: "Pro: PR 5 cherry-picked (no commit) on this head, full census, the ledger residual attributed by source"
-  - text: Each statute field SHALL have its guilt and innocence rows, and the new rules theirs.
-    probe: "M5/Pro: en_purity self-test 0 lines; the rows that relax binding 3 (interleave, glue) each paired with a guilt"
+  - text: Each statute field SHALL have its guilt and innocence rows, and every new rule its pair.
+    probe: "M5/Pro: en_purity self-test 0 lines; static self-test 0 lines"
   - text: The head SHALL build both variants and render 35 PNGs byte-identical to en1b-labelbook.
     probe: "Pro build-only mirror: INTERNAL_RC=0, BKPM_RC=0, RENDER_SET_RC=0, 35/35 = en1b-labelbook"
