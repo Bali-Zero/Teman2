@@ -12,15 +12,17 @@ commit statuses of the run's candidate sha) with the local per-context verdict a
     HOSTED_STALE    (B10) the hosted verdict completed BEFORE the base the local run used, and main changed in between in a path
                     the BASE change_map selects for that context: the two sides judged different trees, so the pair is neither an
                     AGREE nor a FALSE_GREEN and is never counted as compared. Decided by a caller-supplied ``stale_judge`` (this
-                    module has no git); without one, or when the judge cannot read its evidence, the row keeps its class and says so
+                    module has no git); without one, or when the judge cannot read its evidence, the row keeps its class and says so.
+                    (B12b) Also when the hosted RED of a gate-reading context was its reader's PENDING read, given before the gate
+                    verdict the local run read (``stale_why: gate_posted_after_hosted``), decided by a caller-supplied ``gate_judge``
 
 The hosted verdict of a context is order-free and RED-DOMINANT: red if ANY entry GitHub lists
 under that name for the commit is red (the latest attempt of each check; a red that a re-run
 replaced is not listed) (GitHub requires a same-named check and status to both pass, and a
 later green from another event does not erase a red); green only when at least one entry from
 the REQUIRED source (the pinned ``app_id``, or any source when none is pinned) is complete and
-none is pending. The class never reads a timestamp; only the optional ``stale_judge`` (B10) does, from the ``completed_at`` of the
-entries that decided the verdict.
+none is pending. The class never reads a timestamp; only the optional ``stale_judge`` (B10) and ``gate_judge`` (B12b) do, from the
+``completed_at`` of the entries that decided the verdict (and, for B12b, the statuses' ``updated_at`` and the red runs' annotations).
 
 Each row carries the context's COVERAGE as the BASE runner recorded it from the BASE matrix (``full``, ``partial`` with its
 note, or ``unrecorded`` for a status.json that predates it): the class is the same, but a partial AGREE is an agreement on a
@@ -79,12 +81,12 @@ def hosted_entries(check_runs: list, statuses: list) -> dict:
     for run in check_runs:
         concl = run.get("conclusion") if run.get("status") == "completed" else None
         app = run.get("app") if isinstance(run.get("app"), dict) else {}
-        by.setdefault(run.get("name"), []).append({"verdict": _verdict(concl), "conclusion": concl, "app_id": app.get("id"),
+        by.setdefault(run.get("name"), []).append({"verdict": _verdict(concl), "conclusion": concl, "app_id": app.get("id"), "id": run.get("id"),
                                                    "source": app.get("slug") or "check-run", "completed_at": run.get("completed_at")})
     for st in statuses:
         state = st.get("state")
         by.setdefault(st.get("context"), []).append({"verdict": _verdict(None if state == "pending" else state), "conclusion": state,
-                                                     "app_id": None, "source": "commit-status", "completed_at": st.get("updated_at")})
+                                                     "app_id": None, "id": None, "source": "commit-status", "completed_at": st.get("updated_at")})
     return by
 
 
@@ -104,7 +106,8 @@ def hosted_verdict(entries: list, app_id) -> dict:
     stamps = [e.get("completed_at") for e in decisive]
     when = max(stamps) if verdict != "PENDING" and stamps and all(isinstance(t, str) and _TS_RE.match(t) for t in stamps) else None
     return {"verdict": verdict, "entries": len(entries), "counted": len(counted), "sources": sorted({e["source"] for e in entries}),
-            "conclusions": sorted({str(e["conclusion"]) for e in entries}), "completed_at": when}
+            "conclusions": sorted({str(e["conclusion"]) for e in entries}), "completed_at": when,
+            "red": [{"id": e.get("id"), "completed_at": e.get("completed_at")} for e in entries if e["verdict"] == "RED"]}   # B12b: a status has no id
 
 
 def local_verdicts(status: dict) -> dict:
@@ -184,7 +187,35 @@ def stale_reading(judge, name: str, completed_at) -> dict:
             "main_moved_paths": list(got.get("main_moved_paths") or [])[:20], "main_moved_count": int(got.get("main_moved_count") or 0)}
 
 
-def compare(status: dict, required_checks, check_runs, statuses, stale_judge=None) -> dict:
+def gate_reading(judge, name: str, h: dict, statuses: list) -> dict:
+    """B12b: what ``judge(name, hosted, statuses)`` makes of one compared row: was its hosted RED the gate reader's PENDING read, given before
+    the gate verdict the local run read? The judge answers None when the ground does not apply (no field is added). Total like
+    ``stale_reading``: a judge that raises or answers in any other shape gives ``gate_check: unknown (<why>)`` and the row keeps its class."""
+    try:
+        got = judge(name, h, statuses)
+        if got is None:
+            return {}
+        stale = got.get("stale")
+        if stale not in (True, False, None):
+            raise CompareError(f"the gate judge answered stale={stale!r}")
+    except Exception as exc:  # noqa: BLE001 — see the docstring
+        return {"gate_check": f"unknown ({type(exc).__name__}: {str(exc)[-200:]})"}
+    if stale is not True:
+        return {"gate_check": f"{'unknown' if stale is None else 'fresh'} ({str(got.get('why'))[-300:]})"}
+    return {"stale": True, "gate_check": "stale", "stale_check": "stale", "stale_why": "gate_posted_after_hosted",
+            "hosted_completed_at": h["completed_at"], "gate_posted_at": got.get("gate_posted_at"), "plan_at": got.get("plan_at")}
+
+
+def with_gate(reading: dict, gate: dict) -> dict:
+    """B10's reading and B12b's on one row: stale when either ground is, else unknown when either is, else fresh."""
+    if not gate or gate.get("stale") is True:
+        return {**reading, **gate}
+    prior = str(reading.get("stale_check") or "fresh")
+    return {**reading, "gate_check": gate["gate_check"],
+            "stale_check": gate["gate_check"] if gate["gate_check"].startswith("unknown") and not prior.startswith("unknown") else prior}
+
+
+def compare(status: dict, required_checks, check_runs, statuses, stale_judge=None, gate_judge=None) -> dict:
     names = required_names(required_checks)
     if not isinstance(check_runs, list) or not isinstance(statuses, list) or any(not isinstance(x, dict) for x in check_runs + statuses):
         raise CompareError("check_runs / statuses are not lists of objects")
@@ -196,6 +227,8 @@ def compare(status: dict, required_checks, check_runs, statuses, stale_judge=Non
         lo = local.get(name, {"verdict": "BLIND", "detail": "unmapped", "coverage": "unrecorded", "coverage_note": None})
         klass = classify(lo["verdict"], h["verdict"])
         reading = stale_reading(stale_judge, name, h["completed_at"]) if stale_judge is not None and klass in COMPARED else {}
+        if gate_judge is not None and klass in COMPARED and reading.get("stale") is not True:
+            reading = with_gate(reading, gate_reading(gate_judge, name, h, statuses))
         if reading.get("stale") is True:
             reading["class_before"], klass = klass, "HOSTED_STALE"   # every compared class: a stale GREEN beside a local GREEN is no AGREE either
         reading.pop("stale", None)
