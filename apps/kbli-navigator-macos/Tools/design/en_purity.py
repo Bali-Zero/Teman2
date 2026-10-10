@@ -378,7 +378,8 @@ def analyse(row, rec, unknown=False):
         return out
     hulls_of = {}
     for rx, whole, r, keep, within in (rec.spans if rec else []):
-        found = drawn(rx, whole, keep)[0] or (parted(whole) if within else [])
+        found = drawn(rx, whole, keep)[0]
+        found += [p for p in (parted(whole) if within else []) if p not in found]   # each copy, swapped or not
         if found and within:   # a carried-over name or quoted original belongs to the English text that carries it
             if within[1] not in hulls_of: hulls_of[within[1]] = drawn(*within, alone=False)[1]
             hulls = hulls_of[within[1]]
@@ -480,6 +481,8 @@ def selftest():
              ("Ask the TNI Angkatan Darat\nActivities of the TNI Angkatan Darat in national defence", 1, r5),
              ("Angkatan Darat in national defence\nActivities of the TNI", 0, r5),                 # swapped at the name
              ("Angkatan Darat in national defence\nAsk the TNI", 1, r5),                          # not its text
+             ("Activities of the TNI Angkatan Darat in national defence\nAngkatan Darat in national defence\n"
+              "Activities of the TNI", 0, r5),                                                        # whole, then swapped
              # Q16 (#8224 gate binding 7): a statute value is allowed under its label or as its own translation,
              # its carried-over terms inside that translation only; a field written in English, drawn whole
              ("Requirements\nMust hold a certificate (sertifikat) from the Pemerintah Daerah", 0, r6),
