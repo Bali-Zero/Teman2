@@ -27,7 +27,7 @@ lanes:
     role: build
     seat: claude-sonnet-5 (implementer on M5, on the lead's spec)
   - lane: localci-treepack-1010
-    role: measure
+    role: ground_truth
     seat: claude-opus-5-5 (lead; probes on Pro)
 what_changed: |
   runner.py: build_tree_pack (ls-tree -r -t of the candidate commit, blobs and trees plus the root tree, into pack-objects --stdout,
