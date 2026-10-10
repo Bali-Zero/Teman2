@@ -110,6 +110,15 @@ extension LabelBook {
         return ["Sertifikat Laik Sehat (SLHS) — Health-Worthiness Certificate": "Health-Worthiness Certificate (SLHS)"][raw] ?? raw
     }
 
+    /// One line of the curated meaning, which is markdown like the `baliContext` MarkdownView draws on the same sheet:
+    /// its inline emphasis (the 38 `**…**` pairs of 21 codes, 55204's `*not*`) draws as emphasis, never as asterisks.
+    /// The characters are the source's minus the markers; a line the native parser refuses stays as written. Bali
+    /// reasons are not curated meanings and keep their asterisks (Z-3).
+    static func ledgerInline(_ line: String) -> AttributedString {
+        (try? AttributedString(markdown: line, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+            ?? AttributedString(line)
+    }
+
     /// A record string with no English source, met by an English reader (Q12 ruling 4): the source came back
     /// unchanged from the translation table and does not read as English.
     static func isOriginal(_ source: String, drawn: String, isID: Bool) -> Bool {

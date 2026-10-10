@@ -2,9 +2,12 @@ import SwiftUI
 
 /// SPEC-detail-polish D9: an `uraian` list hangs. The text splits at its own "\n"; a line opening with
 /// "- " keeps the "- " in a fixed 16 pt column and wraps the rest beside it; a plain line that opens a
-/// dash run gets 12 above. The lines rejoined with "\n" are the source, byte for byte. Wraps, never clamps.
+/// dash run gets 12 above. The lines rejoined with "\n" are the source, byte for byte — save a curated meaning's
+/// markdown emphasis (`markdown`), drawn as emphasis and not as its asterisks (`LabelBook.ledgerInline`). Wraps,
+/// never clamps.
 struct UraianLines: View {
     let text: String
+    var markdown = false
     var size: CGFloat = 15
     var color: Color = Theme.white
 
@@ -28,7 +31,7 @@ struct UraianLines: View {
     }
 
     private func line(_ s: String) -> some View {
-        Text(s).font(Theme.scalable(size)).lineSpacing(5).foregroundStyle(color)
+        (markdown ? Text(LabelBook.ledgerInline(s)) : Text(s)).font(Theme.scalable(size)).lineSpacing(5).foregroundStyle(color)
             .fixedSize(horizontal: false, vertical: true)
     }
 }

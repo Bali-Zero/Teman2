@@ -200,6 +200,33 @@ let out: [String: Any] = MainActor.assumeIsolated {
         }
         if k.judul != "Pertanian Jagung" || LabelBook.title(k, isID: false) == k.judul { violations.append("ledgerProse: 01111's title moved") }
     } else { violations.append("ledgerProse: no 01111") }
+    // The ledger's curated meaning draws its markdown emphasis, never its asterisks (3-h-1, 46206's "**live fish …**"):
+    // a pair draws its words emphasised (guilt); a spaced or unclosed "*" stays (innocence); and over every curated
+    // meaning, both languages, a line draws its source minus the "*" markers, nothing else and no link.
+    for (raw, want, marked) in [("**Live fish** go by air.", "Live fish go by air.", "Live fish"),
+                                ("This is *not* a lease.", "This is not a lease.", "not"),
+                                ("Spirits >20%, 5 * 3 rows.", "Spirits >20%, 5 * 3 rows.", ""),
+                                ("Bold ** never closed.", "Bold ** never closed.", "")] {
+        let a = LabelBook.ledgerInline(raw)
+        let got = a.runs.filter { $0.inlinePresentationIntent != nil }.map { String(a[$0.range].characters) }.joined()
+        if String(a.characters) != want || got != marked {
+            violations.append("ledgerInline: \"\(raw)\" → \"\(String(a.characters))\" [\(got)], want \"\(want)\" [\(marked)]")
+        }
+    }
+    var unfaithful: [String] = [], emphasised = Set<String>()
+    for k in store.all {
+        for lang in ["en", "id"] {
+            for l in OverlayStore.shared.overlayStrict(k.kode, lang: lang)?.meaning?.components(separatedBy: "\n") ?? [] {
+                let a = LabelBook.ledgerInline(l)
+                if a.runs.contains(where: { $0.inlinePresentationIntent != nil }) { emphasised.insert(k.kode) }
+                if String(a.characters) != l.replacingOccurrences(of: "*", with: "") || a.runs.contains(where: { $0.link != nil }) {
+                    unfaithful.append("\(k.kode) \(lang)")
+                }
+            }
+        }
+    }
+    if emphasised.count != 22 { violations.append("ledgerInline: \(emphasised.count) curated meanings draw emphasis, pinned 22") }
+    if !unfaithful.isEmpty { violations.append("ledgerInline changes \(unfaithful.count) meaning lines beyond their markers, e.g. \(unfaithful.prefix(3))") }
     return ["codes": codes, "balanced_rejoin": rejoin, "probe_violations": violations, "curated_language": curated,
             "labelbook_maps": maps]
 }
