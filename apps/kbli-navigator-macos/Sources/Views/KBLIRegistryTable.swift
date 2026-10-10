@@ -15,13 +15,13 @@ import SwiftUI
 
 // MARK: - The badge that can say "I do not know"
 
-/// One verdict cell. Four renderings, and the fourth is the point: `.undetermined` is a DASHED
-/// outline with no tint at all — neither the sage of an open code nor the coral of a closed one,
-/// because a colour would be a claim. Colour is never the only carrier: each state also has its
-/// own word and its own VoiceOver sentence.
+/// One verdict cell. Four renderings, and the fourth is the point: `.undetermined` is the neutral
+/// chip — neither the sage of an open code nor the coral of a closed one, because a colour would
+/// be a claim. Colour is never the only carrier: each state also has its own word and its own
+/// VoiceOver sentence.
 struct VerdictBadge: View {
     /// `.undetermined` (the Bali axis) and `.undeterminedNational` (the ownership axis) render
-    /// identically — a dashed cell — but they are NOT the same fact, and VoiceOver must not say
+    /// identically — the neutral chip — but they are NOT the same fact, and VoiceOver must not say
     /// "Bali: not determined" on a record whose Bali axis is perfectly determined and whose
     /// NATIONAL position is the unknown one (council round 1, codex-gpt-5.6-sol).
     enum State: Equatable { case open, blocked, closedNational, undetermined, undeterminedNational }

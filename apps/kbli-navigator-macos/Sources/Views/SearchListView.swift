@@ -112,7 +112,7 @@ struct SearchListView: View {
     }
 
     /// "Not determined" is ONE filter over TWO states — the Bali axis and the national one, which
-    /// render the same dashed cell but are different facts (council round 1, codex-gpt-5.6-sol).
+    /// render the same neutral chip but are different facts (council round 1, codex-gpt-5.6-sol).
     /// A reader filtering for what the records cannot say wants both.
     private func baliState(_ f: BaliFilter) -> [VerdictBadge.State] {
         switch f {

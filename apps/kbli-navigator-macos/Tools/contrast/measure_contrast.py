@@ -66,7 +66,7 @@ PAIRS = [
     ("white/ink", "white", ("solid","ink"), 4.5, "RootView.swift:120 .background(Theme.ink)"),
     ("white/inkLift", "white", ("solid","inkLift"), 4.5, "GlassCard fill Theme.inkLift"),
     ("muted/antracite", "muted", ("solid","antracite"), 4.5, "RootView.swift:340 .foregroundStyle(Theme.muted) on window bg"),
-    ("muted/ink", "muted", ("solid","ink"), 4.5, "SearchListView.swift:419/348 rail facet labels on Theme.wash (= ink); KBLIRegistryTable.swift:71 neutral VerdictBadge (Theme.chip(.neutral): muted on wash)"),
+    ("muted/ink", "muted", ("solid","ink"), 4.5, "SearchListView.swift:422/351 rail facet labels on Theme.wash (= ink); KBLIRegistryTable.swift:71 neutral VerdictBadge (Theme.chip(.neutral): muted on wash)"),
     ("muted/inkLift", "muted", ("solid","inkLift"), 4.5, "KBLIDossierView.swift:60/100 on card"),
     ("faint/antracite", "faint", ("solid","antracite"), 4.5, "RootView.swift:142 on window bg; SearchFieldBar.swift:48 density glyph on the bar"),
     ("faint/ink", "faint", ("solid","ink"), 4.5, "RegistryVerdictSheet.swift:96/111 on Theme.ink"),
