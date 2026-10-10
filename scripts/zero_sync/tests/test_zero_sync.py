@@ -462,3 +462,31 @@ def test_a_git_config_override_cannot_hide_a_rewrite_from_the_check(w, tmp_path,
     empty.write_text("")
     monkeypatch.setenv("GIT_CONFIG", str(empty))  # would blind `git config` alone
     assert w.run() == 2
+
+
+@pytest.mark.parametrize("name", ["team_members.json", "Team_Members.2026-10.json"])
+def test_a_roster_file_the_cut_misses_is_refused_whatever_the_manifests_say(w, name):
+    w.canon_commit({f"apps/backend-rag/backend/data/{name}": "STAFF\n"}, "roster inside the perimeter")
+    before = w.zero_tip()
+    assert w.run() == zs.EXIT_ERROR
+    assert w.zero_tip() == before
+    assert w.hb()["status"] == "error" and "staff roster" in w.hb()["note"]
+
+
+def test_roster_stand_ins_and_the_loader_shim_still_export(w):
+    w.canon_commit({
+        "apps/backend-rag/backend/data/team_members.example.json": "[]\n",
+        "apps/backend-rag/backend/data/team_members.synthetic.json": "[]\n",
+        "apps/backend-rag/backend/data/team_members.py": "TEAM_MEMBERS = []\n",
+    }, "stand-ins")
+    assert w.run() == 0
+    assert {"apps/backend-rag/backend/data/team_members.example.json",
+            "apps/backend-rag/backend/data/team_members.synthetic.json",
+            "apps/backend-rag/backend/data/team_members.py"} <= w.zero_files()
+
+
+def test_a_roster_the_cut_names_does_not_trip_the_deny(w):
+    w.canon_commit({"apps/backend-rag/backend/data/team_members.json": "STAFF\n"}, "roster")
+    w.zero_commit({".slim/cut_paths.txt": CUT + "apps/backend-rag/backend/data/team_members.json\n"}, "cut it")
+    assert w.run() == 0
+    assert "apps/backend-rag/backend/data/team_members.json" not in w.zero_files()
