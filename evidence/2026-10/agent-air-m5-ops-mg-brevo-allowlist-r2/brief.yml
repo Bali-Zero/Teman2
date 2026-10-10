@@ -1,0 +1,25 @@
+task: >-
+  The mata-garuda weekly digest (com.matagaruda.weekly-digest on Pro) has failed to email every Sunday with
+  "no BREVO_API_KEY": the env bootstrap (_bootstrap_env.py) imports from ~/.nuzantara-secrets.env only an explicit
+  allow-list, which lacks the email key brevo_tools reads. Admit BREVO_API_KEY, and keep the test suite from
+  sending real email once that key reaches the hosts.
+lane: ops
+machine: m5
+date: 2026-10-10
+gear: 2
+gear_reason: >-
+  Measured floor; campaign rule after #8079: at least gear 2 so harness-floor holds for the independent final gate.
+acceptance:
+  A1:
+    text: >-
+      bootstrap_env imports BREVO_API_KEY from the secrets file when it is unset, never overwrites a set one, and still
+      refuses keys outside the allow-list.
+    probe: >-
+      apps/mata-garuda/tests/test_bootstrap_env_allowlist.py (run by mata-garuda-tests), plus mutants that drop the
+      allow-list line or bypass the filter.
+  A2:
+    text: >-
+      After deploy, the weekly digest on Pro sees the key: import mata_garuda under env -i reports BREVO_API_KEY SET, and
+      the next Sunday run logs email_ok True.
+    probe: >-
+      python -c under env -i with the job's interpreter on Pro; ~/logs weekly-digest log after the Sunday run.
