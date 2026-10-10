@@ -119,10 +119,12 @@ class Repo:
 def url_rewrites(repo: "Repo", urls: list[str]) -> list[str]:
     """url.<base>.insteadOf / pushInsteadOf rules (any config level) that would rewrite one of `urls`.
     A rewrite applied to the push alone would bypass every identity check made on the fetch."""
-    out = repo.run("config", "--get-regexp", r"^url\..*\.(push)?insteadof$", check=False)
+    # NUL-delimited records ("key\nvalue\0"): the <base> in the key may itself contain spaces, so splitting the
+    # plain "key value" line at its first space would misread such a rule and let it through.
+    out = repo.run("config", "-z", "--get-regexp", r"^url\..*\.(push)?insteadof$", check=False)
     hits = []
-    for line in out.splitlines():
-        key, _, prefix = line.partition(" ")
+    for rec in out.split("\0"):
+        key, _, prefix = rec.partition("\n")
         if prefix and any(u.startswith(prefix) for u in urls):
             hits.append(f"{key} {prefix}")
     return hits

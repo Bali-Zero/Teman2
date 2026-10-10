@@ -428,6 +428,16 @@ def test_a_push_rewrite_toward_canonical_is_refused_before_anything_runs(w, tmp_
     assert "URL rewriting" in capsys.readouterr().out
 
 
+def test_a_rewrite_whose_base_contains_a_space_is_still_seen(w, tmp_path, monkeypatch, capsys):
+    cfg = tmp_path / "gitconfig"
+    cfg.write_text(f'[url "file:///nowhere/a mirror/"]\n\tpushInsteadOf = {w.zero_url}\n')
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(cfg))
+    before = w.zero_tip()
+    assert w.run() == 2
+    assert w.zero_tip() == before
+    assert "URL rewriting" in capsys.readouterr().out
+
+
 def test_the_push_is_a_compare_and_swap_on_the_exact_fetched_tip(w, monkeypatch):
     seen = []
     real = zs.Repo.run
