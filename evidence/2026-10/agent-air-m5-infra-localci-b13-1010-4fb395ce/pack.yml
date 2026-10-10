@@ -1,0 +1,106 @@
+task_id: localci-b13-1010
+mission: LOCALCI-SOVEREIGN (phase B, step B13)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  A change to the prune organ's cache cap: which docker flag it calls and when it reports failure. No hot-zone path, workflow, plist or
+  wrapper change; image removal rules, floors and VM discard are untouched; the lint floor is 2.
+l_level: L2
+gate_class: opus
+objective: >-
+  The builder prune calls the cap flag the installed buildx still means as a cap, and says so when buildx deprecates the flag it was
+  given. buildx 0.34 turned --keep-storage into a reserved floor (rc 0, Total: 0B against a 22.83 GB cache on Pro). The flag is read
+  once per prune run from `docker builder prune --help` (--max-used-space, else --keep-storage on an old buildx, else
+  --max-used-space); a call whose output has a line naming the flag we passed with "deprecated" or "has been changed to" sets
+  deprecated_flag and fails the prune. The journal carries flag, freed_gb (the sum of buildx's Total: lines) and du_gb (docker buildx
+  du, a measurement). No size-based verdict: BuildKit's cap accounting is opaque.
+constraints:
+  - Image removal rules, floors and VM discard stay untouched.
+  - freed_gb and du_gb are measurements and never a failure; only a deprecation line naming our flag fails the prune.
+acceptance:
+  - text: A buildx whose help lists --max-used-space SHALL be pruned with it, and an old buildx whose help lists only --keep-storage with that; an unreadable help SHALL use --max-used-space.
+    probe: "test_prune.py::test_b13_a_buildx_that_lists_max_used_space_is_pruned_with_it_and_the_line_says_so"
+  - text: The help SHALL be read exactly once per prune run.
+    probe: "test_prune.py::test_b13_the_help_is_read_once_per_prune_run_not_per_call"
+  - text: The exact Pro line naming --keep-storage SHALL set deprecated_flag and name builder_prune in failed; another flag's warning and a clean output SHALL NOT.
+    probe: "test_prune.py::test_b13_the_exact_pro_deprecation_line_naming_our_flag_fails_the_prune"
+  - text: The buildx du summary SHALL be journalled as du_gb in GB (no Shared line means private is the total), null when unreadable, and never fail the prune.
+    probe: "test_prune.py::test_b13_the_buildx_du_summary_is_parsed_into_gb_and_garbage_is_none"
+  - text: freed_gb SHALL be the sum of the calls' Total lines, null only when every call is unparsed.
+    probe: "test_prune.py::test_b13_freed_gb_sums_the_totals_of_the_calls_and_is_none_only_if_every_call_is_unparsed"
+consumer_map:
+  - scripts/localci/merger.py prune (the merger tick on Pro) — the builder_prune object of the prune line in the journal, and the organ's failed list.
+pii_scan: clean
+pii_scan_note: Prune code, tests against a fake docker, mutant rules and documentation. No client data was read or written.
+lanes:
+  - lane: localci-b13-1010
+    role: build
+    seat: claude-sonnet-5-5 (implementer on M5)
+what_changed: |
+  prune.py: builder_prune_flag reads `docker builder prune --help` once per prune run (30 s bound). flag_deprecated matches, line by
+  line, our flag name plus "deprecated" or "has been changed to" (case-insensitive), over stdout+stderr of every call; deprecated_flag
+  is sticky across the run's calls and `failed` names builder_prune for it. freed_gb sums prune_total_gb over the calls. After the last
+  call buildx_du_gb reads `docker buildx du` (120 s bound, no --verbose) into du_gb {shared, private, reclaimable, total}.
+  The size-based `ineffective` rule and builder_prune_verdict are removed. Image removal rules, floors and VM discard are untouched.
+  tests/test_prune.py: the fake logs `--help` calls to a separate list (asserted exactly one per run), prints a configurable stderr
+  and answers `buildx du`. Mutants: b13-deprecation-ignored and b13-deprecation-any-flag replace b13-ineffective-not-failed.
+  README and spec: the entity rule, the measurements, the live numbers, the old-daemon note.
+proof: |
+  Tests and mutants on M5 against a fake docker; nothing ran on Pro and nothing was pushed.
+bites:
+  consumer: The merger tick's prune on Pro (the builder_prune object of the prune line in the journal) and the organ's failed list.
+  observation: >-
+    Already shown by the live call (Pro, 2026-10-10 ~04:05Z): one `-af --max-used-space 4GB` printed Total: 12.53GB where the old flag
+    freed 0 B. Owed after merge, all three together: the first prune line on Pro carries builder_prune.flag "max-used-space",
+    deprecated_flag false, and a non-null du_gb (a null du_gb there is the first sign the parser does not match Pro's real `buildx du`
+    text). freed_gb may legitimately be 0 on a quiet tick and is not part of the proof.
+ground:
+  ts: "2026-10-10T03:14:51Z"
+  siblings: >-
+    Worktree from origin/main f75a4fee92. Other lanes on scripts/localci touch merger.py and runner.py; this one touches prune.py and its
+    tests, README and spec only.
+spend:
+  adversarial_rounds: 2
+  wall_clock_hours: 0.9
+receipts:
+  - claim: "test_prune.py: 116 passed (34 b13 cases among them)."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_prune.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-10T04:32:01Z"
+    seat: claude-sonnet-5-5 on M5
+  - claim: "ruff check on prune.py, test_prune.py, merger_mutants.py: all checks passed."
+    cmd: ruff check scripts/localci/prune.py scripts/localci/tests/test_prune.py scripts/localci/tests/mutants/merger_mutants.py
+    exit: 0
+    ts: "2026-10-10T04:30:51Z"
+    seat: claude-sonnet-5-5 on M5
+  - claim: "5/5 killed (b13-deprecation-ignored, b13-deprecation-any-flag, b13-deprecated-flag-kept, b13-help-ignored, b13-total-unparsed); survivors none, errors none, stale none."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only b13-deprecation-ignored b13-deprecation-any-flag b13-deprecated-flag-kept b13-help-ignored b13-total-unparsed
+    exit: 0
+    ts: "2026-10-10T04:39:07Z"
+    seat: claude-sonnet-5-5 on M5
+  - claim: "2/2 killed (b8-cache-by-age, b7-fstrim-on-dry-run); survivors none, errors none, stale none."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only b8-cache-by-age b7-fstrim-on-dry-run
+    exit: 0
+    ts: "2026-10-10T04:33:38Z"
+    seat: claude-sonnet-5-5 on M5
+dissent:
+  - seat: claude-opus-5-5 independent gate (round 1)
+    objection: >-
+      NO-GO on 5d825fdb96: the size-based ineffective rule compares a cache count that includes shared records and would mark the
+      prune failed on every tick.
+    status: CONFIRMED
+    resolution: >-
+      The lead's live run on Pro refuted the gate's proposed private-bytes rule too (12.53 GB freed, Private 10.16 -> 9.615 GB, still
+      above the 4 GB cap): every size rule was removed, and the prune now fails only on a deprecation notice that names the flag we
+      passed. Gate round 2 and a fresh gate CONFIRMED 67e49b79b1.
+residuals:
+  - "Live proof on Pro is owed to the first prune after merge: the Bites observation above."
+  - "freed_gb is buildx's record-size sum, not disk bytes: live, 12.53 GB 'freed' against about 2-3 GB of VM data disk (39G to 37G used)."
+  - "BuildKit's cap accounting is opaque: after --max-used-space 4GB, 10.29 GB stayed reclaimable on Pro. du_gb records it; no rule judges it, so a cache above budget is never a failure by itself."
+  - "An old daemon (BuildKit before 0.17) ignores max-used-space and -a then empties the cache: a rebuild cost, never a wrong verdict."
+  - "A deprecation notice reworded so that it no longer says deprecated or has been changed to, or no longer names the flag, is not caught; nor is a flag re-meant in place without pflag's MarkDeprecated, or by the daemon."
+  - "An OLD buildx client (help lists only --keep-storage) against a NEW daemon (BuildKit 0.17 or later) sends keep-storage, which the daemon may read as reserved-space: the same no-op as B13, with no notice. Not live on Pro (client 0.34.1)."
+appetite_exceeded: none
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN step B13, from the lead message of 2026-10-10, from origin/main f75a4fee92. Nothing is pushed.
+brief_ref: evidence/brief.yml
