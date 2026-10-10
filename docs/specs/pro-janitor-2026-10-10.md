@@ -41,46 +41,77 @@ entered when free space falls under its entry mark and left only at or above its
 | RED   | 115         | 125               |
 | BLACK | 105         | 112               |
 
-Escalation is immediate; the way down passes each exit mark. GREEN does nothing but read and write the heartbeat.
+Escalation is immediate; the way down passes each exit mark, one band at a time (RED at 132 GB is AMBER until 140). GREEN does
+nothing but read and write the heartbeat. The tier is recomputed after every free-space reading, so a run escalates mid-run when
+space collapses and de-escalates once it recovers; the final tier is what the state, the journal, the heartbeat and the exit code
+carry.
 
 **The allowlist** — the only things this organ removes, safest first; a rule acts when the tier is at or past its own and its
-cooldown has passed; after each action the free space is read again and the run stops once it is at or above the current
-tier's exit mark:
+cooldown has passed; after each action the free space is read again and the run stops once it is at or above the exit mark of the
+tier it acted in. BLACK adds no rule: it runs the lower ones and pages. (`uv cache clean` was dropped: a held uv cache lock is the
+sign of a live uv process, and clean is not safe under it.)
 
 | rule             | tier  | action                                                                                                                                               | cooldown |
 | ---------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `uv-prune`       | AMBER | `uv cache prune` (uv's own in-use check, never `--force`)                                                                                            | 6 h      |
-| `npm-verify`     | AMBER | `npm cache verify` (npm's own garbage collection)                                                                                                    | 24 h     |
+| `uv-prune`       | AMBER | `uv --no-config cache prune --cache-dir ~/.cache/uv` (uv's own in-use check, never `--force`)                                                        | 6 h      |
+| `npm-verify`     | AMBER | `npm cache verify --cache ~/.npm` (npm's own garbage collection; user and global npmrc set to `/dev/null`)                                           | 24 h     |
 | `playwright-old` | RED   | `~/Library/Caches/ms-playwright/<family>-<rev>`: all but the newest rev of each family and all but the revisions Playwright's `.links` registry pins | 24 h     |
-| `uv-clean`       | BLACK | `uv cache clean` (in-use check kept; everything re-downloadable)                                                                                     | 6 h      |
 
-**Playwright's registry pin** (the same logic as Playwright's own GC). `playwright-old` reads `<root>/.links/*`: each file holds
-the path of a playwright-core package dir; a link whose dir is gone is stale and pins nothing; otherwise that dir's `browsers.json`
-pins `name.replace("-", "_") + "-" + revision` for every listed browser and for every value of its `revisionOverrides`. A pinned
-revision is never removed. Fail closed: a missing `.links`, an unreadable link file, or an existing package dir with an unreadable
-or malformed `browsers.json` makes the rule `skipped:link-registry-unreadable` and removes nothing. Why: the rule as first written
-would have deleted browsers pinned by live installs, measured on Pro (3 links pinning chromium-1208/1217/1243, their headless
-shells, ffmpeg-1011, webkit-2359). There is no `puppeteer-old` rule: puppeteer has no registry of which project uses which
-version, and Pro holds one version, so it would gain nothing.
+Tools run with exactly `HOME`, `PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin` and `LANG=C` (never the parent's
+environment, so no `UV_CACHE_DIR`, `XDG_CACHE_HOME` or `npm_config_cache` decoy can redirect them), against a cache dir that is a
+real directory under `$HOME` (no symlink), otherwise `skipped:root-missing-or-symlinked`. Their stdout and stderr go to
+`/dev/null`; the deadline is 300 s per tool (TERM to the process group, 5 s, KILL, reap). A timeout or a failure is an error of
+that rule, and the later rules still run. A grandchild that left the group is not the janitor's to kill.
 
-A directory rule removes an entry only if: the root is a real directory (no symlink) under `$HOME`; the entry is a real
-directory on the root's filesystem, matching the rule's name pattern; nothing below it is a symlink that leaves it, a `.git`,
-or open (`lsof +D` on the root, once; an unreadable probe skips the rule); its youngest mtime is older than 7 days; and it is
-not the newest of its family. Every tool runs under a deadline (TERM, then KILL); a timeout or a failure is an error of that
-rule, and the later rules still run.
+**Playwright's registry pin** (the same logic as Playwright's own GC). `playwright-old` reads `<root>/.links/*`: each file (a
+regular file of at most 64 KiB, opened without following a symlink) holds the absolute path of a playwright-core package dir. A
+dir that does not exist (`FileNotFoundError`) is a stale link and pins nothing; any other stat error skips the rule. Otherwise
+that dir's `browsers.json` (a regular file of at most 1 MiB, a JSON object whose `browsers` is a NON-EMPTY list) must be exactly
+well-formed: every item a dict with `name` matching `[a-z][a-z0-9-]*` and `revision` a string of ASCII digits, and an optional
+`revisionOverrides` a dict of strings to ASCII-digit strings. It pins `name.replace("-", "_") + "-" + revision` for every
+browser and every override value; a pinned revision is never removed. Fail closed: a missing `.links`, an unreadable link, or any
+deviation makes the rule `skipped:link-registry-unreadable` and removes nothing. An EMPTY `.links` directory (no link file at all)
+means no live install, which is Playwright's own GC view, and is accepted. If `<root>/__dirlock` (Playwright's install lock)
+exists the rule is `skipped:install-in-progress`. The pins and the lock are read again immediately before the removal loop: a
+changed pin set is `skipped:registry-changed`, a new lock `skipped:install-in-progress`, and nothing is removed. Why: the rule as
+first written would have deleted browsers pinned by live installs, measured on Pro (3 links pinning chromium-1208/1217/1243,
+their headless shells, ffmpeg-1011, webkit-2359). There is no puppeteer rule: puppeteer has no registry of which project uses
+which version.
 
-**Modes.** Dry-run by default: the run decides and journals what it would do and removes nothing. `PRO_JANITOR_APPLY=true` in
-the plist acts. Kill switch `PRO_JANITOR_ENABLED=false` (heartbeat `disabled`). A second run while one is alive exits
-(`flock`). The node guard exits off Pro.
+A directory rule removes an entry only if: the root is a real directory (no symlink) under `$HOME`; the entry is a real directory
+on the root's filesystem whose name is `<family>-<ASCII digits>` for an allowlisted family (`chromium`,
+`chromium_headless_shell`, `chromium_tip_of_tree`, `firefox`, `firefox_beta`, `webkit`, `ffmpeg`, `winldd`; any other name is
+never a candidate); nothing below it is a symlink that leaves it, a `.git` (any case: APFS folds it), or open; its youngest mtime
+is older than 7 days; it is not pinned; and it is not the newest of its family. "Open" comes from one `lsof -w -F n +D <root>`
+per rule root, capped at 16 MiB, with a canary: the janitor holds `<root>/.pro-janitor-canary-<pid>` open (`O_EXCL|O_NOFOLLOW`,
+removed in a `finally`) and the canary's path must appear in the output, else `error:lsof-incomplete` and nothing is removed (a
+probe that cannot run is `error:lsof-unreadable`). Open files are matched to entries by realpath prefix. Immediately before each
+removal the entry is audited again (real directory, not a symlink, `realpath` unchanged, the root unchanged, same device, no
+`.git`, nothing young, no escaping symlink) and only then `shutil.rmtree`d; each entry is journaled `removed` or `failed` with
+its bytes, and the rule is `done` only if every candidate was removed, else `error:rmtree-partial`.
 
-**Journal** (`~/logs/pro-janitor/journal.jsonl`, one line per tick): ts, mode, free before and after, the previous and the new
-tier, a `transition` field when the tier changed (the lead correlates these with the merger tick's journal), and per rule
-acted on: id, status (`done`, `dry-run`, `skipped:<reason>`, `error:<reason>`), the df delta, and for directory rules the
-removed entries by name (tool cache revisions, never a user path) with their bytes.
+**Modes.** Dry-run by default: the run decides and journals what it would do and removes nothing (the lsof canary is the one
+file it creates, and deletes). `PRO_JANITOR_APPLY=true` in the plist acts. Kill switch `PRO_JANITOR_ENABLED=false` (heartbeat
+`disabled`). The node guard exits off Pro. A second run while one is alive exits: the payload takes `flock` on
+`<state_dir>/lock` and exits 11 without touching state or journal (the wrapper also keeps its pidfile, and writes `warning`,
+never `ok`, when it skips).
 
-**Heartbeat** (`~/.organism/last_seen/pro.janitor.json`): `ok` when the tick ran without a rule error, whatever the tier;
-`warning` on a rule error or at BLACK (the page: free GB, freed GB, "the VM-side trough is localci's"); `disabled` for the
-kill switch or the wrong node.
+**State** (`~/.local/state/nuzantara/pro-janitor/state.json`): the tier and each rule's last-run time, written atomically
+(temp file, fsync, rename). Every number must be finite (a non-finite `PRO_JANITOR_NOW` is a config error, exit 2); cooldown
+stamps more than 60 s in the future are dropped. An existing but invalid `state.json` forces that tick to dry-run (no removal,
+no tool run), journals `state_invalid: true`, exits 10 and rewrites the state valid.
+
+**Journal** (`~/logs/pro-janitor/journal.jsonl`, one line per tick): ts, mode, free before and after, the previous and the final
+tier, a `transition` field when the tier changed (the lead correlates these with the merger tick's journal), `tiers_seen` when
+it changed mid-run, and per rule acted on: id, status (`done`, `dry-run`, `skipped:<reason>`, `error:<reason>`), the df delta,
+and for directory rules the entries by name (tool cache revisions, never a user path) with their bytes and, when applied, their
+`removed`/`failed` state.
+
+**Exit codes and heartbeat** (`~/.organism/last_seen/pro.janitor.json`, written atomically): payload exit 0 is `ok` whatever the
+tier; 10 (a rule error, the final tier BLACK, or an invalid state) and 11 (lock held) are `warning` (BLACK is the page: free GB,
+freed GB, "the VM-side trough is localci's"); anything else is `error`; `disabled` for the kill switch or the wrong node. The
+note is the payload's own `pro_janitor: ...` summary line when it is printable ASCII, otherwise `payload rc=N`; a traceback, and
+the paths in it, never reach the sidecar.
 
 ## Rollout
 

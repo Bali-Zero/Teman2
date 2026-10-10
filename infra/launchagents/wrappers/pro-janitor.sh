@@ -19,10 +19,11 @@ log() { echo "[$(ts)] $*" >> "$LOG"; }
 # G2_heartbeat — sidecar EVERY exit path (Esiste≠Armato: prove life, every run)
 heartbeat() { # $1 status, $2 note
     mkdir -p "$SIDECAR_DIR"
-    local note
-    note="$(printf '%s' "$2" | tr -d '\042\134' | tr '\n\t' '  ')"   # no quote or backslash can break the JSON
+    local note tmp
+    note="$(printf '%s' "$2" | LC_ALL=C tr -d '[:cntrl:]\042\134' | cut -c1-300)"   # no control char, quote or backslash can break the JSON
+    tmp="$SIDECAR_DIR/.$ORGAN_ID.json.$$"
     printf '{"ts":"%s","status":"%s","note":"%s"}\n' \
-        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$note" > "$SIDECAR_DIR/$ORGAN_ID.json"
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$note" > "$tmp" && mv -f "$tmp" "$SIDECAR_DIR/$ORGAN_ID.json"   # atomic: a reader never sees half a line
 }
 
 # G4_node_guard — wrong node exits VISIBLY (heartbeat), never silently (#10)
@@ -40,10 +41,11 @@ if [ "${PRO_JANITOR_ENABLED:-true}" = "false" ]; then
     exit 0
 fi
 
-# G10_single_instance — pidfile + liveness probe + trap cleanup
-if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
-    log "previous run still alive (pid $(cat "$PIDFILE")) — skipping"
-    heartbeat "ok" "skipped: previous run alive"
+# G10_single_instance — pidfile + liveness probe + trap cleanup (the payload also holds a flock)
+OLDPID="$(cat "$PIDFILE" 2>/dev/null)"
+if [ -f "$PIDFILE" ] && [[ "$OLDPID" =~ ^[0-9]+$ ]] && kill -0 "$OLDPID" 2>/dev/null; then
+    log "previous run still alive (pid $OLDPID) — skipping"
+    heartbeat "warning" "skipped: previous run alive"   # never ok unread
     exit 0
 fi
 echo $$ > "$PIDFILE"
@@ -51,15 +53,18 @@ trap 'rm -f "$PIDFILE"' EXIT
 
 # ---- payload (cron one-shot; G8_keepalive_sane: plist uses StartInterval, no KeepAlive)
 log "run start"
-OUT="$(/usr/bin/python3 -I "$HOME/.nuzantara-cron/pro_janitor.py" 2>&1)"
+RAW="$(/usr/bin/python3 -I "$HOME/.nuzantara-cron/pro_janitor.py" 2>&1)"
 RC=$?
-OUT="$(printf '%s' "$OUT" | tail -n 1 | cut -c1-300)"
-log "payload rc=$RC: $OUT"
+# the note is the payload's own summary line and nothing else: a traceback (with its paths) never reaches the sidecar
+OUT="$(printf '%s\n' "$RAW" | LC_ALL=C grep -E '^pro_janitor: [ -~]*$' | tail -n 1 | cut -c1-300)"
+NOTE="${OUT:-payload rc=$RC}"
+log "payload rc=$RC: $NOTE"
 
 case "$RC" in
-    0)  heartbeat "ok" "${OUT:-run done}" ;;
-    10) heartbeat "warning" "${OUT:-rule error or BLACK tier}" ;;   # a rule error, or BLACK: the VM-side trough is localci's
-    *)  heartbeat "error" "rc=$RC ${OUT}" ;;   # G9: failure is VISIBLE in the sidecar too
+    0)  heartbeat "ok" "$NOTE" ;;
+    10) heartbeat "warning" "$NOTE" ;;   # a rule error, BLACK or an invalid state: the VM-side trough is localci's
+    11) heartbeat "warning" "skipped: previous run alive" ;;   # the payload's flock is held
+    *)  heartbeat "error" "$NOTE" ;;   # G9: failure is VISIBLE in the sidecar too
 esac
 log "run done rc=$RC"
 exit 0

@@ -29,7 +29,7 @@
       "live": "~/.nuzantara-cron/pro_janitor.py",
       "repo": "scripts/ops/pro_janitor.py",
       "machines": ["pro"],
-      "_note": "The payload of pro.janitor: tiers with hysteresis and a four-rule host-cache allowlist, dry-run until PRO_JANITOR_APPLY=true. Python 3.9, stdlib only."
+      "_note": "The payload of pro.janitor: tiers with hysteresis and a three-rule host-cache allowlist (Playwright .links pins honoured), dry-run until PRO_JANITOR_APPLY=true. Python 3.9, stdlib only."
     },
     {
       "live": "~/Library/LaunchAgents/com.nuzantara.janitor.plist",
