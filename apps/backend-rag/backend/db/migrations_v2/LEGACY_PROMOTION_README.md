@@ -23,25 +23,49 @@ script issues. They are intentionally **idempotent** (`CREATE TABLE IF
 NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `DROP NOT NULL`, `SET DEFAULT`)
 so they can land in `migrations_v2/` without breaking either:
 
-* **Prod**, where the tables and columns already exist (every statement
+- **Prod**, where the tables and columns already exist (every statement
   becomes a no-op);
-* **Bootstrap-built CI**, where the bootstrap script will create the
+- **Bootstrap-built CI**, where the bootstrap script will create the
   same tables a few seconds before `python -m backend.db.migrate
-  apply-all` runs — the migration finds them already in place and
+apply-all` runs — the migration finds them already in place and
   records itself as applied.
 
 ## Mapping bootstrap → SQL
 
-| Bootstrap (`ci_bootstrap_schema.py`) | Migration |
-|--------------------------------------|-----------|
-| `CREATE TABLE IF NOT EXISTS user_profiles ...`  | `142_legacy_user_profiles.sql` (was `129_*` until P0-7 renumber on 2026-04-29) |
-| `CREATE TABLE IF NOT EXISTS conversations ...`  | `143_legacy_conversations.sql` (was `130_*` until P0-7 renumber on 2026-04-29) |
-| `CREATE TABLE IF NOT EXISTS lkpm_reports ...` + 18 ALTER + company_id | `132_legacy_lkpm_reports.sql` |
-| `CREATE TABLE IF NOT EXISTS system_settings ...` | `133_legacy_system_settings.sql` |
-| `CREATE TABLE IF NOT EXISTS notification_log ...` + index | `134_legacy_notification_log.sql` |
-| `CREATE TABLE IF NOT EXISTS notification_prefs ...` | `135_legacy_notification_prefs.sql` |
-| `clients` ADD COLUMN drive_* / deleted_at + timestamp defaults | `136_clients_drive_columns_and_defaults.sql` |
-| `team_members` ADD COLUMN name + nullable + defaults | `137_team_members_legacy_columns_and_defaults.sql` |
+| Bootstrap (`ci_bootstrap_schema.py`)                                  | Migration                                                                      |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `CREATE TABLE IF NOT EXISTS user_profiles ...`                        | `142_legacy_user_profiles.sql` (was `129_*` until P0-7 renumber on 2026-04-29) |
+| `CREATE TABLE IF NOT EXISTS conversations ...`                        | `143_legacy_conversations.sql` (was `130_*` until P0-7 renumber on 2026-04-29) |
+| `CREATE TABLE IF NOT EXISTS lkpm_reports ...` + 18 ALTER + company_id | `132_legacy_lkpm_reports.sql`                                                  |
+| `CREATE TABLE IF NOT EXISTS system_settings ...`                      | `133_legacy_system_settings.sql`                                               |
+| `CREATE TABLE IF NOT EXISTS notification_log ...` + index             | `134_legacy_notification_log.sql`                                              |
+| `CREATE TABLE IF NOT EXISTS notification_prefs ...`                   | `135_legacy_notification_prefs.sql`                                            |
+| `clients` ADD COLUMN drive_* / deleted_at + timestamp defaults        | `136_clients_drive_columns_and_defaults.sql`                                   |
+| `team_members` ADD COLUMN name + nullable + defaults                  | `137_team_members_legacy_columns_and_defaults.sql`                             |
+
+### Addendum (2026-10-05): the third `DROP NOT NULL` family
+
+The bootstrap script carries one more `DROP NOT NULL` that the original
+batch did not promote: `ALTER TABLE practices ALTER COLUMN
+practice_type_id DROP NOT NULL` (`ci_bootstrap_schema.py`, practices
+block). It now has its migration counterpart:
+`324_practices_practice_type_id_nullable.sql`.
+
+Unlike the 129–137 batch (prod shape accepted on the README's word),
+this one's prod claim was **measured before the file was written**:
+read-only `information_schema.columns` query against the production
+leader on 2026-10-05 returned `is_nullable = 'YES'` for
+`practices.practice_type_id`. The bootstrap mirrors prod; the migration
+records that fact, and
+`test_legacy_promotion_migrations.py::LEGACY_PROMOTION_FILES` now covers
+it like the rest of the batch.
+
+Two deliberate divergences remain documented in the migration header:
+the SQLModel CRM model still declares the column `nullable=False`
+(same class as `team_members.full_name`), and the CRM INNER-JOINs
+practice_types, so a NULL-typed practice is invisible in the product —
+migration 311's placeholder row exists precisely so the no-type inquiry
+path never relies on this column being NULL.
 
 The bootstrap script also imports the `class table=True` SQLModel
 classes and calls `SQLModel.metadata.create_all()`; that mechanism
@@ -63,8 +87,8 @@ PR #253).
 Once these migrations are merged and applied:
 
 1. Add `SCHEMA_AUDIT_REQUIRED_TABLES=clients,team_members,user_profiles,
-   conversations,lkpm_reports,system_settings,notification_log,
-   notification_prefs` to the CI env and run
+conversations,lkpm_reports,system_settings,notification_log,
+notification_prefs` to the CI env and run
    `python -m backend.db.schema_audit` after `apply-all` to verify the
    migrations actually produced the expected shape.
 2. Drop the `Bootstrap SQLModel tables` step from
@@ -79,16 +103,16 @@ sequencing strategy 01 Step 4 calls for.
 
 ## What these migrations do NOT do
 
-* **No prod data migration.** Every table they touch already exists in
+- **No prod data migration.** Every table they touch already exists in
   prod; the migrations only record that fact. No `INSERT`, no `UPDATE`,
   no data movement.
-* **No NOT NULL promotion.** Several lkpm_reports and team_members
+- **No NOT NULL promotion.** Several lkpm_reports and team_members
   columns are nullable in prod by historical accident; the test suite
   (`test_legacy_promotion_migrations.py::test_alter_column_does_not_promote_to_not_null`)
   guards against re-introducing NOT NULL on columns that legitimately
   store NULL today. If we want to tighten any of these, that's a
   separate migration with a backfill.
-* **No Alembic.** The backend uses the v2 SQL runner
+- **No Alembic.** The backend uses the v2 SQL runner
   (`backend/db/migration_manager.py`); see `VADEMECUM.md §7`.
 
 ## Reference
