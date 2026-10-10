@@ -53,108 +53,199 @@ struct KBLIRegistryView: View {
         .background(Theme.antracite)
     }
 
-    private var content: some View {
-        // Wider macro-block spacing (26→32) so the stack of plates groups into "chapters" (C5).
-        VStack(alignment: .leading, spacing: 32) {
-            // VERDICT-FIRST order (D2, 2026-08-11 — Zero's D2 plan approval, mock showed
-            // verdict-on-top): this SUPERSEDES the 2026-06-30 "verdict moved down after related
-            // codes" ruling recorded on the two lines below. The binding answer now leads, followed
-            // immediately by a 4-up facts inspector (Bali verdict / risk class / national cap /
-            // renumber), THEN the supporting exception pills — heroPlate still opens the card.
-            if showsIdentityAndVerdict {
-                heroPlate
-                verdictBanner.padding(.horizontal, PAD)
-                factsRow.padding(.horizontal, PAD)
+    @ViewBuilder private var content: some View {
+        if showsIdentityAndVerdict {
+            // §4: the full ledger holds from 1040 pt (120 + 360 + 400 + two 40 gutters + 80 padding).
+            // ViewThatFits reads ideal widths, and unwrapped text has none worth reading: the wide page
+            // states its own (the §4 threshold) so the choice is the pane width against 1040.
+            ViewThatFits(in: .horizontal) {
+                page(wide: true).frame(minWidth: Self.fullFrom, idealWidth: Self.fullFrom, maxWidth: .infinity)
+                page(wide: false)
             }
-            pillStrip.padding(.horizontal, PAD)       // carries the No-PMA tags (the exception flags)
-            description.padding(.horizontal, PAD)
-            licensing.padding(.horizontal, PAD)
-            // Gold-Tier "Bali context — reality check" intentionally NOT rendered in the app
-            // (Zero 2026-06-30): too Bali-centric for the national/KBLI-first surface. The prose
-            // stays in kbli-overlay.json `baliContext` for the WEBSITE. baliIntelTeaser / baliIntel
-            // view-builders are kept defined but no longer mounted here.
-            pp28.padding(.horizontal, PAD)
-            roadmap.padding(.horizontal, PAD)
-            referenceDrawer.padding(.horizontal, PAD)
-            relatedGrid.padding(.horizontal, PAD)
-            authorityPlate.padding(.horizontal, PAD)  // Legal Basis → bottom (Zero 2026-06-30, unchanged)
-            // BKPM variant strips every link/connection to balizero.com (Zero's ruling) — this
-            // plate is the sole one in the app that opens one (readGuide's onTapGesture below).
-            if AppVariant.current.showsExternalLinks {
-                readGuide.padding(.horizontal, PAD)
+        } else {
+            // Embedded under `RegistryVerdictSheet` (its only caller until the route lands, §3.7):
+            // the sheet states identity and verdict, so the card keeps the plain column.
+            VStack(alignment: .leading, spacing: 32) {
+                sections.padding(.horizontal, PAD)
+                footer(leading: PAD)
             }
-            footer            // its own full-width warmer inset, no horizontal pad
+            .frame(maxWidth: WIDTH, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
-        .frame(maxWidth: WIDTH, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .center)
     }
 
+    private static let fullFrom: CGFloat = 1040
     private let WIDTH: CGFloat = 760
     private let PAD: CGFloat = 28
 
-    // MARK: 1 · HERO PLATE — big code + title (photo band removed — D1, 2026-08-11, Zero)
-    private var heroPlate: some View {
-        // D4c (2026-08-11): a near-watermark guilloché wash behind the big numeral — "carta
-        // filigranata, mai un pattern" (Zero). Scoped to the hero block only (`.clipped()`, no
-        // fixed height beyond a generous estimate of the text stack below it) — never the whole
-        // card. Uses `GuillocheBand` (D4Decor.swift) at `decorHeroWashAlpha`, deliberately BELOW
-        // the D4 ambient tier per spec.
-        ZStack(alignment: .topLeading) {
-            GuillocheField(height: 150, alpha: Theme.decorFieldAlpha, rows: 16)
-            // D4d.2 (2026-08-11): evolved from the small corner `WatermarkSeal` to the FULL
-            // archipelago (Sumatra→Papua, `ArchipelagoConstellation` — D4Decor.swift), per
-            // Zero's follow-up on the picked B direction. `showArc: false` — a judgment call,
-            // not spec'd either way: the hero is already carrying the big code numeral + two
-            // title lines, and the golden-arc's dome (it dips a further ~28% of its own height
-            // below frame) felt like one flourish too many stacked behind that much text; flip
-            // to `true` in one edit if the reviewer wants it. `Theme.decorFocalAlpha` and
-            // `Theme.decor` are already what `ArchipelagoConstellation` uses internally (it
-            // exposes no `alpha`/`tint` params to override — see Task 1 report), so no extra
-            // opacity/tint modifier is added here. Sized to WIDTH*0.45 (WIDTH=760 → 342pt,
-            // inside the requested 40-50% band) via a fixed frame rather than wrapping heroPlate
-            // in a GeometryReader — WIDTH is already the known, constant width this ZStack is
-            // always laid out at (content's `.frame(maxWidth: WIDTH...)`, heroPlate itself carries
-            // no horizontal .padding), so a GeometryReader would only reintroduce indirection for
-            // a value already in scope. Kept BEFORE the title VStack below in ZStack's child
-            // list (same slot the old WatermarkSeal held) — SwiftUI draws ZStack children
-            // back-to-front in declaration order, so it is unconditionally behind the title text
-            // no matter how long the title runs; no "hide if title is long" branch needed.
-            // D4d ship (2026-08-11, Zero's B2 sign-off): unconditional — no more A/B/C switch.
-            ArchipelagoConstellation(showArc: false, height: 150)
-                .frame(width: WIDTH * 0.45)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-            VStack(alignment: .leading, spacing: 0) {
-                // title block on paper (NOT overlaid on photo — the key "elegante e sobrio" decision)
-                VStack(alignment: .leading, spacing: 5) {
-                    // BIG code lockup — the dominant registry identifier (Zero: "KBLI 55203 lo voglio grande").
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Text("KBLI")
-                            .font(Theme.scalable(17, weight: .semibold, design: .monospaced))
-                            .tracking(1.0)
-                            .foregroundStyle(Theme.muted)
-                        Text(kbli.kode)
-                            .font(Theme.scalable(46, weight: .bold, design: .monospaced))
-                            .foregroundStyle(Theme.accent)
+    /// §3.5: the top grid, then everything that was below the hero, in the middle+right span.
+    private func page(wide: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 32) {
+            topGrid(wide: wide).padding(.top, 24).padding(.leading, 32).padding(.trailing, 48)
+            VStack(alignment: .leading, spacing: 32) {
+                factsRow   // Z-7: the stat cards stay, below the fold
+                sections
+            }
+            .padding(.leading, wide ? 32 + 120 + 40 : 32).padding(.trailing, 48)
+            footer(leading: wide ? 32 + 120 + 40 : 32)
+        }
+    }
+
+    /// pillStrip … footer keep their content (§3.5 "below the fold"); the footer is laid out by the caller.
+    private var sections: some View {
+        VStack(alignment: .leading, spacing: 32) {
+            pillStrip                 // carries the No-PMA tags (the exception flags)
+            description
+            licensing
+            // Gold-Tier "Bali context — reality check" intentionally NOT rendered in the app
+            // (Zero 2026-06-30): the prose stays in kbli-overlay.json `baliContext` for the website.
+            pp28
+            roadmap
+            referenceDrawer
+            relatedGrid
+            authorityPlate            // Legal Basis → bottom (Zero 2026-06-30, unchanged)
+            // BKPM variant strips every link to balizero.com (Zero's ruling): readGuide opens one.
+            if AppVariant.current.showsExternalLinks { readGuide }
+        }
+    }
+
+    // MARK: 1 · TOP GRID (§3.5, set A "ledger with gutter mark")
+    //
+    // Columns 120 · flexible · 400, gutter 40. Column 1 is the PadiLadder, its ground line sharing the
+    // matrix's last rule (D11). Column 2: code, titles, the risk × scale matrix (D1), the heads-up
+    // block (D2). Column 3: the verdict stack (D3) — national figure first, Bali a labelled second
+    // layer with its reason (D4). Then the basis across all three columns (D4, 4 BalancedColumns).
+    // Below 1040 pt the ladder becomes a PadiLine above the title and the stack follows the rows (§4).
+    private func topGrid(wide: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 32) {
+            if wide {
+                HStack(alignment: .top, spacing: 40) {
+                    VStack(alignment: .leading, spacing: 24) {
+                        Grid(alignment: .topLeading, horizontalSpacing: 40, verticalSpacing: 24) {
+                            GridRow { Color.clear.frame(width: 120, height: 0); identity }
+                            GridRow(alignment: .bottom) {
+                                // The ladder hangs from the row's bottom edge, so its ground line (y 326
+                                // of 330) sits on the matrix's last 1 pt rule and it rises above a short table.
+                                Color.clear.frame(width: 120, height: 1)
+                                    .overlay(alignment: .bottom) { PadiLadder().offset(y: 3.5) }
+                                matrix
+                            }
+                        }
+                        headsUp.padding(.leading, 120 + 40)
                     }
-                    Text(primaryTitle)
-                        .font(Theme.scalable(34, weight: .semibold, design: .serif))
-                        .foregroundStyle(Theme.white)
-                        .accessibilityAddTraits(.isHeader)   // D3b — the card's own top-level title
-                    // Secondary line = the OTHER language's title (EN shows the Bahasa name and
-                    // vice-versa), so the bilingual pairing is always visible without duplicating.
-                    Text(secondaryTitle)
-                        .font(Theme.scalable(17, weight: .regular, design: .serif)).italic()
-                        .foregroundStyle(Theme.muted)
-                    Text(sectorLine)
-                        .font(Theme.scalable(11, weight: .medium, design: .monospaced))
-                        .tracking(0.6)
-                        .foregroundStyle(Theme.faint)
-                        .padding(.top, 3)
+                    verdictStack.frame(width: 400)
                 }
-                .padding(.horizontal, PAD).padding(.top, 16)
+            } else {
+                VStack(alignment: .leading, spacing: 24) {
+                    PadiLine(width: 240)
+                    identity
+                    matrix
+                    headsUp
+                    verdictStack
+                }
+            }
+            basisRow(columns: wide ? 4 : 2)
+        }
+    }
+
+    private var identity: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("KBLI \(kbli.kode)").font(Theme.scalable(11, weight: .semibold)).tracking(0.88)
+                .foregroundStyle(Theme.muted)
+            Text(LabelBook.title(kbli, isID: isID)).font(Theme.title(27)).foregroundStyle(Theme.white)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)   // D3b — the card's own top-level title
+            VStack(alignment: .leading, spacing: 2) {
+                // Q12 ruling 3: under an English title the official Indonesian one says what it is.
+                if !isID {
+                    Text(LabelBook.officialTitleLabel).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
+                }
+                Text(isID ? secondaryTitle : LabelBook.officialTitle(kbli))
+                    .font(Theme.scalable(15)).foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Text(sectorLine).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
+        }
+    }
+
+    private var matrix: some View {
+        ScaleMatrix(scales: kbli.perSkala, isID: isID, mode: .ledger, tr: { overlays.dataString($0, isID: isID) })
+    }
+
+    private var headsUp: some View { HeadsUpBlock(KBLIVerdict.headsUp(record: kbli, isID: isID)) }
+
+    /// D3: `detail.national` → status chip → cap → rule → `detail.bali` → Bali chip → reason.
+    private var verdictStack: some View {
+        let v = KBLIVerdict.of(record: kbli)
+        let tone = Theme.chip(Theme.tone(kbli.pmaStatus ?? ""))
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(lang.t("detail.national")).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(Theme.muted)
+            chip(LabelBook.pmaStatus(kbli.pmaStatus, isID: isID), tone)
+            // The canonical `pma_max_asing` (the search peak's rule): "—" only when the record has none.
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(kbli.pmaMaxAsing.map { "\($0)%" } ?? "—").font(Theme.display(64)).monospacedDigit()
+                    .foregroundStyle(Theme.white)
+                Text(lang.t("rich.fact.pma")).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
+            }
+            Rectangle().fill(Theme.lineSoft).frame(height: 1).padding(.vertical, 8)
+            Text(lang.t("detail.bali")).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(Theme.muted)
+            let bali = VerdictBadge(state: baliState(v), isID: isID)
+            chip(bali.text, Theme.chip(baliState(v) == .open ? .open : baliState(v) == .blocked ? .closed : .neutral))
+                .accessibilityLabel(bali.voiceOverLabel)
+            if let reason = verdictSubtitle(v) {
+                LeadBody(text: LabelBook.humanise(reason, record: kbli, isID: isID), kind: .reason).padding(.top, 4)
+            }
+            if baliState(v) == .undetermined {
+                Text(isID
+                     ? "Tidak ada verdikt yang dapat dinyatakan dari catatan ini — jangan diperlakukan sebagai terbuka maupun tertutup."
+                     : "No verdict can be stated from these records — do not read this as open or as closed.")
+                    .font(Theme.scalable(13)).lineSpacing(Theme.leading(13, 20)).foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            // D12: confidence is metadata under the answer, with no separator left dangling.
+            if let c = confidenceLabel(kbli.l4Bali?.confidence) {
+                Text(c).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
             }
         }
-        .clipped()
+        .padding(24)
+        .frame(minHeight: 200, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.inkLift, in: RoundedRectangle(cornerRadius: 2))
+        .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(Theme.lineSoft, lineWidth: 1))
+    }
+
+    private func chip(_ word: String, _ c: (fg: Color, bg: Color)) -> some View {
+        Text(word).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(c.fg)
+            .padding(.vertical, 4).padding(.horizontal, 8)
+            .background(c.bg, in: RoundedRectangle(cornerRadius: 2))
+    }
+
+    /// The Bali axis alone (D14): the chip under `detail.bali` never states the national position.
+    private func baliState(_ v: KBLIVerdict) -> VerdictBadge.State {
+        switch v.bali {
+        case .open: return .open
+        case .blocked: return .blocked
+        case .undetermined: return .undetermined
+        }
+    }
+
+    /// The legal basis across the three columns (§3.5 full-width row, D4): citation lead, then the body
+    /// in BalancedColumns. In English an Indonesian basis is the labelled original (Q12 ruling 4).
+    @ViewBuilder private func basisRow(columns: Int) -> some View {
+        if let basis = kbli.pmaOfficialBasis, !basis.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Rectangle().fill(Theme.structure).frame(height: 2)
+                Text(isID ? "Dasar Hukum" : "Legal Basis").font(Theme.scalable(11, weight: .semibold)).tracking(0.88)
+                    .foregroundStyle(Theme.muted)
+                // Q12 ruling 4, judged on the whole text: 695 of the 722 bases are English analysis quoting
+                // the statute in «…», and their opening clause is a citation with no function word in it, so
+                // LabelBook's opening-clause rule is read over the text with its clause marks blanked.
+                if !isID && !LabelBook.isEnglish(String(basis.map { "(;—".contains($0) ? " " : $0 })) {
+                    Text("Original (Bahasa Indonesia)").font(Theme.scalable(11)).foregroundStyle(Theme.muted)
+                }
+                LeadBody(text: basis, kind: .basis, columns: columns, gutter: 32)
+            }
+        }
     }
 
     private var sectorLine: String {
@@ -199,8 +290,7 @@ struct KBLIRegistryView: View {
     }
 
     private var verdictPills: [PillSpec] {
-        // The full Bali verdict now lives in `verdictBanner` (moved UP, ahead of the facts row and
-        // related codes — D2, 2026-08-11, superseding the 2026-06-30 "moved down" ruling). The
+        // The full Bali verdict lives in the top grid's verdict stack (§3.5, D3). The
         // pills are SUPPORTING EVIDENCE: the PMA restriction TAGS (the exceptions) + national
         // reference / risk / renumber. A KBLI is open by default; the tags flag who is restricted.
         var out: [PillSpec] = []
@@ -250,73 +340,6 @@ struct KBLIRegistryView: View {
         return out
     }
 
-    // MARK: 1b · VERDICT BANNER (C1) — the binding answer, full-width, before the supporting pills.
-    //
-    // K2 2026-09-13: this banner now CONSUMES `KBLIVerdict` instead of re-deriving a verdict from
-    // the raw fields. It used to compute `let blocked = l4.blocked || nationallyClosed` locally,
-    // which is binary: everything not provably closed fell into the else branch and printed "In
-    // Bali: open to a PT PMA" — including the records whose Bali applicability the dataset says
-    // it cannot classify, and including records with no `l4_bali` block at all, for which the
-    // banner simply rendered NOTHING. The rule lives in one file; this view states it.
-    @ViewBuilder private var verdictBanner: some View {
-        let v = KBLIVerdict.of(record: kbli)
-        let undetermined: Bool = {
-            switch v.headline {
-            case .nationalUndetermined, .baliUndetermined: return true
-            default: return false
-            }
-        }()
-        let closed: Bool = {
-            switch v.headline {
-            case .nationallyClosed, .baliBlocked: return true
-            default: return false
-            }
-        }()
-        let color: Color = undetermined ? Theme.faint : (closed ? Theme.pmaClosed : Theme.pmaOpen)
-        let icon = undetermined ? "questionmark.diamond"
-                                : (closed ? "xmark.octagon.fill" : "checkmark.seal.fill")
-        HStack(alignment: .top, spacing: 12) {
-            // D3b: decorative — redundant with the headline text right next to it (the state is
-            // stated in words, not implied by the glyph), so it is hidden from VoiceOver rather
-            // than announced by its raw SF Symbol name.
-            Image(systemName: icon).font(Theme.scalable(20, weight: .semibold)).foregroundStyle(color)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(isID ? "PUTUSAN BALI" : "BALI VERDICT")
-                    .font(Theme.scalable(10, weight: .heavy, design: .monospaced)).tracking(0.8)
-                    .foregroundStyle(color)
-                Text(verdictHeadlineText(v))
-                    .font(Theme.scalable(19, weight: .semibold, design: .serif))
-                    .foregroundStyle(Theme.white).fixedSize(horizontal: false, vertical: true)
-                if let subtitle = verdictSubtitle(v) {
-                    Text(subtitle)
-                        .font(Theme.scalable(12)).foregroundStyle(Theme.muted).lineSpacing(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if undetermined {
-                    Text(isID
-                         ? "Tidak ada verdikt yang dapat dinyatakan dari catatan ini — jangan diperlakukan sebagai terbuka maupun tertutup."
-                         : "No verdict can be stated from these records — do not read this as open or as closed.")
-                        .font(Theme.scalable(12)).foregroundStyle(Theme.muted).lineSpacing(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                // confidence demoted to metadata UNDER the answer, not inside it.
-                if let c = confidenceLabel(kbli.l4Bali?.confidence) {
-                    Text("· \(c)").font(Theme.scalable(11, weight: .medium, design: .monospaced))
-                        .foregroundStyle(Theme.faint)
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(color.opacity(undetermined ? 0.05 : 0.08), in: RoundedRectangle(cornerRadius: Theme.radiusMd, style: .continuous))
-        .overlay(alignment: .leading) { RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 4).padding(.vertical, 12) }
-        .overlay(RoundedRectangle(cornerRadius: Theme.radiusMd).strokeBorder(color.opacity(0.25), lineWidth: 1))
-        // D3b: one VoiceOver stop for the whole banner instead of 3-4 separate swipes.
-        .accessibilityElement(children: .combine)
-    }
-
     /// `KBLIVerdict` is language-free by design: its reasons are English strings meant for a
     /// machine-readable package. Concatenating one into an Indonesian sentence produced
     /// half-translated prose on a regulator-facing card (council round 3, codex-gpt-5.6-sol), so
@@ -331,31 +354,6 @@ struct KBLIRegistryView: View {
     private func quotedRuleReason(_ r: String?) -> String? {
         guard let r, r.isEmpty == false else { return nil }
         return isID ? "Kutipan aturan (EN): \(r)" : r
-    }
-
-    private func verdictHeadlineText(_ v: KBLIVerdict) -> String {
-        switch v.headline {
-        case .nationallyClosed:
-            // The route clause is stated ONLY when the record carries one. The rule emits this
-            // same headline for a bare TERTUTUP and for any 0% cap, neither of which necessarily
-            // has a private sibling to route to (council round 2, codex-gpt-5.6-sol).
-            if let route = kbli.pmaRouteTo, route.isEmpty == false {
-                return isID ? "Tertutup untuk PMA (nasional) — alihkan ke kode \(route)"
-                            : "Closed to PMA (national) — route to code \(route)"
-            }
-            return isID ? "Tertutup untuk PMA (nasional)" : "Closed to PMA (national)"
-        case .baliBlocked:
-            return isID ? "Di Bali: PT PMA tidak dapat mendaftarkan kode ini"
-                        : "In Bali: a PT PMA cannot register this code"
-        case .nationalUndetermined:
-            return isID ? "Posisi nasional tidak dapat ditentukan dari data yang ada"
-                        : "The national position is not determined by the available records"
-        case .baliUndetermined:
-            return isID ? "Penerapan di Bali tidak dapat ditentukan dari data yang ada"
-                        : "Bali applicability is not determined by the available records"
-        case .openInBali:
-            return isID ? "Di Bali: terbuka untuk PT PMA" : "In Bali: open to a PT PMA"
-        }
     }
 
     /// The explaining sentence under the headline. Order matters and is unchanged from D2.1: the
@@ -398,7 +396,7 @@ struct KBLIRegistryView: View {
                 // contradicting the open headline. Show the truthful caveat.
                 return isID
                     ? "Terbuka untuk PT PMA, tetapi tergantung scope: beberapa scope berisiko lebih tinggi pada skala Besar — daftarkan dengan memilih scope berisiko lebih tinggi."
-                    : "Open to a PT PMA, but scope-dependent: some scopes carry a higher OSS risk class at Besar scale — register by declaring the higher-risk scope."
+                    : "Open to a PT PMA, but scope-dependent: some scopes carry a higher OSS risk class at the Large scale — register by declaring the higher-risk scope."
             }
             if let cond = v.nationalCondition, cond.isEmpty == false {
                 return isID ? "Terbuka dengan syarat khusus: \(cond)" : "Open with a special condition: \(cond)"
@@ -551,10 +549,8 @@ struct KBLIRegistryView: View {
     private var description: some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionLabel(rail: Theme.muted, text: isID ? "Deskripsi" : "Description")
-            Text(ovStrict?.meaning ?? overlays.dataString(kbli.uraian, isID: isID))
-                .font(Theme.scalable(15, weight: .regular))
-                .foregroundStyle(Theme.white)
-                .lineSpacing(5)
+            // D9: the dataset's own "- " lists hang (the curated meaning, when there is one, is prose).
+            UraianLines(text: ovStrict?.meaning ?? LabelBook.uraian(kbli, isID: isID))
                 .frame(maxWidth: 640, alignment: .leading)
         }
     }
@@ -1008,21 +1004,13 @@ struct KBLIRegistryView: View {
     }
 
     // MARK: 12 · ZANTARA — footer (warmer ivory inset). Pricing block removed (2026-06-24, Zero).
-    private var footer: some View {
+    private func footer(leading: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            // D4c.1 (2026-08-11, Zero: "non le vedo"): alpha raised from `decorAmbientAlpha * 0.6`
-            // (~.06 night / .096 day — invisible in a pixel-verified snapshot) to `decorFocalAlpha`
-            // directly, plus a touch more amplitude — a 15pt-tall strip needs MORE presence than a
-            // large wash to read at all, not less. Chrome, not probative content (verdicts/tables/
-            // citations stay nude per the D4/D4c guardrail).
-            // D4d (2026-08-11): swapped for the dense `GuillocheField` — density over amplitude.
-            GuillocheField(height: 15, alpha: Theme.decorFieldAlpha, rows: 5)
             SectionLabel(rail: Theme.zantara, text: isID ? "Tanya Zantara" : "Ask Zantara")
             chatFooter
         }
-        .padding(.horizontal, PAD).padding(.vertical, 22)
-        .frame(maxWidth: WIDTH, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.leading, leading).padding(.trailing, 48).padding(.vertical, 22)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surfaceHi)
     }
 
@@ -1163,13 +1151,13 @@ struct FactCell: View {
             Text(value)
                 .font(Theme.scalable(15, weight: .semibold))
                 .foregroundStyle(color)
-                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .fixedSize(horizontal: false, vertical: true)
             if let caption {
                 Text(caption)
                     .font(Theme.scalable(9, weight: .medium))
                     .foregroundStyle(Theme.faint)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -1260,7 +1248,8 @@ struct RegistryDisclosure<Content: View>: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(label).font(Theme.scalable(11, weight: .bold, design: .monospaced)).tracking(0.6).foregroundStyle(Theme.muted)
                         if let p = preview, !open {
-                            Text(p).font(Theme.scalable(11)).foregroundStyle(Theme.faint).lineLimit(1)
+                            Text(p).font(Theme.scalable(11)).foregroundStyle(Theme.faint)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     Spacer(minLength: 0)
@@ -1311,7 +1300,6 @@ struct PP28ScalePanel: View {
     /// Translate a dataset (Indonesian) string to the current language (EN → English, ID → unchanged).
     /// Bound to OverlayStore.dataString so scope names / obligations / requirements aren't macaronic.
     var tr: (String) -> String = { $0 }
-    @State private var sel: Int = 0          // selected row index into `scales` (single-scope tab path)
     @State private var matrixSel: Int? = nil // selected cell = index into `scales` (matrix path)
 
     static let scaleOrder = ["Mikro", "Kecil", "Menengah", "Besar"]
@@ -1370,325 +1358,38 @@ struct PP28ScalePanel: View {
     /// Distinct OSS scopes (ruang lingkup) in first-seen order — now keyed by description so
     /// identical-label splits collapse. A code like 56101 still has TWO ("Restoran" / "Warung").
     private var scopeIndices: [String] { scopeKeys }
-    /// Scale columns actually present, in canonical order, plus any unknown scales appended.
-    private var columns: [String] {
-        let present = Set(scales.flatMap { $0.skalaUsaha })
-        let canon = Self.scaleOrder.filter { present.contains($0) }
-        let extra = present.subtracting(Self.scaleOrder).sorted()
-        return canon + extra
-    }
-    /// Short, human label for a collapsed scope key. The raw OSS `uraian` is frequently a noisy
-    /// dump — "Kode subklasifikasi: IG002 Kelompok ini mencakup…" (a paragraph), or near-identical
-    /// PMSE regulatory boilerplate. `cleanScopeLabel` distils a readable head; then we resolve any
-    /// COLLISION against sibling scopes in the same code (49 codes have two scopes whose distilled
-    /// heads clip identically — e.g. "Pemanfaatan jasa lingkungan energi/air/panas…" or
-    /// "Perpanjangan/Peningkatan IUP Tahap Operasi…"). A regulator must be able to tell them apart.
-    private func scopeName(_ key: String) -> String {
-        let p = scopeNameParts(key)
-        return p.disc.map { "\(p.base) · \($0)" } ?? p.base
-    }
-    /// The distilled scope label split into (base, discriminator?). The discriminator is the
-    /// distinguishing token added when the base collides with a sibling. Returning it SEPARATELY lets
-    /// the narrow matrix column render it on its own guaranteed-visible line — appending it to the
-    /// tail let a 132pt clip eat it, so long-base rows (e.g. "Pengecer Minuman Beralkohol") collided
-    /// visually even though scopeName() was unique (round-3 audit finding).
-    private func scopeNameParts(_ key: String) -> (base: String, disc: String?) {
-        let ord = (scopeKeys.firstIndex(of: key) ?? 0) + 1
-        // Translate the source uraian to the display language BEFORE distilling, so EN shows English
-        // scope names (collapse key stays on the raw ID so grouping is language-stable).
-        let u = tr(rows(forKey: key).first?.row.scopeUraian ?? "")
-        let base = Self.cleanScopeLabel(u, ordinal: ord, isID: isID)
-        let siblings = scopeKeys.filter { $0 != key }.map { k -> String in
-            let o = (scopeKeys.firstIndex(of: k) ?? 0) + 1
-            let su = tr(rows(forKey: k).first?.row.scopeUraian ?? "")
-            return Self.cleanScopeLabel(su, ordinal: o, isID: isID)
-        }
-        guard siblings.contains(base) else { return (base, nil) }
-        // Collision → disambiguate ONLY against the scopes that distil to the SAME base.
-        let colliders = scopeKeys.filter { $0 != key }.compactMap { k -> String? in
-            let o = (scopeKeys.firstIndex(of: k) ?? 0) + 1
-            let su = tr(rows(forKey: k).first?.row.scopeUraian ?? "")
-            return Self.cleanScopeLabel(su, ordinal: o, isID: isID) == base ? su : nil
-        }
-        if let disc = Self.distinguishingToken(of: u, against: colliders), !disc.isEmpty {
-            return (base, disc)
-        }
-        return (base, "\(isID ? "Lingkup" : "Scope") \(ord)")
-    }
-    /// The first word/short-phrase in `target` that does NOT appear in the shared prefix common to
-    /// `others` — i.e. the token that makes this scope distinct. Returns up to ~3 words, title-trimmed.
-    static func distinguishingToken(of target: String, against others: [String]) -> String? {
-        let t = stripHTML(target)
-        let tw = t.split(separator: " ").map(String.init)
-        guard !tw.isEmpty else { return nil }
-        let othersW = others.map { stripHTML($0).split(separator: " ").map(String.init) }
-        // walk word positions; the distinguishing token is the first where target diverges from ALL others
-        for i in tw.indices {
-            let word = tw[i]
-            let sharedHere = othersW.contains { ow in i < ow.count && ow[i].lowercased() == word.lowercased() }
-            if !sharedHere {
-                // take this word + up to 2 following for a meaningful fragment
-                let frag = tw[i..<min(i + 3, tw.count)].joined(separator: " ")
-                return clip(frag, max: 22)
-            }
-        }
-        return nil
-    }
-    /// The PerSkala row for (collapsed scope key, scale), if present.
+
     private func rowFor(scope key: String, scale: String) -> (idx: Int, row: PerSkala)? {
         for (i, s) in scales.enumerated() where scopeKey(s) == key && s.skalaUsaha.contains(scale) {
             return (i, s)
         }
         return nil
     }
-    private func riskAbbr(_ r: String?) -> String { Theme.RiskTier.abbr(r, isID: isID) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             if scales.isEmpty {
                 Text(isID ? "Tidak ada data skala untuk kode ini." : "No per-scale data for this code.")
                     .font(Theme.scalable(12)).foregroundStyle(Theme.faint)
-            } else if scopeIndices.count > Self.matrixMaxScopes {
-                scopeListView                    // many scopes (≥6) → compact searchable scope list
-            } else if scopeIndices.count > 1 {
-                matrixView                       // 2–5 scopes → risk matrix (scope × scale)
             } else {
-                singleScopeTabs                  // single scope → clean scale tabs
+                // D1: the top grid's risk × scale matrix; a chip selects the cell whose duties follow.
+                // Six or more scopes: the matrix's filterable list, each scope's detail on expand.
+                ScaleMatrix(scales: scales, isID: isID, mode: .ledger, tr: tr, selection: $matrixSel,
+                            expanded: { AnyView(cellDetail($0)) })
+                if scopeIndices.count < ScaleMatrix.listFrom, let mi = matrixSel ?? defaultCell, mi < scales.count {
+                    cellDetail(scales[mi])
+                }
             }
         }
     }
 
-    /// Above this scope count, a row-per-scope matrix becomes an unreadable wall (71109 has 29).
-    /// Switch to a compact, searchable, expandable scope list instead.
     static let matrixMaxScopes = 5
 
-    // MARK: many-scope → compact searchable list (one expandable row per scope)
-
-    @State private var scopeQuery: String = ""
-    @State private var expandedScope: String? = nil
-
-    private var scopeListView: some View {
-        let scopes = scopeIndices
-        let q = scopeQuery.lowercased()
-        let filtered = q.isEmpty ? scopes : scopes.filter { key in
-            (rows(forKey: key).first?.row.scopeUraian ?? "").lowercased().contains(q)
-            || scopeName(key).lowercased().contains(q)
-        }
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text((isID ? "\(scopes.count) RUANG LINGKUP" : "\(scopes.count) ACTIVITY SCOPES"))
-                    .font(Theme.scalable(10, weight: .heavy, design: .monospaced)).tracking(0.5).foregroundStyle(Theme.faint)
-                Spacer()
-            }
-            // scale-abbreviation legend — the per-row chips read "Mi/Ke/Me/Be"; spell them out once.
-            Text(isID ? "Skala: Mi=Mikro · Ke=Kecil · Me=Menengah · Be=Besar"
-                      : "Scale: Mi=Micro · Ke=Small · Me=Medium · Be=Large")
-                .font(Theme.scalable(9, design: .monospaced)).foregroundStyle(Theme.faint.opacity(0.85))
-            // search field — essential when a code carries 12–29 scopes
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass").font(Theme.scalable(11)).foregroundStyle(Theme.faint)
-                TextField(isID ? "Cari lingkup…" : "Filter scopes…", text: $scopeQuery)
-                    .textFieldStyle(.plain).font(Theme.scalable(12)).foregroundStyle(Theme.white)
-            }
-            .padding(.horizontal, 10).padding(.vertical, 7)
-            .background(Theme.inkLift, in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.hairline, lineWidth: 1))
-
-            ForEach(filtered, id: \.self) { sc in
-                scopeRow(sc)
-            }
-            if filtered.isEmpty {
-                Text(isID ? "Tidak ada lingkup cocok." : "No matching scope.").font(Theme.scalable(12)).foregroundStyle(Theme.faint)
-            }
-        }
-    }
-
-    private func scopeRow(_ sc: String) -> some View {
-        let rows = self.rows(forKey: sc).map { (offset: $0.idx, element: $0.row) }
-        let expanded = expandedScope == sc
-        return VStack(alignment: .leading, spacing: 6) {
-            Button { expandedScope = expanded ? nil : sc } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: expanded ? "chevron.down" : "chevron.right")
-                        .font(Theme.scalable(10, weight: .bold)).foregroundStyle(Theme.statutory)
-                    Text(scopeName(sc)).font(Theme.scalable(12, weight: .semibold)).foregroundStyle(Theme.white)
-                        .lineLimit(expanded ? nil : 1).multilineTextAlignment(.leading)
-                    Spacer(minLength: 6)
-                    // mini risk chips: a FIXED 4-slot grid in canonical Mikro→Besar order. Each present
-                    // scale shows its initial on that scale's `Theme.riskChip` (tiers differ by fill weight;
-                    // census rows in measure_contrast.py cite this line). An ABSENT scale shows a dim "·"
-                    // placeholder so columns stay aligned and "not applicable" is explicit, never a
-                    // silent blank that reads as "no data" (regulator-confusing).
-                    HStack(spacing: 3) {
-                        ForEach(Self.scaleOrder, id: \.self) { scale in
-                            if let row = rows.first(where: { $0.element.skalaUsaha.contains(scale) })?.element {
-                                let chip = Theme.riskChip(row.kategoriRisiko)
-                                Text(String(scale.prefix(2)))
-                                    .font(Theme.scalable(9, weight: .heavy, design: .monospaced))
-                                    .foregroundStyle(chip.fg)
-                                    .frame(minWidth: 16)
-                                    .padding(.horizontal, 5).padding(.vertical, 2)
-                                    .background(chip.bg, in: Capsule())
-                                    .overlay(Capsule().strokeBorder(chip.border ?? .clear, lineWidth: 1))
-                            } else {
-                                Text("·")
-                                    .font(Theme.scalable(9, weight: .heavy, design: .monospaced))
-                                    .foregroundStyle(Theme.faint.opacity(0.4))
-                                    .frame(minWidth: 16)
-                                    .padding(.horizontal, 5).padding(.vertical, 2)
-                                    .background(Theme.faint.opacity(0.06), in: Capsule())
-                            }
-                        }
-                    }
-                }
-                .contentShape(Rectangle())
-            }.buttonStyle(.plain)
-            if expanded {
-                if let full = rows.first?.element.scopeUraian, !full.isEmpty {
-                    Text(tr(full)).font(Theme.scalable(11)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
-                }
-                ForEach(rows, id: \.offset) { _, row in cellDetail(row) }
-            }
-        }
-        .padding(10)
-        .background(Theme.ink.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
-        .overlay(alignment: .leading) { RoundedRectangle(cornerRadius: 2).fill(Theme.statutory.opacity(0.6)).frame(width: 2).padding(.vertical, 8) }
-    }
-
-    // MARK: multi-scope → matrix (scope rows × scale columns), tap a cell for its real detail
-
-    private var matrixView: some View {
-        let cols = columns
-        let scopes = scopeIndices
-        return VStack(alignment: .leading, spacing: 10) {
-            Text((isID ? "RISIKO — \(scopes.count) RUANG LINGKUP × \(cols.count) SKALA" : "RISK — \(scopes.count) SCOPES × \(cols.count) SCALES"))
-                .font(Theme.scalable(10, weight: .heavy, design: .monospaced)).tracking(0.5).foregroundStyle(Theme.faint)
-
-            // column header: scale names
-            HStack(spacing: 6) {
-                Text("").frame(width: 150, alignment: .leading)
-                ForEach(cols, id: \.self) { c in
-                    Text(Self.scaleLabel(c, isID: isID)).font(Theme.scalable(10, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(Theme.muted).frame(maxWidth: .infinity)
-                }
-            }
-            // one row per scope
-            ForEach(Array(scopes.enumerated()), id: \.offset) { _, sc in
-                let parts = scopeNameParts(sc)
-                HStack(spacing: 6) {
-                    // Round-3 fix: two distinct truncation hazards. (1) When the base distils to a
-                    // genuine collision, show the discriminator on its own mono line (clip-proof).
-                    // (2) When two bases merely share a long leading prefix (e.g. "Pengecer Minuman
-                    // Beralkohol pada Toko Bebas Bea" vs "…Golongan A"), the distinguishing part is at
-                    // the TAIL — use .middle truncation so the tail survives the narrow column.
-                    VStack(alignment: .leading, spacing: 1) {
-                        if let disc = parts.disc {
-                            Text(disc)
-                                .font(Theme.scalable(9, weight: .heavy, design: .monospaced))
-                                .foregroundStyle(Theme.statutory).lineLimit(1).truncationMode(.tail)
-                        }
-                        Text(parts.base)
-                            .font(Theme.scalable(11, weight: .semibold)).foregroundStyle(Theme.white)
-                            .lineLimit(parts.disc == nil ? 2 : 1)
-                            .truncationMode(.middle)
-                    }
-                    .frame(width: 150, alignment: .leading)
-                    ForEach(cols, id: \.self) { col in
-                        cell(scope: sc, scale: col)
-                    }
-                }
-            }
-            // legend + tapped-cell detail (full scope description shows in the tapped cell's detail)
-            HStack(spacing: 10) {
-                legendChip("Rendah", isID ? "R" : "L"); legendChip("Menengah Rendah", "MR")
-                legendChip("Menengah Tinggi", "MT"); legendChip("Tinggi", isID ? "T" : "H")
-                Text(isID ? "— ketuk sel untuk detail" : "— tap a cell for detail")
-                    .font(Theme.scalable(10)).foregroundStyle(Theme.faint)
-            }.padding(.top, 2)
-
-            // Default to the PMA-relevant cell (Besar of the first scope, else first existing) so the
-            // detail is populated on open — for a regulator the "what does a PT PMA face" row matters.
-            let shown = matrixSel ?? defaultCell
-            if let mi = shown, mi < scales.count {
-                cellDetail(scales[mi])
-            }
-        }
-    }
-
-    /// Index of the cell to show by default: Besar of the first scope, else the highest-risk cell.
     private var defaultCell: Int? {
         if let first = scopeIndices.first,
            let hit = rowFor(scope: first, scale: "Besar") { return hit.idx }
         // else the first existing row
         return scales.indices.first
-    }
-
-    private func cell(scope: String, scale: String) -> some View {
-        Group {
-            if let hit = rowFor(scope: scope, scale: scale) {
-                // The tier is the chip's fill weight (spec §1.3 ramp), as in the registry's RiskCell;
-                // the selected cell adds a 2 pt copper ring, the selection colour of every table.
-                let selected = (matrixSel ?? defaultCell) == hit.idx
-                let chip = Theme.riskChip(hit.row.kategoriRisiko)
-                Button { matrixSel = (matrixSel == hit.idx ? nil : hit.idx) } label: {
-                    Text(riskAbbr(hit.row.kategoriRisiko))
-                        .foregroundStyle(chip.fg)
-                        .font(Theme.scalable(11, weight: .bold, design: .monospaced))
-                        .frame(maxWidth: .infinity, minHeight: 30)
-                        .background(chip.bg, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(selected ? Theme.accent : (chip.border ?? .clear),
-                                                                                lineWidth: selected ? 2 : 1))
-                }.buttonStyle(.plain)
-            } else {
-                // combination does not exist (real fact: e.g. no "Warung" at Besar scale)
-                Text("—").font(Theme.scalable(12)).foregroundStyle(Theme.faint.opacity(0.5))
-                    .frame(maxWidth: .infinity, minHeight: 30)
-            }
-        }
-    }
-
-    /// One tier of the matrix legend, drawn as the cells draw it: the riskChip fill, ink and border.
-    private func legendChip(_ tier: String, _ t: String) -> some View {
-        let chip = Theme.riskChip(tier)
-        return Text(t).font(Theme.scalable(9, weight: .semibold, design: .monospaced)).foregroundStyle(chip.fg)
-            .padding(.horizontal, 5).padding(.vertical, 1)
-            .background(chip.bg, in: RoundedRectangle(cornerRadius: 2))
-            .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(chip.border ?? .clear, lineWidth: 1))
-    }
-
-    /// Detail for one tapped (scope, scale) cell: scope label + scale + risk + duties + requirements.
-    /// The licensing authorities for ONE scale cell — the FULL list, not just the highest tier.
-    /// Verified against the official PP 28/2025 lampiran (2026-06-30): `Kewenangan` is a per-row
-    /// (scope × scale × perizinan-step) column. A cell legitimately carries SEVERAL tiers because a
-    /// code's licensing has several steps, each signed off at a different level (the automatic/base
-    /// step at Bupati/Walikota, the verified/higher step at Gubernur or Menteri). Showing only the
-    /// max hid that the base step is a municipal sign-off. It is NOT derivable from the risk/step
-    /// (≈8% exceptions — sector-driven), so we show the real data, sorted low→high, deduplicated.
-    /// Returns nil when the dataset names none for this scale (line hidden, no placeholder).
-    private func scaleAuthority(_ s: PerSkala) -> String? {
-        func rank(_ raw: String) -> Int {
-            let u = raw.lowercased()
-            if u.contains("menteri") || u.contains("kepala badan") || u.contains("lembaga") { return 3 }
-            if u.contains("gubernur") { return 2 }
-            if u.contains("bupati") || u.contains("walikota") || u.contains("wali kota") { return 1 }
-            return 0
-        }
-        func localized(_ raw: String) -> String {
-            let u = raw.lowercased()
-            if u.contains("menteri") || u.contains("kepala badan") { return isID ? "Menteri / Kepala Badan" : "Minister / Agency Head" }
-            if u.contains("gubernur") { return isID ? "Gubernur" : "Governor" }
-            if u.contains("bupati") || u.contains("walikota") || u.contains("wali kota") { return isID ? "Bupati / Walikota" : "Regent / Mayor" }
-            return raw
-        }
-        let levels = s.kewenanganLevels.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-        guard !levels.isEmpty else { return nil }
-        // dedupe by localized label, sort low→high tier (Bupati → Gubernur → Menteri)
-        var seen = Set<String>(); var out: [String] = []
-        for l in levels.sorted(by: { rank($0) < rank($1) }) {
-            let label = localized(l)
-            if seen.insert(label).inserted { out.append(label) }
-        }
-        return out.joined(separator: " · ")
     }
 
     private func cellDetail(_ s: PerSkala) -> some View {
@@ -1709,7 +1410,7 @@ struct PP28ScalePanel: View {
             // which only showed the single highest tier — misleading, since a Micro/Small operator
             // answers to the Bupati/Walikota while only the large scale reaches the Menteri. Per-scale
             // it is honest. Derived from per_skala.kewenangan; hidden when the dataset is silent.
-            if let auth = scaleAuthority(s) {
+            if case let auth = ScaleMatrix.authorities(s, isID: isID).joined(separator: " · "), !auth.isEmpty {
                 HStack(spacing: 5) {
                     Text(isID ? "Kewenangan:" : "Authority:")
                         .font(Theme.scalable(10, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.faint)
@@ -1733,67 +1434,6 @@ struct PP28ScalePanel: View {
         .padding(.top, 4)
     }
 
-    // MARK: single-scope → clean scale tabs (unchanged behavior)
-
-    /// One representative row per DISTINCT scale, in canonical order, PAIRED with the canonical
-    /// scale it represents. When a single scope is backed by several raw blocks (e.g. 23961's 3
-    /// collapsed "Seluruh" indices each carrying Mikro→Besar), iterating raw rows produced a 12-tab
-    /// "Mi Ke Me Be Mi Ke Me Be…" overrun. This dedups to ≤4 tabs.
-    /// We carry the (scale, row) pair so the tab label is the scale THIS tab stands for — NOT the
-    /// row's first scale. A row like ["Menengah","Besar"] must label its Besar tab "Large", not
-    /// "Medium" (columns.first would hit Menengah first and HIDE that a Besar scale exists — which
-    /// for a PT PMA, Besar by law, is the load-bearing fact). (scar #3: a surface mislabels the fact.)
-    private var distinctScaleRows: [(scale: String, row: PerSkala)] {
-        var out: [(String, PerSkala)] = []
-        for scale in columns {   // canonical order, present scales only
-            if let row = scales.first(where: { $0.skalaUsaha.contains(scale) }) { out.append((scale, row)) }
-        }
-        return out.isEmpty ? scales.map { (scale: $0.skalaUsaha.first ?? "", row: $0) } : out
-    }
-
-    private var singleScopeTabs: some View {
-        let rows = distinctScaleRows
-        return VStack(alignment: .leading, spacing: 12) {
-            Picker("", selection: $sel) {
-                ForEach(Array(rows.enumerated()), id: \.offset) { i, pair in
-                    // label by the canonical scale THIS tab represents (not the row's first scale)
-                    Text(Self.scaleLabel(pair.scale, isID: isID)).tag(i)
-                }
-            }
-            .pickerStyle(.segmented).labelsHidden().tint(Theme.accent)
-            let s = rows[min(sel, rows.count - 1)].row
-            HStack(spacing: 8) {
-                if let risk = s.kategoriRisiko {
-                    Text(riskLabel(risk)).font(Theme.scalable(12, weight: .semibold)).foregroundStyle(Theme.riskColor(risk))
-                        .padding(.horizontal, 9).padding(.vertical, 4).background(Theme.riskColor(risk).opacity(0.12), in: Capsule())
-                }
-                if let jw = s.jangkaWaktu, !jw.isEmpty {
-                    Text((isID ? "Proses: " : "Processing: ") + Self.formatJangkaWaktu(jw, isID: isID))
-                        .font(Theme.scalable(12, weight: .medium, design: .monospaced)).foregroundStyle(Theme.muted)
-                } else {
-                    // 133 of the 9095 scale rows carry no `jangka_waktu`. That silence used to
-                    // print "Automatic", which is a statement about how the licence is issued —
-                    // not something the empty field says.
-                    Text(Theme.absent).font(Theme.scalable(12, weight: .medium, design: .monospaced)).foregroundStyle(Theme.faint)
-                }
-            }
-            let duties = Self.dedupKeepingOrder(s.kewajiban.map(Self.stripHTML).filter { !$0.isEmpty }).map(tr)
-            if !duties.isEmpty {
-                scaleList(title: isID ? "KEWAJIBAN PASCA-IZIN" : "POST-LICENSE OBLIGATIONS", items: duties, tint: Theme.yellow)
-            }
-            let reqs = Self.dedupKeepingOrder(s.persyaratan.map(Self.stripHTML).filter { !$0.isEmpty }).map(tr)
-            if !reqs.isEmpty {
-                scaleList(title: isID ? "PERSYARATAN" : "REQUIREMENTS", items: reqs, tint: Theme.statutory)
-            }
-            if duties.isEmpty && reqs.isEmpty {
-                Text(isID ? "Tidak ada kewajiban/persyaratan terdaftar untuk skala ini."
-                          : "No obligations/requirements listed for this scale.")
-                    .font(Theme.scalable(12)).foregroundStyle(Theme.faint)
-            }
-        }
-    }
-
-    /// A titled bullet list of real per-scale items (obligations or requirements).
     private func scaleList(title: String, items: [String], tint: Color) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(Theme.scalable(10, weight: .heavy, design: .monospaced)).tracking(0.5).foregroundStyle(tint)
@@ -1824,68 +1464,6 @@ struct PP28ScalePanel: View {
         return out.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// Distil a readable, distinguishable label from a raw OSS `scope_uraian`. The dataset has
-    /// four recurring noise patterns this untangles (verified across 418 multi-scope codes):
-    ///   1. SUBKLASIFIKASI — "Kode subklasifikasi: IG002 Kelompok ini mencakup …" / "Kode
-    ///      Subklasifikasi Jasa Rekayasa … : RK001" → surface the activity name + its short code.
-    ///   2. PMSE boilerplate — long "…Perdagangan Melalui Sistem Elektronik (PPMSE)…" variants →
-    ///      canonical short labels (Via marketplace / Direct / All-except-marketplace).
-    ///   3. LONG paragraphs — clip to a clause/word boundary, never mid-word, add "…".
-    ///   4. "Seluruh" / empty → ordinal fallback ("Scope N") so two of them never read identically.
-    static func cleanScopeLabel(_ raw: String, ordinal: Int, isID: Bool) -> String {
-        let scopeWord = isID ? "Lingkup" : "Scope"
-        let u = stripHTML(raw).trimmingCharacters(in: .whitespacesAndNewlines)
-        if u.isEmpty { return "\(scopeWord) \(ordinal)" }
-        let low = u.lowercased()
-
-        // 2. PMSE boilerplate → canonical short label. Classify on the LEADING INTENT (word-anchored
-        //    prefix), NEVER a bare substring: the operator scope "…yang tidak diKECUALIkan…" contains
-        //    "kecuali" as a substring and would over-match the "all-except" branch (cicatrice #3,
-        //    guard-over-match). Three distinct legal scopes must stay distinguishable.
-        if low.contains("perdagangan melalui sistem elektronik") || low.contains("ppmse") || low.contains("pmse") {
-            // "Seluruh, kecuali …PPMSE…" → everything EXCEPT marketplace operators.
-            if low.hasPrefix("seluruh, kecuali") || low.hasPrefix("seluruh kecuali") {
-                return isID ? "Seluruh kecuali PPMSE" : "All except marketplace"
-            }
-            // "Selain …PPMSE…" → other-than-marketplace (direct sellers).
-            if low.hasPrefix("selain") {
-                return isID ? "Selain PPMSE (langsung)" : "Direct (non-marketplace)"
-            }
-            // Otherwise it describes the PPMSE/PSP operators themselves (often prefixed "1. Penyelenggara…").
-            return isID ? "Via PPMSE (marketplace)" : "Marketplace operators (PPMSE)"
-        }
-
-        // 1. SUBKLASIFIKASI — pull out the trailing code and the activity head.
-        //    Pattern A: "Kode Subklasifikasi <Activity> : RK001"
-        //    Pattern B: "Kode subklasifikasi: IG002 Kelompok ini mencakup <paragraph>"
-        if low.hasPrefix("kode subklasifikasi") || low.hasPrefix("kode sub") {
-            // trailing short code like ": RK001" / "IG002"
-            var code = ""
-            if let m = u.range(of: "[A-Z]{2}\\d{3}", options: .regularExpression) { code = String(u[m]) }
-            // strip the "Kode subklasifikasi[:]" prefix and any "Kelompok ini mencakup…" tail
-            var body = u.replacingOccurrences(of: "(?i)^kode\\s+subklasifikasi\\s*:?\\s*", with: "", options: .regularExpression)
-            // drop a leading bare code token (e.g. "IG002 ")
-            body = body.replacingOccurrences(of: "^[A-Z]{2}\\d{3}\\s*", with: "", options: .regularExpression)
-            // cut the boilerplate descriptor tail
-            if let r = body.range(of: "Kelompok ini mencakup", options: .caseInsensitive) { body = String(body[..<r.lowerBound]) }
-            if let r = body.range(of: "Usaha dalam kelompok ini", options: .caseInsensitive) { body = String(body[..<r.lowerBound]) }
-            // also drop a trailing ": CODE" we already captured
-            body = body.replacingOccurrences(of: "\\s*:\\s*[A-Z]{2}\\d{3}\\s*$", with: "", options: .regularExpression)
-            body = body.trimmingCharacters(in: CharacterSet(charactersIn: " :—–-"))
-            // If nothing meaningful survives (the whole label WAS the boilerplate paragraph),
-            // fall back to the code itself rather than re-showing the noise.
-            if body.isEmpty {
-                if !code.isEmpty { return isID ? "Subkl. \(code)" : "Subclass \(code)" }
-                return clip(u, max: 30)
-            }
-            let head = clip(body, max: 30)
-            return code.isEmpty ? head : "\(head) · \(code)"
-        }
-
-        // 3 & 4. Plain label. "Seluruh" alone is ambiguous → ordinal-qualify.
-        if low == "seluruh" { return isID ? "Seluruh (\(scopeWord) \(ordinal))" : "All (\(scopeWord) \(ordinal))" }
-        return clip(u, max: 38)
-    }
 
     /// Order-preserving de-duplication (case/space-insensitive key). Kills verbatim-repeated
     /// obligations/requirements the dataset sometimes carries.
@@ -1898,21 +1476,6 @@ struct PP28ScalePanel: View {
         return out
     }
 
-    /// Word-boundary clip (never mid-word) with ellipsis.
-    static func clip(_ s: String, max: Int) -> String {
-        let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
-        if t.count <= max { return t }
-        // prefer a clause boundary (comma / paren) before `max`
-        let prefix = String(t.prefix(max))
-        if let comma = prefix.range(of: ",", options: .backwards), prefix.distance(from: prefix.startIndex, to: comma.lowerBound) > max / 2 {
-            return String(prefix[..<comma.lowerBound]) + "…"
-        }
-        // else last whole word
-        if let sp = prefix.range(of: " ", options: .backwards) {
-            return String(prefix[..<sp.lowerBound]) + "…"
-        }
-        return prefix + "…"
-    }
 }
 
 /// One roadmap step row — monochrome number-chip + connector line (vertical timeline).
@@ -2013,7 +1576,8 @@ struct ComplementaryRow: View {
             HStack(spacing: 12) {
                 Text(code).font(Theme.scalable(13, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.accent)
                     .frame(width: 56, alignment: .leading)
-                Text(note).font(Theme.scalable(13)).foregroundStyle(Theme.muted).lineLimit(2)
+                Text(note).font(Theme.scalable(13)).foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
                 Image(systemName: "arrow.up.right").font(Theme.scalable(10, weight: .bold)).foregroundStyle(Theme.faint)
             }
@@ -2059,9 +1623,9 @@ struct CodeMiniCard: View {
                 // Title fallback must NEVER be the raw code (the "63120 as its own name" bug). When the
                 // overlay carries no localized title, fall back to the note's lead clause, else a generic.
                 Text(cardTitle).font(Theme.scalable(15, weight: .semibold, design: .serif)).foregroundStyle(Theme.white)
-                    .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                    .fixedSize(horizontal: false, vertical: true)
                 if !noteText.isEmpty {
-                    Text(noteText).font(Theme.scalable(11)).foregroundStyle(Theme.muted).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                    Text(noteText).font(Theme.scalable(11)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                 }
                 // Status dot + label: prefer the REAL derived data (realBlocked/realStatusLabel); fall
                 // back to the overlay only when the caller didn't resolve the linked code.
