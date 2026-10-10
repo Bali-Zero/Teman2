@@ -23,7 +23,7 @@ ROWS = DATA["rows"]
 ROW_KEYS = {"id", "kind", "category", "text", "construct", "setup", "expected_reason", "source", "limit", "rule"}
 SETUP_TYPES = {"regular", "symlink", "linked_directory", "vanish_before_open", "hardlink", "fifo", "socket",
                "directory", "injected_exception", "replace_before_open", "parent_swapped_to_symlink"}
-CONTENT_REASONS = {"secret", "phone", "email", "id_number", "crm_name"}
+CONTENT_REASONS = {"secret", "phone", "email", "id_number", "crm_name", "pii_other"}
 CANONICAL_REASONS = CONTENT_REASONS | {"symlink", "not_regular", "oversized", "empty", "binary", "unsafe_path",
                                        "unreadable", "screen_error", "excluded_path"}
 
@@ -87,9 +87,12 @@ CLAIM = {
         r"\s*\.\s*|\s*[\[(]dot[\])]\s*|\s+dot\s+", ".", re.sub(r"\s*[\[(]at[\])]\s*|\s+at\s+", "@", v))),
     "id_number": lambda v: re.search(
         r"(?i)(?:passport|paspor|kitas|kitap|document|dokumen|nomor|national)\w*\W*(?=(?:[A-Z]*\d){6})[A-Z0-9]{6,16}\b"
-        r"|(?:nik|ktp|kk|npwp)\W*\d{6,16}\b|(?<!\d)\d{15,16}(?!\d)|\b[A-Z]\d{7}\b",
+        r"|(?:nik|ktp|kk|npwp)\W*\d{6,16}\b|(?<!\d)\d{15,16}(?!\d)|\b[A-Z]\d{7}\b|\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b",
         re.sub(r"(?<=\d)[.\- ](?=\d)", "", v)),
     "crm_name": lambda v: re.search(r"[A-Z][a-z]+ [A-Z][a-z]+", v),
+    "pii_other": lambda v: re.search(
+        r"(?i)(?:tanggal_lahir|tgl_lahir|dob|birth_?date|alamat|address|telegram|ig_handle|instagram|social)\w*\W+(?!<?(?:YYYY|placeholder))\S"
+        r"|\b[A-Z]{1,2} \d{1,4} [A-Z]{1,3}\b", v),
 }
 
 
@@ -191,6 +194,23 @@ def test_receipt_coverage_and_declared_limits_match_the_spec():
     limits = {r["id"] for r in ROWS if r.get("limit")}
     named = set(re.findall(r"`limit:([a-z0-9_]+)`", spec))
     assert limits and limits == named, (sorted(limits), sorted(named))
+    assert len(limits) == 21, len(limits)
+    assert len(ROWS) == 354, len(ROWS)
+
+
+ADOPTED = {"lim_pan": "id_number", "lim_iban": "id_number", "rem_pii_other": "pii_other",
+           "rem_pii_other_address": "pii_other", "rem_pii_other_messaging": "pii_other",
+           "rem_pii_other_social": "pii_other", "rem_pii_other_plate": "pii_other"}
+ADOPTED_INNOCENCE = {"adopt_innocent_pan", "adopt_innocent_iban", "adopt_innocent_dob"}
+
+
+def test_the_adopted_pii_scopes_are_asserted_guilt_with_an_innocence_row_each():
+    by_id = {r["id"]: r for r in ROWS}
+    for rid, reason in ADOPTED.items():
+        row = by_id[rid]
+        assert row["kind"] == "guilt" and "limit" not in row and row["expected_reason"] == reason, rid
+    assert {r["id"] for r in ROWS if r["source"] == "adopt-2026-10-10"} == ADOPTED_INNOCENCE
+    assert all(by_id[i]["kind"] == "innocence" for i in ADOPTED_INNOCENCE)
 
 
 def test_every_rule_phrase_is_in_the_spec_and_every_remainder_carries_one():
@@ -202,12 +222,12 @@ def test_every_rule_phrase_is_in_the_spec_and_every_remainder_carries_one():
     assert not unpinned, unpinned
 
 
-def test_the_vocabulary_table_names_a_limit_row_for_each_of_its_19_vocabularies():
+def test_the_vocabulary_table_names_a_limit_row_for_each_of_its_18_vocabularies():
     section = SPEC.read_text(encoding="utf-8").split("## Closed vocabularies and their remainders", 1)[1].split("\n## ", 1)[0]
     table = [line for line in section.splitlines() if line.startswith("| ") and not line.startswith(("| Vocabulary", "| ---"))]
     limits = {r["id"] for r in ROWS if r.get("limit")}
     named = [set(re.findall(r"`([a-z0-9_]+)`", line.split("|")[3])) for line in table]
-    assert len(table) == 19 and all(ids and ids <= limits for ids in named), (len(table), named)
+    assert len(table) == 18 and all(ids and ids <= limits for ids in named), (len(table), named)
 
 
 BARE_TOKEN_FAMILY = re.compile(
