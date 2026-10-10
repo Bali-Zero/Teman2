@@ -134,7 +134,7 @@ export function LegalTimeline({
               {entry.year}
             </div>
             {entry.month && (
-              <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--kbli-text-muted)] opacity-60 mt-0.5">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--kbli-text-muted)] opacity-60 mt-0.5">
                 {entry.month}
               </div>
             )}
@@ -142,7 +142,7 @@ export function LegalTimeline({
 
           {/* Content */}
           <div>
-            <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--kbli-text-muted)] mb-1.5">
+            <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--kbli-text-muted)] mb-1.5">
               {entry.typeLabel}
             </div>
             <div className="text-base font-bold text-[var(--kbli-text-primary)] mb-2 leading-[1.3]">

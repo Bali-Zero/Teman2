@@ -139,7 +139,7 @@ export function PeopleColumn({
             <div className="grid grid-cols-2 gap-2.5">
               {a.shares_count != null && (
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--kbli-text-muted)]">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--kbli-text-muted)]">
                     Shares
                   </span>
                   <span className="text-[12px] text-[var(--kbli-text-primary)] font-medium tabular-nums">
@@ -148,7 +148,7 @@ export function PeopleColumn({
                 </div>
               )}
               <div className="flex flex-col gap-0.5">
-                <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--kbli-text-muted)]">
+                <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--kbli-text-muted)]">
                   Role
                 </span>
                 <span className="text-[12px] text-[var(--kbli-text-primary)] font-medium capitalize">

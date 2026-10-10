@@ -46,7 +46,7 @@ export function FactBoxes({
           Authorized Capital
         </span>
         {aktaPerubahanNo && (
-          <span className="text-[10px] text-[var(--kbli-text-muted)]">
+          <span className="text-[11px] text-[var(--kbli-text-muted)]">
             Post-Akta #{aktaPerubahanNo}
             {aktaPerubahanDate &&
               `, ${new Date(aktaPerubahanDate).getFullYear()}`}
@@ -69,7 +69,7 @@ export function FactBoxes({
           Company Age
         </span>
         {foundingDate && (
-          <span className="text-[10px] text-[var(--kbli-text-muted)]">
+          <span className="text-[11px] text-[var(--kbli-text-muted)]">
             Incorporated {formatDateShort(foundingDate)}
           </span>
         )}
@@ -89,7 +89,7 @@ export function FactBoxes({
         <span className="text-[11px] text-[var(--kbli-text-secondary)]">
           Documents on File
         </span>
-        <span className="text-[10px] text-[var(--kbli-text-muted)]">
+        <span className="text-[11px] text-[var(--kbli-text-muted)]">
           Legal vault, Drive-synced
         </span>
       </div>
