@@ -1,0 +1,85 @@
+task_id: localci-b13-1010
+mission: LOCALCI-SOVEREIGN (phase B, step B13)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  A change to the prune organ's cache cap: which docker flag it calls and when it reports failure. No hot-zone path, workflow, plist or
+  wrapper change; image removal rules, floors and VM discard are untouched; the lint floor is 2.
+l_level: L2
+gate_class: opus
+objective: >-
+  The builder prune keeps the build cache at its budget and says so when it does not. buildx 0.34 turned --keep-storage into a reserved
+  floor (rc 0, Total: 0B against a 22.83 GB cache on Pro). The flag is read once per prune run from `docker builder prune --help`
+  (--max-used-space, else --keep-storage on an old buildx, else --max-used-space), the journal carries flag and freed_gb (buildx's own
+  Total: line), and rc 0 with 0 B freed while the cache is over budget by more than 1 GB is ineffective and fails the prune.
+constraints:
+  - Image removal rules, floors and VM discard stay untouched.
+  - A call that freed anything is never flagged ineffective; a missing Total: line or an unread cache says nothing.
+acceptance:
+  - text: A buildx whose help lists --max-used-space SHALL be pruned with it, and an old buildx whose help lists only --keep-storage with that; an unreadable help SHALL use --max-used-space.
+    probe: "test_prune.py::test_b13_a_buildx_that_lists_max_used_space_is_pruned_with_it_and_the_line_says_so"
+  - text: The help SHALL be read once per prune run.
+    probe: "test_prune.py::test_b13_the_help_is_read_once_per_prune_run_not_per_call"
+  - text: "buildx's Total: line SHALL be journalled as freed_gb (GB, MB, kB, 0B), null when absent."
+    probe: "test_prune.py::test_b13_the_total_line_is_parsed_into_gb_and_an_absent_one_is_none"
+  - text: rc 0 with 0 B freed and the cache over budget by more than 1 GB SHALL be ineffective and name builder_prune in failed; an effective or within-budget prune SHALL NOT.
+    probe: "test_prune.py::test_b13_a_prune_that_exits_0_frees_0_b_and_leaves_the_cache_over_budget_is_ineffective_and_failed"
+consumer_map:
+  - scripts/localci/merger.py prune (the merger tick on Pro) — the builder_prune object of the prune line in the journal, and the organ's failed list.
+pii_scan: clean
+pii_scan_note: Prune code, tests against a fake docker, mutant rules and documentation. No client data was read or written.
+lanes:
+  - lane: localci-b13-1010
+    role: build
+    seat: claude-sonnet-5-5 (implementer on M5)
+what_changed: |
+  prune.py: builder_prune_flag reads `docker builder prune --help` once per prune run (30 s bound) and picks --max-used-space, or
+  --keep-storage only when the help lists that and not the new flag; an unreadable help gives --max-used-space. builder_prune creates the
+  journal object once (with `flag`) and records `freed_gb` from buildx's own Total: line (prune_total_gb; null when absent) per call.
+  builder_prune_verdict, run after the final cache read, sets `ineffective` (rc 0, freed 0, cache after > budget + 1 GB) with a `why`;
+  `failed` names builder_prune for it. Image removal rules, floors and VM discard are untouched.
+  tests/test_prune.py: the fake docker answers `builder prune --help` (not logged) and prints a configurable Total:; the argv pins moved to
+  --max-used-space; 14 new b13 tests. 4 b13-* mutant rules. README B13 paragraph with the measured numbers; spec addendum line.
+  Shared bytes are not freeable: buildx du is not read; a call that freed anything is never flagged, so a prune that leaves the shared
+  18.96 GB of a 22.83 GB cache over budget after freeing the private part is not ineffective.
+proof: |
+  Tests and mutants on M5 against a fake docker; nothing ran on Pro and nothing was pushed.
+bites:
+  consumer: The merger tick's prune on Pro (the builder_prune object of the prune line in the journal) and the organ's failed list.
+  observation: >-
+    Owed after merge and the next extraction on Pro. The first prune line after merge carries builder_prune.flag "max-used-space",
+    freed_gb > 0, and cache_gb.after near the 4 GB budget plus the bytes shared with images that exist; the host_disk_below_floor
+    BLOCKED decisions stop. If the cache stays over budget with 0 B freed, the line says ineffective: true with a why and failed names
+    builder_prune.
+ground:
+  ts: "2026-10-10T03:14:51Z"
+  siblings: >-
+    Worktree from origin/main f75a4fee92. Other lanes on scripts/localci touch merger.py and runner.py; this one touches prune.py and its
+    tests, README and spec only.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 0.4
+receipts:
+  - claim: "test_prune.py: 102 passed (14 new b13 cases among them)."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_prune.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-10T03:44:43Z"
+    seat: claude-sonnet-5-5 on M5
+  - claim: "ruff check on prune.py, test_prune.py, merger_mutants.py: all checks passed."
+    cmd: ruff check scripts/localci/prune.py scripts/localci/tests/test_prune.py scripts/localci/tests/mutants/merger_mutants.py
+    exit: 0
+    ts: "2026-10-10T03:44:43Z"
+    seat: claude-sonnet-5-5 on M5
+  - claim: "7/7 killed (b13-deprecated-flag-kept, b13-help-ignored, b13-ineffective-not-failed, b13-total-unparsed, plus neighbours b8-cache-by-age, b8-cache-without-a, b7-fstrim-on-dry-run); survivors none, errors none, stale none."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only b13-deprecated-flag-kept b13-help-ignored b13-ineffective-not-failed b13-total-unparsed b8-cache-by-age b8-cache-without-a b7-fstrim-on-dry-run
+    exit: 0
+    ts: "2026-10-10T03:44:43Z"
+    seat: claude-sonnet-5-5 on M5
+dissent: []
+residuals:
+  - "Live proof on Pro is owed to the first prune after merge: the Bites observation above."
+  - "ineffective does not read buildx du: a cache whose over-budget part is all shared with live images, with nothing private left to free, reads as ineffective (0 B freed, over budget); that is a true statement about the budget, and the organ saying warning is the intended signal."
+appetite_exceeded: none
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN step B13, from the lead message of 2026-10-10, from origin/main f75a4fee92. Nothing is pushed.
+brief_ref: evidence/brief.yml
