@@ -916,6 +916,7 @@ const en = {
   "outcome.timeline_within_one": "Typically within 1 working day",
   "outcome.timeline_typical_exact": "Typically {{days}} working days",
   "outcome.timeline_typical_range": "Typically {{min}}–{{max}} working days",
+  "outcome.share_timing_indicative": "{{typical}} (indicative)",
   "outcome.timeline_if_today":
     "If your documents are complete today: around {{from}} – {{to}}.",
   "outcome.timeline_if_today_single":
@@ -1919,6 +1920,7 @@ const id: Record<Keys, string> = {
   "outcome.timeline_within_one": "Biasanya dalam 1 hari kerja",
   "outcome.timeline_typical_exact": "Biasanya {{days}} hari kerja",
   "outcome.timeline_typical_range": "Biasanya {{min}}–{{max}} hari kerja",
+  "outcome.share_timing_indicative": "{{typical}} (perkiraan)",
   "outcome.timeline_if_today":
     "Jika dokumen Anda lengkap hari ini: sekitar {{from}} – {{to}}.",
   "outcome.timeline_if_today_single":

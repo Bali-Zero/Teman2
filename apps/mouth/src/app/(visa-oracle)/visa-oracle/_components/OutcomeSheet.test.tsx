@@ -1,4 +1,5 @@
 import {
+  cleanup,
   fireEvent,
   render,
   screen,
@@ -1813,5 +1814,115 @@ describe("OutcomeSheet — print reveals closed disclosures (F1)", () => {
       addSpy.mockRestore();
       removeSpy.mockRestore();
     }
+  });
+});
+
+describe("OutcomeSheet — typical processing time in the share summary", () => {
+  const WINDOW = {
+    status: "AVAILABLE",
+    basisDateIso: "2026-10-09",
+    earliestDateIso: "2026-10-20",
+    latestDateIso: "2026-10-23",
+  } as const;
+
+  async function summaryFor(
+    timeline: OutcomeCandidate["timeline"],
+    language: Language = "en",
+  ): Promise<string> {
+    const base = outcomeFor("SUPPORTED_CANDIDATES");
+    if (base.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("test fixture state mismatch");
+    }
+    render(
+      <OutcomeSheet
+        language={language}
+        outcome={{
+          ...base,
+          candidates: [
+            {
+              ...CANDIDATE,
+              duration: {
+                selectedDays: 730,
+                options: [],
+                extensionRequired: false,
+              },
+              timeline,
+            } as OutcomeCandidate,
+          ],
+        }}
+        facts={FACTS}
+      />,
+    );
+    const writeText = navigator.clipboard.writeText as ReturnType<typeof vi.fn>;
+    writeText.mockClear();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: language === "id" ? /salin ringkasan/i : "Copy summary",
+      }),
+    );
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    return writeText.mock.calls[0]?.[0] as string;
+  }
+
+  const CASES: Array<[string, number, number, string, string]> = [
+    [
+      "range",
+      7,
+      10,
+      "Typically 7–10 working days (indicative)",
+      "Biasanya 7–10 hari kerja (perkiraan)",
+    ],
+    [
+      "within one",
+      0,
+      1,
+      "Typically within 1 working day (indicative)",
+      "Biasanya dalam 1 hari kerja (perkiraan)",
+    ],
+    [
+      "exact",
+      5,
+      5,
+      "Typically 5 working days (indicative)",
+      "Biasanya 5 hari kerja (perkiraan)",
+    ],
+  ];
+
+  for (const [label, min, max, en, id] of CASES) {
+    it(`appends the ${label} timing, with no dates (EN and ID)`, async () => {
+      const w = { ...WINDOW, workingDaysMin: min, workingDaysMax: max };
+      const summary = await summaryFor(w);
+      expect(summary).toMatch(
+        /TEST-1 — Test path: IDR\s1,000,000 · 2-year stay permit · /,
+      );
+      expect(summary).toContain(` · ${en}`);
+      expect(summary).not.toMatch(/Oct|2026-10|today/);
+      cleanup();
+      const summaryId = await summaryFor(w, "id");
+      expect(summaryId).toContain(` · ${id}`);
+      expect(summaryId).not.toMatch(/Okt|2026-10|hari ini/);
+    });
+  }
+
+  it("carries only the border sentence for visa-free entry", async () => {
+    const summary = await summaryFor({
+      ...WINDOW,
+      workingDaysMin: 0,
+      workingDaysMax: 0,
+    });
+    expect(summary).toContain(
+      "Nothing to process in advance — entry is granted at the border.",
+    );
+    expect(summary).not.toMatch(/Typically|indicative|Oct/);
+  });
+
+  it("carries no timing line for an UNKNOWN / unavailable timeline", async () => {
+    const summary = await summaryFor({ status: "UNAVAILABLE" });
+    expect(summary).not.toMatch(/Typically|indicative|border|working day/i);
+  });
+
+  it("carries no timing line when an old backend sent no working days", async () => {
+    const summary = await summaryFor({ ...WINDOW });
+    expect(summary).not.toMatch(/Typically|indicative|working day/i);
   });
 });

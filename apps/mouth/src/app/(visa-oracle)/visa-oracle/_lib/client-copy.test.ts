@@ -240,6 +240,7 @@ describe("typical processing time copy", () => {
     "outcome.timeline_if_today",
     "outcome.timeline_if_today_single",
     "outcome.timeline_indicative",
+    "outcome.share_timing_indicative",
   ] as const;
 
   it("exists in both languages and the superseded keys are gone", () => {
