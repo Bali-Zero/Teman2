@@ -141,9 +141,9 @@ def test_every_row_reconstructs(row):
         assert build(setup["path_construct"])
 
 
-# A remainder or catch-all row may sit outside the finite claim regexes; its `rule:` phrase pins it instead.
+# A remainder row may sit outside the finite claim regexes; its `rule:` phrase pins it instead.
 GUILT_CONTENT = [r for r in ROWS if r["kind"] == "guilt" and r.get("expected_reason") in CONTENT_REASONS
-                 and not (r.get("limit") and "rule" in r) and r["id"] != "lim_01"]
+                 and not (r.get("limit") and "rule" in r)]
 
 
 @pytest.mark.parametrize("row", GUILT_CONTENT, ids=[r["id"] for r in GUILT_CONTENT])
@@ -197,12 +197,12 @@ def test_receipt_coverage_and_declared_limits_match_the_spec():
     limits = {r["id"] for r in ROWS if r.get("limit")}
     named = set(re.findall(r"`limit:([a-z0-9_]+)`", spec))
     assert limits and limits == named, (sorted(limits), sorted(named))
-    assert len(limits) == 21, len(limits)
-    assert len(ROWS) == 370, len(ROWS)
+    assert len(limits) == 23, len(limits)
+    assert len(ROWS) == 371, len(ROWS)
 
 
-ADOPTED = {"lim_pan": "id_number", "lim_iban": "id_number", "lim_01": "pii_other",
-           "rem_pii_other": "pii_other", "rem_pii_other_address": "pii_other",
+ADOPTED = {"lim_pan": "id_number", "lim_iban": "id_number", "rem_pii_other": "pii_other",
+           "rem_pii_other_address": "pii_other",
            "rem_pii_other_messaging": "pii_other", "rem_pii_other_social": "pii_other",
            "rem_pii_other_plate": "pii_other", "adopt_pan_hyphen": "id_number",
            "adopt_pan_label_contiguous": "id_number", "adopt_pan_unlabelled_grouped": "id_number",
@@ -219,7 +219,7 @@ def test_the_adopted_pii_scopes_are_asserted_guilt_with_an_innocence_row_each():
     for rid, reason in ADOPTED.items():
         row = by_id[rid]
         assert row["kind"] == "guilt" and "limit" not in row and row["expected_reason"] == reason, rid
-    assert len(ADOPTED) == 15 and len(ADOPTED_INNOCENCE) == 12
+    assert len(ADOPTED) == 14 and len(ADOPTED_INNOCENCE) == 12
     assert all(by_id[i]["kind"] == "innocence" for i in ADOPTED_INNOCENCE)
 
 
@@ -279,7 +279,9 @@ def test_the_adoption_decision_and_financial_id_grammars_are_normative():
     assert "An IBAN is two ASCII letters, two check digits and 11–30 ASCII letters or digits" in spec
     assert "`card_number`, `cc`, `pan`, `kartu`, `nomor_kartu` and `iban`" in spec
     assert "`dob`, `birthdate`, `birth_date`, `alamat`, `address`, `telegram`, `ig_handle`, `instagram` and `social`" in spec
-    assert "personal data outside this label list and the examples above is GUILTY rather than a declared remainder" in spec
+    assert "a personal name in free prose is the declared limit `lim_01`" in spec
+    assert "A concrete scalar under a personal-data-like label outside the list is the declared limit `rem_pii_other_label`" in spec
+    assert "The e-mail allowlist is the only closed list whose outside is GUILTY" in spec
 
 
 def test_every_rule_phrase_is_in_the_spec_and_every_remainder_carries_one():
