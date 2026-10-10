@@ -117,9 +117,9 @@ enum LabelBook {
 
     /// A sentence composed upstream (a `KBLIVerdict` reason, an `l4_bali.reason`), made drawable. In
     /// both languages a Bali-status enum inside it becomes its label. In English the record's own
-    /// `pma_kondisi` becomes the labelled original, and a status word OPENING the sentence (the
-    /// rule's "TERTUTUP — …", "TERBATAS with …") becomes its English word. Nothing else is touched:
-    /// a curated reason is content.
+    /// `pma_kondisi` becomes the labelled original, and the status word that opens one of the rule's
+    /// own national reasons (`KBLIVerdict.nationalVerdict`) becomes its English word. Nothing else is
+    /// touched: a curated reason is content, even when it opens with a status word.
     static func humanise(_ s: String, record k: KBLI, isID: Bool) -> String {
         var out = s
         for m in enumToken.matches(in: s, range: NSRange(s.startIndex..., in: s)).reversed() {
@@ -131,7 +131,8 @@ enum LabelBook {
         if let kondisi = k.pmaKondisi, kondisi.isEmpty == false, out.contains(kondisi) {
             out = out.replacingOccurrences(of: kondisi, with: original(kondisi, isID: false))
         }
-        for word in ["TERBUKA", "TERBATAS", "TERTUTUP"] where out.hasPrefix(word + " ") {
+        for (word, rest) in [("TERTUTUP", " — closed to foreign capital nationally"),
+                             ("TERBATAS", " with no foreign-ownership cap recorded")] where out.hasPrefix(word + rest) {
             out = pmaStatus(word, isID: false) + out.dropFirst(word.count)
         }
         return out
