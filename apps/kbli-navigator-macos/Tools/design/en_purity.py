@@ -43,6 +43,9 @@ ALLOW_RE = [(re.compile(a), r) for a, r in ALLOW]
 R_TITLE = "official title, under its label (ruling 3)"
 R_ORIGINAL = "legal text with no English source, quoted under its label (ruling 4)"
 R_REASON = "the record's curated English Bali reason: its Indonesian words are the cited instrument's terms"
+R_KONDISI = "the record's own condition, written in English: its Indonesian words are the instrument's terms"
+CLAUSE_EN = set("the of and to in for with on by or from as at is are not only must may any no".split())
+CLAUSE_ID = set("yang dan di ke dari untuk dengan pada dalam atau oleh tidak bukan bagi serta hanya".split())
 IDENT_RE = re.compile(r"\b[A-Za-z0-9]+(?:_[A-Za-z0-9]+)+\b")
 PROV_RE = re.compile(r"\b[a-z][a-z0-9_.\[\]]*=")
 WORD_RE = re.compile(r"[A-Za-zÀ-ÿ]+")
@@ -58,6 +61,12 @@ def flex(s):
 
 def english(s): return sum(w.lower() in EN_FUNCTION for w in WORD_RE.findall(s)) >= 3
 
+def english_clause(s):
+    """A condition is English when its opening clause (up to " — ", "(" or ";") holds more English than Indonesian
+    function words — the rule LabelBook.isEnglish states; an English one is drawn unlabelled."""
+    head = [w.lower() for w in WORD_RE.findall(re.split(r" — |[(;]", s)[0])]
+    return sum(w in CLAUSE_EN for w in head) > sum(w in CLAUSE_ID for w in head)
+
 def key(s): return "".join(c for c in s if c.isalnum())
 
 class Record:
@@ -69,9 +78,12 @@ class Record:
         if self.judul:
             t = "Official title (Bahasa Indonesia) " + self.judul
             spans.append((re.compile(r"Official title \(Bahasa Indonesia\)\s*" + flex(self.judul)), t, R_TITLE))
-        if rec.get("pma_kondisi"):
-            t = "Original (Bahasa Indonesia): “%s”" % rec["pma_kondisi"]
-            spans.append((re.compile(r"Original \(Bahasa Indonesia\):\s*“" + flex(rec["pma_kondisi"]) + "”"), t, R_ORIGINAL))
+        k = rec.get("pma_kondisi")
+        if k and english_clause(k):
+            spans.append((re.compile(flex(k)), k, R_KONDISI))
+        elif k:
+            t = "Original (Bahasa Indonesia): “%s”" % k
+            spans.append((re.compile(r"Original \(Bahasa Indonesia\):\s*“" + flex(k) + "”"), t, R_ORIGINAL))
         raw = (rec.get("l4_bali") or {}).get("reason") or ""
         en = (reasons.get(raw) or {}).get("en") or raw
         if en and english(en):   # an enum inside it is drawn as its label: any short run may stand in for it
@@ -137,8 +149,12 @@ def selftest():
              ("TERBUKA Open · 100%", 1),
              ("Restricted · 0%\ndan UMKM”\nOriginal (Bahasa Indonesia): “Bidang usaha dialokasikan untuk Koperasi", 0),  # swapped
              ("dan UMKM”\nOriginal (Bahasa Indonesia): “Bidang usaha dialokasikan untuk Koperasi\nKoperasi dan", 3)]  # + a piece
+    r2 = Record({"judul": "Industri Senjata", "pma_kondisi": "may exceed 49% with Menteri Pertahanan approval"}, {})
+    cases = [(c, w, r) for c, w in cases] + [
+        ("Restricted · 49%  may exceed 49% with Menteri Pertahanan approval", 0, r2),   # English condition, as written
+        ("Restricted · 49%  Menteri Pertahanan", 1, r2)]                                 # not the record's condition
     bad = []
-    for text, want in cases:
+    for text, want, r in cases:
         got = len(analyse({"text": text}, r)[0])
         if got != want: bad.append("EN-SELFTEST %r: %d strings, want %d" % (text[:50], got, want))
     return bad
