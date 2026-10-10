@@ -45,7 +45,7 @@ struct SearchFieldBar: View {
                 withAnimation(Theme.motion(reduceMotion)) { rowDensity.toggle() }
             } label: {
                 Image(systemName: rowDensity == .compact ? "rectangle.expand.vertical" : "rectangle.compress.vertical")
-                    .font(Theme.scalable(12))
+                    .font(Theme.scalable(12)).foregroundStyle(Theme.faint)
             }
             .buttonStyle(.plain)
             .help(rowDensity == .compact ? "Comfortable density" : "Compact density")
