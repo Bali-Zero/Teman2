@@ -62,8 +62,42 @@ receipts:
     exit: 0
     ts: "2026-10-10T03:38:32Z"
     seat: Claude Sonnet 5.5
-council_run: pending-signing-session
+  - claim: The orchestrator signed seq-27 offline on M5 with the production key (key file mode 0600, never printed); sign_pack self-verified the bundle and the digest equals the one pinned in test_seq27_pack.py.
+    cmd: PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.sign_pack <packs>/rulepack-prod-027.source.json --kid prod-2026-07-1 --key-file ~/.config/nuzantara/visa-signing/2026-07-prod-1.ed25519.pem --environment PRODUCTION --sequence 27 --i-know-this-is-production --output <packs>/rulepack-prod-027.signed.json
+    result: "OK — signed and self-verified. sequence=27 environment=PRODUCTION kid=prod-2026-07-1 payload_sha256=a9098744e0cd8369fb4fe9ca5bef851705cf43dabb1c69398b63b36985cb42d0 signed_at 2026-10-10T03:42:26.641001Z"
+    exit: 0
+    ts: "2026-10-10T03:42:25Z"
+    seat: Claude Opus 5.5 (orchestrator)
+  - claim: The full seq-27 pack gate passes with the signed bundle on disk, including TestSignedBundleTiesToSource (JCS payload equals the source, verifies under the prod key, anchors to the signed seq-26 digest, a flipped byte breaks the signature).
+    cmd: PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq27_pack.py -p no:cacheprovider
+    result: "18 passed in 5.03s"
+    exit: 0
+    ts: "2026-10-10T03:43:59Z"
+    seat: Claude Opus 5.5 (orchestrator)
+  - claim: The Bites observer passes on the signed state — the inventory reads seq-27 and the pack gate, the walk census and the inventory tests are green.
+    cmd: python3 scripts/ci/observe_visa_seq27_signed.py
+    result: "observe_visa_seq27_signed: inventory reads seq-27 and all three consumers green"
+    exit: 0
+    ts: "2026-10-10T03:42:49Z"
+    seat: Claude Opus 5.5 (orchestrator)
+council_run: >-
+  not convened — the anti-sperpero gate does not fire: rules, products and the 10 non-portal records are
+  byte-identical to the signed seq-26, so divergent priors cannot change the answer. One independent
+  adversarial seat (below) checked the fingerprint judgements instead, and a fresh on-disk gate signs last.
 dissent:
+  - seat: seq27-adversary (Claude Sonnet 5.5, independent of the build lane, read-only; verdict delivered 2026-10-10T03:31:59Z)
+    objection: "Signing on judge=fingerprint judgements trusts a hash, not a reading: does the fingerprint cover the content the pack relies on, is the baseline a judged read, and do the pages still say it today?"
+    status: REFUTED
+    note: >-
+      PASS. The fingerprint is sha256 of the whole visible text (portal_read_receipt.py:127-128), changing one
+      fee digit or "1 tahun atau 2 tahun" -> "1 tahun" changes it; recomputed from the saved texts it equals the
+      receipt 18/18. The baseline is ONE hop back: the 2026-10-07 seq-25 ledger, judged by three readers with
+      quoted sentences (8 changed, accepted one by one in disposition.json; 10 none with reasons). Live re-read on
+      2026-10-10 with the organ's own fetch/extract: 18/18 HTTP 200, fingerprint equal, key phrase present, text
+      length equal to the receipt. Every product/rule claim is still supported by the saved text (E31A-J "1 tahun
+      atau 2 tahun", E30A 1 or 2 years, E30B 1/2/4 years, D1/D2 60 days, D12 180 days, bridging 60 days, 6
+      calling-visa countries, 97 VOA countries, no alih status from VoA/BVK). Residuals, non-blocking: a changed
+      40-character alphanumeric token is ignored by the fingerprint; ISO codes were counted, not compared one by one.
   - seat: self-review (Claude Sonnet 5.5, not an independent refuter)
     objection: "The 18 judgements are judge=fingerprint: no model read the pages, so a page whose meaning changed outside its visible text would pass."
     status: PLAUSIBLE
@@ -73,7 +107,7 @@ dissent:
     status: RETRACTED
     note: "checked 2026-10-10T03:34Z — seq-27 equals json.dumps(indent=2) of itself exactly, seq-26 does not (it went through Prettier, which compacts short arrays); the content is the 41 listed differences only."
 owed:
-  - "Signing (rulepack-prod-027.signed.json), activation, the adversarial check of the fingerprint judgements, and filling the council."
+  - "Activation of seq-27 in production (two-login ceremony on the PG primary) and its prove-live: sentinel OK pack 27, exactly one open activation, evaluate answers pack 27."
 spend:
   wall_clock_hours: 2
-  adversarial_rounds: 0
+  adversarial_rounds: 1
