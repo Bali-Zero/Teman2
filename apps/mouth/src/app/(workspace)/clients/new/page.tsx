@@ -101,6 +101,7 @@ export default function NewClientPage() {
     "basic" | "personal" | "crm"
   >("basic");
   const [passportFile, setPassportFile] = useState<string | null>(null);
+  const [passportMimeType, setPassportMimeType] = useState("image/jpeg");
   const [ocrApplied, setOcrApplied] = useState(false);
   // The avatar travels as BYTES, never as an inline data: URI in the create
   // payload. The client id doesn't exist until createClient resolves, so the
@@ -350,9 +351,11 @@ export default function NewClientPage() {
   const handleOcrFieldsConfirmed = (
     fields: Partial<CreateClientInput>,
     file: string,
+    mimeType: string,
   ) => {
     setFormData((prev) => ({ ...prev, ...fields }));
     setPassportFile(file);
+    setPassportMimeType(mimeType);
     setOcrApplied(true);
     // Clear field errors for OCR-filled fields
     setFieldErrors((prev) => {
@@ -379,13 +382,16 @@ export default function NewClientPage() {
   ): Promise<boolean> => {
     if (!passportFile) return true;
 
+    // A PDF scan is stored as a PDF; photos keep the historical .jpg name.
+    const isPdf = passportMimeType === "application/pdf";
     const delays = [2000, 4000, 8000];
     for (let i = 0; i < delays.length; i++) {
       await new Promise((r) => setTimeout(r, delays[i]));
       try {
         await api.crm.uploadDocumentBase64(clientId, {
           file: passportFile,
-          file_name: `passport_${formData.full_name?.replace(/\s/g, "_") || "scan"}.jpg`,
+          file_name: `passport_${formData.full_name?.replace(/\s/g, "_") || "scan"}.${isPdf ? "pdf" : "jpg"}`,
+          ...(isPdf ? { mime_type: "application/pdf" } : {}),
           document_type: "passport",
           document_category: "personal",
           expiry_date: formData.passport_expiry || undefined,
@@ -453,7 +459,8 @@ export default function NewClientPage() {
               Scan Passport
             </h3>
             <p className="text-sm text-[var(--foreground-muted)]">
-              Upload a passport photo and auto-fill client details with AI
+              Upload a passport photo or PDF and auto-fill client details with
+              AI
             </p>
             <span className="inline-block mt-4 text-xs text-[var(--accent)] font-medium px-3 py-1 rounded-full bg-[var(--accent)]/10">
               Recommended
