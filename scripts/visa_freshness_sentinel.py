@@ -109,6 +109,7 @@ PACKS_DIR = (
     / "packs"
 )
 PG_SH = PROJECT_ROOT / "scripts" / "pg.sh"
+WITA = timezone(timedelta(hours=8))  # Asia/Makassar, no DST
 COVERAGE_PROBE = PROJECT_ROOT / "scripts" / "visa_holiday_coverage_probe.py"
 COVERAGE_ESCALATION_JOB = "visa-holiday-coverage:persistent"
 COVERAGE_KEY_PREFIX = "visa-holiday-coverage"
@@ -1100,8 +1101,9 @@ def _run_alert_cycle(
 # holiday decree is not in `id_holidays`, and the result page then drops to the neutral "processing
 # times vary" text. The decree (SKB 3 Menteri) is published in the autumn of the year before, so
 # the gap is knowable months ahead. This lane asks the backend for the first anchor day it opens
-# (`scripts/visa_holiday_coverage_probe.py`, a subprocess: it loads only the stdlib-pure decree
-# modules by file path, so it runs under this same bare python3), and rides the SAME re-alert machinery as the pack lane — persistent, fresh gateway key
+# (`scripts/visa_holiday_coverage_probe.py`, a subprocess: it registers the heavy
+# `backend.services.compliance` package as an empty namespace and loads only stdlib-pure modules,
+# so it runs under this same bare python3), and rides the SAME re-alert machinery as the pack lane — persistent, fresh gateway key
 # per delivery, an undelivered send never moves the clock — under its own state file, dedup keys
 # and board row, so neither lane's OK can resolve the other's alert.
 # ---------------------------------------------------------------------------
@@ -1148,7 +1150,8 @@ def build_coverage_verdict(now: datetime, runner: Any = None) -> Verdict:
             coverage={"error": error}, reason=error,
         )
 
-    cmd = [*_coverage_probe_cmd(), "--today", now.date().isoformat()]
+    # The result page anchors on the WITA day (evaluate_path._processing_timeline), so the probe does too.
+    cmd = [*_coverage_probe_cmd(), "--today", now.astimezone(WITA).date().isoformat()]
     try:
         if runner is not None:
             raw = runner(cmd)

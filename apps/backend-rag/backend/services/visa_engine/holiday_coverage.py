@@ -5,8 +5,8 @@ holiday decree is not in `id_holidays`. This module finds the first anchor day o
 product's longest window can no longer be estimated, by walking the real `estimate()` against the
 real loaded years: no date here is typed, so loading the next decree moves the answer by itself.
 
-`scripts/visa_holiday_coverage_probe.py` is the CLI over `assess`, run in the backend venv by the
-freshness sentinel (which itself runs under Pro's bare interpreter).
+`scripts/visa_holiday_coverage_probe.py` is the CLI over `assess`; the freshness sentinel runs it
+under its own bare python3 (these modules are stdlib-only, so no venv is involved).
 """
 
 from __future__ import annotations

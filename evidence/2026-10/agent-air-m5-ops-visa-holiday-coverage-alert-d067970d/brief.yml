@@ -10,7 +10,7 @@ objective: >-
   Since PR 8129 processing_times.estimate() returns None when a working-day walk reaches a year whose national holiday decree is not in
   id_holidays (2026 and 2027 loaded), and the result page falls back to the neutral "processing times vary" paragraph (E23 from about
   2027-11-19). The 2028 decree does not exist yet, so the cure is an alert: the Visa Oracle freshness sentinel computes the first anchor day
-  on which any product's maximum window cannot be estimated and re-alerts daily from 60 days before it until the next decree is loaded.
+  on which any product's maximum window cannot be estimated and re-alerts daily from 60 days before it until the next decree is loaded. Rework: the family is owner-routed in the gateway so the p0 reaches Telegram instead of the board, and the anchor day is the WITA date the result page uses.
 acceptance:
   - text: With only 2026 loaded, a gap 30 days away is WARN, 100 days is OK, the gap day and the past are STALE (HIGH).
     probe: "apps/backend-rag/backend/tests/services/visa_engine/test_holiday_coverage.py"

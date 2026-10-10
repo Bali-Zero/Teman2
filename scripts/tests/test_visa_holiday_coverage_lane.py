@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -152,3 +152,76 @@ def test_real_probe_with_todays_data_puts_the_gap_in_november_2027_and_is_ok():
         capture_output=True, text=True, check=True,
     ).stdout.strip()
     assert out.startswith("HOLIDAY_COVERAGE OK first_gap=2027-11-")
+
+
+def test_visa_holiday_coverage_is_an_owner_routed_family_by_default(monkeypatch):
+    monkeypatch.delenv("TG_OWNER_FAMILIES", raising=False)
+    import importlib
+
+    import tg_notify
+
+    tg = importlib.reload(tg_notify)
+    key = "visa-holiday-coverage:holiday_gap_warn:2028:s1:n0:a0"
+    assert tg._owner_reserved(key)
+    assert tg._owner_reserved("visa-holiday-coverage:cannot-verify")
+    assert not tg._owner_reserved("visa-holiday-coverage-other-organ")
+    assert tg._owner_reserved("visa-freshness:stale:25:s1:n0:a0")  # the sibling family is untouched
+
+
+def _real_gateway_cycles(tmp_path, monkeypatch, days):
+    """The sentinel's real send path into the REAL tg_notify.py subprocess (private spool and board,
+    no Telegram credentials, dry-run so nothing leaves the process), so act-routing is decided by
+    the gateway, not by a fake."""
+    _board(tmp_path, monkeypatch)
+    monkeypatch.setenv("TG_DRY_RUN", "1")
+    monkeypatch.setenv("TG_SPOOL_DIR", str(tmp_path / "spool"))
+    monkeypatch.setenv("TG_BOARD_PATH", str(tmp_path / "gw_board.jsonl"))
+    monkeypatch.setenv("TG_SECRETS_FILE", str(tmp_path / "no-secrets.env"))
+    v = _verdict("WARN", 30)
+    return [
+        vfs.run_alert_cycle(
+            v, dry_run=False, now_ts=T0 + d * DAY, state_path=tmp_path / "coverage_state.json"
+        )
+        for d in range(days)
+    ]
+
+
+def test_warn_reaches_the_gateways_owner_path_every_day_not_the_board(tmp_path, monkeypatch):
+    monkeypatch.delenv("TG_OWNER_FAMILIES", raising=False)
+    results = _real_gateway_cycles(tmp_path, monkeypatch, 3)
+    assert [r["reason"] for r in results] == ["new-condition", "realert-due", "realert-due"]
+    assert [r["gateway_verdict"] for r in results] == ["sent"] * 3
+    assert not (tmp_path / "gw_board.jsonl").exists()
+    state = json.loads((tmp_path / "coverage_state.json").read_text())
+    assert state["delivered_streak"] == 3 and "route" not in state
+
+
+def test_guilt_a_family_outside_the_owner_list_would_be_routed_to_the_board(tmp_path, monkeypatch):
+    monkeypatch.setenv("TG_OWNER_FAMILIES", "some-other-family")
+    results = _real_gateway_cycles(tmp_path, monkeypatch, 1)
+    assert results[0]["gateway_verdict"] == "spooled"
+    rows = [json.loads(x) for x in (tmp_path / "gw_board.jsonl").read_text().splitlines()]
+    assert rows and rows[0]["type"] == "gateway_routed"
+
+
+def test_the_probe_is_given_the_wita_day_the_result_page_anchors_on():
+    seen = []
+
+    def capture(cmd):
+        seen.append(cmd[cmd.index("--today") + 1])
+        return _answer("OK", 400)
+
+    # 16:30Z is 00:30 WITA of the next day: the page already counts it as the next day.
+    vfs.build_coverage_verdict(datetime(2027, 11, 18, 16, 30, tzinfo=timezone.utc), runner=capture)
+    vfs.build_coverage_verdict(datetime(2027, 11, 18, 15, 59, tzinfo=timezone.utc), runner=capture)
+    assert seen == ["2027-11-19", "2027-11-18"]
+
+
+def test_at_the_wita_day_boundary_of_the_gap_the_lane_is_stale_like_the_page():
+    # Real probe, real data: whatever D is, 16:30Z on D-1 is D in WITA and must read STALE.
+    first = vfs.build_coverage_verdict(NOW)
+    gap = datetime.fromisoformat(first.coverage["first_gap"]).date()
+    eve = datetime(gap.year, gap.month, gap.day, 16, 30, tzinfo=timezone.utc) - timedelta(days=1)
+    assert vfs.build_coverage_verdict(eve).outcome == vfs.OUTCOME_COVERAGE_STALE
+    before = eve - timedelta(minutes=31)
+    assert vfs.build_coverage_verdict(before).outcome == vfs.OUTCOME_COVERAGE_WARN
