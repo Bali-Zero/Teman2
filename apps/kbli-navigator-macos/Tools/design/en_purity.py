@@ -621,9 +621,9 @@ def corpus(ds, i18n, reasons, rows, id_rows):
 def complete(row):
     """Q19: the dump holds every anchor its View declared (encensus, from the functions the View calls), read as a key
     or, when PDFKit reorders a wrapped one, as words. A dump missing one is INCOMPLETE: its count is not a 0."""
-    k, have = key(row["text"]).lower(), Counter(w.lower() for _, w in words(row["text"]))
-    return all(key(a).lower() in k or not Counter(w.lower() for _, w in words(a)) - have
-               for a in row.get("anchors") or [] if key(a))
+    toks = lambda s: Counter(t.lower() for t in re.findall(r"[^\W_]+", s))   # words and numbers: a code is one
+    k, have = key(row["text"]).lower(), toks(row["text"])
+    return all(key(a).lower() in k or not toks(a) - have for a in row.get("anchors") or [] if key(a))
 
 def census(path, id_path, n_ex, curated=None):
     fails = selftest()
@@ -658,7 +658,9 @@ def census(path, id_path, n_ex, curated=None):
     views = sorted({r["view"] for r in rows}, key=lambda v: (v not in GATED, v))
     print("en-indonesian-strings: %d (distinct %d) over %d (code, view) dumps, %d codes · lexicon %d words"
           % (sum(by_view.values()), len(distinct), len(rows), len(recs), len(LEX)))
-    for v in views: print("  %-16s %6d  %s" % (v, by_view[v], "GATED" if v in GATED else "counted"))
+    anchored, short = Counter(r["view"] for r in rows if r.get("anchors")), Counter(r["view"] for r in rows if not complete(r))
+    for v in views: print("  %-16s %6d  %s%s" % (v, by_view[v], "GATED" if v in GATED else "counted",
+                                               " — %d INCOMPLETE dumps: not a 0" % short[v] if short[v] else ""))
     print("  by category: " + ", ".join("%s %d" % (c, by_cat[c]) for c in CATS))
     print("allowlisted: %d spans holding Indonesian words, %d of them in gated views (all · gated · reason)"
           % (sum(allow_by.values()), sum(allow_gated.values())))
@@ -666,7 +668,6 @@ def census(path, id_path, n_ex, curated=None):
     for v in views:
         for cat, c, line, toks in examples[v]:
             print("  e.g. %-14s %-13s %s  %s   [%s]" % (v, cat, c, line[:100], ",".join(sorted(set(toks)))[:40]))
-    anchored, short = Counter(r["view"] for r in rows if r.get("anchors")), Counter(r["view"] for r in rows if not complete(r))
     print("anchors (Q19): dumps holding every anchor their View declared, per view")
     for v in views:
         n = sum(r["view"] == v for r in rows)
