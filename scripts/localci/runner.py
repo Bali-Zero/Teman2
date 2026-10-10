@@ -1589,7 +1589,7 @@ def tree_pack_for(run_dir: Path, plan: dict) -> tuple[Path | None, dict | None, 
             meta = {**build_tree_pack(Path(plan["worktree"]), sha, pack, TREE_PACK_TIMEOUT_S), "commit": sha}
             atomic_write(side, json.dumps(meta))
             return pack, meta, None
-        except (OSError, subprocess.SubprocessError, RuntimeError, ValueError) as e:
+        except (OSError, subprocess.SubprocessError, RuntimeError, ValueError, AttributeError, KeyError, TypeError) as e:   # a sidecar that is not a dict, or lacks a key
             pack.unlink(missing_ok=True)
             side.unlink(missing_ok=True)
             why = f"{type(e).__name__}: {str(e).strip()[:160]}"
@@ -1603,6 +1603,14 @@ def tree_pack_ship(run_dir: Path, plan: dict) -> tuple[dict | None, dict[str, Pa
     if pack is None:
         return None, {}, f"# tree pack: unavailable ({why}) — the sandbox indexes the tree itself\n"
     return {"path": "/cfg/tree.pack", "tree": meta["tree"]}, {"cfg/tree.pack": pack}, None
+
+
+def tree_pack_ship_safe(run_dir: Path, plan: dict) -> tuple[dict | None, dict[str, Path], str | None]:
+    """The pack is a speed-up: whatever its machinery raises, the leg falls back to indexing the tree itself and says so."""
+    try:
+        return tree_pack_ship(run_dir, plan)
+    except Exception as e:   # noqa: BLE001
+        return None, {}, f"# tree pack: unavailable ({type(e).__name__}: {str(e).strip()[:160]}) \u2014 the sandbox indexes the tree itself\n"
 
 
 def remove_tree_pack(run_dir: Path) -> None:
@@ -1823,7 +1831,7 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
         for (rel, _mode, oid), blob in zip(hist["base"], read_blobs(Path(plan["worktree"]), [o for _, _, o in hist["base"]])):
             extra[f"cfg/base/{rel}"] = blob
         if spec.get("git_index"):
-            tp, files, pack_note = tree_pack_ship(run_dir, plan)
+            tp, files, pack_note = tree_pack_ship_safe(run_dir, plan)
         extra["cfg/steps.json"] = json.dumps({"context": spec["context"], "root": workdir, "git_index": spec.get("git_index"), "history": spec.get("history"),
                                               "path_prefix": spec.get("path_prefix") or "", "venv": bool(spec.get("venv")), "env": spec["env"],
                                               "steps": spec["steps"], **({"tree_pack": tp} if tp else {})}).encode()
@@ -2124,7 +2132,7 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
             for aname, files in sorted(arts.items()):
                 if fnmatch.fnmatchcase(aname, X.substitute(em["pattern"] or em["name"], ctx)):
                     extra.update({f"w/{dest}/{'' if em['merge'] else aname + '/'}{rel}": b for rel, b in files.items()})
-    tp, files, pack_note = tree_pack_ship(run_dir, plan)
+    tp, files, pack_note = tree_pack_ship_safe(run_dir, plan)
     extra["cfg/steps.json"] = json.dumps({**cfg_base, "context": f"{spec['context']} / {label}", "git_index": True, "history": spec.get("history"),
                                           "checkout": job.get("checkout"), "steps": steps, **({"tree_pack": tp} if tp else {})}).encode()
     uploads = [(X.substitute(em["name"], ctx), X.substitute(em["path"], ctx)) for em in (s.get("emulate") or {} for s in steps) if em.get("action") == "upload"]

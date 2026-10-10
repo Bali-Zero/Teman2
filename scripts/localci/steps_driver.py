@@ -29,8 +29,9 @@ def index_tree(root: str, history: dict | None, base_dir: Path, tree_pack: dict 
     the candidate's index minus the paths it added, plus the BASE blob and mode of every path it changed (<cfg dir>/base/<path>) — and
     the candidate commit sits on it: `main`, `origin/main` and a fetch of `origin main` (origin = this repo) all name BASE.
     With `tree_pack` ({"path", "tree"}, B14) the runner shipped a pack of the candidate tree's objects: it is indexed (which verifies
-    every object's hash), the named tree must be in it, and `read-tree` seeds the index so `add -A -f` only hashes what the pack
-    lacks. A pack that does not verify raises — no verdict, never a silent fallback; without the key the tree is hashed here."""
+    every object's hash), the named tree must be in it, and `read-tree` seeds the index. `add -A -f` must stay: `read-tree` leaves zeroed stat
+    data, so it re-hashes EVERY file in the sandbox and only skips WRITING objects the pack already has; that full re-hash is why a
+    pack can never change the commit. A pack that does not verify raises — no verdict, never a silent fallback; without the key the tree is hashed here."""
     env = {**os.environ, **GIT_ID}
 
     def git(*args: str, data: str | None = None) -> str:

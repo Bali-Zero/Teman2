@@ -181,10 +181,10 @@ counted in no step. Measured on Pro (the real 26,551-blob, 1.4 GB candidate tree
 containers. Now the host builds ONE pack of the candidate tree's objects (`ls-tree -r -t -z` blobs and subtrees plus the root
 tree into `pack-objects --stdout`, streamed to disk: 7.8 s, 29,761 objects, 845 MB) lazily at the first git_index container, under
 `state/tree.pack` with a json sidecar, reused by every later container of the run (size and commit re-checked, not the sha256) and
-removed when the run ends, verdicts or crash. It is tarred into the sandbox as `cfg/tree.pack` and named by the steps config's
+removed in the run's `finally` (verdicts or a crash); what a SIGKILL or a reboot leaves is swept by the prune once the run is 24 h old. It is tarred into the sandbox as `cfg/tree.pack` and named by the steps config's
 `tree_pack` key; egress sandboxes and containers without `git_index` never get it. The driver runs `index-pack --stdin` (every
-object's hash verified), requires the named tree to be in it, `read-tree`s it, and only then `add -A -f` (2.8 s: it hashes only
-what the pack lacks), the history block, the commit and `repack -d`. Start to exit 9.5 s (copy-in 13.9 s vs 7.5 s), same
+object's hash verified), requires the named tree to be in it, `read-tree`s it, and only then `add -A -f` (2.8 s: `read-tree` leaves zeroed stat data, so it re-hashes every file and only skips writing the
+objects the pack has, which is why the pack cannot change the commit, and why the `add` must stay), the history block, the commit and `repack -d`. Start to exit 9.5 s (copy-in 13.9 s vs 7.5 s), same
 `HEAD^{tree}`, same 26,551 files, clean status, 0 loose objects: about 47 s saved per container. A pack that does not verify raises
 in the driver (no verdict, never a silent fallback); a pack the host cannot build ships nothing, writes `# tree pack: unavailable
 (<why>) — the sandbox indexes the tree itself` in the log, and the driver takes the old path: speed is lost, never a verdict.

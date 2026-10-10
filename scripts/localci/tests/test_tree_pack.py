@@ -202,6 +202,26 @@ def test_a_pack_file_is_tarred_from_disk_with_its_size_uid_and_mode(repo):
         assert "cfg" in m and "cfg/x.json" in m
 
 
+@pytest.mark.parametrize("sidecar", ["[1, 2]", '{"commit": "x"}', '{"commit": null, "bytes": 1}', "null"])
+def test_b14_a_malformed_sidecar_falls_back_to_rebuilding_never_raises(repo, monkeypatch, sidecar):
+    run_dir = repo["tmp"] / "run"
+    (run_dir / "state").mkdir(parents=True)
+    (run_dir / "state" / "tree.pack").write_bytes(b"x")
+    (run_dir / "state" / "tree.pack.json").write_text(sidecar)
+    monkeypatch.setattr(runner, "build_tree_pack", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no build")))
+    res, seen, log = run_contained(repo, monkeypatch, True, run_dir)
+    assert res["status"] == "PASS" and "tree_pack" not in seen["cfg"] and "# tree pack: unavailable" in log
+
+
+def test_b14_a_sidecar_that_is_a_nonempty_list_gives_the_fallback_pair_from_the_check_itself(repo):
+    run_dir = repo["tmp"] / "run"
+    (run_dir / "state").mkdir(parents=True)
+    (run_dir / "state" / "tree.pack").write_bytes(b"x")
+    (run_dir / "state" / "tree.pack.json").write_text("[1]")
+    pack, meta, why = runner.tree_pack_for(run_dir, {"candidate_sha": "a" * 40, "worktree": str(repo["repo"] / "missing")})
+    assert pack is None and meta is None and why
+
+
 def contained_spec(fx: dict, git_index: bool) -> dict:
     return {"kind": "contained_steps", "context": "t", "driver_sha256": hashlib.sha256(runner.STEPS_DRIVER.read_bytes()).hexdigest(), "git_index": git_index,
             "history": {"added": [], "base": []}, "path_prefix": "", "venv": False, "env": {}, "steps": [{"name": "s", "argv": ["true"]}],
@@ -322,3 +342,26 @@ def test_the_pack_is_gone_when_a_check_crashes_the_run(tmp_path, monkeypatch):
     with pytest.raises(KeyboardInterrupt):
         fr.run(fx)
     assert not any(p.name.startswith("tree.pack") for p in (fx["run"] / "state").iterdir())
+
+
+def test_b14_a_leg_whose_pack_machinery_raises_runs_on_the_fallback_path(repo, monkeypatch):
+    run_dir = repo["tmp"] / "run"
+    for d in ("state", "logs", "receipts"):
+        (run_dir / d).mkdir(parents=True)
+    monkeypatch.setenv("LOCALCI_MIN_FREE_GB", "0")
+    monkeypatch.setattr(runner, "start_services", lambda *a, **k: ([], None, None))
+    monkeypatch.setattr(runner, "tree_pack_ship", lambda *a, **k: (_ for _ in ()).throw(AttributeError("boom")))
+    seen = []
+
+    def fake(n, spec, rd, plan, inner, overrides, extra, env, log, junit, timeout, workdir="/w", **kw):
+        seen.append((json.loads(extra["cfg/steps.json"]), dict(kw.get("files") or {})))
+        junit.write_text('<testsuite><testcase name="s" time="0.1"/></testsuite>')
+        return 0, None
+    monkeypatch.setattr(runner, "execute_contained", fake)
+    spec = {"isolation": contained_spec(repo, True)["isolation"], "expr": {}, "context": "t", "history": {"added": [], "base": []}, "memory": "4g",
+            "driver_sha256": hashlib.sha256(runner.STEPS_DRIVER.read_bytes()).hexdigest(), "expr_sha256": hashlib.sha256(runner.GH_EXPR.read_bytes()).hexdigest()}
+    job = {"job_id": "j", "needs": [], "path_prefix": "", "venv": False, "job_env": {}, "services": [], "image_id": "sha256:" + "1" * 64, "timeout_s": 60,
+           "checkout": None, "steps": [{"name": "s", "argv": ["true"]}]}
+    plan = {"run_id": "r", "worktree": str(repo["repo"]), "candidate_sha": repo["cand"]}
+    out = runner._run_leg("ctx.t", spec, job, {}, run_dir, plan, {}, {}, runner._gh_expr())
+    assert out["infra"] is None and len(seen) == 1 and seen[0][1] == {} and "tree_pack" not in seen[0][0]
