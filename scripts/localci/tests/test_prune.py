@@ -38,12 +38,15 @@ FAKE = r'''#!{py}
 import json, sys
 world = json.load(open({world!r}))
 a = sys.argv[1:]
-if "--help" not in a:   # the flag probe is not a call the tests count
-    open({log!r}, "a").write(" ".join(a) + "\n")
+open({helplog!r} if "--help" in a else {log!r}, "a").write(" ".join(a) + "\n")   # the flag probe is not a call the tests count
 if a[:2] == ["builder", "prune"] and "--help" in a:   # buildx's own help; `help` overrides it, `help_fails` makes it unreadable
     if world.get("help_fails"):
         sys.exit(1)
     print(world.get("help", "Flags:\n  -a, --all\n      --max-used-space bytes   Maximum amount of disk space allowed to keep for cache\n      --reserved-space bytes\n      --min-free-space bytes"))
+elif a[:2] == ["buildx", "du"]:   # `du` is the summary text; `du_fails` makes it unreadable
+    if world.get("du_fails"):
+        sys.exit(1)
+    print(world.get("du", ""))
 elif a[:2] == ["image", "ls"]:
     print("\n".join([im["tag"] for im in world["images"]] + world.get("others", [])))
 elif a[:2] == ["image", "inspect"]:
@@ -66,6 +69,7 @@ elif a[:2] == ["builder", "prune"] and world.get("builder_rcs"):   # one exit co
 elif a[:2] == ["builder", "prune"] and "cache_after" in world:
     world["cache"] = world["cache_after"]
     json.dump(world, open({world!r}, "w"))
+    print(world.get("prune_stderr", ""), file=sys.stderr)
     print("Total: " + world.get("total", "12.93GB"))
 elif a[:1] == ["run"] and "df" in a:
     if world.get("df_fails"):
@@ -100,13 +104,18 @@ def world(tmp_path: Path, images: list, plans: dict | None = None, in_progress: 
     w = tmp_path / "world.json"
     w.write_text(json.dumps({"images": images, **extra}))
     exe = tmp_path / "docker"
-    exe.write_text(FAKE.format(py=sys.executable, world=str(w), log=str(tmp_path / "docker.log")))
+    exe.write_text(FAKE.format(py=sys.executable, world=str(w), log=str(tmp_path / "docker.log"), helplog=str(tmp_path / "help.log")))
     exe.chmod(0o755)
     return state, str(exe)
 
 
 def calls(tmp_path: Path) -> list[str]:
     log = tmp_path / "docker.log"
+    return log.read_text().splitlines() if log.exists() else []
+
+
+def help_calls(tmp_path: Path) -> list[str]:
+    log = tmp_path / "help.log"
     return log.read_text().splitlines() if log.exists() else []
 
 
@@ -745,7 +754,7 @@ def test_b8_the_build_cache_is_pruned_to_a_budget_not_by_age(tmp_path):
     state, docker = world(tmp_path, [image("a" * 16, 2, "e2e-tests")], cache="16.93GB", cache_after="4GB")
     line = prune_line(state, docker)
     assert "builder prune -af --max-used-space 4GB" in calls(tmp_path) and not [c for c in calls(tmp_path) if "until=" in c]
-    assert line["builder_prune"] == {"rc": 0, "keep_storage_gb": 4, "flag": "max-used-space", "freed_gb": 12.93, "ineffective": False, "cache_gb": {"before": 16.93, "after": 4.0}, "runs": 1,
+    assert line["builder_prune"] == {"rc": 0, "keep_storage_gb": 4, "flag": "max-used-space", "freed_gb": 12.93, "deprecated_flag": False, "du_gb": None, "cache_gb": {"before": 16.93, "after": 4.0}, "runs": 1,
                                      "tail": "Total: 12.93GB"}
 
 
@@ -828,6 +837,7 @@ def test_b13_the_help_is_read_once_per_prune_run_not_per_call(tmp_path):
     state, docker, _ = three_recipes(tmp_path, 14.5)
     assert prune_line(state, docker)["builder_prune"]["runs"] > 1
     assert len({c for c in calls(tmp_path) if c.startswith("builder prune")}) == 1
+    assert help_calls(tmp_path) == ["builder prune --help"]   # exactly one probe for all the calls
 
 
 @pytest.mark.parametrize("out, gb", [("Total:\t3.867GB", 3.867), ("Total:\t0B", 0.0), ("Total: 512MB", 0.512), ("Total:\t1.5kB", 0.0),
@@ -841,26 +851,77 @@ def test_b13_the_journal_carries_what_was_freed(tmp_path):
     assert prune_line(state, docker)["builder_prune"]["freed_gb"] == 18.83
 
 
-def test_b13_a_prune_that_exits_0_frees_0_b_and_leaves_the_cache_over_budget_is_ineffective_and_failed(tmp_path):   # guilt
-    state, docker = world(tmp_path, [image("a" * 16, 2, "e2e-tests")], cache="22.83GB", cache_after="22.83GB", total="0B")
+PRO_LINE = "Flag --keep-storage has been deprecated, keep-storage flag has been changed to reserved-space"
+
+
+def b13_world(tmp_path, **kw):
+    return world(tmp_path, [image("a" * 16, 2, "e2e-tests")], cache="22.83GB", cache_after="4GB", **kw)
+
+
+def test_b13_the_exact_pro_deprecation_line_naming_our_flag_fails_the_prune(tmp_path):   # guilt
+    state, docker = b13_world(tmp_path, help=OLD_HELP, prune_stderr=PRO_LINE, total="0B")
     line = prune_line(state, docker)
-    assert line["builder_prune"]["rc"] == 0 and line["builder_prune"]["ineffective"] is True and "freed 0 B" in line["builder_prune"]["why"]
-    assert "builder_prune" in line["failed"]
+    assert line["builder_prune"]["flag"] == "keep-storage" and line["builder_prune"]["deprecated_flag"] is True
+    assert line["builder_prune"]["rc"] == 0 and "builder_prune" in line["failed"]
 
 
-@pytest.mark.parametrize("world_kw", [
-    {"cache": "22.83GB", "cache_after": "4GB", "total": "18.83GB"},    # effective
-    {"cache": "4.9GB", "cache_after": "4.9GB", "total": "0B"},          # 0 B but within the 1 GB slack
-    {"cache": "4GB", "cache_after": "4GB", "total": "0B"},              # 0 B and already at budget
-    {"cache": "22.83GB", "cache_after": "10GB", "total": "12.83GB"},    # partial: shared bytes stay, something went
-])
-def test_b13_an_effective_prune_or_one_within_budget_is_not_ineffective(tmp_path, world_kw):   # innocence
-    state, docker = world(tmp_path, [image("a" * 16, 2, "e2e-tests")], **world_kw)
+def test_b13_a_deprecation_warning_naming_another_flag_does_not_fail_the_prune(tmp_path):   # innocence
+    state, docker = b13_world(tmp_path, prune_stderr="Flag --reserved-space has been deprecated, use something\nthe word deprecated alone")
     line = prune_line(state, docker)
-    assert line["builder_prune"]["ineffective"] is False and "why" not in line["builder_prune"] and line["failed"] == []
+    assert line["builder_prune"]["flag"] == "max-used-space" and line["builder_prune"]["deprecated_flag"] is False and line["failed"] == []
 
 
-def test_b13_no_total_line_or_an_unread_cache_never_claims_ineffective(tmp_path):
-    state, docker = world(tmp_path, [image("a" * 16, 2, "e2e-tests")], cache="22.83GB")   # a prune that prints nothing
+def test_b13_a_clean_output_does_not_fail_the_prune(tmp_path):   # innocence
+    line = prune_line(*b13_world(tmp_path))
+    assert line["builder_prune"]["deprecated_flag"] is False and line["failed"] == []
+
+
+@pytest.mark.parametrize("out, flag, hit", [
+    (PRO_LINE, "keep-storage", True),
+    ("FLAG --keep-storage HAS BEEN CHANGED TO reserved-space", "keep-storage", True),
+    ("Flag --keep-storage is deprecated", "max-used-space", False),
+    ("--max-used-spaces is deprecated", "max-used-space", False),
+    ("--max-used-space-x has been deprecated", "max-used-space", False),
+    ("--max-used-space 4GB\nsomething deprecated", "max-used-space", False),
+    ("", "keep-storage", False)])
+def test_b13_the_deprecation_match_is_per_line_and_names_our_flag(out, flag, hit):
+    assert pm.flag_deprecated(out, flag) is hit
+
+
+def test_b13_a_deprecation_in_any_call_of_the_run_sticks(tmp_path):
+    state, docker, _ = three_recipes(tmp_path, 14.5, cache="20GB", cache_after="4GB", prune_stderr="Flag --max-used-space has been deprecated")
     line = prune_line(state, docker)
-    assert line["builder_prune"]["freed_gb"] is None and line["builder_prune"]["ineffective"] is False
+    assert line["builder_prune"]["runs"] > 1 and line["builder_prune"]["deprecated_flag"] is True and "builder_prune" in line["failed"]
+
+
+BEFORE = "Shared:\t\t12.67GB\nPrivate:\t10.16GB\nReclaimable:\t22.83GB\nTotal:\t\t22.83GB\n"
+AFTER = "ID  RECLAIMABLE  SIZE  LAST ACCESSED\nabc  true  1GB  now\nShared:\t\t677.5MB\nPrivate:\t9.615GB\nReclaimable:\t10.29GB\nTotal:\t\t10.29GB\n"
+
+
+@pytest.mark.parametrize("out, want", [
+    (BEFORE, {"shared": 12.67, "private": 10.16, "reclaimable": 22.83, "total": 22.83}),
+    (AFTER, {"shared": 0.677, "private": 9.615, "reclaimable": 10.29, "total": 10.29}),
+    ("Reclaimable:\t3.5GB\nTotal:\t\t3.5GB\n", {"shared": 0.0, "private": 3.5, "reclaimable": 3.5, "total": 3.5}),   # no Shared: no Private: either
+    ("", None), ("garbage\nShared: lots", None), ("Total:\t1GB\n", None)])
+def test_b13_the_buildx_du_summary_is_parsed_into_gb_and_garbage_is_none(out, want):
+    assert pm.du_summary_gb(out) == want
+
+
+def test_b13_the_journal_carries_the_du_after_the_last_call_and_never_fails_on_it(tmp_path):
+    line = prune_line(*b13_world(tmp_path, du=AFTER))
+    assert line["builder_prune"]["du_gb"] == {"shared": 0.677, "private": 9.615, "reclaimable": 10.29, "total": 10.29}
+    assert line["failed"] == [] and "buildx du" in calls(tmp_path)
+    assert prune_line(*b13_world(tmp_path / "x", du_fails=True))["builder_prune"]["du_gb"] is None
+    assert prune_line(*b13_world(tmp_path / "y", du="nothing"))["failed"] == []
+    assert calls(tmp_path)[-1] == "buildx du" and [c for c in calls(tmp_path) if c.startswith("buildx")] == ["buildx du"]
+
+
+def test_b13_freed_gb_sums_the_totals_of_the_calls_and_is_none_only_if_every_call_is_unparsed(tmp_path):
+    state, docker, _ = three_recipes(tmp_path, 14.5, cache="20GB", cache_after="4GB")
+    line = prune_line(state, docker)["builder_prune"]
+    assert line["runs"] == 2 and line["freed_gb"] == 25.86   # 12.93 per call
+    assert prune_line(*world(tmp_path / "n", [image("a" * 16, 2, "e2e-tests")], cache="22.83GB"))["builder_prune"]["freed_gb"] is None
+
+
+def test_b13_a_total_of_zero_is_zero_not_none(tmp_path):
+    assert prune_line(*b13_world(tmp_path, total="0B"))["builder_prune"]["freed_gb"] == 0.0
