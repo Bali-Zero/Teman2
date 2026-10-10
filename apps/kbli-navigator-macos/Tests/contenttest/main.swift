@@ -69,7 +69,7 @@ let out: [String: Any] = MainActor.assumeIsolated {
     }
     // Each redesigned view must still ask the canonical functions (append one line per view).
     let mustCall: [String: [String]] = [
-        "Sources/Views/SearchListView.swift": ["KBLIVerdict.headsUp(", "OverlayStore.shared.primaryTitle("],
+        "Sources/Views/SearchListView.swift": ["KBLIVerdict.headsUp(", "OverlayStore.shared.primaryTitle(", "LabelBook.cap("],
         "Sources/Views/KBLIRegistryTable.swift": ["Theme.riskChip(", "Theme.chip(", "LabelBook.title("],
         "Sources/Views/RegistryVerdictSheet.swift": ["LabelBook.title(", "LabelBook.humanise("],
     ]
@@ -99,6 +99,25 @@ let out: [String: Any] = MainActor.assumeIsolated {
                 violations.append("\(file):\(n + 1) reads the raw .\(field): \(line.trimmingCharacters(in: .whitespaces).prefix(80))")
             }
         }
+    }
+    // Lead ruling on EN-1 (2026-10-10): a search row's chip says the status word and the line beside it only
+    // the cap — never "Restricted Restricted · 49%". Every code in both languages, and the row's own call.
+    let words = ["TERBUKA", "TERBATAS", "TERTUTUP"].flatMap { w in
+        [false, true].map { LabelBook.pmaStatus(w, isID: $0).lowercased() }
+    }
+    var repeats: [String] = []
+    for k in store.all {
+        for isID in [false, true] {
+            let line = LabelBook.cap(k, isID: isID)
+            if words.contains(where: { line.lowercased().contains($0) }) { repeats.append("\(k.kode) \(isID ? "id" : "en") “\(line)”") }
+        }
+    }
+    if !repeats.isEmpty {
+        violations.append("search-row: the line beside the status chip repeats the status word in \(repeats.count) rows, e.g. \(repeats.prefix(3).joined(separator: ", "))")
+    }
+    if let src = try? String(contentsOfFile: "\(appRoot)/Sources/Views/SearchListView.swift", encoding: .utf8),
+       src.contains("ownershipLine(") {
+        violations.append("SearchListView.swift calls ownershipLine( — the search row's chip already says its status word; the line beside it is LabelBook.cap(")
     }
     return ["codes": codes, "balanced_rejoin": rejoin, "probe_violations": violations]
 }

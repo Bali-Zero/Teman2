@@ -669,7 +669,7 @@ struct QueryResultRow: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 statusChip()
-                Text(KBLIVerdict.of(record: kbli).ownershipLine(isID: isID))
+                Text(LabelBook.cap(kbli, isID: isID))
                     .font(Theme.scalable(12)).foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }

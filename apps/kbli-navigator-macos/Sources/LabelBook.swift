@@ -60,6 +60,18 @@ enum LabelBook {
         }
     }
 
+    /// The cap half of `ownershipLine`, for a line beside a chip that already says the status word (lead
+    /// ruling on EN-1, 2026-10-10: never "Restricted Restricted · 49%"), in both languages. A closed code
+    /// shows the cap its record states, as the search peak does.
+    static func cap(_ k: KBLI, isID: Bool) -> String {
+        switch KBLIVerdict.of(record: k).national {
+        case .open(let cap): return cap.map { "\($0)%" } ?? "—"
+        case .restricted(let cap): return cap.map { "\($0)%" } ?? (isID ? "syarat khusus" : "special conditions")
+        case .closed: return k.pmaMaxAsing.map { "\($0)%" } ?? "—"
+        case .undetermined: return "—"
+        }
+    }
+
     /// `l4_bali.status`, in both languages. `Theme.kbliStatusLabel` first; it names neither status
     /// added by the 2026-09-17 re-anchor, and its one English label kept an Indonesian word.
     static func baliStatus(_ raw: String, isID: Bool) -> String {
