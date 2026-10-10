@@ -16,6 +16,9 @@ struct RegistryVerdictSheet: View {
     let kbli: KBLI
     @Binding var expanded: Bool
     let onClose: () -> Void
+    /// When false (the text census), the `ScrollView` is dropped so an off-screen renderer draws the
+    /// whole sheet — `KBLIRegistryView`'s convention.
+    var scrolls: Bool = true
 
     /// Pure, headless-callable (`Tests/semantictest`) — the sheet's national-axis card delegates
     /// entirely to `KBLIVerdict.ownershipLine` (OPEN-1, 2026-09-17). `nationalValue` below calls
@@ -46,24 +49,7 @@ struct RegistryVerdictSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             grabber
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    identity
-                    // VERDICT-FIRST, per the D2 ruling the dossier card already follows
-                    // (2026-08-11): the binding answer leads, the three axes and their sources
-                    // support it underneath. At the app's minimum window height this is also the
-                    // difference between a reader seeing the verdict and having to scroll for it.
-                    verdictBlock
-                    axisCards
-                    actions
-                    if expanded {
-                        Divider().overlay(Theme.hairline)
-                        KBLIRegistryView(kbli: kbli, scrolls: false, showsIdentityAndVerdict: false)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-                .padding(.horizontal, 24).padding(.top, 4).padding(.bottom, 16)
-            }
+            if scrolls { ScrollView { content } } else { content }
         }
         .background(Theme.ink)
         .overlay(alignment: .top) { Rectangle().fill(Theme.hairlineHi).frame(height: 1) }
@@ -71,6 +57,25 @@ struct RegistryVerdictSheet: View {
         .overlay(RoundedRectangle(cornerRadius: Theme.radiusLg, style: .continuous)
             .strokeBorder(Theme.hairline, lineWidth: 1))
         .shadow(color: .black.opacity(0.28), radius: 18, y: -6)
+    }
+
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            identity
+            // VERDICT-FIRST, per the D2 ruling the dossier card already follows
+            // (2026-08-11): the binding answer leads, the three axes and their sources
+            // support it underneath. At the app's minimum window height this is also the
+            // difference between a reader seeing the verdict and having to scroll for it.
+            verdictBlock
+            axisCards
+            actions
+            if expanded {
+                Divider().overlay(Theme.hairline)
+                KBLIRegistryView(kbli: kbli, scrolls: false, showsIdentityAndVerdict: false)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.horizontal, 24).padding(.top, 4).padding(.bottom, 16)
     }
 
     // MARK: chrome

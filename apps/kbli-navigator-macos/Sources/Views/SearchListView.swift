@@ -574,7 +574,7 @@ struct SearchListView: View {
 
 /// The first hit is the peak card, every other hit a ruled row. Text wraps (no line limits); the
 /// selection / tap handling stays with `SearchListView.tableBody`.
-private struct QueryResultRow: View {
+struct QueryResultRow: View {
     @EnvironmentObject var lang: LanguageManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let kbli: KBLI
