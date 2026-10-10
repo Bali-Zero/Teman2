@@ -1,0 +1,42 @@
+task_id: kbli-nav-design-en1a2-census
+mission: kbli-nav-design-loop (Track A, build, lot EN-1a' — the en-purity instrument, depth-1 cure of #8213)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  evidence_pack_lint's floor for this change set is 2 by its size term alone, with no hot-zone path. Code and tests
+  are about 588 net lines — Tests/encensus (126), Tools/design/en_purity.py (446), content_check.sh, two census seams
+  in SearchListView.swift and RegistryVerdictSheet.swift, and three line citations that follow them — plus 571
+  lexicon data rows (word, group, English gloss) and this brief.
+l_level: L1
+gate_class: opus
+objective: >-
+  Z-DECISIONI Q12 (2026-10-10, "in English it's English"), first half: the instrument, re-cut after the #8213 gate's
+  BLOCK (under-match). Tests/encensus renders every View a code reaches through ImageRenderer into a PDF context and
+  dumps the text PDFKit reads back; the chromes and the new search-field dump also read what AppKit draws (a text
+  field's placeholder, a pop-up's title). content_check step 4 runs it in English (fast: the three frozen codes plus
+  a stratified sample of 106; full: all 1,559 x 8 Views) and the gated surfaces in Indonesian, and
+  Tools/design/en_purity.py counts the Indonesian left in English per View and category. Its self-test runs over the
+  known corpus every time: all 1,559 ID titles drawn unlabelled are flagged, every ID-only word of the gated surfaces
+  is a lexicon word, and the English titles and descriptions flag nothing. Words are read as drawn (PDFKit's glued
+  runs split), record-bound spans partition exactly with their label and bound an enum's gap, and step 5's
+  never-drawn check follows a raw record field to any sink through local bindings in scope. Gated here: the two
+  chromes, the search field, SearchFieldBar.swift; the four built Views are counted and their never-drawn findings
+  reported, for EN-1b. Presentation tooling only: no KBLI fact, verdict, cap, basis or Bali overlay changes.
+constraints:
+  - No View changes appearance; the 35 renders equal PR 2's after-set manifest byte for byte.
+  - The lexicon carries a reason per entry (its English gloss); every allowlist span kind carries its reason.
+  - content_check works only in a fresh directory under its own app's ignored build/.
+  - No PNG is committed.
+acceptance:
+  - text: The head SHALL build both variants and its 35 renders SHALL equal PR 2's after-set (no visual change).
+    probe: "Pro build-only mirror at the head: INTERNAL_RC=0, BKPM_RC=0, RENDER_SET_RC=0, manifest_match=35/35 vs pr2-registry"
+  - text: The self-test SHALL hold over the known corpus and print its counts.
+    probe: "content_check step 4: ID titles 1559/1559 flagged, ID-only words of the gated surfaces N/N in the lexicon, innocence 0/1559 titles and 0/1559 descriptions, 0 EN-SELFTEST lines"
+  - text: Each of the #8213 gate's mutants SHALL make content_check exit 1, naming the View and the word.
+    probe: "Pro: mut1 (Cari kode KBLI in censusLine), mut2 (Semua sektor, glued in registry-chrome), mut3 (Indonesian placeholder) — each rc=1"
+  - text: The never-drawn check SHALL gate SearchFieldBar on the entity and report the four built Views' findings.
+    probe: "content_check step 5: 0 findings in the gated file, the reported list printed; a raw field put into SearchFieldBar's TextField title gives rc=1"
+  - text: The full census SHALL count every View of all 1,559 codes in English.
+    probe: "Pro: encensus --mode full then en_purity census — per-View counts, the baseline EN-1b must take to 0"
+  - text: The contrast and token gates SHALL stay green.
+    probe: "Pro: measure_contrast rc=0 (FAIL=0 PARITY=0 WHITE=0), derive --check rc=0, png_census 0 FAIL"
