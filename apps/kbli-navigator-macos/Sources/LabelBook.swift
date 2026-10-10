@@ -25,9 +25,25 @@ enum LabelBook {
     static let officialTitleLabel = "Official title (Bahasa Indonesia)"
     static func uraian(_ k: KBLI, isID: Bool) -> String { OverlayStore.shared.dataString(k.uraian, isID: isID) }
 
-    /// Legal text with no English source, quoted whole and labelled (ruling 4). Indonesian is its own language.
+    /// Legal text as the record states it. An English View quotes it whole under the label when it is
+    /// Indonesian: it has no English source and is never machine-translated (ruling 4). Five of the 21
+    /// distinct `pma_kondisi` values are English already ("national capital owner must retain single
+    /// majority", 51101) and stay as written — the label must not call English Indonesian.
     static func original(_ text: String, isID: Bool) -> String {
-        isID ? text : "Original (Bahasa Indonesia): “\(text)”"
+        isID || isEnglish(text) ? text : "Original (Bahasa Indonesia): “\(text)”"
+    }
+
+    /// The opening clause decides, up to the first " — ", "(" or ";": a record's Indonesian legal phrase
+    /// leads and an English gloss may follow it ("Modal dalam negeri 100% — open to domestic capital
+    /// only"), never the reverse. English when that clause holds more English than Indonesian function words.
+    static func isEnglish(_ text: String) -> Bool {
+        let head = text.components(separatedBy: " — ")[0].split(whereSeparator: { "(;".contains($0) }).first ?? ""
+        let words = head.lowercased().split(whereSeparator: { !$0.isLetter }).map(String.init)
+        let en: Set = ["the", "of", "and", "to", "in", "for", "with", "on", "by", "or", "from", "as", "at", "is",
+                       "are", "not", "only", "must", "may", "any", "no"]
+        let id: Set = ["yang", "dan", "di", "ke", "dari", "untuk", "dengan", "pada", "dalam", "atau", "oleh",
+                       "tidak", "bukan", "bagi", "serta", "hanya"]
+        return words.filter(en.contains).count > words.filter(id.contains).count
     }
 
     // MARK: verdict, risk, scale, authority words (ruling 5)

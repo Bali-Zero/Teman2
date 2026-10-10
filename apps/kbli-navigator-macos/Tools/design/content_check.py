@@ -2,7 +2,7 @@
 """content_check.py [--pack PATH] < contenttest.json  (Python 3.9, stdlib; dataset from env KBLI_JSON).
 Compares every leaf of the frozen content pack with what the app produced, byte for byte; authority
 arrays after an order-keeping collapse of exact repeats; 51101 heads_up = the canonical pair (Q12: in English the
-status word is English and pma_kondisi, which has no English source, is the labelled original)."""
+status word is English; 51101's pma_kondisi is English already, so it is verbatim in both languages)."""
 import json, os, sys
 root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 args = sys.argv[1:]
@@ -23,8 +23,7 @@ for code in pack["frozen"]:
     if code == "51101":
         rec = [r for r in ds if r["kode_kbli_2025"] == code][0]
         canons = {"id": ["%s · %s%%" % (want["verdict"], want["cap"]), rec["pma_kondisi"]],
-                  "en": ["%s · %s%%" % ({"TERBATAS": "Restricted"}[want["verdict"]], want["cap"]),
-                         "Original (Bahasa Indonesia): “%s”" % rec["pma_kondisi"]]}
+                  "en": ["%s · %s%%" % ({"TERBATAS": "Restricted"}[want["verdict"]], want["cap"]), rec["pma_kondisi"]]}
         for lang in ("en", "id"):
             canon = canons[lang]
             if got.get(lang, {}).get("heads_up") != canon: diffs.append("DIFF 51101.%s.heads_up: want canonical %r app=%r" % (lang, canon, got.get(lang, {}).get("heads_up")))

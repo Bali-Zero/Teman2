@@ -79,8 +79,8 @@ MainActor.assumeIsolated {
     }
     ck(first[1].map { hu($0).label == tbl(false)["rich.verdict.blocked"]! && hu($0).tone == .closed } ?? false,
        "class 1 first code carries the blocked label, tone closed")
-    // Q12 (2026-10-10): the canonical word is verbatim in id and English in en; pma_kondisi has no English
-    // source, so en shows it whole under the "Original (Bahasa Indonesia)" label.
+    // Q12 (2026-10-10): the canonical word is verbatim in id and English in en; an Indonesian pma_kondisi has
+    // no English source, so en shows it whole under the "Original (Bahasa Indonesia)" label.
     func original(_ s: String?) -> String? { s.map { "Original (Bahasa Indonesia): “\($0)”" } }
     ck(first[2]?.kode == "10307" && first[2].map {
            hu($0, true).label == "TERBATAS · 0%" && hu($0, true).sentence == $0.pmaKondisi
@@ -108,7 +108,7 @@ MainActor.assumeIsolated {
         ck(cls(k) == 5 && id.label == "TERBATAS · 49%" && en.label == "Restricted · 49%",
            "51101: class 5, label \"TERBATAS · 49%\", en \"Restricted · 49%\" (got \"\(id.label)\" / \"\(en.label)\")")
         ck(id.sentence == k.pmaKondisi && k.pmaKondisi != nil, "51101: id sentence == pma_kondisi verbatim (no Kutipan prefix)")
-        ck(en.sentence == original(k.pmaKondisi), "51101: en sentence == pma_kondisi under the original label")
+        ck(en.sentence == k.pmaKondisi, "51101: en sentence == pma_kondisi verbatim — English already, so not labelled")
     } else { ck(false, "51101 present") }
 
     // B3 (0b1 ruling): 448 codes change against the pre-Q10 predicates, frozen here as on main 27ca6fb108:
