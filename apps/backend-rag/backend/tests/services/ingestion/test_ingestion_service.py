@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import inspect
+
 from backend.app.models import TierLevel
 from backend.services.ingestion import ingestion_service as ingestion_module
 from backend.services.ingestion import legal_ingestion_service as legal_module
@@ -21,7 +23,8 @@ class FakeChunker:
 
 
 class FakeEmbedder:
-    def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
+    # Mirrors EmbeddingsGenerator.generate_embeddings, which is async.
+    async def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
         assert texts == ["chunk one", "chunk two"]
         return [[0.1], [0.2]]
 
@@ -30,16 +33,16 @@ class FakeVectorDB:
     def __init__(self) -> None:
         self.calls: list[dict[str, object]] = []
 
-    def upsert_documents(
+    # Mirrors QdrantClient.upsert_documents, which is async.
+    async def upsert_documents(
         self,
         *,
         chunks: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, object]],
-    ) -> None:
-        self.calls.append(
-            {"chunks": chunks, "embeddings": embeddings, "metadatas": metadatas}
-        )
+    ) -> dict[str, object]:
+        self.calls.append({"chunks": chunks, "embeddings": embeddings, "metadatas": metadatas})
+        return {"success": True}
 
 
 class FakeClassifier:
@@ -94,6 +97,7 @@ async def test_ingest_book_runs_standard_pipeline(monkeypatch) -> None:
         "error": None,
     }
     assert service.vector_db.calls[0]["chunks"] == ["chunk one", "chunk two"]
+    assert service.vector_db.calls[0]["embeddings"] == [[0.1], [0.2]]
     assert service.vector_db.calls[0]["metadatas"][0]["status_vigensi"] == "berlaku"
     assert service.vector_db.calls[0]["metadatas"][0]["wilayah"] == "Bali"
 
@@ -132,3 +136,16 @@ def test_is_legal_document_returns_false_when_parsing_fails(monkeypatch) -> None
     monkeypatch.setattr(ingestion_module, "auto_detect_and_parse", raise_parse_error)
 
     assert service._is_legal_document("/tmp/bad.pdf") is False
+
+
+def test_fakes_match_async_contract_of_real_dependencies() -> None:
+    # Guards against the fakes drifting back to sync: sync fakes let the missing
+    # awaits in ingest_book pass CI while the real pipeline returned
+    # success=False ("object of type 'coroutine' has no len()").
+    from backend.core.embeddings import EmbeddingsGenerator
+    from backend.core.qdrant_db import QdrantClient
+
+    assert inspect.iscoroutinefunction(EmbeddingsGenerator.generate_embeddings)
+    assert inspect.iscoroutinefunction(QdrantClient.upsert_documents)
+    assert inspect.iscoroutinefunction(FakeEmbedder.generate_embeddings)
+    assert inspect.iscoroutinefunction(FakeVectorDB.upsert_documents)
