@@ -1,0 +1,41 @@
+task_id: localci-phase-e-followup-1010
+mission: LOCALCI-SOVEREIGN (phase E, prepared — round-9 follow-up)
+colour: BLUE
+gear: 2
+gear_reason:
+  "The lint's floor is 2 by size (the new hand_report.sh, its test and the evidence beside the age change); no
+  hot-zone path. The round-9 LOWs of PR 8191, the lead's runbook request (step 1, the report on Pro, as a versioned script)
+  and the gate's MEDIUM on the first recipe."
+l_level: L2
+gate_class: opus
+objective:
+  'PR 8191 merged the prepared phase E flip with three LOWs from its last gate: the plan said "blockers for --apply:
+  none" for a report 115-120 minutes old while --apply refused it; nothing pinned the per-write report re-read to the full
+  2-hour limit; "cannot expire" overstated a run that is bounded, not instantaneous. The LOCALCI lead added: report.json is
+  written only by a hand `merger.py report` (no tick regenerates it since F2), so the runbook''s first step must be that command
+  on Pro, run immediately before --apply, and the plan''s blocker must say "run the report now".'
+constraints:
+  - Only the report's age judgement, its message and the docs change; W1/W5, Q, the writes, the rollback and the guard are unchanged.
+  - The plan and --apply judge the same age (2 h less 5 min); the re-read before each write keeps the full 2 h.
+  - A session runs the plan only; nothing is applied and no report is recomputed on Pro by this lane.
+  - "No report.json of the lead's state dir is written: the proof run uses a scratch state dir."
+acceptance:
+  - text:
+      The plan's blocker line and --apply SHALL agree on a report 116 minutes old (both refuse, saying to run the report
+      now) and on one 114 minutes old (both accept).
+    probe: test_phase_e_flip.py::test_the_plan_and_apply_agree_on_a_report_near_its_age_limit
+  - text:
+      The re-read before each write SHALL judge the full 2-hour limit (a 114-minute report with the clock moving 4 minutes
+      mid-run flips).
+    probe: test_phase_e_flip.py::test_the_re_read_before_each_write_keeps_the_full_age_limit
+  - text:
+      Step 1 SHALL be scripts/localci/hand_report.sh, which runs the mirror's merger.py report with exactly the files the
+      tick extracts, in launchd's environment, and a report from it on Pro's journal SHALL reclassify the hosted-stale rows
+      as the live report does.
+    probe:
+      test_hand_report.py::test_the_hand_report_extracts_exactly_the_files_the_tick_extracts, ::test_the_hand_report_runs_the_mirrors_merger_report_with_the_ticks_files_in_launchds_environment;
+      a run on Pro into a scratch state dir
+consumer_map:
+  - The operator's phase E plan and apply (scripts/localci/phase_e_flip.py), and the README's phase E runbook.
+pii_scan: clean
+pii_scan_note: Branch-protection tooling, timestamps and a shell recipe. No client data.

@@ -791,9 +791,20 @@ silence is a `warning`, recovery `launchctl kickstart`. Arming (operator of Pro,
 
 ## Phase E flip (prepared; the operator applies)
 
+    bash scripts/localci/hand_report.sh   # step 1, on Pro, immediately before --apply: the report (about 6 minutes)
+    # step 2, the plan (read it); step 3, the apply with the plan's digest
     python scripts/localci/phase_e_flip.py [--repo Bali-Zero/Teman2] [--branch main] [--report <report.json>] [--state-dir <dir>] [--key-pub <deploy_key.pub>]
     python scripts/localci/phase_e_flip.py --apply --confirm <digest> --quiescent   # operator[gui], after READY and the key
     python scripts/localci/phase_e_flip.py --rollback <pre-flip-*.json> [--apply --confirm <digest> --quiescent]
+
+Step 1 recomputes `report.json`, which nothing regenerates on a schedule (since F2 the tick judges READY in memory and writes
+no report). `hand_report.sh` runs the merger's own `merger.py report` the way the tick runs it: the code read from the mirror's
+ref (`refs/merger/wrapper`, else `refs/merger/base`, resolved once), the same files extracted beside it — the report's
+stale-verdict judge loads `runner.py`, and without it every hosted-stale row would stay FALSE_GREEN and READY could never be
+true; a test keeps the list equal to the tick's, and a file missing at that commit fails the run — the merger's venv with `-I`,
+launchd's environment (HOME and PATH only) and the tick's git isolation. `merger report: refusing — <reason>` writes nothing:
+read the reason — a tick appending to the journal at that moment is transient, run it again; an unreadable journal line needs
+repair first.
 
 Phase E of `docs/specs/localci-sovereign-2026-10-07.md` leaves the merger's deploy key as the only writer of `main`. Without
 `--apply` the script only reads (GETs through `gh api`): the classic protection of the branch with its required set and each
@@ -812,7 +823,9 @@ bypass actor), which the flip requires.
 `--apply` writes nothing unless all of these hold, read fresh: `--confirm` equals the digest of a plan of this very state (the
 classic protection, the `merge-queue-main` ruleset, each guard ruleset whole, the write keys by id, date and fingerprint, and the
 writes — any of them that moved since the plan changes the digest); the report says `phase_e_ready: true`,
-is of the same repository, was generated within the last 2 hours (and not more than 5 minutes ahead), and its own window shows
+is of the same repository, was generated within the last 2 hours less 5 minutes — the plan and `--apply` judge the same age,
+and the per-write re-read keeps the full 2 hours — (and not more than 5 minutes ahead; either refusal says to run the report
+now, step 1), and its own window shows
 READY (`compared_merges` >= 50, `compared_days` >= 14, and `FALSE_GREEN` the integer 0 at every level the merger sums for READY —
 `counts`, `context_counts`, `recorded_context_false_green`; a contradiction is refused, a malformed report is refused, never
 raised); exactly one deploy key with write exists (the DeployKey bypass covers every write key of the repository; every page of
@@ -852,8 +865,9 @@ write sent against a state nobody re-read — on draft #8191; the cause is speci
   write intended; a read that differs or fails is read again (3 reads, 2 s apart) before it counts. On a mismatch the run
   stops, writes nothing further, and prints the rollback state file.
 - *W1 for the report.* Before every write of the flip the report is read again and must still prove READY (fresh, the
-  branch's, the whole journal, FALSE_GREEN 0); otherwise the run stops before that write. `--apply` wants a report at least
-  5 minutes inside its 2-hour age limit, so it cannot expire between the two writes and leave the branch frozen. This narrows the window, it does
+  branch's, the whole journal, FALSE_GREEN 0); otherwise the run stops before that write. The plan and `--apply` want a
+  report at least 5 minutes inside its 2-hour age limit, so it does not expire during a normal run (seconds) and leave the
+  branch frozen between the two writes; the re-read before each write keeps the full limit. This narrows the window, it does
   not close it: a READY that turns false between that read and the write is the same residual as GitHub's, and quiescence
   covers it.
 - *W2, nothing else blocks the key.* Rules layer, and a bypass exempts only its own ruleset: beside `merge-queue-main`'s rule,
@@ -874,8 +888,8 @@ write sent against a state nobody re-read — on draft #8191; the cause is speci
   out of scope, and W5 detects a lost race after the fact. A review finding of that class beyond W1/W5 is out of scope by
   this ruling.
 
-**Arming order (phase F's checklist).** (1) Phase D READY: recompute the report on Pro (`merger.py report`, this section's
-freshness rule) and read `phase_e_ready`. (2) operator[secret]: the merger's deploy key generated on Pro
+**Arming order (phase F's checklist).** (1) Phase D READY: recompute the report on Pro (`bash scripts/localci/hand_report.sh`
+from an `origin/main` checkout, the phase E section's step 1) and read `phase_e_ready`. (2) operator[secret]: the merger's deploy key generated on Pro
 (`~/.nuzantara-pilots/local-ci/merger/deploy_key`, 0600, never printed) and registered on the repository with write — the only
 write deploy key; its `.pub` is what `--key-pub` reads. (3) operator[gui]: the plan, read; then `--apply --confirm <digest> --quiescent` (with no session, peer or cron writing GitHub settings) from
 a checkout at `origin/main`, on a host whose `gh` is the owner's (the ruleset and protection writes need admin), with the

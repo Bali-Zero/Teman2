@@ -357,8 +357,8 @@ def test_apply_without_the_digest_of_this_very_state_writes_nothing(fake, tmp_pa
 @pytest.mark.parametrize("over, says", [
     ({"phase_e_ready": False}, "not READY"),
     ({"phase_e_ready": "true"}, "not READY"),
-    ({"generated_at": (NOW - timedelta(hours=2, minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ")}, "outside the last"),
-    ({"generated_at": (NOW + timedelta(minutes=6)).strftime("%Y-%m-%dT%H:%M:%SZ")}, "outside the last"),
+    ({"generated_at": (NOW - timedelta(hours=2, minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ")}, "older than 1:55:00 — run the report now"),
+    ({"generated_at": (NOW + timedelta(minutes=6)).strftime("%Y-%m-%dT%H:%M:%SZ")}, "ahead of this host's clock"),
     ({"generated_at": None}, "no readable generated_at"),
     ({"repo": "Bali-Zero/other"}, "is for 'Bali-Zero/other'"),
     ({"compared_merges": 49}, "does not show it"),
@@ -1248,12 +1248,25 @@ def test_a_failure_of_the_tools_own_output_after_a_rollback_is_exit_3(fake, tmp_
 
 
 @pytest.mark.parametrize("age_minutes, refused", [(116, True), (114, False)])
-def test_apply_wants_a_report_that_cannot_expire_between_the_two_writes(fake, tmp_path, capsys, age_minutes, refused):
+def test_the_plan_and_apply_agree_on_a_report_near_its_age_limit(fake, tmp_path, capsys, age_minutes, refused):
     rep = report(tmp_path, generated_at=(NOW - timedelta(minutes=age_minutes)).strftime("%Y-%m-%dT%H:%M:%SZ"))
-    dig = plan_digest(fake, tmp_path, capsys, rep=rep)   # the plan itself accepts it: inside the 2 h limit
+    rc, out, _ = run(fake, tmp_path, capsys, rep=rep)
+    # the plan says what --apply will say (round-9 LOW: a plan read "none" and the apply refused)
+    assert ("run the report now" in out.split("blockers for --apply:")[1].splitlines()[0]) == refused
+    dig = out.split("plan digest: ")[1].split()[0]
     rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig, rep=rep)
     if refused:
-        assert rc == pef.EXIT_REFUSED and "cannot expire between the two writes" in err and fake.writes() == []
+        assert rc == pef.EXIT_REFUSED and "older than 1:55:00 — run the report now on Pro" in err and fake.writes() == []
         assert not fake.state_dir.exists()
     else:
         assert rc == 0 and [m for m, _, _ in fake.writes()] == ["PUT", "DELETE"]
+
+
+def test_the_re_read_before_each_write_keeps_the_full_age_limit(fake, tmp_path, capsys, monkeypatch):
+    # a report 114 min old passes the plan's 1:55 limit; the clock moves 4 min during the run (118 min at write 2): the
+    # per-write re-read must judge it against the full 2 h, or a slow run would freeze the branch after write 1
+    rep = report(tmp_path, generated_at=(NOW - timedelta(minutes=114)).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    dig = plan_digest(fake, tmp_path, capsys, rep=rep)
+    monkeypatch.setattr(pef, "now", lambda: NOW + timedelta(minutes=4) if fake.writes() else NOW)
+    rc, out, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig, rep=rep)
+    assert rc == 0 and "flipped:" in out and [m for m, _, _ in fake.writes()] == ["PUT", "DELETE"], err
