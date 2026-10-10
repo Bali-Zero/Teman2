@@ -52,6 +52,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -74,6 +75,12 @@ MODEL_ERR = "MODEL_ERR"
 SHED = "SHED"
 TIMEOUT = "TIMEOUT"
 BUSY = "BUSY"
+# HTTP 200 but the model spent its ENTIRE max_tokens budget on reasoning and
+# never produced content (content == "" and reasoning_tokens >= max_tokens).
+# Distinct from UNKNOWN_ERR: the seat ANSWERED — this is a probe-budget/
+# degradation verdict, not a seat death, so it never strict-fails (BUSY's
+# precedent: a third state outside both STRICT_FAIL and CONTEXT_LIMITED).
+BUDGET_TRUNCATED = "BUDGET_TRUNCATED"
 CRED_UNAVAILABLE = "CRED_UNAVAILABLE"
 NOT_INSTALLED = "NOT_INSTALLED"
 UNKNOWN_ERR = "UNKNOWN_ERR"
@@ -88,15 +95,20 @@ CONTEXT_LIMITED = {CONTEXT_AUTH, CRED_UNAVAILABLE, NOT_INSTALLED}
 # Alibaba Token Plan (TP1) door below; that subscription-backed door is distinct
 # from the retired balance-metered endpoint.
 #
-# Honest design boundary: these are seven independently probeable seats pinned
-# to the live text roster verified from TP1's /models door on 2026-08-23. This
-# probe does NOT claim to enumerate the door dynamically. One model failure must
-# remain one row and must never suppress the other six probes.
+# Honest design boundary: these are ten independently probeable seats pinned
+# to the live text roster verified from TP1's /models door on 2026-10-05
+# (re-verification of the 2026-08-23 pinning: deepseek-v4.1-flash, glm-5.3 and
+# qwen3.8-flash were added to the door since; all three PONG-probed live the
+# same day). This probe does NOT claim to enumerate the door dynamically. One
+# model failure must remain one row and must never suppress the other probes.
 TP1_SEAT_MODELS = {
     "tp1-deepseek-v4-pro": "deepseek-v4-pro",
     "tp1-deepseek-v4-flash-0731": "deepseek-v4-flash-0731",
+    "tp1-deepseek-v4.1-flash": "deepseek-v4.1-flash",
     "tp1-glm-5.2": "glm-5.2",
+    "tp1-glm-5.3": "glm-5.3",
     "tp1-qwen3.8-max": "qwen3.8-max",
+    "tp1-qwen3.8-flash": "qwen3.8-flash",
     "tp1-qwen3.7-max": "qwen3.7-max",
     "tp1-qwen3.7-plus": "qwen3.7-plus",
     "tp1-qwen3.6-flash": "qwen3.6-flash",
@@ -183,9 +195,12 @@ TP1_CHAT_COMPLETIONS_URL = f"{TP1_BASE_URL}/chat/completions"
 TP1_SECRETS_VAULT = "~/.nuzantara-secrets.env"
 TP1_CRED_ENV_VAR = "BAILIAN_TOKEN_PLAN_API_KEY"
 
-# NOT 8. Three of the seven TP1 models (deepseek-v4-pro, deepseek-v4-flash-0731,
-# glm-5.2) are THINKING models: max_tokens caps reasoning + answer TOGETHER
-# (same trap as the Opus-5 note in CLAUDE.md Sec.5, on another vendor). Measured
+# NOT 8. Three of the ten TP1 models (deepseek-v4-pro, deepseek-v4-flash-0731,
+# glm-5.2) are confirmed THINKING models: max_tokens caps reasoning + answer
+# TOGETHER (same trap as the Opus-5 note in CLAUDE.md Sec.5, on another vendor).
+# The three 2026-10-05 additions also emit reasoning tokens (measured: 12 on
+# deepseek-v4.1-flash, 31 on glm-5.3, 27 on qwen3.8-flash before answering PONG),
+# so the same trap applies to them. Measured
 # live 2026-08-23: at max_tokens=8 all three spent the whole budget on
 # reasoning (usage.completion_tokens_details.reasoning_tokens == 8),
 # choices[0].message.content came back empty, and the probe misreported three
@@ -193,10 +208,18 @@ TP1_CRED_ENV_VAR = "BAILIAN_TOKEN_PLAN_API_KEY"
 # models dead is worse than no board). Measured again with more room: reasoning
 # ran as long as 171 tokens on qwen3.7-max before it answered "PONG". 256
 # leaves headroom above that observed high-water mark. Do not "optimise" this
-# back toward 8 without re-measuring reasoning_tokens on all seven models.
+# back toward 8 without re-measuring reasoning_tokens on all ten models.
 TP1_PROBE_MAX_TOKENS = 256
 
 PONG_PROMPT = "Reply with exactly: PONG"
+
+# Serialize TP1 seat probes: measured 2026-10-05 on M5, a full concurrent burst
+# (all TP1 seats at once in the ThreadPoolExecutor) starved 5 of 10 past the
+# 15 s budget — the door throttles per-key concurrency, so 5 seats answered
+# HTTP 200 in 0.7-3.6 s while 5 queued ones hit TIMEOUT (each verified LIVE
+# sequentially, 1.6-2.5 s, same minute). Serialized PONGs cost ~2 s each; a
+# false TIMEOUT costs a whole lane.
+_TP1_PROBE_LOCK = threading.Lock()
 
 
 # ---------------------------------------------------------------- environment
@@ -682,7 +705,7 @@ def load_tp1_settings_key(
         # CRED_UNAVAILABLE (context-limited, non-strict-fail), never propagate
         # as a raw exception that would otherwise only be caught by the
         # generic Exception handler in probe_seat() and mis-tagged UNKNOWN_ERR
-        # (strict-fail) for all seven TP1 seats at once.
+        # (strict-fail) for all ten TP1 seats at once.
         return None, f"{p} unreadable: {type(e).__name__}"
     if not isinstance(parsed, dict):
         return None, f"env.BAILIAN_TOKEN_PLAN_API_KEY not set in {p}"
@@ -1292,6 +1315,42 @@ def _tp1_has_live_answer(status_code: Optional[int], full_body: str) -> tuple[bo
         return False, None
 
 
+def _tp1_budget_truncated(full_body: str) -> bool:
+    """Mandate condition: content == "" AND the model burned its whole
+    max_tokens budget on reasoning (reasoning_tokens >= TP1_PROBE_MAX_TOKENS),
+    or finish_reason == "length" with empty content when usage is absent.
+    The seat answered HTTP 200 — this is a budget/degradation shape, not a
+    dead seat. Caller must check emptiness of content itself; this only reads
+    the truncation signals."""
+    try:
+        parsed = json.loads(full_body)
+    except (json.JSONDecodeError, TypeError):
+        return False
+    if not isinstance(parsed, dict):
+        return False
+    choices = parsed.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return False
+    first = choices[0]
+    if not isinstance(first, dict):
+        return False
+    message = first.get("message")
+    if isinstance(message, dict):
+        content = message.get("content")
+        if isinstance(content, str) and content.strip():
+            return False
+    if first.get("finish_reason") == "length":
+        return True
+    usage = parsed.get("usage")
+    if isinstance(usage, dict):
+        details = usage.get("completion_tokens_details")
+        if isinstance(details, dict):
+            reasoning_tokens = details.get("reasoning_tokens")
+            if isinstance(reasoning_tokens, int) and reasoning_tokens >= TP1_PROBE_MAX_TOKENS:
+                return True
+    return False
+
+
 def _tp1_model_mismatch_note(requested_model: str, full_body: str) -> Optional[str]:
     """Kimi round-2 finding #4: a gateway that silently reroutes the requested
     slug to a fallback still returns HTTP 200 + non-empty content, so
@@ -1319,7 +1378,7 @@ def probe_tp1_model(model: str, timeout: float) -> tuple[str, str, int]:
     # to its sibling: "a probe measures the path PRODUCTION uses". Reading only
     # settings.json here would re-commit that exact scar in the other direction —
     # once a host moves the credential into the vault (Air-M5 did, 2026-09-18), a
-    # settings.json-only probe reports CRED_UNAVAILABLE for all seven TP1 seats while
+    # settings.json-only probe reports CRED_UNAVAILABLE for all ten TP1 seats while
     # tp1_call.py answers PONG through the vault. Measured on M5 2026-09-18, env
     # stripped: probe said CRED_UNAVAILABLE, tp1_call said PONG, same seat, same
     # minute. Superscar #2 inverted, and this file's own TP1_PROBE_MAX_TOKENS note
@@ -1341,18 +1400,32 @@ def probe_tp1_model(model: str, timeout: float) -> tuple[str, str, int]:
         "max_tokens": TP1_PROBE_MAX_TOKENS,
         "messages": [{"role": "user", "content": PONG_PROMPT}],
     }
-    status_code, full_body, ev = http_post_json(
-        TP1_CHAT_COMPLETIONS_URL,
-        headers,
-        body,
-        timeout,
-        [token],
-    )
+    with _TP1_PROBE_LOCK:
+        status_code, full_body, ev = http_post_json(
+            TP1_CHAT_COMPLETIONS_URL,
+            headers,
+            body,
+            timeout,
+            [token],
+        )
     latency_ms = int((time.monotonic() - t0) * 1000)
     if status_code is None:
         status = TIMEOUT if "timed out" in ev else UNKNOWN_ERR
         return status, f"{model}: {ev}", latency_ms
     live, note = _tp1_has_live_answer(status_code, full_body)
+    # Truncation is checked BEFORE the live verdict: a reasoning-only "stop"
+    # reply whose reasoning burned the WHOLE budget is truncated too (nothing
+    # usable reached the caller). Safe to run first because the helper
+    # returns False whenever content is non-empty.
+    if status_code == 200 and _tp1_budget_truncated(full_body):
+        # HTTP 200 + empty content + whole budget spent on reasoning: the seat
+        # answered but produced nothing usable — distinct third state, not
+        # LIVE, not the seat-death that classify_generic's UNKNOWN_ERR implies.
+        evidence = (
+            f"{model}: HTTP {status_code} {ev} "
+            "(empty content, reasoning_tokens >= max_tokens — probe budget exhausted before answer)"
+        )
+        return BUDGET_TRUNCATED, evidence, latency_ms
     status = classify_generic(
         f"HTTP {status_code} {full_body}",
         live,

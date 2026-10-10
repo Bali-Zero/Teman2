@@ -58,6 +58,31 @@ def test_arsenal_card_distinguishes_live_busy_and_timeout(monkeypatch, tmp_path)
     assert "kimi✗timeout" in lines[1]
 
 
+def test_arsenal_card_renders_budget_truncated_as_third_state(monkeypatch, tmp_path):
+    report = tmp_path / ".organism" / "arsenal" / "last.json"
+    report.parent.mkdir(parents=True)
+    report.write_text(
+        json.dumps(
+            {
+                "seats": [
+                    {"seat": "claude", "status": "LIVE"},
+                    {"seat": "tp1-deepseek-v4-pro", "status": "BUDGET_TRUNCATED"},
+                ]
+            }
+        )
+    )
+    monkeypatch.setattr(organism_digest, "_home", lambda: tmp_path)
+    monkeypatch.setattr(organism_digest, "_known_seats", lambda: ["claude", "tp1-deepseek-v4-pro"])
+    monkeypatch.setattr(organism_digest, "_roster_doors", lambda root: ({}, []))
+
+    lines, errors = organism_digest.arsenal_card()
+
+    assert errors == []
+    assert "claude✓" in lines[1]
+    assert "tp1-deepseek-v4-pro~budget" in lines[1]
+    assert "✗" not in lines[1].split("tp1-deepseek-v4-pro~budget", 1)[1]
+
+
 def _fake_reporter(tmp_path, payload):
     """Install a fake reporter at the REAL boundary the digest crosses.
 
