@@ -30,7 +30,8 @@ if python3 Tools/design/content_check.py --pack "$T/pack-guilt.json" < "$T/out.j
 else echo "guilt control: edited pack rejected"; fi
 if "$T/headsuptest"; then echo "step 3 ok: headsuptest"; else echo "step 3 FAILED"; rc=1; fi
 if "$T/encensus" "$T/en-census.jsonl" --lang en --mode "${EN_CENSUS:-fast}" 2> "$T/encensus.err" \
-   && "$T/encensus" "$T/id-surfaces.jsonl" --lang id --codes none 2>> "$T/encensus.err" \
+   && "$T/encensus" "$T/id-surfaces.jsonl" --lang id --mode "${EN_CENSUS:-fast}" \
+        --views "$(python3 Tools/design/en_purity.py gated)" 2>> "$T/encensus.err" \
    && python3 Tools/design/en_purity.py census "$T/en-census.jsonl" --id "$T/id-surfaces.jsonl"; then
   echo "step 4 ok: en-purity census (${EN_CENSUS:-fast})"
 else echo "step 4 FAILED: en-purity census ($T/encensus.err)"; rc=1; fi

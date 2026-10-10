@@ -36,7 +36,9 @@ for line in open(os.path.join(HERE, "en_lexicon.tsv"), encoding="utf-8"):
         w, g, gloss = line.rstrip("\n").split("\t"); LEX[w] = g
 # Words an Indonesian dump of a gated surface may hold that no English dump does and that are not Indonesian.
 PROPER = {"kbli": "the classification's name", "oss": "the licensing system's name", "bali": "the island",
-          "pma": "the company type", "pt": "the company form", "zantara": "the assistant's name"}
+          "pma": "the company type", "pt": "the company form", "zantara": "the assistant's name",
+          "en": "the language tag an Indonesian line puts on English it quotes: Kutipan catatan (EN)",
+          "data": "spelled alike in English and Indonesian, so never evidence of either"}
 EN_FUNCTION = set("the of and to in for is a an with on this that by or from as at be not are it its into under only any no "
                   "has have can cannot must may your you which who what when where".split())
 ALLOW = [  # (regex, reason) — masked before the lexicon is read; never masks a pipeline key
@@ -221,8 +223,16 @@ def corpus(ds, i18n, reasons, rows, id_rows):
     missed = [t for t in titles if not analyse({"text": t}, None)[0]]
     out.append("self-test: ID official titles drawn unlabelled, flagged with no record: %d/%d" % (len(titles) - len(missed), len(titles)))
     bad += ["EN-SELFTEST title not flagged: %s" % t for t in missed]
-    gated = lambda rs: {w.lower() for r in rs if r["view"] in GATED for _, w in words(r["text"])}
-    only = sorted(gated(id_rows) - gated(rows) - set(PROPER))
+    def own(code):   # a dump's own record content, in either language: its title, condition and Bali reason
+        r = ds.get(code) or {}
+        raw = (r.get("l4_bali") or {}).get("reason") or ""
+        return {w.lower() for _, w in words(" ".join([r.get("judul") or "", r.get("pma_kondisi") or "", raw,
+                                                         (reasons.get(raw) or {}).get("id") or ""]))}
+    en_words = {w.lower() for r in rows if r["view"] in GATED for _, w in words(r["text"])}
+    only = set()
+    for r in id_rows:   # record content is the titles check's and the record spans' to judge, not the lexicon's
+        if r["view"] in GATED: only |= {w.lower() for _, w in words(r["text"])} - en_words - own(r["code"])
+    only = sorted(only - set(PROPER))
     miss = [w for w in only if w not in LEX]
     out.append("self-test: ID-only words of the gated surfaces (%s) in the lexicon: %d/%d"
                % (", ".join(sorted({r["view"] for r in id_rows if r["view"] in GATED})), len(only) - len(miss), len(only)))
@@ -444,6 +454,8 @@ if __name__ == "__main__":
     if a[:1] == ["census"] and len(a) > 1:
         sys.exit(census(a[1], a[a.index("--id") + 1] if "--id" in a else None,
                         int(a[a.index("--examples") + 1]) if "--examples" in a else 3))
+    if a[:1] == ["gated"]:
+        print(",".join(GATED)); sys.exit(0)
     if a[:1] == ["static"]:
         sys.exit(static(a[1] if len(a) > 1 else ROOT))
     print(__doc__); sys.exit(2)
