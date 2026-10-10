@@ -165,13 +165,15 @@ def census(path, n_ex):
     ds = {r["kode_kbli_2025"]: r for r in json.load(open(os.environ["KBLI_JSON"]))["data"]}
     reasons = json.load(open(os.path.join(ROOT, "Resources", "kbli-reason-i18n.json")))
     recs, rows = {}, [json.loads(l) for l in open(path)]
-    by_view, by_cat, allow_by = Counter(), Counter(), Counter()
+    by_view, by_cat, allow_by, allow_gated = Counter(), Counter(), Counter(), Counter()
     distinct, examples = set(), defaultdict(list)
     for row in rows:
         c = row["code"]
         if c in ds and c not in recs: recs[c] = Record(ds[c], reasons)
         hits, allowed = analyse(row, recs.get(c))
-        for r, _ in allowed: allow_by[r] += 1
+        for r, _ in allowed:
+            allow_by[r] += 1
+            if row["view"] in GATED: allow_gated[r] += 1
         for line, cat, toks in hits:
             by_view[row["view"]] += 1; by_cat[cat] += 1; distinct.add(line)
             if len(examples[row["view"]]) < n_ex: examples[row["view"]].append((cat, c, line, toks))
@@ -180,8 +182,9 @@ def census(path, n_ex):
           % (sum(by_view.values()), len(distinct), len(rows), len(recs), len(LEX)))
     for v in views: print("  %-16s %6d  %s" % (v, by_view[v], "GATED" if v in GATED else "counted"))
     print("  by category: " + ", ".join("%s %d" % (c, by_cat[c]) for c in CATS))
-    print("allowlisted: %d spans holding Indonesian words" % sum(allow_by.values()))
-    for r, n in allow_by.most_common(): print("  %6d  %s" % (n, r))
+    print("allowlisted: %d spans holding Indonesian words, %d of them in gated views (all · gated · reason)"
+          % (sum(allow_by.values()), sum(allow_gated.values())))
+    for r, n in allow_by.most_common(): print("  %6d %6d  %s" % (n, allow_gated[r], r))
     for v in views:
         for cat, c, line, toks in examples[v]:
             print("  e.g. %-14s %-13s %s  %s   [%s]" % (v, cat, c, line[:100], ",".join(sorted(set(toks)))[:40]))
