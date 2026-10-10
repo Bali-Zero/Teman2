@@ -179,18 +179,26 @@ let out: [String: Any] = MainActor.assumeIsolated {
     if !loud.isEmpty {
         violations.append("verdict stack: the Bali chip's casing differs from the national chip's in \(loud.count) rows, e.g. \(loud.prefix(3))")
     }
-    // Q17 in the ledger's curated prose: the record's own office or term, standing alone, reads in English (guilt);
-    // one in (…), quotes or a longer name, and every Indonesian line, stays as written (innocence).
+    // Q17 in the ledger's curated prose (#8232 F2; Q17 on judul, lead 2026-10-11): the record's own office, term or
+    // title, standing alone, reads in English with its original after it (guilt); one that is the whole of a (…), a
+    // title inside one, one in quotes or a longer name, another code's title, and every Indonesian line stay (innocence).
     if let k = store.all.first(where: { $0.kode == "01111" }) {
+        let t = "\(LabelBook.title(k, isID: false)) (\(LabelBook.officialTitle(k)))"
         for (raw, want, isID) in [
-            ("Authority: Bupati/Walikota. Timeline: Otomatis.", "Authority: Regent / Mayor (Bupati/Walikota). Timeline: Instant.", false),
-            ("Issued by Gubernur (Bali = Gubernur Bali).", "Issued by Governor (Bali = Gubernur Bali).", false),
-            ("Instruksi Gubernur Bali No. 6/2025 applies (Bupati/Walikota).", "Instruksi Gubernur Bali No. 6/2025 applies (Bupati/Walikota).", false),
+            ("Authority: Bupati/Walikota. Timeline: Otomatis.", "Authority: Regent / Mayor (Bupati/Walikota). Timeline: Instant (Otomatis).", false),
+            ("Issued by Gubernur (Bali = Gubernur Bali).", "Issued by Governor (Gubernur) (Bali = Gubernur Bali).", false),
+            ("Reports go (outside Jakarta: Bupati/Walikota).", "Reports go (outside Jakarta: Regent / Mayor (Bupati/Walikota)).", false),
+            ("Issued automatically (Otomatis) by Gubernur.", "Issued automatically (Otomatis) by Governor (Gubernur).", false),
+            ("Instruksi Gubernur Bali No. 6/2025 applies.", "Instruksi Gubernur Bali No. 6/2025 applies.", false),
             ("Note the \"Gubernur Daerah Khusus Jakarta\" entry.", "Note the \"Gubernur Daerah Khusus Jakarta\" entry.", false),
-            ("Kewenangan: Bupati/Walikota.", "Kewenangan: Bupati/Walikota.", true)] {
+            ("Pertanian Jagung — maize grown for the market.", t + " — maize grown for the market.", false),
+            ("Maize for the market (Pertanian Jagung).", "Maize for the market (Pertanian Jagung).", false),
+            ("Pertanian Kedelai — soybeans, another code.", "Pertanian Kedelai — soybeans, another code.", false),
+            ("Kewenangan: Bupati/Walikota. Pertanian Jagung.", "Kewenangan: Bupati/Walikota. Pertanian Jagung.", true)] {
             let got = LabelBook.ledgerProse(raw, record: k, isID: isID)
             if got != want { violations.append("ledgerProse (Q17) 01111: \"\(raw)\" → \"\(got)\", want \"\(want)\"") }
         }
+        if k.judul != "Pertanian Jagung" || LabelBook.title(k, isID: false) == k.judul { violations.append("ledgerProse: 01111's title moved") }
     } else { violations.append("ledgerProse: no 01111") }
     return ["codes": codes, "balanced_rejoin": rejoin, "probe_violations": violations, "curated_language": curated,
             "labelbook_maps": maps]

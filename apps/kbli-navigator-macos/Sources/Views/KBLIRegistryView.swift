@@ -538,10 +538,6 @@ struct KBLIRegistryView: View {
         let text = ovStrict?.meaning.map { LabelBook.ledgerProse($0, record: kbli, isID: isID) } ?? LabelBook.uraian(kbli, isID: isID)
         return VStack(alignment: .leading, spacing: 10) {
             SectionLabel(rail: Theme.muted, text: isID ? "Deskripsi" : "Description")
-            // Q12 ruling 3: a curated meaning that opens with the official Indonesian title says what it is (46201…).
-            if !isID && text.hasPrefix(LabelBook.officialTitle(kbli)) {
-                Text(LabelBook.officialTitleLabel).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
-            }
             // D9: the dataset's own "- " lists hang (the curated meaning, when there is one, is prose).
             UraianLines(text: text)
                 .frame(maxWidth: 640, alignment: .leading)
@@ -709,11 +705,7 @@ struct KBLIRegistryView: View {
         // Council K2 round 2 (codex-gpt-5.6-sol): a nationally closed code has no PT PMA route at
         // any scale, so the step never offers one there — the rule decides, not the Besar row.
         let closedToForeignCapital = VerdictAxes(KBLIVerdict.of(record: kbli)).nationallyClosed
-        let detail = (hasBesar && closedToForeignCapital == false)
-            ? (isID ? "PT PMDN (lokal) atau PT PMA (asing) — akta notaris, AHU"
-                    : "PT PMDN (local) or PT PMA (foreign) — notary deed, AHU")
-            : (isID ? "PT PMDN / CV / Perorangan (lokal, WNI) — akta notaris, AHU"
-                    : "PT PMDN / CV / sole proprietorship (local, WNI) — notary deed, AHU")
+        let detail = LabelBook.incorporationStep(foreignRoute: hasBesar && closedToForeignCapital == false, isID: isID)
         return CodeOverlay.Step(title: title, detail: detail, duration: step.duration)
     }
 
