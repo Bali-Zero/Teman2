@@ -610,3 +610,5 @@ tertinggi	risk	highest
 verdikt	verdict	verdict (the app's Indonesian spelling)
 ya	function	yes
 diverifikasi	verdict	verified
+batas	ui	limit, cap (the provenance strip: "batas modal asing")
+lintas	ui	across ("kelas risiko tertinggi lintas skala")

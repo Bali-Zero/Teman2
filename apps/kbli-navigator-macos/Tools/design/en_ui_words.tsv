@@ -1,0 +1,29 @@
+# en_ui_words.tsv — the English words the app's English Views draw that its English corpus (kbli-data-i18n-en.json)
+# lacks (#8224 gate binding 1). word <TAB> where it is drawn. With that corpus it is en_purity's English reference: a
+# gated English dump may hold no word outside the reference, the lexicon, PROPER and its allowlisted spans, and an ID
+# dump's words outside it must be lexicon words. A View PR adds the English words its own View draws.
+annexes	registry sheet: a curated basis ("10/2021/49/2021 annexes")
+applicability	registry sheet: "Bali applicability is not determined"
+ask	registry sheet: "Ask Zantara about this code"
+blocked	registry row and sheet: the Bali badge, "blocked: no"
+carve	registry sheet: a curated basis ("carve-out")
+catalogue	registry chrome: "catalogue of 1,559"
+cited	registry sheet: "cited by the record"
+classifiable	registry sheet: Bali status "Not classifiable"
+confidence	registry sheet: "confidence: high"
+depends	registry sheet: Bali status "Depends on scope"
+dossier	registry sheet: "Open the full dossier"
+jul	registry sheet: the moratorium source date ("24 Jul 2026")
+max	search peak: "Max foreign"
+moratorium	registry sheet: "moratorium effective"
+nat	registry row: the Bali badge "CLOSED · NAT"
+read	registry sheet: "do not read it as"
+reserved	registry sheet: a curated Bali reason
+row	registry sheet: "no Large-scale row carries one"
+rows	registry sheet: "8 of 8 rows carry a class"
+se	registry chrome: the sector picker's truncated "Se…" (AppKit, G4)
+tier	registry sheet: Bali status "Verify on OSS (Bali risk tier)"
+verdict	registry sheet and search peak: "BALI VERDICT", "the verdict"
+week	registry sheet: "third week of May 2026"
+yes	registry sheet: "blocked: yes"
+you	search peak: "YOU CAN DO THIS"
