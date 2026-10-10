@@ -538,8 +538,9 @@ struct KBLIRegistryView: View {
         let text = ovStrict?.meaning.map { LabelBook.ledgerProse($0, record: kbli, isID: isID) } ?? LabelBook.uraian(kbli, isID: isID)
         return VStack(alignment: .leading, spacing: 10) {
             SectionLabel(rail: Theme.muted, text: isID ? "Deskripsi" : "Description")
-            // D9: the dataset's own "- " lists hang (the curated meaning, when there is one, is prose).
-            UraianLines(text: text)
+            // D9: the dataset's own "- " lists hang (the curated meaning, when there is one, is prose, and its
+            // markdown emphasis draws as emphasis).
+            UraianLines(text: text, markdown: ovStrict?.meaning != nil)
                 .frame(maxWidth: 640, alignment: .leading)
         }
     }
