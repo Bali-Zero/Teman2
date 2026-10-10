@@ -1,0 +1,174 @@
+task_id: spalla-redact-quadratic-1010
+mission: SPALLA-REDACT-QUADRATIC
+colour: BLUE
+gear: 3
+gear_reason:
+  scripts/lib/spalla_redact.sh is a hot-zone path (hot-zone-pr-gate.yml, evidence_pack_lint.py), so the lint floor
+  and ceiling are gear 3 although the diff is 15 net lines.
+l_level: L2
+gate_class: opus
+brief_ref: evidence/brief.yml
+objective:
+  redact_for_external's blank check no longer uses bash 3.2's quadratic pattern substitution, so a 70 KB branch diff
+  reaches the Codex seat instead of spinning for 25 minutes in the redactor.
+acceptance:
+  - text:
+      WHEN redact_for_external receives a body made only of tab, CR, LF and space THEN it SHALL return it as is; any other
+      body (\v, \f, NBSP, an invalid byte, text) SHALL go through the redactor, under the C and a UTF-8 locale.
+    probe: scripts/tests/test_codex_spalla_diff_redaction.sh (locale matrix rows)
+  - text: WHEN the caller's LC_ALL is integer or readonly THEN an invalid-byte body SHALL still reach the redactor.
+    probe: scripts/tests/test_codex_spalla_diff_redaction.sh (caller-attribute rows)
+  - text:
+      WHEN redact_for_external receives 200 KB of whitespace, 200 KB of clean text, or 200 KB with one email THEN on /bin/bash
+      3.2 it SHALL return the first two unchanged and the third with only the email removed, every call exiting 0, inside a
+      60 s watchdog.
+    probe: scripts/tests/test_codex_spalla_diff_redaction.sh (large-body probe)
+  - text: The existing redaction rows of the same test file SHALL stay green.
+    probe: bash scripts/tests/test_codex_spalla_diff_redaction.sh
+consumer_map:
+  - .claude/scripts/codex-spalla.sh — the Codex second-opinion helper; every external-seat review prompt passes redact_for_external.
+pii_scan: clean
+pii_scan_note: A shell library line and a test with generated filler text. No client data was read or written.
+plan_ref:
+  Branch agent/air-m5/infra/spalla-redact-quadratic-1010 from origin/main; four commits (4b14c0fa5a the linear check,
+  cd9fa5d3d8 byte-wise in the C locale, 189f5d0731 caller attributes and the hardened probe, f036f7d571 the locale proven
+  by behaviour); a council (Codex, Kimi) each round and fresh Opus gates.
+lanes:
+  - lane: spalla-redact-build
+    role: build
+    seat:
+      claude-opus-5-5 (interactive session on M5; all four commits; the first pack draft by a claude-sonnet subagent of
+      that session)
+  - lane: spalla-redact-gate
+    role: review
+    seat:
+      "claude-opus-5-5, fresh read-only seats: CONFIRMED 189f5d0731 (2 LOWs, fixed in f036f7d571); a second fresh seat on
+      f036f7d571"
+  - lane: spalla-redact-codex
+    role: review
+    seat: "codex-gpt-5.6-sol via codex-spalla.sh (read-only, xhigh): rounds 1-4, journaled"
+  - lane: spalla-redact-kimi
+    role: review
+    seat: "kimi-code/k3 via scripts/kimi_client.py (no tools, scrubbed env): round 1 timed out (non-judgement), rounds 2-3 journaled"
+what_changed:
+  'scripts/lib/spalla_redact.sh: redact_for_external''s blank check was ${input//[$''\t\r\n '']/}, quadratic on
+  bash 3.2. It is now a regex match in a subshell that sheds the caller''s LC_ALL and its own variables, sets LC_ALL=C, proves
+  the C locale by behaviour (a two-byte character counts as two), and counts only a no-match (status 1) of [^\t\r\n ] as blank;
+  every step is chained, so a step that fails sends the body to the redactor. Blank keeps origin/main''s four bytes exactly.
+  scripts/tests/test_codex_spalla_diff_redaction.sh: a locale matrix (C and a UTF-8 locale the host activates) of eight bodies
+  with a stub redactor that makes the path visible; integer and readonly LC_ALL caller rows; the real redactor never returns
+  an invalid-byte body with its email; a static guard against ${var//...} in code; a large-body probe in /bin/bash under a
+  60 s process-group watchdog (200 KB blank, clean and one-email bodies, every exit checked, every other line compared).'
+proof:
+  "Measured on M5 with /bin/bash 3.2.57 (the consumer's interpreter). Guilt: the suite fails on origin/main's library
+  (watchdog rc 142, static guard, readonly row), on 4b14c0fa5a (10 rows: vt, ff, NBSP, invalid byte), on cd9fa5d3d8 (integer
+  LC_ALL), on a >100 KB passthrough and on a last-line redactor; ALL OK on f036f7d571. 8 MB blank in 1 s."
+bites:
+  consumer: .claude/scripts/codex-spalla.sh (the Codex second-opinion helper)
+  observation:
+    "Made before arming, from this branch: codex-spalla.sh on a branch diff of at least 70 KB (the size that never
+    reached codex) returns a Codex verdict line instead of spinning in the redactor. After merge: the same from main."
+ground:
+  ts: "2026-10-09T19:50:00Z"
+  siblings: Worktree from origin/main; no other lane known to edit scripts/lib/spalla_redact.sh.
+spend:
+  adversarial_rounds: 4
+  wall_clock_hours: 4
+receipts:
+  - claim:
+      bash 3.2.57 pattern substitution is quadratic on origin/main's blank check (2 KB 1.4 s, 8 KB 58 s); a 70 KB diff
+      spun 25 min without calling codex (twice).
+    cmd:
+      "/bin/bash: source scripts/lib/spalla_redact.sh; time redact_for_external on 2 KB and 8 KB of filler (origin/main library);
+      ps on codex-spalla.sh"
+    exit: 0
+    ts: "2026-10-09T20:00:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim:
+      "ALL OK on f036f7d571: 38 ok rows, 0 FAIL, including the locale matrix, caller-attribute rows, static guard and the
+      large-body probe in /bin/bash 3.2.57."
+    cmd: bash scripts/tests/test_codex_spalla_diff_redaction.sh
+    exit: 0
+    ts: "2026-10-10T00:20:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim:
+      "Guilt: origin/main 3 FAIL (watchdog rc 142), 4b14c0fa5a 10 FAIL, cd9fa5d3d8 1 FAIL, >100 KB passthrough 1 FAIL,
+      last-line redactor 2 FAIL; the cure restored byte-identical after each."
+    cmd: python3 <scratch>/guilt.py and guilt2.py (swap the library, run the suite under a 240 s timeout, restore by copy)
+    exit: 0
+    ts: "2026-10-10T00:22:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: 8 MB of whitespace judged blank and returned whole in 1 s on /bin/bash 3.2.57.
+    cmd: /bin/bash -c '. scripts/lib/spalla_redact.sh; redact_for_external <8 MB blank>'
+    exit: 0
+    ts: "2026-10-10T00:23:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim:
+      "Fresh Opus gate CONFIRMED 189f5d0731: 0 BLOCKER, 0 MEDIUM, 2 LOW (fixed in f036f7d571); 1331 bodies x 3 locales
+      x 2 libraries identical to origin/main's semantics; 26 hostile caller states, no fail-open."
+    cmd: independent read-only subagent with scratch mutants
+    exit: 0
+    ts: "2026-10-10T00:10:00Z"
+    seat: claude-opus-5-5 (independent seat)
+dissent:
+  - seat: codex-gpt-5.6-sol round 1 (4b14c0fa5a)
+    objection:
+      'BLOCKER: under a UTF-8 locale an invalid byte fails [^[:space:]], so a body starting with one read as blank
+      and its email skipped the redactor; \v, \f, NBSP became blank; the large-body test could not see a passthrough; no watchdog.'
+    status: CONFIRMED
+    resolution:
+      "cd9fa5d3d8: byte-wise check of the four bytes in LC_ALL=C in a subshell; locale matrix with a stub redactor;
+      an email inside 200 KB must be removed; 60 s watchdog."
+  - seat: codex-gpt-5.6-sol round 2 (cd9fa5d3d8)
+    objection:
+      "MEDIUM: a caller with declare -i LC_ALL turns C into 0 (conditional bypass); the probe passed a last-line redactor
+      with rc 1; the watchdog left children holding the pipe; the email body was 168 KB."
+    status: CONFIRMED
+    resolution:
+      "189f5d0731: attributes shed and every step chained (fail toward the redactor); every exit status and every
+      other line checked; a 200 KB body; a fork/setpgrp watchdog that kills the group."
+  - seat: kimi-code/k3 round 2 (cd9fa5d3d8)
+    objection:
+      "MEDIUM: a missing en_US.UTF-8 silently degenerates the matrix; Linux bash 5 would hide a 3.2 quadratic; perl
+      dependency."
+    status: CONFIRMED
+    resolution:
+      "189f5d0731: the UTF-8 leg uses a locale the host activates, else SKIP; a static guard against ${input//...};
+      coreutils timeout where perl is absent. The test runs in no CI workflow: its consumer is codex-spalla.sh on macOS."
+  - seat: codex-gpt-5.6-sol round 3 and kimi-code/k3 round 3 (189f5d0731)
+    objection:
+      "LOW (Codex): the blank probe compared only the length; the static guard skipped lines with a # before the substitution.
+      MEDIUM (Kimi, tests only): the matrix ran PATH bash while the probe pinned /bin/bash; LOW attribute rows gated on UTF-8;
+      LOW the guard knew one spelling."
+    status: CONFIRMED
+    resolution:
+      "f036f7d571: /bin/bash pinned for every child; whole-result compare; readonly blank row in any locale; the guard
+      refuses ${var//...} over any variable on non-comment lines."
+  - seat: claude-opus-5-5 gate (189f5d0731)
+    objection:
+      "LOW: a regex error status read as blank; [[ $LC_ALL == C ]] checks spelling, so a bash >= 4.3 nameref LC_ALL
+      would keep UTF-8."
+    status: CONFIRMED
+    resolution:
+      "f036f7d571: only status 1 is blank; the C locale is proven by behaviour (a two-byte character counts as two).
+      The nameref case is untestable on M5 (bash 3.2 only) and is covered by the behavioural check whatever the version."
+  - seat: codex-gpt-5.6-sol round 4 (f036f7d571)
+    objection:
+      "LOW: the static guard misses a ${var//...} that starts a continuation line; the watchdog could wait on a descendant
+      that keeps stdout open after the probe's shell exits (not the current path)."
+    status: PLAUSIBLE
+    resolution:
+      "Accepted as residuals: the guard is a tripwire for the known regression, not a parser; the probe starts no
+      background descendants."
+residuals:
+  - "A caller with a readonly LC_ALL (or a no-op unset over an integer LC_ALL) sends every body, blank ones included, to the
+    redactor, which fails closed on a short body: codex-spalla.sh would refuse instead of sending. Fail-closed by the contract;
+    no current caller has that state."
+  - The test runs in no CI workflow; its consumer is codex-spalla.sh on the macOS hosts (bash 3.2).
+  - "The static guard is a line tripwire, not a parser: a substitution starting a continuation line passes it (Codex round 4)."
+  - The watchdog kills the probe's process group on timeout; a descendant that kept stdout open after the probe's shell exited
+    would hold the capture (the probe starts none).
+council_run: council-journal.jsonl
+appetite_exceeded:
+  "A one-expression fix became four review rounds: the first replacement was itself fail-open under a UTF-8
+  locale (Codex BLOCKER), and each later round hardened the contract and the tests against the seats' findings."
