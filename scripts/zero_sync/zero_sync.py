@@ -38,6 +38,11 @@ RUN_BUDGET = 3300  # whole-run watchdog (s): under two ticks, so a wedged run al
 NET_TIMEOUT = 1800  # the first full zero fetch took ~10 min on M5; a hung fetch/push must still end the run, or it holds the lock and every later tick no-ops
 
 EXIT_OK, EXIT_ERROR, EXIT_USAGE, EXIT_DIVERGED, EXIT_REJECTED = 0, 1, 2, 3, 4
+# The staff roster never leaves canonical, whatever zero's manifests say: they have no PR gate on zero, so its
+# exclusion must not rest on one exact-path line in cut_paths.txt that a rename or a manifest edit defeats.
+# Invented stand-ins (*.synthetic.json, *.example.json) carry no staff data and still export.
+ROSTER_NAME = re.compile(r"(?:^|/)team_members[^/]*\.json$", re.I)
+ROSTER_STAND_IN = re.compile(r"\.(?:synthetic|example)\.json$", re.I)
 
 
 class SyncError(Exception):
@@ -114,6 +119,10 @@ class Repo:
 
     def hash_blob(self, data: bytes) -> str:
         return self.run("hash-object", "-w", "--stdin", input=data)
+
+
+def roster_files(paths) -> list[str]:
+    return sorted(p for p in paths if ROSTER_NAME.search(p) and not ROSTER_STAND_IN.search(p))
 
 
 def url_rewrites(repo: "Repo", urls: list[str]) -> list[str]:
@@ -257,6 +266,10 @@ def build_tree(repo: Repo, state: Path, canon_ref: str, zero_ref: str, npm_cmd: 
     entries = {p: v for p, v in canon.items() if p not in ROOT_FILES}
     entries = {p: v for p, v in entries.items()
                if not any(p == c or p.startswith(c + "/") for c in cut)}
+    leaked = roster_files(entries)
+    if leaked:
+        raise SyncError(f"the export would carry the staff roster ({leaked[0]}): refusing; cut it in zero's "
+                        ".slim/cut_paths.txt")
     for lp in local:
         # A local path is a file that exists ONLY on zero. One that shadows EXPORTED canonical content (after
         # the cut) would freeze that subtree on zero's copy forever, every later run reporting "up to date".

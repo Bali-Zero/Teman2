@@ -21,9 +21,17 @@ URLs, a `url.*.insteadOf`/`pushInsteadOf` rule matching either URL, a source car
 
 ## Divergence refusal (exit 3)
 The sync refuses when a commit made directly on zero (after the last sync commit) changed a non-zero-owned path
-that the rebuilt tree would revert. Heartbeat status `error` gives the count and three paths; stdout lists up to 10. Fix on the canonical side:
-land the same change in canonical (then the next tick passes), or add the path to `cut_paths.txt`/`local_paths.txt`
-in zero if it is meant to be zero-only. Nothing is pushed while refused.
+that the rebuilt tree would revert. Heartbeat status `error` gives the count and three paths; stdout lists them all
+(a dry run, the first 10). Fix on the canonical side: land the same change in canonical (then the next tick passes),
+or, if the file is meant to be zero-only, add it to `local_paths.txt` in zero (and to `cut_paths.txt` too when
+canonical also has it: a local path may not shadow exported content). A `cut_paths.txt` entry alone does not cure
+it: the cut removes the file from the rebuilt tree, which still differs from zero there. Nothing is pushed while refused.
+
+## Staff roster
+Whatever the manifests say, a canonical `team_members*.json` that the cut does not remove stops the run (exit 1,
+heartbeat `error` naming the file); `*.synthetic.json` and `*.example.json` stand-ins export. The real roster stays
+excluded by its exact path in zero's `.slim/cut_paths.txt`; this check is the floor under that line, since zero's
+manifests have no PR gate.
 
 ## Operating
 - Dry run: `python3 scripts/zero_sync/zero_sync.py --dry-run --no-ci-check --state-dir <dir>` (no push, no heartbeat; exit 3 if it would refuse).
