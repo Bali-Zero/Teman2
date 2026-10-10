@@ -109,6 +109,10 @@ PACKS_DIR = (
     / "packs"
 )
 PG_SH = PROJECT_ROOT / "scripts" / "pg.sh"
+WITA = timezone(timedelta(hours=8))  # Asia/Makassar, no DST
+COVERAGE_PROBE = PROJECT_ROOT / "scripts" / "visa_holiday_coverage_probe.py"
+COVERAGE_ESCALATION_JOB = "visa-holiday-coverage:persistent"
+COVERAGE_KEY_PREFIX = "visa-holiday-coverage"
 TG_NOTIFY = PROJECT_ROOT / "scripts" / "tg_notify.py"
 
 # Outcomes
@@ -118,6 +122,10 @@ OUTCOME_APPROACHING = "APPROACHING"
 OUTCOME_STALE = "STALE"
 OUTCOME_NO_PORTAL_RECORDS = "NO_PORTAL_RECORDS"
 OUTCOME_CANNOT_VERIFY = "CANNOT_VERIFY"
+# Holiday-coverage lane (a second check with its own state and board row; see the lane block below)
+OUTCOME_COVERAGE_WARN = "HOLIDAY_GAP_WARN"
+OUTCOME_COVERAGE_STALE = "HOLIDAY_GAP_STALE"
+COVERAGE_OUTCOMES = (OUTCOME_COVERAGE_WARN, OUTCOME_COVERAGE_STALE)
 
 # The single read-only SELECT this sentinel is allowed to run — a byte-for-byte
 # mirror of repository.py::load_active_rule_pack's WHERE clause (see module
@@ -248,6 +256,7 @@ class Verdict:
     pack_version: str | None = None
     pack_source: str = "unknown"  # "database" | "repository-fallback" | "unknown"
     reason: str = ""
+    coverage: dict[str, Any] | None = None  # set only on the holiday-coverage lane
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -263,6 +272,7 @@ class Verdict:
             "pack_version": self.pack_version,
             "pack_source": self.pack_source,
             "reason": self.reason,
+            "coverage": self.coverage,
         }
 
 
@@ -625,6 +635,10 @@ def dedup_key(verdict: Verdict) -> str:
     gateway's own docstring names as an anti-pattern; it is justified here by the
     deadline and must not be copied to a consumer without one.
     """
+    if verdict.coverage is not None:
+        if verdict.outcome in COVERAGE_OUTCOMES:
+            return f"{COVERAGE_KEY_PREFIX}:{verdict.outcome.lower()}:{_coverage_year(verdict)}"
+        return f"{COVERAGE_KEY_PREFIX}:cannot-verify"
     seq = verdict.pack_sequence if verdict.pack_sequence is not None else "unknown"
     # An anomaly that appears while the pack is ALREADY stale or approaching does
     # not get its own outcome — it rides along in the alert body. Without this
@@ -646,6 +660,8 @@ def dedup_key(verdict: Verdict) -> str:
 
 
 def format_alert_text(verdict: Verdict) -> str:
+    if verdict.coverage is not None:
+        return format_coverage_text(verdict)
     lines: list[str] = []
     header = f"Visa Oracle freshness sentinel — pack seq={verdict.pack_sequence} version={verdict.pack_version}"
     if verdict.pack_source == "repository-fallback":
@@ -725,7 +741,8 @@ def _send(
     # housekeeping note.
     tier = (
         "p0"
-        if verdict.outcome in (OUTCOME_STALE, OUTCOME_APPROACHING, OUTCOME_ANOMALY)
+        if verdict.outcome
+        in (OUTCOME_STALE, OUTCOME_APPROACHING, OUTCOME_ANOMALY, *COVERAGE_OUTCOMES)
         else "digest"
     )
     text = format_alert_text(verdict)
@@ -821,7 +838,7 @@ def save_state(path: Path, state: dict[str, Any]) -> None:
 
 
 def is_persistent(verdict: Verdict) -> bool:
-    if verdict.outcome == OUTCOME_STALE:
+    if verdict.outcome == OUTCOME_STALE or verdict.outcome in COVERAGE_OUTCOMES:
         return True
     if verdict.outcome == OUTCOME_APPROACHING and verdict.approaching:
         left = min((f.boundary - verdict.now).total_seconds() for f in verdict.approaching)
@@ -830,6 +847,8 @@ def is_persistent(verdict: Verdict) -> bool:
 
 
 def _condition(verdict: Verdict) -> str:
+    if verdict.coverage is not None:
+        return f"{verdict.outcome}:{_coverage_year(verdict)}"
     return f"{verdict.outcome}:{verdict.pack_sequence}"
 
 
@@ -912,22 +931,37 @@ def _escalation_open(verdict: Verdict, now_ts: float, count: int, force: bool) -
         from scripts.sentinel_lib import escalations as esc
 
         summary = format_alert_text(verdict).replace("\n", " | ")[:400]
+        job, kind, detail = (
+            (
+                COVERAGE_ESCALATION_JOB,
+                "visa_holiday_coverage_gap",
+                "Visa Oracle processing-time estimates fall back to 'not available' once a "
+                "working-day walk reaches an undecreed year; cure is loading that year's SKB 3 "
+                "Menteri decree into backend/data/id_holidays.py (DECREED_YEARS).",
+            )
+            if verdict.coverage is not None
+            else (
+                ESCALATION_JOB,
+                "visa_freshness_persistent",
+                "Visa Oracle answers HUMAN_REVIEW_REQUIRED while portal stamps are stale; "
+                "cure is the re-attestation ceremony (docs/runbooks/visa-engine-key-ceremony.md).",
+            )
+        )
         if (
             not force
-            and esc.is_job_open(ESCALATION_JOB)
-            and _last_escalated(esc) == verdict.outcome
+            and esc.is_job_open(job)
+            and _last_escalated(esc, job) == verdict.outcome
         ):
             return False
         esc.write_escalation({
-            "job": ESCALATION_JOB,
-            "type": "visa_freshness_persistent",
+            "job": job,
+            "type": kind,
             "priority": "HIGH",
             "outcome": verdict.outcome,
             "last_seen_ts": now_ts,
             "attempts": count,
             "error_summary": summary,
-            "detail": "Visa Oracle answers HUMAN_REVIEW_REQUIRED while portal stamps are stale; "
-            "cure is the re-attestation ceremony (docs/runbooks/visa-engine-key-ceremony.md).",
+            "detail": detail,
             "context": "visa-freshness-sentinel",
         })
         return True
@@ -936,8 +970,8 @@ def _escalation_open(verdict: Verdict, now_ts: float, count: int, force: bool) -
         return False
 
 
-def _last_escalated(esc: Any) -> str | None:
-    rows = [e for e in esc.read_all_escalations() if e.get("job") == ESCALATION_JOB]
+def _last_escalated(esc: Any, job: str = ESCALATION_JOB) -> str | None:
+    rows = [e for e in esc.read_all_escalations() if e.get("job") == job]
     return rows[0].get("outcome") if rows else None
 
 
@@ -947,14 +981,19 @@ def _is_own_job(job: str) -> bool:
     return job == ESCALATION_JOB or job.startswith(f"{ESCALATION_JOB_PREFIX}:")
 
 
-def _escalation_resolve() -> None:
-    """Close the sentinel's HIGH row AND every gateway-routed row it spawned."""
+def _is_coverage_job(job: str) -> bool:
+    return job == COVERAGE_ESCALATION_JOB or job.startswith(f"{COVERAGE_KEY_PREFIX}:")
+
+
+def _escalation_resolve(coverage: bool = False) -> None:
+    """Close the lane's HIGH row AND every gateway-routed row it spawned."""
+    own = _is_coverage_job if coverage else _is_own_job
     try:
         from scripts.sentinel_lib import escalations as esc
 
         jobs = {
             e.get("job") for e in esc.read_all_escalations()
-            if _is_own_job(str(e.get("job", "")))
+            if own(str(e.get("job", "")))
         }
         for job in sorted(j for j in jobs if j):
             if esc.is_job_open(job):
@@ -997,7 +1036,7 @@ def _run_alert_cycle(
     if verdict.outcome == OUTCOME_OK:
         if state or path.exists():
             save_state(path, {})
-        _escalation_resolve()
+        _escalation_resolve(coverage=verdict.coverage is not None)
         return decision
 
     if decision["would_send"] is None:
@@ -1056,6 +1095,103 @@ def _run_alert_cycle(
 
 
 # ---------------------------------------------------------------------------
+# Holiday-coverage lane
+#
+# `processing_times.estimate()` returns None once a working-day walk reaches a year whose national
+# holiday decree is not in `id_holidays`, and the result page then drops to the neutral "processing
+# times vary" text. The decree (SKB 3 Menteri) is published in the autumn of the year before, so
+# the gap is knowable months ahead. This lane asks the backend for the first anchor day it opens
+# (`scripts/visa_holiday_coverage_probe.py`, a subprocess: it registers the heavy
+# `backend.services.compliance` package as an empty namespace and loads only stdlib-pure modules,
+# so it runs under this same bare python3), and rides the SAME re-alert machinery as the pack lane — persistent, fresh gateway key
+# per delivery, an undelivered send never moves the clock — under its own state file, dedup keys
+# and board row, so neither lane's OK can resolve the other's alert.
+# ---------------------------------------------------------------------------
+
+
+def _coverage_year(verdict: Verdict) -> Any:
+    return (verdict.coverage or {}).get("year_to_load", "unknown")
+
+
+def format_coverage_text(verdict: Verdict) -> str:
+    cov = verdict.coverage or {}
+    if verdict.outcome not in COVERAGE_OUTCOMES:
+        return (
+            "Visa Oracle holiday coverage — CANNOT_VERIFY: "
+            f"{cov.get('error', verdict.reason or 'probe gave no answer')}"
+        )
+    year, gap, code = cov.get("year_to_load"), cov.get("first_gap"), cov.get("product")
+    if verdict.outcome == OUTCOME_COVERAGE_STALE:
+        head = (
+            f"Visa Oracle holiday coverage — STALE: processing-time estimates are ALREADY falling "
+            f"back to 'not available' since {gap} (first affected product {code}). "
+        )
+    else:
+        head = (
+            f"Visa Oracle holiday coverage — WARN: {cov.get('days_left')} days left (first affected "
+            f"product {code}). "
+        )
+    return (
+        f"{head}Load the {year} national holiday and cuti bersama decree into id_holidays before "
+        f"{gap}: Visa Oracle processing-time estimates start falling back to 'not available' on {gap}."
+    )
+
+
+def _coverage_probe_cmd() -> list[str]:
+    return [os.environ.get("VISA_COVERAGE_PYTHON") or sys.executable, str(COVERAGE_PROBE)]
+
+
+def build_coverage_verdict(now: datetime, runner: Any = None) -> Verdict:
+    """Never raises: a probe that cannot answer is CANNOT_VERIFY, never a silent green."""
+
+    def cannot(error: str) -> Verdict:
+        return Verdict(
+            outcome=OUTCOME_CANNOT_VERIFY, now=now, warn_seconds=0,
+            coverage={"error": error}, reason=error,
+        )
+
+    # The result page anchors on the WITA day (evaluate_path._processing_timeline), so the probe does too.
+    cmd = [*_coverage_probe_cmd(), "--today", now.astimezone(WITA).date().isoformat()]
+    try:
+        if runner is not None:
+            raw = runner(cmd)
+        else:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            if proc.returncode != 0:
+                return cannot(f"probe-rc-{proc.returncode}")
+            raw = proc.stdout
+        cov = json.loads(raw)
+    except Exception as exc:  # noqa: BLE001 — the lane must never crash the sentinel
+        return cannot(f"probe-{type(exc).__name__}")
+    outcome = {
+        "OK": OUTCOME_OK, "WARN": OUTCOME_COVERAGE_WARN, "STALE": OUTCOME_COVERAGE_STALE,
+    }.get(cov.get("outcome")) if isinstance(cov, dict) else None
+    if outcome is None:
+        return cannot("probe-unrecognised-outcome")
+    return Verdict(outcome=outcome, now=now, warn_seconds=0, coverage=cov)
+
+
+def coverage_state_path() -> Path:
+    override = os.environ.get("VISA_HOLIDAY_COVERAGE_STATE")
+    if override:
+        return Path(override)
+    return _state_path().with_name("visa_holiday_coverage.json")
+
+
+def coverage_line(verdict: Verdict, decision: dict[str, Any] | None = None) -> str:
+    cov = verdict.coverage or {}
+    parts = [f"HOLIDAY_COVERAGE {verdict.outcome}"]
+    for key in ("first_gap", "days_left", "product", "year_to_load"):
+        if key in cov:
+            parts.append(f"{key}={cov[key]}")
+    if "error" in cov:
+        parts.append(f"error={cov['error']}")
+    if decision:
+        parts.append(f"alert={decision.get('reason')}")
+    return " ".join(parts)
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -1071,6 +1207,10 @@ def main(argv: list[str] | None = None) -> int:
         help="ISO-8601 UTC instant override — TEST-ONLY, never for cron.",
     )
     parser.add_argument("--warn-seconds", type=int, default=DEFAULT_WARN_SECONDS)
+    parser.add_argument(
+        "--coverage-only", action="store_true",
+        help="Run only the holiday-coverage lane and print its one outcome line.",
+    )
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
@@ -1086,13 +1226,34 @@ def main(argv: list[str] | None = None) -> int:
     else:
         now = datetime.now(timezone.utc)
 
+    if args.coverage_only:
+        cov_verdict = build_coverage_verdict(now)
+        cov_decision = run_alert_cycle(
+            cov_verdict, dry_run=args.dry_run, now_ts=now.timestamp(),
+            state_path=coverage_state_path(),
+        )
+        print(coverage_line(cov_verdict, cov_decision))
+        return 0
+
     verdict = build_verdict(now, args.warn_seconds)
     decision = run_alert_cycle(
         verdict, dry_run=args.dry_run, now_ts=now.timestamp()
     )
+    # The coverage lane runs after the pack lane on every tick, whatever the pack said.
+    cov_verdict = build_coverage_verdict(now)
+    cov_decision = run_alert_cycle(
+        cov_verdict, dry_run=args.dry_run, now_ts=now.timestamp(),
+        state_path=coverage_state_path(),
+    )
     out = verdict.to_json()
     out["alert_decision"] = decision
+    out["holiday_coverage"] = {
+        **(cov_verdict.coverage or {}),
+        "verdict": cov_verdict.outcome,
+        "alert_decision": cov_decision,
+    }
     print(json.dumps(out, indent=2))
+    logger.info(coverage_line(cov_verdict, cov_decision))
     if not args.dry_run:
         if verdict.outcome != OUTCOME_OK:
             logger.info("alert decision: %s", decision.get("reason"))
