@@ -4,9 +4,9 @@ colour: BLUE
 gear: 2
 gear_reason: >-
   evidence_pack_lint's floor for this change set is 2 by its size term alone, with no hot-zone path. The code churns
-  436 lines (+299/−137, net +162) across SearchListView.swift (browse mode), KBLIRegistryTable.swift, KBLIRegistryView.swift
-  (risk matrix), Theme.swift (Theme.leading), measure_contrast.py, png_census.py, contenttest and headsuptest. The after-set
-  digest manifest adds its JSON evidence.
+  497 lines (+352/−145, net +207) across SearchListView.swift (browse mode, the rail caption, two §3.1 spacings),
+  KBLIRegistryTable.swift, KBLIRegistryView.swift (risk matrix), Theme.swift (Theme.leading), measure_contrast.py,
+  png_census.py, contenttest and headsuptest. The after-set digest manifest adds its JSON evidence.
 l_level: L1
 gate_class: opus
 objective: >-
@@ -15,9 +15,12 @@ objective: >-
   column header; and wrapping rows with opaque chip(tone) verdicts, riskChip risk cells, lineSoft rules and group breaks.
   It carries B2/N4 (risk tiers by fill weight, including the sheet's matrix legend and cells), B4 (png_census C8 counts
   only row rules, narrow judged, xxl VACUOUS), N8 (white-scan escapes and comment consistency) and N9 (byte-equal frozen
-  predicates). Presentation only: no KBLI fact, verdict, cap, basis or Bali overlay changes.
+  predicates), plus the #8196 gate's bindings: contenttest's per-view mustNotRead (`.judul` in SearchListView), census rows
+  for the ruled heads-up label, the 16 pt field-to-PadiLine gap, the census column's trailing 32 pt, and a caption that
+  repeats the rail picker's truncated sector label in full. Presentation only: no KBLI fact, verdict, cap, basis or Bali
+  overlay changes.
 constraints:
-  - Query mode (PR 1's spine) is untouched; the two PRs share SearchListView.swift and stay serialized.
+  - Query mode (PR 1's spine) changes only by the two spacings the #8196 gate bound here; the PRs share SearchListView.swift and stay serialized.
   - Every row reads the canonical chips (Theme.chip, Theme.riskChip); contenttest's probe requires both in KBLIRegistryTable.swift.
   - No PNG is committed; the after-set ships as a sha256 manifest and the PNGs live in the M5 gallery.
 acceptance:
@@ -31,3 +34,5 @@ acceptance:
     probe: "Pro: scan guilt N8.1-6 WHITE=1, N8.c1-4 WHITE=0, N8.c5 WHITE=1; n9_check block at headsuptest:119 and :125"
   - text: The frozen content and the contrast and token gates SHALL stay green.
     probe: "Pro: content_check.sh rc=0, measure_contrast rc=0 (FAIL=0 PARITY=0 WHITE=0), derive --check rc=0"
+  - text: A raw `.judul` read in SearchListView SHALL fail content_check, and the heads-up label SHALL be measured per tone on both grounds.
+    probe: "Pro: G4 (query-row title = kbli.judul) rc=1 naming :588, rc=0 under PR 1's contenttest; CHIP_FG drift and a repainted :655 → PARITY"
