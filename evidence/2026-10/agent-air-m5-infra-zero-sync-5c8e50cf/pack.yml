@@ -1,0 +1,179 @@
+# Gear-3 evidence pack — zero-sync: one-way mirror of canonical main into the product-only FastLabsNet/zero.
+# Written by the orchestrating session (Claude Opus 5.5, M5) on 2026-10-10. Every receipt is a command run in
+# this session; outputs are quoted from those runs, and each ts is the clock read in the same shell call (or the
+# mtime of that run's log). Review transcripts live in the session scratchpad; the
+# verdict sections are verbatim in council-journal.jsonl.
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+ruling: >-
+  Owner directives of 2026-10-09/10: products go to the private FastLabsNet/zero (product-only, no history),
+  Teman2 is deleted with its history once the local merge flow holds; "fai tutto tu" (2026-10-10).
+mission: >-
+  zero must follow canonical without a human and without ever reverting a change made on zero or touching the
+  canonical repository.
+lanes:
+  - lane: zero-sync-build
+    role: build
+    seat: >-
+      Claude Sonnet subagent (first cut: tool, tests, wrapper, plist, organ, workflow) from the orchestrator's
+      spec; every later commit (review cures) by the orchestrator, Claude Opus 5.5.
+  - lane: zero-sync-review-kimi
+    role: review
+    seat: kimi-code/k3 (read-only, rounds 1-3)
+  - lane: zero-sync-review-codex
+    role: review
+    seat: codex-gpt-5.6-sol (read-only, rounds 2-5; round 1 ran on the CLI default gpt-6-astra)
+  - lane: zero-sync-review-claude
+    role: read
+    seat: Claude Sonnet code-reviewer subagent (pre-council read; four silent-stop defects, cured in 0b6206f5b7)
+seat_diversity: >-
+  Builder: Anthropic (Sonnet subagent, then Opus). Reviewers: Moonshot (kimi-code/k3) and OpenAI
+  (codex-gpt-5.6-sol), neither of which built anything here. The Claude code-reviewer read is recorded as a read
+  lane, not counted toward the council.
+pii_scan: clean
+pii_scan_note: >-
+  Git plumbing code, offline tests on throwaway repositories with invented file contents, a launchd wrapper and
+  plist, an organ entry and a workflow. No client or staff data was read into this diff.
+bites: >-
+  Prose form on purpose: the consumer is the launchd job com.nuzantara.zero-sync on Mini (organ mini.zero_sync,
+  ~/scripts/mini-zero-sync.sh) and what it changes is the private FastLabsNet/zero, neither of which a CI runner
+  can observe without a remote shell or a gh token. Observation, made by the shipping session after the install and
+  commented on the PR: a "sync: canonical <sha>" commit with the Zero-Sync-Canonical trailer on zero main, zero's
+  CI push run on it green on mini-zero-1, and Mini's ~/.organism/last_seen/mini.zero_sync.json reading ok.
+decisions:
+  - id: D-perimeter-on-zero
+    decision: >-
+      The perimeter manifests live on zero (.slim/), the code lives here. zero owns .github/ (its self-hosted CI)
+      and .slim/ exclusively; a canonical workflow never overwrites them and a workflow deleted on zero never
+      comes back.
+  - id: D-ff-only-cas
+    decision: >-
+      One commit per sync, parent = zero's fetched tip, pushed as a compare-and-swap on that exact tip
+      (--force-with-lease=refs/heads/main:<tip>): a fast-forward from that tip or nothing. zero's ruleset also
+      forbids non-fast-forward on main.
+  - id: D-refuse-not-revert
+    decision: >-
+      A direct product change on zero is never overwritten: the sync refuses (exit 3, error heartbeat) until the
+      same content lands in canonical. Recognising the last sync needs committer zero-sync AND a git-parsed trailer.
+  - id: D-red-ci-does-not-stop
+    decision: >-
+      A red zero CI on the previous sync is a warning, not a stop: it means the perimeter needs a cut (an organism
+      test exported by mistake) or a real break that canonical's own gate already let through; stopping the mirror
+      would hide the next canonical fix.
+  - id: D-npm-unpinned
+    decision: >-
+      The lock is regenerated with Mini's npm (11.19.1); the cache key includes npm --version. Not pinned: zero's
+      lock check is `npm ci --dry-run`, which accepts both npm 10 and 11 output (verified), and a version change
+      only produces a lock-only sync commit that zero's CI validates.
+receipts:
+  - claim: "R1 — floor 3 via the path term (workflow, plist, wrapper); every other file computes 1."
+    cmd: git diff --name-only origin/main...HEAD | python3 -c 'import evidence_pack_lint as e; ... e.compute_floor([f])' (from scripts/)
+    result: "3 .github/workflows/zero-sync-tests.yml, 3 com.nuzantara.zero-sync.plist, 3 mini-zero-sync.sh, 1 for the other 7"
+    exit: 0
+    ts: "2026-10-10T03:20:00Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R2 — the push gate demanded this pack."
+    cmd: git push -u origin HEAD (husky pre-push, preflight_pack)
+    result: "PUSH REFUSED [floor-needs-brief]: deterministic floor is 3 but this diff carries no evidence/brief.yml"
+    exit: 1
+    ts: "2026-10-10T01:01:01Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R3 — the offline corpus passes on the final code: python -m pytest scripts/zero_sync/tests -q -p no:cacheprovider"
+    cmd: /Users/balizero/nuzantara/.venv/bin/python -m pytest scripts/zero_sync/tests -q -p no:cacheprovider
+    result: "35 passed in 41.11s"
+    exit: 0
+    ts: "2026-10-10T03:20:10Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R4 — every cure is guilt-proven: each round's new tests fail on the code before that round's fix."
+    cmd: git show HEAD:scripts/zero_sync/zero_sync.py > scripts/zero_sync/zero_sync.py; pytest; restore from a cp backup
+    result: >-
+      pre-council fixes 3 failed / 17 passed; round 1 cures 7 failed / 20 passed; round 2 cures 3 failed / 28
+      passed; round 3 cures 2 failed / 31 passed; GIT_CONFIG scrub 1 failed; round 4 cure (NUL-delimited rewrite
+      parser) 1 failed / 34 passed; each restored file cmp-equal to its backup before commit.
+    exit: 1
+    ts: "2026-10-10T03:12:13Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R5 — real dry run against both remotes refused on the portal conftest.py before #8195 landed (python3 scripts/zero_sync/zero_sync.py --dry-run --no-ci-check --state-dir <scratch>)."
+    cmd: python3 scripts/zero_sync/zero_sync.py --dry-run --no-ci-check --state-dir <scratchpad>/zero-sync-state
+    result: >-
+      diff stat: .gitattributes -3, portal conftest.py -21, apps/mouth/package.json 4, three llms*.txt (zero's
+      snapshot had taken them from a locally regenerated working tree), package-lock.json 44; "DIVERGENCE: would
+      REFUSE, 1 path(s) changed directly on zero and not in canonical: ...portal/conftest.py"; exit 3. #8195 then
+      landed the identical file in canonical; zero #38 added .gitattributes to the perimeter.
+    exit: 3
+    ts: "2026-10-10T00:44:25Z"
+    seat: Claude Sonnet subagent (builder), output re-read by the orchestrator
+  - claim: "R5b — real dry run of the final code against both remotes, after #8195 and #8198 landed."
+    cmd: python3 scripts/zero_sync/zero_sync.py --dry-run --state-dir <scratchpad>/zero-sync-state
+    result: >-
+      "DIVERGENCE: none; would sync canonical f75a4fee92 (13 files changed)": the roster loader (team_roster.py
+      +82, team_members.py emptied), its tests and callers, apps/mouth/package.json, the three llms*.txt and
+      package-lock.json; exit 0, nothing pushed.
+    exit: 0
+    ts: "2026-10-10T03:16:11Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R6 — root package.json pruning reproduces zero's file byte-for-byte, and zero's lock check accepts any npm's lock that installs."
+    cmd: >-
+      root package.json absent from the R5b dry-run diff (grep -c package.json on its output = 1, apps/mouth's);
+      gh api repos/FastLabsNet/zero/contents/.github/workflows/npm-lock-sync.yml | grep -n "npm ci"
+    result: >-
+      only apps/mouth/package.json differs; zero's check is line 80 "npm ci --dry-run --ignore-scripts --no-audit
+      --no-fund" (fails on lock/manifest desync, not on the npm version that wrote the lock)
+    exit: 0
+    ts: "2026-10-10T03:21:29Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R7 — Mini prerequisites: gh with push to zero, github.com credential helper, no URL rewriting, Python 3.9 runs the tool, npm."
+    cmd: >-
+      ssh mini 'gh auth status; git config --global --get-regexp credential; git config --global --get-regexp
+      "^url\..*insteadof$" | wc -l; /usr/bin/python3 -V; npm -v; hostname'; then the tool copied to Mini and
+      parsed with ast feature_version (3,9) and run with --help under /usr/bin/python3
+    result: >-
+      Balizero1987 logged in (scopes gist, read:org, repo, workflow); github.com helper "gh auth git-credential";
+      0 insteadOf rules; Python 3.9.6, ast-3.9-ok and --help prints usage; npm 11.19.1; hostname mini-pro2
+    exit: 0
+    ts: "2026-10-10T03:20:51Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R8 — council: two read-only families, every finding cured and re-verified; final verdicts PASS from both."
+    cmd: scripts/with_seat.sh kimi kimi -p <prompt> -m kimi-code/k3; scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: >-
+      Kimi: PASS-WITH-CONDITIONS (2 defects) -> PASS-WITH-CONDITIONS (1 new) -> PASS. Codex: REWORK (4) ->
+      REWORK (2 + URL-identity blocker) -> REWORK (pushInsteadOf blocker) -> REWORK (rewrite rule whose base holds
+      a space was misparsed) -> PASS on 80ffa5ee27, "(1) HOLDS (2) HOLDS (3) HOLDS", remaining gaps none.
+      Verbatim verdict sections in council-journal.jsonl.
+    exit: 0
+    ts: "2026-10-10T03:23:13Z"
+    seat: kimi-code/k3, codex-gpt-5.6-sol
+dissent:
+  - seat: codex-gpt-5.6-sol (round 2)
+    objection: >-
+      The never-push-to-canonical invariant rested on URL syntax; host aliases, insteadOf or symlinked file
+      remotes bypass a URL comparison.
+    status: CONFIRMED
+    disposition: >-
+      Cured in layers: content identity (target must carry .slim/keep_paths.txt, source must not carry .slim/),
+      refusal of any URL rewriting rule for either URL, and the push as a compare-and-swap on zero's fetched tip.
+  - seat: codex-gpt-5.6-sol (round 4)
+    objection: >-
+      url_rewrites() split `git config --get-regexp` output at the first space; a pushInsteadOf rule whose
+      url.<base> contains a space was misread and not refused.
+    status: CONFIRMED
+    disposition: Cured in 80ffa5ee27 (records read with -z, key and value split on the first newline); guilt test fails on the old parser; round 5 PASS.
+  - seat: kimi-code/k3 (rounds 1-3)
+    objection: >-
+      The .slim/ manifests are the perimeter's SSOT yet live on the gate-less target; a keep-path swap that deletes
+      under 25% of the products still ships. Recommends a ruleset on zero requiring review for .slim/**.
+    status: PLAUSIBLE
+    disposition: >-
+      Not adopted here: rulesets on zero are an org-owner setting (FastLabsNet). The empty-perimeter refusal and
+      the 25% mass-change guard bound the damage; recorded for the cutover runbook.
+  - seat: kimi-code/k3 (round 3)
+    objection: lock_cache/ under the state dir grows one file per distinct npm/input hash and is never pruned.
+    status: PLAUSIBLE
+    disposition: >-
+      Owed, not widened: an entry is written only when canonical's root lock/manifests or npm change (a few per
+      week, ~1 MB each). Keep-newest-N pruning is a follow-up.
+  - seat: codex-gpt-5.6-sol (round 1)
+    objection: npm depends on the machine's installed version while the tests stub it; pin it and add a real-npm test.
+    status: PLAUSIBLE
+    disposition: Not adopted (decision D-npm-unpinned); the cache key carries the npm version.
