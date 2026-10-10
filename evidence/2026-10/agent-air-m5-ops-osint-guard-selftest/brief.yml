@@ -1,0 +1,22 @@
+task: >-
+  PR #8171's suite-wide guard (apps/mata-garuda/tests/conftest.py) keeps every test from reaching the real OSINT-Nexus
+  launcher, but its final gate found no in-tree test that notices if the guard is removed: deleting the setattr line
+  leaves every outcome equal and the real launcher reachable again. Add a self-test that pins it.
+lane: ops
+machine: m5
+date: 2026-10-09
+gear: 2
+gear_reason: >-
+  Measured floor 1 (one new test file). Campaign rule after #8079: at least gear 2 so harness-floor holds for the
+  independent final gate.
+acceptance:
+  A1:
+    text: >-
+      In a normal test the launcher is the blocking stub: it returns the blocked failure shape and subprocess.run is never
+      reached; removing the conftest's setattr turns the test red.
+    probe: apps/mata-garuda/tests/test_osint_launch_guard.py, and the same with the setattr line removed.
+  A2:
+    text: >-
+      A test requesting allow_osint_launch sees the real launcher (without calling it); ignoring the opt-in turns the test
+      red.
+    probe: the same file, and the same with the opt-in early return disabled.
