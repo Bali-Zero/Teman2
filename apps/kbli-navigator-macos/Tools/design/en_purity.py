@@ -118,15 +118,14 @@ def known(w): return w in LEX or w in PROPER or w in ref()
 def words(s):
     """(offset, word) as drawn: a lower→Upper boundary splits what PDFKit glued ("CodesSemua"); digits never join.
     A run glued with no case change ("Codessektor", "RISIKOOSS") splits where both halves are known words, one a
-    lexicon word (#8224 gate binding 2) — or, failing that, two English words of 3+ letters ("Codesshown")."""
+    lexicon word (#8224 gate binding 2), or else two English words ("Codesshown"); each half 3+ letters."""
     for m in WORD_RE.finditer(s):
         p = m.start()
         for w in [m.group()] if known(m.group().lower()) else GLUE_RE.split(m.group()):   # "IoT" is a word
             lw, cut = w.lower(), 0
             if len(w) > 4 and not known(lw):
-                cuts = [i for i in range(2, len(w) - 1) if known(lw[:i]) and known(lw[i:])]
-                cut = next((i for i in cuts if lw[:i] in LEX or lw[i:] in LEX), 0) or \
-                      next((i for i in cuts if 3 <= i <= len(w) - 3), 0)
+                cuts = [i for i in range(3, len(w) - 2) if known(lw[:i]) and known(lw[i:])]   # 3+ letters a side:
+                cut = next((i for i in cuts if lw[:i] in LEX or lw[i:] in LEX), cuts[0] if cuts else 0)   # not BA|PANAS
             for part in (w[:cut], w[cut:]) if cut else (w,):
                 yield p, part; p += len(part)
 
