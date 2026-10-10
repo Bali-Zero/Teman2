@@ -643,58 +643,20 @@ class TeamKnowledgeTool(BaseTool):
     def __init__(self, db_pool=None) -> None:
         self.db_pool = db_pool
         self._team_data = None
-        self._data_file = None
-
-    def _get_data_file_path(self) -> Path | None:
-        if self._data_file is None:
-            import os
-            from pathlib import Path
-
-            # Logical paths to check (Local Repo vs Docker Container)
-            possible_paths = [
-                # 1. Local Development (relative to this file)
-                Path(__file__).parent.parent.parent.parent / "data" / "team_members.json",
-                # 2. Docker Container (Standard App Path)
-                Path("/app/backend/data/team_members.json"),
-                # 3. Docker Container (Alternative)
-                Path("/app/data/team_members.json"),
-                # 4. Fallback: Current Working Directory
-                Path(os.getcwd()) / "backend" / "data" / "team_members.json",
-                # 5. Monorepo Fallback
-                Path(os.getcwd())
-                / "apps"
-                / "backend-rag"
-                / "backend"
-                / "data"
-                / "team_members.json",
-                # 6. Monorepo Root Fallback
-                Path(os.getcwd()) / "data" / "team_members.json",
-            ]
-
-            for path in possible_paths:
-                try:
-                    if path.exists():
-                        self._data_file = path
-                        logger.debug(f"[{self.name}] Found team_members.json at: {path}")
-                        break
-                except Exception as e:
-                    logger.warning(f"[{self.name}] Error checking path {path}: {e}")
-
-            if self._data_file is None:
-                logger.error(
-                    f"[{self.name}] CRITICAL: team_members.json NOT FOUND in any expected location.",
-                )
-
-        return self._data_file
 
     def _load_team_data(self) -> list[dict[str, Any]]:
         if self._team_data is None:
-            data_file = self._get_data_file_path()
-            if data_file and data_file.exists():
-                with open(data_file) as f:
-                    self._team_data = json.load(f)
-            else:
+            from backend.core.team_roster import load_team_roster, team_roster_source
+
+            try:
+                self._team_data = load_team_roster()
+            except ValueError as e:
+                logger.error(f"[{self.name}] Team roster unusable: {e}")
                 self._team_data = []
+            if not self._team_data:
+                logger.error(
+                    f"[{self.name}] CRITICAL: team roster not found (source={team_roster_source()}).",
+                )
         return self._team_data
 
     @property
@@ -1118,24 +1080,11 @@ class TimeSheetTool(BaseTool):
 
     def _get_user_id_by_email(self, email: str) -> str | None:
         try:
-            from pathlib import Path
+            from backend.core.team_roster import load_team_roster
 
-            # Try relative to this file first (Local Dev)
-            path = Path(__file__).parent.parent.parent.parent / "data" / "team_members.json"
-
-            # If not found, try Docker paths
-            if not path.exists():
-                path = Path("/app/backend/data/team_members.json")
-
-            if not path.exists():
-                path = Path("/app/data/team_members.json")
-
-            if path.exists():
-                with open(path) as f:
-                    data = json.load(f)
-                    for m in data:
-                        if m.get("email", "").lower() == email.lower():
-                            return m.get("id")
+            for m in load_team_roster():
+                if m.get("email", "").lower() == email.lower():
+                    return m.get("id")
         except Exception as e:
             logger.debug("[TimeSheetTool] Failed to lookup user by email %s: %s", email, e)
         return None

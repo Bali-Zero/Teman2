@@ -133,7 +133,9 @@ async def test_pricing_tool_uses_query_search_and_fails_closed_when_unloaded() -
 
 
 @pytest.mark.asyncio
-async def test_team_knowledge_reads_json_and_searches_case_insensitively(tmp_path) -> None:
+async def test_team_knowledge_reads_json_and_searches_case_insensitively(
+    tmp_path, monkeypatch
+) -> None:
     team_file = tmp_path / "team_members.json"
     team_file.write_text(
         json.dumps(
@@ -143,8 +145,9 @@ async def test_team_knowledge_reads_json_and_searches_case_insensitively(tmp_pat
             ],
         ),
     )
+    monkeypatch.delenv("TEAM_MEMBERS_JSON", raising=False)
+    monkeypatch.setenv("TEAM_MEMBERS_FILE", str(team_file))
     tool = TeamKnowledgeTool()
-    tool._data_file = team_file
 
     all_members = json.loads(await tool.execute(query_type="list_all"))
     matches = json.loads(
