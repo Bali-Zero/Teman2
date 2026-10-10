@@ -39,7 +39,7 @@ receipts:
     ts: "2026-10-10T03:33:49Z"
     seat: Claude Sonnet 5.5
   - claim: Structural diff of the seq-26 and seq-27 sources lists 41 differences and no others — sequence, previous digest, rule_pack_id, created_at, created_by, and verified_at/verified_by on the 18 portal records. Freshness boundary 2026-11-09T13:21:22Z (stamp + 2764800 s) against seq-26's 2026-11-08T13:32:18Z.
-    cmd: python3 -I diff.py rulepack-prod-026.source.json rulepack-prod-027.source.json # recursive path diff, scratch script
+    cmd: "python3 -I diff.py rulepack-prod-026.source.json rulepack-prod-027.source.json # recursive path diff, scratch script"
     result: "41 differences: 18 verified_at, 18 verified_by, created_at, created_by, previous_payload_sha256, rule_pack_id, sequence"
     exit: 0
     ts: "2026-10-10T03:34:23Z"
@@ -80,16 +80,13 @@ receipts:
     exit: 0
     ts: "2026-10-10T03:42:49Z"
     seat: Claude Opus 5.5 (orchestrator)
-council_run: >-
-  not convened — the anti-sperpero gate does not fire: rules, products and the 10 non-portal records are
-  byte-identical to the signed seq-26, so divergent priors cannot change the answer. One independent
-  adversarial seat (below) checked the fingerprint judgements instead, and a fresh on-disk gate signs last.
+council_run: journal.jsonl
 dissent:
   - seat: seq27-adversary (Claude Sonnet 5.5, independent of the build lane, read-only; verdict delivered 2026-10-10T03:31:59Z)
     objection: "Signing on judge=fingerprint judgements trusts a hash, not a reading: does the fingerprint cover the content the pack relies on, is the baseline a judged read, and do the pages still say it today?"
-    status: REFUTED
+    status: RETRACTED
     note: >-
-      PASS. The fingerprint is sha256 of the whole visible text (portal_read_receipt.py:127-128), changing one
+      Retracted on evidence — the check answered every part of the objection. PASS. The fingerprint is sha256 of the whole visible text (portal_read_receipt.py:127-128), changing one
       fee digit or "1 tahun atau 2 tahun" -> "1 tahun" changes it; recomputed from the saved texts it equals the
       receipt 18/18. The baseline is ONE hop back: the 2026-10-07 seq-25 ledger, judged by three readers with
       quoted sentences (8 changed, accepted one by one in disposition.json; 10 none with reasons). Live re-read on
