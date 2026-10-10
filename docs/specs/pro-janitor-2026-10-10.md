@@ -27,6 +27,66 @@ boundaries (below).
 - Never: other agents' worktrees, checkouts, secrets or `.env*`, `~/.agent/decisions`, client data, `~/.ollama`,
   `~/.nuzantara-pilots`, `~/.claude`, `~/.codex`, anything outside the allowlist below. Never kill a process.
 
+## Threat model and invariants (written 2026-10-10, after three council rounds)
+
+Three rounds kept finding new orderings of the same race (audit, then unlink) because this section did not exist. It is the
+arbiter: a finding is judged against it, and a change to it is a decision, not a fix.
+
+The janitor runs as `nuzantara` on a single-user host. **In scope**, and the janitor must be safe against them:
+
+- benign concurrent work of the same user, at any hour: Playwright installing or uninstalling (it holds `<root>/__dirlock` and
+  writes `.links`), a browser launched from a revision (it holds files open, many of them mmap'd: lsof lists those as `mem` or
+  `txt`, and they count as open like any other), uv and npm, and the H24 agent seats that run them — Claude Code sessions, agy,
+  codex and the cron cascade;
+- the janitor's own death at any point (SIGKILL, power loss): no half-written state, journal or sidecar is ever read as valid;
+- untrusted content: link files, manifests, the state file, file names and numbers are input, never trusted;
+- shape changes the janitor did not make: a directory that appears, vanishes, or is replaced by a symlink or another directory
+  between the plan and an unlink.
+
+**Out of scope**, stated so no reviewer has to guess:
+
+- a hostile process of the same user. It already holds every right the janitor has and can delete the caches, or anything under
+  `$HOME`, itself; no ordering of checks protects against it, and the janitor does not try;
+- processes of other users and root. `lsof` without root cannot inspect them (1084 such processes on Pro, 2026-10-10); the roots
+  are under the user's own `~/Library/Caches` and `~/.cache`, which no other user's process uses. A known blind spot, accepted.
+
+The consequence, named: this organ is a hygiene tool, not a security boundary.
+
+**Invariants**, each enforced at the moment it matters, not only by an earlier audit:
+
+1. Every object unlinked is reached through descriptors anchored at `/` without following a symlink, so it lies under the root by
+   construction.
+2. The removal walk re-checks each object when it reaches it, before unlinking it: a `.git` in any case, an mtime or ctime younger
+   than 7 days (a rename into the candidate refreshes the moved object's ctime), another device, or a directory whose inode is not
+   the one it was opened as is left in place and the candidate is `failed:changed`.
+3. The scan of open files is complete or the rule removes nothing: rc 0 or 1, the canary listed, stderr empty, and every `n` record
+   an absolute path (an `n` record such as `FD info error: Operation not permitted` is a process lsof could not inspect; 0 such
+   records on Pro's real root, 2026-10-10).
+4. Nothing pinned by the registry, nothing open, nothing under an install lock: re-checked before each candidate.
+5. No planted name, number or file makes the run crash: every such input is a skip or an error with its cause, and the journal and
+   state are always written. `EPERM` or `EACCES` on an object (TCC- or SIP-protected) is a skip journaled with its cause and not
+   retried within the run.
+6. **Blast radius.** A run unlinks at most 10 GB and at most 200 000 objects (the measured roots hold about 1.6 GB of revisions);
+   it stops at either cap and journals `capped`. A rate limit alone cannot bound one bad plan in one run.
+7. **The kill switch** (`PRO_JANITOR_ENABLED=false`, read from the environment and from `<state_dir>/disabled`, a file the operator
+   can create without a plist edit) is checked before each candidate, so a stop takes effect within one object.
+8. **The janitor holds Playwright's lock while it unlinks.** Playwright 1.63 takes `<root>/__dirlock` with proper-lockfile: an
+   atomic `mkdir`, judged stale when its mtime is older than 10 s, retried by the installer for about 10 minutes (read in
+   `playwright-core/lib/coreBundle.js`, 2026-10-10). Before each candidate the janitor takes the same lock the same way
+   (`mkdir("__dirlock", dir_fd=root)`; `EEXIST` is `skipped:install-in-progress`), refreshes its mtime at least every 2 s while it
+   walks, and removes it in a `finally`; a refresh that fails, or a lock that is no longer the one it made, stops that candidate
+   (`failed:lock-lost`). An installer that arrives meanwhile waits; one already holding the lock makes the janitor skip.
+
+**Residual, accepted:** none from the in-scope writers — the only writer of an old revision directory is a Playwright install,
+which cannot run while the janitor holds `__dirlock` (invariant 8). What remains is a writer that ignores the lock, which is out
+of scope. If the janitor dies holding the lock, Playwright judges it stale after 10 s and takes it over; the janitor's own next
+runs skip (`skipped:install-in-progress`) until the directory is gone, and journal `stale_dirlock: true` once it is older than an
+hour.
+
+**Freed space is the filesystem's word.** The journal records, beside the bytes unlinked, the free-space delta of the Data volume
+(`statvfs` before and after each action): APFS local snapshots keep unlinked blocks until they are thinned, so unlinking 1 GB can
+free nothing, and the journal must show which happened.
+
 ## Design
 
 Every 10 minutes (launchd `StartInterval` 600, no `KeepAlive`), `/usr/bin/python3 -I` runs the payload

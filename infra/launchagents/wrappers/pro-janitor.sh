@@ -41,6 +41,13 @@ if [ "${PRO_JANITOR_ENABLED:-true}" = "false" ]; then
     exit 0
 fi
 
+# G5b — the operator's kill-switch FILE (no plist edit needed); the payload checks it too, before every candidate
+if [ -e "${PRO_JANITOR_STATE_DIR:-$HOME/.local/state/nuzantara/pro-janitor}/disabled" ]; then
+    log "kill switch file present — exiting"
+    heartbeat "disabled" "kill switch file"
+    exit 0
+fi
+
 # G10_single_instance — pidfile + liveness probe + trap cleanup (the payload also holds a flock)
 OLDPID="$(cat "$PIDFILE" 2>/dev/null)"
 if [ -f "$PIDFILE" ] && [[ "$OLDPID" =~ ^[0-9]+$ ]] && kill -0 "$OLDPID" 2>/dev/null; then
@@ -56,6 +63,8 @@ log "run start"
 RAW="$(/usr/bin/python3 -I "$HOME/.nuzantara-cron/pro_janitor.py" 2>&1)"
 RC=$?
 # the note is the payload's own summary line and nothing else: a traceback (with its paths) never reaches the sidecar
+# the raw output (a traceback included) goes to the local run.log for a postmortem, capped; never to the sidecar
+printf '%s\n' "$RAW" | head -c 65536 >> "$LOG"
 OUT="$(printf '%s\n' "$RAW" | LC_ALL=C grep -E '^pro_janitor: [ -~]*$' | tail -n 1 | cut -c1-300)"
 NOTE="${OUT:-payload rc=$RC}"
 log "payload rc=$RC: $NOTE"

@@ -11,6 +11,7 @@ lock or free space unusable; 11 another run holds the lock.
 """
 from __future__ import annotations
 
+import errno
 import fcntl
 import json
 import math
@@ -40,7 +41,7 @@ RULES = [
 RULE_IDS = set(r["id"] for r in RULES)
 
 # the Playwright browser families this organ knows; any other name in the root is never a candidate
-FAMILIES = ("chromium", "chromium_headless_shell", "chromium_tip_of_tree", "firefox", "firefox_beta", "webkit", "ffmpeg",
+FAMILIES = ("chromium", "chromium_headless_shell", "chromium_tip_of_tree", "chromium_tip_of_tree_headless_shell", "firefox", "firefox_beta", "webkit", "ffmpeg",
             "winldd")
 PW_RE = re.compile(r"(?P<family>[a-z_]+)-(?P<rev>[0-9]{1,12})", re.ASCII)
 NAME_RE = re.compile(r"[a-z][a-z0-9-]*", re.ASCII)
@@ -69,8 +70,8 @@ class Env(object):
             self.timeout = float(e.get("PRO_JANITOR_TOOL_TIMEOUT", "300"))
         except ValueError:
             raise ConfigError("PRO_JANITOR_NOW / PRO_JANITOR_TOOL_TIMEOUT is not a number")
-        if not math.isfinite(self.now):
-            raise ConfigError("PRO_JANITOR_NOW is not finite")
+        if not (math.isfinite(self.now) and 0 <= self.now <= 4e9):
+            raise ConfigError("PRO_JANITOR_NOW is not a finite timestamp in [0, 4e9]")
         if not math.isfinite(self.timeout) or self.timeout <= 0:
             raise ConfigError("PRO_JANITOR_TOOL_TIMEOUT must be positive and finite")
         self.tools = {"uv": e.get("PRO_JANITOR_UV", "/opt/homebrew/bin/uv"),
@@ -87,6 +88,28 @@ class Env(object):
             if not all(x is None or math.isfinite(x) for x in self.seq):
                 raise ConfigError("PRO_JANITOR_FREE_GB_SEQ is not finite")
         self._i = 0
+        try:   # invariant 6: the blast radius of one run, injectable for tests
+            self.max_bytes = int(e.get("PRO_JANITOR_MAX_BYTES", str(10 * 10**9)))
+            self.max_objects = int(e.get("PRO_JANITOR_MAX_OBJECTS", "200000"))
+            self.lock_interval = float(e.get("PRO_JANITOR_LOCK_REFRESH", "2"))
+        except ValueError:
+            raise ConfigError("PRO_JANITOR_MAX_BYTES / _MAX_OBJECTS / _LOCK_REFRESH is not a number")
+        if self.max_bytes < 0 or self.max_objects < 0 or not (0 <= self.lock_interval <= 2):
+            raise ConfigError("PRO_JANITOR_MAX_BYTES / _MAX_OBJECTS / _LOCK_REFRESH out of range")
+        self.used_bytes = 0
+        self.used_objects = 0
+        self.notes = {}   # extras a rule leaves for its journal entry
+
+    def killed(self):
+        """Invariant 7: the kill switch, from the environment or from a file the operator can create."""
+        return os.environ.get("PRO_JANITOR_ENABLED") == "false" or os.path.lexists(os.path.join(self.state_dir, "disabled"))
+
+    def fs_free_bytes(self):
+        try:
+            st = os.statvfs(self.df_path)
+            return st.f_bavail * st.f_frsize
+        except OSError:
+            return None
 
     def free_gb(self):
         if self.seq is not None:
@@ -210,7 +233,7 @@ def append_journal(env, line):
 # ---------------------------------------------------------------- subprocess with a real deadline
 
 def run_deadline(argv, timeout, env, cap=None, err_cap=None):
-    """-> (rc, status, stdout, stderr); status ok|timeout|overflow|spawn. Stdout/stderr go to DEVNULL unless a cap asks for a
+    """-> (rc, status, stdout, stderr); status ok|timeout|timeout-unreaped|overflow|spawn. Stdout/stderr go to DEVNULL unless a cap asks for a
     pipe (lsof), read with the deadline and capped; stderr is only ever tested for emptiness, never journaled or printed.
     The child leads its own process group; on the deadline or an overflow: TERM the group, wait 5 s, KILL the group, reap.
     A grandchild that left the group (setsid) is not ours to kill."""
@@ -264,7 +287,10 @@ def run_deadline(argv, timeout, env, cap=None, err_cap=None):
             os.killpg(p.pid, signal.SIGKILL)
         except OSError:
             pass
-        p.wait()
+        try:
+            p.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            status = "timeout-unreaped"   # uninterruptible sleep: abandon the child rather than hang while holding the lock
     for f in (p.stdout, p.stderr):
         if f:
             f.close()
@@ -438,6 +464,8 @@ def lsof_probe(env, root):
     if st != "ok" or rc not in (0, 1) or err:
         return "error:lsof-incomplete", None
     opened = [ln[1:] for ln in out.decode("utf-8", "replace").splitlines() if ln.startswith("n")]
+    if any(not o.startswith("/") for o in opened):   # e.g. "FD info error: ..." is a process lsof could not inspect
+        return "error:lsof-incomplete", None
     if canary not in opened:
         return "error:lsof-incomplete", None
     return None, [os.path.realpath(o) for o in opened]
@@ -445,12 +473,21 @@ def lsof_probe(env, root):
 
 DIRFLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
 MAX_DEPTH = 64
-CANARY_RE = re.compile(r"\.pro-janitor-canary-(?P<pid>[0-9]{1,10})", re.ASCII)
+CANARY_RE = re.compile(r"\.pro-janitor-canary-(?P<pid>[0-9]{1,7})", re.ASCII)
+
+
+class Capped(Exception):
+    pass
+
+
+class LockLost(Exception):
+    pass
 
 
 def fd_supported():
-    return (all(f in os.supports_dir_fd for f in (os.open, os.stat, os.unlink, os.rmdir))
-            and os.scandir in os.supports_fd and os.stat in os.supports_follow_symlinks)
+    return (all(f in os.supports_dir_fd for f in (os.open, os.stat, os.unlink, os.rmdir, os.mkdir, os.utime))
+            and os.scandir in os.supports_fd and os.stat in os.supports_follow_symlinks
+            and os.utime in os.supports_follow_symlinks)
 
 
 def open_anchored(path):
@@ -469,10 +506,12 @@ def open_anchored(path):
 
 
 def audit_fd(fd, root_dev, depth=0):
-    """(ok, reason, youngest_mtime, bytes) of the tree under an open directory fd, walked fd-relative, symlinks never followed."""
+    """(ok, reason, youngest, bytes) of the tree under an open directory fd, walked fd-relative, symlinks never followed.
+    `youngest` is the latest mtime OR ctime (a rename into the tree refreshes the moved object's ctime)."""
     if depth > MAX_DEPTH:
         return False, "too-deep", 0, 0
-    youngest = os.fstat(fd).st_mtime
+    st = os.fstat(fd)
+    youngest = max(st.st_mtime, st.st_ctime)
     total = 0
     with os.scandir(fd) as it:
         names = [e.name for e in it]
@@ -480,7 +519,7 @@ def audit_fd(fd, root_dev, depth=0):
         if n.casefold() == ".git":
             return False, "has-git", 0, 0
         s = os.stat(n, dir_fd=fd, follow_symlinks=False)
-        youngest = max(youngest, s.st_mtime)
+        youngest = max(youngest, s.st_mtime, s.st_ctime)
         total += s.st_size
         if stat.S_ISDIR(s.st_mode):
             if s.st_dev != root_dev:
@@ -500,63 +539,160 @@ def audit_fd(fd, root_dev, depth=0):
     return True, "", youngest, total
 
 
-def remove_children(fd, root_dev, depth=0):
-    """Remove everything under the open directory fd, fd-relative. A symlink is unlinked itself, never its target; a
-    directory on another device is never entered. Returns the number of failures (0 = all gone)."""
+class Lock(object):
+    """Invariant 8: Playwright's own install lock, `<root>/__dirlock`, taken the way proper-lockfile takes it (an atomic
+    mkdir), refreshed (mtime) while we unlink so it never looks stale (> 10 s), and removed only if it is still our inode."""
+    NAME = "__dirlock"
+
+    def __init__(self, root_fd, interval):
+        self.fd, self.interval, self.id, self.last = root_fd, interval, None, 0.0
+
+    def take(self):
+        os.mkdir(self.NAME, 0o755, dir_fd=self.fd)   # FileExistsError: an installer holds it
+        st = os.stat(self.NAME, dir_fd=self.fd, follow_symlinks=False)
+        self.id, self.last = (st.st_dev, st.st_ino), time.monotonic()
+
+    def refresh(self):
+        if time.monotonic() - self.last < self.interval:
+            return
+        try:
+            st = os.stat(self.NAME, dir_fd=self.fd, follow_symlinks=False)
+            if not stat.S_ISDIR(st.st_mode) or (st.st_dev, st.st_ino) != self.id:
+                raise LockLost()
+            os.utime(self.NAME, None, dir_fd=self.fd, follow_symlinks=False)
+        except OSError:
+            raise LockLost()
+        self.last = time.monotonic()
+
+    def release(self):
+        if self.id is None:
+            return
+        try:
+            st = os.stat(self.NAME, dir_fd=self.fd, follow_symlinks=False)
+            if (st.st_dev, st.st_ino) == self.id:
+                os.rmdir(self.NAME, dir_fd=self.fd)
+        except OSError:
+            pass
+
+
+class Walk(object):
+    """State of one candidate's removal: the first failure cause, the bytes unlinked, the run's budget and the lock."""
+
+    def __init__(self, root_dev, now, env=None, lock=None):
+        self.root_dev, self.now, self.env, self.lock = root_dev, now, env, lock
+        self.cause, self.bytes, self.failures = None, 0, 0
+
+    def fail(self, cause):
+        self.failures += 1
+        if self.cause is None:
+            self.cause = cause
+
+    def tick(self):
+        if self.lock is not None:
+            self.lock.refresh()
+
+    def account(self, size):
+        """Invariant 6: called before each unlink; raises Capped when the run's budget would be exceeded."""
+        e = self.env
+        if e is not None:
+            if e.used_objects + 1 > e.max_objects or e.used_bytes + size > e.max_bytes:
+                raise Capped()
+            e.used_objects += 1
+            e.used_bytes += size
+        self.bytes += size
+
+
+def cause_of(exc):
+    if isinstance(exc, FileNotFoundError):
+        return "vanished"
+    if isinstance(exc, PermissionError):
+        return "eperm"
+    return "changed"
+
+
+def remove_children(fd, w, depth=0):
+    """Remove everything under the open directory fd, fd-relative. Invariant 2: each object is lstat'ed through the fd right
+    before it is unlinked and left in place (the candidate fails `changed`) if it is a .git in any case, younger than 7 days by
+    mtime or ctime, on another device, or a directory that is not the inode it was opened as. A symlink is unlinked itself,
+    never its target. Directories are checked when reached, before their children are touched (our own unlinks refresh their
+    times). EPERM/EACCES is a skip with its cause."""
     if depth > MAX_DEPTH:
-        return 1
-    fails = 0
+        w.fail("changed")
+        return
     with os.scandir(fd) as it:
         names = [e.name for e in it]
     for n in names:
+        w.tick()
         try:
             s = os.stat(n, dir_fd=fd, follow_symlinks=False)
+        except FileNotFoundError:
+            continue   # already gone: nothing to remove
+        except OSError as exc:
+            w.fail(cause_of(exc))
+            continue
+        if n.casefold() == ".git" or w.now - max(s.st_mtime, s.st_ctime) <= SEVEN_DAYS or s.st_dev != w.root_dev:
+            w.fail("changed")
+            continue
+        try:
             if stat.S_ISDIR(s.st_mode):
-                if s.st_dev != root_dev:
-                    fails += 1
-                    continue
                 cfd = os.open(n, DIRFLAGS, dir_fd=fd)
                 try:
                     c = os.fstat(cfd)
                     if (c.st_dev, c.st_ino) != (s.st_dev, s.st_ino):
-                        fails += 1
+                        w.fail("changed")
                         continue
-                    sub = remove_children(cfd, root_dev, depth + 1)
+                    before = w.failures
+                    remove_children(cfd, w, depth + 1)
                 finally:
                     os.close(cfd)
-                if sub:
-                    fails += sub
+                if w.failures != before:
                     continue
+                w.account(0)
                 os.rmdir(n, dir_fd=fd)
             else:
+                w.account(s.st_size)
                 os.unlink(n, dir_fd=fd)
-        except OSError:
-            fails += 1
-    return fails
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            w.fail("enotempty" if exc.errno == errno.ENOTEMPTY else cause_of(exc))
 
 
-def remove_candidate(root_fd, name, rec, root_dev, now):
-    """(state, bytes). The candidate is opened relative to the verified root fd and must be the very inode recorded at plan
-    time, on the root's device; it is audited and emptied through that fd and removed with rmdir(dir_fd): no pathname is
-    resolved after the plan."""
-    cfd = os.open(name, DIRFLAGS, dir_fd=root_fd)
+def remove_candidate(root_fd, name, rec, root_dev, now, env=None, lock=None):
+    """(state, bytes_unlinked); state is "removed" or "failed:<cause>". The candidate is opened relative to the verified root
+    fd and must be the very inode recorded at plan time, on the root's device; it is audited and emptied through that fd and
+    removed with rmdir(dir_fd): no pathname is resolved after the plan."""
+    w = Walk(root_dev, now, env, lock)
+    try:
+        cfd = os.open(name, DIRFLAGS, dir_fd=root_fd)
+    except OSError as exc:
+        return "failed:" + cause_of(exc), 0
     try:
         st = os.fstat(cfd)
         if (st.st_dev, st.st_ino) != rec or st.st_dev != root_dev:
-            return "failed", 0
+            return "failed:changed", 0
         ok, why, youngest, size = audit_fd(cfd, root_dev)
         if not ok or now - youngest <= SEVEN_DAYS:
-            return "failed", 0
-        if remove_children(cfd, root_dev):
-            return "failed", 0
+            return "failed:changed", 0
+        remove_children(cfd, w)
+        if w.cause:
+            return "failed:" + w.cause, w.bytes
+        w.tick()
+        w.account(0)
+        os.rmdir(name, dir_fd=root_fd)
+        return "removed", w.bytes
+    except Capped:
+        return "failed:capped", w.bytes
+    except LockLost:
+        return "failed:lock-lost", w.bytes
+    except OSError as exc:
+        return "failed:" + ("enotempty" if exc.errno == errno.ENOTEMPTY else cause_of(exc)), w.bytes
     finally:
         os.close(cfd)
-    os.rmdir(name, dir_fd=root_fd)
-    return "removed", size
 
 
 def sweep_stale_canaries(root):
-    """Remove our own leftover canaries: regular, zero-byte, exactly .pro-janitor-canary-<pid>, with a pid that is gone.
+    """Remove our own leftover canaries: regular, zero-byte, exactly .pro-janitor-canary-<1..7 digits>, with a pid that is gone.
     `kill(pid, 0)` only asks; nothing is ever signalled."""
     try:
         names = os.listdir(root)
@@ -571,6 +707,8 @@ def sweep_stale_canaries(root):
             continue   # alive
         except ProcessLookupError:
             pass
+        except (OverflowError, ValueError):
+            continue
         except OSError:
             continue   # EPERM: alive, someone else's
         p = os.path.join(root, n)
@@ -580,6 +718,19 @@ def sweep_stale_canaries(root):
                 os.unlink(p)
         except OSError:
             pass
+
+
+def dirlock_present(env, root):
+    """True if the install lock exists; notes `stale_dirlock` when it is older than an hour (we still skip)."""
+    p = os.path.join(root, Lock.NAME)
+    if not os.path.lexists(p):
+        return False
+    try:
+        if env.now - os.lstat(p).st_mtime > 3600:
+            env.notes["stale_dirlock"] = True
+    except OSError:
+        pass
+    return True
 
 
 def dir_rule(env, rule, apply_):
@@ -596,7 +747,7 @@ def dir_rule(env, rule, apply_):
     root_dev, root_id = rst.st_dev, (rst.st_dev, rst.st_ino)
     if apply_:
         sweep_stale_canaries(root)
-    if os.path.lexists(os.path.join(root, "__dirlock")):
+    if dirlock_present(env, root):
         return "skipped:install-in-progress", []
     try:
         pins = pinned_revisions(root)
@@ -625,9 +776,9 @@ def dir_rule(env, rule, apply_):
     if not free_cands:
         return "skipped:in-use", []
     if not apply_:
-        return "dry-run", [{"name": n, "bytes": sz} for n, _, sz, _ in free_cands]
+        return "dry-run", [{"name": n, "bytes": sz} for n, _, sz, _ in free_cands]   # dry-run never takes the lock
     # the registry and the install lock are read again at the last moment: an install may have started since
-    if os.path.lexists(os.path.join(root, "__dirlock")):
+    if dirlock_present(env, root):
         return "skipped:install-in-progress", []
     try:
         if pinned_revisions(root) != pins:
@@ -636,38 +787,63 @@ def dir_rule(env, rule, apply_):
         return "skipped:link-registry-unreadable", []
     entries = []
     for name, path, _, rec in free_cands:
-        ent = {"name": name, "bytes": 0, "state": "failed"}
+        if env.killed():   # invariant 7: a stop takes effect before the next candidate
+            env.notes["stopped"] = "kill-switch"
+            break
+        if env.used_objects >= env.max_objects or env.used_bytes >= env.max_bytes:
+            env.notes["capped"] = True
+            break
+        ent = {"name": name, "bytes": 0, "state": "failed:changed"}
         entries.append(ent)
+        rfd, lock = None, None
         try:
-            # per candidate, the last look: lsof again, then the lock and the pins, then fd-anchored removal
+            rfd = open_anchored(root)
+            st = os.fstat(rfd)
+            if (st.st_dev, st.st_ino) != root_id:
+                ent["state"] = "failed:root-changed"
+                continue
+            lock = Lock(rfd, env.lock_interval)
+            try:
+                lock.take()   # invariant 8: Playwright waits for us; if it already holds the lock, we skip
+            except FileExistsError:
+                lock = None
+                ent["state"] = "skipped:install-in-progress"
+                dirlock_present(env, root)
+                continue
+            # per candidate, the last look, under the lock: lsof again, then the pins
             bad, opened2 = lsof_probe(env, root)
             if bad:
+                ent["state"] = "failed:lsof-incomplete"
                 continue
             if any(o == path or o.startswith(path + os.sep) for o in opened2):
                 ent["state"] = "skipped:open"
-                continue
-            if os.path.lexists(os.path.join(root, "__dirlock")):
-                ent["state"] = "skipped:install-in-progress"
                 continue
             m = PW_RE.fullmatch(name)
             if (m.group("family"), int(m.group("rev"))) in pinned_revisions(root):
                 ent["state"] = "skipped:pinned-late"
                 continue
-            rfd = open_anchored(root)
-            try:
-                st = os.fstat(rfd)
-                if (st.st_dev, st.st_ino) != root_id:
-                    continue
-                ent["state"], ent["bytes"] = remove_candidate(rfd, name, rec, root_dev, env.now)
-            finally:
+            ent["state"], ent["bytes"] = remove_candidate(rfd, name, rec, root_dev, env.now, env, lock)
+        except LinksUnreadable:
+            ent["state"] = "failed:changed"
+        except OSError as exc:
+            ent["state"] = "failed:" + ("root-changed" if not isinstance(exc, (FileNotFoundError, PermissionError))
+                                        else cause_of(exc))
+        finally:
+            if lock is not None:
+                lock.release()
+            if rfd is not None:
                 os.close(rfd)
-        except (OSError, LinksUnreadable):
-            pass
-    if any(e["state"] == "failed" for e in entries):
+        if ent["state"] == "failed:capped":
+            env.notes["capped"] = True
+            break
+    env.notes["unlinked_bytes"] = sum(e["bytes"] for e in entries)
+    if any(e["state"].startswith("failed") for e in entries):
         return "error:rmtree-partial", entries
     if any(e["state"] == "removed" for e in entries):
         return "done", entries
-    return entries[0]["state"], entries
+    if entries:
+        return entries[0]["state"], entries
+    return "skipped:kill-switch" if env.notes.get("stopped") else "skipped:capped", entries
 
 
 def tool_env(env):
@@ -691,6 +867,8 @@ def tool_rule(env, rule, apply_):
     if not (os.path.isfile(exe) and os.access(exe, os.X_OK)):
         return "error:tool-missing", []
     rc, st, _, _ = run_deadline(argv, env.timeout, tenv)
+    if st == "timeout-unreaped":
+        return "error:timeout-unreaped", []
     if st == "timeout":
         return "error:timeout", []
     if st != "ok":
@@ -726,6 +904,10 @@ def main():
     except OSError:
         print("pro_janitor: lock unusable")
         return 1
+    if env.killed():   # invariant 7, at the start: no action, one journal line
+        append_journal(env, {"ts": iso(env.now), "disabled": True})
+        print("pro_janitor: disabled by the kill switch")
+        return 0
     try:
         state, invalid = load_state(env)
         free0 = env.free_gb()
@@ -746,6 +928,7 @@ def main():
         last = state["rules"].get(rule["id"])
         if is_num(last) and env.now - last < rule["cooldown"]:
             continue
+        fs0 = env.fs_free_bytes() if apply_ else None
         if rule["kind"] == "tool":
             status, entries = tool_rule(env, rule, apply_)
         else:
@@ -753,8 +936,10 @@ def main():
         res = {"id": rule["id"], "status": status}
         if entries or rule["kind"] == "dir":
             res["entries"] = entries
+        res.update(env.notes)
+        env.notes.clear()
         attempted = apply_ and (status == "done" or status.startswith("error:rc=") or status in
-                                ("error:timeout", "error:rmtree-partial"))
+                                ("error:timeout", "error:timeout-unreaped", "error:rmtree-partial"))
         results.append(res)
         if attempted:
             state["rules"][rule["id"]] = env.now
@@ -764,6 +949,9 @@ def main():
                 free_failed = True   # no reading, no further action: stop here and say so
                 break
             res["delta_gb"] = round(after - free, 3)
+            fs1 = env.fs_free_bytes()
+            if fs0 is not None and fs1 is not None:
+                res["freed_fs_bytes"] = fs1 - fs0   # the filesystem's word: APFS snapshots can hold unlinked blocks
             free = after
             before = cur
             cur = next_tier(cur, free)   # the tier follows every reading: up when space collapses, down once it recovers
