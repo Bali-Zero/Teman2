@@ -118,7 +118,25 @@ POLL_S = 20
 # workflow — so editing one without the other fails CI rather than drifting quietly.
 #
 BUNDLE_PATHS = ("apps/mouth", "packages", "package.json", "package-lock.json", "vercel.json")
-BUNDLE_EXCLUDE: tuple[str, ...] = ()
+# Documentation-only changes under those roots do not change the built bundle: Vercel builds
+# from the same sources either way, so a pure-.md commit is one Vercel deliberately SKIPPED,
+# and aiming production at it resurrects the 2026-08-10 defect (target = a sha with no READY
+# build and no path to currency). Same rule, same tokens, in the sentinel's inline pathspec.
+#
+# apps/mouth/public/** is carved OUT of the .md exclusion: those files are copied verbatim
+# into the deploy and served as URLs, so a change there DOES change the served bundle (owner
+# GO, 2026-10-06). Git pathspecs cannot re-include under an excluded glob (a trailing
+# positive `apps/mouth/public` does NOT override the earlier exclude — verified empirically),
+# so the exclusion is enumerated per doc dir; a NEW apps/mouth dir carrying .md would silently
+# become bundle-relevant again, so .md additions outside public/ belong in this tuple.
+BUNDLE_EXCLUDE: tuple[str, ...] = (
+    ":(exclude,glob)apps/mouth/*.md",
+    ":(exclude,glob)apps/mouth/docs/**/*.md",
+    ":(exclude,glob)apps/mouth/e2e/**/*.md",
+    ":(exclude,glob)apps/mouth/scripts/**/*.md",
+    ":(exclude,glob)apps/mouth/src/**/*.md",
+    ":(exclude,glob)packages/**/*.md",
+)
 
 
 def _read_auth() -> dict:
