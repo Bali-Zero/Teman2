@@ -1,6 +1,6 @@
 """Single loader for the staff roster (one SSOT, supplied outside git).
 
-Source precedence, first one that EXISTS wins:
+Source precedence, first one that is CONFIGURED wins (the default file only if it exists):
 
 1. env ``TEAM_MEMBERS_JSON``  - the JSON document itself (a Fly secret in prod)
 2. env ``TEAM_MEMBERS_FILE``  - path to a JSON file
@@ -39,9 +39,10 @@ def _resolve() -> tuple[str, Path | None] | None:
         return f"env:{ENV_JSON}", None
     file_env = _env(ENV_FILE)
     if file_env is not None:
+        # An explicitly configured path wins even when it does not exist: a wrong path is a
+        # misconfiguration to surface (load_team_roster raises), not a reason to fall back.
         path = Path(file_env.strip())
-        if path.exists():
-            return f"file:{path}", path
+        return f"file:{path}", path
     if DEFAULT_ROSTER_PATH.exists():
         return f"file:{DEFAULT_ROSTER_PATH}", DEFAULT_ROSTER_PATH
     return None

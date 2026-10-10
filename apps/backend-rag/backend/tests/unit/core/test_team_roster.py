@@ -48,9 +48,12 @@ def test_default_path_used(_clean):
     assert team_roster_source() == f"file:{_clean}"
 
 
-def test_env_file_pointing_nowhere_falls_through_to_default(monkeypatch, tmp_path):
-    monkeypatch.setenv("TEAM_MEMBERS_FILE", str(tmp_path / "missing.json"))
-    assert load_team_roster()[0]["id"] == "default"
+def test_env_file_pointing_nowhere_is_an_error_not_a_fallback(monkeypatch, tmp_path):
+    missing = tmp_path / "missing.json"
+    monkeypatch.setenv("TEAM_MEMBERS_FILE", str(missing))
+    assert team_roster_source() == f"file:{missing}"
+    with pytest.raises(TeamRosterError, match="TEAM_MEMBERS_FILE|missing.json"):
+        load_team_roster()
 
 
 def test_no_source(monkeypatch, tmp_path):
