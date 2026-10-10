@@ -141,6 +141,9 @@ if [[ -n "$UTF8_LOC" ]]; then
     assert_eq "$GOT" "REDACTOR-RAN" "redact_for_external: an integer LC_ALL in the caller does not make an invalid byte blank"
     GOT="$(in_child -- "readonly LC_ALL=$UTF8_LOC;" $'\xff'"someone@example.org" 2>/dev/null)"
     assert_eq "$GOT" "REDACTOR-RAN" "redact_for_external: a readonly LC_ALL in the caller sends an invalid byte to the redactor"
+    # a shadowed unset keeps the integer attribute: only the behavioural locale probe stops the invalid byte (Opus gate)
+    GOT="$(in_child LANG="$UTF8_LOC" -- 'unset() { :; }; declare -i LC_ALL;' $'\xff'"someone@example.org" 2>/dev/null)"
+    assert_eq "$GOT" "REDACTOR-RAN" "redact_for_external: a shadowed unset with an integer LC_ALL cannot make an invalid byte blank"
 fi
 # in any locale: a judgement that cannot be made (here LC_ALL cannot be set) is not "blank"
 GOT="$(in_child -- "readonly LC_ALL=${UTF8_LOC:-C};" "   " 2>/dev/null)"
@@ -158,8 +161,8 @@ else
     FAIL=1
 fi
 # the library never goes back to the substitution that was quadratic on bash 3.2 (a Linux bash 5 would not show
-# it): no ${var//...} over any variable on a line that is not a comment (a line's first non-blank is not #)
-if grep -n -E '^[[:space:]]*[^#[:space:]].*\$\{[A-Za-z_][A-Za-z0-9_]*//' "$REPO_ROOT/scripts/lib/spalla_redact.sh" >&2; then
+# it): no ${var//...} — named, positional, array or indirect — on a line that is not a comment
+if grep -n -E '^[[:space:]]*[^#[:space:]].*\$\{!?([A-Za-z_][A-Za-z0-9_]*|[0-9]+|[@*])(\[[^]]*\])?//' "$REPO_ROOT/scripts/lib/spalla_redact.sh" >&2; then
     echo "FAIL: spalla_redact.sh uses a \${var//...} substitution in code (quadratic on bash 3.2)" >&2
     FAIL=1
 else

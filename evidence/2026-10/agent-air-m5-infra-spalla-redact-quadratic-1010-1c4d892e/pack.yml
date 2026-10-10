@@ -85,8 +85,8 @@ receipts:
     ts: "2026-10-09T20:00:00Z"
     seat: claude-opus-5-5 on M5
   - claim:
-      "ALL OK on f036f7d571: 38 ok rows, 0 FAIL, including the locale matrix, caller-attribute rows, static guard and the
-      large-body probe in /bin/bash 3.2.57."
+      "ALL OK at the branch head: 39 ok rows, 0 FAIL (locale matrix, caller-attribute rows incl. a shadowed unset, static
+      guard, large-body probe in /bin/bash 3.2.57)."
     cmd: bash scripts/tests/test_codex_spalla_diff_redaction.sh
     exit: 0
     ts: "2026-10-10T00:20:00Z"
@@ -109,6 +109,13 @@ receipts:
     cmd: independent read-only subagent with scratch mutants
     exit: 0
     ts: "2026-10-10T00:10:00Z"
+    seat: claude-opus-5-5 (independent seat)
+  - claim:
+      "Fresh Opus gate CONFIRMED f036f7d571: 5220 byte verdicts across 5 caller locales identical to origin/main's rule;
+      31 hostile caller states x 2 locales, no fail-open; 8 MB linear."
+    cmd: independent read-only subagent with scratch mutants
+    exit: 0
+    ts: "2026-10-10T01:25:00Z"
     seat: claude-opus-5-5 (independent seat)
 dissent:
   - seat: codex-gpt-5.6-sol round 1 (4b14c0fa5a)
@@ -160,6 +167,15 @@ dissent:
     resolution:
       "Accepted as residuals: the guard is a tripwire for the known regression, not a parser; the probe starts no
       background descendants."
+  - seat: claude-opus-5-5 gate (f036f7d571)
+    objection:
+      "CONFIRMED with two LOW test gaps: no row covers the behavioural locale probe (dropping it passed while a shadowed
+      unset with an integer LC_ALL then let an invalid byte through); the static guard missed positional, array and indirect
+      substitutions."
+    status: CONFIRMED
+    resolution:
+      "Test-only follow-up: a shadowed-unset + integer-LC_ALL row (kills the probe-dropped mutant) and the gate's
+      wider guard pattern (kills a ${1//x/} mutant); ALL OK, 39 rows."
 residuals:
   - "A caller with a readonly LC_ALL (or a no-op unset over an integer LC_ALL) sends every body, blank ones included, to the
     redactor, which fails closed on a short body: codex-spalla.sh would refuse instead of sending. Fail-closed by the contract;
