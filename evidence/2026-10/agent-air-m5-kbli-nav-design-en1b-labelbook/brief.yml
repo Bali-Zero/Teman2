@@ -1,0 +1,36 @@
+task_id: kbli-nav-design-en1b-labelbook
+mission: kbli-nav-design-loop (Track A, build, lot EN-1b — the projection, applied)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Set to the floor evidence_pack_lint computes for this change set by its size term, with no hot-zone path. The code
+  churns 334 lines (+246/−88, net +158) across LabelBook.swift (new), KBLIVerdict.swift (headsUp only),
+  SearchListView.swift, KBLIRegistryTable.swift, RegistryVerdictSheet.swift, KBLIRegistryView.swift (the authority
+  table delegates), headsuptest, contenttest, content_check.py, en_purity.py and measure_contrast's citations; the
+  after-set digest manifest adds its JSON evidence.
+l_level: L1
+gate_class: opus
+objective: >-
+  Z-DECISIONI Q12 rulings 1-5, second half: LabelBook, the one projection from the dataset's keys to the words a reader
+  sees (status, Bali-status enum, risk, scale and authority words; the provenance strip's field names; titles and
+  descriptions from kbli-data-i18n-en.json through primaryTitle; "Official title (Bahasa Indonesia)"; the "Original
+  (Bahasa Indonesia)" label for legal text with no English source), applied to the four built Views: search row, search
+  peak, registry row and registry sheet with its provenance strip. Italian enums and field=value locators are never
+  drawn in either language; Indonesian is otherwise unchanged. en_purity GATED and STATIC gain the four Views. Not in
+  this lot: detail card, dossier, sheet ledger, chat (PRs 3-6, each bound to 0 for its View). Presentation only: no KBLI
+  fact, verdict, cap, basis or Bali overlay changes.
+constraints:
+  - English changes only by translation, labelling or the reason table the search rows already used; Indonesian only by enum and locator humanisation, proven by an id-mode census diff.
+  - The frozen 55203 and 56101 strings stay byte-identical; 51101's heads-up pair changes per Q12 (en Restricted · 49% and the labelled original; id unchanged).
+  - No PNG is committed; the after-set ships as a sha256 manifest and the PNGs live in the M5 gallery.
+acceptance:
+  - text: The full census SHALL find 0 Indonesian strings in English in the six gated Views, with the allowlist counted by reason.
+    probe: "Pro: encensus --mode full --lang en then en_purity census rc=0 (search-row, search-peak, registry-row, registry-sheet and both chromes 0)"
+  - text: The never-drawn check SHALL find nothing in the four View files, and each guilt SHALL fail naming its problem.
+    probe: "Pro: G1 raw judul in the registry row, G2 the raw l4_bali.status in the provenance strip, G3 .help(kbli.judul) — each rc=1, named"
+  - text: Indonesian SHALL be byte-identical except enum and locator humanisation.
+    probe: "Pro: id-mode census of the gated Views at EN-1a and at this head, diffed line by line"
+  - text: The head SHALL build both variants and render 35 PNGs equal to the manifest; only English renders change.
+    probe: "Pro build-only mirror: INTERNAL_RC=0, BKPM_RC=0, RENDER_SET_RC=0, manifest_match=35/35, 7 changed vs pr2-registry, all en"
+  - text: The frozen content and the contrast and token gates SHALL stay green.
+    probe: "Pro: content_check.sh rc=0, measure_contrast rc=0 (FAIL=0 PARITY=0 WHITE=0), derive --check rc=0, png_census 0 FAIL"
