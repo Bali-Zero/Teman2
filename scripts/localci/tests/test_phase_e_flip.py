@@ -134,9 +134,24 @@ class FakeGH:
         actor with an id or a pull-request mode, a classic body without its four required fields or with contexts and checks."""
         if method == "PUT" and "/rulesets/" in path:
             assert set(body) == {"name", "target", "enforcement", "conditions", "rules", "bypass_actors"}, sorted(body)
+            # GitHub's schema, types and enums, for every part of the body (an int where a bool belongs passes 1 == True)
+            is_int = lambda v: type(v) is int                                     # noqa: E731
+            assert type(body["name"]) is str and body["target"] in {"branch", "tag", "push"}, body
+            assert body["enforcement"] in {"disabled", "active", "evaluate"}, body["enforcement"]
+            ref = body["conditions"]["ref_name"]
+            assert all(type(x) is str for k in ("include", "exclude") for x in ref[k]), ref
             for r in body["rules"]:
-                assert REQUIRED_PARAMS.get(r["type"], set()) <= set(r.get("parameters") or {}), r
+                assert type(r["type"]) is str and REQUIRED_PARAMS.get(r["type"], set()) <= set(r.get("parameters") or {}), r
+                prm = r.get("parameters") or {}
+                if r["type"] == "merge_queue":
+                    assert all(is_int(prm[k]) for k in ("check_response_timeout_minutes", "max_entries_to_build", "max_entries_to_merge",
+                                                          "min_entries_to_merge", "min_entries_to_merge_wait_minutes")), prm
+                    assert prm["grouping_strategy"] in {"ALLGREEN", "HEADGREEN"} and prm["merge_method"] in {"MERGE", "SQUASH", "REBASE"}, prm
+                if r["type"] == "update":
+                    assert type(prm["update_allows_fetch_and_merge"]) is bool, prm
             for b in body["bypass_actors"]:
+                assert b["actor_type"] in {"Integration", "OrganizationAdmin", "RepositoryRole", "Team", "DeployKey"}, b
+                assert b["bypass_mode"] in {"always", "pull_request", "exempt"} and (b["actor_id"] is None or is_int(b["actor_id"])), b
                 assert b["actor_type"] != "DeployKey" or (b["actor_id"] is None and b["bypass_mode"] != "pull_request"), b
         if method == "PUT" and path.endswith("/protection"):
             assert {"required_status_checks", "enforce_admins", "required_pull_request_reviews", "restrictions"} <= set(body), sorted(body)
@@ -385,7 +400,7 @@ def test_rollback_refuses_a_state_of_another_repo_or_ruleset_and_a_foreign_file(
     saved = next(fake.state_dir.glob("pre-flip-*.json"))
     doc = json.loads(saved.read_text())
     for name, change in (("other-repo", {"repo": "Bali-Zero/other"}), ("other-ruleset", {"ruleset_id": 1}), ("no-classic", {"classic": None})):
-        (tmp_path / name).write_text(json.dumps({**doc, **change}))
+        (tmp_path / name).write_text(json.dumps(reseal({**doc, **change})))   # re-sealed: the checks behind the checksum
         fake.calls.clear()
         rc, out, _ = run(fake, tmp_path, capsys, "--rollback", str(tmp_path / name))   # refused before any digest exists
         assert rc == pef.EXIT_REFUSED and "plan digest" not in out and fake.writes() == [], name
@@ -916,6 +931,12 @@ def test_a_parameter_of_an_inherited_rule_changed_before_the_first_write_writes_
     assert rc == pef.EXIT_REFUSED and "changed since plan" in err and "'branch_rules'" in err and fake.writes() == []
 
 
+def reseal(doc: dict) -> dict:
+    """A deliberately re-sealed state file: sha256 of canonical JSON without the checksum, computed here, not by the module."""
+    body = {k: v for k, v in doc.items() if k != "checksum"}
+    return {**body, "checksum": hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()}
+
+
 def flipped_with_saved(fake, tmp_path, capsys):
     apply(fake, tmp_path, capsys)
     saved = next(fake.state_dir.glob("pre-flip-*.json"))
@@ -956,7 +977,7 @@ def test_a_hand_edited_state_file_is_refused_before_any_write(fake, tmp_path, ca
     doc = json.loads(saved.read_text())
     damage(doc)
     edited = tmp_path / "edited.json"
-    edited.write_text(json.dumps(doc))
+    edited.write_text(json.dumps(reseal(doc)))   # re-sealed, so the shape checks behind the checksum are what refuses
     fake.calls.clear()
     rc, out, err = run(fake, tmp_path, capsys, "--rollback", str(edited))   # the plan itself refuses: no digest to confirm
     assert rc == pef.EXIT_REFUSED and says in err and "plan digest" not in out
@@ -978,3 +999,57 @@ def test_a_ruleset_recreated_under_a_new_id_before_the_first_write_writes_nothin
     monkeypatch.setattr(pef, "save_state", save_then_recreate)
     rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
     assert rc == pef.EXIT_REFUSED and "before write 1/2: changed since plan" in err and fake.writes() == []
+
+
+@pytest.mark.parametrize("edit", [
+    lambda d: d["ruleset"]["rules"][0].pop("parameters"),                      # Codex round 6: passed the shape checks
+    lambda d: d["classic"].pop("required_linear_history", None) or d["classic"].update(enforce_admins=False),
+    lambda d: d["ruleset"].update(conditions="refs/heads/main"),               # Opus round 6: AttributeError at the plan
+    lambda d: d.update(saved_at="2020-01-01T00:00:00Z"),
+    lambda d: d.pop("checksum"),
+])
+def test_a_state_file_edited_since_the_flip_saved_it_is_refused_before_any_plan(fake, tmp_path, capsys, edit):
+    apply(fake, tmp_path, capsys)
+    saved = next(fake.state_dir.glob("pre-flip-*.json"))
+    doc = json.loads(saved.read_text())
+    edit(doc)
+    edited = tmp_path / "edited.json"
+    edited.write_text(json.dumps(doc))
+    fake.calls.clear()
+    rc, out, err = run(fake, tmp_path, capsys, "--rollback", str(edited))
+    assert rc == pef.EXIT_REFUSED and "its checksum does not match its content" in err and "plan digest" not in out
+    assert fake.writes() == []
+
+
+def test_the_flip_seals_the_state_it_saves(fake, tmp_path, capsys):
+    apply(fake, tmp_path, capsys)
+    doc = json.loads(next(fake.state_dir.glob("pre-flip-*.json")).read_text())
+    assert doc["checksum"] == reseal(doc)["checksum"] and len(doc["checksum"]) == 64
+
+
+def test_a_key_file_that_is_not_text_is_no_key(fake, tmp_path, capsys):
+    run(fake, tmp_path, capsys)   # writes deploy_key.pub; overwrite it with a non-UTF-8 byte
+    (tmp_path / "deploy_key.pub").write_bytes(b"\xff\xfe not a key\n")
+    rc, out, err = pef.main(["--report", report(tmp_path), "--state-dir", str(fake.state_dir), "--key-pub", str(tmp_path / "deploy_key.pub")]), *capsys.readouterr()
+    assert rc == 0 and "merger key (--key-pub): unreadable" in out and "Traceback" not in err
+
+
+def test_an_error_before_any_write_is_refused_without_a_traceback(fake, tmp_path, capsys, monkeypatch):
+    def no_gh(*a, **k):
+        raise FileNotFoundError("gh")
+    monkeypatch.setattr(pef.subprocess, "run", no_gh)
+    rc, _, err = run(fake, tmp_path, capsys)
+    assert rc == pef.EXIT_REFUSED and "REFUSED: FileNotFoundError" in err and "nothing was written" in err
+
+
+def test_a_parameter_of_the_wrong_json_type_never_reaches_github(fake, tmp_path, capsys):
+    fake.rulesets[MQ]["rules"][0]["parameters"]["min_entries_to_merge"] = True   # what a bool-for-int bug would send
+    apply(fake, tmp_path, capsys)
+    saved = next(fake.state_dir.glob("pre-flip-*.json"))
+    dig = plan_digest(fake, tmp_path, capsys, "--rollback", str(saved))
+    fake.calls.clear()
+    rc, _, err = run(fake, tmp_path, capsys, "--rollback", str(saved), "--apply", "--confirm", dig)
+    # the fake refuses the ruleset PUT as GitHub's schema would (an AssertionError from the fake gh, owned by W4: exit 3)
+    assert rc == pef.EXIT_WRITE_FAILED and "FAILED: AssertionError" in err
+    assert [p for m, p, _ in fake.writes()] == ["repos/Bali-Zero/Teman2/branches/main/protection", "repos/Bali-Zero/Teman2/rulesets/19779175"]
+    assert fake.rulesets[MQ]["rules"][0]["type"] == "update"   # refused: the ruleset is still the key-only one

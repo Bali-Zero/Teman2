@@ -186,7 +186,7 @@ def same_classic(a: dict | None, b: dict | None) -> bool:
 def read_key_pub(path: Path) -> str | None:
     try:
         return key_fingerprint(path.read_text())
-    except OSError:
+    except (OSError, UnicodeError):   # missing, unreadable or not text: no key, the plan says so and --apply is refused
         return None
 
 
@@ -289,6 +289,13 @@ def settled(repo: str, branch: str, expected: dict, when: str) -> dict:
         if attempt + 1 < READ_RETRIES:
             pause(READ_DELAY_S)
     raise FlipError(f"{when}: a fresh read differs from the intended state in {differ}")
+
+
+def state_checksum(doc: dict) -> str:
+    """The saved state's sha256 over canonical JSON, its own checksum left out: the rollback restores only the file the flip
+    wrote, never one edited since (a deliberately re-sealed file is the operator's own act, outside this tool's guarantees)."""
+    body = {k: v for k, v in doc.items() if k != "checksum"}
+    return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def digest(state: dict, writes: list[dict]) -> str:
@@ -412,8 +419,9 @@ def save_state(state_dir: Path, state: dict, dig: str) -> Path:
         state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.chmod(state_dir, 0o700)
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        doc = {**state, "saved_at": now().strftime("%Y-%m-%dT%H:%M:%SZ"), "plan_digest": dig}
         with os.fdopen(fd, "w") as fh:
-            json.dump({**state, "saved_at": now().strftime("%Y-%m-%dT%H:%M:%SZ"), "plan_digest": dig}, fh, indent=2, sort_keys=True)
+            json.dump({**doc, "checksum": state_checksum(doc)}, fh, indent=2, sort_keys=True)
             fh.write("\n")
     except OSError as exc:
         raise FlipError(f"pre-flip state not saved to {path} ({type(exc).__name__}): nothing written") from exc
@@ -507,13 +515,16 @@ def run_rollback(a: argparse.Namespace) -> int:
     try:
         saved = json.loads(a.rollback.read_text())
         state_keys = {"repo", "branch", "classic", "ruleset_id", "ruleset"}
-        if not isinstance(saved, dict) or not state_keys <= set(saved) or not isinstance(saved["classic"], dict):
+        if not isinstance(saved, dict) or saved.get("checksum") != state_checksum(saved):
+            raise FlipError(f"{a.rollback}: its checksum does not match its content — not the file the flip saved, or edited "
+                            "since: refusing to restore it")
+        if not state_keys <= set(saved) or not isinstance(saved["classic"], dict):
             raise FlipError(f"{a.rollback} is not a pre-flip state (needs {sorted(state_keys)} with a classic protection)")
     except (OSError, json.JSONDecodeError) as exc:
         raise FlipError(f"{a.rollback} unreadable: {type(exc).__name__}") from exc
     if (saved["repo"], saved["branch"]) != (a.repo, a.branch):
         raise FlipError(f"{a.rollback} is for {saved['repo']} {saved['branch']}, not {a.repo} {a.branch}")
-    # both bodies whole before anything is planned: a hand-edited file must fail here, never between the two writes
+    # the shape of both bodies before anything is planned (the checksum above already refuses an edited file)
     classic_fields = {"required_status_checks", "enforce_admins", "required_pull_request_reviews", "restrictions"}
     if not classic_fields <= set(saved["classic"]):
         raise FlipError(f"{a.rollback}: the saved classic protection lacks {sorted(classic_fields - set(saved['classic']))}")
@@ -565,7 +576,8 @@ def run_rollback(a: argparse.Namespace) -> int:
             print(f"REFUSED: {type(exc).__name__}: {exc}\n  nothing was written", file=sys.stderr)
             return EXIT_REFUSED
         print(f"FAILED: {type(exc).__name__}: {exc}\n  the branch is as the last write left it — still flipped if write 1 did "
-              "not take, frozen (classic protection and the key-only ruleset) if it did. The state file is unchanged: "
+              "not take, frozen (classic protection and the key-only ruleset) if it did, possibly restored already if both "
+              "landed and only a read-back failed — the plan shows which. The state file is unchanged: "
               f"{a.rollback}\n  re-run: python scripts/localci/phase_e_flip.py --repo {a.repo} --branch {a.branch} --rollback "
               f"{a.rollback} (plan first, then --apply --confirm <digest> --quiescent), or restore its `ruleset` by hand",
               file=sys.stderr)
@@ -593,6 +605,9 @@ def main(argv: list[str] | None = None) -> int:
         return run_rollback(a) if a.rollback else run_flip(a)
     except FlipError as exc:
         print(f"REFUSED: {exc}", file=sys.stderr)
+        return EXIT_REFUSED
+    except Exception as exc:   # pre-write by construction: after a write is sent, run_* own every failure (W4) and exit 3
+        print(f"REFUSED: {type(exc).__name__}: {exc} (nothing was written)", file=sys.stderr)
         return EXIT_REFUSED
 
 

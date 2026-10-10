@@ -28,14 +28,16 @@ lanes:
   - lane: localci-phase-e-1010-gate-opus
     role: review
     seat:
-      claude-opus-5-5, fresh read-only seats (rounds 1-4 CONFIRMED; round 5 BLOCKED on the declared gear only, LOWs fixed;
-      round 6 on the final diff)
+      "claude-opus-5-5, fresh read-only seats: rounds 1-4 CONFIRMED; round 5 BLOCKED on the declared gear only; round 6
+      CONFIRMED (4 LOWs, fixed); a final seat on the last delta"
   - lane: localci-phase-e-1010-council-codex
     role: review
-    seat: codex-gpt-5.6 (read-only, xhigh), rounds 1-6 on the full diff; round 6 journaled
+    seat: codex-gpt-5.6 (read-only, xhigh), rounds 1-6 on the full diff; round 6 journaled; a final round on the last delta
   - lane: localci-phase-e-1010-council-kimi
     role: review
-    seat: kimi-code/k3 via scripts/kimi_client.py (no tools, scrubbed env), round 6 on the full diff; journaled
+    seat:
+      kimi-code/k3 via scripts/kimi_client.py (no tools, scrubbed env, 1800 s), round 6 on the script, README and spec diff;
+      journaled
 pii_scan: clean
 pii_scan_note: Branch-protection configuration, check names, ruleset ids and key fingerprints only; no client data.
 what_changed:
@@ -46,9 +48,9 @@ what_changed:
 
   layered-rule checks (rules/branches); the write discipline W1-W4 (expected states, fresh reads with retries, exit 3 after
 
-  the first write); --rollback. Tests (126, fake gh with exact argv, pagination, mid-run peer changes) and mutants
+  the first write); --rollback. Tests (135, fake gh with exact argv, pagination, mid-run peer changes) and mutants
 
-  (phase_e_mutants.py, 79/79). README section "Phase E flip" with the write discipline and the arming order; one spec
+  (phase_e_mutants.py, 99/99). README section "Phase E flip" with the write discipline and the arming order; one spec
 
   paragraph.
 
@@ -68,37 +70,37 @@ bites:
     rules/branches, 0 write keys, report not READY -> blocked, nothing written). At phase E: the operator's apply ending
     'flipped:'."
 ground:
-  ts: "2026-10-10T21:10:00Z"
+  ts: "2026-10-09T19:25:45Z"
   siblings: Worktree from origin/main 323853ba30. The phase F executor (F2) is the lead's lane; merger.py and prune.py untouched.
 spend:
   adversarial_rounds: 5
   wall_clock_hours: 5.5
 receipts:
-  - claim: 126 passed (test_phase_e_flip.py) after the round-5 gate findings.
+  - claim: 135 passed (test_phase_e_flip.py) after the round-6 council and gate findings.
     cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_phase_e_flip.py -q -p no:cacheprovider
     exit: 0
-    ts: "2026-10-10T22:05:00Z"
+    ts: "2026-10-10T00:24:00Z"
     seat: claude-opus-5-5 on M5
   - claim:
-      "Mutants 94/94 killed after the round-5 gate findings (one rule dropped as equivalent: the guard's enforcement check,
+      "Mutants 99/99 killed after the round-6 findings (one rule dropped as equivalent: the guard's enforcement check,
       which the GitHub-side proof already covers); survivors, errors, stale none."
     cmd: python3 scripts/localci/tests/mutants/phase_e_mutants.py
     exit: 0
-    ts: "2026-10-10T22:06:00Z"
+    ts: "2026-10-10T00:24:00Z"
     seat: claude-opus-5-5 on M5
   - claim:
-      Independent Opus gates CONFIRMED at rounds 1-4 (21ae61d699, c0b80170e7, 0663150040, afd5b11035); Codex BLOCKER at
-      rounds 2-4 of one class, then RULED by the lead.
+      Independent Opus gates CONFIRMED rounds 1-4 and 6; round 5 BLOCKED on the declared gear only. Codex BLOCKER rounds
+      2-4 of one class, then RULED by the lead; MEDIUM rounds 5-6, fixed. Kimi round 6 BLOCKER refuted.
     cmd: fresh read-only subagents; codex exec --sandbox read-only -c model_reasoning_effort=xhigh on the redacted diff
     exit: 0
-    ts: "2026-10-10T21:00:00Z"
+    ts: "2026-10-10T00:16:00Z"
     seat: claude-opus-5-5 (independent seats), codex-gpt-5.6
   - claim:
       "Live read-only plan: pre-flip, 14 checks, guard proven via rules/branches, 0 write keys, report not READY and stale
       -> blocked; nothing written (the state dir was never created)."
     cmd: PYTHONPATH=. python3 scripts/localci/phase_e_flip.py --report <copy of Pro's report.json> --state-dir <scratch>
     exit: 0
-    ts: "2026-10-10T22:08:00Z"
+    ts: "2026-10-09T22:08:00Z"
     seat: claude-opus-5-5 on M5
 dissent:
   - seat: codex-gpt-5.6 (read-only, xhigh) at afd5b11035
@@ -180,6 +182,46 @@ dissent:
       test_ctrl_c_after_the_rollbacks_first_write_is_exit_3_with_the_state_file, test_a_hand_edited_state_file_is_refused_before_any_write
       (4 cases), test_a_ruleset_recreated_under_a_new_id_before_the_first_write_writes_nothing; mutants pe-quiescence-unrequired-rollback,
       pe-w4-rollback-ctrl-c-escapes, pe-rollback-saved-ruleset-unchecked, pe-rollback-saved-classic-unchecked, pe-diverges-ruleset-id-ignored."
+  - seat: codex-gpt-5.6-sol round 6 (e599a06db7)
+    objection:
+      "MEDIUM: the rollback's saved-state validation is incomplete (a removed rule parameter or classic flag passes
+      the plan; write 1 lands, write 2 fails: exit 3, frozen). MEDIUM: the fake does not check ruleset parameter types (True
+      for 1 passes). LOW: a non-UTF-8 .pub raises UnicodeDecodeError."
+    status: CONFIRMED
+    resolution:
+      The flip seals the state file with a sha256 of its canonical JSON; --rollback refuses an edited file before
+      any plan, then checks shapes. The fake checks types and enums of every ruleset part (name, target, enforcement, ref names,
+      rule types and parameters, bypass actors). read_key_pub treats a non-text file as no key. Tests test_a_state_file_edited_since_the_flip_saved_it_is_refused_before_any_plan
+      (5 cases), test_the_flip_seals_the_state_it_saves, test_a_parameter_of_the_wrong_json_type_never_reaches_github, test_a_key_file_that_is_not_text_is_no_key;
+      mutants pe-state-checksum-unchecked, pe-state-checksum-not-saved, pe-ruleset-bool-for-int, pe-key-pub-not-text-crashes.
+  - seat: kimi-code/k3 round 6 (e599a06db7)
+    objection:
+      "BLOCKER claimed: W2 admits deletion/non_fast_forward rules of another ruleset without judging its bypass actors,
+      so an admin-bypassed second ruleset would let that actor delete or force-push main."
+    status: RETRACTED
+    resolution:
+      "Refuted by the session: GitHub layers rules and a bypass exempts its actor only from its own ruleset; the guard
+      is proven to apply to the branch (rules/branches shows its deletion and non_fast_forward) and has no bypass actor, so
+      deletion and force-push stay forbidden to everyone whatever a second ruleset allows. Kimi's own text states the exemption
+      is per ruleset."
+  - seat: kimi-code/k3 round 6 (e599a06db7)
+    objection:
+      "LOW: is_target ignores actor_id. LOW: non-FlipError errors before any write (gh missing, a KeyError) exit by
+      traceback."
+    status: PLAUSIBLE
+    resolution:
+      "Traceback fixed: main turns any pre-write exception into REFUSED, exit 1 (test test_an_error_before_any_write_is_refused_without_a_traceback,
+      mutant pe-pre-write-error-traceback). actor_id kept as is: GitHub defines no per-key DeployKey bypass (the actor names
+      all deploy keys; exactly one write key is the control), and a stricter read-back on an unverified shape would only stop
+      the apply."
+  - seat: claude-opus-5-5 gate round 6 (e599a06db7)
+    objection:
+      "LOW: stale counts in what_changed; receipt timestamps not the runs'; the saved-state comment claims more than
+      the shape check does; the rollback's exit-3 text omits the both-writes-landed outcome."
+    status: CONFIRMED
+    resolution:
+      Counts and timestamps corrected; the comment now names the checksum as the refusal of an edited file; the exit-3
+      text names the third outcome.
 residuals:
   - "Accepted by the ruling: GitHub's REST API has no compare-and-swap for rulesets or branch protection; a sub-second window
     remains between W1's read and its write. Quiescence (--quiescent, operator-declared) takes concurrent writers out of scope;

@@ -140,6 +140,12 @@ MUTANTS = {
                                             '    if False and ('),
     "pe-rollback-saved-classic-unchecked": ("    if not classic_fields <= set(saved[\"classic\"]):", "    if False:"),
     "pe-diverges-ruleset-id-ignored": ('fresh["ruleset_id"] != expected["ruleset_id"] or not same_ruleset', "not same_ruleset"),
+    "pe-state-checksum-unchecked": ('        if not isinstance(saved, dict) or saved.get("checksum") != state_checksum(saved):', "        if not isinstance(saved, dict):"),
+    "pe-state-checksum-not-saved": ('json.dump({**doc, "checksum": state_checksum(doc)}, fh, indent=2, sort_keys=True)', "json.dump(doc, fh, indent=2, sort_keys=True)"),
+    "pe-key-pub-not-text-crashes": ("    except (OSError, UnicodeError):   # missing", "    except OSError:   # missing"),
+    "pe-pre-write-error-traceback": ("    except Exception as exc:   # pre-write by construction", "    except FlipError as exc:   # pre-write by construction"),
+    "pe-ruleset-bool-for-int": ("    return {k: doc[k] for k in RULESET_FIELDS}",
+                                "    return {k: (json.loads(json.dumps(doc[k]).replace('\"min_entries_to_merge\": 1', '\"min_entries_to_merge\": true')) if k == \"rules\" else doc[k]) for k in RULESET_FIELDS}"),
     "pe-key-title-kept": ('"fingerprint": key_fingerprint(k.get("key"))}', '"fingerprint": key_fingerprint(k.get("key")), "title": k.get("title")}'),
 }
 

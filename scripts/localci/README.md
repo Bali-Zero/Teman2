@@ -745,7 +745,10 @@ write sent against a state nobody re-read — on draft #8191; the cause is speci
 - *W4, a write sent is a write owned.* Once a write has been sent, any failure — a refused write, a mismatch, an unexpected
   error, Ctrl-C — is exit 3 with the state file and the full rollback command, never a traceback that reads as "refused".
   When a rollback stops after its classic write, the branch is frozen, not open (classic protection and the key-only
-  ruleset): run the plan again, or restore the state file's `ruleset` by hand.
+  ruleset): run the plan again, or restore the state file's `ruleset` by hand. Before any write, every failure is exit 1
+  ("REFUSED", nothing written), never a traceback.
+- *The state file is sealed.* The flip saves it 0600 with a sha256 of its canonical JSON; `--rollback` refuses, before any
+  plan, a file whose checksum does not match its content — one edited since — and then checks the shape of both bodies.
 - *Residual, accepted and documented.* GitHub's REST API offers no compare-and-swap (no `If-Match`) for rulesets or branch
   protection, so a sub-second window remains between W1's read and the write it guards. Quiescence takes concurrent writers
   out of scope, and W5 detects a lost race after the fact. A review finding of that class beyond W1/W5 is out of scope by
