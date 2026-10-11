@@ -118,3 +118,23 @@ def test_cli_command_carries_sha_as_build_and_runtime_env():
 
 def test_production_upload_adds_prod_only_without_preview():
     assert "--prod" in vpd._vercel_deploy_cmd("/x", SHA, preview=False)
+
+
+def test_url_from_stdout_when_the_cli_finished():
+    assert vpd._cli_deployment_url("https://mouth-abc123xyz-nuzantara-2026.vercel.app\n", "") == (
+        "https://mouth-abc123xyz-nuzantara-2026.vercel.app"
+    )
+
+
+def test_url_from_stderr_when_the_cli_died_mid_poll():
+    err = (
+        "Uploading [====] (1.0MB/1.0MB)\n"
+        "  Inspect     https://vercel.com/nuzantara-2026/mouth/DQ3eXRbGsddYCdhreA4awvvwXgSA\n"
+        "  Preview     https://mouth-3umzckvvw-nuzantara-2026.vercel.app\n"
+        "Error: read ETIMEDOUT\n"
+    )
+    assert vpd._cli_deployment_url("", err) == "https://mouth-3umzckvvw-nuzantara-2026.vercel.app"
+
+
+def test_no_url_is_none_not_the_inspect_link():
+    assert vpd._cli_deployment_url("", "Inspect https://vercel.com/nuzantara-2026/mouth/DQ3e\n") is None

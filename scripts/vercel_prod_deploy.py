@@ -622,6 +622,19 @@ def _vercel_deploy_cmd(dest: str, sha: str, preview: bool) -> list[str]:
     return cmd
 
 
+_URL_RE = re.compile(r"https://[a-z0-9-]+-[a-z0-9]+-[a-z0-9-]+\.vercel\.app")
+
+
+def _cli_deployment_url(stdout: str, stderr: str) -> str | None:
+    """The deployment URL: the CLI prints it alone on stdout when it finishes, and as
+    `Preview|Production <url>` on stderr as soon as the upload ends."""
+    lines = [ln.strip() for ln in stdout.strip().splitlines() if ln.strip()]
+    if lines and lines[-1].startswith("https://"):
+        return lines[-1]
+    found = _URL_RE.findall(stderr)
+    return found[0] if found else None
+
+
 def _upload_main(sha: str, preview: bool) -> int:
     """`--upload`: deploy a `git archive` of `sha` through the Vercel CLI. No GitHub involved."""
     _token()  # refreshes an expired CLI credential (never printed); the CLI reads the same file
@@ -637,12 +650,15 @@ def _upload_main(sha: str, preview: bool) -> int:
             capture_output=True, text=True, timeout=UPLOAD_CLI_TIMEOUT_S, check=False,
         )
         print(f"vercel deploy exited {proc.returncode} after {time.time() - t1:.1f}s")
+        url = _cli_deployment_url(proc.stdout or "", proc.stderr or "")
+        # A non-zero exit does NOT mean the deployment failed: the CLI polls the API after the
+        # upload and dies on a network blip (measured 2026-10-11, `read ETIMEDOUT`, while the
+        # build went on to READY). The URL it printed on stderr is the handle; the API state is
+        # the verdict, so a failed CLI with a URL falls through to the wait below.
         if proc.returncode != 0:
-            print((proc.stderr or "")[-800:])
-            return 1
-        url = (proc.stdout or "").strip().splitlines()[-1].strip() if (proc.stdout or "").strip() else ""
-        if not url.startswith("https://"):
-            print(f"could not read a deployment URL from the CLI: {url[:200]!r}")
+            print((proc.stderr or "")[-400:])
+        if not url:
+            print("could not read a deployment URL from the CLI output")
             return 1
         print(f"deployment url  : {url}")
         host = url.removeprefix("https://")
