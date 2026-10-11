@@ -7,7 +7,7 @@ sources:
   - apps/backend-rag/backend/scripts/visa_engine/portal_read_receipt.py
   - apps/backend-rag/backend/scripts/visa_engine/portal_judge.py
   - apps/backend-rag/backend/scripts/visa_engine/fold_pack_generic.py
-adversarial_review: nuzantara-57 (M5 signing session) + independent adversary seat (W141 and persona check); council codex gpt-5.6-sol and kimi k3
+adversarial_review: codex
 ---
 
 # Organ re-attestation 2026-10-11 — candidate seq-28 (unsigned)
