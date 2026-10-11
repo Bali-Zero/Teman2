@@ -17,9 +17,10 @@ scope:
   - apps/backend-rag/backend/services/visa_engine/contracts/
   - apps/backend-rag/backend/tests/services/visa_engine/
   - apps/backend-rag/backend/tests/scripts/visa_engine/
-  - apps/backend-rag/backend/scripts/visa_engine/gold_harness/fixtures/personas/
-  - apps/backend-rag/backend/scripts/visa_engine/gold_coverage/personas/E33G.json
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_harness/fixtures/personas/
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/personas/E33G.json
   - apps/mouth/src/lib/api/
+  - apps/mouth/e2e/visa-oracle-v2.spec.ts
   - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts
   - scripts/ci/observe_visa_engine_annual_income_fact.py
   - tests/scripts/test_observe_visa_engine_annual_income_fact.py

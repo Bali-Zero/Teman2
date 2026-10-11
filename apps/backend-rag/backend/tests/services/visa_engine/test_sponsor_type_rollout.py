@@ -424,6 +424,12 @@ class TestFactVocabularyExtensionRolloutDefaultE33G:
         assert default.status == "UNKNOWN"
         assert not hasattr(default, "value")
 
+    def test_the_field_factory_yields_the_unknown_default(self) -> None:
+        field = M.ApplicantFactsData.model_fields["work_annual_foreign_income_usd"]
+        produced = field.default_factory()  # type: ignore[misc]
+        assert produced == M._ANNUAL_FOREIGN_INCOME_ROLLOUT_DEFAULT
+        assert produced.status == "UNKNOWN"
+
     def test_a_supplied_value_is_honoured(self) -> None:
         body = _all_unknown_facts()
         body[self._WIRE_KEY] = {"status": "KNOWN", "value": 85_000}

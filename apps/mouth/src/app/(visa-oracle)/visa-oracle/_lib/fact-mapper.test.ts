@@ -1,4 +1,8 @@
-import { APPLICANT_FACT_COUNT } from "@/lib/api/applicant-fact-paths";
+import {
+  APPLICANT_FACT_COUNT,
+  FRONTEND_EMITTED_FACT_COUNT,
+  ORDERED_ROLLOUT_OPTIONAL_PATHS,
+} from "@/lib/api/applicant-fact-paths";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -57,10 +61,6 @@ function extractApplicantFactPathsFromModelsPy(): string[] {
   const matches = source.matchAll(/alias="([a-z_]+\.[a-z_]+)"/g);
   return Array.from(matches, (m) => m[1]);
 }
-
-const ORDERED_ROLLOUT_OPTIONAL_PATHS = new Set([
-  "work.annual_foreign_income_usd",
-]);
 
 function requiredFrontendFactPaths(): string[] {
   return extractApplicantFactPathsFromModelsPy().filter(
@@ -132,6 +132,7 @@ describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)",
       backendPaths.filter((factPath) => !expectedPaths.includes(factPath)),
     ).toEqual(["work.annual_foreign_income_usd"]);
     expect(expectedPaths.length).toBe(57);
+    expect(expectedPaths.length).toBe(FRONTEND_EMITTED_FACT_COUNT);
   });
 
   it("emits exactly the other 57 backend fact-path keys", () => {
