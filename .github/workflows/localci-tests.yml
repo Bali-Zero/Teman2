@@ -53,6 +53,7 @@ on:
       - "scripts/ci/hotzone_changed_files.sh"
       - "scripts/ci/impact_map.py"
       - "scripts/ci/test_impact_map.py"
+      - "scripts/ci/test_security_gate_flags.py"
   push:
     branches: [main]
     paths:
@@ -83,6 +84,7 @@ on:
       - "scripts/ci/hotzone_changed_files.sh"
       - "scripts/ci/impact_map.py"
       - "scripts/ci/test_impact_map.py"
+      - "scripts/ci/test_security_gate_flags.py"
 
 permissions:
   contents: read

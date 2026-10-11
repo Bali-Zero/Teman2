@@ -76,7 +76,7 @@ PYSA_SCOPE = "apps/backend-rag/backend/"
 DEFAULT_PYSA_HOME = Path.home() / ".nuzantara-pilots" / "local-ci" / "pysa-home"
 TRUSTED_CLASSIFIER_FILES = [
     "scripts/ci/change_map.py", "scripts/ci/test_change_map.py", "scripts/ci/security_gate_flags.py",
-    "scripts/ci/hotzone_changed_files.sh", "scripts/ci/impact_map.py", "scripts/ci/test_impact_map.py",
+    "scripts/ci/hotzone_changed_files.sh", "scripts/ci/impact_map.py", "scripts/ci/test_impact_map.py", "scripts/ci/test_security_gate_flags.py",
 ]
 BAN_TEST = "scripts/tests/test_ban_predicates.py"
 SECRET_ENV = ("FLY_API_TOKEN", "VERCEL_TOKEN", "GH_TOKEN", "GITHUB_TOKEN", "DATABASE_URL",
@@ -1356,7 +1356,7 @@ def cmd_plan(a):
         if blob is None:
             sys.exit(f"trusted classifier file {f} missing at base {base[:12]} — refusing to plan without the trusted classifier")
         (trusted / Path(f).name).write_bytes(blob)
-    changed = git(wt, "diff", "--name-only", f"{base}..{ident['candidate_sha']}").splitlines()
+    changed = git(wt, "diff", "--no-renames", "--name-only", f"{base}..{ident['candidate_sha']}").splitlines()   # hotzone_changed_files.sh: a rename lists BOTH paths
     cm = json.loads(subprocess.run([sys.executable, "-I", str(trusted / "change_map.py")], input="\n".join(changed) + "\n",
                                    capture_output=True, text=True, check=True, env=trusted_env()).stdout)
     test_mods = sorted(f for f in changed if f.startswith("scripts/tests/test_") and f.endswith(".py") and (wt / f).exists())
@@ -1367,8 +1367,9 @@ def cmd_plan(a):
         venv_py = sys.executable
     trusted_sha: dict[str, str] = {}
     checks = {
-        "policy.trusted_classifier_corpus": {"kind": "cmd", "cwd": str(trusted), "cmd": [sys.executable, "test_change_map.py"], "trusted_pythonpath": str(trusted),
-            "purpose": "the classifier that decides which jobs run is proven on its own guilt+innocence corpus, from the BASE ref (candidate cannot self-approve)"},
+        "policy.trusted_classifier_corpus": {"kind": "cmd", "cwd": str(trusted), "cmd": [sys.executable, "-m", "unittest", "test_change_map", "test_security_gate_flags"],
+            "trusted_pythonpath": str(trusted),
+            "purpose": "the classifiers that decide which jobs and scanners run are proven on their own guilt+innocence corpora (change map and gate flags, as security.yml runs both), from the BASE ref (candidate cannot self-approve)"},
         "policy.change_map": {"kind": "record", "status": change_map_status(cm),
             "reason": f"trusted change_map: reason={cm.get('reason')} run_all={cm.get('run_all')} suggested={cm.get('suggested_jobs')}", "data": cm},
         "tests.scripts_impacted": ({"kind": "pytest", "cwd": str(wt), "modules": pure, "python": venv_py,

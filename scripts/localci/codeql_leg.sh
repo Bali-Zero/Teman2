@@ -68,7 +68,7 @@ while i < len(lines):
     i += 1
 open(dest, "w", encoding="utf-8").write("\n".join(out if placed else block + out) + "\n")
 PY
-  "$CQ" version --format=terse
+  step "$CQ" version --format=terse
   step "$CQ" database init --force-overwrite --db-cluster "$DB" --source-root="$SRC" --calculate-language-specific-baseline \
     --sublanguage-file-coverage --extractor-include-aliases --language="$LANG_" --codescanning-config="$USER_CONFIG"
   exit 0

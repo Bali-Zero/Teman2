@@ -30,8 +30,9 @@ def fail(marker: str, msg: str, rc: int) -> int:
 
 
 def newest(analyses: list, category: str) -> dict | None:
-    """The newest analysis (by created_at) whose category is exactly `category`; None when the page holds none."""
-    mine = [a for a in analyses if isinstance(a, dict) and a.get("category") == category and isinstance(a.get("created_at"), str)]
+    """The newest CodeQL analysis (by created_at) whose category is exactly `category`; None when the page holds none."""
+    mine = [a for a in analyses if isinstance(a, dict) and a.get("category") == category and isinstance(a.get("created_at"), str)
+            and isinstance(a.get("tool"), dict) and a["tool"].get("name") == "CodeQL"]   # another scanner can upload under the same category
     return max(mine, key=lambda a: a["created_at"]) if mine else None
 
 
