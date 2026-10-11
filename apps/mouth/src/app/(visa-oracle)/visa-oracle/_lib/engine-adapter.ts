@@ -950,11 +950,13 @@ function secondHomeDepositHolderReason(
   }
   const bank = facts.secondhome_state_bank;
   const name = facts.secondhome_own_name;
-  const bankBad = bank !== "yes";
-  const nameBad = name !== "yes";
+  // Only an answer the visitor actually gave counts as a negative: "no" or
+  // "unsure". A skipped answer (undefined) or any value outside the wire
+  // vocabulary is not something the visitor told us.
+  const bankBad = bank === "no" || bank === "unsure";
+  const nameBad = name === "no" || name === "unsure";
   if (!bankBad && !nameBad) return undefined;
-  // A skipped answer (undefined) is not something the visitor told us.
-  if ((bankBad && bank === undefined) || (nameBad && name === undefined)) {
+  if ((bank !== "yes" && !bankBad) || (name !== "yes" && !nameBad)) {
     return undefined;
   }
   const bankSure = bank !== "unsure";

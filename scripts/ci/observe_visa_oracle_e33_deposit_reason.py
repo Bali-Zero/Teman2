@@ -30,6 +30,25 @@ ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 
 MIN_TESTS = 100
+# Titles of the tests that prove this change; each must be reported as run, so
+# deleting one cannot hide behind the file total staying above MIN_TESTS.
+REQUIRED_TESTS = (
+    "pins the 130,000 figure to the pack's deposit-basis threshold",
+    "state bank = no replaces the age sentence",
+    "own name = no",
+    "both answers = no",
+    "is named as not sure, never as a told no",
+    "the invest deposit route is covered too",
+    "innocence: retirement walks keep the age sentence",
+    "innocence: a deposit below the threshold keeps the existing copy",
+    "innocence: both answers yes, a skipped answer",
+)
+
+
+def missing_tests(out: str) -> list[str]:
+    """Required test titles absent from a passing (checkmark) verbose line."""
+    passed = [l for l in out.splitlines() if "\u2713" in l or "\u2714" in l]
+    return [t for t in REQUIRED_TESTS if not any(t in l for l in passed)]
 _SUMMARY = re.compile(r"^\s*Tests\s+(\d+) passed \((\d+)\)\s*$")
 
 
@@ -49,7 +68,7 @@ def summary_ok(line: str | None) -> bool:
 
 def main() -> int:
     result = subprocess.run(
-        ["npx", "vitest", "run", TEST_FILE],
+        ["npx", "vitest", "run", "--reporter=verbose", TEST_FILE],
         cwd=MOUTH_DIR,
         check=False,
         capture_output=True,
@@ -62,6 +81,10 @@ def main() -> int:
     if result.returncode != 0 or not summary_ok(line):
         print(f"observe_visa_oracle_e33_deposit_reason: FAILED ({summary})\n{out[-1500:]}")
         return result.returncode or 1
+    absent = missing_tests(out)
+    if absent:
+        print(f"observe_visa_oracle_e33_deposit_reason: FAILED (required tests absent: {absent})")
+        return 1
     print(f"observe_visa_oracle_e33_deposit_reason: {summary}")
     print("observe_visa_oracle_e33_deposit_reason: e33 deposit reason holds")
     return 0

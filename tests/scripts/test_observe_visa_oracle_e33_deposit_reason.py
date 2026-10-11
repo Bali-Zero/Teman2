@@ -33,3 +33,14 @@ def test_rejects_anything_but_a_full_pass(line):
 )
 def test_accepts_full_pass_at_or_above_floor(line):
     assert summary_ok(line) is True
+
+
+def test_missing_tests_names_a_deleted_required_test():
+    from observe_visa_oracle_e33_deposit_reason import REQUIRED_TESTS, missing_tests
+
+    full = "\n".join(f" ✓ file > suite > {t}" for t in REQUIRED_TESTS)
+    assert missing_tests(full) == []
+    partial = "\n".join(f" ✓ file > suite > {t}" for t in REQUIRED_TESTS[1:])
+    assert missing_tests(partial) == [REQUIRED_TESTS[0]]
+    skipped = full.replace("✓", "-", 1)
+    assert missing_tests(skipped) == [REQUIRED_TESTS[0]]
