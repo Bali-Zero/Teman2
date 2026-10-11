@@ -1,19 +1,16 @@
 import SwiftUI
 
-/// IMM-BRIEF M4: risk × scale as a stepped path, Mikro → Kecil → Menengah → Besar. The same strings as the flat
+/// IMM-BRIEF M4 (one to five scopes): risk × scale as a stepped path, Mikro → Kecil → Menengah → Besar. The same strings as the flat
 /// compact `ScaleMatrix` (header, tier chip, term, the faint "·" gap, the scope titles) — the header row becomes
 /// the path, and the picked scale's column lifts onto the floating plane. Pick by click or arrow keys; VoiceOver
 /// reads each node as its LabelBook scale name, the picked one with the selected trait. A scale without a
 /// published row is a hollow node on a dashed tread — the honest gap, still reachable. Six or more scopes keep
 /// `ScaleMatrix`'s filterable list (the caller decides).
-struct ScalePath: View {
+struct ScalePathGrid: View {
     let scales: [PerSkala]
     let isID: Bool
     /// `.ledger` adds the 80 pt label column and the authority line, as `ScaleMatrix(.ledger)` draws them.
     var mode: ScaleMatrix.Mode = .compact
-    /// Snapshot hook: the scale shown focused in a render (nil = the default below).
-    static var snapshotFocus: String?
-
     @EnvironmentObject var lang: LanguageManager
     @Environment(\.accessibilityReduceMotion) private var systemReduce
     @State private var picked: String?
@@ -28,7 +25,7 @@ struct ScalePath: View {
 
     /// A PT PMA is Besar by law: focus starts there when Besar has a row, else the last scale that does.
     private func initial(_ scs: [ScaleMatrix.Scope]) -> String {
-        if let s = Self.snapshotFocus, order.contains(s) { return s }
+        if let s = ScalePath.snapshotFocus, order.contains(s) { return s }
         return order.reversed().first { published($0, scs) } ?? order[0]
     }
 
@@ -210,4 +207,157 @@ struct ScalePath: View {
 private struct PathEdges: PreferenceKey {
     static var defaultValue: [Anchor<CGRect>] = []
     static func reduce(value: inout [Anchor<CGRect>], nextValue: () -> [Anchor<CGRect>]) { value += nextValue() }
+}
+
+
+/// IMM-BRIEF M4: the scale path. One to five scopes draw the path directly; six or more first ask for the scope
+/// (the filterable list of `ScaleMatrix`, as a selector), then draw THAT scope's four scales as the path. Same strings
+/// as the flat matrix and its expanded row — the selector rows are the flat list's rows, the path the expanded entry.
+struct ScalePath: View {
+    let scales: [PerSkala]
+    let isID: Bool
+    var mode: ScaleMatrix.Mode = .compact
+    /// Snapshot hooks: the focused scale, the picked scope (index into the scopes), the selector list drawn unbounded
+    /// (a ScrollView's content is not drawn by the PDF read-back that proves the text).
+    static var snapshotFocus: String?
+    static var snapshotScope: Int?
+    static var snapshotUnbounded = false
+
+    var body: some View {
+        if ScaleMatrix.scopes(scales).count >= ScaleMatrix.listFrom {
+            ScopedScalePath(scales: scales, isID: isID, mode: mode)
+        } else {
+            ScalePathGrid(scales: scales, isID: isID, mode: mode)
+        }
+    }
+}
+
+struct ScopedScalePath: View {
+    let scales: [PerSkala]
+    let isID: Bool
+    let mode: ScaleMatrix.Mode
+
+    @EnvironmentObject var lang: LanguageManager
+    @Environment(\.accessibilityReduceMotion) private var systemReduce
+    @State private var query = ""
+    @State private var chosen: String?
+    private let col: CGFloat = 56
+
+    var body: some View {
+        let scs = ScaleMatrix.scopes(scales)
+        let q = query.lowercased()
+        let shown = q.isEmpty ? scs : scs.filter {
+            LabelBook.data($0.uraian ?? "", isID: isID).lowercased().contains(q) || ($0.uraian ?? "").lowercased().contains(q)
+        }
+        let current = shown.first { $0.id == chosen }
+            ?? ScalePath.snapshotScope.flatMap { shown.indices.contains($0) ? shown[$0] : nil }
+            ?? shown.first
+        VStack(alignment: .leading, spacing: 12) {
+            Text(isID ? "\(scs.count) RUANG LINGKUP" : "\(scs.count) ACTIVITY SCOPES")
+                .font(Theme.scalable(11, weight: .semibold)).tracking(0.88).foregroundStyle(Theme.muted)
+            HStack(spacing: 8) {
+                ForEach(["Rendah", "Menengah Rendah", "Menengah Tinggi", "Tinggi"], id: \.self) { t in
+                    abbr(t)
+                    Text(LabelBook.risk(t, isID: isID)).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
+                }
+            }
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").font(Theme.scalable(11)).foregroundStyle(Theme.muted)
+                TextField(isID ? "Cari lingkup…" : "Filter scopes…", text: $query)
+                    .textFieldStyle(.plain).font(Theme.scalable(13)).foregroundStyle(Theme.white)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background(Theme.inkLift, in: RoundedRectangle(cornerRadius: 2))
+            .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(Theme.lineStrong, lineWidth: 1))
+            selector(shown, current: current)
+            if let current {
+                ScalePathGrid(scales: current.rows.map(\.row), isID: isID, mode: mode).id(current.id)
+            } else {
+                Text(isID ? "Tidak ada lingkup cocok." : "No matching scope.")
+                    .font(Theme.scalable(13)).foregroundStyle(Theme.muted).padding(.top, 4)
+            }
+        }
+    }
+
+    /// The flat list's rows (wrapped title + the four tier abbreviations), each a button that picks the scope.
+    private func selector(_ shown: [ScaleMatrix.Scope], current: ScaleMatrix.Scope?) -> some View {
+        let rows = VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Spacer(minLength: 0)
+                ForEach(ScaleMatrix.order, id: \.self) { s in
+                    Text(LabelBook.scale(s, isID: isID)).font(Theme.scalable(11, weight: .semibold))
+                        .tracking(0.88).foregroundStyle(Theme.muted).fixedSize().frame(width: col)
+                }
+            }
+            .padding(.top, 8).padding(.bottom, 8)
+            Rectangle().fill(Theme.structure).frame(height: 2)
+            ForEach(shown) { sc in row(sc, picked: sc.id == current?.id) }
+        }
+        return Group {
+            if ScalePath.snapshotUnbounded {
+                rows
+            } else if Motion.frozenMs != nil {
+                // A snapshot cannot draw a nested ScrollView's content: show the viewport at its top instead.
+                rows.frame(height: 232, alignment: .top).clipped()
+            } else {
+                ScrollView { rows }.scrollIndicators(.automatic).frame(maxHeight: 232)
+            }
+        }
+        .focusable()
+        .onKeyPress(.upArrow) { step(-1, shown, current); return .handled }
+        .onKeyPress(.downArrow) { step(1, shown, current); return .handled }
+    }
+
+    private func step(_ d: Int, _ shown: [ScaleMatrix.Scope], _ current: ScaleMatrix.Scope?) {
+        guard let i = shown.firstIndex(where: { $0.id == current?.id }) else { return }
+        let n = min(shown.count - 1, max(0, i + d))
+        withAnimation(Theme.motion(systemReduce || Motion.forceReduce)) { chosen = shown[n].id }
+    }
+
+    private func row(_ sc: ScaleMatrix.Scope, picked: Bool) -> some View {
+        Button {
+            withAnimation(Theme.motion(systemReduce || Motion.forceReduce)) { chosen = sc.id }
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                if isOriginal(sc) { OriginalLabel() }
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(LabelBook.data(sc.uraian ?? "", isID: isID))
+                        .font(Theme.scalable(13, weight: picked ? .semibold : .regular)).foregroundStyle(Theme.white)
+                        .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    ForEach(ScaleMatrix.order, id: \.self) { scale in
+                        VStack(spacing: 4) {
+                            let es = ScaleMatrix.entries(sc, scale)
+                            if es.isEmpty { Text("·").font(Theme.scalable(13)).foregroundStyle(Theme.faint) }
+                            else { ForEach(es, id: \.idx) { abbr($0.row.kategoriRisiko) } }
+                        }
+                        .frame(width: col)
+                    }
+                }
+            }
+            .padding(.vertical, 10).padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(picked ? Theme.inkLift : .clear)
+            .overlay(alignment: .leading) { if picked { Rectangle().fill(Theme.structure).frame(width: 3) } }
+            .overlay(alignment: .bottom) { Rectangle().fill(Theme.lineSoft).frame(height: 1) }
+            .shadow(color: .black.opacity(picked ? Elevation.raised.alpha : 0), radius: 6, y: 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(picked ? [.isSelected, .isButton] : .isButton)
+    }
+
+    private func abbr(_ raw: String?) -> some View {
+        let c = Theme.riskChip(raw)
+        return Text(LabelBook.riskAbbr(raw, isID: isID))
+            .font(Theme.scalable(11, weight: .semibold)).foregroundStyle(c.fg)
+            .padding(.vertical, 2).padding(.horizontal, 6)
+            .background(c.bg, in: RoundedRectangle(cornerRadius: 2))
+            .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(c.border ?? .clear, lineWidth: 1))
+    }
+
+    private func isOriginal(_ sc: ScaleMatrix.Scope) -> Bool {
+        let u = sc.uraian ?? ""
+        return !u.isEmpty && LabelBook.isOriginal(u, drawn: LabelBook.data(u, isID: isID), isID: isID)
+    }
 }

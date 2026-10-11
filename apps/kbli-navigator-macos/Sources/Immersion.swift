@@ -200,6 +200,9 @@ extension Motion {
         forceReduce = args.contains("--reduce-motion")
         forceRibbon = args.contains("--ribbon")
         ScalePath.snapshotFocus = flag("--scale-focus")
+        ScalePath.snapshotScope = flag("--scope").flatMap(Int.init)
+        ScalePath.snapshotUnbounded = args.contains("--scope-list-full")
+        ScaleMatrix.snapshotOpenScope = flag("--flat-open").flatMap(Int.init)
         return args.contains("--imm")
     }
 }

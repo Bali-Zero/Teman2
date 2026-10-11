@@ -27,6 +27,8 @@ struct ScaleMatrix: View {
 
     static let order = PP28ScalePanel.scaleOrder
     static let listFrom = PP28ScalePanel.matrixMaxScopes + 1
+    /// Snapshot hook (the content proof of the immersive scope selector): draw this scope's row of the list expanded.
+    static var snapshotOpenScope: Int?
 
     struct Scope: Identifiable { let id: String; let uraian: String?; let rows: [(idx: Int, row: PerSkala)] }
 
@@ -253,7 +255,7 @@ struct ScaleMatrix: View {
     }
 
     private func listRow(_ sc: Scope) -> some View {
-        let isOpen = open.contains(sc.id)
+        let isOpen = open.contains(sc.id) || Self.snapshotOpenScope.map { Self.scopes(scales).indices.contains($0) && Self.scopes(scales)[$0].id == sc.id } == true
         return VStack(alignment: .leading, spacing: 8) {
             if isOriginal(sc) { OriginalLabel().padding(.leading, 20) }
             Button {
