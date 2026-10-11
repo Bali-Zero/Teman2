@@ -1,0 +1,29 @@
+task_id: kbli-nav-design-imm-2a
+mission: kbli-nav-design-loop (Track A, build, lot IMM-L 2a — the immersive layer live on the expanded verdict sheet)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  The immersive layer's shared pieces (planes, arrival, scale path, scope selector, live-host check) mounted on the
+  sheet the user opens, on top of PR 5' (#8283). Content frozen; the glyph and the map (2b) and the choreography,
+  ribbon and hover (2c) are separate PRs (lead rulings 2026-10-11/12). The lead commissions a fresh gate.
+l_level: L1
+gate_class: opus
+objective: >-
+  One concern: under ImmersiveHost the expanded RegistryVerdictSheet draws the scale path as its ONE risk x scale
+  matrix (M4), with the cell detail as its focus panel; the shown cell carries one selection grammar (a ring outside the
+  chip with a gap, >= 3:1 against both neighbours; the selected trait; the hint only over more than one cell); the sheet
+  arrives in one beat of 600 ms (Reduce Motion = final frame); a check fails when a live site loses its host, with its
+  mutant; the six-or-more scope selector is proved by selection on the live sheet.
+constraints:
+  - No fact, verdict, cap, basis, title or reason changes; no string is added (the hint is main's own, through LabelBook).
+  - The top grid of the ledger (verdict stack, heads-up, basis row, ribbon, cap count-up) has no live caller and is not touched.
+  - Flat renders change only where the shown cell's selection mark changed (the ring).
+acceptance:
+  - text: The expanded live sheet SHALL draw the scale path as its one matrix, and no content SHALL be lost against the flat sheet.
+    probe: "Pro: encensus registry-sheet-open vs registry-sheet-open-imm on 55203, 56101, 51101 en/id: 0 lost; 71109: Tools/design/scope_proof.py on the registry-sheet-scopes census, 29 scopes x 4 scales en/id, 0 in no state"
+  - text: A live site that loses ImmersiveHost SHALL fail the content gate.
+    probe: "Pro: content_check.sh step 6; removing .immersiveHost() from SearchListView.swift gives 'RegistryVerdictSheet is mounted without ImmersiveHost'"
+  - text: Reduce Motion SHALL draw the final frame of the choreography, byte-identical.
+    probe: "Pro: snapshot registry-sheet --imm --sheet-open --reduce-motion vs --at-ms 600, 56101/55203/71109 x day/night"
+  - text: The selection ring SHALL reach 3:1 against both neighbours on all four tiers, day and night.
+    probe: "Pro: measure_contrast.py FAIL=0 PARITY=0 (pair accent/ink 3.0, accent/inkLift 4.5); the body's tier table"
