@@ -1335,6 +1335,7 @@ struct PP28ScalePanel: View {
     let scales: [PerSkala]
     let isID: Bool
     @State private var matrixSel: Int? = nil // selected cell = index into `scales` (matrix path)
+    @Environment(\.immersive) private var immersive
 
     static let scaleOrder = ["Mikro", "Kecil", "Menengah", "Besar"]
 
@@ -1408,11 +1409,17 @@ struct PP28ScalePanel: View {
             } else {
                 // D1: the top grid's risk × scale matrix; a chip selects the cell whose duties follow.
                 // Six or more scopes: the matrix's filterable list, each scope's detail on expand.
-                ScaleMatrix(scales: scales, isID: isID, mode: .ledger,
-                            selection: Binding(get: { matrixSel ?? defaultCell }, set: { matrixSel = $0 }),
-                            expanded: { AnyView(cellDetail($0)) })
-                if scopeIndices.count < ScaleMatrix.listFrom, let mi = matrixSel ?? defaultCell, mi < scales.count {
-                    cellDetail(scales[mi])
+                let shownCell = Binding(get: { matrixSel ?? defaultCell }, set: { matrixSel = $0 })
+                if immersive {
+                    // IMM: the scale path IS the matrix here (M4): one matrix per page, the cell detail its focus panel.
+                    ScalePath(scales: scales, isID: isID, mode: .ledger, selection: shownCell)
+                    if let mi = matrixSel ?? defaultCell, mi < scales.count { cellDetail(scales[mi]) }
+                } else {
+                    ScaleMatrix(scales: scales, isID: isID, mode: .ledger, selection: shownCell,
+                                expanded: { AnyView(cellDetail($0)) })
+                    if scopeIndices.count < ScaleMatrix.listFrom, let mi = matrixSel ?? defaultCell, mi < scales.count {
+                        cellDetail(scales[mi])
+                    }
                 }
             }
         }
