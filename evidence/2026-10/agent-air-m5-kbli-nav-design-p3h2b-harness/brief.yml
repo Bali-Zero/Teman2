@@ -1,4 +1,4 @@
-task_id: kbli-nav-design-p3h2-harness
+task_id: kbli-nav-design-p3h2b-harness
 mission: kbli-nav-design-loop (Track A, build, lot PR 3-h-2 — the pixel half of the harness lot)
 colour: BLUE
 gear: 2
@@ -23,7 +23,10 @@ objective: >-
   a missing frame on an armed band FAILs. (5) The two bands spec D6/D14 add: search-results-multi (query 552; the
   band refuses fewer than three results) and registry-table at 51101 (2400 pt tall, so its rows reach division
   51), day-en/id. (6) #8200 gate P2-2: a white written with 255/255 components is caught. (7) P2-5: an xxl PNG with
-  no table head is VACUOUS, printed and counted. (8) The 3-h-1 brief's one prettier line.
+  no table head is VACUOUS, printed and counted. (8) The #8239 gate's 3-h-2 bindings: (a) each row anchors its last
+  drawn element too — registry-row its risk cell, search-row and search-peak their heads-up line, the chromes their
+  census line; (b) is 3-h-1''s (#8247, the lead's ruling); (c) each View PR that joins GATED carries the English
+  words its View draws.
 constraints:
   - No View is tagged and no C is armed by this lot; renders byte-identical (35/35).
   - The frame mark draws nothing; a PNG with it equals the PNG without it.
@@ -38,5 +41,8 @@ acceptance:
     probe: "Pro: probe branches, never shipped — census tags on the PR 5+6+3 stack (innocent) and on today's Views (guilt), probe ARMED"
   - text: A chip painted in a tone its record's state does not dispatch SHALL fail C23.
     probe: "Pro: the stack probe with the card's national chip painted .open — C23 FAIL naming the chip"
+  - text: A row drawing only its code SHALL read INCOMPLETE.
+    probe: "Pro: a copy whose KBLIRegistryRow draws only its code — rc=1 INCOMPLETE"
+
   - text: The white scan SHALL catch a 255/255 white and still pass every innocent spelling.
     probe: "measure_contrast.py WHITE=0 on Sources; the 255/255 guilt rows hit, main's scan misses them"
