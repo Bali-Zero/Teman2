@@ -35,7 +35,7 @@ bites: >-
   be made by the shipping session after the wrapper and plist are installed on Mini (declared pairs): a manual
   launchctl kickstart of com.nuzantara.restore-drill the same day, ending in a Level-5 PASS verdict in
   ~/logs/mini-restore_drill/run.log, ~/.organism/last_seen/mini.restore_drill.json reading ok, and a digest in Telegram.
-  Not yet made: this pack records the pre-merge state, and the council's last round (codex) still lists open findings.
+  Not yet made: this pack records the pre-merge state, and the final council round (both seats) still lists open findings.
 decisions:
   - id: D-derive-roles-from-the-dump
     decision: >-
@@ -118,6 +118,15 @@ receipts:
     exit: 0
     ts: "2026-10-11T15:36:09Z"
     seat: codex-gpt-5.6-sol
+  - claim: "R11 — final council round on head 38bdb192c7 (workflow deleted, write_escalation removed, new restore-drill-tests.yml): both seats REWORK."
+    cmd: scripts/with_seat.sh kimi kimi -p <prompt> -m kimi-code/k3 < /dev/null; scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: >-
+      kimi REWORK (2: the new workflow name is missing from main-push-failure-watch.yml so check_watcher_coverage.py exits 1; the
+      verifier and its test are no longer gated). codex REWORK (4: p0 on the restore-drill family is spooled to the Pro board by
+      tg_notify.py instead of reaching Telegram; watcher coverage; verifier ungated; stale grandfathered.json entry)
+    exit: 0
+    ts: "2026-10-11T23:09:43Z"
+    seat: kimi-code/k3, codex-gpt-5.6-sol
 dissent:
   - seat: kimi-code/k3 (round 1) and codex-gpt-5.6-sol (round 1)
     objection: >-
@@ -168,3 +177,17 @@ dissent:
     status: PLAUSIBLE
     disposition: >-
       The first two and the comment were fixed in 9299e8e546; the foreign-owned lock stays (single-user host, noted).
+  - seat: kimi-code/k3 and codex-gpt-5.6-sol (final round, head 38bdb192c7)
+    objection: >-
+      (1) .github/workflows/restore-drill-tests.yml is not in the workflow_run list of main-push-failure-watch.yml, so
+      scripts/check_watcher_coverage.py exits 1 (CI red on the PR's own diff); (2) the Level-5 verifier
+      scripts/ci/restore_drill_verify.py and scripts/tests/test_restore_drill_verify.py lost their every-PR gate with the deleted
+      wiring-tests workflow and are not in the new workflow's paths; (3) codex only: tg_notify.py does not treat the
+      restore-drill family as owner-reserved, so a p0 is spooled to the tracked shared/escalations_pro.jsonl instead of being
+      sent to Telegram, which also dirties the Mini checkout; (4) codex only: infra/tg-gateway/grandfathered.json still
+      allows the deleted workflow path. Notes: stale references in docs/AUTOMATIONS_REFERENCE.md:74,
+      docs/connectome/edges/gh-workflows.yaml:338, scripts/ci/check_promotion_readiness.py:96.
+    status: CONFIRMED
+    disposition: >-
+      OPEN, reported to the coordinator; not cured here (this round authorised folding verdicts only). Finding 3 changes the
+      alert path the brief's A2 promises (p0 to Telegram), so it must be cured before the first live run.
