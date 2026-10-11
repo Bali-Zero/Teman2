@@ -6,11 +6,12 @@ gear_reason: >-
 mission: >-
   The Visa Oracle interview asks an E33G remote worker for the yearly foreign income, ready for the seq-28 rule.
 objective: >-
-  A visitor on the remote branch of Work and employment (paid from abroad by a foreign employer) is asked, right
-  after the employer country, for the yearly income in whole USD, in EN and ID, with no threshold named in the
-  interview copy and no not-sure option; the mapper sends work.annual_foreign_income_usd, which the engine
-  accepts since step A; the E33G below-threshold reason names USD 60,000 a year in EN and ID; the walk corpus,
-  census pins and enumerator expectations are regenerated; no rule reads the fact until seq-28 step C.
+  A visitor on the Remote worker tile (clients abroad, no Indonesian compensation, paid from abroad) is asked,
+  right after the employer country, for the yearly salary or income in US dollars, in EN and ID, with no threshold
+  and no income source named in the interview copy, a hint to enter the US-dollar equivalent when paid in another
+  currency, and no not-sure option; the mapper sends work.annual_foreign_income_usd, which the engine accepts since
+  step A; the E33G below-threshold reason names USD 60,000 a year in EN and ID; the walk corpus, census pins and
+  enumerator expectations are regenerated; no rule reads the fact until seq-28 step C.
 scope:
   - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/tree.ts
   - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts
@@ -20,6 +21,8 @@ scope:
   - apps/mouth/src/lib/api/applicant-fact-paths.ts
   - apps/backend-rag/backend/app/setup/sentry_config.py
   - scripts/ci/observe_visa_engine_annual_income_fact.py
+  - scripts/ci/observe_visa_oracle_remote_income_question.py
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/remote-income-question.test.ts
 appetite:
   wall_clock_hours: 4
   adversarial_rounds: 2
