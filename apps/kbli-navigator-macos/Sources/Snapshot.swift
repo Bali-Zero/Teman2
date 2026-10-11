@@ -298,11 +298,20 @@ extension Snapshot {
                     .environmentObject(state).environmentObject(lang), width: w, height: h)
             } else { content = notFound }
         case "registry-sheet":
-            // The sheet the user opens over the table (`SearchListView.sheetLayer`); --sheet-open expands it, which is where
-            // its ledger shows: the only live caller of `KBLIRegistryView`.
+            // The sheet the user opens over the table (`SearchListView.sheetLayer`): flat by default, the live layout with --imm.
+            // --sheet-open expands it, which is where its ledger shows: the only live caller of `KBLIRegistryView`.
             if let k = state.store.code(code) {
-                content = Self.page(RegistryVerdictSheet(kbli: k, expanded: .constant(args.contains("--sheet-open")), onClose: {}, scrolls: false)
-                    .environmentObject(state).environmentObject(lang), width: w, height: h)
+                let open = args.contains("--sheet-open")
+                let sheet = RegistryVerdictSheet(kbli: k, expanded: .constant(open), onClose: {}, scrolls: false)
+                if imm {
+                    content = Self.page(sheet.immersiveHost().environmentObject(state).environmentObject(lang), width: w, height: h)
+                    textView = AnyView(RegistryVerdictSheet(kbli: k, expanded: .constant(open), onClose: {}, scrolls: false)
+                        .immersiveHost().environmentObject(state).environmentObject(lang))
+                } else {
+                    content = Self.page(sheet.environmentObject(state).environmentObject(lang), width: w, height: h)
+                    textView = AnyView(RegistryVerdictSheet(kbli: k, expanded: .constant(open), onClose: {}, scrolls: false)
+                        .environmentObject(state).environmentObject(lang))
+                }
             } else { content = notFound }
         case "sheet-ledger":
             // The registry sheet/ledger (KBLIVerdict.swift's own name for this surface) — the mono
