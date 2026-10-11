@@ -1,6 +1,6 @@
 {
-  "sha256": "c29d6e6aea7a4fdbda5e9794224e22db207bd777329de83f15fc951deaee3450",
+  "sha256": "75d5b9f527f3dbb56ebe560725ae260bc2ba5f897090495aec5c4c16c2ca7580",
   "records": 1559,
-  "source_commit": "58e74f69e428a761647cb2770325212448c685f3",
-  "anchored_on": "2026-09-25"
+  "source_commit": "3e59550d48aae9408539c01513917a413ed6809b",
+  "anchored_on": "2026-10-11"
 }
