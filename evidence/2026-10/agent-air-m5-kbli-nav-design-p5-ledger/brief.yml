@@ -1,0 +1,28 @@
+task_id: kbli-nav-design-p5-ledger
+mission: kbli-nav-design-loop (Track A, build, lot PR 5 — the flat ledger redesign, without marks)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  A View redesign of the sheet-ledger with its content proofs (never-drawn gate extended to the ledger's five View
+  files, Q17 prose, paired emphasis). The census marks and the ARMED rows follow in micro PR 5m after #8276 (lead
+  ruling 2026-10-11). The lead commissions a fresh gate for this PR.
+l_level: L1
+gate_class: opus
+objective: >-
+  One concern: the sheet-ledger reads as one ledger (scale matrix, heads-up, verdict stack, cited basis) with every
+  record string drawn through LabelBook or OverlayStore, in English in EN mode, with a curated meaning's markdown
+  emphasis drawn as SemiBold and never as asterisks. The nine sheet-ledger renders (day/night x en/id, narrow, tall
+  56101 and 71109 day/night) change by design; the other 26 of the 35 baseline renders are byte-identical.
+constraints:
+  - No fact, verdict, cap, basis, title or reason changes: strings come from the record, LabelBook or OverlayStore.
+  - No census mark and no ARMED row here (PR 5m).
+  - The worktree is reused from a-prep-3's PR 5 lane (never pushed); the branch is rebuilt from the Pro bundle of 18 commits.
+acceptance:
+  - text: The build SHALL succeed for BKPM and INTERNAL, and the flat render set SHALL change only in the nine sheet-ledger renders.
+    probe: "Pro: prove.sh at the head (BKPM_RC=0 INTERNAL_RC=0, manifest en1b-labelbook 26/35 identical, differing: the nine sheet-ledger PNGs)"
+  - text: The render set SHALL stay byte-identical with and without the census collector.
+    probe: "Pro: CENSUS_IDENTITY=1 render_set.sh (39 PNGs byte-identical)"
+  - text: The content gate and the en-purity gate SHALL pass, the never-drawn check with the ledger's five View files gated.
+    probe: "Pro: content_check.sh rc 0 (never-drawn 0 finding in 9 gated files)"
+  - text: Contrast SHALL hold on every render.
+    probe: "Pro: Tools/contrast/measure_contrast.py FAIL=0 PARITY=0; png_census.py 0 FAIL"
