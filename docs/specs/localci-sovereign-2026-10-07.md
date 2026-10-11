@@ -115,86 +115,74 @@ _Status._ F2 (the executor, disarmed by construction) built 2026-10-10: `merger.
 
 Until then every `would_merge` line says `armed: false` and names why. To stop: remove the env, or `touch <state>/phase_f_halt`. To resume after a `push_refused` or `storage_diverged`: read the reason in the halt file and the journal, reconcile GitHub's main with the mirror, then remove the file.
 
-### Phase F intake without GitHub (RULED 2026-10-11 (Zero: Q1 seat, Q2 replace, Q4 Mini, Q7 residual), revision 2)
+### Phase F intake without GitHub (RULED 2026-10-11, revision 3 (allow-list move))
 
-This revision is for the day `Bali-Zero/Teman2` is deleted with its history (`docs/runbooks/zero-cutover.md`, gate 9). It follows Zero's rulings of 2026-10-11 (`docs/rules/RULINGS.md`) and the round-3 findings on #8254, the suspended first revision, kept as the record.
+For the day `Bali-Zero/Teman2` is deleted with its history (`docs/runbooks/zero-cutover.md`, gate 9), under Zero's rulings of 2026-10-11 (`docs/rules/RULINGS.md`, #8263). Revision 2 (#8262), like #8254, was blocked for trusting after the move state that sessions could write before it; revision 3 replaces that deny-list with an allow-list (item 0b).
 
-- Invariants: every judge runs from BASE (`refs/merger/base`), no secret enters a model-visible environment, and sessions keep building.
-- It still waits on Zero's other operator items: the deploy key and phase E.
-- Pro facts were read on Pro on 2026-10-11.
+- Invariants: every judge runs from BASE (`refs/merger/base`), no secret enters a model-visible environment, sessions keep building.
+- Still owed by Zero: the deploy key and phase E (gate 1). Facts read on Pro and on `origin/main`, 2026-10-11.
 
-**0. Preconditions: the gate leaves the sessions' user.** Today the whole chain belongs to `nuzantara`, the user Pro sessions run as and every `ssh pro` key opens a shell as:
+**0. Preconditions: the gate leaves the sessions' user.** Today `nuzantara`, the user of every Pro session and `ssh pro` key, owns the whole chain: the LaunchAgent and wrapper, the venv python (a link into `~/.pyenv`), the state dir, `repo.git`, the journal, `/opt/homebrew/bin` (first on the plist's `PATH`), the Colima socket, even the `xcode-select` dir the `/usr/bin/git` shim runs. A session could rewrite `refs/merger/base` or the judge. Before arming:
 
-- the LaunchAgent (`gui/501`, `RunAtLoad` true) and the wrapper (`~/.nuzantara-cron`);
-- the venv's python, a link into `~/.pyenv`;
-- the state dir and `repo.git` (`drwxr-xr-x nuzantara`), plus `decisions.jsonl` (`-rw------- nuzantara`);
-- the plist's first `PATH` entry, `/opt/homebrew/bin` (`drwxrwxr-x nuzantara:admin`), where `docker`, `colima` and `limactl` are symlinks into nuzantara's Cellar;
-- the Colima socket (`srw------- nuzantara`);
-- even `/usr/bin/git`, a root shim that runs the `xcode-select` dir, `/Applications/Xcode.app`, which `nuzantara` owns.
+1. A `localci` user owns `/Users/localci/merger`; every ancestor is root- or `localci`-owned, not group- or world-writable. No usable password, but enabled with a real shell: Pro runs `UsePAM yes`, and a disabled account fails PAM (Q3).
+2. The merger is a LaunchDaemon (system domain, `UserName localci`); its wrapper, interpreter, code and hooks are root- or `localci`-owned.
+   - The interpreter is an admin install of 3.11 from a verified source with root-owned prefix and site-packages, never a copy of `~/.pyenv/versions/3.11.11`: `-I` still runs `site`, so a planted `.pth` executes (the CLT python is 3.9.6).
+   - Daemon, hooks and `intake-shell` run with `PATH=/Library/Developer/CommandLineTools/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin` and `GIT_NO_REPLACE_OBJECTS=1`, calling the CLT's `git`/`git-shell`, `/usr/bin/ssh-keygen` and `/usr/bin/ssh` by absolute path. Today's `GIT_ISOLATED` and the wrapper lack `GIT_NO_REPLACE_OBJECTS`, so a `refs/replace/*` ref swaps what every merger git call reads; intake adds it to `GIT_ISOLATED`.
+   - `runner.isolation_spec`'s `shutil.which("docker")` finds nothing on that `PATH`, so docker is a root-owned client outside brew, `/usr/local/localci/bin/docker`.
+   - The wrapper fetches nothing and runs the heartbeat library from `~localci/code/current`, never `<state>/heartbeat.sh`, which today's wrapper runs on early exits.
+3. sshd fences the user: Pro has `PasswordAuthentication yes`, `KbdInteractiveAuthentication yes`, no `AllowUsers`; the `Match User localci` block is in Q3.
+4. The executor stays session-owned (Q7: the threat is error, not attack). `localci` reaches nuzantara's Colima socket through `DOCKER_HOST`, with `staff` membership to traverse `~nuzantara` and a socket ACL that a nuzantara LaunchAgent re-applies whenever Colima recreates it. VM upkeep running `colima` (`prune.keep_vm_discard`, fstrim) moves to that agent: as `localci`, `colima` would be session code.
 
-With no branch protection behind the merger, a session could rewrite `refs/merger/base` or the judge. Before arming:
+**0b. The move is an allow-list.** Two things cross from the sessions' side: `marker.base`'s object closure, fetched into a fresh repository, and the seal and marker texts, once verified against a key no session can write. The operator or the daemon writes every other file. All else stays behind, archived root-owned, never parsed:
 
-1. A `localci` user owns the state dir at `/Users/localci/merger`, and every ancestor of that path is root- or `localci`-owned and not group- or world-writable. The account has no usable password, but it is enabled and has a real login shell, because Pro runs `UsePAM yes` and a disabled account fails PAM (operator commands below, Q3).
-2. The merger runs as a LaunchDaemon (system domain, `UserName localci`).
-   - Its wrapper, interpreter, code and hooks are root- or `localci`-owned.
-   - The interpreter is an admin install of 3.11 from a verified source (root-owned prefix and site-packages), never a copy of `~/.pyenv/versions/3.11.11`: `-I` still runs `site`, so a planted `.pth` executes. The CLT python is 3.9.6.
-   - The daemon, hooks and `intake-shell` run with `PATH=/Library/Developer/CommandLineTools/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin`.
-   - They call the CLT's `git` and `git-shell` (`root:wheel`) and the real `/usr/bin/ssh-keygen` and `/usr/bin/ssh` by absolute path, never the shim.
-   - `runner.isolation_spec`'s `shutil.which("docker")` finds nothing on that `PATH`, so docker is a root-owned client outside brew, `/usr/local/localci/bin/docker`. A brew binary run as `localci` would hand sessions its rights.
-3. sshd fences the user, not only the key. Pro has `PasswordAuthentication yes`, `KbdInteractiveAuthentication yes` and no `AllowUsers`/`AllowGroups`. The required `Match User localci` block is listed below (Q3).
-4. The move happens after gate 9, in this order:
-   1. `bootout` the LaunchAgent while `lease.json` is absent.
-   2. Move the state dir.
-   3. `chown -R localci`.
-   4. Before installing anything, assert three things:
-      - `rev-parse refs/merger/base` equals the marker's `base`;
-      - `phase_f_halt`'s presence equals the marker's `halt`;
-      - `lease.json` is absent.
+- the old `repo.git`: its `config` (a repo-local `merge.<x>.driver` runs during `merge --squash` under `GIT_SAFE`/`GIT_ISOLATED`; `include.path` loads), `info/attributes`, alternates, commit-graph, grafts, packed-refs, `refs/replace/*`, and the `refs/candidates*`, `refs/candidate-admit/*`, `refs/gate/fable-gate/*`, `refs/candidates-merged/*` that never passed `pre-receive`;
+- the `base/<sha>` and `cand/` worktrees: `fresh_worktree` reuses one whose HEAD matches and whose `status --porcelain` is empty, which `--skip-worktree` over an edited `runner.py`, or an ignored `.pyc`, keeps true;
+- `runs/`, `heartbeat.sh`, `decisions.jsonl`, `intake.jsonl`, `lease.json`, `intake.arm`, `phase_f_halt`, `deploy_key`, `known_hosts`.
 
-      Then delete `refs/merger/wrapper` and `refs/merger/pr/*`. A failed fetch leaves the wrapper on `refs/merger/wrapper`, or on `refs/merger/base` when that ref is absent, so neither ref may carry pre-move writes.
+Nothing is chowned, so no symlink (`chown -R` defaults to `-P`) and no session-held fd crosses.
 
-   5. Install the LaunchDaemon. Its first journal line is `moved`.
-   6. Tombstone the old path with a regular file, so a surviving agent's seed step (`mkdir -p`, `clone`) fails instead of seeding a second mirror (against accident, not a fence: `nuzantara` owns the parent).
-   7. Repoint zero_sync to `ssh://localci@pro/Users/localci/merger/repo.git` with its read-only key.
-   8. Retarget the organ `pro.localci_merger` (its `launchctl_kickstart` of `com.balizero.localci-merger`, and its heartbeat under `~nuzantara/.organism`) and the declared pair, and remove the old plist. Otherwise the daemon's heartbeat goes unseen (superscar #2).
-5. The executor stays session-owned (Q7, accepted residual: the threat is error, not attack).
-   - `localci` reaches nuzantara's Colima socket through `DOCKER_HOST`. It needs `staff` membership to traverse `~nuzantara` (`drwxr-x--- nuzantara:staff`) and an ACL on the socket, which a nuzantara LaunchAgent re-applies whenever Colima recreates it.
-   - VM upkeep that runs `colima` (`prune.keep_vm_discard`, the fstrim) moves to that agent. Run as `localci`, `colima` would be session code and would not find the VM.
+_The freeze, before gate 8's bundle_, so main cannot move between the final fetch and gate 9:
+
+1. Reconcile any earlier halt; write `phase_f_halt` (`freeze: gate 9`). Assert: `lease.json` absent; `gh api` shows `merge-queue-main` restricting updates to the deploy key (phase E).
+2. Final fetch into the old mirror (`+refs/heads/main:refs/merger/base`), then gate 8's `git bundle create --all`. Assert: `git bundle verify` passes; `list-heads` shows `refs/merger/base` at the fetched sha.
+3. Gate 9's `ls-remote`. Assert: equal to step 2's sha, else step 1 restarts.
+4. Zero checks the marker text's `base` against main's sha on GitHub's page and touches the token (item 6); gate 9 deletes.
+
+_The move, after gate 9._ A failed assert stops it, the daemon uninstalled.
+
+1. `launchctl bootout gui/501/com.balizero.localci-merger`. Assert: `launchctl print` fails, no `merger.py` process, `lease.json` absent.
+2. Archive the old state dir (root, 0400, `/Library/LocalCI/archive/`), rename it aside, tombstone its path with a regular file so a surviving agent's seed (`mkdir -p`, `clone`) fails instead of seeding a second mirror (against accident: `nuzantara` owns the parent). Assert both with `stat`.
+3. `install -d -o localci -m 0700 /Users/localci/merger`. Assert: precondition 1.
+4. As `localci`, `git init --bare --initial-branch=main repo.git`; delete its sample `hooks/`; install `config` from the root-owned template `/Library/LocalCI/repo.config`, never copied: `core.hooksPath /Users/localci/hooks`, `core.fsmonitor false`, `transfer.fsckObjects`, `receive.fsckObjects`, `receive.maxInputSize` (proposed 200 MB); no `include`, `merge`, `filter`, `diff`, `remote`. Assert: `cmp -s` with the template; no `info/attributes`, `info/grafts`, `objects/info/alternates`, commit-graph, `packed-refs`, `refs/replace`; `for-each-ref` empty.
+5. Zero installs `/Library/LocalCI/seal_signers` (`root:wheel` 0444, dir 0755), one line `zero-seal namespaces="localci-seal" sk-ssh-ed25519@openssh.com …`, read from the token itself with `ssh-keygen -K` (item 3b), never from a session-writable file. Assert: `ssh-keygen -lf` of the file prints the fingerprint of the key the token just gave; `stat` shows root.
+6. Copy `report.json`, `ready.txt`, `marker.txt` and their `.sig` from the old `seal/`, as data, into a root-owned scratch dir; verify before reading any field: `ssh-keygen -Y verify -f /Library/LocalCI/seal_signers -I zero-seal -n localci-seal` on both texts, `kind ready` and `kind teman2_deleted`, the marker's `seal` = sha256(`ready.txt`), `report_sha256` = sha256(`report.json`). Assert all; only then read `marker.base`.
+7. As `localci` under `env -i` (precondition 2's `PATH`, `GIT_NO_REPLACE_OBJECTS=1`, `GIT_CONFIG_NOSYSTEM=1`, `GIT_CONFIG_GLOBAL=/dev/null`): `git fetch --no-tags <bundle> refs/merger/base:refs/merger/incoming`, from gate 8's bundle (copied to `/Library/LocalCI/incoming/`) or one `nuzantara` writes from the renamed mirror; `localci` never runs git in a session-owned repository. Assert: `incoming` = `marker.base`; one `update-ref --stdin` sets `refs/merger/base` and `refs/heads/main` to it and deletes `incoming`; `for-each-ref` lists exactly those two; after `git gc --prune=now`, which drops every bundle object outside that closure, `git fsck --strict` prints nothing.
+8. Install the verified files in `<state>/seal/` (`localci`, 0400), and a copy beside Mini's replica. Assert: sha256s equal step 6's.
+9. Extract the paths the wrapper and hooks run, at `marker.base`, into `~localci/code/<marker.base>/`; swap `current` by atomic symlink rename; install root-owned `~localci/hooks` and `~localci/bin/intake-shell`. Assert: no symlink under `code/<marker.base>`.
+10. Write fresh: empty `decisions.jsonl` and `intake.jsonl` (0600), `phase_f_halt` (`moved`), and as `localci` `mini_key` (0600), its `.pub` and `mini_known_hosts` (item 5). Assert the allow-list: the state dir holds exactly `repo.git`, `seal/` and those six files; `find <new state> -type l` and `find <new state> ! -user localci` print nothing; `lsof +D` of old and new state prints nothing.
+11. Install and bootstrap the LaunchDaemon (`EnvironmentVariables`: precondition 2's `PATH`, `GIT_NO_REPLACE_OBJECTS=1`). Its first tick re-checks steps 4, 6 and 10 in code, then journals `moved` (`marker_sha256`, `marker_base`, `seal_signers_sha256`). Assert: the journal's only line.
+12. Repoint zero_sync (read-only key, `ssh://localci@pro/Users/localci/merger/repo.git`, `ZERO_SYNC_CANONICAL_REF=refs/merger/base`) and `origin` on M5, Pro and Mini (intake keys); retarget the organ `pro.localci_merger` (`launchctl_kickstart`, heartbeat under `~nuzantara/.organism`) and the declared pair; remove the old plist (superscar #2). Assert: `mini.zero_sync` `ok` on the new URL; `ls-remote origin refs/heads/main` = `marker.base` on each host; the organ reads the daemon's heartbeat.
+13. Remove `phase_f_halt`. Sessions re-push and re-admit open candidates: no candidate, admission or verdict carries over.
+
+_Sessions keep building._ The old mirror's `HEAD` and `refs/heads/main` froze at its clone. In the new one `HEAD` names `refs/heads/main`, which no pusher may write and which item 5's transaction fast-forwards with `refs/merger/base`. Gate 7's `git fetch origin` keeps the default refspec; its repoint of `origin` lands at move step 12 (Teman2 until then).
+
+_Restore (Q4)._ If Pro's state is lost, `nuzantara` on Mini bundles the replica's `refs/heads/main`; Zero compares its tip with zero's synced main and re-issues the marker there (item 3b); the move reruns from step 3, with the seal files from any copy (they verify by signature; one is kept beside the replica). The replica is session-writable, so only that comparison and the touch make it trusted. Later candidates are re-pushed.
 
 **1. How a candidate arrives.**
 
-- _Names._ A candidate's _path_ is `<host>/<lane>/<slug>` and its ref is `refs/candidates/<path>`, the twin of the branch `agent/<host>/<lane>/<slug>`.
-  - `host` is `agent_start._hostname_short()`, as existing branches carry it (`air-m5`, `nuzantara`, `mini-pro2`).
-  - `lane` matches `[a-z0-9-]{1,32}`.
-  - `slug` matches `[a-z0-9][a-z0-9.-]{0,63}`, with no `..` and no `.lock` suffix.
-  - Its siblings are `refs/candidate-meta/<path>` (item 2) and `refs/candidate-admit/<path>` (item 3).
-- _Who pushes._ Each host has one intake key (`~/.ssh/localci_intake`, 0600). It is named in an ssh `Host` entry, never in the environment, and is exposed like today's `gh` login.
-  - In `~localci/.ssh/authorized_keys` it reads `restrict,from="127.0.0.1,::1,100.64.0.0/10,fd7a:115c:a1e0::/48",command="/Users/localci/bin/intake-shell <host>" ssh-ed25519 … localci-intake-<host>`.
-  - `intake-shell` accepts exactly `git-receive-pack '<mirror>'` or `git-upload-pack '<mirror>'`. It exports `LOCALCI_INTAKE_PUSHER=<host>` and `exec`s `git-shell -c`.
-  - zero_sync's key is read-only.
-  - `intake.py submit` writes the meta commit, then runs `git push --atomic` of head and meta.
-- _Hooks._ `core.hooksPath` is `~localci/hooks`, which no pusher can write. Each hook runs `~localci/code/current/intake.py hook <name>`.
-  - Today the wrapper reads `refs/merger/wrapper` into a `mktemp` dir that its exit trap deletes. Under intake it extracts `refs/merger/base` into a persistent `~localci/code/<sha>/` and swaps in `current` by an atomic symlink rename.
-  - A hook refuses unless `current` is the sha that `intake.arm` names.
-  - **`pre-receive`** decides the whole push against an allowlist:
-    - `refs/candidates/<pusher>/…` and `refs/candidate-meta/<pusher>/…`;
-    - `refs/candidate-admit/…` from any pusher (the signature, verified here, is the authority);
-    - `refs/gate/fable-gate/<40 hex>`.
-
-    Everything else is refused (`refs/heads/*`, `refs/tags/*`, `refs/notes/*`, `refs/merger/*`, the archives). So is any push that:
-    - leaves a candidate and its meta disagreeing: meta `head` ≠ the ref, `candidate` ≠ the path, or BASE's schema fails;
-    - writes a burned path, meaning a `burn` line names it or `refs/candidates-merged/<path>` exists;
+- _Names._ Path `<host>/<lane>/<slug>`, ref `refs/candidates/<path>`, twin of the branch `agent/<host>/<lane>/<slug>`: `host` is `agent_start._hostname_short()` (`air-m5`, `nuzantara`, `mini-pro2`), `lane` matches `[a-z0-9-]{1,32}`, `slug` `[a-z0-9][a-z0-9.-]{0,63}` without `..` or a `.lock` suffix. Siblings: `refs/candidate-meta/<path>` (item 2), `refs/candidate-admit/<path>` (item 3).
+- _Who pushes._ One intake key per host (`~/.ssh/localci_intake`, 0600), named in an ssh `Host` entry, never in the environment, exposed like today's `gh` login. In `~localci/.ssh/authorized_keys`: `restrict,from="127.0.0.1,::1,100.64.0.0/10,fd7a:115c:a1e0::/48",command="/Users/localci/bin/intake-shell <host>" ssh-ed25519 … localci-intake-<host>`. `intake-shell` accepts exactly `git-receive-pack '<mirror>'` or `git-upload-pack '<mirror>'`, exports `LOCALCI_INTAKE_PUSHER=<host>` and `GIT_NO_REPLACE_OBJECTS=1`, and `exec`s `git-shell -c`. zero_sync's key is read-only. `intake.py submit` writes the meta commit, then `git push --atomic` of head and meta.
+- _Hooks._ `core.hooksPath` is `~localci/hooks`, which no pusher can write; each hook runs `~localci/code/current/intake.py hook <name>`. Instead of today's `mktemp` dir read from `refs/merger/wrapper`, intake extracts `refs/merger/base` into a persistent `~localci/code/<sha>/` and swaps `current` by atomic symlink rename. A hook refuses unless `current` is the sha `intake.arm` names.
+  - **`pre-receive`** decides the whole push against an allowlist: `refs/candidates/<pusher>/…`, `refs/candidate-meta/<pusher>/…`, `refs/candidate-admit/…` from any pusher (its verified signature is the authority), `refs/gate/fable-gate/<40 hex>`. It refuses everything else (`refs/heads/*`, `refs/tags/*`, `refs/notes/*`, `refs/replace/*`, `refs/merger/*`, the archives) and any push that:
+    - leaves candidate and meta disagreeing (meta `head` ≠ the ref, `candidate` ≠ the path, BASE's schema fails);
+    - writes a burned path (a `burn` line names it, or `refs/candidates-merged/<path>` exists);
     - deletes or non-fast-forwards an admit or gate ref;
-    - carries a finding of the secret scanner (Q5). That is a root-owned, pinned `gitleaks` outside brew, run on `old..new` with BASE's config, and the refusal names the rule and the path, never the match;
+    - carries a secret-scanner finding (Q5). The scanner fails closed: absent, off its pinned version and sha256, exiting non-zero, or past 120 s, it refuses. It is the root-installed `/usr/local/localci/bin/gitleaks` (Q3), run as `gitleaks git --redact --config <current>/scripts/localci/gitleaks.toml --log-opts=<range>` on the quarantined push; `<range>` is `old..new`, or `refs/merger/base..new` when `old` is all zeros. That config is owed (not on main today): BASE carries it before arming, `[extend] useDefault = true` over the pinned version's rules, the pin in its header; absent, it refuses. The refusal names rule and path from the redacted report, never the match;
     - arrives under B6's 60 GB floor;
-    - arrives while the arm does not hold (§6). The one exception is a push that only appends revokes: for every commit in `old..new` of each admit ref it updates, the tree is exactly `admit.txt` and `admit.txt.sig`, and the text's action is `revoke`.
+    - arrives while the arm does not hold (§6), except a revoke-only push: every commit in `old..new` of each admit ref it updates has a tree of exactly `admit.txt` and `admit.txt.sig`, action `revoke`.
+  - Every verdict goes to `<state>/intake.jsonl` (`ts`, `pusher`, `ref`, `old`, `new`, `accepted`, `why`), an accepted candidate deletion with `burn: <path>` on the same line. **`update`** repeats the namespace refusal per ref; **`post-receive`** only archives a deleted candidate as `refs/candidates-closed/<path>`.
 
-  - Every verdict goes to `<state>/intake.jsonl` (`ts`, `pusher`, `ref`, `old`, `new`, `accepted`, `why`). An accepted candidate deletion carries `burn: <path>` on that same line.
-  - **`update`** repeats the namespace refusal per ref.
-  - **`post-receive`** only archives a deleted candidate as `refs/candidates-closed/<path>`.
-  - The mirror sets `receive.fsckObjects=true` and `receive.maxInputSize` (proposed 200 MB).
-
-**2. `candidate.yml`** is the one blob of a parentless commit at `refs/candidate-meta/<path>`, not a file in the tree: F2 merges only when the merged tree equals the judged tree, which a fixed in-tree path breaks (it lands on `main`, conflicts, or needs a strip step); out of the tree the claim cannot select, exempt or rewrite what judges it; and it changes without moving the head. Not a git note: `refs/notes/*` is one shared ref that pushers race on.
+**2. `candidate.yml`** is the one blob of a parentless commit at `refs/candidate-meta/<path>`, not a tree file: F2 merges only when the merged tree equals the judged one, which an in-tree file breaks; outside the tree the claim cannot select, exempt or rewrite its judge, and it changes without moving the head. Not a git note: `refs/notes/*` is one ref that pushers race on.
 
 ```yaml
 schema: localci-candidate/1
@@ -209,47 +197,25 @@ author_seat: claude-opus-5-5@air-m5
 draft: false # true keeps it out of the queue (today's non-draft + armed)
 ```
 
-BASE's `intake.py` validates the file against BASE's `scripts/localci/candidate.schema.json`, both at `pre-receive` and at decision. A candidate that edits the schema is still judged by the old one. No client data appears here or in the log.
+BASE's `intake.py` validates it against BASE's `scripts/localci/candidate.schema.json` at `pre-receive` and at decision, so a schema edit is judged by the old schema. No client data appears here or in the log.
 
 **3. The seat admission, replacing `localci:merge-shadow-ok` (Q1 = seat).**
 
-- _Today._ `label_arm` passes when the label is present and its last `LabeledEvent` has a `User` actor whose collaborator `role_name` is `admin` or `maintain` (`ARM_ROLES`). It reads no author, and the label survives a new push. M5's `gh` holds one login, shared by every session on that host, and its role is admin. So any session can apply the label: it is a convention.
-- _What is signed._ A `localci-admit v1` text, LF and ASCII, in fixed order: `repo nuzantara-canonical`, `not_after <UTC>`, `action admit|revoke`, then one line per candidate, `candidate <path> head <sha> base <sha> meta <sha> nonce <32 hex>`. Several lines make a batch under one signature.
-  - `base` is the cut base. Main takes 31–56 merges a day, so binding the decided base would demand a signature per merge.
-  - `pre-receive` refuses a `not_after` more than 7 days after the receipt time it logs.
-- _With what._ Each host has a seat key, principal `admit-<host>`. It is presence-free and non-exportable: a store signs through an ssh-agent and never exports the private key, and the operator picks the store at setup. Sessions on that host can obtain signatures, which is at parity with today's label.
-  - `intake.py admit <path>…` prints the text and signs it with `ssh-keygen -Y sign -n localci-admit`.
-  - It then appends `admit.txt` and `admit.txt.sig` as a fast-forward child commit on each listed path's admit ref, all in one `git push --atomic`.
-- _Who signs._ The principals in BASE's `scripts/localci/admit/allowed_signers` with `namespaces="localci-admit"`. An admit principal never lists `localci-seal`. The file changes only through a candidate admitted under BASE's copy, so a candidate that adds its own key admits nothing.
-- _Verification._ `ssh-keygen -Y find-principals`, then `-Y verify -I <principal> -n localci-admit`, against a temporary copy of BASE's `allowed_signers`. It runs at `pre-receive`, at decision (it fills `label_privileged`) and at merging (it replaces "label still present" in `phase_f_arming`).
-  - The ref is an append-only chain.
-  - The admission in force is the newest verified `admit` line with now ≤ `not_after`, whose (path, head, meta) has no verified `revoke` anywhere on the chain. Both decision and merging check this.
-  - A revoke is terminal for its triple, because the rule reads the whole chain. A later admit of the same triple never counts, so re-admitting needs a new head or a new meta.
-- _Replay._ The binding to repo, path, head, cut base and meta ends the label's carry-over across pushes.
-  - A (path, nonce) pair carried by a different signed text is refused at `pre-receive` and ignored at decision. The key is the text's sha256, so one batch appended to several refs counts as one text.
-  - The `merged` line gains `admit_nonce`.
-  - Another namespace fails verification.
+- _Today._ `label_arm` passes when the label's last `LabeledEvent` has a `User` actor whose `role_name` is in `ARM_ROLES`. It reads no author, the label survives a push, and M5's one admin `gh` login is shared by every session there: a convention.
+- _What is signed._ A `localci-admit v1` text (LF, ASCII, fixed order): `repo nuzantara-canonical`, `not_after <UTC>`, `action admit|revoke`, then per candidate `candidate <path> head <sha> base <sha> meta <sha> nonce <32 hex>`; several lines make a batch. `base` is the cut base, since main takes 31–56 merges a day. `pre-receive` refuses a `not_after` beyond its logged receipt time plus 7 days.
+- _With what._ A seat key per host, principal `admit-<host>`, presence-free and non-exportable (a store the operator picks signs through an ssh-agent, never exporting the key): the host's sessions can obtain signatures, at parity with the label. `intake.py admit <path>…` prints the text, signs it (`ssh-keygen -Y sign -n localci-admit`) and appends `admit.txt` and `admit.txt.sig` as a fast-forward child on each listed admit ref, in one `git push --atomic`.
+- _Who signs._ BASE's `scripts/localci/admit/allowed_signers`, `namespaces="localci-admit"`, changed only through a candidate admitted under BASE's copy. An admit principal never lists `localci-seal`, and a `localci-seal` line there is inert: seals verify against item 3b's pinned file alone.
+- _Verification._ `-Y find-principals`, then `-Y verify -I <principal> -n localci-admit` against a temporary copy of BASE's file, at `pre-receive`, at decision (filling `label_privileged`) and at merging (replacing "label still present" in `phase_f_arming`). On the append-only chain, the admission in force is the newest verified `admit` with now ≤ `not_after` whose (path, head, meta) has no verified `revoke` anywhere on it; a revoke is therefore terminal for its triple, and re-admitting needs a new head or meta.
+- _Replay._ Binding repo, path, head, cut base and meta ends the label's carry-over. A (path, nonce) in a different signed text (keyed on the text's sha256) is refused at `pre-receive` and ignored at decision. The `merged` line gains `admit_nonce`; another namespace fails verification.
 
-**3b. The seal principal (M1).** The READY seal and the gate-9 marker are signed by a SEPARATE principal, `zero-seal`.
+**3b. The seal principal (M1), pinned outside git.** The READY seal and the gate-9 marker are signed by a SEPARATE principal, `zero-seal`: Zero's hardware token (`ed25519-sk`, `-O resident -O verify-required`, `namespaces="localci-seal"` only), touched at READY and at gate 9, never per merge. The PIN lives in the signer's stub; verification cannot prove it was entered.
 
-- It is Zero's hardware token: `ed25519-sk`, generated with `-O verify-required`, and `namespaces="localci-seal"` only.
-- It is touched at READY and at gate 9, never per merge.
-- The PIN belongs to the signer's stub. `allowed_signers` cannot demand it, so verification cannot prove a PIN was entered.
-- _Rotation._ The seal text, its canonical JSON and the marker are retained verbatim under `<state>/seal/`. Rotating re-signs the retained texts, never recomputes READY (impossible without GitHub). Before gate 9 the new key lands through BASE's `allowed_signers`; after it, verification is pinned at `marker.base`, so the rotation re-issues the marker at the current `refs/merger/base`, signed by the new token, and §6's `merged`-line rule restarts from there.
+- _Where._ Only in the root-owned `/Library/LocalCI/seal_signers` (move step 5). In git it would change through admission, presence-free under Q1: one admitted second seal principal plus a swap of `<state>/seal/` would remove the fence. Gating the file on the current token's signature would add a signed-change path to the merger for a list that changes yearly; a root-owned file is an OS permission no session holds, and rotation costs a touch and root either way.
+- _Rotation._ The seal text, its canonical JSON and the marker stay verbatim in `<state>/seal/`. Zero re-signs the seal text with the new token (READY cannot be recomputed) and re-issues the marker at the current `refs/merger/base`; the operator replaces the pinned file; §6's `merged`-line rule restarts at the new `marker.base`.
 
-**4. The gate verdict.** `harness_fable_gate.py --sink mirror` records it on `refs/gate/fable-gate/<head sha>` as a commit holding `verdict.json`: `schema`, `head`, `verdict`, `state` by today's mapping, `description`, `degraded`, `conditions_ref`, `supersede`, `seat`, `posted_at`.
+**4. The gate verdict.** `harness_fable_gate.py --sink mirror` writes `refs/gate/fable-gate/<head sha>`, a commit holding `verdict.json` (`schema`, `head`, `verdict`, `state` by today's mapping, `description`, `degraded`, `conditions_ref`, `supersede`, `seat`, `posted_at`). The ref is fast-forward only: an overwrite is a child needing `--supersede <reason>`, and a racing gate session is refused. No seat signature (a key a gate session can use signs anything for it): authenticity is the pushing host's key in `intake.jsonl`, at parity with today's shared login. `seat` ≠ `author_seat` is journalled, never refused (Q6): both are self-declared.
 
-- An overwrite is a child commit and needs `--supersede <reason>`. Because the ref is fast-forward only, a racing second gate session is refused.
-- There is no seat signature: a key a gate session can sign with signs anything for it. Authenticity is the pushing host's key in `intake.jsonl`, at parity with today's shared login.
-- `seat` ≠ `author_seat` is journalled only and never refuses (Q6). Both strings are self-declared, so the check catches mistakes, not attacks.
-
-BASE's `harness_gate_read.py` gains `--event-name localci_intake --repo nuzantara-canonical --candidate-head <sha> --git-dir <mirror>`; `harness_gate_read.main` requires `--repo`. It reads `git cat-file blob refs/gate/fable-gate/<sha>:verdict.json` with no network and no `gh`:
-
-- absent → B12's PENDING line;
-- unreadable → CANNOT-VERIFY;
-- `state == "success"` → 0.
-
-The matrix step `Gear >= 2 — read the real gate verdict` gains `argv_intake`. The runner, planned with `--candidate-id` instead of `--pr-number`, exposes `${{ localci.candidate_head }}` and `${{ localci.mirror }}`. Both land on BASE before arming. B12's re-open rule becomes "the ref exists".
+BASE's `scripts/ci/harness_gate_read.py` (whose `main` requires `--repo`) gains `--event-name localci_intake --repo nuzantara-canonical --candidate-head <sha> --git-dir <mirror>`, reading `git cat-file blob refs/gate/fable-gate/<sha>:verdict.json` with no network or `gh`: absent → B12's PENDING; unreadable → CANNOT-VERIFY; `state == "success"` → 0. The matrix step `Gear >= 2 — read the real gate verdict` gains `argv_intake`; the runner, planned with `--candidate-id`, exposes `${{ localci.candidate_head }}` and `${{ localci.mirror }}`; both land on BASE before arming. B12's re-open rule becomes "the ref exists".
 
 **5. Every GitHub read the merger makes, and its intake equivalent.**
 
@@ -263,107 +229,80 @@ The matrix step `Gear >= 2 — read the real gate verdict` gains `argv_intake`. 
 | author                                                                              | not read today                                        | meta `author_seat` and `pusher`, journalled                                                    |
 | merge queue state, the enqueue mutation                                             | `pr_side`, `enqueue_step`                             | none; `not_in_queue` / `first_enqueue` read "not burned" / "no `merged` line for (path, head)" |
 | GitHub main (`fetch`, `ls-remote`)                                                  | `fetch_base`, `merge_shadow_step`                     | `refs/merger/base`, local                                                                      |
-| READY: `report()` (`hc.gh_get`, `hc.fetch_live`)                                    | `phase_f_arming`                                      | the signed seal, verified at `marker.base`, never recomputed                                   |
+| READY: `report()` (`hc.gh_get`, `hc.fetch_live`)                                    | `phase_f_arming`                                      | the signed seal, verified against the pinned key, never recomputed                             |
 | `merged`, `merge_commit_sha`, `merged_at`                                           | `replay_pending`, `report`                            | `refs/candidates-merged/<path>` and its `merged` line; replays end                             |
 | `commits/{head}/status(es)`, `gh pr view`                                           | `gate_posted_at`, `harness_gate_read.py`, `GateJudge` | `refs/gate/fable-gate/<head>`                                                                  |
 | branch protection, check runs (`hosted_required_green`)                             | `hosted_compare`, `hosted_side`, `StaleJudge`         | `required_executed_ok` (Q2, below)                                                             |
 | the wrapper's GitHub fetch                                                          | `localci_merger_tick.sh`                              | extract from `refs/merger/base`                                                                |
 
-_Criterion (Q2 = replace)._ `hosted_required_green` becomes `required_executed_ok`: each of the 14 required contexts in BASE's matrix executed OK locally.
+_Criterion (Q2 = replace)._ `hosted_required_green` becomes `required_executed_ok`: each of the 14 required contexts in BASE's matrix executed OK locally. Pysa stays the python taint judge (`security.pysa_python`). The two CodeQL rows carry `waived: "RULED 2026-10-11 Q2"`; an unnamed blocked context still refuses.
 
-- The two CodeQL contexts are waived by this ruling, and their BASE matrix rows carry `waived: "RULED 2026-10-11 Q2"`. An unnamed blocked context still refuses.
-- Pysa stays the python taint judge (`security.pysa_python`).
+- The waiver covers only `mapping: blocked`, and an executed CodeQL FAIL refuses.
+- The waiver lapses automatically once the CodeQL contexts execute locally (the LocalCI lane `agent/air-m5/infra/localci-codeql-1011` is setting them to `executed`), so a stale `waived:` can never turn a CodeQL red into a merge.
 
-_Merge order._ F2 journals `merged`, pushes to GitHub, and only then moves `refs/merger/base` (`phase_f_merge`). Under intake the mirror is the authority:
+_Merge order._ F2 journals `merged`, pushes, then moves `refs/merger/base` (`phase_f_merge`). Under intake the mirror is the authority:
 
 1. `commit-tree`.
-2. One `update-ref --stdin` transaction. It does `verify refs/candidate-admit/<path> <sha>` and `verify refs/candidate-meta/<path> <sha>` as read at merging, so a late revoke fails it. It moves `refs/merger/base` old→new, creates `refs/candidates-merged/<path>`, and deletes the candidate ref at its old value. A failure is `merge_error`, and nothing reads as merged.
-3. Journal `merged`, with `admit_nonce`.
-4. Push to the bare replica on Mini over Tailscale (Q4). The merger uses its own key through `GIT_SSH_COMMAND`, as `push_ssh_command` does. On Mini the key is held by a forced command to `git-receive-pack` of that one path. A refusal is `storage_lag`, never a halt.
+2. One `update-ref --stdin` transaction: `verify` the admit and meta refs at their values read at merging (a late revoke fails it); move `refs/merger/base` and `refs/heads/main` old→new; create `refs/candidates-merged/<path>`; delete the candidate ref at its old value. A failure is `merge_error`; nothing reads as merged.
+3. Journal `merged` with `admit_nonce`.
+4. Push `<new>:refs/heads/main`, never forced, over Tailscale to Mini's bare replica (Q4), `nuzantara@100.93.236.6:/Users/nuzantara/localci/replica.git`. `GIT_SSH_COMMAND` is built like `push_ssh_command` (`-F /dev/null`, no agent, `<state>/mini_key`), with `StrictHostKeyChecking=yes` against `<state>/mini_known_hosts` alone, holding the host key the operator read on Mini (`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`). Mini holds the key as `restrict,from="<Pro's Tailscale address>",command="git-receive-pack '/Users/nuzantara/localci/replica.git'"`; the replica sets `receive.denyNonFastForwards`, `receive.denyDeletes` and `receive.fsckObjects`. In `git push --porcelain`, a failure with no ref line (no connection) is `storage_unreachable`; a `!` ref line (something else wrote the replica) or a host-key mismatch is `storage_refused`. Neither halts. Both raise `storage_lag`, the merges since the last accepted push, on every tick line; the heartbeat reads `warning` at once on a refusal, and on unreachability past 3 merges or 2 h (superscar #2).
 
-If a crash comes between steps 2 and 3, the next tick journals `merged_recovered` first. `phase_f_halt` still stops every intake merge, since it stays a `phase_f_arming` condition, but pushes are still accepted. Under intake only an operator writes it or removes it. The journal's `pr` key becomes `candidate`.
+A crash between steps 2 and 3 makes the next tick journal `merged_recovered` first. `phase_f_halt` stays a `phase_f_arming` condition, stopping merges while pushes are accepted; under intake only an operator writes or removes it. The journal's `pr` key becomes `candidate`.
 
-**6. Arming.** On the live mirror, `scripts/localci/intake.py` arms only when all of the following hold:
+**6. Arming.** `scripts/localci/intake.py` arms the live mirror only when all of these hold:
 
-- `LOCALCI_MERGER_PHASE_F=1`, and `LOCALCI_MERGER_ARMED` unset (superscar #10).
-- **The seal verifies.**
-  - At zero-cutover gate 1, BASE's `merger.py report --seal` writes the report's canonical JSON (sorted keys, no spaces) to `<state>/seal/report.json`. It writes this only when `report()` reads READY.
-  - It also emits a `localci-seal v1` text with these fields: `kind ready`, `compared_merges`, `first_merge`, `last_merge`, `false_green`, `code_sha`, and `report_sha256`.
-  - `report_sha256` is the sha256 of that file. The dict carries `generated_at`, so it is a digest of the file, never a recomputation.
-  - `zero-seal` signs the text, which is kept beside the file. The _seal's sha256_ is the sha256 of the text.
-- **The marker verifies.** It is a `localci-seal v1` text signed by `zero-seal` at gate 9, with these fields:
-  - `kind teman2_deleted`;
-  - `seal <seal's sha256>`;
-  - `base <sha>`, Teman2's main read through `ls-remote` just before the deletion;
-  - `halt absent|present`.
+- `LOCALCI_MERGER_PHASE_F=1` and `LOCALCI_MERGER_ARMED` unset (superscar #10).
+- **The seal.** At zero-cutover gate 1, BASE's `merger.py report --seal`, only when `report()` reads READY, writes the canonical report JSON (sorted keys, no spaces) to `<state>/seal/report.json` and emits a `localci-seal v1` text: `kind ready`, `compared_merges`, `first_merge`, `last_merge`, `false_green`, `code_sha`, `report_sha256`. That is the file's digest, because the dict carries `generated_at`; it is never recomputed. `zero-seal` signs the text; the _seal's sha256_ is the text's.
+- **The marker.** A `localci-seal v1` text signed by `zero-seal` at gate 9: `kind teman2_deleted`, `seal <seal's sha256>`, `base <sha>` (Teman2's main read by `ls-remote` under the freeze, just before deletion), `halt freeze`. It is never inferred from a failed `ls-remote` (superscar #8).
+- **Both verify against `/Library/LocalCI/seal_signers` alone** (item 3b), the marker before `marker.base` is used. The seal's numbers meet `READY_MIN_MERGES` and `READY_MIN_DAYS` read at `marker.base`, with FALSE_GREEN 0. Nothing is read at the current base.
+- **The range is real and merged.** `git merge-base --is-ancestor marker.base refs/merger/base` holds, since a rewind empties the range and makes the next rule vacuous; and every first-parent commit in `marker.base..refs/merger/base` has a `merged` line journalled after `moved`.
+- **The state is the allow-list, read live:** the user is `localci`, no ancestor is session-owned or group- or world-writable, `config` equals the template, `repo.git`, `seal/` and every top-level entry are `localci`-owned, and the top level holds only move step 10's names and the daemon's own (`lease.lock`, `lease.json`, `intake.arm`, `report.json`, `base/`, `cand/`, `runs/`).
 
-  It is never inferred from a failed `ls-remote` (superscar #8).
+_Signed rather than ordered._ Before gate 1 a moved daemon cannot compute READY: precondition 2's `PATH` has no `gh`, which `hosted_compare.gh_argv` and `merger.gh_graphql` spawn bare. After it, the journal stays session-writable and never crosses (0b). Only the token's signatures carry READY across, with no GitHub credential.
 
-- **Both verify at `marker.base`.** The signatures are checked against `allowed_signers` read at `marker.base`. The seal's numbers are checked against `READY_MIN_MERGES` and `READY_MIN_DAYS` read at `marker.base`, and FALSE_GREEN must be 0. Nothing is read at the current base, which post-move writes have moved.
-- **Every first-parent commit in `marker.base..refs/merger/base` has a `merged` line journalled after the `moved` line.** A commit a session stacked before the move would have none, and move step 4's assert has already refused a mirror whose base is not `marker.base`.
-- **Preconditions 1 and 2 hold, read live:** the user is `localci`, and no ancestor of the state dir is session-owned or group- or world-writable.
+_The arm._ The daemon writes `<state>/intake.arm` (`armed`, `sha`, `written_at`, `expires_at` = +20 min) at tick start and at `drop_lease`. Ticks outlive 20 min (Pro's decision `elapsed_s`: median 908 s, max 4568 s, 47 of 202 over 1200 s), so the arm also holds while `lease.json` names a live holder whose `pid_start` is present and equal to `proc_start(pid)`: stricter than `pid_alive`, which reads a missing start time as alive. It expires 20 min after the lease frees or the holder dies; the kill switch exits before any write. A revoke reaches the ref unarmed (item 1), and the next armed tick refuses its triple, because decision and transaction read the chain. In phases D and E the first condition fails.
 
-_Signed rather than ordered._ Both orders fail without signatures:
-
-- Before gate 1, a moved daemon cannot compute READY: precondition 2's `PATH` has no `gh`, and `hosted_compare.gh_argv` and `merger.gh_graphql` spawn a bare `gh`.
-- After gate 1, the journal is session-writable until the `chown -R`, which would launder it.
-
-The token's signatures survive the move and need no new GitHub credential.
-
-_The arm._ The daemon writes `<state>/intake.arm` (`armed`, `sha`, `written_at`, `expires_at` = +20 min) at tick start and again at `drop_lease`.
-
-- Ticks outlive 20 min: decision `elapsed_s` in Pro's journal has a median of 908 s, a maximum of 4568 s, and 47 of 202 over 1200 s. So the arm also holds while `lease.json` names a holder whose pid is alive and whose `pid_start` is present and equal to `proc_start(pid)`.
-- That is stricter than `pid_alive`, which treats a missing or unreadable start time as alive.
-- The arm expires 20 min after the lease is free or the holder is dead.
-- The kill switch exits before any write, so a stopped merger's arm expires.
-- A revoke still reaches the ref while unarmed (item 1's exception). The next armed tick then refuses the triple, because decision and transaction read the chain.
-
-In phases D and E the first condition fails.
-
-_Rehearsal: on a scratch mirror only._ `intake.py rehearse --state-dir <scratch>` clones the mirror and runs the whole intake there, with no storage push. It refuses the live state dir. A live-mirror rehearsal is ruled out, before gate 1 and after it:
-
-- GitHub's queue still merges `--auto` PRs, which would give main two writers.
-- Leaving the rehearsal rewinds the mirror. With no `pushed` anchor, `fetch_base` force-fetches `+main:refs/merger/base`. With an anchor that GitHub's main contains, it runs `update-ref refs/merger/base <incoming>` with no old value.
+_Rehearsal: scratch mirror only._ `intake.py rehearse --state-dir <scratch>` clones the mirror and runs the whole intake with no storage push, refusing the live state dir. A live rehearsal is ruled out on both sides of gate 1: GitHub's queue still merges `--auto` PRs (two writers), and leaving it rewinds the mirror (`fetch_base` force-fetches without a `pushed` anchor, and with one runs `update-ref` with no old value).
 
 _Tests_ (`scripts/localci/tests/test_intake.py`): guilt beside innocence for each rule, signing on real `ssh-keygen -Y` with throwaway non-sk keys.
 
-- Arming: `test_arms_only_on_seal_and_marker`, `test_seal_numbers_rechecked_against_thresholds_at_marker_base`, `test_seal_and_marker_verify_at_marker_base`, `test_admit_principal_cannot_sign_a_seal`, `test_base_stacked_before_the_move_refuses`, `test_every_first_parent_after_marker_base_needs_a_merged_line`, `test_move_asserts_base_halt_and_lease`, `test_armed_intake_calls_no_report_no_gh`, `test_failed_ls_remote_is_not_gone`, `test_refuses_beside_merger_armed`, `test_refuses_a_session_writable_ancestor`, `test_binaries_are_absolute_and_root_owned`, `test_rehearsal_refuses_the_live_state_dir`.
+- Move and arming: `test_first_tick_journals_moved_only_on_the_allow_list`, `test_marker_unverified_by_the_pinned_key_refuses`, `test_seal_principal_in_git_is_inert`, `test_arms_only_on_seal_and_marker`, `test_seal_numbers_rechecked_against_thresholds_at_marker_base`, `test_admit_principal_cannot_sign_a_seal`, `test_rewound_base_refuses`, `test_every_first_parent_after_marker_base_needs_a_merged_line`, `test_replace_refs_are_ignored`, `test_repo_config_off_template_refuses`, `test_armed_intake_calls_no_report_no_gh`, `test_failed_ls_remote_is_not_gone`, `test_refuses_beside_merger_armed`, `test_refuses_a_session_writable_ancestor`, `test_binaries_are_absolute_and_root_owned`, `test_heartbeat_library_read_from_code_current`, `test_rehearsal_refuses_the_live_state_dir`.
 - The arm: `test_expired_arm_closes_the_hook`, `test_arm_holds_while_the_lease_holder_lives`, `test_lease_without_equal_pid_start_does_not_hold_the_arm`, `test_arm_written_at_start_and_at_drop_lease`, `test_a_revoke_lands_while_unarmed`, `test_revoke_only_tree_is_exactly_two_files`.
-- The hook: `test_refuses_outside_the_allowlist` / `test_accepts_an_atomic_pair_in_its_namespace`, `test_refuses_another_hosts_namespace`, `test_burn_holds_when_post_receive_fails`, `test_a_merged_path_is_burned`, `test_refuses_meta_naming_another_head`, `test_hook_runs_the_armed_base_sha`, `test_secret_finding_refuses_without_echoing_the_match`.
+- The hook: `test_refuses_outside_the_allowlist` / `test_accepts_an_atomic_pair_in_its_namespace`, `test_refuses_another_hosts_namespace`, `test_refuses_refs_replace`, `test_burn_holds_when_post_receive_fails`, `test_a_merged_path_is_burned`, `test_refuses_meta_naming_another_head`, `test_hook_runs_the_armed_base_sha`, `test_secret_finding_refuses_without_echoing_the_match`, `test_scanner_absent_erroring_or_timing_out_refuses`, `test_scanner_range_on_a_new_ref_starts_at_base`.
 - Admission: `test_schema_and_signers_are_base`, `test_each_bound_field_alone_refuses`, `test_wrong_namespace_expired_or_merged_nonce_refuses`, `test_expiry_checked_at_decision_and_merging`, `test_not_after_past_receipt_plus_7d_refuses`, `test_nonce_keyed_on_text_and_revoke_is_terminal`, `test_batch_admits_only_its_lines`.
 - Gate verdict: `test_gate_reader_absent_pending_success_zero`, `test_gate_ref_fast_forward_and_supersede_reason`, `test_seat_equal_author_is_journalled_not_refused`.
-- Criterion: `test_codeql_passes_only_with_its_named_waiver`.
-- Merge: `test_merged_only_after_the_transaction`, `test_a_late_revoke_fails_the_transaction`, `test_an_archive_without_merged_line_is_merged_recovered`, `test_mini_push_refusal_is_storage_lag_not_halt`, `test_no_key_path_in_runner_env`.
+- Criterion: `test_codeql_passes_only_with_its_named_waiver`, `test_executed_codeql_fail_refuses_despite_waiver`, `test_waiver_lapses_once_codeql_executes`.
+- Merge: `test_merged_only_after_the_transaction`, `test_main_moves_with_base_in_one_transaction`, `test_a_late_revoke_fails_the_transaction`, `test_an_archive_without_merged_line_is_merged_recovered`, `test_mini_push_refusal_is_storage_lag_not_halt`, `test_mini_unreachable_and_refused_are_told_apart`, `test_storage_lag_warns_the_heartbeat`, `test_no_key_path_in_runner_env`.
 
 _Mutants_ added to `scripts/localci/tests/mutants/merger_mutants.py`, each killed by that file:
 
-- Arming and the seal: `ready-recomputed`, `seal-optional`, `seal-below-threshold`, `seal-written-not-ready`, `seal-unsigned`, `seal-signed-by-admit-principal`, `signers-read-at-current-base`, `base-pinned-by-ancestry-only`, `merged-line-requirement-skipped`, `marker-without-seal`, `marker-from-ls-remote`, `intake-beside-armed`, `ancestor-unchecked`, `relative-binary`, `rehearse-live-state`.
+- Move, arming and the seal: `ready-recomputed`, `seal-optional`, `seal-below-threshold`, `seal-written-not-ready`, `seal-unsigned`, `seal-signed-by-admit-principal`, `seal-verified-against-git-signers`, `marker-read-before-verify`, `thresholds-read-at-current-base`, `base-rewind-vacuous`, `merged-line-requirement-skipped`, `marker-without-seal`, `marker-from-ls-remote`, `allow-list-unchecked`, `replace-objects-honoured`, `intake-beside-armed`, `ancestor-unchecked`, `relative-binary`, `heartbeat-from-state`, `rehearse-live-state`.
 - The arm: `arm-never-expires`, `arm-ignores-lease`, `arm-pid-start-optional`, `arm-not-written-at-drop`, `revoke-refused-unarmed`, `revoke-tree-unchecked`.
-- The hook: `hook-allows-refs-heads`, `hook-allows-refs-merger`, `hook-any-host`, `burn-in-post-receive`, `merged-path-unburned`, `scanner-echoes-match`.
+- The hook: `hook-allows-refs-heads`, `hook-allows-refs-merger`, `hook-allows-refs-replace`, `hook-any-host`, `burn-in-post-receive`, `merged-path-unburned`, `scanner-echoes-match`, `scanner-fail-open`, `scanner-range-unbounded`.
 - Admission: `schema-from-candidate`, `signers-from-candidate`, `admit-any-namespace`, `admit-{head,base,meta}-unbound`, `not-after-unanchored`, `admit-expiry-ignored`, `nonce-keyed-on-ref`, `revoke-not-terminal`, `batch-any-line`.
-- The rest: `gate-absent-is-success`, `waiver-unnamed`, `merged-before-transaction`, `transaction-without-verify`, `merged-recovered-skipped`, `storage-lag-halts`.
+- The rest: `gate-absent-is-success`, `waiver-unnamed`, `waiver-covers-executed-fail`, `waiver-survives-execution`, `merged-before-transaction`, `transaction-without-verify`, `main-left-behind`, `merged-recovered-skipped`, `storage-lag-halts`, `storage-unreachable-as-refused`, `storage-lag-silent`.
 
 **7. Residuals.**
 
-- _The executor (Q7, accepted)._ A session-owned VM decides every contained context's exit status, and FALSE_GREEN is no longer measurable, so a tampered run would not be detected. This is at parity with today, against error rather than attack.
-- _The hosted compare ends._ Only the guilt suites and the mutation sweeps hold the gate. zero's CI on `mini-zero-1` is a partial second opinion, for products only.
-- _Code scanning ends_: CodeQL is waived (Q2; Pysa covers python, nothing covers javascript), Dependabot ends, and the pre-receive scanner (Q5) replaces secret scanning and push protection.
-- _Admission is a convention (Q1)._ Any session on a host can obtain a seat signature, as any could apply the label; the signature adds binding and replay protection, not a fence. The fence is the token-signed seal.
-- _Sessions lose_ the PR UI, review comments, `gh pr create/view/checks`, auto-merge as the readiness gesture, notifications, and the PR number as cross-reference. `intake.py status <path>` reads the journal instead; `pipeline-ship`, `agent_start.py --release` (`gh-closed`) and gate 7's 65 files naming Teman2 are retargeted; `review.independent` (a runner import) is unchanged.
-- _Copies._ The Mini replica (Q4) and gate 8's bundle exist. Mini's sessions run as `nuzantara` and can write the replica, which makes it a backup, not an authority.
+- _Generator ≠ grader per merge (Q1)._ The seal fences ARMING, not merges. Per merge, generator ≠ grader is a convention at parity with today's shared `gh` login: a session-owned executor (Q7), a gate ref any pusher can write (Q6), and admissions any session can sign (Q1). Signatures add binding and replay protection, not a fence.
+- _The executor (Q7)._ A session-owned VM decides every contained context's exit status, and FALSE_GREEN is no longer measurable: parity with today, against error, not attack.
+- _The hosted compare ends._ The guilt suites and mutation sweeps hold the gate; zero's CI on `mini-zero-1` is a partial second opinion, for products only.
+- _Code scanning ends_: CodeQL is waived until it executes locally (Q2; javascript is uncovered meanwhile, Pysa covers python), Dependabot ends, and the pre-receive scanner (Q5) replaces secret scanning and push protection.
+- _Sessions lose_ the PR UI, review comments, `gh pr create/view/checks`, auto-merge as the readiness gesture, notifications and PR numbers. `intake.py status <path>` reads the journal; `pipeline-ship`, `agent_start.py --release` (`gh-closed`) and gate 7's files naming Teman2 are retargeted; `review.independent` is unchanged.
+- _Copies._ Mini's replica and gate 8's bundle. Mini's `nuzantara` sessions can write the replica, so it is a backup, trusted only through the restore's comparison and touch.
 - _Deploy latency._ A backend merge deploys after zero_sync (≤ 30 min) and zero's CI.
 
-**Rulings (Zero, 2026-10-11).**
+**Rulings (2026-10-11).** Zero answered Q1, Q2, Q4 and Q7 in the M5 zero-migration session's question tool, choosing the recommended option each time. Q3, Q5 and Q6 are the session's defaults, which the owner saw and did not object to.
 
-1. **Q1 seat.** Admission uses a presence-free, non-exportable seat key per host. The seal and the marker use the separate `zero-seal` token principal (item 3b).
-2. **Q2 replace.** The criterion term becomes `required_executed_ok`, with CodeQL's two contexts waived and Pysa kept.
-3. **Q3 operator admin acts.** The commands follow.
-4. **Q4 Mini.** A bare replica on Mini, pushed after each merge.
-5. **Q5 yes.** A secret scanner runs in `pre-receive`.
-6. **Q6 journal only.**
-7. **Q7 residual.** The executor stays session-owned.
+1. **Q1 seat (Zero).** A presence-free, non-exportable seat key per host admits; the separate `zero-seal` token principal signs the seal and the marker (item 3b).
+2. **Q2 replace (Zero).** `required_executed_ok`, with CodeQL's two contexts waived while blocked and Pysa kept.
+3. **Q3 operator admin acts (default).** The commands follow.
+4. **Q4 Mini (Zero).** A bare replica on Mini, pushed after each merge.
+5. **Q5 scanner (default).** A secret scanner in `pre-receive`.
+6. **Q6 journal only (default).**
+7. **Q7 residual (Zero).** The executor stays session-owned.
 
-_Operator commands (Q3), on Pro as an admin._ Each block ends with a check, and the next block starts only after that check passes.
+_Operator commands (Q3), on Pro as an admin._ Each block ends with a check; the next starts only after it passes.
 
 ```sh
 # 1 — the localci user: enabled, staff (traverses ~nuzantara), real shell, no usable password
@@ -381,9 +320,16 @@ id localci && sudo -u localci /usr/bin/true && echo "localci ok"
 # 2 — sshd: append the block, validate, read back the effective values
 printf '\nMatch User localci\n    AuthenticationMethods publickey\n    PasswordAuthentication no\n    KbdInteractiveAuthentication no\n    DisableForwarding yes\n    PermitTTY no\n' | sudo tee -a /etc/ssh/sshd_config >/dev/null
 sudo sshd -t && sudo sshd -T -C user=localci,host=localhost,addr=127.0.0.1 | grep -Ei '^(authenticationmethods|passwordauthentication|kbdinteractiveauthentication|disableforwarding|permittty) '
+
+# 3 — the secret scanner: gitleaks at the version and sha256 pinned in the header of BASE's scripts/localci/gitleaks.toml
+V='<pinned version>'; SHA='<pinned sha256 of the darwin_arm64 tarball>'; d=$(mktemp -d)
+curl -fsSL -o "$d/gl.tgz" "https://github.com/gitleaks/gitleaks/releases/download/v$V/gitleaks_${V}_darwin_arm64.tar.gz"
+echo "$SHA  $d/gl.tgz" | shasum -a 256 -c - && tar -xzf "$d/gl.tgz" -C "$d" gitleaks
+sudo install -d -o root -g wheel -m 0755 /usr/local/localci/bin && sudo install -o root -g wheel -m 0755 "$d/gitleaks" /usr/local/localci/bin/gitleaks
+/usr/local/localci/bin/gitleaks version && stat -f '%Su:%Sg %Lp' /usr/local/localci/bin/gitleaks
 ```
 
-The second check must print `publickey`, `no`, `no`, `yes` and `no`. New ssh connections read the file. Before the move, a key login as `localci` must reach `intake-shell` and nothing else.
+The second check must print `publickey`, `no`, `no`, `yes` and `no`; new ssh connections read the file, and before the move a key login as `localci` must reach `intake-shell` and nothing else. The third must print `$V`, then `root:wheel 755`.
 
 ## 3. What is lost, and what covers it
 
