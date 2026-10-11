@@ -87,8 +87,8 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
   ],
   [
     "why.remote_annual_income_usd",
-    "This amount decides whether the remote-worker visa can fit your plan. It is used exactly as you enter it.",
-    "Jumlah ini menentukan apakah visa pekerja jarak jauh dapat sesuai dengan rencana Anda. Jumlah ini digunakan persis seperti yang Anda masukkan.",
+    "The remote-worker visa (E33G) has a yearly income requirement. The amount is used exactly as you enter it.",
+    "Visa pekerja jarak jauh (E33G) memiliki persyaratan penghasilan tahunan. Jumlah ini digunakan persis seperti yang Anda masukkan.",
   ],
   [
     "why.remote_pt_pma",
