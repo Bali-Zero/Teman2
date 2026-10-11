@@ -1,0 +1,26 @@
+task_id: kbli-nav-design-p3h2d-frames
+mission: kbli-nav-design-loop (Track A, build, lot PR 3-h-2b' — successor of #8276, depth-1 cure of its gate BLOCK)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  The depth-1 cure of a fresh gate's BLOCK on #8276 (the judge FAILed the real marks stack, 6 FAIL). It carries #8276's four
+  commits (cherry-picked from its frozen head 561fcfa8e4) and adds one: png_census only. Renders stay byte-identical.
+l_level: L1
+gate_class: opus
+objective: >-
+  The judge passes the marks stack it is meant to seal (lead rulings 2026-10-11 on the #8276 BLOCK). (1) headsup.sentence's
+  upper bound is 1.1 x serif(20) = 44 px at 2 px/pt, calibrated on the real Fraunces Text glyphs: 20 pt lines are 36-40 px
+  here (31-42 px in CoreText), a 24 pt line 47-48 px. (2) cap is measured per band: sheet-ledger = display(64), every other
+  band title(36), the same 0.6-1.0 window; a 36 pt cap on the ledger and a 64 pt cap on the card FAIL. (3) C11's seen()
+  grows only through the chip's own colours and never into a rule: a chip 10 px off that touches a full-width rule FAILs.
+  (4) A single-record band (detail-card, dossier, sheet-ledger, chat) that arms C23 and carries no record FAILs naming it.
+  (5) A non-string census value, or a frame with no value, FAILs naming its cause. Binding 5 (the ladder .offset) belongs to
+  the marks PR; the cap window in font terms is 29-48 pt for Title (a note for any size-only reader).
+constraints:
+  - png_census.py only; renders byte-identical; no check armed here.
+  - Every new rule has a guilt case that FAILs and an innocence case that passes, run on every invocation, on real glyphs where a glyph is the thing measured.
+acceptance:
+  - text: The judge SHALL pass the real marks stack (aprep3/mkv17 3081c8ed05 with this head merged locally, never pushed).
+    probe: "Pro: INTERNAL build, render_set CENSUS_IDENTITY=1, png_census rc 0, 0 FAIL, 1 VACUOUS (xxl/registry-table C8)"
+  - text: Every binding SHALL reject its guilt case and accept its innocent one.
+    probe: "M5/Pro: png_census.py self-test 135/135; removing the rule-stop makes the touching-rule case fail"
