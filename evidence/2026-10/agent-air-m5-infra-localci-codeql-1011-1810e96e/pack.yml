@@ -129,19 +129,25 @@ dissent:
       days and the newest completed security.yml run on main green on the leg. M3: uses_pin on the three steps. N1: the exact probe string, `database
       init` asserted absent, mutant cq-version-probe-swallowed killed. N2: both files, and the override script, in both path lists; test_hosted_workflow
       requires every real file the CodeQL suite reads.
-  - seat: kimi-code/k3 council (round 1)
+  - seat: kimi-code/k3 council (round 1), the BLOCKER
     objection: >-
-      BLOCKER the BASE-trusted leg script takes CODEQL_BIN, CODEQL_SOURCE_ROOT, CODEQL_BASE_CONFIG (and the work dir) from the env. HIGH the local CLI version
-      is never asserted equal to the pin; the sentinel has no recency floor. MEDIUM skip_is_pass lets one `if:` false plus another skip pass. LOW the
-      config rewriter on an inline queries or a column-0 comment in the block; REPO_RE accepts `.` and `..`.
+      BLOCKER the BASE-trusted leg script takes CODEQL_BIN, CODEQL_SOURCE_ROOT, CODEQL_BASE_CONFIG (and the work dir) from the env, so a stub CLI, an
+      empty source root or weaker queries would give a false PASS.
+    status: PLAUSIBLE
+    resolution: >-
+      Not reachable as stated: the step env is composed by the runner from BASE's workflow, job and step env plus the matrix step env (plan_service_context:
+      resolve_steps); runner.py refuses a step whose body writes GITHUB_ENV/PATH/STATE (the "writes GITHUB_ENV/PATH/STATE" refusal in
+      plan_service_context); and the codeql job's only earlier step is `Checkout code`, which is emulated, so no candidate code runs before the leg.
+      Hardened anyway, since the seam costs nothing: the plan BLOCKS when the composed env of a step running codeql_leg.sh carries one of the four seams
+      (cq-leg-seam-open).
+  - seat: kimi-code/k3 council (round 1), the rest
+    objection: >-
+      HIGH the local CLI version is never asserted equal to the pin; the sentinel has no recency floor. MEDIUM skip_is_pass lets one `if:` false plus
+      another skip pass. LOW the config rewriter on an inline queries or a column-0 comment in the block; REPO_RE accepts `.` and `..`.
     status: CONFIRMED
     resolution: >-
-      The BLOCKER is rebutted as unreachable as stated, the rest is confirmed. The BLOCKER is not reachable as stated: the step env is composed by the runner from BASE's workflow, job and step env and the matrix step env only
-      (plan_service_context: resolve_steps), runner.py refuses a step whose body writes GITHUB_ENV/PATH/STATE (the "writes GITHUB_ENV/PATH/STATE" refusal in
-      plan_service_context), and the codeql job's only earlier step is `Checkout code`, which is emulated, so no candidate code runs before the leg.
-      Hardened anyway, since the seam costs nothing: the plan BLOCKS when the composed env of a step running codeql_leg.sh carries one of the four seams
-      (cq-leg-seam-open). HIGH: the leg compares `codeql version` with CODEQL_PIN (the matrix's one literal; the image build already asserts the pin,
-      runner.py DEPS_CODEQL) and gives no verdict on a difference (cq-local-version-unchecked); freshness added (cq-sentinel-stale-ok). MEDIUM: skipped_by_own_if
+      HIGH: the leg compares `codeql version` with CODEQL_PIN (the matrix's one literal; the image build already asserts the pin, runner.py DEPS_CODEQL)
+      and gives no verdict on a difference (cq-local-version-unchecked); freshness added (cq-sentinel-stale-ok). MEDIUM: skipped_by_own_if
       (cq-skip-mixed-passes). LOW: the rewriter is no verdict on both shapes (cq-config-*), REPO_RE refuses `.`/`..` (cq-reader-repo-dots).
 residuals:
   - "The runner's changed list is base..candidate two-dot (an explicit base the merger passes), hosted's is merge-base..HEAD; for the merger's candidates (a merge of the PR onto the base) the two lists are the same."
