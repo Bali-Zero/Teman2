@@ -13,11 +13,12 @@ lanes:
   - lane: pr11-ground-truth
     role: ground_truth
     seat: >-
-      the committed Bali Zero processing-time catalogue the engine reads; the change asserts no figure
-      of its own, it only adds walks and pins what the engine already answers.
-    nb: apps/backend-rag/backend/data/bali_zero_processing_times_2026.json
-    query_hash: "6e7e7b72ea2b4f1afb79d1fcffa650cd58d37f6b1ebd3b277feec2df79f89b06" # pragma: allowlist secret
-    note: query_hash = sha256 of the catalogue file at origin/main.
+      the signed rule pack the engine evaluates (el.e33e.retirement, el.e33f.retirement and the
+      hf.*.retirement-income-below-minimum dead ends); the change asserts no figure of its own, it
+      pins what the pack already answers.
+    nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-027.source.json
+    query_hash: "0ead320b328d6554f879697bfefcd5ad6edd67f77ac304341bc27f646976c3c0" # pragma: allowlist secret
+    note: query_hash = sha256 of rulepack-prod-027.source.json at origin/main.
 pii_scan: clean
 bites:
   consumer: >-
@@ -36,9 +37,15 @@ receipts:
     seat: this session
   - claim: The backend census and age-boundary suites pass after the rebase.
     cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py backend/tests/services/visa_engine/test_fact_registry.py
-    result: "150 passed, 14 skipped"
+    result: "163 passed, 14 skipped"
     exit: 0
     ts: "2026-10-11T13:05:30Z"
+    seat: this session
+  - claim: The seq-21 pack suite, which replays the same walk corpus, passes with the corpus census (103 / 18 / 3 / 1) and the three pinned generic-sentence walks.
+    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine/test_seq21_pack.py
+    result: "52 passed"
+    exit: 0
+    ts: "2026-10-11T16:00:00Z"
     seat: this session
   - claim: The walk-corpus determinism suite passes with the 129-walk corpus.
     cmd: cd apps/mouth && npx vitest run walk-corpus-determinism
@@ -62,22 +69,22 @@ dissent:
     objection: MEDIUM - the legacy client-copy guard fails on the new string 'facts' (i18n.ts, client-copy.test.ts).
     status: RETRACTED
     disposition: >-
-      Not applicable to this branch (finding 1): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane. This diff itself still awaits a valid spalla scoped to its own git diff.
+      Not applicable to this branch (finding 1): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane.
   - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b, model verified in the rollout file)
     objection: MEDIUM - the no-door-copy bites observer is fail-open on skipped or reduced Vitest runs.
     status: RETRACTED
     disposition: >-
-      Not applicable to this branch (finding 2): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane. This diff itself still awaits a valid spalla scoped to its own git diff.
+      Not applicable to this branch (finding 2): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane.
   - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b, model verified in the rollout file)
     objection: LOW - the new Indonesian no-door strings read unnaturally.
     status: RETRACTED
     disposition: >-
-      Not applicable to this branch (finding 3): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane. This diff itself still awaits a valid spalla scoped to its own git diff.
+      Not applicable to this branch (finding 3): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane.
   - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b, model verified in the rollout file)
     objection: LOW - the 'with at least one door' test builds by hand the fields it should verify.
     status: RETRACTED
     disposition: >-
-      Not applicable to this branch (finding 4): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane. This diff itself still awaits a valid spalla scoped to its own git diff.
+      Not applicable to this branch (finding 4): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane.
   - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-20-01a129c7-c33f-70e2-a9bc-51c4d2d28740, model verified in the rollout file)
     objection: >-
       MEDIUM - the pack pointed at a brief_ref that does not exist.
@@ -108,3 +115,33 @@ dissent:
     status: RETRACTED
     disposition: >-
       Cured: renamed test_corpus_has_the_expected_real_interview_walks.
+  - seat: fresh Opus 5.5 gate (outside the contribution chain)
+    objection: >-
+      BLOCKER - test_seq21_pack.py::TestCensusReplay hard-codes 93 / 15 / 3 / 1 and the no-generic-sentence assertion; the 13 new walks broke both (2 failed at head).
+    status: RETRACTED
+    disposition: >-
+      Cured: census now 103 / 18 / 3 / 1 with the PR-11 arithmetic in the docstring, and the three income_2999 walks that still end on the generic sentence on the seq-21 pack are pinned by name (the named cause is a seq-23+ rule). TestCensusReplay 8 passed, whole file 52 passed.
+  - seat: fresh Opus 5.5 gate (outside the contribution chain)
+    objection: >-
+      MEDIUM - RETIREMENT_INCOME_BELOW_THRESHOLD on the 3 dead ends was only a comment; swapping the rule's reason_code stayed green.
+    status: RETRACTED
+    disposition: >-
+      Cured: test_retirement_income_dead_ends_name_their_cause_on_every_sequence_that_has_the_rule asserts the code on seq-23..27 and its absence on the SUPPORTED walks; mutating the reason_code of both hf rules in seq-27 turns it red (restored).
+  - seat: fresh Opus 5.5 gate (outside the contribution chain)
+    objection: >-
+      LOW - stale receipt (150 passed) and ground_truth lane naming the processing-times file.
+    status: RETRACTED
+    disposition: >-
+      Cured: receipt re-recorded at 163 passed, 14 skipped; the lane now names rulepack-prod-027.source.json with its origin/main sha256.
+  - seat: fresh Opus 5.5 gate (outside the contribution chain)
+    objection: >-
+      LOW (already on main) - no-path-doors.replay.json (seq-23) does not list the 3 new NO_SUPPORTED_PATH walks.
+    status: PLAUSIBLE
+    disposition: >-
+      Not changed here: the file belongs to the no-door lane and its fingerprint only hashes the walks it lists; follow-up for that lane, not a regression of this PR.
+  - seat: fresh Opus 5.5 gate (outside the contribution chain)
+    objection: >-
+      COSMETIC - ruff format on new hunks and observer files, stale '6 age-64' docstring, stale 'awaits a valid spalla' dissent text.
+    status: RETRACTED
+    disposition: >-
+      Cured: observer files and new hunks formatted, docstring corrected, dissent text updated; pre-existing unformatted code left alone.
