@@ -1,0 +1,52 @@
+task: >-
+  Run the zero-sync launchd job (com.nuzantara.zero-sync on Mini) every 5 minutes instead of every 30, so that
+  once backend deploys come from FastLabsNet/zero (docs/runbooks/zero-cutover.md gate 5) the canonical-merge to
+  production latency is sync interval plus deploy, not a step back from today's merge = deploy. The organ's
+  expected heartbeat window follows the new cadence.
+lane: infra
+machine: m5
+date: 2026-10-11
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, measured: evidence_pack_lint --print-floor --changed-files gives 3 for
+  infra/launchagents/com.nuzantara.zero-sync.plist and infra/launchagents/wrappers/mini-zero-sync.sh (hot-zone
+  path term) and 1 for apps/organism/organism/organs_registry.yaml, docs/runbooks/zero-cutover.md and
+  scripts/zero_sync/README.md; the husky pre-push refused the push on floor-needs-brief. The floor sets the
+  gear, not the size: this is a cadence change of a few lines.
+acceptance:
+  A1:
+    text: >-
+      The plist SHALL lint OK, SHALL carry StartInterval 300, and SHALL NOT carry KeepAlive (a one-shot job
+      under StartInterval, never restarted as if dead).
+    probe: plutil -lint infra/launchagents/com.nuzantara.zero-sync.plist; plutil -p ... | grep StartInterval; grep -c KeepAlive ... (0)
+  A2:
+    text: >-
+      The organ registry YAML SHALL load and organ mini.zero_sync SHALL read expected_hb_seconds 1200.
+    probe: python3 -c 'import yaml; ...' over apps/organism/organism/organs_registry.yaml
+  A3:
+    text: >-
+      The expected heartbeat window SHALL NOT read a legitimately slow run as silence: a run bounded by the
+      payload's own RUN_BUDGET and NET_TIMEOUT must not be stale/dead under the registry value.
+    probe: council review (kimi-code/k3, gpt-5.6-sol) of scripts/zero_sync/zero_sync.py constants vs expected_hb_seconds
+  A4:
+    text: >-
+      Live after merge: the plist SHALL be reinstalled on Mini (copy to the live pair, bootout/bootstrap) and
+      ~/logs/mini-zero_sync/run.log SHALL show two consecutive "run start" lines about 300 s apart with the
+      organ heartbeat ~/.organism/last_seen/mini.zero_sync.json reading ok.
+    probe: ssh mini 'launchctl print gui/$(id -u)/com.nuzantara.zero-sync | grep -i "run interval"; tail -20 ~/logs/mini-zero_sync/run.log; cat ~/.organism/last_seen/mini.zero_sync.json'
+out_of_scope: >-
+  Moving deploys to zero (gate 5 itself); changing RUN_BUDGET, NET_TIMEOUT or the payload's behaviour; the
+  healer's treatment of status warning (a pre-existing contract); pruning or rotating launchd .out/.err logs.
+assumptions:
+  - text: An up-to-date run takes about 4 seconds, so a 300 s cadence is idle almost all of the time.
+    status: verified
+    probe: ssh mini 'tail -20 ~/logs/mini-zero_sync/run.log' (run start 15:18:49, run done 15:18:53 rc=0)
+  - text: launchd does not overlap StartInterval runs of one job, and the payload holds an exclusive non-blocking flock as a second layer.
+    status: verified
+    probe: grep -n flock scripts/zero_sync/zero_sync.py (fcntl.flock LOCK_EX|LOCK_NB at 540)
+  - text: A run that takes longer than expected_hb_seconds (1200) is not reported as silence.
+    status: unverified
+    probe: council round 1 says it can be (RUN_BUDGET 3300, NET_TIMEOUT 1800); see pack dissent, needs an owner decision on the value.
+  - text: Gear 3 needs the independent final-gate verdict on the head SHA, commissioned after the last push.
+    status: unverified
+    probe: gh pr checks <pr> after the verdict is posted.
