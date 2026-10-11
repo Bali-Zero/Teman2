@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: f381ed5de3fe38ada161130c2469409c5a2f7779eb766d6d087a10f06f110532 # pragma: allowlist secret
+checksum: 6dbf33bdf38065c117163b618c478a16d4e96fcd10d0681a58e8b7eaa7f0c32c # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2782,6 +2782,26 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/mini.zero_sync.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.restore_drill
+  runtime: mini_launchd
+  type: cron
+  # 2851200 = 33 days: a monthly tick plus enough slack for long months and launchd jitter.
+  expected_hb_seconds: 2851200
+  owner_module: infra/launchagents/wrappers/mini-restore-drill.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.restore-drill
+  severity_on_silence: warning
+  notes: monthly disaster-recovery proof; restores the newest Tigris pg_dump into
+    throwaway PostGIS and runs the Level-5 restore verifier
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.restore_drill.json
     timestamp_field: ts
     status_field: status
 - id: mini.voa_probe

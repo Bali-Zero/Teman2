@@ -139,6 +139,16 @@ jobs:
           # env-var prefix scoped to half a shell pipeline.
           DSN="postgresql://drill:drill@127.0.0.1:${DRILL_PORT}/nuzantara_drill"
 
+          # Recreate every safe production role referenced by ownership or
+          # privilege statements before replaying the dump. The scanner derives
+          # this from the current dump, so newly introduced roles do not rot a
+          # hard-coded CI list. PUBLIC, postgres and the drill superuser are
+          # excluded; hostile/non-identifier names fail closed.
+          python3 scripts/restore_drill/role_scanner.py "/tmp/$LATEST" \
+            --exclude drill --output /tmp/restore-drill-roles.sql
+          psql "$DSN" -v ON_ERROR_STOP=1 \
+            -f /tmp/restore-drill-roles.sql >/dev/null
+
           # ON_ERROR_STOP=1 (was 0): a restore that silently swallows a failed
           # statement is exactly the blind spot this drill exists to close —
           # see restore_drill_verify.py's own module docstring for the fuller
