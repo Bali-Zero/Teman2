@@ -220,7 +220,7 @@ struct RegistryVerdictSheet: View {
                     .font(Theme.scalable(19, weight: .semibold, design: .serif))
                     .foregroundStyle(Theme.white).fixedSize(horizontal: false, vertical: true)
                 if let reason = v.headlineReason, reason.isEmpty == false {
-                    Text(displayedReason(reason))
+                    Text(LabelBook.emphasis(displayedReason(reason), size: 12))
                         .font(Theme.scalable(12)).foregroundStyle(Theme.muted).lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true)
                         .textSelection(.enabled)

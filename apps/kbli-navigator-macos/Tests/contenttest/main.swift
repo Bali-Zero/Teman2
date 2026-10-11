@@ -232,7 +232,7 @@ let out: [String: Any] = MainActor.assumeIsolated {
     // A Bali reason draws its paired emphasis, never its asterisks (lead ruling 2026-10-11: Q24 over Z-3 for pairs):
     // a pair, single or double, takes the SemiBold cut (guilt); a lone "*" or none draws as written (innocence); and
     // over every record, both languages, each half LeadBody draws of the reason reads its source with only asterisks
-    // gone and no link. The 15 reasons that carry "*" all pair them, so none is left drawn.
+    // gone and no link. The 15 reasons that carry "*" all pair them, so none is left drawn on any surface.
     for (raw, want, marked) in [("Allocated as *Vila*, a **State** function.", "Allocated as Vila, a State function.", "VilaState"),
                                 ("A footnote* stays.", "A footnote* stays.", ""),
                                 ("No marker at all.", "No marker at all.", "")] {
@@ -248,7 +248,9 @@ let out: [String: Any] = MainActor.assumeIsolated {
         for isID in [false, true] {
             let s = LabelBook.humanise(OverlayStore.shared.displayReason(raw, isID: isID), record: k, isID: isID)
             let p = LeadBody.split(s, .reason)
-            for half in [p.lead, p.body].compactMap({ $0 }) {
+            // LeadBody's two halves (ledger, rail, card); the whole reason (registry sheet); the heads-up sentence
+            // (HeadsUpBlock, search row and peak), which is the reason itself when the Bali axis is undetermined
+            for half in [p.lead, p.body, s, KBLIVerdict.headsUp(record: k, isID: isID).sentence].compactMap({ $0 }) {
                 let a = LabelBook.emphasis(half, size: 13), drawn = String(a.characters)
                 if a.runs.contains(where: { $0.font != nil }) { reasonEmphasised.insert(k.kode) }
                 if drawn.contains("*") { reasonStars.append("\(k.kode) \(isID ? "id" : "en")") }
