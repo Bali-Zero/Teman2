@@ -81,7 +81,12 @@ CQ_RUN = cq("test_the_results_per_language_go_to_the_receipt_as_data_and_the_leg
 CQ_PIN = cq("test_a_changed_action_input_in_the_base_workflow_blocks_until_the_matrix_follows")
 CQ_SIG = cq("test_a_command_killed_by_a_signal_is_no_verdict_never_a_fail")
 CQ_CMD = cq("test_the_leg_script_builds_the_exact_command_lines_the_hosted_logs_show", "test_the_augmented_config_replaces_only_the_queries_block")
-CQ_READ = cq("test_the_reader_compares_the_newest_analysis_of_exactly_this_language")
+CQ_READ = cq("test_the_reader_compares_the_newest_analysis_of_exactly_this_language", "test_the_reader_ignores_another_scanner_uploading_under_the_same_category")
+CQ_RENAME = cq("test_a_rename_lists_both_paths_so_the_leg_runs_as_hosted_does")
+CQ_RUNALL = cq("test_an_unclassified_path_is_run_all_and_both_legs_run")
+CQ_LANG = cq("test_the_sentinel_reads_the_category_of_the_leg_own_language")
+CQ_VERPROBE = cq("test_a_version_probe_killed_by_a_signal_is_no_verdict_and_one_that_fails_is_its_own_exit")
+CQ_CORPUS = ("scripts/localci/tests/test_runner.py::test_the_corpus_check_also_runs_the_gate_flags_corpus_from_base",)
 
 # name: (file, text that must occur once, replacement, test files that must turn red)
 MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
@@ -680,6 +685,12 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "cq-old-queries-kept": (CQ_SH_FILE, 'block = ["queries:"] + [f"  - uses: {q.strip()}"', 'block = ["queries:"] + ["  - uses: old"] + [f"  - uses: {q.strip()}"', CQ_CMD),
     "cq-reader-oldest": (CQ_READER_FILE, 'return max(mine, key=lambda a: a["created_at"]) if mine else None',
                          'return min(mine, key=lambda a: a["created_at"]) if mine else None', CQ_READ),
+    "cq-changed-with-renames": (RUNNER, '"diff", "--no-renames", "--name-only", f"{base}..{ident', '"diff", "--name-only", f"{base}..{ident', CQ_RENAME),
+    "cq-run-all-forced-off": (RUNNER, '"MAP_JSON": json.dumps(cm)})\n        got = dict(', '"MAP_JSON": json.dumps({**cm, "run_all": False})})\n        got = dict(', CQ_RUNALL),
+    "cq-sentinel-python-only": (RUNNER, 'lang = str((local.get("leg") or {}).get("language") or "")', 'lang = "python"', CQ_LANG),
+    "cq-gate-flags-corpus-dropped": (RUNNER, '"-m", "unittest", "test_change_map", "test_security_gate_flags"', '"-m", "unittest", "test_change_map"', CQ_CORPUS),
+    "cq-version-probe-unstepped": (CQ_SH_FILE, '  step "$CQ" version --format=terse', '  "$CQ" version --format=terse', CQ_VERPROBE),
+    "cq-reader-any-tool": (CQ_READER_FILE, ' and a["tool"].get("name") == "CodeQL"]', ']', CQ_READ),
     "cq-reader-category-prefix": (CQ_READER_FILE, 'a.get("category") == category', 'str(a.get("category")).startswith(category)', CQ_READ),
 }
 

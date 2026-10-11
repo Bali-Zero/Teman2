@@ -77,12 +77,14 @@ sys.exit(0)
     return exe
 
 
-def fake_gh(tmp_path: Path, version: str | None = "2.27.2", rc: int = 0, language_present: bool = True) -> Path:
-    """A `gh api` that answers the code-scanning analyses list of the hosted main branch (two languages, newest first)."""
+def fake_gh(tmp_path: Path, version: str | None = "2.27.2", rc: int = 0, language_present: bool = True, versions: dict | None = None) -> Path:
+    """A `gh api` that answers the code-scanning analyses list of the hosted main branch (two languages, newest first); `versions` sets the
+    reported CLI per language ({"python": ..., "javascript": ...}) where `version` sets both."""
+    versions = {"python": version, "javascript": version, **(versions or {})}
     exe = tmp_path / "bin" / "gh"
     exe.parent.mkdir(parents=True, exist_ok=True)
-    rows = [{"id": 3, "category": "/language:python", "created_at": "2026-10-10T22:46:50Z", "tool": {"name": "CodeQL", "version": version}},
-            {"id": 2, "category": "/language:javascript", "created_at": "2026-10-10T22:41:02Z", "tool": {"name": "CodeQL", "version": version}},
+    rows = [{"id": 3, "category": "/language:python", "created_at": "2026-10-10T22:46:50Z", "tool": {"name": "CodeQL", "version": versions["python"]}},
+            {"id": 2, "category": "/language:javascript", "created_at": "2026-10-10T22:41:02Z", "tool": {"name": "CodeQL", "version": versions["javascript"]}},
             {"id": 1, "category": "/language:python", "created_at": "2026-10-08T23:54:33Z", "tool": {"name": "CodeQL", "version": "2.27.1"}}]
     if not language_present:
         rows = [r for r in rows if r["category"] != "/language:python"]
@@ -97,21 +99,24 @@ def base_files(extra: dict | None = None) -> dict:
 
 
 def plan_codeql(tmp_path: Path, monkeypatch, lang: str, candidate: dict, base_extra: dict | None = None, gh_version: str | None = "2.27.2",
-                gh_rc: int = 0, ctx_over: dict | None = None) -> tuple[dict, Path]:
+                gh_rc: int = 0, ctx_over: dict | None = None, gh_versions: dict | None = None, after_candidate=None) -> tuple[dict, Path]:
     """Plan the real matrix entry for `lang` against a fixture repo whose BASE carries the real workflow, config, script and reader."""
     docker = fake_docker(tmp_path)
-    fake_gh(tmp_path, gh_version, gh_rc)
+    fake_gh(tmp_path, gh_version, gh_rc, versions=gh_versions)
     monkeypatch.setenv("PATH", f"{docker.parent}{os.pathsep}{os.environ['PATH']}")
     monkeypatch.setattr(runner, "READER_RETRY_WAITS", (0, 0, 0))
     ctx = matrix_ctx(lang)
     ctx = {**ctx, "local": {**ctx["local"], **(ctx_over or {})}}
     fx = fr.make_repo(tmp_path, candidate, base_files(base_extra))
+    if after_candidate:   # one more candidate commit (a rename needs a base file to move); the plan reads the worktree HEAD
+        after_candidate(fx["repo"])
     fr.plan(fx, "--isolation", "container", "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [ctx])))
     plan = json.loads((fx["run"] / "state" / "plan.json").read_text())
     return plan["checks"][ctx["local"]["check"]], fx["run"]
 
 
 DOCS_ONLY = {"docs/note.md": "# a note\n"}
+UNCLASSIFIED = {"zz_unclassified_top/thing.xyz": "x\n"}
 PY_CHANGE = {"apps/backend-rag/backend/app/new_module.py": "VALUE = 1\n"}
 JS_CHANGE = {"apps/mouth/src/new.ts": "export const v = 1;\n"}
 
@@ -196,6 +201,32 @@ def test_a_candidate_that_rewrites_the_flag_classifier_cannot_switch_its_own_sca
     liar = "import sys\nprint('run_codeql_python=false')\nprint('run_codeql_js=false')\n"
     spec, _ = plan_codeql(tmp_path, monkeypatch, "python", {"scripts/ci/security_gate_flags.py": liar, **PY_CHANGE})
     assert flags_of(spec)["outputs"]["run_codeql_python"] == "true"   # BASE's file ran: scripts/ci/ is security-sensitive, so everything runs
+
+
+@pytest.mark.parametrize("lang", LANGS)
+def test_an_unclassified_path_is_run_all_and_both_legs_run(tmp_path, monkeypatch, lang):
+    spec, run_dir = plan_codeql(tmp_path, monkeypatch, lang, {**DOCS_ONLY, **UNCLASSIFIED})
+    plan = json.loads((run_dir / "state" / "plan.json").read_text())
+    assert plan["checks"]["policy.change_map"]["data"]["run_all"] is True   # the BASE map fails open on a path no rule names
+    assert flags_of(spec)["outputs"] == {"run_codeql_python": "true", "run_codeql_js": "true"}   # DOCS_ONLY alone reads false/false
+
+
+def _git_mv_commit(src: str, dst: str):
+    def move(repo: Path) -> None:
+        (repo / dst).parent.mkdir(parents=True, exist_ok=True)
+        fr.git(repo, "mv", src, dst)
+        fr.git(repo, "commit", "-q", "-m", "move")
+    return move
+
+
+@pytest.mark.parametrize("lang,old,flag", [("python", "apps/backend-rag/backend/app/old_mod.py", "run_codeql_python"),
+                                          ("javascript", "apps/mouth/src/old_mod.ts", "run_codeql_js")])
+def test_a_rename_lists_both_paths_so_the_leg_runs_as_hosted_does(tmp_path, monkeypatch, lang, old, flag):
+    body = "VALUE = 1\n" * 20   # identical content: git's rename detection sees a rename, not a delete and an add
+    spec, run_dir = plan_codeql(tmp_path, monkeypatch, lang, DOCS_ONLY, base_extra={old: body}, after_candidate=_git_mv_commit(old, "docs/moved.txt"))
+    changed = json.loads((run_dir / "state" / "plan.json").read_text())["changed_files"]
+    assert old in changed and "docs/moved.txt" in changed   # hotzone_changed_files.sh lists both: `git diff --no-renames`
+    assert flags_of(spec)["outputs"][flag] == "true"
 
 
 def test_a_classifier_that_fails_is_hosted_fail_open_the_job_result_is_not_success_and_the_leg_runs(tmp_path):
@@ -372,6 +403,13 @@ def test_a_command_killed_by_a_signal_is_no_verdict_never_a_fail(tmp_path, monke
     assert runner.steps_verdict(combined(steps), spec)[0] == "ERROR"
 
 
+def test_a_version_probe_killed_by_a_signal_is_no_verdict_and_one_that_fails_is_its_own_exit(tmp_path):
+    r = run_leg_sh(tmp_path / "killed", "init", "python", FAKE_FAIL_ON="version", FAKE_RC="137")
+    assert r.returncode == -9 and "died of signal 9" in r.stderr   # step: the same re-raised signal as any other command, never a red exit
+    r = run_leg_sh(tmp_path / "failed", "init", "python", FAKE_FAIL_ON="version", FAKE_RC="2")
+    assert r.returncode == 2 and "died of signal" not in r.stderr
+
+
 def test_a_timeout_or_a_driver_that_died_gives_no_verdict(tmp_path, monkeypatch):
     spec, run_dir = plan_codeql(tmp_path, monkeypatch, "python", PY_CHANGE)
     (run_dir / "logs").mkdir(exist_ok=True)
@@ -445,6 +483,17 @@ def test_a_hosted_version_that_differs_or_a_read_that_fails_is_blocked_never_gre
     assert spec["kind"] == "record" and spec["status"] == "BLOCKED" and needle in spec["reason"] and "version sentinel" in spec["reason"]
 
 
+@pytest.mark.parametrize("lang,versions,blocked", [
+    ("javascript", {"javascript": "2.27.3"}, True), ("python", {"javascript": "2.27.3"}, False),
+    ("python", {"python": "2.27.3"}, True), ("javascript", {"python": "2.27.3"}, False)])
+def test_the_sentinel_reads_the_category_of_the_leg_own_language(tmp_path, monkeypatch, lang, versions, blocked):
+    spec, _ = plan_codeql(tmp_path, monkeypatch, lang, {**PY_CHANGE, **JS_CHANGE}, gh_versions=versions)
+    if blocked:
+        assert spec["kind"] == "record" and spec["status"] == "BLOCKED" and "reports '2.27.3'" in spec["reason"] and f"for {lang}" in spec["reason"]
+    else:
+        assert spec["kind"] == "contained_jobs"
+
+
 def test_the_sentinel_runs_the_base_reader_not_the_candidates(tmp_path, monkeypatch):
     liar = "import sys\nsys.exit(0)\n"
     spec, _ = plan_codeql(tmp_path, monkeypatch, "python", {READER: liar, **PY_CHANGE}, gh_version="2.27.3")
@@ -460,13 +509,21 @@ def run_reader(rows, pin="2.27.2", language="python", rc=0):
 
 
 def test_the_reader_compares_the_newest_analysis_of_exactly_this_language(capsys):
-    rows = [{"id": 1, "category": "/language:python", "created_at": "2026-10-08T00:00:00Z", "tool": {"version": "2.27.1"}},
-            {"id": 2, "category": "/language:python", "created_at": "2026-10-10T00:00:00Z", "tool": {"version": "2.27.2"}},
-            {"id": 3, "category": "/language:javascript", "created_at": "2026-10-11T00:00:00Z", "tool": {"version": "2.99.0"}},
-            {"id": 4, "category": "/language:python-extra", "created_at": "2026-10-12T00:00:00Z", "tool": {"version": "2.99.0"}}]
+    rows = [{"id": 1, "category": "/language:python", "created_at": "2026-10-08T00:00:00Z", "tool": {"name": "CodeQL", "version": "2.27.1"}},
+            {"id": 2, "category": "/language:python", "created_at": "2026-10-10T00:00:00Z", "tool": {"name": "CodeQL", "version": "2.27.2"}},
+            {"id": 3, "category": "/language:javascript", "created_at": "2026-10-11T00:00:00Z", "tool": {"name": "CodeQL", "version": "2.99.0"}},
+            {"id": 4, "category": "/language:python-extra", "created_at": "2026-10-12T00:00:00Z", "tool": {"name": "CodeQL", "version": "2.99.0"}}]
     assert run_reader(rows) == 0 and run_reader(rows, language="javascript", pin="2.99.0") == 0
     assert run_reader(rows, pin="2.27.1") == 3 and "MISMATCH" in capsys.readouterr().err   # the older python analysis does not stand in
     assert run_reader(rows, language="go") == 4 and "NO-ANALYSIS" in capsys.readouterr().err
+
+
+def test_the_reader_ignores_another_scanner_uploading_under_the_same_category(capsys):
+    rows = [{"id": 1, "category": "/language:python", "created_at": "2026-10-10T00:00:00Z", "tool": {"name": "CodeQL", "version": "2.27.2"}},
+            {"id": 2, "category": "/language:python", "created_at": "2026-10-12T00:00:00Z", "tool": {"name": "OtherScanner", "version": "9.9.9"}},
+            {"id": 3, "category": "/language:python", "created_at": "2026-10-13T00:00:00Z", "tool": {"version": "9.9.9"}}]
+    assert run_reader(rows) == 0
+    assert run_reader(rows[1:]) == 4 and "NO-ANALYSIS" in capsys.readouterr().err   # only a non-CodeQL analysis is no CodeQL analysis
 
 
 @pytest.mark.parametrize("rows,rc", [("not json", 0), ({"message": "Not Found"}, 0), ([], 1)])

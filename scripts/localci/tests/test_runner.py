@@ -446,8 +446,18 @@ def test_real_contexts_matrix_loads_and_never_yields_pass_while_it_has_blocked_c
     blocked = [n for n, v in c["map"].items() if v["mapping"] in ("blocked", "not_implemented")]
     # no mapping is `blocked` any more (the CodeQL contexts are executed), but this fixture plans without a container: every executed context's
     # check is BLOCKED, so the overall still reads BLOCKED — the claim under test is that a matrix run here is never PASS
-    assert s["overall"] != "PASS" and (s["overall"] == "BLOCKED" or not blocked)
+    assert s["overall"] == "BLOCKED"
     assert set(blocked) <= set(s["contexts"]["blocked"])
+
+
+def test_the_corpus_check_also_runs_the_gate_flags_corpus_from_base(tmp_path):
+    red = "import unittest\n\n\nclass T(unittest.TestCase):\n    def test_flags(self):\n        self.fail('the flag math is wrong')\n\n\nif __name__ == '__main__':\n    unittest.main()\n"
+    fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "scripts/ci/test_security_gate_flags.py": fr.REAL_REPO.joinpath("scripts/ci/test_security_gate_flags.py").read_text()},
+                      {"scripts/ci/test_security_gate_flags.py": red})   # BASE's corpus is red; the candidate's copy is the real, green one
+    fr.plan(fx)
+    fr.run(fx, "--only", "policy.trusted_classifier_corpus")
+    c = fr.load_state(fx)["checks"]["policy.trusted_classifier_corpus"]
+    assert c["status"] == "FAIL" and "the flag math is wrong" in Path(c["log"]).read_text()   # security.yml runs it beside test_change_map.py
 
 
 def test_secret_env_rule_is_an_entity_not_a_spelling():
