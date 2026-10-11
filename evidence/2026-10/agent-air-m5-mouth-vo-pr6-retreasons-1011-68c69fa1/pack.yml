@@ -1,0 +1,87 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 (decisions on the E33/retirement program, plan PR-6 from the 2026-10-11 E33 audit) - a
+  retirement visitor below the passive-income bound got a reason that never named the figure the rules
+  check; the page must say USD 3,000 a month, and the deposit reason must name the USD 50,000 figure and
+  the income condition.
+mission: >-
+  A retirement visitor below the passive-income bound is told the figure the rules check - USD 3,000 a month -
+  and the E33E reason names the USD 50,000 deposit and the income condition.
+lanes:
+  - lane: pr6-retirement-reasons
+    role: build
+    seat: Claude Sonnet 5 implementer (subagent), worktree mouth-vo-pr6-retreasons-1011 on M5.
+  - lane: pr6-ground-truth
+    role: ground_truth
+    seat: >-
+      Newest signed pack: hf.e33e and hf.e33f retirement-income-below-minimum (lt 3000) and el.e33e.retirement
+      (gte 50000 deposit, gte 3000 monthly passive income), pinned in engine-adapter.ts as
+      RETIREMENT_INCOME_THRESHOLD_USD and E33E_DEPOSIT_THRESHOLD_USD; the change asserts no rule of its own,
+      it states the visitor's answers against those rules.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "6d6b36a4da16fafd6c9653232d658570811972711047bda12e9a7c65e4ab40a0" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at origin/main (before the change).
+pii_scan: clean
+bites:
+  consumer: >-
+    the reason line of the public Visa Oracle result page on a NO_SUPPORTED_PATH for a retirement visitor
+    below the passive-income bound, and the E33E eligible sentence (engine-adapter.ts reason builder);
+    live after promote, a headless walk on https://balizero.com/visa-oracle of retirement, age 64, passive
+    income USD 2,999 a month shows the declared-figure sentence (and its Indonesian twin) and not the age-55 sentence.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_retirement_reasons.py
+  expect: "contains:retirement reasons hold"
+receipts:
+  - claim: "The branch sits on a fresh origin/main (nothing pushed); the only conflict was engine-adapter.ts, where PR 8256 (c4d6ff4005) added secondHomeDepositHolderReason in the same reason chain, resolved keeping both behaviours."
+    cmd: git fetch origin main && git rebase origin/main
+    result: "one conflict in engine-adapter.ts resolved by chaining both builders (OPERATIONAL -> deposit-holder sentence, RETIREMENT_INCOME_BELOW_THRESHOLD -> income sentence); HEAD c4d2928989 on df316e3a09"
+    exit: 0
+    ts: "2026-10-11T09:20:00Z"
+    seat: this session
+  - claim: "The visa-oracle _lib Vitest tree after the rebase."
+    cmd: cd apps/mouth && vitest run 'src/app/(visa-oracle)/visa-oracle/_lib'
+    result: "Test Files 1 failed | 30 passed (31); Tests 2 failed | 1041 passed (1043) - both failures in enumerate-interview-space.test.ts (a file that does not import engine-adapter), killed by the 5s per-test timeout at machine load average 172; rerun of that file alone with a 120s ceiling: 39 passed, 1 failed (the same load-bound exhaustive walk); engine-adapter, client-copy, copy-truth and i18n-census files all pass"
+    exit: 1
+    ts: "2026-10-11T09:22:00Z"
+    seat: this session
+  - claim: "apps/mouth typechecks after the rebase."
+    cmd: cd apps/mouth && tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-11T09:30:00Z"
+    seat: this session
+  - claim: "The observer passes: engine-adapter test file, full pass, five required titles present."
+    cmd: python3 scripts/ci/observe_visa_oracle_retirement_reasons.py
+    result: "adapter Tests  150 passed (150); retirement reasons hold"
+    exit: 0
+    ts: "2026-10-11T09:32:52Z"
+    seat: this session
+  - claim: "The observer's parser and required-title checks reject skipped, todo, failed and reduced counts."
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_retirement_reasons.py
+    result: "12 passed"
+    exit: 0
+    ts: "2026-10-11T09:33:00Z"
+    seat: this session
+  - claim: "The legacy client-copy guard and the i18n census stay green."
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py && python3 scripts/ci/observe_visa_oracle_i18n_census.py
+    result: "OK visa-oracle client copy: 3539 literals scanned, 0 banned; i18n census Tests 6 passed (6), census holds"
+    exit: 0
+    ts: "2026-10-11T09:34:00Z"
+    seat: this session
+decisions:
+  - id: D-fact-derived
+    decision: >-
+      RETIREMENT_INCOME_BELOW_THRESHOLD is fact-derived: the declared figure is echoed against USD 3,000 a
+      month; a not-sure answer says it counted as zero (the fact mapper's conservative 0); the static
+      fallback names the figure. E33E_RETIREMENT_ELIGIBLE appends the income condition after the deposit figure.
+  - id: D-pinned
+    decision: >-
+      RETIREMENT_INCOME_THRESHOLD_USD = 3000 and E33E_DEPOSIT_THRESHOLD_USD = 50000 are exported and pinned by
+      tests to the newest signed pack, so a pack change fails the build instead of drifting the copy.
+  - id: D-age-rewording-dropped
+    decision: >-
+      The E33E_AGE_55_59_ADVISOR_CHECK rewording is deliberately NOT in this change: the Permenkumham 11/2024
+      text could not be opened, and primary sources show Permenimipas 3/2025 revokes only Pasal 43/45/52-55
+      while the E33 articles 56-63 stay in force. Say so in the PR body.
+dissent: []
