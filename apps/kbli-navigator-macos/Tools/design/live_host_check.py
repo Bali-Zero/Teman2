@@ -20,7 +20,7 @@ EXEMPT_SITES = {("RegistryVerdictSheet.swift", "KBLIRegistryView"): "embedded ch
 # A site the app must keep (so the check cannot pass vacuously), required once its View is immersive-aware: (file, view).
 REQUIRED = [("SearchListView.swift", "RegistryVerdictSheet"), ("RootView.swift", "ChatView")]
 HOSTED = re.compile(r"\.immersiveHost\(\)|\bImmersiveHost\s*\{")
-FORCED_FLAT = re.compile(r"\.environment\(\\\.immersive,\s*false\)")
+FORCED_FLAT = re.compile(r"\.environment\(\\\.immersive,\s*false\)|\.transformEnvironment\(\\\.immersive\)")   # any write of the switch
 COMMENT = re.compile(r"//[^\n]*")
 IMMERSIVE_READ = re.compile(r"@Environment\(\\\.immersive\)")
 # The mount roots: Views a UI path constructs. Their children read the environment and need no host of their own.
@@ -82,6 +82,9 @@ def main():
         outside = [aware, chat, ("SearchListView.swift", "x\n    RegistryVerdictSheet(kbli: k) {\n    }\n    .immersiveHost().environment(\\.immersive, false)\n"),
                    ("RootView.swift", "case .chat:\n    ChatView().immersiveHost()\n")]
         assert check(outside) == [], "an override OUTSIDE the host overrides nothing: the sheet is immersive"
+        transform = [aware, chat, ("SearchListView.swift", "x\n    RegistryVerdictSheet(kbli: k) {\n    }\n    .transformEnvironment(\\.immersive) { $0 = false }\n    .immersiveHost()\n"),
+                     ("RootView.swift", "case .chat:\n    ChatView().immersiveHost()\n")]
+        assert len(check(transform)) == 1, "a transformEnvironment write of the switch inside the host must fail"
         block = [aware, chat, ("SearchListView.swift", "x\n    ImmersiveHost { RegistryVerdictSheet(kbli: k) {\n    }.environment(\\.immersive, false) }\n"),
                  ("RootView.swift", "case .chat:\n    ChatView().immersiveHost()\n")]
         assert len(check(block)) == 1, "an override INSIDE an ImmersiveHost block must fail"
