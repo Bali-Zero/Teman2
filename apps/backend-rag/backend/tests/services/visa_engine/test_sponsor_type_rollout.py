@@ -140,7 +140,10 @@ class TestSponsorTypeRolloutDefault:
         sixteen on 2026-09-21 (Slice A7-B): ``person_guardian_consent``, the
         minor-hold guardian consent assertion whose question ships in a
         following lane (mouth ``tree.ts``) — see
-        ``TestFactVocabularyExtensionRolloutDefault0921``.
+        ``TestFactVocabularyExtensionRolloutDefault0921``. It widened to
+        seventeen on 2026-10-11 (seq-28 Step A):
+        ``work_annual_foreign_income_usd``, whose question ships in Step B —
+        see ``TestFactVocabularyExtensionRolloutDefaultE33G``.
         """
         optional = {
             name
@@ -166,6 +169,8 @@ class TestSponsorTypeRolloutDefault:
             "investment_meets_published_threshold",
             # Slice A7-B, 2026-09-21.
             "person_guardian_consent",
+            # Seq-28 Step A, 2026-10-11.
+            "work_annual_foreign_income_usd",
         }, (
             "ApplicantFactsData's optional-field set changed. If you added a "
             "field with a default, don't: every fact is required so that an "
@@ -396,6 +401,60 @@ class TestFactVocabularyExtensionRolloutDefault0921:
 
         with pytest.raises(ValidationError):
             M.ApplicantFactsData.model_validate(body)
+
+
+class TestFactVocabularyExtensionRolloutDefaultE33G:
+    """The seq-28 Step A wire seam for E33G's annual foreign income fact."""
+
+    _WIRE_KEY = "work.annual_foreign_income_usd"
+
+    def test_a_body_omitting_the_key_still_validates(self) -> None:
+        body = _all_unknown_facts()
+        del body[self._WIRE_KEY]
+
+        facts = M.ApplicantFactsData.model_validate(body)
+
+        assert isinstance(facts.work_annual_foreign_income_usd, M.UnknownFact)
+        assert facts.work_annual_foreign_income_usd.status == "UNKNOWN"
+        assert facts.work_annual_foreign_income_usd.reason == enums.UnknownReason.NOT_ASKED
+
+    def test_the_default_asserts_unknown_and_never_a_value(self) -> None:
+        default = M._ANNUAL_FOREIGN_INCOME_ROLLOUT_DEFAULT
+        assert isinstance(default, M.UnknownFact)
+        assert default.status == "UNKNOWN"
+        assert not hasattr(default, "value")
+
+    def test_the_field_factory_yields_the_unknown_default(self) -> None:
+        field = M.ApplicantFactsData.model_fields["work_annual_foreign_income_usd"]
+        produced = field.default_factory()  # type: ignore[misc]
+        assert produced == M._ANNUAL_FOREIGN_INCOME_ROLLOUT_DEFAULT
+        assert produced.status == "UNKNOWN"
+
+    def test_a_supplied_value_is_honoured(self) -> None:
+        body = _all_unknown_facts()
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": 85_000}
+
+        facts = M.ApplicantFactsData.model_validate(body)
+
+        assert facts.work_annual_foreign_income_usd.status == "KNOWN"
+        assert facts.work_annual_foreign_income_usd.value == 85_000
+
+    @pytest.mark.parametrize("value", [-1, "85000"])
+    def test_invalid_values_are_rejected(self, value: int | str) -> None:
+        body = _all_unknown_facts()
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": value}
+
+        with pytest.raises(ValidationError):
+            M.ApplicantFactsData.model_validate(body)
+
+    def test_near_miss_key_still_bites_with_extra_forbidden(self) -> None:
+        body = _all_unknown_facts()
+        body["work.annual_foreign_income_usdx"] = dict(_UNKNOWN)
+
+        with pytest.raises(ValidationError) as exc_info:
+            M.ApplicantFactsData.model_validate(body)
+
+        assert any(error["type"] == "extra_forbidden" for error in exc_info.value.errors())
 
 
 class TestInvestmentAmountUsdIsRequiredAndTyped:

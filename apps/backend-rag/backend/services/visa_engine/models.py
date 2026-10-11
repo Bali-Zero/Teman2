@@ -1073,6 +1073,18 @@ _GUARDIAN_CONSENT_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
     status="UNKNOWN", reason="NOT_ASKED"
 )
 
+# Same rollout mechanism for seq-28 Step A (2026-10-11). The engine must
+# accept ``work.annual_foreign_income_usd`` before the deployed mouth starts
+# sending it; until Step B ships, omission means only that nobody asked.
+# The default MUST be a built ``UnknownFact``, never a dict or zero: zero
+# would fabricate a below-threshold answer for every existing caller.
+# FOLLOW-UP (remove the default): once Step B's mouth question ships and no
+# client omits this key, per ``TestFactVocabularyExtensionRolloutDefaultE33G``
+# in ``test_sponsor_type_rollout.py``.
+_ANNUAL_FOREIGN_INCOME_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
+    status="UNKNOWN", reason="NOT_ASKED"
+)
+
 
 class ApplicantFactsData(BaseModel):
     """``ApplicantFacts.facts`` (spec §2) — ``additionalProperties: false``
@@ -1081,7 +1093,8 @@ class ApplicantFactsData(BaseModel):
     ``family.sponsor_permit_basis`` fields (2026-08-23),
     ``immigration_renewal_paid`` (2026-08-24), the ten seq-21
     qualification facts (2026-09-13) and ``person_guardian_consent``
-    (2026-09-21, Slice A7-B) below — all the same rollout mechanism.
+    (2026-09-21, Slice A7-B), plus ``work_annual_foreign_income_usd``
+    (2026-10-11, seq-28 Step A) below — all the same rollout mechanism.
     Field order mirrors ``enums.FactPath``'s
     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
@@ -1165,6 +1178,18 @@ class ApplicantFactsData(BaseModel):
     ]
     work_indonesian_work_sponsor_confirmed: Annotated[
         BooleanFact, Field(alias="work.indonesian_work_sponsor_confirmed")
+    ]
+    work_annual_foreign_income_usd: Annotated[
+        NonNegativeIntegerFact,
+        Field(
+            alias="work.annual_foreign_income_usd",
+            # openapi-typescript 7.13 treats an emitted JSON Schema
+            # ``default`` as required even when OpenAPI omits the property
+            # from ``required``. A factory preserves the real Pydantic
+            # rollout default while keeping the generated request key
+            # optional, so Step A does not force a Step B mapper change.
+            default_factory=_ANNUAL_FOREIGN_INCOME_ROLLOUT_DEFAULT.model_copy,
+        ),
     ]
     investment_pt_pma_committed: Annotated[BooleanFact, Field(alias="investment.pt_pma_committed")]
     investment_investment_capital_idr: Annotated[

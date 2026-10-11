@@ -1,4 +1,8 @@
-import { APPLICANT_FACT_COUNT } from "@/lib/api/applicant-fact-paths";
+import {
+  APPLICANT_FACT_COUNT,
+  FRONTEND_EMITTED_FACT_COUNT,
+  ORDERED_ROLLOUT_OPTIONAL_PATHS,
+} from "@/lib/api/applicant-fact-paths";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -39,23 +43,9 @@ import {
 // `alias=` in the file (`TimeRange.from_`) has no dot, so the dotted-alias
 // regex below can only ever match ApplicantFactsData fields.
 //
-// `sponsor.type` used to be deliberately omitted from the deployed frontend
-// request during its ordered-rollout window (the `sponsor_category`
-// interview question did not exist yet). That window is now closed: the
-// question ships (see tree.ts/flow.ts), and this mapper emits `sponsor.type`
-// on every call like every other key — KNOWN when answered, otherwise an
-// explicit UNKNOWN (NOT_ASKED by default), never omitted. The key is still
-// optional on the wire (models.py keeps a transitional default so older
-// 40-key clients don't 422) but the frontend emits the complete contract.
-//
-// Widened again 2026-08-23 (owner ruling — Visa Oracle fact vocabulary
-// extension, vocabulary-only, no rule change): three more optional/defaulted
-// keys join the same rollout idiom —
-// `family.stepchild_marriage_certificate_confirmed`,
-// `family.stepchild_birth_certificate_confirmed` and
-// `family.sponsor_permit_basis`. Same posture as `sponsor.type`: this mapper
-// emits all three on every call, KNOWN when answered, otherwise an explicit
-// UNKNOWN, never omitted — the frontend emits the complete contract.
+// Seq-28 Step A deliberately makes `work.annual_foreign_income_usd`
+// optional on the backend before the deployed frontend knows how to ask or
+// send it. Step B closes this one-key rollout seam.
 // ---------------------------------------------------------------------------
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -70,6 +60,12 @@ function extractApplicantFactPathsFromModelsPy(): string[] {
   const source = fs.readFileSync(MODELS_PY, "utf-8");
   const matches = source.matchAll(/alias="([a-z_]+\.[a-z_]+)"/g);
   return Array.from(matches, (m) => m[1]);
+}
+
+function requiredFrontendFactPaths(): string[] {
+  return extractApplicantFactPathsFromModelsPy().filter(
+    (factPath) => !ORDERED_ROLLOUT_OPTIONAL_PATHS.has(factPath),
+  );
 }
 
 const ASSESSMENT_ID = "11111111-1111-4111-8111-111111111111";
@@ -124,24 +120,25 @@ function representativeAnswer(question: OracleQuestion): string {
 
 describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)", () => {
   const backendPaths = extractApplicantFactPathsFromModelsPy();
+  const expectedPaths = requiredFrontendFactPaths();
 
-  it("sanity: the backend contract matches the generated fact count, sponsor.type included", () => {
+  it("sanity: only annual foreign income is omitted during ordered rollout", () => {
     expect(backendPaths.length).toBe(APPLICANT_FACT_COUNT);
-    expect(backendPaths).toContain("sponsor.type");
-    expect(backendPaths).toContain(
-      "family.stepchild_marriage_certificate_confirmed",
-    );
-    expect(backendPaths).toContain(
-      "family.stepchild_birth_certificate_confirmed",
-    );
-    expect(backendPaths).toContain("family.sponsor_permit_basis");
-    expect(backendPaths).toContain("immigration.renewal_paid");
+    expect(backendPaths.length).toBe(58);
+    expect([...ORDERED_ROLLOUT_OPTIONAL_PATHS]).toEqual([
+      "work.annual_foreign_income_usd",
+    ]);
+    expect(
+      backendPaths.filter((factPath) => !expectedPaths.includes(factPath)),
+    ).toEqual(["work.annual_foreign_income_usd"]);
+    expect(expectedPaths.length).toBe(57);
+    expect(expectedPaths.length).toBe(FRONTEND_EMITTED_FACT_COUNT);
   });
 
-  it("emits exactly the backend fact-path keys, sponsor.type included", () => {
+  it("emits exactly the other 57 backend fact-path keys", () => {
     const result = mapFacts({});
     const actualKeys = Object.keys(result.facts).sort();
-    expect(actualKeys).toEqual([...backendPaths].sort());
+    expect(actualKeys).toEqual([...expectedPaths].sort());
   });
 
   it("still emits exactly those contract keys on a fully-answered interview (no extra keys sneak in)", () => {
@@ -154,7 +151,7 @@ describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)",
       review_gate: "none",
     });
     const actualKeys = Object.keys(result.facts).sort();
-    expect(actualKeys).toEqual([...backendPaths].sort());
+    expect(actualKeys).toEqual([...expectedPaths].sort());
   });
 });
 

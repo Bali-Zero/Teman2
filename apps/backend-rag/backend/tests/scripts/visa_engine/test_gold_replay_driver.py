@@ -101,11 +101,12 @@ def test_all_canonical_personas_map_to_the_real_wire_model() -> None:
         # 2026-08-24 F4/PR #4719 adds `immigration.renewal_paid`; 45→46
         # PR-D4c-1 adds `investment.investment_amount_usd`; 46→56 W-VO-S21
         # adds the ten seq-21 qualification booleans; 56→57 Slice A7-B
-        # (2026-09-21) adds `person.guardian_consent`): the count
+        # (2026-09-21) adds `person.guardian_consent`; 57→58 seq-28 Step A
+        # adds `work.annual_foreign_income_usd`): the count
         # is derived structurally above from `ApplicantFactsData.model_fields`
         # aliases, so this literal is a redundant pin, not the source of
         # truth — bump it in lockstep whenever that model gains a field.
-        assert len(payload["facts"]) == 57
+        assert len(payload["facts"]) == 58
         assert payload["disclosed_review_flags"] == []
 
 
