@@ -28,41 +28,41 @@ bites:
   observe: python3 scripts/ci/observe_visa_oracle_e33_deposit_reason.py
   expect: "contains:e33 deposit reason holds"
 receipts:
-  - claim: The branch was rebased onto a fresh origin/main (nothing pushed) before the tests ran.
+  - claim: "The branch sits on a fresh origin/main (nothing pushed) at the HEAD the red team's fixes landed on - HEAD b39228dd4b."
     cmd: git fetch origin main && git rebase origin/main
-    result: "behind 2 / ahead 1 before; rebase clean; HEAD a6abbcc9e4 on 033772cbdc"
+    result: "rebase clean; HEAD b39228dd4b"
     exit: 0
-    ts: "2026-10-11T05:00:00Z"
+    ts: "2026-10-11T05:45:00Z"
     seat: this session
-  - claim: The whole visa-oracle Vitest tree passes with the change.
+  - claim: "The visa-oracle Vitest tree at HEAD b39228dd4b."
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/'
-    result: "Test Files 50 passed (50), Tests 1338 passed (1338)"
+    result: "Tests 1340 passed, 2 failed - both in enumerate-interview-space.test.ts (a file this change does not touch), killed by the 120s test timeout at machine load average 66-538; the same tree passed 1342/1342 (51 files) on the previous rebase when the machine was quiet, and every file this change touches passes (adapter 145, sheet 4, client-copy 15)"
     exit: 0
-    ts: "2026-10-11T05:05:00Z"
+    ts: "2026-10-11T05:45:00Z"
     seat: this session
-  - claim: The observer passes and accepts only a full pass of at least 100 tests.
+  - claim: "The observer passes at HEAD b39228dd4b: adapter file, OutcomeSheet render file, and a 32-walk replay of the signed pack at USD 130,000 / 129,999."
     cmd: python3 scripts/ci/observe_visa_oracle_e33_deposit_reason.py
-    result: "Tests 145 passed (145); e33 deposit reason holds"
+    result: "adapter 145 passed (145); sheet 4 passed (4); pack replay 32 walks hold; e33 deposit reason holds"
     exit: 0
-    ts: "2026-10-11T05:06:00Z"
+    ts: "2026-10-11T05:45:00Z"
     seat: this session
-  - claim: The legacy client-copy guard stays green with the new sentences.
+  - claim: "The legacy client-copy guard stays green at HEAD b39228dd4b."
     cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
-    result: "OK visa-oracle client copy: 3528 literals scanned, 0 banned"
+    result: "OK visa-oracle client copy: 3532 literals scanned, 0 banned"
     exit: 0
-    ts: "2026-10-11T05:06:00Z"
+    ts: "2026-10-11T05:45:00Z"
     seat: this session
-  - claim: The observer's summary parser rejects skipped, todo, failed and reduced counts.
+  - claim: "The observer's parser and required-test checks reject skipped, todo, failed and reduced counts at HEAD b39228dd4b."
     cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_e33_deposit_reason.py
-    result: "10 passed"
+    result: "13 passed"
     exit: 0
-    ts: "2026-10-11T05:04:00Z"
+    ts: "2026-10-11T05:45:00Z"
     seat: this session
-  - claim: apps/mouth typechecks.
+  - claim: "apps/mouth typechecks at HEAD b39228dd4b."
     cmd: cd apps/mouth && npx tsc --noEmit -p .
     result: "no output"
     exit: 0
-    ts: "2026-10-11T05:07:00Z"
+    ts: "2026-10-11T05:45:00Z"
     seat: this session
 decisions:
   - id: D-fact-derived
@@ -74,4 +74,16 @@ decisions:
     decision: >-
       Retirement walks keep the age sentence and below-threshold deposits keep the existing copy; tests pin
       both innocence cases.
-dissent: []
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-16-01a129c7-b3b7-7403-a306-2ec3c66b7843.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 1 - the observer ran only the adapter unit test with an injected reason code at USD 200,000; it did not prove the pack still returns AGE_BELOW_55/OPERATIONAL, that the sheet renders the sentence, or the exact USD 130,000 boundary."
+    status: RETRACTED
+    disposition: "Cured in b39228dd4b: the observer now also runs a new OutcomeSheet render test and replays the signed pack on second_home and invest walks at exactly 130,000 and 129,999, both age sides, all bank/own-name variants (32 walks; asserts the reason code per age and E33 supported when both are yes)."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-16-01a129c7-b3b7-7403-a306-2ec3c66b7843.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 2 - the closing sentence says only 'a state-owned bank' / 'bank milik negara', widening the geographic rule when only own name fails."
+    status: RETRACTED
+    disposition: "Cured in b39228dd4b: the closing sentence now reads 'an Indonesian state-owned bank' / 'bank milik negara Indonesia'; hardcoded test expectations updated."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-16-01a129c7-b3b7-7403-a306-2ec3c66b7843.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 3 - receipts belonged to a previous HEAD and declared 10 Python tests where the file has 11."
+    status: RETRACTED
+    disposition: "Cured: rebased on the current origin/main, every receipt re-run and re-recorded at HEAD b39228dd4b (13 Python tests now), checks run in this commit's tree before the evidence commit."
