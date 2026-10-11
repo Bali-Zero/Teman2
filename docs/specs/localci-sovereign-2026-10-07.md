@@ -489,29 +489,17 @@ c=/Users/localci/code/current/scripts/localci/localci_merger_tick.sh; W=/usr/loc
 P=/Library/LaunchDaemons/com.balizero.localci-merger.plist; d=$(/usr/bin/mktemp -d)
 /usr/bin/sudo /usr/bin/install -o root -g wheel -m 0755 $c $W; /usr/bin/sudo /usr/bin/cmp $c $W
 /bin/cat > $d/p.plist <<'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<plist version="1.0"><dict>
-  <key>Label</key><string>com.balizero.localci-merger</string>
-  <key>UserName</key><string>localci</string>
-  <key>GroupName</key><string>staff</string>
+<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>
+  <key>Label</key><string>com.balizero.localci-merger</string> <key>UserName</key><string>localci</string> <key>GroupName</key><string>staff</string>
   <key>ProgramArguments</key><array><string>/bin/bash</string><string>/usr/local/localci/bin/localci_merger_tick.sh</string></array>
-  <key>EnvironmentVariables</key><dict>
-    <key>HOME</key><string>/Users/localci</string>
-    <key>PATH</key><string>/Library/Developer/CommandLineTools/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
-    <key>GIT_NO_REPLACE_OBJECTS</key><string>1</string>
-    <key>MERGER_STATE_DIR</key><string>/Users/localci/merger</string>
-    <key>MERGER_PYTHON</key><string>/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11</string>
-    <key>MERGER_HEARTBEAT_LIB</key><string>/Users/localci/code/current/scripts/lib/heartbeat.sh</string>
-    <key>ORGANISM_LAST_SEEN_DIR</key><string>/Library/LocalCI/heartbeat</string>
-    <key>DOCKER_HOST</key><string>unix:///Users/nuzantara/.colima/default/docker.sock</string>
-    <key>MERGER_NODE</key><string>Nuzantara</string>
+  <key>EnvironmentVariables</key><dict> <key>HOME</key><string>/Users/localci</string>
+    <key>PATH</key><string>/Library/Developer/CommandLineTools/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin</string> <key>GIT_NO_REPLACE_OBJECTS</key><string>1</string>
+    <key>MERGER_STATE_DIR</key><string>/Users/localci/merger</string> <key>MERGER_PYTHON</key><string>/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11</string>
+    <key>MERGER_HEARTBEAT_LIB</key><string>/Users/localci/code/current/scripts/lib/heartbeat.sh</string> <key>ORGANISM_LAST_SEEN_DIR</key><string>/Library/LocalCI/heartbeat</string>
+    <key>DOCKER_HOST</key><string>unix:///Users/nuzantara/.colima/default/docker.sock</string> <key>MERGER_NODE</key><string>Nuzantara</string>
     <key>LOCALCI_MERGER_PHASE_F</key><string>1</string>
-  </dict>
-  <key>StartInterval</key><integer>600</integer>
-  <key>RunAtLoad</key><true/>
-  <key>Umask</key><integer>18</integer>
-  <key>StandardOutPath</key><string>/Users/localci/logs/merger.out.log</string>
-  <key>StandardErrorPath</key><string>/Users/localci/logs/merger.err.log</string>
+  </dict> <key>StartInterval</key><integer>600</integer> <key>RunAtLoad</key><true/> <key>Umask</key><integer>18</integer>
+  <key>StandardOutPath</key><string>/Users/localci/logs/merger.out.log</string> <key>StandardErrorPath</key><string>/Users/localci/logs/merger.err.log</string>
 </dict></plist>
 EOF
 /usr/bin/plutil -lint $d/p.plist
