@@ -33,7 +33,7 @@ for l in en id; do
   shot registry-table --theme day --lang $l --code 51101 --height 2400 "$OUT/tall/registry-table-51101-day-$l.png"; done
 # The immersive set (IMM): what the user sees, a first-class set beside the flat baseline. IMM=1 adds it under $OUT/imm/.
 if [ -n "${IMM:-}" ]; then
-  mkdir -p "$OUT/imm/narrow"
+  mkdir -p "$OUT/imm/narrow" "$OUT/live"
   typeset -A IMMCODE=(detail-card 55203 sheet-ledger 56101 chat 51101 registry-sheet 56101)
   for b in detail-card sheet-ledger chat registry-sheet; do
     for t in day night; do for l in en id; do
