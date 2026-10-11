@@ -13,8 +13,8 @@ import SwiftUI
 extension View {
     /// The shown risk cell's selection mark (flat matrix and scale path alike): a 2 pt accent ring outside the chip with a
     /// 1.5 pt gap, so the ring touches only the surface, never the chip's fill (accent on the surface is >= 3:1 day and night).
-    func selectionRing(_ on: Bool) -> some View {
-        overlay { if on { RoundedRectangle(cornerRadius: 4).strokeBorder(Theme.accent, lineWidth: 2).padding(-3.5).censusFrame("ring") } }
+    func selectionRing(_ on: Bool, row: Int) -> some View {
+        overlay { if on { RoundedRectangle(cornerRadius: 4).strokeBorder(Theme.accent, lineWidth: 2).padding(-3.5).censusFrame("ring", "\(row)") } }
     }
 }
 
@@ -202,7 +202,7 @@ struct ScaleMatrix: View {
             .padding(.vertical, 4).padding(.horizontal, 8)
             .background(c.bg, in: RoundedRectangle(cornerRadius: 2))
             .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(c.border ?? .clear, lineWidth: 1))
-            .selectionRing(selected)
+            .selectionRing(selected, row: e.idx)
         return Group {
             if let selection {
                 Button { selection.wrappedValue = selected ? nil : e.idx } label: { face }.buttonStyle(.plain)

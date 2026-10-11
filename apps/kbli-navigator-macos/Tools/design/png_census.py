@@ -208,6 +208,12 @@ def c24(im, fr, arg):
     if not isinstance(cells, int): raise Miss("the record carries no cells: the snapshot must write them")
     d, t, k, bad = int(s), max(2, round(1.5 * s)), int(6 * s), []
     inside = lambda p: 0 <= p[0] < im.width and 0 <= p[1] < im.height
+    shown = {v for v, _ in fr["detail"]}
+    if len(shown) != 1: raise Miss("the detail names %d rows (%s): a sheet shows one cell's detail" % (len(shown), ", ".join(sorted(shown)) or "none"))
+    wrong = sorted({v for v, _ in fr["ring"]} - shown)
+    if wrong: bad.append("a ring on row %s while the detail shows row %s: two selections" % (", ".join(wrong), next(iter(shown))))
+    if not any(v in shown for v, _ in fr["ring"]): bad.append("no ring on the shown row %s" % next(iter(shown)))
+    if len(fr["matrix.chip"]) < cells: bad.append("%d marked chips for %d cells: a chip is unmarked" % (len(fr["matrix.chip"]), cells))
     o = int(3.5 * s + .5)
     for _, (x0, y0, x1, y1) in fr["ring"]:
         x0, y0, x1, y1 = x0 - o, y0 - o, x1 + o, y1 + o   # the mark sits on the chip; the ring's outer edge is 3.5 pt out
@@ -237,16 +243,17 @@ CHECKS = {"C%d" % n: f for n, f in zip(range(11, 25), (c11, c12, c13, c14, c15, 
 NEEDS = {"C11": ("matrix.head", "matrix.chip"), "C12": ("headsup.label",), "C13": ("cap", "chip.bali", "bali.label"),
          "C14": ("cap",), "C15": ("basis.lead", "basis.body"), "C16": ("bar",), "C17": ("figure", "figure.peak", "card.peak"),
          "C18": ("census", "card"), "C19": ("uraian.item",), "C20": ("row.code", "row.title", "row.chip"),
-         "C21": ("ladder", "matrix"), "C22": ("group.digits", "row.code"), "C23": (), "C24": ("matrix.chip", "ring")}
+         "C21": ("ladder", "matrix"), "C22": ("group.digits", "row.code"), "C23": (), "C24": ("matrix.chip", "ring", "detail")}
 OPTIONAL = {"C12": ("headsup.sentence",), "C24": ("hint",)}
 # The census grammar (#8250 gate binding 2): a frame's name is one of these, and its value matches the name's pattern —
 # a tone, a step ("0"…"3" in `scaleOrder`), an ordinal, a fraction, or nothing. Never drawn text.
 TONE, STEP, ORD, FRAC = r"open|restricted|closed|neutral", r"[0-3]", r"[1-9]?", r"0(?:\.\d+)?|1(?:\.0+)?|\.\d+"
-NAMES = {**dict.fromkeys(("matrix.head", "matrix.chip", "matrix.cell"), STEP), "headsup.label": ORD, "headsup.sentence": ORD,
+ROW = r"\d+"   # a row of the record (an index into its per-scale rows), the cell a ring sits on or the detail shows
+NAMES = {**dict.fromkeys(("matrix.head", "matrix.chip", "matrix.cell"), STEP), **dict.fromkeys(("ring", "detail"), ROW), "headsup.label": ORD, "headsup.sentence": ORD,
          **dict.fromkeys(("chip.national", "chip.bali", "headsup"), TONE), "bar": FRAC,
          **dict.fromkeys(("matrix", "ladder", "cap", "bali.label", "basis.lead", "basis.body", "reason.lead", "reason.body",
                           "figure", "figure.peak", "card.peak", "census", "card", "uraian.item", "row.code", "row.title",
-                          "row.chip", "group.digits", "ring", "hint"), "")}
+                          "row.chip", "group.digits", "hint"), "")}
 
 NOVALUE = object()
 
@@ -477,12 +484,13 @@ def c_cases():
     # C24 (the selection cue): a chip ringed (4 px out, 2 px thick) over a stacked neighbour. 8 px of gap clears it (innocent);
     # a neighbour at 4 px (the ring touches it), below, above or at either side, FAILs; so does a ring missing a side, a hint over
     # one cell and no hint over two (#8288 gate: Medium-Low at night, 85510, the lower chip, a side touch).
-    def sel(dy=None, up=None, dx=None, lx=None, broken=None, cells=2, hint=1, nbfill=OP):
+    def sel(dy=None, up=None, dx=None, lx=None, broken=None, cells=2, hint=1, nbfill=OP, ringrow="0", detailrow="0"):
         chip_b, ring_b = (150, 100, 250, 124), (146, 96, 254, 128)
         ops = chip("matrix.chip", "0", chip_b, OP)[0]
         for side, r in (("top", (146, 96, 254, 98)), ("bottom", (146, 126, 254, 128)), ("left", (146, 96, 148, 128)), ("right", (252, 96, 254, 128))):
             if side != broken: ops.append((r, tuple(RING[0])))
-        fr = {"matrix.chip": [("0", chip_b)], "ring": [("", chip_b)]}
+        fr = {"matrix.chip": [("0", chip_b)], "ring": [(ringrow, chip_b)]}
+        o, f = word("detail", detailrow, (20, 365, 380, 385)); ops += o; fr.update(f)
         for nb in ([(150, 124 + dy, 250, 148 + dy)] if dy is not None else []) + ([(150, 68, 250, 92 + up)] if up is not None else [])                 + ([(254 + dx, 100, 360 + dx, 124)] if dx is not None else []) + ([(40, 100, 146 + lx, 124)] if lx is not None else []):
             o, f = chip("matrix.chip", "1", nb, nbfill); ops += o; fr["matrix.chip"] += f["matrix.chip"]
         if hint:
@@ -490,7 +498,7 @@ def c_cases():
         return ops, fr, {"cells": cells}
     for k, kw in ((0, dict(dy=8)), (0, dict(dy=8, up=0, dx=8, lx=-8)), (1, dict(dy=4)), (1, dict(dy=5)), (1, dict(dy=8, up=3)),
                   (1, dict(dy=8, dx=0)), (1, dict(dy=8, lx=0)), (1, dict(dy=8, broken="left")), (1, dict(dy=8, broken="bottom")),
-                  (1, dict(dy=8, cells=1)), (1, dict(dy=4, nbfill=(0xF4, 0xF1, 0xEB))), (1, dict(dy=8, hint=0)), (0, dict(dy=8, cells=1, hint=0))):
+                  (1, dict(dy=8, ringrow="1")), (1, dict(dy=8, cells=4)), (1, dict(dy=8, cells=1)), (1, dict(dy=4, nbfill=(0xF4, 0xF1, 0xEB))), (1, dict(dy=8, hint=0)), (0, dict(dy=8, cells=1, hint=0))):
         ops, fr, rec = sel(**kw); yield "C24", rec, k, ops, fr
     # a chip whose own colours touch it on both sides: its seen box is 20 px wider, the centre unmoved (B2, #8276 gate)
     yield "C11", 4, 1, *m(*[word("matrix.head", str(i), (x - 10, 10, x + 10, 20)) for i, x in enumerate(xs)],

@@ -1418,12 +1418,12 @@ struct PP28ScalePanel: View {
                 if immersive {
                     // IMM: the scale path IS the matrix here (M4): one matrix per page, the cell detail its focus panel.
                     ScalePath(scales: scales, isID: isID, mode: .ledger, selection: shownCell)
-                    if let mi = matrixSel ?? defaultCell, mi < scales.count { cellDetail(scales[mi]) }
+                    if let mi = matrixSel ?? defaultCell, mi < scales.count { cellDetail(scales[mi]).censusFrame("detail", "\(mi)") }
                 } else {
                     ScaleMatrix(scales: scales, isID: isID, mode: .ledger, selection: shownCell,
                                 expanded: { AnyView(cellDetail($0)) })
                     if scopeIndices.count < ScaleMatrix.listFrom, let mi = matrixSel ?? defaultCell, mi < scales.count {
-                        cellDetail(scales[mi])
+                        cellDetail(scales[mi]).censusFrame("detail", "\(mi)")
                     }
                 }
             }

@@ -219,7 +219,7 @@ struct ScalePathGrid: View {
             .padding(.vertical, 4).padding(.horizontal, 8)
             .background(c.bg, in: RoundedRectangle(cornerRadius: 2))
             .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(c.border ?? .clear, lineWidth: 1))
-            .selectionRing(selected)
+            .selectionRing(selected, row: e.idx)
         return Group {
             if let selection {
                 Button { selection.wrappedValue = selected ? nil : e.idx; picked = nil } label: { face }.buttonStyle(.plain)
