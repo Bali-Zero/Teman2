@@ -1,0 +1,41 @@
+task_id: kbli-r19-w0d3a-1010
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, Track W, lot W0d-3a (ruling Q21): CI sharding ONLY of today's
+  30-capture wrapper census, before W0d-3b grows it to 54 captures and 51 walks.
+    1. `--part rest|kbli|explorer|shared`; no `--part` is the full run as before.
+    2. A matrix job `wrapper-census-part (<part>)`, fail-fast off, 40-minute timeout each, with
+       `phase-seconds` per part on stderr.
+    3. The aggregator keeps the name `wrapper-census-states`: `--replay` over the concatenated
+       dumps, then the grep -Fxq asserts on the aggregate.
+    4. The partition check: the parts are cut from ONE list; a unit test proves union == full and
+       the parts pairwise disjoint; the aggregate compares the received scenarios with that list
+       (missing -> INCOMPLETE, never 0); guilt rows for a dropped scenario, a missing part and a
+       log carrying `: 1`.
+    5. The proof: the aggregate verdict from CI is byte-identical to the single-job full verdict
+       on the same commit.
+  No line changes under apps/mouth/src.
+constraints:
+  - "Zero files under apps/mouth/src (SPEC-W0d section 5); census-replay asserts it on every W0d branch."
+  - "Nothing that belongs to W0d-3b: the 4 routes, 54 captures, S5-S21, the section 8.7 inventory, surfaces-unclaimed, the bg-black/60 amendment, the section 8.5 cells, the #8202 notes and the #8228 notes 1-6."
+  - "No npm install or npm ci. Census dev servers on 3519 and above, started and stopped by this lot."
+acceptance:
+  - text: "WHEN the scenario list is cut by part, THEN the union is the full list (89: 30 captures, 10 walks, 25 opened, 24 shared) and the parts are pairwise disjoint; WHEN the workflow is read, THEN its matrix runs exactly PARTS and the aggregate runs after a red part."
+    probe: "python3 -m pytest scripts/mouth/tests -q -k 'cut_from_one_list or runs_every_part'"
+  - text: "WHEN the full fixture is cut into the four parts' dumps and concatenated in another order, THEN its replay is byte-identical to the full dump's, which is today's verdict under `scenarios-off-manifest: 0`."
+    probe: "python3 -m pytest scripts/mouth/tests -q -k byte_for_byte"
+  - text: "WHEN a scenario is dropped from every part, a part is missing, no dump arrives, a part arrives twice or a scenario is off the list, THEN `scenarios-off-manifest` is not 0 and every count the missing scenarios feed reads INCOMPLETE; WHEN the assert step reads a log carrying `: 1`, a missing scenario or a red part, THEN it exits 1."
+    probe: "python3 -m pytest scripts/mouth/tests -q -k 'guilt_a_scenario or guilt_a_missing_part or guilt_no_dump or twice or exit_step'"
+  - text: "WHEN CI runs the parts and, on the same commit, the single-job full census, THEN the two `wrapper-census-states` verdict texts are byte-identical and all five asserts pass."
+    probe: 'gh workflow run r19-wrapper-census-tests.yml --ref agent/air-m5/mouth/kbli-r19-w0d3a-1010 (default parts, then -f parts=''["full"]''); diff the two census.txt bodies'
+consumer_map:
+  - "r19-wrapper-census-tests / wrapper-census-part (rest|kbli|explorer|shared) runs the live census in parts on every apps/mouth, packages/core and census PR."
+  - "r19-wrapper-census-tests / wrapper-census-states replays the parts' dumps as one census and asserts scenarios-off-manifest 0, captures 30 ok, opened-surfaces 25 ok 0 failed, shared-touched-unpinned 0 and shared-component-drift 0. W0d-3b lands on it; W2''' is judged on it."
+  - "r19-wrapper-census-tests / census-replay runs the guilt and innocence suite, and on a W0d branch it asserts 0 files changed under apps/mouth/src."
+risks:
+  - "Each part compiles its own pages on a cold next dev, where the single job compiled them once; the CI proof compares the two verdicts byte for byte."
+  - "Reads, colours and state classes come from `rest` only today; a later split of the captures across parts relies on load()'s fold in PARTS order, guarded by a unit test."
+grader: |
+  A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha.
