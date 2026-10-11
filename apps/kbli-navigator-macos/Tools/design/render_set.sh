@@ -4,13 +4,18 @@
 # (the ledger's risk chips below the fold: 56101's cellDetail, 71109's 29 scope rows; day and night), and the two
 # bands spec D6/D14 add: search-results-multi (query 552, three results or more) and registry-table at 51101 (sector
 # H, 2400 pt tall so its rows reach division 51), day-en/id. Each PNG gets its census frames beside it (<name>.json, `--layout-json`) for png_census's C-checks.
+# CENSUS_IDENTITY=1 renders each band again without the collector and fails on any byte that differs.
 # OUT may be overridden (the before-set used OUT=…-before and the first loop only). Exit 1 on any failed render.
 cd "${0:A:h}/../.." || exit 2
 BIN="build/KBLI Navigator - INTERNAL.app/Contents/MacOS/KBLINavigator"; OUT="${OUT:-docs/design/baseline-$(date +%F)}"
 typeset -A CODE=(search-results 55203 registry-table 55203 detail-card 55203 dossier 51101 sheet-ledger 56101 chat 51101)
-mkdir -p "$OUT/narrow" "$OUT/xxl" "$OUT/tall"; fails=0
+mkdir -p "$OUT/narrow" "$OUT/xxl" "$OUT/tall"; fails=0 same=0
 shot() { "$BIN" --snapshot-band "${@[1,-2]}" --layout-json "${@[-1]%.png}.json" "${@[-1]}" 2>/dev/null \
-  || { fails=$((fails+1)); echo "FAIL $*"; } }
+  || { fails=$((fails+1)); echo "FAIL $*"; return; }
+  [[ -n $CENSUS_IDENTITY ]] || return 0   # the same band without the collector: the marks must draw nothing
+  "$BIN" --snapshot-band "${@[1,-2]}" "${@[-1]%.png}.plain.png" 2>/dev/null && cmp -s "${@[-1]}" "${@[-1]%.png}.plain.png" \
+    && same=$((same+1)) || { fails=$((fails+1)); echo "DIFF with and without the census collector: ${@[-1]}"; }
+  rm -f "${@[-1]%.png}.plain.png"; }
 for b in ${=1:-search-results registry-table detail-card dossier sheet-ledger chat}; do
   for t in day night; do for l in en id; do
     shot $b --theme $t --lang $l --code ${CODE[$b]} "$OUT/$b-$t-$l.png"; done; done
@@ -23,5 +28,6 @@ for t in day night; do
 for l in en id; do
   shot search-results-multi --theme day --lang $l --code 552 "$OUT/search-results-multi-day-$l.png"
   shot registry-table --theme day --lang $l --code 51101 --height 2400 "$OUT/tall/registry-table-51101-day-$l.png"; done
+[[ -n $CENSUS_IDENTITY ]] && echo "census collector: $same PNGs byte-identical with and without it"
 echo "render_set: $(find "$OUT" -name '*.png' | wc -l | tr -d ' ') PNGs in $OUT, $fails failed"
 exit $(( fails > 0 ))

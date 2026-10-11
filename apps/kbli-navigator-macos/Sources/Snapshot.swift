@@ -254,6 +254,7 @@ extension Snapshot {
         let code = flag("--code") ?? "55101"
         let textSizeArg = (flag("--text-size") ?? "default").lowercased()
         let layoutJSONPath = flag("--layout-json")
+        CensusFrame.collecting = layoutJSONPath != nil
 
         // The output path is the trailing CLI argument, mirroring the legacy `--snapshot` parser's
         // "last positional wins" contract — every named flag above already consumed its own value.
@@ -326,13 +327,14 @@ extension Snapshot {
 
         final class Marks { var frames: [CensusFrame] = [] }
         let marks = Marks()
-        let framedView = content
+        let base = content
             .environment(\.dynamicTypeSize, dynamicSize)
             .frame(width: w, height: h, alignment: .top)
             .background(Theme.antracite)
             .clipped()
-            .coordinateSpace(name: CensusFrame.space)
-            .onPreferenceChange(CensusFramesKey.self) { marks.frames = $0 }
+        let framedView = CensusFrame.collecting
+            ? AnyView(base.coordinateSpace(name: CensusFrame.space).onPreferenceChange(CensusFramesKey.self) { marks.frames = $0 })
+            : AnyView(base)
 
         let host = NSHostingView(rootView: framedView)
         host.frame = NSRect(x: 0, y: 0, width: w, height: h)

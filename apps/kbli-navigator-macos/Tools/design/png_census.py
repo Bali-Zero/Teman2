@@ -10,9 +10,14 @@ and the skipped rules in pt. Under xxl/ C8 is VACUOUS, never a pass: the harness
 text-style or relativeTo: fonts (imperator ruling); an xxl PNG with no table head is VACUOUS too (#8200 gate P2-5).
 C11-C23 (SPEC-detail-polish v3, PR 3-h-2) measure the elements a View names with `.censusFrame(name, value)`, whose
 frames the band snapshot writes beside the PNG (<name>.json, `--layout-json`, pt). A check runs on a band only once
-the View PR that names its elements arms it in ARMED (Q18); a missing frame then FAILs, never passes. Ink is a pixel
-whose summed RGB distance from the frame's dominant colour exceeds 60; a band is a run of ink rows. Every C has a
-synthetic guilt image that must FAIL and an innocent one that must pass. Self-tests run first. Exit 1 on any FAIL."""
+the View PR that names its elements arms it in ARMED (Q18). On an armed band (lead ruling 2026-10-11): a frame the
+check reads that is missing FAILs naming it, never VACUOUS or a pass; every frame it reads holds ink against the
+ground around it, and meets its spec measure where the spec gives one (MEASURE), so a mark on the wrong element
+FAILs; a frame's value is a descriptor (a tone, a step, a fraction) or nothing, never drawn text — encensus stays the
+one text instrument. Ink is a pixel whose summed RGB distance from the frame's dominant colour exceeds 60; a band is
+a run of ink rows. Every C has a synthetic guilt image that must FAIL and an innocent one that must pass, plus a
+forgotten mark and a mark on an empty area per C, and `cap` on a 13 pt element. Self-tests run first. Exit 1 on any
+FAIL."""
 import json, pathlib, re, sys
 from collections import Counter
 from PIL import Image, ImageDraw
@@ -107,11 +112,11 @@ def c15(im, fr, _):
     return lead[1] < body[0] and lh >= 1.15 * bh, "lead %d px ending y %d, body %d px from y %d" % (lh, lead[1], bh, body[0])
 
 def c16(im, fr, _):
-    """bar = figure: a bar's structure fill over its track is the cap / 100 (the frame's value), +-2 px."""
+    """bar = figure: a bar's structure fill over its track is the cap's fraction (the frame's value), +-2 px."""
     need(fr, "bar"); bad = []
     for v, (x0, y0, x1, y1) in fr["bar"]:
         fill = sum(near(im.getpixel((x, (y0 + y1) // 2)), STRUCTURE, 24) for x in range(x0, x1))
-        if abs(fill - (x1 - x0) * float(v) / 100) > 2: bad.append("%s%% fill %d of %d px" % (v, fill, x1 - x0))
+        if abs(fill - (x1 - x0) * float(v)) > 2: bad.append("%s fill %d of %d px" % (v, fill, x1 - x0))
     return not bad, "%d bars, off their figure: %s" % (len(fr["bar"]), ", ".join(bad) or "none")
 
 def c17(im, fr, _):
@@ -140,13 +145,15 @@ def c19(im, fr, _):
     return not bad, "%d wrapped items, not hung: %s" % (n, ", ".join(bad) or "none")
 
 def c20(im, fr, _):
-    """first-baseline: in each multi-line row, code ink top and chip text top within 4 px of the title's."""
-    need(fr, "row.code", "row.title", "row.chip"); code, chip = dict(fr["row.code"]), dict(fr["row.chip"]); bad, n = [], 0
-    for v, b in fr["row.title"]:
-        bs = bands(im, b)
-        if len(bs) < 2 or v not in code or v not in chip: continue
-        t, c, k = bs[0][0], bands(im, code[v])[0][0], bands(im, chip[v])[0][0]; n += 1
-        if abs(c - t) > 4 or abs(k - t) > 4: bad.append("%s title %d code %d chip %d" % (v, t, c, k))
+    """first-baseline: in each multi-line row, code ink top and chip text top within 4 px of the title's (a row is
+    the code and chip frames that overlap the title's vertically the most)."""
+    need(fr, "row.code", "row.title", "row.chip"); bad, n = [], 0
+    over = lambda a, b: min(a[3], b[3]) - max(a[1], b[1])
+    for _, b in fr["row.title"]:
+        bs = bands(im, b); code, chip = (max((f for _, f in fr[k]), key=lambda f: over(f, b)) for k in ("row.code", "row.chip"))
+        if len(bs) < 2 or over(code, b) <= 0 or over(chip, b) <= 0: continue
+        t, c, k = bs[0][0], bands(im, code)[0][0], bands(im, chip)[0][0]; n += 1
+        if abs(c - t) > 4 or abs(k - t) > 4: bad.append("row at y %d: title %d code %d chip %d" % (b[1], t, c, k))
     if not n: raise Miss("no multi-line row")
     return not bad, "%d multi-line rows, off the title's first line: %s" % (n, ", ".join(bad) or "none")
 
@@ -160,7 +167,7 @@ def c22(im, fr, _):
     need(fr, "group.digits", "row.code"); codes = sorted((b for _, b in fr["row.code"]), key=lambda b: b[1]); out = []
     for v, b in fr["group.digits"]:
         under = next((c for c in codes if c[1] >= b[3]), None)
-        if under: out.append((v, first(im, b), first(im, under)))
+        if under: out.append(("y %d" % b[1], first(im, b), first(im, under)))
     if not out: raise Miss("no division with a row under it")
     bad = ["%s %d/%d px" % o for o in out if o[1] < 1.2 * o[2]]
     return not bad, "%d division heads, under 1.2 x their row's code: %s" % (len(out), ", ".join(bad) or "none")
@@ -178,23 +185,67 @@ def c23(im, fr, _):
     return not bad, "%d chips, off their state's tone: %s" % (len(marks), "; ".join(bad) or "none")
 
 CHECKS = {"C%d" % n: f for n, f in zip(range(11, 24), (c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23))}
+# The frames each check reads (C23: the ARMED row's own list of chips), and those it reads when present.
+NEEDS = {"C11": ("matrix.head", "matrix.chip"), "C12": ("headsup.label",), "C13": ("cap", "chip.bali", "bali.label"),
+         "C14": ("cap",), "C15": ("basis.lead", "basis.body"), "C16": ("bar",), "C17": ("figure", "figure.peak", "card.peak"),
+         "C18": ("census", "card"), "C19": ("uraian.item",), "C20": ("row.code", "row.title", "row.chip"),
+         "C21": ("ladder", "matrix"), "C22": ("group.digits", "row.code"), "C23": ()}
+OPTIONAL = {"C12": ("headsup.sentence",)}
+VALUE = re.compile(r"(?:open|restricted|closed|neutral|\d|0?\.\d+|1\.0*)?")
+INK_MIN = .01
+
+def inked(im, b):
+    """The share of b's pixels (every other one) unlike the ground: the dominant colour of a ring 3 px outside b."""
+    x0, y0, x1, y1 = b; px = im.load(); W, H = im.size; xs, ys = range(max(x0 - 3, 0), min(x1 + 3, W), 2), range(max(y0 - 3, 0), min(y1 + 3, H), 2)
+    ring = [px[x, y] for y in {max(y0 - 3, 0), min(y1 + 2, H - 1)} for x in xs] + [px[x, y] for x in {max(x0 - 3, 0), min(x1 + 2, W - 1)} for y in ys]
+    g = Counter(ring).most_common(1)[0][0]; inner = [(x, y) for y in range(y0, y1, 2) for x in range(x0, x1, 2)]
+    return sum(sum(abs(a - c) for a, c in zip(px[x, y], g)) > 48 for x, y in inner) / max(1, len(inner))
+
+def weight(im, b, cs):
+    """The thickest run of rows in b whose pixels near cs cover 80 % of its width: a rule's weight in px."""
+    xs, best, run = range(b[0], b[2], 2), 0, 0
+    for y in range(b[1], b[3]):
+        run = run + 1 if sum(near(im.getpixel((x, y)), cs, 24) for x in xs) >= .8 * len(xs) else 0; best = max(best, run)
+    return best
+
+# The spec's own measure of a marked element (s: px per pt), so a mark on the wrong element FAILs.
+MEASURE = {"cap": (lambda im, b, s: first(im, b) >= .6 * 36 * s, "§3 size, title(36): first ink band >= 0.6 x 36 pt"),
+           "headsup.sentence": (lambda im, b, s: first(im, b) >= .6 * 20 * s, "D2 serif(20): first ink band >= 0.6 x 20 pt"),
+           "bar": (lambda im, b, s: abs(b[3] - b[1] - 2 * s) <= 1 and abs(b[2] - b[0] - 48 * s) <= 2, "D5: 48 x 2 pt"),
+           "matrix": (lambda im, b, s: abs(weight(im, b, STRUCTURE) - 2 * s) <= 1, "D1: a 2 pt structure rule")}
+
+def judge(im, fr, s, c, arg):
+    """An armed check: a frame it reads that is missing FAILs naming it; each one it reads holds ink and meets its
+    MEASURE; then the check itself."""
+    names = NEEDS[c] + (tuple(arg) if c == "C23" else ())
+    missing = [n for n in names if not fr.get(n)]
+    if missing: raise Miss("missing frame %s: the View must mark it" % ", ".join(missing))
+    extra = OPTIONAL.get(c, ()) + (tuple(n for n in fr if n.startswith("chip.") or n == "headsup") if c == "C23" else ())
+    for n in dict.fromkeys(names + extra):
+        for _, b in fr.get(n, []):
+            if inked(im, b) < INK_MIN: raise Miss("frame %s at %s holds no ink: a mark on an empty area" % (n, b))
+            if n in MEASURE and not MEASURE[n][0](im, b, s): raise Miss("frame %s at %s is not %s" % (n, b, MEASURE[n][1]))
+    return CHECKS[c](im, fr, arg)
 # (PNG path relative to the set, as a regex; check; its argument). Each View PR arms its own bands here when it names
 # the frames its checks read (lead ruling 2026-10-11): none is armed by the harness itself.
 ARMED = []
 
 def frames(png, im):
+    """({name: [(value, px box)]} of the frames drawn whole on the canvas, px per pt)."""
     doc = json.load(open(png.with_suffix(".json"))); s = im.width / doc["width"]; fr = {}
     for f in doc["frames"]:
+        if not VALUE.fullmatch(f["value"]):
+            raise ValueError("frame %s carries %r: a value is a tone, a step or a fraction, never drawn text" % (f["name"], f["value"]))
         x, y, w, h = (round(v * s) for v in f["frame"])
         if 0 <= x and 0 <= y and x + w <= im.width + 1 and y + h <= im.height + 1 and w > 0 and h > 0:   # wholly drawn
             fr.setdefault(f["name"], []).append((f["value"], (x, y, min(x + w, im.width), min(y + h, im.height))))
-    return fr
+    return fr, s
 
 def armed(png, rel, im):
     out = []
     for rx, c, arg in ARMED:
         if not re.fullmatch(rx, rel): continue
-        try: ok, detail = CHECKS[c](im, frames(png, im), arg)
+        try: ok, detail = judge(im, *frames(png, im), c, arg)
         except (Miss, OSError, ValueError, KeyError) as e: ok, detail = False, "%s: %s" % (type(e).__name__, e)
         out.append((ok, "%s %s" % (c, detail)))
     return out
@@ -241,7 +292,8 @@ def selftest():
     return out
 
 def c_cases():
-    """Per C, an innocent synthetic image (k = 0) and its guilt (k = 1): (check, argument, k, paint, frames)."""
+    """Per C, an innocent synthetic image (k = 0) and its guilt (k = 1), at 1 px per pt: (check, argument, k, paint,
+    frames). Last, `cap` on a 13 pt element: 9 px of ink where §3 asks 36 pt."""
     OP, CL, LS, ST = TONE_BG["open"][0], TONE_BG["closed"][0], LINESOFT[0], STRUCTURE[0]
     pad = lambda b, m=6: (b[0] - m, b[1] - m, b[2] + m, b[3] + m)
     ink = lambda b: [((x, b[1], x + 2, b[3]), INK) for x in range(b[2] - 2, b[0] - 1, -5)]   # glyph-like strokes
@@ -254,45 +306,62 @@ def c_cases():
             ops += o
             for n, l in f.items(): fr.setdefault(n, []).extend(l)
         return ops, fr
-    xs, ks = (60, 140, 220, 300), ("Mikro", "Kecil", "Menengah", "Besar")
+    xs = (60, 140, 220, 300)
     for k in (0, 1):
-        yield "C11", 4, k, *m(*[word("matrix.head", n, (x - 10, 10, x + 10, 20)) for n, x in zip(ks, xs)],
-                              *[chip("matrix.chip", n, (x - 15 + 10 * k, 40, x + 15 + 10 * k, 64), OP) for n, x in zip(ks, xs)])
+        yield "C11", 4, k, *m(*[word("matrix.head", str(i), (x - 10, 10, x + 10, 20)) for i, x in enumerate(xs)],
+                              *[chip("matrix.chip", str(i), (x - 15 + 10 * k, 40, x + 15 + 10 * k, 64), OP) for i, x in enumerate(xs)])
         yield "C12", None, k, *m(word("headsup.label", "", (20, 10, 120, 20)), word("headsup.sentence", "", (20, 40, 300, 60 - 12 * k)))
         yield "C13", None, k, *m(word("cap", "", (250, 10, 300, 50 - 20 * k)), chip("chip.bali", "open", (240, 100, 300, 124), OP),
                                  word("bali.label", "", (240, 80, 300, 88)))
         yield "C14", None, k, *word("cap", "", (280 - 220 * k, 10, 320 - 220 * k, 50))
         yield "C15", None, k, *m(word("basis.lead", "", (20, 10, 300, 34 - 4 * k)), word("basis.body", "", (20, 60, 300, 80)))
-        yield "C16", None, k, [((100, 50, 200, 54), LS), ((100, 50, 149 - 19 * k, 54), ST)], {"bar": [("49", (100, 50, 200, 54))]}
+        yield "C16", None, k, [((100, 50, 148, 52), LS), ((100, 50, 124 - 10 * k, 52), ST)], {"bar": [("0.49", (100, 50, 148, 52))]}
         yield "C17", None, k, *m(*[word("figure", "", (x - 40, y, x, y + 20)) for x, y in ((300, 10), (301, 50), (299, 90))],
                                  word("figure.peak", "", (260 - 150 * k, 130, 300 - 150 * k, 160)),
                                  ([], {"card.peak": [("", (20, 120, 340, 170))]}))
-        yield "C18", None, k, *m(([], {"card": [("", (20, 20, 380, 200))]}), word("census", "", (20, 240 + 40 * k, 200, 252 + 40 * k)))
+        yield "C18", None, k, *m((ink((40, 40, 300, 60)), {"card": [("", (20, 20, 380, 200))]}),
+                                 word("census", "", (20, 240 + 40 * k, 200, 252 + 40 * k)))
         yield "C19", None, k, [((20, 20, 28, 22), INK)] + ink((40, 14, 380, 28)) + ink((40 - 20 * k, 34, 300, 48)), {
             "uraian.item": [("", (10, 8, 390, 56))]}
-        yield "C20", None, k, *m((ink((110, 12, 290, 24)) + ink((110, 30, 250, 42)), {"row.title": [("55300", (100, 6, 300, 60))]}),
-                                 (ink((30, 14 + 16 * k, 70, 26 + 16 * k)), {"row.code": [("55300", (20, 6, 80, 60))]}),
-                                 chip("row.chip", "55300", (310, 7, 380, 31), OP))
-        yield "C21", None, k, [((300, 200 - 50 * k, 380, 202 - 50 * k), GOLD[0]), ((20, 200, 290, 202), LS)], {
-            "ladder": [("", (300, 20, 380, 200))], "matrix": [("", (20, 20, 290, 202))]}
-        yield "C22", None, k, *m(word("group.digits", "55", (20, 10, 60, 34 - 6 * k)), word("row.code", "55101", (20, 55, 80, 74)))
-        yield "C23", None, k, *chip("chip.national", "open", (20, 20, 120, 44), (OP, CL)[k])
+        yield "C20", None, k, *m((ink((110, 12, 290, 24)) + ink((110, 30, 250, 42)), {"row.title": [("", (100, 6, 300, 60))]}),
+                                 (ink((30, 14 + 16 * k, 70, 26 + 16 * k)), {"row.code": [("", (20, 6, 80, 60))]}),
+                                 chip("row.chip", "", (310, 7, 380, 31), OP))
+        yield "C21", None, k, [((300, 200 - 50 * k, 380, 202 - 50 * k), GOLD[0]), ((20, 200, 290, 202), LS), ((20, 30, 290, 32), ST)] + ink(
+            (310, 60, 370, 120)), {"ladder": [("", (300, 20, 380, 200))], "matrix": [("", (20, 20, 290, 202))]}
+        yield "C22", None, k, *m(word("group.digits", "", (20, 10, 60, 34 - 6 * k)), word("row.code", "", (20, 55, 80, 74)))
+        yield "C23", ("chip.national",), k, *chip("chip.national", "open", (20, 20, 120, 44), (OP, CL)[k])
+    yield "C14", None, 1, *word("cap", "", (280, 10, 320, 19))
 
 def c_selftest():
+    """Each C's innocent image passes and its guilt FAILs; on the innocent image, each frame the C reads left out FAILs
+    naming it, and the first one moved to an empty area FAILs as no ink."""
     out, n = [], 0
-    for c, arg, k, ops, fr in c_cases():
-        im = Image.new("RGB", (400, 300), PAPER); d = ImageDraw.Draw(im)
+    def run(c, arg, ops, fr):
+        im = Image.new("RGB", (400, 400), PAPER); d = ImageDraw.Draw(im)
         for b, col in ops: d.rectangle([b[0], b[1], b[2] - 1, b[3] - 1], fill=col)
-        try: ok, detail = CHECKS[c](im, fr, arg)
-        except Miss as e: ok, detail = False, str(e)
-        n += 1
+        try: return judge(im, fr, 1, c, arg)
+        except Miss as e: return False, str(e)
+    for c, arg, k, ops, fr in c_cases():
+        ok, detail = run(c, arg, ops, fr); n += 1
         if ok == bool(k): out.append("%s-SELFTEST %s image: %s" % (c, ("innocent", "guilt")[k], detail))
+        if k: continue
+        names = NEEDS[c] + (tuple(arg) if c == "C23" else ())
+        for name in names:
+            ok, detail = run(c, arg, ops, {x: l for x, l in fr.items() if x != name}); n += 1
+            if ok or name not in detail: out.append("%s-SELFTEST %s forgotten: %s" % (c, name, detail))
+        moved = {**fr, names[0]: [(v, (b[0], 330, b[2], 330 + min(b[3] - b[1], 60))) for v, b in fr[names[0]]]}
+        ok, detail = run(c, arg, ops, moved); n += 1
+        if ok or "no ink" not in detail: out.append("%s-SELFTEST %s on an empty area: %s" % (c, names[0], detail))
+    for v, want in (("", 1), ("open", 1), ("2", 1), ("0.49", 1), ("1.0", 1), ("Mikro", 0), ("55101", 0), ("49%", 0), ("49", 0)):
+        n += 1   # a frame's value: a descriptor passes, drawn text (a scale word, a code, a figure) does not
+        if bool(VALUE.fullmatch(v)) != bool(want): out.append("VALUE-SELFTEST %r %s" % (v, "refused" if want else "accepted"))
     return out, n
 
 fails = vacuous = 0
 bad, n = c_selftest()
 for msg in selftest() + bad: print(msg); fails += 1
-print("C11-C23 self-test: %d/%d synthetic images judged right (each C: innocent passes, guilt FAILs); armed: %s" % (
+print("C11-C23 self-test: %d/%d synthetic images judged right (each C: innocent passes; guilt, a forgotten mark and a "
+      "mark on an empty area FAIL; cap on a 13 pt element FAILs); armed: %s" % (
     n - len(bad), n, ", ".join("%s on %s" % (c, rx) for rx, c, _ in ARMED) or "none (each View PR arms its bands)"))
 for png in sorted(pathlib.Path(sys.argv[1]).rglob("*.png")):
     im = Image.open(png).convert("RGB"); W, H = im.size

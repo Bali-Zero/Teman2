@@ -26,7 +26,13 @@ objective: >-
   no table head is VACUOUS, printed and counted. (8) The #8239 gate's 3-h-2 bindings: (a) each row anchors its last
   drawn element too — registry-row its risk cell, search-row and search-peak their heads-up line, the chromes their
   census line; (b) is 3-h-1''s (#8247, the lead's ruling); (c) each View PR that joins GATED carries the English
-  words its View draws.
+  words its View draws. (9) The lead's three conditions on census frames (2026-10-11): on an armed band a frame
+  the check reads that is missing FAILs naming it (VACUOUS only for an unarmed band); every frame it reads holds ink
+  against the ground around it and meets the spec's measure where the spec gives one (cap: §3 title(36); heads-up
+  sentence: D2 serif(20); bar: D5 48 x 2 pt; matrix: D1's 2 pt structure rule), with guilt images for a forgotten
+  mark, a mark on an empty area and `cap` on a 13 pt element; a frame's value is a descriptor (tone, step,
+  fraction) or nothing, never drawn text. (10) The mark draws only while a band snapshot collects, and
+  CENSUS_IDENTITY=1 renders every band again without the collector: every PNG byte-identical.
 constraints:
   - No View is tagged and no C is armed by this lot; renders byte-identical (35/35).
   - The frame mark draws nothing; a PNG with it equals the PNG without it.
@@ -35,14 +41,15 @@ constraints:
 acceptance:
   - text: The render set SHALL stay byte-identical, with frames written beside every PNG.
     probe: "Pro: prove.sh at the head; MANIFEST en1b-labelbook 35/35 identical, 4 extra (the two new bands), 39 JSONs"
-  - text: Every C11–C23 SHALL reject its guilt image and accept its innocent one.
-    probe: "M5/Pro: png_census.py prints 'C11-C23 self-test: 26/26'"
+  - text: Every C11–C23 SHALL reject its guilt image, a forgotten mark and a mark on an empty area, and accept its innocent one.
+    probe: "M5/Pro: png_census.py prints 'C11-C23 self-test: 73/73'"
+  - text: A render SHALL be byte-identical with and without the census collector.
+    probe: "Pro: CENSUS_IDENTITY=1 render_set.sh — every PNG identical, at the head and on the marked probe stack"
   - text: On real renders the checks SHALL accept a-prep-3's prepared Views and reject the spec's guilt renders.
     probe: "Pro: probe branches, never shipped — census tags on the PR 5+6+3 stack (innocent) and on today's Views (guilt), probe ARMED"
   - text: A chip painted in a tone its record's state does not dispatch SHALL fail C23.
     probe: "Pro: the stack probe with the card's national chip painted .open — C23 FAIL naming the chip"
   - text: A row drawing only its code SHALL read INCOMPLETE.
     probe: "Pro: a copy whose KBLIRegistryRow draws only its code — rc=1 INCOMPLETE"
-
   - text: The white scan SHALL catch a 255/255 white and still pass every innocent spelling.
     probe: "measure_contrast.py WHITE=0 on Sources; the 255/255 guilt rows hit, main's scan misses them"

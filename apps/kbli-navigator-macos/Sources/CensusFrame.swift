@@ -7,6 +7,8 @@ import SwiftUI
 /// 2026-10-11: bare, run loop pumped, in a borderless window, ordered front, after `finishLaunching`).
 struct CensusFrame: Equatable {
     static let space = "census-band"
+    /// Set by the band snapshot when it writes `--layout-json`; the live app never collects.
+    static var collecting = false
     let name: String
     let value: String
     let rect: CGRect
@@ -18,12 +20,27 @@ struct CensusFramesKey: PreferenceKey {
 }
 
 extension View {
-    /// `value` is what the check compares against: a scale key, a code, a cap figure, or a chip's tone as the
-    /// record's own state dispatches it (`Theme.tone(<record field>)`), never the View's own tone variable.
+    /// `value` is a descriptor, never drawn text (lead ruling 2026-10-11): a step ("0"…"3" in `scaleOrder`), an ordinal,
+    /// a fraction ("0.49"), or a chip's tone as the record's own state dispatches it (`Theme.tone(<record field>)`),
+    /// never the View's own tone variable. Off unless a band snapshot collects (`--layout-json`).
     func censusFrame(_ name: String, _ value: String = "") -> some View {
-        background(GeometryReader { g in
-            Color.clear.preference(key: CensusFramesKey.self, value: [
-                CensusFrame(name: name, value: value, rect: g.frame(in: .named(CensusFrame.space)))])
-        })
+        modifier(CensusMark(name: name, value: value))
+    }
+}
+
+/// The mark itself: a clear background that reports its frame while a band snapshot collects, and nothing otherwise,
+/// so render_set's identity run (CENSUS_IDENTITY=1) proves a render byte-identical with and without the collector.
+struct CensusMark: ViewModifier {
+    let name: String
+    let value: String
+    func body(content: Content) -> some View {
+        if CensusFrame.collecting {
+            content.background(GeometryReader { g in
+                Color.clear.preference(key: CensusFramesKey.self, value: [
+                    CensusFrame(name: name, value: value, rect: g.frame(in: .named(CensusFrame.space)))])
+            })
+        } else {
+            content
+        }
     }
 }
