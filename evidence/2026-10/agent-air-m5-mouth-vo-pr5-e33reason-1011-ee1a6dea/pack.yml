@@ -1,0 +1,77 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 (decisions on the E33 audit, finding e33-ownname-dead-end-reason) - a Second Home visitor
+  whose deposit is not at a state bank or not in their own name was told "retirement routes start at age 55"
+  or the generic fallback; the page must name the real cause.
+mission: >-
+  A Second Home deposit that fails on state bank or own name states its real cause, not the retirement-age sentence.
+lanes:
+  - lane: pr5-e33-deposit-reason
+    role: build
+    seat: Claude Sonnet 5 implementer, worktree mouth-vo-pr5-e33reason-1011 on M5.
+  - lane: pr5-ground-truth
+    role: ground_truth
+    seat: >-
+      el.e33.deposit-basis in the E33 pack (USD 130,000 minimum, own name, Indonesian state-owned bank), already
+      pinned in engine-adapter.ts as SECOND_HOME_DEPOSIT_THRESHOLD_USD; the change asserts no rule of its own,
+      it only states the visitor's answers against that rule.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "8d2744f013275353a80788c9642aeaf24cda8913f2c44f650e65ff63fefeb107" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at origin/main (before the change).
+pii_scan: clean
+bites:
+  consumer: >-
+    the reason line of the public Visa Oracle result page on a NO_SUPPORTED_PATH for a Second Home,
+    invest or bank_deposit visitor with a deposit of USD 130,000 or more (engine-adapter.ts reason builder).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_e33_deposit_reason.py
+  expect: "contains:e33 deposit reason holds"
+receipts:
+  - claim: The branch was rebased onto a fresh origin/main (nothing pushed) before the tests ran.
+    cmd: git fetch origin main && git rebase origin/main
+    result: "behind 2 / ahead 1 before; rebase clean; HEAD a6abbcc9e4 on 033772cbdc"
+    exit: 0
+    ts: "2026-10-11T05:00:00Z"
+    seat: this session
+  - claim: The whole visa-oracle Vitest tree passes with the change.
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/'
+    result: "Test Files 50 passed (50), Tests 1338 passed (1338)"
+    exit: 0
+    ts: "2026-10-11T05:05:00Z"
+    seat: this session
+  - claim: The observer passes and accepts only a full pass of at least 100 tests.
+    cmd: python3 scripts/ci/observe_visa_oracle_e33_deposit_reason.py
+    result: "Tests 145 passed (145); e33 deposit reason holds"
+    exit: 0
+    ts: "2026-10-11T05:06:00Z"
+    seat: this session
+  - claim: The legacy client-copy guard stays green with the new sentences.
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3528 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-11T05:06:00Z"
+    seat: this session
+  - claim: The observer's summary parser rejects skipped, todo, failed and reduced counts.
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_e33_deposit_reason.py
+    result: "10 passed"
+    exit: 0
+    ts: "2026-10-11T05:04:00Z"
+    seat: this session
+  - claim: apps/mouth typechecks.
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-11T05:07:00Z"
+    seat: this session
+decisions:
+  - id: D-fact-derived
+    decision: >-
+      The reason is a sentence derived from the visitor's own answers plus the pack-backed rule, with
+      variants for state bank, own name, both and not sure; it replaces the age or operational reason only
+      for deposit-route walks at or above the threshold.
+  - id: D-innocence
+    decision: >-
+      Retirement walks keep the age sentence and below-threshold deposits keep the existing copy; tests pin
+      both innocence cases.
+dissent: []
