@@ -159,9 +159,10 @@ const en = {
   "why.guardian_consent":
     "The date of birth shows an applicant under 18, so we ask whether a parent or legal guardian is present. Without one, this tool names no visa.",
   "q.retirement_age_notice":
-    "The retirement visas start at age 55, and the date of birth you gave is below that.",
+    "The retirement visa routes checked here require applicants to be at least 55. Based on the date of birth you entered, you are under 55.",
   "q.retirement_age_notice.hint":
     "You turn 55 on {{date}}. You can still go on and see the formal result, or look at another route.",
+  "q.retirement_age_notice.other_routes": "Other options",
   "q.retirement_age_notice.opt.continue": "Continue to the formal result",
   "q.retirement_age_notice.opt.second_home": "Look at Second Home",
   "q.retirement_age_notice.opt.change": "Change my answers",
@@ -1200,9 +1201,10 @@ const id: Record<Keys, string> = {
   "why.guardian_consent":
     "Tanggal lahir menunjukkan pemohon berusia di bawah 18 tahun, jadi kami menanyakan apakah orang tua atau wali sah hadir. Tanpa mereka, alat ini tidak menyebutkan visa.",
   "q.retirement_age_notice":
-    "Visa pensiun mulai pada usia 55 tahun, dan tanggal lahir yang Anda berikan di bawahnya.",
+    "Jalur visa pensiun yang diperiksa di sini mensyaratkan pemohon berusia minimal 55 tahun. Berdasarkan tanggal lahir yang Anda masukkan, usia Anda belum 55 tahun.",
   "q.retirement_age_notice.hint":
     "Anda berusia 55 tahun pada {{date}}. Anda tetap dapat melanjutkan untuk melihat hasil resminya, atau melihat jalur lain.",
+  "q.retirement_age_notice.other_routes": "Pilihan lain",
   "q.retirement_age_notice.opt.continue": "Lanjutkan ke hasil resminya",
   "q.retirement_age_notice.opt.second_home": "Lihat Second Home",
   "q.retirement_age_notice.opt.change": "Ubah jawaban saya",

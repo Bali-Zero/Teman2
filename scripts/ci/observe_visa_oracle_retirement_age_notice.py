@@ -7,7 +7,7 @@
 The consumer is the public Visa Oracle interview. The observation runs the shell test
 file from `apps/mouth` and requires every test in it to pass: a retirement visitor below
 55 sees the notice right after the purpose answers (EN and ID), Continue reaches the
-retirement branch, Second Home opens its branch, and a visitor of 55 or more never sees it.
+retirement branch, Second Home reaches its own basis question, and a visitor of 55 or more never sees it.
 Exit 0 only if Vitest reports the file passed with zero failures.
 """
 
@@ -26,12 +26,12 @@ TEST_FILE = "src/app/(visa-oracle)/visa-oracle/_components/OracleShell.retiremen
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 
-MIN_TESTS = 5
+MIN_TESTS = 6
 _SUMMARY = re.compile(r"^\s*Tests\s+(\d+) passed \((\d+)\)\s*$")
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a Vitest line that is exactly `Tests  N passed (N)`, N >= 5.
+    """True only for a Vitest line that is exactly `Tests  N passed (N)`, N >= 6.
 
     Anything else (skipped, todo, failed, a reduced count, no line) is False.
     """

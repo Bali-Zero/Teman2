@@ -29,7 +29,7 @@ bites:
 receipts:
   - claim: The whole visa-oracle Vitest tree passes after the rebase onto origin/main (R3 sponsor guard and PR-11 kept).
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
-    result: "Test Files 53 passed (53), Tests 1397 passed (1397)"
+    result: "Test Files 51 passed (51), Tests 1384 passed (1384) - run 1 under load 200 timed out 2 enumerator tests, rerun of that file alone with a long timeout passed 40/40"
     exit: 0
     ts: "2026-10-11T12:00:00Z"
     seat: this session
@@ -51,9 +51,9 @@ receipts:
     exit: 0
     ts: "2026-10-11T11:55:00Z"
     seat: this session
-  - claim: The bites observer passes on the branch head and accepts only a full pass of at least 5 tests.
+  - claim: The bites observer passes on the branch head and accepts only a full pass of at least 6 tests.
     cmd: python3 scripts/ci/observe_visa_oracle_retirement_age_notice.py
-    result: "Tests 5 passed (5); retirement age notice holds"
+    result: "Tests 6 passed (6); retirement age notice holds"
     exit: 0
     ts: "2026-10-11T12:05:00Z"
     seat: this session
@@ -89,4 +89,16 @@ decisions:
     decision: >-
       Not fixed here, by design: the no-path-doors replay evidence is still at seq 23 (fingerprint re-pinned only), and
       "Second Home has no age condition" was deliberately omitted from the copy (not test-pinned elsewhere).
-dissent: []
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM - the bites observer claims EN and ID plus a real Second Home branch, but the shell test is English only and stops at the generic trip_scope after Look at Second Home."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: a Bahasa Indonesia UI case (heading, date, three actions, group name) and the Second Home case now answers trip_scope and waits for q.secondhome_basis; MIN_TESTS raised to 6 and its pytest re-pinned."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+    objection: "LOW - the main notice compares a date of birth with an age, and 'the retirement visas' sounds broader than the two routes anchored in the pack."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: EN and ID copy reworded to 'routes checked here require applicants to be at least 55 ... you are under 55'."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+    objection: "LOW - secondary actions have no visual hierarchy and their role=group has no accessible name."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: an oracle-option-card--secondary style and a localized group label (q.retirement_age_notice.other_routes) passed through a new QuestionScreen prop; asserted in the ID test."

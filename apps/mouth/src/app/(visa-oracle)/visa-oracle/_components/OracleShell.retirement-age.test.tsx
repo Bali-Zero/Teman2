@@ -66,6 +66,39 @@ describe("OracleShell · the retirement-age notice", () => {
     }
   });
 
+  it("renders the heading, the date and the three actions in Bahasa Indonesia", async () => {
+    render(<OracleShell />);
+    await reachNotice("1990-01-01");
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: translate("en", "language.option.id.aria"),
+      }),
+    );
+    expect(
+      await screen.findByRole("heading", {
+        name: translate("id", "q.retirement_age_notice" as I18nKey),
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Anda berusia 55 tahun pada 1 Januari 2045\./),
+    ).toBeTruthy();
+    expect(screen.queryByText(/{{date}}/)).toBeNull();
+    for (const key of [
+      "q.retirement_age_notice.opt.continue",
+      "q.retirement_age_notice.opt.second_home",
+      "q.retirement_age_notice.opt.change",
+    ]) {
+      expect(
+        screen.getByRole("button", { name: translate("id", key as I18nKey) }),
+      ).toBeInTheDocument();
+    }
+    expect(
+      screen.getByRole("group", {
+        name: translate("id", "q.retirement_age_notice.other_routes"),
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("Continue goes on to the unchanged retirement branch", async () => {
     render(<OracleShell />);
     await reachNotice("1990-01-01");
@@ -95,6 +128,14 @@ describe("OracleShell · the retirement-age notice", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.queryByText(NOTICE)).toBeNull();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /one main purpose/i }),
+    );
+    expect(
+      await screen.findByRole("heading", {
+        name: translate("en", "q.secondhome_basis" as I18nKey),
+      }),
+    ).toBeInTheDocument();
   });
 
   it("Change my answers reopens the date of birth", async () => {

@@ -1096,6 +1096,7 @@ function OracleShellRuntime({
                 language={language}
                 question={QUESTIONS[current.questionId]}
                 onAnswer={(value) => answer(current.questionId, value)}
+                secondaryActionsLabelI18nKey="q.retirement_age_notice.other_routes"
                 secondaryActions={
                   current.questionId === "retirement_age_notice"
                     ? [

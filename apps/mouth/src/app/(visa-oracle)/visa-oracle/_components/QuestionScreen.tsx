@@ -64,6 +64,8 @@ export interface QuestionScreenProps {
     labelI18nKey: I18nKey;
     onSelect: () => void;
   }[];
+  /** Accessible name of the secondary-actions group. */
+  secondaryActionsLabelI18nKey?: I18nKey;
 }
 
 /**
@@ -87,6 +89,7 @@ export function QuestionScreen({
   facts,
   promptVars,
   secondaryActions,
+  secondaryActionsLabelI18nKey,
 }: QuestionScreenProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [dateValue, setDateValue] = useState("");
@@ -339,12 +342,20 @@ export function QuestionScreen({
       )}
 
       {secondaryActions && secondaryActions.length > 0 && (
-        <div className="oracle-options" role="group">
+        <div
+          className="oracle-options oracle-options--secondary"
+          role="group"
+          aria-label={
+            secondaryActionsLabelI18nKey
+              ? translate(language, secondaryActionsLabelI18nKey)
+              : undefined
+          }
+        >
           {secondaryActions.map((action) => (
             <button
               key={action.key}
               type="button"
-              className="oracle-option-card"
+              className="oracle-option-card oracle-option-card--secondary"
               data-secondary-action={action.key}
               onClick={action.onSelect}
             >
