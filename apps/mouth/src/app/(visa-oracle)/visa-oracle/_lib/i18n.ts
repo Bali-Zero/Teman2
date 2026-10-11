@@ -330,7 +330,7 @@ const en = {
     "Enter the yearly amount in whole US dollars. If you are paid in another currency, enter its US-dollar equivalent.",
   "q.remote_annual_income_usd.label": "Yearly income",
   "why.remote_annual_income_usd":
-    "This amount decides whether the remote-worker visa can fit your plan. It is used exactly as you enter it.",
+    "The remote-worker visa (E33G) has a yearly income requirement. The amount is used exactly as you enter it.",
   "q.remote_pt_pma":
     "Is this remote-work plan tied to a committed Indonesian PT PMA?",
   "q.remote_pt_pma.hint":
@@ -1378,7 +1378,7 @@ const id: Record<Keys, string> = {
     "Masukkan jumlah tahunan dalam dolar AS (angka bulat). Jika Anda dibayar dalam mata uang lain, masukkan nilai setaranya dalam dolar AS.",
   "q.remote_annual_income_usd.label": "Penghasilan tahunan",
   "why.remote_annual_income_usd":
-    "Jumlah ini menentukan apakah visa pekerja jarak jauh dapat sesuai dengan rencana Anda. Jumlah ini digunakan persis seperti yang Anda masukkan.",
+    "Visa pekerja jarak jauh (E33G) memiliki persyaratan penghasilan tahunan. Jumlah ini digunakan persis seperti yang Anda masukkan.",
   "q.remote_pt_pma":
     "Apakah rencana kerja remote ini terikat pada komitmen PT PMA Indonesia?",
   "q.remote_pt_pma.hint":
