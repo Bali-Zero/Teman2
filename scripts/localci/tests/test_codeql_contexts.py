@@ -1229,7 +1229,8 @@ def test_rules_are_counted_once_by_id_across_the_driver_and_its_extensions(tmp_p
 
 
 @pytest.mark.parametrize("sarif_doc,rc,needle", [("{", 1, "Invalid SARIF"), ('{"runs": [{}]}', 1, "Missing 'results' array in run 0"), ('{"runs": []}', 0, "results=0"),
-                                                 (json.dumps(sarif(results=25_001)), 1, "results per run: 25001 > 25000"), (json.dumps(sarif(results=25_000)), 0, "results=25000")])
+                                                 (json.dumps(sarif(results=25_001)), 1, "results per run: 25001 > 25000"), (json.dumps(sarif(results=25_000)), 0, "results=25000")],
+                         ids=["unparseable", "run-without-results", "no-runs", "results-over-max", "results-at-max"])   # a 450 KB id rides PYTEST_CURRENT_TEST into every child's env: E2BIG on Linux
 def test_the_leg_script_exits_1_on_a_sarif_hosted_would_reject_and_0_on_one_it_takes(tmp_path, sarif_doc, rc, needle):
     f = tmp_path / "fake.sarif"
     f.write_text(sarif_doc)
