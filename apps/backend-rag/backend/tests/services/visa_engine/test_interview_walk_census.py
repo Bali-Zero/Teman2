@@ -646,6 +646,7 @@ WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE: dict[int, dict[str, tuple[DeadEnd, ...]]] =
 WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[25] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[24]
 WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[26] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[25]
 WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[27] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[26]
+WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[28] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[27]
 WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
 )
@@ -1252,6 +1253,14 @@ _PR11_RETIREMENT_OUTCOMES: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/retirement/undecided/age64/deposit_or_income_passing": _E33E_AND_E33F,
 }
 EXPECTED_OUTCOME_BY_SEQUENCE[27] = EXPECTED_OUTCOME_BY_SEQUENCE[26]
+# seq-28 Step C: once Step B's two income-boundary walks are present,
+# only the 59,999 USD walk changes state.  The 60,000 USD walk remains E33G,
+# inherited from seq-27 through the dictionary expansion.
+_SEQ28_E33G_59999_WALK = "offshore/remote/foreign_only/income_59999"
+EXPECTED_OUTCOME_BY_SEQUENCE[28] = {
+    **EXPECTED_OUTCOME_BY_SEQUENCE[27],
+    _SEQ28_E33G_59999_WALK: ("NO_SUPPORTED_PATH", ()),
+}
 # The sequences share one corpus, so every one of them pins the 13 walks; the
 # replay test `test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence`
 # re-measures them (and the full state census) on each of seq-20..27.
@@ -1330,6 +1339,16 @@ EXPECTED_STATE_CENSUS_BY_SEQUENCE = {
     }
     for _seq, _census in EXPECTED_STATE_CENSUS_BY_SEQUENCE.items()
 }
+# Expected after Step B's 131-walk corpus from the single ruled movement:
+# one walk moves SUPPORTED_CANDIDATES -> NO_SUPPORTED_PATH; age scoping moves
+# reason codes only, never a state.  The candidate replay below re-measures
+# this literal as soon as the real seq-28 source exists on disk.
+EXPECTED_STATE_CENSUS_BY_SEQUENCE[28] = {
+    "HUMAN_REVIEW_REQUIRED": 3,
+    "NEEDS_INPUT": 1,
+    "NO_SUPPORTED_PATH": 17,
+    "SUPPORTED_CANDIDATES": 110,
+}
 
 #: Which fact blocks how many walks — the §2.2 table, EMPTY between PR-3 and
 #: PR-5. A cure that moves walks between blocking facts instead of removing
@@ -1375,6 +1394,7 @@ EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
 EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[25] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[24]
 EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[26] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[25]
 EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[27] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[26]
+EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[28] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[27]
 EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
 )
@@ -1508,6 +1528,7 @@ STUDIO_HELD_WALKS_BY_SEQUENCE: dict[int, frozenset[str]] = {
 STUDIO_HELD_WALKS_BY_SEQUENCE[25] = STUDIO_HELD_WALKS_BY_SEQUENCE[24]
 STUDIO_HELD_WALKS_BY_SEQUENCE[26] = STUDIO_HELD_WALKS_BY_SEQUENCE[25]
 STUDIO_HELD_WALKS_BY_SEQUENCE[27] = STUDIO_HELD_WALKS_BY_SEQUENCE[26]
+STUDIO_HELD_WALKS_BY_SEQUENCE[28] = STUDIO_HELD_WALKS_BY_SEQUENCE[27]
 STUDIO_HELD_WALKS: frozenset[str] = STUDIO_HELD_WALKS_BY_SEQUENCE.get(_SIGNED_SEQUENCE, frozenset())
 STUDIO_REVIEW_REASON = "SECOND_HOME_BELOW_THRESHOLD_STUDIO"
 
@@ -2390,10 +2411,10 @@ def test_the_census_pins_the_signed_sequence() -> None:
     assert _SIGNED_SEQUENCE in WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE
     assert _SIGNED_SEQUENCE in EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE
     # The sequences share one corpus, so they must pin the same walks.
-    assert all(
-        sorted(pins) == sorted({**_EXPECTED_OUTCOME_ON_SEQ20, **_PR11_RETIREMENT_OUTCOMES})
-        for pins in EXPECTED_OUTCOME_BY_SEQUENCE.values()
-    )
+    common_labels = set(_EXPECTED_OUTCOME_ON_SEQ20) | set(_PR11_RETIREMENT_OUTCOMES)
+    for sequence, pins in EXPECTED_OUTCOME_BY_SEQUENCE.items():
+        expected_labels = common_labels | ({_SEQ28_E33G_59999_WALK} if sequence >= 28 else set())
+        assert set(pins) == expected_labels, sequence
     # Every seq-21 change is an ADDITION: no walk loses a candidate the
     # seq-20 table gave it (the one state change keeps no candidate to lose).
     for label, (_state, candidates) in _SEQ21_OUTCOME_CHANGES.items():
@@ -2474,7 +2495,14 @@ def test_every_walk_ends_in_its_pinned_outcome_on_the_candidate_pack(
     assert held == PRIVACY_HELD_WALKS | STUDIO_HELD_WALKS_BY_SEQUENCE[sequence]
 
 
-@pytest.mark.parametrize("sequence", sorted(EXPECTED_OUTCOME_BY_SEQUENCE))
+@pytest.mark.parametrize(
+    "sequence",
+    [
+        sequence
+        for sequence in sorted(EXPECTED_OUTCOME_BY_SEQUENCE)
+        if (PACKS_DIR / f"rulepack-prod-{sequence:03d}.source.json").is_file()
+    ],
+)
 def test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence(
     walks: dict[str, dict[str, Any]], sequence: int
 ) -> None:
@@ -2506,7 +2534,15 @@ _PR11_INCOME_DEAD_ENDS = (
 )
 
 
-@pytest.mark.parametrize("sequence", [s for s in sorted(EXPECTED_OUTCOME_BY_SEQUENCE) if s >= 23])
+@pytest.mark.parametrize(
+    "sequence",
+    [
+        sequence
+        for sequence in sorted(EXPECTED_OUTCOME_BY_SEQUENCE)
+        if sequence >= 23
+        and (PACKS_DIR / f"rulepack-prod-{sequence:03d}.source.json").is_file()
+    ],
+)
 def test_retirement_income_dead_ends_name_their_cause_on_every_sequence_that_has_the_rule(
     walks: dict[str, dict[str, Any]], sequence: int
 ) -> None:
