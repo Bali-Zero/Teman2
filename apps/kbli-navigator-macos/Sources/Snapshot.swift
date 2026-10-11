@@ -294,6 +294,13 @@ extension Snapshot {
                 content = Self.page(KBLIDossierView(kbli: k, variant: .claude, scrolls: false)
                     .environmentObject(state).environmentObject(lang), width: w, height: h)
             } else { content = notFound }
+        case "registry-sheet":
+            // The sheet the user opens over the table (`SearchListView.sheetLayer`); --sheet-open expands it, which is where
+            // its ledger shows: the only live caller of `KBLIRegistryView`.
+            if let k = state.store.code(code) {
+                content = Self.page(RegistryVerdictSheet(kbli: k, expanded: .constant(args.contains("--sheet-open")), onClose: {}, scrolls: false)
+                    .environmentObject(state).environmentObject(lang), width: w, height: h)
+            } else { content = notFound }
         case "sheet-ledger":
             // The registry sheet/ledger (KBLIVerdict.swift's own name for this surface) — the mono
             // UPPERCASE label↔value LedgerPlate table, `KBLIRegistryView`.
