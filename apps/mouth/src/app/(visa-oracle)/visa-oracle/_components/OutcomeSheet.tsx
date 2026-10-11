@@ -43,6 +43,7 @@ import {
   SECOND_HOME_STUDIO_URL,
   REVIEW_REASON_ELEMENTS,
   UNMAPPED_REASON_COPY,
+  isNoPathWithoutDoors,
   isSecondHomeStudioOnly,
 } from "../_lib/engine-adapter";
 import {
@@ -165,9 +166,13 @@ function buildShareSummary(
 ): string {
   // D23 "OPTION B-STUDIO": the share text must never carry the generic
   // "needs a human, not an algorithm" headline for a Studio-only hold.
+  // Likewise a dead end with no open door must not share "here’s what
+  // instead".
   const headlineKey: I18nKey = isSecondHomeStudioOnly(outcome)
     ? ("verdict.headline.SECOND_HOME_STUDIO" as I18nKey)
-    : (`verdict.headline.${outcome.state}` as I18nKey);
+    : isNoPathWithoutDoors(outcome)
+      ? ("verdict.headline.NO_SUPPORTED_PATH_NO_DOOR" as I18nKey)
+      : (`verdict.headline.${outcome.state}` as I18nKey);
   const lines = [
     translate(language, "outcome.share_title" as I18nKey),
     translate(language, headlineKey),

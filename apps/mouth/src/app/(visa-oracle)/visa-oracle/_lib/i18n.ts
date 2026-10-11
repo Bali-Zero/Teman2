@@ -817,6 +817,11 @@ const en = {
   // ENDING-ROUND E2: truthful in-page language — the previous "saved"
   // wording overclaimed persistence; only the current page still holds the
   // answers.
+  // A NO_SUPPORTED_PATH with ZERO alternatives must not promise "what instead"
+  // or an open door: not an `OutcomeState`, an override selected by
+  // `VerdictReveal`/`buildShareSummary` exactly like SECOND_HOME_STUDIO.
+  "verdict.headline.NO_SUPPORTED_PATH_NO_DOOR":
+    "This path isn’t one this tool can confirm",
   "verdict.headline.TEMPORARILY_UNAVAILABLE": "A pause in the journey.",
   "verdict.headline.NEEDS_INPUT": "A little more to go",
   // D23 "OPTION B-STUDIO": not a real `OutcomeState` — an override VerdictReveal
@@ -838,6 +843,8 @@ const en = {
     "Nothing here is guessed. A Bali Zero advisor reviews cases like yours by hand.",
   "verdict.state_description.NO_SUPPORTED_PATH":
     "We won’t force a fit that isn’t there — here is what your answers do open.",
+  "verdict.state_description.NO_SUPPORTED_PATH_NO_DOOR":
+    "We won’t force a fit that isn’t there. A Bali Zero advisor can look at routes that depend on facts this tool does not ask.",
   "verdict.state_description.TEMPORARILY_UNAVAILABLE":
     "We can’t check your options right now. Your answers are still on this page.",
   "verdict.state_description.NEEDS_INPUT":
@@ -1831,6 +1838,8 @@ const id: Record<Keys, string> = {
     "Ini butuh manusia, bukan algoritma",
   "verdict.headline.NO_SUPPORTED_PATH":
     "Jalur persis ini belum didukung — ini alternatifnya",
+  "verdict.headline.NO_SUPPORTED_PATH_NO_DOOR":
+    "Jalur ini belum dapat dikonfirmasi oleh alat ini",
   "verdict.headline.TEMPORARILY_UNAVAILABLE": "Jeda sejenak dalam perjalanan.",
   "verdict.headline.NEEDS_INPUT": "Sedikit lagi",
   "verdict.headline.SECOND_HOME_STUDIO":
@@ -1846,6 +1855,8 @@ const id: Record<Keys, string> = {
     "Tidak ada yang ditebak di sini. Konsultan Bali Zero meninjau kasus seperti ini secara langsung.",
   "verdict.state_description.NO_SUPPORTED_PATH":
     "Kami tidak akan memaksakan jalur yang tidak cocok — inilah yang dibuka oleh jawaban Anda.",
+  "verdict.state_description.NO_SUPPORTED_PATH_NO_DOOR":
+    "Kami tidak akan memaksakan jalur yang tidak cocok. Konsultan Bali Zero dapat meninjau jalur yang bergantung pada hal yang tidak ditanyakan alat ini.",
   "verdict.state_description.TEMPORARILY_UNAVAILABLE":
     "Kami belum bisa memeriksa opsi Anda saat ini. Jawaban Anda masih ada di halaman ini.",
   "verdict.state_description.NEEDS_INPUT":

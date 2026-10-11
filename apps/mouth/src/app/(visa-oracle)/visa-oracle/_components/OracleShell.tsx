@@ -35,6 +35,7 @@ import { EvaluationRunCache } from "../_lib/evaluation-run-cache";
 import {
   buildEngineOutcome,
   buildInternalPreviewOutcome,
+  isNoPathWithoutDoors,
   isSecondHomeStudioOnly,
 } from "../_lib/engine-adapter";
 import { VisaOracleResponseError } from "../_lib/engine-response";
@@ -1161,6 +1162,7 @@ function OracleShellRuntime({
                       provenance={outcome.provenance}
                       legalStatus={outcome.candidates[0]?.legal.status}
                       isSecondHomeStudioOnly={isSecondHomeStudioOnly(outcome)}
+                      isNoPathWithoutDoors={isNoPathWithoutDoors(outcome)}
                     />
                     <OutcomeSheet
                       language={language}

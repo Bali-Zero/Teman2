@@ -28,6 +28,12 @@ export interface VerdictRevealProps {
    * appear anywhere on a Studio-only outcome.
    */
   isSecondHomeStudioOnly?: boolean;
+  /**
+   * True when `isNoPathWithoutDoors(outcome)` is true — a NO_SUPPORTED_PATH
+   * that carries no alternative. Selects the headline/description that
+   * promise no "what instead" and no open door.
+   */
+  isNoPathWithoutDoors?: boolean;
 }
 
 const STATE_ICON: Record<OutcomeState, typeof CheckCircle2> = {
@@ -61,6 +67,7 @@ export function VerdictReveal({
   provenance,
   legalStatus,
   isSecondHomeStudioOnly,
+  isNoPathWithoutDoors,
 }: VerdictRevealProps) {
   const reducedMotion = useReducedMotion();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -88,16 +95,24 @@ export function VerdictReveal({
     !useProvenanceCopy &&
     state === "HUMAN_REVIEW_REQUIRED" &&
     isSecondHomeStudioOnly === true;
+  const useNoDoorCopy =
+    !useProvenanceCopy &&
+    state === "NO_SUPPORTED_PATH" &&
+    isNoPathWithoutDoors === true;
   const headlineKey = useProvenanceCopy
     ? (`verdict.provenance_headline.${provenance}` as I18nKey)
     : useSecondHomeStudioCopy
       ? ("verdict.headline.SECOND_HOME_STUDIO" as I18nKey)
-      : (`verdict.headline.${state}` as I18nKey);
+      : useNoDoorCopy
+        ? ("verdict.headline.NO_SUPPORTED_PATH_NO_DOOR" as I18nKey)
+        : (`verdict.headline.${state}` as I18nKey);
   const descriptionKey = useProvenanceCopy
     ? (`verdict.provenance_description.${provenance}` as I18nKey)
     : useSecondHomeStudioCopy
       ? ("verdict.state_description.SECOND_HOME_STUDIO" as I18nKey)
-      : (`verdict.state_description.${state}` as I18nKey);
+      : useNoDoorCopy
+        ? ("verdict.state_description.NO_SUPPORTED_PATH_NO_DOOR" as I18nKey)
+        : (`verdict.state_description.${state}` as I18nKey);
 
   const heading = (
     <h1
