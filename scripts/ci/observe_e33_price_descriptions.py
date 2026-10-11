@@ -7,9 +7,9 @@
 
 The consumer is the pricing knowledge layer (get_all_prices / the public pricing
 endpoint), which serves the rows of bali_zero_official_prices_2026.json and its
-mouth mirror. The observation runs the pytest file that requires the E33 and E33E
-rows to carry no "non-working" and to name the rangkap kegiatan condition, in both files.
-Exit 0 only if pytest reports a full pass of at least 4 tests.
+mouth mirror. The observation runs the pytest file that goes through PricingService.get_all_prices()
+and requires the E33 and E33E rows to carry no "non-working" and to name the rangkap kegiatan condition, in both files.
+Exit 0 only if pytest reports a full pass of at least 12 tests.
 """
 
 # bites-observable — no arguments; one literal program, one literal test file.
@@ -23,12 +23,13 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TEST_FILE = "tests/scripts/test_e33_price_descriptions.py"
-MIN_TESTS = 4
+MIN_TESTS = 12
+TIMEOUT_SECONDS = 240
 _SUMMARY = re.compile(r"^=*\s*(\d+) passed in [\d.]+s(?: \(.*\))?\s*=*$")
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a pytest line that is a pure pass (no failed/skipped/error), N >= 4."""
+    """True only for a pytest line that is a pure pass (no failed/skipped/error), N >= 12."""
     if line is None:
         return False
     match = _SUMMARY.match(line.strip())
@@ -36,13 +37,18 @@ def summary_ok(line: str | None) -> bool:
 
 
 def main() -> int:
-    result = subprocess.run(
-        [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", TEST_FILE],
-        cwd=REPO_ROOT,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", TEST_FILE],
+            cwd=REPO_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"observe_e33_price_descriptions: FAILED (timeout after {TIMEOUT_SECONDS}s)")
+        return 1
     out = result.stdout + result.stderr
     lines = [ln for ln in out.splitlines() if " passed" in ln or " failed" in ln or "error" in ln]
     line = lines[-1] if lines else None
