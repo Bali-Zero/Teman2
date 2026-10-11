@@ -1,0 +1,66 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa night family "work", plan PR-04 (audit findings F13 and F31, group G18): the product code is printed
+  twice on the card and in the share line because 37 of 38 pack names end in "(CODE)".
+mission: >-
+  A visitor sharing a Visa Oracle result sees each product code once, on the card and in the share line,
+  in English and Bahasa Indonesia.
+lanes:
+  - lane: pr04-code-once
+    role: build
+    seat: Claude Sonnet 5.5 implementer (subagent), worktree mouth-vn-work-pr04-code-once.
+  - lane: pr04-ground-truth
+    role: ground_truth
+    seat: >-
+      Audit dossiers E23, E23U, E23V (names en/id end in "(CODE)", eyebrow repeats the code, finding E-1);
+      re-verified on origin/main dfb6e2b74a: OutcomeSheet.tsx printed candidate.code then the full name in the
+      share line and in the card eyebrow plus title.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+    query_hash: "14df5a8016f3100ff04919d228de901544a0b517fafc0dc4fb6aa54c88d714b2" # pragma: allowlist secret
+    note: query_hash = sha256 of OutcomeSheet.tsx at origin/main (before the change).
+pii_scan: clean
+bites:
+  consumer: >-
+    visitors sharing a result on the public Visa Oracle: the card title and the Copy summary text produced by
+    OutcomeSheet; live after promote, a headless walk on https://balizero.com/visa-oracle to an E23-family
+    result shows the code once in the card and in the copied share text, EN and ID.
+  where: ci
+  observe: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.display-name.test.tsx'
+  expect: "contains:6 passed"
+receipts:
+  - claim: "The whole visa-oracle mouth suite passes with the change."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 55 passed (55); Tests 1431 passed (1431)"
+    exit: 0
+    ts: "2026-10-12T07:10:00Z"
+    seat: this session
+  - claim: "apps/mouth typechecks."
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-12T07:10:30Z"
+    seat: this session
+  - claim: "The new test was red before the helper existed and is green after."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.display-name.test.tsx'
+    result: "before: 5 failed | 1 passed (6); after: 6 passed (6)"
+    exit: 0
+    ts: "2026-10-12T07:09:31Z"
+    seat: this session
+decisions:
+  - id: D-keep-separator
+    decision: >-
+      The existing em-dash separator of the share line is kept ("E23 - Name: price"), because
+      OutcomeSheet.duration.test.tsx pins it; only the duplicate trailing code is removed.
+  - id: D-scope-mouth-only
+    decision: >-
+      The pack names are not edited (seq-27 is signed and out of scope); the reason sentences in
+      engine-adapter.ts that quote "(E23U)" are a separate surface and are not touched here.
+dissent: []
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
+results:
+  mouth_visa_oracle_suite: "55 files, 1431 tests passed"
+  mouth_tsc: clean
+  new_tests: "6 (3 helper unit, 3 render: card title and share line EN and ID, non-matching suffix)"
