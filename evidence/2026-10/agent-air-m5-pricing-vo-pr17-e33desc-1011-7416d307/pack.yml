@@ -1,0 +1,58 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 decisions/audit — the price rows must say what the official pages say about the
+  Second Home permit, not that it is non-working.
+mission: >-
+  The E33 and E33E price rows stop calling the permit non-working.
+lanes:
+  - lane: pr17-e33-price-descriptions
+    role: build
+    seat: Claude Sonnet 5 implementer, worktree pricing-vo-pr17-e33desc-1011 on M5.
+  - lane: pr17-ground-truth
+    role: ground_truth
+    seat: >-
+      the official imigrasi.go.id pages for E33 and E33E, which state "Selain itu, anda juga dapat
+      melakukan kegiatan bekerja, menempuh pendidikan atau kegiatan lainnya ... dengan melakukan
+      pelaporan rangkap kegiatan ke kantor imigrasi yang menerbitkan izin tinggal." The E33F page
+      permits business, meetings, shopping and tourism and never mentions work or study, so its rows
+      are untouched.
+    nb: apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+    query_hash: "a9c37a23bdce45f060a160f714a994ed2792dd53585eb11882c7fe440fd38c8c" # pragma: allowlist secret
+    note: query_hash = sha256 of the pricing file at origin/main before the change.
+pii_scan: clean
+bites:
+  consumer: >-
+    the pricing knowledge layer (get_all_prices and the public pricing endpoint), which serves the
+    E33 and E33E rows of the official price file and its mouth mirror.
+  where: ci
+  observe: python3 scripts/ci/observe_e33_price_descriptions.py
+  expect: "contains:E33 descriptions hold"
+receipts:
+  - claim: The two data files and the observer parser tests pass.
+    cmd: python3 -m pytest -q tests/scripts/test_e33_price_descriptions.py tests/scripts/test_observe_e33_price_descriptions.py
+    result: "14 passed"
+    exit: 0
+    ts: "2026-10-11T10:00:00Z"
+    seat: this session
+  - claim: The observer passes on the branch head and accepts only a full pass of at least 4 tests.
+    cmd: python3 scripts/ci/observe_e33_price_descriptions.py
+    result: "4 passed in 0.02s; E33 descriptions hold"
+    exit: 0
+    ts: "2026-10-11T10:00:00Z"
+    seat: this session
+  - claim: The mouth mirror is in sync with the canonical pricing tool.
+    cmd: python3 scripts/sync_frontend_prices.py --check
+    result: "INFO OK: bali-zero-prices.json is in sync with PricingTool canonical."
+    exit: 0
+    ts: "2026-10-11T10:00:00Z"
+    seat: this session
+decisions:
+  - id: D-e33f-untouched
+    decision: >-
+      E33F rows keep their text: its official page never mentions work or study.
+  - id: D-catalogue-followup
+    decision: >-
+      apps/backend-rag/backend/services/visa_check/catalogue.py still says non-working for E33 notes;
+      out of scope here, flagged as a follow-up in the PR body.
+dissent: []
