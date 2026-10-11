@@ -201,7 +201,7 @@ struct ScalePathGrid: View {
                     if es.isEmpty {
                         if top == 12 { Text("·").font(Theme.scalable(13)).foregroundStyle(Theme.faint) }
                     } else {
-                        ForEach(es, id: \.idx) { cell($0).censusFrame("matrix.chip", "\(i)", when: chips) }
+                        ForEach(es, id: \.idx) { cell($0).censusFrame("matrix.chip", "\(i):\($0.idx)", when: chips) }
                     }
                 }
                 .frame(minWidth: 80, maxWidth: .infinity)

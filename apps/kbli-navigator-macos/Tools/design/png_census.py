@@ -86,6 +86,7 @@ def c11(im, fr, rows):
     need(fr, "matrix.head", "matrix.chip"); heads = [(v, b[3], sum(ibox(im, b)[0::2]) / 2) for v, b in fr["matrix.head"]]
     per, off = Counter(), []
     for v, b in fr["matrix.chip"]:
+        v = v.split(":")[0]   # a chip's value is its step, then its row ("2:5")
         h = max((h for h in heads if h[0] == v and h[1] <= b[1]), key=lambda h: h[1], default=None)
         if h: per[round(h[1] / 4)] += 1
         c = seen(im, b); cx, cy = (c[0] + c[2]) / 2, (c[1] + c[3]) / 2
@@ -215,7 +216,10 @@ def c24(im, fr, arg):
     if not any(v in shown for v, _ in fr["ring"]): bad.append("no ring on the shown row %s" % next(iter(shown)))
     if len(fr["matrix.chip"]) < cells: bad.append("%d marked chips for %d cells: a chip is unmarked" % (len(fr["matrix.chip"]), cells))
     o = int(3.5 * s + .5)
-    for _, (x0, y0, x1, y1) in fr["ring"]:
+    for row, (x0, y0, x1, y1) in fr["ring"]:
+        sits = [b for v, b in fr["matrix.chip"] if v.endswith(":" + row) and abs((b[0] + b[2]) - (x0 + x1)) <= 4 and abs((b[1] + b[3]) - (y0 + y1)) <= 4
+                and b[0] - x0 <= 2 and b[1] - y0 <= 2 and x1 - b[2] <= 2 and y1 - b[3] <= 2]   # the chip of ITS row, inside the ring, centres within 2 px
+        if not sits: bad.append("the ring marked on row %s at %d,%d surrounds no chip of row %s" % (row, x0, y0, row))
         x0, y0, x1, y1 = x0 - o, y0 - o, x1 + o, y1 + o   # the mark sits on the chip; the ring's outer edge is 3.5 pt out
         g = ground(im, (x0, y0, x1, y1)); xs, ys = range(x0 + k, x1 - k), range(y0 + k, y1 - k)
         sides = {"top": ([(x, y0 + d) for x in xs], [(x, y) for x in xs for y in range(y0 - 1 - t, y0 - 1)]),
@@ -249,7 +253,7 @@ OPTIONAL = {"C12": ("headsup.sentence",), "C24": ("hint",)}
 # a tone, a step ("0"…"3" in `scaleOrder`), an ordinal, a fraction, or nothing. Never drawn text.
 TONE, STEP, ORD, FRAC = r"open|restricted|closed|neutral", r"[0-3]", r"[1-9]?", r"0(?:\.\d+)?|1(?:\.0+)?|\.\d+"
 ROW = r"\d+"   # a row of the record (an index into its per-scale rows), the cell a ring sits on or the detail shows
-NAMES = {**dict.fromkeys(("matrix.head", "matrix.chip", "matrix.cell"), STEP), **dict.fromkeys(("ring", "detail"), ROW), "headsup.label": ORD, "headsup.sentence": ORD,
+NAMES = {**dict.fromkeys(("matrix.head", "matrix.cell"), STEP), "matrix.chip": STEP + r"(?::\d+)?", **dict.fromkeys(("ring", "detail"), ROW), "headsup.label": ORD, "headsup.sentence": ORD,
          **dict.fromkeys(("chip.national", "chip.bali", "headsup"), TONE), "bar": FRAC,
          **dict.fromkeys(("matrix", "ladder", "cap", "bali.label", "basis.lead", "basis.body", "reason.lead", "reason.body",
                           "figure", "figure.peak", "card.peak", "census", "card", "uraian.item", "row.code", "row.title",
@@ -484,21 +488,25 @@ def c_cases():
     # C24 (the selection cue): a chip ringed (4 px out, 2 px thick) over a stacked neighbour. 8 px of gap clears it (innocent);
     # a neighbour at 4 px (the ring touches it), below, above or at either side, FAILs; so does a ring missing a side, a hint over
     # one cell and no hint over two (#8288 gate: Medium-Low at night, 85510, the lower chip, a side touch).
-    def sel(dy=None, up=None, dx=None, lx=None, broken=None, cells=2, hint=1, nbfill=OP, ringrow="0", detailrow="0"):
+    def sel(dy=None, up=None, dx=None, lx=None, broken=None, cells=2, hint=1, nbfill=OP, ringrow="0", detailrow="0", ringat=None):
         chip_b, ring_b = (150, 100, 250, 124), (146, 96, 254, 128)
-        ops = chip("matrix.chip", "0", chip_b, OP)[0]
-        for side, r in (("top", (146, 96, 254, 98)), ("bottom", (146, 126, 254, 128)), ("left", (146, 96, 148, 128)), ("right", (252, 96, 254, 128))):
+        ops = chip("matrix.chip", "0:0", chip_b, OP)[0]
+        rings = (("top", (146, 96, 254, 98)), ("bottom", (146, 126, 254, 128)), ("left", (146, 96, 148, 128)), ("right", (252, 96, 254, 128)))
+        if ringat == "neighbour":   # the ring drawn and marked around the chip below (150,132..156), the row mark unchanged
+            rings = (("top", (146, 128, 254, 130)), ("bottom", (146, 158, 254, 160)), ("left", (146, 128, 148, 160)), ("right", (252, 128, 254, 160)))
+            chip_b = (150, 132, 250, 156)
+        for side, r in rings:
             if side != broken: ops.append((r, tuple(RING[0])))
-        fr = {"matrix.chip": [("0", chip_b)], "ring": [(ringrow, chip_b)]}
+        fr = {"matrix.chip": [("0:0", (150, 100, 250, 124))], "ring": [(ringrow, chip_b)]}
         o, f = word("detail", detailrow, (20, 365, 380, 385)); ops += o; fr.update(f)
         for nb in ([(150, 124 + dy, 250, 148 + dy)] if dy is not None else []) + ([(150, 68, 250, 92 + up)] if up is not None else [])                 + ([(254 + dx, 100, 360 + dx, 124)] if dx is not None else []) + ([(40, 100, 146 + lx, 124)] if lx is not None else []):
-            o, f = chip("matrix.chip", "1", nb, nbfill); ops += o; fr["matrix.chip"] += f["matrix.chip"]
+            o, f = chip("matrix.chip", "1:1", nb, nbfill); ops += o; fr["matrix.chip"] += f["matrix.chip"]
         if hint:
             o, f = word("hint", "", (150, 170, 300, 182)); ops += o; fr.update(f)
         return ops, fr, {"cells": cells}
     for k, kw in ((0, dict(dy=8)), (0, dict(dy=8, up=0, dx=8, lx=-8)), (1, dict(dy=4)), (1, dict(dy=5)), (1, dict(dy=8, up=3)),
                   (1, dict(dy=8, dx=0)), (1, dict(dy=8, lx=0)), (1, dict(dy=8, broken="left")), (1, dict(dy=8, broken="bottom")),
-                  (1, dict(dy=8, ringrow="1")), (1, dict(dy=8, cells=4)), (1, dict(dy=8, cells=1)), (1, dict(dy=4, nbfill=(0xF4, 0xF1, 0xEB))), (1, dict(dy=8, hint=0)), (0, dict(dy=8, cells=1, hint=0))):
+                  (1, dict(dy=8, ringrow="1")), (1, dict(dy=8, ringat="neighbour")), (1, dict(dy=8, ringrow="1", ringat="neighbour")), (1, dict(dy=8, cells=4)), (1, dict(dy=8, cells=1)), (1, dict(dy=4, nbfill=(0xF4, 0xF1, 0xEB))), (1, dict(dy=8, hint=0)), (0, dict(dy=8, cells=1, hint=0))):
         ops, fr, rec = sel(**kw); yield "C24", rec, k, ops, fr
     # a chip whose own colours touch it on both sides: its seen box is 20 px wider, the centre unmoved (B2, #8276 gate)
     yield "C11", 4, 1, *m(*[word("matrix.head", str(i), (x - 10, 10, x + 10, 20)) for i, x in enumerate(xs)],
