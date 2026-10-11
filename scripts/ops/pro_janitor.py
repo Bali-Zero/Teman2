@@ -60,6 +60,11 @@ def mono():
     return time.monotonic()
 
 
+def wall():
+    """The wall clock Playwright judges the lock by: injectable beside mono()."""
+    return time.time()
+
+
 class ConfigError(Exception):
     pass
 
@@ -536,6 +541,10 @@ class LockStale(Exception):
     """We cannot prove the lock is still being kept alive (the keepalive died or starved): never assume it is held."""
 
 
+class LockUncertain(Exception):
+    """The identity stat after the mkdir was too slow to prove the directory is ours."""
+
+
 class Stopped(Exception):
     """The kill switch was thrown while a candidate was being walked."""
 
@@ -597,61 +606,101 @@ def audit_fd(fd, root_dev, depth=0):
 
 class Lock(object):
     """Invariant 8: Playwright's own install lock, `<root>/__dirlock`, taken the way proper-lockfile takes it (an atomic
-    mkdir) and removed only if it is still our inode. A keepalive daemon thread refreshes its mtime every `interval` seconds
-    whatever the walk is doing (an lsof scan or a stalled stat included) and records the monotonic time of its last success.
-    The walk calls check() right before every unlink and rmdir: the lock must still be our inode (else LockLost) and the last
-    success under 8 s old, the thread alive and unfailed (else LockStale). It fails closed: a dead or starved thread means
-    "not held". Playwright judges the lock stale after 10 s."""
+    mkdir) and held by a LEASE on the monotonic clock. take() reads t0 before the mkdir and, if the identity stat does not
+    return within 4 s of t0, proves nothing (LockUncertain). The lease is `t0 + 8 s`; a keepalive thread, holding its own dup
+    of the root fd, extends it to `t1 + 8 s` only after a fresh identity stat and a utime that returned before the lease ran
+    out, and ends on anything else (including wall/monotonic drift: Playwright judges staleness by the wall clock). check()
+    runs right before every unlink and rmdir: lease valid (else LockStale), inode ours (else LockLost). `_lease_until` is
+    guarded by a threading.Lock, since the walk reads it while the thread writes it."""
     NAME = "__dirlock"
-    MAX_AGE = 8.0
+    LEASE = 8.0
+    UNCERTAIN = 4.0
+    DRIFT = 1.0
+    JOIN_TIMEOUT = 5.0
 
-    def __init__(self, root_fd, interval, clock=None):
+    def __init__(self, root_fd, interval, mono_clock=None, wall_clock=None):
         self.fd, self.interval = root_fd, interval
-        self.clock = clock or mono
-        self.id, self.last_ok, self.failed = None, 0.0, False
+        self.mono = mono_clock or (lambda: mono())
+        self.wall = wall_clock or (lambda: wall())
+        self.id, self.failed, self.stuck = None, False, False
+        self._lease_until = 0.0
+        self._mu = threading.Lock()
         self._stop = threading.Event()
-        self._thread = None
+        self._thread, self._tfd, self._prev = None, None, None
+
+    def lease_until(self):
+        with self._mu:
+            return self._lease_until
 
     def take(self):
+        t0 = self.mono()   # BEFORE the mkdir: our mkdir sets an mtime at or after t0
+        w0 = self.wall()
         os.mkdir(self.NAME, 0o755, dir_fd=self.fd)   # FileExistsError: an installer holds it
         st = os.stat(self.NAME, dir_fd=self.fd, follow_symlinks=False)
-        self.id, self.last_ok = (st.st_dev, st.st_ino), self.clock()
+        if self.mono() >= t0 + self.UNCERTAIN:
+            raise LockUncertain()   # we cannot prove that directory is ours: record nothing, remove nothing
+        self.id = (st.st_dev, st.st_ino)
+        self._lease_until = t0 + self.LEASE
+        self._prev = (t0, w0)
+        self._tfd = os.dup(self.fd)   # the thread's own descriptor; the thread closes it
         self._thread = threading.Thread(target=self._keepalive, name="pro-janitor-lock", daemon=True)
         self._thread.start()
 
     def _keepalive(self):
         step = self.interval if self.interval > 0 else 0.05
-        while not self._stop.wait(step):
-            try:
-                st = os.stat(self.NAME, dir_fd=self.fd, follow_symlinks=False)
-                if not stat.S_ISDIR(st.st_mode) or (st.st_dev, st.st_ino) != self.id:
-                    raise LockLost()
-                os.utime(self.NAME, None, dir_fd=self.fd, follow_symlinks=False)
-                self.last_ok = self.clock()
-            except BaseException:   # whatever it was: record it and end the thread, so last_ok stops advancing
-                self.failed = True
-                return
+        try:
+            while not self._stop.wait(step):
+                if not self._refresh():
+                    self.failed = True
+                    return
+        except BaseException:   # whatever it was: end the thread, the lease simply runs out
+            self.failed = True
+        finally:
+            os.close(self._tfd)
 
-    def check(self):
+    def _refresh(self):
+        """One refresh; False ends the thread and the lease is no longer extended."""
+        t1, w1 = self.mono(), self.wall()   # BEFORE the identity stat
+        pt, pw = self._prev
+        if abs((w1 - pw) - (t1 - pt)) > self.DRIFT:
+            return False
+        st = os.stat(self.NAME, dir_fd=self._tfd, follow_symlinks=False)
+        if not stat.S_ISDIR(st.st_mode) or (st.st_dev, st.st_ino) != self.id:
+            return False
+        os.utime(self.NAME, None, dir_fd=self._tfd, follow_symlinks=False)
+        with self._mu:
+            if self.mono() >= self._lease_until:   # the utime returned too late: an installer may already own the lock
+                return False
+            self._lease_until = t1 + self.LEASE
+        self._prev = (t1, w1)
+        return True
+
+    def _ours(self):
         try:
             st = os.stat(self.NAME, dir_fd=self.fd, follow_symlinks=False)
         except OSError:
+            return False
+        return stat.S_ISDIR(st.st_mode) and (st.st_dev, st.st_ino) == self.id
+
+    def check(self):
+        if self.id is None or self.mono() >= self.lease_until():
+            raise LockStale()
+        if not self._ours():
             raise LockLost()
-        if not stat.S_ISDIR(st.st_mode) or (st.st_dev, st.st_ino) != self.id:
-            raise LockLost()
-        if self.failed or self._thread is None or not self._thread.is_alive() or self.clock() - self.last_ok >= self.MAX_AGE:
+        if self.mono() >= self.lease_until():   # the stat itself may have stalled
             raise LockStale()
 
     def release(self):
         self._stop.set()
         if self._thread is not None:
-            self._thread.join(timeout=5)   # the root fd stays open until after this join (the caller closes it afterwards)
-        if self.id is None:
-            return
+            self._thread.join(timeout=self.JOIN_TIMEOUT)   # the root fd stays open until after this join (the caller closes it)
+            if self._thread.is_alive():
+                self.stuck = True
+                return   # it holds its own fd; the lock is left to go stale
+        if self.id is None or self.mono() >= self.lease_until() or not self._ours():
+            return   # not provably ours and fresh: leave it, Playwright judges it stale after 10 s
         try:
-            st = os.stat(self.NAME, dir_fd=self.fd, follow_symlinks=False)
-            if (st.st_dev, st.st_ino) == self.id:
-                os.rmdir(self.NAME, dir_fd=self.fd)
+            os.rmdir(self.NAME, dir_fd=self.fd)
         except OSError:
             pass
 
@@ -934,6 +983,10 @@ def dir_rule(env, rule, apply_):
                 ent["state"] = "skipped:install-in-progress"
                 dirlock_present(env, root)
                 continue
+            except LockUncertain:
+                lock = None
+                ent["state"] = "skipped:lock-uncertain"
+                break   # stops the rule; the finally closes the root fd
             # per candidate, the last look, under the lock: lsof again, then the pins
             bad, opened2 = lsof_probe(env, root, root_id, rfd)
             if bad:
@@ -955,6 +1008,8 @@ def dir_rule(env, rule, apply_):
         finally:
             if lock is not None:
                 lock.release()
+                if lock.stuck:
+                    env.notes["lock_thread_stuck"] = True
             if rfd is not None:
                 os.close(rfd)
         if ent["state"] == "failed:capped":
@@ -963,6 +1018,8 @@ def dir_rule(env, rule, apply_):
         if ent["state"] == "failed:stopped":
             env.notes["stopped"] = "kill-switch"
             break
+        if env.notes.get("lock_thread_stuck"):
+            break   # invariant 8: a keepalive that outlived its join ends the rule
     env.notes["unlinked_bytes"] = sum(e["bytes"] for e in entries)
     if any(e["state"].startswith("failed") for e in entries):
         return "error:rmtree-partial", entries

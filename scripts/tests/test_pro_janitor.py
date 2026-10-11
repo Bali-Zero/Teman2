@@ -7,6 +7,7 @@ import os
 import plistlib
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -1576,8 +1577,8 @@ def test_the_lock_is_refreshed_during_a_slow_lsof(box):
 
 
 class Clock(object):
-    def __init__(self):
-        self.t = 1000.0
+    def __init__(self, t=1000.0):
+        self.t = t
 
     def __call__(self):
         return self.t
@@ -1589,21 +1590,29 @@ def lock_tree(tmp_path, files):
     return root, victim, rec, dev, rfd
 
 
-def test_a_stall_longer_than_8_seconds_before_an_unlink_refuses_it_and_every_later_one(tmp_path, monkeypatch):
+def leased(tmp_path, files=("o1", "o2", "o3", "o4", "o5"), interval=2, wall_clock=None):
+    """A taken lock on a fake monotonic clock; the real thread never fires inside a test (interval 2 s) unless asked."""
     clk = Clock()
-    root, victim, rec, dev, rfd = lock_tree(tmp_path, ("o1", "o2", "o3", "o4", "o5"))
-    lock = pj.Lock(rfd, 2, clock=clk)   # the real thread never fires inside this test (2 s)
+    root, victim, rec, dev, rfd = lock_tree(tmp_path, files)
+    lock = pj.Lock(rfd, interval, mono_clock=clk, wall_clock=wall_clock or clk)
     lock.take()
-    patch_hook = os.stat
+    return clk, root, victim, rec, dev, rfd, lock
 
-    seen = []
+
+def sub_left(victim):
+    return sorted(p.name for p in (victim / "sub").iterdir())
+
+
+def test_a_stall_longer_than_8_seconds_before_an_unlink_refuses_it_and_every_later_one(tmp_path, monkeypatch):
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path)
+    real, seen = os.stat, []
 
     def stat_(path, *a, **k):
         if k.get("dir_fd") is not None and path == "o3":
             seen.append(1)
             if len(seen) == 2:   # the walk's stat (the first was the audit's)
                 clk.t += 9   # a stat that stalls 9 s: the lock may have been taken over by an installer meanwhile
-        return patch_hook(path, *a, **k)
+        return real(path, *a, **k)
     monkeypatch.setattr(os, "stat", stat_)
     try:
         got = pj.remove_candidate(rfd, "victim", rec, dev, NOW, None, lock)
@@ -1611,15 +1620,112 @@ def test_a_stall_longer_than_8_seconds_before_an_unlink_refuses_it_and_every_lat
         monkeypatch.undo()
         lock.release()
         os.close(rfd)
-    left = sorted(p.name for p in (victim / "sub").iterdir())
-    assert got[0] == "failed:lock-stale" and left == ["o3", "o4", "o5"] and not (root / "__dirlock").exists()
+    assert got[0] == "failed:lock-stale" and sub_left(victim) == ["o3", "o4", "o5"]
+    assert (root / "__dirlock").is_dir()   # the lease ran out: left to go stale, never rmdir'd
 
 
-def test_a_dead_keepalive_thread_refuses_the_next_unlink_as_lock_stale_and_the_lock_is_released(tmp_path, monkeypatch):
+def test_the_acquire_stat_returning_4_seconds_after_t0_is_lock_uncertain(tmp_path, monkeypatch):
+    clk = Clock()
+    root, victim, rec, dev, rfd = lock_tree(tmp_path, ("o1",))
+    real = os.stat
+
+    def slow(path, *a, **k):
+        if path == "__dirlock":
+            clk.t += 4
+        return real(path, *a, **k)
+    monkeypatch.setattr(os, "stat", slow)
+    lock = pj.Lock(rfd, 2, mono_clock=clk, wall_clock=clk)
+    try:
+        with pytest.raises(pj.LockUncertain):
+            lock.take()
+        monkeypatch.undo()
+        lock.release()
+    finally:
+        os.close(rfd)
+    assert lock.id is None and lock._thread is None
+    assert (root / "__dirlock").is_dir() and (victim / "sub" / "o1").exists()   # never rmdir'd, nothing removed
+
+
+def test_the_acquire_stat_just_under_4_seconds_takes_the_lease_at_t0_plus_8(tmp_path, monkeypatch):
+    clk = Clock()
+    root, victim, rec, dev, rfd = lock_tree(tmp_path, ("o1",))
+    real = os.stat
+
+    def slow(path, *a, **k):
+        if path == "__dirlock":
+            clk.t += 3.9
+        return real(path, *a, **k)
+    monkeypatch.setattr(os, "stat", slow)
+    lock = pj.Lock(rfd, 2, mono_clock=clk, wall_clock=clk)
+    try:
+        lock.take()
+        monkeypatch.undo()
+        until = lock.lease_until()
+        lock.release()
+    finally:
+        os.close(rfd)
+    assert until == 1000.0 + 8 and not (root / "__dirlock").exists()
+
+
+def test_t0_is_read_before_the_mkdir(tmp_path, monkeypatch):
+    clk = Clock()
+    root, victim, rec, dev, rfd = lock_tree(tmp_path, ("o1",))
+    real = os.mkdir
+
+    def slow_mkdir(path, *a, **k):
+        if path == "__dirlock":
+            clk.t += 3   # a slow mkdir: the mtime it sets is at or after t0, so the lease must count from t0
+        return real(path, *a, **k)
+    monkeypatch.setattr(os, "mkdir", slow_mkdir)
+    lock = pj.Lock(rfd, 2, mono_clock=clk, wall_clock=clk)
+    try:
+        lock.take()
+        monkeypatch.undo()
+        until = lock.lease_until()
+        lock.release()
+    finally:
+        os.close(rfd)
+    assert until == 1000.0 + 8   # not 1003 + 8
+
+
+def inproc(box, monkeypatch, seq, **env):
+    """box.run, but in this process so a test can move the clocks or patch os; returns the payload's exit code."""
+    r = pw_root(box)
+    if r.is_dir() and not (r / ".links").exists():
+        links(box, [pb("winldd", 1)])
+    e = {"PRO_JANITOR_HOME": str(box.home), "PRO_JANITOR_STATE_DIR": str(box.state), "PRO_JANITOR_JOURNAL": str(box.journal),
+         "PRO_JANITOR_NOW": str(NOW), "PRO_JANITOR_UV": str(box.uv), "PRO_JANITOR_NPM": str(box.npm),
+         "PRO_JANITOR_LSOF": str(box.lsof), "PRO_JANITOR_FREE_GB_SEQ": seq, "PRO_JANITOR_TOOL_TIMEOUT": "20",
+         "PRO_JANITOR_TMP": str(box.tmp), "PRO_JANITOR_APPLY": "true"}
+    e.update(env)
+    for k, v in e.items():
+        monkeypatch.setenv(k, v)
+    monkeypatch.setattr(pj, "fd_supported", lambda: True)   # a patched os.stat/os.utime is no longer in os.supports_*
+    return pj.main()
+
+
+def test_an_uncertain_lock_stops_the_rule_with_nothing_removed_and_the_lock_not_rmdird(box, monkeypatch):
+    root, _ = two_old(box)
+    real, t = os.stat, {"jump": 0.0}
+    monkeypatch.setattr(pj, "mono", lambda: time.monotonic() + t["jump"])
+
+    def slow(path, *a, **k):
+        if path == "__dirlock":
+            t["jump"] += 5   # the acquire stat returns 5 s after t0
+        return real(path, *a, **k)
+    monkeypatch.setattr(os, "stat", slow)
+    inproc(box, monkeypatch, "110")
+    monkeypatch.undo()
+    res = box.rules()["playwright-old"]
+    assert res["status"] == "skipped:lock-uncertain" and [e["state"] for e in res["entries"]] == ["skipped:lock-uncertain"]
+    assert (root / "__dirlock").is_dir() and (root / "chromium-998").is_dir() and (root / "chromium-999").is_dir()
+
+
+def test_a_dead_keepalive_thread_lets_the_lease_run_out_and_the_next_unlink_is_refused(tmp_path, monkeypatch):
+    clk = Clock()
     root, victim, rec, dev, rfd = lock_tree(tmp_path, ("o1", "o2", "o3"))
-    lock = pj.Lock(rfd, 0.05)
+    lock = pj.Lock(rfd, 0.05, mono_clock=clk, wall_clock=clk)
     lock.take()
-    real_utime = os.utime
 
     def boom(*a, **k):
         raise RuntimeError("the keepalive blew up")   # not even an OSError
@@ -1628,28 +1734,197 @@ def test_a_dead_keepalive_thread_refuses_the_next_unlink_as_lock_stale_and_the_l
         if not lock._thread.is_alive():
             break
         time.sleep(0.02)
-    monkeypatch.setattr(os, "utime", real_utime)
+    monkeypatch.undo()
+    clk.t += 9   # the lease runs out; nothing extends it any more
     try:
         dead = not lock._thread.is_alive() and lock.failed
         got = pj.remove_candidate(rfd, "victim", rec, dev, NOW, None, lock)
-    finally:
         lock.release()
+    finally:
         os.close(rfd)
-    assert dead and got[0] == "failed:lock-stale" and (victim / "sub" / "o1").exists() and not (root / "__dirlock").exists()
+    assert dead and got[0] == "failed:lock-stale" and (victim / "sub" / "o1").exists() and (root / "__dirlock").is_dir()
 
 
 def test_a_stopped_keepalive_is_not_assumed_alive(tmp_path):
-    root, victim, rec, dev, rfd = lock_tree(tmp_path, ("o1",))
-    lock = pj.Lock(rfd, 2)
-    lock.take()
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path, ("o1",))
     lock._stop.set()
     lock._thread.join(timeout=5)
+    clk.t += 8   # at lease_until exactly the lease is over
     try:
         got = pj.remove_candidate(rfd, "victim", rec, dev, NOW, None, lock)
     finally:
         lock.release()
         os.close(rfd)
     assert got[0] == "failed:lock-stale" and (victim / "sub" / "o1").exists()
+
+
+def test_a_refresh_extends_the_lease_to_t1_plus_8_after_a_fresh_stat_and_utime(tmp_path):
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path)
+    try:
+        os.utime(root / "__dirlock", (1000, 1000))
+        clk.t += 2
+        assert lock._refresh() is True
+        until = lock.lease_until()
+        mtime = os.stat(root / "__dirlock").st_mtime
+    finally:
+        lock.release()
+        os.close(rfd)
+    assert until == 1002.0 + 8 and mtime > 1000 + 3600
+
+
+def test_a_utime_that_returns_after_the_lease_does_not_extend_it_and_ends_the_thread(tmp_path, monkeypatch):
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path)
+    real = os.utime
+
+    def late(*a, **k):
+        r = real(*a, **k)
+        clk.t += 9   # the utime returned after lease_until
+        return r
+    monkeypatch.setattr(os, "utime", late)
+    try:
+        clk.t += 2
+        assert lock._refresh() is False
+        monkeypatch.undo()
+        until = lock.lease_until()
+        got = pj.remove_candidate(rfd, "victim", rec, dev, NOW, None, lock)
+    finally:
+        lock.release()
+        os.close(rfd)
+    assert until == 1000.0 + 8 and got[0] == "failed:lock-stale"
+
+
+def test_a_refresh_whose_identity_stat_shows_another_inode_ends_the_thread(tmp_path):
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path)
+    try:
+        os.rename(root / "__dirlock", root / "lock.old")
+        os.mkdir(root / "__dirlock")
+        clk.t += 2
+        assert lock._refresh() is False and lock.lease_until() == 1000.0 + 8
+    finally:
+        lock.release()
+        os.close(rfd)
+    assert (root / "__dirlock").is_dir()   # the foreign directory is never rmdir'd
+
+
+@pytest.mark.parametrize("skew,extends", [(1.5, False), (-1.5, False), (0.9, True)])
+def test_wall_and_monotonic_drift_over_a_second_ends_the_thread(tmp_path, skew, extends):
+    wall_clk = Clock()
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path, wall_clock=wall_clk)
+    try:
+        clk.t += 2
+        wall_clk.t += 2 + skew
+        ok = lock._refresh()
+        until = lock.lease_until()
+    finally:
+        lock.release()
+        os.close(rfd)
+    assert ok is extends and until == (1002.0 + 8 if extends else 1000.0 + 8)
+
+
+def test_a_drifting_thread_really_ends_and_the_lease_runs_out(tmp_path):
+    wall_clk, clk = Clock(), Clock()
+    root, victim, rec, dev, rfd = lock_tree(tmp_path, ("o1",))
+    lock = pj.Lock(rfd, 0.05, mono_clock=clk, wall_clock=wall_clk)
+    lock.take()
+    wall_clk.t += 5   # the wall clock jumped, the monotonic one did not
+    for _ in range(100):
+        if not lock._thread.is_alive():
+            break
+        time.sleep(0.02)
+    clk.t += 9
+    try:
+        dead = not lock._thread.is_alive() and lock.failed
+        got = pj.remove_candidate(rfd, "victim", rec, dev, NOW, None, lock)
+        lock.release()
+    finally:
+        os.close(rfd)
+    assert dead and got[0] == "failed:lock-stale" and (victim / "sub" / "o1").exists()
+
+
+def test_a_lock_replaced_by_another_dirlock_fails_lock_lost_and_release_never_rmdirs_it(tmp_path, monkeypatch):
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path)
+
+    def swap():
+        os.rename(root / "__dirlock", root / "lock.old")
+        os.mkdir(root / "__dirlock")   # another process's lock, with a valid lease on our side
+    after_audit(monkeypatch, swap)
+    try:
+        got = pj.remove_candidate(rfd, "victim", rec, dev, NOW, None, lock)
+        monkeypatch.undo()
+        lock.release()
+    finally:
+        os.close(rfd)
+    assert got[0] == "failed:lock-lost" and (root / "__dirlock").is_dir() and (root / "lock.old").is_dir() and victim.is_dir()
+
+
+def test_a_keepalive_stuck_after_the_join_is_journaled_and_ends_the_rule(box, monkeypatch):
+    root, _ = two_old(box)
+    gate = threading.Event()
+    real_utime = os.utime
+
+    def blocked(*a, **k):
+        gate.wait(10)
+        return real_utime(*a, **k)
+    monkeypatch.setattr(pj.Lock, "JOIN_TIMEOUT", 0.2)
+    monkeypatch.setattr(os, "utime", blocked)
+    try:
+        inproc(box, monkeypatch, "110", PRO_JANITOR_LOCK_REFRESH="0.01")
+        time.sleep(0.3)   # let the thread reach the blocked utime before the join gives up
+    finally:
+        gate.set()
+    res = box.rules()["playwright-old"]
+    assert res["lock_thread_stuck"] is True and len(res["entries"]) == 1   # the second candidate was never started
+
+
+def test_a_long_walk_with_refreshes_keeps_the_lease_and_the_candidate_is_removed(tmp_path):
+    names = tuple("f%02d" % i for i in range(30))
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path, names)
+    seen = []
+    orig = pj.Walk.guard
+
+    def guard(self):
+        clk.t += 1   # 30 s of walking in all, far past one lease
+        if int(clk.t) % 2 == 0:
+            assert lock._refresh() is True
+        seen.append(lock.lease_until() - clk.t)
+        return orig(self)
+    pj.Walk.guard = guard
+    try:
+        got = pj.remove_candidate(rfd, "victim", rec, dev, NOW, None, lock)
+    finally:
+        pj.Walk.guard = orig
+        lock.release()
+        os.close(rfd)
+    assert got[0] == "removed" and not victim.exists() and min(seen) > 0
+    assert not (root / "__dirlock").exists()
+
+
+def test_release_rmdirs_our_own_valid_lock_and_only_then(tmp_path):
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path, ("o1",))
+    try:
+        lock.release()
+        gone = not (root / "__dirlock").exists()
+        assert gone and lock._thread is not None and not lock._thread.is_alive()
+    finally:
+        os.close(rfd)
+
+
+def test_release_leaves_a_lock_whose_lease_has_run_out(tmp_path):
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path, ("o1",))
+    clk.t += 8
+    try:
+        lock.release()
+    finally:
+        os.close(rfd)
+    assert (root / "__dirlock").is_dir()
+
+
+# Mutants: scripts/mutation_incremental.py is a generic diff-driven mutmut driver with no per-module rule files, so each
+# edit of invariant 8 that a mutation run could make is pinned by the test named here instead.
+#   check removed ................................ test_a_stall_longer_than_8_seconds_before_an_unlink_refuses_it_and_every_later_one
+#                                                  test_a_lock_replaced_by_another_dirlock_fails_lock_lost_and_release_never_rmdirs_it
+#   lease extended without the utime-before-lease  test_a_utime_that_returns_after_the_lease_does_not_extend_it_and_ends_the_thread
+#   t0 read after the mkdir ...................... test_t0_is_read_before_the_mkdir
 
 
 def test_our_lock_is_gone_after_success_and_after_failure(box):
@@ -1939,10 +2214,7 @@ def test_each_rule_journals_its_own_freed_fs_bytes_apart_from_the_directory_rule
 
 @pytest.mark.parametrize("name,nth_stat,left", [("sub", 3, ("sub",)), ("victim", 1, ())])
 def test_a_stall_before_an_rmdir_is_refused_too(tmp_path, monkeypatch, name, nth_stat, left):
-    clk = Clock()
-    root, victim, rec, dev, rfd = lock_tree(tmp_path, ("o1", "o2"))
-    lock = pj.Lock(rfd, 2, clock=clk)
-    lock.take()
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path, ("o1", "o2"))
     real, seen = os.stat, []
 
     def stat_(path, *a, **k):
@@ -1959,4 +2231,4 @@ def test_a_stall_before_an_rmdir_is_refused_too(tmp_path, monkeypatch, name, nth
         lock.release()
         os.close(rfd)
     assert got[0] == "failed:lock-stale" and victim.is_dir() and (victim / "sub").exists() == bool(left)
-    assert not (victim / "sub" / "o1").exists() and not (root / "__dirlock").exists()
+    assert not (victim / "sub" / "o1").exists() and (root / "__dirlock").is_dir()   # the lease ran out: left to go stale
