@@ -338,23 +338,37 @@ def run_deadline(argv, timeout, env, cap=None, err_cap=None):
 
 # ---------------------------------------------------------------- directory rules
 
+def safe_realpath(path):
+    """os.path.realpath, or None when it cannot resolve: a symlink chain deep enough to exhaust the stack, a link that vanished
+    mid-resolution, a path the OS rejects. An input like that is a skip with a cause, never a crash."""
+    try:
+        return os.path.realpath(path)
+    except (OSError, RecursionError, ValueError):
+        return None
+
+
 def real_root(env, rel):
     """The rule root, only if it is a real directory under HOME with no symlink in the way."""
-    home_real = os.path.realpath(env.home)
+    home_real = safe_realpath(env.home)
     root = os.path.join(env.home, rel)
+    if home_real is None:
+        return None
     try:
         if not os.path.isdir(root) or os.path.islink(root):
             return None
-        if os.path.realpath(root) != os.path.join(home_real, rel):
+        if safe_realpath(root) != os.path.join(home_real, rel):
             return None
         return os.path.join(home_real, rel)
-    except OSError:
+    except (OSError, ValueError):
         return None
 
 
 def audit_tree(entry, root_dev, now):
-    """(ok, reason, youngest_mtime, bytes). Walks without following symlinks."""
-    entry_real = os.path.realpath(entry)
+    """(ok, reason, youngest_mtime, bytes). Walks without following symlinks. A path that cannot be resolved is reason
+    "audit-error"."""
+    entry_real = safe_realpath(entry)
+    if entry_real is None:
+        return False, "audit-error", 0, 0
     youngest = 0.0
     total = 0
     stack = [entry]
@@ -378,11 +392,18 @@ def audit_tree(entry, root_dev, now):
                 return False, "unreadable", 0, 0
             youngest = max(youngest, s.st_mtime)
             total += s.st_size
-            if it.is_symlink():
-                tgt = os.path.realpath(it.path)
+            try:
+                is_link = it.is_symlink()
+                is_dir = not is_link and it.is_dir(follow_symlinks=False)
+            except OSError:
+                return False, "unreadable", 0, 0
+            if is_link:
+                tgt = safe_realpath(it.path)
+                if tgt is None:
+                    return False, "audit-error", 0, 0
                 if tgt != entry_real and not tgt.startswith(entry_real + os.sep):
                     return False, "symlink-leaves", 0, 0
-            elif it.is_dir(follow_symlinks=False):
+            elif is_dir:
                 stack.append(it.path)
     return True, "", youngest, total
 
@@ -521,7 +542,10 @@ def lsof_probe(env, root, root_id=None, rfd=None):
         return "error:lsof-incomplete", None
     if canary not in opened:
         return "error:lsof-incomplete", None
-    return None, [os.path.realpath(o) for o in opened]
+    real = [safe_realpath(o) for o in opened]
+    if any(r is None for r in real):
+        return "error:lsof-unreadable", None
+    return None, real
 
 
 DIRFLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
@@ -641,7 +665,7 @@ class Lock(object):
             raise LockUncertain()   # we cannot prove that directory is ours: record nothing, remove nothing
         self.id = (st.st_dev, st.st_ino)
         self._lease_until = t0 + self.LEASE
-        self._prev = (t0, w0)
+        self._prev = (t0, w0)   # the last (mono, wall) pair at which the lock was provably ours
         self._tfd = os.dup(self.fd)   # the thread's own descriptor; the thread closes it
         self._thread = threading.Thread(target=self._keepalive, name="pro-janitor-lock", daemon=True)
         self._thread.start()
@@ -661,8 +685,7 @@ class Lock(object):
     def _refresh(self):
         """One refresh; False ends the thread and the lease is no longer extended."""
         t1, w1 = self.mono(), self.wall()   # BEFORE the identity stat
-        pt, pw = self._prev
-        if abs((w1 - pw) - (t1 - pt)) > self.DRIFT:
+        if self._drifted(t1, w1):
             return False
         st = os.stat(self.NAME, dir_fd=self._tfd, follow_symlinks=False)
         if not stat.S_ISDIR(st.st_mode) or (st.st_dev, st.st_ino) != self.id:
@@ -672,8 +695,18 @@ class Lock(object):
             if self.mono() >= self._lease_until:   # the utime returned too late: an installer may already own the lock
                 return False
             self._lease_until = t1 + self.LEASE
-        self._prev = (t1, w1)
+            self._prev = (t1, w1)
         return True
+
+    def _drifted(self, t, w):
+        """True if the wall clock moved more than DRIFT apart from the monotonic one since the last successful refresh (or the
+        take): Playwright judges staleness by the wall clock, so a step of it can make the lock stale while the lease still reads valid."""
+        with self._mu:
+            pt, pw = self._prev
+        return abs((w - pw) - (t - pt)) > self.DRIFT
+
+    def _valid(self):
+        return self.mono() < self.lease_until() and not self._drifted(self.mono(), self.wall())
 
     def _ours(self):
         try:
@@ -683,11 +716,11 @@ class Lock(object):
         return stat.S_ISDIR(st.st_mode) and (st.st_dev, st.st_ino) == self.id
 
     def check(self):
-        if self.id is None or self.mono() >= self.lease_until():
+        if self.id is None or not self._valid():
             raise LockStale()
         if not self._ours():
             raise LockLost()
-        if self.mono() >= self.lease_until():   # the stat itself may have stalled
+        if not self._valid():   # the stat itself may have stalled
             raise LockStale()
 
     def release(self):
@@ -697,7 +730,7 @@ class Lock(object):
             if self._thread.is_alive():
                 self.stuck = True
                 return   # it holds its own fd; the lock is left to go stale
-        if self.id is None or self.mono() >= self.lease_until() or not self._ours():
+        if self.id is None or not self._valid() or not self._ours() or not self._valid():   # the same sequence as check()
             return   # not provably ours and fresh: leave it, Playwright judges it stale after 10 s
         try:
             os.rmdir(self.NAME, dir_fd=self.fd)
@@ -734,13 +767,17 @@ class Walk(object):
             self.lock.check()
 
     def account(self, size):
-        """Invariant 6: called before each unlink; raises Capped when the run's budget would be exceeded."""
+        """Invariant 6: called before each unlink; raises Capped when the run's budget would be exceeded. The reservation is
+        conservative (made before the syscall); `self.bytes` is not touched here, see done()."""
         e = self.env
         if e is not None:
             if e.used_objects + 1 > e.max_objects or e.used_bytes + size > e.max_bytes:
                 raise Capped()
             e.used_objects += 1
             e.used_bytes += size
+
+    def done(self, size):
+        """Called only after the unlink or rmdir returned success: `bytes` counts what is really gone."""
         self.bytes += size
 
 
@@ -766,7 +803,10 @@ def remove_children(fd, w, depth=0):
         names = sorted(e.name for e in it)
     if depth == 0:
         names.sort(key=lambda n: n != MARKER)   # stable: the marker first, so a partial removal never looks installed
+    marker_first = depth == 0 and bool(names) and names[0] == MARKER
     for n in names:
+        if marker_first and w.failures:
+            return   # invariant 9: the marker did not go, for whatever reason: the candidate stops here and nothing else is touched
         w.tick()
         try:
             s = os.stat(n, dir_fd=fd, follow_symlinks=False)
@@ -799,10 +839,12 @@ def remove_children(fd, w, depth=0):
                 w.account(0)
                 w.guard()
                 os.rmdir(n, dir_fd=fd)
+                w.done(0)
             else:
                 w.account(s.st_size)
                 w.guard()
                 os.unlink(n, dir_fd=fd)
+                w.done(s.st_size)
         except FileNotFoundError:
             continue
         except OSError as exc:
@@ -835,6 +877,7 @@ def remove_candidate(root_fd, name, rec, root_dev, now, env=None, lock=None):
         w.account(0)
         w.guard()
         os.rmdir(name, dir_fd=root_fd)
+        w.done(0)
         return "removed", w.bytes
     except Capped:
         return "failed:capped", w.bytes
@@ -923,6 +966,7 @@ def dir_rule(env, rule, apply_):
     except LinksUnreadable:
         return "skipped:link-registry-unreadable", []
     cands = []
+    unauditable = []   # candidates whose audit could not resolve a path: ineligible, and journaled with the cause
     for fam, items in sorted(families(root).items()):
         newest = max(k for k, _, _ in items)
         for k, name, path in sorted(items):
@@ -933,20 +977,23 @@ def dir_rule(env, rule, apply_):
             except OSError:
                 continue
             ok, why, youngest, size = audit_tree(path, root_dev, env.now)
+            if why == "audit-error":
+                unauditable.append({"name": name, "bytes": 0, "state": "skipped:audit-error"})
+                continue
             if not ok or env.now - youngest <= SEVEN_DAYS:
                 continue
             cands.append((name, path, size, (ls.st_dev, ls.st_ino)))
     if not cands:
-        return "skipped:no-candidates", []
+        return "skipped:no-candidates", unauditable
     bad, opened = lsof_probe(env, root, root_id)   # the plan's probe
     if bad:
         return bad, []
     is_open = [any(o == c[1] or o.startswith(c[1] + os.sep) for o in opened) for c in cands]
     if all(is_open):
-        return "skipped:in-use", [{"name": c[0], "bytes": 0, "state": "skipped:open"} for c in cands]
+        return "skipped:in-use", [{"name": c[0], "bytes": 0, "state": "skipped:open"} for c in cands] + unauditable
     if not apply_:   # dry-run never takes the lock
         return "dry-run", [({"name": c[0], "bytes": 0, "state": "skipped:open"} if o else {"name": c[0], "bytes": c[2]})
-                           for c, o in zip(cands, is_open)]
+                           for c, o in zip(cands, is_open)] + unauditable
     # the registry and the install lock are read again at the last moment: an install may have started since
     if dirlock_present(env, root):
         return "skipped:install-in-progress", []
@@ -1022,12 +1069,12 @@ def dir_rule(env, rule, apply_):
             break   # invariant 8: a keepalive that outlived its join ends the rule
     env.notes["unlinked_bytes"] = sum(e["bytes"] for e in entries)
     if any(e["state"].startswith("failed") for e in entries):
-        return "error:rmtree-partial", entries
+        return "error:rmtree-partial", entries + unauditable
     if any(e["state"] == "removed" for e in entries):
-        return "done", entries
+        return "done", entries + unauditable
     if entries:
-        return ("skipped:in-use" if all(e["state"] == "skipped:open" for e in entries) else entries[0]["state"]), entries
-    return "skipped:kill-switch" if env.notes.get("stopped") else "skipped:capped", entries
+        return ("skipped:in-use" if all(e["state"] == "skipped:open" for e in entries) else entries[0]["state"]), entries + unauditable
+    return "skipped:kill-switch" if env.notes.get("stopped") else "skipped:capped", unauditable
 
 
 def tool_env(env):
@@ -1115,10 +1162,13 @@ def main():
         if is_num(last) and env.now - last < rule["cooldown"]:
             continue
         fs0 = env.fs_free_bytes() if apply_ else None
-        if rule["kind"] == "tool":
-            status, entries = tool_rule(env, rule, apply_)
-        else:
-            status, entries = dir_rule(env, rule, apply_)
+        try:
+            if rule["kind"] == "tool":
+                status, entries = tool_rule(env, rule, apply_)
+            else:
+                status, entries = dir_rule(env, rule, apply_)
+        except Exception:   # last resort: one rule's unexpected failure is its own error:internal (no traceback, no path), the others still run
+            status, entries = "error:internal", []
         res = {"id": rule["id"], "status": status}
         if entries or rule["kind"] == "dir":
             res["entries"] = entries
@@ -1171,9 +1221,12 @@ def main():
         print("pro_janitor: journal unwritable")
         return 1
     errs = [r for r in results if r["status"].startswith("error")]
-    print("pro_janitor: tier=%s mode=%s free=%.1fGB%s%s rules=%s" % (
+    page = ""
+    if tier == "BLACK":   # the page: free GB (above), freed GB (the df delta), and whose trough this is; printable ASCII, so the wrapper copies it
+        page = " freed=%s the VM-side trough is localci's" % ("unknown" if free_failed else "%.1fGB" % (free - free0))
+    print("pro_janitor: tier=%s mode=%s free=%.1fGB%s%s%s rules=%s" % (
         tier, line["mode"], free0, "" if free == free0 else "->%.1fGB" % free,
-        (" state_invalid" if invalid else "") + (" free_read_failed" if free_failed else ""),
+        (" state_invalid" if invalid else "") + (" free_read_failed" if free_failed else ""), page,
         ",".join("%s:%s" % (r["id"], r["status"]) for r in results) or "none"))
     stale = any(r.get("stale_dirlock") or r.get("lock_thread_stuck") for r in results)   # a lock older than an hour, or a keepalive that would not stop: the heartbeat must show it
     return 10 if (tier == "BLACK" or errs or invalid or free_failed or unwritable or stale) else 0

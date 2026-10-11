@@ -1,10 +1,13 @@
 """pro.janitor — tiers with hysteresis, a three-rule allowlist, dry-run first (docs/specs/pro-janitor-2026-10-10.md)."""
 from __future__ import annotations
 
+import errno
 import importlib.util
 import json
 import os
 import plistlib
+import re
+import stat
 import subprocess
 import sys
 import threading
@@ -1859,6 +1862,7 @@ def test_a_lock_replaced_by_another_dirlock_fails_lock_lost_and_release_never_rm
 
 def test_a_keepalive_stuck_after_the_join_is_journaled_and_ends_the_rule(box, monkeypatch):
     root, _ = two_old(box)
+    box.lsof = box.fake_lsof(pre="sleep 0.3")   # the thread's first refresh (10 ms) must land while the candidate is still held, load or no load
     gate = threading.Event()
     real_utime = os.utime
 
@@ -1926,6 +1930,10 @@ def test_release_leaves_a_lock_whose_lease_has_run_out(tmp_path):
 #                                                  test_a_lock_replaced_by_another_dirlock_fails_lock_lost_and_release_never_rmdirs_it
 #   lease extended without the utime-before-lease  test_a_utime_that_returns_after_the_lease_does_not_extend_it_and_ends_the_thread
 #   t0 read after the mkdir ...................... test_t0_is_read_before_the_mkdir
+#   _refresh on the shared self.fd ............... test_the_keepalive_thread_uses_its_own_descriptor_not_the_callers
+#   check() without the post-stat lease re-check .. test_check_requires_the_lease_again_after_its_identity_stat
+#   audit_fd ignoring the directory's own ctime ... test_an_object_with_an_old_mtime_but_a_fresh_ctime_in_a_directory_keeps_the_candidate
+#   audit_fd ignoring a child's ctime ............. test_a_child_with_a_fresh_ctime_fails_the_audit_before_anything_is_removed
 
 
 def test_our_lock_is_gone_after_success_and_after_failure(box):
@@ -2233,3 +2241,285 @@ def test_a_stall_before_an_rmdir_is_refused_too(tmp_path, monkeypatch, name, nth
         os.close(rfd)
     assert got[0] == "failed:lock-stale" and victim.is_dir() and (victim / "sub").exists() == bool(left)
     assert not (victim / "sub" / "o1").exists() and (root / "__dirlock").is_dir()   # the lease ran out: left to go stale
+
+
+# ---------------------------------------------------------------- fix round: marker, accounting, crashes, lock, page
+
+def snapshot(root):
+    return sorted(str(p.relative_to(root)) for p in Path(root).rglob("*"))
+
+
+def marker_tree(tmp_path):
+    root, victim, rec, dev = plain_tree(tmp_path)
+    m = victim / "INSTALLATION_COMPLETE"
+    m.write_bytes(b"")
+    os.utime(m, (NOW - 30 * DAY,) * 2)
+    return root, victim, rec, dev, m
+
+
+def stat_nth(monkeypatch, name, nth, fn):
+    """The nth by-dir_fd os.stat of `name` (the first is the audit's, the second the walk's) goes through fn(real_result)."""
+    real, seen = os.stat, []
+
+    def stat_(path, *a, **k):
+        if k.get("dir_fd") is not None and path == name:
+            seen.append(1)
+            if len(seen) == nth:
+                return fn(real(path, *a, **k))
+        return real(path, *a, **k)
+    monkeypatch.setattr(os, "stat", stat_)
+
+
+def boom_eio(_r):
+    raise OSError(errno.EIO, "stat failed")
+
+
+@pytest.mark.skipif(not hasattr(os, "chflags"), reason="needs BSD file flags for a real EPERM")
+def test_a_marker_that_cannot_be_unlinked_stops_the_candidate_with_nothing_else_touched(tmp_path):
+    root, victim, rec, dev, m = marker_tree(tmp_path)
+    before = snapshot(victim)
+    os.chflags(m, stat.UF_IMMUTABLE)
+    try:
+        got = candidate(root, rec, dev)
+    finally:
+        os.chflags(m, 0)
+    assert got == ("failed:eperm", 0) and snapshot(victim) == before
+
+
+def test_a_marker_made_young_after_the_audit_stops_the_candidate_with_nothing_else_touched(tmp_path, monkeypatch):
+    root, victim, rec, dev, m = marker_tree(tmp_path)
+    before = snapshot(victim)
+    after_audit(monkeypatch, lambda: os.utime(m, (NOW - DAY,) * 2))
+    got = candidate(root, rec, dev)
+    assert got == ("failed:changed", 0) and snapshot(victim) == before
+
+
+@pytest.mark.parametrize("how", ["stat-raises", "other-device"])
+def test_a_marker_whose_walk_stat_fails_stops_the_candidate_with_nothing_else_touched(tmp_path, monkeypatch, how):
+    root, victim, rec, dev, m = marker_tree(tmp_path)
+    before = snapshot(victim)
+    if how == "stat-raises":
+        stat_nth(monkeypatch, "INSTALLATION_COMPLETE", 2, boom_eio)
+    else:
+        stat_nth(monkeypatch, "INSTALLATION_COMPLETE", 2, lambda r: Stat(r, st_dev=r.st_dev + 1))
+    got = candidate(root, rec, dev)
+    assert got == ("failed:changed", 0) and snapshot(victim) == before
+
+
+def test_a_marker_that_vanished_before_its_unlink_does_not_stop_the_rest(tmp_path, monkeypatch):
+    root, victim, rec, dev, m = marker_tree(tmp_path)
+    after_audit(monkeypatch, m.unlink)
+    got = candidate(root, rec, dev)
+    assert got[0] == "removed" and not victim.exists()
+
+
+@pytest.mark.skipif(not hasattr(os, "chflags"), reason="needs BSD file flags for a real EPERM")
+def test_bytes_count_only_what_is_really_gone_and_the_budget_stays_reserved_before_the_unlink(tmp_path):
+    root, victim, rec, dev = plain_tree(tmp_path)
+    stuck = victim / "sub" / "a.bin"
+    os.chflags(stuck, stat.UF_IMMUTABLE)
+    env = type("E", (), {"used_objects": 0, "max_objects": 100, "used_bytes": 0, "max_bytes": 10**9, "killed": lambda self: False})()
+    try:
+        got = candidate(root, rec, dev, env=env)
+    finally:
+        os.chflags(stuck, 0)
+    assert got == ("failed:eperm", 20) and stuck.exists() and not (victim / "top.bin").exists()   # b.bin and top.bin: 10 bytes each
+    assert env.used_objects == 3 and env.used_bytes == 30   # invariant 6 reserves the object that failed too
+
+
+def test_bytes_do_not_count_the_object_a_stale_lease_refused(tmp_path, monkeypatch):
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path)
+    stat_nth(monkeypatch, "o3", 2, lambda r: (setattr(clk, "t", clk.t + 9), r)[1])
+    try:
+        got = pj.remove_candidate(rfd, "victim", rec, dev, NOW, None, lock)
+    finally:
+        monkeypatch.undo()
+        lock.release()
+        os.close(rfd)
+    assert got == ("failed:lock-stale", 20) and sub_left(victim) == ["o3", "o4", "o5"]
+
+
+def chain(directory, n):
+    directory.mkdir(parents=True, exist_ok=True)
+    for i in range(n - 1):
+        os.symlink("l%d" % (i + 1), directory / ("l%d" % i))
+    os.symlink("l0", directory / ("l%d" % (n - 1)))   # ends in a loop
+    return directory / "l0"
+
+
+def test_a_planted_symlink_chain_makes_the_candidate_ineligible_never_a_crash(box):
+    root = two_chromiums(box)
+    chain(root / "chromium-1100" / "x", 1100)
+    r = box.run("110", apply=True)
+    res = box.rules()["playwright-old"]
+    assert r.returncode in (0, 10) and "Traceback" not in r.stderr and (root / "chromium-1100").is_dir()
+    assert [(e["name"], e["state"]) for e in res["entries"]] == [("chromium-1100", "skipped:audit-error")]
+
+
+def test_a_symlink_that_vanishes_between_islink_and_readlink_is_an_audit_error(tmp_path, monkeypatch):
+    victim = tmp_path / "victim"
+    mk(victim, 30)
+    os.symlink("data.bin", victim / "ln")
+    monkeypatch.setattr(os, "readlink", lambda *a, **k: (_ for _ in ()).throw(FileNotFoundError(2, "gone")))
+    got = pj.audit_tree(str(victim), os.stat(victim).st_dev, NOW)
+    assert got[:2] == (False, "audit-error")
+
+
+def test_an_lsof_path_that_cannot_be_resolved_is_error_lsof_unreadable(box):
+    root = two_chromiums(box)
+    start = chain(box.tmp / "elsewhere", 1100)
+    box.lsof = box.fake_lsof(extra=f'echo "n{start}"')
+    r = box.run("110", apply=True)
+    assert r.returncode == 10 and box.rules()["playwright-old"]["status"] == "error:lsof-unreadable"
+    assert (root / "chromium-1100").is_dir() and "Traceback" not in r.stderr
+
+
+def test_a_rule_that_raises_is_its_own_error_internal_and_the_run_still_journals_and_saves_state(box, monkeypatch, capsys):
+    real = pj.tool_rule
+
+    def flaky(env, rule, apply_):
+        if rule["id"] == "uv-prune":
+            raise RuntimeError("secret detail at /Users/someone/private")
+        return real(env, rule, apply_)
+    monkeypatch.setattr(pj, "tool_rule", flaky)
+    rc = inproc(box, monkeypatch, "110")
+    out = capsys.readouterr().out
+    rules = box.rules()
+    assert rc == 10 and rules["uv-prune"]["status"] == "error:internal" and rules["npm-verify"]["status"] == "done"
+    assert (box.state / "state.json").exists() and "uv-prune" not in box.cooldowns()
+    assert "secret" not in out and "/Users" not in out and "secret" not in box.journal.read_text()
+
+
+def test_release_checks_the_lease_again_after_its_identity_stat(tmp_path, monkeypatch):
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path, ("o1",))
+    stat_nth(monkeypatch, "__dirlock", 1, lambda r: (setattr(clk, "t", clk.t + 9), r)[1])   # the identity stat stalls past the lease
+    try:
+        lock.release()
+    finally:
+        monkeypatch.undo()
+        os.close(rfd)
+    assert (root / "__dirlock").is_dir()   # never rmdir'd: Playwright may already own it
+
+
+def test_check_requires_the_lease_again_after_its_identity_stat(tmp_path, monkeypatch):
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path, ("o1",))
+    stat_nth(monkeypatch, "__dirlock", 1, lambda r: (setattr(clk, "t", clk.t + 9), r)[1])
+    try:
+        with pytest.raises(pj.LockStale):
+            lock.check()
+    finally:
+        monkeypatch.undo()
+        lock.release()
+        os.close(rfd)
+
+
+def wall_stepped(tmp_path, step):
+    wall = Clock()
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path, wall_clock=wall)
+    clk.t += 2
+    wall.t += 2
+    assert lock._refresh() is True   # a healthy refresh, then the wall clock steps
+    wall.t += step
+    return clk, wall, root, victim, rec, dev, rfd, lock
+
+
+def test_a_wall_clock_step_right_after_a_refresh_refuses_the_next_unlink(tmp_path):
+    clk, wall, root, victim, rec, dev, rfd, lock = wall_stepped(tmp_path, 5)
+    try:
+        got = pj.remove_candidate(rfd, "victim", rec, dev, NOW, None, lock)
+        lock.release()
+    finally:
+        os.close(rfd)
+    assert got == ("failed:lock-stale", 0) and sub_left(victim) == ["o1", "o2", "o3", "o4", "o5"] and (root / "__dirlock").is_dir()
+
+
+def test_release_after_a_wall_clock_step_leaves_the_lock(tmp_path):
+    clk, wall, root, victim, rec, dev, rfd, lock = wall_stepped(tmp_path, -5)
+    try:
+        lock.release()
+    finally:
+        os.close(rfd)
+    assert (root / "__dirlock").is_dir()
+
+
+def test_a_wall_clock_that_keeps_pace_with_the_monotonic_one_changes_nothing(tmp_path):
+    clk, wall, root, victim, rec, dev, rfd, lock = wall_stepped(tmp_path, 0.9)
+    try:
+        got = pj.remove_candidate(rfd, "victim", rec, dev, NOW, None, lock)
+        lock.release()
+    finally:
+        os.close(rfd)
+    assert got[0] == "removed" and not (root / "__dirlock").exists()
+
+
+def test_the_keepalive_thread_uses_its_own_descriptor_not_the_callers(tmp_path):
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path, ("o1",))
+    assert lock._tfd != lock.fd
+    os.close(rfd)   # the caller closes the root fd: the thread's dup must keep working
+    clk.t += 2
+    try:
+        assert lock._refresh() is True
+    finally:
+        lock._stop.set()
+        lock._thread.join(timeout=5)
+    assert (root / "__dirlock").is_dir()
+
+
+def test_an_object_with_an_old_mtime_but_a_fresh_ctime_in_a_directory_keeps_the_candidate(tmp_path):
+    import time as _t
+    root = tmp_path / "root"
+    victim = root / "victim"
+    victim.mkdir(parents=True)
+    old = _t.time() - 30 * DAY
+    os.utime(victim, (old, old))   # the mtime is old, the ctime (set by the utime itself) is now
+    rec, dev = (os.stat(victim).st_dev, os.stat(victim).st_ino), os.stat(victim).st_dev
+    fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        got = pj.remove_candidate(fd, "victim", rec, dev, int(_t.time()))
+    finally:
+        os.close(fd)
+    assert got == ("failed:changed", 0) and victim.is_dir()
+
+
+def test_a_child_with_a_fresh_ctime_fails_the_audit_before_anything_is_removed(tmp_path, monkeypatch):
+    root, victim, rec, dev = plain_tree(tmp_path)
+    (victim / "sub" / "young.bin").write_bytes(b"x")
+    os.utime(victim / "sub" / "young.bin", (NOW - 30 * DAY,) * 2)   # old mtime
+    patch_stat(monkeypatch, "young.bin", st_ctime=NOW - DAY)         # young ctime, in the audit and in the walk
+    got = candidate(root, rec, dev)
+    assert got == ("failed:changed", 0) and (victim / "sub" / "a.bin").exists() and (victim / "top.bin").exists()
+
+
+def test_black_summary_carries_the_freed_gb_and_whose_trough_it_is_in_printable_ascii(box):
+    r = box.run("100,107,107,107", apply=True)
+    line = r.stdout.strip().splitlines()[-1]
+    assert r.returncode == 10 and "tier=BLACK" in line and "freed=7.0GB" in line and "the VM-side trough is localci's" in line
+    assert re.fullmatch(r"pro_janitor: [ -~]*", line) and len(line) < 300
+
+
+def test_a_tier_below_black_has_no_page_text(box):
+    line = box.run("125,141", apply=True).stdout.strip().splitlines()[-1]
+    assert "freed=" not in line and "trough" not in line
+
+
+def test_a_group_member_that_ignores_term_is_killed_after_the_leader_exits_on_term(tmp_path):
+    pidfile = tmp_path / "gc.pid"
+    script = f"( trap '' TERM; exec sleep 300 ) & echo $! > {pidfile}; trap 'exit 0' TERM; while :; do sleep 1; done"
+    t0 = time.monotonic()
+    rc, status, _, _ = pj.run_deadline(["/bin/sh", "-c", script], 1.0, {"PATH": "/usr/bin:/bin"})
+    gc = int(pidfile.read_text())
+    try:
+        for _ in range(50):
+            try:
+                os.kill(gc, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.1)
+        else:
+            pytest.fail("the grandchild survived the group kill")
+    finally:
+        try:
+            os.kill(gc, 9)
+        except ProcessLookupError:
+            pass
+    assert status == "timeout" and time.monotonic() - t0 < 10
