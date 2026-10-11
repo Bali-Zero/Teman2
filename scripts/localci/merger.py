@@ -69,8 +69,8 @@ CLASSES = ("AGREE", "FALSE_GREEN", "FALSE_RED", "BLIND", "PENDING")
 _TS_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")   # fullmatch only: `$` would let a trailing newline through
 _FULL_SHA = re.compile(r"[0-9a-f]{40}")
 # A compared merge (spec §2 phase D, ruled 2026-10-08): >= 12 contexts compared on both sides, >= 11 of them full and at most one
-# partial, named on the line. The arithmetic the real matrix allows: 14 required - 2 CodeQL (hosted-only, never executed here)
-# - 1 E2E (partial: no repository secrets) = 11 full. An unrecorded coverage counts toward none of the three.
+# partial, named on the line. The arithmetic the real matrix allows: 14 required - 1 E2E (partial: no repository secrets) = 13 full
+# (11 while the 2 CodeQL contexts were hosted-only, which is the floor the ruling states). An unrecorded coverage counts toward none of the three.
 READY_MIN_MERGES, READY_MIN_DAYS = 50, 14   # phase D's READY (spec §2): the report and the tick's precheck both read these
 READY_SPAN_SLACK_DAYS = 1   # the report's span runs on GitHub's merged_at, which can precede its own decision line by up to one tick: the precheck's window starts a day earlier so it never says false while READY is true
 KNOWN_HOSTS_FILE = "known_hosts"   # F2: github.com's host key, pinned by the operator in the state dir; the push trusts nothing else

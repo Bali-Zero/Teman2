@@ -76,7 +76,7 @@ PYSA_SCOPE = "apps/backend-rag/backend/"
 DEFAULT_PYSA_HOME = Path.home() / ".nuzantara-pilots" / "local-ci" / "pysa-home"
 TRUSTED_CLASSIFIER_FILES = [
     "scripts/ci/change_map.py", "scripts/ci/test_change_map.py", "scripts/ci/security_gate_flags.py",
-    "scripts/ci/hotzone_changed_files.sh", "scripts/ci/impact_map.py", "scripts/ci/test_impact_map.py",
+    "scripts/ci/hotzone_changed_files.sh", "scripts/ci/impact_map.py", "scripts/ci/test_impact_map.py", "scripts/ci/test_security_gate_flags.py",
 ]
 BAN_TEST = "scripts/tests/test_ban_predicates.py"
 SECRET_ENV = ("FLY_API_TOKEN", "VERCEL_TOKEN", "GH_TOKEN", "GITHUB_TOKEN", "DATABASE_URL",
@@ -761,6 +761,35 @@ for i, f in enumerate(json.load(open(spec))):
 """
 
 
+# CodeQL (the two CodeQL Analysis contexts): the CLI bundle, pinned in the matrix and extracted at build. The tarball (675 MB) is fetched by
+# the builder with its sha256 checked (`ADD --checksum`) into a stage of its own and bind-mounted into the one RUN that extracts it: it is
+# never read whole into memory here and never lands in a layer. The RUN also asserts `codeql version` equals the pin.
+DEPS_CODEQL_STAGE = """\
+FROM scratch AS codeqlbundle
+ADD --checksum=sha256:{sha256} {url} /bundle.tgz
+"""
+DEPS_CODEQL = """\
+RUN --mount=type=bind,from=codeqlbundle,source=/bundle.tgz,target=/mnt/bundle.tgz \\
+    tar -xzf /mnt/bundle.tgz -C /opt && test "$(/opt/codeql/codeql version --format=terse)" = "{version}"
+ENV PATH=/opt/codeql:${{PATH}}
+"""
+LEG_SCRIPT = "codeql_leg.sh"
+LEG_INPUT_ENV = frozenset({"CODEQL_BIN", "CODEQL_SOURCE_ROOT", "LOCALCI_CODEQL_WORK", "CODEQL_BASE_CONFIG"})   # the leg's own tests set these, nothing else may
+CODEQL_URL = re.compile(r"https://[A-Za-z0-9._~/%+-]+")
+CODEQL_RESULTS = re.compile(r"^LOCALCI_CODEQL_RESULTS language=([a-z]+) results=(\d+) rules=(\d+)$", re.M)
+
+
+def codeql_pin(raw) -> tuple[dict | None, str | None]:
+    """deps.codeql as the matrix pins it: ({version, url, sha256}, None), (None, None) when absent, (None, why) when it cannot be pinned."""
+    if raw is None:
+        return None, None
+    ok = isinstance(raw, dict) and set(raw) == {"version", "url", "sha256"} and all(isinstance(v, str) for v in raw.values())
+    if not ok or not re.fullmatch(r"\d+\.\d+\.\d+", raw["version"]) or not CODEQL_URL.fullmatch(raw["url"]) \
+            or not re.fullmatch(r"[0-9a-f]{64}", raw["sha256"]):
+        return None, "deps.codeql needs exactly a plain version, an https url without a query and a lowercase sha256 pin"
+    return dict(raw), None
+
+
 def _gh_expr():
     """gh_expr.py by path: the same file the driver gets at /cfg, whether the runner runs as a script or as a module."""
     import importlib.util
@@ -868,6 +897,9 @@ def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run
     if any(not f["url"].startswith("https://") or not re.fullmatch(r"[0-9a-f]{64}", f["sha256"]) or not f["path"].startswith("/")
            or ".." in f["path"].split("/") or f["path"].startswith("/w/") for f in fetch):
         return None, "deps.fetch entries need an https url, a sha256 pin and an absolute path outside the tree"
+    cq, cq_why = codeql_pin(deps.get("codeql"))
+    if cq_why:
+        return None, cq_why
     py = f"{prefix.rstrip('/')}/python3" if prefix else "python3"
     node = str(deps.get("node") or "")
     if node and not node.isdigit():
@@ -888,12 +920,16 @@ def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run
     dockerfile = (DEPS_DOCKERFILE if reqs or pkgs or fetch else DEPS_BARE) + (DEPS_NODE.format(v=node) if node else "")
     if npm_files:
         dockerfile = dockerfile.replace("\nFROM ${BASE}\n", "\n" + DEPS_NPM_STAGE.format(v=node) + "FROM ${BASE}\n", 1)
+    if cq:
+        dockerfile = dockerfile.replace("\nFROM ${BASE}\n", "\n" + DEPS_CODEQL_STAGE.format(**cq) + "FROM ${BASE}\n", 1)
     dockerfile += (DEPS_APT.format(pkgs=" ".join(apt)) if apt else "") + (DEPS_PLAYWRIGHT.format(pw=pw, browser=browser) if browser else "") \
-        + (DEPS_NPM + DEPS_OFFLINE_NPM if npm_files else "")
+        + (DEPS_NPM + DEPS_OFFLINE_NPM if npm_files else "") + (DEPS_CODEQL.format(version=cq["version"]) if cq else "")
     recipe = {"base": iso["image_id"], "python": py, "requirements": sorted(set(reqs)), "packages": pkgs, "fetch": fetch, "node": node,
               "dockerfile": sha256_bytes((dockerfile + DEPS_FETCH_PY).encode())}
     if npm_files or apt or browser:   # absent keys keep a recipe built before them (and its image) as it was
         recipe.update(npm={k: sha256_bytes(v) for k, v in sorted(npm_files.items())}, playwright=[browser, pw], apt=apt)
+    if cq:   # the pin is part of the recipe: a bump is a new digest, hence a new image, and the prune keeps the newest per recipe as it does
+        recipe["codeql"] = cq
     digest = sha256_json(recipe)
     tag, docker = f"localci-deps:{digest[:16]}", iso["docker"]
     note = f"deps {tag} ({len(recipe['requirements'])} pins + {pkgs}, {len(fetch)} fetched file(s)); not reaching the network stage: {dropped}"
@@ -1070,8 +1106,117 @@ def run_host_reader(argv: list, cwd: Path, timeout: int | None, no_verdict: str 
             "no verdict on the candidate, re-run", "log": out[-4000:]}
 
 
+def classifier_needs(trusted: Path, cm: dict, changed: list, spec) -> tuple[dict | None, str | None]:
+    """`needs.<job>` as the hosted `changes` job hands it to a job that reads its flags: the BASE classifier (already extracted to `trusted/`)
+    run on the plan's changed files and the trusted change map, the way the hosted step runs it. (needs, note), or (None, why) when the
+    matrix names a classifier the plan did not take from BASE. A classifier that fails, or answers an output the matrix declared
+    with anything but true/false, is hosted's fail-open: the job's result is not `success` and every output reads true, so the leg runs."""
+    job = str(spec.get("job") or "") if isinstance(spec, dict) else ""
+    script = str(spec.get("script") or "") if isinstance(spec, dict) else ""
+    names = [str(n) for n in spec.get("outputs") or []] if isinstance(spec, dict) else []
+    if not job or not names or script not in TRUSTED_CLASSIFIER_FILES or not (trusted / Path(script).name).is_file():
+        return None, f"local.classifier must name a job, its outputs and a BASE classifier file of {TRUSTED_CLASSIFIER_FILES}"
+    try:
+        r = subprocess.run([sys.executable, "-I", str(trusted / Path(script).name)], input="\n".join(changed) + "\n", capture_output=True, text=True,
+                           timeout=60, env={**trusted_env(), "MAP_JSON": json.dumps(cm)})
+        got = dict(ln.split("=", 1) for ln in r.stdout.splitlines() if "=" in ln)
+        err = None if r.returncode == 0 and all(got.get(n) in ("true", "false") for n in names) else f"rc={r.returncode}, outputs {sorted(got)}"
+    except (OSError, subprocess.SubprocessError, ValueError) as e:
+        got, err = {}, type(e).__name__
+    if err:
+        return {"result": "failure", "outputs": {n: "true" for n in names}}, f"BASE {Path(script).name} gave no flags ({err}): fail-open, the job runs"
+    return {"result": "success", "outputs": {n: got[n] for n in names}}, f"BASE {Path(script).name}: " + " ".join(f"{n}={got[n]}" for n in names)
+
+
+RING_OVERRIDE_VAR, RING_OVERRIDE_SH = "MERGEOS_RING_GATING_DISABLED", "scripts/ci/ring_gating_override.sh"
+
+
+def _gh_variables(env: dict, path: str) -> list | None:
+    """Every variable a `gh api` list endpoint holds (per_page=100, paged), or None when the read cannot be trusted: any non-200 status (gh
+    exits non-zero on it, a 404 included: a list that is missing is a read that failed, not an empty one), a body that is not JSON, one
+    without a `variables` array of objects and an integer `total_count`, or a count that disagrees with the rows collected."""
+    rows, total = [], None
+    for page in range(1, 51):
+        r = subprocess.run(["gh", "api", f"{path}?per_page=100&page={page}"], capture_output=True, text=True, timeout=60, env=env)
+        if r.returncode != 0:
+            return None
+        body = json.loads(r.stdout)
+        got = body.get("variables") if isinstance(body, dict) else None
+        count = body.get("total_count") if isinstance(body, dict) else None
+        if not isinstance(got, list) or not all(isinstance(v, dict) for v in got) or type(count) is not int or total not in (None, count):
+            return None
+        rows, total = rows + got, count
+        if len(rows) >= total or not got:
+            return rows if len(rows) == total else None
+    return None
+
+
+def ring_gating_override(wt: Path, base: str, trusted: Path, repo: str, jobs: dict | None = None) -> dict:
+    """The manual override security.yml's `changes` job honours (`vars.MERGEOS_RING_GATING_DISABLED`), read now with the operator's gh and
+    judged by BASE's own truth table (scripts/ci/ring_gating_override.sh, run, not re-implemented). Hosted resolves `vars.X` as a repository
+    variable first, then an organization variable visible to the repository (an environment variable too, when the job names an
+    `environment:`): the repository list is read, then the organization list when the repository's owner is an Organization. {read: ok|error,
+    active: bool}: a name in neither list is ok and inactive; a read, a BASE file or a truth-table answer that cannot be had, and a BASE job
+    that names an `environment:` (its variables are invisible to this read), are `error` and ACTIVE, the same fail-open as a classifier
+    error, so a doubt can only run more, never less."""
+    fail = {"read": "error", "active": True}
+    blob = _extract_base_file(wt, base, RING_OVERRIDE_SH)
+    if blob is None or any(isinstance(j, dict) and "environment" in j for j in (jobs or {}).values()):
+        return fail
+    env = trusted_env()
+    try:
+        owner = subprocess.run(["gh", "api", f"repos/{repo}"], capture_output=True, text=True, timeout=60, env=env)
+        owner_type = (json.loads(owner.stdout).get("owner") or {}).get("type") if owner.returncode == 0 else None
+        if owner_type not in ("Organization", "User"):
+            return fail
+        value = None
+        for path in (f"repos/{repo}/actions/variables", *((f"repos/{repo}/actions/organization-variables",) if owner_type == "Organization" else ())):
+            rows = _gh_variables(env, path)
+            if rows is None:
+                return fail
+            hit = [v for v in rows if str(v.get("name", "")).upper() == RING_OVERRIDE_VAR]   # variable names are case-insensitive
+            if hit:
+                value = hit[0].get("value")
+                if len(hit) != 1 or not isinstance(value, str):
+                    return fail
+                break   # the repository variable wins over the organization's
+        script = trusted / "ctx" / Path(RING_OVERRIDE_SH).name
+        script.parent.mkdir(parents=True, exist_ok=True)
+        script.write_bytes(blob)
+        out = subprocess.run(["bash", str(script)], capture_output=True, text=True, timeout=30,
+                             env={**env, **({RING_OVERRIDE_VAR: value} if value is not None else {})})
+    except (OSError, subprocess.SubprocessError, ValueError, AttributeError):
+        return fail
+    answer = out.stdout.strip()
+    if out.returncode != 0 or answer not in ("active=true", "active=false"):
+        return fail
+    return {"read": "ok", "active": answer == "active=true"}
+
+
+def version_sentinel(trusted: Path, wt: Path, base: str, check: str, spec, language: str, pin: str, repo: str) -> str | None:
+    """None when the newest hosted analysis of `language` on main reports the pinned CLI, else why there is no verdict (BLOCKED, never
+    green): another version, no such analysis, or a read that failed. BASE's reader runs on the host at plan time with the operator's gh,
+    through the same host-reader path as the harness floor's (retried on its CANNOT-VERIFY line, then no verdict)."""
+    rel = str(spec.get("reader") or "") if isinstance(spec, dict) else ""
+    try:
+        rel = safe_tree_path(rel)
+    except RuntimeError:
+        rel = ""
+    blob = _extract_base_file(wt, base, rel) if rel else None
+    if blob is None:
+        return f"version sentinel: reader {spec.get('reader') if isinstance(spec, dict) else spec!r} is not a file at BASE {base[:12]}"
+    dest = trusted / "ctx" / check / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(blob)
+    got = run_host_reader([sys.executable, "-I", str(dest), "--repo", repo, "--language", language, "--pin", pin], dest.parent, 300,
+                          no_verdict="::error::codeql_version_read: CANNOT-VERIFY")
+    if got["rc"] == 0:
+        return None
+    return f"version sentinel: {got['reason']}: {(got.get('log') or '').strip()[-300:]}"
+
+
 def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: str, ctx: dict, changed: list, pyv: dict, iso: dict, cm: dict,
-                         run_dir: Path, pr_number: int | None) -> dict:
+                         run_dir: Path, pr_number: int | None, trusted_sha: dict | None = None) -> dict:
     """A required context whose job `needs:` other jobs, runs beside `services:`, installs a lock, or decides steps with expressions:
     every job of the chain is planned from BASE, each matrix leg runs in its own fresh sandbox with its own services, and the context's
     own job sees its upstreams' artifacts and results. Anything the runner cannot reproduce is BLOCKED naming why."""
@@ -1091,9 +1236,22 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
         jobs_doc = doc["jobs"]
     except Exception as e:  # noqa: BLE001
         return _blocked(f"BASE workflow {wf} unreadable at {base[:12]}: {type(e).__name__}")
-    gh = github_ctx(base, pr_number, str(local.get("repository") or "Bali-Zero/Teman2"))
+    repo = str(local.get("repository") or "Bali-Zero/Teman2")
+    gh = github_ctx(base, pr_number, repo)
     static = {"github": gh, "vars": dict(local.get("vars") or {}), "runner": RUNNER_CTX, "matrix": {}, "needs": {}, "env": {}, "steps": {}}
-    upstream, planned = set((local.get("needs") or {})), []
+    stood_in, flags_note, ov = dict(local.get("needs") or {}), None, None
+    if local.get("classifier"):   # a job whose `needs:` outputs the BASE classifier decides (CodeQL's per-language flags), not the matrix
+        got, flags_note = classifier_needs(trusted, cm, changed, local["classifier"])
+        if got is None:
+            return _blocked(flags_note)
+        holders = {j: jobs_doc.get(j) for j in (local["classifier"]["job"], ctx.get("job_id"))}   # the `changes` job holds the override step; the leg's job reads its flags
+        ov = ring_gating_override(wt, base, trusted, repo, holders)   # hosted's classify steps are skipped when it is active: every flag defaults true
+        if ov["active"]:
+            got = {"result": "success" if ov["read"] == "ok" else "failure", "outputs": {n: "true" for n in got["outputs"]}}
+            flags_note = f"{flags_note}; ring-gating override " + ("ACTIVE (vars.MERGEOS_RING_GATING_DISABLED=true): both flags true" if ov["read"] == "ok"
+                                                                  else "unreadable: fail-open, both flags true")
+        stood_in[str(local["classifier"]["job"])] = got
+    upstream, planned = set(stood_in), []
     for jl in [*(local.get("jobs") or []), {**local, "job_id": ctx.get("job_id")}]:
         jid, job = jl.get("job_id"), jobs_doc.get(jl.get("job_id"))
         if not isinstance(job, dict):
@@ -1106,6 +1264,16 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
         steps, why = resolve_steps({**job, "env": jenv}, jl, "main", ((doc.get("defaults") or {}).get("run")) or {}, expressions=True)
         if why:
             return _blocked(f"job {jid}: {why}")
+        for ms in jl.get("steps") or []:   # an action step the matrix transcribes as a command: its inputs, and the action itself, are part of what was transcribed
+            ws = next((x for x in job.get("steps") or [] if isinstance(x, dict) and x.get("name") == ms.get("workflow_step")), {})
+            if isinstance(ms.get("uses_pin"), str) and ws.get("uses") != ms["uses_pin"]:
+                return _blocked(f"job {jid}: step {ms.get('workflow_step')!r} uses {ws.get('uses')!r}, not the action {ms['uses_pin']!r} the matrix transcribed "
+                                "— an action bump is not emulated until the matrix follows it")
+            if isinstance(ms.get("with_pin"), dict):
+                have = {str(k): " ".join(str(v).split()) for k, v in (ws.get("with") or {}).items()}
+                if have != {str(k): " ".join(str(v).split()) for k, v in ms["with_pin"].items()}:
+                    return _blocked(f"job {jid}: step {ms.get('workflow_step')!r} inputs {have} are not the ones the matrix transcribed "
+                                    f"{ms['with_pin']} — a changed action input is not emulated until the matrix follows it")
         order = [s.get("name") for s in job.get("steps") or [] if isinstance(s, dict)]
         if [st["name"] for st in steps] != [n for n in order if n in {st["name"] for st in steps}]:
             return _blocked(f"job {jid}: the matrix lists its steps out of BASE order; outputs and job status flow in that order")
@@ -1147,6 +1315,9 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                 texts += [(f"{lab} run body", str(st.get("script") or "")), *((f"{lab} env {k}", str(v)) for k, v in (st.get("env") or {}).items()),
                           *((f"{lab} with.{k}", str(v or "")) for k, v in (st.get("emulate") or {}).items())]
                 texts += [(f"{lab} if", "${{ " + X.unwrap(str(st["if"])) + " }}")] if "if" in st else []
+                if any(Path(str(a)).name == LEG_SCRIPT for a in st.get("argv") or []) and (seam := sorted(LEG_INPUT_ENV & {*jenv, *(st.get("env") or {})})):
+                    raise X.ExprError(f"{lab} runs {LEG_SCRIPT} with {seam} in its composed env: those are the leg's own test seams, and a BASE workflow or "
+                                      "matrix that sets them would point the BASE-trusted commands at another CLI, tree or config")
                 if st.get("emulate") and (q := declared_env_read(st["emulate"].values(), {*jenv, *base_env.get(st["name"], {})})):
                     raise X.ExprError(f"{lab} artifact name or path reads `{q}`, {ENV_EVALUATED_HERE}")
             for lab, t in texts:
@@ -1155,7 +1326,7 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                 except X.ExprError as e:
                     raise X.ExprError(f"{lab}: {e}") from None
                 for path in found:
-                    if (why := unmodelled_path(path, gh, needs, local.get("needs") or {})):
+                    if (why := unmodelled_path(path, gh, needs, stood_in)):
                         raise X.ExprError(f"{lab}: `{'.'.join(path)}` {why}")
             if pr_number is None:   # hosted, the queue's ref is refs/heads/gh-readonly-queue/main/pr-<N>-<base>; here '' or made up
                 for lab, t in [*texts, *((f"step {st['name']!r} argv", str(a)) for st in steps for a in st.get("argv") or [])]:
@@ -1197,24 +1368,50 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                 st["precomputed"] = run_host_reader(st["side"]["argv"], tdir, st.get("timeout_s"), ms.get("no_verdict_when"), ms.get("pending_when"))
         image_id, deps_note = iso["image_id"], ""
         if local.get("deps"):
-            image_id, deps_note = plan_deps_image(wt, cand, iso, local["deps"], prefix, run_dir, re.sub(r"[^a-z0-9-]", "-", str(ctx["check"])[4:]))
+            image_id, deps_note = plan_deps_image(wt, cand, iso, local["deps"], prefix, run_dir,   # deps_recipe: contexts sharing one image share its prune recipe
+                                                  re.sub(r"[^a-z0-9-]", "-", str(local.get("deps_recipe") or str(ctx["check"])[4:])))
             if image_id is None:
                 return _blocked(f"job {jid}: {deps_note}")
         planned.append({"job_id": jid, "needs": needs, "legs": legs, "steps": steps, "job_env": jenv, "services": svcs, "path_prefix": prefix,
                         "checkout": checkout, "image_id": image_id, "deps": deps_note, "venv": local.get("bare_venv", True) is not False,
-                        "timeout_s": tm * 60})
+                        "git_index": jl.get("git_index", True) is not False, "timeout_s": tm * 60})
         upstream.add(jid)
     for f in local.get("egress_trusted") or []:   # a tool an egress step runs is BASE's pin, or the step does not run at all
         if _extract_base_file(wt, base, f) != _extract_base_file(wt, cand, f):
             return _blocked(f"{f} differs from BASE: an egress step would run tools the candidate chose, with network")
+    overlay: list = []
+    if local.get("trusted_overlay"):   # BASE's copy of these files is laid over the candidate's inside the sandbox, and a candidate that changes one is a rewritten judge
+        try:
+            overlay = [safe_tree_path(str(f)) for f in local.get("trusted_files") or []]
+        except RuntimeError as e:
+            return _blocked(f"trusted_files: {e}")
+        blobs = {f: _extract_base_file(wt, base, f) for f in overlay}
+        if (missing := [f for f, b in blobs.items() if b is None]):
+            return _blocked(f"trusted file(s) {missing} missing at base {base[:12]} — the candidate would supply its own judge")
+        for f, b in blobs.items():
+            dest = trusted / "base_files" / f
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(b)
+            if trusted_sha is not None:
+                trusted_sha[f] = sha256_bytes(b)
+    notes = [n for n in (flags_note,) if n]
+    if local.get("version_sentinel"):   # the hosted CLI is chosen per run by GitHub: a local analysis on another one is not the hosted check
+        lang = str((local.get("leg") or {}).get("language") or "")
+        pin = str(((local.get("deps") or {}).get("codeql") or {}).get("version") or "")
+        if not lang or not pin:
+            return _blocked("version_sentinel needs local.leg.language and local.deps.codeql.version")
+        if (why := version_sentinel(trusted, wt, base, str(ctx["check"]), local["version_sentinel"], lang, pin, repo)):
+            return _blocked(why)
+        notes.append(f"hosted {lang} CodeQL CLI == the pin {pin} at plan time")
     history = history_delta(wt, base, cand)
     if isinstance(history, str):
         return _blocked(history)
-    judged = [wf]
+    judged = [wf, *overlay]
     modified = [f for f, a, b in zip(judged, tree_entries(wt, base, judged), tree_entries(wt, cand, judged)) if a != b]
     modified += [f for f in changed if f.rsplit("/", 1)[-1] == ".gitattributes"]
-    return {"kind": "contained_jobs", "context": name, "cwd": str(wt), "jobs": planned, "judge_modified": modified, "trusted_files": [],
-            "history": history, "expr": static, "needs": dict(local.get("needs") or {}), "memory": str(local.get("memory") or "4g"),
+    return {"kind": "contained_jobs", "context": name, "cwd": str(wt), "jobs": planned, "judge_modified": modified, "trusted_files": [], "overlay": overlay,
+            "skip_is_pass": local.get("skip_is_pass") is True, "plan_notes": notes, **({"ring_gating_override": ov} if ov else {}),
+            "history": history, "expr": static, "needs": stood_in, "memory": str(local.get("memory") or "4g"),
             "driver_sha256": sha256_file(STEPS_DRIVER), "expr_sha256": sha256_file(GH_EXPR),
             "timeout_s": sum(j["timeout_s"] * len(j["legs"]) for j in planned),
             "purpose": f"{name}: jobs {[j['job_id'] for j in planned]} from BASE {wf}, each leg in a fresh sandbox"
@@ -1239,7 +1436,7 @@ def cmd_plan(a):
         if blob is None:
             sys.exit(f"trusted classifier file {f} missing at base {base[:12]} — refusing to plan without the trusted classifier")
         (trusted / Path(f).name).write_bytes(blob)
-    changed = git(wt, "diff", "--name-only", f"{base}..{ident['candidate_sha']}").splitlines()
+    changed = git(wt, "diff", "--no-renames", "--name-only", f"{base}..{ident['candidate_sha']}").splitlines()   # hotzone_changed_files.sh: a rename lists BOTH paths
     cm = json.loads(subprocess.run([sys.executable, "-I", str(trusted / "change_map.py")], input="\n".join(changed) + "\n",
                                    capture_output=True, text=True, check=True, env=trusted_env()).stdout)
     test_mods = sorted(f for f in changed if f.startswith("scripts/tests/test_") and f.endswith(".py") and (wt / f).exists())
@@ -1250,8 +1447,9 @@ def cmd_plan(a):
         venv_py = sys.executable
     trusted_sha: dict[str, str] = {}
     checks = {
-        "policy.trusted_classifier_corpus": {"kind": "cmd", "cwd": str(trusted), "cmd": [sys.executable, "test_change_map.py"], "trusted_pythonpath": str(trusted),
-            "purpose": "the classifier that decides which jobs run is proven on its own guilt+innocence corpus, from the BASE ref (candidate cannot self-approve)"},
+        "policy.trusted_classifier_corpus": {"kind": "cmd", "cwd": str(trusted), "cmd": [sys.executable, "-m", "unittest", "test_change_map", "test_security_gate_flags"],
+            "trusted_pythonpath": str(trusted),
+            "purpose": "the classifiers that decide which jobs and scanners run are proven on their own guilt+innocence corpora (change map and gate flags, as security.yml runs both), from the BASE ref (candidate cannot self-approve)"},
         "policy.change_map": {"kind": "record", "status": change_map_status(cm),
             "reason": f"trusted change_map: reason={cm.get('reason')} run_all={cm.get('run_all')} suggested={cm.get('suggested_jobs')}", "data": cm},
         "tests.scripts_impacted": ({"kind": "pytest", "cwd": str(wt), "modules": pure, "python": venv_py,
@@ -1291,7 +1489,7 @@ def cmd_plan(a):
         if not isinstance(chk, str) or not CTX_CHECK_NAME.match(chk) or chk in checks:
             sys.exit(f"context {cname!r}: an executed context with steps needs a unique local.check matching {CTX_CHECK_NAME.pattern}, got {chk!r}")
         if ctx["local"].get("expressions"):   # service contexts (v0.6.0): job chains, services, deps images, evaluated expressions
-            checks[chk] = plan_service_context(wt, base, ident["candidate_sha"], trusted, cname, ctx, changed, pyv, iso, cm, run_dir, a.pr_number)
+            checks[chk] = plan_service_context(wt, base, ident["candidate_sha"], trusted, cname, ctx, changed, pyv, iso, cm, run_dir, a.pr_number, trusted_sha)
         else:
             checks[chk] = plan_context_check(wt, base, ident["candidate_sha"], trusted, cname, ctx, trusted_sha, changed, pyv)
     for legacy, chk in SUPERSEDED_RECORDS.items():   # "no local runner exists" stops being true once the context is planned
@@ -1898,6 +2096,29 @@ def judge_rewritten(step: str, spec: dict) -> tuple[list, str]:
     return [f for f in mod if f in planned[step]] + everyone, f" (context scope: {everyone} named by no step)" if everyone else ""
 
 
+IF_FALSE = re.compile(r"^if: .* -> false( \(status [a-z]+\))?$")   # the driver's wording for a step its own `if:` skipped
+
+
+def _step_key(job, name) -> tuple:
+    """A step is named by its job AND its name: two jobs may share a step name, and the N/A one of the first excuses nothing in the second."""
+    return (job, name)
+
+
+def skipped_by_own_if(na: list, spec: dict) -> bool:
+    """Whether an all-skipped leg is the gate's skip and nothing else: every NOT_APPLICABLE step is an `if:` the driver evaluated false or a
+    step the matrix declares not applicable (the plan's own `not_applicable`), and at least one is an `if:` false: a step that carries an `if:`
+    in BASE and was skipped any other way is in neither group. A leg that mixes a gate skip with an unexplained skip is no evidence, so it is not PASS."""
+    planned = {_step_key(j.get("job_id"), s.get("name")): s for j in spec.get("jobs") or [] for s in j.get("steps") or [] if isinstance(s, dict)}
+    planned.update({_step_key(None, s.get("name")): s for s in spec.get("steps") or [] if isinstance(s, dict)})
+
+    def key_of(n) -> tuple:   # a leg's steps carry their label: "codeql[python] › Initialize CodeQL" is the step of job `codeql`
+        label, sep, step = str(n).partition(" › ")
+        return _step_key(label.split("[", 1)[0], step) if sep else _step_key(None, label)
+    gated = [s for s in na if IF_FALSE.match(str(s.get("reason", "")))]
+    rest = [s for s in na if s not in gated]
+    return bool(gated) and all("not_applicable" in planned.get(key_of(s["name"]), {}) for s in rest)   # a matrix N/A step carries no `if:` in the plan
+
+
 def steps_verdict(steps: list, spec: dict) -> tuple[str, str]:
     """A context is PASS only when every step it runs returned 0 and every other step is NOT_APPLICABLE with a reason. A red step
     dominates (FAIL > ERROR > BLOCKED); a verdict read with a BASE judge the candidate rewrites is claimed in neither direction:
@@ -1914,6 +2135,13 @@ def steps_verdict(steps: list, spec: dict) -> tuple[str, str]:
             return status, f"{len(bad)} step(s) {status}: " + "; ".join(f"{s['name']} ({s['reason']})" for s in bad)[:600]
     ran = [s for s in steps if s["status"] == "PASS"]
     na = [s for s in steps if s["status"] == "NOT_APPLICABLE"]
+    # a job whose per-leg gate skips every step still reports success hosted (CodeQL's RUN_THIS_LANGUAGE): the plan declares it, and only an
+    # `if:` evaluated false here may stand for it (the driver words such a skip "if: ... -> false"), never a step the matrix marks N/A
+    if not ran and spec.get("skip_is_pass") and na and len(na) == len(steps) and skipped_by_own_if(na, spec) \
+            and all(written_reason(s.get("reason")) is not None for s in na):
+        if spec.get("judge_modified"):
+            return "BLOCKED", f"every step skipped by the job's own `if:`, but the candidate rewrites {spec['judge_modified']}: no green claimed"
+        return "PASS", f"0 step(s) ran: the job's own `if:` skipped them, as hosted ({len(na)} not applicable): " + "; ".join(f"{s['name']} ({s['reason']})" for s in na)[:400]
     if not ran or len(ran) + len(na) != len(steps) or any(written_reason(s.get("reason")) is None for s in na):
         return "ERROR", f"{len(ran)} step(s) ran, {len(na)} not applicable of {len(steps)} — no executed step or an unexplained one is not PASS"
     if spec.get("judge_modified"):
@@ -2133,8 +2361,17 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
             for aname, files in sorted(arts.items()):
                 if fnmatch.fnmatchcase(aname, X.substitute(em["pattern"] or em["name"], ctx)):
                     extra.update({f"w/{dest}/{'' if em['merge'] else aname + '/'}{rel}": b for rel, b in files.items()})
-    tp, files, pack_note = tree_pack_ship_safe(run_dir, plan)
-    extra["cfg/steps.json"] = json.dumps({**cfg_base, "context": f"{spec['context']} / {label}", "git_index": True, "history": spec.get("history"),
+    overrides: dict[str, bytes] = {}
+    for rel in spec.get("overlay") or []:   # BASE's copy of a judge, laid over the candidate's: the plan froze its sha256
+        bp = run_dir / "state" / "trusted" / "base_files" / rel
+        blob = bp.read_bytes() if bp.exists() else None
+        if blob is None or sha256_bytes(blob) != plan.get("trusted_files_sha256", {}).get(rel):
+            out["infra"] = ("ERROR", f"trusted blob {rel} missing or differs from the plan's sha256")
+            return out
+        overrides[rel] = blob
+    indexed = job.get("git_index", True)   # a job that reads no git history (CodeQL) gets the bare tree, as `git archive` hands the probe
+    tp, files, pack_note = tree_pack_ship_safe(run_dir, plan) if indexed else (None, {}, "")
+    extra["cfg/steps.json"] = json.dumps({**cfg_base, "context": f"{spec['context']} / {label}", "git_index": indexed, "history": spec.get("history"),
                                           "checkout": job.get("checkout"), "steps": steps, **({"tree_pack": tp} if tp else {})}).encode()
     uploads = [(X.substitute(em["name"], ctx), X.substitute(em["path"], ctx)) for em in (s.get("emulate") or {} for s in steps) if em.get("action") == "upload"]
 
@@ -2160,7 +2397,7 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
         if why:
             out["infra"] = ("BLOCKED", f"{label}: {why}")
             return out
-        rc, err = execute_contained(f"{name}.{slug}", spec, run_dir, plan, inner, {}, extra, env, log, junit, job["timeout_s"], "/w",
+        rc, err = execute_contained(f"{name}.{slug}", spec, run_dir, plan, inner, overrides, extra, env, log, junit, job["timeout_s"], "/w",
                                     network=f"container:{owner}" if owner else "none", image_id=job["image_id"], memory=spec.get("memory", "4g"),
                                     collect=collect if uploads else None, files=files)
     finally:
@@ -2247,8 +2484,11 @@ def _execute_jobs(name: str, spec: dict, run_dir: Path, plan: dict, log: Path) -
         reason += f"; continue-on-error, failed without failing the job (as hosted): {coe}"
     with open(log, "w") as fh:
         fh.writelines(f"# {r['label']}: rc={r['rc']} {r['seconds']}s cpu={r['cpu']}s log={r['log']}\n" for r in legs)
+    found = {m.group(1): {"results": int(m.group(2)), "rules": int(m.group(3))} for r in legs if r.get("log") and Path(r["log"]).is_file()
+             for m in CODEQL_RESULTS.finditer(Path(r["log"]).read_text(errors="replace"))}   # data for the receipt, never part of the verdict
     return {"status": status, "reason": reason + " [contained: candidate-produced junit]", "rc": max(r["rc"] for r in legs),
             "duration_s": round(time.monotonic() - t0, 3), "counts": None, "steps": combined, "log": str(log), "isolation": "container",
+            **({"codeql": found} if found else {}),
             "jobs": [{k: x[k] for k in ("label", "rc", "seconds", "cpu")} for x in legs], **({"gate_pending": True} if gate_pending_of(status, combined) else {})}
 
 
