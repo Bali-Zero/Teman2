@@ -651,6 +651,11 @@ def _upload_main(sha: str, preview: bool) -> int:
         )
         print(f"vercel deploy exited {proc.returncode} after {time.time() - t1:.1f}s")
         url = _cli_deployment_url(proc.stdout or "", proc.stderr or "")
+        # The CLI's last "Uploading [...] (sent/total)" line: how much actually travelled.
+        # Content-addressed, so a repeat upload of unchanged files reports a small total.
+        sent = [ln.strip() for ln in (proc.stderr or "").replace("\r", "\n").splitlines()
+                if ln.strip().startswith("Uploading")]
+        print(f"upload          : {sent[-1] if sent else 'no upload line (every file already stored)'}")
         # A non-zero exit does NOT mean the deployment failed: the CLI polls the API after the
         # upload and dies on a network blip (measured 2026-10-11, `read ETIMEDOUT`, while the
         # build went on to READY). The URL it printed on stderr is the handle; the API state is
