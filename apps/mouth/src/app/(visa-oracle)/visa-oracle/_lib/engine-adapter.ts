@@ -719,7 +719,7 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // generic sentence (offshore/other/paid/employer_no). Product name verbatim
   // from the pack's `names.en` / `names.id`.
   E33A_SPONSOR_NOT_GOVERNMENT: text(
-    "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian central government body, and you did not name one as your sponsor.",
+    "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian central-government body, and you did not name one as your sponsor.",
     "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah pusat Indonesia, dan Anda tidak menyebutkan instansi pemerintah pusat sebagai penjamin Anda.",
   ),
   // `hf.d12-onshore-conversion-excluded` (source 5e64ec6b…). Reachable on a
@@ -1184,8 +1184,8 @@ function e33bCollaborationNotCommittedReason(
     return undefined;
   }
   return text(
-    "You told us no Indonesian government body has committed to a collaboration with you; the E33B route needs that commitment.",
-    "Anda menyampaikan bahwa belum ada instansi pemerintah Indonesia yang berkomitmen untuk berkolaborasi dengan Anda; jalur E33B memerlukan komitmen tersebut.",
+    "You told us you do not have a confirmed collaboration commitment with an Indonesian government body or institution based on your special expertise; the Second Home Golden Visa — Special-Expertise Collaboration (E33B) needs that commitment.",
+    "Anda menyampaikan bahwa Anda belum memiliki komitmen kolaborasi yang terkonfirmasi dengan instansi atau lembaga pemerintah Indonesia berdasarkan keahlian khusus Anda; Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B) memerlukan komitmen tersebut.",
   );
 }
 

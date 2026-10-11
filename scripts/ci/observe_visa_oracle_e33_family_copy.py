@@ -12,7 +12,7 @@ with the tests that prove this change reported as run: E33A/E33B/E33C candidates
 the route is handled with a Bali Zero advisor, E33A names a central-government
 sponsor, the Second Home Studio hold never offers a combination route (EN and ID),
 and a sponsorless visitor who answered no to the E33B collaboration question gets
-the E33B sentence while a GOVERNMENT sponsor keeps the E33A one.
+the E33B sentence while any other sponsor, a yes answer or a missing answer keeps the E33A one.
 Exit 0 only if Vitest reports the file passed with zero failures.
 """
 
@@ -36,7 +36,7 @@ REQUIRED_TESTS = (
     "keeps E33A/B/C consultation copy honest",
     "never offers a combined property-and-deposit route",
     "uses the visitor's E33B collaboration answer",
-    "keeps the E33A sentence for a GOVERNMENT-sponsor walk",
+    "keeps the E33A sentence unless the visitor is sponsorless",
 )
 _SUMMARY = re.compile(r"^\s*Tests\s+(\d+) passed \((\d+)\)\s*$")
 

@@ -19,9 +19,9 @@ lanes:
     seat: >-
       the E33 audit of 2026-10-11 and buildValidatedOutcome / SUPPORT_REASON_COPY in engine-adapter.ts; the change
       asserts no new rule, it aligns the sentences to the signed rule and the official page.
-    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
-    query_hash: "6d6b36a4da16fafd6c9653232d658570811972711047bda12e9a7c65e4ab40a0" # pragma: allowlist secret
-    note: query_hash = sha256 of engine-adapter.ts at origin/main.
+    nb: research/visa/2026-08-24-e33abc-grounding-nb2.md
+    query_hash: "7c2e3cc4efe4bd719acdba66b407a98fa37ab8d30da421417b674d4366f937e6" # pragma: allowlist secret
+    note: query_hash = sha256 of the grounding note (Permenkumham 22/2023 Pasal 57/58/59 quoted verbatim) at origin/main.
 pii_scan: clean
 bites:
   consumer: >-
@@ -81,6 +81,12 @@ receipts:
     exit: 0
     ts: "2026-10-11T09:53:08Z"
     seat: this session
+  - claim: After the red-team cure the engine-adapter and copy-truth files pass, the observer holds and mouth typechecks.
+    cmd: cd apps/mouth && npx vitest run engine-adapter.test.ts copy-truth.test.ts; python3 scripts/ci/observe_visa_oracle_e33_family_copy.py; npx tsc --noEmit -p .
+    result: "Test Files 2 passed (2), Tests 207 passed (207); e33 family copy holds; tsc no output"
+    exit: 0
+    ts: "2026-10-11T10:09:31Z"
+    seat: this session
 decisions:
   - id: D-e33b-override-scope
     decision: >-
@@ -90,4 +96,40 @@ decisions:
     decision: >-
       E33A, E33B and E33C say the route is handled with a Bali Zero advisor; the price keeps the existing
       advisor-confirmed line and no figure is added.
-dissent: []
+dissent:
+  - seat: claude-opus-5.5 (cross-family red team; the lane was built by Codex)
+    objection: >-
+      1 MEDIUM: the GOVERNMENT-sponsor test pinned nothing; mutation M1 (drop the NONE guard) survived tests and observer.
+    status: RETRACTED
+    disposition: >-
+      Cured in the follow-up commit: the test now walks EMPLOYER and INDIVIDUAL with a no answer, NONE with yes and NONE with the answer missing, all expecting the E33A sentence; the observer REQUIRED_TESTS title was renamed. M1 re-run: 1 failed, 148 passed, killed.
+  - seat: claude-opus-5.5 (cross-family red team; the lane was built by Codex)
+    objection: >-
+      2 LOW: the E33B override sentence drifted from the question wording and used the bare E33B name.
+    status: RETRACTED
+    disposition: >-
+      Cured: EN and ID now use the question wording (government body or institution, special expertise) and the pack product name; tests updated. Moving it into SUPPORT_REASON_COPY was not done, it stays a facts-driven override covered by its own exact-sentence test.
+  - seat: claude-opus-5.5 (cross-family red team; the lane was built by Codex)
+    objection: >-
+      3 LOW: E33B and E33C sponsor-filter sentences outside the diff still say the lax filter (government or none).
+    status: PLAUSIBLE
+    disposition: >-
+      Accepted as a limit, left for a follow-up PR: it changes the legal claim of two codes outside this lane, rarely reached (not in the seq-23 sweep), and needs its own grounding check against Pasal 58 and the Permenkumham 11/2024 deletion of the E33C no-sponsor route.
+  - seat: claude-opus-5.5 (cross-family red team; the lane was built by Codex)
+    objection: >-
+      4 LOW: the combined-route guard checked one word in one entry; paraphrase M2b survived.
+    status: RETRACTED
+    disposition: >-
+      Cured: the guard scans every SECOND_HOME_ and E33 entry of REVIEW_REASON_COPY and SUPPORT_REASON_COPY for combination, combined, both together, split, mix and the ID equivalents. M2b re-run with a real paraphrase in the Studio hold: 1 failed, killed.
+  - seat: claude-opus-5.5 (cross-family red team; the lane was built by Codex)
+    objection: >-
+      5 LOW: ground_truth.nb pointed at the changed file; dissent empty at gear 2; bites is ci while the site needs promote.
+    status: RETRACTED
+    disposition: >-
+      Cured: ground_truth now points at the grounding note with its sha256 at origin/main and this dissent is recorded. The live headless walk (second_home / bank_deposit / USD 100,000) after vercel promote is run by the orchestrator and written into the PR body before the work is called done; bites where stays ci because the lint accepts only that observer shape.
+  - seat: claude-opus-5.5 (cross-family red team; the lane was built by Codex)
+    objection: >-
+      6 LOW: central government vs central-government spelling; the world-figure question says invitation letter where Pasal 59(2) accepts invitation or statement.
+    status: PLAUSIBLE
+    disposition: >-
+      Spelling cured (central-government everywhere). The question wording is not changed: it lives in i18n.ts under the i18n census and the narrower question can only produce a false no, never a false yes; follow-up.

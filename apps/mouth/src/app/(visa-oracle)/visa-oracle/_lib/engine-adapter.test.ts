@@ -150,15 +150,32 @@ describe("Visa Oracle authoritative outcome adapter", () => {
       id: "Anda menyampaikan bahwa Anda memiliki surat undangan dari instansi pemerintah pusat Indonesia yang mengundang Anda sebagai tokoh dunia — Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C). Jalur undangan pemerintah ini ditangani bersama konsultan Bali Zero.",
     });
     expect(SUPPORT_REASON_COPY.E33A_SPONSOR_NOT_GOVERNMENT).toEqual({
-      en: "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian central government body, and you did not name one as your sponsor.",
+      en: "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian central-government body, and you did not name one as your sponsor.",
       id: "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah pusat Indonesia, dan Anda tidak menyebutkan instansi pemerintah pusat sebagai penjamin Anda.",
     });
   });
 
-  it("never offers a combined property-and-deposit route in Second Home Studio copy", () => {
+  it("never offers a combined property-and-deposit route in Second Home or E33 copy", () => {
     const copy = REVIEW_REASON_COPY[SECOND_HOME_STUDIO_REVIEW_REASON_CODE];
     expect(copy.en).not.toMatch(/combination/i);
     expect(copy.id).not.toMatch(/kombinasi/i);
+    const combined = /combination|combined|both together|split|mix/i;
+    const gabungan = /kombinasi|gabungan|campuran/i;
+    const entries = [
+      ...Object.entries(REVIEW_REASON_COPY),
+      ...Object.entries(SUPPORT_REASON_COPY),
+    ].filter(([code]) => /^(SECOND_HOME_|E33)/.test(code));
+    expect(entries.length).toBeGreaterThan(3);
+    for (const [code, value] of entries) {
+      expect([code, value.en]).not.toEqual([
+        code,
+        expect.stringMatching(combined),
+      ]);
+      expect([code, value.id]).not.toEqual([
+        code,
+        expect.stringMatching(gabungan),
+      ]);
+    }
   });
 
   it("renders an exact PricingTool quote as one all-inclusive IDR amount", () => {
@@ -1498,16 +1515,26 @@ describe("support reasons are sentences, not machine codes", () => {
       sponsor_government_collaboration: "no",
     });
     expect(message).toEqual({
-      en: "You told us no Indonesian government body has committed to a collaboration with you; the E33B route needs that commitment.",
-      id: "Anda menyampaikan bahwa belum ada instansi pemerintah Indonesia yang berkomitmen untuk berkolaborasi dengan Anda; jalur E33B memerlukan komitmen tersebut.",
+      en: "You told us you do not have a confirmed collaboration commitment with an Indonesian government body or institution based on your special expertise; the Second Home Golden Visa — Special-Expertise Collaboration (E33B) needs that commitment.",
+      id: "Anda menyampaikan bahwa Anda belum memiliki komitmen kolaborasi yang terkonfirmasi dengan instansi atau lembaga pemerintah Indonesia berdasarkan keahlian khusus Anda; Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B) memerlukan komitmen tersebut.",
     });
   });
 
-  it("keeps the E33A sentence for a GOVERNMENT-sponsor walk", () => {
-    const message = firstNoPathReason("E33A_SPONSOR_NOT_GOVERNMENT", {
-      sponsor_category: "GOVERNMENT",
-    });
-    expect(message).toEqual(SUPPORT_REASON_COPY.E33A_SPONSOR_NOT_GOVERNMENT);
+  it("keeps the E33A sentence unless the visitor is sponsorless and answered no to the E33B question", () => {
+    const cases: OracleFacts[] = [
+      { sponsor_category: "EMPLOYER", sponsor_government_collaboration: "no" },
+      {
+        sponsor_category: "INDIVIDUAL",
+        sponsor_government_collaboration: "no",
+      },
+      { sponsor_category: "NONE", sponsor_government_collaboration: "yes" },
+      { sponsor_category: "NONE" },
+    ];
+    for (const facts of cases) {
+      expect(firstNoPathReason("E33A_SPONSOR_NOT_GOVERNMENT", facts)).toEqual(
+        SUPPORT_REASON_COPY.E33A_SPONSOR_NOT_GOVERNMENT,
+      );
+    }
   });
 
   it("explains the seq-20 local-compensation exclusion in prose, in every locale", () => {
