@@ -55,6 +55,7 @@ const applicantFactPaths = {
   "study.admission_confirmed": true,
   "study.level": true,
   "study.sponsor_confirmed": true,
+  "work.annual_foreign_income_usd": true,
   "work.employer_country_code": true,
   "work.employer_is_indonesian_entity": true,
   "work.indonesia_source_compensation": true,

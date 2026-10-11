@@ -19250,7 +19250,8 @@ export interface components {
      *     ``family.sponsor_permit_basis`` fields (2026-08-23),
      *     ``immigration_renewal_paid`` (2026-08-24), the ten seq-21
      *     qualification facts (2026-09-13) and ``person_guardian_consent``
-     *     (2026-09-21, Slice A7-B) below — all the same rollout mechanism.
+     *     (2026-09-21, Slice A7-B), plus ``work_annual_foreign_income_usd``
+     *     (2026-10-11, seq-28 Step A) below — all the same rollout mechanism.
      *     Field order mirrors ``enums.FactPath``'s
      *     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
      *     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
@@ -19571,6 +19572,10 @@ export interface components {
       "study.sponsor_confirmed":
         | components["schemas"]["UnknownFact"]
         | components["schemas"]["KnownBoolean"];
+      /** Work.Annual Foreign Income Usd */
+      "work.annual_foreign_income_usd"?:
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownNonNegativeInteger"];
       /** Work.Employer Country Code */
       "work.employer_country_code":
         | components["schemas"]["UnknownFact"]
@@ -22077,7 +22082,7 @@ export interface components {
     };
     /**
      * FactPath
-     * @description Every fact path the engine may ever reference — 57 applicant-collected
+     * @description Every fact path the engine may ever reference — 58 applicant-collected
      *     + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
      *     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
      *     ``sponsor.type`` for the sponsor-category question, 2026-08-10, by the
@@ -22126,6 +22131,7 @@ export interface components {
       | "work.serves_indonesian_clients"
       | "work.indonesia_source_compensation"
       | "work.indonesian_work_sponsor_confirmed"
+      | "work.annual_foreign_income_usd"
       | "investment.pt_pma_committed"
       | "investment.investment_capital_idr"
       | "investment.paid_up_capital_idr"

@@ -1,7 +1,7 @@
 """Tests for ``backend.services.visa_engine.fact_registry``.
 
-Covers: the default catalog is seeded 1:1 with ``enums.FactPath`` (61
-entries, 57 applicant + 4 derived); ``spec()``/``missing_paths()`` behavior
+Covers: the default catalog is seeded 1:1 with ``enums.FactPath`` (62
+entries, 58 applicant + 4 derived); ``spec()``/``missing_paths()`` behavior
 (the PR1 brief's "required_facts subset-of registry" primitive); commercial
 classification exactly matches ``enums.COMMERCIAL_FACT_PATHS``; PII
 classification spot-checks per this module's own documented rationale;
@@ -44,7 +44,7 @@ class TestDefaultCatalogCompleteness:
             assert spec.path is path
 
     def test_catalog_has_exactly_60_entries(self) -> None:
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 61
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 62
 
     def test_all_paths_matches_fact_path_enum(self) -> None:
         assert DEFAULT_FACT_REGISTRY.all_paths() == frozenset(FactPath)
@@ -141,7 +141,7 @@ class TestRegistryImmutability:
         # must be impossible, not merely type-annotated as read-only.
         with pytest.raises(AttributeError):
             DEFAULT_FACT_REGISTRY._specs.clear()  # type: ignore[attr-defined]
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 61
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 62
 
     def test_specs_mapping_cannot_be_item_assigned(self) -> None:
         with pytest.raises(TypeError):
@@ -266,7 +266,7 @@ class TestValueFormatKindConsistency:
         # hotfix's __post_init__ addition must not retroactively break
         # _DEFAULT_SPECS (module import already proves this at collection
         # time; this is the explicit, readable assertion of it).
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 61
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 62
 
 
 class TestRegistryConstruction:
@@ -298,7 +298,7 @@ class TestRegistryConstruction:
             ]
         )
         assert custom.all_paths() == frozenset({FactPath.PERSON_BIRTH_DATE})
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 61
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 62
 
 
 _UNKNOWN_WIRE = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
@@ -332,6 +332,7 @@ def _applicant_facts(overrides: dict[str, Any], *, assessment_id: uuid.UUID | No
         "work.serves_indonesian_clients": _UNKNOWN_WIRE,
         "work.indonesia_source_compensation": _UNKNOWN_WIRE,
         "work.indonesian_work_sponsor_confirmed": _UNKNOWN_WIRE,
+        "work.annual_foreign_income_usd": _UNKNOWN_WIRE,
         "investment.pt_pma_committed": _UNKNOWN_WIRE,
         "investment.investment_capital_idr": _UNKNOWN_WIRE,
         "investment.paid_up_capital_idr": _UNKNOWN_WIRE,
@@ -546,9 +547,9 @@ class TestCanonicalFactPayload:
         payload = canonical_fact_payload(_applicant_facts({}))
         assert list(payload.keys()) == sorted(payload.keys())
 
-    def test_covers_all_57_applicant_paths(self) -> None:
+    def test_covers_all_58_applicant_paths(self) -> None:
         payload = canonical_fact_payload(_applicant_facts({}))
-        assert len(payload) == 57
+        assert len(payload) == 58
 
     def test_is_json_serializable(self) -> None:
         import json
