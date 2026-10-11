@@ -916,6 +916,88 @@ function secondHomeBelowThresholdReason(
 }
 
 /**
+ * The deposit-route dead end (audit finding `e33-ownname-dead-end-reason`,
+ * 2026-10-11). A visitor who chose the Second Home deposit route with a
+ * declared deposit AT OR ABOVE the pack's threshold, but whose deposit is not
+ * at a state bank or not in their own name, ends in NO_SUPPORTED_PATH through
+ * `el.e33.deposit-basis` never firing — and the only sentence the engine
+ * returns is unrelated to that cause (`AGE_BELOW_55` under 55, the generic
+ * OPERATIONAL fallback from 55). This states the visitor's OWN two answers
+ * plus the one figure the pack backs (`el.e33.deposit-basis`: the threshold
+ * constant above, a state bank, the visitor's own name). A "not sure" answer
+ * reads as `no` on the wire (`resolveConservativeAnswers`), so it is named as
+ * what it is. Retirement-category walks are never touched: their dead end is
+ * the age one. `undefined` whenever the facts do not show exactly this case.
+ */
+const DEPOSIT_ROUTE_DEAD_END_CODES: ReadonlySet<string> = new Set([
+  "AGE_BELOW_55",
+  "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+]);
+
+function secondHomeDepositHolderReason(
+  facts: OracleFacts,
+): LocalizedText | undefined {
+  const basis =
+    facts.category === "invest"
+      ? facts.investment_vehicle
+      : facts.category === "second_home"
+        ? facts.secondhome_basis
+        : undefined;
+  if (basis !== "bank_deposit") return undefined;
+  const value = Number(facts.secondhome_deposit_usd);
+  if (!Number.isFinite(value) || value < SECOND_HOME_DEPOSIT_THRESHOLD_USD) {
+    return undefined;
+  }
+  const bank = facts.secondhome_state_bank;
+  const name = facts.secondhome_own_name;
+  const bankBad = bank !== "yes";
+  const nameBad = name !== "yes";
+  if (!bankBad && !nameBad) return undefined;
+  // A skipped answer (undefined) is not something the visitor told us.
+  if ((bankBad && bank === undefined) || (nameBad && name === undefined)) {
+    return undefined;
+  }
+  const bankSure = bank !== "unsure";
+  const nameSure = name !== "unsure";
+  const en = (n: number) => usd(n, "en-US");
+  const id = (n: number) => usd(n, "id-ID");
+  const enParts: string[] = [];
+  const idParts: string[] = [];
+  let subjectEn = `your deposit of ${en(value)}`;
+  let subjectId = `deposito Anda sebesar ${id(value)}`;
+  if (bankBad) {
+    enParts.push(
+      bankSure
+        ? `You told us ${subjectEn} is not deposited at an Indonesian state-owned bank.`
+        : `You were not sure whether ${subjectEn} is deposited at an Indonesian state-owned bank.`,
+    );
+    idParts.push(
+      bankSure
+        ? `Anda menyampaikan bahwa ${subjectId} tidak disimpan di bank milik negara Indonesia.`
+        : `Anda belum yakin apakah ${subjectId} disimpan di bank milik negara Indonesia.`,
+    );
+    subjectEn = "it";
+    subjectId = "deposito tersebut";
+  }
+  if (nameBad) {
+    enParts.push(
+      nameSure
+        ? `You told us ${subjectEn} is not held in your own name.`
+        : `You were not sure whether ${subjectEn} is held in your own name.`,
+    );
+    idParts.push(
+      nameSure
+        ? `Anda menyampaikan bahwa ${subjectId} tidak atas nama Anda sendiri.`
+        : `Anda belum yakin apakah ${subjectId} atas nama Anda sendiri.`,
+    );
+  }
+  return text(
+    `${enParts.join(" ")} The Second Home Visa (E33) deposit route needs at least ${en(SECOND_HOME_DEPOSIT_THRESHOLD_USD)} held in your own name at a state-owned bank.`,
+    `${idParts.join(" ")} Jalur deposito Visa Rumah Kedua (E33) membutuhkan minimal ${id(SECOND_HOME_DEPOSIT_THRESHOLD_USD)} atas nama Anda sendiri di bank milik negara.`,
+  );
+}
+
+/**
  * The pack's own names for the products a dead end may point at, copied
  * verbatim from `rulepack-prod-020.source.json` `products[].names` (the same
  * source the candidate sheet renders from when the engine returns one). A
@@ -1119,8 +1201,13 @@ function reason(
   const message = FACT_DERIVED_NO_PATH_CODES.has(code)
     ? (secondHomeBelowThresholdReason(facts ?? {}) ??
       paidActivityWithoutIndonesianPayerReason(facts ?? {}) ??
+      (code === "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
+        ? secondHomeDepositHolderReason(facts ?? {})
+        : undefined) ??
       reasonMessage(code))
-    : reasonMessage(code);
+    : DEPOSIT_ROUTE_DEAD_END_CODES.has(code)
+      ? (secondHomeDepositHolderReason(facts ?? {}) ?? reasonMessage(code))
+      : reasonMessage(code);
   return {
     code,
     message,
