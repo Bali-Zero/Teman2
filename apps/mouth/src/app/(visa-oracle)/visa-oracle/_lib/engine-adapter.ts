@@ -236,6 +236,13 @@ function usd(value: number, locale: "en-US" | "id-ID"): string {
 export const SECOND_HOME_PROPERTY_THRESHOLD_USD = 1_000_000;
 export const SECOND_HOME_DEPOSIT_THRESHOLD_USD = 130_000;
 
+// The retirement pair, pinned the same way. `RETIREMENT_INCOME_THRESHOLD_USD`
+// is the monthly passive income below which `hf.e33e/e33f.retirement-income-
+// below-minimum` (`lt`) excludes both retirement visas; the E33E deposit
+// figure is `el.e33e.retirement`'s `secondhome.bank_deposit_usd` `gte`.
+export const RETIREMENT_INCOME_THRESHOLD_USD = 3_000;
+export const E33E_DEPOSIT_THRESHOLD_USD = 50_000;
+
 // D23 "OPTION B-STUDIO" (2026-09-16): the one review reason code that routes
 // to a self-serve page instead of a person — named here so OutcomeSheet.tsx
 // never types the code or the route a second time.
@@ -307,8 +314,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Anda berkomitmen pada PT PMA sebagai pemegang saham-direktur atau pemegang saham-komisaris, dengan modal disetor minimal Rp 2,5 miliar.",
   ),
   E33E_RETIREMENT_ELIGIBLE: text(
-    "Retirement, age 55 or over, with a deposit of USD 50,000 or more held in your own name at a state bank.",
-    "Pensiun, usia 55 tahun ke atas, dengan deposito minimal USD 50.000 atas nama sendiri di bank BUMN.",
+    `Retirement, age 55 or over, with a deposit of ${usd(E33E_DEPOSIT_THRESHOLD_USD, "en-US")} or more held in your own name at a state bank, plus passive income of ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} or more a month.`,
+    `Pensiun, usia 55 tahun ke atas, dengan deposito minimal ${usd(E33E_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama sendiri di bank BUMN, ditambah penghasilan pasif minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan.`,
   ),
   // PR-M (owner ruling 2026-09-27): neutral on purpose — no sponsor clause.
   // Rule packs <= 23 gate E33F on `family.sponsor_confirmed`; from seq-24 a
@@ -784,8 +791,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Visa pelajar memerlukan penerimaan dan sponsor yang sudah dikonfirmasi; Anda belum mengonfirmasi keduanya.",
   ),
   RETIREMENT_INCOME_BELOW_THRESHOLD: text(
-    "The retirement visa (E33E/E33F) needs documented passive income at the required minimum; the figure you gave is below it.",
-    "Visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi sesuai batas minimum; angka yang Anda berikan di bawahnya.",
+    `The retirement visas (E33E/E33F) need documented passive income of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month.`,
+    `Visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan.`,
   ),
 
   // Slice A10 — 14 EXCLUDE codes reachable in signed seq-23 that predate
@@ -913,6 +920,37 @@ function secondHomeBelowThresholdReason(
     );
   }
   return undefined;
+}
+
+// `RETIREMENT_INCOME_BELOW_THRESHOLD` (`hf.e33e/e33f.retirement-income-below-
+// minimum`, `lt` the monthly threshold) carries no number of its own. The
+// interview's facts do: a declared figure is named back to the applicant, and
+// a "not sure" — which the wire seam counts as 0 (`tree.ts` conservative
+// "0") — says so instead of reading as a figure the applicant gave. Raw
+// facts still carry "unsure" here. `undefined` for any other shape, so the
+// static sentence stands.
+function retirementIncomeBelowThresholdReason(
+  facts: OracleFacts,
+): LocalizedText | undefined {
+  const raw = facts.secondhome_passive_income_usd;
+  if (raw === "unsure") {
+    return text(
+      `You were not sure of your monthly passive income, so it counted as zero. The retirement visas need documented passive income of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month: come back with the figure, or ask a Bali Zero advisor.`,
+      `Anda belum yakin dengan penghasilan pasif bulanan Anda, sehingga dihitung nol. Visa pensiun memerlukan penghasilan pasif terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan: kembalilah dengan angkanya, atau tanyakan kepada konsultan Bali Zero.`,
+    );
+  }
+  if (raw === undefined || !/^(0|[1-9]\d*)$/.test(raw)) return undefined;
+  const value = Number(raw);
+  if (
+    !Number.isSafeInteger(value) ||
+    value >= RETIREMENT_INCOME_THRESHOLD_USD
+  ) {
+    return undefined;
+  }
+  return text(
+    `You declared ${usd(value, "en-US")} a month; the retirement visas (E33E/E33F) need documented passive income of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month.`,
+    `Anda menyatakan ${usd(value, "id-ID")} per bulan; visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan.`,
+  );
 }
 
 /**
@@ -1185,6 +1223,7 @@ const FACT_DERIVED_NO_PATH_CODES: ReadonlySet<string> = new Set([
   "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
   "SECOND_HOME_GUARANTEE_BELOW_THRESHOLD",
   "PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR",
+  "RETIREMENT_INCOME_BELOW_THRESHOLD",
 ]);
 
 function reason(
@@ -1200,16 +1239,23 @@ function reason(
   // why it was written in the first place (#6441). The static entry in
   // SUPPORT_REASON_COPY remains the fallback for every walk whose facts do
   // not reconstruct the number.
-  const message = FACT_DERIVED_NO_PATH_CODES.has(code)
-    ? (secondHomeBelowThresholdReason(facts ?? {}) ??
-      paidActivityWithoutIndonesianPayerReason(facts ?? {}) ??
-      (code === "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
-        ? secondHomeDepositHolderReason(facts ?? {})
-        : undefined) ??
-      reasonMessage(code))
-    : DEPOSIT_ROUTE_DEAD_END_CODES.has(code)
-      ? (secondHomeDepositHolderReason(facts ?? {}) ?? reasonMessage(code))
-      : reasonMessage(code);
+  const message =
+    code === "RETIREMENT_INCOME_BELOW_THRESHOLD"
+      ? // Its own builder only: the retirement dead end must never be
+        // answered by a Second Home or paid-activity sentence drawn from
+        // unrelated (stale or mixed) facts.
+        (retirementIncomeBelowThresholdReason(facts ?? {}) ??
+        reasonMessage(code))
+      : FACT_DERIVED_NO_PATH_CODES.has(code)
+        ? (secondHomeBelowThresholdReason(facts ?? {}) ??
+          paidActivityWithoutIndonesianPayerReason(facts ?? {}) ??
+          (code === "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
+            ? secondHomeDepositHolderReason(facts ?? {})
+            : undefined) ??
+          reasonMessage(code))
+        : DEPOSIT_ROUTE_DEAD_END_CODES.has(code)
+          ? (secondHomeDepositHolderReason(facts ?? {}) ?? reasonMessage(code))
+          : reasonMessage(code);
   return {
     code,
     message,
