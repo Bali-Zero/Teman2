@@ -13,10 +13,14 @@ FILES = [
     ROOT / "apps" / "backend-rag" / "backend" / "data" / "bali_zero_official_prices_2026.json",
     ROOT / "apps" / "mouth" / "data" / "bali-zero-prices.json",
 ]
-E33F_NAMES = (
-    "E33F Second Home Senior (1 Year, Offshore)",
-    "E33F Second Home Senior (1 Year, Altus/Onshore)",
-)
+# Explicit fixture: the full description_en of all three E33F rows, frozen as shipped
+# (the E33F official page never mentions work or study, so the rows stay as they were).
+E33F_FROZEN = {
+    "E33F Second Home Senior (1 Year, Offshore)": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proven USD 3,000/month passive income (pension or equivalent); no deposit required. Valid 1 year, renewable; non-working residency. Offshore process for applicants outside Indonesia.",
+    "E33F Second Home Senior (1 Year, Altus/Onshore)": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proven USD 3,000/month passive income (pension or equivalent); no deposit required. Valid 1 year, renewable; non-working residency. Onshore process via Altus.",
+    "E33F Second Home Senior (Extend)": "Onshore annual extension of an existing E33F Second Home senior permit. USD 3,000/month passive income proof is re-validated at each extension."
+}
+E33F_NAMES = tuple(E33F_FROZEN)
 NAMES = ("E33 Second Home (5 Years)", "E33E Second Home Senior (5 Years)")
 
 
@@ -43,6 +47,9 @@ _CLAUSE = re.compile(
 )
 
 
+_BAN = re.compile(r"stay permit\. selling goods or services is prohibited\.")
+
+
 def _norm(text: str) -> str:
     return " ".join(text.lower().split())
 
@@ -55,16 +62,15 @@ def test_row_carries_the_full_conditional_work_study_clause(path, name):
     text = _norm(rows[0]["description_en"])
     assert "non-working" not in text
     assert _CLAUSE.search(text), text
+    assert _BAN.search(text), text
 
 
 @pytest.mark.parametrize("path", FILES, ids=lambda p: p.parent.parent.name)
 @pytest.mark.parametrize("name", E33F_NAMES)
-def test_e33f_rows_stay_untouched(path, name):
+def test_e33f_descriptions_stay_frozen(path, name):
     rows = _rows(path, name)
     assert len(rows) == 1
-    text = _norm(rows[0]["description_en"])
-    assert "non-working residency" in text
-    assert "rangkap" not in text
+    assert rows[0]["description_en"] == E33F_FROZEN[name]
 
 
 @pytest.mark.parametrize("name", NAMES)
@@ -85,6 +91,7 @@ def test_pricing_service_get_all_prices_serves_the_new_description(name):
     text = _norm(rows[0]["description_en"])
     assert "non-working" not in text
     assert _CLAUSE.search(text), text
+    assert _BAN.search(text), text
 
 
 def _rows_in(data, name: str) -> list[dict]:

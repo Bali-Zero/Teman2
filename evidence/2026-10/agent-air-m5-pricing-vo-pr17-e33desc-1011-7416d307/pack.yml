@@ -14,7 +14,7 @@ lanes:
     seat: >-
       the official imigrasi.go.id pages for E33 and E33E, which state "Selain itu, anda juga dapat
       melakukan kegiatan bekerja, menempuh pendidikan atau kegiatan lainnya ... dengan melakukan
-      pelaporan rangkap kegiatan ke kantor imigrasi yang menerbitkan izin tinggal." The E33F page
+      pelaporan rangkap kegiatan ke kantor imigrasi yang menerbitkan izin tinggal." The same pages state the prohibition: "Anda dilarang tinggal di wilayah Indonesia melebihi jangka waktu izin tinggal, melakukan pekerjaan yang tidak sesuai dengan izin tinggal, melakukan penjualan barang atau jasa, terkecuali diperlukan dalam pekerjaannya." The E33F page
       permits business, meetings, shopping and tourism and never mentions work or study, so its rows
       are untouched.
     nb: apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
@@ -30,15 +30,16 @@ lanes:
 pii_scan: clean
 bites:
   consumer: >-
-    the pricing knowledge layer (get_all_prices and the public pricing endpoint), which serves the
-    E33 and E33E rows of the official price file and its mouth mirror.
+    PricingService.get_all_prices() (the pricing knowledge layer loader) and the two data files it
+    and the Mouth loader read (canonical price file and its mirror). The public pricing endpoint
+    and the Mouth price cards are left to the post-deploy PROVE-LIVE step, not claimed by this observer.
   where: ci
   observe: python3 scripts/ci/observe_e33_price_descriptions.py
   expect: "contains:E33 descriptions hold"
 receipts:
-  - claim: The data tests (full clause, E33F untouched, mirror parity, PricingService.get_all_prices) and the observer parser tests pass.
+  - claim: The data tests (full clause plus the selling prohibition, all three E33F descriptions frozen, mirror parity, PricingService.get_all_prices) and the observer parser tests pass.
     cmd: python3 -m pytest -q tests/scripts/test_e33_price_descriptions.py tests/scripts/test_observe_e33_price_descriptions.py
-    result: "22 passed"
+    result: "24 passed"
     exit: 0
     ts: "2026-10-11T10:00:00Z"
     seat: this session
@@ -83,3 +84,15 @@ dissent:
     objection: "LOW 5: the observer has no subprocess timeout."
     status: RETRACTED
     disposition: Cured in the fix commit; timeout of 240s, TimeoutExpired prints FAILED and exits 1.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-25-01a129c7-d6bb-7132-8ab0-8d1f6a968494.jsonl, model verified in the rollout file)
+    objection: "HIGH 1: the new copy omits the official prohibition on selling goods or services, so work reads as unqualified; the test passes anyway."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit; both EN descriptions (canonical and mirror, synced) now end the clause with Selling goods or services is prohibited., a required regex in the data and PricingService tests; the Indonesian prohibition sentence is quoted in the ground-truth lane. Compensation from Indonesian parties: no such clause appears in the fetched E33 or E33E official pages, so it is not asserted."
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-25-01a129c7-d6bb-7132-8ab0-8d1f6a968494.jsonl, model verified in the rollout file)
+    objection: "MEDIUM 2: the Bites consumer names the public endpoint and Mouth cards, but the observer exercises a fresh PricingService and two files."
+    status: PLAUSIBLE
+    disposition: "Cured by narrowing the declared consumer to PricingService.get_all_prices() and the two data files; endpoint and cards are explicitly left to post-deploy PROVE-LIVE."
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-25-01a129c7-d6bb-7132-8ab0-8d1f6a968494.jsonl, model verified in the rollout file)
+    objection: "LOW 3: E33F untouched is not really verified (two rows, two fragments)."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit; an explicit fixture freezes the full description_en of all three E33F rows (Offshore, Altus/Onshore, Extend) in both files; the test is renamed accordingly. Price, validity and note fields are not in the fixture and are guarded by the diff, which touches only two description lines per file."
