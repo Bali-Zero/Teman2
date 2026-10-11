@@ -417,10 +417,12 @@ extension Snapshot {
                 // One cell: nothing to choose, so no hint is drawn.
                 let scs = ScaleMatrix.scopes(k.perSkala)
                 let picked = ScalePath.snapshotScope ?? 0
-                let cells = imm && scs.count >= ScaleMatrix.listFrom ? (scs.indices.contains(picked) ? scs[picked].rows.count : 0) : k.perSkala.count
+                let pickable = imm && scs.count >= ScaleMatrix.listFrom ? (scs.indices.contains(picked) ? scs[picked].rows.map(\.row) : []) : k.perSkala
+                let cells = pickable.count
+                let chips = pickable.reduce(0) { $0 + Set($1.skalaUsaha).intersection(ScaleMatrix.order).count }   // one chip per (row, scale)
                 let record: [String: Any] = ["code": code, "national": "\(Theme.tone(k.pmaStatus ?? ""))", "bali": bali,
                                              "headsup": "\(KBLIVerdict.headsUp(record: k, isID: lang.lang == .id).tone)",
-                                             "cells": cells]
+                                             "cells": cells, "chips": chips]
                 doc["record"] = record
             }
             if let data = try? JSONSerialization.data(withJSONObject: doc, options: [.prettyPrinted, .sortedKeys]) {

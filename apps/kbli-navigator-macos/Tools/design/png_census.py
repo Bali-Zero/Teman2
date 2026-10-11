@@ -20,7 +20,7 @@ forgotten mark and a mark on an empty area per C, and `cap` on a 13 pt element. 
 FAIL. Frames ready to arm (PR 3-h-2b, #8250 gate bindings 1-5): every JSON of the set, armed or not, speaks the census
 grammar (NAMES: a closed list of names, each with its value's pattern) and agrees with the record's own state the
 band snapshot writes beside its frames; a measured element is bounded on both sides; C11 finds a chip whole, never
-clipped by its frame, and holds it on its frame — a mark sits outside any `.offset`/Beat, where its element lands.
+clipped by its frame, and holds it on its frame — a mark sits after any Beat and reports the element's layout frame, where it is meant to land; the ink must be there.
 Successor cure (PR 3-h-2b', #8276 gate BLOCK): the sentence's bound is calibrated on the real Fraunces glyphs (a serif(20)
 line is 31-42 px, 1.1 x 20 pt = 44 px; a 24 pt line is 46+), the cap is measured per band (the sheet-ledger's is
 display(64), every other band's title(36)), C11 grows only through the chip's own colours and stops at a rule, a
@@ -82,7 +82,7 @@ nearest = lambda p, table: min(table, key=lambda t: min(sum(abs(a - c) for a, c 
 def c11(im, fr, rows):
     """matrix-columns: each matrix (its header row) holds the fixture's row count of chips, each centred on the ink
     of its scale's header, the nearest above it, and on its own frame, +-4 px. A chip is where it is SEEN, whole: a
-    render offset (an entrance beat) moves the ink, and the frame — marked outside the beat — stays where it lands."""
+    render offset (an entrance beat) moves the ink, and the frame — marked after the beat — stays on the layout frame."""
     need(fr, "matrix.head", "matrix.chip"); heads = [(v, b[3], sum(ibox(im, b)[0::2]) / 2) for v, b in fr["matrix.head"]]
     per, off = Counter(), []
     for v, b in fr["matrix.chip"]:
@@ -205,16 +205,16 @@ def c24(im, fr, arg):
     outer edge (3.5 pt outside the marked chip), and clear of what lies beside it: the 1.5 pt just outside that edge (past its one antialiased pixel) is the ground on each side and no other marked chip is within 1.5 pt of it (a chip filled like the ground, Medium-Low at night, leaves no ink), so a chip
     stacked 4 pt away (a ring touching it) FAILs, whether it is the lower one, the upper one or one at the side; and the
     hint is drawn iff the record offers more than one cell to pick (`cells`)."""
-    rec, s = arg; cells = (rec or {}).get("cells")
-    if not isinstance(cells, int): raise Miss("the record carries no cells: the snapshot must write them")
+    rec, s = arg; cells, nchips = (rec or {}).get("cells"), (rec or {}).get("chips")
+    if not isinstance(cells, int) or not isinstance(nchips, int): raise Miss("the record carries no cells and chips: the snapshot must write them")
     d, t, k, bad = int(s), max(2, round(1.5 * s)), int(6 * s), []
     inside = lambda p: 0 <= p[0] < im.width and 0 <= p[1] < im.height
     shown = {v for v, _ in fr["detail"]}
-    if len(shown) != 1: raise Miss("the detail names %d rows (%s): a sheet shows one cell's detail" % (len(shown), ", ".join(sorted(shown)) or "none"))
+    if len(fr["detail"]) != 1 or len(shown) != 1: raise Miss("the sheet marks %d details (%s): it shows one cell's detail, once" % (len(fr["detail"]), ", ".join(sorted(shown)) or "none"))
     wrong = sorted({v for v, _ in fr["ring"]} - shown)
     if wrong: bad.append("a ring on row %s while the detail shows row %s: two selections" % (", ".join(wrong), next(iter(shown))))
     if not any(v in shown for v, _ in fr["ring"]): bad.append("no ring on the shown row %s" % next(iter(shown)))
-    if len(fr["matrix.chip"]) < cells: bad.append("%d marked chips for %d cells: a chip is unmarked" % (len(fr["matrix.chip"]), cells))
+    if len(fr["matrix.chip"]) < nchips: bad.append("%d marked chips for the record's %d (a row spanning scales draws one per scale): a chip is unmarked" % (len(fr["matrix.chip"]), nchips))
     o = int(3.5 * s + .5)
     for row, (x0, y0, x1, y1) in fr["ring"]:
         sits = [b for v, b in fr["matrix.chip"] if v.endswith(":" + row) and abs((b[0] + b[2]) - (x0 + x1)) <= 4 and abs((b[1] + b[3]) - (y0 + y1)) <= 4
@@ -490,7 +490,7 @@ def c_cases():
                           *[([((x + 5, 40, x + 35, 64), OP)] + ink((x + 13, 46, x + 27, 58)), {"matrix.chip": [(str(i), (x - 15, 40, x + 15, 64))]})
                             for i, x in enumerate(xs)])
     # a chip a few px off its frame, which the frame used to clip (#8250 gate binding 4): 2 px passes, 6 and 10 FAIL;
-    # a whole node a beat left 10 px off, its header too, its frames marked outside the beat where it lands (binding 5)
+    # a whole node a beat left 10 px off, its header too, its frames marked after the beat, on the layout frame (binding 5)
     for dx, dh, k in ((2, 0, 0), (6, 0, 1), (10, 0, 1), (10, 10, 1)):
         yield "C11", 4, k, *m(*[(ink((x - 10 + dh, 10, x + 10 + dh, 20)), {"matrix.head": [(str(i), (x - 16, 4, x + 16, 26))]})
                                 for i, x in enumerate(xs)],
@@ -507,7 +507,7 @@ def c_cases():
     # C24 (the selection cue): a chip ringed (4 px out, 2 px thick) over a stacked neighbour. 8 px of gap clears it (innocent);
     # a neighbour at 4 px (the ring touches it), below, above or at either side, FAILs; so does a ring missing a side, a hint over
     # one cell and no hint over two (#8288 gate: Medium-Low at night, 85510, the lower chip, a side touch).
-    def sel(dy=None, up=None, dx=None, lx=None, broken=None, cells=2, hint=1, nbfill=OP, ringrow="0", detailrow="0", ringat=None):
+    def sel(dy=None, up=None, dx=None, lx=None, broken=None, cells=2, hint=1, nbfill=OP, ringrow="0", detailrow="0", ringat=None, chips=None, twodetail=False):
         chip_b, ring_b = (150, 100, 250, 124), (146, 96, 254, 128)
         ops = chip("matrix.chip", "0:0", chip_b, OP)[0]
         rings = (("top", (146, 96, 254, 98)), ("bottom", (146, 126, 254, 128)), ("left", (146, 96, 148, 128)), ("right", (252, 96, 254, 128)))
@@ -518,14 +518,15 @@ def c_cases():
             if side != broken: ops.append((r, tuple(RING[0])))
         fr = {"matrix.chip": [("0:0", (150, 100, 250, 124))], "ring": [(ringrow, chip_b)]}
         o, f = word("detail", detailrow, (20, 365, 380, 385)); ops += o; fr.update(f)
+        if twodetail: fr["detail"] = fr["detail"] * 2   # the same row, marked twice
         for nb in ([(150, 124 + dy, 250, 148 + dy)] if dy is not None else []) + ([(150, 68, 250, 92 + up)] if up is not None else [])                 + ([(254 + dx, 100, 360 + dx, 124)] if dx is not None else []) + ([(40, 100, 146 + lx, 124)] if lx is not None else []):
             o, f = chip("matrix.chip", "1:1", nb, nbfill); ops += o; fr["matrix.chip"] += f["matrix.chip"]
         if hint:
             o, f = word("hint", "", (150, 170, 300, 182)); ops += o; fr.update(f)
-        return ops, fr, {"cells": cells}
+        return ops, fr, {"cells": cells, "chips": chips if chips is not None else len(fr["matrix.chip"])}
     for k, kw in ((0, dict(dy=8)), (0, dict(dy=8, up=0, dx=8, lx=-8)), (1, dict(dy=4)), (1, dict(dy=5)), (1, dict(dy=8, up=3)),
                   (1, dict(dy=8, dx=0)), (1, dict(dy=8, lx=0)), (1, dict(dy=8, broken="left")), (1, dict(dy=8, broken="bottom")),
-                  (1, dict(dy=8, ringrow="1")), (1, dict(dy=8, ringat="neighbour")), (1, dict(dy=8, ringrow="1", ringat="neighbour")), (1, dict(dy=8, cells=4)), (1, dict(dy=8, cells=1)), (1, dict(dy=4, nbfill=(0xF4, 0xF1, 0xEB))), (1, dict(dy=8, hint=0)), (0, dict(dy=8, cells=1, hint=0))):
+                  (1, dict(dy=8, ringrow="1")), (1, dict(dy=8, ringat="neighbour")), (1, dict(dy=8, ringrow="1", ringat="neighbour")), (1, dict(dy=8, chips=4)), (1, dict(dy=8, twodetail=True)), (1, dict(dy=8, cells=1)), (1, dict(dy=4, nbfill=(0xF4, 0xF1, 0xEB))), (1, dict(dy=8, hint=0)), (0, dict(dy=8, cells=1, hint=0))):
         ops, fr, rec = sel(**kw); yield "C24", rec, k, ops, fr
     # a chip whose own colours touch it on both sides: its seen box is 20 px wider, the centre unmoved (B2, #8276 gate)
     yield "C11", 4, 1, *m(*[word("matrix.head", str(i), (x - 10, 10, x + 10, 20)) for i, x in enumerate(xs)],
