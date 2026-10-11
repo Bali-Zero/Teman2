@@ -1,0 +1,96 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 decisions on the E33/retirement program (2026-10-11 E33 audit, plan PR-9): E33A, E33B and E33C
+  are priced on consultation, split-deposit planning is never offered, and the copy must say what the rule and the
+  official page say.
+mission: >-
+  The E33-family copy says what the rule and the official page say: no combination route, a central-government
+  sponsor, the E33B collaboration sentence, and consultation wording for E33A, E33B and E33C.
+lanes:
+  - lane: vo-pr9-e33-family-copy
+    role: build
+    seat: >-
+      Codex GPT-5.6-sol via scripts/seat_build.sh (tier sol, effort high; log
+      /Users/balizero/nuzantara/.worktrees/seat-build-codex-20261011T050717Z-56002.log), graded, prettier-formatted
+      and committed by the orchestrator (c137831210, rebased as 8b3c3a12f1).
+  - lane: vo-pr9-ground-truth
+    role: ground_truth
+    seat: >-
+      the E33 audit of 2026-10-11 and buildValidatedOutcome / SUPPORT_REASON_COPY in engine-adapter.ts; the change
+      asserts no new rule, it aligns the sentences to the signed rule and the official page.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "6d6b36a4da16fafd6c9653232d658570811972711047bda12e9a7c65e4ab40a0" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at origin/main.
+  - lane: vo-pr9-evidence
+    role: evidence
+    seat: Claude Sonnet 5.5 evidence lane (rebase, observer, receipts, pack).
+pii_scan: clean
+bites:
+  consumer: >-
+    the Second Home Studio hold sentence and the E33A, E33B and E33C reason sentences of the public Visa Oracle
+    result page (OutcomeSheet via engine-adapter SUPPORT_REASON_COPY and REVIEW_REASON_COPY).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_e33_family_copy.py
+  expect: "contains:e33 family copy holds"
+receipts:
+  - claim: The branch rebased cleanly onto a fresh origin/main with one commit ahead.
+    cmd: git fetch origin main; git rebase origin/main
+    result: "rebase succeeded, no conflict; 1 commit ahead (8b3c3a12f1)"
+    exit: 0
+    ts: "2026-10-11T09:38:00Z"
+    seat: this session
+  - claim: The visa-oracle Vitest tree passes with the change except the enumerate-interview-space file, which times out under machine load.
+    cmd: cd apps/mouth && npx vitest run --exclude '**/enumerate-interview-space.test.ts' 'src/app/(visa-oracle)/visa-oracle/'
+    result: "Test Files 50 passed (50), Tests 1308 passed (1308)"
+    exit: 0
+    ts: "2026-10-11T09:49:18Z"
+    seat: this session
+  - claim: >-
+      The excluded file is a full-graph enumeration that touches no copy; under load average 157 one different test
+      timed out at 120000 ms on each run (the 39 others passed), so it is not a verdict on this change.
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts'
+    result: "Tests 1 failed | 39 passed (40); Error: Test timed out in 120000ms"
+    exit: 1
+    ts: "2026-10-11T09:45:00Z"
+    seat: this session
+  - claim: apps/mouth typechecks.
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-11T09:52:51Z"
+    seat: this session
+  - claim: The observer passes on the branch head and requires a full pass of at least 100 tests and four named tests reported as run.
+    cmd: python3 scripts/ci/observe_visa_oracle_e33_family_copy.py
+    result: "Tests 149 passed (149); e33 family copy holds"
+    exit: 0
+    ts: "2026-10-11T09:52:58Z"
+    seat: this session
+  - claim: The observer's summary and required-title parsers reject skipped, todo, failed, reduced and absent tests.
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_e33_family_copy.py
+    result: "11 passed"
+    exit: 0
+    ts: "2026-10-11T09:44:00Z"
+    seat: this session
+  - claim: The legacy client-copy guard stays green with the new strings.
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3537 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-11T09:53:00Z"
+    seat: this session
+  - claim: The i18n census observer holds.
+    cmd: python3 scripts/ci/observe_visa_oracle_i18n_census.py
+    result: "Tests 6 passed (6); census holds"
+    exit: 0
+    ts: "2026-10-11T09:53:08Z"
+    seat: this session
+decisions:
+  - id: D-e33b-override-scope
+    decision: >-
+      The E33B collaboration sentence replaces the E33A sponsor sentence only when sponsor_category is NONE and
+      sponsor_government_collaboration is no; a GOVERNMENT or any other sponsor keeps the E33A sentence (pinned by a test).
+  - id: D-no-price-figure
+    decision: >-
+      E33A, E33B and E33C say the route is handled with a Bali Zero advisor; the price keeps the existing
+      advisor-confirmed line and no figure is added.
+dissent: []
