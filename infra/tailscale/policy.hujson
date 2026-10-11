@@ -33,7 +33,7 @@
 // devices) and both are Zero's own hardware. `tag:team-device` appears in no rule's `src` anywhere in
 // this file, which is what keeps a teammate's laptop off that shell.
 //
-// This is NOT a live breach today: all six nodes belong to `antonellosiano@gmail.com`. It is a
+// This is NOT a live breach today: all seven nodes belong to `antonellosiano@gmail.com`. It is a
 // hard blocker on the tailnet team expansion. ORDERING IS LOAD-BEARING — apply this policy
 // BEFORE any team device joins; join-then-restrict leaves a window in which that device holds
 // the shell. Hardening ttyd itself (`-c user:pass`, or dropping `/term` from `serve`) changes how
@@ -89,9 +89,11 @@
 // it is written as a list of checks rather than a reassurance.
 //
 //   ON `acls` AND `grants`: no `*` as a source; no source starting `tag:team` and no
-//   `autogroup:tagged`; every source resolves to a node in `hosts` or is refused
+//   `autogroup:tagged`; every source resolves to a node in `hosts` or is refused, and the iQOO
+//   QA phone is destination-only even though it is pinned
 //   (UNRESOLVABLE_SRC_SELECTOR — the allowlist of non-node sources is empty); no `*` as a
-//   destination host or port; no destination spanning more than 64 ports; every destination
+//   destination host or port; no destination spanning more than 64 ports except the exact
+//   Pro -> iQOO wireless-ADB ephemeral range; every destination
 //   selector resolves to a node or is refused, with exactly one permitted exception,
 //   `tag:team-device`, which has no IP until a laptop enrols; and `pro:443` — the shell port —
 //   reachable only from the four allowlisted nodes, in every spelling of node and port. On `acls`
@@ -103,7 +105,7 @@
 //   the spelling that walked past a one-literal denylist, yields SSH_USERS_NOT_ALLOWLISTED. A
 //   green run IS therefore evidence that this file grants no root over Tailscale SSH.
 //
-//   ON `hosts`: the six fleet aliases must keep their pinned values, and EVERY entry — including
+//   ON `hosts`: the seven pinned aliases must keep their values, and EVERY entry — including
 //   ones added later — must be a bare dotted-quad IPv4 literal. Entries may be added, so
 //   enrolling a laptop does not require touching the guard; what an entry may not be is a CIDR, a
 //   v6 address or a DNS name. This closed the last class in which the guard's own anchors were
@@ -115,7 +117,7 @@
 //   team-reaching source, AND an accept-test for every grant `acls` makes.
 //
 //   ON AN ADDED `hosts` ALIAS (2026-08-29, gate condition C2): entries may be added, but an alias
-//   that is not one of the six pinned ones may appear only as a DESTINATION, never as a `src`
+//   that is not one of the seven pinned ones may appear only as a DESTINATION, never as a `src`
 //   (UNPINNED_ALIAS_AS_SOURCE). This closes what the previous revision of this paragraph listed
 //   as an open hole: an added alias holding a well-formed FOREIGN IPv4 satisfied both clauses of
 //   the pin and could then originate traffic — measured green to `pro:22`, `mini:22`, `mini:6379`,
@@ -149,7 +151,7 @@
   // table meant an editable guard. Re-pointing `m5` at a foreign address handed that machine
   // pro:443 with every check still green; an IPv6 alias, a CIDR alias and a `/32` alias for Pro's
   // own IP each did the same by a different spelling. The guard now asserts two things about this
-  // block: the six aliases below keep these exact values (no re-pointing, no deletion), and EVERY
+  // block: the seven aliases below keep these exact values (no re-pointing, no deletion), and EVERY
   // entry is a bare IPv4 literal.
   //
   // Entries may still be ADDED — deliberately, so that enrolling a team laptop (see
@@ -162,7 +164,8 @@
     "m5":               "100.110.186.116",
     "iphone-14":        "100.113.83.92",
     "iphone175":        "100.77.16.7",
-    "apple-vision-pro": "100.97.28.18"
+    "apple-vision-pro": "100.97.28.18",
+    "iqoo-15":          "100.117.194.24"
   },
 
   // A tagged device is owned by the TAILNET, not by a user, so it is deliberately excluded from
@@ -198,17 +201,19 @@
       "dst":    ["mini:22", "mini:6379", "mini:11434", "mini:8990"]
     },
 
-    // ---- 2. Mini -> Pro. Only SSH. -----------------------------------------------------------
+    // ---- 2. Mini -> Pro. OpenSSH and OSINT nexus-bridge Redis. -------------------------------
     //   22    fleet-watch's reverse liveness probe (infra/fleet-watch/peers.json declares the
     //         probe mutual) and wr2-warroom-sync pulling war-room output from Pro
     //         (infra/launchagents/wrappers/wr2-warroom-sync.sh).
+    //   6379  OSINT nexus-bridge worker on Mini reading its Redis stream on Pro, observed
+    //         live and ESTABLISHED on 2026-10-11.
     // Deliberately NOT granted: pro:443. Mini has no consumer for the deck, the cinema or the
     // shell, and it is the least-attended machine on the fleet. See SHELL-ROUTE above.
     {
       "action": "accept",
       "proto":  "tcp",
       "src":    ["mini"],
-      "dst":    ["pro:22"]
+      "dst":    ["pro:22", "pro:6379"]
     },
 
     // ---- 3. Pro -> M5. Only SSH. -------------------------------------------------------------
@@ -284,6 +289,18 @@
       "proto":  "tcp",
       "src":    ["apple-vision-pro"],
       "dst":    ["m5:5900", "pro:5900", "mini:5900"]
+    },
+
+    // ---- 6c. Pro -> iQOO wireless ADB TLS. -------------------------------------------------
+    // Android binds adbd's TLS listener from the Linux ephemeral range (32768-60999), and the
+    // selected port changes whenever wireless debugging is enabled or the phone reboots. The
+    // phone is a destination only: it reaches nothing, and only Pro drives it for shared mobile
+    // QA. The repo guard permits this one exact wide range and rejects every wider variation.
+    {
+      "action": "accept",
+      "proto":  "tcp",
+      "src":    ["pro"],
+      "dst":    ["iqoo-15:32768-60999"]
     },
 
     // ---- 7. A team device is a DESTINATION for support, never a source. -----------------------
@@ -370,7 +387,8 @@
     // Innocence: the flows the fleet actually runs must survive the narrowing.
     {
       "src":    "pro",
-      "accept": ["mini:22", "mini:6379", "mini:11434", "mini:8990", "m5:22"]
+      "accept": ["mini:22", "mini:6379", "mini:11434", "mini:8990", "m5:22",
+                 "iqoo-15:32768", "iqoo-15:60999"]
     },
     {
       "src":    "m5",
@@ -378,7 +396,7 @@
     },
     {
       "src":    "mini",
-      "accept": ["pro:22"]
+      "accept": ["pro:22", "pro:6379"]
     },
     {
       "src":    "apple-vision-pro",
@@ -417,7 +435,7 @@
       // Mini is Zero's own machine and still does not get the shell: least privilege is not a
       // property of who owns the device, it is a property of what the device has a consumer for.
       "src":  "mini",
-      "deny": ["pro:443", "pro:18789", "m5:22"]
+      "deny": ["pro:443", "pro:18789", "m5:22", "iqoo-15:40000"]
     },
     {
       // An iOS device gets the deck and nothing else.
@@ -435,7 +453,13 @@
       // reachable from M5, so a new service appearing on a new port is denied until someone adds
       // it here on purpose.
       "src":  "m5",
-      "deny": ["pro:6379", "pro:18789", "pro:18890", "pro:7681", "mini:6379", "mini:11434"]
+      "deny": ["pro:6379", "pro:18789", "pro:18890", "pro:7681", "mini:6379", "mini:11434",
+               "iqoo-15:40000"]
+    },
+    {
+      // The shared QA phone is a destination only. It never originates fleet traffic.
+      "src":  "iqoo-15",
+      "deny": ["pro:22", "pro:443", "mini:22", "mini:6379", "m5:22"]
     }
   ]
 
