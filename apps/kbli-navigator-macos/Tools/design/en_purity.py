@@ -137,14 +137,16 @@ def english_word(w):
 def words(s):
     """(offset, word) as drawn: a lower→Upper boundary splits what PDFKit glued ("CodesSemua"); digits never join.
     A run glued with no case change ("Codessektor", "RISIKOOSS") splits where both halves are known words, one a
-    lexicon word (#8224 gate binding 2), or else two English words ("Codesshown"); each half 3+ letters."""
+    lexicon word (#8224 gate binding 2), or else two words English writes of 4+ letters ("Codesshown": `english_word`,
+    never a merely known half — "Sand|ikan", "dam|pak", "sum|bat" stay whole, #8239 gate); each half 3+ letters."""
     for m in WORD_RE.finditer(s):
         p = m.start()
         for w in [m.group()] if known(m.group().lower()) else GLUE_RE.split(m.group()):   # "IoT" is a word
             lw, cut = w.lower(), 0
             if len(w) > 4 and not known(lw):
                 cuts = [i for i in range(3, len(w) - 2) if known(lw[:i]) and known(lw[i:])]   # 3+ letters a side:
-                cut = next((i for i in cuts if lw[:i] in LEX or lw[i:] in LEX), cuts[0] if cuts else 0)   # not BA|PANAS
+                cut = next((i for i in cuts if lw[:i] in LEX or lw[i:] in LEX),   # not BA|PANAS
+                           next((i for i in cuts if 3 < i < len(w) - 3 and english_word(lw[:i]) and english_word(lw[i:])), 0))
             for part in (w[:cut], w[cut:]) if cut else (w,):
                 yield p, part; p += len(part)
 
@@ -676,6 +678,9 @@ def selftest():
                   ("Scope\n" + own, 1, rr), ("Official title (Bahasa Indonesia)\n" + own, 1, rr)]
     cases += [("Codessektor", 1, None), ("RISIKOOSS Medium", 1, None), ("Codesshown 26", 0, None)]   # #8224 b2
     gated = [("Status: Pratinjau gagal", 1, None), ("Status: Open · IoT · 26 codes shown", 0, None),   # b1, and b5:
+             ("Status: Sandikan", 1, None), ("Dampak · Sandikan", 1, None), ("Status: Sumbat", 1, None),   # #8239 gate:
+             # an Indonesian word is no glue of two known (or two short English) halves
+             ("Open under the Dampak of the record, so the moratorium does not apply", 1, r13),
              ("Open under the extra scope of the record, so the moratorium does not apply", 0, r13),   # an
              ("Open under the Pratinjau gagal of the record, so the moratorium does not apply", 1, r13)]   # unpinned gap
     bad = ["EN-SELFTEST %r (gated): %d strings, want %d" % (t[:50], len(analyse({"text": t}, rr, unknown=True)[0]), w)

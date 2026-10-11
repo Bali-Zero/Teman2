@@ -30,7 +30,9 @@ objective: >-
   own judul is a gap drawn "<English title> (<official title>)", a title inside (…) or another code's never. (10)
   R17: the card's intel_2026 prose (whatItMeans, whoThisIsFor, whatChanged, zantaraOpener, youllAlsoNeed's notes)
   is curated prose read like the overlay's, under the F1 limit. (11) Emphasis markup a View draws literally ("**")
-  is no word, and a gap holds 80 characters plus twice its value (a title's English and the title).
+  is no word, and a gap holds 80 characters plus twice its value (a title's English and the title). (12) The #8239
+  gate's cure: a glued run with no lexicon half splits only into two words English writes (`english_word`), 4+
+  letters each, so an Indonesian word is never read as two merely known halves ("Sand|ikan", "dam|pak", "sum|bat").
 constraints:
   - No Sources file changes; renders byte-identical by construction.
   - "Every binding of #8224 and #8227 stays green, and EN-1c's guilts still fail."
@@ -42,9 +44,11 @@ acceptance:
   - text: A gated View whose content moves into an unexpanded ScrollView SHALL fail as INCOMPLETE.
     probe: "Pro: a copy whose RegistryVerdictSheet always scrolls — rc=1, FAIL: registry-sheet has N INCOMPLETE dumps"
   - text: A novel Indonesian literal drawn in both modes on a gated View SHALL fail.
-    probe: "Pro: a copy drawing Text(\"Pratinjau gagal\") on the registry sheet — rc=1, EN registry-sheet unknown words and EN-SELFTEST ID-only word"
+    probe: 'Pro: a copy drawing Text("Pratinjau gagal") on the registry sheet — rc=1, EN registry-sheet unknown words and EN-SELFTEST ID-only word'
   - text: A raw field drawn through a stored closure SHALL fail the never-drawn check.
     probe: "Pro: a copy with let later = { kbli.judul }; Text(later()) on the registry sheet — rc=1, step 5 names the line"
+  - text: A novel Indonesian word on a list this PR did not choose SHALL be caught in both modes.
+    probe: "M5: the #8239 gate's 30 words — 30/30 drawn in English, 30/30 in both modes; ID-corpus escapes 96 → 21, all English compounds"
   - text: The new self-test rows SHALL bite.
     probe: "M5: en_purity self-test 0 lines; the b1/b2/b5/64993/F1/F2/R12/R15/R16/R19 rows disagree with main's analyser"
   - text: PR 5 on this head SHALL leave in sheet-ledger only what its own View must fix.
