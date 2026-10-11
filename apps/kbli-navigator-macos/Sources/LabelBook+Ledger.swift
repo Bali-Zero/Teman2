@@ -123,8 +123,8 @@ extension LabelBook {
 
     /// One line of the curated meaning, which is markdown like the `baliContext` MarkdownView draws on the same sheet:
     /// its inline emphasis (the 21 `**…**` pairs of 17 codes, 55204's `*not*`) draws as emphasis, never as asterisks.
-    /// The characters are the source's minus the markers; a line the native parser refuses stays as written. Bali
-    /// reasons are not curated meanings and keep their asterisks (Z-3).
+    /// The characters are the source's minus the markers; a line the native parser refuses stays as written. A Bali
+    /// reason's paired emphasis reads the same way (Q24 over Z-3 for pairs, 2026-10-11); a lone `*` stays (Z-3).
     static func ledgerInline(_ line: String) -> AttributedString {
         (try? AttributedString(markdown: line, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
             ?? AttributedString(line)

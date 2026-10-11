@@ -31,16 +31,24 @@ struct UraianLines: View {
     }
 
     private func line(_ s: String) -> some View {
-        (markdown ? Text(strong(LabelBook.ledgerInline(s))) : Text(s)).font(Theme.scalable(size)).lineSpacing(5)
+        (markdown ? Text(LabelBook.emphasis(s, size: size)) : Text(s)).font(Theme.scalable(size)).lineSpacing(5)
             .foregroundStyle(color).fixedSize(horizontal: false, vertical: true)
     }
+}
 
-    /// Manrope ships no bold face for the strong intent to find, so a strong run takes the SemiBold cut by name; an
-    /// italic run has no italic cut and reads in the line's own face.
-    private func strong(_ a: AttributedString) -> AttributedString {
-        a.runs.reduce(into: AttributedString()) { out, r in
+extension LabelBook {
+    /// `ledgerInline` as drawn at `size`, for the curated meaning (UraianLines) and a Bali reason (LeadBody). Manrope
+    /// ships neither a bold nor an italic cut and the app never synthesises weight or slant (`Theme.face`), so every
+    /// emphasised run, `**…**` and `*…*` alike, takes the SemiBold cut by name. A line with no `*` is not parsed: it
+    /// draws exactly as written.
+    static func emphasis(_ line: String, size: CGFloat) -> AttributedString {
+        guard line.contains("*") else { return AttributedString(line) }
+        let a = ledgerInline(line)
+        return a.runs.reduce(into: AttributedString()) { out, r in
             var piece = AttributedString(a[r.range])
-            if r.inlinePresentationIntent?.contains(.stronglyEmphasized) == true { piece.font = Theme.scalable(size, weight: .semibold) }
+            if r.inlinePresentationIntent?.isDisjoint(with: [.stronglyEmphasized, .emphasized]) == false {
+                piece.font = Theme.scalable(size, weight: .semibold)
+            }
             out += piece
         }
     }
