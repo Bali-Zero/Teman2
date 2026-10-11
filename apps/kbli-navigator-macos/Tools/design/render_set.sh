@@ -31,6 +31,17 @@ for c in 56101 55203; do for t in day night; do for l in en id; do
 for l in en id; do
   shot search-results-multi --theme day --lang $l --code 552 "$OUT/search-results-multi-day-$l.png"
   shot registry-table --theme day --lang $l --code 51101 --height 2400 "$OUT/tall/registry-table-51101-day-$l.png"; done
+# The immersive set (IMM): what the user sees, a first-class set beside the flat baseline. IMM=1 adds it under $OUT/imm/.
+if [ -n "${IMM:-}" ]; then
+  mkdir -p "$OUT/imm/narrow"
+  typeset -A IMMCODE=(detail-card 55203 sheet-ledger 56101 chat 51101 registry-sheet 56101)
+  for b in detail-card sheet-ledger chat registry-sheet; do
+    for t in day night; do for l in en id; do
+      shot $b --imm --theme $t --lang $l --code ${IMMCODE[$b]} "$OUT/imm/$b-$t-$l.png"; done; done
+    shot $b --imm --theme day --lang en --code ${IMMCODE[$b]} --width 948 "$OUT/imm/narrow/$b-day-en.png"
+  done
+  shot registry-sheet --imm --sheet-open --theme day --lang en --code 56101 --height 2200 "$OUT/imm/registry-sheet-open-day-en.png"
+fi
 [[ -n $CENSUS_IDENTITY ]] && echo "census collector: $same PNGs byte-identical with and without it"
 echo "render_set: $(find "$OUT" -name '*.png' | wc -l | tr -d ' ') PNGs in $OUT, $fails failed"
 exit $(( fails > 0 ))

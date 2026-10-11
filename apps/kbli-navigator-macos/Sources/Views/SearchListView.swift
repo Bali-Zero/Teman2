@@ -556,6 +556,7 @@ struct SearchListView: View {
                 state.selected = nil
                 sheetExpanded = false
             }
+            .immersiveHost()
             .frame(maxHeight: sheetExpanded ? .infinity : 470)
             .padding(.horizontal, 12).padding(.bottom, 10).padding(.top, 6)
         }
