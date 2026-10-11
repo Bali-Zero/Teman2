@@ -50,6 +50,8 @@ if [ -n "${IMM:-}" ]; then
   shot registry-sheet --imm --sheet-open --theme night --lang en --code 85510 --height 2600 "$OUT/imm/sheet-open-85510-night-en.png"
   shot registry-sheet --imm --sheet-open --theme day --lang en --code 20111 --height 4000 "$OUT/imm/sheet-open-20111-day-en.png"
   # Medium-Low at night, stacked (#8288 gate): the ring's census (C24) must see it clear of the chip beside it.
+  # A row that spans several scales (43110's first row: Micro, Small, Medium) draws one chip per scale and rings each: C24 counts chips.
+  shot registry-sheet --imm --sheet-open --theme night --lang en --code 43110 --scope 0 --scale-focus Mikro --height 4000 "$OUT/imm/sheet-open-43110-night-en.png"
   for c in 03300 32300; do shot registry-sheet --imm --sheet-open --theme night --lang en --code $c --height 4000 "$OUT/imm/sheet-open-$c-night-en.png"; done
 fi
 [[ -n $CENSUS_IDENTITY ]] && echo "census collector: $same PNGs byte-identical with and without it"

@@ -139,7 +139,7 @@ struct KBLIRegistryView: View {
                                 // The ladder hangs from the row's bottom edge, so its ground line (y 326
                                 // of 330) sits on the matrix's last 1 pt rule and it rises above a short table.
                                 Color.clear.frame(width: 120, height: 1)
-                                    .overlay(alignment: .bottom) { PadiLadder().offset(y: 3.5).censusFrame("ladder") }
+                                    .overlay(alignment: .bottom) { PadiLadder().padding(.bottom, -3.5).censusFrame("ladder") }
                                 matrix
                             }
                         }
