@@ -12,19 +12,12 @@ lanes:
     seat: kimi-code/kimi-for-coding via seat_build (built the three personas and the seq-19/seq-20 count wiring in the Mini worktree).
   - lane: pr07-package
     role: build
-    seat: Claude Sonnet 5.5 (packager; cured two LOW wording findings, ran the suite, wrote this pack).
+    seat: claude-sonnet-5 (packager; cured two LOW wording findings, ran the suite, wrote this pack).
   - lane: pr07-redteam
     role: review
     seat: claude-opus (read-only red team; replayed seq-27, ran 9 guilt mutations, ran the suite).
 pii_scan: clean
-bites:
-  consumer: >-
-    the gold-coverage floor gate (backend/tests/services/visa_engine/test_gold_coverage_floor.py, which
-    globs the personas folder, plus scripts/visa_engine/gold_coverage_eval.py); live after merge, the CI
-    log of test_gold_coverage_floor shows the replay green over 23 personas, E23, E23U and E23V among them.
-  where: ci
-  observe: python3 scripts/ci/evidence_paths.py --ref agent/mini-pro2/backend-rag/vn-work-pr07-e23-personas
-  expect: "contains:slug:"
+bites: "consumer: the gold-coverage floor gate (test_gold_coverage_floor.py globs gold_coverage/personas and replays them through apps/backend-rag/backend/scripts/visa_engine/gold_coverage_replay.py); observation: in the PR-lane backend-tests run and the merge_group run test_gold_coverage_floor.py is PASSED with 23 personas including E23, E23U, E23V."
 receipts:
   - claim: "The gold-coverage floor and the seq-19 and seq-20 persona replays are green after the cures (E23 replays on both older packs; E23U and E23V are excluded by name there)."
     cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_gold_coverage_floor.py backend/tests/services/visa_engine/test_seq19_pack.py backend/tests/services/visa_engine/test_seq20_pack.py -k "Gold or gold or floor"
