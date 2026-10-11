@@ -1428,8 +1428,12 @@ struct PP28ScalePanel: View {
     static let matrixMaxScopes = 5
 
     private var defaultCell: Int? {
-        if let first = scopeIndices.first,
-           let hit = rowFor(scope: first, scale: "Besar") { return hit.idx }
+        // Snapshot hooks (--scope, --scale-focus) pick the cell the sheet opens on, so every scope of a six-or-more list
+        // can be censused on the live sheet; without them the default is the first scope's Large row.
+        let snap = immersive ? ScalePath.snapshotScope.flatMap { scopeIndices.indices.contains($0) ? scopeIndices[$0] : nil } : nil
+        let scale = immersive ? (ScalePath.snapshotFocus ?? "Besar") : "Besar"
+        if let first = snap ?? scopeIndices.first,
+           let hit = rowFor(scope: first, scale: scale) { return hit.idx }
         // else the first existing row
         return scales.indices.first
     }

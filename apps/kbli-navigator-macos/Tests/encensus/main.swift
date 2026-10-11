@@ -137,6 +137,21 @@ let rc: Int32 = MainActor.assumeIsolated {
              anchors: c + [isID ? "Buka dosir lengkap" : "Open the full dossier"])
         emit(k.kode, "registry-sheet-open-imm", RegistryVerdictSheet(kbli: k, expanded: .constant(true), onClose: {}, scrolls: false).immersiveHost(),
              anchors: c + [isID ? "Tutup dosir" : "Collapse dossier"])
+        // The scope selector's content proof on the LIVE sheet (IMM-5b): each scope and each scale picked in turn through the
+        // snapshot hooks, against the flat list with that scope's row open.
+        if views?.contains("registry-sheet-scopes") == true, ScaleMatrix.scopes(k.perSkala).count >= ScaleMatrix.listFrom {
+            for i in ScaleMatrix.scopes(k.perSkala).indices {
+                ScalePath.snapshotScope = i; ScaleMatrix.snapshotOpenScope = i
+                emit("\(k.kode)#flat\(i)", "registry-sheet-scopes", RegistryVerdictSheet(kbli: k, expanded: .constant(true), onClose: {}, scrolls: false))
+                ScaleMatrix.snapshotOpenScope = nil
+                for scale in ScaleMatrix.order {
+                    ScalePath.snapshotFocus = scale
+                    emit("\(k.kode)#imm\(i)#\(scale)", "registry-sheet-scopes", RegistryVerdictSheet(kbli: k, expanded: .constant(true), onClose: {}, scrolls: false).immersiveHost())
+                }
+                ScalePath.snapshotFocus = nil
+            }
+            ScalePath.snapshotScope = nil
+        }
         // The sheet the user reads with the dossier open: the only live caller of the ledger (PR 5' gate binding).
         emit(k.kode, "registry-sheet-open", RegistryVerdictSheet(kbli: k, expanded: .constant(true), onClose: {}, scrolls: false),
              anchors: c + [isID ? "Tutup dosir" : "Collapse dossier"])
