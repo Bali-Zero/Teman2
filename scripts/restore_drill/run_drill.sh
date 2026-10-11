@@ -11,12 +11,15 @@ CONTAINER_NAME="${RESTORE_DRILL_CONTAINER:-nuzantara-pg-drill}"
 IMAGE="${RESTORE_DRILL_IMAGE:-nuzantara/pg-drill:17-postgis}"
 DRILL_PORT="${DRILL_PORT:-15499}"
 DRILL_USER="${DRILL_USER:-drill}"
-DRILL_PASSWORD="${DRILL_PASSWORD:-drill}"
+DRILL_PASSWORD="${DRILL_PASSWORD:-$(python3 -c 'import secrets; print(secrets.token_hex(16))')}"
 DRILL_DB="${DRILL_DB:-nuzantara_drill}"
 TIGRIS_ENDPOINT="${TIGRIS_ENDPOINT:-https://fly.storage.tigris.dev}"
 TIGRIS_BUCKET="${TIGRIS_BUCKET:-nuzantara-backups}"
 TIMEOUT_SECONDS="${RESTORE_DRILL_TIMEOUT_SECONDS:-1800}"
 MIN_VM_FREE_KB="${RESTORE_DRILL_MIN_VM_FREE_KB:-8388608}"
+MAX_DUMP_AGE_HOURS="${RESTORE_DRILL_MAX_DUMP_AGE_HOURS:-72}"
+CONTAINER_MEMORY="${RESTORE_DRILL_MEMORY:-3g}"
+CONTAINER_CPUS="${RESTORE_DRILL_CPUS:-2}"
 WORK_DIR=$(mktemp -d /tmp/nuzantara-restore-drill.XXXXXX)
 WATCHDOG_PID=""
 
@@ -30,7 +33,10 @@ cleanup() {
     rm -rf "$WORK_DIR"
     exit "$rc"
 }
-trap cleanup EXIT INT TERM
+# A signal must end the run non-zero: a bare EXIT trap on TERM can inherit a 0 status and read green.
+trap 'exit 143' TERM
+trap 'exit 130' INT
+trap cleanup EXIT
 
 cannot_verify() {
     echo "CANNOT-VERIFY: $*" >&2
@@ -52,20 +58,21 @@ sha256_file() {
 }
 
 check_vm_disk_floor() {
-    local df_output free_kb
+    local extra_kb="${1:-0}" need_kb df_output free_kb
     df_output=$(colima ssh -- df -Pk / 2>/dev/null) \
         || cannot_verify "cannot measure free disk in the Colima VM"
     free_kb=$(printf '%s\n' "$df_output" | awk 'NR > 1 && $NF == "/" {print $4; exit}')
     case "$free_kb" in
         ''|*[!0-9]*) cannot_verify "Colima VM free-disk measurement was not numeric" ;;
     esac
-    if [ "$free_kb" -lt "$MIN_VM_FREE_KB" ]; then
-        cannot_verify "Colima VM has less than 8 GiB free"
+    need_kb=$((MIN_VM_FREE_KB + extra_kb))
+    if [ "$free_kb" -lt "$need_kb" ]; then
+        cannot_verify "Colima VM does not have the free disk the restore needs"
     fi
 }
 
 ensure_image() {
-    local dockerfile_hash current_hash
+    local dockerfile_hash current_hash old_id new_id
     dockerfile_hash=$(sha256_file "$SCRIPT_DIR/Dockerfile")
     current_hash=$(docker image inspect "$IMAGE" \
         --format '{{index .Config.Labels "nuzantara.dockerfile.sha256"}}' 2>/dev/null || true)
@@ -74,8 +81,13 @@ ensure_image() {
         return
     fi
     echo "Building restore image because the Dockerfile changed or the image is absent"
+    old_id=$(docker image inspect "$IMAGE" --format '{{.Id}}' 2>/dev/null || true)
     docker build --build-arg "DOCKERFILE_SHA=$dockerfile_hash" \
         --tag "$IMAGE" "$SCRIPT_DIR"
+    new_id=$(docker image inspect "$IMAGE" --format '{{.Id}}' 2>/dev/null || true)
+    if [ -n "$old_id" ] && [ "$old_id" != "$new_id" ]; then
+        docker rmi "$old_id" >/dev/null 2>&1 || true  # the superseded layers must not pile up on the shared VM
+    fi
 }
 
 wait_for_postgres() {
@@ -83,7 +95,12 @@ wait_for_postgres() {
     attempt=0
     while [ "$attempt" -lt 60 ]; do
         health=$(docker inspect --format '{{.State.Health.Status}}' "$CONTAINER_NAME" 2>/dev/null || true)
-        [ "$health" = "healthy" ] && return 0
+        # Healthy inside the VM is not enough: the host-side psql must reach the published port
+        # (Colima forwards VM ports to macOS), or the first real run would fail after the download.
+        if [ "$health" = "healthy" ] \
+            && PGCONNECT_TIMEOUT=3 psql "$1" -Atqc 'select 1' >/dev/null 2>&1; then
+            return 0
+        fi
         sleep 2
         attempt=$((attempt + 1))
     done
@@ -110,9 +127,18 @@ drill_main() {
     listing=$(aws --endpoint-url "$TIGRIS_ENDPOINT" s3 ls \
         "s3://$TIGRIS_BUCKET/postgres/") \
         || cannot_verify "cannot list Tigris postgres backups"
+    # Only the producer's own naming counts (nuzantara-fly-YYYYMMDD-HHMM.sql.gz); the newest is chosen by
+    # the timestamp in the name, and a dump older than MAX_DUMP_AGE_HOURS is a finding, not a pass.
     latest=$(printf '%s\n' "$listing" | awk '{print $4}' \
-        | grep -E '\.sql\.gz$' | sort | tail -1 || true)
-    [ -n "$latest" ] || cannot_verify "no compressed SQL backup found"
+        | grep -E '^nuzantara-fly-[0-9]{8}-[0-9]{4}\.sql\.gz$' | sort | tail -1 || true)
+    [ -n "$latest" ] || cannot_verify "no compressed SQL backup with the expected name found"
+    python3 - "$latest" "$MAX_DUMP_AGE_HOURS" <<'PY' || cannot_verify "newest backup is older than ${MAX_DUMP_AGE_HOURS}h"
+import datetime, re, sys
+m = re.search(r"(\d{8})-(\d{4})", sys.argv[1])
+taken = datetime.datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M").replace(tzinfo=datetime.timezone.utc)
+age = datetime.datetime.now(datetime.timezone.utc) - taken
+sys.exit(0 if age <= datetime.timedelta(hours=float(sys.argv[2])) else 1)
+PY
 
     dump_path="$WORK_DIR/$latest"
     aws --endpoint-url "$TIGRIS_ENDPOINT" s3 cp \
@@ -123,9 +149,12 @@ drill_main() {
         ''|*[!0-9]*) cannot_verify "downloaded backup size was not numeric" ;;
     esac
     [ "$dump_bytes" -gt 1000000 ] || cannot_verify "downloaded backup is unexpectedly small"
+    # The restored database needs roughly 8x the compressed dump inside the VM, on top of the floor.
+    check_vm_disk_floor $((dump_bytes / 1024 * 8))
 
     docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
     docker run --rm --detach --name "$CONTAINER_NAME" \
+        --memory "$CONTAINER_MEMORY" --cpus "$CONTAINER_CPUS" \
         --publish "127.0.0.1:${DRILL_PORT}:5432" \
         --env "POSTGRES_USER=$DRILL_USER" \
         --env "POSTGRES_PASSWORD=$DRILL_PASSWORD" \
@@ -133,9 +162,8 @@ drill_main() {
         --health-cmd "pg_isready -U $DRILL_USER -d $DRILL_DB" \
         --health-interval 5s --health-timeout 5s --health-retries 20 \
         "$IMAGE" >/dev/null
-    wait_for_postgres
-
     dsn="postgresql://${DRILL_USER}:${DRILL_PASSWORD}@127.0.0.1:${DRILL_PORT}/${DRILL_DB}"
+    wait_for_postgres "$dsn"
     roles_sql="$WORK_DIR/roles.sql"
     python3 "$SCRIPT_DIR/role_scanner.py" "$dump_path" \
         --exclude "$DRILL_USER" --output "$roles_sql" \
@@ -193,6 +221,7 @@ DRILL_PID=$!
     if kill -0 "$DRILL_PID" 2>/dev/null; then
         : > "$WORK_DIR/watchdog-fired"
         kill -TERM "-$DRILL_PID" 2>/dev/null || kill -TERM "$DRILL_PID" 2>/dev/null || true
+        docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 &  # the detached container outlives its client
         sleep 5
         kill -KILL "-$DRILL_PID" 2>/dev/null || kill -KILL "$DRILL_PID" 2>/dev/null || true
     fi

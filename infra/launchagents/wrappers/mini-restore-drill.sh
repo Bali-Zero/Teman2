@@ -10,7 +10,7 @@ ORGAN_ID="mini.restore_drill"
 LOG_DIR="$HOME/logs/mini-restore_drill"
 LOG="$LOG_DIR/run.log"
 SIDECAR_DIR="$HOME/.organism/last_seen"
-PIDFILE="/tmp/nuzantara-mini-restore_drill.pid"
+LOCKDIR="/tmp/nuzantara-mini-restore_drill.lock"
 REPO="$HOME/nuzantara"
 PAYLOAD="$REPO/scripts/restore_drill/run_drill.sh"
 GATEWAY="$REPO/scripts/tg_notify.py"
@@ -56,13 +56,37 @@ if [ "${MINI_RESTORE_DRILL_ENABLED:-true}" = "false" ]; then
     exit 0
 fi
 
-if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
-    log "previous run still alive — skipping"
-    heartbeat "ok" "skipped: previous run alive"
-    exit 0
+# Atomic singleton (mkdir is one syscall; macOS has no flock). A lock is stale only when its owner
+# is gone or is no longer this wrapper (a recycled PID must not make every later run skip).
+# A live run is left alone and its sidecar is NOT touched: the skip is not a result.
+if ! mkdir "$LOCKDIR" 2>/dev/null; then
+    owner=$(cat "$LOCKDIR/pid" 2>/dev/null || true)
+    if [ -n "$owner" ] && kill -0 "$owner" 2>/dev/null \
+        && ps -p "$owner" -o command= 2>/dev/null | grep -q "mini-restore-drill"; then
+        log "previous run (pid $owner) still alive — skipping, sidecar untouched"
+        exit 0
+    fi
+    log "stale lock (owner ${owner:-unknown} gone) — taking it over"
+    rm -rf "$LOCKDIR"
+    mkdir "$LOCKDIR" 2>/dev/null || { log "cannot take the lock — another run won the race"; exit 0; }
 fi
-echo $$ > "$PIDFILE"
-trap 'rm -f "$PIDFILE"' EXIT
+echo $$ > "$LOCKDIR/pid"
+FINISHED=0
+on_exit() {
+    rc=$?
+    # Any exit before the verdict block (crash, signal, launchctl kill) must still leave a visible trace.
+    if [ "$FINISHED" -ne 1 ]; then
+        MONTH=${MONTH:-$(date +%Y-%m)}
+        heartbeat "error" "wrapper exited before a verdict rc=$rc"
+        notify p0 "restore-drill:${MONTH}" \
+            "Monthly restore drill on Mini ended before a verdict (rc=$rc). Investigate the local private log." || true
+        write_failure_escalation "NO-VERDICT" "$rc" || true
+    fi
+    rm -rf "$LOCKDIR"
+}
+trap on_exit EXIT
+trap 'exit 143' TERM
+trap 'exit 130' INT
 
 PATH="/opt/homebrew/bin:$HOME/.local/bin:$HOME/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 export PATH
@@ -79,6 +103,7 @@ if [ -f "$LOG" ] && [ "$(wc -c < "$LOG" | tr -d ' ')" -gt 5242880 ]; then
 fi
 
 log "run start"
+heartbeat "running" "restore drill in progress"
 RC=0
 if [ ! -f "$PAYLOAD" ]; then
     echo "CANNOT-VERIFY: payload missing" >> "$LOG"
@@ -107,5 +132,6 @@ else
         log "write_escalation failed"
 fi
 
+FINISHED=1
 log "run done rc=$RC"
 exit "$RC"

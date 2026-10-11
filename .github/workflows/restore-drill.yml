@@ -9,8 +9,9 @@ name: Monthly PG Restore Drill
 # L2.1 roadmap — see AUTONOMOUS_OPS.md §"Guardrails that make this safe".
 
 on:
-  schedule:
-    - cron: "0 4 1 * *" # 04:00 UTC on the 1st
+  # The monthly run moved to the Mini launchd job com.nuzantara.restore-drill (zero-cutover gate 7b); the
+  # schedule is removed so this stays an on-demand fallback only (its log tail can quote a production row,
+  # which the Mini payload never prints; this workflow is deleted with Teman2).
   workflow_dispatch:
 
 concurrency:
@@ -146,7 +147,7 @@ jobs:
           # excluded; hostile/non-identifier names fail closed.
           python3 scripts/restore_drill/role_scanner.py "/tmp/$LATEST" \
             --exclude drill --output /tmp/restore-drill-roles.sql
-          psql "$DSN" -v ON_ERROR_STOP=1 \
+          psql -v ON_ERROR_STOP=1 "$DSN" \
             -f /tmp/restore-drill-roles.sql >/dev/null
 
           # ON_ERROR_STOP=1 (was 0): a restore that silently swallows a failed

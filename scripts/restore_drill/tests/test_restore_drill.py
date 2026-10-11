@@ -26,6 +26,7 @@ ALTER DATABASE nuzantara OWNER TO drill;
 """
 
     assert scanner.scan_roles(dump.splitlines(), exclude={"drill"}) == {
+        "postgres",  # the drill superuser is "drill", so the dump's postgres owner must be created
         "backend_rag_v2",
         "nuzantara_readonly",
         "visa_ledger_owner",
@@ -33,22 +34,61 @@ ALTER DATABASE nuzantara OWNER TO drill;
     }
 
 
-def test_hostile_quoted_role_is_rejected() -> None:
-    dump = ['ALTER SCHEMA public OWNER TO "bad-role";']
+def test_quoted_role_with_hyphen_or_uppercase_is_created_quoted_not_rejected() -> None:
+    roles = scanner.scan_roles(['ALTER SCHEMA public OWNER TO "Role-Name";\n'])
 
-    with pytest.raises(scanner.UnsafeRoleName):
-        scanner.scan_roles(dump)
+    assert roles == {"Role-Name"}
+    assert scanner.generate_role_sql(roles) == 'CREATE ROLE "Role-Name" NOLOGIN;\n'
 
 
-def test_generated_sql_is_sorted_quoted_and_nologin() -> None:
+def test_generated_sql_is_sorted_quoted_and_nologin_and_cannot_be_broken_out_of() -> None:
     sql = scanner.generate_role_sql({"visa_ledger_owner", "backend_rag_v2"})
 
     assert sql == (
         'CREATE ROLE "backend_rag_v2" NOLOGIN;\n'
         'CREATE ROLE "visa_ledger_owner" NOLOGIN;\n'
     )
+    hostile = scanner.generate_role_sql({'safe"; DROP ROLE drill; --'})
+    assert hostile == 'CREATE ROLE "safe""; DROP ROLE drill; --" NOLOGIN;\n'
     with pytest.raises(scanner.UnsafeRoleName):
-        scanner.generate_role_sql({'safe"; DROP ROLE drill; --'})
+        scanner.generate_role_sql({"line\nbreak"})
+    with pytest.raises(scanner.UnsafeRoleName):
+        scanner.generate_role_sql({"x" * 64})
+
+
+@pytest.mark.parametrize(
+    ("sql", "expected"),
+    [
+        ("GRANT SELECT ON t TO role_a, role_b GRANTED BY grantor_role;", {"role_a", "role_b", "grantor_role"}),
+        ("REVOKE UPDATE ON TABLE public.clients FROM reporting_ro;", {"reporting_ro"}),
+        ("SET ROLE session_role;", {"session_role"}),
+        ("CREATE POLICY p ON t\n  FOR SELECT\n  TO policy_role USING (true);", {"policy_role"}),
+        ("ALTER ROLE configured_role SET work_mem = '64MB';", {"configured_role"}),
+        ('GRANT SELECT ON TABLE public."reports to delete" TO app_ro;', {"app_ro"}),
+        ("GRANT role_a TO role_b;", {"role_a", "role_b"}),
+        ("ALTER DEFAULT PRIVILEGES FOR ROLE x IN SCHEMA public\n  GRANT SELECT ON TABLES TO y, z;", {"x", "y", "z"}),
+        ("GRANT s ON t TO CURRENT_USER, PUBLIC, pg_read_all_data, SESSION_USER;", set()),
+        ("ALTER TABLE a RENAME TO b;", set()),
+        ("ALTER TABLE t OWNER TO postgres;", {"postgres"}),
+    ],
+)
+def test_statement_forms_a_real_pg_dump_emits(sql: str, expected: set[str]) -> None:
+    assert scanner.scan_roles(sql.splitlines(True)) == expected
+
+
+def test_literals_and_dollar_bodies_are_blanked_before_scanning() -> None:
+    dump = (
+        "CREATE FUNCTION f() RETURNS text LANGUAGE sql AS $x$\n"
+        "COPY public.fake FROM stdin;\n"
+        "GRANT s TO bogus;\n"
+        "$x$;\n"
+        "COMMENT ON TABLE c IS 'transfer owner to \"Budi Santoso\"\n"
+        "GRANT s TO ghost';\n"
+        "SELECT E'it\\'s owner to x';\n"
+        "ALTER TABLE t OWNER TO real_owner;\n"
+    )
+
+    assert scanner.scan_roles(dump.splitlines(True)) == {"real_owner"}
 
 
 def test_payload_keeps_on_error_stop_and_never_prints_restore_log() -> None:
@@ -73,5 +113,17 @@ def test_copy_data_rows_are_never_scanned_for_roles() -> None:
 
 def test_rejection_message_does_not_echo_the_dump_token() -> None:
     with pytest.raises(scanner.UnsafeRoleName) as exc:
-        scanner.scan_roles(['ALTER TABLE t OWNER TO "Client Name";\n'])
+        scanner.scan_roles(['ALTER TABLE t OWNER TO "Client\x01Name";\n'])
     assert "Client" not in str(exc.value)
+
+
+def test_wrapper_and_payload_have_no_silent_or_racy_exits() -> None:
+    wrapper = (ROOT.parents[1] / "infra/launchagents/wrappers/mini-restore-drill.sh").read_text(encoding="utf-8")
+    payload = (ROOT / "run_drill.sh").read_text(encoding="utf-8")
+
+    assert 'mkdir "$LOCKDIR"' in wrapper and "PIDFILE" not in wrapper  # atomic lock, no recycled-PID skip
+    assert 'skipped: previous run alive' not in wrapper  # a skip must never write an ok sidecar
+    assert "FINISHED" in wrapper and 'trap on_exit EXIT' in wrapper  # no exit without a trace
+    assert "trap 'exit 143' TERM" in payload  # a signal cannot read green
+    assert "nuzantara-fly-[0-9]{8}-[0-9]{4}" in payload and "MAX_DUMP_AGE_HOURS" in payload  # stale dump != PASS
+    assert "--memory" in payload and "docker rm -f" in payload

@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 6dbf33bdf38065c117163b618c478a16d4e96fcd10d0681a58e8b7eaa7f0c32c # pragma: allowlist secret
+checksum: d92bc3a8917bc14d2f9f6a3a0b31a61b588ddb15266fb3039ce8bba371dfe16c # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2791,7 +2791,9 @@ organs:
   expected_hb_seconds: 2851200
   owner_module: infra/launchagents/wrappers/mini-restore-drill.sh
   dependencies: []
-  recovery_action: launchctl_kickstart
+  # human_only, not launchctl_kickstart: a 30-min monthly restore must never be killed by a recovery kick (kickstart -k
+  # terminates a run in progress), and silence on a monthly job is a person's decision, not a retry.
+  recovery_action: human_only
   recovery_params:
     host: mini
     label: com.nuzantara.restore-drill
