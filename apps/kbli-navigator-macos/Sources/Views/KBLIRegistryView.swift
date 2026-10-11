@@ -189,7 +189,7 @@ struct KBLIRegistryView: View {
 
     private var matrix: some View {
         Group {
-            if immersive && ScaleMatrix.scopes(kbli.perSkala).count < ScaleMatrix.listFrom {
+            if immersive {
                 ScalePath(scales: kbli.perSkala, isID: isID, mode: .ledger)
             } else {
                 ScaleMatrix(scales: kbli.perSkala, isID: isID, mode: .ledger)
