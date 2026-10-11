@@ -3,6 +3,8 @@ verdict that is the commands' exit codes and nothing the findings say. Everythin
 asserted as text, the plan runs against a fake docker, the steps run through the real driver with a fake `codeql` that logs its argv."""
 from __future__ import annotations
 
+import datetime
+import gzip
 import importlib.util
 import json
 import os
@@ -21,6 +23,8 @@ REAL = fr.REAL_REPO
 MATRIX = REAL / "scripts" / "localci" / "contexts_matrix.yaml"
 SECURITY, CONFIG = ".github/workflows/security.yml", ".github/codeql-config.yml"
 LEG_SH, READER = "scripts/localci/codeql_leg.sh", "scripts/localci/codeql_version_read.py"
+SARIF_CHECK = "scripts/localci/codeql_sarif_check.py"
+RING_SH = "scripts/ci/ring_gating_override.sh"
 LANGS = ("python", "javascript")
 PIN = {"version": "2.27.2", "url": "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.27.2/codeql-bundle-linux-arm64.tar.gz",
        "sha256": "c" * 64}
@@ -34,6 +38,7 @@ def _load(path: Path, name: str):
 
 
 reader = _load(REAL / READER, "codeql_version_read_under_test")
+checker = _load(REAL / SARIF_CHECK, "codeql_sarif_check_under_test")
 
 
 def matrix_doc() -> dict:
@@ -77,32 +82,69 @@ sys.exit(0)
     return exe
 
 
-def fake_gh(tmp_path: Path, version: str | None = "2.27.2", rc: int = 0, language_present: bool = True, versions: dict | None = None) -> Path:
-    """A `gh api` that answers the code-scanning analyses list of the hosted main branch (two languages, newest first); `versions` sets the
-    reported CLI per language ({"python": ..., "javascript": ...}) where `version` sets both."""
+def fake_gh(tmp_path: Path, version: str | None = "2.27.2", rc: int = 0, language_present: bool = True, versions: dict | None = None,
+            override: str | None = None, override_rc: int = 0, override_doc: dict | None = None, age_days: float = 1.0, main: dict | None = None, runs_rc: int = 0, jobs_rc: int = 0) -> Path:
+    """A `gh api` that answers what the plan reads: the code-scanning analyses list of the hosted main branch (two languages, newest first;
+    `versions` sets the reported CLI per language where `version` sets both, `age_days` the newest one's age), the newest completed security.yml
+    run on main and its jobs (`main` sets each language's job conclusion), and the MERGEOS_RING_GATING_DISABLED repository variable (`override`
+    its value, None for 404, `override_rc` a read that fails)."""
     versions = {"python": version, "javascript": version, **(versions or {})}
-    exe = tmp_path / "bin" / "gh"
-    exe.parent.mkdir(parents=True, exist_ok=True)
-    rows = [{"id": 3, "category": "/language:python", "created_at": "2026-10-10T22:46:50Z", "tool": {"name": "CodeQL", "version": versions["python"]}},
-            {"id": 2, "category": "/language:javascript", "created_at": "2026-10-10T22:41:02Z", "tool": {"name": "CodeQL", "version": versions["javascript"]}},
-            {"id": 1, "category": "/language:python", "created_at": "2026-10-08T23:54:33Z", "tool": {"name": "CodeQL", "version": "2.27.1"}}]
+    stamp = lambda d: (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=d)).strftime("%Y-%m-%dT%H:%M:%SZ")   # noqa: E731
+    rows = [{"id": 3, "category": "/language:python", "created_at": stamp(age_days), "tool": {"name": "CodeQL", "version": versions["python"]}},
+            {"id": 2, "category": "/language:javascript", "created_at": stamp(age_days + 0.01), "tool": {"name": "CodeQL", "version": versions["javascript"]}},
+            {"id": 1, "category": "/language:python", "created_at": stamp(age_days + 2), "tool": {"name": "CodeQL", "version": "2.27.1"}}]
     if not language_present:
         rows = [r for r in rows if r["category"] != "/language:python"]
-    exe.write_text(f"#!/bin/bash\nif [ {rc} -ne 0 ]; then echo 'gh: HTTP 502' >&2; exit {rc}; fi\ncat <<'JSON'\n{json.dumps(rows)}\nJSON\n")
+    conclusions = {"python": "success", "javascript": "success", **(main or {})}
+    runs = {"workflow_runs": [{"id": 900, "created_at": stamp(0.5), "head_branch": "main", "status": "completed", "conclusion": "success"},
+                              {"id": 800, "created_at": stamp(1.5), "head_branch": "main", "status": "completed", "conclusion": "failure"}]}
+    jobs = {"jobs": [{"name": f"CodeQL Analysis ({lang})", "conclusion": c} for lang, c in conclusions.items()] + [{"name": "Bandit", "conclusion": "failure"}]}
+    exe = tmp_path / "bin" / "gh"
+    exe.parent.mkdir(parents=True, exist_ok=True)
+    exe.write_text(f'''#!{sys.executable}
+import json, sys
+path, cfg = sys.argv[2], json.loads({json.dumps(json.dumps({"rows": rows, "rc": rc, "override": override, "override_rc": override_rc, "override_doc": override_doc, "runs": runs, "runs_rc": runs_rc,
+                                                              "jobs": jobs, "jobs_rc": jobs_rc}))})
+def answer(doc, code):
+    if code:
+        sys.stderr.write("gh: HTTP 502\\n")
+        sys.exit(code)
+    print(json.dumps(doc))
+    sys.exit(0)
+if "/code-scanning/analyses" in path:
+    answer(cfg["rows"], cfg["rc"])
+elif "/actions/variables/" in path:
+    if cfg["override_rc"]:
+        answer(None, cfg["override_rc"])
+    if cfg["override_doc"] is not None:
+        answer(cfg["override_doc"], 0)
+    if cfg["override"] is None:
+        sys.stdout.write('{{"message":"Not Found","status":"404"}}')
+        sys.stderr.write("gh: Not Found (HTTP 404)\\n")
+        sys.exit(1)
+    answer({{"name": "MERGEOS_RING_GATING_DISABLED", "value": cfg["override"]}}, 0)
+elif "/actions/workflows/security.yml/runs" in path:
+    answer(cfg["runs"], cfg["runs_rc"])
+elif "/actions/runs/900/jobs" in path:
+    answer(cfg["jobs"], cfg["jobs_rc"])
+else:
+    sys.stderr.write("fake gh: unexpected " + path + "\\n")
+    sys.exit(9)
+''')
     exe.chmod(0o755)
     return exe
 
 
 def base_files(extra: dict | None = None) -> dict:
-    files = {p: (REAL / p).read_text() for p in (SECURITY, CONFIG, LEG_SH, READER)}
+    files = {p: (REAL / p).read_text() for p in (SECURITY, CONFIG, LEG_SH, READER, SARIF_CHECK, RING_SH)}
     return {**files, **(extra or {})}
 
 
 def plan_codeql(tmp_path: Path, monkeypatch, lang: str, candidate: dict, base_extra: dict | None = None, gh_version: str | None = "2.27.2",
-                gh_rc: int = 0, ctx_over: dict | None = None, gh_versions: dict | None = None, after_candidate=None) -> tuple[dict, Path]:
+                gh_rc: int = 0, ctx_over: dict | None = None, gh_versions: dict | None = None, after_candidate=None, gh_kw: dict | None = None) -> tuple[dict, Path]:
     """Plan the real matrix entry for `lang` against a fixture repo whose BASE carries the real workflow, config, script and reader."""
     docker = fake_docker(tmp_path)
-    fake_gh(tmp_path, gh_version, gh_rc, versions=gh_versions)
+    fake_gh(tmp_path, gh_version, gh_rc, versions=gh_versions, **(gh_kw or {}))
     monkeypatch.setenv("PATH", f"{docker.parent}{os.pathsep}{os.environ['PATH']}")
     monkeypatch.setattr(runner, "READER_RETRY_WAITS", (0, 0, 0))
     ctx = matrix_ctx(lang)
@@ -244,11 +286,11 @@ def test_a_classifier_that_fails_is_hosted_fail_open_the_job_result_is_not_succe
 FAKE_CODEQL = '''#!/bin/bash
 echo "$*" >> "$FAKE_LOG"
 case "$*" in
-  "version --format=terse") echo 2.27.2 ;;
+  "version --format=terse") echo "${FAKE_VERSION-2.27.2}" ;;
 esac
 if [ -n "${FAKE_FAIL_ON:-}" ] && [[ "$*" == *"$FAKE_FAIL_ON"* ]]; then exit "${FAKE_RC:-1}"; fi
 for a in "$@"; do
-  case "$a" in --output=*) python3 -c "
+  case "$a" in --output=*) if [ -n "${FAKE_SARIF:-}" ]; then cp "$FAKE_SARIF" "${a#--output=}"; continue; fi; python3 -c "
 import json, sys
 n = int(sys.argv[2])
 json.dump({'runs': [{'tool': {'driver': {'rules': [{'id': 'r1'}, {'id': 'r2'}]}}, 'results': [{'ruleId': 'r1'}] * n}]}, open(sys.argv[1], 'w'))
@@ -266,11 +308,11 @@ def leg_env(tmp_path: Path, **extra) -> dict:
     src = tmp_path / "w"
     (src / ".github").mkdir(parents=True, exist_ok=True)
     (src / "scripts" / "localci").mkdir(parents=True, exist_ok=True)
-    for rel in (CONFIG, LEG_SH):   # BASE's bytes, unless a test has laid its own
+    for rel in (CONFIG, LEG_SH, SARIF_CHECK):   # BASE's bytes, unless a test has laid its own
         if not (src / rel).exists():
             (src / rel).write_text((REAL / rel).read_text())
     return {"CODEQL_BIN": str(exe), "CODEQL_SOURCE_ROOT": str(src), "LOCALCI_CODEQL_WORK": str(tmp_path / "cq"), "FAKE_LOG": str(tmp_path / "codeql.argv"),
-            "HOME": str(tmp_path), **extra}
+            "CODEQL_PIN": PIN["version"], "HOME": str(tmp_path), **extra}
 
 
 def run_leg_sh(tmp_path: Path, mode: str, lang: str, **extra) -> subprocess.CompletedProcess:
@@ -404,10 +446,13 @@ def test_a_command_killed_by_a_signal_is_no_verdict_never_a_fail(tmp_path, monke
 
 
 def test_a_version_probe_killed_by_a_signal_is_no_verdict_and_one_that_fails_is_its_own_exit(tmp_path):
-    r = run_leg_sh(tmp_path / "killed", "init", "python", FAKE_FAIL_ON="version", FAKE_RC="137")
+    probe = "version --format=terse"   # exactly the probe: pytest's tmp_path carries the test's name, so a bare "version" would fail `database init` too
+    r = run_leg_sh(tmp_path / "killed", "init", "python", FAKE_FAIL_ON=probe, FAKE_RC="137")
     assert r.returncode == -9 and "died of signal 9" in r.stderr   # step: the same re-raised signal as any other command, never a red exit
-    r = run_leg_sh(tmp_path / "failed", "init", "python", FAKE_FAIL_ON="version", FAKE_RC="2")
+    assert (tmp_path / "killed" / "codeql.argv").read_text().splitlines() == [probe]   # and nothing ran after the probe
+    r = run_leg_sh(tmp_path / "failed", "init", "python", FAKE_FAIL_ON=probe, FAKE_RC="2")
     assert r.returncode == 2 and "died of signal" not in r.stderr
+    assert "database init" not in (tmp_path / "failed" / "codeql.argv").read_text()   # the probe's own exit stops the leg: a swallowed probe would run `database init`
 
 
 def test_a_timeout_or_a_driver_that_died_gives_no_verdict(tmp_path, monkeypatch):
@@ -452,7 +497,7 @@ def test_the_results_per_language_go_to_the_receipt_as_data_and_the_leg_gets_the
     out = runner._execute_jobs("ctx.codeql-python", spec, run_dir, plan, run_dir / "logs" / "ctx.log")
     assert out["status"] == "PASS" and out["codeql"] == {"python": {"results": 2499, "rules": 172}}   # 2499 findings, PASS
     assert seen["cfg"]["git_index"] is False and seen["memory"] == "12g" and seen["network"] == "none" and seen["timeout"] == 30 * 60
-    assert seen["overrides"] == {CONFIG: (REAL / CONFIG).read_bytes(), LEG_SH: (REAL / LEG_SH).read_bytes()}   # BASE's bytes, not the candidate's
+    assert seen["overrides"] == {rel: (REAL / rel).read_bytes() for rel in (CONFIG, LEG_SH, SARIF_CHECK)}   # BASE's bytes, not the candidate's
     assert plan["trusted_files_sha256"][CONFIG] == runner.sha256_bytes((REAL / CONFIG).read_bytes())
 
 
@@ -502,10 +547,25 @@ def test_the_sentinel_runs_the_base_reader_not_the_candidates(tmp_path, monkeypa
     assert spec["status"] == "BLOCKED" and "is not a file at BASE" in spec["reason"]
 
 
-def run_reader(rows, pin="2.27.2", language="python", rc=0):
+READER_NOW = datetime.datetime(2026, 10, 12, 0, 0, tzinfo=datetime.timezone.utc)
+MAIN_RUNS = {"workflow_runs": [{"id": 800, "created_at": "2026-10-10T19:17:00Z", "head_branch": "main"},
+                               {"id": 900, "created_at": "2026-10-11T19:17:00Z", "head_branch": "main"}]}   # not newest first: the reader picks by created_at
+
+
+def main_jobs(**conclusion) -> dict:
+    got = {"python": "success", "javascript": "success", **conclusion}
+    return {"jobs": [{"name": f"CodeQL Analysis ({lang})", "conclusion": c} for lang, c in got.items()] + [{"name": "Bandit", "conclusion": "failure"}]}
+
+
+def run_reader(rows, pin="2.27.2", language="python", rc=0, runs=None, jobs=None, runs_rc=0, jobs_rc=0, now=READER_NOW, repo="o/r"):
+    """The reader against a stub gh: analyses -> `rows`, the security.yml runs -> `runs`, the newest run's jobs -> `jobs`."""
+    answers = {"/code-scanning/analyses": (rc, rows), "/actions/workflows/security.yml/runs": (runs_rc, MAIN_RUNS if runs is None else runs),
+               "/actions/runs/900/jobs": (jobs_rc, main_jobs() if jobs is None else jobs)}
+
     def run(argv, **kw):
-        return subprocess.CompletedProcess(argv, rc, json.dumps(rows) if not isinstance(rows, str) else rows, "gh: HTTP 500")
-    return reader.main(["--repo", "o/r", "--language", language, "--pin", pin], run=run)
+        code, doc = next((v for k, v in answers.items() if k in argv[2]), (1, "unexpected path"))
+        return subprocess.CompletedProcess(argv, code, json.dumps(doc) if not isinstance(doc, str) else doc, "gh: HTTP 500")
+    return reader.main(["--repo", repo, "--language", language, "--pin", pin], run=run, now=now)
 
 
 def test_the_reader_compares_the_newest_analysis_of_exactly_this_language(capsys):
@@ -559,7 +619,7 @@ def test_a_red_leg_with_a_rewritten_config_is_blocked_not_fail(tmp_path, monkeyp
 
 def test_an_untouched_config_and_script_leave_the_green_a_green(tmp_path, monkeypatch):
     spec, _ = plan_codeql(tmp_path, monkeypatch, "python", PY_CHANGE)
-    assert spec["judge_modified"] == [] and spec["overlay"] == [CONFIG, LEG_SH]
+    assert spec["judge_modified"] == [] and spec["overlay"] == [CONFIG, LEG_SH, SARIF_CHECK]
 
 
 def test_a_missing_base_judge_blocks_the_plan(tmp_path, monkeypatch):
@@ -599,7 +659,7 @@ def test_both_codeql_contexts_are_executed_full_and_judged_from_base():
         loc = c["local"]
         assert (c["mapping"], c.get("coverage"), c["trusted_base_required"], c["job_id"]) == ("executed", "full", True, "codeql")
         assert loc["leg"] == {"language": lang} and loc["check"] == f"ctx.codeql-{lang}" and loc["trusted_overlay"] is True and loc["skip_is_pass"] is True
-        assert loc["trusted_files"] == [CONFIG, LEG_SH] and loc["memory"] == "12g" and loc["git_index"] is False
+        assert loc["trusted_files"] == [CONFIG, LEG_SH, SARIF_CHECK] and loc["memory"] == "12g" and loc["git_index"] is False
         assert [x["argv"][-1] for x in loc["steps"] if "argv" in x] == [lang, lang]
         assert [x["argv"][2] for x in loc["steps"] if "argv" in x] == ["init", "analyze"]
         assert loc["classifier"]["script"] == "scripts/ci/security_gate_flags.py" and loc["version_sentinel"]["reader"] == READER
@@ -623,3 +683,408 @@ def test_the_parity_gaps_name_the_four_codeql_differences_and_the_vm_size_is_cur
         assert sum(1 for g in gaps if g.startswith("CodeQL (python, javascript) " + key)) == 1, key
     assert not any("4 CPU / 8 GiB" in g for g in gaps) and any("8 CPU / 16 GiB" in g for g in gaps)
     assert any("feature flags" in g for g in gaps if "version:" in g) and any("src/codeql.ts" in g for g in gaps)
+
+
+# ------------------------------------------------------------------------------------------------ sentinel freshness and hosted main
+def at(days: float) -> str:
+    return (READER_NOW - datetime.timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def one_row(created: str, version: str = "2.27.2") -> list:
+    return [{"id": 7, "category": "/language:python", "created_at": created, "tool": {"name": "CodeQL", "version": version}}]
+
+
+@pytest.mark.parametrize("days,rc", [(0.0, 0), (6.99, 0), (7.0, 0), (7.01, 5), (30, 5)])
+def test_the_reader_is_blocked_by_an_analysis_older_than_seven_days(days, rc, capsys):
+    assert run_reader(one_row(at(days))) == rc
+    if rc:
+        err = capsys.readouterr().err
+        assert "STALE" in err and f"{int(days)} days old" in err and "limit 7" in err
+
+
+def test_the_age_is_judged_after_the_version_so_a_stale_other_version_names_the_version(capsys):
+    assert run_reader(one_row(at(30), "2.27.1")) == 3 and "MISMATCH" in capsys.readouterr().err
+
+
+def test_an_unreadable_created_at_is_cannot_verify_never_fresh(capsys):
+    assert run_reader(one_row("yesterday")) == 1 and capsys.readouterr().err.startswith(reader.CANNOT)
+
+
+@pytest.mark.parametrize("conclusion", ["failure", "cancelled", "timed_out", "skipped", None])
+def test_the_reader_is_blocked_when_hosted_main_is_red_on_this_leg(conclusion, capsys):
+    assert run_reader(one_row(at(1)), jobs=main_jobs(python=conclusion)) == 6
+    err = capsys.readouterr().err
+    assert "MAIN-RED" in err and "CodeQL Analysis (python)" in err and "hosted main is red on this leg" in err
+
+
+def test_another_languages_red_job_does_not_block_this_leg(capsys):
+    assert run_reader(one_row(at(1)), jobs=main_jobs(javascript="failure")) == 0
+    rows = one_row(at(1))
+    rows[0]["category"] = "/language:javascript"
+    assert run_reader(rows, language="javascript", jobs=main_jobs(javascript="failure")) == 6
+
+
+def test_the_newest_completed_run_is_the_one_by_created_at_not_by_position(capsys):
+    older_red = {"workflow_runs": [{"id": 900, "created_at": "2026-10-11T19:17:00Z", "head_branch": "main"},
+                                   {"id": 111, "created_at": "2026-10-01T19:17:00Z", "head_branch": "main"}]}
+    assert run_reader(one_row(at(1)), runs=older_red) == 0   # run 900 is the newest whatever its position (its jobs are green)
+    newer_red = {"workflow_runs": [{"id": 111, "created_at": "2026-10-01T19:17:00Z", "head_branch": "main"},
+                                   {"id": 900, "created_at": "2026-10-11T19:17:00Z", "head_branch": "main"}]}
+    assert run_reader(one_row(at(1)), runs=newer_red, jobs=main_jobs(python="failure")) == 6
+
+
+@pytest.mark.parametrize("kw", [{"runs_rc": 1}, {"jobs_rc": 1}, {"runs": {"workflow_runs": []}}, {"runs": {"message": "x"}}, {"jobs": {"jobs": []}},
+                                {"jobs": {"jobs": [{"name": "CodeQL Analysis (python)", "conclusion": "success"}] * 2}}, {"jobs": "not json"}])
+def test_a_read_of_hosted_main_that_fails_or_cannot_find_the_job_is_cannot_verify_never_green(kw, capsys):
+    assert run_reader(one_row(at(1)), **kw) == 1 and capsys.readouterr().err.startswith(reader.CANNOT)
+
+
+@pytest.mark.parametrize("repo", ["../x", "o/..", "./x", "o/.", "../..", "o/r;x", "o"])
+def test_the_reader_refuses_a_repo_that_climbs_the_api_path(repo):
+    assert run_reader(one_row(at(1)), repo=repo) == 2
+
+
+def test_the_reader_takes_an_owner_and_a_name_with_dots_inside_a_segment():
+    assert run_reader(one_row(at(1)), repo="my.org/some-repo.v2") == 0
+
+
+def test_a_stale_newest_analysis_blocks_the_plan_with_the_days_in_the_reason(tmp_path, monkeypatch):
+    spec, _ = plan_codeql(tmp_path, monkeypatch, "python", PY_CHANGE, gh_kw={"age_days": 8})
+    assert spec["kind"] == "record" and spec["status"] == "BLOCKED" and "version sentinel" in spec["reason"] and "8 days old" in spec["reason"]
+    spec, _ = plan_codeql(tmp_path / "fresh", monkeypatch, "python", PY_CHANGE, gh_kw={"age_days": 6})
+    assert spec["kind"] == "contained_jobs"
+
+
+@pytest.mark.parametrize("lang,main,blocked", [("python", {"python": "failure"}, True), ("javascript", {"javascript": "failure"}, True),
+                                               ("python", {"javascript": "failure"}, False), ("javascript", {"python": "failure"}, False)])
+def test_a_red_hosted_main_job_of_the_legs_own_language_blocks_the_plan(tmp_path, monkeypatch, lang, main, blocked):
+    spec, _ = plan_codeql(tmp_path, monkeypatch, lang, PY_CHANGE, gh_kw={"main": main})
+    if blocked:
+        assert spec["kind"] == "record" and spec["status"] == "BLOCKED" and "MAIN-RED" in spec["reason"] and f"CodeQL Analysis ({lang})" in spec["reason"]
+    else:
+        assert spec["kind"] == "contained_jobs"
+
+
+# ------------------------------------------------------------------------------------------------ the ring-gating override, read live
+def test_the_override_is_read_at_plan_and_an_active_one_runs_both_languages_as_hosted_does(tmp_path, monkeypatch):
+    for lang in LANGS:
+        spec, _ = plan_codeql(tmp_path / lang, monkeypatch, lang, DOCS_ONLY, gh_kw={"override": "true"})   # DOCS_ONLY alone reads false/false
+        assert spec["kind"] == "contained_jobs" and spec["ring_gating_override"] == {"read": "ok", "active": True}
+        assert flags_of(spec) == {"result": "success", "outputs": {"run_codeql_python": "true", "run_codeql_js": "true"}}
+        assert any("ring-gating override ACTIVE" in n for n in spec["plan_notes"])
+
+
+@pytest.mark.parametrize("value", [None, "false", "", "True", "TRUE", "1", " true", "true ", "yes"])
+def test_an_unset_variable_or_any_value_that_is_not_exactly_true_leaves_the_classifier_deciding(tmp_path, monkeypatch, value):
+    spec, _ = plan_codeql(tmp_path, monkeypatch, "python", DOCS_ONLY, gh_kw={"override": value})   # None is a 404: the variable does not exist
+    assert spec["ring_gating_override"] == {"read": "ok", "active": False}
+    assert flags_of(spec) == {"result": "success", "outputs": {"run_codeql_python": "false", "run_codeql_js": "false"}}
+
+
+def test_a_read_that_fails_is_fail_open_both_flags_true_and_the_job_result_not_success(tmp_path, monkeypatch):
+    spec, _ = plan_codeql(tmp_path, monkeypatch, "python", DOCS_ONLY, gh_kw={"override_rc": 1})
+    assert spec["kind"] == "contained_jobs" and spec["ring_gating_override"] == {"read": "error", "active": True}
+    assert flags_of(spec) == {"result": "failure", "outputs": {"run_codeql_python": "true", "run_codeql_js": "true"}}
+    assert any("override unreadable" in n for n in spec["plan_notes"])
+
+
+def test_the_truth_table_is_the_base_copy_not_the_candidates_and_not_a_reimplementation(tmp_path, monkeypatch):
+    candidate_says_off = "#!/usr/bin/env bash\necho active=false\n"
+    spec, _ = plan_codeql(tmp_path, monkeypatch, "python", {RING_SH: candidate_says_off, **DOCS_ONLY}, gh_kw={"override": "true"})
+    assert spec["ring_gating_override"]["active"] is True   # BASE's script ran
+    base_odd = "#!/usr/bin/env bash\necho active=maybe\n"
+    spec, _ = plan_codeql(tmp_path / "odd", monkeypatch, "python", DOCS_ONLY, base_extra={RING_SH: base_odd}, gh_kw={"override": "true"})
+    assert spec["ring_gating_override"] == {"read": "error", "active": True}   # an answer that is not active=true/false is no answer: fail-open
+
+
+@pytest.mark.parametrize("doc", [{"value": 1}, {"value": None}, {"name": "x"}, [1], "text"])
+def test_a_variable_answer_without_a_string_value_is_a_read_error(tmp_path, monkeypatch, doc):
+    docker = fake_docker(tmp_path)
+    fake_gh(tmp_path, override_doc=doc)
+    monkeypatch.setenv("PATH", f"{docker.parent}{os.pathsep}{os.environ['PATH']}")
+    assert runner.ring_gating_override(REAL, "HEAD", tmp_path / "trusted", "o/r") == {"read": "error", "active": True}
+
+
+# ------------------------------------------------------------------------------------------------ the action ref is pinned
+def test_the_matrix_pins_the_three_codeql_actions_to_the_sha_the_workflow_uses():
+    ws = {s["name"]: s for s in yaml.safe_load((REAL / SECURITY).read_text())["jobs"]["codeql"]["steps"] if "name" in s}
+    for lang in LANGS:
+        pins = {x["workflow_step"]: x.get("uses_pin") for x in matrix_ctx(lang)["local"]["steps"]}
+        assert set(pins) == {"Initialize CodeQL", "Autobuild", "Perform CodeQL Analysis"}
+        assert all(pins[n] == ws[n]["uses"] and pins[n].split("@")[1] == "2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2" for n in pins)
+
+
+@pytest.mark.parametrize("step,action", [("Initialize CodeQL", "init"), ("Autobuild", "autobuild"), ("Perform CodeQL Analysis", "analyze")])
+def test_a_bumped_codeql_action_in_the_base_workflow_blocks_until_the_matrix_follows(tmp_path, monkeypatch, step, action):
+    old = "github/codeql-action/" + action + "@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2"
+    wf = (REAL / SECURITY).read_text()
+    assert wf.count(old) == 1
+    spec, _ = plan_codeql(tmp_path, monkeypatch, "python", PY_CHANGE, {SECURITY: wf.replace(old, "github/codeql-action/" + action + "@" + "e" * 40)})
+    assert spec["kind"] == "record" and spec["status"] == "BLOCKED" and f"step {step!r}" in spec["reason"] and "an action bump is not emulated" in spec["reason"]
+    spec, _ = plan_codeql(tmp_path / "ok", monkeypatch, "python", PY_CHANGE)
+    assert spec["kind"] == "contained_jobs"
+
+
+# ------------------------------------------------------------------------------------------------ the leg's test seams are not inputs
+SEAMS = ("CODEQL_BIN", "CODEQL_SOURCE_ROOT", "LOCALCI_CODEQL_WORK", "CODEQL_BASE_CONFIG")
+
+
+@pytest.mark.parametrize("seam", SEAMS)
+def test_a_base_job_env_that_sets_a_leg_seam_blocks_the_plan(tmp_path, monkeypatch, seam):
+    wf = (REAL / SECURITY).read_text()
+    marker = "    env:\n      RUN_THIS_LANGUAGE: >-"
+    assert wf.count(marker) == 1
+    spec, _ = plan_codeql(tmp_path, monkeypatch, "python", PY_CHANGE, {SECURITY: wf.replace(marker, f"    env:\n      {seam}: /evil\n      RUN_THIS_LANGUAGE: >-")})
+    assert spec["kind"] == "record" and spec["status"] == "BLOCKED" and seam in spec["reason"] and "test seams" in spec["reason"]
+
+
+def test_a_base_step_env_or_a_matrix_step_env_that_sets_a_leg_seam_blocks_the_plan(tmp_path, monkeypatch):
+    wf = (REAL / SECURITY).read_text()
+    marker = "      - name: Perform CodeQL Analysis\n        if: env.RUN_THIS_LANGUAGE == 'true'\n"
+    assert wf.count(marker) == 1
+    spec, _ = plan_codeql(tmp_path, monkeypatch, "python", PY_CHANGE, {SECURITY: wf.replace(marker, marker + "        env:\n          CODEQL_SOURCE_ROOT: /evil\n")})
+    assert spec["status"] == "BLOCKED" and "CODEQL_SOURCE_ROOT" in spec["reason"]
+    steps = [dict(x) for x in matrix_ctx("python")["local"]["steps"]]
+    steps[2] = {**steps[2], "env": {"LOCALCI_CODEQL_WORK": "/tmp/evil"}}
+    spec, _ = plan_codeql(tmp_path / "matrix", monkeypatch, "python", PY_CHANGE, ctx_over={"steps": steps})
+    assert spec["status"] == "BLOCKED" and "LOCALCI_CODEQL_WORK" in spec["reason"]
+
+
+def test_the_seams_stay_usable_by_the_legs_own_tests_which_call_the_script_directly(tmp_path):
+    r = run_leg_sh(tmp_path, "init", "python")   # leg_env sets all of them
+    assert r.returncode == 0, r.stderr
+
+
+# ------------------------------------------------------------------------------------------------ the local CLI is the pin
+def test_the_matrix_passes_the_recipe_pin_to_the_leg_as_the_one_literal():
+    for lang in LANGS:
+        loc = matrix_ctx(lang)["local"]
+        assert loc["steps"][0]["env"]["CODEQL_PIN"] == loc["deps"]["codeql"]["version"]
+
+
+def test_the_planned_init_step_carries_the_pin_in_its_env(tmp_path, monkeypatch):
+    spec, _ = plan_codeql(tmp_path, monkeypatch, "python", PY_CHANGE)
+    assert spec["jobs"][0]["steps"][0]["env"]["CODEQL_PIN"] == "2.27.2"
+
+
+@pytest.mark.parametrize("reported", ["2.27.1", "2.27.3", "2.27.2-rc1", "", "v2.27.2"])
+def test_a_local_cli_other_than_the_pin_is_no_verdict_before_anything_is_extracted(tmp_path, reported):
+    r = run_leg_sh(tmp_path, "init", "python", FAKE_VERSION=reported)
+    assert r.returncode == -9 and "no verdict" in r.stderr and "the pin is '2.27.2'" in r.stderr   # a signal, as for an OOM kill: never a red exit
+    assert (tmp_path / "codeql.argv").read_text().splitlines() == ["version --format=terse"]
+
+
+@pytest.mark.parametrize("pin", ["", None])
+def test_a_leg_without_a_pin_has_nothing_to_compare_and_gives_no_verdict(tmp_path, pin):
+    env = leg_env(tmp_path)
+    if pin is None:
+        env.pop("CODEQL_PIN")
+    else:
+        env["CODEQL_PIN"] = pin
+    r = subprocess.run(["bash", str(tmp_path / "w" / LEG_SH), "init", "python"], capture_output=True, text=True, env={**{k: v for k, v in os.environ.items() if k != "CODEQL_PIN"}, **env})
+    assert r.returncode == -9 and "CODEQL_PIN" in r.stderr
+
+
+def test_a_driven_leg_on_another_cli_is_error_never_fail_or_pass(tmp_path, monkeypatch):
+    spec, _ = plan_codeql(tmp_path, monkeypatch, "python", PY_CHANGE)
+    steps, rc = drive_planned(tmp_path / "other", spec, FAKE_VERSION="2.27.3")
+    assert rc == 4 and steps[0]["status"] == "ERROR"
+    assert runner.steps_verdict(combined(steps), spec)[0] == "ERROR"
+    steps, rc = drive_planned(tmp_path / "same", spec)
+    assert rc == 0 and runner.steps_verdict(combined(steps), spec)[0] == "PASS"
+
+
+# ------------------------------------------------------------------------------------------------ skip_is_pass, tightened
+def test_a_leg_that_mixes_the_gate_skip_with_any_other_skip_is_not_a_pass(tmp_path, monkeypatch):
+    spec, _ = plan_codeql(tmp_path, monkeypatch, "python", DOCS_ONLY)
+    steps, rc = drive_planned(tmp_path, spec)
+    base = combined(steps)
+    assert rc == 0 and runner.steps_verdict(base, spec)[0] == "PASS"
+    assert [s["name"].rsplit(" › ", 1)[1] for s in base] == ["Initialize CodeQL", "Autobuild", "Perform CodeQL Analysis"]
+    for i in (0, 2):   # a step BASE gates with an `if:`, skipped for some other written reason
+        mixed = [dict(s) for s in base]
+        mixed[i]["reason"] = "skipped for a reason of its own"
+        status, reason = runner.steps_verdict(mixed, spec)
+        assert status == "ERROR" and "not PASS" in reason, (i, status)
+    swapped = [dict(s) for s in base]
+    swapped[1]["reason"] = "if: env.RUN_THIS_LANGUAGE == 'true' -> false (status success)"   # an `if:` skip anywhere is the gate's: Autobuild's matrix N/A may be one
+    assert runner.steps_verdict(swapped, spec)[0] == "PASS"
+    stranger = [*base[:2], {"name": "codeql[x] › A step the plan does not know", "status": "NOT_APPLICABLE", "reason": "written, but nobody planned it"}]
+    assert runner.steps_verdict(stranger, spec)[0] == "ERROR"
+    only_matrix = [{**base[1]}]
+    assert runner.steps_verdict(only_matrix, spec)[0] == "ERROR"   # a matrix N/A alone, with no `if:` skip, is no gate evidence
+
+
+def test_the_drivers_if_false_wording_is_the_one_the_runner_matches():
+    assert runner.IF_FALSE.match("if: env.RUN_THIS_LANGUAGE == 'true' -> false (status success)")
+    assert runner.IF_FALSE.match("if: always() -> false (status failure)") and runner.IF_FALSE.match("if: x -> false")
+    assert not runner.IF_FALSE.match("the action runs no command for python") and not runner.IF_FALSE.match("if: x -> true")
+    assert not runner.IF_FALSE.match("an if: x -> false inside a sentence")
+
+
+# ------------------------------------------------------------------------------------------------ the config rewriter fails closed
+@pytest.mark.parametrize("config", ["name: c\nqueries: [security-extended, security-and-quality]\npaths-ignore:\n  - x\n", "name: c\nqueries: security-extended\n",
+                                    "queries:   [a]  # inline\nname: c\n",
+                                    "name: c\nqueries:\n  - uses: a\n# a comment between items\n  - uses: b\npaths-ignore:\n  - x\n",
+                                    "queries:\n  - uses: a\n\n# a comment after a blank\n  - uses: b\nname: c\n"])
+def test_a_queries_block_the_rewriter_cannot_read_as_text_is_no_verdict_and_writes_nothing(tmp_path, config):
+    leg_env(tmp_path)
+    (tmp_path / "w" / CONFIG).write_text(config)
+    r = run_leg_sh(tmp_path, "init", "python")
+    assert r.returncode == -9 and "no verdict" in r.stderr and "queries block" in r.stderr
+    assert not (tmp_path / "cq" / "user-config.yaml").exists() and not (tmp_path / "codeql.argv").exists()
+
+
+@pytest.mark.parametrize("config,expected_tail", [
+    ("# queries: [a]\nname: c\nqueries:\n  - uses: a\n", "name: c\nqueries:\n  - uses: security-extended\n  - uses: security-and-quality\n"),                                   # a commented-out inline queries is a comment
+    ("name: c\nqueries:\n  - uses: a\n# trailing comment\npaths-ignore:\n  - x\n", "# trailing comment\npaths-ignore:\n  - x\n"),
+    ("name: c\nqueries:\n  - uses: a\n\n# comment after a blank\npaths-ignore:\n  - x\n", "\n# comment after a blank\npaths-ignore:\n  - x\n"),
+    ("name: c\nqueries:\n- uses: a\n- uses: b\npaths-ignore:\n  - x\n", "paths-ignore:\n  - x\n"),     # a block whose items sit at column 0 is still a block
+])
+def test_a_queries_block_in_a_shape_the_rewriter_reads_keeps_everything_around_it(tmp_path, config, expected_tail):
+    leg_env(tmp_path)
+    (tmp_path / "w" / CONFIG).write_text(config)
+    assert run_leg_sh(tmp_path, "init", "python").returncode == 0
+    out = (tmp_path / "cq" / "user-config.yaml").read_text()
+    assert out.endswith(expected_tail) and sum(ln.startswith("queries:") for ln in out.splitlines()) == 1 and "uses: security-extended" in out and "uses: b" not in out and "uses: a\n" not in out
+
+
+# ------------------------------------------------------------------------------------------------ the SARIF, as the analyze action judges it
+def sarif(results: int = 3, rules: int = 2, **run_over) -> dict:
+    return {"runs": [{"tool": {"driver": {"rules": [{"id": f"r{i}"} for i in range(rules)]}}, "results": [{"ruleId": "r0"}] * results, **run_over}]}
+
+
+def check(tmp_path: Path, doc, name: str = "out.sarif", raw: str | None = None, lang: str = "python") -> tuple[int, str]:
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    f = tmp_path / name
+    f.write_text(raw if raw is not None else json.dumps(doc))
+    r = subprocess.run([sys.executable, "-I", str(REAL / SARIF_CHECK), str(f), lang], capture_output=True, text=True)
+    return r.returncode, r.stdout
+
+
+@pytest.mark.parametrize("raw", ["", "not json", "{", "{\"runs\": [", "[1, 2]", "null", "{\"runs\": NaN}", "{\"runs\": [{\"results\": Infinity}]}", "﻿{\"runs\": []}"])
+def test_a_sarif_that_does_not_parse_as_json_is_a_fail_the_action_throws_on_it(tmp_path, raw):
+    rc, out = check(tmp_path, None, raw=raw)
+    assert rc == 1 and "LOCALCI_CODEQL_SARIF_REJECTED language=python Invalid SARIF" in out and "LOCALCI_CODEQL_RESULTS" not in out
+
+
+def test_a_sarif_file_that_is_not_there_is_a_fail(tmp_path):
+    r = subprocess.run([sys.executable, "-I", str(REAL / SARIF_CHECK), str(tmp_path / "absent.sarif"), "python"], capture_output=True, text=True)
+    assert r.returncode == 1 and "Invalid SARIF" in r.stdout
+
+
+@pytest.mark.parametrize("doc,needle", [({}, "Missing 'runs' array"), ({"runs": None}, "Missing 'runs' array"), ({"runs": {}}, "Missing 'runs' array"),
+                                        ([], "Missing 'runs' array"), ({"runs": [{}]}, "Missing 'results' array in run 0"),
+                                        ({"runs": [{"results": []}, {"results": None}]}, "Missing 'results' array in run 1"),
+                                        ({"runs": [{"results": {}}]}, "Missing 'results' array in run 0"), ({"runs": [None]}, "Missing 'results' array in run 0"),
+                                        ({"runs": [{"tool": {}}]}, "Missing 'results' array")])
+def test_a_sarif_without_runs_or_with_a_run_without_results_is_a_fail(tmp_path, doc, needle):
+    rc, out = check(tmp_path, doc)
+    assert rc == 1 and needle in out and "LOCALCI_CODEQL_RESULTS" not in out
+
+
+def test_an_empty_runs_array_and_a_run_with_no_findings_are_valid(tmp_path):
+    assert check(tmp_path / "a", {"runs": []}) == (0, "LOCALCI_CODEQL_RESULTS language=python results=0 rules=0\n")
+    assert check(tmp_path / "b", sarif(results=0, rules=0))[0] == 0
+
+
+def test_the_action_does_not_validate_the_codeql_schema_so_neither_does_the_check(tmp_path):
+    odd = {"version": "not-a-version", "$schema": 5, "runs": [{"results": [{"unknown": 1, "locations": "x"}], "tool": "not an object", "extra": {}}]}
+    assert check(tmp_path, odd)[0] == 0   # a stricter check than hosted's would be a FALSE_RED
+
+
+LIMIT_CASES = {   # name -> (builder of a document at n, the documented maximum, the limit's name in the message)
+    "runs per file": (lambda n: {"runs": [{"results": []}] * n}, 20, "runs per file"),
+    "results per run": (lambda n: sarif(results=n, rules=0), 25_000, "results per run"),
+    "rules per run": (lambda n: {"runs": [{"results": [], "tool": {"driver": {"rules": [{"id": "x"}] * n}}}]}, 25_000, "rules per run"),
+    "rules per run, split between the driver and an extension": (
+        lambda n: {"runs": [{"results": [], "tool": {"driver": {"rules": [{"id": "x"}] * (n - 7)}, "extensions": [{"rules": [{"id": "y"}] * 7}]}}]}, 25_000, "rules per run"),
+    "tool extensions per run": (lambda n: {"runs": [{"results": [], "tool": {"extensions": [{"name": "e"}] * n}}]}, 100, "tool extensions per run"),
+    "locations per result": (lambda n: {"runs": [{"results": [{"locations": [{}] * n}]}]}, 1_000, "locations per result"),
+    "thread flow locations per result": (
+        lambda n: {"runs": [{"results": [{"codeFlows": [{"threadFlows": [{"locations": [{}] * n}]}]}]}]}, 10_000, "thread flow locations per result"),
+    "thread flow locations, summed over a result's flows": (
+        lambda n: {"runs": [{"results": [{"codeFlows": [{"threadFlows": [{"locations": [{}] * (n - 3)}, {"locations": [{}] * 3}]}]}]}]}, 10_000,
+        "thread flow locations per result"),
+    "tags per rule": (lambda n: {"runs": [{"results": [], "tool": {"driver": {"rules": [{"id": "a"}, {"id": "b", "properties": {"tags": ["t"] * n}}]}}}]}, 20, "tags per rule"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(LIMIT_CASES))
+def test_each_documented_upload_limit_is_ok_at_the_maximum_and_a_fail_one_over(name):
+    build, cap, label = LIMIT_CASES[name]
+    assert checker.shape_problem(build(cap)) is None
+    assert checker.limit_problems(build(cap), 1) == []
+    over = checker.limit_problems(build(cap + 1), 1)
+    assert len(over) == 1 and over[0].startswith(label + ": ") and f"> {cap}" in over[0], over
+
+
+def test_the_limits_are_the_documented_numbers():
+    assert (checker.MAX_RUNS, checker.MAX_RESULTS, checker.MAX_RULES, checker.MAX_EXTENSIONS) == (20, 25_000, 25_000, 100)
+    assert (checker.MAX_THREAD_FLOW_LOCATIONS, checker.MAX_LOCATIONS, checker.MAX_TAGS, checker.GZIP_MAX_BYTES) == (10_000, 1_000, 20, 10 * 1024 * 1024)
+
+
+def test_the_gzip_limit_is_ok_at_the_maximum_and_a_fail_one_byte_over_and_names_the_limit():
+    doc = sarif()
+    assert checker.limit_problems(doc, checker.GZIP_MAX_BYTES) == []
+    over = checker.limit_problems(doc, checker.GZIP_MAX_BYTES + 1)
+    assert len(over) == 1 and over[0].startswith("gzip size: ") and str(checker.GZIP_MAX_BYTES + 1) in over[0]
+
+
+def test_the_gzip_size_is_what_zlib_gzipsync_makes_of_the_json_text_at_its_default_level():
+    doc = sarif(results=200)
+    text = json.dumps(doc, separators=(",", ":"), ensure_ascii=False).encode()
+    assert checker.gzip_size(doc) == len(gzip.compress(text, compresslevel=6, mtime=0)) and checker.gzip_size(doc) < len(text)
+    assert checker.gzip_size({"runs": [], "x": "é"}) == len(gzip.compress(json.dumps({"runs": [], "x": "é"}, separators=(",", ":"), ensure_ascii=False).encode(), 6, mtime=0))
+
+
+def test_a_sarif_whose_gzip_is_over_ten_mib_is_a_fail_even_with_no_other_limit_exceeded(tmp_path):
+    doc = sarif(results=1)
+    doc["runs"][0]["results"][0]["message"] = {"text": os.urandom(11 * 1024 * 1024).hex()}   # hex of random bytes: about 4 bits a character, 11.5 MiB gzipped
+    rc, out = check(tmp_path, doc)
+    assert rc == 1 and "gzip size: " in out and "10 MB per gzip-compressed file" in out and "LOCALCI_CODEQL_RESULTS language=python results=1 rules=2" in out
+
+
+def test_a_sarif_of_the_real_size_is_under_every_limit_and_the_results_line_is_receipt_data(tmp_path):
+    results = [{"ruleId": f"r{i % 172}", "message": {"text": "m" * 80}, "locations": [{"physicalLocation": {"artifactLocation": {"uri": f"f{i}.py"},
+               "region": {"startLine": i}}}] * 3, "codeFlows": [{"threadFlows": [{"locations": [{"location": {}}] * 12}]}]} for i in range(2499)]
+    doc = {"runs": [{"tool": {"driver": {"name": "CodeQL", "rules": [{"id": f"r{i}", "properties": {"tags": ["security"] * 8}} for i in range(172)]}}, "results": results}]}
+    assert checker.limit_problems(doc, checker.gzip_size(doc)) == [] and checker.gzip_size(doc) < checker.GZIP_MAX_BYTES // 4
+    assert check(tmp_path, doc) == (0, "LOCALCI_CODEQL_RESULTS language=python results=2499 rules=172\n")
+
+
+def test_rules_are_counted_once_by_id_across_the_driver_and_its_extensions(tmp_path):
+    doc = {"runs": [{"results": [], "tool": {"driver": {"rules": [{"id": "a"}, {"id": "b"}]}, "extensions": [{"rules": [{"id": "b"}, {"id": "c"}]}]}}]}
+    assert check(tmp_path, doc) == (0, "LOCALCI_CODEQL_RESULTS language=javascript results=0 rules=3\n".replace("javascript", "python"))
+
+
+@pytest.mark.parametrize("sarif_doc,rc,needle", [("{", 1, "Invalid SARIF"), ('{"runs": [{}]}', 1, "Missing 'results' array in run 0"), ('{"runs": []}', 0, "results=0"),
+                                                 (json.dumps(sarif(results=25_001)), 1, "results per run: 25001 > 25000"), (json.dumps(sarif(results=25_000)), 0, "results=25000")])
+def test_the_leg_script_exits_1_on_a_sarif_hosted_would_reject_and_0_on_one_it_takes(tmp_path, sarif_doc, rc, needle):
+    f = tmp_path / "fake.sarif"
+    f.write_text(sarif_doc)
+    r = run_leg_sh(tmp_path, "analyze", "python", FAKE_SARIF=str(f))
+    assert r.returncode == rc and needle in r.stdout
+    assert len((tmp_path / "codeql.argv").read_text().splitlines()) == 4   # the four commands ran; only the judgement of their SARIF differs
+
+
+def test_a_driven_leg_whose_sarif_hosted_would_reject_is_a_fail_and_findings_alone_never_are(tmp_path, monkeypatch):
+    spec, _ = plan_codeql(tmp_path, monkeypatch, "python", PY_CHANGE)
+    bad = tmp_path / "bad.sarif"
+    bad.write_text("{")
+    steps, rc = drive_planned(tmp_path / "bad", spec, FAKE_SARIF=str(bad))
+    status, reason = runner.steps_verdict(combined(steps), spec)
+    assert rc == 1 and status == "FAIL" and "Perform CodeQL Analysis" in reason
+    many = tmp_path / "many.sarif"
+    many.write_text(json.dumps(sarif(results=24_999)))
+    steps, rc = drive_planned(tmp_path / "many", spec, FAKE_SARIF=str(many))
+    assert rc == 0 and runner.steps_verdict(combined(steps), spec)[0] == "PASS"
+
+
+def test_the_checker_is_a_base_judge_laid_over_the_candidate_tree(tmp_path, monkeypatch):
+    liar = "import sys\nsys.exit(0)\n"
+    spec, _ = plan_codeql(tmp_path, monkeypatch, "python", {SARIF_CHECK: liar, **PY_CHANGE})
+    assert spec["judge_modified"] == [SARIF_CHECK] and SARIF_CHECK in spec["overlay"]
+    steps, _ = drive_planned(tmp_path, spec)
+    status, reason = runner.steps_verdict(combined(steps), spec)
+    assert status == "BLOCKED" and SARIF_CHECK in reason   # the candidate's checker is not the one that judged

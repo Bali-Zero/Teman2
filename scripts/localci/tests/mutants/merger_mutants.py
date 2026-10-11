@@ -65,6 +65,7 @@ TICK_SKIP = (f"{TICK}::test_a_tick_journals_a_change_map_skip_beside_its_verdict
 
 # CodeQL contexts: their rules name tests by node id, so a survivor costs seconds, not the whole file
 CQ_T, CQ_SH_FILE, CQ_READER_FILE = "scripts/localci/tests/test_codeql_contexts.py", "scripts/localci/codeql_leg.sh", "scripts/localci/codeql_version_read.py"
+CQ_SARIF_FILE = "scripts/localci/codeql_sarif_check.py"
 
 
 def cq(*names: str) -> tuple[str, ...]:
@@ -86,6 +87,23 @@ CQ_RENAME = cq("test_a_rename_lists_both_paths_so_the_leg_runs_as_hosted_does")
 CQ_RUNALL = cq("test_an_unclassified_path_is_run_all_and_both_legs_run")
 CQ_LANG = cq("test_the_sentinel_reads_the_category_of_the_leg_own_language")
 CQ_VERPROBE = cq("test_a_version_probe_killed_by_a_signal_is_no_verdict_and_one_that_fails_is_its_own_exit")
+CQ_SARIF_EXIT = cq("test_the_leg_script_exits_1_on_a_sarif_hosted_would_reject_and_0_on_one_it_takes",
+                   "test_a_driven_leg_whose_sarif_hosted_would_reject_is_a_fail_and_findings_alone_never_are")
+CQ_SARIF_LIMITS = cq("test_each_documented_upload_limit_is_ok_at_the_maximum_and_a_fail_one_over", "test_the_leg_script_exits_1_on_a_sarif_hosted_would_reject_and_0_on_one_it_takes",
+                     "test_a_sarif_whose_gzip_is_over_ten_mib_is_a_fail_even_with_no_other_limit_exceeded")
+CQ_SARIF_GZIP = cq("test_the_gzip_limit_is_ok_at_the_maximum_and_a_fail_one_byte_over_and_names_the_limit",
+                   "test_a_sarif_whose_gzip_is_over_ten_mib_is_a_fail_even_with_no_other_limit_exceeded")
+CQ_SARIF_SHAPE = cq("test_a_sarif_without_runs_or_with_a_run_without_results_is_a_fail")
+CQ_OVERRIDE = cq("test_the_override_is_read_at_plan_and_an_active_one_runs_both_languages_as_hosted_does",
+                 "test_a_read_that_fails_is_fail_open_both_flags_true_and_the_job_result_not_success")
+CQ_USES = cq("test_a_bumped_codeql_action_in_the_base_workflow_blocks_until_the_matrix_follows")
+CQ_LOCALVER = cq("test_a_local_cli_other_than_the_pin_is_no_verdict_before_anything_is_extracted", "test_a_driven_leg_on_another_cli_is_error_never_fail_or_pass")
+CQ_STALE = cq("test_the_reader_is_blocked_by_an_analysis_older_than_seven_days", "test_a_stale_newest_analysis_blocks_the_plan_with_the_days_in_the_reason")
+CQ_MAINRED = cq("test_the_reader_is_blocked_when_hosted_main_is_red_on_this_leg", "test_a_red_hosted_main_job_of_the_legs_own_language_blocks_the_plan")
+CQ_MIXED = cq("test_a_leg_that_mixes_the_gate_skip_with_any_other_skip_is_not_a_pass")
+CQ_SEAM = cq("test_a_base_job_env_that_sets_a_leg_seam_blocks_the_plan", "test_a_base_step_env_or_a_matrix_step_env_that_sets_a_leg_seam_blocks_the_plan")
+CQ_REPO = cq("test_the_reader_refuses_a_repo_that_climbs_the_api_path")
+CQ_CONFIG = cq("test_a_queries_block_the_rewriter_cannot_read_as_text_is_no_verdict_and_writes_nothing")
 CQ_CORPUS = ("scripts/localci/tests/test_runner.py::test_the_corpus_check_also_runs_the_gate_flags_corpus_from_base",)
 
 # name: (file, text that must occur once, replacement, test files that must turn red)
@@ -669,7 +687,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
                                     '    if got["rc"] is not None:\n        return None\n    return f"version sentinel', CQ_SENT),
     "cq-sentinel-unreadable-passes": (RUNNER, '    if got["rc"] == 0:\n        return None\n    return f"version sentinel',
                                       '    if got["rc"] in (0, None):\n        return None\n    return f"version sentinel', CQ_SENT),
-    "cq-skip-any-reason": (RUNNER, 'any(str(s.get("reason", "")).startswith("if: ") for s in na)', "True", CQ_SKIP),
+    "cq-skip-any-reason": (RUNNER, 'gated = [s for s in na if IF_FALSE.match(str(s.get("reason", "")))]', "gated = list(na)", CQ_SKIP),
     "cq-skip-undeclared": (RUNNER, 'if not ran and spec.get("skip_is_pass") and na and', "if not ran and na and", CQ_SKIP),
     "cq-skip-green-over-rewritten-judge": (RUNNER, '        if spec.get("judge_modified"):\n            return "BLOCKED", f"every step skipped',
                                            '        if False:\n            return "BLOCKED", f"every step skipped', CQ_SKIP),
@@ -692,6 +710,22 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "cq-version-probe-unstepped": (CQ_SH_FILE, '  step "$CQ" version --format=terse', '  "$CQ" version --format=terse', CQ_VERPROBE),
     "cq-reader-any-tool": (CQ_READER_FILE, ' and a["tool"].get("name") == "CodeQL"]', ']', CQ_READ),
     "cq-reader-category-prefix": (CQ_READER_FILE, 'a.get("category") == category', 'str(a.get("category")).startswith(category)', CQ_READ),
+    # LOCALCI-SOVEREIGN CodeQL fix round 2: SARIF post-processing, the live override, the action pin, the local pin, freshness, the tightened skip
+    "cq-sarif-unreadable-passes": (CQ_SH_FILE, 'python3 -I "$HERE/codeql_sarif_check.py" "$SARIF" "$LANG_"', 'python3 -I "$HERE/codeql_sarif_check.py" "$SARIF" "$LANG_" || true', CQ_SARIF_EXIT),
+    "cq-sarif-limit-ignored": (CQ_SARIF_FILE, "if (problems := limit_problems(doc, gzip_size(doc))):", "if False:", CQ_SARIF_LIMITS),
+    "cq-sarif-gzip-unchecked": (CQ_SARIF_FILE, "if gzip_bytes > GZIP_MAX_BYTES:", "if False:", CQ_SARIF_GZIP),
+    "cq-sarif-shape-ignored": (CQ_SARIF_FILE, "why = why or shape_problem(doc)", "why = why", CQ_SARIF_SHAPE),
+    "cq-override-ignored": (RUNNER, 'if ov["active"]:\n            got = {', 'if False:\n            got = {', CQ_OVERRIDE),
+    "cq-uses-unpinned": (RUNNER, 'if isinstance(ms.get("uses_pin"), str) and ws.get("uses") != ms["uses_pin"]:', "if False:", CQ_USES),
+    "cq-local-version-unchecked": (CQ_SH_FILE, '  [ "$(tail -n 1 "$WORK/version.out")" = "$CODEQL_PIN" ] ||', "  true ||", CQ_LOCALVER),
+    "cq-version-probe-swallowed": (CQ_SH_FILE, '  step "$CQ" version --format=terse >"$WORK/version.out"', '  step "$CQ" version --format=terse >"$WORK/version.out" || true', CQ_VERPROBE),
+    "cq-sentinel-stale-ok": (CQ_READER_FILE, "if age > MAX_AGE_DAYS:", "if False:", CQ_STALE),
+    "cq-sentinel-main-red-ok": (CQ_READER_FILE, 'if mine[0].get("conclusion") != "success":', "if False:", CQ_MAINRED),
+    "cq-skip-mixed-passes": (RUNNER, 'all("not_applicable" in planned.get(plain(s["name"]), {}) for s in rest)', "True", CQ_MIXED),
+    "cq-leg-seam-open": (RUNNER, '(seam := sorted(LEG_INPUT_ENV & {*jenv, *(st.get("env") or {})}))', "(seam := [])", CQ_SEAM),
+    "cq-reader-repo-dots": (CQ_READER_FILE, ' or any(seg in (".", "..") for seg in args.repo.split("/")):', ":", CQ_REPO),
+    "cq-config-inline-queries-open": (CQ_SH_FILE, 'if re.match(r"^queries\\s*:\\s*\\S", key):', "if False:", CQ_CONFIG),
+    "cq-config-comment-in-block-open": (CQ_SH_FILE, 'if rest[0] in " \\t-":', "if False:", CQ_CONFIG),
 }
 
 
