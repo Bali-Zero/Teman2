@@ -76,21 +76,44 @@ The consequence, named: this organ is a hygiene tool, not a security boundary.
    can create without a plist edit) is checked before each candidate and at least once a second while a candidate is walked, so
    a stop takes effect within about a second; a candidate stopped midway is `failed:stopped`. A run stopped at its start exits
    12, which the wrapper reports as `disabled`.
-8. **The janitor holds Playwright's lock while it unlinks.** Playwright 1.63 takes `<root>/__dirlock` with proper-lockfile: an
-   atomic `mkdir`, judged stale when its mtime is older than 10 s, retried by the installer for about 10 minutes (read in
-   `playwright-core/lib/coreBundle.js`, 2026-10-10). Before each candidate the janitor takes the same lock the same way
-   (`mkdir("__dirlock", dir_fd=root)`; `EEXIST` is `skipped:install-in-progress`) and removes it in a `finally`, only if it is
-   still its own inode. While it holds the lock a keepalive thread refreshes its mtime every 2 s, whatever the walk is doing (an
-   lsof scan or a slow `stat` included). Immediately before EVERY unlink and rmdir, after that object's own checks, the walk
-   confirms the lock is still its own inode and that its last successful refresh is under 8 s old (monotonic clock); otherwise
-   the candidate stops: `failed:lock-lost` if the lock is no longer its own inode, `failed:lock-stale` if it cannot prove the keepalive
-   is alive (the thread died, failed or starved) — it never assumes the lock is held. So a stall longer than Playwright's 10 s stale limit, during which an installer may
-   take the lock over, is caught before the next unlink. An installer that arrives meanwhile waits; one already holding the lock
-   makes the janitor skip.
+8. **The janitor holds Playwright's lock while it unlinks, and proves it by a lease.** Playwright takes `<root>/__dirlock` with
+   proper-lockfile: an atomic `mkdir`, judged stale (removed and taken over) once its mtime is 10 s older than the installer's
+   wall clock, retried by the installer for about 10 minutes (see "Where the Playwright facts were read"). The janitor takes the
+   same lock the same way before each candidate (`mkdir("__dirlock", dir_fd=root)`; `EEXIST` is `skipped:install-in-progress`).
+   Ownership is never inferred from a name or an inode alone; it is a **lease** on the monotonic clock, written `lease_until`:
+
+   - **Acquire.** `t0 = mono()` is read BEFORE the `mkdir`; then the lock is `stat`ed to record its `(st_dev, st_ino)`. If that
+     `stat` returns at or after `t0 + 4 s`, the janitor cannot prove it saw its own directory: it records nothing, removes
+     nothing, never `rmdir`s it, journals `skipped:lock-uncertain` and stops the rule. Otherwise `lease_until = t0 + 8 s`. Why it
+     holds: our `mkdir` set the mtime at or after `t0`, so no installer can take the lock over before `t0 + 10 s`.
+   - **Refresh.** A keepalive thread, holding its own `dup` of the root fd (closed by the thread itself), refreshes every 2 s:
+     `t1 = mono()` BEFORE an identity `stat`; the `stat` must show our `(st_dev, st_ino)`; then `utime` by name. Only if both
+     succeed AND the `utime` returned before the current `lease_until` does the lease become `t1 + 8 s`; the mtime it wrote is
+     at or after `t1`. Anything else (an error, a different inode, a `utime` that returned after the lease, a wall clock that moved
+     more than 1 s apart from the monotonic clock since the previous refresh, since Playwright judges staleness by the wall
+     clock) ends the thread, and the lease is no longer extended.
+   - **Check.** Immediately before EVERY unlink and rmdir, after that object's own checks, the walk requires
+     `mono() < lease_until` (else `failed:lock-stale`) and the lock still our inode (else `failed:lock-lost`). It never assumes the
+     lock is held: a dead, failed or starved keepalive simply lets the lease run out, and the next check refuses.
+   - **Release.** The thread is stopped and joined (5 s). The lock is `rmdir`ed only if the lease is still valid and the inode is
+     ours; otherwise it is left to go stale, which Playwright handles. A keepalive still alive after the join is journaled
+     `lock_thread_stuck: true` and ends the rule; it cannot touch a reused fd, since it holds its own.
+
+   The margin is 2 s (8 s against Playwright's 10 s). An installer that arrives while the janitor holds the lock waits; one
+   already holding it makes the janitor skip.
+
 9. **A partial removal never looks installed.** Playwright treats a revision as installed when its `INSTALLATION_COMPLETE`
-   marker exists, and then skips the download (`coreBundle.js`, 2026-10-10). The janitor unlinks that marker first, through the
-   candidate's fd and under the same checks, before anything else in the candidate; a candidate stopped midway (cap, lost lock,
-   kill switch, a changed or protected object) is then a half-deleted revision that Playwright re-downloads.
+   marker exists, and then skips the download (see "Where the Playwright facts were read"). Removing the marker is a
+   precondition of removing anything else: if a candidate has the marker, it is unlinked first, through the candidate's fd and
+   under the same checks; if that fails for any reason (young, protected, `EPERM`, changed, capped, lease), the candidate stops
+   at once with that cause and nothing else in it is touched. After the marker is gone, a candidate stopped midway is a
+   half-deleted revision that Playwright re-downloads.
+
+**Accounting.** The blast-radius budget (invariant 6) is reserved before each unlink, which keeps the cap conservative;
+`unlinked_bytes` counts only objects whose unlink or rmdir returned success.
+
+**Residual, accepted:** the stall between the last lease check and the unlink syscall itself: one object, and only if the
+process stalls longer than the 2 s margin at that instant and an installer is installing that very revision.
 
 **Residual, accepted:** none from the in-scope writers — the only writer of an old revision directory is a Playwright install,
 which cannot run while the janitor holds `__dirlock` (invariant 8). What remains is a writer that ignores the lock, which is out
