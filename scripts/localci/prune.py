@@ -148,6 +148,14 @@ def _docker(docker: str, *args: str, timeout: int = 120) -> subprocess.Completed
     return subprocess.run([docker, *args], capture_output=True, text=True, timeout=timeout)
 
 
+def shed_order(d: dict) -> tuple:   # the order the VM floor and the host pressure both shed in: fewest plan references first, undated before dated, oldest first
+    return (d["refs"], d["created"] is None, d["created"] or 0, d["tag"])
+
+
+def rm_image(docker: str, tag: str) -> subprocess.CompletedProcess:   # never -f: an image a container still uses is refused, not torn out
+    return _docker(docker, "image", "rm", tag)
+
+
 def all_tags(docker: str) -> list[str]:
     r = _docker(docker, "image", "ls", "--format", "{{.Repository}}:{{.Tag}}")
     if r.returncode != 0:
@@ -455,11 +463,11 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
     else:   # under the floor the newest of a recipe is not protected: only the never-list and what the lease run names are
         # (a 60 GiB VM holds one image per recipe plus a build's scratch when three recipes are live: Pro, 2026-10-08T17:26Z)
         for im in sorted((d for d in decided if not d["remove"] and not d["live"] and not never(d["tag"], keep)),
-                         key=lambda d: (d["refs"], d["created"] is None, d["created"] or 0, d["tag"])):
+                         key=shed_order):
             if rec["vm_free_gb"]["after"] >= floor:
                 break
             before = rec["vm_free_gb"]["after"]
-            r = _docker(docker, "image", "rm", im["tag"])
+            r = rm_image(docker, im["tag"])
             if r.returncode != 0:
                 errors.append({"tag": im["tag"], "gb": im["gb"], "rule": "vm floor", "error": r.stderr.strip()[:200]})
                 continue
@@ -481,8 +489,8 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
     if rec["host_pressure"] and not (dry or blind):
         dropped = False
         for im in sorted((d for d in decided if not d["remove"] and not d["live"] and d["slot"] != 1 and not never(d["tag"], keep)),
-                         key=lambda d: (d["refs"], d["created"] is None, d["created"] or 0, d["tag"])):
-            r = _docker(docker, "image", "rm", im["tag"])
+                         key=shed_order):
+            r = rm_image(docker, im["tag"])
             if r.returncode != 0:
                 errors.append({"tag": im["tag"], "gb": im["gb"], "rule": "host pressure", "error": r.stderr.strip()[:200]})
                 continue
