@@ -399,6 +399,14 @@ def runner_takes(base_wt: Path, flag: str) -> bool:
                and any(isinstance(arg, ast.Constant) and arg.value == flag for arg in node.args) for node in ast.walk(tree))
 
 
+# A cold deps image build (a lock file changed, so the recipe digest is new) runs INSIDE the runner's plan, bounded by the
+# runner's own DEPS_BUILD_TIMEOUT_S. Measured on Pro 2026-10-11: the e2e-tests recipe after #8241 changed package-lock.json
+# took 3552 s cold (pip download of 245 pins 2728 s, playwright 601 s). With the plan step capped at 900 s that build was
+# cancelled on every tick and every e2e candidate was ERROR, with no progress possible. The plan step must outlast the build,
+# and the tick watchdog must hold plan + run + status: tests/test_merger.py pins both relations against runner.py.
+PLAN_TIMEOUT_S = 7500        # > runner.DEPS_BUILD_TIMEOUT_S (7200) + the rest of a plan
+TICK_TIMEOUT_S = 14400       # >= PLAN_TIMEOUT_S + --run-timeout 5400 + the status step 900 + margin
+
 def run_gate(a, base_wt: Path, cand: Path, run_dir: Path, base_sha: str, cand_sha: str, pr: int) -> dict:
     """plan → run → status with the BASE runner and matrix (trusted_base_required applies to the merger too)."""
     env = {k: os.environ[k] for k in RUNNER_ENV if k in os.environ} | GIT_ISOLATED | {"PYTHONPATH": str(base_wt), "PYTHONNOUSERSITE": "1",
@@ -419,7 +427,7 @@ def run_gate(a, base_wt: Path, cand: Path, run_dir: Path, base_sha: str, cand_sh
         out[f"{name}_rc"] = res.returncode
         return res
 
-    if step("plan", plan, 900).returncode != 0:
+    if step("plan", plan, a.plan_timeout).returncode != 0:
         return {**out, "status": {"overall": "ERROR"}, "error": "runner plan failed (merger.log)"}
     seal = SEAL_RE.search(step("run", [*runner, "run", "--run-dir", str(run_dir)], a.run_timeout).stdout)   # the first: printed before candidate code runs
     out["seal"] = seal.group(1) if seal else None
@@ -1799,8 +1807,11 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--remote-url", help="fetch URL (default https://github.com/<repo>.git)")
     t.add_argument("--push-url", help="F2: push URL of the mirror's origin when it differs from the fetch URL (the deploy key's ssh URL)")
     t.add_argument("--python", default=sys.executable, help="interpreter that runs the BASE runner")
+    t.add_argument("--plan-timeout", type=int, default=PLAN_TIMEOUT_S,
+                   help="seconds for the runner's `plan` step: above the runner's DEPS_BUILD_TIMEOUT_S, so a cold deps image build finishes inside one tick")
     t.add_argument("--run-timeout", type=int, default=5400, help="seconds for the runner's `run` step")
-    t.add_argument("--tick-timeout", type=int, default=9000, help="watchdog for the whole tick; past it the decision is ERROR")
+    t.add_argument("--tick-timeout", type=int, default=TICK_TIMEOUT_S,
+                   help="watchdog for the whole tick (plan + run + status + margin); past it the decision is ERROR")
     t.add_argument("--code-sha", help="the origin/main commit this merger.py was extracted from (the launchd wrapper passes it)")
     t.add_argument("--host-free-gb", type=float, help="the host's free GB as the launchd wrapper read it before the tick (B6)")
     t.add_argument("--min-host-free-gb", type=float, default=60.0, help="under it no run starts: the skip is journalled (B6)")
