@@ -1,0 +1,70 @@
+task_id: localci-codeql-1011
+mission: LOCALCI-SOVEREIGN (phase B — the two blocked contexts decided on Pro)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Harness code of the local gate and two matrix entries; the hosted workflow and every check's own logic stay untouched.
+l_level: L2
+gate_class: opus
+objective: >-
+  The two CodeQL contexts are executed on Pro with coverage full (pinned 2.27.2 bundle, hosted RUN_THIS_LANGUAGE from BASE flags,
+  the probe's exact CLI commands, a plan-time version sentinel), so no required context is mapping blocked any more.
+acceptance:
+  - text: A leg whose RUN_THIS_LANGUAGE is false SHALL be PASS with its steps NOT_APPLICABLE and SHALL compare AGREE, coverage full, against hosted success.
+    probe: "scripts/localci/tests/test_codeql_contexts.py (skip cases)"
+  - text: A hosted tool.version other than the pin, or an unreadable read, SHALL make the context BLOCKED.
+    probe: "scripts/localci/tests/test_codeql_contexts.py (sentinel cases)"
+  - text: codeql_leg.sh SHALL run exactly the probe's command lines (a fake codeql logging argv).
+    probe: "scripts/localci/tests/test_codeql_contexts.py (leg cases)"
+consumer_map:
+  - scripts/localci/runner.py (the merger tick on Pro) — the two CodeQL contexts of every candidate whose BASE carries this change.
+pii_scan: clean
+pii_scan_note: Harness code, a leg script, tests on synthetic fixtures and docs. No client data.
+lanes:
+  - lane: localci-codeql-1011
+    role: build
+    seat: claude-sonnet-5 (implementer on M5, on the lead's spec)
+  - lane: localci-codeql-1011
+    role: ground_truth
+    seat: claude-opus-5-5 (lead; parity probe and measurement on Pro)
+what_changed: |
+  runner.py: deps recipe key codeql {version, url, sha256} (FROM scratch stage with ADD --checksum, extracted through a bind mount,
+  codeql version asserted, digest covers the pin); local.classifier runs BASE security_gate_flags.py at plan time and seals
+  needs.changes (fail-open on a classifier error); local.skip_is_pass makes an all-if-skipped leg PASS (a matrix-declared N/A stays
+  ERROR); local.trusted_overlay lays BASE trusted_files over the sandbox tree with frozen hashes; the version sentinel
+  codeql_version_read.py runs through run_host_reader at plan time (any non-zero is BLOCKED). codeql_leg.sh: the probe's init /
+  trace-command / finalize / run-queries / interpret-results lines, signal re-raised so an OOM is no verdict, a results line for the
+  receipt. contexts_matrix.yaml: both contexts executed, coverage full, trusted_base_required; summary.blocked 0,
+  never_claim_parity_for []; parity_gaps for version, flags, architecture and shape; the stale 4 CPU / 8 GiB line fixed. Tests:
+  test_codeql_contexts.py (63); 24 cq-* mutants; README section.
+proof: |
+  Parity probe on Pro (2026-10-11, commit 4be6f5e20352, the same bundle and commands): python 2499 results / 172 rules, javascript
+  186 / 200, identical to the hosted schedule run 38092166320 with 0 per-result differences after the server's two normalisations.
+  The suite and the mutants on M5. The measurement of the new image on Pro and the gate follow.
+bites:
+  consumer: The merger tick on Pro, through the first candidate decided after merge whose BASE contains this change.
+  observation: >-
+    In that run both CodeQL contexts have receipts (PASS, or an honest BLOCKED from the version sentinel) with their result counts,
+    the merger line no longer names them in non_executed, and the hosted compare rows for both are AGREE.
+ground:
+  ts: "2026-10-11T01:40:00Z"
+  siblings: >-
+    Worktree from origin/main 6f87afb292 after #8241 (Apache-2.0, the CodeQL Terms' open-source condition). pro.janitor (this lead's
+    other lane) does not touch scripts/localci.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 1.0
+receipts:
+  - claim: "Parity probe on Pro: python 2499/172, javascript 186/200, identical to hosted analyses 1929899817 and 1929888401; 170 s and 72 s; cgroup memory.peak 8.63 and 7.05 GiB under --memory 12g."
+    cmd: "~/b6deploy/codeql/probe.sh on Pro (the five codeql commands in a --network none container), then cmp.py against the hosted SARIF"
+    exit: 0
+    ts: "2026-10-11T00:49:43Z"
+    seat: claude-opus-5-5 lead (probe dispatched on Pro)
+dissent: []
+residuals:
+  - "No SARIF upload locally: the hosted workflows still upload while they exist; a local upload is for the day they go."
+  - "The CLI version is chosen per hosted run by feature flag; the sentinel reads the newest analysis, and the flag can move between that read and the queue run."
+appetite_exceeded: none
+plan_ref: >-
+  docs/specs/localci-codeql-local-2026-10-11.md; owner decision 2026-10-11 ("Licenza open source") made the CodeQL CLI usable on Pro.
+brief_ref: evidence/brief.yml
