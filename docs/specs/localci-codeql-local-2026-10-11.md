@@ -5,6 +5,17 @@ Mission LOCALCI-SOVEREIGN. Today `CodeQL Analysis (python)` and `CodeQL Analysis
 contexts with coverage `full`, which is the only admissible coverage: the READY criterion allows at most one partial context
 per compared merge, and E2E holds it.
 
+**Why `full` is honest.** In this matrix `partial` names a subset of the WORK left undone: E2E is partial because its six secrets are `""` and the tests
+that need them do not run. An environment difference is a `parity_gaps` line (arch, runner, a GitHub-side outage); every other `full` context runs arm64
+in Colima against hosted x64. What the hosted job can fail on, read from codeql-action v4.38.2 and the GitHub docs, falls in four classes. (1) The CLI
+commands: reproduced with the same CLI, pinned by the sentinel and checked again at run time. (2) The analyze action's post-processing of the SARIF,
+which runs even with `upload: never`: JSON that does not parse, a missing `runs` array or a run without a `results` array throws; the schema is NOT
+validated for CodeQL's own SARIF (`areAllRunsProducedByCodeQL`), so a schema check here would be stricter than hosted, a FALSE_RED. (3) The PR lane's
+upload (`upload: always`, whose check run `hosted_compare` reads for the head): the SARIF API rejects a file over its documented limits (10 MB gzip; 20 runs;
+25,000 results and rules per run; 100 extensions; 10,000 thread-flow and 1,000 result locations; 20 tags a rule), which the code determines and
+`codeql_sarif_check.py` reproduces on the interpreted SARIF. (4) A GitHub-side processing error outside those limits, a transient API error, the
+status-poll timeout (which continues, not fails) and a hosted runner loss: infrastructure, each a `parity_gaps` line.
+
 ## Preconditions (met)
 
 - **Licence.** #8241 (merged 2026-10-11T00:27Z) released the repo under Apache-2.0, and GitHub detects `spdx_id: Apache-2.0`.
@@ -46,6 +57,12 @@ needs.changes.outputs.run_codeql_python != 'false') || (javascript && needs.chan
 2. **Plan-time flags.** The plan runs BASE `security_gate_flags.py` (already in the trusted classifier set) on the plan's
    changed files, after the trusted change map, the way the hosted `changes` job does.
    - It seals `run_codeql_python` / `run_codeql_js` as the `needs.changes` outputs the leg's expressions read.
+   - The manual override `vars.MERGEOS_RING_GATING_DISABLED` (the `Manual override` step of `security.yml`'s `changes` job) is read live at plan with
+     the operator's gh (`GET repos/{repo}/actions/variables/MERGEOS_RING_GATING_DISABLED`; a 404 is unset) and evaluated by BASE's own
+     `scripts/ci/ring_gating_override.sh`, run and not re-implemented. When it is active, hosted skips the classify steps and every flag defaults
+     `true`: both flags are `true` here. A read that fails is the same fail-open. The result is sealed in the check spec as
+     `ring_gating_override: {read: ok|error, active: bool}`. (tests.yml's `changes` job honours the same variable and the local change map does not: a
+     skipped tests.yml context then compares as "skipped here; hosted ran", partial, never a false green. Ledgered by the lead, out of this lane.)
    - A classifier error makes `needs.changes.result` something other than `success`, so the leg runs (fail-open, as hosted).
 3. **The leg.** One job per language, run in expression mode in the bundle image:
    - network `none`, memory `12g`, no git index;
@@ -68,18 +85,29 @@ needs.changes.outputs.run_codeql_python != 'false') || (javascript && needs.chan
    `Autobuild` is not applicable: the action runs no command for these languages.
 
    An all-skipped leg is **PASS**, with the steps NOT_APPLICABLE, so that it compares as AGREE against hosted's success. It
-   must never be a record NOT_APPLICABLE skip: `hosted_compare` would call that "skipped here; hosted ran" = partial.
+   must never be a record NOT_APPLICABLE skip: `hosted_compare` would call that "skipped here; hosted ran" = partial. `skip_is_pass` is tight: every
+   NOT_APPLICABLE step is a matrix `not_applicable` or an `if: ... -> false` the driver evaluated, at least one is the latter, and a step BASE gates
+   with an `if:` that was skipped any other way makes the leg ERROR.
 
-4. **Verdict.** PASS when every command exits 0 within the budget, and FAIL when one exits non-zero. A timeout or OOM-kill
-   is no verdict, as for every leg. Findings and SARIF counts never change the verdict; they go in the receipt as data
-   (results per language).
+   The leg is hardened where it takes inputs: its test seams (`CODEQL_BIN`, `CODEQL_SOURCE_ROOT`, `LOCALCI_CODEQL_WORK`, `CODEQL_BASE_CONFIG`) in a
+   composed step env BLOCK the plan; the action refs are `uses_pin`ned (BASE's `uses` differing BLOCKS); at init the leg compares `codeql version
+--format=terse` with `CODEQL_PIN` (the matrix passes the recipe's one literal; the deps image build asserts the same pin, `runner.py` `DEPS_CODEQL`)
+   and gives no verdict, by dying of a signal, on a difference; a `queries:` block the config rewriter cannot read as text is no verdict too.
+
+4. **Verdict.** PASS when every command exits 0 within the budget and the SARIF is one hosted takes, and FAIL when one exits non-zero or hosted would
+   reject the SARIF (not JSON, no `runs`, a run without `results`, or over a documented upload limit: `codeql_sarif_check.py`, a BASE-laid trusted
+   file). A timeout, OOM-kill or a local CLI other than the pin is no verdict, as for every leg. Findings and SARIF counts never change the verdict;
+   they go in the receipt as data (results per language).
 5. **Version sentinel.** At plan time, read the newest hosted CodeQL analysis per language on `refs/heads/main`
    (`GET /repos/{repo}/code-scanning/analyses?ref=refs/heads/main`, category `/language:<L>`) with the operator's gh, as the
    harness-floor reader does.
    - If `tool.version` differs from the pin, or the read fails, the context is **BLOCKED**, never green. Hosted picks its
      CLI per run by feature flag (2.27.1 → 2.27.2 around 2026-10-09).
+   - It is also **BLOCKED** when the newest analysis is older than 7 days, or when the newest completed `security.yml` run on `refs/heads/main` has
+     its `CodeQL Analysis (<language>)` job concluded anything but `success` (hosted main is red on this leg, which covers a hosted CLI upgrade that
+     fails before it uploads). Both are read at plan with the operator's gh; a read failure is CANNOT-VERIFY, as above.
    - A pin bump is a matrix PR that re-runs the parity probe.
-6. **BASE judges.** `.github/codeql-config.yml` and `codeql_leg.sh` are `trusted_files`. A candidate that changes the
+6. **BASE judges.** `.github/codeql-config.yml`, `codeql_leg.sh` and `codeql_sarif_check.py` are `trusted_files`. A candidate that changes the
    config gets its green BLOCKED by the existing changed-judge rule, because hosted would analyse with the candidate's
    config.
 7. **The matrix.** The two contexts become `mapping: executed`, `coverage: full`, and `trusted_base_required: true`.
@@ -92,9 +120,11 @@ needs.changes.outputs.run_codeql_python != 'false') || (javascript && needs.chan
        only.
      - **Architecture.** The linux-arm64 bundle is used here and linux64 hosted. A crash, OOM or timeout depends on arch and
        resources (hosted runs 4 threads with `--ram=14575`; here `--ram=10240` under 12g).
-     - **Shape.** The merge_group shape with upload `never`: the PR lane's SARIF upload, which can fail the hosted job, is
-       not reproduced. A PR-lane diff-informed result set may be narrower than the local one, which only changes data,
-       never the verdict.
+     - **Shape.** The merge_group shape with upload `never`. What the PR lane's upload can fail on and the code determines is reproduced on the
+       interpreted SARIF (see "Why `full` is honest"). Not reproduced, since GitHub's side decides them: a processing error outside the documented
+       limits, a transient API error, the status-poll timeout, a hosted runner loss. The gzip size is measured on the CLI's SARIF, a few percent short
+       of the uploaded one (fingerprints and automation details are added after). A PR-lane diff-informed result set may be narrower than the local
+       one, which only changes data, never the verdict.
    - Also fix the stale "Colima 4 CPU / 8 GiB" parity_gaps line: the VM has been 8 CPU / 16 GiB since 2026-10-10.
 
 ## Not in scope

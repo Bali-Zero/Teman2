@@ -64,12 +64,16 @@ spend:
   wall_clock_hours: 7.0
 receipts:
   - claim: >-
-      scripts/localci/tests/test_codeql_contexts.py (skip cases, sentinel cases, leg cases): 74 passed; test_runner.py 111 passed, 2
-      skipped; the rest of scripts/localci/tests 1407 passed; 30/30 cq-* mutants killed (merger_mutants.py --only each rule).
+      Fix round 2 (council findings adjudicated). scripts/localci/tests/test_codeql_contexts.py (skip cases, sentinel cases, leg cases): 199
+      passed; test_runner.py + test_merger.py 289 passed, 2 skipped; the rest of scripts/localci/tests 1233 passed, 12 skipped (1721 passed in all);
+      45/45 cq-* mutants killed (merger_mutants.py --only each rule), 15 of them new this round (cq-sarif-unreadable-passes, cq-sarif-limit-ignored,
+      cq-sarif-gzip-unchecked, cq-sarif-shape-ignored, cq-override-ignored, cq-uses-unpinned, cq-local-version-unchecked, cq-version-probe-swallowed,
+      cq-sentinel-stale-ok, cq-sentinel-main-red-ok, cq-skip-mixed-passes, cq-leg-seam-open, cq-reader-repo-dots, cq-config-inline-queries-open,
+      cq-config-comment-in-block-open). The ruff errors in scripts/localci are in files this round does not touch.
     cmd: python3 -m pytest scripts/localci/tests -q -p no:cacheprovider (in chunks); python3 scripts/localci/tests/mutants/merger_mutants.py --only cq-*
     exit: 0
-    ts: "2026-10-11T08:30:00Z"
-    seat: claude-sonnet-5 implementer on M5 (fix round), re-run by the lead after the main merge (test_runner + test_merger 289 passed)
+    ts: "2026-10-11T10:30:00Z"
+    seat: claude-sonnet-5-5 implementer on M5 (fix round 2), on the lead's brief
   - claim: "Parity probe on Pro: python 2499/172, javascript 186/200, identical to hosted analyses 1929899817 and 1929888401; 170 s and 72 s; cgroup memory.peak 8.63 and 7.05 GiB under --memory 12g."
     cmd: "~/b6deploy/codeql/probe.sh on Pro (the five codeql commands in a --network none container), then cmp.py against the hosted SARIF"
     exit: 0
@@ -112,10 +116,38 @@ dissent:
       2377d77e13 and d5536aeac0: git diff --no-renames for the changed list; the corpus check now also runs BASE
       test_security_gate_flags.py (a red corpus is a local FAIL, stricter than hosted's run-both); the probe stepped; the reader keeps
       tool.name CodeQL only; tests for run_all and per-language sentinels; the exact BLOCKED assertion; six new cq-* rules, 30/30 killed.
+  - seat: codex-gpt-5.6-sol council (round 1) and the Opus re-gate, adjudicated by the lead
+    objection: >-
+      B1 coverage full unjustified; B2 the MERGEOS_RING_GATING_DISABLED override ignored; M1 a SARIF the action throws on exits 0; M2 the sentinel stays
+      green after a failed hosted upgrade; M3 with_pin pins inputs, not the action ref; N1 the version-probe test's fake fails `database init` too; N2 the
+      workflow path filter misses security.yml and codeql-config.yml.
+    status: CONFIRMED
+    resolution: >-
+      B1: coverage stays full by reproducing every failure class the code determines (the CLI commands, the action's SARIF post-processing, the upload
+      limits: codeql_sarif_check.py) and naming the environment classes as parity_gaps. B2: read live at plan, judged by BASE's ring_gating_override.sh,
+      sealed as ring_gating_override. M1: exit 1 on an unparseable SARIF, no runs, a run without results. M2: the sentinel also needs the analysis within 7
+      days and the newest completed security.yml run on main green on the leg. M3: uses_pin on the three steps. N1: the exact probe string, `database
+      init` asserted absent, mutant cq-version-probe-swallowed killed. N2: both files, and the override script, in both path lists; test_hosted_workflow
+      requires every real file the CodeQL suite reads.
+  - seat: kimi-code/k3 council (round 1)
+    objection: >-
+      BLOCKER the BASE-trusted leg script takes CODEQL_BIN, CODEQL_SOURCE_ROOT, CODEQL_BASE_CONFIG (and the work dir) from the env. HIGH the local CLI version
+      is never asserted equal to the pin; the sentinel has no recency floor. MEDIUM skip_is_pass lets one `if:` false plus another skip pass. LOW the
+      config rewriter on an inline queries or a column-0 comment in the block; REPO_RE accepts `.` and `..`.
+    status: BLOCKER REBUTTED, the rest CONFIRMED
+    resolution: >-
+      The BLOCKER is not reachable as stated: the step env is composed by the runner from BASE's workflow, job and step env and the matrix step env only
+      (plan_service_context: resolve_steps), runner.py refuses a step whose body writes GITHUB_ENV/PATH/STATE (the "writes GITHUB_ENV/PATH/STATE" refusal in
+      plan_service_context), and the codeql job's only earlier step is `Checkout code`, which is emulated, so no candidate code runs before the leg.
+      Hardened anyway, since the seam costs nothing: the plan BLOCKS when the composed env of a step running codeql_leg.sh carries one of the four seams
+      (cq-leg-seam-open). HIGH: the leg compares `codeql version` with CODEQL_PIN (the matrix's one literal; the image build already asserts the pin,
+      runner.py DEPS_CODEQL) and gives no verdict on a difference (cq-local-version-unchecked); freshness added (cq-sentinel-stale-ok). MEDIUM: skipped_by_own_if
+      (cq-skip-mixed-passes). LOW: the rewriter is no verdict on both shapes (cq-config-*), REPO_RE refuses `.`/`..` (cq-reader-repo-dots).
 residuals:
   - "The runner's changed list is base..candidate two-dot (an explicit base the merger passes), hosted's is merge-base..HEAD; for the merger's candidates (a merge of the PR onto the base) the two lists are the same."
   - "A red BASE gate-flags corpus is a local FAIL of policy.trusted_classifier_corpus, while hosted runs both legs: stricter locally, never greener."
-  - "No SARIF upload locally: the hosted workflows still upload while they exist; a local upload is for the day they go."
+  - "No SARIF upload locally: the hosted workflows still upload while they exist; a local upload is for the day they go. What the upload can fail on and the code determines is reproduced (codeql_sarif_check.py); GitHub-side processing errors, API errors, the status-poll timeout and runner loss are parity_gaps."
+  - "tests.yml's changes job honours vars.MERGEOS_RING_GATING_DISABLED and the local change map does not: with it active a docs-only diff skips tests.yml contexts here that hosted runs (compared as partial, never a false green). Fixing it needs a live gh read on every plan and a change to every existing plan test; reported to the lead to ledger."
   - "The CLI version is chosen per hosted run by feature flag; the sentinel reads the newest analysis, and the flag can move between that read and the queue run."
   - "The local SARIF leaves with the container: the runner's receipts carry the counts per language, and the per-result identity was proven once, by the parity probe (0 differences); a per-result diff per run would need the leg to export its SARIF."
   - "Each executed candidate spends about 7 more minutes (python ~200-315 s, javascript ~100-120 s); the python wall varied 203 s -> 314 s between two runs on the same tree, unexplained."
