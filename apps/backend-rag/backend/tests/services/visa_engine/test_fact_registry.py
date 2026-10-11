@@ -435,6 +435,29 @@ class TestDeriveAgeYears:
         )
         assert snapshot.values[FactPath.DERIVED_AGE_YEARS] == KnownFact(value=26)
 
+    @pytest.mark.parametrize(
+        ("birth", "effective", "years"),
+        [
+            # The day before the 55th birthday is still 54; the birthday itself is 55
+            # (`hf.e33e.age-below-55` is `derived.age_years < 55`, so the floor flips on
+            # exactly this day).
+            ("1971-09-06", datetime(2026, 9, 5, tzinfo=timezone.utc), 54),
+            ("1971-09-06", datetime(2026, 9, 6, tzinfo=timezone.utc), 55),
+            # Leap-day birth, non-leap reference year: the birthday falls on 1 March.
+            ("1972-02-29", datetime(2027, 2, 28, tzinfo=timezone.utc), 54),
+            ("1972-02-29", datetime(2027, 3, 1, tzinfo=timezone.utc), 55),
+            # Leap-day birth, leap reference year: 29 February itself is the birthday.
+            ("1972-02-29", datetime(2028, 2, 28, tzinfo=timezone.utc), 55),
+            ("1972-02-29", datetime(2028, 2, 29, tzinfo=timezone.utc), 56),
+        ],
+    )
+    def test_age_55_boundary_is_birthday_inclusive(
+        self, birth: str, effective: datetime, years: int
+    ) -> None:
+        facts = _applicant_facts({"person.birth_date": {"status": "KNOWN", "value": birth}})
+        snapshot = DEFAULT_FACT_REGISTRY.derive(facts, effective_at=effective)
+        assert snapshot.values[FactPath.DERIVED_AGE_YEARS] == KnownFact(value=years)
+
     def test_age_unknown_when_birth_date_unknown(self) -> None:
         snapshot = DEFAULT_FACT_REGISTRY.derive(_applicant_facts({}), effective_at=GOLD_EFFECTIVE_AT)
         assert isinstance(snapshot.values[FactPath.DERIVED_AGE_YEARS], UnknownFact)

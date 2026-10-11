@@ -1222,7 +1222,38 @@ EXPECTED_OUTCOME_BY_SEQUENCE: dict[int, dict[str, tuple[str, tuple[str, ...]]]] 
 # no rule and no product — every seq-24 pin is reproduced byte-for-byte.
 EXPECTED_OUTCOME_BY_SEQUENCE[25] = EXPECTED_OUTCOME_BY_SEQUENCE[24]
 EXPECTED_OUTCOME_BY_SEQUENCE[26] = EXPECTED_OUTCOME_BY_SEQUENCE[25]
+#: PR-11 (Visa Oracle retirement audit, 2026-10-11): 13 retirement
+#: walks at age 64, one per side of each bound the pack draws. Every row is the
+#: engine's own replay, then checked against the rule text it exercises:
+#: `el.e33e.retirement` = deposit >= 50,000 AND state bank AND own name AND
+#: income >= 3,000; `el.e33f.retirement` = income >= 3,000 alone. A basis
+#: other than `bank_deposit` asserts the deposit trio KNOWN(0)/KNOWN(false)
+#: (`depositBasisDecisivelyNotChosen`), so those walks can never name E33E.
+_E33E_AND_E33F = ("SUPPORTED_CANDIDATES", ("E33E", "E33F"))
+_E33F_ONLY = ("SUPPORTED_CANDIDATES", ("E33F",))
+_INCOME_BELOW_FLOOR = ("NO_SUPPORTED_PATH", ())  # RETIREMENT_INCOME_BELOW_THRESHOLD
+_PR11_RETIREMENT_OUTCOMES: dict[str, tuple[str, tuple[str, ...]]] = {
+    "offshore/retirement/bank_deposit/age64/deposit_passing": _E33E_AND_E33F,
+    "offshore/retirement/bank_deposit/age64/deposit_49999": _E33F_ONLY,
+    "offshore/retirement/bank_deposit/age64/deposit_50000": _E33E_AND_E33F,
+    "offshore/retirement/bank_deposit/age64/state_bank_no": _E33F_ONLY,
+    "offshore/retirement/bank_deposit/age64/own_name_no": _E33F_ONLY,
+    "offshore/retirement/bank_deposit/age64/income_3000": _E33E_AND_E33F,
+    "offshore/retirement/bank_deposit/age64/income_2999": _INCOME_BELOW_FLOOR,
+    "offshore/retirement/passive_income/age64/income_3000": _E33F_ONLY,
+    "offshore/retirement/passive_income/age64/income_2999": _INCOME_BELOW_FLOOR,
+    "offshore/retirement/property/age64/income_3000": _E33F_ONLY,
+    "offshore/retirement/family_sponsor/age64/income_3000": _E33F_ONLY,
+    "offshore/retirement/family_sponsor/age64/income_2999": _INCOME_BELOW_FLOOR,
+    "offshore/retirement/undecided/age64/deposit_or_income_passing": _E33E_AND_E33F,
+}
 EXPECTED_OUTCOME_BY_SEQUENCE[27] = EXPECTED_OUTCOME_BY_SEQUENCE[26]
+# The sequences share one corpus, so every one of them pins the 13 walks; the
+# replay of seq-20..27 gave the identical (state, candidates) on all eight.
+EXPECTED_OUTCOME_BY_SEQUENCE = {
+    _seq: {**_pins, **_PR11_RETIREMENT_OUTCOMES}
+    for _seq, _pins in EXPECTED_OUTCOME_BY_SEQUENCE.items()
+}
 EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = EXPECTED_OUTCOME_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
 )
@@ -1282,6 +1313,16 @@ EXPECTED_STATE_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
 EXPECTED_STATE_CENSUS_BY_SEQUENCE[25] = EXPECTED_STATE_CENSUS_BY_SEQUENCE[24]
 EXPECTED_STATE_CENSUS_BY_SEQUENCE[26] = EXPECTED_STATE_CENSUS_BY_SEQUENCE[25]
 EXPECTED_STATE_CENSUS_BY_SEQUENCE[27] = EXPECTED_STATE_CENSUS_BY_SEQUENCE[26]
+# PR-11 adds 10 SUPPORTED_CANDIDATES and 3 NO_SUPPORTED_PATH walks to EVERY
+# sequence (see `_PR11_RETIREMENT_OUTCOMES`); no new NEEDS_INPUT, no new hold.
+EXPECTED_STATE_CENSUS_BY_SEQUENCE = {
+    _seq: {
+        **_census,
+        "NO_SUPPORTED_PATH": _census["NO_SUPPORTED_PATH"] + 3,
+        "SUPPORTED_CANDIDATES": _census["SUPPORTED_CANDIDATES"] + 10,
+    }
+    for _seq, _census in EXPECTED_STATE_CENSUS_BY_SEQUENCE.items()
+}
 
 #: Which fact blocks how many walks — the §2.2 table, EMPTY between PR-3 and
 #: PR-5. A cure that moves walks between blocking facts instead of removing
@@ -2273,9 +2314,16 @@ def test_corpus_is_the_115_real_interview_walks(walks: dict[str, dict[str, Any]]
     `false` arm by a real walk. One existing fixture changes one byte:
     `offshore/family/PARENT/spNat=IT/minor`'s `person.guardian_consent`
     moves from `UNKNOWN NOT_ASKED` to `KNOWN true` (the tree now asks the
-    question and this walk takes its first option)."""
+    question and this walk takes its first option).
 
-    assert len(walks) == 116, f"expected 116 interview walks, found {len(walks)}"
+    PR-11 (Visa Oracle retirement audit, 2026-10-11): adds 13, corpus 116 ->
+    129, and changes NO existing fixture by a byte. All 13 are age-64
+    retirement walks that answer the money questions with explicit values on
+    either side of the pack's bounds (deposit 49,999 / 50,000, state bank,
+    own name, income 2,999 / 3,000) instead of the corpus-wide 1,000,000,000
+    default — see `_PR11_RETIREMENT_OUTCOMES`."""
+
+    assert len(walks) == 129, f"expected 129 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -2302,7 +2350,7 @@ def test_the_census_pins_the_signed_sequence() -> None:
     assert _SIGNED_SEQUENCE in EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE
     # The sequences share one corpus, so they must pin the same walks.
     assert all(
-        sorted(pins) == sorted(_EXPECTED_OUTCOME_ON_SEQ20)
+        sorted(pins) == sorted({**_EXPECTED_OUTCOME_ON_SEQ20, **_PR11_RETIREMENT_OUTCOMES})
         for pins in EXPECTED_OUTCOME_BY_SEQUENCE.values()
     )
     # Every seq-21 change is an ADDITION: no walk loses a candidate the

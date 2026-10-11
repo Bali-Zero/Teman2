@@ -525,6 +525,98 @@ export function enumerateScenarios(): Scenario[] {
     },
   });
 
+  // PR-11 (Visa Oracle retirement audit, 2026-10-11): the walks above leave
+  // every money answer at the corpus-wide synthetic default (USD
+  // 1,000,000,000 deposit, state bank and own name "yes", income
+  // 1,000,000,000), so the retirement outcomes sit far from every bound the
+  // pack actually draws: `el.e33e.retirement` needs deposit >= 50,000 AND a
+  // state bank AND the applicant's own name AND income >= 3,000, and
+  // `el.e33f.retirement` needs income >= 3,000 alone. One row per side of each
+  // bound, all at RETIREMENT_AGE_64_BIRTH_DATE (a year-wide margin from the
+  // 55 floor, which the census clock moves with every pack signature).
+  const retirementAge64 = (
+    label: string,
+    answers: Record<string, string>,
+  ): void => {
+    scenarios.push({
+      label: `offshore/retirement/${label}`,
+      overrides: {
+        ...base,
+        category: "retirement",
+        birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
+        ...answers,
+      },
+    });
+  };
+  const DEPOSIT_PASSING = {
+    retirement_basis: "bank_deposit",
+    secondhome_deposit_usd: "100000",
+    secondhome_state_bank: "yes",
+    secondhome_own_name: "yes",
+    secondhome_passive_income_usd: "5000",
+    retirement_penjamin_confirmed: "yes",
+  };
+  retirementAge64("bank_deposit/age64/deposit_passing", DEPOSIT_PASSING);
+  retirementAge64("bank_deposit/age64/deposit_49999", {
+    ...DEPOSIT_PASSING,
+    secondhome_deposit_usd: "49999",
+  });
+  retirementAge64("bank_deposit/age64/deposit_50000", {
+    ...DEPOSIT_PASSING,
+    secondhome_deposit_usd: "50000",
+  });
+  retirementAge64("bank_deposit/age64/state_bank_no", {
+    ...DEPOSIT_PASSING,
+    secondhome_state_bank: "no",
+  });
+  retirementAge64("bank_deposit/age64/own_name_no", {
+    ...DEPOSIT_PASSING,
+    secondhome_own_name: "no",
+  });
+  retirementAge64("bank_deposit/age64/income_3000", {
+    ...DEPOSIT_PASSING,
+    secondhome_passive_income_usd: "3000",
+  });
+  retirementAge64("bank_deposit/age64/income_2999", {
+    ...DEPOSIT_PASSING,
+    secondhome_passive_income_usd: "2999",
+  });
+  retirementAge64("passive_income/age64/income_3000", {
+    retirement_basis: "passive_income",
+    secondhome_passive_income_usd: "3000",
+    retirement_penjamin_confirmed: "yes",
+  });
+  retirementAge64("passive_income/age64/income_2999", {
+    retirement_basis: "passive_income",
+    secondhome_passive_income_usd: "2999",
+    retirement_penjamin_confirmed: "yes",
+  });
+  retirementAge64("property/age64/income_3000", {
+    retirement_basis: "property",
+    secondhome_property_value_usd: "500000",
+    secondhome_passive_income_usd: "3000",
+    retirement_penjamin_confirmed: "yes",
+  });
+  retirementAge64("family_sponsor/age64/income_3000", {
+    retirement_basis: "family_sponsor",
+    secondhome_passive_income_usd: "3000",
+    retirement_penjamin_confirmed: "yes",
+  });
+  retirementAge64("family_sponsor/age64/income_2999", {
+    retirement_basis: "family_sponsor",
+    secondhome_passive_income_usd: "2999",
+    retirement_penjamin_confirmed: "yes",
+  });
+  retirementAge64("undecided/age64/deposit_or_income_passing", {
+    retirement_basis: "undecided",
+    retirement_undecided_basis: "deposit_or_income",
+    secondhome_deposit_usd: "100000",
+    secondhome_state_bank: "yes",
+    secondhome_own_name: "yes",
+    secondhome_passive_income_usd: "5000",
+    retirement_penjamin_confirmed: "yes",
+  });
+
   // D3-4's two STEPCHILD sponsor-permit walks (`sponsor_permit_no`/
   // `sponsor_permit_unsure`) were REMOVED (owner ruling SHWEB-20260911,
   // 2026-09-13, fresh grader review) along with the hold and the question
