@@ -1,0 +1,81 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 (decisions on the E33 program and the retirement program) - the E33G income question ships
+  before seq-28 activates; its why-copy must not promise an effect the engine does not yet have, and must not
+  anchor the visitor on a figure. Follow-up promised on PR 8280 (D-why-window).
+mission: >-
+  The E33G income question tells the visitor only what is true both before and after seq-28 activates, and names no figure.
+lanes:
+  - lane: e33g-why-copy
+    role: build
+    seat: Claude Sonnet 5 implementer (subagent), commit e9f248b296 on Mini, worktree mouth-vo-e33g-why-1011.
+  - lane: e33g-ground-truth
+    role: ground_truth
+    seat: >-
+      The visa-oracle i18n copy file is the surface that states the E33G rule to the visitor; the change asserts
+      no rule of its own and names no figure, it only states that a yearly income requirement exists and that the
+      amount is used as entered.
+    nb: "apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts"
+    query_hash: "ce852aea8317bf93697a26f9c51930fd2d44dfa70a5724a0b4ae204e395a1d47" # pragma: allowlist secret
+    note: query_hash = sha256 of i18n.ts at origin/main (before the change).
+pii_scan: clean
+bites:
+  consumer: >-
+    the Why we ask text of the yearly-income question on the public Visa Oracle Remote worker path (i18n.ts, EN and ID).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_remote_income_question.py
+  expect: "contains:remote income question holds"
+receipts:
+  - claim: "The branch sits on a fresh origin/main (nothing pushed); the build commit is rebased as bb070b78d3."
+    cmd: git fetch origin main && git rebase origin/main
+    result: "rebase clean; one commit ahead of origin/main"
+    exit: 0
+    ts: "2026-10-11T16:12:00Z"
+    seat: this session
+  - claim: "The whole visa-oracle Vitest tree, _components included, at the rebased HEAD."
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
+    result: "Test Files 54 passed (54); Tests 1425 passed (1425)"
+    exit: 0
+    ts: "2026-10-11T16:16:07Z"
+    seat: this session
+  - claim: "The observer passes at the rebased HEAD."
+    cmd: python3 scripts/ci/observe_visa_oracle_remote_income_question.py
+    result: "Tests 8 passed (8); remote income question holds"
+    exit: 0
+    ts: "2026-10-11T16:16:13Z"
+    seat: this session
+  - claim: "The observer's parser tests pass."
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_remote_income_question.py
+    result: "10 passed"
+    exit: 0
+    ts: "2026-10-11T16:18:17Z"
+    seat: this session
+  - claim: "apps/mouth typechecks."
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-11T16:16:17Z"
+    seat: this session
+  - claim: "The legacy client-copy guard stays green."
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3590 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-11T16:16:17Z"
+    seat: this session
+  - claim: "The whole backend visa_engine test directory, run locally on a shared dev database that is not a fresh schema."
+    cmd: cd apps/backend-rag/backend && python3 -m pytest tests/services/visa_engine
+    result: "2963 passed, 15 skipped, 2 failed, 31 errors - every failure and error is a database-schema fault (asyncpg TooManyColumnsError x31 'tables can have at most 1600 columns', UndefinedColumnError policy_scope x1, one retention-registry schema assertion) in DB-backed files this copy-only change cannot reach (it touches no backend file); CI runs them on a fresh database"
+    exit: 1
+    ts: "2026-10-11T16:18:17Z"
+    seat: this session
+decisions:
+  - id: D-true-both-states
+    decision: >-
+      The why-copy says a yearly income requirement exists and that the amount is used exactly as entered; it
+      does not say the amount decides whether the visa fits, which is untrue until seq-28.
+  - id: D-no-figure
+    decision: >-
+      No threshold figure appears in either language (anti-anchoring); the guard regex now also catches 60000,
+      60,000, 60.000, 60 000, 60k, sixty and enam puluh, with guilt and innocence cases.
+dissent: []
