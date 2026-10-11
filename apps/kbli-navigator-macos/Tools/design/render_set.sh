@@ -45,9 +45,9 @@ if [ -n "${IMM:-}" ]; then
     shot registry-sheet --imm --sheet-open --theme $t --lang $l --code $c --height 3200 "$OUT/imm/sheet-open-$c-$t-$l.png"; done; done; done
   # Stacked cells open on the shown cell next to a neighbour chip: High at night, Medium-High by day (the ring must clear it).
   shot registry-sheet --imm --sheet-open --theme night --lang en --code 85510 --height 2600 "$OUT/imm/sheet-open-85510-night-en.png"
-  shot registry-sheet --imm --sheet-open --theme day --lang en --code 20111 --height 2600 "$OUT/imm/sheet-open-20111-day-en.png"
+  shot registry-sheet --imm --sheet-open --theme day --lang en --code 20111 --height 4000 "$OUT/imm/sheet-open-20111-day-en.png"
   # Medium-Low at night, stacked (#8288 gate): the ring's census (C24) must see it clear of the chip beside it.
-  for c in 03300 32300; do shot registry-sheet --imm --sheet-open --theme night --lang en --code $c --height 2600 "$OUT/imm/sheet-open-$c-night-en.png"; done
+  for c in 03300 32300; do shot registry-sheet --imm --sheet-open --theme night --lang en --code $c --height 4000 "$OUT/imm/sheet-open-$c-night-en.png"; done
 fi
 [[ -n $CENSUS_IDENTITY ]] && echo "census collector: $same PNGs byte-identical with and without it"
 echo "render_set: $(find "$OUT" -name '*.png' | wc -l | tr -d ' ') PNGs in $OUT, $fails failed"
