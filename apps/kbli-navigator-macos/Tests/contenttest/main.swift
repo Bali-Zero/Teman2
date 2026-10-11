@@ -230,15 +230,18 @@ let out: [String: Any] = MainActor.assumeIsolated {
     if emphasised.count != 18 { violations.append("ledgerInline: \(emphasised.count) curated meanings draw emphasis, pinned 18") }
     if !unfaithful.isEmpty { violations.append("ledgerInline changes \(unfaithful.count) meaning lines beyond their markers, e.g. \(unfaithful.prefix(3))") }
     // A Bali reason draws its paired emphasis, never its asterisks (lead ruling 2026-10-11: Q24 over Z-3 for pairs):
-    // a pair, single or double, takes the SemiBold cut (guilt); a lone "*" or none draws as written (innocence); and
+    // a pair, single or double, takes the SemiBold cut (guilt); a lone "*" or none draws as written, and a code span
+    // keeps its backticks and the line's face (innocence); and
     // over every record, both languages, each half LeadBody draws of the reason reads its source with only asterisks
     // gone and no link. The 15 reasons that carry "*" all pair them, so none is left drawn on any surface.
     for (raw, want, marked) in [("Allocated as *Vila*, a **State** function.", "Allocated as Vila, a State function.", "VilaState"),
                                 ("A footnote* stays.", "A footnote* stays.", ""),
+                                ("Allocates *Vila* (`dialokasikan` column).", "Allocates Vila (`dialokasikan` column).", "Vila"),
                                 ("No marker at all.", "No marker at all.", "")] {
         let a = LabelBook.emphasis(raw, size: 13)
         let got = a.runs.filter { $0.font != nil }.map { String(a[$0.range].characters) }.joined()
-        if String(a.characters) != want || got != marked {
+        let code = a.runs.contains { $0.inlinePresentationIntent?.contains(.code) == true }   // SwiftUI draws it monospaced
+        if String(a.characters) != want || got != marked || code {
             violations.append("emphasis: \"\(raw)\" → \"\(String(a.characters))\" [\(got)], want \"\(want)\" [\(marked)]")
         }
     }
