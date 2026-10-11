@@ -35,16 +35,6 @@ notify() { # $1 tier, $2 dedup key, $3 safe message
         --dedup-key "$key" -- "$message" >> "$LOG" 2>&1
 }
 
-write_failure_escalation() { # $1 outcome, $2 rc
-    outcome=$1
-    payload_rc=$2
-    (
-        export RESTORE_DRILL_OUTCOME="$outcome"
-        export RESTORE_DRILL_RC="$payload_rc"
-        cd "$REPO" || exit 1
-        /usr/bin/python3 -c 'import os; from scripts.sentinel_lib.escalations import write_escalation; outcome=os.environ["RESTORE_DRILL_OUTCOME"]; rc=os.environ["RESTORE_DRILL_RC"]; write_escalation({"job":"mini.restore_drill","type":"restore_drill_failure","source":"mini-restore-drill","priority":"HIGH","outcome":outcome,"error_summary":"Monthly restore drill %s (rc=%s)" % (outcome, rc),"description":"Investigate the monthly restore proof; no production dump rows were included."})'
-    ) >> "$LOG" 2>&1
-}
 
 # Mini-only singleton: a second host would duplicate a heavy restore and its alerts.
 if [ "$(hostname -s | tr '[:upper:]' '[:lower:]')" != "mini-pro2" ]; then
@@ -93,7 +83,6 @@ on_exit() {
         heartbeat "error" "wrapper exited before a verdict rc=$rc"
         notify p0 "restore-drill:${MONTH}" \
             "Monthly restore drill on Mini ended before a verdict (rc=$rc). Investigate the local private log." || true
-        write_failure_escalation "NO-VERDICT" "$rc" || true
     fi
     # Release only a lock this process still owns.
     if [ "$(cat "$LOCKDIR/pid" 2>/dev/null)" = "$(proc_id $$)" ]; then
@@ -149,8 +138,6 @@ else
     notify p0 "restore-drill:${MONTH}" \
         "Monthly restore drill $OUTCOME on Mini (rc=$RC). Investigate the local private log." || \
         log "p0 notification failed or was spooled"
-    write_failure_escalation "$OUTCOME" "$RC" || \
-        log "write_escalation failed"
 fi
 
 FINISHED=1

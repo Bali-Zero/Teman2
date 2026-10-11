@@ -1,0 +1,51 @@
+name: Restore drill tests
+
+# Executor for the corpus that proves the mini.restore_drill organ -- the monthly disaster-recovery
+# proof that restores the newest Tigris pg_dump on Mini. Offline: synthetic dump snippets, no docker,
+# no network. Without this file the corpus is collected by nothing that gates (superscar #2).
+
+on:
+  pull_request:
+    paths:
+      - "scripts/restore_drill/**"
+      - "infra/launchagents/wrappers/mini-restore-drill.sh"
+      - "infra/launchagents/com.nuzantara.restore-drill.plist"
+      - ".github/workflows/restore-drill-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/restore_drill/**"
+      - "infra/launchagents/wrappers/mini-restore-drill.sh"
+      - "infra/launchagents/com.nuzantara.restore-drill.plist"
+      - ".github/workflows/restore-drill-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: restore-drill-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  restore-drill-tests:
+    name: Restore drill tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest
+        run: python -m pip install --quiet --disable-pip-version-check pytest
+
+      - name: The role scan, payload and wrapper behave as specified
+        run: python -m pytest scripts/restore_drill/tests -q -p no:cacheprovider
+
+      - name: The shell files still parse (a syntax error is a silent dead organ)
+        run: |
+          bash -n infra/launchagents/wrappers/mini-restore-drill.sh
+          bash -n scripts/restore_drill/run_drill.sh
