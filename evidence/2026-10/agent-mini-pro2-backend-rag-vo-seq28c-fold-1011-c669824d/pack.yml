@@ -1,0 +1,159 @@
+# Gear-3 evidence pack - seq-28: the weekly organ's portal re-stamp of seq-27 plus the owner's E33 edits, SIGNED.
+# Pre-signing receipts are the reports of the seats named on each line (Mini clock, 2026-10-11 UTC); the
+# signature is the owning session nuzantara-57's act on M5; the land receipts at the end are this session's
+# own runs on Mini on 2026-10-11 between 23:03Z and 23:12Z, ts read with date -u in the same shell.
+gear: 3
+brief_ref: evidence/brief.yml
+pii_scan: clean
+ruling: >-
+  Zero, 2026-10-11 - ONE seq-28 signing: organ re-stamp + E33E 5-year price key + AGE_BELOW_55 scoped to
+  RETIREMENT + E33G income >= USD 60,000 per year.
+mission: >-
+  seq-28 = signed seq-27 with the 18 OFFICIAL_PORTAL stamps moved to 2026-10-11T18:00:16Z (organ PR #8289,
+  head 0e56a429a1, superseded by this PR) and the three E33 edits. 17 judgements are judge=fingerprint and one
+  (Bridging, 3da72c7b) is model-judged and was read by the signing session itself. Signed on M5 by nuzantara-57,
+  kid prod-2026-07-1; activation is a separate ceremony from Pro after merge and is NOT recorded here.
+lanes:
+  - lane: seq28-fold
+    role: build
+    seat: Claude Sonnet 5.5 (implementer, worktree backend-rag-vo-seq28c-fold-1011)
+  - lane: seq28-land
+    role: build
+    seat: Claude Sonnet 5.5 (this landing session, same worktree, docs + evidence + test follow-ups)
+  - lane: seq28-ground-truth
+    role: ground_truth
+    seat: >-
+      the organ's ledger on disk (18 receipts, 18 judgements, 18 saved texts), the signed seq-27 bundle, and the
+      primary text of Pasal 63 Permenkumham 22/2023; no notebook, no memory.
+    nb: research/visa/2026-10-11-organ-reattest-seq28/ and apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-027.signed.json
+    query_hash: "a9098744e0cd8369fb4fe9ca5bef851705cf43dabb1c69398b63b36985cb42d0" # pragma: allowlist secret
+    note: query_hash = the signed seq-27 payload_sha256 that seq-28 chains to.
+bites:
+  consumer: >-
+    review_hold_inventory, the evaluate path and the mouth E33G threshold pin, all reading the highest SIGNED
+    pack on disk, which once rulepack-prod-028.signed.json is added is seq-28; the observer asserts the inventory
+    reads seq-28 and runs the seq-28 pack gate, the walk census and the inventory tests.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq28_signed.py
+  expect: "contains:inventory reads seq-28 and all three consumers green"
+receipts:
+  - claim: "The generic fold on the organ ledger, with the organ's own identity fields, reproduces the organ's candidate byte for byte (JCS digest 6db76810d95a927646c37c6513055ac24e7033df5a0a138cc02d907ab99766fb); the content-folded seq-28 payload digest is a23a5bf55a77a658aef4ff06637cdb6fea476c5569d3d47a56896af2b8557046 chained to seq-27 a9098744; rules 113 to 114; earliest portal boundary 2026-11-12T18:00:16Z." # pragma: allowlist secret
+    cmd: python -m backend.scripts.visa_engine.fold_pack_seq28 (generic_fold over research/visa/2026-10-11-organ-reattest-seq28, anchor rulepack-prod-027.source.json / .signed.json)
+    result: "organ candidate reproduced byte-equal, JCS 6db76810d95a; final payload_sha256 a23a5bf55a77a658aef4ff06637cdb6fea476c5569d3d47a56896af2b8557046; rules added hf.e33g.annual-income-below-minimum, modified hf.e33e.age-below-55, hf.e33f.age-below-55, el.e33g.remote-work" # pragma: allowlist secret
+    exit: 0
+    ts: "2026-10-11T18:17:16Z"
+    seat: Claude Sonnet 5.5 (fold lane, report delivered at ts)
+  - claim: Dry-run counts of the fold - the only differences between seq-27 and seq-28 are identity, 18 portal stamps, the E33E pricing key, three modified rules and one appended rule.
+    cmd: "structural path diff of rulepack-prod-027.source.json against rulepack-prod-028.source.json (adversary's own script, independent of the fold's guards)"
+    result: "identity fields; 18 x {verified_at, verified_by}; E33E pricing_key.item_key; when/required_facts of hf.e33e.age-below-55, hf.e33f.age-below-55, el.e33g.remote-work; one appended rule at index 113; order of existing rules unchanged"
+    exit: 0
+    ts: "2026-10-11T18:25:42Z"
+    seat: seq28-adversary (independent read-only seat)
+  - claim: W141 check of the ledger - 18/18 fingerprints recomputed from the saved texts equal the receipts; live re-read 18/18 HTTP 200, equal fingerprint, key phrase present; 17 judge=fingerprint rows plus 1 model-judged row (3da72c7b Bridging, sidebar-only diff); no changed verdict.
+    cmd: portal_read_receipt.py --pack rulepack-prod-027.signed.json --reader signing-20261012 --all (Mini) plus the checker's own fingerprint recompute (scratchpad w141_chain_check.py)
+    result: "18 read, 0 to check; 18/18 fingerprint equal; 18/18 HTTP 200; 17 fingerprint + 1 model:none; Bridging 'Masa berlaku Izin Tinggal Peralihan yakni 60 hari dan hanya berlaku secara onshore' present"
+    exit: 0
+    ts: "2026-10-11T18:20:25Z"
+    seat: w141-checker (fresh read-only seat)
+  - claim: Fold lane tests before signing - the pack file 28 passed with 4 signed-bundle tests skipped (no signed file yet), gold replay 44 passed, the whole visa_engine directory 2 failed 3010 passed 5 skipped 31 errors with failing ids identical to origin/main in a detached worktree (31 errors in test_evaluate_endpoint.py, 2 failures in test_visa_engine_retention_fk_registry.py - the Mini DB environment).
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine/test_seq28_pack.py ; test_gold_replay_driver.py + test_evaluator_gold.py ; backend/tests/services/visa_engine
+    result: "28 passed 4 skipped ; 44 passed ; 2 failed 3010 passed 5 skipped 31 errors (origin/main: 2 failed 2963 passed 15 skipped 31 errors, same ids)"
+    exit: 1
+    ts: "2026-10-11T18:15:00Z"
+    seat: Claude Sonnet 5.5 (fold lane)
+  - claim: Persona walk on the folded source with the real PricingService (E33G at 59,999 / 60,000 / unknown, age 54 and 55 across retirement, business, second home, tourism, E33E quote) behaves as the owner decisions require; E33E quotes AVAILABLE 45000000 on the 5-year key.
+    cmd: evaluator.evaluate + apply_public_policy_adapters + _attach_price_quotes over census._pack_from_source (adversary script)
+    result: "E33G 59999 NO_SUPPORTED_PATH E33G_INCOME_BELOW_THRESHOLD; 60000 SUPPORTED_CANDIDATES E33G 13000000; unknown NEEDS_INPUT work.annual_foreign_income_usd; retirement 54 AGE_BELOW_55, 55 E33E+E33F; business/second-home/tourism 54 no AGE_BELOW_55; gold replay personas 1, 3, 4 only lose AGE_BELOW_55"
+    exit: 0
+    ts: "2026-10-11T18:25:42Z"
+    seat: seq28-adversary (independent read-only seat)
+  - claim: Two-titolare council on the branch head 856debad3b, read-only - both SIGN, no HIGH objection.
+    cmd: "codex exec -C <checkout> -m gpt-5.6-sol --sandbox read-only -c model_reasoning_effort=high ; kimi -p (v2.1.1, run from the checkout, read-only by prompt)"
+    result: "codex gpt-5.6-sol VERDICT: SIGN (session 01a12c37-3f73-76a0-8cff-c14c82f4067f); kimi k3 VERDICT: SIGN (session_f95638dc-ca65-48e9-bdc5-c3c44a91dbd9)"
+    exit: 0
+    ts: "2026-10-11T18:47:53Z"
+    seat: council (codex-gpt-5.6-sol + kimi-code/k3)
+  - claim: The owning session signed seq-28 offline on M5 with the production key (key file mode 0600, never printed); sign_pack self-verified; the payload digest equals the one the fold produced; the bundle carries signed_at 2026-10-11T22:53:04Z and file sha256 prefix fc3cf948731087f2.
+    cmd: PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.sign_pack <packs>/rulepack-prod-028.source.json --kid prod-2026-07-1 --key-file ~/.config/nuzantara/visa-signing/2026-07-prod-1.ed25519.pem --environment PRODUCTION --sequence 28 --i-know-this-is-production --output <packs>/rulepack-prod-028.signed.json
+    result: "OK - signed and self-verified. sequence=28 environment=PRODUCTION kid=prod-2026-07-1 payload_sha256=a23a5bf55a77a658aef4ff06637cdb6fea476c5569d3d47a56896af2b8557046 signed_at 2026-10-11T22:53:04.266030Z" # pragma: allowlist secret
+    exit: 0
+    ts: "2026-10-11T22:53:04Z"
+    seat: nuzantara-57 (owning session, M5)
+  - claim: The bundle was signed at file sha256 prefix fc3cf948731087f2 and was NOT Prettier-formatted (arrays expanded one item per line). The husky Prettier check rejected it at the first commit, so, as for seq-25/26/27, prettier --write was run on it after signing; the file sha256 prefix is now 00f1d66dd0d77f52. The signature covers the JCS payload, not the file formatting, so the payload digest is unchanged and was re-verified on the formatted file (a23a5bf55a77a658aef4ff06637cdb6fea476c5569d3d47a56896af2b8557046).
+    cmd: shasum -a 256 rulepack-prod-028.signed.json ; ~/nuzantara/node_modules/.bin/prettier --write rulepack-prod-028.signed.json ; test_seq28_pack.py::TestSignedBundleTiesToSource (payload digest re-check)
+    result: "file sha256 fc3cf948731087f2... as signed -> 00f1d66dd0d77f52... after prettier --write; payload_sha256 a23a5bf55a77a658aef4ff06637cdb6fea476c5569d3d47a56896af2b8557046 unchanged; Prettier check clean" # pragma: allowlist secret
+    exit: 0
+    ts: "2026-10-11T23:15:00Z"
+    seat: Claude Sonnet 5.5 (land lane) + orchestrator
+  - claim: With the signed bundle on disk the seq-28 pack gate passes in full, backend/tests/services/visa_engine/test_seq28_pack.py::TestSignedBundleTiesToSource (all four signed-bundle tests) included, nothing skipped.
+    cmd: PYTHONPATH=. python3 -m pytest backend/tests/services/visa_engine/test_seq28_pack.py -p no:cacheprovider -o addopts="" -q -rs
+    result: "32 passed, 1 warning in 1.84s (0 skipped), re-run on the Prettier-formatted bundle (file sha256 00f1d66dd0d77f52)"
+    exit: 0
+    ts: "2026-10-11T23:15:26Z"
+    seat: Claude Sonnet 5.5 (land lane)
+  - claim: The Bites observer passes on the signed state - the inventory reads seq-28 and the pack gate, walk census and review-hold inventory tests are green.
+    cmd: JWT_SECRET_KEY=<conftest test value> API_KEYS=<conftest test value> python3 scripts/ci/observe_visa_seq28_signed.py
+    result: "observe_visa_seq28_signed: inventory reads seq-28 and all three consumers green"
+    exit: 0
+    ts: "2026-10-11T23:07:30Z"
+    seat: Claude Sonnet 5.5 (land lane)
+  - claim: The signed seq-28 turned two pre-existing expectations red that the unsigned fold could not see - gold replay persona 1 (test_gold_replay_driver.py compared the seq-27 table, AGE_BELOW_55 is gone for a non-retirement persona) and the option-matrix remote_work case (no income fact, now NEEDS_INPUT). Both were corrected in this PR as expectation/fixture edits only (the replay test uses the table of the replayed sequence; the matrix base_overrides carry work.annual_foreign_income_usd 60000). First run before the fix, exit 1.
+    cmd: PYTHONPATH=. python3 -m pytest backend/tests/scripts/visa_engine/test_gold_replay_driver.py backend/tests/services/visa_engine/test_evaluator_gold.py -p no:cacheprovider -o addopts="" -q
+    result: "1 failed, 43 passed (before the fix); the whole-directory run at 23:03:52Z also showed test_gold_replay_artifact::test_option_matrix_replay_matches_all_twelve_pinned_cases failing (3 failed, 2999 passed, 15 skipped, 31 errors)"
+    exit: 1
+    ts: "2026-10-11T23:03:52Z"
+    seat: Claude Sonnet 5.5 (land lane)
+  - claim: After the two corrections the gold replay tests pass.
+    cmd: PYTHONPATH=. python3 -m pytest backend/tests/scripts/visa_engine/test_gold_replay_driver.py backend/tests/services/visa_engine/test_evaluator_gold.py -p no:cacheprovider -o addopts="" -q
+    result: "44 passed, 1 warning"
+    exit: 0
+    ts: "2026-10-11T23:07:32Z"
+    seat: Claude Sonnet 5.5 (land lane)
+  - claim: The whole backend/tests/services/visa_engine directory shows exactly the pre-existing Mini DB-environment set and nothing else - 31 errors all in test_evaluate_endpoint.py and the 2 failures in test_visa_engine_retention_fk_registry.py, the same ids as origin/main and as the fold lane's run.
+    cmd: PYTHONPATH=. python3 -m pytest backend/tests/services/visa_engine -p no:cacheprovider -o addopts="" -q
+    result: "2 failed, 3000 passed, 15 skipped, 219 warnings, 31 errors in 110.79s; failed ids test_restore_only_reapplies_the_entry_that_was_actually_unwound and test_unwind_survives_overlapping_policies_of_two_garuda_scopes (both test_visa_engine_retention_fk_registry.py); 31 errors all test_evaluate_endpoint.py"
+    exit: 1
+    ts: "2026-10-11T23:09:25Z"
+    seat: Claude Sonnet 5.5 (land lane)
+  - claim: The mouth tree, first run on the signed state - the E33G pin test passes, but the RETIREMENT_MIN_AGE pin in flow.test.ts failed because the age filter is now an all(RETIREMENT, age lt 55) rather than a bare leaf. 1425 of 1426.
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 1 failed | 53 passed (54); Tests 1 failed | 1425 passed (1426)"
+    exit: 1
+    ts: "2026-10-11T23:09:49Z"
+    seat: Claude Sonnet 5.5 (land lane)
+  - claim: After the flow.test.ts pin reads the age leaf under the all (test edit only) the whole mouth tree passes, including apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts where E33G_ANNUAL_INCOME_THRESHOLD_USD tracks both signed seq-28 income rules.
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 54 passed (54); Tests 1426 passed (1426)"
+    exit: 0
+    ts: "2026-10-11T23:10:43Z"
+    seat: Claude Sonnet 5.5 (land lane)
+  - claim: Type-check of the mouth app.
+    cmd: node_modules/.bin/tsc --noEmit -p apps/mouth
+    result: "no output"
+    exit: 0
+    ts: "2026-10-11T23:10:45Z"
+    seat: Claude Sonnet 5.5 (land lane)
+council_run: journal.jsonl
+dissent:
+  - seat: seq28-adversary (independent, read-only; verdict delivered 2026-10-11T18:25:42Z)
+    objection: "Pre-signing, the mouth E33G threshold pin reads only signed packs and is red until the signed bundle lands; the PR must carry the bundle."
+    status: RETRACTED
+    note: "Retracted on evidence - the bundle is in this PR and the mouth tree reads 1426/1426 at 2026-10-11T23:10:43Z."
+  - seat: kimi-code/k3 (council)
+    objection: "MEDIUM, merge ordering - the branch must not merge before the signed envelope lands on it, or the required mouth leg is red."
+    status: RETRACTED
+    note: "Retracted on evidence - same as above; the signed envelope is part of this commit."
+  - seat: w141-checker
+    objection: "The brief said 18/18 fingerprint rows; the ledger has 17 fingerprint rows and 1 model-judged row (Bridging)."
+    status: RETRACTED
+    note: "Recorded in the attestation with the explicit 17+1 split; the signing session read the Bridging page itself and it says 60 days onshore, as the pack does."
+  - seat: self-review (Claude Sonnet 5.5, land lane, not an independent refuter)
+    objection: "The signed bundle is not Prettier-formatted, and the CI Prettier job runs on changed json files."
+    status: RETRACTED
+    note: "Retracted on evidence - prettier --write was run after signing, as for seq-25/26/27; the file sha256 prefix moved fc3cf948731087f2 -> 00f1d66dd0d77f52 while payload_sha256 a23a5bf55a77 is unchanged and the 4 signed-bundle tie tests pass on the formatted file."
+owed:
+  - "Activation of seq-28 in production (two-login ceremony on the PG primary from Pro, anti-rollback on seq-27 a9098744), its prove-live (sentinel OK pack 28, exactly one open activation, evaluate answers pack 28), and the activation ids in the follow-up ledger PR."
+  - "Close organ PR #8289 as superseded by this PR."
+spend:
+  wall_clock_hours: 3
+  adversarial_rounds: 1

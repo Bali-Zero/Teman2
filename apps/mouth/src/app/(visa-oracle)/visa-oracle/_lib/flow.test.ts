@@ -2281,11 +2281,17 @@ describe("R2 · the retirement-age notice (owner decision 2026-10-11)", () => {
         rule,
         `${ruleId} is absent from the newest signed pack`,
       ).toBeDefined();
-      expect(rule!.when).toMatchObject({
-        fact: "derived.age_years",
-        op: "lt",
-        value: RETIREMENT_MIN_AGE,
-      });
+      // seq-28 scopes the age filter to RETIREMENT, so the leaf sits under an
+      // `all`; older packs carry it bare.
+      const when = rule!.when as { op?: string; args?: unknown[] };
+      const leaves = when.op === "all" ? (when.args ?? []) : [when];
+      expect(leaves).toContainEqual(
+        expect.objectContaining({
+          fact: "derived.age_years",
+          op: "lt",
+          value: RETIREMENT_MIN_AGE,
+        }),
+      );
     }
   });
 

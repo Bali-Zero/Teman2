@@ -1,0 +1,39 @@
+task_id: visa-seq28-land
+mission: visa-reattest-seq28
+gear: 3
+gear_reason: >-
+  A rule pack for the Visa Oracle production engine under apps/backend-rag/** (hot zone), plus the mouth
+  pin that reads it. The signed bundle is the artifact production will run once the owner's session activates
+  it: it re-stamps the 18 portal sources that gate every evaluation (seq-27 stops being fresh on
+  2026-11-09T13:21:22Z) and carries three E33 content edits that change what a client is told is eligible
+  and priced. The signature is the owning session's act on M5; this branch lands the signed file and the
+  tests, runbook note, attestation and evidence that make it reviewable.
+l_level: L2
+gate_class: opus
+ruling: >-
+  Zero, 2026-10-11 - ONE seq-28 signing: the organ re-stamp (organ PR #8289) + E33E 5-year price key
+  + AGE_BELOW_55 scoped to RETIREMENT + E33G income >= USD 60,000 per year.
+mission_text: >-
+  seq-28 = the signed seq-27 with its 18 OFFICIAL_PORTAL stamps re-read on 2026-10-11 (the organ's pure
+  candidate, reproduced byte for byte by the generic fold) and three owner-decided content edits: E33E
+  priced on its own 5-year catalogue key (IDR 45,000,000), the E33E/E33F AGE_BELOW_55 filters scoped to the
+  RETIREMENT purpose, and E33G requiring annual income of at least USD 60,000 (eligibility gte, new
+  hard filter lt). This branch carries the folded source, the signed bundle, the tests, the observer and
+  the record; activation is a separate ceremony from Pro after merge.
+objective: >-
+  rulepack-prod-028.signed.json verifies under the production key, ties to the source, chains to the signed
+  seq-27 digest, and is the highest signed pack on disk, so the evaluator, the gold replay, the review-hold
+  inventory and the mouth pin of E33G_ANNUAL_INCOME_THRESHOLD_USD all read seq-28 and are green.
+constraints:
+  - The signed bundle is never edited after signing; no key is touched; nothing is activated by this branch.
+  - The only differences from seq-27 are identity, the 18 portal stamps, the E33E pricing key, the two age filters, the E33G eligibility conjunct and one appended hard filter.
+  - Test and fixture edits that follow the new pack (gold persona 1, option matrix remote_work, mouth age pin) change expectations only, never an engine path.
+appetite:
+  wall_clock_hours: 3
+acceptance:
+  - text: WHEN seq-28 is compared with the signed seq-27 THEN only the listed differences SHALL exist and the chain SHALL be the seq-27 payload digest.
+    probe: backend/tests/services/visa_engine/test_seq28_pack.py
+  - text: WHEN the signed seq-28 exists THEN the bundle SHALL verify under the production key and tie to the source.
+    probe: backend/tests/services/visa_engine/test_seq28_pack.py::TestSignedBundleTiesToSource
+  - text: WHEN the highest signed pack is seq-28 THEN the mouth pin of the E33G income threshold SHALL pass.
+    probe: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts

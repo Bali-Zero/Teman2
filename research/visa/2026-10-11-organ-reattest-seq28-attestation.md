@@ -7,7 +7,7 @@ sources:
   - apps/backend-rag/backend/scripts/visa_engine/portal_read_receipt.py
   - apps/backend-rag/backend/scripts/visa_engine/portal_judge.py
   - apps/backend-rag/backend/scripts/visa_engine/fold_pack_generic.py
-adversarial_review: pending-session
+adversarial_review: nuzantara-57 (M5 signing session) + independent adversary seat (W141 and persona check); council codex gpt-5.6-sol and kimi k3
 ---
 
 # Organ re-attestation 2026-10-11 — candidate seq-28 (unsigned)
@@ -43,5 +43,30 @@ signed or active. `verified_at` of the candidate is the earliest successful read
 
 ## Adversarial review
 
-Pending. The session that signs this candidate reviews the judge verdicts and reads every
-`changed` page itself, then replaces `pending-session` in the frontmatter with the reviewer.
+Done by the signing session `nuzantara-57` (M5) on 2026-10-12, plus an independent read-only
+adversary seat that is neither the organ nor the build lane. The candidate that the organ folded
+(pure re-stamp, JCS digest `6db76810d95a`) was reproduced byte for byte by the generic fold in the
+seq-28 PR; the signed pack adds the four owner-decided edits on top of it.
+
+- **W141 check (independent seat, read-only):** the ledger holds 17 rows with `judge: fingerprint`
+  and 1 model-judged row (`3da72c7b`, the Bridging page, no `judge` key). 18/18 fingerprints
+  recomputed from the saved texts equal the receipt's `visible_text_sha256`. A live re-read with the
+  organ's own `portal_read_receipt.py` gave 18/18 HTTP 200, live fingerprint equal to the ledger's,
+  key phrase present, saved text byte-equal. Chain for the 17 fingerprint rows: the seq-28 read
+  equals the receipt bound by the seq-27 judgement (one hop back, the attested read of
+  2026-10-08), and those rows were themselves `judge: fingerprint` over the 2026-10-07 reads that
+  three readers judged with quoted sentences (two fingerprint hops back to a reader-judged read).
+  No `changed` verdict anywhere, so no `disposition.json` is needed and none exists.
+- **Bridging page `3da72c7b` (the one model-judged row):** its fingerprint moved (4483 to 4467
+  characters). The independent seat diffed it against the attested seq-27 text and found only the
+  latest-news sidebar changed (three headlines dated 2 Oct became three dated 11 Oct 2026). The
+  signing session read the page itself: "Masa berlaku Izin Tinggal Peralihan yakni 60 hari dan
+  hanya berlaku secara onshore" is present, which is exactly the pack's `BRIDGING` `FIXED_DAYS 60`
+  with no extension. Verdict `none`, confirmed.
+- **Independent adversary (persona check on the folded source):** no blocking defect; E33G 59,999
+  excluded and 60,000 admitted with unknown income asking for input; AGE_BELOW_55 now only under
+  RETIREMENT; E33E quoted at 45,000,000 on the 5-year key.
+- **Council:** codex `gpt-5.6-sol` and kimi `k3`, both `SIGN`, recorded in the evidence journal.
+
+No `changed` verdict, no disposition needed. Record:
+`evidence/2026-10/agent-mini-pro2-backend-rag-vo-seq28c-fold-1011-c669824d/` (pack + journal).
