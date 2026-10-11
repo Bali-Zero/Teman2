@@ -1,0 +1,135 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 decisions on the E33/retirement program (2026-10-11 E33 audit, plan PR-9): E33A, E33B and E33C
+  are priced on consultation, split-deposit planning is never offered, and the copy must say what the rule and the
+  official page say.
+mission: >-
+  The E33-family copy says what the rule and the official page say: no combination route, a central-government
+  sponsor, the E33B collaboration sentence, and consultation wording for E33A, E33B and E33C.
+lanes:
+  - lane: vo-pr9-e33-family-copy
+    role: build
+    seat: >-
+      Codex GPT-5.6-sol via scripts/seat_build.sh (tier sol, effort high; log
+      /Users/balizero/nuzantara/.worktrees/seat-build-codex-20261011T050717Z-56002.log), graded, prettier-formatted
+      and committed by the orchestrator (c137831210, rebased as 8b3c3a12f1).
+  - lane: vo-pr9-ground-truth
+    role: ground_truth
+    seat: >-
+      the E33 audit of 2026-10-11 and buildValidatedOutcome / SUPPORT_REASON_COPY in engine-adapter.ts; the change
+      asserts no new rule, it aligns the sentences to the signed rule and the official page.
+    nb: research/visa/2026-08-24-e33abc-grounding-nb2.md
+    query_hash: "7c2e3cc4efe4bd719acdba66b407a98fa37ab8d30da421417b674d4366f937e6" # pragma: allowlist secret
+    note: query_hash = sha256 of the grounding note (Permenkumham 22/2023 Pasal 57/58/59 quoted verbatim) at origin/main.
+pii_scan: clean
+bites:
+  consumer: >-
+    the Second Home Studio hold sentence and the E33A, E33B and E33C reason sentences of the public Visa Oracle
+    result page (OutcomeSheet via engine-adapter SUPPORT_REASON_COPY and REVIEW_REASON_COPY).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_e33_family_copy.py
+  expect: "contains:e33 family copy holds"
+receipts:
+  - claim: The branch rebased cleanly onto a fresh origin/main with one commit ahead.
+    cmd: git fetch origin main; git rebase origin/main
+    result: "rebase succeeded, no conflict; 1 commit ahead (8b3c3a12f1)"
+    exit: 0
+    ts: "2026-10-11T09:38:00Z"
+    seat: this session
+  - claim: The visa-oracle Vitest tree passes with the change except the enumerate-interview-space file, which times out under machine load.
+    cmd: cd apps/mouth && npx vitest run --exclude '**/enumerate-interview-space.test.ts' 'src/app/(visa-oracle)/visa-oracle/'
+    result: "Test Files 50 passed (50), Tests 1308 passed (1308)"
+    exit: 0
+    ts: "2026-10-11T09:49:18Z"
+    seat: this session
+  - claim: >-
+      The excluded file is a full-graph enumeration that touches no copy; under load average 157 one different test
+      timed out at 120000 ms on each run (the 39 others passed), so it is not a verdict on this change.
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts'
+    result: "Tests 1 failed | 39 passed (40); Error: Test timed out in 120000ms"
+    exit: 1
+    ts: "2026-10-11T09:45:00Z"
+    seat: this session
+  - claim: apps/mouth typechecks.
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-11T09:52:51Z"
+    seat: this session
+  - claim: The observer passes on the branch head and requires a full pass of at least 100 tests and four named tests reported as run.
+    cmd: python3 scripts/ci/observe_visa_oracle_e33_family_copy.py
+    result: "Tests 149 passed (149); e33 family copy holds"
+    exit: 0
+    ts: "2026-10-11T09:52:58Z"
+    seat: this session
+  - claim: The observer's summary and required-title parsers reject skipped, todo, failed, reduced and absent tests.
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_e33_family_copy.py
+    result: "11 passed"
+    exit: 0
+    ts: "2026-10-11T09:44:00Z"
+    seat: this session
+  - claim: The legacy client-copy guard stays green with the new strings.
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3537 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-11T09:53:00Z"
+    seat: this session
+  - claim: The i18n census observer holds.
+    cmd: python3 scripts/ci/observe_visa_oracle_i18n_census.py
+    result: "Tests 6 passed (6); census holds"
+    exit: 0
+    ts: "2026-10-11T09:53:08Z"
+    seat: this session
+  - claim: After the red-team cure the engine-adapter and copy-truth files pass, the observer holds and mouth typechecks.
+    cmd: cd apps/mouth && npx vitest run engine-adapter.test.ts copy-truth.test.ts; python3 scripts/ci/observe_visa_oracle_e33_family_copy.py; npx tsc --noEmit -p .
+    result: "Test Files 2 passed (2), Tests 207 passed (207); e33 family copy holds; tsc no output"
+    exit: 0
+    ts: "2026-10-11T10:09:31Z"
+    seat: this session
+decisions:
+  - id: D-e33b-override-scope
+    decision: >-
+      The E33B collaboration sentence replaces the E33A sponsor sentence only when sponsor_category is NONE and
+      sponsor_government_collaboration is no; a GOVERNMENT or any other sponsor keeps the E33A sentence (pinned by a test).
+  - id: D-no-price-figure
+    decision: >-
+      E33A, E33B and E33C say the route is handled with a Bali Zero advisor; the price keeps the existing
+      advisor-confirmed line and no figure is added.
+dissent:
+  - seat: claude-opus-5.5 (cross-family red team; the lane was built by Codex)
+    objection: >-
+      1 MEDIUM: the GOVERNMENT-sponsor test pinned nothing; mutation M1 (drop the NONE guard) survived tests and observer.
+    status: RETRACTED
+    disposition: >-
+      Cured in the follow-up commit: the test now walks EMPLOYER and INDIVIDUAL with a no answer, NONE with yes and NONE with the answer missing, all expecting the E33A sentence; the observer REQUIRED_TESTS title was renamed. M1 re-run: 1 failed, 148 passed, killed.
+  - seat: claude-opus-5.5 (cross-family red team; the lane was built by Codex)
+    objection: >-
+      2 LOW: the E33B override sentence drifted from the question wording and used the bare E33B name.
+    status: RETRACTED
+    disposition: >-
+      Cured: EN and ID now use the question wording (government body or institution, special expertise) and the pack product name; tests updated. Moving it into SUPPORT_REASON_COPY was not done, it stays a facts-driven override covered by its own exact-sentence test.
+  - seat: claude-opus-5.5 (cross-family red team; the lane was built by Codex)
+    objection: >-
+      3 LOW: E33B and E33C sponsor-filter sentences outside the diff still say the lax filter (government or none).
+    status: PLAUSIBLE
+    disposition: >-
+      Accepted as a limit, left for a follow-up PR: it changes the legal claim of two codes outside this lane, rarely reached (not in the seq-23 sweep), and needs its own grounding check against Pasal 58 and the Permenkumham 11/2024 deletion of the E33C no-sponsor route.
+  - seat: claude-opus-5.5 (cross-family red team; the lane was built by Codex)
+    objection: >-
+      4 LOW: the combined-route guard checked one word in one entry; paraphrase M2b survived.
+    status: RETRACTED
+    disposition: >-
+      Cured: the guard scans every SECOND_HOME_ and E33 entry of REVIEW_REASON_COPY and SUPPORT_REASON_COPY for combination, combined, both together, split, mix and the ID equivalents. M2b re-run with a real paraphrase in the Studio hold: 1 failed, killed.
+  - seat: claude-opus-5.5 (cross-family red team; the lane was built by Codex)
+    objection: >-
+      5 LOW: ground_truth.nb pointed at the changed file; dissent empty at gear 2; bites is ci while the site needs promote.
+    status: RETRACTED
+    disposition: >-
+      Cured: ground_truth now points at the grounding note with its sha256 at origin/main and this dissent is recorded. The live headless walk (second_home / bank_deposit / USD 100,000) after vercel promote is run by the orchestrator and written into the PR body before the work is called done; bites where stays ci because the lint accepts only that observer shape.
+  - seat: claude-opus-5.5 (cross-family red team; the lane was built by Codex)
+    objection: >-
+      6 LOW: central government vs central-government spelling; the world-figure question says invitation letter where Pasal 59(2) accepts invitation or statement.
+    status: PLAUSIBLE
+    disposition: >-
+      Spelling cured (central-government everywhere). The question wording is not changed: it lives in i18n.ts under the i18n census and the narrower question can only produce a false no, never a false yes; follow-up.

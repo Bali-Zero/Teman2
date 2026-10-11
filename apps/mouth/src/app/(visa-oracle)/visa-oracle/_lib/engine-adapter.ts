@@ -682,16 +682,16 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Pekerjaan pada kantor perwakilan dagang dan ekonomi asing, dengan penjamin instansi pemerintah — Visa Kerja Kantor Dagang dan Ekonomi (E23V).",
   ),
   E33A_GOVERNMENT_INVITATION_ELIGIBLE: text(
-    "You hold a central government invitation for special expertise, with a government body as sponsor — the Second Home Visa — Special-Expertise Government Invitation (E33A).",
-    "Anda memiliki undangan pemerintah pusat untuk tenaga ahli, dengan penjamin instansi pemerintah — Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A).",
+    "You told us you hold a written invitation from an Indonesian central-government body for your special expertise — the Second Home Visa — Special-Expertise Government Invitation (E33A). This government-invitation route is handled with a Bali Zero advisor.",
+    "Anda menyampaikan bahwa Anda memiliki undangan tertulis dari instansi pemerintah pusat Indonesia atas keahlian khusus Anda — Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A). Jalur undangan pemerintah ini ditangani bersama konsultan Bali Zero.",
   ),
   E33B_GOVERNMENT_COLLABORATION_ELIGIBLE: text(
-    "You hold a confirmed special-expertise collaboration commitment with an Indonesian government body — the Second Home Golden Visa — Special-Expertise Collaboration (E33B).",
-    "Anda memiliki komitmen kolaborasi keahlian khusus yang terkonfirmasi dengan instansi pemerintah Indonesia — Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B).",
+    "You told us you have a confirmed collaboration commitment with an Indonesian government body or institution based on your special expertise — the Second Home Golden Visa — Special-Expertise Collaboration (E33B). This collaboration route is handled with a Bali Zero advisor.",
+    "Anda menyampaikan bahwa Anda memiliki komitmen kolaborasi yang terkonfirmasi dengan instansi atau lembaga pemerintah Indonesia berdasarkan keahlian khusus Anda — Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B). Jalur kolaborasi ini ditangani bersama konsultan Bali Zero.",
   ),
   E33C_WORLD_FIGURE_INVITATION_ELIGIBLE: text(
-    "You hold a central government invitation extended to you as a world figure — the Second Home Golden Visa — World-Figure Government Invitation (E33C).",
-    "Anda memiliki undangan pemerintah pusat yang diberikan kepada Anda sebagai tokoh dunia — Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C).",
+    "You told us you have an invitation letter from an Indonesian central-government agency inviting you as a world figure — the Second Home Golden Visa — World-Figure Government Invitation (E33C). This government-invitation route is handled with a Bali Zero advisor.",
+    "Anda menyampaikan bahwa Anda memiliki surat undangan dari instansi pemerintah pusat Indonesia yang mengundang Anda sebagai tokoh dunia — Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C). Jalur undangan pemerintah ini ditangani bersama konsultan Bali Zero.",
   ),
   E28B_COMPANY_ESTABLISHMENT_ELIGIBLE: text(
     "You are establishing a company in Indonesia and declared that your investment meets the published minimum for that route — the Investor Golden Visa — Company Establishment (E28B). We confirm the amount against the official schedule with you.",
@@ -726,8 +726,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // generic sentence (offshore/other/paid/employer_no). Product name verbatim
   // from the pack's `names.en` / `names.id`.
   E33A_SPONSOR_NOT_GOVERNMENT: text(
-    "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian government body, and you did not name one as your sponsor.",
-    "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah Indonesia, dan Anda tidak menyebutkan instansi pemerintah sebagai penjamin Anda.",
+    "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian central-government body, and you did not name one as your sponsor.",
+    "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah pusat Indonesia, dan Anda tidak menyebutkan instansi pemerintah pusat sebagai penjamin Anda.",
   ),
   // `hf.d12-onshore-conversion-excluded` (source 5e64ec6b…). Reachable on a
   // corpus walk since W-VO-Q item 7: a business explorer who plans to switch
@@ -1212,6 +1212,21 @@ function paidActivityWithoutIndonesianPayerReason(
   );
 }
 
+function e33bCollaborationNotCommittedReason(
+  facts: OracleFacts,
+): LocalizedText | undefined {
+  if (
+    facts.sponsor_category !== "NONE" ||
+    facts.sponsor_government_collaboration !== "no"
+  ) {
+    return undefined;
+  }
+  return text(
+    "You told us you do not have a confirmed collaboration commitment with an Indonesian government body or institution based on your special expertise; the Second Home Golden Visa — Special-Expertise Collaboration (E33B) needs that commitment.",
+    "Anda menyampaikan bahwa Anda belum memiliki komitmen kolaborasi yang terkonfirmasi dengan instansi atau lembaga pemerintah Indonesia berdasarkan keahlian khusus Anda; Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B) memerlukan komitmen tersebut.",
+  );
+}
+
 /**
  * The no-path reason codes whose sentence is reconstructed from the
  * interview's OWN facts when those facts allow it. seq-20 reaches these three
@@ -1352,8 +1367,8 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // points to the Second Home Studio, which is where OutcomeSheet renders
   // the actual link (`/visa/second-home/studio`) for this code specifically.
   SECOND_HOME_BELOW_THRESHOLD_STUDIO: text(
-    `The Second Home Visa (E33) is granted against a guarantee: qualifying property worth at least ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "en-US")}, or a bank deposit of at least ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")} held in your own name at a state bank. The figure you declared for the route you chose does not reach its threshold, so this route is not confirmed on your answers yet. The Second Home Studio shows the routes — property, deposit, or a combination — and the numbers for your case.`,
-    `Visa Rumah Kedua (E33) diberikan atas dasar jaminan: properti yang memenuhi syarat senilai minimal ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}, atau deposito bank minimal ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama Anda sendiri di bank milik negara. Angka yang Anda nyatakan untuk jalur yang Anda pilih belum mencapai ambang batasnya, sehingga jalur ini belum dapat dikonfirmasi berdasarkan jawaban Anda. Second Home Studio menampilkan jalur-jalur — properti, deposito, atau kombinasi keduanya — beserta angka untuk kasus Anda.`,
+    `The Second Home Visa (E33) is granted against a guarantee: qualifying property worth at least ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "en-US")}, or a bank deposit of at least ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")} held in your own name at a state bank. The figure you declared for the route you chose does not reach its threshold, so this route is not confirmed on your answers yet. The Second Home Studio shows the property and deposit routes and the numbers for your case.`,
+    `Visa Rumah Kedua (E33) diberikan atas dasar jaminan: properti yang memenuhi syarat senilai minimal ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}, atau deposito bank minimal ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama Anda sendiri di bank milik negara. Angka yang Anda nyatakan untuk jalur yang Anda pilih belum mencapai ambang batasnya, sehingga jalur ini belum dapat dikonfirmasi berdasarkan jawaban Anda. Second Home Studio menampilkan jalur properti dan deposito beserta angka untuk kasus Anda.`,
   ),
 
   // 17 pack-independent codes emitted by evaluate_path.py directly.
@@ -2267,7 +2282,19 @@ function buildValidatedOutcome(
           if (!isSourcelessDeadEnd) {
             requireDecisiveRefs(item.source_refs);
           }
-          return reason(item.code, item.source_refs, trustedIds, options.facts);
+          const mapped = reason(
+            item.code,
+            item.source_refs,
+            trustedIds,
+            options.facts,
+          );
+          const collaborationMessage =
+            item.code === "E33A_SPONSOR_NOT_GOVERNMENT"
+              ? e33bCollaborationNotCommittedReason(options.facts ?? {})
+              : undefined;
+          return collaborationMessage
+            ? { ...mapped, message: collaborationMessage }
+            : mapped;
         }) as [OutcomeReason, ...OutcomeReason[]],
         alternatives,
       };
