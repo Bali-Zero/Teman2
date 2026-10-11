@@ -72,6 +72,14 @@ spend:
   wall_clock_hours: 7.0
 receipts:
   - claim: >-
+      Live reads, the branch's code against Bali-Zero/Teman2 (GET only): codeql_version_read.py rc 0 for python (analysis 1930540666, 2026-10-11T04:09:36Z, 2.27.2) and
+      javascript (1930528566, 04:03:06Z, 2.27.2), newest qualifying main run 38110219472 (schedule) green on both CodeQL jobs; ring_gating_override {read: ok, active: false};
+      Pro's gh reads both variable lists (org total_count 0, repo 1, owner Organization). Real SARIF gzip 556,089 B (python) and Node zlib on JSON.stringify 552,337 B.
+    cmd: python3 scripts/localci/codeql_version_read.py --repo Bali-Zero/Teman2 --pin 2.27.2 (per language); runner.ring_gating_override against BASE; ssh pro gh api …/organization-variables
+    exit: 0
+    ts: "2026-10-11T14:20:00Z"
+    seat: claude-opus-5-5 fresh final gate (re-gate CONFIRMED-WITH-LOW at 83ecbd6660) and the lead on Pro
+  - claim: >-
       Fix round 3 (council round 2 and the gate's F1-F3, adjudicated). On M5, in chunks under load: test_codeql_contexts.py 244 passed;
       test_runner.py 111 passed, 2 skipped; test_merger.py 178; test_merger_phase_f.py 86; the other files, grouped, 286 + 373 + 416 + 72
       passed (1766 passed, 14 skipped in all). 57/57 cq-* mutants killed, 12 of them new this round (cq-sarif-gzip-no-bound,
@@ -229,6 +237,9 @@ dissent:
       FALSE_GREEN (hosted_compare.classify), never counted as a full AGREE"; both unreproduced items are named in the spec and the matrix, with the
       upload-never precision; the counts, the Bites line and the journal are updated in this round.
 residuals:
+  - "Final re-gate LOW L1 (test gap): no test fails the owner read (repos/{repo}) while the variable lists succeed; the code fails open correctly there (runner.py ring_gating_override), the gate's mutant gate-override-owner-fail-is-user survived."
+  - "Final re-gate LOW L2 (test gap): no test of a result whose partialFingerprints lacks the line hash; the code counts it, a regression costs at most 32 B per result, far under the measured 18x margin."
+  - "Final re-gate LOW L3 (FALSE_RED side only): an exception outside RecursionError/MemoryError/UnicodeEncodeError inside the SARIF checker's judge() exits 1, read as hosted-rejects; the CodeQL CLI never emits such a document."
   - "The runner's changed list is base..candidate two-dot (an explicit base the merger passes), hosted's is merge-base..HEAD; for the merger's candidates (a merge of the PR onto the base) the two lists are the same."
   - "A red BASE gate-flags corpus is a local FAIL of policy.trusted_classifier_corpus, while hosted runs both legs: stricter locally, never greener."
   - "No SARIF upload locally: the hosted workflows still upload while they exist; a local upload is for the day they go. What the upload can fail on and the code determines is reproduced (codeql_sarif_check.py); GitHub-side processing errors, API errors, the status-poll timeout and runner loss are parity_gaps."
