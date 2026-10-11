@@ -1,0 +1,147 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 — decisions and audit of the Visa Oracle retirement interview; the corpus is pinned
+  before the interview changes.
+mission: >-
+  The Visa Oracle walk corpus reaches every retirement outcome, as the regression base for the coming
+  retirement interview changes.
+lanes:
+  - lane: pr11-retirement-corpus
+    role: build
+    seat: Claude Sonnet 5 implementer, worktree mouth-vo-pr11-retcorpus-1011 on M5.
+  - lane: pr11-ground-truth
+    role: ground_truth
+    seat: >-
+      the signed rule pack the engine evaluates (el.e33e.retirement, el.e33f.retirement and the
+      hf.*.retirement-income-below-minimum dead ends); the change asserts no figure of its own, it
+      pins what the pack already answers.
+    nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-027.source.json
+    query_hash: "0ead320b328d6554f879697bfefcd5ad6edd67f77ac304341bc27f646976c3c0" # pragma: allowlist secret
+    note: query_hash = sha256 of rulepack-prod-027.source.json at origin/main.
+pii_scan: clean
+bites:
+  consumer: >-
+    the required CI census leg: on main the observer reads EXACTLY 13 age-64 retirement walks, split 10
+    SUPPORTED_CANDIDATES (4 [E33E, E33F], 6 [E33F] only) and 3 NO_SUPPORTED_PATH
+    (RETIREMENT_INCOME_BELOW_THRESHOLD), and the census replays them green on seq-20..27.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_retirement_corpus.py
+  expect: "contains:13 retirement walks, 10 SUPPORTED_CANDIDATES and 3 NO_SUPPORTED_PATH, replayed green"
+receipts:
+  - claim: The branch rebased cleanly onto origin/main (2 commits behind, 1 ahead, nothing pushed).
+    cmd: git rebase origin/main
+    result: "Rebase e aggiornamento di refs/heads/agent/air-m5/mouth/vo-pr11-retcorpus-1011 eseguiti con successo"
+    exit: 0
+    ts: "2026-10-11T13:05:00Z"
+    seat: this session
+  - claim: The backend census and age-boundary suites pass after the rebase.
+    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py backend/tests/services/visa_engine/test_fact_registry.py
+    result: "163 passed, 14 skipped"
+    exit: 0
+    ts: "2026-10-11T13:05:30Z"
+    seat: this session
+  - claim: The seq-21 pack suite, which replays the same walk corpus, passes with the corpus census (103 / 18 / 3 / 1) and the three pinned generic-sentence walks.
+    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine/test_seq21_pack.py
+    result: "52 passed"
+    exit: 0
+    ts: "2026-10-11T16:00:00Z"
+    seat: this session
+  - claim: The walk-corpus determinism suite passes with the 129-walk corpus.
+    cmd: cd apps/mouth && npx vitest run walk-corpus-determinism
+    result: "Test Files 1 passed (1), Tests 131 passed (131)"
+    exit: 0
+    ts: "2026-10-11T13:06:50Z"
+    seat: this session
+  - claim: The bites observer reads exactly 13 retirement walks split 10 / 3 and the census replays green.
+    cmd: python3 scripts/ci/observe_visa_retirement_corpus.py
+    result: "13 retirement walks, 10 SUPPORTED_CANDIDATES and 3 NO_SUPPORTED_PATH, replayed green (15 passed, name_their_cause now in the observer -k, MIN_TESTS 15)"
+    exit: 0
+    ts: "2026-10-11T13:06:00Z"
+    seat: this session
+decisions:
+  - id: D-corpus-before-interview
+    decision: >-
+      The retirement outcomes are pinned in the corpus and the census first, so the interview change
+      that follows shows its effect as a fixture diff and not as a silent drift.
+dissent:
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b, model verified in the rollout file)
+    objection: MEDIUM - the legacy client-copy guard fails on the new string 'facts' (i18n.ts, client-copy.test.ts).
+    status: RETRACTED
+    disposition: >-
+      Not applicable to this branch (finding 1): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b, model verified in the rollout file)
+    objection: MEDIUM - the no-door-copy bites observer is fail-open on skipped or reduced Vitest runs.
+    status: RETRACTED
+    disposition: >-
+      Not applicable to this branch (finding 2): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b, model verified in the rollout file)
+    objection: LOW - the new Indonesian no-door strings read unnaturally.
+    status: RETRACTED
+    disposition: >-
+      Not applicable to this branch (finding 3): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b, model verified in the rollout file)
+    objection: LOW - the 'with at least one door' test builds by hand the fields it should verify.
+    status: RETRACTED
+    disposition: >-
+      Not applicable to this branch (finding 4): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-20-01a129c7-c33f-70e2-a9bc-51c4d2d28740, model verified in the rollout file)
+    objection: >-
+      MEDIUM - the pack pointed at a brief_ref that does not exist.
+    status: RETRACTED
+    disposition: >-
+      Cured: brief_ref is the CI staging path evidence/brief.yml (the contract the harness floor stages the dated brief onto); the lint and the pre-push pack-lint are clean.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-20-01a129c7-c33f-70e2-a9bc-51c4d2d28740, model verified in the rollout file)
+    objection: >-
+      MEDIUM - the seq-20..27 pins were declared replayed but never exercised.
+    status: RETRACTED
+    disposition: >-
+      Cured: test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence replays the whole corpus on each pinned sequence's source pack and compares the 13 outcomes and the full state census to that sequence's literals (8 parametrized cases, 9 passed with the corpus-count test).
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-20-01a129c7-c33f-70e2-a9bc-51c4d2d28740, model verified in the rollout file)
+    objection: >-
+      MEDIUM - the Bites was fail-open on the 13-walk target.
+    status: RETRACTED
+    disposition: >-
+      Cured: scripts/ci/observe_visa_retirement_corpus.py requires exactly 13 pin rows split 10 SUPPORTED_CANDIDATES (4 + 6) and 3 NO_SUPPORTED_PATH, then a full pytest pass with no skip; it prints the numbers; unit tests in tests/scripts/test_observe_visa_retirement_corpus.py reject a lost walk or a shifted split.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-20-01a129c7-c33f-70e2-a9bc-51c4d2d28740, model verified in the rollout file)
+    objection: >-
+      LOW - a comment said every non-bank_deposit basis cannot produce E33E, contradicted by the undecided walk.
+    status: RETRACTED
+    disposition: >-
+      Cured: comment now limits the claim to the bases that decisively exclude the deposit and documents the undecided exception.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-20-01a129c7-c33f-70e2-a9bc-51c4d2d28740, model verified in the rollout file)
+    objection: >-
+      LOW - the corpus-count test name said 115 while it enforces 129.
+    status: RETRACTED
+    disposition: >-
+      Cured: renamed test_corpus_has_the_expected_real_interview_walks.
+  - seat: fresh Opus 5.5 gate (outside the contribution chain)
+    objection: >-
+      BLOCKER - test_seq21_pack.py::TestCensusReplay hard-codes 93 / 15 / 3 / 1 and the no-generic-sentence assertion; the 13 new walks broke both (2 failed at head).
+    status: RETRACTED
+    disposition: >-
+      Cured: census now 103 / 18 / 3 / 1 with the PR-11 arithmetic in the docstring, and the three income_2999 walks that still end on the generic sentence on the seq-21 pack are pinned by name (the named cause is a seq-23+ rule). TestCensusReplay 8 passed, whole file 52 passed.
+  - seat: fresh Opus 5.5 gate (outside the contribution chain)
+    objection: >-
+      MEDIUM - RETIREMENT_INCOME_BELOW_THRESHOLD on the 3 dead ends was only a comment; swapping the rule's reason_code stayed green.
+    status: RETRACTED
+    disposition: >-
+      Cured: test_retirement_income_dead_ends_name_their_cause_on_every_sequence_that_has_the_rule asserts the code on seq-23..27 and its absence on the SUPPORTED walks; mutating the reason_code of both hf rules in seq-27 turns it red (restored).
+  - seat: fresh Opus 5.5 gate (outside the contribution chain)
+    objection: >-
+      LOW - stale receipt (150 passed) and ground_truth lane naming the processing-times file.
+    status: RETRACTED
+    disposition: >-
+      Cured: receipt re-recorded at 163 passed, 14 skipped; the lane now names rulepack-prod-027.source.json with its origin/main sha256.
+  - seat: fresh Opus 5.5 gate (outside the contribution chain)
+    objection: >-
+      LOW (already on main) - no-path-doors.replay.json (seq-23) does not list the 3 new NO_SUPPORTED_PATH walks.
+    status: PLAUSIBLE
+    disposition: >-
+      Not changed here: the file belongs to the no-door lane and its fingerprint only hashes the walks it lists; follow-up for that lane, not a regression of this PR.
+  - seat: fresh Opus 5.5 gate (outside the contribution chain)
+    objection: >-
+      COSMETIC - ruff format on new hunks and observer files, stale '6 age-64' docstring, stale 'awaits a valid spalla' dissent text.
+    status: RETRACTED
+    disposition: >-
+      Cured: observer files and new hunks formatted, docstrings corrected (generator states no count, observer states 4 / 6), seq-21 comments fixed (seq-23, USD 3,000), dissent text updated; pre-existing unformatted code left alone.

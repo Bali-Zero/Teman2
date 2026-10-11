@@ -20,6 +20,24 @@
       "_note": "The plist of pro.disk_floor: StartInterval 1800, RunAtLoad, no KeepAlive."
     },
     {
+      "live": "~/scripts/pro-janitor.sh",
+      "repo": "infra/launchagents/wrappers/pro-janitor.sh",
+      "machines": ["pro"],
+      "_note": "launchd organ pro.janitor (com.nuzantara.janitor): the wrapper with the genes; runs the payload below under /usr/bin/python3 -I."
+    },
+    {
+      "live": "~/.nuzantara-cron/pro_janitor.py",
+      "repo": "scripts/ops/pro_janitor.py",
+      "machines": ["pro"],
+      "_note": "The payload of pro.janitor: tiers with hysteresis and a three-rule host-cache allowlist (Playwright .links pins honoured), dry-run until PRO_JANITOR_APPLY=true. Python 3.9, stdlib only."
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.janitor.plist",
+      "repo": "infra/launchagents/com.nuzantara.janitor.plist",
+      "machines": ["pro"],
+      "_note": "The plist of pro.janitor: StartInterval 600, RunAtLoad, no KeepAlive, PRO_JANITOR_APPLY=false."
+    },
+    {
       "live": "~/.fly/bin/fly_pg_tunnel_supervisor.sh",
       "repo": "scripts/fly_pg_tunnel_supervisor.sh",
       "machines": ["m5"],

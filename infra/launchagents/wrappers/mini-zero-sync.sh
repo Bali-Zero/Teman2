@@ -1,5 +1,5 @@
 #!/bin/bash
-# mini.zero_sync — one-way mirror of canonical main into FastLabsNet/zero main (every 30 min)
+# mini.zero_sync — one-way mirror of canonical main into FastLabsNet/zero main (every 5 min)
 # Canon: infra/launchagents/wrappers/mini-zero-sync.sh
 # Live:  ~/scripts/mini-zero-sync.sh (declared pair, node=mini)
 # Payload: scripts/zero_sync/zero_sync.py (README beside it). The payload writes the organ

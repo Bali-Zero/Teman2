@@ -660,6 +660,27 @@ async def test_payload_omitting_guardian_consent_key_is_200_not_422() -> None:
     assert response.status_code == 200
 
 
+@pytest.mark.parametrize("include_income", [True, False])
+async def test_payload_with_or_without_annual_foreign_income_is_200(
+    include_income: bool,
+) -> None:
+    """Step A Bites: old and new callers both cross the HTTP boundary."""
+
+    payload = _wire_payload(_facts_with_purposes(["REMOTE_WORK"]))
+    if include_income:
+        payload["facts"]["work.annual_foreign_income_usd"] = {
+            "status": "KNOWN",
+            "value": 85_000,
+        }
+    else:
+        payload["facts"].pop("work.annual_foreign_income_usd", None)
+
+    async with _client(_build_app(_UntouchedPool())) as client:
+        response = await client.post(_REAL_EVALUATE_URL, json=payload)
+
+    assert response.status_code == 200, response.text
+
+
 async def test_extra_top_level_key_is_422() -> None:
     payload = _wire_payload(_facts_with_purposes(["TOURISM"]))
     payload["bogus"] = 1

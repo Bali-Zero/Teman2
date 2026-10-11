@@ -203,6 +203,40 @@ describe("client-visible copy", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("the deposit-holder dead-end sentences (built from the visitor's answers) carry no engine jargon", () => {
+    const sentences: string[] = [];
+    for (const state_bank of ["yes", "no", "unsure"]) {
+      for (const own_name of ["yes", "no", "unsure"]) {
+        const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+        for (const code of [
+          "AGE_BELOW_55",
+          "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+        ]) {
+          response.decision.no_path_reasons[0].code = code;
+          const outcome = buildEngineOutcome(response, {
+            facts: {
+              category: "second_home",
+              secondhome_basis: "bank_deposit",
+              secondhome_deposit_usd: "200000",
+              secondhome_state_bank: state_bank,
+              secondhome_own_name: own_name,
+            },
+          });
+          if (outcome.state !== "NO_SUPPORTED_PATH") throw new Error("state");
+          const { en, id } = outcome.noPathReasons[0].message;
+          sentences.push(en, id);
+        }
+      }
+    }
+    expect(new Set(sentences).size).toBeGreaterThan(8);
+    const offenders = sentences.flatMap((value) =>
+      BANNED.filter((re) => re.test(withoutAllowed(value))).map(
+        (re) => `${re} :: ${value.slice(0, 80)}`,
+      ),
+    );
+    expect(offenders).toEqual([]);
+  });
+
   it("the dotted-identifier guard names a leaked field and spares placeholders and plain prose", () => {
     for (const leaked of [
       "The answer maps directly to work.indonesia_source_compensation.",

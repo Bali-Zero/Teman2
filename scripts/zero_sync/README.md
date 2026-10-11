@@ -1,6 +1,6 @@
 # zero_sync — canonical main -> FastLabsNet/zero main
 
-One-way mirror, run every 30 min by launchd on Mini (`com.nuzantara.zero-sync`, wrapper
+One-way mirror, run every 5 min by launchd on Mini (`com.nuzantara.zero-sync`, wrapper
 `infra/launchagents/wrappers/mini-zero-sync.sh`, organ `mini.zero_sync`).
 
 ## What it does

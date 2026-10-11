@@ -507,12 +507,12 @@ class Environment(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# FactPath — the closed 61-path fact vocabulary (57 applicant + 4 derived; spec §2 ``FactPath``)
+# FactPath — the closed 62-path fact vocabulary (58 applicant + 4 derived; spec §2 ``FactPath``)
 # ---------------------------------------------------------------------------
 
 
 class FactPath(str, Enum):
-    """Every fact path the engine may ever reference — 57 applicant-collected
+    """Every fact path the engine may ever reference — 58 applicant-collected
     + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
     ``sponsor.type`` for the sponsor-category question, 2026-08-10, by the
@@ -529,7 +529,10 @@ class FactPath(str, Enum):
     their own inline comments and
     ``backend/scripts/visa_engine/fold_pack_seq21.py``), and by
     ``person.guardian_consent`` (2026-09-21, Slice A7-B — see its own inline
-    comment for the grounding).
+    comment for the grounding), and last by ``work.annual_foreign_income_usd``
+    (2026-10-11, seq-28 step A — contract-only: the engine accepts the fact
+    with a NOT_ASKED rollout default; the mouth question is step B and the
+    pack rule step C).
 
     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
     ``required_facts`` array are both typed against this enum, so a rule
@@ -587,6 +590,12 @@ class FactPath(str, Enum):
     WORK_SERVES_INDONESIAN_CLIENTS = "work.serves_indonesian_clients"
     WORK_INDONESIA_SOURCE_COMPENSATION = "work.indonesia_source_compensation"
     WORK_INDONESIAN_WORK_SPONSOR_CONFIRMED = "work.indonesian_work_sponsor_confirmed"
+    # work.annual_foreign_income_usd — the applicant's declared yearly salary
+    # or income, in whole USD (Permenkumham 22/2023 Pasal 63(2): "gaji atau
+    # pendapatan", no source restriction; the foreign-employer contract is
+    # the separate Pasal 63(3)). The threshold lives only in the pack rule,
+    # never in code.
+    WORK_ANNUAL_FOREIGN_INCOME_USD = "work.annual_foreign_income_usd"
     # investment.*
     INVESTMENT_PT_PMA_COMMITTED = "investment.pt_pma_committed"
     INVESTMENT_INVESTMENT_CAPITAL_IDR = "investment.investment_capital_idr"
@@ -771,7 +780,7 @@ class FactPath(str, Enum):
     DERIVED_HAS_ACTIVE_STAY_PERMIT = "derived.has_active_stay_permit"
 
 
-#: The 57 applicant-collected paths (everything except ``derived.*``).
+#: The 58 applicant-collected paths (everything except ``derived.*``).
 APPLICANT_FACT_PATHS: frozenset[FactPath] = frozenset(
     path for path in FactPath if not path.value.startswith("derived.")
 )

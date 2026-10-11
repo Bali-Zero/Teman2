@@ -137,8 +137,36 @@ interesting points spawn round N+1 research. No round limit. Opus 5.5 orchestrat
 hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5); Sonnet implements; research outputs persisted under `research/visa/` in the worktree
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
-## LIVE STATE — CURRENT POSITION (updated 2026-10-10; update on every state change)
+## LIVE STATE — CURRENT POSITION (updated 2026-10-11; update on every state change)
 
+- **2026-10-11 position (E33 / retirement program; production pack still seq-27, boundary 2026-11-09T13:21:22Z).**
+  Census (scratch, read-only): interview space 1.1x10^14 combinations (exact DAG count); 256 covering walks =
+  186 SUPPORTED / 57 NO_SUPPORTED_PATH / 9 HUMAN_REVIEW / 4 NEEDS_INPUT, 0 errors; offline replay == live 256/256.
+  Correctness is proven only where expectations exist: scenario corpus 116/116 (129 after #8258), gold 20/20.
+  E33 audit (90-agent swarm, 61 confirmed findings, 5 HIGH, 20-PR plan, 22 owner decisions); batch 1 decided by Zero
+  2026-10-11: ONE seq-28 signing with the E33 content fixes + the freshness re-stamp before 2026-11-05; E33G real
+  income gate (interview question on annual foreign-employment income + rule excluding < USD 60,000/yr, stating the
+  figure); retirement under 55 gets a notice right after the tile WITH "Continue"; E33A/B/C "price on consultation",
+  never an invented price. Batch 2 decisions still open (documents checklist, onshore prices, property route/Hak Pakai,
+  dependants, deposit commitment timing, 55-59 caveat E33F, E33B/E33C scope, single timeline, F7 article mislabelling,
+  E33D note, extension/10-year model). LIVE today, each proven on production: #8246 (`033772cbdc`) dead end with no
+  open door no longer promises one; #8256 (`c4d6ff4005`) Second Home deposit not at a state bank / not own name has its
+  own reason; #8258 (`17c363faaa`) 13 age-64 retirement walks + per-sequence census pins; #8259 (`666926365c`) E33/E33E
+  price rows no longer say "non-working" (E33F rows deliberately unchanged). In flight: #8265 (retirement reasons name
+  USD 3,000/month and USD 50,000; merge queue), #8266 (E33-family copy; armed), R3 (drop the sponsor question from
+  retirement; ship pipeline), R2 (retirement_age_notice, RETIREMENT_MIN_AGE=55 pinned to the pack; waits for R3), seq-28
+  step A (engine accepts work.annual_foreign_income_usd, default NOT_ASKED). seq-28 chain: A engine fact -> B mouth
+  question + E33G_INCOME_BELOW_THRESHOLD copy (only after A is live) -> C fold on top of the weekly organ's re-stamp
+  candidate (E33E pricing_key -> "E33E Second Home Senior (5 Years)" 45M; AGE_BELOW_55 scoped to RETIREMENT; E33G
+  gte 60000 rule; re-derive gold personas 1/3/4) -> D fingerprint check, adversarial seat, two-titolare council, sign on
+  M5, two-login activation from Pro. Proof = sentinel `OK pack_sequence 28` + `/evaluate` sequence 28; target ~2026-10-19/20;
+  activation needs B live. Fallback (needs Zero): if content is not ready by 11-05, sign the plain re-stamp as seq-28 and
+  move content to seq-29. Regulation check: Permenimipas 3/2025 Pasal 45 revokes only Pasal 43, 45, 52-55 of Permenkumham
+  22/2023 (spouse/child-of-WNI, ex-WNI); E33 articles 56-63 stay (incl. 63(2) USD 60,000/yr); pack copies byte-identical;
+  no citation change for seq-28 (peraturan.go.id listing unverified, site unreachable; follow-up: any E31 rule resting on
+  Pasal 43/45). **Ops note:** the M5 main checkout was 146 commits behind origin/main on 2026-10-11 and
+  `.claude/skills/visaoracle` is a symlink into it, so M5 sessions read a stale corner skill until it is fast-forwarded
+  (owner action). Detail: `references/live-state-log.md`.
 - **Active production pack: seq-27 since 2026-10-10T05:23Z (activation `471bddfa-0423-4fa1-b11f-2d9617615a19`,
   PR #8209, merge `2478b87561`; successor of #8204; supersedes organ candidate #8105).** seq-26 with only the 18
   `OFFICIAL_PORTAL` stamps moved to `2026-10-08T13:21:22Z` by the weekly organ; rules, products and prices
@@ -273,6 +301,7 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   interview Δ1 (`family_sponsor_confirmed` on retirement/property + undecided) → PR-O4
   review-cause explanation Δ2 + neutral contact fallback. Owner decisions D1/D5/D6 recorded on
   the Mini desk 2026-09-11. Released in PR-O4.
+- **TRACK C claimed by air-m5/2026-10-11 — E33/retirement program (audit 2026-10-11, owner decisions 1-4); released when the seq-28 chain and R2 land.**
 
 Full chronology: `references/live-state-log.md` (read the newest entries before claiming a track).
 

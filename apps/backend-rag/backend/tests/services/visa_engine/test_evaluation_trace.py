@@ -113,11 +113,17 @@ def test_trace_golden_vector_and_observed_clock_invariance() -> None:
     # snapshot, so 02_business_c2 gaining one more UNKNOWN key moves it
     # independent of whether any compiled rule reads that key.
     #
+    # Moved a seventh time 2026-10-11 (`8ae9f577…` -> `3d5dde06…`) when
+    # seq-28 Step A registered `work.annual_foreign_income_usd`. No pack
+    # rule ships in this step, so the trace node set and decisions stay
+    # unchanged; only the whole-snapshot `facts_hmac` input gained the new
+    # UNKNOWN/NOT_ASKED fact.
+    #
     # If this literal ever moves again while the node set or a persona's
     # decision ALSO changed, that is a behaviour change wearing a fixture's
     # clothes — do not update the number, find out what evaluated differently.
     assert (
-        first.trace.sha256() == "8ae9f577300e79f93b8d59878e6a04026a9e23e9f5b6c24b5bebf8605edbe240"
+        first.trace.sha256() == "3d5dde0631fea23ff31c8ffee1df2ec228922da89ffbe736444fc9f03aa9233c"
     )
     assert first.decision.trace_sha256 == first.trace.sha256()
     assert second.trace == first.trace

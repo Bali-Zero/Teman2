@@ -55,6 +55,7 @@ const applicantFactPaths = {
   "study.admission_confirmed": true,
   "study.level": true,
   "study.sponsor_confirmed": true,
+  "work.annual_foreign_income_usd": true,
   "work.employer_country_code": true,
   "work.employer_is_indonesian_entity": true,
   "work.indonesia_source_compensation": true,
@@ -63,3 +64,15 @@ const applicantFactPaths = {
 } satisfies Record<keyof components["schemas"]["ApplicantFactsData"], true>;
 
 export const APPLICANT_FACT_COUNT = Object.keys(applicantFactPaths).length;
+
+/**
+ * Backend fact paths the deployed frontend deliberately does not send yet
+ * (ordered rollout: engine first, mouth question after). Seq-28 step B
+ * empties this set. Consumers that count emitted keys subtract it.
+ */
+export const ORDERED_ROLLOUT_OPTIONAL_PATHS: ReadonlySet<string> = new Set([
+  "work.annual_foreign_income_usd",
+]);
+
+export const FRONTEND_EMITTED_FACT_COUNT =
+  APPLICANT_FACT_COUNT - ORDERED_ROLLOUT_OPTIONAL_PATHS.size;

@@ -229,9 +229,9 @@ const en = {
   "why.sponsor_government_collaboration":
     "Only your yes or no about a confirmed government collaboration is used here.",
   "q.sponsor_world_figure_invitation":
-    "Has an Indonesian government body invited you as a world figure — a person of international standing?",
+    "Do you have an invitation letter from an Indonesian central-government agency inviting you as a world figure — a person of international standing?",
   "q.sponsor_world_figure_invitation.hint":
-    "Answer yes only if a government body has invited you in that capacity.",
+    "Answer yes only if the invitation letter is from an Indonesian central-government agency and invites you in that capacity.",
   "why.sponsor_world_figure_invitation":
     "Only your yes or no about a world-figure invitation is used here.",
   // One clause, not two: the wire fact `sponsor.diplomatic_household` is a
@@ -1266,9 +1266,9 @@ const id: Record<Keys, string> = {
   "why.sponsor_government_collaboration":
     "Hanya jawaban ya atau tidak Anda tentang kolaborasi pemerintah yang terkonfirmasi yang dipakai di sini.",
   "q.sponsor_world_figure_invitation":
-    "Apakah instansi pemerintah Indonesia mengundang Anda sebagai tokoh dunia — seseorang dengan reputasi internasional?",
+    "Apakah Anda memiliki surat undangan dari instansi pemerintah pusat Indonesia yang mengundang Anda sebagai tokoh dunia — seseorang dengan reputasi internasional?",
   "q.sponsor_world_figure_invitation.hint":
-    "Jawab ya hanya jika instansi pemerintah telah mengundang Anda dalam kapasitas tersebut.",
+    "Jawab ya hanya jika surat undangan tersebut berasal dari instansi pemerintah pusat Indonesia dan mengundang Anda dalam kapasitas tersebut.",
   "why.sponsor_world_figure_invitation":
     "Hanya jawaban ya atau tidak Anda tentang undangan sebagai tokoh dunia yang dipakai di sini.",
   "q.sponsor_diplomatic_household":

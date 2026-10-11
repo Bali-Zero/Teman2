@@ -214,7 +214,6 @@ const CATEGORY_CASES: ReadonlyArray<{
   {
     category: "retirement",
     branch: [
-      ["sponsor_category", "NONE"],
       ["retirement_basis", "passive_income"],
       ["secondhome_passive_income_usd", "3000"],
       ["retirement_penjamin_confirmed", "yes"],
@@ -309,7 +308,6 @@ describe("retirement evidence branches", () => {
     [
       "bank_deposit",
       [
-        "sponsor_category",
         "retirement_basis",
         "secondhome_deposit_usd",
         "secondhome_state_bank",
@@ -322,7 +320,6 @@ describe("retirement evidence branches", () => {
     [
       "passive_income",
       [
-        "sponsor_category",
         "retirement_basis",
         "secondhome_passive_income_usd",
         "retirement_penjamin_confirmed",
@@ -332,7 +329,6 @@ describe("retirement evidence branches", () => {
     [
       "family_sponsor",
       [
-        "sponsor_category",
         "retirement_basis",
         "secondhome_passive_income_usd",
         "retirement_penjamin_confirmed",
@@ -384,7 +380,6 @@ describe("retirement evidence branches", () => {
     ({ basis, answers }) => {
       let state = startOffshore("retirement");
       state = answer(state, "trip_scope", "single");
-      state = answer(state, "sponsor_category", "NONE");
       state = answer(state, "retirement_basis", basis);
       for (const [questionId, value] of answers) {
         state = answer(state, questionId, value);
@@ -396,7 +391,6 @@ describe("retirement evidence branches", () => {
   it("prunes deposit evidence when the retirement basis changes", () => {
     let state = startOffshore("retirement");
     state = answer(state, "trip_scope", "single");
-    state = answer(state, "sponsor_category", "NONE");
     state = answer(state, "retirement_basis", "bank_deposit");
     state = answer(state, "secondhome_deposit_usd", "100000");
     state = answer(state, "secondhome_state_bank", "yes");
@@ -1518,7 +1512,6 @@ describe("PR-3 · the second_home branch (owner ruling 3)", () => {
         retirement_basis: "property",
       }),
     ).toEqual([
-      "sponsor_category",
       "retirement_basis",
       "secondhome_property_value_usd",
       // Added (PR-D3, D3-3): `property` now asks the same E33F fallback
