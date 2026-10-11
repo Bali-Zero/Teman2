@@ -282,8 +282,15 @@ def test_the_timeouts_hold_a_cold_build_inside_one_tick():
     plan, and the tick watchdog holds plan + run + status."""
     runner_src = (_MODULE.parent / "runner.py").read_text()
     m = re.search(r"^DEPS_BUILD_TIMEOUT_S = (\d+)", runner_src, re.M)
-    assert m and "timeout=DEPS_BUILD_TIMEOUT_S" in runner_src
+    assert m
     build = int(m.group(1))
+    import ast   # the docker build call's timeout kwarg must BE the constant, not an expression of it
+    builds = [c for c in ast.walk(ast.parse(runner_src)) if isinstance(c, ast.Call) and c.args and isinstance(c.args[0], ast.List)
+              and len(c.args[0].elts) > 1 and isinstance(c.args[0].elts[1], ast.Constant) and c.args[0].elts[1].value == "build"]
+    assert builds, "the runner's docker build call was not found"
+    for c in builds:
+        kw = {k.arg: k.value for k in c.keywords}
+        assert isinstance(kw.get("timeout"), ast.Name) and kw["timeout"].id == "DEPS_BUILD_TIMEOUT_S", ast.unparse(c)[:120]
     assert build >= 2 * 3552   # twice the measured cold build: a slower network day still finishes
     assert mg.PLAN_TIMEOUT_S >= build + 300
     ap_defaults = {}
@@ -301,6 +308,11 @@ def test_the_timeouts_hold_a_cold_build_inside_one_tick():
         mg.argparse.ArgumentParser.parse_args = real
     assert ap_defaults["plan_timeout"] == mg.PLAN_TIMEOUT_S and ap_defaults["tick_timeout"] == mg.TICK_TIMEOUT_S
     assert mg.TICK_TIMEOUT_S >= ap_defaults["plan_timeout"] + ap_defaults["run_timeout"] + 900 + 300
+    # The heartbeat is written when the wrapper exits: the healer calls the organ dead past expected_hb_seconds x DEAD_MULTIPLIER
+    # (3), so the longest legal tick plus one StartInterval must stay under it, or a slow cold tick opens a spurious cure session.
+    reg = (_MODULE.parents[2] / "apps" / "organism" / "organism" / "organs_registry.yaml").read_text()
+    hb = re.search(r"^- id: pro\.localci_merger\n(?:  .*\n)*?  expected_hb_seconds: (\d+)$", reg, re.M)
+    assert hb and int(hb.group(1)) * 3 > mg.TICK_TIMEOUT_S + 600
 
 
 def test_only_the_seal_printed_before_candidate_code_runs_is_passed_on(world, monkeypatch):
