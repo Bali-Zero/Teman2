@@ -158,6 +158,13 @@ const en = {
     "We ask because the applicant is under 18. We record only your answer to this question — no name, no document, no contact details.",
   "why.guardian_consent":
     "The date of birth shows an applicant under 18, so we ask whether a parent or legal guardian is present. Without one, this tool names no visa.",
+  "q.retirement_age_notice":
+    "The retirement visas start at age 55, and the date of birth you gave is below that.",
+  "q.retirement_age_notice.hint":
+    "You turn 55 on {{date}}. You can still go on and see the formal result, or look at another route.",
+  "q.retirement_age_notice.opt.continue": "Continue to the formal result",
+  "q.retirement_age_notice.opt.second_home": "Look at Second Home",
+  "q.retirement_age_notice.opt.change": "Change my answers",
 
   "lane.expired.notice":
     "Your permit has already expired. We will still check your options; please talk to a Bali Zero advisor about your next step.",
@@ -1192,6 +1199,13 @@ const id: Record<Keys, string> = {
     "Kami menanyakan ini karena pemohon berusia di bawah 18 tahun. Kami hanya mencatat jawaban Anda atas pertanyaan ini — tanpa nama, tanpa dokumen, tanpa data kontak.",
   "why.guardian_consent":
     "Tanggal lahir menunjukkan pemohon berusia di bawah 18 tahun, jadi kami menanyakan apakah orang tua atau wali sah hadir. Tanpa mereka, alat ini tidak menyebutkan visa.",
+  "q.retirement_age_notice":
+    "Visa pensiun mulai pada usia 55 tahun, dan tanggal lahir yang Anda berikan di bawahnya.",
+  "q.retirement_age_notice.hint":
+    "Anda berusia 55 tahun pada {{date}}. Anda tetap dapat melanjutkan untuk melihat hasil resminya, atau melihat jalur lain.",
+  "q.retirement_age_notice.opt.continue": "Lanjutkan ke hasil resminya",
+  "q.retirement_age_notice.opt.second_home": "Lihat Second Home",
+  "q.retirement_age_notice.opt.change": "Ubah jawaban saya",
 
   "lane.expired.notice":
     "Izin tinggal Anda sudah berakhir. Kami tetap memeriksa pilihan Anda; silakan bicarakan langkah berikutnya dengan konsultan Bali Zero.",

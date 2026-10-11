@@ -352,7 +352,7 @@ import functools
 import json
 from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -2202,6 +2202,36 @@ def candidate_funnel_named(
     walks: dict[str, dict[str, Any]], candidate_pack: PackUnderTest
 ) -> dict[str, tuple[str, ...]]:
     return _funnel_named_products(walks, candidate_pack)
+
+
+def test_r2_retirement_walks_below_55_visit_the_age_notice_and_the_rest_do_not(
+    walks: dict[str, dict[str, Any]],
+) -> None:
+    """R2 (2026-10-11): the interview shows ``retirement_age_notice`` right
+    after ``trip_scope`` to a retirement visitor below 55 on the corpus clock
+    (the generator takes its one option, Continue, so every outcome pin above
+    is unchanged). The age-64 walks never see it. Derived from each walk's own
+    birth date, so a walk added later is judged by the same rule.
+    """
+
+    retirement = {
+        label: spec for label, spec in walks.items() if "retirement_basis" in spec["asked"]
+    }
+    assert retirement, "no retirement walk in the corpus: the check below would be vacuous"
+    visited = {k for k, v in retirement.items() if "retirement_age_notice" in v["asked"]}
+    below_55 = set()
+    for label, spec in retirement.items():
+        born = date.fromisoformat(str(spec["overrides"]["person.birth_date"]["value"]))
+        today = date(2026, 9, 6)
+        age = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+        if age < 55:
+            below_55.add(label)
+    assert below_55, "no retirement walk below 55: the notice is never visited"
+    assert visited == below_55
+    for label in visited:
+        asked = walks[label]["asked"]
+        assert asked.index("retirement_age_notice") == asked.index("trip_scope") + 1
+        assert asked.index("retirement_age_notice") + 1 == asked.index("retirement_basis")
 
 
 def test_corpus_has_the_expected_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
