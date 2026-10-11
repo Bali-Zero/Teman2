@@ -1,0 +1,17 @@
+gear: 1
+gear_reason: >-
+  Test-only change (one new backend test file, about 200 lines), no product code, no data, no pack
+  and no copy; it only reads the signed pack and the price catalogue. Size floor not reached.
+mission: >-
+  The price a Visa Oracle visitor is quoted for E23 is pinned against the real price catalogue on the
+  highest signed pack, and E23U and E23V are pinned as deliberately unpriced.
+objective: >-
+  A backend test asserts that E23 prices from the Working KITAS (Offshore) catalogue row and is quoted
+  AVAILABLE at IDR 34,500,000 through the real PricingService, that E23U and E23V carry no pricing key and
+  resolve to CONTACT_REQUIRED / PRICING_KEY_NOT_CONFIGURED with no amount, and that an edited row amount, a
+  deleted row and a re-aimed key each turn the pin red.
+scope:
+  - apps/backend-rag/backend/tests/services/visa_engine/test_e23_family_pricing.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0

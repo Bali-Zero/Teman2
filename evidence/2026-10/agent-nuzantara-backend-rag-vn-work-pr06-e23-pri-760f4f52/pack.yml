@@ -1,0 +1,56 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night family "work", plan PR-06 (finding F39, group G24): no test pinned the E23-family price or the
+  unpriced state of E23U and E23V against the real catalogue on the active pack, so an edit of the row amount
+  passed CI. Test-only; no owner decision, no pack change.
+mission: >-
+  The price a Visa Oracle visitor is quoted for E23 is pinned against the real price catalogue on the
+  highest signed pack, and E23U and E23V are pinned as deliberately unpriced.
+lanes:
+  - lane: pr06-e23-price-pins
+    role: build
+    seat: Claude Sonnet 5.5 implementer, worktree backend-rag-vn-work-pr06-e23-price-pins on Pro.
+pii_scan: clean
+spend:
+  wall_clock_hours: 0.5
+  adversarial_rounds: 0
+  paid_endpoint_usd: 0
+results:
+  - claim: "The new file passes on the fresh tree (HEAD == origin/main dfb6e2b74a)."
+    cmd: cd apps/backend-rag && PYTHONPATH=. ./.venv/bin/python -m pytest backend/tests/services/visa_engine/test_e23_family_pricing.py
+    result: "14 passed"
+    exit: 0
+    ts: "2026-10-12T12:00:00Z"
+    seat: this session
+  - claim: "Mutation 1 - the Working KITAS (Offshore) row amount edited from 34.500.000 to 35.000.000 IDR in the catalogue turns three pins red; the file was restored byte-for-byte."
+    cmd: same pytest command, catalogue row edited then restored from a copy
+    result: "3 failed, 11 passed (assert 35000000 == 34500000 in the row pin, the real-service quote and the signed quote)"
+    exit: 1
+    ts: "2026-10-12T12:02:00Z"
+    seat: this session
+  - claim: "Mutation 2 - the row key renamed turns the row pin, the quote and the guilt twins red (PRICING_ROW_MISSING)."
+    cmd: same pytest command, catalogue key renamed then restored from a copy
+    result: "5 failed, 9 passed"
+    exit: 1
+    ts: "2026-10-12T12:03:00Z"
+    seat: this session
+  - claim: "Mutation 3 - E23U given the E23 pricing key in the signed payload turns the unpriced pin red; the pack was restored byte-for-byte."
+    cmd: same pytest command, signed pack edited then restored from a copy
+    result: "2 failed, 12 passed (pricing key not None; AVAILABLE != CONTACT_REQUIRED)"
+    exit: 1
+    ts: "2026-10-12T12:04:00Z"
+    seat: this session
+  - claim: "The whole visa_engine backend suite, Python 3.11 venv. The 2 failures and 31 errors are all asyncpg/schema errors from the shared local scratch Postgres (TooManyColumnsError, UndefinedColumnError policy_scope, migration 264/281 not live); none touches pricing or this file, which reads only JSON."
+    cmd: cd apps/backend-rag && PYTHONPATH=. ./.venv/bin/python -m pytest backend/tests/services/visa_engine
+    result: "2977 passed, 15 skipped, 2 failed, 31 errors (all DB-environmental)"
+    exit: 1
+    ts: "2026-10-12T12:08:00Z"
+    seat: this session
+  - claim: "git status is clean apart from the new test file and this evidence dir (catalogue and signed pack restored)."
+    cmd: git status --short
+    result: "only the test file and the evidence dir"
+    exit: 0
+    ts: "2026-10-12T12:09:00Z"
+    seat: this session
+dissent: []
