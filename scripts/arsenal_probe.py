@@ -354,7 +354,8 @@ _QUOTA_DEAD_PAT = re.compile(
 )
 _BALANCE_DEAD_PAT = re.compile(r"\b402\b|insufficient balance|out of credits", re.IGNORECASE)
 _MODEL_ERR_PAT = re.compile(
-    r"\b1211\b|unknown model|model is not supported|model requires a newer version",
+    r"\b1211\b|unknown model|model is not supported|model requires a newer version|"
+    r"access to model denied|eligible for using the model",
     re.IGNORECASE,
 )
 _SHED_PAT = re.compile(r"\b529\b|overloaded", re.IGNORECASE)
@@ -1609,6 +1610,13 @@ _SELFTEST_CANNED = [
         'newer version of Codex. Please upgrade to the latest app or CLI and try again."}}',
         MODEL_ERR,
         "codex gpt-6-astra needs newer CLI (real observed evidence, 2026-09-07, was UNKNOWN_ERR)",
+    ),
+    (
+        "tp1-glm-5.2",
+        'HTTP 403 {"error":{"message":"Access to model denied. Please make sure you are '
+        'eligible for using the model.","id":"<REDACTED>","type":"<REDACTED>","code":"<REDACTED>"}}',
+        MODEL_ERR,
+        "tp1 seat model-entitlement denied (real observed evidence, 2026-10-12, was UNKNOWN_ERR)",
     ),
 ]
 
