@@ -199,8 +199,6 @@ on:
       - P9 Cost Breaker (GOVERN)
       - pajak-monitor tests
       - PR size taxonomy (advisory)
-      - Monthly PG Restore Drill
-      - Restore drill wiring tests
       - Promotion readiness tests
       - queue doctor tests
       - r19-wrapper-census-tests
@@ -316,6 +314,9 @@ on:
       # Added 2026-10-10 (zero-sync-tests.yml, the canonical -> FastLabsNet/zero mirror organ's offline corpus).
       # Listed by its declared name:, caught by check_watcher_coverage.py on that PR's own first run.
       - Zero sync tests
+      # Added 2026-10-12 (restore-drill-tests.yml, the mini.restore_drill organ's offline corpus and the
+      # Level-5 verifier's tests). Listed by its declared name:, as check_watcher_coverage.py requires.
+      - Restore drill tests
       # Added 2026-08-29 (Handoff H3, token-contrast-tests.yml): ADVISORY job
       # (continue-on-error: true — see the workflow's own header comment).
       # check_watcher_coverage.py's contract is name-set membership against

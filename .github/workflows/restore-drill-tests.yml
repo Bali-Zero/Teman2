@@ -1,6 +1,6 @@
 name: Restore drill tests
 
-# Executor for the corpus that proves the mini.restore_drill organ -- the monthly disaster-recovery
+# Executor for the corpora that prove the mini.restore_drill organ and its Level-5 verifier -- the monthly disaster-recovery
 # proof that restores the newest Tigris pg_dump on Mini. Offline: synthetic dump snippets, no docker,
 # no network. Without this file the corpus is collected by nothing that gates (superscar #2).
 
@@ -8,6 +8,8 @@ on:
   pull_request:
     paths:
       - "scripts/restore_drill/**"
+      - "scripts/ci/restore_drill_verify.py"
+      - "scripts/tests/test_restore_drill_verify.py"
       - "infra/launchagents/wrappers/mini-restore-drill.sh"
       - "infra/launchagents/com.nuzantara.restore-drill.plist"
       - ".github/workflows/restore-drill-tests.yml"
@@ -16,6 +18,8 @@ on:
       - main
     paths:
       - "scripts/restore_drill/**"
+      - "scripts/ci/restore_drill_verify.py"
+      - "scripts/tests/test_restore_drill_verify.py"
       - "infra/launchagents/wrappers/mini-restore-drill.sh"
       - "infra/launchagents/com.nuzantara.restore-drill.plist"
       - ".github/workflows/restore-drill-tests.yml"
@@ -44,6 +48,9 @@ jobs:
 
       - name: The role scan, payload and wrapper behave as specified
         run: python -m pytest scripts/restore_drill/tests -q -p no:cacheprovider
+
+      - name: The Level-5 restore verifier behaves as specified
+        run: python -m pytest scripts/tests/test_restore_drill_verify.py -q -p no:cacheprovider
 
       - name: The shell files still parse (a syntax error is a silent dead organ)
         run: |

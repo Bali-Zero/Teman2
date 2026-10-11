@@ -2,6 +2,11 @@
 # mini.restore_drill — monthly proof that the newest Tigris pg_dump is restorable.
 # Canon: infra/launchagents/wrappers/mini-restore-drill.sh
 # Live:  ~/scripts/mini-restore-drill.sh (declared pair, node=mini)
+#
+# Where a failure lands: the error heartbeat (the organism board reads it) and a p0 through
+# scripts/tg_notify.py. The gateway routes a p0 whose family is not owner-reserved to the
+# escalation board as a seat-actionable row (ladder-deduped), not to Telegram: the same path
+# healer-mini's p0s take. A failed DR proof is a seat's to investigate. Success goes to the digest.
 
 set -u
 umask 077

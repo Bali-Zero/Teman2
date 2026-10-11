@@ -35,7 +35,6 @@
     ".github/workflows/hot-zone-pr-gate.yml",
     ".github/workflows/main-push-failure-watch.yml",
     ".github/workflows/merge-queue-watch.yml",
-    ".github/workflows/restore-drill.yml",
     ".github/workflows/telegram-secret-healthcheck.yml",
     "agent-library/scar_replay/scar-replay-run.sh",
     "agent-library/scar_replay/world-scan-run.sh",
