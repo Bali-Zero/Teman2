@@ -840,3 +840,4 @@ apakah	function	whether, is … ?: "Apakah kode ini diblokir moratorium?" (chat.
 berapa	function	how much: "Berapa modal minimum yang dibutuhkan?" (chat.suggest2)
 dibutuhkan	ui	needed: "modal minimum yang dibutuhkan?"
 jangka	ui	term, span: "Jangka waktu" (time limit), "Risiko · Jangka waktu"
+prosedur	ui	procedure: "PROSEDUR NASIONAL (REFERENSI)" (KBLIRegistryView)

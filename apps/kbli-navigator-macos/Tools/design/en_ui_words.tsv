@@ -48,3 +48,5 @@ intel	card: "Gold-Tier Intel"
 detail	ledger: "tap a cell for detail" (and "ketuk sel untuk detail")
 steps	ledger: "The national steps for this code"
 path	ledger: "NOT a path for a PT PMA in Bali"
+let	ledger: KBLIRegistryView's opener, "Let me walk you through it." (drawn in both modes)
+me	ledger: KBLIRegistryView's opener, "Let me walk you through it." (drawn in both modes)
