@@ -135,6 +135,8 @@ let rc: Int32 = MainActor.assumeIsolated {
         emit(k.kode, "registry-row", KBLIRegistryRow(kbli: k, isID: isID), anchors: c + [risk])
         emit(k.kode, "registry-sheet", RegistryVerdictSheet(kbli: k, expanded: .constant(false), onClose: {}, scrolls: false),
              anchors: c + [isID ? "Buka dosir lengkap" : "Open the full dossier"])
+        emit(k.kode, "registry-sheet-open-imm", RegistryVerdictSheet(kbli: k, expanded: .constant(true), onClose: {}, scrolls: false).immersiveHost(),
+             anchors: c + [isID ? "Tutup dosir" : "Collapse dossier"])
         // The sheet the user reads with the dossier open: the only live caller of the ledger (PR 5' gate binding).
         emit(k.kode, "registry-sheet-open", RegistryVerdictSheet(kbli: k, expanded: .constant(true), onClose: {}, scrolls: false),
              anchors: c + [isID ? "Tutup dosir" : "Collapse dossier"])

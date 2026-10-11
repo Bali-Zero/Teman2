@@ -40,7 +40,9 @@ if [ -n "${IMM:-}" ]; then
       shot $b --imm --theme $t --lang $l --code ${IMMCODE[$b]} "$OUT/imm/$b-$t-$l.png"; done; done
     shot $b --imm --theme day --lang en --code ${IMMCODE[$b]} --width 948 "$OUT/imm/narrow/$b-day-en.png"
   done
-  shot registry-sheet --imm --sheet-open --theme day --lang en --code 56101 --height 2200 "$OUT/imm/registry-sheet-open-day-en.png"
+  # The expanded live sheet, immersive: what the user sees (scale path as the matrix, ring, hint). 71109 has 29 scopes.
+  for c in 56101 55203 71109; do for t in day night; do for l in en id; do
+    shot registry-sheet --imm --sheet-open --theme $t --lang $l --code $c --height 3200 "$OUT/imm/sheet-open-$c-$t-$l.png"; done; done; done
 fi
 [[ -n $CENSUS_IDENTITY ]] && echo "census collector: $same PNGs byte-identical with and without it"
 echo "render_set: $(find "$OUT" -name '*.png' | wc -l | tr -d ' ') PNGs in $OUT, $fails failed"

@@ -11,6 +11,10 @@ struct ScalePathGrid: View {
     let isID: Bool
     /// `.ledger` adds the 80 pt label column and the authority line, as `ScaleMatrix(.ledger)` draws them.
     var mode: ScaleMatrix.Mode = .compact
+    /// The live panel's shown cell (an index into `scales`): a chip selects it, the path's picked scale follows it.
+    var selection: Binding<Int?>? = nil
+    /// Draw only this scope's rows (the six-or-more selector's pick); the indices stay those of `scales`.
+    var onlyScope: String? = nil
     @EnvironmentObject var lang: LanguageManager
     @Environment(\.accessibilityReduceMotion) private var systemReduce
     @State private var picked: String?
@@ -30,8 +34,12 @@ struct ScalePathGrid: View {
     }
 
     var body: some View {
-        let scs = ScaleMatrix.scopes(scales)
-        let sel = picked ?? initial(scs)
+        let scs = ScaleMatrix.scopes(scales).filter { onlyScope == nil || $0.id == onlyScope }
+        let shownScale = selection?.wrappedValue.flatMap { i in
+            scales.indices.contains(i) ? order.reversed().first { scales[i].skalaUsaha.contains($0) && published($0, scs) } : nil
+        }
+        let snapScale = ScalePath.snapshotFocus.flatMap { order.contains($0) ? $0 : nil }
+        let sel = picked ?? snapScale ?? shownScale ?? initial(scs)
         let selIdx = order.firstIndex(of: sel) ?? 0
         VStack(alignment: .leading, spacing: 8) {
             if mode == .compact {
@@ -42,7 +50,7 @@ struct ScalePathGrid: View {
                 GridRow {
                     if mode == .ledger { Color.clear.frame(width: 80, height: 1) }
                     ForEach(Array(order.enumerated()), id: \.element) { i, s in
-                        node(s, index: i, selected: i == selIdx, reached: i <= selIdx, hasRow: published(s, scs))
+                        node(s, index: i, selected: i == selIdx, reached: i <= selIdx, hasRow: published(s, scs), pick: { pick(s, scs) })
                             .anchorPreference(key: PathEdges.self, value: .bounds) { [$0] }
                     }
                 }
@@ -108,21 +116,34 @@ struct ScalePathGrid: View {
             }
             .focusable()
             .focused($pathFocused)
-            .onKeyPress(.leftArrow) { move(-1, from: selIdx); return .handled }
-            .onKeyPress(.rightArrow) { move(1, from: selIdx); return .handled }
+            .onKeyPress(.leftArrow) { move(-1, from: selIdx, scs); return .handled }
+            .onKeyPress(.rightArrow) { move(1, from: selIdx, scs); return .handled }
+            if selection != nil {
+                Text(LabelBook.cellHint(isID: isID)).font(Theme.scalable(10)).foregroundStyle(Theme.faint)
+            }
         }
     }
 
-    private func move(_ d: Int, from i: Int) {
-        let n = min(order.count - 1, max(0, i + d))
-        withAnimation(Theme.motion(systemReduce || Motion.forceReduce)) { picked = order[n] }
+    private func move(_ d: Int, from i: Int, _ scs: [ScaleMatrix.Scope]) {
+        pick(order[min(order.count - 1, max(0, i + d))], scs)
+    }
+
+    /// Light a scale. With a shown cell, the cell moves to that scale in the same scope (else the first scope that has one);
+    /// a scale with no published row is only focused, the honest gap.
+    private func pick(_ scale: String, _ scs: [ScaleMatrix.Scope]) {
+        withAnimation(Theme.motion(systemReduce || Motion.forceReduce)) {
+            guard let selection else { picked = scale; return }
+            let all = scs.flatMap { ScaleMatrix.entries($0, scale) }
+            guard let first = all.first else { picked = scale; return }
+            let here = selection.wrappedValue.flatMap { i in scs.first { $0.rows.contains { $0.idx == i } } }
+            selection.wrappedValue = here.flatMap { ScaleMatrix.entries($0, scale).first }?.idx ?? first.idx
+            picked = nil
+        }
     }
 
     /// One stair: the tread (lit up to the picked scale), the node, the scale name under it.
-    private func node(_ scale: String, index i: Int, selected: Bool, reached: Bool, hasRow: Bool) -> some View {
-        Button {
-            withAnimation(Theme.motion(systemReduce || Motion.forceReduce)) { picked = scale }
-        } label: {
+    private func node(_ scale: String, index i: Int, selected: Bool, reached: Bool, hasRow: Bool, pick: @escaping () -> Void) -> some View {
+        Button(action: pick) {
             VStack(spacing: 6) {
                 Canvas { ctx, size in
                     let y = 22 - 5 * CGFloat(i)
@@ -190,12 +211,18 @@ struct ScalePathGrid: View {
 
     private func chip(_ e: (idx: Int, row: PerSkala)) -> some View {
         let c = Theme.riskChip(e.row.kategoriRisiko)
-        return (e.row.kategoriRisiko.map { Text(LabelBook.risk($0, isID: isID)) } ?? Text(Theme.absent))
+        let selected = selection?.wrappedValue == e.idx
+        let face = (e.row.kategoriRisiko.map { Text(LabelBook.risk($0, isID: isID)) } ?? Text(Theme.absent))
             .font(Theme.scalable(11, weight: .semibold)).foregroundStyle(c.fg)
             .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, 4).padding(.horizontal, 8)
             .background(c.bg, in: RoundedRectangle(cornerRadius: 2))
-            .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(c.border ?? .clear, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(selected ? Theme.accent : (c.border ?? .clear), lineWidth: selected ? 2 : 1))
+        return Group {
+            if let selection {
+                Button { selection.wrappedValue = selected ? nil : e.idx; picked = nil } label: { face }.buttonStyle(.plain)
+            } else { face }
+        }
     }
 
     private func isOriginal(_ sc: ScaleMatrix.Scope) -> Bool {
@@ -217,6 +244,7 @@ struct ScalePath: View {
     let scales: [PerSkala]
     let isID: Bool
     var mode: ScaleMatrix.Mode = .compact
+    var selection: Binding<Int?>? = nil
     /// Snapshot hooks: the focused scale, the picked scope (index into the scopes), the selector list drawn unbounded
     /// (a ScrollView's content is not drawn by the PDF read-back that proves the text).
     static var snapshotFocus: String?
@@ -225,9 +253,9 @@ struct ScalePath: View {
 
     var body: some View {
         if ScaleMatrix.scopes(scales).count >= ScaleMatrix.listFrom {
-            ScopedScalePath(scales: scales, isID: isID, mode: mode)
+            ScopedScalePath(scales: scales, isID: isID, mode: mode, selection: selection)
         } else {
-            ScalePathGrid(scales: scales, isID: isID, mode: mode)
+            ScalePathGrid(scales: scales, isID: isID, mode: mode, selection: selection)
         }
     }
 }
@@ -236,6 +264,7 @@ struct ScopedScalePath: View {
     let scales: [PerSkala]
     let isID: Bool
     let mode: ScaleMatrix.Mode
+    var selection: Binding<Int?>? = nil
 
     @EnvironmentObject var lang: LanguageManager
     @Environment(\.accessibilityReduceMotion) private var systemReduce
@@ -271,11 +300,17 @@ struct ScopedScalePath: View {
             .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(Theme.lineStrong, lineWidth: 1))
             selector(shown, current: current)
             if let current {
-                ScalePathGrid(scales: current.rows.map(\.row), isID: isID, mode: mode).id(current.id)
+                ScalePathGrid(scales: scales, isID: isID, mode: mode, selection: selection, onlyScope: current.id).id(current.id)
             } else {
                 Text(isID ? "Tidak ada lingkup cocok." : "No matching scope.")
                     .font(Theme.scalable(13)).foregroundStyle(Theme.muted).padding(.top, 4)
             }
+        }
+        // The shown cell follows the picked scope: its Large row, else the last scale that has one.
+        .onChange(of: current?.id) { _, _ in
+            guard let selection, let current else { return }
+            let cell = ScaleMatrix.order.reversed().lazy.compactMap { ScaleMatrix.entries(current, $0).first }.first
+            if let cell { selection.wrappedValue = cell.idx }
         }
     }
 
