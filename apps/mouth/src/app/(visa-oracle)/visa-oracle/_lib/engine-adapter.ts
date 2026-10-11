@@ -49,6 +49,19 @@ const step = (
   idText: string,
 ): OutcomeNextSteps[number] => ({ id, title: text(en, idText) });
 
+// Shared by the generic NO_SUPPORTED_PATH list and the no-door list below,
+// so the two can never drift apart in wording.
+const TALK_TO_ADVISOR_STEP = step(
+  "talk-to-advisor",
+  "Talk to a Bali Zero advisor — some routes depend on facts this tool does not ask.",
+  "Bicarakan dengan konsultan Bali Zero — beberapa jalur bergantung pada hal yang tidak ditanyakan alat ini.",
+);
+const KEEP_SUMMARY_STEP = step(
+  "keep-summary-checked",
+  "Keep this summary: it shows exactly what was checked.",
+  "Simpan ringkasan ini: isinya menunjukkan apa saja yang sudah diperiksa.",
+);
+
 const NEXT_STEPS_BY_STATE: Record<OutcomeStateName, OutcomeNextSteps> = {
   SUPPORTED_CANDIDATES: [
     step(
@@ -107,16 +120,8 @@ const NEXT_STEPS_BY_STATE: Record<OutcomeStateName, OutcomeNextSteps> = {
       "Look at the open door above, if one is shown.",
       "Lihat pintu yang terbuka di atas, jika ada.",
     ),
-    step(
-      "talk-to-advisor",
-      "Talk to a Bali Zero advisor — some routes depend on facts this tool does not ask.",
-      "Bicarakan dengan konsultan Bali Zero — beberapa jalur bergantung pada hal yang tidak ditanyakan alat ini.",
-    ),
-    step(
-      "keep-summary-checked",
-      "Keep this summary: it shows exactly what was checked.",
-      "Simpan ringkasan ini: isinya menunjukkan apa saja yang sudah diperiksa.",
-    ),
+    TALK_TO_ADVISOR_STEP,
+    KEEP_SUMMARY_STEP,
   ],
   TEMPORARILY_UNAVAILABLE: [
     step(
@@ -138,26 +143,18 @@ const NEXT_STEPS_BY_STATE: Record<OutcomeStateName, OutcomeNextSteps> = {
 };
 
 /**
- * The Second Home Studio-only hold routes to a self-serve calculator and by
- * design never promises a person's review, so it gets its own list.
- */
-/**
  * A NO_SUPPORTED_PATH that carries no alternative: the generic list's
  * "look at the open door above" would point at nothing, so it is dropped.
  */
 const NO_PATH_WITHOUT_DOORS_NEXT_STEPS: OutcomeNextSteps = [
-  step(
-    "talk-to-advisor",
-    "Talk to a Bali Zero advisor — some routes depend on facts this tool does not ask.",
-    "Bicarakan dengan konsultan Bali Zero — beberapa jalur bergantung pada hal yang tidak ditanyakan alat ini.",
-  ),
-  step(
-    "keep-summary-checked",
-    "Keep this summary: it shows exactly what was checked.",
-    "Simpan ringkasan ini: isinya menunjukkan apa saja yang sudah diperiksa.",
-  ),
+  TALK_TO_ADVISOR_STEP,
+  KEEP_SUMMARY_STEP,
 ];
 
+/**
+ * The Second Home Studio-only hold routes to a self-serve calculator and by
+ * design never promises a person's review, so it gets its own list.
+ */
 const STUDIO_NEXT_STEPS: OutcomeNextSteps = [
   step(
     "open-studio",
