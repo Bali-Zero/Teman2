@@ -118,7 +118,7 @@ struct ScalePathGrid: View {
             .focused($pathFocused)
             .onKeyPress(.leftArrow) { move(-1, from: selIdx, scs); return .handled }
             .onKeyPress(.rightArrow) { move(1, from: selIdx, scs); return .handled }
-            if selection != nil {
+            if selection != nil, Set(scs.flatMap { $0.rows.map(\.idx) }).count > 1 {
                 Text(LabelBook.cellHint(isID: isID)).font(Theme.scalable(10)).foregroundStyle(Theme.faint)
             }
         }
@@ -217,10 +217,12 @@ struct ScalePathGrid: View {
             .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, 4).padding(.horizontal, 8)
             .background(c.bg, in: RoundedRectangle(cornerRadius: 2))
-            .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(selected ? Theme.accent : (c.border ?? .clear), lineWidth: selected ? 2 : 1))
+            .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(c.border ?? .clear, lineWidth: 1))
+            .selectionRing(selected)
         return Group {
             if let selection {
                 Button { selection.wrappedValue = selected ? nil : e.idx; picked = nil } label: { face }.buttonStyle(.plain)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
             } else { face }
         }
     }
