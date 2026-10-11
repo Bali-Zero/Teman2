@@ -994,8 +994,8 @@ function secondHomeDepositHolderReason(
     );
   }
   return text(
-    `${enParts.join(" ")} The Second Home Visa (E33) deposit route needs at least ${en(SECOND_HOME_DEPOSIT_THRESHOLD_USD)} held in your own name at a state-owned bank.`,
-    `${idParts.join(" ")} Jalur deposito Visa Rumah Kedua (E33) membutuhkan minimal ${id(SECOND_HOME_DEPOSIT_THRESHOLD_USD)} atas nama Anda sendiri di bank milik negara.`,
+    `${enParts.join(" ")} The Second Home Visa (E33) deposit route needs at least ${en(SECOND_HOME_DEPOSIT_THRESHOLD_USD)} held in your own name at an Indonesian state-owned bank.`,
+    `${idParts.join(" ")} Jalur deposito Visa Rumah Kedua (E33) membutuhkan minimal ${id(SECOND_HOME_DEPOSIT_THRESHOLD_USD)} atas nama Anda sendiri di bank milik negara Indonesia.`,
   );
 }
 

@@ -8,7 +8,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts" / "ci"))
 
-from observe_visa_oracle_e33_deposit_reason import summary_ok  # noqa: E402
+from observe_visa_oracle_e33_deposit_reason import missing_tests, summary_ok  # noqa: E402
 
 
 @pytest.mark.parametrize(
@@ -44,3 +44,17 @@ def test_missing_tests_names_a_deleted_required_test():
     assert missing_tests(partial) == [REQUIRED_TESTS[0]]
     skipped = full.replace("✓", "-", 1)
     assert missing_tests(skipped) == [REQUIRED_TESTS[0]]
+
+
+def test_summary_ok_honours_a_per_file_minimum():
+    assert summary_ok("  Tests  4 passed (4)", 4) is True
+    assert summary_ok("  Tests  3 passed (3)", 4) is False
+    assert summary_ok("  Tests  4 passed (4)") is False
+
+
+def test_missing_tests_takes_the_required_list():
+    out = "  ✓ a > shows the holder sentence (EN)\n"
+    assert missing_tests(out, ("shows the holder sentence (EN)",)) == []
+    assert missing_tests(out, ("shows the Indonesian sentence in ID",)) == [
+        "shows the Indonesian sentence in ID"
+    ]

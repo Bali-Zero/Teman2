@@ -1591,8 +1591,8 @@ describe("support reasons are sentences, not machine codes", () => {
       ...extra,
     });
     const tail = {
-      en: "The Second Home Visa (E33) deposit route needs at least USD 130,000 held in your own name at a state-owned bank.",
-      id: "Jalur deposito Visa Rumah Kedua (E33) membutuhkan minimal USD 130.000 atas nama Anda sendiri di bank milik negara.",
+      en: "The Second Home Visa (E33) deposit route needs at least USD 130,000 held in your own name at an Indonesian state-owned bank.",
+      id: "Jalur deposito Visa Rumah Kedua (E33) membutuhkan minimal USD 130.000 atas nama Anda sendiri di bank milik negara Indonesia.",
     };
 
     it("pins the 130,000 figure to the pack's deposit-basis threshold", () => {
