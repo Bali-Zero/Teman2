@@ -28,9 +28,9 @@ bites:
 receipts:
   - claim: The visa-oracle _lib Vitest tree passes after the rebase onto origin/main, including the flow, activity-boundary and fact-mapper updates.
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib'
-    result: "Test Files 31 passed (31), Tests 1052 passed (1052)"
+    result: "Test Files 32 passed (32), Tests 1055 passed (1055)"
     exit: 0
-    ts: "2026-10-11T10:42:00Z"
+    ts: "2026-10-11T10:52:00Z"
     seat: this session
   - claim: apps/mouth typechecks.
     cmd: cd apps/mouth && npx tsc --noEmit -p .
@@ -62,17 +62,17 @@ receipts:
     exit: 0
     ts: "2026-10-11T10:42:00Z"
     seat: this session
-  - claim: The new observer passes and accepts only a full pass of at least 190 tests with the guard block present.
+  - claim: The observer runs only the dedicated guard file, requires exactly 3 passed, and repeats the pack scan itself in Python.
     cmd: python3 scripts/ci/observe_visa_oracle_retirement_no_sponsor.py
-    result: "Tests 190 passed (190); retirement never asks sponsor"
+    result: "Tests 3 passed (3); retirement never asks sponsor"
     exit: 0
-    ts: "2026-10-11T10:39:41Z"
+    ts: "2026-10-11T10:50:00Z"
     seat: this session
   - claim: The observer's summary parser rejects skipped, todo, failed and reduced counts.
     cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_retirement_no_sponsor.py
-    result: "11 passed"
+    result: "16 passed"
     exit: 0
-    ts: "2026-10-11T10:39:30Z"
+    ts: "2026-10-11T10:50:00Z"
     seat: this session
 decisions:
   - id: D-omission-mirrors-second-home
@@ -83,4 +83,28 @@ decisions:
     decision: >-
       The pack-scan guard requires at least 2 retirement products and at least 1 sponsor rule in the newest signed
       pack, so it cannot pass by scanning nothing.
-dissent: []
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM: the observer checked only that the guard title appears in the file; a no-op test under the same title would pass observer and suite."
+    status: RETRACTED
+    disposition: "Cured: the guard moved to its own file sponsor-retirement-guard.test.ts; the observer runs only that file, requires exactly 3 passed, and repeats the pack scan in Python (fails closed). Commit: the fix commit following e35179c29f."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM: the newest signed pack could silently degrade to an earlier one when a newer file had no numeric sequence."
+    status: RETRACTED
+    disposition: "Cured: newest = max N from the filename; the payload must be well-formed with sequence === N, else the test throws. The Python scan does the same. Same fix commit."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM: the guard needed only two RETIREMENT versions and did not pin E33E and E33F."
+    status: RETRACTED
+    disposition: "Cured: asserts both product codes exist, both cover RETIREMENT, and both version ids are in the scanned set; the Python scan mirrors it. Same fix commit."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+    objection: "LOW: only rule.when was scanned, not the whole rule."
+    status: RETRACTED
+    disposition: "Cured: readsSponsorType scans every string in the whole rule (when, required_facts, ...); unknown scopes fail. A self-test proves required_facts-only reads are detected. Full canonical-schema validation was not added (the pack is signed and schema-validated by the backend loader); accepted as limit."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+    objection: "LOW: legacy answers carrying sponsor_category on the retirement branch were not covered."
+    status: RETRACTED
+    disposition: "Decided: tolerated, not stripped (forwarded KNOWN like on any branch), harmless because the guard fails if any RETIREMENT rule reads sponsor.type. Pinned by a new test in fact-mapper.test.ts. Same fix commit."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+    objection: "LOW: brief_ref evidence/brief.yml looks unresolvable next to the dated pack."
+    status: RETRACTED
+    disposition: "False positive: the lane convention requires brief_ref evidence/brief.yml (CI and pre-push lint stage the brief there); a dated brief_ref fails the lint. No change."
