@@ -1,0 +1,46 @@
+task_id: janitor-apply-1012
+mission: LOCALCI-SOVEREIGN (Pro free-space keeper, rollout step 3 of 3)
+colour: BLUE
+gear: 3
+gear_reason: >-
+  The lint floor is 3 by path (the launchd plist, the declared pairs and the organs registry of a deleting organ); turning apply on
+  makes pro.janitor remove files on Pro.
+l_level: L2
+gate_class: opus
+brief_ref: evidence/brief.yml
+objective: >-
+  pro.janitor leaves dry-run (PRO_JANITOR_APPLY=true) and owns the uv cache alone: disk_janitor.sh no longer runs `uv cache prune`.
+acceptance:
+  - text: scripts/disk_janitor.sh SHALL never invoke uv and its receipt SHALL carry no uv_cache_prune step, while restic and brew still run.
+    probe: "scripts/test_disk_janitor.sh (TEST 10; guilt shown: with the uv step restored the new assertions fail 3 of 109)"
+  - text: The pro.janitor plist SHALL carry PRO_JANITOR_APPLY=true.
+    probe: "plutil -p infra/launchagents/com.nuzantara.janitor.plist"
+consumer_map:
+  - launchd jobs pro.janitor (com.nuzantara.janitor) and pro.disk_janitor on Pro; journal ~/logs/pro-janitor/journal.jsonl.
+lanes:
+  - lane: infra-janitor-apply-1012
+    role: build
+    seat: claude-sonnet-5-5 implementer on M5, directed by the LOCALCI lead
+pii_scan: clean
+pii_scan_note: A plist value, notes text and a bash step removal with its test on tmp fixtures. No client data.
+what_changed: |
+  infra/launchagents/com.nuzantara.janitor.plist: PRO_JANITOR_APPLY false -> true. scripts/disk_janitor.sh: the uv_cache_prune step
+  removed (header, TOOLS_SEEN, CACHE_TIMEOUT comment). scripts/test_disk_janitor.sh: uv stays as a recording fake and the suite
+  proves it is never called. Notes in declared-pairs.json, organs_registry.yaml and the spec's Rollout say apply is armed.
+bites:
+  consumer: launchd jobs pro.janitor (com.nuzantara.janitor) and pro.disk_janitor on Pro.
+  observation: >-
+    Owed after merge and deploy: a ~/logs/pro-janitor/journal.jsonl line with "mode": "apply" and a rule status other than
+    dry-run/skipped with its freed bytes, and `grep -c "uv cache prune" ~/scripts/disk_janitor.sh` = 0 on Pro.
+receipts:
+  - claim: "scripts/test_disk_janitor.sh on the change: PASS=109 FAIL=0 (uv fake on PATH never invoked, receipt tools 'restic brew', no uv_cache_prune key)."
+    cmd: bash scripts/test_disk_janitor.sh
+    exit: 0
+    ts: "2026-10-12T00:00:00Z"
+    seat: claude-sonnet-5-5 implementer on M5
+  - claim: "Guilt: with the uv_cache_prune step restored (cp backup, restored with cp) the same suite fails 3 assertions: PASS=106 FAIL=3."
+    cmd: bash scripts/test_disk_janitor.sh (uv step temporarily re-inserted from origin/main)
+    exit: 1
+    ts: "2026-10-12T00:10:00Z"
+    seat: claude-sonnet-5-5 implementer on M5
+dissent: []
