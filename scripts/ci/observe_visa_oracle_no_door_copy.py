@@ -29,6 +29,24 @@ TEST_FILE = "src/app/(visa-oracle)/visa-oracle/_components/NoPathWithoutDoors.te
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 
+MIN_TESTS = 8
+_SUMMARY = re.compile(r"^\s*Tests\s+(\d+) passed \((\d+)\)\s*$")
+
+
+def summary_ok(line: str | None) -> bool:
+    """True only for a Vitest line that is exactly `Tests  N passed (N)`, N >= 8.
+
+    Anything else (skipped, todo, failed, a reduced count, no line) is False.
+    """
+    if line is None:
+        return False
+    match = _SUMMARY.match(line)
+    if match is None:
+        return False
+    passed, total = int(match.group(1)), int(match.group(2))
+    return passed == total and passed >= MIN_TESTS
+
+
 def main() -> int:
     result = subprocess.run(
         ["npx", "vitest", "run", TEST_FILE],
@@ -38,12 +56,13 @@ def main() -> int:
         text=True,
     )
     out = ANSI.sub("", result.stdout + result.stderr)
-    tests = re.search(r"Tests\s+(.+?)\s*$", out, re.MULTILINE)
-    summary = tests.group(1) if tests else "no Vitest summary"
-    if result.returncode != 0 or "failed" in summary or tests is None:
+    tests = re.search(r"^\s*Tests\s.*$", out, re.MULTILINE)
+    line = tests.group(0) if tests else None
+    summary = line.strip() if line else "no Vitest summary"
+    if result.returncode != 0 or not summary_ok(line):
         print(f"observe_visa_oracle_no_door_copy: FAILED ({summary})\n{out[-1500:]}")
         return result.returncode or 1
-    print(f"observe_visa_oracle_no_door_copy: Tests {summary}")
+    print(f"observe_visa_oracle_no_door_copy: {summary}")
     print("observe_visa_oracle_no_door_copy: no-door copy holds")
     return 0
 
