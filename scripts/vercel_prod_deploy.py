@@ -80,11 +80,25 @@ INCLUDE this commit, not does it EQUAL this sha"); the cure was simply never tau
 rule. Two tools answering "which commit must production serve?" now share one definition and
 a test that reads one out of the other.
 
+NO GITHUB AT ALL: `--upload` (2026-10-11)
+-----------------------------------------
+The public repo Bali-Zero/Teman2 is going away, and `gitSource` above has nothing to point at
+once it does. `--upload --sha <40hex>` is the route that needs no GitHub: it `git archive`s the
+MINIMAL tree a mouth build needs (UPLOAD_INCLUDE) at that canonical sha into a fresh 0700 temp
+dir, links it to the project via `.vercel/project.json`, and runs `vercel deploy` from there.
+The "whole monorepo >25 minutes" failure noted above is why the tree is an include list and not
+the checkout. Vercel stores uploads content-addressed, so after the first upload only changed
+files travel. A CLI upload has no git metadata, so the sha is passed as BUILD_COMMIT_SHA (build
+AND runtime env) and `/api/health` reports it. `--preview` makes a preview deployment; without
+it the deployment is production, and the same verify-then-promote tail as the gitSource path
+runs. The gitSource path stays the default and is untouched.
+
 Usage:
     python3 scripts/vercel_prod_deploy.py            # promote (or, failing that, deploy) the newest bundle-relevant commit
     python3 scripts/vercel_prod_deploy.py --force    # act even if production is already current
     python3 scripts/vercel_prod_deploy.py --dry-run  # report the gap and the plan, change nothing
     python3 scripts/vercel_prod_deploy.py --ref SHA  # override the target commit
+    python3 scripts/vercel_prod_deploy.py --upload --sha SHA [--preview]  # no GitHub: see below
 
 Exit codes: 0 nothing to do or done · 1 the action failed · 3 (--promote-only) there was no
 READY build to promote, and none was created. 3 rather than 2 because argparse owns 2.
@@ -94,8 +108,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -119,6 +136,30 @@ POLL_S = 20
 #
 BUNDLE_PATHS = ("apps/mouth", "packages", "package.json", "package-lock.json", "vercel.json")
 BUNDLE_EXCLUDE: tuple[str, ...] = ()
+
+# What a Vercel build of mouth reads, i.e. the tree `--upload` ships. Derived by grepping
+# apps/mouth for reads outside itself (2026-10-11), not guessed; each entry says why. The
+# project's rootDirectory is apps/mouth but its installCommand runs from the repo root, so the
+# layout (not just apps/mouth) must be preserved.
+UPLOAD_INCLUDE: tuple[tuple[str, str], ...] = (
+    ("apps/mouth", "the app itself (src, public, data/, scripts/ used by `npm run build`, vercel.json)"),
+    ("packages/core", "@balizero/core: tsconfig path alias, and globals.css @imports ../../../../packages/core/*.css"),
+    ("data/kbli-filiera/pma-editorial-certifications.json",
+     "imported by apps/mouth/src/lib/kbli-editorial-certification.ts as ../../../../data/... (repo root)"),
+    ("package.json", "root manifest: `npm ci` runs from the root (installCommand) and declares the workspaces"),
+    ("package-lock.json", "root lockfile: `npm ci` refuses to run without it"),
+    ("packages/ts-schemas", "workspace member of the root lockfile: `npm ci` needs its manifest present"),
+    ("apps/admin-dashboard/package.json", "workspace manifest: lockfile sync check of `npm ci`"),
+    ("apps/admin-dashboard-local/package.json", "workspace manifest: lockfile sync check of `npm ci`"),
+    ("apps/autonomous-lab/package.json", "workspace manifest: lockfile sync check of `npm ci`"),
+    ("apps/web/package.json", "workspace manifest: lockfile sync check of `npm ci`"),
+)
+# Deliberately NOT included: scripts/ci/vercel_should_build.sh. vercel.json's ignoreCommand
+# fails OPEN when the file (or git) is absent, so an upload always builds, which is what an
+# explicit deploy means.
+
+_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+UPLOAD_CLI_TIMEOUT_S = 1800
 
 
 def _read_auth() -> dict:
@@ -539,7 +580,118 @@ def _ready_deployment_among_recent_bundle_commits(
     return None
 
 
-def main() -> int:
+def _archive_tree(sha: str, dest: str) -> None:
+    """Materialise UPLOAD_INCLUDE as it exists at `sha` into `dest`.
+
+    `git archive` reads the object database, never the working tree, so what ships is the
+    canonical commit and not whatever the checkout happens to hold. A path missing at `sha`
+    makes git fail loudly (pathspec did not match); a silently thinner tree would build a
+    different site.
+    """
+    paths = [p for p, _why in UPLOAD_INCLUDE]
+    archive = subprocess.Popen(
+        ["git", "archive", "--format=tar", sha, "--", *paths],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    assert archive.stdout is not None
+    extract = subprocess.run(["tar", "-x", "-C", dest], stdin=archive.stdout, capture_output=True)
+    archive.stdout.close()
+    err = (archive.stderr.read() if archive.stderr else b"").decode(errors="replace").strip()
+    rc = archive.wait()
+    if rc != 0:
+        raise RuntimeError(f"git archive {sha[:9]} failed (exit {rc}): {err[:300]}")
+    if extract.returncode != 0:
+        raise RuntimeError(f"tar extract failed: {extract.stderr.decode(errors='replace')[:300]}")
+
+
+def _write_project_link(dest: str) -> None:
+    link = os.path.join(dest, ".vercel")
+    os.makedirs(link, mode=0o700, exist_ok=True)
+    with open(os.path.join(link, "project.json"), "w") as fh:
+        json.dump({"orgId": TEAM_ID, "projectId": PROJECT_ID}, fh)
+
+
+def _vercel_deploy_cmd(dest: str, sha: str, preview: bool) -> list[str]:
+    cmd = [
+        "vercel", "deploy", "--yes", "--cwd", dest,
+        "--build-env", f"BUILD_COMMIT_SHA={sha}",
+        "--env", f"BUILD_COMMIT_SHA={sha}",
+    ]
+    if not preview:
+        cmd.append("--prod")
+    return cmd
+
+
+_URL_RE = re.compile(r"https://[a-z0-9-]+-[a-z0-9]+-[a-z0-9-]+\.vercel\.app")
+
+
+def _cli_deployment_url(stdout: str, stderr: str) -> str | None:
+    """The deployment URL: the CLI prints it alone on stdout when it finishes, and as
+    `Preview|Production <url>` on stderr as soon as the upload ends."""
+    lines = [ln.strip() for ln in stdout.strip().splitlines() if ln.strip()]
+    if lines and lines[-1].startswith("https://"):
+        return lines[-1]
+    found = _URL_RE.findall(stderr)
+    return found[0] if found else None
+
+
+def _upload_main(sha: str, preview: bool) -> int:
+    """`--upload`: deploy a `git archive` of `sha` through the Vercel CLI. No GitHub involved."""
+    _token()  # refreshes an expired CLI credential (never printed); the CLI reads the same file
+    dest = tempfile.mkdtemp(prefix="mouth-upload-")  # mkdtemp is 0700
+    try:
+        t0 = time.time()
+        _archive_tree(sha, dest)
+        _write_project_link(dest)
+        print(f"archived {sha[:9]} -> {dest} in {time.time() - t0:.1f}s")
+        t1 = time.time()
+        proc = subprocess.run(
+            _vercel_deploy_cmd(dest, sha, preview),
+            capture_output=True, text=True, timeout=UPLOAD_CLI_TIMEOUT_S, check=False,
+        )
+        print(f"vercel deploy exited {proc.returncode} after {time.time() - t1:.1f}s")
+        url = _cli_deployment_url(proc.stdout or "", proc.stderr or "")
+        # The CLI's last "Uploading [...] (sent/total)" line: how much actually travelled.
+        # Content-addressed, so a repeat upload of unchanged files reports a small total.
+        sent = [ln.strip() for ln in (proc.stderr or "").replace("\r", "\n").splitlines()
+                if ln.strip().startswith("Uploading")]
+        print(f"upload          : {sent[-1] if sent else 'no upload line (every file already stored)'}")
+        # A non-zero exit does NOT mean the deployment failed: the CLI polls the API after the
+        # upload and dies on a network blip (measured 2026-10-11, `read ETIMEDOUT`, while the
+        # build went on to READY). The URL it printed on stderr is the handle; the API state is
+        # the verdict, so a failed CLI with a URL falls through to the wait below.
+        if proc.returncode != 0:
+            print((proc.stderr or "")[-400:])
+        if not url:
+            print("could not read a deployment URL from the CLI output")
+            return 1
+        print(f"deployment url  : {url}")
+        host = url.removeprefix("https://")
+        status, dep = _api("GET", f"/v13/deployments/{host}")
+        if status != 200:
+            print(f"lookup HTTP {status}: {json.dumps(dep)[:300]}")
+            return 1
+        dpl = dep["id"]
+        state = dep.get("readyState")
+        if state not in ("READY", "ERROR", "CANCELED"):
+            state, _alias = _wait_terminal(dpl)
+        print(f"deployment      : {dpl} state={state}")
+        if state != "READY":
+            print(f"build logs: vercel inspect --logs {dpl}")
+            return 1
+        if preview:
+            print(f"OK (preview) - prove it with: vercel curl /api/health --deployment {url}")
+            return 0
+        if _probe_until(sha, attempts=8) or _promote(dpl, sha):
+            print(f"OK - kita.balizero.com serves {sha[:9]} (deployment {dpl})")
+            return 0
+        print(f"::error::deployment {dpl} is READY but kita.balizero.com did not prove it serves {sha[:9]}")
+        return 1
+    finally:
+        shutil.rmtree(dest, ignore_errors=True)
+
+
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--force", action="store_true", help="deploy even when production is already current")
     parser.add_argument("--dry-run", action="store_true", help="report the gap and exit without deploying")
@@ -549,7 +701,26 @@ def main() -> int:
         action="store_true",
         help="promote an existing READY build and NEVER create one (the mode a cron may run)",
     )
-    args = parser.parse_args()
+    parser.add_argument("--upload", action="store_true",
+                        help="deploy a git-archive of --sha through the Vercel CLI (no GitHub gitSource)")
+    parser.add_argument("--sha", default=None, help="with --upload: the 40-hex commit to archive")
+    parser.add_argument("--preview", action="store_true",
+                        help="with --upload: make a PREVIEW deployment (default is production)")
+    args = parser.parse_args(argv)
+    if args.upload:
+        if not args.sha or not _SHA_RE.match(args.sha):
+            parser.error("--upload requires --sha <40 lowercase hex chars>")
+        if args.promote_only or args.dry_run or args.force or args.ref:
+            parser.error("--upload cannot be combined with --promote-only/--dry-run/--force/--ref")
+    elif args.sha or args.preview:
+        parser.error("--sha and --preview only make sense with --upload")
+    return args
+
+
+def main() -> int:
+    args = _parse_args()
+    if args.upload:
+        return _upload_main(args.sha, args.preview)
 
     if args.ref:
         sha, how = args.ref, "--ref override"
