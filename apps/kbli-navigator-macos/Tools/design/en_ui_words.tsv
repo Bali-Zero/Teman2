@@ -1,7 +1,8 @@
-# en_ui_words.tsv — the English words the app's English Views draw that its English corpus (kbli-data-i18n-en.json)
-# lacks (#8224 gate binding 1). word <TAB> where it is drawn. With that corpus it is en_purity's English reference: a
-# gated English dump may hold no word outside the reference, the lexicon, PROPER and its allowlisted spans, and an ID
-# dump's words outside it must be lexicon words. A View PR adds the English words its own View draws.
+# en_ui_words.tsv — the English words the app's English Views draw that en_purity's `english_word` does not find
+# English in its corpus (kbli-data-i18n-en.json) and dictionary: absent from the corpus (#8224 gate binding 1), or
+# residue its Indonesian sources write more often ("cap", #8239 gate). word <TAB> where it is drawn. A gated English
+# dump may hold no word that is not English, a lexicon word, PROPER or inside an allowlisted span, and an ID dump's
+# words that are not English must be lexicon words. A View PR adds the English words its own View draws.
 annexes	registry sheet: a curated basis ("10/2021/49/2021 annexes")
 applicability	registry sheet: "Bali applicability is not determined"
 ask	registry sheet: "Ask Zantara about this code"
@@ -27,3 +28,5 @@ verdict	registry sheet and search peak: "BALI VERDICT", "the verdict"
 week	registry sheet: "third week of May 2026"
 yes	registry sheet: "blocked: yes"
 you	search peak: "YOU CAN DO THIS"
+cap	registry sheet: "foreign cap: 100%" (EN-1b)
+regulator	registry sheet: Bali status "Closed (sector regulator)"

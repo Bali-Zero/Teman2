@@ -59,6 +59,7 @@ ALLOW = [  # (regex, reason) — masked before the lexicon is read; never masks 
 ALLOW_RE = [(re.compile(a), r) for a, r in ALLOW]
 R_TITLE = "official title, under its label (ruling 3)"
 R_ORIGINAL = "legal text with no English source, quoted under its label (ruling 4)"
+R_TITLE_EN = "the record's own English title, drawn whole: its words are its curated translation's (\"Peyek\", \"Internet\")"
 R_REASON = "the record's curated English Bali reason: its Indonesian words are the cited instrument's terms"
 R_KONDISI = "the record's own condition, written in English: its Indonesian words are the instrument's terms"
 R_PAREN = "the Indonesian original a record's English text (description, statute field) quotes in parentheses"
@@ -99,6 +100,10 @@ STATUS = ("TERBUKA", "TERBATAS", "TERTUTUP")
 SCOPE = ("pratinjau gagal unduh unggah simpan batalkan pengaturan beranda keluar masuk ubah hapus tambah kirim terima "
          "tolak setuju tutup salin tempel pilih riwayat segarkan muat sembunyikan tampilkan urutkan saring galat "
          "peringatan").split()
+# #8239 gate: Indonesian words that glue or the English corpus once let through, each caught in both modes: glued
+# ("Sand|ikan", "dam|pak", "disk|onto"), residue in the lexicon ("daftar", "kunci"), residue the lexicon cannot hold
+# (its record's English writes "ikan tempe", "dana punia" unquoted) and corpus words no English dictionary holds ("pak").
+GLUED = ("sandikan", "dampak", "diskonto", "daftar", "kunci", "ikan", "dana", "pak")
 # The English word of each closed-set key, from LabelBook's pin (#8227 gate (i)): a curated reason's gap holds it.
 PIN = os.path.join(ROOT, "docs", "design", "labelbook-pin-2026-10-10.json")
 WORD = {k: v[0] for m in ("pmaStatus", "baliStatus", "field") for k, v in json.load(open(PIN))["maps"][m].items()}
@@ -112,41 +117,90 @@ GLUE_RE = re.compile(r"(?<=[a-zß-ÿ])(?=[A-ZÀ-Þ])")
 
 _REF = []
 def ref():
-    """The English reference (#8224 gate binding 1): the words of the app's English corpus (kbli-data-i18n-en.json,
-    titles and descriptions 1559/1559) and of en_ui_words.tsv, the English UI words that corpus lacks."""
+    """The English corpus (#8224 gate binding 1): the words of kbli-data-i18n-en.json (titles and descriptions
+    1559/1559) and of en_ui_words.tsv, the English UI words that corpus lacks. A word in it is ATTESTED, not English:
+    the corpus carries Indonesian residue ("ikan", "daftar", "kunci" — the #8239 gate), so only `english_word` reads it.
+    _REF[0] also keeps the word counts of the corpus's two sides, its English values and its Indonesian keys."""
     if not _REF:
         i18n = json.load(open(os.path.join(ROOT, "Resources", "kbli-data-i18n-en.json")))
-        _REF.append({w.lower() for v in i18n.values() for w in WORD_RE.findall(v)}
-                    | {l.split("\t")[0] for l in open(os.path.join(HERE, "en_ui_words.tsv"), encoding="utf-8")
-                       if l.strip() and not l.startswith("#")})
-    return _REF[0]
+        en, idn = (Counter(w.lower() for t in side for w in WORD_RE.findall(t)) for side in (i18n.values(), i18n))
+        _REF.append((set(en), {l.split("\t")[0] for l in open(os.path.join(HERE, "en_ui_words.tsv"), encoding="utf-8")
+                               if l.strip() and not l.startswith("#")}, en, idn))
+    return _REF[0][0] | _REF[0][1]
 
-def known(w): return w in LEX or w in PROPER or w in ref()
+# The English dictionary `english_word` reads, independent of the app: Webster's 2nd (web2), the same file on M5 and
+# Pro. Its size is pinned (lines, bytes), so a host with another list fails the self-test instead of moving verdicts.
+DICT, DICT_SIZE = "/usr/share/dict/words", (235976, 2493885)
+RESIDUE = 3
+INFLECTION = (("ies", "y"), ("ied", "y"), ("es", ""), ("s", ""), ("ed", ""), ("ed", "e"), ("ing", ""), ("ing", "e"))
+
+def in_dictionary(w, entries):
+    """`w` as written, or a regular inflection of an entry ("activities", "stopped"; a stem of 3+ letters)."""
+    if w in entries: return True
+    for end, stem in INFLECTION:
+        b = w[:-len(end)]
+        if w.endswith(end) and len(b) >= 3 and (b + stem in entries or b[-1] == b[-2] and b[:-1] in entries): return True
+    return False
 
 _ENG = []
 def english_word(w):
-    """A word English writes: an English function word, or no lexicon word and more frequent in the corpus's English
-    (the translation table's values, en_ui_words) than in its Indonesian sources (its keys) — "Regent" and "risk",
-    never "hukum", which English text only carries inside a quoted name (the EN-1c gate's F1)."""
+    """The one test of "English" (#8239 gate): never a lexicon word; an English function word, an en_ui_words word, or
+    a word of the English corpus that the English dictionary holds and that is no residue — the Indonesian sources do
+    not write it more than 3 times as often as their English translations do ("daftar" 1/344, "orang" 4/299; RESIDUE).
+    The corpus alone is not evidence: it carries Indonesian no English dictionary holds ("ikan", "dampak"); nor is the
+    dictionary: it holds Indonesian ("apa", "babi", "gula") the corpus never writes as English."""
     if not _ENG:
-        i18n = json.load(open(os.path.join(ROOT, "Resources", "kbli-data-i18n-en.json")))
-        en, idn = (Counter(w.lower() for t in side for w in WORD_RE.findall(t)) for side in (i18n.values(), i18n))
-        _ENG.append({w for w in ref() if w not in LEX and en[w] + (w not in en) > idn[w]} | EN_FUNCTION)
+        ref()
+        entries = {l.strip().lower() for l in open(DICT, encoding="utf-8")}
+        corpus, ui, en, idn = _REF[0]
+        _ENG.append(({w for w in corpus if in_dictionary(w, entries) and idn[w] <= RESIDUE * en[w]} | ui | EN_FUNCTION)
+                    - set(LEX))
     return w in _ENG[0]
+
+def residue(w):
+    """A word of the English corpus that its Indonesian sources write more than RESIDUE times as often (#8239 gate)."""
+    ref(); return w in _REF[0][0] and _REF[0][3][w] > RESIDUE * _REF[0][2][w]
+
+def written_id(w):
+    """A word the Indonesian sources (the translation table's keys) write: one word, never two glued English runs."""
+    ref(); return _REF[0][3][w] > 0
+
+def known(w): return w in LEX or w in PROPER or english_word(w)
+
+def attested(w):
+    """A word as written, never two glued runs: a known word or one the English corpus writes. Only `words` reads it;
+    whether the word is English is `english_word`'s to say."""
+    return known(w) or w in ref()
+
+_ACR = []
+def acronym(w):
+    """A token drawn as an acronym ("IoT", "NPWP", "CDs": 2+ capitals, at most one small letter) that both corpora
+    only ever write that way: a name, as PROPER is, never evidence of either language. "Daftar" is never one."""
+    if not _ACR:
+        i18n = json.load(open(os.path.join(ROOT, "Resources", "kbli-data-i18n-en.json")))
+        forms = defaultdict(set)
+        for t in list(i18n) + list(i18n.values()):
+            for x in WORD_RE.findall(t): forms[x.lower()].add(x)
+        _ACR.append({k for k, f in forms.items() if all(map(acronym_shape, f))})
+    return acronym_shape(w) and w.lower() in _ACR[0]
+
+def acronym_shape(w): return sum(c.isupper() for c in w) >= 2 and sum(c.islower() for c in w) <= 1
 
 def words(s):
     """(offset, word) as drawn: a lower→Upper boundary splits what PDFKit glued ("CodesSemua"); digits never join.
     A run glued with no case change ("Codessektor", "RISIKOOSS") splits where both halves are known words, one a
-    lexicon word (#8224 gate binding 2), or else two words English writes of 4+ letters ("Codesshown": `english_word`,
-    never a merely known half — "Sand|ikan", "dam|pak", "sum|bat" stay whole, #8239 gate); each half 3+ letters."""
+    lexicon word (#8224 gate binding 2), or else two English words of 4+ letters ("Codesshown": `english_word`, never a
+    merely attested half — "Sand|ikan", "dam|pak", "sum|bat" stay whole, #8239 gate) when the Indonesian sources do not
+    write the run as one word ("disk|onto" is "diskonto"); each half 3+ letters."""
     for m in WORD_RE.finditer(s):
         p = m.start()
-        for w in [m.group()] if known(m.group().lower()) else GLUE_RE.split(m.group()):   # "IoT" is a word
+        for w in [m.group()] if attested(m.group().lower()) else GLUE_RE.split(m.group()):   # "IoT" is a word
             lw, cut = w.lower(), 0
-            if len(w) > 4 and not known(lw):
+            if len(w) > 4 and not attested(lw):
                 cuts = [i for i in range(3, len(w) - 2) if known(lw[:i]) and known(lw[i:])]   # 3+ letters a side:
                 cut = next((i for i in cuts if lw[:i] in LEX or lw[i:] in LEX),   # not BA|PANAS
-                           next((i for i in cuts if 3 < i < len(w) - 3 and english_word(lw[:i]) and english_word(lw[i:])), 0))
+                           next((i for i in cuts if 3 < i < len(w) - 3 and english_word(lw[:i]) and english_word(lw[i:])
+                                 and not written_id(lw)), 0))
             for part in (w[:cut], w[cut:]) if cut else (w,):
                 yield p, part; p += len(part)
 
@@ -254,7 +308,7 @@ def kept(g, spec):
     parentheses after it (Q17)."""
     word, original = spec
     if word: return " ".join(g.split()) == word
-    if not original: return bool(g.strip()) and all(known(w.lower()) and w.lower() not in LEX for _, w in words(g))
+    if not original: return bool(g.strip()) and all(english_word(w.lower()) for _, w in words(g))
     m = original and re.search(r"\(([^()]*)\)\s*$", g)
     if m and key(m.group(1)) == key(original): g = g[:m.start()]
     return bool(g.strip()) and not lexical(g)
@@ -300,6 +354,12 @@ def partition(k, pieces, label=0):
         return None
     return go(0, []) or []
 
+def title_en(rec, i18n, overlay):
+    """The record's English title as OverlayStore.primaryTitle(isID: false) draws it: the overlay's, else the table's."""
+    judul = rec.get("judul") or ""
+    t = (((overlay or {}).get(rec.get("kode_kbli_2025")) or {}).get("en") or {}).get("title") or ""
+    return t if t.strip() and t.strip() != judul.strip() else (i18n or {}).get(judul) or judul
+
 class Record:
     """The record-bound allow spans of one code, compiled once: (pattern, the whole text as drawn, reason, keep,
     within) — `keep` is `gapped`'s per-gap originals or None, `within` the (pattern, whole[, keep]) of the drawn
@@ -311,6 +371,8 @@ class Record:
         if self.judul:
             t = "Official title (Bahasa Indonesia) " + self.judul
             spans.append((re.compile(r"Official\s+title\s+\(Bahasa\s+Indonesia\)\s*" + flex(self.judul)), t, R_TITLE, False, None))
+            t = title_en(rec, i18n, {rec.get("kode_kbli_2025"): overlay})
+            if t.strip() != self.judul.strip(): spans.append((re.compile(flex(t)), t, R_TITLE_EN, False, None))
         k = rec.get("pma_kondisi")
         if k and english_clause(k):
             spans.append((re.compile(flex(k)), k, R_KONDISI, False, None))
@@ -452,7 +514,7 @@ def analyse(row, rec, unknown=False):
     flagged = defaultdict(lambda: {"toks": [], "raw": [], "title": False, "unk": []})
     for p, w in words(masked):
         if w.lower() in LEX: flagged[line_of(p)]["toks"].append(w.lower())
-        elif unknown and not known(w.lower()): flagged[line_of(p)]["unk"].append(w.lower())
+        elif unknown and not known(w.lower()) and not acronym(w): flagged[line_of(p)]["unk"].append(w.lower())
     for rx in (IDENT_RE, PROV_RE):
         for m in rx.finditer(text): flagged[line_of(m.start())]["raw"].append(m.group())
     if rec and rec.title_re:
@@ -679,18 +741,26 @@ def selftest():
     cases += [("Codessektor", 1, None), ("RISIKOOSS Medium", 1, None), ("Codesshown 26", 0, None)]   # #8224 b2
     gated = [("Status: Pratinjau gagal", 1, None), ("Status: Open · IoT · 26 codes shown", 0, None),   # b1, and b5:
              ("Status: Sandikan", 1, None), ("Dampak · Sandikan", 1, None), ("Status: Sumbat", 1, None),   # #8239 gate:
+             ("Status: Daftar", 1, None), ("Status: Kunci", 1, None), ("Status: Diskonto", 1, None),
+             ("Status: Ikan", 1, None), ("Status: Codesshown", 0, None),
              # an Indonesian word is no glue of two known (or two short English) halves
              ("Open under the Dampak of the record, so the moratorium does not apply", 1, r13),
+             ("Open under the Daftar of the record, so the moratorium does not apply", 1, r13),
+             ("Open under the Ikan of the record, so the moratorium does not apply", 1, r13),
              ("Open under the extra scope of the record, so the moratorium does not apply", 0, r13),   # an
              ("Open under the Pratinjau gagal of the record, so the moratorium does not apply", 1, r13)]   # unpinned gap
     bad = ["EN-SELFTEST %r (gated): %d strings, want %d" % (t[:50], len(analyse({"text": t}, rr, unknown=True)[0]), w)
            for t, w, rr in gated if len(analyse({"text": t}, rr, unknown=True)[0]) != w]
+    if [w for _, w in words("Codesshown")] != ["Codes", "shown"]: bad.append("EN-SELFTEST 'Codesshown' no longer splits")
+    raw = open(DICT, "rb").read()
+    if (raw.count(b"\n"), len(raw)) != DICT_SIZE:
+        bad.append("EN-SELFTEST %s is not the pinned English dictionary: english_word would move" % DICT)
     for text, want, rr in cases:
         got = len(analyse({"text": text}, rr)[0])
         if got != want: bad.append("EN-SELFTEST %r: %d strings, want %d" % (text[:50], got, want))
     return bad
 
-def corpus(ds, i18n, reasons, rows, id_rows):
+def corpus(ds, i18n, reasons, rows, id_rows, overlay):
     """The known corpus: (printed lines, failures)."""
     out, bad = [], []
     titles = [r["judul"] for r in ds.values() if r.get("judul")]
@@ -706,21 +776,27 @@ def corpus(ds, i18n, reasons, rows, id_rows):
         r = ds.get(code) or {}
         raw = (r.get("l4_bali") or {}).get("reason") or ""
         return {w.lower() for _, w in words(" ".join([r.get("judul") or "", r.get("pma_kondisi") or "", raw,
-                                                         (reasons.get(raw) or {}).get("id") or ""]))}
-    def id_only(id_rows):   # read against the English reference, not the same surface's EN dump: a hard-coded
+                                                         (reasons.get(raw) or {}).get("id") or "", title_en(r, i18n, overlay)]))}
+    def id_only(id_rows):   # read through english_word, not against the same surface's EN dump: a hard-coded
         only = set()        # Indonesian label drawn in both modes is not subtracted (#8224 gate binding 1); record
         for r in id_rows:   # content is the titles check's and the record spans' to judge, not the lexicon's
-            if r["view"] in GATED: only |= {w.lower() for _, w in words(r["text"])} - ref() - own(r["code"])
+            if r["view"] in GATED:   # an ID View draws the English title under the official one: record content too
+                only |= {w.lower() for _, w in words(r["text"]) if not english_word(w.lower()) and not acronym(w)} - own(r["code"])
         return only - set(PROPER)
     only = sorted(id_only(id_rows))
     miss = [w for w in only if w not in LEX]
-    out.append("self-test: words of the gated surfaces' ID dumps (%s) outside the English reference, in the lexicon: %d/%d"
+    out.append("self-test: words of the gated surfaces' ID dumps (%s) that are not English, in the lexicon: %d/%d"
                % (", ".join(sorted({r["view"] for r in id_rows if r["view"] in GATED})), len(only) - len(miss), len(only)))
     in_en = sum(bool(analyse({"text": "Status: %s" % w}, None, unknown=True)[0]) for w in SCOPE)
     in_both = sum(bool(id_only([{"code": "-", "view": GATED[0], "text": "Status: %s" % w}])) for w in SCOPE)
     out.append("self-test: scope probe, novel Indonesian words caught drawn in English %d/%d, drawn in both modes %d/%d"
                % (in_en, len(SCOPE), in_both, len(SCOPE)))
     if in_en < len(SCOPE) or in_both < len(SCOPE): bad.append("EN-SELFTEST the scope probe missed a novel Indonesian word")
+    glued = [w for w in GLUED if analyse({"text": "Status: %s" % w.capitalize()}, None, unknown=True)[0]
+             and id_only([{"code": "-", "view": GATED[0], "text": "Status: %s" % w.capitalize()}])]
+    out.append("self-test: #8239 gate words (%s) caught drawn in English and in both modes %d/%d"
+               % (" ".join(GLUED), len(glued), len(GLUED)))
+    bad += ["EN-SELFTEST %s passed as English" % w for w in GLUED if w not in glued]
     if not {r["view"] for r in id_rows} >= set(GATED): bad.append("EN-SELFTEST the --id dump lacks a gated surface")
     bad += ["EN-SELFTEST ID-only word of a gated surface not in the lexicon: %s" % w for w in miss]
     en_titles = [i18n[r["judul"]] for r in ds.values() if r.get("judul") in i18n]
@@ -762,7 +838,7 @@ def census(path, id_path, n_ex, curated=None):
     overlay = json.load(open(os.path.join(ROOT, "Resources", "kbli-overlay.json")))
     recs, rows = {}, [json.loads(l) for l in open(path)]
     id_rows = [json.loads(l) for l in open(id_path)] if id_path else []
-    lines, bad = corpus(ds, i18n, reasons, rows, id_rows)
+    lines, bad = corpus(ds, i18n, reasons, rows, id_rows, overlay)
     fails += bad
     if curated:
         more, bad = parity(ds, curated); lines += more; fails += bad
