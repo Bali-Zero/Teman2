@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""observe_visa_engine_annual_income_fact.py — bites: observation for seq-28 step A.
+"""observe_visa_engine_annual_income_fact.py — bites: observation for seq-28 steps A and B.
 
 # bites-observable — this script takes NO arguments: the program it runs and the
 # test class it names are literal strings in this file, so nothing an invoker types
@@ -11,7 +11,8 @@ The consumer is the Visa Oracle engine's /evaluate request model
 `work.annual_foreign_income_usd` and requires every test in it to pass: a body that
 omits the key still validates and carries UnknownFact(NOT_ASKED) (never a value),
 a supplied KNOWN whole-USD value is honoured, negative and string values are
-rejected, and a near-miss key is still refused as an extra field.
+rejected, and a near-miss key is still refused as an extra field; since step B it also
+requires the fact to be classed SENSITIVE (the mouth now asks it).
 Exit 0 only if pytest reports a full pass with at least the minimum test count.
 """
 
@@ -31,7 +32,7 @@ TEST_TARGET = (
     "::TestFactVocabularyExtensionRolloutDefaultE33G"
 )
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
-MIN_TESTS = 6
+MIN_TESTS = 7
 _SUMMARY = re.compile(r"^(?:=+ )?(\d+) passed(?:, \d+ warnings?)? in [\d.]+s(?: \([\d:]+\))?(?: =+)?$")
 
 
