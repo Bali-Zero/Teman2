@@ -833,8 +833,11 @@ def selftest():
         if got != want: bad.append("EN-SELFTEST %r: %d strings, want %d" % (text[:50], got, want))
     return bad
 
-R21_RECORDS = {"R21": {"kode_kbli_2025": "R21", "judul": "Aktivitas Vila", "uraian": "Kegiatan menyewakan vila kepada tamu"},
-               "R21-other": {"kode_kbli_2025": "R21-other", "judul": "Aktivitas Hotel"}}
+R21_RECORDS = {"R21": {"kode_kbli_2025": "R21", "judul": "Aktivitas Vila", "uraian": "Kegiatan menyewakan vila kepada tamu",
+                       "pelengkap": ["00091"]},
+               "R21-other": {"kode_kbli_2025": "R21-other", "judul": "Aktivitas Hotel"},
+               "00091": {"kode_kbli_2025": "00091", "judul": "Pengelolaan Pondok Wisata"},   # a code R21 names
+               "00092": {"kode_kbli_2025": "00092", "judul": "Pengelolaan Losmen Gembira"}}  # a code it does not
 
 def corpus(ds, i18n, reasons, rows, id_rows, overlay):
     """The known corpus: (printed lines, failures)."""
@@ -892,8 +895,11 @@ def corpus(ds, i18n, reasons, rows, id_rows, overlay):
            ("menyewakan" in id_only([{"code": "R21-other", "view": GATED[0], "text": u}]), "the same uraian on another code"),
            ("tampilkan" in id_only([{"code": "R21", "view": GATED[0], "text": "Tampilkan semua"}]), "a UI string on its own code"),
            (bool(analyse({"text": "Status: menyewakan"}, Record(R21_RECORDS["R21"], reasons, i18n), unknown=True)[0]),
-            "its own Indonesian word drawn in English outside any record span")]
-    out.append("self-test: R21 own() — record content subtracted on its own code only, a UI string kept: %d/%d"
+            "its own Indonesian word drawn in English outside any record span"),
+           (not id_only([{"code": "R21", "view": GATED[0], "text": "Pengelolaan Pondok Wisata"}]), "the title of a code it names"),
+           ("losmen" in id_only([{"code": "R21", "view": GATED[0], "text": "Pengelolaan Losmen Gembira"}]),
+            "the title of a code it does not name")]
+    out.append("self-test: R21 own() — record content subtracted on its own code only (and the codes it names), a UI string kept: %d/%d"
                % (sum(ok for ok, _ in r21), len(r21)))
     bad += ["EN-SELFTEST R21 own(): %s" % d for ok, d in r21 if not ok]
     if not {r["view"] for r in id_rows} >= set(GATED): bad.append("EN-SELFTEST the --id dump lacks a gated surface")
