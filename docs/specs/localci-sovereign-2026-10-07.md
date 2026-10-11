@@ -115,9 +115,9 @@ _Status._ F2 (the executor, disarmed by construction) built 2026-10-10: `merger.
 
 Until then every `would_merge` line says `armed: false` and names why. To stop: remove the env, or `touch <state>/phase_f_halt`. To resume after a `push_refused` or `storage_diverged`: read the reason in the halt file and the journal, reconcile GitHub's main with the mirror, then remove the file.
 
-### Phase F intake without GitHub (RULED 2026-10-11, revision 5)
+### Phase F intake without GitHub (RULED 2026-10-11, revision 6)
 
-For the day `Bali-Zero/Teman2` is deleted with its history (`docs/runbooks/zero-cutover.md`, gate 9), under Zero's rulings of 2026-10-11 (`docs/rules/RULINGS.md`, #8263; R-A through R-C below). Revision 3 (#8267) made the move an allow-list (0b); revision 4 moved ceremonies to a session-free account and added the per-tick trust-path walk; revision 5 closes the system-job, ACL, FIDO-provider, console-ceremony and second-channel gaps.
+For the day `Bali-Zero/Teman2` is deleted with its history (`docs/runbooks/zero-cutover.md`, gate 9), under Zero's rulings of 2026-10-11 (`docs/rules/RULINGS.md`, #8263; R-A through R-C below). Revision 3 (#8267) made the move an allow-list (0b); revision 4 moved ceremonies to a session-free account and added the per-tick trust-path walk; revisions 5–6 close the system-job, ACL, FIDO-provider, console-ceremony, second-channel and restore gaps.
 
 - Invariants: every judge runs from BASE (`refs/merger/base`), no secret enters a model-visible environment, sessions keep building.
 - Still owed by Zero: the deploy key and phase E (gate 1). Facts read on Pro and on `origin/main`, 2026-10-11.
@@ -129,16 +129,16 @@ For the day `Bali-Zero/Teman2` is deleted with its history (`docs/runbooks/zero-
    - Interpreter: python.org 3.11 (C4), root-owned, group write stripped; never a copy of `~/.pyenv/versions/3.11.11` (`-I` still runs `site`, so a planted `.pth` executes; the CLT python is 3.9.6). Standard library only.
    - Daemon, hooks and `intake-shell` run with `PATH=/Library/Developer/CommandLineTools/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin` and `GIT_NO_REPLACE_OBJECTS=1` (missing today from `GIT_ISOLATED` and the wrapper, so a `refs/replace/*` ref swaps what every merger git call reads), calling the CLT's `git`/`git-shell`, `/usr/bin/ssh-keygen` and `/usr/bin/ssh` by absolute path.
    - Docker: root-owned `/usr/local/localci/bin/docker` (C3), named absolutely in `runner.isolation_spec`; `shutil.which` is never called (on that `PATH` it finds nothing; with brew first, a session-owned binary).
-   - Wrapper: root-owned `/usr/local/localci/bin/localci_merger_tick.sh` (C12); fetches nothing; runs the heartbeat library from `~localci/code/current`, never `<state>/heartbeat.sh`; heartbeats `warning` while its bytes differ from `code/current`'s copy (superscar #1).
+   - Wrapper: root-owned `/usr/local/localci/bin/localci_merger_tick.sh` (C12); fetches nothing; runs the heartbeat library from `~localci/code/current`, never `<state>/heartbeat.sh`; every tick compares the wrapper and walker in `code/current` with both installed copies and heartbeats `warning` on either drift (superscar #1).
    - **Heartbeat**: not in `~nuzantara/.organism` (session-owned, unwritable for `localci`) but under `ORGANISM_LAST_SEEN_DIR=/Library/LocalCI/heartbeat` (`localci:wheel` 0755, C5): `pro.localci_merger.json`, 0644 (`Umask 18`), written by temp file and rename inside that dir.
 3. sshd (C2): Pro has `PasswordAuthentication yes`, `KbdInteractiveAuthentication yes`, no `AllowUsers`; `localci` gets publickey only, `zero-ops` no method at all.
 4. The executor stays session-owned (Q7: error, not attack): `localci` reaches nuzantara's Colima socket via `DOCKER_HOST`, with `staff` membership to traverse `~nuzantara` and a socket ACL a nuzantara LaunchAgent re-applies whenever Colima recreates it; that agent also takes the `colima` upkeep (`prune.keep_vm_discard`, fstrim), which as `localci` would be session code.
-5. **Trust-path and system-job walk, every tick (R-B).** The trust predicate is root-owned, no group/other write, and no write-granting ACL on the path or any ancestor to `/`: the shell walker uses `/usr/bin/find -L <root> <prunes> -prune -o \( ! -user root -o -perm -020 -o -perm -002 \) -print -quit`, `stat` per ancestor and `/bin/ls -led`; any ACL entry granting `write`, `add_file`, `add_subdirectory`, `append` or `delete_child` refuses, while deny entries such as `/Users/nuzantara`'s `group:everyone deny delete` are permitted. The root-owned wrapper runs it before the interpreter (a planted `.pth` executes at start-up), `intake.py` repeats it among §6's conditions, and each hook runs the same `find`/ancestor/ACL walk in `sh` before `exec` of Python. Output or non-zero exit (including unreadable dir) clears the arm, journals `trust_path_violation` (path, owner, mode or ACL), sets heartbeat `error` and exits before any judge. Roots: `/Library/Frameworks/Python.framework/Versions/3.11` (C4 strips installer group write and ACLs); `/usr/local/localci/bin`; `/Library/LocalCI` except output-only `heartbeat/` and never-read root-0700 `archive/`; `~localci/{hooks,bin,.ssh}`; CLT `usr/{bin/git,bin/git-shell,libexec/git-core}`; `/usr/bin/{ssh-keygen,ssh}`, `/bin/{bash,sh}`; the LaunchDaemon plist; both Docker CLI-plugin dirs `/usr/local/lib/docker/cli-plugins` and `/usr/local/libexec/docker/cli-plugins` when present. The plist's `MERGER_PYTHON` must equal the walked `/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11`.
-6. **No system job reads session-writable code, every tick (R-C).** Before any judge, the shell walker enumerates every plist in `/Library/LaunchDaemons` and `/Library/LaunchAgents`, loaded or not, verifies the plist itself, then extracts `Program`, every existing filesystem path in `ProgramArguments`, `WorkingDirectory` and every existing config path; every extracted path and ancestor must pass item 5's predicate. An unparsable plist, path that exists but cannot be inspected, or violation halts with `system_job_trust_violation`. On 2026-10-11 the system jobs are `AdGuardHome.plist` (relocated by P0 that day) and `com.adguard.mac.adguard.helper.plist`, whose program `…/AdGuard Software/com.adguard.mac.adguard/kext/com.adguard.mac.adguard.helper` and every ancestor pass (root-owned, no group/other write, no ACL); this item proves both on every tick.
+5. **Trust-path and system-job walk, every tick (R-B).** The trust predicate is root-owned, no group/other write, and no write-granting ACL on the path or any ancestor to `/`: under each root the shell walker uses `/usr/bin/find -L <root> <prunes> -prune -o \( ! -user root -o -perm -020 -o -perm -002 -o -acl \) -print` to feed every owner/mode candidate and every ACL-bearing descendant into inspection, plus `stat` and `/bin/ls -led` per ancestor. An ACL `allow` entry may contain only read-class rights (`read`, `readattr`, `readextattr`, `readsecurity`, `list`, `search`, `execute`); any other right refuses, explicitly `write`, `append`, `add_file`, `add_subdirectory`, `delete`, `delete_child`, `writeattr`, `writeextattr`, `writesecurity` and `chown`; deny entries are permitted. The root-owned wrapper runs it before the interpreter (a planted `.pth` executes at start-up), `intake.py` repeats it among §6's conditions, and each hook runs the same find/ancestor/ACL walk in `sh` before `exec` of Python. Violation output or non-zero exit (including unreadable dir) clears the arm, journals `trust_path_violation` (path, owner, mode or ACL), sets heartbeat `error` and exits before any judge. Roots: `/Library/Frameworks/Python.framework/Versions/3.11` (C4 strips installer group write and ACLs); `/usr/local/localci/bin`; `/Library/LocalCI` except output-only `heartbeat/` and never-read root-0700 `archive/`; `~localci/{hooks,bin,.ssh}`; CLT `usr/{bin/git,bin/git-shell,libexec/git-core}`; `/usr/bin/{ssh-keygen,ssh}`, `/bin/{bash,sh}`; the LaunchDaemon plist; both Docker CLI-plugin dirs `/usr/local/lib/docker/cli-plugins` and `/usr/local/libexec/docker/cli-plugins` when present. The plist's `MERGER_PYTHON` must equal the walked `/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11`.
+6. **Principal-relative system-job walk, first at C1 and every tick (R-C).** Staged root-owned as data from gate 8's verified bundle before C1, the walker enumerates every plist in `/Library/LaunchDaemons` and `/Library/LaunchAgents`, loaded or not, plus BTM/SMAppService jobs (`/usr/bin/sfltool dumpbtm` or `launchctl print system`), root's `crontab -l` and `/etc/periodic` entries under the same rule. Principal means `UserName`, defaulting to root for a LaunchDaemon; a LaunchAgent runs as the logged-in user. For root jobs and every LaunchAgent, the plist and every checked path must satisfy item 5's root-only predicate; for `localci`, root or `localci` ownership is accepted with the same mode/ACL rules. Except for the location rule that always checks LaunchAgents, a LaunchDaemon whose explicit principal is a session user (`nuzantara`, `balizero`, `zantara-codex`) is out of scope because it crosses no privilege boundary. Checked keys are `Program`; only absolute `ProgramArguments` entries (relative arguments are ignored: absolute-paths-only); `BundleProgram`, resolved against its bundle; `WorkingDirectory`, checking that directory and its ancestors but not recursing through it; and absolute path-like `EnvironmentVariables` values. For a script with a shebang or a venv Python, `realpath` resolves symlinks and the resolved interpreter and its ancestors are checked. A plist with none of these keys (including `<dict/>`) passes; an unparsable plist or an in-scope path that cannot be inspected halts with `system_job_trust_violation`. The observed inventory is seven daemons—AdGuardHome, the AdGuard for Mac helper, two `com.balizero.wa-codex-*` session-user jobs whose working directories are under that user's 0700 home, Docker socket with a relative argument, Docker vmnetd, and a disabled third-party job (owner's call)—plus two `<dict/>` LaunchAgent stubs. This proves direct declared paths only: transitive config reads and runtime-loaded libraries remain an honest residual.
 
-**0a. The operator account (R-A).** `zero-ops`: admin, used by no session, denied by ssh (C2), no key, a password only Zero knows. C0 creates it in System Settings at Pro's console; P0 and C1–C12 run either at that console or through Screen Sharing from a client host on which no agent session runs, never by `su`/`ssh` from a session terminal, and Screen Sharing must never “remember password”. Each ceremony uses a fresh `/usr/bin/env -i HOME=/Users/zero-ops PATH=/usr/bin:/bin:/usr/sbin:/sbin /bin/zsh -f`, keeps the token inside it and ends with `/usr/bin/sudo -k`.
+**0a. The operator account (R-A).** `zero-ops`: admin, used by no session, denied by ssh (C2), no key, a password only Zero knows. C0 creates it in System Settings at Pro's console; P0 and C1–C12 run either at that console or through Screen Sharing from a client host on which no agent session runs, never by `su`/`ssh` from a session terminal, and Screen Sharing must never “remember password”. Each ceremony uses a fresh `/usr/bin/env -i HOME=/Users/zero-ops PATH=/usr/bin:/bin:/usr/sbin:/sbin /bin/zsh -f`, keeps the token inside it and ends with `/usr/bin/sudo -k`; no ceremony command executes or interprets bytes under `/Users/` (copying them as data is allowed).
 
-**P0. AdGuard root-path ceremony, before Phase F (R-C; Zero only; DONE 2026-10-11).** Zero stops the same `/Library/LaunchDaemons/AdGuardHome.plist` service, moves `/Users/nuzantara/AdGuardHome` to `/usr/local/AdGuardHome`, first asserts the binary's sha256 against the official release (v0.107.79), changes the existing `Program` or `ProgramArguments` entry to `/usr/local/AdGuardHome/AdGuardHome` and sets `WorkingDirectory` to `/usr/local/AdGuardHome` (config and `data/` live beside the binary, so none stays under `/Users/`), applies `root:wheel`, `go-w` and `/bin/chmod -R -N`, then bootstraps that same plist and proves `ps` shows root, `lsof -p` shows no `/Users/` path, `dig @127.0.0.1` resolves, and its resolved paths pass items 5–6. It also retires the disabled `/Library/LaunchDaemons/com.nuzantara.adguardhome.plist`, which points at `~nuzantara/adguard-home` and which item 6 walks although it is not loaded. Still open and named: AdGuard for Mac's `AdguardCore` and `com.adguard.mac` directories are `drwxrwxrwx root:admin` and hold its filtering CA certificate and encrypted key. No system job executes from them, so item 6 does not halt, but a session could swap the CA that AdGuard uses for TLS filtering: that is why C9's anchor is the second channel (N6). Tightening them is Zero's call; no session performs it.
+**P0. AdGuard root-path ceremony, before Phase F (R-C; Zero only; DONE 2026-10-11).** Zero stopped `/Library/LaunchDaemons/AdGuardHome.plist` and copied `/Users/nuzantara/AdGuardHome` to `/usr/local/AdGuardHome`; the old copy still exists and is inert. Zero first asserted the binary's sha256 against official v0.107.79, changed the existing `Program` or `ProgramArguments` entry and `WorkingDirectory` to the new root-owned copy, applied `root:wheel`, `go-w` and no ACL, then bootstrapped the plist and proved a root process, no live `/Users/` path, DNS resolution, and that its Program/WorkingDirectory/plist chain passes items 5–6. This is not a recursive walk: `data/` is root 0700 and need not be traversed. AdGuard for Mac's filtering-CA directory remains live at mode 0777; item 6 does not prove transitive CA reads, so C9 requires both its independent device rule and the pinned CA below. Tightening that directory is Zero's call; no session performs it.
 
 **0b. The move is an allow-list.** Two things cross from the sessions' side: `marker.base`'s object closure, fetched into a fresh repository, and the seal and marker texts, once verified against a key no session can write. The operator or the daemon writes every other file; the rest stays behind, archived root-owned, never parsed:
 
@@ -153,17 +153,17 @@ _The freeze, before gate 8's bundle_, so main cannot move between the final fetc
 1. Reconcile any earlier halt; write `phase_f_halt` (`freeze: gate 9`). Assert: `lease.json` absent; `gh api` shows `merge-queue-main` restricting updates to the deploy key (phase E).
 2. Final fetch into the old mirror (`+refs/heads/main:refs/merger/base`), then gate 8's `git bundle create --all`. Assert: `git bundle verify` passes; `list-heads` shows `refs/merger/base` at the fetched sha.
 3. Gate 9's `ls-remote`. Assert: equal to step 2's sha, else step 1 restarts.
-4. C9: in `zero-ops`, Zero reads GitHub's main sha with `curl`, then re-reads it on `github.com` from their phone over a second channel not behind Pro and compares both to `marker.base`; optional hardening is a separately pinned `--cacert`. Only after equality does Zero touch the token, write the sha down and let gate 9 delete.
+4. C9: in `zero-ops`, Zero reads GitHub's main sha with `curl --cacert <root-owned pinned CA bundle>` (mandatory), then re-reads it on `github.com` from a phone not behind Pro and compares both to `marker.base`. The second device must be driven by no session; alternatively wireless debugging is off and Pro's adb key has been revoked for the ceremony. The property is: the device trusts no CA whose key a session can reach. Only after equality does Zero touch the token, write the sha down and let gate 9 delete.
 
 _The move, after gate 9_, in `zero-ops` (0a). A failed assert stops it, the daemon uninstalled.
 
 1. `/usr/bin/sudo /bin/launchctl bootout gui/501/com.balizero.localci-merger; /usr/bin/sudo /bin/launchctl print gui/501/com.balizero.localci-merger` must fail; `/usr/bin/pgrep -f merger.py` and old `lease.json` must be absent.
 2. `O=/Users/nuzantara/.nuzantara-pilots/local-ci/merger; A=/Library/LocalCI/archive/merger.frozen; /usr/bin/sudo /bin/mv "$O" "$A"; /usr/bin/sudo /usr/sbin/chown -R root:wheel "$A"; /usr/bin/sudo /bin/chmod -R -N "$A"; /usr/bin/sudo /usr/bin/find "$A" -type d -exec /bin/chmod 0500 {} +; /usr/bin/sudo /usr/bin/find "$A" -type f -exec /bin/chmod 0400 {} +; /usr/bin/sudo /usr/bin/install -o root -g wheel -m 0400 /dev/null "$O"`; `stat` proves archive and tombstone.
-3. `/usr/bin/sudo /usr/bin/install -d -o localci -g staff -m 0700 /Users/localci/merger`; assert precondition 1.
+3. `/usr/bin/sudo /usr/bin/install -d -o localci -g staff -m 0700 /Users/localci/merger`; assert precondition 1. On the first move, root copies the five seal files from the frozen archive into `/Library/LocalCI/incoming/seal`; on restore C9R has already replaced those files there, so this step and everything after it are rerunnable.
 4. C10, as `localci` under `env -i`: `git init --bare --template= --initial-branch=main` (no sample `hooks/`); `config` becomes a byte copy of the root-owned template `/Library/LocalCI/repo.config` (C6: `core.hooksPath /Users/localci/hooks`, `core.fsmonitor false`, `transfer.fsckObjects`, `receive.fsckObjects`, `receive.maxInputSize 200m`; no `include`, `merge`, `filter`, `diff`, `remote`). Assert: `cmp` equal; no `hooks/`, `info/attributes`, `info/grafts`, `objects/info/alternates`, commit-graph, `packed-refs`, `refs/replace`; `for-each-ref` empty.
 5. Re-assert C5 with `/usr/bin/ssh-keygen -K -w /usr/lib/ssh-keychain.dylib`; `/Library/LocalCI/seal_signers` (`root:wheel` 0444) is one `zero-seal namespaces="localci-seal" sk-ssh-ed25519@openssh.com …` line whose key equals the downloaded token key.
-6. C11: `report.json`, `ready.txt`, `marker.txt` and their `.sig`, copied as data from `merger.frozen/seal/` into root-owned `/Library/LocalCI/incoming/seal/`, are verified before any field is read: `ssh-keygen -Y verify -f /Library/LocalCI/seal_signers -I zero-seal -n localci-seal` on both texts, `kind ready` and `kind teman2_deleted`, the marker's `seal` = sha256(`ready.txt`), `report_sha256` = sha256(`report.json`). Then C11 prints `marker.base`; Zero confirms it equals freeze step 4's sha before step 7.
-7. `nuzantara` creates the bundle from the frozen archive; root copies it, never links it: `/usr/bin/sudo /usr/bin/install -o root -g wheel -m 0444 <bundle> /Library/LocalCI/incoming/base.bundle`. As `localci` under precondition 2's `env -i`, run `git -C /Users/localci/merger/repo.git fetch --no-tags /Library/LocalCI/incoming/base.bundle refs/merger/base:refs/merger/incoming`, `git bundle verify`, compare `incoming` to `marker.base`, then one `git update-ref --stdin` transaction sets `refs/merger/base` and `refs/heads/main` and deletes `incoming`; exactly those two refs remain, and `git gc --prune=now && git fsck --strict` drops every out-of-closure object and prints nothing.
+6. C11 reads root-owned `/Library/LocalCI/incoming/seal`: it verifies `report.json`, `ready.txt`, `marker.txt` and both signatures before any field is read, using `ssh-keygen -Y verify -f /Library/LocalCI/seal_signers -I zero-seal -n localci-seal` on both texts, then checks `kind ready`, `kind teman2_deleted`, marker `seal` = sha256(`ready.txt`) and `report_sha256` = sha256(`report.json`). C11 prints `marker.base`; Zero confirms it equals freeze step 4's sha before step 7.
+7. Root copies, never links, gate 8's verified bundle from freeze step 2 to `/Library/LocalCI/incoming/base.bundle`; neither `nuzantara` nor root invokes git inside the frozen archive. As `localci` under precondition 2's `env -i`, run `git -C /Users/localci/merger/repo.git fetch --no-tags /Library/LocalCI/incoming/base.bundle refs/merger/base:refs/merger/incoming`, `git bundle verify`, compare `incoming` to `marker.base`, then one `git update-ref --stdin` transaction sets `refs/merger/base` and `refs/heads/main` and deletes `incoming`; exactly those two refs remain, and `git gc --prune=now && git fsck --strict` drops every out-of-closure object and prints nothing.
 8. `/usr/bin/sudo -u localci /usr/bin/install -d -m 0700 /Users/localci/merger/seal; for x in report.json ready.txt ready.txt.sig marker.txt marker.txt.sig; do /usr/bin/sudo -u localci /usr/bin/install -m 0400 /Library/LocalCI/incoming/seal/$x /Users/localci/merger/seal/$x; done`; install the same verified bytes beside Mini's replica and compare sha256s with step 6.
 9. With `B=<marker.base>` and `D=/Users/localci/code/$B`, `/usr/bin/sudo -u localci /usr/bin/install -d -m 0700 "$D"; /usr/bin/sudo -u localci /usr/bin/env -i HOME=/Users/localci PATH=/Library/Developer/CommandLineTools/usr/bin:/usr/bin:/bin GIT_NO_REPLACE_OBJECTS=1 GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null /Library/Developer/CommandLineTools/usr/bin/git -C /Users/localci/merger/repo.git archive "$B" scripts/localci scripts/lib/heartbeat.sh scripts/ci/harness_gate_read.py | /usr/bin/sudo -u localci /usr/bin/tar -x -C "$D"; /usr/bin/sudo -u localci /bin/ln -s "$B" /Users/localci/code/.current.new; /usr/bin/sudo -u localci /bin/mv -f /Users/localci/code/.current.new /Users/localci/code/current`; `find "$D" -type l` is empty and C7 sha256s match.
 10. `/usr/bin/sudo -u localci /usr/bin/touch /Users/localci/merger/{decisions.jsonl,intake.jsonl}; /usr/bin/sudo -u localci /bin/chmod 0600 /Users/localci/merger/{decisions.jsonl,intake.jsonl}; /usr/bin/printf '%s\n' moved | /usr/bin/sudo -u localci /usr/bin/tee /Users/localci/merger/phase_f_halt >/dev/null; /usr/bin/sudo -u localci /usr/bin/ssh-keygen -q -t ed25519 -N '' -f /Users/localci/merger/mini_key; /usr/bin/sudo -u localci /usr/bin/install -m 0600 <operator-verified-mini-known-hosts-file> /Users/localci/merger/mini_known_hosts`; assert the exact allow-list, no symlink/non-`localci` owner, and `lsof +D` empty on old and new state.
@@ -175,18 +175,18 @@ _The healer only alerts_ (`human_only`). A `nuzantara` organ cannot `launchctl k
 
 _Sessions keep building._ The old mirror's `HEAD` and `refs/heads/main` froze at its clone. In the new one `HEAD` names `refs/heads/main`, which no pusher may write and which item 5's transaction fast-forwards with `refs/merger/base`. Gate 7's `git fetch origin` keeps the default refspec; its repoint of `origin` lands at move step 12 (Teman2 until then).
 
-_Restore (Q4)._ If Pro's state is lost, `nuzantara` on Mini bundles the replica's `refs/heads/main`; the move reruns from step 3 with signed seal files from any copy. The replica and zero's synced main are session-writable, so agreement proves only no single-copy divergence: C9R, not C9, anchors trust after GitHub is gone by proving the old signed `marker.base` is an ancestor of the bundle tip and having Zero touch and sign a replacement marker at that tip. Later candidates are re-pushed.
+_Restore (Q4)._ If Pro's state is lost, `nuzantara` on Mini bundles the replica's `refs/merger/base`; root copies it to `incoming/base.bundle`, C9R verifies the old signed marker is an ancestor of that same ref, touches and signs a replacement at its tip, and installs the five seal files into `incoming/seal`; the move then reruns from step 3 and C11 reads exactly that directory. The replica and zero's synced main are session-writable, so agreement proves only no single-copy divergence. Later candidates are re-pushed.
 
 ```sh
 : "C9R — restore marker after GitHub is gone"
-set -euo pipefail
-d=$(/usr/bin/mktemp -d); B=/Library/LocalCI/incoming/base.bundle; S=<seal-copy-beside-replica>; P=/usr/lib/ssh-keychain.dylib; cd $d
+set -euo pipefail; trap '/usr/bin/sudo -k' EXIT
+d=$(/usr/bin/mktemp -d); B=/Library/LocalCI/incoming/base.bundle; S=<seal-copy-beside-replica>; I=/Library/LocalCI/incoming/seal; P=/usr/lib/ssh-keychain.dylib; cd $d
 for x in report.json ready.txt ready.txt.sig marker.txt marker.txt.sig; do /usr/bin/sudo /usr/bin/install -o zero-ops -m 0400 $S/$x $d/$x; done
 f() { /usr/bin/awk -v k="$1" '$1==k {print $2}' "$2"; }; h() { /usr/bin/shasum -a 256 "$1" | /usr/bin/awk '{print $1}'; }; /usr/bin/ssh-keygen -Y verify -f /Library/LocalCI/seal_signers -I zero-seal -n localci-seal -s marker.txt.sig < marker.txt
-C=/Library/Developer/CommandLineTools/usr/bin; $C/git init -q --bare repo.git; $C/git -C repo.git fetch -q $B refs/heads/main:refs/heads/main; OLD=$(f base marker.txt); TIP=$($C/git -C repo.git rev-parse refs/heads/main); $C/git -C repo.git merge-base --is-ancestor $OLD $TIP
+C=/Library/Developer/CommandLineTools/usr/bin; $C/git init -q --bare repo.git; $C/git -C repo.git fetch -q $B refs/merger/base:refs/merger/base; OLD=$(f base marker.txt); TIP=$($C/git -C repo.git rev-parse refs/merger/base); $C/git -C repo.git merge-base --is-ancestor $OLD $TIP
 /usr/bin/printf 'localci-seal v1\nkind teman2_deleted\nseal %s\nbase %s\nhalt freeze\n' "$(h ready.txt)" "$TIP" > marker.txt; /usr/bin/ssh-keygen -K -w $P; p=( $d/id_ed25519_sk_rk_localci-seal*.pub ); [ ${#p} -eq 1 ]
 /usr/bin/ssh-keygen -Y sign -w $P -f ${p[1]%.pub} -n localci-seal marker.txt; /usr/bin/ssh-keygen -Y verify -f /Library/LocalCI/seal_signers -I zero-seal -n localci-seal -s marker.txt.sig < marker.txt
-for x in marker.txt marker.txt.sig; do /usr/bin/sudo /usr/bin/install -o root -g wheel -m 0444 $x /Library/LocalCI/incoming/seal/$x; done; echo "OK C9R restore-tip $TIP"; /usr/bin/sudo -k
+/usr/bin/sudo /usr/bin/install -d -o root -g wheel -m 0755 $I; for x in report.json ready.txt ready.txt.sig marker.txt marker.txt.sig; do /usr/bin/sudo /usr/bin/install -o root -g wheel -m 0444 $x $I/$x; done; echo "OK C9R restore-tip $TIP"; /usr/bin/sudo -k
 ```
 
 **1. How a candidate arrives.**
@@ -229,7 +229,7 @@ BASE's `intake.py` validates it against BASE's `scripts/localci/candidate.schema
 - _Verification._ `-Y find-principals`, then `-Y verify -I <principal> -n localci-admit` against a temporary copy of BASE's file, at `pre-receive`, at decision (filling `label_privileged`) and at merging (replacing "label still present" in `phase_f_arming`). On the append-only chain, the admission in force is the newest verified `admit` with now ≤ `not_after` whose (path, head, meta) has no verified `revoke` anywhere on it; a revoke is therefore terminal for its triple, and re-admitting needs a new head or meta.
 - _Replay._ Binding repo, path, head, cut base and meta ends the label's carry-over. A (path, nonce) in a different signed text (keyed on the text's sha256) is refused at `pre-receive` and ignored at decision. The `merged` line gains `admit_nonce`; another namespace fails verification.
 
-**3b. The seal principal (M1), pinned outside git.** A SEPARATE principal, `zero-seal`, signs the READY seal and gate-9 marker: Zero's hardware token (`ed25519-sk`, enrol with `-w /usr/lib/ssh-keychain.dylib -O resident -O verify-required -O application=ssh:localci-seal`, `namespaces="localci-seal"` only), touched in `zero-ops` at READY (C8) and gate 9 (C9), never per merge. Every `-K` and `-Y sign` also names that provider; any `/opt/homebrew` libfido2/provider is forbidden.
+**3b. The seal principal (M1), pinned outside git.** A SEPARATE principal, `zero-seal`, signs the READY seal and gate-9 marker: Zero's hardware token (`ed25519-sk`, enrol with `-w /usr/lib/ssh-keychain.dylib -O resident -O verify-required -O application=ssh:localci-seal -O write-attestation=<file>`, `namespaces="localci-seal"` only), touched in `zero-ops` at READY (C8) and gate 9 (C9), never per merge. Before C5, the recorded attestation's AAGUID must equal the token vendor's published AAGUID—owed verification, not yet proven—so a platform authenticator cannot satisfy enrolment. Every `-K` and `-Y sign` also names that provider; any `/opt/homebrew` libfido2/provider is forbidden.
 
 - _UV bit._ `-Y verify` cannot show the PIN was entered, so intake decodes the SSHSIG blob and refuses unless the signed `flags` byte (PROTOCOL.u2f) carries user-presence 0x01 and user-verified 0x04.
 - _Resident._ `ssh-keygen -K -w /usr/lib/ssh-keychain.dylib` re-derives the stub from the token in each ceremony, so no file is guarded between them; a stolen token plus PIN is the whole credential, while a non-resident key would also need the stub. A lost token is rotated.
@@ -286,7 +286,7 @@ _Rehearsal: scratch mirror only._ `intake.py rehearse --state-dir <scratch>` clo
 
 _Tests_ (`scripts/localci/tests/test_intake.py`): guilt beside innocence for each rule, signing on real `ssh-keygen -Y` with throwaway non-sk keys; the UV parser runs on constructed SSHSIG blobs (UV set, clear, non-sk), and injectable owner/ACL/plist readers keep trust walks unprivileged.
 
-- Move and arming: `test_first_tick_journals_moved_only_on_the_allow_list`, `test_marker_unverified_by_the_pinned_key_refuses`, `test_seal_principal_in_git_is_inert`, `test_arms_only_on_seal_and_marker`, `test_seal_without_uv_bit_refuses`, `test_seal_numbers_rechecked_against_thresholds_at_marker_base`, `test_admit_principal_cannot_sign_a_seal`, `test_rewound_base_refuses`, `test_every_first_parent_after_marker_base_needs_a_merged_line`, `test_replace_refs_are_ignored`, `test_repo_config_off_template_refuses`, `test_armed_intake_calls_no_report_no_gh`, `test_failed_ls_remote_is_not_gone`, `test_refuses_beside_merger_armed`, `test_refuses_a_session_writable_ancestor`, `test_trust_path_checks_owner_mode_acl_and_every_ancestor`, `test_acl_write_grant_refuses_and_deny_only_acl_passes`, `test_system_job_paths_and_ancestors_are_trusted_every_tick`, `test_hooks_walk_in_sh_before_python`, `test_launchdaemon_plugins_and_merger_python_are_walked`, `test_apple_fido_provider_recovers_resident_verify_required_key_with_uv`, `test_unreadable_trust_dir_halts`, `test_heartbeat_library_read_from_code_current`, `test_heartbeat_written_under_library_localci`, `test_wrapper_drift_from_code_current_warns`, `test_rehearsal_refuses_the_live_state_dir`.
+- Move and arming: `test_first_tick_journals_moved_only_on_the_allow_list`, `test_marker_unverified_by_the_pinned_key_refuses`, `test_seal_principal_in_git_is_inert`, `test_arms_only_on_seal_and_marker`, `test_seal_without_uv_bit_refuses`, `test_seal_numbers_rechecked_against_thresholds_at_marker_base`, `test_admit_principal_cannot_sign_a_seal`, `test_rewound_base_refuses`, `test_every_first_parent_after_marker_base_needs_a_merged_line`, `test_replace_refs_are_ignored`, `test_repo_config_off_template_refuses`, `test_armed_intake_calls_no_report_no_gh`, `test_failed_ls_remote_is_not_gone`, `test_refuses_beside_merger_armed`, `test_refuses_a_session_writable_ancestor`, `test_trust_path_checks_owner_mode_acl_and_every_ancestor`, `test_acl_write_grant_refuses_and_deny_only_acl_passes`, `test_system_job_paths_and_ancestors_are_trusted_every_tick`, `test_system_job_principal_relative_scope`, `test_hooks_walk_in_sh_before_python`, `test_launchdaemon_plugins_and_merger_python_are_walked`, `test_apple_fido_provider_recovers_resident_verify_required_key_with_uv`, `test_token_attestation_aaguid_matches_vendor`, `test_unreadable_trust_dir_halts`, `test_heartbeat_library_read_from_code_current`, `test_heartbeat_written_under_library_localci`, `test_wrapper_and_walker_drift_from_code_current_warn`, `test_rehearsal_refuses_the_live_state_dir`.
 - The arm: `test_expired_arm_closes_the_hook`, `test_arm_holds_while_the_lease_holder_lives`, `test_lease_without_equal_pid_start_does_not_hold_the_arm`, `test_arm_written_at_start_and_at_drop_lease`, `test_a_revoke_lands_while_unarmed`, `test_revoke_only_tree_is_exactly_two_files`.
 - The hook: `test_refuses_outside_the_allowlist` / `test_accepts_an_atomic_pair_in_its_namespace`, `test_refuses_another_hosts_namespace`, `test_refuses_refs_replace`, `test_burn_holds_when_post_receive_fails`, `test_a_merged_path_is_burned`, `test_refuses_meta_naming_another_head`, `test_hook_runs_the_armed_base_sha`, `test_secret_finding_refuses_without_echoing_the_match`, `test_scanner_absent_erroring_or_timing_out_refuses`, `test_scanner_binary_off_its_sha256_refuses`, `test_scanner_range_on_a_new_ref_starts_at_base`.
 - Admission: `test_schema_and_signers_are_base`, `test_each_bound_field_alone_refuses`, `test_wrong_namespace_expired_or_merged_nonce_refuses`, `test_expiry_checked_at_decision_and_merging`, `test_not_after_past_receipt_plus_7d_refuses`, `test_nonce_keyed_on_text_and_revoke_is_terminal`, `test_batch_admits_only_its_lines`.
@@ -296,7 +296,7 @@ _Tests_ (`scripts/localci/tests/test_intake.py`): guilt beside innocence for eac
 
 _Mutants_ added to `scripts/localci/tests/mutants/merger_mutants.py`, each killed by that file:
 
-- Move, arming and the seal: `ready-recomputed`, `seal-optional`, `seal-below-threshold`, `seal-written-not-ready`, `seal-unsigned`, `seal-uv-ignored`, `seal-signed-by-admit-principal`, `seal-verified-against-git-signers`, `marker-read-before-verify`, `thresholds-read-at-current-base`, `base-rewind-vacuous`, `merged-line-requirement-skipped`, `marker-without-seal`, `marker-from-ls-remote`, `allow-list-unchecked`, `replace-objects-honoured`, `intake-beside-armed`, `ancestor-unchecked`, `trust-path-group-writable-accepted`, `trust-path-acl-accepted`, `system-job-session-writable-accepted`, `trust-walk-error-ignored`, `relative-binary`, `heartbeat-from-state`, `heartbeat-under-session-home`, `wrapper-drift-silent`, `rehearse-live-state`.
+- Move, arming and the seal: `ready-recomputed`, `seal-optional`, `seal-below-threshold`, `seal-written-not-ready`, `seal-unsigned`, `seal-uv-ignored`, `seal-signed-by-admit-principal`, `seal-verified-against-git-signers`, `marker-read-before-verify`, `thresholds-read-at-current-base`, `base-rewind-vacuous`, `merged-line-requirement-skipped`, `marker-without-seal`, `marker-from-ls-remote`, `allow-list-unchecked`, `replace-objects-honoured`, `intake-beside-armed`, `ancestor-unchecked`, `trust-path-group-writable-accepted`, `trust-path-acl-accepted`, `system-job-session-writable-accepted`, `system-job-userName-ignored`, `trust-walk-error-ignored`, `relative-binary`, `heartbeat-from-state`, `heartbeat-under-session-home`, `wrapper-drift-silent`, `rehearse-live-state`.
 - The arm: `arm-never-expires`, `arm-ignores-lease`, `arm-pid-start-optional`, `arm-not-written-at-drop`, `revoke-refused-unarmed`, `revoke-tree-unchecked`.
 - The hook: `hook-allows-refs-heads`, `hook-allows-refs-merger`, `hook-allows-refs-replace`, `hook-any-host`, `burn-in-post-receive`, `merged-path-unburned`, `scanner-echoes-match`, `scanner-fail-open`, `scanner-binary-unhashed`, `scanner-range-unbounded`.
 - Admission: `schema-from-candidate`, `signers-from-candidate`, `admit-any-namespace`, `admit-{head,base,meta}-unbound`, `not-after-unanchored`, `admit-expiry-ignored`, `nonce-keyed-on-ref`, `revoke-not-terminal`, `batch-any-line`.
@@ -324,28 +324,28 @@ _Mutants_ added to `scripts/localci/tests/mutants/merger_mutants.py`, each kille
 7. **Q7 residual (Zero).** The executor stays session-owned.
 8. **R-A operator account (Zero, 2026-10-11, M5 session question tool).** A dedicated admin account, `zero-ops`, used by no session, runs every ceremony in a clean shell with absolute tool paths, the token signing inside it (0a).
 9. **R-B trust-path walk (Zero, 2026-10-11, M5 session question tool).** `nuzantara` stays in `admin`; every tick checks ownership, mode and write-granting ACLs on each trust path and ancestor, halting otherwise (precondition 5).
-10. **R-C AdGuard/system jobs (Zero, 2026-10-11, M5 session question tool, confirmed to the LocalCI gate as "only permissions").** Relocated by Zero on 2026-10-11: AdGuardHome (a private service) now runs from `/usr/local/AdGuardHome` as `root:wheel`, `go-w`, no ACL, otherwise unchanged. The LocalCI gate verified it read-only: root process, no non-root or writable entry, no ACL, official v0.107.79 sha256, `dig` resolves, and the disabled `com.nuzantara.adguardhome.plist` retired. Item 6 proves it on every tick. Every tick refuses any system job that executes or reads a session-writable path (P0, precondition 6).
+10. **R-C AdGuard/system jobs (Zero, 2026-10-11, M5 session question tool, confirmed to the LocalCI gate as "only permissions").** Copied by Zero on 2026-10-11: AdGuardHome now runs from `/usr/local/AdGuardHome` as `root:wheel`, `go-w`, no ACL, otherwise unchanged; the old copy is inert. The gate verified the Program/WorkingDirectory/plist chain, root process, official v0.107.79 sha256 and DNS response; it did not recursively traverse root-0700 `data/`. Item 6 applies its principal-relative direct-path rule at C1 and every tick; transitive runtime reads remain unproven.
 
-_Operator blocks (Q3, R-A)._ C0 follows System Settings creation at Pro's console; P0, pre-C5 and C1–C12 each use a fresh clean `zero-ops` shell (0a). A block sets `-euo pipefail`, uses absolute tools, is titled by a `:` no-op, prints `OK`, then ends with `/usr/bin/sudo -k`; the next starts only after it. `<…>` is a placeholder; a download without vendor checksum is pinned to the sha256 of the same URL fetched on Mini (separate ISP).
+_Operator blocks (Q3, R-A)._ C0 follows System Settings creation at Pro's console; P0, pre-C5 and C1–C12 each use a fresh clean `zero-ops` shell (0a). Every block starts with `set -euo pipefail; trap '/usr/bin/sudo -k' EXIT`, uses absolute tools, is titled by a `:` no-op, prints `OK`, and may retain its trailing `/usr/bin/sudo -k`; the next starts only after it. `<…>` is a placeholder; a download without vendor checksum is pinned to the sha256 of the same URL fetched on Mini (separate ISP).
 
 ```sh
-: "C0 — after System Settings creates zero-ops at Pro's console"; set -euo pipefail
+: "C0 — after System Settings creates zero-ops at Pro's console"; set -euo pipefail; trap '/usr/bin/sudo -k' EXIT
 /usr/bin/id zero-ops; /usr/sbin/dseditgroup -o checkmember -m zero-ops admin; /usr/bin/sudo /bin/chmod -N /Users/zero-ops; /usr/bin/sudo /bin/chmod 0700 /Users/zero-ops
 /usr/bin/stat -f '%N %Su:%Sg %Lp' /Users/zero-ops; echo "OK C0"; /usr/bin/sudo -k
-: "C1 — localci: enabled, staff, real shell, no usable password, root-owned home"; set -euo pipefail; S=/usr/bin/sudo; D=/usr/bin/dscl; U=/Users/localci
+: "C1 — system-job walk first; then localci enabled, staff, real shell, no usable password, root-owned home"; set -euo pipefail; trap '/usr/bin/sudo -k' EXIT; S=/usr/bin/sudo; D=/usr/bin/dscl; U=/Users/localci; /usr/local/localci/bin/localci-trust-path-walk.sh --system-jobs
 uid=$(( $($D . -list /Users UniqueID | /usr/bin/awk '$2>=501 && $2<1000 {print $2}' | /usr/bin/sort -n | /usr/bin/tail -1) + 1 ))
 $S $D . -create $U;
 for k v in UniqueID $uid PrimaryGroupID 20 UserShell /bin/zsh RealName localci NFSHomeDirectory $U Password '*'; do $S $D . -create $U $k "$v"; done
 $S /usr/sbin/createhomedir -c -u localci; $S /usr/sbin/chown root:wheel $U; $S /bin/chmod -R -N $U; $S /bin/chmod 0711 $U
 $S /usr/bin/install -d -o localci -g staff -m 0700 $U/code $U/logs; $S /usr/bin/install -d -o root -g wheel -m 0755 $U/hooks $U/bin $U/.ssh
 /usr/bin/id localci; $S -u localci /usr/bin/true; /usr/bin/stat -f '%N %Su:%Sg %Lp' $U $U/code $U/hooks $U/.ssh; echo "OK C1"; /usr/bin/sudo -k
-: "C2 — sshd: localci publickey only, zero-ops no method"; set -euo pipefail
+: "C2 — sshd: localci publickey only, zero-ops no method"; set -euo pipefail; trap '/usr/bin/sudo -k' EXIT
 /usr/bin/printf '%s\n' '' 'Match all' 'DenyUsers zero-ops' 'Match User localci' '    AuthenticationMethods publickey' '    PasswordAuthentication no' '    KbdInteractiveAuthentication no' '    DisableForwarding yes' '    PermitTTY no' 'Match User zero-ops' '    PubkeyAuthentication no' '    PasswordAuthentication no' '    KbdInteractiveAuthentication no' | /usr/bin/sudo /usr/bin/tee -a /etc/ssh/sshd_config >/dev/null
 /usr/bin/sudo /usr/sbin/sshd -t; a=$(/usr/bin/sudo /usr/sbin/sshd -T -C user=localci,host=localhost,addr=127.0.0.1); z=$(/usr/bin/sudo /usr/sbin/sshd -T -C user=zero-ops,host=localhost,addr=127.0.0.1)
 for l in 'authenticationmethods publickey' 'passwordauthentication no' 'kbdinteractiveauthentication no' 'disableforwarding yes' \
   'permittty no'; do /usr/bin/grep -qix "$l" <<< "$a"; done
 for l in 'denyusers zero-ops' 'pubkeyauthentication no' 'passwordauthentication no' 'kbdinteractiveauthentication no'; do /usr/bin/grep -qix "$l" <<< "$z"; done; echo "OK C2"; /usr/bin/sudo -k
-: "C3 — gitleaks and docker pins from BASE's gitleaks.toml header"; set -euo pipefail; B=/usr/local/localci/bin; d=$(/usr/bin/mktemp -d)
+: "C3 — gitleaks and docker pins from BASE's gitleaks.toml header"; set -euo pipefail; trap '/usr/bin/sudo -k' EXIT; B=/usr/local/localci/bin; d=$(/usr/bin/mktemp -d)
 V='<gitleaks version>'; TSHA='<tarball sha256, from release checksums.txt>'; BSHA='<binary sha256>'; DV='<docker version>'; DSHA='<tarball sha256, fetched on Mini>'
 /usr/bin/curl -fsSL --proto '=https' -o $d/gl.tgz https://github.com/gitleaks/gitleaks/releases/download/v$V/gitleaks_${V}_darwin_arm64.tar.gz; /usr/bin/curl -fsSL --proto '=https' -o $d/dk.tgz https://download.docker.com/mac/static/stable/aarch64/docker-$DV.tgz
 /usr/bin/printf '%s  %s\n' "$TSHA" $d/gl.tgz "$DSHA" $d/dk.tgz | /usr/bin/shasum -a 256 -c -
@@ -356,7 +356,7 @@ V='<gitleaks version>'; TSHA='<tarball sha256, from release checksums.txt>'; BSH
 $B/gitleaks version; $B/docker --version; /usr/bin/stat -f '%N %Su:%Sg %Lp' $B $B/gitleaks $B/docker
 echo "OK C3"; /usr/bin/sudo -k
 : "C4 — python.org 3.11.9, the last 3.11 installer; group write stripped"
-set -euo pipefail
+set -euo pipefail; trap '/usr/bin/sudo -k' EXIT
 d=$(/usr/bin/mktemp -d); V=3.11.9; SHA='<pkg sha256, fetched on Mini>'; F=/Library/Frameworks/Python.framework
 /usr/bin/curl -fsSL --proto '=https' -o $d/py.pkg https://www.python.org/ftp/python/$V/python-$V-macos11.pkg
 /usr/bin/printf '%s  %s\n' "$SHA" $d/py.pkg | /usr/bin/shasum -a 256 -c -
@@ -367,21 +367,21 @@ d=$(/usr/bin/mktemp -d); V=3.11.9; SHA='<pkg sha256, fetched on Mini>'; F=/Libra
 $F/Versions/3.11/bin/python3.11 -I -c 'import sys; print(sys.version)'
 echo "OK C4"; /usr/bin/sudo -k
 
-: "pre-C5 — Apple FIDO provider proves resident recovery and verify-required UV"
-set -euo pipefail
-d=$(/usr/bin/mktemp -d); cd $d; P=/usr/lib/ssh-keychain.dylib; PY=/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11; I=/Users/nuzantara/.nuzantara-pilots/local-ci/merger/scripts/localci/intake.py
-: "first enrolment only: /usr/bin/ssh-keygen -t ed25519-sk -w $P -O resident -O verify-required -O application=ssh:localci-seal -C zero-seal -f new"
+: "pre-C5 — Apple FIDO provider proves resident recovery and verify-required UP+UV"
+set -euo pipefail; trap '/usr/bin/sudo -k' EXIT
+d=$(/usr/bin/mktemp -d); cd $d; P=/usr/lib/ssh-keychain.dylib; PY=/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11
+: "first enrolment only: /usr/bin/ssh-keygen -t ed25519-sk -w $P -O resident -O verify-required -O application=ssh:localci-seal -O write-attestation=seal.attestation -C zero-seal -f new; before C5 compare its AAGUID with the token vendor's published AAGUID"
 /usr/bin/ssh-keygen -K -w $P; p=( $d/id_ed25519_sk_rk_localci-seal*.pub ); [ ${#p} -eq 1 ]
 /usr/bin/printf '%s\n' provider-proof > proof.txt; /usr/bin/ssh-keygen -Y sign -w $P -f ${p[1]%.pub} -n localci-seal proof.txt
-flags=$($PY -I $I inspect-sshsig-flags proof.txt.sig); [ $((flags & 0x04)) -eq 4 ]; /bin/rm -f $d/id_*_sk_rk*; echo "OK pre-C5 resident verify-required flags=$flags"; /usr/bin/sudo -k
+flags=$($PY -I -c 'import base64,io,sys; b=base64.b64decode("".join(x.strip() for x in open(sys.argv[1],encoding="ascii") if not x.startswith("-----")),validate=True); r=io.BytesIO(b); u=lambda:int.from_bytes(r.read(4),"big"); s=lambda:r.read(u()); assert r.read(6)==b"SSHSIG"; assert u()==1; [s() for _ in range(4)]; r=io.BytesIO(s()); assert s()==b"sk-ssh-ed25519@openssh.com"; s(); b=r.read(); assert len(b)==5; print(b[0])' proof.txt.sig); [ $((flags & 0x05)) -eq 5 ]; /bin/rm -f $d/id_*_sk_rk*; echo "OK pre-C5 resident verify-required flags=$flags"; /usr/bin/sudo -k
 
 : "C5 — /Library/LocalCI and the seal key read from the token, before gate 1"
-set -euo pipefail
+set -euo pipefail; trap '/usr/bin/sudo -k' EXIT
 L=/Library/LocalCI; S=/usr/bin/sudo; I=/usr/bin/install; d=$(/usr/bin/mktemp -d); cd $d
 $S $I -d -o root -g wheel -m 0755 $L $L/incoming; $S $I -d -o root -g wheel -m 0700 $L/archive
 $S $I -d -o localci -g wheel -m 0755 $L/heartbeat
 /usr/bin/grep -qx sk-ssh-ed25519@openssh.com <<< "$(/usr/bin/ssh -Q key)"
-: 'first enrolment only: /usr/bin/ssh-keygen -t ed25519-sk -w /usr/lib/ssh-keychain.dylib -O resident -O verify-required -O application=ssh:localci-seal -C zero-seal -f new'; /usr/bin/ssh-keygen -K -w /usr/lib/ssh-keychain.dylib
+: 'first enrolment only: /usr/bin/ssh-keygen -t ed25519-sk -w /usr/lib/ssh-keychain.dylib -O resident -O verify-required -O application=ssh:localci-seal -O write-attestation=seal.attestation -C zero-seal -f new'; /usr/bin/ssh-keygen -K -w /usr/lib/ssh-keychain.dylib
 p=( $d/id_ed25519_sk_rk_localci-seal*.pub ); [ ${#p} -eq 1 ]
 /usr/bin/awk '{print "zero-seal namespaces=\"localci-seal\" " $1 " " $2}' $p[1] > seal_signers
 $S $I -o root -g wheel -m 0444 seal_signers $L/seal_signers
@@ -390,7 +390,7 @@ $S $I -o root -g wheel -m 0444 seal_signers $L/seal_signers
 echo "OK C5"; /usr/bin/sudo -k
 
 : "C6 — the repo.config template"
-set -euo pipefail
+set -euo pipefail; trap '/usr/bin/sudo -k' EXIT
 d=$(/usr/bin/mktemp -d); T=/Library/LocalCI/repo.config
 /usr/bin/printf '%s\n' '[core]' 'repositoryformatversion = 0' 'filemode = true' 'bare = true' 'hooksPath = /Users/localci/hooks' \
   'fsmonitor = false' '[transfer]' 'fsckObjects = true' '[receive]' 'fsckObjects = true' 'maxInputSize = 200m' > $d/repo.config
@@ -400,7 +400,7 @@ d=$(/usr/bin/mktemp -d); T=/Library/LocalCI/repo.config
 echo "OK C6"; /usr/bin/sudo -k
 
 : "C7 — hooks, intake-shell, authorized_keys (each host's localci_intake.pub, fingerprint checked on that host)"
-set -euo pipefail
+set -euo pipefail; trap '/usr/bin/sudo -k' EXIT
 d=$(/usr/bin/mktemp -d); U=/Users/localci; PY=/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11
 for h in pre-receive update post-receive; do
   /usr/bin/printf '#!/bin/sh\n/usr/local/localci/bin/localci-trust-path-walk.sh || exit 78\nexec %s -I %s/code/current/scripts/localci/intake.py hook %s "$@"\n' $PY $U $h > $d/$h; done
@@ -429,7 +429,7 @@ EOF
 echo "OK C7"; /usr/bin/sudo -k
 
 : "C8 — gate 1: Zero reads and signs the READY seal"
-set -euo pipefail
+set -euo pipefail; trap '/usr/bin/sudo -k' EXIT
 O=/Users/nuzantara/.nuzantara-pilots/local-ci/merger/seal; d=$(/usr/bin/mktemp -d); cd $d
 h() { /usr/bin/shasum -a 256 "$1" | /usr/bin/awk '{print $1}'; }; f() { /usr/bin/awk -v k="$1" '$1==k {print $2}' "$2"; }
 /usr/bin/sudo /usr/bin/install -o zero-ops -m 0400 $O/ready.txt $O/report.json $d/
@@ -443,10 +443,10 @@ p=( $d/id_ed25519_sk_rk_localci-seal*.pub ); [ ${#p} -eq 1 ]
 echo "OK C8"; /usr/bin/sudo -k
 
 : "C9 — freeze step 4: the marker anchored on GitHub's main, signed; Zero writes the sha down"
-set -euo pipefail
+set -euo pipefail; trap '/usr/bin/sudo -k' EXIT
 O=/Users/nuzantara/.nuzantara-pilots/local-ci/merger/seal; d=$(/usr/bin/mktemp -d); cd $d
 h() { /usr/bin/shasum -a 256 "$1" | /usr/bin/awk '{print $1}'; }; f() { /usr/bin/awk -v k="$1" '$1==k {print $2}' "$2"; }
-G=$(/usr/bin/curl -fsS --proto '=https' -H 'Accept: application/vnd.github.sha' https://api.github.com/repos/Bali-Zero/Teman2/commits/main); PHONE='<main sha Zero read on github.com from a phone not behind Pro>'; [ "$G" = "$PHONE" ]
+CA='<root-owned pinned GitHub CA bundle>'; G=$(/usr/bin/curl -fsS --proto '=https' --cacert "$CA" -H 'Accept: application/vnd.github.sha' https://api.github.com/repos/Bali-Zero/Teman2/commits/main); PHONE='<main sha Zero read on github.com from an eligible phone under N6>'; [ "$G" = "$PHONE" ]
 /usr/bin/sudo /usr/bin/install -o zero-ops -m 0400 $O/marker.txt $O/ready.txt $d/
 /bin/cat marker.txt; /usr/bin/grep -qx 'kind teman2_deleted' marker.txt; /usr/bin/grep -qx 'halt freeze' marker.txt
 [ "$(f base marker.txt)" = "$G" ]; [ "$(f seal marker.txt)" = "$(h ready.txt)" ]
@@ -458,7 +458,7 @@ p=( $d/id_ed25519_sk_rk_localci-seal*.pub ); [ ${#p} -eq 1 ]
 echo "OK C9 github-main $G"; /usr/bin/sudo -k
 
 : "C10 — move step 4: the fresh repository, as localci under env -i"
-set -euo pipefail
+set -euo pipefail; trap '/usr/bin/sudo -k' EXIT
 cd /; C=/Library/Developer/CommandLineTools/usr/bin; R=/Users/localci/merger/repo.git
 L() { /usr/bin/sudo -u localci "$@"; }
 g() { L /usr/bin/env -i HOME=/Users/localci PATH=$C:/usr/bin:/bin GIT_NO_REPLACE_OBJECTS=1 GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null $C/git "$@"; }
@@ -471,12 +471,10 @@ for p in hooks info/attributes info/grafts objects/info/alternates objects/info/
 echo "OK C10"; /usr/bin/sudo -k
 
 : "C11 — move step 6: seal and marker verified as data, then marker.base"
-set -euo pipefail
-O=/Library/LocalCI/archive/merger.frozen/seal; I=/Library/LocalCI/incoming/seal; K=/Library/LocalCI/seal_signers
+set -euo pipefail; trap '/usr/bin/sudo -k' EXIT
+O=/Library/LocalCI/incoming/seal; K=/Library/LocalCI/seal_signers
 h() { /usr/bin/shasum -a 256 "$1" | /usr/bin/awk '{print $1}'; }; f() { /usr/bin/awk -v k="$1" '$1==k {print $2}' "$2"; }
-/usr/bin/sudo /usr/bin/install -d -o root -g wheel -m 0755 $I
-for x in report.json ready.txt ready.txt.sig marker.txt marker.txt.sig; do /usr/bin/sudo /usr/bin/install -o root -g wheel -m 0444 $O/$x $I/$x; done
-cd $I
+cd $O
 for t in ready marker; do /usr/bin/ssh-keygen -Y verify -f $K -I zero-seal -n localci-seal -s $t.txt.sig < $t.txt; done
 /usr/bin/grep -qx 'kind ready' ready.txt; /usr/bin/grep -qx 'kind teman2_deleted' marker.txt
 [ "$(f seal marker.txt)" = "$(h ready.txt)" ]; [ "$(f report_sha256 ready.txt)" = "$(h report.json)" ]
@@ -484,7 +482,7 @@ echo "marker.base $(f base marker.txt)"
 echo "OK C11"; /usr/bin/sudo -k
 
 : "C12 — move step 11: wrapper and LaunchDaemon"
-set -euo pipefail
+set -euo pipefail; trap '/usr/bin/sudo -k' EXIT
 c=/Users/localci/code/current/scripts/localci/localci_merger_tick.sh; W=/usr/local/localci/bin/localci_merger_tick.sh; t=/Users/localci/code/current/scripts/localci/localci-trust-path-walk.sh; T=/usr/local/localci/bin/localci-trust-path-walk.sh
 P=/Library/LaunchDaemons/com.balizero.localci-merger.plist; d=$(/usr/bin/mktemp -d)
 /usr/bin/sudo /usr/bin/install -o root -g wheel -m 0755 $c $W; /usr/bin/sudo /usr/bin/install -o root -g wheel -m 0755 $t $T; /usr/bin/sudo /usr/bin/cmp $c $W; /usr/bin/sudo /usr/bin/cmp $t $T
