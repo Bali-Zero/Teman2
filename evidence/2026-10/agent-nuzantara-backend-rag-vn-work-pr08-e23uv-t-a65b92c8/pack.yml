@@ -1,0 +1,82 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night family audit 2026-10-12, plan PR-08 (findings F14, F22, F37; dedup group G19): the 7-10 working-day
+  figure for E23U and E23V is a catalogue default shared by about thirty codes, the official imigrasi.go.id pages
+  for both are empty, the pack carries no rule for a window and the price catalogue has no row; conservative
+  default of owner decision OD-5 is the pending timeline. The E23 figure and its IMTA source text are untouched
+  (production catalogue row, OD-5).
+mission: >-
+  The E23U and E23V cards stop showing "typically 7-10 working days" that no rule, official page or price row
+  supports, and show the pending-timeline sentence until an owner-confirmed figure exists (OD-5).
+lanes:
+  - lane: pr08-e23uv-timeline
+    role: build
+    seat: Claude Sonnet 5.5 implementer (subagent), worktree backend-rag-vn-work-pr08-e23uv-timeline.
+  - lane: pr08-ground-truth
+    role: ground_truth
+    seat: >-
+      Ground dossiers E23U and E23V of the visa-night audit (pack seq-27): the only primary text for either code
+      is one Kepmen M.IP-08.GR.01.01/2025 Lampiran row; imigrasi.go.id shows "Data Belum Tersedia"; both products
+      have pricing_key null (CONTACT_REQUIRED); the change asserts no rule of its own.
+    nb: visa-night/work/ground/E23U.md
+    query_hash: "a9b4e4f262b03c1baf05ef7ae76c161f1c36ae0d63061354ee2077a1d0a74612" # pragma: allowlist secret
+    note: query_hash = sha256 of the E23U ground dossier read (visa-night/work/ground/E23U.md).
+pii_scan: clean
+spend:
+  wall_clock_hours: 0.5
+  adversarial_rounds: 0
+results:
+  - "test_processing_times.py: 42 passed (6 red before the data change)"
+  - "visa_engine suite: 2969 passed; failures and errors only in Postgres-backed files, same on untouched main"
+  - "visa-oracle mouth suite: 1425 passed of 1425"
+bites:
+  consumer: >-
+    the E23U and E23V outcome cards (evaluate_path._processing_timeline, rendered by OutcomeSheet Timeline);
+    live after the backend-rag deploy, an evaluate for offshore / work / individual sponsor returns E23U with
+    processing_timeline.status UNKNOWN and reason PROCESSING_TIMELINE_NOT_VERIFIED and no working_days_min, and
+    the card shows outcome.timeline_pending.
+  where: live
+receipts:
+  - claim: "The new tests failed on the unchanged snapshot (red first)."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_processing_times.py
+    result: "6 failed, 36 passed (E23U/E23V still (7, 10); snapshot held more than signed pack minus the named exclusion; the E23U walk card AVAILABLE)"
+    exit: 1
+    ts: "2026-10-12T07:00:00Z"
+    seat: this session
+  - claim: "After removing the two rows the processing-times file is green."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_processing_times.py
+    result: "42 passed"
+    exit: 0
+    ts: "2026-10-12T07:10:00Z"
+    seat: this session
+  - claim: "The whole visa_engine backend suite (Python 3.11.11 venv)."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine
+    result: "2969 passed, 15 skipped, 2 failed, 32 errors - every failure and error is in the Postgres-backed files (test_activation_writer, test_evaluate_endpoint, test_repository, test_shadow_evidence, test_shadow_match, test_retention_fk_registry) from the shared local database (TooManyColumnsError, missing visa_rule_packs); the two files test_evaluate_endpoint and test_visa_engine_retention_fk_registry give the same 2 failed 31 errors on the untouched main checkout"
+    exit: 1
+    ts: "2026-10-12T07:15:00Z"
+    seat: this session
+  - claim: "The whole visa-oracle mouth suite (no TS changed; run because a fact changed)."
+    cmd: cd apps/mouth && npx vitest run '(visa-oracle)'
+    result: "Test Files 54 passed (54); Tests 1425 passed (1425)"
+    exit: 0
+    ts: "2026-10-12T07:21:00Z"
+    seat: this session
+decisions:
+  - id: D-conservative-default
+    decision: >-
+      Drop both rows instead of editing the figure: the engine already maps a product with no snapshot row to
+      the UNKNOWN / PROCESSING_TIMELINE_NOT_VERIFIED object, so no engine, tree, i18n or pack file changes.
+  - id: D-e23-untouched
+    decision: >-
+      E23 (20-30 working days, source text "4-6 weeks (RPTKA+IMTA)") is left as is: the IMTA wording lives in a
+      production catalogue row and waits on OD-5; the snapshot is a copy of that row.
+  - id: D-no-observer
+    decision: >-
+      No new CI observer: the existing test file already runs the whole snapshot-versus-pack comparison on every
+      backend run, and a new observer would restate it.
+dissent:
+  - seat: "self-review (implementer)"
+    objection: "Other unpriced products (E28B-D, E28F, E30, E30E/F, E33A-C) also show 7-10 with no price row."
+    status: PLAUSIBLE
+    disposition: "Out of scope by the plan: PR-08 names E23U and E23V only (empty official pages); the test pins only those two plus the general rule that a row-less unpriced product renders pending, not that every unpriced product must lack a window."

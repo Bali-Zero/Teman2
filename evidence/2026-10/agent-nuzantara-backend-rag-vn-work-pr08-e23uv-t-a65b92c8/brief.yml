@@ -1,0 +1,19 @@
+gear: 1
+gear_reason: >-
+  One data concern in one lane (two snapshot rows removed, one test file extended), no tree, no pack,
+  no pricing and no copy change; the engine already renders the pending timeline for a product with no
+  snapshot row.
+mission: >-
+  The E23U and E23V cards stop showing "typically 7-10 working days" that no rule, official page or price row
+  supports, and show the pending-timeline sentence until an owner-confirmed figure exists (OD-5).
+objective: >-
+  Remove E23U and E23V from bali_zero_processing_times_2026.json, name both with the reason in the test's
+  no-catalogue-time list, and pin by tests that the snapshot and the card agree: the E23U walk
+  (offshore/work/sponsor_individual) returns UNKNOWN / PROCESSING_TIMELINE_NOT_VERIFIED for E23U while E23 keeps
+  its 20-30 window, and any unpriced product without a snapshot row renders the pending timeline.
+scope:
+  - apps/backend-rag/backend/data/bali_zero_processing_times_2026.json
+  - apps/backend-rag/backend/tests/services/visa_engine/test_processing_times.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
