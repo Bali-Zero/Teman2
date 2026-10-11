@@ -26,7 +26,10 @@ lanes:
     seat: claude-sonnet-5 (implementer on M5, on the lead's spec)
   - lane: localci-codeql-1011
     role: ground_truth
-    seat: claude-opus-5-5 (lead; parity probe and measurement on Pro)
+    seat: claude-opus-5-5 (lead; parity probe on Pro) and a claude-sonnet-5 measurement seat on Pro, on the lead's protocol
+  - lane: localci-codeql-1011-gate
+    role: review
+    seat: claude-opus-5-5, fresh read-only seats (gate on 7c2d48f45f, re-gate on the fix round)
 what_changed: |
   runner.py: deps recipe key codeql {version, url, sha256} (FROM scratch stage with ADD --checksum, extracted through a bind mount,
   codeql version asserted, digest covers the pin); local.classifier runs BASE security_gate_flags.py at plan time and seals
@@ -53,8 +56,8 @@ ground:
     Worktree from origin/main 6f87afb292 after #8241 (Apache-2.0, the CodeQL Terms' open-source condition). pro.janitor (this lead's
     other lane) does not touch scripts/localci.
 spend:
-  adversarial_rounds: 0
-  wall_clock_hours: 1.0
+  adversarial_rounds: 2
+  wall_clock_hours: 7.0
 receipts:
   - claim: "Parity probe on Pro: python 2499/172, javascript 186/200, identical to hosted analyses 1929899817 and 1929888401; 170 s and 72 s; cgroup memory.peak 8.63 and 7.05 GiB under --memory 12g."
     cmd: "~/b6deploy/codeql/probe.sh on Pro (the five codeql commands in a --network none container), then cmp.py against the hosted SARIF"
@@ -85,8 +88,22 @@ receipts:
     exit: 0
     ts: "2026-10-11T02:18:20Z"
     seat: claude-sonnet-5 measurement seat on Pro, on the lead's protocol
-dissent: []
+dissent:
+  - seat: claude-opus-5-5 independent gate (7c2d48f45f)
+    objection: >-
+      CONFIRMED-WITH-LOW with one MEDIUM: the runner's changed list kept git's rename detection while hosted's changes job uses
+      --no-renames, so a git mv of a backend .py into docs/ made the local python leg skip as PASS while hosted analysed (AGREE/full,
+      invisible to the compare). LOWs: the run_all fail-open and the javascript sentinel had no test (mutants G1, G3 survived); hosted
+      fails open on a red BASE test_security_gate_flags.py, which the runner never ran; a weakened assertion in test_runner.py; the
+      leg's codeql version probe outside step; the version reader did not filter tool.name.
+    status: CONFIRMED
+    resolution: >-
+      2377d77e13 and d5536aeac0: git diff --no-renames for the changed list; the corpus check now also runs BASE
+      test_security_gate_flags.py (a red corpus is a local FAIL, stricter than hosted's run-both); the probe stepped; the reader keeps
+      tool.name CodeQL only; tests for run_all and per-language sentinels; the exact BLOCKED assertion; six new cq-* rules, 30/30 killed.
 residuals:
+  - "The runner's changed list is base..candidate two-dot (an explicit base the merger passes), hosted's is merge-base..HEAD; for the merger's candidates (a merge of the PR onto the base) the two lists are the same."
+  - "A red BASE gate-flags corpus is a local FAIL of policy.trusted_classifier_corpus, while hosted runs both legs: stricter locally, never greener."
   - "No SARIF upload locally: the hosted workflows still upload while they exist; a local upload is for the day they go."
   - "The CLI version is chosen per hosted run by feature flag; the sentinel reads the newest analysis, and the flag can move between that read and the queue run."
   - "The local SARIF leaves with the container: the runner's receipts carry the counts per language, and the per-result identity was proven once, by the parity probe (0 differences); a per-result diff per run would need the leg to export its SARIF."
