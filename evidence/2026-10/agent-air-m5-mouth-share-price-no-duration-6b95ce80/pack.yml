@@ -1,0 +1,38 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-09/10 — client copy is honest and complete; the shared text repeats what the page shows.
+mission: >-
+  The Visa Oracle share summary keeps a candidate's price whenever the price is available.
+lanes:
+  - lane: share-price
+    role: build
+    seat: Claude Sonnet 5.5 implementer, worktree mouth-share-price-no-duration on M5.
+  - lane: share-price-ground-truth
+    role: ground_truth
+    seat: >-
+      the committed Bali Zero processing-time catalogue the engine reads; the change asserts no figure
+      of its own, it only stops dropping a price the engine already returns.
+    nb: apps/backend-rag/backend/data/bali_zero_processing_times_2026.json
+    query_hash: "6e7e7b72ea2b4f1afb79d1fcffa650cd58d37f6b1ebd3b277feec2df79f89b06" # pragma: allowlist secret
+    note: query_hash = sha256 of the catalogue file at origin/main (same ground as the share-timing pack).
+pii_scan: clean
+bites:
+  consumer: >-
+    the Copy / Share summary buttons of the public Visa Oracle result page (OutcomeSheet).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_client_copy.py
+  expect: "contains:0 banned"
+receipts:
+  - claim: The duration and OutcomeSheet suites pass, including price-without-duration and neither-price-nor-duration.
+    cmd: cd apps/mouth && npx vitest run OutcomeSheet.duration.test.tsx OutcomeSheet.test.tsx
+    result: "Test Files 2 passed (2), Tests 141 passed (141)"
+    exit: 0
+    ts: "2026-10-10T15:32:00Z"
+    seat: this session
+decisions:
+  - id: D-price-independent-of-duration
+    decision: >-
+      The price part follows price.status AVAILABLE alone, as the result page's Price component does;
+      PR-C2 (#8124) gated it on duration only because it introduced both in one block.
+dissent: []

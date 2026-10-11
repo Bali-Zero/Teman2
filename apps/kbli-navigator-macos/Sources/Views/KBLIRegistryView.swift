@@ -866,23 +866,10 @@ struct KBLIRegistryView: View {
     }
 
     /// Severity/seniority rank of an OSS licensing authority tier (higher = more senior).
-    private func authorityRank(_ raw: String) -> Int {
-        let u = raw.lowercased()
-        if u.contains("menteri") || u.contains("kepala badan") { return 3 }  // Minister / Agency Head
-        if u.contains("gubernur") { return 2 }                                // Governor
-        if u.contains("bupati") || u.contains("walikota") || u.contains("wali kota") { return 1 } // Regent / Mayor
-        return 0
-    }
+    private func authorityRank(_ raw: String) -> Int { LabelBook.authorityRank(raw) }
 
     /// Map a raw Indonesian authority tier to a clean bilingual label (ID kept verbatim, EN translated).
-    private func localizedAuthority(_ raw: String) -> String {
-        switch authorityRank(raw) {
-        case 3: return isID ? "Menteri/Kepala Badan" : "Minister / Agency Head"
-        case 2: return isID ? "Gubernur" : "Governor"
-        case 1: return isID ? "Bupati/Walikota" : "Regent / Mayor"
-        default: return raw   // unrecognized tier → show the dataset value verbatim rather than guess
-        }
-    }
+    private func localizedAuthority(_ raw: String) -> String { LabelBook.authority(raw, isID: isID) }
 
     // MARK: 8 · BALI INTELLIGENCE — the authority peak (tinted plate)
     @ViewBuilder private var baliIntel: some View {

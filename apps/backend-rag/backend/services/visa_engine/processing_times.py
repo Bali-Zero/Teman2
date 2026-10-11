@@ -18,7 +18,7 @@ _SNAPSHOT = Path(__file__).resolve().parents[2] / "data" / "bali_zero_processing
 # A real window is at most weeks; the cap only stops a corrupt snapshot from walking forever.
 _MAX_WINDOW_DAYS = 120
 
-__all__ = ["estimate", "typical_window"]
+__all__ = ["estimate", "product_windows", "typical_window"]
 
 
 @lru_cache(maxsize=1)
@@ -35,6 +35,10 @@ def _windows() -> dict[str, tuple[int, int]]:
             raise ValueError(f"processing window for {code} is out of range: {low}-{high}")
         windows[code] = (low, high)
     return windows
+
+
+def product_windows() -> dict[str, tuple[int, int]]:
+    return dict(_windows())
 
 
 def typical_window(product_code: str) -> tuple[int, int] | None:

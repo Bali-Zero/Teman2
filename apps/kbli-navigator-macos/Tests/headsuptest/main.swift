@@ -79,15 +79,20 @@ MainActor.assumeIsolated {
     }
     ck(first[1].map { hu($0).label == tbl(false)["rich.verdict.blocked"]! && hu($0).tone == .closed } ?? false,
        "class 1 first code carries the blocked label, tone closed")
+    // Q12 (2026-10-10): the canonical word is verbatim in id and English in en; an Indonesian pma_kondisi has
+    // no English source, so en shows it whole under the "Original (Bahasa Indonesia)" label.
+    func original(_ s: String?) -> String? { s.map { "Original (Bahasa Indonesia): “\($0)”" } }
     ck(first[2]?.kode == "10307" && first[2].map {
-           hu($0).label == "TERBATAS · 0%" && hu($0).sentence == $0.pmaKondisi && hu($0).tone == .closed } == true,
-       "class 2 first = 10307, label TERBATAS · 0%, sentence pma_kondisi verbatim, tone closed")
+           hu($0, true).label == "TERBATAS · 0%" && hu($0, true).sentence == $0.pmaKondisi
+           && hu($0).label == "Restricted · 0%" && hu($0).sentence == original($0.pmaKondisi) && hu($0).tone == .closed } == true,
+       "class 2 first = 10307, label TERBATAS · 0% (en Restricted · 0%), sentence pma_kondisi verbatim (en labelled original), tone closed")
     ck(first[4]?.kode == "01192" && first[4].map { hu($0).label == "NOT DETERMINED" && hu($0).tone == .neutral } == true,
        "class 4 first = 01192, label NOT DETERMINED, tone neutral")
-    ck(first[5].map { hu($0).tone == .restricted && hu($0).label.hasPrefix("TERBATAS · ") } == true,
-       "class 5 first carries TERBATAS · cap, tone restricted")
-    ck(first[6]?.kode == "47221" && first[6].map { hu($0).label == "TERBATAS" && hu($0).tone == .restricted } == true,
-       "class 6 first = 47221, label TERBATAS (no cap), tone restricted")
+    ck(first[5].map { hu($0).tone == .restricted && hu($0, true).label.hasPrefix("TERBATAS · ") && hu($0).label.hasPrefix("Restricted · ") } == true,
+       "class 5 first carries TERBATAS · cap (en Restricted · cap), tone restricted")
+    ck(first[6]?.kode == "47221" && first[6].map {
+           hu($0, true).label == "TERBATAS" && hu($0).label == "Restricted" && hu($0).tone == .restricted } == true,
+       "class 6 first = 47221, label TERBATAS (en Restricted, no cap), tone restricted")
     ck(first[7].map { hu($0).label == tbl(false)["rich.verdict.open"]! && hu($0).tone == .open } == true,
        "class 7 first carries the open label, tone open")
 
@@ -100,9 +105,10 @@ MainActor.assumeIsolated {
     if let k = byCode["79110"] { ck(cls(k) == 1, "79110: class 1") } else { ck(false, "79110 present") }
     if let k = byCode["51101"] {
         let en = hu(k, false), id = hu(k, true)
-        ck(cls(k) == 5 && en.label == "TERBATAS · 49%", "51101: class 5, label \"TERBATAS · 49%\" (got \"\(en.label)\")")
-        ck(en.sentence == k.pmaKondisi && k.pmaKondisi != nil, "51101: sentence == pma_kondisi verbatim")
-        ck(en.sentence == id.sentence && en.label == id.label, "51101: identical in en and id (no Kutipan prefix)")
+        ck(cls(k) == 5 && id.label == "TERBATAS · 49%" && en.label == "Restricted · 49%",
+           "51101: class 5, label \"TERBATAS · 49%\", en \"Restricted · 49%\" (got \"\(id.label)\" / \"\(en.label)\")")
+        ck(id.sentence == k.pmaKondisi && k.pmaKondisi != nil, "51101: id sentence == pma_kondisi verbatim (no Kutipan prefix)")
+        ck(en.sentence == k.pmaKondisi, "51101: en sentence == pma_kondisi verbatim — English already, so not labelled")
     } else { ck(false, "51101 present") }
 
     // B3 (0b1 ruling): 448 codes change against the pre-Q10 predicates, frozen here as on main 27ca6fb108:
@@ -148,10 +154,10 @@ MainActor.assumeIsolated {
     }
     if let a = synth("12345"), let b = synth(nil) {
         let ra = hu(a), rb = hu(b)
-        ck(cls(a) == 2 && ra.label == "TERTUTUP" && ra.tone == .closed
+        ck(cls(a) == 2 && ra.label == "Closed" && hu(a, true).label == "TERTUTUP" && ra.tone == .closed
            && ra.sentence == "For a PMA, register 12345 (the private-sector version) instead.",
            "TERTUTUP with route: class 2, label, route sentence (got \(ra.label) / \(ra.sentence ?? "nil"))")
-        ck(cls(b) == 2 && rb.label == "TERTUTUP" && rb.sentence == "Only a 100% Indonesian-owned entity is permitted.",
+        ck(cls(b) == 2 && rb.label == "Closed" && rb.sentence == "Only a 100% Indonesian-owned entity is permitted.",
            "TERTUTUP without route: class 2, label, 100% sentence (got \(rb.sentence ?? "nil"))")
         ck(hu(a, true).sentence == "Untuk PMA, daftarkan 12345 (versi swasta) sebagai gantinya.", "TERTUTUP with route (id)")
     } else { ck(false, "synthetic TERTUTUP record decodes") }

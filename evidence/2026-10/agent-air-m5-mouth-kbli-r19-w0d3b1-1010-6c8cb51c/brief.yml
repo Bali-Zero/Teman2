@@ -1,0 +1,43 @@
+task_id: kbli-r19-w0d3b1-1010
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, Track W, lot W0d-3b-1 (ruling: W0d-3a -> 3b-1 -> 3b-2): the
+  instrument cures of the #8202 and #8228 gates' notes, on today's list (30 captures, 10 walks,
+  25 opened, 24 shared), with no scenario added or changed.
+    1. #8228 note 1: a run that stays under an occluder its reader cannot see is counted (its own
+       line under G at rest and under K opened), so K 0 reads as clean only when it is.
+    2. Note 2: a walk whose page reloads under it is walked once more.
+    3. Note 3: a faint fixed layer is read through, not an occluder of every run.
+    4. Note 4: a blur or a shadow reaches past its box, side by side (three blur radii; a visible
+       outer shadow's blur plus spread less its offset away from that side; up to 64px), and only
+       from an overlay painted above the run.
+    5. Note 5: the theme a walk starts in holds at every scroll position, or the walk fails.
+    6. A scrim is found by any paint (a colour, or an image or backdrop filter at opacity 0.1 or
+       more); a colourless scrim or one over an image is off contract.
+    7. The TanStack Query devtools button is never painted; the sector card is not hovered.
+    8. The #8237 gate's notes: every count a missing part feeds reads INCOMPLETE (reads and colours
+       without `rest` included); part dumps are never mixed across machines; a re-run part replaces
+       its own dump (`overwrite`), exercised once in CI.
+  Every cure ships with its guilt or innocence row, the fixture is regenerated on M5, and a CI
+  pair (four parts, and the single full job) runs on the head.
+constraints:
+  - "Zero files under apps/mouth/src (SPEC-W0d section 5); census-replay asserts it on every W0d branch."
+  - "Nothing that belongs to W0d-3b-2: the 4 routes, 54 captures, S5-S21, the section 8.7 inventory, surfaces-unclaimed, the exit block, bg-black/60, the section 8.5 cells, the logo proof."
+  - "No npm install or npm ci. Census dev servers on 3519 and above, started and stopped by this lot."
+acceptance:
+  - text: "WHEN each cure is undone, THEN a guilt or innocence row fails: through the real walk or the page judge at rest for the instrument, offline for the verdict and the workflow (22 of 22 mutants killed)."
+    probe: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3b1-1010-6c8cb51c/instrument_mutants.py"
+  - text: "WHEN the regenerated fixture is replayed, THEN it prints the M5 live verdict byte for byte, and its counts are the ones the fixture tests pin."
+    probe: "python3 -m pytest scripts/mouth/tests -q -k 'not e2e'"
+  - text: "WHEN CI runs the four parts and, on the same commit, the single full job, THEN the two wrapper-census-states verdicts are byte-identical and all five asserts pass; WHEN one part job of the sharded run is re-run, THEN it replaces its dump and the re-run aggregate prints the same text."
+    probe: 'gh workflow run r19-wrapper-census-tests.yml --ref agent/air-m5/mouth/kbli-r19-w0d3b1-1010 (default parts, then -f parts=''["full"]''); cmp the two verdict texts'
+consumer_map:
+  - "r19-wrapper-census-tests / wrapper-census-states prints the cured G and K. W2''' reads K 0 as clean only on this instrument."
+  - "r19-wrapper-census-tests / census-replay runs the new rows on every census PR, and on a W0d branch asserts 0 files changed under apps/mouth/src."
+risks:
+  - "Counting occluded runs moves G and K on today's pages; the M5 and CI numbers are reported side by side and the fixture tests pin the M5 ones."
+  - "The reload retry could hide a page that reloads on every load; the second attempt raises, so such a walk still fails."
+grader: |
+  A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha.

@@ -33,12 +33,9 @@ export default defineConfig({
     // addon / no process-global mutation; vitest still isolates each test file's
     // module registry per worker). Verified locally: 197 files / 1707 tests green.
     pool: "threads",
-    poolOptions: {
-      threads: {
-        maxThreads: 2,
-        minThreads: 1,
-      },
-    },
+    // Vitest 4 removed `test.poolOptions`; `maxWorkers` is the top-level cap
+    // (no `minWorkers` equivalent exists — the old `minThreads: 1` is dropped).
+    maxWorkers: 2,
     coverage: {
       // istanbul (babel-based instrumentation), NOT v8: the v8 provider on
       // vitest 4 routes source parsing through rolldown (pulled by vite 8),

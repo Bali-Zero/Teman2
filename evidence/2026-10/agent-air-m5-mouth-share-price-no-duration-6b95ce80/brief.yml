@@ -1,0 +1,14 @@
+gear: 1
+gear_reason: >-
+  One-line gate change in a single component plus its tests; no backend, no data.
+mission: >-
+  The Visa Oracle share summary keeps a candidate's price whenever the price is available.
+objective: >-
+  A SUPPORTED candidate with an available price and no duration label still shows the formatted price
+  in the Copy/Share text, as the result page does; a non-available price contributes nothing.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.duration.test.tsx
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

@@ -66,18 +66,18 @@ PAIRS = [
     ("white/ink", "white", ("solid","ink"), 4.5, "RootView.swift:120 .background(Theme.ink)"),
     ("white/inkLift", "white", ("solid","inkLift"), 4.5, "GlassCard fill Theme.inkLift"),
     ("muted/antracite", "muted", ("solid","antracite"), 4.5, "RootView.swift:340 .foregroundStyle(Theme.muted) on window bg"),
-    ("muted/ink", "muted", ("solid","ink"), 4.5, "SearchListView.swift:419/348 rail facet labels on Theme.wash (= ink); KBLIRegistryTable.swift:71 neutral VerdictBadge (Theme.chip(.neutral): muted on wash)"),
+    ("muted/ink", "muted", ("solid","ink"), 4.5, "SearchListView.swift:422/351 rail facet labels on Theme.wash (= ink); KBLIRegistryTable.swift:71 neutral VerdictBadge (Theme.chip(.neutral): muted on wash)"),
     ("muted/inkLift", "muted", ("solid","inkLift"), 4.5, "KBLIDossierView.swift:60/100 on card"),
     ("faint/antracite", "faint", ("solid","antracite"), 4.5, "RootView.swift:142 on window bg; SearchFieldBar.swift:48 density glyph on the bar"),
-    ("faint/ink", "faint", ("solid","ink"), 4.5, "RegistryVerdictSheet.swift:93/108 on Theme.ink"),
+    ("faint/ink", "faint", ("solid","ink"), 4.5, "RegistryVerdictSheet.swift:96/111 on Theme.ink"),
     ("faint/inkLift", "faint", ("solid","inkLift"), 4.5, "KBLIDetailView.swift:101/206 on card"),
     ("accent/antracite", "accent", ("solid","antracite"), 4.5, "KBLIDetailRichView.swift:379 accent link on window"),
-    ("accent/inkLift", "accent", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:137/2027 accent on card"),
+    ("accent/inkLift", "accent", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:137/2014 accent on card"),
     ("zantara/antracite", "zantara", ("solid","antracite"), 4.5, "ChatView.swift:48/105/117 zantara label on window"),
     ("zantara/ink", "zantara", ("solid","ink"), 4.5, "KBLIDetailRichView.swift:358/366 zantara on ink"),
-    ("statutory/inkLift", "statutory", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:992 statutory pill text"),
-    ("statutory/ink", "statutory", ("solid","ink"), 4.5, "KBLIRegistryView.swift:1567/1601 statutory on ink"),
-    ("yellow/antracite", "yellow", ("solid","antracite"), 4.5, "KBLIRegistryView.swift:481/893 yellow on window"),
+    ("statutory/inkLift", "statutory", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:979 statutory pill text"),
+    ("statutory/ink", "statutory", ("solid","ink"), 4.5, "KBLIRegistryView.swift:1554/1588 statutory on ink"),
+    ("yellow/antracite", "yellow", ("solid","antracite"), 4.5, "KBLIRegistryView.swift:481/880 yellow on window"),
     ("yellow/inkLift", "yellow", ("solid","inkLift"), 4.5, "KBLIDetailView.swift:92 gold-tier label on card"),
     ("white/ink@0.6-on-antracite", "white", ("composite","ink",0.6,"antracite"), 4.5, "ChatView.swift:61/180 header/footer strip"),
     ("faint/ink@0.6-on-antracite", "faint", ("composite","ink",0.6,"antracite"), 4.5, "ChatView.swift:53 on header strip"),
@@ -112,15 +112,15 @@ PAIRS = [
 RISK_CHIP = [("riskInk", "riskFillLow", "rank 1"), ("riskInk", "riskFillMediumLow", "rank 2"),
              ("riskInk", "riskFillMediumHigh", "rank 3"), ("riskInkOnHigh", "riskFillHigh", "rank 4"),
              ("muted", "ink", "unranked")]
-SITES = ["KBLIRegistryView.swift:1541 scopeRow mini risk chip", "KBLIRegistryView.swift:1712 cellDetail risk chip",
-         "KBLIRegistryView.swift:1648 riskMatrix cell", "KBLIRegistryView.swift:1666 riskMatrix legend chip",
+SITES = ["KBLIRegistryView.swift:1528 scopeRow mini risk chip", "KBLIRegistryView.swift:1699 cellDetail risk chip",
+         "KBLIRegistryView.swift:1635 riskMatrix cell", "KBLIRegistryView.swift:1653 riskMatrix legend chip",
          "KBLIRegistryTable.swift:110 RiskCell, the registry table's OSS-risk column"]
 SITE_PAIRS = [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5, "%s — Theme.riskChip %s" % (site, tier))
               for site in SITES for fg, bg, tier in RISK_CHIP]
 # Tone-chip ink painted straight on a row's ground: the ruled heads-up label of the search results, Theme.chip(tone).fg
 # on antracite at rest and on wash (= ink) when selected or hovered. CHIP_FG mirrors Theme.chip's switch (PARITY).
 CHIP_FG = [("chipOpenFg", "open"), ("chipRestrictedFg", "restricted"), ("chipClosedFg", "closed"), ("muted", "neutral")]
-CHIP_SITES = ["SearchListView.swift:655 ruled heads-up label"]
+CHIP_SITES = ["SearchListView.swift:661 ruled heads-up label"]
 SITE_PAIRS += [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5,
                 "%s on %s — Theme.chip(.%s).fg" % (site, ground, tone))
                for site in CHIP_SITES for fg, tone in CHIP_FG
@@ -131,7 +131,8 @@ SITE_PAIRS += [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5,
 # `NSColor(white:alpha:)`, `NSColor(calibratedWhite:`), `CGColor(gray:`, a 1/1/1 `red:` / `srgbRed:` /
 # `calibratedRed:` / `deviceRed:` initialiser, a `hue:` initialiser at saturation 0 and brightness 1, and
 # `Color(hex: 0xFFFFFF)`. A grey `white:` is flagged too, on purpose: a literal is not a token. `Theme.white` is a token.
-ONE = r"\s*1(?:\.0*)?(?![\w.])"
+# A component is 1 written as `1`, `1.0` or the arithmetic `255/255` (`255.0 / 255.0`), #8200 gate P2-2.
+ONE = r"\s*(?:1(?:\.0*)?|255(?:\.0*)?\s*/\s*255(?:\.0*)?)(?![\w.])"
 WHITE_RE = re.compile(r"(?<![\w.])\.white\b|\b(?:Color|NSColor|CGColor)\.white\b"
                       r"|(?:\b(?:Color|NSColor|CGColor)(?:\.init)?|(?<!\w)\.init)\s*\((?:\s*\.\w+\s*,)?\s*(?:\w*[wW]hite|gray)\s*:"
                       r"|\b(?:Color|NSColor|CGColor)(?:\.init)?\s*\((?:\s*\.\w+\s*,)?\s*(?:red|srgbRed|calibratedRed|deviceRed)\s*:"
@@ -147,12 +148,16 @@ WHITE_GUILT = ["Text(x).foregroundStyle(.white)", "Color.white", "NSColor.white"
                "NSColor(srgbRed:1,green:1,blue:1,alpha:1)", "NSColor(calibratedRed: 1, green: 1, blue: 1, alpha: 1)",
                "NSColor(deviceRed: 1.0, green: 1, blue: 1, alpha: 1)", "CGColor.white", "CGColor(gray: 1, alpha: 1)",
                "CGColor(red: 1, green: 1, blue: 1, alpha: 1)", "Color(hue:0,saturation:0,brightness:1)",
-               "NSColor(calibratedHue: 0.5, saturation: 0, brightness: 1.0, alpha: 1)"]
+               "NSColor(calibratedHue: 0.5, saturation: 0, brightness: 1.0, alpha: 1)",
+               "Color(red: 255/255, green: 255/255, blue: 255/255)", "NSColor(srgbRed: 255.0 / 255.0, green: 1, "
+               "blue: 255/255.0, alpha: 1)", "Color(hue: 0, saturation: 0, brightness: 255/255)"]
 WHITE_INNOCENT = ["Text(x).foregroundStyle(Theme.white)", "CharacterSet.whitespaces", "Color(red: 1, green: 0.5, blue: 1)",
                   "Color(red: 1, green: 1, blue: 10)", "Color(hex: 0xF7F4EE)", "Color(hex: isDark ? dark : light)",
                   "NSColor(srgbRed: 1, green: 0.9, blue: 1, alpha: 1)", "Color(red: 1, green: 1, blue: 1.5)",
                   "Color(hue: 0, saturation: 0.2, brightness: 1)", "Color(hue: 0, saturation: 0, brightness: 0.5)",
-                  "CGColor.black", "Text(\"https://x.y\") // Color.white"]
+                  "CGColor.black", "Text(\"https://x.y\") // Color.white",
+                  "Color(red: 255/255, green: 254/255, blue: 255/255)", "Color(red: 25/255, green: 1, blue: 1)",
+                  "Color(red: 255/2550, green: 1, blue: 1)"]
 # Comments never paint, in any form: a full-line, trailing or block comment holding a white spelling is not a hit,
 # and code after a string that contains "//" or "/*" is still scanned. Each COMMENT case is (source, must_hit).
 WHITE_COMMENT = [("// Color.white", False), ("let a = 1 // Color.white", False), ("let a = 1 /* Color.white */", False),

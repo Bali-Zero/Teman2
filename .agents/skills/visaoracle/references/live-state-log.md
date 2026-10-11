@@ -7,6 +7,26 @@ CURRENT POSITION block in SKILL.md in the same commit.
 
 Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE STATE — CURRENT POSITION.
 
+- 2026-10-10 (M5, Zero: "sign and launch now" + "occupati tutto tu"): **seq-27 active, three copy/ops PRs live.**
+  seq-27: organ candidate #8105 landed byte-for-byte, signed on M5 03:42:26Z, first landing PR #8204 closed
+  after the fresh gate caught a mislabelled council seat (the Codex run used the `~/.codex` default
+  `gpt-6-astra`; `codex exec` needs `-m gpt-5.6-sol` to sit the titolare seat) — successor #8209 merged
+  05:22:27Z (`2478b87561`), activated 05:23Z from Pro (two-login ceremony, `activation_id 471bddfa-…`, ceremony
+  roles 0), sentinel `OK pack_sequence 27` at 05:23:44Z, `/evaluate` sequence 27 at 05:25:27Z; organ PR #8105
+  closed as superseded. #8205 deleted 46 dead interview keys (the earlier count of 17 was the truth table's
+  scope; all 42 `process.*` were orphaned by #7659). #8207 share summary + typical time (indicative, no dates).
+  #8206 holiday-coverage lane in the freshness sentinel, owner-routed (`visa-holiday-coverage` in
+  `OWNER_FAMILIES`), WITA day; Pro fast-forwarded. Fly deploy of `2478b87561` (pack file + coverage module,
+  no runtime change) followed the merges. iQOO: developer mode re-enabled by the owner, pairing not yet done.
+  Afternoon follow-ups (each gated by a fresh Opus session, then armed): #8218 share summary keeps the price
+  when a candidate has no duration options (it was dropped for most non-E31 products; live 08:25Z on the
+  promoted deploy); #8219 mouth Vitest cap really applies (`maxWorkers: 2`, the old `poolOptions` was ignored
+  since Vitest 4); #8221 holiday lane L1/L3/L4 (Pro tick 16:56 WITA on the new code, still
+  `OK first_gap=2027-11-19`); #8233 i18n dead-key census (gate made it strip comments before scanning); #8231
+  Pro `~/scripts/tg_notify.py` declared and aligned as a symlink (a copied file would have routed board rows
+  into an unread spool). M5 rebooted mid-afternoon; the census and tg_notify lanes were finished by the
+  orchestrator from their committed worktrees.
+
 - 2026-10-09 (M5, client-copy chain C2, C3, C4): **the result page now shows the priced
   stay-permit length and Bali Zero's typical processing time.** C2 #8124 (`06c3346702`, merged
   03:22:12Z): under the price "2-year stay permit" and "Also available: 1 year — IDR 11,000,000";

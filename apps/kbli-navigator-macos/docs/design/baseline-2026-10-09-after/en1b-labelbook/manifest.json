@@ -1,0 +1,322 @@
+{
+  "set": "after",
+  "pr_slug": "en1b-labelbook",
+  "date": "2026-10-10",
+  "purpose": "The after-set of design-loop PR en1b-labelbook: the 24 band renders pinned by digest and compared 1:1 with baseline-2026-10-09-before/manifest.json, plus the render set's narrow/, xxl/ and tall/ renders. The PNGs are not committed (the root .gitignore ignores *.png on purpose).",
+  "rendered_from": "the code commit bf61458b43 of this PR (the last that touches Sources/); this manifest is docs-only and does not enter the app bundle, so the head renders the same bytes",
+  "host": "Pro, Xcode 26.3, build-only worktree detached at the commit under proof",
+  "build": "KBLI_BOOK_PDF_DIR=~/.local/share/nuzantara/kbli-navigator/book-pdfs ./build.sh --variant internal",
+  "render": "OUT=<dir> Tools/design/render_set.sh (each file: --snapshot-band <band> --theme <theme> --lang <lang> --code <code> [flags] <file>)",
+  "canvas_pt": [1280, 800],
+  "gallery": "M5 ~/BATTAGLIA-20261008/PREVIEW-kbli-nav-design/app-after/en1b-labelbook/",
+  "hash_form": "sha256:<64 hex>, the digest form of apps/mouth/data/kbli-dataset-version.json",
+  "png_count": 35,
+  "changed_vs_before": 24,
+  "changed_vs_previous_after_set": 4,
+  "renders": [
+    {
+      "band": "search-results",
+      "theme": "day",
+      "lang": "en",
+      "code": "55203",
+      "file": "search-results-day-en.png",
+      "sha256": "sha256:a36d85a82b9cac62365584aa70c5fa0b9cec80d853b9cdd5800ba86bc2476a54"
+    },
+    {
+      "band": "search-results",
+      "theme": "day",
+      "lang": "id",
+      "code": "55203",
+      "file": "search-results-day-id.png",
+      "sha256": "sha256:9e8ae29524b034d9447ccca546e081870e01f7857bee660e39e06e80ed9983c9"
+    },
+    {
+      "band": "search-results",
+      "theme": "night",
+      "lang": "en",
+      "code": "55203",
+      "file": "search-results-night-en.png",
+      "sha256": "sha256:af3b340e018b57db66b764a0d001c5a73ead9f99dc7575a0fdbd9dd777a82104"
+    },
+    {
+      "band": "search-results",
+      "theme": "night",
+      "lang": "id",
+      "code": "55203",
+      "file": "search-results-night-id.png",
+      "sha256": "sha256:ba8a82b4ef695b94c83ae6be78b6876dc0ab6d45c7c0e5426fcefa12486d42da"
+    },
+    {
+      "band": "registry-table",
+      "theme": "day",
+      "lang": "en",
+      "code": "55203",
+      "file": "registry-table-day-en.png",
+      "sha256": "sha256:6cdc9f6b870870d140f945f9c9f8511b0a60be66164d3c153ca7003bc819bdc4"
+    },
+    {
+      "band": "registry-table",
+      "theme": "day",
+      "lang": "id",
+      "code": "55203",
+      "file": "registry-table-day-id.png",
+      "sha256": "sha256:70fc7c0dcfa723d89f4b53d19c59e443c3f826cfd2a951df42e007fa9befb57d"
+    },
+    {
+      "band": "registry-table",
+      "theme": "night",
+      "lang": "en",
+      "code": "55203",
+      "file": "registry-table-night-en.png",
+      "sha256": "sha256:24ea615b1482797a6321df8c0540cad738d7b1e1836a479314c0e6cb676d3513"
+    },
+    {
+      "band": "registry-table",
+      "theme": "night",
+      "lang": "id",
+      "code": "55203",
+      "file": "registry-table-night-id.png",
+      "sha256": "sha256:0e789ecc4ed013c069f0d40647300606a8a083944eff187714e7878626a6aa51"
+    },
+    {
+      "band": "detail-card",
+      "theme": "day",
+      "lang": "en",
+      "code": "55203",
+      "file": "detail-card-day-en.png",
+      "sha256": "sha256:08c62f79a9bf9b61cab71dfb3b90c9936c73b7651d8adb9cbe0ef8926f526f4b"
+    },
+    {
+      "band": "detail-card",
+      "theme": "day",
+      "lang": "id",
+      "code": "55203",
+      "file": "detail-card-day-id.png",
+      "sha256": "sha256:6e6fc861844593fe3b0cc2af85648d8a4fad3edc53d48c74422a0de202a2c418"
+    },
+    {
+      "band": "detail-card",
+      "theme": "night",
+      "lang": "en",
+      "code": "55203",
+      "file": "detail-card-night-en.png",
+      "sha256": "sha256:998976e2617851fc800acee2680d227f983a1d8fdb57f378a223a8ac2b5db986"
+    },
+    {
+      "band": "detail-card",
+      "theme": "night",
+      "lang": "id",
+      "code": "55203",
+      "file": "detail-card-night-id.png",
+      "sha256": "sha256:b58d0873882f04d1fe7233bfe5dbc77a50d863925b75cbea52918f77ef54e51a"
+    },
+    {
+      "band": "dossier",
+      "theme": "day",
+      "lang": "en",
+      "code": "51101",
+      "file": "dossier-day-en.png",
+      "sha256": "sha256:21f4bd3d319ed2ed5e02286c1cd05be34a12bb487adc4830b6da0ab2c2ee902a"
+    },
+    {
+      "band": "dossier",
+      "theme": "day",
+      "lang": "id",
+      "code": "51101",
+      "file": "dossier-day-id.png",
+      "sha256": "sha256:b3cbed4636fb7a34383d7f766b2a6dd8d6e2b28ba9c5c1e27d6d6cdf46661ee5"
+    },
+    {
+      "band": "dossier",
+      "theme": "night",
+      "lang": "en",
+      "code": "51101",
+      "file": "dossier-night-en.png",
+      "sha256": "sha256:150e1bcbb75394046a7ec13bc9b62b4617a71e2becd3524a969739e319dd9bf3"
+    },
+    {
+      "band": "dossier",
+      "theme": "night",
+      "lang": "id",
+      "code": "51101",
+      "file": "dossier-night-id.png",
+      "sha256": "sha256:cd8a04b8c896e54b2b23e1a9168d871dc6b05dd884d32d11efb33009b8ba680b"
+    },
+    {
+      "band": "sheet-ledger",
+      "theme": "day",
+      "lang": "en",
+      "code": "56101",
+      "file": "sheet-ledger-day-en.png",
+      "sha256": "sha256:8df1006db3a04d39896ebfdb7670c5b35131c28d63f0a1356656aab8498e542a"
+    },
+    {
+      "band": "sheet-ledger",
+      "theme": "day",
+      "lang": "id",
+      "code": "56101",
+      "file": "sheet-ledger-day-id.png",
+      "sha256": "sha256:1346fcf142cf3be9af77cb67ff91da68378ca1cce39fc9c3b564107a907b23ae"
+    },
+    {
+      "band": "sheet-ledger",
+      "theme": "night",
+      "lang": "en",
+      "code": "56101",
+      "file": "sheet-ledger-night-en.png",
+      "sha256": "sha256:099d19a8f45e727d72d1a849d0045040e40dcaa757528069906088d5b25ae2fa"
+    },
+    {
+      "band": "sheet-ledger",
+      "theme": "night",
+      "lang": "id",
+      "code": "56101",
+      "file": "sheet-ledger-night-id.png",
+      "sha256": "sha256:26da63daebb875fa5c06997132494f4228b3ae0f0a81fcd09f75d43d4d109848"
+    },
+    {
+      "band": "chat",
+      "theme": "day",
+      "lang": "en",
+      "code": "51101",
+      "file": "chat-day-en.png",
+      "sha256": "sha256:8ebb6ce22bc390b1fcb80fd577aa89aec06f83bc2e8044ebb9f308a6dc94738a"
+    },
+    {
+      "band": "chat",
+      "theme": "day",
+      "lang": "id",
+      "code": "51101",
+      "file": "chat-day-id.png",
+      "sha256": "sha256:8f804affad4e8a8221be528b8219ef981761ab5f46e6696f03bc6af8d01d51fe"
+    },
+    {
+      "band": "chat",
+      "theme": "night",
+      "lang": "en",
+      "code": "51101",
+      "file": "chat-night-en.png",
+      "sha256": "sha256:39602d74632518c62659f010cd6a35c8daa29586f52bd11e8d49a4917d3e624a"
+    },
+    {
+      "band": "chat",
+      "theme": "night",
+      "lang": "id",
+      "code": "51101",
+      "file": "chat-night-id.png",
+      "sha256": "sha256:025b9777f3cc580b35a06e47dccc41082515ada45f975492bf3231089074ef51"
+    }
+  ],
+  "extra_renders": [
+    {
+      "set": "narrow",
+      "band": "chat",
+      "theme": "day",
+      "lang": "en",
+      "code": "51101",
+      "flags": "--width 948",
+      "file": "narrow/chat-day-en.png",
+      "sha256": "sha256:225285db38ee01fc782a68a8c8052c72f06358c33f83685daf98dba73a6af05f"
+    },
+    {
+      "set": "narrow",
+      "band": "detail-card",
+      "theme": "day",
+      "lang": "en",
+      "code": "55203",
+      "flags": "--width 948",
+      "file": "narrow/detail-card-day-en.png",
+      "sha256": "sha256:d41843646418cd7c7cdf89fa4108de1b6a05f1ace197a21cca39c0874c9283b9"
+    },
+    {
+      "set": "narrow",
+      "band": "dossier",
+      "theme": "day",
+      "lang": "en",
+      "code": "51101",
+      "flags": "--width 948",
+      "file": "narrow/dossier-day-en.png",
+      "sha256": "sha256:17195da4ccd8344fd63e6c7ffa7654447c6a3cb58957441031f6e2cbc93d1654"
+    },
+    {
+      "set": "narrow",
+      "band": "registry-table",
+      "theme": "day",
+      "lang": "en",
+      "code": "55203",
+      "flags": "--width 948",
+      "file": "narrow/registry-table-day-en.png",
+      "sha256": "sha256:89275440795831a66a0920d36c3fecc1164243d43648c5cdc3a566f83a1319c0"
+    },
+    {
+      "set": "narrow",
+      "band": "search-results",
+      "theme": "day",
+      "lang": "en",
+      "code": "55203",
+      "flags": "--width 948",
+      "file": "narrow/search-results-day-en.png",
+      "sha256": "sha256:bc6b4f72513bab2831d57654e999c25eb3a1f6bb428fc7fa335e729ccdffa7f4"
+    },
+    {
+      "set": "narrow",
+      "band": "sheet-ledger",
+      "theme": "day",
+      "lang": "en",
+      "code": "56101",
+      "flags": "--width 948",
+      "file": "narrow/sheet-ledger-day-en.png",
+      "sha256": "sha256:c3d15555bde77e3e1259a2e4e7d60647aa33317334cbbf8d3a3ee45ae40ad57f"
+    },
+    {
+      "set": "tall",
+      "band": "sheet-ledger",
+      "theme": "day",
+      "lang": "en",
+      "code": "56101",
+      "flags": "--height 2800",
+      "file": "tall/sheet-ledger-56101-day-en.png",
+      "sha256": "sha256:07a7275dc7079ef11e3be180c15aceacc771dcca0944414d4807c1f85856f3f8"
+    },
+    {
+      "set": "tall",
+      "band": "sheet-ledger",
+      "theme": "night",
+      "lang": "en",
+      "code": "56101",
+      "flags": "--height 2800",
+      "file": "tall/sheet-ledger-56101-night-en.png",
+      "sha256": "sha256:c53c45c5fc6b49d7eb84acbd48152348b547c0a0f139bfe5f9208da74b273112"
+    },
+    {
+      "set": "tall",
+      "band": "sheet-ledger",
+      "theme": "day",
+      "lang": "en",
+      "code": "71109",
+      "flags": "--height 3600",
+      "file": "tall/sheet-ledger-71109-day-en.png",
+      "sha256": "sha256:e1bbd76bcd3ea03c35e4d7291f5b236906dad9025cf6ba4fb37a86ee9e964699"
+    },
+    {
+      "set": "tall",
+      "band": "sheet-ledger",
+      "theme": "night",
+      "lang": "en",
+      "code": "71109",
+      "flags": "--height 3600",
+      "file": "tall/sheet-ledger-71109-night-en.png",
+      "sha256": "sha256:6102620a493d05d3eb791a4c300b0723bda5aa49d7853c37514749ace5d2d244"
+    },
+    {
+      "set": "xxl",
+      "band": "registry-table",
+      "theme": "day",
+      "lang": "en",
+      "code": "55203",
+      "flags": "--text-size xxxLarge",
+      "file": "xxl/registry-table-day-en.png",
+      "sha256": "sha256:6cdc9f6b870870d140f945f9c9f8511b0a60be66164d3c153ca7003bc819bdc4"
+    }
+  ]
+}

@@ -429,7 +429,9 @@ struct KBLIVerdict: Equatable {
     }
 
     /// The ONE heads-up label + sentence + tone every surface renders (Q6 extended by Q10): canonical
-    /// words only, never a derived "open" — the open pair survives only in class 7.
+    /// words only, never a derived "open" — the open pair survives only in class 7. Q12: the canonical
+    /// word is verbatim in Indonesian and its `LabelBook` word in English, and `pma_kondisi`, which has
+    /// no English source, is the labelled original in English.
     @MainActor
     static func headsUp(record k: KBLI, isID: Bool) -> (label: String, sentence: String?, tone: Theme.Tone) {
         let v = KBLIVerdict.of(record: k)
@@ -438,6 +440,7 @@ struct KBLIVerdict: Equatable {
             return table[key] ?? LanguageManager.strings[.en]?[key] ?? key
         }
         func nonEmpty(_ s: String?) -> String? { (s?.isEmpty == false) ? s : nil }
+        let kondisi = nonEmpty(k.pmaKondisi).map { LabelBook.original($0, isID: isID) }
         switch v.headsUpClass {
         case 1:
             return (t("rich.verdict.blocked"), t("dossier.holding.blocked"), .closed)
@@ -453,20 +456,23 @@ struct KBLIVerdict: Equatable {
                         ? "Hanya badan usaha milik Indonesia 100% yang diizinkan."
                         : "Only a 100% Indonesian-owned entity is permitted."
                 }
-                return ("TERTUTUP", sentence, .closed)
+                return (LabelBook.pmaStatus("TERTUTUP", isID: isID), sentence, .closed)
             }
             let cap = k.pmaMaxAsing.map(String.init) ?? "—"
-            return ("\(k.pmaStatus ?? "—") · \(cap)%", nonEmpty(k.pmaKondisi), .closed)
+            return ("\(LabelBook.pmaStatus(k.pmaStatus, isID: isID)) · \(cap)%", kondisi, .closed)
         case 3:
-            return (VerdictBadge(state: .undeterminedNational, isID: isID).text, v.headlineReason, .neutral)
+            return (VerdictBadge(state: .undeterminedNational, isID: isID).text,
+                    v.headlineReason.map { LabelBook.humanise($0, record: k, isID: isID) }, .neutral)
         case 4:
-            let reason = nonEmpty(k.l4Bali?.reason).map { OverlayStore.shared.displayReason($0, isID: isID) }
+            let reason = nonEmpty(k.l4Bali?.reason).map {
+                LabelBook.humanise(OverlayStore.shared.displayReason($0, isID: isID), record: k, isID: isID)
+            }
             return (VerdictBadge(state: .undetermined, isID: isID).text, reason, .neutral)
         case 5:
             let cap = v.nationalCap.map(String.init) ?? "—"
-            return ("\(k.pmaStatus ?? "TERBATAS") · \(cap)%", nonEmpty(k.pmaKondisi), .restricted)
+            return ("\(LabelBook.pmaStatus(k.pmaStatus ?? "TERBATAS", isID: isID)) · \(cap)%", kondisi, .restricted)
         case 6:
-            return (k.pmaStatus ?? "TERBATAS", nonEmpty(k.pmaKondisi), .restricted)
+            return (LabelBook.pmaStatus(k.pmaStatus ?? "TERBATAS", isID: isID), kondisi, .restricted)
         case 7:
             return (t("rich.verdict.open"), t("dossier.holding.open"), .open)
         default:

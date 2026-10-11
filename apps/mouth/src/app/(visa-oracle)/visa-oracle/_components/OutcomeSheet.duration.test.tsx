@@ -17,7 +17,7 @@ const option = (days: number, amount: number | null, selected: boolean) => ({
   },
 });
 
-function outcomeWith(extra: Record<string, unknown>) {
+function outcomeWith(extra: Record<string, unknown>, quoted = true) {
   const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
   const candidate = response.display.candidates[0];
   Object.assign(candidate, extra);
@@ -49,6 +49,7 @@ function outcomeWith(extra: Record<string, unknown>) {
       reason_code: "PRICE_AVAILABLE",
     },
   ];
+  if (!quoted) response.decision.quotes = [];
   return buildEngineOutcome(response);
 }
 
@@ -69,11 +70,12 @@ function priceText(
 async function copiedSummary(
   extra: Record<string, unknown>,
   language: Language = "en",
+  quoted = true,
 ): Promise<string> {
   render(
     <OutcomeSheet
       language={language}
-      outcome={outcomeWith(extra)}
+      outcome={outcomeWith(extra, quoted)}
       facts={{}}
     />,
   );
@@ -171,10 +173,18 @@ describe("OutcomeSheet — stay-permit duration under the price", () => {
     expect(summary).toMatch(/: IDR\s15,000,000 · 2-year stay permit$/m);
   });
 
-  it("share summary: a candidate without a duration is unchanged", async () => {
+  it("share summary: a priced candidate without a duration still carries its price", async () => {
     const summary = await copiedSummary({});
-    expect(summary).not.toMatch(/stay permit|·/);
-    expect(summary).toMatch(/^[A-Z0-9]+ — .+$/m);
+    expect(summary.replace(/[\u00a0\u202f]/g, " ")).toMatch(
+      /^[A-Z0-9]+ — .+: IDR 15,000,000$/m,
+    );
+    expect(summary).not.toMatch(/stay permit/);
+  });
+
+  it("share summary: a candidate with neither price nor duration is just its name", async () => {
+    const summary = await copiedSummary({}, "en", false);
+    expect(summary).not.toMatch(/stay permit|·|IDR/);
+    expect(summary).toMatch(/^[A-Z0-9]+ — [^:]+$/m);
   });
 
   it("share summary reads in Indonesian", async () => {

@@ -52,6 +52,7 @@ PY, SH = "scripts/localci/merger.py", "scripts/localci/localci_merger_tick.sh"
 HC, RUNNER = "scripts/localci/hosted_compare.py", "scripts/localci/runner.py"
 HCT, RUNT = "scripts/localci/tests/test_hosted_compare.py", "scripts/localci/tests/test_runner.py"
 HD = "scripts/localci/tests/test_host_disk.py"
+DRIVER, TP = "scripts/localci/steps_driver.py", "scripts/localci/tests/test_tree_pack.py"   # B14
 RUNT_COV = tuple(f"{RUNT}::{t}" for t in ("test_the_matrix_coverage_is_full_by_default_partial_where_declared_and_never_full_when_unreadable",
                                          "test_every_context_result_in_the_status_carries_the_base_matrix_coverage",
                                          "test_the_real_matrix_declares_e2e_partial_with_its_reason"))
@@ -120,12 +121,14 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "ready-days-boundary": (PY, "READY_MIN_MERGES, READY_MIN_DAYS = 50, 14", "READY_MIN_MERGES, READY_MIN_DAYS = 50, 13.999", (REPORT,)),
     "days-float": (PY, "return (int(_epoch(last) - _epoch(first)) * 1000 // 86400) / 1000",
                    "return round((_epoch(last) - _epoch(first)) / 86400, 3)", (REPORT,)),
-    # B4: two xdist workers on the backend shards and nowhere else; a timeout after a dead worker names it and stays no verdict
-    "b4-cap-key-misspelt": (MATRIX, 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "2" }', 'env: { PYTEST_XDIST_AUTO_NUM_WORKER: "2" }', SW_CAP),
-    "b4-cap-value-4": (MATRIX, 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "2" }', 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "4" }', SW_CAP),
-    "b4-cap-dropped": (MATRIX, '          env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "2" }\n', "", SW_CAP),
+    # B4: hosted's four xdist workers on the backend shards (two before the 2026-10-10 VM resize) and nowhere else; a timeout after a dead worker names it and stays no verdict
+    "b4-cap-key-misspelt": (MATRIX, 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "4" }', 'env: { PYTEST_XDIST_AUTO_NUM_WORKER: "4" }', SW_CAP),
+    "b4-cap-value-8": (MATRIX, 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "4" }', 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "8" }', SW_CAP),
+    "b4-cap-value-2": (MATRIX, 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "4" }', 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "2" }', SW_CAP),
+    "b4-memory-back-to-6g": (MATRIX, "      memory: 12g # four xdist workers", "      memory: 6g # four xdist workers", (f"{SW}::test_the_backend_cgroup_holds_four_workers",)),
+    "b4-cap-dropped": (MATRIX, '          env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "4" }\n', "", SW_CAP),
     "b4-cap-leaks-to-static": (MATRIX, "        - job_id: backend-static\n",
-                               '        - job_id: backend-static\n          env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "2" }\n', SW_CAP),
+                               '        - job_id: backend-static\n          env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "4" }\n', SW_CAP),
     "b4-node-down-unmatched": (RUN_PY, "node down: Not properly terminated|", "node down: Not properly terminatedX|", SW_DEAD),
     "b4-crashed-unmatched": (RUN_PY, """|\\bworker '?gw\\d+'? crashed")""", '")', SW_DEAD),
     "b4-node-down-over-match": (RUN_PY, "\\[gw\\d+\\] node down: Not properly terminated|", "node down|", SW_DEAD),
@@ -203,7 +206,29 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b8-floor-keeps-newest": (PRUNE, 'not d["remove"] and not d["live"] and not never(', 'not d["remove"] and d["slot"] != 1 and not d["live"] and not never(', (PRUNE_T,)),
     "b8-floor-takes-lease-run": (PRUNE, 'not d["remove"] and not d["live"] and not never(', 'not d["remove"] and not never(', (PRUNE_T,)),
     "b8-live-flag-off": (PRUNE, '"live": im["tag"] in in_progress or im["id"] in in_progress}', '"live": False}', (PRUNE_T,)),
-    "b8-cache-by-age": (PRUNE, '"builder", "prune", "-af", "--keep-storage", f"{budget_gb:g}GB"', '"builder", "prune", "-f", "--filter", "until=24h"', (PRUNE_T,)),
+    "b8-cache-by-age": (PRUNE, '"builder", "prune", "-af", f"--{bp[\'flag\']}", f"{budget_gb:g}GB"', '"builder", "prune", "-f", "--filter", "until=24h"', (PRUNE_T,)),
+    # B13 (Pro, 2026-10-10: buildx 0.34 turned --keep-storage into a reserved floor: rc 0, a deprecation line naming the flag, 0 B freed)
+    "b13-deprecated-flag-kept": (PRUNE, 'return "keep-storage" if KEEP_STORAGE_RE.search(text) and not MAX_USED_RE.search(text) else "max-used-space"',
+                                 'return "keep-storage"', (PRUNE_T,)),
+    "b13-help-ignored": (PRUNE, 'return "keep-storage" if KEEP_STORAGE_RE.search(text) and not MAX_USED_RE.search(text) else "max-used-space"',
+                         'return "max-used-space"', (PRUNE_T,)),
+    "b13-deprecation-ignored": (PRUNE, 'or rec[k].get("deprecated_flag"))]', ')]', (PRUNE_T,)),
+    "b13-deprecation-any-flag": (PRUNE, "any(named.search(ln) and DEPRECATED_RE.search(ln) for", "any(DEPRECATED_RE.search(ln) for", (PRUNE_T,)),
+    "b13-total-unparsed": (PRUNE, "    m = TOTAL_RE.search(output or \"\")\n", "    m = None\n", (PRUNE_T,)),
+    # B14: the sandbox indexes the tree from a pack the host builds once (runner.py, steps_driver.py), against test_tree_pack.py
+    "b14-pack-ignored-tree-check": (DRIVER, 'if have.returncode != 0 or have.stdout.strip() != "tree":', "if False:", (TP,)),
+    "b14-repack-all": (DRIVER, 'git("repack", *(("-d", "-q") if tree_pack else ("-a", "-d", "-q")))', 'git("repack", "-a", "-d", "-q")', (TP,)),
+    "b14-pack-not-removed-at-run-end": (RUNNER, "        remove_tree_pack(run_dir)\n        for s, h in old.items():", "        for s, h in old.items():", (TP,)),
+    "b14-pack-shipped-to-egress": (RUNNER, 'memory=spec.get("memory", "4g"), paths=set(st["side"]["inputs"]))',
+                                   'memory=spec.get("memory", "4g"), paths=set(st["side"]["inputs"]), files=tree_pack_ship(run_dir, plan)[1])', (TP,)),
+    "b14-no-fallback-log": (RUNNER, 'return None, {}, f"# tree pack: unavailable ({why}) \u2014 the sandbox indexes the tree itself\\n"', "return None, {}, None", (TP,)),
+    "b14-pack-shipped-without-git-index": (RUNNER, '        if spec.get("git_index"):\n            tp, files, pack_note', "        if True:\n            tp, files, pack_note", (TP,)),
+    "b14-failed-build-retried": (RUNNER, "            _TREE_PACK_FAILED[key] = why\n", "", (TP,)),
+    "b14-pack-read-whole": (RUNNER, "            ti.size, ti.mode = os.fstat(fh.fileno()).st_size, mode\n            tf.addfile(ti, fh)",
+                            "            data = fh.read()\n            ti.size, ti.mode = len(data), mode\n            tf.addfile(ti, io.BytesIO(data))", (TP,)),
+    "b14-stale-pack-kept": (PRUNE, "        if age_h is None or age_h < TREE_PACK_STALE_H:", "        if age_h is None or age_h < FULL_DAYS * 24:", (PRUNE_T,)),
+    "b14-stale-pack-swept-too-young": (PRUNE, "TREE_PACK_STALE_H = 24 ", "TREE_PACK_STALE_H = 0 ", (PRUNE_T,)),
+    "b14-sidecar-crash": (RUNNER, "RuntimeError, ValueError, AttributeError, KeyError, TypeError) as e:", "RuntimeError, ValueError) as e:", (TP,)),
     "b8-cache-without-a": (PRUNE, '"builder", "prune", "-af",', '"builder", "prune", "-f",', (PRUNE_T,)),
     "b8-cache-env-ignored": (PRUNE, 'cache_budget = _env_gb("LOCALCI_BUILDER_CACHE_GB", BUILDER_CACHE_GB)', "cache_budget = BUILDER_CACHE_GB", (PRUNE_T,)),
     "b8-cache-not-after-floor-removal": (PRUNE, "            builder_prune(docker, rec, cache_budget)   # the cache entries", "            pass   # the cache entries", (PRUNE_T,)),

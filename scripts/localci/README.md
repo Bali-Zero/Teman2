@@ -144,14 +144,16 @@ verdict on the candidate (the step is BLOCKED, never green; a vulnerability find
 overridden with `""` in the matrix (the run never holds them, and never reads the operator's); the parity gaps say what that
 can change.
 
-### Capacity on Pro (measured 2026-10-07, Colima aarch64, 4 CPU, 8 GiB, 60 GiB)
+### Capacity on Pro (measured 2026-10-07, Colima aarch64, 4 CPU, 8 GiB, 60 GiB; resized 2026-10-10 to 8 CPU, 16 GiB, 80 GiB)
 
-Checks run one after another and so do a service context's legs (parallelism 1): the backend shards take up to 6 GiB each
-and the VM has 8. In-sandbox CPU is the driver's `RUSAGE_CHILDREN` per step; a sibling lane's runs shared the host.
+Checks run one after another and so do a service context's legs (parallelism 1): the backend shards take up to 12 GiB each
+(6 GiB before the resize) and the VM has 16. Pro has 14 cores and 48 GiB; the resize is `colima.yaml` (`cpu: 8`, `memory: 16`,
+`disk: 80`, backup `colima.yaml.bak-20261010`) and a `colima stop`, after which launchd's `homebrew.mxcl.colima` (`colima start -f`,
+KeepAlive) brings the VM back with it, between two merger ticks with the merger job booted out. In-sandbox CPU is the driver's `RUSAGE_CHILDREN` per step; a sibling lane's runs shared the host.
 
 | check | wall s | in-sandbox CPU s | legs (wall / CPU s) |
 |---|---|---|---|
-| ctx.backend-tests | 1318 | 1365 | static 150/51 · shard 1 321/370 · shard 2 288/472 · shard 3 475/455 · fan-in 85/17 — shards at 4 xdist workers; since B4 they run 2, wall not yet re-measured |
+| ctx.backend-tests | 1318 | 1365 | static 150/51 · shard 1 321/370 · shard 2 288/472 · shard 3 475/455 · fan-in 85/17 — shards at 4 xdist workers under 6g, before B4; B4 ran 2 until the 2026-10-10 resize, and now 4 under 12g again, wall not yet re-measured |
 | ctx.harness-floor | 67 | 0.5 | one leg; the Gear ≥ 2 reader ran at plan |
 | ctx.e2e-tests | 320 | 207 | one leg: backend + Next.js build + 134 Playwright specs (PR-B2, 1df44b9b65) |
 | ctx.frontend-tests-mouth | 297 | 515 | the (mouth, true) leg: contract check, tsc, vitest with coverage, core, admin, wa-mirror |
@@ -161,14 +163,31 @@ and the VM has 8. In-sandbox CPU is the driver's `RUSAGE_CHILDREN` per step; a s
 **Shard workers (B4).** `pytest -n auto` starts one xdist worker per CPU, 4 on this VM, and one worker peaks ~2.1 GB
 anon-rss: 4 x 2.1 GB exceeds the leg's 6g memory cgroup (no swap), the kernel OOM-killed a worker, xdist printed
 `[gwN] node down: Not properly terminated` and shard 2 hung to its 1800 s kill in 4 of 5 merger runs (2026-10-07/08).
-The matrix's backend-shard job sets `PYTEST_XDIST_AUTO_NUM_WORKERS=2`: the same command and tests, files whole per worker,
-coverage `full`. Hosted runs 4 workers on 16 GB; the cap is a local capacity adaptation that goes the day the VM is resized.
+Until the 2026-10-10 resize the matrix's backend-shard job set `PYTEST_XDIST_AUTO_NUM_WORKERS=2`. It now sets `4`, hosted's
+count (its 4-CPU runner starts 4 under `-n auto`), under a 12g cgroup: the same command and tests, files whole per worker,
+coverage `full`. The line stays, because on the 8-CPU VM `-n auto` would start 8 workers, which is not hosted's run.
 A leg killed on timeout after such a line says so in its reason (worker, log line) and stays ERROR, never FAIL.
 
 The deps image (`localci-deps:<digest16>`, 9.85 GB: 294 aarch64 wheels, node 24, the fetched files) is built once per
 recipe: 394 s cold at plan (download, install, export), then a cache hit while the candidate's pins and the image are unchanged.
 E2E and Visa Oracle smoke share one recipe (the backend closure plus node 24, the root lock's npm cache, chromium and
 postgresql-client: 11.9 GB, its Python layers shared with Backend Tests'); Frontend Tests' node-only recipe is 1.4 GB.
+
+### Sandbox git index (B14)
+
+Every sandbox whose steps config has `git_index: true` indexes the tree as a git commit before its first step, and that time is
+counted in no step. Measured on Pro (the real 26,551-blob, 1.4 GB candidate tree, the deps image, uid 65534, network none, 8 CPU):
+`git add -A -f` 19.3 s, then `git repack -a -d` 42.8 s, 62.8 s start to exit, about 19 of the 49 minutes of a tick over ~20 such
+containers. Now the host builds ONE pack of the candidate tree's objects (`ls-tree -r -t -z` blobs and subtrees plus the root
+tree into `pack-objects --stdout`, streamed to disk: 7.8 s, 29,761 objects, 845 MB) lazily at the first git_index container, under
+`state/tree.pack` with a json sidecar, reused by every later container of the run (size and commit re-checked, not the sha256) and
+removed in the run's `finally` (verdicts or a crash); what a SIGKILL or a reboot leaves is swept by the prune once the run is 24 h old. It is tarred into the sandbox as `cfg/tree.pack` and named by the steps config's
+`tree_pack` key; egress sandboxes and containers without `git_index` never get it. The driver runs `index-pack --stdin` (every
+object's hash verified), requires the named tree to be in it, `read-tree`s it, and only then `add -A -f` (2.8 s: `read-tree` leaves zeroed stat data, so it re-hashes every file and only skips writing the
+objects the pack has, which is why the pack cannot change the commit, and why the `add` must stay), the history block, the commit and `repack -d`. Start to exit 9.5 s (copy-in 13.9 s vs 7.5 s), same
+`HEAD^{tree}`, same 26,551 files, clean status, 0 loose objects: about 47 s saved per container. A pack that does not verify raises
+in the driver (no verdict, never a silent fallback); a pack the host cannot build ships nothing, writes `# tree pack: unavailable
+(<why>) — the sandbox indexes the tree itself` in the log, and the driver takes the old path: speed is lost, never a verdict.
 
 ## What a verdict covers, and what is no verdict (B3)
 
@@ -321,7 +340,12 @@ whatever it is given (phase E is not armed); `merger.py --selftest` runs the tri
 
     python scripts/localci/merger.py tick --node Nuzantara [--repo Bali-Zero/Teman2] [--base main] \
         [--state-dir ~/.nuzantara-pilots/local-ci/merger] [--seed ~/nuzantara] [--python <venv python>] \
-        [--run-timeout 5400] [--tick-timeout 9000]
+        [--plan-timeout 7500] [--run-timeout 5400] [--tick-timeout 14400]
+
+The plan step's budget (`--plan-timeout`, `PLAN_TIMEOUT_S`) stays above the runner's `DEPS_BUILD_TIMEOUT_S` (7200 s): a lock
+file change makes a new deps recipe, built cold inside the plan (e2e-tests on Pro, 2026-10-11: 3552 s, pip download 2728 s).
+Under the old 900 s plan cap that build was cancelled on every tick and every e2e candidate was `ERROR`, with no way to
+progress. The tick watchdog holds plan + run + status; `tests/test_merger.py` pins both relations against `runner.py`.
 
 One `tick` decides at most one pull request:
 
@@ -720,13 +744,30 @@ The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and 
   2026-10-08T17:26Z). Each removal's rule reads `vm floor: VM free X GB < 15 GB after the cap; N plan(s) of the last 48 h name it, built
   H h ago` (`undated` without a readable `Created`); the line carries
   `vm_floor {floor_gb, removed, met}`, or `skipped` on a dry run, an unreadable input, or an unmeasured VM.
-- **Builder cache.** Every prune that is not a dry run runs `docker builder prune -af --keep-storage 4GB` on the current
+- **Builder cache.** Every prune that is not a dry run runs `docker builder prune -af --max-used-space 4GB` (the flag is chosen per B13 below) on the current
   builder, the one the runner's `docker build` uses (`colima` on Pro; `localci-isolated` is not the runner's), after the
   cap's removals and again after each floor removal. `-a` because the entries are the layers of images that exist, which are
   not dangling: without it the prune removed 0 B of a 16.93 GB cache (17:23Z); with it, after three removals, 20.98 GB (17:27Z). The budget is `BUILDER_CACHE_GB` (4;
-  `LOCALCI_BUILDER_CACHE_GB` overrides it); the line journals `builder_prune {rc, keep_storage_gb, tail}` of the last call,
+  `LOCALCI_BUILDER_CACHE_GB` overrides it); the line journals `builder_prune {rc, keep_storage_gb, flag, freed_gb, deprecated_flag, du_gb, tail}` of the last call,
   `runs` the number of calls, and `cache_gb {before, after}` read from `docker system df` before the first and after the last.
   It read `--filter until=24h` until B8: on Pro at 17:20Z that kept 16.9 GB of cache with 0.5 GB reclaimable.
+- **Builder cache, B13.** buildx 0.34 turned `--keep-storage` into `--reserved-space` (a floor to keep, not a cap): on Pro
+  (buildx v0.34.1, docker client 29.5.2, server 29.2.1; 2026-10-10 ~03:10Z) `builder prune -af --keep-storage 4GB` printed the
+  deprecation notice, `Total: 0B` and exited 0 against a 22.83 GB cache (`docker buildx du`: Shared 18.96 GB, Private 3.867 GB,
+  Reclaimable 22.03 GB); the journal read `rc 0, cache 22.83 -> 22.83`, and at 01:14Z every heavy leg was
+  `host_disk_below_floor 11.8GB<12GB`. Now the flag is read ONCE per prune run from `docker builder prune --help` (30 s bound):
+  `--max-used-space` when listed, `--keep-storage` only when the help lists that and not the new one (old buildx), and
+  `--max-used-space` when the help cannot be read (rc then decides). The prune fails on the entity that failed, not on a size: the
+  line carries `deprecated_flag: true`, and `failed` names `builder_prune`, when a line of a call's output (stdout+stderr) names
+  the flag we passed and says it is `deprecated` or `has been changed to` (the Pro line: `Flag --keep-storage has been deprecated,
+  keep-storage flag has been changed to reserved-space`); another flag's warning, or the word on a line that does not name ours,
+  is not this. `freed_gb` is the sum of buildx's `Total:` over the run's calls (`null` only when no call printed one), and
+  `du_gb {shared, private, reclaimable, total}` is read from `docker buildx du` (120 s bound) after the last call (no `Shared:`
+  line means no `Private:` either, and private is the total; unreadable is `null`). Both are measurements, never a failure.
+  `freed_gb` is buildx's record-size sum, not disk bytes: live on Pro (2026-10-10 ~04:05Z) one `-af --max-used-space 4GB` printed
+  `Total: 12.53GB` while the VM data disk went from 39G used to 37G used. BuildKit also leaves more than the cap reclaimable
+  (cache 22.83 GB before, 10.29 GB after, against 4 GB), so no size-based "over budget" rule is sound and none is applied.
+  An old daemon (BuildKit before 0.17) ignores `max-used-space`, and `-a` then empties the cache: a rebuild cost, never a wrong verdict.
 - **Run directories.** Age from the timestamp in the run's name; an undated directory is never touched. Under 7 days a
   run is whole. From 7 days `logs/` and every `call-graph.json` and `higher-order-call-graph.json` go. From 30 days only
   `status.json`, `hosted_compare.json` and `state/plan.json` stay. `decisions.jsonl` is never touched, and a `runs/` that is a
@@ -758,7 +799,7 @@ One journal line per prune (its shape; the numbers below are illustrative, not m
                 "kept": [{"tag": "localci-deps:…", "rule": "the newest image of recipe e2e-tests"},
                          {"tag": "localci-deps:…", "rule": "slot 2 of 2 of recipe e2e-tests: named by 4 plan(s) of the last 48 h, the youngest 1.4 h ago"},
                          {"tag": "postgres:15", "rule": "service stand-in of the BASE matrix: never pruned"}], "errors": []},
-     "builder_prune": {"rc": 0, "keep_storage_gb": 4.0, "cache_gb": {"before": 21.8, "after": 4.0}, "runs": 2, "tail": "Total: 3.9GB"},
+     "builder_prune": {"rc": 0, "keep_storage_gb": 4.0, "flag": "max-used-space", "freed_gb": 3.9, "deprecated_flag": false, "du_gb": {"shared": 0.68, "private": 3.3, "reclaimable": 3.5, "total": 3.98}, "cache_gb": {"before": 21.8, "after": 4.0}, "runs": 2, "tail": "Total: 3.9GB"},
      "vm_floor": {"floor_gb": 15.0, "removed": 1, "met": true},
      "runs": {"trimmed_7d": ["pr8060-…-20261001T063148Z"], "trimmed_30d": [], "freed_gb": 0.63},
      "fstrim": {"rc": 0, "tail": "/: 9.6 GiB (10307921510 bytes) trimmed"}, "failed": []}

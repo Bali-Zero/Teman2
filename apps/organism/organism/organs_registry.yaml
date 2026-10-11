@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 0f9bf6754b58f637a17f1925370fd769ace2a40844ec4b410876d73670d96cd5 # pragma: allowlist secret
+checksum: e9bcfe8f584c8a72d3122faef0149c43cfd3453eda716734e337932662e26425 # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3208,7 +3208,7 @@ organs:
 - id: pro.localci_merger
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 3600
+  expected_hb_seconds: 5400
   owner_module: scripts/localci/localci_merger_tick.sh
   dependencies: []
   recovery_action: launchctl_kickstart

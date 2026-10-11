@@ -1,0 +1,166 @@
+opened-surfaces: 6 ok, 0 failed
+  kbli-mobile-nav mobile/light: ok, 1 root(s), 1 scrim(s), 7 runs, min 3.66, 1 position(s)
+  kbli-mobile-nav mobile/system-dark: ok, 1 root(s), 1 scrim(s), 7 runs, min 4.36, 1 position(s)
+  kbli-mobile-nav mobile/forced-dark: ok, 1 root(s), 1 scrim(s), 7 runs, min 3.66, 1 position(s)
+  kbli-code-mobile-nav mobile/light: ok, 1 root(s), 1 scrim(s), 7 runs, min 3.66, 1 position(s)
+  kbli-code-mobile-nav mobile/system-dark: ok, 1 root(s), 1 scrim(s), 7 runs, min 4.36, 1 position(s)
+  kbli-code-mobile-nav mobile/forced-dark: ok, 1 root(s), 1 scrim(s), 7 runs, min 3.66, 1 position(s)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav mobile/light)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav mobile/system-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav mobile/forced-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-code-mobile-nav mobile/light)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-code-mobile-nav mobile/system-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-code-mobile-nav mobile/forced-dark)
+opened-outside-wrapper: 6
+  ground #090A0C under 'Login' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-code-mobile-nav mobile/forced-dark
+  ground #0A0A0C under 'Menu' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-mobile-nav mobile/forced-dark
+  ground #0B0B0E under 'Login' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-mobile-nav mobile/forced-dark
+  ground #0E192F under 'Menu' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-mobile-nav mobile/system-dark
+  ground #0E1A30 under 'Login' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-code-mobile-nav mobile/system-dark
+  ground #0F1A30 under 'Login' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-mobile-nav mobile/system-dark
+  ground #1F3A81 under 'Visa' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/system-dark
+  ground #1F3A82 under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/system-dark
+  ground #203A81 under 'Visa' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/system-dark
+  ground #203B81 under 'Tax' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/system-dark
+  ground #203B82 under 'Property' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/system-dark
+  ground #3A6DFF under 'Get Started' at body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center, on kbli-mobile-nav mobile/system-dark
+  ground #6A1624 under 'Visa' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/forced-dark
+  ground #6A1724 under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/forced-dark
+  ground #6B1725 under 'Tax' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/forced-dark
+  ground #6C1722 under 'Visa' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/forced-dark
+  ground #6C1927 under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/forced-dark
+  ground #6E1824 under 'Property' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/forced-dark
+  ground #6F1925 under 'Tax' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/forced-dark
+  ground #CDCDCE under 'Menu' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-mobile-nav mobile/light
+  ground #D6828E under 'Visa' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/light
+  ground #D6828F under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/light
+  ground #D7828E under 'Visa' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/light
+  ground #D7838F under 'Tax' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/light
+  ground #D78491 under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/light
+  ground #D8838F under 'Property' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/light
+  ground #D9848F under 'Tax' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/light
+  ground #D9D9D8 under 'Login' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-code-mobile-nav mobile/light
+  ground #DADAD9 under 'Login' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-mobile-nav mobile/light
+  ground #FF2D4C under 'Get Started' at body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center, on kbli-mobile-nav mobile/light
+  scrim #000000 alpha 0.45 at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div (a scrim is ink, translucent), on kbli-mobile-nav mobile/light
+opened-grounds-off-contract: 31
+ground-resolver-disagree: 0
+shared-touched-unpinned: 0
+  - #1D2C3B on #F2EAE3 'Business'  (MobileNav R19 /news mobile/light)
+  - #1D2C3B on #F2EAE3 'Home'  (MobileNav R19 /news mobile/light)
+  - #1D2C3B on #F2EAE3 'News'  (MobileNav R19 /news mobile/light)
+  - #1D2C3B on #F2EAE3 'Property'  (MobileNav R19 /news mobile/light)
+  - #1D2C3B on #F2EAE3 'Tax'  (MobileNav R19 /news mobile/light)
+  - #1D2C3B on #F2EAE3 'Team'  (MobileNav R19 /news mobile/light)
+  - #1D2C3B on #F2EAE3 'Visa'  (MobileNav R19 /news mobile/light)
+  + #1D2C3B on #D6B0A5 'Business'  (MobileNav R19 /news mobile/light)
+  + #1D2C3B on #D6B0A5 'Home'  (MobileNav R19 /news mobile/light)
+  + #1D2C3B on #D6B0A5 'News'  (MobileNav R19 /news mobile/light)
+  + #1D2C3B on #D6B0A5 'Property'  (MobileNav R19 /news mobile/light)
+  + #1D2C3B on #D6B0A5 'Tax'  (MobileNav R19 /news mobile/light)
+  + #1D2C3B on #D6B0A5 'Team'  (MobileNav R19 /news mobile/light)
+  + #1D2C3B on #D6B0A5 'Visa'  (MobileNav R19 /news mobile/light)
+  - #1D2C3B on #F2EAE3 'Business'  (MobileNav R19 /news mobile/system-dark)
+  - #1D2C3B on #F2EAE3 'Home'  (MobileNav R19 /news mobile/system-dark)
+  - #1D2C3B on #F2EAE3 'News'  (MobileNav R19 /news mobile/system-dark)
+  - #1D2C3B on #F2EAE3 'Property'  (MobileNav R19 /news mobile/system-dark)
+  - #1D2C3B on #F2EAE3 'Tax'  (MobileNav R19 /news mobile/system-dark)
+  - #1D2C3B on #F2EAE3 'Team'  (MobileNav R19 /news mobile/system-dark)
+  - #1D2C3B on #F2EAE3 'Visa'  (MobileNav R19 /news mobile/system-dark)
+  + #1D2C3B on #D6B0A5 'Business'  (MobileNav R19 /news mobile/system-dark)
+  + #1D2C3B on #D6B0A5 'Home'  (MobileNav R19 /news mobile/system-dark)
+  + #1D2C3B on #D6B0A5 'News'  (MobileNav R19 /news mobile/system-dark)
+  + #1D2C3B on #D6B0A5 'Property'  (MobileNav R19 /news mobile/system-dark)
+  + #1D2C3B on #D6B0A5 'Tax'  (MobileNav R19 /news mobile/system-dark)
+  + #1D2C3B on #D6B0A5 'Team'  (MobileNav R19 /news mobile/system-dark)
+  + #1D2C3B on #D6B0A5 'Visa'  (MobileNav R19 /news mobile/system-dark)
+  - #1D2C3B on #F2EAE3 'Home'  (MobileNav R19 /property/eligibility mobile/light)
+  - #1D2C3B on #F2EAE3 'KBLI'  (MobileNav R19 /property/eligibility mobile/light)
+  - #1D2C3B on #F2EAE3 'Tax'  (MobileNav R19 /property/eligibility mobile/light)
+  - #1D2C3B on #F2EAE3 'Visa'  (MobileNav R19 /property/eligibility mobile/light)
+  + #1D2C3B on #D6B0A5 'Home'  (MobileNav R19 /property/eligibility mobile/light)
+  + #1D2C3B on #D6B0A5 'KBLI'  (MobileNav R19 /property/eligibility mobile/light)
+  + #1D2C3B on #D6B0A5 'Tax'  (MobileNav R19 /property/eligibility mobile/light)
+  + #1D2C3B on #D6B0A5 'Visa'  (MobileNav R19 /property/eligibility mobile/light)
+  - #1D2C3B on #F2EAE3 'Home'  (MobileNav R19 /property/eligibility mobile/system-dark)
+  - #1D2C3B on #F2EAE3 'KBLI'  (MobileNav R19 /property/eligibility mobile/system-dark)
+  - #1D2C3B on #F2EAE3 'Tax'  (MobileNav R19 /property/eligibility mobile/system-dark)
+  - #1D2C3B on #F2EAE3 'Visa'  (MobileNav R19 /property/eligibility mobile/system-dark)
+  + #1D2C3B on #D6B0A5 'Home'  (MobileNav R19 /property/eligibility mobile/system-dark)
+  + #1D2C3B on #D6B0A5 'KBLI'  (MobileNav R19 /property/eligibility mobile/system-dark)
+  + #1D2C3B on #D6B0A5 'Tax'  (MobileNav R19 /property/eligibility mobile/system-dark)
+  + #1D2C3B on #D6B0A5 'Visa'  (MobileNav R19 /property/eligibility mobile/system-dark)
+  - #1D2C3B on #F2EAE3 'Home'  (MobileNav R19 /tax-calendar mobile/light)
+  - #1D2C3B on #F2EAE3 'KBLI'  (MobileNav R19 /tax-calendar mobile/light)
+  - #1D2C3B on #F2EAE3 'Property'  (MobileNav R19 /tax-calendar mobile/light)
+  - #1D2C3B on #F2EAE3 'Visa'  (MobileNav R19 /tax-calendar mobile/light)
+  + #1D2C3B on #D6B0A5 'Home'  (MobileNav R19 /tax-calendar mobile/light)
+  + #1D2C3B on #D6B0A5 'KBLI'  (MobileNav R19 /tax-calendar mobile/light)
+  + #1D2C3B on #D6B0A5 'Property'  (MobileNav R19 /tax-calendar mobile/light)
+  + #1D2C3B on #D6B0A5 'Visa'  (MobileNav R19 /tax-calendar mobile/light)
+  - #1D2C3B on #F2EAE3 'Home'  (MobileNav R19 /tax-calendar mobile/system-dark)
+  - #1D2C3B on #F2EAE3 'KBLI'  (MobileNav R19 /tax-calendar mobile/system-dark)
+  - #1D2C3B on #F2EAE3 'Property'  (MobileNav R19 /tax-calendar mobile/system-dark)
+  - #1D2C3B on #F2EAE3 'Visa'  (MobileNav R19 /tax-calendar mobile/system-dark)
+  + #1D2C3B on #D6B0A5 'Home'  (MobileNav R19 /tax-calendar mobile/system-dark)
+  + #1D2C3B on #D6B0A5 'KBLI'  (MobileNav R19 /tax-calendar mobile/system-dark)
+  + #1D2C3B on #D6B0A5 'Property'  (MobileNav R19 /tax-calendar mobile/system-dark)
+  + #1D2C3B on #D6B0A5 'Visa'  (MobileNav R19 /tax-calendar mobile/system-dark)
+  - #09090B at alpha 0.92 over an image 'Business'  (MobileNav non-R19 /v2 mobile/light)
+  - #09090B at alpha 0.92 over an image 'Visa'  (MobileNav non-R19 /v2 mobile/light)
+  - #181719 on #C2B6B7 'News'  (MobileNav non-R19 /v2 mobile/light)
+  - #181719 on #C5BABB 'Property'  (MobileNav non-R19 /v2 mobile/light)
+  - #181719 on #C6BABB 'Tax'  (MobileNav non-R19 /v2 mobile/light)
+  - #19181A on #D0C2C2 'Home'  (MobileNav non-R19 /v2 mobile/light)
+  + #191315 on #D7838E 'Visa'  (MobileNav non-R19 /v2 mobile/light)
+  + #1A1316 on #D88490 'Business'  (MobileNav non-R19 /v2 mobile/light)
+  + #1A1316 on #D88490 'News'  (MobileNav non-R19 /v2 mobile/light)
+  + #1A1316 on #DA8692 'Property'  (MobileNav non-R19 /v2 mobile/light)
+  + #1A1316 on #DA8692 'Tax'  (MobileNav non-R19 /v2 mobile/light)
+  + #1A1316 on #E18C97 'Home'  (MobileNav non-R19 /v2 mobile/light)
+  - #F5F6F7 on #101E3A 'Business'  (MobileNav non-R19 /v2 mobile/system-dark)
+  - #F5F6F7 on #101E3A 'News'  (MobileNav non-R19 /v2 mobile/system-dark)
+  - #F5F6F7 on #101E3A 'Visa'  (MobileNav non-R19 /v2 mobile/system-dark)
+  - #F5F6F7 on #111F3B 'Property'  (MobileNav non-R19 /v2 mobile/system-dark)
+  - #F5F6F7 on #111F3B 'Tax'  (MobileNav non-R19 /v2 mobile/system-dark)
+  - #F6F6F7 on #13213D 'Home'  (MobileNav non-R19 /v2 mobile/system-dark)
+  + #F6F7FA on #203B81 'Visa'  (MobileNav non-R19 /v2 mobile/system-dark)
+  + #F6F7FA on #203B82 'Business'  (MobileNav non-R19 /v2 mobile/system-dark)
+  + #F6F7FA on #203B82 'News'  (MobileNav non-R19 /v2 mobile/system-dark)
+  + #F6F7FA on #203B82 'Property'  (MobileNav non-R19 /v2 mobile/system-dark)
+  + #F6F7FA on #203B82 'Tax'  (MobileNav non-R19 /v2 mobile/system-dark)
+  + #F6F7FA on #223C83 'Home'  (MobileNav non-R19 /v2 mobile/system-dark)
+  - #19181A on #D6C9CA 'News'  (MobileNav non-R19 /v2/news mobile/light)
+  - #1A191B on #DED2D2 'Home'  (MobileNav non-R19 /v2/news mobile/light)
+  + #1B1417 on #E5909C 'News'  (MobileNav non-R19 /v2/news mobile/light)
+  + #1B1417 on #EA96A1 'Home'  (MobileNav non-R19 /v2/news mobile/light)
+  - #F5F6F7 on #101F3C 'Home'  (MobileNav non-R19 /v2/news mobile/system-dark)
+  - #F5F6F7 on #11203D 'News'  (MobileNav non-R19 /v2/news mobile/system-dark)
+  + #F6F7FA on #203B83 'Home'  (MobileNav non-R19 /v2/news mobile/system-dark)
+  + #F6F7FA on #203C83 'News'  (MobileNav non-R19 /v2/news mobile/system-dark)
+  - #1A191B on #DDD1D1 'Tax'  (MobileNav non-R19 /visa/second-home mobile/light)
+  - #1A191B on #DED1D2 'KBLI'  (MobileNav non-R19 /visa/second-home mobile/light)
+  - #1A191B on #DED2D2 'Property'  (MobileNav non-R19 /visa/second-home mobile/light)
+  - #1A191B on #DFD3D3 'Home'  (MobileNav non-R19 /visa/second-home mobile/light)
+  + #1B1417 on #E995A1 'Tax'  (MobileNav non-R19 /visa/second-home mobile/light)
+  + #1B1417 on #EA95A1 'KBLI'  (MobileNav non-R19 /visa/second-home mobile/light)
+  + #1B1417 on #EA96A1 'Property'  (MobileNav non-R19 /visa/second-home mobile/light)
+  + #1B1417 on #EA96A2 'Home'  (MobileNav non-R19 /visa/second-home mobile/light)
+  - #F6F6F7 on #162440 'Home'  (MobileNav non-R19 /visa/second-home mobile/system-dark)
+  - #F6F6F7 on #162440 'KBLI'  (MobileNav non-R19 /visa/second-home mobile/system-dark)
+  - #F6F6F7 on #162440 'Property'  (MobileNav non-R19 /visa/second-home mobile/system-dark)
+  - #F6F6F7 on #162440 'Tax'  (MobileNav non-R19 /visa/second-home mobile/system-dark)
+  + #F6F7FA on #233E85 'Tax'  (MobileNav non-R19 /visa/second-home mobile/system-dark)
+  + #F6F7FA on #243E85 'KBLI'  (MobileNav non-R19 /visa/second-home mobile/system-dark)
+  + #F6F7FA on #243F85 'Property'  (MobileNav non-R19 /visa/second-home mobile/system-dark)
+  + #F6F7FA on #243F86 'Home'  (MobileNav non-R19 /visa/second-home mobile/system-dark)
+shared-component-drift: 108
+  4.27  #5B5B5D on #CDCDCE  'Menu'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.flex.items-center>span.text-[11px].font-bold  (kbli-mobile-nav mobile/light)
+  3.66  #FFFFFF on #FF2D4C  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-mobile-nav mobile/light)
+  4.36  #FFFFFF on #3A6DFF  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-mobile-nav mobile/system-dark)
+  3.66  #FFFFFF on #FF2D4C  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-mobile-nav mobile/forced-dark)
+  4.27  #5B5B5D on #CDCDCE  'Menu'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.flex.items-center>span.text-[11px].font-bold  (kbli-code-mobile-nav mobile/light)
+  3.66  #FFFFFF on #FF2D4C  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-code-mobile-nav mobile/light)
+  4.36  #FFFFFF on #3A6DFF  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-code-mobile-nav mobile/system-dark)
+  3.66  #FFFFFF on #FF2D4C  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-code-mobile-nav mobile/forced-dark)
+opened-text-below-4.5: 8

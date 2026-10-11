@@ -1,0 +1,25 @@
+task_id: visa-holiday-coverage-lows
+gear: 2
+gear_reason: >-
+  Floor 2 by blast radius (about 190 net lines across a backend helper, the sentinel and tests). One sentinel lane; no hot-zone path,
+  workflow, plist or wrapper change. Gear 2's adversarial seat is the fresh on-disk gate.
+l_level: L2
+gate_class: opus
+objective: >-
+  Cure the three LOW gaps the gate left on the holiday-coverage lane (PR 8206). L1: after the gap day the STALE text must keep naming the
+  day the gap began, not today. L3: a coverage probe that stays CANNOT_VERIFY for 4 consecutive ticks (one day at the 6 h cadence) must
+  reach the exit code, the heartbeat and the owner alert path. L4: the two tests pinning the real 2027 data become data-relative.
+acceptance:
+  - text: With only 2026 loaded, any day after the gap day still reports first_gap equal to the gap day.
+    probe: "apps/backend-rag/backend/tests/services/visa_engine/test_holiday_coverage.py"
+  - text: Three CANNOT_VERIFY ticks stay digest-quiet, the fourth is a BLIND p0 with a board row and rc 4, and an OK or WARN resets the count.
+    probe: "scripts/tests/test_visa_holiday_coverage_lane.py"
+  - text: Loading the 2028 decree does not turn the two formerly pinned tests red.
+    probe: "apps/backend-rag/backend/tests/services/visa_engine/test_holiday_coverage.py"
+pii_scan: clean
+pii_scan_note: Holiday decree dates and product codes only; no client data.
+bites:
+  consumer: The launchd tick com.nuzantara.visa-freshness-sentinel on Pro (every 6 h, runs scripts/visa_freshness_sentinel.py).
+  observation: >-
+    After merge a sentinel tick on Pro still logs HOLIDAY_COVERAGE OK first_gap=2027-11-19; the guilt tests prove the STALE text and the
+    BLIND escalation.

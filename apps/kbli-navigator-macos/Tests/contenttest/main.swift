@@ -69,8 +69,9 @@ let out: [String: Any] = MainActor.assumeIsolated {
     }
     // Each redesigned view must still ask the canonical functions (append one line per view).
     let mustCall: [String: [String]] = [
-        "Sources/Views/SearchListView.swift": ["KBLIVerdict.headsUp(", "OverlayStore.shared.primaryTitle("],
-        "Sources/Views/KBLIRegistryTable.swift": ["Theme.riskChip(", "Theme.chip("],
+        "Sources/Views/SearchListView.swift": ["KBLIVerdict.headsUp(", "OverlayStore.shared.primaryTitle(", "LabelBook.cap("],
+        "Sources/Views/KBLIRegistryTable.swift": ["Theme.riskChip(", "Theme.chip(", "LabelBook.title("],
+        "Sources/Views/RegistryVerdictSheet.swift": ["LabelBook.title(", "LabelBook.humanise("],
     ]
     for (file, calls) in mustCall.sorted(by: { $0.key < $1.key }) {
         guard let src = try? String(contentsOfFile: "\(appRoot)/\(file)", encoding: .utf8) else {
@@ -84,6 +85,8 @@ let out: [String: Any] = MainActor.assumeIsolated {
     // comments included. Listed only for a view with no such read at its redesign (append one line per view).
     let mustNotRead: [String: [String]] = [
         "Sources/Views/SearchListView.swift": ["judul"],
+        "Sources/Views/KBLIRegistryTable.swift": ["judul"],
+        "Sources/Views/RegistryVerdictSheet.swift": ["judul"],
     ]
     for (file, fields) in mustNotRead.sorted(by: { $0.key < $1.key }) {
         guard let src = try? String(contentsOfFile: "\(appRoot)/\(file)", encoding: .utf8) else {
@@ -97,7 +100,48 @@ let out: [String: Any] = MainActor.assumeIsolated {
             }
         }
     }
-    return ["codes": codes, "balanced_rejoin": rejoin, "probe_violations": violations]
+    // Lead ruling on EN-1 (2026-10-10): a search row's chip says the status word and the line beside it only
+    // the cap ("49%"), never the word again. Every code in both languages, and the row's own call.
+    let words = ["TERBUKA", "TERBATAS", "TERTUTUP"].flatMap { w in
+        [false, true].map { LabelBook.pmaStatus(w, isID: $0).lowercased() }
+    }
+    var repeats: [String] = []
+    for k in store.all {
+        for isID in [false, true] {
+            let line = LabelBook.cap(k, isID: isID)
+            if words.contains(where: { line.lowercased().contains($0) }) { repeats.append("\(k.kode) \(isID ? "id" : "en") “\(line)”") }
+        }
+    }
+    if !repeats.isEmpty {
+        violations.append("search-row: the line beside the status chip repeats the status word in \(repeats.count) rows, e.g. \(repeats.prefix(3).joined(separator: ", "))")
+    }
+    if let src = try? String(contentsOfFile: "\(appRoot)/Sources/Views/SearchListView.swift", encoding: .utf8),
+       src.contains("ownershipLine(") {
+        violations.append("SearchListView.swift calls ownershipLine( — the search row's chip already says its status word; the line beside it is LabelBook.cap(")
+    }
+    // The closed-set maps, every key in both languages, for content_check.py's pin (#8227 gate (i)): a map edited
+    // without its pin fails, whatever else reads LabelBook's own words.
+    var maps: [String: [String: [String]]] = [:]
+    let both = { (f: (Bool) -> String) in [f(false), f(true)] }
+    for w in ["TERBUKA", "TERBATAS", "TERTUTUP"] { maps["pmaStatus", default: [:]][w] = both { LabelBook.pmaStatus(w, isID: $0) } }
+    for s in KBLIVerdict.knownBaliStatuses { maps["baliStatus", default: [:]][s] = both { LabelBook.baliStatus(s, isID: $0) } }
+    for c in ["HIGH", "MEDIUM", "LOW"] { maps["confidence", default: [:]][c] = both { LabelBook.confidence(c, isID: $0) } }
+    for f in LabelBook.fieldNames.keys { maps["field", default: [:]][f] = both { LabelBook.field(f, isID: $0) } }
+    for b in [true, false] { maps["yesNo", default: [:]][String(b)] = both { LabelBook.yesNo(b, isID: $0) } }
+    // The curated basis and note language, every record, for en_purity's parity probe (census --curated).
+    var curated: [String: [String: String]] = [:]
+    for k in store.all {
+        var c: [String: String] = [:]
+        if let b = k.pmaOfficialBasis, !b.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            c["basis"] = LabelBook.isEnglishText(b) ? "en" : "id"
+        }
+        if let n = k.pmaNota, !n.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            c["nota"] = LabelBook.isEnglishText(n) ? "en" : "id"
+        }
+        if !c.isEmpty { curated[k.kode] = c }
+    }
+    return ["codes": codes, "balanced_rejoin": rejoin, "probe_violations": violations, "curated_language": curated,
+            "labelbook_maps": maps]
 }
 
 guard let data = try? JSONSerialization.data(withJSONObject: out,

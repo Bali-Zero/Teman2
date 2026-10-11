@@ -462,3 +462,85 @@ def test_a_git_config_override_cannot_hide_a_rewrite_from_the_check(w, tmp_path,
     empty.write_text("")
     monkeypatch.setenv("GIT_CONFIG", str(empty))  # would blind `git config` alone
     assert w.run() == 2
+
+
+@pytest.mark.parametrize("name", ["team_members.json", "Team_Members.2026-10.json"])
+def test_a_roster_file_the_cut_misses_is_refused_whatever_the_manifests_say(w, name):
+    w.canon_commit({f"apps/backend-rag/backend/data/{name}": "STAFF\n"}, "roster inside the perimeter")
+    before = w.zero_tip()
+    assert w.run() == zs.EXIT_ERROR
+    assert w.zero_tip() == before
+    assert w.hb()["status"] == "error" and "staff roster" in w.hb()["note"]
+
+
+def test_roster_stand_ins_and_the_loader_shim_still_export(w):
+    w.canon_commit({
+        "apps/backend-rag/backend/data/team_members.example.json": "[]\n",
+        "apps/backend-rag/backend/data/team_members.synthetic.json": "[]\n",
+        "apps/backend-rag/backend/data/team_members.py": "TEAM_MEMBERS = []\n",
+    }, "stand-ins")
+    assert w.run() == 0
+    assert {"apps/backend-rag/backend/data/team_members.example.json",
+            "apps/backend-rag/backend/data/team_members.synthetic.json",
+            "apps/backend-rag/backend/data/team_members.py"} <= w.zero_files()
+
+
+def test_a_roster_the_cut_names_does_not_trip_the_deny(w):
+    w.canon_commit({"apps/backend-rag/backend/data/team_members.json": "STAFF\n"}, "roster")
+    w.zero_commit({".slim/cut_paths.txt": CUT + "apps/backend-rag/backend/data/team_members.json\n"}, "cut it")
+    assert w.run() == 0
+    assert "apps/backend-rag/backend/data/team_members.json" not in w.zero_files()
+
+
+def _aged_entries(d, n):
+    import os
+    d.mkdir(parents=True, exist_ok=True)
+    for i in range(n):
+        f = d / f"{i:02d}.json"
+        f.write_text("lock")
+        os.utime(f, (1_000_000 + i, 1_000_000 + i))  # 00 oldest, n-1 newest
+
+
+def test_the_lock_cache_keeps_only_the_most_recently_used_entries(tmp_path):
+    d = tmp_path / "lock_cache"
+    _aged_entries(d, 12)
+    zs.prune_lock_cache(d)
+    assert sorted(f.name for f in d.glob("*.json")) == [f"{i:02d}.json" for i in range(4, 12)]
+
+
+def test_a_sync_that_writes_a_new_lock_bounds_the_cache_and_a_hit_survives(w):
+    d = w.state / "lock_cache"
+    _aged_entries(d, zs.LOCK_CACHE_KEEP + 3)
+    assert w.run() == 0
+    assert w.npm_calls() == 1
+    names = {f.name for f in d.glob("*.json")}
+    assert len(names) == zs.LOCK_CACHE_KEEP
+    fresh = (names - {f"{i:02d}.json" for i in range(zs.LOCK_CACHE_KEEP + 3)}).pop()
+    import os
+    os.utime(d / fresh, (1, 1))  # make the live entry look ancient
+    w.canon_commit({"apps/mouth/a.txt": "a2\n"}, "touch mouth only")  # lock inputs unchanged -> cache hit
+    assert w.run() == 0
+    assert w.npm_calls() == 1
+    assert (d / fresh).stat().st_mtime > 1  # the hit refreshed it
+
+
+def _side_ref(w, ref="refs/merger/base"):
+    """A commit reachable only from `ref`, the way the LOCALCI mirror keeps its base: main stays behind."""
+    git(w.canon, "checkout", "-q", "-b", "side")
+    w.canon_commit({"apps/mouth/side.txt": "s\n"}, "only on the side ref")
+    git(w.canon, "update-ref", ref, "side")
+    git(w.canon, "checkout", "-q", "main")
+
+
+def test_the_source_ref_comes_from_the_environment(w, monkeypatch):
+    _side_ref(w)
+    monkeypatch.setenv("ZERO_SYNC_CANONICAL_REF", "refs/merger/base")
+    assert w.run() == 0
+    assert "apps/mouth/side.txt" in w.zero_files()
+
+
+def test_without_the_environment_the_source_ref_stays_main(w, monkeypatch):
+    _side_ref(w)
+    monkeypatch.delenv("ZERO_SYNC_CANONICAL_REF", raising=False)
+    assert w.run() == 0
+    assert "apps/mouth/side.txt" not in w.zero_files()

@@ -1,0 +1,29 @@
+task_id: localci-treepack-1010
+mission: LOCALCI-SOVEREIGN (phase B, step B14 — speed)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  The sandbox's git-index setup (harness code: runner.py's tar and the steps driver's index_tree), not any check's logic. The repo a step
+  sees is proven identical by test and on Pro's real tree; no workflow, matrix, hot-zone path, plist or wrapper change.
+l_level: L2
+gate_class: opus
+objective: >-
+  Every git_index sandbox stops hashing and repacking the 1.4 GB candidate tree itself (62.8-69 s per container, ~20 containers per
+  candidate). The runner builds one pack of the candidate tree's objects per run (ls-tree -r -t -> pack-objects, streamed to the run's
+  private state), ships it as cfg/tree.pack, and the driver indexes it (index-pack verifies every object), checks the tree is in it,
+  read-tree seeds the index, add -A -f hashes the files, the history block is unchanged, commit, repack -d. Same repo for every step.
+constraints:
+  - The repo a step sees is identical (HEAD tree, index, status, history refs and diff, no loose objects); only the pack count differs.
+  - A pack that does not verify raises in the sandbox (no verdict, never green); a failed build ships nothing and takes today's path.
+  - The pack never stays on disk after its run; egress sandboxes never get it.
+acceptance:
+  - text: With and without the pack, the sandbox repo SHALL agree on HEAD^{tree}, ls-files -s, an empty status, zero loose objects and fsck, without and with history (main/origin/main trees, diff main HEAD), with an artifact and an override in /w.
+    probe: "test_tree_pack.py (equivalence cases)"
+  - text: A pack of another tree, a truncated pack and a corrupt pack SHALL make the driver raise (rc 2, no junit).
+    probe: "test_tree_pack.py (guilt cases)"
+  - text: The pack SHALL ship iff git_index, never to egress, streamed from disk; a failed build SHALL ship nothing, log one line and not be retried in the run; the pack SHALL be removed when the run ends, also on an interrupt.
+    probe: "test_tree_pack.py (runner cases)"
+consumer_map:
+  - scripts/localci/runner.py (the merger tick on Pro) — every git_index sandbox (contained-steps checks and service-context legs).
+pii_scan: clean
+pii_scan_note: Harness code, tests on synthetic git repos, mutant rules and documentation. The Pro probes read the merger's candidate tree (repo code) only.

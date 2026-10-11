@@ -83,7 +83,9 @@ user `nuzantara`** — the host with the wa-mirror raw PII, the CRM runtime and
 `~/.nuzantara-secrets.env`. This is why a teammate's laptop must join **tagged**, and why
 `policy.hujson` must be applied *before* it joins.
 
-That shell is fine while every node is Zero's own, which is the case today. Hardening ttyd
+That shell is fine only while every node is Zero's own. Measured 2026-10-11 it was not: twelve
+nodes, six of them not pinned in `policy.hujson`, so `/term` was taken out of `serve` on Pro
+that day and goes back only after the policy is applied. Hardening ttyd
 itself (`-c user:pass`, or dropping `/term` from `serve`) changes how Zero reaches his own
 machine from his own phone, so it is his call, filed in the ledger rather than done here.
 

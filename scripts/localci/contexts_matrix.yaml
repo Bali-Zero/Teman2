@@ -144,7 +144,7 @@ contexts:
       where: container
       expressions: true # a service context: the job chain, its services, its lock and its `${{ }}` are reproduced (runner v0.6.0)
       runs_when: backend-tests # the jobs' `if:` reads the classifier's run_backend_tests: the trusted change_map stands in
-      memory: 6g
+      memory: 12g # four xdist workers peak ~2.1 GB each (B4): 4 x 2.1 GB fits 12g; the VM has 16 GiB since 2026-10-10
       bare_venv: false # `uv pip install --system` writes into the interpreter setup-python names, not a venv
       service_images: # ci-image-mirror.yml copies docker.io/library/<tag> (linux/amd64, digests preserved); its arm64 twin stands in here
         "ghcr.io/bali-zero/ci-mirror/postgres:15": "postgres:15"
@@ -206,14 +206,14 @@ contexts:
             - workflow_step: Upload core-gate test results
               not_applicable: a continue-on-error diagnostic upload (BASE says nothing gates on it); there is no artifact store here
         - job_id: backend-shard
-          # Two xdist workers, not four (measured on Pro 2026-10-07/08): `pytest -n auto --dist loadfile` starts one worker per CPU,
-          # 4 on the 4-CPU Colima VM (8 GiB, no swap), and one worker peaks ~2.1 GB anon-rss, so 4 x 2.1 GB exceeds the leg's 6g
-          # memory cgroup: the kernel OOM-killed a worker (six memcg kills 2026-10-07T22:19Z..10-08T06:59Z, every one a
-          # /docker/<ctr>), xdist printed `[gwN] node down: Not properly terminated` and the controller hung until the 1800 s kill
-          # (4 of 5 merger runs). Hosted runs 4 workers on 16 GB with no cgroup limit. Same tests, same command: xdist's
-          # `-n auto` reads PYTEST_XDIST_AUTO_NUM_WORKERS before any CPU count, `--dist loadfile` keeps each file whole on one
-          # worker and the DB isolation is per worker, so coverage stays `full`. Remove this line the day the VM is resized.
-          env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "2" }
+          # Four xdist workers = hosted's count (its runner has 4 CPUs, so `-n auto` starts 4 there). The line stays: on the
+          # 8-CPU Colima VM (resized 2026-10-10 from 4 CPU / 8 GiB) `-n auto` would start 8 workers x ~2.1 GB anon-rss each,
+          # which is not hosted's run and exceeds the leg's 12g cgroup. History (B4, 2026-10-07/08): at 4 workers under the old
+          # 6g cgroup the kernel OOM-killed a worker (six memcg kills, every one a /docker/<ctr>), xdist printed `[gwN] node
+          # down: Not properly terminated` and the controller hung to the 1800 s kill; the cap was 2 until the resize. Same tests,
+          # same command: xdist's `-n auto` reads PYTEST_XDIST_AUTO_NUM_WORKERS before any CPU count, `--dist loadfile` keeps each
+          # file whole on one worker and the DB isolation is per worker, so coverage stays `full`.
+          env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "4" }
           steps:
             - workflow_step: Runner probe (temporary, day-0)
             - workflow_step: Cache dependencies (uv)

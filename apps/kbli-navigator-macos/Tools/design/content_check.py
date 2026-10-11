@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """content_check.py [--pack PATH] < contenttest.json  (Python 3.9, stdlib; dataset from env KBLI_JSON).
 Compares every leaf of the frozen content pack with what the app produced, byte for byte; authority
-arrays after an order-keeping collapse of exact repeats; 51101 heads_up = the canonical pair."""
+arrays after an order-keeping collapse of exact repeats; 51101 heads_up = the canonical pair (Q12: in English the
+status word is English; 51101's pma_kondisi is English already, so it is verbatim in both languages)."""
 import json, os, sys
 root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 args = sys.argv[1:]
@@ -21,13 +22,20 @@ for code in pack["frozen"]:
     want, got = pack["codes"][code], app["codes"].get(code, {})
     if code == "51101":
         rec = [r for r in ds if r["kode_kbli_2025"] == code][0]
-        canon = ["%s · %s%%" % (want["verdict"], want["cap"]), rec["pma_kondisi"]]
+        canons = {"id": ["%s · %s%%" % (want["verdict"], want["cap"]), rec["pma_kondisi"]],
+                  "en": ["%s · %s%%" % ({"TERBATAS": "Restricted"}[want["verdict"]], want["cap"]), rec["pma_kondisi"]]}
         for lang in ("en", "id"):
+            canon = canons[lang]
             if got.get(lang, {}).get("heads_up") != canon: diffs.append("DIFF 51101.%s.heads_up: want canonical %r app=%r" % (lang, canon, got.get(lang, {}).get("heads_up")))
             if want[lang]["heads_up"] == canon: diffs.append("DIFF 51101.%s.heads_up: pack pair equals canonical (expected the open pair)" % lang)
             want[lang].pop("heads_up"); got.get(lang, {}).pop("heads_up", None)
     walk("." + code, want, got)
 diffs += ["DIFF balanced_rejoin.%s: false" % c for c, ok in app.get("balanced_rejoin", {}).items() if not ok]
 diffs += ["DIFF probe: " + v for v in app.get("probe_violations", [])]
+pin = json.load(open(root + "/docs/design/labelbook-pin-2026-10-10.json"))["maps"]   # #8227 gate (i)
+for m in sorted(set(pin) | set(app.get("labelbook_maps", {}))):
+    want, got = pin.get(m, {}), app.get("labelbook_maps", {}).get(m, {})
+    diffs += ["DIFF LabelBook.%s[%s]: pinned %r, app %r" % (m, k, want.get(k), got.get(k))
+              for k in sorted(set(want) | set(got)) if want.get(k) != got.get(k)]
 print("\n".join(diffs) if diffs else "content: 3 frozen codes identical (51101 heads-up = canonical pair)")
 sys.exit(1 if diffs else 0)

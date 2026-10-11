@@ -166,7 +166,10 @@ export interface OutcomeStep {
   body?: LocalizedText;
 }
 
-export type OutcomeNextSteps = readonly [OutcomeStep, OutcomeStep, OutcomeStep];
+/** Three steps, or two when one (the open door) has nothing to point at. */
+export type OutcomeNextSteps =
+  | readonly [OutcomeStep, OutcomeStep, OutcomeStep]
+  | readonly [OutcomeStep, OutcomeStep];
 
 export interface OutcomeAssessment {
   publicId?: string;

@@ -23,17 +23,29 @@ GIT_ID = {"GIT_AUTHOR_NAME": "localci", "GIT_AUTHOR_EMAIL": "localci@invalid", "
           "GIT_COMMITTER_EMAIL": "localci@invalid"}
 
 
-def index_tree(root: str, history: dict | None, base_dir: Path) -> None:
+def index_tree(root: str, history: dict | None, base_dir: Path, tree_pack: dict | None = None) -> None:
     """Steps that call `git ls-files`/`git diff` see the frozen tree as a commit. The tar carries tracked blobs only, so `add -f`
     indexes exactly the candidate's tracked set (ignored-but-tracked files included). With `history`, BASE is rebuilt first —
     the candidate's index minus the paths it added, plus the BASE blob and mode of every path it changed (<cfg dir>/base/<path>) — and
-    the candidate commit sits on it: `main`, `origin/main` and a fetch of `origin main` (origin = this repo) all name BASE."""
+    the candidate commit sits on it: `main`, `origin/main` and a fetch of `origin main` (origin = this repo) all name BASE.
+    With `tree_pack` ({"path", "tree"}, B14) the runner shipped a pack of the candidate tree's objects: it is indexed (which verifies
+    every object's hash), the named tree must be in it, and `read-tree` seeds the index. `add -A -f` must stay: `read-tree` leaves zeroed stat
+    data, so it re-hashes EVERY file in the sandbox and only skips WRITING objects the pack already has; that full re-hash is why a
+    pack can never change the commit. A pack that does not verify raises — no verdict, never a silent fallback; without the key the tree is hashed here."""
     env = {**os.environ, **GIT_ID}
 
     def git(*args: str, data: str | None = None) -> str:
         return subprocess.run(["git", *args], cwd=root, env=env, input=data, check=True, capture_output=True, text=True).stdout.strip()
 
     git("init", "-q", "-b", "localci")
+    if tree_pack:
+        with open(tree_pack["path"], "rb") as fh:
+            subprocess.run(["git", "index-pack", "--stdin"], cwd=root, env=env, stdin=fh, check=True, capture_output=True)
+        have = subprocess.run(["git", "cat-file", "-t", tree_pack["tree"]], cwd=root, env=env, capture_output=True, text=True)
+        if have.returncode != 0 or have.stdout.strip() != "tree":
+            raise RuntimeError(f"the shipped tree pack does not carry tree {tree_pack['tree']}")
+        os.unlink(tree_pack["path"])   # indexed: the container keeps one copy of the objects, not two
+        git("read-tree", tree_pack["tree"])
     git("add", "-A", "-f")
     if history is not None:
         git("update-index", "--force-remove", "-z", "--stdin", data="".join(f"{p}\0" for p in history["added"]))
@@ -49,7 +61,9 @@ def index_tree(root: str, history: dict | None, base_dir: Path) -> None:
         git("update-ref", "HEAD", base)
         git("add", "-A", "-f")
     git("commit", "-q", "--no-verify", "--allow-empty", "-m", "localci candidate tree")
-    git("repack", "-a", "-d", "-q")   # packed, as a fresh fetch is: thousands of loose objects invite an auto-gc mid-step
+    # packed, as a fresh fetch is: thousands of loose objects invite an auto-gc mid-step. With a shipped pack the objects already are, and
+    # `-a` would rewrite them all (42 s on the real tree): `-d` packs only the loose ones (the commit and what the pack lacked)
+    git("repack", *(("-d", "-q") if tree_pack else ("-a", "-d", "-q")))
 
 
 def bare_python(prefix: str) -> str:
@@ -185,7 +199,7 @@ def main(cfg_path: str, junit_path: str) -> int:
     cfg = json.loads(Path(cfg_path).read_text())
     root = cfg["root"]
     if cfg.get("git_index"):
-        index_tree(root, cfg.get("history"), Path(cfg_path).parent / "base")
+        index_tree(root, cfg.get("history"), Path(cfg_path).parent / "base", cfg.get("tree_pack"))
         if (gh := (cfg.get("expr") or {}).get("github")):   # the merge_group ids as hosted hands them: hex, BASE and the candidate on it
             ids = {r: subprocess.run(["git", "rev-parse", r], cwd=root, capture_output=True, text=True, check=True).stdout.strip()
                    for r in ("main", "localci")}

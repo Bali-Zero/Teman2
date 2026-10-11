@@ -34,10 +34,16 @@ TRAILER = "Zero-Sync-Canonical"
 DEEPEN_DEPTH = 200
 NPM_TIMEOUT = 600
 MASS_CHANGE_FRACTION = 0.25
+LOCK_CACHE_KEEP = 8  # lock_cache/ entries kept, by last use: one per distinct npm version + root manifests
 RUN_BUDGET = 3300  # whole-run watchdog (s): under two ticks, so a wedged run always ends with a heartbeat
 NET_TIMEOUT = 1800  # the first full zero fetch took ~10 min on M5; a hung fetch/push must still end the run, or it holds the lock and every later tick no-ops
 
 EXIT_OK, EXIT_ERROR, EXIT_USAGE, EXIT_DIVERGED, EXIT_REJECTED = 0, 1, 2, 3, 4
+# The staff roster never leaves canonical, whatever zero's manifests say: they have no PR gate on zero, so its
+# exclusion must not rest on one exact-path line in cut_paths.txt that a rename or a manifest edit defeats.
+# Invented stand-ins (*.synthetic.json, *.example.json) carry no staff data and still export.
+ROSTER_NAME = re.compile(r"(?:^|/)team_members[^/]*\.json$", re.I)
+ROSTER_STAND_IN = re.compile(r"\.(?:synthetic|example)\.json$", re.I)
 
 
 class SyncError(Exception):
@@ -114,6 +120,10 @@ class Repo:
 
     def hash_blob(self, data: bytes) -> str:
         return self.run("hash-object", "-w", "--stdin", input=data)
+
+
+def roster_files(paths) -> list[str]:
+    return sorted(p for p in paths if ROSTER_NAME.search(p) and not ROSTER_STAND_IN.search(p))
 
 
 def url_rewrites(repo: "Repo", urls: list[str]) -> list[str]:
@@ -211,6 +221,7 @@ def regen_lock(repo: Repo, state: Path, npm_cmd: str, pruned: bytes, lock_oid: s
         h.update(b"\0" + p.encode() + b"=" + ws_entries[p].encode())
     cache = state / "lock_cache" / f"{h.hexdigest()}.json"
     if cache.is_file():
+        os.utime(cache)  # last use, so pruning keeps what the current inputs still need
         return cache.read_bytes()
     with tempfile.TemporaryDirectory(prefix="zero-sync-lock-") as tmp:
         t = Path(tmp)
@@ -233,7 +244,15 @@ def regen_lock(repo: Repo, state: Path, npm_cmd: str, pruned: bytes, lock_oid: s
     tmpc = cache.with_suffix(f".tmp{os.getpid()}")
     tmpc.write_bytes(out)
     os.replace(tmpc, cache)
+    prune_lock_cache(cache.parent)
     return out
+
+
+def prune_lock_cache(d: Path, keep: int = LOCK_CACHE_KEEP) -> None:
+    """Bound lock_cache/: one ~1 MB entry per distinct input would otherwise accumulate forever."""
+    entries = sorted(d.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+    for f in entries[keep:]:
+        f.unlink(missing_ok=True)
 
 
 def build_tree(repo: Repo, state: Path, canon_ref: str, zero_ref: str, npm_cmd: str):
@@ -257,6 +276,10 @@ def build_tree(repo: Repo, state: Path, canon_ref: str, zero_ref: str, npm_cmd: 
     entries = {p: v for p, v in canon.items() if p not in ROOT_FILES}
     entries = {p: v for p, v in entries.items()
                if not any(p == c or p.startswith(c + "/") for c in cut)}
+    leaked = roster_files(entries)
+    if leaked:
+        raise SyncError(f"the export would carry the staff roster ({leaked[0]}): refusing; cut it in zero's "
+                        ".slim/cut_paths.txt")
     for lp in local:
         # A local path is a file that exists ONLY on zero. One that shadows EXPORTED canonical content (after
         # the cut) would freeze that subtree on zero's copy forever, every later run reporting "up to date".
@@ -495,7 +518,7 @@ def main(argv=None) -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--state-dir", default="~/.nuzantara-pilots/zero-sync")
     ap.add_argument("--canonical-url", default=os.environ.get("ZERO_SYNC_CANONICAL_URL", DEFAULT_CANONICAL))
-    ap.add_argument("--canonical-ref", default="main")
+    ap.add_argument("--canonical-ref", default=os.environ.get("ZERO_SYNC_CANONICAL_REF", "main"))
     ap.add_argument("--zero-url", default=os.environ.get("ZERO_SYNC_ZERO_URL", DEFAULT_ZERO))
     ap.add_argument("--npm-cmd", default="npm")
     ap.add_argument("--no-ci-check", action="store_true")
