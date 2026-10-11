@@ -2767,8 +2767,8 @@ organs:
 - id: mini.zero_sync
   runtime: mini_launchd
   type: cron
-  # 1200 = 4x this organ's own 300s plist cadence (self-reporting cron, not bridge-fed): a run that regenerates the lock and pushes takes minutes and launchd skips ticks while it runs, so 2x would read a busy run as silence.
-  expected_hb_seconds: 1200
+  # 3600 > RUN_BUDGET (3300s, scripts/zero_sync/zero_sync.py): one legitimate run (a git call may take NET_TIMEOUT 1800s) ends with its own heartbeat inside this window. The 300s plist cadence does not shorten how long one run may take, so the window follows the run budget, not the tick.
+  expected_hb_seconds: 3600
   owner_module: infra/launchagents/wrappers/mini-zero-sync.sh
   dependencies: []
   recovery_action: launchctl_kickstart
