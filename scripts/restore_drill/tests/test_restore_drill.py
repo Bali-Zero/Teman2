@@ -75,6 +75,8 @@ def test_generated_sql_is_sorted_quoted_and_nologin_and_cannot_be_broken_out_of(
         ("ALTER DEFAULT PRIVILEGES FOR ROLE a REVOKE ALL ON TABLES FROM b;", {"a", "b"}),
         ("/* outer /* nested */ GRANT s TO ghost; */ ALTER TABLE t OWNER TO real;", {"real"}),
         ('GRANT role_a TO "option";', {"role_a", "option"}),
+        ("GRANT role_a, role_b TO role_c;", {"role_a", "role_b", "role_c"}),
+        ("REVOKE role_a, role_b FROM role_c;", {"role_a", "role_b", "role_c"}),
     ],
 )
 def test_statement_forms_a_real_pg_dump_emits(sql: str, expected: set[str]) -> None:
@@ -142,3 +144,4 @@ def test_verdict_needs_zero_exit_and_a_parsed_pass_and_a_sane_dump_date() -> Non
     assert "head-object" in payload and "LastModified" in payload  # age from the store, not the local-time name
     assert 'kill -TERM "-$DRILL_PID"' in payload.split("cleanup()")[1].split("trap 'exit 143'")[0]  # signals stop the worker
     assert 'heartbeat "running"' not in wrapper  # sentinel-aggregate reads "running" as dead
+    assert 'heartbeat "ok" "running' not in wrapper  # and "ok" at start would paint over the last verdict

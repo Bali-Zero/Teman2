@@ -116,7 +116,8 @@ if [ -f "$LOG" ] && [ "$(wc -c < "$LOG" | tr -d ' ')" -gt 5242880 ]; then
 fi
 
 log "run start"
-heartbeat "ok" "running: restore drill in progress"  # "running" reads dead to sentinel-aggregate
+# No start heartbeat: "running" reads dead and "ok" would paint over the last verdict (a SIGKILL or power-off
+# mid-restore would then stay green for the whole 33-day window). The sidecar only ever holds a verdict.
 RC=0
 if [ ! -f "$PAYLOAD" ]; then
     echo "CANNOT-VERIFY: payload missing" >> "$LOG"

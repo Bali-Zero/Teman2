@@ -189,7 +189,7 @@ def _statement_roles(tokens: list[tuple[str, str]]) -> list[tuple[str, str]]:
     # GRANT role_a [, role_b] TO role_c: a membership grant has no ON; the granted names are roles.
     if first in ("grant", "revoke") and not any(kw(i, "on") for i in range(len(words))):
         idx_to = next((i for i in range(len(words)) if kw(i, "to", "from")), len(words))
-        roles += [t for t in tokens[1:idx_to] if (t[0] == "q" or t[1].lower() not in ("option", "admin", "grant", "for", "inherit", "set", "true", "false", "with"))]
+        roles += [t for t in tokens[1:idx_to] if t[0] in ("w", "q") and (t[0] == "q" or t[1].lower() not in ("option", "admin", "grant", "for", "inherit", "set", "true", "false", "with"))]
     return roles
 
 
