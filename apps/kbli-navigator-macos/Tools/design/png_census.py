@@ -73,13 +73,15 @@ nearest = lambda p, table: min(table, key=lambda t: min(sum(abs(a - c) for a, c 
 
 def c11(im, fr, rows):
     """matrix-columns: each matrix (its header row) holds the fixture's row count of chips, each centred on the ink
-    of its scale's header, the nearest above it, +-4 px."""
+    of its scale's header, the nearest above it, +-4 px. A chip is where it is SEEN, not where its frame says: a render
+    offset (an entrance beat) moves the ink and leaves the layout frame behind."""
     need(fr, "matrix.head", "matrix.chip"); heads = [(v, b[3], sum(ibox(im, b)[0::2]) / 2) for v, b in fr["matrix.head"]]
     per, off = Counter(), []
     for v, b in fr["matrix.chip"]:
         h = max((h for h in heads if h[0] == v and h[1] <= b[1]), key=lambda h: h[1], default=None)
         if h: per[round(h[1] / 4)] += 1
-        if not h or abs((b[0] + b[2]) / 2 - h[2]) > 4: off.append(v)
+        c = seen(im, b)
+        if not h or abs((c[0] + c[2]) / 2 - h[2]) > 4: off.append(v)
     ok = bool(per) and set(per.values()) == {rows} and not off
     return ok, "chips per matrix %s (need %d), off their header: %s" % (sorted(per.values()), rows, off or "none")
 
@@ -194,12 +196,23 @@ OPTIONAL = {"C12": ("headsup.sentence",)}
 VALUE = re.compile(r"(?:open|restricted|closed|neutral|\d|0?\.\d+|1\.0*)?")
 INK_MIN = .01
 
-def inked(im, b):
-    """The share of b's pixels (every other one) unlike the ground: the dominant colour of a ring 3 px outside b."""
+def ground(im, b):
+    """The dominant colour of a ring 3 px outside b: what b's ink is told from."""
     x0, y0, x1, y1 = b; px = im.load(); W, H = im.size; xs, ys = range(max(x0 - 3, 0), min(x1 + 3, W), 2), range(max(y0 - 3, 0), min(y1 + 3, H), 2)
     ring = [px[x, y] for y in {max(y0 - 3, 0), min(y1 + 2, H - 1)} for x in xs] + [px[x, y] for x in {max(x0 - 3, 0), min(x1 + 2, W - 1)} for y in ys]
-    g = Counter(ring).most_common(1)[0][0]; inner = [(x, y) for y in range(y0, y1, 2) for x in range(x0, x1, 2)]
+    return Counter(ring).most_common(1)[0][0]
+
+def inked(im, b):
+    """The share of b's pixels (every other one) unlike the ground around b."""
+    x0, y0, x1, y1 = b; px = im.load(); g = ground(im, b); inner = [(x, y) for y in range(y0, y1, 2) for x in range(x0, x1, 2)]
     return sum(sum(abs(a - c) for a, c in zip(px[x, y], g)) > 48 for x, y in inner) / max(1, len(inner))
+
+def seen(im, b):
+    """The box of b's pixels, 3 px in, unlike the ground around b: a chip's fill as drawn inside its frame."""
+    x0, y0, x1, y1 = b; px = im.load(); g = ground(im, b)
+    pts = [(x, y) for y in range(y0 + 3, y1 - 3) for x in range(x0 + 3, x1 - 3) if sum(abs(a - c) for a, c in zip(px[x, y], g)) > 48]
+    if not pts: raise Miss("nothing drawn in a frame at %s" % (b,))
+    return min(x for x, _ in pts), min(y for _, y in pts), max(x for x, _ in pts), max(y for _, y in pts)
 
 def weight(im, b, cs):
     """The thickest run of rows in b whose pixels near cs cover 80 % of its width: a rule's weight in px."""
@@ -331,6 +344,10 @@ def c_cases():
         yield "C22", None, k, *m(word("group.digits", "", (20, 10, 60, 34 - 6 * k)), word("row.code", "", (20, 55, 80, 74)))
         yield "C23", ("chip.national",), k, *chip("chip.national", "open", (20, 20, 120, 44), (OP, CL)[k])
     yield "C14", None, 1, *word("cap", "", (280, 10, 320, 19))
+    # a chip an entrance beat left 20 pt right of its frame, the frame still on its column: C11 reads the ink (IMM probe)
+    yield "C11", 4, 1, *m(*[word("matrix.head", str(i), (x - 10, 10, x + 10, 20)) for i, x in enumerate(xs)],
+                          *[([((x + 5, 40, x + 35, 64), OP)] + ink((x + 13, 46, x + 27, 58)), {"matrix.chip": [(str(i), (x - 15, 40, x + 15, 64))]})
+                            for i, x in enumerate(xs)])
 
 def c_selftest():
     """Each C's innocent image passes and its guilt FAILs; on the innocent image, each frame the C reads left out FAILs
@@ -361,7 +378,7 @@ fails = vacuous = 0
 bad, n = c_selftest()
 for msg in selftest() + bad: print(msg); fails += 1
 print("C11-C23 self-test: %d/%d synthetic images judged right (each C: innocent passes; guilt, a forgotten mark and a "
-      "mark on an empty area FAIL; cap on a 13 pt element FAILs); armed: %s" % (
+      "mark on an empty area FAIL; cap on a 13 pt element and a chip drawn off its frame FAIL); armed: %s" % (
     n - len(bad), n, ", ".join("%s on %s" % (c, rx) for rx, c, _ in ARMED) or "none (each View PR arms its bands)"))
 for png in sorted(pathlib.Path(sys.argv[1]).rglob("*.png")):
     im = Image.open(png).convert("RGB"); W, H = im.size
