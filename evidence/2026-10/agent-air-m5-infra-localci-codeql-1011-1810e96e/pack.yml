@@ -1,9 +1,10 @@
 task_id: localci-codeql-1011
 mission: LOCALCI-SOVEREIGN (phase B — the two blocked contexts decided on Pro)
 colour: BLUE
-gear: 2
+gear: 3
 gear_reason: >-
-  Harness code of the local gate and two matrix entries; the hosted workflow and every check's own logic stay untouched.
+  Floor 3 by path (the localci-tests workflow's path filter gains the BASE gate-flags corpus); harness code of the local gate and two
+  matrix entries otherwise.
 l_level: L2
 gate_class: opus
 objective: >-
@@ -27,6 +28,9 @@ lanes:
   - lane: localci-codeql-1011
     role: ground_truth
     seat: claude-opus-5-5 (lead; parity probe on Pro) and a claude-sonnet-5 measurement seat on Pro, on the lead's protocol
+  - lane: localci-codeql-1011-council
+    role: review
+    seat: codex-gpt-5.6-sol and kimi-code/k3 (council-journal.jsonl)
   - lane: localci-codeql-1011-gate
     role: review
     seat: claude-opus-5-5, fresh read-only seats (gate on 7c2d48f45f, re-gate on the fix round)
@@ -59,6 +63,13 @@ spend:
   adversarial_rounds: 2
   wall_clock_hours: 7.0
 receipts:
+  - claim: >-
+      scripts/localci/tests/test_codeql_contexts.py (skip cases, sentinel cases, leg cases): 74 passed; test_runner.py 111 passed, 2
+      skipped; the rest of scripts/localci/tests 1407 passed; 30/30 cq-* mutants killed (merger_mutants.py --only each rule).
+    cmd: python3 -m pytest scripts/localci/tests -q -p no:cacheprovider (in chunks); python3 scripts/localci/tests/mutants/merger_mutants.py --only cq-*
+    exit: 0
+    ts: "2026-10-11T08:30:00Z"
+    seat: claude-sonnet-5 implementer on M5 (fix round), re-run by the lead after the main merge (test_runner + test_merger 289 passed)
   - claim: "Parity probe on Pro: python 2499/172, javascript 186/200, identical to hosted analyses 1929899817 and 1929888401; 170 s and 72 s; cgroup memory.peak 8.63 and 7.05 GiB under --memory 12g."
     cmd: "~/b6deploy/codeql/probe.sh on Pro (the five codeql commands in a --network none container), then cmp.py against the hosted SARIF"
     exit: 0
@@ -112,3 +123,4 @@ appetite_exceeded: none
 plan_ref: >-
   docs/specs/localci-codeql-local-2026-10-11.md; owner decision 2026-10-11 ("Licenza open source") made the CodeQL CLI usable on Pro.
 brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl

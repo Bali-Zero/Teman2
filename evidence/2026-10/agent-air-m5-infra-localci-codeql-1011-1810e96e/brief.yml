@@ -1,11 +1,11 @@
 task_id: localci-codeql-1011
 mission: LOCALCI-SOVEREIGN (phase B — the two blocked contexts decided on Pro)
 colour: BLUE
-gear: 2
+gear: 3
 gear_reason: >-
-  Harness code of the local gate (runner.py, a BASE-laid leg script, a plan-time host reader) and two matrix entries; the hosted
-  workflow, every check's own logic and every hot-zone path stay untouched. The verdict rule is the hosted job's (errors only, never
-  findings), proven by parity on the same commit.
+  The lint floor is 3 by path: the fix round adds BASE scripts/ci/test_security_gate_flags.py to the localci-tests workflow's path
+  filter (a hot-zone file), because the trusted classifier corpus check now runs it. The rest is harness code of the local gate and
+  two matrix entries; the hosted CodeQL workflow and every check's own logic stay untouched.
 l_level: L2
 gate_class: opus
 objective: >-
