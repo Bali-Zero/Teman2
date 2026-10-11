@@ -112,15 +112,15 @@ PAIRS = [
 RISK_CHIP = [("riskInk", "riskFillLow", "rank 1"), ("riskInk", "riskFillMediumLow", "rank 2"),
              ("riskInk", "riskFillMediumHigh", "rank 3"), ("riskInkOnHigh", "riskFillHigh", "rank 4"),
              ("muted", "ink", "unranked")]
-SITES = ["ScaleMatrix.swift:187 matrix and list risk chip", "ScaleMatrix.swift:297 list abbreviation chip and legend",
-         "KBLIRegistryView.swift:1383 cellDetail risk chip",                                     # PR 5 (D1)
+SITES = ["ScaleMatrix.swift:189 matrix and list risk chip", "ScaleMatrix.swift:299 list abbreviation chip and legend",
+         "KBLIRegistryView.swift:1442 cellDetail risk chip",                                     # PR 5 (D1)
          "KBLIRegistryTable.swift:110 RiskCell, the registry table's OSS-risk column"]
 SITE_PAIRS = [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5, "%s — Theme.riskChip %s" % (site, tier))
               for site in SITES for fg, bg, tier in RISK_CHIP]
 # Tone-chip ink painted straight on a row's ground: the ruled heads-up label of the search results, Theme.chip(tone).fg
 # on antracite at rest and on wash (= ink) when selected or hovered. CHIP_FG mirrors Theme.chip's switch (PARITY).
 CHIP_FG = [("chipOpenFg", "open"), ("chipRestrictedFg", "restricted"), ("chipClosedFg", "closed"), ("muted", "neutral")]
-CHIP_SITES = ["SearchListView.swift:661 ruled heads-up label"]
+CHIP_SITES = ["SearchListView.swift:662 ruled heads-up label"]
 SITE_PAIRS += [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5,
                 "%s on %s — Theme.chip(.%s).fg" % (site, ground, tone))
                for site in CHIP_SITES for fg, tone in CHIP_FG
