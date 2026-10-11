@@ -417,7 +417,7 @@ def keep_vm_discard(colima: str) -> dict:
 
 
 def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, colima: str = "colima", host_path: str = HOST_PATH,
-          now_s: float | None = None, matrix: Path = MATRIX) -> dict:
+          now_s: float | None = None, matrix: Path = MATRIX, pressure_gb: float | None = None) -> dict:
     now_s = time.time() if now_s is None else now_s
     runs = state / "runs"
     rec = {"kind": "prune", "dry_run": dry, "vm_free_gb": {"before": vm_free_gb(docker, state)}, "host_free_gb": {"before": host_free_gb(host_path)}}
@@ -474,6 +474,20 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
             if rec["vm_free_gb"]["after"] is None:
                 break
         rec["vm_floor"]["met"] = rec["vm_free_gb"]["after"] is not None and rec["vm_free_gb"]["after"] >= floor
+    # B15: the host under the start floor (Zero's 100 GB + the margin) is pressure too: every deps image beyond the newest of its recipe
+    # goes, fewest 48 h plan references first (the VM order), never the never-list and never the run in progress's; the trim follows
+    free_before = rec["host_free_gb"]["before"]
+    rec["host_pressure"] = pressure_gb is not None and free_before < pressure_gb
+    if rec["host_pressure"] and not (dry or blind):
+        for im in sorted((d for d in decided if not d["remove"] and not d["live"] and d["slot"] != 1 and not never(d["tag"], keep)),
+                         key=lambda d: (d["refs"], d["created"] is None, d["created"] or 0, d["tag"])):
+            r = _docker(docker, "image", "rm", im["tag"])
+            if r.returncode != 0:
+                errors.append({"tag": im["tag"], "gb": im["gb"], "rule": "host pressure", "error": r.stderr.strip()[:200]})
+                continue
+            im["remove"] = True
+            removed.append({"tag": im["tag"], "gb": im["gb"], "rule": f"host pressure: host free {free_before:g} GB < {pressure_gb:g} GB; "
+                                                                      f"slot {im['slot']} of its recipe, {im['refs']} plan(s) of the last 48 h name it"})
     if "builder_prune" in rec:
         rec["builder_prune"]["cache_gb"]["after"] = build_cache_gb(docker)
         rec["builder_prune"]["du_gb"] = buildx_du_gb(docker)   # a measurement, never a verdict: BuildKit's cap accounting is opaque

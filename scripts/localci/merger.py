@@ -24,6 +24,7 @@ import calendar
 from collections import Counter
 from statistics import median
 import fcntl
+import hashlib
 import importlib.util
 import json
 import os
@@ -369,12 +370,106 @@ def drop_worktree(repo: Path, path: Path) -> None:
     git(repo, "worktree", "prune", check=False)
 
 
-def runner_exec(argv: list[str], cwd: Path, env: dict, timeout: int) -> subprocess.CompletedProcess:
-    """On a timeout, the watchdog or a stop, the runner gets SIGTERM first — it marks its checks INTERRUPTED and removes its
-    container in a `finally` — and SIGKILL only 60 s later."""
-    with subprocess.Popen(argv, cwd=str(cwd), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as proc:
+# B15: Zero's directive (2026-10-08, restated 2026-10-10) is that Pro keeps MORE THAN 100 GB free, always. Observed 2026-10-11:
+# a tick that started at 111 GB ended at 99.6 because one shard container wrote 9.66 GB (60,356 files under /opt/py311: the job's
+# own pip install, re-run verbatim on purpose). kubelet's node-pressure model: a soft threshold to START (floor + START_MARGIN_GB),
+# a hard one to EVICT mid-run (floor + EVICT_MARGIN_GB), and image GC under pressure (prune.py). An eviction is the host's
+# no-verdict, never the candidate's: it is journalled apart from `decision`, so the same (pr, head, base) is decided again.
+HOST_FLOOR_GB = 100.0
+START_MARGIN_GB = 10.0
+EVICT_MARGIN_GB = 1.5
+EVICT_SAMPLE_S = 5
+EVICT_KILL_GRACE_S = 10
+EVICT_BLIND_SAMPLES = 3      # a statvfs that fails this many times in a row counts as below the floor: an unmeasured disk keeps no filling
+HOST_PATH = "/System/Volumes/Data" if os.path.isdir("/System/Volumes/Data") else "/"   # prune.py's, and the janitor's sample
+
+
+def run_label(run_dir: Path) -> str:
+    """runner.run_label's formula (a test pins the two equal): the label every container of THIS run dir carries."""
+    return hashlib.sha256(str(Path(run_dir).resolve()).encode()).hexdigest()[:24]
+
+
+def host_free_gb(path: str = HOST_PATH) -> float | None:
+    try:
+        return round(shutil.disk_usage(path).free / 1e9, 3)
+    except OSError:
+        return None
+
+
+class HostEvicted(Exception):
+    """The host fell under the floor while the runner ran: the run was stopped and its containers removed. No verdict."""
+
+    def __init__(self, free_gb, floor_gb: float, in_flight: list[str], removed: int):
+        super().__init__(f"host free {free_gb} GB under the floor {floor_gb:g} GB during the run")
+        self.free_gb, self.floor_gb, self.in_flight, self.removed = free_gb, floor_gb, in_flight, removed
+
+
+class HostGuard:
+    """B15: the watchdog's two halves, kept apart from the Popen so a test can drive each: ``breach()`` (is the host under the
+    eviction floor, fail-closed on an unmeasurable one) and ``evict()`` (stop the group, remove THIS run's labelled containers)."""
+
+    def __init__(self, floor_gb: float, run_dir: Path, docker: str = "docker", measure=host_free_gb):
+        self.evict_gb, self.run_dir, self.docker, self.measure = floor_gb + EVICT_MARGIN_GB, Path(run_dir), docker, measure
+        self.floor_gb, self.blind = floor_gb, 0
+
+    def breach(self) -> tuple[bool, float | None]:
+        free = self.measure()
+        self.blind = self.blind + 1 if free is None else 0
+        return (self.blind >= EVICT_BLIND_SAMPLES if free is None else free < self.evict_gb), free
+
+    def in_flight(self) -> list[str]:
         try:
-            out, err = proc.communicate(timeout=timeout)
+            checks = json.loads((self.run_dir / "state" / "state.json").read_text()).get("checks") or {}
+            return sorted(k for k, v in checks.items() if isinstance(v, dict) and v.get("status") == "RUNNING")
+        except (OSError, ValueError, AttributeError):
+            return []
+
+    def evict(self, proc: subprocess.Popen, env: dict) -> int:
+        """TERM to the runner's process group, KILL after EVICT_KILL_GRACE_S; then ``docker rm -f -v`` of the containers carrying
+        this run dir's label — found by that label, never by name or age. Returns how many were removed."""
+        for sig, wait in ((signal.SIGTERM, EVICT_KILL_GRACE_S), (signal.SIGKILL, 60)):
+            try:
+                os.killpg(proc.pid, sig)
+                proc.wait(timeout=wait)
+                break
+            except (ProcessLookupError, PermissionError):
+                break
+            except subprocess.TimeoutExpired:
+                continue
+        flt = ["--filter", f"label=org.nuzantara.localci.run={run_label(self.run_dir)}"]
+        try:
+            ids = subprocess.run([self.docker, "ps", "-aq", *flt], capture_output=True, text=True, timeout=60, env=env).stdout.split()
+            if ids:
+                subprocess.run([self.docker, "rm", "-f", "-v", *ids], capture_output=True, timeout=120, env=env)
+            return len(ids)
+        except (OSError, subprocess.TimeoutExpired):
+            return 0
+
+
+def runner_exec(argv: list[str], cwd: Path, env: dict, timeout: int, guard: HostGuard | None = None) -> subprocess.CompletedProcess:
+    """On a timeout, the watchdog or a stop, the runner gets SIGTERM first — it marks its checks INTERRUPTED and removes its
+    container in a `finally` — and SIGKILL only 60 s later. With a ``guard`` (B15) the runner leads its own process group and the
+    host is sampled every EVICT_SAMPLE_S: under the eviction floor the group is stopped and ``HostEvicted`` is raised."""
+    with subprocess.Popen(argv, cwd=str(cwd), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                          start_new_session=guard is not None) as proc:
+        try:
+            if guard is None:
+                out, err = proc.communicate(timeout=timeout)
+            else:
+                deadline = time.monotonic() + timeout
+                while True:
+                    left = deadline - time.monotonic()
+                    if left <= 0:
+                        raise subprocess.TimeoutExpired(argv, timeout)
+                    try:
+                        out, err = proc.communicate(timeout=min(left, EVICT_SAMPLE_S))
+                        break
+                    except subprocess.TimeoutExpired:
+                        pass
+                    low, free = guard.breach()
+                    if low:
+                        flight = guard.in_flight()
+                        raise HostEvicted(free, guard.floor_gb, flight, guard.evict(proc, env))
         except BaseException as exc:
             proc.terminate()
             try:
@@ -420,8 +515,10 @@ def run_gate(a, base_wt: Path, cand: Path, run_dir: Path, base_sha: str, cand_sh
     run_dir.mkdir(parents=True)
     out: dict = {"seal": None}
 
+    guard = HostGuard(a.host_floor_gb, run_dir, a.docker) if a.host_floor_gb > 0 else None   # B15; the status step is a read, never evicted
+
     def step(name: str, argv: list[str], timeout: int) -> subprocess.CompletedProcess:
-        res = runner_exec(argv, base_wt, env, timeout)
+        res = runner_exec(argv, base_wt, env, timeout, **({"guard": guard} if guard and name != "status" else {}))
         with open(run_dir / "merger.log", "a") as fh:
             fh.write(f"$ {' '.join(argv[2:])}\n# rc={res.returncode}\n{res.stdout}{res.stderr}\n")
         out[f"{name}_rc"] = res.returncode
@@ -1211,6 +1308,11 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         except Exception as exc:  # noqa: BLE001 — a shadow never turns a decision into a second, ERROR one
             print(f"merger: #{n} would_merge not journalled — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
         return 0
+    except HostEvicted as ev:   # B15: the host's no-verdict, not a decision: nothing is journalled as one, so the key is decided again
+        journal(state, {**rec, "kind": "evicted", "why": "host_below_floor_during_run", "free_gb": ev.free_gb, "floor_gb": ev.floor_gb,
+                        "context_in_flight": ev.in_flight, "containers_removed": ev.removed, "elapsed_s": round(time.monotonic() - t0, 1)})
+        print(f"merger: #{n} evicted — host free_gb={ev.free_gb} under floor_gb={ev.floor_gb:g} during the run; no verdict, decided again later")
+        return 0
     except Stopped:
         raise
     except Exception as exc:  # noqa: BLE001 — a decision with no verdict: this (pr, head, base) is not retried, the next base is
@@ -1320,7 +1422,8 @@ def cmd_tick(a) -> int:
         print(f"merger: refusing — {state} belongs to {bound.read_text().strip()!r}, not {a.repo!r}", file=sys.stderr)
         return 2
     if a.host_free_gb is not None and a.host_free_gb < a.min_host_free_gb:   # B6: the gate never finishes the job of filling the disk
-        journal(state, {"kind": "skipped", "why": "host_below_floor", "free_gb": a.host_free_gb, "floor_gb": a.min_host_free_gb})
+        journal(state, {"kind": "skipped", "why": "host_below_floor", "free_gb": a.host_free_gb, "floor_gb": a.host_floor_gb,
+                        "start_floor_gb": a.min_host_free_gb})   # B15: floor_gb is Zero's floor; a run starts only above it by START_MARGIN_GB
         print(f"merger: host_below_floor free_gb={a.host_free_gb:g} floor_gb={a.min_host_free_gb:g} — no run started")
         return 0
     fh, lease = take_lease(state, a.repo)
@@ -1738,7 +1841,8 @@ def cmd_prune(a) -> int:
         print("merger prune: skipped — the lease is held")
         return 0
     try:
-        rec = pm.prune(state, a.docker, dry=a.dry_run, fstrim=a.fstrim, colima=a.colima, **({"matrix": Path(a.matrix)} if a.matrix else {}))
+        rec = pm.prune(state, a.docker, dry=a.dry_run, fstrim=a.fstrim, colima=a.colima, pressure_gb=a.min_host_free_gb,
+                      **({"matrix": Path(a.matrix)} if a.matrix else {}))
     except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as exc:
         journal(state, {"kind": "prune", "dry_run": a.dry_run, "error": redact(f"{type(exc).__name__}: {exc}")})
         print(f"merger prune: error — {type(exc).__name__}", file=sys.stderr)
@@ -1748,7 +1852,7 @@ def cmd_prune(a) -> int:
     journal(state, rec)
     gone = rec["images"].get("would_remove" if a.dry_run else "removed") or []
     print(f"merger prune: images_{'would_remove' if a.dry_run else 'removed'}={len(gone)} image_errors={len(rec['images']['errors'])} "
-          f"failed={rec['failed']} vm_free_gb={rec['vm_free_gb']} host_free_gb={rec['host_free_gb']}")
+          f"failed={rec['failed']} vm_free_gb={rec['vm_free_gb']} host_free_gb={rec['host_free_gb']} host_pressure={rec['host_pressure']}")
     return 1 if rec["failed"] else 0
 
 
@@ -1814,7 +1918,11 @@ def main(argv: list[str] | None = None) -> int:
                    help="watchdog for the whole tick (plan + run + status + margin); past it the decision is ERROR")
     t.add_argument("--code-sha", help="the origin/main commit this merger.py was extracted from (the launchd wrapper passes it)")
     t.add_argument("--host-free-gb", type=float, help="the host's free GB as the launchd wrapper read it before the tick (B6)")
-    t.add_argument("--min-host-free-gb", type=float, default=60.0, help="under it no run starts: the skip is journalled (B6)")
+    t.add_argument("--min-host-free-gb", type=float, default=HOST_FLOOR_GB + START_MARGIN_GB,
+                   help="the start floor: under it no run starts, the skip is journalled (B6; B15: Zero's floor + START_MARGIN_GB)")
+    t.add_argument("--host-floor-gb", type=float, default=HOST_FLOOR_GB,
+                   help="B15: Pro keeps more than this free; a run is evicted under it + EVICT_MARGIN_GB (0 disables the watchdog)")
+    t.add_argument("--docker", default="docker", help="B15: the docker CLI that removes an evicted run's labelled containers")
     r = sub.add_parser("report", help="phase D: every decision beside what GitHub did with that head")
     r.add_argument("--repo", default=hc.DEFAULT_REPO)
     r.add_argument("--base", default=hc.DEFAULT_BRANCH)
@@ -1826,6 +1934,8 @@ def main(argv: list[str] | None = None) -> int:
     pr.add_argument("--dry-run", action="store_true", help="journal what would go, remove nothing")
     pr.add_argument("--fstrim", action="store_true", help="after an image removal, `colima ssh -- sudo fstrim -av`")
     pr.add_argument("--colima", default="colima")
+    pr.add_argument("--min-host-free-gb", type=float, default=HOST_FLOOR_GB + START_MARGIN_GB,
+                    help="B15: host free under it is host pressure: the second slot of a recipe goes too")
     pr.add_argument("--matrix", help="the BASE contexts matrix whose service stand-ins are never pruned (default: beside prune.py)")
     pr.add_argument("--code-sha", help="the origin/main commit this merger.py was extracted from (the launchd wrapper passes it)")
     sub.add_parser("merge", help=PHASE_E)

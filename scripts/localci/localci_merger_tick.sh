@@ -96,7 +96,7 @@ if grep -q -- "--code-sha" "$CODE/merger.py"; then CODE_FLAG="--code-sha=$SHA"; 
 # prune runs AFTER it: the decision first, then the gate removes what it wrote and trims the VM when an image went
 HOST_PATH="${MERGER_HOST_PATH:-/System/Volumes/Data}"
 [ -d "$HOST_PATH" ] || HOST_PATH=/
-FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-60}"
+FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-110}"   # B15: the START floor = Zero's 100 GB + 10 (merger.py HOST_FLOOR_GB + START_MARGIN_GB)
 FREE="$(df -Pk "$HOST_PATH" 2>/dev/null | awk 'NR==2 && $4 ~ /^[0-9]+$/ { printf "%d", $4 * 1024 / 1000000000 }' || true)"
 FREE_FLAG=""
 FLOOR_FLAG=""
