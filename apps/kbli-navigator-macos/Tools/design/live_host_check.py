@@ -20,6 +20,8 @@ EXEMPT_SITES = {("RegistryVerdictSheet.swift", "KBLIRegistryView"): "embedded ch
 # A site the app must keep (so the check cannot pass vacuously), required once its View is immersive-aware: (file, view).
 REQUIRED = [("SearchListView.swift", "RegistryVerdictSheet"), ("RootView.swift", "ChatView")]
 HOSTED = re.compile(r"\.immersiveHost\(\)|\bImmersiveHost\s*\{")
+FORCED_FLAT = re.compile(r"\.environment\(\\\.immersive,\s*false\)")
+COMMENT = re.compile(r"//[^\n]*")
 IMMERSIVE_READ = re.compile(r"@Environment\(\\\.immersive\)")
 # The mount roots: Views a UI path constructs. Their children read the environment and need no host of their own.
 ROOTS = {"RegistryVerdictSheet", "ChatView", "KBLIDetailRichView", "KBLIRegistryView"}
@@ -40,7 +42,7 @@ def sites(text, view, pat):
         if re.match(r"\s*(struct|class|enum|extension|//)", text[line_start:m.start() + 20]): continue
         if re.search(r"(struct|class)\s+%s\b" % view, text[line_start:m.end() + 10]): continue
         window = text[max(0, m.start() - 60):m.start()] + text[m.start():m.start() + 700].split("\n\n")[0]
-        yield text.count("\n", 0, m.start()) + 1, bool(HOSTED.search(window))
+        yield text.count("\n", 0, m.start()) + 1, bool(HOSTED.search(window)) and not FORCED_FLAT.search(window)
 
 def check(files):
     views, bad, seen = aware_views(files), [], set()
@@ -65,10 +67,15 @@ def main():
                 ("RootView.swift", "case .chat:\n    ChatView().immersiveHost()\n")]
         assert len(check(bare)) == 1, check(bare)
         assert len(check([aware, chat] + good[2:3])) == 1, "a vanished required site must fail"
+        assert len(check([aware, chat, ("SearchListView.swift", COMMENT.sub("", "x\n    RegistryVerdictSheet(kbli: k) {\n    }\n    // .immersiveHost()\n")),
+                          ("RootView.swift", "case .chat:\n    ChatView().immersiveHost()\n")])) == 1, "a commented-out host must fail"
+        forced = [aware, chat, ("SearchListView.swift", "x\n    RegistryVerdictSheet(kbli: k) {\n    }\n    .environment(\\.immersive, false).immersiveHost()\n"),
+                  ("RootView.swift", "case .chat:\n    ChatView().immersiveHost()\n")]
+        assert len(check(forced)) == 1, "a host with the immersive switch forced off must fail"
         flat = [("ChatView.swift", "struct ChatView: View {\n}\n"), ("RootView.swift", "case .chat:\n    ChatView()\n")]
         assert check(flat) == [], "a View that is not immersive-aware needs no host"
         print("live_host_check selftest ok (guilt + innocence)"); return 0
-    files = [(str(p), p.read_text()) for p in sorted(ROOT.rglob("*.swift"))]
+    files = [(str(p), COMMENT.sub("", p.read_text())) for p in sorted(ROOT.rglob("*.swift"))]   # a commented-out host is no host
     bad = check(files)
     for b in bad: print("LIVE-HOST", b)
     print("live_host_check: %d finding(s) in %d files, immersive-aware: %s" % (len(bad), len(files), ", ".join(sorted(aware_views(files))) or "none"))

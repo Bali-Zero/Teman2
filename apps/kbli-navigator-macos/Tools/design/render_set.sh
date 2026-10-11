@@ -43,6 +43,9 @@ if [ -n "${IMM:-}" ]; then
   # The expanded live sheet, immersive: what the user sees (scale path as the matrix, ring, hint). 71109 has 29 scopes.
   for c in 56101 55203 71109; do for t in day night; do for l in en id; do
     shot registry-sheet --imm --sheet-open --theme $t --lang $l --code $c --height 3200 "$OUT/imm/sheet-open-$c-$t-$l.png"; done; done; done
+  # Stacked cells open on the shown cell next to a neighbour chip: High at night, Medium-High by day (the ring must clear it).
+  shot registry-sheet --imm --sheet-open --theme night --lang en --code 85510 --height 2600 "$OUT/imm/sheet-open-85510-night-en.png"
+  shot registry-sheet --imm --sheet-open --theme day --lang en --code 20111 --height 2600 "$OUT/imm/sheet-open-20111-day-en.png"
 fi
 [[ -n $CENSUS_IDENTITY ]] && echo "census collector: $same PNGs byte-identical with and without it"
 echo "render_set: $(find "$OUT" -name '*.png' | wc -l | tr -d ' ') PNGs in $OUT, $fails failed"

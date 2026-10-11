@@ -1432,8 +1432,10 @@ struct PP28ScalePanel: View {
         // can be censused on the live sheet; without them the default is the first scope's Large row.
         let snap = immersive ? ScalePath.snapshotScope.flatMap { scopeIndices.indices.contains($0) ? scopeIndices[$0] : nil } : nil
         let scale = immersive ? (ScalePath.snapshotFocus ?? "Besar") : "Besar"
-        if let first = snap ?? scopeIndices.first,
-           let hit = rowFor(scope: first, scale: scale) { return hit.idx }
+        if let first = snap ?? scopeIndices.first {
+            if let hit = rowFor(scope: first, scale: scale) { return hit.idx }
+            if snap != nil, let any = rows(forKey: first).first { return any.idx }
+        }
         // else the first existing row
         return scales.indices.first
     }
