@@ -1,0 +1,92 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 ("Avviso più Continua") on the E33/retirement program — before this, the visitor answered the
+  whole retirement branch only to learn at the end that the retirement routes start at 55; the notice comes right
+  after the tile choice and never blocks.
+mission: >-
+  A retirement visitor under 55 learns it right after choosing the tile, not after answering the whole branch.
+lanes:
+  - lane: vo-r2-agegate
+    role: build
+    seat: Claude Sonnet 5 implementer (subagent), worktree mouth-vo-r2-agegate-1011 on M5; rebase and evidence by Claude Sonnet 5.5.
+  - lane: vo-r2-ground-truth
+    role: ground_truth
+    seat: >-
+      the newest signed production rule pack (rulepack-prod-027), whose hf.e33e / hf.e33f age-below-55 rules
+      the 55 threshold mirrors; the change asserts no rule of its own and a Vitest pins RETIREMENT_MIN_AGE to it.
+    nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-027.signed.json
+    query_hash: "662c824712cb3ffa495a05748312f46b0358515cbed0c6841e06b636482f2aa9" # pragma: allowlist secret
+    note: query_hash = sha256 of rulepack-prod-027.signed.json at origin/main.
+pii_scan: clean
+bites:
+  consumer: >-
+    the public Visa Oracle interview at balizero.com/visa-oracle: the retirement_age_notice screen shown to a
+    retirement visitor under 55 (OracleShell, QuestionScreen).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_retirement_age_notice.py
+  expect: "contains:retirement age notice holds"
+receipts:
+  - claim: The whole visa-oracle Vitest tree passes after the rebase onto origin/main (R3 sponsor guard and PR-11 kept).
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 53 passed (53), Tests 1397 passed (1397)"
+    exit: 0
+    ts: "2026-10-11T12:00:00Z"
+    seat: this session
+  - claim: The census pytest passes (age notice visited iff age below 55; outcome pins unchanged).
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "53 passed, 14 skipped"
+    exit: 0
+    ts: "2026-10-11T12:02:00Z"
+    seat: this session
+  - claim: The enumerator dry-run proves the bound with every edge covered.
+    cmd: cd apps/mouth && npx tsx scripts/visa-oracle/enumerate-interview-space.cli.ts --dry-run
+    result: "bound=PROVEN edgesRequired=324 edgesCovered=324 edgesMissing=0 maxDepth=27"
+    exit: 0
+    ts: "2026-10-11T12:00:00Z"
+    seat: this session
+  - claim: The walk corpus regenerates byte-identical after the rebase (129 walks, no diff).
+    cmd: npm run visa-oracle:walk-corpus -w apps/mouth
+    result: "wrote 129 walks; git status clean"
+    exit: 0
+    ts: "2026-10-11T11:55:00Z"
+    seat: this session
+  - claim: The bites observer passes on the branch head and accepts only a full pass of at least 5 tests.
+    cmd: python3 scripts/ci/observe_visa_oracle_retirement_age_notice.py
+    result: "Tests 5 passed (5); retirement age notice holds"
+    exit: 0
+    ts: "2026-10-11T12:05:00Z"
+    seat: this session
+  - claim: The observer's summary parser rejects skipped, todo, failed and reduced counts.
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_retirement_age_notice.py
+    result: "10 passed"
+    exit: 0
+    ts: "2026-10-11T12:05:00Z"
+    seat: this session
+  - claim: The legacy client-copy guard stays green with the new strings.
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3564 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-11T12:01:00Z"
+    seat: this session
+  - claim: apps/mouth typechecks.
+    cmd: cd apps/mouth && npx tsc --noEmit
+    result: "no output"
+    exit: 0
+    ts: "2026-10-11T12:01:00Z"
+    seat: this session
+decisions:
+  - id: D-notice-never-blocks
+    decision: >-
+      Continue is the only tree option and fail-open: the notice informs, the signed pack still decides, so the
+      enumerator walk count and memo are unchanged. Second Home and Change my answers are secondaryActions rendered
+      by OracleShell, outside the tree.
+  - id: D-age-mirrors-engine
+    decision: >-
+      ageYearsAt mirrors derived.age_years (UTC, birthday-inclusive, leap-day births on 1 March); an unusable or
+      future birth date shows no notice. RETIREMENT_MIN_AGE is exported and pinned by a test to the newest signed pack.
+  - id: D-known-items-not-fixed
+    decision: >-
+      Not fixed here, by design: the no-path-doors replay evidence is still at seq 23 (fingerprint re-pinned only), and
+      "Second Home has no age condition" was deliberately omitted from the copy (not test-pinned elsewhere).
+dissent: []
