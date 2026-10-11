@@ -5,8 +5,8 @@ import SwiftUI
 /// label 11 semibold tracked .08em, sentence `serif(20)` on a 27 pt line, both in the tone's fg.
 /// `.stacked` (search, dossier, ledger, chat rail): label over sentence, 8 apart. `.band` (detail
 /// card, full width): a 200 pt label column beside the sentence on one first baseline. With no
-/// sentence the label takes the sentence slot at `serif(20)`. The pair is drawn byte for byte; the
-/// text wraps, never clamps.
+/// sentence the label takes the sentence slot at `serif(20)`. The pair is drawn byte for byte, save a Bali
+/// reason's paired emphasis (`LabelBook.emphasis`, Q24); the text wraps, never clamps.
 struct HeadsUpBlock: View {
     enum Layout { case stacked, band }
 
@@ -51,7 +51,7 @@ struct HeadsUpBlock: View {
     }
 
     private func sentenceText(_ s: String, _ fg: Color) -> some View {
-        Text(s).font(Theme.serif(20)).lineSpacing(Theme.leading(20, 27, serif: true)).foregroundStyle(fg)
+        Text(LabelBook.emphasis(s, size: 20)).font(Theme.serif(20)).lineSpacing(Theme.leading(20, 27, serif: true)).foregroundStyle(fg)
             .fixedSize(horizontal: false, vertical: true)
     }
 }
