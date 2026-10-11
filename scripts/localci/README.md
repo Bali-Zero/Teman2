@@ -94,7 +94,7 @@ context's `trusted_files` or its workflow (a change of tree entry: bytes, mode o
 `.gitattributes`, a green won with the BASE judge is reported **BLOCKED**: hosted judges with the candidate's copy (or
 materializes other bytes), which this run did not execute. The matrix is operator input, like the runner: pass the trusted copy with
 `--contexts-file`, never the candidate's. `summary.never_claim_parity_for` lists exactly the contexts the runner does not execute
-(the suite checks it); `summary.parity_gaps` lists the steps of executed contexts whose hosted twin can still differ.
+(none today; the suite checks it, and `summary.blocked`); `summary.parity_gaps` lists the steps of executed contexts whose hosted twin can still differ.
 
 **Coordinator interpreter.** The env fingerprint hashes the coordinator venv's `pip freeze`. A venv holding an editable install
 of a moving checkout (Pro's backend-rag venv carries `cell_core` from the main checkout, so its freeze names that checkout's
@@ -143,6 +143,28 @@ matrix expands as hosted expands it. A network failure in the egress sandbox (a 
 verdict on the candidate (the step is BLOCKED, never green; a vulnerability finding stays a verdict): re-run. So is a host reader whose own stderr line starts with the matrix's `no_verdict_when` three times running (the harness gate reader's `CANNOT-VERIFY`, a GitHub 5xx); text it merely echoes cannot trigger it. A BASE `actions/setup-node` pin must equal `deps.node`, or the context is BLOCKED. Repository secrets a step reads are
 overridden with `""` in the matrix (the run never holds them, and never reads the operator's); the parity gaps say what that
 can change.
+
+### CodeQL contexts (`CodeQL Analysis (python)`, `CodeQL Analysis (javascript)`)
+
+Executed, coverage `full` (the READY criterion allows one partial context per compared merge, and E2E holds it). The released repository is Apache-2.0
+(#8241), which the CodeQL terms allow for automated analysis of an open-source codebase on GitHub.com. Hosted never fails this job on
+a finding: it fails on a CLI or action error, a timeout, or (PR lane) an upload failure. The local verdict is the same: PASS when every
+command exits 0 within the BASE `timeout-minutes` (30), FAIL when one exits non-zero, no verdict (ERROR) on a timeout or a kill.
+Findings and SARIF counts never change it; the results per language are recorded in the receipt (`result.codeql`).
+
+| surface | how | BLOCKED when |
+|---|---|---|
+| the CLI | `deps.codeql: {version, url, sha256}` builds the **bundle image**: the tarball is fetched by the builder with `ADD --checksum` into a stage of its own and bind-mounted into the one `RUN` that extracts it to `/opt/codeql` (it is never read whole into memory and never lands in a layer); the `RUN` asserts `codeql version` equals the pin. The pin is in the recipe digest: a bump is a new image, and both legs share one (`deps_recipe: codeql`) | the pin is not plain (http, a query string, an uppercase digest), the build fails |
+| the flags | `local.classifier`: BASE's `security_gate_flags.py` runs at plan on the plan's changed files and the trusted change map, as the hosted `changes` job runs it, and its outputs are sealed as `needs.changes`; the leg's `RUN_THIS_LANGUAGE` is then evaluated from the merge_group shape. A classifier that fails or answers a non-boolean is hosted's fail-open: the job result is `failure` and every output reads `true`, so the leg runs | the matrix names a classifier that is not a BASE classifier file |
+| a skipped language | the three steps carry their own `if: env.RUN_THIS_LANGUAGE == 'true'`; skipped, the hosted job still reports success. `skip_is_pass: true` makes a leg whose every step is not applicable, at least one by an evaluated `if:`, PASS (never a matrix-declared skip alone), so it compares as AGREE with full coverage | — |
+| the commands | `Initialize CodeQL` and `Perform CodeQL Analysis` run `scripts/localci/codeql_leg.sh <init\|analyze> <lang>`: the hosted logs' command lines (init; traceless extraction with the JS trap-cache options; finalize; run-queries; interpret-results with category `/language:<L>`), the config `queries` replaced by the workflow's input as the action composes it. `Autobuild` is not applicable: the action runs no command for these languages. A command that dies of a signal (the shell's 128+N, an OOM kill) re-raises it, so the verdict is "killed", never a red exit. The action inputs are `with_pin`ned in the matrix: a BASE workflow that changes them is BLOCKED until the matrix follows | a pinned input differs from BASE's |
+| the judges | `.github/codeql-config.yml` and `codeql_leg.sh` are `trusted_files` with `trusted_overlay: true`: BASE's bytes are laid over the candidate tree inside the sandbox (hash frozen in the plan), and a candidate that changes either gets its green BLOCKED | a trusted file is absent at BASE |
+| the version sentinel | at plan time BASE's `codeql_version_read.py` reads, with the operator's gh (the host-reader path of the harness floor, retried on its `CANNOT-VERIFY` line), the newest hosted analysis of the language on `refs/heads/main` (`category /language:<L>`) | its `tool.version` differs from the pin, there is none, or the read fails: BLOCKED, never green |
+| the sandbox | network `none`, memory 12g, `--threads=4 --ram=10240`, no git index (`git_index: false`: the job reads no history) | — |
+
+A pin bump is a matrix PR: change `deps.codeql`, re-run the parity probe (results and rule counts against the newest hosted SARIF of
+the same commit), and land it before hosted's flag moves on, or both contexts are BLOCKED. SARIF upload is out of scope: hosted
+still uploads while its workflows exist.
 
 ### Capacity on Pro (measured 2026-10-07, Colima aarch64, 4 CPU, 8 GiB, 60 GiB; resized 2026-10-10 to 8 CPU, 16 GiB, 80 GiB)
 
@@ -247,8 +269,8 @@ compared-merge rule is unchanged. A decision journalled before B5 records no ski
 
 ## Security: Pysa taint judge (`security.pysa_python`)
 
-CodeQL CLI cannot run on this repo (public, no OSI licence), so the python security queries are stood in for by Pysa
-(Meta, MIT), chosen on a benchmark against the CodeQL flows GitHub produced for the same commit
+Before the repository was released under Apache-2.0 (#8241) the CodeQL CLI could not run on it, so the python security queries were
+stood in for by Pysa (Meta, MIT), chosen on a benchmark against the CodeQL flows GitHub produced for the same commit
 (`~/.nuzantara-pilots/local-ci-followup/benchmark/REPORT_BENCHMARK.md`: 80 % flow recall on log-injection, 100 % on
 stack-trace / path / SSRF / redirect, 135 s, 1.6 GB). The check is planned whenever the diff touches ANY non-test file under
 `apps/backend-rag/backend/` (a `.gitattributes`, a `.pyi` or a config changes what Pysa sees); otherwise NOT_APPLICABLE. It is BLOCKED (never silently green) when the judge or
@@ -620,7 +642,7 @@ The window line separates `merged_prs` (PRs GitHub merged) from `compared_merges
 `skipped` lines by reason. A merge is COMPARED when GitHub merged the very candidate the merger decided (the decided head, its
 merge commit's sole parent the decided base) and at least 12 contexts had a verdict on both sides, at least 11 of them of
 FULL coverage and at most one partial, named (`MIN_COMPARED_CONTEXTS`, `MIN_COMPARED_FULL`, `MAX_COMPARED_PARTIAL`; ruled
-2026-10-08: 14 required − 2 CodeQL hosted-only − 1 E2E partial = 11 full): a merge compared on blind contexts is no evidence,
+2026-10-08, when the 2 CodeQL contexts were still hosted-only: 11 full; with them executed it is 13 full and the E2E partial): a merge compared on blind contexts is no evidence,
 a partial context never counts as full, an unrecorded one counts toward nothing, and the window line prints
 `compared_merges=N (full_only=M, with_partial=K)`. Each compared PR counts once, at
 GitHub's `merged_at` — two decisions of one PR, or the journal's order, cannot widen the span. **The operator reads
