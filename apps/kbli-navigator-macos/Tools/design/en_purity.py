@@ -29,7 +29,10 @@ GATED = ["search-chrome", "registry-chrome", "search-field",
          "search-row", "search-peak", "registry-row", "registry-sheet"]                  # EN-1b (Q12)
 STATIC = ["Sources/Views/SearchFieldBar.swift",
           "Sources/Views/SearchListView.swift", "Sources/Views/KBLIRegistryTable.swift",
-          "Sources/Views/RegistryVerdictSheet.swift"]                                    # EN-1b (Q12)
+          "Sources/Views/RegistryVerdictSheet.swift",                                    # EN-1b (Q12)
+          "Sources/Views/KBLIRegistryView.swift", "Sources/Views/ScaleMatrix.swift",
+          "Sources/Views/HeadsUpBlock.swift", "Sources/Views/LeadBody.swift",
+          "Sources/Views/UraianLines.swift"]                                             # PR 5 (Q18)
 REPORTED = ["Sources/Views/KBLIDetailRichView.swift"]   # #8224 gate binding 4: `pmaRisk`; PR 3 brings it to 0
 
 LEX = {}
