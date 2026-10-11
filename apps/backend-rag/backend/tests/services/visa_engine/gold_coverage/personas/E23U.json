@@ -1,0 +1,44 @@
+{
+  "expected_candidates": ["E23U"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "Filipino house assistant (29) hired by a foreign diplomat's household, applying offshore from Manila for a 1-year diplomatic-household work stay permit",
+  "overrides": {
+    "intent.desired_entry_date": {
+      "status": "KNOWN",
+      "value": "2026-10-05"
+    },
+    "intent.entry_pattern": {
+      "status": "KNOWN",
+      "value": "MULTIPLE"
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["EMPLOYMENT"]
+    },
+    "intent.stay_days": {
+      "status": "KNOWN",
+      "value": 365
+    },
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "1997-03-14"
+    },
+    "person.nationalities": {
+      "status": "KNOWN",
+      "value": ["PH"]
+    },
+    "sponsor.diplomatic_household": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "sponsor.type": {
+      "status": "KNOWN",
+      "value": "INDIVIDUAL"
+    },
+    "work.employer_is_indonesian_entity": {
+      "status": "KNOWN",
+      "value": false
+    }
+  },
+  "product_code": "E23U"
+}

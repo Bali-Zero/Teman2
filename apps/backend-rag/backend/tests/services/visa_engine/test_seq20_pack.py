@@ -1040,16 +1040,27 @@ class TestLocalCompensationWitnesses:
 # ---------------------------------------------------------------------------
 
 
+#: PR-07 adds E23/E23U/E23V to the corpus (grown 20 -> 23). E23 replays
+#: green here, but E23U/E23V have no eligibility support rule before seq-21's
+#: ``el.e23u.diplomatic-household`` / ``el.e23v.trade-office`` (valid from
+#: 2026-09-16; seq-20 only carries the ``review.e23u/v.requested-product``
+#: review rules), so no fact set can support them on this pack. Same
+#: exclusion-by-name shape as ``_SEQ19_UNSUPPORTED_COVERAGE_PERSONAS`` in
+#: ``test_seq19_pack.py`` — the remaining 21 must all pass.
+_SEQ20_UNSUPPORTED_COVERAGE_PERSONAS = frozenset({"E23U.json", "E23V.json"})
+
+
 def _coverage_persona_specs() -> list[tuple[str, dict[str, Any]]]:
     return [
         (path.name, json.loads(path.read_text(encoding="utf-8")))
         for path in sorted(_GOLD_COVERAGE_CORPUS.glob("*.json"))
+        if path.name not in _SEQ20_UNSUPPORTED_COVERAGE_PERSONAS
     ]
 
 
 class TestGoldCoverageReplay:
-    def test_corpus_has_twenty_personas(self) -> None:
-        assert len(_coverage_persona_specs()) == 20
+    def test_corpus_has_twenty_one_personas(self) -> None:
+        assert len(_coverage_persona_specs()) == 21
 
     @pytest.mark.parametrize(
         "name,spec", _coverage_persona_specs(), ids=[n for n, _ in _coverage_persona_specs()]
