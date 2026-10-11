@@ -19,9 +19,12 @@ mkdir -p "$LOG_DIR" "$SIDECAR_DIR"
 ts() { date '+%Y-%m-%d %H:%M:%S'; }
 log() { echo "[$(ts)] $*" >> "$LOG"; }
 
-heartbeat() { # $1 status, $2 note
+heartbeat() { # $1 status, $2 note — written to a temp file and renamed, so a failed write never truncates the last verdict
+    local tmp="$SIDECAR_DIR/.$ORGAN_ID.json.$$"
     printf '{"ts":"%s","status":"%s","note":"%s"}\n' \
-        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json"
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$tmp" \
+        && mv -f "$tmp" "$SIDECAR_DIR/$ORGAN_ID.json" \
+        || { rm -f "$tmp"; return 1; }
 }
 
 notify() { # $1 tier, $2 dedup key, $3 safe message
@@ -127,8 +130,12 @@ else
 fi
 
 MONTH=$(date +%Y-%m)
+if [ "$RC" -eq 0 ] && ! heartbeat "ok" "restore and Level-5 verification passed"; then
+    # A green that cannot be recorded is not a green: it becomes CANNOT-VERIFY and alerts below.
+    log "heartbeat write failed after a passing drill"
+    RC=2
+fi
 if [ "$RC" -eq 0 ]; then
-    heartbeat "ok" "restore and Level-5 verification passed"
     notify digest "restore-drill:${MONTH}:success" \
         "Monthly restore drill passed on Mini (restore + Level-5 verification)." || \
         log "digest notification failed or was spooled"
@@ -138,7 +145,7 @@ else
     else
         OUTCOME="FAILED"
     fi
-    heartbeat "error" "$OUTCOME rc=$RC"
+    heartbeat "error" "$OUTCOME rc=$RC" || log "heartbeat write failed (error verdict)"
     notify p0 "restore-drill:${MONTH}" \
         "Monthly restore drill $OUTCOME on Mini (rc=$RC). Investigate the local private log." || \
         log "p0 notification failed or was spooled"

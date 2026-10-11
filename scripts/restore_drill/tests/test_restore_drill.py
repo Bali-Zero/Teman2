@@ -145,3 +145,13 @@ def test_verdict_needs_zero_exit_and_a_parsed_pass_and_a_sane_dump_date() -> Non
     assert 'kill -TERM "-$DRILL_PID"' in payload.split("cleanup()")[1].split("trap 'exit 143'")[0]  # signals stop the worker
     assert 'heartbeat "running"' not in wrapper  # sentinel-aggregate reads "running" as dead
     assert 'heartbeat "ok" "running' not in wrapper  # and "ok" at start would paint over the last verdict
+
+
+def test_exit_paths_do_not_hide_an_incomplete_restore_or_an_unrecorded_green() -> None:
+    payload = (ROOT / "run_drill.sh").read_text(encoding="utf-8")
+    wrapper = (ROOT.parents[1] / "infra/launchagents/wrappers/mini-restore-drill.sh").read_text(encoding="utf-8")
+
+    assert "-eq 141" not in payload  # SIGPIPE with psql rc=0 means an incomplete restore
+    assert '[ -n "$DRILL_PID" ]; then' in payload and "kill -0 \"$DRILL_PID\"" not in payload.split("cleanup()")[1].split("trap 'exit 143'")[0]
+    assert 'mv -f "$tmp"' in wrapper  # the sidecar is replaced atomically
+    assert '! heartbeat "ok"' in wrapper  # a green that cannot be recorded is CANNOT-VERIFY

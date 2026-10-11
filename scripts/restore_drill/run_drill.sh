@@ -30,12 +30,13 @@ cleanup() {
     if [ -n "$WATCHDOG_PID" ]; then
         kill "$WATCHDOG_PID" 2>/dev/null || true
     fi
-    if [ -n "$DRILL_PID" ] && kill -0 "$DRILL_PID" 2>/dev/null; then
-        # The worker is a background job: stop its whole group before the container goes, or it can
-        # create the container after this cleanup has already run.
+    if [ -n "$DRILL_PID" ]; then
+        # The worker is a background job: stop its whole process group (not just the leader, which may
+        # already be gone while a descendant lives) before the container goes, or a straggler can create
+        # the container after this cleanup has already run.
         kill -TERM "-$DRILL_PID" 2>/dev/null || kill -TERM "$DRILL_PID" 2>/dev/null || true
         sleep 1
-        kill -KILL "-$DRILL_PID" 2>/dev/null || true
+        kill -KILL "-$DRILL_PID" 2>/dev/null || kill -KILL "$DRILL_PID" 2>/dev/null || true
     fi
     docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
     rm -rf "$WORK_DIR"
@@ -202,9 +203,9 @@ PY
         echo "Restore aborted with psql rc=$restore_rc; private restore log was not printed" >&2
         exit 3
     fi
-    if [ "$gunzip_rc" -eq 141 ]; then
-        echo "Warning: gunzip received SIGPIPE after successful psql restore" >&2
-    elif [ "$gunzip_rc" -ne 0 ]; then
+    # A gunzip SIGPIPE (141) with psql rc=0 means psql stopped reading before the end of the dump: the restore
+    # is incomplete, so it fails like any other decompression/stream error (psql's own error was judged first).
+    if [ "$gunzip_rc" -ne 0 ]; then
         echo "Archive decompression failed with rc=$gunzip_rc" >&2
         exit 4
     fi
