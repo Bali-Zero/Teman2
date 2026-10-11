@@ -70,10 +70,15 @@ def test_generated_sql_is_sorted_quoted_and_nologin_and_cannot_be_broken_out_of(
         ("GRANT s ON t TO CURRENT_USER, PUBLIC, pg_read_all_data, SESSION_USER;", set()),
         ("ALTER TABLE a RENAME TO b;", set()),
         ("ALTER TABLE t OWNER TO postgres;", {"postgres"}),
+        ('ALTER TABLE t OWNER TO "Drill";', {"Drill"}),  # quoted is exact: not the drill user
+        ("ALTER DEFAULT PRIVILEGES FOR ROLE alpha, beta GRANT SELECT ON TABLES TO gamma;", {"alpha", "beta", "gamma"}),
+        ("ALTER DEFAULT PRIVILEGES FOR ROLE a REVOKE ALL ON TABLES FROM b;", {"a", "b"}),
+        ("/* outer /* nested */ GRANT s TO ghost; */ ALTER TABLE t OWNER TO real;", {"real"}),
+        ('GRANT role_a TO "option";', {"role_a", "option"}),
     ],
 )
 def test_statement_forms_a_real_pg_dump_emits(sql: str, expected: set[str]) -> None:
-    assert scanner.scan_roles(sql.splitlines(True)) == expected
+    assert scanner.scan_roles(sql.splitlines(True), exclude={"drill"}) == expected
 
 
 def test_literals_and_dollar_bodies_are_blanked_before_scanning() -> None:
@@ -127,3 +132,13 @@ def test_wrapper_and_payload_have_no_silent_or_racy_exits() -> None:
     assert "trap 'exit 143' TERM" in payload  # a signal cannot read green
     assert "nuzantara-fly-[0-9]{8}-[0-9]{4}" in payload and "MAX_DUMP_AGE_HOURS" in payload  # stale dump != PASS
     assert "--memory" in payload and "docker rm -f" in payload
+
+
+def test_verdict_needs_zero_exit_and_a_parsed_pass_and_a_sane_dump_date() -> None:
+    payload = (ROOT / "run_drill.sh").read_text(encoding="utf-8")
+    wrapper = (ROOT.parents[1] / "infra/launchagents/wrappers/mini-restore-drill.sh").read_text(encoding="utf-8")
+
+    assert '"$aggregate" != "PASS"' in payload  # exit 0 with unreadable output is not green
+    assert "head-object" in payload and "LastModified" in payload  # age from the store, not the local-time name
+    assert 'kill -TERM "-$DRILL_PID"' in payload.split("cleanup()")[1].split("trap 'exit 143'")[0]  # signals stop the worker
+    assert 'heartbeat "running"' not in wrapper  # sentinel-aggregate reads "running" as dead

@@ -40,16 +40,19 @@ class _Lexer:
         self.in_single = False
         self.single_escapes = False
         self.dollar_tag: str | None = None
-        self.in_block_comment = False
+        self.block_depth = 0  # PostgreSQL block comments nest
 
     def tokens(self, line: str) -> Iterator[tuple[str, str]]:
         i, n = 0, len(line)
         while i < n:
-            if self.in_block_comment:
-                end = line.find("*/", i)
-                if end < 0:
+            if self.block_depth:
+                close, opener = line.find("*/", i), line.find("/*", i)
+                if opener >= 0 and (close < 0 or opener < close):
+                    self.block_depth, i = self.block_depth + 1, opener + 2
+                elif close >= 0:
+                    self.block_depth, i = self.block_depth - 1, close + 2
+                else:
                     return
-                self.in_block_comment, i = False, end + 2
                 continue
             if self.dollar_tag is not None:
                 end = line.find(self.dollar_tag, i)
@@ -76,7 +79,7 @@ class _Lexer:
             elif line.startswith("--", i):
                 return
             elif line.startswith("/*", i):
-                self.in_block_comment, i = True, i + 2
+                self.block_depth, i = 1, i + 2
             elif ch == "'":
                 prev = line[i - 1 : i]
                 self.single_escapes = prev in ("E", "e") and (i < 2 or not line[i - 2].isalnum())
@@ -117,10 +120,10 @@ class _Lexer:
 def _name(token: tuple[str, str], excluded: set[str]) -> str | None:
     kind, text = token
     role = text.lower() if kind == "w" else text
-    folded = role.lower()
-    if kind == "w" and folded in _PSEUDO:
+    # An unquoted name folds to lower case; a quoted one is exact ("Drill" is not drill).
+    if kind == "w" and role in _PSEUDO:
         return None
-    if folded in excluded or folded.startswith("pg_"):
+    if role in excluded or role.startswith("pg_"):
         return None
     _check_name(role)
     return role
@@ -166,13 +169,13 @@ def _statement_roles(tokens: list[tuple[str, str]]) -> list[tuple[str, str]]:
         if kw(idx, "owner") and kw(nxt, "to"):
             roles += _ident_list(tokens, idx + 2)[0][:1]
         elif kw(idx, "for") and kw(nxt, "role", "user"):
-            roles += _ident_list(tokens, idx + 2)[0][:1]
+            roles += _ident_list(tokens, idx + 2)[0]
         elif kw(idx, "to") and grantish:
             found, after = _ident_list(tokens, idx + 1)
             roles += found
             if kw(after, "granted") and kw(after + 1, "by"):
                 roles += _ident_list(tokens, after + 2)[0][:1]
-        elif kw(idx, "from") and first == "revoke":
+        elif kw(idx, "from") and (first == "revoke" or (grantish and first == "alter")):
             found, after = _ident_list(tokens, idx + 1)
             roles += found
             if kw(after, "granted") and kw(after + 1, "by"):
@@ -186,13 +189,13 @@ def _statement_roles(tokens: list[tuple[str, str]]) -> list[tuple[str, str]]:
     # GRANT role_a [, role_b] TO role_c: a membership grant has no ON; the granted names are roles.
     if first in ("grant", "revoke") and not any(kw(i, "on") for i in range(len(words))):
         idx_to = next((i for i in range(len(words)) if kw(i, "to", "from")), len(words))
-        roles += [t for t in tokens[1:idx_to] if t[0] in ("w", "q") and t[1].lower() not in ("option", "admin", "grant", "for", "inherit", "set", "true", "false", "with")]
+        roles += [t for t in tokens[1:idx_to] if (t[0] == "q" or t[1].lower() not in ("option", "admin", "grant", "for", "inherit", "set", "true", "false", "with"))]
     return roles
 
 
 def scan_roles(lines: Iterable[str], *, exclude: Iterable[str] = ()) -> set[str]:
     """Return validated roles referenced by ownership and privilege statements."""
-    excluded = {name.lower() for name in exclude}
+    excluded = set(exclude)  # exact names: the drill user is a plain lower-case identifier
     roles: set[str] = set()
     lexer = _Lexer()
     statement: list[tuple[str, str]] = []

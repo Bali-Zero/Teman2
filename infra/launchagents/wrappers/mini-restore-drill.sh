@@ -59,18 +59,28 @@ fi
 # Atomic singleton (mkdir is one syscall; macOS has no flock). A lock is stale only when its owner
 # is gone or is no longer this wrapper (a recycled PID must not make every later run skip).
 # A live run is left alone and its sidecar is NOT touched: the skip is not a result.
+# The owner is identified by PID + process start time + command, so a recycled PID cannot pass for it.
+proc_id() { echo "$1 $(ps -p "$1" -o lstart= 2>/dev/null | tr -s ' ')"; }
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
     owner=$(cat "$LOCKDIR/pid" 2>/dev/null || true)
-    if [ -n "$owner" ] && kill -0 "$owner" 2>/dev/null \
-        && ps -p "$owner" -o command= 2>/dev/null | grep -q "mini-restore-drill"; then
-        log "previous run (pid $owner) still alive — skipping, sidecar untouched"
+    owner_pid=${owner%% *}
+    age=$(( $(date +%s) - $(stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))
+    if [ -z "$owner" ] && [ "$age" -lt 120 ]; then
+        log "lock just created by another run — skipping, sidecar untouched"
         exit 0
     fi
-    log "stale lock (owner ${owner:-unknown} gone) — taking it over"
-    rm -rf "$LOCKDIR"
+    if [ -n "$owner_pid" ] && kill -0 "$owner_pid" 2>/dev/null \
+        && [ "$(proc_id "$owner_pid")" = "$owner" ] \
+        && ps -p "$owner_pid" -o command= 2>/dev/null | grep -q "mini-restore-drill.sh"; then
+        log "previous run (pid $owner_pid) still alive — skipping, sidecar untouched"
+        exit 0
+    fi
+    log "stale lock (owner ${owner_pid:-unknown} gone) — taking it over"
+    # rename is atomic: of two racers only one moves the stale lock away, the other's mkdir then loses.
+    mv "$LOCKDIR" "$LOCKDIR.stale.$$" 2>/dev/null && rm -rf "$LOCKDIR.stale.$$"
     mkdir "$LOCKDIR" 2>/dev/null || { log "cannot take the lock — another run won the race"; exit 0; }
 fi
-echo $$ > "$LOCKDIR/pid"
+proc_id $$ > "$LOCKDIR/pid"
 FINISHED=0
 on_exit() {
     rc=$?
@@ -82,7 +92,10 @@ on_exit() {
             "Monthly restore drill on Mini ended before a verdict (rc=$rc). Investigate the local private log." || true
         write_failure_escalation "NO-VERDICT" "$rc" || true
     fi
-    rm -rf "$LOCKDIR"
+    # Release only a lock this process still owns.
+    if [ "$(cat "$LOCKDIR/pid" 2>/dev/null)" = "$(proc_id $$)" ]; then
+        rm -rf "$LOCKDIR"
+    fi
 }
 trap on_exit EXIT
 trap 'exit 143' TERM
@@ -103,7 +116,7 @@ if [ -f "$LOG" ] && [ "$(wc -c < "$LOG" | tr -d ' ')" -gt 5242880 ]; then
 fi
 
 log "run start"
-heartbeat "running" "restore drill in progress"
+heartbeat "ok" "running: restore drill in progress"  # "running" reads dead to sentinel-aggregate
 RC=0
 if [ ! -f "$PAYLOAD" ]; then
     echo "CANNOT-VERIFY: payload missing" >> "$LOG"

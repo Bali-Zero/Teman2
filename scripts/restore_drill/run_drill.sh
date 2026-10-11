@@ -22,12 +22,20 @@ CONTAINER_MEMORY="${RESTORE_DRILL_MEMORY:-3g}"
 CONTAINER_CPUS="${RESTORE_DRILL_CPUS:-2}"
 WORK_DIR=$(mktemp -d /tmp/nuzantara-restore-drill.XXXXXX)
 WATCHDOG_PID=""
+DRILL_PID=""
 
 cleanup() {
     rc=$?
     trap - EXIT INT TERM
     if [ -n "$WATCHDOG_PID" ]; then
         kill "$WATCHDOG_PID" 2>/dev/null || true
+    fi
+    if [ -n "$DRILL_PID" ] && kill -0 "$DRILL_PID" 2>/dev/null; then
+        # The worker is a background job: stop its whole group before the container goes, or it can
+        # create the container after this cleanup has already run.
+        kill -TERM "-$DRILL_PID" 2>/dev/null || kill -TERM "$DRILL_PID" 2>/dev/null || true
+        sleep 1
+        kill -KILL "-$DRILL_PID" 2>/dev/null || true
     fi
     docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
     rm -rf "$WORK_DIR"
@@ -132,12 +140,19 @@ drill_main() {
     latest=$(printf '%s\n' "$listing" | awk '{print $4}' \
         | grep -E '^nuzantara-fly-[0-9]{8}-[0-9]{4}\.sql\.gz$' | sort | tail -1 || true)
     [ -n "$latest" ] || cannot_verify "no compressed SQL backup with the expected name found"
-    python3 - "$latest" "$MAX_DUMP_AGE_HOURS" <<'PY' || cannot_verify "newest backup is older than ${MAX_DUMP_AGE_HOURS}h"
-import datetime, re, sys
-m = re.search(r"(\d{8})-(\d{4})", sys.argv[1])
-taken = datetime.datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M").replace(tzinfo=datetime.timezone.utc)
+    # Age comes from the object store's own LastModified (UTC): the producer names files in its local time,
+    # so the name alone can be off by hours and a future-dated name must not read as fresh.
+    modified=$(aws --endpoint-url "$TIGRIS_ENDPOINT" s3api head-object --bucket "$TIGRIS_BUCKET" \
+        --key "postgres/$latest" --query LastModified --output text 2>/dev/null) \
+        || cannot_verify "cannot read the backup's LastModified"
+    python3 - "$modified" "$MAX_DUMP_AGE_HOURS" <<'PY' || cannot_verify "newest backup is older than ${MAX_DUMP_AGE_HOURS}h or not dated sanely"
+import datetime, sys
+taken = datetime.datetime.fromisoformat(sys.argv[1].strip())
+if taken.tzinfo is None:
+    taken = taken.replace(tzinfo=datetime.timezone.utc)
 age = datetime.datetime.now(datetime.timezone.utc) - taken
-sys.exit(0 if age <= datetime.timedelta(hours=float(sys.argv[2])) else 1)
+ok = datetime.timedelta(minutes=-5) <= age <= datetime.timedelta(hours=float(sys.argv[2]))
+sys.exit(0 if ok else 1)
 PY
 
     dump_path="$WORK_DIR/$latest"
@@ -203,6 +218,12 @@ PY
         "$WORK_DIR/verify.json" 2>/dev/null || echo CANNOT-VERIFY)
 
     echo "Restore drill verdict=$aggregate backup=$latest bytes=$dump_bytes"
+    # PASS needs BOTH a zero exit and a parsed PASS aggregate: a verifier that exits 0 with missing or
+    # changed output must read CANNOT-VERIFY, never green.
+    if [ "$verify_rc" -eq 0 ] && [ "$aggregate" != "PASS" ]; then
+        echo "Verifier exited 0 but the aggregate is '$aggregate'" >&2
+        exit 2
+    fi
     case "$verify_rc" in
         0) return 0 ;;
         1) exit 5 ;;

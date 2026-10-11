@@ -143,8 +143,8 @@ jobs:
           # Recreate every safe production role referenced by ownership or
           # privilege statements before replaying the dump. The scanner derives
           # this from the current dump, so newly introduced roles do not rot a
-          # hard-coded CI list. PUBLIC, postgres and the drill superuser are
-          # excluded; hostile/non-identifier names fail closed.
+          # hard-coded CI list. PUBLIC, pg_* and the drill superuser are
+          # excluded (postgres is created: the drill superuser is "drill"); every name is quoted.
           python3 scripts/restore_drill/role_scanner.py "/tmp/$LATEST" \
             --exclude drill --output /tmp/restore-drill-roles.sql
           psql -v ON_ERROR_STOP=1 "$DSN" \
