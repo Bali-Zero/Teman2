@@ -37,6 +37,7 @@ def scan(im, b):
     """{y: [x, ...]} of the ink pixels in box b, 3 px in (a chip's rounded corner is no ink), against the box's
     dominant colour."""
     x0, y0, x1, y1 = b; px = im.load(); xs, ys = range(x0 + 3, x1 - 3), range(y0 + 3, y1 - 3)
+    if not xs or not ys: return {}
     bg = Counter(px[x, y] for y in ys[::2] for x in xs[::2]).most_common(1)[0][0]
     rows = {y: [x for x in xs if sum(abs(a - c) for a, c in zip(px[x, y], bg)) > 60] for y in ys}
     return {y: r for y, r in rows.items() if r}
@@ -185,8 +186,8 @@ def frames(png, im):
     doc = json.load(open(png.with_suffix(".json"))); s = im.width / doc["width"]; fr = {}
     for f in doc["frames"]:
         x, y, w, h = (round(v * s) for v in f["frame"])
-        if x < im.width and y < im.height and w > 0 and h > 0:   # drawn: a frame below the canvas is not
-            fr.setdefault(f["name"], []).append((f["value"], (max(x, 0), max(y, 0), min(x + w, im.width), min(y + h, im.height))))
+        if 0 <= x and 0 <= y and x + w <= im.width + 1 and y + h <= im.height + 1 and w > 0 and h > 0:   # wholly drawn
+            fr.setdefault(f["name"], []).append((f["value"], (x, y, min(x + w, im.width), min(y + h, im.height))))
     return fr
 
 def armed(png, rel, im):
