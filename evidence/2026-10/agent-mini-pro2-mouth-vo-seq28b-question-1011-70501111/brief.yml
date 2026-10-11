@@ -1,0 +1,25 @@
+gear: 2
+gear_reason: >-
+  Public-facing copy and a new interview question on the Visa Oracle remote-worker path (E33G), plus the
+  regenerated walk corpus, census pins and enumerator expectations; the diff with tests, observer and pack is
+  well above 400 churn. No pricing, no pack rule (the pack rule is seq-28 step C), no data migration.
+mission: >-
+  The Visa Oracle interview asks an E33G remote worker for the yearly foreign income, ready for the seq-28 rule.
+objective: >-
+  A visitor on the remote branch of Work and employment (paid from abroad by a foreign employer) is asked, right
+  after the employer country, for the yearly income in whole USD, in EN and ID, with no threshold named in the
+  interview copy and no not-sure option; the mapper sends work.annual_foreign_income_usd, which the engine
+  accepts since step A; the E33G below-threshold reason names USD 60,000 a year in EN and ID; the walk corpus,
+  census pins and enumerator expectations are regenerated; no rule reads the fact until seq-28 step C.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/tree.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/lib/api/applicant-fact-paths.ts
+  - apps/backend-rag/backend/app/setup/sentry_config.py
+  - scripts/ci/observe_visa_engine_annual_income_fact.py
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 2

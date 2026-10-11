@@ -1,0 +1,113 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 (decisions on the E33/retirement program, seq-28 release) - the E33G remote worker gets a real
+  income gate, shipped as one signing in three ordered steps; step A (#8272) made the engine accept
+  work.annual_foreign_income_usd, this step B makes the interview ask it, step C adds the pack rule.
+mission: >-
+  The Visa Oracle interview asks an E33G remote worker for the yearly foreign income, ready for the seq-28 rule.
+lanes:
+  - lane: seq28b-mouth-question
+    role: build
+    seat: >-
+      Codex GPT-5.6-sol via scripts/seat_build.sh on Mini (tier sol, effort high, 1338 s; log
+      /Users/nuzantara/nuzantara/.worktrees/seat-build-codex-20261011T112624Z-12972.log), graded and committed by
+      the orchestrator (19c5a2dcf2, rebased onto origin/main as 6d3c76998f).
+  - lane: seq28b-rebase-evidence
+    role: review
+    seat: >-
+      Claude Opus 5.5 in worktree mouth-vo-seq28b-question-1011 on Mini - rebased onto origin/main (step A
+      hunks resolved to main, R2 retirement_age_notice kept), regenerated the no-path-doors replay, raised the
+      income observer floor to 7 (aaa4206842), wrote this pack.
+  - lane: seq28b-ground-truth
+    role: ground_truth
+    seat: >-
+      The owner decision of 2026-10-11 (E33G remote worker income gate, USD 60,000 a year) as it will be signed
+      in the seq-28 pack rule el.e33g.remote-work; this step asserts the figure only in the E33G below-threshold
+      result copy, never in the interview question.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
+    query_hash: "c0f0bfb80e6d8c6c516bcb700996e3f1d97c5df54645004d60d5633e45a24d7f" # pragma: allowlist secret
+    note: query_hash = sha256 of i18n.ts at origin/main (before the change).
+pii_scan: clean
+bites:
+  consumer: >-
+    the engine's /evaluate request model (ApplicantFactsData) fed by the mouth fact-mapper with
+    work.annual_foreign_income_usd, and its classification of the fact as SENSITIVE for the Sentry scrub; the
+    observer runs the rollout-default test class for the fact plus the SENSITIVE pin and requires a full pass of at
+    least 7 tests. After the mouth deploy the remote-worker walk shows the new question after the employer country.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_engine_annual_income_fact.py
+  expect: "contains:annual income rollout default holds"
+receipts:
+  - claim: "The branch was rebased onto a fresh origin/main (nothing pushed); step-A-only files resolved to main's version, the replay fixture regenerated, and the diff against origin/main carries no step-A evidence dir."
+    cmd: git fetch origin main && git rebase origin/main
+    result: "conflicts in step-A files, schema contracts, openapi sha, replay json, tree.test.ts (R2 retirement_age_notice kept beside remote_annual_income_usd, no-notSure count 16), e2e, fact-mapper.test, applicant-fact-paths; resolved; HEAD 6d3c76998f then aaa4206842"
+    exit: 0
+    ts: "2026-10-11T14:01:00Z"
+    seat: this session
+  - claim: "The walk corpus regenerates to no diff (131 walks) after the rebase."
+    cmd: npm run visa-oracle:walk-corpus -w apps/mouth
+    result: "wrote 131 walks; git status clean afterwards"
+    exit: 0
+    ts: "2026-10-11T14:01:30Z"
+    seat: this session
+  - claim: "The visa-oracle _lib Vitest tree at HEAD aaa4206842 (after regenerating the replay with replay-no-path-doors.py)."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib'
+    result: "Test Files 32 passed (32); Tests 1105 passed (1105)"
+    exit: 0
+    ts: "2026-10-11T14:04:51Z"
+    seat: this session
+  - claim: "The enumerator bound stays proven with every edge covered."
+    cmd: cd apps/mouth && npx tsx scripts/visa-oracle/enumerate-interview-space.cli.ts --dry-run
+    result: "walks=110461603101408 maxDepth=27 bound=PROVEN edgesRequired=325 edgesCovered=325 edgesMissing=0"
+    exit: 0
+    ts: "2026-10-11T14:04:55Z"
+    seat: this session
+  - claim: "The interview walk census passes."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "53 passed, 14 skipped (skips: no unsigned production source pack above the highest signed one)"
+    exit: 0
+    ts: "2026-10-11T14:05:21Z"
+    seat: this session
+  - claim: "Fact registry, sponsor-type rollout (incl. the SENSITIVE pin) and Sentry PII scrub tests pass."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_fact_registry.py backend/tests/services/visa_engine/test_sponsor_type_rollout.py backend/tests/unit/app/setup/test_sentry_pii_redaction.py
+    result: "201 passed"
+    exit: 0
+    ts: "2026-10-11T14:05:22Z"
+    seat: this session
+  - claim: "The bites observer passes with the raised floor of 7."
+    cmd: python3 scripts/ci/observe_visa_engine_annual_income_fact.py
+    result: "8 passed in 0.02s; annual income rollout default holds"
+    exit: 0
+    ts: "2026-10-11T14:05:23Z"
+    seat: this session
+  - claim: "The observer's summary parser rejects reduced counts and accepts a full pass at the floor of 7."
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_engine_annual_income_fact.py
+    result: "15 passed"
+    exit: 0
+    ts: "2026-10-11T14:05:24Z"
+    seat: this session
+  - claim: "The legacy client-copy guard stays green."
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3594 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-11T14:05:24Z"
+    seat: this session
+  - claim: "apps/mouth typechecks."
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-11T14:05:25Z"
+    seat: this session
+decisions:
+  - id: D-no-anchor
+    decision: >-
+      The interview copy asks for the yearly income without naming any threshold, and offers no not-sure option
+      (the seq-28 rule will require the figure; an unknown would only re-ask it). The USD 60,000 figure appears
+      only in the E33G_INCOME_BELOW_THRESHOLD result copy, in EN and ID.
+  - id: D-ordered-rollout
+    decision: >-
+      Step B empties the step-A parity exception (ORDERED_ROLLOUT_OPTIONAL_PATHS); the fact is accepted and
+      ignored by the engine until the seq-28 rule activates in step C, so the only visible change is the new
+      question.
+dissent: []
