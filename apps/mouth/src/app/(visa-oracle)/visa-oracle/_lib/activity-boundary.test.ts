@@ -198,7 +198,6 @@ const WALKS: readonly WalkCase[] = [
     category: "retirement",
     tripScope: "single",
     branch: [
-      ["sponsor_category", "NONE"],
       ["retirement_basis", "property"],
       ["secondhome_property_value_usd", "1200000"],
       ["secondhome_passive_income_usd", "5000"],
@@ -231,7 +230,6 @@ const WALKS: readonly WalkCase[] = [
     category: "retirement",
     tripScope: "single",
     branch: [
-      ["sponsor_category", "NONE"],
       ["retirement_basis", "family_sponsor"],
       ["secondhome_passive_income_usd", "5000"],
       ["retirement_penjamin_confirmed", "yes"],

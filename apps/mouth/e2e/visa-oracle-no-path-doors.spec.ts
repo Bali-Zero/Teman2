@@ -70,7 +70,6 @@ const WALKS: { label: string; steps: Step[] }[] = [
       { id: "birth_date", value: "2000-11-11" },
       { id: "category", value: "retirement" },
       { id: "trip_scope", value: "single" },
-      { id: "sponsor_category", value: "NONE" },
       { id: "retirement_basis", value: "bank_deposit" },
       { id: "secondhome_deposit_usd", value: "1000000000" },
       { id: "secondhome_state_bank", value: "yes" },

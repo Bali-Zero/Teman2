@@ -1013,15 +1013,7 @@ describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
         getCategoryQuestionIds({ category }).includes("sponsor_category"),
     );
     expect([...categoriesAsking].sort()).toEqual(
-      [
-        "diaspora",
-        "family",
-        "invest",
-        "remote",
-        "retirement",
-        "study",
-        "work",
-      ].sort(),
+      ["diaspora", "family", "invest", "remote", "study", "work"].sort(),
     );
     for (const category of categoriesAsking) {
       const result = mapFacts({ category, sponsor_category: "EMPLOYER" });
@@ -1033,11 +1025,35 @@ describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
   });
 
   it("is never asked on categories where the sponsor never discriminates", () => {
-    for (const category of ["tourism", "business", "second_home"] as const) {
+    for (const category of [
+      "tourism",
+      "business",
+      "second_home",
+      "retirement",
+    ] as const) {
       expect(getCategoryQuestionIds({ category })).not.toContain(
         "sponsor_category",
       );
     }
+    // R3 (owner decision 2026-10-11): `retirement` joined the omission list —
+    // sponsor.type stays UNKNOWN(NOT_ASKED) on that branch.
+    expect(mapFacts({ category: "retirement" }).facts["sponsor.type"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+  });
+
+  it("a legacy retirement answer still carrying sponsor_category is tolerated, not stripped (no rule reads it)", () => {
+    // R3 decision: a persisted session or payload from before 2026-10-11 may
+    // still hold `sponsor_category` on the retirement branch. The mapper keeps
+    // forwarding it (KNOWN) exactly as on any branch — harmless, because the
+    // pack-scan guard (sponsor-retirement-guard.test.ts) fails if any rule
+    // covering RETIREMENT ever reads sponsor.type.
+    expect(
+      mapFacts({ category: "retirement", sponsor_category: "EMPLOYER" }).facts[
+        "sponsor.type"
+      ],
+    ).toEqual({ status: "KNOWN", value: "EMPLOYER" });
   });
 
   it("`other`: asked only down the other_paid_activity=yes branch (PR-D4d)", () => {
