@@ -12,7 +12,6 @@
     "birth_date",
     "category",
     "trip_scope",
-    "sponsor_category",
     "retirement_basis",
     "secondhome_deposit_usd",
     "secondhome_state_bank",
@@ -117,7 +116,7 @@
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "sponsor.type": { "status": "KNOWN", "value": "NONE" },
+    "sponsor.type": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "sponsor.government_invitation": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"

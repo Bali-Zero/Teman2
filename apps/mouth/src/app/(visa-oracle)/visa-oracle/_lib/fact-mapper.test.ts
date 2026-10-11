@@ -1013,15 +1013,7 @@ describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
         getCategoryQuestionIds({ category }).includes("sponsor_category"),
     );
     expect([...categoriesAsking].sort()).toEqual(
-      [
-        "diaspora",
-        "family",
-        "invest",
-        "remote",
-        "retirement",
-        "study",
-        "work",
-      ].sort(),
+      ["diaspora", "family", "invest", "remote", "study", "work"].sort(),
     );
     for (const category of categoriesAsking) {
       const result = mapFacts({ category, sponsor_category: "EMPLOYER" });
@@ -1033,11 +1025,22 @@ describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
   });
 
   it("is never asked on categories where the sponsor never discriminates", () => {
-    for (const category of ["tourism", "business", "second_home"] as const) {
+    for (const category of [
+      "tourism",
+      "business",
+      "second_home",
+      "retirement",
+    ] as const) {
       expect(getCategoryQuestionIds({ category })).not.toContain(
         "sponsor_category",
       );
     }
+    // R3 (owner decision 2026-10-11): `retirement` joined the omission list —
+    // sponsor.type stays UNKNOWN(NOT_ASKED) on that branch.
+    expect(mapFacts({ category: "retirement" }).facts["sponsor.type"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
   });
 
   it("`other`: asked only down the other_paid_activity=yes branch (PR-D4d)", () => {
@@ -1166,6 +1169,88 @@ describe("sponsor.type vocabulary — pack ⊆ SPONSOR_TYPES, one direction only
       value: "INVESTMENT",
     });
     expect(allPackSponsorTypeValues().has("INVESTMENT")).toBe(false);
+  });
+});
+
+describe("sponsor.type x RETIREMENT — the omission is only safe while no rule reads it (R3)", () => {
+  const PACKS_DIR = path.resolve(
+    REPO_ROOT,
+    "apps/backend-rag/backend/services/visa_engine/contracts/packs",
+  );
+
+  type PackRule = {
+    rule_id: string;
+    scope: string;
+    when?: unknown;
+    product_version_ids?: string[];
+  };
+  type PackProduct = {
+    product_code: string;
+    product_version_id: string;
+    covered_purposes?: string[];
+  };
+
+  /** The highest-sequence SIGNED production pack's payload. */
+  function newestSignedPack(): {
+    sequence: number;
+    rules: PackRule[];
+    products: PackProduct[];
+  } {
+    const files = fs
+      .readdirSync(PACKS_DIR)
+      .filter((name) => /^rulepack-prod-\d+\.signed\.json$/.test(name));
+    expect(files.length).toBeGreaterThan(0);
+    let best: ReturnType<typeof newestSignedPack> | null = null;
+    for (const name of files) {
+      const envelope = JSON.parse(
+        fs.readFileSync(path.join(PACKS_DIR, name), "utf-8"),
+      ) as { payload?: { sequence?: unknown } };
+      const payload = envelope.payload as
+        ({ sequence: number } & Record<string, unknown>) | undefined;
+      if (!payload || typeof payload.sequence !== "number") continue;
+      if (best === null || payload.sequence > best.sequence) {
+        best = payload as unknown as ReturnType<typeof newestSignedPack>;
+      }
+    }
+    if (best === null) throw new Error("no signed pack with a sequence");
+    return best;
+  }
+
+  function readsSponsorType(node: unknown): boolean {
+    if (Array.isArray(node)) return node.some(readsSponsorType);
+    if (node === null || typeof node !== "object") return false;
+    const record = node as Record<string, unknown>;
+    if (record.fact === "sponsor.type") return true;
+    return Object.values(record).some(readsSponsorType);
+  }
+
+  it("no rule whose `when` reads sponsor.type may cover RETIREMENT (the interview no longer asks it)", () => {
+    const pack = newestSignedPack();
+    const retirementVersionIds = new Set(
+      pack.products
+        .filter((product) => product.covered_purposes?.includes("RETIREMENT"))
+        .map((product) => product.product_version_id),
+    );
+    // Guard the guard: E33E and E33F are the retirement products, and a pack
+    // with none would make the assertion below vacuously true.
+    expect(retirementVersionIds.size).toBeGreaterThanOrEqual(2);
+    const sponsorRules = pack.rules.filter((rule) =>
+      readsSponsorType(rule.when),
+    );
+    expect(sponsorRules.length).toBeGreaterThan(0);
+    const covering = sponsorRules
+      .filter(
+        (rule) =>
+          rule.scope !== "PRODUCTS" ||
+          (rule.product_version_ids ?? []).some((id) =>
+            retirementVersionIds.has(id),
+          ),
+      )
+      .map((rule) => rule.rule_id);
+    expect(
+      covering,
+      "a pack rule now reads sponsor.type for RETIREMENT: restore `sponsor_category` to the retirement question list in flow.ts (R3, 2026-10-11) instead of letting the interview dead-end on NEEDS_INPUT",
+    ).toEqual([]);
   });
 });
 
