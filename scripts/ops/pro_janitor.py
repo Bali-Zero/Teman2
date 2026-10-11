@@ -269,10 +269,22 @@ def append_journal(env, line):
 
 # ---------------------------------------------------------------- subprocess with a real deadline
 
+def group_gone(pgid):
+    """True once no process of the group is left to signal. On macOS an un-reaped zombie leader alone answers EPERM, like ESRCH."""
+    try:
+        os.killpg(pgid, 0)
+    except (ProcessLookupError, PermissionError):
+        return True
+    except OSError:
+        return True
+    return False
+
+
 def run_deadline(argv, timeout, env, cap=None, err_cap=None):
     """-> (rc, status, stdout, stderr); status ok|timeout|timeout-unreaped|overflow|spawn. Stdout/stderr go to DEVNULL unless a cap asks for a
     pipe (lsof), read with the deadline and capped; stderr is only ever tested for emptiness, never journaled or printed.
-    The child leads its own process group; on the deadline or an overflow: TERM the group, wait 5 s, KILL the group, reap.
+    The child leads its own process group; on the deadline or an overflow: TERM the group, give the whole group 5 s, KILL the
+    group, and only then reap the leader: its un-reaped zombie holds the pid and so the group id until the last killpg.
     A grandchild that left the group (setsid) is not ours to kill."""
     try:
         p = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE if cap else subprocess.DEVNULL,
@@ -312,16 +324,16 @@ def run_deadline(argv, timeout, env, cap=None, err_cap=None):
         except subprocess.TimeoutExpired:
             status = "timeout"
     if status != "ok":
+        pgid = p.pid   # no poll, wait or send_signal on p until after the last killpg
         try:
-            os.killpg(p.pid, signal.SIGTERM)
+            os.killpg(pgid, signal.SIGTERM)
         except OSError:
             pass
+        end = time.monotonic() + 5
+        while not group_gone(pgid) and time.monotonic() < end:
+            time.sleep(0.02)
         try:
-            p.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            pass
-        try:
-            os.killpg(p.pid, signal.SIGKILL)
+            os.killpg(pgid, signal.SIGKILL)
         except OSError:
             pass
         try:
@@ -668,7 +680,14 @@ class Lock(object):
         self._prev = (t0, w0)   # the last (mono, wall) pair at which the lock was provably ours
         self._tfd = os.dup(self.fd)   # the thread's own descriptor; the thread closes it
         self._thread = threading.Thread(target=self._keepalive, name="pro-janitor-lock", daemon=True)
-        self._thread.start()
+        try:
+            self._thread.start()
+        except BaseException:   # no keepalive: the lock just taken is released within its lease and the caller sees the failure
+            os.close(self._tfd)
+            self._tfd, self._thread = None, None
+            self._rmdir_if_ours()
+            self.id = None
+            raise
 
     def _keepalive(self):
         step = self.interval if self.interval > 0 else 0.05
@@ -725,11 +744,14 @@ class Lock(object):
 
     def release(self):
         self._stop.set()
-        if self._thread is not None:
+        if self._thread is not None and self._thread.ident is not None:   # a thread that never started has nothing to join
             self._thread.join(timeout=self.JOIN_TIMEOUT)   # the root fd stays open until after this join (the caller closes it)
             if self._thread.is_alive():
                 self.stuck = True
                 return   # it holds its own fd; the lock is left to go stale
+        self._rmdir_if_ours()
+
+    def _rmdir_if_ours(self):
         if self.id is None or not self._valid() or not self._ours() or not self._valid():   # the same sequence as check()
             return   # not provably ours and fresh: leave it, Playwright judges it stale after 10 s
         try:
@@ -806,7 +828,7 @@ def remove_children(fd, w, depth=0):
     marker_first = depth == 0 and bool(names) and names[0] == MARKER
     for n in names:
         if marker_first and w.failures:
-            return   # invariant 9: the marker did not go, for whatever reason: the candidate stops here and nothing else is touched
+            return   # invariant 9: with the marker present, ANY top-level failure so far (not only the marker's own) stops the walk: conservative
         w.tick()
         try:
             s = os.stat(n, dir_fd=fd, follow_symlinks=False)
@@ -987,7 +1009,7 @@ def dir_rule(env, rule, apply_):
         return "skipped:no-candidates", unauditable
     bad, opened = lsof_probe(env, root, root_id)   # the plan's probe
     if bad:
-        return bad, []
+        return bad, unauditable
     is_open = [any(o == c[1] or o.startswith(c[1] + os.sep) for o in opened) for c in cands]
     if all(is_open):
         return "skipped:in-use", [{"name": c[0], "bytes": 0, "state": "skipped:open"} for c in cands] + unauditable
@@ -996,13 +1018,14 @@ def dir_rule(env, rule, apply_):
                            for c, o in zip(cands, is_open)] + unauditable
     # the registry and the install lock are read again at the last moment: an install may have started since
     if dirlock_present(env, root):
-        return "skipped:install-in-progress", []
+        return "skipped:install-in-progress", unauditable
     try:
         if pinned_revisions(root) != pins:
-            return "skipped:registry-changed", []
+            return "skipped:registry-changed", unauditable
     except LinksUnreadable:
-        return "skipped:link-registry-unreadable", []
+        return "skipped:link-registry-unreadable", unauditable
     entries = []
+    internal = False
     for (name, path, _, rec), was_open in zip(cands, is_open):
         if was_open:
             entries.append({"name": name, "bytes": 0, "state": "skipped:open"})
@@ -1052,6 +1075,9 @@ def dir_rule(env, rule, apply_):
         except OSError as exc:
             ent["state"] = "failed:" + ("root-changed" if not isinstance(exc, (FileNotFoundError, PermissionError))
                                         else cause_of(exc))
+        except Exception:   # never BaseException; no traceback, no path: this candidate ends and the loop stops, what was decided stays journaled
+            ent["state"] = "failed:internal"
+            internal = True
         finally:
             if lock is not None:
                 lock.release()
@@ -1059,6 +1085,8 @@ def dir_rule(env, rule, apply_):
                     env.notes["lock_thread_stuck"] = True
             if rfd is not None:
                 os.close(rfd)
+        if internal:
+            break
         if ent["state"] == "failed:capped":
             env.notes["capped"] = True
             break
@@ -1068,6 +1096,8 @@ def dir_rule(env, rule, apply_):
         if env.notes.get("lock_thread_stuck"):
             break   # invariant 8: a keepalive that outlived its join ends the rule
     env.notes["unlinked_bytes"] = sum(e["bytes"] for e in entries)
+    if internal:
+        return ("error:rmtree-partial" if any(e["state"] == "removed" for e in entries) else "error:internal"), entries + unauditable
     if any(e["state"].startswith("failed") for e in entries):
         return "error:rmtree-partial", entries + unauditable
     if any(e["state"] == "removed" for e in entries):
@@ -1175,7 +1205,7 @@ def main():
         res.update(env.notes)
         env.notes.clear()
         attempted = apply_ and (status == "done" or status.startswith("error:rc=") or status in
-                                ("error:timeout", "error:timeout-unreaped", "error:rmtree-partial"))
+                                ("error:timeout", "error:timeout-unreaped", "error:rmtree-partial", "error:internal"))
         results.append(res)
         if attempted:
             state["rules"][rule["id"]] = env.now

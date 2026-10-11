@@ -2010,7 +2010,7 @@ def test_a_child_that_cannot_be_reaped_after_the_kill_is_abandoned_not_waited_on
             holder.append(self)
 
         def wait(self, timeout=None):
-            if timeout == 5:   # the post-TERM and the post-KILL waits: the child sits in uninterruptible sleep
+            if timeout == 5:   # the post-KILL wait: the child sits in uninterruptible sleep
                 raise subprocess.TimeoutExpired("x", 5)
             return super().wait(timeout)
     monkeypatch.setattr(pj.subprocess, "Popen", Stuck)
@@ -2024,7 +2024,7 @@ def test_a_child_that_cannot_be_reaped_after_the_kill_is_abandoned_not_waited_on
             except OSError:
                 pass   # already a zombie: macOS answers EPERM for a group with no live member
             subprocess.Popen.wait(p)
-    assert status == "timeout-unreaped" and rc is None and time.monotonic() - t0 < 5
+    assert status == "timeout-unreaped" and rc is None and time.monotonic() - t0 < 5 + 4   # the group's 5 s grace, then no second wait
 
 
 def test_an_unreaped_tool_is_journaled_as_error_timeout_unreaped(box, monkeypatch):
@@ -2386,7 +2386,7 @@ def test_a_rule_that_raises_is_its_own_error_internal_and_the_run_still_journals
     out = capsys.readouterr().out
     rules = box.rules()
     assert rc == 10 and rules["uv-prune"]["status"] == "error:internal" and rules["npm-verify"]["status"] == "done"
-    assert (box.state / "state.json").exists() and "uv-prune" not in box.cooldowns()
+    assert (box.state / "state.json").exists() and box.cooldowns()["uv-prune"] == NOW   # an error:internal in apply mode is an attempted action
     assert "secret" not in out and "/Users" not in out and "secret" not in box.journal.read_text()
 
 
@@ -2523,3 +2523,162 @@ def test_a_group_member_that_ignores_term_is_killed_after_the_leader_exits_on_te
         except ProcessLookupError:
             pass
     assert status == "timeout" and time.monotonic() - t0 < 10
+
+
+# ---------------------------------------------------------------- the tool deadline holds the zombie leader until the last killpg
+
+def record_signals(monkeypatch):
+    """Events in order: ('killpg', sig) for each os.killpg, and ('reap', name) for each Popen.poll/wait/send_signal."""
+    events = []
+    real_killpg = os.killpg
+
+    def killpg(pgid, sig):
+        events.append(("killpg", sig))
+        return real_killpg(pgid, sig)
+    monkeypatch.setattr(os, "killpg", killpg)
+    for name in ("poll", "wait", "send_signal"):
+        def wrap(self, *a, _real=getattr(subprocess.Popen, name), _name=name, **k):
+            events.append(("reap", _name))
+            return _real(self, *a, **k)
+        monkeypatch.setattr(subprocess.Popen, name, wrap)
+    return events
+
+
+def test_the_leader_is_not_reaped_until_after_the_last_killpg_even_with_a_term_ignoring_group(tmp_path, monkeypatch):
+    pidfile = tmp_path / "member.pid"
+    script = f"trap '' TERM; ( trap '' TERM; exec sleep 300 ) & echo $! > {pidfile}; while :; do sleep 1; done"
+    events = record_signals(monkeypatch)
+    t0 = time.monotonic()
+    try:
+        rc, status, _, _ = pj.run_deadline(["/bin/sh", "-c", script], 1.0, {"PATH": "/usr/bin:/bin"})
+        took = time.monotonic() - t0
+        member = int(pidfile.read_text())
+        for _ in range(50):
+            try:
+                os.kill(member, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.1)
+        else:
+            pytest.fail("the TERM-ignoring member survived the group KILL")
+    finally:
+        try:
+            os.kill(int(pidfile.read_text()), 9)
+        except (ProcessLookupError, ValueError, FileNotFoundError):
+            pass
+    first = next(i for i, e in enumerate(events) if e == ("killpg", pj.signal.SIGTERM))
+    after = events[first:]
+    last_kill = max(i for i, e in enumerate(after) if e[0] == "killpg")
+    assert after[last_kill] == ("killpg", pj.signal.SIGKILL)
+    assert not [e for e in after[:last_kill] if e[0] == "reap"], "the leader was reaped before the last killpg: %s" % after
+    assert ("reap", "wait") in after[last_kill:] and status == "timeout" and rc is None and 5 <= took < 5 + 4
+
+
+def test_a_tool_that_exits_on_term_is_reaped_without_the_five_second_stall():
+    t0 = time.monotonic()
+    rc, status, _, _ = pj.run_deadline(["/bin/sh", "-c", "trap 'exit 0' TERM; while :; do sleep 0.1; done"], 1.0,
+                                       {"PATH": "/usr/bin:/bin"})
+    took = time.monotonic() - t0
+    assert status == "timeout" and took < 1 + 2.5, took
+
+
+# ---------------------------------------------------------------- error:internal inside the candidate loop
+
+def test_an_exception_on_the_second_candidate_keeps_the_first_removal_and_stamps_the_cooldown(box, monkeypatch, capsys):
+    root, _ = two_old(box)
+    real, calls = pj.remove_candidate, []
+
+    def flaky(*a, **k):
+        calls.append(1)
+        if len(calls) == 2:
+            raise RuntimeError("secret detail at /Users/someone/private")
+        return real(*a, **k)
+    monkeypatch.setattr(pj, "remove_candidate", flaky)
+    rc = inproc(box, monkeypatch, "110,110")
+    out = capsys.readouterr().out
+    res = box.rules()["playwright-old"]
+    assert rc == 10 and res["status"] == "error:rmtree-partial"
+    assert [(e["name"], e["bytes"], e["state"]) for e in res["entries"]] == [
+        ("chromium-998", 10, "removed"), ("chromium-999", 0, "failed:internal")]
+    assert res["unlinked_bytes"] == 10 and "delta_gb" in res and box.cooldowns()["playwright-old"] == NOW
+    assert not (root / "chromium-998").exists() and (root / "chromium-999").is_dir() and not (root / "__dirlock").exists()
+    assert "Traceback" not in out and "secret" not in out and "/Users" not in out
+    assert "secret" not in box.journal.read_text() and "Traceback" not in box.journal.read_text()
+
+
+def test_an_exception_before_anything_was_removed_is_error_internal_and_stops_the_loop(box, monkeypatch):
+    root, _ = two_old(box)
+    calls = []
+
+    def boom(*a, **k):
+        calls.append(1)
+        raise RuntimeError("x")
+    monkeypatch.setattr(pj, "remove_candidate", boom)
+    rc = inproc(box, monkeypatch, "110,110")
+    res = box.rules()["playwright-old"]
+    assert rc == 10 and res["status"] == "error:internal" and len(calls) == 1
+    assert box.cooldowns()["playwright-old"] == NOW and (root / "chromium-998").is_dir()
+
+
+# ---------------------------------------------------------------- a keepalive that cannot start
+
+def test_a_keepalive_that_cannot_start_releases_its_lock_and_the_rule_is_error_internal(box, monkeypatch):
+    root, _ = two_old(box)
+    real = threading.Thread.start
+
+    def start(self):
+        if self.name == "pro-janitor-lock":
+            raise RuntimeError("can't start new thread")
+        return real(self)
+    monkeypatch.setattr(threading.Thread, "start", start)
+    rc = inproc(box, monkeypatch, "110,110")
+    monkeypatch.undo()
+    res = box.rules()["playwright-old"]
+    assert rc == 10 and res["status"] == "error:internal"
+    assert not (root / "__dirlock").exists() and (root / "chromium-998").is_dir() and (root / "chromium-999").is_dir()
+
+
+def test_release_never_joins_a_thread_that_did_not_start(tmp_path):
+    clk, root, victim, rec, dev, rfd, lock = leased(tmp_path, ("o1",))
+    lock._stop.set()
+    lock._thread.join(timeout=5)
+    lock._thread = threading.Thread(target=lambda: None)   # never started: join() would raise RuntimeError
+    try:
+        lock.release()
+    finally:
+        os.close(rfd)
+    assert not lock.stuck and not (root / "__dirlock").exists()   # no join, no raise: the lock is still ours and goes
+
+
+# ---------------------------------------------------------------- audit-error entries survive every path out of the rule
+
+def chained(box):
+    root = pw_root(box)
+    mk(root / "chromium-998", 30)
+    mk(root / "chromium-1243", 30)
+    mk(root / "chromium-1100", 30)
+    chain(root / "chromium-1100" / "x", 1100)
+    return root
+
+
+@pytest.mark.parametrize("how", ["lsof", "install-lock", "registry"])
+def test_audit_error_entries_are_journaled_on_the_early_returns(box, how):
+    root = chained(box)
+    links(box)
+    if how == "lsof":
+        box.lsof = box.fake_lsof(canary=False)
+        want = "error:lsof-incomplete"
+    elif how == "install-lock":
+        box.lsof = box.fake_lsof(pre=f'touch "{root}/__dirlock"')
+        want = "skipped:install-in-progress"
+    else:
+        newpkg = box.tmp / "pkgs" / "late"
+        newpkg.mkdir(parents=True)
+        (newpkg / "browsers.json").write_text(json.dumps({"browsers": [pb("chromium", 998)]}))
+        box.lsof = box.fake_lsof(pre=f'echo "{newpkg}" > "{root}/.links/late"')
+        want = "skipped:registry-changed"
+    r = box.run("110", apply=True)
+    res = box.rules()["playwright-old"]
+    assert res["status"] == want and "Traceback" not in r.stderr
+    assert {"name": "chromium-1100", "bytes": 0, "state": "skipped:audit-error"} in res["entries"]
+    assert (root / "chromium-998").is_dir()
