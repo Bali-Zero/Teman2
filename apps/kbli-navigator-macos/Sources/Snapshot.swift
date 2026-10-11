@@ -1,4 +1,5 @@
 import AppKit
+import PDFKit
 import SwiftUI
 
 /// Off-screen renderer for QA screenshots without a GUI session.
@@ -274,7 +275,9 @@ extension Snapshot {
         let notFound = AnyView(EmptyDetail(text: "code \(code) not found (store: \(state.store.all.count))")
             .environmentObject(lang))
 
+        let imm = Motion.configure(args)   // --imm: the immersive twin of the band; hooks: --at-ms --reduce-motion --ribbon --scale-focus
         let content: AnyView
+        var textView: AnyView?
         switch band {
         case "registry-table":
             // The live scan surface: `SearchListView` browsing the sector --code belongs to, no
@@ -305,8 +308,15 @@ extension Snapshot {
             // The registry sheet/ledger (KBLIVerdict.swift's own name for this surface) — the mono
             // UPPERCASE label↔value LedgerPlate table, `KBLIRegistryView`.
             if let k = state.store.code(code) {
-                content = Self.page(KBLIRegistryView(kbli: k, scrolls: false)
-                    .environmentObject(state).environmentObject(lang), width: w, height: h)
+                if imm {
+                    content = Self.page(KBLIImmersiveLedger(kbli: k, scrolls: false)
+                        .environmentObject(state).environmentObject(lang), width: w, height: h)
+                    textView = AnyView(KBLIImmersiveLedger(kbli: k, scrolls: false).environmentObject(state).environmentObject(lang))
+                } else {
+                    content = Self.page(KBLIRegistryView(kbli: k, scrolls: false)
+                        .environmentObject(state).environmentObject(lang), width: w, height: h)
+                    textView = AnyView(KBLIRegistryView(kbli: k, scrolls: false).environmentObject(state).environmentObject(lang))
+                }
             } else { content = notFound }
         case "chat":
             state.messages = [
@@ -354,6 +364,20 @@ extension Snapshot {
         if let data = srgb.representation(using: .png, properties: [:]) {
             try? data.write(to: URL(fileURLWithPath: out))
             FileHandle.standardError.write("band snapshot written: \(out)\n".data(using: .utf8)!)
+        }
+
+        if let pdfPath = flag("--pdf"), let tv = textView {
+            // Content byte-diff, the encensus way: the un-scrolled View through ImageRenderer into a PDF, read back by PDFKit.
+            let r = ImageRenderer(content: AnyView(tv.frame(width: w, alignment: .top).fixedSize(horizontal: false, vertical: true)
+                .tracking(0.01).background(Theme.antracite)))
+            let data = NSMutableData()
+            r.render { size, draw in
+                var box = CGRect(origin: .zero, size: size)
+                guard let consumer = CGDataConsumer(data: data as CFMutableData),
+                      let ctx = CGContext(consumer: consumer, mediaBox: &box, nil) else { return }
+                ctx.beginPDFPage(nil); draw(ctx); ctx.endPDFPage(); ctx.closePDF()
+            }
+            try? (PDFDocument(data: data as Data)?.string ?? "").write(toFile: pdfPath, atomically: true, encoding: .utf8)
         }
 
         if let jsonPath = layoutJSONPath {

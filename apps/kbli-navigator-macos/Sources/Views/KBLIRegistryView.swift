@@ -34,6 +34,10 @@ struct KBLIRegistryView: View {
 
     @EnvironmentObject var state: AppState
     @EnvironmentObject var lang: LanguageManager
+    @Environment(\.immersive) private var immersive
+    @Environment(\.arrival) private var arrival
+    @Environment(\.accessibilityReduceMotion) private var systemReduce
+    @State private var identityGone = false
     private let overlays = OverlayStore()
 
     private var ov: CodeOverlay? { overlays.overlay(kbli.kode, lang: lang.lang.rawValue) }
@@ -46,8 +50,16 @@ struct KBLIRegistryView: View {
         Group {
             if scrolls {
                 ScrollView { content.padding(.bottom, 40) }
+                    .coordinateSpace(name: "immLedger")
+                    .onPreferenceChange(StageBottomKey.self) { v in
+                        guard immersive else { return }
+                        withAnimation(Theme.motion(systemReduce || Motion.forceReduce)) { identityGone = v < 0 }
+                    }
+                    .overlay(alignment: .top) {
+                        if immersive && identityGone { ribbon.transition(.move(edge: .top).combined(with: .opacity)) }
+                    }
             } else {
-                content
+                content.overlay(alignment: .top) { if immersive && Motion.forceRibbon { ribbon } }
             }
         }
         .background(Theme.antracite)
@@ -122,7 +134,7 @@ struct KBLIRegistryView: View {
                 HStack(alignment: .top, spacing: 40) {
                     VStack(alignment: .leading, spacing: 24) {
                         Grid(alignment: .topLeading, horizontalSpacing: 40, verticalSpacing: 24) {
-                            GridRow { Color.clear.frame(width: 120, height: 0); identity }
+                            GridRow { Color.clear.frame(width: 120, height: 0); identity.background(identityEdge) }
                             GridRow(alignment: .bottom) {
                                 // The ladder hangs from the row's bottom edge, so its ground line (y 326
                                 // of 330) sits on the matrix's last 1 pt rule and it rises above a short table.
@@ -138,13 +150,20 @@ struct KBLIRegistryView: View {
             } else {
                 VStack(alignment: .leading, spacing: 24) {
                     PadiLine(width: 240)
-                    identity
+                    identity.background(identityEdge)
                     matrix
                     headsUp
                     verdictStack
                 }
             }
             basisRow(columns: wide ? 4 : 2)
+        }
+    }
+
+    /// Reports the identity block's bottom edge in the scroll space; below 0 the ribbon takes over (immersive only).
+    private var identityEdge: some View {
+        GeometryReader { g in
+            Color.clear.preference(key: StageBottomKey.self, value: immersive ? g.frame(in: .named("immLedger")).maxY : 1)
         }
     }
 
@@ -169,7 +188,17 @@ struct KBLIRegistryView: View {
     }
 
     private var matrix: some View {
-        ScaleMatrix(scales: kbli.perSkala, isID: isID, mode: .ledger)
+        Group {
+            if immersive && ScaleMatrix.scopes(kbli.perSkala).count < ScaleMatrix.listFrom {
+                ScalePath(scales: kbli.perSkala, isID: isID, mode: .ledger)
+            } else {
+                ScaleMatrix(scales: kbli.perSkala, isID: isID, mode: .ledger)
+            }
+        }
+    }
+
+    private var ribbon: some View {
+        VerdictRibbon(kbli: kbli, isID: isID, bali: LabelBook.baliChip(KBLIVerdict.of(record: kbli), isID: isID))
     }
 
     private var headsUp: some View { HeadsUpBlock(KBLIVerdict.headsUp(record: kbli, isID: isID)) }
@@ -181,9 +210,14 @@ struct KBLIRegistryView: View {
         return VStack(alignment: .leading, spacing: 8) {
             Text(lang.t("detail.national")).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(Theme.muted)
             chip(LabelBook.pmaStatus(kbli.pmaStatus, isID: isID), tone)
+                .modifier(Beat(p: immersive ? arrival : 1, from: 0.2, to: 0.6, dy: 6))
             // The canonical `pma_max_asing` (the search peak's rule): "—" only when the record has none.
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(kbli.pmaMaxAsing.map { "\($0)%" } ?? "—").font(Theme.display(64)).monospacedDigit()
+                Group {
+                    if immersive, let cap = kbli.pmaMaxAsing { CountUpPercent(p: arrival, value: cap) }
+                    else { Text(kbli.pmaMaxAsing.map { "\($0)%" } ?? "—") }
+                }
+                .font(Theme.display(64)).monospacedDigit()
                     .foregroundStyle(Theme.white)
                 Text(lang.t("rich.fact.pma")).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
             }
@@ -211,6 +245,13 @@ struct KBLIRegistryView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.inkLift, in: RoundedRectangle(cornerRadius: 2))
         .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(Theme.lineSoft, lineWidth: 1))
+        .shadow(color: .black.opacity(immersive ? Elevation.floating.alpha : 0), radius: Elevation.floating.radius, y: Elevation.floating.dy)
+        .overlay(alignment: .top) {
+            if immersive {
+                Rectangle().fill(Theme.chip(Theme.tone(kbli.pmaStatus ?? "")).fg).frame(height: 3)
+                    .modifier(DrawnRule(p: arrival, from: 0, to: 0.4))
+            }
+        }
     }
 
     private func chip(_ word: String, _ c: (fg: Color, bg: Color)) -> some View {
@@ -1161,6 +1202,7 @@ struct FactCell: View {
 struct LedgerPlate: View {
     let rail: Color
     let rows: [LedgerRow]
+    @Environment(\.immersive) private var immersive
     var body: some View {
         VStack(spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
@@ -1183,6 +1225,16 @@ struct LedgerPlate: View {
             RoundedRectangle(cornerRadius: 2).fill(rail).frame(width: 3).padding(.vertical, 8)
         }
         .overlay(RoundedRectangle(cornerRadius: Theme.radiusMd).strokeBorder(Theme.hairline, lineWidth: 1))
+        .shadow(color: .black.opacity(immersive ? Elevation.raised.alpha : 0), radius: Elevation.raised.radius, y: Elevation.raised.dy)
+    }
+}
+
+/// The immersive ledger: `KBLIRegistryView` under the arrival host. Same strings, three planes, the verdict choreography.
+struct KBLIImmersiveLedger: View {
+    let kbli: KBLI
+    var scrolls = true
+    var body: some View {
+        ImmersiveHost { KBLIRegistryView(kbli: kbli, scrolls: scrolls) }
     }
 }
 

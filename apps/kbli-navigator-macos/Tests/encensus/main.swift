@@ -145,6 +145,8 @@ let rc: Int32 = MainActor.assumeIsolated {
         emit(k.kode, "dossier", KBLIDossierView(kbli: k, variant: .claude, scrolls: false), anchors: c + ["Bali Zero · KBLI 2025"])
         emit(k.kode, "sheet-ledger", KBLIRegistryView(kbli: k, scrolls: false),
              anchors: c + [isID ? "Tanya tentang \(k.kode)…" : "Ask about \(k.kode)…"])
+        emit(k.kode, "sheet-ledger-imm", KBLIImmersiveLedger(kbli: k, scrolls: false),
+             anchors: c + [isID ? "Tanya tentang \(k.kode)…" : "Ask about \(k.kode)…"])
         state.chatContextCode = k
         emit(k.kode, "chat", ChatView(), height: 800, anchors: c)   // the code it is asked about
         state.chatContextCode = nil
