@@ -1,0 +1,36 @@
+task_id: kbli-nav-design-p3h2c-frames
+mission: kbli-nav-design-loop (Track A, build, lot PR 3-h-2b — frames ready to arm)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  The judge the View PRs arm their bands on, sealed before they arm (lead ruling 2026-10-11): png_census, the frame
+  doc, the band snapshot's JSON (no pixel) and the never-drawn check's census marks. Renders stay byte-identical. The
+  lead commissions a fresh gate for every PR of the lot.
+l_level: L1
+gate_class: opus
+objective: >-
+  One concern: the census frames and who reads them, ready for PR 5/6/3 and the IMM marks to arm (lead rulings
+  2026-10-11, #8250 gate bindings 1-6). (1) A measured element is bounded on both sides: cap 0.6-1.0 x title(36),
+  heads-up sentence 0.6-1.0 x serif(20), so a 64 pt figure is no cap; cap's readers C13/C14 are its position checks.
+  (2) A closed grammar: png_census's NAMES lists every census name (PR 5/6/3's sixteen included, matrix.cell and
+  reason.lead/body among them) with its value's pattern — a step, a tone, an ordinal, a fraction or nothing; chip.Mikro
+  FAILs. (3) Every JSON of the set is read, armed or not: Mikro beside an unarmed PNG FAILs. (4) C11 finds a chip
+  whole, never clipped by its frame, and holds it on its header and on its frame (+-4 px): 6 and 10 px off FAIL, 2 px
+  passes. (5) A mark sits OUTSIDE any .offset/Beat, where its element lands (CensusFrame.swift); a node a beat left
+  10 px off, its header too, with its frames where it lands, FAILs. (6) A mark's value comes from the record, never
+  from the painter: the band snapshot writes the record's own state (national, bali, headsup) beside the frames and
+  a chip whose value disagrees FAILs. (7) R25: the never-drawn check reads no .censusFrame argument as a sink; the
+  Text beside the mark still is one. (8) #8250 gate nit: its brief's acceptance line still reads 73/73; the count
+  at its head was 74/74 (the C11 cure added a case), and this brief's own count is 93/93. #8250's merged brief stays
+  as it is: one brief per PR.
+constraints:
+  - Renders byte-identical; the record's state is JSON only and written only while a band snapshot collects.
+  - Every new rule has a guilt case that FAILs and an innocence case that passes, run on every invocation.
+  - No View is marked and no check is armed here: the View PRs arm their own bands (Q18).
+acceptance:
+  - text: Every binding SHALL reject its guilt case and accept its innocent one.
+    probe: "M5/Pro: png_census.py self-test all right, and each rule removed in turn makes its own cases fail"
+  - text: The render set SHALL stay byte-identical, with and without the census collector.
+    probe: "Pro: prove.sh at the head (35/35 against en1b-labelbook + 4), CENSUS_IDENTITY=1 render_set.sh"
+  - text: The never-drawn check SHALL read no census mark's value as a sink and still catch the Text beside it.
+    probe: "M5: en_purity static_selftest(); Pro: content_check.sh step 5 ok"
