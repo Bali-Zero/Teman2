@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: e9bcfe8f584c8a72d3122faef0149c43cfd3453eda716734e337932662e26425 # pragma: allowlist secret
+checksum: f381ed5de3fe38ada161130c2469409c5a2f7779eb766d6d087a10f06f110532 # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
