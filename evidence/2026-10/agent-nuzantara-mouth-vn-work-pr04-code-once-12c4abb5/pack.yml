@@ -27,25 +27,31 @@ bites:
     result shows the code once in the card and in the copied share text, EN and ID.
   where: ci
   observe: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.display-name.test.tsx'
-  expect: "contains:6 passed"
+  expect: "contains:7 passed"
 receipts:
   - claim: "The whole visa-oracle mouth suite passes with the change."
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
-    result: "Test Files 55 passed (55); Tests 1431 passed (1431)"
+    result: "Test Files 55 passed (55); Tests 1432 passed (1432)"
     exit: 0
-    ts: "2026-10-12T07:10:00Z"
+    ts: "2026-10-12T07:52:30Z"
     seat: this session
   - claim: "apps/mouth typechecks."
     cmd: cd apps/mouth && npx tsc --noEmit -p .
     result: "no output"
     exit: 0
-    ts: "2026-10-12T07:10:30Z"
+    ts: "2026-10-12T07:53:10Z"
     seat: this session
   - claim: "The new test was red before the helper existed and is green after."
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.display-name.test.tsx'
     result: "before: 5 failed | 1 passed (6); after: 6 passed (6)"
     exit: 0
     ts: "2026-10-12T07:09:31Z"
+    seat: this session
+  - claim: "The signed-name pin is red when the test name drifts from the signed pack and green on the pack's own value."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.display-name.test.tsx'
+    result: "mutated expectation (hyphen for the signed em dash): 1 failed | 6 passed (7); restored: 7 passed (7)"
+    exit: 0
+    ts: "2026-10-12T07:52:00Z"
     seat: this session
 decisions:
   - id: D-keep-separator
@@ -56,11 +62,30 @@ decisions:
     decision: >-
       The pack names are not edited (seq-27 is signed and out of scope); the reason sentences in
       engine-adapter.ts that quote "(E23U)" are a separate surface and are not touched here.
-dissent: []
+dissent:
+  - seat: codex gpt-5.6-sol
+    rollout: 01a12d59-4780-75c2-bfa8-805b9c0ad61d
+    objection: >-
+      LOW: OutcomeSheet.display-name.test.tsx hardcoded "Working Visa - Trade and Economic Office (E23V)" with a
+      hyphen while signed seq-27 uses an em dash, so the test did not pin the pack-to-adapter-to-card/share path.
+    status: CONFIRMED
+    disposition: >-
+      Cured (test first, new commit):
+      The test now reads the E23V names from the newest signed production pack (same newest-by-filename rule as
+      sponsor-retirement-guard.test.ts), asserts they equal the em-dash value, and drives the card and the share
+      line from them. Mutating the expectation to a hyphen turns the suite red (1 failed | 6 passed).
+  - seat: codex gpt-5.6-sol
+    rollout: 01a12d59-4780-75c2-bfa8-805b9c0ad61d
+    objection: "INFO: no other issues found; targeted tests, tsc and the rest of the Visa Oracle suite green; corpus test not run (read-only sandbox)."
+    status: RETRACTED
+    disposition: >-
+      Rejected, nothing to cure.
+      Nothing to cure. The corpus test it could not run is covered by the whole-suite run above
+      (55 files, 1432 tests, including walk-corpus tests), which passed in this session.
 spend:
   wall_clock_hours: 1
-  adversarial_rounds: 0
+  adversarial_rounds: 1
 results:
-  mouth_visa_oracle_suite: "55 files, 1431 tests passed"
+  mouth_visa_oracle_suite: "55 files, 1432 tests passed"
   mouth_tsc: clean
-  new_tests: "6 (3 helper unit, 3 render: card title and share line EN and ID, non-matching suffix)"
+  new_tests: "7 (3 helper unit, 1 signed-name pin, 3 render: card title and share line EN and ID, non-matching suffix)"

@@ -1,9 +1,47 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { describe, expect, it, vi } from "vitest";
 import { buildEngineOutcome } from "../_lib/engine-adapter";
 import type { Language } from "../_lib/flow";
 import { makeVisaOracleResponse } from "../_lib/visa-oracle-test-fixture";
 import { candidateDisplayName, OutcomeSheet } from "./OutcomeSheet";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PACKS_DIR = path.resolve(
+  __dirname,
+  "../../../../../../backend-rag/backend/services/visa_engine/contracts/packs",
+);
+
+/**
+ * The localized names of `productCode` exactly as the newest signed production
+ * pack carries them (same newest-by-filename rule as sponsor-retirement-guard),
+ * so the card and share-line tests run on the signed value, dash and all, not
+ * on a hand-typed approximation of it.
+ */
+function signedProductNames(productCode: string): { en: string; id: string } {
+  const newest = Math.max(
+    ...fs
+      .readdirSync(PACKS_DIR)
+      .map((file) => /^rulepack-prod-(\d+)\.signed\.json$/.exec(file))
+      .filter((match): match is RegExpExecArray => match !== null)
+      .map((match) => Number(match[1])),
+  );
+  const file = `rulepack-prod-${String(newest).padStart(3, "0")}.signed.json`;
+  const envelope = JSON.parse(
+    fs.readFileSync(path.join(PACKS_DIR, file), "utf-8"),
+  ) as {
+    payload: {
+      products: { product_code: string; names: { en: string; id: string } }[];
+    };
+  };
+  const product = envelope.payload.products.find(
+    (candidate) => candidate.product_code === productCode,
+  );
+  if (!product) throw new Error(`${file}: no product ${productCode}`);
+  return product.names;
+}
 
 // The pack names 37 of its 38 products with a trailing "(CODE)". The card
 // eyebrow and the share line already lead with the code, so the same code
@@ -73,13 +111,17 @@ async function renderAndCopy(
 }
 
 describe("OutcomeSheet — product code shown once", () => {
-  const name = {
-    en: "Working Visa - Trade and Economic Office (E23V)",
-    id: "Visa Kerja Kantor Dagang dan Ekonomi (E23V)",
-  };
+  const name = signedProductNames("E23V");
+
+  it("the names under test are the signed pack's own, em dash included", () => {
+    expect(name).toEqual({
+      en: "Working Visa \u2014 Trade and Economic Office (E23V)",
+      id: "Visa Kerja Kantor Dagang dan Ekonomi (E23V)",
+    });
+  });
 
   it.each([
-    ["en", "Working Visa - Trade and Economic Office"],
+    ["en", "Working Visa \u2014 Trade and Economic Office"],
     ["id", "Visa Kerja Kantor Dagang dan Ekonomi"],
   ] as const)(
     "%s: card title and share line carry the code once",
