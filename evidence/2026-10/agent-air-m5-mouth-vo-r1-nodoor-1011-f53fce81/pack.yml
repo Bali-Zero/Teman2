@@ -1,0 +1,56 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 ("vai") — on a real visitor result (retirement tile, under 55, 400 days) the dead end
+  promised "here's what instead" and an "open door above" while showing none; the page must not promise
+  what it does not show.
+mission: >-
+  A Visa Oracle dead end with no alternative to show no longer promises one.
+lanes:
+  - lane: vo-r1-nodoor
+    role: build
+    seat: Claude Sonnet 5 implementer, worktree mouth-vo-r1-nodoor-1011 on M5; orchestrator delta (shared step constants) by Claude Opus 5.5.
+  - lane: vo-r1-ground-truth
+    role: ground_truth
+    seat: >-
+      the visitor PDF of 2026-10-11 08:48 WITA (NO_SUPPORTED_PATH, AGE_BELOW_55, zero doors) and
+      buildNoPathDoors in engine-adapter.ts, which returns no door for a stay above 180 days without a
+      declared Second Home basis; the change asserts no rule of its own, it only stops promising a door.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+pii_scan: clean
+bites:
+  consumer: >-
+    the headline, sub-headline, next steps and Copy/Share summary of the public Visa Oracle result page
+    on a dead end (VerdictReveal, OutcomeSheet).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_no_door_copy.py
+  expect: "contains:no-door copy holds"
+receipts:
+  - claim: The whole visa-oracle Vitest tree passes with the change, including the i18n census and client-copy bans.
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/'
+    result: "Test Files 50 passed (50), Tests 1328 passed (1328)"
+    exit: 0
+    ts: "2026-10-11T01:12:00Z"
+    seat: this session
+  - claim: The observer passes on the branch head.
+    cmd: python3 scripts/ci/observe_visa_oracle_no_door_copy.py
+    result: "Tests 8 passed (8); no-door copy holds"
+    exit: 0
+    ts: "2026-10-11T01:18:42Z"
+    seat: this session
+  - claim: apps/mouth typechecks.
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-11T01:12:00Z"
+    seat: this session
+decisions:
+  - id: D-override-not-state
+    decision: >-
+      NO_SUPPORTED_PATH_NO_DOOR is a copy override selected from the outcome (state plus empty
+      alternatives), exactly like SECOND_HOME_STUDIO; the engine state and the one-door copy are unchanged.
+  - id: D-steps-shared
+    decision: >-
+      The no-door list reuses the generic list's advisor and keep-summary step objects, so the wording of
+      the two lists cannot drift.
+dissent: []

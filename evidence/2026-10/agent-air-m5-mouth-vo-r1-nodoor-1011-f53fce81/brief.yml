@@ -1,0 +1,22 @@
+gear: 1
+gear_reason: >-
+  Client-copy override in the mouth result page (one predicate, two i18n keys, a two-step list) plus
+  its tests and a no-argument observer; no backend, no pack, no data.
+mission: >-
+  A Visa Oracle dead end with no alternative to show no longer promises one.
+objective: >-
+  A NO_SUPPORTED_PATH outcome whose buildNoPathDoors list is empty renders a headline, sub-headline,
+  share text and next-step list (EN and ID) that point to a Bali Zero advisor and never to "what instead"
+  or an "open door"; a dead end with at least one door keeps today's copy unchanged.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/VerdictReveal.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/outcome-view-model.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/NoPathWithoutDoors.test.tsx
+  - scripts/ci/observe_visa_oracle_no_door_copy.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
