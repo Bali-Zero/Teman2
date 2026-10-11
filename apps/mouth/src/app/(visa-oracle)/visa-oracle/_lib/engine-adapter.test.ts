@@ -16,6 +16,7 @@ import {
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   SOURCELESS_NO_PATH_CODES,
   SUPPORT_REASON_COPY,
+  E33G_ANNUAL_INCOME_THRESHOLD_USD,
   E33E_DEPOSIT_THRESHOLD_USD,
   RETIREMENT_INCOME_THRESHOLD_USD,
   buildEngineOutcome,
@@ -154,6 +155,14 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     expect(SUPPORT_REASON_COPY.E33A_SPONSOR_NOT_GOVERNMENT).toEqual({
       en: "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian central-government body, and you did not name one as your sponsor.",
       id: "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah pusat Indonesia, dan Anda tidak menyebutkan instansi pemerintah pusat sebagai penjamin Anda.",
+    });
+  });
+
+  it("states the E33G annual-income exclusion threshold in both languages", () => {
+    expect(E33G_ANNUAL_INCOME_THRESHOLD_USD).toBe(60_000);
+    expect(SUPPORT_REASON_COPY.E33G_INCOME_BELOW_THRESHOLD).toEqual({
+      en: "The Remote Worker visa (E33G) needs a salary or income of at least USD 60,000 a year; the yearly figure you gave is below it.",
+      id: "Visa Rumah Kedua Pekerja Jarak Jauh (E33G) memerlukan gaji atau penghasilan minimal USD 60.000 per tahun; angka tahunan yang Anda berikan berada di bawah batas tersebut.",
     });
   });
 

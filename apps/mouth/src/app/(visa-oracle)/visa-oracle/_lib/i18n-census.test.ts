@@ -90,7 +90,6 @@ const TOMBSTONES: readonly string[] = [
   "whyweask.review_only",
 ];
 
-/** The allowlist may only shrink: lower this with it, never raise it. */
 const ALLOWLIST_CEILING = 102;
 
 const UNRENDERED_ALLOWLIST: readonly {

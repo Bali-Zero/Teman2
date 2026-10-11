@@ -324,6 +324,13 @@ const en = {
   "q.remote_employer_country.label": "Employer country code",
   "why.remote_employer_country":
     "We record the country code exactly as you enter it and do not interpret it.",
+  "q.remote_annual_income_usd":
+    "What is your yearly salary or income, in US dollars?",
+  "q.remote_annual_income_usd.hint":
+    "Enter the yearly amount in whole US dollars. If you are paid in another currency, enter its US-dollar equivalent.",
+  "q.remote_annual_income_usd.label": "Yearly income",
+  "why.remote_annual_income_usd":
+    "This amount decides whether the remote-worker visa can fit your plan. It is used exactly as you enter it.",
   "q.remote_pt_pma":
     "Is this remote-work plan tied to a committed Indonesian PT PMA?",
   "q.remote_pt_pma.hint":
@@ -419,6 +426,7 @@ const en = {
   "q.unit.idr": "IDR",
   "q.unit.usd": "USD",
   "q.unit.usd_month": "USD per month",
+  "q.unit.usd_year": "USD per year",
 
   "q.family_relation": "How are you related to the proposed sponsor?",
   "q.family_relation.hint": "Choose the relationship that can be documented.",
@@ -1364,6 +1372,13 @@ const id: Record<Keys, string> = {
   "q.remote_employer_country.label": "Kode negara pemberi kerja",
   "why.remote_employer_country":
     "Kami mencatat kode negara persis seperti yang Anda masukkan dan tidak menafsirkannya.",
+  "q.remote_annual_income_usd":
+    "Berapa gaji atau penghasilan tahunan Anda, dalam dolar AS?",
+  "q.remote_annual_income_usd.hint":
+    "Masukkan jumlah tahunan dalam dolar AS (angka bulat). Jika Anda dibayar dalam mata uang lain, masukkan nilai setaranya dalam dolar AS.",
+  "q.remote_annual_income_usd.label": "Penghasilan tahunan",
+  "why.remote_annual_income_usd":
+    "Jumlah ini menentukan apakah visa pekerja jarak jauh dapat sesuai dengan rencana Anda. Jumlah ini digunakan persis seperti yang Anda masukkan.",
   "q.remote_pt_pma":
     "Apakah rencana kerja remote ini terikat pada komitmen PT PMA Indonesia?",
   "q.remote_pt_pma.hint":
@@ -1462,6 +1477,7 @@ const id: Record<Keys, string> = {
   "q.unit.idr": "IDR",
   "q.unit.usd": "USD",
   "q.unit.usd_month": "USD per bulan",
+  "q.unit.usd_year": "USD per tahun",
 
   "q.family_relation": "Apa hubungan Anda dengan calon sponsor?",
   "q.family_relation.hint": "Pilih hubungan yang dapat dibuktikan.",

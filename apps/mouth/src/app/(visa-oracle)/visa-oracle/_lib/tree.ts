@@ -771,6 +771,29 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.remote_employer_country" },
     notSure: { mode: "human-review", because: "unknown-is-inert" },
   },
+  remote_annual_income_usd: {
+    id: "remote_annual_income_usd",
+    i18nKey: "q.remote_annual_income_usd",
+    kind: "number",
+    group: "details",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["work.annual_foreign_income_usd"],
+    },
+    options: [],
+    numberInput: {
+      min: 0,
+      max: Number.MAX_SAFE_INTEGER,
+      step: 1,
+      labelI18nKey: "q.remote_annual_income_usd.label",
+      unitI18nKey: "q.unit.usd_year",
+    },
+    whyWeAsk: { i18nKey: "why.remote_annual_income_usd" },
+    // `el.e33g.remote-work` (seq-28) requires it with on_unknown
+    // NEEDS_INPUT; notSure deliberately omitted -- same idiom as the
+    // qualification questions above: an unknown answer would only make the
+    // engine ask this same question again.
+  },
   remote_pt_pma: {
     id: "remote_pt_pma",
     i18nKey: "q.remote_pt_pma",

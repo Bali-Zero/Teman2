@@ -2,7 +2,7 @@
 
 ``test_gold_coverage_floor.py`` proves the pack can support a product when
 every fact arrives. This file proves the opposite half, and it is the half
-the user lives in: replay the **115 real interview walks** — every distinct
+the user lives in: replay the **131 real interview walks** — every distinct
 path through ``flow.ts``'s two-arm spine and ``getCategoryQuestionIds``'
 eleven categories, each answered through the real ``fact-mapper.ts`` —
 against the highest signed PRODUCTION pack, and pin the outcome census.
@@ -929,6 +929,8 @@ _EXPECTED_OUTCOME_ON_SEQ20: dict[str, tuple[str, tuple[str, ...]]] = {
     # product — which left the highest-demand public product named by no walk
     # in the corpus.
     "offshore/remote/foreign_only": ("SUPPORTED_CANDIDATES", ("E33G",)),
+    "offshore/remote/foreign_only/income_59999": ("SUPPORTED_CANDIDATES", ("E33G",)),
+    "offshore/remote/foreign_only/income_60000": ("SUPPORTED_CANDIDATES", ("E33G",)),
     "offshore/retirement/bank_deposit": ("NO_SUPPORTED_PATH", ()),
     # D3-3 (PR-D3): now ALSO asks `family_sponsor_confirmed` (default "yes"),
     # and the corpus's canned passive-income default clears E33F's own
@@ -1317,12 +1319,14 @@ EXPECTED_STATE_CENSUS_BY_SEQUENCE[25] = EXPECTED_STATE_CENSUS_BY_SEQUENCE[24]
 EXPECTED_STATE_CENSUS_BY_SEQUENCE[26] = EXPECTED_STATE_CENSUS_BY_SEQUENCE[25]
 EXPECTED_STATE_CENSUS_BY_SEQUENCE[27] = EXPECTED_STATE_CENSUS_BY_SEQUENCE[26]
 # PR-11 adds 10 SUPPORTED_CANDIDATES and 3 NO_SUPPORTED_PATH walks to EVERY
-# sequence (see `_PR11_RETIREMENT_OUTCOMES`); no new NEEDS_INPUT, no new hold.
+# sequence (see `_PR11_RETIREMENT_OUTCOMES`), and seq-28 Step B adds the two
+# remote-income boundary witnesses as SUPPORTED_CANDIDATES on seq-20..27;
+# no new NEEDS_INPUT, no new hold.
 EXPECTED_STATE_CENSUS_BY_SEQUENCE = {
     _seq: {
         **_census,
         "NO_SUPPORTED_PATH": _census["NO_SUPPORTED_PATH"] + 3,
-        "SUPPORTED_CANDIDATES": _census["SUPPORTED_CANDIDATES"] + 10,
+        "SUPPORTED_CANDIDATES": _census["SUPPORTED_CANDIDATES"] + 12,
     }
     for _seq, _census in EXPECTED_STATE_CENSUS_BY_SEQUENCE.items()
 }
@@ -2354,9 +2358,13 @@ def test_corpus_has_the_expected_real_interview_walks(walks: dict[str, dict[str,
     retirement walks that answer the money questions with explicit values on
     either side of the pack's bounds (deposit 49,999 / 50,000, state bank,
     own name, income 2,999 / 3,000) instead of the corpus-wide 1,000,000,000
-    default — see `_PR11_RETIREMENT_OUTCOMES`."""
+    default — see `_PR11_RETIREMENT_OUTCOMES`.
 
-    assert len(walks) == 129, f"expected 129 interview walks, found {len(walks)}"
+    Seq-28 Step B (2026-10-11): adds 2, corpus 129 -> 131:
+    `offshore/remote/foreign_only/income_59999` and `income_60000`. Both are
+    E33G under seq-20..27 because those packs do not read the new fact."""
+
+    assert len(walks) == 131, f"expected 131 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
