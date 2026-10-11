@@ -20,9 +20,22 @@ struct CensusFramesKey: PreferenceKey {
 }
 
 extension View {
-    /// `value` is a descriptor, never drawn text (lead ruling 2026-10-11): a step ("0"…"3" in `scaleOrder`), an ordinal,
-    /// a fraction ("0.49"), or a chip's tone as the record's own state dispatches it (`Theme.tone(<record field>)`),
-    /// never the View's own tone variable. Off unless a band snapshot collects (`--layout-json`).
+    /// `name` is one of png_census's NAMES, and `value` matches that name's pattern (PR 3-h-2b): a step ("0"…"3" in
+    /// `scaleOrder`, `ScaleMatrix.step`) for `matrix.head/.chip/.cell`, a tone for `chip.national`, `chip.bali` and
+    /// `headsup`, an ordinal for `headsup.label/.sentence`, a fraction ("0.49") for `bar`, nothing for every other name.
+    /// Never drawn text. A tone comes from the RECORD, never from the function that paints the element (lead ruling
+    /// 2026-10-11): `chip.national` is `Theme.tone(k.pmaStatus ?? "")`, `chip.bali` the tone of
+    /// `KBLIVerdict.of(record:).bali`, `headsup` the tone `KBLIVerdict.headsUp(record:)` gives; the band snapshot writes
+    /// those beside the frames and png_census FAILs a value that disagrees, so a wrong colour cannot hide behind its own
+    /// tone variable.
+    ///
+    /// Where the mark sits (lead ruling 2026-10-11, #8250 gate binding 5): OUTSIDE any `.offset` or `Beat`, after it in
+    /// the chain (`x.offset(…).censusFrame(…)`), so the frame says where the element must LAND and the check verifies
+    /// that its ink is there. A mark inside a beat travels with the offset: an element left at a residual offset would
+    /// carry its frame along and pass. Where a beat moves a CONTAINER of the marked element, the snapshot that renders
+    /// mid-motion (`--at-ms`) collects the frames with the motion at its end, so they still say where it lands. At the
+    /// final frame both coincide. A static nudge is layout (`padding`), not `.offset`. Off unless a band snapshot
+    /// collects (`--layout-json`).
     func censusFrame(_ name: String, _ value: String = "") -> some View {
         modifier(CensusMark(name: name, value: value))
     }

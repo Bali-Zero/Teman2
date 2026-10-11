@@ -352,7 +352,19 @@ extension Snapshot {
         if let jsonPath = layoutJSONPath {
             let frames = marks.frames.map { f -> [String: Any] in
                 ["name": f.name, "value": f.value, "frame": [f.rect.minX, f.rect.minY, f.rect.width, f.rect.height]] }
-            let doc: [String: Any] = ["width": w, "frames": frames]
+            var doc: [String: Any] = ["width": w, "frames": frames]
+            // The record's own state as the harness reads it, beside the frames (PR 3-h-2b): a mark's value comes from
+            // the record, never from the function that paints the element, and png_census FAILs one that disagrees.
+            if ["detail-card", "dossier", "sheet-ledger", "chat"].contains(band), let k = state.store.code(code) {
+                let bali: String
+                switch KBLIVerdict.of(record: k).bali {
+                case .open: bali = "open"
+                case .blocked: bali = "closed"
+                case .undetermined: bali = "neutral"
+                }
+                doc["record"] = ["code": code, "national": "\(Theme.tone(k.pmaStatus ?? ""))", "bali": bali,
+                                 "headsup": "\(KBLIVerdict.headsUp(record: k, isID: lang.lang == .id).tone)"]
+            }
             if let data = try? JSONSerialization.data(withJSONObject: doc, options: [.prettyPrinted, .sortedKeys]) {
                 try? data.write(to: URL(fileURLWithPath: jsonPath))
                 FileHandle.standardError.write("census frames written: \(jsonPath) (\(frames.count))\n".data(using: .utf8)!)
