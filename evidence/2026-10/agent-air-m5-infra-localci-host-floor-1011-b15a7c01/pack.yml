@@ -83,6 +83,10 @@ receipts:
     seat: claude-sonnet-5-5 implementer on M5
 residuals:
   - "L4, pre-existing and not B15: test_runner.py::test_sigterm_during_a_check_leaves_interrupted_not_running uses a fixed threading.Timer(1.0) and races under load; passed in the last run, left alone."
+  - "L-pre-existing, not B15: mutant b6-undated-run-trimmed is STALE on origin/main too (its text no longer occurs in prune.py); not this lane's, left alone, so the full sweep still exits 1 on it."
+  - "LOW, owed: replay evictions have no cap; the EVICT_CAP alternation counts only decisions. Bounded and rare at a 90 floor."
+  - "LOW, owed hardening: the parent watcher has no pid-reuse guard. It fails safe (a reused pid looks alive); the hardening is getppid() != pid for the direct child."
+  - "LOW: the janitor's BLACK band (under 105 GB) will warn on heavy ticks under a 90 floor; aligned in the janitor rollout-3 PR."
   - "The pro.disk_floor organ (scripts/ops/pro_disk_floor_tick.sh) still warns under 100 GB: a separate organ, not moved to 90 by this change."
 brief_ref: evidence/brief.yml
 dissent:
@@ -110,3 +114,19 @@ dissent:
     objection: "L4 pre-existing: test_runner.py sigterm test races under load."
     status: CONFIRMED
     resolution: "Left alone, named in residuals."
+  - seat: claude-opus-5-5 fresh re-gate (BLOCKED)
+    objection: "BLOCKER 1: six mutants STALE after the B15 change and the CodeQL rebase - five B8 floor rules matched twice (the host-pressure loop copied the VM-floor sort key and rm line) and f2-key-in-the-runner-env matched zero times (run_gate's env line gained LOCALCI_PARENT_PID); the full sweep exits 1."
+    status: CONFIRMED
+    resolution: "Sort key and image rm factored into shed_order and rm_image in prune.py, used by both branches; the B8 rules re-anchored on them; f2 re-anchored on the LOCALCI_PARENT_PID text and still injects the key into the runner env; b15-pressure-rm-forced added. A static count over the whole table finds every rule at exactly 1 match except b6-undated-run-trimmed (pre-existing); the 7 re-anchored/new rules and the 18 B15 rules are KILLED."
+  - seat: claude-opus-5-5 fresh re-gate (BLOCKED)
+    objection: "BLOCKER 2: origin/main moved (CodeQL, #8279) over runner.py, merger.py, the README and merger_mutants.py; the branch had to be rebased and both sides' rules kept."
+    status: CONFIRMED
+    resolution: "Rebased onto origin/main without conflicts; the CodeQL mutant rules and the B15 rules both survive; the suites, including test_codeql_contexts.py, re-run after the rebase."
+  - seat: claude-opus-5-5 fresh re-gate (BLOCKED)
+    objection: "LOW: spec section 4 and the README cite 'its start line shows start_floor_gb=100', which the wrapper's start line does not print."
+    status: CONFIRMED
+    resolution: "Both now state the true observable: cmp -s of the live wrapper against origin/main, lint_home_fork --check green, and start_floor_gb on a host_below_floor journal skip line."
+  - seat: claude-opus-5-5 fresh re-gate (BLOCKED)
+    objection: "LOW: the wrapper heartbeat printed floor_gb=100 (the start floor) beside the journal's floor_gb 90."
+    status: CONFIRMED
+    resolution: "The wrapper note prints start_floor_gb=; README and the one test that reads it follow."

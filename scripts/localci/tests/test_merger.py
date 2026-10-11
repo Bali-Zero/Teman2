@@ -1048,7 +1048,7 @@ def test_under_the_floor_the_tick_journals_its_skip_the_prune_still_runs_and_the
     assert wrap(env).returncode == 0
     assert calls_of(tmp_path) == ["tick", "prune"] and f"--host-free-gb={free} " in (tmp_path / "calls").read_text()
     hb = heartbeat(tmp_path)
-    assert hb["status"] == status and (status == "ok" or hb["note"].startswith("host_below_floor free_gb=99 floor_gb=100: no run started"))
+    assert hb["status"] == status and (status == "ok" or hb["note"].startswith("host_below_floor free_gb=99 start_floor_gb=100: no run started"))
 
 
 def test_a_merger_that_cannot_journal_the_floor_is_not_started_under_it_and_a_main_without_prune_still_ticks(tmp_path):
