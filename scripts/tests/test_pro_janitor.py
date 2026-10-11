@@ -951,7 +951,7 @@ def test_the_heartbeat_note_is_the_payloads_summary_line_or_the_rc_never_a_trace
     home = tmp_path / "whome"
     (home / ".nuzantara-cron" / "pro_janitor.py").write_text(payload + "\n")
     b = tmp_path / "wbin"
-    res = subprocess.run(["/bin/bash", str(WRAPPER)], env={"HOME": str(home), "TMPDIR": str(tmp_path), "PATH": f"{b}:/usr/bin:/bin"},
+    subprocess.run(["/bin/bash", str(WRAPPER)], env={"HOME": str(home), "TMPDIR": str(tmp_path), "PATH": f"{b}:/usr/bin:/bin"},
                          capture_output=True, text=True, timeout=60)
     raw = (home / ".organism" / "last_seen" / "pro.janitor.json").read_text()
     hb = json.loads(raw)
@@ -1868,12 +1868,13 @@ def test_a_keepalive_stuck_after_the_join_is_journaled_and_ends_the_rule(box, mo
     monkeypatch.setattr(pj.Lock, "JOIN_TIMEOUT", 0.2)
     monkeypatch.setattr(os, "utime", blocked)
     try:
-        inproc(box, monkeypatch, "110", PRO_JANITOR_LOCK_REFRESH="0.01")
+        rc = inproc(box, monkeypatch, "110", PRO_JANITOR_LOCK_REFRESH="0.01")
         time.sleep(0.3)   # let the thread reach the blocked utime before the join gives up
     finally:
         gate.set()
     res = box.rules()["playwright-old"]
     assert res["lock_thread_stuck"] is True and len(res["entries"]) == 1   # the second candidate was never started
+    assert rc == 10   # a keepalive that would not stop is a warning on the heartbeat, never an ok tick
 
 
 def test_a_long_walk_with_refreshes_keeps_the_lease_and_the_candidate_is_removed(tmp_path):
@@ -1936,7 +1937,7 @@ def test_our_lock_is_gone_after_success_and_after_failure(box):
 
 
 def test_a_free_space_delta_of_the_filesystem_is_journaled_beside_the_unlinked_bytes(box):
-    root = two_chromiums(box)
+    two_chromiums(box)
     box.run("110", apply=True)
     res = box.rules()["playwright-old"]
     assert isinstance(res["freed_fs_bytes"], int) and res["unlinked_bytes"] == 10
@@ -2195,7 +2196,7 @@ def test_a_dirlock_older_than_an_hour_makes_the_run_exit_10(box):
 
 
 def test_each_rule_journals_its_own_freed_fs_bytes_apart_from_the_directory_rules_unlinked_bytes(box, monkeypatch):
-    root = two_chromiums(box)
+    two_chromiums(box)
     links(box)
     for k, v in {"PRO_JANITOR_HOME": str(box.home), "PRO_JANITOR_STATE_DIR": str(box.state), "PRO_JANITOR_JOURNAL": str(box.journal),
                  "PRO_JANITOR_NOW": str(NOW), "PRO_JANITOR_UV": str(box.uv), "PRO_JANITOR_NPM": str(box.npm),

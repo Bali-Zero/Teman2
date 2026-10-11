@@ -89,7 +89,7 @@ The consequence, named: this organ is a hygiene tool, not a security boundary.
    - **Refresh.** A keepalive thread, holding its own `dup` of the root fd (closed by the thread itself), refreshes every 2 s:
      `t1 = mono()` BEFORE an identity `stat`; the `stat` must show our `(st_dev, st_ino)`; then `utime` by name. Only if both
      succeed AND the `utime` returned before the current `lease_until` does the lease become `t1 + 8 s`; the mtime it wrote is
-     at or after `t1`. Anything else (an error, a different inode, a `utime` that returned after the lease, a wall clock that moved
+     at or after `t1`. Anything else (an error, an inode other than ours, a `utime` that returned after the lease, a wall clock that moved
      more than 1 s apart from the monotonic clock since the previous refresh, since Playwright judges staleness by the wall
      clock) ends the thread, and the lease is no longer extended.
    - **Check.** Immediately before EVERY unlink and rmdir, after that object's own checks, the walk requires

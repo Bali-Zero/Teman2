@@ -1175,7 +1175,7 @@ def main():
         tier, line["mode"], free0, "" if free == free0 else "->%.1fGB" % free,
         (" state_invalid" if invalid else "") + (" free_read_failed" if free_failed else ""),
         ",".join("%s:%s" % (r["id"], r["status"]) for r in results) or "none"))
-    stale = any(r.get("stale_dirlock") for r in results)   # a lock older than an hour: the heartbeat must show it
+    stale = any(r.get("stale_dirlock") or r.get("lock_thread_stuck") for r in results)   # a lock older than an hour, or a keepalive that would not stop: the heartbeat must show it
     return 10 if (tier == "BLACK" or errs or invalid or free_failed or unwritable or stale) else 0
 
 
