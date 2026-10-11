@@ -242,12 +242,31 @@ def c24(im, fr, arg):
     if cells <= 1 and hints: bad.append("a hint over %d cell: nothing to pick" % cells)
     return not bad, "%d rings accent on 4 sides and clear, %d hint over %d cells: %s" % (len(fr["ring"]), len(hints), cells, "; ".join(bad) or "none")
 
-CHECKS = {"C%d" % n: f for n, f in zip(range(11, 25), (c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24))}
+def c25(im, fr, arg):
+    """live mount (G2, #8290 gate): the sheet the app mounts, rendered through SearchListView as the user reaches it (live/),
+    is the immersive layout: its path nodes (matrix.head) stand as tall as the immersive twin's (imm/) and not as the flat
+    twin's (tall/), both read from the same set. The two twins must differ, or the witness bites nothing. The text guard
+    (live_host_check.py) reads the source; this reads the mount: `#if false`, a sibling host and `transformEnvironment` pass
+    the text guard and FAIL here, and `.immersiveHost().environment(\\.immersive, false)` (outside the host, so immersive)
+    FAILs the text guard and passes here."""
+    png, s = arg; root = png.parent.parent; name = png.name.replace("sheet-open-", "")
+    def heads(rel):
+        f = root / rel
+        if not f.exists(): raise Miss("no %s: the twin the live mount is read against" % rel)
+        h = sorted(fr_["frame"][3] for fr_ in json.load(open(f))["frames"] if fr_["name"] == "matrix.head")
+        if not h: raise Miss("%s has no matrix.head frame" % rel)
+        return h[len(h) // 2]
+    flat, imm = heads("tall/registry-sheet-open-" + name.replace(".png", ".json")), heads("imm/sheet-open-" + name.replace(".png", ".json"))
+    live = sorted(b[3] - b[1] for _, b in fr["matrix.head"]); live = live[len(live) // 2] / s
+    if abs(flat - imm) < 10: raise Miss("the flat and the immersive twins' path nodes are %.0f and %.0f pt: the witness cannot tell them apart" % (flat, imm))
+    return abs(live - imm) <= 2 and abs(live - flat) > 10, "live mount's path nodes %.0f pt; immersive twin %.0f pt, flat twin %.0f pt" % (live, imm, flat)
+
+CHECKS = {"C%d" % n: f for n, f in zip(range(11, 26), (c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25))}
 # The frames each check reads (C23: the ARMED row's own list of chips), and those it reads when present.
 NEEDS = {"C11": ("matrix.head", "matrix.chip"), "C12": ("headsup.label",), "C13": ("cap", "chip.bali", "bali.label"),
          "C14": ("cap",), "C15": ("basis.lead", "basis.body"), "C16": ("bar",), "C17": ("figure", "figure.peak", "card.peak"),
          "C18": ("census", "card"), "C19": ("uraian.item",), "C20": ("row.code", "row.title", "row.chip"),
-         "C21": ("ladder", "matrix"), "C22": ("group.digits", "row.code"), "C23": (), "C24": ("matrix.chip", "ring", "detail")}
+         "C21": ("ladder", "matrix"), "C22": ("group.digits", "row.code"), "C23": (), "C24": ("matrix.chip", "ring", "detail"), "C25": ("matrix.head",)}
 OPTIONAL = {"C12": ("headsup.sentence",), "C24": ("hint",)}
 # The census grammar (#8250 gate binding 2): a frame's name is one of these, and its value matches the name's pattern —
 # a tone, a step ("0"…"3" in `scaleOrder`), an ordinal, a fraction, or nothing. Never drawn text.
@@ -353,7 +372,7 @@ def judge(im, fr, s, c, arg, band="", record=None):
         for _, b in fr.get(n, []):
             if inked(im, b) < INK_MIN: raise Miss("frame %s at %s holds no ink: a mark on an empty area" % (n, b))
             if n in MEASURE and not MEASURE[n][0](im, b, s, band): raise Miss("frame %s at %s is not %s" % (n, b, MEASURE[n][1](band)))
-    return CHECKS[c](im, fr, (record, s) if c == "C24" else arg)
+    return CHECKS[c](im, fr, (record, s) if c == "C24" else arg)   # C25's arg is (png, s), made by armed()
 # (PNG path relative to the set, as a regex; check; its argument). Each View PR arms its own bands here when it names
 # the frames its checks read (lead ruling 2026-10-11): none is armed by the harness itself.
 LEDGER56 = r"(?:imm/)?sheet-ledger-(?:day|night)-(?:en|id)\.png|tall/sheet-ledger-56101-(?:day|night)-en\.png"
@@ -362,7 +381,7 @@ OPEN = r"tall/registry-sheet-open-\d+-(?:day|night)-(?:en|id)\.png|imm/sheet-ope
 TONES = ("chip.national", "chip.bali")
 ARMED = [(LEDGER56, "C11", 6), (LEDGER56, "C12", None), (LEDGER56, "C13", None), (LEDGER56, "C14", None), (LEDGER56, "C21", None),
          (LEDGER56, "C23", TONES), (TALL71, "C12", None), (TALL71, "C13", None), (TALL71, "C14", None), (TALL71, "C23", TONES),
-         (OPEN, "C24", None)]
+         (OPEN, "C24", None), (r"live/sheet-open-\d+-(?:day|night)-en\.png", "C25", None)]
 
 def frames(png, im):
     """({name: [(value, px box)]} of the frames drawn whole on the canvas, px per pt, the record's own state or None)."""
@@ -379,7 +398,7 @@ def armed(png, rel, im):
     out = []
     for rx, c, arg in ARMED:
         if not re.fullmatch(rx, rel): continue
-        try: fr, scale, record = frames(png, im); ok, detail = judge(im, fr, scale, c, arg, png.name, record)
+        try: fr, scale, record = frames(png, im); ok, detail = judge(im, fr, scale, c, (png, scale) if c == "C25" else arg, png.name, record)
         except (Miss, OSError, ValueError, KeyError) as e: ok, detail = False, "%s: %s" % (type(e).__name__, e)
         out.append((ok, "%s %s" % (c, detail)))
     return out
@@ -593,6 +612,18 @@ def c_selftest():
     for nm, v in (("bar", 0.5), ("matrix.chip", 2), ("cap", None)):
         why = grammar(nm, v); n += 1   # a non-string value names its cause, never a TypeError (#8276 gate binding 6)
         if not why or "string" not in why: out.append("VALUE-SELFTEST %s=%r: %s" % (nm, v, why))
+    with tempfile.TemporaryDirectory() as t:   # C25: the live mount against its flat and immersive twins, 2 px per pt
+        for rel, h in (("tall/registry-sheet-open-1-day-en.json", 15), ("imm/sheet-open-1-day-en.json", 51), ("tall/registry-sheet-open-2-day-en.json", 15),
+                       ("imm/sheet-open-2-day-en.json", 15)):
+            pathlib.Path(t, rel).parent.mkdir(exist_ok=True); pathlib.Path(t, rel).write_text(json.dumps({"width": 1, "frames": [
+                {"name": "matrix.head", "value": "0", "frame": [0, 0, 80, h]}]}))
+        for code, h, want in ((1, 51, 1), (1, 15, 0), (2, 15, 0), (2, 51, 0)):
+            im = Image.new("RGB", (400, 400), PAPER); d = ImageDraw.Draw(im); d.rectangle([10, 10, 150, 10 + 2 * h - 1], fill=INK)
+            png = pathlib.Path(t, "live", "sheet-open-%d-day-en.png" % code); png.parent.mkdir(exist_ok=True)
+            try: ok, detail = judge(im, {"matrix.head": [("0", (10, 10, 150, 10 + 2 * h))]}, 2, "C25", (png, 2))
+            except Miss as e: ok, detail = False, str(e)
+            n += 1
+            if ok != bool(want): out.append("C25-SELFTEST twins %s, live %d pt: %s" % ({1: "15/51", 2: "15/15"}[code], h, detail))
     with tempfile.TemporaryDirectory() as t:   # every JSON of the set is read, armed or not (#8250 gate binding 3)
         Image.new("RGB", (40, 40), PAPER).save(pathlib.Path(t, "detail-card-unarmed.png"))
         for v, want in (("open", 1), ("Mikro", 0)):
