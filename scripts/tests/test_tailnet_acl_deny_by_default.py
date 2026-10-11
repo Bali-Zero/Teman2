@@ -1,10 +1,12 @@
 """infra/tailscale/policy.hujson must stay deny-by-default, and must keep naming the shell.
 
 Why this guard exists. The tailnet's live policy is the factory default: one packet-filter rule,
-every node -> 0.0.0.0/0, all ports. On top of it `tailscale serve` on Pro publishes
-`/term` -> 127.0.0.1:7681 (`ttyd -W zsh`, writable, no credential flag) to the whole tailnet. Not
-a live breach — every node is Zero's own — but a hard blocker on the team expansion, and the kind
-of exposure that comes back the moment someone "temporarily" widens a rule.
+every node -> 0.0.0.0/0, all ports. On top of it `tailscale serve` on Pro published
+`/term` -> 127.0.0.1:7681 (`ttyd -W zsh`, writable, no credential flag) to the whole tailnet.
+Measured 2026-10-11, the tailnet held twelve nodes and six of them were not the fleet aliases
+pinned below, so `/term` was taken out of `serve` that day; the policy is what keeps it out of
+reach once it is restored, and the kind of exposure that comes back the moment someone
+"temporarily" widens a rule.
 
 The first draft of the policy widened it by accident, not by malice: it granted
 `antonellosiano@gmail.com -> antonellosiano@gmail.com:*`, which reads as "the fleet keeps talking
@@ -88,6 +90,7 @@ infra/guard-conformance/.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -111,7 +114,7 @@ SHELL_PORT = 443
 #
 # IT IS NOT A CLOSED SET, AND THAT IS THE LOAD-BEARING PART. The obvious spelling of "pin the
 # table" — `hosts == EXPECTED_HOSTS` — would go RED the first time an operator follows this
-# repo's OWN enrolment procedure, which adds a seventh entry (`enroll-team-device.md` step 5,
+# repo's OWN enrolment procedure, which adds an entry (`enroll-team-device.md` step 5,
 # and the worked example at the foot of policy.hujson). A guard that fails when someone does
 # exactly what the runbook tells them to is worse than the gap it closes, and it would fire at
 # enrolment time — the worst possible moment. So the assertion is TWO CONJOINED CLAUSES:
@@ -140,6 +143,13 @@ EXPECTED_HOSTS = {
 # trustworthy; this separate role constraint ensures that trust cannot be mistaken for permission
 # to originate traffic into the fleet. Both its alias and its pinned IP are rejected as sources.
 DESTINATION_ONLY_HOSTS = {"iqoo-15"}
+
+# A `hosts` KEY must be a name, never an address. `_canon_node` reads a token as an alias before
+# it reads it as an IP, so a key spelled like an address (`"<Mini's IP>": "<phone's IP>"`) would
+# shadow that machine: a rule toward Mini would be judged as a rule toward the phone, and the
+# ephemeral exception would carry the range to Mini (round-1 gate of #8244, N1). Whether the
+# console accepts such a key is unverified; an allowlist of one shape removes the question.
+HOST_ALIAS_NAME = re.compile(r"[a-z][a-z0-9-]*")
 
 # Derived, never re-typed: two literals for one fact are two chances to disagree.
 SHELL_HOST_IP = EXPECTED_HOSTS[SHELL_HOST]
@@ -497,6 +507,9 @@ def audit_policy(text: str) -> list[str]:
     for value in hosts.values():
         if not _is_bare_ipv4(str(value)):
             findings.append("HOST_VALUE_NOT_BARE_IPV4")
+    for key in hosts:
+        if not HOST_ALIAS_NAME.fullmatch(str(key)):
+            findings.append("HOST_ALIAS_NOT_A_NAME")
     # Clause 1: the seven pinned aliases are immovable. `.get()` rather than `in` so that DELETING a
     # pinned alias fails here too — a removed anchor is a moved anchor with extra steps.
     if any(hosts.get(alias) != ip for alias, ip in EXPECTED_HOSTS.items()):
@@ -518,7 +531,7 @@ def audit_policy(text: str) -> list[str]:
                 findings.append("UNRESOLVABLE_SRC_SELECTOR")
             # AN UNPINNED ALIAS MAY BE A DESTINATION, NEVER A SOURCE (gate condition C2,
             # 2026-08-29). The `hosts` pin is additive-tolerant on purpose — the enrolment runbook
-            # adds a seventh entry, and a guard that reddens when the operator follows the
+            # adds an entry, and a guard that reddens when the operator follows the
             # documented procedure is worse than the gap it closes. But that tolerance had a price
             # nobody had priced: an added alias holding a perfectly well-formed FOREIGN IPv4 became
             # "a node", and could then be granted anything. Probed port by port: `pro:443` was
@@ -733,7 +746,7 @@ def test_real_policy_is_deny_by_default_and_names_the_shell() -> None:
 def test_enrolling_a_team_laptop_keeps_the_guard_green() -> None:
     """The documented enrolment path must PASS. This test is the point of the additive tolerance.
 
-    `enroll-team-device.md` step 5 adds a seventh `hosts` entry and the support rule that reaches
+    `enroll-team-device.md` step 5 adds a `hosts` entry and the support rule that reaches
     it. A closed-set pin (`hosts == EXPECTED_HOSTS`) would go red exactly here — when an operator
     does what the runbook says, at enrolment time. This asserts the opposite, so that a future
     tightening of the pin cannot quietly reintroduce that failure: it would have to delete this
@@ -866,6 +879,12 @@ LIVE_FLOW_GUILT_CASES = [
     ("iqoo_as_source.hujson", "DESTINATION_ONLY_HOST_AS_SOURCE"),
     ("iqoo_ephemeral_accept_deleted.hujson", "EPHEMERAL_GRANT_NOT_ACCEPT_TESTED"),
     ("mini_redis_accept_deleted.hujson", "ACL_RULE_NOT_ACCEPT_TESTED"),
+    # Round-1 gate of #8244, N2: the exception's transport and its endpoint proof, via `grants`.
+    ("iqoo_grant_udp_range.hujson", "OVERBROAD_DST_PORT_RANGE"),
+    ("iqoo_grant_any_protocol_range.hujson", "OVERBROAD_DST_PORT_RANGE"),
+    ("iqoo_grant_accept_deleted.hujson", "EPHEMERAL_GRANT_NOT_ACCEPT_TESTED"),
+    # Round-1 gate of #8244, N1: an address-shaped key would shadow the machine it spells.
+    ("hosts_ip_shaped_alias.hujson", "HOST_ALIAS_NOT_A_NAME"),
 ]
 
 
@@ -961,6 +980,25 @@ def test_ephemeral_exception_requires_exact_source_destination_and_range(
     srcs: list, host: str, port: str, expected: bool
 ) -> None:
     assert _is_ephemeral_port_grant(srcs, host, port, EXPECTED_HOSTS) is expected
+
+
+@pytest.mark.parametrize(
+    "key,is_name",
+    [
+        ("pro", True),
+        ("iqoo-15", True),
+        ("apple-vision-pro", True),
+        ("team-laptop-01", True),
+        ("100.93.236.6", False),
+        ("100.64.0.0/10", False),
+        ("fd7a:115c:a1e0::1", False),
+        ("pro.lan", False),
+        ("1pro", False),
+        ("", False),
+    ],
+)
+def test_a_host_alias_must_be_a_name(key: str, is_name: bool) -> None:
+    assert bool(HOST_ALIAS_NAME.fullmatch(key)) is is_name
 
 
 def test_destination_only_host_is_recognised_by_alias_or_ip() -> None:

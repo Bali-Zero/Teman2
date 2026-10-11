@@ -16,9 +16,13 @@ serve` on Pro publishes `https://nuzantara.tail461666.ts.net/term` -> `127.0.0.1
 writable shell on Pro as user `nuzantara`**, the host with the wa-mirror raw PII, the CRM runtime
 and the secrets file.
 
-This is not a live breach: all seven nodes are Zero's own. It is a hard blocker on letting a
-teammate's laptop join, and **the ordering is the whole point** — apply the policy first, enroll
-second. Join-then-restrict leaves a window in which that laptop holds the shell.
+Measured 2026-10-11, that is not hypothetical. The tailnet holds twelve nodes under Zero's login,
+and six of them (four computers and two iPhones) are not aliases the policy pins. Under the
+allow-all default each of them could reach that shell, so `/term` was taken out of
+`tailscale serve` on Pro the same day as containment. Applying the policy gives those six nodes
+no reach at all, and **the ordering is the whole point**: apply the policy first, then restore
+`/term` or enroll a device. Join-then-restrict leaves a window in which that device holds the
+shell.
 
 ## Before you start
 
@@ -27,6 +31,8 @@ second. Join-then-restrict leaves a window in which that laptop holds the shell.
 - Know that you are **not** locked out by a bad ACL: an admin can always edit the policy again from
   the console over the public internet, which no ACL governs.
 - Read `infra/tailscale/policy.hujson` end to end, especially the `SHELL-ROUTE` block.
+- Know that **every node not pinned in `hosts` loses all reach on Save**: six on 2026-10-11. If
+  one of them is a device you rely on, pin it in a PR first; do not add it in the console.
 
 ## 1. Repo-side pre-check (session can run this)
 
@@ -206,7 +212,8 @@ Two paths, in order of preference:
 Rollback restores allow-all, which restores the unauthenticated shell to every node. That is
 acceptable only while every node is Zero's own — **if a team device has already joined, roll back
 by removing that device from the tailnet first** (console -> Machines -> Remove), then roll the
-policy back. Never leave a non-Zero device on an allow-all tailnet, even briefly.
+policy back. Never leave a non-Zero device on an allow-all tailnet, even briefly. On 2026-10-11
+six unpinned nodes were already on the tailnet, so this branch is the one that applies.
 
 ## What this runbook does not cover
 

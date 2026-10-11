@@ -29,14 +29,21 @@
 //
 // The exposure is reachable ONLY over port 443 on `pro`. So port 443 on `pro` is the shell port,
 // and every rule below that grants it names its sources one host at a time — never a wildcard,
-// never a whole user's device set, never a group. Two rules grant it (m5, and Zero's three iOS
-// devices) and both are Zero's own hardware. `tag:team-device` appears in no rule's `src` anywhere in
+// never a whole user's device set, never a group. Two rules grant it (m5, and the three iOS aliases
+// pinned for Zero's devices). `tag:team-device` appears in no rule's `src` anywhere in
 // this file, which is what keeps a teammate's laptop off that shell.
 //
-// This is NOT a live breach today: all seven nodes belong to `antonellosiano@gmail.com`. It is a
-// hard blocker on the tailnet team expansion. ORDERING IS LOAD-BEARING — apply this policy
-// BEFORE any team device joins; join-then-restrict leaves a window in which that device holds
-// the shell. Hardening ttyd itself (`-c user:pass`, or dropping `/term` from `serve`) changes how
+// MEASURED 2026-10-11 (`tailscale status --json` on m5). Earlier revisions of this paragraph
+// called this "NOT a live breach" because every node was Zero's own; that premise is false. The
+// tailnet holds twelve nodes under the one login `antonellosiano@gmail.com`, untagged, none
+// shared in. Six are aliases pinned below, and `iphone-14`'s pinned address is no longer among
+// them. The other six — four computers and two iPhones, whose device names match no alias here
+// — are not pinned, and under the allow-all default each of them could reach `/term`. The window
+// the next sentence warns about was already open, so `/term` was taken out of `tailscale serve`
+// on Pro the same day as containment. Applying this file gives an unpinned, untagged node no
+// reach at all. ORDERING IS LOAD-BEARING — apply this policy BEFORE `/term` goes back into
+// `serve` and BEFORE any further device joins; join-then-restrict leaves a window in which that
+// device holds the shell. Hardening ttyd itself (`-c user:pass`, or dropping `/term` from `serve`) changes how
 // Zero reaches his own machine from his own phone, so it stays his call and stays in the ledger;
 // this file contains the blast radius without touching his workflow.
 // ============================================================================

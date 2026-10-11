@@ -3,6 +3,8 @@ task: >-
   console by the owner. As written it would cut two flows observed live on 2026-10-11: Mini -> Pro:6379 (the OSINT
   nexus-bridge worker reading its Redis stream on Pro) and Pro -> iQOO wireless ADB TLS (tailnet address, port picked
   from the Linux ephemeral range). Declare both, with one narrow, pinned guard exception for the ephemeral range.
+  Re-cut after the round-1 gate of #8244 (BLOCK B1): the "every node is Zero's own" premise is replaced by the
+  measured inventory, address-shaped hosts keys are refused, and the exception's grants path is pinned by fixtures.
 lane: infra
 machine: m5
 date: 2026-10-11
@@ -32,3 +34,11 @@ acceptance:
       serial as a device, and the tailnet_policy_drift probe reads MATCH.
     probe: >-
       docs/runbooks/tailnet-acl-apply.md post-apply checks; scripts/tailnet_policy_drift.py on Pro.
+  A4:
+    text: >-
+      No text in the policy, its runbooks or the guard claims every node is Zero's own; the measured inventory (12
+      nodes, 6 unpinned, iphone-14 absent) is stated, and an address-shaped hosts key or a udp/any-protocol or
+      untested grant of the range each yields its own finding.
+    probe: >-
+      tailscale status --json on m5 (counts only); four new guilt fixtures; mutants on exception_transport, the
+      grants endpoint proof and the key-shape check.

@@ -17,7 +17,7 @@ whole directory exists to prevent. The four `hosts_*` fixtures carry the full pi
 precisely so that each isolates the spelling it is named for — measured: they emit that one code
 and nothing else.
 
-The seven `*_iqoo*`, `ephemeral_range_*`, and `mini_redis_accept_deleted` fixtures added for the
-2026-10-11 live-flow exception are full-anchor minimal policies. Each emits exactly its named
+The `iqoo_*`, `ephemeral_range_*`, `hosts_ip_shaped_alias` and `mini_redis_accept_deleted`
+fixtures added for the 2026-10-11 live-flow exception are full-anchor minimal policies. Each emits exactly its named
 finding so the wide-range exception, destination-only phone role, and accept-test requirements
 cannot mask one another.
