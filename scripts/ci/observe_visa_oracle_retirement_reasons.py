@@ -19,7 +19,7 @@ Exit 0 only if Vitest reports a full pass with the required titles present.
 
 from __future__ import annotations
 
-import re
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -27,56 +27,76 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MOUTH_DIR = REPO_ROOT / "apps" / "mouth"
 TEST_FILE = "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts"
-ANSI = re.compile(r"\x1b\[[0-9;]*m")
 MIN_TESTS = 100
 # Titles of the tests that prove this change; each must be reported as run, so
 # deleting one cannot hide behind the file total staying above MIN_TESTS.
 REQUIRED_TESTS = (
     "echoes a declared 2,999 and names the USD 3,000 minimum, EN and ID",
     "says a 'not sure' counted as zero instead of claiming a figure was given",
-    "falls back to the static sentence, which also names the figure",
+    "falls back to the neutral static sentence",
+    "keeps the retirement sentence when unrelated Second Home and paid-activity facts are also populated",
     "RETIREMENT_INCOME_THRESHOLD_USD tracks the signed pack's retirement-income hard filters",
     "E33E_RETIREMENT_ELIGIBLE's second figure (monthly income) is el.e33e.retirement's passive-income gte",
 )
-_SUMMARY = re.compile(r"^\s*Tests\s+(\d+) passed \((\d+)\)\s*$")
 
 
-def missing_tests(out: str, required: tuple[str, ...] = REQUIRED_TESTS) -> list[str]:
-    """Required test titles absent from a passing (checkmark) verbose line."""
-    passed = [l for l in out.splitlines() if "✓" in l or "✔" in l]
-    return [t for t in required if not any(t in l for l in passed)]
+def missing_tests(report: dict, required: tuple[str, ...] = REQUIRED_TESTS) -> list[str]:
+    """Required titles with no assertion whose status is exactly `passed`."""
+    passed = [
+        a.get("fullName", "")
+        for f in report.get("testResults", [])
+        for a in f.get("assertionResults", [])
+        if a.get("status") == "passed"
+    ]
+    return [t for t in required if not any(t in name for name in passed)]
 
 
-def summary_ok(line: str | None, minimum: int = MIN_TESTS) -> bool:
-    """True only for a Vitest line that is exactly `Tests  N passed (N)`, N >= minimum.
+def summary_ok(report: dict | None, minimum: int = MIN_TESTS) -> bool:
+    """True only for a report with every test passed and at least `minimum` of them.
 
-    Anything else (skipped, todo, failed, a reduced count, no line) is False.
+    Failed, pending, todo, a reduced count or no report at all is False.
     """
-    if line is None:
+    if not isinstance(report, dict):
         return False
-    match = _SUMMARY.match(line)
-    if match is None:
+    total = report.get("numTotalTests")
+    passed = report.get("numPassedTests")
+    if not isinstance(total, int) or not isinstance(passed, int):
         return False
-    passed, total = int(match.group(1)), int(match.group(2))
-    return passed == total and passed >= minimum
+    for key in ("numFailedTests", "numPendingTests", "numTodoTests"):
+        if report.get(key, 0) != 0:
+            return False
+    return report.get("success") is True and passed == total and passed >= minimum
+
+
+def parse_report(stdout: str) -> dict | None:
+    """The Vitest JSON reporter's object: the stdout slice from the first brace."""
+    start = stdout.find("{")
+    if start < 0:
+        return None
+    try:
+        return json.loads(stdout[start:])
+    except ValueError:
+        return None
 
 
 def main() -> int:
     result = subprocess.run(
-        ["npx", "vitest", "run", "--reporter=verbose", TEST_FILE],
+        ["npx", "vitest", "run", "--reporter=json", TEST_FILE],
         cwd=MOUTH_DIR,
         check=False,
         capture_output=True,
         text=True,
     )
-    out = ANSI.sub("", result.stdout + result.stderr)
-    tests = re.search(r"^\s*Tests\s.*$", out, re.MULTILINE)
-    line = tests.group(0) if tests else None
-    summary = line.strip() if line else "no Vitest summary"
-    if result.returncode != 0 or not summary_ok(line):
-        print(f"observe_visa_oracle_retirement_reasons: FAILED ({summary})\n{out[-1500:]}")
+    report = parse_report(result.stdout)
+    summary = (
+        f"{report.get('numPassedTests')} passed of {report.get('numTotalTests')}"
+        if report
+        else "no Vitest JSON report"
+    )
+    if result.returncode != 0 or not summary_ok(report):
+        print(f"observe_visa_oracle_retirement_reasons: FAILED ({summary})\n{result.stderr[-1500:]}")
         return result.returncode or 1
-    absent = missing_tests(out)
+    absent = missing_tests(report)
     if absent:
         print(f"observe_visa_oracle_retirement_reasons: FAILED (required tests absent: {absent})")
         return 1

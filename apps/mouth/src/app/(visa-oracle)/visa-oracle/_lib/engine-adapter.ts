@@ -791,8 +791,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Visa pelajar memerlukan penerimaan dan sponsor yang sudah dikonfirmasi; Anda belum mengonfirmasi keduanya.",
   ),
   RETIREMENT_INCOME_BELOW_THRESHOLD: text(
-    `The retirement visas (E33E/E33F) need documented passive income of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month; the figure you gave is below it.`,
-    `Visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan; angka yang Anda berikan di bawahnya.`,
+    `The retirement visas (E33E/E33F) need documented passive income of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month.`,
+    `Visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan.`,
   ),
 
   // Slice A10 — 14 EXCLUDE codes reachable in signed seq-23 that predate
@@ -1239,18 +1239,23 @@ function reason(
   // why it was written in the first place (#6441). The static entry in
   // SUPPORT_REASON_COPY remains the fallback for every walk whose facts do
   // not reconstruct the number.
-  const message = FACT_DERIVED_NO_PATH_CODES.has(code)
-    ? (secondHomeBelowThresholdReason(facts ?? {}) ??
-      paidActivityWithoutIndonesianPayerReason(facts ?? {}) ??
-      (code === "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
-        ? secondHomeDepositHolderReason(facts ?? {})
-        : code === "RETIREMENT_INCOME_BELOW_THRESHOLD"
-          ? retirementIncomeBelowThresholdReason(facts ?? {})
-          : undefined) ??
-      reasonMessage(code))
-    : DEPOSIT_ROUTE_DEAD_END_CODES.has(code)
-      ? (secondHomeDepositHolderReason(facts ?? {}) ?? reasonMessage(code))
-      : reasonMessage(code);
+  const message =
+    code === "RETIREMENT_INCOME_BELOW_THRESHOLD"
+      ? // Its own builder only: the retirement dead end must never be
+        // answered by a Second Home or paid-activity sentence drawn from
+        // unrelated (stale or mixed) facts.
+        (retirementIncomeBelowThresholdReason(facts ?? {}) ??
+        reasonMessage(code))
+      : FACT_DERIVED_NO_PATH_CODES.has(code)
+        ? (secondHomeBelowThresholdReason(facts ?? {}) ??
+          paidActivityWithoutIndonesianPayerReason(facts ?? {}) ??
+          (code === "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
+            ? secondHomeDepositHolderReason(facts ?? {})
+            : undefined) ??
+          reasonMessage(code))
+        : DEPOSIT_ROUTE_DEAD_END_CODES.has(code)
+          ? (secondHomeDepositHolderReason(facts ?? {}) ?? reasonMessage(code))
+          : reasonMessage(code);
   return {
     code,
     message,

@@ -1224,7 +1224,7 @@ describe("support reasons are sentences, not machine codes", () => {
       );
     });
 
-    it("falls back to the static sentence, which also names the figure, when the facts do not show a below-minimum income", () => {
+    it("falls back to the neutral static sentence (no claim about the visitor's figure) when the facts do not show a below-minimum income", () => {
       for (const facts of [
         undefined,
         {},
@@ -1235,9 +1235,33 @@ describe("support reasons are sentences, not machine codes", () => {
         expect(message).toEqual(
           SUPPORT_REASON_COPY.RETIREMENT_INCOME_BELOW_THRESHOLD,
         );
-        expect(message.en).toContain("USD 3,000 a month");
-        expect(message.id).toContain("USD 3.000 per bulan");
+        expect(message.en).toBe(
+          "The retirement visas (E33E/E33F) need documented passive income of at least USD 3,000 a month.",
+        );
+        expect(message.id).toBe(
+          "Visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal USD 3.000 per bulan.",
+        );
       }
+    });
+
+    it("keeps the retirement sentence when unrelated Second Home and paid-activity facts are also populated", () => {
+      const message = retirementNoPathMessage({
+        // category "retire" with leftovers that would each trigger a
+        // sibling builder if the retirement code ever reached them.
+        category: "retire",
+        retirement_basis: "passive_income",
+        secondhome_passive_income_usd: "2999",
+        secondhome_basis: "bank_deposit",
+        investment_vehicle: "bank_deposit",
+        secondhome_deposit_usd: "10000",
+        secondhome_state_bank: "no",
+        secondhome_own_name: "no",
+        other_paid_activity: "yes",
+        work_payer: "no",
+      });
+      expect(message.en).toBe(
+        "You declared USD 2,999 a month; the retirement visas (E33E/E33F) need documented passive income of at least USD 3,000 a month.",
+      );
     });
   });
 
