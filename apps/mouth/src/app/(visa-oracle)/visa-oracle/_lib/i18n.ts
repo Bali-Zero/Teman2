@@ -814,14 +814,14 @@ const en = {
     "This needs a human, not an algorithm",
   "verdict.headline.NO_SUPPORTED_PATH":
     "This exact path isn’t supported — here’s what instead",
-  // ENDING-ROUND E2: truthful in-page language — the previous "saved"
-  // wording overclaimed persistence; only the current page still holds the
-  // answers.
   // A NO_SUPPORTED_PATH with ZERO alternatives must not promise "what instead"
   // or an open door: not an `OutcomeState`, an override selected by
   // `VerdictReveal`/`buildShareSummary` exactly like SECOND_HOME_STUDIO.
   "verdict.headline.NO_SUPPORTED_PATH_NO_DOOR":
     "This path isn’t one this tool can confirm",
+  // ENDING-ROUND E2: truthful in-page language — the previous "saved"
+  // wording overclaimed persistence; only the current page still holds the
+  // answers.
   "verdict.headline.TEMPORARILY_UNAVAILABLE": "A pause in the journey.",
   "verdict.headline.NEEDS_INPUT": "A little more to go",
   // D23 "OPTION B-STUDIO": not a real `OutcomeState` — an override VerdictReveal
