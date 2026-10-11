@@ -1,4 +1,4 @@
-gear: 1
+gear: 2
 brief_ref: evidence/brief.yml
 ruling: >-
   Zero, 2026-10-11 ("vai") — on a real visitor result (retirement tile, under 55, 400 days) the dead end
@@ -17,6 +17,8 @@ lanes:
       buildNoPathDoors in engine-adapter.ts, which returns no door for a stay above 180 days without a
       declared Second Home basis; the change asserts no rule of its own, it only stops promising a door.
     nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "957bfc6a889d5496cb13e531760b1939fc472846d623044a74034805d8a308fc" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at origin/main (the buildNoPathDoors the copy now follows).
 pii_scan: clean
 bites:
   consumer: >-
