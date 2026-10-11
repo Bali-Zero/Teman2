@@ -16,7 +16,7 @@ serve` on Pro publishes `https://nuzantara.tail461666.ts.net/term` -> `127.0.0.1
 writable shell on Pro as user `nuzantara`**, the host with the wa-mirror raw PII, the CRM runtime
 and the secrets file.
 
-This is not a live breach: all six nodes are Zero's own. It is a hard blocker on letting a
+This is not a live breach: all seven nodes are Zero's own. It is a hard blocker on letting a
 teammate's laptop join, and **the ordering is the whole point** — apply the policy first, enroll
 second. Join-then-restrict leaves a window in which that laptop holds the shell.
 
@@ -107,7 +107,16 @@ ssh mini true && echo "pro->mini:22 OK"
 nc -z -G 5 100.93.236.6 11434 && echo "pro->mini:11434 (ollama) OK"
 nc -z -G 5 100.93.236.6 6379  && echo "pro->mini:6379 (redis) OK"
 nc -z -G 5 100.93.236.6 8990  && echo "pro->mini:8990 (KG api) OK"
+adb devices  # when iQOO is online with wireless debugging, its TLS serial must say "device"
 ```
+
+From Mini:
+
+```bash
+nc -z -G 5 100.107.22.111 6379 && echo "mini->pro:6379 (nexus bridge redis) OK"
+```
+
+After the port check, confirm the nexus-bridge worker keeps consuming its Redis stream.
 
 If one of these fails, the policy is missing a rule the fleet actually needs. **Add the rule with
 its evidence** (which script, which file:line) and re-apply. Do not widen a `dst` to `:*` to make a
@@ -117,8 +126,9 @@ red go green — that is exactly the defect this policy replaced, and the CI gua
 > missing flow needs a machine to be a **source** — a new node that must reach `mini:11434`, say,
 > rather than merely be reached — the CI guard fails that rule with `UNPINNED_ALIAS_AS_SOURCE`
 > until that machine's alias is added to `EXPECTED_HOSTS` in
-> `scripts/tests/test_tailnet_acl_deny_by_default.py`. Only the six pinned fleet aliases may
-> appear in a `src`; any other alias may be a destination only. **The fix is to add the constant,
+> `scripts/tests/test_tailnet_acl_deny_by_default.py`. A source must be a pinned alias, and the
+> pinned iQOO remains destination-only; any unpinned alias may only be a destination. **The fix is
+> to add the constant,
 > never to relax the clause**, and adding it is the point: a new machine acquiring reach _into_
 > the fleet then shows up as a reviewed line in a diff instead of widening the tailnet silently.
 > Enrolling a team device does **not** hit this — that path only ever adds a destination, which

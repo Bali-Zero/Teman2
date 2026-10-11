@@ -11,7 +11,7 @@
     "public, and the comparison classifies a source only as 'specific' vs 'any', so the",
     "identities were never load-bearing. The DESTINATIONS and PORTS are truthful \u2014 they are",
     "what makes this fixture match the policy and therefore exercise the CLEAN path.",
-    "The DESTINATION addresses are the three fleet hosts, and they are deliberately NOT sanitized: they are already published in infra/tailscale/policy.hujson and infra/tailscale/README.md, this fixture exists to MATCH that policy, and replacing them would break the very comparison the CLEAN path is meant to exercise. The tool's own OUTPUT still never carries them \u2014 evidence says 'specific-destination', never an address."
+    "The DESTINATION addresses are the four pinned destination hosts, and they are deliberately NOT sanitized: they are already published in infra/tailscale/policy.hujson and infra/tailscale/README.md, this fixture exists to MATCH that policy, and replacing them would break the very comparison the CLEAN path is meant to exercise. The tool's own OUTPUT still never carries them \u2014 evidence says 'specific-destination', never an address."
   ],
   "PacketFilter": [
     {
@@ -52,6 +52,13 @@
             "First": 22,
             "Last": 22
           }
+        },
+        {
+          "Net": "100.117.194.24/32",
+          "Ports": {
+            "First": 32768,
+            "Last": 60999
+          }
         }
       ],
       "Caps": [],
@@ -66,6 +73,13 @@
           "Ports": {
             "First": 22,
             "Last": 22
+          }
+        },
+        {
+          "Net": "100.107.22.111/32",
+          "Ports": {
+            "First": 6379,
+            "Last": 6379
           }
         }
       ],
