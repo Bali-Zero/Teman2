@@ -918,6 +918,7 @@ const FIXED_CATEGORY_QUESTIONS: Record<CategoryKey, readonly string[]> = {
     // branch of a foreign group is both.
     "work_payer",
     "remote_employer_country",
+    "remote_annual_income_usd",
     "remote_pt_pma",
     "stay_days",
   ],

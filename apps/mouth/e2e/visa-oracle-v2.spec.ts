@@ -229,11 +229,8 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
         facts?: Record<string, unknown>;
       };
       expect(body.assessment_id).toMatch(/^[0-9a-f-]{36}$/);
-      // The wire carries every backend fact path except the ordered-rollout
-      // ones the deployed frontend does not send yet (seq-28 step A: the
-      // engine accepts `work.annual_foreign_income_usd`, the mouth asks for it
-      // in step B) and the server-derived paths. Sending the rollout key
-      // before the engine accepts it would be an extra_forbidden 422.
+      // The wire carries every backend fact path. Ordered-rollout omissions
+      // are represented by the shared set, which seq-28 Step B empties.
       const sentKeys = Object.keys(body.facts ?? {});
       expect(sentKeys).toHaveLength(FRONTEND_EMITTED_FACT_COUNT);
       for (const rolloutPath of ORDERED_ROLLOUT_OPTIONAL_PATHS) {

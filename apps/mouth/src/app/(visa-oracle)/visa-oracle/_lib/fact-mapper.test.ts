@@ -43,9 +43,8 @@ import {
 // `alias=` in the file (`TimeRange.from_`) has no dot, so the dotted-alias
 // regex below can only ever match ApplicantFactsData fields.
 //
-// Seq-28 Step A deliberately makes `work.annual_foreign_income_usd`
-// optional on the backend before the deployed frontend knows how to ask or
-// send it. Step B closes this one-key rollout seam.
+// Seq-28 Step B closes Step A's one-key rollout seam: the mapper now emits
+// every backend fact path.
 // ---------------------------------------------------------------------------
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -63,9 +62,7 @@ function extractApplicantFactPathsFromModelsPy(): string[] {
 }
 
 function requiredFrontendFactPaths(): string[] {
-  return extractApplicantFactPathsFromModelsPy().filter(
-    (factPath) => !ORDERED_ROLLOUT_OPTIONAL_PATHS.has(factPath),
-  );
+  return extractApplicantFactPathsFromModelsPy();
 }
 
 const ASSESSMENT_ID = "11111111-1111-4111-8111-111111111111";
@@ -122,20 +119,18 @@ describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)",
   const backendPaths = extractApplicantFactPathsFromModelsPy();
   const expectedPaths = requiredFrontendFactPaths();
 
-  it("sanity: only annual foreign income is omitted during ordered rollout", () => {
+  it("sanity: the ordered-rollout exception is empty", () => {
     expect(backendPaths.length).toBe(APPLICANT_FACT_COUNT);
     expect(backendPaths.length).toBe(58);
-    expect([...ORDERED_ROLLOUT_OPTIONAL_PATHS]).toEqual([
-      "work.annual_foreign_income_usd",
-    ]);
+    expect([...ORDERED_ROLLOUT_OPTIONAL_PATHS]).toEqual([]);
     expect(
       backendPaths.filter((factPath) => !expectedPaths.includes(factPath)),
-    ).toEqual(["work.annual_foreign_income_usd"]);
-    expect(expectedPaths.length).toBe(57);
+    ).toEqual([]);
+    expect(expectedPaths.length).toBe(58);
     expect(expectedPaths.length).toBe(FRONTEND_EMITTED_FACT_COUNT);
   });
 
-  it("emits exactly the other 57 backend fact-path keys", () => {
+  it("emits all 58 backend fact-path keys", () => {
     const result = mapFacts({});
     const actualKeys = Object.keys(result.facts).sort();
     expect(actualKeys).toEqual([...expectedPaths].sort());
@@ -2176,6 +2171,31 @@ describe("country-code facts: one code is not a set of one", () => {
         remote_employer_country: "unsure",
       } as OracleFacts).facts["work.employer_country_code"],
     ).toEqual({ status: "UNKNOWN", reason: "UNVERIFIED" });
+  });
+});
+
+describe("annual foreign income fact", () => {
+  it('maps "59999" to KNOWN 59999', () => {
+    expect(
+      mapFacts({ remote_annual_income_usd: "59999" }).facts[
+        "work.annual_foreign_income_usd"
+      ],
+    ).toEqual({ status: "KNOWN", value: 59_999 });
+  });
+
+  it("maps an unanswered question to UNKNOWN NOT_ASKED", () => {
+    expect(mapFacts({}).facts["work.annual_foreign_income_usd"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+  });
+
+  it('maps malformed "12a" to UNKNOWN NOT_PROVIDED', () => {
+    expect(
+      mapFacts({ remote_annual_income_usd: "12a" }).facts[
+        "work.annual_foreign_income_usd"
+      ],
+    ).toEqual({ status: "UNKNOWN", reason: "NOT_PROVIDED" });
   });
 });
 

@@ -124,7 +124,7 @@ const WALKS: readonly WalkCase[] = [
     flags: [],
   },
   {
-    name: "remote · foreign clients — the deleted remote_income clause named no real question",
+    name: "remote · foreign clients — annual income is a real fact question, not a boundary flag",
     category: "remote",
     tripScope: "single",
     branch: [
@@ -136,6 +136,7 @@ const WALKS: readonly WalkCase[] = [
       // remote worker gives; it is a FACT question, so it adds no flag.
       ["work_payer", "no"],
       ["remote_employer_country", "US"],
+      ["remote_annual_income_usd", "60000"],
       ["remote_pt_pma", "no"],
       ["stay_days", "365"],
     ],

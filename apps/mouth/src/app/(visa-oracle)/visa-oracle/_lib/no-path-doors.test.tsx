@@ -147,7 +147,7 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     ).toBe(replay.walk_corpus_fingerprint);
   });
 
-  it("covers the 14 dead ends and 1 held walk the census reports", () => {
+  it("covers the 16 dead ends, 3 held walks and 1 missing-input walk the current census reports", () => {
     // D19 (2026-09-16): the corpus regeneration this pin depends on surfaced
     // one walk the previous evidence had omitted —
     // `offshore_business_exploring_sponsor_no_no_route.json`, D12_NOT_CONVERTIBLE —
@@ -199,18 +199,20 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     // instead (HUMAN_REVIEW_REQUIRED, not counted here). NEEDS_INPUT loses
     // that one walk: 2 -> 1.
     //
-    // seq-23 regen (this PR, 2026-09-25): fixture was stale on origin/main
-    // since the pack 022 -> 023 fold (`kit/DRAFT-SPEC-A8-1.v2.md` §1,
-    // GATE-A3P-B-REPORT-7234.md finding 3). Pack moves 022 -> 023; state
-    // counts are untouched (14, 1) — the fold only appends
-    // `E33G_LOCAL_COMPANY_NOT_ALLOWED` on `offshore/remote` and
-    // `onshore/remote`, both already NO_SUPPORTED_PATH.
+    // Seq-28 Step B regenerates this evidence against the current highest
+    // signed pack, seq-27. The PR-11 boundary corpus raises the measured
+    // distribution to 16 NO_SUPPORTED_PATH / 3 HUMAN_REVIEW_REQUIRED /
+    // 1 NEEDS_INPUT; its two new E33G income witnesses are supported and do
+    // not enter this non-supported fixture.
     const states = replay.walks.map((walk) => walk.state);
     expect(
       states.filter((state) => state === "NO_SUPPORTED_PATH"),
-    ).toHaveLength(14);
+    ).toHaveLength(16);
+    expect(
+      states.filter((state) => state === "HUMAN_REVIEW_REQUIRED"),
+    ).toHaveLength(3);
     expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(1);
-    expect(replay.pack.file).toBe("rulepack-prod-023.signed.json");
+    expect(replay.pack.file).toBe("rulepack-prod-027.signed.json");
   });
 
   for (const walk of replay.walks.filter(
@@ -355,18 +357,20 @@ describe("no-path doors — the evidence behind every named alternative", () => 
   // gap (`GATE-A7-B-REPORT-7080.md`); the conductor's 2026-09-22T07:17:47Z
   // ruling accepted it as an ORDERING window (A7-M merges in the same queue
   // window, stacked on this head) rather than a code cure. A7-M (this PR)
-  // is that window closing: `guardian_consent` now has a reachable
-  // question (`tree.ts`'s `guardian_consent` node, asked right after
-  // `birth_date` for a minor — see `_lib/flow.ts`'s `birth_date` case), so
-  // the exemption is emptied rather than deleted outright — kept as the
-  // named escape hatch for the next fact whose question ships in a later
-  // PR than its contract (same ordering-window class as this one was). A
-  // missing input with no mapped question legitimately renders without a
-  // `questionId` (`engine-adapter.ts`'s `match ? { questionId } : {}`), so
-  // membership here is what exempts a fact from the "must be reopenable"
-  // assertion below — do not repopulate it without the same gate-named
-  // gap this entry once carried.
-  const FACTS_WITHOUT_A_REACHABLE_QUESTION_YET = new Set<string>([]);
+  // is that window closing: `guardian_consent` now has a reachable question
+  // (`tree.ts`'s `guardian_consent` node, asked right after `birth_date` for
+  // a minor). A missing input with no mapped question legitimately renders
+  // without a `questionId` (`engine-adapter.ts`'s
+  // `match ? { questionId } : {}`), so exemptions below are exact
+  // walk+fact pairs rather than a global fact allowlist.
+  const INPUTS_WITHOUT_A_REACHABLE_QUESTION_YET = new Set<string>([
+    // PR-11's boundary walk deliberately answers retirement basis
+    // `undecided` and then `still_unsure`. flow.ts intentionally asks no
+    // evidence question after that answer, so the signed seq-23 pack's
+    // passive-income NEEDS_INPUT remains a handoff row rather than reopening
+    // a question the visitor just declined to choose a basis for.
+    "offshore/retirement/undecided/age64/still_unsure:secondhome.passive_monthly_income_usd",
+  ]);
 
   for (const walk of replay.walks.filter(
     (candidate) => candidate.state === "NEEDS_INPUT",
@@ -378,7 +382,8 @@ describe("no-path doors — the evidence behind every named alternative", () => 
       }
       expect(outcome.missingInputs.length).toBeGreaterThan(0);
       for (const input of outcome.missingInputs) {
-        if (!FACTS_WITHOUT_A_REACHABLE_QUESTION_YET.has(input.code)) {
+        const exceptionKey = `${walk.label}:${input.code}`;
+        if (!INPUTS_WITHOUT_A_REACHABLE_QUESTION_YET.has(exceptionKey)) {
           expect(
             input.questionId,
             `${walk.label} cannot reopen ${input.code}, so the visitor is left with a dead sentence`,

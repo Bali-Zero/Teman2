@@ -311,15 +311,16 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
     ).toHaveLength(10);
   });
 
-  // INNOCENCE (FIX-B, spec F2): exactly 14 questions declare no `notSure`
-  // at all — four literal ids plus the ten `qualificationQuestion(...)`-
-  // built ones. The ten omit it DELIBERATELY (`tree.ts:182-189`: "a 'not
+  // INNOCENCE (FIX-B, spec F2): exactly 16 questions declare no `notSure`
+  // at all — six literal ids plus the ten `qualificationQuestion(...)`-
+  // built ones. The qualifications and annual-income question omit it
+  // DELIBERATELY (`tree.ts:182-189`: "a 'not
   // sure' would map to UNKNOWN and the engine would ask the same question
-  // again: a loop, not an answer"). Giving any of the ten a `notSure`
-  // would add a tenth `"unsure"` option, move the 253-walk manifest pin
-  // (`enumerate-interview-space.test.ts:519`) and destroy slice A6-2's
-  // manifest-innocence proof — that is a RED to report, never a fix.
-  it("holds exactly 15 questions with no notSure at all, named (A6-1/A7-M)", () => {
+  // again: a loop, not an answer"). Giving any of these questions a
+  // `notSure` would add an `"unsure"` edge and move the pinned 256-walk
+  // covering subset (`enumerate-interview-space.test.ts`) — that is a RED to
+  // report, never a fix.
+  it("holds exactly 16 questions with no notSure at all, named (A6-1/A7-M/seq-28 B)", () => {
     expect(
       Object.entries(QUESTIONS)
         .filter(([, q]) => q.notSure === undefined)
@@ -330,6 +331,7 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
         "guardian_consent",
         "investment_currency",
         "retirement_age_notice",
+        "remote_annual_income_usd",
         "retirement_undecided_basis",
         "review_gate",
         "sponsor_government_invitation",
@@ -346,7 +348,7 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
     );
     expect(
       Object.entries(QUESTIONS).filter(([, q]) => q.notSure === undefined),
-    ).toHaveLength(15);
+    ).toHaveLength(16);
   });
 });
 

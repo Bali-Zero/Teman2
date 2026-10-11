@@ -44,6 +44,7 @@ PII_SAMPLES: dict[str, str] = {
     "email": "zero@balizero.com",
     "phone": "+62 812 3456 7890",
     "client_id": "CL-000142",
+    "annual_foreign_income_usd": "987654321",
     "name": "Antonello",
     "surname": "Siano",
     # Added 2026-08-02 with the free-text tests below. Deliberately sequential,
@@ -136,6 +137,12 @@ def test_redacts_request_body_json():
                 "npwp": PII_SAMPLES["npwp"],
                 "nib": PII_SAMPLES["nib"],
                 "passport": PII_SAMPLES["passport"],
+                "facts": {
+                    "work.annual_foreign_income_usd": {
+                        "status": "KNOWN",
+                        "value": PII_SAMPLES["annual_foreign_income_usd"],
+                    }
+                },
             },
         }
     }

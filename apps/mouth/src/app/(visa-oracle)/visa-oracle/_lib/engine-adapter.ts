@@ -242,6 +242,7 @@ export const SECOND_HOME_DEPOSIT_THRESHOLD_USD = 130_000;
 // figure is `el.e33e.retirement`'s `secondhome.bank_deposit_usd` `gte`.
 export const RETIREMENT_INCOME_THRESHOLD_USD = 3_000;
 export const E33E_DEPOSIT_THRESHOLD_USD = 50_000;
+export const E33G_ANNUAL_INCOME_THRESHOLD_USD = 60_000;
 
 // D23 "OPTION B-STUDIO" (2026-09-16): the one review reason code that routes
 // to a self-serve page instead of a person — named here so OutcomeSheet.tsx
@@ -785,6 +786,10 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   E33G_LOCAL_COMPANY_NOT_ALLOWED: text(
     "The Remote Worker visa (E33G) doesn’t cover owning or running an Indonesian company; that is an investor route.",
     "Visa Rumah Kedua Pekerja Jarak Jauh (E33G) tidak mencakup kepemilikan atau pengelolaan perusahaan Indonesia; itu jalur investor.",
+  ),
+  E33G_INCOME_BELOW_THRESHOLD: text(
+    `The Remote Worker visa (E33G) needs a salary or income of at least ${usd(E33G_ANNUAL_INCOME_THRESHOLD_USD, "en-US")} a year from work for a company outside Indonesia; the yearly figure you gave is below it.`,
+    `Visa Rumah Kedua Pekerja Jarak Jauh (E33G) memerlukan gaji atau penghasilan minimal ${usd(E33G_ANNUAL_INCOME_THRESHOLD_USD, "id-ID")} per tahun dari pekerjaan untuk perusahaan di luar Indonesia; angka tahunan yang Anda berikan di bawahnya.`,
   ),
   STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED: text(
     "A study visa needs a confirmed admission and a confirmed sponsor; you haven’t confirmed both yet.",

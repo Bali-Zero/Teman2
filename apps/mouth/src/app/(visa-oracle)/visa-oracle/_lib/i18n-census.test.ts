@@ -90,8 +90,9 @@ const TOMBSTONES: readonly string[] = [
   "whyweask.review_only",
 ];
 
-/** The allowlist may only shrink: lower this with it, never raise it. */
-const ALLOWLIST_CEILING = 102;
+/** Exact reviewed ceiling; seq-28 Step B adds the mirrored tree label for its
+ * new interview question even though the retired tree panel remains hidden. */
+const ALLOWLIST_CEILING = 103;
 
 const UNRENDERED_ALLOWLIST: readonly {
   reason: string;
@@ -134,6 +135,7 @@ const UNRENDERED_ALLOWLIST: readonly {
       "tree.remote_clients",
       "tree.remote_compensation",
       "tree.remote_employer_country",
+      "tree.remote_annual_income_usd",
       "tree.remote_pt_pma",
       "tree.stay_days",
       "tree.investment_vehicle",

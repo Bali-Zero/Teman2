@@ -199,6 +199,7 @@ const CATEGORY_CASES: ReadonlyArray<{
       ["remote_compensation", "no"],
       ["work_payer", "no"],
       ["remote_employer_country", "US"],
+      ["remote_annual_income_usd", "60000"],
       ["remote_pt_pma", "no"],
       ["stay_days", "365"],
     ],
@@ -1455,6 +1456,31 @@ describe("PR-3 · work_payer reaches the remote branch", () => {
     );
     for (const category of others) {
       expect(getCategoryQuestionIds({ category })).not.toContain("work_payer");
+    }
+  });
+});
+
+describe("seq-28 Step B · annual foreign income reaches only the remote branch", () => {
+  it("guilt: remote asks it exactly once, after the employer country", () => {
+    const ids = getCategoryQuestionIds({ category: "remote" });
+    expect(ids.filter((id) => id === "remote_annual_income_usd")).toHaveLength(
+      1,
+    );
+    expect(ids[ids.indexOf("remote_employer_country") + 1]).toBe(
+      "remote_annual_income_usd",
+    );
+    expect(ids[ids.indexOf("remote_annual_income_usd") + 1]).toBe(
+      "remote_pt_pma",
+    );
+  });
+
+  it("innocence: no other category asks it", () => {
+    for (const category of CATEGORY_KEYS.filter(
+      (candidate) => candidate !== "remote",
+    )) {
+      expect(getCategoryQuestionIds({ category })).not.toContain(
+        "remote_annual_income_usd",
+      );
     }
   });
 });

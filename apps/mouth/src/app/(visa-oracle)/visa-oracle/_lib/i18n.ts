@@ -324,6 +324,13 @@ const en = {
   "q.remote_employer_country.label": "Employer country code",
   "why.remote_employer_country":
     "We record the country code exactly as you enter it and do not interpret it.",
+  "q.remote_annual_income_usd":
+    "What yearly salary or income do you receive from your work for the company outside Indonesia?",
+  "q.remote_annual_income_usd.hint":
+    "Enter the whole-dollar yearly amount your contract, payslips or bank records show.",
+  "q.remote_annual_income_usd.label": "Yearly income",
+  "why.remote_annual_income_usd":
+    "This amount decides whether the remote-worker visa can fit your plan. It is used exactly as you enter it.",
   "q.remote_pt_pma":
     "Is this remote-work plan tied to a committed Indonesian PT PMA?",
   "q.remote_pt_pma.hint":
@@ -419,6 +426,7 @@ const en = {
   "q.unit.idr": "IDR",
   "q.unit.usd": "USD",
   "q.unit.usd_month": "USD per month",
+  "q.unit.usd_year": "USD per year",
 
   "q.family_relation": "How are you related to the proposed sponsor?",
   "q.family_relation.hint": "Choose the relationship that can be documented.",
@@ -748,6 +756,7 @@ const en = {
   "tree.remote_clients": "Where clients sit",
   "tree.remote_compensation": "Payment source",
   "tree.remote_employer_country": "Employer country",
+  "tree.remote_annual_income_usd": "Yearly income",
   "tree.remote_pt_pma": "PT PMA link",
   "tree.stay_days": "Length of stay",
   "tree.investment_vehicle": "Investment basis",
@@ -1364,6 +1373,13 @@ const id: Record<Keys, string> = {
   "q.remote_employer_country.label": "Kode negara pemberi kerja",
   "why.remote_employer_country":
     "Kami mencatat kode negara persis seperti yang Anda masukkan dan tidak menafsirkannya.",
+  "q.remote_annual_income_usd":
+    "Berapa gaji atau penghasilan tahunan yang Anda terima dari pekerjaan Anda untuk perusahaan di luar Indonesia?",
+  "q.remote_annual_income_usd.hint":
+    "Masukkan jumlah tahunan dalam dolar penuh sesuai kontrak, slip gaji, atau catatan bank Anda.",
+  "q.remote_annual_income_usd.label": "Penghasilan tahunan",
+  "why.remote_annual_income_usd":
+    "Jumlah ini menentukan apakah visa pekerja jarak jauh dapat sesuai dengan rencana Anda. Jumlah ini digunakan persis seperti yang Anda masukkan.",
   "q.remote_pt_pma":
     "Apakah rencana kerja remote ini terikat pada komitmen PT PMA Indonesia?",
   "q.remote_pt_pma.hint":
@@ -1462,6 +1478,7 @@ const id: Record<Keys, string> = {
   "q.unit.idr": "IDR",
   "q.unit.usd": "USD",
   "q.unit.usd_month": "USD per bulan",
+  "q.unit.usd_year": "USD per tahun",
 
   "q.family_relation": "Apa hubungan Anda dengan calon sponsor?",
   "q.family_relation.hint": "Pilih hubungan yang dapat dibuktikan.",
@@ -1786,6 +1803,7 @@ const id: Record<Keys, string> = {
   "tree.remote_clients": "Lokasi klien",
   "tree.remote_compensation": "Sumber pembayaran",
   "tree.remote_employer_country": "Negara pemberi kerja",
+  "tree.remote_annual_income_usd": "Penghasilan tahunan",
   "tree.remote_pt_pma": "Kaitan PT PMA",
   "tree.stay_days": "Lama tinggal",
   "tree.investment_vehicle": "Dasar investasi",
