@@ -216,6 +216,14 @@ extension EnvironmentValues {
     }
 }
 
+extension View {
+    /// The LIVE mount of a View that has an immersive presentation: every call site the app reaches from its UI uses this (or
+    /// `ImmersiveHost`), so the user sees the immersive layout. The flat layout stays only as the baseline of the content proof
+    /// and of the flat render set: it is what the snapshot harness draws when `--imm` is absent, and no UI path reaches it.
+    /// `Tools/design/live_host_check.py` fails when a live site loses its host.
+    func immersiveHost() -> some View { ImmersiveHost { self } }
+}
+
 /// Puts a View in its immersive presentation: the choreography clock above it, the `immersive` switch in its environment.
 struct ImmersiveHost<Content: View>: View {
     @ViewBuilder let content: Content
