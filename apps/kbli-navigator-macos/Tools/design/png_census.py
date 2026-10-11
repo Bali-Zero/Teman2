@@ -34,8 +34,9 @@ GOLD, PAPER, INK = tok("decorGold"), tok("antracite")[0], tok("white")[0]
 class Miss(Exception): pass
 
 def scan(im, b):
-    """{y: [x, ...]} of the ink pixels in box b, against the box's dominant colour."""
-    x0, y0, x1, y1 = b; px = im.load(); xs, ys = range(x0, x1), range(y0, y1)
+    """{y: [x, ...]} of the ink pixels in box b, 3 px in (a chip's rounded corner is no ink), against the box's
+    dominant colour."""
+    x0, y0, x1, y1 = b; px = im.load(); xs, ys = range(x0 + 3, x1 - 3), range(y0 + 3, y1 - 3)
     bg = Counter(px[x, y] for y in ys[::2] for x in xs[::2]).most_common(1)[0][0]
     rows = {y: [x for x in xs if sum(abs(a - c) for a, c in zip(px[x, y], bg)) > 60] for y in ys}
     return {y: r for y, r in rows.items() if r}
@@ -65,12 +66,16 @@ def rule(im, b, cs, share):
 nearest = lambda p, table: min(table, key=lambda t: min(sum(abs(a - c) for a, c in zip(p, q)) for q in table[t]))
 
 def c11(im, fr, rows):
-    """matrix-columns: chips = the fixture's row count, each centred on its scale header's ink, +-4 px."""
-    need(fr, "matrix.head", "matrix.chip")
-    head = {v: sum(ibox(im, b)[0::2]) / 2 for v, b in fr["matrix.head"]}
-    off = [v for v, b in fr["matrix.chip"] if abs((b[0] + b[2]) / 2 - head.get(v, -99)) > 4]
-    n = len(fr["matrix.chip"])
-    return n == rows and not off, "chips %d (need %d), off their header: %s" % (n, rows, off or "none")
+    """matrix-columns: each matrix (its header row) holds the fixture's row count of chips, each centred on the ink
+    of its scale's header, the nearest above it, +-4 px."""
+    need(fr, "matrix.head", "matrix.chip"); heads = [(v, b[3], sum(ibox(im, b)[0::2]) / 2) for v, b in fr["matrix.head"]]
+    per, off = Counter(), []
+    for v, b in fr["matrix.chip"]:
+        h = max((h for h in heads if h[0] == v and h[1] <= b[1]), key=lambda h: h[1], default=None)
+        if h: per[round(h[1] / 4)] += 1
+        if not h or abs((b[0] + b[2]) / 2 - h[2]) > 4: off.append(v)
+    ok = bool(per) and set(per.values()) == {rows} and not off
+    return ok, "chips per matrix %s (need %d), off their header: %s" % (sorted(per.values()), rows, off or "none")
 
 def c12(im, fr, _):
     """heads-up hierarchy: each sentence's first band >= 1.6 x its label's; no sentence: the label's >= 30 px."""
@@ -238,9 +243,10 @@ def c_cases():
     """Per C, an innocent synthetic image (k = 0) and its guilt (k = 1): (check, argument, k, paint, frames)."""
     OP, CL, LS, ST = TONE_BG["open"][0], TONE_BG["closed"][0], LINESOFT[0], STRUCTURE[0]
     pad = lambda b, m=6: (b[0] - m, b[1] - m, b[2] + m, b[3] + m)
-    word = lambda name, v, b: ([((x, b[1], x + 2, b[3]), INK) for x in range(b[2] - 2, b[0] - 1, -5)], {name: [(v, pad(b))]})
+    ink = lambda b: [((x, b[1], x + 2, b[3]), INK) for x in range(b[2] - 2, b[0] - 1, -5)]   # glyph-like strokes
+    word = lambda name, v, b: (ink(b), {name: [(v, pad(b))]})
     def chip(name, v, b, fill, t=6):
-        return [(b, fill), ((b[0] + 8, b[1] + t, b[2] - 8, b[3] - t), INK)], {name: [(v, b)]}
+        return [(b, fill)] + ink((b[0] + 8, b[1] + t, b[2] - 8, b[3] - t)), {name: [(v, b)]}
     def m(*parts):
         ops, fr = [], {}
         for o, f in parts:
@@ -261,10 +267,10 @@ def c_cases():
                                  word("figure.peak", "", (260 - 150 * k, 130, 300 - 150 * k, 160)),
                                  ([], {"card.peak": [("", (20, 120, 340, 170))]}))
         yield "C18", None, k, *m(([], {"card": [("", (20, 20, 380, 200))]}), word("census", "", (20, 240 + 40 * k, 200, 252 + 40 * k)))
-        yield "C19", None, k, [((20, 20, 28, 22), INK), ((40, 14, 380, 28), INK), ((40 - 20 * k, 34, 300, 48), INK)], {
+        yield "C19", None, k, [((20, 20, 28, 22), INK)] + ink((40, 14, 380, 28)) + ink((40 - 20 * k, 34, 300, 48)), {
             "uraian.item": [("", (10, 8, 390, 56))]}
-        yield "C20", None, k, *m(([((110, 12, 290, 24), INK), ((110, 30, 250, 42), INK)], {"row.title": [("55300", (100, 6, 300, 60))]}),
-                                 ([((30, 14 + 16 * k, 70, 26 + 16 * k), INK)], {"row.code": [("55300", (20, 6, 80, 60))]}),
+        yield "C20", None, k, *m((ink((110, 12, 290, 24)) + ink((110, 30, 250, 42)), {"row.title": [("55300", (100, 6, 300, 60))]}),
+                                 (ink((30, 14 + 16 * k, 70, 26 + 16 * k)), {"row.code": [("55300", (20, 6, 80, 60))]}),
                                  chip("row.chip", "55300", (310, 7, 380, 31), OP))
         yield "C21", None, k, [((300, 200 - 50 * k, 380, 202 - 50 * k), GOLD[0]), ((20, 200, 290, 202), LS)], {
             "ladder": [("", (300, 20, 380, 200))], "matrix": [("", (20, 20, 290, 202))]}
