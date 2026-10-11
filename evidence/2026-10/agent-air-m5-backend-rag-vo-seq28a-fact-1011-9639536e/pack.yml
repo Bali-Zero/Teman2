@@ -44,9 +44,9 @@ receipts:
     seat: this session
   - claim: "The whole visa_engine backend tree, outside any sandbox, against the local test database."
     cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine
-    result: "2952 passed, 15 skipped, 2 failed, 39 errors in 363.65s. The 2 failed (test_visa_engine_retention_fk_registry, policy_scope column and migration 281 missing) and the 39 errors (test_evaluate_endpoint 31 missing relation visa_evaluate_idem..., test_shadow_evidence 6 DependentObjectsStillExist, test_shadow_match 2 migration 264 applied) are local test-database schema drift; the same four files on a detached origin/main worktree give 2 failed, 331 passed, 39 errors, identical"
+    result: "2953 passed, 15 skipped, 2 failed, 39 errors in 210.82s (re-run at head 405ed49e46, after the contract/OpenAPI regeneration). The 2 failed (test_visa_engine_retention_fk_registry, policy_scope column and migration 281 missing) and the 39 errors (test_evaluate_endpoint 31 missing relation visa_evaluate_idem..., test_shadow_evidence 6 DependentObjectsStillExist, test_shadow_match 2 migration 264 applied) are local test-database schema drift; the same four files on a detached origin/main worktree give 2 failed, 331 passed, 39 errors, identical"
     exit: 1
-    ts: "2026-10-11T10:08:00Z"
+    ts: "2026-10-11T11:15:04Z"
     seat: this session
   - claim: "The same four DB-backed files on pristine origin/main show the same failures, so they are not caused by this change."
     cmd: "cd <detached origin/main worktree>/apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_evaluate_endpoint.py backend/tests/services/visa_engine/test_shadow_evidence.py backend/tests/services/visa_engine/test_shadow_match.py backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py"
@@ -56,15 +56,15 @@ receipts:
     seat: this session
   - claim: "apps/mouth typechecks with the regenerated schema.d.ts and the new fact path."
     cmd: cd apps/mouth && npx tsc --noEmit -p .
-    result: "no output (re-run after the red-team cure commit)"
+    result: "no output (re-run at head 405ed49e46)"
     exit: 0
-    ts: "2026-10-11T10:49:03Z"
+    ts: "2026-10-11T11:15:14Z"
     seat: this session
   - claim: "The visa-oracle _lib Vitest tree, which holds fact-mapper.test.ts (the fact-path parity test admitting the key until step B)."
     cmd: "cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib'"
-    result: "Test Files 31 passed (31); Tests 1051 passed (1051) (re-run after the red-team cure commit)"
+    result: "Test Files 31 passed (31); Tests 1051 passed (1051) (re-run at head 405ed49e46)"
     exit: 0
-    ts: "2026-10-11T10:50:54Z"
+    ts: "2026-10-11T11:16:16Z"
     seat: this session
   - claim: "The observer passes: the rollout-default test class for work.annual_foreign_income_usd."
     cmd: python3 scripts/ci/observe_visa_engine_annual_income_fact.py
@@ -83,6 +83,12 @@ receipts:
     result: "153 passed in 0.57s"
     exit: 0
     ts: "2026-10-11T10:51:04Z"
+    seat: this session
+  - claim: "The regenerated contract snapshots and the OpenAPI pin are green again (gate condition C1)."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/scripts/test_generate_openapi_schema_pin.py
+    result: "1 passed; TestContractSnapshotDriftTripwire 3 passed with the pin test"
+    exit: 0
+    ts: "2026-10-11T11:16:30Z"
     seat: this session
 decisions:
   - id: D-rollout-default
