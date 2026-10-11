@@ -335,7 +335,12 @@ class TestLedger:
             assert receipt["key_phrase_found"] is True
             assert receipt["canonical_url"] == receipt["final_url"]
             assert judgement["judged_at"] >= receipt["fetched_at"]
-            assert isinstance(judgement.get("judge"), str) and judgement["judge"]
+            # A fingerprint row is marked ``judge: fingerprint``; a page whose visible
+            # text moved against the baseline carries no marker and is a model verdict
+            # (the 2026-10-11 ledger has exactly one: the Bridging page).
+            assert judgement.get("judge", "model") in {"fingerprint", "model"}
+            if "judge" not in judgement:
+                assert judgement["semantic_change"] == "none"
 
     def test_stamp_is_the_earliest_successful_read(
         self, newest_ledger: Path, seq28: dict[str, Any]

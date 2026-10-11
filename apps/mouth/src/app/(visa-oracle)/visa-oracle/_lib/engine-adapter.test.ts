@@ -2,7 +2,6 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import * as engineAdapterModule from "./engine-adapter";
 
 const emitVisaOracleTelemetry = vi.hoisted(() => vi.fn());
 vi.mock("./telemetry", () => ({ emitVisaOracleTelemetry }));
@@ -1392,9 +1391,7 @@ describe("support reasons are sentences, not machine codes", () => {
   it("E33G_ANNUAL_INCOME_THRESHOLD_USD tracks both signed seq-28 income rules", () => {
     const payload = highestSequencePack();
 
-    const threshold = (
-      engineAdapterModule as unknown as Record<string, unknown>
-    ).E33G_ANNUAL_INCOME_THRESHOLD_USD;
+    const threshold = E33G_ANNUAL_INCOME_THRESHOLD_USD;
     expect(threshold).toBe(
       gteThresholdInPack(
         "el.e33g.remote-work",

@@ -56,9 +56,9 @@ SEQ27_PAYLOAD_SHA256 = (
     "a9098744e0cd8369fb4fe9ca5bef851705cf43dabb1c69398b63b36985cb42d0"  # pragma: allowlist secret
 )
 FOLD_VERSION = "2026.10.11"
-# The 2026-10-11 organ run is scheduled for 18:00Z.  This fixed instant is
+# The 2026-10-11 organ run read at 18:00Z (latest evidence 18:00:29Z).  This fixed instant is
 # after its expected short read window and before the later signing ceremony.
-FOLD_CREATED_AT = "2026-10-11T19:00:00Z"
+FOLD_CREATED_AT = "2026-10-11T18:05:00Z"
 FOLD_CREATED_BY = "agent.mini-pro2.backend-rag.vo-seq28c-fold-1011"
 NEW_RULE_VALID_FROM = "2026-10-11T00:00:00Z"
 
