@@ -14,7 +14,7 @@ extension View {
     /// The shown risk cell's selection mark (flat matrix and scale path alike): a 2 pt accent ring outside the chip with a
     /// 1.5 pt gap, so the ring touches only the surface, never the chip's fill (accent on the surface is >= 3:1 day and night).
     func selectionRing(_ on: Bool) -> some View {
-        overlay { if on { RoundedRectangle(cornerRadius: 4).strokeBorder(Theme.accent, lineWidth: 2).padding(-3.5) } }
+        overlay { if on { RoundedRectangle(cornerRadius: 4).strokeBorder(Theme.accent, lineWidth: 2).padding(-3.5).censusFrame("ring") } }
     }
 }
 
@@ -101,7 +101,8 @@ struct ScaleMatrix: View {
                 GridRow {
                     if mode == .ledger { Color.clear.frame(width: 80, height: 1) }
                     ForEach(Self.order, id: \.self) { s in
-                        header(s).anchorPreference(key: ColumnEdges.self, value: .bounds) { [$0] }
+                        header(s).censusFrame("matrix.head", "\(Self.order.firstIndex(of: s) ?? 0)")
+                            .anchorPreference(key: ColumnEdges.self, value: .bounds) { [$0] }
                     }
                 }
                 GridRow {
@@ -121,7 +122,7 @@ struct ScaleMatrix: View {
                             .gridCellColumns(ncols)
                         }
                     }
-                    line(lang.t("detail.risk"), sc, top: 12) { chip($0) }
+                    line(lang.t("detail.risk"), sc, top: 12, chips: true) { chip($0) }
                     line(lang.t("detail.term"), sc, top: 4, bottom: mode == .compact ? 12 : 0) { e in
                         Text(Self.term(e.row, isID: isID) ?? Theme.absent)
                             .font(Theme.scalable(13)).monospacedDigit().foregroundStyle(Theme.white)
@@ -156,7 +157,7 @@ struct ScaleMatrix: View {
                 }
             }
             if selection != nil, Set(scs.flatMap { $0.rows.map(\.idx) }).count > 1 {
-                Text(LabelBook.cellHint(isID: isID)).font(Theme.scalable(10)).foregroundStyle(Theme.faint)
+                Text(LabelBook.cellHint(isID: isID)).font(Theme.scalable(10)).foregroundStyle(Theme.faint).censusFrame("hint")
             }
         }
     }
@@ -168,7 +169,7 @@ struct ScaleMatrix: View {
     }
 
     /// One labelled line of a scope block: the label column (ledger) and the four cells.
-    private func line<C: View>(_ label: String, _ sc: Scope, top: CGFloat, bottom: CGFloat = 0,
+    private func line<C: View>(_ label: String, _ sc: Scope, top: CGFloat, bottom: CGFloat = 0, chips: Bool = false,
                                @ViewBuilder _ cell: @escaping ((idx: Int, row: PerSkala)) -> C) -> some View {
         GridRow(alignment: .firstTextBaseline) {
             if mode == .ledger {
@@ -183,7 +184,7 @@ struct ScaleMatrix: View {
                     if es.isEmpty {
                         if top == 12 { Text("·").font(Theme.scalable(13)).foregroundStyle(Theme.faint) }
                     } else {
-                        ForEach(es, id: \.idx) { cell($0) }
+                        ForEach(es, id: \.idx) { cell($0).censusFrame("matrix.chip", "\(Self.order.firstIndex(of: scale) ?? 0)", when: chips) }
                     }
                 }
                 .frame(minWidth: 80, maxWidth: .infinity)

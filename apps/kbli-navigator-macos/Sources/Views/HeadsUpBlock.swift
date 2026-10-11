@@ -27,21 +27,25 @@ struct HeadsUpBlock: View {
                 if let sentence {
                     switch layout {
                     case .stacked:
-                        VStack(alignment: .leading, spacing: 8) { labelText(c.fg); sentenceText(sentence, c.fg) }
+                        VStack(alignment: .leading, spacing: 8) {
+                            labelText(c.fg).censusFrame("headsup.label")
+                            sentenceText(sentence, c.fg).censusFrame("headsup.sentence")
+                        }
                     case .band:
                         HStack(alignment: .firstTextBaseline, spacing: 24) {
-                            labelText(c.fg).frame(width: 200, alignment: .leading)
-                            sentenceText(sentence, c.fg)
+                            labelText(c.fg).frame(width: 200, alignment: .leading).censusFrame("headsup.label")
+                            sentenceText(sentence, c.fg).censusFrame("headsup.sentence")
                         }
                     }
                 } else {
-                    sentenceText(label, c.fg)
+                    sentenceText(label, c.fg).censusFrame("headsup.label")
                 }
             }
             .padding(.vertical, 24).padding(.horizontal, 16)
             Spacer(minLength: 0)
         }
         .background(c.bg)
+        .censusFrame("headsup", "\(tone)")
         .accessibilityElement(children: .combine)
     }
 

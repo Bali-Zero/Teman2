@@ -395,15 +395,22 @@ extension Snapshot {
             var doc: [String: Any] = ["width": w, "frames": frames]
             // The record's own state as the harness reads it, beside the frames (PR 3-h-2b): a mark's value comes from
             // the record, never from the function that paints the element, and png_census FAILs one that disagrees.
-            if ["detail-card", "dossier", "sheet-ledger", "chat"].contains(band), let k = state.store.code(code) {
+            if ["detail-card", "dossier", "sheet-ledger", "chat", "registry-sheet"].contains(band), let k = state.store.code(code) {
                 let bali: String
                 switch KBLIVerdict.of(record: k).bali {
                 case .open: bali = "open"
                 case .blocked: bali = "closed"
                 case .undetermined: bali = "neutral"
                 }
-                doc["record"] = ["code": code, "national": "\(Theme.tone(k.pmaStatus ?? ""))", "bali": bali,
-                                 "headsup": "\(KBLIVerdict.headsUp(record: k, isID: lang.lang == .id).tone)"]
+                // `cells`: the rows the page offers to pick between (under the six-scope selector, the picked scope's).
+                // One cell: nothing to choose, so no hint is drawn.
+                let scs = ScaleMatrix.scopes(k.perSkala)
+                let picked = ScalePath.snapshotScope ?? 0
+                let cells = imm && scs.count >= ScaleMatrix.listFrom ? (scs.indices.contains(picked) ? scs[picked].rows.count : 0) : k.perSkala.count
+                let record: [String: Any] = ["code": code, "national": "\(Theme.tone(k.pmaStatus ?? ""))", "bali": bali,
+                                             "headsup": "\(KBLIVerdict.headsUp(record: k, isID: lang.lang == .id).tone)",
+                                             "cells": cells]
+                doc["record"] = record
             }
             if let data = try? JSONSerialization.data(withJSONObject: doc, options: [.prettyPrinted, .sortedKeys]) {
                 try? data.write(to: URL(fileURLWithPath: jsonPath))
