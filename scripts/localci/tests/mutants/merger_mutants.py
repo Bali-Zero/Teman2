@@ -35,6 +35,10 @@ MERGER_T = "scripts/localci/tests/test_merger.py"
 B6_WRAP = tuple(f"{MERGER_T}::{t}" for t in ("test_the_tick_decides_first_then_prunes_with_fstrim_and_passes_the_host_reading",
                                              "test_under_the_floor_the_tick_journals_its_skip_the_prune_still_runs_and_the_organ_says_warning",
                                              "test_a_failed_prune_is_a_warning_and_a_failed_tick_is_an_error_after_which_the_prune_still_runs"))
+HF = ("scripts/localci/tests/test_host_floor.py",)   # B15
+B15_PRUNE = tuple(f"{PRUNE_T}::{t}" for t in ("test_b15_under_host_pressure_the_second_slot_of_every_recipe_goes_and_the_newest_never",
+                                              "test_b15_host_pressure_never_removes_the_image_of_the_run_in_progress_or_the_never_list"))
+START_DEFAULT = 'default=HOST_FLOOR_GB + START_MARGIN_GB,\n                   help="the start floor'
 B6_FLOOR = (f"{MERGER_T}::test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why",)
 FLOOR_SH, FLOOR_T = "scripts/ops/pro_disk_floor_tick.sh", "scripts/localci/tests/test_disk_floor.py"
 
@@ -257,8 +261,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b8-floor-no-remeasure": (PRUNE, '            rec["vm_free_gb"]["after"] = vm_free_gb(docker, state)\n            if rec', "            if rec", (PRUNE_T,)),
     # B8 amended (Pro, 17:26Z: a 60 GiB VM holds one image per recipe plus scratch): under the floor, fewest references first,
     # the newest of a recipe not protected; the cache pruned with -a after every image removal, its size journalled
-    "b8-floor-by-age-only": (PRUNE, 'key=lambda d: (d["refs"], d["created"] is None,', 'key=lambda d: (d["created"] is None,', (PRUNE_T,)),
-    "b8-floor-most-refs-first": (PRUNE, 'key=lambda d: (d["refs"], d["created"] is None,', 'key=lambda d: (-d["refs"], d["created"] is None,', (PRUNE_T,)),
+    "b8-floor-by-age-only": (PRUNE, 'return (d["refs"], d["created"] is None,', 'return (d["created"] is None,', (PRUNE_T,)),
+    "b8-floor-most-refs-first": (PRUNE, 'return (d["refs"], d["created"] is None,', 'return (-d["refs"], d["created"] is None,', (PRUNE_T,)),
     "b8-floor-newest-first": (PRUNE, 'd["created"] or 0, d["tag"])', '-(d["created"] or 0), d["tag"])', (PRUNE_T,)),
     "b8-floor-keeps-newest": (PRUNE, 'not d["remove"] and not d["live"] and not never(', 'not d["remove"] and d["slot"] != 1 and not d["live"] and not never(', (PRUNE_T,)),
     "b8-floor-takes-lease-run": (PRUNE, 'not d["remove"] and not d["live"] and not never(', 'not d["remove"] and not never(', (PRUNE_T,)),
@@ -291,7 +295,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b8-cache-not-after-floor-removal": (PRUNE, "            builder_prune(docker, rec, cache_budget)   # the cache entries", "            pass   # the cache entries", (PRUNE_T,)),
     "b8-cache-size-after-unread": (PRUNE, 'rec["builder_prune"]["cache_gb"]["after"] = build_cache_gb(docker)', 'rec["builder_prune"]["cache_gb"]["after"] = None', (PRUNE_T,)),
     "b8-cache-first-rc-kept": (PRUNE, '    bp["rc"] = rc   # the last call', '    bp["rc"] = rc if bp["rc"] == 0 else bp["rc"]   # the last call', (PRUNE_T,)),
-    "b8-floor-undated-first": (PRUNE, 'key=lambda d: (d["refs"], d["created"] is None, d["created"] or 0,', 'key=lambda d: (d["refs"], d["created"] or 0,', (PRUNE_T,)),
+    "b8-floor-undated-first": (PRUNE, 'd["created"] is None, d["created"] or 0, d["tag"])', 'd["created"] or 0, d["tag"])', (PRUNE_T,)),
     "b8-cache-size-mb-as-gb": (PRUNE, '"MB": 1e6', '"MB": 1e9', (PRUNE_T,)),
     # B8a (Pro, 2026-10-09T02:49:24Z: "built -5.3 h ago"): Created is a UTC instant whatever its offset
     "b8a-offset-ignored": (PRUNE, '+ float(m.group(2) or 0) - off_s', '+ float(m.group(2) or 0)', (PRUNE_T,)),
@@ -312,7 +316,9 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b8b-kill-switch-ignored": (PRUNE, 'os.environ.get("LOCALCI_VM_DISCARD") == "0"', "False", (PRUNE_T,)),
     "b8b-after-the-trim": (PRUNE, '        rec["vm_discard"] = keep_vm_discard(colima)   # before the trim: the trim then finds only what discard has not returned\n        try:\n            t = subprocess.run([colima, "ssh", "--", "sudo", "fstrim", "-av"], capture_output=True, text=True, timeout=900)\n            rec["fstrim"] = {"rc": t.returncode, "tail": (t.stdout or t.stderr).strip()[-160:]}\n        except (OSError, subprocess.TimeoutExpired) as e:\n            rec["fstrim"] = {"rc": None, "tail": type(e).__name__}\n', '        try:\n            t = subprocess.run([colima, "ssh", "--", "sudo", "fstrim", "-av"], capture_output=True, text=True, timeout=900)\n            rec["fstrim"] = {"rc": t.returncode, "tail": (t.stdout or t.stderr).strip()[-160:]}\n        except (OSError, subprocess.TimeoutExpired) as e:\n            rec["fstrim"] = {"rc": None, "tail": type(e).__name__}\n        rec["vm_discard"] = keep_vm_discard(colima)\n', (PRUNE_T,)),
     "b6-rm-forced": (PRUNE, 'None if dry else _docker(docker, "image", "rm", im["tag"])', 'None if dry else _docker(docker, "image", "rm", "-f", im["tag"])', (PRUNE_T,)),
-    "b8-floor-rm-forced": (PRUNE, 'r = _docker(docker, "image", "rm", im["tag"])', 'r = _docker(docker, "image", "rm", "-f", im["tag"])', (PRUNE_T,)),
+    "b8-floor-rm-forced": (PRUNE, 'return _docker(docker, "image", "rm", tag)', 'return _docker(docker, "image", "rm", "-f", tag)', (PRUNE_T,)),
+    "b15-pressure-rm-forced": (PRUNE, 'r = rm_image(docker, im["tag"])\n            if r.returncode != 0:\n                errors.append({"tag": im["tag"], "gb": im["gb"], "rule": "host pressure"',
+                               'r = _docker(docker, "image", "rm", "-f", im["tag"])\n            if r.returncode != 0:\n                errors.append({"tag": im["tag"], "gb": im["gb"], "rule": "host pressure"', B15_PRUNE),
     "b6-builder-never": (PRUNE, "    if not dry:   # the build cache grows", "    if False:   # the build cache grows", (PRUNE_T,)),
     "b6-dry-run-removes": (PRUNE, "r = None if dry else _docker(", "r = None if False else _docker(", (PRUNE_T,)),
     # B6-2: 7 days full, then the bulk goes; 30 days, then only the verdict files
@@ -324,13 +330,33 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-call-graphs-kept": (PRUNE, "f in BULK)", "False)", (PRUNE_T,)),
     "b6-undated-run-trimmed": (PRUNE, "if age_h is None or age_h < FULL_DAYS * 24:", "if age_h is not None and age_h < FULL_DAYS * 24:", (PRUNE_T,)),
     # B6-3: the tick decides, then prunes and trims the VM; under 60 GB host-free no run starts
-    "b6-wrapper-floor-59": (SH, 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-60}"', 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-59}"', B6_WRAP),
+    "b6-wrapper-floor-99": (SH, 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-100}"', 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-99}"', B6_WRAP),
     "b6-wrapper-floor-le": (SH, '[ "$FREE" -lt "$FLOOR_GB" ]', '[ "$FREE" -le "$FLOOR_GB" ]', B6_WRAP),
     "b6-wrapper-no-fstrim": (SH, 'prune --state-dir "$STATE" --fstrim', 'prune --state-dir "$STATE"', B6_WRAP),
     "b6-wrapper-prune-failure-silent": (SH, 'if [ "$PRUNE_RC" -ne 0 ]; then', "if false; then", B6_WRAP),
     "b6-wrapper-never-prunes": (SH, """if [ -f "$CODE/prune.py" ] && grep -q -- '"prune"' "$CODE/merger.py"; then""", "if false; then", B6_WRAP),
     "b6-merger-floor-off": (PY, "if a.host_free_gb is not None and a.host_free_gb < a.min_host_free_gb:", "if False:", B6_FLOOR),
-    "b6-merger-floor-59": (PY, "type=float, default=60.0,", "type=float, default=59.0,", B6_FLOOR),
+    "b6-merger-floor-99": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "99.0"), B6_FLOOR),
+    # B15: Pro's host floor of 90 GB, held through the run
+    "floor-start-60": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "60.0"), HF),
+    "evict-disabled": (PY, "                    if low:\n", "                    if False:\n", HF),
+    "evict-spares-containers": (PY, 'subprocess.run([self.docker, "rm", "-f", "-v", *ids], capture_output=True, timeout=120, env=env)', "None", HF),
+    "evict-kills-foreign-run": (PY, 'f"label=org.nuzantara.localci.run={run_label(self.run_dir)}"', '"label=org.nuzantara.localci.run"', HF),
+    "evict-as-fail": (PY, '{**rec, "kind": "evicted", "why":', '{**rec, "kind": "decision", "overall": "FAIL", "why":', HF),
+    "statvfs-fail-open": (PY, "return (self.blind >= EVICT_BLIND_SAMPLES if free is None else free < self.evict_gb), free",
+                          "return (False if free is None else free < self.evict_gb), free", HF),
+    "evict-not-rotated": (PY, 'if (r.get("kind") == "decision" and not r.get("replay")) or r.get("kind") == "evicted":',
+                          'if (r.get("kind") == "decision" and not r.get("replay")):', HF),
+    "evict-cap-ignored": (PY, "if evictions[(n, head, base_sha)] >= EVICT_CAP:", "if False:", HF),
+    "evict-cap-off-by-one": (PY, "if evictions[(n, head, base_sha)] >= EVICT_CAP:", "if evictions[(n, head, base_sha)] > EVICT_CAP:", HF),
+    "parent-pid-not-handed": (PY, '"LOCALCI_PARENT_PID": str(os.getpid())}', '"LOCALCI_PARENT_PID": "0"}', HF),
+    "parent-watch-unwired": (RUN_PY, '    if a.cmd in ("plan", "run"):\n        watch_parent()', '    if False:\n        watch_parent()', HF),
+    "parent-watch-pid-1": (RUN_PY, 'if not raw.isdigit() or int(raw) <= 1:', 'if not raw.isdigit():', HF),
+    "parent-gone-never": (RUN_PY, "    except ProcessLookupError:\n        return True\n    except PermissionError:", "    except ProcessLookupError:\n        return False\n    except PermissionError:", HF),
+    "prune-pressure-no-builder-prune": (PRUNE, "        if dropped:\n            builder_prune(", "        if False:\n            builder_prune(", (f"{PRUNE_T}::test_b15_host_pressure_runs_the_builder_prune_after_its_removals_and_names_the_rebuild_cost",)),
+    "prune-pressure-rule-silent-on-cost": (PRUNE, 'f"dropping a second-slot image means a cold rebuild of that recipe"})', 'f"x"})', (f"{PRUNE_T}::test_b15_host_pressure_runs_the_builder_prune_after_its_removals_and_names_the_rebuild_cost",)),
+    "prune-host-pressure-ignored": (PRUNE, 'rec["host_pressure"] = pressure_gb is not None and free_before < pressure_gb',
+                                    'rec["host_pressure"] = False', B15_PRUNE),
     "b7-fstrim-only-after-removal": (PRUNE, "    if fstrim and not dry:   # every real prune", "    if fstrim and removed and not dry:   # every real prune", (PRUNE_T,)),
     "b7-fstrim-on-dry-run": (PRUNE, "    if fstrim and not dry:   # every real prune", "    if fstrim:   # every real prune", (PRUNE_T,)),
     "b6-prune-code-sha-dropped": (PY, "    CODE_SHA = a.code_sha or None\n", "    CODE_SHA = None\n", (PRUNE_T,)),
@@ -441,7 +467,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "f2-parents-swapped": (PY, '"-p", old, "-p", head,', '"-p", head, "-p", old,', (PHASEF,)),
     "f2-subject-without-number": (PY, 'subject = title if title.endswith(f"(#{n})") else f"{title} (#{n})"', "subject = title", (PHASEF,)),
     "f2-bites-not-carried": (PY, "([bites] if bites else [])", "[]", (PHASEF,)),
-    "f2-key-in-the-runner-env": (PY, '"PYTHONDONTWRITEBYTECODE": "1"}', '"PYTHONDONTWRITEBYTECODE": "1", "GIT_SSH_COMMAND": "ssh -i " + str(base_wt.parent.parent / KEY_FILE)}', (PHASEF,)),
+    "f2-key-in-the-runner-env": (PY, '"LOCALCI_PARENT_PID": str(os.getpid())}', '"LOCALCI_PARENT_PID": str(os.getpid()), "GIT_SSH_COMMAND": "ssh -i " + str(base_wt.parent.parent / KEY_FILE)}', (PHASEF,)),
     "f2-key-in-the-process-env": (PY, 'env={"GIT_SSH_COMMAND": push_ssh_command(state)}', 'env=os.environ.setdefault("GIT_SSH_COMMAND", push_ssh_command(state)) and {"GIT_SSH_COMMAND": push_ssh_command(state)}', (PHASEF,)),
     "f2-fetch-guard-dropped": (PY, "if anchor is None or halt_reason(state) is not None:", "if True:", (PHASEF,)),
     "f2-fetch-guard-ignores-the-halt": (PY, "if anchor is None or halt_reason(state) is not None:", "if anchor is None:", (PHASEF,)),
