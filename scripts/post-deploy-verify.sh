@@ -126,14 +126,20 @@ RUN_ID=""
 RUN_SYNC=""
 while [ -z "$RUN_ID" ] && [ $(( $(date +%s) - START_TS )) -lt "$MAX_WAIT_START" ]; do
   RUNS=$(gh run list --repo "$DEPLOY_REPO" --workflow="$WORKFLOW" --limit 30 \
-    --json databaseId,headSha --jq '.[] | "\(.databaseId) \(.headSha)"' 2>/dev/null)
-  while read -r rid hsha; do
+    --json databaseId,headSha,conclusion --jq '.[] | "\(.databaseId) \(.headSha) \(.conclusion // "none")"' 2>/dev/null)
+  while read -r rid hsha concl; do
     [ -n "$rid" ] || continue
-    cache="$WORK/msg.$hsha"
+    # A cancelled or skipped run deployed nothing; a re-run of the same sync is the one to watch.
+    case "$concl" in cancelled | skipped) continue ;; esac
+    # Resolve S the way zero's fly-deploy does: the newest Zero-Sync-Canonical trailer reachable from the
+    # run's head (a zero-owned commit such as a workflow change carries none; the sync commit below it does).
+    cache="$WORK/sync.$hsha"
     if [ ! -s "$cache" ]; then
-      gh api "repos/$DEPLOY_REPO/commits/$hsha" --jq .commit.message > "$cache" 2>/dev/null || { rm -f "$cache"; continue; }
+      gh api "repos/$DEPLOY_REPO/commits?sha=$hsha&per_page=50" --jq '.[].commit.message' 2>/dev/null \
+        | sed -n 's/^Zero-Sync-Canonical:[[:space:]]*\([0-9a-f]\{40\}\).*/\1/p' | head -n1 > "$cache" || true
+      [ -s "$cache" ] || { rm -f "$cache"; continue; }
     fi
-    S=$(sed -n 's/^Zero-Sync-Canonical:[[:space:]]*\([0-9a-f]\{40\}\).*/\1/p' "$cache" | tail -n1)
+    S=$(cat "$cache")
     [ -n "$S" ] || continue
     ensure_commit "$S" || continue
     if is_ancestor "$MERGE_SHA" "$S"; then
