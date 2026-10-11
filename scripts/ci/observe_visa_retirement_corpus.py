@@ -83,7 +83,9 @@ def main() -> int:
         f"SUPPORTED_CANDIDATES={supported} NO_SUPPORTED_PATH={tally['_INCOME_BELOW_FLOOR']}"
     )
     if not pins_ok(tally):
-        print("observe_visa_retirement_corpus: FAILED (pin table is not 13 walks split 10 / 3)")
+        print(
+            "observe_visa_retirement_corpus: FAILED (pin table is not 13 walks split 10 / 3)"
+        )
         return 1
     result = subprocess.run(
         [
@@ -106,7 +108,9 @@ def main() -> int:
     lines = [ln for ln in out.splitlines() if " passed" in ln]
     line = lines[-1] if lines else None
     if result.returncode != 0 or not summary_ok(line):
-        print(f"observe_visa_retirement_corpus: FAILED ({line})\n{result.stdout[-1500:]}")
+        print(
+            f"observe_visa_retirement_corpus: FAILED ({line})\n{result.stdout[-1500:]}"
+        )
         return result.returncode or 1
     print(f"observe_visa_retirement_corpus: {line.strip()}")
     print(

@@ -154,6 +154,15 @@ NAMED_CAUSE_WALKS: dict[str, str] = {
 
 _GENERIC_CAUSE = "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
 
+#: PR-11: the three age-64 retirement walks one euro-equivalent below the
+#: income bound. On seq-21 they still end on the generic sentence (the
+#: named-cause rules are seq-27); this is pinned, not hidden.
+_RETIREMENT_INCOME_WALKS_BEFORE_SEQ27 = (
+    "offshore/retirement/bank_deposit/age64/income_2999",
+    "offshore/retirement/family_sponsor/age64/income_2999",
+    "offshore/retirement/passive_income/age64/income_2999",
+)
+
 #: W-VO-Q (mission SAETTA-VO3): what seq-21 ADDS to seq-20's candidates on each
 #: walk once the interview asks the ten qualification facts, measured
 #: 2026-09-14 over the 107-walk corpus at ``AS_OF``. 26 walks gain; none loses.
@@ -1181,11 +1190,15 @@ class TestCensusReplay:
         sibling walk (`offshore/family/PARENT/spNat=IT/minor/guardian=no`)
         declares `guardian_consent: "no"` and earns the hold instead:
         93 / 15 / 3 / 1 — `held` names exactly that one walk, no OTHER
-        candidate anywhere changes."""
+        candidate anywhere changes.
+
+        PR-11 (2026-10-11) adds thirteen age-64 retirement walks that read
+        none of the ten qualification facts: ten answer SUPPORTED_CANDIDATES
+        and three end NO_SUPPORTED_PATH on this pack, so 103 / 18 / 3 / 1."""
         replayed = _replay(seq21_compiled, unasked_walks)
         census = Counter(actual["state"] for actual in replayed.values())
-        assert census["SUPPORTED_CANDIDATES"] == 93
-        assert census["NO_SUPPORTED_PATH"] == 15
+        assert census["SUPPORTED_CANDIDATES"] == 103
+        assert census["NO_SUPPORTED_PATH"] == 18
         assert census["NEEDS_INPUT"] == 3
         assert census["HUMAN_REVIEW_REQUIRED"] == 1
         held = [
@@ -1322,4 +1335,8 @@ class TestCensusReplay:
             for label, actual in _replay(seq21_compiled, walks).items()
             if _GENERIC_CAUSE in actual["no_path_reason_codes"]
         ]
-        assert offenders == []
+        # The only walks that may still say it: the three PR-11 age-64
+        # income-below-bound dead ends. Their named cause
+        # (RETIREMENT_INCOME_BELOW_THRESHOLD) is a seq-27 rule, which this
+        # seq-21 pack predates; seq-27's own replay pins the cause.
+        assert offenders == sorted(_RETIREMENT_INCOME_WALKS_BEFORE_SEQ27)

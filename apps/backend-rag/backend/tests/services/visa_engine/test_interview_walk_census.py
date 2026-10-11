@@ -2452,9 +2452,40 @@ def test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence(
     assert len(retirement) == 13
     violations = _outcome_violations(retirement, _PR11_RETIREMENT_OUTCOMES)
     assert not violations, "\n  ".join(violations)
-    assert dict(Counter(o["state"] for o in replayed.values())) == (
-        EXPECTED_STATE_CENSUS_BY_SEQUENCE[sequence]
+    census = dict(Counter(o["state"] for o in replayed.values()))
+    assert census == EXPECTED_STATE_CENSUS_BY_SEQUENCE[sequence]
+
+
+#: The three dead ends are NAMED, not just empty: the visitor copy keys off
+#: this code, so a rule that swapped it for another would pass the
+#: (state, candidates) pins above unnoticed. The hf.*.retirement-income-
+#: below-minimum rules first appear in seq-23; seq-20..22 still end these walks
+#: on the generic sentence (seq-21's own census pins that).
+_PR11_INCOME_DEAD_ENDS = (
+    "offshore/retirement/bank_deposit/age64/income_2999",
+    "offshore/retirement/family_sponsor/age64/income_2999",
+    "offshore/retirement/passive_income/age64/income_2999",
+)
+
+
+@pytest.mark.parametrize("sequence", [s for s in sorted(EXPECTED_OUTCOME_BY_SEQUENCE) if s >= 23])
+def test_retirement_income_dead_ends_name_their_cause_on_every_sequence_that_has_the_rule(
+    walks: dict[str, dict[str, Any]], sequence: int
+) -> None:
+    path = PACKS_DIR / f"rulepack-prod-{sequence:03d}.source.json"
+    replayed = _outcomes_on(walks, _pack_from_source(path))
+    dead_ends = sorted(
+        label
+        for label in _PR11_RETIREMENT_OUTCOMES
+        if _PR11_RETIREMENT_OUTCOMES[label][0] == "NO_SUPPORTED_PATH"
     )
+    assert dead_ends == sorted(_PR11_INCOME_DEAD_ENDS)
+    for label in dead_ends:
+        assert "RETIREMENT_INCOME_BELOW_THRESHOLD" in replayed[label]["no_path_reason_codes"], label
+    for label, (state, _) in _PR11_RETIREMENT_OUTCOMES.items():
+        if state == "SUPPORTED_CANDIDATES":
+            codes = replayed[label]["no_path_reason_codes"]
+            assert "RETIREMENT_INCOME_BELOW_THRESHOLD" not in codes, label
 
 
 def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(

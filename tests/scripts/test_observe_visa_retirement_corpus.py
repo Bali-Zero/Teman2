@@ -1,4 +1,5 @@
 """Unit tests for the pin-table and summary parsers in scripts/ci/observe_visa_retirement_corpus.py."""
+
 from __future__ import annotations
 
 import sys
