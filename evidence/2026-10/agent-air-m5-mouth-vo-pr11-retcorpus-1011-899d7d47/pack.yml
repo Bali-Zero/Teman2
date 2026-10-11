@@ -1,4 +1,4 @@
-gear: 1
+gear: 2
 brief_ref: evidence/2026-10/agent-air-m5-mouth-vo-pr11-retcorpus-1011-899d7d47/brief.yml
 ruling: >-
   Zero, 2026-10-11 — decisions and audit of the Visa Oracle retirement interview; the corpus is pinned
@@ -46,9 +46,9 @@ receipts:
     exit: 0
     ts: "2026-10-11T13:06:50Z"
     seat: this session
-  - claim: The bites observer runs the census and the seq-27 consumers green.
-    cmd: python3 scripts/ci/observe_visa_seq27_signed.py
-    result: "inventory reads seq-27 and all three consumers green"
+  - claim: The bites observer reads exactly 13 retirement walks split 10 / 3 and the census replays green.
+    cmd: python3 scripts/ci/observe_visa_retirement_corpus.py
+    result: "13 retirement walks, 10 SUPPORTED_CANDIDATES and 3 NO_SUPPORTED_PATH, replayed green (10 passed)"
     exit: 0
     ts: "2026-10-11T13:06:00Z"
     seat: this session

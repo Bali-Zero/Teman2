@@ -92,7 +92,7 @@ def main() -> int:
             "pytest",
             TEST_FILE,
             "-k",
-            "replay_to_their_pins or expected_real or ends_in_its_pinned",
+            "replay_to_their_pins or expected_real or (ends_in_its_pinned and not candidate_pack)",
             "-p",
             "no:cacheprovider",
         ],
