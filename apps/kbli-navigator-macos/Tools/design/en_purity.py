@@ -322,13 +322,16 @@ def standalone(s, rx, names=()):
             continue
         yield m
 
+LEAD_GAP = r"(?<![^\W_])([\s\S]{1,%d}?)"   # a gap that opens its text starts at a word; drawn() takes its tightest start
+
 def gapped(s, rx, spec, in_parens=True, names=()):
     """`s` as drawn, each match of `rx` a gap a View fills: (pattern, `spec(match)` per gap — the English word the
     pinned map gives, else None). in_parens=False takes only the matches that stand alone (`standalone`), and lets
     the gap keep its match as the original, in parentheses after its English."""
     pat, keep, at = [], [], 0
     for m in (rx.finditer(s) if rx else []) if in_parens else standalone(s, rx, names):
-        pat += [flex(s[at:m.start()]), r"([\s\S]{1,%d}?)" % (80 + 2 * len(m.group()))]   # a title's English + itself
+        gap = LEAD_GAP if not pat and not s[:m.start()].strip() else r"([\s\S]{1,%d}?)"   # a title's English + itself
+        pat += [flex(s[at:m.start()]), gap % (80 + 2 * len(m.group()))]
         keep.append((spec(m.group()), None if in_parens else m.group()))
         at = m.end()
     end = r"(?=\n|$)" if keep and not s[at:].strip() else flex(s[at:])   # a gap closing `s` runs to its line's end (R15)
@@ -467,14 +470,17 @@ class Record:
                 rx = r"\(" + r"[^\w()]*".join(map(re.escape, re.findall(r"[^\W_]+", orig))) + r"\)"
                 spans.append((re.compile(rx), "(%s)" % orig, R_PERMIT, False, None))
         self.spans = spans
-        # R22: the record's own English, as a View may draw it — its title as its English, its status word humanised,
+        # R22: the record's own English, as a View may draw it — the English of its fields as held and as a View strips
+        # them, the fields the data already writes in English, its title as its English, its status word humanised,
         # and the English titles of the codes its own fields name (related, complementary, renumbered). A run of a
         # dump line that is a piece of it, 12+ letters (PDFKit wraps it anywhere and glues a neighbour's cell to it),
         # counts no unknown word; its lexicon words are judged as before. Another record's English, unnamed, is no
         # piece of this one (lead, 3-h-3 (a)).
         raw = (rec.get("l4_bali") or {}).get("reason") or ""
+        mine = list(dict.fromkeys(x for t in strings(rec) for x in (t, strip_html(t))))
         bound = list(strings(en)) + list(strings(intel)) + [v for v, w in statute(rec) if w] + [
-            (i18n or {})[t] for t in strings(rec) if t in (i18n or {})] + [(reasons.get(raw) or {}).get("en") or ""]
+            (i18n or {})[t] for t in mine if t in (i18n or {})] + [(reasons.get(raw) or {}).get("en") or ""] + [
+            t for t in mine if english_clause(t)]
         if k and english_clause(k): bound.append(k)
         t_en = title_en(rec, i18n, {rec.get("kode_kbli_2025"): overlay})
         if self.judul: bound += [re.sub(re.escape(self.judul), lambda m: t_en, x, flags=re.I) for x in bound
@@ -482,7 +488,8 @@ class Record:
         named = set(re.findall(r"(?<!\d)\d{5}(?!\d)", "\n".join(list(strings(rec)) + list(strings(overlay))))) - {rec.get("kode_kbli_2025")}
         bound += [t_en] + [(titles or {})[c] for c in sorted(named) if c in (titles or {})]
         if status in STATUS: bound += [hum(x) for x in bound if hum(x) != x]
-        self.english = "\0".join(key(x).lower() for x in bound if x)
+        self.whole = [key(x).lower() for x in bound if key(x)]
+        self.english = "\0".join(self.whole)
 
 def analyse(row, rec, unknown=False):
     """[(line, category, tokens)] for the Indonesian strings of one dump, and [(reason, tokens)] for allowlisted spans.
@@ -499,7 +506,13 @@ def analyse(row, rec, unknown=False):
     claimed = []   # the lines a record span's own pattern already holds: no other text's piece (87201's basis
                    # quotes its title, whose drawn line would otherwise stand in for the basis's own)
     def drawn(rx, whole, keep=None, alone=True):   # [(span)], and the hull of each occurrence, every occurrence
-        found = [m.span() for m in rx.finditer(text) if not keep or all(map(kept, m.groups(), keep))]
+        found = []
+        for m in rx.finditer(text):   # a search leftmost would stretch an opening gap over the lines before it (the
+            if keep and rx.pattern.startswith(LEAD_GAP[:12]):   # R22 probe, 46201): its tightest start that still holds,
+                m = next((t for a in range(m.end(1) - 1, m.start() - 1, -1) for t in [rx.match(text, a)]   # its (…) whole
+                          if t and t.end() == m.end() and t.group(1).count("(") == t.group(1).count(")")
+                          and all(map(kept, t.groups(), keep))), None)
+            if m and (not keep or all(map(kept, m.groups(), keep))): found.append(m.span())
         hulls = list(found)
         if keep: return found, hulls   # a gap is judged in its pattern only: the source's own words are what it bars
         # PDFKit orders lines by geometry and splits runs at a font change, so a wrapped text can come back
@@ -560,11 +573,20 @@ def analyse(row, rec, unknown=False):
     masked = "".join(mask)
     flagged = defaultdict(lambda: {"toks": [], "raw": [], "title": False, "unk": []})
     pieces = {}
+    is_piece = lambda t: len(key(t)) >= 12 and key(t).lower() in rec.english
+    def short(n):   # R22, a line too short to be a piece alone: a whole string of the record's English, the last
+        l, k = lines[n], key(lines[n]).lower()   # line of one, or a line PDFKit wrapped from the line before or into the next
+        if len(k) < 4: return False
+        if k in rec.whole or any(x.endswith(k) for x in rec.whole): return True
+        prev = lines[n - 1] if n else ""; cut = [0] + [m.end() for m in re.finditer(r"\s+", prev)]
+        nxt = lines[n + 1] if n + 1 < len(lines) else ""; end = [m.start() for m in re.finditer(r"\s+", nxt)] + [len(nxt)]
+        return any(prev and is_piece(prev[c:] + " " + l) for c in cut) or any(nxt and is_piece(l + " " + nxt[:c]) for c in end)
     def piece(n):   # R22: the longest head and tail of line n, at a word boundary, that is a piece of the record's English
         if n not in pieces:
-            l, is_piece = lines[n], lambda t: len(key(t)) >= 12 and key(t).lower() in rec.english
+            l = lines[n]
             cuts = [0] + [m.end() for m in re.finditer(r"\s+", l)] + [len(l)]
             head = next((c for c in reversed(cuts[1:]) if is_piece(l[:c])), 0) if rec else 0
+            head = len(l) if rec and head < len(l) and len(key(l)) < 12 and short(n) else head
             tail = next((c for c in cuts[:-1] if is_piece(l[c:])), len(l)) if rec and head < len(l) else len(l)
             pieces[n] = (starts[n] + head, starts[n] + tail)
         return pieces[n]
@@ -644,9 +666,14 @@ def selftest():
                   'carried out by the Pemerintah; not an investable field' % j12}, {})
     r21 = Record({"judul": "Aktivitas Vila", "pma_status": "TERBUKA", "l4_bali": {"reason": "A PT PMA can satisfy it: "
                   "private parties enter by permit (PP 36/2010 Pasal 8(3): *perorangan, badan usaha, koperasi*)."}}, {})
-    r22 = Record({"judul": "Aktivitas Vila", "intel_2026": {"youllAlsoNeed": "- **99001** — the hall next door"}}, {}, {},
+    rg = Record({"judul": "Aktivitas Zorbing Blorft"}, {}, {}, {"en": {"meaning": "Aktivitas Zorbing Blorft — ball rental for guests."}})
+    r22 = Record({"judul": "Aktivitas Vila", "intel_2026": {"youllAlsoNeed": "- **99001** — the hall next door"},
+                  "l4_bali": {"reason": "Not a zorbing rule: nationally TERBATAS"}, "uraian": "Grepping blorft untuk zorbing",
+                  "per_skala": [{"scope_uraian": "Blorft and grepping", "persyaratan": ["<b>Memiliki</b> blorft"]}]}, {},
+                 {"Memiliki blorft": "Must hold a blorft zorbing permit"},
                  {"en": {"meaning": "Stewards grep the zorbing ledgers of the blorft registry, said the curator of the Kecil "
-                         "scale."}}, {"99001": "Zorbing Blorft Hall", "99002": "Grep Zorbing Office"})
+                         "scale.", "note": "Ledgers stay with the zorbing.", "scopes": ["Grepzorb"]}},
+                 {"99001": "Zorbing Blorft Hall", "99002": "Grep Zorbing Office"})
     r6 = Record({"judul": "Aktivitas Vila", "per_skala": [{"persyaratan": [v6]}], "pma_official_basis": b6}, {},
                 {"Wajib memiliki sertifikat dari Pemerintah Daerah": "Must hold a certificate (sertifikat) from the Pemerintah Daerah"})
     cases = [("Villa Rental\nOfficial title (Bahasa Indonesia)\nAktivitas Vila", 0, r),
@@ -818,6 +845,19 @@ def selftest():
              ("Stewards grep the zorbing ledgers blorft", 1, r22),              # a word the piece does not run on to
              ("Zorbing Blorft Hall", 0, r22), ("Zorbing Blorft Hall", 1, r7),   # a code its record names, by its English title
              ("Grep Zorbing Office", 1, r22),                                    # a code it does not name
+             # an opening gap (the record's title, its English drawn in place) starts tightest, never over what precedes it
+             ("Villa Activities (Aktivitas Vila) — villa rental for guests.", 0, r19),
+             ("Zorbing blorft\nVilla Activities (Aktivitas Vila) — villa rental for guests.", 1, r19),
+             ("Grepzorbing Villa Activities (Aktivitas Vila) — villa rental for guests.", 1, r19),
+             ("Ball Hire (Aktivitas Zorbing Blorft) — ball rental for guests.", 0, rg),   # its original whole (46203)
+             ("Must hold a blorft zorbing permit", 0, r22), ("Must hold a blorft zorbing permit", 1, r7),   # a field's English, markup stripped
+             ("Blorft and grepping", 0, r22), ("Grepping blorft", 1, r22),           # a field written in English; one in Indonesian
+             ("Not a zorbing rule: nationally", 0, r22),                         # a reason the data writes in English
+             ("Not a zorbing rule: nationally Zorbed", 1, r22),
+             ("Grepzorb", 0, r22), ("Grepzorb", 1, r7),                          # a short line: a whole string of its English,
+             ("Gate notes\nzorbing.", 0, r22), ("Gate notes\ngrep.", 1, r22),    # the last line of one (4+ letters),
+             ("Gate notes\ning", 1, r22),
+             ("Stewards grep the zorbing ledgers of the\nblorft", 0, r22), ("Gate notes\nblorft", 1, r22),   # or wrapped
              # R23: «jo.» between two instruments cited; anywhere else it is a word
              ("UU 6/2023 (Job Creation) jo. UU 25/2007", 0, None), ("Perpres 10/2021 jo. Perpres 49/2021", 0, None),
              ("Status: jo. Bali", 1, None), ("Perpres 10/2021 jo. Pasal 5", 1, None),
@@ -862,14 +902,16 @@ def corpus(ds, i18n, reasons, rows, id_rows, overlay):
             text += [t for c in sorted(named) if c in book for t in ((book[c].get("judul") or ""), title_en(book[c], i18n, overlay))]
             text += [i18n[t] for t in text if t in i18n]
             text += [notes[l] for t in text for l in [t] + [x.strip(" -*•") for x in t.split("\n")] if l in notes]
-            _own[code] = {w.lower() for t in text for w in WORD_RE.findall(t)}
+            _own[code] = {w.lower() for t in text for w in WORD_RE.findall(t) + [w for _, w in words(t)]}   # as drawn too
         return _own[code]
     def id_only(id_rows):   # read through english_word, not against the same surface's EN dump: a hard-coded
         only = set()        # Indonesian label drawn in both modes is not subtracted (#8224 gate binding 1); record
         for r in id_rows:   # content is the titles check's and the record spans' to judge, not the lexicon's
             if r["view"] in GATED:   # an ID View draws the English title under the official one: record content too
-                text = r["text"]   # an allowlisted span (a citation, an acronym, an address) is no word here either
-                for rx, _ in ALLOW_RE: text = rx.sub(lambda m: " " * len(m.group()), text)
+                text = list(r["text"])   # an allowlisted span (a citation, an acronym, an address) is no word here
+                for rx, _ in ALLOW_RE:   # either, each read on the dump as drawn, as analyse() does: «jo.» needs its UU
+                    for m in rx.finditer(r["text"]): text[m.start():m.end()] = " " * (m.end() - m.start())
+                text = "".join(text)
                 only |= {w.lower() for _, w in words(text) if not english_word(w.lower()) and not acronym(w)} - own(r["code"])
         return only - set(PROPER)
     only = sorted(id_only(id_rows))
@@ -902,6 +944,12 @@ def corpus(ds, i18n, reasons, rows, id_rows, overlay):
     out.append("self-test: R21 own() — record content subtracted on its own code only (and the codes it names), a UI string kept: %d/%d"
                % (sum(ok for ok, _ in r21), len(r21)))
     bad += ["EN-SELFTEST R21 own(): %s" % d for ok, d in r21 if not ok]
+    cites = [("UU 6/2023 (Cipta Kerja) jo. UU 25/2007", False), ("Perpres 10/2021 jo. Perpres 49/2021", False),
+             ("UU 6/2023 jo. lainnya", True)]   # R23, the ID side: no word between two instruments, a word elsewhere
+    r23 = [c for c, guilt in cites if ("jo" in id_only([{"code": "-", "view": GATED[0], "text": c}])) == guilt]
+    out.append("self-test: R23 «jo.» between two cited instruments is no word of an ID dump, elsewhere it is: %d/%d"
+               % (len(r23), len(cites)))
+    bad += ["EN-SELFTEST R23 «jo.» judged wrong in: %s" % c for c, _ in cites if c not in r23]
     if not {r["view"] for r in id_rows} >= set(GATED): bad.append("EN-SELFTEST the --id dump lacks a gated surface")
     bad += ["EN-SELFTEST ID-only word of a gated surface not in the lexicon: %s" % w for w in miss]
     en_titles = [i18n[r["judul"]] for r in ds.values() if r.get("judul") in i18n]
