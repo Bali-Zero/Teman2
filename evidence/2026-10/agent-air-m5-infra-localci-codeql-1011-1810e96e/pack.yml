@@ -40,7 +40,8 @@ what_changed: |
 proof: |
   Parity probe on Pro (2026-10-11, commit 4be6f5e20352, the same bundle and commands): python 2499 results / 172 rules, javascript
   186 / 200, identical to the hosted schedule run 38092166320 with 0 per-result differences after the server's two normalisations.
-  The suite and the mutants on M5. The measurement of the new image on Pro and the gate follow.
+  The suite (1581 passed) and 24/24 cq-* mutants on M5. On Pro, the branch's runner in the new image reproduced both hosted counts
+  exactly and decided both contexts PASS (receipts below).
 bites:
   consumer: The merger tick on Pro, through the first candidate decided after merge whose BASE contains this change.
   observation: >-
@@ -60,10 +61,36 @@ receipts:
     exit: 0
     ts: "2026-10-11T00:49:43Z"
     seat: claude-opus-5-5 lead (probe dispatched on Pro)
+  - claim: >-
+      The branch's own runner on Pro (merger venv, the merger's env allowlist, container isolation, network none, 12g), BASE
+      7c2d48f45f67, candidate e9332462daac = the probe commit's tree (4be6f5e20352) plus BASE's codeql_leg.sh, parented on BASE.
+      Plan: sentinel "hosted python CodeQL CLI == the pin 2.27.2" (and javascript), BASE flags run_codeql_python=true
+      run_codeql_js=true, needs.changes result success; the localci-deps codeql image built in plan (ADD --checksum accepted by
+      Colima docker 29.2.1, BuildKit 0.27.1; extract and codeql version self-test 8.9 s). ctx.codeql-python PASS 314.3 s, 2499
+      results / 172 rules; ctx.codeql-javascript PASS 119.5 s, 186 / 200 (hosted 2499/172, 186/200); docker-stats peak 7.13 and
+      6.59 GiB (10 s sampling, a lower bound).
+    cmd: >-
+      runner plan --run-dir <d> --worktree <cand2> --base 7c2d48f45f67 --candidate e9332462daac --contexts-file
+      <base>/scripts/localci/contexts_matrix.yaml --pr-number 99999; runner run --run-dir <d> --deadline-s 7200 --only
+      ctx.codeql-python (then ctx.codeql-javascript); runner status (~/b6deploy/codeql/measure2.sh on Pro, merger paused
+      02:33:53-02:41:15Z and restored, merger_tick at 02:41:16Z)
+    exit: 0
+    ts: "2026-10-11T02:41:15Z"
+    seat: claude-sonnet-5 measurement seat on Pro, on the lead's protocol
+  - claim: >-
+      The same run on the probe commit's pure tree (candidate c77547dbe288, no codeql_leg.sh) gave both contexts BLOCKED with
+      every command rc 0 and the same counts: "the candidate rewrites ['scripts/localci/codeql_leg.sh']: hosted judges with the
+      candidate's copy, which this run did not execute — no green claimed". The changed-judge rule holds for a deleted judge.
+    cmd: the same commands on candidate c77547dbe288 (~/b6deploy/codeql/measure.sh on Pro, merger paused 02:13:11-02:18:20Z)
+    exit: 0
+    ts: "2026-10-11T02:18:20Z"
+    seat: claude-sonnet-5 measurement seat on Pro, on the lead's protocol
 dissent: []
 residuals:
   - "No SARIF upload locally: the hosted workflows still upload while they exist; a local upload is for the day they go."
   - "The CLI version is chosen per hosted run by feature flag; the sentinel reads the newest analysis, and the flag can move between that read and the queue run."
+  - "The local SARIF leaves with the container: the runner's receipts carry the counts per language, and the per-result identity was proven once, by the parity probe (0 differences); a per-result diff per run would need the leg to export its SARIF."
+  - "Each executed candidate spends about 7 more minutes (python ~200-315 s, javascript ~100-120 s); the python wall varied 203 s -> 314 s between two runs on the same tree, unexplained."
 appetite_exceeded: none
 plan_ref: >-
   docs/specs/localci-codeql-local-2026-10-11.md; owner decision 2026-10-11 ("Licenza open source") made the CodeQL CLI usable on Pro.
