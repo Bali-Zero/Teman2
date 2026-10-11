@@ -47,7 +47,150 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-10-08 — keep current)
+## 1. LIVE STATE (last update 2026-10-11 — keep current)
+
+**🟡 2026-10-11 — WHAT THE DESIGN LOOP FOUND IN THE DATA AND THE CODE, PARKED HERE ON ZERO'S ORDER
+("nel corner inserisci tutti i tuoi appunti di cosa dovrebbe essere affrontato nel codice, tu devi
+attenerti al design").** The KBLI Navigator design loop (plan `docs/plans/2026-10-08-kbli-navigator-design-loop.md`,
+mission ledger `~/BATTAGLIA-20261008/DYNAMIC-WORKFLOW-kbli-nav-design/Z-DECISIONI.md` on M5) changes
+presentation only, with content frozen. While measuring EN purity and the detail card, it found defects
+that belong to the DATA and to `apps/mouth` code, not to the design. They are recorded here, so the next
+data lane can start from them. **Only D-1 is in flight. Everything else below is NOT started.**
+
+**D-1 — IN FLIGHT, Zero-approved 2026-10-11 (Q26).** Nine `intel_2026.whatChanged` texts showed
+pipeline notes to clients: correction dates, PR numbers, `pp28_sources`, `score=`, PNG file names and
+Italian. The nine codes are `10433 46100 52101 47771 60101 60103 60203 01309 08996`. Each is rewritten as
+one client sentence stating the BPS Lampiran 10 relation the record already carries. 52101 gains one fact
+the field did not carry: 2020-52101 now maps to 2025-52109, tied to the BPS edge. 01309 and 08996 now
+state the BPS split (01302 → 01302 + 01309; 08999 → 08999 + 08996).
+
+- **Surfaces:**
+  - canonical and its 2 copies;
+  - the website gold layer `apps/mouth/data/kbli-gold-all.json`, which overrides canonical on the page;
+  - `kg_nodes.properties.whatChanged`, a PROD write Zero authorized: guarded script, 9 rows, sha256
+    match on the old value, backup first, dry run shown, readback, `inspect_kbli` served-answer check.
+- **Branch:** `agent/air-m5/kbli-nav-design/d1-whatchanged`, in the shape of the 90200 cure-spec
+  precedent.
+- **What it found besides the 9 texts:**
+  - The old texts labelled 60101/60102 and 60201/60202 as analog/digital. The BPS table says
+    government vs private.
+  - Gold still shows the false 1:1 for 46100, and a single parent for 60103 and 60203.
+- **Live only after `vercel promote`, which is Zero's stop.**
+
+**D-2 — the auto-matched 2020 predecessors. NOT STARTED, proposed and parked.** A read-only audit on
+2026-10-11 covered canonical `c29d6e6aea7a`, `edges-lampiran10.json` (2,560 edges) and 1,559/1,559
+records. Report: `~/BATTAGLIA-20261008/PREVIEW-kbli-nav-design/AUDIT-automatch.md` on M5.
+
+**The good news, measured: the served licensing rows are NOT contaminated.**
+
+- `per_skala` is OSS-RBA 2025 data keyed by the 2025 code on 1,337 records.
+- All 209 `no_oss_risk` records serve `[]`.
+- The pointer-derived rows live in `per_skala_legacy`, which nothing renders.
+- 01309 serves rows matching its BPS parent 01302, not the wrong pointer 02119.
+- Caveat: the "OSS-keyed" claim rests on `build_kbli_l2_oss_risk.py`'s docstring, because the raw dump
+  `/tmp/oss_risk_raw.jsonl` is gone.
+
+**The bad news: the pointer itself is wrong, and three client surfaces print it.**
+
+| measure                                                                                           | n                                                                   |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `mapping_note` `Auto-matched to X score=NN%` (65–75%)                                             | 33, of which 31 are disjoint from BPS (33203 equal, 66303 a subset) |
+| `Agent mapping:` notes / `PP28 uses KBLI 2020 code X. Match: NN%` notes                           | 68 / 157                                                            |
+| marked fuzzy AND disjoint from BPS (31 auto + 16 agent + 38 title)                                | **85**                                                              |
+| `pp28_sources` with no code in common with `bps_2020_ancestors`, all markers                      | **255** (40 already detached by Batch A)                            |
+| of those 255, the 2025 code itself taken as a 2020 code (vintage-blind identity join, e.g. 01283) | 123                                                                 |
+| partial: BPS codes plus extra codes outside BPS                                                   | 95                                                                  |
+| 2025 codes with no BPS edge at all                                                                | 0                                                                   |
+
+**Client exposure (`apps/mouth`):**
+
+- The "values below were carried over from KBLI 2020 code(s) X" banner appears on **390** records.
+  It lives in `LicensingSection.tsx` and is driven by `pp28ContentInheritedFrom` in `kbli-provenance.ts`.
+- The "PP 28/2025 licensing source" panel (`KBLITransitionSources.tsx`) prints the raw `mapping_note`,
+  `score=` included. 55201 Homestay still shows `Auto-matched to 80100 (Aktivitas Keamanan Swasta)
+score=66%`.
+- **22** `whatChanged` texts name a code BPS does not list. 01309 and 08996 are cured by D-1; **20 are
+  left**.
+
+**The most embarrassing titles:**
+
+| 2025 code           | wrongly matched to |
+| ------------------- | ------------------ |
+| 55201 homestay      | private security   |
+| 64310               | spa                |
+| 73300 PR            | animal health      |
+| 74910 patent broker | health support     |
+| 20297               | tofu industry      |
+| 13139               | accommodation      |
+| 35402               | travel agent       |
+| 39002               | packing            |
+
+**Bali-priority disjoint codes:**
+
+| sector       | codes                                                                               |
+| ------------ | ----------------------------------------------------------------------------------- |
+| hospitality  | 55106, 55201                                                                        |
+| food         | 10113 10217 10218 10297 10305 10307 10501 10502 10773 10793 11020 11040 11053 56102 |
+| real estate  | 68112 68123 68124 68125 68126 68299                                                 |
+| construction | 42914 42915 42991 42994 42995 42998                                                 |
+| consulting   | 70202 70203 71202 71204 72106 73300 74201 74209 74300 74910                         |
+| trade        | 37 codes in 46/47                                                                   |
+
+The 85 marked fuzzy pointers:
+
+- auto: 01309 03234 08996 13139 20229 20297 20298 23991 23993 26703 35402 38219 38309 39002 46791 50123
+  50125 50139 52227 52239 52329 55201 61108 64124 64310 64920 64930 64959 68124 73300 74910
+- agent: 10218 22129 26519 52313 52319 53301 64191 64955 64994 66127 66129 68123 68126 85324 85330 91300
+- title: 01138 01616 02101 02300 10305 11020 11053 35132 35401 42991 42995 42998 46415 46496 46721 46722
+  46731 46732 46733 46792 46796 47246 47690 47765 50115 50126 61102 61103 61905 64940 64996 64997 66197
+  68299 77397 85402 91121 91122
+
+**Proposed cure, in three parts, each needing its own PR and Zero's GO (Legge 5):**
+
+1. **Provenance fields only.**
+   - Re-derive `pp28_sources`, `kbli_2020_source` and `mapping_note` for the 255 disjoint and 95
+     partial records.
+   - Use `scripts/kbli_filiera/cure_metadata_pp28_sources.py`, which is spec-driven and never touches
+     `per_skala`.
+   - Set the pointer to the BPS ancestors, or to empty where no PP28 row exists for them.
+   - **Never copy licensing rows from a BPS parent.** That would regress 01309-type records, whose
+     OSS-native rows are already right. It would also flatten merges and splits (03214 has 10 ancestors,
+     and BPS marks `sebagian`); `inheritance_verdict` stays `not-adjudicated` on all 1,559.
+2. **Prose.** Regenerate the 20 remaining `whatChanged` texts the D-1 way: a before/after table to Zero
+   first.
+3. **UI in `apps/mouth`.** Stop printing `score=` and unconfirmed predecessors, and stop showing the
+   "carried over" banner on OSS-native rows (or show the BPS ancestors instead). This removes the
+   client-visible wrongness without touching the dataset. `kbli-provenance.test.ts` pins today's
+   behaviour, so it needs a spec change.
+
+This is the same phenomenon as the 2026-07-25 "560 codes render two different predecessors side by side"
+finding and §5.4 F3(a), now with its cause named. Decide them together.
+
+**Stale code comments.** `apps/mouth/src/lib/kbli-types.ts` (337 / 217 `pb_umku` inherited) and
+`LicensingSection.tsx` (336 / 390) describe an older dataset. The current canonical has `pb_umku` on 3
+`per_skala` rows. The comments mislead the next reader; fix them with D-2's UI part.
+
+**Strings the design loop had to INVENT for EN mode** (Q12: EN mode is all English). They are content
+decisions disguised as translation, and they stay pending Zero's render stop:
+
+- "sole proprietorship";
+- "cap verified" / "batas terverifikasi";
+- "Health-Worthiness Certificate (SLHS)";
+- the 69102 line "as Open";
+- the Bali-status labels from EN-1b (#8227).
+
+None changes a fact. Each puts English words on a record that carries only Indonesian.
+
+**Design-loop scars worth keeping (census instrument, app):**
+
+- **#8239's BLOCK (2026-10-11).** An "English reference" word list built from the app's own EN corpus
+  absorbed Indonesian residue (ikan, pak, daftar). A glue-split fallback that accepted two "known"
+  halves then let "Sandikan" = Sand+ikan through: 96 ID-corpus escapes. Every "is English" decision must
+  go through one strict predicate, and scope probes must use word lists the builder has not seen.
+- **A worktree made with a bare `git worktree add` has no `.husky/_`, so no hook ever runs.**
+  `scripts/agent_start.py` creates the symlink. Check `test -e .husky/_` before the first commit.
+- **Start a merge watcher at every PASS.** A lead-session restart kills in-process agents. #8227 and
+  #8228 merged unnoticed for ~3 h.
 
 **🟢 2026-10-08 (bis) — THE QDRANT STORE NOW CARRIES THE DISCLOSURE IT SERVES: 1,150 POINTS
 RE-STAMPED FROM THE PINNED CANONICAL, CENSUS AT ZERO, AND THE SYNC TOOL CAN NO LONGER SAY "ALREADY
