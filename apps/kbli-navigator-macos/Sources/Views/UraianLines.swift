@@ -39,14 +39,17 @@ struct UraianLines: View {
 extension LabelBook {
     /// `ledgerInline` as drawn at `size`, for the curated meaning (UraianLines) and a Bali reason (LeadBody). Manrope
     /// ships neither a bold nor an italic cut and the app never synthesises weight or slant (`Theme.face`), so every
-    /// emphasised run, `**…**` and `*…*` alike, takes the SemiBold cut by name. A line with no `*` is not parsed: it
-    /// draws exactly as written.
+    /// emphasised run, `**…**` and `*…*` alike, takes the SemiBold cut by name. A code span is not emphasis: it draws
+    /// as written, backticks included, in the line's face (55203's footer verdict, "(`dialokasikan` column"). A line
+    /// with no `*` is not parsed: it draws exactly as written.
     static func emphasis(_ line: String, size: CGFloat) -> AttributedString {
         guard line.contains("*") else { return AttributedString(line) }
         let a = ledgerInline(line)
         return a.runs.reduce(into: AttributedString()) { out, r in
             var piece = AttributedString(a[r.range])
-            if r.inlinePresentationIntent?.isDisjoint(with: [.stronglyEmphasized, .emphasized]) == false {
+            if r.inlinePresentationIntent?.contains(.code) == true {
+                piece = AttributedString("`" + String(piece.characters) + "`")
+            } else if r.inlinePresentationIntent?.isDisjoint(with: [.stronglyEmphasized, .emphasized]) == false {
                 piece.font = Theme.scalable(size, weight: .semibold)
             }
             out += piece
