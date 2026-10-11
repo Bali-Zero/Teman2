@@ -1,0 +1,93 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 ("vai") — on a real visitor result (retirement tile, under 55, 400 days) the dead end
+  promised "here's what instead" and an "open door above" while showing none; the page must not promise
+  what it does not show.
+mission: >-
+  A Visa Oracle dead end with no alternative to show no longer promises one.
+lanes:
+  - lane: vo-r1-nodoor
+    role: build
+    seat: Claude Sonnet 5 implementer, worktree mouth-vo-r1-nodoor-1011 on M5; orchestrator delta (shared step constants) by Claude Opus 5.5.
+  - lane: vo-r1-ground-truth
+    role: ground_truth
+    seat: >-
+      the visitor PDF of 2026-10-11 08:48 WITA (NO_SUPPORTED_PATH, AGE_BELOW_55, zero doors) and
+      buildNoPathDoors in engine-adapter.ts, which returns no door for a stay above 180 days without a
+      declared Second Home basis; the change asserts no rule of its own, it only stops promising a door.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "957bfc6a889d5496cb13e531760b1939fc472846d623044a74034805d8a308fc" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at origin/main (the buildNoPathDoors the copy now follows).
+pii_scan: clean
+bites:
+  consumer: >-
+    the headline, sub-headline, next steps and Copy/Share summary of the public Visa Oracle result page
+    on a dead end (VerdictReveal, OutcomeSheet).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_no_door_copy.py
+  expect: "contains:no-door copy holds"
+receipts:
+  - claim: The whole visa-oracle Vitest tree passes with the change, including the i18n census and client-copy bans.
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/'
+    result: "Test Files 50 passed (50), Tests 1328 passed (1328)"
+    exit: 0
+    ts: "2026-10-11T01:12:00Z"
+    seat: this session
+  - claim: The observer passes on the branch head and accepts only a full pass of at least 8 tests.
+    cmd: python3 scripts/ci/observe_visa_oracle_no_door_copy.py
+    result: "Tests 8 passed (8); no-door copy holds"
+    exit: 0
+    ts: "2026-10-11T01:52:00Z"
+    seat: this session
+  - claim: The legacy client-copy guard stays green with the new strings.
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3502 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-11T01:52:00Z"
+    seat: this session
+  - claim: The observer's summary parser rejects skipped, todo, failed and reduced counts.
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_no_door_copy.py
+    result: "10 passed"
+    exit: 0
+    ts: "2026-10-11T01:50:00Z"
+    seat: implementer lane
+  - claim: apps/mouth typechecks.
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-11T01:12:00Z"
+    seat: this session
+decisions:
+  - id: D-override-not-state
+    decision: >-
+      NO_SUPPORTED_PATH_NO_DOOR is a copy override selected from the outcome (state plus empty
+      alternatives), exactly like SECOND_HOME_STUDIO; the engine state and the one-door copy are unchanged.
+  - id: D-steps-shared
+    decision: >-
+      The no-door list reuses the generic list's advisor and keep-summary step objects, so the wording of
+      the two lists cannot drift.
+dissent:
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout 2026-10-11T09-20-16, model verified in the rollout file)
+    objection: >-
+      MEDIUM - the EN sub-headline's word "facts" fails the legacy guard observe_visa_oracle_client_copy.py (exit 1 on
+      i18n.ts); only the Vitest allowlist had been widened.
+    status: RETRACTED
+    disposition: >-
+      Cured in fb070ff61c - the sub-headline reads "A Bali Zero advisor can review details this tool does not cover." and
+      the added allowlist phrase is gone; the legacy guard reports 0 banned.
+  - seat: codex-gpt-5.6-sol (same review)
+    objection: MEDIUM - the bites observer was fail-open on an all-skipped or reduced Vitest run.
+    status: RETRACTED
+    disposition: >-
+      Cured in 07893d3dda - summary_ok() accepts only "Tests N passed (N)" with N >= 8; a pytest pins all-skipped, reduced,
+      failed and mixed lines as rejected.
+  - seat: codex-gpt-5.6-sol (same review)
+    objection: LOW - the ID headline used "belum" (not yet) and both ID strings read unnaturally.
+    status: RETRACTED
+    disposition: Cured in fb070ff61c with the reviewer's own wording ("Alat ini tidak dapat memastikan jalur tersebut").
+  - seat: codex-gpt-5.6-sol (same review)
+    objection: LOW - the one-door test hand-built the alternatives and steps it claimed to verify.
+    status: RETRACTED
+    disposition: >-
+      Cured in fb070ff61c - the one-door outcome comes from buildEngineOutcome with facts that open the real C1 door.

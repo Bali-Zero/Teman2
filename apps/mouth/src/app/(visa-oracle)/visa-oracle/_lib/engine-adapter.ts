@@ -49,6 +49,19 @@ const step = (
   idText: string,
 ): OutcomeNextSteps[number] => ({ id, title: text(en, idText) });
 
+// Shared by the generic NO_SUPPORTED_PATH list and the no-door list below,
+// so the two can never drift apart in wording.
+const TALK_TO_ADVISOR_STEP = step(
+  "talk-to-advisor",
+  "Talk to a Bali Zero advisor — some routes depend on facts this tool does not ask.",
+  "Bicarakan dengan konsultan Bali Zero — beberapa jalur bergantung pada hal yang tidak ditanyakan alat ini.",
+);
+const KEEP_SUMMARY_STEP = step(
+  "keep-summary-checked",
+  "Keep this summary: it shows exactly what was checked.",
+  "Simpan ringkasan ini: isinya menunjukkan apa saja yang sudah diperiksa.",
+);
+
 const NEXT_STEPS_BY_STATE: Record<OutcomeStateName, OutcomeNextSteps> = {
   SUPPORTED_CANDIDATES: [
     step(
@@ -107,16 +120,8 @@ const NEXT_STEPS_BY_STATE: Record<OutcomeStateName, OutcomeNextSteps> = {
       "Look at the open door above, if one is shown.",
       "Lihat pintu yang terbuka di atas, jika ada.",
     ),
-    step(
-      "talk-to-advisor",
-      "Talk to a Bali Zero advisor — some routes depend on facts this tool does not ask.",
-      "Bicarakan dengan konsultan Bali Zero — beberapa jalur bergantung pada hal yang tidak ditanyakan alat ini.",
-    ),
-    step(
-      "keep-summary-checked",
-      "Keep this summary: it shows exactly what was checked.",
-      "Simpan ringkasan ini: isinya menunjukkan apa saja yang sudah diperiksa.",
-    ),
+    TALK_TO_ADVISOR_STEP,
+    KEEP_SUMMARY_STEP,
   ],
   TEMPORARILY_UNAVAILABLE: [
     step(
@@ -136,6 +141,15 @@ const NEXT_STEPS_BY_STATE: Record<OutcomeStateName, OutcomeNextSteps> = {
     ),
   ],
 };
+
+/**
+ * A NO_SUPPORTED_PATH that carries no alternative: the generic list's
+ * "look at the open door above" would point at nothing, so it is dropped.
+ */
+const NO_PATH_WITHOUT_DOORS_NEXT_STEPS: OutcomeNextSteps = [
+  TALK_TO_ADVISOR_STEP,
+  KEEP_SUMMARY_STEP,
+];
 
 /**
  * The Second Home Studio-only hold routes to a self-serve calculator and by
@@ -169,12 +183,22 @@ const STUDIO_NEXT_STEPS: OutcomeNextSteps = [
  */
 export function nextStepsFor(
   state: OutcomeStateName,
-  options: { studioOnly?: boolean } = {},
+  options: { studioOnly?: boolean; noDoors?: boolean } = {},
 ): OutcomeNextSteps {
   if (state === "HUMAN_REVIEW_REQUIRED" && options.studioOnly) {
     return STUDIO_NEXT_STEPS;
   }
+  if (state === "NO_SUPPORTED_PATH" && options.noDoors) {
+    return NO_PATH_WITHOUT_DOORS_NEXT_STEPS;
+  }
   return NEXT_STEPS_BY_STATE[state];
+}
+
+/** A NO_SUPPORTED_PATH outcome whose `alternatives` list is empty. */
+export function isNoPathWithoutDoors(outcome: OutcomeViewModel): boolean {
+  return (
+    outcome.state === "NO_SUPPORTED_PATH" && outcome.alternatives.length === 0
+  );
 }
 
 const PUBLIC_ID = /^[a-z0-9]{16,20}$/;
@@ -2085,11 +2109,17 @@ function buildValidatedOutcome(
           return reviewReason(item.code, item.source_refs, trustedIds);
         }) as [OutcomeReason, ...OutcomeReason[]],
       };
-    case "NO_SUPPORTED_PATH":
+    case "NO_SUPPORTED_PATH": {
+      const alternatives = buildNoPathDoors(
+        response.decision.no_path_reasons.map((item) => item.code),
+        options.facts ?? {},
+      );
       return {
         ...base,
         state: "NO_SUPPORTED_PATH",
-        nextSteps: nextStepsFor("NO_SUPPORTED_PATH"),
+        nextSteps: nextStepsFor("NO_SUPPORTED_PATH", {
+          noDoors: alternatives.length === 0,
+        }),
         candidates: [],
         pathsRemaining: 0,
         noPathReasons: response.decision.no_path_reasons.map((item) => {
@@ -2104,11 +2134,9 @@ function buildValidatedOutcome(
           }
           return reason(item.code, item.source_refs, trustedIds, options.facts);
         }) as [OutcomeReason, ...OutcomeReason[]],
-        alternatives: buildNoPathDoors(
-          response.decision.no_path_reasons.map((item) => item.code),
-          options.facts ?? {},
-        ),
+        alternatives,
       };
+    }
     case "TEMPORARILY_UNAVAILABLE":
       return {
         ...base,
