@@ -101,7 +101,7 @@ def fake_gh(tmp_path: Path, version: str | None = "2.27.2", rc: int = 0, languag
     if not language_present:
         rows = [r for r in rows if r["category"] != "/language:python"]
     conclusions = {"python": "success", "javascript": "success", **(main or {})}
-    own = {"head_branch": "main", "head_repository": {"full_name": "o/r"}, "status": "completed"}
+    own = {"head_branch": "main", "head_repository": {"full_name": "Bali-Zero/Teman2"}, "status": "completed"}   # the repository the plan reads (the default: the matrix names none)
     runs = {"workflow_runs": [{"id": 900, "created_at": stamp(0.5), "event": "schedule", "conclusion": "success", **own},
                               {"id": 800, "created_at": stamp(1.5), "event": "schedule", "conclusion": "failure", **own}, *(other_runs or [])]}
     jobs = {"jobs": [{"name": f"CodeQL Analysis ({lang})", "conclusion": c} for lang, c in conclusions.items()] + [{"name": "Bandit", "conclusion": "failure"}]}
@@ -564,8 +564,13 @@ def test_the_sentinel_runs_the_base_reader_not_the_candidates(tmp_path, monkeypa
 
 
 READER_NOW = datetime.datetime(2026, 10, 12, 0, 0, tzinfo=datetime.timezone.utc)
-MAIN_RUNS = {"workflow_runs": [{"id": 800, "created_at": "2026-10-10T19:17:00Z", "head_branch": "main"},
-                               {"id": 900, "created_at": "2026-10-11T19:17:00Z", "head_branch": "main"}]}   # not newest first: the reader picks by created_at
+def mrun(id: int, created: str, **over) -> dict:
+    """A completed security.yml run as the API lists it: the repository's own main, on the scheduled backstop, unless `over` says otherwise."""
+    return {"id": id, "created_at": created, "head_branch": "main", "event": "schedule", "head_repository": {"full_name": "o/r"}, **over}
+
+
+MAIN_RUNS = {"workflow_runs": [mrun(800, "2026-10-10T19:17:00Z"), mrun(900, "2026-10-11T19:17:00Z")]}   # not newest first: the reader picks by created_at
+FORK = {"event": "pull_request", "head_repository": {"full_name": "fork/r"}}   # a fork's PR whose branch is named main
 
 
 def main_jobs(**conclusion) -> dict:
@@ -573,10 +578,10 @@ def main_jobs(**conclusion) -> dict:
     return {"jobs": [{"name": f"CodeQL Analysis ({lang})", "conclusion": c} for lang, c in got.items()] + [{"name": "Bandit", "conclusion": "failure"}]}
 
 
-def run_reader(rows, pin="2.27.2", language="python", rc=0, runs=None, jobs=None, runs_rc=0, jobs_rc=0, now=READER_NOW, repo="o/r"):
-    """The reader against a stub gh: analyses -> `rows`, the security.yml runs -> `runs`, the newest run's jobs -> `jobs`."""
+def run_reader(rows, pin="2.27.2", language="python", rc=0, runs=None, jobs=None, runs_rc=0, jobs_rc=0, now=READER_NOW, repo="o/r", fork_jobs=None):
+    """The reader against a stub gh: analyses -> `rows`, the security.yml runs -> `runs`, the newest run's jobs -> `jobs` (run 777's, the fork's, -> `fork_jobs`)."""
     answers = {"/code-scanning/analyses": (rc, rows), "/actions/workflows/security.yml/runs": (runs_rc, MAIN_RUNS if runs is None else runs),
-               "/actions/runs/900/jobs": (jobs_rc, main_jobs() if jobs is None else jobs)}
+               "/actions/runs/900/jobs": (jobs_rc, main_jobs() if jobs is None else jobs), "/actions/runs/777/jobs": (0, main_jobs() if fork_jobs is None else fork_jobs)}
 
     def run(argv, **kw):
         code, doc = next((v for k, v in answers.items() if k in argv[2]), (1, "unexpected path"))
@@ -741,12 +746,38 @@ def test_another_languages_red_job_does_not_block_this_leg(capsys):
 
 
 def test_the_newest_completed_run_is_the_one_by_created_at_not_by_position(capsys):
-    older_red = {"workflow_runs": [{"id": 900, "created_at": "2026-10-11T19:17:00Z", "head_branch": "main"},
-                                   {"id": 111, "created_at": "2026-10-01T19:17:00Z", "head_branch": "main"}]}
+    older_red = {"workflow_runs": [mrun(900, "2026-10-11T19:17:00Z"), mrun(111, "2026-10-01T19:17:00Z")]}
     assert run_reader(one_row(at(1)), runs=older_red) == 0   # run 900 is the newest whatever its position (its jobs are green)
-    newer_red = {"workflow_runs": [{"id": 111, "created_at": "2026-10-01T19:17:00Z", "head_branch": "main"},
-                                   {"id": 900, "created_at": "2026-10-11T19:17:00Z", "head_branch": "main"}]}
+    newer_red = {"workflow_runs": [mrun(111, "2026-10-01T19:17:00Z"), mrun(900, "2026-10-11T19:17:00Z")]}
     assert run_reader(one_row(at(1)), runs=newer_red, jobs=main_jobs(python="failure")) == 6
+
+
+def test_a_fork_pr_whose_branch_is_named_main_and_is_newer_and_green_does_not_stand_in_for_main(capsys):
+    red_main = main_jobs(python="failure")
+    runs = {"workflow_runs": [mrun(900, "2026-10-11T19:17:00Z"), mrun(777, "2026-10-11T23:00:00Z", **FORK)]}
+    assert run_reader(one_row(at(1)), runs=runs, jobs=red_main, fork_jobs=main_jobs()) == 6   # the red schedule run on main is the verdict
+    assert "run 900" in capsys.readouterr().err
+
+
+def test_a_fork_pr_named_main_that_is_newer_and_red_does_not_block_a_green_main():
+    runs = {"workflow_runs": [mrun(900, "2026-10-11T19:17:00Z"), mrun(777, "2026-10-11T23:00:00Z", **FORK)]}
+    assert run_reader(one_row(at(1)), runs=runs, fork_jobs=main_jobs(python="failure")) == 0
+
+
+@pytest.mark.parametrize("over", [FORK, {"head_repository": {"full_name": "fork/r"}}, {"event": "pull_request"}, {"event": "push"}, {"event": "merge_group"},
+                                  {"head_branch": "develop"}, {"head_repository": None}, {"head_repository": {}}, {"event": None}])
+def test_only_a_run_of_the_repositorys_own_main_on_a_main_event_is_a_candidate(over):
+    assert run_reader(one_row(at(1)), runs={"workflow_runs": [mrun(900, "2026-10-11T19:17:00Z", **over)]}) == 1   # nothing left: CANNOT-VERIFY, never green
+
+
+def test_the_repository_name_is_compared_case_insensitively():
+    assert run_reader(one_row(at(1)), repo="O/R") == 0
+
+
+def test_the_main_events_are_the_ones_the_base_workflow_runs_on_main():
+    on = yaml.safe_load((REAL / SECURITY).read_text()).get("on") or yaml.safe_load((REAL / SECURITY).read_text()).get(True)   # PyYAML reads the key `on` as True
+    assert "main" not in (on["push"]["branches"]) and "schedule" in on and "workflow_dispatch" in on   # push is develop-only: the citation in the reader
+    assert reader.MAIN_EVENTS == {"schedule", "workflow_dispatch"}
 
 
 @pytest.mark.parametrize("kw", [{"runs_rc": 1}, {"jobs_rc": 1}, {"runs": {"workflow_runs": []}}, {"runs": {"message": "x"}}, {"jobs": {"jobs": []}},
@@ -761,7 +792,8 @@ def test_the_reader_refuses_a_repo_that_climbs_the_api_path(repo):
 
 
 def test_the_reader_takes_an_owner_and_a_name_with_dots_inside_a_segment():
-    assert run_reader(one_row(at(1)), repo="my.org/some-repo.v2") == 0
+    mine = {"workflow_runs": [mrun(900, "2026-10-11T19:17:00Z", head_repository={"full_name": "my.org/some-repo.v2"})]}
+    assert run_reader(one_row(at(1)), repo="my.org/some-repo.v2", runs=mine) == 0
 
 
 def test_a_stale_newest_analysis_blocks_the_plan_with_the_days_in_the_reason(tmp_path, monkeypatch):

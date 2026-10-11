@@ -107,6 +107,8 @@ CQ_OVERRIDE_WINS = cq("test_when_both_exist_the_repository_variable_wins_as_host
 CQ_OVERRIDE_ENV = cq("test_a_base_job_that_names_an_environment_is_fail_open_because_its_variables_are_invisible",
                      "test_the_plan_passes_the_base_jobs_so_an_environment_in_the_base_workflow_fails_open")
 CQ_OVERRIDE_TOTAL = cq("test_a_total_count_that_disagrees_with_the_rows_collected_is_a_read_error")
+CQ_FORK = cq("test_a_fork_pr_whose_branch_is_named_main_and_is_newer_and_green_does_not_stand_in_for_main",
+             "test_a_fork_pr_named_main_that_is_newer_and_red_does_not_block_a_green_main", "test_only_a_run_of_the_repositorys_own_main_on_a_main_event_is_a_candidate")
 CQ_USES = cq("test_a_bumped_codeql_action_in_the_base_workflow_blocks_until_the_matrix_follows")
 CQ_LOCALVER = cq("test_a_local_cli_other_than_the_pin_is_no_verdict_before_anything_is_extracted", "test_a_driven_leg_on_another_cli_is_error_never_fail_or_pass")
 CQ_STALE = cq("test_the_reader_is_blocked_by_an_analysis_older_than_seven_days", "test_a_stale_newest_analysis_blocks_the_plan_with_the_days_in_the_reason")
@@ -736,6 +738,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "cq-override-org-beats-repo": (RUNNER, "                break   # the repository variable wins over the organization's\n", "", CQ_OVERRIDE_WINS),
     "cq-override-environment-ignored": (RUNNER, 'or any(isinstance(j, dict) and "environment" in j for j in (jobs or {}).values()):', ":", CQ_OVERRIDE_ENV),
     "cq-override-total-unchecked": (RUNNER, "            return rows if len(rows) == total else None", "            return rows", CQ_OVERRIDE_TOTAL),
+    "cq-sentinel-fork-main": (CQ_READER_FILE, ' and isinstance(head, dict) and isinstance(head.get("full_name"), str) and head["full_name"].lower() == repo.lower())', ")", CQ_FORK),
+    "cq-sentinel-any-event": (CQ_READER_FILE, '\n            and r.get("event") in MAIN_EVENTS', "", CQ_FORK),
     "cq-uses-unpinned": (RUNNER, 'if isinstance(ms.get("uses_pin"), str) and ws.get("uses") != ms["uses_pin"]:', "if False:", CQ_USES),
     "cq-local-version-unchecked": (CQ_SH_FILE, '  [ "$(tail -n 1 "$WORK/version.out")" = "$CODEQL_PIN" ] ||', "  true ||", CQ_LOCALVER),
     "cq-version-probe-swallowed": (CQ_SH_FILE, '  step "$CQ" version --format=terse >"$WORK/version.out"', '  step "$CQ" version --format=terse >"$WORK/version.out" || true', CQ_VERPROBE),

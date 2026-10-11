@@ -6,7 +6,8 @@ run by feature flag (2.27.1 -> 2.27.2 around 2026-10-09), and a local analysis o
     codeql_version_read.py --repo OWNER/NAME --language python|javascript --pin 2.27.2
 
 Exit 0 = the newest analysis of that language on refs/heads/main reports the pin, is at most 7 days old, and the newest completed
-security.yml run on main has this language's CodeQL job concluded success. Every other exit is "no verdict", never green:
+security.yml run of the repository's own main (head_repository is the repo, head_branch main, event schedule or workflow_dispatch: a fork's
+PR branch named main is not it) has this language's CodeQL job concluded success. Every other exit is "no verdict", never green:
 3 = it reports another version (the line names both) · 4 = no analysis of that language in the newest page · 5 = the newest analysis is
 older than 7 days (hosted has not analysed main since, so the CLI it runs now is unknown) · 6 = the newest completed security.yml run on
 main has this language's job red (hosted main fails on this leg: a CLI upgrade that dies before it uploads shows here and nowhere else) ·
@@ -28,6 +29,10 @@ VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 PAGE = 100
 MAX_AGE_DAYS = 7
 WORKFLOW = "security.yml"
+# The events on which security.yml runs a run whose head_branch is main of THIS repository, from its `on:` block (.github/workflows/security.yml):
+# `push` lists branches [develop] only, `pull_request` and `merge_group` runs carry the PR's or the queue's ref, and `schedule` and
+# `workflow_dispatch` run on the default branch. A fork's pull_request run can carry head_branch "main" too: it is neither this repository's nor these events.
+MAIN_EVENTS = frozenset({"schedule", "workflow_dispatch"})
 
 
 def fail(marker: str, msg: str, rc: int) -> int:
@@ -40,6 +45,14 @@ def newest(analyses: list, category: str) -> dict | None:
     mine = [a for a in analyses if isinstance(a, dict) and a.get("category") == category and isinstance(a.get("created_at"), str)
             and isinstance(a.get("tool"), dict) and a["tool"].get("name") == "CodeQL"]   # another scanner can upload under the same category
     return max(mine, key=lambda a: a["created_at"]) if mine else None
+
+
+def own_main_run(r: object, repo: str) -> bool:
+    """A security.yml run of this repository's own main: the head repository is `repo` (a fork's run is not), the head branch is main, and the
+    event is one that runs the workflow on main (MAIN_EVENTS)."""
+    head = r.get("head_repository") if isinstance(r, dict) else None
+    return (isinstance(r, dict) and isinstance(r.get("created_at"), str) and isinstance(r.get("id"), int) and r.get("head_branch") == "main"
+            and r.get("event") in MAIN_EVENTS and isinstance(head, dict) and isinstance(head.get("full_name"), str) and head["full_name"].lower() == repo.lower())
 
 
 def age_days(stamp: str, now: datetime.datetime) -> float | None:
@@ -90,13 +103,12 @@ def main(argv: list[str] | None = None, run=subprocess.run, now: datetime.dateti
         return fail("::error::codeql_version_read: STALE",
                     f"the newest hosted {args.language} analysis on main (analysis {top.get('id')}, {top['created_at']}) is {int(age)} days old (limit {MAX_AGE_DAYS}): "
                     "the CLI hosted runs today is not known", 5)
-    runs = gh_json(run, f"repos/{args.repo}/actions/workflows/{WORKFLOW}/runs?branch=main&status=completed&per_page=20")
+    runs = gh_json(run, f"repos/{args.repo}/actions/workflows/{WORKFLOW}/runs?branch=main&status=completed&per_page={PAGE}")
     if isinstance(runs, str):
         return fail(CANNOT, runs, 1)
-    rows = [r for r in (runs.get("workflow_runs") if isinstance(runs, dict) else None) or []
-            if isinstance(r, dict) and isinstance(r.get("created_at"), str) and r.get("head_branch") == "main" and isinstance(r.get("id"), int)]
+    rows = [r for r in (runs.get("workflow_runs") if isinstance(runs, dict) else None) or [] if own_main_run(r, args.repo)]
     if not rows:
-        return fail(CANNOT, f"(read failed) no completed {WORKFLOW} run on main in the answer", 1)
+        return fail(CANNOT, f"(read failed) no completed {WORKFLOW} run of {args.repo} main ({'/'.join(sorted(MAIN_EVENTS))}) in the answer", 1)
     last = max(rows, key=lambda r: r["created_at"])
     jobs = gh_json(run, f"repos/{args.repo}/actions/runs/{last['id']}/jobs?per_page=100")
     if isinstance(jobs, str):
