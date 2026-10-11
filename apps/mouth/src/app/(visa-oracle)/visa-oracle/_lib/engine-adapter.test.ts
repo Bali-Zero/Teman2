@@ -136,6 +136,31 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     expect(JSON.stringify(candidate)).not.toContain("60 days");
   });
 
+  it("keeps E33A/B/C consultation copy honest and pins the E33A central-government exclusion in both languages", () => {
+    expect(SUPPORT_REASON_COPY.E33A_GOVERNMENT_INVITATION_ELIGIBLE).toEqual({
+      en: "You told us you hold a written invitation from an Indonesian central-government body for your special expertise — the Second Home Visa — Special-Expertise Government Invitation (E33A). This government-invitation route is handled with a Bali Zero advisor.",
+      id: "Anda menyampaikan bahwa Anda memiliki undangan tertulis dari instansi pemerintah pusat Indonesia atas keahlian khusus Anda — Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A). Jalur undangan pemerintah ini ditangani bersama konsultan Bali Zero.",
+    });
+    expect(SUPPORT_REASON_COPY.E33B_GOVERNMENT_COLLABORATION_ELIGIBLE).toEqual({
+      en: "You told us you have a confirmed collaboration commitment with an Indonesian government body or institution based on your special expertise — the Second Home Golden Visa — Special-Expertise Collaboration (E33B). This collaboration route is handled with a Bali Zero advisor.",
+      id: "Anda menyampaikan bahwa Anda memiliki komitmen kolaborasi yang terkonfirmasi dengan instansi atau lembaga pemerintah Indonesia berdasarkan keahlian khusus Anda — Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B). Jalur kolaborasi ini ditangani bersama konsultan Bali Zero.",
+    });
+    expect(SUPPORT_REASON_COPY.E33C_WORLD_FIGURE_INVITATION_ELIGIBLE).toEqual({
+      en: "You told us you have an invitation letter from an Indonesian central-government agency inviting you as a world figure — the Second Home Golden Visa — World-Figure Government Invitation (E33C). This government-invitation route is handled with a Bali Zero advisor.",
+      id: "Anda menyampaikan bahwa Anda memiliki surat undangan dari instansi pemerintah pusat Indonesia yang mengundang Anda sebagai tokoh dunia — Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C). Jalur undangan pemerintah ini ditangani bersama konsultan Bali Zero.",
+    });
+    expect(SUPPORT_REASON_COPY.E33A_SPONSOR_NOT_GOVERNMENT).toEqual({
+      en: "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian central government body, and you did not name one as your sponsor.",
+      id: "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah pusat Indonesia, dan Anda tidak menyebutkan instansi pemerintah pusat sebagai penjamin Anda.",
+    });
+  });
+
+  it("never offers a combined property-and-deposit route in Second Home Studio copy", () => {
+    const copy = REVIEW_REASON_COPY[SECOND_HOME_STUDIO_REVIEW_REASON_CODE];
+    expect(copy.en).not.toMatch(/combination/i);
+    expect(copy.id).not.toMatch(/kombinasi/i);
+  });
+
   it("renders an exact PricingTool quote as one all-inclusive IDR amount", () => {
     const response = makeVisaOracleResponse();
     const candidate = response.display.candidates[0];
@@ -1466,6 +1491,24 @@ describe("support reasons are sentences, not machine codes", () => {
       throw new Error("unexpected state");
     return outcome.noPathReasons[0].message;
   }
+
+  it("uses the visitor's E33B collaboration answer instead of the E33A sponsor sentence for a sponsorless walk", () => {
+    const message = firstNoPathReason("E33A_SPONSOR_NOT_GOVERNMENT", {
+      sponsor_category: "NONE",
+      sponsor_government_collaboration: "no",
+    });
+    expect(message).toEqual({
+      en: "You told us no Indonesian government body has committed to a collaboration with you; the E33B route needs that commitment.",
+      id: "Anda menyampaikan bahwa belum ada instansi pemerintah Indonesia yang berkomitmen untuk berkolaborasi dengan Anda; jalur E33B memerlukan komitmen tersebut.",
+    });
+  });
+
+  it("keeps the E33A sentence for a GOVERNMENT-sponsor walk", () => {
+    const message = firstNoPathReason("E33A_SPONSOR_NOT_GOVERNMENT", {
+      sponsor_category: "GOVERNMENT",
+    });
+    expect(message).toEqual(SUPPORT_REASON_COPY.E33A_SPONSOR_NOT_GOVERNMENT);
+  });
 
   it("explains the seq-20 local-compensation exclusion in prose, in every locale", () => {
     const code = excludeReasonCodeOfRule("hf.d2.indonesia-source-compensation");
