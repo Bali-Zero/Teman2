@@ -17,8 +17,15 @@ FAILs; a frame's value is a descriptor (a tone, a step, a fraction) or nothing, 
 one text instrument. Ink is a pixel whose summed RGB distance from the frame's dominant colour exceeds 60; a band is
 a run of ink rows. Every C has a synthetic guilt image that must FAIL and an innocent one that must pass, plus a
 forgotten mark and a mark on an empty area per C, and `cap` on a 13 pt element. Self-tests run first. Exit 1 on any
-FAIL."""
-import json, pathlib, re, sys
+FAIL. Frames ready to arm (PR 3-h-2b, #8250 gate bindings 1-5): every JSON of the set, armed or not, speaks the census
+grammar (NAMES: a closed list of names, each with its value's pattern) and agrees with the record's own state the
+band snapshot writes beside its frames; a measured element is bounded on both sides; C11 finds a chip whole, never
+clipped by its frame, and holds it on its frame — a mark sits outside any `.offset`/Beat, where its element lands.
+Successor cure (PR 3-h-2b', #8276 gate BLOCK): the sentence's bound is calibrated on the real Fraunces glyphs (a serif(20)
+line is 31-42 px, 1.1 x 20 pt = 44 px; a 24 pt line is 46+), the cap is measured per band (the sheet-ledger's is
+display(64), every other band's title(36)), C11 grows only through the chip's own colours and stops at a rule, a
+single-record band that arms C23 carries its record, and a non-string value FAILs naming its cause."""
+import json, pathlib, re, sys, tempfile
 from collections import Counter
 from PIL import Image, ImageDraw
 ACCENTS = [(0xA4, 0x4B, 0x36), (0xD0, 0x83, 0x71), (0xB8, 0x86, 0x2B), (0xC2, 0x8D, 0x2D)]
@@ -73,15 +80,15 @@ nearest = lambda p, table: min(table, key=lambda t: min(sum(abs(a - c) for a, c 
 
 def c11(im, fr, rows):
     """matrix-columns: each matrix (its header row) holds the fixture's row count of chips, each centred on the ink
-    of its scale's header, the nearest above it, +-4 px. A chip is where it is SEEN, not where its frame says: a render
-    offset (an entrance beat) moves the ink and leaves the layout frame behind."""
+    of its scale's header, the nearest above it, and on its own frame, +-4 px. A chip is where it is SEEN, whole: a
+    render offset (an entrance beat) moves the ink, and the frame — marked outside the beat — stays where it lands."""
     need(fr, "matrix.head", "matrix.chip"); heads = [(v, b[3], sum(ibox(im, b)[0::2]) / 2) for v, b in fr["matrix.head"]]
     per, off = Counter(), []
     for v, b in fr["matrix.chip"]:
         h = max((h for h in heads if h[0] == v and h[1] <= b[1]), key=lambda h: h[1], default=None)
         if h: per[round(h[1] / 4)] += 1
-        c = seen(im, b)
-        if not h or abs((c[0] + c[2]) / 2 - h[2]) > 4: off.append(v)
+        c = seen(im, b); cx, cy = (c[0] + c[2]) / 2, (c[1] + c[3]) / 2
+        if not h or abs(cx - h[2]) > 4 or abs(cx - (b[0] + b[2]) / 2) > 4 or abs(cy - (b[1] + b[3]) / 2) > 4: off.append(v)
     ok = bool(per) and set(per.values()) == {rows} and not off
     return ok, "chips per matrix %s (need %d), off their header: %s" % (sorted(per.values()), rows, off or "none")
 
@@ -193,7 +200,28 @@ NEEDS = {"C11": ("matrix.head", "matrix.chip"), "C12": ("headsup.label",), "C13"
          "C18": ("census", "card"), "C19": ("uraian.item",), "C20": ("row.code", "row.title", "row.chip"),
          "C21": ("ladder", "matrix"), "C22": ("group.digits", "row.code"), "C23": ()}
 OPTIONAL = {"C12": ("headsup.sentence",)}
-VALUE = re.compile(r"(?:open|restricted|closed|neutral|\d|0?\.\d+|1\.0*)?")
+# The census grammar (#8250 gate binding 2): a frame's name is one of these, and its value matches the name's pattern —
+# a tone, a step ("0"…"3" in `scaleOrder`), an ordinal, a fraction, or nothing. Never drawn text.
+TONE, STEP, ORD, FRAC = r"open|restricted|closed|neutral", r"[0-3]", r"[1-9]?", r"0(?:\.\d+)?|1(?:\.0+)?|\.\d+"
+NAMES = {**dict.fromkeys(("matrix.head", "matrix.chip", "matrix.cell"), STEP), "headsup.label": ORD, "headsup.sentence": ORD,
+         **dict.fromkeys(("chip.national", "chip.bali", "headsup"), TONE), "bar": FRAC,
+         **dict.fromkeys(("matrix", "ladder", "cap", "bali.label", "basis.lead", "basis.body", "reason.lead", "reason.body",
+                          "figure", "figure.peak", "card.peak", "census", "card", "uraian.item", "row.code", "row.title",
+                          "row.chip", "group.digits"), "")}
+
+NOVALUE = object()
+
+def grammar(n, v, record=None):
+    """Why a frame breaks the census grammar, or None. A state value comes from the record, never from the function that
+    paints the element (lead ruling 2026-10-11): one that disagrees with the record's own state FAILs."""
+    if not isinstance(n, str) or n not in NAMES: return "frame %r is no census name: the grammar is png_census's NAMES" % (n,)
+    if v is NOVALUE: return "frame %s has no value: a census value is a string (a tone, a step, a fraction or \"\")" % n
+    if not isinstance(v, str): return "frame %s carries %r (%s): a census value is a string, never a %s" % (n, v, type(v).__name__, type(v).__name__)
+    if not re.fullmatch(NAMES[n], v): return "frame %s carries %r: not its value (%s), never drawn text" % (n, v, NAMES[n] or "none")
+    axis = n[5:] if n.startswith("chip.") else n if n == "headsup" else None
+    if axis in (record or {}) and v != record[axis]:
+        return "frame %s carries %r, its record says %r: a value read from the painter, not the record" % (n, v, record[axis])
+    return None
 INK_MIN = .01
 
 def ground(im, b):
@@ -208,11 +236,34 @@ def inked(im, b):
     return sum(sum(abs(a - c) for a, c in zip(px[x, y], g)) > 48 for x, y in inner) / max(1, len(inner))
 
 def seen(im, b):
-    """The box of b's pixels, 3 px in, unlike the ground around b: a chip's fill as drawn inside its frame."""
-    x0, y0, x1, y1 = b; px = im.load(); g = ground(im, b)
-    pts = [(x, y) for y in range(y0 + 3, y1 - 3) for x in range(x0 + 3, x1 - 3) if sum(abs(a - c) for a, c in zip(px[x, y], g)) > 48]
-    if not pts: raise Miss("nothing drawn in a frame at %s" % (b,))
-    return min(x for x, _ in pts), min(y for _, y in pts), max(x for x, _ in pts), max(y for _, y in pts)
+    """The box of the chip drawn at b: its pixels unlike the ground around b, 3 px in, and every pixel connected to them
+    up to one frame width and height outside b — a chip drawn off its frame is found whole, never clipped by it
+    (#8250 gate binding 4); a Rendah chip (fill == ground) is found by its border. It grows only through the chip's own
+    colours (fill, border, text: the colours that hold >= 2 % of the ink in b) and never into a rule, a run of one colour
+    longer than 1.5 x the frame (#8276 gate binding 3): a chip touching a full-width rule is no wider than itself."""
+    x0, y0, x1, y1 = b; px = im.load(); g = ground(im, b); W, H = im.size; w, h = x1 - x0, y1 - y0
+    unlike = lambda p: sum(abs(a - c) for a, c in zip(px[p], g)) > 48
+    todo = [(x, y) for y in range(y0 + 3, y1 - 3) for x in range(x0 + 3, x1 - 3) if unlike((x, y))]
+    if not todo: raise Miss("nothing drawn in a frame at %s" % (b,))
+    mine = Counter(px[x, y] for y in range(max(y0, 0), min(y1, H)) for x in range(max(x0, 0), min(x1, W)) if unlike((x, y)))
+    own = [c for c, n in mine.items() if n >= .02 * sum(mine.values())]
+    owns = lambda p: any(sum(abs(a - c) for a, c in zip(px[p], o)) <= 30 for o in own)
+    def run(p, step, limit):
+        n = 1
+        for sign in (1, -1):
+            q = (p[0] + sign * step[0], p[1] + sign * step[1])
+            while n <= limit and 0 <= q[0] < W and 0 <= q[1] < H and sum(abs(a - c) for a, c in zip(px[q], px[p])) <= 12:
+                n += 1; q = (q[0] + sign * step[0], q[1] + sign * step[1])
+        return n
+    ruled = lambda p: run(p, (1, 0), 1.5 * w) > 1.5 * w or run(p, (0, 1), 1.5 * h) > 1.5 * h
+    got, tried = set(todo), set()
+    while todo:
+        x, y = todo.pop()
+        for q in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if q in got or q in tried or not (max(x0 - w, 0) <= q[0] < min(x1 + w, W) and max(y0 - h, 0) <= q[1] < min(y1 + h, H)): continue
+            tried.add(q)
+            if unlike(q) and owns(q) and not ruled(q): got.add(q); todo.append(q)
+    return min(x for x, _ in got), min(y for _, y in got), max(x for x, _ in got), max(y for _, y in got)
 
 def weight(im, b, cs):
     """The thickest run of rows in b whose pixels near cs cover 80 % of its width: a rule's weight in px."""
@@ -221,44 +272,56 @@ def weight(im, b, cs):
         run = run + 1 if sum(near(im.getpixel((x, y)), cs, 24) for x in xs) >= .8 * len(xs) else 0; best = max(best, run)
     return best
 
-# The spec's own measure of a marked element (s: px per pt), so a mark on the wrong element FAILs.
-MEASURE = {"cap": (lambda im, b, s: first(im, b) >= .6 * 36 * s, "§3 size, title(36): first ink band >= 0.6 x 36 pt"),
-           "headsup.sentence": (lambda im, b, s: first(im, b) >= .6 * 20 * s, "D2 serif(20): first ink band >= 0.6 x 20 pt"),
-           "bar": (lambda im, b, s: abs(b[3] - b[1] - 2 * s) <= 1 and abs(b[2] - b[0] - 48 * s) <= 2, "D5: 48 x 2 pt"),
-           "matrix": (lambda im, b, s: abs(weight(im, b, STRUCTURE) - 2 * s) <= 1, "D1: a 2 pt structure rule")}
+# The spec's own measure of a marked element (s: px per pt), keyed on (band, name) so a mark on the wrong element FAILs.
+# Bounded on both sides (#8250 gate binding 1): a 64 pt figure is no card cap. cap's two readers are its position checks too
+# (C13: above the Bali label; C14: the right third), so a band that arms a size-measured cap arms its position with it.
+# The cap is measured PER BAND by design (lead ruling 2026-10-11): the sheet-ledger's is the redesign's big figure,
+# Theme.display(64) (KBLIRegistryView), every other band's the detail card's title(36). A real serif(20) line is 31-42 px
+# of ink at 2 px/pt, day and night, and a 24 pt line 46 px: the sentence's upper bound is 1.1 x 20 pt (44 px).
+LEDGER = re.compile(r"sheet-ledger-")
+SINGLE = re.compile(r"(?:detail-card|dossier|sheet-ledger|chat)-")
+cap_pt = lambda band: 64 if LEDGER.match(band) else 36
+MEASURE = {"cap": (lambda im, b, s, band: .6 * cap_pt(band) * s <= first(im, b) <= cap_pt(band) * s,
+                   lambda band: "§3 size, %s(%d): first ink band 0.6-1.0 x %d pt" % ("display" if LEDGER.match(band) else "title", cap_pt(band), cap_pt(band))),
+           "headsup.sentence": (lambda im, b, s, band: .6 * 20 * s <= first(im, b) <= 1.1 * 20 * s,
+                                lambda band: "D2 serif(20): first ink band 0.6-1.1 x 20 pt"),
+           "bar": (lambda im, b, s, band: abs(b[3] - b[1] - 2 * s) <= 1 and abs(b[2] - b[0] - 48 * s) <= 2, lambda band: "D5: 48 x 2 pt"),
+           "matrix": (lambda im, b, s, band: abs(weight(im, b, STRUCTURE) - 2 * s) <= 1, lambda band: "D1: a 2 pt structure rule")}
 
-def judge(im, fr, s, c, arg):
+def judge(im, fr, s, c, arg, band="", record=None):
     """An armed check: a frame it reads that is missing FAILs naming it; each one it reads holds ink and meets its
     MEASURE; then the check itself."""
     names = NEEDS[c] + (tuple(arg) if c == "C23" else ())
+    if c == "C23" and SINGLE.match(band) and not record:
+        raise Miss("band %s is a single-record band and arms C23, but its JSON carries no record: the snapshot must write it" % band)
     missing = [n for n in names if not fr.get(n)]
     if missing: raise Miss("missing frame %s: the View must mark it" % ", ".join(missing))
     extra = OPTIONAL.get(c, ()) + (tuple(n for n in fr if n.startswith("chip.") or n == "headsup") if c == "C23" else ())
     for n in dict.fromkeys(names + extra):
         for _, b in fr.get(n, []):
             if inked(im, b) < INK_MIN: raise Miss("frame %s at %s holds no ink: a mark on an empty area" % (n, b))
-            if n in MEASURE and not MEASURE[n][0](im, b, s): raise Miss("frame %s at %s is not %s" % (n, b, MEASURE[n][1]))
+            if n in MEASURE and not MEASURE[n][0](im, b, s, band): raise Miss("frame %s at %s is not %s" % (n, b, MEASURE[n][1](band)))
     return CHECKS[c](im, fr, arg)
 # (PNG path relative to the set, as a regex; check; its argument). Each View PR arms its own bands here when it names
 # the frames its checks read (lead ruling 2026-10-11): none is armed by the harness itself.
 ARMED = []
 
 def frames(png, im):
-    """({name: [(value, px box)]} of the frames drawn whole on the canvas, px per pt)."""
+    """({name: [(value, px box)]} of the frames drawn whole on the canvas, px per pt, the record's own state or None)."""
     doc = json.load(open(png.with_suffix(".json"))); s = im.width / doc["width"]; fr = {}
     for f in doc["frames"]:
-        if not VALUE.fullmatch(f["value"]):
-            raise ValueError("frame %s carries %r: a value is a tone, a step or a fraction, never drawn text" % (f["name"], f["value"]))
+        why = grammar(f.get("name"), f.get("value", NOVALUE), doc.get("record"))
+        if why: raise ValueError(why)
         x, y, w, h = (round(v * s) for v in f["frame"])
         if 0 <= x and 0 <= y and x + w <= im.width + 1 and y + h <= im.height + 1 and w > 0 and h > 0:   # wholly drawn
             fr.setdefault(f["name"], []).append((f["value"], (x, y, min(x + w, im.width), min(y + h, im.height))))
-    return fr, s
+    return fr, s, doc.get("record")
 
 def armed(png, rel, im):
     out = []
     for rx, c, arg in ARMED:
         if not re.fullmatch(rx, rel): continue
-        try: ok, detail = judge(im, *frames(png, im), c, arg)
+        try: fr, scale, record = frames(png, im); ok, detail = judge(im, fr, scale, c, arg, png.name, record)
         except (Miss, OSError, ValueError, KeyError) as e: ok, detail = False, "%s: %s" % (type(e).__name__, e)
         out.append((ok, "%s %s" % (c, detail)))
     return out
@@ -324,9 +387,9 @@ def c_cases():
         yield "C11", 4, k, *m(*[word("matrix.head", str(i), (x - 10, 10, x + 10, 20)) for i, x in enumerate(xs)],
                               *[chip("matrix.chip", str(i), (x - 15 + 10 * k, 40, x + 15 + 10 * k, 64), OP) for i, x in enumerate(xs)])
         yield "C12", None, k, *m(word("headsup.label", "", (20, 10, 120, 20)), word("headsup.sentence", "", (20, 40, 300, 60 - 12 * k)))
-        yield "C13", None, k, *m(word("cap", "", (250, 10, 300, 50 - 20 * k)), chip("chip.bali", "open", (240, 100, 300, 124), OP),
+        yield "C13", None, k, *m(word("cap", "", (250, 10, 300, 44 - 20 * k)), chip("chip.bali", "open", (240, 100, 300, 124), OP),
                                  word("bali.label", "", (240, 80, 300, 88)))
-        yield "C14", None, k, *word("cap", "", (280 - 220 * k, 10, 320 - 220 * k, 50))
+        yield "C14", None, k, *word("cap", "", (280 - 220 * k, 10, 320 - 220 * k, 44))
         yield "C15", None, k, *m(word("basis.lead", "", (20, 10, 300, 34 - 4 * k)), word("basis.body", "", (20, 60, 300, 80)))
         yield "C16", None, k, [((100, 50, 148, 52), LS), ((100, 50, 124 - 10 * k, 52), ST)], {"bar": [("0.49", (100, 50, 148, 52))]}
         yield "C17", None, k, *m(*[word("figure", "", (x - 40, y, x, y + 20)) for x, y in ((300, 10), (301, 50), (299, 90))],
@@ -344,10 +407,60 @@ def c_cases():
         yield "C22", None, k, *m(word("group.digits", "", (20, 10, 60, 34 - 6 * k)), word("row.code", "", (20, 55, 80, 74)))
         yield "C23", ("chip.national",), k, *chip("chip.national", "open", (20, 20, 120, 44), (OP, CL)[k])
     yield "C14", None, 1, *word("cap", "", (280, 10, 320, 19))
+    yield "C14", None, 1, *word("cap", "", (280, 10, 320, 74))   # a 64 pt figure is no cap (#8250 gate binding 1)
     # a chip an entrance beat left 20 pt right of its frame, the frame still on its column: C11 reads the ink (IMM probe)
     yield "C11", 4, 1, *m(*[word("matrix.head", str(i), (x - 10, 10, x + 10, 20)) for i, x in enumerate(xs)],
                           *[([((x + 5, 40, x + 35, 64), OP)] + ink((x + 13, 46, x + 27, 58)), {"matrix.chip": [(str(i), (x - 15, 40, x + 15, 64))]})
                             for i, x in enumerate(xs)])
+    # a chip a few px off its frame, which the frame used to clip (#8250 gate binding 4): 2 px passes, 6 and 10 FAIL;
+    # a whole node a beat left 10 px off, its header too, its frames marked outside the beat where it lands (binding 5)
+    for dx, dh, k in ((2, 0, 0), (6, 0, 1), (10, 0, 1), (10, 10, 1)):
+        yield "C11", 4, k, *m(*[(ink((x - 10 + dh, 10, x + 10 + dh, 20)), {"matrix.head": [(str(i), (x - 16, 4, x + 16, 26))]})
+                                for i, x in enumerate(xs)],
+                              *[chip("matrix.chip", str(i), (x - 15 + dx, 40, x + 15 + dx, 64), OP)[0:1] + ({"matrix.chip": [(str(i), (x - 15, 40, x + 15, 64))]},)
+                                for i, x in enumerate(xs)])
+
+    # a chip 10 px off that TOUCHES a full-width rule (#8276 gate binding 3): seen() never grows along the rule — whatever the
+    # chip's own colours, the rule's colour included — so the box stays the chip's and its centre is found 10 px off
+    for dx, fill, k in ((0, OP, 0), (10, OP, 1), (10, LS, 1), (0, LS, 0)):
+        yield "C11", 4, k, *m(*[(ink((x - 10, 10, x + 10, 20)), {"matrix.head": [(str(i), (x - 16, 4, x + 16, 26))]}) for i, x in enumerate(xs)],
+                              *[([((x - 15 + dx, 40, x + 15 + dx, 64), fill)] + ink((x - 7 + dx, 46, x + 7 + dx, 58)) + [((0, 64, 400, 65), LS)],
+                                 {"matrix.chip": [(str(i), (x - 15, 40, x + 15, 64))]}) for i, x in enumerate(xs)])
+
+FONTS = pathlib.Path(__file__).resolve().parents[2] / "Resources" / "Fonts"
+SENTENCES = ("Open for foreign investment", "Tidak dibuka, kecuali (kemitraan) dgj")   # an ascender and a descender each
+
+def glyph_cases():
+    """The real Fraunces glyphs of the app's bundled cuts at 2 px/pt, day and night (Pillow): (check, arg, band, k, text, cut,
+    pt, night). A serif(20) line passes C12 at its ink band (36-40 px here; 31-42 px in CoreText) and a 24 pt line FAILs (47-48
+    px); the ledger's cap is Theme.display(64) and every other band's title(36), each FAILing at the other's size."""
+    for night in (0, 1):
+        for t in SENTENCES:
+            yield "C12", None, "chat-night-en.png", 0, t, "Text", 20, night
+            yield "C12", None, "chat-night-en.png", 1, t, "Text", 24, night
+            yield "C12", None, "chat-night-en.png", 1, t, "Text", 11, night
+        yield "C14", None, "sheet-ledger-day-en.png", 0, "49%", "Display", 64, night
+        yield "C14", None, "sheet-ledger-day-en.png", 1, "49%", "Title", 36, night
+        yield "C14", None, "detail-card-day-en.png", 0, "49%", "Title", 36, night
+        yield "C14", None, "detail-card-day-en.png", 1, "49%", "Display", 64, night
+        yield "C14", None, "sheet-ledger-56101-night-en.png", 1, "49%", "Title", 36, night
+
+def glyph_run(c, arg, band, text, cut, pt, night):
+    from PIL import ImageFont
+    bg, fg = ((0x1A, 0x1A, 0x1A), (0xEE, 0xEE, 0xEE)) if night else (PAPER_DAY, INK_DAY)
+    im = Image.new("RGB", (1200, 700), bg); d = ImageDraw.Draw(im)
+    x = 1100 - ImageFont.truetype(str(FONTS / ("KBLIFraunces-%s.ttf" % cut)), 2 * pt).getlength(text) if c == "C14" else 40
+    d.text((x, 100), text, font=ImageFont.truetype(str(FONTS / ("KBLIFraunces-%s.ttf" % cut)), 2 * pt), fill=fg)
+    ink = lambda b: [((xx, b[1], xx + 4, b[3]), fg) for xx in range(b[0], b[2], 10)]
+    ys = [y for y in range(700) if any(sum(abs(a - c_) for a, c_ in zip(im.getpixel((xx, y)), bg)) > 60 for xx in range(0, 1200, 2))]
+    box = (int(x) - 6, ys[0] - 6, 1194, ys[-1] + 7) if c == "C14" else (34, ys[0] - 6, 1194, ys[-1] + 7)
+    fr = {"cap": [("", box)]} if c == "C14" else {"headsup.sentence": [("", box)], "headsup.label": [("", (34, 20, 300, 40))]}
+    if c == "C12":
+        for b, col in ink((40, 20, 300, 40)): d.rectangle([b[0], b[1], b[2], b[3]], fill=col)
+    try: return judge(im, fr, 2, c, arg, band)
+    except Miss as e: return False, str(e)
+
+PAPER_DAY, INK_DAY = (0xF7, 0xF4, 0xEE), (0x1D, 0x2C, 0x3B)
 
 def c_selftest():
     """Each C's innocent image passes and its guilt FAILs; on the innocent image, each frame the C reads left out FAILs
@@ -369,31 +482,67 @@ def c_selftest():
         moved = {**fr, names[0]: [(v, (b[0], 330, b[2], 330 + min(b[3] - b[1], 60))) for v, b in fr[names[0]]]}
         ok, detail = run(c, arg, ops, moved); n += 1
         if ok or "no ink" not in detail: out.append("%s-SELFTEST %s on an empty area: %s" % (c, names[0], detail))
-    for v, want in (("", 1), ("open", 1), ("2", 1), ("0.49", 1), ("1.0", 1), ("Mikro", 0), ("55101", 0), ("49%", 0), ("49", 0)):
-        n += 1   # a frame's value: a descriptor passes, drawn text (a scale word, a code, a figure) does not
-        if bool(VALUE.fullmatch(v)) != bool(want): out.append("VALUE-SELFTEST %r %s" % (v, "refused" if want else "accepted"))
+    for c, arg, band, k, text, cut, pt, night in glyph_cases():
+        ok, detail = glyph_run(c, arg, band, text, cut, pt, night); n += 1
+        if ok == bool(k) or (k and "is not" not in detail): out.append("%s-SELFTEST real %s %d pt %s on %s (%s): %s" % (c, cut, pt, text[:12], band, ("day", "night")[night], detail))
+    chip = ([((20, 20, 120, 44), TONE_BG["open"][0])], {"chip.national": [("open", (20, 20, 120, 44))]})
+    for band, rec, want in (("detail-card-day-en.png", None, 0), ("detail-card-day-en.png", {}, 0), ("detail-card-day-en.png", {"national": "open"}, 1),
+                            ("chat-night-id.png", None, 0), ("dossier-day-en.png", None, 0), ("sheet-ledger-night-en.png", None, 0),
+                            ("registry-table-day-en.png", None, 1)):
+        im = Image.new("RGB", (400, 400), PAPER); d = ImageDraw.Draw(im)
+        for b, col in chip[0]: d.rectangle([b[0], b[1], b[2] - 1, b[3] - 1], fill=col)
+        try: ok, detail = judge(im, chip[1], 1, "C23", ("chip.national",), band, rec)
+        except Miss as e: ok, detail = False, str(e)
+        n += 1   # a single-record band that arms C23 carries a record (#8276 gate binding 4)
+        if ok != bool(want) or (not ok and "no record" not in detail): out.append("RECORD-SELFTEST %s record=%r: %s" % (band, rec, detail))
+    for nm, v, rec, want in (("matrix.chip", "2", None, 1), ("matrix.cell", "3", None, 1), ("chip.bali", "open", None, 1),
+                             ("bar", "0.49", None, 1), ("bar", "1.0", None, 1), ("headsup.label", "", None, 1), ("cap", "", None, 1),
+                             ("matrix.chip", "Mikro", None, 0), ("matrix.chip", "", None, 0), ("chip.bali", "55101", None, 0),
+                             ("cap", "49%", None, 0), ("bar", "49", None, 0), ("chip.Mikro", "open", None, 0), ("Cap", "", None, 0),
+                             ("chip.bali", "closed", {"bali": "closed"}, 1), ("chip.bali", "open", {"bali": "closed"}, 0),
+                             ("headsup", "restricted", {"headsup": "open"}, 0), ("chip.national", "open", {"bali": "closed"}, 1)):
+        n += 1   # the grammar: a name it lists, its value's pattern, and the record's own state where it writes one
+        if (grammar(nm, v, rec) is None) != bool(want): out.append("GRAMMAR-SELFTEST %s=%r %s" % (nm, v, "refused" if want else "accepted"))
+    for nm, v in (("bar", 0.5), ("matrix.chip", 2), ("cap", None)):
+        why = grammar(nm, v); n += 1   # a non-string value names its cause, never a TypeError (#8276 gate binding 6)
+        if not why or "string" not in why: out.append("VALUE-SELFTEST %s=%r: %s" % (nm, v, why))
+    with tempfile.TemporaryDirectory() as t:   # every JSON of the set is read, armed or not (#8250 gate binding 3)
+        Image.new("RGB", (40, 40), PAPER).save(pathlib.Path(t, "detail-card-unarmed.png"))
+        for v, want in (("open", 1), ("Mikro", 0)):
+            pathlib.Path(t, "detail-card-unarmed.json").write_text(json.dumps({"width": 40, "frames": [
+                {"name": "chip.bali", "value": v, "frame": [2, 2, 30, 12]}]}))
+            n += 1; ok = census(pathlib.Path(t, "detail-card-unarmed.png"), t)[0]
+            if ok != bool(want): out.append("JSON-SELFTEST an unarmed band's chip.bali=%r %s" % (v, "refused" if want else "accepted"))
     return out, n
+
+def census(png, root):
+    """(ok, line, vacuous) for one PNG of the set."""
+    im = Image.open(png).convert("RGB"); W, H = im.size; vac = 0
+    small = im.resize((W // 4, H // 4), Image.NEAREST); px = list(small.getdata())
+    share = sum(near(p, ACCENTS, 24) for p in px) / len(px)
+    line = "%-40s C5 %5.2f%%" % (png.relative_to(root), share * 100)
+    ok, detail = share <= 0.08, ""
+    if png.name.startswith("registry-table"):
+        got = c8_rows(im)
+        if got is None and png.parent.name == "xxl": line += "  C8 VACUOUS (no table head)"; vac = 1
+        elif got is None: line += "  C8 no table head (2 pt structure rule)"; ok = False
+        elif png.parent.name == "xxl": line += "  C8 VACUOUS (rows %d; text does not scale here)" % len(got[0]); vac = 1
+        else: line += "  C8 rows %d (need >= 12)" % len(got[0]); ok = ok and len(got[0]) >= 12
+        if got: detail = "\n    row rules at pt %s; not rows: %s" % (" ".join(map(str, got[0])), ", ".join(got[1]) or "none")
+    if png.with_suffix(".json").exists():   # the grammar binds every band that writes frames, armed or not
+        try: frames(png, im)
+        except (ValueError, KeyError, OSError) as e: detail += "\n    frames: %s  FAIL" % e; ok = False
+    for good, msg in armed(png, str(png.relative_to(root)), im):
+        detail += "\n    %s%s" % (msg, "" if good else "  FAIL"); ok = ok and good
+    return ok, line + ("" if ok else "  FAIL") + detail, vac
 
 fails = vacuous = 0
 bad, n = c_selftest()
 for msg in selftest() + bad: print(msg); fails += 1
 print("C11-C23 self-test: %d/%d synthetic images judged right (each C: innocent passes; guilt, a forgotten mark and a "
-      "mark on an empty area FAIL; cap on a 13 pt element and a chip drawn off its frame FAIL); armed: %s" % (
+      "mark on an empty area FAIL; cap on a 13 or a 64 pt element, a chip drawn 6, 10 or 20 px off its frame and a node a beat left off FAIL; a chip touching a rule; real Fraunces glyphs for the sentence and the cap, day and night; a missing record; the grammar, the record's state and an unarmed JSON); armed: %s" % (
     n - len(bad), n, ", ".join("%s on %s" % (c, rx) for rx, c, _ in ARMED) or "none (each View PR arms its bands)"))
 for png in sorted(pathlib.Path(sys.argv[1]).rglob("*.png")):
-    im = Image.open(png).convert("RGB"); W, H = im.size
-    small = im.resize((W // 4, H // 4), Image.NEAREST); px = list(small.getdata())
-    share = sum(near(p, ACCENTS, 24) for p in px) / len(px)
-    line = "%-40s C5 %5.2f%%" % (png.relative_to(sys.argv[1]), share * 100)
-    ok, detail = share <= 0.08, ""
-    if png.name.startswith("registry-table"):
-        got = c8_rows(im)
-        if got is None and png.parent.name == "xxl": line += "  C8 VACUOUS (no table head)"; vacuous += 1
-        elif got is None: line += "  C8 no table head (2 pt structure rule)"; ok = False
-        elif png.parent.name == "xxl": line += "  C8 VACUOUS (rows %d; text does not scale here)" % len(got[0]); vacuous += 1
-        else: line += "  C8 rows %d (need >= 12)" % len(got[0]); ok = ok and len(got[0]) >= 12
-        if got: detail = "\n    row rules at pt %s; not rows: %s" % (" ".join(map(str, got[0])), ", ".join(got[1]) or "none")
-    for good, msg in armed(png, str(png.relative_to(sys.argv[1])), im):
-        detail += "\n    %s%s" % (msg, "" if good else "  FAIL"); ok = ok and good
-    print(line + ("" if ok else "  FAIL") + detail); fails += not ok
+    ok, line, vac = census(png, sys.argv[1]); vacuous += vac
+    print(line); fails += not ok
 print("png_census: %d FAIL, %d VACUOUS" % (fails, vacuous)); sys.exit(1 if fails else 0)
