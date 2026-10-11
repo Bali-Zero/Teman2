@@ -232,7 +232,8 @@ extension Snapshot {
     /// Design loop 2026-10-09 (spec §3, §7): every band is a PAGE — the live view at the full canvas
     /// width (`--width`, default 1280; 948 = the live main pane), top-anchored, clipped at `--height`
     /// (default 800, the set's canvas; a taller value shows a page band below the fold for review).
-    /// Bands: registry-table, detail-card, dossier, sheet-ledger, chat, search-results.
+    /// Bands: registry-table, detail-card, dossier, sheet-ledger, chat, search-results, search-results-multi.
+    /// `--layout-json` writes the band's census frames (`CensusFrame`) for png_census's C-checks.
     @MainActor
     static func runBandIfRequested() -> Bool {
         let args = CommandLine.arguments
@@ -307,10 +308,15 @@ extension Snapshot {
             state.chatContextCode = state.store.code(code)
             content = AnyView(ChatView().environmentObject(state).environmentObject(lang)
                 .frame(width: w, height: h, alignment: .top))
-        case "search-results":
+        case "search-results", "search-results-multi":
             // The live result list for --code typed as a query, no selection (no preview sheet).
             state.query = code
             state.selected = nil
+            // search-results-multi (spec D6): a query that lists three results or more, else no render.
+            if band == "search-results-multi", state.results.rows.count < 3 {
+                FileHandle.standardError.write("\(band): '\(code)' lists \(state.results.rows.count) results, need >= 3\n".data(using: .utf8)!)
+                exit(5)
+            }
             content = AnyView(SearchResultsBand()
                 .environmentObject(state).environmentObject(lang)
                 .frame(width: w, height: h, alignment: .top))
@@ -318,11 +324,15 @@ extension Snapshot {
             content = AnyView(EmptyDetail(text: "unknown band \(band)").environmentObject(lang))
         }
 
+        final class Marks { var frames: [CensusFrame] = [] }
+        let marks = Marks()
         let framedView = content
             .environment(\.dynamicTypeSize, dynamicSize)
             .frame(width: w, height: h, alignment: .top)
             .background(Theme.antracite)
             .clipped()
+            .coordinateSpace(name: CensusFrame.space)
+            .onPreferenceChange(CensusFramesKey.self) { marks.frames = $0 }
 
         let host = NSHostingView(rootView: framedView)
         host.frame = NSRect(x: 0, y: 0, width: w, height: h)
@@ -338,10 +348,12 @@ extension Snapshot {
         }
 
         if let jsonPath = layoutJSONPath {
-            let nodes = Self.layoutNodes(in: host)
-            if let data = try? JSONSerialization.data(withJSONObject: nodes, options: [.prettyPrinted, .sortedKeys]) {
+            let frames = marks.frames.map { f -> [String: Any] in
+                ["name": f.name, "value": f.value, "frame": [f.rect.minX, f.rect.minY, f.rect.width, f.rect.height]] }
+            let doc: [String: Any] = ["width": w, "frames": frames]
+            if let data = try? JSONSerialization.data(withJSONObject: doc, options: [.prettyPrinted, .sortedKeys]) {
                 try? data.write(to: URL(fileURLWithPath: jsonPath))
-                FileHandle.standardError.write("layout json written: \(jsonPath)\n".data(using: .utf8)!)
+                FileHandle.standardError.write("census frames written: \(jsonPath) (\(frames.count))\n".data(using: .utf8)!)
             }
         }
 
@@ -356,106 +368,6 @@ extension Snapshot {
         AnyView(ScrollView(.vertical) { v.frame(width: width, alignment: .top) }
             .scrollIndicators(.never)
             .frame(width: width, height: height, alignment: .top))
-    }
-
-    /// Walks the AppKit accessibility tree IN-PROCESS — the object graph AppKit already builds for
-    /// VoiceOver, not the system AXUIElement C API, so no Accessibility permission prompt — and
-    /// collects every text-bearing node's frame. The rendered TEXT is never written to disk, only
-    /// a hash of it — PII-safe even though --code can echo a client-adjacent search query into a
-    /// chat bubble.
-    ///
-    /// SwiftUI's bridged AX nodes below an `NSHostingView` are NOT statically-typed `NSView`s —
-    /// they are opaque objects that conform to AppKit's ObjC `NSAccessibility` protocol only at
-    /// the Objective-C runtime level. Swift's overlay does not expose that protocol's members on
-    /// an existential (`any NSAccessibilityElementProtocol` carries only `accessibilityFrame`;
-    /// `accessibilityValue`/`accessibilityLabel`/`accessibilityChildren` are compiled onto the
-    /// CONCRETE `NSView` class instead, verified empirically: `func f(_ v: NSObject)` fails to
-    /// typecheck the same call `func f(_ v: NSView)` accepts, for the identical selector) — so
-    /// nominal-type dispatch cannot reach them here. KVC's `value(forKey:)` DOES reach them: Cocoa
-    /// auto-boxes a struct-returning zero-arg method matching the KVC getter convention into an
-    /// `NSValue`, and this predates and is independent of the Swift overlay gap above. Guarded by
-    /// `responds(to:)` first so an untyped `value(forKey:)` never raises on a node that lacks the
-    /// selector (KVC's undefined-key exception path, unlike `accessibilityAttributeValue:`, isn't
-    /// silently nil-returning).
-    ///
-    /// KNOWN LIMITATION 1: the per-run font point size needs the PARAMETERIZED selector
-    /// `accessibilityAttributedStringForRange:`, which takes an `NSRange` C-struct argument — KVC's
-    /// struct-boxing only covers zero-argument property-style getters, and Swift has no NSInvocation
-    /// bridge to invoke an arbitrary ObjC selector with a struct argument without a C shim. Not
-    /// added in this pass (no caller needs it yet — Step 3's baseline loop never passes
-    /// `--layout-json`). `point_size` is always `0` here; a future pass wiring that C shim replaces
-    /// this comment, not the field name, so existing readers of the JSON shape keep working.
-    ///
-    /// KNOWN LIMITATION 2 (bigger, MEASURED live 2026-09-17 in this pass, not assumed): an
-    /// `NSHostingView` rendered purely off-screen via `cacheDisplay(in:to:)` — never added to an
-    /// `NSWindow` that is actually ordered onto the screen, and never pumped through a live
-    /// `NSApplication` run loop — reports `accessibilityChildren().count == 0` even for a single
-    /// plain `Text(...)`, confirmed by an isolated standalone repro OUTSIDE this app (a bare
-    /// `NSHostingView` + `Text`, and separately the same wrapped in a real, non-order-front
-    /// `NSWindow`) — both returned zero children. AppKit's AX tree for a SwiftUI hierarchy appears
-    /// to build lazily off a live display/window-server pass this CLI mode never performs, not off
-    /// `cacheDisplay` alone. So `--layout-json` today writes a syntactically valid but EMPTY `[]`
-    /// for every band; it is wired, callable, and crash-free, not yet functional. Fixing it needs
-    /// either pumping a short `NSApp.run()`-style cycle inside `runBandIfRequested()` before this
-    /// walk, or reading node frames straight off the SwiftUI `Text`/layout data instead of AX —
-    /// neither attempted here, since nothing in this pass's Step 3 render loop calls
-    /// `--layout-json` and speculatively fixing an unconsumed path is exactly the failure mode
-    /// `karpathy-discipline` warns against.
-    private static func layoutNodes(in root: NSObject) -> [[String: Any]] {
-        var out: [[String: Any]] = []
-        var counter = 0
-
-        func hash(_ s: String) -> String {
-            var hasher = Hasher()
-            hasher.combine(s)
-            return String(format: "%016x", UInt64(bitPattern: Int64(hasher.finalize())))
-        }
-
-        // String-literal `Selector` (not `#selector`): `NSView.accessibilityFrame` has both a
-        // getter method AND `accessibilityFrameForRange:` in scope, which `#selector` resolves as
-        // AMBIGUOUS (verified: `#selector(getter: NSView.accessibilityFrame)` fails to typecheck).
-        // A raw selector name sidesteps that overload-resolution problem entirely.
-        func axFrame(_ obj: NSObject) -> NSRect {
-            guard obj.responds(to: Selector(("accessibilityFrame"))),
-                  let v = obj.value(forKey: "accessibilityFrame") as? NSValue
-            else { return .zero }
-            return v.rectValue
-        }
-
-        func axValue(_ obj: NSObject) -> String? {
-            guard obj.responds(to: Selector(("accessibilityValue"))) else { return nil }
-            return obj.value(forKey: "accessibilityValue") as? String
-        }
-
-        func axLabel(_ obj: NSObject) -> String? {
-            guard obj.responds(to: Selector(("accessibilityLabel"))) else { return nil }
-            return obj.value(forKey: "accessibilityLabel") as? String
-        }
-
-        func axChildren(_ obj: NSObject) -> [NSObject] {
-            guard obj.responds(to: Selector(("accessibilityChildren"))),
-                  let kids = obj.value(forKey: "accessibilityChildren") as? [NSObject]
-            else { return [] }
-            return kids
-        }
-
-        func visit(_ obj: NSObject) {
-            let text = axValue(obj).flatMap { $0.isEmpty ? nil : $0 } ?? axLabel(obj).flatMap { $0.isEmpty ? nil : $0 }
-            if let text {
-                let frame = axFrame(obj)
-                counter += 1
-                out.append([
-                    "id": "node-\(counter)",
-                    "text_hash": hash(text),
-                    "point_size": 0,
-                    "frame": [frame.origin.x, frame.origin.y, frame.size.width, frame.size.height],
-                ])
-            }
-            for child in axChildren(obj) { visit(child) }
-        }
-
-        visit(root)
-        return out
     }
 }
 

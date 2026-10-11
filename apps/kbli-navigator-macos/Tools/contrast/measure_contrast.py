@@ -131,7 +131,8 @@ SITE_PAIRS += [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5,
 # `NSColor(white:alpha:)`, `NSColor(calibratedWhite:`), `CGColor(gray:`, a 1/1/1 `red:` / `srgbRed:` /
 # `calibratedRed:` / `deviceRed:` initialiser, a `hue:` initialiser at saturation 0 and brightness 1, and
 # `Color(hex: 0xFFFFFF)`. A grey `white:` is flagged too, on purpose: a literal is not a token. `Theme.white` is a token.
-ONE = r"\s*1(?:\.0*)?(?![\w.])"
+# A component is 1 written as `1`, `1.0` or the arithmetic `255/255` (`255.0 / 255.0`), #8200 gate P2-2.
+ONE = r"\s*(?:1(?:\.0*)?|255(?:\.0*)?\s*/\s*255(?:\.0*)?)(?![\w.])"
 WHITE_RE = re.compile(r"(?<![\w.])\.white\b|\b(?:Color|NSColor|CGColor)\.white\b"
                       r"|(?:\b(?:Color|NSColor|CGColor)(?:\.init)?|(?<!\w)\.init)\s*\((?:\s*\.\w+\s*,)?\s*(?:\w*[wW]hite|gray)\s*:"
                       r"|\b(?:Color|NSColor|CGColor)(?:\.init)?\s*\((?:\s*\.\w+\s*,)?\s*(?:red|srgbRed|calibratedRed|deviceRed)\s*:"
@@ -147,12 +148,16 @@ WHITE_GUILT = ["Text(x).foregroundStyle(.white)", "Color.white", "NSColor.white"
                "NSColor(srgbRed:1,green:1,blue:1,alpha:1)", "NSColor(calibratedRed: 1, green: 1, blue: 1, alpha: 1)",
                "NSColor(deviceRed: 1.0, green: 1, blue: 1, alpha: 1)", "CGColor.white", "CGColor(gray: 1, alpha: 1)",
                "CGColor(red: 1, green: 1, blue: 1, alpha: 1)", "Color(hue:0,saturation:0,brightness:1)",
-               "NSColor(calibratedHue: 0.5, saturation: 0, brightness: 1.0, alpha: 1)"]
+               "NSColor(calibratedHue: 0.5, saturation: 0, brightness: 1.0, alpha: 1)",
+               "Color(red: 255/255, green: 255/255, blue: 255/255)", "NSColor(srgbRed: 255.0 / 255.0, green: 1, "
+               "blue: 255/255.0, alpha: 1)", "Color(hue: 0, saturation: 0, brightness: 255/255)"]
 WHITE_INNOCENT = ["Text(x).foregroundStyle(Theme.white)", "CharacterSet.whitespaces", "Color(red: 1, green: 0.5, blue: 1)",
                   "Color(red: 1, green: 1, blue: 10)", "Color(hex: 0xF7F4EE)", "Color(hex: isDark ? dark : light)",
                   "NSColor(srgbRed: 1, green: 0.9, blue: 1, alpha: 1)", "Color(red: 1, green: 1, blue: 1.5)",
                   "Color(hue: 0, saturation: 0.2, brightness: 1)", "Color(hue: 0, saturation: 0, brightness: 0.5)",
-                  "CGColor.black", "Text(\"https://x.y\") // Color.white"]
+                  "CGColor.black", "Text(\"https://x.y\") // Color.white",
+                  "Color(red: 255/255, green: 254/255, blue: 255/255)", "Color(red: 25/255, green: 1, blue: 1)",
+                  "Color(red: 255/2550, green: 1, blue: 1)"]
 # Comments never paint, in any form: a full-line, trailing or block comment holding a white spelling is not a hit,
 # and code after a string that contains "//" or "/*" is still scanned. Each COMMENT case is (source, must_hit).
 WHITE_COMMENT = [("// Color.white", False), ("let a = 1 // Color.white", False), ("let a = 1 /* Color.white */", False),

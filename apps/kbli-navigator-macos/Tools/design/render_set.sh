@@ -1,13 +1,16 @@
 #!/bin/zsh
 # render_set.sh [band …] — the design loop's snapshot set (spec §7), from the app root, INTERNAL build.
 # 6 bands × day/night × en/id at 1280 pt, plus narrow/ (948 pt, day-en), xxl/ (registry-table) and tall/
-# (the ledger's risk chips below the fold: 56101's cellDetail, 71109's 29 scope rows; day and night).
+# (the ledger's risk chips below the fold: 56101's cellDetail, 71109's 29 scope rows; day and night), and the two
+# bands spec D6/D14 add: search-results-multi (query 552, three results or more) and registry-table at 51101 (sector
+# H), day-en/id. Each PNG gets its census frames beside it (<name>.json, `--layout-json`) for png_census's C-checks.
 # OUT may be overridden (the before-set used OUT=…-before and the first loop only). Exit 1 on any failed render.
 cd "${0:A:h}/../.." || exit 2
 BIN="build/KBLI Navigator - INTERNAL.app/Contents/MacOS/KBLINavigator"; OUT="${OUT:-docs/design/baseline-$(date +%F)}"
 typeset -A CODE=(search-results 55203 registry-table 55203 detail-card 55203 dossier 51101 sheet-ledger 56101 chat 51101)
 mkdir -p "$OUT/narrow" "$OUT/xxl" "$OUT/tall"; fails=0
-shot() { "$BIN" --snapshot-band "$@" 2>/dev/null || { fails=$((fails+1)); echo "FAIL $*"; } }
+shot() { "$BIN" --snapshot-band "${@[1,-2]}" --layout-json "${@[-1]%.png}.json" "${@[-1]}" 2>/dev/null \
+  || { fails=$((fails+1)); echo "FAIL $*"; } }
 for b in ${=1:-search-results registry-table detail-card dossier sheet-ledger chat}; do
   for t in day night; do for l in en id; do
     shot $b --theme $t --lang $l --code ${CODE[$b]} "$OUT/$b-$t-$l.png"; done; done
@@ -17,5 +20,8 @@ shot registry-table --theme day --lang en --code 55203 --text-size xxxLarge "$OU
 for t in day night; do
   shot sheet-ledger --theme $t --lang en --code 56101 --height 2800 "$OUT/tall/sheet-ledger-56101-$t-en.png"
   shot sheet-ledger --theme $t --lang en --code 71109 --height 3600 "$OUT/tall/sheet-ledger-71109-$t-en.png"; done
+for l in en id; do
+  shot search-results-multi --theme day --lang $l --code 552 "$OUT/search-results-multi-day-$l.png"
+  shot registry-table --theme day --lang $l --code 51101 "$OUT/registry-table-51101-day-$l.png"; done
 echo "render_set: $(find "$OUT" -name '*.png' | wc -l | tr -d ' ') PNGs in $OUT, $fails failed"
 exit $(( fails > 0 ))
