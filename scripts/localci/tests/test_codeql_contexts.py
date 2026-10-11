@@ -1021,7 +1021,7 @@ def test_each_documented_upload_limit_is_ok_at_the_maximum_and_a_fail_one_over(n
 
 def test_the_limits_are_the_documented_numbers():
     assert (checker.MAX_RUNS, checker.MAX_RESULTS, checker.MAX_RULES, checker.MAX_EXTENSIONS) == (20, 25_000, 25_000, 100)
-    assert (checker.MAX_THREAD_FLOW_LOCATIONS, checker.MAX_LOCATIONS, checker.MAX_TAGS, checker.GZIP_MAX_BYTES) == (10_000, 1_000, 20, 10 * 1024 * 1024)
+    assert (checker.MAX_THREAD_FLOW_LOCATIONS, checker.MAX_LOCATIONS, checker.MAX_TAGS, checker.GZIP_MAX_BYTES) == (10_000, 1_000, 20, 10_000_000)   # "10 MB" read the smaller way: FALSE_GREEN 0
 
 
 def test_the_gzip_limit_is_ok_at_the_maximum_and_a_fail_one_byte_over_and_names_the_limit():
@@ -1032,17 +1032,59 @@ def test_the_gzip_limit_is_ok_at_the_maximum_and_a_fail_one_byte_over_and_names_
 
 
 def test_the_gzip_size_is_what_zlib_gzipsync_makes_of_the_json_text_at_its_default_level():
-    doc = sarif(results=200)
+    doc = sarif(results=200, automationDetails={"id": "/language:python/"})   # nothing for the action to add, so the size is the gzip alone
     text = json.dumps(doc, separators=(",", ":"), ensure_ascii=False).encode()
     assert checker.gzip_size(doc) == len(gzip.compress(text, compresslevel=6, mtime=0)) and checker.gzip_size(doc) < len(text)
     assert checker.gzip_size({"runs": [], "x": "é"}) == len(gzip.compress(json.dumps({"runs": [], "x": "é"}, separators=(",", ":"), ensure_ascii=False).encode(), 6, mtime=0))
 
 
-def test_a_sarif_whose_gzip_is_over_ten_mib_is_a_fail_even_with_no_other_limit_exceeded(tmp_path):
+def test_a_sarif_whose_gzip_is_over_ten_mb_is_a_fail_even_with_no_other_limit_exceeded(tmp_path):
     doc = sarif(results=1)
-    doc["runs"][0]["results"][0]["message"] = {"text": os.urandom(11 * 1024 * 1024).hex()}   # hex of random bytes: about 4 bits a character, 11.5 MiB gzipped
+    doc["runs"][0]["results"][0]["message"] = {"text": os.urandom(11 * 1000 * 1000).hex()}   # hex of random bytes: about 4 bits a character, 11 MB gzipped
     rc, out = check(tmp_path, doc)
     assert rc == 1 and "gzip size: " in out and "10 MB per gzip-compressed file" in out and "LOCALCI_CODEQL_RESULTS language=python results=1 rules=2" in out
+
+
+def lacking(n: int = 1, **run_over) -> dict:
+    """A document the way the action would find it if the CLI stopped writing fingerprints and automation details."""
+    loc = {"physicalLocation": {"artifactLocation": {"uri": "a.py"}, "region": {"startLine": 3}}}
+    return {"runs": [{"tool": {"driver": {"rules": []}}, "results": [{"ruleId": "r", "locations": [loc]} for _ in range(n)], **run_over}]}
+
+
+def test_the_gzip_limit_is_checked_on_a_bound_of_what_hosted_would_send(monkeypatch):
+    doc = lacking(3)
+    bound = 3 * checker.FINGERPRINT_BOUND + checker.AUTOMATION_BOUND
+    assert checker.action_adds(doc) == bound == 352
+    written = len(gzip.compress(json.dumps(doc, separators=(",", ":"), ensure_ascii=False).encode(), compresslevel=6, mtime=0))   # what is sent as written
+    monkeypatch.setattr(checker, "GZIP_MAX_BYTES", written + 100)   # under the limit as written, over it with the bound
+    problems = checker.limit_problems(doc, checker.gzip_size(doc))
+    assert len(problems) == 1 and problems[0].startswith("gzip size: ")
+    monkeypatch.setattr(checker, "GZIP_MAX_BYTES", written + bound)   # exactly at the bound: still accepted
+    assert checker.limit_problems(doc, checker.gzip_size(doc)) == []
+
+
+def test_a_real_shaped_document_every_hash_and_automation_id_present_adds_nothing():
+    doc = lacking(2, automationDetails={"id": "/language:python/"})
+    for res in doc["runs"][0]["results"]:
+        res["partialFingerprints"] = {"primaryLocationLineHash": "0123456789abcdef:1"}
+    assert checker.action_adds(doc) == 0
+    text = json.dumps(doc, separators=(",", ":"), ensure_ascii=False).encode()
+    assert checker.gzip_size(doc) == len(gzip.compress(text, compresslevel=6, mtime=0))
+
+
+def test_what_the_action_would_not_fingerprint_is_not_in_the_bound():
+    nowhere = {"physicalLocation": {"artifactLocation": {"uri": "a.py"}}}   # no region.startLine: fingerprints.ts skips it
+    doc = {"runs": [{"automationDetails": {"id": "x"}, "results": [{"locations": [nowhere]}, {"locations": []}, {}, {"locations": [{}]}]}]}
+    assert checker.action_adds(doc) == 0
+    assert checker.action_adds({"runs": [{"results": []}, {"results": [], "automationDetails": None}]}) == checker.AUTOMATION_BOUND   # undefined, not null
+
+
+def test_the_size_is_the_compact_serialisation_whatever_the_input_whitespace(tmp_path):
+    doc = lacking(5, automationDetails={"id": "x"})
+    compact, indented = tmp_path / "c.sarif", tmp_path / "i.sarif"
+    compact.write_text(json.dumps(doc, separators=(",", ":")))
+    indented.write_text(json.dumps(doc, indent=4))
+    assert checker.gzip_size(checker.load(str(compact))[0]) == checker.gzip_size(checker.load(str(indented))[0]) == checker.gzip_size(doc)
 
 
 def test_a_sarif_of_the_real_size_is_under_every_limit_and_the_results_line_is_receipt_data(tmp_path):
@@ -1088,3 +1130,39 @@ def test_the_checker_is_a_base_judge_laid_over_the_candidate_tree(tmp_path, monk
     steps, _ = drive_planned(tmp_path, spec)
     status, reason = runner.steps_verdict(combined(steps), spec)
     assert status == "BLOCKED" and SARIF_CHECK in reason   # the candidate's checker is not the one that judged
+
+
+# ------------------------------------------------------------------------------------------------ the checker's own crash is no verdict
+def test_a_document_the_checker_cannot_hold_is_no_verdict_exit_70_never_the_exit_1_of_a_rejection(tmp_path):
+    deep = tmp_path / "deep.sarif"
+    deep.write_text('{"runs":' + "[" * 400_000 + "]" * 400_000 + "}")
+    r = subprocess.run([sys.executable, "-I", str(REAL / SARIF_CHECK), str(deep), "python"], capture_output=True, text=True)
+    assert r.returncode == checker.NO_VERDICT_RC == 70 and "REJECTED" not in r.stdout and "CRASHED" in r.stderr and "RecursionError" in r.stderr
+
+
+@pytest.mark.parametrize("exc", [RecursionError, MemoryError, UnicodeEncodeError])
+def test_every_crash_of_the_checker_itself_is_exit_70(tmp_path, monkeypatch, capsys, exc):
+    f = tmp_path / "ok.sarif"
+    f.write_text(json.dumps(sarif()))
+
+    def boom(*a):
+        raise exc("x") if exc is not UnicodeEncodeError else UnicodeEncodeError("utf-8", "x", 0, 1, "surrogate")
+    monkeypatch.setattr(checker, "gzip_size", boom)
+    assert checker.main([str(f), "python"]) == 70
+    assert "no verdict" in capsys.readouterr().err
+    monkeypatch.setattr(checker, "load", boom)
+    assert checker.main([str(f), "python"]) == 70   # a UnicodeEncodeError is a ValueError, and load() must not read it as an unparsable file
+
+
+def test_the_leg_turns_a_checker_crash_into_a_killed_leg_and_the_driver_reads_it_as_error(tmp_path, monkeypatch):
+    """The exit-code map end to end: the pin mismatch and the checker's crash both end the leg in its no-verdict signal, which the driver
+    classifies ERROR (exit 4), never FAIL (a red exit) and never PASS."""
+    spec, _ = plan_codeql(tmp_path, monkeypatch, "python", PY_CHANGE)
+    deep = tmp_path / "deep.sarif"
+    deep.write_text('{"runs":' + "[" * 400_000 + "]" * 400_000 + "}")
+    r = run_leg_sh(tmp_path / "direct", "analyze", "python", FAKE_SARIF=str(deep))
+    assert r.returncode == -9 and "no verdict" in r.stderr
+    for name, extra, idx in (("crash", {"FAKE_SARIF": str(deep)}, 2), ("pin", {"FAKE_VERSION": "2.27.3"}, 0)):
+        steps, rc = drive_planned(tmp_path / name, spec, **extra)
+        status, reason = runner.steps_verdict(combined(steps), spec)
+        assert rc == 4 and steps[idx]["status"] == "ERROR" and status == "ERROR", (name, steps, reason)

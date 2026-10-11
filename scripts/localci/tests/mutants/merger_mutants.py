@@ -90,9 +90,13 @@ CQ_VERPROBE = cq("test_a_version_probe_killed_by_a_signal_is_no_verdict_and_one_
 CQ_SARIF_EXIT = cq("test_the_leg_script_exits_1_on_a_sarif_hosted_would_reject_and_0_on_one_it_takes",
                    "test_a_driven_leg_whose_sarif_hosted_would_reject_is_a_fail_and_findings_alone_never_are")
 CQ_SARIF_LIMITS = cq("test_each_documented_upload_limit_is_ok_at_the_maximum_and_a_fail_one_over", "test_the_leg_script_exits_1_on_a_sarif_hosted_would_reject_and_0_on_one_it_takes",
-                     "test_a_sarif_whose_gzip_is_over_ten_mib_is_a_fail_even_with_no_other_limit_exceeded")
+                     "test_a_sarif_whose_gzip_is_over_ten_mb_is_a_fail_even_with_no_other_limit_exceeded")
 CQ_SARIF_GZIP = cq("test_the_gzip_limit_is_ok_at_the_maximum_and_a_fail_one_byte_over_and_names_the_limit",
-                   "test_a_sarif_whose_gzip_is_over_ten_mib_is_a_fail_even_with_no_other_limit_exceeded")
+                   "test_a_sarif_whose_gzip_is_over_ten_mb_is_a_fail_even_with_no_other_limit_exceeded")
+CQ_SARIF_BOUND = cq("test_the_gzip_limit_is_checked_on_a_bound_of_what_hosted_would_send", "test_what_the_action_would_not_fingerprint_is_not_in_the_bound")
+CQ_SARIF_MIB = cq("test_the_limits_are_the_documented_numbers")
+CQ_SARIF_CRASH = cq("test_a_document_the_checker_cannot_hold_is_no_verdict_exit_70_never_the_exit_1_of_a_rejection",
+                    "test_the_leg_turns_a_checker_crash_into_a_killed_leg_and_the_driver_reads_it_as_error")
 CQ_SARIF_SHAPE = cq("test_a_sarif_without_runs_or_with_a_run_without_results_is_a_fail")
 CQ_OVERRIDE = cq("test_the_override_is_read_at_plan_and_an_active_one_runs_both_languages_as_hosted_does",
                  "test_a_read_that_fails_is_fail_open_both_flags_true_and_the_job_result_not_success")
@@ -714,6 +718,10 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "cq-sarif-unreadable-passes": (CQ_SH_FILE, 'python3 -I "$HERE/codeql_sarif_check.py" "$SARIF" "$LANG_"', 'python3 -I "$HERE/codeql_sarif_check.py" "$SARIF" "$LANG_" || true', CQ_SARIF_EXIT),
     "cq-sarif-limit-ignored": (CQ_SARIF_FILE, "if (problems := limit_problems(doc, gzip_size(doc))):", "if False:", CQ_SARIF_LIMITS),
     "cq-sarif-gzip-unchecked": (CQ_SARIF_FILE, "if gzip_bytes > GZIP_MAX_BYTES:", "if False:", CQ_SARIF_GZIP),
+    "cq-sarif-gzip-no-bound": (CQ_SARIF_FILE, " + (action_adds(doc) if isinstance(doc, dict) and isinstance(doc.get(\"runs\"), list) else 0)", "", CQ_SARIF_BOUND),
+    "cq-sarif-gzip-mib": (CQ_SARIF_FILE, "GZIP_MAX_BYTES = 10_000_000", "GZIP_MAX_BYTES = 10 * 1024 * 1024", CQ_SARIF_MIB),
+    "cq-sarif-crash-rejects": (CQ_SARIF_FILE, "        return NO_VERDICT_RC\n", "        return 1\n", CQ_SARIF_CRASH),
+    "cq-sarif-crash-swallowed-by-leg": (CQ_SH_FILE, '  *) no_verdict "codeql_sarif_check.py ended', '  *) exit 1 ;;   # no_verdict "codeql_sarif_check.py ended', CQ_SARIF_CRASH),
     "cq-sarif-shape-ignored": (CQ_SARIF_FILE, "why = why or shape_problem(doc)", "why = why", CQ_SARIF_SHAPE),
     "cq-override-ignored": (RUNNER, 'if ov["active"]:\n            got = {', 'if False:\n            got = {', CQ_OVERRIDE),
     "cq-uses-unpinned": (RUNNER, 'if isinstance(ms.get("uses_pin"), str) and ws.get("uses") != ms["uses_pin"]:', "if False:", CQ_USES),

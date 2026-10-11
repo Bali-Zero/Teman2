@@ -116,4 +116,9 @@ step "$CQ" database interpret-results --threads="$THREADS" --format=sarif-latest
 
 # What the analyze action does with the SARIF even when it uploads nothing, and what the PR lane's upload then rejects: a file the action
 # throws on, or one over the documented upload limits, is a red hosted job and a FAIL here. The findings stay data for the receipt.
-python3 -I "$HERE/codeql_sarif_check.py" "$SARIF" "$LANG_"
+check_rc=0
+python3 -I "$HERE/codeql_sarif_check.py" "$SARIF" "$LANG_" || check_rc=$?
+case "$check_rc" in
+  0 | 1) exit "$check_rc" ;;   # accepted / hosted would reject
+  *) no_verdict "codeql_sarif_check.py ended with $check_rc (its own crash, or killed): the SARIF was not judged" ;;
+esac
