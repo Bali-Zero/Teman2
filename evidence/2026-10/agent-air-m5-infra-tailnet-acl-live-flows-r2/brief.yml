@@ -1,0 +1,44 @@
+task: >-
+  The declared deny-by-default tailnet ACL (infra/tailscale/policy.hujson) is about to be pasted in the Tailscale
+  console by the owner. As written it would cut two flows observed live on 2026-10-11: Mini -> Pro:6379 (the OSINT
+  nexus-bridge worker reading its Redis stream on Pro) and Pro -> iQOO wireless ADB TLS (tailnet address, port picked
+  from the Linux ephemeral range). Declare both, with one narrow, pinned guard exception for the ephemeral range.
+  Re-cut after the round-1 gate of #8244 (BLOCK B1): the "every node is Zero's own" premise is replaced by the
+  measured inventory, address-shaped hosts keys are refused, and the exception's grants path is pinned by fixtures.
+lane: infra
+machine: m5
+date: 2026-10-11
+gear: 2
+gear_reason: >-
+  Measured floor; campaign rule after #8079: at least gear 2 so harness-floor holds for the independent final gate. The
+  guard exception touches a security guard, so every widening variant carries its own guilt fixture.
+acceptance:
+  A1:
+    text: >-
+      The real policy audits clean, grants mini -> pro:6379 and pro -> iqoo-15:32768-60999 with accept-tests, and keeps
+      the phone destination-only.
+    probe: >-
+      scripts/tests/test_tailnet_acl_deny_by_default.py and scripts/tests/test_tailnet_policy_drift.py (run by
+      check-tailnet-acl).
+  A2:
+    text: >-
+      The exception is exact: the same range toward a fleet host, from another source, with an extra source or port,
+      or 1-65535 toward the phone stays OVERBROAD_DST_PORT_RANGE; re-pointing the phone alias, using it as a source, or
+      dropping the endpoint accept-tests each yields its own finding.
+    probe: >-
+      Seven guilt fixtures asserting the exact finding, a parametrised predicate test, and mutants on the constant, the
+      single-source clause, the destination-only check and the endpoint proof.
+  A3:
+    text: >-
+      After the owner applies the policy in the console, Mini still reaches Pro:6379 and Pro still lists the iQOO TLS
+      serial as a device, and the tailnet_policy_drift probe reads MATCH.
+    probe: >-
+      docs/runbooks/tailnet-acl-apply.md post-apply checks; scripts/tailnet_policy_drift.py on Pro.
+  A4:
+    text: >-
+      No text in the policy, its runbooks or the guard claims every node is Zero's own; the measured inventory (12
+      nodes, 6 unpinned, iphone-14 absent) is stated, and an address-shaped hosts key or a udp/any-protocol or
+      untested grant of the range each yields its own finding.
+    probe: >-
+      tailscale status --json on m5 (counts only); four new guilt fixtures; mutants on exception_transport, the
+      grants endpoint proof and the key-shape check.
