@@ -3078,6 +3078,43 @@ def render_html(out: dict) -> str:
 <p style="color:#57606a">PASS needs every check PASS or NOT_APPLICABLE-with-reason AND every required context covered. SUBSET_PASS is not PASS.</p></body></html>"""
 
 
+PARENT_PID_ENV = "LOCALCI_PARENT_PID"
+PARENT_POLL_S = 5
+
+
+def parent_gone(pid: int) -> bool:
+    """B15: the merger that started this runner is gone (a bootout or `kickstart -k` kills the job's group, not the runner's
+    own session): ESRCH is gone, EPERM is a live process of someone else."""
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return True
+    except PermissionError:
+        return False
+    return False
+
+
+def watch_parent(poll_s: float = PARENT_POLL_S, environ=None) -> threading.Thread | None:
+    """B15: when the merger's pid (``LOCALCI_PARENT_PID``) disappears, SIGTERM this runner's own process group — the runner then
+    marks its checks INTERRUPTED and removes its container in its `finally`. No env var, no watcher: an older merger changes nothing."""
+    raw = (os.environ if environ is None else environ).get(PARENT_PID_ENV, "")
+    if not raw.isdigit() or int(raw) <= 1:
+        return None
+    pid = int(raw)
+
+    def loop():
+        while not parent_gone(pid):
+            time.sleep(poll_s)
+        try:
+            os.killpg(os.getpgrp(), signal.SIGTERM) if os.getpgrp() == os.getpid() else os.kill(os.getpid(), signal.SIGTERM)
+        except OSError:
+            pass
+
+    t = threading.Thread(target=loop, name="localci-parent-watch", daemon=True)
+    t.start()
+    return t
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="localci")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -3117,6 +3154,8 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--seal", help=f"the seal `run` printed (prefix of >= {SEAL_MIN_PREFIX} chars ok): overall becomes BLOCKED when the trusted evidence no longer re-derives it")
     s.set_defaults(fn=cmd_status)
     a = ap.parse_args(argv)
+    if a.cmd in ("plan", "run"):
+        watch_parent()
     return a.fn(a) or 0
 
 

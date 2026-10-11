@@ -970,18 +970,27 @@ def test_b13_a_total_of_zero_is_zero_not_none(tmp_path):
 
 # ------------------------------------------------------------------ B15: image GC under host pressure
 def test_b15_under_host_pressure_the_second_slot_of_every_recipe_goes_and_the_newest_never(tmp_path, monkeypatch):
-    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 109)   # under 100 + 10
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 99)   # under 90 + 10
     state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)   # VM above its own floor: only the host asks
     line = prune_line(state, docker)
-    assert line["host_pressure"] is True and line["host_free_gb"]["before"] == 109.0
+    assert line["host_pressure"] is True and line["host_free_gb"]["before"] == 99.0
     assert [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"], imgs[2]["tag"]]   # both slot 2: a plan of the last 5 h names them
-    assert all(r["rule"].startswith("host pressure: host free 109 GB < 110 GB; slot 2 of its recipe, 1 plan(s)") for r in line["images"]["removed"])
+    assert all(r["rule"].startswith("host pressure: host free 99 GB < 100 GB; slot 2 of its recipe, 1 plan(s)") for r in line["images"]["removed"])
     assert [c for c in calls(tmp_path) if c.startswith("image rm")] == [f"image rm {imgs[0]['tag']}", f"image rm {imgs[2]['tag']}"]   # by explicit tag
     kept = {k["tag"] for k in line["images"]["kept"]}
     assert {imgs[1]["tag"], imgs[3]["tag"]} <= kept   # the newest of each recipe stays
 
 
-@pytest.mark.parametrize("free", [110, 500])
+def test_b15_host_pressure_runs_the_builder_prune_after_its_removals_and_names_the_rebuild_cost(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 99)
+    state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)   # the VM is above its own floor: only the host asks
+    line = prune_line(state, docker)
+    seq = [c for c in calls(tmp_path) if c.startswith(("image rm", "builder prune"))]
+    assert [c.split()[0] for c in seq].count("image") == 2 and seq[-1].startswith("builder prune") and "builder_prune" in line
+    assert all("cold rebuild of that recipe" in r["rule"] for r in line["images"]["removed"])
+
+
+@pytest.mark.parametrize("free", [100, 500])
 def test_b15_at_or_above_the_start_floor_there_is_no_host_pressure_and_nothing_extra_goes(tmp_path, monkeypatch, free):
     monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", free)
     state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)

@@ -1037,18 +1037,18 @@ def test_the_tick_decides_first_then_prunes_with_fstrim_and_passes_the_host_read
     assert res.returncode == 0, res.stderr
     lines = (tmp_path / "calls").read_text().splitlines()
     assert calls_of(tmp_path) == ["tick", "prune"]   # never the prune before the decision
-    assert lines[0].endswith("--host-free-gb=200 --min-host-free-gb=110")
+    assert lines[0].endswith("--host-free-gb=200 --min-host-free-gb=100")
     assert re.search(rf"prune --state-dir {re.escape(env['MERGER_STATE_DIR'])} --fstrim --code-sha=[0-9a-f]{{40}}$", lines[1])
     assert heartbeat(tmp_path)["status"] == "ok" and "host_free_gb=200" in res.stdout
 
 
-@pytest.mark.parametrize("free,status", [(109, "warning"), (110, "ok")])
+@pytest.mark.parametrize("free,status", [(99, "warning"), (100, "ok")])
 def test_under_the_floor_the_tick_journals_its_skip_the_prune_still_runs_and_the_organ_says_warning(tmp_path, free, status):
     env = floor_world(tmp_path, free)
     assert wrap(env).returncode == 0
     assert calls_of(tmp_path) == ["tick", "prune"] and f"--host-free-gb={free} " in (tmp_path / "calls").read_text()
     hb = heartbeat(tmp_path)
-    assert hb["status"] == status and (status == "ok" or hb["note"].startswith("host_below_floor free_gb=109 floor_gb=110: no run started"))
+    assert hb["status"] == status and (status == "ok" or hb["note"].startswith("host_below_floor free_gb=99 floor_gb=100: no run started"))
 
 
 def test_a_merger_that_cannot_journal_the_floor_is_not_started_under_it_and_a_main_without_prune_still_ticks(tmp_path):
@@ -1080,11 +1080,11 @@ def test_a_failed_prune_is_a_warning_and_a_failed_tick_is_an_error_after_which_t
 def test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why(world):
     world.gh.prs = [pr(1, world.head1)]
     args = ["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--remote-url", str(world.origin), "--python", "py"]
-    assert mg.main([*args, "--host-free-gb", "109.4"]) == 0
-    assert world.journal()[-1] == {**world.journal()[-1], "kind": "skipped", "why": "host_below_floor", "free_gb": 109.4, "floor_gb": 100.0,
-                                   "start_floor_gb": 110.0}
+    assert mg.main([*args, "--host-free-gb", "99.4"]) == 0
+    assert world.journal()[-1] == {**world.journal()[-1], "kind": "skipped", "why": "host_below_floor", "free_gb": 99.4, "floor_gb": 90.0,
+                                   "start_floor_gb": 100.0}
     assert not [r for r in world.journal() if r["kind"] == "decision"]
-    assert mg.main([*args, "--host-free-gb", "110"]) == 0 and [r["kind"] for r in world.journal()][-3:] == ["decision", "would_enqueue", "would_merge"]
+    assert mg.main([*args, "--host-free-gb", "100"]) == 0 and [r["kind"] for r in world.journal()][-3:] == ["decision", "would_enqueue", "would_merge"]
 
 
 # ------------------------------------------------------------------ phase F, shadow: the merge rehearsed, never made (F1)

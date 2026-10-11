@@ -290,7 +290,8 @@ def gate_ready(repo: str, head: str, names: list) -> bool:
     return posted is not None and all(hosted_rerun_after(repo, head, nm, posted) for nm in names)
 
 
-def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_ready=None, capped: list | None = None) -> tuple[list[dict], list[dict]]:
+def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_ready=None, capped: list | None = None,
+           evict_capped: list | None = None) -> tuple[list[dict], list[dict]]:
     """(same-repo PRs to decide, in order; fork PRs to journal). Drafts and PRs that ask for no merge are not the merger's.
 
     Order: a head never decided at any base first, then the head whose last decision is oldest, then created_at —
@@ -299,7 +300,11 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
     B12: a BLOCKED decision that found the gate verdict not posted yet (``gate_pending``) is no verdict, so its key is decided again —
     only when ``gate_ready(pr, head, contexts)`` says the head now carries the status AND the hosted run of each pending context completed
     after it (a failed read, or no callable, is a no), and at most ``GATE_PENDING_CAP`` times; a key past the cap is appended to
-    ``capped`` and stays decided."""
+    ``capped`` and stays decided.
+
+    B15: an ``evicted`` record is an attempt for ORDER (it goes into ``last`` with its ts, so the head rotates behind the others) and
+    never a decision (the key is still undecided). After EVICT_CAP evictions of one (pr, head, base) the key is appended to
+    ``evict_capped`` and skipped until the base or the head moves."""
     decided = {(r.get("pr"), r.get("head_sha"), r.get("base_sha")) for r in recs if (r.get("kind") == "decision" and not r.get("replay"))
                or r.get("why") == "head_in_base"}
     refused = {(r.get("pr"), r.get("head_sha")) for r in recs if r.get("kind") == "refused"}
@@ -312,9 +317,12 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
             ok = mark and isinstance(names, list) and bool(names) and all(isinstance(x, str) for x in names)
             pending[k] = [pending.get(k, [0, None])[0] + mark, names if ok else None]
     last: dict = {}
+    evictions: Counter = Counter()
     for r in recs:
-        if r.get("kind") == "decision" and not r.get("replay"):
+        if (r.get("kind") == "decision" and not r.get("replay")) or r.get("kind") == "evicted":
             last[(r.get("pr"), r.get("head_sha"))] = max(last.get((r.get("pr"), r.get("head_sha")), ""), str(r.get("ts")))
+        if r.get("kind") == "evicted":
+            evictions[(r.get("pr"), r.get("head_sha"), r.get("base_sha"))] += 1
     todo, forks = [], []
     for pr in prs:
         n, head = pr.get("number"), head_of(pr)
@@ -324,6 +332,10 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
             if (n, head) not in refused:
                 forks.append(pr)
         elif (n, head, base_sha) not in decided:
+            if evictions[(n, head, base_sha)] >= EVICT_CAP:
+                if evict_capped is not None:
+                    evict_capped.append(pr)
+                continue
             todo.append(pr)
         elif (count := pending.get((n, head, base_sha), [0, None]))[1]:
             if count[0] >= GATE_PENDING_CAP:
@@ -375,9 +387,10 @@ def drop_worktree(repo: Path, path: Path) -> None:
 # own pip install, re-run verbatim on purpose). kubelet's node-pressure model: a soft threshold to START (floor + START_MARGIN_GB),
 # a hard one to EVICT mid-run (floor + EVICT_MARGIN_GB), and image GC under pressure (prune.py). An eviction is the host's
 # no-verdict, never the candidate's: it is journalled apart from `decision`, so the same (pr, head, base) is decided again.
-HOST_FLOOR_GB = 100.0
-START_MARGIN_GB = 10.0
+HOST_FLOOR_GB = 90.0     # Zero, 2026-10-11, lowered from 100
+START_MARGIN_GB = 10.0     # the start floor is 100
 EVICT_MARGIN_GB = 1.5
+EVICT_CAP = 3               # evictions of one (pr, head, base) before it is skipped: a head the host cannot afford does not starve the queue
 EVICT_SAMPLE_S = 5
 EVICT_KILL_GRACE_S = 10
 EVICT_BLIND_SAMPLES = 3      # a statvfs that fails this many times in a row counts as below the floor: an unmeasured disk keeps no filling
@@ -505,7 +518,8 @@ TICK_TIMEOUT_S = 14400       # >= PLAN_TIMEOUT_S + --run-timeout 5400 + the stat
 def run_gate(a, base_wt: Path, cand: Path, run_dir: Path, base_sha: str, cand_sha: str, pr: int) -> dict:
     """plan → run → status with the BASE runner and matrix (trusted_base_required applies to the merger too)."""
     env = {k: os.environ[k] for k in RUNNER_ENV if k in os.environ} | GIT_ISOLATED | {"PYTHONPATH": str(base_wt), "PYTHONNOUSERSITE": "1",
-                                                                                     "PYTHONDONTWRITEBYTECODE": "1"}
+                                                                                     "PYTHONDONTWRITEBYTECODE": "1",
+                                                                                     "LOCALCI_PARENT_PID": str(os.getpid())}   # B15: the runner leaves launchd's group; it watches this pid instead
     runner = [a.python, "-m", "scripts.localci.runner"]
     plan = [*runner, "plan", "--run-dir", str(run_dir), "--worktree", str(cand), "--base", base_sha, "--candidate", cand_sha]
     if (base_wt / MATRIX).is_file():
@@ -1371,11 +1385,13 @@ def tick(a, state: Path, lease_id: str) -> int:
         return 1
     base_sha = git(repo_dir, "rev-parse", "refs/merger/base^{commit}").stdout.strip()
     capped: list = []
-    todo, forks = triage(open_prs(a.repo, a.base), a.repo, recs, base_sha, lambda n, head, names: gate_ready(a.repo, head, names), capped)
-    for pr in capped:   # B12: journalled once per key, however many ticks pass
-        key = {"pr": pr["number"], "head_sha": head_of(pr), "base_sha": base_sha}
-        if not any(r.get("kind") == "skipped" and r.get("why") == "gate_pending_cap" and all(r.get(k) == v for k, v in key.items()) for r in recs):
-            journal(state, {"kind": "skipped", "why": "gate_pending_cap", **key, "lease_id": lease_id})
+    evict_capped: list = []
+    todo, forks = triage(open_prs(a.repo, a.base), a.repo, recs, base_sha, lambda n, head, names: gate_ready(a.repo, head, names), capped, evict_capped)
+    for why, prs in (("gate_pending_cap", capped), ("evicted_cap", evict_capped)):   # B12, B15: journalled once per key, however many ticks pass
+        for pr in prs:
+            key = {"pr": pr["number"], "head_sha": head_of(pr), "base_sha": base_sha}
+            if not any(r.get("kind") == "skipped" and r.get("why") == why and all(r.get(k) == v for k, v in key.items()) for r in recs):
+                journal(state, {"kind": "skipped", "why": why, **key, "lease_id": lease_id})
     for pr in forks:
         journal(state, {"kind": "refused", "why": "fork", "pr": pr["number"], "head_sha": head_of(pr), "base_sha": base_sha, "lease_id": lease_id})
     last = [r for r in recs if r.get("kind") == "decision"][-1:]
@@ -1424,7 +1440,7 @@ def cmd_tick(a) -> int:
     if a.host_free_gb is not None and a.host_free_gb < a.min_host_free_gb:   # B6: the gate never finishes the job of filling the disk
         journal(state, {"kind": "skipped", "why": "host_below_floor", "free_gb": a.host_free_gb, "floor_gb": a.host_floor_gb,
                         "start_floor_gb": a.min_host_free_gb})   # B15: floor_gb is Zero's floor; a run starts only above it by START_MARGIN_GB
-        print(f"merger: host_below_floor free_gb={a.host_free_gb:g} floor_gb={a.min_host_free_gb:g} — no run started")
+        print(f"merger: host_below_floor free_gb={a.host_free_gb:g} floor_gb={a.host_floor_gb:g} start_floor_gb={a.min_host_free_gb:g} — no run started")
         return 0
     fh, lease = take_lease(state, a.repo)
     if fh is None:
@@ -1655,6 +1671,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
     ready = fg == 0 and compared_merges >= READY_MIN_MERGES and compared_days >= READY_MIN_DAYS   # lead's ruling 2026-10-07: both, never either
     skipped = dict(sorted(Counter(str(r.get("why")) for r in window if r.get("kind") == "skipped").items()))
     errors = sum(1 for r in window if r.get("kind") == "error")
+    evicted = sum(1 for r in window if r.get("kind") == "evicted")
     n_merged, n_refused = (sum(1 for r in window if r.get("kind") == k) for k in ("merged", "push_refused"))
     phase_f = "shadow" if not (n_merged or n_refused) else f"armed ({n_merged} merged, {n_refused} refused)"   # F2: the journal says what ran
     enqueue = {k: sum(1 for r in window if r.get("kind") == k) for k in ("enqueued", "enqueue_refused", "enqueue_error")}
@@ -1676,7 +1693,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
                       "compared_merges_partial_contexts": merged_partial_names, "compared_skip_agreed": compared_skip_agreed,
                       "compared_merges_skip_agreed": merged_skip_agreed,
                       "compared_days": compared_days, "longest_silence_h": silence_h, "longest_decision_gap_h": decision_gap_h,
-                      "last_line_age_h": last_line_age_h, "future_lines": future_lines, "errors": errors, "skipped": skipped,
+                      "last_line_age_h": last_line_age_h, "future_lines": future_lines, "errors": errors, "evicted": evicted, "skipped": skipped,
                       "decisions_without_code_sha": without_code_sha, "enqueue": enqueue, "would_merge": would_merge,
                       "code_shas": sorted({r["code_sha"] for r in rows if is_sha(r["code_sha"])}), "ticks": ticks},
            "counts": counts, "hosted_red_merged": hosted_red_merged, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "recorded_false_green_as_journalled": recorded_raw,
@@ -1691,7 +1708,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
     w = out["window"]
     print(f"window: {first} .. {last} ({days} days) decisions={w['decisions']} distinct_prs={w['distinct_prs']} merged_prs={w['merged_prs']} "
           f"compared_merges={compared_merges} (full_only={compared_merges - len(with_partial)}, with_partial={len(with_partial)}) "
-          f"compared_partial={compared_partial} compared_unrecorded={compared_unrecorded} compared_skip_agreed={compared_skip_agreed} errors={errors} "
+          f"compared_partial={compared_partial} compared_unrecorded={compared_unrecorded} compared_skip_agreed={compared_skip_agreed} errors={errors} evicted={evicted} "
           f"skipped={skipped or 0}")
     print(f"replays (B11): {w['replays']} replay decision(s) in the window; compared_merges={compared_merges} of which {from_replays} reached "
           f"the threshold only through a replay of the merge commit (a PR counts once)")

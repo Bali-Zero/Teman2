@@ -698,3 +698,10 @@ def test_the_gate_pending_count_is_of_non_replay_decisions_only_and_the_line_say
     rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
     assert [r["gate_pending"] for r in rep["rows"]] == [True, True] and rep["window"]["gate_pending"] == 1
     assert "gate pending (B12): 1 decision(s) found no harness/fable-gate verdict posted yet (replays not counted)" in capsys.readouterr().out
+
+
+def test_evictions_are_counted_beside_errors_and_skips(tmp_path, monkeypatch, capsys):
+    recs = [decision(1, A, "BLOCKED", ts="2026-10-01T00:00:00Z"), {"kind": "evicted", "pr": 1, "head_sha": A, "ts": "2026-10-01T06:00:00Z"},
+            {"kind": "evicted", "pr": 1, "head_sha": A, "ts": "2026-10-01T07:00:00Z"}, decision(1, A, "BLOCKED", ts="2026-10-02T00:00:00Z")]
+    rc, rep = run_report(tmp_path, monkeypatch, recs, FakeGH({1: pull(A)}, {A: "success"}))
+    assert rep["window"]["evicted"] == 2 and rep["window"]["errors"] == 0 and "evicted=2" in capsys.readouterr().out and rc == 0

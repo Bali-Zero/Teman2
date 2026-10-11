@@ -479,6 +479,7 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
     free_before = rec["host_free_gb"]["before"]
     rec["host_pressure"] = pressure_gb is not None and free_before < pressure_gb
     if rec["host_pressure"] and not (dry or blind):
+        dropped = False
         for im in sorted((d for d in decided if not d["remove"] and not d["live"] and d["slot"] != 1 and not never(d["tag"], keep)),
                          key=lambda d: (d["refs"], d["created"] is None, d["created"] or 0, d["tag"])):
             r = _docker(docker, "image", "rm", im["tag"])
@@ -487,7 +488,11 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
                 continue
             im["remove"] = True
             removed.append({"tag": im["tag"], "gb": im["gb"], "rule": f"host pressure: host free {free_before:g} GB < {pressure_gb:g} GB; "
-                                                                      f"slot {im['slot']} of its recipe, {im['refs']} plan(s) of the last 48 h name it"})
+                                                                      f"slot {im['slot']} of its recipe, {im['refs']} plan(s) of the last 48 h name it; "
+                                                                      f"dropping a second-slot image means a cold rebuild of that recipe"})
+            dropped = True
+        if dropped:
+            builder_prune(docker, rec, cache_budget)   # after the removals, as the VM-floor branch: the cache entries tied to the images go with them
     if "builder_prune" in rec:
         rec["builder_prune"]["cache_gb"]["after"] = build_cache_gb(docker)
         rec["builder_prune"]["du_gb"] = buildx_du_gb(docker)   # a measurement, never a verdict: BuildKit's cap accounting is opaque
