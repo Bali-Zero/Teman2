@@ -444,7 +444,9 @@ def test_real_contexts_matrix_loads_and_never_yields_pass_while_it_has_blocked_c
     fr.green(fx, tmp_path, "--contexts-file", str(MATRIX), with_contexts=False)
     s = fr.status(fx)
     blocked = [n for n, v in c["map"].items() if v["mapping"] in ("blocked", "not_implemented")]
-    assert s["overall"] == ("BLOCKED" if blocked else "SUBSET_PASS") and s["overall"] != "PASS"
+    # no mapping is `blocked` any more (the CodeQL contexts are executed), but this fixture plans without a container: every executed context's
+    # check is BLOCKED, so the overall still reads BLOCKED — the claim under test is that a matrix run here is never PASS
+    assert s["overall"] != "PASS" and (s["overall"] == "BLOCKED" or not blocked)
     assert set(blocked) <= set(s["contexts"]["blocked"])
 
 

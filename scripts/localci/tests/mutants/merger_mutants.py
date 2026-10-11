@@ -63,6 +63,26 @@ REPORT_SKIP = tuple(f"{REPORT}::{t}" for t in (
     "test_a_skip_here_beside_a_hosted_run_is_partial_so_it_cannot_make_up_the_full_count"))
 TICK_SKIP = (f"{TICK}::test_a_tick_journals_a_change_map_skip_beside_its_verdict_and_only_there",)
 
+# CodeQL contexts: their rules name tests by node id, so a survivor costs seconds, not the whole file
+CQ_T, CQ_SH_FILE, CQ_READER_FILE = "scripts/localci/tests/test_codeql_contexts.py", "scripts/localci/codeql_leg.sh", "scripts/localci/codeql_version_read.py"
+
+
+def cq(*names: str) -> tuple[str, ...]:
+    return tuple(f"{CQ_T}::{n}" for n in names)
+
+
+CQ_IMG = cq("test_the_tarball_is_checksum_fetched_into_a_stage_and_never_lands_in_a_layer", "test_a_codeql_pin_that_is_not_plain_is_refused_before_anything_is_built")
+CQ_FLAGS = cq("test_the_leg_flags_are_decided_at_plan_by_the_base_classifier_on_the_changed_files",
+              "test_a_classifier_that_fails_is_hosted_fail_open_the_job_result_is_not_success_and_the_leg_runs")
+CQ_SENT = cq("test_a_hosted_version_that_differs_or_a_read_that_fails_is_blocked_never_green")
+CQ_SKIP = cq("test_a_matrix_not_applicable_step_alone_is_never_a_pass", "test_a_candidate_that_changes_the_config_or_the_script_gets_its_green_blocked")
+CQ_RUN = cq("test_the_results_per_language_go_to_the_receipt_as_data_and_the_leg_gets_the_base_overlay_and_no_git_index",
+            "test_a_laid_judge_whose_hash_differs_from_the_plans_is_no_verdict")
+CQ_PIN = cq("test_a_changed_action_input_in_the_base_workflow_blocks_until_the_matrix_follows")
+CQ_SIG = cq("test_a_command_killed_by_a_signal_is_no_verdict_never_a_fail")
+CQ_CMD = cq("test_the_leg_script_builds_the_exact_command_lines_the_hosted_logs_show", "test_the_augmented_config_replaces_only_the_queries_block")
+CQ_READ = cq("test_the_reader_compares_the_newest_analysis_of_exactly_this_language")
+
 # name: (file, text that must occur once, replacement, test files that must turn red)
 MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     # which hosted verdict judges a decision, and when a merge counts for phase E
@@ -629,6 +649,38 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b12-state-flag-kept": (RUNNER, 'c.pop("gate_pending", None)   # B12: a flag is', 'pass   # B12: a flag is', GP),
     "b12-state-flag-kept-moved": (RUNNER, 'c.pop("gate_pending", None)\n                    store.save(st)', 'store.save(st)', GP),
     "b12-report-replay-counted": (PY, 'r["gate_pending"] and not r["replay"])', 'r["gate_pending"])', (REPORT,)),
+    # CodeQL contexts (LOCALCI-SOVEREIGN): the pinned bundle image, the plan-time flags and sentinel, the BASE-laid judges, the verdict
+    "cq-add-unchecked": (RUNNER, "ADD --checksum=sha256:{sha256} {url} /bundle.tgz", "ADD {url} /bundle.tgz", CQ_IMG),
+    "cq-version-unasserted": (RUNNER, ' && test "$(/opt/codeql/codeql version --format=terse)" = "{version}"', "", CQ_IMG),
+    "cq-tarball-in-a-layer": (RUNNER, "ENV PATH=/opt/codeql:${{PATH}}", "COPY --from=codeqlbundle /bundle.tgz /opt/bundle.tgz\nENV PATH=/opt/codeql:${{PATH}}", CQ_IMG),
+    "cq-sha-unvalidated": (RUNNER, 'or not re.fullmatch(r"[0-9a-f]{64}", raw["sha256"])', "or False", CQ_IMG),
+    "cq-url-any": (RUNNER, 'CODEQL_URL = re.compile(r"https://[A-Za-z0-9._~/%+-]+")', 'CODEQL_URL = re.compile(r"https://\\S+")', CQ_IMG),
+    "cq-classifier-error-skips": (RUNNER, 'return {"result": "failure", "outputs": {n: "true" for n in names}}, f"BASE',
+                                  'return {"result": "success", "outputs": {n: "false" for n in names}}, f"BASE', CQ_FLAGS),
+    "cq-flags-unchecked": (RUNNER, 'all(got.get(n) in ("true", "false") for n in names)', "True", CQ_FLAGS),
+    "cq-flags-not-sealed": (RUNNER, 'stood_in[str(local["classifier"]["job"])] = got',
+                            'stood_in[str(local["classifier"]["job"])] = {"result": "success", "outputs": {"run_codeql_python": "true", "run_codeql_js": "true"}}', CQ_FLAGS),
+    "cq-sentinel-mismatch-passes": (RUNNER, '    if got["rc"] == 0:\n        return None\n    return f"version sentinel',
+                                    '    if got["rc"] is not None:\n        return None\n    return f"version sentinel', CQ_SENT),
+    "cq-sentinel-unreadable-passes": (RUNNER, '    if got["rc"] == 0:\n        return None\n    return f"version sentinel',
+                                      '    if got["rc"] in (0, None):\n        return None\n    return f"version sentinel', CQ_SENT),
+    "cq-skip-any-reason": (RUNNER, 'any(str(s.get("reason", "")).startswith("if: ") for s in na)', "True", CQ_SKIP),
+    "cq-skip-undeclared": (RUNNER, 'if not ran and spec.get("skip_is_pass") and na and', "if not ran and na and", CQ_SKIP),
+    "cq-skip-green-over-rewritten-judge": (RUNNER, '        if spec.get("judge_modified"):\n            return "BLOCKED", f"every step skipped',
+                                           '        if False:\n            return "BLOCKED", f"every step skipped', CQ_SKIP),
+    "cq-overlay-not-judged": (RUNNER, "judged = [wf, *overlay]", "judged = [wf]", CQ_SKIP),
+    "cq-overlay-not-laid": (RUNNER, "            return out\n        overrides[rel] = blob\n", "            return out\n", CQ_RUN),
+    "cq-overlay-hash-unchecked": (RUNNER, 'if blob is None or sha256_bytes(blob) != plan.get("trusted_files_sha256", {}).get(rel):\n            out["infra"]',
+                                  'if blob is None:\n            out["infra"]', CQ_RUN),
+    "cq-git-index-forced": (RUNNER, '"git_index": indexed,', '"git_index": True,', CQ_RUN),
+    "cq-with-pin-ignored": (RUNNER, 'if have != {str(k): " ".join(str(v).split()) for k, v in ms["with_pin"].items()}:', "if False:", CQ_PIN),
+    "cq-signal-swallowed": (CQ_SH_FILE, '    kill -s "$((rc - 128))" "$$" || true', "    true", CQ_SIG),
+    "cq-ram-differs": (CQ_SH_FILE, "RAM=10240", "RAM=14575", CQ_CMD),
+    "cq-trap-options-everywhere": (CQ_SH_FILE, 'if [ "$LANG_" = javascript ]; then', "if true; then", CQ_CMD),
+    "cq-old-queries-kept": (CQ_SH_FILE, 'block = ["queries:"] + [f"  - uses: {q.strip()}"', 'block = ["queries:"] + ["  - uses: old"] + [f"  - uses: {q.strip()}"', CQ_CMD),
+    "cq-reader-oldest": (CQ_READER_FILE, 'return max(mine, key=lambda a: a["created_at"]) if mine else None',
+                         'return min(mine, key=lambda a: a["created_at"]) if mine else None', CQ_READ),
+    "cq-reader-category-prefix": (CQ_READER_FILE, 'a.get("category") == category', 'str(a.get("category")).startswith(category)', CQ_READ),
 }
 
 
@@ -637,6 +689,9 @@ def copy_tree(dest: Path) -> None:
         shutil.copytree(ROOT / rel, dest / rel, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
     (dest / "scripts" / "tests").mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / "scripts" / "tests" / "test_ban_predicates.py", dest / "scripts" / "tests" / "test_ban_predicates.py")
+    for rel in (".github/workflows/security.yml", ".github/codeql-config.yml"):   # the CodeQL tests plan against the real workflow and config
+        (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / rel, dest / rel)
     for rel in ("scripts/ops/pro_disk_floor_tick.sh", "infra/launchagents/com.nuzantara.disk-floor.plist", "infra/home-fork/declared-pairs.json"):
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)   # B6-4: the disk-floor organ and the files its test reads
         shutil.copy2(ROOT / rel, dest / rel)
