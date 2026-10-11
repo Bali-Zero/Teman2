@@ -366,7 +366,7 @@ describe("no-path doors — the evidence behind every named alternative", () => 
   const INPUTS_WITHOUT_A_REACHABLE_QUESTION_YET = new Set<string>([
     // PR-11's boundary walk deliberately answers retirement basis
     // `undecided` and then `still_unsure`. flow.ts intentionally asks no
-    // evidence question after that answer, so the signed seq-23 pack's
+    // evidence question after that answer, so the seq-27 replay's
     // passive-income NEEDS_INPUT remains a handoff row rather than reopening
     // a question the visitor just declined to choose a basis for.
     "offshore/retirement/undecided/age64/still_unsure:secondhome.passive_monthly_income_usd",

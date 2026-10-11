@@ -161,8 +161,8 @@ describe("Visa Oracle authoritative outcome adapter", () => {
   it("states the E33G annual-income exclusion threshold in both languages", () => {
     expect(E33G_ANNUAL_INCOME_THRESHOLD_USD).toBe(60_000);
     expect(SUPPORT_REASON_COPY.E33G_INCOME_BELOW_THRESHOLD).toEqual({
-      en: "The Remote Worker visa (E33G) needs a salary or income of at least USD 60,000 a year from work for a company outside Indonesia; the yearly figure you gave is below it.",
-      id: "Visa Rumah Kedua Pekerja Jarak Jauh (E33G) memerlukan gaji atau penghasilan minimal USD 60.000 per tahun dari pekerjaan untuk perusahaan di luar Indonesia; angka tahunan yang Anda berikan di bawahnya.",
+      en: "The Remote Worker visa (E33G) needs a salary or income of at least USD 60,000 a year; the yearly figure you gave is below it.",
+      id: "Visa Rumah Kedua Pekerja Jarak Jauh (E33G) memerlukan gaji atau penghasilan minimal USD 60.000 per tahun; angka tahunan yang Anda berikan berada di bawah batas tersebut.",
     });
   });
 

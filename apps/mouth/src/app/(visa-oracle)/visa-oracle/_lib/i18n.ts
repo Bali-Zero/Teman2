@@ -325,9 +325,9 @@ const en = {
   "why.remote_employer_country":
     "We record the country code exactly as you enter it and do not interpret it.",
   "q.remote_annual_income_usd":
-    "What yearly salary or income do you receive from your work for the company outside Indonesia?",
+    "What is your yearly salary or income, in US dollars?",
   "q.remote_annual_income_usd.hint":
-    "Enter the whole-dollar yearly amount your contract, payslips or bank records show.",
+    "Enter the yearly amount in whole US dollars. If you are paid in another currency, enter its US-dollar equivalent.",
   "q.remote_annual_income_usd.label": "Yearly income",
   "why.remote_annual_income_usd":
     "This amount decides whether the remote-worker visa can fit your plan. It is used exactly as you enter it.",
@@ -756,7 +756,6 @@ const en = {
   "tree.remote_clients": "Where clients sit",
   "tree.remote_compensation": "Payment source",
   "tree.remote_employer_country": "Employer country",
-  "tree.remote_annual_income_usd": "Yearly income",
   "tree.remote_pt_pma": "PT PMA link",
   "tree.stay_days": "Length of stay",
   "tree.investment_vehicle": "Investment basis",
@@ -1374,9 +1373,9 @@ const id: Record<Keys, string> = {
   "why.remote_employer_country":
     "Kami mencatat kode negara persis seperti yang Anda masukkan dan tidak menafsirkannya.",
   "q.remote_annual_income_usd":
-    "Berapa gaji atau penghasilan tahunan yang Anda terima dari pekerjaan Anda untuk perusahaan di luar Indonesia?",
+    "Berapa gaji atau penghasilan tahunan Anda, dalam dolar AS?",
   "q.remote_annual_income_usd.hint":
-    "Masukkan jumlah tahunan dalam dolar penuh sesuai kontrak, slip gaji, atau catatan bank Anda.",
+    "Masukkan jumlah tahunan dalam dolar AS (angka bulat). Jika Anda dibayar dalam mata uang lain, masukkan nilai setaranya dalam dolar AS.",
   "q.remote_annual_income_usd.label": "Penghasilan tahunan",
   "why.remote_annual_income_usd":
     "Jumlah ini menentukan apakah visa pekerja jarak jauh dapat sesuai dengan rencana Anda. Jumlah ini digunakan persis seperti yang Anda masukkan.",
@@ -1803,7 +1802,6 @@ const id: Record<Keys, string> = {
   "tree.remote_clients": "Lokasi klien",
   "tree.remote_compensation": "Sumber pembayaran",
   "tree.remote_employer_country": "Negara pemberi kerja",
-  "tree.remote_annual_income_usd": "Penghasilan tahunan",
   "tree.remote_pt_pma": "Kaitan PT PMA",
   "tree.stay_days": "Lama tinggal",
   "tree.investment_vehicle": "Dasar investasi",

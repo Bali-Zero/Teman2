@@ -788,8 +788,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Visa Rumah Kedua Pekerja Jarak Jauh (E33G) tidak mencakup kepemilikan atau pengelolaan perusahaan Indonesia; itu jalur investor.",
   ),
   E33G_INCOME_BELOW_THRESHOLD: text(
-    `The Remote Worker visa (E33G) needs a salary or income of at least ${usd(E33G_ANNUAL_INCOME_THRESHOLD_USD, "en-US")} a year from work for a company outside Indonesia; the yearly figure you gave is below it.`,
-    `Visa Rumah Kedua Pekerja Jarak Jauh (E33G) memerlukan gaji atau penghasilan minimal ${usd(E33G_ANNUAL_INCOME_THRESHOLD_USD, "id-ID")} per tahun dari pekerjaan untuk perusahaan di luar Indonesia; angka tahunan yang Anda berikan di bawahnya.`,
+    `The Remote Worker visa (E33G) needs a salary or income of at least ${usd(E33G_ANNUAL_INCOME_THRESHOLD_USD, "en-US")} a year; the yearly figure you gave is below it.`,
+    `Visa Rumah Kedua Pekerja Jarak Jauh (E33G) memerlukan gaji atau penghasilan minimal ${usd(E33G_ANNUAL_INCOME_THRESHOLD_USD, "id-ID")} per tahun; angka tahunan yang Anda berikan berada di bawah batas tersebut.`,
   ),
   STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED: text(
     "A study visa needs a confirmed admission and a confirmed sponsor; you haven’t confirmed both yet.",

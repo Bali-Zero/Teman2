@@ -2183,6 +2183,22 @@ describe("annual foreign income fact", () => {
     ).toEqual({ status: "KNOWN", value: 59_999 });
   });
 
+  it('maps "0" to KNOWN 0 (the lower bound is inclusive)', () => {
+    expect(
+      mapFacts({ remote_annual_income_usd: "0" }).facts[
+        "work.annual_foreign_income_usd"
+      ],
+    ).toEqual({ status: "KNOWN", value: 0 });
+  });
+
+  it("maps a number above the safe maximum to UNKNOWN NOT_PROVIDED", () => {
+    expect(
+      mapFacts({ remote_annual_income_usd: "9007199254740993" }).facts[
+        "work.annual_foreign_income_usd"
+      ],
+    ).toEqual({ status: "UNKNOWN", reason: "NOT_PROVIDED" });
+  });
+
   it("maps an unanswered question to UNKNOWN NOT_ASKED", () => {
     expect(mapFacts({}).facts["work.annual_foreign_income_usd"]).toEqual({
       status: "UNKNOWN",

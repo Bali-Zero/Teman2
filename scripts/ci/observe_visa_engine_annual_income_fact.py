@@ -32,12 +32,12 @@ TEST_TARGET = (
     "::TestFactVocabularyExtensionRolloutDefaultE33G"
 )
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
-MIN_TESTS = 7
+MIN_TESTS = 8
 _SUMMARY = re.compile(r"^(?:=+ )?(\d+) passed(?:, \d+ warnings?)? in [\d.]+s(?: \([\d:]+\))?(?: =+)?$")
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a pytest line that is a pure pass (warnings aside), N >= 6.
+    """True only for a pytest line that is a pure pass (warnings aside), N >= 8.
 
     Anything else (failed, error, skipped, xfailed, deselected, a reduced count,
     no line) is False.
