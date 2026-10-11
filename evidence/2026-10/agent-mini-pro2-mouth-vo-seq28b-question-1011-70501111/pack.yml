@@ -129,6 +129,30 @@ receipts:
     exit: 0
     ts: "2026-10-11T14:05:25Z"
     seat: this session
+  - claim: "CI red 1 cured: the seq-21 census pin counts the two seq-28 witness walks (105 answers / 18 no-path / 3 questions / 1 hold)."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq21_pack.py
+    result: "52 passed"
+    exit: 0
+    ts: "2026-10-11T15:05:00Z"
+    seat: this session
+  - claim: "Full visa_engine backend suite, sequential, on Mini. The only failures (2 failed, 31 errors) are DB-schema ones in test_evaluate_endpoint.py and test_visa_engine_retention_fk_registry.py, identical on a detached origin/main worktree (2 failed, 31 errors) - pre-existing, environmental."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine
+    result: "2 failed, 2963 passed, 15 skipped, 31 errors in 121s; same 2 failed + 31 errors on origin/main"
+    exit: 1
+    ts: "2026-10-11T15:05:00Z"
+    seat: this session
+  - claim: "CI red 2 cured, whole visa-oracle tree including _components: the OracleShell remote walk answers remote_annual_income_usd."
+    cmd: cd apps/mouth && ~/nuzantara/node_modules/.bin/vitest run '(visa-oracle)'
+    result: "Test Files 54 passed (54); Tests 1423 passed (1423)"
+    exit: 0
+    ts: "2026-10-11T15:05:00Z"
+    seat: this session
+  - claim: "apps/mouth typechecks after the test edits."
+    cmd: cd apps/mouth && ~/nuzantara/node_modules/.bin/tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-11T15:05:00Z"
+    seat: this session
 decisions:
   - id: D-replay-027
     decision: >-
