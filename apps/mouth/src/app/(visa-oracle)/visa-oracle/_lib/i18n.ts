@@ -844,7 +844,7 @@ const en = {
   "verdict.state_description.NO_SUPPORTED_PATH":
     "We won’t force a fit that isn’t there — here is what your answers do open.",
   "verdict.state_description.NO_SUPPORTED_PATH_NO_DOOR":
-    "We won’t force a fit that isn’t there. A Bali Zero advisor can look at routes that depend on facts this tool does not ask.",
+    "We won’t force a fit that isn’t there. A Bali Zero advisor can review details this tool does not cover.",
   "verdict.state_description.TEMPORARILY_UNAVAILABLE":
     "We can’t check your options right now. Your answers are still on this page.",
   "verdict.state_description.NEEDS_INPUT":
@@ -1839,7 +1839,7 @@ const id: Record<Keys, string> = {
   "verdict.headline.NO_SUPPORTED_PATH":
     "Jalur persis ini belum didukung — ini alternatifnya",
   "verdict.headline.NO_SUPPORTED_PATH_NO_DOOR":
-    "Jalur ini belum dapat dikonfirmasi oleh alat ini",
+    "Alat ini tidak dapat memastikan jalur tersebut",
   "verdict.headline.TEMPORARILY_UNAVAILABLE": "Jeda sejenak dalam perjalanan.",
   "verdict.headline.NEEDS_INPUT": "Sedikit lagi",
   "verdict.headline.SECOND_HOME_STUDIO":
@@ -1856,7 +1856,7 @@ const id: Record<Keys, string> = {
   "verdict.state_description.NO_SUPPORTED_PATH":
     "Kami tidak akan memaksakan jalur yang tidak cocok — inilah yang dibuka oleh jawaban Anda.",
   "verdict.state_description.NO_SUPPORTED_PATH_NO_DOOR":
-    "Kami tidak akan memaksakan jalur yang tidak cocok. Konsultan Bali Zero dapat meninjau jalur yang bergantung pada hal yang tidak ditanyakan alat ini.",
+    "Kami tidak akan memaksakan jalur yang tidak cocok. Konsultan Bali Zero dapat meninjau informasi tambahan yang tidak dicakup oleh alat ini.",
   "verdict.state_description.TEMPORARILY_UNAVAILABLE":
     "Kami belum bisa memeriksa opsi Anda saat ini. Jawaban Anda masih ada di halaman ini.",
   "verdict.state_description.NEEDS_INPUT":

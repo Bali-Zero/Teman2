@@ -94,7 +94,6 @@ const ALLOWED_PHRASES: readonly string[] = [
   "biro visa berlisensi atau seseorang di Indonesia",
   "The result reflects only the facts you entered",
   "some routes depend on facts this tool does not ask",
-  "routes that depend on facts this tool does not ask",
   // The template variable name, not copy.
   "{{facts}}",
   // Ordinary language in the interview: a deposit or investment "held",

@@ -9,7 +9,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildEngineOutcome,
   isNoPathWithoutDoors,
-  nextStepsFor,
 } from "../_lib/engine-adapter";
 import type { Language } from "../_lib/flow";
 import type {
@@ -32,11 +31,11 @@ const OLD_SUB = {
 };
 const NEW_HEADLINE = {
   en: "This path isn’t one this tool can confirm",
-  id: "Jalur ini belum dapat dikonfirmasi oleh alat ini",
+  id: "Alat ini tidak dapat memastikan jalur tersebut",
 };
 const NEW_SUB = {
-  en: "We won’t force a fit that isn’t there. A Bali Zero advisor can look at routes that depend on facts this tool does not ask.",
-  id: "Kami tidak akan memaksakan jalur yang tidak cocok. Konsultan Bali Zero dapat meninjau jalur yang bergantung pada hal yang tidak ditanyakan alat ini.",
+  en: "We won’t force a fit that isn’t there. A Bali Zero advisor can review details this tool does not cover.",
+  id: "Kami tidak akan memaksakan jalur yang tidak cocok. Konsultan Bali Zero dapat meninjau informasi tambahan yang tidak dicakup oleh alat ini.",
 };
 const OPEN_DOOR_STEP = {
   en: "Look at the open door above, if one is shown.",
@@ -66,13 +65,15 @@ function zeroDoorOutcome(): NoSupportedPathOutcome {
   return outcome;
 }
 
+/** A real engine outcome with one door: a non-tourism purpose and a short
+ * stay open the C1 tourism door in `buildNoPathDoors`. */
 function oneDoorOutcome(): NoSupportedPathOutcome {
-  const outcome = zeroDoorOutcome();
-  return {
-    ...outcome,
-    alternatives: [{ category: "tourism" }],
-    nextSteps: nextStepsFor("NO_SUPPORTED_PATH"),
-  } as NoSupportedPathOutcome;
+  const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+  const outcome = buildEngineOutcome(response, {
+    facts: { category: "work", stay_days: "30" },
+  });
+  if (outcome.state !== "NO_SUPPORTED_PATH") throw new Error("unexpected");
+  return outcome;
 }
 
 function titles(outcome: OutcomeViewModel, language: Language): string[] {
@@ -134,6 +135,7 @@ describe.each(["en", "id"] as const)(
 
     it("with at least one door everything is unchanged", async () => {
       const outcome = oneDoorOutcome();
+      expect(outcome.alternatives.length).toBeGreaterThan(0);
       expect(isNoPathWithoutDoors(outcome)).toBe(false);
       expect(titles(outcome, language)).toEqual([
         OPEN_DOOR_STEP[language],
