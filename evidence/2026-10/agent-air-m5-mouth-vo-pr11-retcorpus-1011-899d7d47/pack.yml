@@ -56,4 +56,24 @@ decisions:
     decision: >-
       The retirement outcomes are pinned in the corpus and the census first, so the interview change
       that follows shows its effect as a fixture diff and not as a silent drift.
-dissent: []
+dissent:
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b, model verified in the rollout file)
+    objection: MEDIUM - the legacy client-copy guard fails on the new string 'facts' (i18n.ts, client-copy.test.ts).
+    status: RETRACTED
+    disposition: >-
+      Not applicable to this branch (finding 1): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane. This diff itself still awaits a valid spalla scoped to its own git diff.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b, model verified in the rollout file)
+    objection: MEDIUM - the no-door-copy bites observer is fail-open on skipped or reduced Vitest runs.
+    status: RETRACTED
+    disposition: >-
+      Not applicable to this branch (finding 2): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane. This diff itself still awaits a valid spalla scoped to its own git diff.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b, model verified in the rollout file)
+    objection: LOW - the new Indonesian no-door strings read unnaturally.
+    status: RETRACTED
+    disposition: >-
+      Not applicable to this branch (finding 3): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane. This diff itself still awaits a valid spalla scoped to its own git diff.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b, model verified in the rollout file)
+    objection: LOW - the 'with at least one door' test builds by hand the fields it should verify.
+    status: RETRACTED
+    disposition: >-
+      Not applicable to this branch (finding 4): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane. This diff itself still awaits a valid spalla scoped to its own git diff.
