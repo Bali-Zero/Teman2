@@ -109,6 +109,7 @@ CQ_OVERRIDE_ENV = cq("test_a_base_job_that_names_an_environment_is_fail_open_bec
 CQ_OVERRIDE_TOTAL = cq("test_a_total_count_that_disagrees_with_the_rows_collected_is_a_read_error")
 CQ_FORK = cq("test_a_fork_pr_whose_branch_is_named_main_and_is_newer_and_green_does_not_stand_in_for_main",
              "test_a_fork_pr_named_main_that_is_newer_and_red_does_not_block_a_green_main", "test_only_a_run_of_the_repositorys_own_main_on_a_main_event_is_a_candidate")
+CQ_SKIPKEY = cq("test_an_unexplained_skip_in_one_job_is_not_excused_by_the_matrix_na_of_the_same_step_name_in_another")
 CQ_USES = cq("test_a_bumped_codeql_action_in_the_base_workflow_blocks_until_the_matrix_follows")
 CQ_LOCALVER = cq("test_a_local_cli_other_than_the_pin_is_no_verdict_before_anything_is_extracted", "test_a_driven_leg_on_another_cli_is_error_never_fail_or_pass")
 CQ_STALE = cq("test_the_reader_is_blocked_by_an_analysis_older_than_seven_days", "test_a_stale_newest_analysis_blocks_the_plan_with_the_days_in_the_reason")
@@ -740,12 +741,13 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "cq-override-total-unchecked": (RUNNER, "            return rows if len(rows) == total else None", "            return rows", CQ_OVERRIDE_TOTAL),
     "cq-sentinel-fork-main": (CQ_READER_FILE, ' and isinstance(head, dict) and isinstance(head.get("full_name"), str) and head["full_name"].lower() == repo.lower())', ")", CQ_FORK),
     "cq-sentinel-any-event": (CQ_READER_FILE, '\n            and r.get("event") in MAIN_EVENTS', "", CQ_FORK),
+    "cq-skip-name-collision": (RUNNER, "    return (job, name)\n", "    return name\n", CQ_SKIPKEY),
     "cq-uses-unpinned": (RUNNER, 'if isinstance(ms.get("uses_pin"), str) and ws.get("uses") != ms["uses_pin"]:', "if False:", CQ_USES),
     "cq-local-version-unchecked": (CQ_SH_FILE, '  [ "$(tail -n 1 "$WORK/version.out")" = "$CODEQL_PIN" ] ||', "  true ||", CQ_LOCALVER),
     "cq-version-probe-swallowed": (CQ_SH_FILE, '  step "$CQ" version --format=terse >"$WORK/version.out"', '  step "$CQ" version --format=terse >"$WORK/version.out" || true', CQ_VERPROBE),
     "cq-sentinel-stale-ok": (CQ_READER_FILE, "if age > MAX_AGE_DAYS:", "if False:", CQ_STALE),
     "cq-sentinel-main-red-ok": (CQ_READER_FILE, 'if mine[0].get("conclusion") != "success":', "if False:", CQ_MAINRED),
-    "cq-skip-mixed-passes": (RUNNER, 'all("not_applicable" in planned.get(plain(s["name"]), {}) for s in rest)', "True", CQ_MIXED),
+    "cq-skip-mixed-passes": (RUNNER, 'all("not_applicable" in planned.get(key_of(s["name"]), {}) for s in rest)', "True", CQ_MIXED),
     "cq-leg-seam-open": (RUNNER, '(seam := sorted(LEG_INPUT_ENV & {*jenv, *(st.get("env") or {})}))', "(seam := [])", CQ_SEAM),
     "cq-reader-repo-dots": (CQ_READER_FILE, ' or any(seg in (".", "..") for seg in args.repo.split("/")):', ":", CQ_REPO),
     "cq-config-inline-queries-open": (CQ_SH_FILE, 'if re.match(r"^queries\\s*:\\s*\\S", key):', "if False:", CQ_CONFIG),

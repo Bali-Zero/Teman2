@@ -1029,6 +1029,20 @@ def test_a_leg_that_mixes_the_gate_skip_with_any_other_skip_is_not_a_pass(tmp_pa
     assert runner.steps_verdict(only_matrix, spec)[0] == "ERROR"   # a matrix N/A alone, with no `if:` skip, is no gate evidence
 
 
+@pytest.mark.parametrize("order", [("a", "b"), ("b", "a")])
+def test_an_unexplained_skip_in_one_job_is_not_excused_by_the_matrix_na_of_the_same_step_name_in_another(order):
+    steps = {"a": {"name": "Step", "not_applicable": "the matrix declares it"}, "b": {"name": "Step", "if": "env.GO == 'true'"}}   # one step name in two jobs
+    spec = {"jobs": [{"job_id": j, "steps": [steps[j]]} for j in order], "skip_is_pass": True}
+    gate = {"name": "b[x] › Gate", "status": "NOT_APPLICABLE", "reason": "if: env.GO == 'true' -> false (status success)"}
+    excused = {"name": "a[x] › Step", "status": "NOT_APPLICABLE", "reason": "matrix: the matrix declares it"}
+    unexplained = {"name": "b[x] › Step", "status": "NOT_APPLICABLE", "reason": "skipped for a reason of its own"}
+    assert runner.skipped_by_own_if([gate, excused], spec) is True
+    assert runner.skipped_by_own_if([gate, unexplained], spec) is False   # the other job's N/A of the same name is not b's
+    assert runner.skipped_by_own_if([gate, excused, unexplained], spec) is False
+    status, reason = runner.steps_verdict([gate, excused, unexplained], spec)
+    assert status == "ERROR" and "not PASS" in reason
+
+
 def test_the_drivers_if_false_wording_is_the_one_the_runner_matches():
     assert runner.IF_FALSE.match("if: env.RUN_THIS_LANGUAGE == 'true' -> false (status success)")
     assert runner.IF_FALSE.match("if: always() -> false (status failure)") and runner.IF_FALSE.match("if: x -> false")

@@ -2099,16 +2099,24 @@ def judge_rewritten(step: str, spec: dict) -> tuple[list, str]:
 IF_FALSE = re.compile(r"^if: .* -> false( \(status [a-z]+\))?$")   # the driver's wording for a step its own `if:` skipped
 
 
+def _step_key(job, name) -> tuple:
+    """A step is named by its job AND its name: two jobs may share a step name, and the N/A one of the first excuses nothing in the second."""
+    return (job, name)
+
+
 def skipped_by_own_if(na: list, spec: dict) -> bool:
     """Whether an all-skipped leg is the gate's skip and nothing else: every NOT_APPLICABLE step is an `if:` the driver evaluated false or a
     step the matrix declares not applicable (the plan's own `not_applicable`), and at least one is an `if:` false: a step that carries an `if:`
     in BASE and was skipped any other way is in neither group. A leg that mixes a gate skip with an unexplained skip is no evidence, so it is not PASS."""
-    planned = {s.get("name"): s for s in [*(spec.get("steps") or []), *(st for j in spec.get("jobs") or [] for st in j.get("steps") or [])]
-               if isinstance(s, dict)}
-    plain = lambda n: str(n).rsplit(" › ", 1)[-1]   # noqa: E731 — a leg's steps carry their label: "codeql[python] › Initialize CodeQL"
+    planned = {_step_key(j.get("job_id"), s.get("name")): s for j in spec.get("jobs") or [] for s in j.get("steps") or [] if isinstance(s, dict)}
+    planned.update({_step_key(None, s.get("name")): s for s in spec.get("steps") or [] if isinstance(s, dict)})
+
+    def key_of(n) -> tuple:   # a leg's steps carry their label: "codeql[python] › Initialize CodeQL" is the step of job `codeql`
+        label, sep, step = str(n).partition(" › ")
+        return _step_key(label.split("[", 1)[0], step) if sep else _step_key(None, label)
     gated = [s for s in na if IF_FALSE.match(str(s.get("reason", "")))]
     rest = [s for s in na if s not in gated]
-    return bool(gated) and all("not_applicable" in planned.get(plain(s["name"]), {}) for s in rest)   # a matrix N/A step carries no `if:` in the plan
+    return bool(gated) and all("not_applicable" in planned.get(key_of(s["name"]), {}) for s in rest)   # a matrix N/A step carries no `if:` in the plan
 
 
 def steps_verdict(steps: list, spec: dict) -> tuple[str, str]:
