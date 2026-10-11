@@ -1,0 +1,30 @@
+task_id: kbli-nav-design-marks-5m
+mission: kbli-nav-design-loop (Track A, build, PR 5m — the ledger band and the live sheet arm in png_census)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Harness-only arming of an already-merged surface (lead ruling 2026-10-12, after #8290 merged as 452bad3b4c): the
+  ledger's elements are marked for png_census and its checks are armed on the bands that carry them. No fact, verdict,
+  cap, basis, title, reason or string changes; the marks draw nothing (CENSUS_IDENTITY proves it byte for byte). The glyph
+  and the map (2b), the choreography, ribbon and hover (2c), the keys (2k) and the basis plate (M6) are separate PRs.
+l_level: L1
+gate_class: opus
+objective: >-
+  One concern: the ledger's elements name themselves (ladder, matrix, matrix.head/.chip, cap, chip.national, chip.bali,
+  bali.label, headsup and its label/sentence, ring, hint), after any offset or Beat, and png_census arms C11, C12, C13,
+  C14, C21 and C23 on the sheet-ledger bands and a new C24 (the selection cue: the shown cell's ring is the accent on all
+  4 sides, clear of what lies beside it, and the hint is drawn iff the record offers more than one cell) on the expanded
+  live sheet, flat and immersive; every armed check has a guilt that FAILs on a real render, not only a synthetic one.
+constraints:
+  - No fact, verdict, cap, basis, title or reason changes; no string is added; no colour changes.
+  - A mark draws nothing: the render set is byte-identical with and without the collector.
+  - A mark sits after any .offset or Beat, so the frame says where the element lands.
+acceptance:
+  - text: The collector SHALL draw nothing.
+    probe: "Pro: CENSUS_IDENTITY=1 IMM=1 render_set.sh, 91 PNGs byte-identical with and without the collector"
+  - text: The armed bands SHALL pass on the real renders, and the census SHALL FAIL a real render that carries the guilt.
+    probe: "Pro: png_census.py on the 91-PNG set 0 FAIL; mutant build with an env switch, one render per guilt (4 pt gap, no ring, a clear ring, a hint over one cell, no hint over many, serif(24) sentence, ladder mark inside the offset, a tone the record disagrees with): each rc 1 naming the cause, the control rc 0"
+  - text: A single-record band that arms C23 SHALL carry a record with all three axes, and the live sheet SHALL write its record.
+    probe: "Pro: png_census.py selftest RECORD cases (three axes passes, one axis FAILs naming it); registry-sheet JSONs carry national, bali, headsup, cells"
+  - text: A chip's own colours touching it SHALL fail C11, and a plane's gradient SHALL NOT turn a figure into the ground.
+    probe: "Pro: png_census.py selftest (a chip with its colours attached on both sides FAILs; the cap passes on imm/sheet-ledger-day-en, where the surface has no commonest colour)"
