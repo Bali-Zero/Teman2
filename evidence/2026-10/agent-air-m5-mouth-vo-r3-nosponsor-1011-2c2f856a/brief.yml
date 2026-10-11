@@ -17,6 +17,9 @@ scope:
   - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fixtures/no-path-doors.replay.json
   - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks
   - scripts/ci/observe_visa_oracle_retirement_no_sponsor.py
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/sponsor-retirement-guard.test.ts
+  - tests/scripts/test_observe_visa_oracle_retirement_no_sponsor.py
+  - apps/mouth/e2e/visa-oracle-no-path-doors.spec.ts
 appetite:
   wall_clock_hours: 2
   adversarial_rounds: 2

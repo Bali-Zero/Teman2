@@ -1085,7 +1085,7 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
     // R3 (owner decision 2026-10-11): `sponsor_category` is NOT asked here.
     // Measured on the newest signed pack: `sponsor.type` in every value gives
     // the identical SUPPORTED [E33E, E33F] result, and no rule that covers
-    // RETIREMENT reads it (guarded by a pack-scan test, fact-mapper.test.ts) — the
+    // RETIREMENT reads it (guarded by a pack-scan test, sponsor-retirement-guard.test.ts) — the
     // same omission ruling as `second_home` above: asking a question no rule
     // can use only adds review volume. `sponsor.type` stays
     // UNKNOWN(NOT_ASKED).

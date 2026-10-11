@@ -18,13 +18,13 @@ from observe_visa_oracle_retirement_no_sponsor import (  # noqa: E402
 @pytest.mark.parametrize(
     "line",
     [
-        "      Tests  3 skipped (3)",
+        "      Tests  4 skipped (4)",
         "      Tests  2 passed (2)",
-        "      Tests  4 passed (4)",
-        "      Tests  1 failed | 2 passed (3)",
-        "      Tests  3 passed | 1 skipped (4)",
-        "      Tests  3 passed | 1 todo (4)",
-        "      Tests  2 passed (3)",
+        "      Tests  3 passed (3)",
+        "      Tests  1 failed | 3 passed (4)",
+        "      Tests  4 passed | 1 skipped (5)",
+        "      Tests  4 passed | 1 todo (5)",
+        "      Tests  3 passed (4)",
         "",
         None,
     ],
@@ -34,7 +34,7 @@ def test_rejects_anything_but_exactly_the_guard_tests(line):
 
 
 def test_accepts_exactly_the_guard_tests_passing():
-    assert summary_ok("      Tests  3 passed (3)") is True
+    assert summary_ok("      Tests  4 passed (4)") is True
 
 
 def _write(tmp_path, n, payload, name=None):

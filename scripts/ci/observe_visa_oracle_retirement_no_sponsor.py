@@ -33,12 +33,12 @@ PACKS_DIR = (
 )
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
-EXPECTED_TESTS = 3
+EXPECTED_TESTS = 4
 _SUMMARY = re.compile(r"^\s*Tests\s+(\d+) passed \((\d+)\)\s*$")
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a Vitest line that is exactly `Tests  3 passed (3)`.
+    """True only for a Vitest line that is exactly `Tests  4 passed (4)`.
 
     Anything else (skipped, todo, failed, another count, no line) is False.
     """

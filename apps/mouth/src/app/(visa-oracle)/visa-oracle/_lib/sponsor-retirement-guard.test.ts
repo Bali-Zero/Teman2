@@ -2,6 +2,8 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
+import { getCategoryQuestionIds } from "./flow";
+import type { OracleFacts } from "./tree";
 
 // R3 (owner decision 2026-10-11): the retirement interview no longer asks
 // `sponsor_category`, so `sponsor.type` stays UNKNOWN(NOT_ASKED) on that
@@ -128,5 +130,39 @@ describe("sponsor.type x RETIREMENT — the omission is only safe while no rule 
     expect(readsSponsorType({ required_facts: ["a", FACT] })).toBe(true);
     expect(readsSponsorType({ when: { all: [{ fact: FACT }] } })).toBe(true);
     expect(readsSponsorType({ when: { fact: "other.fact" } })).toBe(false);
+  });
+
+  it("the retirement question list never contains sponsor_category, for every basis and every undecided choice", () => {
+    const bases = [
+      "bank_deposit",
+      "property",
+      "passive_income",
+      "family_sponsor",
+      "undecided",
+    ];
+    const undecidedChoices = [
+      "deposit_or_income",
+      "family_sponsor",
+      "still_unsure",
+    ];
+    const cases: Record<string, string>[] = [
+      ...bases
+        .filter((b) => b !== "undecided")
+        .map((b) => ({ retirement_basis: b })),
+      ...undecidedChoices.map((c) => ({
+        retirement_basis: "undecided",
+        retirement_undecided_basis: c,
+      })),
+      { retirement_basis: "undecided" },
+      {},
+    ];
+    for (const extra of cases) {
+      const ids = getCategoryQuestionIds({
+        category: "retirement",
+        ...extra,
+      } as OracleFacts);
+      expect(ids, JSON.stringify(extra)).not.toContain("sponsor_category");
+      expect(ids).toContain("retirement_basis");
+    }
   });
 });
