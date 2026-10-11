@@ -51,6 +51,7 @@ struct ScalePathGrid: View {
                     if mode == .ledger { Color.clear.frame(width: 80, height: 1) }
                     ForEach(Array(order.enumerated()), id: \.element) { i, s in
                         node(s, index: i, selected: i == selIdx, reached: i <= selIdx, hasRow: published(s, scs), pick: { pick(s, scs) })
+                            .censusFrame("matrix.head", "\(i)")
                             .anchorPreference(key: PathEdges.self, value: .bounds) { [$0] }
                     }
                 }
@@ -71,7 +72,7 @@ struct ScalePathGrid: View {
                             .gridCellColumns(ncols)
                         }
                     }
-                    line(lang.t("detail.risk"), sc, top: 12, bottom: 0, selIdx: selIdx) { chip($0) }
+                    line(lang.t("detail.risk"), sc, top: 12, bottom: 0, selIdx: selIdx, chips: true) { chip($0) }
                     line(lang.t("detail.term"), sc, top: 4, bottom: mode == .compact ? 12 : 0, selIdx: selIdx) { e in
                         Text(ScaleMatrix.term(e.row, isID: isID) ?? Theme.absent)
                             .font(Theme.scalable(13)).monospacedDigit().foregroundStyle(Theme.white)
@@ -119,7 +120,7 @@ struct ScalePathGrid: View {
             .onKeyPress(.leftArrow) { move(-1, from: selIdx, scs); return .handled }
             .onKeyPress(.rightArrow) { move(1, from: selIdx, scs); return .handled }
             if selection != nil, Set(scs.flatMap { $0.rows.map(\.idx) }).count > 1 {
-                Text(LabelBook.cellHint(isID: isID)).font(Theme.scalable(10)).foregroundStyle(Theme.faint)
+                Text(LabelBook.cellHint(isID: isID)).font(Theme.scalable(10)).foregroundStyle(Theme.faint).censusFrame("hint")
             }
         }
     }
@@ -185,7 +186,7 @@ struct ScalePathGrid: View {
         .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
     }
 
-    private func line<C: View>(_ label: String, _ sc: ScaleMatrix.Scope, top: CGFloat, bottom: CGFloat, selIdx: Int,
+    private func line<C: View>(_ label: String, _ sc: ScaleMatrix.Scope, top: CGFloat, bottom: CGFloat, selIdx: Int, chips: Bool = false,
                                @ViewBuilder _ cell: @escaping ((idx: Int, row: PerSkala)) -> C) -> some View {
         GridRow(alignment: .firstTextBaseline) {
             if mode == .ledger {
@@ -200,7 +201,7 @@ struct ScalePathGrid: View {
                     if es.isEmpty {
                         if top == 12 { Text("·").font(Theme.scalable(13)).foregroundStyle(Theme.faint) }
                     } else {
-                        ForEach(es, id: \.idx) { cell($0) }
+                        ForEach(es, id: \.idx) { cell($0).censusFrame("matrix.chip", "\(i)", when: chips) }
                     }
                 }
                 .frame(minWidth: 80, maxWidth: .infinity)

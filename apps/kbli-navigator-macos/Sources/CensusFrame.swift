@@ -39,6 +39,24 @@ extension View {
     func censusFrame(_ name: String, _ value: String = "") -> some View {
         modifier(CensusMark(name: name, value: value))
     }
+
+    /// The same mark on some of a row's views only (the chip row of a matrix, not its term and authority rows).
+    func censusFrame(_ name: String, _ value: String = "", when on: Bool) -> some View {
+        modifier(CensusMark(name: name, value: value, on: on))
+    }
+}
+
+/// The tone a mark states, read off the RECORD and not off the colour the painter picked. The band snapshot derives the
+/// same three on its own for the JSON's `record`, and png_census FAILs a mark that disagrees with it.
+enum CensusTone {
+    static func national(_ k: KBLI) -> String { "\(Theme.tone(k.pmaStatus ?? ""))" }
+    static func bali(_ k: KBLI) -> String {
+        switch KBLIVerdict.of(record: k).bali {
+        case .open: return "open"
+        case .blocked: return "closed"
+        case .undetermined: return "neutral"
+        }
+    }
 }
 
 /// The mark itself: a clear background that reports its frame while a band snapshot collects, and nothing otherwise,
@@ -46,8 +64,9 @@ extension View {
 struct CensusMark: ViewModifier {
     let name: String
     let value: String
+    var on = true
     func body(content: Content) -> some View {
-        if CensusFrame.collecting {
+        if CensusFrame.collecting && on {
             content.background(GeometryReader { g in
                 Color.clear.preference(key: CensusFramesKey.self, value: [
                     CensusFrame(name: name, value: value, rect: g.frame(in: .named(CensusFrame.space)))])

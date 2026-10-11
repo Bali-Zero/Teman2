@@ -139,7 +139,7 @@ struct KBLIRegistryView: View {
                                 // The ladder hangs from the row's bottom edge, so its ground line (y 326
                                 // of 330) sits on the matrix's last 1 pt rule and it rises above a short table.
                                 Color.clear.frame(width: 120, height: 1)
-                                    .overlay(alignment: .bottom) { PadiLadder().offset(y: 3.5) }
+                                    .overlay(alignment: .bottom) { PadiLadder().offset(y: 3.5).censusFrame("ladder") }
                                 matrix
                             }
                         }
@@ -195,6 +195,7 @@ struct KBLIRegistryView: View {
                 ScaleMatrix(scales: kbli.perSkala, isID: isID, mode: .ledger)
             }
         }
+        .censusFrame("matrix")
     }
 
     private var ribbon: some View {
@@ -211,6 +212,7 @@ struct KBLIRegistryView: View {
             Text(lang.t("detail.national")).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(Theme.muted)
             chip(LabelBook.pmaStatus(kbli.pmaStatus, isID: isID), tone)
                 .modifier(Beat(p: immersive ? arrival : 1, from: 0.2, to: 0.6, dy: 6))
+                .censusFrame("chip.national", CensusTone.national(kbli))
             // The canonical `pma_max_asing` (the search peak's rule): "—" only when the record has none.
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Group {
@@ -219,12 +221,15 @@ struct KBLIRegistryView: View {
                 }
                 .font(Theme.display(64)).monospacedDigit()
                     .foregroundStyle(Theme.white)
+                    .censusFrame("cap")
                 Text(lang.t("rich.fact.pma")).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
             }
             Rectangle().fill(Theme.lineSoft).frame(height: 1).padding(.vertical, 8)
             Text(lang.t("detail.bali")).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(Theme.muted)
+                .censusFrame("bali.label")
             let bali = LabelBook.baliChip(v, isID: isID)
             chip(bali.word, Theme.chip(bali.tone)).accessibilityLabel(bali.voiceOver)
+                .censusFrame("chip.bali", CensusTone.bali(kbli))
             if let reason = verdictSubtitle(v) {
                 LeadBody(text: LabelBook.humanise(reason, record: kbli, isID: isID), kind: .reason).padding(.top, 4)
             }
