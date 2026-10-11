@@ -10,6 +10,14 @@ import SwiftUI
 /// pinned under it, one collapsible row per scope (wrapped title + the four tier abbreviations, the
 /// legend kept). An absent scale is the faint "·"; a scope that lists a scale twice stacks both
 /// entries in that cell. No row merged or dropped; text wraps, never clamps.
+extension View {
+    /// The shown risk cell's selection mark (flat matrix and scale path alike): a 2 pt accent ring outside the chip with a
+    /// 1.5 pt gap, so the ring touches only the surface, never the chip's fill (accent on the surface is >= 3:1 day and night).
+    func selectionRing(_ on: Bool) -> some View {
+        overlay { if on { RoundedRectangle(cornerRadius: 4).strokeBorder(Theme.accent, lineWidth: 2).padding(-3.5) } }
+    }
+}
+
 struct ScaleMatrix: View {
     enum Mode { case ledger, compact }
 
@@ -145,7 +153,7 @@ struct ScaleMatrix: View {
                     .stroke(Theme.lineSoft, lineWidth: 1)
                 }
             }
-            if selection != nil {
+            if selection != nil, Set(scs.flatMap { $0.rows.map(\.idx) }).count > 1 {
                 Text(LabelBook.cellHint(isID: isID)).font(Theme.scalable(10)).foregroundStyle(Theme.faint)
             }
         }
@@ -190,11 +198,12 @@ struct ScaleMatrix: View {
             .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, 4).padding(.horizontal, 8)
             .background(c.bg, in: RoundedRectangle(cornerRadius: 2))
-            .overlay(RoundedRectangle(cornerRadius: 2)
-                .strokeBorder(selected ? Theme.accent : (c.border ?? .clear), lineWidth: selected ? 2 : 1))
+            .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(c.border ?? .clear, lineWidth: 1))
+            .selectionRing(selected)
         return Group {
             if let selection {
                 Button { selection.wrappedValue = selected ? nil : e.idx } label: { face }.buttonStyle(.plain)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
             } else { face }
         }
     }
