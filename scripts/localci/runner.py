@@ -1131,26 +1131,55 @@ def classifier_needs(trusted: Path, cm: dict, changed: list, spec) -> tuple[dict
 RING_OVERRIDE_VAR, RING_OVERRIDE_SH = "MERGEOS_RING_GATING_DISABLED", "scripts/ci/ring_gating_override.sh"
 
 
-def ring_gating_override(wt: Path, base: str, trusted: Path, repo: str) -> dict:
+def _gh_variables(env: dict, path: str) -> list | None:
+    """Every variable a `gh api` list endpoint holds (per_page=100, paged), or None when the read cannot be trusted: any non-200 status (gh
+    exits non-zero on it, a 404 included: a list that is missing is a read that failed, not an empty one), a body that is not JSON, one
+    without a `variables` array of objects and an integer `total_count`, or a count that disagrees with the rows collected."""
+    rows, total = [], None
+    for page in range(1, 51):
+        r = subprocess.run(["gh", "api", f"{path}?per_page=100&page={page}"], capture_output=True, text=True, timeout=60, env=env)
+        if r.returncode != 0:
+            return None
+        body = json.loads(r.stdout)
+        got = body.get("variables") if isinstance(body, dict) else None
+        count = body.get("total_count") if isinstance(body, dict) else None
+        if not isinstance(got, list) or not all(isinstance(v, dict) for v in got) or type(count) is not int or total not in (None, count):
+            return None
+        rows, total = rows + got, count
+        if len(rows) >= total or not got:
+            return rows if len(rows) == total else None
+    return None
+
+
+def ring_gating_override(wt: Path, base: str, trusted: Path, repo: str, jobs: dict | None = None) -> dict:
     """The manual override security.yml's `changes` job honours (`vars.MERGEOS_RING_GATING_DISABLED`), read now with the operator's gh and
-    judged by BASE's own truth table (scripts/ci/ring_gating_override.sh, run, not re-implemented). {read: ok|error, active: bool}: an
-    unset variable (404) is ok and inactive; a read, a BASE file or a truth-table answer that cannot be had is `error` and ACTIVE, the same
-    fail-open as a classifier error, so a doubt can only run more, never less."""
+    judged by BASE's own truth table (scripts/ci/ring_gating_override.sh, run, not re-implemented). Hosted resolves `vars.X` as a repository
+    variable first, then an organization variable visible to the repository (an environment variable too, when the job names an
+    `environment:`): the repository list is read, then the organization list when the repository's owner is an Organization. {read: ok|error,
+    active: bool}: a name in neither list is ok and inactive; a read, a BASE file or a truth-table answer that cannot be had, and a BASE job
+    that names an `environment:` (its variables are invisible to this read), are `error` and ACTIVE, the same fail-open as a classifier
+    error, so a doubt can only run more, never less."""
     fail = {"read": "error", "active": True}
     blob = _extract_base_file(wt, base, RING_OVERRIDE_SH)
-    if blob is None:
+    if blob is None or any(isinstance(j, dict) and "environment" in j for j in (jobs or {}).values()):
         return fail
     env = trusted_env()
     try:
-        r = subprocess.run(["gh", "api", f"repos/{repo}/actions/variables/{RING_OVERRIDE_VAR}"], capture_output=True, text=True, timeout=60, env=env)
-        if r.returncode == 0:
-            value = json.loads(r.stdout).get("value")
-            if not isinstance(value, str):
-                return fail
-        elif "HTTP 404" in r.stderr:   # gh: Not Found (HTTP 404): the variable does not exist, which is what hosted reads as ''
-            value = None
-        else:
+        owner = subprocess.run(["gh", "api", f"repos/{repo}"], capture_output=True, text=True, timeout=60, env=env)
+        owner_type = (json.loads(owner.stdout).get("owner") or {}).get("type") if owner.returncode == 0 else None
+        if owner_type not in ("Organization", "User"):
             return fail
+        value = None
+        for path in (f"repos/{repo}/actions/variables", *((f"repos/{repo}/actions/organization-variables",) if owner_type == "Organization" else ())):
+            rows = _gh_variables(env, path)
+            if rows is None:
+                return fail
+            hit = [v for v in rows if str(v.get("name", "")).upper() == RING_OVERRIDE_VAR]   # variable names are case-insensitive
+            if hit:
+                value = hit[0].get("value")
+                if len(hit) != 1 or not isinstance(value, str):
+                    return fail
+                break   # the repository variable wins over the organization's
         script = trusted / "ctx" / Path(RING_OVERRIDE_SH).name
         script.parent.mkdir(parents=True, exist_ok=True)
         script.write_bytes(blob)
@@ -1215,7 +1244,8 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
         got, flags_note = classifier_needs(trusted, cm, changed, local["classifier"])
         if got is None:
             return _blocked(flags_note)
-        ov = ring_gating_override(wt, base, trusted, repo)   # hosted's classify steps are skipped when it is active: every flag defaults true
+        holders = {j: jobs_doc.get(j) for j in (local["classifier"]["job"], ctx.get("job_id"))}   # the `changes` job holds the override step; the leg's job reads its flags
+        ov = ring_gating_override(wt, base, trusted, repo, holders)   # hosted's classify steps are skipped when it is active: every flag defaults true
         if ov["active"]:
             got = {"result": "success" if ov["read"] == "ok" else "failure", "outputs": {n: "true" for n in got["outputs"]}}
             flags_note = f"{flags_note}; ring-gating override " + ("ACTIVE (vars.MERGEOS_RING_GATING_DISABLED=true): both flags true" if ov["read"] == "ok"

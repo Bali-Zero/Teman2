@@ -100,6 +100,13 @@ CQ_SARIF_CRASH = cq("test_a_document_the_checker_cannot_hold_is_no_verdict_exit_
 CQ_SARIF_SHAPE = cq("test_a_sarif_without_runs_or_with_a_run_without_results_is_a_fail")
 CQ_OVERRIDE = cq("test_the_override_is_read_at_plan_and_an_active_one_runs_both_languages_as_hosted_does",
                  "test_a_read_that_fails_is_fail_open_both_flags_true_and_the_job_result_not_success")
+CQ_OVERRIDE_ORG = cq("test_an_organization_variable_alone_is_resolved_for_an_organization_owner_and_not_for_a_user",
+                     "test_the_lists_are_paginated_and_a_variable_on_a_later_page_is_found")
+CQ_OVERRIDE_404 = cq("test_a_list_that_answers_404_is_a_read_error_not_an_unset_variable")
+CQ_OVERRIDE_WINS = cq("test_when_both_exist_the_repository_variable_wins_as_hosted_resolves_it")
+CQ_OVERRIDE_ENV = cq("test_a_base_job_that_names_an_environment_is_fail_open_because_its_variables_are_invisible",
+                     "test_the_plan_passes_the_base_jobs_so_an_environment_in_the_base_workflow_fails_open")
+CQ_OVERRIDE_TOTAL = cq("test_a_total_count_that_disagrees_with_the_rows_collected_is_a_read_error")
 CQ_USES = cq("test_a_bumped_codeql_action_in_the_base_workflow_blocks_until_the_matrix_follows")
 CQ_LOCALVER = cq("test_a_local_cli_other_than_the_pin_is_no_verdict_before_anything_is_extracted", "test_a_driven_leg_on_another_cli_is_error_never_fail_or_pass")
 CQ_STALE = cq("test_the_reader_is_blocked_by_an_analysis_older_than_seven_days", "test_a_stale_newest_analysis_blocks_the_plan_with_the_days_in_the_reason")
@@ -724,6 +731,11 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "cq-sarif-crash-swallowed-by-leg": (CQ_SH_FILE, '  *) no_verdict "codeql_sarif_check.py ended', '  *) exit 1 ;;   # no_verdict "codeql_sarif_check.py ended', CQ_SARIF_CRASH),
     "cq-sarif-shape-ignored": (CQ_SARIF_FILE, "why = why or shape_problem(doc)", "why = why", CQ_SARIF_SHAPE),
     "cq-override-ignored": (RUNNER, 'if ov["active"]:\n            got = {', 'if False:\n            got = {', CQ_OVERRIDE),
+    "cq-override-org-ignored": (RUNNER, ', *((f"repos/{repo}/actions/organization-variables",) if owner_type == "Organization" else ())', "", CQ_OVERRIDE_ORG),
+    "cq-override-404-unset": (RUNNER, "        if r.returncode != 0:\n            return None\n        body", '        if r.returncode != 0:\n            return rows if "HTTP 404" in r.stderr else None\n        body', CQ_OVERRIDE_404),
+    "cq-override-org-beats-repo": (RUNNER, "                break   # the repository variable wins over the organization's\n", "", CQ_OVERRIDE_WINS),
+    "cq-override-environment-ignored": (RUNNER, 'or any(isinstance(j, dict) and "environment" in j for j in (jobs or {}).values()):', ":", CQ_OVERRIDE_ENV),
+    "cq-override-total-unchecked": (RUNNER, "            return rows if len(rows) == total else None", "            return rows", CQ_OVERRIDE_TOTAL),
     "cq-uses-unpinned": (RUNNER, 'if isinstance(ms.get("uses_pin"), str) and ws.get("uses") != ms["uses_pin"]:', "if False:", CQ_USES),
     "cq-local-version-unchecked": (CQ_SH_FILE, '  [ "$(tail -n 1 "$WORK/version.out")" = "$CODEQL_PIN" ] ||', "  true ||", CQ_LOCALVER),
     "cq-version-probe-swallowed": (CQ_SH_FILE, '  step "$CQ" version --format=terse >"$WORK/version.out"', '  step "$CQ" version --format=terse >"$WORK/version.out" || true', CQ_VERPROBE),

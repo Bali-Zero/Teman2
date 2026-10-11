@@ -83,11 +83,16 @@ sys.exit(0)
 
 
 def fake_gh(tmp_path: Path, version: str | None = "2.27.2", rc: int = 0, language_present: bool = True, versions: dict | None = None,
-            override: str | None = None, override_rc: int = 0, override_doc: dict | None = None, age_days: float = 1.0, main: dict | None = None, runs_rc: int = 0, jobs_rc: int = 0) -> Path:
+            override: str | None = None, override_rc: int = 0, override_doc: dict | None = None, age_days: float = 1.0, main: dict | None = None, runs_rc: int = 0, jobs_rc: int = 0,
+            org_override: str | None = None, owner_type: str = "Organization", org_rc: int = 0, repo_rc: int = 0, list_404: str = "", filler: int = 0,
+            page_size: int = 100, total_delta: int = 0, other_runs: list | None = None) -> Path:
     """A `gh api` that answers what the plan reads: the code-scanning analyses list of the hosted main branch (two languages, newest first;
-    `versions` sets the reported CLI per language where `version` sets both, `age_days` the newest one's age), the newest completed security.yml
-    run on main and its jobs (`main` sets each language's job conclusion), and the MERGEOS_RING_GATING_DISABLED repository variable (`override`
-    its value, None for 404, `override_rc` a read that fails)."""
+    `versions` sets the reported CLI per language where `version` sets both, `age_days` the newest one's age), the completed security.yml
+    runs on main and the jobs of the newest own-main one (`main` sets each language's job conclusion; `other_runs` adds runs, as the API
+    returns them), the repository (`owner_type`), and the two variable LISTS the override is resolved from: `override` is the repository
+    variable's value and `org_override` the organization's (None for absent), `filler` unrelated rows in the repository list, `page_size`
+    how many rows one page holds, `total_delta` what total_count is off by, `override_doc` a raw body for the repository list, and
+    `override_rc` / `org_rc` / `repo_rc` / `list_404` ("repo" or "org") a read that fails."""
     versions = {"python": version, "javascript": version, **(versions or {})}
     stamp = lambda d: (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=d)).strftime("%Y-%m-%dT%H:%M:%SZ")   # noqa: E731
     rows = [{"id": 3, "category": "/language:python", "created_at": stamp(age_days), "tool": {"name": "CodeQL", "version": versions["python"]}},
@@ -96,37 +101,48 @@ def fake_gh(tmp_path: Path, version: str | None = "2.27.2", rc: int = 0, languag
     if not language_present:
         rows = [r for r in rows if r["category"] != "/language:python"]
     conclusions = {"python": "success", "javascript": "success", **(main or {})}
-    runs = {"workflow_runs": [{"id": 900, "created_at": stamp(0.5), "head_branch": "main", "status": "completed", "conclusion": "success"},
-                              {"id": 800, "created_at": stamp(1.5), "head_branch": "main", "status": "completed", "conclusion": "failure"}]}
+    own = {"head_branch": "main", "head_repository": {"full_name": "o/r"}, "status": "completed"}
+    runs = {"workflow_runs": [{"id": 900, "created_at": stamp(0.5), "event": "schedule", "conclusion": "success", **own},
+                              {"id": 800, "created_at": stamp(1.5), "event": "schedule", "conclusion": "failure", **own}, *(other_runs or [])]}
     jobs = {"jobs": [{"name": f"CodeQL Analysis ({lang})", "conclusion": c} for lang, c in conclusions.items()] + [{"name": "Bandit", "conclusion": "failure"}]}
+    var = lambda v: [{"name": "MERGEOS_RING_GATING_DISABLED", "value": v}] if v is not None else []   # noqa: E731
+    lists = {"repo": [{"name": f"FILLER_{i}", "value": "x"} for i in range(filler)] + var(override), "org": var(org_override)}
     exe = tmp_path / "bin" / "gh"
     exe.parent.mkdir(parents=True, exist_ok=True)
     exe.write_text(f'''#!{sys.executable}
-import json, sys
-path, cfg = sys.argv[2], json.loads({json.dumps(json.dumps({"rows": rows, "rc": rc, "override": override, "override_rc": override_rc, "override_doc": override_doc, "runs": runs, "runs_rc": runs_rc,
-                                                              "jobs": jobs, "jobs_rc": jobs_rc}))})
+import json, re, sys
+path, cfg = sys.argv[2], json.loads({json.dumps(json.dumps({"rows": rows, "rc": rc, "override_doc": override_doc, "runs": runs, "runs_rc": runs_rc, "jobs": jobs, "jobs_rc": jobs_rc,
+                                                              "lists": lists, "rcs": {"repo": override_rc, "org": org_rc}, "repo_rc": repo_rc, "owner_type": owner_type,
+                                                              "list_404": list_404, "page_size": page_size, "total_delta": total_delta}))})
 def answer(doc, code):
     if code:
         sys.stderr.write("gh: HTTP 502\\n")
         sys.exit(code)
     print(json.dumps(doc))
     sys.exit(0)
-if "/code-scanning/analyses" in path:
-    answer(cfg["rows"], cfg["rc"])
-elif "/actions/variables/" in path:
-    if cfg["override_rc"]:
-        answer(None, cfg["override_rc"])
-    if cfg["override_doc"] is not None:
-        answer(cfg["override_doc"], 0)
-    if cfg["override"] is None:
-        sys.stdout.write('{{"message":"Not Found","status":"404"}}')
+def listing(which):
+    if cfg["list_404"] == which:
         sys.stderr.write("gh: Not Found (HTTP 404)\\n")
         sys.exit(1)
-    answer({{"name": "MERGEOS_RING_GATING_DISABLED", "value": cfg["override"]}}, 0)
+    if cfg["rcs"][which]:
+        answer(None, cfg["rcs"][which])
+    if which == "repo" and cfg["override_doc"] is not None:
+        answer(cfg["override_doc"], 0)
+    m = re.search(r"(?<![_a-z])page=(\\d+)", path)
+    page, size, rows = int(m.group(1)) if m else 1, cfg["page_size"], cfg["lists"][which]
+    answer({{"total_count": len(rows) + cfg["total_delta"], "variables": rows[(page - 1) * size:page * size]}}, 0)
+if "/code-scanning/analyses" in path:
+    answer(cfg["rows"], cfg["rc"])
+elif "/actions/organization-variables" in path:
+    listing("org")
+elif "/actions/variables" in path:
+    listing("repo")
 elif "/actions/workflows/security.yml/runs" in path:
     answer(cfg["runs"], cfg["runs_rc"])
 elif "/actions/runs/900/jobs" in path:
     answer(cfg["jobs"], cfg["jobs_rc"])
+elif re.fullmatch(r"repos/[^/]+/[^/]+", path):
+    answer({{"owner": {{"type": cfg["owner_type"]}}}}, cfg["repo_rc"])
 else:
     sys.stderr.write("fake gh: unexpected " + path + "\\n")
     sys.exit(9)
@@ -797,12 +813,78 @@ def test_the_truth_table_is_the_base_copy_not_the_candidates_and_not_a_reimpleme
     assert spec["ring_gating_override"] == {"read": "error", "active": True}   # an answer that is not active=true/false is no answer: fail-open
 
 
-@pytest.mark.parametrize("doc", [{"value": 1}, {"value": None}, {"name": "x"}, [1], "text"])
-def test_a_variable_answer_without_a_string_value_is_a_read_error(tmp_path, monkeypatch, doc):
+VAR = "MERGEOS_RING_GATING_DISABLED"
+BAD_LISTS = [{"value": 1}, {"value": None}, {"name": "x"}, [1], "text", {"total_count": 1}, {"variables": []}, {"total_count": "0", "variables": []},
+             {"total_count": 0, "variables": {}}, {"total_count": 1, "variables": [1]}, {"total_count": 1, "variables": [{"name": VAR, "value": 1}]},
+             {"total_count": 1, "variables": [{"name": VAR}]}, {"total_count": 2, "variables": [{"name": VAR, "value": "true"}, {"name": VAR, "value": "false"}]}]
+
+
+def read_override(tmp_path: Path, monkeypatch, jobs: dict | None = None, **gh) -> dict:
+    """The runner's override read against a fixture repo whose BASE carries the real truth table (a checkout need not be a git repo)."""
     docker = fake_docker(tmp_path)
-    fake_gh(tmp_path, override_doc=doc)
+    fake_gh(tmp_path, **gh)
     monkeypatch.setenv("PATH", f"{docker.parent}{os.pathsep}{os.environ['PATH']}")
-    assert runner.ring_gating_override(REAL, "HEAD", tmp_path / "trusted", "o/r") == {"read": "error", "active": True}
+    fx = fr.make_repo(tmp_path / "fx", {}, base_files())
+    return runner.ring_gating_override(fx["repo"], fx["base"], tmp_path / "trusted", "o/r", jobs)
+
+
+@pytest.mark.parametrize("doc", BAD_LISTS)
+def test_a_variable_list_that_is_not_a_well_formed_answer_is_a_read_error(tmp_path, monkeypatch, doc):
+    assert read_override(tmp_path, monkeypatch, override_doc=doc) == {"read": "error", "active": True}
+
+
+def test_the_repository_variable_is_resolved(tmp_path, monkeypatch):
+    assert read_override(tmp_path / "t", monkeypatch, override="true") == {"read": "ok", "active": True}
+    assert read_override(tmp_path / "f", monkeypatch, override="false") == {"read": "ok", "active": False}
+
+
+def test_an_organization_variable_alone_is_resolved_for_an_organization_owner_and_not_for_a_user(tmp_path, monkeypatch):
+    assert read_override(tmp_path / "org", monkeypatch, org_override="true") == {"read": "ok", "active": True}   # no repository variable of that name
+    assert read_override(tmp_path / "user", monkeypatch, org_override="true", owner_type="User") == {"read": "ok", "active": False}   # a User owner has no organization variables
+    assert read_override(tmp_path / "unset", monkeypatch) == {"read": "ok", "active": False}
+
+
+@pytest.mark.parametrize("repo,org,active", [("false", "true", False), ("true", "false", True), ("", "true", False)])
+def test_when_both_exist_the_repository_variable_wins_as_hosted_resolves_it(tmp_path, monkeypatch, repo, org, active):
+    assert read_override(tmp_path, monkeypatch, override=repo, org_override=org) == {"read": "ok", "active": active}
+
+
+def test_a_list_that_answers_404_is_a_read_error_not_an_unset_variable(tmp_path, monkeypatch):
+    for which in ("repo", "org"):
+        assert read_override(tmp_path / which, monkeypatch, list_404=which) == {"read": "error", "active": True}
+    for kw in ({"override_rc": 1}, {"org_rc": 1}, {"repo_rc": 1}):
+        assert read_override(tmp_path / str(kw), monkeypatch, **kw) == {"read": "error", "active": True}
+
+
+def test_a_repository_whose_owner_type_is_unknown_is_a_read_error(tmp_path, monkeypatch):
+    assert read_override(tmp_path, monkeypatch, owner_type="Bot") == {"read": "error", "active": True}
+
+
+def test_the_lists_are_paginated_and_a_variable_on_a_later_page_is_found(tmp_path, monkeypatch):
+    assert read_override(tmp_path, monkeypatch, override="true", filler=7, page_size=3) == {"read": "ok", "active": True}   # rows 1-3, 4-6, 7-8: the match is on page 3
+    assert read_override(tmp_path / "org", monkeypatch, org_override="true", filler=7, page_size=3) == {"read": "ok", "active": True}
+
+
+@pytest.mark.parametrize("delta", [1, -1])
+def test_a_total_count_that_disagrees_with_the_rows_collected_is_a_read_error(tmp_path, monkeypatch, delta):
+    assert read_override(tmp_path / "repo", monkeypatch, override="false", total_delta=delta) == {"read": "error", "active": True}
+    assert read_override(tmp_path / "paged", monkeypatch, filler=7, page_size=3, total_delta=delta) == {"read": "error", "active": True}
+
+
+@pytest.mark.parametrize("job", ["changes", "codeql"])
+def test_a_base_job_that_names_an_environment_is_fail_open_because_its_variables_are_invisible(tmp_path, monkeypatch, job):
+    jobs = {"changes": {"name": "c"}, "codeql": {"name": "q"}}
+    assert read_override(tmp_path / "plain", monkeypatch, jobs, override="false") == {"read": "ok", "active": False}
+    jobs[job]["environment"] = "production"
+    assert read_override(tmp_path / "env", monkeypatch, jobs, override="false") == {"read": "error", "active": True}
+
+
+def test_the_plan_passes_the_base_jobs_so_an_environment_in_the_base_workflow_fails_open(tmp_path, monkeypatch):
+    wf = yaml.safe_load((REAL / SECURITY).read_text())
+    wf["jobs"]["codeql"]["environment"] = "production"
+    spec, _ = plan_codeql(tmp_path, monkeypatch, "python", DOCS_ONLY, base_extra={SECURITY: yaml.safe_dump(wf, sort_keys=False, width=10_000)}, gh_kw={"override": "false"})
+    assert spec["ring_gating_override"] == {"read": "error", "active": True}
+    assert flags_of(spec) == {"result": "failure", "outputs": {"run_codeql_python": "true", "run_codeql_js": "true"}}
 
 
 # ------------------------------------------------------------------------------------------------ the action ref is pinned
