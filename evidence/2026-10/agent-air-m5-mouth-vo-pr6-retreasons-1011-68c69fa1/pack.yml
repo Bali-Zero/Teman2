@@ -85,27 +85,27 @@ decisions:
       text could not be opened, and primary sources show Permenimipas 3/2025 revokes only Pasal 43/45/52-55
       while the E33 articles 56-63 stay in force. Say so in the PR body.
 dissent:
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T17-34-51-01a12a50-9a41-7001-9c9a-2d814a20cd17.jsonl, model verified in the rollout file)"
     objection: "MEDIUM 1: the retirement code passes through the Second Home and paid-activity builders first, so mixed or stale facts can show a wrong reason."
     status: RETRACTED
     disposition: "Cured in 3f325b1770: reason() dispatches RETIREMENT_INCOME_BELOW_THRESHOLD to its own builder only; a test populates unrelated Second Home and paid-activity facts and asserts the retirement sentence wins."
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T17-34-51-01a12a50-9a41-7001-9c9a-2d814a20cd17.jsonl, model verified in the rollout file)"
     objection: "MEDIUM 2: the static fallback says the figure you gave is below it, which is unproven or false with absent, 3000 or invalid facts."
     status: RETRACTED
     disposition: "Cured in 3f325b1770: the fallback is neutral EN and ID (no claim about the visitor's figure) and the test pins the exact text; only the fact-derived builder says You declared."
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T17-34-51-01a12a50-9a41-7001-9c9a-2d814a20cd17.jsonl, model verified in the rollout file)"
     objection: "MEDIUM 3: the recorded full verification is red and names an older HEAD than the reviewed one."
     status: RETRACTED
     disposition: "Re-run at code commit 3f325b1770 and recorded: tree 1043 of 1044 passed, the single failure being the load-bound exhaustive walk in enumerate-interview-space.test.ts (machine load 120-220, a file that does not import engine-adapter), which passes 40 of 40 alone with a 600s ceiling; tsc 0; observer 151 of 151. The residual red in the one aggregate command is stated, not hidden; a non-overloaded machine was not available."
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T17-34-51-01a12a50-9a41-7001-9c9a-2d814a20cd17.jsonl, model verified in the rollout file)"
     objection: "MEDIUM 4: the Bites names the public page but the observer only runs unit tests, not the rendered page or deploy wiring."
     status: PLAUSIBLE
     disposition: "Accepted as a limit of a ci-side observer (observe may only be a no-argument script): it proves the adapter output pre-merge. The in-force observation is the post-promote headless walk on https://balizero.com/visa-oracle (retirement, age 64, USD 2,999 a month: EN and ID sentences present, age-55 sentence absent), recorded after deploy."
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T17-34-51-01a12a50-9a41-7001-9c9a-2d814a20cd17.jsonl, model verified in the rollout file)"
     objection: "LOW 5: the observer parses text output, so a synthetic log line or a no-op test with the same title could satisfy it."
     status: RETRACTED
     disposition: "Cured in 3f325b1770: the observer runs Vitest with the JSON reporter, requires success, equal passed and total counts, zero failed/pending/todo, and each required title as an assertion with status passed; pytest covers a text log line being rejected."
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T17-34-51-01a12a50-9a41-7001-9c9a-2d814a20cd17.jsonl, model verified in the rollout file)"
     objection: "LOW 6: brief_ref does not point at the brief added by the diff."
     status: RETRACTED
     disposition: "Not a defect: the lane convention and the pre-push pack-lint stage the brief at evidence/brief.yml; a dated path fails the lint. No change."
