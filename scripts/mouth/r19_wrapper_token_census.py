@@ -303,6 +303,8 @@ def unseen_rows(census: dict, states: dict) -> list[str]:
 def verdict(census: dict, contract: dict, states: dict | None = None) -> list[str]:
     reads, colors = census["reads"], census["colors"]
     failed = census.get("failed", [])
+    # Reads and colours come from the captures: a capture failed or never received leaves them short (section 9).
+    tail = f" (INCOMPLETE: {len(failed)} captures failed, not a verdict)" if failed or not census["captures"] else ""
     by_kind = {k: sum(1 for r in reads.values() if r["kind"] == k) for k in KINDS}
     out = [f"captures: {len(census['captures'])} ok, {len(failed)} failed"]
     for page in census["pages"]:
@@ -311,9 +313,9 @@ def verdict(census: dict, contract: dict, states: dict | None = None) -> list[st
         out.append(f"  {page}: {len(caps)}/{len(census['states'])} states, root {' | '.join(roots)}, "
                    f"elements {sorted({c['elements'] for c in caps})}")
     out += [f"  capture-failed: {f}" for f in failed]
-    out.append(f"reads: {len(reads)} tokens (" + ", ".join(f"{k} {v}" for k, v in by_kind.items()) + ")")
+    out.append(f"reads: {len(reads)} tokens (" + ", ".join(f"{k} {v}" for k, v in by_kind.items()) + f"){tail}")
     above = sorted(k for k, r in reads.items() if r["kind"] == "var" and r["defined"] != "wrapper")
-    out.append(f"defined-above-wrapper: {len(above)} (informational; resolved outside the wrapper today)")
+    out.append(f"defined-above-wrapper: {len(above)} (informational; resolved outside the wrapper today){tail}")
     allowed = {r["hex"] for r in contract.values() if r["hex"]} | set(DIRECTION_A.values())
     # Ties by hex, as a replay reads them back: a live run and its dump print the same text (section 9).
     outside = sorted((h for h in colors if h[:7] not in allowed), key=lambda h: (-colors[h]["count"], h))
@@ -322,12 +324,11 @@ def verdict(census: dict, contract: dict, states: dict | None = None) -> list[st
         out.append(f"  colour {h} x{c['count']} {c['prop']} e.g. {c['selector']} on {c['page']} {c['state']}")
     missing = sorted(k for k, r in reads.items() if (r["kind"], r["token"]) not in contract
                      and not (r["kind"] == "class" and r["token"] in (states or {})))
-    tail = f" (INCOMPLETE: {len(failed)} captures failed, not a verdict)" if failed or not census["captures"] else ""
     out.append(f"read-but-undefined: {len(missing)}{tail}")
     for k in missing:
         r = reads[k]
         out.append(f"  {r['kind']} {r['token']}  e.g. {r['selector']} on {r['page']} {r['state']}")
-    out.append(f"colors-outside-direction-a: {len(outside)}")
+    out.append(f"colors-outside-direction-a: {len(outside)}{tail}")
     walk_failed = census.get("walk_failed", [])
     if states is None:
         out.append("state-colors-off-contract: REFUSED (no state table)")
@@ -1076,10 +1077,45 @@ RESOLVE_JS = r"""
     return false;
   };
   // Resolver B at one point. An element above the run's own that paints is an occluder: the point is dropped.
-  // So is a fixed or sticky element outside the roots that paints anything at all, a faint layer or a filter
-  // included (a floating button's blurred glow): the run is then read again in the middle of the viewport.
+  // So is a fixed or sticky element outside the roots that paints a filter, a backdrop filter or a shadow (a
+  // floating button's blurred glow): the run is then read again in the middle of the viewport. A faint layer
+  // alone is not one (#8228 gate, note 3: a fixed 1.5% texture would occlude every run).
   const overlay = (el) => position(el) && !roots.some((r) => r.contains(el)) && opacity(el) > 0
-    && (layersOf(el).some((l) => l.a > 0) || cs(el).filter !== "none" || (cs(el).backdropFilter || "none") !== "none");
+    && (cs(el).filter !== "none" || (cs(el).backdropFilter || "none") !== "none" || cs(el).boxShadow !== "none");
+  // A blur or a shadow paints past its element's box, where elementsFromPoint never names it (#8228 gate,
+  // note 4). Each side is reached by three blur radii, and by each visible outer shadow's blur and spread less
+  // its offset away from that side, up to 64px: a shadow cast down reaches nothing above its bar.
+  const reachOf = (el) => {
+    const blur = /blur\(([\d.]+)px\)/.exec(cs(el).filter), b = blur ? 3 * parseFloat(blur[1]) : 0;
+    const side = { top: b, right: b, bottom: b, left: b }, shadow = cs(el).boxShadow;
+    for (const one of shadow === "none" ? [] : shadow.split(/,(?![^(]*\))/)) {
+      const colour = one.match(/[a-z-]+\([^)]*\)/);
+      const [dx = 0, dy = 0, r = 0, spread = 0] = (one.replace(/[a-z-]+\([^)]*\)/, "").match(/-?[\d.]+px/g) || [])
+        .map(parseFloat);
+      if (/\binset\b/.test(one) || (colour && !parse(colour[0]))) continue;
+      side.top = Math.max(side.top, r + spread - dy); side.bottom = Math.max(side.bottom, r + spread + dy);
+      side.left = Math.max(side.left, r + spread - dx); side.right = Math.max(side.right, r + spread + dx);
+    }
+    for (const k in side) side[k] = Math.min(64, Math.max(0, side[k]));
+    return side;
+  };
+  let reachers = null;  // found at the first point, once the roots and the census style exist
+  const within = (x, y, runEl) => {
+    reachers = reachers || [...document.querySelectorAll("body *")]
+      .filter((el) => overlay(el) && Math.max(...Object.values(reachOf(el))) > 0);
+    return reachers.find((el) => {
+      const r = el.getBoundingClientRect(), m = reachOf(el);
+      if (el.contains(runEl) || !(r.width > 0 && r.height > 0
+        && x >= r.left - m.left && x <= r.right + m.right && y >= r.top - m.top && y <= r.bottom + m.bottom)) return false;
+      // Only an overlay that paints above the run reaches it: where its box comes nearest the point, it is
+      // named before the run's own ancestors. A shadowed bar behind the page reaches nothing.
+      const px = Math.min(Math.max(x, r.left + 1, 0), r.right - 1, innerWidth - 1);
+      const py = Math.min(Math.max(y, r.top + 1, 0), r.bottom - 1, innerHeight - 1);
+      const st = document.elementsFromPoint(px, py);
+      const over = st.findIndex((e) => el.contains(e)), under = st.findIndex((e) => e.contains(runEl));
+      return over >= 0 && (under < 0 || over < under);
+    });
+  };
   const canvasRgb = () => {
     for (const el of [document.documentElement, document.body]) {
       const c = el && parse(cs(el).backgroundColor);
@@ -1087,14 +1123,20 @@ RESOLVE_JS = r"""
     }
     return [255, 255, 255];
   };
+  // An occluder hides the text from its reader unless it is a scrim of the walk or lies inside another
+  // surface the walk opened: a surface over the run's own is the surface order working (W0d-3).
+  const hides = (el, runEl) => !scrims.some((s) => s === el || s.contains(el))
+    && !roots.some((r) => r.contains(el) && !r.contains(runEl));
   const pointB = (x, y, runEl) => {
     const st = document.elementsFromPoint(x, y);
     let i = -1;
     for (let a = runEl; a && i < 0; a = a.parentElement) i = st.indexOf(a);
     if (i < 0) return { missed: true };
+    const near = within(x, y, runEl);
+    if (near) return { occluded: path(near), fixed: true, hides: hides(near, runEl) };
     for (let k = 0; k < i; k++)
       if (!runEl.contains(st[k]) && (layersOf(st[k]).some((l) => !l.faint) || overlay(st[k])))
-        return { occluded: path(st[k]), fixed: position(st[k]) };
+        return { occluded: path(st[k]), fixed: position(st[k]), hides: hides(st[k], runEl) };
     const ls = st.slice(i).flatMap(layersOf);
     let k = ls.findIndex((l) => l.kind === "color" && l.a >= 0.999);
     const base = k >= 0 ? ls[k].rgb : canvasRgb();
@@ -1125,10 +1167,13 @@ RESOLVE_JS = r"""
     .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 1 && r.height > 1; });
   const outside = roots.filter((r) => !(wrapper && wrapper.contains(r)) && !r.closest(".kbli-r19")).map(path);
   const vw = innerWidth, vh = innerHeight;
-  // A scrim: no text, covering 95% of the viewport, behind a surface root, painting any colour.
+  // A scrim: no text, covering 95% of the viewport, behind a surface root, painting any colour, or an image
+  // or a backdrop filter at an opacity a reader sees (W0d-3: a gradient or a blur-only scrim is judged too).
+  const paints = (el) => !!parse(cs(el).backgroundColor) || (opacity(el) >= 0.1
+    && (cs(el).backgroundImage !== "none" || (cs(el).backdropFilter || "none") !== "none"));
   const scrims = args.mode !== "opened" ? [] : [...document.querySelectorAll("body *")].filter((el) => {
     const r = el.getBoundingClientRect();
-    return r.width >= vw * 0.95 && r.height >= vh * 0.95 && parse(cs(el).backgroundColor)
+    return r.width >= vw * 0.95 && r.height >= vh * 0.95 && paints(el)
       && !roots.some((x) => el.contains(x) || x.contains(el)) && !el.textContent.trim();
   });
   const grounds = [];
@@ -1140,7 +1185,8 @@ RESOLVE_JS = r"""
                      image: cs(el).backgroundImage !== "none", scrim: scrims.includes(el) });
     }
   const scrimPaint = scrims.map((el) => { const c = parse(cs(el).backgroundColor);
-    return { path: path(el), hex: hex(c.rgb), a: Math.round(c.a * opacity(el) * 1000) / 1000 }; });
+    return { path: path(el), hex: c ? hex(c.rgb) : null, a: c ? Math.round(c.a * opacity(el) * 1000) / 1000 : 0,
+             image: cs(el).backgroundImage !== "none", backdrop: (cs(el).backdropFilter || "none") !== "none" }; });
   // The runs: every non-empty own text node of a visible element (opacity product >= 0.1), read before
   // the text is made transparent.
   const runs = [], seen = new Set();
@@ -1151,7 +1197,10 @@ RESOLVE_JS = r"""
       if (!text || !el || seen.has(t)) continue;
       seen.add(t);
       const s = cs(el), box = el.getBoundingClientRect();
-      if (s.visibility === "hidden" || box.width <= 1 || box.height <= 1 || opacity(el) < 0.1) continue;
+      // Text not rendered, such as a closed <details>' content, is not a run: its box is laid out where the
+      // open content would sit, under what is painted there, so it would read as occluded (W0d-3b-1).
+      if (s.visibility === "hidden" || box.width <= 1 || box.height <= 1 || opacity(el) < 0.1
+          || (el.checkVisibility && !el.checkVisibility())) continue;
       const fg = parse(s.color);
       const clip = s.backgroundClip === "text" && !parse(s.webkitTextFillColor);
       if (!fg && !clip) continue;
@@ -1161,7 +1210,8 @@ RESOLVE_JS = r"""
   }
   roots.forEach((r) => r.setAttribute("data-census-root", ""));
   const st = document.createElement("style");
-  st.textContent = "nextjs-portal{display:none!important}"
+  // The dev server's own overlays (the Next.js indicator, the TanStack Query devtools button) are never painted.
+  st.textContent = "nextjs-portal,.tsqd-parent-container{display:none!important}"
     + "*{pointer-events:auto!important;scroll-behavior:auto!important}[data-census-root],[data-census-root] *,"
     + "[data-census-root] *::before,[data-census-root] *::after{color:transparent!important;"
     + "-webkit-text-fill-color:transparent!important;text-decoration-color:transparent!important;"
@@ -1227,7 +1277,7 @@ RESOLVE_JS = r"""
         // a blur or a shadow reaches past the overlay's box onto the points that are left.
         if (occ && occ.fixed && this.target !== i) continue;
         if (!keep.length) {
-          if (occ) { r.state = "occluded"; r.occludedBy = occ.occluded; }
+          if (occ) { r.state = "occluded"; r.occludedBy = occ.occluded; r.hides = occ.hides; }
           continue;
         }
         const A = sample(keep.map(([p]) => p)), B = keep.map(([, b]) => b);
@@ -1260,10 +1310,11 @@ RESOLVE_JS = r"""
     },
     result() {
       return {
-        runs: runs.map(({ text, path: p, fg, fa, clip, state: s, a, spread, b, image, approx, painter, action, occludedBy }) =>
+        runs: runs.map(({ text, path: p, fg, fa, clip, state: s, a, spread, b, image, approx, painter, action, occludedBy,
+                          hides }) =>
           ({ text, path: p, fg, fa, clip, state: s === "pending" ? "unreached" : s, a: a || null, spread: spread ?? null,
              b: b || null, image: image || null, approx: !!approx, painter: painter || p, action: action || null,
-             occludedBy: occludedBy || null })),
+             occludedBy: occludedBy || null, hides: !!hides })),
         rootGround: this.rootGround,
       };
     },
@@ -1285,6 +1336,9 @@ IMAGES_JS = ("() => [...document.images].every((i) => { const r = i.getBoundingC
 ROOTS_JS = """(sels) => [...new Set(sels.flatMap((s) => [...document.querySelectorAll(s)]))]
   .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 1 && r.height > 1; }).length"""
 THEME_JS = "() => document.documentElement.getAttribute('data-theme')"
+# A page that navigated or reloaded under the walk: its context is gone (#8228 gate, note 2).
+RELOADED = re.compile(r"Execution context was destroyed|__census is undefined|Cannot read properties of undefined|"
+                      r"Target page, context or browser has been closed|navigat")
 
 
 def force_theme(page, forced: str | None) -> None:
@@ -1346,11 +1400,14 @@ def resolve(page, mode: str, selectors: list[str] | None = None, focus: bool = F
     (mode page), scrolling run by run: SPEC-W0d section 2."""
     page.evaluate("() => document.fonts.ready.then(() => true)")  # a late webfont moves every box
     meta = page.evaluate(RESOLVE_JS, {"mode": mode, "selectors": selectors or [], "focus": focus})
+    theme = page.evaluate(THEME_JS)  # the theme the walk starts in holds at every position (#8228 gate, note 5)
     cdp = page.context.new_cdp_session(page)
     positions, incomplete = 0, False
     try:
         while True:
             step = page.evaluate("() => window.__census.step()")
+            if (now := page.evaluate(THEME_JS)) != theme:
+                raise RuntimeError(f"theme: the page turned data-theme={now!r} during the walk")
             if step["selected"] or step["root"]:
                 if positions == CAPS[mode]:
                     incomplete = True
@@ -1408,6 +1465,9 @@ def judge_runs(runs: list[dict], where: str, page_level: bool = False) -> tuple[
     """The off-contract grounds and the resolver disagreements of measured runs, keyed by painter and hex."""
     off, disagree = {}, {}
     for r in runs:
+        if r["state"] == "occluded" and r.get("hides"):  # text its reader cannot see (W0d-3)
+            off.setdefault(f"occluded {r['path']} {r['occludedBy']}",
+                           f"  occluded {r['text']!r} at {r['path']}, under {r['occludedBy']}, on {where}")
         if r["state"] != "ok":
             continue
         why = run_verdict(r, page_level)
@@ -1480,6 +1540,7 @@ def _active_row(page) -> None:
 def _open_sector(page) -> None:
     page.locator('a[href^="/kbli/sectors/"]').first.click()
     page.wait_for_selector('[role="dialog"]', timeout=60000)
+    page.mouse.move(0, 0)  # the card under the pointer is not the drawer's state (#8202 gate)
 
 
 def _open_compare(page) -> None:
@@ -1668,16 +1729,22 @@ def walk_opened(browser, m, base: str, census: dict, units: list | None = None) 
         try:
             # Under load a click can land before hydration: the surface never opens, closes again, or a link
             # navigates away. The page is loaded and opened once more before the walk fails.
-            try:
-                opened = open_page(page, base + path, forced, opener, selectors)
-            except Exception:
-                if not opener:
-                    raise
-                opened = False
-            if opener and not opened:
-                open_page(page, base + path, forced, opener, selectors)
-            branch = page.evaluate(BRANCH_JS, name.split()[0]) if shared else None
-            row.update(resolve(page, "shared" if shared else "opened", selectors))
+            for attempt in (1, 2):
+                try:
+                    try:
+                        opened = open_page(page, base + path, forced, opener, selectors)
+                    except Exception:
+                        if not opener:
+                            raise
+                        opened = False
+                    if opener and not opened:
+                        open_page(page, base + path, forced, opener, selectors)
+                    branch = page.evaluate(BRANCH_JS, name.split()[0]) if shared else None
+                    row.update(resolve(page, "shared" if shared else "opened", selectors))
+                    break
+                except Exception as exc:  # a page that reloaded under the walk is walked once more
+                    if attempt == 2 or not RELOADED.search(str(exc)):
+                        raise
         except Exception as exc:  # a surface that did not open must never read as clean
             row["error"] = str(exc).splitlines()[0][:200]
         ctx.close()
@@ -1718,8 +1785,11 @@ def judge_grounds(census: dict, surfaces: dict, contract: dict) -> list[str]:
         off.update({k: v for k, v in judge_runs(o.get("runs", []), on)[0].items() if k not in off})
         for c in o.get("scrimPaint", []):
             key = f"scrim {c['hex']} {c['path']}"
-            if (not near(c["hex"], DIRECTION_A["ink"]) or c["a"] >= 1) and key not in off:
-                off[key] = f"  scrim {c['hex']} alpha {c['a']} at {c['path']} (a scrim is ink, translucent), on {on}"
+            paint = (f"{c['hex']} alpha {c['a']}" if c["hex"] else "no colour") + (" over an image" if c.get("image")
+                                                                                   else "")
+            if (not c["hex"] or c.get("image") or not near(c["hex"], DIRECTION_A["ink"]) or c["a"] >= 1) \
+                    and key not in off:
+                off[key] = f"  scrim {paint} at {c['path']} (a scrim is ink, translucent), on {on}"
         for g in o.get("grounds", []):
             t = g["token"]
             if t.startswith(NON_COLOUR_BG) or t in off:
@@ -1890,7 +1960,10 @@ def opened_verdict(census: dict, surfaces: dict, contract: dict, pin: dict | Non
     out.append(f"opened-grounds-off-contract: {len(off)}{tail}")
     disagree = disagreements(census)
     out += disagree[:40] + ([f"  ... and {len(disagree) - 40} more"] if len(disagree) > 40 else [])
-    out.append(f"ground-resolver-disagree: {len(disagree)}{tail}")
+    # It also counts the disagreements read at rest, so a failed capture leaves it short too.
+    cap_failed = census.get("failed", [])
+    out.append(f"ground-resolver-disagree: {len(disagree)}"
+               + (tail or (f" (INCOMPLETE: {len(cap_failed)} captures failed, not a verdict)" if cap_failed else "")))
     out += unpinned
     out.append(f"shared-touched-unpinned: {unpinned_count}")
     drift, count = shared_drift(census, pin)

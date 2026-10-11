@@ -133,12 +133,15 @@ jobs:
           # The verdict is the aggregate's; a part prints its own scenarios only, and its phase-seconds on stderr.
           python scripts/mouth/r19_wrapper_token_census.py --port 3519 --diff-base HEAD "${part[@]}" \
             --json "$RUNNER_TEMP/part/census-$PART.jsonl"
+      # A re-run of this part ("Re-run failed jobs") replaces its own dump under the same name, and the
+      # aggregate re-runs as its dependent: the other parts' dumps are the first attempt's (contract section 9).
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: census-part-${{ matrix.part }}
           path: ${{ runner.temp }}/part/
           if-no-files-found: error
+          overwrite: true
           retention-days: 7
       # After the census, so a red here never costs the aggregate this part's scenarios.
       - name: Browser guilt and innocence of the opened-surface walk
