@@ -24,6 +24,7 @@ func flag(_ name: String) -> String? {
 }
 let views = flag("--views").map { Set($0.split(separator: ",").map(String.init)) }
 _ = NSApplication.shared
+Motion.frozenMs = Motion.total * 1000   // an immersive View is censused at the final frame of its choreography
 
 @MainActor func pdfText(_ v: AnyView, height: CGFloat?) -> String {
     let framed = height.map { AnyView(v.frame(width: 1280, height: $0, alignment: .top)) }
@@ -147,6 +148,15 @@ let rc: Int32 = MainActor.assumeIsolated {
              anchors: c + [isID ? "Tanya tentang \(k.kode)…" : "Ask about \(k.kode)…"])
         emit(k.kode, "sheet-ledger-imm", KBLIImmersiveLedger(kbli: k, scrolls: false),
              anchors: c + [isID ? "Tanya tentang \(k.kode)…" : "Ask about \(k.kode)…"])
+        // The content proof of the scope selector (IMM-5b): each scope picked in turn, against the flat list with that row open.
+        if views?.contains("sheet-ledger-scopes") == true {
+            for i in ScaleMatrix.scopes(k.perSkala).indices {
+                ScalePath.snapshotScope = i; ScaleMatrix.snapshotOpenScope = i
+                emit("\(k.kode)#imm\(i)", "sheet-ledger-scopes", KBLIImmersiveLedger(kbli: k, scrolls: false))
+                emit("\(k.kode)#flat\(i)", "sheet-ledger-scopes", KBLIRegistryView(kbli: k, scrolls: false))
+            }
+            ScalePath.snapshotScope = nil; ScaleMatrix.snapshotOpenScope = nil
+        }
         state.chatContextCode = k
         emit(k.kode, "chat", ChatView(), height: 800, anchors: c)   // the code it is asked about
         state.chatContextCode = nil
