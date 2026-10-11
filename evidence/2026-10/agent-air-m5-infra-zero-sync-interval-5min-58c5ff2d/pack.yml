@@ -32,16 +32,17 @@ bites: >-
   which a CI runner cannot observe without a remote shell. Observation, made by the shipping session after the plist
   is reinstalled on Mini (copied to the live pair, bootout and bootstrap): two consecutive "run start" lines in
   ~/logs/mini-zero_sync/run.log about 300 s apart, and ~/.organism/last_seen/mini.zero_sync.json reading ok.
-  Not yet made: this pack records the pre-merge state, and the council has returned REWORK on the heartbeat window.
+  Not yet made: this pack records the pre-merge state; the live observation is the closing act after merge.
 decisions:
   - id: D-interval-300
     decision: >-
       StartInterval 300. An up-to-date run takes about 4 s and launchd does not overlap StartInterval runs of one
       job; the payload's exclusive non-blocking flock is a second layer.
-  - id: D-hb-1200
+  - id: D-hb-3600
     decision: >-
-      expected_hb_seconds 1200 = 4x the new interval. DISPUTED by both seats, see dissent: the payload's own
-      RUN_BUDGET (3300) and NET_TIMEOUT (1800) exceed it.
+      expected_hb_seconds 3600, above the payload's RUN_BUDGET 3300 (cure d406012f69 of the round-1 REWORK; the
+      first cut of 1200 was sized from the tick, not from the run). Round 2: kimi PASS; codex REWORK because
+      300 + 3300 = 3600 leaves zero margin (suggests 3900 or a running heartbeat at start). Open for the owner.
 receipts:
   - claim: "R1 — floor 3 via the hot-zone path term: the plist and the wrapper compute 3 alone; the other three changed files compute 1."
     cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <one-path-per-file>, per file; whole diff (git diff --name-only origin/main...HEAD) gives 3
@@ -61,9 +62,9 @@ receipts:
     exit: 0
     ts: "2026-10-11T08:00:27Z"
     seat: Claude Opus 5.5 (orchestrator, M5)
-  - claim: "R4 — A2: the registry YAML loads and mini.zero_sync reads expected_hb_seconds 1200."
+  - claim: "R4 — A2: the registry YAML loads and mini.zero_sync reads expected_hb_seconds 1200 (superseded by R7)."
     cmd: python3 -c 'import yaml; ...' over apps/organism/organism/organs_registry.yaml
-    result: "[('mini.zero_sync', 1200)]"
+    result: "[('mini.zero_sync', 1200)] (head 0ebafbbb90, before the cure; see R7)"
     exit: 0
     ts: "2026-10-11T08:00:37Z"
     seat: Claude Opus 5.5 (orchestrator, M5)
@@ -79,6 +80,30 @@ receipts:
     exit: 0
     ts: "2026-10-11T07:49:08Z"
     seat: codex-gpt-5.6-sol
+  - claim: "R7 — A2 after the cure: the registry YAML loads and mini.zero_sync reads expected_hb_seconds 3600 (head d406012f69)."
+    cmd: python3 -c 'import yaml; ...' over apps/organism/organism/organs_registry.yaml
+    result: "[('mini.zero_sync', 3600)]"
+    exit: 0
+    ts: "2026-10-11T08:23:22Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R8 — A1 after the cure: plist OK, StartInterval 300, KeepAlive count 0; RUN_BUDGET is 3300 at zero_sync.py:38."
+    cmd: plutil -lint; plutil -p | grep StartInterval; grep -c KeepAlive; grep -n '^RUN_BUDGET' scripts/zero_sync/zero_sync.py
+    result: 'OK; "StartInterval" => 300; 0; 38:RUN_BUDGET = 3300'
+    exit: 0
+    ts: "2026-10-11T08:23:22Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R9 — A3 round 2: kimi-code/k3 returns PASS on d406012f69."
+    cmd: scripts/with_seat.sh kimi kimi -p <round-2 prompt> -m kimi-code/k3 < /dev/null
+    result: "VERDICT: PASS: silence strictly < 300 + 3300 = 3600 for any self-completing run, dead line 10800, both comments accurate (one nit: 'only by hand' over-narrows), reinstall is the open closing step"
+    exit: 0
+    ts: "2026-10-11T08:22:54Z"
+    seat: kimi-code/k3
+  - claim: "R10 — A3 round 2: codex-gpt-5.6-sol returns REWORK on d406012f69."
+    cmd: scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <round-2 prompt> < /dev/null
+    result: "VERDICT: REWORK: 3600 = 300 + 3300 leaves zero margin, a legitimate full-budget run can exceed the stale line (suggest 3900 or a running heartbeat at start); the near-dead false kickstart is resolved (dead is 10800); lock comment correct; docs agree on 300 s"
+    exit: 0
+    ts: "2026-10-11T08:21:54Z"
+    seat: codex-gpt-5.6-sol
 dissent:
   - seat: kimi-code/k3 (round 1)
     objection: >-
@@ -86,21 +111,22 @@ dissent:
       make a legitimate run exceed it, so the organ reads stale and, near 3 x 1200, dead (healer kickstart).
     status: CONFIRMED
     disposition: >-
-      Reported to the owner of the mandate, not cured here (instruction: do not change the plist or the registry).
-      Options named by the seat: restore expected_hb_seconds >= 3600, or shrink RUN_BUDGET/NET_TIMEOUT to fit.
+      Cured in d406012f69 (expected_hb_seconds 3600 above RUN_BUDGET 3300); round 2 kimi PASS, dead line now 10800.
   - seat: codex-gpt-5.6-sol (round 1)
     objection: >-
       Same window finding; additionally the wrapper checks the sidecar only after the payload returns, so a slow
       fetch between 1200 and 1800 s is a false silence; suggests in-progress heartbeats or a test that includes run
       duration.
     status: CONFIRMED
-    disposition: Reported, not cured; same decision as above.
+    disposition: >-
+      Window finding cured in d406012f69; the residual zero margin (300 + 3300 = 3600 exactly) is raised again in round 2
+      and stays open, see the round-2 entry below.
   - seat: both seats
     objection: >-
       Comments in zero_sync.py:38 ("under two ticks") and :542 ("a run never spans a tick for long") are false at a
       300 s cadence.
     status: CONFIRMED
-    disposition: Reported; a comment/constant fix is a follow-up of the window decision.
+    disposition: Cured in d406012f69 (both comments rewritten); round 2 kimi found them accurate, with one nit on 'only by hand'.
   - seat: kimi-code/k3 (round 1)
     objection: >-
       The edited plist does not change the loaded job; it is a declared pair that needs copy plus bootout/bootstrap
@@ -113,3 +139,13 @@ dissent:
       HEALTHY_STATUSES), and more frequent runs mean more such spells.
     status: PLAUSIBLE
     disposition: Pre-existing status contract, listed out of scope in the brief.
+  - seat: codex-gpt-5.6-sol (round 2)
+    objection: >-
+      expected_hb_seconds 3600 equals StartInterval 300 + RUN_BUDGET 3300, zero margin: the heartbeat is written only
+      at the end and the watchdog starts after the wrapper, so a legitimate full-budget run can exceed 3600 s of
+      silence. Wants an explicit margin (3900) or a running heartbeat at start. The false near-dead kickstart is
+      resolved (dead is 3 x 3600 = 10800).
+    status: PLAUSIBLE
+    disposition: >-
+      OPEN, reported to the coordinator, code untouched. kimi (round 2) judged the same boundary inert: only an
+      already-wedged run reaches it, stale never pages, and the sentinel's PID override reads a running job as ok.

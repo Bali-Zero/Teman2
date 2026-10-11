@@ -21,7 +21,7 @@ acceptance:
     probe: plutil -lint infra/launchagents/com.nuzantara.zero-sync.plist; plutil -p ... | grep StartInterval; grep -c KeepAlive ... (0)
   A2:
     text: >-
-      The organ registry YAML SHALL load and organ mini.zero_sync SHALL read expected_hb_seconds 1200.
+      The organ registry YAML SHALL load and organ mini.zero_sync SHALL read expected_hb_seconds 3600.
     probe: python3 -c 'import yaml; ...' over apps/organism/organism/organs_registry.yaml
   A3:
     text: >-
@@ -44,9 +44,9 @@ assumptions:
   - text: launchd does not overlap StartInterval runs of one job, and the payload holds an exclusive non-blocking flock as a second layer.
     status: verified
     probe: grep -n flock scripts/zero_sync/zero_sync.py (fcntl.flock LOCK_EX|LOCK_NB at 540)
-  - text: A run that takes longer than expected_hb_seconds (1200) is not reported as silence.
+  - text: A run that takes longer than expected_hb_seconds (3600) is not reported as silence.
     status: unverified
-    probe: council round 1 says it can be (RUN_BUDGET 3300, NET_TIMEOUT 1800); see pack dissent, needs an owner decision on the value.
+    probe: round 1 said it could be at 1200; cured to 3600 in d406012f69; round 2 kimi PASS, codex REWORK on zero margin (300 + 3300 = 3600 exactly), see pack dissent.
   - text: Gear 3 needs the independent final-gate verdict on the head SHA, commissioned after the last push.
     status: unverified
     probe: gh pr checks <pr> after the verdict is posted.
