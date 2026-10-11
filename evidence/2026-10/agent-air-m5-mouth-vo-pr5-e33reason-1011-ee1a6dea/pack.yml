@@ -37,7 +37,7 @@ receipts:
   - claim: "The visa-oracle Vitest tree at HEAD b39228dd4b."
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/'
     result: "Tests 1340 passed, 2 failed - both in enumerate-interview-space.test.ts (a file this change does not touch), killed by the 120s test timeout at machine load average 66-538; the same tree passed 1342/1342 (51 files) on the previous rebase when the machine was quiet, and every file this change touches passes (adapter 145, sheet 4, client-copy 15)"
-    exit: 0
+    exit: 1
     ts: "2026-10-11T05:45:00Z"
     seat: this session
   - claim: "The observer passes at HEAD b39228dd4b: adapter file, OutcomeSheet render file, and a 32-walk replay of the signed pack at USD 130,000 / 129,999."
