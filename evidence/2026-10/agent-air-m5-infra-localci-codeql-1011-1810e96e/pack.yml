@@ -64,8 +64,8 @@ spend:
   wall_clock_hours: 7.0
 receipts:
   - claim: >-
-      Fix round 2 (council findings adjudicated). scripts/localci/tests/test_codeql_contexts.py (skip cases, sentinel cases, leg cases): 199
-      passed; test_runner.py + test_merger.py 289 passed, 2 skipped; the rest of scripts/localci/tests 1233 passed, 12 skipped (1721 passed in all);
+      Fix round 2 (council findings adjudicated). scripts/localci/tests/test_codeql_contexts.py (skip cases); scripts/localci/tests/test_codeql_contexts.py (sentinel cases);
+      scripts/localci/tests/test_codeql_contexts.py (leg cases): 199 passed in all; test_runner.py + test_merger.py 289 passed, 2 skipped; the rest of scripts/localci/tests 1233 passed, 12 skipped (1721 passed in all);
       45/45 cq-* mutants killed (merger_mutants.py --only each rule), 15 of them new this round (cq-sarif-unreadable-passes, cq-sarif-limit-ignored,
       cq-sarif-gzip-unchecked, cq-sarif-shape-ignored, cq-override-ignored, cq-uses-unpinned, cq-local-version-unchecked, cq-version-probe-swallowed,
       cq-sentinel-stale-ok, cq-sentinel-main-red-ok, cq-skip-mixed-passes, cq-leg-seam-open, cq-reader-repo-dots, cq-config-inline-queries-open,
@@ -134,9 +134,9 @@ dissent:
       BLOCKER the BASE-trusted leg script takes CODEQL_BIN, CODEQL_SOURCE_ROOT, CODEQL_BASE_CONFIG (and the work dir) from the env. HIGH the local CLI version
       is never asserted equal to the pin; the sentinel has no recency floor. MEDIUM skip_is_pass lets one `if:` false plus another skip pass. LOW the
       config rewriter on an inline queries or a column-0 comment in the block; REPO_RE accepts `.` and `..`.
-    status: BLOCKER REBUTTED, the rest CONFIRMED
+    status: CONFIRMED
     resolution: >-
-      The BLOCKER is not reachable as stated: the step env is composed by the runner from BASE's workflow, job and step env and the matrix step env only
+      The BLOCKER is rebutted as unreachable as stated, the rest is confirmed. The BLOCKER is not reachable as stated: the step env is composed by the runner from BASE's workflow, job and step env and the matrix step env only
       (plan_service_context: resolve_steps), runner.py refuses a step whose body writes GITHUB_ENV/PATH/STATE (the "writes GITHUB_ENV/PATH/STATE" refusal in
       plan_service_context), and the codeql job's only earlier step is `Checkout code`, which is emulated, so no candidate code runs before the leg.
       Hardened anyway, since the seam costs nothing: the plan BLOCKS when the composed env of a step running codeql_leg.sh carries one of the four seams
