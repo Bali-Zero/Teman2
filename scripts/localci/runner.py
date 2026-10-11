@@ -773,6 +773,8 @@ RUN --mount=type=bind,from=codeqlbundle,source=/bundle.tgz,target=/mnt/bundle.tg
     tar -xzf /mnt/bundle.tgz -C /opt && test "$(/opt/codeql/codeql version --format=terse)" = "{version}"
 ENV PATH=/opt/codeql:${{PATH}}
 """
+LEG_SCRIPT = "codeql_leg.sh"
+LEG_INPUT_ENV = frozenset({"CODEQL_BIN", "CODEQL_SOURCE_ROOT", "LOCALCI_CODEQL_WORK", "CODEQL_BASE_CONFIG"})   # the leg's own tests set these, nothing else may
 CODEQL_URL = re.compile(r"https://[A-Za-z0-9._~/%+-]+")
 CODEQL_RESULTS = re.compile(r"^LOCALCI_CODEQL_RESULTS language=([a-z]+) results=(\d+) rules=(\d+)$", re.M)
 
@@ -1126,6 +1128,42 @@ def classifier_needs(trusted: Path, cm: dict, changed: list, spec) -> tuple[dict
     return {"result": "success", "outputs": {n: got[n] for n in names}}, f"BASE {Path(script).name}: " + " ".join(f"{n}={got[n]}" for n in names)
 
 
+RING_OVERRIDE_VAR, RING_OVERRIDE_SH = "MERGEOS_RING_GATING_DISABLED", "scripts/ci/ring_gating_override.sh"
+
+
+def ring_gating_override(wt: Path, base: str, trusted: Path, repo: str) -> dict:
+    """The manual override security.yml's `changes` job honours (`vars.MERGEOS_RING_GATING_DISABLED`), read now with the operator's gh and
+    judged by BASE's own truth table (scripts/ci/ring_gating_override.sh, run, not re-implemented). {read: ok|error, active: bool}: an
+    unset variable (404) is ok and inactive; a read, a BASE file or a truth-table answer that cannot be had is `error` and ACTIVE, the same
+    fail-open as a classifier error, so a doubt can only run more, never less."""
+    fail = {"read": "error", "active": True}
+    blob = _extract_base_file(wt, base, RING_OVERRIDE_SH)
+    if blob is None:
+        return fail
+    env = trusted_env()
+    try:
+        r = subprocess.run(["gh", "api", f"repos/{repo}/actions/variables/{RING_OVERRIDE_VAR}"], capture_output=True, text=True, timeout=60, env=env)
+        if r.returncode == 0:
+            value = json.loads(r.stdout).get("value")
+            if not isinstance(value, str):
+                return fail
+        elif "HTTP 404" in r.stderr:   # gh: Not Found (HTTP 404): the variable does not exist, which is what hosted reads as ''
+            value = None
+        else:
+            return fail
+        script = trusted / "ctx" / Path(RING_OVERRIDE_SH).name
+        script.parent.mkdir(parents=True, exist_ok=True)
+        script.write_bytes(blob)
+        out = subprocess.run(["bash", str(script)], capture_output=True, text=True, timeout=30,
+                             env={**env, **({RING_OVERRIDE_VAR: value} if value is not None else {})})
+    except (OSError, subprocess.SubprocessError, ValueError, AttributeError):
+        return fail
+    answer = out.stdout.strip()
+    if out.returncode != 0 or answer not in ("active=true", "active=false"):
+        return fail
+    return {"read": "ok", "active": answer == "active=true"}
+
+
 def version_sentinel(trusted: Path, wt: Path, base: str, check: str, spec, language: str, pin: str, repo: str) -> str | None:
     """None when the newest hosted analysis of `language` on main reports the pinned CLI, else why there is no verdict (BLOCKED, never
     green): another version, no such analysis, or a read that failed. BASE's reader runs on the host at plan time with the operator's gh,
@@ -1172,11 +1210,16 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
     repo = str(local.get("repository") or "Bali-Zero/Teman2")
     gh = github_ctx(base, pr_number, repo)
     static = {"github": gh, "vars": dict(local.get("vars") or {}), "runner": RUNNER_CTX, "matrix": {}, "needs": {}, "env": {}, "steps": {}}
-    stood_in, flags_note = dict(local.get("needs") or {}), None
+    stood_in, flags_note, ov = dict(local.get("needs") or {}), None, None
     if local.get("classifier"):   # a job whose `needs:` outputs the BASE classifier decides (CodeQL's per-language flags), not the matrix
         got, flags_note = classifier_needs(trusted, cm, changed, local["classifier"])
         if got is None:
             return _blocked(flags_note)
+        ov = ring_gating_override(wt, base, trusted, repo)   # hosted's classify steps are skipped when it is active: every flag defaults true
+        if ov["active"]:
+            got = {"result": "success" if ov["read"] == "ok" else "failure", "outputs": {n: "true" for n in got["outputs"]}}
+            flags_note = f"{flags_note}; ring-gating override " + ("ACTIVE (vars.MERGEOS_RING_GATING_DISABLED=true): both flags true" if ov["read"] == "ok"
+                                                                  else "unreadable: fail-open, both flags true")
         stood_in[str(local["classifier"]["job"])] = got
     upstream, planned = set(stood_in), []
     for jl in [*(local.get("jobs") or []), {**local, "job_id": ctx.get("job_id")}]:
@@ -1191,9 +1234,12 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
         steps, why = resolve_steps({**job, "env": jenv}, jl, "main", ((doc.get("defaults") or {}).get("run")) or {}, expressions=True)
         if why:
             return _blocked(f"job {jid}: {why}")
-        for ms in jl.get("steps") or []:   # an action step the matrix transcribes as a command: its inputs are part of what was transcribed
+        for ms in jl.get("steps") or []:   # an action step the matrix transcribes as a command: its inputs, and the action itself, are part of what was transcribed
+            ws = next((x for x in job.get("steps") or [] if isinstance(x, dict) and x.get("name") == ms.get("workflow_step")), {})
+            if isinstance(ms.get("uses_pin"), str) and ws.get("uses") != ms["uses_pin"]:
+                return _blocked(f"job {jid}: step {ms.get('workflow_step')!r} uses {ws.get('uses')!r}, not the action {ms['uses_pin']!r} the matrix transcribed "
+                                "— an action bump is not emulated until the matrix follows it")
             if isinstance(ms.get("with_pin"), dict):
-                ws = next((x for x in job.get("steps") or [] if isinstance(x, dict) and x.get("name") == ms.get("workflow_step")), {})
                 have = {str(k): " ".join(str(v).split()) for k, v in (ws.get("with") or {}).items()}
                 if have != {str(k): " ".join(str(v).split()) for k, v in ms["with_pin"].items()}:
                     return _blocked(f"job {jid}: step {ms.get('workflow_step')!r} inputs {have} are not the ones the matrix transcribed "
@@ -1239,6 +1285,9 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                 texts += [(f"{lab} run body", str(st.get("script") or "")), *((f"{lab} env {k}", str(v)) for k, v in (st.get("env") or {}).items()),
                           *((f"{lab} with.{k}", str(v or "")) for k, v in (st.get("emulate") or {}).items())]
                 texts += [(f"{lab} if", "${{ " + X.unwrap(str(st["if"])) + " }}")] if "if" in st else []
+                if any(Path(str(a)).name == LEG_SCRIPT for a in st.get("argv") or []) and (seam := sorted(LEG_INPUT_ENV & {*jenv, *(st.get("env") or {})})):
+                    raise X.ExprError(f"{lab} runs {LEG_SCRIPT} with {seam} in its composed env: those are the leg's own test seams, and a BASE workflow or "
+                                      "matrix that sets them would point the BASE-trusted commands at another CLI, tree or config")
                 if st.get("emulate") and (q := declared_env_read(st["emulate"].values(), {*jenv, *base_env.get(st["name"], {})})):
                     raise X.ExprError(f"{lab} artifact name or path reads `{q}`, {ENV_EVALUATED_HERE}")
             for lab, t in texts:
@@ -1331,7 +1380,7 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
     modified = [f for f, a, b in zip(judged, tree_entries(wt, base, judged), tree_entries(wt, cand, judged)) if a != b]
     modified += [f for f in changed if f.rsplit("/", 1)[-1] == ".gitattributes"]
     return {"kind": "contained_jobs", "context": name, "cwd": str(wt), "jobs": planned, "judge_modified": modified, "trusted_files": [], "overlay": overlay,
-            "skip_is_pass": local.get("skip_is_pass") is True, "plan_notes": notes,
+            "skip_is_pass": local.get("skip_is_pass") is True, "plan_notes": notes, **({"ring_gating_override": ov} if ov else {}),
             "history": history, "expr": static, "needs": stood_in, "memory": str(local.get("memory") or "4g"),
             "driver_sha256": sha256_file(STEPS_DRIVER), "expr_sha256": sha256_file(GH_EXPR),
             "timeout_s": sum(j["timeout_s"] * len(j["legs"]) for j in planned),
@@ -2017,6 +2066,21 @@ def judge_rewritten(step: str, spec: dict) -> tuple[list, str]:
     return [f for f in mod if f in planned[step]] + everyone, f" (context scope: {everyone} named by no step)" if everyone else ""
 
 
+IF_FALSE = re.compile(r"^if: .* -> false( \(status [a-z]+\))?$")   # the driver's wording for a step its own `if:` skipped
+
+
+def skipped_by_own_if(na: list, spec: dict) -> bool:
+    """Whether an all-skipped leg is the gate's skip and nothing else: every NOT_APPLICABLE step is an `if:` the driver evaluated false or a
+    step the matrix declares not applicable (the plan's own `not_applicable`), and at least one is an `if:` false: a step that carries an `if:`
+    in BASE and was skipped any other way is in neither group. A leg that mixes a gate skip with an unexplained skip is no evidence, so it is not PASS."""
+    planned = {s.get("name"): s for s in [*(spec.get("steps") or []), *(st for j in spec.get("jobs") or [] for st in j.get("steps") or [])]
+               if isinstance(s, dict)}
+    plain = lambda n: str(n).rsplit(" › ", 1)[-1]   # noqa: E731 — a leg's steps carry their label: "codeql[python] › Initialize CodeQL"
+    gated = [s for s in na if IF_FALSE.match(str(s.get("reason", "")))]
+    rest = [s for s in na if s not in gated]
+    return bool(gated) and all("not_applicable" in planned.get(plain(s["name"]), {}) for s in rest)   # a matrix N/A step carries no `if:` in the plan
+
+
 def steps_verdict(steps: list, spec: dict) -> tuple[str, str]:
     """A context is PASS only when every step it runs returned 0 and every other step is NOT_APPLICABLE with a reason. A red step
     dominates (FAIL > ERROR > BLOCKED); a verdict read with a BASE judge the candidate rewrites is claimed in neither direction:
@@ -2035,7 +2099,7 @@ def steps_verdict(steps: list, spec: dict) -> tuple[str, str]:
     na = [s for s in steps if s["status"] == "NOT_APPLICABLE"]
     # a job whose per-leg gate skips every step still reports success hosted (CodeQL's RUN_THIS_LANGUAGE): the plan declares it, and only an
     # `if:` evaluated false here may stand for it (the driver words such a skip "if: ... -> false"), never a step the matrix marks N/A
-    if not ran and spec.get("skip_is_pass") and na and len(na) == len(steps) and any(str(s.get("reason", "")).startswith("if: ") for s in na) \
+    if not ran and spec.get("skip_is_pass") and na and len(na) == len(steps) and skipped_by_own_if(na, spec) \
             and all(written_reason(s.get("reason")) is not None for s in na):
         if spec.get("judge_modified"):
             return "BLOCKED", f"every step skipped by the job's own `if:`, but the candidate rewrites {spec['judge_modified']}: no green claimed"
