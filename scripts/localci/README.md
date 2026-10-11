@@ -734,10 +734,10 @@ updates mid-run turns every PASS receipt STALE at `status` time (measured on the
 
 1. it reads the host's free GB (`df -Pk /System/Volumes/Data`, whole GB, floored); a `df` that gives no number starts no
    run and the heartbeat is `warning` (`host free space unreadable (df -Pk <path>): no run started`);
-2. `merger.py tick … --host-free-gb=N --min-host-free-gb=110`: under the start floor the tick journals
-   `{"kind":"skipped","why":"host_below_floor","free_gb":N,"floor_gb":100,"start_floor_gb":110}` before the lease and starts no run (B15);
+2. `merger.py tick … --host-free-gb=N --min-host-free-gb=100`: under the start floor the tick journals
+   `{"kind":"skipped","why":"host_below_floor","free_gb":N,"floor_gb":90,"start_floor_gb":100}` before the lease and starts no run (B15);
 3. `merger.py prune --state-dir <state> --fstrim`, after the tick and never before it, whether the tick ran, skipped or failed;
-4. the heartbeat: `error` when the tick failed, `warning` with the number (`host_below_floor free_gb=N floor_gb=110: no run
+4. the heartbeat: `error` when the tick failed, `warning` with the number (`host_below_floor free_gb=N floor_gb=100: no run
    started`) under the floor or when the prune failed, `ok` otherwise. The wrapper exits with the tick's code.
 
 A mirror sha older than B6 still ticks: `prune.py` and `runner.py` are extracted only when the sha has them, and the floor
@@ -839,25 +839,27 @@ reaches Pro when the wrapper's live copy is replaced with the commands of the bl
 
 ### Host floor held through the run (B15)
 
-`docs/specs/localci-host-floor-2026-10-11.md`. Zero's directive: Pro keeps more than 100 GB free, always. B6 checked the host once,
+`docs/specs/localci-host-floor-2026-10-11.md`. Zero's directive: Pro keeps its host free above a floor, always (Zero, 2026-10-11: 90 GB, lowered from 100). B6 checked the host once,
 at the tick's start, against 60 GB; a tick that started at 111 GB ended at 99.6 (one shard container wrote 9.66 GB). kubelet's
-node-pressure model, with one constant (`HOST_FLOOR_GB` 100):
+node-pressure model, with one constant (`HOST_FLOOR_GB` 90):
 
-- **Start floor.** A run starts only at `HOST_FLOOR_GB + START_MARGIN_GB` (10) = 110 GB free: `--min-host-free-gb` (default 110;
-  the wrapper's `MERGER_MIN_HOST_FREE_GB`). The skip line carries `floor_gb` (100) and `start_floor_gb` (110).
+- **Start floor.** A run starts only at `HOST_FLOOR_GB + START_MARGIN_GB` (10) = 100 GB free: `--min-host-free-gb` (default 100;
+  the wrapper's `MERGER_MIN_HOST_FREE_GB`). The skip line carries `floor_gb` (90) and `start_floor_gb` (100).
 - **Hard eviction.** While the runner's `plan` and `run` steps execute, the runner leads its own process group and the host
   (`shutil.disk_usage` of `/System/Volumes/Data`, decimal GB, the janitor's sample) is read every 5 s. Under
-  `HOST_FLOOR_GB + EVICT_MARGIN_GB` (1.5) = 101.5 GB the group gets TERM, KILL after 10 s, and `docker rm -f -v` removes the
+  `HOST_FLOOR_GB + EVICT_MARGIN_GB` (1.5) = 91.5 GB the group gets TERM, KILL after 10 s, and `docker rm -f -v` removes the
   containers carrying THIS run dir's label (`org.nuzantara.localci.run=<run_label>`, the label the runner sets — never a name
   pattern, never an age, never another run's). Three failed reads in a row count as below the floor. `--host-floor-gb 0`
   turns the watchdog off. The `status` read is never evicted: a verdict already produced is never undone.
 - **An eviction is no verdict.** The tick journals `{"kind":"evicted","why":"host_below_floor_during_run","free_gb","floor_gb",
   "context_in_flight":[…],"containers_removed":N,"pr","head_sha","base_sha","run_dir"}` — not a `decision`, so it counts toward
-  nothing (READY included) and the same `(pr, head, base)` is decided again on a later tick, once the host is above the start floor.
-- **Image GC under host pressure.** A prune that finds host free under the start floor (`--min-host-free-gb`, default 110) also
+  nothing (READY included) and the same `(pr, head, base)` is decided again on a later tick, once the host is above the start floor. triage treats it as an attempt for ORDER only (behind every head not yet tried), and after `EVICT_CAP` (3) evictions of one `(pr, head, base)` the key is skipped (`{"kind":"skipped","why":"evicted_cap"}`, once) until the base or head moves. The report counts `evicted`.
+- **Orphaned runner.** The runner leaves launchd's job group (its own session): the merger passes `LOCALCI_PARENT_PID`, and the runner's `plan`/`run` TERM their own group when that pid is gone.
+- **Image GC under host pressure.** A prune that finds host free under the start floor (`--min-host-free-gb`, default 100) also
   removes, by explicit tag, every deps image that is not the newest of its recipe — fewest 48 h plan references first, never the
   never-list, never the run in progress's image — and the wrapper's `--fstrim` follows. The line carries `host_pressure: true`
-  and `host_free_gb` before and after (also printed on the `merger prune:` line).
+  and `host_free_gb` before and after (also printed on the `merger prune:` line); the `builder prune` follows the removals, and the rule names the cost: dropping a second-slot image means a cold rebuild of that recipe.
+- **Ship step (deploy).** The live wrapper passes `--min-host-free-gb=$FLOOR_GB` explicitly, so the merger default alone does not move the start floor. At deploy, re-install it (`cp scripts/localci/localci_merger_tick.sh ~/.nuzantara-cron/.localci_merger_tick.sh.new`, `mv -f` onto `localci_merger_tick.sh`, `cmp -s` against the `origin/main` copy). Observable: the first tick's skip or start shows `start_floor_gb=100`, and `scripts/lint_home_fork.py --check` is green for that pair.
 - **Not touched.** uv, npm and Playwright caches stay `pro.janitor`'s.
 
 ### Disk floor organ (B6, Pro)

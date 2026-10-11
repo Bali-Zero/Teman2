@@ -8,16 +8,16 @@ gear_reason: >-
 l_level: L2
 gate_class: opus
 objective: >-
-  Pro keeps more than 100 GB free through a localci run: a run starts only at 110 GB, a watchdog evicts the run (process group and its
-  own labelled containers) under 101.5 GB as a host no-verdict, and the prune drops second-slot deps images under host pressure.
+  Pro keeps its host floor (90 GB, Zero 2026-10-11, lowered from 100) through a localci run: a run starts only at 100 GB, a watchdog evicts the run (process group and its
+  own labelled containers) under 91.5 GB as a host no-verdict, and the prune drops second-slot deps images under host pressure.
 constraints:
   - An eviction is never a FAIL or an ERROR of the candidate and never counts toward READY; it changes no verdict already decided.
   - Containers are stopped and removed only by THIS run's label, never by name pattern or age; images only by explicit tag, never -f.
   - Stdlib only; match the merger's Python and style.
 acceptance:
-  - text: A start under 110 GB free SHALL be skipped and journalled with floor_gb 100 and start_floor_gb 110.
+  - text: A start under 100 GB free SHALL be skipped and journalled with floor_gb 90 and start_floor_gb 100.
     probe: "scripts/localci/tests/test_host_floor.py (start floor)"
-  - text: A sample under 101.5 GB SHALL kill the runner's process group and remove exactly this run's labelled containers, never another run's.
+  - text: A sample under 91.5 GB SHALL kill the runner's process group and remove exactly this run's labelled containers, never another run's.
     probe: "scripts/localci/tests/test_host_floor.py (eviction cases)"
   - text: An eviction SHALL be journalled as kind evicted, not as a decision, and the same key SHALL be decided again.
     probe: "scripts/localci/tests/test_host_floor.py (no-verdict case)"
