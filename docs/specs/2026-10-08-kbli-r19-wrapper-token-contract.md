@@ -918,14 +918,22 @@ by the painters (`SPEC-W0d-census.md` §2).
   two captures 100 ms apart are identical, so a section a script reveals on scroll has
   finished, and each page is read once its network has been idle for 500 ms. The dev server's
   indicator (`nextjs-portal`) is never painted: the census always runs on `next dev`, CI
-  included, and the indicator sits over the viewport's bottom-left corner (W0d-2').
+  included, and the indicator sits over the viewport's bottom-left corner (W0d-2'). Nor is the
+  TanStack Query devtools button (`.tsqd-parent-container`), mounted in development only, in
+  the same corner (W0d-3).
 - **Resolver B, the painters, names.** `elementsFromPoint` runs with `pointer-events:auto`
   forced, so an overlay that ignores the pointer is still seen. An element outside the run that
   paints above it occludes that point. So does a fixed or sticky element outside the roots that
-  paints anything at all, a faint layer or a filter included, such as a floating button's
-  blurred glow. A run with even one point under such an overlay is read again once it is
-  brought to the middle of the viewport, because a blur reaches past the overlay's box onto
-  the points that are left (W0d-2'). Below the run, each element adds its `::after` and
+  paints a filter, a backdrop filter or a shadow, such as a floating button's blurred glow; a
+  faint layer alone does not, so a fixed texture over the page is read through (W0d-3). A blur
+  or a shadow paints past the element's box, where `elementsFromPoint` never names it, so a
+  point near the box is under the overlay too (W0d-3). Each side reaches three blur radii, and
+  each visible outer shadow's blur plus spread less its offset away from that side, up to 64px:
+  a shadow cast down from a bottom bar reaches nothing above the bar. It reaches only from an
+  overlay painted above the run, one that `elementsFromPoint` names before the run's own
+  ancestors where the overlay's box comes nearest the point. A run with even one point under
+  such an overlay is read again once it is brought to the middle of the viewport (W0d-2').
+  Below the run, each element adds its `::after` and
   `::before`, its replaced content (`img`, `video`, `canvas`, `iframe`, `object`, `embed`, a
   painted SVG shape), its background image and its background colour. A layer's alpha is its own
   times every opacity above it. Layers composite down to the first opaque colour, then the
@@ -968,7 +976,22 @@ by the painters (`SPEC-W0d-census.md` §2).
   an image.
 - **The scroll cap is 250 positions, not 8.** The sector drawer holds about 1,700 runs and needs
   39 positions on desktop and 77 on mobile. A walk over the cap is still INCOMPLETE.
-- **Rest captures are 30, not 54.** The four routes §1.a adds come with W0d-3.
+- **Rest captures are 30, not 54.** The four routes §1.a adds come with W0d-3's second lot.
+
+**Added by W0d-3** (the #8202 and #8228 gates' notes, on the same scenarios):
+
+- **An occluded run that its reader cannot see is counted.** A run whose points stay under an
+  occluder, once read in the middle of the viewport, gets its own line,
+  `occluded '<text>' at <path>, under <occluder>`: under G at rest, under K on an opened surface. It is not counted
+  when the occluder is a scrim of the walk or lies inside another surface the walk opened, which
+  is the surface order working. A run under a fixed badge on a page that cannot scroll is
+  therefore K, never a clean 0. Text that is not rendered, such as the content of a closed
+  `<details>`, is not a run at all: its box is laid out under the section after it, and it
+  would read as occluded.
+- **A scrim is found by any paint.** A text-less layer over 95% of the viewport is a scrim when
+  it paints a colour, or an image or a backdrop filter at an opacity of 0.1 or more. A scrim
+  with no colour, or over an image, is off contract: a scrim is translucent ink.
+- **The sector card is not hovered.** The opener moves the pointer away once the drawer is open.
 
 **Verdict states.** Each walk prints one state:
 
@@ -984,6 +1007,9 @@ Two gestures keep a loaded runner from failing a walk that would open (W0d-2'). 
 throws or leaves no root, the page is loaded and opened once more, because under load a click
 can land before hydration: the surface never opens, closes again, or a link navigates away. A forced theme that hydration replaced is forced again
 before the page is read, at rest and opened alike; a page that keeps its own fails the walk.
+W0d-3 adds two (the #8228 gate's notes). A walk whose page reloads or navigates under it is
+opened and walked once more. The theme a walk starts in holds at every scroll position, and a
+page that changes it mid-walk fails the walk, naming the theme.
 
 **What it prints.** `page-grounds-off-contract: G` follows `state-colors-off-contract:`. It
 lists each distinct ground, painter and cause found at rest, and is INCOMPLETE when a capture
@@ -1219,3 +1245,17 @@ holds. A dump from before the parts has no list, and its replay prints no S line
 of the single-job full run. Offline, a test cuts the full fixture into the four parts' dumps,
 concatenates them in another order and replays them. The result is the same text as the full
 dump's replay, and that text is the earlier verdict under its first line.
+
+**Added by W0d-3b-1** (the #8237 gate's notes):
+
+- **Every count a missing part feeds reads INCOMPLETE.** Without `rest`, every capture is
+  entered as failed, so `reads:`, `defined-above-wrapper:` and `colors-outside-direction-a:`
+  carry the INCOMPLETE tail beside `read-but-undefined:` and `page-grounds-off-contract:`.
+  `ground-resolver-disagree:` carries it on a failed capture too, because it also counts the
+  disagreements read at rest. No count fed by a missing scenario prints a bare number.
+- **The parts of one aggregate come from one machine kind.** Never concatenate a part dumped on
+  M5 with a part dumped in CI: their fonts differ, and so do their counts (on W0d-3a's head, M5
+  read G 438 where CI read 437). In CI, every part comes from the one workflow run.
+- **A part can be re-run.** Its job uploads its dump with `overwrite`, so a re-run (Re-run
+  failed jobs, or one job) replaces that part's dump under the same name. The aggregate re-runs
+  as its dependent and replays the three dumps of the first attempt with the new one.

@@ -938,6 +938,14 @@ EDGE = ("; document.body.insertAdjacentHTML('beforeend', `<div style=\"position:
         "</div></div>`)")
 DEV = ("; document.body.insertAdjacentHTML('beforeend', `<nextjs-portal style=\"display:block;position:fixed;left:0;"
        "bottom:0;width:140px;height:60px;background:#111111;z-index:40\"></nextjs-portal>`)")
+SHADOW = ("; document.body.insertAdjacentHTML('beforeend', `<div style=\"position:fixed;left:0;bottom:0;width:10px;"
+          "height:10px;box-shadow:0 0 40px 30px rgba(0,0,0,.8);z-index:30\"></div>`)")
+FLIP = ("<script>addEventListener('scroll', () => document.documentElement.setAttribute('data-theme', 'dark'),"
+        " { once: true })</script>")
+RELOAD = ("<script>addEventListener('scroll', () => { if (!sessionStorage.r) { sessionStorage.r = 1;"
+          " location.reload(); } })</script>")
+QUERY = ("; document.body.insertAdjacentHTML('beforeend', `<div class=\"tsqd-parent-container\"><div style=\""
+         "position:fixed;left:0;bottom:0;width:140px;height:60px;background:#111111;z-index:40\"></div></div>`)")
 REHYDRATE = ("<script>setTimeout(() => { const h = document.documentElement;"
              " if (h.getAttribute('data-theme') === 'light') h.setAttribute('data-theme', 'dark'); }, 300)</script>")
 LIFTED = "position:relative;z-index:10;background:#FFFCF7;padding:16px"
@@ -1069,6 +1077,75 @@ CASES = [
     # A page that hydrates its own theme over the forced light one is forced again before it is read.
     ("I-theme-hydrated", surface("background:#FFFCF7;padding:16px", p(INK)) + REHYDRATE,
      "[data-theme=dark] #s{background:#111111!important}", REVEAL, ["#s"], (0, 0, 0, "ok", None)),
+    # W0d-3, the #8202 gate's notes. An occluded run whose occluder is a sibling inside its own surface is text
+    # its reader cannot see: its own K line, the gate's case d'.
+    ("G-occluded", surface("position:relative;background:#FFFCF7;padding:16px", p(INK) + p(INK, "Villa")
+                           + '<div style="position:absolute;left:0;top:0;width:100%;height:40px;'
+                           'background:rgba(0,0,0,.6)"></div>'), "", REVEAL, ["#s"],
+     (0, 1, 0, "ok", "  occluded 'Restaurant' at ")),
+    # A run under another surface the walk opened is the surface order working (P counts the portal outside).
+    ("I-surface-over-surface", surface("background:#FFFCF7;padding:16px", p(INK) + p(INK, "Villa")),
+     "", appended('<div id="d" style="position:absolute;left:0;top:0;width:100%;height:64px;background:#FFFCF7;'
+                  f'z-index:20">{p(INK, "Menu")}</div>'), ["#s", "#d"], (2, 0, 0, "ok", None)),
+    # A scrim painted by a gradient, or by a backdrop blur alone, is judged: a scrim is translucent ink.
+    ("G-gradient-scrim", surface(LIFTED, p(INK)), "",
+     appended(SCRIM.format("linear-gradient(rgba(29,44,59,.4),rgba(29,44,59,.5))")), ["#s"],
+     (0, 1, 0, "ok", "  scrim no colour over an image at ")),
+    ("G-blur-scrim", surface(LIFTED, p(INK)), "",
+     appended('<div style="position:fixed;inset:0;backdrop-filter:blur(4px);z-index:5"></div>'), ["#s"],
+     (0, 1, 0, "ok", "  scrim no colour at ")),
+    ("I-blur-ink-scrim", surface(LIFTED, p(INK)), "",
+     appended('<div style="position:fixed;inset:0;background:rgba(29,44,59,.45);backdrop-filter:blur(4px);'
+              'z-index:5"></div>'), ["#s"], (0, 0, 0, "ok", None)),
+    # Translucent ink over an image is still an image under the surface: off contract.
+    ("G-ink-image-scrim", surface(LIFTED, p(INK)), "",
+     appended(SCRIM.format("linear-gradient(rgba(29,44,59,.2),rgba(29,44,59,.3)) rgba(29,44,59,.45)")), ["#s"],
+     (0, 1, 0, "ok", "  scrim #1D2C3B alpha 0.45 over an image at ")),
+    # A run of one surface under the walk's scrim, behind the surface it serves, is the surface order working.
+    ("I-under-the-walks-scrim", surface("background:#FFFCF7;padding:16px", p(INK)), "",
+     appended(SCRIM.format("rgba(29,44,59,.45)") + '<div id="d" style="position:fixed;left:0;bottom:0;width:100%;'
+              f'height:64px;background:#FFFCF7;z-index:20">{p(INK, "Menu")}</div>'), ["#s", "#d"],
+     (2, 0, 0, "ok", None)),
+    # The #8228 gate's notes. 1: a run that stays under a fixed glow on a page that cannot scroll is counted.
+    ("G-badge-unscrollable", surface(f"{AT_BOTTOM}background:#222222", p(LIGHT, "Villa")) + p(INK), "",
+     REVEAL + GLOW, ["#s", "#s ~ p"], (0, 1, 0, "ok", "  occluded 'Villa' at ")),
+    # 3: a fixed faint texture over the whole page is read through, not an occluder of every run.
+    ("I-fixed-texture", surface("background:#FFFCF7;padding:16px", p(INK)), "",
+     appended('<div style="position:fixed;inset:0;background-image:linear-gradient(45deg,#A0A0A0,#E0E0E0);'
+              'opacity:.015;pointer-events:none;z-index:99"></div>'), ["#s"], (0, 0, 0, "ok", None)),
+    # 4: a shadow paints past its element's box: a run within its reach is read in the middle instead.
+    ("I-shadow-reach", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")), TALL, REVEAL + SHADOW, ["#s"],
+     (0, 0, 0, "ok", None)),
+    # A shadow reaches only from an overlay painted above the run: a shadowed bar behind the surface reaches nothing.
+    ("I-glow-behind-the-surface", surface("position:absolute;left:0;top:calc(100vh - 60px);width:200px;height:60px;"
+                                          "box-sizing:border-box;padding:8px;z-index:40;background:#FFFCF7",
+                                          p(INK, "Villa")), "",
+     appended('<div style="position:fixed;left:0;bottom:0;width:10px;height:10px;'
+              'box-shadow:0 0 40px 30px rgba(0,0,0,.8);z-index:1"></div>'), ["#s"], (0, 0, 0, "ok", None)),
+    # A shadow cast down from a bottom bar reaches nothing above the bar (the /v2 mobile CTA bar over the footer).
+    ("I-shadow-cast-down", surface("position:absolute;left:7px;top:calc(100vh - 85px);padding:8px;"
+                                   "background:#FFFCF7", p(INK, "Villa")), "",
+     appended('<div style="position:fixed;left:0;right:0;bottom:0;height:56px;background:#121619;'
+              'box-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);z-index:40"></div>'),
+     ["#s"], (0, 0, 0, "ok", None)),
+    # A blur paints three radii past its box: a run there, on a page that cannot scroll, is counted.
+    ("G-blur-reach", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")) + p(INK), "",
+     appended('<div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;'
+              'filter:blur(8px);z-index:30"></div>'), ["#s", "#s ~ p"], (0, 1, 0, "ok", "  occluded 'Villa' at ")),
+    # A transparent shadow paints nothing, so it reaches nothing.
+    ("I-transparent-shadow", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")), "",
+     appended('<div style="position:fixed;left:0;bottom:0;width:10px;height:10px;'
+              'box-shadow:0 0 40px 30px rgba(0,0,0,0);z-index:30"></div>'), ["#s"], (0, 0, 0, "ok", None)),
+    # 5: a page that turns its theme during the scroll walk fails the walk, naming it.
+    ("G-theme-flip", surface("background:#FFFCF7;padding:16px", p(INK) + '<div style="height:150vh"></div>'
+                             + p(INK, "Villa")) + FLIP, "", REVEAL, ["#s"],
+     ("INC", None, "INC", "failed:never-opened (theme: the page turned data-theme='dark' during the walk)", None)),
+    # 2: a page that reloads under the walk is walked once more.
+    ("I-reload-mid-walk", surface("background:#FFFCF7;padding:16px", p(INK) + '<div style="height:150vh"></div>'
+                                  + p(INK, "Villa")) + RELOAD, "", REVEAL, ["#s"], (0, 0, 0, "ok", None)),
+    # The dev server's query devtools button sits in the same corner as its indicator: never painted.
+    ("I-query-devtools", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")), "", REVEAL + QUERY, ["#s"],
+     (0, 0, 0, "ok", None)),
 ]
 
 
@@ -1140,6 +1217,13 @@ PAGE_CASES = [
     ("G26", f'<section style="background-image:url(&quot;{CHECKER}&quot;);padding:24px">{p(INK, "Licences")}</section>',
      1, "over-image (image) under 'Licences'"),
     ("I8", f'<div style="background:#1D2C3B;padding:8px">{p(ELEVATED, "Indonesia")}</div>{p(INK, "Body")}', 0, None),
+    # The content of a closed <details> is laid out under the section after it: it is not rendered, not occluded.
+    ("I-closed-details", f'<details><summary style="color:{INK}">More</summary>{p(INK, "Hidden")}</details>'
+                         f'<div style="background:#FFFCF7;padding:24px">{p(INK, "Body")}</div>', 0, None),
+    # W0d-3, the #8228 gate's note 1 at rest: text under a fixed glow on a page that cannot scroll is counted.
+    ("G-occluded-at-rest", f'<div style="{AT_BOTTOM}background:#FFFCF7">{p(INK, "Villa")}</div>', 1,
+     "occluded 'Villa' at ", '<div style="position:fixed;left:0;bottom:0;width:64px;height:64px;filter:blur(6px);'
+     'z-index:30"><svg width="64" height="64"><circle cx="32" cy="32" r="8" fill="#25D366"/></svg></div>'),
 ]
 
 
@@ -1148,8 +1232,8 @@ PAGE_CASES = [
 def test_e2e_page_grounds_at_rest(tmp_path, case):
     """SPEC-W0d section 3, G25, G26 and I8: the page-level judge on a local wrapper at rest."""
     from playwright.sync_api import sync_playwright
-    _, body, g, excerpt = case
-    server = serve(tmp_path, PAGE.format(css="", body=body, tail=""))
+    _, body, g, excerpt, *tail = case  # the tail is painted outside the wrapper
+    server = serve(tmp_path, PAGE.format(css="", body=body, tail="".join(tail)))
     m = census_mod._load_measure()
     try:
         with sync_playwright() as pw:
@@ -1184,11 +1268,11 @@ def test_the_origin_main_opened_walk_is_the_guilt(census):
     out = verdict_of(census, PIN, [])
     assert out[0] == "opened-surfaces: 25 ok, 0 failed"
     assert lines_of(out, "opened-outside-wrapper:") == "opened-outside-wrapper: 10"
-    assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 140"
+    assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 135"
     assert lines_of(out, "ground-resolver-disagree:") == "ground-resolver-disagree: 0"
     assert lines_of(out, "shared-touched-unpinned:") == "shared-touched-unpinned: 0"
     assert lines_of(out, "shared-component-drift:") == "shared-component-drift: 0"
-    assert out[-1] == "opened-text-below-4.5: 680"
+    assert out[-1] == "opened-text-below-4.5: 675"
     drop = next(o for o in census["opened"] if o["name"] == "search-dropdown" and o["walk"] == "desktop/light")
     below = [(round(census_mod.contrast(census_mod.text_colour(r), r["a"]), 2), r["fg"], r["text"])
              for r in drop["runs"] if r["state"] == "ok" and r["fg"]
@@ -1198,7 +1282,7 @@ def test_the_origin_main_opened_walk_is_the_guilt(census):
 
 def test_the_origin_main_page_grounds_name_the_consultation_card_over_its_gradient(census):
     """G25 on main: KBLIConsultationCTA's inline gradient puts its text over an image, on every state of 55203."""
-    assert census_mod.page_verdict(census)[-1] == "page-grounds-off-contract: 438"
+    assert census_mod.page_verdict(census)[-1] == "page-grounds-off-contract: 440"
     card = {c["state"] for c in census["captures"] if c["page"] == "/kbli/55203"
             for ln in c["page_off"].values()
             if "over-image (gradient)" in ln and "section.rp-dark-island.mt-12>div.rounded-2xl" in ln}
@@ -1286,17 +1370,20 @@ def test_the_workflow_runs_every_part_and_judges_them_after_any_failure():
     job = WORKFLOW[WORKFLOW.index("\n  wrapper-census-states:\n"):]
     assert "    needs: wrapper-census-part\n" in job and "    if: ${{ !cancelled() }}\n" in job
     assert "--replay \"$RUNNER_TEMP/census.jsonl\"" in job
+    # A re-run part replaces its own dump under the same name (the #8237 gate, note 3).
+    upload = WORKFLOW[WORKFLOW.index("actions/upload-artifact@"):WORKFLOW.index("retention-days:")]
+    assert "name: census-part-${{ matrix.part }}\n" in upload and "overwrite: true\n" in upload
 
 
 def test_the_parts_judged_together_print_the_full_runs_verdict_byte_for_byte(tmp_path, capsys):
-    """The W0d-3a proof, offline: one full run's dump, cut into the four parts' dumps and concatenated in another
-    order, replays to the very text of the full dump, which is today's verdict under its first line."""
-    legacy = replay(capsys, FIXTURE)
-    full = census_mod.load(FIXTURE)
-    full["parts"] = ["full"]
-    census_mod.dump(full, tmp_path / "full.jsonl")
-    whole = replay(capsys, tmp_path / "full.jsonl")
-    assert whole == "scenarios-off-manifest: 0\n" + legacy
+    """The W0d-3a proof, offline: one full run's dump (the fixture), cut into the four parts' dumps and
+    concatenated in another order, replays to the very text of the full dump. The same dump from before the parts
+    replays to that text without its first line."""
+    whole = replay(capsys, FIXTURE)
+    legacy = census_mod.load(FIXTURE)
+    assert legacy.pop("parts") == ["full"] and legacy.pop("seconds")
+    census_mod.dump(legacy, tmp_path / "legacy.jsonl")
+    assert whole == "scenarios-off-manifest: 0\n" + replay(capsys, tmp_path / "legacy.jsonl")
     assert all(want in whole.splitlines() for want in EXIT_LINES)
     for order in (census_mod.PARTS, ("shared", "explorer", "rest", "kbli")):
         assert replay(capsys, parts_file(tmp_path, census_mod.load(FIXTURE), order)) == whole
@@ -1336,14 +1423,26 @@ def test_guilt_a_scenario_no_part_ran_is_missing_and_its_counts_never_read_zero(
     assert line in out
 
 
+# The counts each part feeds: without the part, every one of them reads INCOMPLETE (the #8237 gate, note 1).
+FED = {"rest": ["reads:", "defined-above-wrapper:", "read-but-undefined:", "colors-outside-direction-a:",
+                "state-rows-unseen:", "state-colors-off-contract:", "page-grounds-off-contract:",
+                "ground-resolver-disagree:"],
+       "kbli": ["opened-outside-wrapper:", "opened-grounds-off-contract:", "ground-resolver-disagree:",
+                "opened-text-below-4.5:"],
+       "shared": ["shared-component-drift:"]}
+FED["explorer"] = FED["kbli"]
+
+
 @pytest.mark.parametrize("part", census_mod.PARTS)
 def test_guilt_a_missing_part_is_every_one_of_its_scenarios_missing(tmp_path, capsys, part):
+    """And every count the part feeds reads INCOMPLETE: none prints a bare number."""
     order = [p for p in census_mod.PARTS if p != part]
     out = replay(capsys, parts_file(tmp_path, census_mod.load(FIXTURE), order)).splitlines()
     n = sum(q == part for q, *_ in UNITS)
     assert out[0] == f"scenarios-off-manifest: {n} (INCOMPLETE: {n} scenarios not received, not a verdict)"
     assert sum(ln.startswith("  missing: ") for ln in out) == n
     assert not set(EXIT_LINES) <= set(out)
+    assert [f for f in FED[part] if "INCOMPLETE" not in lines_of(out, f)] == []
 
 
 def test_guilt_no_dump_at_all_is_the_whole_list_missing(tmp_path, capsys):
@@ -1390,6 +1489,16 @@ def test_innocence_a_failed_scenario_is_received_not_missing(tmp_path, capsys):
     census["failed"].append(f"{gone['page']} {gone['state']}: opener: Timeout 30000ms: waiting for x: y")
     out = replay(capsys, parts_file(tmp_path, census)).splitlines()
     assert out[:2] == ["scenarios-off-manifest: 0", "captures: 29 ok, 1 failed"]
+
+
+def test_the_sector_opener_moves_the_pointer_off_the_card_it_clicked():
+    """The #8202 gate: the drawer is read with the pointer away, so the clicked card's hover is not its state."""
+    from unittest import mock
+    page = mock.MagicMock()
+    census_mod._open_sector(page)
+    names = [c[0] for c in page.method_calls]
+    assert names[-1] == "mouse.move" and page.mouse.move.call_args == mock.call(0, 0), names
+    assert names.index("wait_for_selector") < names.index("mouse.move")
 
 
 def exit_step() -> str:
