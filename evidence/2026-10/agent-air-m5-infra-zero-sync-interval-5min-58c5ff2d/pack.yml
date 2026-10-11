@@ -38,11 +38,11 @@ decisions:
     decision: >-
       StartInterval 300. An up-to-date run takes about 4 s and launchd does not overlap StartInterval runs of one
       job; the payload's exclusive non-blocking flock is a second layer.
-  - id: D-hb-3600
+  - id: D-hb-3900
     decision: >-
-      expected_hb_seconds 3600, above the payload's RUN_BUDGET 3300 (cure d406012f69 of the round-1 REWORK; the
-      first cut of 1200 was sized from the tick, not from the run). Round 2: kimi PASS; codex REWORK because
-      300 + 3300 = 3600 leaves zero margin (suggests 3900 or a running heartbeat at start). Open for the owner.
+      expected_hb_seconds 3900 = 300 tick + 3300 RUN_BUDGET + 300 margin (codex's round-2 proposal). History: 1200
+      (REWORK, both seats) -> 3600 (kimi PASS, codex REWORK on zero margin) -> 3900 (codex final PASS on head
+      418274be40). Head SHAs before the rebases (d406012f69, 351d9bec3c, 0a17d5f547, ed7a56545b) are superseded.
 receipts:
   - claim: "R1 — floor 3 via the hot-zone path term: the plist and the wrapper compute 3 alone; the other three changed files compute 1."
     cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <one-path-per-file>, per file; whole diff (git diff --name-only origin/main...HEAD) gives 3
@@ -80,7 +80,7 @@ receipts:
     exit: 0
     ts: "2026-10-11T07:49:08Z"
     seat: codex-gpt-5.6-sol
-  - claim: "R7 — A2 after the cure: the registry YAML loads and mini.zero_sync reads expected_hb_seconds 3600 (head d406012f69)."
+  - claim: "R7 — A2 after the cure: the registry YAML loads and mini.zero_sync reads expected_hb_seconds 3600 (head d406012f69, superseded by R11)."
     cmd: python3 -c 'import yaml; ...' over apps/organism/organism/organs_registry.yaml
     result: "[('mini.zero_sync', 3600)]"
     exit: 0
@@ -103,6 +103,30 @@ receipts:
     result: "VERDICT: REWORK: 3600 = 300 + 3300 leaves zero margin, a legitimate full-budget run can exceed the stale line (suggest 3900 or a running heartbeat at start); the near-dead false kickstart is resolved (dead is 10800); lock comment correct; docs agree on 300 s"
     exit: 0
     ts: "2026-10-11T08:21:54Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "R11 — A2 final: head 418274be40, the registry loads and mini.zero_sync reads expected_hb_seconds 3900; validate_organs_registry passes (checksum and pragma intact)."
+    cmd: python3 -c 'import yaml; ...'; python3 apps/organism/organism/tools/validate_organs_registry.py
+    result: "[3900]; 'organs_registry.yaml valid', exit 0"
+    exit: 0
+    ts: "2026-10-11T09:55:50Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R12 — no real textual conflict with current origin/main for head 418274be40; the diff outside evidence is 6 files, +10/-9."
+    cmd: git merge-tree --write-tree origin/main HEAD; git diff origin/main...HEAD --stat -- . ':!evidence'
+    result: "merge-tree exit 0; 6 files changed, 10 insertions, 9 deletions"
+    exit: 0
+    ts: "2026-10-11T09:55:49Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R13 — rounds 3-5, codex REWORK, each cured: checksum + RUN_BUDGET comment (round 3), then two rebases onto moving main (rounds 4, 5)."
+    cmd: scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: "round 3 REWORK (checksum mismatch, comment 3600); round 4 REWORK (behind main, checksum conflict); round 5 REWORK (behind main, zero-cutover.md conflict); all cured by 0a17d5f547 and the rebases"
+    exit: 0
+    ts: "2026-10-11T09:45:33Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "R14 — A3 final: codex-gpt-5.6-sol returns PASS on head 418274be40 (content judged)."
+    cmd: scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <final prompt> < /dev/null
+    result: "VERDICT: PASS: cadence 5 min consistent, 3900 = 300 + 3300 + 300, checksum and pragma intact, validator exit 0, no real textual conflict"
+    exit: 0
+    ts: "2026-10-11T09:55:42Z"
     seat: codex-gpt-5.6-sol
 dissent:
   - seat: kimi-code/k3 (round 1)
@@ -145,7 +169,13 @@ dissent:
       at the end and the watchdog starts after the wrapper, so a legitimate full-budget run can exceed 3600 s of
       silence. Wants an explicit margin (3900) or a running heartbeat at start. The false near-dead kickstart is
       resolved (dead is 3 x 3600 = 10800).
-    status: PLAUSIBLE
+    status: CONFIRMED
     disposition: >-
-      OPEN, reported to the coordinator, code untouched. kimi (round 2) judged the same boundary inert: only an
-      already-wedged run reaches it, stale never pages, and the sentinel's PID override reads a running job as ok.
+      Cured: expected_hb_seconds 3900 (351d9bec3c, rebased; checksum and comment 0a17d5f547); codex final round PASS on
+      418274be40. kimi had judged the boundary inert at 3600.
+  - seat: codex-gpt-5.6-sol (rounds 3-5)
+    objection: >-
+      Registry checksum not updated after the 3900 edit; RUN_BUDGET comment still named 3600; then the branch was behind
+      main with conflicts in the registry checksum and docs/runbooks/zero-cutover.md.
+    status: CONFIRMED
+    disposition: Cured by 0a17d5f547 and two rebases; the final round judged content, not distance from main, and passed.
