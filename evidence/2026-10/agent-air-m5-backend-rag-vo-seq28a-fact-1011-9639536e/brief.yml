@@ -1,0 +1,28 @@
+gear: 2
+gear_reason: >-
+  Size floor (diff with tests, observer and pack above 400 churn) and a hot zone: apps/backend-rag
+  visa_engine contract (request model, fact registry, OpenAPI and generated schema), merging is the Fly deploy.
+mission: >-
+  The Visa Oracle engine accepts the fact work.annual_foreign_income_usd on /evaluate so the E33G remote worker
+  can get a real income gate (seq-28 step A of one signing; the mouth question and the pack rule follow).
+objective: >-
+  The engine registers FactPath work.annual_foreign_income_usd (whole USD, sensitive; 62 paths = 58 applicant
+  plus 4 derived) and accepts it on /evaluate; a body that omits it validates with UnknownFact NOT_ASKED built
+  by default_factory, never zero; a supplied KNOWN value is honoured; contracts, OpenAPI and schema.d.ts are
+  regenerated and the count pins moved. No pack rule and no mouth question change in this PR.
+scope:
+  - apps/backend-rag/backend/services/visa_engine/enums.py
+  - apps/backend-rag/backend/services/visa_engine/fact_registry.py
+  - apps/backend-rag/backend/services/visa_engine/models.py
+  - apps/backend-rag/backend/services/visa_engine/contracts/
+  - apps/backend-rag/backend/tests/services/visa_engine/
+  - apps/backend-rag/backend/tests/scripts/visa_engine/
+  - apps/backend-rag/backend/scripts/visa_engine/gold_harness/fixtures/personas/
+  - apps/backend-rag/backend/scripts/visa_engine/gold_coverage/personas/E33G.json
+  - apps/mouth/src/lib/api/
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts
+  - scripts/ci/observe_visa_engine_annual_income_fact.py
+  - tests/scripts/test_observe_visa_engine_annual_income_fact.py
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2
