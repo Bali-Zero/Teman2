@@ -1,0 +1,59 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 — decisions and audit of the Visa Oracle retirement interview; the corpus is pinned
+  before the interview changes.
+mission: >-
+  The Visa Oracle walk corpus reaches every retirement outcome, as the regression base for the coming
+  retirement interview changes.
+lanes:
+  - lane: pr11-retirement-corpus
+    role: build
+    seat: Claude Sonnet 5 implementer, worktree mouth-vo-pr11-retcorpus-1011 on M5.
+  - lane: pr11-ground-truth
+    role: ground_truth
+    seat: >-
+      the committed Bali Zero processing-time catalogue the engine reads; the change asserts no figure
+      of its own, it only adds walks and pins what the engine already answers.
+    nb: apps/backend-rag/backend/data/bali_zero_processing_times_2026.json
+    query_hash: "6e7e7b72ea2b4f1afb79d1fcffa650cd58d37f6b1ebd3b277feec2df79f89b06" # pragma: allowlist secret
+    note: query_hash = sha256 of the catalogue file at origin/main.
+pii_scan: clean
+bites:
+  consumer: >-
+    the required CI census leg: on main it reports at least 10 retirement walks, including SUPPORTED
+    [E33E, E33F], [E33F] only and a RETIREMENT_INCOME_BELOW_THRESHOLD dead end, and stays green.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq27_signed.py
+  expect: "contains:inventory reads seq-27 and all three consumers green"
+receipts:
+  - claim: The branch rebased cleanly onto origin/main (2 commits behind, 1 ahead, nothing pushed).
+    cmd: git rebase origin/main
+    result: "Rebase e aggiornamento di refs/heads/agent/air-m5/mouth/vo-pr11-retcorpus-1011 eseguiti con successo"
+    exit: 0
+    ts: "2026-10-11T13:05:00Z"
+    seat: this session
+  - claim: The backend census and age-boundary suites pass after the rebase.
+    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py backend/tests/services/visa_engine/test_fact_registry.py
+    result: "150 passed, 14 skipped"
+    exit: 0
+    ts: "2026-10-11T13:05:30Z"
+    seat: this session
+  - claim: The walk-corpus determinism suite passes with the 129-walk corpus.
+    cmd: cd apps/mouth && npx vitest run walk-corpus-determinism
+    result: "Test Files 1 passed (1), Tests 131 passed (131)"
+    exit: 0
+    ts: "2026-10-11T13:06:50Z"
+    seat: this session
+  - claim: The bites observer runs the census and the seq-27 consumers green.
+    cmd: python3 scripts/ci/observe_visa_seq27_signed.py
+    result: "inventory reads seq-27 and all three consumers green"
+    exit: 0
+    ts: "2026-10-11T13:06:00Z"
+    seat: this session
+decisions:
+  - id: D-corpus-before-interview
+    decision: >-
+      The retirement outcomes are pinned in the corpus and the census first, so the interview change
+      that follows shows its effect as a fixture diff and not as a silent drift.
+dissent: []

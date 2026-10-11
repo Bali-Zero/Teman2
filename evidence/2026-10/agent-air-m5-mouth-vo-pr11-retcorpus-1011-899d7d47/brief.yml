@@ -1,0 +1,19 @@
+gear: 1
+gear_reason: >-
+  Tests and regenerated fixtures only (the lint floor is 1); no engine, rule or data change.
+mission: >-
+  The Visa Oracle walk corpus reaches every retirement outcome, as the regression base for the coming
+  retirement interview changes.
+objective: >-
+  13 new age-64 retirement walks (every basis, income and deposit on either side of the bound) are in
+  the corpus, 116 to 129, with their expected outcomes pinned for every sequence and the 54/55 age
+  boundary pinned in derive_age_years, leap-day births included.
+scope:
+  - apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts
+  - apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_fact_registry.py
+  - the regenerated walk-corpus fixtures
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
