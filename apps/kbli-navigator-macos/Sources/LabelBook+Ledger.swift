@@ -20,6 +20,9 @@ extension LabelBook {
         return (isID ? w : w.prefix(1) + w.dropFirst().lowercased(), tone, badge.voiceOverLabel)
     }
 
+    /// The line under a selectable risk matrix, the words the PP 28 block has always drawn.
+    static func cellHint(isID: Bool) -> String { isID ? "— ketuk sel untuk detail" : "— tap a cell for detail" }
+
     /// `per_skala[].jangka_waktu`: numbers and "Otomatis" as PP28ScalePanel has always drawn them; the four other
     /// values of the closed set (921 codes carry a non-numeric term) in curated English. An unknown value stays
     /// verbatim, so the census can name it.

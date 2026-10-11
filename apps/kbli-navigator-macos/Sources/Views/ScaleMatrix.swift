@@ -143,6 +143,9 @@ struct ScaleMatrix: View {
                     .stroke(Theme.lineSoft, lineWidth: 1)
                 }
             }
+            if selection != nil {
+                Text(LabelBook.cellHint(isID: isID)).font(Theme.scalable(10)).foregroundStyle(Theme.faint)
+            }
         }
     }
 

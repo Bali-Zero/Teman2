@@ -25,6 +25,9 @@ shot registry-table --theme day --lang en --code 55203 --text-size xxxLarge "$OU
 for t in day night; do
   shot sheet-ledger --theme $t --lang en --code 56101 --height 2800 "$OUT/tall/sheet-ledger-56101-$t-en.png"
   shot sheet-ledger --theme $t --lang en --code 71109 --height 3600 "$OUT/tall/sheet-ledger-71109-$t-en.png"; done
+# The expanded live sheet (RegistryVerdictSheet with its dossier open), what the user reads: a ring on the shown risk cell and the hint.
+for c in 56101 55203; do for t in day night; do for l in en id; do
+  shot registry-sheet --sheet-open --theme $t --lang $l --code $c --height 2600 "$OUT/tall/registry-sheet-open-$c-$t-$l.png"; done; done; done
 for l in en id; do
   shot search-results-multi --theme day --lang $l --code 552 "$OUT/search-results-multi-day-$l.png"
   shot registry-table --theme day --lang $l --code 51101 --height 2400 "$OUT/tall/registry-table-51101-day-$l.png"; done

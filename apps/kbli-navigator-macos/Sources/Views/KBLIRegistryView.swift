@@ -1356,7 +1356,8 @@ struct PP28ScalePanel: View {
             } else {
                 // D1: the top grid's risk × scale matrix; a chip selects the cell whose duties follow.
                 // Six or more scopes: the matrix's filterable list, each scope's detail on expand.
-                ScaleMatrix(scales: scales, isID: isID, mode: .ledger, selection: $matrixSel,
+                ScaleMatrix(scales: scales, isID: isID, mode: .ledger,
+                            selection: Binding(get: { matrixSel ?? defaultCell }, set: { matrixSel = $0 }),
                             expanded: { AnyView(cellDetail($0)) })
                 if scopeIndices.count < ScaleMatrix.listFrom, let mi = matrixSel ?? defaultCell, mi < scales.count {
                     cellDetail(scales[mi])
