@@ -2767,8 +2767,8 @@ organs:
 - id: mini.zero_sync
   runtime: mini_launchd
   type: cron
-  # 3600 > RUN_BUDGET (3300s, scripts/zero_sync/zero_sync.py): one legitimate run (a git call may take NET_TIMEOUT 1800s) ends with its own heartbeat inside this window. The 300s plist cadence does not shorten how long one run may take, so the window follows the run budget, not the tick.
-  expected_hb_seconds: 3600
+  # 3900 = 300s tick + RUN_BUDGET 3300s (scripts/zero_sync/zero_sync.py) + 300s margin: the longest silence of a healthy organ is one tick of wait plus one run that spends its whole budget (a git call alone may take NET_TIMEOUT 1800s). The window follows the run budget, not the cadence.
+  expected_hb_seconds: 3900
   owner_module: infra/launchagents/wrappers/mini-zero-sync.sh
   dependencies: []
   recovery_action: launchctl_kickstart
