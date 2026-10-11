@@ -1227,8 +1227,10 @@ EXPECTED_OUTCOME_BY_SEQUENCE[26] = EXPECTED_OUTCOME_BY_SEQUENCE[25]
 #: engine's own replay, then checked against the rule text it exercises:
 #: `el.e33e.retirement` = deposit >= 50,000 AND state bank AND own name AND
 #: income >= 3,000; `el.e33f.retirement` = income >= 3,000 alone. A basis
-#: other than `bank_deposit` asserts the deposit trio KNOWN(0)/KNOWN(false)
-#: (`depositBasisDecisivelyNotChosen`), so those walks can never name E33E.
+#: other than `bank_deposit` and `undecided` asserts the deposit trio
+#: KNOWN(0)/KNOWN(false) (`depositBasisDecisivelyNotChosen`), so those walks can
+#: never name E33E; `undecided` (deposit_or_income) leaves the deposit open and
+#: is the one non-bank_deposit walk that does reach E33E.
 _E33E_AND_E33F = ("SUPPORTED_CANDIDATES", ("E33E", "E33F"))
 _E33F_ONLY = ("SUPPORTED_CANDIDATES", ("E33F",))
 _INCOME_BELOW_FLOOR = ("NO_SUPPORTED_PATH", ())  # RETIREMENT_INCOME_BELOW_THRESHOLD
@@ -1249,7 +1251,8 @@ _PR11_RETIREMENT_OUTCOMES: dict[str, tuple[str, tuple[str, ...]]] = {
 }
 EXPECTED_OUTCOME_BY_SEQUENCE[27] = EXPECTED_OUTCOME_BY_SEQUENCE[26]
 # The sequences share one corpus, so every one of them pins the 13 walks; the
-# replay of seq-20..27 gave the identical (state, candidates) on all eight.
+# replay test `test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence`
+# re-measures them (and the full state census) on each of seq-20..27.
 EXPECTED_OUTCOME_BY_SEQUENCE = {
     _seq: {**_pins, **_PR11_RETIREMENT_OUTCOMES}
     for _seq, _pins in EXPECTED_OUTCOME_BY_SEQUENCE.items()
@@ -2201,7 +2204,7 @@ def candidate_funnel_named(
     return _funnel_named_products(walks, candidate_pack)
 
 
-def test_corpus_is_the_115_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
+def test_corpus_has_the_expected_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
     """An empty or shrunken corpus fails loudly: a census that passes because
     nobody fed it any walks is the green-but-dead shape (cicatrix #2).
 
@@ -2431,6 +2434,27 @@ def test_every_walk_ends_in_its_pinned_outcome_on_the_candidate_pack(
         label for label, outcome in replayed.items() if outcome["state"] == "HUMAN_REVIEW_REQUIRED"
     }
     assert held == PRIVACY_HELD_WALKS | STUDIO_HELD_WALKS_BY_SEQUENCE[sequence]
+
+
+@pytest.mark.parametrize("sequence", sorted(EXPECTED_OUTCOME_BY_SEQUENCE))
+def test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence(
+    walks: dict[str, dict[str, Any]], sequence: int
+) -> None:
+    """The 13 PR-11 pins are replayed, not asserted by copy: each pinned
+    sequence's own source pack evaluates the whole corpus, and both the
+    (state, candidates) table and the state census must equal that sequence's
+    literals exactly."""
+
+    path = PACKS_DIR / f"rulepack-prod-{sequence:03d}.source.json"
+    assert path.is_file(), f"no source pack on disk for pinned seq-{sequence}"
+    replayed = _outcomes_on(walks, _pack_from_source(path))
+    retirement = {k: v for k, v in replayed.items() if k in _PR11_RETIREMENT_OUTCOMES}
+    assert len(retirement) == 13
+    violations = _outcome_violations(retirement, _PR11_RETIREMENT_OUTCOMES)
+    assert not violations, "\n  ".join(violations)
+    assert dict(Counter(o["state"] for o in replayed.values())) == (
+        EXPECTED_STATE_CENSUS_BY_SEQUENCE[sequence]
+    )
 
 
 def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(

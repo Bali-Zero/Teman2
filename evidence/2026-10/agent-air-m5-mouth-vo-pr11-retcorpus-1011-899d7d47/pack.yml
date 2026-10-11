@@ -1,5 +1,5 @@
 gear: 1
-brief_ref: evidence/brief.yml
+brief_ref: evidence/2026-10/agent-air-m5-mouth-vo-pr11-retcorpus-1011-899d7d47/brief.yml
 ruling: >-
   Zero, 2026-10-11 — decisions and audit of the Visa Oracle retirement interview; the corpus is pinned
   before the interview changes.
@@ -21,11 +21,12 @@ lanes:
 pii_scan: clean
 bites:
   consumer: >-
-    the required CI census leg: on main it reports at least 10 retirement walks, including SUPPORTED
-    [E33E, E33F], [E33F] only and a RETIREMENT_INCOME_BELOW_THRESHOLD dead end, and stays green.
+    the required CI census leg: on main the observer reads EXACTLY 13 age-64 retirement walks, split 10
+    SUPPORTED_CANDIDATES (4 [E33E, E33F], 6 [E33F] only) and 3 NO_SUPPORTED_PATH
+    (RETIREMENT_INCOME_BELOW_THRESHOLD), and the census replays them green on seq-20..27.
   where: ci
-  observe: python3 scripts/ci/observe_visa_seq27_signed.py
-  expect: "contains:inventory reads seq-27 and all three consumers green"
+  observe: python3 scripts/ci/observe_visa_retirement_corpus.py
+  expect: "contains:13 retirement walks, 10 SUPPORTED_CANDIDATES and 3 NO_SUPPORTED_PATH, replayed green"
 receipts:
   - claim: The branch rebased cleanly onto origin/main (2 commits behind, 1 ahead, nothing pushed).
     cmd: git rebase origin/main
@@ -77,3 +78,33 @@ dissent:
     status: RETRACTED
     disposition: >-
       Not applicable to this branch (finding 4): every cited file lives in the sibling r1-nodoor worktree and none is in this diff (walk fixtures, generate-walk-corpus.ts, census and age tests, evidence); no code changed here, the cure belongs to the r1-nodoor lane. This diff itself still awaits a valid spalla scoped to its own git diff.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-20-01a129c7-c33f-70e2-a9bc-51c4d2d28740, model verified in the rollout file)
+    objection: >-
+      MEDIUM - the pack pointed at a brief_ref that does not exist.
+    status: RETRACTED
+    disposition: >-
+      Cured: brief_ref now names the dated brief.yml path; the lint is clean (this fix commit).
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-20-01a129c7-c33f-70e2-a9bc-51c4d2d28740, model verified in the rollout file)
+    objection: >-
+      MEDIUM - the seq-20..27 pins were declared replayed but never exercised.
+    status: RETRACTED
+    disposition: >-
+      Cured: test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence replays the whole corpus on each pinned sequence's source pack and compares the 13 outcomes and the full state census to that sequence's literals (8 parametrized cases, 9 passed with the corpus-count test).
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-20-01a129c7-c33f-70e2-a9bc-51c4d2d28740, model verified in the rollout file)
+    objection: >-
+      MEDIUM - the Bites was fail-open on the 13-walk target.
+    status: RETRACTED
+    disposition: >-
+      Cured: scripts/ci/observe_visa_retirement_corpus.py requires exactly 13 pin rows split 10 SUPPORTED_CANDIDATES (4 + 6) and 3 NO_SUPPORTED_PATH, then a full pytest pass with no skip; it prints the numbers; unit tests in tests/scripts/test_observe_visa_retirement_corpus.py reject a lost walk or a shifted split.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-20-01a129c7-c33f-70e2-a9bc-51c4d2d28740, model verified in the rollout file)
+    objection: >-
+      LOW - a comment said every non-bank_deposit basis cannot produce E33E, contradicted by the undecided walk.
+    status: RETRACTED
+    disposition: >-
+      Cured: comment now limits the claim to the bases that decisively exclude the deposit and documents the undecided exception.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-20-01a129c7-c33f-70e2-a9bc-51c4d2d28740, model verified in the rollout file)
+    objection: >-
+      LOW - the corpus-count test name said 115 while it enforces 129.
+    status: RETRACTED
+    disposition: >-
+      Cured: renamed test_corpus_has_the_expected_real_interview_walks.
