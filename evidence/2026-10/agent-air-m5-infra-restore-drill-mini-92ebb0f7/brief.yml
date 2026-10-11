@@ -1,0 +1,64 @@
+task: >-
+  Move the monthly disaster-recovery restore drill from the Teman2 GitHub workflow (deleted with Teman2 at zero
+  cutover, gate 7b) to a launchd job on Mini, and fix the recurring failure: the nightly plain-SQL pg_dump names
+  about ten production roles that the throwaway drill database never created, so psql under ON_ERROR_STOP=1
+  aborts (the 2026-09-01 and 2026-10-01 runs were red for this reason, not for a corrupt backup). The roles are
+  derived from the dump itself and pre-created NOLOGIN; the restore keeps ON_ERROR_STOP=1.
+lane: infra
+machine: m5
+date: 2026-10-11
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, measured: evidence_pack_lint --print-floor --changed-files-file over each changed file gives
+  3 for .github/workflows/restore-drill.yml, infra/launchagents/com.nuzantara.restore-drill.plist and
+  infra/launchagents/wrappers/mini-restore-drill.sh (hot-zone path term) and 1 for every other file; the whole diff
+  computes 3. The floor sets the gear, not the size.
+acceptance:
+  A1:
+    text: >-
+      The role scan SHALL derive from a real pg_dump every role that a restore needs (OWNER TO, FOR ROLE, GRANT TO
+      with lists and GRANTED BY, REVOKE FROM, CREATE POLICY TO, SET ROLE, ALTER ROLE, memberships), SHALL ignore
+      COPY data rows, string literals and dollar-quoted bodies, SHALL quote every created name and SHALL fail closed
+      on an unusable name without echoing it.
+    probe: python -m pytest scripts/restore_drill/tests -q -p no:cacheprovider; role_scanner.py over the newest Tigris dump on Mini
+  A2:
+    text: >-
+      The job SHALL NOT print client data to logs, Telegram, an escalation or the heartbeat (the restore log, verifier
+      output and psql errors stay in a private tmpdir that is deleted on exit), SHALL leave a verdict heartbeat on
+      every exit path (digest on success; p0 plus an escalation on failure or CANNOT-VERIFY), and SHALL NOT read a
+      stale, future-dated or unparsable result as PASS.
+    probe: council review; static assertions in scripts/restore_drill/tests/test_restore_drill.py
+  A3:
+    text: >-
+      On the shared Colima VM the job SHALL use one named --rm container on a loopback port with a per-run password and
+      memory/cpu limits, a disk floor scaled to the dump, an atomic singleton lock, a 30-minute watchdog that also
+      removes the container, and signal handling that cannot read green.
+    probe: council review; bash -n and shellcheck -S warning on run_drill.sh and the wrapper
+  A4:
+    text: >-
+      The registry entry mini.restore_drill SHALL load, the validator SHALL pass, and its recovery SHALL NOT kick a run
+      in progress (recovery_action human_only).
+    probe: python3 apps/organism/organism/tools/validate_organs_registry.py
+  A5:
+    text: >-
+      Live, after merge, the same day: the wrapper and plist are installed on Mini (declared pairs), and a manual
+      launchctl kickstart of com.nuzantara.restore-drill produces a Level-5 PASS verdict, the mini.restore_drill sidecar
+      reads ok, and a digest reaches Telegram. The first scheduled fire is 2026-11-01 12:00 WITA.
+    probe: ssh mini 'launchctl kickstart gui/$(id -u)/com.nuzantara.restore-drill; tail ~/logs/mini-restore_drill/run.log; cat ~/.organism/last_seen/mini.restore_drill.json'
+out_of_scope: >-
+  Deleting the Teman2 workflow (its schedule is removed here; the file goes with Teman2); launchd catch-up after a
+  power-off (a missed 1st raises only a non-paging stale after 33 days); the sentinel rule contract for heartbeat_silent;
+  the other gate-7b jobs (their own PRs).
+assumptions:
+  - text: Mini has Colima (aarch64, VZ), docker, aws, psql, python3 and the Tigris credentials; the postgis image is amd64-only so the drill builds postgres:17 plus apt postgis.
+    status: verified
+    probe: gate7b-launchd-design.md section 6 (measured on Mini); a real-dump role scan ran on Mini and produced the 11 production roles.
+  - text: The producer names dumps in its local time (WITA), so age is taken from the object store's LastModified.
+    status: verified
+    probe: ssh mini aws s3api head-object (name 20261011-0300, LastModified 2026-10-10T19:04Z)
+  - text: A published port bound to 127.0.0.1 inside the Colima VM is reachable from the macOS host.
+    status: unverified
+    probe: the payload now requires a host-side select 1 before the download is used; the first kickstart proves it.
+  - text: Gear 3 needs the independent final-gate verdict on the head SHA, commissioned after the last push.
+    status: unverified
+    probe: gh pr checks <pr> after the verdict is posted.
