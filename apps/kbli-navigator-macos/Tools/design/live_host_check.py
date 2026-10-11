@@ -36,13 +36,20 @@ def aware_views(files):
                 out[name] = r"\b%s\(" % name
     return out
 
+def hosted(window):
+    """Hosted, and not forced flat: `.environment(\\.immersive, false)` BEFORE `.immersiveHost()` (inside it) or after `ImmersiveHost {`
+    overrides the host's switch; after `.immersiveHost()` (outside it) it overrides nothing. The pixel witness (png_census C25) is
+    the arbiter for what a text cannot say: `#if false`, a sibling host, `transformEnvironment`."""
+    h, f = HOSTED.search(window), FORCED_FLAT.search(window)
+    return bool(h) and not (f and (f.start() < h.start()) == h.group().startswith("."))
+
 def sites(text, view, pat):
     for m in re.finditer(pat, text):
         line_start = text.rfind("\n", 0, m.start()) + 1
         if re.match(r"\s*(struct|class|enum|extension|//)", text[line_start:m.start() + 20]): continue
         if re.search(r"(struct|class)\s+%s\b" % view, text[line_start:m.end() + 10]): continue
         window = text[max(0, m.start() - 60):m.start()] + text[m.start():m.start() + 700].split("\n\n")[0]
-        yield text.count("\n", 0, m.start()) + 1, bool(HOSTED.search(window)) and not FORCED_FLAT.search(window)
+        yield text.count("\n", 0, m.start()) + 1, hosted(window)
 
 def check(files):
     views, bad, seen = aware_views(files), [], set()
@@ -72,6 +79,12 @@ def main():
         forced = [aware, chat, ("SearchListView.swift", "x\n    RegistryVerdictSheet(kbli: k) {\n    }\n    .environment(\\.immersive, false).immersiveHost()\n"),
                   ("RootView.swift", "case .chat:\n    ChatView().immersiveHost()\n")]
         assert len(check(forced)) == 1, "a host with the immersive switch forced off must fail"
+        outside = [aware, chat, ("SearchListView.swift", "x\n    RegistryVerdictSheet(kbli: k) {\n    }\n    .immersiveHost().environment(\\.immersive, false)\n"),
+                   ("RootView.swift", "case .chat:\n    ChatView().immersiveHost()\n")]
+        assert check(outside) == [], "an override OUTSIDE the host overrides nothing: the sheet is immersive"
+        block = [aware, chat, ("SearchListView.swift", "x\n    ImmersiveHost { RegistryVerdictSheet(kbli: k) {\n    }.environment(\\.immersive, false) }\n"),
+                 ("RootView.swift", "case .chat:\n    ChatView().immersiveHost()\n")]
+        assert len(check(block)) == 1, "an override INSIDE an ImmersiveHost block must fail"
         flat = [("ChatView.swift", "struct ChatView: View {\n}\n"), ("RootView.swift", "case .chat:\n    ChatView()\n")]
         assert check(flat) == [], "a View that is not immersive-aware needs no host"
         print("live_host_check selftest ok (guilt + innocence)"); return 0
