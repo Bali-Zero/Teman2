@@ -1,0 +1,26 @@
+Teman2 / Nuzantara
+Copyright 2025-2026 Bali Zero
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Excluded from this license
+--------------------------
+
+The Apache License covers the source code and the documentation authored by
+the copyright holder. The following are NOT licensed under it; all rights are
+reserved by their respective owners:
+
+  - The Bali Zero and Zantara names, logos and brand assets.
+  - Photographs of people (e.g. apps/mouth/public/static/team/).
+  - Generated or commissioned images and audio
+    (e.g. apps/mouth/public/static/image_art/, *.mp3).
+  - Third-party and government datasets, which keep their original terms
+    (e.g. data/source_documents/, the KBLI datasets under
+    apps/kbli-navigator-macos/Resources/).
+  - Vendored third-party code (vendor/, e.g. vendor/evoskill, Apache-2.0 per
+    its own LICENSE) and bundled fonts (SIL Open Font License 1.1), which keep
+    their own licences.
+  - Personal data of any natural person, wherever it appears.
+  - Any file carrying its own licence header, and any package whose manifest
+    declares its own licence (e.g. apps/mata-garuda and
+    apps/nuzantara-mcp-advanced, MIT), which keep it.
