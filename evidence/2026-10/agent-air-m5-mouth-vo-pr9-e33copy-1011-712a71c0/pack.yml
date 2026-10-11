@@ -22,9 +22,6 @@ lanes:
     nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
     query_hash: "6d6b36a4da16fafd6c9653232d658570811972711047bda12e9a7c65e4ab40a0" # pragma: allowlist secret
     note: query_hash = sha256 of engine-adapter.ts at origin/main.
-  - lane: vo-pr9-evidence
-    role: evidence
-    seat: Claude Sonnet 5.5 evidence lane (rebase, observer, receipts, pack).
 pii_scan: clean
 bites:
   consumer: >-
