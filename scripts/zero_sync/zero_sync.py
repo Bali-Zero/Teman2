@@ -35,7 +35,7 @@ DEEPEN_DEPTH = 200
 NPM_TIMEOUT = 600
 MASS_CHANGE_FRACTION = 0.25
 LOCK_CACHE_KEEP = 8  # lock_cache/ entries kept, by last use: one per distinct npm version + root manifests
-RUN_BUDGET = 3300  # whole-run watchdog (s): under two ticks, so a wedged run always ends with a heartbeat
+RUN_BUDGET = 3300  # whole-run watchdog (s): under the registry's 3900s heartbeat window (tick + this budget + margin), so a wedged run always ends with a heartbeat before the organ reads stale
 NET_TIMEOUT = 1800  # the first full zero fetch took ~10 min on M5; a hung fetch/push must still end the run, or it holds the lock and every later tick no-ops
 
 EXIT_OK, EXIT_ERROR, EXIT_USAGE, EXIT_DIVERGED, EXIT_REJECTED = 0, 1, 2, 3, 4
@@ -539,7 +539,8 @@ def main(argv=None) -> int:
         try:
             fcntl.flock(lockf, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            # Bounded by NET_TIMEOUT/NPM_TIMEOUT, a run never spans a tick for long; say so anyway.
+            # launchd does not start a tick while the job is still running, so this fires only when a second copy
+            # is started by hand next to the scheduled one.
             print("zero-sync: already running")
             hb("warning", "previous run still holds the lock")
             return EXIT_OK

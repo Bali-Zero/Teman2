@@ -51,6 +51,16 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
     "Siapa yang mensponsori Anda dapat menentukan pertanyaan lanjutan yang kami ajukan dan visa mana yang sesuai dengan situasi Anda.",
   ],
   [
+    "q.sponsor_world_figure_invitation",
+    "Do you have an invitation letter from an Indonesian central-government agency inviting you as a world figure — a person of international standing?",
+    "Apakah Anda memiliki surat undangan dari instansi pemerintah pusat Indonesia yang mengundang Anda sebagai tokoh dunia — seseorang dengan reputasi internasional?",
+  ],
+  [
+    "q.sponsor_world_figure_invitation.hint",
+    "Answer yes only if the invitation letter is from an Indonesian central-government agency and invites you in that capacity.",
+    "Jawab ya hanya jika surat undangan tersebut berasal dari instansi pemerintah pusat Indonesia dan mengundang Anda dalam kapasitas tersebut.",
+  ],
+  [
     "q.business_activity.hint",
     "Describe the activity, not a visa name. Meetings, negotiation, conferences and exploring investment can be assessed here; training or another activity needs a Bali Zero advisor.",
     "Jelaskan kegiatannya, bukan nama visa. Rapat, negosiasi, konferensi, dan penjajakan investasi dapat dinilai di sini; pelatihan atau kegiatan lain memerlukan konsultan Bali Zero.",

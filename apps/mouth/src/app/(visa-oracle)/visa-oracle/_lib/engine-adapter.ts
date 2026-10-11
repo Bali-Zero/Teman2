@@ -236,6 +236,13 @@ function usd(value: number, locale: "en-US" | "id-ID"): string {
 export const SECOND_HOME_PROPERTY_THRESHOLD_USD = 1_000_000;
 export const SECOND_HOME_DEPOSIT_THRESHOLD_USD = 130_000;
 
+// The retirement pair, pinned the same way. `RETIREMENT_INCOME_THRESHOLD_USD`
+// is the monthly passive income below which `hf.e33e/e33f.retirement-income-
+// below-minimum` (`lt`) excludes both retirement visas; the E33E deposit
+// figure is `el.e33e.retirement`'s `secondhome.bank_deposit_usd` `gte`.
+export const RETIREMENT_INCOME_THRESHOLD_USD = 3_000;
+export const E33E_DEPOSIT_THRESHOLD_USD = 50_000;
+
 // D23 "OPTION B-STUDIO" (2026-09-16): the one review reason code that routes
 // to a self-serve page instead of a person — named here so OutcomeSheet.tsx
 // never types the code or the route a second time.
@@ -307,8 +314,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Anda berkomitmen pada PT PMA sebagai pemegang saham-direktur atau pemegang saham-komisaris, dengan modal disetor minimal Rp 2,5 miliar.",
   ),
   E33E_RETIREMENT_ELIGIBLE: text(
-    "Retirement, age 55 or over, with a deposit of USD 50,000 or more held in your own name at a state bank.",
-    "Pensiun, usia 55 tahun ke atas, dengan deposito minimal USD 50.000 atas nama sendiri di bank BUMN.",
+    `Retirement, age 55 or over, with a deposit of ${usd(E33E_DEPOSIT_THRESHOLD_USD, "en-US")} or more held in your own name at a state bank, plus passive income of ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} or more a month.`,
+    `Pensiun, usia 55 tahun ke atas, dengan deposito minimal ${usd(E33E_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama sendiri di bank BUMN, ditambah penghasilan pasif minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan.`,
   ),
   // PR-M (owner ruling 2026-09-27): neutral on purpose — no sponsor clause.
   // Rule packs <= 23 gate E33F on `family.sponsor_confirmed`; from seq-24 a
@@ -675,16 +682,16 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Pekerjaan pada kantor perwakilan dagang dan ekonomi asing, dengan penjamin instansi pemerintah — Visa Kerja Kantor Dagang dan Ekonomi (E23V).",
   ),
   E33A_GOVERNMENT_INVITATION_ELIGIBLE: text(
-    "You hold a central government invitation for special expertise, with a government body as sponsor — the Second Home Visa — Special-Expertise Government Invitation (E33A).",
-    "Anda memiliki undangan pemerintah pusat untuk tenaga ahli, dengan penjamin instansi pemerintah — Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A).",
+    "You told us you hold a written invitation from an Indonesian central-government body for your special expertise — the Second Home Visa — Special-Expertise Government Invitation (E33A). This government-invitation route is handled with a Bali Zero advisor.",
+    "Anda menyampaikan bahwa Anda memiliki undangan tertulis dari instansi pemerintah pusat Indonesia atas keahlian khusus Anda — Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A). Jalur undangan pemerintah ini ditangani bersama konsultan Bali Zero.",
   ),
   E33B_GOVERNMENT_COLLABORATION_ELIGIBLE: text(
-    "You hold a confirmed special-expertise collaboration commitment with an Indonesian government body — the Second Home Golden Visa — Special-Expertise Collaboration (E33B).",
-    "Anda memiliki komitmen kolaborasi keahlian khusus yang terkonfirmasi dengan instansi pemerintah Indonesia — Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B).",
+    "You told us you have a confirmed collaboration commitment with an Indonesian government body or institution based on your special expertise — the Second Home Golden Visa — Special-Expertise Collaboration (E33B). This collaboration route is handled with a Bali Zero advisor.",
+    "Anda menyampaikan bahwa Anda memiliki komitmen kolaborasi yang terkonfirmasi dengan instansi atau lembaga pemerintah Indonesia berdasarkan keahlian khusus Anda — Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B). Jalur kolaborasi ini ditangani bersama konsultan Bali Zero.",
   ),
   E33C_WORLD_FIGURE_INVITATION_ELIGIBLE: text(
-    "You hold a central government invitation extended to you as a world figure — the Second Home Golden Visa — World-Figure Government Invitation (E33C).",
-    "Anda memiliki undangan pemerintah pusat yang diberikan kepada Anda sebagai tokoh dunia — Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C).",
+    "You told us you have an invitation letter from an Indonesian central-government agency inviting you as a world figure — the Second Home Golden Visa — World-Figure Government Invitation (E33C). This government-invitation route is handled with a Bali Zero advisor.",
+    "Anda menyampaikan bahwa Anda memiliki surat undangan dari instansi pemerintah pusat Indonesia yang mengundang Anda sebagai tokoh dunia — Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C). Jalur undangan pemerintah ini ditangani bersama konsultan Bali Zero.",
   ),
   E28B_COMPANY_ESTABLISHMENT_ELIGIBLE: text(
     "You are establishing a company in Indonesia and declared that your investment meets the published minimum for that route — the Investor Golden Visa — Company Establishment (E28B). We confirm the amount against the official schedule with you.",
@@ -719,8 +726,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // generic sentence (offshore/other/paid/employer_no). Product name verbatim
   // from the pack's `names.en` / `names.id`.
   E33A_SPONSOR_NOT_GOVERNMENT: text(
-    "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian government body, and you did not name one as your sponsor.",
-    "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah Indonesia, dan Anda tidak menyebutkan instansi pemerintah sebagai penjamin Anda.",
+    "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian central-government body, and you did not name one as your sponsor.",
+    "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah pusat Indonesia, dan Anda tidak menyebutkan instansi pemerintah pusat sebagai penjamin Anda.",
   ),
   // `hf.d12-onshore-conversion-excluded` (source 5e64ec6b…). Reachable on a
   // corpus walk since W-VO-Q item 7: a business explorer who plans to switch
@@ -784,8 +791,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Visa pelajar memerlukan penerimaan dan sponsor yang sudah dikonfirmasi; Anda belum mengonfirmasi keduanya.",
   ),
   RETIREMENT_INCOME_BELOW_THRESHOLD: text(
-    "The retirement visa (E33E/E33F) needs documented passive income at the required minimum; the figure you gave is below it.",
-    "Visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi sesuai batas minimum; angka yang Anda berikan di bawahnya.",
+    `The retirement visas (E33E/E33F) need documented passive income of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month.`,
+    `Visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan.`,
   ),
 
   // Slice A10 — 14 EXCLUDE codes reachable in signed seq-23 that predate
@@ -913,6 +920,37 @@ function secondHomeBelowThresholdReason(
     );
   }
   return undefined;
+}
+
+// `RETIREMENT_INCOME_BELOW_THRESHOLD` (`hf.e33e/e33f.retirement-income-below-
+// minimum`, `lt` the monthly threshold) carries no number of its own. The
+// interview's facts do: a declared figure is named back to the applicant, and
+// a "not sure" — which the wire seam counts as 0 (`tree.ts` conservative
+// "0") — says so instead of reading as a figure the applicant gave. Raw
+// facts still carry "unsure" here. `undefined` for any other shape, so the
+// static sentence stands.
+function retirementIncomeBelowThresholdReason(
+  facts: OracleFacts,
+): LocalizedText | undefined {
+  const raw = facts.secondhome_passive_income_usd;
+  if (raw === "unsure") {
+    return text(
+      `You were not sure of your monthly passive income, so it counted as zero. The retirement visas need documented passive income of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month: come back with the figure, or ask a Bali Zero advisor.`,
+      `Anda belum yakin dengan penghasilan pasif bulanan Anda, sehingga dihitung nol. Visa pensiun memerlukan penghasilan pasif terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan: kembalilah dengan angkanya, atau tanyakan kepada konsultan Bali Zero.`,
+    );
+  }
+  if (raw === undefined || !/^(0|[1-9]\d*)$/.test(raw)) return undefined;
+  const value = Number(raw);
+  if (
+    !Number.isSafeInteger(value) ||
+    value >= RETIREMENT_INCOME_THRESHOLD_USD
+  ) {
+    return undefined;
+  }
+  return text(
+    `You declared ${usd(value, "en-US")} a month; the retirement visas (E33E/E33F) need documented passive income of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month.`,
+    `Anda menyatakan ${usd(value, "id-ID")} per bulan; visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan.`,
+  );
 }
 
 /**
@@ -1174,6 +1212,21 @@ function paidActivityWithoutIndonesianPayerReason(
   );
 }
 
+function e33bCollaborationNotCommittedReason(
+  facts: OracleFacts,
+): LocalizedText | undefined {
+  if (
+    facts.sponsor_category !== "NONE" ||
+    facts.sponsor_government_collaboration !== "no"
+  ) {
+    return undefined;
+  }
+  return text(
+    "You told us you do not have a confirmed collaboration commitment with an Indonesian government body or institution based on your special expertise; the Second Home Golden Visa — Special-Expertise Collaboration (E33B) needs that commitment.",
+    "Anda menyampaikan bahwa Anda belum memiliki komitmen kolaborasi yang terkonfirmasi dengan instansi atau lembaga pemerintah Indonesia berdasarkan keahlian khusus Anda; Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B) memerlukan komitmen tersebut.",
+  );
+}
+
 /**
  * The no-path reason codes whose sentence is reconstructed from the
  * interview's OWN facts when those facts allow it. seq-20 reaches these three
@@ -1185,6 +1238,7 @@ const FACT_DERIVED_NO_PATH_CODES: ReadonlySet<string> = new Set([
   "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
   "SECOND_HOME_GUARANTEE_BELOW_THRESHOLD",
   "PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR",
+  "RETIREMENT_INCOME_BELOW_THRESHOLD",
 ]);
 
 function reason(
@@ -1200,16 +1254,23 @@ function reason(
   // why it was written in the first place (#6441). The static entry in
   // SUPPORT_REASON_COPY remains the fallback for every walk whose facts do
   // not reconstruct the number.
-  const message = FACT_DERIVED_NO_PATH_CODES.has(code)
-    ? (secondHomeBelowThresholdReason(facts ?? {}) ??
-      paidActivityWithoutIndonesianPayerReason(facts ?? {}) ??
-      (code === "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
-        ? secondHomeDepositHolderReason(facts ?? {})
-        : undefined) ??
-      reasonMessage(code))
-    : DEPOSIT_ROUTE_DEAD_END_CODES.has(code)
-      ? (secondHomeDepositHolderReason(facts ?? {}) ?? reasonMessage(code))
-      : reasonMessage(code);
+  const message =
+    code === "RETIREMENT_INCOME_BELOW_THRESHOLD"
+      ? // Its own builder only: the retirement dead end must never be
+        // answered by a Second Home or paid-activity sentence drawn from
+        // unrelated (stale or mixed) facts.
+        (retirementIncomeBelowThresholdReason(facts ?? {}) ??
+        reasonMessage(code))
+      : FACT_DERIVED_NO_PATH_CODES.has(code)
+        ? (secondHomeBelowThresholdReason(facts ?? {}) ??
+          paidActivityWithoutIndonesianPayerReason(facts ?? {}) ??
+          (code === "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
+            ? secondHomeDepositHolderReason(facts ?? {})
+            : undefined) ??
+          reasonMessage(code))
+        : DEPOSIT_ROUTE_DEAD_END_CODES.has(code)
+          ? (secondHomeDepositHolderReason(facts ?? {}) ?? reasonMessage(code))
+          : reasonMessage(code);
   return {
     code,
     message,
@@ -1306,8 +1367,8 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // points to the Second Home Studio, which is where OutcomeSheet renders
   // the actual link (`/visa/second-home/studio`) for this code specifically.
   SECOND_HOME_BELOW_THRESHOLD_STUDIO: text(
-    `The Second Home Visa (E33) is granted against a guarantee: qualifying property worth at least ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "en-US")}, or a bank deposit of at least ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")} held in your own name at a state bank. The figure you declared for the route you chose does not reach its threshold, so this route is not confirmed on your answers yet. The Second Home Studio shows the routes — property, deposit, or a combination — and the numbers for your case.`,
-    `Visa Rumah Kedua (E33) diberikan atas dasar jaminan: properti yang memenuhi syarat senilai minimal ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}, atau deposito bank minimal ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama Anda sendiri di bank milik negara. Angka yang Anda nyatakan untuk jalur yang Anda pilih belum mencapai ambang batasnya, sehingga jalur ini belum dapat dikonfirmasi berdasarkan jawaban Anda. Second Home Studio menampilkan jalur-jalur — properti, deposito, atau kombinasi keduanya — beserta angka untuk kasus Anda.`,
+    `The Second Home Visa (E33) is granted against a guarantee: qualifying property worth at least ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "en-US")}, or a bank deposit of at least ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")} held in your own name at a state bank. The figure you declared for the route you chose does not reach its threshold, so this route is not confirmed on your answers yet. The Second Home Studio shows the property and deposit routes and the numbers for your case.`,
+    `Visa Rumah Kedua (E33) diberikan atas dasar jaminan: properti yang memenuhi syarat senilai minimal ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}, atau deposito bank minimal ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama Anda sendiri di bank milik negara. Angka yang Anda nyatakan untuk jalur yang Anda pilih belum mencapai ambang batasnya, sehingga jalur ini belum dapat dikonfirmasi berdasarkan jawaban Anda. Second Home Studio menampilkan jalur properti dan deposito beserta angka untuk kasus Anda.`,
   ),
 
   // 17 pack-independent codes emitted by evaluate_path.py directly.
@@ -2221,7 +2282,19 @@ function buildValidatedOutcome(
           if (!isSourcelessDeadEnd) {
             requireDecisiveRefs(item.source_refs);
           }
-          return reason(item.code, item.source_refs, trustedIds, options.facts);
+          const mapped = reason(
+            item.code,
+            item.source_refs,
+            trustedIds,
+            options.facts,
+          );
+          const collaborationMessage =
+            item.code === "E33A_SPONSOR_NOT_GOVERNMENT"
+              ? e33bCollaborationNotCommittedReason(options.facts ?? {})
+              : undefined;
+          return collaborationMessage
+            ? { ...mapped, message: collaborationMessage }
+            : mapped;
         }) as [OutcomeReason, ...OutcomeReason[]],
         alternatives,
       };

@@ -16,6 +16,8 @@ import {
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   SOURCELESS_NO_PATH_CODES,
   SUPPORT_REASON_COPY,
+  E33E_DEPOSIT_THRESHOLD_USD,
+  RETIREMENT_INCOME_THRESHOLD_USD,
   buildEngineOutcome,
   isSecondHomeStudioOnly,
 } from "./engine-adapter";
@@ -134,6 +136,48 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     expect(candidate.price).toMatchObject({ status: "CONTACT_REQUIRED" });
     expect(candidate.documents).toEqual([]);
     expect(JSON.stringify(candidate)).not.toContain("60 days");
+  });
+
+  it("keeps E33A/B/C consultation copy honest and pins the E33A central-government exclusion in both languages", () => {
+    expect(SUPPORT_REASON_COPY.E33A_GOVERNMENT_INVITATION_ELIGIBLE).toEqual({
+      en: "You told us you hold a written invitation from an Indonesian central-government body for your special expertise — the Second Home Visa — Special-Expertise Government Invitation (E33A). This government-invitation route is handled with a Bali Zero advisor.",
+      id: "Anda menyampaikan bahwa Anda memiliki undangan tertulis dari instansi pemerintah pusat Indonesia atas keahlian khusus Anda — Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A). Jalur undangan pemerintah ini ditangani bersama konsultan Bali Zero.",
+    });
+    expect(SUPPORT_REASON_COPY.E33B_GOVERNMENT_COLLABORATION_ELIGIBLE).toEqual({
+      en: "You told us you have a confirmed collaboration commitment with an Indonesian government body or institution based on your special expertise — the Second Home Golden Visa — Special-Expertise Collaboration (E33B). This collaboration route is handled with a Bali Zero advisor.",
+      id: "Anda menyampaikan bahwa Anda memiliki komitmen kolaborasi yang terkonfirmasi dengan instansi atau lembaga pemerintah Indonesia berdasarkan keahlian khusus Anda — Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B). Jalur kolaborasi ini ditangani bersama konsultan Bali Zero.",
+    });
+    expect(SUPPORT_REASON_COPY.E33C_WORLD_FIGURE_INVITATION_ELIGIBLE).toEqual({
+      en: "You told us you have an invitation letter from an Indonesian central-government agency inviting you as a world figure — the Second Home Golden Visa — World-Figure Government Invitation (E33C). This government-invitation route is handled with a Bali Zero advisor.",
+      id: "Anda menyampaikan bahwa Anda memiliki surat undangan dari instansi pemerintah pusat Indonesia yang mengundang Anda sebagai tokoh dunia — Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C). Jalur undangan pemerintah ini ditangani bersama konsultan Bali Zero.",
+    });
+    expect(SUPPORT_REASON_COPY.E33A_SPONSOR_NOT_GOVERNMENT).toEqual({
+      en: "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian central-government body, and you did not name one as your sponsor.",
+      id: "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah pusat Indonesia, dan Anda tidak menyebutkan instansi pemerintah pusat sebagai penjamin Anda.",
+    });
+  });
+
+  it("never offers a combined property-and-deposit route in Second Home or E33 copy", () => {
+    const copy = REVIEW_REASON_COPY[SECOND_HOME_STUDIO_REVIEW_REASON_CODE];
+    expect(copy.en).not.toMatch(/combination/i);
+    expect(copy.id).not.toMatch(/kombinasi/i);
+    const combined = /combination|combined|both together|split|mix/i;
+    const gabungan = /kombinasi|gabungan|campuran/i;
+    const entries = [
+      ...Object.entries(REVIEW_REASON_COPY),
+      ...Object.entries(SUPPORT_REASON_COPY),
+    ].filter(([code]) => /^(SECOND_HOME_|E33)/.test(code));
+    expect(entries.length).toBeGreaterThan(3);
+    for (const [code, value] of entries) {
+      expect([code, value.en]).not.toEqual([
+        code,
+        expect.stringMatching(combined),
+      ]);
+      expect([code, value.id]).not.toEqual([
+        code,
+        expect.stringMatching(gabungan),
+      ]);
+    }
   });
 
   it("renders an exact PricingTool quote as one all-inclusive IDR amount", () => {
@@ -1178,6 +1222,91 @@ describe("support reasons are sentences, not machine codes", () => {
     );
   });
 
+  describe("RETIREMENT_INCOME_BELOW_THRESHOLD names the figure the rules check", () => {
+    function retirementNoPathMessage(facts?: OracleFacts) {
+      const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+      response.decision.no_path_reasons = [
+        {
+          code: "RETIREMENT_INCOME_BELOW_THRESHOLD",
+          rule_ids: ["hf.e33e.retirement-income-below-minimum"],
+          source_refs: [TEST_SOURCE_ID],
+        },
+      ];
+      const outcome = buildEngineOutcome(response, facts ? { facts } : {});
+      if (outcome.state !== "NO_SUPPORTED_PATH")
+        throw new Error("unexpected state");
+      return outcome.noPathReasons[0].message;
+    }
+
+    it("echoes a declared 2,999 and names the USD 3,000 minimum, EN and ID", () => {
+      const message = retirementNoPathMessage({
+        category: "retire",
+        retirement_basis: "passive_income",
+        secondhome_passive_income_usd: "2999",
+      });
+      expect(message.en).toBe(
+        "You declared USD 2,999 a month; the retirement visas (E33E/E33F) need documented passive income of at least USD 3,000 a month.",
+      );
+      expect(message.id).toBe(
+        "Anda menyatakan USD 2.999 per bulan; visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal USD 3.000 per bulan.",
+      );
+    });
+
+    it("says a 'not sure' counted as zero instead of claiming a figure was given", () => {
+      const message = retirementNoPathMessage({
+        category: "retire",
+        retirement_basis: "passive_income",
+        secondhome_passive_income_usd: "unsure",
+      });
+      expect(message.en).toBe(
+        "You were not sure of your monthly passive income, so it counted as zero. The retirement visas need documented passive income of at least USD 3,000 a month: come back with the figure, or ask a Bali Zero advisor.",
+      );
+      expect(message.id).toBe(
+        "Anda belum yakin dengan penghasilan pasif bulanan Anda, sehingga dihitung nol. Visa pensiun memerlukan penghasilan pasif terdokumentasi minimal USD 3.000 per bulan: kembalilah dengan angkanya, atau tanyakan kepada konsultan Bali Zero.",
+      );
+    });
+
+    it("falls back to the neutral static sentence (no claim about the visitor's figure) when the facts do not show a below-minimum income", () => {
+      for (const facts of [
+        undefined,
+        {},
+        { secondhome_passive_income_usd: "3000" },
+        { secondhome_passive_income_usd: "abc" },
+      ] as Array<OracleFacts | undefined>) {
+        const message = retirementNoPathMessage(facts);
+        expect(message).toEqual(
+          SUPPORT_REASON_COPY.RETIREMENT_INCOME_BELOW_THRESHOLD,
+        );
+        expect(message.en).toBe(
+          "The retirement visas (E33E/E33F) need documented passive income of at least USD 3,000 a month.",
+        );
+        expect(message.id).toBe(
+          "Visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal USD 3.000 per bulan.",
+        );
+      }
+    });
+
+    it("keeps the retirement sentence when unrelated Second Home and paid-activity facts are also populated", () => {
+      const message = retirementNoPathMessage({
+        // category "retire" with leftovers that would each trigger a
+        // sibling builder if the retirement code ever reached them.
+        category: "retire",
+        retirement_basis: "passive_income",
+        secondhome_passive_income_usd: "2999",
+        secondhome_basis: "bank_deposit",
+        investment_vehicle: "bank_deposit",
+        secondhome_deposit_usd: "10000",
+        secondhome_state_bank: "no",
+        secondhome_own_name: "no",
+        other_paid_activity: "yes",
+        work_payer: "no",
+      });
+      expect(message.en).toBe(
+        "You declared USD 2,999 a month; the retirement visas (E33E/E33F) need documented passive income of at least USD 3,000 a month.",
+      );
+    });
+  });
+
   it("Slice A10: LEVEL_BAND_DIKTI renders its own copy beside the STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED copy", () => {
     const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
     response.decision.no_path_reasons = [
@@ -1269,6 +1398,41 @@ describe("support reasons are sentences, not machine codes", () => {
     );
   });
 
+  // Same pin for the retirement pair. The income figure is the `lt` bound of
+  // the two retirement hard filters (the figure the no-path sentence quotes);
+  // the deposit figure is `el.e33e.retirement`'s `gte`.
+  it("RETIREMENT_INCOME_THRESHOLD_USD tracks the signed pack's retirement-income hard filters (lt) and E33E_DEPOSIT_THRESHOLD_USD its el.e33e.retirement gte", () => {
+    for (const ruleId of [
+      "hf.e33e.retirement-income-below-minimum",
+      "hf.e33f.retirement-income-below-minimum",
+    ]) {
+      const rule = (highestSequencePack().rules ?? []).find(
+        (r) => r.rule_id === ruleId,
+      );
+      if (!rule) throw new Error(`${ruleId} is absent from the pack`);
+      expect(
+        findLtValue(rule.when, "secondhome.passive_monthly_income_usd"),
+      ).toBe(RETIREMENT_INCOME_THRESHOLD_USD);
+    }
+    expect(E33E_DEPOSIT_THRESHOLD_USD).toBe(
+      gteThresholdInPack("el.e33e.retirement", "secondhome.bank_deposit_usd"),
+    );
+  });
+
+  // E33E_RETIREMENT_ELIGIBLE states TWO figures; the first-figure reader in
+  // FIGURE_BACKED_BY_RULE below pins the deposit, this pins the income.
+  it("E33E_RETIREMENT_ELIGIBLE's second figure (monthly income) is el.e33e.retirement's passive-income gte, EN and ID", () => {
+    const expected = gteThresholdInPack(
+      "el.e33e.retirement",
+      "secondhome.passive_monthly_income_usd",
+    );
+    const copy = SUPPORT_REASON_COPY.E33E_RETIREMENT_ELIGIBLE;
+    const second = (c: string, sep: RegExp) =>
+      Number([...c.matchAll(/USD\s+([\d.,]+)/g)][1][1].replace(sep, ""));
+    expect(second(copy.en, /,/g)).toBe(expected);
+    expect(second(copy.id, /\./g)).toBe(expected);
+  });
+
   // D3c/C-D5 (owner order, 2026-09-13): three more SUPPORT_REASON_COPY
   // sentences state a literal figure that a signed-pack rule actually backs
   // (`el.e28a.investment`, `el.e33e.retirement`, `el.e33f.retirement` — the
@@ -1332,6 +1496,12 @@ describe("support reasons are sentences, not machine codes", () => {
       readId: usdFromProseId,
     },
     E33F_RETIREMENT_ELIGIBLE: {
+      ruleId: "el.e33f.retirement",
+      fact: "secondhome.passive_monthly_income_usd",
+      readEn: usdFromProse,
+      readId: usdFromProseId,
+    },
+    RETIREMENT_INCOME_BELOW_THRESHOLD: {
       ruleId: "el.e33f.retirement",
       fact: "secondhome.passive_monthly_income_usd",
       readEn: usdFromProse,
@@ -1466,6 +1636,34 @@ describe("support reasons are sentences, not machine codes", () => {
       throw new Error("unexpected state");
     return outcome.noPathReasons[0].message;
   }
+
+  it("uses the visitor's E33B collaboration answer instead of the E33A sponsor sentence for a sponsorless walk", () => {
+    const message = firstNoPathReason("E33A_SPONSOR_NOT_GOVERNMENT", {
+      sponsor_category: "NONE",
+      sponsor_government_collaboration: "no",
+    });
+    expect(message).toEqual({
+      en: "You told us you do not have a confirmed collaboration commitment with an Indonesian government body or institution based on your special expertise; the Second Home Golden Visa — Special-Expertise Collaboration (E33B) needs that commitment.",
+      id: "Anda menyampaikan bahwa Anda belum memiliki komitmen kolaborasi yang terkonfirmasi dengan instansi atau lembaga pemerintah Indonesia berdasarkan keahlian khusus Anda; Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B) memerlukan komitmen tersebut.",
+    });
+  });
+
+  it("keeps the E33A sentence unless the visitor is sponsorless and answered no to the E33B question", () => {
+    const cases: OracleFacts[] = [
+      { sponsor_category: "EMPLOYER", sponsor_government_collaboration: "no" },
+      {
+        sponsor_category: "INDIVIDUAL",
+        sponsor_government_collaboration: "no",
+      },
+      { sponsor_category: "NONE", sponsor_government_collaboration: "yes" },
+      { sponsor_category: "NONE" },
+    ];
+    for (const facts of cases) {
+      expect(firstNoPathReason("E33A_SPONSOR_NOT_GOVERNMENT", facts)).toEqual(
+        SUPPORT_REASON_COPY.E33A_SPONSOR_NOT_GOVERNMENT,
+      );
+    }
+  });
 
   it("explains the seq-20 local-compensation exclusion in prose, in every locale", () => {
     const code = excludeReasonCodeOfRule("hf.d2.indonesia-source-compensation");

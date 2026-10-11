@@ -7,6 +7,43 @@ CURRENT POSITION block in SKILL.md in the same commit.
 
 Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE STATE — CURRENT POSITION.
 
+- 2026-10-11 (M5, Zero: "affronta a 360 gradi la sezione retirement … tutto il E33 con i vari index"): **E33/retirement
+  program opened; four PRs live, seq-28 chain planned.** (1) Census (scratch, read-only): interview space 1.1x10^14
+  combinations (exact DAG count); 256 covering walks = 186 SUPPORTED / 57 NO_SUPPORTED_PATH / 9 HUMAN_REVIEW / 4 NEEDS_INPUT,
+  0 errors; offline replay == live 256/256 (determinism); correctness proven only where expectations exist: scenario corpus
+  116/116 (129 after #8258), gold 20/20. (2) E33 audit: 90-agent swarm, 61 confirmed findings (5 HIGH), 20-PR plan, 22 owner
+  decisions. Batch 1 decided by Zero today: (1) ONE seq-28 signing carrying the E33 content fixes + the freshness re-stamp,
+  before 2026-11-05 (boundary 2026-11-09T13:21:22Z); (2) E33G real income gate: interview question on annual
+  foreign-employment income + rule excluding < USD 60,000/yr stating the figure (supersedes the 2026-08-09 "name the check"
+  ruling); (3) retirement under 55: notice right after the tile WITH "Continue"; (4) E33A/B/C "price on consultation", never an
+  invented price. R3 default (drop "who sponsors your stay" from retirement) taken with no objection. Batch 2 still open
+  (documents checklist, onshore prices, property route/Hak Pakai, dependants, deposit commitment timing, 55-59 caveat E33F,
+  E33B/E33C scope, single timeline, F7 articles mislabelling E33A/B, E33D note, extension/10-year model). (3) LIVE, each proven
+  on production: #8246 (`033772cbdc`) dead end with no open door no longer promises one, headless walks EN/ID; #8256
+  (`c4d6ff4005`) Second Home deposit not at a state bank / not own name gets its own reason instead of the age-55 sentence,
+  walks EN/ID + control; #8258 (`17c363faaa`) 13 age-64 retirement walks + per-sequence census pins, census/evaluator legs green
+  on main; #8259 (`666926365c`) E33/E33E price rows no longer say "non-working" (rangkap kegiatan clause, selling prohibited),
+  production knowledge-layer pricing search; E33F rows deliberately unchanged. (4) In flight: #8265 (retirement reasons name USD
+  3,000/month and USD 50,000; merge queue) and #8266 (E33-family copy: no "combination" route, central government, E33B
+  collaboration sentence, E33A/B/C handled with an advisor; armed), prove-live walks pending after promote; R3 in the ship
+  pipeline; R2 (retirement_age_notice with Continue / Look at Second Home / Change answers, RETIREMENT_MIN_AGE=55 pinned to the
+  pack) built, waiting for R3; seq-28 step A (engine accepts work.annual_foreign_income_usd, rollout default NOT_ASKED; backend
+  merge = Fly deploy) in the ship pipeline. (5) seq-28 chain: A engine fact -> B mouth question remote_annual_income_usd +
+  E33G_INCOME_BELOW_THRESHOLD copy (only after A is live) -> C fold_pack_seq28.py on top of the weekly organ's re-stamp candidate
+  (pro.visa_reattestation, Sun 18:00 UTC): E33E pricing_key -> "E33E Second Home Senior (5 Years)" (45M, was "Retirement
+  (Offshore)" 14M), AGE_BELOW_55 rules scoped to RETIREMENT, el.e33g.remote-work gte 60000 + hf.e33g.annual-income-below-minimum;
+  re-derive gold personas 1/3/4 (AGE_BELOW_55 drops) -> D W141 fingerprint check, adversarial seat, two-titolare council (codex
+  gpt-5.6-sol + kimi), sign on M5, two-login activation from Pro; proof = sentinel `OK pack_sequence 28` + /evaluate sequence 28.
+  Target sign/activate ~2026-10-19/20; activation precondition: B live (else every E33G visitor lands on NEEDS_INPUT). Fallback
+  needing Zero's confirmation: if content is not ready by 11-05, sign the plain re-stamp as seq-28 and move content to seq-29.
+  (6) Regulation check (primary sources): Permenimipas 3/2025 Pasal 45 revokes only Pasal 43, 45 and 52-55 of Permenkumham
+  22/2023 as amended by 11/2024 (spouse/child-of-WNI, ex-WNI visas); E33 articles 56-63 stay in force (incl. Pasal 63(2) USD
+  60,000/yr and the 55+ age set by 11/2024); pack copies byte-identical; no citation change for seq-28. Unverified: the
+  peraturan.go.id "revoked" listing for 11/2024 (site unreachable). Follow-up: check whether any E31 rule rests on the revoked
+  Pasal 43/45. (7) Follow-ups are PENDING-ARMS rows of 2026-10-11. (8) Ops: the M5 main checkout was 146 commits behind
+  origin/main on 2026-10-11 and `.claude/skills/visaoracle` is a symlink into it, so M5 sessions read a stale corner skill until
+  the checkout is fast-forwarded (owner action). TRACK C claimed by air-m5/2026-10-11.
+
 - 2026-10-10 (M5, Zero: "sign and launch now" + "occupati tutto tu"): **seq-27 active, three copy/ops PRs live.**
   seq-27: organ candidate #8105 landed byte-for-byte, signed on M5 03:42:26Z, first landing PR #8204 closed
   after the fresh gate caught a mislabelled council seat (the Codex run used the `~/.codex` default
