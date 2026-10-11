@@ -116,21 +116,28 @@ let rc: Int32 = MainActor.assumeIsolated {
     // in a ScrollView, so they are censused per code below as registry-row, search-row and search-peak (#8227 (vi)).
     state.selected = nil
     state.browsedSector = "I"
-    let sector = isID ? "SEKTOR" : "SECTOR"
-    emit("-", "registry-chrome", SearchListView(), height: 800, anchors: [sector])
+    let sector = [isID ? "SEKTOR" : "SECTOR", isID ? "tanpa kelas risiko" : "without a risk class"]   // + the census line
+    emit("-", "registry-chrome", SearchListView(), height: 800, anchors: sector)
     state.browsedSector = nil
     state.query = "55203"
-    emit("-", "search-chrome", SearchListView(), height: 800, anchors: [sector])
+    emit("-", "search-chrome", SearchListView(), height: 800, anchors: sector)
     state.query = ""
     emit("-", "search-field", FieldBand(), height: 120, anchors: [lang.t("search.placeholder")])   // empty: the placeholder
     let codes = all.filter { pick.contains($0.kode) }
     for (n, k) in codes.enumerated() {
         let c = [k.kode]   // the code; then the last thing each View draws, from the View's own source
-        emit(k.kode, "registry-row", KBLIRegistryRow(kbli: k, isID: isID), anchors: c)
+        // A row's last element too (#8239 gate binding (a)): the risk cell, and a result's heads-up line.
+        let risk: String
+        if case .known(let l) = KBLIVerdict.of(record: k).risk { risk = Theme.riskShortLabel(l, isID: isID) }
+        else { risk = RiskCell.absentText(isID: isID) }
+        let hu = KBLIVerdict.headsUp(record: k, isID: isID)
+        emit(k.kode, "registry-row", KBLIRegistryRow(kbli: k, isID: isID), anchors: c + [risk])
         emit(k.kode, "registry-sheet", RegistryVerdictSheet(kbli: k, expanded: .constant(false), onClose: {}, scrolls: false),
              anchors: c + [isID ? "Buka dosir lengkap" : "Open the full dossier"])
-        emit(k.kode, "search-peak", QueryResultRow(kbli: k, isFirst: true, isSelected: false, isID: isID), anchors: c)
-        emit(k.kode, "search-row", QueryResultRow(kbli: k, isFirst: false, isSelected: false, isID: isID), anchors: c)
+        emit(k.kode, "search-peak", QueryResultRow(kbli: k, isFirst: true, isSelected: false, isID: isID),
+             anchors: c + [hu.sentence ?? hu.label])
+        emit(k.kode, "search-row", QueryResultRow(kbli: k, isFirst: false, isSelected: false, isID: isID),
+             anchors: c + [hu.sentence ?? hu.label])
         emit(k.kode, "detail-card", KBLIDetailRichView(kbli: k, scrolls: false), anchors: c + [lang.t("rich.cta.title")])
         emit(k.kode, "dossier", KBLIDossierView(kbli: k, variant: .claude, scrolls: false), anchors: c + ["Bali Zero · KBLI 2025"])
         emit(k.kode, "sheet-ledger", KBLIRegistryView(kbli: k, scrolls: false),
