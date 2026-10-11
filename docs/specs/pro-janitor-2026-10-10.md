@@ -1,12 +1,12 @@
 # pro.janitor — a free-space keeper for Pro (2026-10-10)
 
-Zero, 2026-10-08: Pro keeps more than 100 GB free, always. The LOCALCI lead assigned this organ on 2026-10-10 and set its
+Zero, 2026-10-08: Pro keeps more than 100 GB free, always. Zero, 2026-10-11: lowered from 100 to 90 GB. The LOCALCI lead assigned this organ on 2026-10-10 and set its
 boundaries (below).
 
 ## What exists, measured on Pro (2026-10-10, read-only)
 
-- `pro.disk_floor` (`scripts/ops/pro_disk_floor_tick.sh`, every 30 min) only observes and pages: ok above 100 GB, warning
-  60–100, failed under 60. It stays the independent witness of the floor; this organ never writes its sidecar and never
+- `pro.disk_floor` (`scripts/ops/pro_disk_floor_tick.sh`, every 30 min) only observes and pages: ok above 90 GB, warning
+  60–90, failed under 60. It stays the independent witness of the floor; this organ never writes its sidecar and never
   judges the floor for it (generator is not grader).
 - `pro.disk_janitor` (`scripts/disk_janitor.sh`, daily, APPLY) prunes scratch, codex transcripts, log archives, the qdrant
   backups, restic and brew. Its docker and `colima fstrim` steps leave in their own PR (ruled: the VM has one owner,
@@ -147,11 +147,11 @@ entered when free space falls under its entry mark and left only at or above its
 
 | tier  | enter under | leave at or above |
 | ----- | ----------- | ----------------- |
-| AMBER | 130         | 140               |
-| RED   | 115         | 125               |
-| BLACK | 105         | 112               |
+| AMBER | 120         | 130               |
+| RED   | 105         | 115               |
+| BLACK | 95          | 102               |
 
-Escalation is immediate; the way down passes each exit mark, one band at a time (RED at 132 GB is AMBER until 140). GREEN does
+Escalation is immediate; the way down passes each exit mark, one band at a time (RED at 122 GB is AMBER until 130). GREEN does
 nothing but read and write the heartbeat. The tier is recomputed after every free-space reading, so a run escalates mid-run when
 space collapses and de-escalates once it recovers; the final tier is what the state, the journal, the heartbeat and the exit code
 carry.
@@ -217,4 +217,4 @@ and for directory rules the entries by name (tool cache revisions, never a user 
 2. This organ, deployed dry-run; observed through at least one merger-tick trough.
 3. (this PR: `infra/janitor-apply-1012`) Apply on, and `disk_janitor.sh`'s `uv cache prune` step removed (one owner per cache).
 
-Bites (the lead): free space held above 100 GiB through a full CI-tick trough, and the journal of what it removed.
+Bites (the lead): free space held above 90 GiB through a full CI-tick trough, and the journal of what it removed.

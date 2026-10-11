@@ -1,7 +1,7 @@
 #!/bin/bash
 # pro.disk_floor — reads Pro's free space every 30 min and pages under the floor (B6-4,
-# docs/specs/localci-sovereign-2026-10-07.md: Pro keeps > 100 GB free, always; RULED 2026-10-08).
-# ok above 100 GB, warning from 60 to 100, failed under 60: the sidecar writes `failed` as `error`, the word
+# docs/specs/localci-sovereign-2026-10-07.md: Pro keeps > 90 GB free, always; Zero 2026-10-11, lowered from 100).
+# ok above 90 GB, warning from 60 to 90, failed under 60: the sidecar writes `failed` as `error`, the word
 # scripts/lib/heartbeat.sh canonicalises it to and the one sentinel-aggregate.py and the healer read.
 # Born via scripts/organ_birth.py (genes imprinted). Canon: scripts/ops/pro_disk_floor_tick.sh
 # Live:  ~/.nuzantara-cron/pro_disk_floor_tick.sh (declared pair, node=pro). One-shot: StartInterval, no KeepAlive (#7).
@@ -15,7 +15,7 @@ mkdir -p "$LOG_DIR"
 SIDECAR_DIR="$HOME/.organism/last_seen"
 PIDFILE="${TMPDIR:-/tmp}/nuzantara-pro-disk_floor.pid"
 DATA="${DISK_FLOOR_PATH:-/System/Volumes/Data}"   # never `df /`: that is the sealed system snapshot (disk-monitor, 2026-09-26)
-OK_ABOVE_MB=100000    # ok above 100 GB: compared in MB, so 100.5 GB is above it (whole GB would floor it to 100)
+OK_ABOVE_MB=90000     # ok above 90 GB: compared in MB, so 90.5 GB is above it (whole GB would floor it to 90)
 FAIL_UNDER_MB=60000   # failed under 60 GB
 
 ts() { date '+%Y-%m-%d %H:%M:%S'; }
