@@ -201,7 +201,7 @@ RING = tok("accent")
 
 def c24(im, fr, arg):
     """selection cue (IMM-L, #8278 and #8288 gates): the shown cell's ring is the accent on all 4 sides, 1 pt in from its
-    outer edge (3.5 pt outside the marked chip), and clear of what lies beside it: the 1.5 pt just outside that edge (past its one antialiased pixel) is the ground on each side, so a chip
+    outer edge (3.5 pt outside the marked chip), and clear of what lies beside it: the 1.5 pt just outside that edge (past its one antialiased pixel) is the ground on each side and no other marked chip is within 1.5 pt of it (a chip filled like the ground, Medium-Low at night, leaves no ink), so a chip
     stacked 4 pt away (a ring touching it) FAILs, whether it is the lower one, the upper one or one at the side; and the
     hint is drawn iff the record offers more than one cell to pick (`cells`)."""
     rec, s = arg; cells = (rec or {}).get("cells")
@@ -222,6 +222,11 @@ def c24(im, fr, arg):
             touched = sum(sum(abs(a - c) for a, c in zip(im.getpixel(p), g)) > 48 for p in out) / max(1, len(out))
             if lit < .9: bad.append("ring at %d,%d is no accent on its %s side (%.0f%%)" % (x0, y0, side, 100 * lit))
             if touched > .1: bad.append("ring at %d,%d touches what lies beside its %s side (%.0f%% of the 1.5 pt)" % (x0, y0, side, 100 * touched))
+    for _, r in fr["ring"]:   # a chip whose fill is the ground (Medium-Low at night) leaves no ink to touch: the marked frames say it
+        for _, b in fr["matrix.chip"]:
+            if b == r: continue
+            dx, dy = max(b[0] - (r[2] + o), (r[0] - o) - b[2], 0), max(b[1] - (r[3] + o), (r[1] - o) - b[3], 0)
+            if (dx * dx + dy * dy) ** .5 < 1.5 * s: bad.append("ring at %d,%d is %.1f px from the chip at %d,%d (under 1.5 pt)" % (r[0], r[1], (dx * dx + dy * dy) ** .5, b[0], b[1]))
     hints = fr.get("hint", [])
     if cells > 1 and not hints: bad.append("no hint over %d cells" % cells)
     if cells <= 1 and hints: bad.append("a hint over %d cell: nothing to pick" % cells)
@@ -472,20 +477,20 @@ def c_cases():
     # C24 (the selection cue): a chip ringed (4 px out, 2 px thick) over a stacked neighbour. 8 px of gap clears it (innocent);
     # a neighbour at 4 px (the ring touches it), below, above or at either side, FAILs; so does a ring missing a side, a hint over
     # one cell and no hint over two (#8288 gate: Medium-Low at night, 85510, the lower chip, a side touch).
-    def sel(dy=None, up=None, dx=None, lx=None, broken=None, cells=2, hint=1):
+    def sel(dy=None, up=None, dx=None, lx=None, broken=None, cells=2, hint=1, nbfill=OP):
         chip_b, ring_b = (150, 100, 250, 124), (146, 96, 254, 128)
         ops = chip("matrix.chip", "0", chip_b, OP)[0]
         for side, r in (("top", (146, 96, 254, 98)), ("bottom", (146, 126, 254, 128)), ("left", (146, 96, 148, 128)), ("right", (252, 96, 254, 128))):
             if side != broken: ops.append((r, tuple(RING[0])))
         fr = {"matrix.chip": [("0", chip_b)], "ring": [("", chip_b)]}
         for nb in ([(150, 124 + dy, 250, 148 + dy)] if dy is not None else []) + ([(150, 68, 250, 92 + up)] if up is not None else [])                 + ([(254 + dx, 100, 360 + dx, 124)] if dx is not None else []) + ([(40, 100, 146 + lx, 124)] if lx is not None else []):
-            o, f = chip("matrix.chip", "1", nb, OP); ops += o; fr["matrix.chip"] += f["matrix.chip"]
+            o, f = chip("matrix.chip", "1", nb, nbfill); ops += o; fr["matrix.chip"] += f["matrix.chip"]
         if hint:
             o, f = word("hint", "", (150, 170, 300, 182)); ops += o; fr.update(f)
         return ops, fr, {"cells": cells}
     for k, kw in ((0, dict(dy=8)), (0, dict(dy=8, up=0, dx=8, lx=-8)), (1, dict(dy=4)), (1, dict(dy=5)), (1, dict(dy=8, up=3)),
                   (1, dict(dy=8, dx=0)), (1, dict(dy=8, lx=0)), (1, dict(dy=8, broken="left")), (1, dict(dy=8, broken="bottom")),
-                  (1, dict(dy=8, cells=1)), (1, dict(dy=8, hint=0)), (0, dict(dy=8, cells=1, hint=0))):
+                  (1, dict(dy=8, cells=1)), (1, dict(dy=4, nbfill=(0xF4, 0xF1, 0xEB))), (1, dict(dy=8, hint=0)), (0, dict(dy=8, cells=1, hint=0))):
         ops, fr, rec = sel(**kw); yield "C24", rec, k, ops, fr
     # a chip whose own colours touch it on both sides: its seen box is 20 px wider, the centre unmoved (B2, #8276 gate)
     yield "C11", 4, 1, *m(*[word("matrix.head", str(i), (x - 10, 10, x + 10, 20)) for i, x in enumerate(xs)],
