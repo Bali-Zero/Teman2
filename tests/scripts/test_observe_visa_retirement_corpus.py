@@ -41,7 +41,7 @@ def test_a_lost_or_extra_walk_or_a_shifted_split_is_rejected(tally):
 @pytest.mark.parametrize(
     "line",
     [
-        "9 passed in 3.0s",
+        "14 passed in 3.0s",
         "10 failed, 12 passed in 3.0s",
         "12 passed, 1 skipped in 3.0s",
         "12 passed, 1 xfailed in 3.0s",
@@ -57,8 +57,8 @@ def test_summary_rejects_anything_but_a_full_pass_at_or_above_the_floor(line):
 @pytest.mark.parametrize(
     "line",
     [
-        "10 passed in 3.0s",
-        "\x1b[32m\x1b[1m10 passed\x1b[0m, \x1b[33m52 deselected\x1b[0m\x1b[32m in 128.5s (0:02:08)\x1b[0m",
+        "15 passed in 3.0s",
+        "\x1b[32m\x1b[1m15 passed\x1b[0m, \x1b[33m52 deselected\x1b[0m\x1b[32m in 128.5s (0:02:08)\x1b[0m",
     ],
 )
 def test_summary_accepts_a_full_pass(line):

@@ -92,7 +92,7 @@ const ASSESSMENT_ID = "x";
 const YOUNG_APPLICANT_BIRTH_DATE = "2000-11-11";
 
 /**
- * Birth date for the 6 age-64 retirement walks. `_derive_age_years`
+ * Birth date for the age-64 retirement walks. `_derive_age_years`
  * (`fact_registry.py`) is birthday-inclusive against `effective_at`; both
  * `CORPUS_TODAY` and the highest signed pack's `signed_at` land on
  * 2026-09-06, so this clears the `hf.e33e.age-below-55` /

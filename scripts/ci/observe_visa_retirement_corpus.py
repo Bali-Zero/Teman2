@@ -8,7 +8,7 @@
 
 The consumer is the required CI census leg. The observation (1) reads the census
 pin table and requires EXACTLY 13 age-64 retirement walks split 10
-SUPPORTED_CANDIDATES (3 of them [E33E, E33F], 7... see EXPECTED_* below) and 3
+SUPPORTED_CANDIDATES (4 of them [E33E, E33F], 6 [E33F] only; see EXPECTED_* below) and 3
 NO_SUPPORTED_PATH (the RETIREMENT_INCOME_BELOW_THRESHOLD dead ends), then (2) runs
 the census tests that replay those pins on every pinned sequence and requires a
 full pass with no skip. Fewer or more walks, or a different split, fails loud.
@@ -32,7 +32,7 @@ EXPECTED_SUPPORTED = 10
 EXPECTED_NO_PATH = 3
 EXPECTED_E33E_AND_E33F = 4
 EXPECTED_E33F_ONLY = 6
-MIN_TESTS = 10
+MIN_TESTS = 15
 _ROW = re.compile(
     r'^\s*"offshore/retirement/[^"]+/age64/[^"]+":\s*(_E33E_AND_E33F|_E33F_ONLY|_INCOME_BELOW_FLOOR),\s*$'
 )
@@ -94,7 +94,7 @@ def main() -> int:
             "pytest",
             TEST_FILE,
             "-k",
-            "replay_to_their_pins or expected_real or (ends_in_its_pinned and not candidate_pack)",
+            "replay_to_their_pins or expected_real or name_their_cause or (ends_in_its_pinned and not candidate_pack)",
             "-p",
             "no:cacheprovider",
         ],

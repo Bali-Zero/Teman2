@@ -154,9 +154,9 @@ NAMED_CAUSE_WALKS: dict[str, str] = {
 
 _GENERIC_CAUSE = "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
 
-#: PR-11: the three age-64 retirement walks one euro-equivalent below the
-#: income bound. On seq-21 they still end on the generic sentence (the
-#: named-cause rules are seq-27); this is pinned, not hidden.
+#: PR-11: the three age-64 retirement walks one US dollar below the
+#: USD 3,000 income bound. On seq-21 they still end on the generic sentence (the
+#: named-cause rules start at seq-23); this is pinned, not hidden.
 _RETIREMENT_INCOME_WALKS_BEFORE_SEQ27 = (
     "offshore/retirement/bank_deposit/age64/income_2999",
     "offshore/retirement/family_sponsor/age64/income_2999",
@@ -1337,6 +1337,6 @@ class TestCensusReplay:
         ]
         # The only walks that may still say it: the three PR-11 age-64
         # income-below-bound dead ends. Their named cause
-        # (RETIREMENT_INCOME_BELOW_THRESHOLD) is a seq-27 rule, which this
-        # seq-21 pack predates; seq-27's own replay pins the cause.
+        # (RETIREMENT_INCOME_BELOW_THRESHOLD) is a seq-23+ rule, which this
+        # seq-21 pack predates; the named-cause test pins it from seq-23.
         assert offenders == sorted(_RETIREMENT_INCOME_WALKS_BEFORE_SEQ27)
