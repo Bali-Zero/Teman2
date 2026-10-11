@@ -1573,6 +1573,168 @@ describe("support reasons are sentences, not machine codes", () => {
     );
   });
 
+  // Audit finding `e33-ownname-dead-end-reason` (2026-10-11): the deposit
+  // route with a deposit at/above the threshold but NOT at a state bank / NOT
+  // in the visitor's own name used to show the unrelated age sentence (under
+  // 55) or the generic catalogue sentence (55+). The 130,000 figure is the
+  // SECOND_HOME_DEPOSIT_THRESHOLD_USD constant pinned to el.e33.deposit-basis
+  // above, never a typed literal.
+  describe("second_home deposit route: holder answers (e33-ownname-dead-end-reason)", () => {
+    const AGE = "AGE_BELOW_55";
+    const OPERATIONAL = "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES";
+    const deposit = (extra: OracleFacts = {}): OracleFacts => ({
+      category: "second_home",
+      secondhome_basis: "bank_deposit",
+      secondhome_deposit_usd: "200000",
+      secondhome_state_bank: "yes",
+      secondhome_own_name: "yes",
+      ...extra,
+    });
+    const tail = {
+      en: "The Second Home Visa (E33) deposit route needs at least USD 130,000 held in your own name at an Indonesian state-owned bank.",
+      id: "Jalur deposito Visa Rumah Kedua (E33) membutuhkan minimal USD 130.000 atas nama Anda sendiri di bank milik negara Indonesia.",
+    };
+
+    it("pins the 130,000 figure to the pack's deposit-basis threshold", () => {
+      expect(tail.en).toContain(
+        `USD ${SECOND_HOME_DEPOSIT_THRESHOLD_USD.toLocaleString("en-US")}`,
+      );
+      expect(tail.id).toContain(
+        `USD ${SECOND_HOME_DEPOSIT_THRESHOLD_USD.toLocaleString("id-ID")}`,
+      );
+    });
+
+    it("state bank = no replaces the age sentence (age code) and the generic one (operational code)", () => {
+      for (const code of [AGE, OPERATIONAL]) {
+        const m = firstNoPathReason(
+          code,
+          deposit({ secondhome_state_bank: "no" }),
+        );
+        expect(m.en).toBe(
+          `You told us your deposit of USD 200,000 is not deposited at an Indonesian state-owned bank. ${tail.en}`,
+        );
+        expect(m.id).toBe(
+          `Anda menyampaikan bahwa deposito Anda sebesar USD 200.000 tidak disimpan di bank milik negara Indonesia. ${tail.id}`,
+        );
+      }
+    });
+
+    it("own name = no", () => {
+      const m = firstNoPathReason(AGE, deposit({ secondhome_own_name: "no" }));
+      expect(m.en).toBe(
+        `You told us your deposit of USD 200,000 is not held in your own name. ${tail.en}`,
+      );
+      expect(m.id).toBe(
+        `Anda menyampaikan bahwa deposito Anda sebesar USD 200.000 tidak atas nama Anda sendiri. ${tail.id}`,
+      );
+    });
+
+    it("both answers = no", () => {
+      const m = firstNoPathReason(
+        OPERATIONAL,
+        deposit({ secondhome_state_bank: "no", secondhome_own_name: "no" }),
+      );
+      expect(m.en).toBe(
+        `You told us your deposit of USD 200,000 is not deposited at an Indonesian state-owned bank. You told us it is not held in your own name. ${tail.en}`,
+      );
+      expect(m.id).toBe(
+        `Anda menyampaikan bahwa deposito Anda sebesar USD 200.000 tidak disimpan di bank milik negara Indonesia. Anda menyampaikan bahwa deposito tersebut tidak atas nama Anda sendiri. ${tail.id}`,
+      );
+    });
+
+    it("'not sure' (conservative no on the wire) is named as not sure, never as a told no", () => {
+      const bank = firstNoPathReason(
+        AGE,
+        deposit({ secondhome_state_bank: "unsure" }),
+      );
+      expect(bank.en).toBe(
+        `You were not sure whether your deposit of USD 200,000 is deposited at an Indonesian state-owned bank. ${tail.en}`,
+      );
+      expect(bank.id).toBe(
+        `Anda belum yakin apakah deposito Anda sebesar USD 200.000 disimpan di bank milik negara Indonesia. ${tail.id}`,
+      );
+      const own = firstNoPathReason(
+        OPERATIONAL,
+        deposit({ secondhome_own_name: "unsure" }),
+      );
+      expect(own.en).toBe(
+        `You were not sure whether your deposit of USD 200,000 is held in your own name. ${tail.en}`,
+      );
+      expect(own.id).toBe(
+        `Anda belum yakin apakah deposito Anda sebesar USD 200.000 atas nama Anda sendiri. ${tail.id}`,
+      );
+      const mixed = firstNoPathReason(
+        AGE,
+        deposit({ secondhome_state_bank: "no", secondhome_own_name: "unsure" }),
+      );
+      expect(mixed.en).toBe(
+        `You told us your deposit of USD 200,000 is not deposited at an Indonesian state-owned bank. You were not sure whether it is held in your own name. ${tail.en}`,
+      );
+    });
+
+    it("the invest deposit route is covered too", () => {
+      const m = firstNoPathReason(AGE, {
+        category: "invest",
+        investment_vehicle: "bank_deposit",
+        secondhome_deposit_usd: "200000",
+        secondhome_state_bank: "no",
+        secondhome_own_name: "yes",
+      });
+      expect(m.en).toContain("is not deposited at an Indonesian state-owned");
+    });
+
+    it("innocence: retirement walks keep the age sentence", () => {
+      const m = firstNoPathReason(AGE, {
+        ...deposit({ secondhome_state_bank: "no" }),
+        category: "retirement",
+      });
+      expect(m.en).toBe(SUPPORT_REASON_COPY.AGE_BELOW_55.en);
+      expect(m.id).toBe(SUPPORT_REASON_COPY.AGE_BELOW_55.id);
+    });
+
+    it("innocence: a deposit below the threshold keeps the existing copy", () => {
+      const m = firstNoPathReason(
+        AGE,
+        deposit({
+          secondhome_deposit_usd: "50000",
+          secondhome_state_bank: "no",
+        }),
+      );
+      expect(m.en).toBe(SUPPORT_REASON_COPY.AGE_BELOW_55.en);
+      const op = firstNoPathReason(
+        OPERATIONAL,
+        deposit({
+          secondhome_deposit_usd: "50000",
+          secondhome_state_bank: "no",
+        }),
+      );
+      expect(op.en).toMatch(/50,000/);
+      expect(op.en).toMatch(/130,000/);
+    });
+
+    it("innocence: both answers yes, a skipped answer, the property basis, or another code keep the existing copy", () => {
+      expect(firstNoPathReason(AGE, deposit()).en).toBe(
+        SUPPORT_REASON_COPY.AGE_BELOW_55.en,
+      );
+      const { secondhome_state_bank: _skipped, ...skipped } = deposit();
+      expect(firstNoPathReason(OPERATIONAL, skipped).en).toBe(
+        SUPPORT_REASON_COPY[OPERATIONAL].en,
+      );
+      expect(
+        firstNoPathReason(AGE, {
+          ...deposit({ secondhome_state_bank: "no" }),
+          secondhome_basis: "property",
+        }).en,
+      ).toBe(SUPPORT_REASON_COPY.AGE_BELOW_55.en);
+      expect(
+        firstNoPathReason(
+          "SECOND_HOME_GUARANTEE_BELOW_THRESHOLD",
+          deposit({ secondhome_state_bank: "no" }),
+        ).en,
+      ).toBe(SUPPORT_REASON_COPY.SECOND_HOME_GUARANTEE_BELOW_THRESHOLD.en);
+    });
+  });
+
   // D3-3 (PR-D3): `hf.e33f.sponsor-required` is now reachable — a retirement
   // walk whose chosen basis fails AND whose sponsor is denied resolves
   // decisively to NO_SUPPORTED_PATH with this code (previously unreachable
