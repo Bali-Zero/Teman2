@@ -1005,7 +1005,9 @@ struct KBLIRegistryView: View {
             }
             .accessibilityAddTraits(.isHeader)   // D3b — this footer's section title
             if showsIdentityAndVerdict, let opener = openerLine {
-                Text(opener)
+                // A Bali-blocked opener is the whole curated verdict, so the `*x*` pairs `cleanOpener`
+                // leaves (55203 *Vila*, 55209 *Guest House*, EN) draw as the reason's emphasis does.
+                Text(kbli.l4Bali?.blocked == true ? LabelBook.emphasis(opener, size: 13) : AttributedString(opener))
                     .font(Theme.scalable(13)).foregroundStyle(Theme.white).lineSpacing(4)
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
