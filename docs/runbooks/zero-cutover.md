@@ -13,7 +13,7 @@
 | `FastLabsNet/zero`      | product-only snapshot of canonical `60c2a5c245` (single commit) + its own CI                                                                                                        |
 | zero CI                 | `.github/workflows/ci.yml` on the self-hosted runner `mini-zero-1` (Linux container in Colima on Mini, LAN/tailnet/host blocked); 0 GitHub-hosted jobs                              |
 | zero perimeter          | zero's `.slim/keep_paths.txt`, `cut_paths.txt`, `local_paths.txt`; `.github/` and `.slim/` are zero-owned                                                                           |
-| canonical → zero sync   | `scripts/zero_sync/` + organ `mini.zero_sync` (every 30 min, fast-forward only, refuses to revert a direct zero change)                                                             |
+| canonical → zero sync   | `scripts/zero_sync/` + organ `mini.zero_sync` (every 5 min, fast-forward only, refuses to revert a direct zero change)                                                              |
 | deploys                 | backend from zero since 2026-10-11 (gates 4–5, below); mouth still from Teman2 (`vercel_prod_deploy.py` gitSource + `mini.vercel_autopromote`)                                      |
 | zero's deploy workflows | `fly-deploy` active (secret `FLY_API_TOKEN`, an app-scoped deploy token); `garuda-arm`, `frontend-live-sentinel`, `lighthouse`, `tests`, `frontend-typecheck` disabled              |
 | staff roster            | `backend/core/team_roster.py` reads `TEAM_MEMBERS_JSON` → `TEAM_MEMBERS_FILE` → the package file; zero carries only `team_members.synthetic.json` (invented people, used by its CI) |
