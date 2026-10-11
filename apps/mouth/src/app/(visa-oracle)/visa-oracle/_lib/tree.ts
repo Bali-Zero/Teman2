@@ -477,6 +477,28 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.guardian_consent" },
     // A missing guardian is an explicit "no": UNKNOWN would only re-ask it.
   },
+  // R2 (owner decision 2026-10-11): a notice, not a question. Shown right
+  // after the purpose answers when the retirement tile is chosen with a date
+  // of birth below RETIREMENT_MIN_AGE (flow.ts). HUMAN_CONTEXT: its only
+  // recorded value, `continue`, maps to no engine fact — the pack still
+  // decides on `derived.age_years`. "Look at Second Home" and "Change my
+  // answers" are navigation, rendered by OracleShell as secondary actions —
+  // deliberately NOT options, so no walk (and no enumerated path) ever
+  // records them as an answer. No `notSure`
+  // (nothing to be unsure about) and no `whyWeAsk` (nothing is collected).
+  retirement_age_notice: {
+    id: "retirement_age_notice",
+    i18nKey: "q.retirement_age_notice",
+    kind: "branch",
+    group: "identity",
+    decisionMapping: { kind: "HUMAN_CONTEXT" },
+    options: [
+      {
+        key: "continue",
+        labelI18nKey: "q.retirement_age_notice.opt.continue",
+      },
+    ],
+  },
   category: {
     id: "category",
     i18nKey: "q.category",

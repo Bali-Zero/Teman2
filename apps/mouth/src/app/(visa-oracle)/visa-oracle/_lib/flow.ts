@@ -86,6 +86,79 @@ function isMinor(birthDate: string | undefined, today: Date): boolean {
   return age < 18;
 }
 
+/**
+ * The age below which the two retirement products (E33E / E33F) exclude an
+ * applicant — `hf.e33e.age-below-55` / `hf.e33f.age-below-55`, `derived.
+ * age_years lt 55`. Client-side copy of a pack constant: flow.test.ts pins it
+ * to the newest signed pack so it cannot drift silently.
+ */
+export const RETIREMENT_MIN_AGE = 55;
+
+/**
+ * Whole years of age at `today`, computed exactly like the engine's
+ * `derived.age_years` (UTC dates, birthday-inclusive; a 29 February birthday
+ * falls on 1 March in a non-leap year). `null` when the date is unusable or
+ * lies in the future — the engine turns those UNKNOWN, so the notice stays
+ * silent and the pack decides.
+ */
+export function ageYearsAt(birthDate: string | undefined, today: Date) {
+  if (!birthDate) return null;
+  const birthMs = parseIsoDateUtc(birthDate);
+  if (birthMs === null) return null;
+  const birth = new Date(birthMs);
+  const ty = today.getUTCFullYear();
+  const tm = today.getUTCMonth();
+  const td = today.getUTCDate();
+  if (birth.getTime() > Date.UTC(ty, tm, td)) {
+    return null;
+  }
+  const beforeBirthday =
+    tm < birth.getUTCMonth() ||
+    (tm === birth.getUTCMonth() && td < birth.getUTCDate());
+  return ty - birth.getUTCFullYear() - (beforeBirthday ? 1 : 0);
+}
+
+/** The day the person turns `RETIREMENT_MIN_AGE` (UTC; 29 Feb -> 1 March when
+ * that year is not a leap year, as in the engine's age rule). */
+export function retirementAgeDate(birthDate: string): Date | null {
+  const birthMs = parseIsoDateUtc(birthDate);
+  if (birthMs === null) return null;
+  const birth = new Date(birthMs);
+  const year = birth.getUTCFullYear() + RETIREMENT_MIN_AGE;
+  const month = birth.getUTCMonth();
+  const day = birth.getUTCDate();
+  const exists = new Date(Date.UTC(year, month, day));
+  return exists.getUTCMonth() === month
+    ? exists
+    : new Date(Date.UTC(year, month + 1, 1));
+}
+
+/** True when the retirement-age notice applies: retirement tile chosen and a
+ * usable date of birth puts the applicant below `RETIREMENT_MIN_AGE`. */
+export function shouldShowRetirementAgeNotice(
+  facts: OracleFacts,
+  today: Date,
+): boolean {
+  if (facts.category !== "retirement") return false;
+  const age = ageYearsAt(facts.birth_date, today);
+  return age !== null && age < RETIREMENT_MIN_AGE;
+}
+
+/** The `{{date}}` the notice copy interpolates. */
+export function retirementAgeNoticeDate(
+  facts: OracleFacts,
+  language: Language,
+): string {
+  const date = facts.birth_date ? retirementAgeDate(facts.birth_date) : null;
+  if (!date) return "";
+  return new Intl.DateTimeFormat(language === "id" ? "id-ID" : "en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 /** See `FlowState.blockedAnswer`. */
 export interface BlockedAnswer {
   questionId: string;
@@ -626,6 +699,17 @@ export function computeNextNode(
     case "category":
       return { kind: "question", questionId: "trip_scope" };
     case "trip_scope": {
+      // R2 (owner decision 2026-10-11): a retirement visitor below the
+      // retirement age is told so right after the purpose answers. The
+      // notice never decides — Continue (the only answer it records) goes on
+      // to the unchanged retirement branch and the pack still rules.
+      if (shouldShowRetirementAgeNotice(facts, today)) {
+        return { kind: "question", questionId: "retirement_age_notice" };
+      }
+      const first = getCategoryQuestionIds(facts)[0] ?? "stay_days";
+      return { kind: "question", questionId: first };
+    }
+    case "retirement_age_notice": {
       const first = getCategoryQuestionIds(facts)[0] ?? "stay_days";
       return { kind: "question", questionId: first };
     }

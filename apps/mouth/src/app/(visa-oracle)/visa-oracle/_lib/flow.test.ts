@@ -10,6 +10,8 @@ import { answerFor } from "../../../../../scripts/visa-oracle/generate-walk-corp
 import {
   D12_MAX_STAY_DAYS,
   INTERVIEW_SNAPSHOT_SCHEMA_VERSION,
+  RETIREMENT_MIN_AGE,
+  ageYearsAt,
   computeNextNode,
   createInterviewSnapshot,
   flowReducer,
@@ -17,6 +19,8 @@ import {
   getCategoryQuestionIds,
   initialFlowState,
   restoreInterviewSnapshot,
+  retirementAgeNoticeDate,
+  shouldShowRetirementAgeNotice,
   type FlowState,
 } from "./flow";
 
@@ -214,6 +218,9 @@ const CATEGORY_CASES: ReadonlyArray<{
   {
     category: "retirement",
     branch: [
+      // R2: the 1990 birth date is below the retirement age, so the notice
+      // sits between trip_scope and the branch; Continue goes on.
+      ["retirement_age_notice", "continue"],
       ["retirement_basis", "passive_income"],
       ["secondhome_passive_income_usd", "3000"],
       ["retirement_penjamin_confirmed", "yes"],
@@ -380,6 +387,7 @@ describe("retirement evidence branches", () => {
     ({ basis, answers }) => {
       let state = startOffshore("retirement");
       state = answer(state, "trip_scope", "single");
+      state = answer(state, "retirement_age_notice", "continue");
       state = answer(state, "retirement_basis", basis);
       for (const [questionId, value] of answers) {
         state = answer(state, questionId, value);
@@ -391,6 +399,7 @@ describe("retirement evidence branches", () => {
   it("prunes deposit evidence when the retirement basis changes", () => {
     let state = startOffshore("retirement");
     state = answer(state, "trip_scope", "single");
+    state = answer(state, "retirement_age_notice", "continue");
     state = answer(state, "retirement_basis", "bank_deposit");
     state = answer(state, "secondhome_deposit_usd", "100000");
     state = answer(state, "secondhome_state_bank", "yes");
@@ -2203,5 +2212,190 @@ describe("business explorer — the D12 sequence", () => {
     state = answer(state, "wants_onshore_conversion", "no");
     state = answer(state, "stay_days", "90");
     expectQuestion(state, "review_gate");
+  });
+});
+
+describe("R2 · the retirement-age notice (owner decision 2026-10-11)", () => {
+  const utc = (iso: string) => new Date(`${iso}T00:00:00Z`);
+
+  /** Offshore spine to the answered trip scope, clock injected on every step. */
+  function atTripScope(category: string, birth: string, today: Date) {
+    let state = initialFlowState("en");
+    state = reduce(state, { type: "ADVANCE" });
+    state = answer(state, "in_indonesia", "no", today);
+    state = answer(state, "holds_stay_permit", "no", today);
+    state = answer(state, "nationalities", "IT", today);
+    state = answer(state, "birth_date", birth, today);
+    state = answer(state, "category", category, today);
+    return answer(state, "trip_scope", "single", today);
+  }
+
+  it("pins RETIREMENT_MIN_AGE to hf.e33e / hf.e33f age-below-55 in the newest signed pack", () => {
+    const packs = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../../../../../../backend-rag/backend/services/visa_engine/contracts/packs",
+    );
+    let newest: {
+      sequence: number;
+      rules: { rule_id: string; when?: { op?: string; value?: unknown } }[];
+    } | null = null;
+    for (const name of fs.readdirSync(packs)) {
+      if (!/^rulepack-prod-\d+\.signed\.json$/.test(name)) continue;
+      const payload = JSON.parse(
+        fs.readFileSync(path.join(packs, name), "utf-8"),
+      ).payload;
+      if (newest === null || payload.sequence > newest.sequence) {
+        newest = payload;
+      }
+    }
+    expect(newest).not.toBeNull();
+    for (const ruleId of ["hf.e33e.age-below-55", "hf.e33f.age-below-55"]) {
+      const rule = newest!.rules.find((r) => r.rule_id === ruleId);
+      expect(
+        rule,
+        `${ruleId} is absent from the newest signed pack`,
+      ).toBeDefined();
+      expect(rule!.when).toMatchObject({
+        fact: "derived.age_years",
+        op: "lt",
+        value: RETIREMENT_MIN_AGE,
+      });
+    }
+  });
+
+  it.each([
+    // The engine's own boundary rows (test_fact_registry.py::TestDeriveAgeYears).
+    ["1971-09-06", "2026-09-05", 54],
+    ["1971-09-06", "2026-09-06", 55],
+    ["1972-02-29", "2027-02-28", 54],
+    ["1972-02-29", "2027-03-01", 55],
+    ["1972-02-29", "2028-02-28", 55],
+    ["1972-02-29", "2028-02-29", 56],
+  ] as const)(
+    "ageYearsAt(%s at %s) = %i, like derived.age_years",
+    (birth, at, years) => {
+      expect(ageYearsAt(birth, utc(at))).toBe(years);
+    },
+  );
+
+  it("ageYearsAt is null for a missing, malformed or future date of birth", () => {
+    expect(ageYearsAt(undefined, utc("2026-10-11"))).toBeNull();
+    expect(ageYearsAt("not-a-date", utc("2026-10-11"))).toBeNull();
+    expect(ageYearsAt("2027-01-01", utc("2026-10-11"))).toBeNull();
+  });
+
+  it("reads the UTC calendar day, not the local one", () => {
+    // 2026-09-05T23:59:59Z is still the 5th in UTC whatever the host zone.
+    expect(ageYearsAt("1971-09-06", new Date("2026-09-05T23:59:59Z"))).toBe(54);
+    expect(ageYearsAt("1971-09-06", new Date("2026-09-06T00:00:00Z"))).toBe(55);
+  });
+
+  it("guilt: age 54 on the retirement tile is shown the notice after trip_scope, before the branch", () => {
+    const today = utc("2026-09-05");
+    const state = atTripScope("retirement", "1971-09-06", today);
+    expectQuestion(state, "retirement_age_notice");
+  });
+
+  it("innocence: age 55 exactly (the birthday itself) never sees it", () => {
+    const today = utc("2026-09-06");
+    const state = atTripScope("retirement", "1971-09-06", today);
+    expectQuestion(state, "retirement_basis");
+  });
+
+  it("leap-day birth: still 54 on 28 Feb 2027, the notice goes away on 1 March", () => {
+    expect(
+      shouldShowRetirementAgeNotice(
+        { category: "retirement", birth_date: "1972-02-29" },
+        utc("2027-02-28"),
+      ),
+    ).toBe(true);
+    expect(
+      shouldShowRetirementAgeNotice(
+        { category: "retirement", birth_date: "1972-02-29" },
+        utc("2027-03-01"),
+      ),
+    ).toBe(false);
+  });
+
+  it("innocence: other categories and unusable birth dates never see it", () => {
+    const young = "1990-02-03";
+    const today = utc("2026-10-11");
+    for (const category of CATEGORY_KEYS.filter((c) => c !== "retirement")) {
+      expect(
+        shouldShowRetirementAgeNotice({ category, birth_date: young }, today),
+        category,
+      ).toBe(false);
+    }
+    expect(
+      shouldShowRetirementAgeNotice({ category: "retirement" }, today),
+    ).toBe(false);
+    expect(
+      shouldShowRetirementAgeNotice(
+        { category: "retirement", birth_date: "2099-01-01" },
+        today,
+      ),
+    ).toBe(false);
+  });
+
+  it("Continue is fail-open: it records one value and the unchanged retirement branch follows", () => {
+    const today = utc("2026-10-11");
+    let state = atTripScope("retirement", "1990-02-03", today);
+    expectQuestion(state, "retirement_age_notice");
+    state = answer(state, "retirement_age_notice", "continue", today);
+    expectQuestion(state, "retirement_basis");
+    expect(state.facts.retirement_age_notice).toBe("continue");
+    // The branch itself is untouched by the notice.
+    expect(getCategoryQuestionIds({ category: "retirement" })[0]).toBe(
+      "retirement_basis",
+    );
+  });
+
+  it("Change my answers: editing the date of birth past 55 drops the notice and its answer", () => {
+    const today = utc("2026-10-11");
+    let state = atTripScope("retirement", "1990-02-03", today);
+    state = answer(state, "retirement_age_notice", "continue", today);
+    state = reduce(state, { type: "EDIT", questionId: "birth_date" });
+    expect(state.facts.retirement_age_notice).toBeUndefined();
+    state = answer(state, "birth_date", "1960-01-01", today);
+    state = answer(state, "category", "retirement", today);
+    state = answer(state, "trip_scope", "single", today);
+    expectQuestion(state, "retirement_basis");
+  });
+
+  it("Look at Second Home: SELECT_CATEGORY leaves the notice behind and asks the Second Home questions", () => {
+    const today = utc("2026-10-11");
+    let state = atTripScope("retirement", "1990-02-03", today);
+    state = reduce(state, {
+      type: "SELECT_CATEGORY",
+      category: "second_home",
+      today,
+    });
+    expect(state.facts.category).toBe("second_home");
+    expect(state.history).not.toContainEqual({
+      kind: "question",
+      questionId: "retirement_age_notice",
+    });
+    state = answer(state, "trip_scope", "single", today);
+    expectQuestion(state, "secondhome_basis");
+  });
+
+  it("names the 55th birthday in the visitor's language, in UTC", () => {
+    const facts = { category: "retirement", birth_date: "1972-02-29" };
+    expect(retirementAgeNoticeDate(facts, "en")).toBe("1 March 2027");
+    expect(retirementAgeNoticeDate(facts, "id")).toBe("1 Maret 2027");
+    expect(retirementAgeNoticeDate({ birth_date: "1971-09-06" }, "en")).toBe(
+      "6 September 2026",
+    );
+  });
+
+  it("the copy carries the {{date}} placeholder and claims nothing about any product", () => {
+    for (const language of ["en", "id"] as const) {
+      const hint = translate(
+        language,
+        "q.retirement_age_notice.hint" as I18nKey,
+      );
+      expect(hint).toContain("{{date}}");
+      expect(hint).toContain("55");
+    }
   });
 });

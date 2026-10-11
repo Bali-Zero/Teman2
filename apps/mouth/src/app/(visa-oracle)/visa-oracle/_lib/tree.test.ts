@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as treeRegistry from "./tree";
+import { getCategoryQuestionIds } from "./flow";
 import {
   CATEGORY_KEYS,
   QUESTIONS,
@@ -318,7 +319,7 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
   // would add a tenth `"unsure"` option, move the 253-walk manifest pin
   // (`enumerate-interview-space.test.ts:519`) and destroy slice A6-2's
   // manifest-innocence proof — that is a RED to report, never a fix.
-  it("holds exactly 14 questions with no notSure at all, named (A6-1/A7-M)", () => {
+  it("holds exactly 15 questions with no notSure at all, named (A6-1/A7-M)", () => {
     expect(
       Object.entries(QUESTIONS)
         .filter(([, q]) => q.notSure === undefined)
@@ -328,6 +329,7 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
       [
         "guardian_consent",
         "investment_currency",
+        "retirement_age_notice",
         "retirement_undecided_basis",
         "review_gate",
         "sponsor_government_invitation",
@@ -344,6 +346,24 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
     );
     expect(
       Object.entries(QUESTIONS).filter(([, q]) => q.notSure === undefined),
-    ).toHaveLength(14);
+    ).toHaveLength(15);
+  });
+});
+
+describe("R2 · retirement_age_notice is registered as a notice, not a fact", () => {
+  it("is HUMAN_CONTEXT with `continue` as its only option", () => {
+    const notice = QUESTIONS.retirement_age_notice;
+    expect(notice).toBeDefined();
+    expect(notice.decisionMapping).toEqual({ kind: "HUMAN_CONTEXT" });
+    expect(notice.options.map((option) => option.key)).toEqual(["continue"]);
+    expect(notice.notSure).toBeUndefined();
+  });
+
+  it("is not part of any category sequence: only computeNextNode routes to it", () => {
+    for (const category of CATEGORY_KEYS) {
+      expect(getCategoryQuestionIds({ category })).not.toContain(
+        "retirement_age_notice",
+      );
+    }
   });
 });
