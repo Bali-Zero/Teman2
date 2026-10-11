@@ -9,7 +9,7 @@ mission: >-
 lanes:
   - lane: vo-r2-agegate
     role: build
-    seat: Claude Sonnet 5 implementer (subagent), worktree mouth-vo-r2-agegate-1011 on M5; rebase and evidence by Claude Sonnet 5.5.
+    seat: Claude Sonnet 5 implementer (subagent), worktree mouth-vo-r2-agegate-1011 on M5; rebase and evidence by Claude Opus 5.5 (ship session).
   - lane: vo-r2-ground-truth
     role: ground_truth
     seat: >-
@@ -27,54 +27,54 @@ bites:
   observe: python3 scripts/ci/observe_visa_oracle_retirement_age_notice.py
   expect: "contains:retirement age notice holds"
 receipts:
-  - claim: The whole visa-oracle Vitest tree passes after the rebase onto origin/main (R3 sponsor guard and PR-11 kept).
+  - claim: The whole visa-oracle Vitest tree passes at the final head.
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
-    result: "Test Files 51 passed (51), Tests 1384 passed (1384) - run 1 under load 200 timed out 2 enumerator tests, rerun of that file alone with a long timeout passed 40/40"
+    result: "Test Files 53 passed (53), Tests 1398 passed (1398)"
     exit: 0
-    ts: "2026-10-11T12:00:00Z"
-    seat: this session
+    ts: "2026-10-11T13:14:13Z"
+    seat: this session (ship session, head after the e2e fix)
   - claim: The census pytest passes (age notice visited iff age below 55; outcome pins unchanged).
     cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
     result: "53 passed, 14 skipped"
     exit: 0
-    ts: "2026-10-11T12:02:00Z"
-    seat: this session
+    ts: "2026-10-11T13:18:01Z"
+    seat: this session (ship session, head after the e2e fix)
   - claim: The enumerator dry-run proves the bound with every edge covered.
     cmd: cd apps/mouth && npx tsx scripts/visa-oracle/enumerate-interview-space.cli.ts --dry-run
     result: "bound=PROVEN edgesRequired=324 edgesCovered=324 edgesMissing=0 maxDepth=27"
     exit: 0
-    ts: "2026-10-11T12:00:00Z"
-    seat: this session
-  - claim: The walk corpus regenerates byte-identical after the rebase (129 walks, no diff).
+    ts: "2026-10-11T13:19:33Z"
+    seat: this session (ship session, head after the e2e fix)
+  - claim: The walk corpus regenerates byte-identical at head 99c72e7ece6d (no diff).
     cmd: npm run visa-oracle:walk-corpus -w apps/mouth
-    result: "wrote 129 walks; git status clean"
+    result: "regenerated, git status clean (byte-identical)"
     exit: 0
-    ts: "2026-10-11T11:55:00Z"
-    seat: this session
-  - claim: The bites observer passes on the branch head and accepts only a full pass of at least 6 tests.
+    ts: "2026-10-11T12:50:00Z"
+    seat: final gate (fresh Opus seat, run at 99c72e7ece6d)
+  - claim: The bites observer passes at the final head and accepts only a full pass of at least 6 tests.
     cmd: python3 scripts/ci/observe_visa_oracle_retirement_age_notice.py
     result: "Tests 6 passed (6); retirement age notice holds"
     exit: 0
-    ts: "2026-10-11T12:05:00Z"
-    seat: this session
+    ts: "2026-10-11T13:08:12Z"
+    seat: this session (ship session, head after the e2e fix)
   - claim: The observer's summary parser rejects skipped, todo, failed and reduced counts.
     cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_retirement_age_notice.py
     result: "10 passed"
     exit: 0
     ts: "2026-10-11T12:05:00Z"
-    seat: this session
+    seat: this session (build rebase; test file unchanged since)
   - claim: The legacy client-copy guard stays green with the new strings.
     cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
-    result: "OK visa-oracle client copy: 3564 literals scanned, 0 banned"
+    result: "OK visa-oracle client copy: 3568 literals scanned, 0 banned"
     exit: 0
-    ts: "2026-10-11T12:01:00Z"
-    seat: this session
+    ts: "2026-10-11T13:06:26Z"
+    seat: this session (ship session, head after the e2e fix)
   - claim: apps/mouth typechecks.
     cmd: cd apps/mouth && npx tsc --noEmit
     result: "no output"
     exit: 0
-    ts: "2026-10-11T12:01:00Z"
-    seat: this session
+    ts: "2026-10-11T13:08:47Z"
+    seat: this session (ship session, head after the e2e fix)
 decisions:
   - id: D-notice-never-blocks
     decision: >-
