@@ -734,10 +734,10 @@ updates mid-run turns every PASS receipt STALE at `status` time (measured on the
 
 1. it reads the host's free GB (`df -Pk /System/Volumes/Data`, whole GB, floored); a `df` that gives no number starts no
    run and the heartbeat is `warning` (`host free space unreadable (df -Pk <path>): no run started`);
-2. `merger.py tick … --host-free-gb=N --min-host-free-gb=60`: under the floor the tick journals
-   `{"kind":"skipped","why":"host_below_floor","free_gb":N,"floor_gb":60}` before the lease and starts no run;
+2. `merger.py tick … --host-free-gb=N --min-host-free-gb=110`: under the start floor the tick journals
+   `{"kind":"skipped","why":"host_below_floor","free_gb":N,"floor_gb":100,"start_floor_gb":110}` before the lease and starts no run (B15);
 3. `merger.py prune --state-dir <state> --fstrim`, after the tick and never before it, whether the tick ran, skipped or failed;
-4. the heartbeat: `error` when the tick failed, `warning` with the number (`host_below_floor free_gb=N floor_gb=60: no run
+4. the heartbeat: `error` when the tick failed, `warning` with the number (`host_below_floor free_gb=N floor_gb=110: no run
    started`) under the floor or when the prune failed, `ok` otherwise. The wrapper exits with the tick's code.
 
 A mirror sha older than B6 still ticks: `prune.py` and `runner.py` are extracted only when the sha has them, and the floor
@@ -836,6 +836,29 @@ The prune takes the tick's lease: while a tick holds it, the line is `{"kind": "
 nothing is removed. `failed` lists `images` (an image still in use, an unreadable plan), `builder_prune` or `fstrim` when
 one of them failed; the prune then exits 1 and the organ says `warning`. A VM the probe cannot measure reads `null`. The prune
 reaches Pro when the wrapper's live copy is replaced with the commands of the block above (`cp` beside it, `mv`, `cmp -s`).
+
+### Host floor held through the run (B15)
+
+`docs/specs/localci-host-floor-2026-10-11.md`. Zero's directive: Pro keeps more than 100 GB free, always. B6 checked the host once,
+at the tick's start, against 60 GB; a tick that started at 111 GB ended at 99.6 (one shard container wrote 9.66 GB). kubelet's
+node-pressure model, with one constant (`HOST_FLOOR_GB` 100):
+
+- **Start floor.** A run starts only at `HOST_FLOOR_GB + START_MARGIN_GB` (10) = 110 GB free: `--min-host-free-gb` (default 110;
+  the wrapper's `MERGER_MIN_HOST_FREE_GB`). The skip line carries `floor_gb` (100) and `start_floor_gb` (110).
+- **Hard eviction.** While the runner's `plan` and `run` steps execute, the runner leads its own process group and the host
+  (`shutil.disk_usage` of `/System/Volumes/Data`, decimal GB, the janitor's sample) is read every 5 s. Under
+  `HOST_FLOOR_GB + EVICT_MARGIN_GB` (1.5) = 101.5 GB the group gets TERM, KILL after 10 s, and `docker rm -f -v` removes the
+  containers carrying THIS run dir's label (`org.nuzantara.localci.run=<run_label>`, the label the runner sets — never a name
+  pattern, never an age, never another run's). Three failed reads in a row count as below the floor. `--host-floor-gb 0`
+  turns the watchdog off. The `status` read is never evicted: a verdict already produced is never undone.
+- **An eviction is no verdict.** The tick journals `{"kind":"evicted","why":"host_below_floor_during_run","free_gb","floor_gb",
+  "context_in_flight":[…],"containers_removed":N,"pr","head_sha","base_sha","run_dir"}` — not a `decision`, so it counts toward
+  nothing (READY included) and the same `(pr, head, base)` is decided again on a later tick, once the host is above the start floor.
+- **Image GC under host pressure.** A prune that finds host free under the start floor (`--min-host-free-gb`, default 110) also
+  removes, by explicit tag, every deps image that is not the newest of its recipe — fewest 48 h plan references first, never the
+  never-list, never the run in progress's image — and the wrapper's `--fstrim` follows. The line carries `host_pressure: true`
+  and `host_free_gb` before and after (also printed on the `merger prune:` line).
+- **Not touched.** uv, npm and Playwright caches stay `pro.janitor`'s.
 
 ### Disk floor organ (B6, Pro)
 
