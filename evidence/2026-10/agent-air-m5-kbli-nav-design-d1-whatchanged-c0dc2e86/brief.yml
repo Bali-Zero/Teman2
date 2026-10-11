@@ -1,0 +1,53 @@
+task_id: kbli-nav-design-d1-whatchanged
+gear: 2
+l_level: L2
+gate_class: opus
+mission_colour: BLUE
+# Floor via SIZE term: canonical + 2 consumer copies + sidecar + gold, batch-A re-emit,
+# registry re-stamp, the macOS dataset manifest, 1 new spec, 2 new scripts, 1 new test file.
+# One field (whatChanged) on 9 codes. No hot-zone path, no migration, no new dependency.
+objective: >-
+  Data lot D-1 of the KBLI Navigator design loop (Zero, Q26, 2026-10-11). For 10433, 46100,
+  52101, 47771, 60101, 60103, 60203, 01309 and 08996, intel_2026.whatChanged held the cure's
+  own working notes instead of a sentence for the client: PR numbers, pp28_sources, score=,
+  render file names, Italian and internal correction dates. 01309 and 08996 claimed "same
+  activity, new code number" from an automatic title match the official BPS table
+  contradicts. Replace each with the one sentence Zero approved, on canonical, its two
+  tracked copies, gold (46100, 60103, 60203) and, after the merge, the knowledge graph.
+constraints:
+  - >-
+    Content rule: no KBLI fact changes. Each sentence states only what the record's own
+    bps_2020_ancestors.codes carries. Where it says more (a split, 52101's reused number), the
+    spec pins the BPS Lampiran 10 edge in data/kbli-filiera/bps-crosswalk/edges-lampiran10.json.
+    A moved ancestor list or a missing edge is a refusal before any write.
+  - >-
+    No hand edit of data/kbli-filiera/** (data-plane guard). Membership and the batch-A
+    calibration reports are re-emitted by their emitters. The editorial registry is
+    re-stamped by recert_pma_editorial_registry with 0 pmaFingerprint mismatches. None of the
+    three gold codes is a certified entry.
+  - >-
+    The knowledge graph is PROD. kg_cure_d1_whatchanged.py is dry-run by default and backs up
+    every named row outside the repo first. It writes with compare-and-set on the sha256 of the
+    live text, inside the UPDATE, and reads back. It runs only after the merge, on the lead's go.
+    01309 and 10433 have no whatChanged property in the graph and are not given one (lead
+    ruling).
+  - >-
+    scripts/kbli_design/content_pack.py keeps EXPECT=c29d6e6aea7a4fdb, the design contest's
+    frozen evidence. It refuses the new canonical by design and is not re-pinned (lead ruling).
+acceptance:
+  - text: "WHEN the cure runs on the cured canonical and gold, THEN it is a no-op, every new sentence is free of pipeline jargon, gold and the KG spec carry canonical's sentence, and drift on ancestors, a named BPS edge, another field or a gold text is refused."
+    probe: "python3 -m pytest scripts/kbli_filiera/tests/test_cure_d1_whatchanged.py"
+  - text: "WHEN canonical, the mouth copy and the navigator copy are compared with origin/main, THEN exactly intel_2026.whatChanged of the 9 records moved, at indexes 54/162/209/727/904/986/1071/1073/1076, and in gold exactly whatChanged of 46100, 60103 and 60203."
+    probe: "bash scripts/sync_kbli_dataset.sh --check"
+  - text: "WHEN the macOS app's full EN census runs on the D-1 canonical, THEN detail-card counts 0 Indonesian/pipeline strings (12 on origin/main, all inside the 9 whatChanged texts)."
+    probe: "Pro: KEEP_WORK=1 EN_CENSUS=full zsh apps/kbli-navigator-macos/Tools/design/content_check.sh"
+  - text: "WHEN the KG script plans from the live values, THEN it prints 7 WILL WRITE and 2 nodes without the field, and Postgres's sha256(convert_to(properties->>'whatChanged','UTF8')) equals the spec's 7 pins."
+    probe: "python3 scripts/kbli_filiera/kg_cure_d1_whatchanged.py --snapshot <read-only export>"
+  - text: "WHEN the downstream pins are checked, THEN filiera, backend certification and mouth kbli suites are green and the whatChanged coherence ratchet reads 12 (was 14)."
+    probe: "python3 -m pytest scripts/kbli_filiera/tests; npx vitest run kbli (apps/mouth)"
+consumer_map:
+  - "macOS KBLI Navigator detail card (reads canonical via build.sh; DATASET_MANIFEST re-anchored)."
+  - "Knowledge graph kg_nodes.properties.whatChanged, read by inspect_kbli for WhatsApp/webchat (after the merge, by the KG script, then the inspect cache eviction)."
+  - "Website /kbli/<code>: discloseKbliEditorial withholds gold and intel for the 9 (no verified PMA verdict), so the old text is not drawn today and the new one is not either. The data is in place for the day a verdict is verified."
+risks:
+  - "A rebase after this point moves the cure commit's SHA, which the membership canonical_revision, the manifest's source_commit and one .secrets.baseline hash name. The sha256 content pins stay valid."

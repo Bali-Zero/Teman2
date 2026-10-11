@@ -217,8 +217,9 @@ of remembered.
 `scripts/tests/test_tailnet_acl_deny_by_default.py` pins `hosts` — because it is the table the
 guard resolves all of its other anchors through, and an unpinned one let a re-pointed alias hand
 a foreign machine the shell while every check stayed green — but it pins it in an
-**additive-tolerant** way: the six fleet aliases may not be re-pointed or deleted, and every
-value must be a bare IPv4 literal, while new entries are allowed. Adding
+**additive-tolerant** way: the seven pinned aliases may not be re-pointed or deleted, every
+value must be a bare IPv4 literal, and every key must be a lowercase name, while new entries are
+allowed. Adding
 `"team-laptop-01": "100.x.y.z"` satisfies both clauses and the guard stays green. This is
 asserted, not merely intended: `test_enrolling_a_team_laptop_keeps_the_guard_green` performs
 exactly this edit and requires zero findings, so a future tightening of the pin cannot silently

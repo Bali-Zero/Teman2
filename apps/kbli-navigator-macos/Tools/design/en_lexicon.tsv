@@ -610,3 +610,179 @@ tertinggi	risk	highest
 verdikt	verdict	verdict (the app's Indonesian spelling)
 ya	function	yes
 diverifikasi	verdict	verified
+batas	ui	limit, cap (the provenance strip: "batas modal asing")
+lintas	ui	across ("kelas risiko tertinggi lintas skala")
+berbentuk	function	in the form of ("Berbentuk badan hukum", overlay prose)
+hukum	statute	law, legal ("badan hukum", a legal entity)
+miliar	domain	billion ("IDR 100 miliar")
+juta	domain	million
+# #8239 gate (3-h-1'): the Indonesian residue of the English corpus — words its Indonesian sources write more than
+# 3x as often as its English translations (en_purity RESIDUE: never English), and the Indonesian the English
+# dictionary also holds that the corpus only quotes. The gloss quotes the record text that carries the word.
+acara	domain	proceedings ("Berita Acara", an official report)
+adat	domain	customary ("masyarakat hukum adat")
+akta	statute	deed ("grosse akta")
+aman	domain	safe ("garda aman")
+antar	function	between, inter- ("petugas antar kerja")
+aren	domain	sugar palm
+arus	domain	current ("Arus Liar")
+arwana	domain	arowana
+bakar	domain	fuel, burning ("Bahan Bakar Nabati")
+baku	domain	raw, standard ("Bahan Baku")
+balai	domain	hall, centre ("balai yasa")
+basah	domain	wet, moist ("kue basah")
+batu	domain	stone ("batu pipisan")
+batuan	domain	rock ("Izin Penambangan Batuan")
+beras	domain	rice ("beras kencur")
+berita	domain	report, news ("Berita Acara")
+biro	domain	bureau ("Biro Perjalanan Wisata")
+bumi	domain	earth ("Minyak dan Gas Bumi")
+buncis	domain	green bean
+buru	domain	hunting ("Taman Buru")
+daftar	domain	register, list ("Tanda Daftar Gudang")
+darat	domain	land ("TNI Angkatan Darat")
+daun	domain	leaf ("Bukit Daun")
+dinas	authority	regional office, agency
+edar	domain	circulation ("Izin Edar", marketing authorization)
+efek	domain	securities ("Penjaminan Efek")
+fisik	domain	physical ("Pemeriksaan Fisik")
+fiskal	domain	fiscal ("Surat Keterangan Fiskal")
+gabus	domain	snakehead (fish)
+gadai	domain	pawn, pledge
+garda	domain	guard ("garda aman")
+goa	domain	cave ("wader goa")
+gudang	domain	warehouse
+gula	domain	sugar ("gula merah")
+guna	domain	use ("Hak Guna Bangunan")
+hak	statute	right, title ("Hak Milik")
+hiu	domain	shark
+hutan	domain	forest ("Taman Hutan Raya")
+intan	domain	diamond
+irut	domain	arrowroot
+jambu	domain	guava, rose apple ("jambu air")
+jarak	domain	castor-oil plant ("jarak pagar"); distance
+kacang	domain	bean, nut ("kacang polong")
+kaki	domain	foot, leg ("kaki naga udang")
+kapal	domain	ship, vessel
+kapri	domain	garden pea
+karya	domain	work ("Bank Karya Produksi Desa")
+kayu	domain	wood ("ikan kayu")
+kelapa	domain	coconut ("kecap kelapa")
+kelompok	domain	group ("Kelompok Tani")
+kembang	domain	flower; porcupinefish
+kenanga	domain	ylang-ylang
+kendi	domain	earthenware jug
+kering	domain	dry ("Gabah Kering Panen")
+kerja	domain	work ("Kerja Sama Operasi")
+kesejahteraan	domain	welfare ("Lembaga Kesejahteraan Sosial")
+kesesuaian	statute	conformity ("Persetujuan Kesesuaian Kegiatan Pemanfaatan Ruang")
+ketatalaksanaan	domain	management, administration
+ketenagakerjaan	domain	employment ("BPJS Ketenagakerjaan")
+keterangan	statute	statement, certificate ("Surat Keterangan")
+klinik	domain	clinic ("klinik pratama")
+kliring	domain	clearing ("Kliring Penjaminan Efek")
+konsultan	domain	consultant
+konvensional	domain	conventional
+kredit	domain	credit ("Badan Kredit Desa")
+kunci	domain	key ("temu kunci", fingerroot)
+kusen	domain	window or door frame
+labu	domain	squash, gourd ("labu siam")
+laik	statute	fit, worthy ("Sertifikat Laik Sehat")
+laku	domain	conduct ("laku pandai", branchless banking)
+laut	domain	sea ("TNI Angkatan Laut")
+liar	domain	wild ("Arus Liar")
+los	domain	market stall ("los pasar")
+lulus	statute	pass ("Surat Tanda Lulus Sensor")
+manfaat	domain	benefit ("Pemilik Manfaat")
+masyarakat	domain	community, society
+merah	domain	red ("gula merah")
+migas	authority	oil and gas ("Ditjen Migas")
+milik	statute	ownership ("Hak Milik")
+minyak	domain	oil
+nabati	domain	vegetable, plant-based ("Bahan Bakar Nabati")
+naga	domain	dragon ("kaki naga udang")
+neraca	domain	balance ("Neraca Gas")
+niaga	domain	trade ("Izin Usaha Niaga")
+obat	domain	medicine, drug
+operasi	domain	operation ("Uji Laik Operasi")
+orang	domain	person ("wayang orang")
+organisme	domain	organism ("Organisme Pengganggu Tumbuhan")
+otoritas	authority	authority ("Otoritas Jasa Keuangan")
+pagar	domain	fence, hedge ("jarak pagar")
+pajak	domain	tax
+pakai	statute	use ("Hak Pakai")
+paket	domain	package; the equivalency programme ("Paket B")
+palawija	domain	secondary crops
+pandai	domain	clever ("laku pandai")
+panen	domain	harvest ("Gabah Kering Panen")
+pangkalan	domain	base, depot (an LPG sub-distribution point)
+pasar	domain	market ("los pasar")
+pegawai	domain	employee ("bank pegawai")
+pekebun	domain	smallholder planter
+pelayaran	domain	shipping ("pelayaran rakyat")
+pemeriksaan	domain	inspection
+pemilik	domain	owner ("Pemilik Manfaat")
+penambangan	domain	mining ("Izin Penambangan Batuan")
+penangkapan	domain	catching, fishing ("Izin Penangkapan Ikan")
+pendistribusian	domain	distribution
+penerima	domain	recipient ("Badan Usaha Penerima Penugasan")
+pengganggu	domain	pest ("Organisme Pengganggu Tumbuhan")
+penugasan	domain	assignment
+perahu	domain	boat ("Tangkuban Perahu")
+perintis	domain	pioneer
+perseroan	statute	company ("Perseroan Terbatas", a limited liability company)
+persetujuan	statute	approval ("Persetujuan Lingkungan")
+perwakilan	domain	representative ("Kantor Perwakilan")
+petugas	domain	officer ("petugas antar kerja")
+pisang	domain	banana ("pisang raja")
+pohon	domain	tree ("jarak pohon")
+pondok	domain	lodge ("Pondok Wisata")
+putih	domain	white ("Batu Putih")
+rajangan	domain	shredded (tobacco)
+rakyat	domain	people's ("Izin Pertambangan Rakyat")
+rambut	domain	hair ("Pulau Rambut")
+rawa	domain	swamp ("Rawa Singkil")
+raya	domain	great ("Taman Hutan Raya")
+rebung	domain	bamboo shoot
+rencana	domain	plan ("Sistem Rencana Pemenuhan Bahan Baku")
+resi	domain	receipt ("Resi Gudang", a warehouse receipt)
+ruang	domain	space ("Pemanfaatan Ruang")
+rumput	domain	grass ("rumput odot")
+sama	function	same, together ("Kerja Sama Operasi")
+sampah	domain	waste ("bank sampah")
+sayur	domain	vegetable ("belimbing sayur")
+sekolah	domain	school ("sekolah tinggi")
+sentral	domain	central ("Kustodian Sentral Efek Indonesia")
+sepeda	domain	bicycle ("ojek sepeda")
+sistem	domain	system
+surat	statute	letter, document ("Surat Izin")
+susun	domain	stacked ("rumah susun", flats)
+syahbandar	authority	harbour master
+syariah	domain	sharia
+tanda	statute	sign, certificate ("Tanda Daftar Gudang")
+tani	domain	farmer ("Kelompok Tani")
+teluk	domain	bay ("Teluk Lasolo")
+teri	domain	anchovy
+tertentu	function	certain, specified ("LPG Tertentu")
+timbul	domain	breadnut ("kluwih/timbul"); to arise
+trayek	domain	route ("dalam trayek")
+tripleks	domain	three-ply plywood
+tulis	domain	written, hand-drawn ("batik tulis")
+tumbuhan	domain	plant ("Organisme Pengganggu Tumbuhan")
+udang	domain	shrimp
+udara	domain	air ("TNI Angkatan Udara")
+uji	statute	test ("Uji Laik Operasi")
+wangi	domain	fragrant ("Pandan Wangi")
+adas	domain	fennel ("Adas Pinang")
+belanda	domain	Dutch ("terong Belanda")
+gude	domain	pigeon pea
+kina	domain	cinchona
+kitab	domain	book ("kitab kuning")
+pinang	domain	areca palm ("Adas Pinang")
+raja	domain	king ("pisang raja")
+rede	domain	roadstead ("Rede Transport")
+remis	domain	mussel
+sumpit	domain	archerfish; chopsticks
+tawes	domain	java barb (fish)
+tera	domain	calibration ("tera" of measuring instruments)
+toman	domain	giant snakehead (fish)

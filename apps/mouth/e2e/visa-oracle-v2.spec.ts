@@ -3,8 +3,15 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { translate } from "../src/app/(visa-oracle)/visa-oracle/_lib/i18n";
-import { NOTICE_CONDITION_COPY } from "../src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter";
+import {
+  translate,
+  type I18nKey,
+} from "../src/app/(visa-oracle)/visa-oracle/_lib/i18n";
+import {
+  NOTICE_CONDITION_COPY,
+  buildEngineOutcome,
+  isNoPathWithoutDoors,
+} from "../src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter";
 import {
   makeVisaOracleResponse,
   TEST_SOURCE_ID,
@@ -112,9 +119,17 @@ async function fulfillJson(route: Route, body: unknown): Promise<void> {
 }
 
 async function expectEngineState(page: Page, state: FixtureState) {
+  // Derived the way the shipped UI derives it: a NO_SUPPORTED_PATH whose
+  // outcome carries no door headlines the no-door copy (never re-implemented).
+  const outcome = buildEngineOutcome(makeVisaOracleResponse(state), {
+    facts: VERDICT_FACTS,
+  });
+  const key = isNoPathWithoutDoors(outcome)
+    ? "verdict.headline.NO_SUPPORTED_PATH_NO_DOOR"
+    : `verdict.headline.${state}`;
   await expect(
     page.getByRole("heading", {
-      name: translate("en", `verdict.headline.${state}`),
+      name: translate("en", key as I18nKey),
     }),
   ).toBeVisible();
 }

@@ -70,6 +70,7 @@ import {
 } from "../src/app/(visa-oracle)/visa-oracle/_lib/flow";
 import {
   buildEngineOutcome,
+  isNoPathWithoutDoors,
   isSecondHomeStudioOnly,
 } from "../src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter";
 import {
@@ -520,7 +521,9 @@ if (LIVE_PARITY) {
           "en",
           (isSecondHomeStudioOnly(outcome)
             ? "verdict.headline.SECOND_HOME_STUDIO"
-            : `verdict.headline.${sample.engineState}`) as I18nKey,
+            : isNoPathWithoutDoors(outcome)
+              ? "verdict.headline.NO_SUPPORTED_PATH_NO_DOOR"
+              : `verdict.headline.${sample.engineState}`) as I18nKey,
         );
         const expectedNoticeTexts = outcome.conditions.map((c) =>
           localized(c.message, "en"),

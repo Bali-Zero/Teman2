@@ -108,7 +108,7 @@ class FakeRunner:
 
     def __call__(self, argv, cwd, env, timeout):
         sub, run_dir = argv[3], Path(argv[argv.index("--run-dir") + 1])
-        call = {"sub": sub, "argv": list(argv), "cwd": Path(cwd), "env": dict(env), "cwd_head": g(cwd, "rev-parse", "HEAD")}
+        call = {"sub": sub, "argv": list(argv), "cwd": Path(cwd), "env": dict(env), "cwd_head": g(cwd, "rev-parse", "HEAD"), "timeout": timeout}
         if "--contexts-file" in argv:
             call["matrix"] = Path(argv[argv.index("--contexts-file") + 1]).read_text()
         if "--worktree" in argv:
@@ -265,6 +265,54 @@ def test_a_runner_past_its_timeout_is_terminated_before_it_is_killed(tmp_path):
     t0 = time.monotonic()
     res = mg.runner_exec([sys.executable, "-c", code], tmp_path, dict(os.environ), timeout=2)
     assert res.returncode == 124 and "cleaned up" in res.stdout and "timed out" in res.stderr and time.monotonic() - t0 < 20
+
+
+def test_the_plan_step_outlasts_a_cold_deps_build(world, monkeypatch):
+    """2026-10-11: a cold e2e-tests deps build took 3552 s on Pro while the plan step was capped at 900 s, so it was cancelled
+    on every tick and every e2e candidate was ERROR for good. The plan step now gets --plan-timeout (default PLAN_TIMEOUT_S)."""
+    monkeypatch.setattr(mg, "runner_exec", FakeRunner())
+    world.gh.prs = [pr(1, world.head1)]
+    assert world.tick() == 0
+    by_sub = {c["sub"]: c["timeout"] for c in mg.runner_exec.calls}
+    assert by_sub["plan"] == mg.PLAN_TIMEOUT_S and by_sub["status"] == 900
+
+
+def test_the_timeouts_hold_a_cold_build_inside_one_tick():
+    """The relations, pinned against the runner this merger drives: plan > the runner's deps build budget plus the rest of a
+    plan, and the tick watchdog holds plan + run + status."""
+    runner_src = (_MODULE.parent / "runner.py").read_text()
+    m = re.search(r"^DEPS_BUILD_TIMEOUT_S = (\d+)", runner_src, re.M)
+    assert m
+    build = int(m.group(1))
+    import ast   # the docker build call's timeout kwarg must BE the constant, not an expression of it
+    builds = [c for c in ast.walk(ast.parse(runner_src)) if isinstance(c, ast.Call) and c.args and isinstance(c.args[0], ast.List)
+              and len(c.args[0].elts) > 1 and isinstance(c.args[0].elts[1], ast.Constant) and c.args[0].elts[1].value == "build"]
+    assert builds, "the runner's docker build call was not found"
+    for c in builds:
+        kw = {k.arg: k.value for k in c.keywords}
+        assert isinstance(kw.get("timeout"), ast.Name) and kw["timeout"].id == "DEPS_BUILD_TIMEOUT_S", ast.unparse(c)[:120]
+    assert build >= 2 * 3552   # twice the measured cold build: a slower network day still finishes
+    assert mg.PLAN_TIMEOUT_S >= build + 300
+    ap_defaults = {}
+    real = mg.argparse.ArgumentParser.parse_args
+
+    def grab(self, args=None, namespace=None):
+        ns = real(self, args, namespace)
+        ap_defaults.update(vars(ns))
+        raise SystemExit(0)
+    mg.argparse.ArgumentParser.parse_args = grab
+    try:
+        with pytest.raises(SystemExit):
+            mg.main(["tick", "--node", "x"])
+    finally:
+        mg.argparse.ArgumentParser.parse_args = real
+    assert ap_defaults["plan_timeout"] == mg.PLAN_TIMEOUT_S and ap_defaults["tick_timeout"] == mg.TICK_TIMEOUT_S
+    assert mg.TICK_TIMEOUT_S >= ap_defaults["plan_timeout"] + ap_defaults["run_timeout"] + 900 + 300
+    # The heartbeat is written when the wrapper exits: the healer calls the organ dead past expected_hb_seconds x DEAD_MULTIPLIER
+    # (3), so the longest legal tick plus one StartInterval must stay under it, or a slow cold tick opens a spurious cure session.
+    reg = (_MODULE.parents[2] / "apps" / "organism" / "organism" / "organs_registry.yaml").read_text()
+    hb = re.search(r"^- id: pro\.localci_merger\n(?:  .*\n)*?  expected_hb_seconds: (\d+)$", reg, re.M)
+    assert hb and int(hb.group(1)) * 3 > mg.TICK_TIMEOUT_S + 600
 
 
 def test_only_the_seal_printed_before_candidate_code_runs_is_passed_on(world, monkeypatch):

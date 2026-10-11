@@ -663,6 +663,7 @@ RUNNER_CTX = {"os": "Linux", "arch": "ARM64", "temp": "/tmp/runner-temp", "name"
 ARTIFACT_MAX_BYTES = 256 << 20
 DEPS_LABEL = "org.nuzantara.localci.deps"
 DEPS_RECIPE_LABEL = "org.nuzantara.localci.recipe"   # the check that built it: merger.py prune keeps the newest per recipe
+DEPS_BUILD_TIMEOUT_S = 7200   # a cold build: 3552 s measured for e2e-tests on Pro (2026-10-11); merger.PLAN_TIMEOUT_S stays above it
 _MARKER_ATOM = r"""(?:[a-z_]+|"[^"]*"|'[^']*')\s*(?:===|==|!=|<=|>=|<|>|~=|not\s+in|in)\s*(?:[a-z_]+|"[^"]*"|'[^']*')"""
 # `name[extras]==version`, optionally `; <PEP 508 marker>` — nothing else; and pip reads a space-separated token starting with `-`
 # anywhere on the line as an option (`--no-binary` would lift --only-binary), so _pin_lines also drops any line with a `\s-`.
@@ -951,7 +952,7 @@ def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run
                 ok = ok and subprocess.run([docker, "build", "--progress=plain", "--label", f"{DEPS_LABEL}={digest}",
                                             "--label", f"{DEPS_RECIPE_LABEL}={slug}", "--build-arg", f"BASE={base_tag}",   # the prune's recipe (B6)
                                             "--build-arg", f"PY={py}", "-t", tag, str(ctxd)], stdout=fh, stderr=subprocess.STDOUT, env=denv,
-                                           timeout=3600).returncode == 0
+                                           timeout=DEPS_BUILD_TIMEOUT_S).returncode == 0
             except subprocess.TimeoutExpired:
                 ok = False
         if not ok:

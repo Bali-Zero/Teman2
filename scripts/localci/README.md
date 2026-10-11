@@ -362,7 +362,12 @@ whatever it is given (phase E is not armed); `merger.py --selftest` runs the tri
 
     python scripts/localci/merger.py tick --node Nuzantara [--repo Bali-Zero/Teman2] [--base main] \
         [--state-dir ~/.nuzantara-pilots/local-ci/merger] [--seed ~/nuzantara] [--python <venv python>] \
-        [--run-timeout 5400] [--tick-timeout 9000]
+        [--plan-timeout 7500] [--run-timeout 5400] [--tick-timeout 14400]
+
+The plan step's budget (`--plan-timeout`, `PLAN_TIMEOUT_S`) stays above the runner's `DEPS_BUILD_TIMEOUT_S` (7200 s): a lock
+file change makes a new deps recipe, built cold inside the plan (e2e-tests on Pro, 2026-10-11: 3552 s, pip download 2728 s).
+Under the old 900 s plan cap that build was cancelled on every tick and every e2e candidate was `ERROR`, with no way to
+progress. The tick watchdog holds plan + run + status; `tests/test_merger.py` pins both relations against `runner.py`.
 
 One `tick` decides at most one pull request:
 
