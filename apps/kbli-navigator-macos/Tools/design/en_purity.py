@@ -39,19 +39,35 @@ for line in open(os.path.join(HERE, "en_lexicon.tsv"), encoding="utf-8"):
 # Words an Indonesian dump of a gated surface may hold that no English dump does and that are not Indonesian.
 PROPER = {"kbli": "the classification's name", "oss": "the licensing system's name", "bali": "the island",
           "pma": "the company type", "pt": "the company form", "zantara": "the assistant's name",
+          "cv": "a company form (Commanditaire Vennootschap), as PT", "indonesia": "the country's name",
+          "air": "spelled alike in English and Indonesian (water), so never evidence of either",
           "en": "the language tag an Indonesian line puts on English it quotes: Kutipan catatan (EN)",
           "data": "spelled alike in English and Indonesian, so never evidence of either",
           "perpres": "a legal citation's instrument type (Peraturan Presiden), drawn in both languages"}
+# #8247 gate binding (a): Indonesian names the English translations carry verbatim and the English dictionary also holds
+# (as written, or +s): never English. Not lexicon words — their record's English writes them unquoted, so innocence
+# would fail — so a gated View catches each as an unknown word. The gloss quotes the translation that carries it.
+NOT_ENGLISH = {"tempe": "fermented soybean cake: \"tempe bongkrek\"", "pepes": "dish steamed in banana leaf: \"such as pepes, presto\"",
+               "sungging": "carved-and-painted craft: \"(tatah sungging)\"", "keting": "a catfish: \"keting catfish\"",
+               "pilis": "a topical herbal paste: \"pilis and tapel\"", "lais": "glass catfish: \"sheatfish (lais)\"",
+               "gambas": "luffa: \"(gambas/oyong)\"", "peda": "salted fermented mackerel: \"peda fish\"",
+               "sado": "a horse-drawn cart: \"horse-drawn carts (sado)\"", "debus": "a Banten performance art: \"debus\"",
+               "ula": "the first level of diniyah education: \"diniyah ula education\"",
+               "jami": "of a university level: \"jami'ah levels\""}
 EN_FUNCTION = set("the of and to in for is a an with on this that by or from as at be not are it its into under only any no "
                   "has have can cannot must may your you which who what when where".split())
 ALLOW = [  # (regex, reason) — masked before the lexicon is read; never masks a pipeline key
     (r"\b(?:PP|Perpres|Permen|Permen\w+|Perka\w*|Perda|Pergub|Perbup|Kepmen\w*|UU|Inpres|Keppres)(?:\s+[A-Z][\w]*(?:/[A-Z]\w*)?)?"
      r"\s+(?:No\.?\s*)?\d+(?:/\d{4}|\s+Tahun\s+\d{4})",
      "legal citation: an instrument's name, number and year"),
+    (r"\bjo\.(?=\s+(?:PP|Perpres|Permen\w*|Perka\w*|Perda|Pergub|Perbup|Kepmen\w*|UU|Inpres|Keppres)\s+(?:No\.?\s*)?\d)",
+     "legal citation: «jo.» (juncto), an instrument read together with the next one cited (R23)"),
     (r"\b(?:Lampiran|Pasal|ayat|huruf|angka)\s+(?:[IVXL]+\b(?:[.\w]*)(?:\s*(?:,|/|dan|and|or)\s*[IVXL]+\b)*|\(?\d[\w()–\-.]*|\([a-z0-9]+\)|[a-z]\b)",
      "legal citation: an instrument's part (Lampiran / Pasal / ayat / huruf / angka) with its number"),
-    (r"\bKBLI\b|\bOSS(?:-RBA)?\b|\bBKPM\b|\bPT\s+PMA\b|\bPMA\b|\bPMDN\b|\bNIB\b|\bUMKM\b|\bBPS\b|\bKITAS\b|\bWNA\b|\bWNI\b",
+    (r"\bKBLI\b|\bOSS(?:-RBA)?\b|\bBKPM\b|\bPT\s+PMA\b|\bPMA\b|\bPMDN\b|\bNIB\b|\bUMKM\b|\bBPS\b|\bKITAS\b|\bWNA\b|\bWNI\b|\bAHU\b",
      "proper noun / official acronym"),
+    (r"\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|id|org|net)\b", "a web address (balizero.com), a name in either language"),
+    (r"\b[A-Z]{2}\d{3}\b", "a PP 28/2025 sub-classification code (PL001, GT002)"),
     (r"\bKementerian\s+Investasi(?:/BKPM)?\b|\bBadan\s+Koordinasi\s+Penanaman\s+Modal\b|\bBadan\s+Pusat\s+Statistik\b",
      "official agency name"),
     (r"\bDinas\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b|\bDPMPTSP\b|\bSatpol\s+PP\b", "official regional agency name"),
@@ -98,7 +114,7 @@ CLOSED = (("per_skala", "kewenangan"), ("per_skala", "perizinan"), ("per_skala",
 STATUS = ("TERBUKA", "TERBATAS", "TERTUTUP")
 # #8224 gate binding 1's scope probe: novel Indonesian UI words, none a lexicon word or an English one.
 SCOPE = ("pratinjau gagal unduh unggah simpan batalkan pengaturan beranda keluar masuk ubah hapus tambah kirim terima "
-         "tolak setuju tutup salin tempel pilih riwayat segarkan muat sembunyikan tampilkan urutkan saring galat "
+         "tolak setuju tutup salin tempel pilih riwayat segarkan muat sembunyikan sematkan urutkan saring galat "
          "peringatan").split()
 # #8239 gate: Indonesian words that glue or the English corpus once let through, each caught in both modes: glued
 # ("Sand|ikan", "dam|pak", "disk|onto"), residue in the lexicon ("daftar", "kunci"), residue the lexicon cannot hold
@@ -112,8 +128,8 @@ CLAUSE_EN = set("the of and to in for with on by or from as at is are not only m
 CLAUSE_ID = set("yang dan di ke dari untuk dengan pada dalam atau oleh tidak bukan bagi serta hanya".split())
 IDENT_RE = re.compile(r"\b[A-Za-z0-9]+(?:_[A-Za-z0-9]+)+\b")
 PROV_RE = re.compile(r"\b[a-z][a-z0-9_.\[\]]*=")
-WORD_RE = re.compile(r"[A-Za-zÀ-ÿ]+")
-GLUE_RE = re.compile(r"(?<=[a-zß-ÿ])(?=[A-ZÀ-Þ])")
+WORD_RE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ]+")   # Latin-1 letters: never × or ÷ ("2 SCOPES × 4 SCALES")
+GLUE_RE = re.compile(r"(?<=[a-zß-öø-ÿ])(?=[A-ZÀ-ÖØ-Þ])")
 
 _REF = []
 def ref():
@@ -135,16 +151,23 @@ RESIDUE = 3
 INFLECTION = (("ies", "y"), ("ied", "y"), ("es", ""), ("s", ""), ("ed", ""), ("ed", "e"), ("ing", ""), ("ing", "e"))
 
 def in_dictionary(w, entries):
-    """`w` as written, or a regular inflection of an entry ("activities", "stopped"; a stem of 3+ letters)."""
+    """`w` as written, or an English-shaped inflection of an entry, a stem of 3+ letters (#8247 gate binding (a)):
+    "-es" only after s, x, z, ch, sh or o ("boxes", never "pep|es"); a doubled consonant only after a vowel
+    ("equipped", "quizzes", never "sung|g|ing"); a one-syllable consonant-vowel-consonant stem never takes "-ed" or
+    "-ing" undoubled ("stopping", never "ket|ing")."""
     if w in entries: return True
     for end, stem in INFLECTION:
         b = w[:-len(end)]
-        if w.endswith(end) and len(b) >= 3 and (b + stem in entries or b[-1] == b[-2] and b[:-1] in entries): return True
+        if not w.endswith(end) or len(b) < 3 or end == "es" and not re.search(r"(?:s|x|z|ch|sh|o)$", b): continue
+        if b + stem in entries and (stem or end not in ("ed", "ing") or not re.fullmatch(r"[^aeiou]*[aeiou][^aeiouwxy]", b)):
+            return True
+        if end in ("ed", "ing", "es") and b[-1] == b[-2] and b[:-1] in entries and b[-3] in "aeiou" and b[-2] not in "aeiouwxy":
+            return True
     return False
 
 _ENG = []
 def english_word(w):
-    """The one test of "English" (#8239 gate): never a lexicon word; an English function word, an en_ui_words word, or
+    """The one test of "English" (#8239 gate): never a lexicon word nor a NOT_ENGLISH name; an English function word, an en_ui_words word, or
     a word of the English corpus that the English dictionary holds and that is no residue — the Indonesian sources do
     not write it more than 3 times as often as their English translations do ("daftar" 1/344, "orang" 4/299; RESIDUE).
     The corpus alone is not evidence: it carries Indonesian no English dictionary holds ("ikan", "dampak"); nor is the
@@ -154,7 +177,7 @@ def english_word(w):
         entries = {l.strip().lower() for l in open(DICT, encoding="utf-8")}
         corpus, ui, en, idn = _REF[0]
         _ENG.append(({w for w in corpus if in_dictionary(w, entries) and idn[w] <= RESIDUE * en[w]} | ui | EN_FUNCTION)
-                    - set(LEX))
+                    - set(LEX) - set(NOT_ENGLISH))
     return w in _ENG[0]
 
 def residue(w):
@@ -245,6 +268,14 @@ def parity(ds, path):
     return out, bad
 
 def key(s): return "".join(c for c in s if c.isalnum())
+
+def strings(x):
+    """Every string a record (or its overlay, or a reason's two sides) holds, through lists and dicts."""
+    if isinstance(x, str): yield x
+    elif isinstance(x, dict):
+        for v in x.values(): yield from strings(v)
+    elif isinstance(x, list):
+        for v in x: yield from strings(v)
 
 def strip_html(s):
     """KBLIRegistryView.stripHTML: a View draws a statute value with its markup gone."""
@@ -364,7 +395,7 @@ class Record:
     """The record-bound allow spans of one code, compiled once: (pattern, the whole text as drawn, reason, keep,
     within) — `keep` is `gapped`'s per-gap originals or None, `within` the (pattern, whole[, keep]) of the drawn
     text the span must sit inside, or None."""
-    def __init__(self, rec, reasons, i18n=None, overlay=None):
+    def __init__(self, rec, reasons, i18n=None, overlay=None, titles=None):
         self.judul = rec.get("judul") or ""
         self.title_re = re.compile(flex(self.judul)) if self.judul else None
         spans = []
@@ -436,6 +467,22 @@ class Record:
                 rx = r"\(" + r"[^\w()]*".join(map(re.escape, re.findall(r"[^\W_]+", orig))) + r"\)"
                 spans.append((re.compile(rx), "(%s)" % orig, R_PERMIT, False, None))
         self.spans = spans
+        # R22: the record's own English, as a View may draw it — its title as its English, its status word humanised,
+        # and the English titles of the codes its own fields name (related, complementary, renumbered). A run of a
+        # dump line that is a piece of it, 12+ letters (PDFKit wraps it anywhere and glues a neighbour's cell to it),
+        # counts no unknown word; its lexicon words are judged as before. Another record's English, unnamed, is no
+        # piece of this one (lead, 3-h-3 (a)).
+        raw = (rec.get("l4_bali") or {}).get("reason") or ""
+        bound = list(strings(en)) + list(strings(intel)) + [v for v, w in statute(rec) if w] + [
+            (i18n or {})[t] for t in strings(rec) if t in (i18n or {})] + [(reasons.get(raw) or {}).get("en") or ""]
+        if k and english_clause(k): bound.append(k)
+        t_en = title_en(rec, i18n, {rec.get("kode_kbli_2025"): overlay})
+        if self.judul: bound += [re.sub(re.escape(self.judul), lambda m: t_en, x, flags=re.I) for x in bound
+                                 if self.judul.lower() in x.lower()]
+        named = set(re.findall(r"(?<!\d)\d{5}(?!\d)", "\n".join(list(strings(rec)) + list(strings(overlay))))) - {rec.get("kode_kbli_2025")}
+        bound += [t_en] + [(titles or {})[c] for c in sorted(named) if c in (titles or {})]
+        if status in STATUS: bound += [hum(x) for x in bound if hum(x) != x]
+        self.english = "\0".join(key(x).lower() for x in bound if x)
 
 def analyse(row, rec, unknown=False):
     """[(line, category, tokens)] for the Indonesian strings of one dump, and [(reason, tokens)] for allowlisted spans.
@@ -512,9 +559,19 @@ def analyse(row, rec, unknown=False):
         for i in range(a, b): mask[i] = " "
     masked = "".join(mask)
     flagged = defaultdict(lambda: {"toks": [], "raw": [], "title": False, "unk": []})
+    pieces = {}
+    def piece(n):   # R22: the longest head and tail of line n, at a word boundary, that is a piece of the record's English
+        if n not in pieces:
+            l, is_piece = lines[n], lambda t: len(key(t)) >= 12 and key(t).lower() in rec.english
+            cuts = [0] + [m.end() for m in re.finditer(r"\s+", l)] + [len(l)]
+            head = next((c for c in reversed(cuts[1:]) if is_piece(l[:c])), 0) if rec else 0
+            tail = next((c for c in cuts[:-1] if is_piece(l[c:])), len(l)) if rec and head < len(l) else len(l)
+            pieces[n] = (starts[n] + head, starts[n] + tail)
+        return pieces[n]
     for p, w in words(masked):
         if w.lower() in LEX: flagged[line_of(p)]["toks"].append(w.lower())
-        elif unknown and not known(w.lower()) and not acronym(w): flagged[line_of(p)]["unk"].append(w.lower())
+        elif unknown and not known(w.lower()) and not acronym(w) and piece(line_of(p))[0] <= p < piece(line_of(p))[1]:
+            flagged[line_of(p)]["unk"].append(w.lower())
     for rx in (IDENT_RE, PROV_RE):
         for m in rx.finditer(text): flagged[line_of(m.start())]["raw"].append(m.group())
     if rec and rec.title_re:
@@ -587,6 +644,9 @@ def selftest():
                   'carried out by the Pemerintah; not an investable field' % j12}, {})
     r21 = Record({"judul": "Aktivitas Vila", "pma_status": "TERBUKA", "l4_bali": {"reason": "A PT PMA can satisfy it: "
                   "private parties enter by permit (PP 36/2010 Pasal 8(3): *perorangan, badan usaha, koperasi*)."}}, {})
+    r22 = Record({"judul": "Aktivitas Vila", "intel_2026": {"youllAlsoNeed": "- **99001** — the hall next door"}}, {}, {},
+                 {"en": {"meaning": "Stewards grep the zorbing ledgers of the blorft registry, said the curator of the Kecil "
+                         "scale."}}, {"99001": "Zorbing Blorft Hall", "99002": "Grep Zorbing Office"})
     r6 = Record({"judul": "Aktivitas Vila", "per_skala": [{"persyaratan": [v6]}], "pma_official_basis": b6}, {},
                 {"Wajib memiliki sertifikat dari Pemerintah Daerah": "Must hold a certificate (sertifikat) from the Pemerintah Daerah"})
     cases = [("Villa Rental\nOfficial title (Bahasa Indonesia)\nAktivitas Vila", 0, r),
@@ -748,7 +808,20 @@ def selftest():
              ("Open under the Daftar of the record, so the moratorium does not apply", 1, r13),
              ("Open under the Ikan of the record, so the moratorium does not apply", 1, r13),
              ("Open under the extra scope of the record, so the moratorium does not apply", 0, r13),   # an
-             ("Open under the Pratinjau gagal of the record, so the moratorium does not apply", 1, r13)]   # unpinned gap
+             ("Open under the Pratinjau gagal of the record, so the moratorium does not apply", 1, r13),   # unpinned gap
+             # R22: a piece of the record's own English (12+ letters) counts no unknown word; never a lexicon word, a
+             # short piece, another record's English, or a View word next to it
+             ("Stewards grep the zorbing ledgers\nof the blorft registry, said the curator of the Kecil scale.", 0, r22),
+             ("Stewards grep the zorbing ledgers", 0, r22), ("said the curator of the Kecil", 1, r22),
+             ("Status: grep zorbing", 1, r22), ("grep blorft", 1, r22), ("Stewards grep the zorbing ledgers", 1, r7),
+             ("Stewards grep the zorbing ledgers · H H H H", 0, r22),            # a neighbour's cell glued on its baseline
+             ("Stewards grep the zorbing ledgers blorft", 1, r22),              # a word the piece does not run on to
+             ("Zorbing Blorft Hall", 0, r22), ("Zorbing Blorft Hall", 1, r7),   # a code its record names, by its English title
+             ("Grep Zorbing Office", 1, r22),                                    # a code it does not name
+             # R23: «jo.» between two instruments cited; anywhere else it is a word
+             ("UU 6/2023 (Job Creation) jo. UU 25/2007", 0, None), ("Perpres 10/2021 jo. Perpres 49/2021", 0, None),
+             ("Status: jo. Bali", 1, None), ("Perpres 10/2021 jo. Pasal 5", 1, None),
+             ("Open · 2 × 4 · Medium", 0, None), ("Ask at balizero.com", 0, None), ("Status: com", 1, None)]
     bad = ["EN-SELFTEST %r (gated): %d strings, want %d" % (t[:50], len(analyse({"text": t}, rr, unknown=True)[0]), w)
            for t, w, rr in gated if len(analyse({"text": t}, rr, unknown=True)[0]) != w]
     if [w for _, w in words("Codesshown")] != ["Codes", "shown"]: bad.append("EN-SELFTEST 'Codesshown' no longer splits")
@@ -759,6 +832,9 @@ def selftest():
         got = len(analyse({"text": text}, rr)[0])
         if got != want: bad.append("EN-SELFTEST %r: %d strings, want %d" % (text[:50], got, want))
     return bad
+
+R21_RECORDS = {"R21": {"kode_kbli_2025": "R21", "judul": "Aktivitas Vila", "uraian": "Kegiatan menyewakan vila kepada tamu"},
+               "R21-other": {"kode_kbli_2025": "R21-other", "judul": "Aktivitas Hotel"}}
 
 def corpus(ds, i18n, reasons, rows, id_rows, overlay):
     """The known corpus: (printed lines, failures)."""
@@ -772,19 +848,29 @@ def corpus(ds, i18n, reasons, rows, id_rows, overlay):
                % (sum(bool(re.fullmatch(r"\d{5}", v)) for v in routes), len(routes)))
     bad += ["EN-SELFTEST pma_route_to is not a KBLI code, so the never-drawn check must read it: %s" % v
             for v in routes if not re.fullmatch(r"\d{5}", v)]
-    def own(code):   # a dump's own record content, in either language: its title, condition and Bali reason
-        r = ds.get(code) or {}
-        raw = (r.get("l4_bali") or {}).get("reason") or ""
-        return {w.lower() for _, w in words(" ".join([r.get("judul") or "", r.get("pma_kondisi") or "", raw,
-                                                         (reasons.get(raw) or {}).get("id") or "", title_en(r, i18n, overlay)]))}
+    notes = json.load(open(os.path.join(ROOT, "Resources", "kbli-related-note-i18n-id.json")))
+    _own, book = {}, dict(ds, **R21_RECORDS)
+    def own(code):   # R21 (lead: symmetric to Q16): THIS record's content in either language — its fields, their
+        if code not in _own:   # English, its Bali reason's two sides, its curated overlay, the Indonesian of its own
+            r = book.get(code) or {}   # related-code notes, its English title. The lexicon stays for the Views' UI words.
+            raw = (r.get("l4_bali") or {}).get("reason") or ""
+            text = list(strings(r)) + list(strings(reasons.get(raw))) + list(strings(overlay.get(code))) + [title_en(r, i18n, overlay)]
+            named = set(re.findall(r"(?<!\d)\d{5}(?!\d)", "\n".join(text))) - {code}   # the codes its own fields name, by title
+            text += [t for c in sorted(named) if c in book for t in ((book[c].get("judul") or ""), title_en(book[c], i18n, overlay))]
+            text += [i18n[t] for t in text if t in i18n]
+            text += [notes[l] for t in text for l in [t] + [x.strip(" -*•") for x in t.split("\n")] if l in notes]
+            _own[code] = {w.lower() for t in text for w in WORD_RE.findall(t)}
+        return _own[code]
     def id_only(id_rows):   # read through english_word, not against the same surface's EN dump: a hard-coded
         only = set()        # Indonesian label drawn in both modes is not subtracted (#8224 gate binding 1); record
         for r in id_rows:   # content is the titles check's and the record spans' to judge, not the lexicon's
             if r["view"] in GATED:   # an ID View draws the English title under the official one: record content too
-                only |= {w.lower() for _, w in words(r["text"]) if not english_word(w.lower()) and not acronym(w)} - own(r["code"])
+                text = r["text"]   # an allowlisted span (a citation, an acronym, an address) is no word here either
+                for rx, _ in ALLOW_RE: text = rx.sub(lambda m: " " * len(m.group()), text)
+                only |= {w.lower() for _, w in words(text) if not english_word(w.lower()) and not acronym(w)} - own(r["code"])
         return only - set(PROPER)
     only = sorted(id_only(id_rows))
-    miss = [w for w in only if w not in LEX]
+    miss = [w for w in only if w not in LEX and w not in NOT_ENGLISH]   # a NOT_ENGLISH name is an unknown word in English
     out.append("self-test: words of the gated surfaces' ID dumps (%s) that are not English, in the lexicon: %d/%d"
                % (", ".join(sorted({r["view"] for r in id_rows if r["view"] in GATED})), len(only) - len(miss), len(only)))
     in_en = sum(bool(analyse({"text": "Status: %s" % w}, None, unknown=True)[0]) for w in SCOPE)
@@ -797,6 +883,19 @@ def corpus(ds, i18n, reasons, rows, id_rows, overlay):
     out.append("self-test: #8239 gate words (%s) caught drawn in English and in both modes %d/%d"
                % (" ".join(GLUED), len(glued), len(GLUED)))
     bad += ["EN-SELFTEST %s passed as English" % w for w in GLUED if w not in glued]
+    never = [w for w in NOT_ENGLISH if analyse({"text": "Status: %s" % w.capitalize()}, None, unknown=True)[0]
+             and id_only([{"code": "-", "view": GATED[0], "text": "Status: %s" % w.capitalize()}])]
+    out.append("self-test: #8247 never-English names caught drawn in English and in both modes %d/%d" % (len(never), len(NOT_ENGLISH)))
+    bad += ["EN-SELFTEST never-English %s passed as English" % w for w in NOT_ENGLISH if w not in never]
+    u = R21_RECORDS["R21"]["uraian"]   # R21: a record's own content is its own in its ID dump, nowhere else; UI is not
+    r21 = [(not id_only([{"code": "R21", "view": GATED[0], "text": u}]), "its own uraian in its own ID dump"),
+           ("menyewakan" in id_only([{"code": "R21-other", "view": GATED[0], "text": u}]), "the same uraian on another code"),
+           ("tampilkan" in id_only([{"code": "R21", "view": GATED[0], "text": "Tampilkan semua"}]), "a UI string on its own code"),
+           (bool(analyse({"text": "Status: menyewakan"}, Record(R21_RECORDS["R21"], reasons, i18n), unknown=True)[0]),
+            "its own Indonesian word drawn in English outside any record span")]
+    out.append("self-test: R21 own() — record content subtracted on its own code only, a UI string kept: %d/%d"
+               % (sum(ok for ok, _ in r21), len(r21)))
+    bad += ["EN-SELFTEST R21 own(): %s" % d for ok, d in r21 if not ok]
     if not {r["view"] for r in id_rows} >= set(GATED): bad.append("EN-SELFTEST the --id dump lacks a gated surface")
     bad += ["EN-SELFTEST ID-only word of a gated surface not in the lexicon: %s" % w for w in miss]
     en_titles = [i18n[r["judul"]] for r in ds.values() if r.get("judul") in i18n]
@@ -837,6 +936,7 @@ def census(path, id_path, n_ex, curated=None):
     i18n = json.load(open(os.path.join(ROOT, "Resources", "kbli-data-i18n-en.json")))
     overlay = json.load(open(os.path.join(ROOT, "Resources", "kbli-overlay.json")))
     recs, rows = {}, [json.loads(l) for l in open(path)]
+    titles = {c: title_en(r, i18n, overlay) for c, r in ds.items()}   # R22: the codes a record's own fields name
     id_rows = [json.loads(l) for l in open(id_path)] if id_path else []
     lines, bad = corpus(ds, i18n, reasons, rows, id_rows, overlay)
     fails += bad
@@ -852,7 +952,7 @@ def census(path, id_path, n_ex, curated=None):
     distinct, examples = set(), defaultdict(list)
     for row in rows:
         c = row["code"]
-        if c in ds and c not in recs: recs[c] = Record(ds[c], reasons, i18n, overlay.get(c))
+        if c in ds and c not in recs: recs[c] = Record(ds[c], reasons, i18n, overlay.get(c), titles)
         hits, allowed = analyse(row, recs.get(c), unknown=row["view"] in GATED)
         for r, _ in allowed:
             allow_by[r] += 1
@@ -1070,7 +1170,9 @@ def scan(src):
                 if not vetted(chain, m.start()):
                     out.append((lineno(m.start()), ".%s(…) reads `%s` — not a vetted label (a localiser, SAFE, or a "
                                 "name bound to vetted code in scope)" % (name, chain)))
+    marks = [(c.end(), balanced(src, c.end() - 1)) for c in re.finditer(r"\.censusFrame\(", src)]
     for m in re.finditer(r"\\\(", src):
+        if any(a <= m.start() < b for a, b in marks): continue   # R25: a census mark's value is collected, never drawn
         end = balanced(src, m.end() - 1)
         for what in raw_reads(code_only(src[m.end():end - 1]), m.start()):
             out.append((lineno(m.start()), "interpolates %s" % what))
@@ -1102,7 +1204,10 @@ def static_selftest():
              # #8227 gate (iii): a closure stored in a name and called later, plain, typed and on several lines
              "func f() {\n let later = { kbli.judul }\n Text(later())\n}",
              "func f() {\n let later: () -> String = { kbli.pmaKondisi ?? \"\" }\n Text(later())\n}",
-             "func f() {\n let later = {\n  kbli.judul\n }\n Text(later())\n}"]
+             "func f() {\n let later = {\n  kbli.judul\n }\n Text(later())\n}",
+             # R25: a census mark's value is no sink, the drawn text beside it still is
+             'chip(x).censusFrame("chip.national", "\\(Theme.tone(kbli.pmaStatus ?? ""))")\nText("\\(kbli.pmaStatus ?? "")")',
+             'Text("\\(kbli.judul)").censusFrame("cap")']
     innocent = ["func a() {\n let title = LabelBook.title(k, isID: i)\n Text(title).help(title)\n}",
                 'TextField(lang.t("search.placeholder"), text: $q)', "Text(LabelBook.pmaStatus(kbli.pmaStatus, isID: isID))",
                 "func a() {\n let t = kbli.judul\n _ = t\n}\nfunc b() {\n let t = lang.t(\"x\")\n Text(t)\n}",
@@ -1117,7 +1222,8 @@ def static_selftest():
                 'func f() {\n let risk = LabelBook.field("x", isID: i)\n Text("\\(risk)")\n}',
                 "static func risk(_ k: KBLI, v: V) -> String {\n let rows = k.perSkala.count\n Text(\"\\(rows)\")\n"
                 " return LabelBook.risk(v.riskLabelRaw, isID: i)\n}",
-                "func f() {\n let later = { LabelBook.title(kbli, isID: i) }\n Text(later())\n}"]
+                "func f() {\n let later = { LabelBook.title(kbli, isID: i) }\n Text(later())\n}",
+                'chip(x).censusFrame("chip.national", "\\(Theme.tone(kbli.pmaStatus ?? ""))")']   # R25
     bad = ["NEVER-DRAWN-SELFTEST guilt not caught: %r" % g for g in guilt if not scan(g)]
     bad += ["NEVER-DRAWN-SELFTEST innocent flagged: %r %s" % (s, scan(s)) for s in innocent if scan(s)]
     return bad
