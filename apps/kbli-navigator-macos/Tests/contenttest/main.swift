@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // Tests/contenttest — prints, for each frozen code and language, the strings the views produce
 // (same functions, no literal copies), as ONE JSON object for Tools/design/content_check.py.
@@ -228,6 +229,37 @@ let out: [String: Any] = MainActor.assumeIsolated {
     }
     if emphasised.count != 18 { violations.append("ledgerInline: \(emphasised.count) curated meanings draw emphasis, pinned 18") }
     if !unfaithful.isEmpty { violations.append("ledgerInline changes \(unfaithful.count) meaning lines beyond their markers, e.g. \(unfaithful.prefix(3))") }
+    // A Bali reason draws its paired emphasis, never its asterisks (lead ruling 2026-10-11: Q24 over Z-3 for pairs):
+    // a pair, single or double, takes the SemiBold cut (guilt); a lone "*" or none draws as written (innocence); and
+    // over every record, both languages, each half LeadBody draws of the reason reads its source with only asterisks
+    // gone and no link. The 15 reasons that carry "*" all pair them, so none is left drawn.
+    for (raw, want, marked) in [("Allocated as *Vila*, a **State** function.", "Allocated as Vila, a State function.", "VilaState"),
+                                ("A footnote* stays.", "A footnote* stays.", ""),
+                                ("No marker at all.", "No marker at all.", "")] {
+        let a = LabelBook.emphasis(raw, size: 13)
+        let got = a.runs.filter { $0.font != nil }.map { String(a[$0.range].characters) }.joined()
+        if String(a.characters) != want || got != marked {
+            violations.append("emphasis: \"\(raw)\" → \"\(String(a.characters))\" [\(got)], want \"\(want)\" [\(marked)]")
+        }
+    }
+    var reasonUnfaithful: [String] = [], reasonStars: [String] = [], reasonEmphasised = Set<String>()
+    for k in store.all {
+        guard let raw = k.l4Bali?.reason, !raw.isEmpty else { continue }
+        for isID in [false, true] {
+            let s = LabelBook.humanise(OverlayStore.shared.displayReason(raw, isID: isID), record: k, isID: isID)
+            let p = LeadBody.split(s, .reason)
+            for half in [p.lead, p.body].compactMap({ $0 }) {
+                let a = LabelBook.emphasis(half, size: 13), drawn = String(a.characters)
+                if a.runs.contains(where: { $0.font != nil }) { reasonEmphasised.insert(k.kode) }
+                if drawn.contains("*") { reasonStars.append("\(k.kode) \(isID ? "id" : "en")") }
+                if drawn.replacingOccurrences(of: "*", with: "") != half.replacingOccurrences(of: "*", with: "")
+                    || a.runs.contains(where: { $0.link != nil }) { reasonUnfaithful.append("\(k.kode) \(isID ? "id" : "en")") }
+            }
+        }
+    }
+    if reasonEmphasised.count != 15 { violations.append("emphasis: \(reasonEmphasised.count) Bali reasons draw emphasis, pinned 15") }
+    if !reasonStars.isEmpty { violations.append("emphasis: a Bali reason still draws \"*\": \(reasonStars.prefix(5))") }
+    if !reasonUnfaithful.isEmpty { violations.append("emphasis changes \(reasonUnfaithful.count) Bali reasons beyond their markers, e.g. \(reasonUnfaithful.prefix(3))") }
     return ["codes": codes, "balanced_rejoin": rejoin, "probe_violations": violations, "curated_language": curated,
             "labelbook_maps": maps]
 }
