@@ -196,7 +196,7 @@ struct ScalePathGrid: View {
             }
             ForEach(Array(order.enumerated()), id: \.element) { i, scale in
                 let es = ScaleMatrix.entries(sc, scale)
-                VStack(spacing: 4) {
+                VStack(spacing: ScaleMatrix.cellGap) {
                     if es.isEmpty {
                         if top == 12 { Text("·").font(Theme.scalable(13)).foregroundStyle(Theme.faint) }
                     } else {

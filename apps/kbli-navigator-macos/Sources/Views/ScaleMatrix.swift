@@ -34,6 +34,8 @@ struct ScaleMatrix: View {
     @State private var open: Set<String> = []
 
     static let order = PP28ScalePanel.scaleOrder
+    /// Between stacked cells of one scale: the shown cell's ring (1.5 pt gap + 2 pt line, outside its chip) must clear the chip beside it by >= 1.5 pt.
+    static let cellGap: CGFloat = 8
     static let listFrom = PP28ScalePanel.matrixMaxScopes + 1
     /// Snapshot hook (the content proof of the immersive scope selector): draw this scope's row of the list expanded.
     static var snapshotOpenScope: Int?
@@ -177,7 +179,7 @@ struct ScaleMatrix: View {
             }
             ForEach(Self.order, id: \.self) { scale in
                 let es = Self.entries(sc, scale)
-                VStack(spacing: 4) {
+                VStack(spacing: ScaleMatrix.cellGap) {
                     if es.isEmpty {
                         if top == 12 { Text("·").font(Theme.scalable(13)).foregroundStyle(Theme.faint) }
                     } else {
