@@ -35,6 +35,10 @@ MERGER_T = "scripts/localci/tests/test_merger.py"
 B6_WRAP = tuple(f"{MERGER_T}::{t}" for t in ("test_the_tick_decides_first_then_prunes_with_fstrim_and_passes_the_host_reading",
                                              "test_under_the_floor_the_tick_journals_its_skip_the_prune_still_runs_and_the_organ_says_warning",
                                              "test_a_failed_prune_is_a_warning_and_a_failed_tick_is_an_error_after_which_the_prune_still_runs"))
+HF = ("scripts/localci/tests/test_host_floor.py",)   # B15
+B15_PRUNE = tuple(f"{PRUNE_T}::{t}" for t in ("test_b15_under_host_pressure_the_second_slot_of_every_recipe_goes_and_the_newest_never",
+                                              "test_b15_host_pressure_never_removes_the_image_of_the_run_in_progress_or_the_never_list"))
+START_DEFAULT = 'default=HOST_FLOOR_GB + START_MARGIN_GB,\n                   help="the start floor'
 B6_FLOOR = (f"{MERGER_T}::test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why",)
 FLOOR_SH, FLOOR_T = "scripts/ops/pro_disk_floor_tick.sh", "scripts/localci/tests/test_disk_floor.py"
 
@@ -324,13 +328,23 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-call-graphs-kept": (PRUNE, "f in BULK)", "False)", (PRUNE_T,)),
     "b6-undated-run-trimmed": (PRUNE, "if age_h is None or age_h < FULL_DAYS * 24:", "if age_h is not None and age_h < FULL_DAYS * 24:", (PRUNE_T,)),
     # B6-3: the tick decides, then prunes and trims the VM; under 60 GB host-free no run starts
-    "b6-wrapper-floor-59": (SH, 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-60}"', 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-59}"', B6_WRAP),
+    "b6-wrapper-floor-109": (SH, 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-110}"', 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-109}"', B6_WRAP),
     "b6-wrapper-floor-le": (SH, '[ "$FREE" -lt "$FLOOR_GB" ]', '[ "$FREE" -le "$FLOOR_GB" ]', B6_WRAP),
     "b6-wrapper-no-fstrim": (SH, 'prune --state-dir "$STATE" --fstrim', 'prune --state-dir "$STATE"', B6_WRAP),
     "b6-wrapper-prune-failure-silent": (SH, 'if [ "$PRUNE_RC" -ne 0 ]; then', "if false; then", B6_WRAP),
     "b6-wrapper-never-prunes": (SH, """if [ -f "$CODE/prune.py" ] && grep -q -- '"prune"' "$CODE/merger.py"; then""", "if false; then", B6_WRAP),
     "b6-merger-floor-off": (PY, "if a.host_free_gb is not None and a.host_free_gb < a.min_host_free_gb:", "if False:", B6_FLOOR),
-    "b6-merger-floor-59": (PY, "type=float, default=60.0,", "type=float, default=59.0,", B6_FLOOR),
+    "b6-merger-floor-109": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "109.0"), B6_FLOOR),
+    # B15: Pro's host floor of 100 GB, held through the run
+    "floor-start-60": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "60.0"), HF),
+    "evict-disabled": (PY, "                    if low:\n", "                    if False:\n", HF),
+    "evict-spares-containers": (PY, 'subprocess.run([self.docker, "rm", "-f", "-v", *ids], capture_output=True, timeout=120, env=env)', "None", HF),
+    "evict-kills-foreign-run": (PY, 'f"label=org.nuzantara.localci.run={run_label(self.run_dir)}"', '"label=org.nuzantara.localci.run"', HF),
+    "evict-as-fail": (PY, '{**rec, "kind": "evicted", "why":', '{**rec, "kind": "decision", "overall": "FAIL", "why":', HF),
+    "statvfs-fail-open": (PY, "return (self.blind >= EVICT_BLIND_SAMPLES if free is None else free < self.evict_gb), free",
+                          "return (False if free is None else free < self.evict_gb), free", HF),
+    "prune-host-pressure-ignored": (PRUNE, 'rec["host_pressure"] = pressure_gb is not None and free_before < pressure_gb',
+                                    'rec["host_pressure"] = False', B15_PRUNE),
     "b7-fstrim-only-after-removal": (PRUNE, "    if fstrim and not dry:   # every real prune", "    if fstrim and removed and not dry:   # every real prune", (PRUNE_T,)),
     "b7-fstrim-on-dry-run": (PRUNE, "    if fstrim and not dry:   # every real prune", "    if fstrim:   # every real prune", (PRUNE_T,)),
     "b6-prune-code-sha-dropped": (PY, "    CODE_SHA = a.code_sha or None\n", "    CODE_SHA = None\n", (PRUNE_T,)),

@@ -1,9 +1,11 @@
 """B6: merger.py prune — the gate removes what it wrote, by rule, and journals it."""
 from __future__ import annotations
 
+import collections
 import importlib.util
 import json
 import os
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -24,8 +26,10 @@ def _load(name: str):
 
 
 pm, mg = _load("prune"), _load("merger")
+_Usage = collections.namedtuple("usage", "total used free")
 NOW = time.time()
 H = 3600
+HOST_FREE_GB = 500   # B15: the host reading every prune test sees unless it says otherwise (above any start floor)
 
 
 @pytest.fixture(autouse=True)
@@ -34,6 +38,7 @@ def _clock_at_now(monkeypatch):
     this module's import and a test add to every age, and a 0.1 h rounding reads "built 20.1 h ago" for a 20 h image (M5, full
     localci suite, 2026-10-09). The clock is held at NOW for each test; subprocess timeouts run on the monotonic clock."""
     monkeypatch.setattr(time, "time", lambda: NOW)
+    monkeypatch.setattr(shutil, "disk_usage", lambda path: _Usage(1000 * 10**9, 500 * 10**9, HOST_FREE_GB * 10**9))   # B15: not the machine's
 FAKE = r'''#!{py}
 import json, sys
 world = json.load(open({world!r}))
@@ -961,3 +966,45 @@ def test_b13_freed_gb_sums_the_totals_of_the_calls_and_is_none_only_if_every_cal
 
 def test_b13_a_total_of_zero_is_zero_not_none(tmp_path):
     assert prune_line(*b13_world(tmp_path, total="0B"))["builder_prune"]["freed_gb"] == 0.0
+
+
+# ------------------------------------------------------------------ B15: image GC under host pressure
+def test_b15_under_host_pressure_the_second_slot_of_every_recipe_goes_and_the_newest_never(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 109)   # under 100 + 10
+    state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)   # VM above its own floor: only the host asks
+    line = prune_line(state, docker)
+    assert line["host_pressure"] is True and line["host_free_gb"]["before"] == 109.0
+    assert [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"], imgs[2]["tag"]]   # both slot 2: a plan of the last 5 h names them
+    assert all(r["rule"].startswith("host pressure: host free 109 GB < 110 GB; slot 2 of its recipe, 1 plan(s)") for r in line["images"]["removed"])
+    assert [c for c in calls(tmp_path) if c.startswith("image rm")] == [f"image rm {imgs[0]['tag']}", f"image rm {imgs[2]['tag']}"]   # by explicit tag
+    kept = {k["tag"] for k in line["images"]["kept"]}
+    assert {imgs[1]["tag"], imgs[3]["tag"]} <= kept   # the newest of each recipe stays
+
+
+@pytest.mark.parametrize("free", [110, 500])
+def test_b15_at_or_above_the_start_floor_there_is_no_host_pressure_and_nothing_extra_goes(tmp_path, monkeypatch, free):
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", free)
+    state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)
+    line = prune_line(state, docker)
+    assert line["host_pressure"] is False and line["images"]["removed"] == []
+
+
+def test_b15_host_pressure_never_removes_the_image_of_the_run_in_progress_or_the_never_list(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 50)
+    imgs = [image("a" * 16, 50, "e2e-tests", gb=1.0), image("b" * 16, 1, "e2e-tests", gb=1.0), image("c" * 16, 80, "backend-tests", gb=1.0),
+            image("d" * 16, 2, "backend-tests", gb=1.0)]
+    plans = {"pr1-x-20261008T100000Z": (2, {"ctx.e2e-tests": imgs[0]["tag"]}), "pr2-x-20261008T110000Z": (3, {"ctx.backend-tests": imgs[2]["tag"]})}
+    state, docker = world(tmp_path, imgs, plans, in_progress=("pr1-x-20261008T100000Z",), vm_avail_kb=kb(30),
+                          others=["localci-candidate:1", "localci-deps-base:1", *STAND_INS])
+    line = prune_line(state, docker)
+    assert [r["tag"] for r in line["images"]["removed"]] == [imgs[2]["tag"]]   # the run in progress names imgs[0]: it stays, slot 2 though
+    kept = {k["tag"]: k["rule"] for k in line["images"]["kept"]}
+    assert kept[imgs[0]["tag"]] == "named by the run in progress (no status.json yet)" and {"localci-candidate:1", "localci-deps-base:1", *STAND_INS} <= set(kept)
+
+
+def test_b15_a_dry_run_under_pressure_removes_nothing_and_the_flag_says_so(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 50)
+    state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)
+    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--dry-run"]) == 0
+    assert journal(state)[-1]["host_pressure"] is True and not [c for c in calls(tmp_path) if c.startswith("image rm")]
+    assert "host_pressure=True" in capsys.readouterr().out
