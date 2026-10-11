@@ -1,0 +1,76 @@
+task_id: localci-host-floor-1011
+mission: LOCALCI-SOVEREIGN (phase B - B15, Pro's host floor held through the run)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  The lint floor is 2 by size (about 370 net lines, no hot-zone path). The change touches the merger's run path and must never
+  weaken a check, so it is not a Gear 1 diff.
+l_level: L2
+gate_class: opus
+objective: >-
+  Pro keeps more than 100 GB free through a localci run: a run starts only at 110 GB, a watchdog evicts the run (process group and its
+  own labelled containers) under 101.5 GB as a host no-verdict, and the prune drops second-slot deps images under host pressure.
+acceptance:
+  - text: A start under 110 GB free SHALL be skipped and journalled with floor_gb 100 and start_floor_gb 110.
+    probe: "scripts/localci/tests/test_host_floor.py (start floor)"
+  - text: A sample under 101.5 GB SHALL kill the runner's process group and remove exactly this run's labelled containers, never another run's.
+    probe: "scripts/localci/tests/test_host_floor.py (eviction cases)"
+  - text: An eviction SHALL be journalled as kind evicted, not as a decision, and the same key SHALL be decided again.
+    probe: "scripts/localci/tests/test_host_floor.py (no-verdict case)"
+  - text: Under host pressure the prune SHALL drop second-slot images and never the run in progress's image.
+    probe: "scripts/localci/tests/test_prune.py (b15 cases)"
+consumer_map:
+  - scripts/localci/merger.py and prune.py (the merger tick on Pro, com.balizero.localci-merger) - every tick after merge.
+pii_scan: clean
+pii_scan_note: Harness code, tests on synthetic fixtures and docs. No client data.
+lanes:
+  - lane: localci-host-floor-1011
+    role: build
+    seat: claude-sonnet-5-5 (implementer on M5, on the lead's spec)
+what_changed: |
+  merger.py: HOST_FLOOR_GB 100, START_MARGIN_GB 10, EVICT_MARGIN_GB 1.5; HostGuard (breach: fail-closed after 3 unreadable samples;
+  evict: TERM then KILL to the runner's process group, then docker rm -f -v of the containers carrying this run dir's label);
+  runner_exec(guard=) samples every 5 s in the plan and run steps; HostEvicted is journalled by decide() as kind evicted (never a
+  decision); --min-host-free-gb default 110, --host-floor-gb, --docker; the skip line carries floor_gb and start_floor_gb.
+  prune.py: prune(pressure_gb=) removes non-newest, non-live, non-never deps images by tag under host pressure; host_pressure on
+  the line. localci_merger_tick.sh: MERGER_MIN_HOST_FREE_GB default 110. Tests: test_host_floor.py (14), 4 b15 prune tests, B6 floor
+  tests re-pinned; 7 new mutants and 2 re-pinned.
+proof: |
+  Unit and process-level tests on a fake docker; the eviction test runs a real process group and checks the child is gone and that
+  another run's containers survive. No Pro measurement before merge: the observation is the first live tick (see bites).
+bites:
+  consumer: The merger tick on Pro (com.balizero.localci-merger), which runs merger.py from origin/main at the tick's sha.
+  observation: >-
+    The first tick after merge shows its code sha in the merger_tick line; a run starts only at 110 GB or more, or a host_below_floor
+    skip line carries floor_gb=100; over the next 48 h the pro.janitor journal's minimum free_gb_before is 100 or more, or an evicted
+    line names the trough it stopped.
+ground:
+  ts: "2026-10-11T12:00:00Z"
+  siblings: >-
+    Worktree from origin/main 350d089955. Sibling localci lanes (codeql, janitor) touch runner.py, the matrix and their own tests;
+    this lane touches merger.py, prune.py, the wrapper and their tests.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 2.5
+receipts:
+  - claim: >-
+      scripts/localci/tests/test_host_floor.py (start floor); scripts/localci/tests/test_host_floor.py (eviction cases); scripts/localci/tests/test_host_floor.py (no-verdict case); scripts/localci/tests/test_prune.py (b15 cases):
+      14 + 4 passed. test_prune.py 124 passed; test_merger.py 178 passed; test_merger_phase_f + test_replay + test_merger_report 208 passed;
+      the rest of scripts/localci/tests 905 passed, 12 skipped; test_runner.py 109 passed, 2 skipped, 1 failed (test_sigterm_during_a_check_leaves_interrupted_not_running,
+      which passes alone in 6 s; runner.py is untouched by this change, so it is a load flake on a memory-distressed M5).
+    cmd: python3 -m pytest scripts/localci/tests -q -p no:cacheprovider (in chunks, foreground)
+    exit: 0
+    ts: "2026-10-11T12:00:00Z"
+    seat: claude-sonnet-5-5 implementer on M5
+  - claim: "9/9 mutants KILLED: floor-start-60, evict-disabled, evict-spares-containers, evict-kills-foreign-run, evict-as-fail, statvfs-fail-open, prune-host-pressure-ignored, b6-wrapper-floor-109, b6-merger-floor-109; survivors none, errors none, stale none."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <each rule>
+    exit: 0
+    ts: "2026-10-11T11:30:00Z"
+    seat: claude-sonnet-5-5 implementer on M5
+  - claim: "ruff check clean on every file this change touches; contract_verify --local printed no failing line."
+    cmd: ruff check <touched files>; python3 scripts/contract_verify.py --local
+    exit: 0
+    ts: "2026-10-11T12:00:00Z"
+    seat: claude-sonnet-5-5 implementer on M5
+brief_ref: evidence/brief.yml
+dissent: []
