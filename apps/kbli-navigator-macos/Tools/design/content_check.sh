@@ -39,4 +39,5 @@ if "$T/encensus" "$T/en-census.jsonl" --lang en --mode "${EN_CENSUS:-fast}" 2> "
   echo "step 4 ok: en-purity census (${EN_CENSUS:-fast})"
 else echo "step 4 FAILED: en-purity census ($T/encensus.err)"; rc=1; fi
 if python3 Tools/design/en_purity.py static; then echo "step 5 ok: never-drawn"; else echo "step 5 FAILED"; rc=1; fi
+if python3 Tools/design/live_host_check.py --selftest > /dev/null && python3 Tools/design/live_host_check.py; then echo "step 6 ok: live sites mount the immersive layout"; else echo "step 6 FAILED: a live site lost its ImmersiveHost"; rc=1; fi
 exit $rc

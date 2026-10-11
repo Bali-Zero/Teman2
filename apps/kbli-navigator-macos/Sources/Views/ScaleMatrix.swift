@@ -10,6 +10,14 @@ import SwiftUI
 /// pinned under it, one collapsible row per scope (wrapped title + the four tier abbreviations, the
 /// legend kept). An absent scale is the faint "·"; a scope that lists a scale twice stacks both
 /// entries in that cell. No row merged or dropped; text wraps, never clamps.
+extension View {
+    /// The shown risk cell's selection mark (flat matrix and scale path alike): a 2 pt accent ring outside the chip with a
+    /// 1.5 pt gap, so the ring touches only the surface, never the chip's fill (accent on the surface is >= 3:1 day and night).
+    func selectionRing(_ on: Bool) -> some View {
+        overlay { if on { RoundedRectangle(cornerRadius: 4).strokeBorder(Theme.accent, lineWidth: 2).padding(-3.5) } }
+    }
+}
+
 struct ScaleMatrix: View {
     enum Mode { case ledger, compact }
 
@@ -26,7 +34,11 @@ struct ScaleMatrix: View {
     @State private var open: Set<String> = []
 
     static let order = PP28ScalePanel.scaleOrder
+    /// Between stacked cells of one scale: the shown cell's ring (1.5 pt gap + 2 pt line, outside its chip) must clear the chip beside it by >= 1.5 pt.
+    static let cellGap: CGFloat = 8
     static let listFrom = PP28ScalePanel.matrixMaxScopes + 1
+    /// Snapshot hook (the content proof of the immersive scope selector): draw this scope's row of the list expanded.
+    static var snapshotOpenScope: Int?
 
     struct Scope: Identifiable { let id: String; let uraian: String?; let rows: [(idx: Int, row: PerSkala)] }
 
@@ -143,7 +155,7 @@ struct ScaleMatrix: View {
                     .stroke(Theme.lineSoft, lineWidth: 1)
                 }
             }
-            if selection != nil {
+            if selection != nil, Set(scs.flatMap { $0.rows.map(\.idx) }).count > 1 {
                 Text(LabelBook.cellHint(isID: isID)).font(Theme.scalable(10)).foregroundStyle(Theme.faint)
             }
         }
@@ -167,7 +179,7 @@ struct ScaleMatrix: View {
             }
             ForEach(Self.order, id: \.self) { scale in
                 let es = Self.entries(sc, scale)
-                VStack(spacing: 4) {
+                VStack(spacing: ScaleMatrix.cellGap) {
                     if es.isEmpty {
                         if top == 12 { Text("·").font(Theme.scalable(13)).foregroundStyle(Theme.faint) }
                     } else {
@@ -188,11 +200,12 @@ struct ScaleMatrix: View {
             .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, 4).padding(.horizontal, 8)
             .background(c.bg, in: RoundedRectangle(cornerRadius: 2))
-            .overlay(RoundedRectangle(cornerRadius: 2)
-                .strokeBorder(selected ? Theme.accent : (c.border ?? .clear), lineWidth: selected ? 2 : 1))
+            .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(c.border ?? .clear, lineWidth: 1))
+            .selectionRing(selected)
         return Group {
             if let selection {
                 Button { selection.wrappedValue = selected ? nil : e.idx } label: { face }.buttonStyle(.plain)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
             } else { face }
         }
     }
@@ -253,7 +266,7 @@ struct ScaleMatrix: View {
     }
 
     private func listRow(_ sc: Scope) -> some View {
-        let isOpen = open.contains(sc.id)
+        let isOpen = open.contains(sc.id) || Self.snapshotOpenScope.map { Self.scopes(scales).indices.contains($0) && Self.scopes(scales)[$0].id == sc.id } == true
         return VStack(alignment: .leading, spacing: 8) {
             if isOriginal(sc) { OriginalLabel().padding(.leading, 20) }
             Button {

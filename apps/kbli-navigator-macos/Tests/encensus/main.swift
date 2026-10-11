@@ -24,6 +24,7 @@ func flag(_ name: String) -> String? {
 }
 let views = flag("--views").map { Set($0.split(separator: ",").map(String.init)) }
 _ = NSApplication.shared
+Motion.frozenMs = Motion.total * 1000   // an immersive View is censused at the final frame of its choreography
 
 @MainActor func pdfText(_ v: AnyView, height: CGFloat?) -> String {
     let framed = height.map { AnyView(v.frame(width: 1280, height: $0, alignment: .top)) }
@@ -134,6 +135,23 @@ let rc: Int32 = MainActor.assumeIsolated {
         emit(k.kode, "registry-row", KBLIRegistryRow(kbli: k, isID: isID), anchors: c + [risk])
         emit(k.kode, "registry-sheet", RegistryVerdictSheet(kbli: k, expanded: .constant(false), onClose: {}, scrolls: false),
              anchors: c + [isID ? "Buka dosir lengkap" : "Open the full dossier"])
+        emit(k.kode, "registry-sheet-open-imm", RegistryVerdictSheet(kbli: k, expanded: .constant(true), onClose: {}, scrolls: false).immersiveHost(),
+             anchors: c + [isID ? "Tutup dosir" : "Collapse dossier"])
+        // The scope selector's content proof on the LIVE sheet (IMM-5b): each scope and each scale picked in turn through the
+        // snapshot hooks, against the flat list with that scope's row open.
+        if views?.contains("registry-sheet-scopes") == true, ScaleMatrix.scopes(k.perSkala).count >= ScaleMatrix.listFrom {
+            for i in ScaleMatrix.scopes(k.perSkala).indices {
+                ScalePath.snapshotScope = i; ScaleMatrix.snapshotOpenScope = i
+                emit("\(k.kode)#flat\(i)", "registry-sheet-scopes", RegistryVerdictSheet(kbli: k, expanded: .constant(true), onClose: {}, scrolls: false))
+                ScaleMatrix.snapshotOpenScope = nil
+                for scale in ScaleMatrix.order {
+                    ScalePath.snapshotFocus = scale
+                    emit("\(k.kode)#imm\(i)#\(scale)", "registry-sheet-scopes", RegistryVerdictSheet(kbli: k, expanded: .constant(true), onClose: {}, scrolls: false).immersiveHost())
+                }
+                ScalePath.snapshotFocus = nil
+            }
+            ScalePath.snapshotScope = nil
+        }
         // The sheet the user reads with the dossier open: the only live caller of the ledger (PR 5' gate binding).
         emit(k.kode, "registry-sheet-open", RegistryVerdictSheet(kbli: k, expanded: .constant(true), onClose: {}, scrolls: false),
              anchors: c + [isID ? "Tutup dosir" : "Collapse dossier"])
@@ -145,6 +163,17 @@ let rc: Int32 = MainActor.assumeIsolated {
         emit(k.kode, "dossier", KBLIDossierView(kbli: k, variant: .claude, scrolls: false), anchors: c + ["Bali Zero · KBLI 2025"])
         emit(k.kode, "sheet-ledger", KBLIRegistryView(kbli: k, scrolls: false),
              anchors: c + [isID ? "Tanya tentang \(k.kode)…" : "Ask about \(k.kode)…"])
+        emit(k.kode, "sheet-ledger-imm", KBLIImmersiveLedger(kbli: k, scrolls: false),
+             anchors: c + [isID ? "Tanya tentang \(k.kode)…" : "Ask about \(k.kode)…"])
+        // The content proof of the scope selector (IMM-5b): each scope picked in turn, against the flat list with that row open.
+        if views?.contains("sheet-ledger-scopes") == true {
+            for i in ScaleMatrix.scopes(k.perSkala).indices {
+                ScalePath.snapshotScope = i; ScaleMatrix.snapshotOpenScope = i
+                emit("\(k.kode)#imm\(i)", "sheet-ledger-scopes", KBLIImmersiveLedger(kbli: k, scrolls: false))
+                emit("\(k.kode)#flat\(i)", "sheet-ledger-scopes", KBLIRegistryView(kbli: k, scrolls: false))
+            }
+            ScalePath.snapshotScope = nil; ScaleMatrix.snapshotOpenScope = nil
+        }
         state.chatContextCode = k
         emit(k.kode, "chat", ChatView(), height: 800, anchors: c)   // the code it is asked about
         state.chatContextCode = nil

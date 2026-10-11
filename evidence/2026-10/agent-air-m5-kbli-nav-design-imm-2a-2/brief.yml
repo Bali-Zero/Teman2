@@ -1,0 +1,31 @@
+task_id: kbli-nav-design-imm-2a-2
+mission: kbli-nav-design-loop (Track A, build, lot IMM-L 2a' — the immersive layer live on the expanded verdict sheet, successor of #8288)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Depth-1 cure of the #8288 gate BLOCK (lead ruling 2026-10-12): the shown cell's ring touched the neighbouring chip of
+  a stacked cell on 17 codes. #8288 is frozen and closed; this PR is its commits plus the cure, from a fresh origin/main.
+  Content frozen; the glyph and the map (2b), the choreography, ribbon and hover (2c) and the census marks (5m) are
+  separate PRs. The lead commissions a fresh gate.
+l_level: L1
+gate_class: opus
+objective: >-
+  One concern: under ImmersiveHost the expanded RegistryVerdictSheet draws the scale path as its ONE risk x scale
+  matrix (M4), cell detail as its focus panel; the shown cell carries one selection grammar (a ring outside the chip
+  with a gap, and the stacked cells 8 pt apart so the ring clears every neighbour by >= 1.5 pt of surface; the selected
+  trait; the hint only over more than one cell); the sheet arrives in one beat of 600 ms (Reduce Motion = final frame,
+  proved in its biting form); a check fails when a live site loses its host, including a commented-out or forced-flat
+  host; the six-or-more scope selector is proved by selection on the live sheet.
+constraints:
+  - No fact, verdict, cap, basis, title or reason changes; no string is added (the hint is main's own, through LabelBook).
+  - The top grid of the ledger (verdict stack, heads-up, basis row, ribbon, cap count-up) has no live caller and is not touched.
+  - Flat renders change only where the shown cell's selection mark or the stacked-cell spacing changed.
+acceptance:
+  - text: The expanded live sheet SHALL draw the scale path as its one matrix, and no content SHALL be lost against the flat sheet.
+    probe: "Pro: encensus registry-sheet-open vs registry-sheet-open-imm on 55203, 56101, 51101 en/id: 0 lost; 71109: Tools/design/scope_proof.py on the registry-sheet-scopes census, 29 scopes x 4 scales en/id, 0 in no state"
+  - text: The ring SHALL leave at least 1.5 pt of surface between itself and any neighbouring chip, and reach 3:1 against both neighbours.
+    probe: "Pro: Tools/design/ringgap.py on the expanded-sheet renders of the 22 codes with a stacked cell, day and night: 0 touching (nearest ink below the ring 4.0 pt; 0.0 pt at the 4 pt spacing)"
+  - text: A live site that loses ImmersiveHost, or hosts it with the immersive switch forced off, SHALL fail the content gate.
+    probe: "Pro: content_check.sh step 6; mutants on SearchListView.swift: removed, commented out, forced flat: rc 1 each"
+  - text: Reduce Motion SHALL draw the final frame of the choreography, byte-identical, and the gate SHALL bite.
+    probe: "Pro: snapshot registry-sheet --imm --sheet-open --reduce-motion --at-ms 0 vs --at-ms 600, 56101/55203/71109 x day/night; --at-ms 0 without the switch differs"
