@@ -23,13 +23,13 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TEST_FILE = "tests/scripts/test_e33_price_descriptions.py"
-MIN_TESTS = 12
+MIN_TESTS = 14
 TIMEOUT_SECONDS = 240
 _SUMMARY = re.compile(r"^=*\s*(\d+) passed in [\d.]+s(?: \(.*\))?\s*=*$")
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a pytest line that is a pure pass (no failed/skipped/error), N >= 12."""
+    """True only for a pytest line that is a pure pass (no failed/skipped/error), N >= 14."""
     if line is None:
         return False
     match = _SUMMARY.match(line.strip())
