@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: ff40bd711636d813e80c803ac83f9bba357f5ec31257c79fb8b5420b62483f9e # pragma: allowlist secret
+checksum: e9bcfe8f584c8a72d3122faef0149c43cfd3453eda716734e337932662e26425 # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3269,5 +3269,30 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.visa_reattestation.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.janitor
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1800
+  owner_module: scripts/ops/pro_janitor.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.janitor
+  severity_on_silence: warning
+  notes: 'Free-space keeper for Pro (docs/specs/pro-janitor-2026-10-10.md): every 10 min
+    (StartInterval 600, no KeepAlive) reads free GB on /System/Volumes/Data and moves
+    between GREEN/AMBER/RED/BLACK with hysteresis (enter 130/115/105, leave 140/125/112).
+    Runs ONLY an allowlist of three host-cache rules (uv cache prune, npm cache verify,
+    old ms-playwright revisions not pinned by the .links registry; BLACK adds no rule, it pages), never docker/Colima/VM
+    and never a process kill. Dry-run first (PRO_JANITOR_APPLY=true arms it). Heartbeat ok
+    unless a rule errors or BLACK (warning). pro.disk_floor stays the independent witness
+    of the floor. Kill switch PRO_JANITOR_ENABLED=false. Born via organ_birth.py.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.janitor.json
     timestamp_field: ts
     status_field: status
