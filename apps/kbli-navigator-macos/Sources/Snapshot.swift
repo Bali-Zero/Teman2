@@ -313,6 +313,17 @@ extension Snapshot {
                         .environmentObject(state).environmentObject(lang))
                 }
             } else { content = notFound }
+        case "live-sheet":
+            // The sheet as the app MOUNTS it: `SearchListView` with a code selected, `sheetLayer` and its host and all (no `--imm`:
+            // the mount decides flat or immersive, never the harness). `--sheet-open` expands it (the env the live view reads).
+            // png_census C25 compares it with the flat and the immersive twins of `registry-sheet`.
+            if let k = state.store.code(code) {
+                if args.contains("--sheet-open") { setenv("KBLI_SHEET_EXPANDED", "1", 1) }
+                state.browsedSector = KBLIStore.sectorLetter(for: code) ?? "A"
+                state.selected = k
+                content = AnyView(SearchListView().environmentObject(state).environmentObject(lang)
+                    .frame(width: w, height: h, alignment: .top))
+            } else { content = notFound }
         case "sheet-ledger":
             // The registry sheet/ledger (KBLIVerdict.swift's own name for this surface) — the mono
             // UPPERCASE label↔value LedgerPlate table, `KBLIRegistryView`.
