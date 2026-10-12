@@ -4491,6 +4491,20 @@
       "title": "SourceFreshnessStatus",
       "type": "string"
     },
+    "SourceFreshnessUntilSuperseded": {
+      "additionalProperties": false,
+      "description": "Signed policy: the source stays CURRENT until it is superseded.\n\nOwner ruling 2026-10-12: a source's *client-visible* validity must not\nexpire on a calendar date.  The source stops being usable only through its\nown bitemporal state (``status`` SUPERSEDED/REVOKED/UNAVAILABLE, or the\n``legal_period`` closing) -- never through the passage of time since\n``verified_at``.  Age since verification is still *reported* (sentinel,\nre-attestation organ) as an internal drift alarm, but it does not change the\nengine's decision.  Deliberately carries no ``max_age_seconds``.",
+      "properties": {
+        "kind": {
+          "const": "UNTIL_SUPERSEDED",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": ["kind"],
+      "title": "SourceFreshnessUntilSuperseded",
+      "type": "object"
+    },
     "SourceLocator": {
       "additionalProperties": false,
       "properties": {
@@ -4547,13 +4561,28 @@
         "freshness_policy": {
           "anyOf": [
             {
-              "$ref": "#/$defs/SourceFreshnessPolicy"
+              "discriminator": {
+                "mapping": {
+                  "MAX_AGE_SINCE_VERIFIED_AT": "#/$defs/SourceFreshnessPolicy",
+                  "UNTIL_SUPERSEDED": "#/$defs/SourceFreshnessUntilSuperseded"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/SourceFreshnessPolicy"
+                },
+                {
+                  "$ref": "#/$defs/SourceFreshnessUntilSuperseded"
+                }
+              ]
             },
             {
               "type": "null"
             }
           ],
-          "default": null
+          "default": null,
+          "title": "Freshness Policy"
         },
         "jurisdiction": {
           "const": "ID",

@@ -657,3 +657,85 @@ def test_ledger_retention_keeps_the_newest_eight_and_touches_only_its_own_names(
 
 def test_keep_ledger_never_raises(world, tmp_path):
     assert organ.keep_ledger(world.args(), tmp_path / "absent", 26) is None
+
+
+# ------------------------------------------------------------------ UNTIL_SUPERSEDED (owner ruling 2026-10-12)
+def _non_expiring_payload() -> dict:
+    p = _payload()
+    for rec in p["source_records"]:
+        if rec["authority_type"] == "OFFICIAL_PORTAL":
+            rec["freshness_policy"] = {"kind": "UNTIL_SUPERSEDED"}
+    return p
+
+
+def test_a_non_expiring_pack_has_no_boundary_and_no_t7():
+    p = _non_expiring_payload()
+    assert organ.boundary_of(p) is None
+    assert organ.all_portal_until_superseded(p) is True
+    assert organ.all_portal_until_superseded({"source_records": []}) is False
+    assert organ.t7_due(None, BOUNDARY) is False
+
+
+def test_a_mixed_pack_keeps_the_time_bound_boundary():
+    p = _payload()
+    p["source_records"].append({"authority_type": "OFFICIAL_PORTAL", "verified_at": "2020-01-01T00:00:00Z",
+                                "freshness_policy": {"kind": "UNTIL_SUPERSEDED"}})
+    assert organ.boundary_of(p) == BOUNDARY
+
+
+def test_the_weekly_read_still_plans_for_a_non_expiring_anchor(world, capsys):
+    (world.shared / SIGNED).write_text(json.dumps({"payload": _non_expiring_payload()}))
+    _git(world.shared, "add", "-A")
+    _git(world.shared, "commit", "-m", "non-expiring")
+    _git(world.shared, "push", "origin", "HEAD:refs/heads/main")
+    _git(world.shared, "fetch", "origin")
+    assert organ.run(world.args("--dry-run", "--now", world.now(1.0))) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["next_seq"] == 26
+    assert plan["boundary"] == "none (non-expiring)"
+    assert plan["days_to_boundary"] is None and plan["t7_due"] is False
+
+
+def _anchor_with_policy(world, mutate):
+    p = _non_expiring_payload()
+    mutate(p["source_records"])
+    (world.shared / SIGNED).write_text(json.dumps({"payload": p}))
+    _git(world.shared, "add", "-A")
+    _git(world.shared, "commit", "-m", "policy variant")
+    _git(world.shared, "push", "origin", "HEAD:refs/heads/main")
+    _git(world.shared, "fetch", "origin")
+    return organ.find_anchor(world.shared, "origin/main")
+
+
+def test_innocence_an_all_until_superseded_anchor_is_accepted_with_no_boundary(world):
+    anchor = _anchor_with_policy(world, lambda records: None)
+    assert anchor["boundary"] is None
+
+
+@pytest.mark.parametrize("bad", [None, {"kind": "NEVER"}, "UNTIL_SUPERSEDED", ["UNTIL_SUPERSEDED"], {}, {"kind": ["UNTIL_SUPERSEDED"]}])
+def test_guilt_a_portal_record_that_lost_or_garbled_its_policy_still_raises_anchor(world, bad):
+    def mutate(records):
+        [r for r in records if r["authority_type"] == "OFFICIAL_PORTAL"][0]["freshness_policy"] = bad
+
+    with pytest.raises(organ.OrganError) as exc:
+        _anchor_with_policy(world, mutate)
+    assert exc.value.stage == "anchor"
+
+
+def test_guilt_a_missing_policy_key_still_raises_anchor(world):
+    def mutate(records):
+        [r for r in records if r["authority_type"] == "OFFICIAL_PORTAL"][0].pop("freshness_policy", None)
+
+    with pytest.raises(organ.OrganError) as exc:
+        _anchor_with_policy(world, mutate)
+    assert exc.value.stage == "anchor"
+
+
+def test_guilt_a_mixed_pack_with_one_null_policy_raises_anchor(world):
+    def mutate(records):
+        records.append({"authority_type": "OFFICIAL_PORTAL", "verified_at": "2020-01-01T00:00:00Z",
+                       "freshness_policy": None})
+
+    with pytest.raises(organ.OrganError) as exc:
+        _anchor_with_policy(world, mutate)
+    assert exc.value.stage == "anchor"

@@ -94,21 +94,56 @@ def assert_not_shared_checkout(workdir: Path) -> None:
         raise OrganError("worktree", f"{workdir} is not a linked worktree (shared checkout refused)")
 
 
+NON_EXPIRING_KIND = "UNTIL_SUPERSEDED"
+
+
 def boundary_of(payload: dict[str, Any]) -> datetime | None:
-    """Earliest verified_at + max_age_seconds over the OFFICIAL_PORTAL records."""
+    """Earliest verified_at + max_age_seconds over the OFFICIAL_PORTAL records.
+
+    ``None`` when no record carries a time-bound policy -- e.g. every portal
+    record is ``UNTIL_SUPERSEDED`` (owner ruling 2026-10-12: no calendar expiry).
+    The weekly read still runs as a drift alarm; only the T-7 alert is moot.
+    """
     ends = []
     for rec in payload.get("source_records", []):
         if rec.get("authority_type") != PORTAL:
             continue
-        policy = rec.get("freshness_policy") or {}
+        policy = rec.get("freshness_policy")
+        if not isinstance(policy, dict):
+            continue
         if not rec.get("verified_at") or not isinstance(policy.get("max_age_seconds"), int):
             continue
         ends.append(parse_utc(rec["verified_at"]) + timedelta(seconds=policy["max_age_seconds"]))
     return min(ends) if ends else None
 
 
-def t7_due(boundary: datetime, now: datetime) -> bool:
+def all_portal_until_superseded(payload: dict[str, Any]) -> bool:
+    """True only when there is >=1 OFFICIAL_PORTAL record and EVERY one of them
+    carries ``freshness_policy == {"kind": "UNTIL_SUPERSEDED", ...}`` (exact dict
+    kind match) and a verified_at.  A null, missing, non-dict or unknown-kind policy
+    is NOT non-expiring: that is a pack that lost its policy, and the organ must
+    keep raising rather than silence the T-7 alarm.
+    """
+    portal = [r for r in payload.get("source_records", []) if r.get("authority_type") == PORTAL]
+    if not portal:
+        return False
+    for rec in portal:
+        policy = rec.get("freshness_policy")
+        if not isinstance(policy, dict) or policy.get("kind") != NON_EXPIRING_KIND:
+            return False
+        if not rec.get("verified_at"):
+            return False
+    return True
+
+
+def t7_due(boundary: datetime | None, now: datetime) -> bool:
+    if boundary is None:  # non-expiring pack: there is no boundary to count down to
+        return False
     return boundary - now <= T_MINUS
+
+
+def _boundary_text(boundary: datetime | None) -> str:
+    return "none (non-expiring)" if boundary is None else boundary.isoformat()
 
 
 def candidate_name(seq: int) -> str:
@@ -125,11 +160,13 @@ def pr_title(date: str, next_seq: int) -> str:
 
 
 def pr_body(*, anchor_seq: int, next_seq: int, ledger_rel: str, candidate_rel: str, reader: str,
-            boundary: datetime, payload_sha: str) -> str:
+            boundary: datetime | None, payload_sha: str) -> str:
     return "\n".join([
         f"Weekly organ run (`pro.visa_reattestation`): read ledger + UNSIGNED candidate seq-{next_seq}.",
         "",
-        f"- Anchor: signed seq-{anchor_seq}; its earliest portal boundary is {boundary.strftime('%Y-%m-%dT%H:%M:%SZ')}.",
+        f"- Anchor: signed seq-{anchor_seq}; its earliest portal boundary is "
+        + ("none (every portal source is non-expiring)." if boundary is None
+           else f"{boundary.strftime('%Y-%m-%dT%H:%M:%SZ')}."),
         f"- Ledger: `{ledger_rel}` (reader `{reader}`).",
         f"- Candidate: `{candidate_rel}` (inside the ledger dir), payload digest `{payload_sha or 'n/a'}`.",
         f"- Signing step: move it to `{PACKS_REL}/{candidate_name(next_seq)}` (`git mv`), then sign it there.",
@@ -207,7 +244,7 @@ def find_anchor(repo: Path, ref: str = "origin/main") -> dict[str, Any]:
     if source_rel not in names:
         raise OrganError("anchor", f"{source_rel} missing next to the signed seq-{seq}")
     boundary = boundary_of(payload)
-    if boundary is None:
+    if boundary is None and not all_portal_until_superseded(payload):
         raise OrganError("anchor", f"seq-{seq} has no ageable {PORTAL} record")
     return {"seq": seq, "signed_rel": signed_rel, "source_rel": source_rel, "boundary": boundary}
 
@@ -583,8 +620,9 @@ def run(args: argparse.Namespace) -> int:
         repo, "ls-remote", "--exit-code", "--heads", "origin", branch, check=False).returncode == 0
     reader = reader_name(args.judge, args.model, now)
     ledger_rel = f"research/visa/{date}-organ-reattest-seq{next_seq}"
-    plan = {"anchor_seq": anchor["seq"], "next_seq": next_seq, "boundary": anchor["boundary"].isoformat(),
-            "days_to_boundary": round((anchor["boundary"] - now).total_seconds() / 86400, 2),
+    plan = {"anchor_seq": anchor["seq"], "next_seq": next_seq, "boundary": _boundary_text(anchor["boundary"]),
+            "days_to_boundary": (None if anchor["boundary"] is None
+                                 else round((anchor["boundary"] - now).total_seconds() / 86400, 2)),
             "t7_due": t7_due(anchor["boundary"], now), "branch": branch, "reader": reader,
             "ledger": ledger_rel, "candidate": f"{ledger_rel}/{candidate_name(next_seq)}",
             "existing_pr": existing_pr["url"] if existing_pr else None, "mode": "dry-run" if args.dry_run else

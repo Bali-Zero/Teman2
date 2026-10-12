@@ -208,6 +208,23 @@ class SourceFreshnessPolicy(BaseModel):
     max_age_seconds: Annotated[int, Field(ge=1, strict=True)]
 
 
+class SourceFreshnessUntilSuperseded(BaseModel):
+    """Signed policy: the source stays CURRENT until it is superseded.
+
+    Owner ruling 2026-10-12: a source's *client-visible* validity must not
+    expire on a calendar date.  The source stops being usable only through its
+    own bitemporal state (``status`` SUPERSEDED/REVOKED/UNAVAILABLE, or the
+    ``legal_period`` closing) -- never through the passage of time since
+    ``verified_at``.  Age since verification is still *reported* (sentinel,
+    re-attestation organ) as an internal drift alarm, but it does not change the
+    engine's decision.  Deliberately carries no ``max_age_seconds``.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    kind: Literal["UNTIL_SUPERSEDED"]
+
+
 class SourceRecord(BaseModel):
     """A single verified regulatory/pricing source, bitemporally tracked.
 
@@ -242,7 +259,13 @@ class SourceRecord(BaseModel):
     supersedes_source_record_id: uuid.UUID | None
     # Optional for backward compatibility with already-signed RulePack 1.0
     # payloads. Absence is semantically UNKNOWN, never implicitly current.
-    freshness_policy: SourceFreshnessPolicy | None = None
+    freshness_policy: (
+        Annotated[
+            SourceFreshnessPolicy | SourceFreshnessUntilSuperseded,
+            Field(discriminator="kind"),
+        ]
+        | None
+    ) = None
 
     @field_validator("retrieved_at", "verified_at")
     @classmethod

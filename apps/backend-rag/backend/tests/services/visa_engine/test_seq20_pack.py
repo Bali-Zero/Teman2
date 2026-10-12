@@ -538,6 +538,33 @@ class TestLocalCompensationRule:
         )
         assert after == before
 
+    def test_freshness_horizon_models_until_superseded_and_still_refuses_unknown_kinds(
+        self,
+    ) -> None:
+        """Owner ruling 2026-10-12: UNTIL_SUPERSEDED has no calendar horizon, so
+        it can never be the entry that shortens the union's floor; a kind the
+        fold does not model is still a refusal, not a guess."""
+        from backend.scripts.visa_engine.fold_pack_seq20 import _freshness_horizon
+
+        base = {"source_record_id": "s", "verified_at": "2026-08-30T13:18:00Z"}
+        bounded = _freshness_horizon(
+            {**base, "freshness_policy": {"kind": "MAX_AGE_SINCE_VERIFIED_AT", "max_age_seconds": 60}}
+        )
+        free = _freshness_horizon({**base, "freshness_policy": {"kind": "UNTIL_SUPERSEDED"}})
+        assert free > bounded
+        with pytest.raises(SystemExit):
+            _freshness_horizon({**base, "freshness_policy": {"kind": "SOMETHING_ELSE"}})
+
+    @pytest.mark.parametrize("bad", [None, {}, "UNTIL_SUPERSEDED", {"kind": None}])
+    def test_freshness_horizon_never_reads_a_missing_or_garbled_policy_as_non_expiring(
+        self, bad: Any
+    ) -> None:
+        from backend.scripts.visa_engine.fold_pack_seq20 import _freshness_horizon
+
+        record = {"source_record_id": "s", "verified_at": "2026-08-30T13:18:00Z", "freshness_policy": bad}
+        with pytest.raises(SystemExit):
+            _freshness_horizon(record)
+
 
 # ---------------------------------------------------------------------------
 # Fold guards: innocence (the real payload passes) then guilt (each guard

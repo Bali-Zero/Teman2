@@ -496,11 +496,17 @@ def _assert_bridging_census(payload: dict[str, Any]) -> None:
 def _freshness_horizon(source: dict[str, Any]) -> datetime:
     """The instant a source record stops being CURRENT.
 
-    Only ``MAX_AGE_SINCE_VERIFIED_AT`` is understood; any other policy kind is
-    a refusal rather than a guess, because guessing here would silently weaken
-    the check :func:`_assert_new_rule_shortens_no_freshness_horizon` performs.
+    ``MAX_AGE_SINCE_VERIFIED_AT`` is verified_at + max age; ``UNTIL_SUPERSEDED``
+    never goes stale on a date, so its horizon is the far future (it can never
+    be the entry that shortens the floor).  Any other policy kind is a refusal
+    rather than a guess, because guessing here would silently weaken the check
+    :func:`_assert_new_rule_shortens_no_freshness_horizon` performs.
     """
-    policy = source.get("freshness_policy") or {}
+    policy = source.get("freshness_policy")
+    if not isinstance(policy, dict):
+        policy = {}
+    if policy.get("kind") == "UNTIL_SUPERSEDED":
+        return datetime.max.replace(tzinfo=timezone.utc)
     if policy.get("kind") != "MAX_AGE_SINCE_VERIFIED_AT":
         _fail(
             f"source {source['source_record_id']} carries freshness policy "

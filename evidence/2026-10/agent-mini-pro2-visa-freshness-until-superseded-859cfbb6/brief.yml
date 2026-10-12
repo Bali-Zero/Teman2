@@ -1,0 +1,31 @@
+gear: 2
+gear_reason: >-
+  One engine concern: a second, closed freshness-policy kind on a gate that decides what clients see. No pack
+  file, no signature and no activation is touched; the tool surface is the engine, its contract schema, two
+  reporting scripts and tests.
+mission: >-
+  The Visa Oracle engine can represent and evaluate a source whose freshness is "current until superseded", so a
+  later pack ceremony can stop the calendar from degrading what clients see (owner ruling 2026-10-12), with
+  internal staleness reporting kept.
+objective: >-
+  Add the closed kind UNTIL_SUPERSEDED to SourceFreshnessPolicy (models, exported contract schema), return
+  CURRENT / SOURCE_FRESHNESS_NOT_TIME_BOUNDED / max_age_seconds null from the evaluator without bypassing
+  applicability, and teach the seq-20 fold horizon, the freshness sentinel (NON_EXPIRING bucket, report only) and
+  the re-attestation organ (no boundary, no T-7) not to choke on it. No pack uses the kind yet. v2 (supersedes
+  #8342, gate REWORK-BUILD): the organ's no-boundary exemption applies only when EVERY OFFICIAL_PORTAL record
+  carries freshness_policy.kind == UNTIL_SUPERSEDED; a null, missing, non-dict or unknown-kind policy still
+  raises OrganError(anchor), so a pack that lost its policy cannot silence the T-7 alarm.
+scope:
+  - apps/backend-rag/backend/services/visa_engine/models.py
+  - apps/backend-rag/backend/services/visa_engine/evaluate_path.py
+  - apps/backend-rag/backend/services/visa_engine/contracts/contract.schema.json
+  - apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq20.py
+  - scripts/visa_freshness_sentinel.py
+  - scripts/visa_reattestation_organ.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_evaluate_endpoint.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_seq20_pack.py
+  - scripts/tests/test_visa_freshness_sentinel.py
+  - scripts/tests/test_visa_reattestation_organ.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

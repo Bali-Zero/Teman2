@@ -1029,3 +1029,76 @@ def test_a_continuing_condition_keeps_its_key_family(tmp_path, monkeypatch):
         _cycle(v, tmp_path, gw, T0 + h * 3600)
     keys = [c[c.index("--dedup-key") + 1] for c in _calls(tmp_path)]
     assert len({k.rsplit(":n", 1)[0] for k in keys}) == 1 and len(set(keys)) == 3
+
+
+# ---------------------------------------------------------------------------
+# UNTIL_SUPERSEDED (owner ruling 2026-10-12) — a non-expiring source is
+# REPORTED (age since verified_at) but is never STALE, never APPROACHING and
+# never an anomaly. Guilt and innocence in both directions.
+# ---------------------------------------------------------------------------
+
+
+def _until_superseded_record(record_id: str, verified_at_iso: str) -> dict:
+    return {
+        "source_record_id": record_id,
+        "title": "A non-expiring portal source",
+        "authority_type": "OFFICIAL_PORTAL",
+        "verified_at": verified_at_iso,
+        "freshness_policy": {"kind": "UNTIL_SUPERSEDED"},
+    }
+
+
+def test_innocence_until_superseded_ten_years_on_is_ok_and_reported(tmp_path):
+    record = _until_superseded_record("dddd4444-0000-0000-0000-000000000001", VERIFIED_AT.isoformat())
+    now = VERIFIED_AT + timedelta(days=3650)
+    verdict = vfs.classify_freshness([record], now)
+
+    assert verdict.outcome == vfs.OUTCOME_OK
+    assert not verdict.stale and not verdict.approaching
+    assert not verdict.policy_missing and not verdict.future_verified
+    (reported,) = verdict.non_expiring
+    assert reported.age_seconds == 3650 * 86_400
+    assert verdict.to_json()["non_expiring"][0]["age_seconds"] == 3650 * 86_400
+    fake_gateway = _write_fake_gateway(tmp_path, _FAKE_GATEWAY_RECORDING)
+    assert vfs.send_alert(verdict, gateway_path=fake_gateway) is None
+    assert not (tmp_path / "calls.jsonl").exists()
+
+
+def test_guilt_a_max_age_record_beside_it_still_goes_stale():
+    stale = _portal_record("eeee5555-0000-0000-0000-000000000001", VERIFIED_AT.isoformat())
+    free = _until_superseded_record("eeee5555-0000-0000-0000-000000000002", VERIFIED_AT.isoformat())
+    verdict = vfs.classify_freshness([stale, free], BOUNDARY + timedelta(seconds=1))
+
+    assert verdict.outcome == vfs.OUTCOME_STALE
+    assert [f.source_record_id for f in verdict.stale] == [stale["source_record_id"]]
+    assert [n.source_record_id for n in verdict.non_expiring] == [free["source_record_id"]]
+
+
+def test_guilt_until_superseded_with_future_verified_at_stays_an_anomaly():
+    # The engine answers UNKNOWN (SOURCE_VERIFIED_AT_IN_FUTURE) for it too.
+    record = _until_superseded_record("ffff6666-0000-0000-0000-000000000001", VERIFIED_AT.isoformat())
+    verdict = vfs.classify_freshness([record], VERIFIED_AT - timedelta(days=1))
+
+    assert verdict.outcome == vfs.OUTCOME_ANOMALY
+    assert len(verdict.future_verified) == 1 and not verdict.non_expiring
+
+
+def test_guilt_an_unknown_kind_is_still_an_anomaly_not_non_expiring():
+    record = _until_superseded_record("ffff7777-0000-0000-0000-000000000001", VERIFIED_AT.isoformat())
+    record["freshness_policy"] = {"kind": "NEVER_EXPIRES"}
+    verdict = vfs.classify_freshness([record], VERIFIED_AT + timedelta(days=1))
+
+    assert verdict.outcome == vfs.OUTCOME_ANOMALY
+    assert verdict.policy_missing[0].reason_code == "FRESHNESS_POLICY_NOT_DEFINED"
+    assert not verdict.non_expiring
+
+
+@pytest.mark.parametrize("bad", [None, "UNTIL_SUPERSEDED", ["UNTIL_SUPERSEDED"], {}])
+def test_guilt_a_null_or_non_dict_policy_is_an_anomaly_never_non_expiring(bad):
+    record = _until_superseded_record("ffff8888-0000-0000-0000-000000000001", VERIFIED_AT.isoformat())
+    record["freshness_policy"] = bad
+    verdict = vfs.classify_freshness([record], VERIFIED_AT + timedelta(days=1))
+
+    assert verdict.outcome == vfs.OUTCOME_ANOMALY
+    assert verdict.policy_missing[0].reason_code == "FRESHNESS_POLICY_NOT_DEFINED"
+    assert not verdict.non_expiring
