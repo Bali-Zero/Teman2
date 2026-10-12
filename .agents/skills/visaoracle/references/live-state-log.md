@@ -9,7 +9,7 @@ Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE S
 
 - 2026-10-12 (M5, Zero's seq-28 mandate; signing session nuzantara-57): **seq-28 active; step B and the why-copy live.**
   (1) seq-28 signed on M5 (`signed_at 2026-10-11T22:53:04Z`, kid `prod-2026-07-1`), landing PR #8300 merged
-  2026-10-12T03:06:42Z as `7bb50d079e`, ACTIVATED 03:08Z from Pro (two-login ceremony, dry-run first; activation_id
+  2026-10-12T03:05:56Z as `7bb50d079e`, ACTIVATED 03:08Z from Pro (two-login ceremony, dry-run first; activation_id
   `b7c808bd-c0f4-48fe-9fdb-3f7f47f7e86a`, rule_pack_id `b383effb-eea4-5890-9a6a-0f13d816e855`, payload
   `a23a5bf55a77a658aef4ff06637cdb6fea476c5569d3d47a56896af2b8557046`; previous seq-27 activation `471bddfa` closed;
   ceremony roles 0). Content: the organ re-stamp of 2026-10-11 (organ PR #8289, reproduced byte-for-byte, closed as
