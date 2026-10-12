@@ -1053,6 +1053,16 @@
       "machines": ["mini"]
     },
     {
+      "live": "~/scripts/mini-cert-monitor.sh",
+      "repo": "infra/launchagents/wrappers/mini-cert-monitor.sh",
+      "machines": ["mini"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.cert-monitor.plist",
+      "repo": "infra/launchagents/com.nuzantara.cert-monitor.plist",
+      "machines": ["mini"]
+    },
+    {
       "live": "~/Library/LaunchAgents/com.nuzantara.zero-sync.plist",
       "repo": "infra/launchagents/com.nuzantara.zero-sync.plist",
       "machines": ["mini"]

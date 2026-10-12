@@ -240,13 +240,6 @@ edges:
     }
   # ── SCHEDULED (cron twins of local jobs flagged in notes) ──
   - {
-      id: cron-cert-monitor.yml,
-      kind: gh_workflow,
-      machine: github,
-      status: SCHEDULED_ALIVE,
-      producer: "daily 23:00 UTC",
-    }
-  - {
       id: cron-drive-poll.yml,
       kind: gh_workflow,
       machine: github,

@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 208c1ca051e108d4e256def2bf992bed5699a597cbd16cab9c86f131927c2fb4 # pragma: allowlist secret
+checksum: 01ee8dda8273b1710336701aa31a26e045eaa7dc2c34e2a337e447d0b68c1730 # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2782,6 +2782,25 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/mini.zero_sync.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.cert_monitor
+  runtime: mini_launchd
+  type: cron
+  # 176400 = 2 days plus 1 hour of launchd jitter.
+  expected_hb_seconds: 176400
+  owner_module: infra/launchagents/wrappers/mini-cert-monitor.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.cert-monitor
+  severity_on_silence: warning
+  notes: daily verified TLS certificate check for seven public service hosts
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.cert_monitor.json
     timestamp_field: ts
     status_field: status
 - id: mini.restore_drill

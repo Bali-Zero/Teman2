@@ -567,7 +567,7 @@ jobs:
       # run (which always executes against the default branch, i.e. main).
       # `secrets.*` is available on both: `schedule` only ever fires on the
       # default branch, never a fork PR context, and this repo's other
-      # scheduled workflows (e.g. cron-cert-monitor.yml) already read
+      # scheduled workflows (e.g. the former cron-cert-monitor.yml) read
       # `secrets.TELEGRAM_BOT_TOKEN`/`secrets.TELEGRAM_OWNER_CHAT_ID` live under
       # `on: schedule:` with no special-casing.
       # The alert NAMES the ref it fired on rather than asserting one. The step
