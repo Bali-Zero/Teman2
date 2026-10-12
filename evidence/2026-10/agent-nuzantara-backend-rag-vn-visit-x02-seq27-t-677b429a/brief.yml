@@ -1,8 +1,9 @@
-gear: 1
+gear: 2
 gear_reason: >-
   Test-only, one new file under backend/tests/services/visa_engine; no pack, no rule, no copy, no tree,
-  no corpus and no product code changes. Gear 1: the engine's behaviour is unchanged and each assertion
-  was proven to bite by mutating the evaluator operators.
+  no corpus and no product code changes. Gear 2 because the changed-file set (the engine test tree plus
+  its evidence) sits at the deterministic floor of 2, and the lane took one read-only adversarial round
+  (codex gpt-5.6-sol), cured in a follow-up commit; each assertion was proven to bite by mutation.
 mission: >-
   The edges of the visit family on the signed seq-27 pack have a witness that fails when a rule moves:
   B1 60 vs 61 days, C1 and C6 180 vs 181, C6 without a confirmed sponsor, D12 on its named cause, and the
@@ -16,4 +17,4 @@ scope:
   - apps/backend-rag/backend/tests/services/visa_engine/test_visit_family_seq27.py
 appetite:
   wall_clock_hours: 1
-  adversarial_rounds: 0
+  adversarial_rounds: 1

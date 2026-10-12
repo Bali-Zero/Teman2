@@ -1,4 +1,4 @@
-gear: 1
+gear: 2
 brief_ref: evidence/brief.yml
 ruling: >-
   VISA NIGHT plan X02 (family visit, audit findings F013, F043, F073, F103, 2026-10-12): a test-only
@@ -24,7 +24,7 @@ lanes:
 pii_scan: clean
 spend:
   wall_clock_hours: 1
-  adversarial_rounds: 0
+  adversarial_rounds: 1
 results:
   tests_added: 33
   visa_engine_suite: "2989 passed, 3 failed and 39 errors in the Postgres-integration files, identical to the run without the new file (2956 passed)"
