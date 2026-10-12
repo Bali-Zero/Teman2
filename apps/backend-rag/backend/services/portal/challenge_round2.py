@@ -26,11 +26,12 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 
 from backend.services.portal.challenge_leaderboard import (
+    _AGGREGATES_SELECT,
+    _SHARED_CTES,
     REAL_CLIENTS_CTE,
     WITA,
     AwardedEntry,
     _is_real_staff_row,
-    build_aggregates_sql_for_window,
     build_recent_activations_sql_for_window,
     build_team_total_activations_sql_for_window,
     member_key_from_email,
@@ -40,6 +41,16 @@ from backend.services.portal.challenge_leaderboard import WINDOW_START as R1_WIN
 
 ROUND2_START = datetime(2026, 9, 29, 0, 0, tzinfo=WITA)
 ROUND2_END = datetime(2026, 10, 30, 0, 0, tzinfo=WITA)  # exclusive
+
+# Zero's ruling, 2026-10-12: from this instant to the end of the round every
+# participant must earn SPRINT_MIN_POINTS net points (same scoring rules, only
+# events at/after SPRINT_START; the September carry never counts). Missing it
+# costs SPRINT_PENALTY_IDR off the monthly bonus and shuts the member out of
+# EVERY rank prize, whatever their total.
+SPRINT_START = datetime(2026, 10, 12, 0, 0, tzinfo=WITA)
+SPRINT_END = ROUND2_END
+SPRINT_MIN_POINTS = 20
+SPRINT_PENALTY_IDR = 700_000
 
 # Zero's ruling, 2026-09-29: these three took the September prize ("Ambil
 # hadiah") and start October at 0. Everyone else carries their September
@@ -205,11 +216,34 @@ def _window_ts() -> tuple[str, str]:
     return ROUND2_START.isoformat(), ROUND2_END.isoformat()
 
 
+# R2-only variant of R1's aggregates SELECT: the same columns PLUS
+# `sprint_activations` (distinct clients activated at/after SPRINT_START).
+# Derived from the R1 text so the two cannot drift; R1's own constant and
+# builders are never touched (R1 is frozen).
+_ACTIVATION_COUNT = "COUNT(DISTINCT client_id) AS activations,"
+assert _ACTIVATION_COUNT in _AGGREGATES_SELECT
+_R2_AGGREGATES_SELECT = _AGGREGATES_SELECT.replace(
+    _ACTIVATION_COUNT,
+    _ACTIVATION_COUNT
+    + "\n           COUNT(DISTINCT client_id) FILTER"
+    + " (WHERE used_at >= TIMESTAMP WITH TIME ZONE '{sprint_start}')"
+    + " AS sprint_activations,",
+    1,
+).replace(
+    "    a.last_activation_at\nFROM",
+    "    a.last_activation_at,\n    COALESCE(a.sprint_activations, 0) AS sprint_activations\nFROM",
+    1,
+)
+
+
 def build_registration_aggregates_sql() -> str:
     """Per-creator registrations/invited/last_activation_at inside the R2
-    window — same CTE shape as R1's `build_aggregates_sql`, parameterised."""
+    window — same CTE shape as R1's `build_aggregates_sql`, plus
+    `sprint_activations` (registrations at/after SPRINT_START)."""
     start_ts, end_ts = _window_ts()
-    return build_aggregates_sql_for_window(start_ts, end_ts)
+    return (_SHARED_CTES + _R2_AGGREGATES_SELECT).format(
+        start_ts=start_ts, end_ts=end_ts, sprint_start=SPRINT_START.isoformat()
+    )
 
 
 def build_recent_registrations_sql() -> str:
@@ -400,6 +434,12 @@ class Round2Entry:
     # Tied with another eligible member on a prize slot: no prize is awarded
     # until the (not yet announced) play-off decides it.
     playoff_pending: bool = False
+    # Sprint minimum (Zero's ruling, 2026-10-12): net points earned at/after
+    # SPRINT_START. Reaching SPRINT_MIN_POINTS gates every rank prize; missing
+    # it projects a SPRINT_PENALTY_IDR deduction (final only at round close).
+    sprint_points: int = 0
+    sprint_reached: bool = False
+    sprint_penalty_idr: int = SPRINT_PENALTY_IDR
 
 
 @dataclass
@@ -566,12 +606,19 @@ def _assign_rank_prizes(ordered: list[Round2Entry], r1_rank_by_email: dict[str, 
     playoff_pending with prize 0. Either way next_free_slot = s + 1. A group
     with no reachable slot (or with no eligible member) consumes nothing. A September prize-taker is eligible
     only if their October dense rank <= their September rank (computed from
-    the R1 awards; no R1 rank -> not eligible)."""
+    the R1 awards; no R1 rank -> not eligible).
+
+    Zero's ruling, 2026-10-12: every slot additionally requires the sprint
+    minimum (`sprint_reached`, >= SPRINT_MIN_POINTS net points from
+    SPRINT_START). A member short of it is ineligible exactly like the
+    September rule above: consumes no slot, so slots slide down."""
     for entry in ordered:
         if entry.email in SEPTEMBER_PRIZE_TAKEN:
             entry.september_rank = r1_rank_by_email.get(entry.email)
 
     def eligible(entry: Round2Entry) -> bool:
+        if not entry.sprint_reached:
+            return False
         if entry.email not in SEPTEMBER_PRIZE_TAKEN:
             return True
         return entry.september_rank is not None and entry.rank <= entry.september_rank
@@ -660,6 +707,7 @@ def score_round2(
         entry.invited = int(row.get("invited") or 0)
         entry.last_activation_at = row.get("last_activation_at")
         entry.points += entry.registrations * REGISTRATION_POINTS
+        entry.sprint_points += int(row.get("sprint_activations") or 0) * REGISTRATION_POINTS
         entry.last_event_at = _bump(entry.last_event_at, entry.last_activation_at)
 
     # ── first-document bonuses (+3) ──
@@ -670,6 +718,8 @@ def score_round2(
             continue  # unattributed (or Asya, who is absent from `roster`) — counted, not credited
         entry.document_bonuses += 1
         entry.points += FIRST_DOCUMENT_POINTS
+        if row["first_doc_at"] >= SPRINT_START:
+            entry.sprint_points += FIRST_DOCUMENT_POINTS
         entry.last_event_at = _bump(entry.last_event_at, row["first_doc_at"])
         events.append(
             ScoringEvent(
@@ -710,6 +760,8 @@ def score_round2(
             entry.unanswered_requests += 1
             entry.penalty_points += UNANSWERED_REQUEST_PENALTY
             entry.points -= UNANSWERED_REQUEST_PENALTY
+            if penalty_start(at, RESPONSE_WORKING_HOURS_LIMIT) >= SPRINT_START:
+                entry.sprint_points -= UNANSWERED_REQUEST_PENALTY
             entry.last_event_at = _bump(entry.last_event_at, at)
             events.append(
                 ScoringEvent(
@@ -743,6 +795,8 @@ def score_round2(
             entry.unreviewed_documents += 1
             entry.penalty_points += UNREVIEWED_DOCUMENT_PENALTY
             entry.points -= UNREVIEWED_DOCUMENT_PENALTY
+            if penalty_start(at, REVIEW_WORKING_HOURS_LIMIT) >= SPRINT_START:
+                entry.sprint_points -= UNREVIEWED_DOCUMENT_PENALTY
             entry.last_event_at = _bump(entry.last_event_at, at)
             events.append(
                 ScoringEvent(
@@ -791,6 +845,11 @@ def score_round2(
                 at=latest_event_at,
             )
         )
+
+    # ── sprint minimum (Zero's ruling, 2026-10-12) — before the prize walk ──
+    for entry in roster.values():
+        entry.sprint_reached = entry.sprint_points >= SPRINT_MIN_POINTS
+        entry.sprint_penalty_idr = 0 if entry.sprint_reached else SPRINT_PENALTY_IDR
 
     # ── rank + rank prizes (dense rank over distinct points, R1-style) ──
     ordered = sorted(

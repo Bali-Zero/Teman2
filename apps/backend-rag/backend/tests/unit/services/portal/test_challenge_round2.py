@@ -553,6 +553,7 @@ def _regs(**points_by_member: int) -> list[dict]:
         {
             "creator_email": f"{member}@balizero.com",
             "activations": n,
+            "sprint_activations": n,
             "invited": n,
             "last_activation_at": NOW,
         }
@@ -620,6 +621,7 @@ class TestRankingAndPrizes:
             {
                 "creator_email": f"m{i}@balizero.com",
                 "activations": n,
+                "sprint_activations": n,
                 "invited": n,
                 "last_activation_at": NOW,
             }
@@ -693,6 +695,7 @@ class TestRankingAndPrizes:
             {
                 "creator_email": f"m{i}@balizero.com",
                 "activations": 200 - 10 * i,
+                "sprint_activations": 200 - 10 * i,
                 "invited": 1,
                 "last_activation_at": NOW,
             }
@@ -1022,3 +1025,246 @@ class TestNoClientIdentifiers:
         snapshot = _score(first_document_rows=first_document_rows)
         for event in snapshot.recent_events:
             assert "777" not in repr(event)
+
+
+# ── Sprint minimum (Zero's ruling, 2026-10-12) ───────────────────────────────
+
+SPRINT = r2.SPRINT_START
+
+
+def _sprint_reg(member: str, total: int, sprint: int | None) -> dict:
+    row = {
+        "creator_email": f"{member}@balizero.com",
+        "activations": total,
+        "invited": total,
+        "last_activation_at": NOW,
+    }
+    if sprint is not None:
+        row["sprint_activations"] = sprint
+    return row
+
+
+def _doc_row(practice_id: int, at: datetime, assignee: str = "adit@balizero.com") -> dict:
+    return {
+        "practice_id": practice_id,
+        "client_id": 900 + practice_id,
+        "first_doc_at": at,
+        "practice_assignee": assignee,
+        "client_assignee": None,
+    }
+
+
+def _by_member(snapshot) -> dict:
+    return {e.member: e for e in snapshot.entries}
+
+
+class TestSprintConstants:
+    def test_the_ruling_values(self):
+        assert r2.SPRINT_START == datetime(2026, 10, 12, 0, 0, tzinfo=WITA)
+        assert r2.SPRINT_END == r2.ROUND2_END
+        assert r2.SPRINT_MIN_POINTS == 20
+        assert r2.SPRINT_PENALTY_IDR == 700_000
+
+
+class TestSprintPoints:
+    def test_registrations_count_from_the_sprint_column_only(self):
+        # 30 registrations in the round, only 7 at/after SPRINT_START.
+        snapshot = _score(registration_rows=[_sprint_reg("adit", 30, 7)])
+        adit = _by_member(snapshot)["adit"]
+        assert adit.points == 30
+        assert adit.sprint_points == 7
+
+    def test_a_row_without_sprint_activations_counts_as_zero(self):
+        snapshot = _score(registration_rows=[_sprint_reg("adit", 30, None)])
+        assert _by_member(snapshot)["adit"].sprint_points == 0
+
+    def test_september_carry_never_counts(self):
+        r1 = [_r1_entry("adit@balizero.com", 40)]
+        snapshot = _score(r1_awarded=r1)
+        adit = _by_member(snapshot)["adit"]
+        assert adit.carry_points == 40
+        assert adit.points == 40
+        assert adit.sprint_points == 0
+        assert adit.sprint_reached is False
+
+    def test_first_document_exactly_at_sprint_start_counts(self):
+        snapshot = _score(first_document_rows=[_doc_row(1, SPRINT)])
+        assert _by_member(snapshot)["adit"].sprint_points == r2.FIRST_DOCUMENT_POINTS
+
+    def test_first_document_one_second_before_sprint_start_does_not(self):
+        snapshot = _score(first_document_rows=[_doc_row(1, SPRINT - timedelta(seconds=1))])
+        adit = _by_member(snapshot)["adit"]
+        assert adit.points == r2.FIRST_DOCUMENT_POINTS
+        assert adit.sprint_points == 0
+
+    def test_penalty_starting_at_or_after_sprint_start_counts(self):
+        # Origin Monday 12 Oct 09:00 WITA: the 3-working-hour penalty starts
+        # at 12:00 the same day, well after SPRINT_START.
+        created = datetime(2026, 10, 12, 9, 0, tzinfo=WITA)
+        request_rows = [
+            {
+                "id": 1,
+                "client_id": 701,
+                "practice_id": None,
+                "created_at": created,
+                "reply_at": None,
+                "client_assignee": "adit@balizero.com",
+                "practice_assignee": None,
+            }
+        ]
+        snapshot = _score(request_rows=request_rows, now=datetime(2026, 10, 14, tzinfo=WITA))
+        adit = _by_member(snapshot)["adit"]
+        assert adit.points == -2
+        assert adit.sprint_points == -2
+
+    def test_penalty_with_origin_before_but_start_after_sprint_counts(self):
+        # Origin Sunday 11 Oct (before SPRINT_START); the working clock only
+        # runs from Monday 09:00, so the penalty starts Monday 12:00 WITA.
+        created = datetime(2026, 10, 11, 20, 0, tzinfo=WITA)
+        assert created < SPRINT
+        assert r2.penalty_start(created, r2.RESPONSE_WORKING_HOURS_LIMIT) >= SPRINT
+        request_rows = [
+            {
+                "id": 2,
+                "client_id": 702,
+                "practice_id": None,
+                "created_at": created,
+                "reply_at": None,
+                "client_assignee": "adit@balizero.com",
+                "practice_assignee": None,
+            }
+        ]
+        snapshot = _score(request_rows=request_rows, now=datetime(2026, 10, 14, tzinfo=WITA))
+        assert _by_member(snapshot)["adit"].sprint_points == -2
+
+    def test_penalty_that_started_before_sprint_start_does_not_count(self):
+        # Origin Thursday 8 Oct: penalty started on 8 Oct, long before the sprint.
+        created = datetime(2026, 10, 8, 9, 0, tzinfo=WITA)
+        assert r2.penalty_start(created, r2.RESPONSE_WORKING_HOURS_LIMIT) < SPRINT
+        request_rows = [
+            {
+                "id": 3,
+                "client_id": 703,
+                "practice_id": None,
+                "created_at": created,
+                "reply_at": None,
+                "client_assignee": "adit@balizero.com",
+                "practice_assignee": None,
+            }
+        ]
+        snapshot = _score(request_rows=request_rows, now=datetime(2026, 10, 14, tzinfo=WITA))
+        adit = _by_member(snapshot)["adit"]
+        assert adit.points == -2
+        assert adit.sprint_points == 0
+
+    def test_unreviewed_document_penalty_uses_the_review_limit(self):
+        uploaded = datetime(2026, 10, 12, 9, 0, tzinfo=WITA)
+        review_rows = [
+            {
+                "id": 4,
+                "practice_id": 55,
+                "client_id": 704,
+                "uploaded_at": uploaded,
+                "review_at": None,
+                "practice_assignee": "adit@balizero.com",
+                "client_assignee": None,
+            }
+        ]
+        snapshot = _score(review_rows=review_rows, now=datetime(2026, 10, 16, tzinfo=WITA))
+        assert _by_member(snapshot)["adit"].sprint_points == -1
+
+    def test_sprint_points_combine_all_three_sources(self):
+        snapshot = _score(
+            registration_rows=[_sprint_reg("adit", 30, 10)],
+            first_document_rows=[
+                _doc_row(1, SPRINT + timedelta(hours=1)),
+                _doc_row(2, SPRINT - timedelta(hours=1)),
+            ],
+        )
+        adit = _by_member(snapshot)["adit"]
+        assert adit.sprint_points == 10 + 3
+        assert adit.points == 30 + 6
+
+
+class TestSprintGateAndPenalty:
+    def test_penalty_idr_is_700k_below_twenty_and_zero_from_twenty(self):
+        snapshot = _score(
+            registration_rows=[
+                _sprint_reg("adit", 20, 19),
+                _sprint_reg("vino", 20, 20),
+            ]
+        )
+        by = _by_member(snapshot)
+        assert by["adit"].sprint_reached is False
+        assert by["adit"].sprint_penalty_idr == 700_000
+        assert by["vino"].sprint_reached is True
+        assert by["vino"].sprint_penalty_idr == 0
+
+    def test_a_member_below_the_sprint_minimum_gets_no_prize_despite_the_points(self):
+        # 35 total points would take slot 4 (min 30) — but only 19 sprint points.
+        snapshot = _score(registration_rows=[_sprint_reg("adit", 35, 19)])
+        adit = _by_member(snapshot)["adit"]
+        assert adit.prize_slot is None
+        assert adit.prize_idr == 0
+        assert adit.total_prize_idr == 0
+
+    def test_exactly_twenty_sprint_points_unlocks_the_prize(self):
+        snapshot = _score(registration_rows=[_sprint_reg("adit", 35, 20)])
+        adit = _by_member(snapshot)["adit"]
+        assert adit.prize_slot == 4
+        assert adit.prize_idr == 1_000_000
+
+    def test_the_slot_slides_to_the_next_eligible_member(self):
+        # adit leads with 35 but 19 sprint points: he consumes no slot, so
+        # vino (28 total, sprint 20) takes the first reachable slot for him.
+        snapshot = _score(
+            registration_rows=[_sprint_reg("adit", 35, 19), _sprint_reg("vino", 28, 20)]
+        )
+        by = _by_member(snapshot)
+        assert by["adit"].rank == 1
+        assert by["adit"].prize_slot is None
+        # vino is rank 2: smallest slot >= 2 whose minimum 28 reaches is slot 5 (min 20).
+        assert by["vino"].prize_slot == 5
+        assert by["vino"].prize_idr == 700_000
+
+    def test_an_ineligible_member_does_not_form_a_playoff_with_an_eligible_tie(self):
+        snapshot = _score(
+            registration_rows=[_sprint_reg("adit", 25, 19), _sprint_reg("vino", 25, 25)]
+        )
+        by = _by_member(snapshot)
+        assert by["adit"].playoff_pending is False
+        assert by["adit"].prize_idr == 0
+        assert by["vino"].playoff_pending is False
+        assert by["vino"].prize_idr == 700_000
+
+    def test_asya_mission_is_unaffected_by_the_sprint(self):
+        asya_request_rows = [
+            {"client_id": 800 + i, "created_at": datetime(2026, 10, 1, 9, 0, tzinfo=WITA)}
+            for i in range(3)
+        ]
+        before = _score(asya_request_rows=asya_request_rows).asya_mission
+        assert before.points == 0
+        # No sprint field exists on the mission and its target stays 60.
+        assert not hasattr(before, "sprint_points")
+        assert before.target_points == 60
+
+
+class TestSprintSqlBuilder:
+    def test_r2_aggregates_sql_carries_the_sprint_filter(self):
+        sql = r2.build_registration_aggregates_sql()
+        assert "sprint_activations" in sql
+        assert "FILTER (WHERE used_at >= TIMESTAMP WITH TIME ZONE '2026-10-12" in sql
+        assert "2026-09-29" in sql and "2026-10-30" in sql
+        assert "{" not in sql
+
+    def test_r1_aggregates_sql_is_untouched(self):
+        from backend.services.portal import challenge_leaderboard as r1
+
+        sql = r1.build_aggregates_sql()
+        assert "sprint" not in sql
+        assert "FILTER" not in sql
+        expected = (r1._SHARED_CTES + r1._AGGREGATES_SELECT).format(
+            start_ts=r1.WINDOW_START.isoformat(), end_ts=r1.WINDOW_END.isoformat()
+        )
+        assert sql == expected
+        assert r1._AGGREGATES_SELECT.count("COUNT(DISTINCT client_id)") == 2
