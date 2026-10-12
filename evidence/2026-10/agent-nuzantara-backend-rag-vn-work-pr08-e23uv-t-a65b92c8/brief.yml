@@ -1,8 +1,8 @@
 gear: 1
 gear_reason: >-
-  One data concern in one lane (two snapshot rows removed, one test file extended), no tree, no pack,
-  no pricing and no copy change; the engine already renders the pending timeline for a product with no
-  snapshot row.
+  One data concern (two snapshot rows removed, one test file extended) plus, after the red team, the one
+  shared pending-timeline sentence reworded so it names no unsupported cause; no tree, no pack and no
+  pricing change; the engine already renders the pending timeline for a product with no snapshot row.
 mission: >-
   The E23U and E23V cards stop showing "typically 7-10 working days" that no rule, official page or price row
   supports, and show the pending-timeline sentence until an owner-confirmed figure exists (OD-5).
@@ -14,6 +14,9 @@ objective: >-
 scope:
   - apps/backend-rag/backend/data/bali_zero_processing_times_2026.json
   - apps/backend-rag/backend/tests/services/visa_engine/test_processing_times.py
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts (outcome.timeline_pending, en + id only)
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/client-copy.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx (two pins of the old sentence)
 appetite:
   wall_clock_hours: 1
   adversarial_rounds: 1

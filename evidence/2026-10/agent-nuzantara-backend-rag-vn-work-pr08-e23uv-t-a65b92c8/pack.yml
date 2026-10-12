@@ -1,10 +1,15 @@
 gear: 1
-brief_ref: evidence/brief.yml
+brief_ref: evidence/2026-10/agent-nuzantara-backend-rag-vn-work-pr08-e23uv-t-a65b92c8/brief.yml
 ruling: >-
   Visa-night family audit 2026-10-12, plan PR-08 (findings F14, F22, F37; dedup group G19): the 7-10 working-day
-  figure for E23U and E23V is a catalogue default shared by about thirty codes, the official imigrasi.go.id pages
-  for both are empty, the pack carries no rule for a window and the price catalogue has no row; conservative
-  default of owner decision OD-5 is the pending timeline. The E23 figure and its IMTA source text are untouched
+  figure for E23U and E23V is a catalogue default shared by about thirty codes, the per-code imigrasi.go.id pages
+  for both are empty ("Data Belum Tersedia"), the pack carries no rule for a window and the price catalogue has no
+  row; conservative default of owner decision OD-5 is the pending timeline. Authority note (red team, checked
+  2026-10-12): official sources are silent for these codes, not absent in general. The generic imigrasi.go.id
+  klasifikasi-visa-tinggal-terbatas page prints "Empat hari kerja setelah pembayaran visa diterima" 93 times as
+  a template; that page returns byte-identical text for any slug (an invented slug included), and the strings
+  E23U and E23V never occur in it, so it is not a code-specific window. A Kanim Bontang decision dated 2025
+  (WIM.18.IMI.7-1132.PW.02.01) sets a one-hour compensation rule, not a visa standard, and names neither code. The E23 figure and its IMTA source text are untouched
   (production catalogue row, OD-5).
 mission: >-
   The E23U and E23V cards stop showing "typically 7-10 working days" that no rule, official page or price row
@@ -23,13 +28,15 @@ lanes:
     query_hash: "a9b4e4f262b03c1baf05ef7ae76c161f1c36ae0d63061354ee2077a1d0a74612" # pragma: allowlist secret
     note: query_hash = sha256 of the E23U ground dossier read (visa-night/work/ground/E23U.md).
 pii_scan: clean
+appetite_exceeded: "The red-team cure round (live check of the official pages, a shared-copy rewording, two more test files and the full suites twice) added 0.7 h to the 0.5 h build."
 spend:
-  wall_clock_hours: 0.5
-  adversarial_rounds: 0
+  wall_clock_hours: 1.2
+  adversarial_rounds: 1
 results:
   - "test_processing_times.py: 42 passed (6 red before the data change)"
-  - "visa_engine suite: 2969 passed; failures and errors only in Postgres-backed files, same on untouched main"
-  - "visa-oracle mouth suite: 1425 passed of 1425"
+  - "visa_engine suite (after red team): 2958 passed, 15 skipped; 3 failed and 42 errors only in Postgres-backed files; the 2571 tests outside them all pass"
+  - "visa-oracle mouth suite: 1426 passed of 1426 (two OutcomeSheet pins and two client-copy tests follow the reworded sentence)"
+  - "tsc --noEmit (apps/mouth): clean"
 bites:
   consumer: >-
     the E23U and E23V outcome cards (evaluate_path._processing_timeline, rendered by OutcomeSheet Timeline);
@@ -62,6 +69,18 @@ receipts:
     exit: 0
     ts: "2026-10-12T07:21:00Z"
     seat: this session
+  - claim: "The reworded pending sentence was red before the copy change."
+    cmd: cd apps/mouth && npx vitest run '(visa-oracle)/visa-oracle/_lib/client-copy.test.ts'
+    result: "2 failed, 14 passed (old sentence named office and season)"
+    exit: 1
+    ts: "2026-10-12T07:57:00Z"
+    seat: this session
+  - claim: "After the rewording the whole visa-oracle mouth suite is green and tsc is clean."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)' && npx tsc --noEmit -p .
+    result: "54 files, 1426 passed; tsc exit 0"
+    exit: 0
+    ts: "2026-10-12T08:05:00Z"
+    seat: this session
 decisions:
   - id: D-conservative-default
     decision: >-
@@ -80,3 +99,20 @@ dissent:
     objection: "Other unpriced products (E28B-D, E28F, E30, E30E/F, E33A-C) also show 7-10 with no price row."
     status: PLAUSIBLE
     disposition: "Out of scope by the plan: PR-08 names E23U and E23V only (empty official pages); the test pins only those two plus the general rule that a row-less unpriced product renders pending, not that every unpriced product must lack a window."
+  - seat: "codex gpt-5.6-sol (red team)"
+    rollout: "01a12d18-e796-75d0-99d7-88fbd895de07"
+    objection: "MEDIUM: the premise that no official source gives a window is false; imigrasi.go.id indexes a 4-day window on the E23V page and a newer Kanim Bontang page a 5-day standard, so sources conflict or are stale, not absent; document and resolve it rather than bake a false premise into tests and the pack."
+    status: PLAUSIBLE
+    disposition: >-
+      CURED: premise corrected, figure rejected. Checked live 2026-10-12: the per-code pages (daftar-visa-indonesia/E23V and /E23U) say "Data Belum Tersedia". The klasifikasi-visa-tinggal-terbatas-indeks-e23v URL returns the generic page whose text is byte-identical to an invented slug and never contains E23U or E23V, so its "Empat hari kerja" is a template, not an E23V window (and it is the visa-issuance step, while the 7-10 default was never tied to it). The Bontang file reachable from search is a one-hour service-compensation decision and says nothing about E23U or E23V; the 5-day statement was not found, and an office-local standard would not govern a national catalogue figure anyway. UNKNOWN stays (OD-5 owns which authority wins). Cure: the pack ruling, the snapshot interpretation text and the test reasons now say "no code-specific official window" and record the conflict instead of "no official page".
+  - seat: "codex gpt-5.6-sol (red team)"
+    rollout: "01a12d18-e796-75d0-99d7-88fbd895de07"
+    objection: "MEDIUM: the now-exposed fallback tells clients processing times 'vary by office and season' (EN) and 'bervariasi menurut kantor dan musim' (ID); no rule or page supports a seasonal cause; it should say only that Bali Zero has no verified window."
+    status: CONFIRMED
+    disposition: >-
+      CURED: real, copy reworded. outcome.timeline_pending (en, id) reworded to "Bali Zero has no confirmed processing time for this visa yet. A Bali Zero advisor can confirm the calendar for your case before you book travel." / "Bali Zero belum memiliki kepastian lama proses untuk visa ini. Konsultan Bali Zero dapat mengonfirmasi jadwal untuk kasus Anda sebelum Anda memesan perjalanan." No cause, no figure, advisor offered not promised ("verified" is avoided because an existing test bars internal-note words from this copy). A new client-copy test (red first, 2 failed) bars season, office, vary and digits from it; the two OutcomeSheet pins of the old sentence were updated. The key is shared by every UNKNOWN timeline, so the cure reaches all of them, which is the intent: the old cause was unsupported for all.
+  - seat: "codex gpt-5.6-sol (red team)"
+    rollout: "01a12d18-e796-75d0-99d7-88fbd895de07"
+    objection: "LOW: no price or PNBP split defect; git diff --check clean; the full pytest suite could not run in the read-only sandbox, only a functional probe."
+    status: RETRACTED
+    disposition: "No defect to cure; the whole suites were run in this lane (see results)."

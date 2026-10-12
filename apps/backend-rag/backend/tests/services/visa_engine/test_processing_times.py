@@ -34,8 +34,8 @@ def _decision(evaluated_at: datetime) -> Any:
 # snapshot row, so the card falls back to the pending timeline instead of an invented figure.
 _NO_CATALOGUE_TIME_REASONS = {
     "BRIDGING": "the production catalogue has no processing time for it",
-    "E23U": "no official page or rule gives a window and the catalogue has no price row (OD-5)",
-    "E23V": "no official page or rule gives a window and the catalogue has no price row (OD-5)",
+    "E23U": "no code-specific official window (own page empty; the 4-day text on the generic klasifikasi page is a template that never names it) and no price row (OD-5)",
+    "E23V": "no code-specific official window (own page empty; the 4-day text on the generic klasifikasi page is a template that never names it) and no price row (OD-5)",
 }
 _NO_CATALOGUE_TIME = frozenset(_NO_CATALOGUE_TIME_REASONS)
 
@@ -71,7 +71,9 @@ class TestSnapshot:
 
     @pytest.mark.parametrize("code", ["E23U", "E23V"])
     def test_the_diplomat_household_and_trade_office_visas_carry_no_window(self, code: str) -> None:
-        # No official imigrasi.go.id data, no rule, no price row: the 7-10 default was unsourced.
+        # The 7-10 default was unsourced. imigrasi.go.id carries no E23U/E23V window of its own; its generic
+        # klasifikasi-visa page prints "four working days" in a template served unchanged for any slug and
+        # never names these codes, so it is not a code-specific figure (OD-5 decides which authority governs).
         assert typical_window(code) is None
         assert code not in processing_times.product_windows()
         assert code in _NO_CATALOGUE_TIME_REASONS
