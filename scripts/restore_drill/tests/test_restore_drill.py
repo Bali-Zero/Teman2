@@ -202,18 +202,17 @@ def _run_payload_until_listing(tmp_path: Path, extra_env: dict[str, str]) -> tup
         stub = bin_dir / name
         stub.write_text(body, encoding="utf-8")
         stub.chmod(0o755)
-    env = {k: v for k, v in os.environ.items() if not k.startswith(("RESTORE_DRILL_", "TIGRIS_", "AWS_"))}
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("RESTORE_DRILL_", "TIGRIS_", "AWS_", "DRILL_"))}
     env.update(
         PATH=f"{bin_dir}:{env.get('PATH', '/usr/bin:/bin')}",
         AWS_ACCESS_KEY_ID="stub",
         AWS_SECRET_ACCESS_KEY="stub",
         STUB_IMAGE_HASH=hashlib.sha256((ROOT / "Dockerfile").read_bytes()).hexdigest(),
         RESTORE_DRILL_CONTAINER=f"pytest-drill-{os.getpid()}",
-        # The watchdog's `sleep` outlives the run by design and would hold a pipe open: output goes to
-        # a file, and a short cap bounds the orphan.
+        # Output goes to a file, never a pipe, and a short cap bounds the run.
         RESTORE_DRILL_TIMEOUT_SECONDS="20",
-        **extra_env,
     )
+    env.update(extra_env)
     out = tmp_path / "payload.out"
     with out.open("w", encoding="utf-8") as sink:
         proc = subprocess.run(
@@ -239,3 +238,32 @@ def test_the_drill_scoped_bucket_override_still_applies(tmp_path: Path) -> None:
     )
     assert rc == 2
     assert calls == ["--endpoint-url https://fly.storage.tigris.dev s3 ls s3://drill-bucket/postgres/"]
+
+
+def test_the_drill_scoped_endpoint_override_still_applies(tmp_path: Path) -> None:
+    rc, _, calls = _run_payload_until_listing(
+        tmp_path, {"TIGRIS_ENDPOINT": "https://media.invalid", "RESTORE_DRILL_TIGRIS_ENDPOINT": "https://drill.invalid"}
+    )
+    assert rc == 2
+    assert calls == ["--endpoint-url https://drill.invalid s3 ls s3://nuzantara-backups/postgres/"]
+
+
+def test_the_watchdog_group_is_killed_so_its_sleep_does_not_outlive_the_run(tmp_path: Path) -> None:
+    import subprocess
+    import time
+
+    marker = f"{9000 + (int(time.time()) % 900)}"  # a sleep length no other process is likely to use
+    rc, _, _ = _run_payload_until_listing(tmp_path, {"RESTORE_DRILL_TIMEOUT_SECONDS": marker})
+    assert rc == 2
+    time.sleep(0.5)
+    left = subprocess.run(["pgrep", "-f", f"^sleep {marker}$"], capture_output=True, text=True).stdout.split()
+    for pid in left:
+        subprocess.run(["kill", pid], check=False)
+    assert left == []
+
+
+def test_generic_drill_knobs_in_the_secrets_env_do_not_reach_the_drill() -> None:
+    text = _payload_text()
+    for knob in ("PORT", "USER", "PASSWORD", "DB"):
+        assert f'DRILL_{knob}="${{RESTORE_DRILL_{knob}:-' in text
+        assert f'"${{DRILL_{knob}:-' not in text
