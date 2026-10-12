@@ -101,7 +101,7 @@ const NEXT_STEPS_BY_STATE: Record<OutcomeStateName, OutcomeNextSteps> = {
     step(
       "send-for-review",
       "Send this summary to a Bali Zero advisor — an advisor can look at your case with you.",
-      "Kirim ringkasan ini ke konsultan Bali Zero — konsultan dapat membantu melihat kasus Anda bersama Anda.",
+      "Kirim ringkasan ini ke konsultan Bali Zero — konsultan dapat meninjau kasus Anda bersama Anda.",
     ),
     step(
       "keep-documents-at-hand",
@@ -1445,7 +1445,7 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   ),
   // fact-mapper.ts: raised when trip_scope === "multiple".
   DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW: text(
-    "You said your trip serves more than one purpose, so no path can be confirmed yet. A Bali Zero advisor can review how those purposes combine with you.",
+    "You said your trip serves more than one purpose, so no path can be confirmed yet. A Bali Zero advisor can go over with you how those purposes fit together.",
     "Anda menyatakan bahwa perjalanan Anda memiliki lebih dari satu tujuan, sehingga belum ada jalur yang dapat dipastikan. Konsultan Bali Zero dapat meninjau bagaimana tujuan-tujuan tersebut digabungkan bersama Anda.",
   ),
   DISCLOSED_PEP_OR_SANCTIONS_REVIEW: text(
@@ -1548,9 +1548,9 @@ export const REVIEW_REASON_ELEMENTS: Partial<
   },
 };
 
-const GENERIC_REVIEW_REASON: LocalizedText = text(
-  "Some of your answers need a Bali Zero advisor's judgment before we can confirm a path.",
-  "Beberapa jawaban Anda memerlukan penilaian dari konsultan Bali Zero sebelum kami dapat mengonfirmasi jalur.",
+export const GENERIC_REVIEW_REASON: LocalizedText = text(
+  "Some of your answers need a review before a path can be confirmed. A Bali Zero advisor can go over them with you.",
+  "Beberapa jawaban Anda perlu ditinjau sebelum jalur dapat dikonfirmasi. Konsultan Bali Zero dapat membahasnya bersama Anda.",
 );
 
 // D3-4 (PR-D3, owner ruling SHWEB-20260911) had added a STEPCHILD-only
@@ -1640,7 +1640,7 @@ export const NOTICE_CONDITION_COPY: Record<string, LocalizedText> = {
     "Belum dapat dipastikan di sini apakah sponsor Anda memiliki izin tinggal sendiri. Konsultan Bali Zero dapat memastikan izin tinggal sponsor tersebut bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
   ),
   DISCLOSED_MULTI_PURPOSE_TRIP_CONDITION: text(
-    "You said your trip serves more than one purpose. A Bali Zero advisor can review how those purposes combine with you before submission and tell you what to prepare.",
+    "You said your trip serves more than one purpose. A Bali Zero advisor can go over with you how those purposes fit together before submission and tell you what to prepare.",
     "Anda menyatakan bahwa perjalanan Anda memiliki lebih dari satu tujuan. Konsultan Bali Zero dapat meninjau bagaimana tujuan-tujuan tersebut digabungkan bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
   ),
   CONFLICTING_IMMIGRATION_STATUS_CONDITION: text(
@@ -1658,7 +1658,7 @@ export const NOTICE_CONDITION_COPY: Record<string, LocalizedText> = {
   ),
   DISCLOSED_BLACKLIST_ENTRY_CONDITION: text(
     "You flagged a blacklist entry in your disclosures. A Bali Zero advisor can go over your situation with you before submission and tell you what to prepare.",
-    "Anda menandai adanya pencantuman dalam daftar hitam dalam pengungkapan Anda. Konsultan Bali Zero dapat membahas situasi tersebut bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
+    "Pengungkapan Anda menandai adanya pencantuman dalam daftar hitam. Konsultan Bali Zero dapat membahas situasi tersebut bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
   ),
   DISCLOSED_IMMIGRATION_INVESTIGATION_CONDITION: text(
     "You flagged an open immigration investigation. A Bali Zero advisor can review its status with you before submission and tell you what supporting documentation, if any, to prepare.",

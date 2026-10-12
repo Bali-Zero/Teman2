@@ -1,6 +1,9 @@
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   GENERIC_NOTICE_CONDITION,
+  GENERIC_REVIEW_REASON,
   NOTICE_CONDITION_COPY,
   REVIEW_REASON_COPY,
   REVIEW_REASON_ELEMENTS,
@@ -40,6 +43,10 @@ const PROMISE: readonly RegExp[] = [
   /\bkonsultan (bali zero )?perlu\b/i,
   /\bperlu (diperiksa ulang|dikonfirmasi|ditinjau|diverifikasi) oleh konsultan/i,
   /\b(memerlukan|diperlukan) (peninjauan|konfirmasi|pemeriksaan)[^.]{0,80}oleh konsultan/i,
+  // "needs a Bali Zero advisor's judgment" makes the advisor's judgment a
+  // precondition, the same obligation in a possessive.
+  /\bneeds? an? (bali zero )?(advisor|consultant)'s\b/i,
+  /\bmemerlukan (penilaian|pertimbangan|keputusan) (dari )?konsultan/i,
 ];
 
 // EXEMPTION, stated openly: Second Home (E33*) keys are skipped by name. Their
@@ -114,6 +121,7 @@ describe("the advisor is offered, never promised (every non-E33 code; E33 is Tra
       offenders([
         ...table("NOTICE_CONDITION_COPY", NOTICE_CONDITION_COPY),
         ["GENERIC_NOTICE_CONDITION", GENERIC_NOTICE_CONDITION],
+        ["GENERIC_REVIEW_REASON", GENERIC_REVIEW_REASON],
         ["DEGRADED_REVIEW_REASON", degraded.message],
       ]),
     ).toEqual([]);
@@ -165,10 +173,49 @@ describe("the advisor is offered, never promised (every non-E33 code; E33 is Tra
         en: "x",
         id: "diperlukan konfirmasi oleh konsultan Bali Zero mengenai status mana yang benar.",
       },
+      {
+        en: "Some of your answers need a Bali Zero advisor's judgment before we can confirm a path.",
+        id: "Beberapa jawaban Anda memerlukan penilaian dari konsultan Bali Zero sebelum kami dapat mengonfirmasi jalur.",
+      },
     ];
     for (const copy of obligations) {
       expect(offenders([["obligation", copy]]).length).toBeGreaterThan(0);
     }
+  });
+});
+
+// The Playwright specs pin copy word for word, and nothing in the unit suite
+// ran them: two of them still expected the old promises after the adapter
+// moved on. A spec that pins a promise sentence is a spec that fails the day
+// the sentence is cured, so the specs are scanned like any other copy table.
+// The one allow-listed literal is the disclaimer paragraph that lives in
+// i18n.ts (tree lane, named in the PR body as a follow-up).
+describe("the Playwright specs pin no promise sentence", () => {
+  const e2eDir = path.resolve(__dirname, "../../../../../e2e");
+  const TREE_LANE_DISCLAIMER =
+    "a Bali Zero advisor reviews your case before any path is confirmed";
+
+  function literals(source: string): string[] {
+    return source.match(/"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g) ?? [];
+  }
+
+  it("no visa-oracle e2e string literal carries a promise or an obligation", () => {
+    const files = readdirSync(e2eDir).filter((name) =>
+      /^visa-.*\.spec\.ts$/.test(name),
+    );
+    expect(files.length).toBeGreaterThan(0);
+    const found: string[] = [];
+    for (const name of files) {
+      const source = readFileSync(path.join(e2eDir, name), "utf8");
+      for (const literal of literals(source)) {
+        if (literal.includes(TREE_LANE_DISCLAIMER)) continue;
+        for (const re of PROMISE) {
+          if (re.test(literal))
+            found.push(`${name} ~ ${re}: ${literal.slice(0, 60)}`);
+        }
+      }
+    }
+    expect(found).toEqual([]);
   });
 });
 

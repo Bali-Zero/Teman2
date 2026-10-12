@@ -2746,10 +2746,10 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
     if (secondOutcome.state !== "HUMAN_REVIEW_REQUIRED")
       throw new Error("unexpected state");
     expect(firstOutcome.reviewReasons[0].message.en).toBe(
-      "Some of your answers need a Bali Zero advisor's judgment before we can confirm a path.",
+      "Some of your answers need a review before a path can be confirmed. A Bali Zero advisor can go over them with you.",
     );
     expect(secondOutcome.reviewReasons[0].message.en).toBe(
-      "Some of your answers need a Bali Zero advisor's judgment before we can confirm a path.",
+      "Some of your answers need a review before a path can be confirmed. A Bali Zero advisor can go over them with you.",
     );
     expect(emitVisaOracleTelemetry).toHaveBeenCalledTimes(1);
     expect(emitVisaOracleTelemetry).toHaveBeenCalledWith({
