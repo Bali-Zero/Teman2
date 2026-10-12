@@ -574,8 +574,13 @@ class TestPinnedLedgerReproducesSigned:
         self, folded: tuple[dict[str, Any], dict[str, Any], str], seq28: dict[str, Any]
     ) -> None:
         assert folded[2] == "real"
-        digest = hashlib.sha256(canonicalize_json(seq28)).hexdigest()
+        folded_payload = folded[1]
+        assert canonicalize_json(folded_payload) == canonicalize_json(seq28)
+        assert canonicalize_json(folded_payload) == canonicalize_json(_read_json(_SEQ28_SOURCE))
+        digest = hashlib.sha256(canonicalize_json(folded_payload)).hexdigest()
         assert digest == _SEQ28_PAYLOAD_SHA256
+        if _SEQ28_SIGNED.exists():
+            assert digest == _read_json(_SEQ28_SIGNED)["payload_sha256"]
 
 
 class TestSignedBundleTiesToSource:

@@ -38,17 +38,23 @@ receipts:
     exit: 0
     ts: "2026-10-12T11:12:27Z"
     seat: this session
-  - claim: The whole visa_engine directory shows the same tally as origin/main outside the seq files, all seq pack and census tests green.
-    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine -p no:cacheprovider
-    result: "4 failed, 3053 passed, 15 skipped, 39 errors in 257.94s"
-    exit: 1
-    ts: "2026-10-12T11:16:52Z"
+  - claim: The seq-28 pack tests still pass after the pin test was strengthened (folded payload vs seq28, vs committed source, vs signed payload_sha256).
+    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine/test_seq28_pack.py -p no:cacheprovider
+    result: "34 passed in 3.94s"
+    exit: 0
+    ts: "2026-10-12T11:28:23Z"
     seat: this session
-  - claim: The 4 failures and 39 errors are pre-existing local-environment ones (scratch DB schema, missing psutil), not caused by the diff.
-    cmd: cd a detached worktree of origin/main/apps/backend-rag && python3 -m pytest the five failing files (test_bundle_verify, test_evaluate_endpoint, test_visa_engine_retention_fk_registry, test_shadow_evidence, test_shadow_match) -p no:cacheprovider
-    result: "4 failed, 398 passed, 39 errors in 12.51s"
+  - claim: Baseline, the same full command on origin/main's merge base (detached worktree at ec3c6ead04, the commit this branch forks from).
+    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine -p no:cacheprovider
+    result: "4 failed, 3051 passed, 15 skipped, 39 errors in 205.55s"
     exit: 1
-    ts: "2026-10-12T11:18:00Z"
+    ts: "2026-10-12T11:32:04Z"
+    seat: this session
+  - claim: Branch, the identical full command on the branch head; same 4 failed and 39 errors as the baseline, 2 more passes are the two new pin tests.
+    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine -p no:cacheprovider
+    result: "4 failed, 3053 passed, 15 skipped, 39 errors in 178.82s"
+    exit: 1
+    ts: "2026-10-12T11:35:07Z"
     seat: this session
 decisions:
   - id: D-pin-not-discover
@@ -59,4 +65,20 @@ decisions:
     decision: >-
       observe_visa_seq27_signed.py is deleted because seq-28 superseded seq-27; the old seq-27 evidence pack that names
       it is history and is left untouched.
-dissent: []
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T19-18-09-01a12fd5-95a4-74e1-8446-b3aa89c8bff1.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM, test_seq28_pack.py pin test only checks folded[2] == real and digests seq28, not the payload the fold produced."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: the test now compares canonicalize_json of folded[1] with seq28 and with the committed source, digests folded[1], and compares it with both the pinned constant and the signed payload_sha256. (seq28 was already folded[1], so the old check was weaker in form than in substance.)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T19-18-09-01a12fd5-95a4-74e1-8446-b3aa89c8bff1.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM, pack.yml brief_ref: evidence/brief.yml does not identify the brief the diff adds."
+    status: PLAUSIBLE
+    disposition: "Not changed: the pre-push pack-lint and CI stage the brief at evidence/brief.yml and a dated or directory brief_ref fails the lint; the brief itself is committed beside the pack and passed as --brief-source-path. Accepted as a repo convention."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T19-18-09-01a12fd5-95a4-74e1-8446-b3aa89c8bff1.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM, pack.yml baseline receipt is prose rather than a re-runnable command and a partial run does not prove the whole-directory claim."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: the partial receipt is replaced by the identical full command run on the merge base ec3c6ead04 (4 failed, 3051 passed, 39 errors) and on the branch (4 failed, 3053 passed, 39 errors); the claim is narrowed to same failures and errors plus 2 new passes."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T19-18-09-01a12fd5-95a4-74e1-8446-b3aa89c8bff1.jsonl, model verified in the rollout file)"
+    objection: "LOW, key-ceremony runbook says the seq-27 test and observer are green at merge, false in time."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: the sentence now uses historical wording (were green when seq-27 merged; observer retired 2026-10-12, replaced by the seq-28 observer)."
