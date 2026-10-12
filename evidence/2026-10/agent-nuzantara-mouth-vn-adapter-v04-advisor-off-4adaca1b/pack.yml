@@ -33,23 +33,27 @@ bites: >-
   to you". Pre-merge, the same phrases are asserted absent by advisor-offer.test.ts.
 spend:
   wall_clock_hours: 1
-  adversarial_rounds: 0
+  adversarial_rounds: 1
   paid_api: none
   note: >-
-    One implementer session; no subagent, no external seat, no paid per-token API.
+    One implementer session plus one red-team round by codex gpt-5.6-sol (subscription CLI, rollout
+    rollout-2026-10-12T09-58-56-01a12dd5-9d11-7da1-9657-4b8b4666773e); no paid per-token API.
 results:
   - claim: "Test first: the new scan test is red on origin/main copy for the right keys."
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/advisor-offer.test.ts'
     result: "4 failed | 1 passed before the rewrite (next steps, support/review reasons, review elements, notices); the guilt test on the replaced sentences passes"
   - claim: "The whole visa-oracle mouth suite after the change."
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
-    result: "Test Files 55 passed (55); Tests 1431 passed (1431)"
+    result: "Test Files 55 passed (55); Tests 1436 passed (1436) after the red-team cures (1431 before)"
   - claim: "apps/mouth typechecks."
     cmd: cd apps/mouth && npx tsc --noEmit -p .
     result: "no output, exit 0"
   - claim: "The legacy client-copy guard and the i18n census stay green."
     cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py && python3 scripts/ci/observe_visa_oracle_i18n_census.py
     result: "OK visa-oracle client copy: 3592 literals scanned, 0 banned; census holds (6 passed)"
+  - claim: "Test first on the red-team cures: the new tests are red on the pre-cure copy and green after."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/advisor-offer.test.ts' 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts'
+    result: "7 failed on the pre-cure engine-adapter.ts (obligation sentences, blacklist capability claim, three CONTACT_REQUIRED reason codes, pinned activity-boundary and price strings); 167 passed after"
   - claim: "Backend suite not run: the diff touches no tree, corpus, fact, pack or Python file."
     cmd: git diff --name-only origin/main
     result: "only apps/mouth/src/app/(visa-oracle) files and this evidence directory"
@@ -58,7 +62,8 @@ decisions:
     decision: >-
       The E33-family advisor checks (E33G, E33B, E33E, E33F, E33 property, and the E33A-C government
       sentences) keep their wording: they belong to the Second Home lane and the scan test exempts the E33
-      code prefix by name.
+      code prefix by name, states that exemption in its own describe title and comment, and claims
+      only "every non-E33 code".
   - id: D-i18n-follow-up
     decision: >-
       Promise strings that live in i18n.ts are NOT touched here (tree lane): the timeline lines where "your
@@ -70,3 +75,44 @@ dissent:
     objection: "The scan regexes are phrase lists, so a differently worded promise would pass."
     status: PLAUSIBLE
     disposition: "Accepted: the list is a floor, not a proof; it is guilty on every replaced sentence and innocent on the rewritten tables. New promise shapes are added when found."
+  - seat: "codex gpt-5.6-sol, rollout 01a12dd5-9d11-7da1-9657-4b8b4666773e (red team, HIGH)"
+    objection: >-
+      engine-adapter.ts blacklist notice said an active ban stops any application from being FILED and
+      that an advisor can verify the status with Ditjen Imigrasi. UU 6/2011 Pasal 42 says the visa
+      application is REJECTED for someone on the penangkalan list, and neither the rule pack nor
+      imigrasi.go.id supports the advisor lookup: it overstates the advisor.
+    status: CONFIRMED
+    disposition: >-
+      CURED. The notice now names the disclosure and offers to go over it and say what to prepare; it
+      states no legal effect and no Ditjen lookup. advisor-offer.test.ts pins the absence of both.
+  - seat: "codex gpt-5.6-sol, rollout 01a12dd5-9d11-7da1-9657-4b8b4666773e (red team, HIGH)"
+    objection: >-
+      CONTACT_REQUIRED price copy always said "no fixed price is published", but the backend returns
+      CONTACT_REQUIRED for PRICING_ROW_MISSING and PRICING_ROW_NOT_EXACT_AMOUNT as well; the reason
+      code was ignored and the test never used a real code.
+    status: CONFIRMED
+    disposition: >-
+      CURED. One neutral sentence for all three codes ("Price on consultation. You can ask a Bali Zero
+      advisor." / "Harga melalui konsultasi. ..."), no claim about publication. engine-adapter.test.ts
+      runs it.each over the three real backend reason codes.
+  - seat: "codex gpt-5.6-sol, rollout 01a12dd5-9d11-7da1-9657-4b8b4666773e (red team, MEDIUM)"
+    objection: >-
+      advisor-offer.test.ts claimed coverage "across every visa code" while dropping every E33* key;
+      six promise-style E33 sentences remain.
+    status: CONFIRMED
+    disposition: >-
+      CURED by narrowing, not by scope creep: E33 copy is Track C's. The exemption is now stated in a
+      comment and in the describe title, and the PR body claims "every non-E33 code". The brief
+      gear_reason is narrowed the same way.
+  - seat: "codex gpt-5.6-sol, rollout 01a12dd5-9d11-7da1-9657-4b8b4666773e (red team, MEDIUM)"
+    objection: >-
+      The promise was reworded as an obligation ("a Bali Zero advisor needs to confirm it" / "konsultan
+      perlu memastikannya"), which is not an offer; the guard regex did not recognise "needs to" and the
+      exact-string test froze the defective sentence.
+    status: CONFIRMED
+    disposition: >-
+      CURED across the whole class, not only line 1333: the activity-boundary, conflicting-status,
+      uncertainty and six disclosed-review sentences, the six decisive/safety-critical source sentences
+      and the multi-purpose sentence now read "no path can be confirmed yet. A Bali Zero advisor can go
+      over it with you" (EN and ID). The guard gains obligation patterns (needs to, perlu, memerlukan
+      ... oleh konsultan) with a guilt test, and the pinned string moved.
