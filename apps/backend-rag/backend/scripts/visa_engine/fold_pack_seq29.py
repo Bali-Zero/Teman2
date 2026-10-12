@@ -233,7 +233,13 @@ def build_e31j_married_rule() -> dict[str, Any]:
             "args": [
                 dict(_FAMILY),
                 _relation("SIBLING"),
-                {"op": "neq", "fact": "person.marital_status", "value": "SINGLE"},
+                # The page criterion is "belum kawin": refuse only the statuses that say the applicant
+                # has been married; "Another status" (OTHER) does not say so and is not excluded.
+                {
+                    "op": "in",
+                    "fact": "person.marital_status",
+                    "values": ["MARRIED", "DIVORCED", "WIDOWED"],
+                },
             ],
         },
         "E31J_REQ_UNMARRIED",
