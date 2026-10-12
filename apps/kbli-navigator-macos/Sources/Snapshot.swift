@@ -423,9 +423,15 @@ extension Snapshot {
                 // One chip per (row, scale), named as the mark names it ("scale:row"): the SET the sheet must mark, not a count.
                 let chipSet = pickable.flatMap { p in Set(p.row.skalaUsaha).intersection(ScaleMatrix.order).compactMap { sc in
                     ScaleMatrix.order.firstIndex(of: sc).map { "\($0):\(p.idx)" } } }.sorted()
-                let record: [String: Any] = ["code": code, "national": "\(Theme.tone(k.pmaStatus ?? ""))", "bali": bali,
+                // The sheet draws no raw `pma_status` chip, only the plate, which reads the verdict; every other band draws the card's.
+                let verdict = KBLIVerdict.of(record: k)
+                let national: String = band == "registry-sheet" ? { switch verdict.national { case .open: return "open"; case .restricted: return "restricted"
+                                                                                           case .closed: return "closed"; case .undetermined: return "neutral" } }()
+                                                                 : "\(Theme.tone(k.pmaStatus ?? ""))"
+                var record: [String: Any] = ["code": code, "national": national, "bali": bali,
                                              "headsup": "\(KBLIVerdict.headsUp(record: k, isID: lang.lang == .id).tone)",
                                              "cells": cells, "chipSet": chipSet]
+                if let cap = verdict.nationalCap { record["cap"] = cap }
                 doc["record"] = record
             }
             if let data = try? JSONSerialization.data(withJSONObject: doc, options: [.prettyPrinted, .sortedKeys]) {

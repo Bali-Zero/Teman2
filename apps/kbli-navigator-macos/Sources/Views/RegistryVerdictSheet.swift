@@ -61,13 +61,7 @@ struct RegistryVerdictSheet: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 14) {
-            identity
-            // VERDICT-FIRST, per the D2 ruling the dossier card already follows
-            // (2026-08-11): the binding answer leads, the three axes and their sources
-            // support it underneath. At the app's minimum window height this is also the
-            // difference between a reader seeing the verdict and having to scroll for it.
-            verdictBlock
-            axisCards
+            head
             actions
             if expanded {
                 Divider().overlay(Theme.hairline)
@@ -106,48 +100,127 @@ struct RegistryVerdictSheet: View {
         }
     }
 
+    // MARK: the head (the redesigned card's head, owner decision 2026-10-12)
+
+    private var head: some View {
+        let v = verdict
+        return VStack(alignment: .leading, spacing: 18) {
+            WideOrStacked(side: 330, wideFrom: 780, spacing: 32) {
+                identity
+                nationalPlate(v)
+            }
+            verdictBand(v)
+            baliBlock(v)
+            riskRow(v)
+        }
+    }
+
     private var identity: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("KBLI \(kbli.kode) · 2025")
-                .font(Theme.scalable(11, weight: .semibold, design: .monospaced)).tracking(1.0)
-                .foregroundStyle(Theme.faint)
-            Text(LabelBook.title(kbli, isID: isID))
-                .font(Theme.scalable(26, weight: .bold, design: .serif))
-                .foregroundStyle(Theme.white)
-                .fixedSize(horizontal: false, vertical: true)
+        HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("KBLI \(kbli.kode) · 2025")
+                    .font(Theme.scalable(11, weight: .semibold, design: .monospaced)).tracking(1.0)
+                    .foregroundStyle(Theme.faint)
+                Text(LabelBook.title(kbli, isID: isID))
+                    .font(Theme.display(44))
+                    .foregroundStyle(Theme.white)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                    .censusFrame("title")
+                if !isID {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(LabelBook.officialTitleLabel).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
+                        Text(LabelBook.officialTitle(kbli)).font(Theme.scalable(15)).foregroundStyle(Theme.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // IMM: the division glyph sits beside the title, never under its text (Q28).
+            if immersive && Theme.decorationsVisible {
+                GlyphStroke(division: Int(kbli.kode.prefix(2)) ?? 0, size: 64, alpha: Theme.mode == .light ? 0.55 : 0.5, width: 1.6)
+                    .modifier(Beat(p: arrival, from: 0, to: 0.6, dx: 16, fade: false))
+                    .censusFrame("glyph")
+                    .accessibilityHidden(true)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .modifier(Beat(p: immersive ? arrival : 1, from: 0, to: 0.35, dy: 6))
-        .accessibilityElement(children: .combine)
+    }
+
+    /// The national answer, from `KBLIVerdict.ownershipLine` and nothing else (IMM-L binding (a)): the word is its first half, the
+    /// figure its cap. The cap counts up to its value (M2); the axis's own source line stays behind "Source".
+    private func nationalPlate(_ v: KBLIVerdict) -> some View {
+        let parts = v.ownershipLine(isID: isID).components(separatedBy: " · ")
+        let tone: Theme.Tone = { switch v.national { case .open: return .open; case .restricted: return .restricted
+                                                    case .closed: return .closed; case .undetermined: return .neutral } }()
+        let c = Theme.chip(tone)
+        return VStack(alignment: .leading, spacing: 10) {
+            Text(isID ? "NASIONAL" : "NATIONAL")
+                .font(Theme.scalable(9.5, weight: .heavy, design: .monospaced)).tracking(0.9).foregroundStyle(Theme.faint)
+            Text(parts[0]).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(c.fg)
+                .padding(.vertical, 4).padding(.horizontal, 8)
+                .background(c.bg, in: RoundedRectangle(cornerRadius: 2))
+                .censusFrame("chip.national", CensusTone.national(verdict: v))
+            if let cap = v.nationalCap {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Group {
+                        if immersive { CountUpPercent(p: arrival, value: cap) } else { Text("\(cap)%") }
+                    }
+                    .font(Theme.display(64)).monospacedDigit().foregroundStyle(Theme.white)
+                    .censusFrame("cap")
+                    Text(lang.t("rich.fact.pma")).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
+                }
+            } else if parts.count > 1 {
+                Text(parts[1]).font(Theme.scalable(15, weight: .semibold)).foregroundStyle(Theme.muted)
+            }
+            SourceDisclosure(text: AxisSource.national(kbli, isID: isID), isID: isID)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.inkLift, in: RoundedRectangle(cornerRadius: 2))
+        .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(Theme.lineSoft, lineWidth: 1))
+        .shadow(color: .black.opacity(immersive ? Elevation.raised.alpha : 0), radius: Elevation.raised.radius, y: Elevation.raised.dy)
+        .modifier(Beat(p: immersive ? arrival : 1, from: 0.1, to: 0.45, dy: 6))
+        .censusFrame("plate")
+    }
+
+    /// Bali: the axis's own claim, its source behind "Source". (The map beside it is the next PR.)
+    private func baliBlock(_ v: KBLIVerdict) -> some View {
+        let color = baliColor(v), tone = Theme.chip(LabelBook.baliChip(v, isID: isID).tone)
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("BALI").font(Theme.scalable(9.5, weight: .heavy, design: .monospaced)).tracking(0.9).foregroundStyle(Theme.faint)
+            Text(LabelBook.baliChip(v, isID: isID).word).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(tone.fg)
+                .padding(.vertical, 4).padding(.horizontal, 8)
+                .background(tone.bg, in: RoundedRectangle(cornerRadius: 2))
+            Text(baliValue(v)).font(Theme.scalable(15, weight: .semibold))
+                .foregroundStyle(v.baliTag == "UNDETERMINED" ? Theme.muted : color)
+                .fixedSize(horizontal: false, vertical: true)
+            SourceDisclosure(text: AxisSource.bali(kbli, isID: isID), isID: isID)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .modifier(Beat(p: immersive ? arrival : 1, from: 0.4, to: 0.75, dy: 6))
+    }
+
+    /// OSS risk is a row of the head (risk, then its source behind "Source"), not a card.
+    private func riskRow(_ v: KBLIVerdict) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 16) {
+                Text(isID ? "RISIKO OSS" : "OSS RISK").font(Theme.scalable(9.5, weight: .heavy, design: .monospaced)).tracking(0.9)
+                    .foregroundStyle(Theme.faint)
+                Text(riskValue(v)).font(Theme.scalable(15, weight: .semibold)).foregroundStyle(riskColor(v))
+                Spacer(minLength: 0)
+            }
+            SourceDisclosure(text: AxisSource.risk(kbli, verdict: v, isID: isID), isID: isID)
+        }
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .top) { Rectangle().fill(Theme.lineSoft).frame(height: 1) }
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.lineSoft).frame(height: 1) }
+        .modifier(Beat(p: immersive ? arrival : 1, from: 0.55, to: 0.85, dy: 6))
     }
 
     // MARK: the three axes, each with its own source line (the graft)
-
-    /// Three siblings in one row, each taking an equal share and WRAPPING its source line rather
-    /// than truncating it (a truncated locator is not a source). Deliberately not `ViewThatFits`:
-    /// that measures the ideal, unwrapped width of the source text, which never fits, so it always
-    /// collapsed to a single column even in a 1,440pt window.
-    private var axisCards: some View {
-        HStack(alignment: .top, spacing: 12) { cards(verdict) }
-    }
-
-    @ViewBuilder private func cards(_ v: KBLIVerdict) -> some View {
-        AxisCard(title: isID ? "NASIONAL" : "NATIONAL",
-                 value: nationalValue(v), color: nationalColor(v),
-                 undetermined: v.nationalTag == "UNDETERMINED",
-                 source: AxisSource.national(kbli, isID: isID))
-            .modifier(Beat(p: immersive ? arrival : 1, from: 0.35, to: 0.65, dy: 6))
-        AxisCard(title: "BALI",
-                 value: baliValue(v), color: baliColor(v),
-                 undetermined: v.baliTag == "UNDETERMINED",
-                 source: AxisSource.bali(kbli, isID: isID))
-            .modifier(Beat(p: immersive ? arrival : 1, from: 0.45, to: 0.75, dy: 6))
-        AxisCard(title: isID ? "RISIKO OSS" : "OSS RISK",
-                 value: riskValue(v), color: riskColor(v),
-                 undetermined: v.risk == .absent,
-                 source: AxisSource.risk(kbli, verdict: v, isID: isID))
-            .modifier(Beat(p: immersive ? arrival : 1, from: 0.55, to: 0.85, dy: 6))
-    }
 
     // OPEN-1 (2026-09-17): this used to re-phrase the national axis in the sheet's own words
     // ("Open · cap not recorded", "Closed to foreign capital" — a wording no other surface used).
@@ -200,20 +273,9 @@ struct RegistryVerdictSheet: View {
 
     // MARK: the binding answer
 
-    private var verdictBlock: some View {
-        let v = verdict
-        let closed: Bool = {
-            switch v.headline {
-            case .nationallyClosed, .baliBlocked: return true
-            default: return false
-            }
-        }()
-        let undetermined: Bool = {
-            switch v.headline {
-            case .nationalUndetermined, .baliUndetermined: return true
-            default: return false
-            }
-        }()
+    private func verdictBand(_ v: KBLIVerdict) -> some View {
+        let closed: Bool = { switch v.headline { case .nationallyClosed, .baliBlocked: return true; default: return false } }()
+        let undetermined: Bool = { switch v.headline { case .nationalUndetermined, .baliUndetermined: return true; default: return false } }()
         let color: Color = undetermined ? Theme.faint : (closed ? Theme.pmaClosed : Theme.pmaOpen)
         let icon = undetermined ? "questionmark.diamond" : (closed ? "xmark.octagon.fill" : "checkmark.seal.fill")
         return HStack(alignment: .top, spacing: 12) {
@@ -233,9 +295,6 @@ struct RegistryVerdictSheet: View {
                         .textSelection(.enabled)
                 }
                 if undetermined {
-                    // What is missing, not just that something is. The sentence names the field
-                    // the rule looked at and found unusable — the same locator the Bali axis card
-                    // above quotes verbatim.
                     Text(isID
                          ? "Tidak ada verdikt yang dapat dinyatakan dari catatan ini. Bawa kode ini ke konsultasi — jangan diperlakukan sebagai terbuka maupun tertutup."
                          : "No verdict can be stated from these records. Bring this code to the consultation — do not read it as open or as closed.")
@@ -254,9 +313,15 @@ struct RegistryVerdictSheet: View {
         }
         .overlay(RoundedRectangle(cornerRadius: Theme.radiusMd, style: .continuous)
             .strokeBorder(color.opacity(0.25), lineWidth: 1))
+        .overlay(alignment: .top) {
+            if immersive {
+                Rectangle().fill(color).frame(height: 3).modifier(DrawnRule(p: arrival, from: 0.1, to: 0.5))
+            }
+        }
         .modifier(Beat(p: immersive ? arrival : 1, from: 0.15, to: 0.5, dy: 6))
         .accessibilityElement(children: .combine)
     }
+
 
     private func headlineText(_ v: KBLIVerdict) -> String {
         switch v.headline {
@@ -353,5 +418,68 @@ struct AxisCard: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// The grey provenance line of an axis, collapsed behind "Source" / "Sumber" (owner ruling 2026-10-12): a reader who wants the locator
+/// clicks for it. `KBLI_SOURCE_OPEN` opens every one (the text census and the content proof count the words with them open).
+struct SourceDisclosure: View {
+    let text: String
+    let isID: Bool
+    @State private var open = ProcessInfo.processInfo.environment["KBLI_SOURCE_OPEN"] != nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Button { open.toggle() } label: {
+                HStack(spacing: 4) {
+                    Text(isID ? "Sumber" : "Source")
+                    Image(systemName: open ? "chevron.down" : "chevron.right").font(Theme.scalable(8, weight: .bold))
+                }
+                .font(Theme.scalable(10.5, weight: .semibold)).foregroundStyle(Theme.muted)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if open {
+                Text(text)
+                    .font(Theme.scalable(9.5, design: .monospaced)).foregroundStyle(Theme.faint)
+                    .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+            }
+        }
+    }
+}
+
+/// Two children side by side when the column is `wideFrom` wide or more (the second one `side` wide), stacked below it when not
+/// (the narrow rule, owner 2026-10-12). A `Layout`, not `ViewThatFits`: the title wraps, so its ideal width never fits.
+struct WideOrStacked: Layout {
+    var side: CGFloat
+    var wideFrom: CGFloat
+    var spacing: CGFloat
+
+    private func wide(_ w: CGFloat) -> Bool { w >= wideFrom }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard subviews.count == 2 else { return .zero }
+        let w = proposal.width ?? wideFrom
+        if wide(w) {
+            let a = subviews[0].sizeThatFits(ProposedViewSize(width: w - side - spacing, height: nil))
+            let b = subviews[1].sizeThatFits(ProposedViewSize(width: side, height: nil))
+            return CGSize(width: w, height: max(a.height, b.height))
+        }
+        let a = subviews[0].sizeThatFits(ProposedViewSize(width: w, height: nil))
+        let b = subviews[1].sizeThatFits(ProposedViewSize(width: w, height: nil))
+        return CGSize(width: w, height: a.height + spacing + b.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count == 2 else { return }
+        if wide(bounds.width) {
+            let aw = bounds.width - side - spacing
+            subviews[0].place(at: CGPoint(x: bounds.minX, y: bounds.minY), anchor: .topLeading, proposal: ProposedViewSize(width: aw, height: nil))
+            subviews[1].place(at: CGPoint(x: bounds.maxX - side, y: bounds.minY), anchor: .topLeading, proposal: ProposedViewSize(width: side, height: nil))
+        } else {
+            let a = subviews[0].sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
+            subviews[0].place(at: CGPoint(x: bounds.minX, y: bounds.minY), anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: nil))
+            subviews[1].place(at: CGPoint(x: bounds.minX, y: bounds.minY + a.height + spacing), anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: nil))
+        }
     }
 }

@@ -46,6 +46,10 @@ if [ -n "${IMM:-}" ]; then
   # The sheet as the app mounts it (SearchListView.sheetLayer): C25 reads it against the flat twin (tall/) and this set's immersive one.
   for c in 56101 55203; do for t in day night; do
     shot live-sheet --sheet-open --theme $t --lang en --code $c --height 2600 "$OUT/live/sheet-open-$c-$t-en.png"; done; done
+  # The longest titles of the dataset (87202 in Indonesian, 77520 and 47192 in English, found in KBLI_2025_FINAL_CLEAN.json and the overlay):
+  # the head's title wraps to 2-3 lines and never squashes the plate (C26).
+  for c in 87202 77520 47192; do for t in day night; do for l in en id; do
+    shot registry-sheet --imm --sheet-open --theme $t --lang $l --code $c --height 3600 "$OUT/imm/sheet-head-$c-$t-$l.png"; done; done; done
   # Stacked cells open on the shown cell next to a neighbour chip: High at night, Medium-High by day (the ring must clear it).
   shot registry-sheet --imm --sheet-open --theme night --lang en --code 85510 --height 2600 "$OUT/imm/sheet-open-85510-night-en.png"
   shot registry-sheet --imm --sheet-open --theme day --lang en --code 20111 --height 4000 "$OUT/imm/sheet-open-20111-day-en.png"

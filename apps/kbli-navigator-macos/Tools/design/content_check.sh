@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Compile contenttest + headsuptest + encensus against Sources/ and run the content gate (spec §7) and the
 # en-purity gate (Q12): the text census of the drawn Views (fast sample; EN_CENSUS=full for all 1,559 codes) and
-# the never-drawn static check. Run from anywhere; operates on the app root. Its binaries and outputs live in a
+# the never-drawn static check. KBLI_SOURCE_OPEN=1: the census counts the words with every "Source" disclosure open. Run from anywhere; operates on the app root. Its binaries and outputs live in a
 # fresh directory under THIS app's ignored build/ (removed on exit), so a concurrent run in another worktree or
 # session can neither be picked up nor overwrite them: every path below is $T's, by construction.
 cd "$(dirname "$0")/../.." || exit 2
@@ -32,8 +32,8 @@ if python3 Tools/design/content_check.py --pack "$T/pack-guilt.json" < "$T/out.j
   echo "step 2 FAILED: guilt control: edited pack accepted"; rc=1
 else echo "guilt control: edited pack rejected"; fi
 if "$T/headsuptest"; then echo "step 3 ok: headsuptest"; else echo "step 3 FAILED"; rc=1; fi
-if "$T/encensus" "$T/en-census.jsonl" --lang en --mode "${EN_CENSUS:-fast}" 2> "$T/encensus.err" \
-   && "$T/encensus" "$T/id-surfaces.jsonl" --lang id --mode "${EN_CENSUS:-fast}" \
+if KBLI_SOURCE_OPEN=1 "$T/encensus" "$T/en-census.jsonl" --lang en --mode "${EN_CENSUS:-fast}" 2> "$T/encensus.err" \
+   && KBLI_SOURCE_OPEN=1 "$T/encensus" "$T/id-surfaces.jsonl" --lang id --mode "${EN_CENSUS:-fast}" \
         --views "$(python3 Tools/design/en_purity.py gated)" 2>> "$T/encensus.err" \
    && python3 Tools/design/en_purity.py census "$T/en-census.jsonl" --id "$T/id-surfaces.jsonl" --curated "$T/out.json"; then
   echo "step 4 ok: en-purity census (${EN_CENSUS:-fast})"

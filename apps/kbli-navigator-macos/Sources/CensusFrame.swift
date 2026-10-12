@@ -56,6 +56,15 @@ extension View {
 /// same three on its own for the JSON's `record`, and png_census FAILs a mark that disagrees with it.
 enum CensusTone {
     static func national(_ k: KBLI) -> String { "\(Theme.tone(k.pmaStatus ?? ""))" }
+    /// The national plate's tone: the verdict's own (the sheet draws no raw `pma_status` chip).
+    static func national(verdict v: KBLIVerdict) -> String {
+        switch v.national {
+        case .open: return "open"
+        case .restricted: return "restricted"
+        case .closed: return "closed"
+        case .undetermined: return "neutral"
+        }
+    }
     static func bali(_ k: KBLI) -> String {
         switch KBLIVerdict.of(record: k).bali {
         case .open: return "open"
