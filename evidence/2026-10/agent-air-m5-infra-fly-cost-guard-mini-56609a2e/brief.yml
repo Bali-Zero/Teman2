@@ -1,0 +1,63 @@
+task: >-
+  Move the weekly Fly fleet ceiling check off the public-repo workflow cron-fly-cost-alert.yml (deleted here) into the Mini
+  launchd organ mini.fly_cost_guard: infra/launchagents/wrappers/mini-fly-cost-guard.sh runs the existing
+  scripts/fly_cost_guard.py with the workflow's exact ceilings; the Fly token is resolved through scripts/lib/fly_credential.sh
+  with its rag probe (Mini's env token is postgres-scoped), redacted from messages and unset after use; a green run sends a
+  digest, findings send one p0 with routing off and an empty relay, a broken run sends an error heartbeat and a p0; the plist
+  fires Monday 09:00 WITA without KeepAlive; a registry entry with an 8-day window, a declared pair and a connectome edge; the
+  guard's pytest reads its ceilings from the wrapper; the new executor fly-cost-guard-tests.yml runs 17 pytest and 14 wrapper
+  assertions.
+lane: infra
+machine: m5
+date: 2026-10-12
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, measured: evidence_pack_lint --print-floor --changed-files-file over the 12 changed files computes 3
+  (infra/launchagents/ and organs_registry.yaml are hot-zone path terms). The floor sets the gear, not the size.
+acceptance:
+  A1:
+    text: >-
+      The wrapper SHALL export EXPECTED_APPS, MAX_TOTAL_MACHINES, MAX_STARTED_MACHINES, MAX_STARTED_MEMORY_MB, MAX_STARTED_CPUS,
+      MAX_TOTAL_VOLUME_GB and MAX_DEDICATED_IPV4 equal to the env block of the deleted workflow, and the guard's pytest SHALL
+      read the numeric ceilings from the wrapper so a drift fails a test.
+    probe: git show origin/main:.github/workflows/cron-fly-cost-alert.yml compared key by key (R2); python3 -m pytest scripts/tests/test_fly_cost_guard.py
+  A2:
+    text: >-
+      The Fly token SHALL be resolved through resolve_fly_credential with a probe on nuzantara-rag, redacted from the log and from
+      every message, never in a heartbeat, and unset before the digest or p0 is sent; an unresolved credential SHALL exit 2 with an
+      error heartbeat and a broken p0 and the guard SHALL NOT run.
+    probe: bash scripts/tests/test_mini_fly_cost_guard_wrapper.sh; council review of redaction and the unset
+  A3:
+    text: >-
+      Guard rc 0 SHALL be an ok heartbeat and a digest keyed by ISO week; rc 1 an ok heartbeat naming the finding count and one p0
+      with routing off, an empty relay and a hash-of-findings dedup key; any other rc an error heartbeat and a broken p0.
+    probe: bash scripts/tests/test_mini_fly_cost_guard_wrapper.sh; council review of the mapping
+  A4:
+    text: >-
+      A live previous run SHALL read warning, a dead owner SHALL be reclaimed by pid plus start time, the EXIT trap SHALL turn an
+      unfinished run into an error heartbeat and a broken p0; the plist SHALL fire Monday 09:00 with RunAtLoad false and no KeepAlive;
+      the registry window SHALL be 8 days.
+    probe: council review of wrapper lines 53-107, the plist and the registry diff
+  A5:
+    text: >-
+      fly-cost-guard-tests.yml SHALL run the guard pytest, the wrapper shell test and bash -n on pull requests and pushes to main,
+      and the retired workflow SHALL have no live consumer left in the watch list, the connectome or the grandfathered list.
+    probe: council review of the executor and of the diff
+  A6:
+    text: >-
+      Live, after merge and the declared pair installed on Mini: the sidecar ~/.organism/last_seen/mini.fly_cost_guard.json reads
+      ok after the first Monday 09:00 run and a digest or a p0 reaches Telegram; the Pro twins retire only after that.
+    probe: ssh mini 'cat ~/.organism/last_seen/mini.fly_cost_guard.json; tail ~/logs/mini-fly-cost-guard/run.log'
+out_of_scope: >-
+  Retiring the Pro twins (com.balizero.fly-cost-alert.weekly and its crontab line) and their connectome edge, which happens at
+  cutover after the first green Mini run; fly_cost_guard.py itself; the generated docs/AUTOMATIONS_REFERENCE.md.
+assumptions:
+  - text: Mini's own FLY_API_TOKEN is scoped to nuzantara-postgres only, so a probe on nuzantara-rag is what selects a usable credential.
+    status: verified
+    probe: reported by the coordinator for this mandate and written in the lib header (Pro's token is postgres-scoped); not re-run on Mini in the dossier session.
+  - text: Mini's local timezone is Asia/Makassar, so StartCalendarInterval Monday 09:00 is 09:00 WITA.
+    status: unverified
+    probe: ssh mini 'date +%Z' at install; the old workflow was pinned to 01:00 UTC.
+  - text: Gear 3 needs the independent final-gate verdict on the head SHA, commissioned after the last push.
+    status: unverified
+    probe: gh pr checks <pr> after the verdict is posted.
