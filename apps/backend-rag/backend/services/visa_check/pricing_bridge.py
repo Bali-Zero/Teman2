@@ -22,13 +22,10 @@ logger = logging.getLogger(__name__)
 
 # Known-None set: VisaTypes for which the pricing JSON has no entry.
 # Bridge returns (None, None) for these and the UI shows
-# "confirm on WhatsApp". These are intentional, not bugs.
-KNOWN_NONE_VISAS: frozenset[VisaType] = frozenset(
-    {
-        VisaType.C6,  # Social visit — no standalone C6 row in pricing JSON
-        VisaType.E30A,  # Education — JSON lacks a student visa entry
-    }
-)
+# "confirm on WhatsApp". Empty since the 2026 catalogue priced C6
+# ("C6 Social Activity") and E30A ("E30A Education Visa (1 Year)"); a new
+# member must name a catalogue gap, never a guess.
+KNOWN_NONE_VISAS: frozenset[VisaType] = frozenset()
 
 
 # Map our VisaType codes to substrings likely to appear in the
@@ -39,13 +36,15 @@ _SEARCH_HINTS: dict[VisaType, tuple[str, ...]] = {
     VisaType.B1: ("B1 Visa on Arrival (VOA)", "Visa on Arrival"),
     VisaType.C1: ("C1 Tourism",),
     VisaType.C2: ("C2 Business",),
-    VisaType.C6: ("C6", "Social"),  # known None
+    VisaType.C6: ("C6 Social Activity", "C6"),
     VisaType.C7: ("C7A&B Music/Art", "C7"),  # best-effort
     VisaType.C7A: ("C7A&B Music/Art", "C7A"),
     VisaType.C7B: ("C7A&B Music/Art", "C7B"),
     VisaType.C18: ("C18 Work Trial",),
     VisaType.C22A: ("C22A&B Internship (60 Days)", "C22A&B Internship"),
-    VisaType.D2: ("D12 Business Investigation (1 Year)", "D2"),  # closest multi-entry row
+    # D2 has its own catalogue row; quoting the D12 row first priced D2 at
+    # 7.500.000 instead of 6.500.000 (audit 2026-10-12).
+    VisaType.D2: ("D2 Business (1 Year)", "D2"),
     VisaType.D12: (
         "D12 Business Investigation (1 Year)",
         "D12 Business Investigation (2 Years)",
@@ -53,7 +52,7 @@ _SEARCH_HINTS: dict[VisaType, tuple[str, ...]] = {
     VisaType.E23: ("Working KITAS (Offshore)", "Working KITAS"),
     VisaType.E23_FREELANCE: ("Freelance E23 (Offshore)", "Freelance E23"),
     VisaType.E28A: ("Investor KITAS 2 Years (Offshore)", "Investor KITAS"),
-    VisaType.E30A: ("Education", "Student"),  # known None
+    VisaType.E30A: ("E30A Education Visa (1 Year)", "E30A"),
     VisaType.E31: (
         "Dependent 1 Year (Offshore)",
         "Spouse 1 Year (Offshore)",

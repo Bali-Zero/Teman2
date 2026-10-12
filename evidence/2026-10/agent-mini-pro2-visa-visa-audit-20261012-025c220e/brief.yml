@@ -1,0 +1,19 @@
+gear: 1
+gear_reason: >-
+  Two small copy/hint corrections on the legacy visa funnel (one string, one pricing hint plus tests); no pack,
+  no catalogue and no pricing-rule change.
+mission: >-
+  The legacy /visa/match quote for D2 comes from the D2 catalogue row, and the Visa Clock renewal CTA stops
+  promising a fixed fee and a ~14-day turnaround that no catalogue row supports.
+objective: >-
+  pricing_bridge hints D2 at "D2 Business (1 Year)" (6.500.000) instead of the D12 row (7.500.000); C6 and E30A
+  hints name their own rows and KNOWN_NONE_VISAS is emptied; the clock CTA description names no fee type and no
+  duration. Pinned by tests that read the catalogue JSON.
+scope:
+  - apps/backend-rag/backend/services/visa_check/pricing_bridge.py
+  - apps/backend-rag/backend/tests/services/visa_check/test_pricing_bridge.py
+  - apps/mouth/src/app/visa/clock/[hash]/page.tsx
+  - apps/mouth/src/app/visa/clock/[hash]/page.test.tsx
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
