@@ -1,0 +1,176 @@
+# Gear-3 evidence pack — mini.vercel_autopromote moves from --promote-only to --upload --auto-build.
+# Written 2026-10-12 by a dossier session (Claude Sonnet 5.5, M5) for head 7d56d5732f. Every receipt is a command run in
+# this session; ts is the clock read in the same shell call. Verbatim seat verdicts are in council-journal.jsonl.
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+seat_fallback_reason: >-
+  The reserve agy-gemini-3.1-pro stands in for the titular tp1-qwen3.8-max, which answered HTTP 403 "Access to model
+  denied" at dispatch (arsenal_probe on M5, 2026-10-12T04:21:16Z, MODEL_ERR; every tp1 seat read the same). The third
+  titular, codex-gpt-5.6-sol, built this diff and is excluded by generator is not grader, not by unavailability (it was
+  LIVE in the same probe). kimi-code/k3 was LIVE and is the titular seat that counts.
+ruling: >-
+  Coordinator's mandate (2026-10-12): the public repo is being removed, so the Git-integration build producer
+  disappears and the organ must be able to build. Companion #8320 (--no-wait, --skip-domain, split final messages) merges
+  first.
+mission: >-
+  Let the Mini autopromote organ build by upload when no READY build exists, without ever reading a stuck, blind or
+  unrecognised run as green.
+lanes:
+  - lane: autobuild-wrapper-build
+    role: build
+    seat: codex-gpt-5.6-sol (built the wrapper change and its 30-case test; it is NOT a grader here)
+  - lane: autobuild-wrapper-review-kimi
+    role: review
+    seat: kimi-code/k3 (read-only, prompt-only with files inlined, 1 round)
+  - lane: autobuild-wrapper-review-agy
+    role: review
+    seat: agy-gemini-3.1-pro (gemini-3.1-pro-high, --sandbox, prompt-only, 1 round)
+seat_diversity: >-
+  Builder: OpenAI (codex-gpt-5.6-sol). Reviewers: Moonshot (kimi-code/k3) and Google (agy-gemini-3.1-pro); neither built
+  anything here and codex does not grade its own diff.
+pii_scan: clean
+pii_scan_note: >-
+  A wrapper and a shell test with synthetic fixtures. No client data is read or printed; the sidecar note carries a
+  status string, a 9-hex sha or the redacted last line of the cure script.
+what_changed: |
+  infra/launchagents/wrappers/mini-vercel-autopromote.sh and scripts/tests/test_mini_vercel_autopromote_wrapper.sh.
+  The wrapper default becomes --upload --auto-build (MINI_VERCEL_AUTOPROMOTE_MODE=promote-only is the fallback; any other
+  value is an error heartbeat); rc 0 is mapped from anchored exact markers and an unmatched rc 0 is an error; rc 4 is an
+  error naming the suspended sha; rc 3 outside promote-only is an error with a redacted last line; a live pid younger than
+  35 minutes reports ok, older or of unknown age reports warning.
+proof: |
+  See receipts. The 30-case test drives the real wrapper against a fake cure script on every marker and rc. The council
+  compared each regex with the print statements of vercel_prod_deploy.py as changed by #8320. The live proof (a production
+  upload, 2026-10-12) was reported by the coordinator and is not re-run here.
+bites:
+  consumer: >-
+    The launchd job for mini.vercel_autopromote on Mini (StartInterval 120 s) and the sentinel that reads its sidecar
+    ~/.organism/last_seen/mini.vercel_autopromote.json.
+  observation: >-
+    Owed to the shipping session after #8320 and this change are on main and the wrapper is installed on Mini (declared
+    pair): the sidecar reads ok with a note from the marker table ("already current", "promoted", "built by upload and
+    promoted" or "build in progress (lock held)") within two ticks of a mouth merge, ~/logs/mini-vercel_autopromote/run.log
+    shows mode=autobuild, and the next mouth merge reaches kita.balizero.com without a human promote. Not yet made: this
+    pack records the pre-merge state at head 7d56d5732f.
+ground:
+  ts: "2026-10-12T04:20:00Z"
+  siblings: >-
+    Base origin/main e474325994 is an ancestor of the head; #8320 (origin/agent/air-m5/ops/mouth-upload-skip-domain) is
+    armed and not yet on main.
+spend:
+  adversarial_rounds: 1
+  wall_clock_hours: 0.4
+decisions:
+  - id: D-exact-markers-fail-closed
+    decision: >-
+      rc 0 is judged by anchored whole-line markers of the cure script; text the wrapper does not know reads error, so a
+      reworded success message turns the organ red instead of green over blind.
+  - id: D-young-overlap-ok-old-warning
+    decision: >-
+      A normal upload (about 4 minutes) spans two or three ticks, so a live pid younger than 35 minutes is ok and an older
+      or unreadable-age one is warning; launchd does not overlap one label, the pidfile covers manual runs.
+receipts:
+  - claim: "R1 — floor 3 via the hot-zone path term: the two changed files compute 3."
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <git diff origin/main...HEAD --name-only>
+    result: "3"
+    exit: 0
+    ts: "2026-10-12T04:23:28Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R2 — A1/A2/A3: the wrapper test passes on the head (30 cases: every marker, rc 0-4 and other, overlap young and old, fallback mode, invalid mode, rotation)."
+    cmd: bash scripts/tests/test_mini_vercel_autopromote_wrapper.sh
+    result: "passed 30, failed 0"
+    exit: 0
+    ts: "2026-10-12T04:23:28Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R3 — bash -n and shellcheck -S warning are clean on the wrapper and the test."
+    cmd: bash -n infra/launchagents/wrappers/mini-vercel-autopromote.sh; shellcheck -S warning <wrapper> <test>
+    result: "bash-n-ok; shellcheck 0"
+    exit: 0
+    ts: "2026-10-12T04:23:28Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R4 — no textual conflict with current origin/main and origin/main is an ancestor of the head."
+    cmd: git merge-tree --write-tree origin/main HEAD; git merge-base --is-ancestor origin/main HEAD
+    result: "merge-tree exit 0; ancestor exit 0; origin/main e474325994"
+    exit: 0
+    ts: "2026-10-12T04:23:28Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R5 — seat liveness at dispatch: kimi, agy, codex LIVE; every tp1 seat (including the titular tp1-qwen3.8-max), qwen-cloud-code and codex-spark MODEL_ERR."
+    cmd: python3 scripts/arsenal_probe.py --table --timeout 1
+    result: "6 of 16 seats OK; tp1-qwen3.8-max HTTP 403 Access to model denied"
+    exit: 0
+    ts: "2026-10-12T04:21:16Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R6 — council round 1 on head 7d56d5732f, kimi-code/k3: PASS. All six reachable rc=0 outputs verified char for char against the cure script with #8320 applied (lock busy, promoted by upload, already current with the upload staged, the two promote-existing wordings, nothing to do); DEGRADED is computed before and checked ahead of the markers; fallback mode PASS; age boundary 2100 s correct. Nine NOTEs, no defect."
+    cmd: "scripts/with_seat.sh kimi kimi -p <prompt with the wrapper, the 8320 diff and the cure excerpts inlined> -m kimi-code/k3 < /dev/null"
+    result: "rc 0; VERDICT: PASS; 9 NOTEs (dead marker arm :210; rc4 sed hardcodes limit 2 :257; recycled pid window :55-80; pidfile TOCTOU and unchecked write :82; lock-busy ok with no age bound :201-203; redaction gaps :184-188; control characters in the note :180-189; rotation race :133; transition split-brain with the Git integration)"
+    exit: 0
+    ts: "2026-10-12T04:33:12Z"
+    seat: kimi-code/k3
+  - claim: "R7 — council round 1 on head 7d56d5732f, agy-gemini-3.1-pro (reserve): REWORK with 2 DEFECT and 3 NOTE."
+    cmd: scripts/with_seat.sh agy agy --sandbox --model gemini-3.1-pro-high --print-timeout 900s -p <same prompt> < /dev/null
+    result: "rc 0; VERDICT: REWORK; DEFECT 1 mode check precedes the node guard (:29-44); DEFECT 2 lock-busy maps to ok with no bound when a manual run wedges the flock (:201-203); NOTE redaction misses a quoted JSON key (:185); NOTE rc4 sed hardcodes 2 (:257); NOTE control characters make the sidecar JSON invalid (:184-188)"
+    exit: 0
+    ts: "2026-10-12T04:26:36Z"
+    seat: agy-gemini-3.1-pro
+  - claim: "R8 — the redaction gap both seats name is real but latent: a JSON-keyed token survives safe_last_line's token and bearer rules."
+    cmd: >-
+      printf of a synthetic line lookup HTTP 401 with a JSON access_token key piped through the two sed -E redaction
+      expressions of safe_last_line
+    result: "output unchanged (access_token value not redacted); 'token=abc Bearer xyz' reads 'token=[REDACTED] Bearer [REDACTED]'"
+    exit: 0
+    ts: "2026-10-12T04:33:24Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+dissent:
+  - seat: agy-gemini-3.1-pro (DEFECT 2) and kimi-code/k3 (NOTE 5)
+    objection: >-
+      infra/launchagents/wrappers/mini-vercel-autopromote.sh:201-203 maps "upload already in progress — lock busy" to ok
+      "build in progress (lock held)" with no bound. The 35-minute pidfile age covers only a run of this wrapper; a wedged
+      manual or other upload run holding the cure script's flock (vercel_prod_deploy.py:765-770) keeps every tick green
+      (superscar #2).
+    status: CONFIRMED
+    disposition: >-
+      OPEN, reported to the coordinator; not cured here (this session adds the dossier only). Kimi bounds the likelihood
+      by the cure's CLI timeout and --no-wait. Cure options: a consecutive lock-busy counter in a state file escalating to
+      warning after N ticks, or a distinct rc for lock busy.
+  - seat: agy-gemini-3.1-pro (DEFECT 1)
+    objection: >-
+      The invalid-mode branch (:29-37) runs before the node guard (:40-44), so a wrong host with a bad
+      MINI_VERCEL_AUTOPROMOTE_MODE writes an error heartbeat instead of disabled.
+    status: PLAUSIBLE
+    disposition: >-
+      Not a defect on the evidence: kimi judged the order correct (a bad mode must be visible; the sidecar is host-local;
+      the variable is set only in the Mini plist). Recorded as a divergence between the seats; at worst harmless noise on
+      a foreign host.
+  - seat: agy-gemini-3.1-pro (NOTE) and kimi-code/k3 (NOTE 6, NOTE 7)
+    objection: >-
+      safe_last_line (:180-189) misses a JSON-keyed token, an Authorization header without Bearer and URL userinfo, and
+      does not strip control characters (tab, carriage return), so a future final line could leak a secret or make the
+      sidecar JSON invalid.
+    status: CONFIRMED
+    disposition: >-
+      OPEN as a latent hardening item (R8 reproduces the gap). Every reachable rc=1 and rc=3 last line of the cure script
+      today is a fixed clean string or a json.dumps-escaped one, per kimi. Cure: add the three redaction rules and pipe the
+      note through tr -d '[:cntrl:]' before the escapes.
+  - seat: agy-gemini-3.1-pro (NOTE) and kimi-code/k3 (NOTE 2)
+    objection: >-
+      The rc=4 sed (:257) hardcodes "2 failed upload builds"; if UPLOAD_FAILURE_LIMIT changes, the sha is lost and the
+      note falls back to the generic text.
+    status: CONFIRMED
+    disposition: >-
+      OPEN, cosmetic: the heartbeat stays error either way. Cure: replace the literal 2 by [0-9]+.
+  - seat: kimi-code/k3 (NOTE 3, NOTE 4)
+    objection: >-
+      A SIGKILLed run leaves a pidfile whose pid may be recycled: up to 35 minutes of ok then warning forever; the
+      pidfile check and write are not atomic and the write is unchecked.
+    status: PLAUSIBLE
+    disposition: >-
+      Accepted as a contained residual: launchd does not overlap one label and the cure script holds its own flock; the
+      worst case ends in warning, not green past 35 minutes.
+residuals:
+  - "NOTE (kimi 1): the marker ^OK after promote — (wrapper :210) is unreachable in both wrapper modes (the cure prints it only on the API-build path); harmless."
+  - "NOTE (kimi 9): while the Git integration still produces production builds, it and this organ are two writers; both converge on newest-main by inclusion, and the overlap ends with the public repo."
+  - "Order dependency: this change reads the #8320 wording; on a tree without #8320 a successful upload prints a line the wrapper does not know and reads error (fails closed, never green)."
+  - "The live production-upload proof of 2026-10-12 was reported by the coordinator and was not re-run in this session."
+  - "Generator is not grader: codex-gpt-5.6-sol built the diff and was not asked to grade it; R9 needs two distinct seats from the roster and is met by kimi plus the agy reserve, declared in seat_fallback_reason."
+appetite_exceeded: false
