@@ -11,6 +11,16 @@ lanes:
   - lane: v04-advisor-offered
     role: build
     seat: Claude Sonnet 5.5 implementer, worktree mouth-vn-adapter-v04-advisor-offered on the visa night run.
+  - lane: v04-ground-truth
+    role: ground_truth
+    seat: >-
+      The change asserts no rule of its own. Ground truth is the signed pack and the official imigrasi.go.id
+      pages already cited by the adapter's existing sentences; every rewritten sentence keeps the claim it
+      had and changes only who acts (an advisor CAN, instead of "we do"). Price rows are untouched: the
+      unpriced fallback names no figure.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "344b13d8fe80347efe2fd3cf4b5b1e406bf37ace6c27e436d6155dffd4befc28" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at origin/main 12200510b2 (before the change).
 pii_scan: clean
 bites: >-
   Consumer: the public Visa Oracle result page (OutcomeSheet reading engine-adapter.ts nextStepsFor,
@@ -22,10 +32,11 @@ bites: >-
   Bahasa Indonesia twin, and none of "we confirm", "reviews your case", "continues from here", "comes back
   to you". Pre-merge, the same phrases are asserted absent by advisor-offer.test.ts.
 spend:
-  tokens_note: >-
-    One implementer session; no subagent, no external seat, no paid per-token API. Wall clock under the
-    two-hour appetite.
+  wall_clock_hours: 1
+  adversarial_rounds: 0
   paid_api: none
+  note: >-
+    One implementer session; no subagent, no external seat, no paid per-token API.
 results:
   - claim: "Test first: the new scan test is red on origin/main copy for the right keys."
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/advisor-offer.test.ts'
