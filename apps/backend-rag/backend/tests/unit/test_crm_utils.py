@@ -118,3 +118,25 @@ class TestIsActiveTaxDepartmentMember:
     async def test_none_user_fails(self):
         conn = _FakeConn({"department": "tax", "active": True})
         assert await is_active_tax_department_member(None, conn) is False
+
+
+class TestCanChangeDocumentVisibility:
+    @pytest.mark.parametrize("role", ["Team Leader", "TAX LEAD", " supervisor ", "admin", "CEO"])
+    def test_allowed_roles(self, role):
+        from backend.app.utils.crm_utils import can_change_document_visibility
+
+        assert can_change_document_visibility({"email": "a@example.test", "role": role}) is True
+
+    @pytest.mark.parametrize(
+        "role", ["Tax Manager", "Tax Care", "Consultant", "Reception", "client", "user", "", None]
+    )
+    def test_other_roles_denied(self, role):
+        from backend.app.utils.crm_utils import can_change_document_visibility
+
+        assert can_change_document_visibility({"email": "a@example.test", "role": role}) is False
+
+    def test_empty_user_denied(self):
+        from backend.app.utils.crm_utils import can_change_document_visibility
+
+        assert can_change_document_visibility({}) is False
+        assert can_change_document_visibility(None) is False

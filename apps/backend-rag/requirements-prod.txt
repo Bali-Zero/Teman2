@@ -1,6 +1,6 @@
 # ZANTARA RAG Backend - PRODUCTION DEPENDENCIES (Optimized for <8GB)
 # Removes heavy ML packages that aren't used in production (OpenAI API for embeddings)
-# Last updated: 2026-01-18 - Security updates: python-jose, fastapi, openai, requests
+# Last updated: 2026-01-18 - Security updates: fastapi, openai, requests
 
 # Core Framework
 fastapi!=0.136.3,>=0.141.1  # Upgraded for starlette 0.50+; exclude 0.136.3 (MAL-2026-4750 supply-chain malware injecting 'fastar' dep)
@@ -67,9 +67,8 @@ aiohttp>=3.14.3  # Security: zip bomb, directory traversal, DoS fixes
 urllib3>=2.0.0
 
 # Authentication
-PyJWT>=2.13.0  # Security fix: CVE-2026-32597 crit header validation
-python-jose[cryptography]>=3.4.0  # CVE-2024-33663, CVE-2024-33664 fixed in 3.4.0
-cryptography>=50.0.0  # GHSA-537c-gmf6-5ccf fix (vulnerable static OpenSSL in wheels) — pins transitive python-jose dep above the advisory
+PyJWT[crypto]==2.15.1  # Security fix: CVE-2026-32597 crit header validation
+cryptography>=50.0.0  # GHSA-537c-gmf6-5ccf fix (vulnerable static OpenSSL in wheels)
 bcrypt>=5.0.0  # Security and performance improvements
 passlib[bcrypt]>=1.7.4
 

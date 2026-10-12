@@ -1,0 +1,23 @@
+B1 an occluded run is not counted | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-occlud
+B2 hides ignores another opened surface | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-surfac
+B3 hides ignores the walk's scrims | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-under-
+B4 a faint layer occludes | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-fixed-
+B5 a shadow is not an overlay | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-shadow
+B6 no reach past the box | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-shadow
+B7 the reach ignores a blur | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-blur-r
+B8 a scrim paints a colour only | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-gradie
+B9 a colourless scrim passes | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-gradie
+B10 an ink scrim over an image passes | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-ink-im
+B11 the query devtools are painted | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-query-
+B12 the theme may turn mid-walk | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-theme-
+B13 a reloaded walk is not walked again | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-reload
+B15 an overlay behind the run still reaches it | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-glow-b
+B16 a shadow reaches against its offset | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-shadow
+B17 a transparent shadow reaches | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-transp
+B14 the sector card stays hovered | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_the_sector_opener_moves_the_pointer_off_the_card_it_cl
+B18 unrendered text is a run | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_page_grounds_at_rest[I-closed-details]
+V1 reads bare without rest | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_guilt_a_missing_part_is_every_one_of_its_scenarios_mis
+V2 defined-above-wrapper bare without rest | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_guilt_a_missing_part_is_every_one_of_its_scenarios_mis
+V3 colours bare without rest | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_guilt_a_missing_part_is_every_one_of_its_scenarios_mis
+V4 disagreements bare on a failed capture | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_guilt_a_missing_part_is_every_one_of_its_scenarios_mis
+W6 a re-run part cannot replace its dump | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_the_workflow_runs_every_part_and_judges_them_after_any

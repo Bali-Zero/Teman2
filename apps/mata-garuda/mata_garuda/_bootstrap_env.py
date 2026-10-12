@@ -52,6 +52,8 @@ _ALLOWED_SECRET_KEYS = frozenset({
     "TELEGRAM_OWNER_CHAT_ID",
     "TELEGRAM_APPROVAL_CHAT_ID",
     "TELEGRAM_PUBLIC_CHANNEL_ID",
+    # email (mata_garuda.tools.brevo_tools — the weekly digest)
+    "BREVO_API_KEY",
     # bridge (mata_garuda.bridge.nerve) — from ~/.cell-bridge-state/wa-media.env
     "WHATSAPP_ACCESS_TOKEN",
     "BRIDGE_API_KEY",

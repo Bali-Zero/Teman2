@@ -49,7 +49,7 @@ Licensing in Indonesia is closely integrated with the KBLI system and the OSS pl
 
 ## Bali Zero Services & System Integration
 
-- **PT PMA Setup Package**: Bali Zero offers an all-inclusive PT PMA setup package for IDR 20,000,000 (2025 official price), covering notary, KEMENKUMHAM, NIB, NPWP, and bank account setup.
+- **PT PMA Setup Package**: Bali Zero offers an all-inclusive PT PMA setup package for IDR 25,000,000 (official price, updated 2026-10-12), covering notary, KEMENKUMHAM, NIB, NPWP, and bank account setup.
 - **CRM `02_Company` Folder**: The CRM system organizes client company documents (deeds, NIB, NPWP, etc.) within a dedicated "02_Company" folder.
 - **Pricing Service**: The backend includes a pricing service (`backend/services/pricing/pricing_service.py`) that retrieves official Bali Zero prices for company services.
 - **Portal Endpoints**: `/api/portal/company/{company_id}` provides detailed company information to clients through the portal, including status and primary company selection.

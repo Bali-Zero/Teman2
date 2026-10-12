@@ -12,7 +12,8 @@ LOG="$LOG_DIR/run.log"
 mkdir -p "$LOG_DIR"
 TG_SOURCE="healer-pro"
 SIDECAR_DIR="$HOME/.organism/last_seen"
-PIDFILE="/tmp/nuzantara-pro-healer.pid"
+HEALER_STATE_DIR="$HOME/.organism/healer-pro"
+PIDFILE="${PRO_HEALER_PIDFILE:-/tmp/nuzantara-pro-healer.pid}"
 
 ts() { date '+%Y-%m-%d %H:%M:%S'; }
 log() { echo "[$(ts)] $*" >> "$LOG"; }
@@ -137,29 +138,61 @@ REASONS=""
 # Receptor A: registry-driven dead-organ scan on THIS node (DNA/GENOME 4c)
 REG_OUT=$(python3 scripts/healer_receptor_registry.py --node pro --json 2>/dev/null)
 REG_EXIT=$?
-if [ "$REG_EXIT" -eq 1 ]; then
-    REG_DEAD=$(printf '%s' "$REG_OUT" | python3 -c "
-import json,sys
-try:
-    print(len(json.load(sys.stdin).get('dead',[])))
-except Exception:
-    print(1)
-" 2>/dev/null)
-    ACTIONABLE=1; REASONS="${REASONS}registry:${REG_DEAD:-?}-dead-organs "
-elif [ "$REG_EXIT" -eq 2 ]; then
-    ACTIONABLE=1; REASONS="${REASONS}registry-receptor-broken "
+REG_BROKEN=""
+REG_SUMMARY=$(printf '%s' "$REG_OUT" | python3 scripts/healer_run_checks.py registry-summary 2>>"$LOG")
+REG_CHECK_EXIT=$?
+REG_DEAD=$(printf '%s\n' "$REG_SUMMARY" | sed -n '1p')
+REG_SESSION=$(printf '%s\n' "$REG_SUMMARY" | sed -n '2p')
+REG_DEAD_IDS=$(printf '%s\n' "$REG_SUMMARY" | sed -n '3p')
+REG_FINDINGS=$(printf '%s\n' "$REG_SUMMARY" | sed -n '4p')
+REG_FINDING_IDS=$(printf '%s\n' "$REG_SUMMARY" | sed -n '5p')
+# Exit 1 means "dead organs"; exit 1 with none listed is a broken receptor, not health.
+if [ "$REG_EXIT" -eq 2 ] || [ "$REG_CHECK_EXIT" -ne 0 ] \
+    || { [ "$REG_EXIT" -eq 1 ] && [ "${REG_DEAD:-0}" = "0" ]; }; then
+    ACTIONABLE=1; REASONS="${REASONS}registry-receptor-broken "; REG_BROKEN=1
+elif [ "$REG_EXIT" -eq 1 ] && [ "${REG_SESSION:-0}" -gt 0 ] 2>/dev/null; then
+    ACTIONABLE=1
+    REASONS="${REASONS}registry:${REG_SESSION}/${REG_DEAD}-dead ${REG_FINDINGS:-0}-findings "
+elif [ "$REG_EXIT" -eq 1 ] && [ "${REG_DEAD:-0}" -gt 0 ] 2>/dev/null; then
+    log "skip: registry ${REG_DEAD} dead, none session-curable: ${REG_DEAD_IDS:-unknown}"
+fi
+# A detector that ran on time and reported what it found is alive, not a patient.
+if [ "${REG_FINDINGS:-0}" -gt 0 ] 2>/dev/null; then
+    log "registry alive_with_findings: ${REG_FINDINGS} (${REG_FINDING_IDS}) — not dead, no spawn on their account"
+fi
+
+# B defers organs_heartbeat to A only on THIS tick's accepted judgement: never a previous tick's file, never a broken A.
+REGISTRY_FILE="$HEALER_STATE_DIR/registry-last.json"; REGISTRY_HANDOFF=""; REGISTRY_TMP=""
+rm -f "$REGISTRY_FILE" "$REGISTRY_FILE".tmp.*
+if [ -n "$REG_OUT" ] && [ -z "$REG_BROKEN" ] && { [ "$REG_EXIT" -eq 0 ] || [ "$REG_EXIT" -eq 1 ]; }; then
+    if mkdir -p "$HEALER_STATE_DIR" && REGISTRY_TMP=$(mktemp "$REGISTRY_FILE.tmp.XXXXXX") \
+        && printf '%s\n' "$REG_OUT" > "$REGISTRY_TMP" && mv "$REGISTRY_TMP" "$REGISTRY_FILE"; then
+        REGISTRY_HANDOFF=1
+    else
+        log "registry snapshot write failed: receptor B counts organs_heartbeat itself"
+        [ -n "$REGISTRY_TMP" ] && rm -f "$REGISTRY_TMP"
+    fi
 fi
 
 # Receptor B: proprioception — boundary divergences on THIS machine
 PROP_JSON=$(python3 scripts/proprioception.py --json --no-fetch 2>/dev/null)
 PROP_EXIT=$?
-DIVERGED=$(printf '%s' "$PROP_JSON" | python3 scripts/healer_run_checks.py count-diverged 2>/dev/null)
+if [ -n "$REGISTRY_HANDOFF" ] && [ -s "$REGISTRY_FILE" ]; then
+    PROP_SUMMARY=$(printf '%s' "$PROP_JSON" | python3 scripts/healer_run_checks.py proprioception-summary --registry-file "$REGISTRY_FILE" 2>>"$LOG")
+else
+    PROP_SUMMARY=$(printf '%s' "$PROP_JSON" | python3 scripts/healer_run_checks.py proprioception-summary 2>>"$LOG")
+fi
 CHECK_EXIT=$?
+DIVERGED=$(printf '%s\n' "$PROP_SUMMARY" | sed -n '1p')
+SESSION_CURABLE=$(printf '%s\n' "$PROP_SUMMARY" | sed -n '2p')
+DIVERGED_IDS=$(printf '%s\n' "$PROP_SUMMARY" | sed -n '3p')
 # The probe's own failure is a THIRD state, like registry receptor exit 2 (superscar #2).
 if [ "$PROP_EXIT" -ne 0 ] || [ "$CHECK_EXIT" -ne 0 ]; then
     ACTIONABLE=1; REASONS="${REASONS}proprioception-receptor-broken "
+elif [ "${SESSION_CURABLE:-0}" -gt 0 ] 2>/dev/null; then
+    ACTIONABLE=1; REASONS="${REASONS}proprioception:${SESSION_CURABLE}/${DIVERGED}-session-curable "
 elif [ "${DIVERGED:-0}" -gt 0 ] 2>/dev/null; then
-    ACTIONABLE=1; REASONS="${REASONS}proprioception:${DIVERGED}-diverged "
+    log "skip: ${DIVERGED} diverged, none session-curable at P0-P1: ${DIVERGED_IDS:-unknown}"
 fi
 
 # Receptor C: declared HOME pairs drift on pro (superscar #1)
@@ -175,11 +208,24 @@ fi
 # verdict text is captured, not discarded, in EITHER branch — a guard
 # whose product is a verdict must not have that verdict thrown away by
 # its only reader.
-LHF_CHECK_OUT=$(python3 scripts/lint_home_fork.py --check 2>&1)
+LHF_CHECK_OUT=$(python3 scripts/lint_home_fork.py --check --json 2>>"$LOG")
 LHF_CHECK_RC=$?
+LHF_SUMMARY=$(printf '%s' "$LHF_CHECK_OUT" | python3 scripts/healer_run_checks.py home-fork-summary 2>>"$LOG")
+LHF_SUMMARY_RC=$?
+LHF_DRIFTED=$(printf '%s\n' "$LHF_SUMMARY" | sed -n '1p')
+LHF_SESSION=$(printf '%s\n' "$LHF_SUMMARY" | sed -n '2p')
+LHF_IDS=$(printf '%s\n' "$LHF_SUMMARY" | sed -n '3p')
+LHF_CURABLE_IDS=$(printf '%s\n' "$LHF_SUMMARY" | sed -n '4p')
 if [ $(( LHF_CHECK_RC & 1 )) -ne 0 ]; then
-    ACTIONABLE=1; REASONS="${REASONS}home-fork-drift "
     log "home-fork --check (rc=$LHF_CHECK_RC): $LHF_CHECK_OUT"
+    if [ "$LHF_SUMMARY_RC" -ne 0 ] || [ "${LHF_DRIFTED:-0}" -eq 0 ] 2>/dev/null; then
+        ACTIONABLE=1; REASONS="${REASONS}home-fork-receptor-broken "
+    elif [ "${LHF_SESSION:-0}" -gt 0 ] 2>/dev/null; then
+        ACTIONABLE=1
+        REASONS="${REASONS}home-fork-drift:${LHF_SESSION}/${LHF_DRIFTED}-session-curable "
+    else
+        log "skip: home-fork ${LHF_DRIFTED} drift, none session-curable: ${LHF_IDS:-unknown}"
+    fi
 elif [ $(( LHF_CHECK_RC & 4 )) -ne 0 ]; then
     log "home-fork --check: CANNOT-VERIFY (rc=$LHF_CHECK_RC), not treated as drift: $LHF_CHECK_OUT"
 fi
@@ -201,18 +247,20 @@ if [ "$ARSENAL_AGE_H" -ge 20 ] && [ -f "scripts/arsenal_probe.py" ]; then
     log "arsenal probe: report ${ARSENAL_AGE_H}h old — refreshing (live seat probes)"
     python3 scripts/arsenal_probe.py --quiet >> "$LOG" 2>&1 || true
 fi
+NEW_DEAD=""
 if [ -f "$ARSENAL_REPORT" ]; then
-    NEW_DEAD=$(python3 - <<'PY' 2>/dev/null
-import json, os
-try:
-    d = json.load(open(os.path.expanduser("~/.organism/arsenal/last.json")))
-    strict = {"AUTH_DEAD", "BALANCE_DEAD", "MODEL_ERR", "UNKNOWN_ERR"}
-    print(",".join(f"{t['seat']}:{t['to']}" for t in d.get("transitions", [])
-                   if t.get("to") in strict))
-except Exception:
-    pass
-PY
-)
+    ARSENAL_GATE=$(python3 scripts/healer_run_checks.py arsenal-transitions \
+        --state "$HEALER_STATE_DIR/arsenal-last-acted.json" \
+        < "$ARSENAL_REPORT" 2>>"$LOG")
+    ARSENAL_GATE_RC=$?
+    NEW_DEAD=$(printf '%s\n' "$ARSENAL_GATE" | sed -n '1p')
+    ALREADY_ACTED=$(printf '%s\n' "$ARSENAL_GATE" | sed -n '2p')
+    ARSENAL_REPORT_TS=$(printf '%s\n' "$ARSENAL_GATE" | sed -n '3p')
+    if [ "$ARSENAL_GATE_RC" -ne 0 ]; then
+        log "skip: arsenal transition gate unreadable (rc=$ARSENAL_GATE_RC)"
+    elif [ -n "$ALREADY_ACTED" ]; then
+        log "skip: arsenal transition already acted: ${ALREADY_ACTED} report-ts=${ARSENAL_REPORT_TS}"
+    fi
     if [ -n "$NEW_DEAD" ]; then
         ACTIONABLE=1; REASONS="${REASONS}arsenal:${NEW_DEAD} "
         telegram p0 "healer-pro:arsenal-seat-dead" "🔌 ARSENALE (Pro): seat morto rilevato — ${NEW_DEAD}. Dettaglio: ~/.organism/arsenal/last.json (docs/runbooks/arsenal-probe.md)"
@@ -220,7 +268,11 @@ PY
 fi
 
 if [ "$ACTIONABLE" -eq 0 ]; then
-    log "pre-check clean (pro organs alive, 0 diverged, pairs aligned) — no LLM spawn"
+    if [ "${REG_DEAD:-0}" -eq 0 ] 2>/dev/null \
+        && [ "${DIVERGED:-0}" -eq 0 ] 2>/dev/null \
+        && [ "${LHF_DRIFTED:-0}" -eq 0 ] 2>/dev/null; then
+        log "pre-check clean (pro organs alive, 0 session-curable diverged, pairs aligned) — no LLM spawn"
+    fi
     heartbeat "ok" "idle: pre-check clean"
     exit 0
 fi
@@ -233,9 +285,13 @@ fi
 # skipped cure (#2 Esiste≠Armato) — MEMO_RC not in {0,3} falls through untouched.
 export _HM_REG_OUT="$REG_OUT"
 export _HM_PROP_JSON="$PROP_JSON"
-export _HM_LHF_OUT="$LHF_CHECK_OUT"
+export _HM_LHF_IDS="${LHF_IDS:-}"
+export _HM_LHF_CURABLE_IDS="${LHF_CURABLE_IDS:-}"
 export _HM_NEW_DEAD="${NEW_DEAD:-}"
 export _HM_REASONS="$REASONS"
+export _HM_REG_SESSION="${REG_SESSION:-0}"
+export _HM_PROP_SESSION="${SESSION_CURABLE:-0}"
+export _HM_LHF_SESSION="${LHF_SESSION:-0}"
 RECEPTOR_STATE_JSON=$(python3 - <<'PY'
 import json, os
 
@@ -248,7 +304,6 @@ def _load(name):
 
 reg = _load("_HM_REG_OUT")
 prop = _load("_HM_PROP_JSON")
-lhf_out = os.environ.get("_HM_LHF_OUT", "")
 new_dead_raw = os.environ.get("_HM_NEW_DEAD", "")
 reasons = os.environ.get("_HM_REASONS", "")
 
@@ -261,30 +316,42 @@ for p in (prop.get("probes") if isinstance(prop, dict) else []) or []:
     if not isinstance(p, dict):
         continue
     verdict = str(p.get("status") or p.get("verdict") or "").upper()
-    if verdict == "DIVERGED":
-        diverged_probes.append(str(p.get("id", "")))
+    if verdict == "DIVERGED":  # the cure joins the key: a session-curable probe moving is new work
+        diverged_probes.append(f'{p.get("id", "")}:{p.get("cure", "session")}')
 
-# lint_home_fork.py --check prints breach lines as "  - <text>"; a stale-checkout
-# notice ("  ~ <text>") is NOT a breach and must not perturb the fingerprint.
-drifted_pairs = [
-    ln.strip()[2:].strip()
-    for ln in lhf_out.splitlines()
-    if ln.strip().startswith("- ")
+lhf_curable = set(os.environ.get("_HM_LHF_CURABLE_IDS", "").split(","))
+drifted_pairs = [  # each pair with its cure: a drift moving across the cure boundary is new work
+    f'{t}:{"session" if t in lhf_curable else "owner"}'
+    for t in os.environ.get("_HM_LHF_IDS", "").split(",") if t
 ]
-
 arsenal_new_dead = [t for t in new_dead_raw.split(",") if t]
+def _count(name):
+    try:
+        return int(os.environ.get(name, "0") or 0)
+    except ValueError:
+        return 0
+
+session_curable = {
+    "registry": _count("_HM_REG_SESSION"),
+    "proprioception": _count("_HM_PROP_SESSION"),
+    "home_fork": _count("_HM_LHF_SESSION"),
+}
+receptor_failures = sorted(
+    token for token in reasons.split() if token.endswith("-receptor-broken")
+)
 
 print(json.dumps({
     "dead_organs": dead_organs,
     "diverged_probes": diverged_probes,
     "drifted_pairs": drifted_pairs,
+    "session_curable": session_curable,
+    "receptor_failures": receptor_failures,
     "arsenal_new_dead": arsenal_new_dead,
-    "reasons": reasons,
 }))
 PY
 )
 FINGERPRINT=$(printf '%s' "$RECEPTOR_STATE_JSON" | python3 scripts/healer_memo.py fingerprint 2>>"$LOG")
-MEMO_STATE="$HOME/.organism/healer-pro/memo.json"
+MEMO_STATE="$HEALER_STATE_DIR/memo.json"
 MEMO_RC=0
 MEMO_OUT=$(python3 scripts/healer_memo.py check --state "$MEMO_STATE" --fingerprint "$FINGERPRINT" 2>&1) || MEMO_RC=$?
 log "healer_memo check (rc=$MEMO_RC): $MEMO_OUT"
@@ -315,12 +382,28 @@ if [ ! -x "$CASCADE_BIN" ]; then
     exit 1
 fi
 
+# The n_total the session must echo in its HEALER_VERDICT line: every item this
+# tick asks it to cure, so a verdict on part of the work never memoizes the rest.
+VERDICT_TOTAL=0
+for n in "${REG_SESSION:-0}" "${SESSION_CURABLE:-0}" "${LHF_SESSION:-0}"; do
+    case "$n" in ''|*[!0-9]*) ;; *) VERDICT_TOTAL=$((VERDICT_TOTAL + n)) ;; esac
+done
+for t in $REASONS; do
+    case "$t" in *-receptor-broken) VERDICT_TOTAL=$((VERDICT_TOTAL + 1)) ;; esac
+done
+for t in ${NEW_DEAD//,/ }; do VERDICT_TOTAL=$((VERDICT_TOTAL + 1)); done
+
 SESSION_LOG="$LOG_DIR/session-$(date +%Y%m%d-%H%M%S).log"
 SPAWN_TS_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 export HEALER_RUN=1
 "$CASCADE_BIN" "$(cat "$MANDATE")
 
-CONTESTO DI QUESTO TICK — receptor scattati: ${REASONS}" \
+CONTESTO DI QUESTO TICK — receptor scattati: ${REASONS}
+
+Chiudi il report con UNA riga macchina, senza markdown, dove ${VERDICT_TOTAL} = gli
+elementi curabili che questo tick ti chiede di curare e n_cured = quelli curati
+(cured = tutti, incurable = nessuno, partial = alcuni):
+HEALER_VERDICT: cured|incurable|partial <n_cured>/${VERDICT_TOTAL}" \
     --claude-only --model "$MODEL" -- \
     --dangerously-skip-permissions --strict-mcp-config \
     --mcp-config '{"mcpServers":{}}' \
@@ -359,11 +442,24 @@ TAIL=$(tail -c 600 "$SESSION_LOG" 2>/dev/null | tr '\n' ' ' | tr -s ' ')
 log "session exit=$RC — tail: ${TAIL:0:300}"
 
 # G11_memoize (continued): record this tick's outcome so the NEXT tick can
-# memoize against it. The verdict comes from the healer's own escalation
-# write (shared/escalations_pro.jsonl), never from $RC — a session can exit 0
-# after concluding "0/N curable" (that IS success: the diagnosis is correct).
-MEMO_VERDICT=$(python3 scripts/healer_memo.py verdict-from-escalations \
-    --file shared/escalations_pro.jsonl --since "$SPAWN_TS_ISO" 2>>"$LOG")
+# memoize against it. The verdict is the session's own HEALER_VERDICT line,
+# else (unchanged) the healer's escalation write (shared/escalations_pro.jsonl),
+# never $RC — a session can exit 0 after concluding "0/N curable" (that IS
+# success: the diagnosis is correct).
+MEMO_VERDICT=$(python3 scripts/healer_memo.py verdict-from-session \
+    --file "$SESSION_LOG" --expect-total "$VERDICT_TOTAL" 2>>"$LOG")
+case "$MEMO_VERDICT" in
+    cured|incurable|partial) ;;
+    missing)
+        log "verdict-line-missing: no HEALER_VERDICT line in $SESSION_LOG"
+        MEMO_VERDICT=$(python3 scripts/healer_memo.py verdict-from-escalations \
+            --file shared/escalations_pro.jsonl --since "$SPAWN_TS_ISO" 2>>"$LOG")
+        ;;
+    *)
+        log "verdict-line-invalid: last HEALER_VERDICT line in $SESSION_LOG is malformed or not <k>/${VERDICT_TOTAL}"
+        MEMO_VERDICT="unknown"
+        ;;
+esac
 [ -n "$MEMO_VERDICT" ] || MEMO_VERDICT="unknown"
 if [ -n "${FINGERPRINT:-}" ]; then
     python3 scripts/healer_memo.py record --state "$MEMO_STATE" \

@@ -133,50 +133,50 @@ class TestWebSocketAuth:
 
     @pytest.mark.asyncio
     @patch("backend.app.routers.websocket.settings")
-    @patch("backend.app.routers.websocket.jwt")
-    async def test_get_current_user_ws_valid(self, mock_jwt, mock_settings):
+    @patch("backend.app.routers.websocket.decode_jwt")
+    async def test_get_current_user_ws_valid(self, mock_decode, mock_settings):
         """Test getting current user with valid token"""
         mock_settings.jwt_secret_key = "secret"
         mock_settings.jwt_algorithm = "HS256"
-        mock_jwt.decode.return_value = {"sub": "user123", "type": "access"}
+        mock_decode.return_value = {"sub": "user123", "type": "access"}
 
         user_id = await get_current_user_ws("valid_token")
         assert user_id == "user123"
 
     @pytest.mark.asyncio
     @patch("backend.app.routers.websocket.settings")
-    @patch("backend.app.routers.websocket.jwt")
-    async def test_get_current_user_ws_userid(self, mock_jwt, mock_settings):
+    @patch("backend.app.routers.websocket.decode_jwt")
+    async def test_get_current_user_ws_userid(self, mock_decode, mock_settings):
         """Test getting current user with userId in payload"""
         mock_settings.jwt_secret_key = "secret"
         mock_settings.jwt_algorithm = "HS256"
-        mock_jwt.decode.return_value = {"userId": "user456", "type": "access"}
+        mock_decode.return_value = {"userId": "user456", "type": "access"}
 
         user_id = await get_current_user_ws("valid_token")
         assert user_id == "user456"
 
     @pytest.mark.asyncio
     @patch("backend.app.routers.websocket.settings")
-    @patch("backend.app.routers.websocket.jwt")
-    async def test_get_current_user_ws_invalid(self, mock_jwt, mock_settings):
+    @patch("backend.app.routers.websocket.decode_jwt")
+    async def test_get_current_user_ws_invalid(self, mock_decode, mock_settings):
         """Test getting current user with invalid token"""
-        from jose import JWTError
+        from jwt import PyJWTError
 
         mock_settings.jwt_secret_key = "secret"
         mock_settings.jwt_algorithm = "HS256"
-        mock_jwt.decode.side_effect = JWTError("Invalid token")
+        mock_decode.side_effect = PyJWTError("Invalid token")
 
         user_id = await get_current_user_ws("invalid_token")
         assert user_id is None
 
     @pytest.mark.asyncio
     @patch("backend.app.routers.websocket.settings")
-    @patch("backend.app.routers.websocket.jwt")
-    async def test_get_current_user_ws_no_user_id(self, mock_jwt, mock_settings):
+    @patch("backend.app.routers.websocket.decode_jwt")
+    async def test_get_current_user_ws_no_user_id(self, mock_decode, mock_settings):
         """Test getting current user with no user ID in payload"""
         mock_settings.jwt_secret_key = "secret"
         mock_settings.jwt_algorithm = "HS256"
-        mock_jwt.decode.return_value = {"type": "access"}
+        mock_decode.return_value = {"type": "access"}
 
         user_id = await get_current_user_ws("token")
         assert user_id is None

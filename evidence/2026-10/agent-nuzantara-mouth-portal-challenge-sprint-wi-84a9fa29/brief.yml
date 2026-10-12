@@ -1,0 +1,16 @@
+task_id: portal-challenge-r2-sprint-widget
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Show Zero's 2026-10-12 Round 2 sprint minimum in PortalChallengeWidget: a
+  rule banner (period, 20-point minimum required for every prize, -700,000 IDR
+  monthly-bonus deduction otherwise) and a per-row sprint progress line
+  (points/min, missing points, penalty). Everything renders only when the
+  backend sends the new optional `sprint` fields (sibling backend PR #8310).
+constraints:
+  - Optional fields only; Round 1 and older backends render unchanged.
+  - Widget no-red rule and min-11px guard respected; no client PII in fixtures.
+acceptance:
+  - Vitest widget suite + min-11px guard + _lib tests green; tsc --noEmit clean.
+  - After backend deploy and Vercel promote, the live dashboard shows the banner and per-row sprint lines.

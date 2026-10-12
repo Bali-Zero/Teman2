@@ -1,0 +1,19 @@
+gear: 2
+gear_reason: >-
+  Public Visa Oracle client-copy change in one mouth component (display-name helper on the result card
+  and the share line, EN and ID). Small diff, no backend, no pack, no pricing, no tree file; Gear 2 because
+  it ships on the public funnel and carries a pinned test.
+mission: >-
+  A visitor sharing a Visa Oracle result sees each product code once, on the card and in the share line,
+  in English and Bahasa Indonesia.
+objective: >-
+  OutcomeSheet strips a trailing " (CODE)" from the localized product name only when CODE equals the
+  candidate's own code, so the card eyebrow plus title and the share line read "E23V - Working Visa -
+  Trade and Economic Office" instead of repeating "(E23V)"; a different or non-trailing code is left as the
+  pack wrote it; a name that would become empty is kept.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.display-name.test.tsx
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

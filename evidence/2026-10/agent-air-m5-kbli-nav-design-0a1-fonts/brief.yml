@@ -1,0 +1,30 @@
+task_id: kbli-nav-design-0a1-fonts
+mission: kbli-nav-design-loop (Track A, build, PR 0a-1)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  evidence_pack_lint's floor for this change set is 2 by its size term alone, with no hot-zone path. Churn is 286
+  for the fonts commit and 494 once the after-set manifest is added. Of those lines, 186 are the two SIL OFL licence
+  texts and 208 are the JSON digest manifest; the code is Theme.swift, KBLINavigatorApp.swift, Info.plist and a
+  30-line instancing script.
+l_level: L1
+gate_class: opus
+objective: >-
+  SPEC-swiftui §1.5–1.6. Bundle five static Fraunces/Manrope cuts, made from apps/mouth/public/fonts with every axis
+  pinned. Register them for the process before any view, and refuse a band render (exit 4) when they are missing.
+  Theme.scalable and the named roles paint the bundled face at the size each call site states. Before this change,
+  the macOS text-style default stood in for that size: 15 pt rendered 11 pt via .subheadline. Presentation only: no
+  KBLI fact, verdict, cap, basis or Bali overlay changes, and the canonical dataset is not written.
+constraints:
+  - No content string changes; colour tokens are untouched (they arrive in 0a-2).
+  - Fonts are cut once on M5 (fontTools 4.63); the Pro build only copies Resources/ and never imports fontTools.
+  - No PNG is committed; the after-set ships as a sha256 manifest and the PNGs live in the M5 gallery.
+acceptance:
+  - text: The five committed cuts SHALL be byte-identical to a fresh run of Tools/fonts/make_instances.py on the mouth variable fonts.
+    probe: "M5: re-cut into a scratch tree, shasum -a 256 diff against Resources/Fonts → 5/5 identical"
+  - text: A band render SHALL exit 4 with "font not registered" and write no PNG when the bundle carries no Fonts directory.
+    probe: "Pro: copy of the built app with Contents/Resources/Fonts removed and ATSApplicationFontsPath deleted → rc=4, 0 PNG"
+  - text: The head SHALL build both variants and render all 24 bands, each equal to its digest in baseline-2026-10-09-after/0a1-fonts/manifest.json.
+    probe: "Pro build-only mirror detached at the head: INTERNAL_RC=0, BKPM_RC=0, rendered=24 failed=0, manifest_match=24/24"
+  - text: Renders SHALL be deterministic.
+    probe: "Pro: a second render of detail-card night id has the same sha256 as the first"

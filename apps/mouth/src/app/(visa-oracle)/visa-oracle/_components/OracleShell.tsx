@@ -13,6 +13,7 @@ import { MessageCircle } from "lucide-react";
 import { useReducedMotion } from "framer-motion";
 import {
   restoreInterviewSnapshot,
+  retirementAgeNoticeDate,
   useOracleFlow,
   type BlockedAnswer,
   type InterviewSnapshot,
@@ -35,6 +36,7 @@ import { EvaluationRunCache } from "../_lib/evaluation-run-cache";
 import {
   buildEngineOutcome,
   buildInternalPreviewOutcome,
+  isNoPathWithoutDoors,
   isSecondHomeStudioOnly,
 } from "../_lib/engine-adapter";
 import { VisaOracleResponseError } from "../_lib/engine-response";
@@ -1094,6 +1096,29 @@ function OracleShellRuntime({
                 language={language}
                 question={QUESTIONS[current.questionId]}
                 onAnswer={(value) => answer(current.questionId, value)}
+                secondaryActionsLabelI18nKey="q.retirement_age_notice.other_routes"
+                secondaryActions={
+                  current.questionId === "retirement_age_notice"
+                    ? [
+                        {
+                          key: "second_home",
+                          labelI18nKey:
+                            "q.retirement_age_notice.opt.second_home",
+                          onSelect: () => handleSelectCategory("second_home"),
+                        },
+                        {
+                          key: "change",
+                          labelI18nKey: "q.retirement_age_notice.opt.change",
+                          onSelect: () => handleEdit("birth_date"),
+                        },
+                      ]
+                    : undefined
+                }
+                promptVars={
+                  current.questionId === "retirement_age_notice"
+                    ? { date: retirementAgeNoticeDate(state.facts, language) }
+                    : undefined
+                }
                 onSkip={() => skip(current.questionId)}
                 onBack={back}
                 canGoBack={canGoBack}
@@ -1161,6 +1186,7 @@ function OracleShellRuntime({
                       provenance={outcome.provenance}
                       legalStatus={outcome.candidates[0]?.legal.status}
                       isSecondHomeStudioOnly={isSecondHomeStudioOnly(outcome)}
+                      isNoPathWithoutDoors={isNoPathWithoutDoors(outcome)}
                     />
                     <OutcomeSheet
                       language={language}
@@ -1204,7 +1230,7 @@ function OracleShellRuntime({
                         {translate(language, "restart.button")}
                       </button>
                     </div>
-                    <details className="oracle-atlas-alternatives">
+                    <details className="oracle-atlas-alternatives oracle-no-print">
                       <summary>{atlasCopy(language, "tools.explore")}</summary>
                       <div>
                         {CATEGORY_KEYS.filter(

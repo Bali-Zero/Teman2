@@ -33,6 +33,7 @@ dotenv.load_dotenv(str(base_path / ".env"))
 
 from backend.services.crm.documents import auto_categorize_document
 from backend.services.crm.drive_poll_service import _infer_document_type
+from backend.services.crm.drive_registration_visibility import drive_default_client_visible
 
 
 def parse_report(report_path: str) -> list[dict[str, Any]]:
@@ -163,6 +164,7 @@ async def main():
                     drive_url,
                     file_size_kb,
                     subfolder_value,
+                    drive_default_client_visible(file_name),
                 )
             )
             unique_clients.add(client_id)
@@ -215,10 +217,11 @@ async def main():
                             INSERT INTO documents (
                                 client_id, document_type, document_category, file_name, file_id,
                                 google_drive_file_url, file_size_kb, subfolder,
-                                status, storage_type, ocr_status, created_at, updated_at
+                                status, storage_type, ocr_status, created_at, updated_at,
+                                client_visible
                             ) VALUES (
                                 $1, $2, $3, $4, $5, $6, $7, $8,
-                                'active', 'google_drive', 'pending', NOW(), NOW()
+                                'active', 'google_drive', 'pending', NOW(), NOW(), $9
                             )
                         """,
                             chunk,
@@ -236,8 +239,9 @@ async def main():
                                     INSERT INTO documents (
                                         client_id, document_type, document_category, file_name, file_id,
                                         google_drive_file_url, file_size_kb, subfolder,
-                                        status, storage_type, ocr_status, created_at, updated_at
-                                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', 'google_drive', 'pending', NOW(), NOW())
+                                        status, storage_type, ocr_status, created_at, updated_at,
+                                        client_visible
+                                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', 'google_drive', 'pending', NOW(), NOW(), $9)
                                 """,
                                     *row,
                                 )

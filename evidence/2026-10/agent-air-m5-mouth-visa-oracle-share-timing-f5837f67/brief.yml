@@ -1,0 +1,22 @@
+gear: 2
+gear_reason: >-
+  One component helper, two i18n twins and tests in a single public surface; no backend, no data,
+  no deploy beyond the normal mouth merge.
+ruling: >-
+  Zero, 2026-10-09/10 — every final answer is honest and refined; client copy never carries
+  internal language, never splits the price, never promises what the code does not do.
+mission: >-
+  The Visa Oracle share / copy summary carries Bali Zero's typical processing time per candidate.
+objective: >-
+  A candidate line in the shared summary ends with the same Typically sentence the page shows plus
+  the word indicative (perkiraan in Indonesian), with no dates; visa-free carries the border
+  sentence; UNKNOWN or missing working days carry no timing line.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/client-copy.test.ts
+  - scripts/ci/observe_visa_oracle_client_copy.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0

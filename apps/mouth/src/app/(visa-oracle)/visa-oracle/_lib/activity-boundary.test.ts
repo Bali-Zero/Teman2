@@ -124,7 +124,7 @@ const WALKS: readonly WalkCase[] = [
     flags: [],
   },
   {
-    name: "remote · foreign clients — the deleted remote_income clause named no real question",
+    name: "remote · foreign clients — annual income is a real fact question, not a boundary flag",
     category: "remote",
     tripScope: "single",
     branch: [
@@ -136,6 +136,7 @@ const WALKS: readonly WalkCase[] = [
       // remote worker gives; it is a FACT question, so it adds no flag.
       ["work_payer", "no"],
       ["remote_employer_country", "US"],
+      ["remote_annual_income_usd", "60000"],
       ["remote_pt_pma", "no"],
       ["stay_days", "365"],
     ],
@@ -198,7 +199,7 @@ const WALKS: readonly WalkCase[] = [
     category: "retirement",
     tripScope: "single",
     branch: [
-      ["sponsor_category", "NONE"],
+      ["retirement_age_notice", "continue"],
       ["retirement_basis", "property"],
       ["secondhome_property_value_usd", "1200000"],
       ["secondhome_passive_income_usd", "5000"],
@@ -231,7 +232,7 @@ const WALKS: readonly WalkCase[] = [
     category: "retirement",
     tripScope: "single",
     branch: [
-      ["sponsor_category", "NONE"],
+      ["retirement_age_notice", "continue"],
       ["retirement_basis", "family_sponsor"],
       ["secondhome_passive_income_usd", "5000"],
       ["retirement_penjamin_confirmed", "yes"],
@@ -463,6 +464,10 @@ describe("ACTIVITY_BOUNDARY — the decision table itself", () => {
       // carries the fact a rule could ever read, never this label.
       investment_currency:
         "engine-inert routing label; the evidence carries the fact",
+      // R2 (2026-10-11): a notice, not a question — its one recorded value
+      // (`continue`) maps to no fact; the pack still decides on the age.
+      retirement_age_notice:
+        "notice only; the pack decides on derived.age_years",
     };
     for (const question of Object.values(QUESTIONS)) {
       if (question.decisionMapping.kind !== "HUMAN_CONTEXT") continue;

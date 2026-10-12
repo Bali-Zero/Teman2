@@ -1,0 +1,57 @@
+opened-surfaces: 6 ok, 0 failed
+  kbli-mobile-nav mobile/light: ok, 1 root(s), 1 scrim(s), 7 runs, min 3.66, 1 position(s)
+  kbli-mobile-nav mobile/system-dark: ok, 1 root(s), 1 scrim(s), 7 runs, min 4.36, 1 position(s)
+  kbli-mobile-nav mobile/forced-dark: ok, 1 root(s), 1 scrim(s), 7 runs, min 3.66, 1 over an image, 1 position(s)
+  kbli-code-mobile-nav mobile/light: ok, 1 root(s), 1 scrim(s), 7 runs, min 3.66, 1 position(s)
+  kbli-code-mobile-nav mobile/system-dark: ok, 1 root(s), 1 scrim(s), 7 runs, min 4.36, 1 position(s)
+  kbli-code-mobile-nav mobile/forced-dark: ok, 1 root(s), 1 scrim(s), 7 runs, min 3.66, 2 over an image, 1 position(s)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav mobile/light)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav mobile/system-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav mobile/forced-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-code-mobile-nav mobile/light)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-code-mobile-nav mobile/system-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-code-mobile-nav mobile/forced-dark)
+opened-outside-wrapper: 6
+  ground #090A0C under 'Login' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-code-mobile-nav mobile/forced-dark
+  ground #0A0A0C under 'Menu' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-mobile-nav mobile/forced-dark
+  ground #0B0B0E under 'Login' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-mobile-nav mobile/forced-dark
+  ground #0E192F under 'Menu' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-mobile-nav mobile/system-dark
+  ground #0E1A30 under 'Login' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-code-mobile-nav mobile/system-dark
+  ground #0F1A30 under 'Login' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-mobile-nav mobile/system-dark
+  ground #101E39 under 'Visa' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/system-dark
+  ground #101E3A under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/system-dark
+  ground #160A0D under 'Visa' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/forced-dark
+  ground #160B0D under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/forced-dark
+  ground #170B0E over-image (non-uniform) under 'Tax' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/forced-dark
+  ground #180C0F under 'Property' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/forced-dark
+  ground #190B0B under 'Visa' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/forced-dark
+  ground #190E12 under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/forced-dark
+  ground #1C0D0E over-image (non-uniform) under 'Property' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/forced-dark
+  ground #1D0E0E over-image (non-uniform) under 'Tax' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/forced-dark
+  ground #3A6DFF under 'Get Started' at body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center, on kbli-mobile-nav mobile/system-dark
+  ground #BFB3B4 under 'Visa' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/light
+  ground #BFB3B5 under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/light
+  ground #C0B4B5 under 'Tax' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/light
+  ground #C0B4B6 under 'Property' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/light
+  ground #C1B3B3 under 'Visa' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/light
+  ground #C1B6B8 under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/light
+  ground #C3B5B5 under 'Property' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/light
+  ground #C4B6B5 under 'Tax' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/light
+  ground #CDCDCE under 'Menu' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-mobile-nav mobile/light
+  ground #D9D9D8 under 'Login' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-code-mobile-nav mobile/light
+  ground #DADAD9 under 'Login' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-mobile-nav mobile/light
+  ground #FF2D4C under 'Get Started' at body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center, on kbli-mobile-nav mobile/light
+  scrim #000000 alpha 0.45 at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div (a scrim is ink, translucent), on kbli-mobile-nav mobile/light
+opened-grounds-off-contract: 30
+ground-resolver-disagree: 0
+shared-touched-unpinned: 0
+shared-component-drift: 0
+  4.27  #5B5B5D on #CDCDCE  'Menu'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.flex.items-center>span.text-[11px].font-bold  (kbli-mobile-nav mobile/light)
+  3.66  #FFFFFF on #FF2D4C  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-mobile-nav mobile/light)
+  4.36  #FFFFFF on #3A6DFF  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-mobile-nav mobile/system-dark)
+  3.66  #FFFFFF on #FF2D4C  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-mobile-nav mobile/forced-dark)
+  4.27  #5B5B5D on #CDCDCE  'Menu'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.flex.items-center>span.text-[11px].font-bold  (kbli-code-mobile-nav mobile/light)
+  3.66  #FFFFFF on #FF2D4C  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-code-mobile-nav mobile/light)
+  4.36  #FFFFFF on #3A6DFF  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-code-mobile-nav mobile/system-dark)
+  3.66  #FFFFFF on #FF2D4C  'Get Started'  body.antialiased.bg-[var(--background)]>div.md:hidden.fixed>div.p-5.flex>a.block.text-center  (kbli-code-mobile-nav mobile/forced-dark)
+opened-text-below-4.5: 8

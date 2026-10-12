@@ -1,13 +1,13 @@
 {
   "generator": "apps/mouth/scripts/visa-oracle/replay-no-path-doors.py",
   "pack": {
-    "file": "rulepack-prod-023.signed.json",
-    "sequence": 23,
-    "version": "2026.9.23"
+    "file": "rulepack-prod-027.signed.json",
+    "sequence": 27,
+    "version": "2026.10.8"
   },
-  "as_of": "2026-09-24 09:32:53.364322+00:00",
+  "as_of": "2026-10-10 03:42:26.641001+00:00",
   "age_55_birth_date": "1971-09-01",
-  "walk_corpus_fingerprint": "38c590547e76c70ef0b8a8fc2c6c1714842ce28bcd55a9b3d2f12aeb81169626",
+  "walk_corpus_fingerprint": "64d7a743d3720fd3b5536e79f6b47cbddf05cd78e626f179737f1cd770e9b7de",
   "walks": [
     {
       "label": "offshore/business",
@@ -96,12 +96,28 @@
       }
     },
     {
+      "label": "offshore/retirement/bank_deposit/age64/income_2999",
+      "walk_fixture": "offshore_retirement_bank_deposit_age64_income_2999.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["RETIREMENT_INCOME_BELOW_THRESHOLD"],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
       "label": "offshore/retirement/family_sponsor",
       "walk_fixture": "offshore_retirement_family_sponsor.json",
       "state": "NO_SUPPORTED_PATH",
       "no_path_reason_codes": ["AGE_BELOW_55"],
       "missing_facts": [],
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": ["E33F"] }
+    },
+    {
+      "label": "offshore/retirement/family_sponsor/age64/income_2999",
+      "walk_fixture": "offshore_retirement_family_sponsor_age64_income_2999.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["RETIREMENT_INCOME_BELOW_THRESHOLD"],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
     },
     {
       "label": "offshore/retirement/passive_income",
@@ -112,20 +128,20 @@
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": ["E33F"] }
     },
     {
+      "label": "offshore/retirement/passive_income/age64/income_2999",
+      "walk_fixture": "offshore_retirement_passive_income_age64_income_2999.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["RETIREMENT_INCOME_BELOW_THRESHOLD"],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
       "label": "offshore/retirement/property",
       "walk_fixture": "offshore_retirement_property.json",
       "state": "NO_SUPPORTED_PATH",
       "no_path_reason_codes": ["AGE_BELOW_55"],
       "missing_facts": [],
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": ["E33"], "AGE_55": ["E33F"] }
-    },
-    {
-      "label": "offshore/retirement/property/age64/sponsor_no",
-      "walk_fixture": "offshore_retirement_property_age64_sponsor_no.json",
-      "state": "NO_SUPPORTED_PATH",
-      "no_path_reason_codes": ["SPONSOR_REQUIRED"],
-      "missing_facts": [],
-      "doors": { "TOURISM": ["C1"], "SECOND_HOME": ["E33"], "AGE_55": [] }
     },
     {
       "label": "offshore/retirement/undecided",
@@ -144,7 +160,7 @@
       "walk_fixture": "offshore_retirement_undecided_age64_still_unsure.json",
       "state": "NEEDS_INPUT",
       "no_path_reason_codes": [],
-      "missing_facts": ["family.sponsor_confirmed"],
+      "missing_facts": ["secondhome.passive_monthly_income_usd"],
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
     },
     {

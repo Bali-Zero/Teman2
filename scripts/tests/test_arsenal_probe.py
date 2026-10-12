@@ -163,6 +163,27 @@ def test_model_requires_newer_version_classifies_model_err():
     assert ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False) == ap.MODEL_ERR
 
 
+def test_access_to_model_denied_classifies_model_err():
+    # real observed evidence, 2026-10-12 — 7 tp1-* council seats + qwen-cloud-code all probed
+    # a model this account's plan does not have entitlement for; was misclassified UNKNOWN_ERR
+    # before this fix (same disease as the codex-spark/gpt-6-astra widenings above: a real,
+    # already-model-shaped error string the classifier's patterns did not cover yet).
+    ev = (
+        'HTTP 403 {"error":{"message":"Access to model denied. Please make sure you are '
+        'eligible for using the model.","id":"abc","type":"access_denied","code":"403"}}'
+    )
+    assert ap.classify_generic(ev, live_signal=False, seat="tp1-glm-5.2", ssh_context=False) == ap.MODEL_ERR
+
+
+def test_eligible_for_unrelated_benefit_is_not_model_err():
+    # innocence: "eligible for" bound to something other than "the model" must not
+    # false-positive — only the exact "eligible for using the model" shape does.
+    ev = "Please ensure your membership is active to remain eligible for this benefit."
+    status = ap.classify_generic(ev, live_signal=False, seat="tp1-glm-5.2", ssh_context=False)
+    assert status != ap.MODEL_ERR
+    assert status == ap.UNKNOWN_ERR
+
+
 def test_requires_newer_version_without_model_is_not_model_err():
     # innocence: a generic "upgrade" nudge that never says "model requires a newer
     # version" must not false-positive — only that exact model-bound phrase does.

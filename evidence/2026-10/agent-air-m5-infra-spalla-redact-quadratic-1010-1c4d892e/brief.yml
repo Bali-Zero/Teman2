@@ -1,0 +1,44 @@
+task_id: spalla-redact-quadratic-1010
+mission: SPALLA-REDACT-QUADRATIC
+colour: BLUE
+gear: 3
+gear_reason:
+  scripts/lib/spalla_redact.sh is a hot-zone path (listed by .github/workflows/hot-zone-pr-gate.yml and scripts/evidence_pack_lint.py),
+  so the lint floor and ceiling are gear 3 although the diff is 15 net lines.
+l_level: L2
+gate_class: opus
+objective:
+  'The Codex second-opinion helper (.claude/scripts/codex-spalla.sh) passes every external-seat review prompt through
+  redact_for_external. That function tested "is this body blank?" with the bash pattern substitution ${input//[$''\t\r\n '']/},
+  which on macOS /bin/bash 3.2.57 is quadratic: measured 2026-10-10 on M5, 2 KB took 1.4 s and 8 KB 58 s, and codex-spalla.sh
+  on a 70 KB branch diff spun at about 90 % CPU for 25 minutes without ever calling codex (twice, observed by the session).
+  The blank check becomes a linear regex match so a large diff reaches the seat.'
+constraints:
+  - Blank means only tab, CR, LF and space — the four bytes origin/main treated as blank — judged byte by byte whatever the
+    caller's locale or variable attributes; when the judgement cannot be made the body is NOT blank and goes to the redactor
+    (which fails closed).
+  - No other behaviour of the redactor changes; no other file than the library and its test is edited.
+  - No client data is read, stored or transcribed; every fixture is generated filler text or the repo's synthetic someone@example.org.
+appetite:
+  wall_clock_hours: 1
+acceptance:
+  - text:
+      WHEN redact_for_external receives a body made only of tab, CR, LF and space THEN it SHALL return it as is; any other
+      body (\v, \f, NBSP, an invalid byte, text) SHALL go through the redactor, under the C and a UTF-8 locale.
+    probe: scripts/tests/test_codex_spalla_diff_redaction.sh (locale matrix rows)
+  - text: WHEN the caller's LC_ALL is integer or readonly THEN an invalid-byte body SHALL still reach the redactor.
+    probe: scripts/tests/test_codex_spalla_diff_redaction.sh (caller-attribute rows)
+  - text:
+      WHEN redact_for_external receives 200 KB of whitespace, 200 KB of clean text, or 200 KB with one email THEN on /bin/bash
+      3.2 it SHALL return the first two unchanged and the third with only the email removed, every call exiting 0, inside a
+      60 s watchdog.
+    probe: scripts/tests/test_codex_spalla_diff_redaction.sh (large-body probe)
+  - text: The existing redaction rows of the same test file SHALL stay green.
+    probe: bash scripts/tests/test_codex_spalla_diff_redaction.sh
+consumer_map:
+  - .claude/scripts/codex-spalla.sh — the Codex second-opinion helper; every external-seat review prompt it builds passes redact_for_external
+    from scripts/lib/spalla_redact.sh.
+pii_scan: clean
+pii_scan_note:
+  A shell library line and a test with generated filler text. Timings and byte counts only; no client data was
+  read or written.

@@ -1,0 +1,474 @@
+set -o pipefail
+python scripts/mouth/r19_wrapper_token_census.py --port 3519 --diff-base "$DIFF_BASE" | tee "$RUNNER_TEMP/census.txt"
+shell: /usr/bin/bash -e {0}
+env:
+  pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+  PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+  Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+  Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+  Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+  LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+  CHROME_HEADLESS: /home/runner/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell
+  CENSUS_DEV_LOG: /home/runner/work/_temp/next-dev.log
+  DIFF_BASE: HEAD
+captures: 30 ok, 0 failed
+  /kbli: 6/6 states, root [style*=--font-montserrat], elements [609]
+  /kbli/55203: 6/6 states, root [style*=--font-montserrat], elements [443]
+  /kbli/51101: 6/6 states, root [style*=--font-montserrat], elements [644]
+  /kbli/56101: 6/6 states, root [style*=--font-montserrat], elements [479]
+  /kbli-explorer: 6/6 states, root parent of #kbli-explorer-jsonld, elements [143]
+reads: 310 tokens (var 79, class 206, rule 14, component 11)
+defined-above-wrapper: 78 (informational; resolved outside the wrapper today)
+  colour #FFFFFF/0.08 x2664 border-color e.g. section>div>div.mb-4.inline-flex on /kbli mobile/light
+  colour #8A8A8A x1104 color e.g. nav.mb-4.flex>span.flex.items-center>a.transition-colors.hover:text-[var(--kbli-accent)] on /kbli/55203 mobile/light
+  colour #FFFFFF/0.06 x1072 background-color e.g. nav.flex.items-center>div.ml-auto.md:ml-4>button.md:hidden.w-10 on /kbli mobile/light
+  colour #ECECEC x606 color e.g. div.relative.z-10>div.flex.flex-col>h1.text-5xl.sm:text-6xl on /kbli mobile/light
+  colour #FFFFFF/0.10 x606 border-color e.g. div.relative.z-10>div.flex.flex-col>a.mt-8.inline-flex on /kbli mobile/light
+  colour #FFFFFF/0.05 x591 border-color e.g. main>div.space-y-16>div.sticky.top-14 on /kbli mobile/light
+  colour #A8A8A8 x516 color e.g. div.space-y-0>section.pb-10>p.text-lg.leading-relaxed on /kbli/55203 mobile/light
+  colour #5EC490 x468 color e.g. div.mt-5.flex>span.inline-flex.items-center>span on /kbli/55203 mobile/light
+  colour #D97706 x444 color e.g. div.min-w-0.flex-1>div.flex.flex-wrap>span.rounded-full.border on /kbli/55203 mobile/light
+  colour #D4845A x414 color e.g. a.group.relative>div.flex.items-start>div.text-[10px].font-bold on /kbli mobile/light
+  colour #FFFFFF x369 color e.g. div.flex.flex-col>p.mt-5.text-xl>em.text-white.font-medium on /kbli mobile/light
+  colour #6BA3E8 x360 color e.g. div.relative.px-6>div.mt-5.flex>span.inline-flex.items-center on /kbli/55203 mobile/light
+  colour #243047 x348 background-color e.g. div.space-y-0>section.py-10>div.overflow-hidden.rounded-xl on /kbli/55203 mobile/light
+  colour #5FC391/0.20 x336 border-color e.g. div.relative.px-6>div.mt-5.flex>span.inline-flex.items-center on /kbli/55203 mobile/light
+  colour #9F9FA9 x324 color e.g. div.relative.z-10>div.flex.flex-col>p.mt-5.text-xl on /kbli mobile/light
+  colour #5DC38E/0.30 x288 border-color e.g. div.min-w-0.flex-1>div.flex.flex-wrap>span.rounded-full.border on /kbli/55203 mobile/light
+  colour #FFFFFF/0.50 x250 color e.g. div.flex.items-center>div.text-[13px].font-semibold>span.block.text-white/50 on /kbli mobile/light
+  colour #E2E8F0 x240 border-color e.g. a.group.block>div.mt-3.flex>span.inline-flex.items-center on /kbli/55203 mobile/light
+  colour #FFFFFF/0.03 x235 background-color e.g. div.mt-8.mb-0>div.grid.grid-cols-1>a.block.p-4 on /kbli mobile/light
+  colour #FFFFFF/0.14 x232 border-color e.g. nav.flex.items-center>div.ml-auto.md:ml-4>button.md:hidden.w-10 on /kbli mobile/light
+  colour #DC2828/0.20 x216 border-color e.g. div.relative.px-6>div.mt-5.flex>span.inline-flex.items-center on /kbli/55203 mobile/light
+  colour #DC2626 x180 color e.g. div.relative.px-6>div.mt-5.rounded-xl>p.text-base.font-semibold on /kbli/55203 mobile/light
+  colour #FFFFFF/0.04 x168 background-color e.g. div.relative.w-full>div.relative.group>input.w-full.pl-12 on /kbli mobile/light
+  colour #09090B/0.18 x160 border-color e.g. div.flex.flex-col>a.flex.items-center>div.w-9.h-9 on /kbli mobile/light
+  colour #FFFFFF/0.22 x160 border-color e.g. div.flex.flex-col>a.flex.items-center>div.w-9.h-9 on /kbli mobile/system-dark
+  colour #2A3655 x138 background-color e.g. div.space-y-4>details.rounded-xl.border>div.px-5.py-4 on /kbli/55203 mobile/light
+  colour #FFFFFF/0.80 x134 color e.g. div.flex.items-center>div.text-[13px].font-semibold>span.block on /kbli mobile/light
+  colour #09090B/0.58 x128 color e.g. div.footer-grid.grid>div>p.text-[13px].leading-relaxed on /kbli mobile/light
+  colour #FFFFFF/0.02 x126 background-color e.g. section>div.relative.overflow-hidden>div.relative.z-10 on /kbli mobile/light
+  colour #62748E x120 color e.g. div.mt-3.flex>span.inline-flex.items-center>span on /kbli/55203 mobile/light
+  colour #D77805/0.20 x120 border-color e.g. div.relative.px-6>div.mt-5.flex>span.inline-flex.items-center on /kbli/51101 mobile/light
+  colour #09090B/0.60 x116 color e.g. main>div.space-y-16>p.text-xs.mt-4 on /kbli mobile/light
+  colour #FFFFFF/0.68 x116 color e.g. main>div.space-y-16>p.text-xs.mt-4 on /kbli mobile/system-dark
+  colour #D4845A/0.25 x102 border-color e.g. div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center on /kbli/55203 mobile/light
+  colour #5EC490/0.10 x102 background-color e.g. div.relative.px-6>div.mt-5.flex>span.inline-flex.items-center on /kbli/55203 mobile/light
+  colour #D48459/0.30 x96 border-color e.g. div.relative.overflow-hidden>div.relative.z-10>div.relative.flex on /kbli mobile/light
+  colour #1C1C1E x96 border-color e.g. div.relative.z-10>div.relative.flex>span.absolute.top-0 on /kbli mobile/light
+  colour #8B9CF7/0.20 x96 border-color e.g. section>div.flex.items-start>span.mt-0.5.inline-flex on /kbli/55203 mobile/light
+  colour #D4845A/0.20 x96 border-color e.g. article.pb-28>section.rp-dark-island.mt-12>div.rounded-2xl.border on /kbli/55203 mobile/light
+  colour #D2B482/0.20 x84 border-color e.g. div.grid.grid-cols-1>div.flex.items-start>span.flex-shrink-0.w-7 on /kbli-explorer mobile/light
+  colour #FFFFFF/0.07 x72 border-color e.g. div.mt-8.mb-0>div.grid.grid-cols-1>a.block.p-4 on /kbli mobile/light
+  colour #DB7707/0.30 x72 border-color e.g. div.min-w-0.flex-1>div.flex.flex-wrap>span.rounded-full.border on /kbli/55203 mobile/light
+  colour #8B9CF7 x66 color e.g. div.relative.px-6>div.mt-5.flex>span.inline-flex.items-center on /kbli/55203 mobile/light
+  colour #E8716C/0.10 x60 background-color e.g. div.relative.-mx-4>div.relative.px-6>div.mt-5.rounded-xl on /kbli/55203 mobile/light
+  colour #F8FAFC x60 background-color e.g. a.group.block>div.mt-3.flex>span.inline-flex.items-center on /kbli/55203 mobile/light
+  colour #D4845A/0.40 x60 background-color e.g. div.space-y-1.5.p-4>div.flex.items-start>span.mt-1.5.h-1.5 on /kbli/51101 mobile/light
+  colour #59BF8C/0.08 x54 background-color e.g. div.min-w-0.flex-1>div.flex.flex-wrap>span.rounded-full.border on /kbli/55203 mobile/light
+  colour #D88058/0.10 x48 background-color e.g. section>div.relative.overflow-hidden>div.absolute.top-0 on /kbli mobile/light
+  colour #09090B/0.92 x44 color e.g. div.space-y-16>p.text-xs.mt-4>a.underline.underline-offset-2 on /kbli mobile/light
+  colour #FFFFFF/0.96 x44 color e.g. div.space-y-16>p.text-xs.mt-4>a.underline.underline-offset-2 on /kbli mobile/system-dark
+  colour #FFFFFF/0.92 x44 color e.g. div.space-y-16>p.text-xs.mt-4>a.underline.underline-offset-2 on /kbli mobile/forced-dark
+  colour #D4D4D8 x42 color e.g. div.flex.animate-fade-in-up>div.max-w-[85%].rounded-2xl>div.text-sm.leading-relaxed on /kbli mobile/light
+  colour #D4845A/0.15 x36 background-color e.g. div.relative.px-6>div.mb-4.flex>span.inline-flex.items-center on /kbli/55203 mobile/light
+  colour #D4B384/0.30 x36 border-color e.g. div.max-w-3xl.mx-auto>div.max-w-2xl.mx-auto>div.mb-10.p-1 on /kbli-explorer mobile/light
+  colour #8B9CF7/0.10 x30 background-color e.g. section>div.flex.items-start>span.mt-0.5.inline-flex on /kbli/55203 mobile/light
+  colour #E8A849/0.10 x30 background-color e.g. div.relative.px-6>div.mt-5.flex>span.inline-flex.items-center on /kbli/51101 mobile/light
+  colour #D4845A/0.18 x30 border-color e.g. div>div.space-y-2>div.flex.items-start on /kbli/51101 mobile/light
+  colour #8B9CF7/0.18 x30 border-color e.g. div>div.space-y-2>div.flex.items-start on /kbli/51101 mobile/light
+  colour #8B9CF7/0.22 x30 border-color e.g. div>div.space-y-2>div.flex.items-start on /kbli/51101 mobile/light
+  colour #5EC490/0.18 x30 border-color e.g. div>div.space-y-2>div.flex.items-start on /kbli/51101 mobile/light
+  colour #5EC490/0.22 x30 border-color e.g. div>div.space-y-2>div.flex.items-start on /kbli/51101 mobile/light
+  colour #1A1D24 x30 background-color e.g. div.grid.grid-cols-2>button.group.flex>div.p-2.rounded on /kbli-explorer mobile/light
+  colour #F4F4F5 x26 color e.g. div.grid.grid-cols-1>a.block.p-4>div.text-[14px].font-semibold on /kbli mobile/light
+  colour #09090B/0.08 x24 border-color e.g. div.__variable_5ebf0e.relative>nav.flex.items-center on /kbli mobile/light
+  colour #FFFFFF/0.15 x24 border-color e.g. div.relative.w-full>div.relative.group>input.w-full.pl-12 on /kbli mobile/light
+  colour #1C1C1E/0.60 x24 background-color e.g. div.space-y-16>section>div.relative.overflow-hidden on /kbli mobile/light
+  colour #3B80F5/0.10 x24 background-color e.g. section>div.relative.overflow-hidden>div.absolute.bottom-0 on /kbli mobile/light
+  colour #22C55E x24 background-color e.g. div.relative.z-10>div.relative.flex>span.absolute.top-0 on /kbli mobile/light
+  colour #050505/0.20 x24 background-color e.g. section>div.relative.overflow-hidden>div.relative.z-10 on /kbli mobile/light
+  colour #FFFFFF/0.12 x24 border-color e.g. div.__variable_5ebf0e.relative>nav.flex.items-center on /kbli mobile/system-dark
+  colour #DB2424/0.30 x24 border-color e.g. div.relative.-mx-4>div.relative.px-6>div.mt-5.rounded-xl on /kbli/55203 mobile/light
+  colour #8B9CF8/0.30 x24 border-color e.g. div.relative.px-6>div.mt-5.flex>span.inline-flex.items-center on /kbli/55203 mobile/light
+  colour #D4845A/0.10 x24 background-color e.g. div.space-y-2.p-4>div.flex.items-start>span.mt-0.5.flex on /kbli/51101 mobile/light
+  colour #E8A949/0.30 x24 border-color e.g. div.relative.px-6>div.mt-5.flex>span.inline-flex.items-center on /kbli/56101 mobile/light
+  colour #E8A849/0.25 x24 border-color e.g. article.pb-28>section.mt-12>div.rounded-xl.border on /kbli/56101 mobile/light
+  colour #D4B483 x24 color e.g. div.flex-1>button.flex.items-center>span on /kbli-explorer mobile/light
+  colour #0F1116/0.60 x24 background-color e.g. div.max-w-2xl.mx-auto>div.grid.grid-cols-2>button.group.flex on /kbli-explorer mobile/light
+  colour #CCCCCC x24 color e.g. div.grid.grid-cols-2>button.group.flex>span.text-sm.text-[#CCC] on /kbli-explorer mobile/light
+  colour #FFFFFF/0.60 x18 color e.g. div.relative.-mx-4>div.relative.px-6>p.mt-2.text-lg on /kbli/55203 mobile/light
+  colour #FFFFFF/0.40 x18 color e.g. div.relative.-mx-4>div.relative.px-6>p.mt-3.text-sm on /kbli/55203 mobile/light
+  colour #D97300/0.08 x18 background-color e.g. div.min-w-0.flex-1>div.flex.flex-wrap>span.rounded-full.border on /kbli/55203 mobile/light
+  colour #0D3A1F x18 color e.g. div.flex.flex-col>div.flex.flex-col>a.inline-flex.items-center on /kbli/55203 mobile/light
+  colour #25D366 x18 background-color e.g. div.flex.flex-col>div.flex.flex-col>a.inline-flex.items-center on /kbli/55203 mobile/light
+  colour #D8B180/0.10 x18 background-color e.g. div.grid.grid-cols-1>div.flex.items-start>span.flex-shrink-0.w-7 on /kbli-explorer mobile/light
+  colour #999999 x18 color e.g. div.grid.grid-cols-1>div.flex.items-start>p.text-sm.text-[#999] on /kbli-explorer mobile/light
+  colour #09090B/0.04 x16 border-color e.g. div.mx-auto.max-w-6xl>div>section on /kbli mobile/light
+  colour #050507 x15 background-color e.g. div.h-screen.w-full on /kbli-explorer mobile/light
+  colour #888888 x15 color e.g. div.bg-[#050507].rounded-lg>div.flex-1>p.text-[#888].text-xs on /kbli-explorer mobile/light
+  colour #5EC490/0.08 x12 background-color e.g. div.space-y-4.p-5>div.flex.flex-wrap>span.rounded-full.px-2.5 on /kbli/51101 mobile/light
+  colour #E8A849 x12 color e.g. div.relative.px-6>div.mt-5.flex>span.inline-flex.items-center on /kbli/56101 mobile/light
+  colour #444444 x12 color e.g. div.relative.max-w-3xl>form>span.absolute.left-12 on /kbli-explorer mobile/light
+  colour #555555 x9 color e.g. div.max-w-2xl.mx-auto>div.border-t.border-white/5>h3.text-[11px].font-bold on /kbli-explorer mobile/light
+  colour #666666 x9 color e.g. div.group.flex>div>p.text-[11px].uppercase on /kbli-explorer desktop/light
+  colour #FFFFFF/0.72 x8 background-color e.g. div.__variable_5ebf0e.relative>nav.flex.items-center on /kbli mobile/light
+  colour #F4F1EA x8 background-color e.g. div.mx-auto.max-w-6xl>div>div on /kbli mobile/light
+  colour #0E1A30/0.94 x8 background-color e.g. div.__variable_5ebf0e.relative>nav.flex.items-center on /kbli mobile/system-dark
+  colour #162D50 x8 background-color e.g. div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20 on /kbli mobile/system-dark
+  colour #040406/0.55 x8 background-color e.g. div.__variable_5ebf0e.relative>nav.flex.items-center on /kbli mobile/forced-dark
+  colour #121016 x8 background-color e.g. div.mx-auto.max-w-6xl>div>div on /kbli mobile/forced-dark
+  colour #0D0D12 x8 background-color e.g. div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20 on /kbli mobile/forced-dark
+  colour #FF2D4C x8 background-color e.g. nav.flex.items-center>div.ml-4.hidden>a.inline-flex.items-center on /kbli desktop/light
+  colour #141416 x6 background-color e.g. main>div.space-y-16>div.relative.-mx-4 on /kbli mobile/light
+  colour #141416/0.80 x6 background-color e.g. main>div.space-y-16>div.sticky.top-14 on /kbli mobile/light
+  colour #FFFFFF/0.90 x6 color e.g. div.space-y-16>section>h2.mb-4.text-xl on /kbli mobile/light
+  colour #8C9CF7/0.12 x6 background-color e.g. div.relative.px-6>div.mt-5.flex>span.inline-flex.items-center on /kbli/55203 mobile/light
+  colour #C77DFF x6 background-color e.g. a.group.relative>div.relative.flex>div.absolute.-right-4 on /kbli/55203 mobile/light
+  colour #FFB900 x6 color e.g. div.relative.px-6>div.mb-4.flex>span.text-xs.text-amber-400 on /kbli/51101 mobile/light
+  colour #5AC594/0.12 x6 background-color e.g. div.relative.px-6>div.mt-5.flex>span.inline-flex.items-center on /kbli/51101 mobile/light
+  colour #D4845A/0.04 x6 background-color e.g. section.pb-10.pt-2>article.relative>aside.mb-8.rounded-2xl on /kbli/51101 mobile/light
+  colour #E8A849/0.08 x6 background-color e.g. div.space-y-4.p-5>div.flex.flex-wrap>span.rounded-full.px-2.5 on /kbli/51101 mobile/light
+  colour #D4845A/0.12 x6 background-color e.g. div>div.space-y-2>div.flex.items-start on /kbli/51101 mobile/light
+  colour #D4845A/0.08 x6 background-color e.g. div>div.space-y-2>div.flex.items-start on /kbli/51101 mobile/light
+  colour #8B9CF7/0.08 x6 background-color e.g. div>div.space-y-2>div.flex.items-start on /kbli/51101 mobile/light
+  colour #D4845A/0.02 x6 background-color e.g. div.relative.px-6>div.space-y-5>div.rounded-xl.p-5 on /kbli/51101 mobile/light
+  colour #E6A54A/0.12 x6 background-color e.g. div.relative.px-6>div.mt-5.flex>span.inline-flex.items-center on /kbli/56101 mobile/light
+  colour #F48C06 x6 background-color e.g. a.group.relative>div.relative.flex>div.absolute.-right-4 on /kbli/56101 mobile/light
+  colour #E8A849/0.05 x6 background-color e.g. article.pb-28>section.mt-12>div.rounded-xl.border on /kbli/56101 mobile/light
+  colour #D8B189/0.05 x6 background-color e.g. div.h-screen.w-full>div.fixed.top-0>div.absolute.top-[-10%] on /kbli-explorer mobile/light
+  colour #273145/0.10 x6 background-color e.g. div.h-screen.w-full>div.fixed.top-0>div.absolute.bottom-[-10%] on /kbli-explorer mobile/light
+  colour #0F1115/0.80 x6 background-color e.g. div.relative.max-w-3xl>form>input.w-full.bg-surface-deep/80 on /kbli-explorer mobile/light
+  colour #F0F0F0 x6 color e.g. div.max-w-3xl.mx-auto>div.max-w-2xl.mx-auto>h1.text-2xl.md:text-4xl on /kbli-explorer mobile/light
+  colour #333333 x6 color e.g. div.flex-1.overflow-y-auto>section>h3.text-[11px].font-bold on /kbli-explorer desktop/light
+  colour #0F1114/0.40 x6 background-color e.g. section>div.space-y-3>div.group.flex on /kbli-explorer desktop/light
+  colour #3A6DFF x4 background-color e.g. nav.flex.items-center>div.ml-4.hidden>a.inline-flex.items-center on /kbli desktop/system-dark
+  colour #030307/0.60 x3 background-color e.g. div.relative.z-10>div.rounded-[36px].border>div.rounded-[18px].bg-black/60 on /kbli desktop/light
+  colour #080A0E x3 background-color e.g. div.relative.z-10>div.flex.h-full>aside.fixed.md:relative on /kbli-explorer desktop/light
+  colour #0F1115 x3 background-color e.g. button.w-full.group>div.flex.items-center>div.p-2.rounded on /kbli-explorer desktop/light
+  colour #0A0C10/0.90 x3 background-color e.g. div.relative.z-10>div.flex.h-full>aside.hidden.xl:block on /kbli-explorer desktop/light
+read-but-undefined: 0
+colors-outside-direction-a: 128
+state-rows-unseen: 0
+  focus-within:bg-[#1c1c1e]  expected #EAE3D8, painted #1C1C1E (focus-within background), e.g. div.relative.flex on /kbli desktop/light
+  focus-within:border-accent-warm/40  expected #A44B36, painted #D4845A (focus-within border), e.g. div.relative.flex on /kbli desktop/light
+  focus:border-accent-sand/30  expected #A44B36, painted #D4B483 (focus border), e.g. input.w-full.bg-surface-deep/80 on /kbli-explorer desktop/light
+  focus:border-white/[0.15]  expected #58626B, painted #FFFFFF (focus border), e.g. input.w-full.pl-12 on /kbli desktop/light
+  focus:ring-1  expected #A44B36, painted #000000 (focus ring), e.g. input.w-full.bg-surface-deep/80 on /kbli-explorer desktop/light
+  focus:ring-2  expected #A44B36, painted #000000, #DC2626, #FFFFFF (focus ring), e.g. input.w-full.pl-12 on /kbli desktop/light
+  focus:ring-[#D4B483]/30  expected #A44B36, painted #000000 (focus ring), e.g. input.w-full.bg-surface-deep/80 on /kbli-explorer desktop/light
+  focus:ring-[#dc2626]  expected #A44B36, painted #000000, #DC2626, #FFFFFF (focus ring), e.g. input.w-full.pl-12 on /kbli desktop/light
+  group-focus-visible:bg-[color-mix(in_srgb,var(--accent-zantara)_10%,transparent)]  expected #EAE3D8, painted #8B5CF6 (group-focus-visible background), e.g. div.w-9.h-9 on /kbli desktop/light
+  group-focus-visible:border-[color:var(--accent-zantara)]  expected #233D52, painted #8B5CF6 (group-focus-visible border), e.g. div.w-9.h-9 on /kbli desktop/light
+  group-focus-visible:text-[color:var(--accent-zantara)]  expected #233D52, painted #8B5CF6 (group-focus-visible color), e.g. div.w-9.h-9 on /kbli desktop/light
+  group-focus-within:text-zinc-300  expected #1D2C3B, painted #D4D4D8 (group-focus-within color), e.g. div.absolute.left-4 on /kbli desktop/light
+  group-hover:bg-[color-mix(in_srgb,var(--accent-zantara)_10%,transparent)]  expected #EAE3D8, painted #8B5CF6 (group-hover background), e.g. div.w-9.h-9 on /kbli desktop/light
+  group-hover:bg-accent-warm/15  expected #EAE3D8, painted #D4845A (group-hover background), e.g. div.inline-flex.items-center on /kbli desktop/light
+  group-hover:border-[color:var(--accent-zantara)]  expected #233D52, painted #8B5CF6 (group-hover border), e.g. div.w-9.h-9 on /kbli desktop/light
+  group-hover:border-accent-warm/40  expected #A44B36, painted #D4845A (group-hover border), e.g. div.inline-flex.items-center on /kbli desktop/light
+  group-hover:text-[#CCC]  expected #1D2C3B, painted #CCCCCC (group-hover color), e.g. p.text-[11px].text-[#888] on /kbli-explorer desktop/light
+  group-hover:text-[color:var(--accent-zantara)]  expected #233D52, painted #8B5CF6 (group-hover color), e.g. div.w-9.h-9 on /kbli desktop/light
+  group-hover:text-[var(--kbli-accent)]  expected #A44B36, painted #D4845A (group-hover color), e.g. p.line-clamp-2.text-sm on /kbli/55203 desktop/light
+  group-hover:text-accent-sand  expected #A44B36, painted #D4B483 (group-hover color), e.g. div.p-2.5.rounded on /kbli-explorer desktop/light
+  group-hover:text-accent-warm  expected #A44B36, painted #D4845A (group-hover color), e.g. div.inline-flex.items-center on /kbli desktop/light
+  group-hover:text-white  expected #1D2C3B, painted #FFFFFF (group-hover color), e.g. h4.text-sm.font-medium on /kbli-explorer desktop/light
+  group-hover:text-zinc-300  expected #1D2C3B, painted #D4D4D8 (group-hover color), e.g. span.text-[11px].font-medium on /kbli desktop/light
+  hover:bg-[#151921]  expected #EAE3D8, painted #151921 (hover background), e.g. div.group.flex on /kbli-explorer desktop/light
+  hover:bg-[#D01033]/90  expected #A44B36, painted #D01033 (hover background), e.g. a.mt-8.inline-flex on /kbli desktop/light
+  hover:bg-[rgba(255,255,255,0.06)]  expected #EAE3D8, painted #FFFFFF (hover background), e.g. a.block.p-4 on /kbli desktop/light
+  hover:bg-accent-warm/10  expected #EAE3D8, painted #D4845A (hover background), e.g. button.rounded-full.border on /kbli desktop/light
+  hover:bg-surface-editorial-elevated  expected #EAE3D8, painted #1A1D24 (hover background), e.g. button.p-2.rounded-md on /kbli-explorer desktop/light
+  hover:bg-white/5  expected #EAE3D8, painted #FFFFFF (hover background), e.g. a.group.block on /kbli/55203 desktop/light
+  hover:bg-white/[0.05]  expected #EAE3D8, painted #FFFFFF (hover background), e.g. div.text-center.px-6 on /kbli desktop/light
+  hover:bg-white/[0.06]  expected #EAE3D8, painted #FFFFFF (hover background), e.g. button.inline-flex.items-center on /kbli desktop/light
+  hover:bg-white/[0.07]  expected #EAE3D8, painted #FFFFFF (hover background), e.g. button.px-3.5.py-1.5 on /kbli desktop/light
+  hover:border-[#D01033]/60  expected #A44B36, painted #D01033 (hover border), e.g. a.mt-8.inline-flex on /kbli desktop/light
+  hover:border-[rgba(255,255,255,0.12)]  expected #A8ACA9, painted #FFFFFF (hover border), e.g. a.block.p-4 on /kbli desktop/light
+  hover:border-[var(--kbli-accent)]/40  expected #A44B36, painted #D4845A (hover border), e.g. a.group.block on /kbli/55203 desktop/light
+  hover:border-accent-sand  expected #A44B36, painted #D4B483 (hover border), e.g. button.w-full.group on /kbli-explorer desktop/light
+  hover:border-accent-sand/30  expected #A44B36, painted #D4B483 (hover border), e.g. div.group.flex on /kbli-explorer desktop/light
+  hover:border-accent-sand/40  expected #A44B36, painted #D4B483 (hover border), e.g. button.group.flex on /kbli-explorer desktop/light
+  hover:border-accent-warm/40  expected #A44B36, painted #D4845A (hover border), e.g. a.group.relative on /kbli desktop/light
+  hover:border-red-500/30  expected #A44B36, painted #FF2D4C (hover border), e.g. button.px-3.5.py-1.5 on /kbli desktop/light
+  hover:border-white/[0.1]  expected #A8ACA9, painted #FFFFFF (hover border), e.g. div.text-center.px-6 on /kbli desktop/light
+  hover:text-[var(--foreground-secondary)]  expected #58626B, painted #A8A8A8 (hover color), e.g. summary.flex.cursor-pointer on /kbli/51101 desktop/light
+  hover:text-[var(--kbli-accent)]  expected #A44B36, painted #D4845A (hover color), e.g. a.transition-colors.hover:text-[var(--kbli-accent)] on /kbli/55203 desktop/light
+  hover:text-accent-warm  expected #A44B36, painted #D4845A (hover color), e.g. button.rounded-full.border on /kbli desktop/light
+  hover:text-white  expected #1D2C3B, painted #FFFFFF (hover color), e.g. button.px-3.5.py-1.5 on /kbli desktop/light
+  placeholder-[#444]  expected #58626B, painted #444444 (placeholder color), e.g. input.w-full.bg-surface-deep/80 on /kbli-explorer desktop/light
+  placeholder-zinc-400  expected #58626B, painted #9F9FA9 (placeholder color), e.g. input.w-full.pl-12 on /kbli desktop/light
+  placeholder-zinc-500  expected #58626B, painted #71717B (placeholder color), e.g. textarea.flex-1.max-h-32 on /kbli desktop/light
+  scrollbar-thumb-white/10  expected #DAD8D1, painted transparent (scrollbar scrollbar), e.g. div.relative.z-10 on /kbli desktop/light
+  selection:bg-accent-sand/30  expected #EAE3D8, painted #D4B483 (selection background), e.g. div.h-screen.w-full on /kbli-explorer desktop/light
+  selection:text-accent-sand  expected #1D2C3B, painted #D4B483 (selection color), e.g. div.h-screen.w-full on /kbli-explorer desktop/light
+state-colors-off-contract: 51
+  ground #050507 under 'Are your company codes still valid?' at div.max-w-3xl.mx-auto>div.max-w-2xl.mx-auto>div.mb-10.p-1>div.bg-[#050507].rounded-lg, on /kbli-explorer mobile/light
+  ground #060608 under 'How it works' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.h-screen.w-full, on /kbli-explorer desktop/light
+  ground #060609 under 'How it works' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.h-screen.w-full, on /kbli-explorer mobile/light
+  ground #060709 under 'Describe your business idea in any langu' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.h-screen.w-full, on /kbli-explorer mobile/light
+  ground #070708 under 'Ask about your codes' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.h-screen.w-full, on /kbli-explorer mobile/light
+  ground #070709 under 'We show you requirements, restrictions &' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.h-screen.w-full, on /kbli-explorer mobile/light
+  ground #070808 under 'KBLI 2025 (Peraturan BPS 7/2025) replace' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.h-screen.w-full, on /kbli-explorer mobile/light
+  ground #080709 under 'What business do you want to start in In' at body.antialiased.bg-[var(--background)]>div.h-screen.w-full>div.fixed.top-0>div.absolute.top-[-10%], on /kbli-explorer mobile/light
+  ground #080709 under 'Describe your idea in any language and w' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.h-screen.w-full, on /kbli-explorer mobile/light
+  ground #08080A under 'What business do you want to start in In' at body.antialiased.bg-[var(--background)]>div.h-screen.w-full>div.fixed.top-0>div.absolute.top-[-10%], on /kbli-explorer mobile/system-dark
+  ground #08080A under 'Describe your idea in any language and w' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.h-screen.w-full, on /kbli-explorer desktop/light
+  ground #080A0E under 'Zantara' at div.h-screen.w-full>div.relative.z-10>div.flex.h-full>aside.fixed.md:relative, on /kbli-explorer desktop/light
+  ground #090B0E under 'Click on any result to see full details' at div.h-screen.w-full>div.relative.z-10>div.flex.h-full>aside.hidden.xl:block, on /kbli-explorer desktop/light
+  ground #0A090B under 'What business do you want to start in In' at body.antialiased.bg-[var(--background)]>div.h-screen.w-full>div.fixed.top-0>div.absolute.top-[-10%], on /kbli-explorer desktop/light
+  ground #0A0D10 under 'PP 28/2025 Lampiran I' at div.flex-1.overflow-y-auto>section>div.space-y-3>div.group.flex, on /kbli-explorer desktop/light
+  ground #0B0A0B under 'What business do you want to start in In' at body.antialiased.bg-[var(--background)]>div.h-screen.w-full>div.fixed.top-0>div.absolute.top-[-10%], on /kbli-explorer desktop/system-dark
+  ground #0B0C10 under 'Restaurant / Cafe' at div.max-w-3xl.mx-auto>div.max-w-2xl.mx-auto>div.grid.grid-cols-2>button.group.flex, on /kbli-explorer mobile/light
+  ground #0C0B0B under 'Ask about your codes' at body.antialiased.bg-[var(--background)]>div.h-screen.w-full>div.fixed.top-0>div.absolute.top-[-10%], on /kbli-explorer desktop/light
+  ground #0D0D12 under 'Your trusted partner for business, immig' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20, on /kbli mobile/forced-dark
+  ground #0D0D13 under 'Get in touch' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20, on /kbli mobile/forced-dark
+  ground #0D0E12 under 'Tax & Compliance' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20, on /kbli desktop/forced-dark
+  ground #0D0E13 under 'Your Bali, from Zero.' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20, on /kbli mobile/forced-dark
+  ground #0D0F12 under 'What do I need to open a restaurant in B' at div.p-4.md:p-8>div.relative.max-w-3xl>form>input.w-full.bg-surface-deep/80, on /kbli-explorer mobile/light
+  ground #0E0D0D under 'Are your company codes still valid?' at body.antialiased.bg-[var(--background)]>div.h-screen.w-full>div.fixed.top-0>div.absolute.top-[-10%], on /kbli-explorer desktop/light
+  ground #0E0D12 under 'WhatsApp' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20, on /kbli mobile/forced-dark
+  ground #0E0D13 under 'Location' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20, on /kbli desktop/forced-dark
+  ground #0E0E12 under 'Company Setup' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20, on /kbli mobile/forced-dark
+  ground #0E0E13 under 'Company' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20, on /kbli mobile/forced-dark
+  ground #0E1013 under 'What do I need to open a restaurant in B' at div.p-4.md:p-8>div.relative.max-w-3xl>form>input.w-full.bg-surface-deep/80, on /kbli-explorer desktop/light
+  ground #0E1A30 under 'Home' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>nav.flex.items-center, on /kbli desktop/system-dark
+  ground #0F131E under 'Home' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>nav.flex.items-center, on /kbli desktop/forced-dark
+  ground #101A28 over-image (image) under '★ Gold-Tier Intel' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 desktop/light
+  ground #111B29 over-image (image) under '★ Gold-Tier Intel' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 mobile/light
+  ground #111B2A over-image (image) under '★ Gold-Tier Intel' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 mobile/system-dark
+  ground #121016 under 'Talk on WhatsApp' at div.__variable_5ebf0e.relative>div.mx-auto.max-w-6xl>div>div, on /kbli mobile/forced-dark
+  ground #131D2B over-image (image) under 'Angkutan Udara Niaga Berjadwal untuk Pen' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 mobile/system-dark
+  ground #141416 over-image (text clipped to a background) under 'KBLI 2025' at div.relative.-mx-4>div.relative.z-10>div.flex.flex-col>h1.text-5xl.sm:text-6xl, on /kbli mobile/light
+  ground #141416 over-image (gradient) under "We don't sell services." at main>div.space-y-16>div.relative.-mx-4>div.absolute.inset-0, on /kbli mobile/light
+  ground #141D29 over-image (image) under '🚚' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 mobile/system-dark
+  ground #141D2A over-image (image) under 'Scheduled Passenger Air Transport' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 desktop/system-dark
+  ground #151316 over-image (gradient) under 'Your' at main>div.space-y-16>div.relative.-mx-4>div.absolute.inset-0, on /kbli desktop/light
+  ground #15171E under 'Quick:' at div>main>div.space-y-16>div.sticky.top-14, on /kbli mobile/system-dark
+  ground #15181E under 'Quick:' at div>main>div.space-y-16>div.sticky.top-14, on /kbli mobile/light
+  ground #151E2C over-image (image) under 'Angkutan Udara Niaga Berjadwal untuk Pen' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 mobile/light
+  ground #151F2D over-image (image) under 'Scheduled Passenger Air Transport' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 desktop/light
+  ground #161E2A over-image (image) under '🚚' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 mobile/light
+  ground #161F2C over-image (image) under 'Section' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 mobile/system-dark
+  ground #16202D over-image (image) under 'H' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 mobile/system-dark
+  ground #162D50 under 'Your trusted partner for business, immig' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20, on /kbli mobile/system-dark
+  ground #162D51 under 'Get in touch' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20, on /kbli mobile/system-dark
+  ground #162E50 under 'Tax & Compliance' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20, on /kbli desktop/system-dark
+  ground #162E51 under 'Company Setup' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20, on /kbli desktop/system-dark
+  ground #171316 over-image (text clipped to a background) under 'KBLI 2025' at div.relative.-mx-4>div.relative.z-10>div.flex.flex-col>h1.text-5xl.sm:text-6xl, on /kbli desktop/system-dark
+  ground #171316 over-image (gradient) under "We don't sell services." at main>div.space-y-16>div.relative.-mx-4>div.hidden.lg:block, on /kbli desktop/light
+  ground #171416 over-image (gradient) under 'codes\u2002·\u200222 sectors\u2002·\u2002PMA rules' at main>div.space-y-16>div.relative.-mx-4>div.hidden.lg:block, on /kbli desktop/light
+  ground #171E28 over-image (image) under 'Angkutan Udara Niaga Berjadwal untuk Pen' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 desktop/light
+  ground #17202D over-image (image) under '—' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 mobile/system-dark
+  ground #17212D over-image (image) under 'Section' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 mobile/light
+  ground #172D50 under 'WhatsApp' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20, on /kbli mobile/system-dark
+  ground #172D51 under 'Location' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20, on /kbli desktop/system-dark
+  ground #172E50 under 'Your Bali, from Zero.' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20, on /kbli mobile/system-dark
+  ground #172E51 under 'Company' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.__variable_5ebf0e.relative>footer.pt-12.md:pt-20, on /kbli mobile/system-dark
+  ground #181316 over-image (text clipped to a background) under 'KBLI 2025' at div.relative.-mx-4>div.relative.z-10>div.flex.flex-col>h1.text-5xl.sm:text-6xl, on /kbli desktop/light
+  ground #181316 over-image (gradient) under 'We offer intelligence.' at main>div.space-y-16>div.relative.-mx-4>div.hidden.lg:block, on /kbli desktop/light
+  ground #181416 over-image (gradient) under 'Business Codes' at main>div.space-y-16>div.relative.-mx-4>div.hidden.lg:block, on /kbli desktop/light
+  ground #181517 over-image (gradient) under 'Indonesian' at main>div.space-y-16>div.relative.-mx-4>div.hidden.lg:block, on /kbli desktop/light
+  ground #18212E over-image (image) under 'H' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 mobile/light
+  ground #182230 over-image (image) under 'Transportation & Storage' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 mobile/system-dark
+  ground #191F29 over-image (image) under '🚚' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 desktop/light
+  ground #19202A over-image (image) under 'Section' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 desktop/light
+  ground #19212B over-image (image) under 'H' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 desktop/light
+  ground #192431 over-image (image) under 'Transportation & Storage' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 mobile/light
+  ground #1A202A over-image (image) under '—' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 desktop/light
+  ground #1A212B over-image (image) under 'Transportation & Storage' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 desktop/light
+  ground #1A2230 over-image (image) under '—' at main>article.pb-28>div.relative.-mx-4>div.absolute.inset-0, on /kbli/51101 mobile/light
+  ground #1B1613 under '2' at div.border-t.border-white/5>div.grid.grid-cols-1>div.flex.items-start>span.flex-shrink-0.w-7, on /kbli-explorer mobile/light
+  ground #1B1714 under '3' at div.border-t.border-white/5>div.grid.grid-cols-1>div.flex.items-start>span.flex-shrink-0.w-7, on /kbli-explorer mobile/light
+  ground #1B1715 under '2' at div.border-t.border-white/5>div.grid.grid-cols-1>div.flex.items-start>span.flex-shrink-0.w-7, on /kbli-explorer desktop/light
+  ground #1B1B1A over-image (gradient) under 'Ask our team which KBLI 2025 code replac' at aside.fixed.md:relative>div.flex-1.overflow-y-auto>section>button.w-full.group, on /kbli-explorer desktop/light
+  ground #1C1814 under '1' at div.border-t.border-white/5>div.grid.grid-cols-1>div.flex.items-start>span.flex-shrink-0.w-7, on /kbli-explorer mobile/light
+  ... and 357 more
+page-grounds-off-contract: 437
+opened-surfaces: 25 ok, 0 failed
+  search-dropdown mobile/light: ok, 1 root(s), 0 scrim(s), 15 runs, min 3.27, 1 over an image, 2 position(s)
+  search-dropdown mobile/system-dark: ok, 1 root(s), 0 scrim(s), 15 runs, min 3.27, 2 position(s)
+  search-dropdown mobile/forced-dark: ok, 1 root(s), 0 scrim(s), 15 runs, min 3.27, 1 over an image, 2 position(s)
+  search-dropdown desktop/light: ok, 1 root(s), 0 scrim(s), 15 runs, min 3.27, 2 over an image, 1 position(s)
+  search-dropdown desktop/system-dark: ok, 1 root(s), 0 scrim(s), 15 runs, min 3.27, 1 position(s)
+  search-dropdown desktop/forced-dark: ok, 1 root(s), 0 scrim(s), 15 runs, min 3.27, 2 over an image, 1 position(s)
+  search-active-row desktop/light: ok, 1 root(s), 0 scrim(s), 15 runs, min 2.82, 2 over an image, 1 position(s)
+  search-active-row mobile/system-dark: ok, 1 root(s), 0 scrim(s), 15 runs, min 2.82, 2 position(s)
+  search-error desktop/light: ok, 1 root(s), 0 scrim(s), 6 runs, min 5.10, 1 over an image, 1 position(s)
+  search-error mobile/system-dark: ok, 1 root(s), 0 scrim(s), 6 runs, min 5.10, 1 position(s)
+  sector-drawer desktop/light: ok, 1 root(s), 1 scrim(s), 1724 runs, min 2.18, 41 position(s)
+  sector-drawer mobile/system-dark: ok, 1 root(s), 1 scrim(s), 1724 runs, min 2.18, 96 position(s)
+  explorer-answer-inspector desktop/light: ok, 2 root(s), 0 scrim(s), 48 runs, min 1.96, 4 over an image, 2 position(s)
+  explorer-answer-inspector mobile/system-dark: ok, 2 root(s), 1 scrim(s), 25 runs, min 2.01, 4 over an image, 23 occluded, 27 position(s)
+  explorer-compare desktop/light: ok, 1 root(s), 1 scrim(s), 25 runs, min 5.52, 1 position(s)
+  explorer-compare mobile/system-dark: ok, 1 root(s), 1 scrim(s), 25 runs, min 5.52, 1 position(s)
+  explorer-black-book desktop/light: ok, 1 root(s), 1 scrim(s), 5 runs, min 5.33, 1 position(s)
+  explorer-black-book mobile/system-dark: ok, 1 root(s), 1 scrim(s), 5 runs, min 5.33, 1 position(s)
+  explorer-mobile-sidebar mobile/system-dark: ok, 1 root(s), 1 scrim(s), 12 runs, min 1.57, 2 over an image, 1 occluded, 2 position(s)
+  kbli-mobile-nav mobile/light: ok, 1 root(s), 1 scrim(s), 7 runs, min 3.66, 1 position(s)
+  kbli-mobile-nav mobile/system-dark: ok, 1 root(s), 1 scrim(s), 7 runs, min 4.36, 1 position(s)
+  kbli-mobile-nav mobile/forced-dark: ok, 1 root(s), 1 scrim(s), 7 runs, min 3.66, 1 over an image, 1 position(s)
+  kbli-code-mobile-nav mobile/light: ok, 1 root(s), 1 scrim(s), 7 runs, min 3.66, 1 position(s)
+  kbli-code-mobile-nav mobile/system-dark: ok, 1 root(s), 1 scrim(s), 7 runs, min 4.36, 1 position(s)
+  kbli-code-mobile-nav mobile/forced-dark: ok, 1 root(s), 1 scrim(s), 7 runs, min 3.66, 2 over an image, 1 position(s)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.kbli-panel-content.fixed  renders outside the wrapper (sector-drawer desktop/light)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.kbli-panel-content.fixed  renders outside the wrapper (sector-drawer mobile/system-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.fixed.top-[50%]  renders outside the wrapper (explorer-compare desktop/light)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.fixed.top-[50%]  renders outside the wrapper (explorer-compare mobile/system-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav mobile/light)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav mobile/system-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-mobile-nav mobile/forced-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-code-mobile-nav mobile/light)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-code-mobile-nav mobile/system-dark)
+  html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed  renders outside the wrapper (kbli-code-mobile-nav mobile/forced-dark)
+opened-outside-wrapper: 10
+  bg-[#0A0C10]  expected elevated #FFFCF7 (opaque), painted #0A0C10 alpha 1, on explorer-answer-inspector desktop/light
+  bg-[#141416]/95  expected elevated #FFFCF7 (opaque), painted #141416 alpha 0.95, on sector-drawer desktop/light
+  bg-[#151921]  expected wash #EAE3D8 (opaque), painted #151921 alpha 1, on explorer-answer-inspector desktop/light
+  bg-[#1c1c1f]/95  expected elevated #FFFCF7 (opaque), painted #1C1C1F alpha 0.95, on search-dropdown mobile/light
+  bg-[#dc2626]/10  expected wash #EAE3D8 (opaque), painted #DC2626 alpha 0.1, on search-dropdown mobile/light
+  bg-[var(--kbli-accent)]/15  expected wash #EAE3D8 (opaque), painted #D4845A alpha 0.15, on sector-drawer desktop/light
+  bg-accent-sand  expected copper #A44B36 (opaque), painted #D4B483 alpha 1, on explorer-answer-inspector desktop/light
+  bg-amber-500/10  expected wash #EAE3D8 (opaque), painted #FE9A00 alpha 0.1, on search-dropdown mobile/light
+  bg-amber-500/[0.08]  expected wash #EAE3D8 (opaque), painted #FE9A00 alpha 0.08, on search-error desktop/light
+  bg-black/50  expected ink #1D2C3B (scrim), painted #040406 alpha 0.5, on explorer-answer-inspector mobile/system-dark
+  bg-black/70  expected ink #1D2C3B (scrim), painted #040406 alpha 0.7, on sector-drawer desktop/light
+  bg-black/90  expected ink #1D2C3B (scrim), painted #040406 alpha 0.9, on explorer-black-book desktop/light
+  bg-emerald-500/10  expected wash #EAE3D8 (opaque), painted #00BC7D alpha 0.1, on search-dropdown mobile/light
+  bg-red-500/10  expected wash #EAE3D8 (opaque), painted #FF2D4C alpha 0.1, on explorer-answer-inspector desktop/light
+  bg-red-500/20  expected wash #EAE3D8 (opaque), painted #FF2D4C alpha 0.2, on explorer-answer-inspector desktop/light
+  bg-slate-500  expected muted #58626B (mark), painted #62748E alpha 1, on explorer-answer-inspector desktop/light
+  bg-white/20  expected line-strong #A8ACA9 (mark), painted #FFFFFF alpha 0.2, on explorer-answer-inspector mobile/system-dark
+  bg-white/[0.02]  expected wash #EAE3D8 (opaque), painted #FFFFFF alpha 0.02, on search-dropdown mobile/light
+  bg-zinc-500/10  expected wash #EAE3D8 (opaque), painted #71717B alpha 0.1, on search-dropdown mobile/light
+  from-[#0F1115]  expected not painted on this surface (-), painted transparent alpha 0 over an image, on explorer-answer-inspector desktop/light
+  ground #060608 over-image (gradient) under 'Medium-Low' at div.flex.h-full>aside.hidden.xl:block>div.h-full.flex>div.p-6.md:p-8, on explorer-answer-inspector desktop/light
+  ground #060608 over-image (gradient) under 'Medium-Low' at div.flex.h-full>div.xl:hidden.fixed>div.h-full.flex>div.p-6.md:p-8, on explorer-answer-inspector mobile/system-dark
+  ground #060608 under 'Census fixture answer.' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.h-screen.w-full, on explorer-answer-inspector desktop/light
+  ground #060609 under 'census fixture question' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.h-screen.w-full, on explorer-answer-inspector desktop/light
+  ground #07080A over-image (gradient) under 'VERIFIED' at div.flex.h-full>div.xl:hidden.fixed>div.h-full.flex>div.p-6.md:p-8, on explorer-answer-inspector mobile/system-dark
+  ground #07080B over-image (gradient) under 'VERIFIED' at div.flex.h-full>aside.hidden.xl:block>div.h-full.flex>div.p-6.md:p-8, on explorer-answer-inspector desktop/light
+  ground #08090B under 'Menu' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-mobile-nav mobile/forced-dark
+  ground #080A0E under 'Zantara' at div.h-screen.w-full>div.relative.z-10>div.flex.h-full>aside.fixed.md:relative, on explorer-mobile-sidebar mobile/system-dark
+  ground #09090C under 'Login' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-code-mobile-nav mobile/forced-dark
+  ground #090B0E under 'Official Description' at div.h-screen.w-full>div.relative.z-10>div.flex.h-full>aside.hidden.xl:block, on explorer-answer-inspector desktop/light
+  ground #090B0F under 'Related Business Codes' at div.h-screen.w-full>div.relative.z-10>div.flex.h-full>aside.hidden.xl:block, on explorer-answer-inspector desktop/light
+  ground #0A0C0F over-image (gradient) under 'Census fixture code' at div.flex.h-full>div.xl:hidden.fixed>div.h-full.flex>div.p-6.md:p-8, on explorer-answer-inspector mobile/system-dark
+  ground #0A0C10 under 'Official Description' at div.h-screen.w-full>div.relative.z-10>div.flex.h-full>div.xl:hidden.fixed, on explorer-answer-inspector mobile/system-dark
+  ground #0A0C10 under 'NIB' at div.relative>div.space-y-4>div.flex.gap-3>div.group.flex-1, on explorer-answer-inspector desktop/light
+  ground #0A0C10 under 'Compare KBLI Codes' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.fixed.top-[50%], on explorer-compare desktop/light
+  ground #0A0D10 under 'PP 28/2025 Lampiran I' at div.flex-1.overflow-y-auto>section>div.space-y-3>div.group.flex, on explorer-mobile-sidebar mobile/system-dark
+  ground #0B0B0E under 'Login' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-mobile-nav mobile/forced-dark
+  ground #0B0C0F over-image (gradient) under 'Census fixture code' at div.flex.h-full>aside.hidden.xl:block>div.h-full.flex>div.p-6.md:p-8, on explorer-answer-inspector desktop/light
+  ground #0B0C0F under 'Restaurant' at div.space-y-6.text-[#BBB]>div.space-y-3.mt-4>div>button.group.w-full, on explorer-answer-inspector desktop/light
+  ground #0B0C10 under '92' at div.space-y-6.text-[#BBB]>div.space-y-3.mt-4>div>button.group.w-full, on explorer-answer-inspector desktop/light
+  ground #0C0D11 over-image (gradient) under 'Open to Foreign Investment' at div.flex.h-full>aside.hidden.xl:block>div.h-full.flex>div.p-6.md:p-8, on explorer-answer-inspector desktop/light
+  ground #0C0D11 over-image (gradient) under 'Open to Foreign Investment' at div.flex.h-full>div.xl:hidden.fixed>div.h-full.flex>div.p-6.md:p-8, on explorer-answer-inspector mobile/system-dark
+  ground #0D192E under 'Menu' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-mobile-nav mobile/system-dark
+  ground #0D2219 under 'Open to Foreigners' at button.group.w-full>div.flex.items-center>div.flex.items-center>span.text-[11px].px-2, on explorer-answer-inspector desktop/light
+  ground #0E1013 under 'What do I need to open a restaurant in B' at div.p-4.md:p-8>div.relative.max-w-3xl>form>input.w-full.bg-surface-deep/80, on explorer-answer-inspector desktop/light
+  ground #0E1A30 under 'Login' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.md:hidden.fixed, on kbli-mobile-nav mobile/system-dark
+  ground #0F1115 under '55130' at div.flex-1.overflow-y-auto>section>div.flex.flex-wrap>button.px-4.py-2, on explorer-answer-inspector desktop/light
+  ground #0F1115 under 'Sector:' at div.flex-1.overflow-y-auto>section>div.flex.flex-wrap>div.px-4.py-2, on explorer-answer-inspector desktop/light
+  ground #0F1115 under 'Ask about your KBLI codes' at div.relative.z-10>div.flex.h-full>div.fixed.inset-0>div.relative.w-full, on explorer-black-book desktop/light
+  ground #0F1115 under '1' at div.relative>div.space-y-4>div.flex.gap-3>div.flex-shrink-0.w-6, on explorer-answer-inspector desktop/light
+  ground #0F1C39 under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/system-dark
+  ground #100E0E under 'census fixture follow-up' at div.max-w-[90%].md:max-w-[85%]>div.space-y-6.text-[#BBB]>div.flex.flex-wrap>button.group.flex, on explorer-answer-inspector desktop/light
+  ground #101C39 under 'Visa' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/system-dark
+  ground #101D39 under 'Tax' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/system-dark
+  ground #101D3A under 'Property' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/system-dark
+  ground #131315 under 'B' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.kbli-panel-content.fixed, on sector-drawer desktop/light
+  ground #131316 under 'M' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.kbli-panel-content.fixed, on sector-drawer desktop/light
+  ground #131416 under '122' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.kbli-panel-content.fixed, on sector-drawer desktop/light
+  ground #141416 under 'Pertanian, Kehutanan dan Perikanan' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.kbli-panel-content.fixed, on sector-drawer desktop/light
+  ground #15090C under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/forced-dark
+  ground #151517 under '🌾' at html.__variable_8d8e21.__variable_c4c10f>body.antialiased.bg-[var(--background)]>div.kbli-panel-content.fixed, on sector-drawer desktop/light
+  ground #151921 under '1 day' at div.flex.gap-3>div.group.flex-1>div.flex.justify-between>span.text-[11px].uppercase, on explorer-answer-inspector desktop/light
+  ground #160A0C over-image (non-uniform) under 'Tax' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/forced-dark
+  ground #170909 under 'Visa' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/forced-dark
+  ground #170B0D under 'Property' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-mobile-nav mobile/forced-dark
+  ground #170C11 under 'Home' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/forced-dark
+  ground #17181D under 'PMA not verified' at button.group.w-full>div.flex.items-center>div.flex.items-center>span.text-[11px].px-2, on explorer-answer-inspector desktop/light
+  ground #18181A under '01111' at div.kbli-panel-content.fixed>div.@container.min-h-0>div.grid.grid-cols-1>a.group.block, on sector-drawer desktop/light
+  ground #191819 over-image (gradient) under 'Ask our team which KBLI 2025 code replac' at aside.fixed.md:relative>div.flex-1.overflow-y-auto>section>button.w-full.group, on explorer-mobile-sidebar mobile/system-dark
+  ground #192C29 under 'TERBUKA' at button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5, on search-dropdown mobile/light
+  ground #1A1D24 under 'KBLI 2025 transition' at div.flex.h-full>div.fixed.inset-0>div.relative.w-full>div.bg-surface-editorial-elevated.p-4, on explorer-black-book desktop/light
+  ground #1A1D24 under 'Back to Explorer' at div.relative.w-full>div.p-6.md:p-8>div.space-y-3>button.w-full.py-3, on explorer-black-book desktop/light
+  ground #1B0C0C over-image (non-uniform) under 'Property' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/forced-dark
+  ground #1B1A1B over-image (gradient) under 'ASK ABOUT YOUR CODES' at aside.fixed.md:relative>div.flex-1.overflow-y-auto>section>button.w-full.group, on explorer-mobile-sidebar mobile/system-dark
+  ground #1C0D0D over-image (non-uniform) under 'Tax' at div.md:hidden.fixed>ul.flex.flex-col>li>a.block.px-4, on kbli-code-mobile-nav mobile/forced-dark
+  ground #1C1C1F under 'Restaurant' at div.space-y-16>div.sticky.top-14>div.relative.w-full>div.absolute.z-50, on search-dropdown mobile/light
+  ground #1C1C1F over-image (non-uniform) under 'Census fixture row: a verified PMA verdi' at div.space-y-16>div.sticky.top-14>div.relative.w-full>div.absolute.z-50, on search-dropdown mobile/light
+  ground #1C1D20 under 'Villa' at div.space-y-16>div.sticky.top-14>div.relative.w-full>div.absolute.z-50, on search-dropdown mobile/light
+  ground #1F1C1A under '56101' at button.group.w-full>div.flex.items-center>div.flex.items-center>span.font-mono.text-sm, on explorer-answer-inspector desktop/light
+  ground #1F1F21 under '01112' at div.kbli-panel-content.fixed>div.@container.min-h-0>div.grid.grid-cols-1>a.group.block, on sector-drawer mobile/system-dark
+  ... and 58 more
+opened-grounds-off-contract: 138
+ground-resolver-disagree: 0
+shared-touched-unpinned: 0
+shared-component-drift: 0
+  3.30  #DC2626 on #2F1D20  '56101'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown mobile/light)
+  3.27  #DC2626 on #2F1E21  '55130'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown mobile/light)
+  3.30  #DC2626 on #2F1D20  '56101'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown mobile/system-dark)
+  3.27  #DC2626 on #2F1E21  '55130'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown mobile/system-dark)
+  3.30  #DC2626 on #2F1D20  '56101'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown mobile/forced-dark)
+  3.27  #DC2626 on #2F1E21  '55130'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown mobile/forced-dark)
+  3.30  #DC2626 on #2F1D20  '56101'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown desktop/light)
+  3.27  #DC2626 on #2F1E21  '55130'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown desktop/light)
+  3.30  #DC2626 on #2F1D20  '56101'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown desktop/system-dark)
+  3.27  #DC2626 on #2F1E21  '55130'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown desktop/system-dark)
+  3.30  #DC2626 on #2F1D20  '56101'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown desktop/forced-dark)
+  3.27  #DC2626 on #2F1E21  '55130'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown desktop/forced-dark)
+  2.82  #DC2626 on #3B292C  '56101'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-active-row desktop/light)
+  3.27  #DC2626 on #2F1E21  '55130'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-active-row desktop/light)
+  2.82  #DC2626 on #3B292C  '56101'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-active-row mobile/system-dark)
+  3.27  #DC2626 on #2F1E21  '55130'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-active-row mobile/system-dark)
+  3.82  #71717B on #131416  '122'  body.antialiased.bg-[var(--background)]>div.kbli-panel-content.fixed>header.shrink-0.border-b>p.mt-2.text-xs  (sector-drawer desktop/light)
+  3.82  #71717B on #131416  'business'  body.antialiased.bg-[var(--background)]>div.kbli-panel-content.fixed>header.shrink-0.border-b>p.mt-2.text-xs  (sector-drawer desktop/light)
+  3.82  #71717B on #131416  'codes'  body.antialiased.bg-[var(--background)]>div.kbli-panel-content.fixed>header.shrink-0.border-b>p.mt-2.text-xs  (sector-drawer desktop/light)
+  3.82  #71717B on #131416  '·'  body.antialiased.bg-[var(--background)]>div.kbli-panel-content.fixed>header.shrink-0.border-b>p.mt-2.text-xs  (sector-drawer desktop/light)
+  3.82  #71717B on #131416  'open as full page'  div.kbli-panel-content.fixed>header.shrink-0.border-b>p.mt-2.text-xs>a.underline.underline-offset-2  (sector-drawer desktop/light)
+  3.84  #71717B on #131315  'B'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131315  'C'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131315  'D'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131315  'E'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131315  'F'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131315  'G'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131315  'H'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131315  'I'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131315  'J'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131315  'K'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131315  'L'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131316  'M'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131316  'N'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131316  'O'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131316  'P'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131316  'Q'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131316  'R'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131316  'S'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131316  'T'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  3.84  #71717B on #131316  'U'  div.kbli-panel-content.fixed>div.flex.items-center>nav.flex.min-w-0>a.inline-flex.h-7  (sector-drawer desktop/light)
+  4.20  #4B9670 on #1F2926  '· 100% Foreign'  a.group.block>div.mt-3.flex>span.inline-flex.items-center>span.opacity-70  (sector-drawer desktop/light)
+  3.46  #458666 on #1F2926  '·'  div.mt-3.flex>span.inline-flex.flex-col>span.inline-flex.items-center>span.opacity-60  (sector-drawer desktop/light)
+  3.46  #458666 on #1F2926  'medium'  div.mt-3.flex>span.inline-flex.flex-col>span.inline-flex.items-center>span.opacity-60  (sector-drawer desktop/light)
+  3.46  #458666 on #1F2926  'conf.'  div.mt-3.flex>span.inline-flex.flex-col>span.inline-flex.items-center>span.opacity-60  (sector-drawer desktop/light)
+  4.20  #4B9670 on #1F2926  '· 100% Foreign'  a.group.block>div.mt-3.flex>span.inline-flex.items-center>span.opacity-70  (sector-drawer desktop/light)
+  3.46  #458666 on #1F2926  '·'  div.mt-3.flex>span.inline-flex.flex-col>span.inline-flex.items-center>span.opacity-60  (sector-drawer desktop/light)
+  3.46  #458666 on #1F2926  'medium'  div.mt-3.flex>span.inline-flex.flex-col>span.inline-flex.items-center>span.opacity-60  (sector-drawer desktop/light)
+  3.46  #458666 on #1F2926  'conf.'  div.mt-3.flex>span.inline-flex.flex-col>span.inline-flex.items-center>span.opacity-60  (sector-drawer desktop/light)
+  4.20  #4B9670 on #1F2926  '· 100% Foreign'  a.group.block>div.mt-3.flex>span.inline-flex.items-center>span.opacity-70  (sector-drawer desktop/light)
+  3.46  #458666 on #1F2926  '·'  div.mt-3.flex>span.inline-flex.flex-col>span.inline-flex.items-center>span.opacity-60  (sector-drawer desktop/light)
+  3.46  #458666 on #1F2926  'medium'  div.mt-3.flex>span.inline-flex.flex-col>span.inline-flex.items-center>span.opacity-60  (sector-drawer desktop/light)
+  3.46  #458666 on #1F2926  'conf.'  div.mt-3.flex>span.inline-flex.flex-col>span.inline-flex.items-center>span.opacity-60  (sector-drawer desktop/light)
+  4.20  #4B9670 on #1F2926  '· 100% Foreign'  a.group.block>div.mt-3.flex>span.inline-flex.items-center>span.opacity-70  (sector-drawer desktop/light)
+  3.46  #458666 on #1F2926  '·'  div.mt-3.flex>span.inline-flex.flex-col>span.inline-flex.items-center>span.opacity-60  (sector-drawer desktop/light)
+  3.46  #458666 on #1F2926  'medium'  div.mt-3.flex>span.inline-flex.flex-col>span.inline-flex.items-center>span.opacity-60  (sector-drawer desktop/light)
+  3.46  #458666 on #1F2926  'conf.'  div.mt-3.flex>span.inline-flex.flex-col>span.inline-flex.items-center>span.opacity-60  (sector-drawer desktop/light)
+  4.20  #4B9670 on #1F2926  '· 100% Foreign'  a.group.block>div.mt-3.flex>span.inline-flex.items-center>span.opacity-70  (sector-drawer desktop/light)
+  3.46  #458666 on #1F2926  '·'  div.mt-3.flex>span.inline-flex.flex-col>span.inline-flex.items-center>span.opacity-60  (sector-drawer desktop/light)
+  3.46  #458666 on #1F2926  'medium'  div.mt-3.flex>span.inline-flex.flex-col>span.inline-flex.items-center>span.opacity-60  (sector-drawer desktop/light)
+  ... and 617 more
+opened-text-below-4.5: 677
+ok: captures: 30 ok, 0 failed
+ok: opened-surfaces: 25 ok, 0 failed
+ok: shared-touched-unpinned: 0
+ok: shared-component-drift: 0

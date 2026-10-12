@@ -1,0 +1,407 @@
+import { describe, expect, it } from "vitest";
+import {
+  GENERIC_NOTICE_CONDITION,
+  NOTICE_CONDITION_COPY,
+  REVIEW_REASON_COPY,
+  REVIEW_REASON_ELEMENTS,
+  SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
+  SUPPORT_REASON_COPY,
+  UNMAPPED_REASON_COPY,
+  nextStepsFor,
+} from "./engine-adapter";
+import { buildEngineOutcome } from "./engine-adapter";
+import { ATLAS_COPY } from "./atlas-scenes";
+import { dict } from "./i18n";
+import { makeVisaOracleResponse } from "./visa-oracle-test-fixture";
+import {
+  buildClientGuardOutcome,
+  buildDegradedHumanReviewOutcome,
+  buildNetworkFailureOutcome,
+  buildShadowOutcome,
+} from "./outcome-fallbacks";
+import { buildPreviewOutcome } from "./preview-adapter";
+import type { OutcomeState } from "./outcome-view-model";
+
+const STATES: readonly OutcomeState[] = [
+  "SUPPORTED_CANDIDATES",
+  "NEEDS_INPUT",
+  "HUMAN_REVIEW_REQUIRED",
+  "NO_SUPPORTED_PATH",
+  "TEMPORARILY_UNAVAILABLE",
+];
+
+const DOTTED_IDENTIFIER = /\b[a-z]+\.[a-z]+_[a-z_]+\b/;
+
+// Words that belong to the engine, not to a client. Indonesian equivalents
+// are listed beside their English twin.
+const BANNED: readonly RegExp[] = [
+  /\bengine\b/i,
+  /\bmesin\b/i,
+  /\bdisahkan\b/i,
+  /fabricat/i,
+  /dibuat-buat/i,
+  /\bshadow\b/i,
+  /\bcandidates?\b/i,
+  /\bkandidat\b/i,
+  /\bPNBP\b/,
+  /verified (decision )?rules/i,
+  /decision rules/i,
+  /aturan (keputusan )?terverifikasi/i,
+  /aturan keputusan/i,
+  /\bprovenance\b/i,
+  /\b(?:a|the|this|that|safety|client) hold\b/i,
+  /\bpenahanan\b/i,
+  /\bsigned rules\b/i,
+  /\ba person needs\b/i,
+  /\bheld\b/i,
+  /\bditahan\b/i,
+  /\bseseorang\b/i,
+  // PR-C4: the interview speaks to the visitor, not to an engineer.
+  /\binterface\b/i,
+  /\bantarmuka\b/i,
+  /decision facts?/i,
+  /\bfakta (mesin|keputusan)\b/i,
+  /\bfakta\b/i,
+  /\benums?\b/i,
+  /\bclosed-/i,
+  /\breceives\b/i,
+  /\bmenerima\b.*\bmesin\b/i,
+  /\babstain/i,
+  /\bpayload\b/i,
+  /\brouting\b/i,
+  /\broutes (?:the|this|next)\b/i,
+  /\bboolean\b/i,
+  /dikirim ke mesin/i,
+  /\bunchanged\b/i,
+  /\btanpa perubahan\b/i,
+  /\bfields?\b/i,
+  /\blabels?\b/i,
+  /\bfacts?\b/i,
+  // A dotted engine identifier (work.indonesia_source_compensation) is never copy.
+  DOTTED_IDENTIFIER,
+];
+
+// Exact phrases that are ordinary language, not engine voice: a deposit "held
+// in your own name", property "held and valued", a pass "held with no sponsor",
+// and owner-approved lines that name "a person" as the reviewer.
+const ALLOWED_PHRASES: readonly string[] = [
+  "held in your own name",
+  "how it is held and valued",
+  "held with no sponsor",
+  "ditinjau oleh seseorang",
+  "ditinjau seseorang",
+  "a licensed visa agency or a person in Indonesia",
+  "biro visa berlisensi atau seseorang di Indonesia",
+  "The result reflects only the facts you entered",
+  "some routes depend on facts this tool does not ask",
+  // The template variable name, not copy.
+  "{{facts}}",
+  // Ordinary language in the interview: a deposit or investment "held",
+  // a citizenship "held".
+  "held only in capital-market instruments",
+  "held in my own name",
+  "deposit held at an Indonesian state-owned bank",
+  "or have held more than one citizenship",
+  "seseorang dengan reputasi internasional",
+];
+
+// `{{name}}` / `{{plural:a|b}}` are template placeholders, not copy.
+function withoutAllowed(value: string): string {
+  return ALLOWED_PHRASES.reduce(
+    (text, phrase) => text.split(phrase).join(" "),
+    value.replace(/\{\{[^}]*\}\}/g, " "),
+  );
+}
+
+// "signed" and "operational" are engine jargon as UI labels but ordinary words
+// inside a reason sentence ("a signed Pernyataan Integrasi", "operational
+// work"), so they are only banned in the outcome/verdict dictionary entries.
+const BANNED_IN_DICT: readonly RegExp[] = [
+  /\bsigned\b/i,
+  /\boperational\b/i,
+  /\boperasional\b/i,
+];
+
+// PR-C4: the interview's own helper copy (question hints, "why we ask",
+// lane notices, assumptions, process panel) is client-visible too.
+const INTERVIEW_PREFIXES: readonly string[] = [
+  "framing.",
+  "q.",
+  "why.",
+  "lane.",
+  "assumption.",
+  "process.",
+  "whyweask.",
+  "confirmation.",
+  "question.",
+];
+
+function clientStrings(): { where: string; value: string; strict?: boolean }[] {
+  const rows: { where: string; value: string; strict?: boolean }[] = [];
+  for (const language of ["en", "id"] as const) {
+    for (const [key, value] of Object.entries(dict[language])) {
+      if (key.startsWith("outcome.") || key.startsWith("verdict.")) {
+        rows.push({ where: `${language}:${key}`, value, strict: true });
+      } else if (INTERVIEW_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+        rows.push({ where: `${language}:${key}`, value });
+      }
+    }
+    for (const state of STATES) {
+      for (const step of nextStepsFor(state)) {
+        rows.push({
+          where: `${language}:nextSteps.${state}.${step.id}`,
+          value: `${step.title[language]} ${step.body?.[language] ?? ""}`,
+        });
+      }
+    }
+    for (const [name, copy] of Object.entries({
+      ...SUPPORT_REASON_COPY,
+      ...REVIEW_REASON_COPY,
+      ...NOTICE_CONDITION_COPY,
+    })) {
+      rows.push({ where: `${language}:reason.${name}`, value: copy[language] });
+    }
+    for (const [key, value] of Object.entries(ATLAS_COPY[language])) {
+      rows.push({ where: `${language}:atlas.${key}`, value });
+    }
+    for (const [name, elements] of Object.entries(REVIEW_REASON_ELEMENTS)) {
+      for (const [part, copy] of Object.entries(elements ?? {})) {
+        rows.push({
+          where: `${language}:review-element.${name}.${part}`,
+          value: copy[language],
+        });
+      }
+    }
+    rows.push(
+      { where: `${language}:unmapped`, value: UNMAPPED_REASON_COPY[language] },
+      {
+        where: `${language}:generic-notice`,
+        value: GENERIC_NOTICE_CONDITION[language],
+      },
+    );
+    for (const outcome of [
+      buildClientGuardOutcome({ code: "X" }),
+      buildNetworkFailureOutcome({ code: "X" }),
+      buildShadowOutcome({ code: "X" }),
+    ]) {
+      rows.push({
+        where: `${language}:fallback.${outcome.provenance}`,
+        value: outcome.outage.message[language],
+      });
+    }
+  }
+  return rows;
+}
+
+describe("client-visible copy", () => {
+  it("never carries engine jargon in outcome/verdict copy, the interview helper copy, the atlas, next steps, reasons or fallbacks", () => {
+    const offenders = clientStrings().flatMap(({ where, value, strict }) =>
+      [...BANNED, ...(strict ? BANNED_IN_DICT : [])]
+        .filter((re) => re.test(withoutAllowed(value)))
+        .map((re) => `${where} ~ ${re} :: ${value.slice(0, 80)}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it("the deposit-holder dead-end sentences (built from the visitor's answers) carry no engine jargon", () => {
+    const sentences: string[] = [];
+    for (const state_bank of ["yes", "no", "unsure"]) {
+      for (const own_name of ["yes", "no", "unsure"]) {
+        const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+        for (const code of [
+          "AGE_BELOW_55",
+          "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+        ]) {
+          response.decision.no_path_reasons[0].code = code;
+          const outcome = buildEngineOutcome(response, {
+            facts: {
+              category: "second_home",
+              secondhome_basis: "bank_deposit",
+              secondhome_deposit_usd: "200000",
+              secondhome_state_bank: state_bank,
+              secondhome_own_name: own_name,
+            },
+          });
+          if (outcome.state !== "NO_SUPPORTED_PATH") throw new Error("state");
+          const { en, id } = outcome.noPathReasons[0].message;
+          sentences.push(en, id);
+        }
+      }
+    }
+    expect(new Set(sentences).size).toBeGreaterThan(8);
+    const offenders = sentences.flatMap((value) =>
+      BANNED.filter((re) => re.test(withoutAllowed(value))).map(
+        (re) => `${re} :: ${value.slice(0, 80)}`,
+      ),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it("the dotted-identifier guard names a leaked field and spares placeholders and plain prose", () => {
+    for (const leaked of [
+      "The answer maps directly to work.indonesia_source_compensation.",
+      "Ini dipetakan ke investment.pt_pma_committed dan tidak menyiratkan persetujuan.",
+    ]) {
+      expect(DOTTED_IDENTIFIER.test(withoutAllowed(leaked))).toBe(true);
+    }
+    for (const innocent of [
+      "Your answer sets {{plural:this detail|these details}}, which we use:",
+      "Used to decide: {{facts}}",
+      "Enter the amount, e.g. 5.000 per month. Ask Dr. Smith.",
+    ]) {
+      expect(DOTTED_IDENTIFIER.test(withoutAllowed(innocent))).toBe(false);
+    }
+  });
+
+  it("never leaks an internal note into the price or timeline copy", () => {
+    for (const language of ["en", "id"] as const) {
+      const table = dict[language];
+      expect(table["outcome.price_all_inclusive"]).not.toMatch(/split|ever/i);
+      expect(table["outcome.price_all_inclusive"]).not.toMatch(/pemisahan/i);
+      expect(table["outcome.timeline_pending"]).not.toMatch(
+        /unavailable|tidak tersedia|verified|terverifikasi/i,
+      );
+    }
+  });
+});
+
+describe("typical processing time copy", () => {
+  const KEYS = [
+    "outcome.timeline_none",
+    "outcome.timeline_within_one",
+    "outcome.timeline_typical_exact",
+    "outcome.timeline_typical_range",
+    "outcome.timeline_if_today",
+    "outcome.timeline_if_today_single",
+    "outcome.timeline_indicative",
+    "outcome.share_timing_indicative",
+  ] as const;
+
+  it("exists in both languages and the superseded keys are gone", () => {
+    for (const language of ["en", "id"] as const) {
+      const table = dict[language] as Record<string, string>;
+      for (const key of KEYS) expect(table[key]?.length).toBeGreaterThan(0);
+      expect(table["outcome.timeline_dates"]).toBeUndefined();
+      expect(table["outcome.timeline_basis"]).toBeUndefined();
+    }
+    expect(dict.en["outcome.timeline_typical_range"]).toBe(
+      "Typically {{min}}–{{max}} working days",
+    );
+    expect(dict.id["outcome.timeline_typical_range"]).toBe(
+      "Biasanya {{min}}–{{max}} hari kerja",
+    );
+    expect(dict.id["outcome.timeline_none"]).toBe(
+      "Tidak ada visa yang perlu diproses sebelumnya — izin masuk diberikan di perbatasan.",
+    );
+    expect(dict.id["outcome.timeline_indicative"]).toMatch(
+      /^Perkiraan waktu proses Bali Zero .* akan mengonfirmasi jadwal /,
+    );
+    expect(dict.id["outcome.timeline_pending"]).toMatch(
+      /Konsultan Bali Zero dapat mengonfirmasi jadwal/,
+    );
+  });
+
+  it("the pending timeline names no cause and promises no advisor", () => {
+    // No rule or official page says why a time is unknown, so the copy states only that Bali Zero
+    // has none confirmed yet, and an advisor is offered ("can"), never promised.
+    for (const language of ["en", "id"] as const) {
+      const text = dict[language]["outcome.timeline_pending"];
+      expect(text).not.toMatch(
+        /season|musim|vary|varies|bervariasi|office|kantor|Ditjen/i,
+      );
+      expect(text).not.toMatch(/\d/);
+    }
+    expect(dict.en["outcome.timeline_pending"]).toMatch(
+      /^Bali Zero has no confirmed processing time for this visa yet\./,
+    );
+    expect(dict.en["outcome.timeline_pending"]).toMatch(
+      /advisor can confirm the calendar/,
+    );
+    expect(dict.id["outcome.timeline_pending"]).toMatch(
+      /^Bali Zero belum memiliki kepastian lama proses/,
+    );
+  });
+});
+
+describe("nextStepsFor — one list per outcome state", () => {
+  it.each(STATES)(
+    "%s carries exactly three distinct, stable-id steps",
+    (state) => {
+      const steps = nextStepsFor(state);
+      expect(steps).toHaveLength(3);
+      expect(new Set(steps.map((step) => step.id)).size).toBe(3);
+      for (const step of steps) {
+        expect(step.id).toMatch(/^[a-z]+(-[a-z]+)*$/);
+        expect(step.title.en.length).toBeGreaterThan(0);
+        expect(step.title.id.length).toBeGreaterThan(0);
+      }
+    },
+  );
+
+  it("gives every state a different list", () => {
+    const lists = new Set(
+      STATES.map((state) =>
+        nextStepsFor(state)
+          .map((step) => step.id)
+          .join("|"),
+      ),
+    );
+    expect(lists.size).toBe(STATES.length);
+  });
+
+  it("is the single source for the fallbacks and the gold preview baseline", () => {
+    expect(buildNetworkFailureOutcome({ code: "X" }).nextSteps).toBe(
+      nextStepsFor("TEMPORARILY_UNAVAILABLE"),
+    );
+    expect(buildDegradedHumanReviewOutcome({}).nextSteps).toBe(
+      nextStepsFor("HUMAN_REVIEW_REQUIRED"),
+    );
+    expect(buildPreviewOutcome({}, new Date()).state).toBe(
+      "TEMPORARILY_UNAVAILABLE",
+    );
+  });
+});
+
+describe("next steps follow the real situation of the visitor", () => {
+  it("a Studio-only hold gets the Studio steps, with no promise of a person's review", () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons[0].code =
+      SECOND_HOME_STUDIO_REVIEW_REASON_CODE;
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.state).toBe("HUMAN_REVIEW_REQUIRED");
+    expect(outcome.nextSteps.map((step) => step.id)).toEqual([
+      "open-studio",
+      "compare-guarantee-figure",
+      "return-with-updated-figure",
+    ]);
+    expect(outcome.nextSteps[0].title.en).toMatch(/Second Home Studio/);
+    for (const language of ["en", "id"] as const) {
+      expect(outcome.nextSteps[0].title[language]).toMatch(/Studio/);
+      expect(outcome.nextSteps[1].title[language]).not.toMatch(
+        /advisor|konsultan|person|seseorang|review|tinjau/i,
+      );
+    }
+  });
+
+  it("an ordinary review keeps the review steps and matches the gold preview baseline", () => {
+    const outcome = buildEngineOutcome(
+      makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED"),
+    );
+    expect(outcome.nextSteps).toBe(nextStepsFor("HUMAN_REVIEW_REQUIRED"));
+  });
+
+  it("a non-retryable client guard never says to try again; a retryable failure does", () => {
+    expect(buildClientGuardOutcome({ code: "X" }).nextSteps).toBe(
+      nextStepsFor("HUMAN_REVIEW_REQUIRED"),
+    );
+    expect(buildNetworkFailureOutcome({ code: "X" }).nextSteps).toBe(
+      nextStepsFor("TEMPORARILY_UNAVAILABLE"),
+    );
+    expect(buildShadowOutcome({ code: "X" }).nextSteps).toBe(
+      nextStepsFor("HUMAN_REVIEW_REQUIRED"),
+    );
+    expect(
+      buildNetworkFailureOutcome({ code: "X", retryable: false }).nextSteps,
+    ).toBe(nextStepsFor("HUMAN_REVIEW_REQUIRED"));
+  });
+});

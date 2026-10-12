@@ -1,0 +1,19 @@
+gear: 2
+gear_reason: >-
+  Client-facing price-row wording on a ground-truth path (pricing table), two mirrored data files plus
+  a test and an observer; deploys on merge.
+mission: >-
+  The E33 and E33E price rows stop calling the permit non-working.
+objective: >-
+  The description text of E33 Second Home (5 Years) and E33E Second Home Senior (5 Years) follows the
+  official imigrasi.go.id pages: work or study only after dual-activity (rangkap kegiatan) reporting;
+  prices, validity and keys unchanged; E33F rows untouched.
+scope:
+  - apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+  - apps/mouth/data/bali-zero-prices.json
+  - tests/scripts/test_e33_price_descriptions.py
+  - scripts/ci/observe_e33_price_descriptions.py
+  - tests/scripts/test_observe_e33_price_descriptions.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

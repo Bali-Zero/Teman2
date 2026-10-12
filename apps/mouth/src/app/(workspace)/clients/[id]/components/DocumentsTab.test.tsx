@@ -512,3 +512,18 @@ describe("DocumentsTab — grid/filter/actions (kept)", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("DocumentsTab — client visibility marker (PR 7989 contract)", () => {
+  it("GUILT: a document hidden from the client says so on its row", () => {
+    renderTab([
+      doc({ id: 1, client_visible: false }),
+      doc({ id: 2, client_visible: null }),
+    ]);
+    expect(screen.getAllByText("Hidden from the client")).toHaveLength(2);
+  });
+
+  it("INNOCENCE: visible documents, and a backend without the field, show no marker", () => {
+    renderTab([doc({ id: 3, client_visible: true }), doc({ id: 4 })]);
+    expect(screen.queryByText("Hidden from the client")).toBeNull();
+  });
+});

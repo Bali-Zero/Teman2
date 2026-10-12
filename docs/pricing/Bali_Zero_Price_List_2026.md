@@ -181,7 +181,7 @@ _PT PMA setup, virtual office and corporate amendments._
 
 | Service                               | Description                                                                                                                                                                                      | Price                      |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
-| **New Company (PT PMA)**              | Full incorporation of a new Indonesian foreign-owned limited company (PT PMA), including notarial deed, BKPM/OSS registration and tax ID issuance.                                               | 20.000.000 IDR             |
+| **New Company (PT PMA)**              | Full incorporation of a new Indonesian foreign-owned limited company (PT PMA), including notarial deed, BKPM/OSS registration and tax ID issuance.                                               | 25.000.000 IDR             |
 | **Virtual Office**                    | Virtual office address for company registration and correspondence, suited to clients without dedicated commercial premises. _(Only for clients without their own commercial premises.)_         | 5.000.000 IDR              |
 | **Akta Perubahan (Revision Company)** | Notarial amendment deed (Akta Perubahan) for an existing Indonesian company. Pricing depends on scope of changes. _(Required when changing company address, directors, or business activities.)_ | Depend (Contact for quote) |
 

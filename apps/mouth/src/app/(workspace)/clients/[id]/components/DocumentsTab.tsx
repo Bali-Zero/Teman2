@@ -342,6 +342,12 @@ export function DocumentsTab({
                         : `${typeLabel} · ${catLabel}`
                     }
                   />
+                  {(d.client_visible === false ||
+                    d.client_visible === null) && (
+                    <span className="mt-0.5 block text-[11px] text-[var(--tx-secondary)]">
+                      Hidden from the client
+                    </span>
+                  )}
                   {d.deleted_at && (
                     <span className="mt-0.5 block text-[11px] text-[var(--tx-secondary)]">
                       Removed by the client on {formatDate(d.deleted_at)} —

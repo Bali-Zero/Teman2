@@ -1,0 +1,15 @@
+slug: agent-air-m5-mouth-visa-oracle-i18n-census-e6a57ecb
+gear: 2
+gear_reason: >-
+  Test-only guard over the Visa Oracle dictionary; no runtime or copy change, no deletion.
+ruling: >-
+  Team lead mandate, 2026-10-10 - PENDING-ARMS row of the dead-keys chain: a census test that fails when an unrendered key is re-added.
+mission: >-
+  A Vitest census fails when a Visa Oracle i18n key is neither referenced by code nor frozen in a reasoned allowlist, when an allowlisted key stops being dead or is deleted, when EN and ID differ, or when one of the 46 keys #8205 deleted returns.
+objective: >-
+  The census passes on main with 102 triaged unrendered keys frozen, and fails on a re-added question.human_context_notice.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n-census.test.ts (new)
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

@@ -701,7 +701,13 @@ export class CrmApi {
   async updateDocument(
     clientId: number,
     docId: number,
-    updates: Partial<DocumentCreate & { status: string; is_archived: boolean }>,
+    updates: Partial<
+      DocumentCreate & {
+        status: string;
+        is_archived: boolean;
+        client_visible: boolean;
+      }
+    >,
   ): Promise<{ success: boolean }> {
     return this.client.request<{ success: boolean }>(
       `/api/crm/clients/${clientId}/documents/${docId}`,

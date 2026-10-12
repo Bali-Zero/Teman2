@@ -9,10 +9,8 @@ a `--max-budget-usd 10` session against the same dead organs, tick after tick,
 for zero new information (`shared/escalations_pro.jsonl` carries 8 open HIGH
 `healer_pro_tick` entries of the shape "N dead organs ... 0/N curable").
 
-The fingerprint MUST include the heartbeat status (not just the count) of the
-dead organs — the revision criterion D-004 names explicitly: two ticks with
-the same COUNT of dead organs are not the same state if a different organ
-died, or the same organ's status text changed.
+The fingerprint keys dead organs by identity+cure, not by age. A dead organ
+aging in place is no new work; a new organ or a cure-boundary change is.
 
 Subcommands:
     fingerprint                Read a receptor-state JSON object on stdin,
@@ -20,6 +18,10 @@ Subcommands:
     check                      Decide SPAWN (exit 0) vs SKIP (exit 3) against
                                 a persisted state file.
     record                     Persist {fingerprint, verdict, spawned_at}.
+    verdict-from-session       Read the session log's LAST `HEALER_VERDICT:`
+                                line strictly: cured / incurable / partial;
+                                malformed or another tick's total = unknown;
+                                no such line at all = missing.
     verdict-from-escalations   Classify the newest `healer_pro_tick` line in
                                 shared/escalations_pro.jsonl since a given
                                 time as incurable / cured / unknown.
@@ -38,7 +40,6 @@ import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 logger = logging.getLogger("healer_memo")
 if not logger.handlers:
@@ -49,12 +50,10 @@ if not logger.handlers:
 KILL_SWITCH_ENV = "PRO_HEALER_MEMO"
 DEFAULT_MAX_AGE_H = 24.0
 DEFAULT_MAX_SKIPS = 3
-AGE_BUCKET_CAP_H = 48
-
 EXIT_SPAWN = 0
 EXIT_SKIP = 3
 
-VALID_VERDICTS = ("incurable", "cured", "unknown")
+VALID_VERDICTS = ("incurable", "cured", "partial", "unknown")
 
 
 def _kill_switch_disabled() -> bool:
@@ -67,23 +66,6 @@ def _kill_switch_disabled() -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _age_bucket(age_s: Any) -> int:
-    """floor(age_s / 3600) capped at AGE_BUCKET_CAP_H.
-
-    A malformed/missing age must never crash the fingerprint (it would take
-    down the healer's pre-check with it) — it degrades to bucket 0, which
-    only means "this organ's age never distinguishes two states on its own",
-    not that the organ is ignored (id/status/recovery_action still count).
-    """
-    try:
-        age = float(age_s)
-    except (TypeError, ValueError):
-        return 0
-    if age < 0:
-        return 0
-    return min(int(age // 3600), AGE_BUCKET_CAP_H)
-
-
 def fingerprint(receptor_state: dict) -> str:
     """Deterministic sha256 hex over the organ-state shape D-004 names.
 
@@ -94,9 +76,9 @@ def fingerprint(receptor_state: dict) -> str:
     dead_tuples = sorted(
         (
             str(o.get("id", "")),
-            str(o.get("status", "")),
+            str(o.get("cure", "session")),
             str(o.get("recovery_action", "")),
-            _age_bucket(o.get("age_s")),
+            str(o.get("label", "")),
         )
         for o in dead
         if isinstance(o, dict)
@@ -104,20 +86,32 @@ def fingerprint(receptor_state: dict) -> str:
 
     diverged = sorted(str(p) for p in (receptor_state.get("diverged_probes") or []))
     drifted = sorted(str(p) for p in (receptor_state.get("drifted_pairs") or []))
+    counts = receptor_state.get("session_curable") or {}
+    session_curable = {
+        key: counts.get(key, 0) if isinstance(counts, dict) else 0
+        for key in ("registry", "proprioception", "home_fork")
+    }
     arsenal_new_dead = sorted(
         str(t) for t in (receptor_state.get("arsenal_new_dead") or [])
     )
-    reasons_tokens = sorted(
-        tok for tok in str(receptor_state.get("reasons", "")).split() if tok
+    receptor_failures = sorted(
+        str(item) for item in (receptor_state.get("receptor_failures") or [])
+    )
+
+    observations = sorted(
+        str(item) for item in (receptor_state.get("observations") or [])
     )
 
     canonical = {
         "dead_organs": [list(t) for t in dead_tuples],
         "diverged_probes": diverged,
         "drifted_pairs": drifted,
+        "session_curable": session_curable,
         "arsenal_new_dead": arsenal_new_dead,
-        "reasons_tokens": reasons_tokens,
+        "receptor_failures": receptor_failures,
     }
+    if observations:  # optional axis (Mini healer): absent keeps every existing hash byte-identical
+        canonical["observations"] = observations
     blob = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
@@ -186,6 +180,28 @@ def _classify_summary(text: str) -> str:
     if _CURED_WORD_RE.search(text):
         return "cured"
     return "unknown"
+
+
+_SESSION_VERDICT_RE = re.compile(r"HEALER_VERDICT: (cured|incurable|partial) ([0-9]+)/([0-9]+)")
+
+
+def verdict_from_session(text: str, expect_total: int | None = None) -> str:
+    """The LAST line naming HEALER_VERDICT decides, parsed strictly: a later
+    malformed line voids an earlier valid one (unknown spawns, never skips), the
+    counts must agree with the word (cured n/n, incurable 0/n, partial k/n) and
+    n must be the tick's own total, so a verdict on part of the work never
+    memoizes the rest. No such line at all is "missing", not "unknown"."""
+    candidates = [line.strip() for line in text.splitlines() if "HEALER_VERDICT" in line]
+    if not candidates:
+        return "missing"
+    match = _SESSION_VERDICT_RE.fullmatch(candidates[-1])
+    if not match:
+        return "unknown"
+    verdict, cured, total = match.group(1), int(match.group(2)), int(match.group(3))
+    expected = {"cured": cured == total, "incurable": cured == 0, "partial": 0 < cured < total}
+    if expect_total is not None and total != expect_total:
+        return "unknown"
+    return verdict if total > 0 and expected[verdict] else "unknown"
 
 
 # ---------------------------------------------------------------------------
@@ -321,6 +337,15 @@ def cmd_verdict_from_escalations(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_verdict_from_session(args: argparse.Namespace) -> int:
+    try:
+        text = Path(args.file).expanduser().read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        text = ""
+    print(verdict_from_session(text, args.expect_total))
+    return 0
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -358,6 +383,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_verdict.add_argument("--file", required=True)
     p_verdict.add_argument("--since", required=True)
     p_verdict.set_defaults(func=cmd_verdict_from_escalations)
+
+    p_session = sub.add_parser(
+        "verdict-from-session", help="parse the session log's last HEALER_VERDICT line"
+    )
+    p_session.add_argument("--file", required=True)
+    p_session.add_argument("--expect-total", type=int, default=None)
+    p_session.set_defaults(func=cmd_verdict_from_session)
 
     return parser
 

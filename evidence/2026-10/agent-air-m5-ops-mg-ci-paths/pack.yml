@@ -1,0 +1,58 @@
+# Gear-3 evidence pack — mata-garuda-tests also triggers on the organs registry its new test reads.
+# Written by the imperator session (Claude Opus 5.5, M5), verifier and shipper; the measurement and the two path lines
+# are a Claude Sonnet builder session's (build-mg-ci). Scratch under ~/.agent/campaign-20261005/work/ (not committed).
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+ruling: >-
+  Owner 2026-10-09: "fai tutto tu e decidi tu al meglio". The final gates of #8164 and #8169 both named this gap as the
+  follow-up for whichever PR landed second.
+mission: >-
+  Keep the mata-garuda suite's trigger complete: a change to apps/organism/organism/organs_registry.yaml, which
+  test_run_sentinel_cell.py reads since #8164, must run the suite.
+lanes:
+  - lane: build
+    role: build
+    seat: >-
+      claude-sonnet-5 (build-mg-ci) re-measured the repo files the suite opens on main 05ec82e25d with an audit hook and
+      added the one missing path to both blocks.
+  - lane: council
+    role: review
+    seat: >-
+      Sealed council: the Dux position was written to COUNCIL-BRIEF.md at 12:38:35Z before any seat was asked; Codex O2
+      (codex-gpt-5.6-sol roster seat) and Kimi k3 answered on a scratch export of main with the patch applied.
+seat_diversity: >-
+  Three families: Anthropic (builder, shipper), OpenAI (Codex O2), Moonshot (Kimi k3). The final gate is a fresh Claude
+  session outside this chain.
+pii_scan: clean
+bites:
+  consumer: The mata-garuda-tests job, on a PR or main push that touches the organs registry.
+  observation: >-
+    This PR's own run of the job (the workflow file is in its own filter) is green, and both paths blocks list the
+    registry; the next registry-only PR shows the job in its checks.
+decisions:
+  - >-
+    List the single file, not apps/organism/**: the test pins one registry entry, and a wider glob would fire on every
+    unrelated organism change.
+dissent:
+  - seat: kimi-code/k3
+    objection: The two hand-duplicated paths blocks can drift on future edits; Actions has no YAML anchors to share them.
+    status: PLAUSIBLE
+    resolution: Declared, pre-existing; a lint that compares the two blocks is a follow-up, not part of this two-line change.
+receipts:
+  - claim: "R1 — the repo files the suite opens outside apps/mata-garuda and packages/cell-core on main 05ec82e25d; only the registry was not covered."
+    cmd: "python -c 'sys.addaudithook(<record open outside the app and cell-core>); pytest.main([...])'  (recording fakes for nlm, curl and OSINT_NEXUS_PYTHON)"
+    result: >-
+      7 files: agent-library/config/redaction-rules.yaml, apps/organism/organism/organs_registry.yaml,
+      infra/launchagents/com.matagaruda.gap.consumer.plist, scripts/_redact_pii.py, scripts/lib/yaml_strict.py,
+      scripts/mata_garuda_invalidation_sweep.py, scripts/pytest_guards/pytest_verbosity_guard.py; uncovered before: the
+      registry only
+    exit: 0
+    ts: "2026-10-09T12:37:47Z"
+    seat: claude-sonnet-5 (build-mg-ci)
+  - claim: "R2 — the workflow lints with the two lines added."
+    cmd: "actionlint .github/workflows/mata-garuda-tests.yml"
+    result: "actionlint-ok"
+    exit: 0
+    ts: "2026-10-09T12:43:10Z"
+    seat: claude-opus-5.5 (imperator)

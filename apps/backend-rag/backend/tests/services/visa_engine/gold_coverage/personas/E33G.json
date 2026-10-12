@@ -19,6 +19,10 @@
       "status": "KNOWN",
       "value": "FR"
     },
+    "work.annual_foreign_income_usd": {
+      "status": "KNOWN",
+      "value": 85000
+    },
     "work.employer_is_indonesian_entity": {
       "status": "KNOWN",
       "value": false

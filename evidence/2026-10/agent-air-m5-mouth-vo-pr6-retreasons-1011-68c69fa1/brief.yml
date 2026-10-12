@@ -1,0 +1,22 @@
+gear: 2
+gear_reason: >-
+  Size floor (diff with tests, observer and pack above 400 churn). Client-copy change in the mouth
+  adapter (one fact-derived sentence builder, EN and ID, plus two exported pack-pinned figures) on the
+  public Visa Oracle, with tests and a no-argument observer; no backend, no data, no pricing.
+mission: >-
+  A retirement visitor below the passive-income bound is told the figure the rules check - USD 3,000 a month -
+  and the E33E reason names the USD 50,000 deposit and the income condition.
+objective: >-
+  RETIREMENT_INCOME_BELOW_THRESHOLD joins the fact-derived no-path codes: a declared figure gets "You declared
+  USD X a month; the retirement visas (E33E/E33F) need documented passive income of at least USD 3,000 a month.",
+  a not-sure answer says it counted as zero, the static fallback names the figure, and E33E_RETIREMENT_ELIGIBLE
+  appends the income condition after the deposit figure; EN and Bahasa Indonesia twins; both thresholds exported
+  and pinned by tests to the newest signed pack.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+  - scripts/ci/observe_visa_oracle_retirement_reasons.py
+  - tests/scripts/test_observe_visa_oracle_retirement_reasons.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2

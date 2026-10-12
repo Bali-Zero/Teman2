@@ -1,0 +1,248 @@
+# Gear-2 evidence pack — Visa Oracle interview copy, truth-table successor (PR-C4-v3).
+# Every receipt is a command run in this worktree on 2026-10-09; ts captured in the same shell call.
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-08/09 — no internal language reaches the client; the interview copy follows
+  the result page and states only what the code does.
+mission: >-
+  The Visa Oracle interview explains why it asks in the visitor's words, EN and ID, and every
+  claim about an answer is checked against the code.
+lanes:
+  - lane: interview-copy-build
+    role: build
+    seat: Claude Sonnet 5.5 implementer, worktree mouth-visa-oracle-interview-copy-c4-v5 on M5.
+  - lane: interview-copy-truth-table
+    role: ground_truth
+    seat: >-
+      the per-key truth table (scratchpad spec-interview-truth-table-c4v3.md), derived from the
+      flow, the fact mapping, the question tree and the signed seq-26 pack.
+    nb: "/private/tmp/claude-501/-Users-balizero-nuzantara/97393d09-3316-4ddc-a999-9e558d25a8dd/scratchpad/spec-interview-truth-table-c4v3.md (no notebook: the truth table is derived from the code on disk)"
+    query_hash: "c42aa8975a93052a966e4154dde3ea8c3d27f5f1b2b72fde4d3671d255c9c8d2" # pragma: allowlist secret — sha256 of that spec file
+  - lane: interview-copy-review
+    role: review
+    seat: agy-gemini-3.1-pro (constructive copy review on the predecessor), cured.
+  - lane: interview-copy-sweep
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (red-team, read-only full sweep of all 114 changed keys); the CLI ran its
+      configured default model gpt-6-astra, run 05:14 to 05:25Z, verdict file codex-c4v4-verdict.txt.
+  - lane: interview-copy-gate
+    role: review
+    seat: fresh-opus-gate (final on-disk gates of the two predecessor PRs), cured in this successor.
+  - lane: interview-copy-redteam
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (red-team, read-only); the CLI ran its configured default model
+      gpt-6-astra, run 04:22 to 04:28Z, verdict file codex-c4v3-verdict.txt.
+pii_scan: clean
+bites:
+  consumer: >-
+    the CI harness, which runs this observer after the merge, and every visitor of
+    balizero.com/visa-oracle who opens a "why we ask" hint: the observer proves the copy they
+    read carries no engine, interface or field-name language, and the truth test proves the 55
+    sentences about what an answer does still match the reviewed text.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_client_copy.py
+  expect: "contains:OK visa-oracle client copy"
+decisions:
+  - id: D-truth-table-spec
+    decision: >-
+      The copy follows spec-interview-truth-table-c4v3.md (scratchpad), whose rows were derived
+      from flow.ts, fact-mapper.ts, tree.ts and the signed pack rulepack-prod-026 with sha256
+      dcbc12cd5844301c18c89bf9311d061fe6ad718ebbe13755afc9dd5b01c070cf. Section 2-A (27 keys),
+      2-C (7 keys) and the 9 addendum (16 rows) the 10 addendum (4 keys) and the 11 addendum (13 keys) are applied byte-exactly in both languages; 2-C covers keys outside the
+      original diff because they are visible and false on main. The dead keys of section 2-B are
+      not touched here: deleting them is a separate PR.
+  - id: D-full-subtree-before-push
+    decision: >-
+      The whole visa-oracle test subtree must run green before any push. The seven-file subset
+      never ran the engine adapter test that scans the shipped condition strings for reassuring
+      stems, which is how three Indonesian assumption notes with the stem pasti got through. The
+      full-subtree receipt below carries the real totals.
+  - id: D-successor-of-8145
+    decision: >-
+      Successor of the closed PR 8145. The final gate verified all 98 rendered changed keys true
+      and blocked only on the red full subtree: three assumption notes said pastikan. They now
+      say konfirmasi. Built on a fresh origin/main with the v4 code commits cherry-picked in
+      order, without their evidence commits.
+  - id: D-successor-of-8140
+    decision: >-
+      Successor of the closed PR 8140 (gate BLOCK on two keys that referred to an answer the
+      visitor never gave on that path: the code list above and the marriage registered above).
+      Built on a fresh origin/main that already holds C2 and C3; the v3 code commits were
+      cherry-picked without their evidence commits and the spec addendum 10 applied on top.
+  - id: D-penjamin-note-present-tense
+    decision: >-
+      Row 13 of the 11 addendum rewrites the penjamin assumption note in the present tense,
+      keeping the owner's service wording that Bali Zero can act as the penjamin (PR-M ruling).
+      Its not-sure handling was checked in the question tree and the fact mapper: the answer
+      becomes no. The past-tense assumption wording is now banned across every assumption key by
+      the truth test, and the conservative handling of that note is no longer a special case.
+  - id: D-no-reference-to-unseen-answer
+    decision: >-
+      A helper text never refers to an earlier answer (above, earlier, di atas, sebelumnya)
+      unless the flow guarantees that question precedes it on every path showing the text. The
+      only two references left were checked against the flow: the channel conflict message
+      shows only once the status-change answer exists, and the undecided-basis hint follows the
+      basis question in every retirement walk.
+  - id: D-no-promised-advisor
+    decision: >-
+      No interview sentence promises that a Bali Zero advisor confirms, reviews or checks
+      something the code does not guarantee; the advisor is offered, never promised. The same
+      rule is applied to the ten assumption sentences and the family sponsor basis hint, as the
+      lead's extension of Codex's rule (rows 6 to 16 of the spec addendum). Each assumption
+      preface was checked against the question's not-sure handling in the question tree and
+      the fact mapper: all ten state an assumption the mapper really makes. The hint on the
+      sponsor permit basis is rewritten because that answer reaches no rule of the signed pack.
+  - id: D-successor-of-8128
+    decision: >-
+      Successor of the closed PR 8128 (gate BLOCK on three HIGH truth findings: the retirement
+      basis hint, the sponsor category hint, the other-purpose and paid-activity hints). The
+      v2 code commits were cherry-picked from that branch, without its evidence commits, then
+      the truth table was applied on top.
+  - id: D-no-staff-channel
+    decision: >-
+      No sentence says an answer reaches Bali Zero staff: the only network call carrying answers
+      is the evaluation request, and the WhatsApp handoff states that interview answers are not
+      included. Answers that do not decide anything automatically are described as such, without
+      claiming a person reads them.
+  - id: D-identifier-guard
+    decision: >-
+      A dotted engine identifier inside a sentence is banned by both the census test and the
+      observer; template placeholders are exempt and a dotted dictionary key is not copy.
+receipts:
+  - claim: "The whole visa-oracle test subtree is green, including the engine adapter scan of the shipped condition strings."
+    cmd: "cd apps/mouth && npx vitest run src/app/(visa-oracle)"
+    result: "Test Files  48 passed (48); Tests  1308 passed (1308)"
+    exit: 0
+    ts: "2026-10-09T05:57:38Z"
+    seat: this session
+  - claim: "The bites observer finds no banned phrase, word or dotted identifier in the dictionary, the atlas copy or the adapter copy."
+    cmd: "python3 scripts/ci/observe_visa_oracle_client_copy.py"
+    result: "OK visa-oracle client copy: 3672 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-09T05:55:57Z"
+    seat: this session
+  - claim: "The observer guard has guilt and innocence tests in both languages."
+    cmd: "python3 -m pytest scripts/tests/test_observe_visa_oracle_client_copy.py -q"
+    result: "4 passed"
+    exit: 0
+    ts: "2026-10-09T05:55:57Z"
+    seat: this session
+  - claim: "The mouth typecheck is clean."
+    cmd: "cd apps/mouth && npx tsc --noEmit -p tsconfig.json"
+    result: "no output"
+    exit: 0
+    ts: "2026-10-09T05:56:23Z"
+    seat: this session
+  - claim: "Prettier accepts every touched TypeScript file."
+    cmd: "cd apps/mouth && npx prettier --check <touched files>"
+    result: "All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-10-09T05:55:56Z"
+    seat: this session
+dissent:
+  - seat: agy-gemini-3.1-pro
+    severity: HIGH
+    objection: English strings said Bali Zero consultant while the live result page says advisor.
+    status: CONFIRMED
+    note: cured in c5de6ed034, carried into this successor.
+  - seat: agy-gemini-3.1-pro
+    severity: MEDIUM
+    objection: The paid-up capital hint lost the promise that the exact amount is used.
+    status: CONFIRMED
+    note: cured in c5de6ed034, carried into this successor.
+  - seat: fresh-opus-gate
+    severity: HIGH
+    objection: why.birth_date was false and two helper sentences printed internal field names (gate of the first successor).
+    status: CONFIRMED
+    note: cured in b1f106c796, carried into this successor.
+  - seat: fresh-opus-gate
+    severity: HIGH
+    objection: why.retirement_basis claimed a basis not chosen is not counted, but passive income is checked on every basis and only the deposit is zeroed.
+    status: CONFIRMED
+    note: cured in 64e83b4246 from the truth table.
+  - seat: fresh-opus-gate
+    severity: HIGH
+    objection: why.sponsor_category said no rule uses the sponsor type, but ten seq-26 rules read it.
+    status: CONFIRMED
+    note: cured in 64e83b4246 from the truth table.
+  - seat: fresh-opus-gate
+    severity: HIGH
+    objection: The other-purpose and paid-activity hints were false for transit and for a yes that becomes an employment purpose.
+    status: CONFIRMED
+    note: cured in 64e83b4246 from the truth table.
+  - seat: codex-gpt-5.6-sol
+    severity: HIGH
+    objection: The urgent-lane notice said 1 to 2 days left, but the lane also triggers at 0 days, when the permit expires today.
+    status: CONFIRMED
+    note: cured in fd0ee3e4d2; the journal note is codex-c4v3-verdict.txt (run 04:22 to 04:28Z, real model gpt-6-astra).
+  - seat: codex-gpt-5.6-sol
+    severity: HIGH
+    objection: assumption.work_payer promised that a Bali Zero advisor confirms the point, but contact needs the visitor's consent and action.
+    status: CONFIRMED
+    note: cured in fd0ee3e4d2, the sentence now offers the advisor instead of promising a confirmation.
+  - seat: codex-gpt-5.6-sol
+    severity: HIGH
+    objection: assumption.remote_clients made the same promise of an advisor confirmation.
+    status: CONFIRMED
+    note: cured in fd0ee3e4d2, same wording as the work payer sentence.
+  - seat: codex-gpt-5.6-sol
+    severity: HIGH
+    objection: question.human_context_notice said the answer cannot select, rank, add or remove a visa, but context answers can change the evaluated purpose.
+    status: CONFIRMED
+    note: cured in fd0ee3e4d2, the sentence now says the answer may affect the questions or visa options shown.
+  - seat: codex-gpt-5.6-sol
+    severity: MEDIUM
+    objection: why.review_gate kept the internal phrase bear directly on the rules.
+    status: CONFIRMED
+    note: cured in fd0ee3e4d2, plain wording about immigration history and what the result notes.
+  - seat: fresh-opus-gate
+    severity: HIGH
+    objection: why.stay_permit_code said the same as in the code list above, but no code list ever precedes that question.
+    status: CONFIRMED
+    note: cured in 2789839fec, the reference is gone in EN and ID.
+  - seat: fresh-opus-gate
+    severity: HIGH
+    objection: why.family_stepchild_marriage_certificate_confirmed referred to the marriage registered answer above, which a stepchild applicant never gives.
+    status: CONFIRMED
+    note: cured in 2789839fec, the sentence stands on its own in EN and ID.
+  - seat: fresh-opus-gate
+    severity: LOW
+    objection: q.review_gate.hint named only the criminal record although the activity-crosses-categories item also ends with no visa named.
+    status: CONFIRMED
+    note: cured in 2789839fec, the hint says some items, such as a criminal record, mean no visa is named.
+  - seat: fresh-opus-gate
+    severity: LOW
+    objection: outcome.freshness.UNKNOWN said last check date unknown, but the badge shows when a check date is in the future.
+    status: CONFIRMED
+    note: cured in 2789839fec, the badge reads check status unknown.
+  - seat: codex-gpt-5.6-sol
+    severity: HIGH
+    objection: outcome.freshness.STALE said the source is being re-checked by our team, but nothing establishes that anyone is re-checking it.
+    status: CONFIRMED
+    note: cured in b8972352eb; the journal note is codex-c4v4-verdict.txt (run 05:14 to 05:25Z, real model gpt-6-astra). The badge now says the source needs to be checked again.
+  - seat: codex-gpt-5.6-sol
+    severity: MEDIUM
+    objection: why.birth_date said a child visa ends at 18, but the exclusion applies at assessment and does not end an issued visa.
+    status: CONFIRMED
+    note: cured in b8972352eb, the sentence now only says some visas have age limits and we check the age against them.
+  - seat: codex-gpt-5.6-sol
+    severity: LOW
+    objection: why.diaspora_connection spoke of multiple passports as such, but the restriction follows the selected answer.
+    status: CONFIRMED
+    note: cured in b8972352eb, the sentence names the answer chosen.
+  - seat: codex-gpt-5.6-sol
+    severity: LOW
+    objection: Nine assumption notes used the past tense although they appear before the assessment runs.
+    status: CONFIRMED
+    note: cured in b8972352eb, present tense, with the advisor offer kept.
+  - seat: fresh-opus-gate
+    severity: HIGH
+    objection: The full visa-oracle subtree was red because three Indonesian assumption notes contained the stem pasti that the shipped-strings scan bans.
+    status: CONFIRMED
+    note: cured in 085c5af728, the three notes say konfirmasi.
+spend:
+  wall_clock_hours: 4
+  adversarial_rounds: 7

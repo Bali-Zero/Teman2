@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 138185f5345454f0722d161602684d8f10efafd1d3152f2797ac3afd31facb3b # pragma: allowlist secret
+checksum: 4131fc068f09ee5ae41a37fc8899249d4bb00c6b4b641b9a451b21deb49d56be # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -670,11 +670,30 @@ organs:
     label: com.matagaruda.bridge.adaptive
   severity_on_silence: error
   cicatrix_refs: []
+- id: mata_garuda.sentinel_hourly.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 7200
+  owner_module: apps/mata-garuda/scripts/run_sentinel_cell.py
+  dependencies:
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.sentinel.hourly
+  severity_on_silence: warning
+  notes: Pro Sentinel Cell hourly pulse runner.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mata_garuda.sentinel_hourly.pro.json
+    timestamp_field: ts
+    status_field: status
 - id: mata_garuda.sentinel_daily.mini
   runtime: mini_launchd
   type: cron
   expected_hb_seconds: 90000
-  owner_module: apps/mata-garuda/scripts/run_sentinel.py
+  owner_module: apps/mata-garuda/scripts/run_sentinel_py.py
   dependencies:
   - infra.redis
   recovery_action: launchctl_kickstart
@@ -2745,6 +2764,26 @@ organs:
     path: ~/.organism/last_seen/mini.vercel_autopromote.json
     timestamp_field: ts
     status_field: status
+- id: mini.zero_sync
+  runtime: mini_launchd
+  type: cron
+  # 3900 = 300s tick + RUN_BUDGET 3300s (scripts/zero_sync/zero_sync.py) + 300s margin: the longest silence of a healthy organ is one tick of wait plus one run that spends its whole budget (a git call alone may take NET_TIMEOUT 1800s). The window follows the run budget, not the cadence.
+  expected_hb_seconds: 3900
+  owner_module: infra/launchagents/wrappers/mini-zero-sync.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.zero-sync
+  severity_on_silence: warning
+  notes: one-way mirror of canonical main into the product-only FastLabsNet/zero main
+    (scripts/zero_sync/zero_sync.py); refuses and says so when zero was changed directly
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.zero_sync.json
+    timestamp_field: ts
+    status_field: status
 - id: mini.voa_probe
   runtime: mini_launchd
   type: cron
@@ -3164,5 +3203,96 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.disk_janitor.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.localci_merger
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 5400
+  owner_module: scripts/localci/localci_merger_tick.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.localci-merger
+  severity_on_silence: warning
+  notes: 'LOCALCI-SOVEREIGN shadow merger tick on Pro (docs/specs/localci-sovereign-2026-10-07.md,
+    phases C-D): decides one armed same-repo PR per tick on the local gate, journals
+    it in ~/.nuzantara-pilots/local-ci/merger/decisions.jsonl and merges nothing.
+    Wrapper runs merger.py as committed on origin/main from the merger mirror. Kill
+    switch LOCALCI_MERGER_ENABLED=false. Phase-D instrument: merger.py report.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.localci_merger.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.disk_floor
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 3600
+  owner_module: scripts/ops/pro_disk_floor_tick.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.disk-floor
+  severity_on_silence: warning
+  notes: 'LOCALCI-SOVEREIGN B6 (docs/specs/localci-sovereign-2026-10-07.md, RULED 2026-10-08:
+    Pro keeps > 100 GB free, always): reads df -Pk /System/Volumes/Data every 30 min
+    (StartInterval 1800, no KeepAlive). ok above 100 GB, warning 60-100, failed under
+    60 (written as error); the note carries the free GB and, when not ok, the three
+    biggest top-level directories of ~. Kill switch PRO_DISK_FLOOR_ENABLED=false.
+    Born via organ_birth.py.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.disk_floor.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.visa_reattestation
+  runtime: pro_launchd
+  type: cron
+  # 1209600 = 2x this organ's own weekly (604800s) StartCalendarInterval cadence - one full missed run of slack before going stale.
+  expected_hb_seconds: 1209600
+  owner_module: infra/launchagents/wrappers/pro-visa-reattestation.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.visa-reattestation
+  severity_on_silence: warning
+  notes: Weekly Visa Oracle portal re-attestation - reads the OFFICIAL_PORTAL pages,
+    judges them, folds an UNSIGNED candidate pack and opens a PR for a session to sign
+    (born via organ_birth.py, genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.visa_reattestation.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.janitor
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1800
+  owner_module: scripts/ops/pro_janitor.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.janitor
+  severity_on_silence: warning
+  notes: 'Free-space keeper for Pro (docs/specs/pro-janitor-2026-10-10.md): every 10 min
+    (StartInterval 600, no KeepAlive) reads free GB on /System/Volumes/Data and moves
+    between GREEN/AMBER/RED/BLACK with hysteresis (enter 130/115/105, leave 140/125/112).
+    Runs ONLY an allowlist of three host-cache rules (uv cache prune, npm cache verify,
+    old ms-playwright revisions not pinned by the .links registry; BLACK adds no rule, it pages), never docker/Colima/VM
+    and never a process kill. Apply armed since rollout step 3 (PRO_JANITOR_APPLY=true). Heartbeat ok
+    unless a rule errors or BLACK (warning). pro.disk_floor stays the independent witness
+    of the floor. Kill switch PRO_JANITOR_ENABLED=false. Born via organ_birth.py.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.janitor.json
     timestamp_field: ts
     status_field: status

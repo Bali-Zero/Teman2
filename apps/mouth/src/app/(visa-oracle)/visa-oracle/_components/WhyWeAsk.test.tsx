@@ -8,7 +8,7 @@ const factMapping = {
   factPaths: ["immigration.currently_in_indonesia"],
 };
 const whyText =
-  "Your current location tells the engine whether this is an onshore situation or a future plan.";
+  "Where you are now decides which questions come next and which options can apply to you.";
 
 describe("WhyWeAsk", () => {
   it("renders inline content without an expandable control", () => {

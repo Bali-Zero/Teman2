@@ -38,7 +38,12 @@ import {
 } from "../../../../../scripts/visa-oracle/generate-walk-corpus";
 import { DEFAULT_OUT_DIR } from "../../../../../scripts/visa-oracle/generate-walk-corpus.cli";
 import { OutcomeSheet } from "../_components/OutcomeSheet";
-import { buildEngineOutcome, buildNoPathDoors } from "./engine-adapter";
+import {
+  SUPPORT_REASON_COPY,
+  UNMAPPED_REASON_COPY,
+  buildEngineOutcome,
+  buildNoPathDoors,
+} from "./engine-adapter";
 import { CATEGORY_TO_PURPOSE } from "./fact-mapper";
 import replay from "./fixtures/no-path-doors.replay.json";
 import type { Language } from "./flow";
@@ -54,7 +59,7 @@ type ReplayWalk = (typeof replay.walks)[number];
 
 /** The catalogue sentence a named cause must replace (engine-adapter.ts). */
 const GENERIC_NO_PATH_COPY =
-  "No visa in our verified catalogue covers the purpose you described.";
+  SUPPORT_REASON_COPY.OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES.en;
 
 /** The JSON import widens an all-empty column to `never[]`; the codes are
  * plain strings and every consumer here reads them as such. */
@@ -142,7 +147,7 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     ).toBe(replay.walk_corpus_fingerprint);
   });
 
-  it("covers the 14 dead ends and 1 held walk the census reports", () => {
+  it("covers the 16 dead ends, 3 held walks and 1 missing-input walk the current census reports", () => {
     // D19 (2026-09-16): the corpus regeneration this pin depends on surfaced
     // one walk the previous evidence had omitted —
     // `offshore_business_exploring_sponsor_no_no_route.json`, D12_NOT_CONVERTIBLE —
@@ -194,18 +199,20 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     // instead (HUMAN_REVIEW_REQUIRED, not counted here). NEEDS_INPUT loses
     // that one walk: 2 -> 1.
     //
-    // seq-23 regen (this PR, 2026-09-25): fixture was stale on origin/main
-    // since the pack 022 -> 023 fold (`kit/DRAFT-SPEC-A8-1.v2.md` §1,
-    // GATE-A3P-B-REPORT-7234.md finding 3). Pack moves 022 -> 023; state
-    // counts are untouched (14, 1) — the fold only appends
-    // `E33G_LOCAL_COMPANY_NOT_ALLOWED` on `offshore/remote` and
-    // `onshore/remote`, both already NO_SUPPORTED_PATH.
+    // Seq-28 Step B regenerates this evidence against the current highest
+    // signed pack, seq-27. The PR-11 boundary corpus raises the measured
+    // distribution to 16 NO_SUPPORTED_PATH / 3 HUMAN_REVIEW_REQUIRED /
+    // 1 NEEDS_INPUT; its two new E33G income witnesses are supported and do
+    // not enter this non-supported fixture.
     const states = replay.walks.map((walk) => walk.state);
     expect(
       states.filter((state) => state === "NO_SUPPORTED_PATH"),
-    ).toHaveLength(14);
+    ).toHaveLength(16);
+    expect(
+      states.filter((state) => state === "HUMAN_REVIEW_REQUIRED"),
+    ).toHaveLength(3);
     expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(1);
-    expect(replay.pack.file).toBe("rulepack-prod-023.signed.json");
+    expect(replay.pack.file).toBe("rulepack-prod-027.signed.json");
   });
 
   for (const walk of replay.walks.filter(
@@ -273,6 +280,21 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     });
   }
 
+  // `offshore/work/sponsor_government/trade_office_only/employer_no` —
+  // surfaced by the same D12-rename corpus regeneration as the walk in the
+  // dead-end count above, last touched by #6663 (2026-09-16), unrelated to
+  // this PR. `engine-adapter.ts` only reconstructs
+  // `OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES` for two named
+  // combinations today (`paidActivityWithoutIndonesianPayerReason` and the
+  // Second Home threshold one, `FACT_DERIVED_NO_PATH_CODES`); a GOVERNMENT
+  // sponsor whose trade-office question resolves "no" and whose employer is
+  // not Indonesian matches neither, so the generic sentence is the accurate,
+  // measured behaviour today — writing it a bespoke cause is a product
+  // decision outside a wording-only mandate, not a defect this diff owns.
+  const WALKS_WITHOUT_A_NAMED_CAUSE_YET = new Set([
+    "offshore/work/sponsor_government/trade_office_only/employer_no",
+  ]);
+
   // The browser found this hole before this loop did (2026-09-13): a code with
   // no entry in SUPPORT_REASON_COPY rendered `Verified reason: AGE_BELOW_55`
   // at a real reader on 7 of the 15 dead ends. Every walk is checked now, not
@@ -294,44 +316,37 @@ describe("no-path doors — the evidence behind every named alternative", () => 
         expect(reason.message.id).not.toContain("Alasan terverifikasi:");
         expect(reason.message.en).not.toContain(reason.code);
         expect(reason.message.id.length).toBeGreaterThan(0);
+        // Every cause is a sentence of its own: never the unmapped fallback,
+        // and never the generic catalogue sentence unless the walk is one of
+        // the known walks that still has no bespoke cause.
+        expect(reason.message.en).not.toBe(UNMAPPED_REASON_COPY.en);
+        expect(reason.message.id).not.toBe(UNMAPPED_REASON_COPY.id);
+        if (!WALKS_WITHOUT_A_NAMED_CAUSE_YET.has(walk.label)) {
+          expect(reason.message.en).not.toBe(GENERIC_NO_PATH_COPY);
+        }
       }
     });
   }
 
-  // `offshore/work/sponsor_government/trade_office_only/employer_no` —
-  // surfaced by the same D12-rename corpus regeneration as the walk in the
-  // dead-end count above, last touched by #6663 (2026-09-16), unrelated to
-  // this PR. `engine-adapter.ts` only reconstructs
-  // `OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES` for two named
-  // combinations today (`paidActivityWithoutIndonesianPayerReason` and the
-  // Second Home threshold one, `FACT_DERIVED_NO_PATH_CODES`); a GOVERNMENT
-  // sponsor whose trade-office question resolves "no" and whose employer is
-  // not Indonesian matches neither, so the generic sentence is the accurate,
-  // measured behaviour today — writing it a bespoke cause is a product
-  // decision outside a wording-only mandate, not a defect this diff owns.
-  const WALKS_WITHOUT_A_NAMED_CAUSE_YET = new Set([
-    "offshore/work/sponsor_government/trade_office_only/employer_no",
-  ]);
+  // The assertions above can fail: an unmapped code really renders the
+  // unmapped fallback, and the generic code renders the generic sentence.
+  it("proves the fallback assertions bite: an unmapped code reads as the unmapped copy", () => {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons[0].code = "SOMETHING_NOT_IN_ANY_TABLE";
+    const outcome = buildEngineOutcome(response, { facts: {} });
+    if (outcome.state !== "NO_SUPPORTED_PATH") throw new Error("state");
+    expect(outcome.noPathReasons[0].message.en).toBe(UNMAPPED_REASON_COPY.en);
+    expect(outcome.noPathReasons[0].message.id).toBe(UNMAPPED_REASON_COPY.id);
+  });
 
-  for (const walk of replay.walks.filter(
-    (candidate) =>
-      noPathReasonCodes(candidate).includes(
-        "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
-      ) && !WALKS_WITHOUT_A_NAMED_CAUSE_YET.has(candidate.label),
-  )) {
-    it(`replaces the generic catalogue sentence with a named cause: ${walk.label}`, () => {
-      const outcome = outcomeFor(walk);
-      if (outcome.state !== "NO_SUPPORTED_PATH") {
-        throw new Error(`expected NO_SUPPORTED_PATH, got ${outcome.state}`);
-      }
-      for (const reason of outcome.noPathReasons) {
-        expect(reason.message.en).not.toContain(GENERIC_NO_PATH_COPY);
-        expect(reason.message.en).not.toContain("Verified reason:");
-        expect(reason.message.id).not.toContain("Alasan terverifikasi:");
-        expect(reason.message.id.length).toBeGreaterThan(0);
-      }
-    });
-  }
+  it("proves the generic code reads as the generic catalogue sentence without a named cause", () => {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons[0].code =
+      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES";
+    const outcome = buildEngineOutcome(response, { facts: {} });
+    if (outcome.state !== "NO_SUPPORTED_PATH") throw new Error("state");
+    expect(outcome.noPathReasons[0].message.en).toBe(GENERIC_NO_PATH_COPY);
+  });
 
   // Slice A7-B, 2026-09-21 (restored in the 2026-09-22 rework after the
   // rebase onto B5-1 overwrote it wholesale): `person.guardian_consent` had
@@ -342,18 +357,20 @@ describe("no-path doors — the evidence behind every named alternative", () => 
   // gap (`GATE-A7-B-REPORT-7080.md`); the conductor's 2026-09-22T07:17:47Z
   // ruling accepted it as an ORDERING window (A7-M merges in the same queue
   // window, stacked on this head) rather than a code cure. A7-M (this PR)
-  // is that window closing: `guardian_consent` now has a reachable
-  // question (`tree.ts`'s `guardian_consent` node, asked right after
-  // `birth_date` for a minor — see `_lib/flow.ts`'s `birth_date` case), so
-  // the exemption is emptied rather than deleted outright — kept as the
-  // named escape hatch for the next fact whose question ships in a later
-  // PR than its contract (same ordering-window class as this one was). A
-  // missing input with no mapped question legitimately renders without a
-  // `questionId` (`engine-adapter.ts`'s `match ? { questionId } : {}`), so
-  // membership here is what exempts a fact from the "must be reopenable"
-  // assertion below — do not repopulate it without the same gate-named
-  // gap this entry once carried.
-  const FACTS_WITHOUT_A_REACHABLE_QUESTION_YET = new Set<string>([]);
+  // is that window closing: `guardian_consent` now has a reachable question
+  // (`tree.ts`'s `guardian_consent` node, asked right after `birth_date` for
+  // a minor). A missing input with no mapped question legitimately renders
+  // without a `questionId` (`engine-adapter.ts`'s
+  // `match ? { questionId } : {}`), so exemptions below are exact
+  // walk+fact pairs rather than a global fact allowlist.
+  const INPUTS_WITHOUT_A_REACHABLE_QUESTION_YET = new Set<string>([
+    // PR-11's boundary walk deliberately answers retirement basis
+    // `undecided` and then `still_unsure`. flow.ts intentionally asks no
+    // evidence question after that answer, so the seq-27 replay's
+    // passive-income NEEDS_INPUT remains a handoff row rather than reopening
+    // a question the visitor just declined to choose a basis for.
+    "offshore/retirement/undecided/age64/still_unsure:secondhome.passive_monthly_income_usd",
+  ]);
 
   for (const walk of replay.walks.filter(
     (candidate) => candidate.state === "NEEDS_INPUT",
@@ -365,7 +382,8 @@ describe("no-path doors — the evidence behind every named alternative", () => 
       }
       expect(outcome.missingInputs.length).toBeGreaterThan(0);
       for (const input of outcome.missingInputs) {
-        if (!FACTS_WITHOUT_A_REACHABLE_QUESTION_YET.has(input.code)) {
+        const exceptionKey = `${walk.label}:${input.code}`;
+        if (!INPUTS_WITHOUT_A_REACHABLE_QUESTION_YET.has(exceptionKey)) {
           expect(
             input.questionId,
             `${walk.label} cannot reopen ${input.code}, so the visitor is left with a dead sentence`,

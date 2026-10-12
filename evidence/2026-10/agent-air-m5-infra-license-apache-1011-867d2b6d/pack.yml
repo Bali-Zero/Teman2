@@ -1,0 +1,81 @@
+task_id: license-apache-1011
+mission: LOCALCI-SOVEREIGN (the CodeQL contexts' licence precondition)
+colour: BLUE
+gear: 1
+gear_reason: >-
+  A licence grant decided by the owner: LICENSE, NOTICE and the root package's licence field; no code or check changes.
+l_level: L2
+gate_class: opus
+objective: >-
+  Release the repo under Apache-2.0 so it is an Open Source Codebase under the GitHub CodeQL Terms.
+constraints:
+  - Official Apache-2.0 text byte for byte; NOTICE excludes what is not the holder's to license; no invented legal entity.
+acceptance:
+  - text: LICENSE SHALL be the official text (sha256 cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30 of https://www.apache.org/licenses/LICENSE-2.0.txt).
+    probe: "shasum -a 256 LICENSE"
+  - text: GitHub SHALL detect the repo's licence as Apache-2.0 after merge.
+    probe: "gh repo view Bali-Zero/Teman2 --json licenseInfo --jq .licenseInfo.spdxId"
+consumer_map:
+  - GitHub's licence detection (repo licenseInfo) and the GitHub CodeQL Terms' Open Source Codebase condition, read by the CodeQL-local lane next.
+pii_scan: clean
+pii_scan_note: Licence text, a NOTICE naming directories (no client data) and one package.json field.
+lanes:
+  - lane: license-apache-1011
+    role: build
+    seat: claude-sonnet-5 (implementer on M5)
+  - lane: license-apache-1011
+    role: build
+    seat: claude-opus-5-5 (lead; package licence field, NOTICE package clause)
+what_changed: |
+  LICENSE: the Apache License 2.0 text fetched from apache.org, unmodified (202 lines). NOTICE: "Teman2 / Nuzantara", "Copyright
+  2025-2026 Bali Zero", the licence line, and an exclusion list (vendored third-party code under vendor/ and bundled OFL fonts; personal data of any natural person; Bali Zero/Zantara names and brand assets; photographs of people,
+  apps/mouth/public/static/team/; generated images and audio, apps/mouth/public/static/image_art/ and *.mp3; third-party and
+  government datasets, data/source_documents/ and the KBLI datasets in apps/kbli-navigator-macos/Resources/; files with their own
+  licence header and packages whose manifest declares its own licence, apps/mata-garuda and apps/nuzantara-mcp-advanced, MIT).
+  package.json and package-lock.json's root entry: "license" ISC -> Apache-2.0 (the npm default ISC contradicted the grant).
+proof: |
+  The LICENSE hash is the official text's; every path NOTICE names exists on origin/main (git ls-tree); package.json and the lock parse.
+bites:
+  consumer: GitHub's licence detection for Bali-Zero/Teman2, which the CodeQL-local lane reads as its precondition.
+  observation: >-
+    After merge `gh repo view Bali-Zero/Teman2 --json licenseInfo` reports spdxId Apache-2.0 (today: none), quoted in a PR comment.
+ground:
+  ts: "2026-10-10T23:52:59Z"
+  siblings: >-
+    Worktree from origin/main. The CodeQL-local design lane is read-only until this merges; no other open PR touches LICENSE,
+    NOTICE or the root package's licence field (the lock is touched on its root entry only).
+spend:
+  adversarial_rounds: 1
+  wall_clock_hours: 0.3
+receipts:
+  - claim: "LICENSE sha256 cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30, the official Apache-2.0 text's."
+    cmd: shasum -a 256 LICENSE
+    exit: 0
+    ts: "2026-10-10T23:54:43Z"
+    seat: claude-opus-5-5 on M5 (lead)
+  - claim: "The repo today: visibility PUBLIC, licenseInfo none, no LICENSE at the root."
+    cmd: gh repo view Bali-Zero/Teman2 --json visibility,licenseInfo,isPrivate
+    exit: 0
+    ts: "2026-10-10T23:20:00Z"
+    seat: claude-opus-5-5 on M5 (lead; approximate time)
+dissent:
+  - seat: claude-opus-5-5 independent gate (round 1, CONFIRMED)
+    objection: >-
+      MEDIUM: vendor/evoskill (upstream Apache-2.0) and the SIL OFL 1.1 fonts were not named in NOTICE; LOW: no 2024 provenance for
+      the start year (first commit 2025-12-19); no personal-data exclusion; residuals lacked contributor copyright and the
+      research/personal and osint-nexus-ui notes.
+    status: CONFIRMED
+    resolution: >-
+      NOTICE names vendored code under vendor/ and the bundled fonts, excludes personal data of any natural person, and reads
+      2025-2026; the residuals below carry the rest.
+residuals:
+  - "The holder is 'Bali Zero', the name the site footers use; the repo names a legal entity inconsistently (PT Bali Zero Investama in book data, CV Bayu Santero in one archived doc). The owner may substitute the entity in NOTICE."
+  - "Earlier commits stay as they were published: the grant covers the tree from this commit on, as Apache-2.0 applies to the Work distributed under it."
+  - "Fourteen sub-packages are private: true with no licence field; they fall under the root LICENSE (two non-private ones, evidence/dual-consul-astra and packages/design-system, too)."
+  - "The holder must own, or be authorised for, every contribution in the tree (contractors, translators, external seats): the grant is the holder's, not theirs."
+  - "research/personal/ (the owner's own research notes, already public) becomes Apache-licensed documentation; apps/osint-nexus-ui is UI code only and becomes Apache-licensed (the OSINT data itself is never on GitHub). Both are named to the owner."
+appetite_exceeded: none
+plan_ref: >-
+  Owner decision 2026-10-11 ("Licenza open source", AskUserQuestion) after the lead found the CodeQL Terms' Open Source Codebase
+  condition; lead's choice of Apache-2.0 (patent grant) among OSI licences.
+brief_ref: evidence/brief.yml

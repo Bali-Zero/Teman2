@@ -7,7 +7,6 @@
     "birth_date",
     "category",
     "trip_scope",
-    "sponsor_category",
     "retirement_basis",
     "retirement_undecided_basis",
     "stay_days",
@@ -62,6 +61,10 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
+    "work.annual_foreign_income_usd": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "investment.pt_pma_committed": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
@@ -111,7 +114,7 @@
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "sponsor.type": { "status": "KNOWN", "value": "NONE" },
+    "sponsor.type": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "sponsor.government_invitation": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"

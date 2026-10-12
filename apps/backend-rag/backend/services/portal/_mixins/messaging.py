@@ -13,6 +13,22 @@ import asyncpg
 from backend.services.common.cache import cache_invalidating
 from backend.services.portal._rbac import ClientContext, require_client_access
 
+TEAM_SENDER_FALLBACK = "Bali Zero"
+
+
+def _display_sender(row: Any) -> str | None:
+    """Sender line the client sees.
+
+    Team messages store the staff email in ``sent_by``; the client sees the
+    staff name instead, or "Bali Zero" when no name is on file (Antonello,
+    30 Sep 2026). The stored ``sent_by`` is not changed. Client messages keep
+    their own sender.
+    """
+    if row["direction"] != "team_to_client":
+        return row["sent_by"]
+    name = (row.get("sender_name") or "").strip()
+    return name or TEAM_SENDER_FALLBACK
+
 
 class PortalMessagingMixin:
     """Messaging (portal_messages) and client preferences (client_preferences)."""
@@ -53,10 +69,20 @@ class PortalMessagingMixin:
                 """
                 SELECT m.id, m.subject, m.content, m.direction, m.sent_by,
                        m.read_at, m.created_at, m.practice_id,
-                       p.id as practice_id, pt.name as practice_name
+                       p.id as practice_id, pt.name as practice_name,
+                       tm.sender_name
                 FROM portal_messages m
                 LEFT JOIN practices p ON p.id = m.practice_id
                 LEFT JOIN practice_types pt ON pt.id = p.practice_type_id
+                LEFT JOIN LATERAL (
+                    SELECT COALESCE(NULLIF(btrim(t.full_name), ''), NULLIF(btrim(t.name), ''))
+                           AS sender_name
+                    FROM team_members t
+                    WHERE m.direction = 'team_to_client'
+                      AND lower(t.email) = lower(m.sent_by)
+                    ORDER BY t.id
+                    LIMIT 1
+                ) tm ON TRUE
                 WHERE m.client_id = $1
                 ORDER BY m.created_at DESC
                 LIMIT $2 OFFSET $3
@@ -88,7 +114,7 @@ class PortalMessagingMixin:
                         "subject": m["subject"],
                         "content": m["content"],
                         "from_team": m["direction"] == "team_to_client",
-                        "sent_by": m["sent_by"],
+                        "sent_by": _display_sender(m),
                         "is_read": m["read_at"] is not None,
                         "practice_id": m["practice_id"],
                         "practice_name": m["practice_name"],

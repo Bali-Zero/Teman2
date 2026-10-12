@@ -1,0 +1,115 @@
+# Gear-3 evidence pack — the Mini healer memoizes like Pro, and the memo tests get a CI executor.
+# Written by the imperator session (Claude Opus 5.5, M5), verifier and shipper. The port is a Claude Sonnet builder
+# session's; the council cures are the imperator's. Every receipt is a command this writer ran on 2026-10-09; scratch
+# under ~/.agent/campaign-20261005/work/imperator-minimemo/ and work/build-mini-memo/ (not committed).
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+ruling: >-
+  Owner 2026-10-09: "fai tutto tu e decidi tu al meglio". Campaign rule after #8079: at least gear 2 so harness-floor
+  holds for the independent final gate; the workflow edit floors this PR at 3.
+mission: >-
+  Stop the Mini healer from spawning a capped LLM session on every 4 h tick when nothing changed and the last session
+  found nothing it could cure, by porting Pro's G11 memoize; and give the memo tests a CI step that can go red (W108).
+# One build lane, one family: both builders are Anthropic seats, declared together rather than split, because the D3
+# rule's builder diversity is about multi-lane builds. Cross-family diversity here is the council's (OpenAI, Moonshot),
+# which found the four defects cured below.
+lanes:
+  - lane: build
+    role: build
+    seat: >-
+      Anthropic family, two seats. claude-sonnet-5 (build-mini-memo) built the memo block, the observations axis, the
+      HEALER_VERDICT prompt line and the first corpus (29 checks, 10 mutants). claude-opus-5.5 (imperator) verified it
+      under /bin/bash 3.2, proved Pro's hashes unchanged, wired the CI steps, and cured the council's findings with nine
+      new corpus checks.
+  - lane: council
+    role: review
+    seat: >-
+      Sealed council: the Dux position was written to council-brief.md at 08:46:43Z before any seat was asked; Codex O2
+      (codex-gpt-5.6-sol roster seat) and Kimi k3 answered on a scratch export of main with the patch applied.
+seat_diversity: >-
+  Three families: Anthropic (builder, shipper), OpenAI (Codex O2), Moonshot (Kimi k3). tp1-qwen3.8-max is 429 until
+  2026-10-11T16:00Z. The final gate is a fresh Claude session outside this chain.
+pii_scan: clean
+bites:
+  consumer: >-
+    Mini's launchd com.nuzantara.healer.4h running ~/scripts/healer-run.sh (a declared HOME pair, delivered after merge),
+    and the watchdog-third-state workflow running the two memo corpora on every PR that touches them.
+  observation: >-
+    After delivery, the first Mini tick whose receptor state equals the previous tick's, after an incurable verdict, logs
+    "memoized:" and spawns no session; the first tick after any real change spawns. On this PR's head the
+    watchdog-third-state job runs test_mini_healer_memo.sh and test_healer_memo.py.
+decisions:
+  - >-
+    Mirror Pro's block and its memo tool; Mini-only inputs ride an optional `observations` axis, absent for Pro, so Pro's
+    fingerprints do not move.
+  - >-
+    Reason tokens whose text is constant carry a content hash: the overdue ledger rows (every field but age), the HIGH
+    groups of the uncapped board, and the outbox counts. Any input that cannot be read yields no fingerprint, so the
+    session spawns.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: garuda-outbox-undrained is a constant token, so a new exhausted row or another API fault does not move the fingerprint.
+    status: CONFIRMED
+    resolution: >-
+      Cured. The outbox counts are hashed into the observations; an unreadable outbox verdict spawns. Corpus rows "outbox
+      counts changed -> spawn" and "outbox verdict unreadable -> spawn".
+  - seat: codex-gpt-5.6-sol
+    objection: The ledger digest hashed only opened, owner and artifact, so new text on the same row stayed memoized.
+    status: CONFIRMED
+    resolution: >-
+      Cured. Every row field except age_days and overdue joins the key, raw_head included. Corpus row "ledger row text
+      changed, same set -> spawn".
+  - seat: codex-gpt-5.6-sol
+    objection: The board was hashed after the hook's byte cap, so a change in a HIGH group past the cap stayed memoized.
+    status: CONFIRMED
+    resolution: >-
+      Cured. The memo re-reads the hook with SESSIONSTART_HOOK_MAX_BYTES raised; an unreadable or empty board spawns.
+      Corpus rows "HIGH change hidden by the hook's byte cap -> spawn" and "board unreadable -> spawn".
+  - seat: codex-gpt-5.6-sol
+    objection: _HM_ESC_OUT and the other memo inputs were exported, so board text sat in the environment the session inherits.
+    status: CONFIRMED
+    resolution: >-
+      Cured. The inputs are assigned on the hashing command only. Corpus row "no memo input is exported to the session".
+  - seat: kimi-code/k3
+    objection: The state builder's stderr was not redirected, so a traceback would miss the healer log.
+    status: CONFIRMED
+    resolution: >-
+      Cured. The builder's stderr appends to the log; the behaviour was already fail-open.
+  - seat: kimi-code/k3
+    objection: The corpus runs the bash on PATH, so the bash 3.2 claim holds only where PATH resolves to /bin/bash.
+    status: PLAUSIBLE
+    resolution: >-
+      Declared. On M5 and Mini PATH bash is /bin/bash 3.2.57 (measured on M5); CI runs it under ubuntu's bash 5, which
+      covers the newer shell. Both shells pass.
+receipts:
+  - claim: "R1 — the Mini memo corpus passes on this head under /bin/bash 3.2 (38 checks)."
+    cmd: "/bin/bash scripts/tests/test_mini_healer_memo.sh"
+    result: "ALL PASS, 38 ok lines"
+    exit: 0
+    ts: "2026-10-09T09:00:26Z"
+    seat: claude-opus-5.5 (imperator)
+  - claim: "R2 — the council-cure rows bite: the same corpus against the wrapper as it stood before the council fails exactly the seven new silence and leak checks."
+    cmd: "MINI_HEALER_UNDER_TEST=wrapper.precouncil.sh /bin/bash scripts/tests/test_mini_healer_memo.sh"
+    result: "7 FAIL lines plus the FAILURES trailer: export leak, new HIGH escalation, HIGH change past the cap, board unreadable, ledger row text, outbox counts, outbox unreadable"
+    exit: 0
+    ts: "2026-10-09T09:01:01Z"
+    seat: claude-opus-5.5 (imperator)
+  - claim: "R3 — the watchdog-third-state pytest step's exact invocation passes."
+    cmd: "python3 -m pytest -q scripts/tests/test_healer_run_checks.py scripts/tests/test_pro_healer_receptors.py scripts/tests/test_healer_receptor_findings.py scripts/tests/test_healer_memo.py"
+    result: "114 passed, 17 subtests passed"
+    exit: 0
+    ts: "2026-10-09T09:01:18Z"
+    seat: claude-opus-5.5 (imperator)
+  - claim: "R4 — the existing third-state corpus still passes, the wrapper parses under bash 3.2, the workflow lints; shellcheck finding set equal to base."
+    cmd: "/bin/bash scripts/tests/test_watchdog_third_state.sh ; /bin/bash -n infra/healer/healer-run.sh ; actionlint .github/workflows/watchdog-third-state.yml ; shellcheck set diff"
+    result: "ALL PASS ; bash32-n-ok ; actionlint-ok ; shellcheck-set-equal"
+    exit: 0
+    ts: "2026-10-09T09:02:23Z"
+    seat: claude-opus-5.5 (imperator)
+  - claim: "R5 — Pro's fingerprints are unchanged: base and head healer_memo.py hash three Pro-shaped states identically."
+    cmd: "printf <state> | python3 base_memo.py fingerprint ; printf <state> | python3 scripts/healer_memo.py fingerprint"
+    result: "same a062241fa0f2 ; same 5fa6f15c5ee3 ; same 5fa6f15c5ee3 ; an observations entry moves the hash"
+    exit: 0
+    ts: "2026-10-09T08:36:00Z"
+    seat: claude-opus-5.5 (imperator)

@@ -115,11 +115,14 @@ export type OutcomeTimeline =
       basisDateIso: string;
       earliestDateIso: string;
       latestDateIso: string;
-      note?: LocalizedText;
+      /** Bali Zero's typical window in Indonesian working days; absent from an older backend. */
+      workingDaysMin?: number;
+      workingDaysMax?: number;
     }
   | {
       status: "CONTACT_REQUIRED" | "UNAVAILABLE";
-      message: LocalizedText;
+      /** Optional: the renderer owns the pending-timeline sentence. */
+      message?: LocalizedText;
     };
 
 export interface OutcomeDocument {
@@ -142,7 +145,19 @@ export interface OutcomeCandidate {
   decisionReasons: readonly OutcomeReason[];
   timeline: OutcomeTimeline;
   price: OutcomePrice;
+  /** Present only when the engine priced a stay-permit duration (seq-26). */
+  duration?: OutcomeDuration;
   documents: readonly OutcomeDocument[];
+}
+
+export interface OutcomeDuration {
+  selectedDays: number;
+  options: readonly {
+    days: number;
+    amountIdr: number | null;
+    selected: boolean;
+  }[];
+  extensionRequired: boolean;
 }
 
 export interface OutcomeStep {
@@ -151,7 +166,10 @@ export interface OutcomeStep {
   body?: LocalizedText;
 }
 
-export type OutcomeNextSteps = readonly [OutcomeStep, OutcomeStep, OutcomeStep];
+/** Three steps, or two when one (the open door) has nothing to point at. */
+export type OutcomeNextSteps =
+  | readonly [OutcomeStep, OutcomeStep, OutcomeStep]
+  | readonly [OutcomeStep, OutcomeStep];
 
 export interface OutcomeAssessment {
   publicId?: string;

@@ -54,6 +54,18 @@ export interface QuestionScreenProps {
    * (`questionPromptI18nKey`). Never consulted to select, gate or skip a
    * question — that is the reducer's job. */
   facts?: OracleFacts;
+  /** Values for `{{name}}` placeholders in the prompt and its hint — today
+   * only the retirement-age notice's date. */
+  promptVars?: Record<string, string | number>;
+  /** Navigation buttons shown under the options. Never an answer: choosing
+   * one records nothing (the retirement-age notice's two exits). */
+  secondaryActions?: readonly {
+    key: string;
+    labelI18nKey: I18nKey;
+    onSelect: () => void;
+  }[];
+  /** Accessible name of the secondary-actions group. */
+  secondaryActionsLabelI18nKey?: I18nKey;
 }
 
 /**
@@ -75,6 +87,9 @@ export function QuestionScreen({
   conflictI18nKey,
   currentAnswer,
   facts,
+  promptVars,
+  secondaryActions,
+  secondaryActionsLabelI18nKey,
 }: QuestionScreenProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [dateValue, setDateValue] = useState("");
@@ -151,11 +166,11 @@ export function QuestionScreen({
 
       <div>
         <h1 className="oracle-headline" tabIndex={-1} ref={headingRef}>
-          {translate(language, promptKey)}
+          {translate(language, promptKey, promptVars)}
         </h1>
         {hasHint && (
           <p className="oracle-question__hint">
-            {translate(language, hintKey)}
+            {translate(language, hintKey, promptVars)}
           </p>
         )}
       </div>
@@ -196,7 +211,7 @@ export function QuestionScreen({
         <div
           className="oracle-tiles"
           role="group"
-          aria-label={translate(language, promptKey)}
+          aria-label={translate(language, promptKey, promptVars)}
           onMouseLeave={
             presentation === "watershed"
               ? () => onPreviewOption?.(null)
@@ -265,7 +280,7 @@ export function QuestionScreen({
                 : "oracle-options"
           }
           role="group"
-          aria-label={translate(language, promptKey)}
+          aria-label={translate(language, promptKey, promptVars)}
         >
           {(presentation === "world"
             ? // FIX-ROUND-2 K4: the world presentation renders "no" (left
@@ -323,6 +338,31 @@ export function QuestionScreen({
               </button>
             );
           })}
+        </div>
+      )}
+
+      {secondaryActions && secondaryActions.length > 0 && (
+        <div
+          className="oracle-options oracle-options--secondary"
+          role="group"
+          aria-label={
+            secondaryActionsLabelI18nKey
+              ? translate(language, secondaryActionsLabelI18nKey)
+              : undefined
+          }
+        >
+          {secondaryActions.map((action) => (
+            <button
+              key={action.key}
+              type="button"
+              className="oracle-option-card oracle-option-card--secondary"
+              data-secondary-action={action.key}
+              onClick={action.onSelect}
+            >
+              <span>{translate(language, action.labelI18nKey)}</span>
+              <ArrowRight aria-hidden="true" size={18} />
+            </button>
+          ))}
         </div>
       )}
 

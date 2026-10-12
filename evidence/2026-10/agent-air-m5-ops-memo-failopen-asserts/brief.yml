@@ -1,0 +1,25 @@
+task: >-
+  The Mini healer memo corpus (scripts/tests/test_mini_healer_memo.sh, PR #8160) checks that an unreadable board, outbox
+  or ledger makes the tick spawn, but the final gate of #8160 found the board and outbox rows pass only because the
+  fingerprint differs from the re-armed state, not because the fail-open path ran: removing the fail-open survived.
+  Make those rows assert the builder-failed log line, and add the empty-board row.
+lane: ops
+machine: m5
+date: 2026-10-09
+gear: 2
+gear_reason: >-
+  Measured floor 1 (one test corpus). Campaign rule after #8079: at least gear 2 so harness-floor holds for the
+  independent final gate.
+acceptance:
+  A1:
+    text: >-
+      For an unreadable ledger, a non-JSON board, an empty board and an outbox verdict without counts, the corpus asserts
+      the anchored line "healer_memo check (rc=1): no fingerprint (receptor-state builder failed)" and the fail-open line,
+      not only the spawn.
+    probe: /bin/bash scripts/tests/test_mini_healer_memo.sh (run by watchdog-third-state).
+  A2:
+    text: >-
+      Removing the empty-board guard, or skipping the outbox observation instead of failing, turns rows red; a non-JSON
+      board coerced to empty is an equivalent mutant (the empty-board guard still fails the builder), and coercing it with
+      the empty-board guard removed turns rows red.
+    probe: the corpus with MINI_HEALER_UNDER_TEST pointed at each mutant copy of the wrapper.

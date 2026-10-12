@@ -1,0 +1,36 @@
+task_id: localci-b8b-1009
+mission: LOCALCI-SOVEREIGN (phase D, step B8b)
+colour: BLUE
+gear: 1
+gear_reason: >-
+  One bounded function in the merger's prune (read the VM's mount table, remount with discard when it is off), its tests and
+  mutant rules, and two documentation paragraphs. No hot-zone path, workflow, credential, wrapper or plist change; the lint
+  floor is 1 by size.
+l_level: L2
+gate_class: opus
+objective: >-
+  Pro's Colima VM disk (/dev/vdb1, ext4, mounted on /mnt/lima-colima and bind-mounted on /var/lib/docker) is a 60 GiB sparse file on
+  the host (~/.colima/_lima/_disks/colima/datadisk), trimmed once per tick at the end. A read-only sampler on 2026-10-09 (every 20 s)
+  showed the datadisk's host allocation climbing to 54.0 GiB inside a tick while the VM used 36.6-40 GiB: 14-17 GiB of freed blocks
+  returned only at the end-of-tick trim, and the host's free space fell to 104.0 GiB at 12:07:08Z (100.3 GiB at 10:29:44Z, another
+  session's read) against the owner's floor of more than 100 GB free at all times. At 12:07:47Z the lead remounted the disk with
+  online discard by hand. Mount options do not survive a VM restart; B8b makes the prune keep the option.
+constraints:
+  - Only the real (non-dry) prune that runs the fstrim acts, with the same colima argument and guards; a dry run makes no colima call.
+  - A measurement problem (unreadable table, timeout) is journalled and never stops the prune.
+  - The mount point is matched as a /proc/mounts field and the option as a comma-split field, never as a substring.
+acceptance:
+  - text: A disk mounted without discard SHALL be remounted once with exactly "remount,discard" on /mnt/lima-colima, before the fstrim.
+    probe: "test_prune.py::test_b8b_a_disk_mounted_without_discard_is_remounted_once_before_the_trim"
+  - text: A disk already mounted with discard SHALL NOT be remounted.
+    probe: "test_prune.py::test_b8b_a_disk_already_mounted_with_discard_is_not_remounted"
+  - text: nodiscard SHALL read as off and a longer mount-point path SHALL NOT match.
+    probe: "test_prune.py::test_b8b_nodiscard_is_off_and_a_longer_mount_point_is_not_the_data_disk"
+  - text: A remount that does not take SHALL add vm_discard to failed, and the trim SHALL still run.
+    probe: "test_prune.py::test_b8b_a_failed_remount_fails_the_prune_but_the_trim_still_runs"
+  - text: An unreadable table SHALL be journalled as null with an error, with no remount and the prune completing.
+    probe: "test_prune.py::test_b8b_an_unreadable_mount_table_is_journalled_never_raised_and_nothing_is_remounted"
+consumer_map:
+  - scripts/localci/merger.py prune (via the launchd tick com.balizero.localci-merger on Pro) — the vm_discard key of the prune line in decisions.jsonl.
+pii_scan: clean
+pii_scan_note: Prune code, tests on fake colima/docker scripts under tmp, mutant rules and documentation. Host paths and byte counts only; no client data was read or written.

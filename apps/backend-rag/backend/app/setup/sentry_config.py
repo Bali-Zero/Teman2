@@ -64,6 +64,10 @@ _PII_KEY_SUBSTRINGS: tuple[str, ...] = (
     "last_name",
     "full_name",
     "contact_name",
+    # Seq-28 Step B: the E33G interview now sends this SENSITIVE financial
+    # fact. Match the exact semantic token rather than broad "income" or
+    # "usd" substrings, which would erase legitimate diagnostic counters.
+    "annual_foreign_income_usd",
     # Added 2026-08-25 (GARUDA VOA L4 magic-link auth, CodeQL
     # py/clear-text-storage-sensitive-data #8755 review): covers
     # `account_session_secret` / `result_session_secret` / any future

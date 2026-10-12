@@ -40,6 +40,8 @@ on:
       - "scripts/tests/test_prepush_tip_drift.sh"
       - "scripts/tests/test_prepush_suite_lock.sh"
       - "scripts/tests/test_prepush_default_off.sh"
+      - "scripts/push_witness_reconcile.py"
+      - "scripts/tests/test_push_witness.py"
       - "scripts/tests/test_test_deps_declared.py"
       - "apps/backend-rag/requirements-test.txt"
       - ".github/workflows/tests.yml"
@@ -125,3 +127,11 @@ jobs:
       # already does.
       - name: Guard — the backend suite defaults off, and PREPUSH_FULL=1 still forces it
         run: sh scripts/tests/test_prepush_default_off.sh
+
+      # The runtime push witness: the hook's marker and the reconciler that reads it.
+      # Before this step the corpus ran only in the nightly report-only sweep, so a
+      # PR could break the witness with every per-PR check green.
+      - name: Guard — a pushed agent tip is judged by its runtime witness
+        run: |
+          pip install pytest
+          python3 -m pytest -q scripts/tests/test_push_witness.py

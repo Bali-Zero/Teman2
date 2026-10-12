@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
+import jwt
 import pytest
-from jose import jwt
 
 from backend.app.core.config import settings
 

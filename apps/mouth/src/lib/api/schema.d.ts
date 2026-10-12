@@ -5037,6 +5037,9 @@ export interface paths {
     /**
      * Update Document
      * @description Update a document.
+     *
+     *     `client_visible` is a separate gate: only CRM admins, Team Leader, Tax Lead and
+     *     Supervisor may send it (403 otherwise, nothing written).
      */
     patch: operations["update_document_api_crm_clients__client_id__documents__doc_id__patch"];
     trace?: never;
@@ -19247,7 +19250,8 @@ export interface components {
      *     ``family.sponsor_permit_basis`` fields (2026-08-23),
      *     ``immigration_renewal_paid`` (2026-08-24), the ten seq-21
      *     qualification facts (2026-09-13) and ``person_guardian_consent``
-     *     (2026-09-21, Slice A7-B) below — all the same rollout mechanism.
+     *     (2026-09-21, Slice A7-B), plus ``work_annual_foreign_income_usd``
+     *     (2026-10-11, seq-28 Step A) below — all the same rollout mechanism.
      *     Field order mirrors ``enums.FactPath``'s
      *     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
      *     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
@@ -19568,6 +19572,10 @@ export interface components {
       "study.sponsor_confirmed":
         | components["schemas"]["UnknownFact"]
         | components["schemas"]["KnownBoolean"];
+      /** Work.Annual Foreign Income Usd */
+      "work.annual_foreign_income_usd"?:
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownNonNegativeInteger"];
       /** Work.Employer Country Code */
       "work.employer_country_code":
         | components["schemas"]["UnknownFact"]
@@ -20045,6 +20053,11 @@ export interface components {
     CandidateDisplayDTO: {
       availability: components["schemas"]["CandidateAvailabilityDTO"];
       documentation: components["schemas"]["CandidateDocumentationDTO"];
+      /** Duration Options */
+      duration_options?:
+        components["schemas"]["DurationOptionDisplayDTO"][] | null;
+      /** Extension Required */
+      extension_required?: boolean | null;
       name: components["schemas"]["ProductNames"];
       pricing: components["schemas"]["CandidatePricingDTO"];
       processing_timeline: components["schemas"]["CandidateProcessingTimelineDTO"];
@@ -20057,6 +20070,8 @@ export interface components {
       product_version_id: string;
       /** Rank */
       rank: number;
+      /** Selected Duration Days */
+      selected_duration_days?: number | null;
       stay_policy: components["schemas"]["CandidateStayPolicyDTO"];
       tagline: components["schemas"]["ProductNames"] | null;
     };
@@ -20117,6 +20132,10 @@ export interface components {
       /** Reason Code */
       reason_code: string;
       status: components["schemas"]["ProcessingTimelineStatus"];
+      /** Working Days Max */
+      working_days_max?: number | null;
+      /** Working Days Min */
+      working_days_min?: number | null;
     };
     /**
      * CandidateStayPolicyDTO
@@ -21534,6 +21553,8 @@ export interface components {
     };
     /** DocumentUpdate */
     DocumentUpdate: {
+      /** Client Visible */
+      client_visible?: boolean | null;
       /** Document Category */
       document_category?: string | null;
       /** Document Type */
@@ -21656,6 +21677,22 @@ export interface components {
       statuses?: components["schemas"]["DriveCountRow"][];
       /** Total */
       total: number;
+    };
+    /**
+     * DurationOptionDisplayDTO
+     * @description One purchasable stay length with its own exact catalogue resolution.
+     */
+    DurationOptionDisplayDTO: {
+      /** Amount Idr */
+      amount_idr?: number | null;
+      /** Days */
+      days: number;
+      pricing_key: components["schemas"]["PricingKey"];
+      /** Reason Code */
+      reason_code: string;
+      /** Selected */
+      selected: boolean;
+      status: components["schemas"]["PricingAvailabilityStatus"];
     };
     /**
      * E33Stage
@@ -22045,7 +22082,7 @@ export interface components {
     };
     /**
      * FactPath
-     * @description Every fact path the engine may ever reference — 57 applicant-collected
+     * @description Every fact path the engine may ever reference — 58 applicant-collected
      *     + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
      *     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
      *     ``sponsor.type`` for the sponsor-category question, 2026-08-10, by the
@@ -22062,7 +22099,10 @@ export interface components {
      *     their own inline comments and
      *     ``backend/scripts/visa_engine/fold_pack_seq21.py``), and by
      *     ``person.guardian_consent`` (2026-09-21, Slice A7-B — see its own inline
-     *     comment for the grounding).
+     *     comment for the grounding), and last by ``work.annual_foreign_income_usd``
+     *     (2026-10-11, seq-28 step A — contract-only: the engine accepts the fact
+     *     with a NOT_ASKED rollout default; the mouth question is step B and the
+     *     pack rule step C).
      *
      *     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
      *     ``required_facts`` array are both typed against this enum, so a rule
@@ -22094,6 +22134,7 @@ export interface components {
       | "work.serves_indonesian_clients"
       | "work.indonesia_source_compensation"
       | "work.indonesian_work_sponsor_confirmed"
+      | "work.annual_foreign_income_usd"
       | "investment.pt_pma_committed"
       | "investment.investment_capital_idr"
       | "investment.paid_up_capital_idr"

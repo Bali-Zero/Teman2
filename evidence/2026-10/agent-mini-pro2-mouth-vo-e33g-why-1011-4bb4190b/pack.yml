@@ -1,0 +1,93 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 (decisions on the E33 program and the retirement program) - the E33G income question ships
+  before seq-28 activates; its why-copy must not promise an effect the engine does not yet have, and must not
+  anchor the visitor on a figure. Follow-up promised on PR 8280 (D-why-window).
+mission: >-
+  The E33G income question tells the visitor only what is true both before and after seq-28 activates, and names no figure.
+lanes:
+  - lane: e33g-why-copy
+    role: build
+    seat: Claude Sonnet 5 implementer (subagent), commit e9f248b296 on Mini, worktree mouth-vo-e33g-why-1011.
+  - lane: e33g-ground-truth
+    role: ground_truth
+    seat: >-
+      The Visa Oracle live-state log records the ruling and the seq-27/seq-28 plan for the E33G income gate (the
+      question ships before the engine acts on it); the copy asserts no rule or figure of its own. The pre-change
+      i18n.ts is deliberately NOT the source (red team finding 1: circular).
+    nb: ".agents/skills/visaoracle/references/live-state-log.md"
+    query_hash: "8f83afd3cc1aa6510233f48e2e4e63cdd2457af1800c34a87544bd9f200e9791" # pragma: allowlist secret
+    note: query_hash = sha256 of that file at origin/main.
+pii_scan: clean
+bites:
+  consumer: >-
+    the Why we ask text of the yearly-income question on the public Visa Oracle Remote worker path (i18n.ts, EN and ID).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_remote_income_question.py
+  expect: "contains:remote income question holds"
+receipts:
+  - claim: "The branch sits on a fresh origin/main (nothing pushed); the build commit is rebased as bb070b78d3; candidate under review is 1bf23429322f995d1b160be28c3740c4984e9283."
+    cmd: git fetch origin main && git rebase origin/main
+    result: "rebase clean; one commit ahead of origin/main"
+    exit: 0
+    ts: "2026-10-11T16:12:00Z"
+    seat: this session
+  - claim: "The whole visa-oracle Vitest tree, _components included, at candidate 1bf234 (re-run after the red team)."
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
+    result: "Test Files 54 passed (54); Tests 1425 passed (1425)"
+    exit: 0
+    ts: "2026-10-11T16:25:03Z"
+    seat: this session
+  - claim: "The observer passes at candidate 1bf234."
+    cmd: python3 scripts/ci/observe_visa_oracle_remote_income_question.py
+    result: "Tests 8 passed (8); remote income question holds"
+    exit: 0
+    ts: "2026-10-11T16:25:27Z"
+    seat: this session
+  - claim: "The observer's parser tests pass."
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_remote_income_question.py
+    result: "10 passed"
+    exit: 0
+    ts: "2026-10-11T16:25:31Z"
+    seat: this session
+  - claim: "apps/mouth typechecks."
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-11T16:25:31Z"
+    seat: this session
+  - claim: "The legacy client-copy guard stays green."
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3590 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-11T16:25:31Z"
+    seat: this session
+  - claim: "The whole backend visa_engine test directory, run locally on a shared dev database that is not a fresh schema."
+    cmd: cd apps/backend-rag/backend && python3 -m pytest tests/services/visa_engine
+    result: "2963 passed, 15 skipped, 2 failed, 31 errors - every failure and error is a database-schema fault (asyncpg TooManyColumnsError x31 'tables can have at most 1600 columns', UndefinedColumnError policy_scope x1, one retention-registry schema assertion) in DB-backed files this copy-only change cannot reach (it touches no backend file); CI runs them on a fresh database"
+    exit: 1
+    ts: "2026-10-11T16:25:31Z"
+    seat: this session
+decisions:
+  - id: D-true-both-states
+    decision: >-
+      The why-copy says a yearly income requirement exists and that the amount is used exactly as entered; it
+      does not say the amount decides whether the visa fits, which is untrue until seq-28.
+  - id: D-no-figure
+    decision: >-
+      No threshold figure appears in either language (anti-anchoring); the guard regex now also catches 60000,
+      60,000, 60.000, 60 000, 60k, sixty and enam puluh, with guilt and innocence cases.
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T00-21-21-01a12bc4-d2cf-7c81-8f2f-40d6685d996a.jsonl, model verified in the rollout file)"
+    objection: "pack.yml ground_truth lane is circular and fail-open: its source is i18n.ts, the file the patch corrects, with the pre-change file hash as query_hash."
+    status: RETRACTED
+    disposition: "Cured: the circular i18n.ts lane is replaced by a ground_truth lane on the Visa Oracle live-state log (the ruling and seq-27/seq-28 plan, real sha256 at origin/main); the lint requires a ground_truth lane for this path, so removal was not possible."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T00-21-21-01a12bc4-d2cf-7c81-8f2f-40d6685d996a.jsonl, model verified in the rollout file)"
+    objection: "Receipts claim verification at rebased HEAD bb070b78d3 while the candidate is 1bf234 and the build lane cites e9f248b296; proofs not bound to the final candidate."
+    status: RETRACTED
+    disposition: "Cured: candidate 1bf23429322f995d1b160be28c3740c4984e9283 is recorded and every receipt re-run on it (apps bytes identical to bb070b78d3, git diff empty); the curing commit changes pack.yml only."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T00-21-21-01a12bc4-d2cf-7c81-8f2f-40d6685d996a.jsonl, model verified in the rollout file)"
+    objection: "brief_ref evidence/brief.yml does not point at the brief.yml the diff adds."
+    status: RETRACTED
+    disposition: "Dismissed, no change: CI and the pre-push pack-lint stage the brief at evidence/brief.yml and a dated brief_ref fails the lint."

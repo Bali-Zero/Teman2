@@ -1,0 +1,6 @@
+opened-surfaces: 0 ok, 0 failed
+opened-outside-wrapper: 0 (INCOMPLETE: 0 surfaces failed to open, not a verdict)
+opened-grounds-off-contract: 0 (INCOMPLETE: 0 surfaces failed to open, not a verdict)
+shared-touched-unpinned: 0
+shared-component-drift: 0
+opened-text-below-4.5: 0 (INCOMPLETE: 0 surfaces failed to open, not a verdict)

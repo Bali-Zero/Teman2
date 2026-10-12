@@ -1,0 +1,40 @@
+task_id: healer-receptors-ac
+mission: seat-utilization campaign 2026-10-05/07 (owner order "fai tu" on the Pro healer, 2026-10-06)
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  The Pro healer's receptors A (registry dead organs) and C (HOME-fork drift) spawn its capped Claude session only on
+  what a session can cure, and the G11 memo fingerprint stays equal while the dead set is unchanged: each dead organ
+  carries cure session|owner (owner only on declared cure, a TCC denial, or a deliberately unloaded job), receptor A
+  spawns on dead_session > 0 with reason registry:<k>/<n>-session-curable, receptor C spawns on session-curable drift
+  with reason home-fork-drift:<k>/<n>-session-curable (a root-owned or non-writable live path is owner), else one
+  run.log skip line; the memo key drops the per-organ age bucket.
+constraints:
+  - The live copy ~/scripts/pro-healer.sh on Pro is NOT touched by this PR; delivery is a separate step after merge.
+  - scripts/proprioception.py (receptor B's classifier, PR 7995) is unchanged byte for byte.
+  - Nothing new is silenced by accident - an undeclared cure is session; an invalid cure, a malformed registry report, a malformed lint report is receptor-broken (visible).
+  - The Mini healer (infra/healer/healer-run.sh, exit code + dead count) sees the same dead set and exit as before.
+  - No network, secrets or client data in tests or logs.
+appetite:
+  wall_clock_hours: 3
+acceptance:
+  - text: WHEN one dead organ is session-curable THEN the wrapper SHALL spawn once with reason registry:1/1-session-curable.
+    probe: scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_a_guilt_session_curable_dead_organ_spawns
+  - text: 'WHEN every dead organ is owner-cured THEN the wrapper SHALL NOT spawn and SHALL write one "skip: registry <n> dead, none session-curable" line.'
+    probe: scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_a_innocence_owner_only_dead_skips_with_ledger
+  - text: WHEN the only drifted pair has a root-owned live path THEN the wrapper SHALL NOT spawn and SHALL log the lint verdict and one skip line.
+    probe: scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_c_innocence_root_owned_live_path_skips_with_ledger
+  - text: WHEN the registry or lint report is malformed, empty on exit 1, or carries an undeclared cure THEN the receptor SHALL be reported broken, never skipped.
+    probe: scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_a_and_c_third_states_spawn_with_named_reasons
+  - text: WHEN the same dead set is observed 6 h later THEN the memo fingerprint SHALL be identical.
+    probe: scripts/tests/test_healer_memo.py::test_fingerprint_stable_for_same_dead_set_observed_six_hours_later
+  - text: WHEN any key component changes (dead id or cure, probe cure, drifted pair, a session-curable count, a receptor failure, a new arsenal death) THEN the fingerprint SHALL change; age, status and note SHALL NOT move it.
+    probe: scripts/tests/test_healer_memo.py::test_fingerprint_component_table
+  - text: WHEN a dead organ's evidence matches one owner rule THEN its cure SHALL be owner, and each rule's innocence row SHALL stay session.
+    probe: scripts/tests/test_healer_receptor_disabled_plist.py::test_dead_cure_branch_table
+consumer_map:
+  - infra/launchagents/wrappers/pro-healer.sh - Pro healer, every 6 h (com.nuzantara.healer-pro.6h); live copy ~/scripts/pro-healer.sh on Pro (declared HOME-fork pair). Mini has no copy.
+  - scripts/healer_receptor_registry.py - read from the Pro and Mini checkouts by both healers; the Mini healer reads only the exit code and len(dead).
+  - scripts/healer_run_checks.py - registry-summary and home-fork-summary, read from the Pro checkout by the wrapper.
+  - scripts/healer_memo.py - fingerprint over the wrapper's receptor-state JSON; state ~/.organism/healer-pro/memo.json on Pro.

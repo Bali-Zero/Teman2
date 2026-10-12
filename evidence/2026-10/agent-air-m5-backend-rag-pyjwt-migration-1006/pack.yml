@@ -1,0 +1,180 @@
+# Gear-3 evidence pack — migrate apps/backend-rag from python-jose 3.5.0 to PyJWT 2.15.1.
+# Written by dux-pyjwt-2 (Claude Opus 5.5, M5), verifier and shipper. The build was done by the previous Dux
+# (dux-pyjwt, journal seat claude-fable-5.1) with a Codex O2 continuation editing the same worktree until ~13:30Z;
+# that window closed at 14:25Z with the diff finished and uncommitted. Every receipt below is a command this writer
+# ran on 2026-10-06 between 15:58Z and 17:10Z; `ts` is the UTC mtime of the receipt's output file. Scratch logs live
+# under ~/.agent/campaign-20261005/work/dux-pyjwt-2/ (and the predecessor's .../work/dux-pyjwt/) and are not committed.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Owner order 2026-10-06 ("fai tu"), dispatched by the imperator window as a resume-and-ship of an already-built
+  diff: verify every hunk on disk, own it, ship it before the 2026-11-06 date on which the #7965 guard turns
+  Backend Static red.
+mission: >-
+  Replace python-jose (CVE-2026-85394, no fixed release) with PyJWT in the 12 production modules of
+  apps/backend-rag without changing what any caller accepts or rejects, drop python-jose/ecdsa/rsa from both
+  locks, and remove the ignore, the dated guard and the stale ecdsa ignore in the same change.
+lanes:
+  - lane: pyjwt-build
+    role: build
+    seat: >-
+      claude-fable-5.1 (dux-pyjwt): helper, call-site edits, locks, workflow and doc removal (mixed authorship with
+      the lane below; every hunk re-read and owned by dux-pyjwt-2).
+  - lane: pyjwt-build-codex
+    role: build
+    seat: >-
+      codex-gpt-5.6-sol (Codex O2 context_bridge continuation, workspace-write in the same worktree until ~13:30Z):
+      concurrent edits to the same diff, not separable per hunk after the fact.
+  - lane: pyjwt-verify-ship
+    role: build
+    seat: >-
+      claude-opus-5.5 (dux-pyjwt-2): two fixes found while verifying (helper moved to backend/app/utils so the
+      dependencies import chain stays secret-free; python-jose's exp boundary), the alg-none and boundary tests,
+      both suites, the pack.
+  - lane: pyjwt-council
+    role: review
+    seat: >-
+      Sealed council 13:05-13:06Z, before any commit: Dux position, Codex O2 (codex-gpt-5.6-sol roster seat; CLI
+      reported gpt-6.1-sol), Kimi k3 (refused, HTTP 403 weekly limit), Ollama qwen3.5:9b on Mini (declared
+      non-quorum reserve). Verbatim in council-journal.jsonl.
+  - lane: pyjwt-review
+    role: review
+    seat: >-
+      Codex O2 read-only review of the FINAL diff (b2c5544c9b) and one refutation round on the fix (8d69cd4899);
+      account verified by the rollout file under ~/.codex-o2/sessions/2026/10/07/. Kimi k3 asked again, 403.
+seat_diversity: >-
+  Two families answered: Anthropic (builders and verifier) and OpenAI (Codex O2, every review). Moonshot (Kimi k3)
+  refused twice with HTTP 403 (13:05Z and 16:33Z); Alibaba (tp1-qwen3.8-max) monthly quota exhausted until
+  2026-10-11T16:00Z (429, campaign rules: do not retry); Gemini agy reads BUSY on the owner's windows. Ollama
+  qwen3.5:9b on Mini sat in the council as a non-cloud reserve and is not counted toward quorum.
+seat_override: >-
+  R9 quorum not reachable: only one COUNCIL_REVIEW_SEATS titolare (codex-gpt-5.6-sol) could answer. kimi-code/k3
+  answered HTTP 403 "weekly (7-day) usage limit" at 13:05:38Z and again at 16:33Z (council-journal.jsonl,
+  ok:false); tp1-qwen3.8-max is 429 until 2026-10-11T16:00Z; agy-gemini-3.1-pro BUSY. Fallback used: Ollama
+  qwen3.5:9b on Mini in the sealed council (13:06:37Z). The deadline (2026-11-06) and the open CVE do not wait
+  for the Kimi window to reset. Reviewer independence is also only partial: Codex O2 both edited the build
+  (continuation) and reviewed it, so the Codex-authored hunks were graded cross-family only by the Claude verifier
+  (dux-pyjwt-2, every hunk read, 36-shape differential against python-jose, both suites) and the Claude-authored
+  hunks by Codex. The final on-disk gate weighs this override.
+pii_scan: clean
+bites:
+  consumer: >-
+    (1) The Backend Static (Python) job's pip-audit step on this PR, which now audits both locks with no
+    CVE-2026-85394 ignore and no JOSE_PIN/JOSE_RECHECK guard, and through it the required "Backend Tests
+    (Python)". (2) The Fly app nuzantara-rag: merging this PR deploys requirements-prod.lock.txt without
+    python-jose and every bearer-token verifier on PyJWT.
+  observation: >-
+    Backend Static green on this PR with "pip-audit requirements.lock.txt: clean" and "pip-audit
+    requirements-prod.lock.txt: clean" in its log, `grep -c jose` = 0 on both locks at the head SHA; after the
+    deploy, `curl -s -o /dev/null -w '%{http_code}' https://nuzantara-rag.fly.dev/health` prints 200 and a forged
+    HS256 bearer on GET /api/auth/profile prints 401 (owed after merge, made by the imperator).
+decisions:
+  - >-
+    One shared decoder, backend/app/utils/jwt_decode.py::decode_jwt, for all 11 decode sites: algorithms pinned
+    per call (["HS256"] or [settings.jwt_algorithm], default HS256), options mirror python-jose 3.5.0 (exp
+    mandatory with python-jose's whole-second boundary, future iat accepted, malformed iat / falsy aud / at_hash
+    rejected). Every caller catches jwt.PyJWTError. 36/36 token shapes match python-jose side by side.
+  - >-
+    The helper lives in backend/app/utils, not backend/app/auth: the auth package's __init__ imports config,
+    whose Settings() needs JWT_SECRET_KEY at import time; importing backend.app.dependencies must stay
+    secret-free (test_import_chain_without_secrets, and the pre-commit import-chain hook refused the commit).
+  - >-
+    Three token shapes change class, all in the safe direction: exp null, iat null and iat as a list escaped
+    python-jose as a bare TypeError (HTTP 500 at most call sites); they are now a PyJWTError (401).
+  - >-
+    PyJWT[crypto]==2.15.1 pinned in both requirement sources (it was already a direct dependency at 2.15.1 in
+    both locks). Both locks are byte-identical to a fresh run of the uv pip compile command in their headers.
+receipts:
+  - claim: "R1 — python-jose 3.5.0 vs decode_jwt: 36/36 token shapes get the same accept/reject verdict; encode byte-identical, both str."
+    cmd: >-
+      jv/bin/python -I differential.py <worktree>/apps/backend-rag/backend/app/utils/jwt_decode.py (scratch venv
+      with python-jose 3.5.0 + PyJWT 2.15.1; tokens minted by python-jose)
+    result: "36 SAME, DIFF_COUNT 0. On the pre-fix helper: DIFF_COUNT 1 (exp_this_second: jose ACCEPT, PyJWT REJECT)."
+    exit: 0
+    ts: "2026-10-06T16:36:34Z"
+    seat: claude-opus-5.5 (dux-pyjwt-2)
+  - claim: "R2 — both locks are reproducible and jose-free."
+    cmd: >-
+      uv 0.12.3: uv pip compile requirements.txt -o requirements.lock.txt --generate-hashes --python-version 3.11
+      (and the prod twin), then cmp against the committed files; grep -c jose on both sources, both locks,
+      pyproject.toml, tests.yml, .pip-audit-ignore.md
+    result: "both cmp identical; every grep -c = 0; ecdsa and rsa gone (they came only via python-jose); pyasn1 stays via pyasn1-modules"
+    exit: 0
+    ts: "2026-10-06T16:03:06Z"
+    seat: claude-opus-5.5 (dux-pyjwt-2)
+  - claim: "R3 — pip-audit as the workflow runs it is clean on both locks without the removed ignores."
+    cmd: >-
+      pipaudit.sh (replica of the tests.yml loop: pip-audit 2.10.1 from requirements-ci-tools.txt, Python 3.11,
+      the IGNORES array of the new tests.yml, cell-core and hash lines stripped)
+    result: >-
+      prod lock "No known vulnerabilities found"; dev lock first attempt failed resolving srsly==2.5.3 (index miss;
+      srsly is untouched by this diff and resolved on the base lock), rerun "No known vulnerabilities found"
+    exit: 0
+    ts: "2026-10-06T16:15:16Z"
+    seat: claude-opus-5.5 (dux-pyjwt-2)
+  - claim: "R4 — every new policy test fails on a deliberately broken helper or call site."
+    cmd: >-
+      sed mutations of validation.py / jwt_decode.py (backed up with cp, restored, cmp): MUT1 a call site admits
+      "none"; MUT2 the helper skips the signature; MUT3 PyJWT's exp boundary; MUT4 no exp check
+    result: "MUT1 1 failed, MUT2 2 failed, MUT3 1 failed, MUT4 2 failed; restored tree: 43 passed"
+    exit: 0
+    ts: "2026-10-06T16:36:48Z"
+    seat: claude-opus-5.5 (dux-pyjwt-2)
+  - claim: "R5 — every Fly entrypoint imports from a venv built from requirements-prod.lock.txt, which has no python-jose."
+    cmd: >-
+      venv-prod/bin/python -c "importlib.import_module(m)" for backend.app.main_cloud, backend.app.main_api,
+      backend.app.main_rag, backend.workers.drive_poll_worker (fly.toml [processes] + Dockerfile CMD, read only);
+      venv-prod/bin/python -c "import jose"
+    result: "4 x IMPORT_OK on 8d69cd4899 (first run on b2c5544c9b, same result); import jose -> ModuleNotFoundError"
+    exit: 0
+    ts: "2026-10-06T16:41:09Z"
+    seat: claude-opus-5.5 (dux-pyjwt-2)
+  - claim: "R6 — importing backend.app.dependencies needs no secret (regression found and fixed while verifying)."
+    cmd: >-
+      env -i PATH=/usr/bin:/bin PYTHONPATH=.:../crm-cell .venv/bin/python -c "from backend.app.dependencies import
+      get_current_user"; the pre-commit import-chain hook on both commits
+    result: "IMPORT OK; hook 'import chain OK' (it refused the first commit attempt while the helper sat in backend/app/auth)"
+    exit: 0
+    ts: "2026-10-06T16:32:00Z"
+    seat: claude-opus-5.5 (dux-pyjwt-2)
+  - claim: "R7 — baseline: the full backend suite on origin/main 65b340c05c (this PR's base before the last rebase; main since moved only outside apps/backend-rag)."
+    cmd: >-
+      run_suite.sh base (fresh detached worktree, venv from the base requirements.lock.txt, fresh DB, ci_bootstrap_schema +
+      migrate apply-all MIGRATE_RC=0 + schema_audit OK, the 1703 modules of scripts/ci/shard_tests.py enumerate,
+      pytest -n auto --dist loadfile --ignore=backend/tests/e2e)
+    result: >-
+      17 failed, 33548 passed, 444 skipped, 7 xfailed; all 17 in test_pii_scanner.py (spaCy en_core_web_lg not
+      installed on M5, environmental). test_import_chain_without_secrets passes on base.
+    exit: 1
+    ts: "2026-10-06T16:39:50Z"
+    seat: claude-opus-5.5 (dux-pyjwt-2)
+dissent:
+  - seat: codex-gpt-5.6-sol (sealed council, 13:06Z) and codex-gpt-5.6-sol (review of the final diff, 16:34Z)
+    objection: >-
+      Expiry boundary: python-jose rejects when int(exp) < floor(now), PyJWT when int(exp) <= now (float), so a
+      token expires up to one second earlier; the final-diff review ended VERDICT BLOCK on it (severity LOW).
+    status: CONFIRMED
+    resolution: >-
+      Commit 8d69cd4899: PyJWT's exp check disabled (exp still required), python-jose's comparison applied in the
+      helper; test_exp_boundary_matches_python_jose pins both boundary seconds (red on MUT3/MUT4).
+  - seat: codex-gpt-5.6-sol (sealed council)
+    objection: "Malformed iat accepted once verify_iat is off; at_hash no longer verified; falsy aud accepted by PyJWT."
+    status: CONFIRMED
+    resolution: >-
+      Folded in by the build before any commit: int() check on iat, at_hash rejected, falsy aud rejected
+      (test_malformed_iat_is_rejected, test_at_hash_without_access_token_is_rejected,
+      test_falsy_audience_claim_is_rejected).
+  - seat: codex-gpt-5.6-sol (predecessor's review of the uncommitted diff, 13:14Z)
+    objection: "BLOCK only on the untracked backend/tests/unit/security/test_pyjwt_compatibility.py (ast.literal_eval on a Name)."
+    status: RETRACTED
+    resolution: "That file no longer exists on disk; it was superseded by tests/unit/auth/test_jwt_decode_policy.py."
+  - seat: claude-opus-5.5 (dux-pyjwt-2, verification)
+    objection: >-
+      The helper under backend/app/auth made backend.app.dependencies import config at import time:
+      test_import_chain_without_secrets failed on the predecessor's head run and the pre-commit hook refused it.
+    status: CONFIRMED
+    resolution: "Helper moved to backend/app/utils/jwt_decode.py before the first commit."
+council_run: council-journal.jsonl
+owed:
+  - "Post-deploy prove-live: /health 200 and a forged bearer on GET /api/auth/profile -> 401 (imperator, after merge)."
+  - "Close the PENDING-ARMS row for the python-jose deadline once the deploy is live (ledger owner)."

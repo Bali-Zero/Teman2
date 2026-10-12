@@ -1,0 +1,23 @@
+task_id: visa-oracle-duration-c2
+mission: visa-oracle-outcome-copy
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  The public Visa Oracle result page shows which stay-permit duration the engine priced for an
+  E31 product (1 or 2 years), the other option with its price, and a renewal line when the
+  planned stay is longer than the longest permit. Products without duration options render
+  exactly as before.
+constraints:
+  - Old responses without the duration fields parse and render unchanged.
+  - The shadow parity projection does not include the duration, because the gold baseline cannot carry it.
+  - No new interview question and no backend change.
+appetite:
+  wall_clock_hours: 2
+acceptance:
+  - text: WHEN the engine sends selected_duration_days 365 or 730 THEN the page SHALL name that permit under the amount and list the other option with its price.
+    probe: apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.duration.test.tsx
+  - text: WHEN extension_required is true THEN the page SHALL show the renewal line.
+    probe: apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.duration.test.tsx
+  - text: WHEN the engine omits the duration fields THEN the response SHALL parse and the candidate SHALL carry no duration.
+    probe: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/duration.test.ts

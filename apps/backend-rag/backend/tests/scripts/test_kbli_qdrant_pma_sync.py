@@ -961,3 +961,73 @@ def test_the_prose_repair_matches_the_real_generator_on_real_canonical_records()
         "no truncated record in the corpus — the refusal branch went untested, and it is the "
         "branch that stops the tool inventing content past a truncation marker"
     )
+
+
+# --- flat keys are compared for EVERY point, shaped or not --------------------
+
+_UNSHAPED_BLOB = "# KBLI 51101\n\nno pma section here at all\n"
+
+
+def _unshaped_point(pid: Any, **flat_overrides: Any) -> dict:
+    point = _blob_point(pid, _UNSHAPED_BLOB, status="TERBATAS", cap=49)
+    point["payload"].update(flat_overrides)
+    return point
+
+
+def _plan_51101(point: dict):
+    rec = _rec("51101", status="TERBATAS", cap=49)
+    return build_plan("51101", Target("51101", "pma", _pma_fields("TERBATAS", 49), rec), [point])
+
+
+def test_an_unshaped_point_with_a_none_verification_status_is_stale_and_names_the_key():
+    plan = _plan_51101(_unshaped_point("p1", pma_verification_status=None))
+    assert plan.unshaped == ["p1"]
+    assert plan.stale_points() == ["p1"]
+    assert plan.differing_keys("p1") == ["pma_verification_status"]
+    assert plan.prose == {}, "the blob is still never rewritten for an unshaped point"
+    assert plan.payload_for("p1") == _pma_fields("TERBATAS", 49)
+
+
+def test_an_unshaped_point_with_a_missing_flat_key_is_stale():
+    point = _unshaped_point("p1")
+    del point["payload"]["pma_verification_status"]
+    assert _plan_51101(point).stale_points() == ["p1"]
+
+
+def test_an_unshaped_point_whose_flat_keys_all_agree_is_not_stale():
+    plan = _plan_51101(_unshaped_point("p1"))
+    assert plan.unshaped == ["p1"]
+    assert plan.differing_keys("p1") == []
+    assert plan.stale_points() == []
+
+
+def test_a_shaped_point_with_a_differing_cap_is_still_stale():
+    rec = _rec("25200", status="TERBATAS", cap=49)
+    point = _blob_point("p1", _BLOB_OPEN, status="TERBATAS", cap=100)
+    plan = build_plan("25200", Target("25200", "pma", _pma_fields("TERBATAS", 49), rec), [point])
+    assert plan.unshaped == []
+    assert "p1" in plan.stale_points()
+    assert plan.differing_keys("p1") == ["pma_max_asing"]
+
+
+def test_the_unshaped_stale_point_is_written_flat_only_on_apply():
+    fake = FakeQdrant({"51101": [[_unshaped_point("p1", pma_verification_status=None)]]})
+    with fake.client() as http:
+        pts = find_points_for_code(http, _BASE, _HEADERS, _COLLECTION, "51101")
+        plan = _plan_51101(pts[0])
+        assert apply_plan(http, _BASE, _HEADERS, _COLLECTION, plan, apply=True) == 1
+    assert fake.payload_writes == [{"payload": _pma_fields("TERBATAS", 49), "points": ["p1"]}]
+
+
+def test_the_agree_line_says_what_was_compared(caplog):
+    plan = _plan_51101(_unshaped_point("p1"))
+    with caplog.at_level("INFO", logger="kbli_qdrant_pma_sync"):
+        apply_plan(None, _BASE, _HEADERS, _COLLECTION, plan, apply=False)  # type: ignore[arg-type]
+    assert "agrees with canonical (flat keys compared: 7" in caplog.text
+
+
+def test_the_stale_line_names_the_differing_key(caplog):
+    plan = _plan_51101(_unshaped_point("p1", pma_verification_status=None))
+    with caplog.at_level("INFO", logger="kbli_qdrant_pma_sync"):
+        apply_plan(None, _BASE, _HEADERS, _COLLECTION, plan, apply=False)  # type: ignore[arg-type]
+    assert "STALE: pma_verification_status None → 'located'" in caplog.text

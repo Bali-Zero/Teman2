@@ -1,0 +1,59 @@
+task: >-
+  Close two notices of the PR #7996 final gate. N2: the 401 mapping at routers/auth.get_current_user and
+  garuda_portal/staff_auth._decode_staff_jwt (they catch only jwt.PyJWTError and have no outer catch-all) was not
+  pinned by any test, so removing the except survived the suite. N4: scripts/intake_drive_folder_id_backfill.py
+  still imported python-jose, which #7996 removed from both locks, so its --apply path would crash. Tests and one
+  manual script only; no production file changes.
+lane: backend-rag
+machine: m5
+date: 2026-10-08
+gear: 2
+gear_reason: >-
+  Measured floor 1, source none: scripts/evidence_pack_lint.py --print-floor on the four changed code files
+  (+173/-6 against base 1cef6f665e). No hot-zone path. Gear 2 is declared above the floor on purpose, so that
+  harness-floor holds the merge until the final gate signs this follow-up to the #7996 gate. The diff was built by
+  a non-Anthropic seat (Codex O1). A Claude session verified it, fixed the staff test, and ran a sealed council
+  (council-journal.jsonl) before the commit.
+acceptance:
+  A1:
+    text: >-
+      For each of the five real call sites, seven invalid shapes are tested: forged signature, expired, exp
+      absent, exp null, garbage, HS512 against the pinned HS256, and alg none with an empty signature. Each site
+      answers 401, or None for the two validators. No site returns 500. decode_jwt is not mocked.
+    probe: backend/tests/unit/auth/test_jwt_invalid_call_sites.py (36 tests including the staff valid-token control).
+  A2:
+    text: >-
+      The tests pin the path. Removing the except at each site turns that site's seven cases red. Dropping both
+      the PyJWTError and catch-all excepts in deps/auth and in validation does the same. A helper that skips the
+      exp check or admits HS512 turns the matching case red at all five sites. A staff decoder with the wrong key
+      turns the control red.
+    probe: scratch mutation harness (mut.py, per-run bytecode cache), results in the PR body.
+  A3:
+    text: >-
+      No Python file under apps/backend-rag/backend or repo-root scripts/ imports jose. The backfill script mints
+      a str HS256 token that PyJWT decodes to the same claims.
+    probe: >-
+      test_python_jose_is_gone_from_production_and_tests (a planted import in scripts/ goes red, a planted
+      innocent file stays green), test_minted_admin_jwt_round_trips_with_pyjwt.
+  A4:
+    text: >-
+      The merge does not deploy. fly-deploy.yml push paths exclude apps/backend-rag/**/tests/** and
+      **/test_*.py, and scripts/ is outside the filter. Production keeps serving the #7996 build and rejects a
+      forged bearer with 401.
+    probe: >-
+      gh run list --workflow fly-deploy.yml --commit <merge sha> is empty; /health 200 with an unchanged build;
+      a forged HS256 bearer on GET /api/auth/profile gets 401.
+out_of_scope: >-
+  Production auth code (unchanged). Claims-shape checks after a valid signature (sub or email of the wrong type).
+  Dynamic importlib imports of jose (none exist). The pre-existing ruff-format drift in the legacy backfill script,
+  which the pre-commit ruff-format scope (^apps/backend-rag/) does not cover. The legacy test file was formatted
+  because that hook would otherwise refuse the commit.
+assumptions:
+  - text: CI's backend-shard Redis service does not change any outcome of the new tests.
+    status: verified
+    probe: >-
+      The staff test pins revocation. The other four sites reject before any revocation call, and every
+      mutant kill holds with no Redis on M5.
+  - text: Gear 2 needs the final-gate verdict on the head SHA, which the imperator commissions.
+    status: unverified
+    probe: gh pr checks <pr> shows harness-floor after the gate verdict is posted.

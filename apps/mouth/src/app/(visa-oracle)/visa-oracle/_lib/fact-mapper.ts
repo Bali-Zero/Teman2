@@ -998,6 +998,11 @@ export function mapOracleFactsToApplicantFacts(
     "work.indonesian_work_sponsor_confirmed": booleanFact(
       facts.work_sponsor_confirmed,
     ),
+    "work.annual_foreign_income_usd": integerFact(
+      facts.remote_annual_income_usd,
+      0,
+      Number.MAX_SAFE_INTEGER,
+    ),
     "investment.pt_pma_committed": pairedBooleanFact(
       facts.investment_pt_pma,
       facts.remote_pt_pma,

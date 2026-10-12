@@ -7,9 +7,17 @@ import { UPLOAD_ACCEPT, UPLOAD_FORMAT_LABEL } from "@/lib/vault/uploadLimits";
 interface Props {
   practiceId?: number | string | null;
   onDone?: () => void;
+  /** Blocks choosing/dropping a file; `disabledReason` tells the client why. */
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
-export function VaultUploadZone({ practiceId, onDone }: Props) {
+export function VaultUploadZone({
+  practiceId,
+  onDone,
+  disabled = false,
+  disabledReason,
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [purpose, setPurpose] = useState("");
@@ -27,7 +35,7 @@ export function VaultUploadZone({ practiceId, onDone }: Props) {
   }, [state, onDone, reset]);
 
   const handleFiles = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
+    if (disabled || !files || files.length === 0) return;
     upload(files[0], { practiceId, purpose });
   };
 
@@ -63,7 +71,10 @@ export function VaultUploadZone({ practiceId, onDone }: Props) {
           setDragOver(false);
           handleFiles(e.dataTransfer.files);
         }}
+        aria-disabled={disabled || undefined}
         className={`rounded-lg border-2 border-dashed p-6 text-center transition ${
+          disabled ? "opacity-60" : ""
+        } ${
           dragOver
             ? "border-[var(--bz-copper-text)] bg-[var(--surface-raised)]"
             : "border-[var(--bz-border-hover)]"
@@ -84,6 +95,7 @@ export function VaultUploadZone({ practiceId, onDone }: Props) {
         </p>
         <button
           type="button"
+          disabled={disabled}
           onClick={() => inputRef.current?.click()}
           className="text-xs uppercase tracking-[2px] text-[var(--bz-copper-text)] hover:underline"
         >
@@ -95,9 +107,15 @@ export function VaultUploadZone({ practiceId, onDone }: Props) {
           accept={UPLOAD_ACCEPT}
           className="sr-only"
           onChange={(e) => handleFiles(e.target.files)}
+          disabled={disabled}
           aria-label="Choose file to upload"
           aria-describedby="vault-upload-formats"
         />
+        {disabled && disabledReason && (
+          <p role="status" className="text-xs text-[var(--bz-text-2)] mt-3">
+            {disabledReason}
+          </p>
+        )}
         {state.status === "uploading" && (
           <p role="status" className="text-xs text-[var(--bz-text-2)] mt-3">
             Uploading… {Math.round(state.progress)}%

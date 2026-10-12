@@ -1,0 +1,32 @@
+task_id: kbli-nav-design-pr1-search
+mission: kbli-nav-design-loop (Track A, build, PR 1 search-results)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  evidence_pack_lint's floor for this change set is 2 by its size term alone, with no hot-zone path. The View commit
+  churns 437 lines (+349/−88, net +261) across SearchListView.swift, the extracted SearchFieldBar.swift, RootView.swift,
+  D4Decor.swift (PadiLine), Snapshot.swift and contenttest's probe. The after-set digest manifest adds its JSON evidence.
+l_level: L1
+gate_class: opus
+objective: >-
+  SPEC-swiftui §3.1 and §7. SearchListView's query mode becomes set A's spine: the facets column, a 760 pt spine with
+  PadiLine, and the census rail at ≥ 1160 pt, with the legacy filter bar and one column below it (§4). The first result is
+  the peak card: code, status chip, canonical cap, primary title, other-language title, and the KBLIVerdict.headsUp
+  block. Each later result is ruled. Text wraps, with no line limits. SearchFieldBar is RootView.searchHeader extracted
+  verbatim and restyled to 52 pt; binding B5 requires the band to render the bar with the query visible. Presentation
+  only: no KBLI fact, verdict, cap, basis or Bali overlay changes.
+constraints:
+  - Browse mode (the registry table) is untouched; it is PR 2's.
+  - Results read only the canonical functions (headsUp, primaryTitle, ownershipLine); contenttest's probe requires them in SearchListView.
+  - No PNG is committed; the after-set ships as a sha256 manifest and the PNGs live in the M5 gallery.
+acceptance:
+  - text: The head SHALL build both variants and render_set.sh SHALL render 35 PNGs with 0 failures, equal to the manifest.
+    probe: "Pro build-only mirror detached at the head: INTERNAL_RC=0, BKPM_RC=0, RENDER_SET_RC=0, manifest_match=35/35"
+  - text: The search-results band SHALL show SearchFieldBar with the query 55203 visible above the results (B5).
+    probe: "search-results-{day,night}-{en,id}.png and narrow/search-results-day-en.png, visual crop in the gallery"
+  - text: The frozen content SHALL stay byte-identical and the probe SHALL require the canonical calls in SearchListView.
+    probe:
+      "Pro: content_check.sh rc=0; probe guilt on copies → rc=1 each: KBLIVerdict.headsUp( through a typealias,
+      OverlayStore.shared.primaryTitle( through a typealias, and a file-local primaryTitle shadow reading judul"
+  - text: The contrast and token gates SHALL stay green.
+    probe: "Pro: measure_contrast rc=0 (FAIL=0 PARITY=0 WHITE=0), derive --check rc=0"

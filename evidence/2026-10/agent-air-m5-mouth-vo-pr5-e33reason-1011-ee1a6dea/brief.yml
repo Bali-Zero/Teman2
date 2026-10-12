@@ -1,0 +1,21 @@
+gear: 2
+gear_reason: >-
+  Size floor (diff with tests, observer and pack above 400 churn). Client-copy change in the mouth
+  adapter (one fact-derived sentence builder, EN and ID) on the public Visa Oracle, plus tests and a
+  no-argument observer; no backend, no data, no pricing.
+mission: >-
+  A Second Home deposit that fails on state bank or own name states its real cause, not the retirement-age sentence.
+objective: >-
+  A second_home, invest or bank_deposit visitor with a deposit of USD 130,000 or more who answers no (or not
+  sure) to the state-bank or own-name question gets a NO_SUPPORTED_PATH reason built from their own answers and
+  the pack-backed rule el.e33.deposit-basis, in EN and ID; retirement walks keep the age sentence and
+  below-threshold deposits keep the existing copy.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/client-copy.test.ts
+  - scripts/ci/observe_visa_oracle_e33_deposit_reason.py
+  - tests/scripts/test_observe_visa_oracle_e33_deposit_reason.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2

@@ -1,0 +1,48 @@
+{
+  "expected_candidates": ["E28B"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "Singaporean founder (38) establishing an Indonesian company past the published investment threshold, applying offshore, no foreign branch and no IKN subsidiary",
+  "overrides": {
+    "intent.desired_entry_date": {
+      "status": "KNOWN",
+      "value": "2026-11-02"
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["INVESTMENT"]
+    },
+    "investment.capital_market_only": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "investment.establishes_indonesian_company": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "investment.foreign_branch_or_subsidiary": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "investment.ikn_subsidiary": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "investment.meets_published_threshold": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "1988-02-11"
+    },
+    "person.nationalities": {
+      "status": "KNOWN",
+      "value": ["SG"]
+    },
+    "sponsor.type": {
+      "status": "KNOWN",
+      "value": "INVESTMENT"
+    }
+  },
+  "product_code": "E28B"
+}

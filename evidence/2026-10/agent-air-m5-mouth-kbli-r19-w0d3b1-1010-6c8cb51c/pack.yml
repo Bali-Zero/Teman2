@@ -1,0 +1,93 @@
+brief_ref: evidence/brief.yml
+seat_override: >-
+  Dispatched by the imperator: mission kbli-nav-design-loop, Track W, lot W0d-3b-1 (BLUE), the first
+  of the two lots the W0d-3b split ruled. The Dux (w2-dux-3) built and ran every command. It does
+  not self-sign; the imperator commissions a fresh Opus gate.
+plan_ref: >-
+  ~/BATTAGLIA-20261008/DYNAMIC-WORKFLOW-kbli-nav-design/Z-DECISIONI.md Q21-Q22; the #8202 and #8228
+  gate comments ("Notes for W0d-3"); the #8237 gate comment (notes 1-3 for 3b-1); the contract
+  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md sections 8.4 and 9.
+lanes:
+  - lane: kbli-r19-w0d3b1-1010
+    role: build
+    seat: "claude-opus-5-5 (Dux)"
+pii_scan: clean
+pii_scan_note: "Census dumps, verdict texts and mutant outputs hold public page labels, colours, CSS paths and route paths only. No client data, no external seat."
+provenance: >-
+  Carved from the protected W0d-3 WIP (875957b0bb, w2-dux-2, never pushed) onto W0d-3a's head:
+  the RESOLVE_JS cures, the walk retry, the theme hold, the occluded lines, the scrim paint and the
+  sector opener, with their eleven rows. Nothing of the scope (routes, scenarios, section 8.7, the
+  exit block, the logo) came along. Two over-matches the first M5 run exposed were cured here, each
+  with its rows, then the lot was rebased onto origin/main after #8237 merged.
+diff:
+  net_lines: |
+    About 225 net beyond evidence:
+      - census script +102 -29;
+      - tests +122 -13;
+      - contract +46 -6;
+      - workflow +3.
+    The fixture is regenerated in place (28 lines, same count). No apps/mouth/src file.
+  behaviour_change: >-
+    On today's 89 scenarios, M5: G 438 -> 440 (the AZ avatar over its gradient, no longer hidden by
+    the dev-only Query devtools button; and one known residual, the explorer's 2025-transition card
+    read as occluded under its composer because the census removes its entrance animation), K 140 ->
+    135 and M 680 -> 675 (the sector drawer read with the pointer off the card it clicked), every
+    other count unchanged, shared-component-drift 0 against the unchanged pins.
+    Without a part, every count it feeds now prints INCOMPLETE. A re-run part job replaces its own
+    dump.
+receipts:
+  - claim: "The offline suite passes on the regenerated fixture: the pinned counts, the byte-for-byte parts replay, and every missing part's counts INCOMPLETE."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'"
+    result: "143 passed, 72 deselected"
+    exit: 0
+    ts: "2026-10-11T05:21:35Z"
+    seat: claude-opus-5-5
+  - claim: "The whole suite, browser rows included (66 walk, page and opener rows), passes on M5."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider"
+    result: "215 passed in 524.97s"
+    exit: 0
+    ts: "2026-10-11T05:13:21Z"
+    seat: claude-opus-5-5
+  - claim: "The armed apps/mouth test still reads the probe, pages and states through --export."
+    cmd: "cd apps/mouth && npm test -- r19-wrapper --run --reporter=dot"
+    result: "Test Files 1 passed; Tests 5 passed, 1 skipped (419.82s)"
+    exit: 0
+    ts: "2026-10-11T05:20:30Z"
+    seat: claude-opus-5-5
+  - claim: "Every cure undone fails a row: 18 on the instrument through the real walk or the page judge, 4 on the verdict and 1 on the workflow offline."
+    cmd: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3b1-1010-6c8cb51c/instrument_mutants.py (instrument-mutants.txt)"
+    result: "23 of 23 killed; the census and the workflow cmp-identical to before the run"
+    exit: 0
+    ts: "2026-10-11T02:45:18Z"
+    seat: claude-opus-5-5
+  - claim: "M5, the full census on port 3521 with the cured instrument: the fixture is its dump, and the fixture's replay is its live verdict byte for byte."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --port 3521 --diff-base origin/main --json <fixture>; --replay <fixture>; cmp"
+    result: "458 lines, identical (sha256 7d8e54d0f5485acf). S 0, captures 30 ok, reads 310, colours 128, R 0, state 51, G 440, opened 25 ok, P 10, K 135, D-resolver 0, N 0, drift 0, M 675. phase-seconds: full capture 665, walk 85, opened 683, shared 315."
+    exit: 0
+    ts: "2026-10-11T02:04:07Z"
+    seat: claude-opus-5-5
+  - claim: "The one G line the third run added on the explorer is a census artifact, not a client-visible occlusion."
+    cmd: "the census capture flow on /kbli-explorer desktop/light (quiet, the probe, page_grounds) against a plain load, both screenshotted at 1440x900 (notice-census-state.png, notice-user-state.png)"
+    result: "Under the census's animation:none the 2025-transition card collapses under the composer, and the line reads it occluded; a reader sees the whole card below the composer. A known residual for 3b-2, whose NO_MOTION finishes motion instead of removing it."
+    exit: 0
+    ts: "2026-10-11T05:02:47Z"
+    seat: claude-opus-5-5
+  - claim: "The fence: no file under apps/mouth/src."
+    cmd: "git diff --name-only origin/main...HEAD | grep -c '^apps/mouth/src'"
+    result: "0"
+    exit: 1
+    ts: "2026-10-11T05:21:35Z"
+    seat: claude-opus-5-5
+dissent:
+  - seat: claude-opus-5-5
+    objection: "The WIP's shadow reach (the sum of a shadow's lengths, any stacking) made the first M5 run print shared-component-drift 15: the /v2 mobile CTA bar (fixed, z-40, a shadow cast down) 'occluded' the footer links above it, and the nav behind the opened MobileNav 'occluded' its labels."
+    status: CONFIRMED
+    resolution: "The reach is per side (blur plus spread less the offset away from that side, a transparent or inset shadow reaching nothing) and only from an overlay elementsFromPoint names above the run's ancestors where its box comes nearest. Rows I-glow-behind-the-surface, I-shadow-cast-down, I-transparent-shadow; mutants B15-B17. The second run printed drift 0."
+  - seat: claude-opus-5-5
+    objection: "The second M5 run counted 14 'occluded' runs at rest that no reader is meant to see: the content of closed <details> on the code pages, whose boxes are laid out under the section after them."
+    status: CONFIRMED
+    resolution: "Text that is not rendered (checkVisibility false) is not a run. Row I-closed-details fails without the cure; mutant B18. The third run printed G 440."
+  - seat: claude-opus-5-5
+    objection: "Three of the first seventeen mutants survived: B3 (hides ignores the walk's scrims), B7 (the reach ignores a blur), B16 (a shadow reaches against its offset)."
+    status: CONFIRMED
+    resolution: "B3: I-under-the-walks-scrim had #d over the run, so the roots clause, not the scrim clause, cleared it; #d moved to the bottom. B7: no row isolated a blur's reach; G-blur-reach added. B16: I-shadow-cast-down's run sat beyond the mutant's reach; moved within it. Each row was traced under its mutant before the full rerun."

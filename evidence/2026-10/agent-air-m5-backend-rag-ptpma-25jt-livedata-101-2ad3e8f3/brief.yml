@@ -1,0 +1,46 @@
+task_id: ptpma-25jt-livedata-1012
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Owner ruling 2026-10-12: PT PMA setup price 20M -> 25M. The canonical JSON
+  (PR #8303) does not reach two live stores: prod Postgres practice_types
+  row company_pt_pma (base_price 20000000, seeded once by migration_066) and
+  the Qdrant collection bali_zero_pricing_hybrid (point payload price/text
+  "20.000.000 IDR"). This PR ships migration_127 (guarded UPDATE
+  20M -> 25M, with rollback), a payload-only dry-run-default sync script for
+  the collection (scripts/sync_pricing_collection_prices.py, with --only
+  scoping), and two #8303 gate leftovers (HomepageFAQ JSON-LD price and one
+  docs example). Applying either to prod is a separate, operator step.
+acceptance:
+  - text: >-
+      Migration 127 moves company_pt_pma 20M -> 25M, leaves any other value
+      untouched, is a no-op when absent or already moved, and rolls back only
+      the value it set.
+    probe: cd apps/backend-rag && .venv/bin/python -m pytest -p no:cacheprovider backend/tests/migrations/test_migration_127.py
+  - text: >-
+      The sync script plans price/text/last_updated for drifted points only,
+      rewrites the old price in text exactly once, refuses (exit 2, applies
+      nothing) on ambiguous text, and only reports unmatched names.
+    probe: cd apps/backend-rag && .venv/bin/python -m pytest -p no:cacheprovider ../../scripts/test_sync_pricing_collection_prices.py
+  - text: >-
+      A read-only dry-run against the live collection with the 25M catalog
+      and --only "New Company (PT PMA)" plans exactly one update.
+    probe: ssh pro, QDRANT env from apps/backend-rag/.env, script piped to python3 - with a temp catalog under /tmp (dry-run, no --apply)
+  - text: >-
+      The PT PMA offer in HomepageFAQ.tsx and the PT PMA example in
+      docs/MULTI_DOMAIN_FUSION_ARCHITECTURE.md carry 25 million.
+    probe: git diff origin/main -- apps/mouth/src/components/seo/HomepageFAQ.tsx docs/MULTI_DOMAIN_FUSION_ARCHITECTURE.md
+assumptions:
+  - text: >-
+      A full-collection dry-run with the 25M catalog also plans 6 OTHER price
+      drifts (passports, Domicilie Letter, Cancel RPTKA, Cancel Wajib Lapor)
+      that predate this ruling; the operator applies PT PMA with
+      --only "New Company (PT PMA)" unless the owner wants the rest synced.
+    status: verified
+    probe: scratch dry-run of build_plan over a read-only scroll of the 70 live points, 2026-10-12
+  - text: >-
+      Migration and collection sync are applied by the operator after merge
+      (run_migration-style via fly ssh; script --apply from a host with
+      QDRANT env); nothing here writes to prod.
+    status: assumed
