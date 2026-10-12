@@ -80,8 +80,8 @@ export function buildShadowOutcome(
 const DEGRADED_REVIEW_REASON: OutcomeReason = {
   code: "CLIENT_UNABLE_TO_VERIFY_DETAIL",
   message: {
-    en: "A Bali Zero advisor will review your full case by hand. Some supporting detail could not be safely verified in this browser, so it is not shown here.",
-    id: "Konsultan Bali Zero akan meninjau kasus Anda secara lengkap. Beberapa detail pendukung tidak dapat diverifikasi dengan aman di browser ini, sehingga tidak ditampilkan di sini.",
+    en: "A Bali Zero advisor can review your full case by hand. Some supporting detail could not be safely verified in this browser, so it is not shown here.",
+    id: "Konsultan Bali Zero dapat meninjau kasus Anda secara lengkap. Beberapa detail pendukung tidak dapat diverifikasi dengan aman di browser ini, sehingga tidak ditampilkan di sini.",
   },
   sourceIds: [],
 };

@@ -369,9 +369,19 @@ const FALSE_CLAIMS: readonly RegExp[] = [
   /only tells us which process/i,
   /only to check them/i,
   /hanya dipakai untuk memeriksanya/i,
+  // The advisor is offered, never promised (see advisor-offer.test.ts).
+  /we confirm the documents/i,
+  /kami memastikan dokumen/i,
+  /confirmed by a bali zero advisor/i,
+  /dipastikan oleh konsultan/i,
 ];
 
 const FALSE_SAMPLES: readonly (readonly [string, string])[] = [
+  [
+    "en",
+    "Send it to a Bali Zero advisor on WhatsApp: we confirm the documents, the timing and the quote.",
+  ],
+  ["id", "Harga jalur ini dipastikan oleh konsultan Bali Zero."],
   [
     "en",
     "Your choice decides which questions come next. A basis you do not choose, such as a bank deposit, is not counted in your plan.",
