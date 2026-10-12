@@ -130,6 +130,40 @@ def test_render_round2_table_shows_dash_for_no_september_choice() -> None:
     assert " - " in output or output.rstrip().endswith("-")
 
 
+def test_render_round2_table_shows_the_sprint_column() -> None:
+    reached = _r2_entry(sprint_points=23, sprint_reached=True, sprint_penalty_idr=0)
+    short = _r2_entry(
+        member="vino",
+        display_name="Vino",
+        sprint_points=7,
+        sprint_reached=False,
+        sprint_penalty_idr=700_000,
+    )
+    output = pcl.render_round2_table([reached, short], markdown=False)
+    header, *_ = output.splitlines()
+    assert "sprint" in header
+    assert "23/20" in output
+    assert "7/20 (-700000)" in output
+
+
+def test_parse_activity_rows_defaults_sprint_activations_to_zero() -> None:
+    rows = pcl._parse_activity_rows(
+        [{"creator_email": "client1@example.com", "activations": "3", "invited": "4"}]
+    )
+    assert rows[0]["sprint_activations"] == 0
+    rows = pcl._parse_activity_rows(
+        [
+            {
+                "creator_email": "client1@example.com",
+                "activations": "3",
+                "invited": "4",
+                "sprint_activations": "2",
+            }
+        ]
+    )
+    assert rows[0]["sprint_activations"] == 2
+
+
 # ── round routing ────────────────────────────────────────────────────────
 
 
@@ -204,7 +238,7 @@ def _select_output_names(sql: str) -> list[str]:
 @pytest.mark.parametrize(
     ("builder", "columns"),
     [
-        ("build_registration_aggregates_sql", "_AGGREGATES_COLUMNS"),
+        ("build_registration_aggregates_sql", "_R2_AGGREGATES_COLUMNS"),
         ("build_first_documents_sql", "_FIRST_DOCUMENT_COLUMNS"),
         ("build_client_requests_sql", "_REQUEST_COLUMNS"),
         ("build_required_document_reviews_sql", "_REVIEW_COLUMNS"),

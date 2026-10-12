@@ -1,0 +1,24 @@
+task_id: portal-challenge-r2-sprint-minimum
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Zero's ruling 2026-10-12 for Portal Challenge Round 2: from 2026-10-12 00:00
+  WITA to the round end (2026-10-30 00:00 WITA, exclusive) each of the six R2
+  participants must earn >= 20 NET points (same scoring rules, events at/after
+  the sprint start only, September carry excluded). Missing it projects a
+  -700,000 IDR monthly-bonus deduction and makes the member ineligible for
+  EVERY rank prize (an ineligible member consumes no slot; slots slide down).
+  Exposed per entry (sprint_points, sprint_reached, sprint_penalty_idr) and as
+  a round-level `sprint` object on GET /api/dashboard/portal-challenge, and as
+  a sprint column in scripts/portal_challenge_leaderboard.py.
+constraints:
+  - >-
+    No client PII: the new SQL column is a per-staff COUNT; fixtures use
+    example.com placeholders.
+  - >-
+    R1 (frozen) SQL text untouched; the R2 query is derived from it and raises
+    at import if the R1 text ever stops fitting the derivation.
+acceptance:
+  - Unit tests for sprint boundaries, penalty-start attribution, prize gate and slot sliding, payload shape.
+  - The new R2 SQL runs against prod (read-only, via scripts/portal_challenge_leaderboard.py) and returns the same totals as before plus the sprint column.

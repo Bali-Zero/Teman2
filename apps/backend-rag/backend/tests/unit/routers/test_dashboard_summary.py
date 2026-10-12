@@ -844,10 +844,18 @@ class TestPortalChallengeEndpoint:
         assert by_member["krisna"]["carry_points"] == 0
         assert by_member["adit"]["carry_points"] == 23
         assert by_member["adit"]["september_choice"] == "carry"
-        # Zero's 2026-09-30 slot rule: adit's 23 carried points clear only
-        # slot 5 (min 20), so he slides there; prize-takers start at 0.
-        assert by_member["adit"]["prize_slot"] == 5
-        assert by_member["adit"]["prize_idr"] == 700_000
+        # Zero's 2026-09-30 slot rule would slide adit's 23 carried points
+        # into slot 5 (min 20), but the 2026-10-12 sprint minimum shuts him
+        # out: carry never counts, he has 0 sprint points.
+        assert by_member["adit"]["prize_slot"] is None
+        assert by_member["adit"]["prize_idr"] == 0
+        assert by_member["adit"]["sprint_points"] == 0
+        assert by_member["adit"]["sprint_reached"] is False
+        assert by_member["adit"]["sprint_penalty_idr"] == 700_000
+        assert body["sprint"]["min_points"] == 20
+        assert body["sprint"]["penalty_idr"] == 700_000
+        assert body["sprint"]["start"].startswith("2026-10-12T00:00:00")
+        assert body["sprint"]["end"].startswith("2026-10-30T00:00:00")
         assert by_member["surya"]["prize_slot"] is None
         assert by_member["surya"]["september_rank"] == 1
         assert by_member["adit"]["september_rank"] is None
