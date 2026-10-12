@@ -1,0 +1,58 @@
+name: Fly cost guard tests
+
+# Executor for the corpora that prove the mini.fly_cost_guard organ (weekly Fly fleet ceiling check,
+# Mini launchd). Offline: flyctl is stubbed and the wrapper stubs
+# python and hostname. Without this file the corpus is collected by nothing that gates
+# (superscar #2).
+
+on:
+  pull_request:
+    paths:
+      - "scripts/fly_cost_guard.py"
+      - "scripts/tests/test_fly_cost_guard.py"
+      - "scripts/tests/test_mini_fly_cost_guard_wrapper.sh"
+      - "infra/launchagents/wrappers/mini-fly-cost-guard.sh"
+      - "infra/launchagents/com.nuzantara.fly-cost-guard.plist"
+      - ".github/workflows/fly-cost-guard-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/fly_cost_guard.py"
+      - "scripts/tests/test_fly_cost_guard.py"
+      - "scripts/tests/test_mini_fly_cost_guard_wrapper.sh"
+      - "infra/launchagents/wrappers/mini-fly-cost-guard.sh"
+      - "infra/launchagents/com.nuzantara.fly-cost-guard.plist"
+      - ".github/workflows/fly-cost-guard-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fly-cost-guard-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  fly-cost-guard-tests:
+    name: Fly cost guard tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest
+        run: python -m pip install --quiet --disable-pip-version-check pytest
+
+      - name: The guard judges every ceiling as specified
+        run: |
+          python -m pytest scripts/tests/test_fly_cost_guard.py -q -p no:cacheprovider
+
+      - name: The wrapper maps outcomes to heartbeats and p0s
+        run: bash scripts/tests/test_mini_fly_cost_guard_wrapper.sh
+
+      - name: The wrapper still parses (a syntax error is a silent dead organ)
+        run: bash -n infra/launchagents/wrappers/mini-fly-cost-guard.sh

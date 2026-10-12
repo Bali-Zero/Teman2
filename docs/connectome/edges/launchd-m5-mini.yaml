@@ -21,6 +21,12 @@ edges:
         type: cmd,
         cmd: "launchctl list | grep -F com.nuzantara.agent-worktree-cleanup.daily",
       }
+  - id: com.nuzantara.fly-cost-guard
+    kind: launchd
+    machine: mini
+    status: UNKNOWN
+    consumer: "infra/launchagents/wrappers/mini-fly-cost-guard.sh -> scripts/fly_cost_guard.py (weekly Monday 09:00 WITA; heartbeat mini.fly_cost_guard)"
+    notes: "Replaces the retired public-repo scheduled workflow at gate 7b. UNKNOWN until installed on Mini and a run reaches a verdict."
   - id: com.nuzantara.mailbox-janitor.daily-m5
     kind: launchd
     machine: m5

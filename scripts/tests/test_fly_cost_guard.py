@@ -1,7 +1,7 @@
 """Guilt / innocence tests for scripts/fly_cost_guard.py.
 
 Innocence: the inventory captured live on 2026-09-10 passes the ceilings the
-workflow ships with. Guilt: every ceiling, breached by exactly one unit, turns
+Mini wrapper ships with. Guilt: every ceiling, breached by exactly one unit, turns
 into a named finding AND a non-zero exit — a guard that only warns is not a
 guard (cicatrix #2).
 """
@@ -12,15 +12,14 @@ import copy
 import json
 import os
 from pathlib import Path
+import re
 import stat
 import subprocess
 import sys
 
-import yaml
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "fly_cost_guard.py"
-WORKFLOW = ROOT / ".github" / "workflows" / "cron-fly-cost-alert.yml"
+WRAPPER = ROOT / "infra" / "launchagents" / "wrappers" / "mini-fly-cost-guard.sh"
 FIXTURE = ROOT / "scripts" / "tests" / "fixtures" / "fly_inventory_2026-09-10.json"
 
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -34,27 +33,33 @@ def _inventory() -> dict:
     return json.loads(FIXTURE.read_text(encoding="utf-8"))
 
 
-def _workflow_limits() -> dict[str, int]:
-    env = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))["jobs"]["run"]["env"]
-    return fly_cost_guard.limits_from_env({k: str(v) for k, v in env.items()})
+def _wrapper_limits() -> dict[str, int]:
+    text = WRAPPER.read_text(encoding="utf-8")
+    env: dict[str, str] = {}
+    for env_name in fly_cost_guard.LIMIT_ENV.values():
+        match = re.search(rf'^export {env_name}="(\d+)"$', text, re.MULTILINE)
+        assert match, f"{env_name} missing from Mini wrapper"
+        env[env_name] = match.group(1)
+    return fly_cost_guard.limits_from_env(env)
 
 
-def test_workflow_ceilings_match_script_defaults() -> None:
-    assert _workflow_limits() == fly_cost_guard.DEFAULT_LIMITS
+def test_wrapper_ceilings_match_script_defaults() -> None:
+    assert _wrapper_limits() == fly_cost_guard.DEFAULT_LIMITS
 
 
-def test_workflow_calls_the_script_and_checks_it_out() -> None:
-    text = WORKFLOW.read_text(encoding="utf-8")
-    assert "python3 scripts/fly_cost_guard.py" in text
-    assert "actions/checkout@" in text
+def test_wrapper_calls_the_script_from_the_mini_checkout() -> None:
+    text = WRAPPER.read_text(encoding="utf-8")
+    assert 'GUARD="$REPO/scripts/fly_cost_guard.py"' in text
+    assert '"$PYTHON_BIN" "$GUARD"' in text
+    assert "resolve_fly_credential \"$FLY_BIN\" status -a nuzantara-rag" in text
     assert "python3 <<'PY'" not in text, "inline guard resurrected"
     assert "flyctl bills view" not in text
     assert "Current month cost" not in text
 
 
-def test_live_fixture_is_innocent_under_workflow_ceilings() -> None:
+def test_live_fixture_is_innocent_under_wrapper_ceilings() -> None:
     report, findings = fly_cost_guard.evaluate(
-        _inventory(), EXPECTED, _workflow_limits()
+        _inventory(), EXPECTED, _wrapper_limits()
     )
     assert findings == []
     assert report.startswith("Apps: 2 | Machines: 6/7 started (limit 6/7)")
@@ -81,7 +86,7 @@ def test_one_more_machine_is_guilty() -> None:
             "group": "api",
         }
     )
-    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
+    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _wrapper_limits())
     assert findings == ["machines 8>7"]
 
 
@@ -95,12 +100,12 @@ def test_performance_cpu_is_guilty() -> None:
         m for m in inv["apps"]["nuzantara-rag"]["machines"] if m["group"] == "rag"
     )
     rag["cpu_kind"] = "performance"
-    report, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
+    report, findings = fly_cost_guard.evaluate(inv, EXPECTED, _wrapper_limits())
     assert findings == ["non-shared cpu=1781e5eda03438:performance"]
     assert "Started CPUs: 11 (limit 11) [performance=2,shared=9]" in report
 
     del rag["cpu_kind"]
-    report, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
+    report, findings = fly_cost_guard.evaluate(inv, EXPECTED, _wrapper_limits())
     assert findings == ["non-shared cpu=1781e5eda03438:None"]
     assert "[shared=9,unknown=2]" in report
 
@@ -111,7 +116,7 @@ def test_started_standby_is_guilty_on_count_and_memory() -> None:
         m for m in inv["apps"]["nuzantara-rag"]["machines"] if m["state"] == "stopped"
     )
     standby["state"] = "started"
-    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
+    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _wrapper_limits())
     assert findings == [
         "started machines 7>6",
         "started memory 13312MB>12288MB",
@@ -125,7 +130,7 @@ def test_one_more_gb_of_ram_is_guilty() -> None:
         m for m in inv["apps"]["nuzantara-rag"]["machines"] if m["group"] == "rag"
     )
     rag["memory_mb"] += 1024
-    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
+    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _wrapper_limits())
     assert findings == ["started memory 13312MB>12288MB"]
 
 
@@ -135,7 +140,7 @@ def test_one_more_started_cpu_is_guilty() -> None:
         m for m in inv["apps"]["nuzantara-rag"]["machines"] if m["group"] == "rag"
     )
     rag["cpus"] += 1
-    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
+    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _wrapper_limits())
     assert findings == ["started cpus 12>11"]
 
 
@@ -152,7 +157,7 @@ def test_missing_sizes_fail_closed_only_on_what_is_billed() -> None:
     )
     standby["memory_mb"] = None
     del standby["cpus"]
-    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
+    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _wrapper_limits())
     assert findings == []
 
     api = next(
@@ -162,7 +167,7 @@ def test_missing_sizes_fail_closed_only_on_what_is_billed() -> None:
     del api["cpus"]
     volume = inv["apps"]["nuzantara-postgres"]["volumes"][0]
     volume["size_gb"] = "25"  # a string is not a size the guard will add up
-    report, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
+    report, findings = fly_cost_guard.evaluate(inv, EXPECTED, _wrapper_limits())
     assert findings == [
         "inventory errors="
         f"nuzantara-postgres:volume {volume['id']}:size_gb missing,"
@@ -176,17 +181,17 @@ def test_missing_sizes_fail_closed_only_on_what_is_billed() -> None:
 def test_extended_volume_is_guilty() -> None:
     inv = _inventory()
     inv["apps"]["nuzantara-postgres"]["volumes"][0]["size_gb"] += 1
-    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
+    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _wrapper_limits())
     assert findings == ["volumes 78GB>77GB"]
 
 
 def test_paid_ipv4_is_guilty_but_shared_ipv4_is_not() -> None:
     inv = _inventory()
     assert any(ip["type"] == "shared_v4" for ip in inv["apps"]["nuzantara-rag"]["ips"])
-    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
+    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _wrapper_limits())
     assert findings == []
     inv["apps"]["nuzantara-rag"]["ips"].append({"type": "v4"})
-    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
+    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _wrapper_limits())
     assert findings == ["dedicated IPv4 1>0"]
 
 
@@ -195,7 +200,7 @@ def test_unexpected_missing_apps_and_inventory_errors_are_findings() -> None:
     inv["apps"]["fly-builder-legacy"] = {"machines": [], "volumes": [], "ips": []}
     del inv["apps"]["nuzantara-postgres"]
     inv["errors"] = ["nuzantara-rag:ips:CalledProcessError"]
-    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
+    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _wrapper_limits())
     assert findings == [
         "unexpected apps=fly-builder-legacy",
         "missing apps=nuzantara-postgres",
