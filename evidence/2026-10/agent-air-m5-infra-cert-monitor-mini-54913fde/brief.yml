@@ -1,0 +1,61 @@
+task: >-
+  Move the daily TLS expiry check off the public-repo GitHub workflow cron-cert-monitor.yml (deleted here) into the Mini
+  launchd organ mini.cert_monitor: scripts/cert_monitor.py (stdlib, SNI, verification on, 30-day threshold, 7 hosts),
+  the wrapper infra/launchagents/wrappers/mini-cert-monitor.sh (p0 straight to Telegram through tg_notify.py with
+  TG_ACT_ROUTING_ENABLED=false and an empty TG_RELAY_SSH, a per-host dedup key, a heartbeat that reports the monitor's own
+  health, a live previous run older than an hour reads warning), a daily 07:00 plist without KeepAlive, a registry entry,
+  a declared pair and a connectome edge, with cert-monitor-tests.yml as the executor of 7 pytest and 5 wrapper shell cases.
+lane: infra
+machine: m5
+date: 2026-10-12
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, measured: evidence_pack_lint --print-floor --changed-files-file over the 13 changed files
+  computes 3 (infra/launchagents/ and organs_registry.yaml are hot-zone path terms). The floor sets the gear, not the size.
+acceptance:
+  A1:
+    text: >-
+      cert_monitor.py SHALL verify the chain with SNI under an 8 s timeout, classify each of the 7 hosts as ok, expiring
+      (fewer than 30 days), verify_failed, unreachable or parse_error, print one JSON line and exit 1 if and only if any host
+      is not ok.
+    probe: python3 -m pytest scripts/tests/test_cert_monitor.py -q; python3 scripts/cert_monitor.py --self-test; council review
+  A2:
+    text: >-
+      The wrapper SHALL map rc 0 with no findings to an ok heartbeat, rc 1 with findings to one p0 per finding and an ok
+      heartbeat, and anything else (rc other than 0 or 1, unparseable output, a host set that is not the seven, rc and
+      findings that disagree) to an error heartbeat and one broken p0; the p0 SHALL carry TG_ACT_ROUTING_ENABLED=false and an
+      empty TG_RELAY_SSH.
+    probe: bash scripts/tests/test_mini_cert_monitor_wrapper.sh (5 cases); council review of the mapping and the routing env
+  A3:
+    text: >-
+      A live previous run SHALL read ok under one hour and warning after, a dead owner SHALL be reclaimed, and the EXIT trap
+      SHALL turn an unfinished run into an error heartbeat and a broken p0; the plist SHALL have a daily 07:00 calendar
+      interval, RunAtLoad false and no KeepAlive.
+    probe: council review of wrapper lines 49-79 and the plist; plutil -lint
+  A4:
+    text: >-
+      The retired workflow SHALL have no live consumer left (watch list, connectome, grandfathered list) and cert-monitor-tests.yml
+      SHALL run the pytest file, the self-test, the wrapper shell test and bash -n on pull requests and pushes to main.
+    probe: council review of the diff and of the executor workflow
+  A5:
+    text: >-
+      Live, after merge and the declared pair installed on Mini: the sidecar ~/.organism/last_seen/mini.cert_monitor.json
+      reads ok within a day of the first 07:00 run and a p0 reaches Telegram for each of mail, calendar and drive until Zero
+      renews their certificate.
+    probe: ssh mini 'cat ~/.organism/last_seen/mini.cert_monitor.json; tail ~/logs/mini-cert-monitor/run.log'
+out_of_scope: >-
+  Renewing the three expired certificates (Zero's action); retiring the Pro HOME twin (after the first green Mini heartbeat);
+  a plist lint step in the executor; the generated docs/AUTOMATIONS_REFERENCE.md table.
+assumptions:
+  - text: A live run on 2026-10-12 found mail, calendar and drive under balizero.com serving a certificate that expired on 2026-10-05; the three stay in the host list.
+    status: verified
+    probe: reported by the coordinator for this mandate; not re-run in the dossier session.
+  - text: The verified default SSL context refuses an expired certificate at the handshake, so an expired host reads verify_failed and never expiring with negative days.
+    status: verified
+    probe: council (both seats) from scripts/cert_monitor.py:31-34 and :72-77; the pytest case maps SSLCertVerificationError to verify_failed.
+  - text: tg_notify.py repeats a p0 with the same dedup key on a ladder (6 h, 24 h, 72 h, 168 h), so the three expired hosts do not page daily forever.
+    status: verified
+    probe: scripts/tg_notify.py:170 and :207-209 read in the dossier session (REPEAT_LADDER_H defaults to DEDUP_HOURS then 24, 72, 168).
+  - text: Gear 3 needs the independent final-gate verdict on the head SHA, commissioned after the last push.
+    status: unverified
+    probe: gh pr checks <pr> after the verdict is posted.

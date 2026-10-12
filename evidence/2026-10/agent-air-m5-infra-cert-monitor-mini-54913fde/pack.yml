@@ -1,0 +1,168 @@
+# Gear-3 evidence pack — the daily TLS expiry check becomes the Mini launchd organ mini.cert_monitor.
+# Written 2026-10-12 by a dossier session (Claude Sonnet 5.5, M5) for code head bf8a1cecdf (local, not pushed). Every receipt is a
+# command run in this session; ts is the clock read in the same shell call. Verbatim seat verdicts are in council-journal.jsonl.
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+seat_fallback_reason: >-
+  The council is kimi-code/k3 and agy-gemini-3.1-pro (gemini-3.1-pro-high), named by the coordinator for this mandate. The
+  codex seat built this diff and is excluded by generator is not grader. Neither reviewer built or edited anything here. Seat
+  liveness was not probed separately: both answered rc 0.
+ruling: >-
+  Coordinator's mandate (2026-10-12): the public repo is being removed, so the GitHub-hosted cron workflows retire; the cert
+  check moves to a Mini launchd organ with its own heartbeat and a direct p0 to Telegram (gate 7b).
+mission: >-
+  Keep the daily verified TLS expiry check alive after the public repo goes, without a repo secret, and without ever reading a
+  hung, partial or unparseable run as green.
+lanes:
+  - lane: cert-monitor-build
+    role: build
+    seat: codex (built the check, the wrapper and the tests; it is NOT a grader here)
+  - lane: cert-monitor-review-kimi
+    role: review
+    seat: kimi-code/k3 (read-only, prompt-only with the six changed files and the registry diff inlined, 1 round)
+  - lane: cert-monitor-review-agy
+    role: review
+    seat: agy-gemini-3.1-pro (gemini-3.1-pro-high, --sandbox, prompt-only, same prompt, 1 round)
+seat_diversity: >-
+  Builder: OpenAI (codex). Reviewers: Moonshot (kimi-code/k3) and Google (agy-gemini-3.1-pro); neither built anything here and
+  codex does not grade its own diff.
+pii_scan: clean
+pii_scan_note: >-
+  Public hostnames, a stdlib check and a shell test with synthetic fixtures. No client data is read or printed; the p0 text
+  carries a public host, a status word and a day count.
+what_changed: |
+  scripts/cert_monitor.py (stdlib, verification on, SNI, 8 s timeout, 30-day threshold, 7 hosts, one JSON line, exit 1 on any
+  non-ok host), infra/launchagents/wrappers/mini-cert-monitor.sh (p0 per finding through tg_notify.py with
+  TG_ACT_ROUTING_ENABLED=false and an empty TG_RELAY_SSH, dedup key cert:HOST:STATUS, heartbeat reports the monitor's health,
+  a live previous run older than an hour is a warning), infra/launchagents/com.nuzantara.cert-monitor.plist (daily 07:00,
+  RunAtLoad false, no KeepAlive), organs_registry.yaml entry mini.cert_monitor, a declared pair, a connectome edge,
+  cert-monitor-tests.yml as the executor of 7 pytest and 5 wrapper shell cases; .github/workflows/cron-cert-monitor.yml is
+  deleted and removed from the watch list, the gh-workflows edge file and the grandfathered list.
+proof: |
+  See receipts. The council read the check, the wrapper, the plist, the executor, the tests and the registry diff; both found
+  the mechanics sound. The verdicts diverge on one business question, keeping the three expired hosts in the list, recorded
+  under dissent. The live run of 2026-10-12 that found the three expired hosts was reported by the coordinator and is not re-run here.
+bites:
+  consumer: >-
+    The Mini launchd job com.nuzantara.cert-monitor (daily 07:00 WITA) and the organism bridge that reads its sidecar
+    ~/.organism/last_seen/mini.cert_monitor.json (organs_registry.yaml, expected_hb_seconds 176400); the p0s reach Zero through
+    tg_notify.py.
+  observation: >-
+    Owed to the shipping session after merge and the declared pair installed on Mini: the sidecar reads ok within a day of the
+    first run, run.log under ~/logs/mini-cert-monitor shows monitor_rc=1, and Telegram carries one p0 each for mail, calendar and
+    drive (verify_failed) until the certificates are renewed. Not yet made: this pack records the pre-push state at head bf8a1cecdf.
+ground:
+  ts: "2026-10-12T05:35:11Z"
+  siblings: >-
+    Branch base origin/main e474325994; origin/main has since moved three commits and a merge-tree of origin/main with the head
+    is clean. No sibling PR touches the six new files.
+spend:
+  adversarial_rounds: 1
+  wall_clock_hours: 0.3
+decisions:
+  - id: D-keep-expired-hosts
+    decision: >-
+      The three expired hosts stay in HOSTS and in the wrapper's expected set; removing or muting them is exactly the
+      green-masking shape this organ exists to kill, and tg_notify.py makes a held condition quieter on a ladder (6 h, 24 h,
+      72 h, 168 h) instead of paging daily forever.
+  - id: D-findings-heartbeat-ok
+    decision: >-
+      Findings (rc 1) write an ok heartbeat and a p0; only a broken monitor writes error. A warning or error heartbeat for a
+      healthy organ would invite launchctl_kickstart of a working job.
+  - id: D-stale-lock-warning
+    decision: >-
+      A live previous run older than an hour reads warning, a dead owner is reclaimed, an unfinished run turns into an error
+      heartbeat and a broken p0 through the EXIT trap.
+receipts:
+  - claim: "R1 — floor 3 via the hot-zone path terms: the 13 changed files compute 3."
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <git diff origin/main...HEAD --name-only>
+    result: "3"
+    exit: 0
+    ts: "2026-10-12T05:35:11Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R2 — A1: the pytest corpus and the offline self-test pass on the head."
+    cmd: python3 -m pytest scripts/tests/test_cert_monitor.py -q -p no:cacheprovider; python3 scripts/cert_monitor.py --self-test
+    result: "7 passed; self-test ok"
+    exit: 0
+    ts: "2026-10-12T05:35:11Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R3 — A2: the wrapper shell test passes (rc 0, rc 1 with one p0 per finding, routing env, rc 3, missing hosts)."
+    cmd: bash scripts/tests/test_mini_cert_monitor_wrapper.sh
+    result: "passed 5, failed 0"
+    exit: 0
+    ts: "2026-10-12T05:35:11Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R4 — bash -n and shellcheck -S warning are clean on the wrapper and its test; the plist lints."
+    cmd: bash -n <wrapper>; shellcheck -S warning <wrapper> <test>; plutil -lint infra/launchagents/com.nuzantara.cert-monitor.plist
+    result: "bashn-ok; shellcheck 0; plist OK"
+    exit: 0
+    ts: "2026-10-12T05:35:11Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R5 — no textual conflict with current origin/main."
+    cmd: git merge-tree --write-tree origin/main HEAD
+    result: "exit 0; origin/main 86c0e9caf2, branch base e474325994"
+    exit: 0
+    ts: "2026-10-12T05:35:11Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R6 — council round 1 on head bf8a1cecdf, kimi-code/k3: PASS. The check verifies the chain with SNI under an 8 s timeout and orders SSLCertVerificationError before the OSError arm; an expired certificate reads verify_failed; the wrapper requires rc and findings to agree and a 7-host set; the p0 routing env and the dedup key are right; lock, stale and EXIT-trap handling sound; plist has no KeepAlive; registry fields consistent; no live consumer of the retired workflow remains; the executor runs all four corpora; keeping the three expired hosts is right."
+    cmd: "scripts/with_seat.sh kimi kimi -p <prompt with the six files and the registry diff inlined> -m kimi-code/k3 < /dev/null"
+    result: "rc 0; VERDICT: PASS; 1 DEFECT (the p0 text drops the reason: parser prints host/status/days at wrapper :109 and notify sends them at :127, so the three live alerts read status=verify_failed days=unknown); NOTEs: ExitTimeOut 60 s against 7 x 8 s worst case is marginal; a wedged run gets a daily warning and escalation depends on the bridge reading status; merge_group in cancel-in-progress is dead config; no plist lint step; three stale doc/comment mentions"
+    exit: 0
+    ts: "2026-10-12T05:33:40Z"
+    seat: kimi-code/k3
+  - claim: "R7 — council round 1 on head bf8a1cecdf, agy-gemini-3.1-pro: REWORK on one point; items 1 to 6 and 8 NOTE-level correct."
+    cmd: scripts/with_seat.sh agy agy --sandbox --model gemini-3.1-pro-high --print-timeout 900s -p <same prompt> < /dev/null
+    result: "rc 0; VERDICT: REWORK; BLOCKER item 9 (the three expired hosts in scripts/cert_monitor.py:18 and wrapper :100 give a daily p0 and alert fatigue; remove or mute them); DEFECT item 7 (stale text in docs/AUTOMATIONS_REFERENCE.md:52, security.yml:570, runtime-ownership.md:125, none a live consumer)"
+    exit: 0
+    ts: "2026-10-12T05:34:20Z"
+    seat: agy-gemini-3.1-pro
+  - claim: "R8 — the stale mention in docs/AUTOMATIONS_REFERENCE.md is generated, not hand-kept, and tg_notify.py makes a held condition quieter on a ladder."
+    cmd: sed -n 1,12p docs/AUTOMATIONS_REFERENCE.md; sed -n 14,30p scripts/tg_notify.py; sed -n 200,210p scripts/tg_notify.py
+    result: "header reads Auto-generated from live system state, do not edit manually; tg_notify.py: a persisting condition gets quieter, REPEAT_LADDER_H defaults to DEDUP_HOURS (6) then 24, 72, 168"
+    exit: 0
+    ts: "2026-10-12T05:35:40Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+dissent:
+  - seat: agy-gemini-3.1-pro (BLOCKER, item 9)
+    objection: >-
+      scripts/cert_monitor.py:18 and infra/launchagents/wrappers/mini-cert-monitor.sh:100, agy: "Keeping mail, calendar and drive
+      in the arrays while they are known to be expired guarantees a verify_failed finding on every run ... The wrapper loops over
+      findings and fires daily P0 alerts for an already known, unresolved issue. This creates severe alert fatigue and defeats
+      the purpose of the dedup contract. They must be removed from both the python HOSTS array and the bash inline expected set
+      until fixed, or explicitly muted."
+    status: PLAUSIBLE
+    disposition: >-
+      NOT adopted; the call belongs to Zero and the coordinator. Kimi reaches the opposite verdict on the same text ("Removing
+      or muting would be exactly the green-masking-dead shape this change exists to kill ... the acceptable tool is a time-boxed
+      ack/snooze, never removal"). The premise "daily" is weaker than agy states: tg_notify.py lowers the repeat rate on a ladder
+      (R8) and the wrapper's seven-host contract would also have to be edited to drop a host. Removing the three would make the
+      organ report seven healthy hosts while three public mail, calendar and drive sites serve an expired certificate. The
+      cheapest end to the noise is renewing the three certificates, which is Zero's action.
+  - seat: kimi-code/k3 (DEFECT, item 2)
+    objection: >-
+      wrapper :109 and :127, kimi: "the p0 text drops reason. Parser FINDING line prints only host/status/days and notify sends
+      host status days. The 3 live alerts read status=verify_failed days=unknown — expired vs untrusted-chain vs wrong-CN is
+      indistinguishable without opening run.log, though reason is captured in the JSON (:76). One-line fix in both places."
+    status: CONFIRMED
+    disposition: >-
+      OPEN, not cured: this session may not edit code. The reason stays in run.log; the alert is still correct and actionable
+      (the host and the status are named). Fast-follow for the shipping session or a later PR; not a blocker for the change.
+  - seat: agy-gemini-3.1-pro (DEFECT, item 7)
+    objection: >-
+      docs/AUTOMATIONS_REFERENCE.md:52, .github/workflows/security.yml:570, docs/automations/runtime-ownership.md:125 still name
+      cron-cert-monitor.yml; "stale documentation and comments, not live operational consumers."
+    status: PLAUSIBLE
+    disposition: >-
+      Severity overstated by agy's own text (no live consumer). AUTOMATIONS_REFERENCE.md is regenerated from live state (R8) and
+      self-heals; the other two are a comment and a prose line. Left as is.
+residuals:
+  - "R6 NOTE (kimi): ExitTimeOut 60 s against a worst case of 7 hosts x 8 s = 56 s plus the notifications is marginal but bounded; a killed run leaves an error heartbeat through the EXIT trap only if the trap runs, otherwise the 176400 s silence net reports it."
+  - "R6 NOTE (kimi): a wedged run gets a daily-refreshed warning heartbeat, never silence; escalation depends on the bridge consuming status, not only freshness."
+  - "R6 NOTE (kimi): merge_group in cancel-in-progress of cert-monitor-tests.yml is dead config (no merge_group trigger); the sibling vercel-autopromote-tests.yml carries the same expression. Harmless unless main adopts a merge queue for it."
+  - "R6 NOTE (kimi): the plist is in the executor's path filter but no step lints it; a malformed plist passes CI and is caught only by the silence net."
+  - "R6 NOTE (kimi): the registry bridge path uses ~; its expansion by the bridge was not verifiable from the text read."
+  - "The three expired certificates stay a daily-ladder p0 until Zero renews them; the first Mini run is the live proof of the p0 route and the heartbeat."
+  - "Superscar #1: the Pro HOME twin of cert-monitor stays untouched until the first green Mini heartbeat; retiring it is a later step the wrapper header names."
+  - "The 2026-10-12 live run that found three expired hosts was reported by the coordinator and was not re-run in this session."
+appetite_exceeded: false
