@@ -1,10 +1,12 @@
-"""Seq-28 fold gates: newest organ restamp plus the ruled E33 corrections.
+"""Seq-28 fold gates: the organ restamp plus the ruled E33 corrections.
 
-Before the Sunday organ run, this suite builds a scratch candidate from the
-newest ledger only after proving that ledger produced signed seq-27 from
-signed seq-26.  Once a newer ledger is committed, the same fixture folds it
-from seq-27 and compares the result with the committed seq-28 source.  Signed
-bundle checks become active when the human ceremony adds the signed artifact.
+The ledger is PINNED to research/visa/2026-10-11-organ-reattest-seq28, the one
+that produced the signed seq-28 bundle.  It is deliberately not the newest
+ledger: the weekly re-attestation organ commits a newer one every week, and a
+newest-ledger fixture would then fold a different ledger than the one that was
+signed, breaking the byte-for-byte comparison.  The fixture folds the pinned
+ledger from seq-27 and compares the result with the committed seq-28 source,
+whose digest is the signed payload_sha256.
 """
 
 from __future__ import annotations
@@ -60,6 +62,8 @@ _SEQ27_SOURCE = _PACKS / "rulepack-prod-027.source.json"
 _SEQ27_SIGNED = _PACKS / "rulepack-prod-027.signed.json"
 _SEQ28_SOURCE = _PACKS / "rulepack-prod-028.source.json"
 _SEQ28_SIGNED = _PACKS / "rulepack-prod-028.signed.json"
+_SEQ28_LEDGER_NAME = "2026-10-11-organ-reattest-seq28"
+_SEQ28_PAYLOAD_SHA256 = "a23a5bf55a77a658aef4ff06637cdb6fea476c5569d3d47a56896af2b8557046"  # pragma: allowlist secret
 _PORTAL_MAX_AGE = timedelta(seconds=2_764_800)
 _E31 = ["E31A", "E31B", "E31C", "E31D", "E31E", "E31F", "E31G", "E31H", "E31J"]
 
@@ -129,7 +133,8 @@ def anchor_signed() -> dict[str, Any]:
 
 @pytest.fixture(scope="module")
 def newest_ledger() -> Path:
-    return fold_mod.discover_newest_ledger(_RESEARCH)
+    # Pinned, not discover_newest_ledger(): see the module docstring.
+    return _RESEARCH / _SEQ28_LEDGER_NAME
 
 
 @pytest.fixture(scope="module")
@@ -558,6 +563,19 @@ class TestContent:
             "review.e33.below-threshold-studio"
         ]
         assert pack_unknown_escalations(payload) == ()
+
+
+class TestPinnedLedgerReproducesSigned:
+    def test_fixture_is_the_pinned_directory(self, newest_ledger: Path) -> None:
+        assert newest_ledger == _RESEARCH / _SEQ28_LEDGER_NAME
+        assert newest_ledger.is_dir()
+
+    def test_fold_of_pinned_ledger_is_the_real_signed_payload(
+        self, folded: tuple[dict[str, Any], dict[str, Any], str], seq28: dict[str, Any]
+    ) -> None:
+        assert folded[2] == "real"
+        digest = hashlib.sha256(canonicalize_json(seq28)).hexdigest()
+        assert digest == _SEQ28_PAYLOAD_SHA256
 
 
 class TestSignedBundleTiesToSource:
