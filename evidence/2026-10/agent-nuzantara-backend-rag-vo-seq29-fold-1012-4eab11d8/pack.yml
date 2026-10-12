@@ -63,7 +63,12 @@ receipts:
     exit: 1
     ts: "2026-10-12T08:02:00Z"
     seat: Claude Sonnet 5.5 (implementer, Mini)
-dissent: []
+council_run: journal.jsonl
+dissent:
+  - seat: codex-gpt-5.6-sol (red team, read-only, generator is a Claude seat)
+    objection: "HIGH - the E31J age-18 and unmarried hard filters are not grounded by the saved E31J page, a 2026-07-21 note warns against hard-coding an E31J age cap, and Permenkumham 11/2024 is not in the rules' source_refs."
+    status: PLAUSIBLE
+    note: "Builder evidence, not a retraction: the cited Kepmen M.IP-08/2025 Lampiran (source e3572ad2) row for E31J reads 'belum berusia 18 (delapan belas) tahun dan belum kawin' verbatim (research/legal/2026-05-26-kepmen-visa-taxonomy/01-raw-extraction.md:191), the rule cites that record, and a build-gate test now pins the row text; the 2026-07-21 note predates that extraction. Attaching Permenkumham 11/2024 as a source is a non-portal record edit and stays in the sources slice. Kimi k3 verified the same row and signed. The signing session decides."
 owed:
   - "Re-run the fold in REAL mode on the newest organ ledger (the dry-run source reuses the 2026-10-11 stamps), commit the regenerated source, re-gate the delta."
   - "Cross-family red team (Codex), two-titolare council, fresh Opus gate, signing, activation and prove-live: the signing session's."
