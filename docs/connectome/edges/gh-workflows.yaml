@@ -255,14 +255,6 @@ edges:
       notes: "potential ACTIVE_ACTIVE with Pro drive intake watcher when armed (#1364, ~14/06)",
     }
   - {
-      id: cron-fly-cost-alert.yml,
-      kind: gh_workflow,
-      machine: github,
-      status: SCHEDULED_ALIVE,
-      producer: "Mon 01:00 UTC",
-      notes: "complementary to Pro cost-breaker (different ledgers)",
-    }
-  - {
       id: cron-fly-restart-detector.yml,
       kind: gh_workflow,
       machine: github,

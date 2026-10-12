@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Mini install prerequisite:
+    umask 077
+    mkdir -p ~/logs/mini-fly-cost-guard ~/Library/LaunchAgents
+    : >> ~/logs/mini-fly-cost-guard/launchd.out.log
+    : >> ~/logs/mini-fly-cost-guard/launchd.err.log
+    chmod 600 ~/logs/mini-fly-cost-guard/launchd.out.log ~/logs/mini-fly-cost-guard/launchd.err.log
+    install -m 0755 infra/launchagents/wrappers/mini-fly-cost-guard.sh ~/scripts/
+    install -m 0644 infra/launchagents/com.nuzantara.fly-cost-guard.plist ~/Library/LaunchAgents/
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.fly-cost-guard</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/scripts/mini-fly-cost-guard.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/nuzantara</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>1</integer>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>Umask</key>
+    <integer>63</integer>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/Users/nuzantara/.local/bin:/Users/nuzantara/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/mini-fly-cost-guard/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/mini-fly-cost-guard/launchd.err.log</string>
+</dict>
+</plist>
