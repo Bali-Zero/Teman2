@@ -1,0 +1,17 @@
+gear: 2
+gear_reason: >-
+  Test-only change (one backend test file plus its evidence), no product code, no data, no pack and no copy; it only
+  reads the signed pack and the price catalogue. Gear 2 because it pins client-facing prices across nine visit codes.
+mission: >-
+  The price a Visa Oracle visitor is quoted for A1, B1, BRIDGING, C1, C2, C6, D1, D2 and D12 is pinned against the
+  real price catalogue on the highest signed pack, and a row rewritten to prose or a range is pinned to fail closed.
+objective: >-
+  A new backend test file resolves each visit code through the real PricingService on the highest verified signed
+  pack and asserts AVAILABLE at the exact typed IDR amount (A1 0, B1 750000, C1 2300000, C2 3600000, C6 2000000,
+  BRIDGING 3500000, D1 6000000, D2 6500000, D12 7500000), the quote built from the signed product, the A1 real zero, and guilt twins
+  (edited amount, prose or range row, deleted row, rewired key, tampered pack).
+scope:
+  - apps/backend-rag/backend/tests/services/visa_engine/test_visit_family_pricing.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

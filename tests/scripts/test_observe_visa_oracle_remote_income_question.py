@@ -14,12 +14,12 @@ from observe_visa_oracle_remote_income_question import summary_ok  # noqa: E402
 @pytest.mark.parametrize(
     "line",
     [
-        "      Tests  5 skipped (5)",
-        "      Tests  5 passed (5)",
-        "      Tests  1 failed | 5 passed (6)",
-        "      Tests  6 passed | 1 skipped (7)",
-        "      Tests  6 passed | 1 todo (7)",
-        "      Tests  5 passed (6)",
+        "      Tests  8 skipped (8)",
+        "      Tests  8 passed (8)",
+        "      Tests  1 failed | 8 passed (9)",
+        "      Tests  9 passed | 1 skipped (10)",
+        "      Tests  9 passed | 1 todo (10)",
+        "      Tests  8 passed (9)",
         "",
         None,
     ],
@@ -29,7 +29,7 @@ def test_rejects_anything_but_a_full_pass(line):
 
 
 @pytest.mark.parametrize(
-    "line", ["      Tests  6 passed (6)", "      Tests  7 passed (7)"]
+    "line", ["      Tests  9 passed (9)", "      Tests  10 passed (10)"]
 )
 def test_accepts_full_pass_at_or_above_floor(line):
     assert summary_ok(line) is True

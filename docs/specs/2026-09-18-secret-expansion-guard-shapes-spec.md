@@ -95,6 +95,19 @@ argument**: `bash -c '…'`, a combined `-lc`, and `eval '…'` are judged ident
 heredoc and a `-c` differ in spelling, not in what the child executes, and judging only the first left
 the more idiomatic second wide open. `ssh host '…'` is the one deliberate exception (E64, note below).
 
+**Redirects are read OUTSIDE quotes only (2026-10-12, E65–E73).** Measured on main the same day: a
+redirect INSIDE a quoted `-c`/`eval` payload switched the payload's judgement off. `bash -c 'cat STORE
+2>/dev/null'`, `sh -c 'printenv 2>&1'` and `eval 'cat STORE 2>/dev/null'` were ALLOW, the same commands
+without the redirect DENY. The tokenizer's glued-redirect rule cut the quoted token at its first `>`,
+the payload lost its closing quote, and the cut fragment's last path segment became a bogus head
+(`bash -c 'ls ~/bin/env > /tmp/o'` was DENY as a bare `env`). **A glued redirect is an operator at an
+UNQUOTED position of its token**: `cat STORE>/tmp/x` still keeps `STORE` (E72), while a `>` or `<`
+inside `'…'` or `"…"` is data, so a quoted payload stays whole and is judged as the code it is
+(E65–E71, E73). Two neighbouring tokenizer facts are deliberately NOT changed here: `&` inside `2>&1` /
+`&>` still splits statements, and `|&` is not yet a stage separator. Both are inert today — X1–X4 judge
+every stage on its own, so no verdict depends on them — and become load-bearing only for a shape that
+reads LATER stages; they belong with that shape, with rows that bite.
+
 Explicitly **out of scope**, stated so nobody assumes coverage:
 
 - **Interpreter one-liners.** `python3 -c 'print(os.environ["NAME"])'` is not caught. Detecting it
@@ -184,6 +197,15 @@ print-access-token`, `flyctl auth token` — are not shapes yet (gate finding 20
 | E62 | `bash -c 'echo hello'`                                                    | ALLOW   | innocence for E60/E61 — a `-c` payload with nothing guilty in it                                                            |
 | E63 | `eval 'cat STORE'`                                                        | DENY    | X4 — `eval` runs its argument as code in the CURRENT shell                                                                  |
 | E64 | `ssh pro 'cat STORE'`                                                     | ALLOW   | **KNOWN BOUNDARY**, not an endorsement — see the note below                                                                 |
+| E65 | `bash -c 'cat STORE 2>/dev/null'`                                         | DENY    | X4 — the quoted payload keeps its inner `2>`; was ALLOW (cut at `>`)                                                        |
+| E66 | `bash -c "cat STORE 2>&1"`                                                | DENY    | X4 — the same in double quotes                                                                                              |
+| E67 | `sh -c 'printenv 2>&1'`                                                   | DENY    | X2 — inside a `-c` payload with a redirect                                                                                  |
+| E68 | `bash -lc 'set -x; ls 2>/dev/null'`                                       | DENY    | X2 xtrace — inside a combined `-lc` payload with a redirect                                                                 |
+| E69 | `eval 'cat STORE 2>/dev/null'`                                            | DENY    | X4 — E63's entity with a redirect                                                                                           |
+| E70 | `bash -c 'ls -la ~/bin/env > /tmp/o; cat /tmp/o'`                         | ALLOW   | innocence — no bogus `env` head from a cut token; was DENY                                                                  |
+| E71 | `bash -c 'cd /tmp && python3 tool.py out/set > log 2>&1; echo rc=$?'`     | ALLOW   | innocence — no bogus `set` head; was DENY                                                                                   |
+| E72 | `cat STORE>/tmp/x`                                                        | DENY    | X4 — an UNQUOTED glued redirect still keeps the operand before it                                                           |
+| E73 | `echo 'a>b'`                                                              | ALLOW   | innocence — a quoted `>` is data                                                                                            |
 
 **E64, the one deliberate hole.** A remote INLINE command cannot be judged by this guard until the
 read-vs-write distinction of W94 is written down: a remote WRITE stays remote and never reaches the

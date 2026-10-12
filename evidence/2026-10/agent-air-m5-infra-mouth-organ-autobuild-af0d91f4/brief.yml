@@ -1,0 +1,50 @@
+task: >-
+  Switch the Mini organ mini.vercel_autopromote (every 120 s) from vercel_prod_deploy.py --promote-only to
+  --upload --auto-build, because the public repo (and with it Vercel's Git-integration build producer) is being
+  removed: the organ promotes a READY build when one exists and otherwise builds once from a local archive. Heartbeats
+  are mapped from exact output markers of the cure script, rc 4 means upload suspended, an unrecognized rc=0 outcome
+  is an error, a young overlapping run reports ok and an old one a warning, and MINI_VERCEL_AUTOPROMOTE_MODE=promote-only
+  is an instant fallback.
+lane: infra
+machine: m5
+date: 2026-10-12
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, measured: evidence_pack_lint --print-floor --changed-files-file over the two changed files
+  computes 3 (infra/launchagents/wrappers/ is a hot-zone path term). The floor sets the gear, not the size.
+acceptance:
+  A1:
+    text: >-
+      Every successful rc=0 outcome the cure script can print under --upload --auto-build (lock busy, promoted by upload,
+      already current with the upload staged, promoted existing build in both wordings, nothing to do) SHALL map to an
+      ok heartbeat by an anchored exact marker, and any other rc=0 text SHALL map to error.
+    probe: bash scripts/tests/test_mini_vercel_autopromote_wrapper.sh; council marker check against the print statements of scripts/vercel_prod_deploy.py with #8320 applied
+  A2:
+    text: >-
+      rc 4 SHALL be an error naming the suspended target, rc 3 outside promote-only an error carrying a redacted last
+      line, rc 2 an error, any other rc an error; a live overlapping pid SHALL report ok under 35 minutes and warning
+      after, and no branch SHALL stay green while nothing is built or promoted.
+    probe: bash scripts/tests/test_mini_vercel_autopromote_wrapper.sh (30 cases); council review of the overlap and lock-busy paths
+  A3:
+    text: >-
+      MINI_VERCEL_AUTOPROMOTE_MODE=promote-only SHALL restore the previous behaviour in every rc branch and an invalid
+      value SHALL leave an error heartbeat.
+    probe: bash scripts/tests/test_mini_vercel_autopromote_wrapper.sh; council review
+  A4:
+    text: >-
+      Live, after #8320 and this change are on main and the pair is installed on Mini: the sidecar
+      ~/.organism/last_seen/mini.vercel_autopromote.json reads ok with a marker note, and the next mouth merge goes live
+      without a human promote.
+    probe: ssh mini 'cat ~/.organism/last_seen/mini.vercel_autopromote.json; tail ~/logs/mini-vercel_autopromote/run.log'
+out_of_scope: >-
+  The cure script itself (#8320 and #8302); a persistent counter for repeated lock-busy ticks; the repo removal.
+assumptions:
+  - text: The wrapper's markers match the cure script as changed by #8320 (--no-wait, --skip-domain, split final messages); without #8320 a successful upload prints a line the wrapper does not recognise and reads error.
+    status: verified
+    probe: council marker comparison char for char (kimi) against the 8320 diff; this PR must merge after #8320.
+  - text: A production upload was proven live on 2026-10-12 with the script this wrapper calls.
+    status: verified
+    probe: reported by the coordinator for this mandate; not re-run in the dossier session.
+  - text: Gear 3 needs the independent final-gate verdict on the head SHA, commissioned after the last push.
+    status: unverified
+    probe: gh pr checks <pr> after the verdict is posted.

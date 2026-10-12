@@ -193,3 +193,67 @@ def test_closure_captures_via_default_args_not_loop_variable() -> None:
     assert [cb() for cb in callbacks_naive] == ["q-2", "q-2", "q-2"]
     # Pinned callbacks see their OWN iteration's `q`
     assert [cb() for cb in callbacks_pinned] == ["q-0", "q-1", "q-2"]
+
+
+# ----------------------------------------------------------------------------
+# L6 — bounded close: a dead LISTEN connection must not wedge the reconnect loop
+# ----------------------------------------------------------------------------
+
+
+class _HangingConn:
+    """Fake asyncpg connection whose close() never returns (dead socket)."""
+
+    def __init__(self) -> None:
+        self.terminated = False
+
+    async def close(self) -> None:
+        await asyncio.Event().wait()  # never set
+
+    def terminate(self) -> None:
+        self.terminated = True
+
+
+class _HealthyConn:
+    def __init__(self) -> None:
+        self.closed = False
+        self.terminated = False
+
+    async def close(self) -> None:
+        self.closed = True
+
+    def terminate(self) -> None:
+        self.terminated = True
+
+
+@pytest.mark.asyncio
+async def test_close_quietly_terminates_when_close_hangs() -> None:
+    """Guilt: close() never returns -> helper still returns within the timeout
+    and falls through to terminate(). With the old unbounded `await conn.close()`
+    the helper does not exist / the call never returns."""
+    conn = _HangingConn()
+    await asyncio.wait_for(wr3_supervisor._close_quietly(conn, timeout=0.05), timeout=2.0)
+    assert conn.terminated is True
+
+
+@pytest.mark.asyncio
+async def test_close_quietly_terminates_when_close_raises() -> None:
+    conn = _HealthyConn()
+    conn.close = AsyncMock(side_effect=asyncpg.InterfaceError("connection is closed"))
+    await wr3_supervisor._close_quietly(conn, timeout=0.05)
+    assert conn.terminated is True
+
+
+@pytest.mark.asyncio
+async def test_close_quietly_swallows_terminate_failure() -> None:
+    conn = _HangingConn()
+    conn.terminate = MagicMock(side_effect=RuntimeError("boom"))
+    await asyncio.wait_for(wr3_supervisor._close_quietly(conn, timeout=0.05), timeout=2.0)
+
+
+@pytest.mark.asyncio
+async def test_close_quietly_does_not_terminate_healthy_conn() -> None:
+    """Innocence: a normal close() is honoured and terminate() is NOT called."""
+    conn = _HealthyConn()
+    await wr3_supervisor._close_quietly(conn, timeout=0.05)
+    assert conn.closed is True
+    assert conn.terminated is False

@@ -181,3 +181,96 @@ def test_a_refused_run_creates_nothing_so_its_label_owns_nothing() -> None:
     # the only name-based removal is the stale reap, after the age guard and before creation
     assert text.count('docker rm -f "$CONTAINER_NAME"') == 1
     assert refusal < reap < create
+
+
+def _run_payload_until_listing(
+    tmp_path: Path, extra_env: dict[str, str], *, pipe_timeout: float | None = None
+) -> tuple[int, str, list[str]]:
+    """Run the real payload with stub tools; the stub `aws` records its argv and refuses the listing.
+
+    With pipe_timeout, output is captured through a PIPE that closes only when every process holding
+    it has exited: a surviving watchdog `sleep` raises TimeoutExpired.
+    """
+    import hashlib
+    import os
+    import subprocess
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    record = tmp_path / "aws.argv"
+    stubs = {
+        "aws": f'#!/bin/bash\nprintf "%s\\n" "$*" >> "{record}"\nexit 1\n',
+        "colima": '#!/bin/bash\nprintf "Filesystem 1024-blocks Used Available Capacity Mounted\\n/dev/root 1 1 99999999 1%% /\\n"\n',
+        "docker": '#!/bin/bash\ncase "$1 $2" in "image inspect") echo "$STUB_IMAGE_HASH" ;; esac\nexit 0\n',
+        "psql": "#!/bin/bash\nexit 0\n",
+    }
+    for name, body in stubs.items():
+        stub = bin_dir / name
+        stub.write_text(body, encoding="utf-8")
+        stub.chmod(0o755)
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("RESTORE_DRILL_", "TIGRIS_", "AWS_", "DRILL_"))}
+    env.update(
+        PATH=f"{bin_dir}:{env.get('PATH', '/usr/bin:/bin')}",
+        AWS_ACCESS_KEY_ID="stub",
+        AWS_SECRET_ACCESS_KEY="stub",
+        STUB_IMAGE_HASH=hashlib.sha256((ROOT / "Dockerfile").read_bytes()).hexdigest(),
+        RESTORE_DRILL_CONTAINER=f"pytest-drill-{os.getpid()}",
+        # Output goes to a file, never a pipe, and a short cap bounds the run.
+        RESTORE_DRILL_TIMEOUT_SECONDS="20",
+    )
+    env.update(extra_env)
+    cmd = ["/bin/bash", str(ROOT / "run_drill.sh")]
+
+    def calls_of() -> list[str]:
+        return record.read_text(encoding="utf-8").splitlines() if record.exists() else []
+
+    if pipe_timeout is not None:
+        piped = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=pipe_timeout)
+        return piped.returncode, piped.stdout + piped.stderr, calls_of()
+    out = tmp_path / "payload.out"
+    with out.open("w", encoding="utf-8") as sink:
+        proc = subprocess.run(cmd, env=env, stdout=sink, stderr=sink, timeout=60)
+    return proc.returncode, out.read_text(encoding="utf-8"), calls_of()
+
+
+def test_the_generic_secrets_env_bucket_cannot_redirect_the_drill(tmp_path: Path) -> None:
+    # Mini's secrets env exports TIGRIS_BUCKET for the app's media bucket and the wrapper sources it with
+    # `set -a`; a generic TIGRIS_ENDPOINT would leak the same way. The drill must still list the backups bucket.
+    rc, stderr, calls = _run_payload_until_listing(
+        tmp_path, {"TIGRIS_BUCKET": "media-bucket", "TIGRIS_ENDPOINT": "https://media.invalid"}
+    )
+    assert rc == 2 and "cannot list Tigris postgres backups" in stderr
+    assert calls == ["--endpoint-url https://fly.storage.tigris.dev s3 ls s3://nuzantara-backups/postgres/"]
+
+
+def test_the_drill_scoped_bucket_override_still_applies(tmp_path: Path) -> None:
+    rc, _, calls = _run_payload_until_listing(
+        tmp_path, {"TIGRIS_BUCKET": "media-bucket", "RESTORE_DRILL_TIGRIS_BUCKET": "drill-bucket"}
+    )
+    assert rc == 2
+    assert calls == ["--endpoint-url https://fly.storage.tigris.dev s3 ls s3://drill-bucket/postgres/"]
+
+
+def test_the_drill_scoped_endpoint_override_still_applies(tmp_path: Path) -> None:
+    rc, _, calls = _run_payload_until_listing(
+        tmp_path, {"TIGRIS_ENDPOINT": "https://media.invalid", "RESTORE_DRILL_TIGRIS_ENDPOINT": "https://drill.invalid"}
+    )
+    assert rc == 2
+    assert calls == ["--endpoint-url https://drill.invalid s3 ls s3://nuzantara-backups/postgres/"]
+
+
+def test_the_watchdog_group_is_killed_so_its_sleep_does_not_outlive_the_run(tmp_path: Path) -> None:
+    # Deterministic, no process-table read: the watchdog's `sleep` inherits the output pipe, so the
+    # pipe reaches EOF within the timeout only if the whole watchdog group died with the run. On the
+    # pre-cure payload the orphan holds it for the 45 s cap and this raises TimeoutExpired.
+    rc, out, _ = _run_payload_until_listing(
+        tmp_path, {"RESTORE_DRILL_TIMEOUT_SECONDS": "45"}, pipe_timeout=20
+    )
+    assert rc == 2 and "cannot list Tigris postgres backups" in out
+
+
+def test_generic_drill_knobs_in_the_secrets_env_do_not_reach_the_drill() -> None:
+    text = _payload_text()
+    for knob in ("PORT", "USER", "PASSWORD", "DB"):
+        assert f'DRILL_{knob}="${{RESTORE_DRILL_{knob}:-' in text
+        assert f'"${{DRILL_{knob}:-' not in text

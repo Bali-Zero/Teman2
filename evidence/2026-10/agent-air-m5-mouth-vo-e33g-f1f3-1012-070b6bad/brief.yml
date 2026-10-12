@@ -1,0 +1,19 @@
+gear: 1
+gear_reason: >-
+  Test-only change plus a no-argument observer floor and a ledger row; the diff stays well under the size floor and
+  asserts no product behaviour of its own.
+mission: >-
+  The E33G income-question tests check every category, every spelling of the threshold and the real test count.
+objective: >-
+  The remote-income-question test file asserts the income question on all ten other categories read from the real
+  option list (a misspelled key falls back to stay_days and is caught), the threshold-naming regex also matches
+  60 thousand and 60 ribu, and the observer floor equals the real test count (9).
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/remote-income-question.test.ts
+  - scripts/ci/observe_visa_oracle_remote_income_question.py
+  - tests/scripts/test_observe_visa_oracle_remote_income_question.py
+  - tests/scripts/test_visa_ledger_seq28.py
+  - .claude/skills/modus/PENDING-ARMS.md
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0

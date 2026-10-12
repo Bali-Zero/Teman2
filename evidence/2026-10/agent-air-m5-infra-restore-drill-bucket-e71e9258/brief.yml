@@ -1,0 +1,22 @@
+gear: 2
+gear_reason: >-
+  One payload script and its test file: the drill reads drill-scoped variable names instead of generic ones,
+  the watchdog's process group is killed with the run, and a dead legacy drill script is removed. No wrapper,
+  plist, registry or workflow change. The floor is 2 by size alone (+232/-185 with the 176-line legacy
+  deletion and this dossier); no hot-zone path.
+mission: >-
+  The first scheduled mini.restore_drill run (2026-11-01 12:00 WITA) lists the backups bucket, not the media
+  bucket the Mini secrets env names TIGRIS_BUCKET, so the organ installed from #8308 can reach a verdict.
+objective: >-
+  run_drill.sh reads RESTORE_DRILL_TIGRIS_BUCKET / RESTORE_DRILL_TIGRIS_ENDPOINT / RESTORE_DRILL_PORT / _USER /
+  _PASSWORD / _DB with the retired workflow's defaults; behavioural tests run the real payload with stub tools up
+  to the listing and pin the bucket and endpoint; the watchdog group is killed on both exit paths;
+  scripts/pg-restore-drill.sh and its grandfathered entry are removed.
+scope:
+  - scripts/restore_drill/run_drill.sh
+  - scripts/restore_drill/tests/test_restore_drill.py
+  - scripts/pg-restore-drill.sh (deleted)
+  - infra/tg-gateway/grandfathered.json (one entry removed)
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

@@ -27,8 +27,9 @@ import time
 from datetime import datetime, timezone
 
 TIERS = ["GREEN", "AMBER", "RED", "BLACK"]
-ENTER = {1: 130.0, 2: 115.0, 3: 105.0}   # a tier is entered when free falls under this mark
-EXIT = {1: 140.0, 2: 125.0, 3: 112.0}    # and left only at or above this one
+# Zero, 2026-10-11, floor lowered from 100 to 90: BLACK = floor+5, RED = floor+15, AMBER = floor+30
+ENTER = {1: 120.0, 2: 105.0, 3: 95.0}    # a tier is entered when free falls under this mark
+EXIT = {1: 130.0, 2: 115.0, 3: 102.0}    # and left only at or above this one
 SEVEN_DAYS = 7 * 86400
 H = 3600
 
@@ -151,7 +152,7 @@ def implied_tier(free):
 
 def next_tier(current, free):
     """Escalation is immediate; the way down passes each exit mark: a tier is left only at or above its own exit mark, one
-    band at a time (RED at 132 GB is AMBER until 140), and never below what the reading implies."""
+    band at a time (RED at 122 GB is AMBER until 130), and never below what the reading implies."""
     while current > 0 and free >= EXIT[current]:
         current -= 1
     return max(current, implied_tier(free))

@@ -1,0 +1,20 @@
+gear: 2
+gear_reason: >-
+  Test-only change (one backend test file plus its evidence), no product code, no data, no pack and no copy; it only
+  reads the signed pack and the price catalogue. Gear 2 because the file sits near the 400-line size floor
+  (test file 394 lines), not because any hot zone is touched.
+mission: >-
+  The price a Visa Oracle visitor is quoted for E28A is pinned against the real price catalogue on the
+  highest signed pack, and E28B, E28C, E28D and E28F are pinned as deliberately unpriced.
+objective: >-
+  A backend test asserts, on the highest signed pack VERIFIED through verify_rule_pack under the production key,
+  that E28A prices from the Investor KITAS 2 Years (Offshore) catalogue row and is quoted AVAILABLE at IDR 17,000,000
+  through the real PricingService and through run_evaluation end to end (candidate, quote, display, persisted quote),
+  that E28B, E28C, E28D and E28F carry no pricing key and resolve to CONTACT_REQUIRED / PRICING_KEY_NOT_CONFIGURED
+  with no amount (and show as such in the end-to-end display), and that an edited row amount, a deleted row, an
+  E28A product re-aimed at a neighbouring row and a pack edited after signing each turn the pin red.
+scope:
+  - apps/backend-rag/backend/tests/services/visa_engine/test_e28_family_pricing.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

@@ -31,6 +31,7 @@ import contextlib
 import json
 import logging
 import signal
+import time
 from typing import Any
 
 import asyncpg
@@ -54,6 +55,22 @@ logger = logging.getLogger(__name__)
 
 PG_CHANNEL = "federation_alert"
 
+# A LISTEN connection that dies silently (proxy flap) receives nothing and
+# raises nothing: the idle loop must ask the server whether it is still there.
+LISTEN_PROBE_INTERVAL_S = 30.0
+LISTEN_PROBE_TIMEOUT_S = 5.0
+LISTEN_IDLE_POLL_S = 1.0
+CLOSE_TIMEOUT_S = 5.0
+
+
+async def _close_quietly(conn: Any, timeout: float = CLOSE_TIMEOUT_S) -> None:
+    """Close ``conn`` with a bounded wait; fall back to terminate()."""
+    try:
+        await asyncio.wait_for(conn.close(), timeout)
+    except Exception:
+        with contextlib.suppress(Exception):
+            conn.terminate()
+
 
 class FederationAlertDaemon:
     """Long-running daemon for the Federation Alert Dispatcher."""
@@ -65,6 +82,9 @@ class FederationAlertDaemon:
         self._pool: asyncpg.Pool | None = None
         self._stop_event = asyncio.Event()
         self._listener_conn: asyncpg.Connection | None = None
+        # time.monotonic() of the last proof the LISTEN connection is alive
+        # (successful probe OR received notification); None until first connect.
+        self.last_probe_ok_ts: float | None = None
         # Probe ai-dispatch.sh at construction; the daemon won't refuse
         # to start, but it will refuse to leave 'observe' mode if False.
         self._dispatch_available: bool = quick_subprocess_check()
@@ -90,8 +110,17 @@ class FederationAlertDaemon:
 
         # B7: replay unconsumed events_outbox rows for federation_alert
         # (recovers events lost during a previous reconnect window).
+        await self._replay_missed("boot")
+
+        # Run the LISTEN loop until stop_event is set.
         try:
-            async with self._pool.acquire() as conn:
+            await self._listen_loop(repo)
+        finally:
+            await self._cleanup()
+
+    async def _replay_missed(self, when: str) -> None:
+        try:
+            async with self._pool.acquire() as conn:  # type: ignore[union-attr]
                 await replay_unconsumed(
                     conn,
                     self._enqueue_replay,
@@ -99,17 +128,17 @@ class FederationAlertDaemon:
                     consumer_id=self._config.daemon_owner,
                 )
         except Exception as exc:
-            logger.warning("replay_unconsumed failed at boot: %s", exc)
+            logger.warning("replay_unconsumed failed at %s: %s", when, exc)
             self._audit.emit(
                 "daemon.replay_failed",
-                data={"error": repr(exc)[:300]},
+                data={"error": repr(exc)[:300], "when": when},
             )
 
-        # Run the LISTEN loop until stop_event is set.
-        try:
-            await self._listen_loop(repo)
-        finally:
-            await self._cleanup()
+    def probe_age_s(self) -> float | None:
+        """Seconds since the LISTEN connection last proved alive (None = never)."""
+        if self.last_probe_ok_ts is None:
+            return None
+        return time.monotonic() - self.last_probe_ok_ts
 
     def _install_signal_handlers(self) -> None:
         loop = asyncio.get_event_loop()
@@ -123,8 +152,7 @@ class FederationAlertDaemon:
     async def _cleanup(self) -> None:
         self._audit.emit("daemon.stopping", data={})
         if self._listener_conn is not None:
-            with contextlib.suppress(Exception):
-                await self._listener_conn.close()
+            await _close_quietly(self._listener_conn)
         if self._pool is not None:
             await self._pool.close()
 
@@ -134,10 +162,14 @@ class FederationAlertDaemon:
 
     async def _listen_loop(self, repo: FederationAlertRepo) -> None:
         backoff = 1.0
+        reconnecting = False
         while not self._stop_event.is_set():
+            conn: Any = None
             try:
                 conn = await asyncpg.connect(self._config.database_url)
                 self._listener_conn = conn
+                dead = asyncio.Event()
+                conn.add_termination_listener(lambda _c, _d=dead: _d.set())
                 queue: asyncio.Queue[str] = asyncio.Queue()
 
                 # Bind the queue to a default arg so each loop iteration
@@ -151,6 +183,7 @@ class FederationAlertDaemon:
                     *,
                     _queue: asyncio.Queue[str] = queue,
                 ) -> None:
+                    self.last_probe_ok_ts = time.monotonic()
                     _queue.put_nowait(payload)
 
                 await conn.add_listener(PG_CHANNEL, _on_notify)
@@ -160,12 +193,31 @@ class FederationAlertDaemon:
                     data={"channel": PG_CHANNEL},
                 )
                 backoff = 1.0  # reset on successful connect
+                self.last_probe_ok_ts = time.monotonic()
+                if reconnecting:
+                    await self._replay_missed("reconnect")
+                reconnecting = True
+                last_probe = time.monotonic()
 
                 while not self._stop_event.is_set():
                     try:
-                        payload = await asyncio.wait_for(queue.get(), timeout=1.0)
+                        payload = await asyncio.wait_for(queue.get(), timeout=LISTEN_IDLE_POLL_S)
                     except asyncio.TimeoutError:
+                        if dead.is_set() or conn.is_closed():
+                            raise ConnectionError("LISTEN connection closed")
+                        if time.monotonic() - last_probe >= LISTEN_PROBE_INTERVAL_S:
+                            try:
+                                await asyncio.wait_for(
+                                    conn.fetchval("SELECT 1"), LISTEN_PROBE_TIMEOUT_S
+                                )
+                            except Exception as probe_exc:
+                                raise ConnectionError(
+                                    f"LISTEN probe failed: {type(probe_exc).__name__}"
+                                ) from probe_exc
+                            last_probe = time.monotonic()
+                            self.last_probe_ok_ts = last_probe
                         continue
+                    self.last_probe_ok_ts = time.monotonic()
                     await self._process_notify_payload(payload, repo)
             except (
                 asyncpg.PostgresConnectionError,
@@ -182,6 +234,8 @@ class FederationAlertDaemon:
                     "daemon.listener_lost",
                     data={"error": repr(exc)[:300], "backoff_s": backoff},
                 )
+                if conn is not None:
+                    await _close_quietly(conn)
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 30.0)
             except Exception as exc:
@@ -190,6 +244,9 @@ class FederationAlertDaemon:
                     "daemon.listener_crashed",
                     data={"error": repr(exc)[:300]},
                 )
+                if conn is not None:
+                    await _close_quietly(conn)
+                reconnecting = True
                 await asyncio.sleep(5.0)
 
     # ------------------------------------------------------------------

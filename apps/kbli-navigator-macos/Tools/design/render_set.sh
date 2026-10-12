@@ -33,7 +33,7 @@ for l in en id; do
   shot registry-table --theme day --lang $l --code 51101 --height 2400 "$OUT/tall/registry-table-51101-day-$l.png"; done
 # The immersive set (IMM): what the user sees, a first-class set beside the flat baseline. IMM=1 adds it under $OUT/imm/.
 if [ -n "${IMM:-}" ]; then
-  mkdir -p "$OUT/imm/narrow"
+  mkdir -p "$OUT/imm/narrow" "$OUT/live"
   typeset -A IMMCODE=(detail-card 55203 sheet-ledger 56101 chat 51101 registry-sheet 56101)
   for b in detail-card sheet-ledger chat registry-sheet; do
     for t in day night; do for l in en id; do
@@ -43,10 +43,15 @@ if [ -n "${IMM:-}" ]; then
   # The expanded live sheet, immersive: what the user sees (scale path as the matrix, ring, hint). 71109 has 29 scopes.
   for c in 56101 55203 71109 19201; do for t in day night; do for l in en id; do
     shot registry-sheet --imm --sheet-open --theme $t --lang $l --code $c --height 3200 "$OUT/imm/sheet-open-$c-$t-$l.png"; done; done; done
+  # The sheet as the app mounts it (SearchListView.sheetLayer): C25 reads it against the flat twin (tall/) and this set's immersive one.
+  for c in 56101 55203; do for t in day night; do
+    shot live-sheet --sheet-open --theme $t --lang en --code $c --height 2600 "$OUT/live/sheet-open-$c-$t-en.png"; done; done
   # Stacked cells open on the shown cell next to a neighbour chip: High at night, Medium-High by day (the ring must clear it).
   shot registry-sheet --imm --sheet-open --theme night --lang en --code 85510 --height 2600 "$OUT/imm/sheet-open-85510-night-en.png"
   shot registry-sheet --imm --sheet-open --theme day --lang en --code 20111 --height 4000 "$OUT/imm/sheet-open-20111-day-en.png"
   # Medium-Low at night, stacked (#8288 gate): the ring's census (C24) must see it clear of the chip beside it.
+  # A row that spans several scales (43110's first row: Micro, Small, Medium) draws one chip per scale and rings each: C24 counts chips.
+  shot registry-sheet --imm --sheet-open --theme night --lang en --code 43110 --scope 0 --scale-focus Mikro --height 4000 "$OUT/imm/sheet-open-43110-night-en.png"
   for c in 03300 32300; do shot registry-sheet --imm --sheet-open --theme night --lang en --code $c --height 4000 "$OUT/imm/sheet-open-$c-night-en.png"; done
 fi
 [[ -n $CENSUS_IDENTITY ]] && echo "census collector: $same PNGs byte-identical with and without it"

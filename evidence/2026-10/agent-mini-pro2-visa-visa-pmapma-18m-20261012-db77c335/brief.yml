@@ -1,0 +1,16 @@
+gear: 1
+gear_reason: >-
+  Mechanical price-string correction in two articles (5 languages), plus one source-bound
+  test; no pack, no catalogue and no engine change.
+mission: >-
+  The two KBLI-2025 business articles stop quoting a PT PMA setup price of ~IDR 18M that the 2026-10-12 owner
+  ruling (25.000.000, catalogue company_services) superseded; a test pins the point price to the catalogue.
+objective: >-
+  Replace IDR 18M / Rp 18 juta with 25M in the IT-tech and professional-services articles (en/id/it/fr/ru); add src/content/pt-pma-setup-price.test.ts reading the catalogue JSON.
+scope:
+  - apps/mouth/src/content/articles/business/kbli-2025-it-tech-software-cloud-bali-2026*.mdx
+  - apps/mouth/src/content/articles/business/kbli-2025-professional-services-consulting-design-bali-2026*.mdx
+  - apps/mouth/src/content/pt-pma-setup-price.test.ts
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

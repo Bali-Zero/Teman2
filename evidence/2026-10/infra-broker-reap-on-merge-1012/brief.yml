@@ -1,0 +1,18 @@
+task_id: infra-broker-reap-on-merge-1012
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  The agent-worktree broker's cleanup (scripts/agent_start.py cmd_cleanup, every 3 h on Pro) reaps a worktree whose
+  pull request merged its exact head at the first idle tick at least 60 minutes after the merge, instead of waiting
+  for the session's TTL (sessions set 1440 min). Measured on Pro 2026-10-12: free space fell 97.0 -> 81.8 GB under
+  the 90 GB floor while 33 worktrees of about 1.4 GB each were alive, four of them on PRs merged 3-4 h earlier and
+  never considered by the cleanup tick. Gear is 2 via the SIZE term alone (churn above 400: the PR-record helper
+  moved, and the tests); no hot-zone path. The gear-2 verdict is not asserted here; a fresh Opus gate reads the
+  diff and posts it.
+residuals:
+  - The idle signal is the broker's existing liveness probe (worktree dir, .git pointer, gitdir HEAD mtimes), so a
+    session doing read-only work in a merged, clean worktree for over 60 minutes after the merge can lose its
+    checkout; the branch ref is kept and `git worktree add` restores it.
+  - "`git worktree remove --force` drops gitignored files; unchanged behaviour, now reachable up to ~23 h sooner."
+  - Metadata with `"branch": null` raises an uncaught TypeError; the broker always writes a string.

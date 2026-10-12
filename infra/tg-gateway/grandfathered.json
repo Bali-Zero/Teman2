@@ -131,7 +131,6 @@
     "scripts/nlm_activation/truth_dashboard_digest.sh",
     "scripts/nlm_nb1_daily_refresh.py",
     "scripts/nlm_pipeline_run.sh",
-    "scripts/pg-restore-drill.sh",
     "scripts/post-deploy-verify.sh",
     "scripts/profile-monitor/wrapper.py",
     "scripts/ragas_eval.py",

@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: fc785344c3a3358e114942f9a3e5d7ca45e62eadf9404f6ebbc84e20c0a90fd6 # pragma: allowlist secret
+checksum: 01ee8dda8273b1710336701aa31a26e045eaa7dc2c34e2a337e447d0b68c1730 # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3280,8 +3280,8 @@ organs:
     label: com.nuzantara.disk-floor
   severity_on_silence: warning
   notes: 'LOCALCI-SOVEREIGN B6 (docs/specs/localci-sovereign-2026-10-07.md, RULED 2026-10-08:
-    Pro keeps > 100 GB free, always): reads df -Pk /System/Volumes/Data every 30 min
-    (StartInterval 1800, no KeepAlive). ok above 100 GB, warning 60-100, failed under
+    Pro keeps > 90 GB free, always; Zero 2026-10-11, lowered from 100): reads df -Pk /System/Volumes/Data every 30 min
+    (StartInterval 1800, no KeepAlive). ok above 90 GB, warning 60-90, failed under
     60 (written as error); the note carries the free GB and, when not ok, the three
     biggest top-level directories of ~. Kill switch PRO_DISK_FLOOR_ENABLED=false.
     Born via organ_birth.py.'
@@ -3325,7 +3325,7 @@ organs:
   severity_on_silence: warning
   notes: 'Free-space keeper for Pro (docs/specs/pro-janitor-2026-10-10.md): every 10 min
     (StartInterval 600, no KeepAlive) reads free GB on /System/Volumes/Data and moves
-    between GREEN/AMBER/RED/BLACK with hysteresis (enter 130/115/105, leave 140/125/112).
+    between GREEN/AMBER/RED/BLACK with hysteresis (enter 120/105/95, leave 130/115/102).
     Runs ONLY an allowlist of three host-cache rules (uv cache prune, npm cache verify,
     old ms-playwright revisions not pinned by the .links registry; BLACK adds no rule, it pages), never docker/Colima/VM
     and never a process kill. Apply armed since rollout step 3 (PRO_JANITOR_APPLY=true). Heartbeat ok

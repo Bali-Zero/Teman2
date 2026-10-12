@@ -232,6 +232,8 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         (bash("cat ~/.nuzantara-secrets.env"), "BLOCK", "E24 X4: content dump of a registered store"),
         (read_("~/.codex/auth.json"), "BLOCK", "E36 X5: Read on a registered store"),
         (bash('echo "$(cat ~/.nuzantara-secrets.env)"'), "BLOCK", "E52 X4 inside a command substitution"),
+        (bash("bash -c 'cat ~/.nuzantara-secrets.env 2>/dev/null'"), "BLOCK",
+         "E65 X4: quoted payload keeps its inner redirect"),
         # INNOCENCE
         (bash('echo "${BAILIAN_TOKEN_PLAN_API_KEY:+SET}"'), "ALLOW", "E06: the sanctioned presence check — one character from E01"),
         (bash('curl -H "Authorization: Bearer $BAILIAN_TOKEN_PLAN_API_KEY" https://api/'), "ALLOW", "E09: THE correct way to use a key"),
@@ -243,6 +245,8 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         (bash("set +x; ls"), "ALLOW", "E48: +x turns tracing OFF — found DENIED at the gate"),
         (bash("python3 - <<'PY'\nprint(\"cat ~/.nuzantara-secrets.env\")\nPY"), "ALLOW",
          "E57: quoted heredoc to a non-shell is literal data — the repo's editing idiom"),
+        (bash("bash -c 'ls -la ~/bin/env > /tmp/o; cat /tmp/o'"), "ALLOW",
+         "E70: quoted payload is not cut into a bogus env head"),
         (read_("~/.qwen/settings.json"), "ALLOW", "E39: config, not a registered store (spec §4)"),
         (bash("git diff --stat origin/main...HEAD"), "ALLOW", "everyday command, no secret anywhere"),
     ],

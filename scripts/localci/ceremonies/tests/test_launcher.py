@@ -234,6 +234,23 @@ def test_symlink_ceremony_is_refused(rig_factory):
     assert rig.run(rig.m2, "C3-bootstrap").returncode == 65
 
 
+def test_body_runs_from_m_not_from_the_fetched_tip(rig_factory):
+    # M is an ancestor of the tip with a different body: the launcher must run M's.
+    rig = rig_factory({"C3-bootstrap": 'print -r -- "body=m1"\n'}, tip_bodies={"C3-bootstrap": 'print -r -- "body=tip"\n'})
+    got = rig.run(rig.m1, "C3-bootstrap")
+    assert got.returncode == 0
+    assert "body=m1" in got.stdout.splitlines() and "body=tip" not in got.stdout
+
+
+def test_ceremony_mode_is_judged_at_m_not_at_the_fetched_tip(rig_factory):
+    # At M the ceremony is a symlink (refused); at the tip it is a regular blob. Judging the tip would accept it.
+    # M runs first: a refused run writes no journal, so the 65 cannot come from the rewind check.
+    rig = rig_factory(symlink_ceremony="C3-bootstrap", tip_bodies={"C3-bootstrap": "exit 0\n"})
+    assert rig.run(rig.m1, "C3-bootstrap").returncode == 65
+    assert not (rig.base / "last-main").exists()
+    assert rig.run(rig.m2, "C3-bootstrap").returncode == 0
+
+
 def test_test_copy_diff_is_exactly_the_declared_patch_table(rig_factory):
     rig = rig_factory()
     source = SHIPPED.read_text()

@@ -163,6 +163,8 @@ from backend.services.visa_engine.models import (
     ApplicantFacts,
     Decision,
     Reason,
+    SourceFreshnessPolicy,
+    SourceFreshnessUntilSuperseded,
     SourceRecord,
     VisaProductVersion,
 )
@@ -700,13 +702,25 @@ def _evaluate_source_freshness(
     """
 
     policy = source.freshness_policy
+    max_age_seconds = policy.max_age_seconds if isinstance(policy, SourceFreshnessPolicy) else None
     if source.verified_at > evaluated_at:
         return SourceFreshnessDTO(
             status=SourceFreshnessStatus.UNKNOWN,
             reason_code="SOURCE_VERIFIED_AT_IN_FUTURE",
             evaluated_at=evaluated_at,
             verified_at=source.verified_at,
-            max_age_seconds=None if policy is None else policy.max_age_seconds,
+            max_age_seconds=max_age_seconds,
+        )
+    if isinstance(policy, SourceFreshnessUntilSuperseded):
+        # Owner ruling 2026-10-12: no calendar expiry.  Applicability (status,
+        # legal_period, recorded_period) is judged separately by
+        # _source_applicability_status and is NOT bypassed by this branch.
+        return SourceFreshnessDTO(
+            status=SourceFreshnessStatus.CURRENT,
+            reason_code="SOURCE_FRESHNESS_NOT_TIME_BOUNDED",
+            evaluated_at=evaluated_at,
+            verified_at=source.verified_at,
+            max_age_seconds=None,
         )
     if policy is None:
         return SourceFreshnessDTO(

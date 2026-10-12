@@ -8,9 +8,10 @@ import { QUESTIONS } from "./tree";
 // the seq-28 step B interview question for the E33G yearly income.
 
 // Any spelling of the 60,000 USD threshold: digits with a separator or a thin/
-// no-break space, 60k, or the number in words (EN/ID). Copy must never anchor.
+// no-break space, 60k, 60 thousand, 60 ribu, or the number in words (EN/ID).
+// Copy must never anchor.
 const NAMES_THE_THRESHOLD =
-  /60[\s\u00a0\u202f,.]?000|60\s?k\b|sixty|enam puluh/i;
+  /(?<!\d)60[\s  ,.]?000(?!\d)|(?<!\d)60[\s  ]?k\b|(?<!\d)60[\s  ]?(?:thousand|ribu)|sixty|enam puluh/i;
 
 describe("seq-28 step B - the remote interview asks the yearly income", () => {
   it("asks it right after the employer country and before the PT PMA question", () => {
@@ -31,10 +32,29 @@ describe("seq-28 step B - the remote interview asks the yearly income", () => {
   });
 
   it("is asked on no other category", () => {
-    for (const category of ["work", "family", "invest", "study"] as const) {
+    const categories = (QUESTIONS.category.options ?? []).map((o) => o.key);
+    // A silently shrunk list must fail: every category the gate named is here.
+    for (const key of [
+      "remote",
+      "tourism",
+      "business",
+      "retirement",
+      "second_home",
+      "diaspora",
+      "other",
+      "work",
+      "family",
+      "invest",
+      "study",
+    ]) {
+      expect(categories, key).toContain(key);
+    }
+    for (const category of categories.filter((key) => key !== "remote")) {
       const ids = getCategoryQuestionIds({ category });
-      expect(ids.length).toBeGreaterThan(0);
-      expect(ids).not.toContain("remote_annual_income_usd");
+      // An unknown key falls back to ["stay_days"]: a misspelt key must not pass.
+      expect(ids, category).not.toEqual(["stay_days"]);
+      expect(ids.length, category).toBeGreaterThan(0);
+      expect(ids, category).not.toContain("remote_annual_income_usd");
     }
   });
 
@@ -74,6 +94,40 @@ describe("seq-28 step B - the remote interview asks the yearly income", () => {
           NAMES_THE_THRESHOLD,
         );
       }
+    }
+  });
+
+  it("the threshold regex matches every spelling and no unrelated figure", () => {
+    for (const spelling of [
+      "60,000",
+      "60.000",
+      "60 000",
+      "60\u00a0000",
+      "60\u202f000",
+      "60000",
+      "60k",
+      "sixty",
+      "enam puluh",
+      "60 thousand",
+      "60 ribu",
+      "60ribu",
+      "60 Thousand",
+      "60 RIBU",
+    ]) {
+      expect(spelling, spelling).toMatch(NAMES_THE_THRESHOLD);
+    }
+    for (const figure of [
+      "6,000",
+      "600",
+      "160 days",
+      "160 ribu",
+      "16 thousand",
+      "160000",
+      "160,000",
+      "160k",
+      "600000",
+    ]) {
+      expect(figure, figure).not.toMatch(NAMES_THE_THRESHOLD);
     }
   });
 

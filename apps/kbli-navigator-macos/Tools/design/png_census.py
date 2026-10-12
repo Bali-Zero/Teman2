@@ -20,7 +20,7 @@ forgotten mark and a mark on an empty area per C, and `cap` on a 13 pt element. 
 FAIL. Frames ready to arm (PR 3-h-2b, #8250 gate bindings 1-5): every JSON of the set, armed or not, speaks the census
 grammar (NAMES: a closed list of names, each with its value's pattern) and agrees with the record's own state the
 band snapshot writes beside its frames; a measured element is bounded on both sides; C11 finds a chip whole, never
-clipped by its frame, and holds it on its frame — a mark sits outside any `.offset`/Beat, where its element lands.
+clipped by its frame, and holds it on its frame — a mark sits after any Beat and reports the element's layout frame, where it is meant to land; the ink must be there.
 Successor cure (PR 3-h-2b', #8276 gate BLOCK): the sentence's bound is calibrated on the real Fraunces glyphs (a serif(20)
 line is 31-42 px, 1.1 x 20 pt = 44 px; a 24 pt line is 46+), the cap is measured per band (the sheet-ledger's is
 display(64), every other band's title(36)), C11 grows only through the chip's own colours and stops at a rule, a
@@ -82,7 +82,7 @@ nearest = lambda p, table: min(table, key=lambda t: min(sum(abs(a - c) for a, c 
 def c11(im, fr, rows):
     """matrix-columns: each matrix (its header row) holds the fixture's row count of chips, each centred on the ink
     of its scale's header, the nearest above it, and on its own frame, +-4 px. A chip is where it is SEEN, whole: a
-    render offset (an entrance beat) moves the ink, and the frame — marked outside the beat — stays where it lands."""
+    render offset (an entrance beat) moves the ink, and the frame — marked after the beat — stays on the layout frame."""
     need(fr, "matrix.head", "matrix.chip"); heads = [(v, b[3], sum(ibox(im, b)[0::2]) / 2) for v, b in fr["matrix.head"]]
     per, off = Counter(), []
     for v, b in fr["matrix.chip"]:
@@ -205,16 +205,19 @@ def c24(im, fr, arg):
     outer edge (3.5 pt outside the marked chip), and clear of what lies beside it: the 1.5 pt just outside that edge (past its one antialiased pixel) is the ground on each side and no other marked chip is within 1.5 pt of it (a chip filled like the ground, Medium-Low at night, leaves no ink), so a chip
     stacked 4 pt away (a ring touching it) FAILs, whether it is the lower one, the upper one or one at the side; and the
     hint is drawn iff the record offers more than one cell to pick (`cells`)."""
-    rec, s = arg; cells = (rec or {}).get("cells")
-    if not isinstance(cells, int): raise Miss("the record carries no cells: the snapshot must write them")
+    rec, s = arg; cells, want = (rec or {}).get("cells"), (rec or {}).get("chipSet")
+    if not isinstance(cells, int) or not isinstance(want, list): raise Miss("the record carries no cells and chipSet: the snapshot must write them")
     d, t, k, bad = int(s), max(2, round(1.5 * s)), int(6 * s), []
     inside = lambda p: 0 <= p[0] < im.width and 0 <= p[1] < im.height
     shown = {v for v, _ in fr["detail"]}
-    if len(shown) != 1: raise Miss("the detail names %d rows (%s): a sheet shows one cell's detail" % (len(shown), ", ".join(sorted(shown)) or "none"))
+    if len(fr["detail"]) != 1 or len(shown) != 1: raise Miss("the sheet marks %d details (%s): it shows one cell's detail, once" % (len(fr["detail"]), ", ".join(sorted(shown)) or "none"))
     wrong = sorted({v for v, _ in fr["ring"]} - shown)
     if wrong: bad.append("a ring on row %s while the detail shows row %s: two selections" % (", ".join(wrong), next(iter(shown))))
     if not any(v in shown for v, _ in fr["ring"]): bad.append("no ring on the shown row %s" % next(iter(shown)))
-    if len(fr["matrix.chip"]) < cells: bad.append("%d marked chips for %d cells: a chip is unmarked" % (len(fr["matrix.chip"]), cells))
+    got = [v for v, _ in fr["matrix.chip"]]   # the SET of marked chips (scale:row) is the record's set: a count can balance a missing chip against a doubled one
+    if len(got) != len(set(got)): bad.append("chip %s marked twice" % ", ".join(sorted(v for v in set(got) if got.count(v) > 1)))
+    if set(want) - set(got): bad.append("chip %s of the record is unmarked (a row spanning scales draws one per scale)" % ", ".join(sorted(set(want) - set(got))))
+    if set(got) - set(want): bad.append("chip %s is marked but not in the record" % ", ".join(sorted(set(got) - set(want))))
     o = int(3.5 * s + .5)
     for row, (x0, y0, x1, y1) in fr["ring"]:
         sits = [b for v, b in fr["matrix.chip"] if v.endswith(":" + row) and abs((b[0] + b[2]) - (x0 + x1)) <= 4 and abs((b[1] + b[3]) - (y0 + y1)) <= 4
@@ -242,12 +245,31 @@ def c24(im, fr, arg):
     if cells <= 1 and hints: bad.append("a hint over %d cell: nothing to pick" % cells)
     return not bad, "%d rings accent on 4 sides and clear, %d hint over %d cells: %s" % (len(fr["ring"]), len(hints), cells, "; ".join(bad) or "none")
 
-CHECKS = {"C%d" % n: f for n, f in zip(range(11, 25), (c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24))}
+def c25(im, fr, arg):
+    """live mount (G2, #8290 gate): the sheet the app mounts, rendered through SearchListView as the user reaches it (live/),
+    is the immersive layout: its path nodes (matrix.head) stand as tall as the immersive twin's (imm/) and not as the flat
+    twin's (tall/), both read from the same set. The two twins must differ, or the witness bites nothing. The text guard
+    (live_host_check.py) reads the source; this reads the mount: `#if false`, a sibling host and `transformEnvironment` pass
+    the text guard and FAIL here, and `.immersiveHost().environment(\\.immersive, false)` (outside the host, so immersive)
+    FAILs the text guard and passes here."""
+    png, s = arg; root = png.parent.parent; name = png.name.replace("sheet-open-", "")
+    def heads(rel):
+        f = root / rel
+        if not f.exists(): raise Miss("no %s: the twin the live mount is read against" % rel)
+        h = sorted(fr_["frame"][3] for fr_ in json.load(open(f))["frames"] if fr_["name"] == "matrix.head")
+        if not h: raise Miss("%s has no matrix.head frame" % rel)
+        return h[len(h) // 2]
+    flat, imm = heads("tall/registry-sheet-open-" + name.replace(".png", ".json")), heads("imm/sheet-open-" + name.replace(".png", ".json"))
+    live = sorted(b[3] - b[1] for _, b in fr["matrix.head"]); live = live[len(live) // 2] / s
+    if abs(flat - imm) < 10: raise Miss("the flat and the immersive twins' path nodes are %.0f and %.0f pt: the witness cannot tell them apart" % (flat, imm))
+    return abs(live - imm) <= 2 and abs(live - flat) > 10, "live mount's path nodes %.0f pt; immersive twin %.0f pt, flat twin %.0f pt" % (live, imm, flat)
+
+CHECKS = {"C%d" % n: f for n, f in zip(range(11, 26), (c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25))}
 # The frames each check reads (C23: the ARMED row's own list of chips), and those it reads when present.
 NEEDS = {"C11": ("matrix.head", "matrix.chip"), "C12": ("headsup.label",), "C13": ("cap", "chip.bali", "bali.label"),
          "C14": ("cap",), "C15": ("basis.lead", "basis.body"), "C16": ("bar",), "C17": ("figure", "figure.peak", "card.peak"),
          "C18": ("census", "card"), "C19": ("uraian.item",), "C20": ("row.code", "row.title", "row.chip"),
-         "C21": ("ladder", "matrix"), "C22": ("group.digits", "row.code"), "C23": (), "C24": ("matrix.chip", "ring", "detail")}
+         "C21": ("ladder", "matrix"), "C22": ("group.digits", "row.code"), "C23": (), "C24": ("matrix.chip", "ring", "detail"), "C25": ("matrix.head",)}
 OPTIONAL = {"C12": ("headsup.sentence",), "C24": ("hint",)}
 # The census grammar (#8250 gate binding 2): a frame's name is one of these, and its value matches the name's pattern —
 # a tone, a step ("0"…"3" in `scaleOrder`), an ordinal, a fraction, or nothing. Never drawn text.
@@ -353,7 +375,7 @@ def judge(im, fr, s, c, arg, band="", record=None):
         for _, b in fr.get(n, []):
             if inked(im, b) < INK_MIN: raise Miss("frame %s at %s holds no ink: a mark on an empty area" % (n, b))
             if n in MEASURE and not MEASURE[n][0](im, b, s, band): raise Miss("frame %s at %s is not %s" % (n, b, MEASURE[n][1](band)))
-    return CHECKS[c](im, fr, (record, s) if c == "C24" else arg)
+    return CHECKS[c](im, fr, (record, s) if c == "C24" else arg)   # C25's arg is (png, s), made by armed()
 # (PNG path relative to the set, as a regex; check; its argument). Each View PR arms its own bands here when it names
 # the frames its checks read (lead ruling 2026-10-11): none is armed by the harness itself.
 LEDGER56 = r"(?:imm/)?sheet-ledger-(?:day|night)-(?:en|id)\.png|tall/sheet-ledger-56101-(?:day|night)-en\.png"
@@ -362,7 +384,7 @@ OPEN = r"tall/registry-sheet-open-\d+-(?:day|night)-(?:en|id)\.png|imm/sheet-ope
 TONES = ("chip.national", "chip.bali")
 ARMED = [(LEDGER56, "C11", 6), (LEDGER56, "C12", None), (LEDGER56, "C13", None), (LEDGER56, "C14", None), (LEDGER56, "C21", None),
          (LEDGER56, "C23", TONES), (TALL71, "C12", None), (TALL71, "C13", None), (TALL71, "C14", None), (TALL71, "C23", TONES),
-         (OPEN, "C24", None)]
+         (OPEN, "C24", None), (r"live/sheet-open-\d+-(?:day|night)-en\.png", "C25", None)]
 
 def frames(png, im):
     """({name: [(value, px box)]} of the frames drawn whole on the canvas, px per pt, the record's own state or None)."""
@@ -379,7 +401,7 @@ def armed(png, rel, im):
     out = []
     for rx, c, arg in ARMED:
         if not re.fullmatch(rx, rel): continue
-        try: fr, scale, record = frames(png, im); ok, detail = judge(im, fr, scale, c, arg, png.name, record)
+        try: fr, scale, record = frames(png, im); ok, detail = judge(im, fr, scale, c, (png, scale) if c == "C25" else arg, png.name, record)
         except (Miss, OSError, ValueError, KeyError) as e: ok, detail = False, "%s: %s" % (type(e).__name__, e)
         out.append((ok, "%s %s" % (c, detail)))
     return out
@@ -471,7 +493,7 @@ def c_cases():
                           *[([((x + 5, 40, x + 35, 64), OP)] + ink((x + 13, 46, x + 27, 58)), {"matrix.chip": [(str(i), (x - 15, 40, x + 15, 64))]})
                             for i, x in enumerate(xs)])
     # a chip a few px off its frame, which the frame used to clip (#8250 gate binding 4): 2 px passes, 6 and 10 FAIL;
-    # a whole node a beat left 10 px off, its header too, its frames marked outside the beat where it lands (binding 5)
+    # a whole node a beat left 10 px off, its header too, its frames marked after the beat, on the layout frame (binding 5)
     for dx, dh, k in ((2, 0, 0), (6, 0, 1), (10, 0, 1), (10, 10, 1)):
         yield "C11", 4, k, *m(*[(ink((x - 10 + dh, 10, x + 10 + dh, 20)), {"matrix.head": [(str(i), (x - 16, 4, x + 16, 26))]})
                                 for i, x in enumerate(xs)],
@@ -488,7 +510,7 @@ def c_cases():
     # C24 (the selection cue): a chip ringed (4 px out, 2 px thick) over a stacked neighbour. 8 px of gap clears it (innocent);
     # a neighbour at 4 px (the ring touches it), below, above or at either side, FAILs; so does a ring missing a side, a hint over
     # one cell and no hint over two (#8288 gate: Medium-Low at night, 85510, the lower chip, a side touch).
-    def sel(dy=None, up=None, dx=None, lx=None, broken=None, cells=2, hint=1, nbfill=OP, ringrow="0", detailrow="0", ringat=None):
+    def sel(dy=None, up=None, dx=None, lx=None, broken=None, cells=2, hint=1, nbfill=OP, ringrow="0", detailrow="0", ringat=None, chipset=None, dup=False, twodetail=False):
         chip_b, ring_b = (150, 100, 250, 124), (146, 96, 254, 128)
         ops = chip("matrix.chip", "0:0", chip_b, OP)[0]
         rings = (("top", (146, 96, 254, 98)), ("bottom", (146, 126, 254, 128)), ("left", (146, 96, 148, 128)), ("right", (252, 96, 254, 128)))
@@ -499,14 +521,18 @@ def c_cases():
             if side != broken: ops.append((r, tuple(RING[0])))
         fr = {"matrix.chip": [("0:0", (150, 100, 250, 124))], "ring": [(ringrow, chip_b)]}
         o, f = word("detail", detailrow, (20, 365, 380, 385)); ops += o; fr.update(f)
-        for nb in ([(150, 124 + dy, 250, 148 + dy)] if dy is not None else []) + ([(150, 68, 250, 92 + up)] if up is not None else [])                 + ([(254 + dx, 100, 360 + dx, 124)] if dx is not None else []) + ([(40, 100, 146 + lx, 124)] if lx is not None else []):
-            o, f = chip("matrix.chip", "1:1", nb, nbfill); ops += o; fr["matrix.chip"] += f["matrix.chip"]
+        if twodetail: fr["detail"] = fr["detail"] * 2   # the same row, marked twice
+        for n, nb in enumerate(([(150, 124 + dy, 250, 148 + dy)] if dy is not None else []) + ([(150, 68, 250, 92 + up)] if up is not None else [])                 + ([(254 + dx, 100, 360 + dx, 124)] if dx is not None else []) + ([(40, 100, 146 + lx, 124)] if lx is not None else []), 1):
+            o, f = chip("matrix.chip", "1:%d" % n, nb, nbfill); ops += o; fr["matrix.chip"] += f["matrix.chip"]   # each neighbour is its own chip
         if hint:
             o, f = word("hint", "", (150, 170, 300, 182)); ops += o; fr.update(f)
-        return ops, fr, {"cells": cells}
+        if dup:   # 0:0 marked twice (a second frame, off by itself) and 1:5, which the record has, never marked: the count balances, the set does not
+            o, f = chip("matrix.chip", "0:0", (40, 200, 140, 224), OP); ops += o; fr["matrix.chip"] += f["matrix.chip"]
+            return ops, fr, {"cells": cells, "chipSet": sorted(["0:0", "1:5"] + [v for v, _ in fr["matrix.chip"] if v not in ("0:0",)])}
+        return ops, fr, {"cells": cells, "chipSet": chipset if chipset is not None else sorted({v for v, _ in fr["matrix.chip"]})}
     for k, kw in ((0, dict(dy=8)), (0, dict(dy=8, up=0, dx=8, lx=-8)), (1, dict(dy=4)), (1, dict(dy=5)), (1, dict(dy=8, up=3)),
                   (1, dict(dy=8, dx=0)), (1, dict(dy=8, lx=0)), (1, dict(dy=8, broken="left")), (1, dict(dy=8, broken="bottom")),
-                  (1, dict(dy=8, ringrow="1")), (1, dict(dy=8, ringat="neighbour")), (1, dict(dy=8, ringrow="1", ringat="neighbour")), (1, dict(dy=8, cells=4)), (1, dict(dy=8, cells=1)), (1, dict(dy=4, nbfill=(0xF4, 0xF1, 0xEB))), (1, dict(dy=8, hint=0)), (0, dict(dy=8, cells=1, hint=0))):
+                  (1, dict(dy=8, ringrow="1")), (1, dict(dy=8, ringat="neighbour")), (1, dict(dy=8, ringrow="1", ringat="neighbour")), (1, dict(dy=8, chipset=["0:0", "1:1", "1:5"])), (1, dict(dy=8, dup=True)), (1, dict(dy=8, twodetail=True)), (1, dict(dy=8, cells=1)), (1, dict(dy=4, nbfill=(0xF4, 0xF1, 0xEB))), (1, dict(dy=8, hint=0)), (0, dict(dy=8, cells=1, hint=0))):
         ops, fr, rec = sel(**kw); yield "C24", rec, k, ops, fr
     # a chip whose own colours touch it on both sides: its seen box is 20 px wider, the centre unmoved (B2, #8276 gate)
     yield "C11", 4, 1, *m(*[word("matrix.head", str(i), (x - 10, 10, x + 10, 20)) for i, x in enumerate(xs)],
@@ -593,6 +619,18 @@ def c_selftest():
     for nm, v in (("bar", 0.5), ("matrix.chip", 2), ("cap", None)):
         why = grammar(nm, v); n += 1   # a non-string value names its cause, never a TypeError (#8276 gate binding 6)
         if not why or "string" not in why: out.append("VALUE-SELFTEST %s=%r: %s" % (nm, v, why))
+    with tempfile.TemporaryDirectory() as t:   # C25: the live mount against its flat and immersive twins, 2 px per pt
+        for rel, h in (("tall/registry-sheet-open-1-day-en.json", 15), ("imm/sheet-open-1-day-en.json", 51), ("tall/registry-sheet-open-2-day-en.json", 15),
+                       ("imm/sheet-open-2-day-en.json", 15)):
+            pathlib.Path(t, rel).parent.mkdir(exist_ok=True); pathlib.Path(t, rel).write_text(json.dumps({"width": 1, "frames": [
+                {"name": "matrix.head", "value": "0", "frame": [0, 0, 80, h]}]}))
+        for code, h, want in ((1, 51, 1), (1, 15, 0), (2, 15, 0), (2, 51, 0)):
+            im = Image.new("RGB", (400, 400), PAPER); d = ImageDraw.Draw(im); d.rectangle([10, 10, 150, 10 + 2 * h - 1], fill=INK)
+            png = pathlib.Path(t, "live", "sheet-open-%d-day-en.png" % code); png.parent.mkdir(exist_ok=True)
+            try: ok, detail = judge(im, {"matrix.head": [("0", (10, 10, 150, 10 + 2 * h))]}, 2, "C25", (png, 2))
+            except Miss as e: ok, detail = False, str(e)
+            n += 1
+            if ok != bool(want): out.append("C25-SELFTEST twins %s, live %d pt: %s" % ({1: "15/51", 2: "15/15"}[code], h, detail))
     with tempfile.TemporaryDirectory() as t:   # every JSON of the set is read, armed or not (#8250 gate binding 3)
         Image.new("RGB", (40, 40), PAPER).save(pathlib.Path(t, "detail-card-unarmed.png"))
         for v, want in (("open", 1), ("Mikro", 0)):

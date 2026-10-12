@@ -32,19 +32,19 @@ spec.loader.exec_module(pj)
 # ---------------------------------------------------------------- tier math
 
 @pytest.mark.parametrize("cur,free,want", [
-    (0, 130.0, 0), (0, 129.99, 1), (0, 115.0, 1), (0, 114.99, 2), (0, 105.0, 2), (0, 104.99, 3), (0, 50, 3),
-    (1, 139.99, 1), (1, 140.0, 0), (1, 129.99, 1), (1, 114.0, 2), (1, 100, 3),
-    # the way down passes each exit mark: RED at 130 or 132 is AMBER until 140, BLACK at 115 is RED until 125
-    (2, 124.99, 2), (2, 125.0, 1), (2, 130.0, 1), (2, 132.0, 1), (2, 129.99, 1), (2, 140.0, 0), (2, 104.0, 3),
-    (3, 111.99, 3), (3, 112.0, 2), (3, 114.99, 2), (3, 115.0, 2), (3, 124.99, 2), (3, 125.0, 1), (3, 139.99, 1),
-    (3, 140.0, 0),
+    (0, 120.0, 0), (0, 119.99, 1), (0, 105.0, 1), (0, 104.99, 2), (0, 95.0, 2), (0, 94.99, 3), (0, 50, 3),
+    (1, 129.99, 1), (1, 130.0, 0), (1, 119.99, 1), (1, 104.0, 2), (1, 90, 3),
+    # the way down passes each exit mark: RED at 120 or 122 is AMBER until 130, BLACK at 105 is RED until 115
+    (2, 114.99, 2), (2, 115.0, 1), (2, 120.0, 1), (2, 122.0, 1), (2, 119.99, 1), (2, 130.0, 0), (2, 94.0, 3),
+    (3, 101.99, 3), (3, 102.0, 2), (3, 104.99, 2), (3, 105.0, 2), (3, 114.99, 2), (3, 115.0, 1), (3, 129.99, 1),
+    (3, 130.0, 0),
 ])
 def test_tiers_escalate_at_once_and_leave_only_at_the_exit_mark(cur, free, want):
     assert pj.next_tier(cur, free) == want
 
 
 def test_the_marks_are_the_spec_table():
-    assert pj.ENTER == {1: 130.0, 2: 115.0, 3: 105.0} and pj.EXIT == {1: 140.0, 2: 125.0, 3: 112.0}
+    assert pj.ENTER == {1: 120.0, 2: 105.0, 3: 95.0} and pj.EXIT == {1: 130.0, 2: 115.0, 3: 102.0}
     assert [(r["id"], r["tier"], r["cooldown"]) for r in pj.RULES] == [
         ("uv-prune", 1, 21600), ("npm-verify", 1, 86400), ("playwright-old", 2, 86400)]
 
@@ -175,9 +175,9 @@ def test_green_does_nothing_but_journal(box):
 
 
 @pytest.mark.parametrize("free,tier,ids,rc", [
-    ("125", "AMBER", ["uv-prune", "npm-verify"], 0),
-    ("110", "RED", ["uv-prune", "npm-verify", "playwright-old"], 0),
-    ("100", "BLACK", ["uv-prune", "npm-verify", "playwright-old"], 10),
+    ("115", "AMBER", ["uv-prune", "npm-verify"], 0),
+    ("100", "RED", ["uv-prune", "npm-verify", "playwright-old"], 0),
+    ("90", "BLACK", ["uv-prune", "npm-verify", "playwright-old"], 10),
 ])
 def test_each_rule_acts_only_at_or_past_its_tier(box, free, tier, ids, rc):
     r = box.run(free, apply=True)
@@ -187,7 +187,7 @@ def test_each_rule_acts_only_at_or_past_its_tier(box, free, tier, ids, rc):
 
 
 def test_uv_prune_never_passes_force_and_both_tools_are_pinned_to_the_cache_under_home(box):
-    box.run("100", apply=True)
+    box.run("90", apply=True)
     home = os.path.realpath(box.home)
     assert box.calls() == [f"uv --no-config cache prune --cache-dir {home}/.cache/uv",
                            f"npm cache verify --cache {home}/.npm"]
@@ -197,7 +197,7 @@ def test_uv_prune_never_passes_force_and_both_tools_are_pinned_to_the_cache_unde
 def test_tools_get_exactly_the_minimal_env_never_the_parents(box):
     for name in ("uv", "npm"):
         setattr(box, name, box.tool(name, body=f'env | sort > "{box.tmp}/env.{name}"', record=False))
-    box.run("125", apply=True, UV_CACHE_DIR="/decoy/uv", XDG_CACHE_HOME="/decoy/xdg", npm_config_cache="/decoy/npm",
+    box.run("115", apply=True, UV_CACHE_DIR="/decoy/uv", XDG_CACHE_HOME="/decoy/xdg", npm_config_cache="/decoy/npm",
             NPM_CONFIG_USERCONFIG="/decoy/rc", SECRET_TOKEN="leak")
     noise = {"PWD", "SHLVL", "_", "OLDPWD", "__CF_USER_TEXT_ENCODING"}
     envs = {}
@@ -216,12 +216,12 @@ def test_a_symlinked_or_missing_cache_dir_skips_the_tool(box, rel):
     real.mkdir()
     _sh.rmtree(box.home / rel)
     (box.home / rel).symlink_to(real)
-    r = box.run("125", apply=True)
+    r = box.run("115", apply=True)
     assert box.calls() == [c for c in box.calls() if rel not in c]
     want = "uv-prune" if rel == ".cache/uv" else "npm-verify"
     assert box.rules()[want]["status"] == "skipped:root-missing-or-symlinked" and r.returncode == 0
     (box.home / rel).unlink()
-    box.run("125", apply=True, now=NOW + 99 * DAY)
+    box.run("115", apply=True, now=NOW + 99 * DAY)
     assert box.rules()[want]["status"] == "skipped:root-missing-or-symlinked"
 
 
@@ -229,51 +229,51 @@ def test_cooldowns_hold_and_expire(box):
     box.state.mkdir()
     (box.state / "state.json").write_text(json.dumps({"tier": "AMBER", "rules": {
         "uv-prune": NOW - 6 * 3600 + 1, "npm-verify": NOW - 24 * 3600 + 1}}))
-    box.run("125", apply=True)
+    box.run("115", apply=True)
     assert box.verbs() == [] and box.last()["rules"] == []
-    box.run("125", apply=True, now=NOW + 2)   # both cooldowns have now passed exactly
+    box.run("115", apply=True, now=NOW + 2)   # both cooldowns have now passed exactly
     assert box.verbs() == ["uv cache prune", "npm cache verify"]
     assert box.cooldowns() == {"uv-prune": NOW + 2, "npm-verify": NOW + 2}
 
 
 def test_stop_at_the_exit_mark_after_the_first_action(box):
-    r = box.run("125,141", apply=True)   # uv-prune frees enough: free 141 >= AMBER exit 140
+    r = box.run("115,131", apply=True)   # uv-prune frees enough: free 131 >= AMBER exit 130
     assert r.returncode == 0 and box.verbs() == ["uv cache prune"]
-    assert box.last()["stopped_at_exit_mark"] is True and box.last()["free_gb_after"] == 141
+    assert box.last()["stopped_at_exit_mark"] is True and box.last()["free_gb_after"] == 131
     assert box.rules()["uv-prune"]["delta_gb"] == 16
     assert "npm-verify" not in box.rules() and "npm-verify" not in box.cooldowns()
 
 
 def test_no_stop_when_free_space_stays_under_the_exit_mark(box):
-    box.run("125,139.99,139.99", apply=True)
+    box.run("115,129.99,129.99", apply=True)
     assert box.verbs() == ["uv cache prune", "npm cache verify"] and "stopped_at_exit_mark" not in box.last()
 
 
 def test_black_is_exit_10_and_a_clean_amber_is_0(box):
-    assert box.run("100").returncode == 10
-    assert box.run("125", now=NOW + 99 * DAY).returncode == 0
+    assert box.run("90").returncode == 10
+    assert box.run("115", now=NOW + 99 * DAY).returncode == 0
 
 
 def test_hysteresis_holds_the_tier_between_the_marks_across_runs(box):
-    box.run("125")                        # GREEN -> AMBER
-    box.run("135")                        # still AMBER: under the exit mark 140
+    box.run("115")                        # GREEN -> AMBER
+    box.run("125")                        # still AMBER: under the exit mark 130
     assert box.last()["tier"] == "AMBER" and "transition" not in box.last()
-    box.run("140")                        # leaves exactly at the exit mark
+    box.run("130")                        # leaves exactly at the exit mark
     assert box.last()["tier"] == "GREEN" and box.last()["transition"] == "AMBER->GREEN"
-    box.run("100")
-    box.run("113")                        # BLACK leaves at its exit mark 112; 113 implies RED
+    box.run("90")
+    box.run("103")                        # BLACK leaves at its exit mark 102; 103 implies RED
     assert box.last()["tier"] == "RED" and box.last()["transition"] == "BLACK->RED"
 
 
 def test_the_tier_follows_every_reading_mid_run_up(box):
-    r = box.run("125,100,100", apply=True)   # AMBER, uv-prune frees nothing and space collapses: BLACK, RED rules run
+    r = box.run("115,90,90", apply=True)   # AMBER, uv-prune frees nothing and space collapses: BLACK, RED rules run
     assert r.returncode == 10 and box.last()["tier"] == "BLACK" and box.last()["tiers_seen"] == ["AMBER", "BLACK"]
     assert [x["id"] for x in box.last()["rules"]] == ["uv-prune", "npm-verify", "playwright-old"]
     assert box.last()["transition"] == "GREEN->BLACK"
 
 
 def test_the_tier_follows_every_reading_mid_run_down(box):
-    r = box.run("100,113", apply=True)   # BLACK, uv-prune recovers to 113: RED, the run stops at BLACK's exit mark
+    r = box.run("90,103", apply=True)   # BLACK, uv-prune recovers to 103: RED, the run stops at BLACK's exit mark
     assert r.returncode == 0 and box.last()["tier"] == "RED" and box.last()["tiers_seen"] == ["BLACK", "RED"]
     assert box.last()["stopped_at_exit_mark"] is True and box.calls() and len(box.calls()) == 1
     assert box.cooldowns() and json.loads((box.state / "state.json").read_text())["tier"] == "RED"
@@ -296,17 +296,17 @@ def state_file(box, text):
                                  '{"tier":"GREEN","rules":{"uv-prune":1e999}}'])
 def test_an_invalid_state_forces_dry_run_warns_and_is_rewritten_valid(box, bad):
     state_file(box, bad)
-    r = box.run("125", apply=True)
+    r = box.run("115", apply=True)
     assert r.returncode == 10 and box.calls() == [] and box.last()["state_invalid"] is True
     assert box.last()["mode"] == "dry-run" and box.rules()["uv-prune"]["status"] == "dry-run"
     assert json.loads((box.state / "state.json").read_text())["tier"] == "AMBER"
-    r = box.run("125", apply=True)   # valid now: acts again
+    r = box.run("115", apply=True)   # valid now: acts again
     assert r.returncode == 0 and len(box.calls()) == 2 and "state_invalid" not in box.last()
 
 
 def test_cooldown_stamps_in_the_future_are_dropped_and_small_skew_is_kept(box):
     state_file(box, json.dumps({"tier": "AMBER", "rules": {"uv-prune": NOW + 3600, "npm-verify": NOW + 30}}))
-    box.run("125", apply=True)
+    box.run("115", apply=True)
     assert box.verbs() == ["uv cache prune"]   # the far-future uv-prune stamp is dropped; npm's small skew is kept
     assert box.cooldowns()["uv-prune"] == NOW
 
@@ -334,7 +334,7 @@ def test_a_second_run_while_the_lock_is_held_exits_11_touching_nothing(box):
     fd = os.open(box.state / "lock", os.O_RDWR | os.O_CREAT)
     fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     try:
-        r = box.run("100", apply=True)
+        r = box.run("90", apply=True)
     finally:
         os.close(fd)
     assert r.returncode == 11 and not box.journal.exists() and not (box.state / "state.json").exists()
@@ -342,7 +342,7 @@ def test_a_second_run_while_the_lock_is_held_exits_11_touching_nothing(box):
 
 
 def test_journal_line_schema(box):
-    box.run("125,126", apply=True)
+    box.run("115,116", apply=True)
     ln = box.last()
     assert set(ln) >= {"ts", "mode", "free_gb_before", "free_gb_after", "tier_prev", "tier", "rules", "transition"}
     assert ln["mode"] == "apply" and ln["ts"].endswith("Z") and ln["tier_prev"] == "GREEN"
@@ -356,7 +356,7 @@ def test_journal_line_schema(box):
 def test_dry_run_decides_removes_nothing_and_leaves_cooldowns_alone(box):
     mk(pw_root(box) / "chromium-999", 30, size=7)
     mk(pw_root(box) / "chromium-1000", 30)
-    r = box.run("110")
+    r = box.run("100")
     assert r.returncode == 0 and box.calls() == []
     assert (pw_root(box) / "chromium-999").is_dir()
     rules = box.rules()
@@ -367,7 +367,7 @@ def test_dry_run_decides_removes_nothing_and_leaves_cooldowns_alone(box):
 
 @pytest.mark.parametrize("val", ["", "false", "1", "yes"])
 def test_only_true_arms(box, val):
-    box.run("125", **{"PRO_JANITOR_APPLY": val})
+    box.run("115", **{"PRO_JANITOR_APPLY": val})
     assert box.calls() == []
 
 
@@ -381,7 +381,7 @@ def test_apply_removes_only_old_non_newest_and_keeps_the_newest_even_when_old(bo
     mk(root / "chromium-1001", 3)           # the newest chromium: young, kept; 999 and 1000 go
     mk(root / "firefox-1500", 30)
     mk(root / "firefox-1499", 2)            # younger than 7 days: kept
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     assert r.returncode == 0
     assert sorted(p.name for p in root.iterdir() if p.name != ".links") == ["chromium-1001", "ffmpeg-1011", "firefox-1499", "firefox-1500"]
     got = {e["name"] for e in box.rules()["playwright-old"]["entries"]}
@@ -393,7 +393,7 @@ def test_numeric_revision_order_not_string_order(box):
     root = pw_root(box)
     mk(root / "chromium-999", 30)
     mk(root / "chromium-1000", 30)
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert (root / "chromium-1000").is_dir() and not (root / "chromium-999").exists()
 
 
@@ -410,7 +410,7 @@ def test_pinned_revisions_survive_and_unpinned_older_ones_of_the_same_family_go(
         mk(root / f"chromium-{rev}", 30)
     links(box, [pb("chromium", 1208)])
     links(box, [pb("chromium", 1217)], name="pkg2")
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     assert sorted(p.name for p in root.iterdir() if not p.name.startswith(".")) == [
         "chromium-1208", "chromium-1217", "chromium-1243"]
     assert box.rules()["playwright-old"]["entries"] == [{"name": "chromium-1100", "bytes": 10, "state": "removed"}]
@@ -422,7 +422,7 @@ def test_a_stale_link_pins_nothing(box):
     mk(root / "chromium-1100", 30)
     mk(root / "chromium-1243", 30)
     links(box, [pb("chromium", 1100)], live=False)   # the package dir is gone
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert not (root / "chromium-1100").exists() and (root / "chromium-1243").is_dir()
 
 
@@ -431,7 +431,7 @@ def test_a_missing_links_dir_skips_the_rule(box):
     mk(root / "chromium-1100", 30)
     mk(root / "chromium-1243", 30)
     box.nolinks = True
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     assert box.rules()["playwright-old"]["status"] == "skipped:link-registry-unreadable"
     assert (root / "chromium-1100").is_dir() and "playwright-old" not in box.cooldowns() and r.returncode == 0
 
@@ -446,7 +446,7 @@ def test_an_unreadable_or_malformed_browsers_json_of_a_live_link_skips_the_rule(
         (pkg / "browsers.json").unlink()
     else:
         (pkg / "browsers.json").write_text(bad)
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert box.rules()["playwright-old"]["status"] == "skipped:link-registry-unreadable"
     assert (root / "chromium-1100").is_dir()
 
@@ -457,7 +457,7 @@ def test_an_unreadable_link_file_skips_the_rule(box):
     mk(root / "chromium-1243", 30)
     links(box, [])
     (root / ".links" / "dirlink").mkdir()   # a link entry that cannot be read as a file
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert box.rules()["playwright-old"]["status"] == "skipped:link-registry-unreadable"
     assert (root / "chromium-1100").is_dir()
 
@@ -468,7 +468,7 @@ def test_revision_overrides_are_pinned(box):
     mk(root / "chromium-1050", 30)
     mk(root / "chromium-1243", 30)
     links(box, [pb("chromium", 1243, **{"mac14": "1100", "mac15": "1243"})])
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert (root / "chromium-1100").is_dir() and not (root / "chromium-1050").exists()
 
 
@@ -478,7 +478,7 @@ def test_hyphenated_browser_names_pin_the_underscored_dir(box):
     mk(root / "chromium_headless_shell-1050", 30)
     mk(root / "chromium_headless_shell-1243", 30)
     links(box, [pb("chromium-headless-shell", 1100)])
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert (root / "chromium_headless_shell-1100").is_dir() and not (root / "chromium_headless_shell-1050").exists()
 
 
@@ -493,7 +493,7 @@ def test_pros_real_layout_loses_nothing_at_red(box):
              "chromium-1243", "chromium_headless_shell-1243", "webkit-2359"]
     for n in names:
         mk(root / n, 40)
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     assert r.returncode == 0 and sorted(p.name for p in root.iterdir() if not p.name.startswith(".")) == sorted(names)
     assert box.rules()["playwright-old"]["status"] == "skipped:no-candidates"
 
@@ -538,16 +538,16 @@ def test_a_manifest_that_is_not_exactly_well_formed_skips_the_rule(box, which):
     root = two_chromiums(box)
     pkg = links(box)
     (pkg / "browsers.json").write_text(MANIFESTS[which])
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert untouched(box, root) is None
 def test_a_non_utf8_or_oversized_manifest_skips_the_rule(box):
     root = two_chromiums(box)
     pkg = links(box)
     (pkg / "browsers.json").write_bytes(b"\xff\xfe{")
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert untouched(box, root) is None
     (pkg / "browsers.json").write_text('{"browsers":[{"name":"winldd","revision":"1"}],"pad":"' + "x" * (1024 * 1024) + '"}')
-    box.run("110", apply=True, now=NOW + 99 * DAY)
+    box.run("100", apply=True, now=NOW + 99 * DAY)
     assert untouched(box, root) is None
 def test_a_link_file_that_is_a_symlink_a_fifo_or_oversized_skips_the_rule(box):
     root = two_chromiums(box)
@@ -556,21 +556,21 @@ def test_a_link_file_that_is_a_symlink_a_fifo_or_oversized_skips_the_rule(box):
     real = box.tmp / "real-link"
     real.write_text(str(pkg))
     (lk / "sym").symlink_to(real)
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert untouched(box, root) is None
     (lk / "sym").unlink()
     os.mkfifo(lk / "fifo")
-    box.run("110", apply=True, now=NOW + 99 * DAY)
+    box.run("100", apply=True, now=NOW + 99 * DAY)
     assert untouched(box, root) is None
     (lk / "fifo").unlink()
     (lk / "big").write_text(str(pkg) + "\n" + " " * (64 * 1024))
-    box.run("110", apply=True, now=NOW + 199 * DAY)
+    box.run("100", apply=True, now=NOW + 199 * DAY)
     assert untouched(box, root) is None
 def test_a_relative_or_empty_link_content_skips_the_rule(box):
     root = two_chromiums(box)
     links(box)
     (root / ".links" / "rel").write_text("relative/dir\n")
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert untouched(box, root) is None
 def test_an_unstatable_package_dir_other_than_not_found_skips_the_rule(box):
     root = two_chromiums(box)
@@ -580,7 +580,7 @@ def test_an_unstatable_package_dir_other_than_not_found_skips_the_rule(box):
     (root / ".links" / "eacces").write_text(str(locked / "pkg") + "\n")
     locked.chmod(0)
     try:
-        box.run("110", apply=True)
+        box.run("100", apply=True)
     finally:
         locked.chmod(0o755)
     assert untouched(box, root) is None
@@ -588,7 +588,7 @@ def test_an_empty_links_dir_is_no_live_install_and_the_older_revision_goes(box):
     root = two_chromiums(box)
     (root / ".links").mkdir()
     box.nolinks = True
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert box.rules()["playwright-old"]["status"] == "done" and not (root / "chromium-1100").exists()
 
 
@@ -596,12 +596,12 @@ def test_an_empty_links_dir_is_no_live_install_and_the_older_revision_goes(box):
 def test_an_install_lock_skips_the_rule(box, apply):
     root = two_chromiums(box)
     (root / "__dirlock").write_text("")
-    box.run("110", apply=apply)
+    box.run("100", apply=apply)
     assert untouched(box, root, "skipped:install-in-progress") is None
 def test_an_install_lock_that_appears_during_the_run_removes_nothing(box):
     root = two_chromiums(box)
     box.lsof = box.fake_lsof(pre=f'touch "{root}/__dirlock"')   # runs between the plan and the removal
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert untouched(box, root, "skipped:install-in-progress") is None
 def test_a_registry_that_changes_during_the_run_removes_nothing(box):
     root = two_chromiums(box)
@@ -610,7 +610,7 @@ def test_a_registry_that_changes_during_the_run_removes_nothing(box):
     newpkg.mkdir(parents=True)
     (newpkg / "browsers.json").write_text(json.dumps({"browsers": [pb("chromium", 1100)]}))
     box.lsof = box.fake_lsof(pre=f'echo "{newpkg}" > "{root}/.links/late"')
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert untouched(box, root, "skipped:registry-changed") is None
 def test_only_allowlisted_families_with_ascii_digit_revisions_are_ever_candidates(box):
     root = pw_root(box)
@@ -619,7 +619,7 @@ def test_only_allowlisted_families_with_ascii_digit_revisions_are_ever_candidate
     for n in ("backup-1", "backup-2", "foo_bar-1", "foo_bar-2", "chromium-\u0661\u0662\u0663", "chromium-\uff11\uff12",
               "chromium-12345678901234", "Chromium-1"):
         mk(root / n, 30)
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     left = sorted(p.name for p in root.iterdir() if p.name != ".links")
     assert "chromium-1100" not in left and len(left) == 9
     assert box.rules()["playwright-old"]["entries"] == [{"name": "chromium-1100", "bytes": 10, "state": "removed"}]
@@ -644,7 +644,7 @@ def raced(box, how):
 @pytest.mark.parametrize("how", ["young-file", "swapped-for-symlink", "git-appears"])
 def test_every_entry_is_audited_again_at_the_moment_of_removal(box, how):
     victim, outside = raced(box, how)
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     assert os.path.lexists(victim) and (outside / "data.bin").exists()
     res = box.rules()["playwright-old"]
     assert res["status"] == "error:rmtree-partial" and r.returncode == 10
@@ -659,7 +659,7 @@ def test_a_failed_rmtree_is_journaled_failed_never_removed(box):
     mk(root / "chromium-998", 30)
     os.chmod(bad / "sub", 0o555)   # its file cannot be unlinked
     try:
-        r = box.run("110", apply=True)
+        r = box.run("100", apply=True)
     finally:
         os.chmod(bad / "sub", 0o755)
     res = box.rules()["playwright-old"]
@@ -713,7 +713,7 @@ def blocked_case(box, how):
 ])
 def test_unsafe_entries_are_never_removed(box, how, status):
     victim, outside = blocked_case(box, how)
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     assert os.path.lexists(victim) and (outside / "data.bin").exists()
     assert box.rules()["playwright-old"]["status"] == status
     assert r.returncode == (10 if status.startswith("error") else 0)
@@ -726,7 +726,7 @@ def test_a_symlink_that_stays_inside_the_entry_is_fine(box):
     mk(root / "chromium-1000", 30)
     mk(root / "chromium-999", 30)
     (root / "chromium-999" / "alias").symlink_to(root / "chromium-999" / "data.bin")
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert not (root / "chromium-999").exists()
 
 
@@ -736,7 +736,7 @@ def test_a_symlinked_root_is_skipped_and_its_target_survives(box):
     mk(real / "chromium-1000", 30)
     pw_root(box).parent.mkdir(parents=True)
     pw_root(box).symlink_to(real)
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert box.rules()["playwright-old"]["status"] == "skipped:root-missing-or-symlinked"
     assert (real / "chromium-999").is_dir()
 
@@ -746,7 +746,7 @@ def test_a_file_matching_the_pattern_is_ignored(box):
     mk(root / "chromium-1000", 30)
     root.joinpath("chromium-500").write_text("not a dir")
     os.utime(root / "chromium-500", (NOW - 30 * DAY,) * 2)
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert (root / "chromium-500").is_file() and box.rules()["playwright-old"]["status"] == "skipped:no-candidates"
 
 
@@ -759,7 +759,7 @@ def test_nothing_outside_the_rule_roots_is_ever_touched(box):
     mk(box.home / "ms-playwright" / "chromium-1", 30)
     mk(box.home / "ms-playwright" / "chromium-2", 30)
     mk(box.home / "nuzantara" / "x-1", 30)
-    box.run("100", apply=True)
+    box.run("90", apply=True)
     assert not (pw_root(box) / "chromium-999").exists()
     for p in (sib / "chromium-1", box.home / "ms-playwright" / "chromium-1", box.home / "nuzantara" / "x-1"):
         assert p.is_dir()
@@ -768,7 +768,7 @@ def test_nothing_outside_the_rule_roots_is_ever_touched(box):
 def test_journal_and_stdout_name_only_revision_entries(box):
     mk(pw_root(box) / "chromium-999", 30)
     mk(pw_root(box) / "chromium-1000", 30)
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     text = box.journal.read_text() + r.stdout
     assert str(box.home) not in text and str(box.tmp) not in text
 
@@ -789,7 +789,7 @@ time.sleep(300)
     t.chmod(0o755)
     t0 = time.monotonic()
     try:
-        r = box.run("100", apply=True, PRO_JANITOR_TOOL_TIMEOUT="3")   # only the hanging uv is slow; npm has room under load
+        r = box.run("90", apply=True, PRO_JANITOR_TOOL_TIMEOUT="3")   # only the hanging uv is slow; npm has room under load
         took = time.monotonic() - t0
         assert took < 3 + 10 + 5 and r.returncode == 10
         rules = box.rules()
@@ -819,26 +819,26 @@ time.sleep(300)
 
 def test_a_tool_with_a_lot_of_output_does_not_block_on_a_pipe(box):
     box.uv = box.tool("uv", body="yes | head -c 5000000")
-    r = box.run("125", apply=True, PRO_JANITOR_TOOL_TIMEOUT="10")
+    r = box.run("115", apply=True, PRO_JANITOR_TOOL_TIMEOUT="10")
     assert box.rules()["uv-prune"]["status"] == "done" and r.returncode == 0
 
 
 def test_a_failing_tool_is_an_error_and_the_next_rule_runs(box):
     box.uv = box.tool("uv", rc=3)
-    r = box.run("125", apply=True)
+    r = box.run("115", apply=True)
     assert r.returncode == 10 and box.rules()["uv-prune"]["status"] == "error:rc=3"
     assert box.rules()["npm-verify"]["status"] == "done"
 
 
 def test_a_missing_tool_is_an_error(box):
-    r = box.run("125", apply=True, PRO_JANITOR_UV=str(box.bin / "nope"))
+    r = box.run("115", apply=True, PRO_JANITOR_UV=str(box.bin / "nope"))
     assert r.returncode == 10 and box.rules()["uv-prune"]["status"] == "error:tool-missing"
 
 
 def test_a_missing_tool_cools_down_and_does_not_error_every_tick(box):
-    box.run("125", apply=True, PRO_JANITOR_UV=str(box.bin / "nope"))
+    box.run("115", apply=True, PRO_JANITOR_UV=str(box.bin / "nope"))
     assert box.cooldowns()["uv-prune"] == NOW
-    box.run("125", apply=True, now=NOW + 600, PRO_JANITOR_UV=str(box.bin / "nope"))
+    box.run("115", apply=True, now=NOW + 600, PRO_JANITOR_UV=str(box.bin / "nope"))
     assert "uv-prune" not in box.rules()   # still in its 6 h cooldown: not retried, not re-paged
 
 
@@ -850,7 +850,7 @@ def test_npm_never_runs_when_a_link_in_its_cache_leaves_the_cache(box, link):
     target = box.home / ".npm" / link
     target.parent.mkdir(parents=True, exist_ok=True)
     target.symlink_to(outside)
-    r = box.run("125", apply=True)
+    r = box.run("115", apply=True)
     assert r.returncode == 0 and box.rules()["npm-verify"]["status"] == "skipped:link-escapes-cache"
     assert box.rules()["npm-verify"]["link_escape"] == link
     assert not any(c.startswith("npm ") for c in box.calls()) and (outside / "keep" / "data").exists()
@@ -874,7 +874,7 @@ def test_an_unreadable_level_of_the_cache_refuses_the_rule(box):
     locked.mkdir()
     locked.chmod(0)
     try:
-        r = box.run("125", apply=True)
+        r = box.run("115", apply=True)
         assert r.returncode == 0 and box.rules()["npm-verify"]["status"] == "skipped:link-escapes-cache"
         assert box.rules()["npm-verify"]["link_escape"] == "unreadable:_cacache"
         assert not any(c.startswith("npm ") for c in box.calls())
@@ -887,14 +887,14 @@ def test_a_link_that_stays_inside_the_cache_does_not_stop_the_tool(box):
     inner.mkdir(parents=True)
     (box.home / ".cache" / "uv" / "wheels-v5").mkdir()
     (box.home / ".cache" / "uv" / "wheels-v5" / "pkg").symlink_to(inner)   # uv's own layout: wheels link into archive
-    box.run("125", apply=True)
+    box.run("115", apply=True)
     assert box.rules()["uv-prune"]["status"] == "done" and any(c.startswith("uv ") for c in box.calls())
 
 
 @pytest.mark.parametrize("rc,why", [(0, "a uv process is alive"), (2, "the probe itself failed: fail closed")])
 def test_uv_prune_waits_while_uv_runs_or_cannot_be_ruled_out(box, rc, why):
     box.pgrep = box.tool("pgrep", rc=rc, record=False)
-    r = box.run("125", apply=True)
+    r = box.run("115", apply=True)
     assert r.returncode == 0 and box.rules()["uv-prune"]["status"] == "skipped:uv-in-use", why
     assert not any(c.startswith("uv ") for c in box.calls()) and box.rules()["npm-verify"]["status"] == "done"
 
@@ -934,7 +934,7 @@ def test_wrapper_maps_exit_codes_to_the_heartbeat(tmp_path):
     _, hb, home = wrap(tmp_path, seq="200")
     assert hb["status"] == "ok" and "tier=GREEN" in hb["note"]
     assert (home / "logs" / "pro-janitor" / "journal.jsonl").exists()
-    _, hb, _ = wrap(tmp_path, seq="100")
+    _, hb, _ = wrap(tmp_path, seq="90")
     assert hb["status"] == "warning" and "tier=BLACK" in hb["note"]
     _, hb, _ = wrap(tmp_path, seq="1,x")
     assert hb["status"] == "error" and hb["note"].startswith("pro_janitor: bad config")
@@ -1010,7 +1010,7 @@ def test_wrapper_maps_the_payload_lock_exit_11_to_a_warning(tmp_path):
     fd = os.open(state / "lock", os.O_RDWR | os.O_CREAT)
     fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     try:
-        _, hb, home = wrap(tmp_path, seq="100")
+        _, hb, home = wrap(tmp_path, seq="90")
     finally:
         os.close(fd)
     assert hb["status"] == "warning" and hb["note"] == "skipped: previous run alive"
@@ -1061,7 +1061,7 @@ def test_a_swapped_ancestor_of_the_root_is_never_followed_and_the_decoy_survives
     decoy = box.tmp / "decoy"
     _sh.copytree(caches, decoy, symlinks=True)
     box.lsof = box.fake_lsof(pre=nth(box, 1, f'mv "{caches}" "{caches}.orig" && ln -s "{decoy}" "{caches}"'))   # before the root is opened
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     res = box.rules()["playwright-old"]
     assert (decoy / "ms-playwright" / "chromium-999" / "data.bin").exists()
     assert (Path(str(caches) + ".orig") / "ms-playwright" / "chromium-999" / "data.bin").exists()
@@ -1087,7 +1087,7 @@ def test_a_candidate_replaced_by_a_different_real_dir_of_the_same_name_survives(
     victim = root / "chromium-999"
     mk(victim, 30)
     box.lsof = box.fake_lsof(pre=nth(box, 2, f'mv "{victim}" "{victim}.orig"; mkdir "{victim}"; echo new > "{victim}/new.bin"'))
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     assert (victim / "new.bin").exists() and (Path(str(victim) + ".orig") / "data.bin").exists()
     assert box.rules()["playwright-old"]["entries"] == [{"name": "chromium-999", "bytes": 0, "state": "failed:changed"}] and r.returncode == 10
 
@@ -1196,7 +1196,7 @@ def states(box):
 def test_a_candidate_pinned_after_the_first_removal_is_skipped_pinned_late(box):
     root, pkg = two_old(box)
     box.lsof = box.fake_lsof(pre=nth(box, 3, f'echo "{pkg}" > "{root}/.links/late"'))
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     assert states(box) == [("chromium-998", "removed"), ("chromium-999", "skipped:pinned-late")]
     assert not (root / "chromium-998").exists() and (root / "chromium-999").is_dir()
     assert box.rules()["playwright-old"]["status"] == "done" and r.returncode == 0
@@ -1205,7 +1205,7 @@ def test_a_candidate_pinned_after_the_first_removal_is_skipped_pinned_late(box):
 def test_a_candidate_opened_after_the_first_removal_is_skipped_open(box):
     root, _ = two_old(box)
     box.lsof = box.fake_lsof(pre=counted(box), extra=f'[ "$(cat "{box.tmp}/cnt")" = 3 ] && echo "n{root}/chromium-999/data.bin"')
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert states(box) == [("chromium-998", "removed"), ("chromium-999", "skipped:open")] and (root / "chromium-999").is_dir()
 
 
@@ -1233,7 +1233,7 @@ def test_an_installer_that_takes_the_lock_between_candidates_makes_the_next_one_
 def test_a_root_that_vanishes_mid_loop_still_journals_the_first_removal(box):
     root, _ = two_old(box)
     box.lsof = box.fake_lsof(pre=nth(box, 3, f'mv "{root}" "{root}.gone"'))
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     assert states(box) == [("chromium-998", "removed"), ("chromium-999", "failed:changed")]
     assert box.rules()["playwright-old"]["status"] == "error:rmtree-partial" and r.returncode == 10
     assert not (Path(str(root) + ".gone") / "chromium-998").exists() and (Path(str(root) + ".gone") / "chromium-999").is_dir()
@@ -1250,7 +1250,7 @@ def test_a_root_that_vanishes_mid_loop_still_journals_the_first_removal(box):
 def test_the_lsof_scan_is_complete_iff_rc_0_or_1_and_the_canary_and_empty_stderr(box, rc, canary, err, status):
     root = two_chromiums(box)
     box.lsof = box.fake_lsof(rc=rc, canary=canary, err=err)
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     assert box.rules()["playwright-old"]["status"] == status
     assert (not (root / "chromium-1100").exists()) == (status == "done") and r.returncode == (0 if status == "done" else 10)
     assert "Permission denied" not in box.journal.read_text() + r.stdout   # stderr is tested, never kept
@@ -1258,13 +1258,13 @@ def test_the_lsof_scan_is_complete_iff_rc_0_or_1_and_the_canary_and_empty_stderr
 
 def test_lsof_is_run_without_w_so_that_warnings_reach_stderr(box):
     two_chromiums(box)
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     argv = (box.tmp / "lsof.argv").read_text().splitlines()
     assert argv and all(a.split()[:3] == ["-F", "n", "+D"] and "-w" not in a.split() for a in argv)
 
 
 def test_a_failed_free_space_read_after_an_action_stops_everything_and_warns(box):
-    r = box.run("125,ERR", apply=True)
+    r = box.run("115,ERR", apply=True)
     ln = box.last()
     assert r.returncode == 10 and ln["free_read_failed"] is True and ln["free_gb_after"] is None
     assert box.verbs() == ["uv cache prune"] and [x["id"] for x in ln["rules"]] == ["uv-prune"]
@@ -1279,20 +1279,20 @@ def test_a_symlinked_state_dir_is_unusable_exit_1(box):
     other = box.tmp / "elsewhere"
     other.mkdir()
     box.state.symlink_to(other)
-    r = box.run("125", apply=True)
+    r = box.run("115", apply=True)
     assert r.returncode == 1 and "state dir unusable" in r.stdout and not box.journal.exists()
     assert list(other.iterdir()) == []
 
 
 def test_a_state_dir_outside_home_is_unusable_exit_1(box):
-    r = box.run("125", PRO_JANITOR_STATE_DIR=str(box.tmp / "st-out"))
+    r = box.run("115", PRO_JANITOR_STATE_DIR=str(box.tmp / "st-out"))
     assert r.returncode == 1 and "state dir unusable" in r.stdout and not (box.tmp / "st-out").exists()
 
 
 def test_a_lock_that_cannot_be_opened_is_unusable_not_alive(box):
     box.state.mkdir()
     (box.state / "lock").symlink_to(box.tmp / "nowhere")   # O_NOFOLLOW refuses it
-    r = box.run("125")
+    r = box.run("115")
     assert r.returncode == 1 and "lock unusable" in r.stdout
 
 
@@ -1333,7 +1333,7 @@ def stale_setup(box):
 def test_stale_canaries_of_dead_pids_are_swept_and_nothing_else(box):
     files, live = stale_setup(box)
     try:
-        box.run("110", apply=True)
+        box.run("100", apply=True)
     finally:
         live.kill()
         live.wait()
@@ -1344,7 +1344,7 @@ def test_stale_canaries_of_dead_pids_are_swept_and_nothing_else(box):
 def test_dry_run_sweeps_nothing(box):
     files, live = stale_setup(box)
     try:
-        box.run("110")
+        box.run("100")
     finally:
         live.kill()
         live.wait()
@@ -1357,7 +1357,7 @@ def test_a_pin_with_leading_zeros_protects_the_numerically_equal_dir(box):
     mk(root / "chromium-1100", 30)
     mk(root / "chromium-1050", 30)
     links(box, [pb("chromium", "01100")])
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert (root / "chromium-1100").is_dir() and not (root / "chromium-1050").exists()
 
 
@@ -1487,10 +1487,10 @@ def test_our_own_unlinks_do_not_make_a_directory_look_young(tmp_path):
 def test_an_n_record_that_is_not_an_absolute_path_makes_the_scan_incomplete(box):
     root = two_chromiums(box)
     box.lsof = box.fake_lsof(extra='echo "nFD info error: Operation not permitted"')
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert box.rules()["playwright-old"]["status"] == "error:lsof-incomplete" and (root / "chromium-1100").is_dir()
     box.lsof = box.fake_lsof(extra='echo "n/some/other/file"')
-    box.run("110", apply=True, now=NOW + 99 * DAY)
+    box.run("100", apply=True, now=NOW + 99 * DAY)
     assert box.rules()["playwright-old"]["status"] == "done"
 
 
@@ -1498,7 +1498,7 @@ def test_a_planted_canary_with_a_huge_pid_cannot_crash_the_run(box):
     root = two_chromiums(box)
     planted = root / ".pro-janitor-canary-9999999999-0123456789abcdef"
     planted.write_bytes(b"")
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     assert r.returncode == 0 and planted.exists() and box.rules()["playwright-old"]["status"] == "done"
 
 
@@ -1513,7 +1513,7 @@ def one_old(box, nfiles=5, size=10):
 @pytest.mark.parametrize("env,left", [({"PRO_JANITOR_MAX_OBJECTS": "2"}, 3), ({"PRO_JANITOR_MAX_BYTES": "15"}, 4)])
 def test_a_run_stops_at_its_blast_radius_cap_and_says_so(box, env, left):
     root = one_old(box)
-    r = box.run("110", apply=True, **env)
+    r = box.run("100", apply=True, **env)
     res = box.rules()["playwright-old"]
     assert res["capped"] is True and [(e["name"], e["state"]) for e in res["entries"]] == [("chromium-998", "failed:capped")]
     assert len(list((root / "chromium-998").iterdir())) == left and (root / "chromium-999").is_dir() and r.returncode == 10
@@ -1531,14 +1531,14 @@ def test_the_kill_switch_at_start_does_nothing_and_exits_12(box, how):
     if how == "file":
         box.state.mkdir()
         (box.state / "disabled").write_text("")
-    r = box.run("100", apply=True, **({"PRO_JANITOR_ENABLED": "false"} if how == "env" else {}))
+    r = box.run("90", apply=True, **({"PRO_JANITOR_ENABLED": "false"} if how == "env" else {}))
     assert r.returncode == 12 and box.calls() == [] and box.last()["disabled"] is True and "rules" not in box.last()
 
 
 def test_the_kill_switch_file_created_during_candidate_1_stops_it_and_leaves_candidate_2_untouched(box):
     root, _ = two_old(box)
     box.lsof = box.fake_lsof(pre=nth(box, 2, f'touch "{box.state}/disabled"'))
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     res = box.rules()["playwright-old"]
     assert [(e["name"], e["state"]) for e in res["entries"]] == [("chromium-998", "failed:stopped")] and res["stopped"] == "kill-switch"
     assert (root / "chromium-999").is_dir() and (root / "chromium-998" / "data.bin").exists() and r.returncode == 10
@@ -1573,7 +1573,7 @@ def test_the_lock_is_held_around_each_candidate_and_gone_afterwards(box):
     root, _ = two_old(box)
     rec = box.tmp / "lock.rec"
     box.lsof = box.fake_lsof(pre=f'if [ -d "{root}/__dirlock" ]; then echo held >> "{rec}"; else echo free >> "{rec}"; fi')
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert rec.read_text().split() == ["free", "held", "held"]   # the plan's probe, then one per candidate
     assert not (root / "__dirlock").exists() and not (root / "chromium-998").exists() and not (root / "chromium-999").exists()
 
@@ -1582,7 +1582,7 @@ def test_dry_run_never_takes_the_lock(box):
     root, _ = two_old(box)
     rec = box.tmp / "lock.rec"
     box.lsof = box.fake_lsof(pre=f'if [ -d "{root}/__dirlock" ]; then echo held >> "{rec}"; else echo free >> "{rec}"; fi')
-    box.run("110")
+    box.run("100")
     assert rec.read_text().split() == ["free"] and not (root / "__dirlock").exists() and (root / "chromium-998").is_dir()
 
 
@@ -1590,7 +1590,7 @@ def test_an_existing_lock_dir_skips_and_a_stale_one_is_journaled(box):
     root = two_chromiums(box)
     (root / "__dirlock").mkdir()
     os.utime(root / "__dirlock", (NOW - 7200, NOW - 7200))
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     res = box.rules()["playwright-old"]
     assert res["status"] == "skipped:install-in-progress" and res["stale_dirlock"] is True and (root / "chromium-1100").is_dir()
     assert (root / "__dirlock").is_dir()   # not ours: left alone
@@ -1600,7 +1600,7 @@ def test_a_fresh_lock_is_not_journaled_stale(box):
     root = two_chromiums(box)
     (root / "__dirlock").mkdir()
     os.utime(root / "__dirlock", (NOW - 60, NOW - 60))
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     res = box.rules()["playwright-old"]
     assert res["status"] == "skipped:install-in-progress" and "stale_dirlock" not in res
 
@@ -1647,7 +1647,7 @@ def test_the_lock_is_refreshed_during_a_slow_lsof(box):
     rec = box.tmp / "mtimes.rec"
     box.lsof = box.fake_lsof(pre=f'if [ -d "{root}/__dirlock" ]; then stat -f %m "{root}/__dirlock" >> "{rec}"; sleep 2.5; '
                                  f'stat -f %m "{root}/__dirlock" >> "{rec}"; fi')
-    box.run("110", apply=True, PRO_JANITOR_LOCK_REFRESH="0.3")
+    box.run("100", apply=True, PRO_JANITOR_LOCK_REFRESH="0.3")
     m = [int(x) for x in rec.read_text().split()]
     assert len(m) == 4 and m[1] >= m[0] + 2 and m[3] >= m[2] + 2   # each held-lock lsof call: start, then 2.5 s later
     assert states(box) == [("chromium-998", "removed"), ("chromium-999", "removed")]
@@ -1791,7 +1791,7 @@ def test_an_uncertain_lock_stops_the_rule_with_nothing_removed_and_the_lock_not_
             t["jump"] += 5   # the acquire stat returns 5 s after t0
         return real(path, *a, **k)
     monkeypatch.setattr(os, "stat", slow)
-    inproc(box, monkeypatch, "110")
+    inproc(box, monkeypatch, "100")
     monkeypatch.undo()
     res = box.rules()["playwright-old"]
     assert res["status"] == "skipped:lock-uncertain" and [e["state"] for e in res["entries"]] == ["skipped:lock-uncertain"]
@@ -1946,7 +1946,7 @@ def test_a_keepalive_stuck_after_the_join_is_journaled_and_ends_the_rule(box, mo
     monkeypatch.setattr(pj.Lock, "JOIN_TIMEOUT", 0.2)
     monkeypatch.setattr(os, "utime", blocked)
     try:
-        rc = inproc(box, monkeypatch, "110", PRO_JANITOR_LOCK_REFRESH="0.01")
+        rc = inproc(box, monkeypatch, "100", PRO_JANITOR_LOCK_REFRESH="0.01")
         time.sleep(0.3)   # let the thread reach the blocked utime before the join gives up
     finally:
         gate.set()
@@ -2013,18 +2013,18 @@ def test_release_leaves_a_lock_whose_lease_has_run_out(tmp_path):
 def test_our_lock_is_gone_after_success_and_after_failure(box):
     root, _ = two_old(box)
     box.lsof = box.fake_lsof(pre=nth(box, 3, f'echo fresh > "{root}/chromium-999/fresh.bin"; touch -t 202701140000 "{root}/chromium-999/fresh.bin"'))
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert states(box) == [("chromium-998", "removed"), ("chromium-999", "failed:changed")]
     assert not (root / "__dirlock").exists()
 
 
 def test_a_free_space_delta_of_the_filesystem_is_journaled_beside_the_unlinked_bytes(box):
     two_chromiums(box)
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     res = box.rules()["playwright-old"]
     assert isinstance(res["freed_fs_bytes"], int) and res["unlinked_bytes"] == 10
     assert isinstance(box.rules()["uv-prune"]["freed_fs_bytes"], int)
-    box.run("110", now=NOW + 99 * DAY)
+    box.run("100", now=NOW + 99 * DAY)
     assert "freed_fs_bytes" not in box.rules()["uv-prune"]   # dry-run: nothing was done
 
 
@@ -2035,7 +2035,7 @@ def test_the_root_identity_check_alone_stops_a_replaced_root_that_holds_the_cand
     links(box)
     box.lsof = box.fake_lsof(pre=nth(box, 1, f'mv "{root}" "{root}.old"; mkdir "{root}"; cp -R "{root}.old/.links" "{root}/.links"; '
                                             f'mv "{root}.old/chromium-999" "{root}/chromium-999"; mv "{root}.old/chromium-1243" "{root}/chromium-1243"'))
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     assert states(box) == [("chromium-999", "failed:root-changed")] and (root / "chromium-999" / "data.bin").exists()
     assert r.returncode == 10
 
@@ -2043,7 +2043,7 @@ def test_the_root_identity_check_alone_stops_a_replaced_root_that_holds_the_cand
 def test_a_last_look_lsof_failure_is_journaled_failed_lsof_incomplete(box):
     root = two_chromiums(box)
     box.lsof = box.fake_lsof(pre=nth(box, 2, 'echo "lsof: WARNING: can\'t opendir" >&2'))
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert states(box) == [("chromium-1100", "failed:lsof-incomplete")] and (root / "chromium-1100").is_dir()
     assert not (root / "__dirlock").exists()
 
@@ -2065,13 +2065,13 @@ def test_the_tip_of_tree_headless_shell_family_is_an_allowlisted_family(box):
     root = pw_root(box)
     mk(root / "chromium_tip_of_tree_headless_shell-1243", 30)
     mk(root / "chromium_tip_of_tree_headless_shell-1100", 30)
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert not (root / "chromium_tip_of_tree_headless_shell-1100").exists() and (root / "chromium_tip_of_tree_headless_shell-1243").is_dir()
 
 
 @pytest.mark.parametrize("now", ["1e300", "4000000001", "-1"])
 def test_an_absurd_now_is_a_config_error_before_any_action(box, now):
-    r = box.run("125", apply=True, PRO_JANITOR_NOW=now)
+    r = box.run("115", apply=True, PRO_JANITOR_NOW=now)
     assert r.returncode == 2 and box.calls() == [] and not box.journal.exists()
 
 
@@ -2112,7 +2112,7 @@ def test_wrapper_checks_the_kill_switch_file_and_reports_disabled(tmp_path):
     state = tmp_path / "whome" / ".local/state/nuzantara/pro-janitor"
     state.mkdir(parents=True)
     (state / "disabled").write_text("")
-    _, hb, home = wrap(tmp_path, seq="100")
+    _, hb, home = wrap(tmp_path, seq="90")
     assert hb["status"] == "disabled" and hb["note"] == "kill switch file"
     assert not (home / "logs" / "pro-janitor" / "journal.jsonl").exists()
 
@@ -2136,7 +2136,7 @@ def test_the_installation_marker_goes_first_then_a_cap_leaves_a_half_deleted_rev
     root = pw_root(box)
     mk(root / "chromium-1243", 30)
     mk(root / "chromium-998", 30, files=("INSTALLATION_COMPLETE", "0.bin", "1.bin", "2.bin", "3.bin"))   # the marker sorts after the digits
-    box.run("110", apply=True, PRO_JANITOR_MAX_OBJECTS="2")
+    box.run("100", apply=True, PRO_JANITOR_MAX_OBJECTS="2")
     left = sorted(p.name for p in (root / "chromium-998").iterdir())
     assert states(box) == [("chromium-998", "failed:capped")] and "INSTALLATION_COMPLETE" not in left and len(left) == 3
 
@@ -2171,8 +2171,8 @@ def test_canary_names_are_unique_per_probe_and_a_live_pid_canary_blocks_nothing(
     seen = box.tmp / "canaries.rec"
     box.lsof = box.fake_lsof(pre=f'ls -A "$R" | grep "^[.]pro-janitor-canary-" >> "{seen}"')
     try:
-        box.run("110", apply=True)
-        box.run("110", apply=True, now=NOW + 99 * DAY)
+        box.run("100", apply=True)
+        box.run("100", apply=True, now=NOW + 99 * DAY)
     finally:
         live.kill()
         live.wait()
@@ -2186,7 +2186,7 @@ def test_canary_names_are_unique_per_probe_and_a_live_pid_canary_blocks_nothing(
 def test_a_directory_at_state_json_is_invalid_and_unwritable_it_warns_and_leaves_no_temp_file(box):
     box.state.mkdir()
     (box.state / "state.json").mkdir()
-    r = box.run("125", apply=True)
+    r = box.run("115", apply=True)
     ln = box.last()
     assert r.returncode == 10 and ln["state_invalid"] is True and ln["state_unwritable"] is True and box.calls() == []
     assert sorted(os.listdir(box.state)) == ["lock", "state.json"] and (box.state / "state.json").is_dir()
@@ -2195,14 +2195,14 @@ def test_a_directory_at_state_json_is_invalid_and_unwritable_it_warns_and_leaves
 def test_an_oversized_state_json_is_invalid_not_read(box):
     box.state.mkdir()
     (box.state / "state.json").write_text('{"tier":"GREEN","rules":{},"pad":"' + "x" * (1024 * 1024) + '"}')
-    r = box.run("125", apply=True)
+    r = box.run("115", apply=True)
     assert r.returncode == 10 and box.last()["state_invalid"] is True and box.calls() == []
     assert json.loads((box.state / "state.json").read_text())["tier"] == "AMBER"
 
 
 def test_a_directory_at_the_journal_path_exits_1_with_a_clean_note_and_no_traceback(box):
     box.journal.mkdir()
-    r = box.run("125")
+    r = box.run("115")
     assert r.returncode == 1 and r.stdout.strip() == "pro_janitor: journal unwritable" and "Traceback" not in r.stderr
 
 
@@ -2256,7 +2256,7 @@ def test_candidates_found_open_at_plan_time_are_journaled_skipped_open(box):
     mk(root / "chromium-998", 30)
     mk(root / "chromium-999", 30)
     box.lsof = box.fake_lsof(extra=f'echo "n{root}/chromium-998/data.bin"')
-    box.run("110", apply=True)
+    box.run("100", apply=True)
     assert states(box) == [("chromium-998", "skipped:open"), ("chromium-999", "removed")] and (root / "chromium-998").is_dir()
 
 
@@ -2265,7 +2265,7 @@ def test_a_dry_run_also_lists_the_open_ones_as_skipped_open(box):
     mk(root / "chromium-1243", 30)
     mk(root / "chromium-998", 30)
     box.lsof = box.fake_lsof(extra=f'echo "n{root}/chromium-998/data.bin"')
-    box.run("110")
+    box.run("100")
     assert box.rules()["playwright-old"]["status"] == "skipped:in-use" and states(box) == [("chromium-998", "skipped:open")]
 
 
@@ -2273,7 +2273,7 @@ def test_a_dirlock_older_than_an_hour_makes_the_run_exit_10(box):
     root = two_chromiums(box)
     (root / "__dirlock").mkdir()
     os.utime(root / "__dirlock", (NOW - 7200, NOW - 7200))
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     assert r.returncode == 10 and box.rules()["playwright-old"]["stale_dirlock"] is True
 
 
@@ -2282,7 +2282,7 @@ def test_each_rule_journals_its_own_freed_fs_bytes_apart_from_the_directory_rule
     links(box)
     for k, v in {"PRO_JANITOR_HOME": str(box.home), "PRO_JANITOR_STATE_DIR": str(box.state), "PRO_JANITOR_JOURNAL": str(box.journal),
                  "PRO_JANITOR_NOW": str(NOW), "PRO_JANITOR_UV": str(box.uv), "PRO_JANITOR_NPM": str(box.npm),
-                 "PRO_JANITOR_LSOF": str(box.lsof), "PRO_JANITOR_FREE_GB_SEQ": "110", "PRO_JANITOR_APPLY": "true",
+                 "PRO_JANITOR_LSOF": str(box.lsof), "PRO_JANITOR_FREE_GB_SEQ": "100", "PRO_JANITOR_APPLY": "true",
                  "PRO_JANITOR_TOOL_TIMEOUT": "20"}.items():
         monkeypatch.setenv(k, v)
     readings = iter([1000, 1500,   # uv-prune: before, after  (+500)
@@ -2424,7 +2424,7 @@ def chain(directory, n):
 def test_a_planted_symlink_chain_makes_the_candidate_ineligible_never_a_crash(box):
     root = two_chromiums(box)
     chain(root / "chromium-1100" / "x", 1100)
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     res = box.rules()["playwright-old"]
     assert r.returncode in (0, 10) and "Traceback" not in r.stderr and (root / "chromium-1100").is_dir()
     assert [(e["name"], e["state"]) for e in res["entries"]] == [("chromium-1100", "skipped:audit-error")]
@@ -2443,7 +2443,7 @@ def test_an_lsof_path_that_cannot_be_resolved_is_error_lsof_unreadable(box):
     root = two_chromiums(box)
     start = chain(box.tmp / "elsewhere", 1100)
     box.lsof = box.fake_lsof(extra=f'echo "n{start}"')
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     assert r.returncode == 10 and box.rules()["playwright-old"]["status"] == "error:lsof-unreadable"
     assert (root / "chromium-1100").is_dir() and "Traceback" not in r.stderr
 
@@ -2456,7 +2456,7 @@ def test_a_rule_that_raises_is_its_own_error_internal_and_the_run_still_journals
             raise RuntimeError("secret detail at /Users/someone/private")
         return real(env, rule, apply_)
     monkeypatch.setattr(pj, "tool_rule", flaky)
-    rc = inproc(box, monkeypatch, "110")
+    rc = inproc(box, monkeypatch, "100")
     out = capsys.readouterr().out
     rules = box.rules()
     assert rc == 10 and rules["uv-prune"]["status"] == "error:internal" and rules["npm-verify"]["status"] == "done"
@@ -2565,14 +2565,14 @@ def test_a_child_with_a_fresh_ctime_fails_the_audit_before_anything_is_removed(t
 
 
 def test_black_summary_carries_the_freed_gb_and_whose_trough_it_is_in_printable_ascii(box):
-    r = box.run("100,107,107,107", apply=True)
+    r = box.run("90,97,97,97", apply=True)
     line = r.stdout.strip().splitlines()[-1]
     assert r.returncode == 10 and "tier=BLACK" in line and "freed=7.0GB" in line and "the VM-side trough is localci's" in line
     assert re.fullmatch(r"pro_janitor: [ -~]*", line) and len(line) < 300
 
 
 def test_a_tier_below_black_has_no_page_text(box):
-    line = box.run("125,141", apply=True).stdout.strip().splitlines()[-1]
+    line = box.run("115,131", apply=True).stdout.strip().splitlines()[-1]
     assert "freed=" not in line and "trough" not in line
 
 
@@ -2668,7 +2668,7 @@ def test_an_exception_on_the_second_candidate_keeps_the_first_removal_and_stamps
             raise RuntimeError("secret detail at /Users/someone/private")
         return real(*a, **k)
     monkeypatch.setattr(pj, "remove_candidate", flaky)
-    rc = inproc(box, monkeypatch, "110,110")
+    rc = inproc(box, monkeypatch, "100,100")
     out = capsys.readouterr().out
     res = box.rules()["playwright-old"]
     assert rc == 10 and res["status"] == "error:rmtree-partial"
@@ -2688,7 +2688,7 @@ def test_an_exception_before_anything_was_removed_is_error_internal_and_stops_th
         calls.append(1)
         raise RuntimeError("x")
     monkeypatch.setattr(pj, "remove_candidate", boom)
-    rc = inproc(box, monkeypatch, "110,110")
+    rc = inproc(box, monkeypatch, "100,100")
     res = box.rules()["playwright-old"]
     assert rc == 10 and res["status"] == "error:internal" and len(calls) == 1
     assert box.cooldowns()["playwright-old"] == NOW and (root / "chromium-998").is_dir()
@@ -2705,7 +2705,7 @@ def test_a_keepalive_that_cannot_start_releases_its_lock_and_the_rule_is_error_i
             raise RuntimeError("can't start new thread")
         return real(self)
     monkeypatch.setattr(threading.Thread, "start", start)
-    rc = inproc(box, monkeypatch, "110,110")
+    rc = inproc(box, monkeypatch, "100,100")
     monkeypatch.undo()
     res = box.rules()["playwright-old"]
     assert rc == 10 and res["status"] == "error:internal"
@@ -2751,7 +2751,7 @@ def test_audit_error_entries_are_journaled_on_the_early_returns(box, how):
         (newpkg / "browsers.json").write_text(json.dumps({"browsers": [pb("chromium", 998)]}))
         box.lsof = box.fake_lsof(pre=f'echo "{newpkg}" > "{root}/.links/late"')
         want = "skipped:registry-changed"
-    r = box.run("110", apply=True)
+    r = box.run("100", apply=True)
     res = box.rules()["playwright-old"]
     assert res["status"] == want and "Traceback" not in r.stderr
     assert {"name": "chromium-1100", "bytes": 0, "state": "skipped:audit-error"} in res["entries"]

@@ -41,6 +41,7 @@ class Rig:
         *,
         with_main_tag: bool = False,
         symlink_ceremony: str | None = None,
+        tip_bodies: dict[str, str] | None = None,
     ):
         self.root = root
         self.home = root / "home"
@@ -68,7 +69,7 @@ class Rig:
         self.target.touch()
         self.link.symlink_to(self.target)
         self.write_git_wrapper()
-        self.m1, self.m2, self.tag_main = self._make_remote(bodies or {}, with_main_tag, symlink_ceremony)
+        self.m1, self.m2, self.tag_main = self._make_remote(bodies or {}, with_main_tag, symlink_ceremony, tip_bodies or {})
         source = SHIPPED.read_text()
         self.patches = self._patches(source)
         self.launcher.write_text(apply_patches(source, self.patches))
@@ -105,6 +106,7 @@ class Rig:
         bodies: dict[str, str],
         with_main_tag: bool,
         symlink_ceremony: str | None,
+        tip_bodies: dict[str, str],
     ) -> tuple[str, str, str | None]:
         src = self.root / "src"
         self._git_run("init", "-b", "main", str(src))
@@ -123,7 +125,12 @@ class Rig:
         self._git_run("commit", "-m", "fixture one", cwd=src)
         m1 = self._git_run("rev-parse", "HEAD", cwd=src)
         (src / "generation").write_text("two\n")
-        self._git_run("add", "generation", cwd=src)
+        # tip_bodies make m2's ceremony differ from m1's, so a launcher that reads the tip instead of M shows.
+        for name, body in tip_bodies.items():
+            path = ceremonies / f"{name}.zsh"
+            path.unlink()
+            path.write_text(body)
+        self._git_run("add", ".", cwd=src)
         self._git_run("commit", "-m", "fixture two", cwd=src)
         m2 = self._git_run("rev-parse", "HEAD", cwd=src)
         tag_main = None
@@ -228,6 +235,7 @@ def rig_factory(tmp_path: Path):
         *,
         with_main_tag: bool = False,
         symlink_ceremony: str | None = None,
+        tip_bodies: dict[str, str] | None = None,
     ) -> Rig:
         nonlocal made
         made += 1
@@ -236,6 +244,7 @@ def rig_factory(tmp_path: Path):
             bodies,
             with_main_tag=with_main_tag,
             symlink_ceremony=symlink_ceremony,
+            tip_bodies=tip_bodies,
         )
 
     return make
