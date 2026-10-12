@@ -34,6 +34,16 @@ for stale in /tmp/nuzantara-restore-drill.*; do
     fi
 done
 WORK_DIR=$(mktemp -d /tmp/nuzantara-restore-drill.XXXXXX)
+# Container ownership, the one rule: a run owns exactly the containers carrying its own label,
+# which docker attaches at creation, atomically. Cleanup and the watchdog remove by that label
+# only, so no window exists between "created" and "recorded", and a run that refused (75) before
+# creating anything owns nothing and reaps nothing. Removal by NAME is only the age-gated stale reap.
+RUN_LABEL="com.nuzantara.restore-drill.run=${WORK_DIR##*/}"
+remove_own_containers() {
+    for owned in $(docker ps -aq --filter "label=$RUN_LABEL" 2>/dev/null); do
+        docker rm -f "$owned" >/dev/null 2>&1 || true
+    done
+}
 WATCHDOG_PID=""
 DRILL_PID=""
 
@@ -51,12 +61,7 @@ cleanup() {
         sleep 1
         kill -KILL "-$DRILL_PID" 2>/dev/null || kill -KILL "$DRILL_PID" 2>/dev/null || true
     fi
-    # Only the container THIS run started is removed, by the ID drill_main recorded. A run that
-    # refused because a younger drill container may belong to a live orphan never wrote an ID, so
-    # it leaves that container alone (exit 75 stays exit 75 and nothing is reaped).
-    if [ -s "$WORK_DIR/container-id" ]; then
-        docker rm -f "$(cat "$WORK_DIR/container-id")" >/dev/null 2>&1 || true
-    fi
+    remove_own_containers
     rm -rf "$WORK_DIR"
     exit "$rc"
 }
@@ -197,7 +202,7 @@ PY
         fi
     fi
     docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
-    cid=$(docker run --rm --detach --name "$CONTAINER_NAME" \
+    docker run --rm --detach --name "$CONTAINER_NAME" --label "$RUN_LABEL" \
         --memory "$CONTAINER_MEMORY" --cpus "$CONTAINER_CPUS" \
         --publish "127.0.0.1:${DRILL_PORT}:5432" \
         --env "POSTGRES_USER=$DRILL_USER" \
@@ -205,8 +210,7 @@ PY
         --env "POSTGRES_DB=$DRILL_DB" \
         --health-cmd "pg_isready -U $DRILL_USER -d $DRILL_DB" \
         --health-interval 5s --health-timeout 5s --health-retries 20 \
-        "$IMAGE") || cannot_verify "drill container did not start"
-    printf '%s\n' "$cid" > "$WORK_DIR/container-id"
+        "$IMAGE" >/dev/null || cannot_verify "drill container did not start"
     dsn="postgresql://${DRILL_USER}:${DRILL_PASSWORD}@127.0.0.1:${DRILL_PORT}/${DRILL_DB}"
     wait_for_postgres "$dsn"
     roles_sql="$WORK_DIR/roles.sql"
@@ -272,9 +276,7 @@ DRILL_PID=$!
     if kill -0 "$DRILL_PID" 2>/dev/null; then
         : > "$WORK_DIR/watchdog-fired"
         kill -TERM "-$DRILL_PID" 2>/dev/null || kill -TERM "$DRILL_PID" 2>/dev/null || true
-        if [ -s "$WORK_DIR/container-id" ]; then  # the detached container outlives its client
-            docker rm -f "$(cat "$WORK_DIR/container-id")" >/dev/null 2>&1 &
-        fi
+        remove_own_containers &  # the detached container outlives its client
         sleep 5
         kill -KILL "-$DRILL_PID" 2>/dev/null || kill -KILL "$DRILL_PID" 2>/dev/null || true
     fi

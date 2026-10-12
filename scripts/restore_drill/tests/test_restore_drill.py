@@ -161,20 +161,23 @@ def _payload_text() -> str:
     return (ROOT / "run_drill.sh").read_text(encoding="utf-8")
 
 
-def test_cleanup_and_watchdog_remove_only_the_container_this_run_started() -> None:
+def test_cleanup_and_watchdog_remove_only_containers_carrying_this_runs_label() -> None:
     text = _payload_text()
     cleanup = text[text.index("cleanup() {") : text.index("\n}\n", text.index("cleanup() {"))]
     watchdog = text[text.index('sleep "$TIMEOUT_SECONDS"') :]
     for block in (cleanup, watchdog):
         assert 'docker rm -f "$CONTAINER_NAME"' not in block
-        assert '"$WORK_DIR/container-id"' in block
+        assert "remove_own_containers" in block
+    assert 'docker run --rm --detach --name "$CONTAINER_NAME" --label "$RUN_LABEL"' in text
+    assert 'docker ps -aq --filter "label=$RUN_LABEL"' in text
+    assert "container-id" not in text
 
 
-def test_a_refused_run_writes_no_container_id_so_nothing_is_reaped() -> None:
+def test_a_refused_run_creates_nothing_so_its_label_owns_nothing() -> None:
     text = _payload_text()
     refusal = text.index("return 75")
-    record = text.index('> "$WORK_DIR/container-id"')
-    assert refusal < record, "the 75 refusal must happen before this run records any container"
-    # the only name-based removal is the stale reap, and it sits after the age guard
+    reap = text.index('docker rm -f "$CONTAINER_NAME"')
+    create = text.index("docker run --rm --detach")
+    # the only name-based removal is the stale reap, after the age guard and before creation
     assert text.count('docker rm -f "$CONTAINER_NAME"') == 1
-    assert refusal < text.index('docker rm -f "$CONTAINER_NAME"') < record
+    assert refusal < reap < create
