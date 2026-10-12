@@ -2,10 +2,9 @@
 # LocalCI ceremony launcher. Invoke under env -i as zero-ops with M and NAME.
 # Body contract: $1 is verified M; $2 is the work directory; cwd is $2;
 # $2/w.git holds M's objects. The body reads repository code only with
-#   git cat-file blob "${1}:path"
-# and never from FETCH_HEAD. Its supplied environment is exactly HOME, PATH and
-# LC_ALL=C (zsh may materialize its own special parameters).
-# C12 SSH uses /Users/zero-ops/.ssh/known_hosts_localci.
+#   "$2/g" cat-file blob "${1}:path"
+# and never runs bare git or reads FETCH_HEAD. Its supplied environment is
+# exactly HOME, PATH and LC_ALL=C (zsh may materialize special parameters).
 # The root-owned 0444 journal is replaced only by:
 #   /usr/bin/sudo /usr/bin/install -o root -g wheel -m 0444 SOURCE JOURNAL
 # Exit 0: success; 64: argv/name; 65: trust/config/history/internal refusal;
@@ -25,8 +24,8 @@ BASE=/Users/zero-ops/ceremony
 CLT=/Library/Developer/CommandLineTools
 GIT="$CLT/usr/bin/git"
 case "$NAME" in
-  C3-bootstrap|C3) REMOTE='https://github.com/Bali-Zero/Teman2.git'; transport=(-c protocol.allow=never -c protocol.https.allow=always); transport_expected=$'command line:\tprotocol.https.allow=always' ;;
-  C12) REMOTE='ssh://mini/Users/nuzantara/localci/replica.git'; transport=(-c protocol.allow=never -c protocol.ssh.allow=always); transport_expected=$'command line:\tprotocol.ssh.allow=always' ;;
+  C3-bootstrap|C3) REMOTE='https://github.com/Bali-Zero/Teman2.git'; fetch_ref=main; transport=(-c protocol.allow=never -c protocol.https.allow=always); transport_expected=$'command line:\tprotocol.https.allow=always' ;;
+  C12) REMOTE='file:///Users/nuzantara/.nuzantara-pilots/local-ci/merger/repo.git'; fetch_ref=refs/merger/base; transport=(-c protocol.allow=never -c protocol.file.allow=always); transport_expected=$'command line:\tprotocol.file.allow=always' ;;
   *) exit 64 ;;
 esac
 [[ ! -e /etc/zshenv && ! -L /etc/zshenv ]] || exit 65
@@ -34,8 +33,7 @@ esac
 TS=$(/bin/date -u +%Y%m%dT%H%M%SZ)
 d="$BASE/$TS.$$"
 cfg=(-c core.hooksPath=/dev/null -c core.fsmonitor=false -c maintenance.auto=false)
-ssh_command='/usr/bin/ssh -F /dev/null -o ProxyCommand=none -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/Users/zero-ops/.ssh/known_hosts_localci'
-gcmd=(/usr/bin/env -i HOME="$d" PATH=/usr/bin:/bin:/usr/sbin:/sbin LC_ALL=C GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="$ssh_command" "$GIT" "${cfg[@]}" "${transport[@]}")
+gcmd=(/usr/bin/env -i HOME="$d" PATH=/usr/bin:/bin:/usr/sbin:/sbin LC_ALL=C GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 GIT_TERMINAL_PROMPT=0 "$GIT" "${cfg[@]}" "${transport[@]}")
 g() { "${gcmd[@]}" "$@"; }
 
 link_ok='CLT=/Library/Developer/CommandLineTools; STOP=/; for p; do r=$(/bin/realpath "$p") || exit 1; case "$r" in /System/Volumes/Data|/System/Volumes/Data/*) exit 1 ;; "$CLT"|"$CLT"/*|/usr/bin|/usr/bin/*|/usr/lib|/usr/lib/*|/usr/libexec|/usr/libexec/*|/usr/share|/usr/share/*|/System|/System/*) ;; *) exit 1 ;; esac; q=$r; while true; do [[ -z "$(/usr/bin/find "$q" -prune \( ! -user root -o -perm +0022 -o -acl \) -print)" ]] || exit 1; [[ "$q" == "$STOP" ]] && break; [[ "$q" == / ]] && exit 1; q=${q:h}; done; done'
@@ -75,7 +73,7 @@ watch_fetch() {
 }
 fetch_with_watchdog() {
   local fetch_pid watch_pid fetch_rc watch_rc
-  ( exec "${gcmd[@]}" -C "$d/w.git" fetch --no-tags "$REMOTE" main ) & fetch_pid=$!
+  ( exec "${gcmd[@]}" -C "$d/w.git" fetch --no-tags "$REMOTE" "$fetch_ref" ) & fetch_pid=$!
   watch_fetch "$fetch_pid" & watch_pid=$!
   wait "$watch_pid"; watch_rc=$?
   (( watch_rc == 0 )) || kill -TERM "$fetch_pid" 2>/dev/null
@@ -100,6 +98,8 @@ else
   [[ "$NAME" == C3-bootstrap ]] || exit 65
 fi
 
+/usr/bin/printf '%s\n' '#!/bin/zsh -f' "exec /usr/bin/env -i HOME=\"$d\" PATH=/usr/bin:/bin:/usr/sbin:/sbin LC_ALL=C GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 GIT_TERMINAL_PROMPT=0 /Library/Developer/CommandLineTools/usr/bin/git -c core.hooksPath=/dev/null -c core.fsmonitor=false -c maintenance.auto=false -c protocol.allow=never -C \"$d/w.git\" \"\$@\"" >"$d/g" || exit 65
+/bin/chmod 0500 "$d/g" || exit 65
 g -C "$d/w.git" cat-file blob "${M}:docs/ceremonies/${NAME}.zsh" >"$d/ceremony.zsh" || exit 65
 /bin/chmod 0500 "$d/ceremony.zsh" || exit 65
 ( cd "$d" || exit 65; /usr/bin/env -i HOME=/Users/zero-ops PATH=/usr/bin:/bin:/usr/sbin:/sbin LC_ALL=C /bin/zsh -f "$d/ceremony.zsh" "$M" "$d" )

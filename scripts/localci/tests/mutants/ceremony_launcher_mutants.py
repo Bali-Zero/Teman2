@@ -36,6 +36,7 @@ CONFIG = node("test_config_allow_list_rejects_every_extra_or_changed_entry[crede
 STATIC = node("test_shipped_security_contract_is_literal")
 ZSHENV = node("test_zshenv_presence_halts")
 PARENT = node("test_trust_walk_table[writable-parent]")
+HELPER = node("test_body_git_helper_is_hardened_and_mode_0500")
 
 # name: (old text, replacement, tests that must turn red)
 MUTANTS: dict[str, tuple[str, str, tuple[str, ...]]] = {
@@ -52,14 +53,16 @@ MUTANTS: dict[str, tuple[str, str, tuple[str, ...]]] = {
     "body-without-argv": ('/bin/zsh -f "$d/ceremony.zsh" "$M" "$d"', '/bin/zsh -f "$d/ceremony.zsh"', BODY),
     "body-inherits-env": ('/usr/bin/env -i HOME=/Users/zero-ops PATH=/usr/bin:/bin:/usr/sbin:/sbin LC_ALL=C /bin/zsh', 'HOME=/Users/zero-ops PATH=/usr/bin:/bin:/usr/sbin:/sbin LC_ALL=C /bin/zsh', BODY),
     "fetch-not-execd": (
-        '( exec "${gcmd[@]}" -C "$d/w.git" fetch --no-tags "$REMOTE" main ) & fetch_pid=$!',
-        '( "${gcmd[@]}" -C "$d/w.git" fetch --no-tags "$REMOTE" main; : ) & fetch_pid=$!',
+        '( exec "${gcmd[@]}" -C "$d/w.git" fetch --no-tags "$REMOTE" "$fetch_ref" ) & fetch_pid=$!',
+        '( "${gcmd[@]}" -C "$d/w.git" fetch --no-tags "$REMOTE" "$fetch_ref"; : ) & fetch_pid=$!',
         WATCH,
     ),
     "journal-absent-accepted": ('  [[ "$NAME" == C3-bootstrap ]] || exit 65', "  true", JABS),
     "rewind-accepted": ('  g -C "$d/w.git" merge-base --is-ancestor "$PREV_M" "$M" || exit 65', "  true", REWIND),
     "config-list-not-allowlisted": ('[[ "$actual" == "$(/usr/bin/printf \'%s\\n\' "$expected" | /usr/bin/sort)" ]] || exit 65', "true", CONFIG),
-    "transport-unpinned": (' GIT_SSH_COMMAND="$ssh_command"', "", STATIC),
+    "transport-unpinned": ('transport=(-c protocol.allow=never -c protocol.file.allow=always)', 'transport=(-c protocol.file.allow=always)', STATIC),
+    "body-helper-uses-path-git": ('/Library/Developer/CommandLineTools/usr/bin/git -c core.hooksPath', 'git -c core.hooksPath', HELPER),
+    "body-helper-allows-network": (' -c protocol.allow=never -C \\"$d/w.git\\"', ' -C \\"$d/w.git\\"', HELPER),
     "zshenv-not-asserted": ('[[ ! -e /etc/zshenv && ! -L /etc/zshenv ]] || exit 65', "true", ZSHENV),
     "link-parent-not-judged": (
         'q=$r; while true; do [[ -z "$(/usr/bin/find "$q" -prune \\( ! -user root -o -perm +0022 -o -acl \\) -print)" ]] || exit 1; [[ "$q" == "$STOP" ]] && break; [[ "$q" == / ]] && exit 1; q=${q:h}; done',

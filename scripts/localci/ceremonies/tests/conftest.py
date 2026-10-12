@@ -66,9 +66,10 @@ class Rig:
 
     def _patches(self, source: str) -> tuple[Patch, ...]:
         file_url = self.remote.as_uri()
-        c3_old = "C3-bootstrap|C3) REMOTE='https://github.com/Bali-Zero/Teman2.git'; transport=(-c protocol.allow=never -c protocol.https.allow=always); transport_expected=$'command line:\\tprotocol.https.allow=always' ;;"
-        c12_old = "C12) REMOTE='ssh://mini/Users/nuzantara/localci/replica.git'; transport=(-c protocol.allow=never -c protocol.ssh.allow=always); transport_expected=$'command line:\\tprotocol.ssh.allow=always' ;;"
-        remote_new = f"REMOTE='{file_url}'; transport=(-c protocol.allow=never -c protocol.file.allow=always); transport_expected=$'command line:\\tprotocol.file.allow=always' ;;"
+        c3_old = "C3-bootstrap|C3) REMOTE='https://github.com/Bali-Zero/Teman2.git'; fetch_ref=main; transport=(-c protocol.allow=never -c protocol.https.allow=always); transport_expected=$'command line:\\tprotocol.https.allow=always' ;;"
+        c12_old = "C12) REMOTE='file:///Users/nuzantara/.nuzantara-pilots/local-ci/merger/repo.git'; fetch_ref=refs/merger/base; transport=(-c protocol.allow=never -c protocol.file.allow=always); transport_expected=$'command line:\\tprotocol.file.allow=always' ;;"
+        c3_new = f"C3-bootstrap|C3) REMOTE='{file_url}'; fetch_ref=main; transport=(-c protocol.allow=never -c protocol.file.allow=always); transport_expected=$'command line:\\tprotocol.file.allow=always' ;;"
+        c12_new = f"C12) REMOTE='{file_url}'; fetch_ref=refs/merger/base; transport=(-c protocol.allow=never -c protocol.file.allow=always); transport_expected=$'command line:\\tprotocol.file.allow=always' ;;"
         trust_new = f'trust=("{self.trust}" "{self.clt}" "$CLT/usr" "$CLT/usr/bin" "$CLT/usr/libexec" "$CLT/usr/share" "$GIT" "{self.probe}" "{self.link}" "{self.launcher}")'
         return (
             Patch("ceremony-home", "/Users/zero-ops", str(self.home), source.count("/Users/zero-ops")),
@@ -77,8 +78,8 @@ class Rig:
             Patch("link-parent-stop", "STOP=/;", f"STOP={self.trust};"),
             Patch("trust-roots", 'trust=(/ /Library /Library/Developer "$CLT" "$CLT/usr" "$CLT/usr/bin" "$CLT/usr/libexec" "$CLT/usr/share" /bin /usr /usr/bin /System /usr/local /usr/local/localci /usr/local/localci/bin /usr/local/localci/bin/ceremony-launcher.zsh)', trust_new),
             Patch("closure-roots", '"$GIT" "$CLT/usr/libexec/git-core" "$CLT/usr/share/git-core" /bin/realpath', '"$GIT" "$CLT/usr/libexec/git-core" "$CLT/usr/share/git-core"'),
-            Patch("c3-file-remote", c3_old, f"C3-bootstrap|C3) {remote_new}"),
-            Patch("c12-file-remote", c12_old, f"C12) {remote_new}"),
+            Patch("c3-file-remote", c3_old, c3_new),
+            Patch("c12-fixture-remote", c12_old, c12_new),
             Patch("zshenv-probe", "/etc/zshenv", str(self.zshenv), 2),
             Patch("unprivileged-install", '/usr/bin/sudo /usr/bin/install -o root -g wheel -m 0444 "$d/last-main.new" "$journal"', '/usr/bin/install -m 0444 "$d/last-main.new" "$journal"'),
             Patch("watchdog-ticks", "ticks < 600", "ticks < 4"),
@@ -107,6 +108,7 @@ class Rig:
         self._git_run("commit", "-m", "fixture two", cwd=src)
         m2 = self._git_run("rev-parse", "HEAD", cwd=src)
         self._git_run("clone", "--bare", str(src), str(self.remote))
+        self._git_run(f"--git-dir={self.remote}", "update-ref", "refs/merger/base", m2)
         return m1, m2
 
     def write_git_wrapper(self, mode: str = "normal", plant: str | None = None) -> None:

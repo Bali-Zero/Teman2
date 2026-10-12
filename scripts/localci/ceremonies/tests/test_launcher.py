@@ -123,6 +123,31 @@ def test_body_contract_has_two_args_cwd_and_only_the_supplied_env(rig_factory):
     assert lines == {"argc": "2", "one": rig.m2, "two": str(run), "pwd": str(run), "env": "HOME,LC_ALL,PATH"}
 
 
+def test_body_reads_known_blob_through_helper(rig_factory):
+    body = '"$2/g" cat-file blob "${1}:generation"\n'
+    rig = rig_factory({"C3-bootstrap": body})
+    got = rig.run(rig.m2, "C3-bootstrap")
+    expected = rig._git_run(f"--git-dir={rig.remote}", "cat-file", "blob", f"{rig.m2}:generation") + "\n"
+    assert got.returncode == 0
+    assert got.stdout.splitlines(keepends=True)[-1] == expected
+
+
+def test_body_git_helper_is_hardened_and_mode_0500(rig_factory):
+    body = '/bin/cat "$2/g"\n/usr/bin/stat -f "mode=%Lp" "$2/g"\n'
+    rig = rig_factory({"C3-bootstrap": body})
+    got = rig.run(rig.m2, "C3-bootstrap")
+    run = rig.runs()[-1]
+    assert got.returncode == 0
+    helper = got.stdout[got.stdout.index("#!/bin/zsh -f\n") :]
+    assert helper.startswith("#!/bin/zsh -f\nexec /usr/bin/env -i ")
+    assert f'HOME="{run}"' in helper
+    assert "/Library/Developer/CommandLineTools/usr/bin/git" in helper
+    assert "GIT_CONFIG_NOSYSTEM=1" in helper
+    assert "-c protocol.allow=never" in helper
+    assert f'-C "{run}/w.git" "$@"' in helper
+    assert helper.endswith("mode=500\n")
+
+
 STDIN_BODY = r'''read -r first || true
 /usr/bin/head -c 1 >/dev/null || true
 /bin/cat >/dev/null & child=$!
@@ -181,16 +206,19 @@ def test_test_copy_diff_is_exactly_the_declared_patch_table(rig_factory):
     assert actual_diff == declared_diff
     assert [p.name for p in rig.patches] == [
         "ceremony-home", "tool-root", "trust-owner", "link-parent-stop", "trust-roots", "closure-roots",
-        "c3-file-remote", "c12-file-remote", "zshenv-probe", "unprivileged-install",
+        "c3-file-remote", "c12-fixture-remote", "zshenv-probe", "unprivileged-install",
         "watchdog-ticks", "watchdog-tick-duration", "watchdog-grace",
     ]
 
 
 def test_shipped_security_contract_is_literal():
     text = SHIPPED.read_text()
-    assert "GIT_SSH_COMMAND=\"$ssh_command\"" in text
-    assert "ProxyCommand=none -o BatchMode=yes -o StrictHostKeyChecking=yes" in text
-    assert "UserKnownHostsFile=/Users/zero-ops/.ssh/known_hosts_localci" in text
+    assert "GIT_SSH_COMMAND" not in text
+    assert "known_hosts" not in text
+    assert "C3-bootstrap|C3) REMOTE='https://github.com/Bali-Zero/Teman2.git'; fetch_ref=main; transport=(-c protocol.allow=never -c protocol.https.allow=always)" in text
+    assert "C12) REMOTE='file:///Users/nuzantara/.nuzantara-pilots/local-ci/merger/repo.git'; fetch_ref=refs/merger/base; transport=(-c protocol.allow=never -c protocol.file.allow=always)" in text
+    assert '"$2/g" cat-file blob "${1}:path"' in text
+    assert "/Library/Developer/CommandLineTools/usr/bin/git -c core.hooksPath=/dev/null -c core.fsmonitor=false -c maintenance.auto=false -c protocol.allow=never" in text
     assert "/System/Volumes/Data|/System/Volumes/Data/*) exit 1" in text
     assert '/usr/bin/sudo /usr/bin/install -o root -g wheel -m 0444 "$d/last-main.new" "$journal"' in text
     assert '/usr/bin/env -i HOME=/Users/zero-ops PATH=/usr/bin:/bin:/usr/sbin:/sbin LC_ALL=C /bin/zsh -f "$d/ceremony.zsh" "$M" "$d"' in text
