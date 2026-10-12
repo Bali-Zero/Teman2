@@ -519,17 +519,6 @@ jobs:
             --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_121'"
           echo "✅ Python migration 121 OK"
 
-      - name: Run Python migration 127 (practice_types PT PMA 25M)
-        timeout-minutes: 2
-        run: |
-          MACHINE="${{ steps.sentinel.outputs.machine }}"
-          flyctl ssh console \
-            --app nuzantara-rag \
-            --machine "$MACHINE" \
-            --process-group api \
-            --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_127'"
-          echo "✅ Python migration 127 OK"
-
       - name: Notifica Telegram — Python migration fallita
         if: failure()
         run: |
