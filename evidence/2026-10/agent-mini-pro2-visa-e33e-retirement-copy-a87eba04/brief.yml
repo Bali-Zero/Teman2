@@ -1,0 +1,28 @@
+task_id: visa-e33e-copy-20261012
+gear: 1
+l_level: L1
+gate_class: opus
+objective: >-
+  Owner ruling 2026-10-12: E33E is the 5-year RETIREMENT KITAS (55+) at IDR
+  45,000,000 per catalogue row kitas_permits "E33E Second Home Senior (5
+  Years)"; the catalogue is right. The retirement-visa-indonesia guide quoted
+  IDR 18M for E33E in en/id/it/fr/ru (table row, cost block, Total 5-Year
+  Cost, comparison card). Price corrected to 45M everywhere, a vitest guard
+  added so no article states a different E33E price, and the internal case
+  intake page now says E33E is retirement and not the 35M base E33. Catalogue
+  keys, pricing_key strings and signed packs untouched; renames are proposals.
+acceptance:
+  - text: >-
+      No retirement-visa-indonesia* article states IDR 18M for E33E.
+    probe: >-
+      grep -rnE "18[.,]000[.,]000|18M|18 000 000|18 млн"
+      apps/mouth/src/content/articles/immigration/retirement-visa-indonesia*
+  - text: >-
+      The guard passes on the fix and fails when one E33E line is reverted to 18M.
+    probe: cd apps/mouth && npx vitest run src/content/e33e-retirement-price.test.ts
+assumptions:
+  - text: >-
+      The guard went red with one fr line reverted to 18,000,000 and green
+      after restoring it (2026-10-12).
+    status: verified
+    probe: mutation run in this worktree
