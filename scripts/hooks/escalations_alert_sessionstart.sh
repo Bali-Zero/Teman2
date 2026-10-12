@@ -64,6 +64,12 @@ fresh_cutoff = now - fresh_days * 86400
 
 high = []          # list of (source, job, summary, ts)
 normal_pending = 0
+# type=gateway_routed rows are tg_notify's AUDIT trail of conditions it routed
+# to the board BECAUSE no owner action is required (cure_lane note says so, and
+# the row is always NORMAL). They are never resolved by anything — they are not
+# a to-do — so counting them as "NORMAL pending" made the board read ~84 open
+# items of which zero were actionable. Counted apart and rendered as a tail.
+gateway_audit = 0
 
 # --- cause normalization for grouping (2026-09-09 diet) ---
 # The same job can escalate on every tick with an identical CAUSE but a
@@ -156,6 +162,8 @@ if os.path.isfile(esc_file):
             summ = " ".join((d.get("error_summary") or "").split())[:80]
             if prio == "HIGH":
                 high.append(("escalations_pro.jsonl", job, summ, entry_ts))
+            elif d.get("type") == "gateway_routed":
+                gateway_audit += 1
             else:
                 normal_pending += 1
     except Exception:
@@ -281,6 +289,10 @@ def _build(show_n: int, tail_text: str) -> str:
         lines.append("  — 0 HIGH-priority open.")
     if normal_pending:
         lines.append(f"  — {normal_pending} NORMAL pending in escalations_pro.jsonl (context).")
+    if gateway_audit and (groups or normal_pending):
+        lines.append(
+            f"  — +{gateway_audit} gateway-routed audit row(s), no owner action (see /escalations)."
+        )
     lines.append("")
     lines.append(tail_text)
     return "\n".join(lines)
