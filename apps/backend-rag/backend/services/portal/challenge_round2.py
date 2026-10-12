@@ -221,7 +221,11 @@ def _window_ts() -> tuple[str, str]:
 # Derived from the R1 text so the two cannot drift; R1's own constant and
 # builders are never touched (R1 is frozen).
 _ACTIVATION_COUNT = "COUNT(DISTINCT client_id) AS activations,"
-assert _ACTIVATION_COUNT in _AGGREGATES_SELECT
+_OUTER_LAST_COLUMN = "    a.last_activation_at\nFROM"
+if _ACTIVATION_COUNT not in _AGGREGATES_SELECT or _OUTER_LAST_COLUMN not in _AGGREGATES_SELECT:
+    raise RuntimeError(
+        "R1 _AGGREGATES_SELECT changed shape: the R2 sprint column cannot be derived"
+    )
 _R2_AGGREGATES_SELECT = _AGGREGATES_SELECT.replace(
     _ACTIVATION_COUNT,
     _ACTIVATION_COUNT
@@ -230,7 +234,7 @@ _R2_AGGREGATES_SELECT = _AGGREGATES_SELECT.replace(
     + " AS sprint_activations,",
     1,
 ).replace(
-    "    a.last_activation_at\nFROM",
+    _OUTER_LAST_COLUMN,
     "    a.last_activation_at,\n    COALESCE(a.sprint_activations, 0) AS sprint_activations\nFROM",
     1,
 )
