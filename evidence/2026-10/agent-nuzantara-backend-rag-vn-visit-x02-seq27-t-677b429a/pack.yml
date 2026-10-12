@@ -1,0 +1,72 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  VISA NIGHT plan X02 (family visit, audit findings F013, F043, F073, F103, 2026-10-12): a test-only
+  lane; no owner decision is involved and no rule, copy or price is changed.
+mission: >-
+  The edges of the visit family on the signed seq-27 pack have a witness that fails when a rule moves:
+  B1 60 vs 61 days, C1 and C6 180 vs 181, C6 without a confirmed sponsor, D12 on its named cause, and the
+  two global overstay filters.
+lanes:
+  - lane: x02-seq27-tests
+    role: build
+    seat: Claude Sonnet 5.5 implementer (subagent), worktree backend-rag-vn-visit-x02-seq27-tests.
+  - lane: x02-ground-truth
+    role: ground_truth
+    seat: >-
+      Signed seq-27 pack rules el.b1.tourism (stay_days lte 60), el.c1 tourism (lte 180), el.c6.social
+      (sponsor_confirmed true, stay_days lte 180), hf.d12-onshore-conversion-excluded, hf.overstay-exceeds-60-days
+      (gt 60) and hf.active-overstay (gt 0); the tests assert no rule of their own, they state the corpus
+      personas against those rules.
+    nb: /Users/nuzantara/visa-night/visit/ground/C6.md
+    query_hash: "a9098744e0cd8369fb4fe9ca5bef851705cf43dabb1c69398b63b36985cb42d0" # pragma: allowlist secret
+    note: query_hash = payload sha256 of rulepack-prod-027 (SEQ27_PAYLOAD_SHA256 in test_seq27_pack.py).
+pii_scan: clean
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
+results:
+  tests_added: 29
+  visa_engine_suite: "2985 passed, 3 failed and 39 errors in the Postgres-integration files, identical to the run without the new file"
+bites: >-
+  Consumer: the backend-rag CI pytest job, which collects backend/tests/services/visa_engine on every
+  backend PR. Observation: pytest apps/backend-rag/backend/tests/services/visa_engine/test_visit_family_seq27.py
+  reports 29 passed on the signed seq-27 pack, and with the evaluator's lte operator mutated to lt, or gt
+  to gte, 4 and 18 of them fail (recorded in the receipts), so a moved bound or threshold turns the check red.
+receipts:
+  - claim: "The new file passes against the signed seq-27 pack."
+    cmd: "cd apps/backend-rag && PYTHONPATH=. venv311/bin/python -m pytest backend/tests/services/visa_engine/test_visit_family_seq27.py"
+    result: "29 passed in 1.15s"
+    exit: 0
+    ts: "2026-10-12T00:30:00Z"
+    seat: this session
+  - claim: "Mutation 1: with the evaluator's lte comparison (ast.py) changed to lt, the boundary tests fail."
+    cmd: "sed line 673 of backend/services/visa_engine/ast.py (value <= condition.value -> value < condition.value), run the new file, restore from backup"
+    result: "4 failed, 25 passed (B1 at 60 and 180, C1 at 180, C6 at 180); file restored, git status shows only the new test file"
+    exit: 1
+    ts: "2026-10-12T00:32:00Z"
+    seat: this session
+  - claim: "Mutation 2: with the evaluator's gt comparison changed to gte, the overstay and unknown-fact tests fail."
+    cmd: "sed line 675 of backend/services/visa_engine/ast.py (value > condition.value -> value >= condition.value), run the new file, restore from backup"
+    result: "18 failed, 11 passed; file restored, git status shows only the new test file"
+    exit: 1
+    ts: "2026-10-12T00:33:00Z"
+    seat: this session
+  - claim: "The whole backend visa_engine suite after the change; the failures and errors are the Postgres-integration files on the shared local database and are identical without the new file."
+    cmd: "cd apps/backend-rag && PYTHONPATH=. venv311/bin/python -m pytest backend/tests/services/visa_engine"
+    result: "3 failed, 2985 passed, 15 skipped, 39 errors; same run with the new file ignored: 3 failed, 2956 passed, 15 skipped, 39 errors (the 29 added tests are the whole difference)"
+    exit: 1
+    ts: "2026-10-12T00:41:00Z"
+    seat: this session
+decisions:
+  - id: D-seq27-by-name
+    decision: >-
+      The cases evaluate rulepack-prod-027.signed.json by name, not the highest pack on disk, so the file
+      stays a statement about seq-27 after seq-28 is signed; the gold-coverage floor keeps covering the
+      highest pack.
+  - id: D-no-ride-along-pins
+    decision: >-
+      Ride-along reasons beside a named cause (BRIDGING_ONSHORE_ONLY beside a C6 miss, BVK_NATIONALITY_ONLY
+      and AGE_BELOW_55 beside a tourist miss) are not pinned: several are known copy defects awaiting a later
+      pack, and pinning them would turn a defect into a requirement. Only the named cause is asserted, as a subset.
+dissent: []

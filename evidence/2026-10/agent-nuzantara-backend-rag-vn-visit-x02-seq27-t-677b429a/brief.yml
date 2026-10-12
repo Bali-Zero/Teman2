@@ -1,0 +1,19 @@
+gear: 1
+gear_reason: >-
+  Test-only, one new file under backend/tests/services/visa_engine; no pack, no rule, no copy, no tree,
+  no corpus and no product code changes. Gear 1: the engine's behaviour is unchanged and each assertion
+  was proven to bite by mutating the evaluator operators.
+mission: >-
+  The edges of the visit family on the signed seq-27 pack have a witness that fails when a rule moves:
+  B1 60 vs 61 days, C1 and C6 180 vs 181, C6 without a confirmed sponsor, D12 on its named cause, and the
+  two global overstay filters.
+objective: >-
+  One test file, test_visit_family_seq27.py, builds each case from the corpus's own persona or walk JSON
+  with one fact changed and evaluates it against rulepack-prod-027.signed.json by name (not the highest
+  pack) at a fixed instant: stay-day ceilings, C6 sponsor and unknown-fact asks, D12_NOT_CONVERTIBLE with
+  its guilt twin, and ACTIVE_OVERSTAY_SETTLE_FIRST / OVERSTAY_EXCEEDS_60_DAYS through C1, C6 and D12.
+scope:
+  - apps/backend-rag/backend/tests/services/visa_engine/test_visit_family_seq27.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
