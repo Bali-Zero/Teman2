@@ -139,6 +139,19 @@ export interface PortalChallengeEntry {
   september_rank?: number | null;
   /** Tied on a prize slot: no prize until the play-off decides it. */
   playoff_pending?: boolean;
+  /** Sprint minimum (R2, from 12 Oct) — optional: absent on older backends. */
+  sprint_points?: number;
+  sprint_reached?: boolean;
+  /** 0 when reached; the monthly-bonus deduction while below the minimum. */
+  sprint_penalty_idr?: number;
+}
+
+/** Round-2 sprint rule: `end` is exclusive, like `window_end`. */
+export interface PortalChallengeSprint {
+  start: string;
+  end: string;
+  min_points: number;
+  penalty_idr: number;
 }
 
 export interface PortalChallengeRecentActivation {
@@ -211,6 +224,7 @@ export interface PortalChallengeResponse {
   recent_events?: PortalChallengeRecentEvent[];
   september?: PortalChallengeSeptemberSummary | null;
   asya_mission?: PortalChallengeAsyaMission | null;
+  sprint?: PortalChallengeSprint | null;
 }
 
 export const dashboardApi = {
