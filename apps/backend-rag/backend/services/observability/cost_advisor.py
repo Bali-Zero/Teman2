@@ -272,8 +272,9 @@ class CostAdvisor:
                         estimated_monthly_saving_usd, quality_tradeoff,
                         confidence, spike_flag
                     )
-                    -- $1-$3 appear twice: in the SELECT list each resolves as text, in the
-                    -- NOT EXISTS predicate (`endpoint = $1`) as varchar, and Postgres
+                    -- $1-$3 appear twice: in the SELECT list each resolves as varchar (it
+                    -- takes the INSERT target column's type), in the NOT EXISTS predicate
+                    -- (`endpoint = $1`) as text (varchar has no `=` of its own), and Postgres
                     -- rejects the disagreement (AmbiguousParameterError, observed live
                     -- 2026-10-12). All seven are cast so the types are stated in one place.
                     SELECT $1::varchar, $2::varchar, $3::varchar, $4::numeric,
