@@ -21,11 +21,16 @@ MAX_DUMP_AGE_HOURS="${RESTORE_DRILL_MAX_DUMP_AGE_HOURS:-72}"
 CONTAINER_MEMORY="${RESTORE_DRILL_MEMORY:-3g}"
 CONTAINER_CPUS="${RESTORE_DRILL_CPUS:-2}"
 # A SIGKILL or a power loss skips the EXIT trap and leaves the dump and restore.log (both client
-# data, mode 0700) behind. The wrapper's lock means no other run is alive, so every leftover work
-# dir owned by this user is stale: remove it before starting. /private/tmp is also emptied at boot.
+# data, mode 0700) behind. A SIGKILLed wrapper can also orphan a live worker, whose 30-minute
+# watchdog still bounds it. So only a work dir older than 60 minutes is stale and removed here; a
+# younger one means a run may still be alive, and this run stops. /private/tmp is emptied at boot.
 for stale in /tmp/nuzantara-restore-drill.*; do
-    if [ -d "$stale" ] && [ -O "$stale" ]; then
+    [ -d "$stale" ] && [ -O "$stale" ] || continue
+    if [ -n "$(/usr/bin/find "$stale" -maxdepth 0 -mmin +60)" ]; then
         rm -r -f -- "$stale"
+    else
+        echo "CANNOT-VERIFY: a work dir younger than 60 minutes exists; a previous run may be alive" >&2
+        exit 75
     fi
 done
 WORK_DIR=$(mktemp -d /tmp/nuzantara-restore-drill.XXXXXX)
@@ -176,6 +181,16 @@ PY
     # The restored database needs roughly 8x the compressed dump inside the VM, on top of the floor.
     check_vm_disk_floor $((dump_bytes / 1024 * 8))
 
+    # A running drill container younger than 60 minutes may belong to an orphaned live worker:
+    # refuse rather than remove it. An older one is past every watchdog bound and is stale.
+    started=$(docker inspect --format '{{.State.Running}} {{.State.StartedAt}}' "$CONTAINER_NAME" 2>/dev/null || true)
+    if [ "${started%% *}" = "true" ]; then
+        age=$(/usr/bin/python3 -c 'import sys,datetime as d; t=d.datetime.fromisoformat(sys.argv[1][:26].rstrip("Z")+"+00:00"); print(int((d.datetime.now(d.timezone.utc)-t).total_seconds()))' "${started#* }" 2>/dev/null || echo 0)
+        if [ "$age" -lt 3600 ]; then
+            echo "CANNOT-VERIFY: drill container running for ${age}s; a previous run may be alive" >&2
+            return 75
+        fi
+    fi
     docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
     docker run --rm --detach --name "$CONTAINER_NAME" \
         --memory "$CONTAINER_MEMORY" --cpus "$CONTAINER_CPUS" \

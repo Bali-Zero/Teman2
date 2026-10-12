@@ -37,10 +37,11 @@ notify() { # $1 tier, $2 dedup key, $3 safe message
     message=$3
     # A p0 goes straight to Telegram: board routing would append to the tracked, Pro-only
     # shared/escalations_pro.jsonl from Mini. TG_ACT_ROUTING_ENABLED=false keeps the gateway's
-    # fail-visible p0_unsent spool when Telegram is unreachable.
+    # fail-visible p0_unsent spool when Telegram is unreachable. TG_RELAY_SSH is emptied so a
+    # failed local send can never hand the p0 to a remote gateway that would route it to a board.
     routing=true
     [ "$tier" = "p0" ] && routing=false
-    TG_ACT_ROUTING_ENABLED=$routing /usr/bin/python3 "$GATEWAY" --tier "$tier" --source restore-drill \
+    TG_ACT_ROUTING_ENABLED=$routing TG_RELAY_SSH= /usr/bin/python3 "$GATEWAY" --tier "$tier" --source restore-drill \
         --dedup-key "$key" -- "$message" >> "$LOG" 2>&1
 }
 
