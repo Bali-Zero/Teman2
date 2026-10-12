@@ -1,0 +1,66 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Fresh-gate follow-ups F1-F3 of #8287 (non-blocking LOWs, owner nuzantara-57), carried as an open PENDING-ARMS row by
+  #8316 (merged d300d73e4e, 2026-10-12).
+mission: >-
+  The E33G income-question tests check every category, every spelling of the threshold and the real test count.
+lanes:
+  - lane: e33g-f1f3
+    role: build
+    seat: claude-sonnet-5 (Claude Code workflow subagent), worktree mouth-vo-e33g-f1f3-1012 on M5.
+pii_scan: clean
+bites:
+  consumer: >-
+    every CI run of the visa-oracle mouth tree and of the corner-skill ledger tests (the remote-income-question test
+    file and the seq-28 ledger test).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_remote_income_question.py
+  expect: "contains:remote income question holds"
+receipts:
+  - claim: The whole visa-oracle Vitest tree passes after the rebase onto origin/main.
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 56 passed (56), Tests 1447 passed (1447)"
+    exit: 0
+    ts: "2026-10-12T10:46:07Z"
+    seat: this session
+  - claim: apps/mouth typechecks.
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-12T10:47:00Z"
+    seat: this session
+  - claim: The observer passes with the raised floor of 9 tests.
+    cmd: python3 scripts/ci/observe_visa_oracle_remote_income_question.py
+    result: "Tests 9 passed (9); remote income question holds"
+    exit: 0
+    ts: "2026-10-12T10:47:10Z"
+    seat: this session
+  - claim: The observer test, the ledger test and the ledger observer test pass.
+    cmd: python3 -m pytest tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_oracle_remote_income_question.py -q
+    result: "32 passed"
+    exit: 0
+    ts: "2026-10-12T10:47:20Z"
+    seat: this session
+  - claim: >-
+      The whole backend visa_engine directory shows no failure in a census or count pin; the failures and errors are database
+      and environment ones (psutil missing, scratch database without the deployed schema) and the diff touches no backend file.
+    cmd: cd apps/backend-rag/backend && python3 -m pytest tests/services/visa_engine -p no:cacheprovider
+    result: "4 failed, 3051 passed, 15 skipped, 39 errors (psutil ModuleNotFoundError, asyncpg UndefinedTable/UndefinedColumn/DependentObjects, migration-ledger preconditions)"
+    exit: 1
+    ts: "2026-10-12T10:50:17Z"
+    seat: this session
+decisions:
+  - id: D-lookbehind
+    decision: >-
+      The new threshold alternatives (60 thousand, 60 ribu, 60ribu) carry a (?<!\d) lookbehind so 160 ribu and 16 thousand
+      are not read as the threshold; a table test pins 14 matching and 5 non-matching spellings.
+  - id: D-min-tests-9
+    decision: >-
+      MIN_TESTS is 9, the real count (8 existing plus the new table test), not the 6 the row named; the observer pytest
+      shifts its accept and reject lists to the same floor.
+  - id: D-close-row
+    decision: >-
+      The F1-F3 PENDING-ARMS row is closed in this PR and test_f1_f3 in the seq-28 ledger test accepts either the open row
+      or the closed row carrying CLOSED BY, so the ledger count stays pinned.
+dissent: []
