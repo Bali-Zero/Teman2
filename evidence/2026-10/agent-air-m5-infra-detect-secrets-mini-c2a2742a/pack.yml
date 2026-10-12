@@ -1,0 +1,230 @@
+# Gear-3 evidence pack — the scheduled full-tree detect-secrets scan becomes the Mini launchd organ mini.detect_secrets_fulltree.
+# Written 2026-10-12 by the shipping session (Claude, M5), bound to code head 3a69d6a5bb (local, not pushed); commits after that head
+# only touch this dossier. Round 1 was judged at 7d735bae9a, round 2 at 1628849991, round 3 at 3a69d6a5bb. Receipts are commands run by
+# the builder session; receipt ts values are the commit times of the heads they were run against, council ts values are the times the
+# seat outputs were written. Verbatim seat verdicts are in council-journal.jsonl.
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+seat_fallback_reason: >-
+  The council is kimi-code/k3 and agy-gemini-3.1-pro (gemini-3.1-pro-high), both non-Anthropic. The codex seat (gpt-5.6-sol) built the
+  first draft as a prepare-only seat and is excluded from grading by generator is not grader; the shipping Claude session verified,
+  cured and committed. Neither reviewer built or edited anything here. Seat liveness was not probed separately: every call answered rc 0.
+ruling: >-
+  Coordinator's mandate (2026-10-12): the public repo is being removed, so the GitHub-hosted scheduled jobs retire; the scheduled
+  full-tree detect-secrets scan moves to a Mini launchd organ with its own heartbeat (gate 7b), the sibling of the docs-inventory organ.
+mission: >-
+  Keep the full-tree secret scan running daily after the public repo goes, against the real main and never a dirty tree, with every
+  finding and every breakage visible, no secret or baseline content ever printed, and no worktree, lock or mutated baseline left behind.
+lanes:
+  - lane: detect-secrets-build
+    role: build
+    seat: "codex gpt-5.6-sol (prepare-only seat, built from task spec detect-secrets-task.md; NOT a grader here)"
+  - lane: detect-secrets-verify
+    role: build
+    seat: "Claude (the shipping session; verified the build, reverted codex's hand edit of the generated docs/AUTOMATIONS_REFERENCE.md because that file is generated from live Pro and Mini state and Pro was offline, reflowed one security.yml comment, committed 7d735bae9a)"
+  - lane: detect-secrets-review-kimi
+    role: review
+    seat: "kimi-code/k3 (read-only, ran suites, guilt probes, a real detect-secrets 1.5.0 scan and concurrent git-worktree experiments; round 1 7d735bae9a PASS with NOTEs, round 2 1628849991 PASS)"
+  - lane: detect-secrets-review-agy
+    role: review
+    seat: "agy-gemini-3.1-pro (gemini-3.1-pro-high, --sandbox, headless, judged from reading because it cannot run commands; round 1 REWORK, round 2 REWORK, round 3 on 3a69d6a5bb PASS)"
+  - lane: detect-secrets-cure
+    role: build
+    seat: "Claude (the shipping session; round-1 cures in 1628849991, round-2 cure in 3a69d6a5bb)"
+seat_diversity: >-
+  Build lane non-Anthropic (codex), reviews kimi (Moonshot) and agy (Google), both non-Anthropic; cure lane Claude. The seat that built
+  the first draft did not grade it, and the Claude cure lane did not grade its own cures.
+pii_scan: clean
+pii_scan_note: >-
+  A wrapper, a plist, a shell corpus with synthetic fixtures, a registry entry and a workflow condition. The scan reports counts and
+  sanitized paths only; the baseline and any finding content are never printed, logged or paged. No client data is read or written.
+what_changed: |
+  infra/launchagents/wrappers/mini-detect-secrets.sh, infra/launchagents/com.nuzantara.detect-secrets-fulltree.plist, the registry
+  entry mini.detect_secrets_fulltree (129600 s), declared pairs, a connectome edge, scripts/tests/test_mini_detect_secrets_wrapper.sh
+  (19 cases), the executor detect-secrets-organ-tests.yml; security.yml (the detect-secrets-scan job excludes schedule, both crons
+  stay, PR/push/workflow_dispatch unchanged), scripts/ci/detect_secrets_nightly_alert.sh and its test (the composer serves
+  workflow_dispatch), test_no_push_main_trigger_on_heavy_suites.py (wording), main-push-failure-watch.yml path list.
+proof: |
+  See receipts. At the code head 3a69d6a5bb the 19-case wrapper corpus passes (R4); the cases added in each cure are red on the previous
+  wrapper (R5, R6, guilt runs); round 3 is PASS from agy and round 2 was PASS from kimi, with every earlier agy defect either cured or
+  disproved by kimi's experiments. Round 1 (agy REWORK) and round 2 (agy REWORK) are recorded as given.
+bites:
+  consumer: >-
+    The Mini launchd job com.nuzantara.detect-secrets-fulltree (daily 03:17 WITA) and the organism bridge that reads its sidecar
+    ~/.organism/last_seen/mini.detect_secrets_fulltree.json (expected_hb_seconds 129600).
+  observation: >-
+    Owed to the shipping session after merge: install the venv with the baseline's detect-secrets version, install the wrapper and plist
+    from main, run launchctl kickstart gui/501/com.nuzantara.detect-secrets-fulltree, then the sidecar reads status ok "fulltree clean
+    <sha>" (or warning with a page that carries only counts and paths), git worktree list on Mini shows no leftover, and git -C
+    ~/nuzantara status --porcelain is unchanged. Not yet made: this pack records the local, pre-push state at code head 3a69d6a5bb.
+ground:
+  ts: "2026-10-12T12:44:02Z"
+  siblings: >-
+    Branch base is origin/main. The docs-inventory organ (same lifecycle, proven over three council rounds) runs on Mini at 03:00, 17
+    minutes before this one; kimi verified concurrent git worktree add and prune are safe across the two organs.
+spend:
+  adversarial_rounds: 3
+  wall_clock_hours: 2.0
+decisions:
+  - id: D-report-only
+    decision: >-
+      The scan runs auto-triage in a throwaway worktree and discards the mutated baseline; nothing is committed. A finding is a
+      warning heartbeat (the monitor is healthy) plus one p0 through tg_notify.py with routing off and an empty relay.
+  - id: D-detached-worktree-of-main
+    decision: >-
+      The scan reads refs/heads/main of Mini's checkout in a throwaway detached worktree, never the canonical checkout; freshness of that
+      main is owned by the zero-sync organ (residual: no staleness alarm, the heartbeat carries the sha).
+  - id: D-pinned-venv-never-installs
+    decision: >-
+      A dedicated venv whose detect-secrets version must equal the baseline's validated "version"; the wrapper never installs and names
+      the install command when the tool is wrong. Installing on Mini is a post-merge step.
+  - id: D-security-yml-schedule-exclusion
+    decision: >-
+      Only the detect-secrets-scan job excludes schedule; both crons stay so the Snyk jobs' scheduled behaviour (owner decision pending)
+      is untouched. PR, push and workflow_dispatch are unchanged and the alert composer serves workflow_dispatch.
+  - id: D-daily-0317-weekly-collapsed
+    decision: >-
+      One daily run at 03:17 WITA replaces the daily and weekly workflow runs; the 129600 s window is 36 h, one missed slot plus margin.
+  - id: D-reuse-proven-lifecycle
+    decision: >-
+      The process lifecycle reuses the docs-inventory spec rows L1-L6 verbatim (group kill on ALRM/TERM/INT/HUP, background wait with
+      signal forwarding, bound validation, stale sweep under the lock), so no new lifecycle is invented in a fix-of-a-fix.
+receipts:
+  - claim: "R1 — floor 3 via the hot-zone path terms of the changed files."
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <git diff --name-only merge-base>
+    result: "3"
+    exit: 0
+    ts: "2026-10-12T12:50:00Z"
+    seat: Claude (dossier session, M5)
+  - claim: "R2 — build: codex's final report states the wrapper corpus 15/15, the alert test 8/8, the trigger test 2/2, bash -n, shellcheck, actionlint, prettier, plutil, registry validator and watcher coverage clean, a banned-term guard clean, and the exact one-term security.yml change; the report was not taken on trust, R3 re-ran it."
+    cmd: "tail -c 6000 of the codex build output (scratchpad ds-build.out)"
+    result: "report read; final receipt of eight commands, all exit 0 (codex-reported, re-verified by R3)"
+    exit: 0
+    ts: "2026-10-12T11:53:00Z"
+    seat: Claude (the shipping session)
+  - claim: "R3 — builder-session verification of the build at 7d735bae9a: wrapper corpus 15/15; alert composer test 8 passed; heavy-suite trigger test 2 passed; shellcheck -S warning clean; actionlint clean on security.yml, detect-secrets-organ-tests.yml and main-push-failure-watch.yml; prettier clean; plutil OK; registry validator valid; watcher coverage all 132 covered (one pre-existing stale-entry warning)."
+    cmd: "bash scripts/tests/test_mini_detect_secrets_wrapper.sh; bash scripts/tests/test_detect_secrets_nightly_alert.sh; python3 -m pytest -q scripts/tests/test_no_push_main_trigger_on_heavy_suites.py; shellcheck -S warning; actionlint; prettier --check; plutil -lint; python3 -m organism.tools.validate_organs_registry (from apps/organism); python3 scripts/check_watcher_coverage.py"
+    result: "15/15; 8 passed; 2 passed; shellcheck 0; actionlint clean; prettier clean; plist OK; registry valid; 132 covered"
+    exit: 0
+    ts: "2026-10-12T11:55:31Z"
+    seat: Claude (the shipping session)
+  - claim: "R4 — wrapper corpus at each head: 15/15 at 7d735bae9a, 18/18 at 1628849991, 19/19 at 3a69d6a5bb (the code head); the alert and trigger suites and the linters stay green at the head."
+    cmd: bash scripts/tests/test_mini_detect_secrets_wrapper.sh; bash scripts/tests/test_detect_secrets_nightly_alert.sh; python3 -m pytest -q scripts/tests/test_no_push_main_trigger_on_heavy_suites.py
+    result: "19/19 at the head; alert 8 passed; trigger 2 passed"
+    exit: 0
+    ts: "2026-10-12T12:44:02Z"
+    seat: Claude (the shipping session)
+  - claim: "R5 — guilt run, round-1 cures: the wrapper of 7d735bae9a with the 1628849991 tests goes red on exactly the summary cap (shown=40) and the baseline version validation, so those cases are not vacuous. Kimi reproduced the same two failures in a throwaway clone."
+    cmd: "swap the wrapper of 7d735bae9a in, bash scripts/tests/test_mini_detect_secrets_wrapper.sh (1628849991 tests), swap back"
+    result: "16 passed, 2 failed (summary cap shown=40; baseline version validation)"
+    exit: 1
+    ts: "2026-10-12T12:32:06Z"
+    seat: Claude (the shipping session)
+  - claim: "R6 — guilt run, round-2 cure: the wrapper of 1628849991 with the 3a69d6a5bb tests goes red on the deep-path case, so the character bound is pinned."
+    cmd: "swap the wrapper of 1628849991 in, bash scripts/tests/test_mini_detect_secrets_wrapper.sh (3a69d6a5bb tests), swap back"
+    result: "18 passed, 1 failed (page length 9298 against a 3500 bound)"
+    exit: 1
+    ts: "2026-10-12T12:44:02Z"
+    seat: Claude (the shipping session)
+  - claim: "R7 — council round 1 on 7d735bae9a, agy-gemini-3.1-pro-high: REWORK with 3 DEFECTs (line_number in the dedup hash; signal window between the background fork and CHILD_PID=$!; git worktree add/prune race) and 3 NOTEs."
+    cmd: "scripts/with_seat.sh agy agy --sandbox --model gemini-3.1-pro-high --print-timeout 900s -p <prompt, code inlined> < /dev/null"
+    result: "rc 0; VERDICT: REWORK; verbatim in council-journal.jsonl (row 1)"
+    exit: 0
+    ts: "2026-10-12T11:59:00Z"
+    seat: agy-gemini-3.1-pro
+  - claim: "R8 — council round 1 on 7d735bae9a, kimi-code/k3: PASS with NOTEs. Kimi ran the suite (15/15), the alert and trigger suites, guilt probes, a real detect-secrets 1.5.0 scan and concurrent worktree experiments; findings: unbounded findings summary against Telegram's 4096, baseline version unvalidated before the heartbeat, no L3 group-signal test, static version pin in the plist note, plus NOTEs recorded under residuals."
+    cmd: "scripts/with_seat.sh kimi kimi -p <prompt> -m kimi-code/k3 < /dev/null"
+    result: "rc 0; VERDICT: PASS; verbatim in council-journal.jsonl (row 2)"
+    exit: 0
+    ts: "2026-10-12T12:26:00Z"
+    seat: kimi-code/k3
+  - claim: "R9 — council round 2 on 1628849991, agy-gemini-3.1-pro: REWORK, one DEFECT: the 30-path cap bounds the count, not the characters, so deep paths can still overflow 4096. The three round-1 dispositions (worktree race, line_number, signal window) were ACCEPTED by agy."
+    cmd: "scripts/with_seat.sh agy agy --sandbox --model gemini-3.1-pro-high --print-timeout 900s -p <prompt, code inlined> < /dev/null"
+    result: "rc 0; VERDICT: REWORK; verbatim in council-journal.jsonl (row 3)"
+    exit: 0
+    ts: "2026-10-12T12:36:00Z"
+    seat: agy-gemini-3.1-pro
+  - claim: "R10 — council round 2 on 1628849991, kimi-code/k3: PASS. All four round-1 cures verified, the guilt run reproduced (16/18), the worktree add/prune experiment replicated independently (20 rounds x 3 concurrent adds + prune, zero errors, clean fsck), all three non-cured dispositions ACCEPTED; the character-bound concern recorded as a NOTE (measured about 3306 characters on today's tree)."
+    cmd: "scripts/with_seat.sh kimi kimi -p <prompt> -m kimi-code/k3 < /dev/null"
+    result: "rc 0; VERDICT: PASS; verbatim in council-journal.jsonl (row 4)"
+    exit: 0
+    ts: "2026-10-12T12:41:00Z"
+    seat: kimi-code/k3
+  - claim: "R11 — council round 3 (agy-only confirmation) on 3a69d6a5bb, agy-gemini-3.1-pro: PASS. Each path is cut to 160 characters, the list stops at 30 paths or 3000 characters, the dedup digest still covers every finding, and the deep-path case pins the bound non-vacuously."
+    cmd: "scripts/with_seat.sh agy agy --sandbox --model gemini-3.1-pro-high --print-timeout 900s -p <prompt, code inlined> < /dev/null"
+    result: "rc 0; VERDICT: PASS; verbatim in council-journal.jsonl (row 5)"
+    exit: 0
+    ts: "2026-10-12T12:45:00Z"
+    seat: agy-gemini-3.1-pro
+dissent:
+  - seat: agy-gemini-3.1-pro (round 1 DEFECT 3)
+    objection: >-
+      git worktree add and git worktree prune are not concurrency-safe; if the 03:00 docs-inventory organ overlaps the 03:17 scan, a
+      concurrent prune could delete the metadata of a mid-creation worktree and corrupt the repository.
+    status: RETRACTED
+    disposition: >-
+      REJECTED on evidence. Kimi disproved it empirically in round 1 and again in round 2 (20 rounds x 3 concurrent same-basename adds
+      plus a concurrent prune: zero errors, no admin-dir leftovers, clean fsck; same-basename adds auto-suffix; the two organs use
+      disjoint temp bases and the schedules are 17 minutes apart). Agy itself ACCEPTED the disproof in round 2.
+  - seat: agy-gemini-3.1-pro (round 1 DEFECT 1)
+    objection: >-
+      line_number is part of the dedup hash, so unrelated code inserted above a finding shifts the line, changes the hash and re-pages
+      an old finding.
+    status: PLAUSIBLE
+    disposition: >-
+      REJECTED as a defect, kept as a design choice. A re-page on a shifted finding is the safe direction for a security organ, and
+      dropping the line would collapse distinct same-type findings in one file into a single row and mask a new one. Both seats ACCEPTED
+      this in round 2.
+  - seat: agy-gemini-3.1-pro (round 1 DEFECT 2)
+    objection: >-
+      A signal landing between the background fork and CHILD_PID=$! runs the trap with an empty CHILD_PID, so the child tree could
+      outlive the wrapper and be scanned under a removed worktree.
+    status: PLAUSIBLE
+    disposition: >-
+      ACCEPTED as a residual, the same window the docs-inventory organ accepted after its round 3. A launchd stop group-signals, so the
+      helper receives the TERM directly (lifecycle row L3, now pinned by a test); the next run's stale sweep reclaims any residue. Both
+      seats ACCEPTED in round 2.
+  - seat: kimi-code/k3 (round 1 NOTE)
+    objection: >-
+      The findings summary is unbounded and tg_notify has no 4096 cap; a mass finding event makes Telegram reject the p0 after the
+      gateway has recorded the dedup key, so it never re-sends in real time.
+    status: CONFIRMED
+    disposition: >-
+      CURED in 1628849991 (30-path cap plus "... and N more file(s)"), then re-cured in 3a69d6a5bb after agy round 2 showed the cap
+      bounded the count and not the characters: each path at most 160 characters, the list at most 30 paths and 3000 characters. The
+      digest still covers every finding. Pinned by the many and deep cases (the deep page was 9298 characters on 1628849991); agy
+      round 3 PASS.
+  - seat: kimi-code/k3 (round 1 NOTE)
+    objection: >-
+      The baseline's "version" string flows unvalidated into the heartbeat JSON and the p0 on the tool-error path; a quote or newline
+      there would corrupt the sidecar.
+    status: CONFIRMED
+    disposition: >-
+      CURED in 1628849991: the version must be digits and dots before any use (guard placed before the install hint is built). Pinned by
+      the bad-version case, red on 7d735bae9a (R5).
+  - seat: kimi-code/k3 (round 1 NOTE)
+    objection: >-
+      The suite pins the lifecycle's main-only TERM but not the group-signalled stop (row L3) that the sibling suite covers.
+    status: CONFIRMED
+    disposition: >-
+      CURED in 1628849991: a group-signalled stop case was added. Kimi notes in round 2 that it also passes on the previous wrapper, so
+      it is a regression pin and not a guilt pair; recorded so the dossier does not overclaim.
+  - seat: kimi-code/k3 (round 1 NOTE)
+    objection: The plist install note pins a static detect-secrets version that can go stale.
+    status: CONFIRMED
+    disposition: >-
+      CURED in 1628849991: the note names the "version" field of .secrets.baseline on main.
+residuals:
+  - "R8 NOTE (kimi): safe_path redacts only control characters and 24+ character token-like segments, so a secret-shaped filename shorter than 24 characters, or a C1 or U+2028-class separator, passes; reachable only through a committed filename on main."
+  - "R8 NOTE (kimi): the organ scans Mini's local refs/heads/main and never fetches; a stalled Mini main scans stale code without an alarm (the heartbeat carries the sha so drift is observable)."
+  - "R8 NOTE (kimi): test_no_push_main_trigger_on_heavy_suites guards only the cron string; nothing guards the job-level schedule exclusion on the detect-secrets-scan job or the organ's registration from drift."
+  - "R10 NOTE (kimi): the many and deep cases do not pin that the dedup digest covers all rows; code inspection (and agy round 3) shows it does."
+  - "R10 NOTE (kimi): the group-signalled stop case is a regression pin, not a guilt pair."
+  - "R8 NOTE (kimi): the test file trips the scanner's keyword detector on a JSON key and is neutralised by the tests/** auto-triage path rule; narrowing that rule would turn the file red on unrelated PRs."
+  - "R8 NOTE (kimi): disk headroom is fine today (two transient worktrees of about 1.4 GB each against about 14 GiB free on a 97% full volume) and worth watching."
+  - "Accepted window (agy round 1): sub-millisecond signal window between the background fork and CHILD_PID=$!; the launchd group stop reaches the helper directly (row L3)."
+  - "docs/AUTOMATIONS_REFERENCE.md still lists the retired scheduled detect-secrets run until the generated file refreshes from live Pro and Mini state."
+  - "detect-secrets is not installed on Mini and tg_notify.py is stubbed in the corpus, so the venv, the gateway under Python 3.9 and the real scan duration are unproven until the post-merge observation (A6)."
+  - "Rounds 1 and 2 were REWORK from agy and are recorded as given; the final head was judged PASS by agy (round 3, from reading) and the previous head PASS by kimi (round 2, with the suite run); kimi did not re-run round 3 because the round-3 change was a bound on the page text covered by agy's confirmation and the 19/19 suite."
+appetite_exceeded: false

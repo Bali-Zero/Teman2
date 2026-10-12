@@ -59,7 +59,7 @@ SECURITY_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "security.yml"
 # "a schedule key exists", so a future edit that empties/narrows the
 # schedule to something that no longer covers the backstop is caught.
 TESTS_SCHEDULE_CRON = "17 */2 * * *"
-SECURITY_DAILY_BACKSTOP_CRON = "17 19 * * *"
+SECURITY_DAILY_CRON = "17 19 * * *"
 
 
 def _load_triggers(path: pathlib.Path) -> dict:
@@ -166,7 +166,7 @@ def test_security_yml_push_trigger_excludes_main():
         "security.yml's `push` trigger has re-grown `main` in its "
         f"`branches:` list ({branches!r}) — this re-introduces the 'third "
         "payment' that Merge-OS v3 build order step 2 removed. The daily "
-        "schedule (03:17 WITA) is the confirmed backstop; re-adding this "
+        "schedule (03:17 WITA) still covers the scheduled security jobs; re-adding this "
         "needs a fresh precondition check, not a silent revert."
     )
     assert "develop" in branches, (
@@ -175,12 +175,11 @@ def test_security_yml_push_trigger_excludes_main():
         "trigger."
     )
     crons = _cron_strings(triggers.get("schedule"))
-    assert SECURITY_DAILY_BACKSTOP_CRON in crons, (
-        f"security.yml's schedule no longer carries the daily backstop "
-        f"cron ({SECURITY_DAILY_BACKSTOP_CRON!r}, got {crons!r}) — that is "
-        "the confirmed backstop the push:main removal was gated on; "
-        "losing it without also removing the push:main dedupe re-opens a "
-        "window with no backstop."
+    assert SECURITY_DAILY_CRON in crons, (
+        f"security.yml's schedule no longer carries the daily security "
+        f"cron ({SECURITY_DAILY_CRON!r}, got {crons!r}) — that is "
+        "the schedule the push:main removal was gated on; losing it would "
+        "also change the still-pending Snyk schedule decision."
     )
 
 

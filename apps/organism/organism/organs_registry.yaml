@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: c1b3a73a476bfec79fd15557b92aa778dece0bbc09a723fd34bf576a6b3d8c72 # pragma: allowlist secret
+checksum: 72574f828eec71cf3743e99ea9ffece79e1f47a2508d9516c7da1703668134be # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3316,5 +3316,24 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.janitor.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.detect_secrets_fulltree
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 129600
+  owner_module: infra/launchagents/wrappers/mini-detect-secrets.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.detect-secrets-fulltree
+  severity_on_silence: warning
+  notes: Daily full-tree scan from a disposable detached main worktree; reports
+    findings without committing the mutated baseline.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.detect_secrets_fulltree.json
     timestamp_field: ts
     status_field: status

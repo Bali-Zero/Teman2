@@ -1,0 +1,73 @@
+task: >-
+  Move the scheduled full-tree detect-secrets scan off the public-repo workflow security.yml (its scheduled half) into the Mini
+  launchd organ mini.detect_secrets_fulltree (wrapper infra/launchagents/wrappers/mini-detect-secrets.sh) scans a throwaway detached worktree
+  of the local refs/heads/main (never the canonical checkout) with a dedicated venv whose detect-secrets version must equal the
+  baseline's "version" (the wrapper never installs), runs scan plus auto-triage (--apply, --report) plus the unaudited gate under a
+  3600 s bound in its own process group, and discards the mutated baseline (report only). Findings are a warning heartbeat plus one
+  p0 carrying counts and sanitized paths only; breakage is an error heartbeat plus one p0 per kind. Plist daily 03:17 WITA with no
+  KeepAlive (the weekly run collapses into it), registry entry with a 129600 s window, declared pairs, connectome edge, and the new
+  executor detect-secrets-organ-tests.yml running the wrapper corpus. In security.yml only the detect-secrets-scan job stops
+  running on schedule; both crons stay, so the Snyk jobs' scheduled behaviour (owner decision pending) is untouched.
+lane: infra
+machine: m5
+date: 2026-10-12
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, measured: evidence_pack_lint --print-floor --changed-files-file over the changed files computes 3
+  (infra/launchagents/, organs_registry.yaml and workflow paths are hot-zone path terms). The floor sets the gear, not the size.
+size_note: >-
+  Net +479 lines, over the ~400 guide. It is one concern: one organ, the test corpus that proves it, and the retirement of the
+  workflow half it replaces cannot be split without leaving a window with either no scan or two scans.
+acceptance:
+  A1:
+    text: >-
+      The wrapper SHALL scan only a detached worktree of refs/heads/main, remove the worktree on every exit path it can control,
+      bound the scan at 3600 s in its own process group (group kill on ALRM/TERM/INT/HUP, background wait with signal forwarding,
+      bound validation, stale-run sweep under the lock) and never commit or leave the mutated baseline.
+    probe: bash scripts/tests/test_mini_detect_secrets_wrapper.sh (19 cases at the head); council review
+  A2:
+    text: >-
+      The wrapper SHALL never install the tool, SHALL require the venv's detect-secrets version to equal the validated baseline
+      "version" and SHALL name the install command when it does not.
+    probe: the wrapper corpus (tool-missing, wrong-version and bad-version cases); council review
+  A3:
+    text: >-
+      Findings SHALL page once per content hash of the sorted finding set, as a warning heartbeat plus a p0 whose text stays under
+      4096 characters whatever the paths look like (each path at most 160 characters, at most 30 paths and 3000 characters, then
+      "... and N more file(s)") and carries counts and sanitized paths only; every breakage SHALL write an error heartbeat plus one
+      p0 per kind; no secret or baseline content is ever printed.
+    probe: the wrapper corpus (findings, many, deep and hostile-path cases); council review of the outcome mapping
+  A4:
+    text: >-
+      In security.yml only the detect-secrets-scan job SHALL stop running on schedule; both crons, the Snyk jobs and the PR, push and
+      workflow_dispatch behaviour SHALL be unchanged, and the legacy alert composer SHALL keep serving workflow_dispatch.
+    probe: actionlint on security.yml; test_detect_secrets_nightly_alert.sh; test_no_push_main_trigger_on_heavy_suites.py; council review
+  A5:
+    text: >-
+      The plist SHALL fire daily at 03:17 with RunAtLoad false and no KeepAlive; the registry window SHALL be 129600 s; the registry
+      validator and the watcher coverage check SHALL stay green.
+    probe: plutil -lint; python3 -m organism.tools.validate_organs_registry; python3 scripts/check_watcher_coverage.py
+  A6:
+    text: >-
+      Live, after merge, the venv installed with the baseline's version and the wrapper plus plist installed on Mini: a kickstart of
+      com.nuzantara.detect-secrets-fulltree writes the sidecar ~/.organism/last_seen/mini.detect_secrets_fulltree.json with status ok
+      "fulltree clean <sha>" (or warning with a page that carries only counts and paths), git worktree list on Mini shows no leftover,
+      and git -C ~/nuzantara status --porcelain is unchanged.
+    probe: ssh mini 'launchctl kickstart gui/501/com.nuzantara.detect-secrets-fulltree; cat ~/.organism/last_seen/mini.detect_secrets_fulltree.json; git -C ~/nuzantara worktree list; git -C ~/nuzantara status --porcelain'
+out_of_scope: >-
+  The generated docs/AUTOMATIONS_REFERENCE.md (generated from live Pro and Mini state; Pro was offline, so the builder's hand edit was
+  reverted by the shipping session); the Snyk jobs' scheduled behaviour (owner decision pending); any fetch of origin main on Mini
+  (the zero-sync organ owns repo freshness); installing detect-secrets on Mini (a post-merge step).
+assumptions:
+  - text: >-
+      Mini facts measured 2026-10-12: Homebrew python3 3.14.7, /usr/bin/python3 3.9.6, uv 0.13.0 at ~/.local/bin/uv, detect-secrets
+      NOT installed, data volume 97% full (about 14 GiB free), a worktree checkout about 1.4 GB, the docs-inventory organ runs at 03:00
+      (17 minutes earlier).
+    status: verified
+    probe: measured on Mini by the shipping session on 2026-10-12; not re-run by the dossier session.
+  - text: scripts/tg_notify.py runs under Mini's /usr/bin/python3 (3.9), as the other Mini organ wrappers already call it.
+    status: unverified
+    probe: a gateway run under that interpreter is part of the post-merge observation (A6).
+  - text: Gear 3 needs the independent final-gate verdict on the head SHA, commissioned after the last push.
+    status: unverified
+    probe: gh pr checks <pr> after the verdict is posted.
