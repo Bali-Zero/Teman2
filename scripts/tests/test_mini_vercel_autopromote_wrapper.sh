@@ -289,6 +289,9 @@ r=$(SEED_BUSY=17 run_case 0 "$BUSY_LINE" Mini-Pro2); hb=$(echo "$r" | cut -f1)
 r=$(SEED_BUSY=17 run_case 0 'production already includes this commit — nothing to do' Mini-Pro2); tmpd=$(echo "$r" | cut -f3)
 [ ! -f "$tmpd/home/logs/mini-vercel_autopromote/lock-busy-ticks" ] && ok "a non-busy outcome resets the busy counter" || bad "busy counter must reset" "$(cat "$tmpd/home/logs/mini-vercel_autopromote/lock-busy-ticks")"
 
+r=$(SEED_BUSY='garbage 1;2' run_case 0 "$BUSY_LINE" Mini-Pro2); hb=$(echo "$r" | cut -f1)
+[ "$(field "$hb" status)" = "ok" ] && ok "a corrupt busy counter restarts at 1, never aborts" || bad "corrupt counter must not abort the wrapper" "$hb"
+
 r=$(run_case 1 'error: {"token": "abcdEFGH1234", "x": 1}' Mini-Pro2); hb=$(echo "$r" | cut -f1)
 case "$hb" in *abcdEFGH1234*) bad "JSON-keyed token must be redacted" "$hb" ;; *) ok "JSON-keyed token redacted" ;; esac
 r=$(run_case 1 'fail key=Zm9vYmFyYmF6cXV4cXV1eHF1dXhxdXV4cXV1eA==' Mini-Pro2); hb=$(echo "$r" | cut -f1)

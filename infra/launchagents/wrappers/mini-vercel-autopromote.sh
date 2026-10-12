@@ -210,7 +210,9 @@ case "$RC" in
         elif has_output_line '^upload already in progress — lock busy, skipping this tick$'; then
             # A lock held by a wedged or manual run must not read green forever (superscar #2):
             # count consecutive busy ticks; past 35 minutes of them it is a warning.
-            BUSY=$(( $(cat "$BUSY_FILE" 2>/dev/null || echo 0) + 1 ))
+            BUSY="$(cat "$BUSY_FILE" 2>/dev/null)"
+            case "$BUSY" in ''|*[!0-9]*) BUSY=0 ;; esac  # a corrupt counter restarts, never aborts
+            BUSY=$(( BUSY + 1 ))
             printf '%s\n' "$BUSY" > "$BUSY_FILE"
             if [ $(( BUSY * 120 )) -lt "$PIDFILE_MAX_AGE_S" ]; then
                 heartbeat "ok" "build in progress (lock held)"
