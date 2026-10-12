@@ -1,0 +1,32 @@
+task_id: secret-guard-quoted-redirects
+lane: infra
+machine: m5
+date: 2026-10-12
+gear: 2
+gear_reason: |
+  One hook's tokenizer, spec first; a deny-guard where over- and under-match are both defects
+  (superscar #3), so the spec table is the oracle and a fresh gate grades against it.
+history: |
+  Found by the final gate of #8388 (X6 r2, suspended at depth 1 per Builder Contract section 1):
+  B1/B3 come from this tokenizer and are already on main. Measured on main ec3c6ead04 the same day:
+  `bash -c 'cat STORE 2>/dev/null'`, `bash -c "cat STORE 2>/dev/null"`, `sh -c 'printenv 2>&1'`,
+  `bash -lc 'set -x; ls 2>/dev/null'` and `eval 'cat STORE 2>/dev/null'` were ALLOW; `bash -c 'ls -la
+  ~/bin/env > /tmp/o; cat /tmp/o'` and a `.../set > log 2>&1` payload were DENY. X6 is rebuilt on top of
+  this once it is merged.
+objective: |
+  Redirects are read outside quotes only: a glued redirect is an operator at an unquoted position of
+  its token. (`>&`/`&>`/`|&` handling is inert while every shape judges stages alone; it moves to the
+  X6 rebuild, where a later-stage selector makes it bite.)
+constraints:
+  - "E01-E64 keep their verdicts."
+  - "Kill switch, fail-open contract and stdin/exit-code shape unchanged."
+  - "Tests drive the guard through stdin JSON only."
+acceptance:
+  - text: "A1: WHEN a -c / eval payload carries a redirect inside its quotes, THEN the payload is judged whole (E65-E69 DENY)."
+    probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
+  - text: "A2: WHEN a quoted token holds a `>`, THEN no fragment of it becomes a head (E70, E71, E73 ALLOW)."
+    probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
+  - text: "A3: WHEN the tokenizer cure is reverted, THEN E65-E71 fail (guilt replay)."
+    probe: "revert on a scratch copy, rerun the corpus, restore check with cmp"
+consumer_map:
+  - "PreToolUse(Bash|Monitor|Read) wiring in .claude/settings.json invokes this hook on every Bash call; hook-innocence-gate.yml runs the vaccine block on every hooks change."
