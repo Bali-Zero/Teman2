@@ -334,6 +334,12 @@ KILL_SWITCH_ENV = "AGENT_BROKER_ENABLED"
 # skip_recent_minutes=0).
 RECENT_ACTIVITY_MINUTES = 10
 
+# Reap-on-merge: a worktree whose PR merged its exact head is reaped before its
+# TTL once it has been idle this long AND the PR merged at least this long ago
+# (the owning session's post-merge deploy / prove-live window). Stronger than
+# RECENT_ACTIVITY_MINUTES because nothing but the grace window protects it.
+MERGED_GRACE_MINUTES = 60
+
 # W62 ANTIBODY #2/#3: a worktree older than this multiple of its TTL is a
 # suspected orphan (surfaced by --list, gated by the CI hygiene test).
 ORPHAN_TTL_MULTIPLE = 2
@@ -1224,6 +1230,89 @@ def _content_subset_ok(
     return added_lines.issubset(main_lines)
 
 
+def _gh_pr_record_for_branch(
+    branch: str, *, cwd: Path, timeout: int = 15
+) -> dict | None:
+    """The selected PR record behind `_gh_pr_state_for_branch` (see its docstring
+    for the exact-``--head`` filtering, the ``createdAt`` tie-break and the
+    fail-closed contract).
+
+    Returns ``{"state": "NONE"}`` when gh succeeded and no PR exists, else a dict
+    with ``state`` ("MERGED"/"OPEN"/"CLOSED"), ``number``, ``mergedAt`` and
+    ``headRefOid`` of the latest exact-head PR; None on any failure to get a
+    trustworthy answer.
+    """
+    try:
+        proc = subprocess.run(
+            [
+                "gh", "pr", "list",
+                "--head", branch,
+                "--state", "all",
+                "--json", "number,state,createdAt,headRefName,mergedAt,headRefOid",
+            ],
+            cwd=str(cwd),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError) as exc:
+        logger.warning(
+            "gh pr list failed for branch %s (%s) — falling back to offline "
+            "ancestry/content check",
+            branch, exc,
+        )
+        return None
+    if proc.returncode != 0:
+        logger.warning(
+            "gh pr list exited %s for branch %s (%s) — falling back to "
+            "offline ancestry/content check",
+            proc.returncode, branch, (proc.stderr or "").strip(),
+        )
+        return None
+    try:
+        data = json.loads(proc.stdout or "[]")
+    except json.JSONDecodeError:
+        logger.warning(
+            "gh pr list returned unparseable JSON for branch %s — falling "
+            "back to offline ancestry/content check",
+            branch,
+        )
+        return None
+    if not isinstance(data, list):
+        return None
+    # Defensive exact-match filter (belt-and-suspenders on top of `--head`):
+    # only rows whose own headRefName is EXACTLY this branch ever count. This
+    # is what keeps a future `gh` regression, or a differently-scoped `--head`
+    # behavior on some other `gh` version, from silently reading a sibling
+    # branch's PR as this branch's own.
+    rows = [
+        row for row in data
+        if isinstance(row, dict) and row.get("headRefName") == branch
+    ]
+    if not rows:
+        return {"state": "NONE"}
+
+    def _created_at(row: dict) -> str:
+        return row.get("createdAt") or ""
+
+    latest = max(rows, key=_created_at)
+    state = latest.get("state")
+    if state not in ("MERGED", "OPEN", "CLOSED"):
+        logger.warning(
+            "gh pr list returned unrecognized state %r for branch %s — "
+            "falling back to offline ancestry/content check",
+            state, branch,
+        )
+        return None
+    return {
+        "state": state,
+        "number": latest.get("number"),
+        "mergedAt": latest.get("mergedAt"),
+        "headRefOid": latest.get("headRefOid"),
+    }
+
+
 def _gh_pr_state_for_branch(
     branch: str, *, cwd: Path, timeout: int = 15
 ) -> str | None:
@@ -1276,70 +1365,8 @@ def _gh_pr_state_for_branch(
     as "MERGED" (W84: cannot-verify must never read as proven — an API
     failure may only ever make the verdict MORE conservative, never less).
     """
-    try:
-        proc = subprocess.run(
-            [
-                "gh", "pr", "list",
-                "--head", branch,
-                "--state", "all",
-                "--json", "number,state,createdAt,headRefName",
-            ],
-            cwd=str(cwd),
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,
-        )
-    except (subprocess.SubprocessError, OSError) as exc:
-        logger.warning(
-            "gh pr list failed for branch %s (%s) — falling back to offline "
-            "ancestry/content check",
-            branch, exc,
-        )
-        return None
-    if proc.returncode != 0:
-        logger.warning(
-            "gh pr list exited %s for branch %s (%s) — falling back to "
-            "offline ancestry/content check",
-            proc.returncode, branch, (proc.stderr or "").strip(),
-        )
-        return None
-    try:
-        data = json.loads(proc.stdout or "[]")
-    except json.JSONDecodeError:
-        logger.warning(
-            "gh pr list returned unparseable JSON for branch %s — falling "
-            "back to offline ancestry/content check",
-            branch,
-        )
-        return None
-    if not isinstance(data, list):
-        return None
-    # Defensive exact-match filter (belt-and-suspenders on top of `--head`):
-    # only rows whose own headRefName is EXACTLY this branch ever count. This
-    # is what keeps a future `gh` regression, or a differently-scoped `--head`
-    # behavior on some other `gh` version, from silently reading a sibling
-    # branch's PR as this branch's own.
-    rows = [
-        row for row in data
-        if isinstance(row, dict) and row.get("headRefName") == branch
-    ]
-    if not rows:
-        return "NONE"
-
-    def _created_at(row: dict) -> str:
-        return row.get("createdAt") or ""
-
-    latest = max(rows, key=_created_at)
-    state = latest.get("state")
-    if state not in ("MERGED", "OPEN", "CLOSED"):
-        logger.warning(
-            "gh pr list returned unrecognized state %r for branch %s — "
-            "falling back to offline ancestry/content check",
-            state, branch,
-        )
-        return None
-    return state
+    record = _gh_pr_record_for_branch(branch, cwd=cwd, timeout=timeout)
+    return None if record is None else record["state"]
 
 
 def _worktree_head_branch(worktree: Path) -> str:
@@ -1754,10 +1781,80 @@ def _refresh_origin_main_once(*, cwd: Path, timeout: int = 30) -> bool:
     return True
 
 
+def _parse_github_timestamp(value: object) -> datetime | None:
+    """Parse a GitHub ISO-8601 timestamp (``2026-10-12T05:12:19Z``) to aware UTC.
+
+    Python 3.9's ``datetime.fromisoformat`` rejects a trailing ``Z`` (Pro's
+    cron resolves ``/usr/bin/python3`` = 3.9.6), so it is rewritten to
+    ``+00:00`` first. None for anything missing or unparseable.
+    """
+    if not isinstance(value, str) or not value:
+        return None
+    text = value.strip()
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(timezone.utc)
+
+
+def _worktree_head_sha(worktree: Path) -> str:
+    """Full sha HEAD points to inside ``worktree``, or "" if unreadable."""
+    proc = _run_git(["rev-parse", "HEAD"], cwd=worktree, check=False)
+    return proc.stdout.strip() if proc.returncode == 0 else ""
+
+
+def _merged_pr_reap_facts(
+    wt: Path, branch: str, *, now: datetime
+) -> tuple[int | None, int] | None:
+    """(PR number, minutes since merge) when a NOT-yet-expired worktree is
+    reapable because its PR merged this worktree's exact head, else None.
+
+    Fail-closed: every doubt (dirty, recently active, live process, gh
+    unusable, PR not MERGED, mergedAt missing/younger than the grace window,
+    HEAD != the merged headRefOid) returns None and the TTL path decides, as
+    before. Only the gh-merged arm counts: an ancestor-of-origin/main HEAD is
+    also what a brand-new zero-commit checkout looks like, and the content
+    proxy is not proof the work landed (W88). The cheap local checks run
+    before any gh call.
+    """
+    if not wt.is_dir():
+        return None
+    if _worktree_has_wip(wt):
+        return None
+    if _worktree_recently_active(wt, threshold_minutes=MERGED_GRACE_MINUTES):
+        return None
+    if _worktree_has_live_process(wt):
+        return None
+    record = _gh_pr_record_for_branch(branch, cwd=wt)
+    if record is None or record.get("state") != "MERGED":
+        return None
+    merged_at = _parse_github_timestamp(record.get("mergedAt"))
+    if merged_at is None:
+        return None
+    merged_minutes = int((now - merged_at).total_seconds() // 60)
+    if merged_minutes < MERGED_GRACE_MINUTES:
+        return None
+    head_oid = record.get("headRefOid")
+    if not head_oid or _worktree_head_sha(wt) != head_oid:
+        return None
+    return record.get("number"), merged_minutes
+
+
 def cmd_cleanup(
     *, force: bool = False, skip_recent_minutes: int = RECENT_ACTIVITY_MINUTES
 ) -> int:
     """Remove expired worktrees. WIP-safe: emits WARNING and skips if dirty.
+
+    A NOT-yet-expired worktree is also reaped (branch ref kept) when its PR
+    merged this worktree's exact head at least MERGED_GRACE_MINUTES ago and it
+    is clean, idle that long and unanchored by any process
+    (`_merged_pr_reap_facts`); otherwise it is skipped silently — never an
+    issue, never WIP-warned.
 
     Two guards protect a worktree from being reaped even when its TTL clock
     expired. Order matters — WIP is checked FIRST so a worktree that is BOTH
@@ -1793,13 +1890,36 @@ def cmd_cleanup(
     now = datetime.now(timezone.utc)
     issues = 0
     for meta in rows:
-        if not meta.is_expired(now=now):
-            continue
         wt = (
             Path(meta.worktree_path)
             if meta.worktree_path
             else _worktree_path(meta.lane, meta.task_id)
         )
+        if not meta.is_expired(now=now):
+            if force:
+                continue
+            facts = _merged_pr_reap_facts(wt, meta.branch, now=now)
+            if facts is None:
+                continue
+            pr_number, merged_minutes = facts
+            try:
+                _remove_worktree(wt, meta.branch, delete_branch=False)
+                logger.info(
+                    "cleanup reaped merged worktree %s — PR #%s merged %d min "
+                    "ago, before its TTL",
+                    meta.task_id, pr_number, merged_minutes,
+                )
+                print(
+                    f"removed merged worktree {meta.task_id} (PR #{pr_number} "
+                    f"merged {merged_minutes} min ago, before its TTL) ({wt})"
+                )
+            except subprocess.CalledProcessError as exc:
+                issues += 1
+                logger.error(
+                    "cleanup failed %s: %s", meta.task_id, (exc.stderr or "").strip()
+                )
+                print(f"ERROR: cleanup failed for {meta.task_id}: {exc.stderr}")
+            continue
         # WIP guard FIRST: a dirty worktree is always a failure to clean,
         # even if it was touched recently (codex P2: recent+dirty must not
         # exit 0 silently).

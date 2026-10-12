@@ -2480,3 +2480,213 @@ def test_innocence_a_stacked_branch_on_a_LIVE_base_is_not_judged_against_main(fa
         mod.cmd_release("rel-child")
     assert wt.exists()
     assert "feature/live" in str(exc.value)
+
+
+# ---------------------------------------------------------------------------
+# cleanup — reap-on-merge before TTL (MERGED_GRACE_MINUTES)
+# ---------------------------------------------------------------------------
+
+
+def _merged_candidate(mod, monkeypatch, task_id, *, idle_minutes=120):
+    """A NOT-expired, clean, idle worktree with one commit, no live process and
+    a MERGED exact-head PR merged 3h ago. Returns (wt, record) — tests mutate
+    the record (or the worktree) to break exactly one guard."""
+    wt = mod.cmd_create("wr2", task_id, ttl_minutes=1440)
+    (wt / "done.txt").write_text("shipped\n")
+    _commit_in_worktree(wt, mod, "done.txt", "shipped")
+    _backdate_worktree_mtime(wt, minutes=idle_minutes)
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=wt, check=True, capture_output=True, text=True
+    ).stdout.strip()
+    merged_at = datetime.now(timezone.utc) - timedelta(minutes=180)
+    record = {
+        "state": "MERGED",
+        "number": 8304,
+        "mergedAt": merged_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "headRefOid": head,
+    }
+    monkeypatch.setattr(mod, "_worktree_has_live_process", lambda p: False)
+    monkeypatch.setattr(
+        mod, "_gh_pr_record_for_branch", lambda b, **kw: record
+    )
+    return wt, record
+
+
+def test_cleanup_reaps_merged_unexpired_worktree_and_keeps_branch(
+    fake_repo, capsys, monkeypatch
+):
+    mod, repo = fake_repo
+    wt, _ = _merged_candidate(mod, monkeypatch, "early-001")
+    branch = json.loads((wt / mod.TASK_METADATA_FILENAME).read_text())["branch"]
+    rc = mod.cmd_cleanup()
+    assert rc == 0
+    assert not wt.exists()
+    out = capsys.readouterr().out
+    assert "removed merged worktree early-001 (PR #8304 merged 180 min ago" in out
+    assert "before its TTL" in out
+    ref = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"],
+        cwd=repo, capture_output=True, text=True,
+    )
+    assert ref.returncode == 0  # branch ref preserved
+
+
+def _break_dirty(wt, record, mod, monkeypatch):
+    (wt / "wip.txt").write_text("uncommitted\n")
+    _backdate_worktree_mtime(wt, minutes=120)
+
+
+def _break_recent(wt, record, mod, monkeypatch):
+    past = time.time() - 30 * 60  # inside the 60-minute window, outside 10
+    os.utime(wt, (past, past))
+
+
+def _break_live_process(wt, record, mod, monkeypatch):
+    monkeypatch.setattr(mod, "_worktree_has_live_process", lambda p: True)
+
+
+def _break_gh_unusable(wt, record, mod, monkeypatch):
+    monkeypatch.setattr(mod, "_gh_pr_record_for_branch", lambda b, **kw: None)
+
+
+def _break_open(wt, record, mod, monkeypatch):
+    record["state"] = "OPEN"
+
+
+def _break_closed(wt, record, mod, monkeypatch):
+    record["state"] = "CLOSED"
+
+
+def _break_no_pr(wt, record, mod, monkeypatch):
+    record.clear()
+    record["state"] = "NONE"
+
+
+def _break_merged_recently(wt, record, mod, monkeypatch):
+    young = datetime.now(timezone.utc) - timedelta(minutes=20)
+    record["mergedAt"] = young.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _break_merged_at_missing(wt, record, mod, monkeypatch):
+    record["mergedAt"] = None
+
+
+def _break_merged_at_garbage(wt, record, mod, monkeypatch):
+    record["mergedAt"] = "yesterday-ish"
+
+
+def _break_head_moved(wt, record, mod, monkeypatch):
+    (wt / "after-merge.txt").write_text("new work\n")
+    _commit_in_worktree(wt, mod, "after-merge.txt", "post-merge work")
+    _backdate_worktree_mtime(wt, minutes=120)
+
+
+@pytest.mark.parametrize(
+    "breaker",
+    [
+        _break_dirty,
+        _break_recent,
+        _break_live_process,
+        _break_gh_unusable,
+        _break_open,
+        _break_closed,
+        _break_no_pr,
+        _break_merged_recently,
+        _break_merged_at_missing,
+        _break_merged_at_garbage,
+        _break_head_moved,
+    ],
+    ids=lambda f: f.__name__,
+)
+def test_cleanup_does_not_reap_unexpired_worktree_when_one_guard_fails(
+    fake_repo, capsys, monkeypatch, breaker
+):
+    mod, _ = fake_repo
+    wt, record = _merged_candidate(mod, monkeypatch, "early-guard")
+    breaker(wt, record, mod, monkeypatch)
+    rc = mod.cmd_cleanup()
+    out = capsys.readouterr().out
+    assert rc == 0  # a non-expired worktree is never an issue
+    assert wt.exists()
+    assert "WARN" not in out  # nor WIP-warned
+    assert "removed merged worktree" not in out
+
+
+def test_cleanup_fresh_zero_commit_worktree_is_not_reaped_by_ancestry(
+    fake_repo, monkeypatch
+):
+    """A brand-new checkout is an ancestor of origin/main; with gh unusable the
+    content arm would also read it as merged — neither may reap before TTL."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "fresh-zero", ttl_minutes=1440)
+    _backdate_worktree_mtime(wt, minutes=120)
+    monkeypatch.setattr(mod, "_worktree_has_live_process", lambda p: False)
+    monkeypatch.setattr(mod, "_gh_pr_record_for_branch", lambda b, **kw: None)
+    assert mod.cmd_cleanup() == 0
+    assert wt.exists()
+    monkeypatch.setattr(
+        mod, "_gh_pr_record_for_branch", lambda b, **kw: {"state": "NONE"}
+    )
+    assert mod.cmd_cleanup() == 0
+    assert wt.exists()
+
+
+def test_cleanup_force_does_not_reap_unexpired_merged_worktree(
+    fake_repo, monkeypatch
+):
+    mod, _ = fake_repo
+    wt, _ = _merged_candidate(mod, monkeypatch, "early-force")
+    assert mod.cmd_cleanup(force=True) == 0
+    assert wt.exists()
+
+
+def test_cleanup_expired_worktree_path_unchanged_by_merged_reap(
+    fake_repo, capsys, monkeypatch
+):
+    mod, _ = fake_repo
+    wt, _ = _merged_candidate(mod, monkeypatch, "early-expired")
+    _backdate_metadata(wt, mod, minutes=2000)  # past the 1440-minute TTL
+    assert mod.cmd_cleanup() == 0
+    assert not wt.exists()
+    out = capsys.readouterr().out
+    assert "removed expired worktree early-expired" in out
+
+
+def test_parse_github_timestamp_accepts_trailing_z_and_rejects_garbage(fake_repo):
+    mod, _ = fake_repo
+    parsed = mod._parse_github_timestamp("2026-10-12T05:12:19Z")
+    assert parsed == datetime(2026, 10, 12, 5, 12, 19, tzinfo=timezone.utc)
+    assert mod._parse_github_timestamp("2026-10-12T05:12:19+00:00") == parsed
+    assert mod._parse_github_timestamp("2026-10-12T05:12:19") is None  # naive
+    for bad in (None, "", "nope", 12345):
+        assert mod._parse_github_timestamp(bad) is None
+
+
+def test_gh_pr_record_for_branch_carries_merge_fields_of_latest_exact_head_pr(
+    fake_repo, monkeypatch, tmp_path
+):
+    mod, repo = fake_repo
+    bin_dir = tmp_path / "fakebin"
+    _install_fake_gh(
+        bin_dir,
+        "#!/bin/sh\n"
+        "echo '["
+        '{"number": 41, "state": "CLOSED", "createdAt": "2026-08-20T00:00:00Z", '
+        '"headRefName": "some/branch", "mergedAt": null, "headRefOid": "aaa"}, '
+        '{"number": 42, "state": "MERGED", "createdAt": "2026-08-25T00:00:00Z", '
+        '"headRefName": "some/branch", "mergedAt": "2026-08-25T01:00:00Z", '
+        '"headRefOid": "bbb"}, '
+        '{"number": 43, "state": "MERGED", "createdAt": "2026-08-26T00:00:00Z", '
+        '"headRefName": "some/branch-longer", "mergedAt": "2026-08-26T01:00:00Z", '
+        '"headRefOid": "ccc"}'
+        "]'\n",
+    )
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+    record = mod._gh_pr_record_for_branch("some/branch", cwd=repo)
+    assert record == {
+        "state": "MERGED",
+        "number": 42,
+        "mergedAt": "2026-08-25T01:00:00Z",
+        "headRefOid": "bbb",
+    }
+    assert mod._gh_pr_state_for_branch("some/branch", cwd=repo) == "MERGED"
