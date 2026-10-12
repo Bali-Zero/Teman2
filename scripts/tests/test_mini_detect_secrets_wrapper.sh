@@ -43,6 +43,7 @@ case "${SCAN_CASE:-clean}" in
   hang) (sleep 31 & echo $! > "$HOME/child.pid"; wait) & wait ;;
   findings) printf '%s\n' '{"version":"1.5.0","results":{"src/obviously-fake.txt":[{"type":"Fake Detector","line_number":7,"hashed_secret":"FAKE_SECRET_SHAPED_VALUE_DO_NOT_USE_000000000000"}]}}' > .secrets.baseline ;;
   many) /usr/bin/python3 -c 'import json; print(json.dumps({"version":"1.5.0","results":{f"src/f{i:02d}.txt":[{"type":"Fake Detector","line_number":1}] for i in range(40)}}))' > .secrets.baseline ;;
+  deep) /usr/bin/python3 -c 'import json; d="/".join(["abcdefghij"]*27); print(json.dumps({"version":"1.5.0","results":{f"src/{d}/f{i:02d}.txt":[{"type":"Fake Detector","line_number":1}] for i in range(30)}}))' > .secrets.baseline ;;
   hostile) printf '%s\n' '{"version":"1.5.0","results":{"src/FAKE_SECRET_SHAPED_VALUE_DO_NOT_USE_000000000000\nspoof.txt":[{"type":"Fake Detector","line_number":7,"hashed_secret":"FAKE_SECRET_SHAPED_VALUE_DO_NOT_USE_000000000000"}]}}' > .secrets.baseline ;;
   *) printf '%s\n' '{"version":"1.5.0","results":{}}' > .secrets.baseline ;;
 esac
@@ -116,6 +117,12 @@ if [ "$(field "$HB" status)" = warning ] && grep -q '40 finding(s) in 40 file(s)
     && grep -q '\.\.\. and 10 more file(s)' "$CALLS" && [ "$SHOWN" -eq 30 ]; then
     ok "a mass finding page lists 30 paths and counts the rest"
 else bad "summary cap (shown=$SHOWN)"; fi
+
+run_case deep deep
+PAGE_LEN="$(/usr/bin/python3 -c 'import json,sys; print(max(len(json.loads(l)["args"][-1]) for l in open(sys.argv[1])))' "$CALLS" 2>/dev/null || echo 99999)"
+if [ "$(field "$HB" status)" = warning ] && [ "$PAGE_LEN" -le 3500 ] && grep -q 'more file(s)' "$CALLS"; then
+    ok "deep paths still give a page under Telegram's limit"
+else bad "page length bound (len=$PAGE_LEN)"; fi
 
 run_case bad-version
 if [ "$(field "$HB" status)" = error ] && grep -q 'detect-secrets:broken:tool' "$CALLS" \

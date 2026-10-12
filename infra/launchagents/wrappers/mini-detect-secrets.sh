@@ -144,15 +144,21 @@ case "$SCAN_RC" in
     *) finish error "fulltree broken scan rc=$SCAN_RC" scan 1 ;;
 esac
 
-# At most 30 paths: a mass-residue page must stay under Telegram's 4096-character limit, or the
-# gateway records the dedup key for a message Telegram rejected.
+# The page must stay under Telegram's 4096 characters whatever the paths look like, or the gateway
+# records the dedup key for a message Telegram rejected: at most 30 paths, each cut to 160
+# characters, and at most 3000 characters of list. The digest still covers every finding.
 "$PYTHON_BIN" -c 'import hashlib,json,re,sys
 b=json.load(open(sys.argv[1])); rows=sorted({(f,str(h.get("type","?")),int(h.get("line_number",0))) for f,hs in b.get("results",{}).items() for h in hs if "is_secret" not in h})
 files=sorted({r[0] for r in rows}); raw=json.dumps(rows,ensure_ascii=True,separators=(",",":")).encode(); digest=hashlib.sha256(raw).hexdigest()[:12]
 def safe_path(path):
     parts=re.split(r"([/\\\\])",path)
     return "".join("<redacted>" if any(ord(c)<32 or ord(c)==127 for c in p) or re.search(r"[A-Za-z0-9_+=-]{24,}",p) else p for p in parts)
-shown=[safe_path(f) for f in files[:30]]+([f"... and {len(files)-30} more file(s)"] if len(files)>30 else [])
+shown=[]; used=0
+for f in files:
+    p=safe_path(f); p=p if len(p)<=160 else p[:157]+"..."
+    if len(shown)==30 or used+len(p)+1>3000: break
+    shown.append(p); used+=len(p)+1
+shown+=[f"... and {len(files)-len(shown)} more file(s)"] if len(shown)<len(files) else []
 open(sys.argv[2],"w").write(f"{digest} {len(rows)}\n"); open(sys.argv[3],"w").write(f"{len(rows)} finding(s) in {len(files)} file(s):\n"+"\n".join(shown)+"\n")' \
     "$WORKTREE/.secrets.baseline" "$RUN_TMP/meta" "$RUN_TMP/summary" \
     || finish error "fulltree broken gate metadata" gate 1
