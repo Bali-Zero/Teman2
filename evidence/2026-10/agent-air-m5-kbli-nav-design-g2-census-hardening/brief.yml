@@ -1,0 +1,28 @@
+task_id: kbli-nav-design-g2-census-hardening
+mission: kbli-nav-design-loop (Track A, build, census hardening — G2 and the #8292 / #8297 gate bindings)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Harness-only (lead ruling 2026-10-12): the live-host guard judges the mount with a pixel witness (#8290 gate G2), the
+  mark-order rule is re-ruled (a census frame is the LAYOUT frame; #8297 finding 4), and C24 counts chips and one detail
+  (#8297 findings 1 and 2). No app View, string, colour or fact changes; no render changes (the ladder's nudge becomes layout,
+  byte-identical).
+l_level: L1
+gate_class: opus
+objective: >-
+  One concern: the guards that say the live sheet is the immersive layout and that the census marks mean what they say. A
+  `live-sheet` band renders the sheet as the app mounts it and png_census C25 reads it against the flat and immersive twins;
+  the text guard knows the order of an override; `mark_order_check.py` holds the mark after any Beat and any static nudge in
+  layout; C24 counts chips and rejects two detail frames.
+constraints:
+  - Harness only; the mount decides flat or immersive, never the band.
+  - No render changes against #8297's set.
+acceptance:
+  - text: A live mount that lost its host, by any spelling, SHALL fail the witness.
+    probe: "Pro: source mutants of SearchListView.sheetLayer (host removed, #if false, sibling EmptyView host, transformEnvironment) rebuilt and rendered: C25 FAIL; the text guard passes three at that head; the outside-the-host override passes both"
+  - text: A census mark before a Beat or a transition, or a static offset on a marked element, SHALL fail the scan.
+    probe: "Pro: mark_order_check --selftest; the two pre-ruling inversions on the real tree rc 1; a ladder with a static offset rc 1; the 21 marks at head rc 0"
+  - text: C24 SHALL count chips, and two details SHALL fail.
+    probe: "Pro: 43110 night at 4 pt with only r2 unmarked rc 1; the detail marked twice rc 1; the control rc 0"
+  - text: The render set SHALL not move.
+    probe: "Pro: the 91 PNGs shared with #8297's set byte-identical; CENSUS_IDENTITY 96/96"
