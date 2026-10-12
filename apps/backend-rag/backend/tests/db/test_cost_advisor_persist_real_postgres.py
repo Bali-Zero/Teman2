@@ -2,10 +2,11 @@
 
 The INSERT ... SELECT used bare ``$n`` parameters in the SELECT list while
 also using ``$1``/``$2``/``$3`` in ``endpoint = $1`` of the dedupe subquery.
-Postgres types a SELECT-list parameter as text but the comparison deduces
-varchar, so PREPARE failed with ``AmbiguousParameterError`` and the weekly job
-exited 1 (observed live 2026-10-12). The unit tests mock ``conn.execute`` and
-cannot see this; only a real PREPARE does, so this uses ``db_tx`` (rolled back).
+Postgres types a SELECT-list parameter as varchar (the INSERT target column)
+but the comparison deduces text, so PREPARE failed with
+``AmbiguousParameterError`` and the weekly job exited 1 (observed live
+2026-10-12). The unit tests mock ``conn.execute`` and cannot see this; only a
+real PREPARE does, so this uses ``db_tx`` (rolled back).
 ``llm_cost_recommendations`` is migration ``119`` in ``migrations_v2``.
 """
 

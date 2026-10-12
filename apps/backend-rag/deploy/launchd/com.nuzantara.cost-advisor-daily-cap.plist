@@ -14,8 +14,7 @@
     <key>Hour</key><integer>8</integer>
     <key>Minute</key><integer>0</integer>
   </dict>
-  <key>StandardOutPath</key><string>/tmp/cost-advisor-daily.log</string>
-  <key>StandardErrorPath</key><string>/tmp/cost-advisor-daily.err</string>
-  <key>RunAtLoad</key><false/>
+  <key>StandardOutPath</key><string>/Users/nuzantara/Library/Logs/cost-advisor-daily.log</string>
+  <key>StandardErrorPath</key><string>/Users/nuzantara/Library/Logs/cost-advisor-daily.err</string>
 </dict>
 </plist>
