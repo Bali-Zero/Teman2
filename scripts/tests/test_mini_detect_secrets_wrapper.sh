@@ -42,6 +42,7 @@ case "${SCAN_CASE:-clean}" in
   error) exit 8 ;;
   hang) (sleep 31 & echo $! > "$HOME/child.pid"; wait) & wait ;;
   findings) printf '%s\n' '{"version":"1.5.0","results":{"src/obviously-fake.txt":[{"type":"Fake Detector","line_number":7,"hashed_secret":"FAKE_SECRET_SHAPED_VALUE_DO_NOT_USE_000000000000"}]}}' > .secrets.baseline ;;
+  many) /usr/bin/python3 -c 'import json; print(json.dumps({"version":"1.5.0","results":{f"src/f{i:02d}.txt":[{"type":"Fake Detector","line_number":1}] for i in range(40)}}))' > .secrets.baseline ;;
   hostile) printf '%s\n' '{"version":"1.5.0","results":{"src/FAKE_SECRET_SHAPED_VALUE_DO_NOT_USE_000000000000\nspoof.txt":[{"type":"Fake Detector","line_number":7,"hashed_secret":"FAKE_SECRET_SHAPED_VALUE_DO_NOT_USE_000000000000"}]}}' > .secrets.baseline ;;
   *) printf '%s\n' '{"version":"1.5.0","results":{}}' > .secrets.baseline ;;
 esac
@@ -69,6 +70,9 @@ run_case() {
     elif [ "$scenario" = stale ]; then
         mkdir -p "$CASE_DIR/tmp/run.dead"
         /usr/bin/git -C "$CASE_REPO" worktree add -q --detach "$CASE_DIR/tmp/run.dead/worktree" refs/heads/main
+    elif [ "$scenario" = bad-version ]; then
+        printf '{"version":"1.5.0\\"x","results":{}}\n' > "$CASE_REPO/.secrets.baseline"
+        /usr/bin/git -C "$CASE_REPO" commit -q -am bad-version
     elif [ "$scenario" = missing ]; then
         rm -f "$CASE_DIR/venv/bin/detect-secrets"
     fi
@@ -105,6 +109,19 @@ if [ "$(field "$HB" status)" = warning ] && grep -q 'src/<redacted>' "$CALLS" \
     && [ "$(grep -c 'detect-secrets:findings:' "$CALLS")" -eq 1 ]; then
     ok "unsafe path content is redacted from logs and alerts"
 else bad "unsafe path redaction"; fi
+
+run_case many many
+SHOWN="$(grep -o 'src/f[0-9][0-9]\.txt' "$CALLS" | sort -u | wc -l | tr -d ' ')"
+if [ "$(field "$HB" status)" = warning ] && grep -q '40 finding(s) in 40 file(s)' "$CALLS" \
+    && grep -q '\.\.\. and 10 more file(s)' "$CALLS" && [ "$SHOWN" -eq 30 ]; then
+    ok "a mass finding page lists 30 paths and counts the rest"
+else bad "summary cap (shown=$SHOWN)"; fi
+
+run_case bad-version
+if [ "$(field "$HB" status)" = error ] && grep -q 'detect-secrets:broken:tool' "$CALLS" \
+    && /usr/bin/python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$HB" 2>/dev/null; then
+    ok "a non-numeric baseline version is a tool error and the heartbeat stays valid JSON"
+else bad "baseline version validation"; fi
 
 run_case missing
 if [ "$(field "$HB" status)" = error ] && grep -q 'detect-secrets:broken:tool' "$CALLS" && grep -q 'detect-secrets==1.5.0' "$CALLS" && [ "$(worktrees)" -eq 1 ]; then ok "missing venv is a tool error"; else bad "missing venv"; fi
@@ -156,6 +173,24 @@ HB_STATUS="$(field "$HB" status)"; WT_COUNT="$(worktrees)"
 USR1_RC=$((128 + $(kill -l USR1)))
 if [ "$WRC" -eq "$USR1_RC" ] && [ "$elapsed" -le 10 ] && [ "$CHILD" != 0 ] && [ "$CHILD_ALIVE" -eq 0 ] \
     && [ "$HB_STATUS" = error ] && [ "$WT_COUNT" -eq 1 ]; then ok "unexpected exit kills child tree within 10 seconds"; else bad "unexpected-exit cleanup (rc=$WRC elapsed=$elapsed child_alive=$CHILD_ALIVE heartbeat=$HB_STATUS worktrees=$WT_COUNT)"; [ "$CHILD" = 0 ] || kill "$CHILD" 2>/dev/null || true; fi
+
+# L3: launchd may signal the whole job process group, so the helper receives TERM directly too.
+setup_case
+BEFORE="$(/usr/bin/git -C "$CASE_REPO" status --porcelain)"; t0=$(date +%s)
+env -i HOME="$CASE_HOME" PATH="/usr/bin:/bin" SCAN_CASE=hang HOST_CASE=Mini-Pro2 FAKE_TOOL_VERSION=1.5.0 \
+    MINI_DETECT_SECRETS_TIMEOUT=3600 MINI_DETECT_SECRETS_REPO="$CASE_REPO" MINI_DETECT_SECRETS_GIT="$CASE_DIR/bin/git" \
+    MINI_DETECT_SECRETS_PYTHON=/usr/bin/python3 MINI_DETECT_SECRETS_HOSTNAME="$CASE_DIR/bin/hostname" \
+    MINI_DETECT_SECRETS_VENV="$CASE_DIR/venv" MINI_DETECT_SECRETS_LOG_DIR="$CASE_HOME/logs" \
+    MINI_DETECT_SECRETS_SIDECAR_DIR="$CASE_HOME/sidecar" MINI_DETECT_SECRETS_LOCKDIR="$CASE_DIR/lock" \
+    MINI_DETECT_SECRETS_TMP_BASE="$CASE_DIR/tmp" GIT_CALLS="$CASE_HOME/git.log" \
+    /usr/bin/perl -e 'setpgrp(0, 0); exec @ARGV' /bin/bash "$WRAPPER" >/dev/null 2>&1 &
+WPID=$!; for _ in $(seq 1 100); do [ -s "$CASE_HOME/child.pid" ] && break; sleep 0.1; done
+kill -TERM -- "-$WPID"; WRC=0; wait "$WPID" || WRC=$?; elapsed=$(( $(date +%s)-t0 )); sleep 1
+CHILD="$(sed -n '1p' "$CASE_HOME/child.pid" 2>/dev/null || echo 0)"; AFTER="$(/usr/bin/git -C "$CASE_REPO" status --porcelain)"
+HB="$CASE_HOME/sidecar/mini.detect_secrets_fulltree.json"
+[ "$BEFORE" = "$AFTER" ] || CANON_OK=0
+if [ "$WRC" -eq 143 ] && [ "$elapsed" -le 10 ] && [ "$CHILD" != 0 ] && ! kill -0 "$CHILD" 2>/dev/null \
+    && [ "$(field "$HB" status)" = error ] && [ "$(worktrees)" -eq 1 ]; then ok "a group-signalled stop kills the child tree within 10 seconds"; else bad "group TERM (rc=$WRC elapsed=$elapsed)"; [ "$CHILD" = 0 ] || kill "$CHILD" 2>/dev/null || true; fi
 
 run_case stale
 if [ ! -e "$CASE_DIR/tmp/run.dead" ] && [ "$(field "$HB" status)" = ok ] && [ "$(worktrees)" -eq 1 ]; then ok "stale run directory is swept"; else bad "stale sweep"; fi

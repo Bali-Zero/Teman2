@@ -106,6 +106,8 @@ SHORT_SHA="$($GIT_BIN -C "$WORKTREE" rev-parse --short HEAD 2>> "$LOG")" \
     || finish error "fulltree broken worktree revision" worktree 1
 VERSION="$($PYTHON_BIN -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$WORKTREE/.secrets.baseline" 2>/dev/null)" \
     || finish error "fulltree broken tool baseline-version" tool 1
+# The version reaches the heartbeat JSON and the alert: digits and dots only.
+case "$VERSION" in ''|*[!0-9.]*) finish error "fulltree broken tool baseline-version" tool 1 ;; esac
 SCAN_BIN="$VENV/bin/detect-secrets"
 INSTALL="$HOME/.local/bin/uv venv --python /opt/homebrew/bin/python3 $VENV && $HOME/.local/bin/uv pip install --python $VENV/bin/python detect-secrets==$VERSION"
 if [ ! -x "$SCAN_BIN" ]; then finish error "fulltree broken tool; install: $INSTALL" tool 1; fi
@@ -142,13 +144,15 @@ case "$SCAN_RC" in
     *) finish error "fulltree broken scan rc=$SCAN_RC" scan 1 ;;
 esac
 
+# At most 30 paths: a mass-residue page must stay under Telegram's 4096-character limit, or the
+# gateway records the dedup key for a message Telegram rejected.
 "$PYTHON_BIN" -c 'import hashlib,json,re,sys
 b=json.load(open(sys.argv[1])); rows=sorted({(f,str(h.get("type","?")),int(h.get("line_number",0))) for f,hs in b.get("results",{}).items() for h in hs if "is_secret" not in h})
 files=sorted({r[0] for r in rows}); raw=json.dumps(rows,ensure_ascii=True,separators=(",",":")).encode(); digest=hashlib.sha256(raw).hexdigest()[:12]
 def safe_path(path):
     parts=re.split(r"([/\\\\])",path)
     return "".join("<redacted>" if any(ord(c)<32 or ord(c)==127 for c in p) or re.search(r"[A-Za-z0-9_+=-]{24,}",p) else p for p in parts)
-shown=[safe_path(f) for f in files]
+shown=[safe_path(f) for f in files[:30]]+([f"... and {len(files)-30} more file(s)"] if len(files)>30 else [])
 open(sys.argv[2],"w").write(f"{digest} {len(rows)}\n"); open(sys.argv[3],"w").write(f"{len(rows)} finding(s) in {len(files)} file(s):\n"+"\n".join(shown)+"\n")' \
     "$WORKTREE/.secrets.baseline" "$RUN_TMP/meta" "$RUN_TMP/summary" \
     || finish error "fulltree broken gate metadata" gate 1
