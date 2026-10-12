@@ -1,0 +1,75 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 (standing rule) - the /visaoracle corner-skill ledger is updated at every merge; #8385 gate condition 2 -
+  the F1-F3 row's pending-on-merge becomes the merge proof and the ledger test stops accepting pending-on-merge; Zero,
+  2026-10-12 - the session signs and activates seq-29 itself.
+mission: >-
+  The /visaoracle corner-skill ledger is updated at every merge: the F1-F3 row closes with its merge and the post-organ
+  seq-28 observation opens as a PENDING-ARMS row.
+lanes:
+  - lane: ledger-8385-8390
+    role: build
+    seat: claude-sonnet-5 (Claude Code workflow subagent), worktree docs-vo-ledger-8385-8390-1012 on M5.
+pii_scan: clean
+bites:
+  consumer: >-
+    every session that loads /visaoracle and reads PENDING-ARMS (the F1-F3 row and the post-organ seq-28 row).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_ledger_seq28.py
+  expect: "contains:seq-28 ledger holds"
+receipts:
+  - claim: The ledger test and the observer-parser test pass with the tightened F1-F3 test and the new post-organ row test.
+    cmd: python3 -m pytest tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq28.py -p no:cacheprovider -q
+    result: "23 passed in 0.10s"
+    exit: 0
+    ts: "2026-10-12T15:25:04Z"
+    seat: this session
+  - claim: The bites observer passes on the branch head and accepts only a full pass of at least 12 tests.
+    cmd: python3 scripts/ci/observe_visa_ledger_seq28.py
+    result: "12 passed in 0.04s; seq-28 ledger holds"
+    exit: 0
+    ts: "2026-10-12T15:25:04Z"
+    seat: this session
+  - claim: The whole mouth visa-oracle Vitest tree passes (diff touches no mouth file).
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 56 passed (56), Tests 1447 passed (1447)"
+    exit: 0
+    ts: "2026-10-12T15:30:02Z"
+    seat: this session
+  - claim: >-
+      The whole backend visa_engine directory ran; 4 failed, 39 errors, all environmental on this M5 (no local schema:
+      relation visa_evaluate_idempotency missing, policy_scope column missing, migration 264 rollback, module psutil absent,
+      DROP of visa_decisions with dependents); the diff touches no backend file. 3311 passed, 15 skipped. CI is the judge of
+      those DB-backed tests.
+    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine -p no:cacheprovider
+    result: "4 failed, 3311 passed, 15 skipped, 39 errors in 217.73s"
+    exit: 1
+    ts: "2026-10-12T15:28:52Z"
+    seat: this session
+decisions:
+  - id: D-closed-by-merge
+    decision: >-
+      The F1-F3 row reads CLOSED BY #8385 with merge bc35468022 and the prove-live comment; the test rejects pending-on-merge.
+      A row changing from pending to a merge proof is not a silent loss.
+  - id: D-post-organ-row
+    decision: >-
+      #8390's real observation is the visa_engine suite staying green on main after the 2026-10-18T18:00Z organ ledger lands,
+      so it is an open PENDING-ARMS row, appended once, with owner and proof-of-armed.
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T23-30-44-01a130bc-d47a-7a81-a2b4-ec34fbd5773c.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM: brief_ref evidence/brief.yml does not resolve to a file on disk."
+    status: RETRACTED
+    disposition: "False positive: repo convention requires brief_ref evidence/brief.yml, staged there only during lint and removed after; Codex linted without staging it. No change; lint run with staging ends clean."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T23-30-44-01a130bc-d47a-7a81-a2b4-ec34fbd5773c.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM: the post-organ PENDING-ARMS row accepts green on the organ PR, weakening the post-merge purpose, and the test does not catch it."
+    status: RETRACTED
+    disposition: "Cured in the fix commit after f13c50ad: proof-of-armed now counts only main after the organ ledger merged, pins d00c73dd48 as ancestor and the exact observer command; the test pins ledger path, SHA, prove-live id, main-only wording, absence of the fail-open wording and the observer command."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T23-30-44-01a130bc-d47a-7a81-a2b4-ec34fbd5773c.jsonl, model verified in the rollout file)"
+    objection: "LOW: live-state-log claims every spelling of the threshold while only 60 thousand and 60 ribu are covered."
+    status: RETRACTED
+    disposition: "Cured in the fix commit: wording now names the EN 60 thousand and ID 60 ribu variants."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T23-30-44-01a130bc-d47a-7a81-a2b4-ec34fbd5773c.jsonl, model verified in the rollout file)"
+    objection: "LOW: the F1-F3 test does not check the prove-live identifier."
+    status: RETRACTED
+    disposition: "Cured in the fix commit: test asserts issuecomment-6127011575 in the row."

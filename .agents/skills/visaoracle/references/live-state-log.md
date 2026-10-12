@@ -7,6 +7,19 @@ CURRENT POSITION block in SKILL.md in the same commit.
 
 Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE STATE — CURRENT POSITION.
 
+- 2026-10-12 (M5, visaoracle E33 lane, ledger after #8385 and #8390; recorded ~15:30Z): **F1-F3 closed, the post-organ seq-28 observation opened, seq-29 signing authorized.**
+  (1) #8385 (E33G income-question tests check every category and the EN `60 thousand` and ID `60 ribu` variants of the threshold, observer floor to the real
+  count; F1-F3 of #8287's gate) merged 2026-10-12T15:04:51Z as `bc35468022`, proven live at
+  https://github.com/Bali-Zero/Teman2/pull/8385#issuecomment-6127011575; the F1-F3 PENDING-ARMS row is CLOSED BY #8385.
+  (2) #8390 (the seq-28 pack tests fold the ledger that produced seq-28, `research/visa/2026-10-11-organ-reattest-seq28`,
+  not the newest one) merged 2026-10-12T15:16:27Z as `d00c73dd48`, proven live at
+  https://github.com/Bali-Zero/Teman2/pull/8390#issuecomment-6127248185. Its real observation is still ahead: the weekly
+  organ `pro.visa_reattestation` commits a newer ledger at its 2026-10-18T18:00Z run and the visa_engine suite on main must
+  stay green after it (open PENDING-ARMS row). (3) Zero ruled on 2026-10-12 that session nuzantara-57 signs and activates
+  seq-29 itself; the process is unchanged (red team, two-titolare council, fresh Opus gate, ceremony, proof-of-armed).
+  (4) The seq-29 candidate of the 38-visa night program does not exist yet: Pro (nuzantara) has been offline on Tailscale
+  since about 11:10Z 2026-10-12, so the night conductor is halted.
+
 - 2026-10-12 (M5, Zero's seq-28 mandate; signing session nuzantara-57): **seq-28 active; step B and the why-copy live.**
   (1) seq-28 signed on M5 (`signed_at 2026-10-11T22:53:04Z`, kid `prod-2026-07-1`), landing PR #8300 merged
   2026-10-12T03:05:56Z as `7bb50d079e`, ACTIVATED 03:08Z from Pro (two-login ceremony, dry-run first; activation_id
