@@ -71,7 +71,10 @@ proc_id() { echo "$1 $(ps -p "$1" -o lstart= 2>/dev/null | tr -s ' ')"; }
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
     owner=$(cat "$LOCKDIR/pid" 2>/dev/null || true)
     owner_pid=${owner%% *}
-    age=$(( $(date +%s) - $(stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))
+    # perl, not stat: BSD `stat -f %m` and GNU `stat -c %Y` disagree, and the corpus runs on Linux.
+    mtime=$(/usr/bin/perl -e 'my @s = stat shift; print @s ? $s[9] : 0' "$LOCKDIR" 2>/dev/null)
+    case "$mtime" in ''|*[!0-9]*) mtime=0 ;; esac
+    age=$(( $(date +%s) - mtime ))
     if [ -z "$owner" ] && [ "$age" -lt 120 ]; then
         log "lock just created by another run — skipping"
         heartbeat "warning" "run already active"
