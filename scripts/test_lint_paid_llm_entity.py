@@ -359,6 +359,124 @@ def _run_bench() -> int:
     return 0
 
 
+# ─────────────────────────────────────────────── main() report/exit contract
+# Added by the 2026-10-12 AST mutation sweep of lint_paid_llm_entity.py: the
+# CLI's diagnostics-vs-JSON separation and its pardon accounting had no test.
+
+
+def _verdict(**over):
+    base = {
+        "violation": False,
+        "grep": False,
+        "fired_routes": [],
+        "pardoned_routes": [],
+        "probabilities": {},
+        "asked": False,
+    }
+    base.update(over)
+    return base
+
+
+def _stub_one_file(monkeypatch, tmp_path, verdict, pardons=None, reason=None):
+    target = tmp_path / "changed.py"
+    target.write_text("x = 1\n")
+    monkeypatch.setattr(lint, "in_scope", lambda path: True)
+    monkeypatch.setattr(
+        lint, "judge_file", lambda path, text, pardons=None: {"path": path, **verdict}
+    )
+    monkeypatch.setattr(lint, "load_pardons", lambda: pardons or {})
+    monkeypatch.setattr(lint, "unavailable_reason", lambda: reason)
+    return target
+
+
+def test_json_stdout_stays_a_single_parseable_object_with_every_diagnostic_present(
+    monkeypatch, tmp_path, capsys
+):
+    """Both the 'growth check skipped' line and the 'entity judgment skipped'
+    line are diagnostics; in --json mode NEITHER may reach stdout, or the
+    caller's json.loads() raises instead of reading a verdict."""
+    target = _stub_one_file(monkeypatch, tmp_path, _verdict(), reason="key absent")
+    assert lint.main(["--json", str(target)]) == 0
+    parsed = json.loads(capsys.readouterr().out)
+    assert [r["path"] for r in parsed["results"]] == [str(target)]
+    # INNOCENCE twin: the same run without --json DOES say both things.
+    assert lint.main([str(target)]) == 0
+    text = capsys.readouterr().out
+    assert "pardon growth check skipped (no base ref)" in text
+    assert "entity judgment skipped (key absent)" in text
+    # ... and a key that is available prints no skip line at all.
+    monkeypatch.setattr(lint, "unavailable_reason", lambda: None)
+    assert lint.main([str(target)]) == 0
+    assert "entity judgment skipped" not in capsys.readouterr().out
+
+
+def test_report_names_only_unpardoned_routes_and_counts_pardons(
+    monkeypatch, tmp_path, capsys
+):
+    pardoned_route, live_route = list(lint.ROUTE_QUESTIONS)[:2]
+    verdict = _verdict(
+        violation=True,
+        fired_routes=[pardoned_route, live_route],
+        pardoned_routes=[pardoned_route],
+        probabilities={pardoned_route: 0.91, live_route: 0.77},
+        asked=True,
+    )
+    target = tmp_path / "changed.py"
+    pardons = {
+        str(target): [
+            {
+                "path": str(target),
+                "routes": [pardoned_route],
+                "reason": "proxy for the CLI",
+                "pr": 4242,
+                "date": "2026-10-01",
+            }
+        ]
+    }
+    _stub_one_file(monkeypatch, tmp_path, verdict, pardons=pardons)
+    assert lint.main([str(target)]) == 1
+    out = capsys.readouterr().out
+    error_line = next(ln for ln in out.splitlines() if ln.startswith("::error file="))
+    assert f"{live_route}=0.77" in error_line
+    assert pardoned_route not in error_line          # a pardoned route is not blamed
+    assert "grep" not in error_line                  # grep did not fire
+    notice = next(ln for ln in out.splitlines() if ln.startswith("::notice file="))
+    assert f"({pardoned_route}=0.91)" in notice and "PR #4242, 2026-10-01" in notice
+    assert "1 file(s) in scope, 1 judged, 1 violation(s), 1 pardoned." in out
+
+
+def test_grep_hit_is_named_and_unasked_files_are_not_counted_as_judged(
+    monkeypatch, tmp_path, capsys
+):
+    target = _stub_one_file(
+        monkeypatch, tmp_path, _verdict(violation=True, grep=True, asked=False)
+    )
+    assert lint.main([str(target)]) == 1
+    out = capsys.readouterr().out
+    assert "::error file=" in out and "paid-endpoint route (grep)" in out
+    assert "1 file(s) in scope, 0 judged, 1 violation(s), 0 pardoned." in out
+
+
+def test_advisory_warning_only_appears_when_there_was_something_to_waive(
+    monkeypatch, tmp_path, capsys
+):
+    clean = _stub_one_file(monkeypatch, tmp_path, _verdict())
+    assert lint.main(["--advisory", str(clean)]) == 0
+    assert "advisory mode" not in capsys.readouterr().out
+    dirty = _stub_one_file(monkeypatch, tmp_path, _verdict(violation=True, grep=True))
+    assert lint.main(["--advisory", str(dirty)]) == 0
+    assert "advisory mode — findings above did NOT fail this build" in capsys.readouterr().out
+
+
+def test_a_pardon_entry_without_a_usable_path_pardons_nothing():
+    good = {"routes": ["wrapper_library"], "reason": "r", "pr": 7, "date": "2026-10-01"}
+    assert lint._valid_entry({**good, "path": "a.py"}) is True
+    assert lint._valid_entry({**good, "path": ""}) is False
+    assert lint._valid_entry({**good, "path": 5}) is False
+    assert lint._valid_entry({**good, "path": None}) is False
+    assert lint._valid_entry({k: v for k, v in good.items()}) is False  # no path key at all
+
+
 if __name__ == "__main__":
     if "--bench" in sys.argv:
         raise SystemExit(_run_bench())
