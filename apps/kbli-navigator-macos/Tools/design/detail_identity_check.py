@@ -27,7 +27,7 @@ INDEX = re.compile(r"\(\s*scales\[\s*([^\]]+?)\s*\]\s*\)\s*$")
 
 
 def check(files):
-    bad, cells, marks = [], 0, 0
+    bad, cells, marks, exempt = [], 0, 0, []
     for path, text in files:
         name, s = pathlib.Path(path).name, lib.blank(text)
         good = set()
@@ -35,7 +35,7 @@ def check(files):
             cells += 1; line = s.count("\n", 0, m.start()) + 1
             end = lib.match_fwd(s, m.end() - 1)
             if re.search(r"expanded:\s*\{\s*AnyView\(\s*$", text[max(0, m.start() - 60):m.start()]) and re.fullmatch(r"\(\s*\$0\s*\)", text[m.end() - 1:end]):
-                cells -= 1; continue   # the 6+ scope list's expanded row: the row the reader opened, bound by the closure's own argument; C24 judges the picked cell, not this
+                cells -= 1; exempt.append("%s:%d" % (name, s.count("\n", 0, m.start()) + 1)); continue   # the 6+ scope list's expanded row: the row the reader opened, bound by the closure's own argument; C24 judges the picked cell, not this
             idx = INDEX.search(text[m.end() - 1:end])
             tail = MARK.match(s, lib.ws(s, end)) if s[lib.ws(s, end):lib.ws(s, end) + 1] == "." else None
             want = idx and re.compile(r'\.\s*censusFrame\(\s*"detail"\s*,\s*"\\\(\s*%s\s*\)"\s*\)' % re.escape(idx.group(1)))
@@ -47,7 +47,7 @@ def check(files):
             if (lib.NAME.match(text[m.end() - 1:]) or [None, ""])[1] != "detail": continue
             marks += 1
             if m.start() not in good: bad.append("%s:%d a `detail` mark that is not on a cellDetail(scales[X]) call" % (name, s.count("\n", 0, m.start()) + 1))
-    return bad, cells, marks
+    return bad, cells, marks, exempt
 
 
 def selftest():
@@ -71,8 +71,9 @@ def selftest():
 def main():
     if "--selftest" in sys.argv: return selftest()
     root = pathlib.Path(sys.argv[sys.argv.index("--sources") + 1]) if "--sources" in sys.argv else ROOT
-    bad, cells, marks = check([(str(p), p.read_text()) for p in sorted(root.rglob("*.swift"))])
+    bad, cells, marks, exempt = check([(str(p), p.read_text()) for p in sorted(root.rglob("*.swift"))])
     for b in bad: print("DETAIL-IDENTITY", b)
+    for e in exempt: print("exempt: list-row expansion (the reader opens a row; not the selected cell) at", e)
     print("detail_identity_check: %d finding(s) in %d cellDetail calls and %d detail marks" % (len(bad), cells, marks))
     return 1 if bad else 0
 
