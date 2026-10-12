@@ -1,0 +1,19 @@
+gear: 2
+gear_reason: >-
+  Test-only change (one backend test file plus its evidence), no product code, no data, no pack and no copy; it only
+  reads the signed pack and the price catalogue. Gear 2 because the test file is large (about 690 lines), not because
+  any hot zone is touched.
+mission: >-
+  The price a Visa Oracle visitor is quoted for each E31 family code (E31A..E31J) is pinned, per stay length,
+  against the real price catalogue on the highest signed pack.
+objective: >-
+  A backend test asserts, on the highest signed pack VERIFIED through verify_rule_pack and ACTIVATABLE over its
+  predecessor, that stays of 1..365 days quote the 1-year row, 366..730 the 2-year row and 731+ the 2-year row with
+  extension_required, that E31A prices from the Spouse rows and E31B-E31J from the Dependent rows, that no quote or
+  duration display carries a PNBP/fee component, and that a USD row, an edited amount, a deleted row and a product
+  re-aimed at a neighbouring row each turn the pin red.
+scope:
+  - apps/backend-rag/backend/tests/services/visa_engine/test_e31_price_pins.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
