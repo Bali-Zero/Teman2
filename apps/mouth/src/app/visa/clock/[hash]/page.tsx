@@ -266,7 +266,7 @@ export default function VisaClockResultPage({
       <AppWhatsAppCTA
         source="visa_clock"
         headline={`Want our team to file the ${data.visa_type} renewal?`}
-        description="Fixed fee, processed in ~14 days. Start on WhatsApp."
+        description="Your Bali Zero advisor confirms the fee and the timing for your case. Start on WhatsApp."
         resultHash={data.hash}
         context={{
           visa_type: data.visa_type,
