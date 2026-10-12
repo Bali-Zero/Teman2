@@ -1,0 +1,21 @@
+gear: 2
+gear_reason: >-
+  Client-facing price-row wording on a ground-truth path (pricing table, two mirrored data files, the /book
+  Most popular tagline), plus a data test and a no-argument observer; merging backend-rag deploys it.
+mission: >-
+  The C1 and C6 price rows say what the official imigrasi.go.id pages say: C1 is no longer called unusable for
+  business, C6 no longer bans business meetings, and both separate the 60-day stay from the 90-day visa validity.
+objective: >-
+  The description_en of "C1 Tourism" and "C6 Social Activity" follows the official pages (first stay up to 60
+  days, extendable to 180 days in total, visa valid 90 days from issue; C1 covers tourism, MICE, business
+  discussions, negotiations and signing, and site visits; both prohibit selling goods or services and receiving
+  pay, C1 also speaking at events); prices, keys and neighbouring rows unchanged; mouth mirror regenerated.
+scope:
+  - apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+  - apps/mouth/data/bali-zero-prices.json
+  - tests/scripts/test_c1_c6_price_descriptions.py
+  - scripts/ci/observe_c1_c6_price_descriptions.py
+  - tests/scripts/test_observe_c1_c6_price_descriptions.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
