@@ -1,0 +1,21 @@
+gear: 1
+gear_reason: >-
+  Ledger-only change plus one test file, one observer constant and its parametrized test; no runtime code, no data, no pack
+  of the visa engine. The lint floor decides the final declaration.
+mission: >-
+  The /visaoracle corner-skill ledger is updated at every merge: the F1-F3 row closes with its merge and the post-organ
+  seq-28 observation opens as a PENDING-ARMS row.
+objective: >-
+  The F1-F3 row of PENDING-ARMS reads CLOSED BY #8385 with its merge sha and prove-live link, the ledger test rejects
+  pending-on-merge, a new open row names the 2026-10-18T18:00Z organ observation of #8390, and the live-state log and
+  SKILL record Zero's seq-29 signing authorization.
+scope:
+  - .claude/skills/modus/PENDING-ARMS.md
+  - .agents/skills/visaoracle/SKILL.md
+  - .agents/skills/visaoracle/references/live-state-log.md
+  - tests/scripts/test_visa_ledger_seq28.py
+  - tests/scripts/test_observe_visa_ledger_seq28.py
+  - scripts/ci/observe_visa_ledger_seq28.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
