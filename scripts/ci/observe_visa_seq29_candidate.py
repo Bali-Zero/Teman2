@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -20,6 +21,12 @@ CANDIDATE = (
     BACKEND_RAG_DIR
     / "backend/services/visa_engine/contracts/packs/rulepack-prod-029.source.json"
 )
+MOUTH_DIR = REPO_ROOT / "apps" / "mouth"
+COPY_TEST_FILE = "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts"
+# Must be reported as run (a checkmark line), so deleting the EN/ID copy test cannot hide in the file total.
+COPY_REQUIRED_TEST = "writes the three seq-29 exclusion sentences in both languages"
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
+_SUMMARY = re.compile(r"^\s*Tests\s+(\d+) passed \((\d+)\)\s*$", re.MULTILINE)
 TEST_MODULES = (
     "backend/tests/services/visa_engine/test_seq29_pack.py",
     "backend/tests/services/visa_engine/test_interview_walk_census.py",
@@ -29,6 +36,17 @@ TEST_MODULES = (
 def _backend_rag_python() -> str:
     venv_python = BACKEND_RAG_DIR / ".venv" / "bin" / "python3"
     return str(venv_python) if venv_python.is_file() else sys.executable
+
+
+def copy_test_ok(out: str) -> bool:
+    """True only when Vitest passed everything and the seq-29 copy test is reported as run."""
+    out = _ANSI.sub("", out)
+    summary = _SUMMARY.search(out)
+    if summary is None or summary.group(1) != summary.group(2):
+        return False
+    return any(
+        COPY_REQUIRED_TEST in line and ("✓" in line or "✔" in line) for line in out.splitlines()
+    )
 
 
 def main() -> int:
@@ -47,6 +65,18 @@ def main() -> int:
         if rc != 0:
             print(f"observe_visa_seq29_candidate: {module} FAILED")
             return rc
+    print(f"observe_visa_seq29_candidate: running vitest {COPY_TEST_FILE} (cwd=apps/mouth)")
+    copy = subprocess.run(
+        ["npx", "vitest", "run", "--reporter=verbose", COPY_TEST_FILE],
+        cwd=MOUTH_DIR,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if copy.returncode != 0 or not copy_test_ok(copy.stdout + copy.stderr):
+        print("observe_visa_seq29_candidate: EN/ID copy test FAILED or absent")
+        print(_ANSI.sub("", copy.stdout + copy.stderr)[-1500:])
+        return copy.returncode or 1
     print("observe_visa_seq29_candidate: seq-29 candidate gate and census green")
     return 0
 
