@@ -13,6 +13,7 @@ free GB of the docker VM and of the host before and after.
 from __future__ import annotations
 
 import calendar
+import fcntl
 import importlib.util
 import json
 import math
@@ -110,11 +111,33 @@ def run_age_h(run: Path, now_s: float) -> float | None:
     return None if t is None else (now_s - t) / 3600
 
 
+def run_alive(run: Path) -> bool:
+    """B16: a run with no status.json is live only while its coordinator holds `state/coordinator.lock` — runner.py's flock,
+    held for the whole `run` and dropped by the kernel when the process dies. An evicted, killed or crashed run leaves no
+    status.json and a free lock: read as live, it kept its images for 48 h (Pro, 2026-10-12: three B15 evictions held four deps
+    images through host pressure, 13.3 GB of them reclaimable, so every next run started short and was evicted too). No lock
+    file means no coordinator ever ran. A lock that cannot be opened or probed counts as held: unknown keeps the image."""
+    lock = run / "state" / "coordinator.lock"
+    try:
+        fh = open(lock, "rb")
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
+    with fh:
+        try:
+            fcntl.flock(fh, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        except OSError:   # BlockingIOError: the coordinator holds it; anything else is unknown, so held too
+            return True
+        fcntl.flock(fh, fcntl.LOCK_UN)
+        return False
+
+
 def plan_refs(runs: Path, now_s: float) -> tuple[dict, dict, dict, list, set]:
     """Tags and image ids named by a plan of the last 48 h (tag -> youngest age in hours), each tag's recipe as the plans
     read it (the check whose job names it: `ctx.backend-tests` -> `backend-tests`), and the plans that could not be read —
     any of which may name an image, so none is removed while one exists — and what the run in progress names (a run of the
-    last 48 h with no status.json yet). A half-written plan still names what its text names."""
+    last 48 h with no status.json yet whose coordinator still holds its lock, B16). A half-written plan still names what its text names."""
     recent, ids, recipes, unreadable, in_progress = {}, {}, {}, [], set()
     named = {}   # tag or image id -> the plans of the last 48 h that name it (B8: an image's count is the union, tag or id)
     for plan in sorted(runs.glob("*/state/plan.json")) if runs.is_dir() else []:
@@ -139,7 +162,7 @@ def plan_refs(runs: Path, now_s: float) -> tuple[dict, dict, dict, list, set]:
                 ids[iid] = min(ids.get(iid, age_h), age_h)
             for ref in set(TAG_RE.findall(raw)) | set(ID_RE.findall(raw)):
                 named.setdefault(ref, set()).add(str(plan))
-            if not (plan.parent.parent / "status.json").exists():
+            if not (plan.parent.parent / "status.json").exists() and run_alive(plan.parent.parent):
                 in_progress |= set(TAG_RE.findall(raw)) | set(ID_RE.findall(raw))
     return recent, ids, {t: sorted(r)[0] for t, r in recipes.items()}, unreadable, in_progress, named
 
@@ -184,7 +207,7 @@ def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, 
     """Every deps image with `remove`, `slot` and the rule that decided it. Per recipe, MAX_IMAGES_PER_RECIPE slots held by
     distinct images: the newest holds the first; the others go to the images most plans of the last 48 h name (ties: the
     youngest reference, then the newest image). Beyond the slots an image stays only when the run in progress names it (a run
-    of the last 48 h with no status.json; the prune never runs beside the lease holder) — no clock grace (B8). An image no
+    of the last 48 h with no status.json whose coordinator holds its lock; the prune never runs beside the lease holder) — no clock grace (B8). An image no
     plan of the window names takes no slot and goes. The never-list is always kept. A recipe nothing records is its own."""
     named = named or {}
     for im in images:
@@ -205,7 +228,7 @@ def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, 
             if never(im["tag"], stand_ins):
                 out[im["tag"]] = (False, never_rule(im["tag"], stand_ins), None)
             elif im["tag"] in in_progress or im["id"] in in_progress:
-                out[im["tag"]] = (False, "named by the run in progress (no status.json yet)", None)
+                out[im["tag"]] = (False, "named by the run in progress (no status.json yet, its coordinator holds the lock)", None)
             elif top is None or im["created"] is None or im["created"] == top["created"]:
                 slots[im["id"]] = 1   # an image built at the same instant, or undated, ranks with the newest
                 out[im["tag"]] = (False, f"the newest image of recipe {r}", 1)

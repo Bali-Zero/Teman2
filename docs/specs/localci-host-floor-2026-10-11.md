@@ -38,6 +38,10 @@ Constraints kept: stdlib only; no `-f` on an image removal, no age prune; contai
 
 `scripts/localci/tests/test_host_floor.py` (25), `test_prune.py` (5 `b15`), `test_merger_report.py` (evicted counted), `test_merger.py` (B6 floor tests re-pinned to 90/100). Mutants in `merger_mutants.py`: `floor-start-60`, `evict-disabled`, `evict-spares-containers`, `evict-kills-foreign-run`, `evict-as-fail`, `statvfs-fail-open`, `prune-host-pressure-ignored`, `evict-not-rotated`, `evict-cap-ignored`, `evict-cap-off-by-one`, `parent-pid-not-handed`, `parent-watch-unwired`, `parent-watch-pid-1`, `parent-gone-never`, `prune-pressure-no-builder-prune`, `prune-pressure-rule-silent-on-cost`; the B6 floor mutants re-pinned (`b6-wrapper-floor-99`, `b6-merger-floor-99`).
 
+## B16 (2026-10-12)
+
+Observed on Pro: three runs evicted by B15 left no `status.json`, and prune read "no status.json in the last 48 h" as "run in progress", so their four deps images (13.3 GB, reclaimable) stayed through host pressure; the next runs started short of disk and were evicted in turn. Cure: `prune.run_alive(run)` probes `state/coordinator.lock` with `flock(LOCK_SH | LOCK_NB)`; the run is in progress only while its coordinator holds it. A free lock or no lock file reads dead; a lock that cannot be opened or probed reads held (unknown keeps the image). Tests in `test_prune.py`: `test_b16_an_evicted_run_does_not_keep_its_image_under_host_pressure` (free and absent lock), `test_b16_a_lock_that_cannot_be_opened_counts_as_held`, `test_b16_the_lock_of_a_live_coordinator_process_holds_and_its_death_frees_it`. Mutants: `b16-dead-run-reads-live`, `b16-missing-lock-reads-live`, `b16-unknown-lock-reads-free`.
+
 ## 4. Bites
 
 Consumer: the merger tick on Pro (`com.balizero.localci-merger`), which runs `merger.py` from `origin/main` at the tick's sha. Observe on the first tick after merge: its `merger_tick:` line shows the code sha; a run starts only at >= 100 GB, or a `host_below_floor` skip line carries `floor_gb=90` and `start_floor_gb=100`; over the next 48 h the pro.janitor journal's minimum `free_gb_before` is >= 90, or an `evicted` line names the trough it stopped.
