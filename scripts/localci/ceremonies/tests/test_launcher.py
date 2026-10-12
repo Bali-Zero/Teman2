@@ -1,0 +1,196 @@
+from __future__ import annotations
+
+import difflib
+import os
+import subprocess
+from pathlib import Path
+
+import pytest
+
+from .conftest import SHIPPED, apply_patches
+
+
+GOOD = "a" * 40
+
+
+@pytest.mark.parametrize(
+    ("args", "case"),
+    [
+        ((), "argc"),
+        (("abc", "C3"), "non-hex"),
+        ((GOOD, "bad"), "bad-name"),
+        ((GOOD, "C3;id"), "shell-text"),
+        ((GOOD, "../"), "traversal"),
+    ],
+    ids=lambda value: value if isinstance(value, str) else None,
+)
+def test_argv_refusals_are_64(rig_factory, args, case):
+    rig = rig_factory()
+    assert rig.run_args(args).returncode == 64, case
+
+
+def _guilt(rig, case: str) -> None:
+    if case.startswith("mode-"):
+        rig.probe.chmod(int(case.removeprefix("mode-"), 8))
+    elif case == "acl":
+        subprocess.run(["/bin/chmod", "+a", f"{rig.user} allow write", str(rig.probe)], check=True)
+    elif case == "dangling-link":
+        rig.link.unlink(); rig.link.symlink_to(rig.trust / "missing")
+    elif case == "usr-local-link":
+        rig.link.unlink(); rig.link.symlink_to("/usr/local")
+    elif case == "private-tmp-link":
+        rig.link.unlink(); rig.link.symlink_to("/private/tmp")
+    elif case == "writable-parent":
+        rig.target.parent.chmod(0o775)
+
+
+@pytest.mark.parametrize(
+    "case",
+    ["innocent", "mode-0775", "mode-0757", "mode-0777", "acl", "dangling-link", "usr-local-link", "private-tmp-link", "writable-parent"],
+)
+def test_trust_walk_table(rig_factory, case):
+    rig = rig_factory()
+    if case != "innocent":
+        _guilt(rig, case)
+    got = rig.run(rig.m2, "C3-bootstrap")
+    assert got.returncode == (0 if case == "innocent" else 65), (case, got.stderr)
+
+
+@pytest.mark.parametrize("plant", ["credential.helper", "include.path", "duplicate hooksPath", "core.bare=false"])
+def test_config_allow_list_rejects_every_extra_or_changed_entry(rig_factory, plant):
+    rig = rig_factory()
+    rig.write_git_wrapper(plant=plant)
+    assert rig.run(rig.m2, "C3-bootstrap").returncode == 65
+
+
+def test_c3_and_c12_each_match_the_exact_config_list(rig_factory):
+    rig = rig_factory()
+    assert rig.run(rig.m2, "C3-bootstrap").returncode == 0
+    assert rig.run(rig.m2, "C3").returncode == 0
+    assert rig.run(rig.m2, "C12").returncode == 0
+
+
+@pytest.mark.parametrize("kind", ["absent", "symlink", "unreadable", "directory", "garbage", "fifo"])
+def test_bad_journal_table_halts(rig_factory, kind):
+    rig = rig_factory()
+    journal = rig.base / "last-main"
+    if kind == "symlink":
+        target = rig.root / "journal-target"; target.write_text(rig.m1 + "\n"); journal.symlink_to(target)
+    elif kind == "unreadable":
+        journal.write_text(rig.m1 + "\n"); journal.chmod(0)
+    elif kind == "directory":
+        journal.mkdir()
+    elif kind == "garbage":
+        journal.write_text("not-a-commit\n")
+    elif kind == "fifo":
+        os.mkfifo(journal)
+    name = "C3" if kind == "absent" else "C3-bootstrap"
+    assert rig.run(rig.m2, name).returncode == 65
+
+
+def test_absent_journal_is_allowed_only_for_bootstrap(rig_factory):
+    rig = rig_factory()
+    assert rig.run(rig.m2, "C3-bootstrap").returncode == 0
+    journal = rig.base / "last-main"
+    assert journal.read_text() == rig.m2 + "\n"
+    assert journal.stat().st_mode & 0o777 == 0o444
+
+
+@pytest.mark.parametrize(("previous", "current", "expected"), [("m1", "m2", 0), ("m2", "m2", 0), ("m2", "m1", 65)])
+def test_journal_forward_same_and_rewind(rig_factory, previous, current, expected):
+    rig = rig_factory()
+    rig.set_journal(getattr(rig, previous))
+    assert rig.run(getattr(rig, current), "C3").returncode == expected
+
+
+BODY_CONTRACT = r'''print -r -- "argc=$#"
+print -r -- "one=$1"
+print -r -- "two=$2"
+print -r -- "pwd=$PWD"
+typeset +x LOGNAME OLDPWD PWD SHLVL
+keys=$(/usr/bin/env | /usr/bin/cut -d= -f1 | /usr/bin/grep -v '^_$' | /usr/bin/sort | /usr/bin/paste -sd, -)
+print -r -- "env=$keys"
+'''
+
+
+def test_body_contract_has_two_args_cwd_and_only_the_supplied_env(rig_factory):
+    rig = rig_factory({"C3-bootstrap": BODY_CONTRACT})
+    got = rig.run(rig.m2, "C3-bootstrap")
+    run = rig.runs()[-1]
+    wanted = ("argc=", "one=", "two=", "pwd=", "env=")
+    lines = dict(line.split("=", 1) for line in got.stdout.splitlines() if line.startswith(wanted))
+    assert got.returncode == 0
+    assert lines == {"argc": "2", "one": rig.m2, "two": str(run), "pwd": str(run), "env": "HOME,LC_ALL,PATH"}
+
+
+STDIN_BODY = r'''read -r first || true
+/usr/bin/head -c 1 >/dev/null || true
+/bin/cat >/dev/null & child=$!
+wait "$child"
+print -r -- TAIL-RAN
+'''
+
+
+def test_hostile_stdin_cannot_truncate_the_body(rig_factory):
+    rig = rig_factory({"C3-bootstrap": STDIN_BODY})
+    got = rig.run(rig.m2, "C3-bootstrap", stdin="first\nsecond\nthird\n")
+    assert got.returncode == 0
+    assert "TAIL-RAN" in got.stdout
+
+
+def test_watchdog_timeout_is_70_and_leaves_no_fetch_process(rig_factory):
+    rig = rig_factory()
+    rig.write_git_wrapper(mode="sleep")
+    got = rig.run(rig.m2, "C3-bootstrap")
+    alive, pid = rig.fetch_alive()
+    if alive:
+        rig.kill_fetch(pid)
+    assert got.returncode == 70
+    assert not alive
+
+
+def test_fetch_failure_is_69(rig_factory):
+    rig = rig_factory()
+    rig.write_git_wrapper(mode="fail")
+    assert rig.run(rig.m2, "C3-bootstrap").returncode == 69
+
+
+@pytest.mark.parametrize(("body", "expected"), [("exit 0\n", 0), ("exit 42\n", 42)])
+def test_cleanup_and_receipt_after_body_success_or_failure(rig_factory, body, expected):
+    rig = rig_factory({"C3-bootstrap": body})
+    got = rig.run(rig.m2, "C3-bootstrap")
+    run = rig.runs()[-1]
+    assert got.returncode == expected
+    assert [p.name for p in run.iterdir()] == ["receipt"]
+    assert f"rc={expected}\n" in (run / "receipt").read_text()
+    assert (run / "receipt").stat().st_mode & 0o777 == 0o400
+
+
+def test_zshenv_presence_halts(rig_factory):
+    rig = rig_factory()
+    rig.zshenv.write_text("return 0\n")
+    assert rig.run(rig.m2, "C3-bootstrap").returncode == 65
+
+
+def test_test_copy_diff_is_exactly_the_declared_patch_table(rig_factory):
+    rig = rig_factory()
+    source = SHIPPED.read_text()
+    expected = apply_patches(source, rig.patches)
+    actual_diff = list(difflib.unified_diff(source.splitlines(), rig.launcher.read_text().splitlines(), lineterm=""))
+    declared_diff = list(difflib.unified_diff(source.splitlines(), expected.splitlines(), lineterm=""))
+    assert actual_diff == declared_diff
+    assert [p.name for p in rig.patches] == [
+        "ceremony-home", "tool-root", "trust-owner", "link-parent-stop", "trust-roots", "closure-roots",
+        "c3-file-remote", "c12-file-remote", "zshenv-probe", "unprivileged-install",
+        "watchdog-ticks", "watchdog-tick-duration", "watchdog-grace",
+    ]
+
+
+def test_shipped_security_contract_is_literal():
+    text = SHIPPED.read_text()
+    assert "GIT_SSH_COMMAND=\"$ssh_command\"" in text
+    assert "ProxyCommand=none -o BatchMode=yes -o StrictHostKeyChecking=yes" in text
+    assert "UserKnownHostsFile=/Users/zero-ops/.ssh/known_hosts_localci" in text
+    assert "/System/Volumes/Data|/System/Volumes/Data/*) exit 1" in text
+    assert '/usr/bin/sudo /usr/bin/install -o root -g wheel -m 0444 "$d/last-main.new" "$journal"' in text
+    assert '/usr/bin/env -i HOME=/Users/zero-ops PATH=/usr/bin:/bin:/usr/sbin:/sbin LC_ALL=C /bin/zsh -f "$d/ceremony.zsh" "$M" "$d"' in text
