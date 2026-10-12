@@ -298,3 +298,39 @@ describe("OverviewTab — Company docs tile (K22)", () => {
     expect(screen.queryByText("Company docs")).toBeNull();
   });
 });
+
+describe("OverviewTab — gender reads both stored spellings", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.crm.getClientAiSummary).mockResolvedValue({
+      status: "not_generated",
+    } as never);
+    vi.mocked(api.crm.getClientWaCaseIntelligence).mockResolvedValue({
+      status: "not_generated",
+    } as never);
+  });
+
+  it("control: OCR spelling 'F' shows Female", () => {
+    render(
+      <OverviewTab
+        {...baseProps}
+        expiryAlerts={[]}
+        needsViewerAction={false}
+        client={{ ...client, gender: "F" } as ClientProfile["client"]}
+      />,
+    );
+    expect(screen.getByText("Female")).toBeTruthy();
+  });
+
+  it("GUILT: PATCH spelling 'male' (saved by Edit client) shows Male, not a dash", () => {
+    render(
+      <OverviewTab
+        {...baseProps}
+        expiryAlerts={[]}
+        needsViewerAction={false}
+        client={{ ...client, gender: "male" } as ClientProfile["client"]}
+      />,
+    );
+    expect(screen.getByText("Male")).toBeTruthy();
+  });
+});

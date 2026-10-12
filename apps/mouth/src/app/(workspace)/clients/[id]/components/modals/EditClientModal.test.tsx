@@ -176,3 +176,50 @@ describe("EditClientModal — avatar_url update contract", () => {
     expect(lastUpdatePayload()).toHaveProperty("avatar_url", "");
   });
 });
+
+describe("EditClientModal — gender can be corrected (K13)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getProfile.mockResolvedValue({ email: "surya@balizero.com" });
+    updateClient.mockResolvedValue({});
+  });
+
+  it("GUILT: the form has a Gender field, prefilled from either stored spelling", () => {
+    render(
+      <EditClientModal
+        client={makeClient({ gender: "male" })}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+    expect((screen.getByLabelText(/gender/i) as HTMLSelectElement).value).toBe(
+      "M",
+    );
+  });
+
+  it("GUILT: changing the gender sends it", async () => {
+    render(
+      <EditClientModal
+        client={makeClient({ gender: "M" })}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+    await userEvent.selectOptions(screen.getByLabelText(/gender/i), "F");
+    await clickSave();
+    expect(lastUpdatePayload()).toHaveProperty("gender", "F");
+  });
+
+  it("control: an unchanged gender is not re-sent (no rewrite of the stored spelling)", async () => {
+    render(
+      <EditClientModal
+        client={makeClient({ gender: "M" })}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+    await clickSave();
+    expect(lastUpdatePayload()).not.toHaveProperty("gender");
+    expect(lastUpdatePayload()).toHaveProperty("full_name", "Test Client");
+  });
+});

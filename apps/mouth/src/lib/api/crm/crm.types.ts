@@ -296,7 +296,8 @@ export interface Client {
   passport_number?: string;
   passport_expiry?: string;
   date_of_birth?: string;
-  gender?: "M" | "F";
+  /** "M"/"F" (passport OCR) or "male"/"female" (PATCH) — read via genderCode. */
+  gender?: string;
   birthplace?: string;
   address?: string;
   notes?: string;

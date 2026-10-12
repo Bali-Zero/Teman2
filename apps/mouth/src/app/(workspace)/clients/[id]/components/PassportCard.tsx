@@ -15,6 +15,7 @@ import { logger } from "@/lib/logger";
 import { api } from "@/lib/api";
 import { fileToBase64 } from "@/lib/utils";
 import { useOcrPolling } from "@/hooks/useOcrPolling";
+import { genderCode } from "@/lib/utils/gender";
 import type { ClientProfile, ClientDocument } from "@/lib/api/crm/crm.types";
 import {
   extractDriveFileId,
@@ -270,15 +271,15 @@ export function PassportCard({
           Passport
         </h3>
         {/* Gender Badge */}
-        {client.gender && (
+        {genderCode(client.gender) && (
           <span
             className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-              client.gender === "M"
+              genderCode(client.gender) === "M"
                 ? "bg-blue-500/20 text-blue-400"
                 : "bg-pink-500/20 text-pink-400"
             }`}
           >
-            {client.gender === "M" ? "M" : "F"}
+            {genderCode(client.gender)}
           </span>
         )}
       </div>

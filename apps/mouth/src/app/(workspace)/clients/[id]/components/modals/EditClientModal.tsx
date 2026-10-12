@@ -11,6 +11,7 @@ import { COMMON_NATIONALITIES, CLIENT_STATUSES } from "@/lib/api/crm/crm.types";
 import { Modal } from "../Modal";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 import { COUNTRY_CODES, extractCountryCode } from "../utils";
+import { genderCode } from "@/lib/utils/gender";
 
 /**
  * Static token map for the status picker — one named entry per
@@ -66,6 +67,9 @@ export function EditClientModal({
   // Tracks an explicit "remove photo" so the save can clear the avatar. Uploads
   // persist server-side on their own; the save never re-sends the URL.
   const [avatarRemoved, setAvatarRemoved] = useState(false);
+  // Stored as "M"/"F" (passport OCR) or "male"/"female" (this PATCH); the
+  // select always works in "M"/"F" — see genderCode.
+  const initialGender = genderCode(client.gender) ?? "";
   const [formData, setFormData] = useState({
     full_name: client.full_name || "",
     email: client.email || "",
@@ -76,6 +80,7 @@ export function EditClientModal({
     passport_number: client.passport_number || "",
     passport_expiry: client.passport_expiry?.split("T")[0] || "",
     date_of_birth: client.date_of_birth?.split("T")[0] || "",
+    gender: initialGender,
     address: client.address || "",
     notes: client.notes || "",
     status: client.status || "lead",
@@ -172,6 +177,12 @@ export function EditClientModal({
         // avatar_url is owned by the dedicated upload endpoint and handled
         // explicitly below — never forwarded through this generic field loop.
         if (key === "avatar_url") return;
+        // Gender is sent only when the user changed it, so saving any other
+        // field never rewrites the stored spelling.
+        if (key === "gender") {
+          if (value && value !== initialGender) updates[key] = value;
+          return;
+        }
         if (
           value !== undefined &&
           value !== null &&
@@ -406,6 +417,28 @@ export function EditClientModal({
             }
             className={inputClass}
           />
+        </div>
+        <div>
+          <label
+            htmlFor="edit-client-gender"
+            className="block text-sm font-medium mb-1.5"
+          >
+            Gender
+          </label>
+          <select
+            id="edit-client-gender"
+            value={formData.gender}
+            onChange={(e) =>
+              setFormData({ ...formData, gender: e.target.value })
+            }
+            className={inputClass}
+          >
+            <option value="" disabled={initialGender !== ""}>
+              Select...
+            </option>
+            <option value="M">Male</option>
+            <option value="F">Female</option>
+          </select>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">

@@ -116,4 +116,30 @@ describe("PassportCard", () => {
       expect(onRefresh).toHaveBeenCalled();
     });
   });
+  it("GUILT: gender stored as 'male' (Edit client PATCH spelling) shows the M badge, not F", () => {
+    render(
+      <PassportCard
+        client={{ ...client, gender: "male" } as any}
+        documents={documents as any}
+        formatDate={(value) => value}
+        onRefresh={vi.fn()}
+        clientId={42}
+      />,
+    );
+    expect(screen.getByText("M")).toBeTruthy();
+    expect(screen.queryByText("F")).toBeNull();
+  });
+
+  it("control: OCR spelling 'F' shows the F badge", () => {
+    render(
+      <PassportCard
+        client={{ ...client, gender: "F" } as any}
+        documents={documents as any}
+        formatDate={(value) => value}
+        onRefresh={vi.fn()}
+        clientId={42}
+      />,
+    );
+    expect(screen.getByText("F")).toBeTruthy();
+  });
 });

@@ -107,6 +107,7 @@ const isBirthdayToday = (dateOfBirth: string | undefined): boolean => {
 
 import { formatDate, formatLongSpan } from "@/lib/utils/format-date";
 import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
+import { genderCode } from "@/lib/utils/gender";
 
 // ============================================================================
 // DAY THEME PRIMITIVES (GARUDA Day Edition, WS3)
@@ -383,16 +384,16 @@ export default function ProfilePage() {
               </div>
             )}
             {/* Gender Badge */}
-            {profile.gender && (
+            {genderCode(profile.gender) && (
               <div
                 className={cn(
                   "absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2",
-                  profile.gender === "M"
+                  genderCode(profile.gender) === "M"
                     ? "bg-blue-500 text-white"
                     : "bg-pink-500 text-white",
                 )}
               >
-                {profile.gender}
+                {genderCode(profile.gender)}
               </div>
             )}
           </div>

@@ -30,6 +30,7 @@ import {
   StatePill,
 } from "@/components/workspace/r19";
 import { passportLabel } from "../../client-row-model";
+import { genderCode } from "@/lib/utils/gender";
 
 /** "kitas_card" -> "Kitas Card" — formatting only, never invents a value. */
 function documentTypeLabel(documentType: string): string {
@@ -309,9 +310,9 @@ export function OverviewTab({
                     Gender
                   </p>
                   <p className="text-sm font-medium">
-                    {client.gender === "M" ? (
+                    {genderCode(client.gender) === "M" ? (
                       "Male"
-                    ) : client.gender === "F" ? (
+                    ) : genderCode(client.gender) === "F" ? (
                       "Female"
                     ) : (
                       <span className="text-[var(--bz-text-2)] italic text-xs">
