@@ -148,6 +148,18 @@ receipts:
     exit: 0
     ts: "2026-10-12T02:12:59Z"
     seat: kimi-code/k3, codex-gpt-5.6-sol
+  - claim: "R14 — final council round on head c0fcc4d21c (relay emptied, age-guarded sweep and container reap): kimi PASS, codex REWORK (1 defect, 1 residual)."
+    cmd: scripts/with_seat.sh kimi kimi -p <prompt> -m kimi-code/k3 < /dev/null; scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: >-
+      kimi VERDICT: PASS. codex VERDICT: REWORK. Relay cure verified (in-memory run on the real gateway: board_calls=0, p0_unsent
+      spooled); timestamp parsing verified (nano and plain, malformed fails closed); exit 75 reaches a FAILED rc=75 error
+      heartbeat plus p0 (mini-restore-drill.sh:142), neither silent nor green. DEFECT: the guard returns 75 for a young container
+      (run_drill.sh:191) but the EXIT trap (run_drill.sh:61 -> 54) then runs docker rm -f unconditionally, removing the very
+      container the guard meant to protect; no test carries 75 through the trap. RESIDUAL: a dead work dir younger than 60 min
+      blocks one drill with an alarm. Note: shellcheck flags SC1007 on the empty TG_RELAY_SSH= assignment.
+    exit: 0
+    ts: "2026-10-12T02:32:40Z"
+    seat: kimi-code/k3, codex-gpt-5.6-sol
 dissent:
   - seat: kimi-code/k3 (round 1) and codex-gpt-5.6-sol (round 1)
     objection: >-
@@ -231,3 +243,20 @@ dissent:
     disposition: >-
       OPEN, reported to the coordinator, not cured here. Both depend on whether TG_RELAY_SSH is set on Mini and on killing the
       worker with the wrapper (process group); neither was measured in this session.
+  - seat: codex-gpt-5.6-sol (final council round)
+    objection: >-
+      The young-container guard returns 75, but the EXIT trap removes the container unconditionally, so the protection is
+      cancelled; removal should be ownership-aware (container id or a unique label), in the watchdog too, and a test should carry
+      75 through the trap.
+    status: CONFIRMED
+    disposition: >-
+      OPEN DEFECT, reported to the coordinator, not cured here (this round authorised folding verdicts only and no loop).
+      kimi PASSed the same head and did not raise it.
+  - seat: codex-gpt-5.6-sol (final council round)
+    objection: >-
+      Residual: a dead work dir younger than 60 minutes blocks the next drill until it ages out; the run exits 75, a FAILED
+      error heartbeat and a p0 are raised. Codex text: "Accettabile, non richiede un altro loop."
+    status: PLAUSIBLE
+    disposition: >-
+      RESIDUAL, accepted: the age heuristic is deliberately safety-first (never delete possibly live data) and the cost is one
+      alarmed monthly run in the rare crash case. Also noted, not a defect: shellcheck SC1007 on the empty TG_RELAY_SSH= assignment.
