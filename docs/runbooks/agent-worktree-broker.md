@@ -51,6 +51,8 @@ Due guard proteggono un worktree expired dal drop:
 - **WIP-safe** — worktree con modifiche non committate → skip con WARN, exit 1 (operator deve committare/stashare). Forza con `--force`.
 - **skip-recent** (W62) — worktree con attività filesystem negli ultimi 10min = sessione viva → skip silenzioso, exit 0 (al prossimo tick, quando idle, verrà preso). Soglia configurabile con `--skip-recent-min N` (0 disabilita). `--force` bypassa anche questo.
 
+**Reap-on-merge (prima del TTL).** Un worktree NON ancora scaduto viene rimosso al primo tick di cleanup ≥60 min dopo il merge della sua PR (`MERGED_GRACE_MINUTES`), solo se: pulito, idle da 60 min, nessun processo ancorato (`lsof`), `gh pr list --head <branch>` dà l'ultima PR exact-head `MERGED` con `mergedAt` ≥60 min fa, e il suo HEAD coincide con `headRefOid` della PR (un commit successivo al merge è lavoro nuovo e resta protetto fino al TTL). Solo il braccio gh-merged conta: né "ancestor" (un checkout nuovo senza commit lo è) né content-match. Se `gh` manca/va in errore si torna al percorso TTL. Il ref del branch resta; negli altri casi lo skip è silenzioso (mai un `issue`, mai exit 1). Messaggio: `removed merged worktree <id> (PR #<n> merged <m> min ago, before its TTL)`.
+
 ### Auto-cleanup (cron) — W62 ANTIBODY #1
 
 `--cleanup` NON è più solo manuale. Il LaunchAgent `com.nuzantara.agent-worktree-cleanup.daily` lo invoca **ogni 3 ore al minuto :15 WITA** (00:15, 03:15, … 21:15 — otto passate al giorno) via `scripts/agent_worktree_cleanup_cron.sh`.
