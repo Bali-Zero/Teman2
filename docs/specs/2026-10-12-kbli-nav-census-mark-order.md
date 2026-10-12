@@ -36,6 +36,7 @@ because either may compile. Walk forwards from the mark and backwards to the roo
 
 **Walk out of closures.** A mark inside a group (a closure or an argument) of an enclosing expression takes that expression's links as its
 own:
+
 - if the group belongs to a link L (`.overlay { ... }`, `.background(...)`), only the links AFTER L apply (an offset BEFORE the overlay
   does not move the mark: innocent I2);
 - if the group belongs to the root (`Group`, `VStack`, `ForEach`, ...), every link applies;
@@ -67,17 +68,17 @@ OR from an `extension T: ...` (L7), plus every function or ViewModifier struct t
 Each is a guilt the tool must fail, with the gate's case id. None is live in `Sources/` today (22 move/animation sites, none with a
 marked element in its subject; 0 postfix `#if`; the 26 labelled trailing closures are all on roots).
 
-| id | shape | cases |
-|---|---|---|
-| L1 | trailing closure with the `{` on the next line, with parens or without | B1a, B1b |
-| L2 | labelled trailing closures `label: { ... }`, forwards and backwards | B2a, B2b |
-| L3 | postfix `#if` / `#elseif` / `#else` / `#endif` inside the chain | B3a, B3b, B3c |
-| L4 | a mark inside a closure or argument whose enclosing chain then moves or animates: `Group { mark }.offset`, `host.overlay { mark }.offset` / `.modifier(Beat)`, `ForEach { mark }.offset` | B4, B5a, B5b, B5c |
-| L5 | a marked view used by name and moved where it is used, e.g. `matrix.offset(...)`; offsets as well as animations | B15 |
-| L6 | a MOVE helper: a func or ViewModifier whose body applies `.offset`, the real `HoverLift` included | B6, B7a, B7b |
-| L7 | an Animatable conformance declared in an `extension` | B8 |
-| L8 | a non-Animatable ViewModifier that applies Beat or another animation | B11 |
-| L9 | built-in render effects: scaleEffect, rotationEffect, rotation3DEffect, transformEffect, projectionEffect, matchedGeometryEffect | B14 |
+| id  | shape                                                                                                                                                                                    | cases             |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| L1  | trailing closure with the `{` on the next line, with parens or without                                                                                                                   | B1a, B1b          |
+| L2  | labelled trailing closures `label: { ... }`, forwards and backwards                                                                                                                      | B2a, B2b          |
+| L3  | postfix `#if` / `#elseif` / `#else` / `#endif` inside the chain                                                                                                                          | B3a, B3b, B3c     |
+| L4  | a mark inside a closure or argument whose enclosing chain then moves or animates: `Group { mark }.offset`, `host.overlay { mark }.offset` / `.modifier(Beat)`, `ForEach { mark }.offset` | B4, B5a, B5b, B5c |
+| L5  | a marked view used by name and moved where it is used, e.g. `matrix.offset(...)`; offsets as well as animations                                                                          | B15               |
+| L6  | a MOVE helper: a func or ViewModifier whose body applies `.offset`, the real `HoverLift` included                                                                                        | B6, B7a, B7b      |
+| L7  | an Animatable conformance declared in an `extension`                                                                                                                                     | B8                |
+| L8  | a non-Animatable ViewModifier that applies Beat or another animation                                                                                                                     | B11               |
+| L9  | built-in render effects: scaleEffect, rotationEffect, rotation3DEffect, transformEffect, projectionEffect, matchedGeometryEffect                                                         | B14               |
 
 Measured at the #8327 gate: `Group { chip.national }.offset(y: 4)` moves `chip.national`'s frame from y 71 to y 75 together with its ink and
 `png_census` passes it (C23: "3 chips, off their state's tone: none"); the same on the ladder's overlay host is caught only by C21, which
