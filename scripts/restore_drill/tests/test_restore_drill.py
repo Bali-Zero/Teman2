@@ -155,3 +155,26 @@ def test_exit_paths_do_not_hide_an_incomplete_restore_or_an_unrecorded_green() -
     assert '[ -n "$DRILL_PID" ]; then' in payload and "kill -0 \"$DRILL_PID\"" not in payload.split("cleanup()")[1].split("trap 'exit 143'")[0]
     assert 'mv -f "$tmp"' in wrapper  # the sidecar is replaced atomically
     assert '! heartbeat "ok"' in wrapper  # a green that cannot be recorded is CANNOT-VERIFY
+
+
+def _payload_text() -> str:
+    return (ROOT / "run_drill.sh").read_text(encoding="utf-8")
+
+
+def test_cleanup_and_watchdog_remove_only_the_container_this_run_started() -> None:
+    text = _payload_text()
+    cleanup = text[text.index("cleanup() {") : text.index("\n}\n", text.index("cleanup() {"))]
+    watchdog = text[text.index('sleep "$TIMEOUT_SECONDS"') :]
+    for block in (cleanup, watchdog):
+        assert 'docker rm -f "$CONTAINER_NAME"' not in block
+        assert '"$WORK_DIR/container-id"' in block
+
+
+def test_a_refused_run_writes_no_container_id_so_nothing_is_reaped() -> None:
+    text = _payload_text()
+    refusal = text.index("return 75")
+    record = text.index('> "$WORK_DIR/container-id"')
+    assert refusal < record, "the 75 refusal must happen before this run records any container"
+    # the only name-based removal is the stale reap, and it sits after the age guard
+    assert text.count('docker rm -f "$CONTAINER_NAME"') == 1
+    assert refusal < text.index('docker rm -f "$CONTAINER_NAME"') < record
