@@ -1,0 +1,52 @@
+{
+  "expected_candidates": ["E28D"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "Japanese electronics firm director (52) opening an Indonesian foreign branch past the published investment threshold, applying offshore, no IKN subsidiary",
+  "overrides": {
+    "intent.desired_entry_date": {
+      "status": "KNOWN",
+      "value": "2026-11-02"
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["INVESTMENT"]
+    },
+    "investment.capital_market_only": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "investment.establishes_indonesian_company": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "investment.foreign_branch_or_subsidiary": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "investment.ikn_subsidiary": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "investment.meets_published_threshold": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "investment.proposed_role": {
+      "status": "KNOWN",
+      "value": "SHAREHOLDER_DIRECTOR"
+    },
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "1974-04-25"
+    },
+    "person.nationalities": {
+      "status": "KNOWN",
+      "value": ["JP"]
+    },
+    "sponsor.type": {
+      "status": "KNOWN",
+      "value": "INVESTMENT"
+    }
+  },
+  "product_code": "E28D"
+}
