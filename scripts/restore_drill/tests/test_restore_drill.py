@@ -181,3 +181,61 @@ def test_a_refused_run_creates_nothing_so_its_label_owns_nothing() -> None:
     # the only name-based removal is the stale reap, after the age guard and before creation
     assert text.count('docker rm -f "$CONTAINER_NAME"') == 1
     assert refusal < reap < create
+
+
+def _run_payload_until_listing(tmp_path: Path, extra_env: dict[str, str]) -> tuple[int, str, list[str]]:
+    """Run the real payload with stub tools; the stub `aws` records its argv and refuses the listing."""
+    import hashlib
+    import os
+    import subprocess
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    record = tmp_path / "aws.argv"
+    stubs = {
+        "aws": f'#!/bin/bash\nprintf "%s\\n" "$*" >> "{record}"\nexit 1\n',
+        "colima": '#!/bin/bash\nprintf "Filesystem 1024-blocks Used Available Capacity Mounted\\n/dev/root 1 1 99999999 1%% /\\n"\n',
+        "docker": '#!/bin/bash\ncase "$1 $2" in "image inspect") echo "$STUB_IMAGE_HASH" ;; esac\nexit 0\n',
+        "psql": "#!/bin/bash\nexit 0\n",
+    }
+    for name, body in stubs.items():
+        stub = bin_dir / name
+        stub.write_text(body, encoding="utf-8")
+        stub.chmod(0o755)
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("RESTORE_DRILL_", "TIGRIS_", "AWS_"))}
+    env.update(
+        PATH=f"{bin_dir}:{env.get('PATH', '/usr/bin:/bin')}",
+        AWS_ACCESS_KEY_ID="stub",
+        AWS_SECRET_ACCESS_KEY="stub",
+        STUB_IMAGE_HASH=hashlib.sha256((ROOT / "Dockerfile").read_bytes()).hexdigest(),
+        RESTORE_DRILL_CONTAINER=f"pytest-drill-{os.getpid()}",
+        # The watchdog's `sleep` outlives the run by design and would hold a pipe open: output goes to
+        # a file, and a short cap bounds the orphan.
+        RESTORE_DRILL_TIMEOUT_SECONDS="20",
+        **extra_env,
+    )
+    out = tmp_path / "payload.out"
+    with out.open("w", encoding="utf-8") as sink:
+        proc = subprocess.run(
+            ["/bin/bash", str(ROOT / "run_drill.sh")], env=env, stdout=sink, stderr=sink, timeout=60
+        )
+    calls = record.read_text(encoding="utf-8").splitlines() if record.exists() else []
+    return proc.returncode, out.read_text(encoding="utf-8"), calls
+
+
+def test_the_generic_secrets_env_bucket_cannot_redirect_the_drill(tmp_path: Path) -> None:
+    # Mini's secrets env exports TIGRIS_BUCKET for the app's media bucket and the wrapper sources it with
+    # `set -a`; a generic TIGRIS_ENDPOINT would leak the same way. The drill must still list the backups bucket.
+    rc, stderr, calls = _run_payload_until_listing(
+        tmp_path, {"TIGRIS_BUCKET": "media-bucket", "TIGRIS_ENDPOINT": "https://media.invalid"}
+    )
+    assert rc == 2 and "cannot list Tigris postgres backups" in stderr
+    assert calls == ["--endpoint-url https://fly.storage.tigris.dev s3 ls s3://nuzantara-backups/postgres/"]
+
+
+def test_the_drill_scoped_bucket_override_still_applies(tmp_path: Path) -> None:
+    rc, _, calls = _run_payload_until_listing(
+        tmp_path, {"TIGRIS_BUCKET": "media-bucket", "RESTORE_DRILL_TIGRIS_BUCKET": "drill-bucket"}
+    )
+    assert rc == 2
+    assert calls == ["--endpoint-url https://fly.storage.tigris.dev s3 ls s3://drill-bucket/postgres/"]
