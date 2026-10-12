@@ -1,9 +1,11 @@
 """seq-27 — the negative and boundary side of the visit family (B1, C1, C6, D12).
 
-The gold-coverage corpus (``gold_coverage/personas/``) is positive-only by design: every file
-there says "this person IS supported for this product". The interview-walk census pins a state
-and a candidate list per walk, never a reason code, and no walk reaches the edges below. So the
-rules that decide the edges of the visit family had no witness that fails when one of them moves:
+Prior coverage, stated exactly. ``test_seq23_pack.py`` already carries an engine witness and a
+mutation/revert proof for ``ACTIVE_OVERSTAY_SETTLE_FIRST`` (one C1 case, 5 days, on the seq-23
+candidate pack), and the interview-walk census already walks the D12 no-route explorer to its dead
+end (``NO_SUPPORTED_PATH``, no candidate) -- but it pins a state and a candidate list, never the
+reason code. The gold-coverage corpus (``gold_coverage/personas/``) is positive-only by design.
+What was still missing, and is added here for the SIGNED seq-27 pack:
 
 * B1 ``intent.stay_days <= 60`` -- 60 offered, 61 not;
 * C1 ``intent.stay_days <= 180`` -- 180 offered, 181 not;
@@ -11,13 +13,18 @@ rules that decide the edges of the visit family had no witness that fails when o
   and the unknown-sponsor/unknown-stay sides, each on its own;
 * D12 ``hf.d12-onshore-conversion-excluded`` -- the named cause ``D12_NOT_CONVERTIBLE``, and the
   twin that proves the cause is the conversion answer and nothing else;
-* the two global overstay filters: ``overstay_days > 0`` -> ``ACTIVE_OVERSTAY_SETTLE_FIRST``,
-  ``overstay_days > 60`` -> ``OVERSTAY_EXCEEDS_60_DAYS`` (no test named it before this file).
+* the two global overstay filters, at 0 / 1 / 60 / 61 days and through C1, C6 and D12:
+  ``overstay_days > 0`` -> ``ACTIVE_OVERSTAY_SETTLE_FIRST``, ``overstay_days > 60`` ->
+  ``OVERSTAY_EXCEEDS_60_DAYS`` (no other test in the visa_engine suite names it). The overstay
+  cases use an ONSHORE applicant on a compatible visit-class status: an overstay describes a
+  person in Indonesia (UU 6/2011 art. 78), and an offshore base with an overstay is a contradiction
+  the API boundary flags with ``CONFLICTING_IMMIGRATION_STATUS_CONDITION`` -- asserted absent.
 
 Every case is evaluated against the SIGNED seq-27 pack by name -- not "the highest pack on disk"
 -- at a fixed instant inside its freshness window, so the file stays a statement about seq-27
 after a later pack is signed. Cases are built from the corpus's own persona and walk JSON with
-ONE fact changed, so a passing twin and its failing sibling differ in exactly that fact.
+ONE fact changed, so a passing twin and its failing sibling differ in exactly that fact (the
+onshore overstay bases first move the person into Indonesia and are proven supported on their own).
 
 What this file does NOT pin, on purpose: the ride-along reasons that appear next to a named cause
 (``BRIDGING_ONSHORE_ONLY`` beside a C6 miss, ``BVK_NATIONALITY_ONLY``/``AGE_BELOW_55`` beside a
@@ -263,17 +270,57 @@ def test_d12_with_an_unanswered_conversion_question_asks_it(
 # ---------------------------------------------------------------------------
 
 
+#: A person who is physically in Indonesia on a visit-class stay is the only person an overstay
+#: can describe (UU 6/2011 art. 78: staying in Indonesian territory past the permit's expiry). The
+#: offshore corpus bases carry ``currently_in_indonesia == false``; changing only the overstay on
+#: them builds a contradictory applicant that the API boundary flags
+#: (``CONFLICTING_IMMIGRATION_STATUS_CONDITION``) -- not the person the filters are about.
+_CONFLICT_NOTICE = "CONFLICTING_IMMIGRATION_STATUS_CONDITION"
+
+
+def _onshore(base: Facts, status_code: str) -> Facts:
+    """``base`` for someone already in Indonesia on a visit-class stay (``status_code``)."""
+    return base | {
+        "immigration.currently_in_indonesia": _known(True),
+        "immigration.current_status_code": _known(status_code),
+        "immigration.overstay_days": _known(0),
+    }
+
+
 @pytest.fixture(scope="module")
 def bases(tourist: Facts, c6_persona: Facts, d12_persona: Facts) -> dict[str, Facts]:
-    return {"C1": tourist, "C6": c6_persona, "D12": d12_persona}
+    """Each product's corpus base, moved onshore on a compatible visit-class status."""
+    return {
+        "C1": _onshore(tourist, "C1"),
+        "C6": _onshore(c6_persona, "C6"),
+        "D12": _onshore(d12_persona, "C1"),
+    }
+
+
+def test_an_overstay_set_on_an_offshore_base_is_the_contradiction_the_boundary_flags(
+    decide: Any, tourist: Facts
+) -> None:
+    """Why the overstay cases below move the base onshore: offshore + overstay is not a person."""
+    actual = decide(_with(tourist, immigration__overstay_days=_known(61)))
+    assert _CONFLICT_NOTICE in actual["notice_codes"]
+
+
+@pytest.mark.parametrize("product", ["C1", "C6", "D12"])
+def test_the_onshore_bases_are_consistent_and_supported_without_an_overstay(
+    decide: Any, bases: dict[str, Facts], product: str
+) -> None:
+    actual = decide(bases[product])
+    assert (actual["state"], actual["candidates"]) == ("SUPPORTED_CANDIDATES", [product])
+    assert _CONFLICT_NOTICE not in actual["notice_codes"]
 
 
 @pytest.mark.parametrize("product", ["C1", "C6", "D12"])
 def test_no_overstay_is_the_supported_twin(
     decide: Any, bases: dict[str, Facts], product: str
 ) -> None:
-    actual = decide(bases[product] | {"immigration.overstay_days": _known(0)})
+    actual = decide(_with(bases[product], immigration__overstay_days=_known(0)))
     assert (actual["state"], actual["candidates"]) == ("SUPPORTED_CANDIDATES", [product])
+    assert _CONFLICT_NOTICE not in actual["notice_codes"]
 
 
 @pytest.mark.parametrize("overstay_days", [1, 60])
@@ -281,28 +328,30 @@ def test_no_overstay_is_the_supported_twin(
 def test_any_overstay_up_to_60_days_says_settle_it_first_and_offers_nothing(
     decide: Any, bases: dict[str, Facts], product: str, overstay_days: int
 ) -> None:
-    actual = decide(bases[product] | {"immigration.overstay_days": _known(overstay_days)})
+    actual = decide(_with(bases[product], immigration__overstay_days=_known(overstay_days)))
     assert (actual["state"], actual["candidates"]) == ("NO_SUPPORTED_PATH", [])
     assert "ACTIVE_OVERSTAY_SETTLE_FIRST" in actual["no_path_reason_codes"]
     assert "OVERSTAY_EXCEEDS_60_DAYS" not in actual["no_path_reason_codes"]
+    assert _CONFLICT_NOTICE not in actual["notice_codes"]
 
 
 @pytest.mark.parametrize("product", ["C1", "C6", "D12"])
 def test_an_overstay_past_60_days_adds_its_own_named_cause(
     decide: Any, bases: dict[str, Facts], product: str
 ) -> None:
-    actual = decide(bases[product] | {"immigration.overstay_days": _known(61)})
+    actual = decide(_with(bases[product], immigration__overstay_days=_known(61)))
     assert (actual["state"], actual["candidates"]) == ("NO_SUPPORTED_PATH", [])
     assert {"ACTIVE_OVERSTAY_SETTLE_FIRST", "OVERSTAY_EXCEEDS_60_DAYS"} <= set(
         actual["no_path_reason_codes"]
     )
+    assert _CONFLICT_NOTICE not in actual["notice_codes"]
 
 
 @pytest.mark.parametrize("product", ["C1", "C6", "D12"])
 def test_an_undeclared_overstay_is_asked_never_read_as_zero(
     decide: Any, bases: dict[str, Facts], product: str
 ) -> None:
-    actual = decide(bases[product] | {"immigration.overstay_days": _UNKNOWN})
+    actual = decide(_with(bases[product], immigration__overstay_days=_UNKNOWN))
     assert actual["state"] == "NEEDS_INPUT"
     assert actual["candidates"] == []
     assert "immigration.overstay_days" in actual["missing_facts"]
