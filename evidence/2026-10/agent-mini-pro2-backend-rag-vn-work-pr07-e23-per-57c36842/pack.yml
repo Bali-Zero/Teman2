@@ -1,0 +1,89 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa night plan (audit.json, PR-07, findings F01/F20/F34/F48/F57): the E23 family had no gold-coverage
+  persona, so the floor gate could not notice a rule change that unsupported E23, E23U or E23V.
+mission: >-
+  The gold-coverage floor gate replays E23, E23U and E23V on the newest signed pack, so a rule change
+  that unsupports any of the three turns the gate red.
+lanes:
+  - lane: pr07-personas
+    role: build
+    seat: kimi-code/kimi-for-coding via seat_build (built the three personas and the seq-19/seq-20 count wiring in the Mini worktree).
+  - lane: pr07-package
+    role: build
+    seat: claude-sonnet-5 (packager; cured two LOW wording findings, ran the suite, wrote this pack).
+  - lane: pr07-redteam
+    role: review
+    seat: claude-opus (read-only red team; replayed seq-27, ran 9 guilt mutations, ran the suite).
+pii_scan: clean
+bites: "consumer: the gold-coverage floor gate (test_gold_coverage_floor.py globs gold_coverage/personas and replays them through apps/backend-rag/backend/scripts/visa_engine/gold_coverage_replay.py); observation: in the PR-lane backend-tests run and the merge_group run test_gold_coverage_floor.py is PASSED with 23 personas including E23, E23U, E23V."
+receipts:
+  - claim: "The gold-coverage floor and the seq-19 and seq-20 persona replays are green after the cures (E23 replays on both older packs; E23U and E23V are excluded by name there)."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_gold_coverage_floor.py backend/tests/services/visa_engine/test_seq19_pack.py backend/tests/services/visa_engine/test_seq20_pack.py -k "Gold or gold or floor"
+    result: "51 passed, 131 deselected"
+    exit: 0
+    ts: "2026-10-12T00:00:00Z"
+    seat: this session (Mini worktree)
+  - claim: "The floor test passes over the whole corpus (summary total equals the folder file count, file names match product codes)."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_gold_coverage_floor.py
+    result: "3 passed (test_corpus_is_not_empty, test_every_corpus_persona_is_supported_for_its_product, test_corpus_file_names_match_their_product_code)"
+    exit: 0
+    ts: "2026-10-12T00:00:00Z"
+    seat: this session (Mini worktree)
+  - claim: "The whole visa_engine service test tree, with xdist, at the cured working tree on top of dfb6e2b74a."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine -n 6
+    result: "2965 passed, 15 skipped, 2 failed, 31 errors in 31.86s. All 33 non-passes are database-side: 31 errors in test_evaluate_endpoint.py (asyncpg TooManyColumnsError: tables can have at most 1600 columns) and 2 failures in test_visa_engine_retention_fk_registry.py (UndefinedColumnError policy_scope; migration 281 not live)."
+    exit: 1
+    ts: "2026-10-12T00:00:00Z"
+    seat: this session (Mini worktree)
+  - claim: "The same 33 non-passes reproduce on the main checkout (f4027b5766) with no change from this branch, so they come from the local test-database schema, not from the personas."
+    cmd: cd /Users/nuzantara/nuzantara/apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_evaluate_endpoint.py backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py
+    result: "2 failed, 266 passed, 31 errors - the identical failures and errors"
+    exit: 1
+    ts: "2026-10-12T00:00:00Z"
+    seat: this session (Mini main checkout)
+  - claim: "Red team replay on seq-27 (signed pack, pinned to its signed_at): the whole corpus 23 of 23, and each new persona SUPPORTED_CANDIDATES on sequence 27."
+    cmd: gold_coverage_replay over the corpus; gold_coverage_eval --persona E23 / E23U / E23V
+    result: "23/23 pass; rc=0 SUPPORTED_CANDIDATES for each of the three"
+    exit: 0
+    ts: "2026-10-12T00:00:00Z"
+    seat: claude-opus (red team)
+  - claim: "Guilt mutations: flipping each persona's key fact (sponsor_confirmed or employer to false, diplomatic_household or trade_office to false, wrong sponsor.type, purposes to TOURISM) turns all 9 variants red (NO_SUPPORTED_PATH or NEEDS_INPUT)."
+    cmd: gold_coverage_eval on 9 mutated copies of the three personas
+    result: "9 of 9 variants red"
+    exit: 0
+    ts: "2026-10-12T00:00:00Z"
+    seat: claude-opus (red team)
+decisions:
+  - id: D-exclusion-by-name
+    decision: >-
+      E23U and E23V are excluded by name from the seq-19 and seq-20 coverage replays, the shape already used
+      for E33G and D2__121D: those packs carry only review.e23u/v.requested-product rules, and the
+      eligibility support rules el.e23u.diplomatic-household and el.e23v.trade-office first appear in
+      rulepack-prod-021 (valid from 2026-09-13, 2026-09-16 by seq-26). E23 replays green on both and stays in.
+  - id: D-counts
+    decision: >-
+      seq-19 replays 19 of the 23 personas (test_corpus_has_nineteen_personas) and seq-20 replays 21
+      (test_corpus_has_twenty_one_personas); the seq-27 floor replays all 23.
+  - id: D-synthetic
+    decision: >-
+      The personas are synthetic (generic label, nationality, role, age; birth dates follow the corpus -03-14
+      convention); no real-person data.
+dissent:
+  - seat: "claude-opus (red team)"
+    objection: "LOW 1: the new exclusion comments in test_seq19_pack.py and test_seq20_pack.py say E23U/E23V have no support rule until seq-27; the rules in fact first appear in seq-21 (valid from 2026-09-13)."
+    status: RETRACTED
+    disposition: "Cured: both comments now say the rules come with seq-21 (reworded to no eligibility support rule before seq-21). The exclusion itself was already correct."
+  - seat: "claude-opus (red team)"
+    objection: "LOW 2: a stale count remains, the test_seq19_pack.py section header says all 18 personas while the gate replays 19 of 23; line 1022 says all 20 personas."
+    status: RETRACTED
+    disposition: "Cured the header (now 19 of 23 personas). Line 1022 refers to the separate gold_replay PERSONAS set, measured on both packs, and is correct; left unchanged."
+  - seat: "claude-opus (red team)"
+    objection: "LOW 3 (informational): the floor check is a subset match (state equal, expected_candidates contained), so an extra candidate leaking in would not turn these personas red; F34/F48 ask for a price-on-consultation guard for E23V which a persona cannot express."
+    status: PLAUSIBLE
+    disposition: "Accepted as the floor gate's existing contract, not a defect of this change. Today the actual candidate sets on seq-27 are exactly [E23], [E23U] and [E23V]. The E23V price-state guard is deferred, as the plan already states."
+  - seat: "claude-opus (red team)"
+    objection: "Suite note: 2 failures and 31 errors in the visa_engine tree (test_evaluate_endpoint.py, test_visa_engine_retention_fk_registry.py), not proven against a baseline."
+    status: RETRACTED
+    disposition: "Baselined here: the identical 2 failed and 31 errors reproduce on the main checkout at f4027b5766 with this branch absent; neither file touches gold coverage or personas. Local test-database schema state."
