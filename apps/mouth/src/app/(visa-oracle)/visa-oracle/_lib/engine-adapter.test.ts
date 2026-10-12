@@ -137,13 +137,49 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     expect(candidate.price).toEqual({
       status: "CONTACT_REQUIRED",
       message: {
-        en: "Price on consultation — no fixed price is published for this path yet. You can ask a Bali Zero advisor.",
-        id: "Harga melalui konsultasi — belum ada harga tetap yang dipublikasikan untuk jalur ini. Anda dapat bertanya kepada konsultan Bali Zero.",
+        en: "Price on consultation. You can ask a Bali Zero advisor.",
+        id: "Harga melalui konsultasi. Anda dapat bertanya kepada konsultan Bali Zero.",
       },
     });
     expect(candidate.documents).toEqual([]);
     expect(JSON.stringify(candidate)).not.toContain("60 days");
   });
+
+  it.each([
+    "PRICING_KEY_NOT_CONFIGURED",
+    "PRICING_ROW_MISSING",
+    "PRICING_ROW_NOT_EXACT_AMOUNT",
+  ])(
+    "CONTACT_REQUIRED for %s never claims what that reason code does not prove",
+    (reasonCode) => {
+      // The backend (pricing_adapter.py resolve_pricing_key) returns
+      // CONTACT_REQUIRED for a product left without a pricing key AND for a
+      // catalogue row that is missing or has no exact amount. "No fixed
+      // price is published" is true for the first only, so the one sentence
+      // shown for all three says no more than "price on consultation".
+      const response = makeVisaOracleResponse();
+      response.display.candidates[0].pricing = {
+        ...response.display.candidates[0].pricing,
+        status: "CONTACT_REQUIRED",
+        reason_code: reasonCode,
+      };
+      const outcome = buildEngineOutcome(response);
+      if (outcome.state !== "SUPPORTED_CANDIDATES")
+        throw new Error("unexpected state");
+      const candidatePrice = outcome.candidates[0].price;
+      expect(candidatePrice.status).toBe("CONTACT_REQUIRED");
+      if (candidatePrice.status !== "CONTACT_REQUIRED")
+        throw new Error("unexpected price status");
+      expect(candidatePrice.message.en).not.toMatch(
+        /no fixed price|published/i,
+      );
+      expect(candidatePrice.message.id).not.toMatch(
+        /harga tetap|dipublikasikan/i,
+      );
+      expect(candidatePrice.message.en).toMatch(/Price on consultation/);
+      expect(candidatePrice.message.id).toMatch(/Harga melalui konsultasi/);
+    },
+  );
 
   it("keeps E33A/B/C consultation copy honest and pins the E33A central-government exclusion in both languages", () => {
     expect(SUPPORT_REASON_COPY.E33A_GOVERNMENT_INVITATION_ELIGIBLE).toEqual({
@@ -2678,8 +2714,8 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
       throw new Error("unexpected state");
     expect(outcome.reviewReasons).toHaveLength(1);
     expect(outcome.reviewReasons[0].message).toEqual({
-      en: "One of your answers about your planned activity, investment vehicle, retirement basis or diaspora connection is one these rules cannot decide on their own, so a Bali Zero advisor needs to confirm it before a path can be confirmed.",
-      id: "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, sarana investasi, dasar pensiun, atau hubungan diaspora tidak dapat diputuskan sendiri oleh aturan ini, sehingga konsultan Bali Zero perlu memastikannya sebelum jalur dapat dikonfirmasi.",
+      en: "One of your answers about your planned activity, investment vehicle, retirement basis or diaspora connection is one these rules cannot decide on their own, so no path can be confirmed yet. A Bali Zero advisor can go over it with you.",
+      id: "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, sarana investasi, dasar pensiun, atau hubungan diaspora tidak dapat diputuskan sendiri oleh aturan ini, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat membahasnya bersama Anda.",
     });
     expect(
       REVIEW_REASON_ELEMENTS.DISCLOSED_ACTIVITY_BOUNDARY_REVIEW,

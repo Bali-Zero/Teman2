@@ -32,10 +32,21 @@ const PROMISE: readonly RegExp[] = [
   /\bdipastikan oleh konsultan\b/i,
   /\bditinjau oleh seseorang\b/i,
   /\bkasus anda ditinjau\b/i,
+  // An obligation laid on the advisor is no more an offer than a promise is:
+  // "an advisor needs to confirm it" commits a person who has not been engaged.
+  /\b(advisor|consultant|specialist) needs? to\b/i,
+  /\bneeds? to be (confirmed|reviewed|checked|verified) by (a |an )?(bali zero )?(advisor|consultant)/i,
+  /\bneeds? a (fresh )?(check|review) by (a |an )?(bali zero )?(advisor|consultant)/i,
+  /\bkonsultan (bali zero )?perlu\b/i,
+  /\bperlu (diperiksa ulang|dikonfirmasi|ditinjau|diverifikasi) oleh konsultan/i,
+  /\b(memerlukan|diperlukan) (peninjauan|konfirmasi|pemeriksaan)[^.]{0,80}oleh konsultan/i,
 ];
 
-// Second Home (E33) sentences belong to the E33 lane; they carry the same
-// template and are rewritten there, not here.
+// EXEMPTION, stated openly: Second Home (E33*) keys are skipped by name. Their
+// sentences belong to Track C (the E33 lane) and still carry the old promise
+// template ("We confirm", "We review", "We work out", "We check"); they are
+// rewritten there, not in this PR. Every claim below is therefore "every
+// non-E33 code", never "every visa code".
 const E33_OWNED = /^E33/;
 
 function offenders(rows: [string, LocalizedText][]): string[] {
@@ -59,7 +70,7 @@ function table(
     .map(([code, copy]) => [`${name}.${code}`, copy]);
 }
 
-describe("the advisor is offered, never promised", () => {
+describe("the advisor is offered, never promised (every non-E33 code; E33 is Track C)", () => {
   it("next steps for every state", () => {
     const rows: [string, LocalizedText][] = [];
     for (const state of [
@@ -134,6 +145,51 @@ describe("the advisor is offered, never promised", () => {
     for (const copy of old) {
       expect(offenders([["old", copy]]).length).toBeGreaterThan(0);
     }
+  });
+
+  it("the guard is guilty on an advisor made an obligation, not an offer", () => {
+    const obligations: LocalizedText[] = [
+      {
+        en: "so a Bali Zero advisor needs to confirm it before a path can be confirmed.",
+        id: "sehingga konsultan Bali Zero perlu memastikannya sebelum jalur dapat dikonfirmasi.",
+      },
+      {
+        en: "One of the official sources behind this result needs a fresh check by a Bali Zero advisor before the result can stand.",
+        id: "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang oleh konsultan Bali Zero sebelum hasilnya dapat dipakai.",
+      },
+      {
+        en: "a Bali Zero advisor needs to review the details before any path can be confirmed.",
+        id: "dan memerlukan peninjauan detail oleh konsultan Bali Zero sebelum jalur apa pun dapat dikonfirmasi.",
+      },
+      {
+        en: "x",
+        id: "diperlukan konfirmasi oleh konsultan Bali Zero mengenai status mana yang benar.",
+      },
+    ];
+    for (const copy of obligations) {
+      expect(offenders([["obligation", copy]]).length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("the advisor is offered no more than the rules and Imigrasi support", () => {
+  const blacklist = NOTICE_CONDITION_COPY.DISCLOSED_BLACKLIST_ENTRY_CONDITION;
+
+  it("the blacklist notice names the disclosure without stating a legal effect or an advisor lookup the rule pack does not hold", () => {
+    // UU 6/2011 Pasal 42 says the visa application is REJECTED for someone on
+    // the penangkalan list, and immigration officers keep that list. Neither
+    // the rule pack nor imigrasi.go.id says an applicant is barred from
+    // SUBMITTING, nor that an advisor can look the entry up with Ditjen
+    // Imigrasi. The notice may say what the person flagged and offer to go
+    // over it, and nothing about the ban's effect or the advisor's reach.
+    expect(blacklist.en).not.toMatch(
+      /stops any application|filed|lifted|verify your status|Ditjen/i,
+    );
+    expect(blacklist.id).not.toMatch(
+      /tidak dapat diproses|dicabut|memverifikasi status|Ditjen/i,
+    );
+    expect(blacklist.en).toMatch(/advisor can go over/i);
+    expect(blacklist.id).toMatch(/konsultan Bali Zero dapat membahas/i);
   });
 });
 

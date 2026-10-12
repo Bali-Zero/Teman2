@@ -1330,8 +1330,8 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // question DIMENSIONS below as the most specific honest statement
   // available, and flagged as a split candidate in the PR-O2 report.
   DISCLOSED_ACTIVITY_BOUNDARY_REVIEW: text(
-    "One of your answers about your planned activity, investment vehicle, retirement basis or diaspora connection is one these rules cannot decide on their own, so a Bali Zero advisor needs to confirm it before a path can be confirmed.",
-    "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, sarana investasi, dasar pensiun, atau hubungan diaspora tidak dapat diputuskan sendiri oleh aturan ini, sehingga konsultan Bali Zero perlu memastikannya sebelum jalur dapat dikonfirmasi.",
+    "One of your answers about your planned activity, investment vehicle, retirement basis or diaspora connection is one these rules cannot decide on their own, so no path can be confirmed yet. A Bali Zero advisor can go over it with you.",
+    "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, sarana investasi, dasar pensiun, atau hubungan diaspora tidak dapat diputuskan sendiri oleh aturan ini, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat membahasnya bersama Anda.",
   ),
 
   // --- QW-4b (PR-O2, D1): the 29 codes that previously fell back to
@@ -1386,8 +1386,8 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // meaning not fully pinned to a specific fact pair (not a split
   // candidate — there is no enumerable second cause to split out).
   CONFLICTING_IMMIGRATION_STATUS_REVIEW: text(
-    "Your answers about your current immigration status conflict with each other — a Bali Zero advisor needs to confirm which status is correct before a path can be confirmed.",
-    "Jawaban Anda tentang status keimigrasian Anda saat ini saling bertentangan — diperlukan konfirmasi oleh konsultan Bali Zero mengenai status mana yang benar sebelum jalur dapat dipastikan.",
+    "Your answers about your current immigration status conflict with each other, so no path can be confirmed yet. A Bali Zero advisor can go over which status is correct with you.",
+    "Jawaban Anda tentang status keimigrasian Anda saat ini saling bertentangan, sehingga belum ada jalur yang dapat dipastikan. Konsultan Bali Zero dapat membahas status mana yang benar bersama Anda.",
   ),
   // `_apply_decisive_source_authority_hold` (evaluate_path.py:1097-1198):
   // abstains an otherwise-conclusive result when a citation the decision
@@ -1397,16 +1397,16 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // this category, since nothing the applicant said caused this; named the
   // source mechanism as specifically as the code allows instead.
   DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE: text(
-    "One of the official sources behind this result needs a fresh check by a Bali Zero advisor before the result can stand.",
-    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang oleh konsultan Bali Zero sebelum hasilnya dapat dipakai.",
+    "One of the official sources behind this result needs a fresh check before the result can stand. A Bali Zero advisor can go over it with you.",
+    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang sebelum hasilnya dapat dipakai. Konsultan Bali Zero dapat membahasnya bersama Anda.",
   ),
   DECISIVE_SOURCE_FRESHNESS_UNKNOWN: text(
-    "One of the official sources behind this result needs a fresh check by a Bali Zero advisor before the result can stand.",
-    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang oleh konsultan Bali Zero sebelum hasilnya dapat dipakai.",
+    "One of the official sources behind this result needs a fresh check before the result can stand. A Bali Zero advisor can go over it with you.",
+    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang sebelum hasilnya dapat dipakai. Konsultan Bali Zero dapat membahasnya bersama Anda.",
   ),
   DECISIVE_SOURCE_STALE: text(
-    "One of the official sources behind this result needs a fresh check by a Bali Zero advisor before the result can stand.",
-    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang oleh konsultan Bali Zero sebelum hasilnya dapat dipakai.",
+    "One of the official sources behind this result needs a fresh check before the result can stand. A Bali Zero advisor can go over it with you.",
+    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang sebelum hasilnya dapat dipakai. Konsultan Bali Zero dapat membahasnya bersama Anda.",
   ),
   // `_DISCLOSED_REVIEW_REASON_CODES` (evaluate_path.py:1014-1027) +
   // `_apply_disclosed_review_flags` (1304-1354): applicant self-disclosures,
@@ -1432,41 +1432,41 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
     "Kasus ini ditunda karena belum dapat dipastikan di sini apakah sponsor Anda memiliki izin tinggal sendiri — konfirmasi izin tinggal sponsor tersebut adalah yang akan menyelesaikannya.",
   ),
   DISCLOSED_CRIMINAL_RECORD_REVIEW: text(
-    "You flagged a criminal record concern in your disclosures, and a Bali Zero advisor needs to review the details before any path can be confirmed.",
-    "Anda menandai adanya masalah catatan kriminal dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh konsultan Bali Zero sebelum jalur apa pun dapat dikonfirmasi.",
+    "You flagged a criminal record concern in your disclosures, so no path can be confirmed yet. A Bali Zero advisor can review the details with you.",
+    "Anda menandai adanya masalah catatan kriminal dalam pengungkapan Anda, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat meninjau detailnya bersama Anda.",
   ),
   DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW: text(
-    "You flagged holding a diplomatic passport in your disclosures, and a Bali Zero advisor needs to review the details before any path can be confirmed.",
-    "Anda menandai kepemilikan paspor diplomatik dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh konsultan Bali Zero sebelum jalur apa pun dapat dikonfirmasi.",
+    "You flagged holding a diplomatic passport in your disclosures, so no path can be confirmed yet. A Bali Zero advisor can review the details with you.",
+    "Anda menandai kepemilikan paspor diplomatik dalam pengungkapan Anda, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat meninjau detailnya bersama Anda.",
   ),
   DISCLOSED_HEALTH_CONCERN_REVIEW: text(
-    "You flagged a health concern in your disclosures, and a Bali Zero advisor needs to review the details before any path can be confirmed.",
-    "Anda menandai adanya masalah kesehatan dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh konsultan Bali Zero sebelum jalur apa pun dapat dikonfirmasi.",
+    "You flagged a health concern in your disclosures, so no path can be confirmed yet. A Bali Zero advisor can review the details with you.",
+    "Anda menandai adanya masalah kesehatan dalam pengungkapan Anda, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat meninjau detailnya bersama Anda.",
   ),
   // fact-mapper.ts: raised when trip_scope === "multiple".
   DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW: text(
-    "You said your trip serves more than one purpose, and a Bali Zero advisor needs to review how those purposes combine before a path can be confirmed.",
-    "Anda menyatakan bahwa perjalanan Anda memiliki lebih dari satu tujuan, dan memerlukan peninjauan oleh konsultan Bali Zero mengenai bagaimana tujuan-tujuan tersebut digabungkan sebelum jalur dapat dipastikan.",
+    "You said your trip serves more than one purpose, so no path can be confirmed yet. A Bali Zero advisor can review how those purposes combine with you.",
+    "Anda menyatakan bahwa perjalanan Anda memiliki lebih dari satu tujuan, sehingga belum ada jalur yang dapat dipastikan. Konsultan Bali Zero dapat meninjau bagaimana tujuan-tujuan tersebut digabungkan bersama Anda.",
   ),
   DISCLOSED_PEP_OR_SANCTIONS_REVIEW: text(
-    "You flagged a politically-exposed-person or sanctions-list concern in your disclosures, and a Bali Zero advisor needs to review the details before any path can be confirmed.",
-    "Anda menandai adanya masalah terkait status politically exposed person atau daftar sanksi dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh konsultan Bali Zero sebelum jalur apa pun dapat dikonfirmasi.",
+    "You flagged a politically-exposed-person or sanctions-list concern in your disclosures, so no path can be confirmed yet. A Bali Zero advisor can review the details with you.",
+    "Anda menandai adanya masalah terkait status politically exposed person atau daftar sanksi dalam pengungkapan Anda, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat meninjau detailnya bersama Anda.",
   ),
   DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW: text(
-    "You flagged a prior visa refusal in your disclosures, and a Bali Zero advisor needs to review the details before any path can be confirmed.",
-    "Anda menandai adanya penolakan visa sebelumnya dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh konsultan Bali Zero sebelum jalur apa pun dapat dikonfirmasi.",
+    "You flagged a prior visa refusal in your disclosures, so no path can be confirmed yet. A Bali Zero advisor can review the details with you.",
+    "Anda menandai adanya penolakan visa sebelumnya dalam pengungkapan Anda, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat meninjau detailnya bersama Anda.",
   ),
   DISCLOSED_SOURCE_OF_FUNDS_REVIEW: text(
-    "You flagged an unclear source of funds in your disclosures, and a Bali Zero advisor needs to review the details before any path can be confirmed.",
-    "Anda menandai sumber dana yang tidak jelas dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh konsultan Bali Zero sebelum jalur apa pun dapat dikonfirmasi.",
+    "You flagged an unclear source of funds in your disclosures, so no path can be confirmed yet. A Bali Zero advisor can review the details with you.",
+    "Anda menandai sumber dana yang tidak jelas dalam pengungkapan Anda, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat meninjau detailnya bersama Anda.",
   ),
   // fact-mapper.ts: raised when ANY answer across the interview equals
   // "unsure" — the OutcomeReason carries no field for which question. One
   // code, as many potential causes as there are questions; flagged as a
   // split candidate in the PR-O2 report.
   DISCLOSED_UNCERTAINTY_REVIEW: text(
-    'One of your answers was marked "unsure," and a Bali Zero advisor needs to confirm that answer before any path can be confirmed.',
-    'Salah satu jawaban Anda ditandai "tidak yakin," dan memerlukan konfirmasi oleh konsultan Bali Zero atas jawaban tersebut sebelum jalur apa pun dapat dikonfirmasi.',
+    'One of your answers was marked "unsure," so no path can be confirmed yet. A Bali Zero advisor can go over that answer with you.',
+    'Salah satu jawaban Anda ditandai "tidak yakin," sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat membahas jawaban tersebut bersama Anda.',
   ),
   // `_apply_minor_privacy_hold` (evaluate_path.py:1033-1094): a categorical
   // privacy-policy hold on ANY known minor, distinct from the pack's own
@@ -1487,16 +1487,16 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // the specific citations a given result relied on. Same D2-bis rule 1
   // caveat as the DECISIVE_* trio: not an applicant-fact code.
   SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE: text(
-    "One of the official sources behind this result needs a fresh check by a Bali Zero advisor before the result can stand.",
-    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang oleh konsultan Bali Zero sebelum hasilnya dapat dipakai.",
+    "One of the official sources behind this result needs a fresh check before the result can stand. A Bali Zero advisor can go over it with you.",
+    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang sebelum hasilnya dapat dipakai. Konsultan Bali Zero dapat membahasnya bersama Anda.",
   ),
   SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN: text(
-    "One of the official sources behind this result needs a fresh check by a Bali Zero advisor before the result can stand.",
-    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang oleh konsultan Bali Zero sebelum hasilnya dapat dipakai.",
+    "One of the official sources behind this result needs a fresh check before the result can stand. A Bali Zero advisor can go over it with you.",
+    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang sebelum hasilnya dapat dipakai. Konsultan Bali Zero dapat membahasnya bersama Anda.",
   ),
   SAFETY_CRITICAL_SOURCE_STALE: text(
-    "One of the official sources behind this result needs a fresh check by a Bali Zero advisor before the result can stand.",
-    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang oleh konsultan Bali Zero sebelum hasilnya dapat dipakai.",
+    "One of the official sources behind this result needs a fresh check before the result can stand. A Bali Zero advisor can go over it with you.",
+    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang sebelum hasilnya dapat dipakai. Konsultan Bali Zero dapat membahasnya bersama Anda.",
   ),
 };
 
@@ -1657,8 +1657,8 @@ export const NOTICE_CONDITION_COPY: Record<string, LocalizedText> = {
     "Anda menandai riwayat overstay dalam pengungkapan Anda. Konsultan Bali Zero dapat meninjau tanggal dan catatan sanksi terkait bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
   ),
   DISCLOSED_BLACKLIST_ENTRY_CONDITION: text(
-    "You flagged a blacklist entry in your disclosures. While an entry ban is active it stops any application from being filed until it is lifted; a Bali Zero advisor can verify your status with Ditjen Imigrasi before submission and tell you what that means for the paths listed above.",
-    "Anda menandai adanya pencantuman dalam daftar hitam. Selama larangan tersebut masih aktif, pengajuan apa pun tidak dapat diproses sampai larangan itu dicabut; konsultan Bali Zero dapat memverifikasi status Anda ke Ditjen Imigrasi sebelum pengajuan dan menjelaskan artinya bagi jalur yang tercantum di atas.",
+    "You flagged a blacklist entry in your disclosures. A Bali Zero advisor can go over your situation with you before submission and tell you what to prepare.",
+    "Anda menandai adanya pencantuman dalam daftar hitam dalam pengungkapan Anda. Konsultan Bali Zero dapat membahas situasi tersebut bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
   ),
   DISCLOSED_IMMIGRATION_INVESTIGATION_CONDITION: text(
     "You flagged an open immigration investigation. A Bali Zero advisor can review its status with you before submission and tell you what supporting documentation, if any, to prepare.",
@@ -1915,12 +1915,15 @@ function quoteFor(
   );
 }
 
-// No fixed price is published for this path (CONTACT_REQUIRED), or the price
-// could not be loaded (UNAVAILABLE). Neither sentence invents a figure, and
-// neither promises an advisor: the advisor is something the reader CAN ask.
+// CONTACT_REQUIRED covers three backend reason codes (pricing_adapter.py:
+// PRICING_KEY_NOT_CONFIGURED, PRICING_ROW_MISSING, PRICING_ROW_NOT_EXACT_AMOUNT)
+// and only the first means a product was left without a price on purpose, so
+// the sentence says no more than "price on consultation". UNAVAILABLE is a
+// price that could not be loaded. Neither invents a figure, and neither
+// promises an advisor: the advisor is something the reader CAN ask.
 const PRICE_ON_CONSULTATION = text(
-  "Price on consultation — no fixed price is published for this path yet. You can ask a Bali Zero advisor.",
-  "Harga melalui konsultasi — belum ada harga tetap yang dipublikasikan untuk jalur ini. Anda dapat bertanya kepada konsultan Bali Zero.",
+  "Price on consultation. You can ask a Bali Zero advisor.",
+  "Harga melalui konsultasi. Anda dapat bertanya kepada konsultan Bali Zero.",
 );
 const PRICE_COULD_NOT_BE_LOADED = text(
   "The price for this path could not be loaded. You can ask a Bali Zero advisor.",
