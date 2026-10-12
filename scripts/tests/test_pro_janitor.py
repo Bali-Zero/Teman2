@@ -206,7 +206,35 @@ def test_tools_get_exactly_the_minimal_env_never_the_parents(box):
         envs[name] = {k: v for k, v in envs[name].items() if k not in noise}
     base = {"HOME": str(box.home), "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin", "LANG": "C"}
     assert envs["uv"] == base
-    assert envs["npm"] == dict(base, npm_config_userconfig="/dev/null", npm_config_globalconfig="/dev/null")
+    assert envs["npm"] == dict(base, npm_config_userconfig="/dev/null", npm_config_globalconfig="/var/empty/pro-janitor-npmrc")
+
+
+def test_npm_user_and_global_config_are_two_distinct_paths_that_cannot_exist():
+    """npm 11 exits 1 ("double-loading config") when user and global name one file: seen on Pro's first apply tick."""
+    assert pj.NPM_GLOBALCONFIG != "/dev/null" and os.path.dirname(pj.NPM_GLOBALCONFIG) == "/var/empty"
+    assert not os.path.exists(pj.NPM_GLOBALCONFIG)
+
+
+def _real_npm():
+    import shutil
+    for cand in ("/opt/homebrew/bin/npm", shutil.which("npm")):
+        if cand and os.path.isfile(os.path.realpath(cand)) and "shims" not in cand:
+            return os.path.realpath(cand)
+    return None
+
+
+@pytest.mark.skipif(_real_npm() is None, reason="no real npm on this host")
+def test_the_real_npm_resolves_the_janitors_config(tmp_path):
+    """The verb's own config load, with the janitor's exact config pair, on the host's real npm (10 and 11 both refuse a
+    double-loaded file): rc 0 and the cache it was given."""
+    npm = _real_npm()
+    home = tmp_path / "h"
+    (home / ".npm").mkdir(parents=True)
+    env = {"HOME": str(home), "PATH": os.path.dirname(npm) + ":" + pj.TOOL_PATH, "LANG": "C",
+           "npm_config_userconfig": "/dev/null", "npm_config_globalconfig": pj.NPM_GLOBALCONFIG}
+    r = subprocess.run([npm, "config", "get", "cache", "--cache", str(home / ".npm")], env=env,
+                       capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0 and r.stdout.strip() == str(home / ".npm"), r.stderr
 
 
 @pytest.mark.parametrize("rel", [".cache/uv", ".npm"])

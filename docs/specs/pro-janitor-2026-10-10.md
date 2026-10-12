@@ -161,11 +161,11 @@ cooldown has passed; after each action the free space is read again and the run 
 tier it acted in. BLACK adds no rule: it runs the lower ones and pages. (`uv cache clean` was dropped: a held uv cache lock is the
 sign of a live uv process, and clean is not safe under it.)
 
-| rule             | tier  | action                                                                                                                                               | cooldown |
-| ---------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `uv-prune`       | AMBER | `uv --no-config cache prune --cache-dir ~/.cache/uv` (uv's own in-use check, never `--force`)                                                        | 6 h      |
-| `npm-verify`     | AMBER | `npm cache verify --cache ~/.npm` (npm's own garbage collection; user and global npmrc set to `/dev/null`)                                           | 24 h     |
-| `playwright-old` | RED   | `~/Library/Caches/ms-playwright/<family>-<rev>`: all but the newest rev of each family and all but the revisions Playwright's `.links` registry pins | 24 h     |
+| rule             | tier  | action                                                                                                                                                | cooldown |
+| ---------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `uv-prune`       | AMBER | `uv --no-config cache prune --cache-dir ~/.cache/uv` (uv's own in-use check, never `--force`)                                                         | 6 h      |
+| `npm-verify`     | AMBER | `npm cache verify --cache ~/.npm` (npm's own garbage collection; user npmrc `/dev/null`, global `/var/empty/pro-janitor-npmrc`, never one file twice) | 24 h     |
+| `playwright-old` | RED   | `~/Library/Caches/ms-playwright/<family>-<rev>`: all but the newest rev of each family and all but the revisions Playwright's `.links` registry pins  | 24 h     |
 
 Tools run with exactly `HOME`, `PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin` and `LANG=C` (never the parent's
 environment, so no `UV_CACHE_DIR`, `XDG_CACHE_HOME` or `npm_config_cache` decoy can redirect them), against a cache dir that is a
