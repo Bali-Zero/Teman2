@@ -1,0 +1,20 @@
+task_id: mut-pending-arms-20261012
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  scripts/pending_arms_report.py ratchet path had 33 of 86 AST mutants surviving its tests. Pin the
+  verdict notes, base/clock resolution, two-day clock tolerance, inherited-override reporting, RED row
+  listing and usage exit codes. Test-only change.
+constraints:
+  - "Tests only unless the PR title says fix; one concern per PR."
+  - "Each new test carries a guilt case and an innocence twin; expected values come from the documented contract."
+acceptance:
+  - text: "WHEN the AST mutation sweep is re-run against the extended tests, THEN the named survivors are killed."
+    probe: "python3 -m pytest -q scripts/tests"
+consumer_map:
+  - "The unit-test battery of immune-enforcement.yml (or the workflow that names the extended test file) runs these tests on every PR touching the guard."
+risks:
+  - "Pinned behaviour is the documented one; ambiguous-contract mutants are listed in the PR body, not pinned."
+grader: |
+  Mutation re-run with named restored mutants plus the existing suite green.
