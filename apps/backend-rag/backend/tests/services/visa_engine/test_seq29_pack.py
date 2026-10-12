@@ -258,10 +258,10 @@ class TestIntegrity:
     def test_rule_counts_and_order(self, anchor: dict[str, Any], seq29: dict[str, Any]) -> None:
         before = [r["rule_id"] for r in anchor["rules"]]
         after = [r["rule_id"] for r in seq29["rules"]]
-        assert len(before) == 114 and len(after) == 116
+        assert len(before) == 114 and len(after) == 117
         assert set(before) - set(after) == {"el.e31j-dependency-age"}
-        assert after[-3:] == list(fold_mod.INSERTED_RULE_IDS_IN_ORDER)
-        assert after[:-3] == [r for r in before if r != "el.e31j-dependency-age"]
+        assert after[-4:] == list(fold_mod.INSERTED_RULE_IDS_IN_ORDER)
+        assert after[:-4] == [r for r in before if r != "el.e31j-dependency-age"]
 
     def test_boundary_is_stamp_plus_2764800_seconds(self, seq29: dict[str, Any]) -> None:
         stamps = {r["verified_at"] for r in _portals(seq29)}
@@ -273,7 +273,7 @@ class TestIntegrity:
     def test_model_validates(self, seq29: dict[str, Any]) -> None:
         payload = RulePackPayload.model_validate(seq29)
         assert payload.sequence == 29
-        assert len(payload.rules) == 116
+        assert len(payload.rules) == 117
 
     def test_every_new_or_changed_rule_reads_exactly_the_facts_it_requires(
         self, seq29: dict[str, Any]
@@ -282,10 +282,13 @@ class TestIntegrity:
         for rule_id in (*sorted(fold_mod.MODIFIED_RULE_IDS), *fold_mod.INSERTED_RULE_IDS_IN_ORDER):
             assert rules[rule_id]["required_facts"] == fold_mod._fact_paths(rules[rule_id]["when"])
 
-    def test_the_review_inventory_is_unchanged(self, seq29: dict[str, Any]) -> None:
+    def test_the_review_inventory_gains_only_the_e31j_other_status_hold(
+        self, seq29: dict[str, Any]
+    ) -> None:
         payload = RulePackPayload.model_validate(seq29)
         assert [row.rule_id for row in pack_review_rules(payload)] == [
-            "review.e33.below-threshold-studio"
+            "review.e33.below-threshold-studio",
+            "review.e31j-marital-status-other",
         ]
         assert pack_unknown_escalations(payload) == ()
 
@@ -508,15 +511,46 @@ class TestE31JMinorAndSingle:
         assert actual["state"] == "NO_SUPPORTED_PATH"
         assert actual["no_path_reason_codes"] == ["E31J_REQ_UNMARRIED"]
 
-    def test_innocence_another_status_is_not_refused_as_married(
+    def test_guilt_another_status_is_held_for_review_not_supported(
+        self, pack: census.PackUnderTest, old_pack: census.PackUnderTest
+    ) -> None:
+        """'belum kawin' is not attested by 'Another status' (OTHER): E31J is held, never offered."""
+
+        facts = _family("SIBLING", **{"person.marital_status": _known("OTHER")})
+        assert _decide(old_pack, facts)["candidates"] == ["E31J"]
+        actual = _decide(pack, facts)
+        assert actual["state"] == "HUMAN_REVIEW_REQUIRED"
+        assert actual["candidates"] == []
+        assert actual["review_reason_codes"] == ["E31J_MARITAL_STATUS_OTHER_REVIEW"]
+
+    def test_innocence_another_status_is_not_silently_excluded_as_married(
         self, pack: census.PackUnderTest
     ) -> None:
-        """The page criterion is 'belum kawin'; 'Another status' does not say the applicant married."""
-
         actual = _decide(pack, _family("SIBLING", **{"person.marital_status": _known("OTHER")}))
+        assert actual["state"] != "NO_SUPPORTED_PATH"
+        assert "E31J_REQ_UNMARRIED" not in actual["no_path_reason_codes"]
+
+    def test_innocence_single_is_supported_and_raises_no_review(
+        self, pack: census.PackUnderTest
+    ) -> None:
+        actual = _decide(pack, _family("SIBLING", **{"person.marital_status": _known("SINGLE")}))
         assert actual["state"] == "SUPPORTED_CANDIDATES"
         assert actual["candidates"] == ["E31J"]
-        assert "E31J_REQ_UNMARRIED" not in actual.get("no_path_reason_codes", [])
+        assert actual["review_reason_codes"] == []
+
+    def test_innocence_the_review_hold_is_for_siblings_only(
+        self, pack: census.PackUnderTest, old_pack: census.PackUnderTest
+    ) -> None:
+        facts = _family("DEPENDENT", **{"person.marital_status": _known("OTHER")})
+        assert _decide(pack, facts)["review_reason_codes"] == []
+        assert _decide(pack, facts)["candidates"] == _decide(old_pack, facts)["candidates"]
+
+    def test_the_review_rule_is_a_product_hold_that_ignores_an_unanswered_status(
+        self, seq29: dict[str, Any]
+    ) -> None:
+        rule = _rules(seq29)[fold_mod.E31J_OTHER_STATUS_RULE_ID]
+        assert rule["stage"] == "HUMAN_REVIEW" and rule["on_unknown"] == "NO_EFFECT"
+        assert rule["product_version_ids"] == [fold_mod.E31J_PRODUCT_VERSION_ID]
 
     def test_innocence_a_single_minor_sibling_is_supported(
         self, pack: census.PackUnderTest
