@@ -16,7 +16,7 @@ control the prose was not.
 
 GRADED, NOT IMPROVISED. The shapes and the verdicts live in
 docs/specs/2026-09-18-secret-expansion-guard-shapes-spec.md (§4 shapes, §5 corpus
-E01-E147) and infra/claude-hooks/test_secret_expansion_guard.py asserts the corpus
+E01-E178) and infra/claude-hooks/test_secret_expansion_guard.py asserts the corpus
 row by row. Where this file and the spec disagree, THE SPEC WINS. Precedent:
 output_hygiene_guard v1 was suspended at three gate rounds, each finding a new
 over-match on an everyday command (cicatrix superscar #3). The over-match trap
@@ -107,14 +107,15 @@ LINE_SELECTORS = {"grep", "egrep", "fgrep", "rg", "awk", "gawk", "sed", "wc"}
 SSH_ARG_OPTS = set("bcDEeFIiJLlmOopPQRSWwB")
 _HEREDOC_RE = re.compile(r"<<-?\s*(['\"]?)(\w+)\1")
 _ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
-_REDIRECT_RE = re.compile(r"^\d*(?:>>|<<<|<<-?|&>>|&>|>&\d*|<|>)")
+_REDIRECT_RE = re.compile(r"^\d*(?:&>>|&>|>>|<<<|<<-?|>&\d*|<&\d*|<|>)")
 # A redirect glued to its target (`cat store>/tmp/x`, `2>&1`) — the operand before
 # the operator is still a real argument and must not be swallowed with it.
-_GLUED_REDIRECT_RE = re.compile(r"(?:&>>|&>|>>|>&\d*|<<<|<<-?|<|>)")
+_GLUED_REDIRECT_RE = re.compile(r"(?:&>>|&>|>>|>&\d*|<&\d*|<<<|<<-?|<|>)")
 # `${NAME…}` — the operator after the name decides value vs presence.
 _BRACE_EXP_RE = re.compile(r"(?<!\\)\$\{([A-Za-z_][A-Za-z0-9_]*)([^{}]*)\}")
 _BARE_EXP_RE = re.compile(r"(?<!\\)\$([A-Za-z_][A-Za-z0-9_]*)")
 _NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_SUBSTITUTION_PLACEHOLDER = "__NUZ_MASKED_SUBSTITUTION__"
 
 
 def _warn(msg: str) -> None:
@@ -191,6 +192,16 @@ def _path_matches(candidate: str, pattern: str) -> bool:
 # --------------------------------------------------------------- tokenizing
 
 
+def _is_backslash_escaped(text: str, pos: int) -> bool:
+    """Whether the character at `pos` is preceded by an odd backslash run."""
+    slashes = 0
+    pos -= 1
+    while pos >= 0 and text[pos] == "\\":
+        slashes += 1
+        pos -= 1
+    return slashes % 2 == 1
+
+
 def _split_quoted(text: str, seps: list[str]) -> list[str]:
     """Split on the first matching separator found OUTSIDE quotes/escapes.
 
@@ -229,9 +240,15 @@ def _split_quoted(text: str, seps: list[str]) -> list[str]:
         if hit:
             # `&` is syntax inside redirects (`>&`, `<&`, `&>`, `&>>`) and
             # inside bash's `|&` pipe operator; only a lone `&` separates
-            # statements. The pipeline pass below consumes `|&` as a unit.
+            # statements. An escaped operator before it is literal, so the `&`
+            # is lone (E171/E172, and the equivalent `\|&`). The pipeline pass
+            # below consumes an unescaped `|&` as a unit.
             if hit == "&" and (
-                (i > 0 and text[i - 1] in "<>|")
+                (
+                    i > 0
+                    and text[i - 1] in "<>|"
+                    and not _is_backslash_escaped(text, i - 1)
+                )
                 or (i + 1 < n and text[i + 1] == ">")
             ):
                 buf.append(c)
@@ -352,7 +369,7 @@ def _tokenize(stage: str) -> list[str]:
 
     Three redirect forms, handled separately because getting this wrong is an
     under-match (a secret store hidden behind `>/tmp/x`) rather than a harmless
-    over-match: a bare operator (`> file`) consumes the NEXT token; a
+    over-match: a bare operator (`> file`, `&> file`, `>& file`) consumes the NEXT token; a
     self-contained one (`2>&1`) consumes nothing; a glued one (`store>/tmp/x`)
     keeps the operand before the operator, which is the real argument.
     """
@@ -366,7 +383,7 @@ def _tokenize(stage: str) -> list[str]:
         m = _REDIRECT_RE.match(tok)
         if m:
             if len(m.group(0)) == len(tok) and tok.lstrip("0123456789") in (
-                ">", ">>", "<", "<<<", "<<-",
+                ">", ">>", "<", "<<<", "<<-", "&>", "&>>", ">&", "<&",
             ):
                 skip_next = True
             continue
@@ -401,6 +418,13 @@ def _peel(toks: list[str], peel_env: bool = True) -> list[str]:
     while toks and guard < 24:
         guard += 1
         head = toks[0]
+        if _unquote(head) == _SUBSTITUTION_PLACEHOLDER:
+            toks = toks[1:]
+            continue
+        if _unquote(head).startswith(_SUBSTITUTION_PLACEHOLDER):
+            # `$(true)printenv` runs `printenv` (E176).
+            toks = [_unquote(head)[len(_SUBSTITUTION_PLACEHOLDER):]] + toks[1:]
+            continue
         if _ASSIGN_RE.match(head):
             toks = toks[1:]
             continue
@@ -546,6 +570,9 @@ def _check_x2(toks: list[str], head: str) -> str | None:
             i += 1
             continue
         if "=" in t and _ASSIGN_RE.match(t):
+            i += 1
+            continue
+        if _unquote(t) == _SUBSTITUTION_PLACEHOLDER:
             i += 1
             continue
         # A real program follows: env is setting an environment, not printing one.
@@ -746,7 +773,7 @@ def _mask_substitutions(text: str) -> tuple[str, list[str]]:
     quoted string (under-match, E52) and `echo "$(curl -H "Bearer $KEY" ...)"`
     is an X1 hit (over-match, E56) — one blind spot, both directions.
     """
-    chars = list(text)
+    out: list[str] = []
     subs: list[str] = []
     i, n = 0, len(text)
     while i < n:
@@ -761,26 +788,24 @@ def _mask_substitutions(text: str) -> tuple[str, list[str]]:
                 j += 1
             inner_end = j - 1 if depth == 0 else j
             subs.append(text[i + 2:inner_end])
-            chars[i] = "__NUZ_MASKED_SUBSTITUTION__"
-            for k in range(i + 1, j):
-                if chars[k] != "\n":
-                    chars[k] = " "
+            out.append(_SUBSTITUTION_PLACEHOLDER)
+            out.extend(c for c in text[i:j] if c == "\n")
             i = j
             continue
         if text[i] == "`" and not escaped:
             j = text.find("`", i + 1)
             if j == -1:
+                out.append(text[i])
                 i += 1
                 continue
             subs.append(text[i + 1:j])
-            chars[i] = "__NUZ_MASKED_SUBSTITUTION__"
-            for k in range(i + 1, j + 1):
-                if chars[k] != "\n":
-                    chars[k] = " "
+            out.append(_SUBSTITUTION_PLACEHOLDER)
+            out.extend(c for c in text[i:j + 1] if c == "\n")
             i = j + 1
             continue
+        out.append(text[i])
         i += 1
-    return "".join(chars), subs
+    return "".join(out), subs
 
 
 def _shell_c_payloads(toks: list[str], head: str) -> list[str]:
