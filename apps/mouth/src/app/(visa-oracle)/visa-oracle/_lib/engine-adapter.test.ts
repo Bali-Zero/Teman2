@@ -134,10 +134,52 @@ describe("Visa Oracle authoritative outcome adapter", () => {
       throw new Error("unexpected state");
     const candidate = outcome.candidates[0];
     expect(candidate.timeline).toMatchObject({ status: "UNAVAILABLE" });
-    expect(candidate.price).toMatchObject({ status: "CONTACT_REQUIRED" });
+    expect(candidate.price).toEqual({
+      status: "CONTACT_REQUIRED",
+      message: {
+        en: "Price on consultation. You can ask a Bali Zero advisor.",
+        id: "Harga melalui konsultasi. Anda dapat bertanya kepada konsultan Bali Zero.",
+      },
+    });
     expect(candidate.documents).toEqual([]);
     expect(JSON.stringify(candidate)).not.toContain("60 days");
   });
+
+  it.each([
+    "PRICING_KEY_NOT_CONFIGURED",
+    "PRICING_ROW_MISSING",
+    "PRICING_ROW_NOT_EXACT_AMOUNT",
+  ])(
+    "CONTACT_REQUIRED for %s never claims what that reason code does not prove",
+    (reasonCode) => {
+      // The backend (pricing_adapter.py resolve_pricing_key) returns
+      // CONTACT_REQUIRED for a product left without a pricing key AND for a
+      // catalogue row that is missing or has no exact amount. "No fixed
+      // price is published" is true for the first only, so the one sentence
+      // shown for all three says no more than "price on consultation".
+      const response = makeVisaOracleResponse();
+      response.display.candidates[0].pricing = {
+        ...response.display.candidates[0].pricing,
+        status: "CONTACT_REQUIRED",
+        reason_code: reasonCode,
+      };
+      const outcome = buildEngineOutcome(response);
+      if (outcome.state !== "SUPPORTED_CANDIDATES")
+        throw new Error("unexpected state");
+      const candidatePrice = outcome.candidates[0].price;
+      expect(candidatePrice.status).toBe("CONTACT_REQUIRED");
+      if (candidatePrice.status !== "CONTACT_REQUIRED")
+        throw new Error("unexpected price status");
+      expect(candidatePrice.message.en).not.toMatch(
+        /no fixed price|published/i,
+      );
+      expect(candidatePrice.message.id).not.toMatch(
+        /harga tetap|dipublikasikan/i,
+      );
+      expect(candidatePrice.message.en).toMatch(/Price on consultation/);
+      expect(candidatePrice.message.id).toMatch(/Harga melalui konsultasi/);
+    },
+  );
 
   it("keeps E33A/B/C consultation copy honest and pins the E33A central-government exclusion in both languages", () => {
     expect(SUPPORT_REASON_COPY.E33A_GOVERNMENT_INVITATION_ELIGIBLE).toEqual({
@@ -2588,23 +2630,23 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
   it.each([
     [
       "rule",
-      "This result is paused because you disclosed a criminal record or an ongoing case. A Bali Zero advisor reviews it with you before any path is confirmed.",
-      "Hasil ini ditunda karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Konsultan Bali Zero meninjaunya bersama Anda sebelum jalur mana pun dikonfirmasi.",
+      "This result is paused because you disclosed a criminal record or an ongoing case. A Bali Zero advisor can review it with you before any path is confirmed.",
+      "Hasil ini ditunda karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Konsultan Bali Zero dapat meninjaunya bersama Anda sebelum jalur mana pun dikonfirmasi.",
     ],
     [
       "checked",
-      "A specialist reads what you disclosed against the immigration record requirements for the route you asked about, and decides whether it can be submitted as it stands.",
-      "Seorang spesialis membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
+      "A Bali Zero advisor can read what you disclosed against the immigration record requirements for the route you asked about, and assess whether it can be submitted as it stands.",
+      "Konsultan Bali Zero dapat membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
     ],
     [
       "prepare",
-      "Have the dates and the issuing authority of any court or police record ready, together with any document showing the case is closed. Send nothing here — our team tells you where each document goes.",
-      "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — tim kami akan memberi tahu ke mana setiap dokumen harus dikirim.",
+      "Have the dates and the issuing authority of any court or police record ready, together with any document showing the case is closed. Send nothing here — a Bali Zero advisor can tell you where each document goes.",
+      "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — konsultan Bali Zero dapat memberi tahu ke mana setiap dokumen harus dikirim.",
     ],
     [
       "handling",
-      "A specialist reviews this before we confirm a path, and our team comes back to you with the timing for your case.",
-      "Seorang spesialis meninjau hal ini sebelum kami mengonfirmasi jalur, dan tim kami akan mengabari Anda mengenai perkiraan waktu untuk kasus Anda.",
+      "A Bali Zero advisor can review this before a path is confirmed, and can tell you the timing for your case.",
+      "Konsultan Bali Zero dapat meninjau hal ini sebelum jalur dikonfirmasi, dan dapat memberi tahu Anda perkiraan waktu untuk kasus Anda.",
     ],
   ] as const)("pins %s in EN and ID", (field, en, id) => {
     expect(copy[field]).toEqual({ en, id });
@@ -2650,8 +2692,8 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
       throw new Error("unexpected state");
     expect(outcome.reviewReasons).toHaveLength(1);
     expect(outcome.reviewReasons[0].message).toEqual({
-      en: "You told us no parent or legal guardian is filling this in with the applicant, who is under 18. A Bali Zero consultant continues from here with an adult present.",
-      id: "Anda menyampaikan bahwa tidak ada orang tua atau wali sah yang mengisi ini bersama pemohon yang berusia di bawah 18 tahun. Konsultan Bali Zero melanjutkan dari sini dengan kehadiran orang dewasa.",
+      en: "You told us no parent or legal guardian is filling this in with the applicant, who is under 18. A Bali Zero consultant can pick this up with you once an adult is present.",
+      id: "Anda menyampaikan bahwa tidak ada orang tua atau wali sah yang mengisi ini bersama pemohon yang berusia di bawah 18 tahun. Konsultan Bali Zero dapat melanjutkan bersama Anda setelah ada orang dewasa yang mendampingi.",
     });
     // The rewritten sentence must not still describe "being a minor" as
     // what raises the code — A7-B narrowed the hold to a declared/unknown
@@ -2681,8 +2723,8 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
       id: "Orang tua atau wali sah yang dapat melengkapi permohonan bersama pemohon.",
     });
     expect(elements.handling).toEqual({
-      en: "A Bali Zero consultant, who confirms the guardian before any application step.",
-      id: "Konsultan Bali Zero, yang memastikan wali sebelum langkah permohonan apa pun.",
+      en: "A Bali Zero consultant can confirm the guardian before any application step.",
+      id: "Konsultan Bali Zero dapat memastikan wali sebelum langkah permohonan apa pun.",
     });
   });
 
@@ -2695,8 +2737,8 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
       throw new Error("unexpected state");
     expect(outcome.reviewReasons).toHaveLength(1);
     expect(outcome.reviewReasons[0].message).toEqual({
-      en: "One of your answers about your planned activity, investment vehicle, retirement basis or diaspora connection is one these rules cannot decide on their own, so a Bali Zero advisor confirms it before a path can be confirmed.",
-      id: "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, sarana investasi, dasar pensiun, atau hubungan diaspora tidak dapat diputuskan sendiri oleh aturan ini, sehingga konsultan Bali Zero memastikannya sebelum jalur dapat dikonfirmasi.",
+      en: "One of your answers about your planned activity, investment vehicle, retirement basis or diaspora connection is one these rules cannot decide on their own, so no path can be confirmed yet. A Bali Zero advisor can go over it with you.",
+      id: "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, sarana investasi, dasar pensiun, atau hubungan diaspora tidak dapat diputuskan sendiri oleh aturan ini, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat membahasnya bersama Anda.",
     });
     expect(
       REVIEW_REASON_ELEMENTS.DISCLOSED_ACTIVITY_BOUNDARY_REVIEW,
@@ -2727,10 +2769,10 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
     if (secondOutcome.state !== "HUMAN_REVIEW_REQUIRED")
       throw new Error("unexpected state");
     expect(firstOutcome.reviewReasons[0].message.en).toBe(
-      "Some of your answers need a Bali Zero advisor's judgment before we can confirm a path.",
+      "Some of your answers need a review before a path can be confirmed. A Bali Zero advisor can go over them with you.",
     );
     expect(secondOutcome.reviewReasons[0].message.en).toBe(
-      "Some of your answers need a Bali Zero advisor's judgment before we can confirm a path.",
+      "Some of your answers need a review before a path can be confirmed. A Bali Zero advisor can go over them with you.",
     );
     expect(emitVisaOracleTelemetry).toHaveBeenCalledTimes(1);
     expect(emitVisaOracleTelemetry).toHaveBeenCalledWith({

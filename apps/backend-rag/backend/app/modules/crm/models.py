@@ -113,7 +113,10 @@ class Practice(SQLModel, table=True):
 
     # Relations
     client_id: int = Field(foreign_key="clients.id", nullable=False, index=True)
-    practice_type_id: int = Field(foreign_key="practice_types.id", nullable=False, index=True)
+    # Nullable to mirror production: information_schema measured is_nullable=YES on
+    # 2026-10-06 (PR #7938, migration 324). Legacy rows carry NULL; the write path in
+    # crm_practices.py still supplies the id unconditionally.
+    practice_type_id: int | None = Field(default=None, foreign_key="practice_types.id", index=True)
 
     # Status Tracking
     status: str = Field(

@@ -1,0 +1,30 @@
+task_id: ptpma-25jt-articles-1012
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Owner ruling (Zero, 2026-10-12): Bali Zero's PT PMA setup service price
+  moves from IDR 20.000.000 to IDR 25.000.000. This PR carries it to the
+  public site copy: every balizero.com article stating the fee (all
+  languages), every path total that includes the fee (E33G -> E25B 56-58M -> 61-63M and 56M -> 61M, E33G -> E28A 37M+ -> 42M+), the
+  kbli-2025-construction-building sentence that mislabelled the fee as a
+  capital minimum, the llms-full/llms-id exports (same line edits) and the
+  design draft. The canonical catalog ships in #8303.
+acceptance:
+  - text: >-
+      Every changed line is the PT PMA setup fee or a total derived from it.
+    probe: git diff origin/main --word-diff=plain -U0 (pairs 20->25 only, plus 56-58M->61-63M and the construction sentence)
+  - text: >-
+      Article, llms export and KBLI prose suites pass.
+    probe: cd apps/mouth && npx --no-install vitest run src/content llms-article-exports llms-public-file-guard kbli-prose-pins
+  - text: >-
+      After vercel promote, the live consulting-business-guide page reads IDR 25,000,000 for New Company (PT PMA).
+    probe: curl -s https://balizero.com/... | grep 25,000,000
+assumptions:
+  - text: >-
+      The PII gate blocked llms-full.txt on a placeholder NPWP that is
+      already published on origin/main (6 occurrences); no added line
+      carries it or any PII-shaped string. The commit used the documented
+      PII_GATE_ENFORCEMENT=false switch, never --no-verify.
+    status: verified
+    probe: git show origin/main:apps/mouth/public/llms-full.txt | grep -c 01.234.567.8-901.000 -> 6; added article and llms lines -> 0 (this brief quotes the placeholder itself)

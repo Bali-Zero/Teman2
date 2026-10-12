@@ -7,6 +7,31 @@ CURRENT POSITION block in SKILL.md in the same commit.
 
 Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE STATE — CURRENT POSITION.
 
+- 2026-10-12 (M5, Zero's seq-28 mandate; signing session nuzantara-57): **seq-28 active; step B and the why-copy live.**
+  (1) seq-28 signed on M5 (`signed_at 2026-10-11T22:53:04Z`, kid `prod-2026-07-1`), landing PR #8300 merged
+  2026-10-12T03:05:56Z as `7bb50d079e`, ACTIVATED 03:08Z from Pro (two-login ceremony, dry-run first; activation_id
+  `b7c808bd-c0f4-48fe-9fdb-3f7f47f7e86a`, rule_pack_id `b383effb-eea4-5890-9a6a-0f13d816e855`, payload
+  `a23a5bf55a77a658aef4ff06637cdb6fea476c5569d3d47a56896af2b8557046`; previous seq-27 activation `471bddfa` closed;
+  ceremony roles 0). Content: the organ re-stamp of 2026-10-11 (organ PR #8289, reproduced byte-for-byte, closed as
+  superseded) + E33E pricing key "E33E Second Home Senior (5 Years)" IDR 45,000,000 + AGE_BELOW_55 scoped to
+  RETIREMENT + E33G `work.annual_foreign_income_usd >= 60000` (new rule `hf.e33g.annual-income-below-minimum`, code
+  `E33G_INCOME_BELOW_THRESHOLD`); 113 -> 114 rules. **New earliest portal boundary 2026-11-12T18:00:16Z** (organ alert
+  T-7 = 2026-11-05). (2) Pre-sign reviews: W141 (17 judge=fingerprint + 1 model-judged Bridging row `3da72c7b`; 18/18
+  fingerprints recomputed, 18/18 live re-read), independent adversary (persona table green), council codex gpt-5.6-sol +
+  kimi k3 both SIGN, Codex red team + fresh Opus gate on #8300. (3) Proof-of-armed (PR #8300 comment
+  issuecomment-6117354289): sentinel `OK pack_sequence 28` at 03:09:58Z (boundary 2026-11-12T18:00:16Z via
+  `--dry-run --now`); `/evaluate` sequence 28 at 03:10:54Z; E33E quote 45000000; business age 36 no AGE_BELOW_55;
+  retirement age 54 AGE_BELOW_55; remote 85000 [E33G]; remote 59999 E33G_INCOME_BELOW_THRESHOLD; income unknown
+  NEEDS_INPUT; headless walks EN 03:35:50Z / ID 03:43:20Z show the USD 60,000 sentence; retirement walk E33E IDR
+  45,000,000; live gold 18/20 (only 9 and 10, known); exactly one open PRODUCTION activation. (4) Also live since the
+  2026-10-11 entry: #8280 (step B, yearly-income question on the Remote worker path, merged 2026-10-11T15:40:19Z as
+  `2630e98c70`, walks EN/ID + synthetic POST, comment issuecomment-6111023863) and #8287 (why-copy, merged 16:50:19Z as
+  `fdce3f78dd`, walks EN/ID, comment issuecomment-6111522657). (5) Still open (TRACK C stays claimed by M5
+  nuzantara-57): test-hygiene follow-ups F1-F3 from #8287's gate (unknown-category key check, "60 thousand" / "60 ribu"
+  in NAMES_THE_THRESHOLD, observer MIN_TESTS 6 -> 8); audit PRs PR-7/PR-4 (post-seq-28), PR-10, PR-14, PR-15, PR-18,
+  PR-19/20, PR-16; the 13 batch-2 owner decisions; the 38-visa night program (conductor on Pro, `~/visa-night`) builds
+  the seq-29 candidate, unsigned, chained to seq-28.
+
 - 2026-10-11 (M5, Zero: "affronta a 360 gradi la sezione retirement … tutto il E33 con i vari index"): **E33/retirement
   program opened; four PRs live, seq-28 chain planned.** (1) Census (scratch, read-only): interview space 1.1x10^14
   combinations (exact DAG count); 256 covering walks = 186 SUPPORTED / 57 NO_SUPPORTED_PATH / 9 HUMAN_REVIEW / 4 NEEDS_INPUT,

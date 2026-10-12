@@ -270,12 +270,12 @@ def test_fresh_ok_organ_not_flagged_unhealthy(tmp_path):
 def test_known_benign_failed_suppressed(tmp_path):
     """INNOCENCE: an intentionally-disabled organ reporting failed is NOT flagged.
 
-    These are the false-positives from the triage (codex.spark_*, decommissioned
+    These are the false-positives from the triage (decommissioned
     wr2 organs, by-design exit-1 auditors). Flagging them = alert-fatigue = the next
     blindness. The allow-list must suppress them.
     """
     d = str(tmp_path)
-    for organ in ("codex.spark_loop", "wr2.telegram_gate", "pro.audit_launchd_daily"):
+    for organ in ("wr2.carousel_dispatcher", "wr2.telegram_gate", "pro.audit_launchd_daily"):
         _write(d, organ, {"ts": time.time(), "status": "failed"})
     # host pinned to Pro for the third fixture: unpinned, pro.audit_launchd_daily
     # is dropped as foreign before the allow-list is consulted, so removing it
@@ -310,8 +310,10 @@ def test_allow_list_is_documented_not_empty():
     """The allow-list must be non-empty (the triage found several) and each entry
     should be a real organ_id string, so drift is auditable."""
     assert isinstance(KNOWN_BENIGN_FAILED, (set, frozenset, tuple))
-    assert len(KNOWN_BENIGN_FAILED) >= 6
-    assert "codex.spark_loop" in KNOWN_BENIGN_FAILED
+    assert len(KNOWN_BENIGN_FAILED) >= 5
+    assert "wr2.telegram_gate" in KNOWN_BENIGN_FAILED
+    for retired in ("codex.spark_loop", "codex.spark_harvester", "codex.spark_alarm"):
+        assert retired not in KNOWN_BENIGN_FAILED
 
 
 def test_innocence_known_intentionally_disabled_organ_reports_disabled_not_stale(tmp_path):

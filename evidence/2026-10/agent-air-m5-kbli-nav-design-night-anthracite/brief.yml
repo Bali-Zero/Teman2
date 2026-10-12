@@ -1,0 +1,23 @@
+task_id: kbli-nav-design-night-anthracite
+mission: kbli-nav-design-loop (Track A, build, night palette; owner order 2026-10-12)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Palette only (owner order via lead, 2026-10-12): the night surfaces change from blue-navy to a neutral anthracite grey.
+  No fact, verdict, cap, basis, title, reason or string change; day is untouched.
+l_level: L1
+gate_class: opus
+objective: >-
+  One concern: night mode is a neutral anthracite ramp (ground 232527, card 272A2C, panel/hover/scrim 2B2E31, lines 3C3F43 and
+  62666B) in place of the navy; the semantic hues stay, the derived tokens (chip backgrounds, risk fills, ground glyphs,
+  Increase-Contrast night pairs) follow the new ground; the census reads lineSoft from Theme.swift.
+constraints:
+  - Day tokens and every day render byte-identical.
+  - No hex outside Theme.swift; no new token.
+acceptance:
+  - text: derive_tokens --check SHALL pass and measure_contrast SHALL hold FAIL=0 PARITY=0 on the new surfaces.
+    probe: "Pro: derive_tokens.py --check Sources/Theme.swift rc 0 (40 tokens); measure_contrast.py TOTAL=196 FAIL=0 PARITY=0 WHITE=0"
+  - text: Every night render SHALL change and every day render SHALL be byte-identical.
+    probe: "Pro: the 91-PNG IMM set at origin/main vs the head: 52 day identical, 39 night differing, 0 night identical"
+  - text: The census SHALL pass and the ring SHALL hold against the night surface.
+    probe: "Pro: png_census.py 0 FAIL (1 VACUOUS, xxl C8, pre-existing); C24 ring copper on the 5 night live sheets, 4.98:1 on its surface"

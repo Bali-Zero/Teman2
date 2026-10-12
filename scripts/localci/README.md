@@ -859,6 +859,7 @@ node-pressure model, with one constant (`HOST_FLOOR_GB` 90):
   removes, by explicit tag, every deps image that is not the newest of its recipe — fewest 48 h plan references first, never the
   never-list, never the run in progress's image — and the wrapper's `--fstrim` follows. The line carries `host_pressure: true`
   and `host_free_gb` before and after (also printed on the `merger prune:` line); the `builder prune` follows the removals, and the rule names the cost: dropping a second-slot image means a cold rebuild of that recipe.
+  B16: "in progress" means the run's coordinator still holds `state/coordinator.lock` (runner.py's flock for the whole `run`); an evicted, killed or crashed run leaves the lock free and no longer keeps its images.
 - **Ship step (deploy).** The live wrapper passes `--min-host-free-gb=$FLOOR_GB` explicitly, so the merger default alone does not move the start floor. At deploy, re-install it (`cp scripts/localci/localci_merger_tick.sh ~/.nuzantara-cron/.localci_merger_tick.sh.new`, `mv -f` onto `localci_merger_tick.sh`, `cmp -s` against the `origin/main` copy). Observable: `cmp -s` of the live wrapper against the `origin/main` copy is silent and `scripts/lint_home_fork.py --check` is green for that pair; a `host_below_floor` skip line in the journal carries `start_floor_gb` 100 (the wrapper's start line does not print it).
 - **Not touched.** uv, npm and Playwright caches stay `pro.janitor`'s.
 

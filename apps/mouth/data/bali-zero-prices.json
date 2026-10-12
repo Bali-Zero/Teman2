@@ -4,7 +4,7 @@
   "company_services": {
     "company-pma": {
       "name": "New Company (PT PMA)",
-      "price": "20.000.000 IDR",
+      "price": "25.000.000 IDR",
       "icon_id": "company-pma"
     },
     "company-virtual": {
@@ -64,7 +64,7 @@
         "duration": "",
         "validity": "",
         "notes": "",
-        "description_en": "Tourist visa, single entry, valid 60 days. Cannot be used for work or business activities.",
+        "description_en": "Tourist visa, single entry: first stay up to 60 days, extendable to 180 days in total; the visa is valid 90 days from issue. Covers tourism, meetings, incentives, conferences and exhibitions, business discussions, negotiations and signing, and site visits. Selling goods or services, receiving pay and speaking at events are prohibited.",
         "icon_id": "visa-tourism",
         "tier_range": null
       },
@@ -100,7 +100,7 @@
         "duration": "",
         "validity": "",
         "notes": "",
-        "description_en": "Social activity visit visa, single entry, valid 60 days. For social, cultural or humanitarian activities sponsored by an individual or organisation — no paid employment or business meetings.",
+        "description_en": "Social activity visit visa, single entry: first stay up to 60 days, extendable to 180 days in total; the visa is valid 90 days from issue. For social activities sponsored by an individual or organisation, including visiting friends and family and tourism. Selling goods or services and receiving pay are prohibited.",
         "icon_id": "visa-social",
         "tier_range": null
       },
@@ -997,7 +997,7 @@
         "category": "company_services",
         "key": "New Company (PT PMA)",
         "name": "New Company (PT PMA)",
-        "price": "20.000.000 IDR",
+        "price": "25.000.000 IDR",
         "duration": "",
         "validity": "",
         "notes": "",

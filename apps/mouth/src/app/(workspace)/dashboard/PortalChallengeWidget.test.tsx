@@ -1469,3 +1469,139 @@ describe("Round 2 «Lascia o raddoppia»", () => {
     expect((bar.firstElementChild as HTMLElement).style.width).toBe("0%");
   });
 });
+
+describe("Round 2 sprint minimum", () => {
+  beforeEach(() => {
+    mockedHook.mockReset();
+  });
+
+  const SPRINT = {
+    start: "2026-10-12T00:00:00+08:00",
+    end: "2026-10-30T00:00:00+08:00",
+    min_points: 20,
+    penalty_idr: 700_000,
+  };
+  const norm = (s: string | null) => (s ?? "").replace(/\s+/g, " ");
+
+  function r2(
+    over: Partial<PortalChallengeResponse> = {},
+    entries?: PortalChallengeEntry[],
+  ): PortalChallengeResponse {
+    return response({
+      round: 2,
+      window_start: "2026-09-30T00:00:00+08:00",
+      window_end: "2026-10-30T00:00:00+08:00",
+      tiers: [],
+      entries: entries ?? [
+        entry({
+          member: "fake.a@example.test",
+          display_name: "Fake A",
+          rank: 1,
+          points: 31,
+          last_event_at: "2026-10-12T01:00:00Z",
+          sprint_points: 24,
+          sprint_reached: true,
+          sprint_penalty_idr: 0,
+        }),
+        entry({
+          member: "fake.b@example.test",
+          display_name: "Fake B",
+          is_me: true,
+          rank: 2,
+          points: 12,
+          last_event_at: "2026-10-12T01:00:00Z",
+          sprint_points: 6,
+          sprint_reached: false,
+          sprint_penalty_idr: 700_000,
+        }),
+      ],
+      ...over,
+    });
+  }
+
+  it("renders nothing sprint-related when the payload has no sprint", () => {
+    mockQuery(r2());
+    render(<PortalChallengeWidget identity="fixture" />);
+    expect(screen.queryByTestId("champion-sprint-banner")).toBeNull();
+    expect(
+      screen.queryByTestId("champion-sprint-fake.a@example.test"),
+    ).toBeNull();
+  });
+
+  it("renders no per-row line for an entry without sprint_points", () => {
+    mockQuery(
+      r2({ sprint: SPRINT }, [
+        entry({ member: "fake.c@example.test", rank: 1, points: 5 }),
+      ]),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    expect(screen.getByTestId("champion-sprint-banner")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("champion-sprint-fake.c@example.test"),
+    ).toBeNull();
+  });
+
+  it("shows the rule banner with period (end exclusive) and values from the payload", () => {
+    mockQuery(r2({ sprint: SPRINT }));
+    render(<PortalChallengeWidget identity="fixture" />);
+    const text = norm(screen.getByTestId("champion-sprint-banner").textContent);
+    expect(text).toContain("12 Okt");
+    expect(text).toContain("29 Okt 2026");
+    expect(text).toContain("Minimal 20 poin");
+    expect(text).toContain("Rp 700.000");
+  });
+
+  it("takes min and penalty from the payload, not from constants", () => {
+    mockQuery(
+      r2({ sprint: { ...SPRINT, min_points: 30, penalty_idr: 500_000 } }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    const text = norm(screen.getByTestId("champion-sprint-banner").textContent);
+    expect(text).toContain("Minimal 30 poin");
+    expect(text).toContain("Rp 500.000");
+    expect(text).not.toContain("700.000");
+  });
+
+  it("reached row: progress, success label, no penalty", () => {
+    mockQuery(r2({ sprint: SPRINT }));
+    render(<PortalChallengeWidget identity="fixture" />);
+    const row = screen.getByTestId("champion-sprint-fake.a@example.test");
+    expect(row).toHaveAttribute("data-reached", "true");
+    const text = norm(row.textContent);
+    expect(text).toContain("Sprint 24/20");
+    expect(text).toContain("minimum tercapai");
+    expect(text).not.toContain("Rp");
+    const bar = within(row).getByRole("progressbar");
+    expect(bar).toHaveAttribute("aria-valuenow", "20");
+    expect((bar.firstElementChild as HTMLElement).style.width).toBe("100%");
+  });
+
+  it("not-reached row: missing points and the formatted penalty", () => {
+    mockQuery(r2({ sprint: SPRINT }));
+    render(<PortalChallengeWidget identity="fixture" />);
+    const row = screen.getByTestId("champion-sprint-fake.b@example.test");
+    expect(row).toHaveAttribute("data-reached", "false");
+    const text = norm(row.textContent);
+    expect(text).toContain("Sprint 6/20");
+    expect(text).toContain("kurang 14 poin");
+    expect(text).toContain("−Rp 700.000");
+    expect(text).not.toContain("minimum tercapai");
+    const bar = within(row).getByRole("progressbar");
+    expect((bar.firstElementChild as HTMLElement).style.width).toBe("30%");
+  });
+
+  it("highlights the current user's own not-reached warning", () => {
+    mockQuery(r2({ sprint: SPRINT }));
+    render(<PortalChallengeWidget identity="fixture" />);
+    const mine = within(
+      screen.getByTestId("champion-sprint-fake.b@example.test"),
+    ).getByText(/kurang 14 poin/);
+    expect(mine.className).toContain("bg-[var(--bz-card-hover)]");
+  });
+
+  it("is not shown in round 1 even if a sprint object leaks in", () => {
+    mockQuery(response({ sprint: SPRINT }));
+    render(<PortalChallengeWidget identity="fixture" />);
+    expect(screen.queryByTestId("champion-sprint-banner")).toBeNull();
+  });
+});

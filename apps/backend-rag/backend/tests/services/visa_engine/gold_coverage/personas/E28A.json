@@ -1,0 +1,64 @@
+{
+  "expected_candidates": ["E28A"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "German software entrepreneur (41) investing IDR 10bn in a committed PT PMA as shareholder-director, applying offshore for a 400-day investor stay, no other Golden Visa route",
+  "overrides": {
+    "intent.desired_entry_date": {
+      "status": "KNOWN",
+      "value": "2026-11-02"
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["INVESTMENT"]
+    },
+    "intent.stay_days": {
+      "status": "KNOWN",
+      "value": 400
+    },
+    "investment.establishes_indonesian_company": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "investment.capital_market_only": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "investment.foreign_branch_or_subsidiary": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "investment.ikn_subsidiary": {
+      "status": "KNOWN",
+      "value": false
+    },
+    "investment.investment_capital_idr": {
+      "status": "KNOWN",
+      "value": 10000000000
+    },
+    "investment.meets_published_threshold": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "investment.paid_up_capital_idr": {
+      "status": "KNOWN",
+      "value": 2500000000
+    },
+    "investment.proposed_role": {
+      "status": "KNOWN",
+      "value": "SHAREHOLDER_DIRECTOR"
+    },
+    "investment.pt_pma_committed": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "1985-06-20"
+    },
+    "person.nationalities": {
+      "status": "KNOWN",
+      "value": ["DE"]
+    }
+  },
+  "product_code": "E28A"
+}

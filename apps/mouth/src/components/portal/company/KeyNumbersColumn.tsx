@@ -127,7 +127,7 @@ export function KeyNumbersColumn({
           key={item.label}
           className={`py-[22px] flex flex-col gap-1 ${i === 0 ? "pt-0" : ""} ${i < items.length - 1 ? "border-b border-[var(--kbli-border)]" : ""}`}
         >
-          <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--kbli-text-muted)]">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--kbli-text-muted)]">
             {item.label}
           </span>
           <span
@@ -151,7 +151,7 @@ export function KeyNumbersColumn({
                instead (4.78:1 on paper; was rgba(232,168,73,.1) +
                --kbli-amber = 1.84:1). */
             <span
-              className="inline-block self-start px-2 py-0.5 rounded-[var(--kbli-radius-sm)] text-[10px] font-semibold mt-1"
+              className="inline-block self-start px-2 py-0.5 rounded-[var(--kbli-radius-sm)] text-[11px] font-semibold mt-1"
               style={{
                 border:
                   "1px solid color-mix(in srgb, var(--state-warning) 35%, transparent)",

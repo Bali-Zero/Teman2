@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import collections
+import fcntl
 import importlib.util
 import json
 import os
 import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -30,6 +32,23 @@ _Usage = collections.namedtuple("usage", "total used free")
 NOW = time.time()
 H = 3600
 HOST_FREE_GB = 500   # B15: the host reading every prune test sees unless it says otherwise (above any start floor)
+_HELD: list = []     # B16: the coordinator locks this module's live runs hold, released after each test
+
+
+@pytest.fixture(autouse=True)
+def _release_held_locks():
+    yield
+    while _HELD:
+        _HELD.pop().close()
+
+
+def hold_lock(run_dir: Path):
+    """What runner.py's `run` does for its whole length: an exclusive flock on state/coordinator.lock."""
+    lock = run_dir / "state" / "coordinator.lock"
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    fh = open(lock, "a+")
+    fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    _HELD.append(fh)
 
 
 @pytest.fixture(autouse=True)
@@ -94,7 +113,7 @@ def image(tag16: str, age_h: float, recipe: str | None = None, gb: float = 9.85)
 
 def world(tmp_path: Path, images: list, plans: dict | None = None, in_progress: tuple = (), **extra) -> tuple[Path, str]:
     """A merger state dir whose runs hold `plans` ({run name: (age_h, {check: tag})}), finished (a status.json) unless named in
-    `in_progress`, and a docker that knows `images`."""
+    `in_progress` (no status.json, and the coordinator lock held, B16), and a docker that knows `images`."""
     state = tmp_path / "state"
     (state / "runs").mkdir(parents=True)
     (state / "repo").write_text("o/r\n")
@@ -106,6 +125,8 @@ def world(tmp_path: Path, images: list, plans: dict | None = None, in_progress: 
         os.utime(p, (NOW - age_h * H, NOW - age_h * H))
         if run not in in_progress:
             (state / "runs" / run / "status.json").write_text("{}")
+        else:
+            hold_lock(state / "runs" / run)
     w = tmp_path / "world.json"
     w.write_text(json.dumps({"images": images, **extra}))
     exe = tmp_path / "docker"
@@ -156,7 +177,7 @@ def test_two_images_of_a_recipe_named_in_the_window_are_both_kept_and_the_run_in
     three = imgs + [image("c" * 16, 1, "backend-tests")]
     d = decided(*world(tmp_path / "live", three, {"pr1-x-20261008T000000Z": (30, {"ctx.backend-tests": imgs[0]["tag"]})},
                        in_progress=("pr1-x-20261008T000000Z",)))
-    assert d[imgs[0]["tag"]]["remove"] is False and d[imgs[0]["tag"]]["rule"] == "named by the run in progress (no status.json yet)"
+    assert d[imgs[0]["tag"]]["remove"] is False and d[imgs[0]["tag"]]["rule"] == "named by the run in progress (no status.json yet, its coordinator holds the lock)"
 
 
 def test_a_plan_older_than_48_hours_names_nothing_and_the_recipe_comes_from_it_when_no_label_says(tmp_path):
@@ -643,7 +664,7 @@ def test_b8_the_run_in_progress_keeps_the_third_image_it_names(tmp_path):   # in
     imgs = [image("a" * 16, 100, "e2e-tests"), image("b" * 16, 50, "e2e-tests"), image("c" * 16, 2, "e2e-tests")]
     plans = {"pr1-x-20261008T120000Z": (0.9, {"ctx.e2e-tests": imgs[0]["tag"]}), "pr2-x-20261008T130000Z": (0.5, {"ctx.e2e-tests": imgs[1]["tag"]})}
     d = decided(*world(tmp_path, imgs, plans, in_progress=("pr1-x-20261008T120000Z",)))
-    assert d[imgs[0]["tag"]]["remove"] is False and d[imgs[0]["tag"]]["rule"] == "named by the run in progress (no status.json yet)"
+    assert d[imgs[0]["tag"]]["remove"] is False and d[imgs[0]["tag"]]["rule"] == "named by the run in progress (no status.json yet, its coordinator holds the lock)"
     assert d[imgs[1]["tag"]]["remove"] is False and d[imgs[1]["tag"]]["slot"] == 2
 
 
@@ -763,7 +784,7 @@ def test_b8_the_floor_never_touches_the_never_list_or_what_the_lease_run_names(t
     assert line["vm_floor"] == {"floor_gb": 15.0, "removed": 1, "met": False}
     assert [c for c in calls(tmp_path) if c.startswith("image rm")] == [f"image rm {imgs[0]['tag']}", f"image rm {imgs[1]['tag']}"]
     kept = {k["tag"]: k["rule"] for k in line["images"]["kept"]}
-    assert kept[imgs[2]["tag"]] == "named by the run in progress (no status.json yet)" and set(STAND_INS) <= set(kept)
+    assert kept[imgs[2]["tag"]] == "named by the run in progress (no status.json yet, its coordinator holds the lock)" and set(STAND_INS) <= set(kept)
     assert {"localci-candidate:1", "localci-deps-base:1"} <= set(kept)
 
 
@@ -1008,7 +1029,7 @@ def test_b15_host_pressure_never_removes_the_image_of_the_run_in_progress_or_the
     line = prune_line(state, docker)
     assert [r["tag"] for r in line["images"]["removed"]] == [imgs[2]["tag"]]   # the run in progress names imgs[0]: it stays, slot 2 though
     kept = {k["tag"]: k["rule"] for k in line["images"]["kept"]}
-    assert kept[imgs[0]["tag"]] == "named by the run in progress (no status.json yet)" and {"localci-candidate:1", "localci-deps-base:1", *STAND_INS} <= set(kept)
+    assert kept[imgs[0]["tag"]] == "named by the run in progress (no status.json yet, its coordinator holds the lock)" and {"localci-candidate:1", "localci-deps-base:1", *STAND_INS} <= set(kept)
 
 
 def test_b15_a_dry_run_under_pressure_removes_nothing_and_the_flag_says_so(tmp_path, monkeypatch, capsys):
@@ -1017,3 +1038,60 @@ def test_b15_a_dry_run_under_pressure_removes_nothing_and_the_flag_says_so(tmp_p
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--dry-run"]) == 0
     assert journal(state)[-1]["host_pressure"] is True and not [c for c in calls(tmp_path) if c.startswith("image rm")]
     assert "host_pressure=True" in capsys.readouterr().out
+
+
+# B16: "in progress" is the coordinator's flock, not a missing status.json (Pro, 2026-10-12: four evicted runs held two
+# second-slot deps images, about 6.35 GB, through host pressure, so the next runs started short and were evicted in turn)
+
+def _evicted(state: Path, run: str, lock: str = "free") -> None:
+    """A run B15 evicted: its plan, no status.json, and the lock its dead coordinator left (`free`), none, or one never readable."""
+    st = state / "runs" / run / "state"
+    if lock == "free":
+        (st / "coordinator.lock").write_text("29406")
+    elif lock == "unopenable":
+        (st / "coordinator.lock").mkdir()
+    (state / "runs" / run / "status.json").unlink()
+
+
+def _pressure_world(tmp_path: Path, lock: str) -> tuple[Path, str, list]:
+    imgs = [image("a" * 16, 50, "e2e-tests", gb=11.9), image("b" * 16, 1, "e2e-tests", gb=11.9)]
+    state, docker = world(tmp_path, imgs, {"pr8307-x-20261012T041205Z": (1, {"ctx.e2e-tests": imgs[0]["tag"]})}, vm_avail_kb=kb(39))
+    _evicted(state, "pr8307-x-20261012T041205Z", lock)
+    return state, docker, imgs
+
+
+@pytest.mark.parametrize("lock", ["free", "absent"])
+def test_b16_an_evicted_run_does_not_keep_its_image_under_host_pressure(tmp_path, monkeypatch, lock):   # guilt: the Pro shape
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 89)
+    state, docker, imgs = _pressure_world(tmp_path, lock)
+    line = prune_line(state, docker)
+    assert [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"]]   # slot 2, named by a dead run's plan only
+    assert line["images"]["removed"][0]["rule"].startswith("host pressure: host free 89 GB < 100 GB; slot 2 of its recipe, 1 plan(s)")
+    assert {k["tag"]: k["rule"] for k in line["images"]["kept"]}[imgs[1]["tag"]] == "the newest image of recipe e2e-tests"
+
+
+def test_b16_a_lock_that_cannot_be_opened_counts_as_held(tmp_path, monkeypatch):   # innocence: unknown keeps the image
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 89)
+    state, docker, imgs = _pressure_world(tmp_path, "unopenable")
+    line = prune_line(state, docker)
+    assert line["images"]["removed"] == []
+    assert {k["tag"]: k["rule"] for k in line["images"]["kept"]}[imgs[0]["tag"]] == (
+        "named by the run in progress (no status.json yet, its coordinator holds the lock)")
+
+
+def test_b16_the_lock_of_a_live_coordinator_process_holds_and_its_death_frees_it(tmp_path):   # the kernel, not the fixture
+    run = tmp_path / "runs" / "pr1-x-20261012T041205Z"
+    (run / "state").mkdir(parents=True)
+    child = subprocess.Popen([sys.executable, "-c", "import fcntl, sys, time\n"
+                              f"fh = open({str(run / 'state' / 'coordinator.lock')!r}, 'a+')\n"
+                              "fcntl.flock(fh, fcntl.LOCK_EX)\nprint('held', flush=True)\ntime.sleep(60)\n"],
+                             stdout=subprocess.PIPE, text=True)
+    try:
+        assert child.stdout.readline().strip() == "held"
+        assert pm.run_alive(run) is True
+    finally:
+        child.kill()
+        child.wait(timeout=10)
+        child.stdout.close()
+    assert pm.run_alive(run) is False   # SIGKILL: no status.json, no cleanup, and the lock is free
+    assert pm.run_alive(run) is False   # the probe itself leaves the lock free

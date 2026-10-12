@@ -267,6 +267,11 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b8-floor-keeps-newest": (PRUNE, 'not d["remove"] and not d["live"] and not never(', 'not d["remove"] and d["slot"] != 1 and not d["live"] and not never(', (PRUNE_T,)),
     "b8-floor-takes-lease-run": (PRUNE, 'not d["remove"] and not d["live"] and not never(', 'not d["remove"] and not never(', (PRUNE_T,)),
     "b8-live-flag-off": (PRUNE, '"live": im["tag"] in in_progress or im["id"] in in_progress}', '"live": False}', (PRUNE_T,)),
+    # B16 (Pro, 2026-10-12: evicted runs, no status.json, pinned 13.3 GB of images): in progress = the coordinator holds its lock
+    "b16-dead-run-reads-live": (PRUNE, " and run_alive(plan.parent.parent):", ":", (PRUNE_T,)),
+    "b16-missing-lock-reads-live": (PRUNE, "    except FileNotFoundError:\n        return False", "    except FileNotFoundError:\n        return True", (PRUNE_T,)),
+    "b16-unknown-lock-reads-free": (PRUNE, "        except OSError:   # BlockingIOError: the coordinator holds it; anything else is unknown, so held too\n            return True",
+                                    "        except OSError:   # BlockingIOError: the coordinator holds it; anything else is unknown, so held too\n            return False", (PRUNE_T,)),
     "b8-cache-by-age": (PRUNE, '"builder", "prune", "-af", f"--{bp[\'flag\']}", f"{budget_gb:g}GB"', '"builder", "prune", "-f", "--filter", "until=24h"', (PRUNE_T,)),
     # B13 (Pro, 2026-10-10: buildx 0.34 turned --keep-storage into a reserved floor: rc 0, a deprecation line naming the flag, 0 B freed)
     "b13-deprecated-flag-kept": (PRUNE, 'return "keep-storage" if KEEP_STORAGE_RE.search(text) and not MAX_USED_RE.search(text) else "max-used-space"',

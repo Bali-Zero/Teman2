@@ -57,7 +57,7 @@ export function KBLIEditorial({
                 </div>
               )}
               <span
-                className="inline-block mt-2 px-2 py-0.5 rounded-[var(--kbli-radius-sm)] text-[10px] font-semibold"
+                className="inline-block mt-2 px-2 py-0.5 rounded-[var(--kbli-radius-sm)] text-[11px] font-semibold"
                 style={{
                   background: isPrimary
                     ? "var(--kbli-accent-subtle)"

@@ -40,6 +40,7 @@ import type {
   PortalChallengeRankPrize,
   PortalChallengeResponse,
   PortalChallengeSeptemberSummary,
+  PortalChallengeSprint,
   PortalChallengeTier,
 } from "@/lib/api/dashboard/dashboard.api";
 
@@ -819,14 +820,93 @@ function Round2PrizeNote({ entry }: { entry: PortalChallengeEntry }) {
   );
 }
 
+// Sprint minimum: the rule banner above the ranking, and one progress line per
+// row. Both render nothing unless the backend sent `sprint` (older backends do
+// not), and a row renders nothing without `sprint_points`.
+function SprintBanner({ sprint }: { sprint: PortalChallengeSprint }) {
+  return (
+    <div
+      data-testid="champion-sprint-banner"
+      className="flex flex-col gap-0.5 rounded-lg border border-[var(--bz-copper-text)] px-3 py-2 text-[11px] text-[var(--tx-secondary)]"
+    >
+      <span className="font-bold uppercase tracking-[0.12em] text-[var(--bz-copper-text)]">
+        {`Sprint · ${formatWindowRange(sprint.start, sprint.end)}`}
+      </span>
+      <span>
+        {`Minimal ${sprint.min_points} poin — wajib untuk semua hadiah; jika kurang, bonus bulanan dipotong ${formatIDR(sprint.penalty_idr)}.`}
+      </span>
+    </div>
+  );
+}
+
+function SprintProgress({
+  entry,
+  sprint,
+}: {
+  entry: PortalChallengeEntry;
+  sprint: PortalChallengeSprint;
+}) {
+  if (entry.sprint_points == null) return null;
+  const min = sprint.min_points;
+  const points = entry.sprint_points;
+  const reached = entry.sprint_reached ?? points >= min;
+  const pct = min > 0 ? Math.max(0, Math.min(100, (points / min) * 100)) : 100;
+  const penalty = entry.sprint_penalty_idr ?? sprint.penalty_idr;
+  return (
+    <div
+      data-testid={`champion-sprint-${entry.member}`}
+      data-reached={reached ? "true" : "false"}
+      className="col-span-3 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-7 text-[11px] tabular-nums"
+    >
+      <span
+        role="progressbar"
+        aria-label={`Sprint ${entry.display_name}`}
+        aria-valuemin={0}
+        aria-valuemax={min}
+        aria-valuenow={Math.min(points, min)}
+        className="h-1.5 w-16 overflow-hidden rounded-full bg-[var(--line-control)]"
+      >
+        <span
+          className={cn(
+            "block h-full",
+            reached
+              ? "bg-[var(--state-success)]"
+              : "bg-[var(--bz-copper-text)]",
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </span>
+      <span className="text-[var(--tx-secondary)]">
+        {`Sprint ${points}/${min}`}
+      </span>
+      {reached ? (
+        <span className="font-semibold text-[var(--state-success)]">
+          minimum tercapai
+        </span>
+      ) : (
+        <span
+          className={cn(
+            "font-semibold text-[var(--bz-copper-text)]",
+            entry.is_me && "rounded bg-[var(--bz-card-hover)] px-1.5 py-0.5",
+          )}
+        >
+          {`kurang ${Math.max(0, min - points)} poin · −${formatIDR(penalty)}`}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function RankingRow({
   entry,
   isZeroState,
   round2,
+  sprint,
 }: {
   entry: PortalChallengeEntry;
   isZeroState: boolean;
   round2: boolean;
+  sprint?: PortalChallengeSprint | null;
 }) {
   const ranked = round2 ? isRanked(entry, true) : !isZeroState;
   return (
@@ -866,6 +946,7 @@ function RankingRow({
       </span>
       {round2 && <Round2Breakdown entry={entry} />}
       {round2 && <Round2PrizeNote entry={entry} />}
+      {round2 && sprint && <SprintProgress entry={entry} sprint={sprint} />}
     </div>
   );
 }
@@ -874,10 +955,12 @@ function RankingList({
   entries,
   isZeroState,
   round2,
+  sprint,
 }: {
   entries: PortalChallengeEntry[];
   isZeroState: boolean;
   round2: boolean;
+  sprint?: PortalChallengeSprint | null;
 }) {
   const [expanded, setExpanded] = React.useState(false);
   const sorted = isZeroState
@@ -891,6 +974,11 @@ function RankingList({
       <div className={cn(HAIRLINE, "border-x-0 border-t-0 px-4 py-3")}>
         <span className={EYEBROW}>Papan Peringkat</span>
       </div>
+      {round2 && sprint && (
+        <div className="px-3 pt-2">
+          <SprintBanner sprint={sprint} />
+        </div>
+      )}
       <div className="flex flex-col py-1">
         {visible.length === 0 ? (
           <p className="px-4 py-6 text-center text-[11px] text-[var(--tx-secondary)]">
@@ -903,6 +991,7 @@ function RankingList({
               entry={entry}
               isZeroState={isZeroState}
               round2={round2}
+              sprint={sprint}
             />
           ))
         )}
@@ -1304,6 +1393,7 @@ export function PortalChallengeWidget({ identity }: { identity: string }) {
           entries={data.entries}
           isZeroState={isZeroState}
           round2={round2}
+          sprint={data.sprint}
         />
         <LiveFeed
           activations={data.recent_activations}

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { expect, test, type Page } from "@playwright/test";
+import { REVIEW_REASON_COPY } from "../src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter";
 import { translate } from "../src/app/(visa-oracle)/visa-oracle/_lib/i18n";
 import {
   computeNextNode,
@@ -251,9 +252,7 @@ test.describe("Visa Oracle real full-stack smoke", () => {
     // different function, reasonMessage(), for candidate-eligibility reasons —
     // review reasons never go through it). Assert the curated text verbatim.
     await expect(
-      page.getByText(
-        "One of the official sources behind this result needs a fresh check by a Bali Zero advisor before the result can stand.",
-      ),
+      page.getByText(REVIEW_REASON_COPY.DECISIVE_SOURCE_FRESHNESS_UNKNOWN.en),
     ).toBeVisible({ timeout: 30_000 });
     const initialRequest = {
       body: evaluateRequest.postData() ?? "",

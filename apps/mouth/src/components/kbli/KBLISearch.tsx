@@ -281,7 +281,7 @@ export function KBLISearch({
                     : "hover:bg-white/[0.04]",
                 )}
               >
-                <div className="flex-shrink-0 w-12 h-12 bg-[#dc2626]/10 rounded-lg flex items-center justify-center font-bold text-[#dc2626] border border-[#dc2626]/20 text-xs">
+                <div className="flex-shrink-0 w-12 h-12 bg-[#dc2626]/10 rounded-lg flex items-center justify-center font-bold text-[#fca5a5] border border-[#dc2626]/20 text-xs">
                   {result.code}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -294,7 +294,7 @@ export function KBLISearch({
                   <div className="flex gap-2 mt-1">
                     <span
                       className={cn(
-                        "text-[10px] px-1.5 py-0.5 rounded font-medium",
+                        "text-[11px] px-1.5 py-0.5 rounded font-medium",
                         isApiPmaVerdictVerified(result)
                           ? "bg-emerald-500/10 text-emerald-400"
                           : "bg-zinc-500/10 text-zinc-400",
@@ -302,7 +302,7 @@ export function KBLISearch({
                     >
                       {apiPmaStatusLabel(result)}
                     </span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium">
+                    <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium">
                       {result.risk_category}
                     </span>
                   </div>
@@ -310,13 +310,13 @@ export function KBLISearch({
                 <ChevronRight
                   className={cn(
                     "w-4 h-4 self-center text-zinc-400",
-                    index === activeIndex && "text-[#dc2626] animate-pulse",
+                    index === activeIndex && "text-[#fca5a5] animate-pulse",
                   )}
                 />
               </button>
             ))}
           </div>
-          <div className="p-3 bg-white/[0.02] border-t border-white/[0.06] flex justify-between items-center text-[10px] text-zinc-400 uppercase tracking-widest font-bold">
+          <div className="p-3 bg-white/[0.02] border-t border-white/[0.06] flex justify-between items-center text-[11px] text-zinc-400 uppercase tracking-widest font-bold">
             <span>{results.length} KBLI codes found</span>
             <span className="flex items-center gap-1">
               Press{" "}

@@ -5,17 +5,16 @@
   <key>Label</key><string>com.nuzantara.cost-advisor-daily-cap</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/bin/bash</string>
-    <string>-lc</string>
-    <string>cd /Users/nuzantara/nuzantara/apps/backend-rag &amp;&amp; PYTHONPATH=. /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m backend.scripts.cost_advisor_cli --check-daily-cap</string>
+    <string>/Users/nuzantara/nuzantara/scripts/wr2-cron-wrapper.sh</string>
+    <string>backend.scripts.cost_advisor_cli</string>
+    <string>--check-daily-cap</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict>
     <key>Hour</key><integer>8</integer>
     <key>Minute</key><integer>0</integer>
   </dict>
-  <key>StandardOutPath</key><string>/tmp/cost-advisor-daily.log</string>
-  <key>StandardErrorPath</key><string>/tmp/cost-advisor-daily.err</string>
-  <key>RunAtLoad</key><false/>
+  <key>StandardOutPath</key><string>/Users/nuzantara/Library/Logs/cost-advisor-daily.log</string>
+  <key>StandardErrorPath</key><string>/Users/nuzantara/Library/Logs/cost-advisor-daily.err</string>
 </dict>
 </plist>

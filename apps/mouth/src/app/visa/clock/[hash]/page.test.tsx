@@ -262,6 +262,18 @@ describe("visa clock — a stay that is still valid (control)", () => {
     );
   });
 
+  it("promises no fee type or processing time the catalogue does not source", async () => {
+    await renderWithExpiry(45);
+
+    // The renewal CTA once read "Fixed fee, processed in ~14 days" for every
+    // visa type. No catalogue row carries 14 days (snapshot windows are 3-5,
+    // 7-10 and 20-30 working days) and the page quotes no amount, so both
+    // halves were unsourced. The description must name neither.
+    const description = String(ctaProps.current?.description ?? "");
+    expect(description).not.toBe("");
+    expect(description).not.toMatch(/fixed fee|~|\d+\s*(days|working)/i);
+  });
+
   it("hands the team days LEFT while the stay is still running", async () => {
     await renderWithExpiry(45);
 

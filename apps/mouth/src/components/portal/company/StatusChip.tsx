@@ -45,7 +45,7 @@ export function StatusChip({
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[var(--kbli-radius-sm)] text-[10px] font-semibold uppercase tracking-[0.04em]"
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[var(--kbli-radius-sm)] text-[11px] font-semibold uppercase tracking-[0.04em]"
       style={styles[variant]}
     >
       {icon}

@@ -297,7 +297,28 @@ describe("typical processing time copy", () => {
       /^Perkiraan waktu proses Bali Zero .* akan mengonfirmasi jadwal /,
     );
     expect(dict.id["outcome.timeline_pending"]).toMatch(
-      /Konsultan Bali Zero akan mengonfirmasi jadwal/,
+      /Konsultan Bali Zero dapat mengonfirmasi jadwal/,
+    );
+  });
+
+  it("the pending timeline names no cause and promises no advisor", () => {
+    // No rule or official page says why a time is unknown, so the copy states only that Bali Zero
+    // has none confirmed yet, and an advisor is offered ("can"), never promised.
+    for (const language of ["en", "id"] as const) {
+      const text = dict[language]["outcome.timeline_pending"];
+      expect(text).not.toMatch(
+        /season|musim|vary|varies|bervariasi|office|kantor|Ditjen/i,
+      );
+      expect(text).not.toMatch(/\d/);
+    }
+    expect(dict.en["outcome.timeline_pending"]).toMatch(
+      /^Bali Zero has no confirmed processing time for this visa yet\./,
+    );
+    expect(dict.en["outcome.timeline_pending"]).toMatch(
+      /advisor can confirm the calendar/,
+    );
+    expect(dict.id["outcome.timeline_pending"]).toMatch(
+      /^Bali Zero belum memiliki kepastian lama proses/,
     );
   });
 });

@@ -160,6 +160,19 @@ function shareTimingText(
       });
 }
 
+/**
+ * The pack names 37 of its 38 products with a trailing " (CODE)". The card
+ * eyebrow and the share line already lead with the code, so strip a trailing
+ * "(CODE)" only when it is this candidate's OWN code: a different code in
+ * parentheses, or one that is not at the end, is the pack's wording and stays.
+ * Never returns an empty name.
+ */
+export function candidateDisplayName(code: string, name: string): string {
+  const escaped = code.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const stripped = name.replace(new RegExp(`\\s*\\(${escaped}\\)\\s*$`), "");
+  return stripped.length > 0 ? stripped : name;
+}
+
 function buildShareSummary(
   language: Language,
   outcome: OutcomeViewModel,
@@ -186,7 +199,10 @@ function buildShareSummary(
   }
   if (outcome.state === "SUPPORTED_CANDIDATES") {
     for (const candidate of outcome.candidates) {
-      const name = `${candidate.code} — ${localized(candidate.name, language)}`;
+      const name = `${candidate.code} — ${candidateDisplayName(
+        candidate.code,
+        localized(candidate.name, language),
+      )}`;
       const timing = shareTimingText(language, candidate.timeline);
       const parts = [
         candidate.price.status === "AVAILABLE"
@@ -687,7 +703,10 @@ function CandidateCard({
           )}
         </div>
         <h2 className="oracle-candidate-card__title">
-          {localized(candidate.name, language)}
+          {candidateDisplayName(
+            candidate.code,
+            localized(candidate.name, language),
+          )}
         </h2>
         {candidate.tagline && (
           <p className="oracle-question__hint">

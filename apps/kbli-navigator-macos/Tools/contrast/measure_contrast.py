@@ -12,8 +12,8 @@ import json, re, sys
 from pathlib import Path
 
 TOKENS = {
-    "antracite": (0xF7F4EE, 0x111922), "ink": (0xEAE3D8, 0x1C2B3A),
-    "inkLift": (0xFFFCF7, 0x16222E), "surfaceHi": (0xEAE3D8, 0x1C2B3A),
+    "antracite": (0xF7F4EE, 0x232527), "ink": (0xEAE3D8, 0x2B2E31),
+    "inkLift": (0xFFFCF7, 0x272A2C), "surfaceHi": (0xEAE3D8, 0x2B2E31),
     "accent": (0xA44B36, 0xD08371), "accentHi": (0x853D2C, 0xDA9E90),
     "red": (0x86200F, 0xED6F5A), "zantara": (0x233D52, 0x6C9BC0),
     "statutory": (0x233D52, 0x6C9BC0), "blue": (0x233D52, 0x6C9BC0),
@@ -23,16 +23,16 @@ TOKENS = {
     "pmaClosed": (0x86200F, 0xED6F5A), "green": (0x17452A, 0x39AC69),
     "riskLow": (0x233D52, 0x6C9BC0), "riskMediumLow": (0x233D52, 0x6C9BC0),
     "riskMediumHigh": (0x233D52, 0x6C9BC0), "riskHigh": (0x233D52, 0x6C9BC0),
-    "lineSoft": (0xDAD8D1, 0x243649), "lineStrong": (0xA8ACA9, 0x416283),
-    "scrim": (0xEAE3D8, 0x1C2B3A),
-    "iconOnAccentFill": (0xF7F4EE, 0x111922), "iconOnZantaraFill": (0xF7F4EE, 0x111922),
+    "lineSoft": (0xDAD8D1, 0x3C3F43), "lineStrong": (0xA8ACA9, 0x62666B),
+    "scrim": (0xEAE3D8, 0x2B2E31),
+    "iconOnAccentFill": (0xF7F4EE, 0x232527), "iconOnZantaraFill": (0xF7F4EE, 0x232527),
     "decor": (0xB8862B, 0xC28D2D), "decorGold": (0xB8862B, 0xC28D2D),
-    "chipOpenFg": (0x17452A, 0xDDEBDF), "chipOpenBg": (0xDDEBDF, 0x142F26),
-    "chipRestrictedFg": (0x5B4000, 0xF4E3B9), "chipRestrictedBg": (0xF4E3B9, 0x362C11),
-    "chipClosedFg": (0x86200F, 0xF4D6D0), "chipClosedBg": (0xF4D6D0, 0x4C1C18),
-    "riskFillLow": (0xF7F4EE, 0x111922), "riskFillMediumLow": (0xD7D9D7, 0x1F2C3A),
-    "riskFillMediumHigh": (0xADB4B7, 0x314659), "riskFillHigh": (0x233D52, 0x6C9BC0),
-    "riskInk": (0x233D52, 0xF7F4EE), "riskInkOnHigh": (0xF7F4EE, 0x111922),
+    "chipOpenFg": (0x17452A, 0xDDEBDF), "chipOpenBg": (0xDDEBDF, 0x1D3528),
+    "chipRestrictedFg": (0x5B4000, 0xF4E3B9), "chipRestrictedBg": (0xF4E3B9, 0x3F3214),
+    "chipClosedFg": (0x86200F, 0xF4D6D0), "chipClosedBg": (0xF4D6D0, 0x54221B),
+    "riskFillLow": (0xF7F4EE, 0x232527), "riskFillMediumLow": (0xD7D9D7, 0x2E373E),
+    "riskFillMediumHigh": (0xADB4B7, 0x3D4E5D), "riskFillHigh": (0x233D52, 0x6C9BC0),
+    "riskInk": (0x233D52, 0xF7F4EE), "riskInkOnHigh": (0xF7F4EE, 0x232527),
 }
 
 def hex_to_rgb(h): return ((h >> 16) & 0xFF, (h >> 8) & 0xFF, h & 0xFF)

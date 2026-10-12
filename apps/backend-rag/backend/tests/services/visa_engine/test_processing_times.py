@@ -30,7 +30,14 @@ def _decision(evaluated_at: datetime) -> Any:
     return SimpleNamespace(evaluated_at=evaluated_at, observed_at=_OBSERVED)
 
 
-_NO_CATALOGUE_TIME = frozenset({"BRIDGING"})
+# Products that deliberately carry no window, each with the reason. A product listed here has no
+# snapshot row, so the card falls back to the pending timeline instead of an invented figure.
+_NO_CATALOGUE_TIME_REASONS = {
+    "BRIDGING": "the production catalogue has no processing time for it",
+    "E23U": "no code-specific official window (own page empty; the 4-day text on the generic klasifikasi page is a template that never names it) and no price row (OD-5)",
+    "E23V": "no code-specific official window (own page empty; the 4-day text on the generic klasifikasi page is a template that never names it) and no price row (OD-5)",
+}
+_NO_CATALOGUE_TIME = frozenset(_NO_CATALOGUE_TIME_REASONS)
 
 
 def unmapped_products(product_codes: Iterable[str]) -> set[str]:
@@ -61,6 +68,15 @@ class TestSnapshot:
             assert unmapped_products(codes) == set(), label
         assert typical_window("BRIDGING") is None
         assert typical_window("NOPE") is None
+
+    @pytest.mark.parametrize("code", ["E23U", "E23V"])
+    def test_the_diplomat_household_and_trade_office_visas_carry_no_window(self, code: str) -> None:
+        # The 7-10 default was unsourced. imigrasi.go.id carries no E23U/E23V window of its own; its generic
+        # klasifikasi-visa page prints "four working days" in a template served unchanged for any slug and
+        # never names these codes, so it is not a code-specific figure (OD-5 decides which authority governs).
+        assert typical_window(code) is None
+        assert code not in processing_times.product_windows()
+        assert code in _NO_CATALOGUE_TIME_REASONS
 
     def test_the_snapshot_holds_exactly_the_signed_pack_minus_the_named_exclusion(self) -> None:
         snapshot = json.loads(Path(processing_times._SNAPSHOT).read_text(encoding="utf-8"))
@@ -164,8 +180,11 @@ class TestDisplayTimeline:
         )
         assert shown["anchor_date"] == "2026-10-10"
 
-    def test_bridging_stays_the_unchanged_unknown_object(self) -> None:
-        shown = _processing_timeline("BRIDGING", _decision(_OBSERVED))
+    @pytest.mark.parametrize("code", ["BRIDGING", "E23U", "E23V"])
+    def test_a_product_with_no_snapshot_row_stays_the_unchanged_unknown_object(
+        self, code: str
+    ) -> None:
+        shown = _processing_timeline(code, _decision(_OBSERVED))
         assert shown == {
             "status": "UNKNOWN",
             "reason_code": "PROCESSING_TIMELINE_NOT_VERIFIED",
@@ -174,6 +193,35 @@ class TestDisplayTimeline:
             "estimated_completion_from": None,
             "estimated_completion_to": None,
         }
+
+    def test_an_unpriced_product_without_a_snapshot_row_renders_the_pending_timeline(self) -> None:
+        # pricing_key is None (CONTACT_REQUIRED) and the snapshot has no row: pending, not a window.
+        pack = load_highest_signed_pack()
+        unpriced = {str(p.product_code) for p in pack.products if p.pricing_key is None}
+        assert {"E23U", "E23V"} <= unpriced
+        for code in sorted(unpriced - set(processing_times.product_windows())):
+            shown = _processing_timeline(code, _decision(_OBSERVED))
+            assert shown["status"] == "UNKNOWN", code
+            assert shown["reason_code"] == "PROCESSING_TIMELINE_NOT_VERIFIED", code
+            assert "working_days_min" not in shown, code
+
+    def test_the_e23u_walk_card_shows_the_pending_timeline_and_e23_keeps_its_window(self) -> None:
+        from backend.tests.services.visa_engine import test_interview_walk_census as census
+
+        spec = census._load_walks()["offshore/work/sponsor_individual"]
+        decision, compiled, _ = census._decide(
+            spec["overrides"], "offshore/work/sponsor_individual"
+        )
+        raw = _build_display(
+            decision, compiled, request_trace="t", pricing_catalog=UnavailablePricingCatalog()
+        )
+        by_code = {
+            str(entry["product_code"]): entry["processing_timeline"] for entry in raw["candidates"]
+        }
+        assert by_code["E23U"]["status"] == "UNKNOWN"
+        assert by_code["E23U"]["reason_code"] == "PROCESSING_TIMELINE_NOT_VERIFIED"
+        assert "working_days_min" not in by_code["E23U"]
+        assert (by_code["E23"]["working_days_min"], by_code["E23"]["working_days_max"]) == (20, 30)
 
     def test_an_undecreed_year_falls_back_to_unknown(self) -> None:
         shown = _processing_timeline("E31B", _decision(datetime(2028, 3, 1, tzinfo=timezone.utc)))

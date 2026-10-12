@@ -328,12 +328,6 @@ edges:
       status: SCHEDULED_ALIVE,
       producer: "Mon 09:00 UTC",
     }
-  - id: restore-drill.yml
-    kind: gh_workflow
-    machine: github
-    status: RED
-    producer: "monthly d1 04:00 UTC"
-    notes: "last SCHEDULED run (2026-06-01) FAILED, rescued by manual dispatch 06-05; with W70 local fly_pg_backup 0-byte history, backup-verify lane failed on BOTH sides. Next unattended proof 2026-07-01"
   - {
       id: sprint2-w1-verify.yml,
       kind: gh_workflow,

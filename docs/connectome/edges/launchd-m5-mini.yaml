@@ -21,6 +21,12 @@ edges:
         type: cmd,
         cmd: "launchctl list | grep -F com.nuzantara.agent-worktree-cleanup.daily",
       }
+  - id: com.nuzantara.restore-drill
+    kind: launchd
+    machine: mini
+    status: UNKNOWN
+    consumer: "infra/launchagents/wrappers/mini-restore-drill.sh -> scripts/restore_drill/run_drill.sh (monthly d1 12:00; heartbeat mini.restore_drill)"
+    notes: "Replaces the retired restore-drill.yml GitHub workflow (zero-cutover gate 7b). UNKNOWN until installed on Mini; flip to ALIVE after the first kickstart reaches verdict PASS."
   - id: com.nuzantara.mailbox-janitor.daily-m5
     kind: launchd
     machine: m5

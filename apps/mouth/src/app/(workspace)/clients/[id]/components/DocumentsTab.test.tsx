@@ -4,6 +4,20 @@ import type { ClientDocument } from "@/lib/api/crm/crm.types";
 import { StatePill } from "@/components/workspace/r19";
 import { DocumentsTab } from "./DocumentsTab";
 import { getDocumentOpenUrl } from "./utils";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
+
+vi.mock("@/lib/api", () => ({
+  api: { crm: { deleteDocument: vi.fn() } },
+}));
+
+vi.mock("sonner", () => ({
+  toast: Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    dismiss: vi.fn(),
+  }),
+}));
 
 describe("getDocumentOpenUrl", () => {
   it("prefers file_id over any URL on the row", () => {
@@ -82,6 +96,7 @@ const renderTab = (
   extra: Partial<{
     onAddClick: () => void;
     onEditClick: (d: ClientDocument) => void;
+    onRefresh: () => void;
   }> = {},
 ) =>
   render(
@@ -92,6 +107,7 @@ const renderTab = (
       formatDate={(d) => d}
       onAddClick={extra.onAddClick ?? vi.fn()}
       onEditClick={extra.onEditClick ?? vi.fn()}
+      onRefresh={extra.onRefresh ?? vi.fn()}
     />,
   );
 
@@ -525,5 +541,46 @@ describe("DocumentsTab — client visibility marker (PR 7989 contract)", () => {
   it("INNOCENCE: visible documents, and a backend without the field, show no marker", () => {
     renderTab([doc({ id: 3, client_visible: true }), doc({ id: 4 })]);
     expect(screen.queryByText("Hidden from the client")).toBeNull();
+  });
+});
+
+describe("DocumentsTab — archive a document (CRM-17)", () => {
+  type ToastOpts = { action: { label: string; onClick: () => Promise<void> } };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.crm.deleteDocument).mockResolvedValue({
+      success: true,
+      action: "archived",
+    });
+  });
+
+  it("GUILT: every row has an Archive action", () => {
+    renderTab([doc({ id: 7 }), doc({ id: 8 })]);
+    expect(
+      screen.getByRole("button", { name: "Archive doc-7.pdf" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Archive doc-8.pdf" }),
+    ).toBeTruthy();
+  });
+
+  it("control: clicking asks first and does not archive yet", () => {
+    renderTab([doc({ id: 7 })]);
+    fireEvent.click(screen.getByRole("button", { name: "Archive doc-7.pdf" }));
+    expect(toast).toHaveBeenCalledTimes(1);
+    expect(api.crm.deleteDocument).not.toHaveBeenCalled();
+  });
+
+  it("GUILT: confirming archives (never permanent) and refreshes the client", async () => {
+    const onRefresh = vi.fn();
+    renderTab([doc({ id: 7 })], undefined, { onRefresh });
+    fireEvent.click(screen.getByRole("button", { name: "Archive doc-7.pdf" }));
+    const opts = vi.mocked(toast).mock.calls[0][1] as unknown as ToastOpts;
+    expect(opts.action.label).toBe("Archive");
+    await opts.action.onClick();
+    expect(api.crm.deleteDocument).toHaveBeenCalledWith(1, 7);
+    expect(vi.mocked(api.crm.deleteDocument).mock.calls[0]).toHaveLength(2);
+    expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 });

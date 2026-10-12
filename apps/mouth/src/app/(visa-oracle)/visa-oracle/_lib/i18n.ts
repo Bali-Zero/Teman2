@@ -886,7 +886,7 @@ const en = {
 
   "outcome.timeline_title": "Timeline",
   "outcome.timeline_pending":
-    "Processing times are set by Ditjen Imigrasi and vary by office and season. Your Bali Zero advisor confirms the calendar for your case before you book travel.",
+    "Bali Zero has no confirmed processing time for this visa yet. A Bali Zero advisor can confirm the calendar for your case before you book travel.",
   "outcome.path_counter": "Path {{index}} of {{total}}",
   "outcome.checked_on": "Checked on {{date}} against the sources above.",
   "outcome.checked_on_plain": "Checked on {{date}}.",
@@ -1914,7 +1914,7 @@ const id: Record<Keys, string> = {
 
   "outcome.timeline_title": "Linimasa",
   "outcome.timeline_pending":
-    "Lama proses ditentukan oleh Ditjen Imigrasi dan bervariasi menurut kantor dan musim. Konsultan Bali Zero akan mengonfirmasi jadwal untuk kasus Anda sebelum Anda memesan perjalanan.",
+    "Bali Zero belum memiliki kepastian lama proses untuk visa ini. Konsultan Bali Zero dapat mengonfirmasi jadwal untuk kasus Anda sebelum Anda memesan perjalanan.",
   "outcome.path_counter": "Jalur {{index}} dari {{total}}",
   "outcome.checked_on": "Diperiksa pada {{date}} berdasarkan sumber di atas.",
   "outcome.checked_on_plain": "Diperiksa pada {{date}}.",

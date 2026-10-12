@@ -1,0 +1,32 @@
+task: >-
+  Follow-up to #8296 (final-gate notices N1 and N4). N1: the merged SQL comment in persist_recommendations and the DB
+  test docstring name the type sides the wrong way round; a PREPARE measures the NOT EXISTS predicate resolving $1 as
+  text and the SELECT list (typed by the INSERT target column) as varchar. The #8296 brief carries the same inversion
+  and is corrected here rather than rewritten. N4: the repo plists for cost-advisor-weekly and cost-advisor-daily-cap
+  still log to /tmp and carry RunAtLoad, while the live Pro plists log to ~/Library/Logs and carry no RunAtLoad; the
+  deploy README still sends DATABASE_URL through the project .env, which held a stale password on 2026-10-11.
+lane: backend-rag
+machine: m5
+date: 2026-10-12
+gear: 2
+gear_reason: >-
+  Measured floor; campaign rule after #8079: at least gear 2 so harness-floor holds for the independent final gate.
+  Text and plist alignment only; the SQL is unchanged.
+acceptance:
+  A1:
+    text: >-
+      The comment above persist_recommendations' SELECT and the DB test docstring say the SELECT list resolves $1-$3
+      as varchar and the NOT EXISTS predicate as text, matching a PREPARE.
+    probe: >-
+      asyncpg PREPARE on a real Postgres of `SELECT 1 FROM llm_cost_recommendations WHERE endpoint = $1` (-> text) and
+      `INSERT INTO llm_cost_recommendations (endpoint, ...) SELECT $1, ...` (-> varchar); SQL text unchanged
+      (git diff shows comment lines only).
+  A2:
+    text: >-
+      plutil -p of each repo plist equals plutil -p of the live Pro plist byte for byte.
+    probe: cmp of the two plutil -p outputs per job; plutil -lint.
+  A3:
+    text: >-
+      The deploy README names scripts/wr2-cron-wrapper.sh as the source of DATABASE_URL and lists the
+      ~/Library/Logs paths.
+    probe: reading the README section against the live plists and the wrapper.

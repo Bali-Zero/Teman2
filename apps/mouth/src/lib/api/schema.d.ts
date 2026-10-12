@@ -24844,6 +24844,12 @@ export interface components {
       september_choice?: string | null;
       /** September Rank */
       september_rank?: number | null;
+      /** Sprint Penalty Idr */
+      sprint_penalty_idr?: number | null;
+      /** Sprint Points */
+      sprint_points?: number | null;
+      /** Sprint Reached */
+      sprint_reached?: boolean | null;
       /** Tax Bonus Idr */
       tax_bonus_idr: number;
       /** To Next Tier */
@@ -24925,6 +24931,7 @@ export interface components {
       round: number;
       scoring?: components["schemas"]["PortalChallengeScoringRules"] | null;
       september?: components["schemas"]["PortalChallengeSeptember"] | null;
+      sprint?: components["schemas"]["PortalChallengeSprint"] | null;
       /** Status */
       status: string;
       tax_rules: components["schemas"]["PortalChallengeTaxRules"];
@@ -25012,6 +25019,23 @@ export interface components {
       tax_bonus_idr: number;
       /** Total Prize Idr */
       total_prize_idr: number;
+    };
+    /** PortalChallengeSprint */
+    PortalChallengeSprint: {
+      /**
+       * End
+       * Format: date-time
+       */
+      end: string;
+      /** Min Points */
+      min_points: number;
+      /** Penalty Idr */
+      penalty_idr: number;
+      /**
+       * Start
+       * Format: date-time
+       */
+      start: string;
     };
     /** PortalChallengeTaxRules */
     PortalChallengeTaxRules: {

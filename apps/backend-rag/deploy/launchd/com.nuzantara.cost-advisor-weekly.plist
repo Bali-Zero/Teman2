@@ -5,9 +5,9 @@
   <key>Label</key><string>com.nuzantara.cost-advisor-weekly</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/bin/bash</string>
-    <string>-lc</string>
-    <string>cd ~/nuzantara/apps/backend-rag &amp;&amp; source .venv/bin/activate &amp;&amp; PYTHONPATH=. python -m backend.scripts.cost_advisor_cli run</string>
+    <string>/Users/nuzantara/nuzantara/scripts/wr2-cron-wrapper.sh</string>
+    <string>backend.scripts.cost_advisor_cli</string>
+    <string>run</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict>
@@ -15,8 +15,7 @@
     <key>Hour</key><integer>7</integer>
     <key>Minute</key><integer>0</integer>
   </dict>
-  <key>StandardOutPath</key><string>/tmp/cost-advisor-weekly.log</string>
-  <key>StandardErrorPath</key><string>/tmp/cost-advisor-weekly.err</string>
-  <key>RunAtLoad</key><false/>
+  <key>StandardOutPath</key><string>/Users/nuzantara/Library/Logs/cost-advisor-weekly.log</string>
+  <key>StandardErrorPath</key><string>/Users/nuzantara/Library/Logs/cost-advisor-weekly.err</string>
 </dict>
 </plist>

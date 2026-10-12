@@ -434,7 +434,9 @@ describe("OutcomeSheet — honest five-state rendering", () => {
     );
 
     expect(
-      screen.getByText(/Processing times are set by Ditjen Imigrasi/),
+      screen.getByText(
+        /Bali Zero has no confirmed processing time for this visa yet/,
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Timeline unavailable/i)).not.toBeInTheDocument();
     expect(document.querySelector(".oracle-unverified")).toBeNull();
@@ -581,7 +583,9 @@ describe("OutcomeSheet — Bali Zero typical processing time", () => {
   it("UNKNOWN keeps the pending paragraph unchanged", () => {
     renderTimeline({ status: "UNAVAILABLE" });
     expect(
-      screen.getByText(/Processing times are set by Ditjen Imigrasi/),
+      screen.getByText(
+        /Bali Zero has no confirmed processing time for this visa yet/,
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Typically/)).toBeNull();
     expect(screen.queryByText(/Indicative Bali Zero timing/)).toBeNull();
@@ -633,10 +637,10 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
         "How this is handled",
       ],
       [
-        "This result is paused because you disclosed a criminal record or an ongoing case. A Bali Zero advisor reviews it with you before any path is confirmed.",
-        "A specialist reads what you disclosed against the immigration record requirements for the route you asked about, and decides whether it can be submitted as it stands.",
-        "Have the dates and the issuing authority of any court or police record ready, together with any document showing the case is closed. Send nothing here — our team tells you where each document goes.",
-        "A specialist reviews this before we confirm a path, and our team comes back to you with the timing for your case.",
+        "This result is paused because you disclosed a criminal record or an ongoing case. A Bali Zero advisor can review it with you before any path is confirmed.",
+        "A Bali Zero advisor can read what you disclosed against the immigration record requirements for the route you asked about, and assess whether it can be submitted as it stands.",
+        "Have the dates and the issuing authority of any court or police record ready, together with any document showing the case is closed. Send nothing here — a Bali Zero advisor can tell you where each document goes.",
+        "A Bali Zero advisor can review this before a path is confirmed, and can tell you the timing for your case.",
       ],
     ],
     [
@@ -648,10 +652,10 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
         "Bagaimana hal ini ditangani",
       ],
       [
-        "Hasil ini ditunda karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Konsultan Bali Zero meninjaunya bersama Anda sebelum jalur mana pun dikonfirmasi.",
-        "Seorang spesialis membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
-        "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — tim kami akan memberi tahu ke mana setiap dokumen harus dikirim.",
-        "Seorang spesialis meninjau hal ini sebelum kami mengonfirmasi jalur, dan tim kami akan mengabari Anda mengenai perkiraan waktu untuk kasus Anda.",
+        "Hasil ini ditunda karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Konsultan Bali Zero dapat meninjaunya bersama Anda sebelum jalur mana pun dikonfirmasi.",
+        "Konsultan Bali Zero dapat membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
+        "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — konsultan Bali Zero dapat memberi tahu ke mana setiap dokumen harus dikirim.",
+        "Konsultan Bali Zero dapat meninjau hal ini sebelum jalur dikonfirmasi, dan dapat memberi tahu Anda perkiraan waktu untuk kasus Anda.",
       ],
     ],
   ] as const)(

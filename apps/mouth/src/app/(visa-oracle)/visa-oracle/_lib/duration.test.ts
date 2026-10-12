@@ -202,9 +202,10 @@ describe("duration pricing — the quote must belong to the selected option", ()
       ]);
       expect(candidate.price.status).not.toBe("AVAILABLE");
       if (candidate.price.status === "AVAILABLE") throw new Error("price");
-      expect(candidate.price.message?.en).toBe(
-        "The price for this path is confirmed by a Bali Zero advisor.",
-      );
+      expect(candidate.price.message).toEqual({
+        en: "The price for this path could not be loaded. You can ask a Bali Zero advisor.",
+        id: "Harga untuk jalur ini tidak dapat dimuat. Anda dapat bertanya kepada konsultan Bali Zero.",
+      });
       expect(candidate.duration).toBeUndefined();
     },
   );

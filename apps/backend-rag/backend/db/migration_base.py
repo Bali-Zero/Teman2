@@ -544,6 +544,38 @@ def split_migration_sql(sql_text: str) -> tuple[str, str | None]:
     return forward, rollback
 
 
+# Dependency declaration convention for SQL migrations: a header comment of
+# the form `-- depends: 277` (comma-separated numbers allowed) declares that
+# those migrations must be applied BEFORE this one. Like the rollback marker,
+# the declaration is a `--` comment, so PostgreSQL ignores it; the runner
+# (`MigrationManager.discover_migrations`) extracts it and passes it to
+# BaseMigration(dependencies=...), and `_check_dependencies()` refuses to
+# apply the migration while any declared dependency is missing from
+# `schema_migrations`. Files without the line declare no constraint.
+DEPENDS_MARKER_RE = re.compile(
+    r"^\s*--\s*depends\s*:\s*([0-9].*?)\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def extract_dependencies(sql_text: str) -> list[int]:
+    """Extract declared `-- depends: N[, M, ...]` numbers from a SQL file.
+
+    Returns the sorted, de-duplicated list of dependency migration numbers;
+    the empty list when no declaration is present. Unparseable tokens are
+    ignored rather than failing discovery — a malformed declaration must not
+    block unrelated migrations.
+    """
+    numbers: set[int] = set()
+    for match in DEPENDS_MARKER_RE.finditer(sql_text):
+        for token in match.group(1).replace(",", " ").split():
+            try:
+                numbers.add(int(token))
+            except ValueError:
+                continue
+    return sorted(numbers)
+
+
 class MigrationIrreversibleError(MigrationError):
     """Raised when a migration explicitly has no safe rollback path.
 

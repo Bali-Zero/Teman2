@@ -1,0 +1,181 @@
+gear: 2
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  visa-night family "visit" plan V04 (/Users/nuzantara/visa-night/visit/audit.json, findings F029, F065,
+  F081, F114, F115 engine-adapter/outcome-fallbacks part) merged with family "work" plan PR-03
+  (/Users/nuzantara/visa-night/work/audit.json, group G20, findings F26, F41, F42). Audit ran on
+  53190abacc; this change was re-verified on origin/main 12200510b2 (every promise string still present).
+mission: >-
+  The Visa Oracle offers a Bali Zero advisor and never promises one, in English and Bahasa Indonesia.
+lanes:
+  - lane: v04-advisor-offered
+    role: build
+    seat: Claude Opus 5.5 implementer (as in the commit co-author lines), worktree mouth-vn-adapter-v04-advisor-offered on the visa night run.
+  - lane: v04-ground-truth
+    role: ground_truth
+    seat: >-
+      The change asserts no rule of its own. Ground truth is the signed pack and the official imigrasi.go.id
+      pages already cited by the adapter's existing sentences; every rewritten sentence keeps the claim it
+      had and changes only who acts (an advisor CAN, instead of "we do"). Price rows are untouched: the
+      unpriced fallback names no figure.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "344b13d8fe80347efe2fd3cf4b5b1e406bf37ace6c27e436d6155dffd4befc28" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at origin/main 12200510b2 (before the change).
+pii_scan: clean
+bites: >-
+  Consumer: the public Visa Oracle result page (OutcomeSheet reading engine-adapter.ts nextStepsFor,
+  REVIEW_REASON_COPY, REVIEW_REASON_ELEMENTS, NOTICE_CONDITION_COPY and the price fallback), and the
+  advisor-offer.test.ts scan that runs in the mouth suite on every PR. Observation, after promote: a
+  headless walk of tourism shows the step "an advisor can go over the documents, the timing and the price
+  with you"; an unpriced path (E23U) shows "Price on consultation" with the offer; the minor-without-guardian
+  walk shows "A Bali Zero consultant can pick this up with you once an adult is present"; each with its
+  Bahasa Indonesia twin, and none of "we confirm", "reviews your case", "continues from here", "comes back
+  to you". Pre-merge, the same phrases are asserted absent by advisor-offer.test.ts.
+appetite_exceeded: >-
+  Two adversarial rounds against a declared ceiling of one: the second is the fresh rollout gate, whose
+  blocking finding (two required Playwright jobs still pinning the old copy) the first red team could not
+  see because it did not run the e2e specs.
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 2
+  paid_api: none
+  note: >-
+    One implementer session plus one red-team round by codex gpt-5.6-sol (subscription CLI, rollout
+    rollout-2026-10-12T09-58-56-01a12dd5-9d11-7da1-9657-4b8b4666773e), then a fresh Opus 5.5 rollout gate
+    at ebc8106927 (REWORK-BUILD) cured in a second implementer pass; no paid per-token API.
+results:
+  - claim: "Test first: the new scan test is red on origin/main copy for the right keys."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/advisor-offer.test.ts'
+    result: "4 failed | 1 passed before the rewrite (next steps, support/review reasons, review elements, notices); the guilt test on the replaced sentences passes"
+  - claim: "The whole visa-oracle mouth suite after the change."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 55 passed (55); Tests 1437 passed (1437) after the rollout-gate cures (1436 at ebc8106927, 1431 before the first red-team cures)"
+  - claim: "apps/mouth typechecks."
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output, exit 0"
+  - claim: "The legacy client-copy guard and the i18n census stay green."
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py && python3 scripts/ci/observe_visa_oracle_i18n_census.py
+    result: "OK visa-oracle client copy: 3592 literals scanned, 0 banned; census holds (6 passed)"
+  - claim: "Test first on the red-team cures: the new tests are red on the pre-cure copy and green after."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/advisor-offer.test.ts' 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts'
+    result: "7 failed on the pre-cure engine-adapter.ts (obligation sentences, blacklist capability claim, three CONTACT_REQUIRED reason codes, pinned activity-boundary and price strings); 167 passed after"
+  - claim: "Test first on the rollout-gate cures: the new guards are red on the head the gate judged and green after."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/advisor-offer.test.ts'
+    result: "2 failed on ebc8106927 (the unscanned generic review reason; three Playwright specs, visa-oracle-v2, visa-oracle-fullstack and visa-oracle-live-parity, pinning the old promise sentences); 9 passed after"
+  - claim: "The Playwright specs the gate named type-check (e2e is excluded from the app tsconfig)."
+    cmd: cd apps/mouth && npx tsc --noEmit -p <temporary tsconfig extending tsconfig.json that includes the three e2e specs, removed afterwards>
+    result: "no output, exit 0"
+  - claim: "The cured criminal-record review elements spec passes in a real browser (the gate's F1 spec)."
+    cmd: cd apps/mouth && npx playwright test e2e/visa-oracle-v2.spec.ts -g "criminal-record review elements"
+    result: "chromium and webkit passed; firefox could not start because its browser is not installed on this host (environment, not the spec). The remaining two specs are covered by the type-check and the e2e string scan; the fullstack job needs the live stack and is left to CI."
+  - claim: "Backend suite not run: the diff touches no tree, corpus, fact, pack or Python file."
+    cmd: git diff --name-only origin/main
+    result: "only apps/mouth/src/app/(visa-oracle) files and this evidence directory"
+decisions:
+  - id: D-e33-left
+    decision: >-
+      The E33-family advisor checks (E33G, E33B, E33E, E33F, E33 property, and the E33A-C government
+      sentences) keep their wording: they belong to the Second Home lane and the scan test exempts the E33
+      code prefix by name, states that exemption in its own describe title and comment, and claims
+      only "every non-E33 code".
+  - id: D-i18n-follow-up
+    decision: >-
+      Promise strings that live in i18n.ts are NOT touched here (tree lane): the timeline lines where "your
+      advisor confirms the calendar", the CLIENT_GUARD title and body "A person will review this" / "Akan
+      ditinjau oleh seseorang" (also allow-listed in client-copy.test.ts), and the disclosure paragraph that
+      says an advisor "reviews your case". Listed in the PR body for the tree lane.
+dissent:
+  - seat: "this session (self-review, no external seat in a prepare lane)"
+    objection: "The scan regexes are phrase lists, so a differently worded promise would pass."
+    status: PLAUSIBLE
+    disposition: "Accepted: the list is a floor, not a proof; it is guilty on every replaced sentence and innocent on the rewritten tables. New promise shapes are added when found."
+  - seat: "codex gpt-5.6-sol, rollout 01a12dd5-9d11-7da1-9657-4b8b4666773e (red team, HIGH)"
+    objection: >-
+      engine-adapter.ts blacklist notice said an active ban stops any application from being FILED and
+      that an advisor can verify the status with Ditjen Imigrasi. UU 6/2011 Pasal 42 says the visa
+      application is REJECTED for someone on the penangkalan list, and neither the rule pack nor
+      imigrasi.go.id supports the advisor lookup: it overstates the advisor.
+    status: CONFIRMED
+    disposition: >-
+      CURED. The notice now names the disclosure and offers to go over it and say what to prepare; it
+      states no legal effect and no Ditjen lookup. advisor-offer.test.ts pins the absence of both.
+  - seat: "codex gpt-5.6-sol, rollout 01a12dd5-9d11-7da1-9657-4b8b4666773e (red team, HIGH)"
+    objection: >-
+      CONTACT_REQUIRED price copy always said "no fixed price is published", but the backend returns
+      CONTACT_REQUIRED for PRICING_ROW_MISSING and PRICING_ROW_NOT_EXACT_AMOUNT as well; the reason
+      code was ignored and the test never used a real code.
+    status: CONFIRMED
+    disposition: >-
+      CURED. One neutral sentence for all three codes ("Price on consultation. You can ask a Bali Zero
+      advisor." / "Harga melalui konsultasi. ..."), no claim about publication. engine-adapter.test.ts
+      runs it.each over the three real backend reason codes.
+  - seat: "codex gpt-5.6-sol, rollout 01a12dd5-9d11-7da1-9657-4b8b4666773e (red team, MEDIUM)"
+    objection: >-
+      advisor-offer.test.ts claimed coverage "across every visa code" while dropping every E33* key;
+      six promise-style E33 sentences remain.
+    status: CONFIRMED
+    disposition: >-
+      CURED by narrowing, not by scope creep: E33 copy is Track C's. The exemption is now stated in a
+      comment and in the describe title, and the PR body claims "every non-E33 code". The brief
+      gear_reason is narrowed the same way.
+  - seat: "codex gpt-5.6-sol, rollout 01a12dd5-9d11-7da1-9657-4b8b4666773e (red team, MEDIUM)"
+    objection: >-
+      The promise was reworded as an obligation ("a Bali Zero advisor needs to confirm it" / "konsultan
+      perlu memastikannya"), which is not an offer; the guard regex did not recognise "needs to" and the
+      exact-string test froze the defective sentence.
+    status: CONFIRMED
+    disposition: >-
+      CURED across the whole class, not only line 1333: the activity-boundary, conflicting-status,
+      uncertainty and six disclosed-review sentences, the six decisive/safety-critical source sentences
+      and the multi-purpose sentence now read "no path can be confirmed yet. A Bali Zero advisor can go
+      over it with you" (EN and ID). The guard gains obligation patterns (needs to, perlu, memerlukan
+      ... oleh konsultan) with a guilt test, and the pinned string moved.
+  - seat: "codex gpt-5.6-sol via fresh Opus 5.5 rollout gate at ebc8106927 (F1, blocking)"
+    objection: >-
+      Two required Playwright jobs still expected the old copy word for word: visa-oracle-v2.spec.ts
+      (four EN and four ID criminal-record review elements) and visa-oracle-fullstack.spec.ts (the
+      DECISIVE_SOURCE_FRESHNESS_UNKNOWN sentence). The unit test was moved, the e2e copies were not.
+    status: CONFIRMED
+    disposition: >-
+      CURED. Both specs now read the sentence from the adapter's own tables (REVIEW_REASON_ELEMENTS,
+      REVIEW_REASON_COPY) so they move with the copy. The sweep the gate asked for found a third
+      stale spec the gate did not name: visa-oracle-live-parity.spec.ts duplicated the generic review
+      reason to assert it is absent from the DOM, which would have gone vacuous. It now imports the
+      exported constant. A new advisor-offer.test.ts guard scans every visa e2e string literal for the
+      promise and obligation patterns, red on all three specs before the cure.
+  - seat: "codex gpt-5.6-sol via fresh Opus 5.5 rollout gate at ebc8106927 (N1)"
+    objection: >-
+      The review-reason fallback still read "Some of your answers need a Bali Zero advisor's judgment
+      before we can confirm a path", the obligation wording the PR says it cured across the class; the
+      constant was unexported so no scan reached it.
+    status: CONFIRMED
+    disposition: >-
+      CURED. Rewritten as an offer ("Some of your answers need a review before a path can be confirmed.
+      A Bali Zero advisor can go over them with you." and the ID twin), exported, added to the notice
+      and fallback scan, and two obligation patterns (possessive "needs an advisor's", "memerlukan
+      penilaian dari konsultan") with a guilt entry.
+  - seat: "codex gpt-5.6-sol via fresh Opus 5.5 rollout gate at ebc8106927 (N2)"
+    objection: "pack.yml named the implementer seat 'Claude Sonnet 5.5', an alias that is not in the roster."
+    status: CONFIRMED
+    disposition: "CURED. The seat now reads Claude Opus 5.5, matching the commit co-author lines."
+  - seat: "codex gpt-5.6-sol via fresh Opus 5.5 rollout gate at ebc8106927 (N3)"
+    objection: "copy-truth.test.ts patterns scan only the i18n dict and stayed green under the mutation, so they are not proof for the adapter."
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED as a statement, not a code change: the adapter guard is advisor-offer.test.ts (red under
+      the mutation, now also over the e2e specs); copy-truth only keeps i18n from bringing the strings
+      back, and the PR body no longer cites it as adapter proof.
+  - seat: "codex gpt-5.6-sol via fresh Opus 5.5 rollout gate at ebc8106927 (N4)"
+    objection: "Bahasa Indonesia and English wording: a doubled 'membantu melihat', 'dalam ... dalam' in the blacklist sentence, an ambiguous 'review how those purposes combine with you'."
+    status: CONFIRMED
+    disposition: >-
+      CURED in the three sentences named: "konsultan dapat meninjau kasus Anda bersama Anda"; "Pengungkapan
+      Anda menandai adanya pencantuman dalam daftar hitam."; "go over with you how those purposes fit
+      together" (both multi-purpose sentences). The imigrasi term "Penangkalan" is left to T02/V10 as
+      the gate itself assigns it.
+  - seat: "codex gpt-5.6-sol via fresh Opus 5.5 rollout gate at ebc8106927 (N5)"
+    objection: "Pre-existing: the E31J text does not name the pack's 18; several edited advisor-check keys are dead in pack 027."
+    status: CONFIRMED
+    disposition: >-
+      TRUE BUT NOT CURED HERE (out of scope). Not from this PR (the gate says so). The E31J figure and the dead keys belong to V11's lane
+      (pack-emitted checks); this change rewrites who acts and asserts no new threshold.

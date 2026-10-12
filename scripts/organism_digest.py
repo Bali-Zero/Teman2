@@ -220,10 +220,15 @@ _SEAT_PROVIDER = {
     # deepseek-v4-pro, deepseek-v4-flash-0731, glm-5.2, qwen3.8-max,
     # qwen3.7-max, qwen3.7-plus and qwen3.6-flash side by side with
     # qwen-cloud-code's own row (verified 2026-08-29 against the live file).
+    # 2026-10-05: three seats added on the 2026-10-05 /models re-verification
+    # (deepseek-v4.1-flash, glm-5.3, qwen3.8-flash) — same TP1 provider.
     "tp1-deepseek-v4-pro": "Alibaba Token Plan (TP1)",
     "tp1-deepseek-v4-flash-0731": "Alibaba Token Plan (TP1)",
+    "tp1-deepseek-v4.1-flash": "Alibaba Token Plan (TP1)",
     "tp1-glm-5.2": "Alibaba Token Plan (TP1)",
+    "tp1-glm-5.3": "Alibaba Token Plan (TP1)",
     "tp1-qwen3.8-max": "Alibaba Token Plan (TP1)",
+    "tp1-qwen3.8-flash": "Alibaba Token Plan (TP1)",
     "tp1-qwen3.7-max": "Alibaba Token Plan (TP1)",
     "tp1-qwen3.7-plus": "Alibaba Token Plan (TP1)",
     "tp1-qwen3.6-flash": "Alibaba Token Plan (TP1)",
@@ -231,8 +236,10 @@ _SEAT_PROVIDER = {
 _FALLBACK_ALL_SEATS = ["claude", "kimi", "agy", "codex", "codex-spark",
                         "ollama", "nlm", "qwen-cloud-code", "jules",
                         "tp1-deepseek-v4-pro", "tp1-deepseek-v4-flash-0731",
-                        "tp1-glm-5.2", "tp1-qwen3.8-max", "tp1-qwen3.7-max",
-                        "tp1-qwen3.7-plus", "tp1-qwen3.6-flash"]
+                        "tp1-deepseek-v4.1-flash", "tp1-glm-5.2",
+                        "tp1-glm-5.3", "tp1-qwen3.8-max", "tp1-qwen3.8-flash",
+                        "tp1-qwen3.7-max", "tp1-qwen3.7-plus",
+                        "tp1-qwen3.6-flash"]
 
 
 def _known_seats() -> list[str]:
@@ -307,6 +314,8 @@ def arsenal_card() -> tuple[list[str], list[str]]:
         seat = s.get("seat", "?")
         if st == "BUSY":
             return f"{seat}~busy"
+        if st == "BUDGET_TRUNCATED":
+            return f"{seat}~budget"
         return f"{seat}✓" if st == "LIVE" else f"{seat}✗{st.lower()}"
 
     rollup = "  " + " ".join(mark(s) for s in seats if isinstance(s, dict)) if seats else "  (report has no seats)"
@@ -324,6 +333,25 @@ def arsenal_card() -> tuple[list[str], list[str]]:
     role_line = "  doors: " + " · ".join(parts)
 
     return [header, rollup, role_line], errs
+
+
+def _intentionally_disabled(organ_id: str) -> bool:
+    """True iff the receptor already declares this organ deliberately unarmed.
+
+    organism_stale_detector.KNOWN_INTENTIONALLY_DISABLED_STALE reports these as
+    kind="disabled" ("deliberate, not a failure"); this digest never asked, so
+    mata_garuda.intel_bridge_daily.mini (plist renamed ...disabled-20260925-owner-pro,
+    ownership moved to Pro) read "silent 440h" at every Mini SessionStart while
+    the receptor next to it called it deliberate. Only the age-silent branch
+    consults this — a fresh sidecar with a bad status still surfaces, so a
+    re-armed organ that fails is not hidden. Import failure returns False.
+    """
+    try:
+        sys.path.insert(0, str(_repo_root() / "scripts"))
+        from organism_stale_detector import KNOWN_INTENTIONALLY_DISABLED_STALE
+    except Exception:
+        return False
+    return organ_id in KNOWN_INTENTIONALLY_DISABLED_STALE
 
 
 def stale_heartbeats(window_stale_h: float = HEARTBEAT_STALE_H) -> tuple[list[str], list[str]]:
@@ -360,6 +388,8 @@ def stale_heartbeats(window_stale_h: float = HEARTBEAT_STALE_H) -> tuple[list[st
             continue
         status = str(data.get("status", "")).lower()
         if age_h > window_stale_h:
+            if _intentionally_disabled(path.stem):
+                continue  # deliberate: the receptor reports it as "disabled", not dead
             lines.append(f"organ {path.stem}: silent {age_h:.0f}h")
         elif status and status not in ("ok", "live", "green"):
             lines.append(f"organ {path.stem}: status={status}")
@@ -718,6 +748,23 @@ def _selftest() -> int:
             d = build_digest(24)
             expect("innocence: foreign-host organ not flagged silent",
                    not any("mini.queue_shepherd" in ln for ln in d["organs"]))
+
+            # ---- innocence/guilt: a deliberately unarmed organ (the receptor's
+            # KNOWN_INTENTIONALLY_DISABLED_STALE) is not "silent" — but a
+            # sibling organ of the same prefix that merely went quiet still is.
+            hb8 = fake_home / ".organism" / "last_seen" / "mata_garuda.intel_bridge_daily.mini.json"
+            hb8.write_text(json.dumps({"status": "ok"}))
+            os.utime(hb8, (old, old))
+            hb9 = fake_home / ".organism" / "last_seen" / "mata_garuda.intel_bridge_other.mini.json"
+            hb9.write_text(json.dumps({"status": "ok"}))
+            os.utime(hb9, (old, old))
+            d = build_digest(24)
+            expect("innocence: intentionally-disabled organ not flagged silent",
+                   not any("intel_bridge_daily" in ln for ln in d["organs"]))
+            expect("guilt: same-prefix organ not on the disabled list still flagged",
+                   any("intel_bridge_other" in ln for ln in d["organs"]))
+            os.utime(hb8, None)  # refresh both so later checks keep the line cap to themselves
+            os.utime(hb9, None)
 
             # ---- guilt, the W94 under-match twin: a DECLARED cross-host mirror
             # (CROSS_HOST_SIDECAR_SOURCES) is refreshed here on purpose, so its

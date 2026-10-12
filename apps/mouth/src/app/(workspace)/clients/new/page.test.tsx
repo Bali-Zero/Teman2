@@ -4,14 +4,21 @@ import userEvent from "@testing-library/user-event";
 import NewClientPage from "./page";
 
 // --- module mocks -----------------------------------------------------------
-const { push, getProfile, createClient, uploadClientAvatar, toastError } =
-  vi.hoisted(() => ({
-    push: vi.fn(),
-    getProfile: vi.fn(),
-    createClient: vi.fn(),
-    uploadClientAvatar: vi.fn(),
-    toastError: vi.fn(),
-  }));
+const {
+  push,
+  getProfile,
+  createClient,
+  uploadClientAvatar,
+  uploadDocumentBase64,
+  toastError,
+} = vi.hoisted(() => ({
+  push: vi.fn(),
+  getProfile: vi.fn(),
+  createClient: vi.fn(),
+  uploadClientAvatar: vi.fn(),
+  uploadDocumentBase64: vi.fn(),
+  toastError: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
@@ -20,7 +27,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/api", () => ({
   api: {
     getProfile,
-    crm: { createClient, uploadClientAvatar, uploadDocumentBase64: vi.fn() },
+    crm: { createClient, uploadClientAvatar, uploadDocumentBase64 },
   },
 }));
 
@@ -36,8 +43,43 @@ vi.mock("@/hooks/useTeamMembers", () => ({
   useTeamMemberOptions: () => ({ options: [] }),
 }));
 
+// The scan mock hands back what the real section would after "Apply
+// selected": the confirmed fields, the base64 file and its mime type.
 vi.mock("./components/PassportScanSection", () => ({
-  default: () => <div data-testid="passport-scan-mock" />,
+  default: (props: {
+    onFieldsConfirmed: (
+      fields: Record<string, unknown>,
+      file: string,
+      mimeType: string,
+    ) => void;
+  }) => (
+    <div data-testid="passport-scan-mock">
+      <button
+        type="button"
+        onClick={() =>
+          props.onFieldsConfirmed(
+            { full_name: "Scan Client" },
+            "JVBERi0xLjQ=",
+            "application/pdf",
+          )
+        }
+      >
+        mock apply pdf scan
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          props.onFieldsConfirmed(
+            { full_name: "Scan Client" },
+            "/9j/4AAQ",
+            "image/jpeg",
+          )
+        }
+      >
+        mock apply jpg scan
+      </button>
+    </div>
+  ),
 }));
 
 // The real cropper needs a canvas; the contract under test is that a BLOB (not
@@ -212,5 +254,48 @@ describe("NewClientPage — duplicate phone names the existing client", () => {
     expect(
       screen.queryByRole("link", { name: /open existing client/i }),
     ).toBeNull();
+  });
+});
+
+describe("NewClientPage — a scanned passport is saved in its own format", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getProfile.mockResolvedValue({ email: "surya@balizero.com" });
+    createClient.mockResolvedValue({ id: 4242 });
+    uploadDocumentBase64.mockResolvedValue({ id: 1 });
+  });
+
+  async function scanAndSubmit(button: RegExp): Promise<void> {
+    render(<NewClientPage />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /scan passport/i }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: button }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /crm settings/i }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /create client/i }),
+    );
+    // uploadPassportWithRetry waits 2 s before its first attempt.
+    await waitFor(() => expect(uploadDocumentBase64).toHaveBeenCalled(), {
+      timeout: 5000,
+    });
+  }
+
+  it("GUILT: a PDF scan is uploaded as .pdf with mime application/pdf", async () => {
+    await scanAndSubmit(/mock apply pdf scan/i);
+    const [clientId, payload] = uploadDocumentBase64.mock.calls[0];
+    expect(clientId).toBe(4242);
+    expect(payload.file_name).toMatch(/\.pdf$/);
+    expect(payload.mime_type).toBe("application/pdf");
+    expect(payload.document_type).toBe("passport");
+  });
+
+  it("INNOCENCE: a photo scan keeps the .jpg name", async () => {
+    await scanAndSubmit(/mock apply jpg scan/i);
+    const [, payload] = uploadDocumentBase64.mock.calls[0];
+    expect(payload.file_name).toMatch(/\.jpg$/);
+    expect(payload.document_type).toBe("passport");
   });
 });

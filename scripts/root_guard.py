@@ -50,6 +50,7 @@ WHITELIST_FILES: set[str] = {
     "README.md",
     "LICENSE",
     "LICENSE.md",
+    "NOTICE",  # Apache-2.0 NOTICE file, added by #8241
     "package.json",
     "package-lock.json",
     "pnpm-lock.yaml",

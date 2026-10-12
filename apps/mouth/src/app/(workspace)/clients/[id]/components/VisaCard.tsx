@@ -21,6 +21,7 @@ import {
   getVisaAlertStatus,
 } from "./utils";
 import { formatLongSpan } from "@/lib/utils/format-date";
+import { pickCurrentVisa } from "./pickCurrentVisa";
 
 export function VisaCard({
   client,
@@ -55,26 +56,8 @@ export function VisaCard({
     cleanupOnUnmount: false,
   });
 
-  // Find latest visa/KITAS document
-  const visaDocs = documents.filter(
-    (doc) =>
-      doc.document_category === "immigration" &&
-      (doc.document_type?.toLowerCase().includes("visa") ||
-        doc.document_type?.toLowerCase().includes("kitas") ||
-        doc.document_type?.toLowerCase().includes("kitap") ||
-        doc.document_type?.toLowerCase().includes("e-visa") ||
-        doc.document_type?.toLowerCase().includes("evisa")),
-  );
-
-  const sortedVisaDocs = visaDocs.sort((a, b) => {
-    if (!a.expiry_date) return 1;
-    if (!b.expiry_date) return -1;
-    return (
-      new Date(b.expiry_date).getTime() - new Date(a.expiry_date).getTime()
-    );
-  });
-
-  const latestVisa = sortedVisaDocs[0];
+  // The current visa/KITAS — see pickCurrentVisa.
+  const latestVisa = pickCurrentVisa(documents);
   const latestVisaFileUrl = latestVisa?.google_drive_file_url;
 
   // Find active visa process

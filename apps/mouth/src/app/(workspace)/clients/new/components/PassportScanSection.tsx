@@ -22,7 +22,11 @@ import { logger } from "@/lib/logger";
 // ============================================
 
 interface PassportScanSectionProps {
-  onFieldsConfirmed: (fields: Partial<CreateClientInput>, file: string) => void;
+  onFieldsConfirmed: (
+    fields: Partial<CreateClientInput>,
+    file: string,
+    mimeType: string,
+  ) => void;
   onDiscarded: () => void;
 }
 
@@ -141,6 +145,13 @@ function scanReducer(state: ScanState, action: ScanAction): ScanState {
 // Helpers
 // ============================================
 
+/**
+ * Passport files the scan accepts. PDF is included because most passports
+ * reach the team as PDF scans; the OCR endpoint already receives PDFs from
+ * the client page (PassportCard → extractPassportForClient).
+ */
+const ACCEPTED_PASSPORT_TYPES = ["image/jpeg", "image/png", "application/pdf"];
+
 /** Convert file to base64 data URL, strip the prefix */
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -195,10 +206,10 @@ export function PassportScanSection({
       if (!file) return;
 
       // Validate type
-      if (!["image/jpeg", "image/png"].includes(file.type)) {
+      if (!ACCEPTED_PASSPORT_TYPES.includes(file.type)) {
         dispatch({
           type: "OCR_FAIL",
-          message: "Only JPG and PNG files are supported.",
+          message: "Only JPG, PNG and PDF files are supported.",
         });
         return;
       }
@@ -308,7 +319,11 @@ export function PassportScanSection({
       (fields as Record<string, unknown>)[key] = result[key];
     }
 
-    onFieldsConfirmed(fields, file);
+    onFieldsConfirmed(
+      fields,
+      file,
+      consentDataRef.current?.mimeType ?? "image/jpeg",
+    );
     dispatch({ type: "CONFIRMED" });
   }, [state, onFieldsConfirmed]);
 
@@ -355,14 +370,14 @@ export function PassportScanSection({
           fileInputRef.current?.click();
         }
       }}
-      aria-label="Upload passport photo"
+      aria-label="Upload passport photo or PDF"
     >
       <Camera className="w-10 h-10 mx-auto mb-3 text-[var(--foreground-muted)]" />
       <p className="text-sm font-medium text-[var(--foreground)]">
-        Drop passport photo or click to browse
+        Drop passport photo or PDF, or click to browse
       </p>
       <p className="text-xs text-[var(--foreground-muted)] mt-1">
-        JPG, PNG — max 10 MB
+        JPG, PNG, PDF — max 10 MB
       </p>
       <p className="text-xs text-[var(--foreground-muted)] mt-3 italic">
         Or skip and fill fields manually below
@@ -370,7 +385,7 @@ export function PassportScanSection({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png"
+        accept={ACCEPTED_PASSPORT_TYPES.join(",")}
         capture="environment"
         className="hidden"
         onChange={handleFileChange}

@@ -39,7 +39,7 @@ const NEW_SUB = {
 };
 const OPEN_DOOR_STEP = {
   en: "Look at the open door above, if one is shown.",
-  id: "Lihat pintu yang terbuka di atas, jika ada.",
+  id: "Lihat alternatif di atas, jika ada.",
 };
 const ADVISOR_STEP = {
   en: "Talk to a Bali Zero advisor — some routes depend on facts this tool does not ask.",

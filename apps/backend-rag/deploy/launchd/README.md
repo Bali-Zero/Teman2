@@ -26,15 +26,18 @@ launchctl load ~/Library/LaunchAgents/com.nuzantara.cost-advisor-daily-cap.plist
 
 ## Required env
 
-- `DATABASE_URL` — via the usual Pro dev env (venv + project .env)
+- `DATABASE_URL` — supplied by `scripts/wr2-cron-wrapper.sh`, which sources
+  `~/.nuzantara-secrets.env` and sets `DATABASE_URL` from `DATABASE_URL_LOCAL`.
+  Do not rely on the project `apps/backend-rag/.env`: on 2026-10-11 it held a
+  stale DB password and the job failed on it.
 - `TELEGRAM_BOT_TOKEN` — for delivery; missing → silent skip (logged)
 - `TELEGRAM_OWNER_CHAT_ID` — defaults to `1125336968`
 - **NEVER** `ANTHROPIC_API_KEY` — Claude via OAuth Max CLI only
 
 ## Logs
 
-- `/tmp/cost-advisor-weekly.log` / `.err`
-- `/tmp/cost-advisor-daily.log` / `.err`
+- `~/Library/Logs/cost-advisor-weekly.log` / `.err`
+- `~/Library/Logs/cost-advisor-daily.log` / `.err`
 
 ## Uninstall
 

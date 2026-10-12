@@ -1046,8 +1046,20 @@ class TestLocalCompensationWitnesses:
 #: 2026-09-16; seq-20 only carries the ``review.e23u/v.requested-product``
 #: review rules), so no fact set can support them on this pack. Same
 #: exclusion-by-name shape as ``_SEQ19_UNSUPPORTED_COVERAGE_PERSONAS`` in
-#: ``test_seq19_pack.py`` — the remaining 21 must all pass.
-_SEQ20_UNSUPPORTED_COVERAGE_PERSONAS = frozenset({"E23U.json", "E23V.json"})
+#: ``test_seq19_pack.py``.
+#: The I-X02 gold-coverage lane adds E28A/E28B/E28C/E28D/E28F to the corpus
+#: (grown 23 -> 28). E28A replays green here (``el.e28a.investment`` has
+#: existed since the first signed pack, seq-001), but E28B/E28C/E28D/E28F have
+#: no eligibility support rule before seq-21's ``el.e28b.company-establishment``
+#: / ``el.e28c.capital-market`` / ``el.e28d.branch-or-subsidiary`` /
+#: ``el.e28f.ikn-subsidiary`` (seq-20 only carries the review rules
+#: ``review.e28b.usd-threshold-manual``, ``review.e28c.usd-threshold-manual``,
+#: ``review.e28d.usd-threshold-turnover-manual`` and
+#: ``review.e28f.ikn-threshold-manual``), so no fact set can support them on
+#: this pack — same exclusion-by-name shape. The remaining 22 must all pass.
+_SEQ20_UNSUPPORTED_COVERAGE_PERSONAS = frozenset(
+    {"E23U.json", "E23V.json", "E28B.json", "E28C.json", "E28D.json", "E28F.json"}
+)
 
 
 def _coverage_persona_specs() -> list[tuple[str, dict[str, Any]]]:
@@ -1059,8 +1071,8 @@ def _coverage_persona_specs() -> list[tuple[str, dict[str, Any]]]:
 
 
 class TestGoldCoverageReplay:
-    def test_corpus_has_twenty_one_personas(self) -> None:
-        assert len(_coverage_persona_specs()) == 21
+    def test_corpus_has_twenty_nine_personas(self) -> None:
+        assert len(_coverage_persona_specs()) == 29
 
     @pytest.mark.parametrize(
         "name,spec", _coverage_persona_specs(), ids=[n for n, _ in _coverage_persona_specs()]

@@ -1,0 +1,33 @@
+task_id: ptpma-25jt-1012
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Owner ruling (Zero, 2026-10-12): Bali Zero's "New Company (PT PMA)" setup
+  price moves from IDR 20.000.000 to IDR 25.000.000. This PR moves the
+  canonical PricingTool row, the generated mouth price copy, the mouth parity
+  test, the live system prompts that teach the figure (v2, v4, few-shot), the
+  KB/skill/doc mirrors and the services page meta description. Article copy
+  ships in a sibling mouth PR; live stores outside the JSON are censused
+  separately.
+acceptance:
+  - text: >-
+      PricingTool canonical row New Company (PT PMA) reads 25.000.000 IDR and
+      the mouth copy is in sync with it.
+    probe: python3 scripts/sync_frontend_prices.py --check
+  - text: >-
+      Pricing, intent, WA package, evidence, abstain and prompt tests pass.
+    probe: >-
+      cd apps/backend-rag && .venv/bin/python -m pytest -p no:cacheprovider
+      backend/tests/services/pricing backend/tests/unit/prompts
+      backend/tests/unit/services/rag/agentic/test_wa_package_builder.py
+  - text: >-
+      After deploy, production PricingTool answers 25.000.000 IDR for PT PMA.
+    probe: search_service_pricing("PT PMA") against nuzantara-rag.fly.dev
+assumptions:
+  - text: >-
+      zantara_core.py (v1) is off-limits per CLAUDE.md and is not the live
+      prompt: Fly sets ZANTARA_PROMPT_VERSION (memory records v5, which
+      carries no PT PMA figure). v1 keeps the old example; flagged to Zero.
+    status: unverified-value
+    probe: fly secrets list -a nuzantara-rag (name present; value not readable)
