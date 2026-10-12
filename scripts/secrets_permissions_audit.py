@@ -167,6 +167,12 @@ EXCLUDE_NAME_GLOBS: Tuple[str, ...] = (
 CUSTODY_DIR_NAMES = frozenset({".secrets"})
 
 DESIGN_TOKENS_MAX_BYTES = 256 * 1024
+#: Deepest container nesting a design-tokens file may have (top-level object
+#: = level 1). A real token file is a few levels deep; anything deeper is not
+#: a bounded design-token document. Explicit so the fail-closed verdict does
+#: not depend on the interpreter's json recursion limit (3.12+ parses deep
+#: documents that 3.11 rejects with RecursionError).
+DESIGN_TOKENS_MAX_DEPTH = 64
 #: Substring markers: the credential vocabulary of SECRET_NAME_GLOBS
 #: (secret, credential, password, passwd, api key, token-ish) plus the words a
 #: credential-bearing JSON key is usually spelled with.
@@ -389,15 +395,17 @@ def is_design_tokens_file(path: Path) -> bool:
     if not isinstance(payload, dict):
         return False
 
-    pending = [payload]
+    pending = [(payload, 1)]
     while pending:
-        value = pending.pop()
+        value, level = pending.pop()
+        if isinstance(value, (dict, list)) and level > DESIGN_TOKENS_MAX_DEPTH:
+            return False
         if isinstance(value, dict):
             if any(_is_credential_key(key) for key in value):
                 return False
-            pending.extend(value.values())
+            pending.extend((child, level + 1) for child in value.values())
         elif isinstance(value, list):
-            pending.extend(value)
+            pending.extend((child, level + 1) for child in value)
         elif isinstance(value, str) and _has_credential_shape(value):
             return False
     return True

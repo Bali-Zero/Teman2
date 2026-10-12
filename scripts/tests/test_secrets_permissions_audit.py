@@ -883,6 +883,32 @@ def test_t9d_credential_vocabulary_keys_and_values_stay_findings(
     assert target in _paths(audit.scan([tmp_path], max_depth=8))
 
 
+def _nested_tokens(levels: int, leaf: str = "1px") -> str:
+    """A tokens.json whose containers nest `levels` deep (top-level = 1)."""
+    return '{"a":' * (levels - 1) + '{"size": "' + leaf + '"}' + "}" * (levels - 1)
+
+
+@pytest.mark.parametrize("levels", [64])
+def test_t9d2_design_tokens_at_the_depth_bound_stay_exempt(
+    tmp_path: Path, levels: int
+) -> None:
+    # innocence twin: a deep-but-bounded, credential-free token file is design data
+    target = _touch(tmp_path / "skills" / "x" / "tokens.json", 0o644, _nested_tokens(levels))
+
+    assert target not in _paths(audit.scan([tmp_path], max_depth=8))
+
+
+@pytest.mark.parametrize("levels", [65, 200])
+def test_t9d3_design_tokens_beyond_the_depth_bound_fail_closed_on_any_interpreter(
+    tmp_path: Path, levels: int
+) -> None:
+    # guilt: nesting past the bound is not a bounded token file, even though the
+    # document parses (3.12+) and holds no credential key or value.
+    target = _touch(tmp_path / "skills" / "x" / "tokens.json", 0o644, _nested_tokens(levels))
+
+    assert target in _paths(audit.scan([tmp_path], max_depth=8))
+
+
 def test_t9e_design_vocabulary_near_misses_are_not_credentials(tmp_path: Path) -> None:
     content = (
         '{"author":"A","spinner":{"pinned":"#fff"},"authority":"x",'
