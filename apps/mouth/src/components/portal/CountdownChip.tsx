@@ -52,7 +52,7 @@ export function CountdownChip({
     return (
       <span
         suppressHydrationWarning
-        className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${className ?? ""}`}
+        className={`text-[11px] px-1.5 py-0.5 rounded-full font-semibold ${className ?? ""}`}
         style={{
           background: "var(--glass-rim)",
           /* --bz-text-2: --bz-text-3 computes 3.06:1 on this tint over white
@@ -90,7 +90,7 @@ export function CountdownChip({
   return (
     <span
       suppressHydrationWarning
-      className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${className ?? ""}`}
+      className={`text-[11px] px-1.5 py-0.5 rounded-full font-semibold ${className ?? ""}`}
       style={chipStyle}
       title={formatDate(date, {
         month: "long",

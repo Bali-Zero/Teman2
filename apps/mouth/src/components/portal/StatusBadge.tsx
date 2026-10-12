@@ -127,7 +127,7 @@ export function StatusBadge({
 
   return (
     <div
-      className={`inline-flex items-center gap-[7px] h-6 pl-[9px] pr-2.5 rounded-full border text-[10px] font-[650] uppercase tracking-[.12em] whitespace-nowrap ${className ?? ""}`}
+      className={`inline-flex items-center gap-[7px] h-6 pl-[9px] pr-2.5 rounded-full border text-[11px] font-[650] uppercase tracking-[.12em] whitespace-nowrap ${className ?? ""}`}
       style={{
         background: tone.bg,
         color: tone.color,
