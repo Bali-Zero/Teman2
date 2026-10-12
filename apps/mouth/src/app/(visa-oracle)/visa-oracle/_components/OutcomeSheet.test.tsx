@@ -434,7 +434,9 @@ describe("OutcomeSheet — honest five-state rendering", () => {
     );
 
     expect(
-      screen.getByText(/Processing times are set by Ditjen Imigrasi/),
+      screen.getByText(
+        /Bali Zero has no confirmed processing time for this visa yet/,
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Timeline unavailable/i)).not.toBeInTheDocument();
     expect(document.querySelector(".oracle-unverified")).toBeNull();
@@ -581,7 +583,9 @@ describe("OutcomeSheet — Bali Zero typical processing time", () => {
   it("UNKNOWN keeps the pending paragraph unchanged", () => {
     renderTimeline({ status: "UNAVAILABLE" });
     expect(
-      screen.getByText(/Processing times are set by Ditjen Imigrasi/),
+      screen.getByText(
+        /Bali Zero has no confirmed processing time for this visa yet/,
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Typically/)).toBeNull();
     expect(screen.queryByText(/Indicative Bali Zero timing/)).toBeNull();

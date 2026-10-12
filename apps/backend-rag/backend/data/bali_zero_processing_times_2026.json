@@ -2,7 +2,7 @@
   "schema_version": 1,
   "source": "visa_types.processing_time_normal (production), snapshot 2026-10-09",
   "unit": "indonesian_working_days",
-  "interpretation": "'N-M business days' and 'N-M days' are read as Indonesian working days (the conservative reading); 'N-M weeks' = 5 working days per week (4-6 weeks = 20-30); 'Instant' = 0-0; 'Instant or 1x24h' = 0-1. BRIDGING has no catalogue time and is deliberately absent.",
+  "interpretation": "'N-M business days' and 'N-M days' are read as Indonesian working days (the conservative reading); 'N-M weeks' = 5 working days per week (4-6 weeks = 20-30); 'Instant' = 0-0; 'Instant or 1x24h' = 0-1. BRIDGING has no catalogue time; E23U/E23V have no code-specific official window (their imigrasi.go.id pages are empty, the generic klasifikasi page's four-working-day text is a template that never names them) and no price row, so all three are deliberately absent and the card shows the pending timeline.",
   "products": {
     "A1": {
       "min": 0,
@@ -48,16 +48,6 @@
       "min": 20,
       "max": 30,
       "source_text": "4-6 weeks (RPTKA+IMTA)"
-    },
-    "E23U": {
-      "min": 7,
-      "max": 10,
-      "source_text": "7-10 days"
-    },
-    "E23V": {
-      "min": 7,
-      "max": 10,
-      "source_text": "7-10 days"
     },
     "E28A": {
       "min": 7,
