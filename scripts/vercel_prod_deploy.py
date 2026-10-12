@@ -632,9 +632,14 @@ def _vercel_deploy_cmd(dest: str, sha: str, preview: bool) -> list[str]:
         "--build-env", f"BUILD_COMMIT_SHA={sha}",
         "--env", f"BUILD_COMMIT_SHA={sha}",
         "--meta", f"nzBuildSha={sha}",
+        # --no-wait: the CLI returns once the upload is accepted and the API state is the verdict
+        # (_wait_terminal). Measured 2026-10-12: a production upload sat READY+STAGED while
+        # `vercel deploy --prod` kept waiting, 20 minutes, then again with --skip-domain.
+        "--no-wait",
     ]
     if not preview:
-        cmd.append("--prod")
+        # --skip-domain: no alias moves on its own; the tail promotes only after it has a READY build.
+        cmd += ["--prod", "--skip-domain"]
     return cmd
 
 
@@ -698,8 +703,11 @@ def _upload_main(sha: str, preview: bool) -> int:
         if preview:
             print(f"OK (preview) - prove it with: vercel curl /api/health --deployment {url}")
             return 0
-        if _probe_until(sha, attempts=8) or _promote(dpl, sha):
-            print(f"OK - kita.balizero.com serves {sha[:9]} (deployment {dpl})")
+        if _probe_until(sha, attempts=8):
+            print(f"OK - kita.balizero.com already serves {sha[:9]}; {dpl} stays staged, not promoted")
+            return 0
+        if _promote(dpl, sha):
+            print(f"OK - promoted {dpl}; kita.balizero.com serves {sha[:9]}")
             return 0
         print(f"::error::deployment {dpl} is READY but kita.balizero.com did not prove it serves {sha[:9]}")
         return 1

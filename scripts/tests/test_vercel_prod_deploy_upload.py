@@ -137,6 +137,14 @@ def test_production_upload_adds_prod_only_without_preview():
     assert "--prod" in vpd._vercel_deploy_cmd("/x", SHA, preview=False)
 
 
+def test_the_cli_never_waits_for_the_build_and_production_never_self_aliases() -> None:
+    prod = vpd._vercel_deploy_cmd("/x", SHA, preview=False)
+    preview = vpd._vercel_deploy_cmd("/x", SHA, preview=True)
+    assert "--no-wait" in prod and "--no-wait" in preview
+    assert "--skip-domain" in prod
+    assert "--skip-domain" not in preview
+
+
 def test_url_from_stdout_when_the_cli_finished():
     assert vpd._cli_deployment_url("https://mouth-abc123xyz-nuzantara-2026.vercel.app\n", "") == (
         "https://mouth-abc123xyz-nuzantara-2026.vercel.app"
@@ -324,3 +332,25 @@ def test_disk_floor_refuses_before_archiving(tmp_path, monkeypatch, capsys):
     assert vpd._upload_with_guards(SHA, False) == 1
     upload.assert_not_called()
     assert "3 GiB" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("served_already", [True, False])
+def test_production_tail_promotes_only_when_the_probe_has_not_proven_it(monkeypatch, capsys, served_already):
+    url = "https://mouth-abc123def-nuzantara-2026.vercel.app"
+    monkeypatch.setattr(vpd, "_token", lambda: "x")
+    monkeypatch.setattr(vpd, "_archive_tree", lambda sha, dest: None)
+    monkeypatch.setattr(vpd, "_write_project_link", lambda dest: None)
+    monkeypatch.setattr(vpd.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 0, url + "\n", ""))
+    monkeypatch.setattr(vpd, "_api", lambda method, path, body=None: (200, {"id": "dpl_X", "readyState": "READY"}))
+    monkeypatch.setattr(vpd, "_probe_until", lambda sha, attempts: served_already)
+    promote = unittest.mock.Mock(return_value=True)
+    monkeypatch.setattr(vpd, "_promote", promote)
+
+    assert vpd._upload_main(SHA, preview=False) == 0
+    out = capsys.readouterr().out
+    if served_already:
+        promote.assert_not_called()
+        assert "already serves" in out and "not promoted" in out
+    else:
+        promote.assert_called_once_with("dpl_X", SHA)
+        assert "OK - promoted dpl_X" in out
