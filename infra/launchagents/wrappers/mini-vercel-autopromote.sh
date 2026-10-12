@@ -1,5 +1,6 @@
 #!/bin/bash
-# mini.vercel_autopromote — promote the READY-but-STAGED Vercel production build so a merge reaches balizero.com without a human
+# mini.vercel_autopromote — promote a READY build or build mouth from a local archive, then move production
+# Default: --upload --auto-build. Set MINI_VERCEL_AUTOPROMOTE_MODE=promote-only for instant fallback.
 # Born via scripts/organ_birth.py (DNA/GENOME 2026-07-06): genes imprinted at birth.
 # Canon: infra/launchagents/wrappers/mini-vercel-autopromote.sh
 # Live:  ~/scripts/mini-vercel-autopromote.sh (declared pair, node=mini)
@@ -12,9 +13,12 @@ LOG="$LOG_DIR/run.log"
 mkdir -p "$LOG_DIR"
 SIDECAR_DIR="$HOME/.organism/last_seen"
 PIDFILE="/tmp/nuzantara-mini-vercel_autopromote.pid"
+PIDFILE_MAX_AGE_S=$((35 * 60))
+BUSY_FILE="$LOG_DIR/lock-busy-ticks"
+MODE="${MINI_VERCEL_AUTOPROMOTE_MODE:-autobuild}"
 
 ts() { date '+%Y-%m-%d %H:%M:%S'; }
-log() { echo "[$(ts)] $*" >> "$LOG"; }
+log() { echo "[$(ts)] mode=$MODE $*" >> "$LOG"; }
 
 # G2_heartbeat — sidecar EVERY exit path (Esiste≠Armato: prove life, every run)
 heartbeat() { # $1 status, $2 note
@@ -38,16 +42,45 @@ if [ "${MINI_VERCEL_AUTOPROMOTE_ENABLED:-true}" = "false" ]; then
     exit 0
 fi
 
-# G10_single_instance — pidfile + liveness probe + trap cleanup
-if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
-    # WARNING, not ok. A skip is not health: if a run ever wedges (a hung network call, a
-    # stopped process), its pid stays alive and EVERY later tick lands here — an "ok"
-    # heartbeat every 2 minutes while the organ cures nothing, which is the exact
-    # green-over-dead shape of superscar #2. The organ that is skipping is not the organ
-    # that is working, and the sidecar must not spell them the same way.
-    log "previous run still alive (pid $(cat "$PIDFILE")) — skipping"
-    heartbeat "warning" "skipped: previous run still alive"
-    exit 0
+# Mode is validated after the node guard and kill switch: a wrong node or a stopped organ
+# reports that first, whatever the mode says.
+case "$MODE" in
+    autobuild) CURE_ARGS=(--upload --auto-build) ;;
+    promote-only) CURE_ARGS=(--promote-only) ;;
+    *)
+        log "invalid MINI_VERCEL_AUTOPROMOTE_MODE — exiting"
+        heartbeat "error" "invalid MINI_VERCEL_AUTOPROMOTE_MODE"
+        exit 0
+        ;;
+esac
+
+# G10_single_instance — pidfile + liveness probe + age threshold + trap cleanup
+if [ -f "$PIDFILE" ]; then
+    PREVIOUS_PID="$(cat "$PIDFILE" 2>/dev/null)"
+    if [ -n "$PREVIOUS_PID" ] && kill -0 "$PREVIOUS_PID" 2>/dev/null; then
+        # A normal upload takes about four minutes and therefore spans 2-3 launchd fires.
+        # It stays healthy inside the 35-minute build-timeout margin. Past that boundary the
+        # same live pid is a stuck run, not a green build forever (superscar #2).
+        PIDFILE_MTIME="$(stat -f %m "$PIDFILE" 2>/dev/null)"
+        case "$PIDFILE_MTIME" in
+            ''|*[!0-9]*) PIDFILE_MTIME="$(stat -c %Y "$PIDFILE" 2>/dev/null)" ;;
+        esac
+        case "$PIDFILE_MTIME" in
+            ''|*[!0-9]*) PIDFILE_AGE_S="" ;;
+            *) PIDFILE_AGE_S=$(( $(date +%s) - PIDFILE_MTIME )) ;;
+        esac
+        if [ -n "$PIDFILE_AGE_S" ] && [ "$PIDFILE_AGE_S" -lt "$PIDFILE_MAX_AGE_S" ]; then
+            log "previous run still building (pid $PREVIOUS_PID, age ${PIDFILE_AGE_S}s) — skipping"
+            heartbeat "ok" "previous run still building"
+        elif [ -n "$PIDFILE_AGE_S" ]; then
+            log "previous run alive > 35 min (pid $PREVIOUS_PID, age ${PIDFILE_AGE_S}s) — skipping"
+            heartbeat "warning" "previous run alive > 35 min"
+        else
+            log "previous run alive but pidfile age is unknown (pid $PREVIOUS_PID) — skipping"
+            heartbeat "warning" "previous run age unknown"
+        fi
+        exit 0
+    fi
 fi
 echo $$ > "$PIDFILE"
 trap 'rm -f "$PIDFILE"' EXIT
@@ -65,12 +98,10 @@ trap 'rm -f "$PIDFILE"' EXIT
 # nothing on the happy path: `vercel_prod_deploy.py` returns before touching the Vercel API
 # when production already includes the target, so an idle tick is one `git fetch` and one
 # GET on /api/health; the Vercel listing is only asked while a build is actually pending.
-# A run may legitimately outlive a tick (a promote proves itself with up to ~2 minutes of
-# probes). That is not a race: launchd never starts a second instance of a label while one
-# is running — it skips that fire — and the pidfile above is the second line for a manual
-# run. What a long run costs is one skipped fire, visible as a warning heartbeat. The number
-# the cadence really bounds is the FETCH (the step every idle tick takes), so a dead network
-# degrades this tick instead of wedging the organ into the next one.
+# A run may legitimately outlive a tick: a local upload build takes about four minutes, and
+# a promote can probe for another ~2 minutes. launchd does not overlap one label, while the
+# pidfile is the second line for manual runs. A young live pid therefore reports a healthy
+# build in progress; after 35 minutes it turns warning so a wedged run cannot stay green.
 #
 # WHAT THIS CLOSES
 # On 2026-08-21 balizero.com served a ~22h-old build while three READY production builds sat
@@ -78,11 +109,12 @@ trap 'rm -f "$PIDFILE"' EXIT
 # row and DELIVERED its Telegram every time; the cure (vercel_prod_deploy.py) worked on
 # demand. Nothing joined them, so every merge waited for a human. This is the join.
 #
-# WHY --promote-only AND NOT THE DEFAULT
-# Left at its default the script CREATES a deployment when no READY build exists (~6 min +
-# build minutes). Unattended at a 2-minute cadence that is a build loop nobody asked for.
-# --promote-only promotes what is already built and refuses to build, returning 2 for "there
-# was nothing to promote" — an anomaly that wants eyes, not an automatic rebuild.
+# WHY AUTOBUILD IS NOW THE DEFAULT (2026-10-12)
+# This organ originally used --promote-only because Vercel's Git integration made the build;
+# creating another deployment at a 2-minute cadence would have been a build loop. The public
+# repo is being removed, so that producer disappears. --upload --auto-build keeps the same
+# promote-first decision and creates one serialized local-archive build only when none exists.
+# MINI_VERCEL_AUTOPROMOTE_MODE=promote-only preserves the old behaviour as an instant fallback.
 #
 # WHY THE PATH IS SET EXPLICITLY (W108)
 # vercel_prod_deploy.py refreshes its OAuth token by shelling out to `vercel whoami`, and
@@ -119,7 +151,7 @@ fi
 # cannot silently decapitate the branch below, which is the only reason this line exists.
 OUT=""
 RC=0
-OUT=$(cd "$REPO" && /usr/bin/python3 "$CURE" --promote-only 2>&1) || RC=$?
+OUT=$(cd "$REPO" && /usr/bin/python3 "$CURE" "${CURE_ARGS[@]}" 2>&1) || RC=$?
 
 # Judge the OUTPUT, not only the code (W104): the log is what a human reads at 07:30.
 printf '%s\n' "$OUT" >> "$LOG"
@@ -144,9 +176,29 @@ printf '%s\n' "$OUT" >> "$LOG"
 DEGRADED=0
 if printf '%s' "$OUT" | grep -q 'main HEAD — '; then DEGRADED=1; fi
 
+has_output_line() { # $1 anchored extended regexp
+    printf '%s\n' "$OUT" | grep -Eq "$1"
+}
+
+safe_last_line() {
+    local line
+    line="$(printf '%s\n' "$OUT" | awk 'NF { line=$0 } END { print line }')"
+    [ -n "$line" ] || line="rc=$RC"
+    printf '%s' "$line" | LC_ALL=C tr -d '\000-\037\177' | sed -E \
+        -e 's/([Tt][Oo][Kk][Ee][Nn]"?[[:space:]]*[:=][[:space:]]*"?)[^[:space:]",}]+/\1[REDACTED]/g' \
+        -e 's/([Bb][Ee][Aa][Rr][Ee][Rr][[:space:]]+)[^[:space:]",}]+/\1[REDACTED]/g' \
+        -e 's/[A-Za-z0-9_+\/=-]{32,}/[REDACTED]/g' \
+        -e 's/\\/\\\\/g' \
+        -e 's/"/\\"/g'
+}
+
+# Any outcome other than a busy lock resets the consecutive-busy counter.
+if ! has_output_line '^upload already in progress — lock busy, skipping this tick$'; then
+    rm -f "$BUSY_FILE"
+fi
+
 case "$RC" in
     0)
-        # Both good outcomes: production was already current, or it just got promoted.
         if [ "$DEGRADED" = 1 ]; then
             # The note names the STATE, not an action. rc=0 covers two different histories —
             # it promoted main HEAD's build, or main HEAD was already what production served —
@@ -155,11 +207,38 @@ case "$RC" in
             # defect class this whole organ keeps finding.
             heartbeat "warning" "degraded target — git could not be asked"
             log "DEGRADED TARGET — the cure fell back to main HEAD and exited 0; the fetch is broken"
-        elif printf '%s' "$OUT" | grep -q 'promoted'; then
+        elif has_output_line '^upload already in progress — lock busy, skipping this tick$'; then
+            # A lock held by a wedged or manual run must not read green forever (superscar #2):
+            # count consecutive busy ticks; past 35 minutes of them it is a warning.
+            BUSY="$(cat "$BUSY_FILE" 2>/dev/null)"
+            # The counter's whole domain: written only by this wrapper, a decimal integer with no
+            # leading zero and at most 5 digits. Anything else (empty, text, 08 read as octal,
+            # an overflow) is corruption and restarts the count; it never aborts the run.
+            case "$BUSY" in 0|[1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-9][0-9][0-9][0-9]|[1-9][0-9][0-9][0-9][0-9]) ;; *) BUSY=0 ;; esac
+            BUSY=$(( BUSY + 1 ))
+            printf '%s\n' "$BUSY" > "$BUSY_FILE"
+            if [ $(( BUSY * 120 )) -lt "$PIDFILE_MAX_AGE_S" ]; then
+                heartbeat "ok" "build in progress (lock held)"
+            else
+                heartbeat "warning" "upload lock held for $BUSY consecutive ticks"
+            fi
+            log "BUILD IN PROGRESS — upload lock held (consecutive busy ticks: $BUSY)"
+        elif has_output_line '^OK - promoted dpl_[[:alnum:]_-]+; kita\.balizero\.com serves [[:xdigit:]]{9}$'; then
+            heartbeat "ok" "built by upload and promoted"
+            log "BUILT AND PROMOTED — upload moved production"
+        elif has_output_line '^OK - kita\.balizero\.com already serves [[:xdigit:]]{9}; dpl_[[:alnum:]_-]+ stays staged, not promoted$'; then
+            heartbeat "ok" "already current"
+            log "ALREADY CURRENT — uploaded deployment stayed staged"
+        elif has_output_line '^OK after promote — kita\.balizero\.com serves [[:xdigit:]]{9}$' \
+            || has_output_line '^OK — kita\.balizero\.com serves [[:xdigit:]]{9} \(promoted dpl_[[:alnum:]_-]+, no rebuild(; newest bundle-relevant commit [[:xdigit:]]{9} still awaits its own build)?\)$'; then
             heartbeat "ok" "promoted"
             log "PROMOTED — production moved"
-        else
+        elif has_output_line '^production already includes this commit — nothing to do$'; then
             heartbeat "ok" "already current"
+            log "ALREADY CURRENT — nothing to do"
+        else
+            heartbeat "error" "unrecognized rc=0 outcome"
+            log "UNRECOGNIZED SUCCESS — no exact outcome marker"
         fi
         ;;
     3)
@@ -173,7 +252,7 @@ case "$RC" in
         if [ "$DEGRADED" = 1 ]; then
             heartbeat "error" "cure could not determine the target commit (git degraded)"
             log "DEGRADED TARGET — the cure fell back to main HEAD; it will never promote"
-        else
+        elif [ "$MODE" = "promote-only" ]; then
             # No READY build for the target commit. NOT a failure of this organ: Vercel
             # either skipped the commit or its build failed, and both want a human's eyes
             # rather than an unattended rebuild. Distinct status so a watcher can tell them
@@ -181,6 +260,10 @@ case "$RC" in
             # bash, so the benign heartbeat below would have overwritten the error above.)
             heartbeat "warning" "no READY build to promote (rc=3)"
             log "NO READY BUILD — nothing promoted, deliberately did not build"
+        else
+            NOTE="$(safe_last_line)"
+            heartbeat "error" "$NOTE"
+            log "AUTOBUILD REFUSED — $NOTE"
         fi
         ;;
     2)
@@ -189,8 +272,22 @@ case "$RC" in
         # benign colour of "nothing to promote". Measured on Mini before this landed: the
         # pre-merge copy of the script exits exactly here. This is the shape that would have
         # made the organ green over dead for as long as nobody looked (superscar #2).
-        heartbeat "error" "cure rejected --promote-only (usage error, rc=2) — script too old?"
-        log "USAGE ERROR — the cure does not know --promote-only; NOTHING was cured"
+        heartbeat "error" "cure rejected $MODE arguments (usage error, rc=2) — script too old?"
+        log "USAGE ERROR — the cure rejected the selected mode; NOTHING was cured"
+        ;;
+    4)
+        SUSPENDED_SHA="$(printf '%s\n' "$OUT" | sed -nE 's/^SUSPENDED ([[:xdigit:]]{9}) — [0-9]+ failed upload builds; waiting for the target sha to change$/\1/p' | tail -n 1)"
+        if [ -n "$SUSPENDED_SHA" ]; then
+            heartbeat "error" "upload suspended for $SUSPENDED_SHA after repeated failed builds"
+        else
+            heartbeat "error" "upload suspended after repeated failed builds"
+        fi
+        log "UPLOAD SUSPENDED — failed-build limit reached"
+        ;;
+    1)
+        NOTE="$(safe_last_line)"
+        heartbeat "error" "$NOTE"
+        log "CURE FAILED — $NOTE"
         ;;
     *)
         heartbeat "error" "rc=$RC"   # G9: failure is VISIBLE in the sidecar too
