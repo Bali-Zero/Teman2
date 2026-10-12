@@ -386,3 +386,20 @@ def test_tri_state_diverged_count_matches_the_capped_evidence(
     status, n, ev = _tri_wrap(tmp_path, {"evidence": [f"item-{i}" for i in range(given)]})
     assert status == prop.DIVERGED
     assert n == len(ev) == shown
+
+
+def test_tri_state_rc0_with_contradicting_body_is_unprobeable_with_zero_findings(tmp_path: Path) -> None:
+    f = tmp_path / "t.out"
+    f.write_text(json.dumps({"verdict": "BLIND"}), encoding="utf-8")
+    status, n, ev = prop.run_wrap(
+        tmp_path, {"target": ["cat", str(f)], "parse": "tri_state_exit"}, 10)
+    assert (status, n) == (prop.UNPROBEABLE, 0)
+    assert any("exit code and body disagree" in e for e in ev)
+
+
+def test_findings_list_evidence_keeps_non_ascii_text_legible(tmp_path: Path) -> None:
+    status, n, ev = _wrap(tmp_path, [{"state": "BAD", "note": "kantor imigrasi Denpasar — é"}],
+                          parse="findings_list", verdict_key="state", ok_values=["ok"])
+    assert (status, n) == (prop.DIVERGED, 1)
+    assert "— é" in ev[0]
+    assert "\\u" not in ev[0]
