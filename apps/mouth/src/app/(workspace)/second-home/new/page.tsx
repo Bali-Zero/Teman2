@@ -171,10 +171,12 @@ export default function NewSecondHomeCasePage() {
             renewal follows Permenkumham 22/2023 Pasal 113 cumulative caps.
           </p>
           <p>
-            <strong className="text-[var(--foreground)]">E33E</strong> — senior
-            55+ (ages 55–59 handled as a signed-disclosure band).{" "}
-            <strong className="text-[var(--foreground)]">E33F</strong> — senior
-            55+, USD 3,000/month passive income only, no deposit.
+            <strong className="text-[var(--foreground)]">E33E</strong> —
+            retirement KITAS, senior 55+, 5 years, USD 50,000 deposit + USD
+            3,000/month income, IDR 45,000,000 all-inclusive (not the IDR
+            35,000,000 base E33; ages 55–59 handled as a signed-disclosure
+            band). <strong className="text-[var(--foreground)]">E33F</strong> —
+            senior 55+, USD 3,000/month passive income only, no deposit.
           </p>
           <p>
             <strong className="text-[var(--foreground)]">Price</strong> — IDR
