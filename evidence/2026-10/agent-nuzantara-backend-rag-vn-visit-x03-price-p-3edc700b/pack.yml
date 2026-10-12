@@ -1,0 +1,82 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night family "visit", plan X03 (finding F109): no test pinned the exact IDR amount per visit code against the
+  real catalogue on the active pack, nor the fail-closed state of a row rewritten to prose, nor the A1 zero. Test-only;
+  no owner decision, no pack change.
+mission: >-
+  The price a Visa Oracle visitor is quoted for A1, B1, BRIDGING, C1, C2, C6, D1, D2 and D12 is pinned against the
+  real price catalogue on the highest signed pack, and a row rewritten to prose or a range is pinned to fail closed.
+lanes:
+  - lane: x03-visit-price-pins
+    role: build
+    seat: Claude Sonnet 5.5 implementer, worktree backend-rag-vn-visit-x03-price-pins on Pro.
+pii_scan: clean
+bites: >-
+  Consumer is the backend CI test job (apps/backend-rag, pytest over backend/tests/services/visa_engine), which runs
+  test_visit_family_pricing.py on every PR that touches the catalogue, a pack or the pricing adapter. The observation
+  is that job going red when a visit row amount, key or text changes: mutating the C1 row to 2.400.000 IDR, the A1
+  row to "Free" and adding a pnbp field to the D12 row turned 25 of the 192 tests red here (resolver, end-to-end
+  walk and fee-split guard), and the unmutated tree passes 192 of 192.
+appetite_exceeded: "A second adversarial round: the codex red team (rollout 01a12e8d) found two MEDIUM gaps (no end-to-end walk, no enforced fee-split guard) that were cured in a follow-up commit."
+spend:
+  wall_clock_hours: 1.0
+  adversarial_rounds: 2
+  paid_endpoint_usd: 0
+results:
+  - claim: "The new file passes on the highest signed pack (seq 28), Python 3.11 venv: 192 tests (93 resolver pins, 99 added by the red-team cure: end-to-end walks, fee-split guard and twins)."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_visit_family_pricing.py
+    result: "192 passed"
+    exit: 0
+    ts: "2026-10-12T13:41:00Z"
+    seat: this session
+  - claim: "Mutation - the C1 catalogue row edited 2.300.000 -> 2.400.000 IDR, the A1 row 0 IDR -> Free and a pnbp field added to the D12 row: the resolver pins, the end-to-end walk (A1 quote dropped from the response, C1 amount moved) and the fee-split innocence test for D12 go red; the catalogue was restored from a byte copy (git status clean for it)."
+    cmd: same pytest command, catalogue rows edited then restored from /tmp copy
+    result: "25 failed, 167 passed"
+    exit: 1
+    ts: "2026-10-12T13:42:00Z"
+    seat: this session
+  - claim: "The whole visa_engine backend suite with the new file, load first value 3.52 at start. The 2 failures and 39 errors are the same asyncpg/schema errors of the shared local scratch Postgres (migration 264/281 not live, policy_scope column missing, DependentObjectsStillExistError) in test_evaluate_endpoint, test_shadow_evidence, test_shadow_match and test_visa_engine_retention_fk_registry; none reads pricing or this file."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine
+    result: "3186 passed, 15 skipped, 2 failed, 39 errors (all DB-environmental)"
+    exit: 1
+    ts: "2026-10-12T13:46:00Z"
+    seat: this session
+  - claim: "Control (from the first round, unchanged by the cure): the same suite with the new file ignored gives the same 2 failures and 39 errors and 2994 passes, so the DB red is independent of this change; 3186 - 2994 = 192 is exactly the new file."
+    cmd: same pytest command with --ignore=backend/tests/services/visa_engine/test_visit_family_pricing.py
+    result: "2994 passed, 15 skipped, 2 failed, 39 errors"
+    exit: 1
+    ts: "2026-10-12T05:16:15Z"
+    seat: this session
+  - claim: "ruff format and ruff check are clean on the test file."
+    cmd: ruff format; ruff check backend/tests/services/visa_engine/test_visit_family_pricing.py
+    result: "All checks passed"
+    exit: 0
+    ts: "2026-10-12T13:40:00Z"
+    seat: this session
+decisions:
+  - id: D-pin-amounts-typed
+    decision: >-
+      The nine amounts are typed in the test, not read from the row they guard; A1 is pinned as a real zero
+      (an AVAILABLE signed quote with amount 0), and duration or validity is deliberately not pinned.
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T13-20-15-01a12e8d-eb12-7aa3-97c2-f9af67d26eff.jsonl)"
+    objection: "MEDIUM: the test called resolve_candidate_pricing and build_price_quote directly; run_evaluation, candidate selection, quote attachment, persistence and display were never exercised, so an unreachable product or a quote dropped from the response stayed green."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: eight of the nine codes are driven by the real interview-corpus walk that names them through the real run_evaluation (real verify, compile, price, seal, projection; only the retention gate, the pack binding and the decision writer are replaced), asserting the quote in the sealed decision, the persisted row and the public response and the display row hash; BRIDGING uses the census recipe at engine level (the funnel never asks which permit is wanted, owner ruling D4). Edited-row and prose-row twins prove a moved amount or a dropped quote turns it red. Partial dissent on the display amount: for these nine products the display carries pricing status and row hash only (no duration options), so the amount the client renders is the response decision quote, which is what is pinned."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T13-20-15-01a12e8d-eb12-7aa3-97c2-f9af67d26eff.jsonl)"
+    objection: "MEDIUM: the no-PNBP-split guard was only price.endswith(' IDR'); structured pnbp, government_fee, service_fee fields and split wording passed, and a live counterexample still resolved AVAILABLE 2300000."
+    status: RETRACTED
+    disposition: "Cured: _split_findings refuses unknown keys, a price that is not one grouped IDR amount, a second figure or PNBP/fee-split wording in client-visible fields, with guilt twins for each shape across all nine rows, innocence over the nine real rows (the A1 and B1 notes that merely state inclusion stay clean), and the red-team counterexample pinned as a witness that the resolver alone does not see a split."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T13-20-15-01a12e8d-eb12-7aa3-97c2-f9af67d26eff.jsonl)"
+    objection: "LOW: the docstring claimed trust-chain and anti-rollback verification, but verify_rule_pack checks one envelope and the fixture picks the highest file, not the active database binding."
+    status: RETRACTED
+    disposition: "Cured: the claim is dropped; the docstring now states signature, protected header and payload hash of one envelope, and says plainly that the previous-payload chain (validate_activation) and the database-active pack are not claimed."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T13-20-15-01a12e8d-eb12-7aa3-97c2-f9af67d26eff.jsonl)"
+    objection: "LOW: the words 'signed quote' are inaccurate; build_price_quote returns a plain PriceQuote that the test never seals."
+    status: RETRACTED
+    disposition: "Cured: renamed to a quote built from the signed product; the sealing claim now lives only in the end-to-end test, which asserts decision_integrity is present on the response."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T13-20-15-01a12e8d-eb12-7aa3-97c2-f9af67d26eff.jsonl)"
+    objection: "INFO: all nine pins match seq 28 and the current catalogue, no scope creep, lint clean; pytest errored 93 of 93 at fixture setup because the read-only sandbox has no writable temp directory, so the claimed pass could not be confirmed independently; verdict REJECT pending the two MEDIUM gaps."
+    status: PLAUSIBLE
+    disposition: "The sandbox limit is environmental and stated: the pass is recorded in the results above by the implementer seat on a writable tree. A fresh on-disk gate seat re-runs the file."
