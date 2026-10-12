@@ -11,7 +11,7 @@ import { QUESTIONS } from "./tree";
 // no-break space, 60k, 60 thousand, 60 ribu, or the number in words (EN/ID).
 // Copy must never anchor.
 const NAMES_THE_THRESHOLD =
-  /60[\s\u00a0\u202f,.]?000|60[\s\u00a0\u202f]?k\b|(?<!\d)60[\s\u00a0\u202f]?(?:thousand|ribu)|sixty|enam puluh/i;
+  /(?<!\d)60[\s  ,.]?000(?!\d)|(?<!\d)60[\s  ]?k\b|(?<!\d)60[\s  ]?(?:thousand|ribu)|sixty|enam puluh/i;
 
 describe("seq-28 step B - the remote interview asks the yearly income", () => {
   it("asks it right after the employer country and before the PT PMA question", () => {
@@ -122,6 +122,10 @@ describe("seq-28 step B - the remote interview asks the yearly income", () => {
       "160 days",
       "160 ribu",
       "16 thousand",
+      "160000",
+      "160,000",
+      "160k",
+      "600000",
     ]) {
       expect(figure, figure).not.toMatch(NAMES_THE_THRESHOLD);
     }

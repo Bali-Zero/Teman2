@@ -63,4 +63,16 @@ decisions:
     decision: >-
       The F1-F3 PENDING-ARMS row is closed in this PR and test_f1_f3 in the seq-28 ledger test accepts either the open row
       or the closed row carrying CLOSED BY, so the ledger count stays pinned.
-dissent: []
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T18-53-08-01a12fbe-af22-7322-b7b3-fc8e3130f7a4, model verified in the rollout file)"
+    objection: "MEDIUM: the ledger test is fail-open once the row is closed (only prefix and CLOSED BY checked; stale MIN_TESTS 8 undetected)"
+    status: RETRACTED
+    disposition: "Cured in the fix commit after 8e3b932083: owner, proof-of-armed and NAMES_THE_THRESHOLD are asserted in both states; the closed state also requires MIN_TESTS 9, no MIN_TESTS 8, every category, and a durable CLOSED BY reference."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T18-53-08-01a12fbe-af22-7322-b7b3-fc8e3130f7a4, model verified in the rollout file)"
+    objection: "LOW: closed row carried a stale MIN_TESTS 8 proof and a branch name instead of an immutable reference"
+    status: RETRACTED
+    disposition: "Cured in the same fix commit: proof now says MIN_TESTS 9 and the row reads CLOSED BY pending-on-merge (no PR exists yet at fix time); the merge commit and CI outcome are recorded by the next ledger touch."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T18-53-08-01a12fbe-af22-7322-b7b3-fc8e3130f7a4, model verified in the rollout file)"
+    objection: "LOW: the no-unrelated-figure test misses 160000, 160,000, 160k that the regex still matched"
+    status: RETRACTED
+    disposition: "Cured in the same fix commit: the lookbehind and a trailing not-digit guard apply to every numeric alternative; 160000, 160,000, 160k and 600000 are negative cases."
