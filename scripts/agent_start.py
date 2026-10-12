@@ -1017,7 +1017,12 @@ def _iter_metadata(worktrees_dir: Path | None = None) -> Iterable[TaskMetadata]:
 
 def _worktree_has_wip(worktree: Path) -> bool:
     """True if the worktree has uncommitted changes (tracked or untracked)."""
-    proc = _run_git(["status", "--porcelain"], cwd=worktree, check=False)
+    # --no-optional-locks: this also runs against live sessions' worktrees on
+    # every cleanup tick; git's opportunistic index refresh would take
+    # index.lock and could collide with their commit/add.
+    proc = _run_git(
+        ["--no-optional-locks", "status", "--porcelain"], cwd=worktree, check=False
+    )
     if proc.returncode != 0:
         # If git can't read the worktree (corrupt) treat as WIP to be safe.
         return True
@@ -1258,15 +1263,13 @@ def _gh_pr_record_for_branch(
         )
     except (subprocess.SubprocessError, OSError) as exc:
         logger.warning(
-            "gh pr list failed for branch %s (%s) — falling back to offline "
-            "ancestry/content check",
+            "gh pr list failed for branch %s (%s) — cannot verify via GitHub",
             branch, exc,
         )
         return None
     if proc.returncode != 0:
         logger.warning(
-            "gh pr list exited %s for branch %s (%s) — falling back to "
-            "offline ancestry/content check",
+            "gh pr list exited %s for branch %s (%s) — cannot verify via GitHub",
             proc.returncode, branch, (proc.stderr or "").strip(),
         )
         return None
@@ -1274,8 +1277,8 @@ def _gh_pr_record_for_branch(
         data = json.loads(proc.stdout or "[]")
     except json.JSONDecodeError:
         logger.warning(
-            "gh pr list returned unparseable JSON for branch %s — falling "
-            "back to offline ancestry/content check",
+            "gh pr list returned unparseable JSON for branch %s — cannot "
+            "verify via GitHub",
             branch,
         )
         return None
@@ -1301,7 +1304,7 @@ def _gh_pr_record_for_branch(
     if state not in ("MERGED", "OPEN", "CLOSED"):
         logger.warning(
             "gh pr list returned unrecognized state %r for branch %s — "
-            "falling back to offline ancestry/content check",
+            "cannot verify via GitHub",
             state, branch,
         )
         return None
@@ -1824,9 +1827,9 @@ def _merged_pr_reap_facts(
     """
     if not wt.is_dir():
         return None
-    if _worktree_has_wip(wt):
-        return None
     if _worktree_recently_active(wt, threshold_minutes=MERGED_GRACE_MINUTES):
+        return None
+    if _worktree_has_wip(wt):
         return None
     if _worktree_has_live_process(wt):
         return None
@@ -1914,11 +1917,12 @@ def cmd_cleanup(
                     f"merged {merged_minutes} min ago, before its TTL) ({wt})"
                 )
             except subprocess.CalledProcessError as exc:
-                issues += 1
-                logger.error(
-                    "cleanup failed %s: %s", meta.task_id, (exc.stderr or "").strip()
+                # Not an issue: the TTL path retries and owns the failure.
+                detail = (exc.stderr or "").strip()
+                logger.warning(
+                    "early reap of %s failed: %s", meta.task_id, detail
                 )
-                print(f"ERROR: cleanup failed for {meta.task_id}: {exc.stderr}")
+                print(f"WARN: early reap of {meta.task_id} failed: {detail}")
             continue
         # WIP guard FIRST: a dirty worktree is always a failure to clean,
         # even if it was touched recently (codex P2: recent+dirty must not

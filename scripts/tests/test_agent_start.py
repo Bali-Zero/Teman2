@@ -2690,3 +2690,51 @@ def test_gh_pr_record_for_branch_carries_merge_fields_of_latest_exact_head_pr(
         "headRefOid": "bbb",
     }
     assert mod._gh_pr_state_for_branch("some/branch", cwd=repo) == "MERGED"
+
+
+def test_wip_probe_reads_status_without_optional_locks(fake_repo, monkeypatch):
+    mod, _ = fake_repo
+    seen = []
+    real = mod._run_git
+
+    def spy(args, **kw):
+        seen.append(list(args))
+        return real(args, **kw)
+
+    monkeypatch.setattr(mod, "_run_git", spy)
+    assert mod._worktree_has_wip(Path(mod.REPO_ROOT)) in (True, False)
+    status_calls = [a for a in seen if "status" in a]
+    assert status_calls and all(a[0] == "--no-optional-locks" for a in status_calls)
+
+
+def test_recently_active_unexpired_worktree_never_reaches_wip_probe_or_gh(
+    fake_repo, monkeypatch
+):
+    mod, _ = fake_repo
+    wt, _ = _merged_candidate(mod, monkeypatch, "early-cheap")
+    past = time.time() - 30 * 60
+    os.utime(wt, (past, past))
+    calls = []
+    monkeypatch.setattr(mod, "_worktree_has_wip", lambda p: calls.append("wip") or False)
+    monkeypatch.setattr(
+        mod, "_gh_pr_record_for_branch", lambda b, **kw: calls.append("gh")
+    )
+    assert mod.cmd_cleanup() == 0
+    assert wt.exists()
+    assert calls == []
+
+
+def test_early_reap_removal_failure_is_not_a_cleanup_issue(
+    fake_repo, capsys, monkeypatch
+):
+    mod, _ = fake_repo
+    wt, _ = _merged_candidate(mod, monkeypatch, "early-locked")
+
+    def boom(*a, **kw):
+        raise subprocess.CalledProcessError(1, ["git"], stderr="worktree is locked")
+
+    monkeypatch.setattr(mod, "_remove_worktree", boom)
+    assert mod.cmd_cleanup() == 0
+    out = capsys.readouterr().out
+    assert "WARN: early reap of early-locked failed: worktree is locked" in out
+    assert wt.exists()
