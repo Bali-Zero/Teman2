@@ -5,8 +5,27 @@ WHAT THIS IS (harness-v2-teman2.md §6 "Meccanizzazione"): the Fable gate
 session decides a verdict interactively — PASS / PASS-WITH-CONDITIONS /
 REWORK-BUILD / REWORK-DESIGN / BLOCK. This script's ONLY job is to make that
 already-decided verdict visible to GitHub as the `harness/fable-gate` commit
-status, via `gh api`, so branch protection can require it and merging a
-Gear-3 PR without a real gate verdict becomes physically impossible ("il
+status, via `gh api`.
+
+HOW THAT STATUS IS ENFORCED — a two-part mechanism, described here because
+an earlier draft of this docstring claimed "branch protection can require
+it", i.e. that this commit-status CONTEXT could itself be a required check.
+It cannot, and that false premise is what a 2026-08-24 PENDING-ARMS row
+recorded as "published but not required" (measured: the context absent from
+main's required_status_checks). The truth, since the 2026-08-21 redesign
+(research/operations/2026-08-21-fable-gate-required-promotion.md): branch
+protection requires the `Harness floor recompute` JOB
+(.github/workflows/harness-floor.yml — a required context before the
+redesign and after), NEVER this status. A status posted on a PR's real head
+sha never appears on the merge queue's synthetic test-merge sha, so a
+required `harness/fable-gate` context would deadlock every gated PR in the
+queue; and a fork PR's read-only token could never post it anyway. Instead,
+for a PR declaring gear >= 2 (threshold RULED 2026-09-10; was Gear 3) that
+job READS this status on the PR's real head sha
+(scripts/ci/harness_gate_read.py) and mirrors the verdict as its own exit
+code; gear-1 and no-brief diffs pass the job unconditionally. So merging a
+gear >= 2 PR without a real gate verdict IS physically impossible — via the
+job plus this status together, not via this context being required ("il
 gate diventa CI-enforced, non prompt-enforced").
 
 THE NAME IS HISTORICAL — THIS SCRIPT NEVER INVOKES FABLE (note added
