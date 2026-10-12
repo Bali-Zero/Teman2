@@ -80,3 +80,4 @@ operator_followups:
 
 spend:
   adversarial_rounds: 0
+council_run: council-journal.jsonl
