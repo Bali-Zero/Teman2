@@ -127,6 +127,16 @@ receipts:
     exit: 0
     ts: "2026-10-11T23:09:43Z"
     seat: kimi-code/k3, codex-gpt-5.6-sol
+  - claim: "R12 — final council round 2 on head df1c4c829a (watcher list, verifier gate, grandfathered entry, wrapper header): kimi PASS, codex REWORK (3)."
+    cmd: scripts/with_seat.sh kimi kimi -p <prompt> -m kimi-code/k3 < /dev/null; scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: >-
+      kimi VERDICT: PASS. codex VERDICT: REWORK: the board row is acceptable as a seat alert, but the gateway writes it from Mini
+      into the tracked Pro-only shared/escalations_pro.jsonl (tg_notify.py:92, 623); restore.log keeps cleartext production
+      errors on disk (mode 700, deleted on exit, survives SIGKILL or power loss); the CI paths omit scripts/tests/fixtures/restore_drill/**.
+      Checked and clean per codex: watcher coverage passes 131 workflows, 28/28 drill tests, merge-tree no conflict.
+    exit: 0
+    ts: "2026-10-12T01:06:35Z"
+    seat: kimi-code/k3, codex-gpt-5.6-sol
 dissent:
   - seat: kimi-code/k3 (round 1) and codex-gpt-5.6-sol (round 1)
     objection: >-
@@ -191,3 +201,13 @@ dissent:
     disposition: >-
       OPEN, reported to the coordinator; not cured here (this round authorised folding verdicts only). Finding 3 changes the
       alert path the brief's A2 promises (p0 to Telegram), so it must be cured before the first live run.
+  - seat: codex-gpt-5.6-sol (final council round 2, head df1c4c829a)
+    objection: >-
+      (1) The Mini gateway appends the restore-drill p0 to the tracked Pro-only escalations_pro.jsonl, dirtying the Mini
+      checkout and recreating the stash/pull conflict mini-git-pull.sh documents; (2) restore.log holds psql errors that can
+      quote production rows, left on disk on SIGKILL or power loss; (3) the CI path filter omits
+      scripts/tests/fixtures/restore_drill/**, which the verifier tests load.
+    status: CONFIRMED
+    disposition: >-
+      OPEN, reported to the coordinator, not cured here. The coordinator holds that routing to the board is house design;
+      codex accepts the board as an alert target but not the write into the tracked Pro file from Mini. kimi PASSed the same head.
