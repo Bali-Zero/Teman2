@@ -7,7 +7,7 @@ on:
     types: [opened, synchronize, reopened]
   merge_group:
   schedule:
-    # Daily backstop, 19:17 UTC = 03:17 WITA next day. Added (#4184,
+    # Daily security run, 19:17 UTC = 03:17 WITA next day. Added (#4184,
     # 2026-08-14) as the prerequisite for removing this workflow's
     # `push: main` trigger (Merge-OS v3 build order step 2 —
     # research/operations/2026-08-14-merge-os-v3-research-council.md §6):
@@ -25,10 +25,11 @@ on:
     # describes reads as a standing TODO to the next session (W106: "a cure
     # anchored to a frozen measurement of the world"), which is what
     # produced a second Zero GO order to re-run a step already complete.
-    # The weekly Sunday entry stays regardless of any of the above — it is
-    # a second independent sample, not a stand-in for the daily one.
-    - cron: "17 19 * * *" # Daily security backstop, 03:17 WITA
-    - cron: "0 0 * * 0" # Weekly scan on Sunday
+    # The schedule remains for Snyk and the other security jobs while their
+    # ownership decision is pending. Full-tree detect-secrets now runs daily
+    # on Mini as mini.detect_secrets_fulltree, so that job excludes schedule.
+    - cron: "17 19 * * *" # Daily security run, 03:17 WITA
+    - cron: "0 0 * * 0" # Weekly security run on Sunday
   workflow_dispatch:
 
 concurrency:
@@ -875,9 +876,9 @@ jobs:
     # research/operations/2026-08-21-token-ceremony-ci-system-audit.md):
     # on pull_request/merge_group the scan is scoped to the files the diff
     # touches, because a secret can only ENTER through a changed file. A
-    # secret sitting in an UNCHANGED file is already on main — the daily +
-    # weekly scheduled full-tree scans (and any push/workflow_dispatch run)
-    # are the net that catches those, per the audit's own risk note. The
+    # secret sitting in an UNCHANGED file is already on main — the Mini organ
+    # mini.detect_secrets_fulltree is the scheduled net for those. Push and
+    # workflow_dispatch still use this job's full-tree path. The
     # full scan measured 19m34s on run 31312661093; the diff-scoped scan is
     # seconds. The gate semantics are unchanged: any NEW finding in a
     # changed file still arrives unaudited and still fails the job below.
@@ -897,12 +898,12 @@ jobs:
     # a contrived, non-blocking edge case — not the realistic accidental-
     # credential-leak shape this scanner exists to catch, which its own
     # pull_request run (this PR's or the batchmate's) already covers.
-    # `github.event_name != 'merge_group'` below skips only that redundant
-    # re-scan; push/schedule/workflow_dispatch keep running the full-tree
-    # scan exactly as before, and pull_request keeps running the diff-scoped
-    # scan exactly as before. IF THIS JOB IS EVER MADE REQUIRED for merge,
-    # remove that term — the argument here depends on advisory-only status.
-    if: github.event_name != 'merge_group'
+    # The condition below skips that redundant re-scan and the retired GitHub
+    # schedule path; push/workflow_dispatch keep the full-tree scan and
+    # pull_request keeps the diff-scoped scan. IF THIS JOB IS EVER MADE
+    # REQUIRED for merge, remove the merge_group term — the argument here
+    # depends on advisory-only status.
+    if: github.event_name != 'merge_group' && github.event_name != 'schedule'
     runs-on: ubuntu-latest
     # Run 31312661093 measured 19m34s in the scan alone and was cancelled at
     # the 20m job limit after every gating step had succeeded. Keep this gate
@@ -964,11 +965,11 @@ jobs:
         run: |
           python3 scripts/lint_no_inline_credential_tables.py
 
-      - name: Guilt+innocence corpus (L3 diff-scope + nightly-alert composer)
+      - name: Guilt+innocence corpus (L3 diff-scope + manual-alert composer)
         # Self-contained regression tripwire for this job's own behavior — see
         # each test file's header for what it proves (diff-scope: a changed-
         # file secret goes red on the PR path and is invisible there while the
-        # nightly full-tree path still catches it; nightly-alert: the composer
+        # Mini's full-tree path still catches it; manual-alert: the composer
         # quotes a real summary verbatim, never fabricates one when none was
         # captured, and does not swallow the gateway's exit code). Runs BEFORE
         # the real scan below so a broken corpus fails loud here rather than
@@ -1105,26 +1106,20 @@ jobs:
           printf '%s\n' "$OUT" > /tmp/unaudited-findings.txt
           exit "$RC"
 
-      - name: Telegram alert — nightly full-tree scan failed
-        # L3 (audit lever, see this job's header comment above): the
-        # diff-scoped PR/queue path only sees changed files — a failure of
-        # THIS event's full-tree run is the net for anything else, so it gets
-        # a dedicated, content-bearing page (scripts/ci/detect_secrets_nightly_alert.sh)
-        # rather than relying only on main-push-failure-watch.yml's generic
-        # "Security Scanning failed" ping, which names the workflow, never
-        # the job or the finding.
+      - name: Telegram alert — manual full-tree scan failed
+        # workflow_dispatch still has a dedicated content-bearing page through
+        # the legacy-named composer below. Scheduled pages now belong to the
+        # Mini organ and never traverse this job.
         #
         # Gated on event name alone, not steps.scope.outputs.mode: "Decide
-        # scan scope" sets mode=full unconditionally for any non-pull_request/
-        # merge_group event (see that step), so schedule/workflow_dispatch
-        # always implies full-tree — and an earlier-step failure (pip
-        # install, the scan crashing) skips "Decide scan scope" entirely,
+        # scan scope" sets mode=full for workflow_dispatch, and an earlier-step
+        # failure (pip install, the scan crashing) skips "Decide scan scope" entirely,
         # which would leave its output unset and silently disarm an
         # output-keyed condition. Push:develop full-tree runs are
         # DELIBERATELY not covered here (out of this lever's scope, and
         # main-push-failure-watch.yml doesn't see them either — its trigger
         # filters branches:[main]).
-        if: failure() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        if: failure() && github.event_name == 'workflow_dispatch'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
@@ -1166,8 +1161,8 @@ jobs:
               ["CodeQL", "${{ needs.codeql.result }}"],
               ["Bandit", "${{ needs.bandit.result }}"],
               ["Safety", "${{ needs.safety.result }}"],
-              // Label corrected 2026-09-05: this job now DOES skip on
-              // merge_group (redundant re-scan of the same PR-head diff, see
+              // This job skips merge_group and schedule (the latter moved to
+              // Mini); pull requests still scan their changed-file set. See
               // its own job comment). This is JavaScript inside github-script:
               // a "#" line here is a SyntaxError, not a comment — the Security
               // Summary failed on exactly that on this PR's own run (2026-09-04).

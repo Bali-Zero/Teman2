@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# test_detect_secrets_nightly_alert.sh — guilt+innocence for
-# scripts/ci/detect_secrets_nightly_alert.sh (audit lever L3, 2026-08-21).
+# Guilt+innocence for the legacy-named manual full-tree alert composer.
 #
 # No network, no real Telegram gateway: TELEGRAM_NOTIFY_BIN points at a fake
 # gateway (same pattern as scripts/tests/test_tg_sender_migration.sh) that
@@ -63,7 +62,7 @@ printf '%s\n' "unaudited findings (of 3 total): apps/x.py:12 AWSKeyDetector" > "
 CAPTURED_TEXT_FILE="${WORKDIR}/captured1.txt" \
 FAKE_GATEWAY_EXIT=0 \
 TELEGRAM_NOTIFY_BIN="${WORKDIR}/fake_telegram_notify.sh" \
-EVENT_NAME=schedule \
+EVENT_NAME=workflow_dispatch \
 RUN_URL="https://github.com/Bali-Zero/Teman2/actions/runs/12345" \
 SUMMARY_FILE="${WORKDIR}/summary.txt" \
   bash "${ALERT_SCRIPT}"
@@ -74,7 +73,7 @@ if [ "${RC1}" -eq 0 ] && grep -q "AWSKeyDetector" "${WORKDIR}/captured1.txt" 2>/
 else
   bad "summary content missing from composed message (rc=${RC1})"
 fi
-if grep -q "schedule" "${WORKDIR}/captured1.txt" 2>/dev/null; then
+if grep -q "workflow_dispatch" "${WORKDIR}/captured1.txt" 2>/dev/null; then
   ok "event name lands in the message"
 else
   bad "event name missing from message"
@@ -109,7 +108,7 @@ echo "── INNOCENCE: an EMPTY summary file is treated the same as absent"
 CAPTURED_TEXT_FILE="${WORKDIR}/captured3.txt" \
 FAKE_GATEWAY_EXIT=0 \
 TELEGRAM_NOTIFY_BIN="${WORKDIR}/fake_telegram_notify.sh" \
-EVENT_NAME=schedule \
+EVENT_NAME=workflow_dispatch \
 RUN_URL="https://example/run/3" \
 SUMMARY_FILE="${WORKDIR}/empty-summary.txt" \
   bash "${ALERT_SCRIPT}" >/dev/null
@@ -123,7 +122,7 @@ echo "── exit-code propagation: gateway REFUSAL is not swallowed"
 CAPTURED_TEXT_FILE="${WORKDIR}/captured4.txt" \
 FAKE_GATEWAY_EXIT=1 \
 TELEGRAM_NOTIFY_BIN="${WORKDIR}/fake_telegram_notify.sh" \
-EVENT_NAME=schedule \
+EVENT_NAME=workflow_dispatch \
 RUN_URL="https://example/run/4" \
 SUMMARY_FILE="${WORKDIR}/summary.txt" \
   bash "${ALERT_SCRIPT}" >/dev/null
@@ -137,7 +136,7 @@ fi
 CAPTURED_TEXT_FILE="${WORKDIR}/captured5.txt" \
 FAKE_GATEWAY_EXIT=2 \
 TELEGRAM_NOTIFY_BIN="${WORKDIR}/fake_telegram_notify.sh" \
-EVENT_NAME=schedule \
+EVENT_NAME=workflow_dispatch \
 RUN_URL="https://example/run/5" \
 SUMMARY_FILE="${WORKDIR}/summary.txt" \
   bash "${ALERT_SCRIPT}" >/dev/null
