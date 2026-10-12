@@ -12,6 +12,7 @@ import {
 } from "../src/app/(visa-oracle)/visa-oracle/_lib/i18n";
 import {
   NOTICE_CONDITION_COPY,
+  REVIEW_REASON_ELEMENTS,
   buildEngineOutcome,
   isNoPathWithoutDoors,
 } from "../src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter";
@@ -315,23 +316,16 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     await page.goto("/visa-oracle");
     await expectEngineState(page, "HUMAN_REVIEW_REQUIRED");
     const enRows = page.locator(".oracle-review-elements__row");
+    const reviewElements =
+      REVIEW_REASON_ELEMENTS.DISCLOSED_CRIMINAL_RECORD_REVIEW;
+    expect(reviewElements).toBeDefined();
+    // Copy comes from the adapter's own table, so the spec moves with the
+    // sentence instead of pinning a stale copy of it.
     const en = [
-      [
-        "Why this is paused",
-        "This result is paused because you disclosed a criminal record or an ongoing case. A Bali Zero advisor reviews it with you before any path is confirmed.",
-      ],
-      [
-        "What the reviewer checks",
-        "A specialist reads what you disclosed against the immigration record requirements for the route you asked about, and decides whether it can be submitted as it stands.",
-      ],
-      [
-        "What to prepare",
-        "Have the dates and the issuing authority of any court or police record ready, together with any document showing the case is closed. Send nothing here — our team tells you where each document goes.",
-      ],
-      [
-        "How this is handled",
-        "A specialist reviews this before we confirm a path, and our team comes back to you with the timing for your case.",
-      ],
+      ["Why this is paused", reviewElements!.rule.en],
+      ["What the reviewer checks", reviewElements!.checked.en],
+      ["What to prepare", reviewElements!.prepare.en],
+      ["How this is handled", reviewElements!.handling.en],
     ] as const;
     await expect(enRows).toHaveCount(4);
     for (const [label, text] of en)
@@ -341,22 +335,10 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
       .click();
     const idRows = page.locator(".oracle-review-elements__row");
     const id = [
-      [
-        "Mengapa hasil ini ditunda",
-        "Hasil ini ditunda karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Konsultan Bali Zero meninjaunya bersama Anda sebelum jalur mana pun dikonfirmasi.",
-      ],
-      [
-        "Apa yang diperiksa peninjau",
-        "Seorang spesialis membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
-      ],
-      [
-        "Apa yang perlu disiapkan",
-        "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — tim kami akan memberi tahu ke mana setiap dokumen harus dikirim.",
-      ],
-      [
-        "Bagaimana hal ini ditangani",
-        "Seorang spesialis meninjau hal ini sebelum kami mengonfirmasi jalur, dan tim kami akan mengabari Anda mengenai perkiraan waktu untuk kasus Anda.",
-      ],
+      ["Mengapa hasil ini ditunda", reviewElements!.rule.id],
+      ["Apa yang diperiksa peninjau", reviewElements!.checked.id],
+      ["Apa yang perlu disiapkan", reviewElements!.prepare.id],
+      ["Bagaimana hal ini ditangani", reviewElements!.handling.id],
     ] as const;
     await expect(idRows).toHaveCount(4);
     for (const [label, text] of id)
