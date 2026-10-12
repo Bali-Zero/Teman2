@@ -1,0 +1,61 @@
+gear: 2
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  visa-night family "visit" plan V04 (/Users/nuzantara/visa-night/visit/audit.json, findings F029, F065,
+  F081, F114, F115 engine-adapter/outcome-fallbacks part) merged with family "work" plan PR-03
+  (/Users/nuzantara/visa-night/work/audit.json, group G20, findings F26, F41, F42). Audit ran on
+  53190abacc; this change was re-verified on origin/main 12200510b2 (every promise string still present).
+mission: >-
+  The Visa Oracle offers a Bali Zero advisor and never promises one, in English and Bahasa Indonesia.
+lanes:
+  - lane: v04-advisor-offered
+    role: build
+    seat: Claude Sonnet 5.5 implementer, worktree mouth-vn-adapter-v04-advisor-offered on the visa night run.
+pii_scan: clean
+bites: >-
+  Consumer: the public Visa Oracle result page (OutcomeSheet reading engine-adapter.ts nextStepsFor,
+  REVIEW_REASON_COPY, REVIEW_REASON_ELEMENTS, NOTICE_CONDITION_COPY and the price fallback), and the
+  advisor-offer.test.ts scan that runs in the mouth suite on every PR. Observation, after promote: a
+  headless walk of tourism shows the step "an advisor can go over the documents, the timing and the price
+  with you"; an unpriced path (E23U) shows "Price on consultation" with the offer; the minor-without-guardian
+  walk shows "A Bali Zero consultant can pick this up with you once an adult is present"; each with its
+  Bahasa Indonesia twin, and none of "we confirm", "reviews your case", "continues from here", "comes back
+  to you". Pre-merge, the same phrases are asserted absent by advisor-offer.test.ts.
+spend:
+  tokens_note: >-
+    One implementer session; no subagent, no external seat, no paid per-token API. Wall clock under the
+    two-hour appetite.
+  paid_api: none
+results:
+  - claim: "Test first: the new scan test is red on origin/main copy for the right keys."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/advisor-offer.test.ts'
+    result: "4 failed | 1 passed before the rewrite (next steps, support/review reasons, review elements, notices); the guilt test on the replaced sentences passes"
+  - claim: "The whole visa-oracle mouth suite after the change."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 55 passed (55); Tests 1431 passed (1431)"
+  - claim: "apps/mouth typechecks."
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output, exit 0"
+  - claim: "The legacy client-copy guard and the i18n census stay green."
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py && python3 scripts/ci/observe_visa_oracle_i18n_census.py
+    result: "OK visa-oracle client copy: 3592 literals scanned, 0 banned; census holds (6 passed)"
+  - claim: "Backend suite not run: the diff touches no tree, corpus, fact, pack or Python file."
+    cmd: git diff --name-only origin/main
+    result: "only apps/mouth/src/app/(visa-oracle) files and this evidence directory"
+decisions:
+  - id: D-e33-left
+    decision: >-
+      The E33-family advisor checks (E33G, E33B, E33E, E33F, E33 property, and the E33A-C government
+      sentences) keep their wording: they belong to the Second Home lane and the scan test exempts the E33
+      code prefix by name.
+  - id: D-i18n-follow-up
+    decision: >-
+      Promise strings that live in i18n.ts are NOT touched here (tree lane): the timeline lines where "your
+      advisor confirms the calendar", the CLIENT_GUARD title and body "A person will review this" / "Akan
+      ditinjau oleh seseorang" (also allow-listed in client-copy.test.ts), and the disclosure paragraph that
+      says an advisor "reviews your case". Listed in the PR body for the tree lane.
+dissent:
+  - seat: "this session (self-review, no external seat in a prepare lane)"
+    objection: "The scan regexes are phrase lists, so a differently worded promise would pass."
+    status: PLAUSIBLE
+    disposition: "Accepted: the list is a floor, not a proof; it is guilty on every replaced sentence and innocent on the rewritten tables. New promise shapes are added when found."

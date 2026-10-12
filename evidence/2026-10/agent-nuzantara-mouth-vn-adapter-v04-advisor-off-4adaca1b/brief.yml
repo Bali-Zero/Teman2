@@ -1,0 +1,26 @@
+gear: 2
+gear_reason: >-
+  Public client copy on the Visa Oracle (a promise the tool cannot keep, across every visa code) with a
+  new scan test; the diff is wide in strings but touches no rule, no data, no pricing figure, no tree file
+  and no backend. Gear 2 for the public-copy surface and the shared string across all families.
+mission: >-
+  The Visa Oracle offers a Bali Zero advisor and never promises one: the supported next step, the review
+  steps and reasons, the notice conditions, the advisor-check template and the price-on-consultation
+  fallback say what an advisor CAN do, in English and Bahasa Indonesia.
+objective: >-
+  Merge of visit plan V04 and work plan PR-03. Rewrite the promise sentences in engine-adapter.ts and
+  outcome-fallbacks.ts as offers (EN + ID), give an unpriced path "Price on consultation" and an unloadable
+  price its own sentence, change the door calque in the ID no-path step, and add a scan test that fails on
+  promise phrasing in every shared copy table. E33-family sentences and every i18n.ts string stay out.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/outcome-fallbacks.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/advisor-offer.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/duration.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/copy-truth.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/NoPathWithoutDoors.test.tsx
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
