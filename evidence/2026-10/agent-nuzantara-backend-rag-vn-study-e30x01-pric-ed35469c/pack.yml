@@ -12,12 +12,12 @@ mission: >-
 lanes:
   - lane: e30x01-price-pins
     role: build
-    seat: Claude Sonnet 5.5 implementer, worktree backend-rag-vn-study-e30x01-price-pins.
+    seat: claude-sonnet-5 implementer, worktree backend-rag-vn-study-e30x01-price-pins.
 pii_scan: clean
 bites: >-
   Consumer: backend-rag CI, which runs backend/tests/services/visa_engine on every change to the price catalogue,
   the signed packs or the pricing adapter. Observation: the CI run of this PR shows test_e30_family_pricing.py
-  passing (34 passed, 3 xfailed), the mutation runs show it failing when an E30 row amount is edited, a row is
+  passing (50 passed, 3 xfailed), and no fly-deploy run is triggered (test-only change); the mutation runs show it failing when an E30 row amount is edited, a row is
   renamed, or a seq-29-style pack-side fix makes the xfail rows XPASS (strict, so red until the mark is removed).
 spend:
   wall_clock_hours: 1.0
@@ -122,8 +122,8 @@ dissent:
     disposition: "Cured for the backend contract. The end-to-end walk now asserts E30, E30E and E30F are candidates, each displayed once with CONTACT_REQUIRED / PRICING_KEY_NOT_CONFIGURED, row_sha256 null, no amount, and absent from the persisted quotes. Mutation: the no-key resolution turned UNKNOWN turns 4 tests red. The comment that claimed the page wording was removed (the wording is the mouth adapter's, see next entry)."
   - seat: "codex gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T14-15-18-01a12ec0-53fc-78d1-90f9-9b6797b5c81e.jsonl)"
     objection: "LOW remainder of the same finding: the EN/ID advisor wording itself is not asserted by this backend test."
-    status: PLAUSIBLE
-    disposition: "Rejected for this PR, with reason: the wording lives in apps/mouth engine-adapter.ts (keyed only on candidate.pricing.status === CONTACT_REQUIRED, which this test now pins) and this lane is test-only backend; a mouth test for the Bahasa Indonesia line (duration.test.ts asserts only the EN line) is a separate lane and is recorded here as an open follow-up, not hidden."
+    status: RETRACTED
+    disposition: "Already satisfied on main: #8314 replaced the CONTACT_REQUIRED price line and pins both the EN line (Price on consultation. You can ask a Bali Zero advisor.) and the Bahasa Indonesia line (Harga melalui konsultasi. Anda dapat bertanya kepada konsultan Bali Zero.) in apps/mouth engine-adapter.test.ts:140-141 and :179-180. This backend test pins the status that line is keyed on; no follow-up is open."
   - seat: "codex gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T14-15-18-01a12ec0-53fc-78d1-90f9-9b6797b5c81e.jsonl)"
     objection: "NONE: Codex verified PNBP 6M / 8.5M / 12M plus the 3M internal margin gives 9M / 11.5M / 15M, consistent with the official Imigrasi source, and probed signed pack 028 (E30A/E30B AVAILABLE 9,000,000; E30/E30E/E30F CONTACT_REQUIRED / PRICING_KEY_NOT_CONFIGURED). Codex could not run the full pytest (read-only sandbox, no temp dir)."
     status: RETRACTED

@@ -12,8 +12,9 @@ tampered copy is refused (guilt twin below).
   from the ``E30A Education Visa (1 Year)`` / ``E30B Higher Education (1 Year)`` rows of
   ``bali_zero_official_prices_2026.json``;
 * E30, E30E and E30F carry NO ``pricing_key`` (the catalogue has no row for them) and resolve to
-  CONTACT_REQUIRED / ``PRICING_KEY_NOT_CONFIGURED`` with no amount, so the page says an advisor
-  confirms the price instead of inventing one;
+  CONTACT_REQUIRED / ``PRICING_KEY_NOT_CONFIGURED`` with no amount, so the page shows no price and
+  offers a Bali Zero advisor ("Price on consultation. You can ask a Bali Zero advisor.") instead
+  of inventing one;
 * the same holds END TO END: ``run_evaluation`` over the real signed pack, the real pricing service
   and a real study walk names E30A, attaches the quote and renders the display;
 * GUILT twins: an edited row amount moves the quote off the pin, a missing row degrades to
@@ -442,15 +443,16 @@ class TestTheEvaluatePathQuotesE30OnTheRealPack:
         assert quote.amount == _ONE_YEAR_IDR
         assert quote.pricing_key == _E30A_1Y
 
-        # The siblings the same walk lists carry NO quote: an advisor confirms their price.
+        # The siblings the same walk lists carry NO quote: their price is on consultation.
         quoted = {q.product_code for q in response.decision.quotes}
         assert quoted <= set(_PRICED)
         assert not quoted & set(_UNPRICED)
 
         # ... and they are still OFFERED: each sibling is a candidate of the walk, displayed with
         # CONTACT_REQUIRED / PRICING_KEY_NOT_CONFIGURED and no row. That status is what the mouth
-        # adapter turns into the advisor line ("confirmed by a Bali Zero advisor" EN/ID); it is
-        # pinned in the mouth suite, not here.
+        # adapter turns into the advisor offer ("Price on consultation. You can ask a Bali Zero
+        # advisor." / "Harga melalui konsultasi. Anda dapat bertanya kepada konsultan Bali Zero.");
+        # both lines are pinned in the mouth suite (engine-adapter.test.ts), not here.
         for code in _UNPRICED:
             assert code in candidates, f"{code} left the walk's candidates"
             sibling = [c for c in body["display"]["candidates"] if c["product_code"] == code]
