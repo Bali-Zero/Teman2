@@ -47,10 +47,11 @@ class Miss(Exception): pass
 
 def scan(im, b):
     """{y: [x, ...]} of the ink pixels in box b, 3 px in (a chip's rounded corner is no ink), against the box's
-    dominant colour."""
+    median colour."""
     x0, y0, x1, y1 = b; px = im.load(); xs, ys = range(x0 + 3, x1 - 3), range(y0 + 3, y1 - 3)
     if not xs or not ys: return {}
-    bg = Counter(px[x, y] for y in ys[::2] for x in xs[::2]).most_common(1)[0][0]
+    cols = [px[x, y] for y in ys[::2] for x in xs[::2]]
+    bg = tuple(sorted(c[i] for c in cols)[len(cols) // 2] for i in range(3))   # the median: a gradient surface has no one commonest colour
     rows = {y: [x for x in xs if sum(abs(a - c) for a, c in zip(px[x, y], bg)) > 60] for y in ys}
     return {y: r for y, r in rows.items() if r}
 
@@ -85,12 +86,16 @@ def c11(im, fr, rows):
     need(fr, "matrix.head", "matrix.chip"); heads = [(v, b[3], sum(ibox(im, b)[0::2]) / 2) for v, b in fr["matrix.head"]]
     per, off = Counter(), []
     for v, b in fr["matrix.chip"]:
+        v = v.split(":")[0]   # a chip's value is its step, then its row ("2:5")
         h = max((h for h in heads if h[0] == v and h[1] <= b[1]), key=lambda h: h[1], default=None)
         if h: per[round(h[1] / 4)] += 1
         c = seen(im, b); cx, cy = (c[0] + c[2]) / 2, (c[1] + c[3]) / 2
-        if not h or abs(cx - h[2]) > 4 or abs(cx - (b[0] + b[2]) / 2) > 4 or abs(cy - (b[1] + b[3]) / 2) > 4: off.append(v)
+        # nothing in the chip's colours touches it: its seen box is no wider or taller than its frame (a chip whose fill is the
+        # ground, a Rendah chip at night on the sheet, shows its text alone and is smaller: that is no touching)
+        whole = c[2] - c[0] - (b[2] - b[0]) <= 6 and c[3] - c[1] - (b[3] - b[1]) <= 6
+        if not h or not whole or abs(cx - h[2]) > 4 or abs(cx - (b[0] + b[2]) / 2) > 4 or abs(cy - (b[1] + b[3]) / 2) > 4: off.append(v)
     ok = bool(per) and set(per.values()) == {rows} and not off
-    return ok, "chips per matrix %s (need %d), off their header: %s" % (sorted(per.values()), rows, off or "none")
+    return ok, "chips per matrix %s (need %d), off their header or not whole: %s" % (sorted(per.values()), rows, off or "none")
 
 def c12(im, fr, _):
     """heads-up hierarchy: each sentence's first band >= 1.6 x its label's; no sentence: the label's >= 30 px."""
@@ -193,21 +198,66 @@ def c23(im, fr, _):
         if got != v: bad.append("%s at %d,%d is %s, its state says %s" % (n, x0, y0, got, v))
     return not bad, "%d chips, off their state's tone: %s" % (len(marks), "; ".join(bad) or "none")
 
-CHECKS = {"C%d" % n: f for n, f in zip(range(11, 24), (c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23))}
+RING = tok("accent")
+
+def c24(im, fr, arg):
+    """selection cue (IMM-L, #8278 and #8288 gates): the shown cell's ring is the accent on all 4 sides, 1 pt in from its
+    outer edge (3.5 pt outside the marked chip), and clear of what lies beside it: the 1.5 pt just outside that edge (past its one antialiased pixel) is the ground on each side and no other marked chip is within 1.5 pt of it (a chip filled like the ground, Medium-Low at night, leaves no ink), so a chip
+    stacked 4 pt away (a ring touching it) FAILs, whether it is the lower one, the upper one or one at the side; and the
+    hint is drawn iff the record offers more than one cell to pick (`cells`)."""
+    rec, s = arg; cells = (rec or {}).get("cells")
+    if not isinstance(cells, int): raise Miss("the record carries no cells: the snapshot must write them")
+    d, t, k, bad = int(s), max(2, round(1.5 * s)), int(6 * s), []
+    inside = lambda p: 0 <= p[0] < im.width and 0 <= p[1] < im.height
+    shown = {v for v, _ in fr["detail"]}
+    if len(shown) != 1: raise Miss("the detail names %d rows (%s): a sheet shows one cell's detail" % (len(shown), ", ".join(sorted(shown)) or "none"))
+    wrong = sorted({v for v, _ in fr["ring"]} - shown)
+    if wrong: bad.append("a ring on row %s while the detail shows row %s: two selections" % (", ".join(wrong), next(iter(shown))))
+    if not any(v in shown for v, _ in fr["ring"]): bad.append("no ring on the shown row %s" % next(iter(shown)))
+    if len(fr["matrix.chip"]) < cells: bad.append("%d marked chips for %d cells: a chip is unmarked" % (len(fr["matrix.chip"]), cells))
+    o = int(3.5 * s + .5)
+    for row, (x0, y0, x1, y1) in fr["ring"]:
+        sits = [b for v, b in fr["matrix.chip"] if v.endswith(":" + row) and abs((b[0] + b[2]) - (x0 + x1)) <= 4 and abs((b[1] + b[3]) - (y0 + y1)) <= 4
+                and b[0] - x0 <= 2 and b[1] - y0 <= 2 and x1 - b[2] <= 2 and y1 - b[3] <= 2]   # the chip of ITS row, inside the ring, centres within 2 px
+        if not sits: bad.append("the ring marked on row %s at %d,%d surrounds no chip of row %s" % (row, x0, y0, row))
+        x0, y0, x1, y1 = x0 - o, y0 - o, x1 + o, y1 + o   # the mark sits on the chip; the ring's outer edge is 3.5 pt out
+        g = ground(im, (x0, y0, x1, y1)); xs, ys = range(x0 + k, x1 - k), range(y0 + k, y1 - k)
+        sides = {"top": ([(x, y0 + d) for x in xs], [(x, y) for x in xs for y in range(y0 - 1 - t, y0 - 1)]),
+                 "bottom": ([(x, y1 - 1 - d) for x in xs], [(x, y) for x in xs for y in range(y1 + 1, y1 + 1 + t)]),
+                 "left": ([(x0 + d, y) for y in ys], [(x, y) for y in ys for x in range(x0 - 1 - t, x0 - 1)]),
+                 "right": ([(x1 - 1 - d, y) for y in ys], [(x, y) for y in ys for x in range(x1 + 1, x1 + 1 + t)])}
+        for side, (line, out) in sides.items():
+            line, out = [p for p in line if inside(p)], [p for p in out if inside(p)]
+            lit = sum(near(im.getpixel(p), RING, 30) for p in line) / max(1, len(line))
+            touched = sum(sum(abs(a - c) for a, c in zip(im.getpixel(p), g)) > 48 for p in out) / max(1, len(out))
+            if lit < .9: bad.append("ring at %d,%d is no accent on its %s side (%.0f%%)" % (x0, y0, side, 100 * lit))
+            if touched > .1: bad.append("ring at %d,%d touches what lies beside its %s side (%.0f%% of the 1.5 pt)" % (x0, y0, side, 100 * touched))
+    for _, r in fr["ring"]:   # a chip whose fill is the ground (Medium-Low at night) leaves no ink to touch: the marked frames say it
+        for _, b in fr["matrix.chip"]:
+            if b == r: continue
+            dx, dy = max(b[0] - (r[2] + o), (r[0] - o) - b[2], 0), max(b[1] - (r[3] + o), (r[1] - o) - b[3], 0)
+            if (dx * dx + dy * dy) ** .5 < 1.5 * s: bad.append("ring at %d,%d is %.1f px from the chip at %d,%d (under 1.5 pt)" % (r[0], r[1], (dx * dx + dy * dy) ** .5, b[0], b[1]))
+    hints = fr.get("hint", [])
+    if cells > 1 and not hints: bad.append("no hint over %d cells" % cells)
+    if cells <= 1 and hints: bad.append("a hint over %d cell: nothing to pick" % cells)
+    return not bad, "%d rings accent on 4 sides and clear, %d hint over %d cells: %s" % (len(fr["ring"]), len(hints), cells, "; ".join(bad) or "none")
+
+CHECKS = {"C%d" % n: f for n, f in zip(range(11, 25), (c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24))}
 # The frames each check reads (C23: the ARMED row's own list of chips), and those it reads when present.
 NEEDS = {"C11": ("matrix.head", "matrix.chip"), "C12": ("headsup.label",), "C13": ("cap", "chip.bali", "bali.label"),
          "C14": ("cap",), "C15": ("basis.lead", "basis.body"), "C16": ("bar",), "C17": ("figure", "figure.peak", "card.peak"),
          "C18": ("census", "card"), "C19": ("uraian.item",), "C20": ("row.code", "row.title", "row.chip"),
-         "C21": ("ladder", "matrix"), "C22": ("group.digits", "row.code"), "C23": ()}
-OPTIONAL = {"C12": ("headsup.sentence",)}
+         "C21": ("ladder", "matrix"), "C22": ("group.digits", "row.code"), "C23": (), "C24": ("matrix.chip", "ring", "detail")}
+OPTIONAL = {"C12": ("headsup.sentence",), "C24": ("hint",)}
 # The census grammar (#8250 gate binding 2): a frame's name is one of these, and its value matches the name's pattern —
 # a tone, a step ("0"…"3" in `scaleOrder`), an ordinal, a fraction, or nothing. Never drawn text.
 TONE, STEP, ORD, FRAC = r"open|restricted|closed|neutral", r"[0-3]", r"[1-9]?", r"0(?:\.\d+)?|1(?:\.0+)?|\.\d+"
-NAMES = {**dict.fromkeys(("matrix.head", "matrix.chip", "matrix.cell"), STEP), "headsup.label": ORD, "headsup.sentence": ORD,
+ROW = r"\d+"   # a row of the record (an index into its per-scale rows), the cell a ring sits on or the detail shows
+NAMES = {**dict.fromkeys(("matrix.head", "matrix.cell"), STEP), "matrix.chip": STEP + r"(?::\d+)?", **dict.fromkeys(("ring", "detail"), ROW), "headsup.label": ORD, "headsup.sentence": ORD,
          **dict.fromkeys(("chip.national", "chip.bali", "headsup"), TONE), "bar": FRAC,
          **dict.fromkeys(("matrix", "ladder", "cap", "bali.label", "basis.lead", "basis.body", "reason.lead", "reason.body",
                           "figure", "figure.peak", "card.peak", "census", "card", "uraian.item", "row.code", "row.title",
-                          "row.chip", "group.digits"), "")}
+                          "row.chip", "group.digits", "hint"), "")}
 
 NOVALUE = object()
 
@@ -279,7 +329,7 @@ def weight(im, b, cs):
 # Theme.display(64) (KBLIRegistryView), every other band's the detail card's title(36). A real serif(20) line is 31-42 px
 # of ink at 2 px/pt, day and night, and a 24 pt line 46 px: the sentence's upper bound is 1.1 x 20 pt (44 px).
 LEDGER = re.compile(r"sheet-ledger-")
-SINGLE = re.compile(r"(?:detail-card|dossier|sheet-ledger|chat)-")
+SINGLE = re.compile(r"(?:detail-card|dossier|sheet-ledger|chat|registry-sheet|sheet-open)-")
 cap_pt = lambda band: 64 if LEDGER.match(band) else 36
 MEASURE = {"cap": (lambda im, b, s, band: .6 * cap_pt(band) * s <= first(im, b) <= cap_pt(band) * s,
                    lambda band: "§3 size, %s(%d): first ink band 0.6-1.0 x %d pt" % ("display" if LEDGER.match(band) else "title", cap_pt(band), cap_pt(band))),
@@ -294,6 +344,8 @@ def judge(im, fr, s, c, arg, band="", record=None):
     names = NEEDS[c] + (tuple(arg) if c == "C23" else ())
     if c == "C23" and SINGLE.match(band) and not record:
         raise Miss("band %s is a single-record band and arms C23, but its JSON carries no record: the snapshot must write it" % band)
+    if c == "C23" and SINGLE.match(band) and any(a not in record for a in ("national", "bali", "headsup")):
+        raise Miss("band %s arms C23 and its record lacks an axis (national, bali, headsup): %s" % (band, sorted(record)))
     missing = [n for n in names if not fr.get(n)]
     if missing: raise Miss("missing frame %s: the View must mark it" % ", ".join(missing))
     extra = OPTIONAL.get(c, ()) + (tuple(n for n in fr if n.startswith("chip.") or n == "headsup") if c == "C23" else ())
@@ -301,10 +353,16 @@ def judge(im, fr, s, c, arg, band="", record=None):
         for _, b in fr.get(n, []):
             if inked(im, b) < INK_MIN: raise Miss("frame %s at %s holds no ink: a mark on an empty area" % (n, b))
             if n in MEASURE and not MEASURE[n][0](im, b, s, band): raise Miss("frame %s at %s is not %s" % (n, b, MEASURE[n][1](band)))
-    return CHECKS[c](im, fr, arg)
+    return CHECKS[c](im, fr, (record, s) if c == "C24" else arg)
 # (PNG path relative to the set, as a regex; check; its argument). Each View PR arms its own bands here when it names
 # the frames its checks read (lead ruling 2026-10-11): none is armed by the harness itself.
-ARMED = []
+LEDGER56 = r"(?:imm/)?sheet-ledger-(?:day|night)-(?:en|id)\.png|tall/sheet-ledger-56101-(?:day|night)-en\.png"
+TALL71 = r"tall/sheet-ledger-71109-(?:day|night)-en\.png"
+OPEN = r"tall/registry-sheet-open-\d+-(?:day|night)-(?:en|id)\.png|imm/sheet-open-\d+-(?:day|night)-(?:en|id)\.png"
+TONES = ("chip.national", "chip.bali")
+ARMED = [(LEDGER56, "C11", 6), (LEDGER56, "C12", None), (LEDGER56, "C13", None), (LEDGER56, "C14", None), (LEDGER56, "C21", None),
+         (LEDGER56, "C23", TONES), (TALL71, "C12", None), (TALL71, "C13", None), (TALL71, "C14", None), (TALL71, "C23", TONES),
+         (OPEN, "C24", None)]
 
 def frames(png, im):
     """({name: [(value, px box)]} of the frames drawn whole on the canvas, px per pt, the record's own state or None)."""
@@ -427,6 +485,34 @@ def c_cases():
                               *[([((x - 15 + dx, 40, x + 15 + dx, 64), fill)] + ink((x - 7 + dx, 46, x + 7 + dx, 58)) + [((0, 64, 400, 65), LS)],
                                  {"matrix.chip": [(str(i), (x - 15, 40, x + 15, 64))]}) for i, x in enumerate(xs)])
 
+    # C24 (the selection cue): a chip ringed (4 px out, 2 px thick) over a stacked neighbour. 8 px of gap clears it (innocent);
+    # a neighbour at 4 px (the ring touches it), below, above or at either side, FAILs; so does a ring missing a side, a hint over
+    # one cell and no hint over two (#8288 gate: Medium-Low at night, 85510, the lower chip, a side touch).
+    def sel(dy=None, up=None, dx=None, lx=None, broken=None, cells=2, hint=1, nbfill=OP, ringrow="0", detailrow="0", ringat=None):
+        chip_b, ring_b = (150, 100, 250, 124), (146, 96, 254, 128)
+        ops = chip("matrix.chip", "0:0", chip_b, OP)[0]
+        rings = (("top", (146, 96, 254, 98)), ("bottom", (146, 126, 254, 128)), ("left", (146, 96, 148, 128)), ("right", (252, 96, 254, 128)))
+        if ringat == "neighbour":   # the ring drawn and marked around the chip below (150,132..156), the row mark unchanged
+            rings = (("top", (146, 128, 254, 130)), ("bottom", (146, 158, 254, 160)), ("left", (146, 128, 148, 160)), ("right", (252, 128, 254, 160)))
+            chip_b = (150, 132, 250, 156)
+        for side, r in rings:
+            if side != broken: ops.append((r, tuple(RING[0])))
+        fr = {"matrix.chip": [("0:0", (150, 100, 250, 124))], "ring": [(ringrow, chip_b)]}
+        o, f = word("detail", detailrow, (20, 365, 380, 385)); ops += o; fr.update(f)
+        for nb in ([(150, 124 + dy, 250, 148 + dy)] if dy is not None else []) + ([(150, 68, 250, 92 + up)] if up is not None else [])                 + ([(254 + dx, 100, 360 + dx, 124)] if dx is not None else []) + ([(40, 100, 146 + lx, 124)] if lx is not None else []):
+            o, f = chip("matrix.chip", "1:1", nb, nbfill); ops += o; fr["matrix.chip"] += f["matrix.chip"]
+        if hint:
+            o, f = word("hint", "", (150, 170, 300, 182)); ops += o; fr.update(f)
+        return ops, fr, {"cells": cells}
+    for k, kw in ((0, dict(dy=8)), (0, dict(dy=8, up=0, dx=8, lx=-8)), (1, dict(dy=4)), (1, dict(dy=5)), (1, dict(dy=8, up=3)),
+                  (1, dict(dy=8, dx=0)), (1, dict(dy=8, lx=0)), (1, dict(dy=8, broken="left")), (1, dict(dy=8, broken="bottom")),
+                  (1, dict(dy=8, ringrow="1")), (1, dict(dy=8, ringat="neighbour")), (1, dict(dy=8, ringrow="1", ringat="neighbour")), (1, dict(dy=8, cells=4)), (1, dict(dy=8, cells=1)), (1, dict(dy=4, nbfill=(0xF4, 0xF1, 0xEB))), (1, dict(dy=8, hint=0)), (0, dict(dy=8, cells=1, hint=0))):
+        ops, fr, rec = sel(**kw); yield "C24", rec, k, ops, fr
+    # a chip whose own colours touch it on both sides: its seen box is 20 px wider, the centre unmoved (B2, #8276 gate)
+    yield "C11", 4, 1, *m(*[word("matrix.head", str(i), (x - 10, 10, x + 10, 20)) for i, x in enumerate(xs)],
+                          *[([((x - 25, 46, x - 15, 58), OP), ((x + 15, 46, x + 25, 58), OP)] + chip("matrix.chip", str(i), (x - 15, 40, x + 15, 64), OP)[0],
+                             {"matrix.chip": [(str(i), (x - 15, 40, x + 15, 64))]}) for i, x in enumerate(xs)])
+
 FONTS = pathlib.Path(__file__).resolve().parents[2] / "Resources" / "Fonts"
 SENTENCES = ("Open for foreign investment", "Tidak dibuka, kecuali (kemitraan) dgj")   # an ascender and a descender each
 
@@ -469,7 +555,7 @@ def c_selftest():
     def run(c, arg, ops, fr):
         im = Image.new("RGB", (400, 400), PAPER); d = ImageDraw.Draw(im)
         for b, col in ops: d.rectangle([b[0], b[1], b[2] - 1, b[3] - 1], fill=col)
-        try: return judge(im, fr, 1, c, arg)
+        try: return judge(im, fr, 1, c, arg, "", arg if c == "C24" else None)
         except Miss as e: return False, str(e)
     for c, arg, k, ops, fr in c_cases():
         ok, detail = run(c, arg, ops, fr); n += 1
@@ -486,7 +572,8 @@ def c_selftest():
         ok, detail = glyph_run(c, arg, band, text, cut, pt, night); n += 1
         if ok == bool(k) or (k and "is not" not in detail): out.append("%s-SELFTEST real %s %d pt %s on %s (%s): %s" % (c, cut, pt, text[:12], band, ("day", "night")[night], detail))
     chip = ([((20, 20, 120, 44), TONE_BG["open"][0])], {"chip.national": [("open", (20, 20, 120, 44))]})
-    for band, rec, want in (("detail-card-day-en.png", None, 0), ("detail-card-day-en.png", {}, 0), ("detail-card-day-en.png", {"national": "open"}, 1),
+    for band, rec, want in (("detail-card-day-en.png", None, 0), ("detail-card-day-en.png", {}, 0), ("detail-card-day-en.png", {"national": "open", "bali": "open", "headsup": "open"}, 1),
+                            ("detail-card-day-en.png", {"national": "open"}, 0),
                             ("chat-night-id.png", None, 0), ("dossier-day-en.png", None, 0), ("sheet-ledger-night-en.png", None, 0),
                             ("registry-table-day-en.png", None, 1)):
         im = Image.new("RGB", (400, 400), PAPER); d = ImageDraw.Draw(im)
@@ -494,7 +581,7 @@ def c_selftest():
         try: ok, detail = judge(im, chip[1], 1, "C23", ("chip.national",), band, rec)
         except Miss as e: ok, detail = False, str(e)
         n += 1   # a single-record band that arms C23 carries a record (#8276 gate binding 4)
-        if ok != bool(want) or (not ok and "no record" not in detail): out.append("RECORD-SELFTEST %s record=%r: %s" % (band, rec, detail))
+        if ok != bool(want) or (not ok and "no record" not in detail and "lacks an axis" not in detail): out.append("RECORD-SELFTEST %s record=%r: %s" % (band, rec, detail))
     for nm, v, rec, want in (("matrix.chip", "2", None, 1), ("matrix.cell", "3", None, 1), ("chip.bali", "open", None, 1),
                              ("bar", "0.49", None, 1), ("bar", "1.0", None, 1), ("headsup.label", "", None, 1), ("cap", "", None, 1),
                              ("matrix.chip", "Mikro", None, 0), ("matrix.chip", "", None, 0), ("chip.bali", "55101", None, 0),
