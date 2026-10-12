@@ -20,7 +20,7 @@ mission: >-
 lanes:
   - lane: pr08-e23uv-timeline
     role: build
-    seat: claude-opus-5-5 implementer (subagent; the Co-Authored-By trailer of all three commits), worktree backend-rag-vn-work-pr08-e23uv-timeline.
+    seat: claude-opus-5-5 implementer (subagent; the Co-Authored-By trailer of every build commit), worktree backend-rag-vn-work-pr08-e23uv-timeline.
   - lane: pr08-ground-truth
     role: ground_truth
     seat: >-
@@ -149,7 +149,7 @@ dissent:
     rollout: "fresh gate session, verdict REWORK-BUILD (no rollout id supplied to this lane)"
     objection: "GATE 2: the lane seat 'Claude Sonnet 5.5' is not a roster model."
     status: CONFIRMED
-    disposition: "CURED: lane seat now reads claude-opus-5-5, the model named in the Co-Authored-By trailer of all three commits."
+    disposition: "CURED: lane seat now reads claude-opus-5-5, the model named in the Co-Authored-By trailer of every build commit."
   - seat: "codex gpt-5.6-sol (fresh rollout gate on head 64fb19d8a1)"
     rollout: "fresh gate session, verdict REWORK-BUILD (no rollout id supplied to this lane)"
     objection: "GATE 3: the PR body is stale (old pending-sentence parenthetical, 'never contains E23U or E23V', 'merging backend-rag is the deploy' with no mouth/Vercel promote) and the Bites line omits the promote and the EN+ID observation."
