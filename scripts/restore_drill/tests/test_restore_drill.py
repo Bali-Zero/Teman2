@@ -183,8 +183,14 @@ def test_a_refused_run_creates_nothing_so_its_label_owns_nothing() -> None:
     assert refusal < reap < create
 
 
-def _run_payload_until_listing(tmp_path: Path, extra_env: dict[str, str]) -> tuple[int, str, list[str]]:
-    """Run the real payload with stub tools; the stub `aws` records its argv and refuses the listing."""
+def _run_payload_until_listing(
+    tmp_path: Path, extra_env: dict[str, str], *, pipe_timeout: float | None = None
+) -> tuple[int, str, list[str]]:
+    """Run the real payload with stub tools; the stub `aws` records its argv and refuses the listing.
+
+    With pipe_timeout, output is captured through a PIPE that closes only when every process holding
+    it has exited: a surviving watchdog `sleep` raises TimeoutExpired.
+    """
     import hashlib
     import os
     import subprocess
@@ -213,13 +219,18 @@ def _run_payload_until_listing(tmp_path: Path, extra_env: dict[str, str]) -> tup
         RESTORE_DRILL_TIMEOUT_SECONDS="20",
     )
     env.update(extra_env)
+    cmd = ["/bin/bash", str(ROOT / "run_drill.sh")]
+
+    def calls_of() -> list[str]:
+        return record.read_text(encoding="utf-8").splitlines() if record.exists() else []
+
+    if pipe_timeout is not None:
+        piped = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=pipe_timeout)
+        return piped.returncode, piped.stdout + piped.stderr, calls_of()
     out = tmp_path / "payload.out"
     with out.open("w", encoding="utf-8") as sink:
-        proc = subprocess.run(
-            ["/bin/bash", str(ROOT / "run_drill.sh")], env=env, stdout=sink, stderr=sink, timeout=60
-        )
-    calls = record.read_text(encoding="utf-8").splitlines() if record.exists() else []
-    return proc.returncode, out.read_text(encoding="utf-8"), calls
+        proc = subprocess.run(cmd, env=env, stdout=sink, stderr=sink, timeout=60)
+    return proc.returncode, out.read_text(encoding="utf-8"), calls_of()
 
 
 def test_the_generic_secrets_env_bucket_cannot_redirect_the_drill(tmp_path: Path) -> None:
@@ -249,17 +260,13 @@ def test_the_drill_scoped_endpoint_override_still_applies(tmp_path: Path) -> Non
 
 
 def test_the_watchdog_group_is_killed_so_its_sleep_does_not_outlive_the_run(tmp_path: Path) -> None:
-    import subprocess
-    import time
-
-    marker = f"{9000 + (int(time.time()) % 900)}"  # a sleep length no other process is likely to use
-    rc, _, _ = _run_payload_until_listing(tmp_path, {"RESTORE_DRILL_TIMEOUT_SECONDS": marker})
-    assert rc == 2
-    time.sleep(0.5)
-    left = subprocess.run(["pgrep", "-f", f"^sleep {marker}$"], capture_output=True, text=True).stdout.split()
-    for pid in left:
-        subprocess.run(["kill", pid], check=False)
-    assert left == []
+    # Deterministic, no process-table read: the watchdog's `sleep` inherits the output pipe, so the
+    # pipe reaches EOF within the timeout only if the whole watchdog group died with the run. On the
+    # pre-cure payload the orphan holds it for the 45 s cap and this raises TimeoutExpired.
+    rc, out, _ = _run_payload_until_listing(
+        tmp_path, {"RESTORE_DRILL_TIMEOUT_SECONDS": "45"}, pipe_timeout=20
+    )
+    assert rc == 2 and "cannot list Tigris postgres backups" in out
 
 
 def test_generic_drill_knobs_in_the_secrets_env_do_not_reach_the_drill() -> None:
