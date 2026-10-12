@@ -1,0 +1,178 @@
+# Gear-3 evidence pack - mission CIWIRE-20261005: wire two orphan shell suites into fleet-burst-tests.yml.
+# Written by the Dux (Claude Sonnet 5.5, M5). Every receipt is a command this writer ran on 2026-10-05
+# between 10:25Z and 10:56Z; outputs are quoted from those runs. Scratch logs live in the session scratchpad.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Mandate from the imperator, 2026-10-05: ship one small PR that makes CI run
+  scripts/tests/test_ai_dispatch_shared_watchdog.sh and scripts/tests/test_pr_watch.sh; the other orphans
+  go in the report, not in this PR.
+mission: >-
+  Both suites were merged today (#7881, #7894) and are referenced by no workflow, so the behaviour they pin
+  can rot unseen (superscar #2, exists != armed). This PR adds two steps and four path-filter entries to the
+  workflow that already owns the shell corpora of the seat/dispatch surface.
+lanes:
+  - lane: ciwire
+    role: build
+    seat: Claude Sonnet 5.5 (Dux dux-ciwire, M5)
+pii_scan: clean
+bites:
+  consumer: >-
+    the job "Fleet burst dispatcher tests" of .github/workflows/fleet-burst-tests.yml, steps "ai-dispatch
+    still kills a TERM-ignoring agy through the shared watchdog and fails loud without the lib" and "pr_watch
+    still reports merge, close, dedup, missing-required, pagination and timeout correctly", on every PR or push
+    to main that touches either suite or the script it executes.
+  observation: >-
+    This PR's own run of that job (the PR touches both paths lists) logs "test_ai_dispatch_shared_watchdog.sh:
+    3 passed (floor 3)" and "test_pr_watch.sh: 51 ok checks (floor 51)" and concludes success; the run id
+    and the two log lines are quoted in the PR after the checks finish.
+decisions:
+  - id: D-home
+    decision: >-
+      Wired into the existing fleet-burst-tests.yml rather than a new workflow: it already owns the seat_build
+      shell corpora, the same exists-!=-armed reasoning, an ubuntu job that is not a required context, and its
+      paths filter already lists scripts/lib/seat_watchdog.sh. Two suites are offline (stub agy, fake gh on
+      PATH), so the steps sit before the zsh install and the origin/main fetch, like the seat_build steps.
+  - id: D-floor-count
+    decision: >-
+      Each step re-asserts the count it prints (3 from the SUMMARY line, 51 `  ok ` lines for pr_watch,
+      which prints no SUMMARY) with the same shape as the seat_build floor step, so a suite that shrinks or
+      aborts goes red instead of green. The counts equal the number of check calls in each suite
+      (receipt R2; confirmed by codex-gpt-5.6-sol with `rg -c '^check "'`).
+  - id: D-no-merge-group
+    decision: >-
+      The workflow has no merge_group trigger (pull_request and push only) and neither does the sibling
+      step set; adding one is a trigger change outside this mandate and the job is not a required context.
+      Reported, not changed.
+  - id: D-mutation-choice
+    decision: >-
+      The first watchdog mutation (removing the `exit 1` of the fail-loud branch in ai-dispatch.sh) did NOT
+      turn the step red (receipt R4a): the FATAL message and the source error still satisfy check (b). It was
+      replaced by a mutation of the behaviour check (a) pins (receipt R4b). Recorded so the first one is not
+      mistaken for a proof.
+receipts:
+  - claim: "R1 - the deterministic floor is 3, path-sourced."
+    cmd: >-
+      git diff --name-only / --numstat / (full patch) origin/main > scratch; python3 scripts/evidence_pack_lint.py
+      --changed-files-file <names> --numstat-file <numstat> --patch-file <patch> --print-floor
+      --print-floor-source
+    result: >-
+      floor 3 (the lint prints 3); the changed set is one file, .github/workflows/fleet-burst-tests.yml, which
+      matches HOTZONE_PATTERNS entry `.github/workflows/*`. Code delta +42 -0.
+    exit: 0
+    ts: "2026-10-05T10:39:00Z"
+    seat: Claude Sonnet 5.5 (Dux, M5)
+  - claim: "R2 - both suites pass in a clean environment on M5."
+    cmd: >-
+      env -i PATH=/usr/bin:/bin HOME=<scratch> TMPDIR=<scratch> bash scripts/tests/test_pr_watch.sh; same with
+      PATH=/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin for scripts/tests/test_ai_dispatch_shared_watchdog.sh
+    result: >-
+      test_pr_watch.sh: rc 0, 51 lines starting `  ok`, last line `PASS (all checks)`.
+      test_ai_dispatch_shared_watchdog.sh: rc 0, `guilt case finished: rc=1 elapsed=121s`, three PASS lines,
+      `SUMMARY 3 passed, 0 failed`. Needs: bash, python3 (pr_watch.sh pipes through python3), mktemp, sort,
+      sleep, date +%s, kill/job control; no jq, no gh, no network, no macOS-only tool on the exercised path
+      (`md5 -q` at ai-dispatch.sh:237 has an `|| echo $RANDOM` fallback; the `stat -f%m || stat -c%Y` pair at
+      :162 is off the exercised path).
+    exit: 0
+    ts: "2026-10-05T10:33:00Z"
+    seat: Claude Sonnet 5.5 (Dux, M5)
+  - claim: "R3 - the wired steps' exact run text, extracted from the YAML, passes on a scratch copy of scripts/ and prints the floor lines."
+    cmd: >-
+      yaml.safe_load of the workflow -> the two `run:` texts to files; cd <scratch copy> && env -i ... bash
+      <step file>
+    result: >-
+      watchdog step: `test_ai_dispatch_shared_watchdog.sh: 3 passed (floor 3)`, STEP_RC=0.
+      pr_watch step: `test_pr_watch.sh: 51 ok checks (floor 51)`, STEP_RC=0.
+    exit: 0
+    ts: "2026-10-05T10:38:00Z"
+    seat: Claude Sonnet 5.5 (Dux, M5)
+  - claim: "R4a - a mutation that did NOT bite, kept as a negative result."
+    cmd: >-
+      scratch copy of scripts/, ai-dispatch.sh lines 64-70: `exit 1` inside the missing-lib branch replaced by `:`;
+      the watchdog step's run text under env -i
+    result: >-
+      step green (`3 passed (floor 3)`, STEP_RC=0): the FATAL line and the source error alone satisfy check (b).
+      The mutation was discarded as a proof.
+    exit: 0
+    ts: "2026-10-05T10:46:00Z"
+    seat: Claude Sonnet 5.5 (Dux, M5)
+  - claim: "R4b - guilt, watchdog suite: a timeout reported as success turns the step red."
+    cmd: >-
+      scratch copy of scripts/, scripts/lib/seat_watchdog.sh line 36 `exit 124` -> `exit 0` (diff shown);
+      the watchdog step's run text under env -i
+    result: >-
+      `guilt case finished: rc=0 elapsed=121s`; `  expected non-zero dispatcher exit`; `  missing documented
+      TIMEOUT stderr line`; `FAIL: guilt: gemini-scan timeout kills TERM-ignoring stub process group`;
+      `SUMMARY 2 passed, 1 failed`; STEP_RC=1.
+    exit: 1
+    ts: "2026-10-05T10:56:00Z"
+    seat: Claude Sonnet 5.5 (Dux, M5)
+  - claim: "R5 - guilt, pr_watch suite: dropping the EJECTED-FROM-QUEUE alert turns the step red."
+    cmd: >-
+      scratch copy of scripts/, scripts/pr_watch.sh line 383 `echo "#$pr EJECTED-FROM-QUEUE"` -> `:`
+      (diff shown); the pr_watch step's run text under env -i
+    result: >-
+      `  FAIL EJECTED-FROM-QUEUE fires exactly once`; `  FAIL the ejected PR is named`; `FAIL (2 check(s))`;
+      STEP_RC=1.
+    exit: 1
+    ts: "2026-10-05T10:36:00Z"
+    seat: Claude Sonnet 5.5 (Dux, M5)
+  - claim: "R6 - the census of scripts/tests/test_*.sh that no workflow names."
+    cmd: >-
+      for f in $(git ls-tree --name-only origin/main scripts/tests/ | grep 'test_.*\.sh$'); do
+      git grep -q "$(basename $f)" origin/main -- .github/workflows || echo $(basename $f); done
+    result: >-
+      33 names on origin/main 434d87d2d4 (listed in the PR body); this PR removes two of them. Names only,
+      not wired: they were not run here and some are host-specific.
+    exit: 0
+    ts: "2026-10-05T10:27:00Z"
+    seat: Claude Sonnet 5.5 (Dux, M5)
+  - claim: "R7 - both paths lists carry the four new entries and the already-listed lib."
+    cmd: >-
+      awk '/^on:/,/^permissions:/' .github/workflows/fleet-burst-tests.yml | grep -n
+      'seat_watchdog\|ai-dispatch\|pr_watch'; python3 -c yaml.safe_load of the workflow
+    result: >-
+      8 hits: scripts/lib/seat_watchdog.sh, scripts/ai-dispatch.sh, scripts/pr_watch.sh,
+      scripts/tests/test_pr_watch.sh in each of pull_request.paths and push.paths (the watchdog suite entry is
+      on a line the grep does not match by name); YAML loads.
+    exit: 0
+    ts: "2026-10-05T10:44:00Z"
+    seat: Claude Sonnet 5.5 (Dux, M5)
+  - claim: "R8 - PII-shaped strings in the touched files."
+    cmd: >-
+      grep -nE for an email pattern or a 16-digit run over the diff and the evidence directory
+    result: "no hits; no client data was read or written"
+    exit: 1
+    ts: "2026-10-05T10:57:00Z"
+    seat: Claude Sonnet 5.5 (Dux, M5)
+dissent:
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      MEDIUM: scripts/lib/seat_watchdog.sh is absent from both paths lists, so a change to the lib would not
+      trigger the workflow. Disposition: RETRACTED. The reviewer saw only the diff and two files, not the whole
+      workflow; the lib was already listed in both lists before this PR (receipt R7, 2 lines of the `on:` block).
+    status: RETRACTED
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      LOW: could not confirm `timeout-minutes: 10` exists. Disposition: it does, at the job level of the
+      existing workflow (codex-gpt-5.6-sol read it at line 127); it was not in the diff because this PR does
+      not change it.
+    status: RETRACTED
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      NOTE: a real ubuntu run could not be confirmed (read-only sandbox, Pro unreachable); the 10 minute
+      timeout is judged adequate for ~121 s added. Disposition: accepted; the only proof is this PR's own run
+      (brief assumption, acceptance A3).
+    status: PLAUSIBLE
+  - seat: codex gpt-6.1-sol (first pass, not a counted seat)
+    objection: >-
+      LOW: ai-dispatch.sh:237 uses `md5 -q` (macOS) but has an `|| echo $RANDOM` fallback, so the suite is
+      not interrupted. Disposition: confirmed by reading the line; off the contract, unchanged.
+    status: PLAUSIBLE
+  - seat: self-review (the Dux, not an independent refuter)
+    objection: >-
+      The watchdog suite waits out run_gemini's hardcoded 120 s timeout, so the job grows by ~2 minutes; on a
+      busy runner a TERM-ignoring-stub race is conceivable. Disposition: bounded by the 10 minute job timeout
+      and the job is not a required context; a red there would name the suite.
+    status: PLAUSIBLE
+council_run: council-journal.jsonl

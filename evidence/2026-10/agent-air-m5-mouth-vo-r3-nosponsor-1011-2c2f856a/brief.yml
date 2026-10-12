@@ -1,0 +1,25 @@
+gear: 2
+gear_reason: >-
+  Size floor (diff with tests, corpus fixtures, observer and pack above 400 churn). Interview-flow change on the
+  retirement branch of the public Visa Oracle: one question removed from one list, a pack-scan guard test, regenerated
+  walk corpus, a no-argument observer; no backend code, no pack, no new copy.
+mission: >-
+  The Visa Oracle retirement interview stops asking who sponsors the stay, because no retirement rule reads it.
+objective: >-
+  The retirement branch of the interview no longer includes the sponsor_category question; sponsor.type stays
+  UNKNOWN(NOT_ASKED) there and the retirement outcomes are unchanged; a guard test fails if any rule reading
+  sponsor.type ever covers RETIREMENT in the newest signed pack.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/activity-boundary.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fixtures/no-path-doors.replay.json
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks
+  - scripts/ci/observe_visa_oracle_retirement_no_sponsor.py
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/sponsor-retirement-guard.test.ts
+  - tests/scripts/test_observe_visa_oracle_retirement_no_sponsor.py
+  - apps/mouth/e2e/visa-oracle-no-path-doors.spec.ts
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2

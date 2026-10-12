@@ -1,0 +1,99 @@
+opened-surfaces: 10 ok, 0 failed
+  search-dropdown mobile/light: ok, 1 root(s), 0 scrim(s), 15 runs, min 1.03, 1 over an image, 1 position(s)
+  search-dropdown mobile/system-dark: ok, 1 root(s), 0 scrim(s), 15 runs, min 1.03, 1 over an image, 1 position(s)
+  search-dropdown mobile/forced-dark: ok, 1 root(s), 0 scrim(s), 15 runs, min 1.03, 1 over an image, 1 position(s)
+  search-dropdown desktop/light: ok, 1 root(s), 0 scrim(s), 15 runs, min 1.03, 1 over an image, 1 position(s)
+  search-dropdown desktop/system-dark: ok, 1 root(s), 0 scrim(s), 15 runs, min 1.03, 2 over an image, 1 position(s)
+  search-dropdown desktop/forced-dark: ok, 1 root(s), 0 scrim(s), 15 runs, min 1.03, 1 over an image, 1 position(s)
+  search-active-row desktop/light: ok, 1 root(s), 0 scrim(s), 15 runs, min 1.03, 1 position(s)
+  search-active-row mobile/system-dark: ok, 1 root(s), 0 scrim(s), 15 runs, min 1.03, 1 position(s)
+  search-error desktop/light: ok, 1 root(s), 0 scrim(s), 6 runs, min 2.39, 1 position(s)
+  search-error mobile/system-dark: ok, 1 root(s), 0 scrim(s), 6 runs, min 2.39, 1 position(s)
+opened-outside-wrapper: 0
+  bg-[#1c1c1f]/95  expected elevated #FFFCF7 (opaque), painted #1C1C1F alpha 0.95, on search-dropdown mobile/light
+  bg-[#dc2626]/10  expected wash #EAE3D8 (opaque), painted #DC2626 alpha 0.1, on search-dropdown mobile/light
+  bg-amber-500/10  expected wash #EAE3D8 (opaque), painted #FE9A00 alpha 0.1, on search-dropdown mobile/light
+  bg-amber-500/[0.08]  expected wash #EAE3D8 (opaque), painted #FE9A00 alpha 0.08, on search-error desktop/light
+  bg-emerald-500/10  expected wash #EAE3D8 (opaque), painted #00BC7D alpha 0.1, on search-dropdown mobile/light
+  bg-white/[0.02]  expected wash #EAE3D8 (opaque), painted #1D2C3B alpha 0.02, on search-dropdown mobile/light
+  bg-zinc-500/10  expected wash #EAE3D8 (opaque), painted #58626B alpha 0.1, on search-dropdown mobile/light
+  ground #243631 under 'TERBUKA' at button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5, on search-dropdown mobile/system-dark
+  ground #243631 over-image (non-uniform) under 'TERBUKA' at button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5, on search-dropdown mobile/light
+  ground #282729 under 'Restaurant' at div.space-y-16>div.sticky.top-14>div.relative.w-full>div.absolute.z-50, on search-dropdown mobile/light
+  ground #282729 under '2' at div.sticky.top-14>div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02], on search-dropdown mobile/light
+  ground #28282A under 'Villa' at div.space-y-16>div.sticky.top-14>div.relative.w-full>div.absolute.z-50, on search-dropdown mobile/light
+  ground #2D2D30 under 'PMA not verified' at button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5, on search-dropdown mobile/light
+  ground #393126 under 'Search is temporarily unavailable. Try a' at div.sticky.top-14>div.relative.w-full>div.absolute.z-50>div.flex.items-start, on search-error desktop/light
+  ground #3A2829 under '56101' at div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12, on search-dropdown mobile/light
+  ground #3A282A under '55130' at div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12, on search-dropdown mobile/light
+  ground #3D3225 under 'Low' at button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5, on search-dropdown mobile/light
+  ground #3D3225 over-image (non-uniform) under 'Low' at button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5, on search-dropdown mobile/system-dark
+  ground #E5F5EA under 'TERBUKA' at button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5, on search-active-row desktop/light
+  ground #FBE6E2 under '56101' at div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12, on search-active-row desktop/light
+  ground #FEF1DE under 'Low' at button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5, on search-active-row desktop/light
+opened-grounds-off-contract: 21
+ground-resolver-disagree: 0
+shared-touched-unpinned: 0
+shared-component-drift: INCOMPLETE (Footer R19 blog /news mobile/light not walked)
+  2.87  #DC2626 on #3A2829  '56101'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown mobile/light)
+  1.04  #1D2C3B on #282729  'Restaurant'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.font-semibold.truncate  (search-dropdown mobile/light)
+  2.39  #58626B on #282729  'Census fixture row: a verified PMA verdi'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.text-sm.text-zinc-400  (search-dropdown mobile/light)
+  1.97  #7A5A1E on #3D3225  'Low'  button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5  (search-dropdown mobile/light)
+  2.87  #DC2626 on #3A282A  '55130'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown mobile/light)
+  1.03  #1D2C3B on #28282A  'Villa'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.font-semibold.truncate  (search-dropdown mobile/light)
+  2.39  #58626B on #282729  'Census fixture row: an unverified PMA ve'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.text-sm.text-zinc-400  (search-dropdown mobile/light)
+  2.21  #58626B on #2D2D30  'PMA not verified'  button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5  (search-dropdown mobile/light)
+  1.97  #7A5A1E on #3D3225  'Medium Low'  button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5  (search-dropdown mobile/light)
+  2.39  #58626B on #282729  '2'  div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02]>span  (search-dropdown mobile/light)
+  2.39  #58626B on #282729  'KBLI codes found'  div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02]>span  (search-dropdown mobile/light)
+  2.39  #58626B on #282729  'Press'  div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02]>span.flex.items-center  (search-dropdown mobile/light)
+  2.39  #58626B on #282729  'to see all'  div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02]>span.flex.items-center  (search-dropdown mobile/light)
+  2.87  #DC2626 on #3A2829  '56101'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown mobile/system-dark)
+  1.04  #1D2C3B on #282729  'Restaurant'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.font-semibold.truncate  (search-dropdown mobile/system-dark)
+  2.39  #58626B on #282729  'Census fixture row: a verified PMA verdi'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.text-sm.text-zinc-400  (search-dropdown mobile/system-dark)
+  1.97  #7A5A1E on #3D3225  'Low'  button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5  (search-dropdown mobile/system-dark)
+  2.87  #DC2626 on #3A282A  '55130'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown mobile/system-dark)
+  1.03  #1D2C3B on #28282A  'Villa'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.font-semibold.truncate  (search-dropdown mobile/system-dark)
+  2.39  #58626B on #282729  'Census fixture row: an unverified PMA ve'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.text-sm.text-zinc-400  (search-dropdown mobile/system-dark)
+  2.21  #58626B on #2D2D30  'PMA not verified'  button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5  (search-dropdown mobile/system-dark)
+  1.97  #7A5A1E on #3D3225  'Medium Low'  button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5  (search-dropdown mobile/system-dark)
+  2.39  #58626B on #282729  '2'  div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02]>span  (search-dropdown mobile/system-dark)
+  2.39  #58626B on #282729  'KBLI codes found'  div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02]>span  (search-dropdown mobile/system-dark)
+  2.39  #58626B on #282729  'Press'  div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02]>span.flex.items-center  (search-dropdown mobile/system-dark)
+  2.39  #58626B on #282729  'to see all'  div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02]>span.flex.items-center  (search-dropdown mobile/system-dark)
+  2.87  #DC2626 on #3A2829  '56101'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown mobile/forced-dark)
+  1.04  #1D2C3B on #282729  'Restaurant'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.font-semibold.truncate  (search-dropdown mobile/forced-dark)
+  2.39  #58626B on #282729  'Census fixture row: a verified PMA verdi'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.text-sm.text-zinc-400  (search-dropdown mobile/forced-dark)
+  1.97  #7A5A1E on #3D3225  'Low'  button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5  (search-dropdown mobile/forced-dark)
+  2.87  #DC2626 on #3A282A  '55130'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown mobile/forced-dark)
+  1.03  #1D2C3B on #28282A  'Villa'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.font-semibold.truncate  (search-dropdown mobile/forced-dark)
+  2.39  #58626B on #282729  'Census fixture row: an unverified PMA ve'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.text-sm.text-zinc-400  (search-dropdown mobile/forced-dark)
+  2.21  #58626B on #2D2D30  'PMA not verified'  button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5  (search-dropdown mobile/forced-dark)
+  1.97  #7A5A1E on #3D3225  'Medium Low'  button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5  (search-dropdown mobile/forced-dark)
+  2.39  #58626B on #282729  '2'  div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02]>span  (search-dropdown mobile/forced-dark)
+  2.39  #58626B on #282729  'KBLI codes found'  div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02]>span  (search-dropdown mobile/forced-dark)
+  2.39  #58626B on #282729  'Press'  div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02]>span.flex.items-center  (search-dropdown mobile/forced-dark)
+  2.39  #58626B on #282729  'to see all'  div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02]>span.flex.items-center  (search-dropdown mobile/forced-dark)
+  2.87  #DC2626 on #3A2829  '56101'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown desktop/light)
+  1.04  #1D2C3B on #282729  'Restaurant'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.font-semibold.truncate  (search-dropdown desktop/light)
+  2.39  #58626B on #282729  'Census fixture row: a verified PMA verdi'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.text-sm.text-zinc-400  (search-dropdown desktop/light)
+  1.97  #7A5A1E on #3D3225  'Low'  button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5  (search-dropdown desktop/light)
+  2.87  #DC2626 on #3A282A  '55130'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown desktop/light)
+  1.03  #1D2C3B on #28282A  'Villa'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.font-semibold.truncate  (search-dropdown desktop/light)
+  2.39  #58626B on #282729  'Census fixture row: an unverified PMA ve'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.text-sm.text-zinc-400  (search-dropdown desktop/light)
+  2.21  #58626B on #2D2D30  'PMA not verified'  button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5  (search-dropdown desktop/light)
+  1.97  #7A5A1E on #3D3225  'Medium Low'  button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5  (search-dropdown desktop/light)
+  2.39  #58626B on #282729  '2'  div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02]>span  (search-dropdown desktop/light)
+  2.39  #58626B on #282729  'KBLI codes found'  div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02]>span  (search-dropdown desktop/light)
+  2.39  #58626B on #282729  'Press'  div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02]>span.flex.items-center  (search-dropdown desktop/light)
+  2.39  #58626B on #282729  'to see all'  div.relative.w-full>div.absolute.z-50>div.p-3.bg-white/[0.02]>span.flex.items-center  (search-dropdown desktop/light)
+  2.87  #DC2626 on #3A2829  '56101'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown desktop/system-dark)
+  1.04  #1D2C3B on #282729  'Restaurant'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.font-semibold.truncate  (search-dropdown desktop/system-dark)
+  2.39  #58626B on #282729  'Census fixture row: a verified PMA verdi'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.text-sm.text-zinc-400  (search-dropdown desktop/system-dark)
+  1.97  #7A5A1E on #3D3225  'Low'  button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5  (search-dropdown desktop/system-dark)
+  2.87  #DC2626 on #3A282A  '55130'  div.absolute.z-50>div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-shrink-0.w-12  (search-dropdown desktop/system-dark)
+  1.03  #1D2C3B on #28282A  'Villa'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.font-semibold.truncate  (search-dropdown desktop/system-dark)
+  2.39  #58626B on #282729  'Census fixture row: an unverified PMA ve'  div.max-h-[400px].overflow-y-auto>button.w-full.flex>div.flex-1.min-w-0>div.text-sm.text-zinc-400  (search-dropdown desktop/system-dark)
+  2.21  #58626B on #2D2D30  'PMA not verified'  button.w-full.flex>div.flex-1.min-w-0>div.flex.gap-2>span.text-[10px].px-1.5  (search-dropdown desktop/system-dark)
+  ... and 48 more
+opened-text-below-4.5: 108

@@ -69,9 +69,21 @@ def _slug(path: Path) -> str:
     return str(canon).strip("/").replace("/", "_")
 
 
-def _worktrees() -> list[dict]:
-    """Parse `git worktree list --porcelain` into dicts with path/branch/detached."""
-    out = _git(["worktree", "list", "--porcelain"]).stdout
+def _worktrees() -> list[dict] | None:
+    """Parse `git worktree list --porcelain` into dicts with path/branch/detached.
+
+    Returns None when the listing itself fails: a git failure must never be
+    read as "no worktrees" (fail-closed — silently skipping unarmed work is
+    the exact W80 loss this script exists to prevent)."""
+    r = _git(["worktree", "list", "--porcelain"])
+    if r.returncode != 0:
+        print(
+            f"arm-keep: ERROR: `git worktree list --porcelain` failed "
+            f"(rc={r.returncode}): {r.stderr.strip()}",
+            file=sys.stderr,
+        )
+        return None
+    out = r.stdout
     entries: list[dict] = []
     cur: dict = {}
     for line in out.splitlines():
@@ -91,22 +103,49 @@ def _worktrees() -> list[dict]:
 
 def _dirty_count(wt: Path) -> int:
     r = _git(["status", "--porcelain"], cwd=wt)
-    return len([ln for ln in r.stdout.splitlines() if ln.strip()])
+    # Fail-closed: a git failure must read as dirty, never as "nothing to do".
+    return 1 if r.returncode != 0 else len([ln for ln in r.stdout.splitlines() if ln.strip()])
+
+
+def _count(args: list[str], wt: Path) -> int | None:
+    """Run a `rev-list --count`; None when it failed or printed no integer."""
+    r = _git(args, cwd=wt)
+    if r.returncode != 0:
+        return None
+    try:
+        return int(r.stdout.strip())
+    except ValueError:
+        return None
 
 
 def _unpushed(wt: Path, branch: str | None) -> int:
-    if not branch:
-        return 0
-    short = branch.replace("refs/heads/", "")
-    r = _git(["rev-list", "--count", f"origin/{short}..HEAD"], cwd=wt)
-    try:
-        return int(r.stdout.strip() or "0")
-    except ValueError:
-        return 0
+    if branch:
+        short = branch.replace("refs/heads/", "")
+        n = _count(["rev-list", "--count", f"origin/{short}..HEAD"], wt)
+        if n is not None:
+            return n
+    # Upstream ref missing (the common local-only agent/<host>/<lane>/... case)
+    # or detached HEAD: count commits not reachable from ANY remote-tracking ref.
+    n = _count(["rev-list", "--count", "HEAD", "--not", "--remotes"], wt)
+    if n is not None:
+        return n
+    # Fail-closed: if even the fallback cannot count, treat the worktree as
+    # having unpushed work so it stays armed — never silently report 0.
+    print(f"arm-keep: WARN: cannot count unpushed commits in {wt} — treating as unpushed (fail-closed).", file=sys.stderr)
+    return 1
+
+
+def _fail(wt: Path, what: str, r: subprocess.CompletedProcess[str]) -> tuple[bool, str]:
+    return False, f"FAILED to arm {wt.name}: {what} rc={r.returncode}: {r.stderr.strip()}"
 
 
 def _arm_one(wt: Path, *, apply: bool) -> tuple[bool, str]:
-    """Capture tracked+untracked into a quarantine ref + patch receipt. Best-effort."""
+    """Capture tracked+untracked into a quarantine ref + patch receipt.
+
+    Returns True ONLY when a ref pointing at the work exists: a stash commit for
+    a dirty tree, or HEAD itself (`<ref>-head`, the form worktree_gc_universal
+    uses for detached HEADs) for a clean tree whose commits live nowhere else.
+    Every git step that could leave nothing preserved is checked."""
     slug = _slug(wt)
     ref = f"{QUARANTINE_REF_PREFIX}/{slug}"
     if not apply:
@@ -114,29 +153,44 @@ def _arm_one(wt: Path, *, apply: bool) -> tuple[bool, str]:
     try:
         # Stage everything (incl. untracked) so `stash create` captures it, then
         # reset — your working tree is left exactly as it was.
-        _git(["add", "-A"], cwd=wt)
-        created = _git(["stash", "create", f"arm-keep {slug}"], cwd=wt)
-        sha = created.stdout.strip()
-        if sha:
-            _git(["update-ref", ref, sha])
+        staged = _git(["add", "-A"], cwd=wt)
+        if staged.returncode != 0:
+            return _fail(wt, "git add -A", staged)
+        try:
+            created = _git(["stash", "create", f"arm-keep {slug}"], cwd=wt)
+            if created.returncode != 0:
+                return _fail(wt, "git stash create", created)
+            sha = created.stdout.strip()
+            if sha:
+                target_ref, target = ref, sha
+            else:
+                # Clean tree: `stash create` is empty by design, but unpushed
+                # commits would still be lost with the dir — pin HEAD itself.
+                head = _git(["rev-parse", "--verify", "HEAD"], cwd=wt)
+                target = head.stdout.strip()
+                if head.returncode != 0 or not target:
+                    return _fail(wt, "git rev-parse HEAD", head)
+                target_ref = f"{ref}-head"
+            written = _git(["update-ref", target_ref, target])
+            if written.returncode != 0:
+                return _fail(wt, f"git update-ref {target_ref}", written)
+        finally:
+            unstaged = _git(["reset"], cwd=wt)  # unstage NOW — leave working tree untouched
+        note = "" if unstaged.returncode == 0 else " (WARN: `git reset` failed, index left staged; ref is intact)"
+        if not sha:
+            return True, f"armed {wt.name} -> {target_ref} (HEAD {target[:10]}){note}"
         # Human-readable receipt survives even if the ref is later pruned.
-        # Use `stash show -p <sha>` (NOT `git diff HEAD`) so the patch includes
-        # the UNTRACKED files captured by `add -A` + stash create — diff HEAD
-        # would silently drop them (the exact gap that lost livekit's untracked
-        # runtime files in scar W80).
-        _git(["reset"], cwd=wt)  # unstage NOW — leave working tree untouched
-        receipts = REPO_ROOT / ".agent-receipts"
-        receipts.mkdir(exist_ok=True)
         # The stash-create commit has the pre-arm HEAD as a parent, so the full
-        # captured change (tracked + untracked) == diff(sha^, sha). This is the
-        # robust receipt — `git diff HEAD` would drop untracked (the W80 gap).
-        patch = ""
-        if sha:
-            patch = _git(["diff", f"{sha}^", sha], cwd=wt).stdout
-        if patch:
-            (receipts / f"quarantine-{slug}.patch").write_text(patch)
-        tag = sha[:10] if sha else "patch-only"
-        return True, f"armed {wt.name} -> {ref} ({tag})"
+        # captured change (tracked + untracked) == diff(sha^, sha). `git diff HEAD`
+        # would drop untracked files (the W80 gap).
+        patch = _git(["diff", f"{sha}^", sha], cwd=wt)
+        if patch.returncode == 0 and patch.stdout:
+            receipts = REPO_ROOT / ".agent-receipts"
+            receipts.mkdir(exist_ok=True)
+            (receipts / f"quarantine-{slug}.patch").write_text(patch.stdout)
+        elif patch.returncode != 0:
+            note += " (patch receipt NOT written; ref is intact)"
+        return True, f"armed {wt.name} -> {ref} ({sha[:10]}){note}"
     except Exception as exc:  # noqa: BLE001 — never crash, the point is to NOT lose work
         return False, f"FAILED to arm {wt.name}: {exc}"
 
@@ -144,6 +198,9 @@ def _arm_one(wt: Path, *, apply: bool) -> tuple[bool, str]:
 def _list_quarantine() -> int:
     r = _git(["for-each-ref", QUARANTINE_REF_PREFIX,
               "--format=%(refname:short)  %(objectname:short)  %(creatordate:short)"])
+    if r.returncode != 0:
+        print(f"arm-keep: ERROR: cannot list quarantine refs (rc={r.returncode}): {r.stderr.strip()}", file=sys.stderr)
+        return 1
     if not r.stdout.strip():
         print("no quarantine refs.")
         return 0
@@ -166,8 +223,11 @@ def main(argv: list[str]) -> int:
     only = {n.strip() for n in args.names.split(",") if n.strip()}
     apply = not args.dry_run
 
+    entries = _worktrees()
+    if entries is None:
+        return 1  # listing failed; stderr already says why — never "nothing to arm"
     targets = []
-    for e in _worktrees():
+    for e in entries:
         wt = e["path"]
         if only and wt.name not in only:
             continue
@@ -194,6 +254,9 @@ def main(argv: list[str]) -> int:
     if failures:
         print(f"\narm-keep: {failures} worktree(s) FAILED to arm — DO NOT remove those.", file=sys.stderr)
         return 1
+    if args.dry_run:
+        print("\narm-keep: dry-run — nothing was frozen.")
+        return 0
     print("\narm-keep: all targets frozen. Safe to triage. Recover via `--list` + `git stash apply`.")
     return 0
 

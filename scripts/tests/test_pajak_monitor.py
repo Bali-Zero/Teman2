@@ -13,12 +13,17 @@ place `published_at` and `raw_payload` are observable from outside the function.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import importlib.util
+import json
+import subprocess
 import sys
 import time
 import types
 import zoneinfo
 from pathlib import Path
+
+import pytest
 
 MODULE_DIR = Path(__file__).parent.parent / "cron-agent-python"
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "pajak"
@@ -544,3 +549,233 @@ def test_zero_yield_signal_never_pages_p0():
     assert tg_calls[0]["tier"] != "p0"
     assert tg_calls[0]["tier"] != "log"
     assert tg_calls[0]["tier"] == "digest"
+
+
+# ─── Delivery must precede seen-state ─────────────────────────────────
+
+
+def _wire_delivery_run(job, item, seen, outcomes):
+    sends = []
+    marks = []
+
+    async def fetch_direct_sources():
+        return [dict(item)], []
+
+    async def search_updates():
+        return []
+
+    async def get_seen():
+        return set(seen)
+
+    async def mark_seen(urls):
+        marks.append(list(urls))
+        seen.update(urls)
+        return True
+
+    async def send(msg, tier="p0", dedup_key=""):
+        sends.append(msg)
+        job.sent_dedup_keys.append(dedup_key)
+        outcome = outcomes.pop(0)
+        if isinstance(outcome, BaseException):
+            raise outcome
+        return outcome
+
+    job._fetch_direct_sources = fetch_direct_sources
+    job._search_djp_updates = search_updates
+    job._get_seen_urls = get_seen
+    job._mark_seen = mark_seen
+    job._enrich_peraturan_details = lambda items: asyncio.sleep(0)
+    job._write_intel_feed = lambda items: 0
+    job.send_telegram = send
+    job.sent_dedup_keys = []
+    return sends, marks
+
+
+def test_delivery_failure_is_retried_then_success_is_marked_once(tmp_path, monkeypatch):
+    monkeypatch.setattr(pajak_monitor, "DELIVERY_STATE_PATH", tmp_path / "delivery-state.json", raising=False)
+    monkeypatch.setattr(pajak_monitor, "DEAD_LETTER_PATH", tmp_path / "dead-letter.jsonl", raising=False)
+    item = _peraturan_item("ack-after-delivery")
+    seen = set()
+    job = _make_job()
+    sends, marks = _wire_delivery_run(job, item, seen, [False, True])
+
+    first = asyncio.run(job.run())
+    assert first.status == "error"
+    assert seen == set()
+
+    second = asyncio.run(job.run())
+    assert second.status == "ok"
+    assert seen == {item["url"]}
+
+    third = asyncio.run(job.run())
+    assert third.output == "no_new_regulations"
+    assert len(sends) == 2
+    assert marks == [[item["url"]]]
+
+
+def test_delivery_exception_is_not_seen_and_is_retried(tmp_path, monkeypatch):
+    monkeypatch.setattr(pajak_monitor, "DELIVERY_STATE_PATH", tmp_path / "delivery-state.json", raising=False)
+    monkeypatch.setattr(pajak_monitor, "DEAD_LETTER_PATH", tmp_path / "dead-letter.jsonl", raising=False)
+    item = _peraturan_item("exception-retry")
+    seen = set()
+    job = _make_job()
+    sends, _ = _wire_delivery_run(job, item, seen, [TimeoutError("synthetic"), True])
+
+    assert asyncio.run(job.run()).status == "error"
+    assert seen == set()
+    assert asyncio.run(job.run()).status == "ok"
+    assert len(sends) == 2
+
+
+def test_poison_item_is_dead_lettered_at_configured_bound_with_legacy_state(tmp_path, monkeypatch):
+    state_path = tmp_path / "delivery-state.json"
+    dlq_path = tmp_path / "dead-letter.jsonl"
+    monkeypatch.setattr(pajak_monitor, "DELIVERY_STATE_PATH", state_path, raising=False)
+    monkeypatch.setattr(pajak_monitor, "DEAD_LETTER_PATH", dlq_path, raising=False)
+    monkeypatch.setattr(pajak_monitor, "DELIVERY_MAX_ATTEMPTS", 2, raising=False)
+    item = _peraturan_item("poison")
+    item_id = hashlib.sha256(item["url"].encode()).hexdigest()[:16]
+    # Older shape: first_seen and last_error were optional.
+    state_path.write_text(json.dumps({"items": {item_id: {"attempts": 1}}}))
+    seen = set()
+    job = _make_job()
+    _wire_delivery_run(job, item, seen, [False])
+
+    result = asyncio.run(job.run())
+
+    assert result.status == "error"
+    assert seen == {item["url"]}
+    record = json.loads(dlq_path.read_text().strip())
+    assert record == {
+        "id": item_id,
+        "url": item["url"],
+        "first_seen": record["first_seen"],
+        "attempts": 2,
+        "last_error": "DeliveryNotAccepted",
+    }
+    assert "synthetic" not in dlq_path.read_text()
+
+
+def test_healthy_delivery_keeps_output_and_unrelated_state_bytes(tmp_path, monkeypatch):
+    state_path = tmp_path / "delivery-state.json"
+    original_state = b'{"items":{},"legacy":true}\n'
+    state_path.write_bytes(original_state)
+    monkeypatch.setattr(pajak_monitor, "DELIVERY_STATE_PATH", state_path, raising=False)
+    monkeypatch.setattr(pajak_monitor, "DEAD_LETTER_PATH", tmp_path / "dead-letter.jsonl", raising=False)
+    item = _peraturan_item("healthy-byte-contract")
+    seen = set()
+    job = _make_job()
+    sends, _ = _wire_delivery_run(job, item, seen, [True])
+
+    result = asyncio.run(job.run())
+
+    assert result.output == json.dumps([item], default=str)
+    assert sends == [job._compose_alert([item])]
+    assert seen == {item["url"]}
+    assert state_path.read_bytes() == original_state
+
+
+def test_seen_persist_failure_after_send_is_an_error(tmp_path, monkeypatch):
+    monkeypatch.setattr(pajak_monitor, "DELIVERY_STATE_PATH", tmp_path / "delivery-state.json", raising=False)
+    monkeypatch.setattr(pajak_monitor, "DEAD_LETTER_PATH", tmp_path / "dead-letter.jsonl", raising=False)
+    item = _peraturan_item("seen-persist-fails")
+    seen = set()
+    job = _make_job()
+    sends, _ = _wire_delivery_run(job, item, seen, [True])
+
+    outcomes = iter([False, True])
+
+    async def mark_fails_once(urls):
+        if next(outcomes):
+            seen.update(urls)
+            return True
+        return False
+
+    job._mark_seen = mark_fails_once
+    result = asyncio.run(job.run())
+
+    assert result.status == "error"
+    assert seen == set()
+    assert asyncio.run(job.run()).output == "no_new_regulations"
+    assert len(sends) == 1
+
+
+def test_distinct_alerts_carry_distinct_gateway_keys_and_a_retry_keeps_its_key(tmp_path, monkeypatch):
+    # Without a key tg_notify keys on the first line, "Pajak Monitor — #N new", the same for
+    # every alert, and its repeat ladder answered "deduped" for new regulations (Pro, 09-25→10-04).
+    monkeypatch.setattr(pajak_monitor, "DELIVERY_STATE_PATH", tmp_path / "delivery-state.json", raising=False)
+    monkeypatch.setattr(pajak_monitor, "DEAD_LETTER_PATH", tmp_path / "dead-letter.jsonl", raising=False)
+    first_item = _peraturan_item("key-first")
+    job = _make_job()
+    _wire_delivery_run(job, first_item, set(), [False, True])
+    asyncio.run(job.run())
+    asyncio.run(job.run())
+
+    other_job = _make_job()
+    _wire_delivery_run(other_job, _peraturan_item("key-second"), set(), [True])
+    asyncio.run(other_job.run())
+
+    retry_keys, other_keys = job.sent_dedup_keys, other_job.sent_dedup_keys
+    assert len(retry_keys) == 2 and retry_keys[0] == retry_keys[1]
+    assert retry_keys[0].startswith("pajak-new:")
+    assert other_keys[0].startswith("pajak-new:") and other_keys[0] != retry_keys[0]
+
+
+def test_alert_key_ignores_the_order_the_sources_return_the_same_items_in(tmp_path, monkeypatch):
+    # Sources and search results come back in no fixed order; a retried set must keep its key.
+    monkeypatch.setattr(pajak_monitor, "DELIVERY_STATE_PATH", tmp_path / "delivery-state.json", raising=False)
+    monkeypatch.setattr(pajak_monitor, "DEAD_LETTER_PATH", tmp_path / "dead-letter.jsonl", raising=False)
+    first, second = _peraturan_item("order-a"), _peraturan_item("order-b")
+    job = _make_job()
+    _wire_delivery_run(job, first, set(), [False, True])
+    orders = [[first, second], [second, first]]
+
+    async def fetch_in_turn():
+        return [dict(item) for item in orders.pop(0)], []
+
+    job._fetch_direct_sources = fetch_in_turn
+    asyncio.run(job.run())
+    asyncio.run(job.run())
+
+    assert len(job.sent_dedup_keys) == 2
+    assert job.sent_dedup_keys[0] == job.sent_dedup_keys[1]
+
+
+@pytest.mark.parametrize("corrupted", ["not-a-number", {"attempts": "x"}, None])
+def test_a_hand_corrupted_attempt_count_still_reaches_the_dead_letter(tmp_path, monkeypatch, corrupted):
+    state_path = tmp_path / "delivery-state.json"
+    dlq_path = tmp_path / "dead-letter.jsonl"
+    monkeypatch.setattr(pajak_monitor, "DELIVERY_STATE_PATH", state_path, raising=False)
+    monkeypatch.setattr(pajak_monitor, "DEAD_LETTER_PATH", dlq_path, raising=False)
+    monkeypatch.setattr(pajak_monitor, "DELIVERY_MAX_ATTEMPTS", 2, raising=False)
+    item = _peraturan_item("corrupted-state")
+    item_id = hashlib.sha256(item["url"].encode()).hexdigest()[:16]
+    state_path.write_text(json.dumps({"items": {item_id: corrupted}}))
+    seen = set()
+    job = _make_job()
+    _wire_delivery_run(job, item, seen, [False, False])
+
+    assert asyncio.run(job.run()).status == "error"
+    assert seen == set()
+    assert asyncio.run(job.run()).status == "error"
+    assert seen == {item["url"]}
+    assert json.loads(dlq_path.read_text().strip())["attempts"] == 2
+
+
+def test_mark_seen_refuses_a_redis_error_reply_that_exits_zero(monkeypatch):
+    replies = []
+
+    def fake_run(argv, **kwargs):
+        return subprocess.CompletedProcess(argv, 0, stdout=replies.pop(0), stderr="")
+
+    monkeypatch.setattr(pajak_monitor.subprocess, "run", fake_run)
+    job = _make_job()
+
+    replies[:] = ["NOAUTH Authentication required.\n", "1\n"]
+    assert asyncio.run(job._mark_seen(["https://pajak.go.id/id/peraturan/x"])) is False
+
+    replies[:] = ["MISCONF Errors writing to the RDB snapshot\n"]
+    assert asyncio.run(job._mark_seen(["https://pajak.go.id/id/peraturan/x"])) is False
+
+    replies[:] = ["1\n", "1\n"]
+    assert asyncio.run(job._mark_seen(["https://pajak.go.id/id/peraturan/x"])) is True

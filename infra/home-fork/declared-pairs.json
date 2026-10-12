@@ -2,6 +2,42 @@
   "_doc": "Declared HOME-executed script copies and their git-tracked twins (superscar #1 HOME-fork drift). Consumed by scripts/lint_home_fork.py --check (sha256 live vs repo) and --discover (a HOME-executed payload NOT listed here and NOT allow-matched is an UNDECLARED finding). Overlapping SSOT note: scripts/proprioception.py DEFAULT_REGISTRY 'home_fork_scripts' declares its own pairs — lint_home_fork.py merges them at runtime (best-effort import) so the two lists cannot silently drift; add NEW pairs HERE. Paths use ~ (expanded per-machine: balizero on M5, nuzantara on Pro/Mini). 'machines': m5|pro|mini|all.",
   "pairs": [
     {
+      "live": "~/.nuzantara-cron/localci_merger_tick.sh",
+      "repo": "scripts/localci/localci_merger_tick.sh",
+      "machines": ["pro"],
+      "_note": "launchd organ pro.localci_merger (com.balizero.localci-merger): the LOCALCI-SOVEREIGN shadow merger tick; the plist runs this copy, which runs merger.py from origin/main."
+    },
+    {
+      "live": "~/.nuzantara-cron/pro_disk_floor_tick.sh",
+      "repo": "scripts/ops/pro_disk_floor_tick.sh",
+      "machines": ["pro"],
+      "_note": "launchd organ pro.disk_floor (com.nuzantara.disk-floor), LOCALCI-SOVEREIGN B6: reads Pro's free space every 30 min and pages under the floor (ok > 100 GB, failed < 60). Armed by the lead with the README's commands."
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.disk-floor.plist",
+      "repo": "infra/launchagents/com.nuzantara.disk-floor.plist",
+      "machines": ["pro"],
+      "_note": "The plist of pro.disk_floor: StartInterval 1800, RunAtLoad, no KeepAlive."
+    },
+    {
+      "live": "~/scripts/pro-janitor.sh",
+      "repo": "infra/launchagents/wrappers/pro-janitor.sh",
+      "machines": ["pro"],
+      "_note": "launchd organ pro.janitor (com.nuzantara.janitor): the wrapper with the genes; runs the payload below under /usr/bin/python3 -I."
+    },
+    {
+      "live": "~/.nuzantara-cron/pro_janitor.py",
+      "repo": "scripts/ops/pro_janitor.py",
+      "machines": ["pro"],
+      "_note": "The payload of pro.janitor: tiers with hysteresis and a three-rule host-cache allowlist (Playwright .links pins honoured), apply armed (PRO_JANITOR_APPLY=true) since rollout step 3. Python 3.9, stdlib only."
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.janitor.plist",
+      "repo": "infra/launchagents/com.nuzantara.janitor.plist",
+      "machines": ["pro"],
+      "_note": "The plist of pro.janitor: StartInterval 600, RunAtLoad, no KeepAlive, PRO_JANITOR_APPLY=true (apply armed since rollout step 3)."
+    },
+    {
       "live": "~/.fly/bin/fly_pg_tunnel_supervisor.sh",
       "repo": "scripts/fly_pg_tunnel_supervisor.sh",
       "machines": ["m5"],
@@ -958,6 +994,16 @@
       "machines": ["pro"]
     },
     {
+      "live": "~/scripts/pro-visa-reattestation.sh",
+      "repo": "infra/launchagents/wrappers/pro-visa-reattestation.sh",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.visa-reattestation.plist",
+      "repo": "infra/launchagents/com.nuzantara.visa-reattestation.plist",
+      "machines": ["pro"]
+    },
+    {
       "live": "~/Library/LaunchAgents/com.nuzantara.wa-mirror-freshness-liveness.plist",
       "repo": "infra/launchagents/com.nuzantara.wa-mirror-freshness-liveness.plist",
       "machines": ["pro"],
@@ -999,6 +1045,16 @@
     {
       "live": "~/Library/LaunchAgents/com.nuzantara.vercel-autopromote.plist",
       "repo": "infra/launchagents/com.nuzantara.vercel-autopromote.plist",
+      "machines": ["mini"]
+    },
+    {
+      "live": "~/scripts/mini-zero-sync.sh",
+      "repo": "infra/launchagents/wrappers/mini-zero-sync.sh",
+      "machines": ["mini"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.zero-sync.plist",
+      "repo": "infra/launchagents/com.nuzantara.zero-sync.plist",
       "machines": ["mini"]
     },
     {
@@ -1193,6 +1249,12 @@
       "live": "~/Library/LaunchAgents/com.nuzantara.disk-janitor.plist",
       "repo": "infra/launchagents/com.nuzantara.disk-janitor.plist",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/tg_notify.py",
+      "repo": "scripts/tg_notify.py",
+      "machines": ["pro"],
+      "_note": "The Telegram gateway. Declared 2026-10-10: the HOME copy on Pro was a real file byte-identical to repo commit 36baefb85e (2026-08-17) and had no declaration, so it silently missed the later routing work (the 'act' tier, OWNER_FAMILIES, board routing). Consumers measured on Pro: 13 ~/scripts/*.sh that resolve the gateway sibling-first via dirname \"$0\" (cron-runner, cron-state, cron-agent, runtime-reconcile, login-healthcheck, launchd-liveness-detector, audit-launchd-daily and others) and 4 ~/scripts/*.py that resolve Path(__file__).resolve().parent (intel-lake-outbox-drain, machine_boot_report, mos-plus-compression-worker, redis_liveness_check — the last two have no fallback, so never delete this path). Align it as a SYMLINK to ~/nuzantara/scripts/tg_notify.py, never as a copied file: the gateway resolves its board as Path(__file__).resolve().parents[1]/'shared', and a real file in ~/scripts has no sibling shared/, so routed rows would land in ~/.organism/tg_spool/escalations_local.jsonl, which nothing reads. Through the symlink they land on ~/nuzantara/shared/escalations_pro.jsonl (precedent: ~/scripts/wa-mirror-attention-telegram.py and ~/scripts/cron-state.sh are already symlinks into the checkout)."
     }
   ],
   "allow": [
@@ -1204,6 +1266,9 @@
     "~/.local/bin/zero-design/*",
     "~/.openclaw-node-host/service-env/ai.openclaw.node-env-wrapper.sh",
     "~/.openclaw/service-env/ai.openclaw.gateway-env-wrapper.sh",
-    "~/.claude/daemons/guardrails.py"
+    "~/.claude/daemons/guardrails.py",
+    "~/Desktop/OSINT-Nexus/scripts/nexus_session_retention.sh",
+    "~/nexus-cutover/bin/osint-nexus-synapse-monitor-run.sh",
+    "~/nexus-cutover/bin/nexus-ui-run.sh"
   ]
 }

@@ -1,0 +1,55 @@
+gear: 2
+brief_ref: evidence/brief.yml
+pii_scan: clean
+lanes:
+  - lane: holiday-coverage-lows-build
+    role: build
+    seat: Claude Sonnet 5.5 (implementer, worktree ops-visa-holiday-coverage-lows)
+  - lane: holiday-decree-ground-truth
+    role: ground_truth
+    seat: >-
+      the committed decree table itself, read by the code under test; no notebook, no memory.
+    nb: apps/backend-rag/backend/data/id_holidays.py (DECREED_YEARS, HOLIDAY_DATES)
+    query_hash: "b5b47924a007fa637b80b7232173e93bdcfbeb1e838bdccd68d9dbb722afa4ac" # pragma: allowlist secret
+bites:
+  consumer: The launchd tick com.nuzantara.visa-freshness-sentinel on Pro (every 6 h, scripts/visa_freshness_sentinel.py).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_holiday_coverage.py
+  expect: "contains:holiday coverage observed: OK 100d, WARN 30d, STALE 0d"
+receipts:
+  - claim: "Sentinel suites: coverage lane (L1 guilt, L3 streak guilt/innocence/reset, rc 4) and the existing sentinel suite pass together."
+    cmd: python3 -m pytest scripts/tests/test_visa_holiday_coverage_lane.py scripts/tests/test_visa_freshness_sentinel.py
+    result: "88 passed in 2.34s"
+    exit: 0
+    ts: "2026-10-10T06:00:00Z"
+    seat: Claude Sonnet 5.5 on M5
+  - claim: "Backend helper tests, including the L1 guilt/innocence pair and the data-relative real-data test."
+    cmd: "cd apps/backend-rag && PYTHONPATH=backend .venv/bin/python -m pytest backend/tests/services/visa_engine/test_holiday_coverage.py backend/tests/services/visa_engine/test_processing_times.py"
+    result: "46 passed in 2.11s"
+    exit: 0
+    ts: "2026-10-10T06:00:00Z"
+    seat: Claude Sonnet 5.5 on M5
+  - claim: "Mutation: with the old holiday_coverage.py restored, the L1 guilt tests fail on both sides (backend: 2026-11-19 != 2026-11-18; lane: the STALE text names the clock day)."
+    cmd: "git show HEAD:<file> over the new file, run both guilt tests, restore from a cp backup"
+    result: "1 failed in each suite with the mutation; green after the restore"
+    exit: 0
+    ts: "2026-10-10T06:00:00Z"
+    seat: Claude Sonnet 5.5 on M5
+dissent:
+  - seat: Claude Sonnet 5.5 (builder self-review, not an independent reviewer)
+    objection: >-
+      N counts ticks, not elapsed time: a Pro asleep for a day misses ticks and delays escalation, and a burst of manual runs could
+      escalate early.
+    status: PLAUSIBLE
+    disposition: >-
+      Accepted: launchd StartInterval fires once on wake, and manual runs of the lane are rare; escalating a little late or early on a
+      broken probe is harmless next to the weekly digest it replaces.
+  - seat: gpt-5.6-sol (adversarial review, read-only)
+    objection: >-
+      MEDIUM: the first version of the L1 walk-back was capped at 366 days and fell back to today beyond it, so a STALE alert older than a
+      year slid again.
+    status: CONFIRMED
+    disposition: >-
+      Cured: the walk-back stops at 1 January of the first loaded year instead of a day count; the guilt test now probes +400 and +800 days.
+owed:
+  - The half of L4 that says lane tests run only in the scheduled sweep needs a .github/workflows change (hot zone); it stays a ledger note.

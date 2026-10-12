@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timedelta
@@ -100,6 +102,57 @@ def test_collect_candidates_excludes_orphan_and_legacy(tmp_path):
     assert seats == {"AZ", "A2", "A1", "A3"}
     assert "orphan (no seat exists — verify and retire)" not in seats
     assert "AZ-legacy-verify" not in seats
+
+
+def _write_machine_seat_map(tmp_path: Path) -> Path:
+    """A by_machine block shaped like Air-M5's measured map: one seat (A3)
+    reached through two profile dirs, one seat (A4) kept out of rotation."""
+    for name in ("default", "acct2", "a1", "acct4", "flat-only"):
+        (tmp_path / name).mkdir(exist_ok=True)
+    data = {
+        "claude_profiles": {str(tmp_path / "flat-only"): "AZ"},
+        "by_machine": {
+            "Air-M5": {
+                "claude_profiles": {
+                    str(tmp_path / "default"): "A3",
+                    str(tmp_path / "acct2"): "A3",
+                    str(tmp_path / "a1"): "A1",
+                    str(tmp_path / "acct4"): "A4",
+                },
+                "auto_rotation_excluded": {"A4": "no role chain yet"},
+            }
+        },
+    }
+    p = tmp_path / "seat_map.json"
+    p.write_text(json.dumps(data, indent=2) + "\n")
+    return p
+
+
+def test_load_seat_map_reads_this_machines_block(tmp_path):
+    seat_map = cswap.load_seat_map(_write_machine_seat_map(tmp_path), machine="air-m5")
+    assert seat_map["claude_profiles"][str(tmp_path / "a1")] == "A1"
+    assert str(tmp_path / "flat-only") not in seat_map["claude_profiles"]
+
+
+def test_load_seat_map_other_machine_keeps_the_flat_fallback(tmp_path):
+    seat_map = cswap.load_seat_map(_write_machine_seat_map(tmp_path), machine="Nuzantara")
+    assert seat_map["claude_profiles"] == {str(tmp_path / "flat-only"): "AZ"}
+
+
+def test_collect_candidates_counts_one_seat_once_across_its_profile_dirs(tmp_path, monkeypatch):
+    seat_map = cswap.load_seat_map(_write_machine_seat_map(tmp_path), machine="Air-M5")
+    monkeypatch.setattr(cswap, "_collect_window", lambda pdir, since: {"total": 10})
+    candidates = cswap.collect_candidates(seat_map, cswap._now(), exclude=set())
+    by_seat = {c["seat"]: c for c in candidates}
+    assert sorted(by_seat) == ["A1", "A3"]
+    assert by_seat["A3"]["t5"] == 20 and by_seat["A1"]["t5"] == 10
+
+
+def test_collect_candidates_never_offers_a_seat_held_out_of_rotation(tmp_path):
+    seat_map = cswap.load_seat_map(_write_machine_seat_map(tmp_path), machine="Air-M5")
+    seats = {c["seat"] for c in cswap.collect_candidates(seat_map, cswap._now(), exclude=set())}
+    assert "A4" not in seats
+    assert cswap.resolve_seat_dir(seat_map, "A4") == tmp_path / "acct4"
 
 
 def test_list_warns_but_does_not_crash_on_orphan(tmp_path, capsys):
@@ -457,3 +510,295 @@ def test_strip_leading_separator():
     assert cswap._strip_leading_separator(["--", "claude", "-p", "x"]) == ["claude", "-p", "x"]
     assert cswap._strip_leading_separator(["claude"]) == ["claude"]
     assert cswap._strip_leading_separator([]) == []
+
+
+def test_collect_candidates_keeps_every_profile_dir_of_an_aggregated_seat(tmp_path, monkeypatch):
+    seat_map = cswap.load_seat_map(_write_machine_seat_map(tmp_path), machine="Air-M5")
+    monkeypatch.setattr(cswap, "_collect_window", lambda pdir, since: {"total": 10})
+    a3 = next(c for c in cswap.collect_candidates(seat_map, cswap._now(), exclude=set()) if c["seat"] == "A3")
+    assert a3["dirs"] == [str(tmp_path / "default"), str(tmp_path / "acct2")]
+
+
+def test_choose_seat_recognises_the_current_seat_through_its_alias_dir():
+    """Naga P2 on #7887: state on A3's SECOND profile dir, switched 5 min ago,
+    A3 far over threshold — the 30-minute guard must still hold."""
+    now = datetime(2026, 10, 5, 12, 0, tzinfo=cswap.WITA)
+    candidates = [
+        {"seat": "A3", "dir": "~/.claude", "dirs": ["~/.claude", "~/.claude-acct2"], "t5": 1000, "t7": 1000},
+        {"seat": "A1", "dir": "~/.claude-a1", "dirs": ["~/.claude-a1"], "t5": 10, "t7": 10},
+    ]
+    state = {"active_dir": "~/.claude-acct2", "active_seat": "A3",
+             "last_switch_ts": (now - timedelta(minutes=5)).isoformat()}
+    assert cswap.choose_seat(candidates, state, now)["seat"] == "A3"
+
+
+# ------------------------------------------------ unknown load (gate note on #7887)
+# A counter collect_claude reports as "unknown" is not a zero: the window total
+# is "unknown" (same poison rule as seat_usage_collector._sum_tok, either order)
+# and a seat whose load is unknown is never the least-loaded one.
+
+
+def _fake_window(monkeypatch, days):
+    monkeypatch.setattr(cswap, "collect_claude",
+                        lambda pdir, since: {"status": "partial", "days": days})
+
+
+@pytest.mark.parametrize("days", [
+    {"d1": {"in": 1, "cache_w": "unknown"}, "d2": {"in": 2, "cache_w": 4}},
+    {"d1": {"in": 1, "cache_w": 4}, "d2": {"in": 2, "cache_w": "unknown"}},
+])
+def test_collect_window_unknown_counter_poisons_the_total_in_either_order(monkeypatch, days):
+    _fake_window(monkeypatch, days)
+    w = cswap._collect_window("~/x", cswap._now())
+    assert w["cache_w"] == "unknown" and w["total"] == "unknown"
+    assert w["in"] == 3 and w["out"] == 0, "absent counter = 0, known counters stay exact"
+
+
+def test_collect_window_known_counters_still_sum_to_an_int(monkeypatch):
+    _fake_window(monkeypatch, {"d1": {"in": 1, "out": 2}, "d2": {"in": 3}})
+    w = cswap._collect_window("~/x", cswap._now())
+    assert (w["in"], w["out"], w["total"]) == (4, 2, 6)
+
+
+def test_fmt_tokens_never_raises_on_an_unknown_window():
+    w = {"in": 1, "out": 0, "cache_r": 0, "cache_w": "unknown", "total": "unknown", "status": "partial"}
+    assert "unknown" in cswap._fmt_tokens(w)
+
+
+def test_choose_seat_never_treats_an_unknown_load_as_least_loaded():
+    now = datetime(2026, 8, 11, 12, 0, 0)
+    candidates = [_cand("AZ", "/az", "unknown", "unknown"), _cand("A2", "/kaiser", 10**9, 10**9)]
+    assert cswap.choose_seat(candidates, {}, now)["seat"] == "A2"
+    assert cswap.choose_seat(list(reversed(candidates)), {}, now)["seat"] == "A2"
+
+
+def test_choose_seat_unknown_7d_ranks_after_a_known_7d_on_a_5h_tie():
+    now = datetime(2026, 8, 11, 12, 0, 0)
+    candidates = [_cand("AZ", "/az", 5, "unknown"), _cand("A2", "/kaiser", 5, 99)]
+    assert cswap.choose_seat(candidates, {}, now)["seat"] == "A2"
+
+
+def test_choose_seat_all_unknown_does_not_crash_and_keeps_the_current_seat():
+    now = datetime(2026, 8, 11, 12, 0, 0)
+    candidates = [_cand("A1", "/a1", "unknown", 100), _cand("AZ", "/az", "unknown", 1)]
+    assert cswap.choose_seat(candidates, {"active_dir": "/az"}, now)["seat"] == "AZ"
+    # no state: no evidence to rank, so the choice is deterministic by seat id, not by 7d
+    assert cswap.choose_seat(candidates, {}, now)["seat"] == "A1"
+    assert cswap.choose_seat(list(reversed(candidates)), {}, now)["seat"] == "A1"
+
+
+def test_choose_seat_unknown_current_is_dropped_even_inside_the_flip_flop_window():
+    now = datetime(2026, 8, 11, 12, 0, 0)
+    candidates = [_cand("AZ", "/az", "unknown", "unknown"), _cand("A2", "/kaiser", 10, 10)]
+    state = {"active_dir": "/az", "last_switch_ts": (now - timedelta(minutes=5)).isoformat()}
+    assert cswap.choose_seat(candidates, state, now)["seat"] == "A2"
+
+
+def test_choose_seat_naive_last_switch_stamp_never_crashes():
+    aware_now = cswap._now()
+    candidates = [_cand("AZ", "/az", 100, 1), _cand("A2", "/kaiser", 1, 1)]
+    state = {"active_dir": "/az", "last_switch_ts": "2026-08-11T11:55:00"}
+    assert cswap.choose_seat(candidates, state, aware_now)["seat"] in {"AZ", "A2"}
+
+
+def test_choose_seat_current_with_unknown_load_is_not_kept_as_under_threshold():
+    now = datetime(2026, 8, 11, 12, 0, 0)
+    candidates = [_cand("AZ", "/az", "unknown", "unknown"), _cand("A2", "/kaiser", 10, 10)]
+    state = {"active_dir": "/az", "last_switch_ts": (now - timedelta(hours=3)).isoformat()}
+    assert cswap.choose_seat(candidates, state, now)["seat"] == "A2"
+
+
+def test_collect_candidates_aggregated_seat_with_one_unknown_profile_is_unknown(tmp_path, monkeypatch):
+    seat_map = json.loads(_write_seat_map(tmp_path).read_text())
+    seat_map["claude_profiles"] = {str(tmp_path / "az"): "A3", str(tmp_path / "acct2"): "A3"}
+    # per profile: (5h, 7d); the first profile has an unknown 5h window
+    totals = iter([{"total": "unknown"}, {"total": 7}, {"total": 4}, {"total": 2}])
+    monkeypatch.setattr(cswap, "_collect_window", lambda pdir, since: next(totals))
+    (a3,) = cswap.collect_candidates(seat_map, cswap._now(), exclude=set())
+    assert a3["t5"] == "unknown" and a3["t7"] == 9
+
+
+# --------------------------------------------------------------- exec: the headless door
+#
+# These run the REAL scripts/with_seat.sh (registry overridden to find a fake
+# `claude`), so what the fake records is what a real child would receive.
+
+_REPO = Path(__file__).resolve().parents[2]
+_FAKE_CLAUDE = """#!/bin/bash
+log="$HOME/fake-claude"; mkdir -p "$log"; id="$$-$RANDOM"; cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+env | cut -d= -f1 | sort > "$log/$id.env"
+printf '%s\\n' "${CLAUDE_CONFIG_DIR:-<unset>}" > "$log/$id.dir"
+if [ -e "$cfg/FAIL" ]; then
+  echo "Failed to authenticate: OAuth session expired and could not be refreshed"; exit 1
+fi
+case "$*" in
+  *PONG*) [ -e "$cfg/HANG" ] && sleep 8; echo PONG ;;
+  *) echo ANSWER; [ -e "$cfg/RC" ] && exit "$(cat "$cfg/RC")"; exit 0 ;;
+esac
+"""
+_CREDENTIAL_NAME = re.compile(r"TOKEN|SECRET|KEY|PASSWORD|CREDENTIAL|_PAT$")
+
+
+@pytest.fixture
+def door(tmp_path, monkeypatch):
+    fake_bin = tmp_path / "fakebin"
+    fake_bin.mkdir()
+    (fake_bin / "claude").write_text(_FAKE_CLAUDE)
+    (fake_bin / "claude").chmod(0o755)
+    # A copy of the wrapper reads the registry beside it: the door honours no override.
+    (tmp_path / "repo/scripts").mkdir(parents=True)
+    (tmp_path / "repo/infra/llm-credentials").mkdir(parents=True)
+    shutil.copy(_REPO / "scripts/with_seat.sh", tmp_path / "repo/scripts/with_seat.sh")
+    registry = json.loads((_REPO / "infra/llm-credentials/seat-env.json").read_text())
+    registry["seats"]["claude-seat"]["exec_search_path"] = [str(fake_bin)]
+    reg_path = tmp_path / "repo/infra/llm-credentials/seat-env.json"
+    reg_path.write_text(json.dumps(registry))
+    reg_path.chmod(0o600)
+    monkeypatch.setattr(cswap, "_default_with_seat_path", lambda: tmp_path / "repo/scripts/with_seat.sh")
+    for d in (".claude", "a1", "kaiser", "acct4", "acct5"):
+        (tmp_path / d).mkdir()
+    seat_map = tmp_path / "seat_map.json"
+    seat_map.write_text(json.dumps({"claude_profiles": {
+        "~/.claude": "A3", "~/a1": "A1", "~/kaiser": "A2", "~/acct4": "A4", "~/acct5": "A5"}}))
+    topology = tmp_path / "topology.json"
+    topology.write_text(json.dumps({"accounts": {"anthropic": {"slots": {
+        "A1": {"plan": "x"}, "A5": {"status": "retired"}}}}}))
+
+    def run(seat, *opts):
+        return cswap.main(["--seat-map", str(seat_map), "exec", "--topology", str(topology),
+                           "--cwd", str(tmp_path), *opts, seat, "--", "claude", "-p", "review"])
+    return run
+
+
+def _calls(home: Path) -> list[tuple[str, list[str]]]:
+    log = home / "fake-claude"
+    return [((log / f"{p.stem}.dir").read_text().strip(), p.read_text().split())
+            for p in sorted(log.glob("*.env"))] if log.is_dir() else []
+
+
+def test_exec_refuses_a_retired_seat_before_any_call(door, tmp_path, capfd):
+    assert door("A5") == cswap.REFUSED_RC
+    assert "retired" in capfd.readouterr().err
+    assert _calls(tmp_path) == []
+
+
+def test_exec_refuses_a_silent_named_seat_and_never_falls_back(door, tmp_path, capfd):
+    (tmp_path / "kaiser" / "FAIL").touch()
+    assert door("A2") == cswap.REFUSED_RC
+    out, err = capfd.readouterr()
+    assert "REFUSED seat=A2" in err and "OAuth session expired" in err
+    assert "ANSWER" not in out
+    assert [d for d, _ in _calls(tmp_path)] == [str(tmp_path / "kaiser")]  # the PONG only
+
+
+def test_exec_child_env_carries_no_credential(door, tmp_path, monkeypatch, capfd):
+    for name in ("CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "GITHUB_PERSONAL_ACCESS_TOKEN",
+                 "AWS_SECRET_ACCESS_KEY"):
+        monkeypatch.setenv(name, "fixture-not-a-secret")
+    # bash sources BASH_ENV before with_seat.sh's allowlist runs: it must never reach it.
+    hook = tmp_path / "bash_env.sh"
+    hook.write_text('export CLAUDE_CODE_OAUTH_TOKEN=fixture; touch "$HOME/bash_env_ran"\n')
+    monkeypatch.setenv("BASH_ENV", str(hook))
+    assert door("A1") == 0
+    assert not (tmp_path / "bash_env_ran").exists()
+    calls = _calls(tmp_path)
+    assert len(calls) == 2  # PONG + the real call
+    for config_dir, names in calls:
+        assert config_dir == str(tmp_path / "a1")
+        assert [n for n in names if _CREDENTIAL_NAME.search(n)] == []
+        assert "CLAUDE_CONFIG_DIR" in names  # innocence: the seat's own name does pass
+
+
+def test_exec_reports_the_seat_that_answered(door, capfd):
+    assert door("A1") == 0
+    out, err = capfd.readouterr()
+    assert out.strip() == "ANSWER"
+    assert "seat=A1 dir=~/a1 pong=ok" in err and "seat=A1 exit=0" in err
+
+
+def test_exec_default_dir_runs_with_config_dir_unset(door, tmp_path):
+    assert door("A3") == 0
+    assert {d for d, _ in _calls(tmp_path)} == {"<unset>"}
+
+
+def test_exec_auto_skips_silent_seats_loudly_and_reports_the_one_used(door, tmp_path, capfd):
+    (tmp_path / ".claude" / "FAIL").touch()
+    (tmp_path / "a1" / "FAIL").touch()
+    assert door("auto") == 0
+    out, err = capfd.readouterr()
+    assert "REFUSED seat=A3" in err and "REFUSED seat=A1" in err
+    assert "seat=A2 dir=~/kaiser pong=ok" in err and out.strip() == "ANSWER"
+    assert str(tmp_path / "acct5") not in {d for d, _ in _calls(tmp_path)}  # retired never tried
+
+
+def test_exec_auto_with_no_answering_seat_refuses(door, tmp_path, capfd):
+    for d in (".claude", "a1", "kaiser", "acct4"):
+        (tmp_path / d / "FAIL").touch()
+    assert door("auto") == cswap.REFUSED_RC
+    assert "no eligible seat answered" in capfd.readouterr().err
+
+
+def test_exec_pong_must_be_the_whole_answer(door, tmp_path, capfd):
+    fake = tmp_path / "fakebin" / "claude"
+    original = fake.read_text()
+    for answer in ("Unable to return PONG", "pong.", "Invalid API key\\nPONG"):
+        fake.write_text(original.replace("echo PONG", f"printf '{answer}\\n'"))
+        assert door("A1") == cswap.REFUSED_RC, answer
+        assert "PONG failed" in capfd.readouterr().err
+
+
+def test_exec_never_honours_or_forwards_a_caller_registry(door, tmp_path, monkeypatch):
+    evil_bin = tmp_path / "evilbin"
+    evil_bin.mkdir()
+    (evil_bin / "claude").write_text('#!/bin/bash\ntouch "$HOME/evil_ran"; echo PONG\n')
+    (evil_bin / "claude").chmod(0o755)
+    paid = ["CLAUDE_CODE_USE_BEDROCK", "AWS_BEARER_TOKEN_BEDROCK", "ANTHROPIC_BEDROCK_BASE_URL"]
+    reg = json.loads((_REPO / "infra/llm-credentials/seat-env.json").read_text())
+    reg["seats"]["claude-seat"]["env"] += paid + ["SHELLOPTS"]
+    reg["seats"]["claude-seat"]["exec_search_path"] = [str(evil_bin)]
+    evil = tmp_path / "evil-registry.json"
+    evil.write_text(json.dumps(reg))
+    evil.chmod(0o600)
+    monkeypatch.setenv("WITH_SEAT_REGISTRY", str(evil))
+    for name in paid:
+        monkeypatch.setenv(name, "fixture")
+    assert door("A1") == 0
+    assert not (tmp_path / "evil_ran").exists()
+    assert [(set(paid) | {"SHELLOPTS"}) & set(names) for _, names in _calls(tmp_path)] == [set(), set()]
+
+
+def test_exec_returns_the_command_exit_code(door, tmp_path):
+    (tmp_path / "a1" / "RC").write_text("7")
+    assert door("A1") == 7
+
+
+def test_exec_unreadable_topology_shuts_the_door(door, tmp_path):
+    (tmp_path / "topology.json").unlink()
+    with pytest.raises(SystemExit):
+        door("A1")
+    assert _calls(tmp_path) == []
+
+
+def test_exec_defaults_are_anchored_to_the_repo_not_the_cwd():
+    assert cswap._default_topology_path() == _REPO / "FLEET_TOPOLOGY.json"
+    assert cswap._CANONICAL_REGISTRY == _REPO / "infra/llm-credentials/seat-env.json"
+    assert cswap._default_with_seat_path() == _REPO / "scripts/with_seat.sh"
+
+
+def test_exec_probe_timeout_refuses_the_seat(door, tmp_path, monkeypatch, capfd):
+    monkeypatch.setattr(cswap, "PONG_TIMEOUT_S", 2)
+    (tmp_path / "a1" / "HANG").touch()
+    assert door("A1") == cswap.REFUSED_RC
+    assert "no answer within 2s" in capfd.readouterr().err
+
+
+def test_exec_exclude_is_validated_and_only_for_auto(door, tmp_path):
+    assert door("A1", "--exclude", "A2") == 2
+    assert door("auto", "--exclude", "a1") == 2
+    assert _calls(tmp_path) == []
+
+
+def test_exec_accepts_only_seat_ids_of_this_machine(door, tmp_path):
+    assert door("A9") == 2
+    assert door(str(tmp_path / "kaiser")) == 2  # a literal dir would hide which seat ran
+    assert _calls(tmp_path) == []

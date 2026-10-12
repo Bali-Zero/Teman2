@@ -1,0 +1,34 @@
+task: >-
+  The Mini healer (infra/healer/healer-run.sh, HOME pair ~/scripts/healer-run.sh, launchd com.nuzantara.healer.4h every
+  4 h) spawns a capped LLM session on every tick, also when the receptor state is unchanged and the last session found
+  nothing it could cure. Pro's healer has had the cure since D-004 (G11 memoize: fingerprint the receptor state, skip the
+  spawn when it is unchanged and the last verdict was incurable). Port it to Mini as a mirror of Pro's block.
+lane: ops
+machine: m5
+date: 2026-10-09
+gear: 3
+gear_reason: >-
+  Measured floor 3, source the .github/workflows/ hot zone: the memo tests had no CI executor (W108), so the PR adds
+  them to watchdog-third-state.yml (one shell step, one pytest argument, three trigger paths). Gear 3 carries a pack
+  and a sealed council.
+acceptance:
+  A1:
+    text: >-
+      Same receptor-state fingerprint and a last verdict of incurable within the memo window: no spawn, a `memoized:` log
+      line and an ok heartbeat. A changed fingerprint, a memo error, an empty state or an unreadable ledger: the session spawns.
+    probe: scripts/tests/test_mini_healer_memo.sh (extracted wrapper text under a fake HOME, /bin/bash 3.2).
+  A2:
+    text: >-
+      The session is told to print `HEALER_VERDICT: cured|incurable|partial <n>/<total>`; its line is recorded as the memo
+      verdict, a missing or malformed line records unknown, which never skips.
+    probe: the same corpus plus scripts/tests/test_healer_memo.py.
+  A3:
+    text: >-
+      Pro is unchanged: scripts/healer_memo.py hashes every state without the new optional observations axis exactly as
+      before, and Pro's wrapper is not touched.
+    probe: base-versus-head fingerprint of three Pro-shaped states, equal.
+  A4:
+    text: >-
+      watchdog-third-state runs scripts/tests/test_mini_healer_memo.sh and scripts/tests/test_healer_memo.py in steps
+      without continue-on-error, on every PR touching the wrapper, healer_memo.py or either test file.
+    probe: this PR's own watchdog-third-state job log.

@@ -30,6 +30,7 @@ Usage:
   python3 scripts/qwen_quota_watch.py --selftest       # offline unit checks
 
 Exit codes: 0 ok/below-warn · 1 WARN threshold crossed · 2 CRIT crossed ·
+3 CRASH (uncaught exception — never a bare 1, which cron reads as GREEN) ·
 4 CANNOT-MEASURE (no log readable anywhere — never reported as "0% used").
 """
 
@@ -41,13 +42,13 @@ import json
 import os
 import subprocess
 import sys
+import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
-from scripts.tg_gateway_verdict import extract_gateway_verdict, gateway_delivered  # noqa: E402
 
 # --- calibration (console read 2026-08-14, Part 4 of the burn-rate doc) ----
 CALIBRATION = {
@@ -66,6 +67,8 @@ WINDOW_DAYS = 7
 # seen FROM THE MACHINE THIS RUNS ON (designed for Pro: `air` = M5, `mini`).
 DEFAULT_REMOTE_LOG = ".qwen/usage/token-usage-{month}.jsonl"
 SSH_TIMEOUT_S = 15
+# tg_notify hang limit: a hung gateway fails the alert (→ exit 4), never hangs cron.
+ALERT_TIMEOUT_S = 60
 
 
 @dataclass
@@ -207,11 +210,21 @@ def send_alert(report: str, pct: float, repo_root: Path) -> bool:
     """
     tier = "P0" if pct >= CRIT_PCT else "P1"
     tg = repo_root / "scripts" / "tg_notify.py"
-    proc = subprocess.run(
-        [sys.executable, str(tg), "--tier", tier, "--source", "qwen-quota-watch",
-         "--dedup-key", f"qwen-quota-{dt.date.today().isoformat()}", report],
-        capture_output=True, text=True,
-    )
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(tg), "--tier", tier, "--source", "qwen-quota-watch",
+             "--dedup-key", f"qwen-quota-{dt.date.today().isoformat()}", report],
+            capture_output=True, text=True, timeout=ALERT_TIMEOUT_S,
+        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        what = "TIMEOUT" if isinstance(exc, subprocess.TimeoutExpired) else "ERROR"
+        sys.stderr.write(f"tg_notify {what} {type(exc).__name__}: {exc}\n")
+        sys.stderr.write("ALERT NOT DELIVERED — the quota warning above reached nobody\n")
+        return False
+    # Imported here, not at module level: a broken sibling module must reach
+    # _run_main as CRASH (3), not exit 1 at import time, which cron reads as WARN.
+    from scripts.tg_gateway_verdict import extract_gateway_verdict, gateway_delivered
+
     verdict = extract_gateway_verdict(proc.stderr)
     delivered = False if verdict is None else gateway_delivered(verdict)
     sys.stderr.write(
@@ -300,5 +313,31 @@ def main() -> int:
     return exit_code
 
 
+def _crash(what: str, with_traceback: bool = False) -> int:
+    try:
+        if with_traceback:
+            traceback.print_exc()
+        sys.stderr.write(f"CRASH: {what}\n")
+    except Exception:
+        pass  # an unwritable stderr must not turn the crash back into a bare 1
+    return 3
+
+
+def _run_main() -> int:
+    """__main__ guard body (small so tests can drive it): an uncaught crash, or a
+    SystemExit carrying a non-zero code (argparse usage error), is exit 3, never
+    the bare 1/2 the cron wrapper maps to success together with WARN/CRIT (W104)."""
+    try:
+        return main()
+    except KeyboardInterrupt:
+        raise
+    except SystemExit as exc:
+        if exc.code in (0, None):
+            raise
+        return _crash(f"SystemExit({exc.code!r})")
+    except Exception as exc:
+        return _crash(f"{type(exc).__name__}: {exc}", with_traceback=True)
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_run_main())

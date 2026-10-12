@@ -1,0 +1,31 @@
+task_id: pro-janitor-1010
+mission: LOCALCI-SOVEREIGN (Pro free-space keeper, rollout step 2 of 3)
+colour: BLUE
+gear: 3
+gear_reason: >-
+  The lint floor is 3 by path (a new launchd organ, its wrapper, plist, declared pairs and the organs registry); the organ deletes
+  files on Pro, so the council and the Opus gates are owed.
+l_level: L2
+gate_class: opus
+objective: >-
+  Zero (2026-10-08): Pro keeps more than 100 GB free, always. pro.janitor is a free-space keeper that acts only on host caches
+  through a closed allowlist (uv cache prune, npm cache verify, old Playwright browser revisions not pinned by Playwright's own
+  .links registry), with tiers and hysteresis, fd-anchored removal, Playwright's own install lock held as a monotonic-clock lease,
+  blast-radius caps, a kill switch and dry-run first. Nothing inside Colima or docker (the VM has one owner, prune.py).
+constraints:
+  - Never Colima, docker, prune.py, ~/.ollama, ~/.nuzantara-pilots, ~/.claude, ~/.codex, other agents' worktrees, secrets or client data; never kill a process except the tool's own process group past its deadline.
+  - Dry-run by default (PRO_JANITOR_APPLY=false in the plist); pro.disk_floor stays the independent witness of the floor.
+  - The spec's threat model and invariants 1-9 are the arbiter; a same-user hostile process is out of scope.
+acceptance:
+  - text: A failed INSTALLATION_COMPLETE (EPERM, young, changed, stat error) SHALL stop the candidate with nothing else in it touched.
+    probe: "scripts/tests/test_pro_janitor.py (marker cases, real chflags UF_IMMUTABLE)"
+  - text: Every unlink and rmdir SHALL be refused once the lock lease ran out, the lock is not our inode, or the wall clock drifted from the monotonic clock.
+    probe: "scripts/tests/test_pro_janitor.py (lease cases)"
+  - text: No planted name, number or file SHALL crash the run; journal and state are always written.
+    probe: "scripts/tests/test_pro_janitor.py (symlink chain, vanishing link, error:internal cases)"
+  - text: A tool past its deadline SHALL be killed by process group with its leader un-reaped until the last killpg.
+    probe: "scripts/tests/test_pro_janitor.py (deadline ordering case)"
+consumer_map:
+  - launchd organ pro.janitor on Pro (com.nuzantara.janitor, StartInterval 600), its journal ~/logs/pro-janitor/journal.jsonl and heartbeat ~/.organism/last_seen/pro.janitor.json.
+pii_scan: clean
+pii_scan_note: A stdlib payload, a bash wrapper, a plist, registry entries and tests on tmp fixtures. Tool cache revision names only; no client data.

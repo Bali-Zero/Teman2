@@ -33,7 +33,7 @@ import {
   saveInterviewResume,
 } from "../_lib/resume-store";
 import { makeVisaOracleResponse } from "../_lib/visa-oracle-test-fixture";
-import { translate } from "../_lib/i18n";
+import { translate, type I18nKey } from "../_lib/i18n";
 import { OracleShell } from "./OracleShell";
 
 const ANSWERS = [
@@ -99,9 +99,15 @@ function engineErrorResponse(status: number): Response {
 }
 
 async function expectStateHeading(state: FixtureState) {
+  // The engine fixture's NO_SUPPORTED_PATH names no alternative, so it carries
+  // the no-door headline rather than the "here’s what instead" one.
+  const key =
+    state === "NO_SUPPORTED_PATH"
+      ? "verdict.headline.NO_SUPPORTED_PATH_NO_DOOR"
+      : `verdict.headline.${state}`;
   expect(
     await screen.findByRole("heading", {
-      name: translate("en", `verdict.headline.${state}`),
+      name: translate("en", key as I18nKey),
     }),
   ).toBeInTheDocument();
 }
@@ -233,6 +239,8 @@ describe("OracleShell authoritative evaluate integration", () => {
         ["remote_compensation", "no"],
         ["work_payer", "no"],
         ["remote_employer_country", "US"],
+        // Seq-28 step B: the remote path now asks the yearly income.
+        ["remote_annual_income_usd", "85000"],
         ["remote_pt_pma", "no"],
       ],
     },

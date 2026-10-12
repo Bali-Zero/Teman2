@@ -1068,3 +1068,52 @@ async def test_dead_pending_reservation_with_published_manifest_stays_committed(
     assert generated.exists()
     records = [json.loads(line) for line in ledger_path.read_text().splitlines()]
     assert records[-1]["event"] == "committed"
+
+
+@pytest.mark.asyncio
+async def test_default_generator_is_agy(
+    tmp_path: Path,
+    breaking_factory: Callable[..., dict[str, Any]],
+    story_factory: Callable[..., dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    log = tmp_path / "agy_calls.log"
+    image_path = tmp_path / "fixture.png"
+    image_path.write_bytes(_image_bytes())
+    stub = tmp_path / "stub_agy.py"
+    stub.write_text(
+        "import argparse, json, shutil\n"
+        "from pathlib import Path\n"
+        "p = argparse.ArgumentParser()\n"
+        "p.add_argument('command')\n"
+        "p.add_argument('--prompt')\n"
+        "p.add_argument('--dest')\n"
+        "p.add_argument('--width')\n"
+        "p.add_argument('--height')\n"
+        "a = p.parse_args()\n"
+        f"open({str(log)!r}, 'a').write(a.width + 'x' + a.height + '\\n')\n"
+        "Path(a.dest).parent.mkdir(parents=True, exist_ok=True)\n"
+        f"shutil.copyfile({str(image_path)!r}, a.dest)\n"
+        "print(json.dumps({'ok': True, 'dest': a.dest}))\n"
+    )
+    monkeypatch.setenv("MAGAZINE_AGY_CLI", str(stub))
+
+    async def describe(_data: bytes, _filename: str) -> tuple[str, dict[str, str]]:
+        return "Abstract editorial scene with no visible text or people.", {"model": "local"}
+
+    async def scan(_text: str, _filename: str) -> DLPResult:
+        return DLPResult(has_pii=False)
+
+    result = await resolve_asset_manifest(
+        breaking_factory(story=story_factory(asset_digests=[])),
+        breaking=True,
+        output_dir=tmp_path / "generated",
+        ledger=AssetFingerprintLedger(tmp_path / "fingerprints.jsonl"),
+        describe=describe,
+        scan_dlp=scan,
+    )
+
+    assert result.fallback_reason is None
+    assert len(result.manifest.intents) == 1
+    assert result.manifest.intents[0].source_path.is_file()
+    assert log.read_text().splitlines() == ["1344x768"]

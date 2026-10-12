@@ -1,0 +1,177 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Mandate FIXBATCH-G-20261005 from the imperator window (team-lead, mission
+  colour BLUE): findings-ranked.md item 11, candidates
+  branch_graveyard_cleanup.sh content_on_main(), audit_agent_quarantine.py
+  _path_set and the ancestor fast path. Builder Kimi, reviewer from another
+  family, red tests on scratch repositories with a fake git on PATH, siblings
+  listed and not cured.
+
+lanes:
+  - lane: build
+    role: build
+    seat: kimi-code/kimi-for-coding
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-default-home
+  - lane: review-tp1-qwen
+    role: review
+    seat: tp1-qwen3.8-max
+  - lane: review-tp1-deepseek
+    role: review
+    seat: tp1-deepseek-v4-pro
+
+seat_fallback_reason: >-
+  tp1-deepseek-v4-pro replaces the titolare kimi-code/k3, excluded by family
+  exclusion: the Kimi family built this diff (kimi-for-coding, both rounds).
+  The Codex review ran through scripts/with_seat.sh on the default Codex home,
+  which does not prove the codex-gpt-5.6-sol seat, so it is journalled as
+  codex-default-home and not counted toward quorum.
+
+council_note: >-
+  POST-HOC. The floor (3, source path: the broker-hygiene.yml wiring) was
+  measured after the round-1 build, so no council sat before the build. The
+  three reviews ran on the built diff: Codex round 1 on 45dc912bab, then a
+  sealed round 2 (Codex, Qwen, DeepSeek) on ff1c440055, which is also the
+  refutation round of round 1.
+
+ground:
+  ts: "2026-10-05T12:22:25Z"
+  siblings: >-
+    No open PR touched branch_graveyard_cleanup.sh, audit_agent_quarantine.py,
+    agent_start.py or worktree_gc (gh pr list --state open --json files) at
+    the start. Pro's weekly launchd job runs the repo checkout in DRY-RUN; the
+    quarantine audit has no scheduler and no manifest on M5 or Pro.
+
+what_changed: |
+  scripts/branch_graveyard_cleanup.sh content_on_main() returns 0 / 1 / 2.
+  2 (could not tell) on: merge-base failure other than an honest
+  no-common-ancestor, diff exit != 0, an empty or blank name list whose trees
+  differ, an ls-tree read exit != 0. The classification loop sends 2, and an
+  --is-ancestor exit other than 0/1, to a new REPORT-ONLY section "Could not
+  tell (content check failed)" that --apply never reads. Per-file reads use a
+  literal ls-tree; decisions for legit input are unchanged (both present and
+  equal SHA = match; one absent, both absent or different = 1).
+  scripts/audit_agent_quarantine.py classify(): diff failure is None, not [];
+  blob SHAs come from one ls-tree -r per ref (malformed or empty listing =
+  None); merge-base needs exit 0; ancestry no longer proves LANDED: the fork
+  is the single merge-base of obj with the first parent of the merge that
+  brought it in, then the same blob checks run; a ref on main's first-parent
+  line, a criss-cross fork or any failed step is AMBIGUOUS with a reason.
+  broker-hygiene.yml runs the new test and the existing graveyard category-5
+  test (which no workflow ran before).
+
+proof: |
+  New test file: 16 failed / 11 passed with origin/main's two scripts
+  (5ec3d63463), 27 passed on the final tree; graveyard category-5 test 6
+  passed. ruff clean, bash -n clean, py_compile clean.
+
+dissent:
+  - seat: codex-default-home
+    objection: >-
+      R1 (45dc912bab): lying-empty ls-tree and rev-parse compared equal;
+      non-ancestor merge-base exit ignored; empty ancestry walk trusted;
+      first-parent scope obj^ too narrow; criss-cross base; a name file of
+      blank lines compared zero paths and returned 0; a failed --is-ancestor
+      fell through to the content check; tests did not kill every cure.
+    status: CONFIRMED
+    resolution: >-
+      Cured in ff1c440055 (Kimi round 2) with a test per finding: partial and
+      lying git modes, delta-only failure, first-parent ref, failed ancestor
+      probe, merge-base rc.
+  - seat: codex-default-home
+    objection: >-
+      R1 #7 and R2 #4: blob readability is not proven (ls-tree yields OIDs
+      even if the blob object is missing).
+    status: PLAUSIBLE
+    resolution: >-
+      Dux disputes it: equal OIDs are equal content by construction; a blob missing from the
+      object store is equally missing for main, so pruning the ref loses
+      nothing that main still has.
+  - seat: codex-default-home
+    objection: >-
+      R2 #1: the non-ancestor merge-base has no --all, so a criss-cross base
+      may already contain a branch change that main later dropped.
+    status: CONFIRMED
+    resolution: >-
+      Pre-existing on origin/main, not introduced here: a change inside any
+      merge-base is in main's history, so it stays reachable. Listed as owed
+      (merge-base --all, refuse >1 base) under the fix-of-a-fix depth-1 stop.
+  - seat: codex-default-home
+    objection: >-
+      R2 #2: a git that exits 0 with a plausible but incomplete name list (or
+      a single newline) can still narrow the scope.
+    status: CONFIRMED
+    resolution: >-
+      Same answer on origin/main for that input; a git that lies coherently
+      with exit 0 cannot be cross-checked with git alone. Owed spec: compare
+      the scope with a second, independent enumeration (diff-tree of the two
+      tree OIDs).
+  - seat: codex-default-home
+    objection: >-
+      R2 #3: a truncated first-parent walk can make merge-base return obj
+      itself, emptying the authored scope.
+    status: CONFIRMED
+    resolution: >-
+      Needs a git that exits 0 with a truncated walk; origin/main marks EVERY
+      ancestor LANDED with no check at all, so head is strictly safer.
+      Owed: refuse fork == obj. Not added here: the Builder Contract stops a
+      fix-of-a-fix at depth 1.
+  - seat: codex-default-home
+    objection: >-
+      R2 #5 and #6 (with tp1-qwen3.8-max #1 #2, tp1-deepseek-v4-pro #1 #3):
+      graveyard keeps a deletion absent on both sides as 1; an empty
+      quarantine tree is AMBIGUOUS.
+    status: CONFIRMED
+    resolution: >-
+      Both are the safe direction. The graveyard deletion answer is
+      byte-identical to origin/main on purpose (widening what --apply deletes
+      is not this PR); an empty tree does not occur in this repository.
+  - seat: tp1-deepseek-v4-pro
+    objection: >-
+      #2 (and Codex R2 #7, Qwen #5): test_graveyard_failed_blob_read_never_matches
+      injected rev-parse, which the cured code no longer calls.
+    status: CONFIRMED
+    resolution: >-
+      The test now injects ls-tree and asserts the branch lands in Could not
+      tell; red on origin/main, green on the final tree.
+
+receipts:
+  - claim: "deterministic floor of this diff"
+    cmd: "python3 scripts/evidence_pack_lint.py --changed-files-file <merge-base name-only> --numstat-file <numstat> --patch-file <patch> --print-floor --print-floor-source"
+    result: "floor=3 source=path (.github/workflows/broker-hygiene.yml); without it floor source=size"
+    exit: 0
+    ts: "2026-10-05T13:39:18Z"
+    seat: claude-opus-5-5
+  - claim: "new test red against origin/main's scripts"
+    cmd: "bash <scratch>/run-verify.sh (git archive 5ec3d63463 of both scripts + head test file)"
+    result: "16 failed, 11 passed"
+    exit: 1
+    ts: "2026-10-05T13:37:40Z"
+    seat: claude-opus-5-5
+  - claim: "new test and category-5 test green on the final tree"
+    cmd: "python3 -m pytest scripts/tests/test_content_on_main_three_answers.py -q -p no:cacheprovider; sh scripts/tests/test_branch_graveyard_prmerged.sh"
+    result: "27 passed; Results: 6 passed, 0 failed"
+    exit: 0
+    ts: "2026-10-05T13:37:40Z"
+    seat: claude-opus-5-5
+  - claim: "no past run deleted or pruned on a failed diff"
+    cmd: "ssh pro: grep -c 'apply: deleting|-> git push' ~/logs/branch-cleanup*.log; grep '^Mode:' ~/logs/branch-cleanup-*.md; ls .agent-receipts | grep -c quarantine-audit"
+    result: "8 weekly reports since 2026-08-17, all DRY-RUN, 0 apply lines; 0 quarantine manifests on M5 and Pro; Mini unreachable"
+    exit: 0
+    ts: "2026-10-05T13:39:19Z"
+    seat: claude-opus-5-5
+
+pii_scan: clean
+pii_scan_note: >-
+  No client data, OSINT or credential is read, written or quoted. Tests build
+  synthetic scratch repositories (example.invalid identities). Reviewers
+  received the diff and repository code only.
+
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
+
+diff:
+  net_lines: "measured by CI from git numstat at merge-base..HEAD"

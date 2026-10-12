@@ -1,0 +1,28 @@
+task_id: visa-duration-options-engine
+mission: visa-e31-two-year
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  A visa product may offer several stay lengths, each priced by its own catalogue row, and the
+  evaluator picks the option from the applicant's requested stay (intent.stay_days, in days).
+  Engine only: no rule pack changes, so the signed seq-25 pack validates and replays unchanged.
+  This unblocks seq-26, where E31A-E31J offer 365 or 730 days and the 730 option resolves the
+  "2 Years" catalogue row instead of silently showing the 1-year price.
+constraints:
+  - No pack change: products without duration_options are byte-for-byte unaffected, serialise without the key, and keep their digest.
+  - A request longer than every option gets the LAST option (the permit is extendable); an unknown request gets the first.
+  - Display fields are additive and appear only on products that carry options.
+  - No new interview question; the requested stay is read from the existing intent.stay_days fact.
+  - apps/mouth is not touched.
+appetite:
+  wall_clock_hours: 3
+acceptance:
+  - text: WHEN options are not strictly increasing, or fall outside the product's FIXED_DAYS bounds THEN the model SHALL refuse the product.
+    probe: backend/tests/services/visa_engine/test_duration_options.py::TestModelValidation
+  - text: WHEN a stay of 365, 366, 730 or 1095 days is requested THEN the selector SHALL return the 365, 730, 730 and 730 option, and an unknown stay the first.
+    probe: backend/tests/services/visa_engine/test_duration_options.py::TestSelector
+  - text: WHEN the 730 option is selected THEN the price SHALL be the 2-year catalogue row and never the 1-year row.
+    probe: backend/tests/services/visa_engine/test_duration_options.py::TestPricing
+  - text: WHEN a product has no options THEN the display SHALL carry no duration fields and its dump SHALL carry no duration_options key.
+    probe: backend/tests/services/visa_engine/test_duration_options.py::TestDisplay

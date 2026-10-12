@@ -1,0 +1,85 @@
+# Gear-2 evidence pack - the Visa Oracle i18n dead-key census.
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Team lead mandate, 2026-10-10 - the census is the missing arming step of the dead-keys chain.
+mission: >-
+  A dead i18n key cannot be added, or re-added, without a failing test naming it.
+lanes:
+  - lane: i18n-census-build
+    role: build
+    seat: Claude Sonnet 5.5 implementer (worktree mouth-visa-oracle-i18n-census).
+  - lane: i18n-census-ground-truth
+    role: ground_truth
+    seat: >-
+      exact-key and template-literal grep over apps/mouth/src and apps/mouth/e2e; the 46 tombstones are the key names removed in bf953020ed; no notebook, no memory, no regulatory figure asserted.
+    nb: none
+    query_hash: "0000000000000000000000000000000000000000000000000000000000000000" # pragma: allowlist secret
+    note: no notebook query; ground truth is the repo grep
+pii_scan: clean
+bites:
+  consumer: the mouth Vitest run in the required Frontend Tests check.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_i18n_census.py
+  expect: "contains:census holds"
+decisions:
+  - id: D-rule
+    decision: >-
+      A template literal vouches only for keys whose interpolated segment is one dotted segment that also appears as a quoted literal in the scanned sources; a leading-interpolation suffix such as .hint derives from a referenced base key.
+receipts:
+  - claim: The census passes on the clean tree.
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/i18n-census.test.ts"
+    result: "Test Files 1 passed (1); Tests 6 passed (6)"
+    exit: 0
+    ts: "2026-10-10T15:36:00Z"
+    seat: Claude Sonnet 5.5
+  - claim: Re-adding question.human_context_notice to EN and ID fails two census tests with the key named.
+    cmd: probe edit of i18n.ts, vitest run, then restore
+    result: "Tests 2 failed | 3 passed (5) at 5d7305aed4; re-run at the final head through the observer: FAILED (2 failed | 4 passed (6))"
+    exit: 1
+    ts: "2026-10-10T15:34:00Z"
+    seat: Claude Sonnet 5.5
+  - claim: The bites observer passes on the clean tree and fails when a deleted key is re-added.
+    cmd: python3 scripts/ci/observe_visa_oracle_i18n_census.py
+    result: "clean tree: Tests 6 passed (6), census holds, exit 0; with question.human_context_notice re-added to EN and ID: FAILED (2 failed | 4 passed (6))"
+    exit: 0
+    ts: "2026-10-10T15:05:00Z"
+    seat: Claude Opus 5.5 orchestrator
+dissent:
+  - seat: codex-gpt-5.6-sol (read-only review, rollout 2026-10-10T15-37-27, model verified in the rollout file)
+    objection: >-
+      HIGH - outcome.document_status.CONDITIONAL and .UNKNOWN count as referenced because the values appear as quoted
+      type-union members, while the only production adapter emits status REQUIRED; the census cannot see they never render.
+    status: PLAUSIBLE
+    disposition: >-
+      Accepted as a static-analysis limit, documented in the test header (Known limits). Proving reachability needs data-flow
+      analysis, out of scope for a census; the two keys are a follow-up for the dead-key triage.
+  - seat: codex-gpt-5.6-sol (same review)
+    objection: >-
+      MEDIUM - a multi-segment interpolation such as outcome.${tail} with tail "provenance.CLIENT_GUARD.title" would be flagged
+      as unreferenced although it renders; the template rule assumes one dotted segment.
+    status: PLAUSIBLE
+    disposition: >-
+      Fails loud, never silent: such a spelling turns the census red and names the key, so the author either keeps the
+      one-segment spelling or extends the rule. Documented in the header.
+  - seat: codex-gpt-5.6-sol (same review)
+    objection: MEDIUM - nothing stops the allowlist from growing back.
+    status: RETRACTED
+    disposition: Cured in 65e7a23dad - ALLOWLIST_CEILING = 102 pins the allowlist size.
+  - seat: "fresh Opus 5.5 gate on PR 8233 (outside the contribution chain)"
+    objection: >-
+      A dead key named only in a comment counted as referenced, because the literal scan read comments (mutation: new key plus
+      a comment in OutcomeSheet.tsx passed 6/6).
+    status: CONFIRMED
+    disposition: >-
+      Cured at the final head - sources pass through the TypeScript printer with removeComments before the scan; the same
+      mutation now fails (1 failed | 5 passed (6)) and names the key. Baseline unchanged (allowlist still 102).
+  - seat: "fresh Opus 5.5 gate on PR 8233 (same review)"
+    objection: >-
+      The template rule's reach is wider than documented - q.${id} and why.${id} in tree.ts cover about 119 keys plus their
+      .hint, which stay referenced while the question id survives as a literal anywhere.
+    status: PLAUSIBLE
+    disposition: Documented in the test header (Known limits); narrowing it needs data-flow analysis, out of scope for a census.
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

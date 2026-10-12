@@ -6,9 +6,11 @@ Two Ed25519 signing keypairs were minted for RulePack signing (spec §3,
 `apps/backend-rag/backend/services/visa_engine/bundle.py`). The runtime NEVER
 reads a private key — it only pins **public** keys via the environment
 variable `VISA_ENGINE_TRUST_STORE_KEYS_JSON`, loaded through
-`StaticTrustStore.from_env`. `bundle.py` ships no `sign_pack.py` script by
-design (FIREBREAK — see `bundle.py` module docstring): key generation and
-signing happen only in the offline environment, never in autonomous code.
+`StaticTrustStore.from_env`. `bundle.py` itself ships no signing code by design (FIREBREAK — see
+`bundle.py` module docstring); the offline operator CLI `sign_pack.py` lives
+under `backend/scripts/visa_engine/` (see the FIREBREAK reminder below). Key
+generation and signing happen only in the offline environment, never in
+autonomous code.
 
 ## Keys (public)
 
@@ -125,6 +127,145 @@ array above, before and after Prettier (the signature covers the JCS-canonical
 payload, so the file's formatting does not matter). **Signed, not activated.**
 The standing regression is
 `test_seq24_pack.py::TestSignedBundleTiesToSource`.
+
+## Signing + activation note (2026-10-07, seq-25 — and seq-24's deferred activation)
+
+`rulepack-prod-025.signed.json` (the 18 `OFFICIAL_PORTAL` sources re-stamped from
+the 2026-10-07 read ledger, `research/visa/2026-10-07-freshness-restamp-seq25/`;
+rules and products byte-identical to seq-24) was signed offline on M5 with the
+production key, `kid: prod-2026-07-1`, `signed_at` 2026-10-07T13:39:07Z,
+`payload_sha256`
+`603f777e5fdd8ffbd5824282593b6584893f39b0b6b192f59c4563ae6d9c9d11`, chained to the
+signed seq-24 (`5a569091f84a858f1957cdf96086ee7212f67d13a8225d64492a7212093cd272`).
+Digest re-verified unchanged after Prettier.
+
+**Activated the same day, two activations in order** (the anti-rollback gate anchors
+`previous_payload_sha256` on the pack active at that instant, so seq-24 had to go
+first): seq-24 `activation_id e1e01743-b290-4dee-9c45-08218e58a228` (reason
+`seq24-e33f-penjamin-261007`), then seq-25 `activation_id
+d2752a16-cd3f-46f0-81f0-fe32dcc43c05` (reason `seq25-portal-restamp-261007`), actor
+`consul-session-m5`, 13:49Z. Exactly one open activation afterwards (seq-25).
+
+Ceremony mechanics measured this run, where they differ from the 2026-09-06 notes:
+
+- The PG primary is now machine `5683e090f3d228` (`fly machines list -a
+nuzantara-postgres` → ROLE primary); `0801696b541568`, named in every earlier
+  entry, is STOPPED. Target the primary explicitly:
+  `flyctl proxy 15433:5433 <primary>.vm.nuzantara-postgres.internal -a nuzantara-postgres`
+  on Pro (the only host with Fly auth), then `ssh -N -L 15433:127.0.0.1:15433 pro`
+  from M5. Check `pg_is_in_recovery()` is `f` before minting anything.
+- `~/.config/nuzantara/visa-signing/activation-operator-password` is NOT the
+  superuser password — it belongs to the persistent login role
+  `visa_activation_operator`. The superuser (`postgres`) password is the machine's
+  `OPERATOR_PASSWORD`: fetch it machine-side on Pro into a 0600 file
+  (`flyctl ssh console -a nuzantara-postgres --machine <primary> -C "printenv
+OPERATOR_PASSWORD" > ~/.tmp/visa-ceremony/su.pw`), read it into a shell variable,
+  delete the file at cleanup. Never print it.
+- Ephemeral logins `visa_pack_writer_ceremony_<yymmdd>` (`IN ROLE visa_pack_writer`)
+  and `visa_activation_ceremony_<yymmdd>` (`IN ROLE visa_activation_executor`),
+  `VALID UNTIL` +3h, `GRANT CONNECT` each; cleanup = `REVOKE CONNECT` then `DROP
+ROLE`, then `select count(*) from pg_roles where rolname like 'visa_%_ceremony_%'`
+  must read 0.
+- While Pro's `flyctl proxy` was open, M5's own read-only tunnel
+  (`com.nuzantara.fly-pg-tunnel`, :15432) died "during handshake" and respawned by
+  itself ~30 s after the ceremony proxy closed (two WireGuard proxies on one
+  account). Expect `scripts/pg.sh` on M5 to be unavailable for the ceremony's
+  duration; verify through the sentinel on Pro or after the respawn.
+
+## Signing + activation note (2026-10-08, seq-26)
+
+`rulepack-prod-026.signed.json` (seq-25 plus `duration_options` on E31A–E31J; stamps
+unchanged) was signed offline on M5, `kid: prod-2026-07-1`, `signed_at`
+2026-10-08T08:58:04Z, `payload_sha256`
+`05511184caf05119ac0adf644601e322d845c276faad3146ea243c507cf23b7f`, version `2026.10.8`,
+`rule_pack_id 16cdbc81-c9b0-5475-b7cf-63f642c140b5`, chained to the signed seq-25
+(`603f777e…9d11`). Activation is the same two-login ceremony as above on the PG primary
+`5683e090f3d228`, run from Pro: `activation_id` `1c7ac00b-7c5e-44e9-8efc-392d03fb47ef` at `2026-10-08T10:08:02Z`.
+
+Prove-live (2026-10-08): POST /api/visa-oracle/evaluate with the E31 spouse persona + intent.stay_days → pack 26, E31A duration_options [(365, 11.000.000), (730, 15.000.000)]; 365 → 365, 730 → 730, 1095 → 730 + extension_required; Fly build f43d4ac0a0.
+
+Gotchas measured this run:
+
+- GitHub answered HTTP 499 to `enablePullRequestAutoMerge` for minutes; arm in a retry loop
+  with a pause, do not conclude the PR cannot be armed.
+- `merge=union` on `PENDING-ARMS.md` turns an edit of an existing row into a silent
+  duplicate (the old and the new line both survive); fold the row by hand after the merge.
+- A fresh gate compares a receipt `ts` with the commit dates: a receipt typed after its
+  commit is a BLOCK. Capture the timestamp with `date -u` at the moment of the read.
+
+## Signing + activation note (2026-10-10, seq-27)
+
+`rulepack-prod-027.source.json` is the weekly re-attestation organ's candidate (organ PR #8105, head `a2ceaeeef8`; the same payload under JCS, the file Prettier-formatted as the pre-commit hook requires, which does not move the digest). Its read ledger is
+`research/visa/2026-10-08-organ-reattest-seq27/` (without a second copy of the candidate file): the 18 `OFFICIAL_PORTAL` sources of the signed
+seq-26 re-stamped to `2026-10-08T13:21:22Z` (verified_by `organ-sonnet-20261008`), chained to
+seq-26 (`05511184…3b7f`), version `2026.10.8`, `rule_pack_id b0fd0791-98c5-5132-8905-8985c6ed4803`,
+`payload_sha256` `a9098744e0cd8369fb4fe9ca5bef851705cf43dabb1c69398b63b36985cb42d0`. Rules,
+products (every E31A–J `duration_options`) and the 10 non-portal records are byte-identical to
+seq-26. The new freshness boundary is `2026-11-09T13:21:22Z` (32 days), against seq-26's
+`2026-11-08T13:32:18Z`.
+
+All 18 judgements are `judge: fingerprint`: the visible-text fingerprint of each page equals the
+attested read of 2026-10-07 (`no model consulted`). No model read the pages; the session that signs
+this pack does its own adversarial check, recorded in the evidence pack. The generic fold re-run
+from the ledger reproduces the source byte for byte (`TestLedger` in `test_seq27_pack.py`).
+
+Signing and activation follow the seq-26 recipe above (`sign_pack` with `--kid prod-2026-07-1
+--environment PRODUCTION --sequence 27 --i-know-this-is-production`, key file
+`~/.config/nuzantara/visa-signing/2026-07-prod-1.ed25519.pem` on M5; then the two-login activation
+on the PG primary via `activate_pack`). Signed offline on M5 on 2026-10-10 (`signed_at`
+2026-10-10T03:42:26Z); the bundle lands in the same PR as the source, so `TestSignedBundleTiesToSource`
+and `scripts/ci/observe_visa_seq27_signed.py` are green at merge. The council seat that ran on
+the default Codex account model (`gpt-6-astra`) is recorded under that name and kept out of the quorum;
+`codex exec` from `~/.codex` needs an explicit `-m gpt-5.6-sol` to sit the titolare seat.
+
+## Signing + activation note (2026-10-11, seq-28)
+
+`rulepack-prod-028.signed.json` is the weekly re-attestation organ's re-stamp of seq-27 plus four
+owner-decided content edits, signed in ONE signing. Read ledger:
+`research/visa/2026-10-11-organ-reattest-seq28/` (organ PR #8289, head `0e56a429a1`, superseded by
+this PR). The organ's pure candidate (the 18 `OFFICIAL_PORTAL` stamps moved to
+`2026-10-11T18:00:16Z`, verified_by `organ-sonnet-20261011`, nothing else) has JCS digest
+`6db76810d95a927646c37c6513055ac24e7033df5a0a138cc02d907ab99766fb`; the generic fold on the ledger
+reproduced it byte for byte before the content edits were applied. Signed offline on M5 by the owning
+session `nuzantara-57`, `kid: prod-2026-07-1`, `signed_at` 2026-10-11T22:53:04Z (the value inside the
+bundle), `sign_pack` self-verified, version `2026.10.11`, `rule_pack_id
+b383effb-eea4-5890-9a6a-0f13d816e855`, `payload_sha256`
+`a23a5bf55a77a658aef4ff06637cdb6fea476c5569d3d47a56896af2b8557046`, chained to the signed seq-27
+(`previous_payload_sha256` `a9098744e0cd8369fb4fe9ca5bef851705cf43dabb1c69398b63b36985cb42d0`),
+sequence 27 to 28, `rollback_of_payload_sha256` null. Rules 113 to 114.
+
+The four content items (owner decisions, Zero, 2026-10-11):
+
+1. The organ re-stamp of the 18 portal sources (pure candidate above).
+2. E33E carries its own 5-year price key `E33E Second Home Senior (5 Years)` (IDR 45,000,000,
+   one price, stay fixed at 1825 days) instead of `Retirement (Offshore)`.
+3. `AGE_BELOW_55` on E33E/E33F is scoped to the RETIREMENT purpose (`hf.e33e.age-below-55`,
+   `hf.e33f.age-below-55` modified).
+4. E33G requires `work.annual_foreign_income_usd >= 60000` (`el.e33g.remote-work` modified) and a
+   new hard filter `hf.e33g.annual-income-below-minimum` excludes REMOTE_WORK below USD 60,000 with
+   `on_unknown: NO_EFFECT` (Pasal 63(2) of Permenkumham 22/2023, "paling sedikit US$60.000 per tahun").
+
+New earliest portal freshness boundary: `2026-11-12T18:00:16Z` (stamp + 32 days), against seq-27's
+`2026-11-09T13:21:22Z`. Seq-29 is due before it; the organ alerts at T-7.
+
+Pre-signing review, none of it the organ or the build lane: the W141 check (18/18 fingerprints
+recomputed, 18/18 live re-read HTTP 200 and equal; 17 `judge: fingerprint` rows plus 1 model-judged
+row, the Bridging page `3da72c7b`, which the signing session read itself), the independent adversary
+(persona walk on the folded source, no blocking defect), and the two-titolare council, both `SIGN`:
+codex `gpt-5.6-sol` (rollout `01a12c37-3f73-76a0-8cff-c14c82f4067f`) and kimi `k3` (session
+`session_f95638dc-ca65-48e9-bdc5-c3c44a91dbd9`). Detail and receipts:
+`evidence/2026-10/agent-mini-pro2-backend-rag-vo-seq28c-fold-1011-c669824d/` and the attestation
+`research/visa/2026-10-11-organ-reattest-seq28-attestation.md`. The bundle was signed at file sha256
+prefix `fc3cf948731087f2` and Prettier-formatted after signing (as seq-25/26/27; the husky Prettier check
+requires it), file prefix now `00f1d66dd0d77f52`; the signature covers the JCS payload, so
+`payload_sha256` is re-verified unchanged and the signed-bundle tie tests pass on the formatted file.
+The bundle lands in the same PR as the
+source, so `TestSignedBundleTiesToSource` and `scripts/ci/observe_visa_seq28_signed.py` are green at
+merge, and so is the mouth pin of `E33G_ANNUAL_INCOME_THRESHOLD_USD`.
+
+**Activation: PENDING.** It happens from Pro right after merge, the same two-login ceremony as the
+seq-25 and seq-26 notes above, on the PG primary. The `activation_id` and timestamp are recorded in the
+follow-up ledger PR; nothing is recorded here until the ceremony has run.
 
 ## Rotation
 

@@ -12,6 +12,7 @@
         "intent.purposes": ["REMOTE_WORK"],
         "intent.stay_days": 180,
         "process.application_channel": "OFFSHORE",
+        "work.annual_foreign_income_usd": 60000,
         "work.employer_country_code": "FR",
         "work.indonesia_source_compensation": false
       },

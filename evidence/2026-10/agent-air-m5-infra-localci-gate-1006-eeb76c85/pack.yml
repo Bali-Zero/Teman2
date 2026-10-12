@@ -1,0 +1,140 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-GATE pasted by Zero into a Fable 5.1 window on 2026-10-06 and confirmed by him in the same
+  session ("execute all": ground, decision spec, first PR armed, fresh Opus 5.5 gate). Design artifact:
+  docs/specs/localci-gate-2026-10-06.md. First step of the chosen shape: scripts/localci/hosted_compare.py.
+lanes:
+  - lane: localci-gate-design-build
+    role: build
+    seat: "claude-fable-5-1 (imperator window opened by Zero; ground, spec, comparator, tests, this pack)"
+  - lane: localci-gate-redteam
+    role: review
+    seat: "codex-gpt-6.1-sol (codex-companion 1.0.6, read-only, effort high)"
+  - lane: localci-gate-refuter
+    role: review
+    seat: "agy-gemini-3.1-pro (agy --sandbox --model gemini-3.1-pro-high, prompt-only)"
+  - lane: localci-gate-final-gate
+    role: review
+    seat: "claude-opus-5-5 (fresh session outside the chain; final on-disk gate, published as harness/fable-gate)"
+council_run: council-journal.jsonl
+seat_override: >-
+  Two external families reviewed the candidate (OpenAI Codex and Google Gemini 3.1 Pro), but only one line counts
+  for R9: the Codex home's configured default is gpt-6.1-sol and the roster still names codex-gpt-5.6-sol, so the
+  Codex line is journalled under its true name and does not qualify. The seat was not renamed to fit the roster.
+seat_fallback_reason: >-
+  The reserve agy-gemini-3.1-pro stood in because both remaining titular seats were dead at dispatch (arsenal_probe
+  2026-10-06T08:03:06Z): kimi TIMEOUT twice, tp1-qwen3.8-max QUOTA_DEAD (HTTP 429, monthly plan quota, reset
+  2026-10-11); tp1-glm-5.2 shares that quota.
+pii_scan: clean
+pii_scan_note: Code, a decision spec and GitHub check metadata only; no client data was read or written.
+what_changed: |
+  scripts/localci/hosted_compare.py (new): read-only comparator. Reads the live required contexts, the check runs
+  and the commit statuses of a local run's candidate sha through bare GETs, and classes every required context as
+  AGREE, FALSE_GREEN, FALSE_RED, LOCAL_BLIND or HOSTED_PENDING. The hosted side is order-free and red-dominant and
+  honours the pinned app_id; a hosted document for another repo, branch or commit is refused.
+  scripts/localci/tests/test_hosted_compare.py (new): guilt and innocence corpus, offline.
+  scripts/localci/README.md: one command row and one section for the comparator.
+  docs/specs/localci-gate-2026-10-06.md (new): the decision — hosted writes, local predicts, execution may move
+  later through a runner; per-context table; operator-only steps; meta-pattern.
+proof: |
+  See receipts. Nothing in this change posts a status, edits branch protection, registers a runner or touches a
+  workflow: the comparator's only GitHub calls are GETs and its corpus asserts that on the live path.
+bites:
+  consumer: >-
+    docs/specs/localci-gate-2026-10-06.md §2 (its agreement line and local column are this tool's output) and the
+    Dux of any later local-CI mission at GROUND.
+  observation: >-
+    Pro, 2026-10-06, live GETs against run dir gate-ground-1006-f42fd16429 (candidate f42fd16429, hosted green):
+    one row per live required context, agreement=0/14, local_blind=14, false_green=0, hosted_pending=0, drift none,
+    unpinned_source=11/14, exit 0.
+ground:
+  ts: "2026-10-06T07:26:59Z"
+  siblings: >-
+    No open PR touched scripts/localci or docs/specs/localci at probe time; nine open PRs touched other workflow
+    files and none of this change's paths. Broker leases showed no local-CI lane. Four peer sessions were live on
+    M5, none on these paths. Fleet mailbox carried nothing addressed to this lane.
+spend:
+  adversarial_rounds: 1
+  wall_clock_hours: 7
+appetite_exceeded: >-
+  Wall clock ran from the first ground probe (2026-10-06T07:24Z) to the pre-push sibling probe (14:18Z), about
+  7 hours against a declared 6. Most of it was waiting: two external reviews and two gate passes ran in the
+  background and the window sat idle between their notifications. Adversarial rounds stayed inside the appetite.
+receipts:
+  - claim: Live protection requires 14 contexts; 11 carry no pinned app_id; merge queue ruleset 19779175 is active with enforce_admins true.
+    cmd: gh api repos/Bali-Zero/Teman2/branches/main/protection ; gh api repos/Bali-Zero/Teman2/rules/branches/main
+    exit: 0
+    ts: "2026-10-06T07:24:00Z"
+    seat: claude-fable-5-1 on M5
+  - claim: No self-hosted runner is registered; the repository is public, org-owned, with no licence; fork-PR approval is first_time_contributors.
+    cmd: gh api repos/Bali-Zero/Teman2/actions/runners ; gh api repos/Bali-Zero/Teman2 ; gh api repos/Bali-Zero/Teman2/actions/permissions/fork-pr-contributor-approval
+    exit: 0
+    ts: "2026-10-06T07:27:00Z"
+    seat: claude-fable-5-1 on M5
+  - claim: The ten workflows behind the required contexts ran 1585 times in the last 24 h, about 133 hosted job-hours (runs times mean job-minutes of the 6 newest runs per workflow).
+    cmd: gh api "repos/Bali-Zero/Teman2/actions/workflows/<file>/runs?created=>=<24h ago>" and .../actions/runs/<id>/jobs, per workflow
+    exit: 0
+    ts: "2026-10-06T07:36:00Z"
+    seat: claude-fable-5-1 on M5
+  - claim: The local runner v0.3.1 on Pro ends BLOCKED on hosted-green f42fd16429 with every required context BLOCKED or UNCOVERED.
+    cmd: python -m scripts.localci.runner plan --base HEAD~1 --contexts-file scripts/localci/contexts_matrix.yaml ; run ; status (run dir gate-ground-1006-f42fd16429)
+    exit: 0
+    ts: "2026-10-06T07:34:25Z"
+    seat: claude-fable-5-1 driving Pro over ssh
+  - claim: The comparator, run live on Pro against that run dir, reports agreement=0/14 with local_blind=14 and unpinned_source=11/14.
+    cmd: python3.12 scripts/localci/hosted_compare.py ~/.nuzantara-pilots/local-ci/gate-ground-1006-f42fd16429/status.json
+    exit: 0
+    ts: "2026-10-06T08:20:00Z"
+    seat: claude-fable-5-1 driving Pro over ssh
+  - claim: The comparator corpus is green, and each of fifteen single-rule mutants of the comparator turns it red; the gate's own eight found one survivor ('error' no longer red), cured by a corpus row.
+    cmd: python -m pytest -q scripts/localci/tests/test_hosted_compare.py ; the same after each in-place mutation, source restored byte-identical
+    exit: 0
+    ts: "2026-10-06T08:18:00Z"
+    seat: claude-fable-5-1 on M5
+  - claim: No workflow runs scripts/localci/tests.
+    cmd: grep -rnE 'scripts/localci' .github/workflows/*.yml
+    exit: 1
+    ts: "2026-10-06T07:45:00Z"
+    seat: claude-fable-5-1 on M5
+dissent:
+  - seat: codex-gpt-6.1-sol
+    objection: "Hosted verdict by 'latest entry wins': a same-named commit status that failed, a red run from the pinned app beside a newer green from another app, two same-named runs, or non-UTC and missing timestamps all read AGREE with exit 0 (reproduced)."
+    status: CONFIRMED
+    resolution: "The hosted verdict is now order-free and red-dominant, counts only the pinned app's entries toward green, and compares no timestamp. Corpus rows for each reproduction; four mutants on these rules are killed."
+  - seat: codex-gpt-6.1-sol
+    objection: "The combined-status read took one page only; a red required status on page two was missed (reproduced). Same point raised by the Gemini seat."
+    status: CONFIRMED
+    resolution: "Check runs and statuses are both paged to the short page, a failed page or a page cap refuses the comparison. Corpus rows; one mutant killed."
+  - seat: codex-gpt-6.1-sol
+    objection: "A required set of [{}] produced required=0, agreement=0/0, exit 0; fixtures were not bound to repo, branch or sha, so a document for another commit was reported under this one (both reproduced)."
+    status: CONFIRMED
+    resolution: "A nameless, duplicate or empty required set is refused; a hosted document must carry the same repo, branch and sha, and a check run of another commit refuses it. Corpus rows; four mutants killed."
+  - seat: codex-gpt-6.1-sol
+    objection: "The GET-only test checked a helper and some strings; swapping the real call for a POST left it green (reproduced)."
+    status: CONFIRMED
+    resolution: "The corpus now replaces subprocess.run on the live path and asserts every argv is exactly gh, api, path. The POST mutant is killed."
+  - seat: agy-gemini-3.1-pro
+    objection: "Exit 0 while required contexts are still HOSTED_PENDING lets an incomplete comparison read as clean."
+    status: CONFIRMED
+    resolution: "Exit 3 = incomplete. Severity lowered from the seat's BLOCKER: the tool gates nothing."
+  - seat: agy-gemini-3.1-pro
+    objection: "Attachment is not an impossibility: merge-group refs can be polled; Pen is curable with a dedicated OS user and a pinned GitHub App; shape C was rejected on premises that are curable. Codex adds that a separate CI controller was never weighed and 'the only honest route' overclaims."
+    status: CONFIRMED
+    resolution: "Spec §1 now states each blocker as true today with its cure and owner; §3 adds shape D (separate controller) and rejects it as dominated by the runner route, not as impossible; 'each sufficient' and 'only honest route' are gone."
+  - seat: agy-gemini-3.1-pro
+    objection: "Capacity arithmetic: the VM can be resized, so a 6x ratio is wrong. Codex adds that 133 job-hours is hosted workload of whole workflows, not Pro throughput, so Capacity is not an independently proven blocker."
+    status: CONFIRMED
+    resolution: "Capacity is now 'unproven, not disproven': 5.5 hosted-size jobs on average against 3.5 for the whole machine, a ~1.6x per-job speed needed at full utilisation, the ratio unmeasured, a timed canary named as the settling measurement."
+  - seat: codex-gpt-6.1-sol
+    objection: "Going private drops free hosted minutes and needs a Code Security entitlement for CodeQL; 'safe to extend to tests.yml' ignores the spec's own Tier R conditions; Tier R gives no independence from a GitHub control-plane outage; sampling merged shas only keeps the survivors and a re-run can erase a hosted red."
+    status: CONFIRMED
+    resolution: "Spec §5 items 1 and 3, §7 and the Tier L promotion rule (§4.2) rewritten accordingly: rejected candidates required, pairs stored when observed."
+  - seat: claude-opus-5-5
+    objection: "Final gate on ee2bfcaa4a, PASS with notices: the red-dominance wording overstates the live path (GitHub lists only the latest attempt of each check); the corpus did not pin the 'error' status state as red; the brief named a test that no longer exists; the spec's 369 local tests and 165 ubuntu-latest jobs were not reproduced (252 collected before this change, 166 on this tree); reading classic protection only is an unlisted residual; a hand-forged status.json with an out-of-vocabulary verdict reads LOCAL_BLIND."
+    status: CONFIRMED
+    resolution: "Cured in the follow-up commit on this branch: wording in the docstring, README and spec §8, an 'error' row in the corpus, the brief's probe name, both numbers, the residual. The forged-status case stays as documented behaviour: a real runner cannot emit it and blind is never green."
+owed:
+  - Run scripts/localci/tests in a hosted job (spec §4 step 2); until then the comparator's corpus has no hosted consumer.
+  - After merge, re-run the comparator on Pro from main and record the output on the PR (prove-live).
+  - Operator-only steps of spec §5, first of all pinning app 15368 on the 11 unpinned required contexts.
+  - The council roster still names codex-gpt-5.6-sol while the Codex home defaults to gpt-6.1-sol.

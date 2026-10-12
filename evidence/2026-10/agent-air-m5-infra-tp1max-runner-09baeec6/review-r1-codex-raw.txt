@@ -1,0 +1,58 @@
+# Reviewer r1 raw answer — PR #7889, verbatim excerpt of the Codex CLI transcript.
+# Source: codex_review.txt, 216236 bytes, 2359 lines, sha256 bb52060a3fd3d46c707e1749a71a359c193a08acc1fcb136bb0f6eb98adacc51
+# Kept verbatim: lines 1-15 (header + prompt), 2243-2264 (the findings message), 2348-2359 (closing answer).
+# Omitted: the tool trace in between (file dumps of the reviewed scripts, sandbox hooks). No redaction was needed.
+# Credential/PII scan (token shapes, key names, emails, other users' home paths) on the FULL transcript: 0 hits except
+# 6 email-shaped false positives, all an escaped newline before @pytest.mark.parametrize; positive control fired on every pattern.
+
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/infra-tp1max-runner
+model: gpt-6-astra
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 01a10ad2-4e26-73d0-a668-8a69b455da9f
+--------
+user
+You are an adversarial reviewer. Review ONLY scripts/tp1_batch_runner.py and scripts/test_tp1_batch_runner.py in the current directory (read scripts/tp1_call.py only to check the imported contracts). The runner must: never pay twice for a finished job on rerun; stop dispatch at the first hard quota/auth error and never fall through to any other endpoint; stop at --stop-at, the kill file and --token-budget; back off on rate limits; write results/heartbeat atomically enough to survive a crash; run on Python 3.9. Find concrete defects with file:line: fail-open stop conditions, a quota error misclassified as retryable, loops that can spin or hang, double dispatch, lost rows, races, tests that pass for the wrong reason. No style remarks. For each finding: file:line, severity, defect, why it matters. If none, say NONE.
+hook: SessionStart
+[... lines 16-2242: tool trace omitted ...]
+codex
+1. **P1 — [scripts/tp1_batch_runner.py:302](/Users/balizero/nuzantara/.worktrees/infra-tp1max-runner/scripts/tp1_batch_runner.py:302): la ripresa conserva la riga troncata.** Il nuovo risultato viene accodato direttamente al frammento JSON, creando un’altra riga illeggibile. Riprodotto: il test a `scripts/test_tp1_batch_runner.py:153` passa, ma al terzo avvio `j1` viene inviato nuovamente. Il test non verifica il file risultante né un ulteriore riavvio.
+
+2. **P1 — [scripts/tp1_batch_runner.py:248](/Users/balizero/nuzantara/.worktrees/infra-tp1max-runner/scripts/tp1_batch_runner.py:248): manca uno stato persistente prima dell’invio.** Un crash dopo una risposta pagata, ma prima della registrazione del risultato, lascia il job indistinguibile da uno mai inviato. La ripresa lo paga nuovamente. Riprodotto simulando un errore prima della scrittura del risultato.
+
+3. **P1 — [scripts/tp1_batch_runner.py:246](/Users/balizero/nuzantara/.worktrees/infra-tp1max-runner/scripts/tp1_batch_runner.py:246): vengono inviati altri job prima di esaminare errori già completati.** Il ciclo riempie la concorrenza prima di leggere i future conclusi. Riprodotto: prima risposta `401` già disponibile, ma quattro chiamate inviate con concorrenza quattro. I test auth/quota usano concorrenza uno e nascondono il difetto.
+
+4. **P1 — [scripts/tp1_batch_runner.py:148](/Users/balizero/nuzantara/.worktrees/infra-tp1max-runner/scripts/tp1_batch_runner.py:148): il messaggio viene troncato prima della classificazione.** Un `429` con `insufficient_quota` all’inizio e oltre 300 caratteri successivi perde l’indicazione decisiva. Riprodotto: il messaggio completo è `quota`, quello restituito diventa `rate`; il runner continua con retry invece di fermarsi subito.
+
+5. **P1 — [scripts/tp1_batch_runner.py:97](/Users/balizero/nuzantara/.worktrees/infra-tp1max-runner/scripts/tp1_batch_runner.py:97): HTTP 200 prevale anche su un errore quota esplicito.** `classify(200, "insufficient_quota")` restituisce `ok`. Una risposta applicativa d’errore trasportata con HTTP 200 viene registrata come `no_answer`, senza arrestare la coda. Riprodotto: tre chiamate e uscita zero.
+
+6. **P1 — [scripts/tp1_batch_runner.py:79](/Users/balizero/nuzantara/.worktrees/infra-tp1max-runner/scripts/tp1_batch_runner.py:79): alcune indicazioni inequivocabili di esaurimento non vengono riconosciute.** `429 / monthly token quota exceeded` diventa `rate`; `400 / insufficient balance` diventa `rejected`. Nel primo caso vengono effettuati retry; nel secondo vengono inviati i job successivi, senza arresto globale.
+
+7. **P1 — [scripts/tp1_batch_runner.py:151](/Users/balizero/nuzantara/.worktrees/infra-tp1max-runner/scripts/tp1_batch_runner.py:151): budget fail-open quando manca `usage`.** L’assenza dei contatori viene convertita in zero, permettendo ulteriori chiamate pagate senza contabilizzarle. Riprodotto: budget di un token, dieci risposte riuscite senza `usage`, dieci invii e uscita zero.
+
+8. **P1 — [scripts/tp1_batch_runner.py:154](/Users/balizero/nuzantara/.worktrees/infra-tp1max-runner/scripts/tp1_batch_runner.py:154): un `usage` non-dizionario causa il retry di una risposta già pagata.** Con `usage: ["malformed"]`, `.get()` solleva un’eccezione; `settle()` la trasforma in errore transitorio. Riprodotto: due HTTP 200 per lo stesso job, poi risultato `failed`. Il nuovo test copre soltanto un valore numerico malformato dentro un dizionario.
+
+9. **P2 — [scripts/tp1_batch_runner.py:145](/Users/balizero/nuzantara/.worktrees/infra-tp1max-runner/scripts/tp1_batch_runner.py:145): `--timeout` non impone il limite temporale dichiarato.** Il contratto importato usa `urlopen(timeout=...)` seguito da `read()`: una risposta che continua ad arrivare lentamente può superare indefinitamente il limite. Il runner attende tutti i future anche dopo kill file o deadline, quindi può restare bloccato senza terminare.
+
+10. **P2 — [scripts/test_tp1_batch_runner.py:105](/Users/balizero/nuzantara/.worktrees/infra-tp1max-runner/scripts/test_tp1_batch_runner.py:105): il test del backoff non verifica l’attesa.** Controlla risultati e concorrenza, senza controllare quando avviene il retry. Riprodotto: azzerando `pause_until` dopo ogni risposta, il test passa comunque.
+
+Riproduzioni offline sulla versione aggiornata. Python 3.9 verificato sintatticamente; runtime 3.9 non disponibile.
+[... lines 2265-2347: tool trace omitted ...]
+codex
+Verifica registrata con successo: test offline e riproduzioni dei difetti passano sulla versione revisionata. I 10 rilievi restano validi; la verifica conferma le riproduzioni, non approva il codice.
+
+Python 3.9 verificato solo sintatticamente.
+hook: Stop
+hook: Stop Completed
+tokens used
+106.477
+Verifica registrata con successo: test offline e riproduzioni dei difetti passano sulla versione revisionata. I 10 rilievi restano validi; la verifica conferma le riproduzioni, non approva il codice.
+
+Python 3.9 verificato solo sintatticamente.
+with_seat: seat=codex fingerprint=1966a2c4d7988750 exit_status=0

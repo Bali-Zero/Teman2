@@ -626,6 +626,7 @@ _BASELINE_FACTS: dict[str, dict[str, Any]] = {
     "work.serves_indonesian_clients": {"status": "KNOWN", "value": False},
     "work.indonesia_source_compensation": {"status": "KNOWN", "value": False},
     "work.indonesian_work_sponsor_confirmed": {"status": "KNOWN", "value": False},
+    "work.annual_foreign_income_usd": _UNKNOWN_NOT_ASKED,
     "investment.pt_pma_committed": {"status": "KNOWN", "value": False},
     "investment.investment_capital_idr": {"status": "KNOWN", "value": 0},
     "investment.paid_up_capital_idr": {"status": "KNOWN", "value": 0},

@@ -17,16 +17,28 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime, timedelta
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    GetJsonSchemaHandler,
+    SerializerFunctionWrapHandler,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema
 
 from backend.services.visa_engine.enums import SourceAuthorityType, SourceStatus
 from backend.services.visa_engine.models import (
     ApplicantFacts,
     Decision,
     ExtensionPolicy,
+    PricingKey,
     ProductCode,
     ProductNames,
     ReasonCode,
@@ -411,6 +423,33 @@ class CandidateProcessingTimelineDTO(BaseModel):
     anchor_date: date | None
     estimated_completion_from: date | None
     estimated_completion_to: date | None
+    # Additive: the working-day window behind an AVAILABLE estimate; absent when UNKNOWN.
+    working_days_min: int | None = Field(default=None, ge=0, le=365, strict=True)
+    working_days_max: int | None = Field(default=None, ge=0, le=365, strict=True)
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        # The after-validator wraps the model schema, so the serializer sits one level down.
+        def untyped_serialization_free(node: Any) -> Any:
+            if not isinstance(node, dict):
+                return node
+            kept = {key: value for key, value in node.items() if key != "serialization"}
+            if node.get("type") == "function-after" and "schema" in kept:
+                kept["schema"] = untyped_serialization_free(kept["schema"])
+            return kept
+
+        return handler(untyped_serialization_free(core_schema))
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_working_days(self, handler: SerializerFunctionWrapHandler) -> Any:
+        # An UNKNOWN timeline answers byte-identically to before these keys existed.
+        data = handler(self)
+        for key in ("working_days_min", "working_days_max"):
+            if data.get(key) is None:
+                data.pop(key, None)
+        return data
 
     @field_validator("observed_at")
     @classmethod
@@ -427,9 +466,15 @@ class CandidateProcessingTimelineDTO(BaseModel):
         if self.status is ProcessingTimelineStatus.UNKNOWN:
             if any(value is not None for value in dates):
                 raise ValueError("UNKNOWN processing timeline cannot carry dates")
+            if self.working_days_min is not None or self.working_days_max is not None:
+                raise ValueError("UNKNOWN processing timeline cannot carry working days")
             return self
         if any(value is None for value in dates):
             raise ValueError("AVAILABLE processing timeline requires all dates")
+        if self.working_days_min is None or self.working_days_max is None:
+            raise ValueError("AVAILABLE processing timeline requires its working-day window")
+        if self.working_days_min > self.working_days_max:
+            raise ValueError("processing window minimum cannot exceed its maximum")
         assert self.anchor_date is not None
         assert self.estimated_completion_from is not None
         assert self.estimated_completion_to is not None
@@ -438,6 +483,19 @@ class CandidateProcessingTimelineDTO(BaseModel):
         if self.estimated_completion_to < self.estimated_completion_from:
             raise ValueError("processing estimate end cannot precede its start")
         return self
+
+
+class DurationOptionDisplayDTO(BaseModel):
+    """One purchasable stay length with its own exact catalogue resolution."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    days: int = Field(ge=1, le=36_500, strict=True)
+    pricing_key: PricingKey
+    selected: bool
+    status: PricingAvailabilityStatus
+    reason_code: ReasonCode
+    amount_idr: int | None = Field(default=None, ge=0, strict=True)
 
 
 class CandidateDisplayDTO(BaseModel):
@@ -453,6 +511,32 @@ class CandidateDisplayDTO(BaseModel):
     processing_timeline: CandidateProcessingTimelineDTO
     availability: CandidateAvailabilityDTO
     pricing: CandidatePricingDTO
+    # Additive: present only for products that offer more than one stay length.
+    selected_duration_days: int | None = Field(default=None, ge=1, le=36_500, strict=True)
+    duration_options: tuple[DurationOptionDisplayDTO, ...] | None = Field(
+        default=None, min_length=1
+    )
+    # True when the requested stay is longer than the last option: the permit is then
+    # extended, so the quote covers the last option only.
+    extension_required: bool | None = Field(default=None, strict=True)
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        # The wrap serializer below returns a dict, which Pydantic documents as an
+        # untyped schema. The OpenAPI contract must keep the typed shape.
+        return handler({key: value for key, value in core_schema.items() if key != "serialization"})
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_duration_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
+        # A product without options answers exactly as it did before these fields
+        # existed: the public response must not grow null keys the old contract rejects.
+        data = handler(self)
+        if self.duration_options is None:
+            for key in ("selected_duration_days", "duration_options", "extension_required"):
+                data.pop(key, None)
+        return data
 
 
 class VisaOracleDisplayDTO(BaseModel):
@@ -595,6 +679,7 @@ __all__ = [
     "CandidateStayPolicyDTO",
     "DisclosedReviewFlag",
     "DocumentationStatus",
+    "DurationOptionDisplayDTO",
     "EvaluateResponseMode",
     "PricingAvailabilityStatus",
     "ProcessingTimelineStatus",

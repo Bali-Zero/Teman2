@@ -23,6 +23,7 @@ from backend.tests.services.visa_engine.gold_replay import _persona_expected
 from backend.tests.services.visa_engine.test_evaluator_gold import (
     PERSONAS,
     PRODUCTION_REPLAY_EXPECTATIONS,
+    production_replay_expectations_for_sequence,
 )
 
 _GOLD_AT = gf.GOLD_EFFECTIVE_AT
@@ -101,11 +102,12 @@ def test_all_canonical_personas_map_to_the_real_wire_model() -> None:
         # 2026-08-24 F4/PR #4719 adds `immigration.renewal_paid`; 45→46
         # PR-D4c-1 adds `investment.investment_amount_usd`; 46→56 W-VO-S21
         # adds the ten seq-21 qualification booleans; 56→57 Slice A7-B
-        # (2026-09-21) adds `person.guardian_consent`): the count
+        # (2026-09-21) adds `person.guardian_consent`; 57→58 seq-28 Step A
+        # adds `work.annual_foreign_income_usd`): the count
         # is derived structurally above from `ApplicantFactsData.model_fields`
         # aliases, so this literal is a redundant pin, not the source of
         # truth — bump it in lockstep whenever that model gains a field.
-        assert len(payload["facts"]) == 57
+        assert len(payload["facts"]) == 58
         assert payload["disclosed_review_flags"] == []
 
 
@@ -267,11 +269,20 @@ def test_offline_replay_match_count_does_not_regress_below_measured_floor() -> N
     NOT laundered into the expectation:
 
     * persona 1: an Indonesian citizen remains outside the foreign visa set
-      under UU 6/2011 jo. UU 63/2024;
+      under UU 6/2011 jo. UU 63/2024 (cured 2026-10-08, see below);
     * persona 9: the described direct C1-to-E28A onshore conversion remains
       unsupported under Permenkumham 22/2023 jo. 11/2024;
     * persona 10: the described status-bridging route remains adviser-review
       work under the same regulation.
+
+    Floor raised 2026-10-08 to 18/20 and the ceiling lowered to 2, measured
+    against signed pack sequence 25: persona 1 already reached
+    ``NO_SUPPORTED_PATH`` with the citizen exclusion; only its code list was
+    incomplete (the other products' own hard filters fire on the same facts
+    since seq-23), so its expectation now names all four codes.  Personas 9
+    and 10 stay divergent on purpose: no rule in any production pack reads
+    ``process.application_channel``, so the engine cannot tell an onshore
+    conversion or a status-bridging request from an offshore one.
 
     The previous floor was measured 2026-08-23:
     ``python -m backend.scripts.visa_engine.gold_replay_driver --offline``
@@ -301,20 +312,74 @@ def test_offline_replay_match_count_does_not_regress_below_measured_floor() -> N
 
     summary = report["summary"]
     assert summary["personas_total"] == 20
-    assert summary["personas_match"] >= 17, (
+    assert summary["personas_match"] >= 18, (
         f"gold-persona offline replay regressed below the measured floor: "
-        f"{summary['personas_match']}/20 matched (floor=17), "
+        f"{summary['personas_match']}/20 matched (floor=18), "
         f"{summary['unexplained_divergences']} unexplained divergences "
-        f"(ceiling=3) against pack sequence={report['pack']['sequence']}"
+        f"(ceiling=2) against pack sequence={report['pack']['sequence']}"
     )
-    assert summary["unexplained_divergences"] <= 3
+    assert summary["unexplained_divergences"] <= 2
     unexplained_persona_ids = {
         row["persona_id"]
         for row in report["personas"]
         if row["divergence"]
         and (not isinstance(row["explanation"], str) or not row["explanation"].strip())
     }
-    assert unexplained_persona_ids == {1, 9, 10}
+    assert unexplained_persona_ids == {9, 10}
+    _assert_engine_gap_pinned(report)
+
+
+# How personas 9 and 10 diverge TODAY (seq-25): the engine ignores the application
+# channel, so both answer the pre-investment visit visa with no reason code at all.
+# Pinned so that a silent worsening (a new state, a different candidate, a new reason
+# code) fails here instead of hiding behind "still personas 9 and 10".
+_ENGINE_GAP_ACTUALS = {
+    9: {
+        "state": "SUPPORTED_CANDIDATES",
+        "candidate_products": ["D12"],
+        "review_reason_codes": [],
+        "no_path_reason_codes": [],
+    },
+    10: {
+        "state": "SUPPORTED_CANDIDATES",
+        "candidate_products": ["D12"],
+        "review_reason_codes": [],
+        "no_path_reason_codes": [],
+    },
+}
+
+
+def _assert_engine_gap_pinned(report: dict) -> None:
+    rows = {row["persona_id"]: row for row in report["personas"]}
+    for persona_id, pinned in _ENGINE_GAP_ACTUALS.items():
+        actual = {key: rows[persona_id]["actual"][key] for key in pinned}
+        assert actual == pinned, f"persona {persona_id} diverges differently now: {actual}"
+
+
+def test_engine_gap_pin_fails_when_persona_9_gets_worse() -> None:
+    report = driver.build_offline_report(generated_at=_OFFLINE_AT)
+    _assert_engine_gap_pinned(report)
+
+    row = next(row for row in report["personas"] if row["persona_id"] == 9)
+    row["actual"]["state"] = "NO_SUPPORTED_PATH"
+    row["actual"]["candidate_products"] = []
+    with pytest.raises(AssertionError, match="persona 9 diverges differently now"):
+        _assert_engine_gap_pinned(report)
+
+
+_PERSONA_1_PRE_SEQ23_EXPECTATION = ("APPLICANT_IS_INDONESIAN_CITIZEN",)
+
+
+def test_persona_1_expectation_matches_the_highest_pack_and_the_old_one_does_not() -> None:
+    report = driver.build_offline_report(generated_at=_OFFLINE_AT)
+    row = next(row for row in report["personas"] if row["persona_id"] == 1)
+    expected = production_replay_expectations_for_sequence(report["pack"]["sequence"])[1]
+
+    assert row["divergence"] is False
+    assert row["actual"]["state"] == "NO_SUPPORTED_PATH"
+    assert tuple(row["actual"]["no_path_reason_codes"]) == expected.no_path_codes
+    assert "APPLICANT_IS_INDONESIAN_CITIZEN" in expected.no_path_codes
+    assert tuple(row["actual"]["no_path_reason_codes"]) != _PERSONA_1_PRE_SEQ23_EXPECTATION
 
 
 def test_every_production_expectation_has_a_named_legal_basis() -> None:

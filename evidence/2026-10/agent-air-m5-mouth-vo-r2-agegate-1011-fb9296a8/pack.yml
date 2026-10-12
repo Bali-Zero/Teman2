@@ -1,0 +1,104 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 ("Avviso più Continua") on the E33/retirement program — before this, the visitor answered the
+  whole retirement branch only to learn at the end that the retirement routes start at 55; the notice comes right
+  after the tile choice and never blocks.
+mission: >-
+  A retirement visitor under 55 learns it right after choosing the tile, not after answering the whole branch.
+lanes:
+  - lane: vo-r2-agegate
+    role: build
+    seat: Claude Sonnet 5 implementer (subagent), worktree mouth-vo-r2-agegate-1011 on M5; rebase and evidence by Claude Opus 5.5 (ship session).
+  - lane: vo-r2-ground-truth
+    role: ground_truth
+    seat: >-
+      the newest signed production rule pack (rulepack-prod-027), whose hf.e33e / hf.e33f age-below-55 rules
+      the 55 threshold mirrors; the change asserts no rule of its own and a Vitest pins RETIREMENT_MIN_AGE to it.
+    nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-027.signed.json
+    query_hash: "662c824712cb3ffa495a05748312f46b0358515cbed0c6841e06b636482f2aa9" # pragma: allowlist secret
+    note: query_hash = sha256 of rulepack-prod-027.signed.json at origin/main.
+pii_scan: clean
+bites:
+  consumer: >-
+    the public Visa Oracle interview at balizero.com/visa-oracle: the retirement_age_notice screen shown to a
+    retirement visitor under 55 (OracleShell, QuestionScreen).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_retirement_age_notice.py
+  expect: "contains:retirement age notice holds"
+receipts:
+  - claim: The whole visa-oracle Vitest tree passes at the final head.
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 53 passed (53), Tests 1398 passed (1398)"
+    exit: 0
+    ts: "2026-10-11T13:14:13Z"
+    seat: this session (ship session, head after the e2e fix)
+  - claim: The census pytest passes (age notice visited iff age below 55; outcome pins unchanged).
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "53 passed, 14 skipped"
+    exit: 0
+    ts: "2026-10-11T13:18:01Z"
+    seat: this session (ship session, head after the e2e fix)
+  - claim: The enumerator dry-run proves the bound with every edge covered.
+    cmd: cd apps/mouth && npx tsx scripts/visa-oracle/enumerate-interview-space.cli.ts --dry-run
+    result: "bound=PROVEN edgesRequired=324 edgesCovered=324 edgesMissing=0 maxDepth=27"
+    exit: 0
+    ts: "2026-10-11T13:19:33Z"
+    seat: this session (ship session, head after the e2e fix)
+  - claim: The walk corpus regenerates byte-identical at head 99c72e7ece6d (no diff).
+    cmd: npm run visa-oracle:walk-corpus -w apps/mouth
+    result: "regenerated, git status clean (byte-identical)"
+    exit: 0
+    ts: "2026-10-11T12:50:00Z"
+    seat: final gate (fresh Opus seat, run at 99c72e7ece6d)
+  - claim: The bites observer passes at the final head and accepts only a full pass of at least 6 tests.
+    cmd: python3 scripts/ci/observe_visa_oracle_retirement_age_notice.py
+    result: "Tests 6 passed (6); retirement age notice holds"
+    exit: 0
+    ts: "2026-10-11T13:08:12Z"
+    seat: this session (ship session, head after the e2e fix)
+  - claim: The observer's summary parser rejects skipped, todo, failed and reduced counts.
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_retirement_age_notice.py
+    result: "10 passed"
+    exit: 0
+    ts: "2026-10-11T12:05:00Z"
+    seat: this session (build rebase; test file unchanged since)
+  - claim: The legacy client-copy guard stays green with the new strings.
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3568 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-11T13:06:26Z"
+    seat: this session (ship session, head after the e2e fix)
+  - claim: apps/mouth typechecks.
+    cmd: cd apps/mouth && npx tsc --noEmit
+    result: "no output"
+    exit: 0
+    ts: "2026-10-11T13:08:47Z"
+    seat: this session (ship session, head after the e2e fix)
+decisions:
+  - id: D-notice-never-blocks
+    decision: >-
+      Continue is the only tree option and fail-open: the notice informs, the signed pack still decides, so the
+      enumerator walk count and memo are unchanged. Second Home and Change my answers are secondaryActions rendered
+      by OracleShell, outside the tree.
+  - id: D-age-mirrors-engine
+    decision: >-
+      ageYearsAt mirrors derived.age_years (UTC, birthday-inclusive, leap-day births on 1 March); an unusable or
+      future birth date shows no notice. RETIREMENT_MIN_AGE is exported and pinned by a test to the newest signed pack.
+  - id: D-known-items-not-fixed
+    decision: >-
+      Not fixed here, by design: the no-path-doors replay evidence is still at seq 23 (fingerprint re-pinned only), and
+      "Second Home has no age condition" was deliberately omitted from the copy (not test-pinned elsewhere).
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM - the bites observer claims EN and ID plus a real Second Home branch, but the shell test is English only and stops at the generic trip_scope after Look at Second Home."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: a Bahasa Indonesia UI case (heading, date, three actions, group name) and the Second Home case now answers trip_scope and waits for q.secondhome_basis; MIN_TESTS raised to 6 and its pytest re-pinned."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+    objection: "LOW - the main notice compares a date of birth with an age, and 'the retirement visas' sounds broader than the two routes anchored in the pack."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: EN and ID copy reworded to 'routes checked here require applicants to be at least 55 ... you are under 55'."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T09-20-16-01a1288b-db59-7421-b7a4-4e52e21d49d7.jsonl, model verified in the rollout file)"
+    objection: "LOW - secondary actions have no visual hierarchy and their role=group has no accessible name."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: an oracle-option-card--secondary style and a localized group label (q.retirement_age_notice.other_routes) passed through a new QuestionScreen prop; asserted in the ID test."

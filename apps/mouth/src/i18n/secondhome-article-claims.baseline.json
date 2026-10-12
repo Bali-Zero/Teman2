@@ -17,7 +17,7 @@
   "immigration/business-visit-vs-work-visa-indonesia-guide.mdx | /\\bIDR\\s*2[.,]?000[.,]?000\\b/i | 4a84c4913c5462a363b72d76bcefbdcace31ac556d138a959ee3973d3acbd16c": 1,
   "immigration/business-visit-vs-work-visa-indonesia-guide.mdx | /\\bguaranteed\\b/i | 3bef1aa0c038cd9a137d0d688c4ae88c1dabff92003c9171cd9f16c215f944c8": 1,
   "immigration/dkp-tka-foreign-worker-registration.id.mdx | /\\bIDR\\s*2[.,]?000[.,]?000\\b/i | 3e58773b437b5cf5f2f95a514034dd584281474da62097d2854e93a1b0658d03": 1,
-  "immigration/dkp-tka-foreign-worker-registration.it.mdx | /\\bIDR\\s*2[.,]?000[.,]?000\\b/i | e3f563999daa06ce782cc3a9606f471a31eee0da97bc4fa604b00c54a8ad0022": 1,
+  "immigration/dkp-tka-foreign-worker-registration.it.mdx | /\\bIDR\\s*2[.,]?000[.,]?000\\b/i | 258451f7402cf8749282588020ee0d08f01a40fe3c196b18f500cca355a911bc": 1,
   "immigration/dkp-tka-foreign-worker-registration.mdx | /\\bIDR\\s*2[.,]?000[.,]?000\\b/i | fc103dc1333487ec2ad5cee31d3994cddcd9ad8ca6abacac96b4d841cb716743": 1,
   "immigration/e-voa-electronic-visa-on-arrival-guide.fr.mdx | /\\bgaranti(?:e|s|es)?\\b/i | 2125b364263a2b10d49f8c56d1e698bd1b0c71eb86005b4d753856853e91ac67": 1,
   "immigration/e-voa-electronic-visa-on-arrival-guide.id.mdx | /\\bIDR\\s*2[.,]?000[.,]?000\\b/i | 694d8f074ad9d6213e28a26eb6a1018fbc6e357a1dac74d4cf6e5dd0d878d4d6": 1,

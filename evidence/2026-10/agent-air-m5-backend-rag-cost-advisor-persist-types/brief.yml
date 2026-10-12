@@ -1,0 +1,31 @@
+task: >-
+  The weekly LLM cost advisor on Pro (com.nuzantara.cost-advisor-weekly) exited 1 on its 2026-10-12 07:00 WITA run:
+  persist_recommendations' INSERT ... SELECT uses $1-$3 both in the SELECT list (resolved as text) and in the NOT EXISTS
+  predicate (deduced varchar), and asyncpg's PREPARE raises AmbiguousParameterError. Latent since 2026-05-19, masked by an
+  earlier DB-password failure that was cured live on 2026-10-11 by running the job through scripts/wr2-cron-wrapper.sh.
+  Cast the parameters, prove it against a real Postgres, and align the repo plists with the live wrapper invocation.
+lane: backend-rag
+machine: m5
+date: 2026-10-12
+gear: 2
+gear_reason: >-
+  Measured floor; campaign rule after #8079: at least gear 2 so harness-floor holds for the independent final gate. The
+  defect was invisible to the mocked unit tests, so the proof is a real-Postgres test with a guilt replay.
+acceptance:
+  A1:
+    text: >-
+      persist_recommendations prepares and runs on a real Postgres: first insert 1, same triple within 7 days 0, a new
+      proposed_model 1, numeric and boolean values read back intact.
+    probe: >-
+      apps/backend-rag/backend/tests/db/test_cost_advisor_persist_real_postgres.py (db_tx, rolled back); with the casts
+      removed it fails with AmbiguousParameterError.
+  A2:
+    text: >-
+      The repo plists for cost-advisor-weekly and cost-advisor-daily-cap run the module through
+      scripts/wr2-cron-wrapper.sh, as the live Pro plists do.
+    probe: plutil -lint; comparison with plutil -p of the live plists on Pro.
+  A3:
+    text: >-
+      After merge and Pro's checkout reaching the merge commit, a run of com.nuzantara.cost-advisor-weekly on Pro exits 0
+      and logs no AmbiguousParameterError.
+    probe: launchctl print (last exit code) and ~/Library/Logs/cost-advisor-weekly.err on Pro.

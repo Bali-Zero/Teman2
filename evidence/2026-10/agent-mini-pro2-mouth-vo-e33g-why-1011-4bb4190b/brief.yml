@@ -1,0 +1,20 @@
+gear: 1
+gear_reason: >-
+  Size floor is gear 1 (copy-only diff of four files, tests included, well under 400 churn). It touches
+  one i18n string pair and the tests that pin it; no tree, flow, corpus, backend or pricing change.
+mission: >-
+  The E33G income question tells the visitor only what is true both before and after seq-28 activates, and names no figure.
+objective: >-
+  The why-copy of the Remote worker yearly-income question reads, in EN and ID, a sentence that is true while
+  the engine still ignores the fact and once it uses it, and carries no threshold figure; both hints and both
+  why strings are pinned exactly, the threshold-naming guard catches written and numeric spellings, and the
+  innocence loop actually runs.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n-census.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/copy-truth.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/remote-income-question.test.ts
+  - evidence/2026-10/agent-mini-pro2-mouth-vo-e33g-why-1011-4bb4190b/
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

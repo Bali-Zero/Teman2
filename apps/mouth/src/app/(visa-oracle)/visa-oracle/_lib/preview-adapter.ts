@@ -1,4 +1,4 @@
-import { NEXT_STEPS as ENGINE_NEXT_STEPS } from "./engine-adapter";
+import { nextStepsFor } from "./engine-adapter";
 import {
   findGoldOraclePersona,
   goldOracleReviewReasonCode,
@@ -93,7 +93,7 @@ function buildGoldOraclePreviewOutcome(
     sources: [],
     // Real engine copy, not the developer-preview NEXT_STEPS above — see the
     // export site's doc comment in engine-adapter.ts for why this must match.
-    nextSteps: ENGINE_NEXT_STEPS,
+    nextSteps: nextStepsFor("HUMAN_REVIEW_REQUIRED"),
     conditions: [],
     reviewReasons: [GOLD_ORACLE_REVIEW_REASON],
   };

@@ -1,0 +1,106 @@
+{
+  "all_fail": {
+    "calls": [
+      "token1",
+      "token3",
+      "token4",
+      "token5",
+      "token6",
+      "legacy",
+      "keychain",
+      "nonclaude-agy",
+      "nonclaude-kimi",
+      "nonclaude-codex",
+      "nonclaude-ollama",
+      "nonclaude-fm"
+    ],
+    "rc": 1,
+    "stderr": [
+      "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 falling back to the single default seat",
+      "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 seat-state precheck disabled, cascade unaffected",
+      "[claude-cascade] starting (prompt 15 chars, agent='', model='')",
+      "  [try] claude-token-1-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "  [error] claude-token-1-env exit=1",
+      "  [try] claude-token-3-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "  [error] claude-token-3-env exit=1",
+      "  [try] claude-token-4-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "  [error] claude-token-4-env exit=1",
+      "  [try] claude-token-5-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "  [error] claude-token-5-env exit=1",
+      "  [try] claude-token-6-team-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "  [error] claude-token-6-team-env exit=1",
+      "  [try] claude-token-legacy-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "  [error] claude-token-legacy-env exit=1",
+      "  [try] claude-keychain (<tmp>/home/.local/share/mise/shims/claude)",
+      "  [error] claude-keychain exit=1",
+      "  [try] Gemini agy (Gemini 3.1 Pro)",
+      "  [error] agy (Gemini 3.1 Pro) exit=1",
+      "  [try] Kimi Code K3",
+      "  [error] Kimi K3 exit=1",
+      "  [try] tier4 codex [.codex]",
+      "  [error] tier4 codex [.codex] exit=1",
+      "  [try] tier5 ollama qwen3.5:9b local",
+      "  [error] ollama exit=1",
+      "  [try] tier6 fm apple-on-device",
+      "  [error] fm exit=1",
+      "[claude-cascade] ALL TIERS FAILED"
+    ],
+    "stdout": ""
+  },
+  "dead_slot_then_answer": {
+    "calls": ["token1", "token3"],
+    "rc": 0,
+    "stderr": [
+      "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 falling back to the single default seat",
+      "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 seat-state precheck disabled, cascade unaffected",
+      "[claude-cascade] starting (prompt 15 chars, agent='', model='')",
+      "  [try] claude-token-1-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "  [error] claude-token-1-env exit=1",
+      "  [try] claude-token-3-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "[claude-cascade] used: claude-token-3-env"
+    ],
+    "stdout": "answer-three\n"
+  },
+  "first_slot_answers": {
+    "calls": ["token1"],
+    "rc": 0,
+    "stderr": [
+      "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 falling back to the single default seat",
+      "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 seat-state precheck disabled, cascade unaffected",
+      "[claude-cascade] starting (prompt 15 chars, agent='', model='')",
+      "  [try] claude-token-1-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "[claude-cascade] used: claude-token-1-env"
+    ],
+    "stdout": "answer-one\n"
+  },
+  "rate_limited_then_second_answers": {
+    "calls": ["token1", "token3"],
+    "rc": 0,
+    "stderr": [
+      "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 falling back to the single default seat",
+      "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 seat-state precheck disabled, cascade unaffected",
+      "[claude-cascade] starting (prompt 15 chars, agent='', model='')",
+      "  [try] claude-token-1-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "  [retry] claude-token-1-env quota/auth failure",
+      "  [try] claude-token-3-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "[claude-cascade] used: claude-token-3-env"
+    ],
+    "stdout": "answer-three\n"
+  },
+  "retired_slot_in_the_middle": {
+    "calls": ["token1", "token3", "token4"],
+    "rc": 0,
+    "stderr": [
+      "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 falling back to the single default seat",
+      "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 seat-state precheck disabled, cascade unaffected",
+      "[claude-cascade] starting (prompt 15 chars, agent='', model='')",
+      "  [try] claude-token-1-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "  [retry] claude-token-1-env quota/auth failure",
+      "  [try] claude-token-3-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "  [error] claude-token-3-env returned empty output",
+      "  [try] claude-token-4-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "[claude-cascade] used: claude-token-4-env"
+    ],
+    "stdout": "answer-four\n"
+  }
+}

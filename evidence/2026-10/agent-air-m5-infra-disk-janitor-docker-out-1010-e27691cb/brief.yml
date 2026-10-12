@@ -1,0 +1,27 @@
+task_id: disk-janitor-docker-out-1010
+mission: LOCALCI-SOVEREIGN (Pro disk janitor, step 1 of 3)
+colour: BLUE
+gear: 3
+gear_reason: >-
+  The lint floor is 3 by path (scripts/disk_janitor.sh and its wrapper are hot-zone); the change removes steps from a
+  daily APPLY organ that deletes files on Pro.
+l_level: L2
+gate_class: opus
+objective: >-
+  The LOCALCI lead ruled on 2026-10-10 that the Colima VM has one owner, scripts/localci/prune.py (images only by
+  explicit tag, never by age; it also trims the guest after every tick). pro.disk_janitor ran daily in APPLY with an
+  age prune of tagged docker images (older than 30 days by build time), an anonymous-volume prune (another owner's
+  data), a dangling-image prune and a builder prune that race prune.py's accounting, and colima fstrim (a second
+  actor on the same VM). All five leave, first and on their own, before the new pro.janitor organ lands.
+constraints:
+  - Every other step (scratch, codex, logarch, qdrant, uv with its lock check, restic, brew), the receipt keys, the protected paths, the kill switch, dry-run default and bash 3.2 stay as they are.
+  - ~/.colima stays a protected root.
+acceptance:
+  - text: A full --apply run SHALL invoke no docker, docker-compose, colima, limactl or nerdctl, and its receipt and log SHALL name none of them.
+    probe: "scripts/test_disk_janitor.sh TEST 10: the recording shims, the receipt and log checks"
+  - text: No executable line of scripts/disk_janitor.sh SHALL call docker or the VM, by name, by path or through the docker socket.
+    probe: "scripts/test_disk_janitor.sh TEST 10: the static detector with its nine probed forms"
+consumer_map:
+  - launchd organ pro.disk_janitor on Pro (com.nuzantara.disk-janitor, daily), its receipts in ~/logs/disk-janitor.receipts.jsonl.
+pii_scan: clean
+pii_scan_note: A bash janitor, its test fixtures under tmp and a wrapper comment. No client data.

@@ -1,0 +1,13 @@
+# Review by codex gpt-6.1-sol (O2 default model, effort none), verbatim; NOT a counted council seat
+
+VERDICT: OK
+
+- INFO .github/workflows/fleet-burst-tests.yml:77 — Nessuna dipendenza omessa: suite, dispatcher, watcher e `seat_watchdog.sh` compaiono in entrambi i filtri. Gli altri script citati dal dispatcher appartengono a comandi non esercitati. — Comandi: `cat scripts/tests/test_ai_dispatch_shared_watchdog.sh`, `cat scripts/pr_watch.sh`, `rg -n 'source|\.sh|\.py|exec|bash ' scripts/tests/test_pr_watch.sh`; confronto dei filtri con `ruby -ryaml`.
+
+- INFO .github/workflows/fleet-burst-tests.yml:176 — Entrambi gli step diventano rossi con exit 1/137, output vuoto o conteggio insufficiente. Le soglie sono corrette: tre chiamate watchdog e 51 chiamate `check`; i pattern corrispondono agli output effettivi. — Comandi: `rg -c '^check ' scripts/tests/test_pr_watch.sh` → 51; `python3 -c …` con estrazione degli step dal file e sostituzione in memoria delle suite: dieci controlli, tutti conformi.
+
+- LOW scripts/ai-dispatch.sh:237 — Il percorso esercitato contiene `md5 -q`, specifico macOS, ma `|| echo "$RANDOM"` gestisce l’assenza senza interrompere la suite. Nessun altro requisito macOS individuato nel percorso eseguito. Il watchdog usa job control Bash e segnali al gruppo, senza `ps`, `setsid` o `timeout`. — Comandi: `nl -ba scripts/ai-dispatch.sh | sed -n '225,246p'`; `cat scripts/lib/seat_watchdog.sh`.
+
+- INFO .github/workflows/fleet-burst-tests.yml:127 — Dieci minuti sembrano adeguati al percorso nominale: circa 121 secondi aggiunti; il watcher usa intervallo zero e fixture terminali. Non ho confermato durata completa né comportamento dei gruppi di processi su un runner Ubuntu: sessione macOS in sola lettura, suite non eseguite.
+
+- INFO .github/workflows/fleet-burst-tests.yml:173 — YAML valido, step esistenti e ordine preservati; nessun errore statico rilevato. — Comandi: `actionlint .github/workflows/fleet-burst-tests.yml`, `ruby -ryaml …` → 12 step, `bash -n` sui cinque file coinvolti, `git diff --check origin/main -- .github/workflows/fleet-burst-tests.yml`.

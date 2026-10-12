@@ -1,0 +1,34 @@
+task_id: visa-seq27-land
+mission: visa-reattest-seq27
+gear: 3
+gear_reason: >-
+  A rule pack for the Visa Oracle production engine under apps/backend-rag/** (hot zone). The
+  unsigned source is inert until the orchestrator signs and activates it on M5, but it is the
+  artifact that will be signed: it re-stamps the 18 portal sources that gate every evaluation,
+  and seq-26 stops being fresh on 2026-11-08T13:32:18Z. Hand-written part is about 330 lines of
+  tests and a runbook note; the pack and the ledger are byte copies of organ PR #8105.
+l_level: L2
+gate_class: opus
+ruling: >-
+  Zero, 2026-10-10 — sign and activate seq-27 now (the weekly re-attestation organ's candidate).
+mission_text: >-
+  seq-27 = the signed seq-26 with its 18 OFFICIAL_PORTAL source records re-stamped from the organ's
+  read ledger of 2026-10-08. No rule, product, price key or duration option moves. This branch lands
+  the unsigned source, the ledger, the tests and the observer; the orchestrator adds the signature.
+objective: >-
+  rulepack-prod-027.source.json chains to the signed seq-26 digest, moves only identity and the 18
+  portal stamps, is reproduced byte for byte by the generic fold from the ledger, and its freshness
+  boundary is 2026-11-09T13:21:22Z; once signed, the highest signed pack on disk reads seq-27.
+constraints:
+  - Rules, products, E31A-J duration_options and the 10 non-portal source records are byte-identical to seq-26.
+  - The 18 judgements are judge=fingerprint (visible text identical to the attested read of 2026-10-07); no model read the pages. This is stated in the test, the runbook and the pack, not softened.
+  - Do not sign, do not add rulepack-prod-027.signed.json, do not activate, do not push.
+appetite:
+  wall_clock_hours: 2
+acceptance:
+  - text: WHEN seq-27 is compared with the signed seq-26 THEN only identity and the 18 portal verified_at/verified_by SHALL differ, and the chain SHALL be the seq-26 payload digest.
+    probe: backend/tests/services/visa_engine/test_seq27_pack.py::TestIntegrity
+  - text: WHEN the ledger is folded by fold_pack_generic THEN the result SHALL equal the committed source, and a ledger missing a receipt SHALL be refused.
+    probe: backend/tests/services/visa_engine/test_seq27_pack.py::TestLedger
+  - text: WHEN seq-27 is signed THEN the bundle SHALL verify against the production key and tie byte for byte to the source.
+    probe: backend/tests/services/visa_engine/test_seq27_pack.py::TestSignedBundleTiesToSource

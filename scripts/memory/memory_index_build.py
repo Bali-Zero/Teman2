@@ -148,14 +148,17 @@ def build_index(memdir: str) -> tuple[str, dict]:
             frontmatter_less += 1
 
         desc, hits = redact((fm.get("description") or "").strip())
-        if hits:
-            pii_offenders.append(fn)
+        title, title_hits = redact(title)
+        redacted_fn, filename_hits = redact(fn)
         if len(desc) > DESC_MAX:
             desc = desc[: DESC_MAX - 1].rstrip() + "…"
 
         typ = classify_type(fn, (fm.get("metadata") or {}).get("type"))
+        typ, type_hits = redact(typ)
+        if hits or title_hits or type_hits or filename_hits:
+            pii_offenders.append(redacted_fn)
         dkey = date_key(fn, os.path.getmtime(path))
-        by_type.setdefault(typ, []).append((dkey, f"- {title}: {desc} ({fn})"))
+        by_type.setdefault(typ, []).append((dkey, f"- {title}: {desc} ({redacted_fn})"))
 
     for typ in by_type:
         by_type[typ].sort(reverse=True)

@@ -7,6 +7,135 @@ CURRENT POSITION block in SKILL.md in the same commit.
 
 Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE STATE — CURRENT POSITION.
 
+- 2026-10-11 (M5, Zero: "affronta a 360 gradi la sezione retirement … tutto il E33 con i vari index"): **E33/retirement
+  program opened; four PRs live, seq-28 chain planned.** (1) Census (scratch, read-only): interview space 1.1x10^14
+  combinations (exact DAG count); 256 covering walks = 186 SUPPORTED / 57 NO_SUPPORTED_PATH / 9 HUMAN_REVIEW / 4 NEEDS_INPUT,
+  0 errors; offline replay == live 256/256 (determinism); correctness proven only where expectations exist: scenario corpus
+  116/116 (129 after #8258), gold 20/20. (2) E33 audit: 90-agent swarm, 61 confirmed findings (5 HIGH), 20-PR plan, 22 owner
+  decisions. Batch 1 decided by Zero today: (1) ONE seq-28 signing carrying the E33 content fixes + the freshness re-stamp,
+  before 2026-11-05 (boundary 2026-11-09T13:21:22Z); (2) E33G real income gate: interview question on annual
+  foreign-employment income + rule excluding < USD 60,000/yr stating the figure (supersedes the 2026-08-09 "name the check"
+  ruling); (3) retirement under 55: notice right after the tile WITH "Continue"; (4) E33A/B/C "price on consultation", never an
+  invented price. R3 default (drop "who sponsors your stay" from retirement) taken with no objection. Batch 2 still open
+  (documents checklist, onshore prices, property route/Hak Pakai, dependants, deposit commitment timing, 55-59 caveat E33F,
+  E33B/E33C scope, single timeline, F7 articles mislabelling E33A/B, E33D note, extension/10-year model). (3) LIVE, each proven
+  on production: #8246 (`033772cbdc`) dead end with no open door no longer promises one, headless walks EN/ID; #8256
+  (`c4d6ff4005`) Second Home deposit not at a state bank / not own name gets its own reason instead of the age-55 sentence,
+  walks EN/ID + control; #8258 (`17c363faaa`) 13 age-64 retirement walks + per-sequence census pins, census/evaluator legs green
+  on main; #8259 (`666926365c`) E33/E33E price rows no longer say "non-working" (rangkap kegiatan clause, selling prohibited),
+  production knowledge-layer pricing search; E33F rows deliberately unchanged. (4) In flight: #8265 (retirement reasons name USD
+  3,000/month and USD 50,000; merge queue) and #8266 (E33-family copy: no "combination" route, central government, E33B
+  collaboration sentence, E33A/B/C handled with an advisor; armed), prove-live walks pending after promote; R3 in the ship
+  pipeline; R2 (retirement_age_notice with Continue / Look at Second Home / Change answers, RETIREMENT_MIN_AGE=55 pinned to the
+  pack) built, waiting for R3; seq-28 step A (engine accepts work.annual_foreign_income_usd, rollout default NOT_ASKED; backend
+  merge = Fly deploy) in the ship pipeline. (5) seq-28 chain: A engine fact -> B mouth question remote_annual_income_usd +
+  E33G_INCOME_BELOW_THRESHOLD copy (only after A is live) -> C fold_pack_seq28.py on top of the weekly organ's re-stamp candidate
+  (pro.visa_reattestation, Sun 18:00 UTC): E33E pricing_key -> "E33E Second Home Senior (5 Years)" (45M, was "Retirement
+  (Offshore)" 14M), AGE_BELOW_55 rules scoped to RETIREMENT, el.e33g.remote-work gte 60000 + hf.e33g.annual-income-below-minimum;
+  re-derive gold personas 1/3/4 (AGE_BELOW_55 drops) -> D W141 fingerprint check, adversarial seat, two-titolare council (codex
+  gpt-5.6-sol + kimi), sign on M5, two-login activation from Pro; proof = sentinel `OK pack_sequence 28` + /evaluate sequence 28.
+  Target sign/activate ~2026-10-19/20; activation precondition: B live (else every E33G visitor lands on NEEDS_INPUT). Fallback
+  needing Zero's confirmation: if content is not ready by 11-05, sign the plain re-stamp as seq-28 and move content to seq-29.
+  (6) Regulation check (primary sources): Permenimipas 3/2025 Pasal 45 revokes only Pasal 43, 45 and 52-55 of Permenkumham
+  22/2023 as amended by 11/2024 (spouse/child-of-WNI, ex-WNI visas); E33 articles 56-63 stay in force (incl. Pasal 63(2) USD
+  60,000/yr and the 55+ age set by 11/2024); pack copies byte-identical; no citation change for seq-28. Unverified: the
+  peraturan.go.id "revoked" listing for 11/2024 (site unreachable). Follow-up: check whether any E31 rule rests on the revoked
+  Pasal 43/45. (7) Follow-ups are PENDING-ARMS rows of 2026-10-11. (8) Ops: the M5 main checkout was 146 commits behind
+  origin/main on 2026-10-11 and `.claude/skills/visaoracle` is a symlink into it, so M5 sessions read a stale corner skill until
+  the checkout is fast-forwarded (owner action). TRACK C claimed by air-m5/2026-10-11.
+
+- 2026-10-10 (M5, Zero: "sign and launch now" + "occupati tutto tu"): **seq-27 active, three copy/ops PRs live.**
+  seq-27: organ candidate #8105 landed byte-for-byte, signed on M5 03:42:26Z, first landing PR #8204 closed
+  after the fresh gate caught a mislabelled council seat (the Codex run used the `~/.codex` default
+  `gpt-6-astra`; `codex exec` needs `-m gpt-5.6-sol` to sit the titolare seat) — successor #8209 merged
+  05:22:27Z (`2478b87561`), activated 05:23Z from Pro (two-login ceremony, `activation_id 471bddfa-…`, ceremony
+  roles 0), sentinel `OK pack_sequence 27` at 05:23:44Z, `/evaluate` sequence 27 at 05:25:27Z; organ PR #8105
+  closed as superseded. #8205 deleted 46 dead interview keys (the earlier count of 17 was the truth table's
+  scope; all 42 `process.*` were orphaned by #7659). #8207 share summary + typical time (indicative, no dates).
+  #8206 holiday-coverage lane in the freshness sentinel, owner-routed (`visa-holiday-coverage` in
+  `OWNER_FAMILIES`), WITA day; Pro fast-forwarded. Fly deploy of `2478b87561` (pack file + coverage module,
+  no runtime change) followed the merges. iQOO: developer mode re-enabled by the owner, pairing not yet done.
+  Afternoon follow-ups (each gated by a fresh Opus session, then armed): #8218 share summary keeps the price
+  when a candidate has no duration options (it was dropped for most non-E31 products; live 08:25Z on the
+  promoted deploy); #8219 mouth Vitest cap really applies (`maxWorkers: 2`, the old `poolOptions` was ignored
+  since Vitest 4); #8221 holiday lane L1/L3/L4 (Pro tick 16:56 WITA on the new code, still
+  `OK first_gap=2027-11-19`); #8233 i18n dead-key census (gate made it strip comments before scanning); #8231
+  Pro `~/scripts/tg_notify.py` declared and aligned as a symlink (a copied file would have routed board rows
+  into an unread spool). M5 rebooted mid-afternoon; the census and tg_notify lanes were finished by the
+  orchestrator from their committed worktrees.
+
+- 2026-10-09 (M5, client-copy chain C2, C3, C4): **the result page now shows the priced
+  stay-permit length and Bali Zero's typical processing time.** C2 #8124 (`06c3346702`, merged
+  03:22:12Z): under the price "2-year stay permit" and "Also available: 1 year — IDR 11,000,000";
+  live 03:31:23Z on balizero.com/visa-oracle, headless replay of the owner's scenario (Singapore
+  spouse of an E23 holder, 500 days); Vercel built production without a promote. C3 #8129
+  (`1d5a508366`, merged 04:33:53Z): Fly deployed the merge-queue batch head `68b70014a3`, which
+  contains it (`/health` build_sha at 04:51Z); live 04:52:41Z, same scenario: "Typically 7–10
+  working days / If your documents are complete today: around 20 Oct 2026 – 23 Oct 2026 /
+  Indicative Bali Zero timing…". Source: the committed snapshot
+  `backend/data/bali_zero_processing_times_2026.json` of production
+  `visa_types.processing_time_normal`, 37 products; BRIDGING stays UNKNOWN. C4 (interview helper
+  copy): #8119 and #8128 were closed after fresh-gate BLOCKs on false sentences; a per-key truth
+  table was then written from `flow.ts`, `fact-mapper.ts`, `tree.ts` and the seq-26 pack;
+  successors: PR-C4 #8148 merged 2026-10-09T06:27:43Z (`4443d209f1`). Vercel dpl `mouth-jounkfl8j` was aliased about 06:34Z by an automatic promotion, a few minutes after READY. Live 06:34:46Z: on balizero.com/visa-oracle, "Why we ask" on the direction question reads "Your direction decides which questions come next and which visas can fit your plan." and the old "only chooses the next questions" is gone; the full replay still shows the C3 timing and the C2 duration. Predecessors #8119, #8128, #8140 and #8145 were closed after fresh-gate BLOCKs on false sentences, a lost "above" reference, and a red suite. The fix was a per-key truth table written from the code, a Codex full sweep of every changed key (97 rendered + 17 never rendered of 114/115), and the full visa-oracle vitest subtree before push. Rule now in force: an advisor is offered, never promised. Census unchanged (seq-26): 99 SUPPORTED / 13 NO_PATH /
+  1 NEEDS_INPUT / 3 HUMAN_REVIEW of 116 walks. The iQOO device check was blocked (wireless ADB on
+  Pro refused, zero mDNS services). Open: see the 2026-10-09 rows in `PENDING-ARMS.md`.
+  The C4-v5 evidence pack (`evidence/2026-10/agent-air-m5-mouth-visa-oracle-interview-copy-c4-28847009/pack.yml`)
+  cites rotated cure commits in 14 dissent notes; the pack stays as a historical record. Correct
+  mapping: Gemini `b8972352eb`, #8119 gate `2789839fec`, #8128 truth table `57513c5823`, #8140 gate
+  `b1f106c796`, Codex v4 sweep `c5de6ed034`. Its builder seat should read `claude-sonnet-5`.
+
+- 2026-10-08 (afternoon, M5, result-page copy PR-C1 #8102 `11f47173a0`, organ hardening PR-O2
+  #8100 `fa15d34f7e`): **the client stops seeing internal copy, and the organ's first false
+  positive is cured.** Zero's own test of the public page (PDF, 18:32 WITA) showed the price
+  subtitle "One number — no PNBP-vs-fee split, ever." and the block "Timeline unavailable";
+  the backend always emits `processing_timeline.status = UNKNOWN` (`evaluate_path.py:993`).
+  Ruling: internal comments never reach the client, every final response is refined. #8102
+  (successor of #8099, closed when the armed branch froze on red Playwright pins): copy EN+ID per
+  outcome state, `nextStepsFor(state, {studioOnly})`, timeline pending paragraph, print fixes,
+  census test, CI observer; Codex 5 findings (HIGH Studio-only steps cured), Gemini 1 retracted,
+  fresh Opus gate PASS. #8100 (gear 2, Codex two rounds, 8 findings cured, fresh Opus gate PASS):
+  the first organ run (10:11Z) halted on page dcf08e19, a false positive (fingerprint identical to
+  the seq-25 text; stamp `content_sha256` is not that fingerprint, 0 of 18), so the fold now uses a
+  judgement-bound baseline and keeps each ledger under `~/.local/state/nuzantara/`. Kickstart:
+  second real run 2026-10-08T12:46:36Z→12:47:06Z on Pro (post-#8100): `fingerprint: 18 of 18 pages identical to their attested read — judged without a model`, judge skipped, ledger kept at `~/.local/state/nuzantara/visa-reattestation/ledgers/20261008T124704Z-seq26` (18 `judge: fingerprint` rows); the fold then refused on a latent guard: `created_at '2026-10-08T12:47:00Z' precedes the ledger's latest evidence 2026-10-08T12:47:02Z` — `fold_pack_generic.py:440` truncates the default created_at to the minute (pre-existing), exposed by the fingerprint speed; PR-O3 in flight. Prove-live C1: Vercel production build `mouth-fe7se9ybt` of commit 11f4717 went live at 13:10Z on its own (should-build judges against the live commit; no promote was needed); headless replay of Zero's scenario on https://balizero.com/visa-oracle at 2026-10-08T13:25:49Z: Supported, E31B, 'Timeline' → 'Processing times are set by Ditjen Imigrasi and vary by office and season. Your Bali Zero advisor confirms the calendar for your case before you book travel.', under the price 'Government fees and Bali Zero service included.', 'What to do next' = Keep this summary / Send it to a Bali Zero advisor on WhatsApp / Book travel only once the timing is confirmed, the new disclaimer, no '01/01' counter, zero banned strings in the page text (artefacts result-20261008T132549Z.{txt,pdf,png} in the session scratchpad). Open: C2 duration rendering, C3
+  catalogue processing time (owner), C4 interview copy; O2 LOW notes: `judged_read` vs `judged_at`,
+  late alert on a copy failure of a successful run. Third organ run 2026-10-08T13:21:15Z→13:21:42Z (post-#8104 `b6a1cd01d9`): fingerprint 18/18, fold OK, candidate PR #8105 unsigned. seq-27 candidate = organ PR #8105: a signing session reviews the attestation note, signs on M5, runs the ceremony, merges — before 2026-11-08T13:32:18Z (the candidate's own boundary moves to ~2026-11-09).
+
+- 2026-10-08 (M5, W141 pending chain closed, seq-26, PR #8081 `f43d4ac0a0`): **the
+  1- or 2-year ITAS is now a duration option on E31A–J, and the re-attestation lane is built.**
+  Chain, all merged 2026-10-08: #8061 `128421062c` seq-24 observer retired; #8062 `2ef5d23c92`
+  generic fold for any anchor; #8064 `02543f1c51` sentinel v2 (STALE re-alerts inside 24 h, only
+  a `sent` Telegram counts); #8065 `1596326357` engine duration options, live on Fly; #8066
+  `80d9256a23` gold drift (persona 1 cured, floor 18/20, personas 9/10 pinned as an engine gap);
+  #8069 `8ec655a508` `portal_judge.py` and per-fetch receipts; #8075 `9d5c082288` organ
+  `pro.visa_reattestation`. seq-26 predecessors #8078 and #8080 were closed by the Builder
+  Contract after one fresh-gate BLOCK each. Ruling (Zero): duration option on the same product,
+  one all-inclusive price per option, never PNBP. seq-26 = seq-25 + `duration_options` on E31A–J
+  (Dependent 11.000.000 / 15.000.000 IDR offshore), `stay_policy FIXED_DAYS 365..730`, stamps
+  unchanged (boundary **2026-11-08T13:32:18Z**), signed `2026-10-08T08:58:04Z` kid
+  `prod-2026-07-1`, payload `05511184…3b7f`, `rule_pack_id 16cdbc81-c9b0-5475-b7cf-63f642c140b5`,
+  version `2026.10.8`. Ceremony: activation `1c7ac00b-7c5e-44e9-8efc-392d03fb47ef` at `2026-10-08T10:08:02Z` on the PG primary
+  `5683e090f3d228`. Organ installed `2026-10-08T10:11:50Z (bootstrap + kickstart on Pro)`, first run first real run 2026-10-08T10:11:50Z→10:18:17Z on Pro (launchd runs=1, exit 0 from the wrapper; organ rc=2): the 18 OFFICIAL_PORTAL pages were read and judged through the Claude CLI; the fold REFUSED by design — reader verdict `changed` on dcf08e19 (imigrasi-alih-status-itk-itas-service-page) with no disposition.json entry — HIGH board row `visa-reattestation:fold:seq26` written, heartbeat `error rc=2`; the organ is armed and its halt-on-change path is the proof. Prove-live:
+  sentinel `OK pack 26 (stale 0, approaching 0)`, gold replay `18/20 live on seq-26, unexplained {9, 10} only, HUMAN_REVIEW_REQUIRED 0`. Open: seq-27 before the boundary;
+  `checked_sentence` has no minimum length; #8081 evidence-pack header stale; personas 9/10
+  ruling; E31 mouth UI for both durations (Track C).
+  Live evaluate probe: POST /api/visa-oracle/evaluate with the E31 spouse persona + intent.stay_days → pack 26, E31A duration_options [(365, 11.000.000), (730, 15.000.000)]; 365 → 365, 730 → 730, 1095 → 730 + extension_required; Fly build f43d4ac0a0.
+
+- 2026-10-07 (M5, freshness re-stamp seq-25, PR #8026, merge `2a1e00e0d3`): **production
+  moved seq-23 → seq-24 → seq-25 in one ceremony (13:49Z).** The 18 `OFFICIAL_PORTAL` stamps
+  had been STALE since 2026-10-01T13:18Z (32-day window from the 2026-08-30 stamp), every
+  product folding to `HUMAN_REVIEW_REQUIRED` with an empty candidate list — second occurrence,
+  scar W141 (sentinel fired into a 401-dead Telegram token, then dedup-muted). seq-25 re-derives
+  `verified_at = 2026-10-07T13:32:18Z` from a read ledger written during the reading
+  (`research/visa/2026-10-07-freshness-restamp-seq25/`: receipts at request time, three
+  parallel readers' judgements, disposition by id, saved visible text); the fold validates every
+  receipt and judgement (Codex BLOCK → cured) and ties the saved text to the receipt fingerprint
+  (Gemini HIGH → cured). Rules/products byte-identical to seq-24; 8 "changed" verdicts
+  dispositioned (pages offer a 1-or-2-year ITAS, the pack models 1 year — modelling gap, owner
+  ruling pending). Next boundary **2026-11-08T13:32:18Z**; re-attestation still not an organ.
+  Prove-live: sentinel `OK pack 25 stale 0`, gold replay live 20/20, `HUMAN_REVIEW_REQUIRED 0`.
+
 - 2026-09-11 (Mini, Codex verification — decisiveness/review-reason coverage): **The public
   explanation mechanism exists and renders, but the requested 100% coverage does not hold.**
   Audit at `be45266252f4e1ccbaf19d2b81c73f03af676e05`, Pro/Mini synchronized.

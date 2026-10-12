@@ -59,6 +59,10 @@
       "status": "KNOWN",
       "value": true
     },
+    "work.annual_foreign_income_usd": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "investment.pt_pma_committed": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"

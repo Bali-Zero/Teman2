@@ -413,7 +413,7 @@ def test_real_env_fingerprint_carries_the_required_evidence(fx, monkeypatch):
     env = runner.env_fingerprint(PY, spec)
     for k in ("python", "pytest", "platform", "hostname", "runner_sha256", "git_version", "deps_lock_sha256", "deps_lock_source", "uv_version", "runner_version"):
         assert k in env
-    assert env["python"].startswith(sys.version.split()[0]) and env["runner_version"] == "0.3.1"
+    assert env["python"].startswith(sys.version.split()[0]) and env["runner_version"] == runner.RUNNER_VERSION == "0.6.0"
     assert len(env["deps_lock_sha256"]) == 64 and env["deps_lock_source"] in ("pip", "uv")
     assert env["tools"]["c.tool"]["sha256"] not in ("not-a-file", None) and os.path.isabs(env["tools"]["c.tool"]["path"])
     assert env["tools"]["c.gone"] == {"path": None, "sha256": "not-a-file"}
@@ -444,8 +444,20 @@ def test_real_contexts_matrix_loads_and_never_yields_pass_while_it_has_blocked_c
     fr.green(fx, tmp_path, "--contexts-file", str(MATRIX), with_contexts=False)
     s = fr.status(fx)
     blocked = [n for n, v in c["map"].items() if v["mapping"] in ("blocked", "not_implemented")]
-    assert s["overall"] == ("BLOCKED" if blocked else "SUBSET_PASS") and s["overall"] != "PASS"
+    # no mapping is `blocked` any more (the CodeQL contexts are executed), but this fixture plans without a container: every executed context's
+    # check is BLOCKED, so the overall still reads BLOCKED — the claim under test is that a matrix run here is never PASS
+    assert s["overall"] == "BLOCKED"
     assert set(blocked) <= set(s["contexts"]["blocked"])
+
+
+def test_the_corpus_check_also_runs_the_gate_flags_corpus_from_base(tmp_path):
+    red = "import unittest\n\n\nclass T(unittest.TestCase):\n    def test_flags(self):\n        self.fail('the flag math is wrong')\n\n\nif __name__ == '__main__':\n    unittest.main()\n"
+    fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "scripts/ci/test_security_gate_flags.py": fr.REAL_REPO.joinpath("scripts/ci/test_security_gate_flags.py").read_text()},
+                      {"scripts/ci/test_security_gate_flags.py": red})   # BASE's corpus is red; the candidate's copy is the real, green one
+    fr.plan(fx)
+    fr.run(fx, "--only", "policy.trusted_classifier_corpus")
+    c = fr.load_state(fx)["checks"]["policy.trusted_classifier_corpus"]
+    assert c["status"] == "FAIL" and "the flag math is wrong" in Path(c["log"]).read_text()   # security.yml runs it beside test_change_map.py
 
 
 def test_secret_env_rule_is_an_entity_not_a_spelling():
@@ -595,7 +607,7 @@ def test_trusted_pytest_runs_after_the_seal_because_it_executes_candidate_code(t
             assert ends[n] <= boundary, n                    # runner-planned cmd verdicts are sealed
         elif spec["kind"] in ("trusted_pytest", "pytest"):
             assert starts[n] >= boundary, n                  # anything that runs candidate code starts after the seal
-    assert runner.TRUSTED_KINDS == ("cmd",)
+    assert runner.TRUSTED_KINDS == ("cmd", "trusted_steps")
     with pytest.raises(SystemExit):
         runner.main(["status", "--run-dir", str(fx["run"]), "--seal", "ab"])   # a 2-char prefix would match almost anything
 
@@ -628,6 +640,20 @@ def test_unclassified_paths_is_not_a_failure(tmp_path):
     assert plan["checks"]["tests.backend_shards"]["status"] == "BLOCKED"
 
 
+def test_a_legacy_record_is_superseded_once_the_context_that_runs_its_job_is_planned(tmp_path):
+    """tests.backend_shards said "no local backend runner exists"; once ctx.backend-tests is planned, that check carries the job's
+    verdict (here BLOCKED: --isolation none), and the legacy record stops claiming one of its own."""
+    fx = fr.make_repo(tmp_path, {**fr.CANDIDATE_FILES, "zzz_unmapped_dir/notes.txt": "x\n"})   # run_all: the legacy rule says BLOCKED
+    ctx = {"name": "Backend Tests (Python)", "workflow_file": ".github/workflows/tests.yml", "job_id": "backend-tests", "mapping": "executed",
+           "local": {"check": "ctx.backend-tests", "where": "container", "expressions": True, "steps": [{"workflow_step": "t"}]}}
+    fr.plan(fx, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "contexts.yaml", [ctx])))
+    checks = json.loads((fx["run"] / "state" / "plan.json").read_text())["checks"]
+    assert checks["ctx.backend-tests"]["status"] == "BLOCKED"
+    assert checks["tests.backend_shards"]["status"] == "NOT_APPLICABLE"
+    assert checks["tests.backend_shards"]["reason"].startswith("superseded by ctx.backend-tests")
+    assert checks["tests.frontend_mouth"]["status"] == "BLOCKED"   # its context is not planned here: the old rule stands
+
+
 def test_classified_diff_stays_pass(fx):
     fr.plan(fx)
     cm = json.loads((fx["run"] / "state" / "plan.json").read_text())["checks"]["policy.change_map"]
@@ -638,3 +664,40 @@ def test_classified_diff_stays_pass(fx):
                                     {"mode": "shadow", "reason": "classified", "run_all": False, "suggested_jobs": []}])
 def test_unjudgeable_classifier_output_is_blocked_not_fail(cm_out):
     assert runner.change_map_status(cm_out) == "BLOCKED"
+
+
+# ------------------------------------------------------------------ coverage travels with the verdict (B3)
+@pytest.mark.parametrize("entry,coverage,note", [
+    ("{name: a, mapping: executed}", "full", None),                                            # nothing declared: full
+    ("{name: a, mapping: executed, coverage: full}", "full", None),
+    ("{name: a, mapping: executed, coverage: partial, coverage_note: no secrets}", "partial", "no secrets"),
+    ("{name: a, mapping: executed, coverage: partial}", "partial", "declared partial without a coverage_note"),
+    ("{name: a, mapping: executed, coverage: fulll}", "partial", "declared partial without a coverage_note"),   # unreadable: never full
+    ("{name: a, mapping: executed, coverage: null}", "partial", "declared partial without a coverage_note"),
+    ("{name: a, mapping: executed, coverage: full, coverage_note: ignored}", "full", None)])
+def test_the_matrix_coverage_is_full_by_default_partial_where_declared_and_never_full_when_unreadable(tmp_path, entry, coverage, note):
+    p = tmp_path / "c.yaml"
+    p.write_text(f"contexts:\n - {entry}\n")
+    got = runner.load_contexts(str(p))["map"]["a"]
+    assert (got["coverage"], got["coverage_note"]) == (coverage, note)
+    assert ("unknown coverage" in (got["note"] or "")) == ("fulll" in entry or "null" in entry)
+
+
+def test_every_context_result_in_the_status_carries_the_base_matrix_coverage(fx, tmp_path):
+    ctxs = [{"name": n, "local": {"kind": "rule", "check": n}, "mapping": "executed"} for n in ("policy.change_map", "review.independent")]
+    ctxs[0].update(coverage="partial", coverage_note="a subset")
+    ctxs += [{"name": "CodeQL", "local": {}, "mapping": "blocked"}, {"name": "nowhere", "local": {"check": "ctx.absent"}, "mapping": "executed"}]
+    fr.green(fx, tmp_path, "--contexts-file", str(fr.contexts_file(fx, tmp_path / "cov.yaml", ctxs)), with_contexts=False)
+    res = fr.status(fx)["contexts"]["results"]
+    assert res["policy.change_map"]["coverage"] == "partial" and res["policy.change_map"]["coverage_note"] == "a subset"
+    assert {n: (r["verdict"], r["coverage"]) for n, r in res.items() if n != "policy.change_map"} == {
+        "review.independent": (res["review.independent"]["verdict"], "full"), "CodeQL": ("BLOCKED", "full"), "nowhere": ("UNCOVERED", "full")}
+    assert all("coverage_note" not in r for n, r in res.items() if n != "policy.change_map")
+
+
+@pytest.mark.skipif(not MATRIX.exists(), reason="contexts_matrix.yaml not present yet")
+def test_the_real_matrix_declares_e2e_partial_with_its_reason():
+    c = runner.load_contexts(str(MATRIX))["map"]
+    assert c["E2E Tests (Playwright)"]["coverage"] == "partial" and "secrets" in c["E2E Tests (Playwright)"]["coverage_note"]
+    assert all(v["coverage"] in runner.COVERAGES and (v["coverage"] == "full") == (v["coverage_note"] is None) for v in c.values())
+    assert not any(v["note"] for v in c.values())

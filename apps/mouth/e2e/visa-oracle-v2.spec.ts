@@ -1,10 +1,21 @@
-import { APPLICANT_FACT_COUNT } from "../src/lib/api/applicant-fact-paths";
+import {
+  FRONTEND_EMITTED_FACT_COUNT,
+  ORDERED_ROLLOUT_OPTIONAL_PATHS,
+} from "../src/lib/api/applicant-fact-paths";
 import { expect, test, type Page, type Route } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { translate } from "../src/app/(visa-oracle)/visa-oracle/_lib/i18n";
-import { NOTICE_CONDITION_COPY } from "../src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter";
+import {
+  translate,
+  type I18nKey,
+} from "../src/app/(visa-oracle)/visa-oracle/_lib/i18n";
+import {
+  NOTICE_CONDITION_COPY,
+  REVIEW_REASON_ELEMENTS,
+  buildEngineOutcome,
+  isNoPathWithoutDoors,
+} from "../src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter";
 import {
   makeVisaOracleResponse,
   TEST_SOURCE_ID,
@@ -112,9 +123,17 @@ async function fulfillJson(route: Route, body: unknown): Promise<void> {
 }
 
 async function expectEngineState(page: Page, state: FixtureState) {
+  // Derived the way the shipped UI derives it: a NO_SUPPORTED_PATH whose
+  // outcome carries no door headlines the no-door copy (never re-implemented).
+  const outcome = buildEngineOutcome(makeVisaOracleResponse(state), {
+    facts: VERDICT_FACTS,
+  });
+  const key = isNoPathWithoutDoors(outcome)
+    ? "verdict.headline.NO_SUPPORTED_PATH_NO_DOOR"
+    : `verdict.headline.${state}`;
   await expect(
     page.getByRole("heading", {
-      name: translate("en", `verdict.headline.${state}`),
+      name: translate("en", key as I18nKey),
     }),
   ).toBeVisible();
 }
@@ -211,13 +230,13 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
         facts?: Record<string, unknown>;
       };
       expect(body.assessment_id).toMatch(/^[0-9a-f-]{36}$/);
-      // 45, not 46: `derived.has_active_stay_permit` is server-derived and
-      // never sent on the wire — 41 + the 3 applicant-collected facts
-      // (2026-08-23 vocabulary extension, PR #4650) + `immigration.renewal_paid`
-      // (2026-08-24 F4, question now shipped in tree.ts/flow.ts — this
-      // seed never answers `renewal_paid`, so the key is still present but
-      // UNKNOWN NOT_ASKED, same count as before) is the correct count.
-      expect(Object.keys(body.facts ?? {})).toHaveLength(APPLICANT_FACT_COUNT);
+      // The wire carries every backend fact path. Ordered-rollout omissions
+      // are represented by the shared set, which seq-28 Step B empties.
+      const sentKeys = Object.keys(body.facts ?? {});
+      expect(sentKeys).toHaveLength(FRONTEND_EMITTED_FACT_COUNT);
+      for (const rolloutPath of ORDERED_ROLLOUT_OPTIONAL_PATHS) {
+        expect(sentKeys).not.toContain(rolloutPath);
+      }
 
       if (state === "SUPPORTED_CANDIDATES") {
         await expect(candidateCardText(page)).toBeVisible();
@@ -297,23 +316,16 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     await page.goto("/visa-oracle");
     await expectEngineState(page, "HUMAN_REVIEW_REQUIRED");
     const enRows = page.locator(".oracle-review-elements__row");
+    const reviewElements =
+      REVIEW_REASON_ELEMENTS.DISCLOSED_CRIMINAL_RECORD_REVIEW;
+    expect(reviewElements).toBeDefined();
+    // Copy comes from the adapter's own table, so the spec moves with the
+    // sentence instead of pinning a stale copy of it.
     const en = [
-      [
-        "Why this is held",
-        "This result is held because you disclosed a criminal record or an ongoing case. It is one of the two disclosures the signed rules still send to a person; the other nine now stay on your result as named conditions.",
-      ],
-      [
-        "What the reviewer checks",
-        "A specialist reads what you disclosed against the immigration record requirements for the route you asked about, and decides whether it can be submitted as it stands.",
-      ],
-      [
-        "What to prepare",
-        "Have the dates and the issuing authority of any court or police record ready, together with any document showing the case is closed. Send nothing here — our team tells you where each document goes.",
-      ],
-      [
-        "How this is handled",
-        "A specialist reviews this before we confirm a path, and our team comes back to you with the timing for your case.",
-      ],
+      ["Why this is paused", reviewElements!.rule.en],
+      ["What the reviewer checks", reviewElements!.checked.en],
+      ["What to prepare", reviewElements!.prepare.en],
+      ["How this is handled", reviewElements!.handling.en],
     ] as const;
     await expect(enRows).toHaveCount(4);
     for (const [label, text] of en)
@@ -323,22 +335,10 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
       .click();
     const idRows = page.locator(".oracle-review-elements__row");
     const id = [
-      [
-        "Mengapa hasil ini ditahan",
-        "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan yang telah disahkan; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
-      ],
-      [
-        "Apa yang diperiksa peninjau",
-        "Seorang spesialis membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
-      ],
-      [
-        "Apa yang perlu disiapkan",
-        "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — tim kami akan memberi tahu ke mana setiap dokumen harus dikirim.",
-      ],
-      [
-        "Bagaimana hal ini ditangani",
-        "Seorang spesialis meninjau hal ini sebelum kami mengonfirmasi jalur, dan tim kami akan mengabari Anda mengenai perkiraan waktu untuk kasus Anda.",
-      ],
+      ["Mengapa hasil ini ditunda", reviewElements!.rule.id],
+      ["Apa yang diperiksa peninjau", reviewElements!.checked.id],
+      ["Apa yang perlu disiapkan", reviewElements!.prepare.id],
+      ["Bagaimana hal ini ditangani", reviewElements!.handling.id],
     ] as const;
     await expect(idRows).toHaveCount(4);
     for (const [label, text] of id)
@@ -363,7 +363,7 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     await page.goto("/visa-oracle");
     await expectEngineState(page, "SUPPORTED_CANDIDATES");
     await expect(page.locator(".oracle-disclaimer")).toContainText(
-      "A disclosed criminal record goes to a person before any path is confirmed; an answer the signed rules cannot assess is sent to a person or routed to a consultation. Every other disclosure stays on your result as a named condition our team checks with you before submission. Ditjen Imigrasi decides, not this tool.",
+      "If you disclosed a criminal record, or gave an answer these rules cannot assess, a Bali Zero advisor reviews your case before any path is confirmed. Any other disclosure appears on your result as a condition we check with you before filing. The decision is always Ditjen Imigrasi’s, never this tool’s.",
     );
     await expect(page.locator(".oracle-disclaimer")).not.toContainText(
       "Complex or flagged cases always go to a human",

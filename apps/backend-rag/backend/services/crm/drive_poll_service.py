@@ -24,6 +24,7 @@ from googleapiclient.errors import HttpError
 from backend.core.cache import invalidate_crm_stats
 from backend.core.secret_log_redaction import install_telegram_token_redaction
 from backend.services.crm.document_categorizer import auto_categorize_document
+from backend.services.crm.drive_registration_visibility import drive_default_client_visible
 from backend.services.crm_guardian.summary_queue import (
     enqueue_client,
     enqueue_clients_for_company_folder,
@@ -646,8 +647,9 @@ async def _do_poll_drive_changes(
                 doc_id = await conn.fetchval(
                     """INSERT INTO documents (
                         client_id, document_type, document_category, file_name, file_id,
-                        status, storage_type, ocr_status, subfolder, content_hash
-                    ) VALUES ($1, $2, $3, $4, $5, 'active', 'google_drive', 'pending', $6, $7)
+                        status, storage_type, ocr_status, subfolder, content_hash,
+                        client_visible
+                    ) VALUES ($1, $2, $3, $4, $5, 'active', 'google_drive', 'pending', $6, $7, $8)
                     RETURNING id""",
                     client_id,
                     _infer_document_type(file_name, folder_name),
@@ -656,6 +658,7 @@ async def _do_poll_drive_changes(
                     file_id,
                     subfolder_value,
                     content_hash,
+                    drive_default_client_visible(file_name),
                 )
             await invalidate_crm_stats()  # F32
 

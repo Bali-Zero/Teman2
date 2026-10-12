@@ -314,6 +314,45 @@ def test_allow_list_is_documented_not_empty():
     assert "codex.spark_loop" in KNOWN_BENIGN_FAILED
 
 
+def test_innocence_known_intentionally_disabled_organ_reports_disabled_not_stale(tmp_path):
+    """INNOCENCE: an organ whose plist was deliberately renamed away (W-mini
+    convention, PR #7553) must not re-raise a P1 'stale' finding on every tick
+    forever — it is reported as kind='disabled' instead, same age math, so a
+    human report still shows it (not silenced outright)."""
+    from organism_stale_detector import KNOWN_INTENTIONALLY_DISABLED_STALE
+
+    d = str(tmp_path)
+    old = time.time() - 14 * 86400
+    organ_id = "mata_garuda.intel_bridge_daily.mini"
+    assert organ_id in KNOWN_INTENTIONALLY_DISABLED_STALE
+    _write(d, organ_id, {"ts": old, "status": "ok"})
+    findings = scan_sidecars(d, stale_days=7, now=time.time())
+    assert len(findings) == 1
+    f = findings[0]
+    assert f.organ_id == organ_id
+    assert f.kind == "disabled"
+    assert 13 <= f.age_days <= 15, f.age_days
+
+
+def test_guilt_unlisted_organ_still_flags_stale_despite_disabled_allowlist(tmp_path):
+    """GUILT: the new exemption must be scoped to its declared organ_id only —
+    a different, unlisted organ going stale must still raise 'stale' at P1."""
+    d = str(tmp_path)
+    old = time.time() - 14 * 86400
+    _write(d, "mata_garuda.normalizer_hourly.mini", {"ts": old, "status": "ok"})
+    findings = scan_sidecars(d, stale_days=7, now=time.time())
+    assert len(findings) == 1
+    assert findings[0].kind == "stale"
+
+
+def test_disabled_allow_list_is_documented_not_empty():
+    from organism_stale_detector import KNOWN_INTENTIONALLY_DISABLED_STALE
+
+    assert isinstance(KNOWN_INTENTIONALLY_DISABLED_STALE, (set, frozenset, tuple))
+    assert len(KNOWN_INTENTIONALLY_DISABLED_STALE) >= 1
+    assert "mata_garuda.intel_bridge_daily.mini" in KNOWN_INTENTIONALLY_DISABLED_STALE
+
+
 def test_ollama_pro_failure_now_surfaces(tmp_path):
     """GUILT (2026-08-31 — supersedes the old suppression contract below):
     infra.ollama_pro reporting failed is now flagged, not swallowed.
@@ -778,7 +817,9 @@ def test_proprioception_exempts_warning_from_p1():
     """CROSS-ARTIFACT PIN: the severity split lives in TWO files and is only true
     if both agree. If proprioception's organs_heartbeat entry loses its
     verdict_key/ok_values, the three permanent advisories become a P1 on every
-    node forever — the alert-fatigue this split exists to prevent.
+    node forever — the alert-fatigue this split exists to prevent. Also pins
+    'disabled' (added 2026-10-08): without it, every intentionally-disarmed
+    organ in KNOWN_INTENTIONALLY_DISABLED_STALE re-raises a P1 forever too.
     """
     import re
 
@@ -788,7 +829,7 @@ def test_proprioception_exempts_warning_from_p1():
     assert block, "organs_heartbeat probe entry not found in proprioception.py"
     body = block.group(0)
     assert '"verdict_key": "kind"' in body, body[-400:]
-    assert '"ok_values": ["warning"]' in body, body[-400:]
+    assert '"ok_values": ["warning", "disabled"]' in body, body[-400:]
 
     from organism_stale_detector import WARNING_STATUSES
 

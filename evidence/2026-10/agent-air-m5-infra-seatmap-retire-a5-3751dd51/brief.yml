@@ -1,0 +1,32 @@
+task_id: seatmap-retire-a5
+mission: SEATMAP-20261005
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  Make the A5 retirement (Zero 2026-10-05, subscription cancelled, token slot 2) operational in the
+  cron cascades: with CLAUDE_CODE_OAUTH_TOKEN_2 present in the environment, claude-cascade.sh and
+  wr2-ig-metrics-analyst-run.sh never attempt it, not even under the legacy CLAUDE_CODE_OAUTH_TOKEN
+  name; claude_seat_quota.py never labels the retired account as a live token slot (Naga gap 3).
+constraints:
+  - No token is read, printed, copied or moved; every test uses dummy strings.
+  - claude_seat_quota.py is never run against the live endpoint; fixtures only.
+  - The Team seat stays last; the order of the live slots 1,3,4,5,6 is unchanged.
+  - The wrappers' live copies run from ~/scripts on Pro and Mini; merge does not make them live.
+appetite:
+  wall_clock_hours: 3
+acceptance:
+  - text: WHEN CLAUDE_CODE_OAUTH_TOKEN_2 is set THEN claude-cascade.sh SHALL never attempt slot 2 and SHALL reach slot 3.
+    probe: scripts/tests/test_claude_cascade_shell.py::test_retired_slot_is_never_attempted_even_when_its_token_is_set
+  - text: WHEN the legacy CLAUDE_CODE_OAUTH_TOKEN carries the retired slot's value THEN neither wrapper SHALL attempt it.
+    probe: test_retired_slot_value_is_not_retried_under_the_legacy_name + test_wr2_ig_metrics_analyst_wrapper.sh [R2]
+  - text: WHEN CLAUDE_CODE_OAUTH_TOKEN_2 is set THEN wr2-ig-metrics-analyst-run.sh SHALL never attempt it and SHALL reach slot 3.
+    probe: scripts/tests/test_wr2_ig_metrics_analyst_wrapper.sh [R1]
+  - text: WHEN FLEET_TOPOLOGY.json retires or un-retires a slot THEN both wrappers' retired lists SHALL be pinned to it.
+    probe: test_cascade_retired_slots_equal_the_registry + test_wr2_retired_token_vars_equal_the_registry
+  - text: WHEN a retired slot's account is read by claude_seat_quota.py THEN its label SHALL be "<seat>/ret", never "<seat>/_<n>".
+    probe: scripts/tests/test_claude_seat_quota.py::test_retired_slot_is_labelled_retired_never_as_a_live_token_slot
+consumer_map:
+  - infra/launchagents/wrappers/claude-cascade.sh — every Claude cron daemon's seat cascade, live copy ~/scripts on Pro and Mini.
+  - infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh — weekly WR2 IG metrics analyst, live copy ~/scripts on Pro and Mini.
+  - scripts/claude_seat_quota.py — seat quota report (run by hand / --publish).

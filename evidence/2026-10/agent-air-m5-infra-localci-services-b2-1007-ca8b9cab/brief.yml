@@ -1,0 +1,43 @@
+task_id: localci-services-b2-1007
+mission: LOCALCI-SOVEREIGN (phase B, PR-B2)
+colour: BLUE
+gear: 3
+gear_reason: >-
+  Declared by the mandate: the change decides what a local verdict on three more required contexts may claim, and it
+  builds an npm cache, Playwright browsers and apt packages into the dependency image beside the candidate sandbox.
+  It flips nothing — GitHub stays the writer, no workflow, branch protection or status is touched.
+l_level: L2
+gate_class: opus
+objective: >-
+  Make scripts/localci/runner.py execute E2E Tests (Playwright), Visa Oracle fullstack smoke and Frontend Tests
+  (Next.js) (mouth, true) as service contexts (docs/specs/localci-sovereign-2026-10-07.md §2 phase B), every BASE
+  step run verbatim or not_applicable with a written reason, so that hosted_compare moves the three rows from
+  LOCAL_BLIND to AGREE on merged hosted-green commits and never_claim_parity_for shrinks to the two CodeQL contexts.
+constraints:
+  - No .github/ file, branch protection or commit status is touched; nothing is posted.
+  - npm ci runs only inside docker, from the candidate's lock, never on a host or in a worktree (lesson 2026-09-13).
+  - Candidate code runs only inside containers without network; a lock entry that would reach anything but the registry under an integrity, a workspace link or a GitHub commit is BLOCKED.
+  - No repository secret, prod credential or ~/.nuzantara-secrets.env value reaches any sandbox; the steps that read secrets hosted get "".
+  - A context is green only when every step it runs returned 0; a step that cannot run is BLOCKED, never skipped.
+acceptance:
+  - text: WHEN run on Pro against merged hosted-green main commits, hosted_compare SHALL report AGREE for E2E, Visa Oracle smoke and Frontend Tests (mouth, true), and FALSE_GREEN = 0.
+    probe: "measureb2.sh b2-main-"
+  - text: WHEN an unpushed candidate breaks a selected E2E spec, only E2E SHALL be RED; WHEN it breaks the fullstack spec only the smoke runs, only Visa Oracle smoke SHALL be RED; WHEN it fails one mouth vitest case, only Frontend Tests SHALL be RED; hosted_compare SHALL say HOSTED_PENDING, never AGREE.
+    probe: "measureb2.sh b2-guilt-"
+  - text: WHEN a required context names one leg of a matrix, exactly that leg SHALL run, typed values compared (1 is not true), and its rendered values SHALL end the context name.
+    probe: "test_service_contexts.py::test_a_leg_selector_takes_exactly_the_leg_the_required_context_names"
+  - text: WHEN an egress step or a host reader fails on the network and holds no finding, the step SHALL have no verdict (BLOCKED), never green, never red.
+    probe: "test_service_contexts.py::test_a_host_reader_that_could_not_read_github_is_asked_again_then_gives_no_verdict"
+  - text: WHEN a plain context carries a step timeout-minutes, it SHALL be BLOCKED; in a service context the step SHALL be killed there.
+    probe: "test_service_contexts.py::test_a_step_timeout_is_emulated_in_a_service_context_and_blocked_elsewhere"
+assumptions:
+  - text: The selected E2E specs (page Page|@offline) behave the same with the six repository secrets empty as hosted does with them set.
+    status: unverified
+    note: True of BASE's specs today (none reads E2E_TEST_EMAIL/PIN); a candidate can break it. Declared in parity_gaps; E2E coverage is partial.
+    probe: a candidate whose backend start or selected specs fail only with the secrets set (GREEN here, RED hosted)
+consumer_map:
+  - scripts/localci/hosted_compare.py on Pro — its AGREE rows for the three contexts are this change's output.
+  - docs/specs/localci-sovereign-2026-10-07.md §2 phase B (AGREE >= 12 of 14 with A2 and PR-B1).
+appetite:
+  wall_clock_hours: 8
+  adversarial_rounds: 2

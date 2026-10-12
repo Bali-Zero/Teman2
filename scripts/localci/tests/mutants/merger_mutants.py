@@ -1,0 +1,850 @@
+"""Replayable mutation sweep for the merger (merger.py, localci_merger_tick.sh) against its two test files, and for the B3
+honesty rules (coverage, disk-full, the free-space floor) in hosted_compare.py and runner.py against theirs.
+
+Every mutant is ONE textual rule applied to a temporary copy of scripts/localci and scripts/lib — the checkout is never
+touched, so a killed sweep leaves nothing behind. A mutant is KILLED only when pytest ran its tests and one failed (exit 1);
+exit 0 is SURVIVED, and any other exit (nothing collected, a collection or usage error) is ERROR, never a kill. pytest runs
+without inherited PYTEST_* options, so a caller's -k or plugin cannot deselect the guilt. A rule whose text no longer
+occurs exactly once is STALE (the code moved and the table must follow it), never skipped. Exit 0 only when every test
+file set passes unmutated and every mutant is killed; 1 on a survivor, an error or a stale rule; 2 when a baseline fails.
+
+    python3 scripts/localci/tests/mutants/merger_mutants.py [--only NAME ...] [--list]
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+# B4: the backend shards' worker cap (contexts_matrix.yaml) and the dead-worker timeout reason (runner.py), against their tests
+MATRIX, RUN_PY = "scripts/localci/contexts_matrix.yaml", "scripts/localci/runner.py"
+SW = "scripts/localci/tests/test_shard_workers.py"
+SW_CAP = (f"{SW}::test_the_cap_is_declared_once_on_the_backend_shard_job_and_nowhere_else_in_the_matrix",)
+SW_DEAD = tuple(f"{SW}::{t}" for t in ("test_a_timeout_after_a_dead_xdist_worker_names_the_worker_and_its_log_line_and_is_no_verdict",
+                                      "test_every_xdist_wording_of_a_dead_worker_is_named_from_its_first_line",
+                                      "test_a_timeout_without_a_dead_worker_keeps_the_old_reason",
+                                      "test_a_dead_worker_in_a_run_that_finished_changes_nothing"))
+
+# B6: the merger's own retention (prune.py) and the tick's host floor, against their tests
+PRUNE, PRUNE_T = "scripts/localci/prune.py", "scripts/localci/tests/test_prune.py"
+MERGER_T = "scripts/localci/tests/test_merger.py"
+B6_WRAP = tuple(f"{MERGER_T}::{t}" for t in ("test_the_tick_decides_first_then_prunes_with_fstrim_and_passes_the_host_reading",
+                                             "test_under_the_floor_the_tick_journals_its_skip_the_prune_still_runs_and_the_organ_says_warning",
+                                             "test_a_failed_prune_is_a_warning_and_a_failed_tick_is_an_error_after_which_the_prune_still_runs"))
+HF = ("scripts/localci/tests/test_host_floor.py",)   # B15
+B15_PRUNE = tuple(f"{PRUNE_T}::{t}" for t in ("test_b15_under_host_pressure_the_second_slot_of_every_recipe_goes_and_the_newest_never",
+                                              "test_b15_host_pressure_never_removes_the_image_of_the_run_in_progress_or_the_never_list"))
+START_DEFAULT = 'default=HOST_FLOOR_GB + START_MARGIN_GB,\n                   help="the start floor'
+B6_FLOOR = (f"{MERGER_T}::test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why",)
+FLOOR_SH, FLOOR_T = "scripts/ops/pro_disk_floor_tick.sh", "scripts/localci/tests/test_disk_floor.py"
+
+STALE = "scripts/localci/tests/test_hosted_stale.py"
+REPLAY = "scripts/localci/tests/test_replay.py"
+PHASEF = "scripts/localci/tests/test_merger_phase_f.py"
+WRAPPER_T = tuple(f"{PHASEF}::{t}" for t in ("test_the_wrapper_fetches_into_its_own_ref_and_leaves_the_authoritative_base_alone",
+                                                 "test_a_mirror_from_before_the_wrapper_ref_existed_runs_the_code_the_last_tick_ran"))
+GP = ("scripts/localci/tests/test_gate_pending.py",)   # B12
+GS = ("scripts/localci/tests/test_gate_stale.py",)   # B12b
+ROOT = Path(__file__).resolve().parents[4]
+REPORT = "scripts/localci/tests/test_merger_report.py"
+TICK = "scripts/localci/tests/test_merger.py"
+PY, SH = "scripts/localci/merger.py", "scripts/localci/localci_merger_tick.sh"
+HC, RUNNER = "scripts/localci/hosted_compare.py", "scripts/localci/runner.py"
+HCT, RUNT = "scripts/localci/tests/test_hosted_compare.py", "scripts/localci/tests/test_runner.py"
+HD = "scripts/localci/tests/test_host_disk.py"
+DRIVER, TP = "scripts/localci/steps_driver.py", "scripts/localci/tests/test_tree_pack.py"   # B14
+RUNT_COV = tuple(f"{RUNT}::{t}" for t in ("test_the_matrix_coverage_is_full_by_default_partial_where_declared_and_never_full_when_unreadable",
+                                         "test_every_context_result_in_the_status_carries_the_base_matrix_coverage",
+                                         "test_the_real_matrix_declares_e2e_partial_with_its_reason"))
+# B5: a red read with a rewritten BASE judge, a skip compared as a skip, and the report's count of skip agreements
+JR, SKC = "scripts/localci/tests/test_judge_rewritten.py", "scripts/localci/tests/test_skip_compare.py"
+REPORT_SKIP = tuple(f"{REPORT}::{t}" for t in (
+    "test_eleven_full_of_which_three_are_skip_agreements_and_one_partial_still_count_and_the_lines_say_three",
+    "test_a_skip_here_beside_a_hosted_run_is_partial_so_it_cannot_make_up_the_full_count"))
+TICK_SKIP = (f"{TICK}::test_a_tick_journals_a_change_map_skip_beside_its_verdict_and_only_there",)
+
+# CodeQL contexts: their rules name tests by node id, so a survivor costs seconds, not the whole file
+CQ_T, CQ_SH_FILE, CQ_READER_FILE = "scripts/localci/tests/test_codeql_contexts.py", "scripts/localci/codeql_leg.sh", "scripts/localci/codeql_version_read.py"
+CQ_SARIF_FILE = "scripts/localci/codeql_sarif_check.py"
+
+
+def cq(*names: str) -> tuple[str, ...]:
+    return tuple(f"{CQ_T}::{n}" for n in names)
+
+
+CQ_IMG = cq("test_the_tarball_is_checksum_fetched_into_a_stage_and_never_lands_in_a_layer", "test_a_codeql_pin_that_is_not_plain_is_refused_before_anything_is_built")
+CQ_FLAGS = cq("test_the_leg_flags_are_decided_at_plan_by_the_base_classifier_on_the_changed_files",
+              "test_a_classifier_that_fails_is_hosted_fail_open_the_job_result_is_not_success_and_the_leg_runs")
+CQ_SENT = cq("test_a_hosted_version_that_differs_or_a_read_that_fails_is_blocked_never_green")
+CQ_SKIP = cq("test_a_matrix_not_applicable_step_alone_is_never_a_pass", "test_a_candidate_that_changes_the_config_or_the_script_gets_its_green_blocked")
+CQ_RUN = cq("test_the_results_per_language_go_to_the_receipt_as_data_and_the_leg_gets_the_base_overlay_and_no_git_index",
+            "test_a_laid_judge_whose_hash_differs_from_the_plans_is_no_verdict")
+CQ_PIN = cq("test_a_changed_action_input_in_the_base_workflow_blocks_until_the_matrix_follows")
+CQ_SIG = cq("test_a_command_killed_by_a_signal_is_no_verdict_never_a_fail")
+CQ_CMD = cq("test_the_leg_script_builds_the_exact_command_lines_the_hosted_logs_show", "test_the_augmented_config_replaces_only_the_queries_block")
+CQ_READ = cq("test_the_reader_compares_the_newest_analysis_of_exactly_this_language", "test_the_reader_ignores_another_scanner_uploading_under_the_same_category")
+CQ_RENAME = cq("test_a_rename_lists_both_paths_so_the_leg_runs_as_hosted_does")
+CQ_RUNALL = cq("test_an_unclassified_path_is_run_all_and_both_legs_run")
+CQ_LANG = cq("test_the_sentinel_reads_the_category_of_the_leg_own_language")
+CQ_VERPROBE = cq("test_a_version_probe_killed_by_a_signal_is_no_verdict_and_one_that_fails_is_its_own_exit")
+CQ_SARIF_EXIT = cq("test_the_leg_script_exits_1_on_a_sarif_hosted_would_reject_and_0_on_one_it_takes",
+                   "test_a_driven_leg_whose_sarif_hosted_would_reject_is_a_fail_and_findings_alone_never_are")
+CQ_SARIF_LIMITS = cq("test_each_documented_upload_limit_is_ok_at_the_maximum_and_a_fail_one_over", "test_the_leg_script_exits_1_on_a_sarif_hosted_would_reject_and_0_on_one_it_takes",
+                     "test_a_sarif_whose_gzip_is_over_ten_mb_is_a_fail_even_with_no_other_limit_exceeded")
+CQ_SARIF_GZIP = cq("test_the_gzip_limit_is_ok_at_the_maximum_and_a_fail_one_byte_over_and_names_the_limit",
+                   "test_a_sarif_whose_gzip_is_over_ten_mb_is_a_fail_even_with_no_other_limit_exceeded")
+CQ_SARIF_BOUND = cq("test_the_gzip_limit_is_checked_on_a_bound_of_what_hosted_would_send", "test_what_the_action_would_not_fingerprint_is_not_in_the_bound")
+CQ_SARIF_MIB = cq("test_the_limits_are_the_documented_numbers")
+CQ_SARIF_CRASH = cq("test_a_document_the_checker_cannot_hold_is_no_verdict_exit_70_never_the_exit_1_of_a_rejection",
+                    "test_the_leg_turns_a_checker_crash_into_a_killed_leg_and_the_driver_reads_it_as_error")
+CQ_SARIF_SHAPE = cq("test_a_sarif_without_runs_or_with_a_run_without_results_is_a_fail")
+CQ_OVERRIDE = cq("test_the_override_is_read_at_plan_and_an_active_one_runs_both_languages_as_hosted_does",
+                 "test_a_read_that_fails_is_fail_open_both_flags_true_and_the_job_result_not_success")
+CQ_OVERRIDE_ORG = cq("test_an_organization_variable_alone_is_resolved_for_an_organization_owner_and_not_for_a_user",
+                     "test_the_lists_are_paginated_and_a_variable_on_a_later_page_is_found")
+CQ_OVERRIDE_404 = cq("test_a_list_that_answers_404_is_a_read_error_not_an_unset_variable")
+CQ_OVERRIDE_WINS = cq("test_when_both_exist_the_repository_variable_wins_as_hosted_resolves_it")
+CQ_OVERRIDE_ENV = cq("test_a_base_job_that_names_an_environment_is_fail_open_because_its_variables_are_invisible",
+                     "test_the_plan_passes_the_base_jobs_so_an_environment_in_the_base_workflow_fails_open")
+CQ_OVERRIDE_TOTAL = cq("test_a_total_count_that_disagrees_with_the_rows_collected_is_a_read_error")
+CQ_FORK = cq("test_a_fork_pr_whose_branch_is_named_main_and_is_newer_and_green_does_not_stand_in_for_main",
+             "test_a_fork_pr_named_main_that_is_newer_and_red_does_not_block_a_green_main", "test_only_a_run_of_the_repositorys_own_main_on_a_main_event_is_a_candidate")
+CQ_SKIPKEY = cq("test_an_unexplained_skip_in_one_job_is_not_excused_by_the_matrix_na_of_the_same_step_name_in_another")
+CQ_USES = cq("test_a_bumped_codeql_action_in_the_base_workflow_blocks_until_the_matrix_follows")
+CQ_LOCALVER = cq("test_a_local_cli_other_than_the_pin_is_no_verdict_before_anything_is_extracted", "test_a_driven_leg_on_another_cli_is_error_never_fail_or_pass")
+CQ_STALE = cq("test_the_reader_is_blocked_by_an_analysis_older_than_seven_days", "test_a_stale_newest_analysis_blocks_the_plan_with_the_days_in_the_reason")
+CQ_MAINRED = cq("test_the_reader_is_blocked_when_hosted_main_is_red_on_this_leg", "test_a_red_hosted_main_job_of_the_legs_own_language_blocks_the_plan")
+CQ_MIXED = cq("test_a_leg_that_mixes_the_gate_skip_with_any_other_skip_is_not_a_pass")
+CQ_SEAM = cq("test_a_base_job_env_that_sets_a_leg_seam_blocks_the_plan", "test_a_base_step_env_or_a_matrix_step_env_that_sets_a_leg_seam_blocks_the_plan")
+CQ_REPO = cq("test_the_reader_refuses_a_repo_that_climbs_the_api_path")
+CQ_CONFIG = cq("test_a_queries_block_the_rewriter_cannot_read_as_text_is_no_verdict_and_writes_nothing")
+CQ_CORPUS = ("scripts/localci/tests/test_runner.py::test_the_corpus_check_also_runs_the_gate_flags_corpus_from_base",)
+
+# name: (file, text that must occur once, replacement, test files that must turn red)
+MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
+    # which hosted verdict judges a decision, and when a merge counts for phase E
+    "parents-membership": (PY, 'return mc if parents[mc] == [d.get("base_sha")] else', 'return mc if d.get("base_sha") in parents[mc] else', (REPORT,)),
+    "merged-here-any-base": (PY, 'merged_here = sha != head and sha == prs[n].get("merge_commit_sha")',
+                             'merged_here = prs[n].get("merged") is True and head_of(prs[n]) == head', (REPORT,)),
+    # the ruled threshold (2026-10-08): >= 12 compared, >= 11 full, at most 1 partial. MIN_COMPARED_FULL 11 -> 10 is an EQUIVALENT
+    # mutant (12 compared with at most 1 partial already means >= 11 full), so it is not in the table; 11 -> 12 is.
+    "min-contexts-minus-one": (PY, "MIN_COMPARED_CONTEXTS = 12\n", "MIN_COMPARED_CONTEXTS = 11\n", (REPORT,)),
+    "min-contexts-ignored": (PY, "return full + partial >= MIN_COMPARED_CONTEXTS and full", "return full", (REPORT,)),
+    "min-full-plus-one": (PY, "MIN_COMPARED_FULL = 11 ", "MIN_COMPARED_FULL = 12 ", (REPORT,)),
+    "max-partial-zero": (PY, "MAX_COMPARED_PARTIAL = 1\n", "MAX_COMPARED_PARTIAL = 0\n", (REPORT,)),
+    "max-partial-two": (PY, "MAX_COMPARED_PARTIAL = 1\n", "MAX_COMPARED_PARTIAL = 2\n", (REPORT,)),
+    "compared-enough-ignores-partial": (PY, 'compared_enough(compared_ctx, len(not_full["partial"]))', "compared_enough(compared_ctx, 0)", (REPORT,)),
+    "with-partial-uncounted": (PY, 'with_partial = {r["pr"] for r in rows if r["compared_merge"] and r["compared_partial"]}', "with_partial = set()",
+                               (REPORT,)),
+    "compared-merge-hosted-pending": (PY, 'merged_here and github != "PENDING" and d.get("contexts_status")', 'merged_here and d.get("contexts_status")', (REPORT,)),
+    "merges-not-deduped": (PY, 'merges = sorted({r["pr"]: r["merged_at"] for r in rows if r["compared_merge"]}.values())',
+                           'merges = sorted(r["merged_at"] for r in rows if r["compared_merge"])', (REPORT,)),
+    "merges-unsorted": (PY, 'merges = sorted({r["pr"]: r["merged_at"] for r in rows if r["compared_merge"]}.values())',
+                        'merges = list({r["pr"]: r["merged_at"] for r in rows if r["compared_merge"]}.values())', (REPORT,)),
+    "merged-at-unrequired": (PY, "            if merged_here and not is_ts(merged_at):", "            if False:", (REPORT,)),
+    "merged-pending-is-green": (PY, "            github = github_side(live)", "            github = github_side(live)\n            github = \"GREEN\" if merged_here and github == \"PENDING\" else github", (REPORT,)),
+    "merged-red-is-green": (PY, "            github = github_side(live)", "            github = \"GREEN\" if merged_here else github_side(live)", (REPORT,)),
+    "hosted-red-merged-never": (PY, "            if red:\n                hosted_red_merged.append(", "            if False:\n                hosted_red_merged.append(", (REPORT,)),
+    "hosted-red-merged-any-not-green": (PY, 'red = sorted(k for k, v in required_verdicts(lives[mc]).items() if v == "RED")',
+                                        'red = sorted(k for k, v in required_verdicts(lives[mc]).items() if v != "GREEN")', (REPORT,)),
+    "hosted-red-merged-compared-only": (PY, "        for n in sorted(k for k, v in prs.items() if v.get(\"merged\") is True):",
+                                        "        for n in sorted(r[\"pr\"] for r in rows if r[\"compared_merge\"]):", (REPORT,)),
+    "hosted-red-merged-no-sha-skipped": (PY, '                raise hc.CompareError(f"#{n} is merged but carries no merge commit sha")', "                continue", (REPORT,)),
+    "hosted-red-merged-first-only": (PY, '                hosted_red_merged.append({"pr": n, "merge_commit_sha": mc, "red": red})',
+                                     '                hosted_red_merged.append({"pr": n, "merge_commit_sha": mc, "red": red})\n                break', (REPORT,)),
+    "hosted-red-merged-all-contexts": (PY, 'red = sorted(k for k, v in required_verdicts(lives[mc]).items() if v == "RED")',
+                                       'red = sorted(required_verdicts(lives[mc])) if "RED" in required_verdicts(lives[mc]).values() else []', (REPORT,)),
+    "github-side-green-dominant": (PY, '    return "RED" if "RED" in seen else "PENDING" if "PENDING" in seen else "GREEN"',
+                                   '    return "GREEN" if "GREEN" in seen else "RED" if "RED" in seen else "PENDING"', (REPORT,)),
+    "github-side-pending-over-red": (PY, '    return "RED" if "RED" in seen else "PENDING" if "PENDING" in seen else "GREEN"',
+                                     '    return "PENDING" if "PENDING" in seen else "RED" if "RED" in seen else "GREEN"', (REPORT,)),
+    "pr-number-always": (PY, 'if runner_takes(base_wt, "--pr-number"):', "if True:", (TICK,)),
+    "pr-number-never": (PY, 'if runner_takes(base_wt, "--pr-number"):', "if False:", (TICK,)),
+    "pr-number-substring": (PY, '        tree = ast.parse((base_wt / "scripts" / "localci" / "runner.py").read_text())',
+                            '        return flag in (base_wt / "scripts" / "localci" / "runner.py").read_text()', (TICK,)),
+    "pr-number-undecodable-crashes": (PY, "    except (OSError, SyntaxError, ValueError):\n        return False\n    return any(",
+                                      "    except (OSError, SyntaxError):\n        return False\n    return any(", (TICK,)),
+    "pr-number-any-call": (PY, 'isinstance(node.func, ast.Attribute) and node.func.attr == "add_argument"', "True", (TICK,)),
+    # the false-green count and the READY line
+    "recorded-or-zero": (PY, '    value = counts.get("FALSE_GREEN") if isinstance(counts, dict) else None',
+                         '    value = (counts.get("FALSE_GREEN") or 0) if isinstance(counts, dict) else 0', (REPORT,)),
+    "recorded-any-type": (PY, "    if type(value) is not int or value < 0:", "    if False:", (REPORT,)),
+    "ready-either": (PY, "ready = fg == 0 and compared_merges >= READY_MIN_MERGES and compared_days >= READY_MIN_DAYS",
+                     "ready = fg == 0 and (compared_merges >= READY_MIN_MERGES or compared_days >= READY_MIN_DAYS)", (REPORT,)),
+    "ready-on-days-alone": (PY, "ready = fg == 0 and compared_merges >= READY_MIN_MERGES and compared_days >= READY_MIN_DAYS",
+                            "ready = fg == 0 and compared_merges >= READY_MIN_MERGES and days >= READY_MIN_DAYS", (REPORT,)),
+    "ready-ignores-ctx-fg": (PY, "ready = fg == 0 and", 'ready = (counts["FALSE_GREEN"] + recorded_fg) == 0 and', (REPORT,)),
+    "ready-49": (PY, "READY_MIN_MERGES, READY_MIN_DAYS = 50, 14", "READY_MIN_MERGES, READY_MIN_DAYS = 49, 14", (REPORT,)),
+    "ready-days-boundary": (PY, "READY_MIN_MERGES, READY_MIN_DAYS = 50, 14", "READY_MIN_MERGES, READY_MIN_DAYS = 50, 13.999", (REPORT,)),
+    "days-float": (PY, "return (int(_epoch(last) - _epoch(first)) * 1000 // 86400) / 1000",
+                   "return round((_epoch(last) - _epoch(first)) / 86400, 3)", (REPORT,)),
+    # B4: hosted's four xdist workers on the backend shards (two before the 2026-10-10 VM resize) and nowhere else; a timeout after a dead worker names it and stays no verdict
+    "b4-cap-key-misspelt": (MATRIX, 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "4" }', 'env: { PYTEST_XDIST_AUTO_NUM_WORKER: "4" }', SW_CAP),
+    "b4-cap-value-8": (MATRIX, 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "4" }', 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "8" }', SW_CAP),
+    "b4-cap-value-2": (MATRIX, 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "4" }', 'env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "2" }', SW_CAP),
+    "b4-memory-back-to-6g": (MATRIX, "      memory: 12g # four xdist workers", "      memory: 6g # four xdist workers", (f"{SW}::test_the_backend_cgroup_holds_four_workers",)),
+    "b4-cap-dropped": (MATRIX, '          env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "4" }\n', "", SW_CAP),
+    "b4-cap-leaks-to-static": (MATRIX, "        - job_id: backend-static\n",
+                               '        - job_id: backend-static\n          env: { PYTEST_XDIST_AUTO_NUM_WORKERS: "4" }\n', SW_CAP),
+    "b4-node-down-unmatched": (RUN_PY, "node down: Not properly terminated|", "node down: Not properly terminatedX|", SW_DEAD),
+    "b4-crashed-unmatched": (RUN_PY, """|\\bworker '?gw\\d+'? crashed")""", '")', SW_DEAD),
+    "b4-node-down-over-match": (RUN_PY, "\\[gw\\d+\\] node down: Not properly terminated|", "node down|", SW_DEAD),
+    "b4-crashed-over-match": (RUN_PY, """\\bworker '?gw\\d+'? crashed")""", 'worker.*crashed")', SW_DEAD),
+    "b4-line-zero-based": (RUN_PY, "for n, raw in enumerate(fh, 1):", "for n, raw in enumerate(fh):", SW_DEAD),
+    "b4-last-not-first": (RUN_PY, "for n, raw in enumerate(fh, 1):", "for n, raw in reversed(list(enumerate(fh, 1))):", SW_DEAD),
+    "b4-dead-worker-fail-rc": (RUN_PY, 'return None, (f"timeout after {timeout}s — an xdist', 'return 1, (f"timeout after {timeout}s — an xdist', SW_DEAD),
+    "b4-dead-worker-a-verdict": (RUN_PY, "if (dead := xdist_dead_worker(log)):",
+                                 "if (dead := xdist_dead_worker(log)):\n                    return 1, None\n                if dead:", SW_DEAD),
+    "b4-marker-judges-a-finished-run": (RUN_PY, "timeout=timeout, env=denv).returncode",
+                                        'timeout=timeout, env=denv).returncode\n                if xdist_dead_worker(log):\n'
+                                        '                    return None, "an xdist worker died"', SW_DEAD),
+    "b4-always-named": (RUN_PY, "if (dead := xdist_dead_worker(log)):",
+                        'if (dead := xdist_dead_worker(log) or ("?", 0)):', SW_DEAD),
+    # inputs the report must refuse
+    "sha-match-not-full": (PY, "return isinstance(x, str) and _FULL_SHA.fullmatch(x) is not None",
+                           "return isinstance(x, str) and _FULL_SHA.match(x) is not None", (REPORT, TICK)),
+    "ts-match-not-full": (PY, "return isinstance(x, str) and _TS_RE.fullmatch(x) is not None",
+                          "return isinstance(x, str) and _TS_RE.match(x) is not None", (REPORT,)),
+    # silences, counts and provenance in the window
+    "decision-gap-all-lines": (PY, 'decision_gap_h = _longest_gap_h(r["ts"] for r in rows)', 'decision_gap_h = _longest_gap_h(r["ts"] for r in window)', (REPORT,)),
+    "last-line-age-dropped": (PY, '"last_line_age_h": last_line_age_h,', '"last_line_age_h": 0,', (REPORT,)),
+    "last-line-age-unclamped": (PY, "round(max(0.0, clock - max(_epoch(r[\"ts\"]) for r in window)) / 3600, 2)",
+                                "round((clock - max(_epoch(r[\"ts\"]) for r in window)) / 3600, 2)", (REPORT,)),
+    "future-lines-uncounted": (PY, 'future_lines = sum(1 for r in window if _epoch(r["ts"]) > clock)', "future_lines = 0", (REPORT,)),
+    "errors-uncounted": (PY, 'errors = sum(1 for r in window if r.get("kind") == "error")', "errors = 0", (REPORT,)),
+    "skips-uncounted": (PY, 'Counter(str(r.get("why")) for r in window if r.get("kind") == "skipped")',
+                        'Counter(str(r.get("why")) for r in window if False)', (REPORT,)),
+    "rows-lose-code-sha": (PY, '"code_sha": d.get("code_sha"),', '"code_sha": None,', (REPORT,)),
+    "no-code-sha-any-string": (PY, 'without_code_sha = sum(1 for r in rows if not is_sha(r["code_sha"]))',
+                               'without_code_sha = sum(1 for r in rows if not r["code_sha"])', (REPORT,)),
+    "check-max-last": (PY, "check_max_s[k] = max(check_max_s.get(k, 0), v)", "check_max_s[k] = v", (REPORT,)),
+    "check-max-unsorted": (PY, "dict(sorted(check_max_s.items(), key=lambda kv: -kv[1]))", "dict(sorted(check_max_s.items()))", (REPORT,)),
+    "is-num-any-number": (PY, "return type(x) in (int, float) and x >= 0", "return isinstance(x, (int, float))", (REPORT,)),
+    "median-is-mean": (PY, '"median_s": round(median(t for t, _ in timed), 1) if timed else None',
+                       '"median_s": round(sum(t for t, _ in timed) / len(timed), 1) if timed else None', (REPORT,)),
+    "longest-is-first": (PY, '"longest_s": timed[-1][0] if timed else None', '"longest_s": timed[0][0] if timed else None', (REPORT,)),
+    # B6-1: deps images by explicit tag, 48 h unreferenced, never the newest of a recipe, never the candidate or base images
+    "b6-ref-window-shorter": (PRUNE, "REF_WINDOW_H = 48", "REF_WINDOW_H = 46", (PRUNE_T,)),
+    "b6-ref-window-longer": (PRUNE, "REF_WINDOW_H = 48", "REF_WINDOW_H = 72", (PRUNE_T,)),
+    "b6-newest-guard-off": (PRUNE, 'elif top is None or im["created"] is None or im["created"] == top["created"]:', 'elif top is None or im["created"] is None:', (PRUNE_T,)),
+    "b6-never-list-off": (PRUNE, "    return tag.startswith(NEVER) or tag in stand_ins\n", "    return False\n", (PRUNE_T,)),
+    # lead's addenda (2026-10-08): service stand-ins from the BASE matrix, a cap of 2 per recipe, a tick in flight, the run in progress
+    "b6-stand-ins-ignored": (PRUNE, "    return tag.startswith(NEVER) or tag in stand_ins\n", "    return tag.startswith(NEVER)\n", (PRUNE_T,)),
+    "b6-stand-ins-unread-removes": (PRUNE, "    for d in decided if blind else []:", "    for d in []:", (PRUNE_T,)),
+    "b6-stand-in-rule-unnamed": (PRUNE, "    if tag in stand_ins:\n        return \"service stand-in", "    if False:\n        return \"service stand-in", (PRUNE_T,)),
+    "b6-cap-3": (PRUNE, "MAX_IMAGES_PER_RECIPE = 2 ", "MAX_IMAGES_PER_RECIPE = 3 ", (PRUNE_T,)),
+    "b6-run-in-progress-ignored": (PRUNE, "        elif im[\"tag\"] in in_progress or im[\"id\"] in in_progress:", "        elif False:", (PRUNE_T,)),
+    "b6-cap-off": (PRUNE, 'if im["id"] not in slots and len(used) < MAX_IMAGES_PER_RECIPE:', 'if im["id"] not in slots:', (PRUNE_T,)),
+    "b6-twin-tag-untagged": (PRUNE, 'if ref_of(im) is None and im["id"] in slots:', "if False:", (PRUNE_T,)),
+    "b6-second-kept-unnamed": (PRUNE, '(True, f"not the newest of recipe', '(False, f"not the newest of recipe', (PRUNE_T,)),
+    # B8 (Pro, 2026-10-08T15:27Z, the VM full): the lease not a clock, slot 2 by plans, a VM floor over slot 2, the cache by budget
+    "b8-clock-grace-back": (PRUNE, '(True, f"recipe {r} already keeps', '(ref_of(im) >= 6, f"recipe {r} already keeps', (PRUNE_T,)),
+    "b8-slot-1-not-reserved": (PRUNE, "used = {1} if top is not None else set()", "used = set()", (PRUNE_T,)),
+    "b8-slot-2-by-age": (PRUNE, "key=lambda im: (-count_of(im), ref_of(im), -(im", "key=lambda im: (-(im", (PRUNE_T,)),
+    "b8-slot-2-count-ignored": (PRUNE, "key=lambda im: (-count_of(im), ref_of(im),", "key=lambda im: (ref_of(im),", (PRUNE_T,)),
+    "b8-slot-2-tie-oldest-ref": (PRUNE, "key=lambda im: (-count_of(im), ref_of(im),", "key=lambda im: (-count_of(im), -ref_of(im),", (PRUNE_T,)),
+    "b8-count-max-not-union": (PRUNE, 'len(set(named.get(im["tag"], ())) | set(named.get(im["id"], ())))', 'max(len(named.get(im["tag"], ())), len(named.get(im["id"], ())))', (PRUNE_T,)),
+    "b8-count-sum-not-union": (PRUNE, 'len(set(named.get(im["tag"], ())) | set(named.get(im["id"], ())))', 'len(named.get(im["tag"], ())) + len(named.get(im["id"], ()))', (PRUNE_T,)),
+    "b8-floor-14": (PRUNE, "VM_MIN_FREE_GB = 15.0 ", "VM_MIN_FREE_GB = 14.0 ", (PRUNE_T,)),
+    "b8-floor-16": (PRUNE, "VM_MIN_FREE_GB = 15.0 ", "VM_MIN_FREE_GB = 16.0 ", (PRUNE_T,)),
+    "b8-floor-off": (PRUNE, 'if rec["vm_free_gb"]["after"] >= floor:\n                break', "if True:\n                break", (PRUNE_T,)),
+    "b8-floor-at-the-floor": (PRUNE, 'if rec["vm_free_gb"]["after"] >= floor:\n                break', 'if rec["vm_free_gb"]["after"] > floor:\n                break', (PRUNE_T,)),
+    "b8-floor-env-ignored": (PRUNE, 'floor = _env_gb("LOCALCI_VM_MIN_FREE_GB", VM_MIN_FREE_GB)', "floor = VM_MIN_FREE_GB", (PRUNE_T,)),
+    "b8-floor-unmeasured-acts": (PRUNE, 'elif rec["vm_free_gb"]["after"] is None:', "elif False:", (PRUNE_T,)),
+    "b8-floor-on-dry-run": (PRUNE, "    if dry or blind:\n", "    if blind:\n", (PRUNE_T,)),
+    "b8-floor-blind": (PRUNE, "    if dry or blind:\n", "    if dry:\n", (PRUNE_T,)),
+    "b8-floor-gated-on-errors": (PRUNE, "    if dry or blind:\n", "    if dry or errors:\n", (PRUNE_T,)),
+    "b8-floor-no-remeasure": (PRUNE, '            rec["vm_free_gb"]["after"] = vm_free_gb(docker, state)\n            if rec', "            if rec", (PRUNE_T,)),
+    # B8 amended (Pro, 17:26Z: a 60 GiB VM holds one image per recipe plus scratch): under the floor, fewest references first,
+    # the newest of a recipe not protected; the cache pruned with -a after every image removal, its size journalled
+    "b8-floor-by-age-only": (PRUNE, 'return (d["refs"], d["created"] is None,', 'return (d["created"] is None,', (PRUNE_T,)),
+    "b8-floor-most-refs-first": (PRUNE, 'return (d["refs"], d["created"] is None,', 'return (-d["refs"], d["created"] is None,', (PRUNE_T,)),
+    "b8-floor-newest-first": (PRUNE, 'd["created"] or 0, d["tag"])', '-(d["created"] or 0), d["tag"])', (PRUNE_T,)),
+    "b8-floor-keeps-newest": (PRUNE, 'not d["remove"] and not d["live"] and not never(', 'not d["remove"] and d["slot"] != 1 and not d["live"] and not never(', (PRUNE_T,)),
+    "b8-floor-takes-lease-run": (PRUNE, 'not d["remove"] and not d["live"] and not never(', 'not d["remove"] and not never(', (PRUNE_T,)),
+    "b8-live-flag-off": (PRUNE, '"live": im["tag"] in in_progress or im["id"] in in_progress}', '"live": False}', (PRUNE_T,)),
+    "b8-cache-by-age": (PRUNE, '"builder", "prune", "-af", f"--{bp[\'flag\']}", f"{budget_gb:g}GB"', '"builder", "prune", "-f", "--filter", "until=24h"', (PRUNE_T,)),
+    # B13 (Pro, 2026-10-10: buildx 0.34 turned --keep-storage into a reserved floor: rc 0, a deprecation line naming the flag, 0 B freed)
+    "b13-deprecated-flag-kept": (PRUNE, 'return "keep-storage" if KEEP_STORAGE_RE.search(text) and not MAX_USED_RE.search(text) else "max-used-space"',
+                                 'return "keep-storage"', (PRUNE_T,)),
+    "b13-help-ignored": (PRUNE, 'return "keep-storage" if KEEP_STORAGE_RE.search(text) and not MAX_USED_RE.search(text) else "max-used-space"',
+                         'return "max-used-space"', (PRUNE_T,)),
+    "b13-deprecation-ignored": (PRUNE, 'or rec[k].get("deprecated_flag"))]', ')]', (PRUNE_T,)),
+    "b13-deprecation-any-flag": (PRUNE, "any(named.search(ln) and DEPRECATED_RE.search(ln) for", "any(DEPRECATED_RE.search(ln) for", (PRUNE_T,)),
+    "b13-total-unparsed": (PRUNE, "    m = TOTAL_RE.search(output or \"\")\n", "    m = None\n", (PRUNE_T,)),
+    # B14: the sandbox indexes the tree from a pack the host builds once (runner.py, steps_driver.py), against test_tree_pack.py
+    "b14-pack-ignored-tree-check": (DRIVER, 'if have.returncode != 0 or have.stdout.strip() != "tree":', "if False:", (TP,)),
+    "b14-repack-all": (DRIVER, 'git("repack", *(("-d", "-q") if tree_pack else ("-a", "-d", "-q")))', 'git("repack", "-a", "-d", "-q")', (TP,)),
+    "b14-pack-not-removed-at-run-end": (RUNNER, "        remove_tree_pack(run_dir)\n        for s, h in old.items():", "        for s, h in old.items():", (TP,)),
+    "b14-pack-shipped-to-egress": (RUNNER, 'memory=spec.get("memory", "4g"), paths=set(st["side"]["inputs"]))',
+                                   'memory=spec.get("memory", "4g"), paths=set(st["side"]["inputs"]), files=tree_pack_ship(run_dir, plan)[1])', (TP,)),
+    "b14-no-fallback-log": (RUNNER, 'return None, {}, f"# tree pack: unavailable ({why}) \u2014 the sandbox indexes the tree itself\\n"', "return None, {}, None", (TP,)),
+    "b14-pack-shipped-without-git-index": (RUNNER, '        if spec.get("git_index"):\n            tp, files, pack_note', "        if True:\n            tp, files, pack_note", (TP,)),
+    "b14-failed-build-retried": (RUNNER, "            _TREE_PACK_FAILED[key] = why\n", "", (TP,)),
+    "b14-pack-read-whole": (RUNNER, "            ti.size, ti.mode = os.fstat(fh.fileno()).st_size, mode\n            tf.addfile(ti, fh)",
+                            "            data = fh.read()\n            ti.size, ti.mode = len(data), mode\n            tf.addfile(ti, io.BytesIO(data))", (TP,)),
+    "b14-stale-pack-kept": (PRUNE, "        if age_h is None or age_h < TREE_PACK_STALE_H:", "        if age_h is None or age_h < FULL_DAYS * 24:", (PRUNE_T,)),
+    "b14-stale-pack-swept-too-young": (PRUNE, "TREE_PACK_STALE_H = 24 ", "TREE_PACK_STALE_H = 0 ", (PRUNE_T,)),
+    "b14-sidecar-crash": (RUNNER, "RuntimeError, ValueError, AttributeError, KeyError, TypeError) as e:", "RuntimeError, ValueError) as e:", (TP,)),
+    "b8-cache-without-a": (PRUNE, '"builder", "prune", "-af",', '"builder", "prune", "-f",', (PRUNE_T,)),
+    "b8-cache-env-ignored": (PRUNE, 'cache_budget = _env_gb("LOCALCI_BUILDER_CACHE_GB", BUILDER_CACHE_GB)', "cache_budget = BUILDER_CACHE_GB", (PRUNE_T,)),
+    "b8-cache-not-after-floor-removal": (PRUNE, "            builder_prune(docker, rec, cache_budget)   # the cache entries", "            pass   # the cache entries", (PRUNE_T,)),
+    "b8-cache-size-after-unread": (PRUNE, 'rec["builder_prune"]["cache_gb"]["after"] = build_cache_gb(docker)', 'rec["builder_prune"]["cache_gb"]["after"] = None', (PRUNE_T,)),
+    "b8-cache-first-rc-kept": (PRUNE, '    bp["rc"] = rc   # the last call', '    bp["rc"] = rc if bp["rc"] == 0 else bp["rc"]   # the last call', (PRUNE_T,)),
+    "b8-floor-undated-first": (PRUNE, 'd["created"] is None, d["created"] or 0, d["tag"])', 'd["created"] or 0, d["tag"])', (PRUNE_T,)),
+    "b8-cache-size-mb-as-gb": (PRUNE, '"MB": 1e6', '"MB": 1e9', (PRUNE_T,)),
+    # B8a (Pro, 2026-10-09T02:49:24Z: "built -5.3 h ago"): Created is a UTC instant whatever its offset
+    "b8a-offset-ignored": (PRUNE, '+ float(m.group(2) or 0) - off_s', '+ float(m.group(2) or 0)', (PRUNE_T,)),
+    "b8a-offset-sign-flipped": (PRUNE, '(1 if m.group(3) == "+" else -1)', '(-1 if m.group(3) == "+" else 1)', (PRUNE_T,)),
+    "b8a-offset-minutes-dropped": (PRUNE, "int(m.group(4)) * 3600 + int(m.group(5)) * 60", "int(m.group(4)) * 3600", (PRUNE_T,)),
+    "b8a-bad-offset-accepted": (PRUNE, "if not m or (m.group(3) and (int(m.group(4)) > 23 or int(m.group(5)) > 59)):", "if not m:", (PRUNE_T,)),
+    "b8a-trailing-text-accepted": (PRUNE, "m = TS_RE.fullmatch((text or \"\").strip())", "m = TS_RE.match((text or \"\").strip())", (PRUNE_T,)),
+    "b8-cache-budget-8": (PRUNE, "BUILDER_CACHE_GB = 4 ", "BUILDER_CACHE_GB = 8 ", (PRUNE_T,)),
+    "b8-env-inf-accepted": (PRUNE, "return v if math.isfinite(v) and v >= 0 else default", "return v if v >= 0 else default", (PRUNE_T,)),
+    # B8b: the VM's data disk keeps online discard (keep_vm_discard), against the b8b tests of test_prune.py
+    "b8b-discard-by-substring": (PRUNE, 'found = "discard" in f[3].split(",")', 'found = "discard" in f[3]', (PRUNE_T,)),
+    "b8b-first-line-wins": (PRUNE, 'found = "discard" in f[3].split(",")', 'found = "discard" in f[3].split(",") if found is None else found', (PRUNE_T,)),
+    "b8b-mount-point-by-prefix": (PRUNE, "if len(f) >= 4 and f[1] == VM_DOCKER_MOUNT:", "if len(f) >= 4 and f[1].startswith(VM_DOCKER_MOUNT):", (PRUNE_T,)),
+    "b8b-remount-skipped": (PRUNE, "    out[\"remounted\"] = True\n    try:", "    return out\n    try:", (PRUNE_T,)),
+    "b8b-remount-when-unreadable": (PRUNE, 'if out["before"] is not False:', 'if out["before"] is True:', (PRUNE_T,)),
+    "b8b-failed-list-not-updated": (PRUNE, 'rec["vm_discard"]["after"] is not True:', "False:", (PRUNE_T,)),
+    "b8b-failed-when-not-remounted": (PRUNE, 'rec.get("vm_discard", {}).get("remounted") and rec["vm_discard"]["after"] is not True:', 'rec.get("vm_discard", {}).get("after") is not True and "skipped" not in rec["vm_discard"]:', (PRUNE_T,)),
+    "b8b-kill-switch-ignored": (PRUNE, 'os.environ.get("LOCALCI_VM_DISCARD") == "0"', "False", (PRUNE_T,)),
+    "b8b-after-the-trim": (PRUNE, '        rec["vm_discard"] = keep_vm_discard(colima)   # before the trim: the trim then finds only what discard has not returned\n        try:\n            t = subprocess.run([colima, "ssh", "--", "sudo", "fstrim", "-av"], capture_output=True, text=True, timeout=900)\n            rec["fstrim"] = {"rc": t.returncode, "tail": (t.stdout or t.stderr).strip()[-160:]}\n        except (OSError, subprocess.TimeoutExpired) as e:\n            rec["fstrim"] = {"rc": None, "tail": type(e).__name__}\n', '        try:\n            t = subprocess.run([colima, "ssh", "--", "sudo", "fstrim", "-av"], capture_output=True, text=True, timeout=900)\n            rec["fstrim"] = {"rc": t.returncode, "tail": (t.stdout or t.stderr).strip()[-160:]}\n        except (OSError, subprocess.TimeoutExpired) as e:\n            rec["fstrim"] = {"rc": None, "tail": type(e).__name__}\n        rec["vm_discard"] = keep_vm_discard(colima)\n', (PRUNE_T,)),
+    "b6-rm-forced": (PRUNE, 'None if dry else _docker(docker, "image", "rm", im["tag"])', 'None if dry else _docker(docker, "image", "rm", "-f", im["tag"])', (PRUNE_T,)),
+    "b8-floor-rm-forced": (PRUNE, 'return _docker(docker, "image", "rm", tag)', 'return _docker(docker, "image", "rm", "-f", tag)', (PRUNE_T,)),
+    "b15-pressure-rm-forced": (PRUNE, 'r = rm_image(docker, im["tag"])\n            if r.returncode != 0:\n                errors.append({"tag": im["tag"], "gb": im["gb"], "rule": "host pressure"',
+                               'r = _docker(docker, "image", "rm", "-f", im["tag"])\n            if r.returncode != 0:\n                errors.append({"tag": im["tag"], "gb": im["gb"], "rule": "host pressure"', B15_PRUNE),
+    "b6-builder-never": (PRUNE, "    if not dry:   # the build cache grows", "    if False:   # the build cache grows", (PRUNE_T,)),
+    "b6-dry-run-removes": (PRUNE, "r = None if dry else _docker(", "r = None if False else _docker(", (PRUNE_T,)),
+    # B6-2: 7 days full, then the bulk goes; 30 days, then only the verdict files
+    "b6-full-days-6": (PRUNE, "FULL_DAYS, VERDICT_DAYS = 7, 30", "FULL_DAYS, VERDICT_DAYS = 6, 30", (PRUNE_T,)),
+    "b6-full-days-8": (PRUNE, "FULL_DAYS, VERDICT_DAYS = 7, 30", "FULL_DAYS, VERDICT_DAYS = 8, 30", (PRUNE_T,)),
+    "b6-verdict-days-29": (PRUNE, "FULL_DAYS, VERDICT_DAYS = 7, 30", "FULL_DAYS, VERDICT_DAYS = 7, 29", (PRUNE_T,)),
+    "b6-verdict-days-31": (PRUNE, "FULL_DAYS, VERDICT_DAYS = 7, 30", "FULL_DAYS, VERDICT_DAYS = 7, 31", (PRUNE_T,)),
+    "b6-verdict-files-lost": (PRUNE, "rel not in VERDICT", "True", (PRUNE_T,)),
+    "b6-call-graphs-kept": (PRUNE, "f in BULK)", "False)", (PRUNE_T,)),
+    "b6-undated-run-trimmed": (PRUNE, "if age_h is None or age_h < FULL_DAYS * 24:", "if age_h is not None and age_h < FULL_DAYS * 24:", (PRUNE_T,)),
+    # B6-3: the tick decides, then prunes and trims the VM; under 60 GB host-free no run starts
+    "b6-wrapper-floor-99": (SH, 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-100}"', 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-99}"', B6_WRAP),
+    "b6-wrapper-floor-le": (SH, '[ "$FREE" -lt "$FLOOR_GB" ]', '[ "$FREE" -le "$FLOOR_GB" ]', B6_WRAP),
+    "b6-wrapper-no-fstrim": (SH, 'prune --state-dir "$STATE" --fstrim', 'prune --state-dir "$STATE"', B6_WRAP),
+    "b6-wrapper-prune-failure-silent": (SH, 'if [ "$PRUNE_RC" -ne 0 ]; then', "if false; then", B6_WRAP),
+    "b6-wrapper-never-prunes": (SH, """if [ -f "$CODE/prune.py" ] && grep -q -- '"prune"' "$CODE/merger.py"; then""", "if false; then", B6_WRAP),
+    "b6-merger-floor-off": (PY, "if a.host_free_gb is not None and a.host_free_gb < a.min_host_free_gb:", "if False:", B6_FLOOR),
+    "b6-merger-floor-99": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "99.0"), B6_FLOOR),
+    # B15: Pro's host floor of 90 GB, held through the run
+    "floor-start-60": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "60.0"), HF),
+    "evict-disabled": (PY, "                    if low:\n", "                    if False:\n", HF),
+    "evict-spares-containers": (PY, 'subprocess.run([self.docker, "rm", "-f", "-v", *ids], capture_output=True, timeout=120, env=env)', "None", HF),
+    "evict-kills-foreign-run": (PY, 'f"label=org.nuzantara.localci.run={run_label(self.run_dir)}"', '"label=org.nuzantara.localci.run"', HF),
+    "evict-as-fail": (PY, '{**rec, "kind": "evicted", "why":', '{**rec, "kind": "decision", "overall": "FAIL", "why":', HF),
+    "statvfs-fail-open": (PY, "return (self.blind >= EVICT_BLIND_SAMPLES if free is None else free < self.evict_gb), free",
+                          "return (False if free is None else free < self.evict_gb), free", HF),
+    "evict-not-rotated": (PY, 'if (r.get("kind") == "decision" and not r.get("replay")) or r.get("kind") == "evicted":',
+                          'if (r.get("kind") == "decision" and not r.get("replay")):', HF),
+    "evict-cap-ignored": (PY, "if evictions[(n, head, base_sha)] >= EVICT_CAP:", "if False:", HF),
+    "evict-cap-off-by-one": (PY, "if evictions[(n, head, base_sha)] >= EVICT_CAP:", "if evictions[(n, head, base_sha)] > EVICT_CAP:", HF),
+    "parent-pid-not-handed": (PY, '"LOCALCI_PARENT_PID": str(os.getpid())}', '"LOCALCI_PARENT_PID": "0"}', HF),
+    "parent-watch-unwired": (RUN_PY, '    if a.cmd in ("plan", "run"):\n        watch_parent()', '    if False:\n        watch_parent()', HF),
+    "parent-watch-pid-1": (RUN_PY, 'if not raw.isdigit() or int(raw) <= 1:', 'if not raw.isdigit():', HF),
+    "parent-gone-never": (RUN_PY, "    except ProcessLookupError:\n        return True\n    except PermissionError:", "    except ProcessLookupError:\n        return False\n    except PermissionError:", HF),
+    "prune-pressure-no-builder-prune": (PRUNE, "        if dropped:\n            builder_prune(", "        if False:\n            builder_prune(", (f"{PRUNE_T}::test_b15_host_pressure_runs_the_builder_prune_after_its_removals_and_names_the_rebuild_cost",)),
+    "prune-pressure-rule-silent-on-cost": (PRUNE, 'f"dropping a second-slot image means a cold rebuild of that recipe"})', 'f"x"})', (f"{PRUNE_T}::test_b15_host_pressure_runs_the_builder_prune_after_its_removals_and_names_the_rebuild_cost",)),
+    "prune-host-pressure-ignored": (PRUNE, 'rec["host_pressure"] = pressure_gb is not None and free_before < pressure_gb',
+                                    'rec["host_pressure"] = False', B15_PRUNE),
+    "b7-fstrim-only-after-removal": (PRUNE, "    if fstrim and not dry:   # every real prune", "    if fstrim and removed and not dry:   # every real prune", (PRUNE_T,)),
+    "b7-fstrim-on-dry-run": (PRUNE, "    if fstrim and not dry:   # every real prune", "    if fstrim:   # every real prune", (PRUNE_T,)),
+    "b6-prune-code-sha-dropped": (PY, "    CODE_SHA = a.code_sha or None\n", "    CODE_SHA = None\n", (PRUNE_T,)),
+    # council round 1 (2026-10-08): the confirmed findings, each with its guard
+    "b6-unreadable-plan-ignored": (PRUNE, "            unreadable.append(", "            0 and unreadable.append(", (PRUNE_T,)),
+    "b6-half-plan-unread": (PRUNE, "        except ValueError:\n            doc = None\n", "        except ValueError:\n            continue\n", (PRUNE_T,)),
+    "b6-runs-link-followed": (PRUNE, "    if runs.is_symlink():   # the prune never leaves", "    if False:   # the prune never leaves", (PRUNE_T,)),
+    "b6-nanoseconds-dropped": (PRUNE, "+ float(m.group(2) or 0) - off_s", "- off_s", (PRUNE_T,)),
+    "b6-prune-failure-ok": (PY, 'return 1 if rec["failed"] else 0', 'return 1 if rec["images"]["errors"] else 0', (PRUNE_T,)),
+    "b6-prune-beside-tick": (PY, "    if fh is None:\n        journal(state, {\"kind\": \"prune\"", "    if False:\n        journal(state, {\"kind\": \"prune\"", (PRUNE_T,)),
+    "b6-wrapper-df-unread-ticks": (SH, 'if [ -z "$FREE" ]; then WARN="host free space unreadable', 'if false; then WARN="host free space unreadable', (f"{MERGER_T}::test_an_unreadable_host_reading_starts_no_run_and_the_organ_says_warning",)),
+    "b6-floor-organ-alive-ok": (FLOOR_SH, 'heartbeat "warning" "skipped: previous run alive', 'heartbeat "ok" "skipped: previous run alive', (FLOOR_T,)),
+    "b6-prune-code-sha-unvalidated": (PY, "if a.code_sha and not is_sha(a.code_sha):", "if False:", (PRUNE_T,)),
+    # B6-4: pro.disk_floor — ok above 100 GB, warning 60-100, failed under 60
+    "b6-floor-organ-ok-at-100": (FLOOR_SH, 'if [ "$FREE_MB" -gt "$OK_ABOVE_MB" ]; then VERDICT="ok"', 'if [ "$FREE_MB" -ge "$OK_ABOVE_MB" ]; then VERDICT="ok"', (FLOOR_T,)),
+    "b6-floor-organ-ok-above-101": (FLOOR_SH, "OK_ABOVE_MB=100000 ", "OK_ABOVE_MB=101000 ", (FLOOR_T,)),
+    "b6-floor-organ-fail-under-59": (FLOOR_SH, "FAIL_UNDER_MB=60000 ", "FAIL_UNDER_MB=59000 ", (FLOOR_T,)),
+    "b6-floor-organ-fail-under-61": (FLOOR_SH, "FAIL_UNDER_MB=60000 ", "FAIL_UNDER_MB=61000 ", (FLOOR_T,)),
+    "b6-floor-organ-failed-as-warning": (FLOOR_SH, '*) heartbeat "error" "failed: $NOTE"', '*) heartbeat "warning" "failed: $NOTE"', (FLOOR_T,)),
+    # the tick's journal
+    "durations-not-journalled": (PY, '                               "durations": {k: (v or {}).get("duration_s") for k, v in (status.get("checks") or {}).items()},\n',
+                                 "", (TICK,)),
+    "code-sha-not-stamped": (PY, '**({"code_sha": CODE_SHA} if CODE_SHA else {}), ', "", (TICK,)),
+    "code-sha-unvalidated": (PY, "if a.code_sha is not None and not is_sha(a.code_sha):", "if False:", (TICK,)),
+    "code-sha-sticky": (PY, "    CODE_SHA = a.code_sha\n", "    CODE_SHA = a.code_sha or CODE_SHA\n", (TICK,)),
+    # the enqueue path (C3a-2): each sub-criterion, the two halves of the arm, the one mutation
+    "enqueue-env-any-value": (PY, "armed_env = os.environ.get(ARM_ENV) == \"1\"", "armed_env = bool(os.environ.get(ARM_ENV))", (TICK,)),
+    "enqueue-label-not-an-arm": (PY, 'if not (armed_env and criterion["label_privileged"]) else', "if not armed_env else", (TICK,)),
+    "enqueue-label-any-role": (PY, "(None if role in ARM_ROLES else", "(None if role else", (TICK,)),
+    "enqueue-label-first-actor": (PY, 'actor = ev.get("actor") if ev.get("__typename") == "LabeledEvent" else None', 'actor = actor or ev.get("actor")', (TICK,)),
+    "enqueue-blocked-executed-ok": (PY, 'if res.get("mapping") in NON_EXECUTED and res.get("verdict") == "BLOCKED":', 'if res.get("verdict") == "BLOCKED":', (TICK,)),
+    "enqueue-check-blocked-only-fail": (PY, 'v not in CHECK_OK}', 'v == "FAIL"}', (TICK,)),
+    "enqueue-review-any": (PY, 'None if review in ("QUEUED", "PASS") else', 'None if review != "FAIL" else', (TICK,)),
+    "enqueue-hosted-pending-ok": (PY, 'if v != "GREEN"}', 'if v == "RED"}', (TICK,)),
+    "enqueue-head-moved-ignored": (PY, "None if live_head == head else", "None if live_head else", (TICK,)),
+    "enqueue-queue-entry-ignored": (PY, 'p.get("isInMergeQueue") is False and entry is None', 'p.get("isInMergeQueue") is False', (TICK,)),
+    "enqueue-twice": (PY, '"this head was enqueued by an earlier tick" if again else None', "None", (TICK,)),
+    "enqueue-no-entry-is-success": (PY, 'if not isinstance(entry, dict) or not entry.get("id"):', "if False:", (TICK,)),
+    "enqueue-unread-is-true": (PY, 'criterion = {k: k in why and why[k] is None for k in CRITERION}', 'criterion = {k: why.get(k) is None for k in CRITERION}', (TICK,)),
+    "report-would-enqueue-any": (PY, 'r.get("kind") == "would_enqueue" and r.get("ok") is True', 'r.get("kind") == "would_enqueue"', (REPORT,)),
+    # F1 (phase F, shadow): the rehearsed merge — one would_merge line, never a ref, never a push
+    "f1-kind-string": (PY, '{"kind": "would_merge", "pr": enq["pr"]', '{"kind": "would_merged", "pr": enq["pr"]', (TICK,)),
+    "f1-step-not-called": (PY, "            merge_shadow_step(state, repo_dir, enq, a.base, a, line)\n", "            pass\n", (TICK,)),
+    "f1-ok-ignores-criterion": (PY, "bool(crit) and all(crit.values()) and", "bool(crit) and True and", (TICK,)),
+    "f1-ok-empty-criterion": (PY, "bool(crit) and all(crit.values()) and", "all(crit.values()) and", (TICK,)),
+    "f1-ok-ignores-base-moved": (PY, 'and line["base_current"] and line["clean"]', 'and line["clean"]', (TICK,)),
+    "f1-ok-ignores-conflict": (PY, 'and line["base_current"] and line["clean"]', 'and line["base_current"]', (TICK,)),
+    "f1-base-current-always": (PY, 'line["base_current"] = line["remote_main"] == base_sha', 'line["base_current"] = True', (TICK,)),
+    "f1-base-current-vs-mirror": (PY, 'line["base_current"] = line["remote_main"] == base_sha', 'line["base_current"] = line["mirror_main"] == base_sha', (TICK,)),
+    "f1-remote-read-without-timeout": (PY, "check=False, timeout=REMOTE_TIMEOUT_S)", "check=False)", (TICK,)),
+    "f1-remote-error-is-current": (PY, "        errors.append(redact(f\"{type(exc).__name__}: {exc}\"))\n    try:\n        line[\"mirror_main\"]",
+                                   "        line[\"base_current\"] = True\n    try:\n        line[\"mirror_main\"]", (TICK,)),
+    "f1-journal-failure-reaches-decide": (PY, "        except Exception as exc:  # noqa: BLE001 — a shadow never turns a decision", "        except ZeroDivisionError as exc:  # noqa: BLE001", (TICK,)),
+    "f1-report-error-is-conflict": (PY, 'r.get("clean") is False and is_sha(r.get("merge_tree")) and not r.get("error")', 'r.get("clean") is False', (REPORT,)),
+    "f1-report-error-is-base-moved": (PY, 'r.get("base_current") is False and is_sha(r.get("remote_main"))', 'r.get("base_current") is False', (REPORT,)),
+    "f1-report-errors-uncounted": (PY, '"errors": sum(1 for r in wm if r.get("error"))', '"errors": 0', (REPORT,)),
+    "f1-head-unchanged-always": (PY, '"head_unchanged": crit.get("head_unchanged") is True', '"head_unchanged": True', (TICK,)),
+    "f1-rehearses-on-decided-base": (PY, 'line["mirror_main"], head, check=False)', 'base_sha, head, check=False)', (TICK,)),
+    "f1-clean-always": (PY, 'line["clean"] = parts[0], res.returncode == 0', 'line["clean"] = parts[0], True', (TICK,)),
+    "f1-conflicts-unread": (PY, 'line["conflicts"] = (names[:names.index("")] if "" in names else names)[:50]', 'line["conflicts"] = []', (TICK,)),
+    "f1-conflicts-take-messages": (PY, 'names[:names.index("")] if "" in names else names', "names", (TICK,)),
+    "f1-writes-a-ref": (PY, 'line["merge_tree"], line["clean"] = parts[0], res.returncode == 0',
+                        'line["merge_tree"], line["clean"] = parts[0], res.returncode == 0; git(repo_dir, "update-ref", "refs/merger/shadow", parts[0])', (TICK,)),
+    "f1-error-unredacted": (PY, "a shadow never raises into the decision\n        errors.append(redact(f\"{type(exc).__name__}: {exc}\"))",
+                            "a shadow never raises into the decision\n        errors.append(f\"{type(exc).__name__}: {exc}\")", (TICK,)),
+    "f1-remote-error-unredacted": (PY, "not known to be current\n        errors.append(redact(f\"{type(exc).__name__}: {exc}\"))",
+                                   "not known to be current\n        errors.append(f\"{type(exc).__name__}: {exc}\")", (TICK,)),
+    "f1-raises-into-decision": (PY, "    except Exception as exc:  # noqa: BLE001 — a shadow never raises into the decision",
+                                "    except ZeroDivisionError as exc:  # noqa: BLE001", (TICK,)),
+    "f1-bites-always": (PY, '"bites": isinstance(p.get("body"), str) and BITES_RE.search(p["body"]) is not None', '"bites": True', (TICK,)),
+    "f1-bites-case-sensitive": (PY, "re.M | re.I)   # the PR contract", "re.M)   # the PR contract", (TICK,)),
+    "f1-bites-anywhere": (PY, 'BITES_RE = re.compile(r"^[ \\t>*_-]*Bites', 'BITES_RE = re.compile(r".*Bites', (TICK,)),
+    "f1-report-counts-other-kinds": (PY, 'wm = [r for r in window if r.get("kind") == "would_merge"]', 'wm = [r for r in window if r.get("kind") in ("would_merge", "would_enqueue")]', (REPORT,)),
+    "f1-report-ok-any": (PY, '"ok": sum(1 for r in wm if r.get("ok") is True)', '"ok": len(wm)', (REPORT,)),
+    "f1-report-conflicted-inverted": (PY, 'sum(1 for r in wm if r.get("clean") is False and', 'sum(1 for r in wm if r.get("clean") is True and', (REPORT,)),
+    "f1-report-base-moved-inverted": (PY, 'sum(1 for r in wm if r.get("base_current") is False and', 'sum(1 for r in wm if r.get("base_current") is True and', (REPORT,)),
+    "f1-report-phase-f-live": (PY, 'phase_f = "shadow" if not', 'phase_f = "live" if not', (REPORT,)),
+    # F2 (phase F, the executor): disarmed by construction — each arming condition is one rule, and the push is plain
+    "f2-ready-dropped": (PY, 'elif rep.get("phase_e_ready") is not True:', "elif False:", (PHASEF,)),
+    "f2-ready-unreadable-passes": (PY, 'if rep.get("refused"):', "if False:", (PHASEF,)),
+    "f2-precheck-removed": (PY, "elif (early := ready_precheck(state)):", "elif (early := None):", (PHASEF,)),
+    "f2-precheck-passes-without-the-report": (PY, "        why.append(early)\n    else:\n        try:", "        why.append(early)\n    elif True:\n        pass\n    else:\n        try:", (PHASEF,)),
+    "f2-precheck-days-ignored": (PY, "if days + READY_SPAN_SLACK_DAYS < READY_MIN_DAYS:", "if False:", (PHASEF,)),
+    "f2-precheck-count-ignored": (PY, "if decided < READY_MIN_MERGES:", "if False:", (PHASEF,)),
+    "f2-precheck-own-threshold": (PY, "if days + READY_SPAN_SLACK_DAYS < READY_MIN_DAYS:", "if days + READY_SPAN_SLACK_DAYS < 10:", (PHASEF,)),
+    "f2-ready-always": (PY, "report(argparse.Namespace(repo=a.repo, base=a.base, state_dir=str(state), since=None), emit=False)",
+                        "(0, {'phase_e_ready': True})", (PHASEF,)),
+    "f2-env-dropped": (PY, 'if os.environ.get(PHASE_F_ENV) != "1":', "if False:", (PHASEF,)),
+    "f2-key-mode-dropped": (PY, "if stat.S_IMODE(st.st_mode) != 0o600:", "if False:", (PHASEF,)),
+    "f2-key-owner-dropped": (PY, "if st.st_uid != os.geteuid():", "if False:", (PHASEF,)),
+    "f2-key-regular-dropped": (PY, "if not stat.S_ISREG(st.st_mode):", "if False:", (PHASEF,)),
+    "f2-key-missing-ignored": (PY, "    except FileNotFoundError:\n        return f\"{KEY_FILE} missing\"", "    except FileNotFoundError:\n        return None", (PHASEF,)),
+    "f2-halt-ignored": (PY, "if (reason := halt_reason(state)) is not None:", "if False and (reason := halt_reason(state)) is not None:", (PHASEF,)),
+    "f2-criterion-bypassed": (PY, 'if not (enq.get("ok") is True and crit and all(crit.values())):', "if False:", (PHASEF,)),
+    "f2-criterion-empty-passes": (PY, 'if not (enq.get("ok") is True and crit and all(crit.values())):', 'if not (enq.get("ok") is True and all(crit.values())):', (PHASEF,)),
+    "f2-queue-owner-ignored": (PY, 'if enq.get("kind") != "would_enqueue":', "if False:", (PHASEF,)),
+    "f2-enqueue-kind-only-enqueued": (PY, 'if enq.get("kind") != "would_enqueue":', 'if enq.get("kind") == "enqueued":', (PHASEF,)),
+    "f2-base-current-ignored": (PY, 'if line.get("base_current") is not True:', "if False:", (PHASEF,)),
+    "f2-clean-ignored": (PY, 'if line.get("clean") is not True:', "if False:", (PHASEF,)),
+    "f2-mirror-main-ignored": (PY, 'if line.get("mirror_main") != line.get("base_sha"):', "if False:", (PHASEF,)),
+    "f2-head-reread-dropped": (PY, "if a is not None and not why:", "if False:", (PHASEF,)),
+    "f2-pr-state-ignored": (PY, 'if pull.get("state") != "OPEN":', "if False:", (PHASEF,)),
+    "f2-force-push": (PY, 'git(repo_dir, "push", "origin", f"{commit}:refs/heads/{base}"', 'git(repo_dir, "push", "--force", "origin", f"{commit}:refs/heads/{base}"', (PHASEF,)),
+    "f2-plus-refspec-push": (PY, 'f"{commit}:refs/heads/{base}", env={"GIT_SSH_COMMAND": push_ssh_command(state)}', 'f"+{commit}:refs/heads/{base}", env={"GIT_SSH_COMMAND": push_ssh_command(state)}', (PHASEF,)),
+    "f2-refusal-does-not-halt": (PY, 'halt(state, f"push of {commit} for #{n} refused: {err}")', "pass", (PHASEF,)),
+    "f2-refusal-moves-the-mirror": (PY, "    if err:\n        halt(state, f\"push of {commit} for #{n} refused", "    if err and git(repo_dir, \"update-ref\", \"refs/merger/base\", commit, old, check=False):\n        halt(state, f\"push of {commit} for #{n} refused", (PHASEF,)),
+    "f2-mirror-not-moved": (PY, 'updated = git(repo_dir, "update-ref", "refs/merger/base", commit, old, check=False).returncode == 0', "updated = False", (PHASEF,)),
+    "f2-parents-swapped": (PY, '"-p", old, "-p", head,', '"-p", head, "-p", old,', (PHASEF,)),
+    "f2-subject-without-number": (PY, 'subject = title if title.endswith(f"(#{n})") else f"{title} (#{n})"', "subject = title", (PHASEF,)),
+    "f2-bites-not-carried": (PY, "([bites] if bites else [])", "[]", (PHASEF,)),
+    "f2-key-in-the-runner-env": (PY, '"LOCALCI_PARENT_PID": str(os.getpid())}', '"LOCALCI_PARENT_PID": str(os.getpid()), "GIT_SSH_COMMAND": "ssh -i " + str(base_wt.parent.parent / KEY_FILE)}', (PHASEF,)),
+    "f2-key-in-the-process-env": (PY, 'env={"GIT_SSH_COMMAND": push_ssh_command(state)}', 'env=os.environ.setdefault("GIT_SSH_COMMAND", push_ssh_command(state)) and {"GIT_SSH_COMMAND": push_ssh_command(state)}', (PHASEF,)),
+    "f2-fetch-guard-dropped": (PY, "if anchor is None or halt_reason(state) is not None:", "if True:", (PHASEF,)),
+    "f2-fetch-guard-ignores-the-halt": (PY, "if anchor is None or halt_reason(state) is not None:", "if anchor is None:", (PHASEF,)),
+    "f2-fetch-anchor-is-unpushed": (PY, 'if r.get("kind") == "pushed" and is_sha(r.get("merge_commit"))', 'if r.get("kind") in ("pushed", "merged") and is_sha(r.get("merge_commit"))', (PHASEF,)),
+    "f2-fetch-guard-inverted": (PY, '"--is-ancestor", anchor, incoming, check=False).returncode == 0:', '"--is-ancestor", anchor, incoming, check=False).returncode != 0:', (PHASEF,)),
+    "f2-diverged-does-not-halt": (PY, 'halt(state, f"storage diverged:', 'print(f"storage diverged:', (PHASEF,)),
+    "f2-push-url-https": (PY, 'return a.push_url or (None if a.remote_url else f"git@github.com:{a.repo}.git")', "return a.push_url", (PHASEF,)),
+    "f2-report-quiet-writes": (PY, "    if not emit:\n        return (1 if fg else 0), out", "    if False:\n        return (1 if fg else 0), out", (PHASEF,)),
+    "f2-report-executor-uncounted": (PY, "n_merged, n_refused = (sum(1 for r in window if r.get(\"kind\") == k) for k in (\"merged\", \"push_refused\"))", "n_merged, n_refused = 0, 0", (PHASEF,)),
+    # F2 fix round: the wrapper keeps its hands off refs/merger/base, READY only after the local conditions, the window slack, the re-read, the ssh, the halt order, the halt/URL guards, the judged tree
+    "f2-wrapper-fetches-base": (SH, "origin +refs/heads/main:refs/merger/wrapper", "origin +refs/heads/main:refs/merger/base", WRAPPER_T),
+    "f2-wrapper-reads-base": (SH, "rev-parse --verify --quiet 'refs/merger/wrapper^{commit}'", "rev-parse --verify --quiet 'refs/merger/base^{commit}'", WRAPPER_T),
+    "f2-wrapper-fallback-dropped": (SH, "  || git -C \"$STATE/repo.git\" rev-parse --verify 'refs/merger/base^{commit}')\"", "  || false)\"", WRAPPER_T),
+    "f2-ready-evaluated-despite-local-false": (PY, '    if why:\n        why.append("READY not evaluated")', '    if False:\n        why.append("READY not evaluated")', (PHASEF,)),
+    "f2-ready-not-evaluated-silent": (PY, 'why.append("READY not evaluated")', "pass", (PHASEF,)),
+    "f2-precheck-no-slack": (PY, "if days + READY_SPAN_SLACK_DAYS < READY_MIN_DAYS:", "if days < READY_MIN_DAYS:", (PHASEF,)),
+    "f2-precheck-double-slack": (PY, "if days + READY_SPAN_SLACK_DAYS < READY_MIN_DAYS:", "if days + 2 * READY_SPAN_SLACK_DAYS < READY_MIN_DAYS:", (PHASEF,)),
+    "f2-reread-queue-ignored": (PY, 'if pull.get("isInMergeQueue") is not False:', "if False:", (PHASEF,)),
+    "f2-reread-draft-ignored": (PY, 'if pull.get("isDraft") is not False:', "if False:", (PHASEF,)),
+    "f2-reread-base-ignored": (PY, 'if pull.get("baseRefName") != a.base:', "if False:", (PHASEF,)),
+    "f2-reread-label-ignored": (PY, "if ARM_LABEL not in {lb.get(\"name\") for lb in (pull.get(\"labels\")", "if False and ARM_LABEL not in {lb.get(\"name\") for lb in (pull.get(\"labels\")", (PHASEF,)),
+    "f2-ssh-config-not-nulled": (PY, "ssh -F /dev/null -o IdentityAgent=none -i ", "ssh -o IdentityAgent=none -i ", (PHASEF,)),
+    "f2-ssh-agent-allowed": (PY, "ssh -F /dev/null -o IdentityAgent=none -i ", "ssh -F /dev/null -i ", (PHASEF,)),
+    "f2-ssh-known-hosts-unpinned": (PY, 'f"-o {shlex.quote(known)} -o StrictHostKeyChecking=yes")', 'f"-o StrictHostKeyChecking=yes")', (PHASEF,)),
+    "f2-ssh-global-known-hosts-read": (PY, '"-o GlobalKnownHostsFile=/dev/null "', '""', (PHASEF,)),
+    "f2-ssh-host-key-unchecked": (PY, 'f"-o {shlex.quote(known)} -o StrictHostKeyChecking=yes")', 'f"-o {shlex.quote(known)} -o StrictHostKeyChecking=no")', (PHASEF,)),
+    "f2-halt-after-the-journal": (PY, '        halt(state, f"push of {commit} for #{n} refused: {err}")   # the halt first: a journal line that fails to write must not leave the door open\n'
+                                  '        journal(state, {"kind": "push_refused", "pr": n, "head_sha": head, "merge_commit": commit, "error": err, "lease_id": enq.get("lease_id")})\n',
+                                  '        journal(state, {"kind": "push_refused", "pr": n, "head_sha": head, "merge_commit": commit, "error": err, "lease_id": enq.get("lease_id")})\n'
+                                  '        halt(state, f"push of {commit} for #{n} refused: {err}")\n', (PHASEF,)),
+    "f2-stopped-push-does-not-halt": (PY, '            halt(state, f"push of {commit} for #{n} interrupted, outcome unknown: {err}")\n            raise', "            raise", (PHASEF,)),
+    "f2-interrupted-push-does-not-halt": (PY, 'halt(state, f"push of {commit} for #{n} interrupted, outcome unknown: {type(exc).__name__}")', "pass", (PHASEF,)),
+    "f2-halt-valueerror-uncaught": (PY, "except (OSError, ValueError):   # a halt file", "except OSError:   # a halt file", (PHASEF,)),
+    "f2-report-halted-follows-exists": (PY, '"phase_f_halted": os.path.lexists(state / HALT_FILE)', '"phase_f_halted": (state / HALT_FILE).exists()', (PHASEF,)),
+    "f2-push-url-any-scheme-trusted": (PY, 'and m[1].lower() not in ("ssh", "git+ssh", "ssh+git")', "and False", (PHASEF,)),
+    "f2-push-url-https-trusted": (PY, '("ssh", "git+ssh", "ssh+git")', '("ssh", "git+ssh", "ssh+git", "https")', (PHASEF,)),
+    "f2-push-url-case-sensitive": (PY, 'u or "", re.I)', 'u or "")', (PHASEF,)),
+    "f2-tree-check-dropped": (PY, 'elif tree != line.get("merge_tree"):', "elif False:", (PHASEF,)),
+    "f2-tree-unreadable-passes": (PY, "if (tree := judged_tree(repo_dir, enq)) is None:", "if False:", (PHASEF,)),
+    # B10 (phase D): a hosted verdict given on an older main than the local run judged is HOSTED_STALE, only on evidence
+    "b10-stale-without-path-test": (PY, 'return {"stale": bool(selected), "hosted_main": main,', 'return {"stale": bool(paths), "hosted_main": main,', (STALE,)),
+    "b10-stale-any-flag": (PY, 'if cm.get("run_all") or flag in (cm.get("suggested_jobs") or []):', "if True:", (STALE,)),
+    "b10-stale-before-flag-read": (PY, "        if not isinstance(self._flags[name], str):\n            raise", "        if False:\n            raise", (STALE,)),
+    "b10-stale-main-after": (PY, 'f"--before={completed_at}"', 'f"--after={completed_at}"', (STALE,)),
+    "b10-stale-on-unreadable-time": (HC, 'return {**base, "stale": None, "stale_check": "unknown (the hosted verdict carries no readable completed_at)"}',
+                                     'return {**base, "stale": True, "stale_check": "unknown (the hosted verdict carries no readable completed_at)"}', (STALE,)),
+    "b10-stale-on-judge-failure": (HC, 'return {**base, "stale": None, "stale_check": f"unknown ({type(exc).__name__}',
+                                   'return {**base, "stale": True, "stale_check": f"unknown ({type(exc).__name__}', (STALE,)),
+    "b10-agree-left-as-agree": (HC, 'if reading.get("stale") is True:\n            reading["class_before"]', 'if reading.get("stale") is True and klass != "AGREE":\n            reading["class_before"]', (STALE,)),
+    "b10-stale-counts-as-compared": (HC, 'COMPARED = ("AGREE", "FALSE_GREEN", "FALSE_RED")', 'COMPARED = ("AGREE", "FALSE_GREEN", "FALSE_RED", "HOSTED_STALE")', (STALE,)),
+    "b10-oldest-entry-times-the-verdict": (HC, "when = max(stamps) if", "when = min(stamps) if", (STALE,)),
+    "b10-judge-unwired-in-the-tick": (PY, "run_dir, judge, gate=GateJudge(", "run_dir, None, gate=GateJudge(", (TICK,)),
+    "b10-tick-drops-the-stale-rows": (PY, '**({"stale": stale} if stale else {})', "**{}", (STALE,)),
+    "b10-report-compare-without-judge": (PY, 'live["statuses"], stale_judge=judge, gate_judge=gate)\n                for k, v',
+                                         'live["statuses"], gate_judge=gate)\n                for k, v', (REPORT,)),
+    "b10-report-reclassifies-without-evidence": (PY, 'if reading["stale"] is True:\n            out.append', 'if True:\n            out.append', (REPORT,)),
+    "b10-report-reclassifies-a-red-that-went": (PY, 'if h["verdict"] != "RED":\n            kept.append(', "if False:\n            kept.append(", (REPORT,)),
+    "b10-report-never-subtracts": (PY, "recorded_fg += raw - len(got)", "recorded_fg += raw", (REPORT,)),
+    "b10-report-hides-the-raw-count": (PY, "recorded_raw += raw\n", "recorded_raw += raw - len(got)\n", (REPORT,)),
+    "b10-first-parent-dropped": (PY, '"rev-list", "-1", "--first-parent", f"--before=', '"rev-list", "-1", f"--before=', (STALE,)),
+    "b10-per-path-classify-blind": (PY, "cm = change_map.classify([p])", "cm = change_map.classify([])", (STALE,)),
+    "b10-report-kept-unsaid": (PY, '"why": reading["stale_check"]})', '"why": ""})', (REPORT,)),
+    "b10-report-read-failure-unsaid": (PY, '"why": redact(f"unknown ({type(exc).__name__}: {exc})")}]', '"why": ""}]', (REPORT,)),
+    "b10-report-red-gone-unsaid": (PY, "the hosted verdict is now {h['verdict']}, not the red the tick recorded", "kept", (REPORT,)),
+    # B12b: a hosted RED of a gate-reading context that was its reader's PENDING read, given before the gate post the local run read
+    "b12b-any-red-stale": (PY, "if not ours or len(fails) > len(ours) + len(exits) or len(exits) > 1:", "if False:", GS),
+    "b12b-extra-annotation-ignored": (PY, "if not ours or len(fails) > len(ours) + len(exits) or len(exits) > 1:", "if not ours:", GS),
+    "b12b-newest-post-any-time": (PY, 'read = [x for x in gate if x["updated_at"] <= self.plan_at]', "read = gate", GS),
+    "b12b-annotation-read-fails-stale": (HC, 'return {"gate_check": f"unknown ({type(exc).__name__}: {str(exc)[-200:]})"}',
+                                         'return {"stale": True, "gate_check": f"unknown ({type(exc).__name__}: {str(exc)[-200:]})"}', GS),
+    "b12b-context-by-name": (PY, "pending = self.matrix.pending_of(name)\n        if not pending:",
+                             'pending = [{"step": "Gear >= 2 — read the real gate verdict", "line": "::error::harness_gate_read: PENDING", "later": []}] '
+                             'if name == "Harness floor recompute" else []\n        if not pending:', GS),
+    "b12b-report-not-rejudged": (PY, 'g = recorded_gate(a, gate, str(head), r, live["statuses"]) if gate is not None else {}', "g = {}", GS),
+    "b12b-green-stale": (PY, 'if hosted["verdict"] != "RED":\n            return None', "if False:\n            return None", GS),
+    "b12b-post-same-second-stale": (PY, 'if not hosted["completed_at"] < posted:', 'if not hosted["completed_at"] <= posted:', GS),
+    "b12b-status-red-read-as-run": (PY, 'if any(type(e.get("id")) is not int for e in red):', "if False:", GS),
+    "b12b-report-red-not-found-judged": (PY, 'if not any(e["completed_at"] == at for e in red):', "if False:", GS),
+    "b12b-gate-unwired-in-the-tick": (PY, "gate=GateJudge(a.repo, judge, plan_time(run_dir), frozen_reads(run_dir))", "gate=None", (TICK,)),
+    # B12b fix round: the local run read a success the plan froze; the job failed on the reader step alone; a failure conclusion; the
+    # report finds the tick's own reds by id; a row says what ran; a B10 row is journalled whole
+    "b12b-anchor-state-ignored": (PY, 'if states != ["success"]:', "if False:", GS),
+    "b12b-frozen-read-ignored": (PY, "if not rcs or any(type(rc) is not int or rc != 0 for rc in rcs):", "if False:", GS),
+    "b12b-other-step-failed-stale": (PY, 'if failed != [p["step"]] or ran:', "if ran:", GS),
+    "b12b-later-step-ran-stale": (PY, 'if failed != [p["step"]] or ran:', 'if failed != [p["step"]]:', GS),
+    "b12b-annotation-cap-ignored": (PY, "if len(raw) >= self.ANN_CAP:", "if False:", GS),
+    "b12b-jobs-read-fails-stale": (PY, '            steps = self.job_steps(e["id"])\n',
+                                   '            try:\n                steps = self.job_steps(e["id"])\n            except Exception:\n                continue\n', GS),
+    "b12b-job-of-another-run": (PY, 'if not isinstance(url, str) or not url.endswith(f"/check-runs/{rid}"):', "if False:", GS),
+    "b12b-conclusion-ignored": (PY, 'if any(e.get("conclusion") != "failure" for e in red):', "if False:", GS),
+    "b12b-report-red-ids-ignored": (PY, "if len(red) != len(recorded):", "if False:", GS),
+    "b12b-report-red-unjournalled": (HC, '**({"hosted_red": h["red"]} if h["verdict"] == "RED" else {})', "**{}", GS),
+    "b12b-stale-check-without-b10": (HC, '"stale_check": gate["gate_check"]}\n', '"stale_check": "fresh"}\n', GS),
+    "b12b-b10-row-tolerated": (PY, "    return {k: r[k] for k in B10_KEYS}\n", "    return {k: r[k] for k in B10_KEYS if k in r}\n", GS),
+    # B11 (phase D): the merger also judges the exact commit GitHub merged — a replay, BASE = its first parent, alternating with PR decisions
+    "b11-base-is-the-merge-commit": (PY, '"base_sha": parents.split()[0]', '"base_sha": sha', (REPLAY,)),
+    "b11-alternation-off": (PY, 'after_replay = bool(last and last[0].get("replay"))', "after_replay = False", (REPLAY,)),
+    "b11-open-pull-journalled-unmapped": (PY, 'if isinstance(p, dict) and p.get("state") == "open":\n                    continue', 'if False:\n                    continue', (REPLAY,)),
+    "b11-oldest-merge-first": (PY, "for line in log:   # newest first (B11b)", "for line in reversed(log):   # (B11b)", (REPLAY,)),
+    "b11-replayed-again": (PY, "if sha in done or not m or not parents.split():", "if not m or not parents.split():", (REPLAY,)),
+    "b11-unconfirmed-commit-replayed": (PY, 'p.get("merged") is True and p.get("merge_commit_sha") == sha and head_of(p)', 'p.get("merged") is True and head_of(p)', (REPLAY,)),
+    "b11-stale-judge-on-a-replay": (PY, "hosted_summary(a.repo, a.base, status, cand_sha, run_dir, None, REPLAY_NOTE)",
+                                    "hosted_summary(a.repo, a.base, status, cand_sha, run_dir, StaleJudge(repo_dir, base_sha), REPLAY_NOTE)", (REPLAY,)),
+    "b11-replay-enqueues": (PY, "        if replay:\n            return 0\n        enq = ", "        if False:\n            return 0\n        enq = ", (REPLAY,)),
+    "b11-replay-counted-without-threshold": (PY, 'and compared_enough(compared_ctx, len(not_full["partial"]))})', 'and (d.get("replay") is True or compared_enough(compared_ctx, len(not_full["partial"]))) })', (REPORT,)),
+    "b11-pr-counted-twice": (PY, 'merges = sorted({r["pr"]: r["merged_at"] for r in rows if r["compared_merge"]}.values())', 'merges = sorted(r["merged_at"] for r in rows if r["compared_merge"])', (REPORT,)),
+    "b11-unconfirmed-merge-commit-trusted": (PY, 'return mc if pr.get("merged") is True and is_sha(mc) and pr.get("merge_commit_sha") == mc else', "return mc if True else", (REPORT,)),
+    "b11-replay-judged-for-stale": (PY, 'judge = None if d.get("replay") else judges.setdefault', "judge = judges.setdefault", (REPORT,)),
+    "b11-replay-credit-to-any": (PY, "if all(flags))   # a PR that also qualified", "if any(flags))   # a PR that also qualified", (REPORT,)),
+    "b11-second-parent-base": (PY, '"base_sha": parents.split()[0]', '"base_sha": parents.split()[-1]', (REPLAY,)),
+    "b11-not-first-parent-line": (PY, '"log", "--first-parent", "--format=%H%x00%P%x00%s"', '"log", "--format=%H%x00%P%x00%s"', (REPLAY,)),
+    "b11-replay-crash-unjournalled": (PY, "if not (replay or isinstance(exc, (MergerError, OSError))):", "if not isinstance(exc, (MergerError, OSError)):", (REPLAY,)),
+    "b11-any-crash-journalled": (PY, "if not (replay or isinstance(exc, (MergerError, OSError))):", "if False:", (REPLAY,)),
+    "b11-replay-stop-journalled": (PY, "    except Stopped:\n        raise\n    except Exception as exc:  # noqa: BLE001 — a decision with no verdict",
+                                   "    except Exception as exc:  # noqa: BLE001 — a decision with no verdict", (REPLAY,)),
+    "b11-replay-false-green-unlisted": (PY, '"why": REPLAY_KEPT}]', '"why": REPLAY_KEPT}][:0]', (REPORT,)),
+    # the launchd wrapper
+    "sh-code-flag-always": (SH, 'if grep -q -- "--code-sha" "$CODE/merger.py"; then', "if true; then", (TICK,)),
+    "sh-code-flag-never": (SH, 'if grep -q -- "--code-sha" "$CODE/merger.py"; then', "if false; then", (TICK,)),
+    "sh-heartbeat-sourced": (SH, '"$BASH" "$HB_LIB" "$ORGAN_ID" "$1" "$2" ||', '{ source "$HB_LIB"; organism_heartbeat "$ORGAN_ID" "$1" "$2"; } ||', (TICK,)),
+    "sh-heartbeat-from-checkout": (SH, 'HB_LIB="${MERGER_HEARTBEAT_LIB:-$STATE/heartbeat.sh}"',
+                                   'HB_LIB="${MERGER_HEARTBEAT_LIB:-$HOME/nuzantara/scripts/lib/heartbeat.sh}"', (TICK,)),
+    "sh-heartbeat-not-refreshed": (SH, '  mv -f "$HB_NEW" "$STATE/heartbeat.sh"', "  :", (TICK,)),
+    "sh-heartbeat-empty-runs": (SH, 'if [ -r "$HB_LIB" ] && [ -s "$HB_LIB" ]; then', 'if [ -r "$HB_LIB" ]; then', (TICK,)),
+    "sh-python-x-unchecked": (SH, 'if [ ! -x "$PY" ]; then', "if false; then", (TICK,)),
+    "sh-required-check-gone": (SH, 'if [ -z "$PY" ] || [ -z "$NODE" ]; then', "if false; then", (TICK,)),
+    "sh-required-via-expansion": (SH, 'PY="${MERGER_PYTHON:-}"    # the interpreter that runs the BASE runner', 'PY="${MERGER_PYTHON:?required}"', (TICK,)),
+    "sh-kill-switch-ignored": (SH, 'if [ "${LOCALCI_MERGER_ENABLED:-true}" = "false" ]; then', "if false; then", (TICK,)),
+    "sh-heartbeat-always-ok": (SH, 'if [ "$rc" -ne 0 ]; then heartbeat error', "if false; then heartbeat error", (TICK,)),   # B6-3 reordered the trap
+    # B3 — coverage travels with the verdict: only a full context counts toward the >= 12
+    "report-counts-partial": (PY, 'compared_ctx = rep["coverage"]["compared_full"]', 'compared_ctx = sum(rep["counts"][k] for k in hc.COMPARED)', (REPORT,)),
+    "report-coverage-not-read": (PY, 'k: {"verdict": v, "coverage": cov.get(k), ', 'k: {"verdict": v, "coverage": "full", ', (REPORT,)),
+    "report-unrecorded-is-full": (PY, 'cov = d.get("coverage") if isinstance(d.get("coverage"), dict) else {}',
+                                  'cov = d.get("coverage") if isinstance(d.get("coverage"), dict) else dict.fromkeys(d.get("contexts") or {}, "full")',
+                                  (REPORT,)),
+    "report-partial-unshown": (PY, 'compared_partial = sum(len(r["compared_partial"]) for r in rows)', "compared_partial = 0", (REPORT,)),
+    "report-unrecorded-unshown": (PY, 'compared_unrecorded = sum(len(r["compared_unrecorded"]) for r in rows)', "compared_unrecorded = 0", (REPORT,)),
+    "tick-coverage-not-journalled": (PY, '                               "coverage": {k: (v or {}).get("coverage") for k, v in results.items()},\n', "",
+                                     (TICK,)),
+    "enqueue-partial-unnamed": (PY, 'elif res.get("coverage") != "full":   # executed', "elif False:   # executed", (TICK,)),
+    "enqueue-partial-refuses": (PY, '        elif res.get("verdict") != "OK":\n            not_ok[str(name)]',
+                                '        elif res.get("verdict") != "OK" or res.get("coverage") != "full":\n            not_ok[str(name)]', (TICK,)),
+    "hc-unrecorded-is-full": (HC, '"coverage": cov if cov in COVERAGES else "unrecorded",', '"coverage": cov if cov in COVERAGES else "full",', (HCT,)),
+    "hc-compared-full-counts-all": (HC, '"compared_full": sum(1 for r in compared if r["coverage"] == "full"),', '"compared_full": len(compared),',
+                                    (HCT,)),
+    "hc-row-drops-coverage": (HC, '"coverage": lo["coverage"], "coverage_note": lo["coverage_note"],', '"coverage": "full", "coverage_note": None,', (HCT,)),
+    "hc-agreement-full-is-agreement": (HC, "r['class'] == 'AGREE' and r['coverage'] == 'full')", "r['class'] == 'AGREE')", (HCT,)),
+    "runner-absent-coverage-partial": (RUNNER, 'coverage = it.get("coverage", "full")', 'coverage = it.get("coverage", "partial")', RUNT_COV),
+    "runner-unreadable-coverage-full": (RUNNER, "        if coverage not in COVERAGES:\n", "        if False:\n", RUNT_COV),
+    "runner-results-drop-coverage": (RUNNER, '        cov = {"coverage": ctx.get("coverage") or "unrecorded",', '        cov = {"coverage": "full",', RUNT_COV),
+    # B3 — a full disk is no verdict: matched on error lines, never FAIL, never OK
+    "runner-disk-full-ignored-jobs": (RUNNER, 'if (full := host_disk_full(r.get("logs") or [r.get("log")], r["label"])):', "if (full := None):", (HD,)),
+    "runner-disk-full-ignored-contained": (RUNNER, "if (full := host_disk_full([log], name)):", "if (full := None):", (HD,)),
+    "runner-disk-full-egress-unread": (RUNNER, 'r.get("logs") or [r.get("log")]', '[r.get("log")]', (HD,)),
+    "runner-disk-full-substring": (RUNNER, '    r"ENOSPC: no space left on device"                         #',
+                                   '    r"(?i)enospc|no[ _]space[ _]left|diskfull|ENOSPC: no space left on device"                         #', (HD,)),
+    "runner-disk-full-python-exception-ok": (RUNNER, r'r"|^(?!.*\b\w*(?:Error|Exception)\b).*: [Nn]o space left on device\s*$")',
+                                             r'r"|^.*: [Nn]o space left on device\s*$")', (HD,)),
+    "runner-recovery-alone": (RUNNER, "                if DISK_FULL_LINE.search(line):\n",
+                              "                if DISK_FULL_LINE.search(line) or RECOVERY_LINE.search(line):\n", (HD,)),
+    "runner-no-verdict-any-status": (RUNNER, 'if s in ("ERROR", "BLOCKED") and (host := HOST_NO_VERDICT.match(reason)):',
+                                     "if (host := HOST_NO_VERDICT.match(reason)):", (HD,)),
+    "runner-no-verdict-anywhere": (RUNNER, 'HOST_NO_VERDICT = re.compile(r"^(?:host_disk_full|', 'HOST_NO_VERDICT = re.compile(r".*?(?:host_disk_full|',
+                                   (HD,)),
+    "hc-no-verdict-unnamed": (HC, '''+ (f" {res['no_verdict']}" if isinstance(res.get("no_verdict"), str) else "")''', '+ ""', (HCT,)),
+    "enqueue-host-counted-executed": (PY, "{len(required) - len(non_executed) - len(host)}/", "{len(required) - len(non_executed)}/", (TICK,)),
+    "enqueue-host-passes": (PY, '                                                               if host else "") if x) or None)}',
+                            '                                                               if False else "") if x) or None)}', (TICK,)),
+    "enqueue-host-any-verdict": (PY, 'elif res.get("verdict") in ("ERROR", "BLOCKED") and nv.split(" ")[0] in HOST_NO_VERDICT:',
+                                 'elif nv.split(" ")[0] in HOST_NO_VERDICT:', (TICK,)),
+    # B3 — the free-space floor: BLOCKED before a service leg starts, never a FAIL
+    "floor-ignored": (RUNNER, 'if (floor := disk_floor_refusal(iso["docker"], iso["image_id"], run_dir)):', "if (floor := None):", (HD,)),
+    "floor-default-zero": (RUNNER, 'MIN_FREE_ENV, DEFAULT_MIN_FREE_GB = "LOCALCI_MIN_FREE_GB", 12.0', 'MIN_FREE_ENV, DEFAULT_MIN_FREE_GB = "LOCALCI_MIN_FREE_GB", 0.0',
+                           (HD,)),
+    "floor-boundary": (RUNNER, "    if free < floor:\n", "    if free <= floor:\n", (HD,)),
+    "floor-zero-still-reads": (RUNNER, "    if floor == 0:\n        return None\n", "", (HD,)),
+    "floor-unmeasured-runs": (RUNNER, "    if free is None:\n        return f\"host_disk_unmeasured:", "    if free is None and False:\n        return f\"host_disk_unmeasured:",
+                              (HD,)),
+    "floor-invalid-is-default": (RUNNER, '        floor = float("nan")\n', "        floor = DEFAULT_MIN_FREE_GB\n", (HD,)),
+    "floor-not-cached": (RUNNER, "    if key not in _HOST_FREE:\n", "    if True:\n", (HD,)),
+    "floor-probe-wrong-column": (RUNNER, "return int(fields[3]) * 1024 / 1e9, None", "return int(fields[2]) * 1024 / 1e9, None", (HD,)),
+    "floor-probe-networked": (RUNNER, '"--rm", "--network", "none", "--cap-drop", "ALL",', '"--rm", "--network", "bridge", "--cap-drop", "ALL",', (HD,)),
+    "floor-no-verdict-unnamed": (RUNNER, r"|host_disk_below_floor \d+(?:\.\d+)?GB<\d+(?:\.\d+)?GB|", "|", (HD,)),
+    "merger-floor-env-dropped": (PY, '              "LOCALCI_MIN_FREE_GB")  # an allowlist', "              )  # an allowlist", (TICK,)),
+    "merger-floor-not-host": (PY, 'HOST_NO_VERDICT = ("host_disk_full", "host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid")',
+                              'HOST_NO_VERDICT = ("host_disk_full",)', (TICK,)),
+    # B5-1: the scope of a rewritten judge is the step; where the plan cannot attribute, the context, said
+    "b5-judge-scope-context": (RUNNER, "return [f for f in mod if f in planned[step]] + everyone", "return mod", (JR,)),
+    "b5-judge-red-claimed": (RUNNER, 's["status"] in ("FAIL", "ERROR")', 's["status"] in ()', (JR,)),
+    "b5-judge-error-claimed": (RUNNER, 's["status"] in ("FAIL", "ERROR")', 's["status"] in ("FAIL",)', (JR,)),
+    "b5-judge-unattributed-ignored": (RUNNER, 'return mod, " (context scope: the plan attributes no judge to this step)"',
+                                      'return [], " (context scope: the plan attributes no judge to this step)"', (JR,)),
+    "b5-judge-unnamed-file-ignored": (RUNNER, "everyone = [f for f in mod if f not in named]", "everyone = []", (JR,)),
+    "b5-judge-plan-unattributed": (RUNNER, 'st["trusted"] = step_judges([st], files)', 'st["trusted"] = []', (JR,)),
+    "b5-judge-no-verdict-unnamed": (RUNNER, 'out["results"][name]["no_verdict"] = "judge_rewritten"', "pass", (JR,)),
+    "b5-judge-rewritten-is-fail": (RUNNER, 'return "BLOCKED", ("judge_rewritten: "', 'return "FAIL", ("judge_rewritten: "', (JR,)),
+    # B5-2: the skip rides on the result and the row says what was compared
+    "b5-skip-unmarked": (RUNNER, '"skipped": "change_map",', "", (SKC,)),
+    "b5-skip-not-carried": (RUNNER, 'if s == "NOT_APPLICABLE" and isinstance(skip := ', 'if False and isinstance(skip := ', (SKC,)),
+    "b5-label-agreed-as-executed": (HC, """"local_detail": f"NOT_APPLICABLE (skip agreed: {lo['skipped']})\"""", '"local_detail": lo["detail"]', (SKC,)),
+    "b5-label-hosted-ran-as-executed": (HC, '"NOT_APPLICABLE (skipped here; hosted ran)"', '"OK (executed)"', (SKC,)),
+    "b5-label-hosted-skipped-unsaid": (HC, 'lo["detail"][:-1] + "; hosted skipped)"', 'lo["detail"]', (SKC,)),
+    "b5-hosted-ran-counted-full": (HC, '"coverage": "partial",', '"coverage": lo["coverage"],', (SKC, *REPORT_SKIP)),
+    "b5-agreed-keeps-execution-coverage": (HC, '"coverage": "full", "coverage_note": None}', '"coverage": lo["coverage"], "coverage_note": lo["coverage_note"]}', (SKC,)),
+    "b5-pending-read-as-ran": (HC, 'if h["verdict"] != "PENDING":', "if True:", (SKC,)),
+    "b5-agreed-uncounted": (HC, 'if r["skip"] == "agreed"]', 'if r["skip"] == "hosted_skipped"]', (SKC, *REPORT_SKIP)),
+    # B5-3: journalled by the tick, read back by the report, counted apart on both lines
+    "b5-tick-skip-unjournalled": (PY, '"skipped": {k: v["skipped"] for k, v in results.items() if isinstance((v or {}).get("skipped"), str)},', "", TICK_SKIP),
+    "b5-report-skip-unread": (PY, '"skipped": skip.get(k)}', '"skipped": None}', REPORT_SKIP),
+    "b5-report-window-uncounted": (PY, 'compared_skip_agreed = sum(len(r["compared_skip_agreed"]) for r in rows)', "compared_skip_agreed = 0", REPORT_SKIP),
+    "b5-report-merges-uncounted": (PY, 'merged_skip_agreed = sum(', "merged_skip_agreed = 0 * sum(", REPORT_SKIP),
+    # B12: a gate verdict not posted yet is no verdict, and is asked again once it is posted
+    "b12-pending-retried": (RUNNER, "if pending and r.returncode != 0 and any(", "if pending and r.returncode != 0 and wait == READER_RETRY_WAITS[-1] and any(", GP),
+    "b12-pending-as-pass": (RUNNER, 'return {"rc": None, "reason": f"gate_pending: host', 'return {"rc": 0, "reason": f"gate_pending: host', GP),
+    "b12-pending-on-stdout": (RUNNER, "any(ln.startswith(pending) for ln in r.stderr.splitlines())", "any(ln.startswith(pending) for ln in out.splitlines())", GP),
+    "b12-pending-key-dropped": (RUNNER, 'ms.get("no_verdict_when"), ms.get("pending_when"))', 'ms.get("no_verdict_when"), None)', GP),
+    "b12-matrix-key-dropped": (MATRIX, 'pending_when: "::error::harness_gate_read: PENDING" #', "#", GP),
+    "b12-pending-unmarked": (RUNNER, 'out["results"][name]["no_verdict"] = "gate_pending"', "pass", GP),
+    "b12-decision-unmarked": (PY, '**({"gate_pending": True, "gate_pending_contexts": pending_ctx} if gate_pending else {})', "**{}", GP),
+    "b12-reeligible-without-status": (PY, "if gate_ready is not None and gate_ready(n, head, count[1]):", "if True:", GP),
+    "b12-cap-ignored": (PY, "if count[0] >= GATE_PENDING_CAP:", "if False:", GP),
+    "b12-failed-read-eligible": (PY, "except (hc.CompareError, OSError) as exc:\n                print(f\"merger: #{n} gate status",
+                                 "except (hc.CompareError, OSError) as exc:\n                todo.append(pr)\n                print(f\"merger: #{n} gate status", GP),
+    "b12-status-context-any": (PY, ' if x.get("context") == GATE_CONTEXT]', "]", GP),
+    "b12-report-uncounted": (PY, 'gate_pending_n = sum(1 for r in rows if r["gate_pending"] and not r["replay"])', "gate_pending_n = 0", (REPORT,)),
+    # B12 fix round: a re-decision waits for the hosted re-run after the post; red is never re-opened; the mark is a flag, never text
+    "b12-hosted-rerun-ignored": (PY, "return posted is not None and all(hosted_rerun_after(repo, head, nm, posted) for nm in names)",
+                                 "return posted is not None", GP),
+    "b12-hosted-in-progress-eligible": (PY, "return False   # B12: still running", "continue   # B12: still running", GP),
+    "b12-hosted-before-post-eligible": (PY, "return False   # B12: completed before the post", "continue   # B12: completed before the post", GP),
+    "b12-hosted-every-attempt": (PY, "latest[suite] = (rid, r)", "latest[(suite, rid)] = (rid, r)", GP),
+    "b12-hosted-oldest-post": (PY, "return max(stamps) if stamps else None", "return min(stamps) if stamps else None", GP),
+    "b12-pending-on-red-journalled": (PY, 'gate_pending = bool(pending_ctx) and status.get("overall") == "BLOCKED"', "gate_pending = bool(pending_ctx)", GP),
+    "b12-pending-on-red-reopened": (PY, 'mark = r.get("gate_pending") is True and r.get("overall") == "BLOCKED"', 'mark = r.get("gate_pending") is True', GP),
+    "b12-mark-by-text": (RUNNER, 'elif s == "BLOCKED" and view[chk].get("gate_pending") is True:',
+                         'elif s == "BLOCKED" and "(gate_pending: host, at plan:" in reason:', GP),
+    "b12-mark-any-blocked": (RUNNER, 'all(s.get("gate_pending") is True for s in bad)', 'any(s.get("gate_pending") is True for s in bad)', GP),
+    "b12-step-flag-from-text": (RUNNER, 'if s["status"] == "BLOCKED" and (planned.get("precomputed") or {}).get("gate_pending") is True:',
+                                'if s["status"] == "BLOCKED" and "gate_pending: host" in s["reason"]:', GP),
+    "b12-state-flag-dropped": (RUNNER, 'steps=res.get("steps"), **({"gate_pending": True} if res.get("gate_pending") is True else {}))',
+                               'steps=res.get("steps"))', GP),
+    "b12-state-flag-kept": (RUNNER, 'c.pop("gate_pending", None)   # B12: a flag is', 'pass   # B12: a flag is', GP),
+    "b12-state-flag-kept-moved": (RUNNER, 'c.pop("gate_pending", None)\n                    store.save(st)', 'store.save(st)', GP),
+    "b12-report-replay-counted": (PY, 'r["gate_pending"] and not r["replay"])', 'r["gate_pending"])', (REPORT,)),
+    # CodeQL contexts (LOCALCI-SOVEREIGN): the pinned bundle image, the plan-time flags and sentinel, the BASE-laid judges, the verdict
+    "cq-add-unchecked": (RUNNER, "ADD --checksum=sha256:{sha256} {url} /bundle.tgz", "ADD {url} /bundle.tgz", CQ_IMG),
+    "cq-version-unasserted": (RUNNER, ' && test "$(/opt/codeql/codeql version --format=terse)" = "{version}"', "", CQ_IMG),
+    "cq-tarball-in-a-layer": (RUNNER, "ENV PATH=/opt/codeql:${{PATH}}", "COPY --from=codeqlbundle /bundle.tgz /opt/bundle.tgz\nENV PATH=/opt/codeql:${{PATH}}", CQ_IMG),
+    "cq-sha-unvalidated": (RUNNER, 'or not re.fullmatch(r"[0-9a-f]{64}", raw["sha256"])', "or False", CQ_IMG),
+    "cq-url-any": (RUNNER, 'CODEQL_URL = re.compile(r"https://[A-Za-z0-9._~/%+-]+")', 'CODEQL_URL = re.compile(r"https://\\S+")', CQ_IMG),
+    "cq-classifier-error-skips": (RUNNER, 'return {"result": "failure", "outputs": {n: "true" for n in names}}, f"BASE',
+                                  'return {"result": "success", "outputs": {n: "false" for n in names}}, f"BASE', CQ_FLAGS),
+    "cq-flags-unchecked": (RUNNER, 'all(got.get(n) in ("true", "false") for n in names)', "True", CQ_FLAGS),
+    "cq-flags-not-sealed": (RUNNER, 'stood_in[str(local["classifier"]["job"])] = got',
+                            'stood_in[str(local["classifier"]["job"])] = {"result": "success", "outputs": {"run_codeql_python": "true", "run_codeql_js": "true"}}', CQ_FLAGS),
+    "cq-sentinel-mismatch-passes": (RUNNER, '    if got["rc"] == 0:\n        return None\n    return f"version sentinel',
+                                    '    if got["rc"] is not None:\n        return None\n    return f"version sentinel', CQ_SENT),
+    "cq-sentinel-unreadable-passes": (RUNNER, '    if got["rc"] == 0:\n        return None\n    return f"version sentinel',
+                                      '    if got["rc"] in (0, None):\n        return None\n    return f"version sentinel', CQ_SENT),
+    "cq-skip-any-reason": (RUNNER, 'gated = [s for s in na if IF_FALSE.match(str(s.get("reason", "")))]', "gated = list(na)", CQ_SKIP),
+    "cq-skip-undeclared": (RUNNER, 'if not ran and spec.get("skip_is_pass") and na and', "if not ran and na and", CQ_SKIP),
+    "cq-skip-green-over-rewritten-judge": (RUNNER, '        if spec.get("judge_modified"):\n            return "BLOCKED", f"every step skipped',
+                                           '        if False:\n            return "BLOCKED", f"every step skipped', CQ_SKIP),
+    "cq-overlay-not-judged": (RUNNER, "judged = [wf, *overlay]", "judged = [wf]", CQ_SKIP),
+    "cq-overlay-not-laid": (RUNNER, "            return out\n        overrides[rel] = blob\n", "            return out\n", CQ_RUN),
+    "cq-overlay-hash-unchecked": (RUNNER, 'if blob is None or sha256_bytes(blob) != plan.get("trusted_files_sha256", {}).get(rel):\n            out["infra"]',
+                                  'if blob is None:\n            out["infra"]', CQ_RUN),
+    "cq-git-index-forced": (RUNNER, '"git_index": indexed,', '"git_index": True,', CQ_RUN),
+    "cq-with-pin-ignored": (RUNNER, 'if have != {str(k): " ".join(str(v).split()) for k, v in ms["with_pin"].items()}:', "if False:", CQ_PIN),
+    "cq-signal-swallowed": (CQ_SH_FILE, '    kill -s "$((rc - 128))" "$$" || true', "    true", CQ_SIG),
+    "cq-ram-differs": (CQ_SH_FILE, "RAM=10240", "RAM=14575", CQ_CMD),
+    "cq-trap-options-everywhere": (CQ_SH_FILE, 'if [ "$LANG_" = javascript ]; then', "if true; then", CQ_CMD),
+    "cq-old-queries-kept": (CQ_SH_FILE, 'block = ["queries:"] + [f"  - uses: {q.strip()}"', 'block = ["queries:"] + ["  - uses: old"] + [f"  - uses: {q.strip()}"', CQ_CMD),
+    "cq-reader-oldest": (CQ_READER_FILE, 'return max(mine, key=lambda a: a["created_at"]) if mine else None',
+                         'return min(mine, key=lambda a: a["created_at"]) if mine else None', CQ_READ),
+    "cq-changed-with-renames": (RUNNER, '"diff", "--no-renames", "--name-only", f"{base}..{ident', '"diff", "--name-only", f"{base}..{ident', CQ_RENAME),
+    "cq-run-all-forced-off": (RUNNER, '"MAP_JSON": json.dumps(cm)})\n        got = dict(', '"MAP_JSON": json.dumps({**cm, "run_all": False})})\n        got = dict(', CQ_RUNALL),
+    "cq-sentinel-python-only": (RUNNER, 'lang = str((local.get("leg") or {}).get("language") or "")', 'lang = "python"', CQ_LANG),
+    "cq-gate-flags-corpus-dropped": (RUNNER, '"-m", "unittest", "test_change_map", "test_security_gate_flags"', '"-m", "unittest", "test_change_map"', CQ_CORPUS),
+    "cq-version-probe-unstepped": (CQ_SH_FILE, '  step "$CQ" version --format=terse', '  "$CQ" version --format=terse', CQ_VERPROBE),
+    "cq-reader-any-tool": (CQ_READER_FILE, ' and a["tool"].get("name") == "CodeQL"]', ']', CQ_READ),
+    "cq-reader-category-prefix": (CQ_READER_FILE, 'a.get("category") == category', 'str(a.get("category")).startswith(category)', CQ_READ),
+    # LOCALCI-SOVEREIGN CodeQL fix round 2: SARIF post-processing, the live override, the action pin, the local pin, freshness, the tightened skip
+    "cq-sarif-unreadable-passes": (CQ_SH_FILE, 'python3 -I "$HERE/codeql_sarif_check.py" "$SARIF" "$LANG_"', 'python3 -I "$HERE/codeql_sarif_check.py" "$SARIF" "$LANG_" || true', CQ_SARIF_EXIT),
+    "cq-sarif-limit-ignored": (CQ_SARIF_FILE, "if (problems := limit_problems(doc, gzip_size(doc))):", "if False:", CQ_SARIF_LIMITS),
+    "cq-sarif-gzip-unchecked": (CQ_SARIF_FILE, "if gzip_bytes > GZIP_MAX_BYTES:", "if False:", CQ_SARIF_GZIP),
+    "cq-sarif-gzip-no-bound": (CQ_SARIF_FILE, " + (action_adds(doc) if isinstance(doc, dict) and isinstance(doc.get(\"runs\"), list) else 0)", "", CQ_SARIF_BOUND),
+    "cq-sarif-gzip-mib": (CQ_SARIF_FILE, "GZIP_MAX_BYTES = 10_000_000", "GZIP_MAX_BYTES = 10 * 1024 * 1024", CQ_SARIF_MIB),
+    "cq-sarif-crash-rejects": (CQ_SARIF_FILE, "        return NO_VERDICT_RC\n", "        return 1\n", CQ_SARIF_CRASH),
+    "cq-sarif-crash-swallowed-by-leg": (CQ_SH_FILE, '  *) no_verdict "codeql_sarif_check.py ended', '  *) exit 1 ;;   # no_verdict "codeql_sarif_check.py ended', CQ_SARIF_CRASH),
+    "cq-sarif-shape-ignored": (CQ_SARIF_FILE, "why = why or shape_problem(doc)", "why = why", CQ_SARIF_SHAPE),
+    "cq-override-ignored": (RUNNER, 'if ov["active"]:\n            got = {', 'if False:\n            got = {', CQ_OVERRIDE),
+    "cq-override-org-ignored": (RUNNER, ', *((f"repos/{repo}/actions/organization-variables",) if owner_type == "Organization" else ())', "", CQ_OVERRIDE_ORG),
+    "cq-override-404-unset": (RUNNER, "        if r.returncode != 0:\n            return None\n        body", '        if r.returncode != 0:\n            return rows if "HTTP 404" in r.stderr else None\n        body', CQ_OVERRIDE_404),
+    "cq-override-org-beats-repo": (RUNNER, "                break   # the repository variable wins over the organization's\n", "", CQ_OVERRIDE_WINS),
+    "cq-override-environment-ignored": (RUNNER, 'or any(isinstance(j, dict) and "environment" in j for j in (jobs or {}).values()):', ":", CQ_OVERRIDE_ENV),
+    "cq-override-total-unchecked": (RUNNER, "            return rows if len(rows) == total else None", "            return rows", CQ_OVERRIDE_TOTAL),
+    "cq-sentinel-fork-main": (CQ_READER_FILE, ' and isinstance(head, dict) and isinstance(head.get("full_name"), str) and head["full_name"].lower() == repo.lower())', ")", CQ_FORK),
+    "cq-sentinel-any-event": (CQ_READER_FILE, '\n            and r.get("event") in MAIN_EVENTS', "", CQ_FORK),
+    "cq-skip-name-collision": (RUNNER, "    return (job, name)\n", "    return name\n", CQ_SKIPKEY),
+    "cq-uses-unpinned": (RUNNER, 'if isinstance(ms.get("uses_pin"), str) and ws.get("uses") != ms["uses_pin"]:', "if False:", CQ_USES),
+    "cq-local-version-unchecked": (CQ_SH_FILE, '  [ "$(tail -n 1 "$WORK/version.out")" = "$CODEQL_PIN" ] ||', "  true ||", CQ_LOCALVER),
+    "cq-version-probe-swallowed": (CQ_SH_FILE, '  step "$CQ" version --format=terse >"$WORK/version.out"', '  step "$CQ" version --format=terse >"$WORK/version.out" || true', CQ_VERPROBE),
+    "cq-sentinel-stale-ok": (CQ_READER_FILE, "if age > MAX_AGE_DAYS:", "if False:", CQ_STALE),
+    "cq-sentinel-main-red-ok": (CQ_READER_FILE, 'if mine[0].get("conclusion") != "success":', "if False:", CQ_MAINRED),
+    "cq-skip-mixed-passes": (RUNNER, 'all("not_applicable" in planned.get(key_of(s["name"]), {}) for s in rest)', "True", CQ_MIXED),
+    "cq-leg-seam-open": (RUNNER, '(seam := sorted(LEG_INPUT_ENV & {*jenv, *(st.get("env") or {})}))', "(seam := [])", CQ_SEAM),
+    "cq-reader-repo-dots": (CQ_READER_FILE, ' or any(seg in (".", "..") for seg in args.repo.split("/")):', ":", CQ_REPO),
+    "cq-config-inline-queries-open": (CQ_SH_FILE, 'if re.match(r"^queries\\s*:\\s*\\S", key):', "if False:", CQ_CONFIG),
+    "cq-config-comment-in-block-open": (CQ_SH_FILE, 'if rest[0] in " \\t-":', "if False:", CQ_CONFIG),
+}
+
+
+def copy_tree(dest: Path) -> None:
+    for rel in ("scripts/localci", "scripts/lib", "scripts/ci"):   # scripts/ci: the trusted classifier the runner's fixture repo copies
+        shutil.copytree(ROOT / rel, dest / rel, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
+    (dest / "scripts" / "tests").mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / "scripts" / "tests" / "test_ban_predicates.py", dest / "scripts" / "tests" / "test_ban_predicates.py")
+    for rel in (".github/workflows/security.yml", ".github/codeql-config.yml"):   # the CodeQL tests plan against the real workflow and config
+        (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / rel, dest / rel)
+    for rel in ("scripts/ops/pro_disk_floor_tick.sh", "infra/launchagents/com.nuzantara.disk-floor.plist", "infra/home-fork/declared-pairs.json"):
+        (dest / rel).parent.mkdir(parents=True, exist_ok=True)   # B6-4: the disk-floor organ and the files its test reads
+        shutil.copy2(ROOT / rel, dest / rel)
+
+
+def run_tests(tree: Path, files: tuple[str, ...]) -> int:
+    env = {k: v for k, v in os.environ.items() if not k.startswith("PYTEST_")}
+    env.update(PYTHONPATH=str(tree), PYTHONDONTWRITEBYTECODE="1")
+    return subprocess.run([sys.executable, "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", *files], cwd=tree, env=env,
+                          capture_output=True, text=True).returncode
+
+
+def verdict(rc: int) -> str:
+    return {0: "SURVIVED", 1: "KILLED"}.get(rc, f"ERROR (pytest exit {rc})")
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--only", nargs="+", metavar="NAME", help="run only these mutants")
+    ap.add_argument("--list", action="store_true", help="print the table and exit")
+    a = ap.parse_args(argv)
+    names = a.only or list(MUTANTS)
+    if unknown := [n for n in names if n not in MUTANTS]:
+        print(f"unknown mutant(s): {unknown}", file=sys.stderr)
+        return 2
+    if a.list:
+        for n in names:
+            print(f"{n:30} {MUTANTS[n][0]}")
+        return 0
+    with tempfile.TemporaryDirectory(prefix="merger-mutants-") as tmp:
+        tree = Path(tmp)
+        copy_tree(tree)
+        originals = {f: (tree / f).read_text() for f in sorted({m[0] for m in MUTANTS.values()})}
+        for files in sorted({MUTANTS[n][3] for n in names}):
+            if (rc := run_tests(tree, files)) != 0:
+                print(f"baseline: the unmutated copy gives pytest exit {rc} on {' '.join(files)} — nothing to measure", file=sys.stderr)
+                return 2
+        survived, stale, errors = [], [], []
+        for n in names:
+            target, old, new, tests = MUTANTS[n]
+            if originals[target].count(old) != 1 or old == new:
+                stale.append(n)
+                print(f"{n:30} STALE (the rule's text occurs {originals[target].count(old)} times)", flush=True)
+                continue
+            (tree / target).write_text(originals[target].replace(old, new))
+            v = verdict(run_tests(tree, tests))
+            (tree / target).write_text(originals[target])
+            if v == "SURVIVED":
+                survived.append(n)
+            elif v != "KILLED":
+                errors.append(n)
+            print(f"{n:30} {v}", flush=True)
+    killed = len(names) - len(survived) - len(stale) - len(errors)
+    print(f"{killed}/{len(names)} killed; survivors: {survived or 'none'}; errors: {errors or 'none'}; stale: {stale or 'none'}")
+    return 1 if survived or stale or errors else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

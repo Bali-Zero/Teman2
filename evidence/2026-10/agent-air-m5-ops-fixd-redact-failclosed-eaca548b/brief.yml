@@ -1,0 +1,43 @@
+task_id: fixd-redact-failclosed
+mandate_id: FIXBATCH-D-20261005
+colour: BLUE
+gear: 3
+l_level: L1
+gate_class: final-on-disk
+objective: |
+  Four redactors let the raw text out when the redaction step broke or did not match. Each one now
+  fails CLOSED: (D1) infra/claude-hooks/bash_call_log.sh wrote the RAW command to
+  ~/.claude/command-history.log whenever redact_secrets.py was missing, crashed, hung or printed
+  nothing, and redact_secrets.redact() itself returned its input on an internal error;
+  (D2) scripts/_redact_pii.py pass4 wrapped CRM names in `\b`, which never matches beside a name
+  that starts or ends with punctuation ("Ltd.", "(Name)", a trailing space), so those names reached
+  the external reviewer in cleartext; (D3a) cost_ledger_export._redact_dsn split the DSN at the
+  FIRST "@", logging the tail of a password that contains "@"; (D3b) memory_index_build wrote the
+  title, the type heading and the filename into MEMORY_INDEX.md without redact().
+constraints:
+  - "The Bash hook keeps its contract: exit 0, empty stdout, the raw {cmd,cwd} pipe to hotfix-notify.sh and live-status.json unchanged; only the command TEXT fails closed."
+  - "No new external binary (macOS has no `timeout`) and no extra process per Bash call; added median latency measured before/after (n=20)."
+  - "scripts/lib/spalla_redact.sh and _redact_pii._cli_main are NOT touched: open PR #7483 rewrites both (residual for quoted headers left as a comment there)."
+  - "Fixtures use invented data only; the live log was sized by counts, never lines."
+acceptance:
+  - text: "WHEN the redactor is missing, crashes, prints nothing, echoes then fails, or hangs, THEN command-history.log gets a REDACTION-FAILED placeholder and never the raw command, the hook exits 0 with empty stdout within the bound, and hotfix-notify still receives the raw command."
+    probe: "sh scripts/tests/test_bash_call_log.sh (cases 4-9 + timeout 0/abc/-5)"
+  - text: "WHEN the real redactor runs, THEN a plain command is logged verbatim and a credential is cut by the redactor, never replaced by the fallback placeholder."
+    probe: "sh scripts/tests/test_bash_call_log.sh (real-redactor innocence cases)"
+  - text: "WHEN a CRM name starts/ends with punctuation or carries a trailing space, THEN pass4 redacts it; neighbouring words, code identifiers, paths and public company names come out byte-identical to a redactor with no names."
+    probe: "pytest scripts/tests/test_redact_pii_dynamic_boundaries.py"
+  - text: "WHEN a DSN password contains '@', '?', '#' or '/', THEN no password byte reaches the log line; ordinary DSNs are byte-identical."
+    probe: "pytest scripts/tests/test_redaction_siblings_fail_closed.py -k dsn"
+  - text: "WHEN a memory title, type or filename carries an email or phone/ID number, THEN MEMORY_INDEX.md and pii_offender_files carry the placeholder; clean titles are unchanged."
+    probe: "pytest scripts/tests/test_redaction_siblings_fail_closed.py -k memory_index"
+consumer_map:
+  - "D1: every Claude Code session on M5 — ~/.claude/settings.json PostToolUse Bash hook `bash ~/.claude/hooks/bash_call_log.sh` (live copy, declared pair infra/home-fork/declared-pairs.json; delivered by infra/claude-hooks/install_hook_diet.py, NOT by the merge)."
+  - "D2: scripts/privacy_preflight.py strict mode (Redactor.load_default(require_dynamic_names=True)) and, once #7483 lands, codex-spalla.sh's redact_for_external — both run from the repo checkout."
+  - "D3a: launchd com.nuzantara.cost-ledger-export on Mini (/Users/nuzantara/nuzantara checkout, every 1800 s) — delivered by git pull on Mini (Mini offline: PENDING)."
+  - "D3b: MEMORY_INDEX.md regeneration (python3 scripts/memory/memory_index_build.py --out ...); no scheduler registered on M5 found — manual."
+risks:
+  - "A slow machine pushing python3 cold start past the 2 s bound logs a placeholder (diagnostic loss, never a leak)."
+  - "Edge-aware boundaries over-match a punctuation-edged name glued to a word (accepted: over-redaction beats a leak)."
+grader: |
+  Builder Codex O2 (gpt-6-astra) in the worktree; review of the final diff by a non-GPT family
+  (TP1 qwen3.8-max, read-only, verbatim in the pack); final on-disk gate commissioned by the imperator.

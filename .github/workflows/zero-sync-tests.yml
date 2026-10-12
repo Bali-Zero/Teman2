@@ -1,0 +1,57 @@
+name: Zero sync tests
+
+# Executor for the corpus that proves the mini.zero_sync organ -- the cron that mirrors canonical
+# main into the product-only FastLabsNet/zero repository. Offline: throwaway repos over file://.
+# Without this file the corpus is collected by nothing that gates (superscar #2).
+
+on:
+  pull_request:
+    paths:
+      - "scripts/zero_sync/zero_sync.py"
+      - "scripts/zero_sync/__init__.py"
+      - "scripts/zero_sync/tests/__init__.py"
+      - "scripts/zero_sync/tests/test_zero_sync.py"
+      - "scripts/zero_sync/README.md"
+      - "infra/launchagents/wrappers/mini-zero-sync.sh"
+      - "infra/launchagents/com.nuzantara.zero-sync.plist"
+      - ".github/workflows/zero-sync-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/zero_sync/zero_sync.py"
+      - "scripts/zero_sync/__init__.py"
+      - "scripts/zero_sync/tests/__init__.py"
+      - "scripts/zero_sync/tests/test_zero_sync.py"
+      - "scripts/zero_sync/README.md"
+      - "infra/launchagents/wrappers/mini-zero-sync.sh"
+      - "infra/launchagents/com.nuzantara.zero-sync.plist"
+      - ".github/workflows/zero-sync-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zero-sync-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  zero-sync-tests:
+    name: Zero sync tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest
+        run: python -m pip install --quiet --disable-pip-version-check pytest
+
+      - name: The mirror builds, guards and pushes as specified
+        run: python -m pytest scripts/zero_sync/tests -q -p no:cacheprovider
+
+      - name: The wrapper still parses (a shell syntax error is a silent dead organ)
+        run: bash -n infra/launchagents/wrappers/mini-zero-sync.sh

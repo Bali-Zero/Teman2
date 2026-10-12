@@ -1,0 +1,94 @@
+brief_ref: evidence/brief.yml
+seat_override:
+  "The plan's seat roster for Track W names a cross-family refuter for W0 only, and the imperator's
+  W1 dispatch prescribes none. W1's graders are the Dux (claude-opus-5-5), who reviewed every file
+  the claude-sonnet-5-5 implementer wrote and ran the exit command itself, and the fresh Opus 5.5
+  gate session that the imperator commissions to sign harness/fable-gate on the head sha. The
+  Gear-3 floor is path-only: one new job in the existing advisory workflow."
+plan_ref:
+  "docs/plans/2026-10-08-kbli-navigator-design-loop.md §1, row W1; imperator dispatch 2026-10-08
+  (mission kbli-nav-design-loop/W1, BLUE, rulings 1-5); imperator ruling 2026-10-08 accepting the
+  437-line test file."
+lanes:
+  - lane: kbli-r19-w1-1008
+    role: review
+    seat:
+      "claude-opus-5-5 (Dux: grounded the W0 census, the vitest and Playwright setup and the CI
+      pattern, wrote the implementer spec, reviewed both implementer rounds line by line, ran the
+      exit command and the checks, authored this pack; wrote no test or script code)"
+  - lane: kbli-r19-w1-1008-implementer
+    role: build
+    seat:
+      "claude-sonnet-5-5 (implementer: wrote the --export flag and its test, the vitest gate, the
+      test file, the two fixtures and the workflow job, in two rounds)"
+
+pii_scan: clean
+pii_scan_note:
+  "KBLI classification data is public. The fixtures are synthetic HTML with no client data. No
+  external seat was dispatched."
+
+fixtures_sha256:
+  "Recompute with `shasum -a 256 apps/mouth/src/test/fixtures/r19-wrapper-*.html` on this commit.
+  r19-wrapper-innocence.html 89d190753635…, r19-wrapper-guilt.html b9c9fe64630c…. The two files
+  differ only in the --kbli-bg-base line, which a test asserts."
+
+diff:
+  net_lines: |
+    Code: 437 lines for the test, 26 for the census --export flag, 11 for its pytest, 9 for the
+    vitest gate and 29 net for the workflow job. Data: two 36-line HTML fixtures that differ by one
+    line. The test is over the ~400 per-lot target. Prettier wraps at 80 columns, and the
+    imperator accepted 437 lines rather than trading behaviour for a line count.
+  behaviour_change: >-
+    No runtime surface changes. `npm test -- r19-wrapper` in apps/mouth now starts its own
+    `next dev --webpack`, walks /kbli* in the six measure.py states with the W0 probe, and judges
+    token reads with W0's replay. It also judges the palette on r19-marked surfaces, which skip
+    with a counted reason on main, and runs the guilt, innocence and undeclared-read fixtures. The
+    full mouth vitest suite skips these six tests with a not-requested reason. A new advisory job,
+    r19-wrapper-census-tests / wrapper-census-live, runs the command on PRs that touch apps/mouth,
+    packages/core, scripts/mouth, the contract or measure.py.
+
+receipts:
+  - claim: "Exit command run from the worktree on the final content. The test started and killed its own dev server. Fixtures: innocence palette 0 and W0 replay 0/0. Guilt names exactly #0F172A via --kbli-bg-base, and the replay prints colors-outside-direction-a: 1. The undeclared read is named by the replay (read-but-undefined: 1). Live: captures 30 ok, 0 failed; reads 310 (var 79, class 206, rule 14, component 11); read-but-undefined: 0; colors-outside-direction-a: 128, the same counts as the W0 run. Palette SKIPPED: 0 r19 surfaces under /kbli* (0 of 30 captures carry [data-presentation=r19]), W2 pending. Afterwards git status shows tsconfig.json unmodified and no next dev process is left."
+    cmd: "cd apps/mouth && npm test -- r19-wrapper; git status --short; pgrep -fl 'next dev'"
+    result: "Test Files 1 passed (1); Tests 5 passed | 1 skipped (6); 120.30s"
+    exit: 0
+    ts: "2026-10-08T09:44:46Z"
+    seat: claude-opus-5-5
+  - claim: "W0 stays green: the 11 original tests plus the new --export test pass, and the spec §6 replay command prints the same verdict lines as before."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider; python3 scripts/mouth/r19_wrapper_token_census.py --replay scripts/mouth/tests/fixtures/r19_wrapper_census.jsonl | tail -2"
+    result: "12 passed; read-but-undefined: 0 / colors-outside-direction-a: 128"
+    exit: 0
+    ts: "2026-10-08T09:44:55Z"
+    seat: claude-opus-5-5
+  - claim: "The full suite does not start a server or a browser. Run without naming r19-wrapper, all six tests show as skipped with the not-requested note, and the other 812 tests pass."
+    cmd: "cd apps/mouth && npx vitest --run src/test/ --reporter=verbose | grep -E 'r19-wrapper|Test Files|Tests '"
+    result: "Tests 812 passed | 6 skipped (818)"
+    exit: 0
+    ts: "2026-10-08T09:44:55Z"
+    seat: claude-opus-5-5
+  - claim: "Static checks on the touched files: actionlint is clean on the workflow, the timeout floor scan is clean, prettier is clean on the ts, yml and pack files, and eslint --no-ignore exits 0 on the test and the vitest config."
+    cmd: "actionlint .github/workflows/r19-wrapper-census-tests.yml; python3 scripts/lint_workflow_timeout_floor.py; prettier --check <files>; eslint --no-ignore src/test/r19-wrapper.test.ts vitest.config.ts"
+    result: "actionlint 0; 174 jobs clean at the 10m floor; prettier clean; eslint 0"
+    exit: 0
+    ts: "2026-10-08T09:44:55Z"
+    seat: claude-opus-5-5
+  - claim: "PROBE_JS fidelity: the --export test asserts that the probe string the TS test evaluates equals PROBE_JS. The six exported states equal the states in the W0 live census fixture, in the same order."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -k export"
+    result: "1 passed (within the 12 above)"
+    exit: 0
+    ts: "2026-10-08T09:44:55Z"
+    seat: claude-opus-5-5
+
+dissent:
+  - seat: claude-opus-5-5
+    objection: "Round 1 of the implementer delivered a 516-line test file against a lot budget of about 400 net lines."
+    status: CONFIRMED
+    resolution: "Round 2 compacted the merge, the attribution, the types and the teardown, and folded the triad check into the innocence test. The file went from 516 to 437 lines with the same behaviour, and the imperator accepted 437."
+  - seat: claude-opus-5-5
+    objection: "next dev rewrites apps/mouth/tsconfig.json on every start: it reformats the file and adds .next/dev/dev/types. So a local run of the test dirties a tracked file that an agent could commit by accident. Observed in the Dux's own first run."
+    status: CONFIRMED
+    resolution: "The live block reads the tsconfig bytes before spawning the server, and afterAll writes them back if they changed. Only the server the test started triggers this. After the final run, git status lists no tsconfig change."
+  - seat: claude-sonnet-5-5
+    objection: "The dev-server wait loop resolved status 0 on a connection error, which passed the < 400 check, so the wait returned before the server was listening."
+    status: CONFIRMED
+    resolution: "A connection error now resolves to 599. Plain fetch could not replace node:http, because src/test/setup.tsx stubs the global fetch."

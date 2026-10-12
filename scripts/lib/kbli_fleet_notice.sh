@@ -7,7 +7,9 @@
 # "already matches canonical". Two different files are involved:
 #
 #   Resources/  — what the NEXT build will ship. build.sh refreshes it from canonical on
-#                 every build, so it agrees with canonical the moment anyone builds.
+#                 every build, so it agrees with canonical the moment anyone builds. It is
+#                 gitignored: a fresh checkout has none, so it is NOT a fleet surface and
+#                 this notice no longer reads it (it cried "stale: Resources/" forever).
 #   the .app    — what a colleague opening the icon TODAY actually reads.
 #
 # Between a build and a deploy the first matches while the second is stale, and the old
@@ -31,11 +33,9 @@ kbli_fleet_notice() {
   # there is no fleet copy here to be stale.
   [[ -d "$app_repo" ]] || return 0
 
-  local app_copy="$app_repo/Resources/KBLI_2025_FINAL_CLEAN.json"
   local app_bundle="$bundle_dir/Contents/Resources/KBLI_2025_FINAL_CLEAN.json"
   local -a stale=()
 
-  cmp -s "$canonical" "$app_copy" 2>/dev/null || stale+=("Resources/ (the next build's input)")
   if [[ -e "$app_bundle" ]]; then
     cmp -s "$canonical" "$app_bundle" 2>/dev/null || stale+=("the .app installed on $host")
   else
@@ -50,7 +50,7 @@ kbli_fleet_notice() {
     echo "   $app_repo/deploy/make-team-installer.sh # refresh the team zip"
     echo "   $app_repo/deploy/check-fleet.sh         # verify (read-only)"
   else
-    echo "native app: Resources/ AND the .app on $host both match canonical."
+    echo "native app: the .app installed on $host matches canonical."
   fi
   # Printed in BOTH branches on purpose: this function does no ssh, so it can never speak
   # for the other two machines or for the team zip. Only check-fleet.sh does.

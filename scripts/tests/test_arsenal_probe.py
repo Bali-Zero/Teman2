@@ -163,6 +163,27 @@ def test_model_requires_newer_version_classifies_model_err():
     assert ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False) == ap.MODEL_ERR
 
 
+def test_access_to_model_denied_classifies_model_err():
+    # real observed evidence, 2026-10-12 — 7 tp1-* council seats + qwen-cloud-code all probed
+    # a model this account's plan does not have entitlement for; was misclassified UNKNOWN_ERR
+    # before this fix (same disease as the codex-spark/gpt-6-astra widenings above: a real,
+    # already-model-shaped error string the classifier's patterns did not cover yet).
+    ev = (
+        'HTTP 403 {"error":{"message":"Access to model denied. Please make sure you are '
+        'eligible for using the model.","id":"abc","type":"access_denied","code":"403"}}'
+    )
+    assert ap.classify_generic(ev, live_signal=False, seat="tp1-glm-5.2", ssh_context=False) == ap.MODEL_ERR
+
+
+def test_eligible_for_unrelated_benefit_is_not_model_err():
+    # innocence: "eligible for" bound to something other than "the model" must not
+    # false-positive — only the exact "eligible for using the model" shape does.
+    ev = "Please ensure your membership is active to remain eligible for this benefit."
+    status = ap.classify_generic(ev, live_signal=False, seat="tp1-glm-5.2", ssh_context=False)
+    assert status != ap.MODEL_ERR
+    assert status == ap.UNKNOWN_ERR
+
+
 def test_requires_newer_version_without_model_is_not_model_err():
     # innocence: a generic "upgrade" nudge that never says "model requires a newer
     # version" must not false-positive — only that exact model-bound phrase does.
@@ -1341,6 +1362,30 @@ def test_timeout_concurrent_ollama_job_is_busy(monkeypatch):
                               "401 1 ollama /opt/homebrew/bin/ollama run qwen3.5:9b hi\n")
     status = ap.timeout_status("/opt/homebrew/bin/ollama", "", 10, ignore_subcommands=("serve",))[0]
     assert status == ap.BUSY
+
+
+def test_timeout_ollama_run_with_serve_in_prompt_is_busy(monkeypatch):
+    _fake_census(monkeypatch, "401 1 ollama ollama run qwen3.5:9b serve\n")
+    status = ap.timeout_status("/opt/homebrew/bin/ollama", "", 10, ignore_subcommands=("serve",))[0]
+    assert status == ap.BUSY
+
+
+def test_timeout_ollama_run_with_quoted_serve_sentence_is_busy(monkeypatch):
+    _fake_census(monkeypatch, '401 1 ollama ollama run qwen3.5:9b please serve me\n')
+    status = ap.timeout_status("/opt/homebrew/bin/ollama", "", 10, ignore_subcommands=("serve",))[0]
+    assert status == ap.BUSY
+
+
+def test_timeout_absolute_path_ollama_serve_is_not_contention(monkeypatch):
+    _fake_census(monkeypatch, "400 1 /opt/homebrew/bin/ollama /opt/homebrew/bin/ollama serve\n")
+    status = ap.timeout_status("/opt/homebrew/bin/ollama", "", 10, ignore_subcommands=("serve",))[0]
+    assert status == ap.TIMEOUT
+
+
+def test_timeout_bare_ollama_serve_is_not_contention(monkeypatch):
+    _fake_census(monkeypatch, "400 1 ollama ollama serve\n")
+    status = ap.timeout_status("/opt/homebrew/bin/ollama", "", 10, ignore_subcommands=("serve",))[0]
+    assert status == ap.TIMEOUT
 
 
 def test_probe_jules_and_ollama_pass_their_census_filters(monkeypatch):

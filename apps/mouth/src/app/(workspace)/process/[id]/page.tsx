@@ -50,6 +50,7 @@ import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 import { useInvalidateClient } from "@/hooks/useClientDetail";
 import { initialsOf } from "@/lib/team-initials";
 import { AvatarWithFallback } from "@/components/ui/avatar-with-fallback";
+import { formatLongSpan } from "@/lib/utils/format-date";
 
 // Status badge styling — WS2 (GARUDA OS): reuses the canonical kanban column
 // palette (kanban-colors.ts) so the detail page can never drift from the
@@ -1538,7 +1539,7 @@ export default function CaseDetailPage() {
                           ? "Expires today"
                           : daysLeft <= 365
                             ? `⏰ ${daysLeft}d left`
-                            : `${Math.floor(daysLeft / 30)}mo left`;
+                            : `${formatLongSpan(daysLeft)} left`;
                     return (
                       <p
                         style={{ color }}

@@ -1,0 +1,256 @@
+task_id: localci-codeql-1011
+mission: LOCALCI-SOVEREIGN (phase B — the two blocked contexts decided on Pro)
+colour: BLUE
+gear: 3
+gear_reason: >-
+  Floor 3 by path (the localci-tests workflow's path filter gains the BASE gate-flags corpus); harness code of the local gate and two
+  matrix entries otherwise.
+l_level: L2
+gate_class: opus
+objective: >-
+  The two CodeQL contexts are executed on Pro with coverage full (pinned 2.27.2 bundle, hosted RUN_THIS_LANGUAGE from BASE flags,
+  the probe's exact CLI commands, a plan-time version sentinel), so no required context is mapping blocked any more.
+acceptance:
+  - text: A leg whose RUN_THIS_LANGUAGE is false SHALL be PASS with its steps NOT_APPLICABLE and SHALL compare AGREE, coverage full, against hosted success.
+    probe: "scripts/localci/tests/test_codeql_contexts.py (skip cases)"
+  - text: A hosted tool.version other than the pin, or an unreadable read, SHALL make the context BLOCKED.
+    probe: "scripts/localci/tests/test_codeql_contexts.py (sentinel cases)"
+  - text: codeql_leg.sh SHALL run exactly the probe's command lines (a fake codeql logging argv).
+    probe: "scripts/localci/tests/test_codeql_contexts.py (leg cases)"
+consumer_map:
+  - scripts/localci/runner.py (the merger tick on Pro) — the two CodeQL contexts of every candidate whose BASE carries this change.
+pii_scan: clean
+pii_scan_note: Harness code, a leg script, tests on synthetic fixtures and docs. No client data.
+lanes:
+  - lane: localci-codeql-1011
+    role: build
+    seat: claude-sonnet-5 (implementer on M5, on the lead's spec)
+  - lane: localci-codeql-1011
+    role: ground_truth
+    seat: claude-opus-5-5 (lead; parity probe on Pro) and a claude-sonnet-5 measurement seat on Pro, on the lead's protocol
+  - lane: localci-codeql-1011-council
+    role: review
+    seat: codex-gpt-5.6-sol and kimi-code/k3 (council-journal.jsonl)
+  - lane: localci-codeql-1011-gate
+    role: review
+    seat: claude-opus-5-5, fresh read-only seats (gate on 7c2d48f45f, re-gate on the fix round)
+what_changed: |
+  runner.py: deps recipe key codeql {version, url, sha256} (FROM scratch stage with ADD --checksum, extracted through a bind mount,
+  codeql version asserted, digest covers the pin); local.classifier runs BASE security_gate_flags.py at plan time and seals
+  needs.changes (fail-open on a classifier error); local.skip_is_pass makes an all-if-skipped leg PASS (a matrix-declared N/A stays
+  ERROR); local.trusted_overlay lays BASE trusted_files over the sandbox tree with frozen hashes; the version sentinel
+  codeql_version_read.py runs through run_host_reader at plan time (any non-zero is BLOCKED). codeql_leg.sh: the probe's init /
+  trace-command / finalize / run-queries / interpret-results lines, signal re-raised so an OOM is no verdict, a results line for the
+  receipt. contexts_matrix.yaml: both contexts executed, coverage full, trusted_base_required; summary.blocked 0,
+  never_claim_parity_for []; parity_gaps for version, flags, architecture and shape; the stale 4 CPU / 8 GiB line fixed. Tests:
+  test_codeql_contexts.py (244); 57 cq-* mutants; README section.
+  Fix round 3 (the last correction round): the SARIF gzip limit is the compact JSON at level 6 plus a bound of what the analyze action adds
+  (32 B per result it would fingerprint, 256 B per run without automationDetails), against 10,000,000; the checker's own crash is exit 70,
+  no verdict, which the leg turns into its kill signal (the driver reads ERROR); the ring-gating override is resolved from the repository
+  then the organization variables lists (paginated, total_count checked, a BASE job naming an environment: or any failed read fails open);
+  the version sentinel takes only runs of the repository's own main on schedule or workflow_dispatch (not a fork's PR branch named main);
+  skipped_by_own_if keys a step by (job, step).
+proof: |
+  Parity probe on Pro (2026-10-11, commit 4be6f5e20352, the same bundle and commands): python 2499 results / 172 rules, javascript
+  186 / 200, identical to the hosted schedule run 38092166320 with 0 per-result differences after the server's two normalisations.
+  The suite (1766 passed, 14 skipped, in chunks) and 57/57 cq-* mutants on M5 at fix round 3. On Pro, the branch's runner in the new
+  image reproduced both hosted counts exactly and decided both contexts PASS (receipts below).
+bites:
+  consumer: The merger tick on Pro, through the first candidate decided after merge whose BASE contains this change.
+  observation: >-
+    In that run both CodeQL contexts have receipts (PASS, or an honest BLOCKED from the version sentinel) with their result counts,
+    the merger line no longer names them in non_executed, the hosted compare rows for both are AGREE, and the first live plan on Pro
+    carries ring_gating_override: {read: ok, ...} in the check spec (read: error means the repository, organization or environment
+    variable read failed and both languages ran).
+ground:
+  ts: "2026-10-11T01:40:00Z"
+  siblings: >-
+    Worktree from origin/main 6f87afb292 after #8241 (Apache-2.0, the CodeQL Terms' open-source condition). pro.janitor (this lead's
+    other lane) does not touch scripts/localci.
+spend:
+  adversarial_rounds: 3
+  wall_clock_hours: 7.0
+receipts:
+  - claim: >-
+      Live reads, the branch's code against Bali-Zero/Teman2 (GET only): codeql_version_read.py rc 0 for python (analysis 1930540666, 2026-10-11T04:09:36Z, 2.27.2) and
+      javascript (1930528566, 04:03:06Z, 2.27.2), newest qualifying main run 38110219472 (schedule) green on both CodeQL jobs; ring_gating_override {read: ok, active: false};
+      Pro's gh reads both variable lists (org total_count 0, repo 1, owner Organization). Real SARIF gzip 556,089 B (python) and Node zlib on JSON.stringify 552,337 B.
+    cmd: python3 scripts/localci/codeql_version_read.py --repo Bali-Zero/Teman2 --pin 2.27.2 (per language); runner.ring_gating_override against BASE; ssh pro gh api …/organization-variables
+    exit: 0
+    ts: "2026-10-11T14:20:00Z"
+    seat: claude-opus-5-5 fresh final gate (re-gate CONFIRMED-WITH-LOW at 83ecbd6660) and the lead on Pro
+  - claim: >-
+      Fix round 3 (council round 2 and the gate's F1-F3, adjudicated). On M5, in chunks under load: test_codeql_contexts.py 244 passed;
+      test_runner.py 111 passed, 2 skipped; test_merger.py 178; test_merger_phase_f.py 86; the other files, grouped, 286 + 373 + 416 + 72
+      passed (1766 passed, 14 skipped in all). 57/57 cq-* mutants killed, 12 of them new this round (cq-sarif-gzip-no-bound,
+      cq-sarif-gzip-mib, cq-sarif-crash-rejects, cq-sarif-crash-swallowed-by-leg, cq-override-org-ignored, cq-override-404-unset,
+      cq-override-org-beats-repo, cq-override-environment-ignored, cq-override-total-unchecked, cq-sentinel-fork-main,
+      cq-sentinel-any-event, cq-skip-name-collision). ruff: the six errors are in test_isolation.py and test_merger_phase_f.py, which this
+      round does not touch.
+    cmd: python3 -m pytest scripts/localci/tests (by file, in chunks of at most 600 s); python3 scripts/localci/tests/mutants/merger_mutants.py --only <each cq-* rule>
+    exit: 0
+    ts: "2026-10-11T19:00:00Z"
+    seat: claude-sonnet-5-5 implementer on M5 (fix round 3), on the lead's brief
+  - claim: >-
+      Real SARIF sizes, the lead's measurement on Pro (the Pro measurement of 2026-10-11 08:48Z, files in ~/b6deploy/codeql/out/, Python
+      gzip.compress(raw, 6)): python raw 11,483,894 B, gzip 556,089 B, 2,499 results, all 2,499 already carrying primaryLocationLineHash;
+      javascript raw 4,058,662 B, gzip 340,945 B, 186 results, all 186 carrying it. The gate found automationDetails.id (/language:<L>/)
+      on every run, so the action's addFingerprints and populateRunAutomationDetails add nothing to the CLI's SARIF today. Hosted's python
+      SARIF measured 431,655 B gzipped against 556,089 B locally: the local figure is comparable, not "a few percent short". codeql-action
+      v4.38.2 enforces no size limit itself (upload-lib.ts uploadPostProcessedFiles: JSON.stringify, zlib.gzipSync level 6, base64); the
+      server's "10 MB" per gzip-compressed file is read as 10,000,000.
+    cmd: the lead's measurement protocol on Pro (python3 gzip.compress over ~/b6deploy/codeql/out/*.sarif); codeql-action upload-lib.ts and fingerprints.ts at v4.38.2
+    exit: 0
+    ts: "2026-10-11T08:48:00Z"
+    seat: claude-opus-5-5 lead (measurement), recorded by the fix round 3 implementer
+  - claim: >-
+      Fix round 2 (council findings adjudicated). scripts/localci/tests/test_codeql_contexts.py (skip cases); scripts/localci/tests/test_codeql_contexts.py (sentinel cases);
+      scripts/localci/tests/test_codeql_contexts.py (leg cases): 199 passed in all; test_runner.py + test_merger.py 289 passed, 2 skipped; the rest of scripts/localci/tests 1233 passed, 12 skipped (1721 passed in all);
+      45/45 cq-* mutants killed (merger_mutants.py --only each rule), 15 of them new this round (cq-sarif-unreadable-passes, cq-sarif-limit-ignored,
+      cq-sarif-gzip-unchecked, cq-sarif-shape-ignored, cq-override-ignored, cq-uses-unpinned, cq-local-version-unchecked, cq-version-probe-swallowed,
+      cq-sentinel-stale-ok, cq-sentinel-main-red-ok, cq-skip-mixed-passes, cq-leg-seam-open, cq-reader-repo-dots, cq-config-inline-queries-open,
+      cq-config-comment-in-block-open). The ruff errors in scripts/localci are in files this round does not touch.
+    cmd: python3 -m pytest scripts/localci/tests -q -p no:cacheprovider (in chunks); python3 scripts/localci/tests/mutants/merger_mutants.py --only cq-*
+    exit: 0
+    ts: "2026-10-11T10:30:00Z"
+    seat: claude-sonnet-5-5 implementer on M5 (fix round 2), on the lead's brief
+  - claim: "Parity probe on Pro: python 2499/172, javascript 186/200, identical to hosted analyses 1929899817 and 1929888401; 170 s and 72 s; cgroup memory.peak 8.63 and 7.05 GiB under --memory 12g."
+    cmd: "~/b6deploy/codeql/probe.sh on Pro (the five codeql commands in a --network none container), then cmp.py against the hosted SARIF"
+    exit: 0
+    ts: "2026-10-11T00:49:43Z"
+    seat: claude-opus-5-5 lead (probe dispatched on Pro)
+  - claim: >-
+      The branch's own runner on Pro (merger venv, the merger's env allowlist, container isolation, network none, 12g), BASE
+      7c2d48f45f67, candidate e9332462daac = the probe commit's tree (4be6f5e20352) plus BASE's codeql_leg.sh, parented on BASE.
+      Plan: sentinel "hosted python CodeQL CLI == the pin 2.27.2" (and javascript), BASE flags run_codeql_python=true
+      run_codeql_js=true, needs.changes result success; the localci-deps codeql image built in plan (ADD --checksum accepted by
+      Colima docker 29.2.1, BuildKit 0.27.1; extract and codeql version self-test 8.9 s). ctx.codeql-python PASS 314.3 s, 2499
+      results / 172 rules; ctx.codeql-javascript PASS 119.5 s, 186 / 200 (hosted 2499/172, 186/200); docker-stats peak 7.13 and
+      6.59 GiB (10 s sampling, a lower bound).
+    cmd: >-
+      runner plan --run-dir <d> --worktree <cand2> --base 7c2d48f45f67 --candidate e9332462daac --contexts-file
+      <base>/scripts/localci/contexts_matrix.yaml --pr-number 99999; runner run --run-dir <d> --deadline-s 7200 --only
+      ctx.codeql-python (then ctx.codeql-javascript); runner status (~/b6deploy/codeql/measure2.sh on Pro, merger paused
+      02:33:53-02:41:15Z and restored, merger_tick at 02:41:16Z)
+    exit: 0
+    ts: "2026-10-11T02:41:15Z"
+    seat: claude-sonnet-5 measurement seat on Pro, on the lead's protocol
+  - claim: >-
+      The same run on the probe commit's pure tree (candidate c77547dbe288, no codeql_leg.sh) gave both contexts BLOCKED with
+      every command rc 0 and the same counts: "the candidate rewrites ['scripts/localci/codeql_leg.sh']: hosted judges with the
+      candidate's copy, which this run did not execute — no green claimed". The changed-judge rule holds for a deleted judge.
+    cmd: the same commands on candidate c77547dbe288 (~/b6deploy/codeql/measure.sh on Pro, merger paused 02:13:11-02:18:20Z)
+    exit: 0
+    ts: "2026-10-11T02:18:20Z"
+    seat: claude-sonnet-5 measurement seat on Pro, on the lead's protocol
+dissent:
+  - seat: claude-opus-5-5 independent gate (7c2d48f45f)
+    objection: >-
+      CONFIRMED-WITH-LOW with one MEDIUM: the runner's changed list kept git's rename detection while hosted's changes job uses
+      --no-renames, so a git mv of a backend .py into docs/ made the local python leg skip as PASS while hosted analysed (AGREE/full,
+      invisible to the compare). LOWs: the run_all fail-open and the javascript sentinel had no test (mutants G1, G3 survived); hosted
+      fails open on a red BASE test_security_gate_flags.py, which the runner never ran; a weakened assertion in test_runner.py; the
+      leg's codeql version probe outside step; the version reader did not filter tool.name.
+    status: CONFIRMED
+    resolution: >-
+      2377d77e13 and d5536aeac0: git diff --no-renames for the changed list; the corpus check now also runs BASE
+      test_security_gate_flags.py (a red corpus is a local FAIL, stricter than hosted's run-both); the probe stepped; the reader keeps
+      tool.name CodeQL only; tests for run_all and per-language sentinels; the exact BLOCKED assertion; six new cq-* rules, 30/30 killed.
+  - seat: codex-gpt-5.6-sol council (round 1) and the Opus re-gate, adjudicated by the lead
+    objection: >-
+      B1 coverage full unjustified; B2 the MERGEOS_RING_GATING_DISABLED override ignored; M1 a SARIF the action throws on exits 0; M2 the sentinel stays
+      green after a failed hosted upgrade; M3 with_pin pins inputs, not the action ref; N1 the version-probe test's fake fails `database init` too; N2 the
+      workflow path filter misses security.yml and codeql-config.yml.
+    status: CONFIRMED
+    resolution: >-
+      B1: coverage stays full by reproducing every failure class the code determines (the CLI commands, the action's SARIF post-processing, the upload
+      limits: codeql_sarif_check.py) and naming the environment classes as parity_gaps. B2: read live at plan, judged by BASE's ring_gating_override.sh,
+      sealed as ring_gating_override. M1: exit 1 on an unparseable SARIF, no runs, a run without results. M2: the sentinel also needs the analysis within 7
+      days and the newest completed security.yml run on main green on the leg. M3: uses_pin on the three steps. N1: the exact probe string, `database
+      init` asserted absent, mutant cq-version-probe-swallowed killed. N2: both files, and the override script, in both path lists; test_hosted_workflow
+      requires every real file the CodeQL suite reads.
+  - seat: kimi-code/k3 council (round 1), the BLOCKER
+    objection: >-
+      BLOCKER the BASE-trusted leg script takes CODEQL_BIN, CODEQL_SOURCE_ROOT, CODEQL_BASE_CONFIG (and the work dir) from the env, so a stub CLI, an
+      empty source root or weaker queries would give a false PASS.
+    status: PLAUSIBLE
+    resolution: >-
+      Not reachable as stated: the step env is composed by the runner from BASE's workflow, job and step env plus the matrix step env (plan_service_context:
+      resolve_steps); runner.py refuses a step whose body writes GITHUB_ENV/PATH/STATE (the "writes GITHUB_ENV/PATH/STATE" refusal in
+      plan_service_context); and the codeql job's only earlier step is `Checkout code`, which is emulated, so no candidate code runs before the leg.
+      Hardened anyway, since the seam costs nothing: the plan BLOCKS when the composed env of a step running codeql_leg.sh carries one of the four seams
+      (cq-leg-seam-open).
+  - seat: kimi-code/k3 council (round 1), the rest
+    objection: >-
+      HIGH the local CLI version is never asserted equal to the pin; the sentinel has no recency floor. MEDIUM skip_is_pass lets one `if:` false plus
+      another skip pass. LOW the config rewriter on an inline queries or a column-0 comment in the block; REPO_RE accepts `.` and `..`.
+    status: CONFIRMED
+    resolution: >-
+      HIGH: the leg compares `codeql version` with CODEQL_PIN (the matrix's one literal; the image build already asserts the pin, runner.py DEPS_CODEQL)
+      and gives no verdict on a difference (cq-local-version-unchecked); freshness added (cq-sentinel-stale-ok). MEDIUM: skipped_by_own_if
+      (cq-skip-mixed-passes). LOW: the rewriter is no verdict on both shapes (cq-config-*), REPO_RE refuses `.`/`..` (cq-reader-repo-dots).
+  - seat: codex-gpt-5.6-sol council (round 2, HEAD f310aa8254)
+    objection: >-
+      BLOCKER the gzip limit is checked on the pre-fingerprint document (accepts 10346188 B where the action's transformed payload is
+      10694087 B > 10485760): a deterministic FALSE_GREEN. BLOCKER a repository-variable 404 is read as the override off, but
+      vars.MERGEOS_RING_GATING_DISABLED can be an organization variable, so hosted runs both scanners where local skip-PASSes. MEDIUM
+      head_branch == main does not identify the repository's main (a fork's PR branch named main, no event or repository check).
+    status: CONFIRMED
+    resolution: >-
+      The gzip limit is the compact JSON at level 6 plus a bound of what the action adds, against 10,000,000 (cq-sarif-gzip-no-bound,
+      cq-sarif-gzip-mib). The override is resolved from the repository then the organization variables lists, paginated, with a
+      total_count check and a fail-open on any failed read or a BASE environment: (cq-override-org-ignored, cq-override-404-unset,
+      cq-override-org-beats-repo, cq-override-environment-ignored, cq-override-total-unchecked). The sentinel takes only the repository's
+      own main on schedule or workflow_dispatch (cq-sentinel-fork-main, cq-sentinel-any-event).
+  - seat: kimi-code/k3 council (round 2, HEAD f310aa8254), confirmed findings
+    objection: >-
+      MEDIUM skipped_by_own_if keys planned by the bare step name across jobs, so a same-named step collides and a skip is forgiven. MEDIUM the
+      gzip limit uses the larger 10 MiB reading. LOW the SARIF checker's uncaught RecursionError/UnicodeEncodeError exits 1 without a marker.
+      LOW an organization-level or environment-level variable is invisible, and a 404 may be an unauthenticated read. Requested a test of the exit-code map.
+    status: CONFIRMED
+    resolution: >-
+      skipped_by_own_if keys (job, step) (cq-skip-name-collision). 10,000,000, the smaller reading (cq-sarif-gzip-mib). The checker's own crash
+      is exit 70, no verdict, turned into the leg's kill signal (cq-sarif-crash-rejects, cq-sarif-crash-swallowed-by-leg). The override read covers
+      organization variables, fails open on a 404 and on a BASE environment:. test_the_leg_turns_a_checker_crash_into_a_killed_leg_and_the_driver_reads_it_as_error
+      proves, through the driver, that the pin mismatch and the checker crash both end as ERROR, never FAIL and never PASS.
+  - seat: kimi-code/k3 council (round 2, HEAD f310aa8254), rebutted findings
+    objection: >-
+      MEDIUM the result and rule maxima are truncation limits, so failing on them is a FALSE_BLOCKED. BLOCKER-claimed exit 75 of no_verdict is dead
+      code because kill -s KILL $$ ends the script as 137. LOW gh is resolved through PATH in codeql_version_read.py.
+    status: PLAUSIBLE
+    resolution: >-
+      Rebutted, no code change. (1) The GitHub docs say "If any of these objects exceeds its maximum value the SARIF file is rejected"; the display
+      truncation ("only the top 5,000 ...") applies BELOW the maximum, so the checker keeps failing on the maxima and says so in its docstring. (2)
+      kill -s KILL $$ is intended: it is the no-verdict channel (the comment in codeql_leg.sh), so the driver reads a killed step as ERROR and not as
+      an exit code; exit 75 is only the fallback if the kill is somehow ignored. (3) Every plan-time gh read resolves a bare gh from the operator's
+      PATH (hosted_compare.gh_argv and gh_get, phase_e_flip, the runner's override read): the same trust as the rest of the plan's reads.
+  - seat: claude-opus-5-5 fresh final gate (BLOCKED at f310aa8254), F1-F3 and LOWs
+    objection: >-
+      F1 the gzip limit is measured on a document the action then transforms (the bound), F2 the override read ignores organization variables, F3 the
+      sentinel's newest completed run is not filtered to the repository's own main. LOWs: pack.yml and the spec overstate "never a false green" for
+      the tests.yml override residual; the Alert Limit 1,000,000 and a failed hosted self-test step are unnamed in the not-reproduced list; the
+      what_changed and proof counts are stale; the Bites line misses the override observation; the round-2 council-journal lines are uncommitted.
+    status: CONFIRMED
+    resolution: >-
+      F1-F3 as for Codex's round-2 findings above (the gate measured that the CLI SARIF carries primaryLocationLineHash on every result and
+      automationDetails.id on every run, so the bound is 0 on a real document). The residual wording is "partial; a hosted red is journalled
+      FALSE_GREEN (hosted_compare.classify), never counted as a full AGREE"; both unreproduced items are named in the spec and the matrix, with the
+      upload-never precision; the counts, the Bites line and the journal are updated in this round.
+residuals:
+  - "Final re-gate LOW L1 (test gap): no test fails the owner read (repos/{repo}) while the variable lists succeed; the code fails open correctly there (runner.py ring_gating_override), the gate's mutant gate-override-owner-fail-is-user survived."
+  - "Final re-gate LOW L2 (test gap): no test of a result whose partialFingerprints lacks the line hash; the code counts it, a regression costs at most 32 B per result, far under the measured 18x margin."
+  - "Final re-gate LOW L3 (FALSE_RED side only): an exception outside RecursionError/MemoryError/UnicodeEncodeError inside the SARIF checker's judge() exits 1, read as hosted-rejects; the CodeQL CLI never emits such a document."
+  - "The runner's changed list is base..candidate two-dot (an explicit base the merger passes), hosted's is merge-base..HEAD; for the merger's candidates (a merge of the PR onto the base) the two lists are the same."
+  - "A red BASE gate-flags corpus is a local FAIL of policy.trusted_classifier_corpus, while hosted runs both legs: stricter locally, never greener."
+  - "No SARIF upload locally: the hosted workflows still upload while they exist; a local upload is for the day they go. What the upload can fail on and the code determines is reproduced (codeql_sarif_check.py); GitHub-side processing errors, API errors, the status-poll timeout and runner loss are parity_gaps."
+  - "tests.yml's changes job honours vars.MERGEOS_RING_GATING_DISABLED and the local change map does not: with it active a docs-only diff skips tests.yml contexts here that hosted runs. Partial; a hosted red is journalled FALSE_GREEN (hosted_compare.classify), never counted as a full AGREE. Fixing it needs a live gh read on every plan and a change to every existing plan test; reported to the lead to ledger."
+  - "Not reproduced, and named in the spec and the matrix: the docs table's Alert Limit 1,000,000 (repository state), and a failed hosted 'Self-test ring-gating override' step (security.yml, pip install pyyaml from the network), which makes changes.result non-success so hosted runs both languages. With upload never a run without results does not throw on hosted (countResultsInSarif runs only in uploadPostProcessedFiles); local judges as the PR lane does, so it is stricter than the merge_group twin."
+  - "Every plan-time gh read (codeql_version_read.py, the runner's override read, hosted_compare.gh_argv and gh_get, phase_e_flip) resolves a bare gh from the operator's PATH: the same trust as the rest of the plan's reads, one line and no change."
+  - "The CLI version is chosen per hosted run by feature flag; the sentinel reads the newest analysis, and the flag can move between that read and the queue run."
+  - "The local SARIF leaves with the container: the runner's receipts carry the counts per language, and the per-result identity was proven once, by the parity probe (0 differences); a per-result diff per run would need the leg to export its SARIF."
+  - "Each executed candidate spends about 7 more minutes (python ~200-315 s, javascript ~100-120 s); the python wall varied 203 s -> 314 s between two runs on the same tree, unexplained."
+appetite_exceeded: none
+plan_ref: >-
+  docs/specs/localci-codeql-local-2026-10-11.md; owner decision 2026-10-11 ("Licenza open source") made the CodeQL CLI usable on Pro.
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl

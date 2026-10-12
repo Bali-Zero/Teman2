@@ -1,0 +1,13 @@
+diff --git a/apps/mouth/src/app/v2/_components/MobileNav.tsx b/apps/mouth/src/app/v2/_components/MobileNav.tsx
+index 08c3ae40dd..51dac6c1da 100644
+--- a/apps/mouth/src/app/v2/_components/MobileNav.tsx
++++ b/apps/mouth/src/app/v2/_components/MobileNav.tsx
+@@ -115,7 +115,7 @@ export function MobileNav({ items, funnel }: MobileNavProps) {
+                   style={{
+                     color: "var(--text-primary)",
+                     background:
+-                      "color-mix(in srgb, var(--accent-funnel) 6%, transparent)",
++                      "color-mix(in srgb, var(--accent-funnel) 40%, transparent)",
+                     border:
+                       "1px solid color-mix(in srgb, var(--accent-funnel) 14%, transparent)",
+                     textDecoration: "none",

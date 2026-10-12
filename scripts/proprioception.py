@@ -53,9 +53,10 @@ import sys
 import time
 from pathlib import Path
 
-RUNNER_VERSION = "1.0.0"
-SCHEMA_VERSION = 1
+RUNNER_VERSION = "1.1.0"
+SCHEMA_VERSION = 2
 RECONCILED, DIVERGED, UNPROBEABLE = "RECONCILED", "DIVERGED", "UNPROBEABLE"
+CURE_VALUES = {"session", "owner", "pr"}
 REPORT_DIR = Path.home() / ".nuzantara-proprioception"
 
 # The boundary taxonomy. A class with no probe scoped to this machine appears as
@@ -80,6 +81,7 @@ KNOWN_BOUNDARY_CLASSES = [
     "door<->door",              # the SAME rule in each CLI's auto-loaded door file (2026-08-31)
     "process<->cwd",            # a headless claude CLI process vs. its own working dir / worktree registration (2026-09-01)
     "model<->calibration",      # configured child models vs. their stored context-window calibration (2026-09-10)
+    "dataset<->bundle",         # the canonical dataset vs the anchor a bundled copy was stamped with (2026-10-08)
     "config<->guard",           # a CLI setting vs. the trip point of the guard it must not pre-empt (autoCompactWindow, 2026-09-18)
 ]
 
@@ -157,7 +159,7 @@ def redact(line: str) -> str:
 
 
 def verdict(pid: str, boundary: str, bclass: str, status: str, severity: str, n: int,
-            evidence: list[str], fix_hint: str, t0: float) -> dict:
+            evidence: list[str], fix_hint: str, t0: float, cure: str = "session") -> dict:
     return {
         "id": pid,
         "boundary": boundary,
@@ -167,8 +169,94 @@ def verdict(pid: str, boundary: str, bclass: str, status: str, severity: str, n:
         "n_findings": n,
         "evidence": [redact(e)[:200] for e in evidence[:5]],
         "fix_hint": fix_hint,
+        "cure": cure,
         "duration_ms": int((time.monotonic() - t0) * 1000),
     }
+
+
+def cure_for_result(entry: dict, status: str, n: int, evidence: list[str]) -> str:
+    """Choose a non-session cure only when this result proves it."""
+    def complete_string_field(line: object, name: str) -> str | None:
+        """Read one complete string from JSON or run_wrap's 160-char cut."""
+        if not isinstance(line, str):
+            return None
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            if len(line) != 160:
+                return None
+            match = re.search(rf'(?:^\s*\{{|,)\s*"{re.escape(name)}"\s*:\s*', line)
+            if match is None:
+                return None
+            try:
+                value, end = json.JSONDecoder().raw_decode(line, match.end())
+            except json.JSONDecodeError:
+                return None
+            if line[end:].lstrip()[:1] not in {"", ",", "}"}:
+                return None
+        else:
+            if not isinstance(item, dict):
+                return None
+            value = item.get(name)
+        return value if isinstance(value, str) else None
+    declared = str(entry.get("cure", "session"))
+    if status != DIVERGED:
+        return declared
+
+    probe_id = entry.get("id")
+    if probe_id in {"arsenal_seats", "launchd_liveness", "worktree_gate_shim", "organs_heartbeat"}:
+        if len(evidence) != n or not evidence:
+            return "session"
+
+    if probe_id == "arsenal_seats":
+        states = [complete_string_field(line, "status") for line in evidence]
+        if all(s in {"AUTH_DEAD", "BALANCE_DEAD", "QUOTA_DEAD", "MODEL_ERR"} for s in states):
+            return "owner"
+        return "session"
+
+    if probe_id == "launchd_liveness":
+        # The runtime whitelist cannot load a plist or fix a job that fails honestly; its kickstart needs a
+        # DEAD registry sidecar, which receptor A reports itself. DEAD-NONZERO/ARMED-TO-NOTHING/unknown stay.
+        def owner_only(line: str) -> bool:
+            item = complete_string_field(line, "verdict")
+            if item in {"NOT-LOADED", "FAILING-HONESTLY", "EXPECTED-NONZERO"}:
+                return True
+            marker = str(complete_string_field(line, "log_marker")).lower()
+            return item == "DEAD-GREEN" and "operation not permitted" in marker
+        return "owner" if all(owner_only(line) for line in evidence) else "session"
+
+    if probe_id == "worktree_gate_shim":
+        local_origins = {"broker", "broker-path-no-metadata"}
+        paths = [complete_string_field(line, "path") for line in evidence]
+        origins = [complete_string_field(line, "origin") for line in evidence]
+        if not all(path and Path(path).is_absolute() and origin for path, origin in zip(paths, origins)):
+            return "session"
+        if all(origin not in local_origins and ".worktrees" not in Path(path).parts
+               for path, origin in zip(paths, origins)):
+            return "owner"
+        return "session"
+
+    if probe_id == "organs_heartbeat":
+        # Exactly healer_receptor_registry.EXEMPT_STATUSES: receptor A never cures a "disabled" sidecar.
+        if all(complete_string_field(line, "status") == "disabled" for line in evidence):
+            return "owner"
+        return "session"
+
+    if probe_id == "home_fork_scripts":
+        live_paths = []
+        for line in evidence:
+            match = re.match(r"^(?:DIVERGED: )(.+?) != ", line)
+            if not match:
+                match = re.match(r"^NO REPO COUNTERPART: (.+?) executes live ", line)
+            if match:
+                live_paths.append(Path(os.path.expanduser(match.group(1))))
+        if len(live_paths) == n and live_paths:
+            try:
+                if all(path.stat().st_uid == 0 for path in live_paths):
+                    return "owner"
+            except OSError:
+                pass  # not provably root-owned: fail open toward a session
+    return declared
 
 
 def finding_label(probe: dict) -> str:
@@ -2049,6 +2137,91 @@ def probe_model_topology_drift(root: Path, args: dict, timeout: int) -> tuple[st
     return (DIVERGED if missing else RECONCILED), len(missing), ev
 
 
+KBLI_ANCHOR_MANIFEST = "apps/kbli-navigator-macos/Resources/DATASET_MANIFEST.json"
+KBLI_ANCHOR_DATASET = "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
+
+
+KBLI_ANCHOR_REMEDY = (
+    "re-anchor deliberately: commit the new sha into "
+    "apps/kbli-navigator-macos/Resources/DATASET_MANIFEST.json (data(dataset) commit), "
+    "then rebuild on Pro — build.sh refuses (exit 4) until the anchor matches; "
+    "see the Re-anchor paragraph of apps/kbli-navigator-macos/README.md"
+)
+
+
+def probe_kbli_dataset_anchor(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """Is the D2 anchor of the bundled KBLI dataset still the canonical's hash?
+
+    Contract
+      inputs   manifest@origin/main (sha256, optional records) and canonical@origin/main,
+               both read with `git show` so a never-pulled checkout (M5, W106b) cannot
+               produce a false RED after a re-anchor. Each falls back to the working
+               tree only when git cannot answer, and the message then says LOCAL.
+      states   RECONCILED: anchor sha (and record count, if declared) == canonical.
+               DIVERGED: they differ; the message names BOTH shas (12 chars) and, for
+               a count mismatch, both counts, then the remedy below.
+               UNPROBEABLE: the manifest or the canonical cannot be read anywhere.
+      remedy   a deliberate re-anchor commit of DATASET_MANIFEST.json, after which
+               build.sh (which exits 4 on mismatch) builds again.
+      non-goal the probe never writes: re-anchoring is a decision, not a heal.
+    """
+    root = Path(args.get("root") or root)
+    manifest_rel = str(args.get("manifest") or KBLI_ANCHOR_MANIFEST)
+    dataset_rel = str(args.get("dataset") or KBLI_ANCHOR_DATASET)
+    ref = str(args.get("ref") or "origin/main")
+    if not args.get("no_fetch"):
+        try:
+            sh(["git", "fetch", "-q", "origin", "main"], timeout=min(timeout, 10), cwd=root)
+        except Exception:
+            pass
+
+    def read(rel: str) -> tuple[bytes, str] | None:
+        try:
+            p = subprocess.run(["git", "-C", str(root), "show", f"{ref}:{rel}"],
+                               capture_output=True, timeout=timeout)
+            if p.returncode == 0 and p.stdout:
+                return p.stdout, f"{ref}:{rel}"
+        except Exception:
+            pass
+        try:
+            return (root / rel).read_bytes(), f"LOCAL {rel} ({ref} unreadable)"
+        except OSError:
+            return None
+
+    got_manifest = read(manifest_rel)
+    if got_manifest is None:
+        return UNPROBEABLE, 0, [f"anchor manifest {manifest_rel} unreadable on {ref} and locally"]
+    try:
+        manifest = json.loads(got_manifest[0])
+        anchor_sha = str(manifest["sha256"])
+    except (ValueError, KeyError, TypeError):
+        return UNPROBEABLE, 0, [f"anchor in {manifest_rel} is not valid JSON with a sha256 ({got_manifest[1]})"]
+    anchor_records = manifest.get("records")
+
+    got_data = read(dataset_rel)
+    if got_data is None:
+        return UNPROBEABLE, 0, [f"canonical {dataset_rel} unreadable on {ref} and locally"]
+    data, source = got_data
+    live_sha = hashlib.sha256(data).hexdigest()
+    where = f"manifest {got_manifest[1]}, canonical {source}"
+
+    findings: list[str] = []
+    if live_sha != anchor_sha:
+        findings.append(f"anchor {anchor_sha[:12]} != canonical {live_sha[:12]} ({where})")
+    if anchor_records is not None:
+        try:
+            live_records = len(json.loads(data)["data"])
+        except (ValueError, KeyError, TypeError):
+            live_records = None
+        if live_records is not None and live_records != anchor_records:
+            findings.append(f"anchor records {anchor_records} != canonical records {live_records} ({where})")
+    if findings:
+        n = len(findings)
+        findings.append(KBLI_ANCHOR_REMEDY)
+        return DIVERGED, n, findings
+    return RECONCILED, 0, [f"anchor {anchor_sha[:12]} == canonical {live_sha[:12]} ({where})"]
+
+
 BUILTINS = {
     "git_alignment": probe_git_alignment,
     "executed_code_currency": probe_executed_code_currency,
@@ -2058,6 +2231,7 @@ BUILTINS = {
     "repomap_size": probe_repomap_size,
     "canon_blocks": probe_canon_blocks,
     "door_canon_parity": probe_door_canon_parity,
+    "kbli_dataset_anchor": probe_kbli_dataset_anchor,
     "headless_zombies": probe_headless_zombies,
     "child_calibration": probe_child_calibration,
     "autocompact_window": probe_autocompact_window,
@@ -2211,7 +2385,8 @@ def run_wrap(root: Path, entry: dict, timeout: int) -> tuple[str, int, list[str]
         if bad_key and data and not any(bad_key in i for i in data if isinstance(i, dict)):
             return UNPROBEABLE, 0, [f"schema drift: no item carries key '{bad_key}'"]
         items = [i for i in data if not bad_key or str(i.get(bad_key, "")) not in ok_values]
-        ev = [json.dumps(i, ensure_ascii=False)[:160] for i in items[:5]]
+        # Every item, not 5: cure_for_result must see all n to prove owner; verdict() still shows 5.
+        ev = [json.dumps(i, ensure_ascii=False)[:160] for i in items]
         return (DIVERGED if items else RECONCILED), len(items), ev
     if parse == "category_counts":
         if not isinstance(data, dict):
@@ -2254,6 +2429,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "boundary": "infra/tailscale/policy.hujson <-> the packet filter this node enforces",
         "machines": ["all"], "tags": ["fast"], "timeout_sec": 30,
         "severity": "P1",
+        "cure": "owner",
         "parse": "tri_state_exit",
         "fix_hint": ("DIVERGED here is expected until policy.hujson is applied in the "
                      "Tailscale admin console (operator[GUI], runbook "
@@ -2283,6 +2459,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "boundary": "machine-checkout <-> origin/main",
         "machines": ["all"], "tags": ["fast", "remote-safe"], "timeout_sec": 40,
         "severity": "P1", "args": {"behind_warn": 10},
+        "cure": "owner",
         "fix_hint": "interactive pull on this machine's main (never from an agent session)",
     },
     {
@@ -2291,6 +2468,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "boundary": "produced-on-host <-> committed-to-repo",
         "machines": ["all"], "tags": ["fast", "remote-safe"], "timeout_sec": 20,
         "severity": "P1",
+        "cure": "pr",
         "args": {"pairs": [{"glob": "research/regulatory/*-delta.json", "label": "regulatory deltas"}]},
         "fix_hint": "promote stranded deltas: git add research/regulatory/*-delta.json + PR",
     },
@@ -2309,8 +2487,19 @@ DEFAULT_REGISTRY: list[dict] = [
         "boundary": "the canon block of CLAUDE.md <-> AGENTS.md <-> GEMINI.md <-> QWEN.md",
         "machines": ["all"], "tags": ["fast", "remote-safe"], "timeout_sec": 15,
         "severity": "P1",
+        "cure": "pr",
         "args": {"reference": "CLAUDE.md", "doors": ["CLAUDE.md", "AGENTS.md", "GEMINI.md", "QWEN.md"]},
         "fix_hint": "copy the reference door's block VERBATIM into the diverging door — the block is shared doctrine, so the cure is never to reword it locally; if the reference is the one that is wrong, fix it there and re-copy outward",
+    },
+    {
+        "id": "kbli_dataset_anchor", "type": "builtin", "target": "kbli_dataset_anchor",
+        "class": "dataset<->bundle",
+        "boundary": "the D2 anchor in the KBLI app DATASET_MANIFEST.json <-> the canonical KBLI dataset on origin/main",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 20,
+        "severity": "P2",
+        "cure": "pr",
+        "args": {},
+        "fix_hint": "re-anchor deliberately: commit the new sha into apps/kbli-navigator-macos/Resources/DATASET_MANIFEST.json (data(dataset) commit), then rebuild on Pro — build.sh refuses (exit 4) until the anchor matches",
     },
     {
         "id": "repomap_size", "type": "builtin", "target": "repomap_size",
@@ -2394,6 +2583,19 @@ DEFAULT_REGISTRY: list[dict] = [
                     "bare `git worktree add` pushes with NO gate and reports a clean push",
     },
     {
+        "id": "push_witness", "type": "wrap",
+        "target": ["python3", "{repo}/scripts/push_witness_reconcile.py",
+                   "--json", "--since", "24"],
+        "class": "worktree<->gate",
+        "boundary": "origin agent-branch tips <-> runtime pre-push witness journal",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 30,
+        "severity": "P1", "cure": "pr",
+        "parse": "findings_list", "unwrap_key": "findings",
+        "verdict_key": "verdict", "ok_values": [],
+        "fix_hint": "an agent tip has no witness marker: a push skipped the trusted hook, or the hook "
+                    "warned it could not write its journal; find the pusher, never a session cure",
+    },
+    {
         "id": "launchd_liveness", "type": "wrap",
         "target": ["python3", "{repo}/scripts/launchd_liveness_detector.py", "--json"],
         "class": "wrapper<->payload",
@@ -2449,8 +2651,16 @@ DEFAULT_REGISTRY: list[dict] = [
         # *.agent_worktree_cleanup advisories ("WIP worktree skipped") would sit at
         # P1 on every node forever, which is how a channel earns being ignored —
         # the failure this detector was born to end, re-created one severity up.
-        # stale / dead_channel / corrupt / unhealthy still DIVERGE, unchanged.
-        "verdict_key": "kind", "ok_values": ["warning"],
+        # kind="disabled" (added 2026-10-08) is a sidecar frozen forever because
+        # the organ was deliberately disarmed (plist renamed to .disabled-*,
+        # same fact healer_receptor_registry.py's own EXEMPT_STATUSES/
+        # _renamed_away_disabled_plist path already stopped alarming on via
+        # PR #7553) — mata_garuda.intel_bridge_daily.mini DIVERGED here on every
+        # tick for 2+ weeks after that disable despite being correctly exempt
+        # in the registry receptor (see organism_stale_detector.py's
+        # KNOWN_INTENTIONALLY_DISABLED_STALE). stale / dead_channel / corrupt /
+        # unhealthy still DIVERGE, unchanged.
+        "verdict_key": "kind", "ok_values": ["warning", "disabled"],
         "fix_hint": "read the organ's own log — restart is NOT the cure (heartbeat TAC 2026-07-02)",
     },
     {
@@ -2466,7 +2676,7 @@ DEFAULT_REGISTRY: list[dict] = [
         # Reader, not prober: re-emits the last arsenal_probe report (no live LLM
         # calls here — the heavy probe is healer-armed on Mini AND on Pro since
         # 2026-07-18, pro-healer Receptor D). Transients
-        # (QUOTA/SHED/TIMEOUT) are ok_values: they belong to transition alerting,
+        # (QUOTA/SHED/TIMEOUT/BUSY — BUSY is contention, not death) are ok_values: they belong to transition alerting,
         # not boundary reconciliation — only persistent seat-death DIVERGEs.
         "id": "arsenal_seats", "type": "wrap",
         "target": ["python3", "{repo}/scripts/arsenal_probe.py", "--read-last", "--json"],
@@ -2476,7 +2686,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "severity": "P1", "parse": "findings_list", "unwrap_key": "findings",
         "verdict_key": "status",
         "ok_values": ["LIVE", "CRED_UNAVAILABLE", "NOT_INSTALLED", "CONTEXT_AUTH",
-                       "SHED", "QUOTA_DEAD", "TIMEOUT"],
+                       "SHED", "QUOTA_DEAD", "TIMEOUT", "BUSY"],
         "fix_hint": "scripts/arsenal_probe.py --table for detail; AUTH/BALANCE dead = operator relogin/top-up (see docs/runbooks/arsenal-probe.md)",
     },
     {
@@ -2619,6 +2829,8 @@ def validate_registry(registry: list[dict]) -> list[str]:
             errors.append(f"probe[{i}] ({e.get('id')}): unknown builtin '{e.get('target')}'")
         if e.get("class") not in KNOWN_BOUNDARY_CLASSES:
             errors.append(f"probe[{i}] ({e.get('id')}): class '{e.get('class')}' not in taxonomy")
+        if e.get("cure", "session") not in CURE_VALUES:
+            errors.append(f"probe[{i}] ({e.get('id')}): invalid cure '{e.get('cure')}'")
     return errors
 
 
@@ -2689,7 +2901,8 @@ def write_report(report: dict) -> None:
              ""]
     for r in report["probes"]:
         mark = {"RECONCILED": "OK ", "DIVERGED": "!! ", "UNPROBEABLE": "?? "}[r["status"]]
-        lines.append(f"- {mark}[{r['severity']}] {r['id']} ({r['boundary']}) — {r['n_findings']} findings, {r['duration_ms']}ms")
+        lines.append(f"- {mark}[{r['severity']}] {r['id']} ({r['boundary']}) — "
+                     f"{r['n_findings']} findings, {r['duration_ms']}ms, cure={r['cure']}")
         for e in r["evidence"]:
             lines.append(f"    - {e}")
         if r["status"] == DIVERGED:
@@ -2830,12 +3043,12 @@ def main() -> int:
         if root is None:
             results.append(verdict(entry["id"], entry["boundary"], entry["class"], UNPROBEABLE,
                                    entry["severity"], 0, ["no repo checkout found on this machine"],
-                                   entry["fix_hint"], t0))
+                                   entry["fix_hint"], t0, entry.get("cure", "session")))
             continue
         try:
             if entry["type"] == "builtin":
                 probe_args = dict(entry.get("args", {}))
-                if entry["target"] == "git_alignment" and args.no_fetch:
+                if entry["target"] in ("git_alignment", "kbli_dataset_anchor") and args.no_fetch:
                     probe_args["no_fetch"] = True
                 status, n, ev = BUILTINS[entry["target"]](root, probe_args, timeout)
             else:
@@ -2851,8 +3064,9 @@ def main() -> int:
             fix_hint = _arsenal_seats_vcr_m5_remedy(entry)
         elif entry["id"] == "guardian_freshness":
             fix_hint = _guardian_freshness_remedy(entry, ev)
+        cure = cure_for_result(entry, status, n, ev)
         results.append(verdict(entry["id"], entry["boundary"], entry["class"], status,
-                               entry["severity"], n, ev, fix_hint, t0))
+                               entry["severity"], n, ev, fix_hint, t0, cure))
 
     if args.fleet:
         self_path = Path(__file__) if "__file__" in globals() and Path(__file__).exists() else None

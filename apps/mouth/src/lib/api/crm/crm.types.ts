@@ -408,6 +408,13 @@ export interface ClientDocument {
    * a live one, with no field distinguishing them (portal audit F-02).
    */
   deleted_at?: string | null;
+  /**
+   * Whether the client sees this document in the portal. Only `true` is
+   * visible (portal predicate `client_visible = true`); absent = the backend
+   * did not return the field. Flipped via PATCH by admin / Team Leader /
+   * Tax Lead / Supervisor only (PR 7989).
+   */
+  client_visible?: boolean | null;
   /** 'client' for a portal upload, 'team' for a CRM one. */
   uploaded_source?: "client" | "team" | string;
   /**
@@ -526,6 +533,8 @@ export interface ClientProfile {
     documents_count: number;
     practices_count: number;
     company_count?: number;
+    /** Active documents of every company linked to the client (any link). */
+    company_documents_count?: number;
     expired_count: number;
     red_alerts: number;
     yellow_alerts: number;

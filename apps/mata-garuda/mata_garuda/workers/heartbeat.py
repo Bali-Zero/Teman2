@@ -12,8 +12,8 @@ not a new format — schema parity is load-bearing (superscar #9: two divergent
 sidecar formats already exist; do not add a third).
 
 Schema:
-    {"ts": <float epoch>, "status": "ok"|"degraded"|"fail",
-     "organ_id": "<full.id>", "metadata": {...}}
+    {"ts": <float epoch>, "status": "ok"|"warning"|"degraded"|"fail",
+     "organ_id": "<full.id>", "metadata": {...}, "note": "<optional>"}
 
 Best-effort: never raises back to the producer (the cron's real work must not
 depend on the sidecar landing). A missing/stale file already reads as dead.
@@ -39,6 +39,7 @@ def emit_heartbeat(
     metadata: Mapping[str, Any] | None = None,
     *,
     out_dir: str | None = None,
+    note: str | None = None,
 ) -> bool:
     """Write the sidecar JSON for `organ_id`. Returns True on success.
 
@@ -54,6 +55,8 @@ def emit_heartbeat(
             "organ_id": str(organ_id),
             "metadata": dict(metadata) if metadata else {},
         }
+        if note is not None:
+            payload["note"] = str(note)
         tmp = os.path.join(target_dir, f".{organ_id}.json.tmp")
         final = os.path.join(target_dir, f"{organ_id}.json")
         with open(tmp, "w", encoding="utf-8") as fh:

@@ -583,6 +583,7 @@ else
     # kept for human-readable debugging, random suffix for actual uniqueness.
     CLONE_DB="nuzantara_test_run_${$}_${RANDOM}"
     CLONE_CREATED=0
+    # shellcheck disable=SC2329  # invoked indirectly by the trap below
     cleanup_clone() {
         if [ "$CLONE_CREATED" = "1" ]; then
             "$PSQL" -h 127.0.0.1 -p 5432 -d postgres -tAc "DROP DATABASE IF EXISTS \"$CLONE_DB\" WITH (FORCE);" >/dev/null 2>&1
@@ -859,8 +860,6 @@ if [ -n "${PREPUSH_REFS:-}" ] && [ -x "$PREPUSH_TIP_DRIFT_SCRIPT" ]; then
             ;;
     esac
 fi
-[ -n "${PREPUSH_REFS:-}" ] && rm -f "$PREPUSH_REFS"
-
 if [ "$PREPUSH_RUN_BACKEND" = "1" ] && [ "${BACKEND_SUITE_RAN:-0}" != "1" ]; then
     echo "⚠️  PUSH NOT VERIFIED LOCALLY — the backend suite was REQUIRED for this diff but never ran"
     echo "    (${BACKEND_SUITE_SKIP_REASON:-reason not recorded})."
@@ -871,3 +870,63 @@ if [ "$PREPUSH_RUN_BACKEND" = "1" ] && [ "${BACKEND_SUITE_RAN:-0}" != "1" ]; the
 else
     echo "✅ All pre-push checks passed!"
 fi
+
+# Runtime receipt, deliberately last: a blocked push must not look witnessed.
+# This whole function is best-effort; journal failure must not block a push.
+push_witness_escape() {
+    printf '%s\n' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' \
+        -e "s/$(printf '\t')/\\\\t/g" -e "s/$(printf '\r')/\\\\r/g" |
+        awk 'NR > 1 { printf "\\n" } { printf "%s", $0 }'
+}
+
+# A push URL may carry credentials in its userinfo part: keep the repository, drop the userinfo.
+push_witness_url() {
+    printf '%s' "$1" | sed 's#^\([A-Za-z][A-Za-z0-9+.-]*://\)[^/@]*@#\1#'
+}
+
+push_witness_write() (
+    PUSH_WITNESS_DIR="${NUZ_PUSH_WITNESS_DIR:-${HOME:-}/.organism/push-witness}"
+    if [ -z "${NUZ_PUSH_WITNESS_DIR:-}" ] && [ -z "${HOME:-}" ]; then return 1; fi
+    if ! mkdir -p "$PUSH_WITNESS_DIR" || ! chmod 700 "$PUSH_WITNESS_DIR"; then return 1; fi
+    PUSH_WITNESS_JOURNAL="$PUSH_WITNESS_DIR/journal.jsonl"
+    umask 077
+    if ! : >> "$PUSH_WITNESS_JOURNAL" || ! chmod 600 "$PUSH_WITNESS_JOURNAL"; then return 1; fi
+
+    PUSH_WITNESS_HOOK="$0"  # the file that is running, not the copy the root names
+    PUSH_WITNESS_HASH=""
+    if command -v shasum >/dev/null 2>&1; then
+        PUSH_WITNESS_HASH=$(shasum -a 256 "$PUSH_WITNESS_HOOK" 2>/dev/null) || PUSH_WITNESS_HASH=""
+    elif command -v sha256sum >/dev/null 2>&1; then
+        PUSH_WITNESS_HASH=$(sha256sum "$PUSH_WITNESS_HOOK" 2>/dev/null) || PUSH_WITNESS_HASH=""
+    fi
+    PUSH_WITNESS_HASH=${PUSH_WITNESS_HASH%% *}
+    [ "${#PUSH_WITNESS_HASH}" -eq 64 ] || return 1
+    PUSH_WITNESS_TS=$(date -u '+%Y-%m-%dT%H:%M:%SZ') || PUSH_WITNESS_TS=""
+    PUSH_WITNESS_HOST=$(hostname -s 2>/dev/null) || PUSH_WITNESS_HOST=""
+    PUSH_WITNESS_CWD=$(pwd -P 2>/dev/null) || PUSH_WITNESS_CWD=""
+    if [ -z "$PUSH_WITNESS_TS" ] || [ -z "$PUSH_WITNESS_HOST" ] || \
+        [ -z "$PUSH_WITNESS_CWD" ]; then return 1; fi
+    if [ -z "${PREPUSH_REFS:-}" ] || [ ! -r "$PREPUSH_REFS" ]; then return 1; fi
+
+    PUSH_WITNESS_BAD=0
+    while IFS=' ' read -r PUSH_LOCAL_REF PUSH_LOCAL_SHA PUSH_REMOTE_REF PUSH_REMOTE_SHA PUSH_EXTRA; do
+        [ -z "$PUSH_LOCAL_REF" ] && continue
+        if [ -n "$PUSH_EXTRA" ] || [ -z "$PUSH_REMOTE_SHA" ]; then
+            PUSH_WITNESS_BAD=1
+            continue
+        fi
+        printf '{"ts":"%s","host":"%s","remote":"%s","url":"%s","local_ref":"%s","local_sha":"%s","remote_ref":"%s","remote_sha":"%s","trust_root":"%s","hook_sha256":"%s","cwd":"%s"}\n' \
+            "$(push_witness_escape "$PUSH_WITNESS_TS")" "$(push_witness_escape "$PUSH_WITNESS_HOST")" \
+            "$(push_witness_escape "$(push_witness_url "${1:-}")")" \
+            "$(push_witness_escape "$(push_witness_url "${2:-}")")" \
+            "$(push_witness_escape "$PUSH_LOCAL_REF")" "$(push_witness_escape "$PUSH_LOCAL_SHA")" \
+            "$(push_witness_escape "$PUSH_REMOTE_REF")" "$(push_witness_escape "$PUSH_REMOTE_SHA")" \
+            "$(push_witness_escape "$PREPUSH_TRUST_ROOT")" "$PUSH_WITNESS_HASH" \
+            "$(push_witness_escape "$PUSH_WITNESS_CWD")" >> "$PUSH_WITNESS_JOURNAL" || return 1
+    done < "$PREPUSH_REFS"
+    [ "$PUSH_WITNESS_BAD" -eq 0 ]
+)
+
+if ! push_witness_write "$@"; then printf '⚠️  push witness: marker could not be written\n' >&2; fi
+if [ -n "${PREPUSH_REFS:-}" ]; then rm -f "$PREPUSH_REFS" || true; fi
+exit 0

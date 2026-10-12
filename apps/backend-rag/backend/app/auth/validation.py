@@ -9,10 +9,11 @@ eliminating code duplication across the codebase.
 import logging
 from typing import Any
 
-from jose import JWTError, jwt
+from jwt import PyJWTError
 
 from backend.app.core.config import settings
 from backend.app.services.api_key_auth import APIKeyAuth
+from backend.app.utils.jwt_decode import decode_jwt
 from backend.services.security.token_revocation import (
     RevocationStoreUnavailable,
     is_session_revoked,
@@ -61,11 +62,10 @@ async def validate_auth_token(token: str | None) -> dict[str, Any] | None:
         return None
 
     try:
-        payload = jwt.decode(
+        payload = decode_jwt(
             token,
             settings.jwt_secret_key,
             algorithms=[settings.jwt_algorithm],
-            options={"verify_exp": True, "require_exp": True},
         )
 
         user_id = payload.get("sub") or payload.get("userId")
@@ -86,7 +86,7 @@ async def validate_auth_token(token: str | None) -> dict[str, Any] | None:
                 "status": "active",
             }
 
-    except JWTError as e:
+    except PyJWTError as e:
         logger.debug("Local JWT validation failed: %s", e)
     except RevocationStoreUnavailable:
         logger.error("Authentication unavailable: session revocation cannot be checked")

@@ -1,10 +1,12 @@
 """infra/tailscale/policy.hujson must stay deny-by-default, and must keep naming the shell.
 
 Why this guard exists. The tailnet's live policy is the factory default: one packet-filter rule,
-every node -> 0.0.0.0/0, all ports. On top of it `tailscale serve` on Pro publishes
-`/term` -> 127.0.0.1:7681 (`ttyd -W zsh`, writable, no credential flag) to the whole tailnet. Not
-a live breach — every node is Zero's own — but a hard blocker on the team expansion, and the kind
-of exposure that comes back the moment someone "temporarily" widens a rule.
+every node -> 0.0.0.0/0, all ports. On top of it `tailscale serve` on Pro published
+`/term` -> 127.0.0.1:7681 (`ttyd -W zsh`, writable, no credential flag) to the whole tailnet.
+Measured 2026-10-11, the tailnet held twelve nodes and six of them were not the fleet aliases
+pinned below, so `/term` was taken out of `serve` that day; the policy is what keeps it out of
+reach once it is restored, and the kind of exposure that comes back the moment someone
+"temporarily" widens a rule.
 
 The first draft of the policy widened it by accident, not by malice: it granted
 `antonellosiano@gmail.com -> antonellosiano@gmail.com:*`, which reads as "the fleet keeps talking
@@ -44,7 +46,7 @@ longer list: a decimal-integer spelling of Pro's address, and an IPv4-mapped IPv
 contains Pro's own dotted quad as a substring. All six close under the two clauses below, and not
 one of them needed a branch of its own.
 
-So `hosts` is now pinned — but NOT as a closed set, which is the subtle half. The six fleet
+So `hosts` is now pinned — but NOT as a closed set, which is the subtle half. The seven pinned
 aliases may not be re-pointed or deleted, AND every entry must be a bare IPv4 literal; entries
 may still be ADDED, because this repo's own enrolment procedure adds one, and a guard that goes
 red when an operator follows the runbook is worse than the gap it closes. Two conjoined clauses,
@@ -88,6 +90,7 @@ infra/guard-conformance/.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -111,12 +114,12 @@ SHELL_PORT = 443
 #
 # IT IS NOT A CLOSED SET, AND THAT IS THE LOAD-BEARING PART. The obvious spelling of "pin the
 # table" — `hosts == EXPECTED_HOSTS` — would go RED the first time an operator follows this
-# repo's OWN enrolment procedure, which adds a seventh entry (`enroll-team-device.md` step 5,
+# repo's OWN enrolment procedure, which adds an entry (`enroll-team-device.md` step 5,
 # and the worked example at the foot of policy.hujson). A guard that fails when someone does
 # exactly what the runbook tells them to is worse than the gap it closes, and it would fire at
 # enrolment time — the worst possible moment. So the assertion is TWO CONJOINED CLAUSES:
 #
-#   1. the six fleet aliases below keep these exact values — they may not be re-pointed, and
+#   1. the seven pinned aliases below keep these exact values — they may not be re-pointed, and
 #      they may not be deleted; and
 #   2. EVERY entry in `hosts`, including ones added long after this comment, is a bare IPv4
 #      literal (see `_is_bare_ipv4`).
@@ -133,7 +136,20 @@ EXPECTED_HOSTS = {
     "iphone-14": "100.113.83.92",
     "iphone175": "100.77.16.7",
     "apple-vision-pro": "100.97.28.18",
+    "iqoo-15": "100.117.194.24",
 }
+
+# A shared QA phone is deliberately a destination only. Pinning it above makes its identity
+# trustworthy; this separate role constraint ensures that trust cannot be mistaken for permission
+# to originate traffic into the fleet. Both its alias and its pinned IP are rejected as sources.
+DESTINATION_ONLY_HOSTS = {"iqoo-15"}
+
+# A `hosts` KEY must be a name, never an address. `_canon_node` reads a token as an alias before
+# it reads it as an IP, so a key spelled like an address (`"<Mini's IP>": "<phone's IP>"`) would
+# shadow that machine: a rule toward Mini would be judged as a rule toward the phone, and the
+# ephemeral exception would carry the range to Mini (round-1 gate of #8244, N1). Whether the
+# console accepts such a key is unverified; an allowlist of one shape removes the question.
+HOST_ALIAS_NAME = re.compile(r"[a-z][a-z0-9-]*")
 
 # Derived, never re-typed: two literals for one fact are two chances to disagree.
 SHELL_HOST_IP = EXPECTED_HOSTS[SHELL_HOST]
@@ -151,6 +167,12 @@ SHELL_PORT_ALLOWED_SOURCES = {"m5", "iphone-14", "iphone175", "apple-vision-pro"
 
 # A port spec wider than this is a wildcard wearing a range's clothes (`1-65535`).
 MAX_PORTS_PER_DST = 64
+
+# One deliberately narrow exception: Pro drives the iQOO over wireless ADB TLS, whose Android
+# adbd port is selected anew from the Linux ephemeral range on every enable/reboot. The predicate
+# below requires this exact source, pinned destination and exact range; no extra source or port
+# can inherit the exception.
+EPHEMERAL_PORT_GRANT = ("pro", "iqoo-15", "32768-60999")
 
 # `proto` was presence-checked and never value-checked, so `"proto": "udp"` under a comment
 # reading "Only SSH" was green — a rule that names a TCP service while granting a different
@@ -382,6 +404,23 @@ def _enumerate_ports(spec: str) -> set:
     return ports
 
 
+def _is_ephemeral_port_grant(srcs: list, host: str, port: str, hosts: dict) -> bool:
+    """Whether this rule is the one exact wide grant declared by EPHEMERAL_PORT_GRANT."""
+    src_alias, dst_alias, expected_port = EPHEMERAL_PORT_GRANT
+    allowed_src_spellings = {src_alias, EXPECTED_HOSTS[src_alias]}
+    return (
+        len(srcs) == 1
+        and srcs[0] in allowed_src_spellings
+        and _canon_node(host, hosts) == EXPECTED_HOSTS[dst_alias]
+        and port.strip() == expected_port
+    )
+
+
+def _is_destination_only_source(src: str, hosts: dict) -> bool:
+    destination_only_ips = {EXPECTED_HOSTS[alias] for alias in DESTINATION_ONLY_HOSTS}
+    return src in DESTINATION_ONLY_HOSTS or _canon_node(src, hosts) in destination_only_ips
+
+
 def _is_fence(line: str) -> bool:
     """A `// =====` rule line. The SHELL-ROUTE banner is wrapped in these."""
     stripped = line.strip()
@@ -468,7 +507,10 @@ def audit_policy(text: str) -> list[str]:
     for value in hosts.values():
         if not _is_bare_ipv4(str(value)):
             findings.append("HOST_VALUE_NOT_BARE_IPV4")
-    # Clause 1: the six fleet aliases are immovable. `.get()` rather than `in` so that DELETING a
+    for key in hosts:
+        if not HOST_ALIAS_NAME.fullmatch(str(key)):
+            findings.append("HOST_ALIAS_NOT_A_NAME")
+    # Clause 1: the seven pinned aliases are immovable. `.get()` rather than `in` so that DELETING a
     # pinned alias fails here too — a removed anchor is a moved anchor with extra steps.
     if any(hosts.get(alias) != ip for alias, ip in EXPECTED_HOSTS.items()):
         findings.append("PINNED_HOST_ALIAS_MOVED")
@@ -489,7 +531,7 @@ def audit_policy(text: str) -> list[str]:
                 findings.append("UNRESOLVABLE_SRC_SELECTOR")
             # AN UNPINNED ALIAS MAY BE A DESTINATION, NEVER A SOURCE (gate condition C2,
             # 2026-08-29). The `hosts` pin is additive-tolerant on purpose — the enrolment runbook
-            # adds a seventh entry, and a guard that reddens when the operator follows the
+            # adds an entry, and a guard that reddens when the operator follows the
             # documented procedure is worse than the gap it closes. But that tolerance had a price
             # nobody had priced: an added alias holding a perfectly well-formed FOREIGN IPv4 became
             # "a node", and could then be granted anything. Probed port by port: `pro:443` was
@@ -506,6 +548,8 @@ def audit_policy(text: str) -> list[str]:
             # comment.
             elif src not in EXPECTED_HOSTS and _canon_node(src, hosts) not in EXPECTED_HOSTS.values():
                 findings.append("UNPINNED_ALIAS_AS_SOURCE")
+            if _is_destination_only_source(src, hosts):
+                findings.append("DESTINATION_ONLY_HOST_AS_SOURCE")
         if require_proto:
             proto = str(rule.get("proto", "")).strip()
             if not proto:
@@ -520,7 +564,14 @@ def audit_policy(text: str) -> list[str]:
                 findings.append("WILDCARD_DST_HOST")
             if port.strip() == "*":
                 findings.append("WILDCARD_DST_PORT")
-            if _port_count(port) > MAX_PORTS_PER_DST:
+            exception_transport = (
+                str(rule.get("proto", "")).strip() == "tcp"
+                if require_proto
+                else rule.get("ip") == [f"tcp:{port.strip()}"]
+            )
+            if _port_count(port) > MAX_PORTS_PER_DST and not (
+                exception_transport and _is_ephemeral_port_grant(srcs, host, port, hosts)
+            ):
                 findings.append("OVERBROAD_DST_PORT_RANGE")
             # FAIL CLOSED ON THE DESTINATION AXIS (round-2 gate, findings B/C/E). The shell
             # check below can only fire on a destination it can RESOLVE to a node. A user, a
@@ -635,22 +686,44 @@ def audit_policy(text: str) -> list[str]:
         if "accept" in t:
             key = _canon_node(str(t.get("src", "")), hosts)
             accepts.setdefault(key, []).extend(t.get("accept", []))
+    def proven_accept_ports(src: str, host: str, wanted: set) -> set:
+        proven = set()
+        for entry in accepts.get(_canon_node(src, hosts), []):
+            e_host, e_port = _split_dst(entry)
+            if _canon_node(e_host, hosts) == _canon_node(host, hosts):
+                proven.update(p for p in wanted if _port_spec_covers(e_port, p))
+        return proven
+
     for rule in policy.get("acls", []):
         srcs = list(rule.get("src", [])) + list(rule.get("users", []))
         dsts = list(rule.get("dst", [])) + list(rule.get("ports", []))
         for dst in dsts:
             host, port = _split_dst(dst)
-            wanted = _enumerate_ports(port)
+            is_ephemeral = _is_ephemeral_port_grant(srcs, host, port, hosts)
+            wanted = {32768, 60999} if is_ephemeral else _enumerate_ports(port)
             if not wanted:
                 continue
             for src in srcs:
-                proven = set()
-                for entry in accepts.get(_canon_node(src, hosts), []):
-                    e_host, e_port = _split_dst(entry)
-                    if _canon_node(e_host, hosts) == _canon_node(host, hosts):
-                        proven.update(p for p in wanted if _port_spec_covers(e_port, p))
+                proven = proven_accept_ports(src, host, wanted)
                 if proven != wanted:
-                    findings.append("ACL_RULE_NOT_ACCEPT_TESTED")
+                    findings.append(
+                        "EPHEMERAL_GRANT_NOT_ACCEPT_TESTED"
+                        if is_ephemeral
+                        else "ACL_RULE_NOT_ACCEPT_TESTED"
+                    )
+
+    # `grants` uses a different destination/port shape, but the exceptional wide range must carry
+    # the same endpoint proof if someone moves the rule there later.
+    for grant in policy.get("grants", []):
+        srcs = list(grant.get("src", []))
+        port = _grant_port_spec(grant)
+        for host in grant.get("dst", []):
+            if not _is_ephemeral_port_grant(srcs, host, port, hosts):
+                continue
+            wanted = {32768, 60999}
+            for src in srcs:
+                if proven_accept_ports(src, host, wanted) != wanted:
+                    findings.append("EPHEMERAL_GRANT_NOT_ACCEPT_TESTED")
 
     return findings
 
@@ -673,7 +746,7 @@ def test_real_policy_is_deny_by_default_and_names_the_shell() -> None:
 def test_enrolling_a_team_laptop_keeps_the_guard_green() -> None:
     """The documented enrolment path must PASS. This test is the point of the additive tolerance.
 
-    `enroll-team-device.md` step 5 adds a seventh `hosts` entry and the support rule that reaches
+    `enroll-team-device.md` step 5 adds a `hosts` entry and the support rule that reaches
     it. A closed-set pin (`hosts == EXPECTED_HOSTS`) would go red exactly here — when an operator
     does what the runbook says, at enrolment time. This asserts the opposite, so that a future
     tightening of the pin cannot quietly reintroduce that failure: it would have to delete this
@@ -743,7 +816,7 @@ def test_reformatting_the_banner_does_not_make_the_guard_red(kind: str) -> None:
 #
 # Stated precisely rather than tidily (2026-08-29): most of these fixtures are MINIMAL — a few
 # lines of policy carrying one defect — so since `hosts` became pinned they also emit
-# PINNED_HOST_ALIAS_MOVED, because a three-line `hosts` block is missing five of the six pinned
+# PINNED_HOST_ALIAS_MOVED, because a three-line `hosts` block is missing six of the seven pinned
 # aliases and a missing anchor is a moved anchor. That is expected and does not weaken anything:
 # the assertion below demands the SPECIFIC named code, so a fixture cannot pass on the strength of
 # the pin alone. The four `hosts_*` fixtures added in round 4 carry the full pinned table on
@@ -798,12 +871,35 @@ GUILT_CASES = [
     ("accept_tests_deleted.hujson", "ACL_RULE_NOT_ACCEPT_TESTED"),
 ]
 
+LIVE_FLOW_GUILT_CASES = [
+    ("ephemeral_range_to_mini.hujson", "OVERBROAD_DST_PORT_RANGE"),
+    ("ephemeral_range_from_m5.hujson", "OVERBROAD_DST_PORT_RANGE"),
+    ("iqoo_full_port_range.hujson", "OVERBROAD_DST_PORT_RANGE"),
+    ("iqoo_alias_repointed.hujson", "PINNED_HOST_ALIAS_MOVED"),
+    ("iqoo_as_source.hujson", "DESTINATION_ONLY_HOST_AS_SOURCE"),
+    ("iqoo_ephemeral_accept_deleted.hujson", "EPHEMERAL_GRANT_NOT_ACCEPT_TESTED"),
+    ("mini_redis_accept_deleted.hujson", "ACL_RULE_NOT_ACCEPT_TESTED"),
+    # Round-1 gate of #8244, N2: the exception's transport and its endpoint proof, via `grants`.
+    ("iqoo_grant_udp_range.hujson", "OVERBROAD_DST_PORT_RANGE"),
+    ("iqoo_grant_any_protocol_range.hujson", "OVERBROAD_DST_PORT_RANGE"),
+    ("iqoo_grant_accept_deleted.hujson", "EPHEMERAL_GRANT_NOT_ACCEPT_TESTED"),
+    # Round-1 gate of #8244, N1: an address-shaped key would shadow the machine it spells.
+    ("hosts_ip_shaped_alias.hujson", "HOST_ALIAS_NOT_A_NAME"),
+]
+
 
 @pytest.mark.parametrize("filename,expected", GUILT_CASES)
 def test_guilty_fixture_is_rejected(filename: str, expected: str) -> None:
     fixture = FIXTURES / filename
     assert fixture.is_file(), f"missing guilt fixture {fixture}"
     assert expected in audit_policy(fixture.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("filename,expected", LIVE_FLOW_GUILT_CASES)
+def test_live_flow_guilty_fixture_has_exact_finding(filename: str, expected: str) -> None:
+    fixture = FIXTURES / filename
+    assert fixture.is_file(), f"missing guilt fixture {fixture}"
+    assert audit_policy(fixture.read_text(encoding="utf-8")) == [expected]
 
 
 # ---------------------------------------------------------------------------------------------
@@ -863,6 +959,54 @@ def test_the_expected_hosts_table_is_itself_well_formed() -> None:
     assert len(set(EXPECTED_HOSTS.values())) == len(EXPECTED_HOSTS), "two aliases, one IP"
     assert SHELL_HOST in EXPECTED_HOSTS
     assert SHELL_PORT_ALLOWED_SOURCES <= set(EXPECTED_HOSTS), "allowlists an alias that is not a node"
+
+
+@pytest.mark.parametrize(
+    "srcs,host,port,expected",
+    [
+        (["pro"], "iqoo-15", "32768-60999", True),
+        (["100.107.22.111"], "100.117.194.24", "32768-60999", True),
+        (["m5"], "iqoo-15", "32768-60999", False),
+        (["mini"], "iqoo-15", "32768-60999", False),
+        (["pro", "m5"], "iqoo-15", "32768-60999", False),
+        (["pro"], "mini", "32768-60999", False),
+        (["pro"], "pro", "32768-60999", False),
+        (["pro"], "m5", "32768-60999", False),
+        (["pro"], "iqoo-15", "1-65535", False),
+        (["pro"], "iqoo-15", "32768-60999,61000", False),
+    ],
+)
+def test_ephemeral_exception_requires_exact_source_destination_and_range(
+    srcs: list, host: str, port: str, expected: bool
+) -> None:
+    assert _is_ephemeral_port_grant(srcs, host, port, EXPECTED_HOSTS) is expected
+
+
+@pytest.mark.parametrize(
+    "key,is_name",
+    [
+        ("pro", True),
+        ("iqoo-15", True),
+        ("apple-vision-pro", True),
+        ("team-laptop-01", True),
+        ("100.93.236.6", False),
+        ("100.64.0.0/10", False),
+        ("fd7a:115c:a1e0::1", False),
+        ("pro.lan", False),
+        ("1pro", False),
+        ("", False),
+    ],
+)
+def test_a_host_alias_must_be_a_name(key: str, is_name: bool) -> None:
+    assert bool(HOST_ALIAS_NAME.fullmatch(key)) is is_name
+
+
+def test_destination_only_host_is_recognised_by_alias_or_ip() -> None:
+    hosts = {**EXPECTED_HOSTS, "qa-phone-alias": EXPECTED_HOSTS["iqoo-15"]}
+    for source in ("iqoo-15", EXPECTED_HOSTS["iqoo-15"], "qa-phone-alias"):
+        assert _is_destination_only_source(source, hosts)
+    for source in ("pro", EXPECTED_HOSTS["pro"], "mini"):
+        assert not _is_destination_only_source(source, hosts)
 
 
 def test_port_enumeration_declines_specs_too_wide_to_enumerate() -> None:

@@ -18,6 +18,7 @@ import type {
   OutcomeReason,
   OutcomeSource,
   OutcomeTimeline,
+  OutcomeDuration,
   OutcomeViewModel,
   NoSupportedPathAlternative,
   ServiceAvailabilityStatus,
@@ -40,37 +41,165 @@ const KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_COPY = text(
   "Pasal 60 ayat (2) UU 6/2011 mensyaratkan usia perkawinan mencapai dua tahun dan Pernyataan Integrasi yang ditandatangani untuk KITAP perkawinan campur. Penilaian ini belum memverifikasi kedua prasyarat tersebut.",
 );
 
+type OutcomeStateName = OutcomeViewModel["state"];
+
+const step = (
+  id: string,
+  en: string,
+  idText: string,
+): OutcomeNextSteps[number] => ({ id, title: text(en, idText) });
+
+// Shared by the generic NO_SUPPORTED_PATH list and the no-door list below,
+// so the two can never drift apart in wording.
+const TALK_TO_ADVISOR_STEP = step(
+  "talk-to-advisor",
+  "Talk to a Bali Zero advisor — some routes depend on facts this tool does not ask.",
+  "Bicarakan dengan konsultan Bali Zero — beberapa jalur bergantung pada hal yang tidak ditanyakan alat ini.",
+);
+const KEEP_SUMMARY_STEP = step(
+  "keep-summary-checked",
+  "Keep this summary: it shows exactly what was checked.",
+  "Simpan ringkasan ini: isinya menunjukkan apa saja yang sudah diperiksa.",
+);
+
+const NEXT_STEPS_BY_STATE: Record<OutcomeStateName, OutcomeNextSteps> = {
+  SUPPORTED_CANDIDATES: [
+    step(
+      "keep-summary",
+      "Keep this summary — it carries your decision reference.",
+      "Simpan ringkasan ini — di dalamnya ada referensi keputusan Anda.",
+    ),
+    step(
+      "send-to-advisor",
+      "Send it to a Bali Zero advisor on WhatsApp: an advisor can go over the documents, the timing and the price with you.",
+      "Kirim ke konsultan Bali Zero lewat WhatsApp: konsultan dapat membahas dokumen, jadwal, dan harganya bersama Anda.",
+    ),
+    step(
+      "book-after-timing",
+      "Book travel only once the timing is confirmed.",
+      "Pesan perjalanan hanya setelah jadwalnya dipastikan.",
+    ),
+  ],
+  NEEDS_INPUT: [
+    step(
+      "answer-missing-details",
+      "Answer the missing details above.",
+      "Lengkapi detail yang masih kurang di atas.",
+    ),
+    step(
+      "run-check-again",
+      "Run the check again — it takes a minute.",
+      "Jalankan pemeriksaan lagi — hanya butuh semenit.",
+    ),
+    step(
+      "send-what-you-have",
+      "Or send what you have to a Bali Zero advisor.",
+      "Atau kirim yang sudah ada ke konsultan Bali Zero.",
+    ),
+  ],
+  HUMAN_REVIEW_REQUIRED: [
+    step(
+      "send-for-review",
+      "Send this summary to a Bali Zero advisor — an advisor can look at your case with you.",
+      "Kirim ringkasan ini ke konsultan Bali Zero — konsultan dapat meninjau kasus Anda bersama Anda.",
+    ),
+    step(
+      "keep-documents-at-hand",
+      "Keep your passport and current permit details at hand.",
+      "Siapkan paspor dan detail izin tinggal Anda saat ini.",
+    ),
+    step(
+      "no-travel-before-review",
+      "Don't book travel until the review is done.",
+      "Jangan pesan perjalanan sebelum peninjauan selesai.",
+    ),
+  ],
+  NO_SUPPORTED_PATH: [
+    step(
+      "see-open-door",
+      "Look at the open door above, if one is shown.",
+      "Lihat alternatif di atas, jika ada.",
+    ),
+    TALK_TO_ADVISOR_STEP,
+    KEEP_SUMMARY_STEP,
+  ],
+  TEMPORARILY_UNAVAILABLE: [
+    step(
+      "try-again-soon",
+      "Try again in a few minutes.",
+      "Coba lagi dalam beberapa menit.",
+    ),
+    step(
+      "send-answers-if-failing",
+      "If it keeps failing, send your answers to a Bali Zero advisor.",
+      "Jika masih gagal, kirim jawaban Anda ke konsultan Bali Zero.",
+    ),
+    step(
+      "no-travel-on-unfinished-check",
+      "Don't book travel on an unfinished check.",
+      "Jangan pesan perjalanan berdasarkan pemeriksaan yang belum selesai.",
+    ),
+  ],
+};
+
 /**
- * Exported so the gold-oracle SHADOW baseline (`preview-adapter.ts`'s
- * `buildGoldOraclePreviewOutcome`) reproduces the SAME public next-steps
- * copy a real `NEEDS_INPUT` engine outcome carries — `shadow-parity.ts`'s
- * `semanticProjection` compares `nextSteps` verbatim (id/title/body), so an
- * independently-worded preview copy would read as a permanent mismatch on
- * this axis alone, even when state and missing facts agree exactly.
+ * A NO_SUPPORTED_PATH that carries no alternative: the generic list's
+ * "look at the open door above" would point at nothing, so it is dropped.
  */
-export const NEXT_STEPS: OutcomeNextSteps = [
-  {
-    id: "review-decision",
-    title: text(
-      "Review the verified decision and its assumptions",
-      "Tinjau keputusan terverifikasi dan asumsinya",
-    ),
-  },
-  {
-    id: "prepare-verified-items",
-    title: text(
-      "Prepare only documents marked as verified",
-      "Siapkan hanya dokumen yang ditandai terverifikasi",
-    ),
-  },
-  {
-    id: "consented-advice",
-    title: text(
-      "Choose whether to contact a Bali Zero advisor",
-      "Pilih apakah akan menghubungi konsultan Bali Zero",
-    ),
-  },
+const NO_PATH_WITHOUT_DOORS_NEXT_STEPS: OutcomeNextSteps = [
+  TALK_TO_ADVISOR_STEP,
+  KEEP_SUMMARY_STEP,
 ];
+
+/**
+ * The Second Home Studio-only hold routes to a self-serve calculator and by
+ * design never promises a person's review, so it gets its own list.
+ */
+const STUDIO_NEXT_STEPS: OutcomeNextSteps = [
+  step(
+    "open-studio",
+    "Open the Second Home Studio — it shows the routes and the numbers for your case.",
+    "Buka Second Home Studio — di sana tampil jalur dan angkanya untuk kasus Anda.",
+  ),
+  step(
+    "compare-guarantee-figure",
+    "Compare the guarantee figure you declared with the thresholds shown there.",
+    "Bandingkan angka jaminan yang Anda nyatakan dengan ambang batas yang ditampilkan di sana.",
+  ),
+  step(
+    "return-with-updated-figure",
+    "Come back with the updated figure, or send this summary to a Bali Zero advisor.",
+    "Kembali dengan angka yang diperbarui, atau kirim ringkasan ini ke konsultan Bali Zero.",
+  ),
+];
+
+/**
+ * The single source of the "What to do next" list for every outcome state.
+ * Exported so the gold-oracle SHADOW baseline (`preview-adapter.ts`) and the
+ * client-side fallbacks (`outcome-fallbacks.ts`) reproduce the SAME copy a
+ * real engine outcome carries — `shadow-parity.ts`'s `semanticProjection`
+ * compares `nextSteps` verbatim (id/title/body), so independently worded
+ * copy would read as a permanent mismatch on this axis alone.
+ */
+export function nextStepsFor(
+  state: OutcomeStateName,
+  options: { studioOnly?: boolean; noDoors?: boolean } = {},
+): OutcomeNextSteps {
+  if (state === "HUMAN_REVIEW_REQUIRED" && options.studioOnly) {
+    return STUDIO_NEXT_STEPS;
+  }
+  if (state === "NO_SUPPORTED_PATH" && options.noDoors) {
+    return NO_PATH_WITHOUT_DOORS_NEXT_STEPS;
+  }
+  return NEXT_STEPS_BY_STATE[state];
+}
+
+/** A NO_SUPPORTED_PATH outcome whose `alternatives` list is empty. */
+export function isNoPathWithoutDoors(outcome: OutcomeViewModel): boolean {
+  return (
+    outcome.state === "NO_SUPPORTED_PATH" && outcome.alternatives.length === 0
+  );
+}
 
 const PUBLIC_ID = /^[a-z0-9]{16,20}$/;
 
@@ -106,6 +235,14 @@ function usd(value: number, locale: "en-US" | "id-ID"): string {
 // interpolate them instead of restating the digits a third time.
 export const SECOND_HOME_PROPERTY_THRESHOLD_USD = 1_000_000;
 export const SECOND_HOME_DEPOSIT_THRESHOLD_USD = 130_000;
+
+// The retirement pair, pinned the same way. `RETIREMENT_INCOME_THRESHOLD_USD`
+// is the monthly passive income below which `hf.e33e/e33f.retirement-income-
+// below-minimum` (`lt`) excludes both retirement visas; the E33E deposit
+// figure is `el.e33e.retirement`'s `secondhome.bank_deposit_usd` `gte`.
+export const RETIREMENT_INCOME_THRESHOLD_USD = 3_000;
+export const E33E_DEPOSIT_THRESHOLD_USD = 50_000;
+export const E33G_ANNUAL_INCOME_THRESHOLD_USD = 60_000;
 
 // D23 "OPTION B-STUDIO" (2026-09-16): the one review reason code that routes
 // to a self-serve page instead of a person — named here so OutcomeSheet.tsx
@@ -178,8 +315,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Anda berkomitmen pada PT PMA sebagai pemegang saham-direktur atau pemegang saham-komisaris, dengan modal disetor minimal Rp 2,5 miliar.",
   ),
   E33E_RETIREMENT_ELIGIBLE: text(
-    "Retirement, age 55 or over, with a deposit of USD 50,000 or more held in your own name at a state bank.",
-    "Pensiun, usia 55 tahun ke atas, dengan deposito minimal USD 50.000 atas nama sendiri di bank BUMN.",
+    `Retirement, age 55 or over, with a deposit of ${usd(E33E_DEPOSIT_THRESHOLD_USD, "en-US")} or more held in your own name at a state bank, plus passive income of ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} or more a month.`,
+    `Pensiun, usia 55 tahun ke atas, dengan deposito minimal ${usd(E33E_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama sendiri di bank BUMN, ditambah penghasilan pasif minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan.`,
   ),
   // PR-M (owner ruling 2026-09-27): neutral on purpose — no sponsor clause.
   // Rule packs <= 23 gate E33F on `family.sponsor_confirmed`; from seq-24 a
@@ -294,16 +431,16 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Penjamin Anda harus memiliki ITAS atau ITAP yang berlaku.",
   ),
   REQ_SPONSOR_MIXED_MARRIAGE: text(
-    "This route runs through a mixed-marriage sponsor, whose status we verify.",
-    "Jalur ini melalui penjamin perkawinan campur, yang statusnya kami verifikasi.",
+    "This route runs through a mixed-marriage sponsor, whose status a Bali Zero advisor can verify.",
+    "Jalur ini melalui penjamin perkawinan campur, yang statusnya dapat diverifikasi oleh konsultan Bali Zero.",
   ),
   REQ_MIXED_MARRIAGE_PARENTS: text(
-    "This route requires a mixed-marriage parent relationship, which we verify from your documents.",
-    "Jalur ini memerlukan hubungan orang tua perkawinan campur, yang kami verifikasi dari dokumen Anda.",
+    "This route requires a mixed-marriage parent relationship, which a Bali Zero advisor can verify from your documents.",
+    "Jalur ini memerlukan hubungan orang tua perkawinan campur, yang dapat diverifikasi konsultan Bali Zero dari dokumen Anda.",
   ),
   REQ_STEP_PARENT_RELATION: text(
-    "This route requires a step-parent relationship, which we verify from your documents.",
-    "Jalur ini memerlukan hubungan orang tua tiri, yang kami verifikasi dari dokumen Anda.",
+    "This route requires a step-parent relationship, which a Bali Zero advisor can verify from your documents.",
+    "Jalur ini memerlukan hubungan orang tua tiri, yang dapat diverifikasi konsultan Bali Zero dari dokumen Anda.",
   ),
   MINOR_CONSENT_GUARDIAN: text(
     "As the applicant is a minor, guardian consent is required.",
@@ -337,8 +474,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Jabatan Anda harus sesuai dengan bidang usaha KBLI perusahaan.",
   ),
   PROHIBITED_HR_ROLES_KEPMENAKER_349_2019: text(
-    "Some human-resources roles are closed to foreign nationals under Kepmenaker 349/2019 — we check your specific job title against that list.",
-    "Sebagian jabatan sumber daya manusia tertutup bagi warga negara asing menurut Kepmenaker 349/2019 — kami memeriksa jabatan Anda terhadap daftar tersebut.",
+    "Some human-resources roles are closed to foreign nationals under Kepmenaker 349/2019 — a Bali Zero advisor can check your specific job title against that list.",
+    "Sebagian jabatan sumber daya manusia tertutup bagi warga negara asing menurut Kepmenaker 349/2019 — konsultan Bali Zero dapat memeriksa jabatan Anda terhadap daftar tersebut.",
   ),
   E23_REQUIRED_FOR_OPERATIONAL_WORK_EVEN_IF_DIRECTOR: text(
     "Operational work needs this work permit even when you are a shareholder-director or shareholder-commissioner.",
@@ -361,8 +498,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Anda memerlukan izin belajar dari Kemdikbud.",
   ),
   C2_CORPORATE_SPONSOR_TYPE_VERIFICATION: text(
-    "We verify that your sponsor is the right type of company for this visa.",
-    "Kami memverifikasi bahwa penjamin Anda adalah jenis perusahaan yang tepat untuk visa ini.",
+    "A Bali Zero advisor can verify that your sponsor is the right type of company for this visa.",
+    "Konsultan Bali Zero dapat memverifikasi bahwa penjamin Anda adalah jenis perusahaan yang tepat untuk visa ini.",
   ),
   GOVT_INVITATION_REQUIRED: text(
     "This route requires an invitation from a central government body.",
@@ -378,12 +515,12 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_NOT_VERIFIED:
     KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_COPY,
   BRIDGING_SOURCE_STATUS_VERIFY: text(
-    "We verify your current immigration status before a bridging route can be filed.",
-    "Kami memverifikasi status keimigrasian Anda saat ini sebelum jalur peralihan dapat diajukan.",
+    "A Bali Zero advisor can verify your current immigration status before a bridging route is filed.",
+    "Konsultan Bali Zero dapat memverifikasi status keimigrasian Anda saat ini sebelum jalur peralihan diajukan.",
   ),
   BRIDGING_OVERSTAY_SHIELD_PAYMENT_CHECK: text(
-    "We check whether an overstay payment is due before the bridging permit shields your stay.",
-    "Kami memeriksa apakah ada pembayaran overstay yang terutang sebelum izin peralihan melindungi masa tinggal Anda.",
+    "A Bali Zero advisor can check whether an overstay payment is due before the bridging permit shields your stay.",
+    "Konsultan Bali Zero dapat memeriksa apakah ada pembayaran overstay yang terutang sebelum izin peralihan melindungi masa tinggal Anda.",
   ),
 
   // --- Advisor checks ----------------------------------------------------
@@ -412,20 +549,20 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Jalur ini memiliki ambang penghasilan tahunan minimum. Kami memastikan angka terkini dan bukti Anda bersama konsultan kami.",
   ),
   E28B_USD_THRESHOLD_ADVISOR_CHECK: text(
-    "This Golden Visa route has a minimum investment threshold in USD. We confirm the current figure and your evidence with one of our advisors.",
-    "Jalur Golden Visa ini memiliki ambang investasi minimum dalam USD. Kami memastikan angka terkini dan bukti Anda bersama konsultan kami.",
+    "This Golden Visa route has a minimum investment threshold in USD. A Bali Zero advisor can confirm the current figure and your evidence with you.",
+    "Jalur Golden Visa ini memiliki ambang investasi minimum dalam USD. Konsultan Bali Zero dapat memastikan angka terkini dan bukti Anda bersama Anda.",
   ),
   E28C_USD_THRESHOLD_ADVISOR_CHECK: text(
-    "This Golden Visa route has a minimum investment threshold in USD. We confirm the current figure, the instrument, and your evidence with one of our advisors.",
-    "Jalur Golden Visa ini memiliki ambang investasi minimum dalam USD. Kami memastikan angka terkini, instrumennya, dan bukti Anda bersama konsultan kami.",
+    "This Golden Visa route has a minimum investment threshold in USD. A Bali Zero advisor can confirm the current figure, the instrument, and your evidence with you.",
+    "Jalur Golden Visa ini memiliki ambang investasi minimum dalam USD. Konsultan Bali Zero dapat memastikan angka terkini, instrumennya, dan bukti Anda bersama Anda.",
   ),
   E28D_USD_THRESHOLD_TURNOVER_ADVISOR_CHECK: text(
-    "This Golden Visa route has a minimum investment and turnover threshold. We confirm the current figures and your evidence with one of our advisors.",
-    "Jalur Golden Visa ini memiliki ambang investasi dan omzet minimum. Kami memastikan angka terkini dan bukti Anda bersama konsultan kami.",
+    "This Golden Visa route has a minimum investment and turnover threshold. A Bali Zero advisor can confirm the current figures and your evidence with you.",
+    "Jalur Golden Visa ini memiliki ambang investasi dan omzet minimum. Konsultan Bali Zero dapat memastikan angka terkini dan bukti Anda bersama Anda.",
   ),
   E28F_IKN_THRESHOLD_ADVISOR_CHECK: text(
-    "This IKN route has its own investment threshold. We confirm the current figure and your evidence with one of our advisors.",
-    "Jalur IKN ini memiliki ambang investasi tersendiri. Kami memastikan angka terkini dan bukti Anda bersama konsultan kami.",
+    "This IKN route has its own investment threshold. A Bali Zero advisor can confirm the current figure and your evidence with you.",
+    "Jalur IKN ini memiliki ambang investasi tersendiri. Konsultan Bali Zero dapat memastikan angka terkini dan bukti Anda bersama Anda.",
   ),
   E33B_EXPERTISE_QUALIFICATION_ADVISOR_CHECK: text(
     "This route is judged on your professional qualifications. We review them with one of our advisors before filing.",
@@ -448,12 +585,12 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Apakah properti Anda memenuhi syarat untuk jalur ini bergantung pada bentuk kepemilikan dan penilaiannya. Kami memeriksanya bersama konsultan kami.",
   ),
   E31F_ADULT_AGE_ADVISOR_CHECK: text(
-    "For an adult dependant, eligibility depends on age and relationship together. We check how it applies to you.",
-    "Untuk tanggungan dewasa, kelayakan bergantung pada usia dan hubungan keluarga bersama-sama. Kami memeriksa penerapannya untuk Anda.",
+    "For an adult dependant, eligibility depends on age and relationship together. A Bali Zero advisor can check how it applies to you.",
+    "Untuk tanggungan dewasa, kelayakan bergantung pada usia dan hubungan keluarga bersama-sama. Konsultan Bali Zero dapat memeriksa penerapannya untuk Anda.",
   ),
   E31J_DEPENDENCY_AGE_ADVISOR_CHECK: text(
-    "Dependency at this age is assessed case by case. We check how it applies to you.",
-    "Status ketergantungan pada usia ini dinilai per kasus. Kami memeriksa penerapannya untuk Anda.",
+    "Dependency at this age is assessed case by case. A Bali Zero advisor can check how it applies to you.",
+    "Status ketergantungan pada usia ini dinilai per kasus. Konsultan Bali Zero dapat memeriksa penerapannya untuk Anda.",
   ),
   // EXCLUDE code (hf.e31c-marriage-not-registered, seq-10). Exclusion
   // reasons flow through the same reasonMessage fallback as candidate
@@ -490,8 +627,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Anda menyampaikan bahwa salah satu kewarganegaraan Anda adalah Indonesia. Warga negara Indonesia tidak mengajukan visa untuk masuk ke Indonesia.",
   ),
   AGE_BELOW_55: text(
-    "The retirement routes in our verified catalogue start at age 55, and the date of birth you gave is below that.",
-    "Jalur pensiun dalam katalog terverifikasi kami dimulai pada usia 55 tahun, dan tanggal lahir yang Anda berikan berada di bawah usia tersebut.",
+    "The retirement routes in our catalogue start at age 55, and the date of birth you gave is below that.",
+    "Jalur pensiun dalam katalog kami dimulai pada usia 55 tahun, dan tanggal lahir yang Anda berikan berada di bawah usia tersebut.",
   ),
   INDONESIAN_EMPLOYER_NOT_ALLOWED: text(
     "You told us your employer is an Indonesian entity. The remote-work route covers work done for an employer outside Indonesia.",
@@ -506,12 +643,12 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Bebas visa hanya terbuka untuk daftar kewarganegaraan tertentu, dan paspor yang Anda berikan tidak termasuk dalam daftar tersebut.",
   ),
   D12_CUMULATIVE_STAY_ADVISOR_CHECK: text(
-    "Long or repeated stays are counted cumulatively. We check your total against the limit with one of our advisors.",
-    "Masa tinggal panjang atau berulang dihitung secara kumulatif. Kami memeriksa total Anda terhadap batasnya bersama konsultan kami.",
+    "Long or repeated stays are counted cumulatively. A Bali Zero advisor can check your total against the limit with you.",
+    "Masa tinggal panjang atau berulang dihitung secara kumulatif. Konsultan Bali Zero dapat memeriksa total Anda terhadap batasnya bersama Anda.",
   ),
   BRIDGING_T3_WINDOW_ADVISOR_CHECK: text(
-    "The filing window for this bridging route is tight. We check your dates with one of our advisors.",
-    "Jendela pengajuan jalur peralihan ini sempit. Kami memeriksa tanggal Anda bersama konsultan kami.",
+    "The filing window for this bridging route is tight. A Bali Zero advisor can check your dates with you.",
+    "Jendela pengajuan jalur peralihan ini sempit. Konsultan Bali Zero dapat memeriksa tanggal Anda bersama Anda.",
   ),
   // The engine's own OPERATIONAL fallback, emitted when NO_SUPPORTED_PATH is
   // reached with no named exclusion reason that belongs to this applicant
@@ -523,8 +660,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // no product COVERS the declared purposes, which is what the engine
   // actually established.
   OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES: text(
-    "No visa in our verified catalogue covers the purpose you described. Bali Zero can review your case and suggest what to do next.",
-    "Tidak ada visa dalam katalog terverifikasi kami yang mencakup tujuan yang Anda sebutkan. Bali Zero dapat meninjau kasus Anda dan menyarankan langkah selanjutnya.",
+    "No visa in our catalogue covers the purpose you described. Bali Zero can review your case and suggest what to do next.",
+    "Tidak ada visa dalam katalog kami yang mencakup tujuan yang Anda sebutkan. Bali Zero dapat meninjau kasus Anda dan menyarankan langkah selanjutnya.",
   ),
 
   // --- seq-21 (W-VO-S21, 2026-09-13): the nine products that had NO
@@ -546,32 +683,32 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Pekerjaan pada kantor perwakilan dagang dan ekonomi asing, dengan penjamin instansi pemerintah — Visa Kerja Kantor Dagang dan Ekonomi (E23V).",
   ),
   E33A_GOVERNMENT_INVITATION_ELIGIBLE: text(
-    "You hold a central government invitation for special expertise, with a government body as sponsor — the Second Home Visa — Special-Expertise Government Invitation (E33A).",
-    "Anda memiliki undangan pemerintah pusat untuk tenaga ahli, dengan penjamin instansi pemerintah — Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A).",
+    "You told us you hold a written invitation from an Indonesian central-government body for your special expertise — the Second Home Visa — Special-Expertise Government Invitation (E33A). This government-invitation route is handled with a Bali Zero advisor.",
+    "Anda menyampaikan bahwa Anda memiliki undangan tertulis dari instansi pemerintah pusat Indonesia atas keahlian khusus Anda — Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A). Jalur undangan pemerintah ini ditangani bersama konsultan Bali Zero.",
   ),
   E33B_GOVERNMENT_COLLABORATION_ELIGIBLE: text(
-    "You hold a confirmed special-expertise collaboration commitment with an Indonesian government body — the Second Home Golden Visa — Special-Expertise Collaboration (E33B).",
-    "Anda memiliki komitmen kolaborasi keahlian khusus yang terkonfirmasi dengan instansi pemerintah Indonesia — Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B).",
+    "You told us you have a confirmed collaboration commitment with an Indonesian government body or institution based on your special expertise — the Second Home Golden Visa — Special-Expertise Collaboration (E33B). This collaboration route is handled with a Bali Zero advisor.",
+    "Anda menyampaikan bahwa Anda memiliki komitmen kolaborasi yang terkonfirmasi dengan instansi atau lembaga pemerintah Indonesia berdasarkan keahlian khusus Anda — Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B). Jalur kolaborasi ini ditangani bersama konsultan Bali Zero.",
   ),
   E33C_WORLD_FIGURE_INVITATION_ELIGIBLE: text(
-    "You hold a central government invitation extended to you as a world figure — the Second Home Golden Visa — World-Figure Government Invitation (E33C).",
-    "Anda memiliki undangan pemerintah pusat yang diberikan kepada Anda sebagai tokoh dunia — Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C).",
+    "You told us you have an invitation letter from an Indonesian central-government agency inviting you as a world figure — the Second Home Golden Visa — World-Figure Government Invitation (E33C). This government-invitation route is handled with a Bali Zero advisor.",
+    "Anda menyampaikan bahwa Anda memiliki surat undangan dari instansi pemerintah pusat Indonesia yang mengundang Anda sebagai tokoh dunia — Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C). Jalur undangan pemerintah ini ditangani bersama konsultan Bali Zero.",
   ),
   E28B_COMPANY_ESTABLISHMENT_ELIGIBLE: text(
-    "You are establishing a company in Indonesia and declared that your investment meets the published minimum for that route — the Investor Golden Visa — Company Establishment (E28B). We confirm the amount against the official schedule with you.",
-    "Anda mendirikan perusahaan di Indonesia dan menyatakan bahwa investasi Anda memenuhi batas minimum yang dipublikasikan untuk jalur tersebut — Visa Investor Pendirian Perusahaan (E28B). Kami mengonfirmasi jumlahnya terhadap ketentuan resmi bersama Anda.",
+    "You are establishing a company in Indonesia and declared that your investment meets the published minimum for that route — the Investor Golden Visa — Company Establishment (E28B). A Bali Zero advisor can confirm the amount against the official schedule with you.",
+    "Anda mendirikan perusahaan di Indonesia dan menyatakan bahwa investasi Anda memenuhi batas minimum yang dipublikasikan untuk jalur tersebut — Visa Investor Pendirian Perusahaan (E28B). Konsultan Bali Zero dapat mengonfirmasi jumlahnya terhadap ketentuan resmi bersama Anda.",
   ),
   E28C_CAPITAL_MARKET_ELIGIBLE: text(
-    "You are investing in capital-market instruments without establishing a company, and declared that your investment meets the published minimum for that route — the Investor Golden Visa — Capital Market (E28C). We confirm the amount against the official schedule with you.",
-    "Anda berinvestasi pada instrumen pasar modal tanpa mendirikan perusahaan, dan menyatakan bahwa investasi Anda memenuhi batas minimum yang dipublikasikan untuk jalur tersebut — Visa Investor Tanpa Mendirikan Perusahaan (E28C). Kami mengonfirmasi jumlahnya terhadap ketentuan resmi bersama Anda.",
+    "You are investing in capital-market instruments without establishing a company, and declared that your investment meets the published minimum for that route — the Investor Golden Visa — Capital Market (E28C). A Bali Zero advisor can confirm the amount against the official schedule with you.",
+    "Anda berinvestasi pada instrumen pasar modal tanpa mendirikan perusahaan, dan menyatakan bahwa investasi Anda memenuhi batas minimum yang dipublikasikan untuk jalur tersebut — Visa Investor Tanpa Mendirikan Perusahaan (E28C). Konsultan Bali Zero dapat mengonfirmasi jumlahnya terhadap ketentuan resmi bersama Anda.",
   ),
   E28D_BRANCH_OR_SUBSIDIARY_ELIGIBLE: text(
-    "You are establishing a branch or subsidiary of a foreign company and declared that it meets the published minimums for that route — the Investor Golden Visa — Branch or Subsidiary (E28D). We confirm the investment and turnover figures against the official schedule with you.",
-    "Anda mendirikan kantor cabang atau anak perusahaan dari perusahaan asing dan menyatakan bahwa hal itu memenuhi batas minimum yang dipublikasikan untuk jalur tersebut — Visa Investor Pendirian Kantor Cabang atau Anak Perusahaan (E28D). Kami mengonfirmasi angka investasi dan omzetnya terhadap ketentuan resmi bersama Anda.",
+    "You are establishing a branch or subsidiary of a foreign company and declared that it meets the published minimums for that route — the Investor Golden Visa — Branch or Subsidiary (E28D). A Bali Zero advisor can confirm the investment and turnover figures against the official schedule with you.",
+    "Anda mendirikan kantor cabang atau anak perusahaan dari perusahaan asing dan menyatakan bahwa hal itu memenuhi batas minimum yang dipublikasikan untuk jalur tersebut — Visa Investor Pendirian Kantor Cabang atau Anak Perusahaan (E28D). Konsultan Bali Zero dapat mengonfirmasi angka investasi dan omzetnya terhadap ketentuan resmi bersama Anda.",
   ),
   E28F_IKN_SUBSIDIARY_ELIGIBLE: text(
-    "You are establishing a subsidiary in the new capital, IKN, and declared that your investment meets the published minimum for that route — the Investor Golden Visa — New Capital (IKN) Subsidiary (E28F). We confirm the amount against the official schedule with you.",
-    "Anda mendirikan anak perusahaan di Ibukota Nusantara (IKN) dan menyatakan bahwa investasi Anda memenuhi batas minimum yang dipublikasikan untuk jalur tersebut — Visa Investor Anak Perusahaan Ibukota Nusantara (E28F). Kami mengonfirmasi jumlahnya terhadap ketentuan resmi bersama Anda.",
+    "You are establishing a subsidiary in the new capital, IKN, and declared that your investment meets the published minimum for that route — the Investor Golden Visa — New Capital (IKN) Subsidiary (E28F). A Bali Zero advisor can confirm the amount against the official schedule with you.",
+    "Anda mendirikan anak perusahaan di Ibukota Nusantara (IKN) dan menyatakan bahwa investasi Anda memenuhi batas minimum yang dipublikasikan untuk jalur tersebut — Visa Investor Anak Perusahaan Ibukota Nusantara (E28F). Konsultan Bali Zero dapat mengonfirmasi jumlahnya terhadap ketentuan resmi bersama Anda.",
   ),
   // The two EXCLUDE codes that replace the OPERATIONAL sentence on the three
   // dead-end walks that used to render it. Each one names the door that IS
@@ -590,8 +727,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // generic sentence (offshore/other/paid/employer_no). Product name verbatim
   // from the pack's `names.en` / `names.id`.
   E33A_SPONSOR_NOT_GOVERNMENT: text(
-    "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian government body, and you did not name one as your sponsor.",
-    "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah Indonesia, dan Anda tidak menyebutkan instansi pemerintah sebagai penjamin Anda.",
+    "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian central-government body, and you did not name one as your sponsor.",
+    "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah pusat Indonesia, dan Anda tidak menyebutkan instansi pemerintah pusat sebagai penjamin Anda.",
   ),
   // `hf.d12-onshore-conversion-excluded` (source 5e64ec6b…). Reachable on a
   // corpus walk since W-VO-Q item 7: a business explorer who plans to switch
@@ -612,8 +749,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // own `SESSION_COPY.{en,id}.consultant` string, proved in
   // engine-adapter.test.ts by reading that file's source text.
   DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH: text(
-    "One of your answers, listed below, is one our verified rules cannot assess, so this tool cannot name a visa path for it. A consultant can assess it with you: use “Talk to a consultant” to arrange a consultation.",
-    "Salah satu jawaban Anda, yang tercantum di bawah, tidak dapat dinilai oleh aturan terverifikasi kami, sehingga alat ini tidak dapat menyebutkan jalur visa untuk jawaban tersebut. Konsultan kami dapat menilainya bersama Anda: gunakan tombol “Bicara dengan konsultan” untuk mengatur konsultasi.",
+    "One of your answers, listed below, is one our rules cannot assess, so this tool cannot name a visa path for it. A consultant can assess it with you: use “Talk to a consultant” to arrange a consultation.",
+    "Salah satu jawaban Anda, yang tercantum di bawah, tidak dapat dinilai oleh aturan kami, sehingga alat ini tidak dapat menyebutkan jalur visa untuk jawaban tersebut. Konsultan kami dapat menilainya bersama Anda: gunakan tombol “Bicara dengan konsultan” untuk mengatur konsultasi.",
   ),
   // Slice A8-2 (2026-09-24): copy for the 10 EXCLUDE codes seq-23 adds beyond
   // signed seq-22, owed ahead of the A9 signing/activation so a real applicant
@@ -650,13 +787,17 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "The Remote Worker visa (E33G) doesn’t cover owning or running an Indonesian company; that is an investor route.",
     "Visa Rumah Kedua Pekerja Jarak Jauh (E33G) tidak mencakup kepemilikan atau pengelolaan perusahaan Indonesia; itu jalur investor.",
   ),
+  E33G_INCOME_BELOW_THRESHOLD: text(
+    `The Remote Worker visa (E33G) needs a salary or income of at least ${usd(E33G_ANNUAL_INCOME_THRESHOLD_USD, "en-US")} a year; the yearly figure you gave is below it.`,
+    `Visa Rumah Kedua Pekerja Jarak Jauh (E33G) memerlukan gaji atau penghasilan minimal ${usd(E33G_ANNUAL_INCOME_THRESHOLD_USD, "id-ID")} per tahun; angka tahunan yang Anda berikan berada di bawah batas tersebut.`,
+  ),
   STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED: text(
     "A study visa needs a confirmed admission and a confirmed sponsor; you haven’t confirmed both yet.",
     "Visa pelajar memerlukan penerimaan dan sponsor yang sudah dikonfirmasi; Anda belum mengonfirmasi keduanya.",
   ),
   RETIREMENT_INCOME_BELOW_THRESHOLD: text(
-    "The retirement visa (E33E/E33F) needs documented passive income at the required minimum; the figure you gave is below it.",
-    "Visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi sesuai batas minimum; angka yang Anda berikan di bawahnya.",
+    `The retirement visas (E33E/E33F) need documented passive income of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month.`,
+    `Visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan.`,
   ),
 
   // Slice A10 — 14 EXCLUDE codes reachable in signed seq-23 that predate
@@ -725,11 +866,14 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   ),
 };
 
+/** What a client reads for a reason code with no written copy: never a raw code. */
+export const UNMAPPED_REASON_COPY: LocalizedText = text(
+  "Confirmed by the rules for this visa.",
+  "Dipastikan oleh aturan untuk visa ini.",
+);
+
 function reasonMessage(code: string): LocalizedText {
-  return (
-    SUPPORT_REASON_COPY[code] ??
-    text(`Verified reason: ${code}`, `Alasan terverifikasi: ${code}`)
-  );
+  return SUPPORT_REASON_COPY[code] ?? UNMAPPED_REASON_COPY;
 }
 
 // D3-3 gate finding, owner escalation 2026-09-13: `el.e33.property-basis` /
@@ -781,6 +925,121 @@ function secondHomeBelowThresholdReason(
     );
   }
   return undefined;
+}
+
+// `RETIREMENT_INCOME_BELOW_THRESHOLD` (`hf.e33e/e33f.retirement-income-below-
+// minimum`, `lt` the monthly threshold) carries no number of its own. The
+// interview's facts do: a declared figure is named back to the applicant, and
+// a "not sure" — which the wire seam counts as 0 (`tree.ts` conservative
+// "0") — says so instead of reading as a figure the applicant gave. Raw
+// facts still carry "unsure" here. `undefined` for any other shape, so the
+// static sentence stands.
+function retirementIncomeBelowThresholdReason(
+  facts: OracleFacts,
+): LocalizedText | undefined {
+  const raw = facts.secondhome_passive_income_usd;
+  if (raw === "unsure") {
+    return text(
+      `You were not sure of your monthly passive income, so it counted as zero. The retirement visas need documented passive income of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month: come back with the figure, or ask a Bali Zero advisor.`,
+      `Anda belum yakin dengan penghasilan pasif bulanan Anda, sehingga dihitung nol. Visa pensiun memerlukan penghasilan pasif terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan: kembalilah dengan angkanya, atau tanyakan kepada konsultan Bali Zero.`,
+    );
+  }
+  if (raw === undefined || !/^(0|[1-9]\d*)$/.test(raw)) return undefined;
+  const value = Number(raw);
+  if (
+    !Number.isSafeInteger(value) ||
+    value >= RETIREMENT_INCOME_THRESHOLD_USD
+  ) {
+    return undefined;
+  }
+  return text(
+    `You declared ${usd(value, "en-US")} a month; the retirement visas (E33E/E33F) need documented passive income of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month.`,
+    `Anda menyatakan ${usd(value, "id-ID")} per bulan; visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan.`,
+  );
+}
+
+/**
+ * The deposit-route dead end (audit finding `e33-ownname-dead-end-reason`,
+ * 2026-10-11). A visitor who chose the Second Home deposit route with a
+ * declared deposit AT OR ABOVE the pack's threshold, but whose deposit is not
+ * at a state bank or not in their own name, ends in NO_SUPPORTED_PATH through
+ * `el.e33.deposit-basis` never firing — and the only sentence the engine
+ * returns is unrelated to that cause (`AGE_BELOW_55` under 55, the generic
+ * OPERATIONAL fallback from 55). This states the visitor's OWN two answers
+ * plus the one figure the pack backs (`el.e33.deposit-basis`: the threshold
+ * constant above, a state bank, the visitor's own name). A "not sure" answer
+ * reads as `no` on the wire (`resolveConservativeAnswers`), so it is named as
+ * what it is. Retirement-category walks are never touched: their dead end is
+ * the age one. `undefined` whenever the facts do not show exactly this case.
+ */
+const DEPOSIT_ROUTE_DEAD_END_CODES: ReadonlySet<string> = new Set([
+  "AGE_BELOW_55",
+  "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+]);
+
+function secondHomeDepositHolderReason(
+  facts: OracleFacts,
+): LocalizedText | undefined {
+  const basis =
+    facts.category === "invest"
+      ? facts.investment_vehicle
+      : facts.category === "second_home"
+        ? facts.secondhome_basis
+        : undefined;
+  if (basis !== "bank_deposit") return undefined;
+  const value = Number(facts.secondhome_deposit_usd);
+  if (!Number.isFinite(value) || value < SECOND_HOME_DEPOSIT_THRESHOLD_USD) {
+    return undefined;
+  }
+  const bank = facts.secondhome_state_bank;
+  const name = facts.secondhome_own_name;
+  // Only an answer the visitor actually gave counts as a negative: "no" or
+  // "unsure". A skipped answer (undefined) or any value outside the wire
+  // vocabulary is not something the visitor told us.
+  const bankBad = bank === "no" || bank === "unsure";
+  const nameBad = name === "no" || name === "unsure";
+  if (!bankBad && !nameBad) return undefined;
+  if ((bank !== "yes" && !bankBad) || (name !== "yes" && !nameBad)) {
+    return undefined;
+  }
+  const bankSure = bank !== "unsure";
+  const nameSure = name !== "unsure";
+  const en = (n: number) => usd(n, "en-US");
+  const id = (n: number) => usd(n, "id-ID");
+  const enParts: string[] = [];
+  const idParts: string[] = [];
+  let subjectEn = `your deposit of ${en(value)}`;
+  let subjectId = `deposito Anda sebesar ${id(value)}`;
+  if (bankBad) {
+    enParts.push(
+      bankSure
+        ? `You told us ${subjectEn} is not deposited at an Indonesian state-owned bank.`
+        : `You were not sure whether ${subjectEn} is deposited at an Indonesian state-owned bank.`,
+    );
+    idParts.push(
+      bankSure
+        ? `Anda menyampaikan bahwa ${subjectId} tidak disimpan di bank milik negara Indonesia.`
+        : `Anda belum yakin apakah ${subjectId} disimpan di bank milik negara Indonesia.`,
+    );
+    subjectEn = "it";
+    subjectId = "deposito tersebut";
+  }
+  if (nameBad) {
+    enParts.push(
+      nameSure
+        ? `You told us ${subjectEn} is not held in your own name.`
+        : `You were not sure whether ${subjectEn} is held in your own name.`,
+    );
+    idParts.push(
+      nameSure
+        ? `Anda menyampaikan bahwa ${subjectId} tidak atas nama Anda sendiri.`
+        : `Anda belum yakin apakah ${subjectId} atas nama Anda sendiri.`,
+    );
+  }
+  return text(
+    `${enParts.join(" ")} The Second Home Visa (E33) deposit route needs at least ${en(SECOND_HOME_DEPOSIT_THRESHOLD_USD)} held in your own name at an Indonesian state-owned bank.`,
+    `${idParts.join(" ")} Jalur deposito Visa Rumah Kedua (E33) membutuhkan minimal ${id(SECOND_HOME_DEPOSIT_THRESHOLD_USD)} atas nama Anda sendiri di bank milik negara Indonesia.`,
+  );
 }
 
 /**
@@ -915,8 +1174,8 @@ export function buildNoPathDoors(
       productCode: "E33",
       productName: DOOR_PRODUCT_NAMES.E33,
       message: text(
-        "The deposit or property you declared already meets what the verified rules ask for the Second Home route, and that route carries no age condition: switching keeps everything you told us before your purpose and asks the few questions that route needs.",
-        "Deposito atau properti yang Anda nyatakan sudah memenuhi syarat aturan terverifikasi untuk jalur Rumah Kedua, dan jalur tersebut tidak memiliki syarat usia: beralih ke sana tetap menyimpan semua jawaban sebelum tujuan Anda dan hanya menanyakan beberapa pertanyaan yang dibutuhkan jalur itu.",
+        "The deposit or property you declared already meets what the rules ask for the Second Home route, and that route carries no age condition: switching keeps everything you told us before your purpose and asks the few questions that route needs.",
+        "Deposito atau properti yang Anda nyatakan sudah memenuhi syarat aturan untuk jalur Rumah Kedua, dan jalur tersebut tidak memiliki syarat usia: beralih ke sana tetap menyimpan semua jawaban sebelum tujuan Anda dan hanya menanyakan beberapa pertanyaan yang dibutuhkan jalur itu.",
       ),
       actionable: true,
     });
@@ -953,8 +1212,23 @@ function paidActivityWithoutIndonesianPayerReason(
     return undefined;
   }
   return text(
-    "You told us you will be paid for activity in Indonesia, and that the payer is not an Indonesian entity. No visa in our verified catalogue covers that combination.",
-    "Anda menyampaikan bahwa Anda akan dibayar untuk aktivitas di Indonesia, dan bahwa pihak yang membayar bukan badan usaha Indonesia. Tidak ada visa dalam katalog terverifikasi kami yang mencakup kombinasi tersebut.",
+    "You told us you will be paid for activity in Indonesia, and that the payer is not an Indonesian entity. No visa in our catalogue covers that combination.",
+    "Anda menyampaikan bahwa Anda akan dibayar untuk aktivitas di Indonesia, dan bahwa pihak yang membayar bukan badan usaha Indonesia. Tidak ada visa dalam katalog kami yang mencakup kombinasi tersebut.",
+  );
+}
+
+function e33bCollaborationNotCommittedReason(
+  facts: OracleFacts,
+): LocalizedText | undefined {
+  if (
+    facts.sponsor_category !== "NONE" ||
+    facts.sponsor_government_collaboration !== "no"
+  ) {
+    return undefined;
+  }
+  return text(
+    "You told us you do not have a confirmed collaboration commitment with an Indonesian government body or institution based on your special expertise; the Second Home Golden Visa — Special-Expertise Collaboration (E33B) needs that commitment.",
+    "Anda menyampaikan bahwa Anda belum memiliki komitmen kolaborasi yang terkonfirmasi dengan instansi atau lembaga pemerintah Indonesia berdasarkan keahlian khusus Anda; Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B) memerlukan komitmen tersebut.",
   );
 }
 
@@ -969,6 +1243,7 @@ const FACT_DERIVED_NO_PATH_CODES: ReadonlySet<string> = new Set([
   "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
   "SECOND_HOME_GUARANTEE_BELOW_THRESHOLD",
   "PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR",
+  "RETIREMENT_INCOME_BELOW_THRESHOLD",
 ]);
 
 function reason(
@@ -984,11 +1259,23 @@ function reason(
   // why it was written in the first place (#6441). The static entry in
   // SUPPORT_REASON_COPY remains the fallback for every walk whose facts do
   // not reconstruct the number.
-  const message = FACT_DERIVED_NO_PATH_CODES.has(code)
-    ? (secondHomeBelowThresholdReason(facts ?? {}) ??
-      paidActivityWithoutIndonesianPayerReason(facts ?? {}) ??
-      reasonMessage(code))
-    : reasonMessage(code);
+  const message =
+    code === "RETIREMENT_INCOME_BELOW_THRESHOLD"
+      ? // Its own builder only: the retirement dead end must never be
+        // answered by a Second Home or paid-activity sentence drawn from
+        // unrelated (stale or mixed) facts.
+        (retirementIncomeBelowThresholdReason(facts ?? {}) ??
+        reasonMessage(code))
+      : FACT_DERIVED_NO_PATH_CODES.has(code)
+        ? (secondHomeBelowThresholdReason(facts ?? {}) ??
+          paidActivityWithoutIndonesianPayerReason(facts ?? {}) ??
+          (code === "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
+            ? secondHomeDepositHolderReason(facts ?? {})
+            : undefined) ??
+          reasonMessage(code))
+        : DEPOSIT_ROUTE_DEAD_END_CODES.has(code)
+          ? (secondHomeDepositHolderReason(facts ?? {}) ?? reasonMessage(code))
+          : reasonMessage(code);
   return {
     code,
     message,
@@ -1043,8 +1330,8 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // question DIMENSIONS below as the most specific honest statement
   // available, and flagged as a split candidate in the PR-O2 report.
   DISCLOSED_ACTIVITY_BOUNDARY_REVIEW: text(
-    "One of your answers about your planned activity, investment vehicle, retirement basis, or diaspora connection is not one the signed rules can decide on their own, so a person needs to confirm it before a path can be confirmed.",
-    "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, kendaraan investasi, dasar pensiun, atau hubungan diaspora bukan jawaban yang dapat diputuskan sendiri oleh aturan yang telah disahkan, sehingga memerlukan konfirmasi oleh seseorang sebelum jalur dapat dipastikan.",
+    "One of your answers about your planned activity, investment vehicle, retirement basis or diaspora connection is one these rules cannot decide on their own, so no path can be confirmed yet. A Bali Zero advisor can go over it with you.",
+    "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, sarana investasi, dasar pensiun, atau hubungan diaspora tidak dapat diputuskan sendiri oleh aturan ini, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat membahasnya bersama Anda.",
   ),
 
   // --- QW-4b (PR-O2, D1): the 29 codes that previously fell back to
@@ -1085,8 +1372,8 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // points to the Second Home Studio, which is where OutcomeSheet renders
   // the actual link (`/visa/second-home/studio`) for this code specifically.
   SECOND_HOME_BELOW_THRESHOLD_STUDIO: text(
-    `The Second Home Visa (E33) is granted against a guarantee: qualifying property worth at least ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "en-US")}, or a bank deposit of at least ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")} held in your own name at a state bank. The figure you declared for the route you chose does not reach its threshold, so this route is not confirmed on your answers yet. The Second Home Studio shows the routes — property, deposit, or a combination — and the numbers for your case.`,
-    `Visa Rumah Kedua (E33) diberikan atas dasar jaminan: properti yang memenuhi syarat senilai minimal ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}, atau deposito bank minimal ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama Anda sendiri di bank milik negara. Angka yang Anda nyatakan untuk jalur yang Anda pilih belum mencapai ambang batasnya, sehingga jalur ini belum dapat dikonfirmasi berdasarkan jawaban Anda. Second Home Studio menampilkan jalur-jalur — properti, deposito, atau kombinasi keduanya — beserta angka untuk kasus Anda.`,
+    `The Second Home Visa (E33) is granted against a guarantee: qualifying property worth at least ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "en-US")}, or a bank deposit of at least ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")} held in your own name at a state bank. The figure you declared for the route you chose does not reach its threshold, so this route is not confirmed on your answers yet. The Second Home Studio shows the property and deposit routes and the numbers for your case.`,
+    `Visa Rumah Kedua (E33) diberikan atas dasar jaminan: properti yang memenuhi syarat senilai minimal ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}, atau deposito bank minimal ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama Anda sendiri di bank milik negara. Angka yang Anda nyatakan untuk jalur yang Anda pilih belum mencapai ambang batasnya, sehingga jalur ini belum dapat dikonfirmasi berdasarkan jawaban Anda. Second Home Studio menampilkan jalur properti dan deposito beserta angka untuk kasus Anda.`,
   ),
 
   // 17 pack-independent codes emitted by evaluate_path.py directly.
@@ -1099,8 +1386,8 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // meaning not fully pinned to a specific fact pair (not a split
   // candidate — there is no enumerable second cause to split out).
   CONFLICTING_IMMIGRATION_STATUS_REVIEW: text(
-    "Your answers about your current immigration status conflict with each other — a person needs to confirm which status is correct before a path can be confirmed.",
-    "Jawaban Anda tentang status keimigrasian Anda saat ini saling bertentangan — diperlukan konfirmasi oleh seseorang mengenai status mana yang benar sebelum jalur dapat dipastikan.",
+    "Your answers about your current immigration status conflict with each other, so no path can be confirmed yet. A Bali Zero advisor can go over which status is correct with you.",
+    "Jawaban Anda tentang status keimigrasian Anda saat ini saling bertentangan, sehingga belum ada jalur yang dapat dipastikan. Konsultan Bali Zero dapat membahas status mana yang benar bersama Anda.",
   ),
   // `_apply_decisive_source_authority_hold` (evaluate_path.py:1097-1198):
   // abstains an otherwise-conclusive result when a citation the decision
@@ -1110,16 +1397,16 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // this category, since nothing the applicant said caused this; named the
   // source mechanism as specifically as the code allows instead.
   DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE: text(
-    "This result relies on a regulatory source that could not be confirmed as valid and currently applicable — verifying that source is what a person must do before this result can stand.",
-    "Hasil ini bergantung pada sumber regulasi yang tidak dapat dikonfirmasi valid dan berlaku saat ini — memverifikasi sumber tersebut adalah yang harus dilakukan oleh seseorang sebelum hasil ini dapat dipastikan.",
+    "One of the official sources behind this result needs a fresh check before the result can stand. A Bali Zero advisor can go over it with you.",
+    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang sebelum hasilnya dapat dipakai. Konsultan Bali Zero dapat membahasnya bersama Anda.",
   ),
   DECISIVE_SOURCE_FRESHNESS_UNKNOWN: text(
-    "This result relies on a regulatory source whose currency could not be established automatically — confirming whether that source is still current is what a person must do before this result can stand.",
-    "Hasil ini bergantung pada sumber regulasi yang keberlakuannya belum dapat dipastikan secara otomatis — memastikan apakah sumber tersebut masih berlaku adalah yang harus dilakukan oleh seseorang sebelum hasil ini dapat dipastikan.",
+    "One of the official sources behind this result needs a fresh check before the result can stand. A Bali Zero advisor can go over it with you.",
+    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang sebelum hasilnya dapat dipakai. Konsultan Bali Zero dapat membahasnya bersama Anda.",
   ),
   DECISIVE_SOURCE_STALE: text(
-    "This result relies on a regulatory source confirmed out of date — replacing it with a current source is what a person must do before this result can stand.",
-    "Hasil ini bergantung pada sumber regulasi yang telah dipastikan usang — menggantinya dengan sumber yang berlaku saat ini adalah yang harus dilakukan oleh seseorang sebelum hasil ini dapat dipastikan.",
+    "One of the official sources behind this result needs a fresh check before the result can stand. A Bali Zero advisor can go over it with you.",
+    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang sebelum hasilnya dapat dipakai. Konsultan Bali Zero dapat membahasnya bersama Anda.",
   ),
   // `_DISCLOSED_REVIEW_REASON_CODES` (evaluate_path.py:1014-1027) +
   // `_apply_disclosed_review_flags` (1304-1354): applicant self-disclosures,
@@ -1141,45 +1428,45 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // case — it says the question wasn't settled by this tool, never that a
   // permit exists or is required.
   DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW: text(
-    "This case is held because whether your sponsor holds a stay permit of their own has not been established here — confirming the sponsor's own stay permit is what resolves it.",
-    "Kasus ini ditahan karena belum dapat dipastikan di sini apakah sponsor Anda memiliki izin tinggal sendiri — konfirmasi izin tinggal sponsor tersebut adalah yang akan menyelesaikannya.",
+    "This case is paused because whether your sponsor holds a stay permit of their own has not been established here — confirming the sponsor's own stay permit is what resolves it.",
+    "Kasus ini ditunda karena belum dapat dipastikan di sini apakah sponsor Anda memiliki izin tinggal sendiri — konfirmasi izin tinggal sponsor tersebut adalah yang akan menyelesaikannya.",
   ),
   DISCLOSED_CRIMINAL_RECORD_REVIEW: text(
-    "You flagged a criminal record concern in your disclosures, and a person needs to review the details before any path can be confirmed.",
-    "Anda menandai adanya masalah catatan kriminal dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh seseorang sebelum jalur apa pun dapat dikonfirmasi.",
+    "You flagged a criminal record concern in your disclosures, so no path can be confirmed yet. A Bali Zero advisor can review the details with you.",
+    "Anda menandai adanya masalah catatan kriminal dalam pengungkapan Anda, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat meninjau detailnya bersama Anda.",
   ),
   DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW: text(
-    "You flagged holding a diplomatic passport in your disclosures, and a person needs to review the details before any path can be confirmed.",
-    "Anda menandai kepemilikan paspor diplomatik dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh seseorang sebelum jalur apa pun dapat dikonfirmasi.",
+    "You flagged holding a diplomatic passport in your disclosures, so no path can be confirmed yet. A Bali Zero advisor can review the details with you.",
+    "Anda menandai kepemilikan paspor diplomatik dalam pengungkapan Anda, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat meninjau detailnya bersama Anda.",
   ),
   DISCLOSED_HEALTH_CONCERN_REVIEW: text(
-    "You flagged a health concern in your disclosures, and a person needs to review the details before any path can be confirmed.",
-    "Anda menandai adanya masalah kesehatan dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh seseorang sebelum jalur apa pun dapat dikonfirmasi.",
+    "You flagged a health concern in your disclosures, so no path can be confirmed yet. A Bali Zero advisor can review the details with you.",
+    "Anda menandai adanya masalah kesehatan dalam pengungkapan Anda, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat meninjau detailnya bersama Anda.",
   ),
   // fact-mapper.ts: raised when trip_scope === "multiple".
   DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW: text(
-    "You said your trip serves more than one purpose, and a person needs to review how those purposes combine before a path can be confirmed.",
-    "Anda menyatakan bahwa perjalanan Anda memiliki lebih dari satu tujuan, dan memerlukan peninjauan oleh seseorang mengenai bagaimana tujuan-tujuan tersebut digabungkan sebelum jalur dapat dipastikan.",
+    "You said your trip serves more than one purpose, so no path can be confirmed yet. A Bali Zero advisor can go over with you how those purposes fit together.",
+    "Anda menyatakan bahwa perjalanan Anda memiliki lebih dari satu tujuan, sehingga belum ada jalur yang dapat dipastikan. Konsultan Bali Zero dapat meninjau bagaimana tujuan-tujuan tersebut digabungkan bersama Anda.",
   ),
   DISCLOSED_PEP_OR_SANCTIONS_REVIEW: text(
-    "You flagged a politically-exposed-person or sanctions-list concern in your disclosures, and a person needs to review the details before any path can be confirmed.",
-    "Anda menandai adanya masalah terkait status politically exposed person atau daftar sanksi dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh seseorang sebelum jalur apa pun dapat dikonfirmasi.",
+    "You flagged a politically-exposed-person or sanctions-list concern in your disclosures, so no path can be confirmed yet. A Bali Zero advisor can review the details with you.",
+    "Anda menandai adanya masalah terkait status politically exposed person atau daftar sanksi dalam pengungkapan Anda, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat meninjau detailnya bersama Anda.",
   ),
   DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW: text(
-    "You flagged a prior visa refusal in your disclosures, and a person needs to review the details before any path can be confirmed.",
-    "Anda menandai adanya penolakan visa sebelumnya dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh seseorang sebelum jalur apa pun dapat dikonfirmasi.",
+    "You flagged a prior visa refusal in your disclosures, so no path can be confirmed yet. A Bali Zero advisor can review the details with you.",
+    "Anda menandai adanya penolakan visa sebelumnya dalam pengungkapan Anda, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat meninjau detailnya bersama Anda.",
   ),
   DISCLOSED_SOURCE_OF_FUNDS_REVIEW: text(
-    "You flagged an unclear source of funds in your disclosures, and a person needs to review the details before any path can be confirmed.",
-    "Anda menandai sumber dana yang tidak jelas dalam pengungkapan Anda, dan memerlukan peninjauan detail oleh seseorang sebelum jalur apa pun dapat dikonfirmasi.",
+    "You flagged an unclear source of funds in your disclosures, so no path can be confirmed yet. A Bali Zero advisor can review the details with you.",
+    "Anda menandai sumber dana yang tidak jelas dalam pengungkapan Anda, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat meninjau detailnya bersama Anda.",
   ),
   // fact-mapper.ts: raised when ANY answer across the interview equals
   // "unsure" — the OutcomeReason carries no field for which question. One
   // code, as many potential causes as there are questions; flagged as a
   // split candidate in the PR-O2 report.
   DISCLOSED_UNCERTAINTY_REVIEW: text(
-    'One of your answers was marked "unsure," and a person needs to confirm that answer before any path can be confirmed.',
-    'Salah satu jawaban Anda ditandai "tidak yakin," dan memerlukan konfirmasi oleh seseorang atas jawaban tersebut sebelum jalur apa pun dapat dikonfirmasi.',
+    'One of your answers was marked "unsure," so no path can be confirmed yet. A Bali Zero advisor can go over that answer with you.',
+    'Salah satu jawaban Anda ditandai "tidak yakin," sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat membahas jawaban tersebut bersama Anda.',
   ),
   // `_apply_minor_privacy_hold` (evaluate_path.py:1033-1094): a categorical
   // privacy-policy hold on ANY known minor, distinct from the pack's own
@@ -1191,8 +1478,8 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // reviewing guardian identity/consent directly) since this adapter "may
   // only abstain" by its own docstring.
   MINOR_GUARDIAN_PRIVACY_REVIEW: text(
-    "You told us no parent or legal guardian is filling this in with the applicant, who is under 18. A Bali Zero consultant continues from here with an adult present.",
-    "Anda menyampaikan bahwa tidak ada orang tua atau wali sah yang mengisi ini bersama pemohon yang berusia di bawah 18 tahun. Konsultan Bali Zero melanjutkan dari sini dengan kehadiran orang dewasa.",
+    "You told us no parent or legal guardian is filling this in with the applicant, who is under 18. A Bali Zero consultant can pick this up with you once an adult is present.",
+    "Anda menyampaikan bahwa tidak ada orang tua atau wali sah yang mengisi ini bersama pemohon yang berusia di bawah 18 tahun. Konsultan Bali Zero dapat melanjutkan bersama Anda setelah ada orang dewasa yang mendampingi.",
   ),
   // `_apply_safety_critical_source_hold` (evaluate_path.py:1201-1301): same
   // source-integrity pattern as the DECISIVE_* trio above, but global to
@@ -1200,16 +1487,16 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // the specific citations a given result relied on. Same D2-bis rule 1
   // caveat as the DECISIVE_* trio: not an applicant-fact code.
   SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE: text(
-    "One of the safety-critical rules used in this evaluation relies on a source that could not be confirmed as valid and currently applicable — verifying that source is what a person must do before this result can stand.",
-    "Salah satu aturan safety-critical yang digunakan dalam evaluasi ini bergantung pada sumber yang tidak dapat dikonfirmasi valid dan berlaku saat ini — memverifikasi sumber tersebut adalah yang harus dilakukan oleh seseorang sebelum hasil ini dapat dipastikan.",
+    "One of the official sources behind this result needs a fresh check before the result can stand. A Bali Zero advisor can go over it with you.",
+    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang sebelum hasilnya dapat dipakai. Konsultan Bali Zero dapat membahasnya bersama Anda.",
   ),
   SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN: text(
-    "One of the safety-critical rules used in this evaluation relies on a source whose currency could not be established automatically — confirming whether that source is still current is what a person must do before this result can stand.",
-    "Salah satu aturan safety-critical yang digunakan dalam evaluasi ini bergantung pada sumber yang keberlakuannya belum dapat dipastikan secara otomatis — memastikan apakah sumber tersebut masih berlaku adalah yang harus dilakukan oleh seseorang sebelum hasil ini dapat dipastikan.",
+    "One of the official sources behind this result needs a fresh check before the result can stand. A Bali Zero advisor can go over it with you.",
+    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang sebelum hasilnya dapat dipakai. Konsultan Bali Zero dapat membahasnya bersama Anda.",
   ),
   SAFETY_CRITICAL_SOURCE_STALE: text(
-    "One of the safety-critical rules used in this evaluation relies on a source confirmed out of date — replacing it with a current source is what a person must do before this result can stand.",
-    "Salah satu aturan safety-critical yang digunakan dalam evaluasi ini bergantung pada sumber yang telah dipastikan usang — menggantinya dengan sumber yang berlaku saat ini adalah yang harus dilakukan oleh seseorang sebelum hasil ini dapat dipastikan.",
+    "One of the official sources behind this result needs a fresh check before the result can stand. A Bali Zero advisor can go over it with you.",
+    "Salah satu sumber resmi di balik hasil ini perlu diperiksa ulang sebelum hasilnya dapat dipakai. Konsultan Bali Zero dapat membahasnya bersama Anda.",
   ),
 };
 
@@ -1237,33 +1524,33 @@ export const REVIEW_REASON_ELEMENTS: Partial<
       "Orang tua atau wali sah yang dapat melengkapi permohonan bersama pemohon.",
     ),
     handling: text(
-      "A Bali Zero consultant, who confirms the guardian before any application step.",
-      "Konsultan Bali Zero, yang memastikan wali sebelum langkah permohonan apa pun.",
+      "A Bali Zero consultant can confirm the guardian before any application step.",
+      "Konsultan Bali Zero dapat memastikan wali sebelum langkah permohonan apa pun.",
     ),
   },
   DISCLOSED_CRIMINAL_RECORD_REVIEW: {
     rule: text(
-      "This result is held because you disclosed a criminal record or an ongoing case. It is one of the two disclosures the signed rules still send to a person; the other nine now stay on your result as named conditions.",
-      "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan yang telah disahkan; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
+      "This result is paused because you disclosed a criminal record or an ongoing case. A Bali Zero advisor can review it with you before any path is confirmed.",
+      "Hasil ini ditunda karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Konsultan Bali Zero dapat meninjaunya bersama Anda sebelum jalur mana pun dikonfirmasi.",
     ),
     checked: text(
-      "A specialist reads what you disclosed against the immigration record requirements for the route you asked about, and decides whether it can be submitted as it stands.",
-      "Seorang spesialis membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
+      "A Bali Zero advisor can read what you disclosed against the immigration record requirements for the route you asked about, and assess whether it can be submitted as it stands.",
+      "Konsultan Bali Zero dapat membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
     ),
     prepare: text(
-      "Have the dates and the issuing authority of any court or police record ready, together with any document showing the case is closed. Send nothing here — our team tells you where each document goes.",
-      "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — tim kami akan memberi tahu ke mana setiap dokumen harus dikirim.",
+      "Have the dates and the issuing authority of any court or police record ready, together with any document showing the case is closed. Send nothing here — a Bali Zero advisor can tell you where each document goes.",
+      "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — konsultan Bali Zero dapat memberi tahu ke mana setiap dokumen harus dikirim.",
     ),
     handling: text(
-      "A specialist reviews this before we confirm a path, and our team comes back to you with the timing for your case.",
-      "Seorang spesialis meninjau hal ini sebelum kami mengonfirmasi jalur, dan tim kami akan mengabari Anda mengenai perkiraan waktu untuk kasus Anda.",
+      "A Bali Zero advisor can review this before a path is confirmed, and can tell you the timing for your case.",
+      "Konsultan Bali Zero dapat meninjau hal ini sebelum jalur dikonfirmasi, dan dapat memberi tahu Anda perkiraan waktu untuk kasus Anda.",
     ),
   },
 };
 
-const GENERIC_REVIEW_REASON: LocalizedText = text(
-  "Some of your answers need a person's judgment before we can confirm a path.",
-  "Beberapa jawaban Anda memerlukan penilaian dari seseorang sebelum kami dapat mengonfirmasi jalur.",
+export const GENERIC_REVIEW_REASON: LocalizedText = text(
+  "Some of your answers need a review before a path can be confirmed. A Bali Zero advisor can go over them with you.",
+  "Beberapa jawaban Anda perlu ditinjau sebelum jalur dapat dikonfirmasi. Konsultan Bali Zero dapat membahasnya bersama Anda.",
 );
 
 // D3-4 (PR-D3, owner ruling SHWEB-20260911) had added a STEPCHILD-only
@@ -1321,44 +1608,44 @@ function reviewReason(
 // first so the channel is never dark on the day that PR opens.
 export const NOTICE_CONDITION_COPY: Record<string, LocalizedText> = {
   OBSOLETE_PRODUCT_CODE: text(
-    "The visa code you referenced has been retired and reclassified. Your result reflects the current, equivalent product in our verified catalogue.",
-    "Kode visa yang Anda referensikan sudah tidak berlaku dan telah diklasifikasikan ulang. Hasil Anda mencerminkan produk setara yang berlaku saat ini dalam katalog terverifikasi kami.",
+    "The visa code you referenced has been retired and reclassified. Your result reflects the current, equivalent product in our catalogue.",
+    "Kode visa yang Anda referensikan sudah tidak berlaku dan telah diklasifikasikan ulang. Hasil Anda mencerminkan produk setara yang berlaku saat ini dalam katalog kami.",
   ),
   DISCLOSED_HEALTH_CONCERN_CONDITION: text(
-    "You flagged a health concern in your disclosures. Our team reviews the details with you before submission and lets you know what supporting documentation, if any, to prepare.",
-    "Anda menandai adanya masalah kesehatan dalam pengungkapan Anda. Tim kami akan meninjau detailnya bersama Anda sebelum pengajuan dan memberi tahu dokumen pendukung, jika ada, yang perlu disiapkan.",
+    "You flagged a health concern in your disclosures. A Bali Zero advisor can review the details with you before submission and let you know what supporting documentation, if any, to prepare.",
+    "Anda menandai adanya masalah kesehatan dalam pengungkapan Anda. Konsultan Bali Zero dapat meninjau detailnya bersama Anda sebelum pengajuan dan memberi tahu dokumen pendukung, jika ada, yang perlu disiapkan.",
   ),
   DISCLOSED_PRIOR_VISA_REFUSAL_CONDITION: text(
-    "You flagged a prior visa refusal in your disclosures. Our team reviews the refusal details with you before submission and tells you what documentation to prepare.",
-    "Anda menandai adanya penolakan visa sebelumnya dalam pengungkapan Anda. Tim kami akan meninjau detail penolakan tersebut bersama Anda sebelum pengajuan dan memberi tahu dokumen yang perlu disiapkan.",
+    "You flagged a prior visa refusal in your disclosures. A Bali Zero advisor can review the refusal details with you before submission and tell you what documentation to prepare.",
+    "Anda menandai adanya penolakan visa sebelumnya dalam pengungkapan Anda. Konsultan Bali Zero dapat meninjau detail penolakan tersebut bersama Anda sebelum pengajuan dan memberi tahu dokumen yang perlu disiapkan.",
   ),
   DISCLOSED_UNCERTAINTY_CONDITION: text(
-    'One of your answers was marked "unsure." Our team confirms that answer with you before submission and tells you what to prepare once it is settled.',
-    'Salah satu jawaban Anda ditandai "tidak yakin." Tim kami akan memastikan jawaban tersebut bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan setelah dipastikan.',
+    'One of your answers was marked "unsure." A Bali Zero advisor can confirm that answer with you before submission and tell you what to prepare once it is settled.',
+    'Salah satu jawaban Anda ditandai "tidak yakin." Konsultan Bali Zero dapat memastikan jawaban tersebut bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan setelah dipastikan.',
   ),
   DISCLOSED_PEP_OR_SANCTIONS_CONDITION: text(
-    "You flagged a politically-exposed-person or sanctions-list concern in your disclosures. A compliance check against PEP and sanctions records runs at submission, and our team tells you what documentation to prepare for it.",
-    "Anda menandai adanya masalah terkait status politically exposed person atau daftar sanksi dalam pengungkapan Anda. Pemeriksaan kepatuhan terhadap data PEP dan daftar sanksi dilakukan pada saat pengajuan, dan tim kami akan memberi tahu dokumen yang perlu disiapkan untuk itu.",
+    "You flagged a politically-exposed-person or sanctions-list concern in your disclosures. A compliance check against PEP and sanctions records runs at submission, and a Bali Zero advisor can tell you what documentation to prepare for it.",
+    "Anda menandai adanya masalah terkait status politically exposed person atau daftar sanksi dalam pengungkapan Anda. Pemeriksaan kepatuhan terhadap data PEP dan daftar sanksi dilakukan pada saat pengajuan, dan konsultan Bali Zero dapat memberi tahu dokumen yang perlu disiapkan untuk itu.",
   ),
   DISCLOSED_SOURCE_OF_FUNDS_CONDITION: text(
-    "You flagged an unclear source of funds in your disclosures. A source-of-funds compliance check runs at submission, and our team tells you what supporting documentation to prepare for it.",
-    "Anda menandai sumber dana yang tidak jelas dalam pengungkapan Anda. Pemeriksaan kepatuhan atas sumber dana dilakukan pada saat pengajuan, dan tim kami akan memberi tahu dokumen pendukung yang perlu disiapkan untuk itu.",
+    "You flagged an unclear source of funds in your disclosures. A source-of-funds compliance check runs at submission, and a Bali Zero advisor can tell you what supporting documentation to prepare for it.",
+    "Anda menandai sumber dana yang tidak jelas dalam pengungkapan Anda. Pemeriksaan kepatuhan atas sumber dana dilakukan pada saat pengajuan, dan konsultan Bali Zero dapat memberi tahu dokumen pendukung yang perlu disiapkan untuk itu.",
   ),
   DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION: text(
-    "You flagged holding a diplomatic passport in your disclosures. Our team reviews the diplomatic-passport details with you before submission and tells you what documentation to prepare.",
-    "Anda menandai kepemilikan paspor diplomatik dalam pengungkapan Anda. Tim kami akan meninjau detail paspor diplomatik tersebut bersama Anda sebelum pengajuan dan memberi tahu dokumen yang perlu disiapkan.",
+    "You flagged holding a diplomatic passport in your disclosures. A Bali Zero advisor can review the diplomatic-passport details with you before submission and tell you what documentation to prepare.",
+    "Anda menandai kepemilikan paspor diplomatik dalam pengungkapan Anda. Konsultan Bali Zero dapat meninjau detail paspor diplomatik tersebut bersama Anda sebelum pengajuan dan memberi tahu dokumen yang perlu disiapkan.",
   ),
   DISCLOSED_AMBIGUOUS_SPONSOR_CONDITION: text(
-    "Whether your sponsor holds a stay permit of their own has not been established here. Our team confirms the sponsor's own stay permit with you before submission and tells you what to prepare.",
-    "Belum dapat dipastikan di sini apakah sponsor Anda memiliki izin tinggal sendiri. Tim kami akan memastikan izin tinggal sponsor tersebut bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
+    "Whether your sponsor holds a stay permit of their own has not been established here. A Bali Zero advisor can confirm the sponsor's own stay permit with you before submission and tell you what to prepare.",
+    "Belum dapat dipastikan di sini apakah sponsor Anda memiliki izin tinggal sendiri. Konsultan Bali Zero dapat memastikan izin tinggal sponsor tersebut bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
   ),
   DISCLOSED_MULTI_PURPOSE_TRIP_CONDITION: text(
-    "You said your trip serves more than one purpose. Our team reviews how those purposes combine with you before submission and tells you what to prepare.",
-    "Anda menyatakan bahwa perjalanan Anda memiliki lebih dari satu tujuan. Tim kami akan meninjau bagaimana tujuan-tujuan tersebut digabungkan bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
+    "You said your trip serves more than one purpose. A Bali Zero advisor can go over with you how those purposes fit together before submission and tell you what to prepare.",
+    "Anda menyatakan bahwa perjalanan Anda memiliki lebih dari satu tujuan. Konsultan Bali Zero dapat meninjau bagaimana tujuan-tujuan tersebut digabungkan bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
   ),
   CONFLICTING_IMMIGRATION_STATUS_CONDITION: text(
-    "Your answers about your current immigration status conflict with each other. Our team confirms which status is correct with you before submission and tells you what to prepare.",
-    "Jawaban Anda tentang status keimigrasian Anda saat ini saling bertentangan. Tim kami akan memastikan status mana yang benar bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
+    "Your answers about your current immigration status conflict with each other. A Bali Zero advisor can confirm which status is correct with you before submission and tell you what to prepare.",
+    "Jawaban Anda tentang status keimigrasian Anda saat ini saling bertentangan. Konsultan Bali Zero dapat memastikan status mana yang benar bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
   ),
   // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M4): three new keys beside the
   // eleven above, backed by `_DISCLOSED_CONDITION_REASON_CODES`
@@ -1366,22 +1653,22 @@ export const NOTICE_CONDITION_COPY: Record<string, LocalizedText> = {
   // by whom, when, and what to prepare — never "cleared", "approved" or
   // "guaranteed".
   DISCLOSED_PAST_OVERSTAY_CONDITION: text(
-    "You flagged a past overstay in your disclosures. Our team reviews the dates and any penalty record with you before submission and tells you what to prepare.",
-    "Anda menandai riwayat overstay dalam pengungkapan Anda. Tim kami akan meninjau tanggal dan catatan sanksi terkait bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
+    "You flagged a past overstay in your disclosures. A Bali Zero advisor can review the dates and any penalty record with you before submission and tell you what to prepare.",
+    "Anda menandai riwayat overstay dalam pengungkapan Anda. Konsultan Bali Zero dapat meninjau tanggal dan catatan sanksi terkait bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
   ),
   DISCLOSED_BLACKLIST_ENTRY_CONDITION: text(
-    "You flagged a blacklist entry in your disclosures. While an entry ban is active it stops any application from being filed until it is lifted; our team verifies your status with Ditjen Imigrasi before submission and tells you what that means for the paths listed above.",
-    "Anda menandai adanya pencantuman dalam daftar hitam. Selama larangan tersebut masih aktif, pengajuan apa pun tidak dapat diproses sampai larangan itu dicabut; tim kami memverifikasi status Anda ke Ditjen Imigrasi sebelum pengajuan dan menjelaskan artinya bagi jalur yang tercantum di atas.",
+    "You flagged a blacklist entry in your disclosures. A Bali Zero advisor can go over your situation with you before submission and tell you what to prepare.",
+    "Pengungkapan Anda menandai adanya pencantuman dalam daftar hitam. Konsultan Bali Zero dapat membahas situasi tersebut bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
   ),
   DISCLOSED_IMMIGRATION_INVESTIGATION_CONDITION: text(
-    "You flagged an open immigration investigation. Our team reviews its status with you before submission and tells you what supporting documentation, if any, to prepare.",
-    "Anda menandai adanya pemeriksaan keimigrasian yang sedang berjalan. Tim kami akan meninjau statusnya bersama Anda sebelum pengajuan dan memberi tahu dokumen pendukung, jika ada, yang perlu disiapkan.",
+    "You flagged an open immigration investigation. A Bali Zero advisor can review its status with you before submission and tell you what supporting documentation, if any, to prepare.",
+    "Anda menandai adanya pemeriksaan keimigrasian yang sedang berjalan. Konsultan Bali Zero dapat meninjau statusnya bersama Anda sebelum pengajuan dan memberi tahu dokumen pendukung, jika ada, yang perlu disiapkan.",
   ),
 };
 
 export const GENERIC_NOTICE_CONDITION: LocalizedText = text(
-  "An additional condition applies to this result — our team will confirm it with you before submission.",
-  "Kondisi tambahan berlaku untuk hasil ini — tim kami akan memastikannya bersama Anda sebelum pengajuan.",
+  "An additional condition applies to this result — a Bali Zero advisor can go over it with you before submission.",
+  "Kondisi tambahan berlaku untuk hasil ini — konsultan Bali Zero dapat membahasnya bersama Anda sebelum pengajuan.",
 );
 
 /** Codes already reported this session (N3): a monitored event fires once
@@ -1543,16 +1830,16 @@ function timeline(candidate: VisaOracleCandidateDisplay): OutcomeTimeline {
       basisDateIso: value.anchor_date,
       earliestDateIso: value.estimated_completion_from,
       latestDateIso: value.estimated_completion_to,
-      note: reasonMessage(value.reason_code),
+      ...(typeof value.working_days_min === "number" &&
+      typeof value.working_days_max === "number"
+        ? {
+            workingDaysMin: value.working_days_min,
+            workingDaysMax: value.working_days_max,
+          }
+        : {}),
     };
   }
-  return {
-    status: "UNAVAILABLE",
-    message: text(
-      "A verified operational processing timeline is not available.",
-      "Timeline proses operasional terverifikasi belum tersedia.",
-    ),
-  };
+  return { status: "UNAVAILABLE" };
 }
 
 function documents(candidate: VisaOracleCandidateDisplay): OutcomeDocument[] {
@@ -1578,13 +1865,76 @@ function documents(candidate: VisaOracleCandidateDisplay): OutcomeDocument[] {
   return result;
 }
 
+/** Spread into the candidate: absent unless the engine sent `selected_duration_days`. */
+function duration(
+  candidate: VisaOracleCandidateDisplay,
+  response: VisaOracleEvaluateResponse,
+): { duration: OutcomeDuration } | Record<string, never> {
+  if (candidate.selected_duration_days == null) return {};
+  // No matching quote, no label: a permit length is only shown beside its own price.
+  if (price(candidate, response).status !== "AVAILABLE") return {};
+  return {
+    duration: {
+      selectedDays: candidate.selected_duration_days,
+      options: (candidate.duration_options ?? []).map((option) => ({
+        days: option.days,
+        amountIdr: option.amount_idr ?? null,
+        selected: option.selected,
+      })),
+      extensionRequired: candidate.extension_required === true,
+    },
+  };
+}
+
+/**
+ * The quote that prices this candidate. Without a duration block it is the
+ * product's quote. With one, it must be the quote of the SELECTED option:
+ * same pricing key and, when the option carries an amount, the same amount.
+ * `null` when none matches, so the page never shows a duration beside the
+ * price of another one.
+ */
+function quoteFor(
+  candidate: VisaOracleCandidateDisplay,
+  response: VisaOracleEvaluateResponse,
+) {
+  const quotes = response.decision.quotes.filter(
+    (item) => item.product_version_id === candidate.product_version_id,
+  );
+  if (candidate.selected_duration_days == null) return quotes[0] ?? null;
+  const selected = (candidate.duration_options ?? []).find(
+    (option) => option.selected,
+  );
+  if (!selected) return null;
+  return (
+    quotes.find(
+      (item) =>
+        item.pricing_key.category === selected.pricing_key.category &&
+        item.pricing_key.item_key === selected.pricing_key.item_key &&
+        (selected.amount_idr == null || item.amount === selected.amount_idr),
+    ) ?? null
+  );
+}
+
+// CONTACT_REQUIRED covers three backend reason codes (pricing_adapter.py:
+// PRICING_KEY_NOT_CONFIGURED, PRICING_ROW_MISSING, PRICING_ROW_NOT_EXACT_AMOUNT)
+// and only the first means a product was left without a price on purpose, so
+// the sentence says no more than "price on consultation". UNAVAILABLE is a
+// price that could not be loaded. Neither invents a figure, and neither
+// promises an advisor: the advisor is something the reader CAN ask.
+const PRICE_ON_CONSULTATION = text(
+  "Price on consultation. You can ask a Bali Zero advisor.",
+  "Harga melalui konsultasi. Anda dapat bertanya kepada konsultan Bali Zero.",
+);
+const PRICE_COULD_NOT_BE_LOADED = text(
+  "The price for this path could not be loaded. You can ask a Bali Zero advisor.",
+  "Harga untuk jalur ini tidak dapat dimuat. Anda dapat bertanya kepada konsultan Bali Zero.",
+);
+
 function price(
   candidate: VisaOracleCandidateDisplay,
   response: VisaOracleEvaluateResponse,
 ): OutcomePrice {
-  const quote = response.decision.quotes.find(
-    (item) => item.product_version_id === candidate.product_version_id,
-  );
+  const quote = quoteFor(candidate, response);
   if (
     candidate.pricing.status === "AVAILABLE" &&
     quote?.status === "AVAILABLE" &&
@@ -1600,21 +1950,9 @@ function price(
     };
   }
   if (candidate.pricing.status === "CONTACT_REQUIRED") {
-    return {
-      status: "CONTACT_REQUIRED",
-      message: text(
-        "An all-inclusive verified quote requires contact.",
-        "Penawaran all-inclusive terverifikasi memerlukan kontak.",
-      ),
-    };
+    return { status: "CONTACT_REQUIRED", message: PRICE_ON_CONSULTATION };
   }
-  return {
-    status: "UNAVAILABLE",
-    message: text(
-      "No verified all-inclusive price is available.",
-      "Harga all-inclusive terverifikasi belum tersedia.",
-    ),
-  };
+  return { status: "UNAVAILABLE", message: PRICE_COULD_NOT_BE_LOADED };
 }
 
 /**
@@ -1822,7 +2160,6 @@ function buildValidatedOutcome(
     assessment,
     assumptions: options.assumptions ?? [],
     sources,
-    nextSteps: NEXT_STEPS,
     conditions,
   };
 
@@ -1872,6 +2209,7 @@ function buildValidatedOutcome(
           ),
           timeline: timeline(projected),
           price: price(projected, response),
+          ...duration(projected, response),
           documents: documents(projected),
         } satisfies OutcomeCandidate;
       });
@@ -1881,6 +2219,7 @@ function buildValidatedOutcome(
       return {
         ...base,
         state: "SUPPORTED_CANDIDATES",
+        nextSteps: nextStepsFor("SUPPORTED_CANDIDATES"),
         pathsRemaining: candidates.length,
         candidates: nonEmpty(candidates),
       };
@@ -1889,6 +2228,7 @@ function buildValidatedOutcome(
       return {
         ...base,
         state: "NEEDS_INPUT",
+        nextSteps: nextStepsFor("NEEDS_INPUT"),
         candidates: [],
         pathsRemaining: Math.max(1, options.interviewBranchesRemaining ?? 1),
         missingInputs: nonEmpty(
@@ -1921,6 +2261,13 @@ function buildValidatedOutcome(
       return {
         ...base,
         state: "HUMAN_REVIEW_REQUIRED",
+        nextSteps: nextStepsFor("HUMAN_REVIEW_REQUIRED", {
+          studioOnly:
+            response.decision.review_reasons.length > 0 &&
+            response.decision.review_reasons.every(
+              (item) => item.code === SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
+            ),
+        }),
         candidates: [],
         pathsRemaining: Math.max(1, options.interviewBranchesRemaining ?? 1),
         reviewReasons: response.decision.review_reasons.map((item) => {
@@ -1928,10 +2275,17 @@ function buildValidatedOutcome(
           return reviewReason(item.code, item.source_refs, trustedIds);
         }) as [OutcomeReason, ...OutcomeReason[]],
       };
-    case "NO_SUPPORTED_PATH":
+    case "NO_SUPPORTED_PATH": {
+      const alternatives = buildNoPathDoors(
+        response.decision.no_path_reasons.map((item) => item.code),
+        options.facts ?? {},
+      );
       return {
         ...base,
         state: "NO_SUPPORTED_PATH",
+        nextSteps: nextStepsFor("NO_SUPPORTED_PATH", {
+          noDoors: alternatives.length === 0,
+        }),
         candidates: [],
         pathsRemaining: 0,
         noPathReasons: response.decision.no_path_reasons.map((item) => {
@@ -1944,24 +2298,35 @@ function buildValidatedOutcome(
           if (!isSourcelessDeadEnd) {
             requireDecisiveRefs(item.source_refs);
           }
-          return reason(item.code, item.source_refs, trustedIds, options.facts);
+          const mapped = reason(
+            item.code,
+            item.source_refs,
+            trustedIds,
+            options.facts,
+          );
+          const collaborationMessage =
+            item.code === "E33A_SPONSOR_NOT_GOVERNMENT"
+              ? e33bCollaborationNotCommittedReason(options.facts ?? {})
+              : undefined;
+          return collaborationMessage
+            ? { ...mapped, message: collaborationMessage }
+            : mapped;
         }) as [OutcomeReason, ...OutcomeReason[]],
-        alternatives: buildNoPathDoors(
-          response.decision.no_path_reasons.map((item) => item.code),
-          options.facts ?? {},
-        ),
+        alternatives,
       };
+    }
     case "TEMPORARILY_UNAVAILABLE":
       return {
         ...base,
         state: "TEMPORARILY_UNAVAILABLE",
+        nextSteps: nextStepsFor("TEMPORARILY_UNAVAILABLE"),
         candidates: [],
         pathsRemaining: 0,
         outage: {
           code: response.decision.outage?.code ?? "ENGINE_UNAVAILABLE",
           message: text(
-            "The verified decision service is temporarily unavailable. No visa path is shown.",
-            "Layanan keputusan terverifikasi sementara tidak tersedia. Tidak ada jalur visa yang ditampilkan.",
+            "The decision service is temporarily unavailable. No visa path is shown.",
+            "Layanan keputusan sementara tidak tersedia. Tidak ada jalur visa yang ditampilkan.",
           ),
           retryable: response.decision.outage?.retryable ?? false,
         },

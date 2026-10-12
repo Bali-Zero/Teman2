@@ -56,6 +56,7 @@ import hashlib
 import json
 import os
 import re
+import socket
 import sys
 from collections import defaultdict
 from collections.abc import Iterable
@@ -88,6 +89,46 @@ def _load_seat_map(path: Path) -> dict:
     except Exception as e:
         print(f"[seat-usage] seat_map illeggibile ({e}); uso default", file=sys.stderr)
         return DEFAULT_SEAT_MAP
+
+
+def machine_seat_map(smap: dict, machine: str | None = None) -> dict:
+    """La mappa di QUESTA macchina: il blocco `by_machine` il cui nome è l'hostname
+    corto (case-insensitive), altrimenti il fallback top-level. Il collector gira dal
+    checkout di ogni host: una macchina senza blocco misurato non eredita mai la
+    verità di un'altra (Naga gap 1, 2026-10-05)."""
+    host = (machine or socket.gethostname().split(".")[0]).lower()
+    for name, block in (smap.get("by_machine") or {}).items():
+        if name.lower() == host and isinstance(block, dict):
+            return block
+    return smap
+
+
+def merge_profile_results(results: list[tuple[str, dict]]) -> dict:
+    """Un account raggiunto da più profile dir (A3 su Air-M5) è UNA riga: i
+    contatori si sommano, la provenienza per profilo resta in `profiles`. I
+    consumer indicizzati per id (usage-dashboard.html) altrimenti tengono solo
+    l'ultima riga e perdono i consumi dell'altra (Naga P2 su #7887). Un contatore
+    "unknown" avvelena la somma in qualunque ordine (semantica di `_acc_tok`), e un
+    profilo "partial" rende "partial" la riga (gate BLOCK su #7887 r2)."""
+    def add(into: dict, key: str, value) -> None:
+        # absent here = no activity (0); "unknown" = not reported (poisons the sum)
+        into[key] = _sum_tok([into[key], value]) if key in into else value
+
+    days: dict = defaultdict(dict)
+    models: dict = {}
+    for _, r in results:
+        for day, counters in (r.get("days") or {}).items():
+            for key, value in counters.items():
+                add(days[day], key, value)
+        for model, value in (r.get("models") or {}).items():
+            add(models, model, value)
+    statuses = [r.get("status") for _, r in results]
+    notes = [r["note"] for _, r in results if r.get("note")]
+    status = next((s for s in ("partial", "ok") if s in statuses), statuses[0])
+    return {"status": status,
+            "days": dict(days), "models": models,
+            "note": "; ".join(notes) or None,
+            "profiles": [{"source": f"claude:{p}", "status": r.get("status")} for p, r in results]}
 
 
 def _day(ts: str) -> str | None:
@@ -820,14 +861,19 @@ def main() -> int:
     args = ap.parse_args()
 
     since = NOW - timedelta(days=args.days)
-    smap = _load_seat_map(Path(args.seat_map))
+    smap = machine_seat_map(_load_seat_map(Path(args.seat_map)))
     seats = []
     task_dir = Path(os.path.expanduser(args.task_outcomes))
     task_index = {} if task_dir.is_dir() and any(task_dir.glob("*.json")) else None
 
+    profile_dirs_by_seat: dict[str, list[str]] = {}
     for pdir, seat_id in (smap.get("claude_profiles") or {}).items():
-        r = collect_claude(os.path.expanduser(pdir), since, task_index=task_index)
-        seats.append({"id": seat_id, "source": f"claude:{pdir}", "status": r.get("status"),
+        profile_dirs_by_seat.setdefault(seat_id, []).append(pdir)
+    for seat_id, pdirs in profile_dirs_by_seat.items():
+        r = merge_profile_results([
+            (pdir, collect_claude(os.path.expanduser(pdir), since, task_index=task_index))
+            for pdir in pdirs])
+        seats.append({"id": seat_id, "source": "claude:" + "+".join(pdirs), "status": r.get("status"),
                       "days": r.get("days", {}), "models": r.get("models", {}),
                       "metrics": fmt_metrics(r.get("days", {}),
                                              provenance=CLAUDE_LOCAL_JSONL_PROVENANCE)
@@ -841,6 +887,7 @@ def main() -> int:
                           "reading": "observed/provisional — not provider-final",
                           "label": CLAUDE_LOCAL_JSONL_PROVENANCE,
                       },
+                      "profiles": r["profiles"],
                       "note": r.get("note")})
 
     for chome, seat_id in (smap.get("codex_homes") or {}).items():

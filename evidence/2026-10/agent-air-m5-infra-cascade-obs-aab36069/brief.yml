@@ -1,0 +1,31 @@
+task_id: cascade-obs
+mission: CASCADEOBS-20261005
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  Make claude-cascade.sh say, for every Claude seat attempt, which token slot and seat id it tried,
+  the failure CLASS from a closed list, the duration, and one final line naming the slot/seat that
+  answered or none — with the attempts, their order, stdout, exit codes and every pre-existing
+  stderr line unchanged. Fix the header comment that still listed token_2.
+constraints:
+  - Behaviour-neutral: same attempts, same order, same exit codes, same stdout, same old stderr lines.
+  - A log line never carries a token, a prefix or hash of one, an account e-mail or an org name; provider text is classified, never copied.
+  - Classification judges the entity: an answer that talks about rate limits classifies answered.
+  - No change to slot order or selection; FLEET_TOPOLOGY.json is not edited (another Dux owns it).
+  - The live copy runs from ~/scripts on Pro; merge does not make it live (manual delivery, owner).
+appetite:
+  wall_clock_hours: 3
+acceptance:
+  - text: WHEN any of the 5 golden scenarios runs THEN attempts, stdout, exit code and every pre-existing stderr line SHALL equal the fixture recorded on the pre-change wrapper (beb6991b30).
+    probe: scripts/tests/test_claude_cascade_shell.py::test_golden_attempts_stdout_exit_and_old_stderr_are_unchanged (and CLAUDE_CASCADE_GOLDEN_SCRIPT=<pre-change copy> for the before run)
+  - text: WHEN a Claude seat is attempted or a retired slot is reached THEN exactly one schema-valid [cascade-attempt] line SHALL name slot, seat and class, and one [cascade-result] line SHALL name the answering slot/seat or none.
+    probe: test_every_attempt_names_slot_seat_and_class_and_one_result_line
+  - text: WHEN an attempt fails THEN its class SHALL follow the failure entity (quota, org-disabled, 401, empty, watchdog, global deadline, ledger skip) and an answer about rate limits or with org text on stderr SHALL stay answered.
+    probe: test_attempt_class_guilt_and_innocence + test_watchdog_timeout_is_timeout + test_global_deadline_is_timeout_not_rate_limited + test_seat_ledger_skip_is_rate_limited_from_the_ledger
+  - text: WHEN stderr carries a token or an e-mail THEN no record line SHALL carry it or a prefix of it; an off-shape job name SHALL become unknown whole.
+    probe: test_attempt_records_never_carry_a_token_or_an_account + test_job_name_is_validated_whole_never_rewritten
+  - text: WHEN FLEET_TOPOLOGY.json maps a token slot to a seat THEN OAUTH_SLOT_SEATS SHALL equal it.
+    probe: test_oauth_slot_seats_equal_the_registry
+consumer_map:
+  - infra/launchagents/wrappers/claude-cascade.sh — every scheduled Claude job on Pro calling ~/scripts/claude-cascade.sh (22 in-repo callers); live copy on Pro is a manual delivery.

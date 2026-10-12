@@ -29,8 +29,9 @@
 # WORKING, not failing, so the cron receipt stays ok (otherwise every
 # legitimate warning would also fire a redundant cron-fail P0). Only 4
 # (CANNOT-MEASURE: no log readable / CANNOT-DELIVER: alert reached nobody)
-# and unexpected codes propagate, so cron-runner's own alert covers exactly
-# the states where the watcher could NOT speak for itself.
+# and 3 (CRASH: the watcher's traceback guard fired — an exception is a
+# failure, not a green reading) propagate, so cron-runner's own alert covers
+# exactly the states where the watcher could NOT speak for itself.
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -6,6 +6,7 @@ from typing import Any
 
 import asyncpg
 
+from backend.services.crm.admin_document_visibility import admin_document_not_deleted_clause
 from backend.services.crm.tax_company_pilot import (
     DriveConfidence,
     TaxCompanyPilotDocument,
@@ -614,7 +615,7 @@ ORDER BY ccl.is_primary DESC, co.company_name, cl.full_name
 LIMIT $2
 """
 
-_DOCUMENT_SQL = """
+_DOCUMENT_SQL = f"""
 SELECT
     client_id,
     file_name,
@@ -630,6 +631,7 @@ SELECT
 FROM documents
 WHERE client_id = ANY($1::int[])
   AND (is_archived IS NULL OR is_archived = false)
+  AND {admin_document_not_deleted_clause()}
 ORDER BY document_category, document_type, file_name
 """
 

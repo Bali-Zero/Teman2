@@ -1033,10 +1033,10 @@ async def chat(
     # Backwards compatible: when check_hash is absent, validation is skipped.
     system_prompt_prefix = ""
     if body.check_hash:
-        from jose import JWTError
-        from jose import jwt as _jose_jwt
+        from jwt import PyJWTError
 
         from backend.app.core.config import settings as _settings
+        from backend.app.utils.jwt_decode import decode_jwt
         from backend.services.visa_unified.bridge import (
             augment_chat_system_prompt as _augment,
         )
@@ -1049,13 +1049,12 @@ async def chat(
             raise HTTPException(status_code=401, detail="Missing bearer token")
         token = auth.split(" ", 1)[1].strip()
         try:
-            claims = _jose_jwt.decode(
+            claims = decode_jwt(
                 token,
                 _settings.jwt_secret_key,
                 algorithms=[_settings.jwt_algorithm],
-                options={"verify_exp": True, "require_exp": True},
             )
-        except JWTError:
+        except PyJWTError:
             raise HTTPException(status_code=401, detail="Invalid or expired token")
 
         if claims.get("type") != "visa_funnel":

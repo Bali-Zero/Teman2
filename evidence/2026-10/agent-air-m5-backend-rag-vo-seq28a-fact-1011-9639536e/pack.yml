@@ -1,0 +1,146 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 (decisions on the E33/retirement program) - the E33G remote worker gets a real income gate,
+  shipped as one signing in three steps; step A is the engine accepting the fact, step B the mouth question,
+  step C the pack seq-28 rule.
+mission: >-
+  The Visa Oracle engine accepts the fact work.annual_foreign_income_usd on /evaluate so the E33G remote worker
+  can get a real income gate (seq-28 step A of one signing; the mouth question and the pack rule follow).
+lanes:
+  - lane: seq28a-engine-fact
+    role: build
+    seat: >-
+      Codex GPT-5.6-sol via scripts/seat_build.sh (tier sol, effort high, 3474 s; log
+      .worktrees/seat-build-codex-20261011T085853Z-92673.log), graded and committed by the orchestrator
+      (commit 4b13eb4c56 before the rebase, dcb40f3a6f after).
+  - lane: seq28a-evidence
+    role: build
+    seat: claude-sonnet-5 evidence seat, worktree backend-rag-vo-seq28a-fact-1011 on M5.
+  - lane: seq28a-ground-truth
+    role: ground_truth
+    seat: >-
+      The visa_engine request model (models.py) at origin/main before the change; the change adds one fact the
+      engine accepts and asserts no eligibility rule of its own (no pack rule, no mouth question).
+    nb: apps/backend-rag/backend/services/visa_engine/models.py
+    query_hash: "e71b8ae47122bb224ee77119a37b8f6f4dc287d23bd5b9259591e7dfcc922b89" # pragma: allowlist secret
+    note: query_hash = sha256 of models.py at origin/main (before the change).
+pii_scan: clean
+bites:
+  consumer: >-
+    the Visa Oracle engine /evaluate request model (ApplicantFactsData) on nuzantara-rag, which must keep
+    accepting bodies without the new key and accept work.annual_foreign_income_usd as UnknownFact or KNOWN
+    whole USD. After the Fly deploy a synthetic POST to /api/visa-oracle/evaluate returns 200 both without the
+    key and with it set to KNOWN 85000, on the same pack sequence 27.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_engine_annual_income_fact.py
+  expect: "contains:annual income rollout default holds"
+receipts:
+  - claim: "The branch sits on a fresh origin/main, nothing pushed (feature commit 4b13eb4c56 became dcb40f3a6f)."
+    cmd: git fetch origin main && git rebase origin/main
+    result: "rebase clean, no conflicts; origin/main 666926365c, feature commit dcb40f3a6f"
+    exit: 0
+    ts: "2026-10-11T10:01:13Z"
+    seat: this session
+  - claim: "The whole visa_engine backend tree, outside any sandbox, against the local test database."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine
+    result: "2953 passed, 15 skipped, 2 failed, 39 errors in 210.82s (re-run at head 405ed49e46, after the contract/OpenAPI regeneration). The 2 failed (test_visa_engine_retention_fk_registry, policy_scope column and migration 281 missing) and the 39 errors (test_evaluate_endpoint 31 missing relation visa_evaluate_idem..., test_shadow_evidence 6 DependentObjectsStillExist, test_shadow_match 2 migration 264 applied) are local test-database schema drift; the same four files on a detached origin/main worktree give 2 failed, 331 passed, 39 errors, identical"
+    exit: 1
+    ts: "2026-10-11T11:15:04Z"
+    seat: this session
+  - claim: "The same four DB-backed files on pristine origin/main show the same failures, so they are not caused by this change."
+    cmd: "cd <detached origin/main worktree>/apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_evaluate_endpoint.py backend/tests/services/visa_engine/test_shadow_evidence.py backend/tests/services/visa_engine/test_shadow_match.py backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py"
+    result: "2 failed, 331 passed, 39 errors in 47.51s"
+    exit: 1
+    ts: "2026-10-11T10:09:00Z"
+    seat: this session
+  - claim: "apps/mouth typechecks with the regenerated schema.d.ts and the new fact path."
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output (re-run at head 405ed49e46)"
+    exit: 0
+    ts: "2026-10-11T11:15:14Z"
+    seat: this session
+  - claim: "The visa-oracle _lib Vitest tree, which holds fact-mapper.test.ts (the fact-path parity test admitting the key until step B)."
+    cmd: "cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib'"
+    result: "Test Files 31 passed (31); Tests 1051 passed (1051) (re-run at head 405ed49e46)"
+    exit: 0
+    ts: "2026-10-11T11:16:16Z"
+    seat: this session
+  - claim: "The observer passes: the rollout-default test class for work.annual_foreign_income_usd."
+    cmd: python3 scripts/ci/observe_visa_engine_annual_income_fact.py
+    result: "7 passed in 0.04s; annual income rollout default holds"
+    exit: 0
+    ts: "2026-10-11T10:48:55Z"
+    seat: this session
+  - claim: "The observer's summary parser rejects skipped, error, failed, xfailed, deselected and reduced counts."
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_engine_annual_income_fact.py
+    result: "14 passed"
+    exit: 0
+    ts: "2026-10-11T10:48:55Z"
+    seat: this session
+  - claim: "The rollout-default test class and the fact registry tests, including the new factory-yield test."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_sponsor_type_rollout.py backend/tests/services/visa_engine/test_fact_registry.py
+    result: "153 passed in 0.57s"
+    exit: 0
+    ts: "2026-10-11T10:51:04Z"
+    seat: this session
+  - claim: "The regenerated contract snapshots and the OpenAPI pin are green again (gate condition C1)."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/scripts/test_generate_openapi_schema_pin.py
+    result: "1 passed; TestContractSnapshotDriftTripwire 3 passed with the pin test"
+    exit: 0
+    ts: "2026-10-11T11:16:30Z"
+    seat: this session
+decisions:
+  - id: D-rollout-default
+    decision: >-
+      The new key is optional on the wire with an UnknownFact(NOT_ASKED) default built by default_factory,
+      never zero, because the request model rejects unknown keys and the deployed mouth does not send it yet;
+      step B closes the seam, step C adds the rule.
+  - id: D-overlap
+    decision: >-
+      Open PR 7897 (fact-count-derive) really conflicts with this change (git merge-tree conflict, 7 files
+      overlap incl. both contract schemas, enums.py, schema.d.ts) and needs a rebase. PR 7941 (gold-coverage-7)
+      has zero file overlap and merges with this head cleanly: no rebase needed.
+  - id: D-idempotency-409
+    decision: >-
+      Accepted limit, named in the PR risks: the defaulted key enters the idempotency HMAC, so a visitor who
+      evaluated before the deploy and reloads within the 2 h client identity TTL gets HTTP 409 (guard page)
+      once. Same class as every rollout default since 3732. Structural fix (exclude unset rollout defaults from
+      canonical_request) is a separate PR.
+dissent:
+  - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: "HIGH: the required E2E Playwright check counts facts in apps/mouth/e2e/visa-oracle-v2.spec.ts against APPLICANT_FACT_COUNT (58) while the mapper emits 57, so it goes red."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: applicant-fact-paths.ts exports ORDERED_ROLLOUT_OPTIONAL_PATHS and FRONTEND_EMITTED_FACT_COUNT; e2e and fact-mapper.test.ts use them; e2e also asserts the key is not sent; stale comment replaced; e2e added to brief scope. Playwright itself needs a next build and was not run locally."
+  - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: "MEDIUM: the defaulted key enters the idempotency HMAC, so resumed sessions get 409 for up to 2 h after deploy."
+    status: PLAUSIBLE
+    disposition: "Accepted limit, recorded as D-idempotency-409 and in the PR risks; the structural fix is a separate PR."
+  - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: "LOW: Sentry scrub has no facts key; the SENSITIVE field would leak once step B sends values."
+    status: PLAUSIBLE
+    disposition: "Harmless in step A (mouth does not send the value). Must land before step B: exact-key facts scrub plus PII_SAMPLES case. Carried to step B."
+  - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: "LOW: the fact definition (foreign employer) is narrower than Pasal 63(2) (salary or income, no source restriction)."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: enums.py comment now says declared yearly salary or income, Pasal 63(3) is the contract. Step B copy must follow."
+  - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: "LOW: FactPath docstring omits the new key in its extension history; schema has no description saying omitted means UNKNOWN/NOT_ASKED."
+    status: PLAUSIBLE
+    disposition: "Docstring history cured in the follow-up commit. The Field description is not added: it changes the OpenAPI and both contract schemas and would force a regeneration and pin move for documentation only; the comment on the field and the tests carry the meaning. Revisit in step B."
+  - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: "LOW: the rollout test checks the module constant, not what the field factory yields; fact-mapper.test.ts dropped history comments."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: test_the_field_factory_yields_the_unknown_default. Coverage of the dropped comments is unchanged (exact-set equality plus count); history comment not restored."
+  - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: "LOW: evidence pack honesty (dissent empty, estimated timestamps, non-roster alias, D-overlap half wrong, brief paths wrong)."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: dissent recorded, receipts re-recorded with date -u, alias fixed, D-overlap corrected, brief paths moved to backend/tests/services/visa_engine/. The fresh gate is still to be signed before arming."
+  - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: "LOW: the observer parser test file is not collected by any workflow, like its sibling observer tests."
+    status: PLAUSIBLE
+    disposition: "Accepted limit: repo-wide convention for observer tests; the observer itself is the bites check and fails closed."
+  - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: "Note: replays and probes send the key and 422 against a pre-deploy engine; gold_harness 08_remote_worker stays NOT_ASKED."
+    status: PLAUSIBLE
+    disposition: "Run Bites probes only after /health build_sha matches; 08_remote_worker is a step C item."

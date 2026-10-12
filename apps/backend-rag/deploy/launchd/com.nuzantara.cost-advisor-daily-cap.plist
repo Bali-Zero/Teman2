@@ -5,9 +5,9 @@
   <key>Label</key><string>com.nuzantara.cost-advisor-daily-cap</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/bin/bash</string>
-    <string>-lc</string>
-    <string>cd /Users/nuzantara/nuzantara/apps/backend-rag &amp;&amp; PYTHONPATH=. /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m backend.scripts.cost_advisor_cli --check-daily-cap</string>
+    <string>/Users/nuzantara/nuzantara/scripts/wr2-cron-wrapper.sh</string>
+    <string>backend.scripts.cost_advisor_cli</string>
+    <string>--check-daily-cap</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict>

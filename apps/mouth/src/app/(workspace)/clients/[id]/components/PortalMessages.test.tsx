@@ -365,3 +365,106 @@ function render(ui: React.ReactElement) {
     ),
   });
 }
+
+/**
+ * PortalMessages — one send per message.
+ *
+ * Client 10247, 6 Oct 2026: 21 identical team messages were stored within
+ * 3.6 seconds (about 6 per second) — not manual typing. The Enter handler
+ * called handleSend() on every keydown, and handleSend() only checked for an
+ * empty input: nothing stopped a second call while the first request was in
+ * flight, and the input is cleared only after the request resolves. Holding
+ * Enter (key auto-repeat) or pressing it several times therefore stored one
+ * copy per keydown, all visible to the client.
+ *
+ *   (a) guilt      repeated Enter while the first send is pending -> 1 request
+ *   (b) guilt      Enter auto-repeat events never send
+ *   (c) guilt      Send click while an Enter send is pending -> still 1 request
+ *   (d) innocence  after the first send resolves, the next message sends
+ */
+describe("PortalMessages single send", () => {
+  let resolveSend: (() => void) | undefined;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.crm.getPortalMessages).mockReset();
+    vi.mocked(api.crm.sendPortalMessage).mockReset();
+    vi.mocked(api.crm.markPortalMessageRead).mockResolvedValue(undefined);
+    respondWith(TWO_MESSAGES);
+    vi.mocked(api.crm.sendPortalMessage).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSend = () => resolve(makeMessage(3));
+        }),
+    );
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const input = () => screen.getByPlaceholderText(`Message ${CLIENT_NAME}...`);
+  const type = (value: string) =>
+    fireEvent.change(input(), { target: { value } });
+
+  it("repeated Enter while a send is pending sends once", async () => {
+    renderComponent();
+    await advance(100);
+    type("Reply from team");
+
+    for (let i = 0; i < 5; i += 1) {
+      fireEvent.keyDown(input(), { key: "Enter" });
+    }
+    await advance(10);
+
+    expect(api.crm.sendPortalMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("Enter auto-repeat events never send", async () => {
+    renderComponent();
+    await advance(100);
+    type("Reply from team");
+
+    fireEvent.keyDown(input(), { key: "Enter", repeat: true });
+    fireEvent.keyDown(input(), { key: "Enter", repeat: true });
+    await advance(10);
+
+    expect(api.crm.sendPortalMessage).not.toHaveBeenCalled();
+  });
+
+  it("clicking Send while an Enter send is pending does not send again", async () => {
+    renderComponent();
+    await advance(100);
+    type("Reply from team");
+
+    fireEvent.keyDown(input(), { key: "Enter" });
+    fireEvent.click(screen.getByRole("button", { name: /send/i }));
+    await advance(10);
+
+    expect(api.crm.sendPortalMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("the next message sends once the first one has resolved", async () => {
+    renderComponent();
+    await advance(100);
+    type("First reply");
+    fireEvent.keyDown(input(), { key: "Enter" });
+    await advance(10);
+
+    await act(async () => {
+      resolveSend?.();
+    });
+    await advance(100);
+
+    type("Second reply");
+    fireEvent.keyDown(input(), { key: "Enter" });
+    await advance(10);
+
+    expect(api.crm.sendPortalMessage).toHaveBeenCalledTimes(2);
+    expect(api.crm.sendPortalMessage).toHaveBeenLastCalledWith(
+      CLIENT_ID,
+      "Second reply",
+    );
+  });
+});

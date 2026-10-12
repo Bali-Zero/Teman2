@@ -45,7 +45,7 @@ GENERAL_FEW_SHOT_EXAMPLES: list[dict[str, Any]] = [
         "role": "assistant",
         "content": (
             "Investor KITAS is 17 juta for 2 years (Offshore) or 19 juta via Altus. "
-            "Renewal is 18 juta. You'll need a PT PMA company too, that's 20 juta "
+            "Renewal is 18 juta. You'll need a PT PMA company too, that's 25 juta "
             "for the setup. Are you looking to open a business here?"
         ),
     },

@@ -1,0 +1,89 @@
+{
+  "run_at": "2026-10-06T07:08:29+08:00",
+  "today": "2026-10-06",
+  "yesterday_seen_count": 5,
+  "new_today_count": 1,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://ortax.org/news",
+      "reason": "http_404",
+      "note": "confirmed, recurring 404 same as prior runs"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, same as prior runs"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "200 OK, JS-rendered shell, 'Memuat artikel...' placeholder persists since 2026-09-07"
+    },
+    {
+      "url": "https://peraturan.go.id/rss",
+      "reason": "http_404",
+      "note": "confirmed, same as prior runs"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "HTTP_CODE:000 on both initial fetch and the one mechanical retry, 30s each"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "checked_no_new",
+      "note": "newest dated item 2026-10-05, no reg-type match (BUMD, UU Kehutanan advocacy, law-firm rankings)"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "checked_no_new",
+      "note": "JS-rendered search results not in static HTML; static content is only pagination links, no PMK 2026 entries, same as prior runs"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "outside_window",
+      "note": "newest dated entry 2026-10-02, older than the 48h freshness window"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest entry still KEP-185/PJ/2026 (bencana alam Nusa Tenggara tax admin policy), unchanged from prior runs"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest visible UU 2/2026 Pelindungan Pekerja Rumah Tangga, enacted 30 Apr 2026, unchanged from prior runs"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [
+    {
+      "citation": "PMK 71/2026",
+      "title_id": "PMK 71/2026 Terbit, Aturan Pembetulan dan Keberatan Pajak Direvisi",
+      "title_en": "PMK 71/2026 Issued, Tax Correction and Objection Rules Revised",
+      "service_line": [
+        "tax",
+        "property"
+      ],
+      "severity": "medium",
+      "impact_note": "Revises PMK 118/2024 procedures for tax correction, objection, reduction, deletion and cancellation (incl. DJP exchange-of-information authority for objection review); also grants PBB-P5L administrative sanction/penalty relief, application window max 2 years from the PMK's effective date.",
+      "summary": "Kementerian Keuangan menerbitkan PMK 71/2026, berlaku mulai 2 Oktober 2026, merevisi PMK 118/2024 tentang tata cara pembetulan, keberatan, pengurangan, penghapusan, dan pembatalan di bidang perpajakan; juga memberikan keringanan sanksi/denda administratif PBB-P5L, permohonan paling lama 2 tahun sejak berlakunya PMK.",
+      "source": "DDTC News | https://news.ddtc.co.id/berita/nasional/1823034/pmk-712026-terbit-aturan-pembetulan-dan-keberatan-pajak-direvisi",
+      "verbatim_excerpt": "\"Untuk mewujudkan rasa keadilan dan kepastian hukum ... perlu dilakukan perubahan terhadap ketentuan mengenai tata cara pembetulan, keberatan, pengurangan, penghapusan, dan pembatalan di bidang perpajakan,\" bunyi pertimbangan PMK 71/2026, dikutip pada Senin (5/10/2026).",
+      "first_seen_at": "2026-10-06T07:08:29+08:00",
+      "confidence": "medium"
+    }
+  ],
+  "seen_citations": [
+    "PMK 55/2026",
+    "PER-6/PJ/2026",
+    "PMK 49/2026",
+    "PER-12/PJ/2026",
+    "PMK 37/2025",
+    "PMK 71/2026"
+  ],
+  "note": "4/4 NB-INTEL returned nessuna novita (NB-INTEL-Tax surfaced PER-12/PJ/2026 context again, already in seen_citations, non-citable). Web: DDTC delivered 2 PMK citations -- PMK 71/2026 (genuinely new, first appearance in any delta archive, 'PMK 71/2026 Terbit' + PBB-P5L relief article, both published 2026-10-05) and PMK 44/2026 (NOT counted as new: verified via grep across the full delta archive that it already appeared in 15 prior files, 2026-07-10 through 2026-08-27 -- it fell out of yesterday's 5-item seen_citations only because of 90-day-window trimming/an intervening schema reset, not because the regulation is new; today's DDTC article is DJP re-explaining existing kuasa-pajak/SKK competency-certificate requirements under it, no material change detected). PMK 55/2026 also seen on DDTC, already in seen_citations, dropped."
+}

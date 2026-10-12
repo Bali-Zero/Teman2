@@ -1,0 +1,124 @@
+brief_ref: evidence/brief.yml
+gear: 2
+pii_scan: clean
+spend:
+  wall_clock_hours: 0.5
+measured_floor: "2 (source: size; evidence_pack_lint.py --print-floor/--print-floor-source on the merge-base diff staged with this pack, R6)"
+recut_of: >-
+  #7929 (head 41329cf606), BLOCKED by final gate gate-7929-w4 at 12:24Z: B1 two receipts stamped after the
+  commit that carried them; B2 the event-bus gateway part claimed a redelivery the live consumer cannot do.
+  The same gate found the pajak part solid. This PR carries only the pajak part, by content, plus the two
+  gate notices that belong to it (N4 key order unpinned, N5 corrupted state value).
+lanes:
+  - lane: fixe-build
+    role: build
+    seat: "Codex seat, O3 Team home (gpt-5.6-sol per #7929's pack and dux-fix-e's report; not re-proved by this Dux) — built in #7929, cured there by Dux dux-fix-e (claude-opus-5.5)"
+  - lane: fixe2-recut
+    role: build
+    seat: "claude-opus-5.5 (Dux dux-fix-e2: carried pajak_monitor.py + test_pajak_monitor.py over by content from 41329cf606 as 497cac33ae; added the order test and the corrupted-count cure as 81904a7f01)"
+  - lane: fixe2-review-tp1
+    role: review
+    seat: "tp1-qwen3.8-max (read-only, falsify-the-claims prompt on the origin/main..81904a7f01 diff of the two files) — verbatim: review-tp1-qwen3.8-max.txt"
+  - lane: fixe-review-tp1-prior
+    role: review
+    seat: "tp1-qwen3.8-max in #7929 on 306d07b884's production diff (pre-cure, gateway included); not copied here, readable at 41329cf606:evidence/2026-10/agent-air-m5-infra-fixe-ack-after-delivery-dux-9358453d/review-tp1-qwen3.8-max.txt"
+dissent:
+  - seat: claude-opus-5.5 (gate-7929-w4, notice N4)
+    objection: "The key sorts the urls but no test pins order independence: an unsorted-key mutation survived."
+    status: CONFIRMED
+    disposition: "Pinned by test_alert_key_ignores_the_order_the_sources_return_the_same_items_in (same two items, opposite order across a retry); the unsorted mutation now goes red (R4)."
+  - seat: claude-opus-5.5 (gate-7929-w4, notice N5)
+    objection: "A hand-corrupted state value raises ValueError on every failed run; the caller swallows it and the item retries forever without a dead letter."
+    status: CONFIRMED
+    disposition: "IN, not owed: an 8-line cure (_prior_attempts reads an unparseable count as 0) turns an unbounded retry into the same bound as everything else; red first (R1), green after, mutation e1 red (R4)."
+  - seat: claude-opus-5.5 (dux-fix-e2)
+    objection: "The dead-letter record is written only when attempts == DELIVERY_MAX_ATTEMPTS; if the bound is LOWERED while items already sit past the new bound, those items are marked seen with no record."
+    status: PLAUSIBLE
+    disposition: "Owed, not cured: PAJAK_DELIVERY_MAX_ATTEMPTS is introduced by this PR and set nowhere; the == avoids a duplicate record when the seen-mark after the dead letter fails. Changing it is a design choice for its own PR."
+  - seat: claude-opus-5.5 (gate-7929-w4, notice N2)
+    objection: "The dead letter (~/.intel_scraper/pajak_dead_letter.jsonl) reaches no surface a human reads."
+    status: CONFIRMED
+    disposition: "Owed (stated in the PR body). The dead-lettering run ends status=error, which pages through the same gateway — spooled while Telegram is dead."
+  - seat: tp1-qwen3.8-max
+    objection: "C1: the key hashes a sorted LIST, not a set; the newline join and the 16-hex truncation can collapse distinct sets."
+    status: PLAUSIBLE
+    disposition: "Refuted by the Dux: a repeated url in one run gives a different key from the same set without it: the effect is one extra alert, never a mute. A collision needs a url containing a newline or a 64-bit hash collision inside the gateway's 24-168 h ladder window."
+  - seat: tp1-qwen3.8-max
+    objection: "C2/C3: the dead-letter path marks items seen after a False send, and only if Redis accepts the write; otherwise they stay unseen and retry."
+    status: PLAUSIBLE
+    disposition: "Refuted by the Dux, by design and in the claim set: past the bound the item is dead-lettered and THEN marked seen (C3); while Redis refuses writes nothing can be marked, the run ends status=error and the record is written once (attempts == bound). My C2 prompt omitted 'except at the bound'; the code matches the contract."
+  - seat: tp1-qwen3.8-max
+    objection: "Further 1: the intel feed is re-written for the same unseen items on every retry."
+    status: CONFIRMED
+    disposition: "Accepted, known (gate-7929 N6): the downstream content-hash dedup absorbs it; at most DELIVERY_MAX_ATTEMPTS writes per item."
+  - seat: tp1-qwen3.8-max
+    objection: "Further 2: _remember_delivered's int(entry) is unguarded; a corrupted non-dict value suppresses the local receipt."
+    status: CONFIRMED
+    disposition: "Accepted, bounded: the caller logs delivery_state_error and the next run re-sends once under the SAME dedup key, which the gateway answers 'deduped' inside its window and the items are then marked. Not the retry-forever case the gate named; outside this re-cut's two items."
+  - seat: tp1-qwen3.8-max
+    objection: "Further 3: the redis reply regex is a whitelist; an unlisted zero-exit error reply reads as success."
+    status: PLAUSIBLE
+    disposition: "Accepted (same as #7929's D1): covers the replies a single local Redis sends to SADD/EXPIRE; an unlisted reply degrades to the pre-PR behaviour for that run."
+  - seat: tp1-qwen3.8-max
+    objection: "Further 4: reconciliation returns early while Redis is down, withholding other new items."
+    status: CONFIRMED
+    disposition: "Accepted by design (gate-7929 N5): sending items that cannot be marked would re-send them every run; the run ends status=error, visible."
+  - seat: tp1-qwen3.8-max
+    objection: "Further 5: _clear_delivery_failures after a successful mark is outside a try; a state-save OSError turns a delivered run into an error."
+    status: PLAUSIBLE
+    disposition: "Accepted: the items are already marked seen, so nothing is lost or re-sent; the run reads as an error (disk full / unwritable HOME), which is the right signal."
+what_changed: |
+  pajak_monitor.py: the alert carries dedup_key "pajak-new:<sha256 of the sorted urls>[:16]" (one gateway
+  identity per item set, the same key on a retry); seen-state is written only after the gateway accepted
+  the alert; bounded retry (PAJAK_DELIVERY_MAX_ATTEMPTS=5) with a counter in
+  ~/.intel_scraper/pajak_delivery_state.json, then one line in ~/.intel_scraper/pajak_dead_letter.jsonl
+  (id, url, first_seen, attempts, error class) and seen; an accepted send whose mark failed leaves a local
+  receipt the next run reconciles without re-sending; _mark_seen grades the redis-cli reply; an unparseable
+  stored attempt count reads as 0. No event-bus gateway change.
+receipts:
+  - claim: "R1 the corrupted-count test is RED on the carried-over code (497cac33ae) before the cure"
+    cmd: pytest -q scripts/tests/test_pajak_monitor.py -k "order_the_sources or hand_corrupted" (worktree, before commit 2)
+    exit: "1 (3 failed: the 3 corrupted shapes; 1 passed: the order test, whose red is mutation a2 in R4)"
+    ts: "2026-10-05T12:31:42Z"
+    seat: claude-opus-5.5
+  - claim: "R2 the new tests are RED on origin/main's pajak_monitor.py"
+    cmd: pytest -q scripts/tests/test_pajak_monitor.py scripts/tests/test_pajak_parse.py on a tree of origin/main 0c97783867 with 81904a7f01's test file
+    exit: "1 (10 failed, 56 passed)"
+    ts: "2026-10-05T12:34:05Z"
+    seat: claude-opus-5.5
+  - claim: "R3 healthy path byte-identical origin/main vs 81904a7f01 on the same fake inputs (two runs)"
+    cmd: python3 healthy_equiv.py <origin/main test harness> <81904a7f01 test harness> (dux-fix-e's script, copied)
+    exit: "0 — res1, res2, sends (msg+tier), seen, intel_files, outbox, redis_write_ops, other_files: IDENTICAL"
+    ts: "2026-10-05T12:34:10Z"
+    seat: claude-opus-5.5
+  - claim: "R4 every gate mutation of the pajak part goes red, plus one for the new cure; untouched head green"
+    cmd: python3 -B mutate.py on an export of 81904a7f01 (gate-7929's a1-a3, b1-b5 verbatim + e1)
+    exit: "untouched 66 passed; a1 a2 a3 b1 b2 b3 b4 b5 e1: each >=1 failed (a2 -> test_alert_key_ignores_the_order..., e1 -> test_a_hand_corrupted_attempt_count... x3)"
+    ts: "2026-10-05T12:33:15Z"
+    seat: claude-opus-5.5
+  - claim: "R5 consumer path on Pro (read-only): HOME copy == origin/main blob, crontab line, no delivery state yet, 0 pajak-new keys"
+    cmd: ssh pro 'bash -s' < pro_probe.sh
+    exit: "0 — ~/scripts/cron-agent-python/pajak_monitor.py sha16 a1f472500792e3ef == origin/main; crontab `0 0 * * * bash ~/scripts/cron-agent-python/run.sh pajak-monitor`; Pro TZ WITA; state/dead-letter files absent; pajak-new keys 0"
+    ts: "2026-10-05T12:35:37Z"
+    seat: claude-opus-5.5
+  - claim: "R6 deterministic floor, merge-base diff staged with this pack (draft) like CI"
+    cmd: evidence_pack_lint.py --changed-files-file c --numstat-file n --patch-file p --print-floor / --print-floor-source / --print-measured (git diff --cached 0c97783867)
+    exit: "0 — floor 2, source size: 4 files +503/-9 with the draft pack (12:45:48Z); 5 files +563/-9 with this pack before its last two edits (12:48:22Z); far below the gear-3 size threshold 1828"
+    ts: "2026-10-05T12:48:22Z"
+    seat: claude-opus-5.5
+  - claim: "R7 all suites touching the file GREEN at 81904a7f01 (the pack commit adds evidence files only)"
+    cmd: pytest -q scripts/tests/test_pajak_parse.py scripts/tests/test_pajak_monitor.py ; pytest -q scripts/tests/test_agent_job_telegram_gateway.py scripts/tests/test_tg_notify_identity_ladder.py
+    exit: "0 (66 passed) ; 0 (38 passed)"
+    ts: "2026-10-05T12:47:01Z"
+    seat: claude-opus-5.5
+  - claim: "R8 each acceptance probe of the brief, by node id"
+    cmd: pytest -q scripts/tests/test_pajak_monitor.py::test_delivery_failure_is_retried_then_success_is_marked_once scripts/tests/test_pajak_monitor.py::test_poison_item_is_dead_lettered_at_configured_bound_with_legacy_state scripts/tests/test_pajak_monitor.py::test_seen_persist_failure_after_send_is_an_error scripts/tests/test_pajak_monitor.py::test_distinct_alerts_carry_distinct_gateway_keys_and_a_retry_keeps_its_key scripts/tests/test_pajak_monitor.py::test_alert_key_ignores_the_order_the_sources_return_the_same_items_in scripts/tests/test_pajak_monitor.py::test_a_hand_corrupted_attempt_count_still_reaches_the_dead_letter
+    exit: "0 (8 passed: 5 tests + 3 parametrized shapes)"
+    ts: "2026-10-05T12:47:19Z"
+    seat: claude-opus-5.5
+owed:
+  - "The dead letter has no human-read surface (no board, digest or alert reads pajak_dead_letter.jsonl)."
+  - "The 22 alerts lost 2026-09-25 -> 10-04 are not re-sent; their urls stay in bz:pajak:seen_urls (list held by the imperator)."
+  - "Same no-key / mark-before-send shape, not cured here: oss_monitor.py, imigrasi_monitor.py, intel_radar_daily_digest.py (file:line in dux-fix-e's report, verified by gate-7929)."
+  - "Event-bus gateway at-least-once (#7929 part c): not built; spec in dux-fix-e2's final report."
+  - "Dead-letter record when the bound is lowered mid-retry (dissent above)."

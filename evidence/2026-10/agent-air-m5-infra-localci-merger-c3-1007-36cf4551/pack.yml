@@ -1,0 +1,220 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN phases C-D (the merger), handed by the team lead of the 2026-10-07 mission to this BLUE Dux;
+  plan docs/specs/localci-sovereign-2026-10-07.md §2, ruling docs/rules/RULINGS.md RULED 2026-10-07. PR-C1 (#8017) and
+  PR-C2b (#8021, merged 856f1ab6b2) are on main. The lead's C3 brief carries the notices of #8020's and #8021's gates;
+  it allows a split C3a (`merge --armed` and its one live proof) / C3b (the rest). This is C3b. C3a waits on the lead's
+  ruling: main's merge queue (ruleset 19779175, no bypass actor) refuses a direct PUT merge, and the runner never says
+  PASS/SUBSET_PASS while review.independent is QUEUED, so the brief's proof cannot happen as written.
+lanes:
+  - lane: localci-merger-c3b-build
+    role: build
+    seat: "claude-opus-5-5 (BLUE Dux, M5 worktree infra-localci-merger-c3-1007 and its Pro mirror; code, tests, Pro proofs, this pack)"
+  - lane: localci-merger-c3b-redteam
+    role: review
+    seat: "codex-gpt-6.1-sol (codex-companion via the codex:codex-rescue subagent, read-only, effort high)"
+  - lane: localci-merger-c3b-refuter
+    role: review
+    seat: "agy-gemini-3.1-pro (agy --sandbox --model gemini-3.1-pro-high, prompt-only, diff and files inlined)"
+council_run: council-journal.jsonl
+seat_override: >-
+  Two external families reviewed the candidate (OpenAI Codex and Google Gemini 3.1 Pro), but only the Gemini line counts
+  for R9: the Codex runtime printed gpt-6.1-sol while the roster still names codex-gpt-5.6-sol, so the Codex line is
+  journalled under its true name and does not qualify. The seat was not renamed to fit the roster.
+seat_fallback_reason: >-
+  The reserve agy-gemini-3.1-pro stood in because the remaining titular seats were dead at dispatch (arsenal_probe
+  2026-10-07T13:15:31Z on M5): kimi QUOTA_DEAD (membership quota), tp1-qwen3.8-max and tp1-glm-5.2 QUOTA_DEAD (HTTP 429,
+  monthly plan quota). agy was LIVE.
+pii_scan: clean
+pii_scan_note: >-
+  Code, tests and GitHub metadata only (PR numbers, shas, check names). The journal and the report carry no PR title,
+  author or body; no client data was read or written.
+what_changed: |
+  infra/launchagents/com.balizero.localci-merger.plist: MERGER_PYTHON is the merger's own coordinator venv
+  (~/.nuzantara-pilots/local-ci/merger/venv, pytest 9.0.3 + PyYAML 6.0.3) instead of the shared backend-rag venv, whose
+  pip freeze changed mid-run twice on 2026-10-07 and turned every PASS receipt STALE.
+  scripts/localci/merger.py: `tick --code-sha` (40 lowercase hex, else exit 2) stamps code_sha on every journal line;
+  the decision line journals each check's duration_s. `report`: error and skipped counts; the longest gap between
+  DECISIONS, between any lines, and the age of the last line; a compared merge is GitHub merging the decided candidate
+  (merge commit whose sole parent is the decided base) with >= 12 contexts compared (spec §2 phase B), counted once per
+  PR at merged_at, sorted; the phase E line is READY only on 0 FALSE_GREEN and (>= 50 compared merges or >= 14 days
+  between the first and last of them), never on days alone; a recorded FALSE_GREEN that is not a non-negative int, a
+  timestamp or sha that does not fullmatch, or a merged candidate without merged_at is exit 2; rows carry code_sha and
+  elapsed_s; the ticks line prints the longest and median tick and the slowest run of each check.
+  scripts/localci/localci_merger_tick.sh: heartbeat through scripts/lib/heartbeat.sh run in its own process (never
+  sourced); an interpreter that is not executable is exit 2 before any git; --code-sha passed only when the extracted
+  merger.py knows the flag; the note says code=none when no sha was resolved.
+  apps/organism/organism/organs_registry.yaml: pro.localci_merger expected_hb_seconds 1800 → 3600 (checksum recomputed
+  over the parsed organs, two lines changed).
+  Tests: test_merger.py 41 → 50 cases (wrapper pinned to /bin/bash, required variables isolated, heartbeat library
+  hostile, older merger on main, non-executable python, code sha stamping and refusal; the watchdog test no longer trips
+  on a loaded host's clone); test_merger_report.py 25 → 56 cases. README: the report paragraph, the schedule
+  paragraph, a capacity note (sequential runner, cadence, heartbeat budget) and the own-venv install.
+  Net size 413 added, 102 deleted (tests 240, merger.py 99, README 50, wrapper/plist/registry 24): one concern — the
+  owed notices of the merger's two gates, which all land on the same three files; the tests are most of it.
+proof: |
+  See receipts. Every GitHub call is still a GET through hosted_compare.gh_get; runner.py, contexts_matrix.yaml and
+  hosted_compare.py are untouched; nothing is merged, enqueued, labelled or posted.
+bites:
+  consumer: >-
+    The Pro launchd job com.balizero.localci-merger (user nuzantara, organ pro.localci_merger), which runs the tick every
+    600 s from origin/main and beats ~/.organism/last_seen/pro.localci_merger.json; the operator's phase E decision,
+    which reads `merger.py report`.
+  observation: >-
+    Pro, before merge: the C3b wrapper run by hand on the own venv (14:06:16Z-14:24:37Z) extracted main's merger.py
+    (code 53de39e6a07c, which has no --code-sha, so the flag was not passed), decided #7943 BLOCKED with PASS 10 / QUEUED 1
+    / not applicable 4 / BLOCKED 1, hosted 7/14, 1096.5 s, and wrote the heartbeat through heartbeat.sh
+    {"ts":"2026-10-07T14:24:37Z","status":"ok","note":"tick rc=0 code=53de39e6a07c"}; the launchd tick that came due
+    meanwhile journalled skipped/lease at 14:15:58Z. The C3b report on the live journal at 15:19:36Z: 24 decisions,
+    compared_merges=0, errors=1, skipped {lease: 2, node: 1}, longest tick 1264.6 s (#8025), context agree=84
+    false_green=0, phase E NOT READY, rc 0. The C3b merger run directly with the own venv decided #7945 at 15:40:18Z (PASS 10, 1179.9 s) on a line carrying code_sha 1858452041 and 16 check durations. After merge (owed): the wrapper and plist installed from main and one launchd
+    tick whose line carries code_sha and durations.
+ground:
+  ts: "2026-10-07T12:56:14Z"
+  siblings: >-
+    Branch started from origin/main 856f1ab6b2 + (agent_start, 12:56:14Z) and was rebased on 106d60716e, 3962b9990c and
+    53de39e6a0 as main moved; the sibling lane's #8024 (A2: runner, contexts_matrix.yaml, README top) merged meanwhile with
+    no conflict (this change touches only the README's Merger section). git merge-tree against origin/main clean.
+spend:
+  adversarial_rounds: 1
+  wall_clock_hours: 3.4
+receipts:
+  - claim: "The shared backend-rag venv changed under a running gate twice on 2026-10-07, which is why the merger gets its own: #8022's run (status 12:50:47Z) has 6 receipts bound to env d4a4c17f8048 while the seal reads 6e7c716b8fe0, and the launchd tick of #7979 (status 14:05:52Z) has 9 receipts on a43616bbf0d2 against b80b95c82acc; in both the only differing env key is deps_lock_sha256 (the coordinator's pip freeze), so 6 and 9 checks read STALE and #7979's hosted agreement fell to 0/14."
+    cmd: python3 - <run_dir> (status.json env vs every receipts/*.json env) for runs/pr8022-291048a585f9-856f1ab6b2da-20261007T124827Z and runs/pr7979-974d667c417d-9cd42fdc00ff-20261007T135114Z
+    exit: 0
+    ts: "2026-10-07T15:22:54Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "The own venv covers the BASE runner: runner.py imports only the standard library and drives docker through its CLI. The direct tick with the C3b merger at 688d1dec3b on the own venv (python 3.11.11, deps 72c532e3affc) decided #7962 at 13:19:27Z — PASS 7, QUEUED 1, not applicable 3, BLOCKED 2, no STALE, 108.0 s, rc 0 — and the line carries code_sha 688d1dec3b8a2f3f0d589c60eeda276f665017df."
+    cmd: ~/.nuzantara-pilots/local-ci/merger/venv/bin/python -I scripts/localci/merger.py tick --node Nuzantara --python <venv> --code-sha <sha> ; grep '^import\|^from' scripts/localci/runner.py
+    exit: 0
+    ts: "2026-10-07T13:19:27Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "The C3b wrapper beside main's older merger: run by hand on Pro under env -i with HOME, PATH, MERGER_NODE and the own venv, it resolved code 53de39e6a07c, did not pass --code-sha (main's merger.py lacks it), decided #7943 BLOCKED (PASS 10, hosted 7/14, 1096.5 s), exited 0 with an empty err log and wrote the heartbeat through heartbeat.sh's CLI mode (status ok, note 'tick rc=0 code=53de39e6a07c'). The launchd tick that came due at 14:15:58Z journalled skipped/lease."
+    cmd: env -i HOME=$HOME PATH=... MERGER_NODE=Nuzantara MERGER_PYTHON=<venv> /bin/bash <worktree>/scripts/localci/localci_merger_tick.sh ; cat ~/.organism/last_seen/pro.localci_merger.json ; tail -5 decisions.jsonl
+    exit: 0
+    ts: "2026-10-07T14:24:37Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "The C3b report on the live Pro journal at 1858452041: 24 decisions over 15 PRs, merged_prs=3, compared_merges=0 (no tick compares 12 contexts yet: A2 reaches 7/14), errors=1, skipped {lease: 2, node: 1}, longest gap between decisions 2.1 h, last line 0.07 h ago, code shas seen [688d1dec3b8a], ticks: 24 timed, longest 1264.6 s (#8025), median 140.95 s; context agree=84 false_green=0 local_blind=252, recorded 0; phase E NOT READY; rc 0. Two attempts four minutes earlier refused with rc 2 on GitHub HTTP 500 for every check-runs and status read — the refusal the report is built to make."
+    cmd: ~/.nuzantara-pilots/local-ci/merger/venv/bin/python -I scripts/localci/merger.py report
+    exit: 0
+    ts: "2026-10-07T15:19:36Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "Tick cost and the heartbeat budget: launchd ticks with A2 on main took 883.1 s (#7978), 886.3 s (#7979) and 1264.6 s (#8025), the hand run 1096.5 s (#7943), against StartInterval 600. The runner's cmd_run executes the planned checks in one sequential loop. Heartbeats land when a tick ends, so two are up to tick + 600 s apart (about 1865 s for #8025, past the old 1800): expected_hb_seconds goes to 3600. The sentinel downgrades only status ok to stale and returns 'running' untouched (scripts/nuzantara-sentinel.py), so a start-of-tick 'running' heartbeat would hide a hung tick."
+    cmd: python3 (decisions.jsonl elapsed_s) ; grep -n 'for name in names' scripts/localci/runner.py ; sed -n 670,700p scripts/nuzantara-sentinel.py
+    exit: 0
+    ts: "2026-10-07T15:19:36Z"
+    seat: claude-opus-5-5 on M5 and driving Pro over ssh
+  - claim: "Each of 31 single-rule mutants of the folded merger.py and wrapper turns the merger tests red, sources restored byte-identical: parents membership, merged on any base, contexts threshold -1 and ignored, merges not deduplicated, unsorted, merged_at not required, recorded count defaulted by `or 0`, any type accepted, sha and timestamp `match` instead of fullmatch, READY on days alone, READY ignoring per-context false greens, 49 merges, float days, decision gap over all lines, last-line age dropped, errors and skips uncounted, rows without code_sha, code_sha not stamped, unvalidated, sticky across calls; in the wrapper the flag always and never passed, the library sourced, the executable check, the required-variable check removed and turned into a ${VAR:?} expansion, the kill switch ignored, the heartbeat always ok."
+    cmd: python3 $CLAUDE_JOB_DIR/tmp/mutate_c3b.py
+    exit: 0
+    ts: "2026-10-07T13:59:43Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Seven more mutants on the tick measurement are killed: durations not journalled, a check's max replaced by its last run, elapsed accepting bool or negative values, the median replaced by the mean, the longest tick replaced by the shortest, the slowest checks unsorted (the first sweep let that one live; the fixture now orders them differently by name and by time)."
+    cmd: python3 $CLAUDE_JOB_DIR/tmp/mutate_c3b_ticks.py
+    exit: 0
+    ts: "2026-10-07T15:22:03Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The merger suites pass at 1858452041 on M5: 106 passed. Earlier, under a load average of 100-170, the full suite failed in 3 of 6 runs on one test whose name the coloured output hid; eight parallel runs of the timing-sensitive tests reproduced it 8 of 8 as test_the_watchdog_turns_a_hung_gate_into_an_error_decision_and_frees_the_lease (on main since C1): its 1 s --tick-timeout fired during the clone, before the gate, so no decision line was written. With the tick watchdog at 120 s (the fake runner still re-arms 1 s at the gate) the same eight parallel runs pass 8 of 8."
+    cmd: PYTHONPATH=$PWD python3 -m pytest -q scripts/localci/tests/test_merger.py scripts/localci/tests/test_merger_report.py ; eight parallel pytest -k 'terminated_before or watchdog' (15:22:14Z)
+    exit: 0
+    ts: "2026-10-07T15:25:39Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Organ and registry gates at 1858452041: check_organ_conformance 172 plists, 0 regressions, 0 non-conformant births; ratchet holds (112, no growth); organs_registry.yaml valid with the recomputed checksum 7d2192a17bd3; stale detector, heartbeat-vs-poller, self-reporting-cron margin and workflow wiring 79 passed 1 skipped; both plist lints clean; plutil OK; lint_home_fork --check on M5 with this branch's pairs exit 0 (208 pairs, 0 breaches)."
+    cmd: python3 infra/organ-conformance/check_organ_conformance.py ; check_baseline_ratchet.py --base origin/main ; validate_organs_registry ; pytest scripts/tests/test_organism_stale_detector.py scripts/tests/test_organ_heartbeat_exceeds_poller_interval.py scripts/tests/test_organ_heartbeat_workflow_wiring.py scripts/tests/test_self_reporting_cron_own_plist_margin.py scripts/tests/test_self_reporting_cron_workflow_wiring.py ; lint_plist_keepalive.py ; lint_plist_daemon_cron_xor.py ; lint_home_fork.py --check --json
+    exit: 0
+    ts: "2026-10-07T15:22:41Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Three failures in suites near this change are pre-existing and name other organs: infra/organ-conformance/test_gene_g2_heartbeat_fires.py::test_a_clean_run_reports_ok_and_says_what_it_did (runs scripts/nb-curator-daily.sh, rc 2), scripts/tests/test_regulatory_watcher_schema_fix.py::test_declared_home_fork_pair_registered (regulatory-watcher pair scope) and apps/organism/tests/test_genome_no_active_active.py (com.balizero.wr2control and com.nuzantara.mailbox-janitor.daily); the same three were recorded in #8021's pack."
+    cmd: pytest -q -rf infra/organ-conformance scripts/tests/test_regulatory_watcher_schema_fix.py (M5) ; pytest apps/organism/tests/test_genome_no_active_active.py (Pro backend-rag venv, fakeredis)
+    exit: 1
+    ts: "2026-10-07T15:23:59Z"
+    seat: claude-opus-5-5 on M5 and driving Pro over ssh
+  - claim: "The localci suite on Pro at 1858452041 is green with docker and the Pysa home present: 521 passed, 1 skipped (hypothesis is not installed in the Pro backend-rag venv)."
+    cmd: PYTHONPATH=$PWD ~/nuzantara/apps/backend-rag/.venv/bin/python -m pytest scripts/localci/tests -q -rs -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-07T15:22:17Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "Every acceptance probe of the brief named by test id passes at 1858452041 on M5: 16 probes, 41 test cases (parametrised), all passed."
+    cmd: "python3 -m pytest -q scripts/localci/tests/test_merger_report.py::test_phase_e_readiness_counts_compared_merges_and_days_only_between_them scripts/localci/tests/test_merger_report.py::test_fourteen_days_of_decisions_without_a_compared_merge_are_not_ready scripts/localci/tests/test_merger_report.py::test_one_merge_decided_twice_fourteen_days_apart_is_one_merge_and_no_span scripts/localci/tests/test_merger_report.py::test_the_journal_order_does_not_change_readiness scripts/localci/tests/test_merger_report.py::test_merges_compared_on_fewer_contexts_than_phase_b_are_not_evidence scripts/localci/tests/test_merger_report.py::test_any_one_false_green_keeps_fifty_compared_merges_not_ready scripts/localci/tests/test_merger_report.py::test_the_queue_commit_judges_only_a_decision_on_the_base_it_was_built_on scripts/localci/tests/test_merger_report.py::test_a_merge_commit_with_the_base_among_two_parents_is_not_the_decided_candidate scripts/localci/tests/test_merger_report.py::test_a_recorded_false_green_that_is_not_a_count_is_refused scripts/localci/tests/test_merger_report.py::test_unusable_inputs_are_refused_never_counted scripts/localci/tests/test_merger_report.py::test_errors_and_skips_are_counted_and_only_decisions_measure_the_gap scripts/localci/tests/test_merger.py::test_every_journal_line_carries_the_code_sha_it_ran scripts/localci/tests/test_merger.py::test_an_older_merger_on_main_is_ticked_without_the_flag_it_does_not_know scripts/localci/tests/test_merger.py::test_the_heartbeat_library_runs_in_its_own_process_and_cannot_end_the_tick scripts/localci/tests/test_merger.py::test_a_missing_required_variable_stops_before_any_git_and_says_error scripts/localci/tests/test_merger.py::test_a_python_that_is_not_executable_stops_before_any_git"
+    exit: 0
+    ts: "2026-10-07T15:26:55Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "The C3b merger at 1858452041, run directly on Pro with the own venv and --code-sha, decided #7945 at 15:40:18Z — BLOCKED, PASS 10 / QUEUED 1 / not applicable 4 / BLOCKED 1, no STALE, candidate 3a3d01dbd617 on base 53de39e6a07c, hosted 7/14, 1179.9 s, rc 0. The line carries code_sha 1858452041623af931e7a1e6a82d88bd756a5ee5 and the duration of all 16 checks; the slowest were ctx.antidotes 462.7 s, ctx.guard-guilt-innocence 285.2 s, ctx.cate-sovereignty 157.4 s and ctx.organ-genes 124.3 s."
+    cmd: ~/.nuzantara-pilots/local-ci/merger/venv/bin/python -I scripts/localci/merger.py tick --node Nuzantara --python <venv> --code-sha 1858452041623af931e7a1e6a82d88bd756a5ee5 ; tail -1 ~/.nuzantara-pilots/local-ci/merger/decisions.jsonl (Pro)
+    exit: 0
+    ts: "2026-10-07T15:40:20Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+dissent:
+  - seat: codex-gpt-6.1-sol
+    objection: "BLOCKER: one PR decided twice fourteen days apart reads compared_merges=1, compared_days=14, phase E READY — the span was measured between decisions, not between merges."
+    status: CONFIRMED
+    resolution: "Each compared PR counts once, at GitHub's merged_at (a merged candidate without merged_at is exit 2); the span runs between the first and last of those. Test (one merge decided twice → 1 merge, 0 days, NOT READY); mutant (no dedupe) killed."
+  - seat: codex-gpt-6.1-sol
+    objection: "BLOCKER: 50 merged PRs with contexts_status ok but no comparable context ({} or all BLOCKED) read READY with LOCAL_BLIND=50 and AGREE=0."
+    status: CONFIRMED
+    resolution: "A merge counts as compared only when at least 12 contexts had a verdict on both sides (AGREE + FALSE_GREEN + FALSE_RED >= MIN_COMPARED_CONTEXTS = 12, the AGREE >= 12 of 14 of spec §2 phase B). Until phase B lands no live merge qualifies, and the README says so. Test parametrised on all-blind and one-blind; two mutants (threshold - 1, threshold ignored) killed."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR: `or 0` turns a recorded FALSE_GREEN of false, 0.0, [], {}, '' or null into zero before the type check."
+    status: CONFIRMED
+    resolution: "recorded_false_green() reads the value before any default: counts absent (a comparison that failed at tick time) is 0; counts present must hold a non-negative int under FALSE_GREEN, else exit 2. Thirteen parametrised shapes plus the failed-comparison innocence case; two mutants killed."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR: the heartbeat library, sourced from a mutable checkout before the trap, controls the wrapper: `exit 0` ends it green, `set +e` lets a later failure pass as ok."
+    status: CONFIRMED
+    resolution: "The wrapper runs heartbeat.sh in its own process (the library's CLI mode), never `source`; a failed write is said on stderr. Guilt test: a library that runs `set +eu; exit 0` beside a tick that fails leaves the wrapper's exit 1; mutant (sourced) killed."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR: rollout breaks both ways — the new wrapper passes --code-sha to main's merger.py, which argparse rejects with exit 2 (no tick, no journal line); the old wrapper beside the new merger writes lines without code_sha."
+    status: CONFIRMED
+    resolution: "The wrapper passes --code-sha only when the extracted merger.py knows the flag, so a newer wrapper beside an older main (or a stale mirror after a failed fetch) still ticks. Test with an older merger on main; mutants (flag always, flag never) killed. The other direction is accepted and visible: a line without code_sha is reported as such (the window lists the code shas it saw), and the install after merge replaces the wrapper the same hour."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR: a 40-hex sha followed by a newline passes the `$`-anchored match and lands in the journal."
+    status: CONFIRMED
+    resolution: "is_sha() and is_ts() use fullmatch (code sha, merge commit sha, heads, journal timestamps, --since). Tests: a code sha with a newline or upper case is exit 2; a journal timestamp with a newline is exit 2; both mutants killed."
+  - seat: codex-gpt-6.1-sol
+    objection: "MINOR: reversing the journal's lines turns compared_days negative and READY into NOT READY."
+    status: CONFIRMED
+    resolution: "The merged_at events are sorted before the span is taken. Test with the journal reversed; mutant (unsorted) killed."
+  - seat: codex-gpt-6.1-sol
+    objection: "MINOR: the report drops the provenance the tick now writes."
+    status: CONFIRMED
+    resolution: "Every row carries its decision's code_sha and the window lists the code shas seen; the gaps line prints them. Test; mutant killed."
+  - seat: codex-gpt-6.1-sol
+    objection: "MINOR: the README promises to show a merger that stopped writing, but a gap needs two lines — the silence since the last line is not measured."
+    status: CONFIRMED
+    resolution: "The window carries last_line_age_h, the age of the last line against the clock, and the gaps line prints it. Assertion added; mutant killed."
+  - seat: codex-gpt-6.1-sol
+    objection: "MINOR: readiness that ignores per-context FALSE_GREEN survives all 38 report tests."
+    status: CONFIRMED
+    resolution: "Readiness is tested with fifty compared merges against each FALSE_GREEN source apart (recorded at tick time, per context now, per decision); mutant killed."
+  - seat: agy-gemini-3.1-pro
+    objection: "BLOCKER: merged_here ignores the base, so every decision of a merged head reads GitHub GREEN (hiding a false green on an older base) and joins the compared span."
+    status: CONFIRMED
+    resolution: "merged_here now holds only when the queue merged the decided candidate (the merge commit whose sole parent is the decided base); a decision on another base is judged on its head's checks. The base test now also asserts github RED and no compared merge; mutant killed."
+  - seat: agy-gemini-3.1-pro
+    objection: "MAJOR: CODE_SHA is a module global, so a run without --code-sha after one with it stamps the stale value; an empty SHA writes `code=` in the heartbeat."
+    status: PLAUSIBLE
+    resolution: "cmd_tick assigns CODE_SHA from its own argument on every call, so no value leaks (Codex measured the sequence and found none); the test now runs a tick without the flag after one with it and asserts no code_sha (mutant `a.code_sha or CODE_SHA` killed). The heartbeat note says code=none when no sha was resolved."
+  - seat: agy-gemini-3.1-pro
+    objection: "BLOCKER: the new wrapper passes --code-sha to an older merger.py; sourcing the library lets a working checkout alter or kill the wrapper."
+    status: CONFIRMED
+    resolution: "Same cures as the Codex findings: the flag only when the extracted merger knows it; the library in its own process. Tests and mutants as above."
+  - seat: agy-gemini-3.1-pro
+    objection: "BLOCKER: the merger's venv has only pytest and PyYAML, so the BASE runner crashes on missing project dependencies such as docker; a missing venv fails with 127 instead of 2."
+    status: PLAUSIBLE
+    resolution: "Measured, the first half does not hold: runner.py imports only the standard library and drives docker through its CLI (shutil.which('docker')); the own-venv tick on Pro ran PASS 7 / QUEUED 1 / not applicable 3 / BLOCKED 2, the shape of the last shared-venv tick. The second half is cured: an interpreter that is not executable is exit 2 before any git, with an error heartbeat. Test; mutant killed."
+  - seat: agy-gemini-3.1-pro
+    objection: "MINOR: the README's '14 days between the first and the last compared merge' is computed between decisions of the same merge."
+    status: CONFIRMED
+    resolution: "Cured with the dedupe at merged_at; the README now says what is counted and when a merge is compared."
+  - seat: agy-gemini-3.1-pro
+    objection: "MINOR: the code-sha test stays green if CODE_SHA is only set when the flag is given."
+    status: CONFIRMED
+    resolution: "The test runs a tick without the flag after one with it and asserts the line carries no code_sha; the sticky mutant is killed."
+owed:
+  - "After merge, on Pro: re-take the wrapper from main (copy beside, mv, cmp -s against origin/main's blob), install the plist with only __HOME__ substituted and bootout/bootstrap it (MERGER_PYTHON changes), then prove one launchd tick whose decision line carries code_sha and durations and whose heartbeat comes through heartbeat.sh; scripts/lint_home_fork.py --check clean for the pair. Until then the launchd job runs the C2b wrapper on the shared venv and its receipts can go STALE again."
+  - "PR-C3a, per the lead's ruling (B + ENQUEUE), built from origin/main after this merges: `merge --armed` behind LOCALCI_MERGER_ARMED=1 + the label localci:merge-shadow-ok set by a maintainer (labeler read from the issue events) or a PR of the repo's own bot/sessions; local criterion 'no local red' (no FAIL/ERROR/STALE, every executed required context OK, only review.independent QUEUED and not_implemented contexts allowed, both counted on the line, never the word PASS) AND GitHub's required checks green on the head; enqueue via GraphQL enqueuePullRequest with expectedHeadOid, never PUT /merge; a moved head or a dequeue journalled, never retried blindly; proved once on a docs-only PR, flag off after."
+  - "Pen residual: anything the merger does on GitHub (C3a's enqueue included) runs under the ambient gh token, the shared identity of every session on Pro. Only Zero's dedicated merger credential (spec §4.1, a GitHub App or machine user under an OS user no agent session can read) cures it."
+  - "review.independent has no local seat: the runner plans it and leaves it QUEUED, so overall is never PASS. The end state needs either a local review seat or a ruling that drops it as a required check — not decided here."
+  - "compared_merges stays 0 until phase B: a merge counts only with >= 12 contexts compared and A2 reaches 7/14. Phase D's window effectively starts when B lands."
+  - "Capacity: ticks take 883-1265 s with the runner's sequential loop; StartInterval stays 600 and launchd serialises. Parallel checks are phase B's runner work; expected_hb_seconds 3600 holds while tick + 600 s stays under it (a tick past 3000 s needs the budget raised again, with a receipt)."
+  - "The wrapper decides whether to pass --code-sha by grepping the extracted merger.py for the flag. Once every main the mirror can serve carries it, a later PR can drop the probe."
+  - "Carried from C1/C2: a kill -9 of a tick leaves its runner child running to the runner's own deadline; a second host (Mini) needs the Postgres lease of spec §3 before it may tick; GIT_ATTR_NOSYSTEM has no guilt test (planting a system attributes file needs root)."

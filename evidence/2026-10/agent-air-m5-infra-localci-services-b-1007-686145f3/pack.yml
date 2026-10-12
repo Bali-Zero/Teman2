@@ -1,0 +1,226 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN phase B (ruling docs/rules/RULINGS.md, RULED 2026-10-07), handed by the team lead of
+  Zero's session on 2026-10-07; this pack is PR-B1 (services + Backend Tests + Harness floor). Design anchor:
+  docs/specs/localci-sovereign-2026-10-07.md §2 phase B. Rebased on origin/main after A2 merged as 9cd42fdc00:
+  services are admitted only in a matrix context keyed `expressions: true` (plan_services judges them there);
+  `container:` stays BLOCKED, as A2 ruled.
+lanes:
+  - lane: localci-services-b-build
+    role: build
+    seat: "claude-opus-5-5 (BLUE Dux of LOCALCI-SOVEREIGN phase B, M5; heavy execution on Pro over ssh)"
+  - lane: localci-services-b-redteam
+    role: review
+    seat: "codex-gpt-6.1-sol (codex:codex-rescue runtime, read-only, default-to-defective; 3 rounds)"
+  - lane: localci-services-b-refuter
+    role: review
+    seat: "agy-gemini-3.1-pro (agy --sandbox --model gemini-3.1-pro-high, prompt-only, diff inlined; 3 rounds)"
+council_run: council-journal.jsonl
+seat_override: >-
+  Two external families reviewed the candidate (OpenAI Codex, Google Gemini 3.1 Pro), but only one line counts for
+  R9: the Codex home's configured default is gpt-6.1-sol while the roster names codex-gpt-5.6-sol, so the Codex
+  lines are journalled under their true name and do not qualify — the position A1's and PR #7991's packs took.
+seat_fallback_reason: >-
+  The reserve agy-gemini-3.1-pro stood in because every remaining titular seat was dead at dispatch
+  (scripts/arsenal_probe.py --seats kimi,tp1-qwen3.8-max,tp1-glm-5.2, 2026-10-07T15:52:47Z on M5, and the same
+  at 11:27:22Z): kimi QUOTA_DEAD (membership quota), tp1-qwen3.8-max and tp1-glm-5.2 QUOTA_DEAD (HTTP 429,
+  monthly plan quota, reset 2026-10-11 16:00 UTC).
+pii_scan: clean
+pii_scan_note: Runner code, a contexts matrix, tests, CI logs of the repository's own suites and GitHub check metadata only; no client data was read or written.
+what_changed: |
+  scripts/localci/runner.py (v0.6.0, service contexts, kind contained_jobs): a matrix context keyed
+  `expressions: true` is planned from the BASE job chain (`needs:`), every step accounted for, matrix legs
+  expanded as hosted does. Services (Postgres, Redis) take BASE's spec and literal env, run from operator-pinned
+  stand-ins pinned by image id, in a loopback-only network namespace, health-checked within BASE's budget, torn
+  down in finally. A deps image (wheels only, strict pins, sha256-pinned fetches, node from the official image) is
+  built at plan; the install steps re-run offline against it. pip-audit runs in an egress sandbox on BASE's tool
+  pins; the Harness Gear>=2 reader runs at plan on the host, BASE copy under python -I. Expressions the run cannot
+  hold (secrets, github.token, unmodelled github/job/strategy paths, rebuilt commit ids outside the driver) BLOCK.
+  scripts/localci/gh_expr.py (new): the actions/runner expression subset (ParseNumber, OrdinalIgnoreCase, identity).
+  scripts/localci/steps_driver.py: expression mode — job.status, implicit success(), continue-on-error, step
+  timeout-minutes, GITHUB_OUTPUT as FileCommandManager parses it, emulated artifacts, merge_group ids as hex.
+  scripts/localci/contexts_matrix.yaml: Backend Tests and Harness floor executed (9 executed, 5 blocked), parity_gaps.
+  scripts/localci/README.md (service contexts, capacity on Pro), tests/test_service_contexts.py (new).
+proof: |
+  See receipts. Nothing in this change posts a status, edits branch protection, touches a workflow or arms the
+  adapter. Before it: Backend Tests and Harness floor LOCAL_BLIND on every commit (7/14 with A2). After it, on Pro
+  from the final head: both AGREE on three merged hosted-green main commits (9/14, FALSE_GREEN 0); an unpushed
+  failing backend test turns only Backend Tests RED, an unpushed hot-zone touch without a brief only Harness
+  floor RED, and hosted_compare says HOSTED_PENDING for both, never AGREE.
+bites:
+  consumer: >-
+    scripts/localci/hosted_compare.py run on Pro over a local run of a merged hosted-green main commit (the comparator
+    spec §4 makes the only place a local claim is stated).
+  observation: >-
+    Pro, 2026-10-07, runner of 120ec673fd (sha256 56d78eb3…; byte-identical to the measured 0bbcda2916 for runner,
+    driver, gh_expr, matrix, Dockerfile and hosted_compare), live GETs: 1df44b9b65 agreement=9/14 false_green=0
+    false_red=0 with Backend Tests and Harness floor AGREE, both executed; 01d1241330 agreement=9/14 false_green=0
+    (Harness executed; Backend Tests not triggered by the change map, so hosted and local both skip it). On
+    481b42dd9e Backend Tests AGREE, executed. Harness floor read FALSE_RED there because GitHub answered HTTP 500 to
+    BASE's gate reader. Run alone at 17:33Z, it read AGREE.
+ground:
+  ts: "2026-10-07T17:45:00Z"
+  siblings: >-
+    `gh pr list --state open --json number,files`: no open PR touches scripts/localci (16:07Z). origin/main moved
+    by #8027 (C3b: merger, its tests, README); B1 rebased onto 3edce71137 without conflict, and the six files the
+    measurement ran are byte-identical (git rev-parse of each blob). Pro's main checkout was not written: runs use
+    the broker's worktree and a --shared clone under ~/.nuzantara-pilots/local-ci/executor-b/.
+appetite_exceeded: >-
+  Three review rounds and about eleven hours against two and eight: the second-round cures needed a third look
+  (the merge_group ids reached expressions as hex only after a Pro measurement showed a FALSE_RED), and the
+  final measurement ran twice because the API/DNS outage of 14:29-14:37Z turned the first one red on the network.
+spend:
+  adversarial_rounds: 3
+  wall_clock_hours: 11
+receipts:
+  - claim: "1df44b9b65 (PR #8003, base d961f053b4): agreement=9/14 false_green=0 false_red=0 local_blind=5; Backend Tests PASS (executed, 1334 s wall, 1548 s CPU), Harness floor PASS (68 s); seal minted 16:00:06Z, UNCHANGED at the end; docker containers new since start 0, networks new 0; coordinator venv unchanged."
+    cmd: ssh pro 'measure.sh f5-main-1df44b9b65 1df44b9b65 d961f053b4 8003' (plan, run, status --seal, docker ps -a and docker network ls before and after, hosted_compare live)
+    exit: 0
+    ts: "2026-10-07T16:42:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "01d1241330 (PR #8004): agreement=9/14 false_green=0 false_red=0; Harness floor PASS (79 s); Backend Tests NOT_APPLICABLE by the trusted change map (hosted skipped its steps too). The first hosted_compare call met GitHub HTTP 500 (refused, rc=2); the re-run on the same status.json read the numbers above. Seal UNCHANGED; 0 new containers/networks."
+    cmd: ssh pro 'measure.sh f5-main-01d1241330 01d1241330 1df44b9b65 8004; hosted_compare.py runs/f5-main-01d1241330/status.json'
+    exit: 0
+    ts: "2026-10-07T17:03:12Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "481b42dd9e (PR #7995): agreement=8/14 false_green=0 false_red=1. Backend Tests PASS, executed (1199 s wall / 1306 s CPU). Harness floor FAIL: BASE harness_gate_read.py at plan printed CANNOT-VERIFY on `gh api …/status` HTTP 500. Run alone in a --shared clone at 17:33Z, it read AGREE (13 steps rc=0). Seal UNCHANGED; 0 new containers/networks."
+    cmd: ssh pro 'measure.sh f5-main-481b42dd9e …; ONLY=ctx.harness-floor measurew2.sh f6-harness-481b42dd9e 481b42dd9e 0e6d48a4e9 7995'
+    exit: 0
+    ts: "2026-10-07T17:34:30Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "Guilt, unpushed backend-red 5121bdead7 (a failing unit test): only Backend Tests RED (backend-shard[1] › Run unit tests rc=2, fan-in rc=1), every other executed context PASS; hosted_compare HOSTED_PENDING on all 14 rows, agreement 0/14, rc=3. Unpushed harness-red dab6c12ff4 (a hot-zone touch, no brief): only Harness floor RED (floor >= 2, no evidence/brief.yml), HOSTED_PENDING on all 14. Seals UNCHANGED; 0 new containers/networks."
+    cmd: ssh pro 'guilt.sh 1df44b9b65; UNPUSHED=1 measure.sh f-guilt-<g> <sha> 1df44b9b65' (runner of 3c1af47487)
+    exit: 0
+    ts: "2026-10-07T15:43:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "The guilt runs carry over to the final code: the plan of each guilt candidate under 120ec673fd's runner has 0 differences in plan.checks from the plan its run used. The comparison is not vacuous: the two guilt plans differ in 36 places."
+    cmd: ssh pro 'runner.py plan --run-dir runs/p5-guilt-<g> …; planid.py runs/f-guilt-<g> runs/p5-guilt-<g>'
+    exit: 0
+    ts: "2026-10-07T16:02:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "The localci suite is green on Pro with docker at 0bbcda2916 (120ec673fd before the rebase onto #8027): 590 passed, 0 skipped (343 s). On M5 without docker, at the rebased head 120ec673fd (with #8027's merger tests): 615 passed, 13 skipped (needs_docker). test_service_contexts.py: 106 passed after the last change, among them the brief's probes test_service_contexts.py::test_a_service_the_runner_cannot_reproduce_is_blocked_naming_why, test_service_contexts.py::test_an_unhealthy_service_blocks_the_job_and_is_torn_down, test_service_contexts.py::test_no_host_secret_reaches_a_service_or_rides_on_its_argv, test_service_contexts.py::test_the_base_service_spec_is_the_one_planned_whatever_the_candidate_writes and test_service_contexts.py::test_a_value_hosted_holds_and_this_run_does_not_is_refused_never_read_as_empty."
+    cmd: PYTHONPATH=$W <venv>/bin/python -m pytest scripts/localci/tests -q -rs -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-07T16:08:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "Capacity on Pro (Colima aarch64, 4 CPU, 8 GiB; checks and legs run one after another; the merger ticks on the same VM). Backend Tests: 1334 s wall / 1548 s CPU on 1df44b9b65. Its legs: static 193/69, shard 1 376/567, shard 2 272/465, shard 3 396/429, fan-in 97/18. On 481b42dd9e: 1199/1306. Harness floor: 68-92 s wall, about 1 s CPU in the sandbox. A whole run takes 2313 s and 2194 s (944 s when Backend Tests is not triggered). Plan: 6-9 s with the deps image cached. The deps image is 9.85 GB, built cold in 394 s."
+    cmd: ssh pro 'python3 -I timing.py runs/f5-main-* runs/f-guilt-*'
+    exit: 0
+    ts: "2026-10-07T17:40:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "A first final run on 481b42dd9e (runner of 3c1af47487, 14:01Z) read Backend Tests FALSE_RED: pip-audit in the egress sandbox met ReadTimeoutError on pypi.org during the 14:29-14:37Z outage. It is kept as evidence, not counted. PR-B2 makes such a failure no verdict, unless the log holds a finding."
+    cmd: ssh pro 'grep ReadTimeoutError runs/f-main-481b42dd9e/logs/ctx.backend-tests.backend-static.egress.log'
+    exit: 0
+    ts: "2026-10-07T15:10:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+dissent:
+  - seat: codex-gpt-6.1-sol
+    objection: "BLOCKER (round 1): job.status is never set, so `if: job.status == 'success'` skips a step hosted runs (reproduced: NOT_APPLICABLE with status success)."
+    status: CONFIRMED
+    resolution: "The driver sets job.status to the live job status before each step; any other job.* path is refused at plan (d2d4abeeb6). Corpus rows."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR (round 1): a step without `if:` still runs after a red, where hosted's implicit success() skips it (reproduced)."
+    status: CONFIRMED
+    resolution: "A step with no `if:` is success(); after a red only always()/failure() steps run (d2d4abeeb6). Corpus row."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR (round 1): a step killed by a signal, or one that cannot start, leaves the job status success (reproduced)."
+    status: CONFIRMED
+    resolution: "Both turn the job status to failure; under continue-on-error the job goes on as hosted, and the step itself stays ERROR/BLOCKED (d2d4abeeb6, 52e0999a2b). Corpus rows."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR (rounds 1-2): number coercion differs from ExpressionUtility.ParseNumber ('   ', 0x, 0o, 1_0; then signed radix, Int32 overflow, Infinity)."
+    status: CONFIRMED
+    resolution: "ParseNumber reproduced: trim, '' 0, invariant decimal, unsigned 0x/0o read as an Int32 (0xffffffff -1, past 32 bits NaN), Infinity (d2d4abeeb6, 52e0999a2b). Corpus rows."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR (round 1): property lookup is case-sensitive, string equality folds ß to SS, objects compare by contents (reproduced)."
+    status: CONFIRMED
+    resolution: "Property names match ignoring case, strings compare per character (OrdinalIgnoreCase, no expansion), objects by identity (d2d4abeeb6). Corpus rows."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR (round 1): modelled roots accept properties the run does not hold (github.run_id, runner.tool_cache, strategy.*), read as null."
+    status: CONFIRMED
+    resolution: "runner.unmodelled_path refuses at plan any github/runner property, merge_group payload field, job.* other than status, strategy.*, or upstream output the run does not carry (d2d4abeeb6). The four real jobs read none of them (checked). Corpus rows."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR (rounds 1-2): GITHUB_OUTPUT parsing accepts malformed files and alters values (\\r, BOM)."
+    status: CONFIRMED
+    resolution: "FileCommandManager on Linux reproduced: \\n-only split, \\r kept, BOM dropped, exact delimiter, a malformed file fails its step (d2d4abeeb6, 52e0999a2b). Corpus rows."
+  - seat: codex-gpt-6.1-sol
+    objection: 'BLOCKER (round 1): `demo==1.0; python_version >= "3" --no-binary=:all:` passes REQ_PIN and pip reads the option, lifting --only-binary in the networked download (sdist build as root with network).'
+    status: CONFIRMED
+    resolution: "A requirement line reaches the networked stage only as name[extras]==version with a PEP 508 marker grammar, and never with a space-led dash anywhere (d2d4abeeb6, 52e0999a2b). All 243 lock pins and both CI-tool pins still kept. Corpus rows."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR (round 1): a service whose `docker run` times out is never removed; one failed removal stops the others (reproduced with mocks)."
+    status: CONFIRMED
+    resolution: "The name is handed back before docker is asked and removed in finally; each removal is isolated (d2d4abeeb6). Corpus row."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR (round 1): _run_egress accepts a junit that disagrees with its exit code (rc=1 with a PASS case becomes rc 0)."
+    status: CONFIRMED
+    resolution: "Exactly one case, named as the step, and (rc, status) in {(0, PASS), (1, FAIL)}, else no verdict (d2d4abeeb6). Corpus rows."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR (round 1): pip-audit --no-deps --disable-pip audits only the listed pins; hosted resolves the locks and also audits what they leave unpinned (the cuda subtree, or a dependency a lock omits) — a FALSE_GREEN shape."
+    status: CONFIRMED
+    resolution: "Not cured: resolving here would install wheels (and run their code) with network. Declared in the matrix parity_gaps with the exact shape, and owed."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR (round 1): trusted_env keeps AWS_*/DOCKER_CONFIG, which reach the docker build/run processes."
+    status: RETRACTED
+    resolution: "Disputed with evidence: they reach the host's own docker CLI process, never a container: service env is BASE's literal `--env=K=V` map, the sandbox env is the runner's fixed map, and no `--env NAME` passthrough form exists (grep). trusted_env is A1's filter, unchanged here."
+  - seat: codex-gpt-6.1-sol
+    objection: "MINOR (round 1): a continue-on-error failure is summarised as `N step(s) rc=0`."
+    status: CONFIRMED
+    resolution: "The context reason now names each continue-on-error step that failed without failing its job (d2d4abeeb6)."
+  - seat: agy-gemini-3.1-pro
+    objection: "BLOCKER (round 1): side-step config (egress/host) is zipped to BASE steps by position; a reordered matrix applies it to the wrong step."
+    status: CONFIRMED
+    resolution: "Side steps bind by name, and a matrix that lists a job's steps out of BASE order is BLOCKED (outputs and status flow in order) (d2d4abeeb6). Corpus row."
+  - seat: agy-gemini-3.1-pro
+    objection: "MAJOR (round 1): a job timeout-minutes given as an expression silently becomes 360."
+    status: CONFIRMED
+    resolution: "BLOCKED naming it (d2d4abeeb6). Corpus row."
+  - seat: agy-gemini-3.1-pro
+    objection: "BLOCKER (round 2): github.event.action is refused, which breaks pull_request workflows."
+    status: CONFIRMED
+    resolution: "The refusal was real, the premise was not: the run emulates the merge_group event only, where action is checks_requested; it is now modelled (52e0999a2b), and every other payload field a merge_group carries is still refused."
+  - seat: agy-gemini-3.1-pro
+    objection: "MAJOR (round 2): the continue-on-error prefix was dropped from system-out, so the summary never sees it."
+    status: RETRACTED
+    resolution: "parse_expr_junit adds the prefix; test_the_driver_decides_conditions… asserts the exact reason `continue-on-error: rc=3`."
+  - seat: agy-gemini-3.1-pro
+    objection: "MINOR (round 2): marker values containing a dash are dropped."
+    status: CONFIRMED
+    resolution: "Quoted values may hold a dash; only a space-led dash anywhere on the line is refused (52e0999a2b). Corpus row."
+  - seat: agy-gemini-3.1-pro
+    objection: "MAJOR (round 2): refusing timeout-minutes expressions over-blocks legitimate workflows."
+    status: PLAUSIBLE
+    resolution: "Not acted on: BLOCKED is the honest answer for a value the run does not evaluate; it never reports a verdict. The real jobs use numbers."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR (round 3, on 3c1af47487): the hex substitution is partial — the runner evaluates artifact names/paths, a host reader's argv and an egress step itself, where github.sha is still the placeholder `localci` (reproduced in memory)."
+    status: CONFIRMED
+    resolution: "Any such text that reads a rebuilt id, or an object holding one, is BLOCKED at plan (120ec673fd). No executed context reads them there (checked on the matrix). Corpus rows."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR (round 3): the rebuilt ids are not hosted's ids; a step comparing github.sha with a hosted value would diverge (FALSE_GREEN if it guards an exit 1)."
+    status: PLAUSIBLE
+    resolution: "A limit of any rebuilt-commit run, older than this commit (the ids were `main`/`localci` before). Every read of them in the executed jobs is a git operation on the rebuilt tree (checked: Backend Tests partitioner, Harness floor diff/bites steps); the sandbox has no network for an API call. Declared, not cured."
+  - seat: agy-gemini-3.1-pro
+    objection: "BLOCKER (round 3): a job-level env or an emulated step's if: reads github.sha past the refusal."
+    status: RETRACTED
+    resolution: "resolve_steps merges workflow and job env into every step's env, which the refusal reads; an emulated or side step's if: is decided by the driver, which holds the hex ids."
+  - seat: agy-gemini-3.1-pro
+    objection: "BLOCKER (round 3): reading the holder object (github.event.merge_group) bypasses a leaf-only check."
+    status: CONFIRMED
+    resolution: "Any path that holds a rebuilt id is refused (120ec673fd). Corpus row."
+  - seat: agy-gemini-3.1-pro
+    objection: "MAJOR (round 3): plain text such as 'github.sha' outside an expression is refused."
+    status: RETRACTED
+    resolution: "paths() reads only inside ${{ }}; a corpus row asserts plain text passes."
+  - seat: agy-gemini-3.1-pro
+    objection: "BLOCKER (round 3): the driver raises KeyError on a non-merge_group event."
+    status: RETRACTED
+    resolution: "github_ctx always builds the merge_group event; the runner emulates no other."
+residuals:
+  - "pip-audit runs with --no-deps --disable-pip in the egress sandbox: it audits the pins the locks list, while hosted resolves them first and also audits what they leave unpinned — a FALSE_GREEN shape, declared in the matrix parity_gaps and owed (resolving here would install wheels, and run their code, with network)."
+  - "Two infrastructure failures read as FALSE_RED in this PR's own measurements: GitHub HTTP 500 to the Harness gate reader at plan (481b42dd9e), and a pypi.org timeout to pip-audit during the outage. Neither is a green. PR-B2 (stacked) makes both no verdict, BLOCKED and re-run: the reader through the matrix's `no_verdict_when: CANNOT-VERIFY`, and the egress step when its log shows a network error and no finding."
+  - "A step-level timeout-minutes in a PLAIN (non-expression) context is neither emulated nor BLOCKED here, as before this PR; PR-B2 adds the one-line BLOCK (team-lead notice). No plain executed context carries one (checked)."
+  - "github.sha and the merge_group ids are the sandbox's rebuilt commits, not hosted's ids: a step comparing them with a hosted value could diverge. Every read in the executed jobs is a git operation on the rebuilt tree."
+  - "The candidate and deps images build FROM tags (python:3.11.17-slim-bookworm, python:3.12.15-slim-bookworm, ubuntu:24.04, node:24-bookworm-slim), not digests: what is trusted is the built image's ID — the plan pins it and every sandbox and service runs by that ID, and the candidate image's ID is in the env fingerprint, so a rebuild that changes it stales every contained verdict."
+  - "Service contexts run on linux/arm64 (Colima on Pro) against the docker.io arm64 twins of the ghcr mirror's postgres:15 and redis:7; hosted is ubuntu-latest x64 — declared in parity_gaps with the wheel-architecture gap."
+  - "Contained verdicts stay candidate-produced (junit written inside the sandbox), as A1 and A2 stated: a deliberately malicious candidate can forge its own contained green, as it can make its own hosted job exit 0."
+  - "PR size: +1580/-60 against the merge base (runner +635/-19, gh_expr +217 new, steps_driver +135, matrix +148/-38, tests +408/-2, README +37/-1), about 1520 net — well above the ~400 guide. The mandate's split is B1/B2; inside B1 the expression evaluator, the expression-mode driver and the service planner have one consumer, the two contexts, and none ships alone without a planner no context uses. Owed in the report, not hidden."
+  - "Journal lines name the commits as they were when each seat reviewed them; across two rebases (A2's squash 9cd42fdc00, then #8027) 5c6a768f58/66b67f468d/7d44772980 are 03af72dc6f (re-resolved against A2's services rule)/d2d4abeeb6/52e0999a2b, and 28649e809f/0bbcda2916 are 3c1af47487/120ec673fd."

@@ -56,18 +56,19 @@ import { KBLI_CONCORDANCE_2025 } from "./concordance";
 // CONSTANTS & HELPERS
 // =============================================================================
 
-const MOCK_SOURCES = [
+// Titles and types only. Enacted dates are not shown on the page, so they are
+// not stored here: PP 28/2025 was enacted 5 Jun 2025 and Peraturan BPS 7/2025
+// on 17 Dec 2025, which the previous "Jan 2025" / "Feb 2025" values contradicted.
+const OFFICIAL_SOURCES = [
   {
     id: "pp28",
     title: "PP 28/2025 Lampiran I",
     type: "Official Regulation",
-    date: "Jan 2025",
   },
   {
     id: "bps25",
     title: "Peraturan BPS 7/2025",
     type: "Statistical Standard",
-    date: "Feb 2025",
   },
 ];
 
@@ -252,7 +253,7 @@ function renderWithTooltips(text: string): React.ReactNode {
 const SourceCard = ({
   source,
 }: {
-  source: { id: string; title: string; type: string; date: string };
+  source: { id: string; title: string; type: string };
 }) => (
   <div className="group flex items-center gap-4 p-4 rounded-lg bg-surface-deep/40 border border-white/5 hover:bg-[#151921] hover:border-accent-sand/30 transition-all duration-300 backdrop-blur-sm">
     <div className="p-2.5 rounded bg-surface-editorial-elevated text-[#888] group-hover:text-accent-sand transition-colors border border-white/5">
@@ -262,7 +263,7 @@ const SourceCard = ({
       <h4 className="text-sm font-medium text-silver group-hover:text-white font-serif tracking-wide">
         {source.title}
       </h4>
-      <p className="text-[10px] md:text-[10px] uppercase tracking-widest text-[#666] mt-1">
+      <p className="text-[11px] uppercase tracking-widest text-[#666] mt-1">
         {source.type}
       </p>
     </div>
@@ -323,27 +324,17 @@ const WelcomeOnboarding = ({
       className="mb-10 p-1 rounded-xl bg-gradient-to-r from-[#D4B483]/40 via-[#D4B483]/10 to-transparent border border-accent-sand/30"
     >
       <div className="bg-[#050507] rounded-lg p-4 md:p-6 flex flex-col md:flex-row items-center gap-6 text-left">
-        <div className="relative shrink-0">
-          <div className="w-16 h-20 bg-[#0A0C10] border border-accent-sand/40 rounded shadow-2xl flex items-center justify-center p-2 text-center transform -rotate-2">
-            <div className="text-[5px] uppercase tracking-wider text-accent-sand">
-              KBLI 2025 Dossier
-            </div>
-          </div>
-          <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full animate-pulse shadow-lg">
-            RESTRICTED
-          </div>
-        </div>
         <div className="flex-1">
           <h4 className="text-white font-serif text-lg mb-1">
             Are your company codes still valid?
           </h4>
           <p className="text-[#888] text-xs leading-relaxed mb-4">
-            Hundreds of KBLI 2020 codes were revoked on Dec 17. The KBLI 2025
-            transition starts now.
+            KBLI 2025 (Peraturan BPS 7/2025) replaced KBLI 2020 in December
+            2025.
           </p>
           <button
             onClick={onOpenBlackBook}
-            className="flex items-center gap-2 text-accent-sand text-[10px] font-bold uppercase tracking-widest hover:text-white transition-colors group"
+            className="flex items-center gap-2 text-accent-sand text-[11px] font-bold uppercase tracking-widest hover:text-white transition-colors group"
           >
             <span>Ask about your codes</span>
             <ArrowRight
@@ -384,7 +375,7 @@ const WelcomeOnboarding = ({
     </div>
 
     <div className="border-t border-white/5 pt-8 md:pt-10">
-      <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-6">
+      <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-6">
         How it works
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
@@ -473,7 +464,7 @@ const AIMessageContent = ({
       {isTyping && isLatest && (
         <button
           onClick={skip}
-          className="text-[10px] uppercase tracking-widest text-[#555] hover:text-accent-sand transition-colors"
+          className="text-[11px] uppercase tracking-widest text-[#555] hover:text-accent-sand transition-colors"
         >
           Skip &rarr;
         </button>
@@ -534,7 +525,7 @@ const AIMessageContent = ({
                         <div className="flex items-center gap-3">
                           {pmaBadgeInline.label && (
                             <span
-                              className="text-[10px] px-2 py-0.5 rounded-full border"
+                              className="text-[11px] px-2 py-0.5 rounded-full border"
                               style={{
                                 color: pmaBadgeInline.color,
                                 backgroundColor: pmaBadgeInline.bg,
@@ -556,7 +547,7 @@ const AIMessageContent = ({
                         {result.description}
                       </p>
                       {!compareMode && (
-                        <div className="flex items-center gap-1 mt-2 text-[10px] text-[#555] group-hover:text-accent-sand transition-colors">
+                        <div className="flex items-center gap-1 mt-2 text-[11px] text-[#555] group-hover:text-accent-sand transition-colors">
                           <span>View details</span>
                           <ChevronRight size={10} />
                         </div>
@@ -797,7 +788,7 @@ const InspectorChoreographed = ({
           className="flex items-center justify-between"
         >
           <RiskGauge level={riskLevel} />
-          <span className="text-[10px] uppercase tracking-widest text-accent-sand">
+          <span className="text-[11px] uppercase tracking-widest text-accent-sand">
             {data.licensing_status}
           </span>
         </motion.div>
@@ -810,7 +801,7 @@ const InspectorChoreographed = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
             <FileText size={12} /> Official Description
           </h3>
           <p className="text-sm text-[#CCC] leading-loose font-light border-l border-accent-sand/30 pl-5 italic">
@@ -825,7 +816,7 @@ const InspectorChoreographed = ({
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
           >
-            <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
               <Scale size={12} /> Required Licenses
             </h3>
             <div className="relative">
@@ -843,7 +834,7 @@ const InspectorChoreographed = ({
                     className="flex gap-3"
                   >
                     {/* Step number */}
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-surface-deep border border-white/10 text-[10px] text-[#666] flex items-center justify-center font-mono z-10">
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-surface-deep border border-white/10 text-[11px] text-[#666] flex items-center justify-center font-mono z-10">
                       {idx + 1}
                     </div>
                     <div
@@ -868,7 +859,7 @@ const InspectorChoreographed = ({
                             </span>
                           )}
                         </span>
-                        <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-[#151921] text-[#888] border border-white/5">
+                        <span className="text-[11px] uppercase px-2 py-1 rounded-full bg-[#151921] text-[#888] border border-white/5">
                           {lic.sla}
                         </span>
                       </div>
@@ -886,7 +877,7 @@ const InspectorChoreographed = ({
                       </div>
                       {lic.requirements.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-white/5">
-                          <p className="text-[10px] text-[#444] uppercase mb-2">
+                          <p className="text-[11px] text-[#444] uppercase mb-2">
                             What you need to do:
                           </p>
                           <ul className="space-y-1">
@@ -927,7 +918,7 @@ const InspectorChoreographed = ({
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
             <Activity size={12} /> Related Business Codes
           </h3>
           <div className="flex flex-wrap gap-2">
@@ -1162,7 +1153,7 @@ export default function KBLIExplorerPage() {
               <span className="font-serif text-lg tracking-wide text-silver">
                 Zantara
               </span>
-              <span className="text-[9px] uppercase tracking-[0.3em] text-[#444] -mt-1">
+              <span className="text-[11px] uppercase tracking-[0.3em] text-[#444] -mt-1">
                 Business Code Guide
               </span>
             </div>
@@ -1177,7 +1168,7 @@ export default function KBLIExplorerPage() {
 
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8">
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#333] mb-4 px-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#333] mb-4 px-2">
               2025 Transition
             </h3>
             <button
@@ -1192,18 +1183,18 @@ export default function KBLIExplorerPage() {
                   ASK ABOUT YOUR CODES
                 </span>
               </div>
-              <p className="text-[10px] text-[#888] leading-tight group-hover:text-[#CCC] transition-colors">
+              <p className="text-[11px] text-[#888] leading-tight group-hover:text-[#CCC] transition-colors">
                 Ask our team which KBLI 2025 code replaces yours.
               </p>
             </button>
           </section>
 
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#333] mb-4 px-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#333] mb-4 px-2">
               Official Sources
             </h3>
             <div className="space-y-3">
-              {MOCK_SOURCES.map((source) => (
+              {OFFICIAL_SOURCES.map((source) => (
                 <SourceCard key={source.id} source={source} />
               ))}
             </div>
@@ -1212,14 +1203,14 @@ export default function KBLIExplorerPage() {
 
         <div className="p-4 border-t border-white/5">
           <div className="flex items-center gap-3 p-2 rounded">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#D4B483] to-[#8C7350] flex items-center justify-center text-[#050507] text-[10px] font-bold">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#D4B483] to-[#8C7350] flex items-center justify-center text-[#050507] text-[11px] font-bold">
               AZ
             </div>
             <div>
               <div className="text-xs font-medium text-silver">
                 Business Assistant
               </div>
-              <div className="text-[10px] text-[#555] uppercase tracking-wider">
+              <div className="text-[11px] text-[#555] uppercase tracking-wider">
                 Ready to help
               </div>
             </div>
@@ -1318,7 +1309,7 @@ export default function KBLIExplorerPage() {
                   exit={{ opacity: 0, y: -10 }}
                   className="absolute top-full mt-2 left-0 w-full bg-surface-deep border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden"
                 >
-                  <div className="p-2 border-b border-white/5 text-[10px] uppercase tracking-widest text-[#555] px-4">
+                  <div className="p-2 border-b border-white/5 text-[11px] uppercase tracking-widest text-[#555] px-4">
                     Related Results
                   </div>
                   <div className="max-h-60 overflow-y-auto custom-scrollbar">

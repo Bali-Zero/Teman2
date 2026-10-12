@@ -1,0 +1,152 @@
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: seatmap-roster-o3
+    role: build
+    seat: "claude (dux-roster-o3, commits 3312a22873 and 2a5575d645)"
+  - lane: seatmap-roster-o3-cure-r1
+    role: build
+    seat: "claude-opus-5-5 (dux-o3cure: merge of origin/main after #7898 and the P2 cure commit)"
+  - lane: roster-diff-review
+    role: review
+    seat: "tp1-qwen3.7-plus and codex-o2 read-only (raw answers in review-raw.md)"
+  - lane: cure-delta-review
+    role: review
+    seat: "codex-o2 read-only (CODEX_HOME=~/.codex-o2, codex exec --sandbox read-only)"
+
+what_changed: |
+  Round 0 (2a5575d645): O3 rostered per host. Schema providers.openai is oneOf two closed shapes;
+  air-m5.v1.json carries O1/O2/O3 with O3 quota_independence "unverified"; Pro/Mini stay two-seat and
+  gain auto_rotation_order; registry O3 moves from unrostered_seats to slots, bound on Air-M5 only.
+  Merge a3f436fcaf: origin/main after #7898 (beb6991b30). FLEET_TOPOLOGY.json conflict in pending_arms
+  resolved keeping both sides: #7898's operator entry and SLOT-2 READERS entry, #7910's OpenAI roster
+  entry. Against each parent the merged file differs only by the other side's lines.
+  Cure round 1 (Naga P2-O3-runtime-routing-overclaim): the O3 lane sentence, the seat-map README and
+  the codex_seat.sh header comment now say what the runtime does — O3 is LAST in codex_seat.sh's
+  directory enumeration, codex_seat_pick rotates a start offset, auto_rotation_order is declarative
+  only, excluding O3 is a CODEX_SEAT_DIRS change on the host. The runtime consumer is recorded as OWED
+  in FLEET_TOPOLOGY.json pending_arms, not built. Three tests pin the sentences: offset 2 opens on O3,
+  CODEX_SEAT_DIRS without acct2 enumerates no O3, and no non-test non-comment line reads the field.
+  The brief now declares gear 2 (round 0 declared 1 and the floor job was red).
+
+floor:
+  measured: 2
+  source: size
+  cmd: >-
+    python3 scripts/evidence_pack_lint.py --print-floor / --print-floor-source
+    --changed-files-file <merge-base name-only + pack.yml> --numstat-file <git diff --no-renames --numstat merge-base>
+  note: no hot-zone path (path term 1); churn over SIZE_GEAR2_THRESHOLD 400 raises it to 2.
+
+receipts:
+  - claim: the merged FLEET_TOPOLOGY.json parses and differs from each parent only by the other side's lines
+    cmd: >-
+      python3 -c "import json;json.load(open('FLEET_TOPOLOGY.json'))"; git diff --stat HEAD -- FLEET_TOPOLOGY.json;
+      git diff --stat origin/main -- FLEET_TOPOLOGY.json (before committing the merge)
+    exit: 0
+    ts: "2026-10-05T10:35Z"
+    seat: claude-opus-5-5
+    output: "JSON OK; vs ours 3 insertions 2 deletions (#7898's retired_note, operator, SLOT-2 READERS); vs theirs 6 insertions 9 deletions (#7910's own lines)"
+  - claim: the no-reader test goes red when a real reader exists (guilt) and is green on the head (innocence)
+    cmd: >-
+      cp scripts/lib/codex_seat.sh <scratch>; printf '_o=$(jq -r .auto_rotation_order x)\n' >> scripts/lib/codex_seat.sh;
+      pytest scripts/tests/test_conductor_host_seat_maps.py::test_auto_rotation_order_has_no_runtime_reader; cp <scratch> back
+    exit: 1
+    ts: "2026-10-05T10:35Z"
+    seat: claude-opus-5-5
+    output: "1 failed with the mutation; file restored (diff stat back to the comment-only 4+/2-)"
+  - claim: PR test set green on the cure working tree
+    cmd: pytest -q scripts/tests/test_codex_seat_lib.py scripts/tests/test_conductor_host_seat_maps.py scripts/usage scripts/tests/test_llm_fleet_audit.py
+    exit: 0
+    ts: "2026-10-05T10:36Z"
+    seat: claude-opus-5-5
+    output: "243 passed in 6.06s"
+  - claim: "#7898's tests green on the merged tree"
+    cmd: >-
+      pytest -q scripts/tests/test_claude_cascade_shell.py scripts/tests/test_claude_seat_quota.py
+      scripts/tests/test_claude_oauth_runtime_fallback.py; bash scripts/tests/test_wr2_ig_metrics_analyst_wrapper.sh
+    exit: 0
+    ts: "2026-10-05T10:37Z"
+    seat: claude-opus-5-5
+    output: "133 passed in 97.75s; risultato: 44 pass, 0 fail"
+  - claim: >-
+      acceptance probes green — scripts/tests/test_conductor_host_seat_maps.py (four negative cases);
+      scripts/tests/test_conductor_host_seat_maps.py::test_registry_seat_map_and_conductor_agree_on_the_air_m5_codex_bindings;
+      scripts/tests/test_conductor_host_seat_maps.py::test_declared_auto_rotation_order_matches_codex_seat_enumeration;
+      scripts/tests/test_conductor_host_seat_maps.py::test_auto_rotation_order_has_no_runtime_reader;
+      scripts/tests/test_codex_seat_lib.py -k "offset_can_open_on_o3 or excluding_o3"
+    cmd: >-
+      pytest -q <the three node ids above>; pytest -q scripts/tests/test_conductor_host_seat_maps.py
+      -k "rejects or negative or without_the_marker or verified"; pytest -q scripts/tests/test_codex_seat_lib.py
+      -k "offset_can_open_on_o3 or excluding_o3"
+    exit: 0
+    ts: "2026-10-05T10:51Z"
+    seat: claude-opus-5-5
+    output: "3 passed; 4 passed, 10 deselected; 2 passed, 25 deselected"
+  - claim: deterministic floor is 2 via the size term
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source (inputs above)
+    exit: 0
+    ts: "2026-10-05T10:39Z"
+    seat: claude-opus-5-5
+    output: "2 / size"
+
+cure_delta_review:
+  seat: codex-o2 (CODEX_HOME=~/.codex-o2 scripts/with_seat.sh codex codex exec --sandbox read-only)
+  builder_family: anthropic (claude-opus-5-5)
+  reviewer_family: openai
+  pass_1:
+    ts: "2026-10-05T10:38:47Z..10:45:25Z"
+    input: git diff a3f436fcaf (uncommitted cure delta, 5 files)
+    raw: |-
+      VERDICT: BLOCK
+
+      1. **P2 — `scripts/tests/test_conductor_host_seat_maps.py:290,300`:** The no-reader guarantee has false negatives: `.github/` is outside its scope, executable `package.json` commands are ignored, and computed keys evade literal matching. **Fix:** Narrow the test’s promises—including `FLEET_TOPOLOGY.json:578`—to its actual coverage, or expand detection with adversarial fixtures.
+
+      2. **P3 — `scripts/tests/test_conductor_host_seat_maps.py:302`:** Probes confirmed false positives for `//` comments, Python docstrings, and inline comments; only whole-line `#` comments stay green. **Fix:** Support these comment forms and add negative controls.
+
+      3. **P3 — `FLEET_TOPOLOGY.json:100`:** “O3 is LAST in that enumeration” needs qualification: `CODEX_SEAT_DIRS` can place O3 first. **Fix:** Say “last in the default directory enumeration.”
+
+      4. **P3 — `scripts/lib/codex_seat.sh:23`:** “The role is read per host from” the registry/manifests still suggests a runtime lookup. **Fix:** Replace “is read” with “is documented.”
+
+      5. **P3 — `scripts/tests/test_codex_seat_lib.py:122`:** Seeding offset `2` and asserting one pick proves O3 can start, but does not demonstrate advancement or a one-in-three cycle. **Fix:** Narrow the docstring or test successive picks and state advancement.
+
+      The README, schema, and three manifests contain no additional explicit operating-control promise. The exclusion test checks the stated enumeration behavior. Non-comment shell content matches both baselines: **no runtime behavior changed**.
+
+      Verification receipt is now **reusable** against unchanged reviewed files. Thirteen fixture-free test functions passed directly; in-memory probes reproduced the findings. Full pytest execution remained blocked by temporary-file restrictions. No edits made.
+  pass_2:
+    ts: "2026-10-05T10:47:00Z..10:49:42Z"
+    input: the five dispositions applied in the working tree
+    raw: |-
+      VERDICT: PASS
+
+      1. **CLOSED** — [test_conductor_host_seat_maps.py:286](/Users/balizero/nuzantara/.worktrees/infra-seatmap-roster-o3/scripts/tests/test_conductor_host_seat_maps.py:286), `FLEET_TOPOLOGY.json:577`: promessa limitata al tripwire letterale; limite delle chiavi calcolate esplicito. Inclusi `.github` e `package.json`.
+      2. **CLOSED** — [test_conductor_host_seat_maps.py:289](/Users/balizero/nuzantara/.worktrees/infra-seatmap-roster-o3/scripts/tests/test_conductor_host_seat_maps.py:289): falsi positivi mantenuti deliberatamente e dichiarati come fail-closed, soggetti a valutazione umana.
+      3. **CLOSED** — [FLEET_TOPOLOGY.json:100](/Users/balizero/nuzantara/.worktrees/infra-seatmap-roster-o3/FLEET_TOPOLOGY.json:100): “LAST” qualificato rispetto all’enumerazione predefinita; override esplicito.
+      4. **CLOSED** — [codex_seat.sh:23](/Users/balizero/nuzantara/.worktrees/infra-seatmap-roster-o3/scripts/lib/codex_seat.sh:23): “documented per host in” elimina la promessa di lettura runtime.
+      5. **CLOSED** — [test_codex_seat_lib.py:122](/Users/balizero/nuzantara/.worktrees/infra-seatmap-roster-o3/scripts/tests/test_codex_seat_lib.py:122): docstring limitata all’apertura su O3 con offset 2.
+
+      Nessun nuovo overclaim rilevato. **Nessun cambiamento runtime**: contenuto shell eseguibile identico al baseline. Cambia soltanto la copertura del tripwire, ora più ampia.
+
+      Verifica attuale: **13 test senza fixture e 11 controlli in memoria superati**, ricevuta positiva. I test con filesystem temporaneo non sono stati rieseguiti. Nessuna modifica effettuata.
+
+dissent:
+  - seat: codex-o2
+    objection: "P2: the no-reader test has false negatives (.github outside scope, package.json skipped, computed keys evade literal matching); narrow its promise or expand detection."
+    status: CONFIRMED
+    disposition: promise narrowed to a tripwire for LITERAL readers in the test docstring and the pending_arms entry; scope widened to .github; only the seat-maps dir, the schema file, markdown and tests are skipped. Pass 2 CLOSED.
+  - seat: codex-o2
+    objection: "P3: false positives for // comments, docstrings and inline comments; only whole-line # comments stay green."
+    status: CONFIRMED
+    disposition: kept by design, they fail closed (red without a reader) for a human to judge; stated in the docstring. Pass 2 CLOSED.
+  - seat: codex-o2
+    objection: "P3: FLEET_TOPOLOGY.json O3 LAST in that enumeration needs qualification, CODEX_SEAT_DIRS can place O3 first."
+    status: CONFIRMED
+    disposition: now LAST in the default directory enumeration (a host CODEX_SEAT_DIRS can reorder it). Pass 2 CLOSED.
+  - seat: codex-o2
+    objection: "P3: codex_seat.sh:23 the role is read per host suggests a runtime lookup."
+    status: CONFIRMED
+    disposition: comment now says documented per host in; no executable line changed. Pass 2 CLOSED.
+  - seat: codex-o2
+    objection: "P3: the offset test proves O3 can start, not a one-in-three cycle."
+    status: CONFIRMED
+    disposition: docstring narrowed to an offset of 2 opens on O3. Pass 2 CLOSED.
+
+pii_scan: clean

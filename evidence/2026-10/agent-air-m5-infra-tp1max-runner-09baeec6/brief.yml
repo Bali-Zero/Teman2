@@ -1,0 +1,43 @@
+task_id: tp1max-runner-1005
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Mission TP1MAX-20261005: use the remaining Alibaba Token Plan quota on
+  verifiable work before the 2026-10-12 reset, from a job that does not hang
+  off one chat session. Add scripts/tp1_batch_runner.py: a JSONL queue run
+  through the existing tp1_call.py door (imported, not copied) with AIMD
+  concurrency, idempotent results.jsonl outside the repo, a kill file, a hard
+  stop at 2026-10-11T23:30+08:00, at the first quota/auth/redirect error and
+  at a 429 that survives backoff at concurrency 1, one runner per out-dir,
+  and a heartbeat counting result rows and real tokens. Gear 2 via the SIZE
+  term (about 560 added lines, 230 of them tests); no hot-zone path.
+acceptance:
+  - text: >-
+      A hard quota error stops dispatch after one call and writes no row; a
+      rerun on a finished out-dir makes zero calls; kill file and a past
+      deadline make zero calls; a second runner on the same out-dir refuses.
+    probe: python3 -m pytest -q scripts/test_tp1_batch_runner.py
+  - text: >-
+      Against the live gateway, two smoke jobs produce two ok rows with
+      parsed JSON and non-zero usage, and a rerun leaves two rows.
+    probe: >-
+      python3 scripts/tp1_batch_runner.py --queue <2-job queue> --out-dir
+      <scratch> --model qwen3.6-flash (run twice; wc -l results.jsonl)
+  - text: >-
+      AFTER merge, the L-CODE job started on Pro from origin/main content
+      writes result rows: results.jsonl line count and heartbeat ok and
+      total_tokens rise between two reads.
+    probe: >-
+      ssh pro 'wc -l ~/.local/share/nuzantara/tp1max/runs/code-pro/results.jsonl;
+      cat ~/.local/share/nuzantara/tp1max/runs/code-pro/heartbeat.json'
+assumptions:
+  - text: >-
+      The non-streaming TP1 response carries a usage object with
+      prompt_tokens / completion_tokens / total_tokens.
+    status: verified
+    probe: live smoke 2026-10-05, usage 174 and 484 tokens on qwen3.6-flash
+  - text: >-
+      Pro's /usr/bin/python3 (3.9.6) imports the runner.
+    status: verified
+    probe: /usr/bin/python3 -c "import tp1_batch_runner" (2026-10-05, 3.9.6)

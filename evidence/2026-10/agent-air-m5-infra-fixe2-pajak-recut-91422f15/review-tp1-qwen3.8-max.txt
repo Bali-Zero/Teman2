@@ -1,0 +1,19 @@
+# tp1-qwen3.8-max, read-only review of origin/main(0c97783867)..81904a7f01, scripts/cron-agent-python/pajak_monitor.py + scripts/tests/test_pajak_monitor.py
+# door: scripts/seat_build.sh --seat tp1 --effort high (TP1_MODEL=qwen3.8-max); started 2026-10-05T12:32:39Z, ended 2026-10-05T12:46:13Z, rc 0, 807 s
+# prompt: review-task.txt in dux-fix-e2 scratch (claims C1-C8 + diff). Verbatim answer below; <REDACTED> tokens are the door's own redaction.
+
+C1 BROKEN — `return "pajak-new:" + hashlib.sha256("\n".join(sorted(urls)).encode()).hexdigest()[:16]`: sorted list, not set; newline join and 16-hex truncation can collapse distinct sets.  
+C2 BROKEN — `if dead_urls and await self._mark_seen(dead_urls):`: seen can be written after a False/exception in the dead-letter path.  
+C3 BROKEN — `if dead_urls and await self._mark_seen(dead_urls):`: dead-lettered items are marked seen only if Redis succeeds; otherwise they remain unseen and retry.  
+C4 HOLDS — `delivered = self._locally_delivered(new_items)` then `_mark_seen(delivered_urls)` marks receipted items without resending.  
+C5 HOLDS — `if result.returncode != 0 or <REDACTED>(result.stdout or ""):` returns False.  
+C6 HOLDS — `except (TypeError, ValueError, OverflowError): return 0` normalizes corrupted attempt values.  
+C7 HOLDS — `msg = self._compose_alert(new_items)` / `intel_count = self._write_intel_feed(new_items)` unchanged; send only adds `dedup_key=`.  
+C8 HOLDS — `orders = [[first, second], [second, first]]` and `@pytest.mark.parametrize("corrupted", ...)` would fail if order-independence or C6 normalization were reverted.  
+
+Further defects:  
+1. `intel_count = self._write_intel_feed(new_items)` before send + failed `if not ok:` return rewrites intel feed for the same unseen items on every retry.  
+2. `entry = {"attempts": int(entry)}` in `_remember_delivered` is unguarded; corrupted non-dict state can raise and suppress the local receipt.  
+3. `_REDIS_ERROR_REPLY = re.compile(...)` is a whitelist; unlisted zero-exit Redis error replies are treated as success.  
+4. `if not await self._mark_seen(delivered_urls): return RunResult(...)` in reconciliation blocks all other new items when Redis is down.  
+5. `<REDACTED>(urls)` after success is outside try; a state-save OSError can turn a delivered run into an error.

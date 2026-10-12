@@ -18,6 +18,11 @@ name: Fleet burst dispatcher tests
 # resolvable for the seat-state corpus, and one workflow that owns the whole seat
 # surface is easier to keep armed than two that drift apart. Superscar #2 / W108.
 #
+# It also owns two more shell corpora that no workflow executed (found by a census of
+# `scripts/tests/test_*.sh` against `.github/workflows/`): `test_ai_dispatch_shared_watchdog.sh`
+# (the dispatcher's shared `run_with_timeout`, #7881) and `test_pr_watch.sh` (the PR watcher, #7894).
+# Both are offline -- a stub `agy` and a fake `gh` on PATH -- so they need nothing the runner lacks.
+#
 # WHY THIS FILE EXISTS, and why it ships in the same PR as the script
 # -------------------------------------------------------------------
 # Measured on this branch before writing it: `scripts-tests-sweep.yml` collects only
@@ -76,6 +81,10 @@ on:
       - "scripts/tests/test_seat_build_tiers.sh"
       - "scripts/tests/test_seat_build_effort.sh"
       - "infra/launchagents/wrappers/claude-cascade.sh"
+      - "scripts/ai-dispatch.sh"
+      - "scripts/tests/test_ai_dispatch_shared_watchdog.sh"
+      - "scripts/pr_watch.sh"
+      - "scripts/tests/test_pr_watch.sh"
       - ".github/workflows/fleet-burst-tests.yml"
   push:
     branches:
@@ -99,6 +108,10 @@ on:
       - "scripts/tests/test_seat_build_tiers.sh"
       - "scripts/tests/test_seat_build_effort.sh"
       - "infra/launchagents/wrappers/claude-cascade.sh"
+      - "scripts/ai-dispatch.sh"
+      - "scripts/tests/test_ai_dispatch_shared_watchdog.sh"
+      - "scripts/pr_watch.sh"
+      - "scripts/tests/test_pr_watch.sh"
 
 permissions:
   contents: read
@@ -151,6 +164,35 @@ jobs:
       # (mandate L09-PR3: bind dispatch effort to compute_floor)."
       - name: seat_build still derives dispatch effort from the computed gear floor
         run: bash scripts/tests/test_seat_build_effort.sh
+
+      # Two more offline corpora, the same "green but executed by nothing" gap. Both run before
+      # the zsh install and the origin/main fetch for the reason given above. The watchdog
+      # suite's guilt case waits out run_gemini's hardcoded 120s timeout, so it costs ~2 min.
+      # Each step re-asserts the count it reports: a suite that shrinks or aborts before its
+      # summary must go red, not quietly green.
+      - name: ai-dispatch still kills a TERM-ignoring agy through the shared watchdog and fails loud without the lib
+        run: |
+          set -euo pipefail
+          out=$(bash scripts/tests/test_ai_dispatch_shared_watchdog.sh 2>&1) || { printf '%s\n' "$out"; exit 1; }
+          printf '%s\n' "$out"
+          count=$(printf '%s\n' "$out" | sed -n 's/^SUMMARY \([0-9][0-9]*\) passed, 0 failed$/\1/p' | tail -1)
+          if [ -z "$count" ] || [ "$count" -lt 3 ]; then
+            echo "::error::test_ai_dispatch_shared_watchdog.sh reported '${count:-no clean SUMMARY}' passing checks, floor is 3" >&2
+            exit 1
+          fi
+          echo "test_ai_dispatch_shared_watchdog.sh: $count passed (floor 3)"
+
+      - name: pr_watch still reports merge, close, dedup, missing-required, pagination and timeout correctly
+        run: |
+          set -euo pipefail
+          out=$(bash scripts/tests/test_pr_watch.sh 2>&1) || { printf '%s\n' "$out"; exit 1; }
+          printf '%s\n' "$out"
+          count=$(printf '%s\n' "$out" | grep -c '^  ok ' || true)
+          if [ "$count" -lt 51 ]; then
+            echo "::error::test_pr_watch.sh reported $count ok checks, floor is 51" >&2
+            exit 1
+          fi
+          echo "test_pr_watch.sh: $count ok checks (floor 51)"
 
       - name: The dispatcher still parses
         run: bash -n scripts/fleet_burst.sh

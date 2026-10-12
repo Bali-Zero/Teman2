@@ -1,0 +1,25 @@
+gear: 2
+gear_reason: >-
+  Size and surface floor: five new gold-coverage persona fixtures plus count/exclusion wiring in two
+  pack-pinned test files under apps/backend-rag (a backend-rag merge is a deploy). Test-only, no engine
+  code, no rule data, no pricing, no migration.
+mission: >-
+  The gold-coverage floor gate replays E28A, E28B, E28C, E28D and E28F on the newest signed pack, so a rule
+  change that unsupports any of the five turns the gate red.
+objective: >-
+  Add personas E28A (committed PT PMA investment, shareholder-director), E28B (company establishment past the
+  published threshold), E28C (capital-market only), E28D (foreign branch or subsidiary) and E28F (IKN
+  subsidiary), each SUPPORTED_CANDIDATES for its own product on the newest signed pack; keep the seq-19 and
+  seq-20 pack tests honest about the corpus growing 23 to 28 by excluding E28B, E28C, E28D and E28F by name
+  where those packs carry no eligibility support rule for them.
+scope:
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/personas/E28A.json
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/personas/E28B.json
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/personas/E28C.json
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/personas/E28D.json
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/personas/E28F.json
+  - apps/backend-rag/backend/tests/services/visa_engine/test_seq19_pack.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_seq20_pack.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

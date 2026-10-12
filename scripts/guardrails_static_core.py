@@ -43,7 +43,10 @@ References:
 
 from __future__ import annotations
 
+from collections import deque
+import posixpath
 import re
+import shlex
 from typing import Any
 
 DESTRUCTIVE_SQL_VERBS = r"DROP|UPDATE|DELETE|INSERT|TRUNCATE"
@@ -263,6 +266,259 @@ _STRUCTURE_ONLY_REASONS = (
     "base64 decode-and-execute",
 )
 
+# Recursive rm of root/home judged on the parsed command, whatever the spelling
+# (FIXBATCH-A 2026-10-05). It only ADDS blocks: the legacy rm regexes above still
+# run. Not mirrored in the vendored fallback of ~/.claude/hooks/guardrails-static.py
+# nor in the Pro daemon; guardrails_sync_check.py compares BLOCK_PATTERNS only.
+_RM_REASON = "rm -rf on root/$HOME/~"
+_LONG_COMMAND_REASON = "command too long to analyse safely"
+# Longest of 131,741 real M5 commands is 44,878 chars; shlex token growth is quadratic, 64 KiB ~50 ms.
+_MAX_COMMAND_LENGTH = 64 * 1024
+# Deeper eval / $(...) / sh -c nesting is judged by the cheap scan (fail closed): bounds recursion.
+_MAX_NESTING = 8
+_SHELL_PUNCTUATION = ";&|()\n"
+_SHELLS = {"bash", "sh", "zsh", "dash", "ksh", "fish", "su"}
+# Leading words that run the word after them; value = their options that take an argument.
+_WRAPPERS: dict[str, set[str]] = {
+    "sudo": {"-u", "-g", "-h", "-p", "-C", "-D", "-r", "-t", "-U", "-T"},
+    "doas": {"-u", "-C"},
+    "env": {"-u", "-C"},
+    "command": set(),
+    "builtin": set(),
+    "exec": {"-a"},
+    "nohup": set(),
+    "time": set(),
+    "nice": {"-n"},
+    "ionice": {"-c", "-n"},
+    "stdbuf": set(),
+    "caffeinate": {"-t", "-w"},
+    "watch": {"-n"},
+    "timeout": {"-s", "-k"},
+    "flock": {"-w", "-E"},
+    "chroot": {"-u", "-g", "-G"},
+    "xargs": {"-I", "-n", "-P", "-L", "-s", "-d", "-E", "-a", "-J", "-R", "-S"},
+}
+# Wrappers whose first operand (duration, lock file, new root) precedes the command.
+_WRAPPERS_WITH_OPERAND = {"timeout", "flock", "chroot"}
+_SHELL_KEYWORDS = {"!", "{", "}", "if", "then", "else", "elif", "do", "while", "until"}
+_ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+# ~, $HOME, ${HOME} and ${HOME<op>...} all expand to the home directory.
+_HOME_WORD = re.compile(r"^(?:~|\$HOME|\$\{HOME(?:[:?+=%#/-][^}]*)?\})(?=/|$)")
+_LONG_DELETE_TOKEN = re.compile(
+    r"(?:^|[\s;&|()'\"`/]|-S)(?:rm|rmdir|unlink|shred)(?=$|[\s;&|()'\"`])",
+    re.IGNORECASE,
+)
+_LONG_FIND_TOKEN = re.compile(r"(?:^|[\s;&|()'\"`/])find(?=$|[\s;&|()'\"`])", re.IGNORECASE)
+_LONG_FIND_DELETE = re.compile(r"(?:^|[\s;&|()'\"`])-delete(?=$|[\s;&|()'\"`])", re.IGNORECASE)
+# Quotes and backslashes the shell removes ('r''m', r\m, \rm, "r"m all run rm).
+_SHELL_UNQUOTE = str.maketrans("", "", "\\'\"")
+_BRACE_PAIR = re.compile(r"\{([^{}]*)\}")
+
+
+def _command_name(token: str) -> str:
+    """Return the executable basename after shell escaping is removed."""
+    return token.lstrip("\\").rsplit("/", 1)[-1]
+
+
+def _unwrap_command(tokens: list[str]) -> list[str]:
+    """Remove leading assignments, shell keywords and the wrappers in _WRAPPERS."""
+    remaining = deque(tokens)
+    while remaining:
+        word = remaining[0]
+        if word in _SHELL_KEYWORDS or _ASSIGNMENT.match(word):
+            remaining.popleft()
+            continue
+        name = _command_name(word)
+        if name not in _WRAPPERS:
+            break
+        remaining.popleft()
+        while remaining and (remaining[0].startswith("-") or _ASSIGNMENT.match(remaining[0])):
+            option = remaining.popleft()
+            if name == "env" and option.startswith("-S"):  # env -S splits its argument into argv
+                split = option[2:] or (remaining.popleft() if remaining else "")
+                remaining.extendleft(reversed(split.split()))
+            elif option in _WRAPPERS[name] and remaining:
+                remaining.popleft()
+        if name in _WRAPPERS_WITH_OPERAND and remaining:
+            remaining.popleft()
+    return list(remaining)
+
+
+def _is_recursive_flag(token: str) -> bool:
+    if token.startswith("--"):
+        return len(token) > 2 and "--recursive".startswith(token)
+    return token.startswith("-") and any(flag in token[1:] for flag in ("r", "R"))
+
+
+def _first_brace_list(token: str) -> tuple[str, str, str] | None:
+    """Linear equal of re.match(r"^(.*?)\\{([^{}]*,[^{}]*)\\}(.*)$", token).groups(),
+    whose backtracking is quadratic on a long unclosed `{a,a,a,...`."""
+    body = token[:-1] if token.endswith("\n") else token
+    if "\n" in body:
+        return None
+    for pair in _BRACE_PAIR.finditer(body):
+        if "," in pair.group(1):
+            return body[: pair.start()], pair.group(1), body[pair.end() :]
+    return None
+
+
+def _is_protected_rm_target(token: str) -> bool:
+    """Root, home, or an ancestor of home (or all their children via /*).
+
+    A path below home stays with the legacy regexes, which judge it only for the
+    combined-flag spelling: widening that to every spelling is a policy change.
+    One level of brace expansion is applied, as bash would (`/{,}` is `/ /`)."""
+    braces = _first_brace_list(token)
+    if braces:
+        if token.count("{") > 4 or token.count(",") > 16:
+            return True  # too wide to enumerate: fail closed
+        head, parts, tail = braces
+        return any(_is_protected_rm_target(head + part + tail) for part in parts.split(","))
+    home = _HOME_WORD.match(token)
+    path = "/Users/.home" + token[home.end():] if home else token
+    path = posixpath.normpath(re.sub(r"^/+", "/", path)) if path.startswith("/") else path
+    return path in {"/", "/*"} or re.fullmatch(r"/Users(?:/[\w.-]+)?(?:/\*)?", path) is not None
+
+
+_HEREDOC_OPERATOR = re.compile(r"(?<!<)<<-?(?!<)")
+_HEREDOC_WORD = re.compile(r"\s*(['\"]?)([A-Za-z_][\w.-]*)\1")
+
+
+def _shell_views(command: str) -> tuple[str, str]:
+    """Read the command line by line as the shell does.
+
+    Returns (the command without heredoc bodies, the text where $(...) and `...`
+    really run). A heredoc body is data, never a command line, and the shell
+    expands substitutions in it only when its delimiter is unquoted; text in
+    single quotes never runs."""
+    kept: list[str] = []
+    runnable: list[str] = []
+    pending: deque[tuple[bool, str]] = deque()
+    quote = None
+    parts: list[str] = []
+    no_single_parts: list[str] = []
+    no_quotes_parts: list[str] = []
+    for line in command.split("\n"):
+        if pending:
+            quoted, delimiter = pending[0]
+            if line.lstrip("\t") == delimiter:
+                pending.popleft()
+            elif not quoted:
+                runnable.append(line)
+            continue
+        no_single: list[str] = []
+        no_quotes: list[str] = []
+        for char in line:
+            was = quote
+            if quote == "'":
+                quote = None if char == "'" else "'"
+            elif char == "'" and quote is None:
+                quote = "'"
+            elif char == '"':
+                quote = None if quote == '"' else '"'
+            no_single.append(" " if "'" in (was, quote) else char)
+            no_quotes.append(char if was is None and quote is None else " ")
+        parts.append(line)
+        no_single_parts.append("".join(no_single))
+        no_quotes_parts.append("".join(no_quotes))
+        if quote != "'" and (len(line) - len(line.rstrip("\\"))) % 2:
+            parts[-1] = parts[-1][:-1]
+            no_single_parts[-1] = no_single_parts[-1][:-1]
+            no_quotes_parts[-1] = no_quotes_parts[-1][:-1]
+            continue
+        logical_line = "".join(parts)
+        no_single_line = "".join(no_single_parts)
+        no_quotes_line = "".join(no_quotes_parts)
+        kept.append(logical_line)
+        runnable.append(no_single_line)
+        for operator in _HEREDOC_OPERATOR.finditer(no_quotes_line):
+            word = _HEREDOC_WORD.match(logical_line, operator.end())
+            if word:
+                pending.append((bool(word.group(1)), word.group(2)))
+        parts.clear()
+        no_single_parts.clear()
+        no_quotes_parts.clear()
+    if parts:
+        carry = "".join(parts)
+        if carry:
+            kept.append(carry)
+    return "\n".join(kept), "\n".join(runnable)
+
+
+def _long_command_has_delete_shape(command: str) -> bool:
+    """Cheap linear fail-closed scan used instead of shell parsing over the cap."""
+    command = command.replace("\\\n", "").translate(_SHELL_UNQUOTE)
+    if _LONG_DELETE_TOKEN.search(command):
+        return True
+    return bool(_LONG_FIND_TOKEN.search(command) and _LONG_FIND_DELETE.search(command))
+
+
+def _rm_segment_is_dangerous(tokens: list[str]) -> bool:
+    command = _unwrap_command(tokens)
+    if not command or _command_name(command[0]) != "rm":
+        return False
+    args = command[1:]
+    recursive = any(_is_recursive_flag(token) for token in args)
+    targets = [token for token in args if not token.startswith("-")]
+    return recursive and any(_is_protected_rm_target(target) for target in targets)
+
+
+def _parse_failure_rm_is_dangerous(command: str) -> bool:
+    """shlex refused the line (an apostrophe in a heredoc body is enough): judge
+    the raw words with quotes dropped, so a protected target still blocks and an
+    ordinary rm elsewhere in the line does not."""
+    for raw_segment in re.split(r"[;&|()\n]+", command):
+        words = [word.strip("'\"") for word in raw_segment.split()]
+        if _rm_segment_is_dangerous(words):
+            return True
+    return False
+
+
+def _dangerous_rm_command(command: str, depth: int = 0) -> bool:
+    """Parse executable shell segments and find recursive rm of protected roots."""
+    if depth > _MAX_NESTING:
+        return _long_command_has_delete_shape(command)
+    shell_text, runnable = _shell_views(command)
+    bodies = re.findall(r"\$\(([^()]*)\)", runnable) + re.findall(r"`([^`]*)`", runnable)
+    if any(_dangerous_rm_command(body, depth + 1) for body in bodies):
+        return True
+    lexer = shlex.shlex(shell_text, posix=True, punctuation_chars=_SHELL_PUNCTUATION)
+    lexer.commenters = ""
+    lexer.whitespace = " \t\r"
+    lexer.whitespace_split = True
+    try:
+        tokens = list(lexer)
+    except ValueError:
+        return _parse_failure_rm_is_dangerous(shell_text)
+
+    segment: list[str] = []
+    segments: list[list[str]] = []
+    for token in tokens:
+        if token and all(char in _SHELL_PUNCTUATION for char in token):
+            if segment:
+                segments.append(segment)
+                segment = []
+        else:
+            segment.append(token)
+    if segment:
+        segments.append(segment)
+
+    for shell_segment in segments:
+        command_tokens = _unwrap_command(shell_segment)
+        if _rm_segment_is_dangerous(command_tokens):
+            return True
+        name = _command_name(command_tokens[0]) if command_tokens else ""
+        if name == "eval" and _dangerous_rm_command(" ".join(command_tokens[1:]), depth + 1):
+            return True
+        if name not in _SHELLS:
+            continue
+        for index, token in enumerate(command_tokens[1:], start=1):
+            if re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", token) and index + 1 < len(command_tokens):
+                if _dangerous_rm_command(command_tokens[index + 1], depth + 1):
+                    return True
+                break
+    return False
+
 
 def _strip_quotes(cmd: str) -> str:
     """Empty the CONTENT of single/double-quoted strings, preserving structure.
@@ -280,6 +536,11 @@ def _eval_bash(tool_input: dict[str, Any]) -> tuple[bool, str | None]:
     command = tool_input.get("command", "") or ""
     if ROLLBACK_TAG_ALLOWLIST.match(command):
         return False, None
+    if len(command) > _MAX_COMMAND_LENGTH:
+        if _long_command_has_delete_shape(command):
+            return True, _LONG_COMMAND_REASON
+    elif _dangerous_rm_command(command):
+        return True, _RM_REASON
     stripped = _strip_quotes(command)
     for pat, reason in BLOCK_PATTERNS:
         # structure-only patterns match the quote-stripped view (no phrase-in-arg

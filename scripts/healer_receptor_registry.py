@@ -18,7 +18,12 @@ Panel-hardened semantics (red-team 2026-07-06):
   - registry entries with enabled: false or expected_hb_seconds <= 0 are skipped
     (liveness-exempt by declaration).
   - dead = sidecar age > 3 × expected_hb_seconds, or status not in the healthy
-    set (same classification as scripts/sentinel-aggregate.py).
+    set (same classification as scripts/sentinel-aggregate.py) — EXCEPT, on
+    Pro, a fresh sidecar whose unhealthy status comes with the producer's own
+    proof that its detector completed: that organ is ALIVE WITH FINDINGS (it
+    ran on time and honestly reported what it found), listed under `findings`,
+    never `dead`. The proof is a closed allowlist of live producer shapes
+    (_COMPLETION_PROOF, one entry per producer); anything else stays dead with a note.
   - malformed sidecar = dead with note (the organ's writer is broken — W54:
     a timestamp-format drift once killed a staleness check silently).
   - Mini legacy dialect (~/heartbeat/<label>.ts) is NOT read — declared blind
@@ -34,11 +39,19 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
+import subprocess
 import sys
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 
 HEALTHY_STATUSES = {"ok", "success", "healthy", "starting", "running"}
+CURES = {"session", "owner"}
+# The same entity proprioception.py's launchd classifier reads in a log_marker:
+# the macOS TCC denial text. "Permission denied" (EACCES, a chmod) is NOT it.
+TCC_DENIAL = "operation not permitted"
+LAUNCHCTL_NOT_FOUND = 113
 EXEMPT_STATUSES = {"disabled"}
 DEAD_MULTIPLIER = 3
 _REEXEC_GUARD_ENV = "_HEALER_REGISTRY_REEXEC_DONE"
@@ -111,12 +124,8 @@ def load_registry(path: Path) -> list[dict]:
 def _renamed_away_disabled_plist(agents_dir: Path, label: str) -> bool:
     """A `<label>.plist` renamed to `<label>.plist.disabled-*` (W-mini convention
     since 2026-09-25, e.g. `.disabled-20260925-owner-pro`) means the job was
-    deliberately unloaded, not that it crashed. Its heartbeat sidecar will never
-    refresh again, so age-based classification alone would call it 'dead' forever
-    (observed 3 consecutive healer ticks, 2026-09-25/26/27, on
-    mata_garuda.intel_bridge_daily.mini) — same disease as EXEMPT_STATUSES, read
-    from the filesystem instead of the sidecar because a disabled organ writes no
-    sidecar update explaining why."""
+    deliberately unloaded. Its stale sidecar remains a visible dead finding, but
+    this entity proof makes its cure owner-only instead of spawning a session."""
     if not label or not agents_dir.is_dir():
         return False
     if (agents_dir / f"{label}.plist").exists():
@@ -124,20 +133,133 @@ def _renamed_away_disabled_plist(agents_dir: Path, label: str) -> bool:
     return any(agents_dir.glob(f"{label}.plist.disabled-*"))
 
 
+def _tcc_denial(value: object) -> bool:
+    return TCC_DENIAL in str(value).lower()
+
+
+def _launchctl_print(label: str) -> tuple[bool | None, str]:
+    """Loaded state plus the job's `last exit` lines (read-only).
+
+    True = loaded, False = launchd answers "service not found" (113), None =
+    unprobeable. Only the `last exit ...` lines are evidence: the rest of the
+    print (program, arguments, environment) is configuration, not a verdict."""
+    if not label:
+        return None, ""
+    try:
+        result = subprocess.run(
+            ["launchctl", "print", f"gui/{os.getuid()}/{label}"],
+            capture_output=True, text=True, timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None, ""
+    if result.returncode == LAUNCHCTL_NOT_FOUND:
+        return False, ""
+    if result.returncode != 0:
+        return None, ""
+    exit_lines = [
+        ln.strip() for ln in result.stdout.splitlines()
+        if ln.strip().startswith("last exit")
+    ]
+    return True, "\n".join(exit_lines)
+
+
+def _dead_cure(
+    organ: dict,
+    payload: dict,
+    agents_dir: Path,
+    loaded: bool | None,
+    launchctl_evidence: str,
+) -> str:
+    """Owner only on explicit entity/evidence; ambiguity defaults to session.
+
+    An undeclared cure value raises: run() fails, main() exits 2 and the
+    healer reads registry-receptor-broken (visible), never a silent skip."""
+    declared = organ.get("cure", "session")
+    if declared not in CURES:
+        raise ValueError(f"organ {organ.get('id', '<no-id>')}: invalid cure {declared!r}")
+    if declared == "owner":
+        return "owner"
+    if (
+        _tcc_denial(payload.get("status", ""))
+        or _tcc_denial(payload.get("note", ""))
+        or _tcc_denial(launchctl_evidence)
+    ):
+        return "owner"
+    label = (organ.get("recovery_params") or {}).get("label", "")
+    owner_note = organ.get("owner_note") or organ.get("disabled_reason")
+    if loaded is False and (
+        _renamed_away_disabled_plist(agents_dir, label) or bool(owner_note)
+    ):
+        return "owner"
+    return "session"
+
+
+def _note_proof(pattern: str) -> Callable[[dict], str | None]:
+    regex = re.compile(pattern)
+
+    def proof(payload: dict) -> str | None:
+        match = regex.match(str(payload.get("note", "")))
+        return f"note:{match.group(0).strip()}" if match else None
+
+    return proof
+
+
+def _pulse_proof(payload: dict) -> str | None:
+    """apps/cell/cell/main.py: a completed pulse writes exactly pulse_count, tier
+    and action; a pulse that THREW writes pulse_count and `error`."""
+    metadata = payload.get("metadata")
+    completed = (
+        isinstance(metadata, dict)
+        and set(metadata) == {"pulse_count", "tier", "action"}
+        and type(metadata["pulse_count"]) is int
+        and metadata["pulse_count"] >= 0
+    )
+    return "metadata.pulse_count" if completed else None
+
+
+# Closed allowlist, one entry per live producer: the organ, the status its
+# detector writes when it COMPLETED and found something, and that run's sidecar
+# shape. The crash / cannot-verify path writes another status or shape and stays
+# dead. Not listed, so dead: pro.visa_freshness_sentinel ("rc=1" is STALE or an
+# uncaught exception), prose, "detector_rc=N" alone.
+_COMPLETION_PROOF = {
+    # kbli-surface-conformance-run.sh: rc 1 WITH the report header
+    "pro.kbli_surface_conformance": ("error", _note_proof(r"detector_rc=1 result=divergence(?:\s|$)")),
+    # launchd-liveness-detector.sh: alarm count parsed from the detector's JSON
+    "pro.launchd_liveness": ("degraded", _note_proof(r"[1-9][0-9]* alarm\(s\)(?:\s|$)")),
+    # meta_one_steward.py: a completed tick (a crash writes "error" + the exception text)
+    "pro.meta_one_steward": ("warning", _note_proof(r"token=(?:alive|dead)$")),
+    # run_sentinel_cell.py: red is a completed pulse with a finding; exceptions
+    # write fail and stay dead. The note carries only bounded operational tokens.
+    "mata_garuda.sentinel_hourly.pro": (
+        "warning",
+        _note_proof(r"^pulse=red action=[A-Za-z0-9_.-]+ pulse=[0-9]+(?:\s|$)"),
+    ),
+    "cell.organism": ("fail", _pulse_proof),
+    # ops/pro_disk_floor_tick.sh: a completed df read writes the free GB at note start;
+    # 60-100 GB is `warning`. Under 60 GB is `error` ("failed: ...") and stays dead, so it
+    # still spawns; "skipped: ..." and "free space unreadable" never read the disk.
+    "pro.disk_floor": ("warning", _note_proof(r"free_gb=[0-9]+\.[0-9] on /\S+ \(ok > [0-9]+, failed < [0-9]+\)")),
+}
+
+
 def run(
     node: str,
     registry_path: Path,
     sidecar_dir: Path,
     launchagents_dir: Path | None = None,
+    launchctl_probe: Callable[[str], tuple[bool | None, str]] | None = None,
 ) -> dict:
     organs = load_registry(registry_path)
     runtime_wanted = f"{node}_launchd"
     now = datetime.now(timezone.utc)
     agents_dir = launchagents_dir or (Path.home() / "Library" / "LaunchAgents")
+    probe_launchctl = launchctl_probe or _launchctl_print
 
     report: dict = {
         "schema": 1, "node": node, "checked": 0, "ok": [], "stale": [],
-        "dead": [], "never_armed": [], "disabled": [], "skipped_exempt": 0,
+        "dead": [], "dead_session": 0, "dead_owner": 0, "findings": [],
+        "never_armed": [], "disabled": [], "skipped_exempt": 0,
         "blind_spots": [
             "legacy dialect ~/heartbeat/<label>.ts not read (grandfathered, "
             "see genome doc §6.4)"
@@ -174,12 +296,15 @@ def run(
             continue
 
         label = (organ.get("recovery_params") or {}).get("label", "")
-        if organ.get("recovery_action") == "launchctl_kickstart" and _renamed_away_disabled_plist(
-            agents_dir, label
+        # Mini's separate healer is not cure-aware yet; preserve its established
+        # disabled exemption while Pro keeps the finding visible as owner-only.
+        if (
+            node != "pro"
+            and organ.get("recovery_action") == "launchctl_kickstart"
+            and _renamed_away_disabled_plist(agents_dir, label)
         ):
             report["disabled"].append(oid)
             continue
-
         entry = {
             "id": oid, "status": status,
             "note": str(payload.get("note", ""))[:200],
@@ -190,13 +315,32 @@ def run(
         if ts is None:
             entry["age_s"] = None
             entry["note"] = f"malformed sidecar: {entry['note']}"
-            report["dead"].append(entry)
-            continue
+            is_dead = True
+        else:
+            age = (now - ts).total_seconds()
+            entry["age_s"] = int(age)
+            fresh = age <= DEAD_MULTIPLIER * expected
+            # Mini's healer is not findings-aware: its classification is unchanged.
+            if fresh and node == "pro" and status not in HEALTHY_STATUSES:
+                proof_status, proof = _COMPLETION_PROOF.get(oid, (None, None))
+                evidence = proof(payload) if status == proof_status else None
+                if evidence:
+                    entry["state"] = "alive_with_findings"
+                    entry["completion_evidence"] = evidence
+                    report["findings"].append(entry)
+                    continue
+                entry["note"] = f"no detector completion evidence: {entry['note']}"
+            is_dead = not fresh or status not in HEALTHY_STATUSES
 
-        age = (now - ts).total_seconds()
-        entry["age_s"] = int(age)
-        if age > DEAD_MULTIPLIER * expected or status not in HEALTHY_STATUSES:
+        if is_dead:
+            loaded, launchctl_evidence = (None, "")
+            if organ.get("recovery_action") == "launchctl_kickstart" and label:
+                loaded, launchctl_evidence = probe_launchctl(label)
+            entry["cure"] = _dead_cure(
+                organ, payload, agents_dir, loaded, launchctl_evidence
+            )
             report["dead"].append(entry)
+            report[f"dead_{entry['cure']}"] += 1
         elif age > expected:
             report["stale"].append(entry)
         else:
@@ -236,10 +380,14 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"node={report['node']} checked={report['checked']} ok={len(report['ok'])} "
             f"stale={len(report['stale'])} dead={len(report['dead'])} "
+            f"dead_session={report['dead_session']} dead_owner={report['dead_owner']} "
+            f"findings={len(report['findings'])} "
             f"never_armed={len(report['never_armed'])} disabled={len(report['disabled'])}"
         )
         for d in report["dead"]:
             print(f"  DEAD {d['id']} age={d['age_s']}s status={d['status']} ({d['severity']})")
+        for f in report["findings"]:
+            print(f"  FINDINGS {f['id']} age={f['age_s']}s status={f['status']} ({f['completion_evidence']})")
         for oid in report["never_armed"]:
             print(f"  NEVER-ARMED {oid} (ledger's job, not a healer target)")
     return report["exit"]

@@ -1,0 +1,18 @@
+# Review by codex-gpt-5.6-sol (read-only, reasoning high), verbatim final message
+# candidate: uncommitted diff of .github/workflows/fleet-burst-tests.yml vs origin/main 99746b46d1; 2026-10-05
+
+VERDICT: OK
+
+INFO .github/workflows/fleet-burst-tests.yml:77 — Complete dependency closure (`ai-dispatch.sh`, watchdog library, both suites, `pr_watch.sh`) appears in both path lists — `sed -n '64,115p' ...; rg -n 'source|scripts/' ...`
+
+INFO .github/workflows/fleet-burst-tests.yml:173 — Both steps fail closed on suite failure/abort or insufficient output; floors exactly match 3 and 51 assertions — `rg -c '^check "' scripts/tests/test_{ai_dispatch_shared_watchdog,pr_watch}.sh` plus synthetic failure/no-summary/low-count probes.
+
+INFO scripts/lib/seat_watchdog.sh:9 — No active `date -v`, `sed -i ''`, `gdate`, or external `timeout`; the pure-Bash process-group watchdog returned 124 and killed a TERM-ignoring command in a shortened probe — `rg -n 'date -v|sed -i|gdate|g?timeout' ...; run_with_timeout 1 ...`
+
+INFO .github/workflows/fleet-burst-tests.yml:127 — Added deterministic cost is about 121 seconds; 10 minutes retains substantial headroom — `rg -n '\bsleep\b|timeout|INTERVAL'` across all invoked suites.
+
+INFO .github/workflows/fleet-burst-tests.yml:63 — YAML and workflow structure/order validate; diff has no whitespace errors — `actionlint .github/workflows/fleet-burst-tests.yml; git diff --check`.
+
+NOTE — A real Ubuntu/full-suite run could not be confirmed: this read-only sandbox rejects `mktemp`, and Pro was unreachable. `bash scripts/tests/test_pr_watch.sh` confirmed that environmental blocker, not a candidate failure.
+
+Skills: `stadio-zero`, `modus`.

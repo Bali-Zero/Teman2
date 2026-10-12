@@ -101,6 +101,10 @@ def seat_labels(path: Path = TOPOLOGY_PATH) -> dict[str, str]:
     for label, slot in slots.items():
         if not isinstance(slot, dict) or not slot.get("email"):
             continue
+        if slot.get("status") == "retired":
+            # Its token slot is dead: never print it as a live seat's slot.
+            out[str(slot["email"]).lower()] = f"{label}/ret"
+            continue
         num = str(slot.get("oauth_token_slot") or "").rsplit("_", 1)[-1]
         out[str(slot["email"]).lower()] = f"{label}/_{num}" if num.isdigit() else str(label)
     return out

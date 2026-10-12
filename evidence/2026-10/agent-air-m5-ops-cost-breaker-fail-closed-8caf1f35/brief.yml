@@ -1,0 +1,65 @@
+task_id: cost-breaker-fail-closed
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  FIXBATCH-C-20261005, items 6 and 14 of the 2026-10-05 ranked findings. The fleet's spend governor reported an
+  alert as handled when it never left, and read a corrupt spend total as zero. (1) scripts/cost_breaker_deadman.sh
+  started its 1 h cooldown after every alert attempt, delivered or not: scripts/tg_notify.py always exits 0 and
+  names its verdict on stderr, so the `|| log "gateway send failed"` branch could never fire, and the `return 0`
+  inside the interpreter loop ended the fallback chain at the first executable python3. Measured read-only on Pro
+  (the only host that runs it, launchd com.nuzantara.cost-breaker-deadman, StartInterval 600, from the repo
+  checkout /Users/nuzantara/nuzantara): 4 governance-mute alerts since 2026-09-23 were not delivered (2x
+  p0_unsent_spooled, 2x tg_notify internal error ENOSPC) and each one started the cooldown; on 2026-09-26 ten
+  ticks in a row logged "cooldown active, not alerting" while three governance alive-signals were stale. Cure:
+  the cooldown starts only on the gateway's own "sent" verdict (or "deduped" after a delivered alert, the
+  pre-existing healthy shape); anything else clears the stamp, logs "alert NOT delivered", names the verdict in the
+  state file (`alert_undelivered`) and the next tick retries; an interpreter that printed no gateway verdict falls
+  through to the next one. (2) scripts/cost_breaker.py `_pg_provider_spend` returned `_safe_decimal(value) or
+  Decimal("0")`, so a NaN / Infinity / negative / garbage aggregate became $0 and the breaker ALLOWed; it now
+  returns None, which the existing G4 path maps to a fail-closed DEGRADE.
+constraints:
+  - Only the two scripts change; tests are added to the two existing test files that p9-cost-breaker.yml already runs. No workflow edit.
+  - tg_alert stays self-contained (test_tg_sender_migration.sh extracts its body verbatim) and keeps the absolute interpreter list (W108).
+  - The healthy tick (all signals fresh) and the delivered-alert tick are byte-identical to origin/main; the dead-man's exit status stays 0 in every branch.
+  - No real alert, no real ledger read, no state edit on Pro; every test uses a fake gateway in a temp HOME.
+  - Out of scope, owed to the gateway's owner, recorded in the pack - tg_notify stamps its dedup entry before the send outcome, so an unsent P0 mutes its own retries for TG_DEDUP_HOURS.
+acceptance:
+  - text: >-
+      An undelivered alert (p0_unsent_spooled, gateway internal error, "deduped" without a delivered stamp, no
+      gateway verdict) starts no cooldown, logs "alert NOT delivered", writes alert_undelivered into the state file,
+      and the next tick calls the gateway again; a gateway that answered is not re-run on another interpreter.
+    probe: bash scripts/test_cost_breaker_deadman.sh
+  - text: >-
+      A failed attempt clears an older delivered stamp, so the gateway's "deduped" on the next tick (it stamps its
+      dedup entry before it knows the send failed) still reads as undelivered; with no gateway at all the state says
+      no_gateway; with no verdict each absolute python3 is tried exactly once.
+    probe: bash scripts/test_cost_breaker_deadman.sh
+  - text: >-
+      A broken first interpreter falls through to the next one and the delivery is reported (the real tg_alert body,
+      first interpreter literal replaced by a broken one).
+    probe: bash scripts/test_cost_breaker_deadman.sh
+  - text: >-
+      A "sent" alert starts the cooldown and the next tick stays quiet; "deduped" after a delivered alert re-arms the
+      cooldown; the healthy tick calls no gateway and keeps the same state keys.
+    probe: bash scripts/test_cost_breaker_deadman.sh
+  - text: >-
+      A PG aggregate of NaN, Infinity, -3.50, garbage or None is UNKNOWN and decide() returns DEGRADE; 0, 0.00 and
+      1.25 stay KNOWN and ALLOW.
+    probe: python3 -m pytest -q scripts/test_cost_breaker.py -k fixc
+  - text: >-
+      The tg sender migration contract still holds for the dead-man (gateway reached, key, poisoned PATH, fail-loud).
+    probe: bash scripts/tests/test_tg_sender_migration.sh
+assumptions:
+  - text: The new tests fail on origin/main 5ec3d63463 and pass with the cure.
+    status: verified
+    probe: >-
+      2026-10-05, worktree at red-test commit f489074d76 (scripts unchanged from origin/main): deadman 9 failed /
+      13 passed; pytest -k fixc 5 failed / 3 passed.
+  - text: >-
+      No production caller reaches the PG path of provider_spend_in_window: the hourly Pro job and deepseek_client
+      read the JSONL export only, so DEGRADE on a corrupt aggregate stops nothing fleet-wide.
+    status: verified
+    probe: >-
+      git grep -n 'conn_or_pool' (only tests pass it); ssh pro: ~/logs/fase0-cost-breaker.err.log 3747 verdict
+      lines, all ALLOW, 0 UNKNOWN.

@@ -1,0 +1,34 @@
+task_id: qwen-watch-green-1005
+gear: 1
+l_level: L1
+gate_class: opus
+objective: >-
+  Mission TP1MAX-20261005, first class deliverable ("exit code masked as
+  green / call with no timeout"). scripts/qwen_quota_watch.py documents exit
+  codes 0 ok, 1 WARN, 2 CRIT, 4 CANNOT-MEASURE, but an uncaught exception
+  also exits 1 and scripts/qwen_quota_watch_cron.sh maps 0|1|2 to success,
+  so a crashing watcher read green. The tg_notify subprocess in send_alert()
+  had no timeout, so a hung gateway hung the cron job. Cure: a __main__
+  guard that turns an uncaught exception into exit 3 (CRASH), which the
+  wrapper already propagates, and a 60 s timeout whose expiry counts as not
+  delivered (main already turns that into exit 4). Found by qwen3.8-max,
+  confirmed by Kimi K3 on disk, built by Kimi, reviewed by Codex.
+acceptance:
+  - text: >-
+      An uncaught exception in main() returns 3 and prints CRASH; a normal
+      return code and SystemExit pass through unchanged.
+    probe: python3 -m pytest -q scripts/tests/test_qwen_quota_watch.py -k run_main
+  - text: >-
+      A tg_notify call that times out returns False with ALERT NOT DELIVERED,
+      and the call carries timeout=ALERT_TIMEOUT_S.
+    probe: python3 -m pytest -q scripts/tests/test_qwen_quota_watch.py -k timeout
+  - text: >-
+      The documented 0/1/2/4 behaviour and the offline selftest are unchanged.
+    probe: python3 scripts/qwen_quota_watch.py --selftest
+assumptions:
+  - text: >-
+      The two new tests fail on origin/main and pass with the cure.
+    status: verified
+    probe: >-
+      2026-10-05, worktree with scripts/qwen_quota_watch.py reverted to
+      origin/main: 2 failed, 3 passed; with the cure: 5 passed

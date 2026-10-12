@@ -166,6 +166,7 @@ on:
       - infra/workflows contract tests
       - Insight cover cards — no article may wear another article's card
       - "intake-review reader liveness (5xx SICK corpus)"
+      - "watchdog third state (probe failure is neither ok nor alarm)"
       - Intel Router Tests
       - kbli-68112-collision-regression
       - kbli-filiera-vault-compilers
@@ -175,6 +176,8 @@ on:
       - Golden Rule
       - Lint — GARUDA_ENVIRONMENT workflow value matches DB schema
       - Lint i18n providers
+      - localci tests
+      - mata-garuda-tests
       - Merah Putih DAY contrast guard
       - Migration number uniqueness lint
       - Migration ROLLBACK marker lint
@@ -200,6 +203,7 @@ on:
       - Restore drill wiring tests
       - Promotion readiness tests
       - queue doctor tests
+      - r19-wrapper-census-tests
       - "runbook section numbers are unique"
       - Root Guard
       - SBOM (Software Bill of Materials)
@@ -282,6 +286,9 @@ on:
       # accompanies was written to close, so being caught by this checker on
       # the way in is the system working, not an obstacle.
       - WR3 spend gate tests
+      # Added 2026-10-06 (tp1-runner-tests.yml): it also runs on push to
+      # main, so a red there must reach this watcher.
+      - TP1 runner tests
       # Added 2026-08-21: main-red-breaker.yml (token-ceremony CI-critical-
       # path work) triggers on `workflow_run` only — this list's contract is
       # name-set membership, not alert-path reachability (see header comment
@@ -306,6 +313,9 @@ on:
       # own first run, which is the coverage gate doing exactly its job: a new
       # push-to-main workflow that nothing watches is a red nobody would see.
       - VOA probe organ tests
+      # Added 2026-10-10 (zero-sync-tests.yml, the canonical -> FastLabsNet/zero mirror organ's offline corpus).
+      # Listed by its declared name:, caught by check_watcher_coverage.py on that PR's own first run.
+      - Zero sync tests
       # Added 2026-08-29 (Handoff H3, token-contrast-tests.yml): ADVISORY job
       # (continue-on-error: true — see the workflow's own header comment).
       # check_watcher_coverage.py's contract is name-set membership against

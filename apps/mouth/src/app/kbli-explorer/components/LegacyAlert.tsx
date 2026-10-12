@@ -65,11 +65,6 @@ export default function LegacyAlert({
                 className="group-hover:translate-x-1 transition-transform"
               />
             </button>
-
-            <div className="flex items-center gap-2 px-3 py-2 text-[10px] uppercase tracking-[0.2em] font-bold opacity-60">
-              <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-              Extraction Protocol Available
-            </div>
           </div>
         </div>
       </div>

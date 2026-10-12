@@ -1,0 +1,39 @@
+task: >-
+  scripts/secrets_permissions_audit.py marks a file credential-like by NAME (`*token*`), so the Bali Zero brand
+  DESIGN TOKENS file skills/bali-zero-brand/tokens.json (palette, fonts; tracked 100644) is reported on Mini and the
+  healer session chmods it to 0600 on most ticks; the next checkout re-creates it 0644. Exclude a skill's
+  tokens.json by what it is: bounded JSON object, no credential-marker key at any depth, no credential-shaped value.
+lane: ops
+machine: m5
+date: 2026-10-09
+gear: 2
+gear_reason: >-
+  Floor measured below 2 (no hot-zone path). Declared gear 2 so harness-floor holds the merge for the independent
+  final gate: the change narrows what a credential auditor reports, so an over-wide exclusion would hide a loosened
+  credential (scar #3, under-match).
+acceptance:
+  A1:
+    text: The tracked brand tokens.json, copied under a skills dir at 0644, is not a finding.
+    probe: test_t9c_the_tracked_brand_tokens_file_is_design_tokens; t9b rows brand / synced / urls-paths-colours.
+  A2:
+    text: >-
+      Still findings: tokens.json outside a skills component; a credential-marker key; a credential-shaped value
+      under an innocent key; invalid JSON; > 256 KiB; inside .secrets custody; another extension.
+    probe: t9b guilt rows.
+  A3:
+    text: >-
+      Each guard is load-bearing: dropping the value check, the key check, the skills component, the custody
+      precedence, or shortening the value run to 8 turns a row red.
+    probe: five scratch mutants, results in the PR body.
+  A4:
+    text: >-
+      Cure round of gate-8136, B1: every key the module's own credential vocabulary names (passwd, credential(s),
+      pwd, passphrase, pass_word, bearer, authorization; auth/token/pin/pass as whole segments, camelCase split) and
+      every key or value with a credential shape (a 24+ letter+digit run, a basic-auth userinfo in a URL) keeps a
+      tokens.json a finding; the tracked brand file still matches none of them (302 keys, 214 values, 0 hits).
+    probe: rows t9d (19 shapes) and t9e (near-miss design words) plus t9c.
+  A5:
+    text: >-
+      Cure round, B2 and cost: a parse failure of any kind, RecursionError included, keeps the file a finding and
+      scan() completes; the value check is linear (a 256 KiB digitless value in milliseconds, was minutes).
+    probe: rows t9d deep-object/deep-array, t9f (padding past the cap), t9g (timed), t9h (FIFO and symlink never opened).

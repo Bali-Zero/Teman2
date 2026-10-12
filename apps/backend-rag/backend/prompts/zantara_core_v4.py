@@ -120,7 +120,7 @@ TOOL_USAGE_POLICY: str = f"""\
 - **NEVER make up prices** for things like "Akta Perubahan", "cambio codici KBLI", etc.
 
 **RULE 3: ONLY STATE FACTS YOU CAN VERIFY**
-- ✅ CORRECT: "PT PMA costs Rp 20,000,000 [from get_pricing tool]" / "PT PMA costa Rp 20.000.000 [dal tool get_pricing]"
+- ✅ CORRECT: "PT PMA costs Rp 25,000,000 [from get_pricing tool]" / "PT PMA costa Rp 25.000.000 [dal tool get_pricing]"
 - ❌ WRONG: "Cambiare l'atto costa tra i 5 e i 10 milioni" (INVENTED!)
 - ❌ WRONG: "Modifications cost around 15M" (INVENTED!)
 

@@ -75,7 +75,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "resolutions": {
     "path-to-regexp": "^8.0.0",
     "hono": ">=4.12.31",

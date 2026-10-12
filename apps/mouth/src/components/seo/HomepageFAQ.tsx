@@ -31,7 +31,7 @@ export function HomepageServicesSchema() {
       areaServed: { "@type": "Country", name: "Indonesia" },
       offers: {
         "@type": "Offer",
-        price: "20000000",
+        price: "25000000",
         priceCurrency: "IDR",
         priceValidUntil: "2026-12-31",
       },

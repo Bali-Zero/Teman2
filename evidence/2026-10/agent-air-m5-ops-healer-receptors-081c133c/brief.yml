@@ -1,0 +1,37 @@
+task_id: healer-receptors
+mission: seat-utilization campaign 2026-10-05/06 (owner order "fai tu" on the Pro healer, 2026-10-06)
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  The Pro healer stops spawning its capped Claude session on what no session can cure: receptor B spawns on
+  proprioception only when at least one DIVERGED probe has cure == session and priority P0/P1 (else one
+  run.log skip line), and receptor D treats an arsenal seat transition as new only when the arsenal report's
+  own timestamp is newer than the last one acted on for that (seat, state).
+constraints:
+  - The live copy ~/scripts/pro-healer.sh on Pro is NOT touched by this PR; delivery is a separate step after merge.
+  - Receptors A (registry dead organs) and C (home-fork drift) and the G11 memo are unchanged (separate mandate).
+  - Nothing new is silenced by accident - an undeclared cure is session; an invalid cure or a malformed board is receptor-broken (visible).
+  - The Mini healer (infra/healer/healer-run.sh, count-diverged) is unchanged.
+  - No network, secrets or client data in tests or logs.
+appetite:
+  wall_clock_hours: 3
+acceptance:
+  - text: WHEN one DIVERGED P1 probe carries cure session THEN the wrapper SHALL spawn once with reason proprioception:1/1-session-curable.
+    probe: scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_b_guilt_p1_session_probe_spawns
+  - text: WHEN every DIVERGED probe is owner-cured or P2/P3 THEN the wrapper SHALL NOT spawn and SHALL write "skip <n> diverged, none session-curable at P0-P1" to run.log.
+    probe: scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_b_innocence_owner_and_p3_skip_with_ledger
+  - text: WHEN a probe carries a cure outside session/owner/pr (case variants included) THEN the receptor SHALL be reported broken and the value named in run.log, never skipped.
+    probe: scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_b_invalid_cure_fails_visible_not_skipped
+  - text: WHEN the arsenal report is newer than the last acted (seat, state) THEN the wrapper SHALL act once and persist the new report ts.
+    probe: scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_d_guilt_newer_report_timestamp_spawns_and_persists_tuple
+  - text: WHEN the same report is read on the next tick THEN the wrapper SHALL NOT spawn and SHALL log "already acted".
+    probe: scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_d_innocence_same_report_timestamp_next_tick_skips_with_ledger
+  - text: WHEN the last-acted state file is corrupt THEN it SHALL read as never acted, say so in run.log and be rewritten.
+    probe: scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_d_corrupt_state_reads_as_never_acted_and_says_so
+  - text: WHEN a probe declares no cure THEN its verdict and both boards (last.json, last.md) SHALL carry cure session.
+    probe: scripts/tests/test_pro_healer_receptors.py::ProprioceptionCureSchemaTest::test_undeclared_cure_defaults_to_session_and_both_boards_carry_it
+consumer_map:
+  - infra/launchagents/wrappers/pro-healer.sh - Pro healer, every 6 h (com.nuzantara.healer-pro.6h); live copy ~/scripts/pro-healer.sh on Pro (declared HOME-fork pair; blob 48267b60c3 == origin/main 65b340c05c on 2026-10-06T16:05Z). Mini has no copy.
+  - scripts/healer_run_checks.py - read from the Pro checkout ~/nuzantara by the wrapper (auto fast-forward); count-diverged (Mini healer) unchanged.
+  - scripts/proprioception.py - board ~/.nuzantara-proprioception/last.json|md; readers scripts/hooks/proprioception_sessionstart.sh (no schema check), both healers, the ghostty keybind (cat last.md).

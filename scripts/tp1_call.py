@@ -450,7 +450,8 @@ def stream_chat_completion(
 
 
 def no_stream_chat_completion(
-    url: str, headers: dict, body: dict, timeout: float, secret_values: list[str]
+    url: str, headers: dict, body: dict, timeout: float, secret_values: list[str],
+    raw_errors: bool = False,
 ) -> tuple[Optional[int], str, str]:
     """Single-shot POST. Same contract as arsenal_probe.http_post_json —
     (status_code_or_None, full_body, evidence_tail) — with one deliberate
@@ -479,7 +480,10 @@ def no_stream_chat_completion(
     On a non-200 status, or on any transport exception, nothing here is ever
     handed to json.loads — full_body and evidence_tail are scrub()'d exactly
     as arsenal_probe.http_post_json does, so a header/token still never
-    reaches stderr on an error path."""
+    reaches stderr on an error path. raw_errors=True returns an HTTP error
+    status's body RAW too (the tail stays scrubbed): for a caller that must
+    classify the gateway's error code before redacting it, and that scrubs
+    the body itself before it reaches any output."""
 
     def _scrub_evidence(raw: str) -> tuple[str, str]:
         full = scrub((raw or "").strip().replace("\n", " "), secret_values)
@@ -498,11 +502,11 @@ def no_stream_chat_completion(
                 _, tail = _scrub_evidence(raw)
                 return resp.status, raw, tail
             full, tail = _scrub_evidence(raw)
-            return resp.status, full, tail
+            return resp.status, raw if raw_errors else full, tail
     except urllib.error.HTTPError as e:
         raw = e.read().decode("utf-8", errors="replace") if e.fp else ""
         full, tail = _scrub_evidence(raw)
-        return e.code, full, tail
+        return e.code, raw if raw_errors else full, tail
     except urllib.error.URLError as e:
         full, tail = _scrub_evidence(f"{type(e).__name__}: {e.reason}")
         return None, full, tail

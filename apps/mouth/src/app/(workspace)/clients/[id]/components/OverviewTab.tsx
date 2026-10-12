@@ -11,6 +11,7 @@ import {
   Copy,
   Check,
   Trash2,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type {
@@ -462,6 +463,23 @@ export function OverviewTab({
                   </div>
                   <p className="text-lg font-bold">{stats.documents_count}</p>
                 </div>
+                {typeof stats.company_documents_count === "number" &&
+                  (stats.company_count ?? 0) > 0 && (
+                    <div
+                      className="bz-product-panel bz-product-panel--interactive p-3 transition-all duration-300 hover:-translate-y-1"
+                      title="Active documents of every company linked to this client, primary or not."
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Building2 className="w-3.5 h-3.5 text-purple-500" />
+                        <span className="text-[11px] text-[var(--bz-text-2)]">
+                          Company docs
+                        </span>
+                      </div>
+                      <p className="text-lg font-bold">
+                        {stats.company_documents_count}
+                      </p>
+                    </div>
+                  )}
                 {pipelineValue > 0 && (
                   <div className="bz-product-panel bz-product-panel--interactive p-3 transition-all duration-300 hover:-translate-y-1">
                     <div className="flex items-center gap-1.5 mb-1">

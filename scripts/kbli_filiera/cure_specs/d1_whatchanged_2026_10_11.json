@@ -1,0 +1,193 @@
+{
+  "spec_id": "d1_whatchanged_2026_10_11",
+  "adjudicated": "Zero, 2026-10-11 (data lot D-1, through the team lead): the seven sentences as drafted in PREVIEW-kbli-nav-design/D1-whatchanged.md; 01309 and 08996 take option A (the BPS split); 52101 adds the BPS pointer for its reused number. Surfaces: app, website and WhatsApp.",
+  "why": "Nine client-facing whatChanged fields carried pipeline provenance instead of a sentence for the client: PR numbers, pp28_sources, score=, PNG names, Italian, and internal correction dates. Two of them (01309, 08996) asserted a KBLI 2020 predecessor from an automatic title match that the official BPS table contradicts. Each sentence states only what the record's own bps_2020_ancestors carries, plus, where it says more (a split, a reused number), the BPS Lampiran 10 edge pinned under expect_bps_edges.",
+  "edges_file": "data/kbli-filiera/bps-crosswalk/edges-lampiran10.json",
+  "canonical": [
+    {
+      "code": "10433",
+      "old_sha256": "8df5b6d21ea91d4cdc1827df5aa70d4fb570cf3cb6609868a98b9a2d6ffa0840",
+      "new_sha256": "cba24f524c312a2dc994a4a2909e7c914b34ab6f5b794ee89dcb64a62a038140",
+      "expect": {
+        "bps_2020_ancestors.codes": ["10433"]
+      },
+      "old_text": "KBLI 2020->2025 mapping: direct 1:1 match (10433->10433). Corrected 2026-07-19 — the previous 'match con aggregazione' status_mapping/label was stale: it depended on a second parent (2020 code 10490) that was already removed from pp28_sources by PR #2777, since 10490's true 2025 child is 10419, not 10433. With only one true ancestor remaining, this is a clean 1:1 continuation.",
+      "patch": {
+        "intel_2026.whatChanged": "Direct 1:1 match from KBLI 2020 — code and scope unchanged."
+      }
+    },
+    {
+      "code": "46100",
+      "old_sha256": "9d98223c2cfae30e66f8a99d952cf8ce11aa4e9e3905f98730e822e9f9709dcc",
+      "new_sha256": "42143bbad023d2c51abbada7104a78e4a24f773f01c4f37884368b4c767e1c18",
+      "expect": {
+        "bps_2020_ancestors.codes": ["46100", "63122"]
+      },
+      "old_text": "Merged from multiple KBLI 2020 codes into a single 2025 code (corrected 2026-07-19 — the previous 'Direct match... No code changes, no scope changes' label was a false 1:1 narrative). BPS Vol.2 Lampiran 10 (image-verified p.356, render lampiran10_p370-370.png) documents a two-source merge in the reverse crosswalk direction: KBLI-2020 codes 46100 (Perdagangan Besar atas dasar Balas Jasa) and 63122 (Portal Web Dan/Atau Platform Digital Dengan Tujuan Komersial) both map to KBLI-2025 46100. 63122 is recorded here as a crosswalk ancestor only — NOT as a PP28 source; pp28_sources remains ['46100'] unchanged.",
+      "patch": {
+        "intel_2026.whatChanged": "Merged in KBLI 2025: the official BPS conversion table maps two KBLI 2020 codes into this one — 46100 (wholesale on a fee or contract basis) and 63122 (commercial web portals and digital platforms)."
+      }
+    },
+    {
+      "code": "52101",
+      "old_sha256": "6241f21bdd1988582171be2efbad030502370104f584f606a3e3e34cd4fdcf0f",
+      "new_sha256": "3c7922ab17c2d228cd0d34b7ac22b1b176fbb17207bde3f2feb6e41731357eab",
+      "expect": {
+        "bps_2020_ancestors.codes": [
+          "03143",
+          "03241",
+          "03243",
+          "03263",
+          "52108"
+        ]
+      },
+      "expect_bps_edges": [["52101", "52109"]],
+      "old_text": "Renumbered/merged from KBLI 2020 52108 + fishery post-harvest services codes — activity scope from 52108, code number reused (corrected 2026-07-19 — the previous 'Direct 1:1 match... code and scope unchanged' label was a false narrative). BPS Vol.2 Lampiran 10 (image-verified p.389, render lampiran10_p403-403.png) documents a FIVE-parent merge: KBLI-2020 codes 03143, 03241, 03243, 03263 (fishery post-harvest/production services) and 52108 (same-title SRG warehouse manager) all map to KBLI-2025 52101 — the false same-digit self-reference ['52101'] previously left in pp28_sources is now corrected to this true 5-parent ancestor list (residual fix, 2026-07-19).",
+      "patch": {
+        "intel_2026.whatChanged": "Merged in KBLI 2025: the official BPS conversion table maps five KBLI 2020 codes into this one — 52108 (warehouse operators under the warehouse receipt system) and four fishery service codes (03143, 03241, 03243, 03263) — while KBLI 2020 code 52101 itself is not among them; that number now maps to 52109 (warehousing and storage)."
+      }
+    },
+    {
+      "code": "47771",
+      "old_sha256": "2e02a2b2f2274692adb33db2a59ab8dee50acbfbae91d55df36198d96f701e69",
+      "new_sha256": "7afea68df0de653ff1040f402f85b7ad929118cdf927830d8a86821c76ac647a",
+      "expect": {
+        "bps_2020_ancestors.codes": ["47771", "47892", "47919", "47996"]
+      },
+      "old_text": "Merged from multiple KBLI 2020 codes into a single 2025 code (corrected 2026-07-18 — the previous 'Unchanged from KBLI 2020 — direct match' label was a false 1:1 narrative). BPS Vol.2 Lampiran 5 (sha 29f17b3b) documents a four-source merge in both crosswalk directions: KBLI-2020 codes 47771, 47892, 47919, and 47996 all map to KBLI-2025 47771. These four codes are recorded as crosswalk ancestors only — NOT as PP28 sources; pp28_sources remains ['47771'] unchanged.",
+      "patch": {
+        "intel_2026.whatChanged": "Merged in KBLI 2025: the official BPS conversion table maps four KBLI 2020 codes into this one — 47771 (retail sale of kerosene), 47892 (street and market-stall retail of fuels and lubricants), 47919 (retail of various other goods via media) and 47996 (itinerant retail of fuels and lubricants)."
+      }
+    },
+    {
+      "code": "60101",
+      "old_sha256": "6716acaf0a1be91700da5fa09dcdc515e9b5f9e6e91d1ac83c997bc9dee6477b",
+      "new_sha256": "8acd36b7d95ff5616021c561fd6ebfca925959d02b89680d2fcc31aa0c74a989",
+      "expect": {
+        "bps_2020_ancestors.codes": ["60101"]
+      },
+      "expect_bps_edges": [
+        ["60101", "60101"],
+        ["60101", "60103"]
+      ],
+      "old_text": "Scope narrowed under the 2025 analog/digital/on-demand broadcasting re-axing (corrected 2026-07-19 — the previous 'Direct 1:1 match ... unchanged' label was a false scope-preservation narrative). BPS Vol.2 Lampiran 5 (forward table, p.212) shows KBLI-2020 code 60101 fanning into two KBLI-2025 codes: 60101 (this code, analog radio broadcasting) and 60103 (audio distribution and streaming-on-demand) — a genuine split, not a preserved 1:1 scope. pp28_sources remains ['60101'] unchanged: the sibling code 60103 is a co-descendant of the same 2020 ancestor, not an additional source of this code.",
+      "patch": {
+        "intel_2026.whatChanged": "Split in KBLI 2025: the official BPS conversion table maps KBLI 2020 code 60101 (radio broadcasting by government) into two codes — this one, analog radio broadcasting, and 60103, audio distribution and on-demand streaming."
+      }
+    },
+    {
+      "code": "60103",
+      "old_sha256": "bfcac7e328ddbc91ddd29176203ffddd5306de9eb71bf6cb18f48ffe39faa505",
+      "new_sha256": "15b1ae30bd16404aa91baf0325983c0903c6ffa82983bb791e55470d8122f276",
+      "expect": {
+        "bps_2020_ancestors.codes": ["60101", "60102"]
+      },
+      "old_text": "Merged from multiple KBLI 2020 codes under the 2025 analog/digital/on-demand broadcasting re-axing (corrected 2026-07-19 — the previous 'codice rinumerato' single-parent label was a false narrative). BPS Vol.2 Lampiran 10 (reverse table, p.395) documents a two-parent merge: KBLI-2020 codes 60101 (analog radio) AND 60102 (digital radio) both map to KBLI-2025 60103 (audio distribution and streaming-on-demand). Both codes are recorded as crosswalk ancestors only — NOT as PP28 sources; pp28_sources remains ['60102'] unchanged.",
+      "patch": {
+        "intel_2026.whatChanged": "Merged in KBLI 2025: the official BPS conversion table maps two KBLI 2020 codes into this one — 60101 (radio broadcasting by government) and 60102 (radio broadcasting by private operators)."
+      }
+    },
+    {
+      "code": "60203",
+      "old_sha256": "d729d2ef91ae7336ad3623b6ef91801504c14fbf0f37e3340cf43cbafa302be2",
+      "new_sha256": "9792c6e0978b3b27f8b9fa2f4d1c17d11393f76fef23f5c4a35b132eb96d83e8",
+      "expect": {
+        "bps_2020_ancestors.codes": ["60201", "60202"]
+      },
+      "old_text": "Merged from multiple KBLI 2020 codes under the 2025 analog/digital/on-demand broadcasting re-axing (corrected 2026-07-19 — the previous 'codice rinumerato' single-parent label was a false narrative). BPS Vol.2 Lampiran 10 (reverse table, p.395) documents a two-parent merge: KBLI-2020 codes 60201 (analog TV) AND 60202 (digital TV) both map to KBLI-2025 60203 (video distribution and streaming-on-demand). Both codes are recorded as crosswalk ancestors only — NOT as PP28 sources; pp28_sources remains ['60202'] unchanged.",
+      "patch": {
+        "intel_2026.whatChanged": "Merged in KBLI 2025: the official BPS conversion table maps two KBLI 2020 codes into this one — 60201 and 60202 (television broadcasting and programming, by government and by private operators)."
+      }
+    },
+    {
+      "code": "01309",
+      "old_sha256": "4dc754341cf46a6dced02875fd52ed59fd07c739428db5f5dc7f21514a6186b3",
+      "new_sha256": "2b90f5211961b424fb223cc09bdf2862fe4e7fc0284fa81ec800406ae6513b50",
+      "expect": {
+        "bps_2020_ancestors.codes": ["01302"]
+      },
+      "expect_bps_edges": [
+        ["01302", "01302"],
+        ["01302", "01309"]
+      ],
+      "old_text": "Renumbered from KBLI 2020 — same activity, new code number. Auto-matched to 02119 (Pemanfaatan kayu hutan tanaman...) score=73% Previous code(s): 02119",
+      "patch": {
+        "intel_2026.whatChanged": "Split in KBLI 2025: the official BPS conversion table maps KBLI 2020 code 01302 (plant propagation) into two codes, 01302 and this one."
+      }
+    },
+    {
+      "code": "08996",
+      "old_sha256": "99270747c4bd71779aa23f434c422ebf9ca14d8a49d01deb0c1e9c6a85ad4136",
+      "new_sha256": "087f2cb35e8c1bd10d19448bc390cdd8a5744ef85c63483a8cb4c2173446770c",
+      "expect": {
+        "bps_2020_ancestors.codes": ["08999"]
+      },
+      "expect_bps_edges": [
+        ["08999", "08999"],
+        ["08999", "08996"]
+      ],
+      "old_text": "Renumbered from KBLI 2020 — same activity, new code number. Auto-matched to 07309 (Pertambangan Bijih Logam Mulia...) score=75% Previous code(s): 07309",
+      "patch": {
+        "intel_2026.whatChanged": "Split in KBLI 2025: the official BPS conversion table maps KBLI 2020 code 08999 (other mining and quarrying n.e.c.) into two codes, 08999 and this one."
+      }
+    }
+  ],
+  "gold": [
+    {
+      "code": "46100",
+      "field": "whatChanged",
+      "old": "Direct match from KBLI 2020. No code changes, no scope changes. The commission agent model has been stable across both classifications.",
+      "new": "Merged in KBLI 2025: the official BPS conversion table maps two KBLI 2020 codes into this one — 46100 (wholesale on a fee or contract basis) and 63122 (commercial web portals and digital platforms)."
+    },
+    {
+      "code": "60103",
+      "field": "whatChanged",
+      "old": "Renumbered from KBLI 2020 code 60102 (Private Radio Broadcasting). The name change is significant — KBLI 2025 explicitly separates on-demand streaming from traditional broadcasting, recognizing the digital shift. However, the licensing requirements inherited from broadcasting are arguably over-regulated for pure streaming services.",
+      "new": "Merged in KBLI 2025: the official BPS conversion table maps two KBLI 2020 codes into this one — 60101 (radio broadcasting by government) and 60102 (radio broadcasting by private operators)."
+    },
+    {
+      "code": "60203",
+      "field": "whatChanged",
+      "old": "Renumbered from KBLI 2020 code 60202 (TV Programming & Broadcasting). Separates on-demand video from linear TV.",
+      "new": "Merged in KBLI 2025: the official BPS conversion table maps two KBLI 2020 codes into this one — 60201 and 60202 (television broadcasting and programming, by government and by private operators)."
+    }
+  ],
+  "kg": [
+    {
+      "entity_id": "kbli:46100",
+      "old_sha256": "d9681ed5fb54a293eb41ac369f2a827a72571492aa9405c25056c5acffa87998",
+      "new": "Merged in KBLI 2025: the official BPS conversion table maps two KBLI 2020 codes into this one — 46100 (wholesale on a fee or contract basis) and 63122 (commercial web portals and digital platforms)."
+    },
+    {
+      "entity_id": "kbli:52101",
+      "old_sha256": "a0a94c898278168b7cd37ad43f5fcc0cd80b062b1f9e11eac9438a9657fce561",
+      "new": "Merged in KBLI 2025: the official BPS conversion table maps five KBLI 2020 codes into this one — 52108 (warehouse operators under the warehouse receipt system) and four fishery service codes (03143, 03241, 03243, 03263) — while KBLI 2020 code 52101 itself is not among them; that number now maps to 52109 (warehousing and storage)."
+    },
+    {
+      "entity_id": "kbli:47771",
+      "old_sha256": "6ff9cd78daf516adc2c669076836b1af1161e4aaacdcca550bc22a87c536b8a3",
+      "new": "Merged in KBLI 2025: the official BPS conversion table maps four KBLI 2020 codes into this one — 47771 (retail sale of kerosene), 47892 (street and market-stall retail of fuels and lubricants), 47919 (retail of various other goods via media) and 47996 (itinerant retail of fuels and lubricants)."
+    },
+    {
+      "entity_id": "kbli:60101",
+      "old_sha256": "3632f629fa0226ab679076ee54c2971e6bba2eb948053abac74735d228fb064f",
+      "new": "Split in KBLI 2025: the official BPS conversion table maps KBLI 2020 code 60101 (radio broadcasting by government) into two codes — this one, analog radio broadcasting, and 60103, audio distribution and on-demand streaming."
+    },
+    {
+      "entity_id": "kbli:60103",
+      "old_sha256": "2f0c8108622c272f923e444976acd9027f88cdc0ce55a8c7841ad2e55aa3a4e8",
+      "new": "Merged in KBLI 2025: the official BPS conversion table maps two KBLI 2020 codes into this one — 60101 (radio broadcasting by government) and 60102 (radio broadcasting by private operators)."
+    },
+    {
+      "entity_id": "kbli:60203",
+      "old_sha256": "6588dc8bcd5fc433a702f403b7efcbee124cfa2c27c2a6ac62f668c879fc2a38",
+      "new": "Merged in KBLI 2025: the official BPS conversion table maps two KBLI 2020 codes into this one — 60201 and 60202 (television broadcasting and programming, by government and by private operators)."
+    },
+    {
+      "entity_id": "kbli:08996",
+      "old_sha256": "a944f8064ce322e38340418d3f1125ed1a076081348193087e554a6155d50b4e",
+      "new": "Split in KBLI 2025: the official BPS conversion table maps KBLI 2020 code 08999 (other mining and quarrying n.e.c.) into two codes, 08999 and this one."
+    }
+  ],
+  "kg_without_the_field": ["kbli:01309", "kbli:10433"]
+}

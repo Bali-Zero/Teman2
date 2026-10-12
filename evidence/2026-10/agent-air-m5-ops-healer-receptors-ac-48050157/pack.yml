@@ -1,0 +1,140 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+plan_ref: >-
+  Branch agent/air-m5/ops/healer-receptors-ac from origin/main 63b4c26ba8. Codex O1 built the first diff in a linked
+  worktree (scripts/seat_build.sh --seat codex --tier sol, 2026-10-07 09:21-09:43Z, prepare-only, no commit). The Claude
+  verifier (dux-healer-ac-ship) re-verified on disk, amended F1-F7, measured the live shapes read-only on Pro and Mini, ran
+  a sealed three-family council (10:03-10:05Z) and one refutation round (10:08-10:10Z), folded two council amendments, then
+  committed and shipped. Owner order "fai tu" on the Pro healer, 2026-10-06.
+lanes:
+  - lane: healer-receptors-ac-build
+    role: build
+    seat: "codex-o1 (scripts/seat_build.sh --seat codex --tier sol; registry cure, receptors A/C, memo key, tests; prepare-only)"
+  - lane: healer-receptors-ac-verify
+    role: build
+    seat: "claude-opus-5.5 (dux-healer-ac-ship: on-disk verification, red-first on origin/main exports, 59 mutants, amendments F1-F7, live shapes, this pack, commit, push, arm)"
+  - lane: healer-receptors-ac-council-claude
+    role: review
+    seat: "claude-opus-5.5 (sealed round 1, written first; AMEND; round 2 adjudication)"
+  - lane: healer-receptors-ac-council-codex
+    role: review
+    seat: "codex-o2 (gpt-6.1-sol, sessions 01a115d1 / 01a115d5 under ~/.codex-o2/sessions = O2 verified; round 1 BLOCK, round 2 7 HELD + 1 new; builder family)"
+  - lane: healer-receptors-ac-council-ollama
+    role: review
+    seat: "ollama-qwen3.5:9b (Mini, local, think=false; round 1 AMEND, round 2 5 HELD / 2 FALSIFIED + 1 new)"
+council_run: journal.jsonl
+seat_override: >-
+  Gear-3 quorum short of three counted non-builder families. Kimi (kimi-code/k3) and the TP1 seats (Alibaba monthly quota
+  exhausted since 2026-10-05T15:55Z, 429 until 2026-10-11T16:00Z) are quota-dead and agy (Gemini) is busy with the owner's
+  interactive windows, per the imperator's standing campaign rules; none was re-probed (TP1: "do not retry"). Fallback used:
+  ollama-qwen3.5:9b on Mini (largest qwen in `ssh mini ollama list`), which this lint does not count. Codex O2 is the
+  builder's family (Codex O1 built the diff): its voice counts as a seat, not as independence. The gate should weigh the
+  council as anthropic + openai(builder family) + local qwen.
+council_timing: >-
+  Round 1 sealed: claude 10:03:11Z (before either other answer was read), codex-o2 10:03:23-10:04:45Z, ollama
+  10:03:27-10:04:06Z. Round 2 refutation: ollama 10:08:14-10:08:56Z, codex-o2 10:08:10-10:09:29Z, claude adjudication
+  10:10:36Z. All before the first commit of this branch. Amendments F1-F7 precede the council; the drifted-pair cure follows
+  round 1 (codex-o2 #1); the label/recovery_action key follows round 2 (codex-o2 new).
+what_changed: |
+  scripts/healer_receptor_registry.py: each dead organ carries cure session|owner (dead_session / dead_owner). Owner only on a
+  declared registry cure: owner; "operation not permitted" (caseless, the entity proprioception.py's launchd classifier reads)
+  in the sidecar status/note or in launchctl print's "last exit" lines; or launchctl rc 113 (not loaded) AND a
+  <label>.plist.disabled-* rename or an owner_note/disabled_reason. Undeclared cure value -> ValueError -> exit 2. On Pro a
+  renamed-away plist is a visible owner-cured dead organ; Mini keeps the disabled exemption.
+  scripts/healer_run_checks.py: registry-summary (dead, session-curable, ids; non-str/undeclared cure rejected) and
+  home-fork-summary (drifted, session-curable, ids, session-curable ids; live path uid 0 or not writable = owner; stat error
+  and a line without a judgeable live path = session; malformed report rejected).
+  infra/launchagents/wrappers/pro-healer.sh: receptor A spawns on dead_session > 0 (reason registry:<k>/<n>-session-curable),
+  else one skip line; exit 1 with no dead organ or a malformed report = registry-receptor-broken. Receptor C reads
+  lint_home_fork.py --check --json (stderr to run.log, verdict logged), spawns on session-curable drift (reason
+  home-fork-drift:<k>/<n>-session-curable), else one skip line; malformed JSON or rc 1 with no breach =
+  home-fork-receptor-broken. The memo state carries diverged probes id:cure, drifted pairs path:cure and the three counts.
+  scripts/healer_memo.py: fingerprint = dead (id, cure, recovery_action, label) + diverged probe id:cure + drifted pair
+  path:cure + session-curable counts + receptor-broken tokens + new arsenal deaths; age bucket, status and note removed.
+  scripts/proprioception.py: unchanged (Codex's widening reverted).
+  Tests: branch tables in test_healer_receptor_disabled_plist.py, test_healer_run_checks.py, test_healer_memo.py and
+  wrapper rows in test_pro_healer_receptors.py (the #7995 swap-cures memo test restored).
+spend:
+  wall_clock_hours: 1.5
+receipts:
+  - claim: no Codex continuation was live in the worktree when the verifier took it
+    cmd: ps -axo pid,command | grep "context_bridge.py continue" | grep -v grep; lsof -a -p <codex pids> -d cwd
+    exit: "1 (no process; no codex pid with this cwd)"
+    ts: "2026-10-07T09:52Z"
+    seat: claude-opus-5.5
+  - claim: RED first on origin/main 63b4c26ba8 exports of the wrapper, registry, healer_run_checks.py and healer_memo.py, final test files
+    cmd: PRO_HEALER_UNDER_TEST=<base> HEALER_RUN_CHECKS_UNDER_TEST=<base> HEALER_MEMO_UNDER_TEST=<base> HEALER_REGISTRY_UNDER_TEST=<base> python -m pytest -q <4 test files>
+    exit: "1 (33 failed, 49 passed): A innocence spawned (1 != 0); C innocence spawned (1 != 0); same dead set +6 h -> fingerprint moved; A guilt reason registry:1-dead-organs"
+    ts: "2026-10-07T09:59Z"
+    seat: claude-opus-5.5
+  - claim: every owner-deciding branch and every memo key component is pinned
+    cmd: python -I work/dux-healer-ac-ship/mut/mutate.py (scratch copies injected via the *_UNDER_TEST seams)
+    exit: "M0 green; 59 mutants, 58 red on a named row; W8 survives as equivalent (a failed summary prints no stdout, the rc-1-no-breach clause fires the same reason)"
+    ts: "2026-10-07T10:12Z"
+    seat: claude-opus-5.5
+  - claim: GREEN on the final tree, existing suites included
+    cmd: python -m pytest -q test_pro_healer_receptors.py test_healer_memo.py test_healer_run_checks.py test_healer_receptor_*.py test_proprioception*.py; test_watchdog_third_state.sh; test_proprioception_*.sh; proprioception.py --selftest; bash -n; git diff --check; ruff
+    exit: "0 (311 passed) / ALL PASS / 14+8+7 passed / SELFTEST OK / 0 / 0 / clean"
+    ts: "2026-10-07T10:06Z"
+    seat: claude-opus-5.5
+  - claim: live Pro shapes, read-only from an export bundle (no fetch, no live copy touched)
+    cmd: tar bundle | ssh pro 'd=$(mktemp -d) ... bash run.sh' (registry --node pro --json x2, probe.py, lint --check --json --no-fetch, proprioception --json --no-report --no-fetch, wrapper memo heredoc + fingerprint x2)
+    exit: "registry 5 dead / 5 session (all loaded, no TCC, no rename, no declared cure); lint rc 1, stderr 0 B, summary 1 / 0 (root-owned _support_signal.py); proprioception 7 / 4; fingerprint 603bfb13... twice while age_s moved"
+    ts: "2026-10-07T10:01Z"
+    seat: claude-opus-5.5
+  - claim: Mini sees the same dead set and exit
+    cmd: tar base+new registry | ssh mini '... healer_receptor_registry.py --node mini --json (base, new)'
+    exit: "dead [] / [], disabled 1 / 1 equal, exit 0 / 0"
+    ts: "2026-10-07T10:05Z"
+    seat: claude-opus-5.5
+  - claim: >-
+      the seven acceptance probes pass by node id on the rebased head 0459eb4eda (origin/main 619fee6cef):
+      scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_a_guilt_session_curable_dead_organ_spawns,
+      scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_a_innocence_owner_only_dead_skips_with_ledger,
+      scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_c_innocence_root_owned_live_path_skips_with_ledger,
+      scripts/tests/test_pro_healer_receptors.py::ProHealerHarness::test_a_and_c_third_states_spawn_with_named_reasons,
+      scripts/tests/test_healer_memo.py::test_fingerprint_stable_for_same_dead_set_observed_six_hours_later,
+      scripts/tests/test_healer_memo.py::test_fingerprint_component_table,
+      scripts/tests/test_healer_receptor_disabled_plist.py::test_dead_cure_branch_table
+    cmd: python3 -c '<brief.yml acceptance probes>' | xargs python -m pytest -q -p no:cacheprovider
+    exit: "0 (7 passed)"
+    ts: "2026-10-07T10:12:42Z"
+    seat: claude-opus-5.5
+dissent:
+  - seat: codex-o2 (round 1, finding 1)
+    objection: "Two drifted pairs, first only A curable then only B curable: the key carried paths without cure and stayed equal."
+    status: CONFIRMED
+    reason: "Cured: home-fork-summary prints the session-curable paths; the key carries each pair as path:cure; mutant W14 red."
+  - seat: codex-o2 (round 1, finding 2)
+    objection: "A NO-REPO-TWIN with a root-owned live path is skipped, yet creating the repo twin is curable."
+    status: PLAUSIBLE
+    reason: "Refuted, not acted: the Pro session may not write the repo (HEALER-PRO-MANDATE.md:10); codex-o2 round 2 HELD the refutation."
+  - seat: codex-o2 (round 1, finding 3)
+    objection: "Mini now runs one launchctl print per dead launchctl_kickstart organ, serial, 10 s timeout each; Mini still spawns on owner-only organs."
+    status: CONFIRMED
+    reason: "Declared residual, not acted: read-only and fail-open; Mini's dead set and exit measured identical to base; Mini's count-based healer is out of scope."
+  - seat: codex-o2 (round 2, new)
+    objection: "Same dead id and cure, label old.job -> new.job: identical fingerprint, a fresh incurable verdict skips the new work."
+    status: CONFIRMED
+    reason: "Cured: the dead tuple carries recovery_action and label (static registry fields); rows dead-label / dead-recovery-action; mutants M12/M13 red."
+  - seat: ollama-qwen3.5:9b (round 1, findings 1-3)
+    objection: "An owner-cured dead organ or a root-owned drift is counted session-curable and spawns."
+    status: PLAUSIBLE
+    reason: "Refuted, not acted: only cure == session (registry) and non-owner paths (home-fork) are counted; the A and C innocence tests show 0 spawns."
+  - seat: ollama-qwen3.5:9b (round 1, findings 4-5)
+    objection: "An invalid cure makes the receptor broken and spawns; a missing cure defaults to session and spawns."
+    status: PLAUSIBLE
+    reason: "Refuted as defects: both are the designed fail-visible / fail-open directions (as #7995 B)."
+  - seat: ollama-qwen3.5:9b (round 2, C2 falsified)
+    objection: "The OSError fail-open makes a root-owned NO-REPO-TWIN session-curable and ACTIONABLE."
+    status: PLAUSIBLE
+    reason: "Refuted, not acted: a root-owned path stats fine (uid 0) -> owner (rows uid0-writable-guilt, no-repo-twin-guilt); only an unstat-able path is session."
+  - seat: ollama-qwen3.5:9b (round 2, new)
+    objection: "Owner-only drift now logs a skip and does not spawn."
+    status: PLAUSIBLE
+    reason: "Refuted, not acted: that is the intended change (root-owned live file = sudo = owner), not a silence of session-curable work."
+residuals:
+  - "Spawn lever: on Pro today receptor A reads 5/5 session-curable (5 loaded jobs reporting fail/error/degraded/warning, no owner evidence) and receptor B 4/7, so the next tick still spawns; only C stops contributing. Next levers: the 5 organs themselves, an owner ruling cure: owner per organ in organs_registry.yaml, and B's 4 session P1 probes."
+  - "The memo skips only when the session's escalation reads incurable; Pro's last recorded verdict is unknown."
+  - "The memo key keeps every DIVERGED probe (P2/P3 included), as #7995 did."
+  - "Delivery owed after merge: ~/scripts/pro-healer.sh on Pro only after the Pro checkout contains the merge (merge-base --is-ancestor), .bak-<date>-pre<PR>, blob check, by a Claude session."
