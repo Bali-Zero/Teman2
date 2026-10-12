@@ -9,6 +9,8 @@ on:
   pull_request:
     paths:
       - "scripts/fly_cost_guard.py"
+      - "scripts/lib/fly_credential.sh"
+      - "scripts/tg_notify.py"
       - "scripts/tests/test_fly_cost_guard.py"
       - "scripts/tests/test_mini_fly_cost_guard_wrapper.sh"
       - "infra/launchagents/wrappers/mini-fly-cost-guard.sh"
@@ -19,6 +21,8 @@ on:
       - main
     paths:
       - "scripts/fly_cost_guard.py"
+      - "scripts/lib/fly_credential.sh"
+      - "scripts/tg_notify.py"
       - "scripts/tests/test_fly_cost_guard.py"
       - "scripts/tests/test_mini_fly_cost_guard_wrapper.sh"
       - "infra/launchagents/wrappers/mini-fly-cost-guard.sh"

@@ -18,6 +18,8 @@ REPO="$HOME/nuzantara"
 GUARD="$REPO/scripts/fly_cost_guard.py"
 GATEWAY="$REPO/scripts/tg_notify.py"
 PYTHON_BIN="${MINI_FLY_COST_GUARD_PYTHON_BIN:-/usr/bin/python3}"
+# Test-only override lets the offline harness exercise the timeout quickly; production uses 900.
+GUARD_TIMEOUT_SECONDS="${MINI_FLY_COST_GUARD_TEST_TIMEOUT_SECONDS:-900}"
 mkdir -p "$LOG_DIR" "$SIDECAR_DIR"
 
 ts() { date '+%Y-%m-%d %H:%M:%S'; }
@@ -43,11 +45,14 @@ heartbeat() {
 }
 
 notify() {
-    local tier="$1" key="$2" message="$3" routing=true
+    local tier="$1" key="$2" message="$3" routing=true gateway_output rc
     [ "$tier" = "p0" ] && routing=false
-    TG_ACT_ROUTING_ENABLED=$routing TG_RELAY_SSH='' "$PYTHON_BIN" "$GATEWAY" \
+    gateway_output=$(TG_ACT_ROUTING_ENABLED=$routing TG_RELAY_SSH='' "$PYTHON_BIN" "$GATEWAY" \
         --tier "$tier" --source fly-cost-guard --dedup-key "$key" -- "$message" \
-        >> "$LOG" 2>&1
+        2>&1)
+    rc=$?
+    [ -n "$gateway_output" ] && log_output "$gateway_output"
+    return "$rc"
 }
 
 if [ "$(hostname -s | tr '[:upper:]' '[:lower:]')" != "mini-pro2" ]; then
@@ -75,8 +80,13 @@ if ! mkdir "$LOCKDIR" 2>/dev/null; then
     if [ -n "$owner_pid" ] && kill -0 "$owner_pid" 2>/dev/null \
         && [ "$(proc_id "$owner_pid")" = "$owner" ] \
         && ps -p "$owner_pid" -o command= 2>/dev/null | grep -q "mini-fly-cost-guard.sh"; then
-        log "previous run (pid $owner_pid) still alive — skipping"
-        heartbeat "warning" "run already active"
+        if [ "$age" -ge 1800 ]; then
+            log "previous run (pid $owner_pid) still alive for ${age}s — skipping"
+            heartbeat "warning" "run already active; age=${age}s"
+        else
+            log "previous run (pid $owner_pid) still alive — skipping"
+            heartbeat "warning" "run already active"
+        fi
         exit 0
     fi
     log "stale lock (owner ${owner_pid:-unknown} gone) — taking it over"
@@ -115,6 +125,7 @@ if [ -f "$HOME/.nuzantara-secrets.env" ]; then
 fi
 [ -n "${FLY_API_TOKEN:-}" ] && SENSITIVE_VALUES+=("$FLY_API_TOKEN")
 [ -n "${FLY_ACCESS_TOKEN:-}" ] && SENSITIVE_VALUES+=("$FLY_ACCESS_TOKEN")
+[ -n "${TELEGRAM_BOT_TOKEN:-}" ] && SENSITIVE_VALUES+=("$TELEGRAM_BOT_TOKEN")
 
 if [ -f "$LOG" ] && [ "$(wc -c < "$LOG" | tr -d ' ')" -gt 5242880 ]; then
     mv -f "$LOG" "$LOG.1"
@@ -151,13 +162,16 @@ export MAX_STARTED_CPUS="11"
 export MAX_TOTAL_VOLUME_GB="77"
 export MAX_DEDICATED_IPV4="0"
 
-OUTPUT=$("$PYTHON_BIN" "$GUARD" 2>&1)
+OUTPUT=$(/usr/bin/perl -e 'alarm shift; exec @ARGV' \
+    "$GUARD_TIMEOUT_SECONDS" "$PYTHON_BIN" "$GUARD" 2>&1)
 RC=$?
 unset FLY_API_TOKEN FLY_ACCESS_TOKEN
 log_output "$OUTPUT"
 REPORT_LINES=$(printf '%s\n' "$OUTPUT" | sed '/^::error::Fly resource guard:/d; /^Fly resource guard: within limits$/d; /^[[:space:]]*$/d')
 
-if [ "$RC" -eq 0 ]; then
+if [ "$RC" -eq 142 ]; then
+    broken guard-timeout "guard timed out after ${GUARD_TIMEOUT_SECONDS} s" 2
+elif [ "$RC" -eq 0 ]; then
     heartbeat "ok" "within configured ceilings" || broken heartbeat "heartbeat write failed" 2
     notify digest "fly-cost:success:$(date +%G-W%V)" \
         "Fly cost guard passed on Mini."$'\n'"$REPORT_LINES" || log "digest notification failed or was spooled"

@@ -6,20 +6,22 @@ PASS=0; FAIL=0
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WRAPPER="$ROOT/infra/launchagents/wrappers/mini-fly-cost-guard.sh"
 TOKEN_MARKER="fly-token-must-not-escape"
+GATEWAY_TOKEN_MARKER="gateway-token-must-not-escape"
 
 ok() { PASS=$((PASS + 1)); printf '  ok   %s\n' "$1"; }
 bad() { FAIL=$((FAIL + 1)); printf '  FAIL %s\n     %s\n' "$1" "$2"; }
 
 field() { printf '%s' "$1" | sed -n "s/.*\"$2\":\"\([^\"]*\)\".*/\1/p"; }
 
-run_case() { # $1=guard rc, $2=guard output, $3=credential failure (true/false)
-    local guard_rc="$1" guard_output="$2" cred_fail="$3"
+prepare_case() { # $1=guard rc, $2=guard output, $3=credential failure, $4=guard sleep, $5=gateway echoes secret
+    local guard_rc="$1" guard_output="$2" cred_fail="$3" guard_sleep="$4" gateway_echo="$5"
     CASE_TMP="$(mktemp -d)"
     mkdir -p "$CASE_TMP/bin" "$CASE_TMP/home/nuzantara/scripts/lib"
     cp "$ROOT/scripts/lib/fly_credential.sh" "$CASE_TMP/home/nuzantara/scripts/lib/"
     : > "$CASE_TMP/home/nuzantara/scripts/fly_cost_guard.py"
     : > "$CASE_TMP/home/nuzantara/scripts/tg_notify.py"
-    printf 'FLY_API_TOKEN=%s\n' "$TOKEN_MARKER" > "$CASE_TMP/home/.nuzantara-secrets.env"
+    printf 'FLY_API_TOKEN=%s\nTELEGRAM_BOT_TOKEN=%s\n' \
+        "$TOKEN_MARKER" "$GATEWAY_TOKEN_MARKER" > "$CASE_TMP/home/.nuzantara-secrets.env"
     chmod 600 "$CASE_TMP/home/.nuzantara-secrets.env"
 
     printf '#!/bin/bash\necho Mini-Pro2\n' > "$CASE_TMP/bin/hostname"
@@ -29,6 +31,7 @@ run_case() { # $1=guard rc, $2=guard output, $3=credential failure (true/false)
 #!/bin/bash
 case "$1" in
     */fly_cost_guard.py)
+        [ "${STUB_GUARD_SLEEP:-0}" = 0 ] || sleep "$STUB_GUARD_SLEEP"
         printf '%s\n' "$STUB_GUARD_OUTPUT"
         printf '%s|%s|%s|%s|%s|%s|%s\n' \
             "$EXPECTED_APPS" "$MAX_TOTAL_MACHINES" "$MAX_STARTED_MACHINES" \
@@ -37,6 +40,10 @@ case "$1" in
         exit "$STUB_GUARD_RC"
         ;;
     */tg_notify.py)
+        if [ "${STUB_GATEWAY_ECHO_SECRET:-false}" = true ]; then
+            printf 'gateway stdout %s\n' "${TELEGRAM_BOT_TOKEN:-none}"
+            printf 'gateway stderr %s\n' "${TELEGRAM_BOT_TOKEN:-none}" >&2
+        fi
         {
             printf 'routing=%s\n' "${TG_ACT_ROUTING_ENABLED-UNSET}"
             printf 'relay_set=%s\n' "${TG_RELAY_SSH+x}"
@@ -51,15 +58,50 @@ exit 99
 STUB
     chmod +x "$CASE_TMP/bin/hostname" "$CASE_TMP/bin/flyctl" "$CASE_TMP/bin/python-stub"
 
+    STUB_GUARD_RC="$guard_rc"
+    STUB_GUARD_OUTPUT="$guard_output"
+    STUB_CRED_FAIL="$cred_fail"
+    STUB_GUARD_SLEEP="$guard_sleep"
+    STUB_GATEWAY_ECHO_SECRET="$gateway_echo"
+}
+
+invoke_case() { # $1=capture path, $2=test-only timeout seconds
+    local capture_path="$1" timeout_seconds="$2"
     env -i HOME="$CASE_TMP/home" PATH="$CASE_TMP/bin:/usr/bin:/bin" \
         MINI_FLY_COST_GUARD_PYTHON_BIN="$CASE_TMP/bin/python-stub" \
         MINI_FLY_COST_GUARD_FLY_BIN="$CASE_TMP/bin/flyctl" \
         MINI_FLY_COST_GUARD_LOCKDIR="$CASE_TMP/lock" \
-        STUB_CAPTURE_DIR="$CASE_TMP" STUB_GUARD_RC="$guard_rc" \
-        STUB_GUARD_OUTPUT="$guard_output" STUB_CRED_FAIL="$cred_fail" \
-        /bin/bash "$WRAPPER" > "$CASE_TMP/captured" 2>&1
+        MINI_FLY_COST_GUARD_TEST_TIMEOUT_SECONDS="$timeout_seconds" \
+        STUB_CAPTURE_DIR="$CASE_TMP" STUB_GUARD_RC="$STUB_GUARD_RC" \
+        STUB_GUARD_OUTPUT="$STUB_GUARD_OUTPUT" STUB_CRED_FAIL="$STUB_CRED_FAIL" \
+        STUB_GUARD_SLEEP="$STUB_GUARD_SLEEP" STUB_GATEWAY_ECHO_SECRET="$STUB_GATEWAY_ECHO_SECRET" \
+        /bin/bash "$WRAPPER" > "$capture_path" 2>&1
     CASE_RC=$?
     CASE_HB="$(cat "$CASE_TMP/home/.organism/last_seen/mini.fly_cost_guard.json" 2>/dev/null)"
+}
+
+run_case() { # $1=guard rc, $2=guard output, $3=credential failure, $4=sleep, $5=gateway echo, $6=timeout
+    prepare_case "$1" "$2" "$3" "${4:-0}" "${5:-false}"
+    invoke_case "$CASE_TMP/captured" "${6:-900}"
+}
+
+run_live_lock_case() { # $1=young/old
+    local age_kind="$1" owner_pid owner_start
+    prepare_case 0 'Fly resource guard: within limits' false 0 false
+    cat > "$CASE_TMP/bin/ps" <<'STUB'
+#!/bin/bash
+case "$*" in
+    *lstart=*) printf ' Mon Jan  1 00:00:00 2024\n' ;;
+    *command=*) printf '/bin/bash mini-fly-cost-guard.sh\n' ;;
+esac
+STUB
+    chmod +x "$CASE_TMP/bin/ps"
+    owner_pid=$$
+    owner_start=$("$CASE_TMP/bin/ps" -p "$owner_pid" -o lstart= | tr -s ' ')
+    mkdir "$CASE_TMP/lock"
+    printf '%s %s\n' "$owner_pid" "$owner_start" > "$CASE_TMP/lock/pid"
+    [ "$age_kind" = old ] && touch -t 200001010000 "$CASE_TMP/lock"
+    invoke_case "$CASE_TMP/second-captured" 900
 }
 
 assert_no_token() {
@@ -115,6 +157,48 @@ grep -q -- '--tier p0' "$CASE_TMP/notify" && grep -q 'fly cost guard broken' "$C
 [ ! -f "$CASE_TMP/ceilings" ] && ok "guard never ran with unresolved credentials" \
     || bad "guard ran after credential failure" "$(cat "$CASE_TMP/ceilings" 2>/dev/null)"
 assert_no_token "credential failure"
+
+echo "== stale lock: dead owner is reclaimed =="
+prepare_case 0 'Fly resource guard: within limits' false 0 false
+mkdir "$CASE_TMP/lock"
+printf '999999 dead-owner\n' > "$CASE_TMP/lock/pid"
+invoke_case "$CASE_TMP/captured" 900
+[ "$CASE_RC" -eq 0 ] && [ "$(field "$CASE_HB" status)" = "ok" ] \
+    && [ -f "$CASE_TMP/ceilings" ] && grep -q 'stale lock' "$CASE_TMP/home/logs/mini-fly-cost-guard/run.log" \
+    && ok "dead lock owner is reclaimed and the guard runs" \
+    || bad "stale lock was not reclaimed" "rc=$CASE_RC heartbeat=$CASE_HB"
+
+echo "== live young lock: later run skips with active warning =="
+run_live_lock_case young
+[ "$CASE_RC" -eq 0 ] && [ "$(field "$CASE_HB" status)" = "warning" ] \
+    && [ "$(field "$CASE_HB" note)" = "run already active" ] \
+    && ok "young live lock reports run already active" \
+    || bad "young live lock warning" "rc=$CASE_RC heartbeat=$CASE_HB"
+
+echo "== live old lock: warning includes age =="
+run_live_lock_case old
+[ "$CASE_RC" -eq 0 ] && [ "$(field "$CASE_HB" status)" = "warning" ] \
+    && printf '%s' "$(field "$CASE_HB" note)" | grep -Eq '^run already active; age=[0-9]+s$' \
+    && ok "old live lock warning names its age" \
+    || bad "old live lock warning" "rc=$CASE_RC heartbeat=$CASE_HB"
+
+echo "== timeout: sleeping guard becomes broken p0 =="
+run_case 0 'never reached' false 3 false 1
+[ "$CASE_RC" -eq 2 ] && [ "$(field "$CASE_HB" status)" = "error" ] \
+    && [ "$(field "$CASE_HB" note)" = "guard timed out after 1 s" ] \
+    && grep -q -- '--tier p0' "$CASE_TMP/notify" \
+    && grep -q 'fly cost guard broken' "$CASE_TMP/notify" \
+    && ok "guard timeout writes error heartbeat and broken p0" \
+    || bad "guard timeout contract" "rc=$CASE_RC heartbeat=$CASE_HB notify=$(cat "$CASE_TMP/notify" 2>/dev/null)"
+
+echo "== gateway output: stdout and stderr are redacted in the log =="
+run_case 0 'Fly resource guard: within limits' false 0 true 900
+LOG_FILE="$CASE_TMP/home/logs/mini-fly-cost-guard/run.log"
+grep -q 'gateway stdout \[REDACTED\]' "$LOG_FILE" \
+    && grep -q 'gateway stderr \[REDACTED\]' "$LOG_FILE" \
+    && ! grep -Fq "$GATEWAY_TOKEN_MARKER" "$LOG_FILE" \
+    && ok "gateway stdout and stderr pass through redaction" \
+    || bad "gateway output redaction" "$(cat "$LOG_FILE")"
 
 echo
 printf 'passed %d, failed %d\n' "$PASS" "$FAIL"
