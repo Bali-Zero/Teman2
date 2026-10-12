@@ -237,8 +237,9 @@ sequence 27 to 28, `rollback_of_payload_sha256` null. Rules 113 to 114.
 The four content items (owner decisions, Zero, 2026-10-11):
 
 1. The organ re-stamp of the 18 portal sources (pure candidate above).
-2. E33E carries its own 5-year price key `E33E Second Home Senior (5 Years)` (IDR 45,000,000,
-   one price, stay fixed at 1825 days) instead of `Retirement (Offshore)`.
+2. E33E carries its own 5-year price key `E33E Second Home Senior (5 Years)` (IDR 45,000,000 at ceremony time;
+   superseded by owner ruling 2026-10-12 to IDR 18,000,000 in the catalogue row, which the pack
+   resolves at runtime, so no pack change; one price, stay fixed at 1825 days) instead of `Retirement (Offshore)`.
 3. `AGE_BELOW_55` on E33E/E33F is scoped to the RETIREMENT purpose (`hf.e33e.age-below-55`,
    `hf.e33f.age-below-55` modified).
 4. E33G requires `work.annual_foreign_income_usd >= 60000` (`el.e33g.remote-work` modified) and a

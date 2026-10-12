@@ -1,0 +1,23 @@
+gear: 1
+gear_reason: >-
+  One catalogue price cell (E33E Second Home Senior 5 Years) and the copy/test/doc surfaces that
+  quote it; no pack, no engine path, no signed file touched.
+mission: >-
+  The E33E 5-year Bali Zero price is IDR 18.000.000 per the 2026-10-12 owner ruling; the catalogue
+  row said 45.000.000. The catalogue, its mouth mirror, llms.txt, the fold precondition and the
+  seq-28 content test follow the ruling; the pack resolves the amount from the catalogue at runtime.
+objective: >-
+  bali_zero_official_prices_2026.json and apps/mouth/data/bali-zero-prices.json carry 18.000.000 IDR on
+  the E33E Second Home Senior (5 Years) row; test_seq28_pack reads the amount from that row.
+scope:
+  - apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+  - apps/mouth/data/bali-zero-prices.json
+  - apps/mouth/public/llms.txt
+  - apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq28.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_seq28_pack.py
+  - docs/runbooks/visa-engine-key-ceremony.md
+  - .agents/skills/secondhome/SKILL.md
+  - .agents/skills/visaoracle/SKILL.md
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

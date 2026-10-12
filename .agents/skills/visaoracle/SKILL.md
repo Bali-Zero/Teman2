@@ -157,7 +157,7 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   retirement; ship pipeline), R2 (retirement_age_notice, RETIREMENT_MIN_AGE=55 pinned to the pack; waits for R3), seq-28
   step A (engine accepts work.annual_foreign_income_usd, default NOT_ASKED). seq-28 chain: A engine fact -> B mouth
   question + E33G_INCOME_BELOW_THRESHOLD copy (only after A is live) -> C fold on top of the weekly organ's re-stamp
-  candidate (E33E pricing_key -> "E33E Second Home Senior (5 Years)" 45M; AGE_BELOW_55 scoped to RETIREMENT; E33G
+  candidate (E33E pricing_key -> "E33E Second Home Senior (5 Years)" (45M at fold time, 18M since owner ruling 2026-10-12, resolved from the catalogue); AGE_BELOW_55 scoped to RETIREMENT; E33G
   gte 60000 rule; re-derive gold personas 1/3/4) -> D fingerprint check, adversarial seat, two-titolare council, sign on
   M5, two-login activation from Pro. Proof = sentinel `OK pack_sequence 28` + `/evaluate` sequence 28; target ~2026-10-19/20;
   activation needs B live. Fallback (needs Zero): if content is not ready by 11-05, sign the plain re-stamp as seq-28 and

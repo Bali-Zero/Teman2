@@ -402,7 +402,7 @@ class TestLedger:
 
 
 class TestContent:
-    def test_e33e_resolves_to_45m_and_sibling_keys_stay_put(
+    def test_e33e_resolves_to_catalogue_price_and_sibling_keys_stay_put(
         self, anchor: dict[str, Any], seq28: dict[str, Any]
     ) -> None:
         catalogue = _read_json(_CATALOGUE)
@@ -413,7 +413,10 @@ class TestContent:
             pricing_catalog=_Catalog(catalogue),
             evaluated_at=datetime(2026, 10, 12, tzinfo=timezone.utc),
         )
-        assert resolution.amount == 45_000_000
+        row = catalogue["services"]["kitas_permits"][fold_mod.E33E_PRICE_ITEM_KEY]
+        # Owner ruling 2026-10-12: E33E 5-year is IDR 18.000.000; the amount is the catalogue row's.
+        assert row["price"] == "18.000.000 IDR"
+        assert resolution.amount == int(row["price"].split()[0].replace(".", ""))
         assert after["E33E"]["pricing_key"] == {
             "category": "kitas_permits",
             "item_key": fold_mod.E33E_PRICE_ITEM_KEY,

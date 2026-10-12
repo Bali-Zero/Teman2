@@ -81,7 +81,7 @@
 - E31B/F - Dependent KITAS 2 Years: IDR 15.000.000 (extension IDR 15.000.000)
 - E33G - Remote Worker KITAS Offshore: IDR 13.000.000 (onshore IDR 14.000.000, extension IDR 10.000.000)
 - E33 - Second Home Visa 5 Years: IDR 35.000.000 (all-inclusive)
-- E33E - Second Home Senior 5 Years: IDR 45.000.000 (all-inclusive)
+- E33E - Second Home Senior 5 Years: IDR 18.000.000 (all-inclusive)
 - E33E - Second Home Senior Extension: IDR 10.000.000 (all-inclusive)
 - E33F - Second Home Senior 1 Year Offshore: IDR 14.000.000 (all-inclusive)
 - E33F - Second Home Senior 1 Year Onshore: IDR 16.000.000 (all-inclusive, extension IDR 10.000.000)

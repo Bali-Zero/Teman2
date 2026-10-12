@@ -149,9 +149,9 @@ def assert_catalogue_preconditions(catalogue: dict[str, Any]) -> None:
     senior = rows.get(E33E_PRICE_ITEM_KEY)
     if not isinstance(senior, dict):
         _fail(f"pricing row {E33E_PRICE_ITEM_KEY!r} does not exist")
-    if senior.get("price") != "45.000.000 IDR" or senior.get("validity") != "5 years":
+    if senior.get("price") != "18.000.000 IDR" or senior.get("validity") != "5 years":
         _fail(
-            f"pricing row {E33E_PRICE_ITEM_KEY!r} is not 45.000.000 IDR / 5 years: "
+            f"pricing row {E33E_PRICE_ITEM_KEY!r} is not 18.000.000 IDR / 5 years: "
             f"{senior.get('price')!r} / {senior.get('validity')!r}"
         )
     if OLD_E33E_PRICE_ITEM_KEY not in rows:
