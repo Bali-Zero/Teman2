@@ -1,0 +1,16 @@
+gear: 1
+gear_reason: >-
+  Size floor is gear 1 (about 250 churn with tests and evidence, below 400). A test-only pin plus the retirement of a
+  superseded observer; no product code, no pack, no data change.
+mission: >-
+  The seq-28 pack tests fold the ledger that produced the signed seq-28 bundle, not whichever ledger is newest.
+objective: >-
+  test_seq28_pack.py folds research/visa/2026-10-11-organ-reattest-seq28 whatever newer ledger the weekly organ commits,
+  and reproduces the signed payload digest; the superseded seq-27 signed observer is gone.
+scope:
+  - apps/backend-rag/backend/tests/services/visa_engine/test_seq28_pack.py
+  - docs/runbooks/visa-engine-key-ceremony.md
+  - scripts/ci/observe_visa_seq27_signed.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
