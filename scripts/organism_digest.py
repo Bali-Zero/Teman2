@@ -220,10 +220,15 @@ _SEAT_PROVIDER = {
     # deepseek-v4-pro, deepseek-v4-flash-0731, glm-5.2, qwen3.8-max,
     # qwen3.7-max, qwen3.7-plus and qwen3.6-flash side by side with
     # qwen-cloud-code's own row (verified 2026-08-29 against the live file).
+    # 2026-10-05: three seats added on the 2026-10-05 /models re-verification
+    # (deepseek-v4.1-flash, glm-5.3, qwen3.8-flash) — same TP1 provider.
     "tp1-deepseek-v4-pro": "Alibaba Token Plan (TP1)",
     "tp1-deepseek-v4-flash-0731": "Alibaba Token Plan (TP1)",
+    "tp1-deepseek-v4.1-flash": "Alibaba Token Plan (TP1)",
     "tp1-glm-5.2": "Alibaba Token Plan (TP1)",
+    "tp1-glm-5.3": "Alibaba Token Plan (TP1)",
     "tp1-qwen3.8-max": "Alibaba Token Plan (TP1)",
+    "tp1-qwen3.8-flash": "Alibaba Token Plan (TP1)",
     "tp1-qwen3.7-max": "Alibaba Token Plan (TP1)",
     "tp1-qwen3.7-plus": "Alibaba Token Plan (TP1)",
     "tp1-qwen3.6-flash": "Alibaba Token Plan (TP1)",
@@ -231,8 +236,10 @@ _SEAT_PROVIDER = {
 _FALLBACK_ALL_SEATS = ["claude", "kimi", "agy", "codex", "codex-spark",
                         "ollama", "nlm", "qwen-cloud-code", "jules",
                         "tp1-deepseek-v4-pro", "tp1-deepseek-v4-flash-0731",
-                        "tp1-glm-5.2", "tp1-qwen3.8-max", "tp1-qwen3.7-max",
-                        "tp1-qwen3.7-plus", "tp1-qwen3.6-flash"]
+                        "tp1-deepseek-v4.1-flash", "tp1-glm-5.2",
+                        "tp1-glm-5.3", "tp1-qwen3.8-max", "tp1-qwen3.8-flash",
+                        "tp1-qwen3.7-max", "tp1-qwen3.7-plus",
+                        "tp1-qwen3.6-flash"]
 
 
 def _known_seats() -> list[str]:
@@ -307,6 +314,8 @@ def arsenal_card() -> tuple[list[str], list[str]]:
         seat = s.get("seat", "?")
         if st == "BUSY":
             return f"{seat}~busy"
+        if st == "BUDGET_TRUNCATED":
+            return f"{seat}~budget"
         return f"{seat}✓" if st == "LIVE" else f"{seat}✗{st.lower()}"
 
     rollup = "  " + " ".join(mark(s) for s in seats if isinstance(s, dict)) if seats else "  (report has no seats)"
