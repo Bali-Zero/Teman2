@@ -95,7 +95,12 @@ def assert_not_shared_checkout(workdir: Path) -> None:
 
 
 def boundary_of(payload: dict[str, Any]) -> datetime | None:
-    """Earliest verified_at + max_age_seconds over the OFFICIAL_PORTAL records."""
+    """Earliest verified_at + max_age_seconds over the OFFICIAL_PORTAL records.
+
+    ``None`` when no record carries a time-bound policy -- e.g. every portal
+    record is ``UNTIL_SUPERSEDED`` (owner ruling 2026-10-12: no calendar expiry).
+    The weekly read still runs as a drift alarm; only the T-7 alert is moot.
+    """
     ends = []
     for rec in payload.get("source_records", []):
         if rec.get("authority_type") != PORTAL:
@@ -107,8 +112,22 @@ def boundary_of(payload: dict[str, Any]) -> datetime | None:
     return min(ends) if ends else None
 
 
-def t7_due(boundary: datetime, now: datetime) -> bool:
+def has_portal_record(payload: dict[str, Any]) -> bool:
+    """True when at least one OFFICIAL_PORTAL record carries a verified_at."""
+    return any(
+        rec.get("authority_type") == PORTAL and rec.get("verified_at")
+        for rec in payload.get("source_records", [])
+    )
+
+
+def t7_due(boundary: datetime | None, now: datetime) -> bool:
+    if boundary is None:  # non-expiring pack: there is no boundary to count down to
+        return False
     return boundary - now <= T_MINUS
+
+
+def _boundary_text(boundary: datetime | None) -> str:
+    return "none (non-expiring)" if boundary is None else boundary.isoformat()
 
 
 def candidate_name(seq: int) -> str:
@@ -125,11 +144,13 @@ def pr_title(date: str, next_seq: int) -> str:
 
 
 def pr_body(*, anchor_seq: int, next_seq: int, ledger_rel: str, candidate_rel: str, reader: str,
-            boundary: datetime, payload_sha: str) -> str:
+            boundary: datetime | None, payload_sha: str) -> str:
     return "\n".join([
         f"Weekly organ run (`pro.visa_reattestation`): read ledger + UNSIGNED candidate seq-{next_seq}.",
         "",
-        f"- Anchor: signed seq-{anchor_seq}; its earliest portal boundary is {boundary.strftime('%Y-%m-%dT%H:%M:%SZ')}.",
+        f"- Anchor: signed seq-{anchor_seq}; its earliest portal boundary is "
+        + ("none (every portal source is non-expiring)." if boundary is None
+           else f"{boundary.strftime('%Y-%m-%dT%H:%M:%SZ')}."),
         f"- Ledger: `{ledger_rel}` (reader `{reader}`).",
         f"- Candidate: `{candidate_rel}` (inside the ledger dir), payload digest `{payload_sha or 'n/a'}`.",
         f"- Signing step: move it to `{PACKS_REL}/{candidate_name(next_seq)}` (`git mv`), then sign it there.",
@@ -207,7 +228,7 @@ def find_anchor(repo: Path, ref: str = "origin/main") -> dict[str, Any]:
     if source_rel not in names:
         raise OrganError("anchor", f"{source_rel} missing next to the signed seq-{seq}")
     boundary = boundary_of(payload)
-    if boundary is None:
+    if boundary is None and not has_portal_record(payload):
         raise OrganError("anchor", f"seq-{seq} has no ageable {PORTAL} record")
     return {"seq": seq, "signed_rel": signed_rel, "source_rel": source_rel, "boundary": boundary}
 
@@ -583,8 +604,9 @@ def run(args: argparse.Namespace) -> int:
         repo, "ls-remote", "--exit-code", "--heads", "origin", branch, check=False).returncode == 0
     reader = reader_name(args.judge, args.model, now)
     ledger_rel = f"research/visa/{date}-organ-reattest-seq{next_seq}"
-    plan = {"anchor_seq": anchor["seq"], "next_seq": next_seq, "boundary": anchor["boundary"].isoformat(),
-            "days_to_boundary": round((anchor["boundary"] - now).total_seconds() / 86400, 2),
+    plan = {"anchor_seq": anchor["seq"], "next_seq": next_seq, "boundary": _boundary_text(anchor["boundary"]),
+            "days_to_boundary": (None if anchor["boundary"] is None
+                                 else round((anchor["boundary"] - now).total_seconds() / 86400, 2)),
             "t7_due": t7_due(anchor["boundary"], now), "branch": branch, "reader": reader,
             "ledger": ledger_rel, "candidate": f"{ledger_rel}/{candidate_name(next_seq)}",
             "existing_pr": existing_pr["url"] if existing_pr else None, "mode": "dry-run" if args.dry_run else

@@ -33,6 +33,7 @@ import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import asyncpg
 import httpx
@@ -1226,6 +1227,7 @@ def _real_signed_decisive_source_case(
     persona_name: str = "02_business_c2.json",
     official_host: str = "www.imigrasi.go.id",
     freshness_max_age_seconds: int | None = None,
+    freshness_policy: dict[str, Any] | None = None,
 ) -> tuple[CompiledRulePack, Decision, Decision]:
     """Verify -> compile -> evaluate -> source-gate using a real Ed25519 pack."""
 
@@ -1253,6 +1255,8 @@ def _real_signed_decisive_source_case(
             "kind": "MAX_AGE_SINCE_VERIFIED_AT",
             "max_age_seconds": freshness_max_age_seconds,
         }
+    if freshness_policy is not None:
+        source["freshness_policy"] = freshness_policy
 
     if defect in {"SUPERSEDED", "REVOKED", "UNAVAILABLE"}:
         source["status"] = defect
@@ -3414,6 +3418,106 @@ def test_freshness_is_monotone_from_current_to_stale_after_boundary() -> None:
         SourceFreshnessStatus.CURRENT,
         SourceFreshnessStatus.STALE,
     ]
+
+
+_UNTIL_SUPERSEDED = {"kind": "UNTIL_SUPERSEDED"}
+
+
+def test_until_superseded_source_is_current_and_reports_no_max_age() -> None:
+    """Owner ruling 2026-10-12: no calendar expiry for a non-time-bound source."""
+    compiled, decision, held = _real_signed_decisive_source_case(
+        freshness_policy=_UNTIL_SUPERSEDED,
+    )
+    assert decision.state is DecisionState.SUPPORTED_CANDIDATES
+    assert held == decision
+    assert evaluate_path._apply_safety_critical_source_hold(decision, compiled) == decision
+    sources = evaluate_path._build_sources_dto(
+        decision, compiled, request_trace="trace-until-superseded"
+    )
+    assert sources[0]["freshness"] == {
+        "status": "CURRENT",
+        "reason_code": "SOURCE_FRESHNESS_NOT_TIME_BOUNDED",
+        "evaluated_at": "2026-08-04T12:00:00Z",
+        "verified_at": "2026-08-03T11:00:00Z",
+        "max_age_seconds": None,
+    }
+
+
+def test_until_superseded_stays_current_ten_years_on_while_max_age_goes_stale() -> None:
+    """Guilt AND innocence: the same instant that keeps UNTIL_SUPERSEDED CURRENT
+    turns a MAX_AGE source STALE; a null policy stays UNKNOWN."""
+    compiled, _, _ = _real_signed_decisive_source_case(freshness_policy=_UNTIL_SUPERSEDED)
+    source = next(
+        item
+        for item in compiled.source_pack.payload.source_records
+        if str(item.source_record_id) == _DECISIVE_SOURCE_ID
+    )
+    far = source.verified_at + timedelta(days=3650)
+    non_bound = evaluate_path._evaluate_source_freshness(source, evaluated_at=far)
+    assert non_bound.status is SourceFreshnessStatus.CURRENT
+    assert non_bound.reason_code == "SOURCE_FRESHNESS_NOT_TIME_BOUNDED"
+    assert non_bound.max_age_seconds is None
+
+    bounded_compiled, _, _ = _real_signed_decisive_source_case(freshness_max_age_seconds=90_000)
+    bounded = next(
+        item
+        for item in bounded_compiled.source_pack.payload.source_records
+        if str(item.source_record_id) == _DECISIVE_SOURCE_ID
+    )
+    stale = evaluate_path._evaluate_source_freshness(bounded, evaluated_at=far)
+    assert stale.status is SourceFreshnessStatus.STALE
+    assert stale.max_age_seconds == 90_000
+
+    null_compiled, _, _ = _real_signed_decisive_source_case()
+    null_policy = next(
+        item
+        for item in null_compiled.source_pack.payload.source_records
+        if str(item.source_record_id) == _DECISIVE_SOURCE_ID
+    )
+    unknown = evaluate_path._evaluate_source_freshness(null_policy, evaluated_at=far)
+    assert unknown.status is SourceFreshnessStatus.UNKNOWN
+    assert unknown.reason_code == "FRESHNESS_POLICY_NOT_DEFINED"
+
+
+@pytest.mark.parametrize("defect", ["REVOKED", "non_primary", "expired"])
+def test_until_superseded_never_bypasses_legal_validity(defect: str) -> None:
+    compiled, decision, _ = _real_signed_decisive_source_case(
+        defect, freshness_policy=_UNTIL_SUPERSEDED
+    )
+    safety_held = evaluate_path._apply_safety_critical_source_hold(decision, compiled)
+    assert safety_held.state is DecisionState.HUMAN_REVIEW_REQUIRED
+    assert safety_held.candidates == ()
+    assert {reason.code for reason in safety_held.review_reasons} == {
+        "SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE"
+    }
+
+
+def test_until_superseded_future_verified_at_is_still_unknown() -> None:
+    compiled, decision, held = _real_signed_decisive_source_case(
+        "verified_in_future_before_signing", freshness_policy=_UNTIL_SUPERSEDED
+    )
+    assert {reason.code for reason in held.review_reasons} == {"DECISIVE_SOURCE_FRESHNESS_UNKNOWN"}
+    sources = evaluate_path._build_sources_dto(
+        decision, compiled, request_trace="trace-until-superseded-future"
+    )
+    assert sources[0]["freshness"]["status"] == "UNKNOWN"
+    assert sources[0]["freshness"]["reason_code"] == "SOURCE_VERIFIED_AT_IN_FUTURE"
+    assert sources[0]["freshness"]["max_age_seconds"] is None
+
+
+@pytest.mark.parametrize(
+    "policy",
+    [
+        {"kind": "UNTIL_SUPERSEDED", "max_age_seconds": 90_000},
+        {"kind": "NEVER"},
+        {"kind": "MAX_AGE_SINCE_VERIFIED_AT"},
+    ],
+)
+def test_freshness_policy_vocabulary_stays_closed(policy: dict[str, Any]) -> None:
+    from backend.services.visa_engine.errors import RulePackVerificationError
+
+    with pytest.raises(RulePackVerificationError, match="JSON Schema validation"):
+        _real_signed_decisive_source_case(freshness_policy=policy)
 
 
 def test_future_verified_at_projects_unknown_and_never_passes_decisive_gate() -> None:
