@@ -281,3 +281,221 @@ def test_real_repo_allowlist_file_parses_and_scan_is_clean() -> None:
         "default allowlist path failed to load against the real tree — DEFECT 1 regressed\n"
         f"stdout:\n{proc.stdout}"
     )
+
+
+# ---------------------------------------------------------------- mutation-sweep pins (2026-10-12)
+#
+# Each test below asserts a documented contract (module docstring + scan()
+# docstring) with a guilt fixture and an innocence twin; expected numbers are
+# counted by hand from the fixture, never read back from the implementation.
+
+import json
+
+NO_ALLOW = "absent-allowlist.txt"
+
+
+def _run_json(repo: Path, tmp_path: Path, capsys, *extra: str) -> tuple[int, dict]:
+    rc = lint.main(["--repo-root", str(repo), "--allowlist", str(tmp_path / NO_ALLOW), "--json", *extra])
+    return rc, json.loads(capsys.readouterr().out)
+
+
+def _run_text(repo: Path, tmp_path: Path, capsys, allowlist: Path | None = None) -> tuple[int, str, str]:
+    al = allowlist if allowlist is not None else tmp_path / NO_ALLOW
+    rc = lint.main(["--repo-root", str(repo), "--allowlist", str(al)])
+    cap = capsys.readouterr()
+    return rc, cap.out, cap.err
+
+
+def test_json_report_counts_walked_scope_files_and_occurrences(tmp_path: Path, capsys) -> None:
+    repo = make_git_repo(tmp_path)
+    # two occurrences on one file (guilt), a clean in-scope file, an out-of-scope file
+    (repo / "bad.sh").write_text("a=~/Desktop/nuzantara/x\nb=~/Desktop/nuzantara-deploy/y\n")
+    (repo / "good.py").write_text("print('hi')\n")
+    (repo / "notes.md").write_text("Desktop/nuzantara\n")
+    git_add(repo, "bad.sh", "good.py", "notes.md")
+    rc, doc = _run_json(repo, tmp_path, capsys)
+    assert rc == 1
+    assert doc["schema"] == 1
+    assert doc["walked"] == 2  # bad.sh + good.py; notes.md is out of scope
+    assert doc["tracked_total"] == 3
+    assert doc["git_failed"] is False
+    assert doc["allowlist_error"] is None
+    assert doc["violations"] == [{"path": "bad.sh", "detail": "2 occurrence(s)", "kind": "file"}]
+
+
+def test_json_output_is_indented_two_spaces(tmp_path: Path, capsys) -> None:
+    repo = make_git_repo(tmp_path)
+    (repo / "good.sh").write_text("echo hi\n")
+    git_add(repo, "good.sh")
+    lint.main(["--repo-root", str(repo), "--allowlist", str(tmp_path / NO_ALLOW), "--json"])
+    assert capsys.readouterr().out.startswith('{\n  "schema": 1,')
+
+
+def test_text_mode_is_not_json(tmp_path: Path, capsys) -> None:
+    repo = make_git_repo(tmp_path)
+    (repo / "good.sh").write_text("echo hi\n")
+    git_add(repo, "good.sh")
+    rc, out, _ = _run_text(repo, tmp_path, capsys)
+    assert rc == 0
+    assert out.startswith("[tcc-desktop-paths] scanned 1 tracked")
+    assert "clean — no tracked payload hardcodes Desktop/nuzantara" in out
+    assert "FAIL" not in out and "[error]" not in out
+
+
+def test_text_mode_violation_prints_fail_and_not_clean(tmp_path: Path, capsys) -> None:
+    repo = make_git_repo(tmp_path)
+    (repo / "bad.sh").write_text('R="$HOME/Desktop/nuzantara"\n')
+    git_add(repo, "bad.sh")
+    rc, out, _ = _run_text(repo, tmp_path, capsys)
+    assert rc == 1
+    assert "  - bad.sh: 1 occurrence(s)" in out
+    assert "TCC-DESKTOP-PATHS LINT FAIL" in out
+    assert "clean —" not in out
+
+
+def test_allowlist_error_prints_error_never_clean(tmp_path: Path, capsys) -> None:
+    repo = make_git_repo(tmp_path)
+    (repo / "good.sh").write_text("echo hi\n")
+    git_add(repo, "good.sh")
+    bad = tmp_path / "al-dir"
+    bad.mkdir()
+    rc, out, _ = _run_text(repo, tmp_path, capsys, allowlist=bad)
+    assert rc == 4
+    assert "[error] allowlist unreadable" in out
+    assert "clean —" not in out
+    assert "FAIL" not in out
+
+
+def test_git_failure_reports_blind_scan_with_zero_counts(tmp_path: Path, capsys) -> None:
+    not_a_repo = tmp_path / "plain-dir"
+    not_a_repo.mkdir()
+    rc, doc = _run_json(not_a_repo, tmp_path, capsys)
+    assert rc == 2
+    assert doc["git_failed"] is True
+    assert doc["walked"] == 0
+    assert doc["tracked_total"] == 0
+    assert doc["violations"] == []
+
+
+def test_git_failure_text_mode_says_so_and_never_clean(tmp_path: Path, capsys) -> None:
+    not_a_repo = tmp_path / "plain-dir"
+    not_a_repo.mkdir()
+    rc, out, err = _run_text(not_a_repo, tmp_path, capsys)
+    assert rc == 2
+    assert "[error] git ls-files failed" in out
+    assert "clean —" not in out
+    assert "BLIND SCAN" in err
+
+
+def test_empty_repo_with_no_tracked_files_is_blind_not_clean(tmp_path: Path, capsys) -> None:
+    """git works, tracked_total == 0: wrong/empty root is a blind scan (rc 2)."""
+    repo = make_git_repo(tmp_path)
+    rc, out, err = _run_text(repo, tmp_path, capsys)
+    assert rc == 2
+    assert "BLIND SCAN" in err
+
+
+def test_tracked_files_all_out_of_scope_is_clean_not_blind(tmp_path: Path, capsys) -> None:
+    """Innocence twin of the previous test: tracked_total > 0 but nothing in
+    scope (walked == 0) is a legitimate clean state, rc 0."""
+    repo = make_git_repo(tmp_path)
+    (repo / "README.md").write_text("Desktop/nuzantara\n")
+    git_add(repo, "README.md")
+    rc, doc = _run_json(repo, tmp_path, capsys)
+    assert rc == 0
+    assert doc["walked"] == 0
+    assert doc["tracked_total"] == 1
+
+
+def test_uppercase_extension_is_in_scope(tmp_path: Path, capsys) -> None:
+    repo = make_git_repo(tmp_path)
+    (repo / "RUN.SH").write_text("cd ~/Desktop/nuzantara\n")
+    git_add(repo, "RUN.SH")
+    rc, doc = _run_json(repo, tmp_path, capsys)
+    assert rc == 1
+    assert [v["path"] for v in doc["violations"]] == ["RUN.SH"]
+
+
+def test_binary_in_scope_file_is_skipped_without_crash_and_still_walked(tmp_path: Path, capsys) -> None:
+    repo = make_git_repo(tmp_path)
+    (repo / "blob.py").write_bytes(b"\xff\xfe\x00Desktop/nuzantara\x80")
+    git_add(repo, "blob.py")
+    rc, doc = _run_json(repo, tmp_path, capsys)
+    assert rc == 0
+    assert doc["violations"] == []
+    assert doc["walked"] == 1
+
+
+def test_tracked_file_missing_from_disk_is_not_walked(tmp_path: Path, capsys) -> None:
+    repo = make_git_repo(tmp_path)
+    (repo / "gone.sh").write_text("cd ~/Desktop/nuzantara\n")
+    (repo / "kept.sh").write_text("echo ok\n")
+    git_add(repo, "gone.sh", "kept.sh")
+    (repo / "gone.sh").unlink()
+    rc, doc = _run_json(repo, tmp_path, capsys)
+    assert rc == 0
+    assert doc["walked"] == 1
+    assert doc["tracked_total"] == 2
+
+
+def test_symlink_violation_is_reported_once_with_kind_symlink(tmp_path: Path, capsys) -> None:
+    """A symlink whose raw target crosses Desktop is one 'symlink' violation —
+    and the file behind it must NOT be scanned a second time as the link."""
+    repo = make_git_repo(tmp_path)
+    real_dir = repo / "Desktop" / "nuzantara"
+    real_dir.mkdir(parents=True)
+    (real_dir / "x.sh").write_text("echo clean\n")
+    (repo / "link.sh").symlink_to("Desktop/nuzantara/x.sh")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+    rc, doc = _run_json(repo, tmp_path, capsys)
+    assert rc == 1
+    assert doc["walked"] == 2  # x.sh and link.sh, each exactly once
+    assert doc["violations"] == [
+        {
+            "path": "link.sh",
+            "detail": "symlink target crosses Desktop: 'Desktop/nuzantara/x.sh'",
+            "kind": "symlink",
+        }
+    ]
+
+
+def test_clean_symlink_is_walked_but_not_a_violation(tmp_path: Path, capsys) -> None:
+    repo = make_git_repo(tmp_path)
+    (repo / "x.sh").write_text("echo ok\n")
+    (repo / "link.sh").symlink_to("x.sh")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+    rc, doc = _run_json(repo, tmp_path, capsys)
+    assert rc == 0
+    assert doc["walked"] == 2
+    assert doc["violations"] == []
+
+
+def test_symlink_with_nonscope_extension_is_ignored(tmp_path: Path, capsys) -> None:
+    repo = make_git_repo(tmp_path)
+    (repo / "doc.txt").symlink_to("Desktop/nuzantara/x")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+    (repo / "keep.sh").write_text("echo ok\n")
+    git_add(repo, "keep.sh")
+    rc, doc = _run_json(repo, tmp_path, capsys)
+    assert rc == 0
+    assert doc["walked"] == 1
+
+
+def test_dangling_symlink_is_still_walked_and_flagged(tmp_path: Path, capsys) -> None:
+    repo = make_git_repo(tmp_path)
+    (repo / "dangling.plist").symlink_to("/Users/x/Desktop/nuzantara/missing.plist")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+    rc, doc = _run_json(repo, tmp_path, capsys)
+    assert rc == 1
+    assert doc["walked"] == 1
+    assert doc["violations"][0]["kind"] == "symlink"
+
+
+def test_deploy_variant_flagged_but_longer_names_are_not(tmp_path: Path, capsys) -> None:
+    repo = make_git_repo(tmp_path)
+    (repo / "deploy.sh").write_text("cd ~/Desktop/nuzantara-deploy\n")
+    (repo / "other.sh").write_text("cd ~/Desktop/nuzantara-archive\ncd ~/Desktop/nuzantara_x\n")
+    git_add(repo, "deploy.sh", "other.sh")
+    rc, doc = _run_json(repo, tmp_path, capsys)
+    assert rc == 1
+    assert [v["path"] for v in doc["violations"]] == ["deploy.sh"]
