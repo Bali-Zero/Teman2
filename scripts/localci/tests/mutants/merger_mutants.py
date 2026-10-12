@@ -375,9 +375,9 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-wrapper-df-unread-ticks": (SH, 'if [ -z "$FREE" ]; then WARN="host free space unreadable', 'if false; then WARN="host free space unreadable', (f"{MERGER_T}::test_an_unreadable_host_reading_starts_no_run_and_the_organ_says_warning",)),
     "b6-floor-organ-alive-ok": (FLOOR_SH, 'heartbeat "warning" "skipped: previous run alive', 'heartbeat "ok" "skipped: previous run alive', (FLOOR_T,)),
     "b6-prune-code-sha-unvalidated": (PY, "if a.code_sha and not is_sha(a.code_sha):", "if False:", (PRUNE_T,)),
-    # B6-4: pro.disk_floor — ok above 100 GB, warning 60-100, failed under 60
-    "b6-floor-organ-ok-at-100": (FLOOR_SH, 'if [ "$FREE_MB" -gt "$OK_ABOVE_MB" ]; then VERDICT="ok"', 'if [ "$FREE_MB" -ge "$OK_ABOVE_MB" ]; then VERDICT="ok"', (FLOOR_T,)),
-    "b6-floor-organ-ok-above-101": (FLOOR_SH, "OK_ABOVE_MB=100000 ", "OK_ABOVE_MB=101000 ", (FLOOR_T,)),
+    # B6-4: pro.disk_floor — ok above 90 GB, warning 60-90, failed under 60
+    "b6-floor-organ-ok-at-90": (FLOOR_SH, 'if [ "$FREE_MB" -gt "$OK_ABOVE_MB" ]; then VERDICT="ok"', 'if [ "$FREE_MB" -ge "$OK_ABOVE_MB" ]; then VERDICT="ok"', (FLOOR_T,)),
+    "b6-floor-organ-ok-above-91": (FLOOR_SH, "OK_ABOVE_MB=90000 ", "OK_ABOVE_MB=91000 ", (FLOOR_T,)),
     "b6-floor-organ-fail-under-59": (FLOOR_SH, "FAIL_UNDER_MB=60000 ", "FAIL_UNDER_MB=59000 ", (FLOOR_T,)),
     "b6-floor-organ-fail-under-61": (FLOOR_SH, "FAIL_UNDER_MB=60000 ", "FAIL_UNDER_MB=61000 ", (FLOOR_T,)),
     "b6-floor-organ-failed-as-warning": (FLOOR_SH, '*) heartbeat "error" "failed: $NOTE"', '*) heartbeat "warning" "failed: $NOTE"', (FLOOR_T,)),
