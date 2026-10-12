@@ -41,9 +41,11 @@ what_changed: |
 bites:
   consumer: launchd jobs pro.janitor (com.nuzantara.janitor) and pro.disk_janitor on Pro.
   observation: >-
-    Owed after merge and deploy (plist, wrapper payload and disk_janitor.sh re-copied to Pro and cmp-checked against origin/main):
-    a ~/logs/pro-janitor/journal.jsonl line with "mode": "apply" and a rule status other than dry-run/skipped with its freed
-    bytes, and `grep -c "uv cache prune" ~/scripts/disk_janitor.sh` = 0 on Pro.
+    Owed after merge and deploy (the plist and the pro_janitor.py payload re-copied to Pro and cmp-checked against origin/main,
+    the job reloaded; disk_janitor.sh is read from the Pro checkout ~/nuzantara, which must be at a main that holds this
+    change): a ~/logs/pro-janitor/journal.jsonl line with "mode": "apply" and a rule (npm-verify or uv-prune) with status "done"
+    and its freed bytes, `launchctl print` showing PRO_JANITOR_APPLY => true, and
+    `grep -c "uv cache prune" ~/nuzantara/scripts/disk_janitor.sh` = 0 on Pro.
 receipts:
   - claim: >-
       Rollout precondition (spec §Rollout: a merger-tick trough observed in dry-run): Pro's journal holds 99 dry-run lines from
@@ -54,7 +56,7 @@ receipts:
     exit: 0
     ts: "2026-10-12T01:10:00Z"
     seat: claude-opus-5-5 lead on M5
-  - claim: "scripts/tests/test_pro_janitor.py: 283 passed (275 before plus 8 new cases)."
+  - claim: "scripts/tests/test_pro_janitor.py: 285 passed (275 before plus 10 new cases); the gate's two surviving mutants (LINK_SCAN_DEPTH 3 -> 2, the unreadable branch -> continue) are now killed, 1 failed each."
     cmd: python3 -m pytest scripts/tests/test_pro_janitor.py -q -p no:cacheprovider
     exit: 0
     ts: "2026-10-12T01:08:00Z"
@@ -77,6 +79,10 @@ receipts:
     ts: "2026-10-11T23:20:00Z"
     seat: claude-sonnet-5 implementer on M5
 dissent:
+  - seat: claude-opus-5-5 fresh gate
+    objection: "MEDIUM: the Bites and the ledger row grep ~/scripts/disk_janitor.sh, which does not exist on Pro; the wrapper reads ~/nuzantara/scripts/disk_janitor.sh. The row also still said 100 GiB. LOW: the depth-3 boundary and the unreadable branch are unpinned (two mutants survive the full suite); uv-prune can starve on long-lived uv run processes."
+    status: CONFIRMED
+    resolution: "Bites and PENDING-ARMS row name the checkout path and the 90 GB floor; two tests pin the boundary and the fail-closed branch (each mutant now 1 failed); the starvation is a stated residual and the Bites accepts npm-verify or uv-prune done."
   - seat: codex-gpt-5.6-sol
     objection: "BLOCKER: npm cache verify is pinned to ~/.npm but only ~/.npm is checked for symlinks; a symlinked _cacache (or content-v2/index-v5) lets npm's gc and tmp rimraf delete outside the allowlist (pro_janitor.py tool_rule; cacache verify.js:244)."
     status: CONFIRMED
@@ -103,7 +109,8 @@ dissent:
     resolution: "Recorded as residuals; none is introduced by this change."
 residuals:
   - "The link scan is a point-in-time check: a link created between the scan and the tool's run is not seen. The janitor runs as the same user that owns the caches, so the threat is a misconfiguration, which the scan catches, not an adversary, who could delete those files directly."
-  - "The scan stops at three levels: a link deeper inside npm's content tree is not seen. npm's own content paths are hash-addressed files, not links."
+  - "The scan stops at three levels (pinned by test_the_link_scan_reaches_depth_three_and_no_further): a link deeper inside npm's content tree is not seen. npm's own content paths are hash-addressed files, not links."
+  - "uv-prune can starve: pgrep -x uv also matches long-lived `uv run` processes (on Pro at 2026-10-12T01:26Z an agy session's `uv run -m advanced_seo_mcp.server`), and every skip retries in 10 min. uv's own cache lock would stall the prune the same way; the skip turns a 300 s timeout into a clean line. The uv cache is 1.4 GB, npm and Playwright are unaffected."
   - "A failed lsof probe (error:lsof-*) is not cooled down by design and pages every tick until it reads."
   - "A stale __dirlock parks playwright-old (skipped:install-in-progress, noted stale_dirlock after 1 h) until removed by hand."
   - "Pre-existing doc drift: exit code 12 is missing from the module docstring; next_tier's docstring says one band at a time while the loop can descend several."

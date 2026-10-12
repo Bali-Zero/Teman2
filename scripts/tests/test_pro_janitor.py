@@ -856,6 +856,32 @@ def test_npm_never_runs_when_a_link_in_its_cache_leaves_the_cache(box, link):
     assert not any(c.startswith("npm ") for c in box.calls()) and (outside / "keep" / "data").exists()
 
 
+def test_the_link_scan_reaches_depth_three_and_no_further(box, tmp_path):
+    root = Path(pj.safe_realpath(str(box.home / ".npm")))
+    outside = tmp_path / "away"
+    outside.mkdir()
+    (root / "a" / "b").mkdir(parents=True)
+    (root / "a" / "b" / "c").symlink_to(outside)              # depth 3: seen
+    assert pj.link_escape(str(root)) == os.path.join("a", "b", "c")
+    (root / "a" / "b" / "c").unlink()
+    (root / "a" / "b" / "c").mkdir()
+    (root / "a" / "b" / "c" / "d").symlink_to(outside)        # depth 4: beyond the declared scan (a stated residual)
+    assert pj.link_escape(str(root)) is None
+
+
+def test_an_unreadable_level_of_the_cache_refuses_the_rule(box):
+    locked = box.home / ".npm" / "_cacache"
+    locked.mkdir()
+    locked.chmod(0)
+    try:
+        r = box.run("125", apply=True)
+        assert r.returncode == 0 and box.rules()["npm-verify"]["status"] == "skipped:link-escapes-cache"
+        assert box.rules()["npm-verify"]["link_escape"] == "unreadable:_cacache"
+        assert not any(c.startswith("npm ") for c in box.calls())
+    finally:
+        locked.chmod(0o755)
+
+
 def test_a_link_that_stays_inside_the_cache_does_not_stop_the_tool(box):
     inner = box.home / ".cache" / "uv" / "archive-v0" / "abc"
     inner.mkdir(parents=True)

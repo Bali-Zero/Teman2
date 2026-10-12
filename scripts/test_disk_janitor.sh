@@ -416,7 +416,7 @@ printf 'x="$JH/.docker/config.json"\nPROTECTED_ROOTS=("$JH/.colima")\n' > "$ROOT
   && ok "innocence: the static detector catches absolute paths, compose, lima, nerdctl, the docker socket and the colima ssh config; a ~/.docker path is quiet" || no "static detector blind or over-matching on paths"
 { exec_invokes_dc "$ROOT/probe1.sh" && exec_invokes_dc "$ROOT/probe2.sh" && ! exec_invokes_dc "$ROOT/probe3.sh"; } \
   && ok "innocence: the static detector fires on docker/colima commands, stays quiet on comments and the .colima path" || no "static detector blind or over-matching"
-build; fake_tools; printf '#!/bin/sh\necho "uv $*" >> %s/calls\nexit 0\n' "$ROOT" > "$FAKEBIN/uv"; printf '#!/bin/sh\nexit 0\n' > "$FAKEBIN/pgrep"   # a uv process is alive: it holds the cache lock
+build; fake_tools; printf '#!/bin/sh\necho "uv $*" >> %s/calls\nexit 0\n' "$ROOT" > "$FAKEBIN/uv"; printf '#!/bin/sh\nexit 0\n' > "$FAKEBIN/pgrep"   # pgrep reports a live uv: disk_janitor no longer asks, it never calls uv either way
 OUT=$(truns --apply); RC=$?
 ! grep -q "^uv " "$ROOT/calls" && ! grep -q 'uv_cache_prune' "$ROOT/j.jsonl" \
   && ok "uv present and idle: still never called, no uv step in the receipt" || no "uv was invoked or journaled while pro.janitor owns its cache"
