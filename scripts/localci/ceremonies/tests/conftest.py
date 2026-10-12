@@ -34,13 +34,22 @@ def apply_patches(source: str, patches: tuple[Patch, ...]) -> str:
 
 
 class Rig:
-    def __init__(self, root: Path, bodies: dict[str, str] | None = None):
+    def __init__(
+        self,
+        root: Path,
+        bodies: dict[str, str] | None = None,
+        *,
+        with_main_tag: bool = False,
+        symlink_ceremony: str | None = None,
+    ):
         self.root = root
         self.home = root / "home"
         self.base = self.home / "ceremony"
         self.trust = root / "trust"
         self.clt = self.trust / "clt"
         self.git = self.clt / "usr/bin/git"
+        self.git_core = self.clt / "usr/libexec/git-core"
+        self.git_core_probe = self.git_core / "git-probe"
         self.probe = self.trust / "probe"
         self.link = self.trust / "link"
         self.target = self.clt / "good-parent/target"
@@ -52,13 +61,14 @@ class Rig:
         self.user = getpass.getuser()
         self.root.mkdir(parents=True)
         self.base.mkdir(parents=True)
-        for path in (self.clt / "usr/bin", self.clt / "usr/libexec/git-core", self.clt / "usr/share/git-core", self.target.parent):
+        for path in (self.clt / "usr/bin", self.git_core, self.clt / "usr/share/git-core", self.target.parent):
             path.mkdir(parents=True)
+        self.git_core_probe.touch(mode=0o755)
         self.probe.touch()
         self.target.touch()
         self.link.symlink_to(self.target)
         self.write_git_wrapper()
-        self.m1, self.m2 = self._make_remote(bodies or {})
+        self.m1, self.m2, self.tag_main = self._make_remote(bodies or {}, with_main_tag, symlink_ceremony)
         source = SHIPPED.read_text()
         self.patches = self._patches(source)
         self.launcher.write_text(apply_patches(source, self.patches))
@@ -66,9 +76,9 @@ class Rig:
 
     def _patches(self, source: str) -> tuple[Patch, ...]:
         file_url = self.remote.as_uri()
-        c3_old = "C3-bootstrap|C3) REMOTE='https://github.com/Bali-Zero/Teman2.git'; fetch_ref=main; transport=(-c protocol.allow=never -c protocol.https.allow=always); transport_expected=$'command line:\\tprotocol.https.allow=always' ;;"
+        c3_old = "C3-bootstrap|C3) REMOTE='https://github.com/Bali-Zero/Teman2.git'; fetch_ref=refs/heads/main; transport=(-c protocol.allow=never -c protocol.https.allow=always); transport_expected=$'command line:\\tprotocol.https.allow=always' ;;"
         c12_old = "C12) REMOTE='file:///Users/nuzantara/.nuzantara-pilots/local-ci/merger/repo.git'; fetch_ref=refs/merger/base; transport=(-c protocol.allow=never -c protocol.file.allow=always); transport_expected=$'command line:\\tprotocol.file.allow=always' ;;"
-        c3_new = f"C3-bootstrap|C3) REMOTE='{file_url}'; fetch_ref=main; transport=(-c protocol.allow=never -c protocol.file.allow=always); transport_expected=$'command line:\\tprotocol.file.allow=always' ;;"
+        c3_new = f"C3-bootstrap|C3) REMOTE='{file_url}'; fetch_ref=refs/heads/main; transport=(-c protocol.allow=never -c protocol.file.allow=always); transport_expected=$'command line:\\tprotocol.file.allow=always' ;;"
         c12_new = f"C12) REMOTE='{file_url}'; fetch_ref=refs/merger/base; transport=(-c protocol.allow=never -c protocol.file.allow=always); transport_expected=$'command line:\\tprotocol.file.allow=always' ;;"
         trust_new = f'trust=("{self.trust}" "{self.clt}" "$CLT/usr" "$CLT/usr/bin" "$CLT/usr/libexec" "$CLT/usr/share" "$GIT" "{self.probe}" "{self.link}" "{self.launcher}")'
         return (
@@ -82,7 +92,7 @@ class Rig:
             Patch("c12-fixture-remote", c12_old, c12_new),
             Patch("zshenv-probe", "/etc/zshenv", str(self.zshenv), 2),
             Patch("unprivileged-install", '/usr/bin/sudo /usr/bin/install -o root -g wheel -m 0444 "$d/last-main.new" "$journal"', '/usr/bin/install -m 0444 "$d/last-main.new" "$journal"'),
-            Patch("watchdog-ticks", "ticks < 600", "ticks < 4"),
+            Patch("watchdog-ticks", "ticks < 600", "ticks < 40"),
             Patch("watchdog-tick-duration", "zselect -t 100", "zselect -t 5"),
             Patch("watchdog-grace", "zselect -t 500", "zselect -t 5"),
         )
@@ -90,7 +100,12 @@ class Rig:
     def _git_run(self, *args: str, cwd: Path | None = None) -> str:
         return subprocess.run([str(REAL_GIT), *args], cwd=cwd, check=True, text=True, capture_output=True).stdout.strip()
 
-    def _make_remote(self, bodies: dict[str, str]) -> tuple[str, str]:
+    def _make_remote(
+        self,
+        bodies: dict[str, str],
+        with_main_tag: bool,
+        symlink_ceremony: str | None,
+    ) -> tuple[str, str, str | None]:
         src = self.root / "src"
         self._git_run("init", "-b", "main", str(src))
         self._git_run("config", "user.name", "Fixture", cwd=src)
@@ -98,7 +113,11 @@ class Rig:
         ceremonies = src / "docs/ceremonies"
         ceremonies.mkdir(parents=True)
         for name in ("C3-bootstrap", "C3", "C12"):
-            (ceremonies / f"{name}.zsh").write_text(bodies.get(name, "exit 0\n"))
+            path = ceremonies / f"{name}.zsh"
+            if name == symlink_ceremony:
+                path.symlink_to("/bin/true")
+            else:
+                path.write_text(bodies.get(name, "exit 0\n"))
         (src / "generation").write_text("one\n")
         self._git_run("add", ".", cwd=src)
         self._git_run("commit", "-m", "fixture one", cwd=src)
@@ -107,9 +126,18 @@ class Rig:
         self._git_run("add", "generation", cwd=src)
         self._git_run("commit", "-m", "fixture two", cwd=src)
         m2 = self._git_run("rev-parse", "HEAD", cwd=src)
+        tag_main = None
+        if with_main_tag:
+            self._git_run("checkout", "--detach", m1, cwd=src)
+            (src / "generation").write_text("tag\n")
+            self._git_run("add", "generation", cwd=src)
+            self._git_run("commit", "-m", "off-main tag", cwd=src)
+            tag_main = self._git_run("rev-parse", "HEAD", cwd=src)
+            self._git_run("checkout", "main", cwd=src)
+            self._git_run("tag", "main", tag_main, cwd=src)
         self._git_run("clone", "--bare", str(src), str(self.remote))
         self._git_run(f"--git-dir={self.remote}", "update-ref", "refs/merger/base", m2)
-        return m1, m2
+        return m1, m2, tag_main
 
     def write_git_wrapper(self, mode: str = "normal", plant: str | None = None) -> None:
         fetch = ""
@@ -130,11 +158,26 @@ class Rig:
         self.git.write_text(f'''#!/bin/zsh -f\nunsetopt BG_NICE\n{fetch}{init}exec "{REAL_GIT}" "$@"\n''')
         self.git.chmod(0o755)
 
-    def run(self, m: str, name: str, *, stdin: str = "", extra: tuple[str, ...] = ()) -> subprocess.CompletedProcess[str]:
-        return self.run_args((m, name, *extra), stdin=stdin)
+    def run(
+        self,
+        m: str,
+        name: str,
+        *,
+        stdin: str = "",
+        extra: tuple[str, ...] = (),
+        caller_env: dict[str, str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        return self.run_args((m, name, *extra), stdin=stdin, caller_env=caller_env)
 
-    def run_args(self, args: tuple[str, ...], *, stdin: str = "") -> subprocess.CompletedProcess[str]:
-        cmd = ["/usr/bin/env", "-i", f"HOME={self.home}", f"PATH={FIXED_PATH}", "LC_ALL=C", "HOSTILE_BODY_ENV=present", "/bin/zsh", "-f", str(self.launcher), *args]
+    def run_args(
+        self,
+        args: tuple[str, ...],
+        *,
+        stdin: str = "",
+        caller_env: dict[str, str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        hostile = [f"{key}={value}" for key, value in (caller_env or {}).items()]
+        cmd = ["/usr/bin/env", "-i", f"HOME={self.home}", f"PATH={FIXED_PATH}", "LC_ALL=C", "HOSTILE_BODY_ENV=present", *hostile, "/bin/zsh", "-f", str(self.launcher), *args]
         return subprocess.run(cmd, input=stdin, text=True, capture_output=True, timeout=15)
 
     def runs(self) -> list[Path]:
@@ -180,10 +223,20 @@ class Rig:
 def rig_factory(tmp_path: Path):
     made = 0
 
-    def make(bodies: dict[str, str] | None = None) -> Rig:
+    def make(
+        bodies: dict[str, str] | None = None,
+        *,
+        with_main_tag: bool = False,
+        symlink_ceremony: str | None = None,
+    ) -> Rig:
         nonlocal made
         made += 1
-        return Rig(tmp_path / f"rig-{made}", bodies)
+        return Rig(
+            tmp_path / f"rig-{made}",
+            bodies,
+            with_main_tag=with_main_tag,
+            symlink_ceremony=symlink_ceremony,
+        )
 
     return make
 

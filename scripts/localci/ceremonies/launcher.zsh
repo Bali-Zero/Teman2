@@ -24,7 +24,7 @@ BASE=/Users/zero-ops/ceremony
 CLT=/Library/Developer/CommandLineTools
 GIT="$CLT/usr/bin/git"
 case "$NAME" in
-  C3-bootstrap|C3) REMOTE='https://github.com/Bali-Zero/Teman2.git'; fetch_ref=main; transport=(-c protocol.allow=never -c protocol.https.allow=always); transport_expected=$'command line:\tprotocol.https.allow=always' ;;
+  C3-bootstrap|C3) REMOTE='https://github.com/Bali-Zero/Teman2.git'; fetch_ref=refs/heads/main; transport=(-c protocol.allow=never -c protocol.https.allow=always); transport_expected=$'command line:\tprotocol.https.allow=always' ;;
   C12) REMOTE='file:///Users/nuzantara/.nuzantara-pilots/local-ci/merger/repo.git'; fetch_ref=refs/merger/base; transport=(-c protocol.allow=never -c protocol.file.allow=always); transport_expected=$'command line:\tprotocol.file.allow=always' ;;
   *) exit 64 ;;
 esac
@@ -73,7 +73,7 @@ watch_fetch() {
 }
 fetch_with_watchdog() {
   local fetch_pid watch_pid fetch_rc watch_rc
-  ( exec "${gcmd[@]}" -C "$d/w.git" fetch --no-tags "$REMOTE" "$fetch_ref" ) & fetch_pid=$!
+  ( exec "${gcmd[@]}" -C "$d/w.git" fetch --no-tags "$REMOTE" "+${fetch_ref}:refs/ceremony/main" ) & fetch_pid=$!
   watch_fetch "$fetch_pid" & watch_pid=$!
   wait "$watch_pid"; watch_rc=$?
   (( watch_rc == 0 )) || kill -TERM "$fetch_pid" 2>/dev/null
@@ -87,7 +87,7 @@ fetch_with_watchdog; fetch_rc=$?
 (( fetch_rc == 0 )) || exit "$fetch_rc"
 
 g -C "$d/w.git" cat-file -e "${M}^{commit}" || exit 65
-g -C "$d/w.git" merge-base --is-ancestor "$M" FETCH_HEAD || exit 65
+g -C "$d/w.git" merge-base --is-ancestor "$M" refs/ceremony/main || exit 65
 journal="$BASE/last-main"
 if [[ -e "$journal" || -L "$journal" ]]; then
   [[ -f "$journal" && ! -L "$journal" && -r "$journal" ]] || exit 65
@@ -100,7 +100,12 @@ fi
 
 /usr/bin/printf '%s\n' '#!/bin/zsh -f' "exec /usr/bin/env -i HOME=\"$d\" PATH=/usr/bin:/bin:/usr/sbin:/sbin LC_ALL=C GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 GIT_TERMINAL_PROMPT=0 /Library/Developer/CommandLineTools/usr/bin/git -c core.hooksPath=/dev/null -c core.fsmonitor=false -c maintenance.auto=false -c protocol.allow=never -C \"$d/w.git\" \"\$@\"" >"$d/g" || exit 65
 /bin/chmod 0500 "$d/g" || exit 65
-g -C "$d/w.git" cat-file blob "${M}:docs/ceremonies/${NAME}.zsh" >"$d/ceremony.zsh" || exit 65
+ceremony_path="docs/ceremonies/${NAME}.zsh"
+tree_entry=$(g -C "$d/w.git" ls-tree "$M" -- "$ceremony_path") || exit 65
+tree_meta=${tree_entry%%$'\t'*}; tree_path=${tree_entry#*$'\t'}
+tree_mode=${tree_meta%% *}; tree_tail=${tree_meta#* }; tree_type=${tree_tail%% *}
+[[ "$tree_entry" == *$'\t'* && "$tree_path" == "$ceremony_path" && ( "$tree_mode" == 100644 || "$tree_mode" == 100755 ) && "$tree_type" == blob ]] || exit 65
+g -C "$d/w.git" cat-file blob "${M}:${ceremony_path}" >"$d/ceremony.zsh" || exit 65
 /bin/chmod 0500 "$d/ceremony.zsh" || exit 65
 ( cd "$d" || exit 65; /usr/bin/env -i HOME=/Users/zero-ops PATH=/usr/bin:/bin:/usr/sbin:/sbin LC_ALL=C /bin/zsh -f "$d/ceremony.zsh" "$M" "$d" )
 ceremony_rc=$?

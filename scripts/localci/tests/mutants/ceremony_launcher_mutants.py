@@ -37,6 +37,11 @@ STATIC = node("test_shipped_security_contract_is_literal")
 ZSHENV = node("test_zshenv_presence_halts")
 PARENT = node("test_trust_walk_table[writable-parent]")
 HELPER = node("test_body_git_helper_is_hardened_and_mode_0500")
+FETCH_REF = node("test_c3_fetch_uses_branch_when_remote_also_has_main_tag")
+CLOSURE = node("test_executable_closure_rejects_writable_or_acl_entries")
+GIT_ENV = node("test_git_commands_ignore_hostile_caller_env")
+ARGC = node("test_argv_refusals_are_64")
+SYMLINK = node("test_symlink_ceremony_is_refused")
 
 # name: (old text, replacement, tests that must turn red)
 MUTANTS: dict[str, tuple[str, str, tuple[str, ...]]] = {
@@ -53,8 +58,8 @@ MUTANTS: dict[str, tuple[str, str, tuple[str, ...]]] = {
     "body-without-argv": ('/bin/zsh -f "$d/ceremony.zsh" "$M" "$d"', '/bin/zsh -f "$d/ceremony.zsh"', BODY),
     "body-inherits-env": ('/usr/bin/env -i HOME=/Users/zero-ops PATH=/usr/bin:/bin:/usr/sbin:/sbin LC_ALL=C /bin/zsh', 'HOME=/Users/zero-ops PATH=/usr/bin:/bin:/usr/sbin:/sbin LC_ALL=C /bin/zsh', BODY),
     "fetch-not-execd": (
-        '( exec "${gcmd[@]}" -C "$d/w.git" fetch --no-tags "$REMOTE" "$fetch_ref" ) & fetch_pid=$!',
-        '( "${gcmd[@]}" -C "$d/w.git" fetch --no-tags "$REMOTE" "$fetch_ref"; : ) & fetch_pid=$!',
+        '( exec "${gcmd[@]}" -C "$d/w.git" fetch --no-tags "$REMOTE" "+${fetch_ref}:refs/ceremony/main" ) & fetch_pid=$!',
+        '( "${gcmd[@]}" -C "$d/w.git" fetch --no-tags "$REMOTE" "+${fetch_ref}:refs/ceremony/main"; : ) & fetch_pid=$!',
         WATCH,
     ),
     "journal-absent-accepted": ('  [[ "$NAME" == C3-bootstrap ]] || exit 65', "  true", JABS),
@@ -70,6 +75,24 @@ MUTANTS: dict[str, tuple[str, str, tuple[str, ...]]] = {
         PARENT,
     ),
     "timeout-same-rc-as-fetch-fail": ("  return 70\n", "  return 69\n", WATCH),
+    "fetch-ref-ambiguous": ("fetch_ref=refs/heads/main", "fetch_ref=main", FETCH_REF),
+    "closure-perm-dash": (
+        '"$CLT/usr/share/git-core" /bin/realpath \\( -type l \\( ! -exec /bin/zsh -fc "$link_ok" zsh {} + \\) -o ! -type l \\( ! -user root -o -perm +0022 -o -acl \\) \\) -print',
+        '"$CLT/usr/share/git-core" /bin/realpath \\( -type l \\( ! -exec /bin/zsh -fc "$link_ok" zsh {} + \\) -o ! -type l \\( ! -user root -o -perm -0022 -o -acl \\) \\) -print',
+        CLOSURE,
+    ),
+    "closure-acl-dropped": (
+        '"$CLT/usr/share/git-core" /bin/realpath \\( -type l \\( ! -exec /bin/zsh -fc "$link_ok" zsh {} + \\) -o ! -type l \\( ! -user root -o -perm +0022 -o -acl \\) \\) -print',
+        '"$CLT/usr/share/git-core" /bin/realpath \\( -type l \\( ! -exec /bin/zsh -fc "$link_ok" zsh {} + \\) -o ! -type l \\( ! -user root -o -perm +0022 \\) \\) -print',
+        CLOSURE,
+    ),
+    "gcmd-without-env-i": ('gcmd=(/usr/bin/env -i HOME="$d"', 'gcmd=(/usr/bin/env HOME="$d"', GIT_ENV),
+    "argc-relaxed": ("(( $# == 2 )) || exit 64", "(( $# >= 2 )) || exit 64", ARGC),
+    "ceremony-symlink-accepted": (
+        "[[ \"$tree_entry\" == *$'\\t'* && \"$tree_path\" == \"$ceremony_path\" && ( \"$tree_mode\" == 100644 || \"$tree_mode\" == 100755 ) && \"$tree_type\" == blob ]] || exit 65",
+        "true",
+        SYMLINK,
+    ),
 }
 
 def run_tests(tree: Path, tests: tuple[str, ...]) -> int:

@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import difflib
 import os
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from .conftest import SHIPPED, apply_patches
+from .conftest import SHIPPED
 
 
 GOOD = "a" * 40
@@ -21,6 +20,7 @@ GOOD = "a" * 40
         ((GOOD, "bad"), "bad-name"),
         ((GOOD, "C3;id"), "shell-text"),
         ((GOOD, "../"), "traversal"),
+        ((GOOD, "C3-bootstrap", "extra"), "argc-three"),
     ],
     ids=lambda value: value if isinstance(value, str) else None,
 )
@@ -54,6 +54,38 @@ def test_trust_walk_table(rig_factory, case):
         _guilt(rig, case)
     got = rig.run(rig.m2, "C3-bootstrap")
     assert got.returncode == (0 if case == "innocent" else 65), (case, got.stderr)
+
+
+@pytest.mark.parametrize("case", ["dir-mode-0775", "file-mode-0757", "acl"])
+def test_executable_closure_rejects_writable_or_acl_entries(rig_factory, case):
+    rig = rig_factory()
+    if case == "dir-mode-0775":
+        rig.git_core.chmod(0o775)
+    elif case == "file-mode-0757":
+        rig.git_core_probe.chmod(0o757)
+    else:
+        subprocess.run(["/bin/chmod", "+a", f"{rig.user} allow write", str(rig.git_core_probe)], check=True)
+    assert rig.run(rig.m2, "C3-bootstrap").returncode == 65
+
+
+@pytest.mark.parametrize("key", ["GIT_DIR", "GIT_CONFIG_PARAMETERS", "GIT_EXEC_PATH"])
+def test_git_commands_ignore_hostile_caller_env(rig_factory, key):
+    rig = rig_factory()
+    clean = rig.run(rig.m2, "C3-bootstrap")
+    hostile_value = {
+        "GIT_DIR": str(rig.root / "hostile.git"),
+        "GIT_CONFIG_PARAMETERS": "'credential.helper'='!false'",
+        "GIT_EXEC_PATH": str(rig.root / "hostile-exec"),
+    }[key]
+    hostile = rig.run(rig.m2, "C3-bootstrap", caller_env={key: hostile_value})
+    assert clean.returncode == hostile.returncode == 0
+
+
+def test_c3_fetch_uses_branch_when_remote_also_has_main_tag(rig_factory):
+    rig = rig_factory(with_main_tag=True)
+    assert rig.tag_main is not None
+    assert rig.run(rig.tag_main, "C3-bootstrap").returncode == 65
+    assert rig.run(rig.m2, "C3-bootstrap").returncode == 0
 
 
 @pytest.mark.parametrize("plant", ["credential.helper", "include.path", "duplicate hooksPath", "core.bare=false"])
@@ -197,26 +229,84 @@ def test_zshenv_presence_halts(rig_factory):
     assert rig.run(rig.m2, "C3-bootstrap").returncode == 65
 
 
+def test_symlink_ceremony_is_refused(rig_factory):
+    rig = rig_factory(symlink_ceremony="C3-bootstrap")
+    assert rig.run(rig.m2, "C3-bootstrap").returncode == 65
+
+
 def test_test_copy_diff_is_exactly_the_declared_patch_table(rig_factory):
     rig = rig_factory()
     source = SHIPPED.read_text()
-    expected = apply_patches(source, rig.patches)
-    actual_diff = list(difflib.unified_diff(source.splitlines(), rig.launcher.read_text().splitlines(), lineterm=""))
-    declared_diff = list(difflib.unified_diff(source.splitlines(), expected.splitlines(), lineterm=""))
-    assert actual_diff == declared_diff
-    assert [p.name for p in rig.patches] == [
-        "ceremony-home", "tool-root", "trust-owner", "link-parent-stop", "trust-roots", "closure-roots",
-        "c3-file-remote", "c12-fixture-remote", "zshenv-probe", "unprivileged-install",
-        "watchdog-ticks", "watchdog-tick-duration", "watchdog-grace",
+    file_url = rig.remote.as_uri()
+    c3_old = "C3-bootstrap|C3) REMOTE='https://github.com/Bali-Zero/Teman2.git'; fetch_ref=refs/heads/main; transport=(-c protocol.allow=never -c protocol.https.allow=always); transport_expected=$'command line:\\tprotocol.https.allow=always' ;;"
+    c12_old = "C12) REMOTE='file:///Users/nuzantara/.nuzantara-pilots/local-ci/merger/repo.git'; fetch_ref=refs/merger/base; transport=(-c protocol.allow=never -c protocol.file.allow=always); transport_expected=$'command line:\\tprotocol.file.allow=always' ;;"
+    frozen = [
+        ("ceremony-home", "/Users/zero-ops", str(rig.home)),
+        ("tool-root", "CLT=/Library/Developer/CommandLineTools", f"CLT={rig.clt}"),
+        ("trust-owner", "-user root", f"-user {rig.user}"),
+        ("link-parent-stop", "STOP=/;", f"STOP={rig.trust};"),
+        (
+            "trust-roots",
+            'trust=(/ /Library /Library/Developer "$CLT" "$CLT/usr" "$CLT/usr/bin" "$CLT/usr/libexec" "$CLT/usr/share" /bin /usr /usr/bin /System /usr/local /usr/local/localci /usr/local/localci/bin /usr/local/localci/bin/ceremony-launcher.zsh)',
+            f'trust=("{rig.trust}" "{rig.clt}" "$CLT/usr" "$CLT/usr/bin" "$CLT/usr/libexec" "$CLT/usr/share" "$GIT" "{rig.probe}" "{rig.link}" "{rig.launcher}")',
+        ),
+        (
+            "closure-roots",
+            '"$GIT" "$CLT/usr/libexec/git-core" "$CLT/usr/share/git-core" /bin/realpath',
+            '"$GIT" "$CLT/usr/libexec/git-core" "$CLT/usr/share/git-core"',
+        ),
+        (
+            "c3-file-remote",
+            c3_old,
+            f"C3-bootstrap|C3) REMOTE='{file_url}'; fetch_ref=refs/heads/main; transport=(-c protocol.allow=never -c protocol.file.allow=always); transport_expected=$'command line:\\tprotocol.file.allow=always' ;;",
+        ),
+        (
+            "c12-fixture-remote",
+            c12_old,
+            f"C12) REMOTE='{file_url}'; fetch_ref=refs/merger/base; transport=(-c protocol.allow=never -c protocol.file.allow=always); transport_expected=$'command line:\\tprotocol.file.allow=always' ;;",
+        ),
+        ("zshenv-probe", "/etc/zshenv", str(rig.zshenv)),
+        (
+            "unprivileged-install",
+            '/usr/bin/sudo /usr/bin/install -o root -g wheel -m 0444 "$d/last-main.new" "$journal"',
+            '/usr/bin/install -m 0444 "$d/last-main.new" "$journal"',
+        ),
+        ("watchdog-ticks", "ticks < 600", "ticks < 40"),
+        ("watchdog-tick-duration", "zselect -t 100", "zselect -t 5"),
+        ("watchdog-grace", "zselect -t 500", "zselect -t 5"),
     ]
+    counts = {
+        "ceremony-home": 2,
+        "tool-root": 2,
+        "trust-owner": 3,
+        "link-parent-stop": 1,
+        "trust-roots": 1,
+        "closure-roots": 1,
+        "c3-file-remote": 1,
+        "c12-fixture-remote": 1,
+        "zshenv-probe": 2,
+        "unprivileged-install": 1,
+        "watchdog-ticks": 1,
+        "watchdog-tick-duration": 1,
+        "watchdog-grace": 1,
+    }
+    assert [(patch.name, patch.old, patch.new) for patch in rig.patches] == frozen
+    assert {patch.name: patch.count for patch in rig.patches} == counts
+    expected = source
+    for name, old, new in frozen:
+        assert source.count(old) == counts[name], name
+        expected = expected.replace(old, new)
+    assert rig.launcher.read_text() == expected
 
 
 def test_shipped_security_contract_is_literal():
     text = SHIPPED.read_text()
     assert "GIT_SSH_COMMAND" not in text
     assert "known_hosts" not in text
-    assert "C3-bootstrap|C3) REMOTE='https://github.com/Bali-Zero/Teman2.git'; fetch_ref=main; transport=(-c protocol.allow=never -c protocol.https.allow=always)" in text
+    assert "C3-bootstrap|C3) REMOTE='https://github.com/Bali-Zero/Teman2.git'; fetch_ref=refs/heads/main; transport=(-c protocol.allow=never -c protocol.https.allow=always)" in text
     assert "C12) REMOTE='file:///Users/nuzantara/.nuzantara-pilots/local-ci/merger/repo.git'; fetch_ref=refs/merger/base; transport=(-c protocol.allow=never -c protocol.file.allow=always)" in text
+    assert 'fetch --no-tags "$REMOTE" "+${fetch_ref}:refs/ceremony/main"' in text
+    assert 'merge-base --is-ancestor "$M" refs/ceremony/main' in text
     assert '"$2/g" cat-file blob "${1}:path"' in text
     assert "/Library/Developer/CommandLineTools/usr/bin/git -c core.hooksPath=/dev/null -c core.fsmonitor=false -c maintenance.auto=false -c protocol.allow=never" in text
     assert "/System/Volumes/Data|/System/Volumes/Data/*) exit 1" in text
