@@ -1,0 +1,61 @@
+task: >-
+  Move the twice-daily docs inventory off the public-repo workflows docs-inventory-refresh.yml (a GitHub artifact) and
+  docs-inventory-refresh-liveness.yml with its script and 601-line corpus (all deleted) into the Mini launchd organ
+  mini.docs_inventory_refresh: infra/launchagents/wrappers/mini-docs-inventory.sh builds the volatile bundle from a throwaway detached
+  worktree of the local refs/heads/main with Homebrew python asserted at least 3.11, regen bounded at 1800 s, three payload files
+  checked non-empty, a latest symlink repointed atomically under ~/.local/state/nuzantara/docs-derived-state/ and 30-day rotation
+  that never removes latest; failure is a digest plus an error heartbeat. Plist 03:00 and 15:00 WITA with no KeepAlive, registry
+  entry with a 14 h window replacing the liveness workflow, declared pair, connectome edge, live consumers repointed to the Mini
+  bundle and docs_sync.py --json, and the new executor docs-inventory-organ-tests.yml running the 10-case wrapper corpus.
+lane: infra
+machine: m5
+date: 2026-10-12
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, measured: evidence_pack_lint --print-floor --changed-files-file over the 33 changed files computes 3
+  (infra/launchagents/, organs_registry.yaml and workflow paths are hot-zone path terms). The floor sets the gear, not the size.
+acceptance:
+  A1:
+    text: >-
+      The wrapper SHALL build only from a detached worktree of refs/heads/main (never the working tree, never a tag named main),
+      remove the worktree on every exit path it can control, bound the regen at 1800 s, require the three payload files non-empty
+      and publish latest atomically without ever rotating away latest's target.
+    probe: bash scripts/tests/test_mini_docs_inventory_wrapper.sh (10 cases incl. tag-shadow and the regen bound); council review
+  A2:
+    text: >-
+      Every failure (python below 3.11, worktree add, regen rc or timeout, empty payload, latest move, unexpected exit) SHALL write
+      an error heartbeat and one digest with routing off and an empty relay; wrong node and kill switch SHALL write disabled.
+    probe: bash scripts/tests/test_mini_docs_inventory_wrapper.sh; council review of the outcome mapping
+  A3:
+    text: >-
+      The plist SHALL fire at 03:00 and 15:00 with RunAtLoad false and no KeepAlive and the registry window SHALL be 14 h, so a
+      skipped slot or a dead organ is reported by staleness in place of the retired liveness workflow.
+    probe: plutil -lint; council review of the registry and of what the liveness workflow detected
+  A4:
+    text: >-
+      No live consumer of the deleted workflows, script or corpus SHALL remain, and the repointed consumers SHALL keep their tests
+      and docs_sync.py --check green.
+    probe: git grep of the retired names; python3 scripts/docs_sync.py --check; the pytest files that read the repointed pointer text
+  A5:
+    text: >-
+      docs-inventory-organ-tests.yml SHALL run the wrapper corpus, bash -n and a plist parse on ubuntu on pull requests and pushes
+      to main.
+    probe: council review of the executor
+  A6:
+    text: >-
+      Live, after merge and the declared pair installed on Mini: the sidecar ~/.organism/last_seen/mini.docs_inventory_refresh.json
+      reads ok after the next 03:00 or 15:00 slot and latest points at a bundle named for the main sha.
+    probe: ssh mini 'cat ~/.organism/last_seen/mini.docs_inventory_refresh.json; readlink ~/.local/state/nuzantara/docs-derived-state/latest'
+out_of_scope: >-
+  The generated docs/AUTOMATIONS_REFERENCE.md (reverted by the shipping session; regenerated from live state); the regen script's
+  content; any fetch of origin main on Mini (the zero-sync organ owns repo freshness).
+assumptions:
+  - text: Mini's /usr/bin/python3 is 3.9 and Homebrew python on Mini is at least 3.11.
+    status: unverified
+    probe: ssh mini '/usr/bin/python3 -V; /opt/homebrew/bin/python3 -V' at install; stated in the commit message, not re-run here.
+  - text: scripts/tg_notify.py runs under Mini's /usr/bin/python3 (3.9), as the other Mini organ wrappers already call it.
+    status: verified
+    probe: ast.parse of scripts/tg_notify.py with feature_version (3, 9) succeeds in the dossier session (syntax only, not a run on Mini).
+  - text: Gear 3 needs the independent final-gate verdict on the head SHA, commissioned after the last push.
+    status: unverified
+    probe: gh pr checks <pr> after the verdict is posted.

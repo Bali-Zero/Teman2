@@ -1,0 +1,210 @@
+# Gear-3 evidence pack — the twice-daily docs inventory becomes the Mini launchd organ mini.docs_inventory_refresh.
+# Written 2026-10-12 by a dossier session (Claude Sonnet 5.5, M5) for code head 66204b0b5f (local, not pushed). Every receipt is a
+# command run in this session; ts is the clock read in the same shell call. Verbatim seat verdicts are in council-journal.jsonl.
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+seat_fallback_reason: >-
+  The council is kimi-code/k3 and agy-gemini-3.1-pro (gemini-3.1-pro-high), named by the coordinator for this mandate. The codex
+  seat built this diff (the shipping session reviewed and refined it) and is excluded by generator is not grader. Neither reviewer
+  built or edited anything here. Seat liveness was not probed separately: both answered rc 0.
+ruling: >-
+  Coordinator's mandate (2026-10-12): the public repo is being removed, so the GitHub-hosted cron workflows retire; the docs
+  inventory moves to a Mini launchd organ with its own heartbeat, replacing the artifact publisher and its liveness workflow (gate 7b).
+mission: >-
+  Keep the volatile docs bundle produced twice a day after the public repo goes, from the real main and never a dirty tree, with
+  every failure visible and no worktree, lock or bundle left to rot.
+lanes:
+  - lane: docs-inventory-build
+    role: build
+    seat: codex (built the first draft; the shipping session refined it; codex is NOT a grader here)
+  - lane: docs-inventory-review-kimi
+    role: review
+    seat: kimi-code/k3 (read-only, prompt-only, 1 round)
+  - lane: docs-inventory-review-agy
+    role: review
+    seat: agy-gemini-3.1-pro (gemini-3.1-pro-high, --sandbox, prompt-only, same prompt, 1 round)
+seat_diversity: >-
+  Builder: OpenAI (codex). Reviewers: Moonshot (kimi-code/k3) and Google (agy-gemini-3.1-pro); neither built anything here and
+  codex does not grade its own diff.
+pii_scan: clean
+pii_scan_note: >-
+  A wrapper, a plist, a shell corpus with synthetic fixtures and pointer-text edits in docs. The bundle holds repository metadata,
+  not client data; no PII is read or printed.
+what_changed: |
+  infra/launchagents/wrappers/mini-docs-inventory.sh, infra/launchagents/com.nuzantara.docs-inventory-refresh.plist, the registry
+  entry mini.docs_inventory_refresh (50400 s), a declared pair, a connectome edge, scripts/tests/test_mini_docs_inventory_wrapper.sh
+  (10 cases), the executor docs-inventory-organ-tests.yml; deleted docs-inventory-refresh.yml, docs-inventory-refresh-liveness.yml,
+  scripts/docs_inventory_refresh_liveness.py and test_docs_inventory_refresh_liveness.py; repointed INDEX.md, README.md, several docs,
+  docs_sync.py's generated pointer, docs_audit.py, docs_inventory_regen.sh, docs-guardian, immune-enforcement, merge-queue-watch, tests.yml,
+  craft-instruments-daily and main-push-failure-watch path lists and the grandfathered list.
+proof: |
+  See receipts. The 10-case wrapper corpus, docs_sync.py --check and 113 pytest of the repointed consumers pass. The council found the
+  mechanics sound and the migration open on several points; kimi found a red test the diff leaves on the head (R9), reproduced here.
+bites:
+  consumer: >-
+    The Mini launchd job com.nuzantara.docs-inventory-refresh (03:00 and 15:00 WITA), the organism bridge that reads its sidecar
+    ~/.organism/last_seen/mini.docs_inventory_refresh.json (expected_hb_seconds 50400), and the readers of the latest bundle
+    (docs_sync.py pointer text, INDEX.md, the docs).
+  observation: >-
+    Owed to the shipping session after merge and the declared pair installed on Mini: after the next 03:00 or 15:00 slot the sidecar
+    reads ok, latest under ~/.local/state/nuzantara/docs-derived-state points at a bundle named for the main sha, and
+    git worktree list on Mini shows no leftover worktree. Not yet made: this pack records the pre-push state at head 66204b0b5f.
+ground:
+  ts: "2026-10-12T07:07:23Z"
+  siblings: >-
+    Branch base origin/main c4b045752b is an ancestor; a merge-tree of origin/main with the head is clean. The Mini zero-sync organ
+    keeps the local main that this wrapper reads.
+spend:
+  adversarial_rounds: 1
+  wall_clock_hours: 0.5
+decisions:
+  - id: D-local-main-detached-worktree
+    decision: >-
+      The bundle is built from refs/heads/main of Mini's checkout in a throwaway detached worktree, never the dirty tree and never
+      a bare main that a tag could shadow; freshness of that main is owned by the zero-sync organ, not by this wrapper.
+  - id: D-registry-staleness-replaces-liveness
+    decision: >-
+      The 14 h registry window (12 h cadence plus 2 h) replaces the liveness workflow; every outcome writes a heartbeat with a status,
+      so the bridge must evaluate the status field and not only freshness.
+  - id: D-retire-artifact-consumers
+    decision: >-
+      Readers move from the GitHub artifact to the Mini bundle with docs_sync.py --json as the off-Mini fallback.
+receipts:
+  - claim: "R1 — floor 3 via the hot-zone path terms: the 33 changed files compute 3."
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <git diff origin/main...HEAD --name-only>
+    result: "3"
+    exit: 0
+    ts: "2026-10-12T07:07:23Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R2 — A1/A2: the wrapper corpus passes (success, regen failure, empty payload, python 3.9 rejected, wrong node, kill switch, 30-day rotation keeps latest, architecture pin, regen bound, tag-shadow)."
+    cmd: bash scripts/tests/test_mini_docs_inventory_wrapper.sh
+    result: "passed 10, failed 0"
+    exit: 0
+    ts: "2026-10-12T07:07:23Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R3 — bash -n and shellcheck -S warning are clean on the wrapper and its test; the plist lints; no textual conflict with origin/main."
+    cmd: bash -n <wrapper>; shellcheck -S warning <wrapper> <test>; plutil -lint <plist>; git merge-tree --write-tree origin/main HEAD
+    result: "bashn-ok; shellcheck 0; plist OK; merge-tree exit 0"
+    exit: 0
+    ts: "2026-10-12T07:07:23Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R4 — A4: docs_sync.py --check passes with the repointed pointer text."
+    cmd: python3 scripts/docs_sync.py --check
+    result: "DOCSYNC OK (generator valid; no protected hand-edits)"
+    exit: 0
+    ts: "2026-10-12T07:07:23Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R5 — A4: the pytest files that read the repointed pointer text pass."
+    cmd: python3 -m pytest scripts/tests/test_docs_sync_atlas.py scripts/tests/test_docs_audit.py scripts/tests/test_docs_inventory_regen.py -q -p no:cacheprovider
+    result: "113 passed"
+    exit: 0
+    ts: "2026-10-12T07:07:23Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R6 — registry window is 14 h."
+    cmd: grep -n expected_hb_seconds apps/organism/organism/organs_registry.yaml | grep -c 50400
+    result: "1"
+    exit: 0
+    ts: "2026-10-12T07:15:40Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R7 — council round 1 on head 66204b0b5f, kimi-code/k3: REWORK. Sound: the tag-shadow case is genuine guilt and proven innocence (refs/heads/main), the atomic latest with mv -fh and mv -fT, rotation that spares latest's target, the lock logic, the two-entry plist without KeepAlive, the 14 h arithmetic, docs_sync swap symmetric with its test, the executor runs the corpus."
+    cmd: "scripts/with_seat.sh kimi kimi -p <prompt> -m kimi-code/k3 < /dev/null"
+    result: "rc 0; VERDICT: REWORK; DEFECT a trapped TERM is deferred until the foreground regen returns, then launchd ExitTimeOut 60 sends SIGKILL (wrapper :92, :155, plist :43); DEFECT SIGKILL leaves the registered worktree, run.XXXXXX and .latest.$$ links to accumulate (:139-141); DEFECT no fetch, a stale local main reads green while the registry declares dependencies [] (:142); DEFECT the alarm kills the exec'd bash and orphans the hung grandchild (:155); DEFECT already-running writes a green heartbeat (:123) and the registry replaces the liveness check without a proven status evaluation or independence from Mini; DEFECT scripts/tests/test_docs_inventory_blame.py:184 still asserts 'docs-derived-state CI artifact'; DEFECT executor path filters omit the retired workflow paths so the architecture pin never triggers on a revival, and omit scripts/tg_notify.py; NOTEs"
+    exit: 0
+    ts: "2026-10-12T07:15:00Z"
+    seat: kimi-code/k3
+  - claim: "R8 — council round 1 on head 66204b0b5f, agy-gemini-3.1-pro: REWORK."
+    cmd: scripts/with_seat.sh agy agy --sandbox --model gemini-3.1-pro-high --print-timeout 900s -p <same prompt> < /dev/null
+    result: "rc 0; VERDICT: REWORK; BLOCKER the alarm kills bash and not its children (wrapper :155-156); BLOCKER /usr/bin/python3 (3.9) runs the gateway while the regen needs 3.11 (:44); DEFECT a hang before the alarm (git worktree add) holds the lock and the organ bricks itself behind a perpetual warning (:122-126); DEFECT no fetch of main (:142); DEFECT SIGKILL leaks the worktree and RUN_TMP (:60-91); NOTE registry staleness depends on where the organism runs; NOTE consumers clean"
+    exit: 0
+    ts: "2026-10-12T07:14:30Z"
+    seat: agy-gemini-3.1-pro
+  - claim: "R9 — kimi's red-test finding reproduces on the head: test_tracked_inventory_pointer_is_not_parsed_as_derived_rows asserts a string the repointed docs/DOCS_INVENTORY.md no longer carries."
+    cmd: python3 -m pytest scripts/tests/test_docs_inventory_blame.py -q -p no:cacheprovider; sed -n 180,186p scripts/tests/test_docs_inventory_blame.py; git diff origin/main...HEAD -- scripts/tests/test_docs_inventory_blame.py | wc -l
+    result: "1 failed, 36 passed (assertion at line 184: 'docs-derived-state CI artifact' in DOCS_INVENTORY.md); the diff does not touch this test (0 lines)"
+    exit: 0
+    ts: "2026-10-12T07:19:00Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R10 — agy's python 3.9 BLOCKER is not a syntax fact: scripts/tg_notify.py parses under the 3.9 grammar."
+    cmd: python3 -c "import ast; ast.parse(open('scripts/tg_notify.py').read(), feature_version=(3, 9))"
+    result: "tg_notify parses as 3.9 (syntax only; not a run on Mini)"
+    exit: 0
+    ts: "2026-10-12T07:19:00Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+dissent:
+  - seat: kimi-code/k3 (DEFECT 8)
+    objection: >-
+      scripts/tests/test_docs_inventory_blame.py:184, kimi: "still asserts docs-derived-state CI artifact in content — a live test,
+      untouched by the diff, and not among the three suites reported green; tests.yml runs the full suite -> likely red on main or
+      asserting retired wording."
+    status: CONFIRMED
+    disposition: >-
+      OPEN, not cured: this session may not edit code. R9 reproduces a failing test on the head. This is the finding most likely to
+      turn the first CI run red; the shipping session should change the assertion to the new pointer wording (or the pointer) before pushing.
+  - seat: kimi-code/k3 (DEFECT 4) and agy-gemini-3.1-pro (BLOCKER 1)
+    objection: >-
+      wrapper :155-156, agy: "When the SIGALRM fires, the bash process is killed, but it does not kill its children (the actual Python
+      scripts executing the regen). The timeout is logged, but the heavy workloads leak into the background and run indefinitely."
+    status: CONFIRMED
+    disposition: >-
+      OPEN, residual. The mechanism was reproduced in the fly-cost-guard dossier of this session (an orphan outlives the alarm). Here the regen
+      output goes to a file, not a pipe, so the wrapper does not hang waiting for it (the fly case did); the cost is an orphan per
+      timed-out run and a lock released while it still runs. Cure: run the regen in its own process group and kill the group.
+  - seat: kimi-code/k3 (DEFECT 1b) and agy-gemini-3.1-pro (DEFECT 5)
+    objection: >-
+      A SIGKILL, or a TERM that is deferred until the foreground regen returns and then met by launchd's 60 s ExitTimeOut, bypasses
+      the EXIT trap and leaves the registered worktree, run.XXXXXX and .latest.$$ behind; later runs prune only their own worktree.
+    status: PLAUSIBLE
+    disposition: >-
+      OPEN, residual. Read from the code (:60-91, :139-142), not reproduced: both seats agree and the lock and an unpublished bundle heal
+      (dead-pid reclaim, 30-day rotation). Cure: a start-of-run sweep of old run.* directories and git worktree prune, and a longer ExitTimeOut.
+  - seat: kimi-code/k3 (DEFECT 2) and agy-gemini-3.1-pro (DEFECT 4)
+    objection: >-
+      wrapper :142 builds from the local refs/heads/main with no fetch; if the zero-sync organ stalls, the organ writes a green heartbeat
+      for a stale bundle forever, and the registry declares dependencies [] although it depends on mini.zero_sync.
+    status: PLAUSIBLE
+    disposition: >-
+      OPEN, residual and a design choice (decision D-local-main-detached-worktree): freshness is owned by zero-sync. Cure options: declare
+      the dependency in the registry or record the main sha age in the heartbeat note.
+  - seat: kimi-code/k3 (DEFECT 6, NOTE) and agy-gemini-3.1-pro (NOTE 6)
+    objection: >-
+      Every outcome writes a fresh heartbeat (error, warning, disabled, and ok for already-running), so staleness alone cannot see
+      a run that failed; the old liveness workflow required a successful run and lived on GitHub, independent of the publisher. If the
+      registry evaluator also lives on Mini, a dead Mini silences organ and evaluator together.
+    status: PLAUSIBLE
+    disposition: >-
+      OPEN, residual. The bridge's use of status_field is declared in the registry diff but its evaluation was not read here; the
+      common-mode question is the same for every Mini organ moved off GitHub in this series.
+  - seat: agy-gemini-3.1-pro (BLOCKER 2)
+    objection: >-
+      wrapper :44, agy: "Hardcodes the system python (3.9 on Mini) for the Telegram alert script, despite enforcing >= 3.11 for the regen
+      via PYTHON_BIN. If tg_notify.py uses 3.10+ syntax, it will crash, resulting in completely silent failures."
+    status: PLAUSIBLE
+    disposition: >-
+      NOT adopted as a blocker. R10: tg_notify.py parses under the 3.9 grammar, and the other Mini organ wrappers call the same gateway with
+      /usr/bin/python3; agy's own text is conditional ("if it uses 3.10+ syntax"). The gateway's stdlib-only design is stated in its header.
+      Kimi rates the same point a NOTE. A run on Mini is the real proof (assumption in the brief).
+  - seat: agy-gemini-3.1-pro (DEFECT 3) and kimi-code/k3 (NOTE)
+    objection: >-
+      wrapper :122-126: a process hung before the alarm starts (for example git worktree add) holds the lock, later runs see it older than
+      7200 s, write a warning and never reclaim; the stuck process is never killed.
+    status: PLAUSIBLE
+    disposition: >-
+      OPEN, residual: the heartbeat reads warning, not green, after two hours; kimi rates it a NOTE. Cure: bound the pre-regen git steps too.
+  - seat: kimi-code/k3 (DEFECT 8b)
+    objection: >-
+      docs-inventory-organ-tests.yml filters omit the retired workflow paths, so a PR that resurrects them never triggers the architecture pin
+      (test :184-190), and omit scripts/tg_notify.py.
+    status: PLAUSIBLE
+    disposition: >-
+      OPEN, residual: add the two retired paths and the gateway to the filters.
+residuals:
+  - "R7 NOTE (kimi): the production Darwin branch mv -fh is never exercised on the ubuntu executor (only the GNU mv -fT branch is); the regen bound and 142 mapping are identical on Linux."
+  - "R7 NOTE (kimi): rotation failures are silent (rm -rf in a pipe-fed subshell, rc unchecked) and still finish ok; the bundle name has minute resolution, so two runs in one minute fail on the output dir."
+  - "R7 NOTE (kimi): a regen that exits 142 by itself is mislabeled as timed out; a corrupt but non-empty payload passes the -s checks."
+  - "R7 NOTE (kimi): the python gate checks PYTHON_BIN while the regen script resolves python3 from PATH; the defaults coincide, an override would gate one interpreter and run another."
+  - "R7 NOTE (kimi): the pointer ~/.local/state/... exists only on Mini; the text does not say so, docs_sync.py --json is the off-Mini fallback."
+  - "docs/specs/2026-09-27-evidence-pack-fixed-point.md:447 still names the deleted liveness script (a dated spec) and docs/AUTOMATIONS_REFERENCE.md:67-68 still list the retired workflows until the generated file refreshes from live state."
+  - "The real tg_notify.py is stubbed in the corpus, so its behaviour under Mini's python 3.9 is unproven by the executor."
+  - "Both seats REWORKed the head; the verdicts are recorded as given, not as PASS. R9 needs two distinct seats from the roster and is met by kimi plus agy; codex built the first draft and was not asked to grade it."
+appetite_exceeded: false
