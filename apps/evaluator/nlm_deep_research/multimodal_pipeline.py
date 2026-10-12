@@ -59,6 +59,17 @@ DOWNLOAD_TIMEOUT = 120  # 2 min per download
 DOWNLOAD_RETRY_ATTEMPTS = 10
 DOWNLOAD_RETRY_INTERVAL_S = 60
 
+# `nlm <type> create` is one synchronous HTTP call whose read timeout is owned
+# by the CLI's httpx client, not by us. NotebookLM answers it slowly now and
+# then (observed 2026-09-29, 10-04, 10-11 on Pro: "Studio create failed:
+# ReadTimeout"), and one blip used to fail the whole run with exit 1 + a P0
+# alert. A read timeout on the CREATE leg is transient by nature, so it gets a
+# bounded retry; every other failure shape (auth, quota, unknown type) is
+# deterministic and still fails on the first attempt.
+CREATE_RETRY_ATTEMPTS = 3
+CREATE_RETRY_INTERVAL_S = 45
+_TRANSIENT_CREATE_MARKERS = ("ReadTimeout", "ConnectTimeout", "read operation timed out")
+
 # Telegram
 _BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 _CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")
@@ -331,22 +342,32 @@ def _run_nlm_create(
         return True, "dry_run"
 
     logger.info("Creating %s for %s...", artifact_type, notebook_id)
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=NLM_TIMEOUT,
+    err = ""
+    for attempt in range(1, CREATE_RETRY_ATTEMPTS + 1):
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=NLM_TIMEOUT,
+            )
+        except subprocess.TimeoutExpired:
+            return False, f"timeout after {NLM_TIMEOUT}s"
+        except Exception as exc:
+            return False, str(exc)
+        if result.returncode == 0:
+            return True, result.stdout.strip()
+        err = result.stderr.strip() or result.stdout.strip() or f"exit {result.returncode}"
+        logger.error("nlm create %s failed: %s", artifact_type, err)
+        transient = any(m in err for m in _TRANSIENT_CREATE_MARKERS)
+        if not transient or attempt == CREATE_RETRY_ATTEMPTS:
+            break
+        logger.warning(
+            "nlm create %s hit a transient read timeout (attempt %d/%d), retrying in %ds",
+            artifact_type, attempt, CREATE_RETRY_ATTEMPTS, CREATE_RETRY_INTERVAL_S,
         )
-        if result.returncode != 0:
-            err = result.stderr.strip() or result.stdout.strip() or f"exit {result.returncode}"
-            logger.error("nlm create %s failed: %s", artifact_type, err)
-            return False, err
-        return True, result.stdout.strip()
-    except subprocess.TimeoutExpired:
-        return False, f"timeout after {NLM_TIMEOUT}s"
-    except Exception as exc:
-        return False, str(exc)
+        time.sleep(CREATE_RETRY_INTERVAL_S)
+    return False, err
 
 
 def _run_nlm_download(
