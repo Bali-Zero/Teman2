@@ -1,0 +1,43 @@
+task_id: secret-guard-env-dump-r4
+lane: infra
+machine: m5
+date: 2026-10-12
+gear: 2
+gear_reason: |
+  One hook, one new shape plus the tokenizer facts it depends on; a deny-guard where over- and
+  under-match are both defects (superscar #3), so the spec table is the oracle and a fresh gate grades it.
+history: |
+  r1 #8384 @ 240c93431b BLOCK (D1 ssh options after the host hid the remote command; D2 a local selector
+  after ssh was ignored). r2 #8388 @ 556ce5dbbd BLOCK (B1 a redirect inside ssh quotes cut the remote
+  command; B2 `&` in `2>&1` split statements and lost the selector; B3 bogus heads from the cut token),
+  then suspended at depth 1 (Builder Contract section 1). The tokenizer root cause of B1/B3 was specified
+  and cured alone on main as #8391 (E65-E73). r3 = r2's gate-validated X6 code ported onto that base with
+  rows renumbered E74-E130, plus the remaining spec-first deltas E131-E147.
+  r3 #8397 @ 0031265c6e BLOCK: D1 the substitution placeholder became the command's HEAD
+  (`$(true) printenv` ALLOW); D2 `&>`/`&>>`/`>&` with a separate target left the target as a program
+  (`env &> /dev/stdout` ALLOW). r4 = r3's three commits cherry-picked (same patch-ids) onto a fresh main,
+  then spec rows E148-E175 FIRST (D1, D2 and the gate's notices N1-N5), then the cure.
+objective: |
+  X6 (launchctl print/dumpstate/export/procinfo, getenv of a secret, ps environment display) denied
+  locally and inside `ssh host '...'`, with the r2 gate's B2/N1/N3/N5 and #8391 gate's F2 settled in spec.
+constraints:
+  - "E01-E73 keep their verdicts; E74-E130 keep r2's verdicts."
+  - "Kill switch, fail-open contract and stdin/exit-code shape unchanged."
+  - "Tests drive the guard through stdin JSON only; no real environment dump is run anywhere."
+acceptance:
+  - text: "A1: WHEN `&` belongs to `>&`/`<&`/`&>`/`&>>`, THEN it does not split statements; WHEN `|&` appears, THEN it splits stages like `|` (E131-E138)."
+    probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
+  - text: "A2: WHEN a local selector follows an ssh stage, THEN it bounds every remote statement (E142-E144)."
+    probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
+  - text: "A3: WHEN egrep/fgrep select, or procinfo's pid is a substitution, THEN the verdicts follow E140/E141/E145."
+    probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
+  - text: "A4: WHEN a redirect sits inside ssh quotes, THEN the remote dump is still judged (E139) and no bogus head appears (E146, E147)."
+    probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
+  - text: "A6: WHEN a substitution leads the command or is glued to a suffix, THEN the real head is judged; it stays an argument for procinfo/export/set and is never env's program (E148-E160)."
+    probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
+  - text: "A7: WHEN `&>`/`&>>`/`>&`/`<&` stand as their own word, THEN they consume their target; an escaped operator is literal (E161-E175)."
+    probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
+  - text: "A5: WHEN each delta rule is reverted on a scratch copy, THEN its rows fail (guilt replay)."
+    probe: "mutate on a scratch copy, rerun the corpus, restore check with cmp"
+consumer_map:
+  - "PreToolUse(Bash|Monitor|Read) wiring in .claude/settings.json invokes this hook on every Bash call; hook-innocence-gate.yml runs the vaccine block on every hooks change."

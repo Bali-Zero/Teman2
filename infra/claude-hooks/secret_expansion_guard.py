@@ -16,7 +16,7 @@ control the prose was not.
 
 GRADED, NOT IMPROVISED. The shapes and the verdicts live in
 docs/specs/2026-09-18-secret-expansion-guard-shapes-spec.md (§4 shapes, §5 corpus
-E01-E59) and infra/claude-hooks/test_secret_expansion_guard.py asserts the corpus
+E01-E178) and infra/claude-hooks/test_secret_expansion_guard.py asserts the corpus
 row by row. Where this file and the spec disagree, THE SPEC WINS. Precedent:
 output_hygiene_guard v1 was suspended at three gate rounds, each finding a new
 over-match on an everyday command (cicatrix superscar #3). The over-match trap
@@ -51,6 +51,14 @@ on a real ~/.config, spec budget 5 ms) and could only deny a store that existed
 at that instant. `set -o pipefail`, `set +x` and `declare -x` were over-matched
 (E47-E49); `declare -p` and command substitutions were under-matched (E51-E53);
 quoted heredocs to a non-shell consumer are literal data, not shell (E57).
+
+X6 2026-10-12: a subagent ran `ssh pro 'launchctl print gui/501/<label>'` unfiltered and a
+VALID Telegram bot token reached the transcript — `launchctl print` prints the
+`environment` block with values, and `ps -E` / `ps eww` do the same for processes. The
+guard had no shape for either, and E64 left every `ssh host '…'` inline command unjudged.
+X6 closes the first; the second is closed narrowly (spec §4, the E64 note): only X2 and X6
+are judged inside a remote inline command, because an environment dump is a READ by
+construction and needs none of W94's read/write distinction.
 """
 from __future__ import annotations
 
@@ -88,19 +96,26 @@ PEELABLE = {"env", "sudo", "time", "nice", "command", "exec", "nohup", "stdbuf"}
 # ssh, remotely) and its output comes back to the transcript — judge the body.
 SHELL_HEADS = {"bash", "sh", "zsh", "dash", "ksh", "ssh"}
 # The same shells when they take their CODE as a `-c` STRING ARGUMENT. `ssh` is
-# deliberately absent: its `-c` is the CIPHER flag, and a remote command needs the
-# read/write distinction of W94 before it can be judged (see the spec's E64 note).
+# deliberately absent: its `-c` is the CIPHER flag. Its remote inline command is
+# judged separately and only for X2/X6 (_ssh_remote_command; the spec's E64 note).
 LOCAL_SHELL_HEADS = SHELL_HEADS - {"ssh"}
+# X6: a line selector the session wrote on purpose bounds the accidental env dump
+# (one variable per line). `cut` selects columns, not lines; `sort`/`uniq` alone
+# do not select either.
+LINE_SELECTORS = {"grep", "egrep", "fgrep", "rg", "awk", "gawk", "sed", "wc"}
+# ssh's own options that take an argument — skipped to find the destination host.
+SSH_ARG_OPTS = set("bcDEeFIiJLlmOopPQRSWwB")
 _HEREDOC_RE = re.compile(r"<<-?\s*(['\"]?)(\w+)\1")
 _ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
-_REDIRECT_RE = re.compile(r"^\d*(?:>>|<<<|<<-?|&>>|&>|>&\d*|<|>)")
+_REDIRECT_RE = re.compile(r"^\d*(?:&>>|&>|>>|<<<|<<-?|>&\d*|<&\d*|<|>)")
 # A redirect glued to its target (`cat store>/tmp/x`, `2>&1`) — the operand before
 # the operator is still a real argument and must not be swallowed with it.
-_GLUED_REDIRECT_RE = re.compile(r"(?:&>>|&>|>>|>&\d*|<<<|<<-?|<|>)")
+_GLUED_REDIRECT_RE = re.compile(r"(?:&>>|&>|>>|>&\d*|<&\d*|<<<|<<-?|<|>)")
 # `${NAME…}` — the operator after the name decides value vs presence.
 _BRACE_EXP_RE = re.compile(r"(?<!\\)\$\{([A-Za-z_][A-Za-z0-9_]*)([^{}]*)\}")
 _BARE_EXP_RE = re.compile(r"(?<!\\)\$([A-Za-z_][A-Za-z0-9_]*)")
 _NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_SUBSTITUTION_PLACEHOLDER = "__NUZ_MASKED_SUBSTITUTION__"
 
 
 def _warn(msg: str) -> None:
@@ -177,6 +192,16 @@ def _path_matches(candidate: str, pattern: str) -> bool:
 # --------------------------------------------------------------- tokenizing
 
 
+def _is_backslash_escaped(text: str, pos: int) -> bool:
+    """Whether the character at `pos` is preceded by an odd backslash run."""
+    slashes = 0
+    pos -= 1
+    while pos >= 0 and text[pos] == "\\":
+        slashes += 1
+        pos -= 1
+    return slashes % 2 == 1
+
+
 def _split_quoted(text: str, seps: list[str]) -> list[str]:
     """Split on the first matching separator found OUTSIDE quotes/escapes.
 
@@ -213,6 +238,27 @@ def _split_quoted(text: str, seps: list[str]) -> list[str]:
             continue
         hit = next((s for s in ordered if text.startswith(s, i)), None)
         if hit:
+            # `&` is syntax inside redirects (`>&`, `<&`, `&>`, `&>>`) and
+            # inside bash's `|&` pipe operator; only a lone `&` separates
+            # statements. An escaped operator before it is literal, so the `&`
+            # is lone (E171/E172, and the equivalent `\|&`). The pipeline pass
+            # below consumes an unescaped `|&` as a unit.
+            if hit == "&" and (
+                (
+                    i > 0
+                    and text[i - 1] in "<>|"
+                    and not _is_backslash_escaped(text, i - 1)
+                )
+                or (i + 1 < n and text[i + 1] == ">")
+            ):
+                buf.append(c)
+                i += 1
+                continue
+            if hit == "|" and i + 1 < n and text[i + 1] == "&":
+                out.append("".join(buf))
+                buf = []
+                i += 2
+                continue
             out.append("".join(buf))
             buf = []
             i += len(hit)
@@ -323,7 +369,7 @@ def _tokenize(stage: str) -> list[str]:
 
     Three redirect forms, handled separately because getting this wrong is an
     under-match (a secret store hidden behind `>/tmp/x`) rather than a harmless
-    over-match: a bare operator (`> file`) consumes the NEXT token; a
+    over-match: a bare operator (`> file`, `&> file`, `>& file`) consumes the NEXT token; a
     self-contained one (`2>&1`) consumes nothing; a glued one (`store>/tmp/x`)
     keeps the operand before the operator, which is the real argument.
     """
@@ -337,7 +383,7 @@ def _tokenize(stage: str) -> list[str]:
         m = _REDIRECT_RE.match(tok)
         if m:
             if len(m.group(0)) == len(tok) and tok.lstrip("0123456789") in (
-                ">", ">>", "<", "<<<", "<<-",
+                ">", ">>", "<", "<<<", "<<-", "&>", "&>>", ">&", "<&",
             ):
                 skip_next = True
             continue
@@ -372,6 +418,13 @@ def _peel(toks: list[str], peel_env: bool = True) -> list[str]:
     while toks and guard < 24:
         guard += 1
         head = toks[0]
+        if _unquote(head) == _SUBSTITUTION_PLACEHOLDER:
+            toks = toks[1:]
+            continue
+        if _unquote(head).startswith(_SUBSTITUTION_PLACEHOLDER):
+            # `$(true)printenv` runs `printenv` (E176).
+            toks = [_unquote(head)[len(_SUBSTITUTION_PLACEHOLDER):]] + toks[1:]
+            continue
         if _ASSIGN_RE.match(head):
             toks = toks[1:]
             continue
@@ -401,6 +454,25 @@ def _head_of(toks: list[str]) -> str:
         return ""
     h = _unquote(toks[0])
     return os.path.basename(h) if "/" in h else h
+
+
+def _effective_command(toks: list[str], peel_env: bool = True) -> list[str]:
+    """Peel ordinary wrappers and `launchctl asuser <uid>` wrappers.
+
+    `asuser` runs the remaining argv as a command. Judging the wrapper's head
+    would miss the command it actually runs (X6/N3), just as judging `sudo`
+    instead of its payload would.
+    """
+    current = _peel(toks, peel_env=peel_env)
+    for _ in range(8):
+        if (
+            _head_of(current) != "launchctl"
+            or len(current) < 4
+            or _unquote(current[1]) != "asuser"
+        ):
+            break
+        current = _peel(current[3:], peel_env=peel_env)
+    return current
 
 
 # --------------------------------------------------------------- shapes
@@ -500,9 +572,114 @@ def _check_x2(toks: list[str], head: str) -> str | None:
         if "=" in t and _ASSIGN_RE.match(t):
             i += 1
             continue
+        if _unquote(t) == _SUBSTITUTION_PLACEHOLDER:
+            i += 1
+            continue
         # A real program follows: env is setting an environment, not printing one.
         return None
     return "X2 environment dump: `env` with only flags/assignments prints the environment."
+
+
+def _is_count_stage(toks: list[str]) -> bool:
+    """`wc …` or `grep -c`/`--count`: a stage that can only report a number."""
+    h = _head_of(toks)
+    if h == "wc":
+        return True
+    if h in ("grep", "egrep", "fgrep", "rg"):
+        return any(
+            _unquote(t) == "--count" or re.match(r"^-[a-z]*c[a-z]*$", _unquote(t))
+            for t in toks[1:]
+        )
+    return False
+
+
+def _ps_shows_environment(args: list[str]) -> bool:
+    """`ps -E`, a combined `-axE`, or BSD-style `e` in the FIRST dashless argument.
+    `-e` is `-A` (all processes, no environment), so `ps -ef` / `ps -e` are innocent."""
+    for t in map(_unquote, args):
+        if re.match(r"^-[A-Za-z]*E[A-Za-z]*$", t):
+            return True
+    first = _unquote(args[0]) if args else ""
+    return bool(re.match(r"^[A-Za-z]*e[A-Za-z]*$", first))
+
+
+def _check_x6(toks: list[str], head: str, later: list[list[str]], secrets) -> str | None:
+    """X6 — a process or launchd environment dump (measured 2026-10-12)."""
+    if head == "launchctl" and len(toks) >= 2:
+        sub = _unquote(toks[1])
+        dumps_environment = sub in ("print", "dumpstate", "export") or (
+            sub == "procinfo" and len(toks) >= 3
+        )
+        if dumps_environment:
+            if any(_head_of(s) in LINE_SELECTORS for s in later):
+                return None  # a deliberate line selector bounds the dump
+            return (
+                f"X6 launchd environment dump: `launchctl {sub}` prints environment data "
+                f"with values and nothing here selects lines. Pipe it through grep/awk/sed for "
+                f"the keys you need (state, runs, last exit)."
+            )
+        if sub == "getenv" and len(toks) >= 3:
+            name = _unquote(toks[2])
+            if _is_secret(name, *secrets):
+                return (
+                    f"X6 launchd environment read: `launchctl getenv {name}` prints a "
+                    f"registered secret's value, even captured into a variable."
+                )
+        return None
+    if head == "ps" and _ps_shows_environment(toks[1:]):
+        if later and _is_count_stage(later[0]):
+            return None
+        return (
+            "X6 process environment dump: `ps -E` / BSD `ps e…` prints every process's "
+            "environment, and a matched line still carries all of it. `ps -e`/`-ef` do not."
+        )
+    return None
+
+
+def _ssh_option_width(flag: str) -> int:
+    """Tokens consumed by one ssh option cluster, read as getopt reads it.
+
+    The FIRST argument-taking letter ends the cluster: the rest of the token is
+    its glued argument (`-p22`, `-oControlPath=none`, `-qtoK=V`) and nothing more
+    is consumed; if it is the last letter, the next token is the argument
+    (`-tp 22`, `-o K=V`). The last character alone cannot tell the two apart —
+    `-oControlPath=none` ends in `e`, itself an argument-taking letter.
+    """
+    for pos, letter in enumerate(flag[1:], start=1):
+        if letter in SSH_ARG_OPTS:
+            return 1 if pos < len(flag) - 1 else 2
+    return 1
+
+
+def _ssh_remote_command(toks: list[str]) -> str:
+    """The remote inline command of `ssh [opts] host cmd…`, or "" if there is none."""
+    i = 1
+    parsing_options = True
+    while i < len(toks):
+        t = _unquote(toks[i])
+        if parsing_options and t == "--":
+            parsing_options = False
+            i += 1
+            continue
+        if not parsing_options or not t.startswith("-") or len(t) < 2:
+            break
+        i += _ssh_option_width(t)
+    if i >= len(toks):
+        return ""
+    i += 1  # destination
+
+    # OpenSSH also accepts its options after the destination. Keep skipping the
+    # same shapes until the first real remote-command token. A prior `--` ended
+    # option parsing globally; a post-destination `--` is dropped here.
+    while parsing_options and i < len(toks):
+        t = _unquote(toks[i])
+        if t == "--":
+            i += 1
+            break
+        if not t.startswith("-") or len(t) < 2:
+            break
+        i += _ssh_option_width(t)
+    return " ".join(_unquote(t) for t in toks[i:])
 
 
 def _check_x3(toks: list[str], head: str) -> str | None:
@@ -589,14 +766,14 @@ MAX_SUBSTITUTION_DEPTH = 3
 
 
 def _mask_substitutions(text: str) -> tuple[str, list[str]]:
-    """Blank `$(...)` and backtick spans in `text` and return their bodies.
+    """Mask `$(...)` and backtick spans in `text` and return their bodies.
 
-    The OUTER command is judged on the blanked text, each body on its own
+    The OUTER command is judged with an inert argument placeholder, each body on its own
     (recursively, bounded). Without this, `echo "$(cat STORE)"` is an echo of a
     quoted string (under-match, E52) and `echo "$(curl -H "Bearer $KEY" ...)"`
     is an X1 hit (over-match, E56) — one blind spot, both directions.
     """
-    chars = list(text)
+    out: list[str] = []
     subs: list[str] = []
     i, n = 0, len(text)
     while i < n:
@@ -611,24 +788,24 @@ def _mask_substitutions(text: str) -> tuple[str, list[str]]:
                 j += 1
             inner_end = j - 1 if depth == 0 else j
             subs.append(text[i + 2:inner_end])
-            for k in range(i, j):
-                if chars[k] != "\n":
-                    chars[k] = " "
+            out.append(_SUBSTITUTION_PLACEHOLDER)
+            out.extend(c for c in text[i:j] if c == "\n")
             i = j
             continue
         if text[i] == "`" and not escaped:
             j = text.find("`", i + 1)
             if j == -1:
+                out.append(text[i])
                 i += 1
                 continue
             subs.append(text[i + 1:j])
-            for k in range(i, j + 1):
-                if chars[k] != "\n":
-                    chars[k] = " "
+            out.append(_SUBSTITUTION_PLACEHOLDER)
+            out.extend(c for c in text[i:j + 1] if c == "\n")
             i = j + 1
             continue
+        out.append(text[i])
         i += 1
-    return "".join(chars), subs
+    return "".join(out), subs
 
 
 def _shell_c_payloads(toks: list[str], head: str) -> list[str]:
@@ -656,28 +833,49 @@ def _judge_command(command: str, cwd: str, reg: dict) -> str | None:
     return _judge_text(text, cwd, _secret_names(reg), _store_patterns(reg), 0)
 
 
-def _judge_text(text: str, cwd: str, secrets, stores: list[str], depth: int) -> str | None:
+def _judge_text(
+    text: str,
+    cwd: str,
+    secrets,
+    stores: list[str],
+    depth: int,
+    remote: bool = False,
+    following: list[list[str]] | None = None,
+) -> str | None:
+    """`remote=True` judges the inline command of an `ssh host '…'`: X2 and X6 only.
+    X1/X3/X4 inside it stay under E64 (a remote WRITE never reaches the transcript)."""
     outer, subs = _mask_substitutions(text)
-    for statement in _split_quoted(outer, ["&&", "||", ";", "&", "\n"]):
-        if not statement.strip():
-            continue
-        for stage in _split_quoted(statement, ["|"]):
-            if not stage.strip():
-                continue
-            toks = _tokenize(stage)
-            if not toks:
-                continue
-            peeled = _peel(toks)
-            keep_env = _peel(toks, peel_env=False)
+    remote_cmds: list[tuple[str, list[list[str]]]] = []
+    statements = [
+        statement
+        for statement in _split_quoted(outer, ["&&", "||", ";", "&", "\n"])
+        if statement.strip()
+    ]
+    for statement in statements:
+        stages = [
+            (stage, _tokenize(stage))
+            for stage in _split_quoted(statement, ["|"])
+            if stage.strip()
+        ]
+        stages = [(s, t) for s, t in stages if t]
+        peeled_all = [_effective_command(t) for _s, t in stages]
+        for idx, (stage, toks) in enumerate(stages):
+            peeled = peeled_all[idx]
+            keep_env = _effective_command(toks, peel_env=False)
             head = _head_of(peeled)
             head_ke = _head_of(keep_env)
+            later = peeled_all[idx + 1:]
+            if remote and following:
+                later = later + following
             candidates: list[str | None] = []
             if head:
-                candidates += [
-                    _check_x1(stage, head, secrets),
-                    _check_x3(peeled, head),
-                    _check_x4(peeled, head, cwd, stores),
-                ]
+                if not remote:
+                    candidates += [
+                        _check_x1(stage, head, secrets),
+                        _check_x3(peeled, head),
+                        _check_x4(peeled, head, cwd, stores),
+                    ]
+                candidates.append(_check_x6(peeled, head, later, secrets))
             if head_ke:
                 candidates.append(_check_x2(keep_env, head_ke))
             for reason in candidates:
@@ -685,11 +883,20 @@ def _judge_text(text: str, cwd: str, secrets, stores: list[str], depth: int) -> 
                     return reason
             if head:
                 subs.extend(_shell_c_payloads(peeled, head))
+                if head == "ssh":
+                    remote_cmds.append((_ssh_remote_command(peeled), later))
     if depth < MAX_SUBSTITUTION_DEPTH:
         for body in subs:
-            reason = _judge_text(body, cwd, secrets, stores, depth + 1)
+            reason = _judge_text(body, cwd, secrets, stores, depth + 1, remote)
             if reason:
                 return reason
+        for body, later in remote_cmds:
+            if body.strip():
+                reason = _judge_text(
+                    body, cwd, secrets, stores, depth + 1, True, following=later
+                )
+                if reason:
+                    return reason
     return None
 
 
