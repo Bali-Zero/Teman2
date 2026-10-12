@@ -1329,8 +1329,20 @@ _EXPECTED_REASONS_ON_SEQ27: dict[str, ReasonPin] = {
     # NEEDS_INPUT: the answer is open, so there is no cause to name yet.
     "offshore/retirement/undecided/age64/still_unsure": ((), ()),
 }
+#: seq-28 (E33G Step C, #8300): the business no-path stops naming AGE_BELOW_55
+#: next to BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED (measured from the evaluated
+#: actual, not derived), and the 59,999 USD remote walk gains its own cause,
+#: E33G_INCOME_BELOW_THRESHOLD. Every other row is the seq-27 row.
+_BUSINESS_NO_PATH_SEQ28: ReasonPin = (("BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED",), ())
+_EXPECTED_REASONS_ON_SEQ28: dict[str, ReasonPin] = {
+    **_EXPECTED_REASONS_ON_SEQ27,
+    "offshore/business": _BUSINESS_NO_PATH_SEQ28,
+    "onshore/business": _BUSINESS_NO_PATH_SEQ28,
+    _SEQ28_E33G_59999_WALK: (("E33G_INCOME_BELOW_THRESHOLD",), ()),
+}
 EXPECTED_REASONS_BY_SEQUENCE: dict[int, dict[str, ReasonPin]] = {
     27: _EXPECTED_REASONS_ON_SEQ27,
+    28: _EXPECTED_REASONS_ON_SEQ28,
 }
 EXPECTED_REASONS: dict[str, ReasonPin] = EXPECTED_REASONS_BY_SEQUENCE.get(_SIGNED_SEQUENCE, {})
 
@@ -2552,23 +2564,31 @@ def test_every_flagged_walk_ends_in_its_pinned_reasons(
 
 def test_the_reason_pins_name_the_causes_this_audit_found_unpinned() -> None:
     """Visit-family F125 / work-family F56: the four visit causes and the
-    paid-activity pair were the unpinned rows. Stated in code so the pin table
-    cannot be emptied to green without a reviewer seeing the label go."""
+    paid-activity pair were the unpinned rows. Stated in code, per sequence, so
+    the pin table cannot be emptied to green without a reviewer seeing the label
+    go. The business row differs by sequence (seq-27 names AGE_BELOW_55 beside
+    it, seq-28 does not), so each table is asserted on its own."""
 
-    assert EXPECTED_REASONS["offshore/business"] == (
+    seq27 = EXPECTED_REASONS_BY_SEQUENCE[27]
+    seq28 = EXPECTED_REASONS_BY_SEQUENCE[28]
+    assert seq27["offshore/business"] == (
         ("BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED", "AGE_BELOW_55"),
         (),
     )
-    assert EXPECTED_REASONS["onshore/business"] == EXPECTED_REASONS["offshore/business"]
-    assert EXPECTED_REASONS["offshore/other/no_paid_activity"] == (("BVK_NATIONALITY_ONLY",), ())
-    assert EXPECTED_REASONS["offshore/business/exploring/sponsor_no/no_route"] == (
-        ("D12_NOT_CONVERTIBLE",),
-        (),
-    )
-    assert EXPECTED_REASONS["offshore/other/paid/employer_no"] == (
-        ("PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR", "E33A_SPONSOR_NOT_GOVERNMENT"),
-        (),
-    )
+    assert seq28["offshore/business"] == (("BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED",), ())
+    for table in (seq27, seq28):
+        assert table["onshore/business"] == table["offshore/business"]
+        assert table["offshore/other/no_paid_activity"] == (("BVK_NATIONALITY_ONLY",), ())
+        assert table["offshore/business/exploring/sponsor_no/no_route"] == (
+            ("D12_NOT_CONVERTIBLE",),
+            (),
+        )
+        assert table["offshore/other/paid/employer_no"] == (
+            ("PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR", "E33A_SPONSOR_NOT_GOVERNMENT"),
+            (),
+        )
+    assert _SEQ28_E33G_59999_WALK not in seq27
+    assert seq28[_SEQ28_E33G_59999_WALK] == (("E33G_INCOME_BELOW_THRESHOLD",), ())
 
 
 def test_guilt_a_swapped_cause_is_caught(outcomes: dict[str, dict[str, Any]]) -> None:
@@ -2582,15 +2602,27 @@ def test_guilt_a_swapped_cause_is_caught(outcomes: dict[str, dict[str, Any]]) ->
 
 
 def test_guilt_a_dropped_or_added_cause_is_caught(outcomes: dict[str, dict[str, Any]]) -> None:
-    label = "offshore/business"
-    dropped = {**outcomes, label: {**outcomes[label], "no_path_reason_codes": ["AGE_BELOW_55"]}}
-    assert [v.split(":")[0] for v in _reason_violations(dropped, EXPECTED_REASONS)] == [label]
+    # A walk with >= 2 codes on seq-28 (the business rows carry one there, so
+    # dropping/reordering needs the paid-activity pair).
+    label = "offshore/other/paid/employer_no"
+    assert len(EXPECTED_REASONS_BY_SEQUENCE[28][label][0]) >= 2
+    # Graded against the table of the sequence the `outcomes` fixture replays.
+    pinned_codes = EXPECTED_REASONS[label][0]
+    assert len(pinned_codes) >= 2, pinned_codes
+    signed_table = EXPECTED_REASONS
+    dropped = {
+        **outcomes,
+        label: {**outcomes[label], "no_path_reason_codes": [pinned_codes[0]]},
+    }
+    assert [v.split(":")[0] for v in _reason_violations(dropped, signed_table)] == [label]
+    added = {
+        **outcomes,
+        label: {**outcomes[label], "no_path_reason_codes": [*pinned_codes, "AGE_BELOW_55"]},
+    }
+    assert [v.split(":")[0] for v in _reason_violations(added, signed_table)] == [label]
     reordered = {
         **outcomes,
-        label: {
-            **outcomes[label],
-            "no_path_reason_codes": ["AGE_BELOW_55", "BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED"],
-        },
+        label: {**outcomes[label], "no_path_reason_codes": list(reversed(pinned_codes))},
     }
     assert [v.split(":")[0] for v in _reason_violations(reordered, EXPECTED_REASONS)] == [label]
     moved_to_review = {

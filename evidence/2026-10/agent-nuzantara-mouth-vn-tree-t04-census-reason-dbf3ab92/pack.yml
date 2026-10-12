@@ -16,18 +16,30 @@ spend:
   wall_clock_hours: 3
   adversarial_rounds: 2
 results:
-  backend_visa_engine_suite: "2966 passed, 15 skipped, 3 failed, 39 errors on the final head after the gate rework (same tally as after the first red-team cure; this rework changes no code) - every failure and error is a database-schema, shared-scratch-database concurrency or missing-dependency item of this environment in test_evaluate_endpoint, test_shadow_evidence, test_shadow_match, test_visa_engine_retention_fk_registry; none touches the census"
-  census_file: "65 passed, 14 skipped (was 53 passed, 14 skipped before the change; 62 after the first commit, 3 candidate-reason tests added by the red-team cure)"
-  mouth_visa_oracle_vitest: "54 files, 1425 tests passed"
+  backend_visa_engine_suite: "3006 passed, 15 skipped, 2 failed, 39 errors on the rebased head (origin/main e474325994, seq-28 signed via #8300) - every failure and error is a database-schema or shared-scratch-database item of this environment in test_evaluate_endpoint (31 errors), test_shadow_evidence (6), test_shadow_match (2) and test_visa_engine_retention_fk_registry (2 failures); none touches the census"
+  census_file: "67 passed, 14 skipped on seq-28 (was 65 passed, 14 skipped on seq-27; the two new tests are the seq-28 reason-table guards added by the rebase)"
+  mouth_visa_oracle_vitest: "54 files, 1426 tests passed on the rebased head"
   mutation: "swapping E33A_SPONSOR_NOT_GOVERNMENT for another code in the pin table turns test_every_non_supported_walk_ends_in_its_pinned_reasons red, naming offshore/other/paid/employer_no; restored"
 bites:
   consumer: >-
     the CI backend shard that runs apps/backend-rag/backend/tests/services/visa_engine against the signed
     pack (test_every_non_supported_walk_ends_in_its_pinned_reasons and its funnel twin), and every future
     pack fold, which must add its sequence to EXPECTED_REASONS_BY_SEQUENCE or fail
-    test_the_census_pins_the_signed_sequence by name.
-  where: ci
+    test_the_census_pins_the_signed_sequence by name (seq-28 is the signed one today and carries its table).
+    Prose contract: the observation is the CI backend check, not a runner-executed observer.
 receipts:
+  - claim: "Rework after the final gate (REWORK-BUILD, seq-28 landed on main as #8300, 7bb50d079e): the branch is rebased and EXPECTED_REASONS_BY_SEQUENCE[28] is added, measured from the evaluated actual (21 non-SUPPORTED rows: the 20 seq-27 rows with the two business rows now (BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED,) and the new offshore/remote/foreign_only/income_59999 row (E33G_INCOME_BELOW_THRESHOLD,)); [27] is kept."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "red before the table: 12 failed (the reason tests and test_the_census_pins_the_signed_sequence naming rulepack-prod-028); green after: 67 passed, 14 skipped"
+    exit: 0
+    ts: "2026-10-12T11:50:00Z"
+    seat: this session
+  - claim: "Rework: the whole visa_engine backend suite and the whole visa-oracle vitest subtree on the rebased head; remaining red is the same environmental, census-free set."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine ; cd ../mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "pytest: 2 failed, 3006 passed, 15 skipped, 39 errors (test_evaluate_endpoint 31, test_shadow_evidence 6, test_shadow_match 2 errors; test_visa_engine_retention_fk_registry 2 failures - scratch database schema); vitest: 54 files, 1426 tests passed"
+    exit: 1
+    ts: "2026-10-12T11:55:00Z"
+    seat: this session
   - claim: "Gate rework (third commit, evidence-only): the whole visa_engine backend suite is unchanged; remaining red is the same environmental set and census-free."
     cmd: cd apps/backend-rag && /Users/nuzantara/visa-night/venv311/bin/python -m pytest backend/tests/services/visa_engine
     result: "3 failed, 2966 passed, 15 skipped, 39 errors in 176s - 31 errors + 1 failure in test_evaluate_endpoint, 6 errors in test_shadow_evidence, 2 in test_shadow_match, 2 failures in test_visa_engine_retention_fk_registry; census file 65 passed, 14 skipped; the mouth subtree and tsc were not re-run because no mouth, tree, corpus or pack file changed (last run on the gate: 54 files, 1425 tests passed)"
@@ -79,8 +91,10 @@ receipts:
 decisions:
   - id: D-signed-sequence-only
     decision: >-
-      The reason table is pinned for the signed sequence (27) only, like the dead-end and state tables:
-      a fold adds its own sequence, and test_the_census_pins_the_signed_sequence names the omission.
+      The reason table is pinned per signed sequence (27 kept, 28 added by the post-gate rework), like the
+      dead-end and state tables: a fold adds its own sequence, and test_the_census_pins_the_signed_sequence
+      names the omission. test_the_reason_pins_name_the_causes_this_audit_found_unpinned asserts each
+      sequence's table explicitly (the business row differs: seq-27 pairs it with AGE_BELOW_55, seq-28 does not).
   - id: D-order-pinned
     decision: >-
       Reason codes are compared as ordered tuples, because the sheet prints them in that order; a reorder is
