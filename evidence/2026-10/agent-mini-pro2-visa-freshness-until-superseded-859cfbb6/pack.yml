@@ -11,7 +11,11 @@ mission: >-
 lanes:
   - lane: freshness-engine
     role: build
-    seat: claude-sonnet-5-5 implementer (subagent; the Co-Authored-By trailer of the build commit), worktree visa-visa-freshness-engine-20261012.
+    seat: claude-sonnet-5-5 implementer (subagent; the Co-Authored-By trailer of the build commits), worktree visa-visa-freshness-engine-20261012.
+    note: >-
+      One build lane covers the change and its v2 fix commit (find_anchor exemption now requires kind UNTIL_SUPERSEDED
+      on every boundary-less portal record; cures REWORK-BUILD on a4d7daad). No gate verdict is claimed here; the v2
+      gate is a separate fresh seat.
   - lane: freshness-ground
     role: ground_truth
     seat: >-
@@ -21,12 +25,6 @@ lanes:
     nb: owner-ruling-2026-10-12 (no NotebookLM query; ground truth is the engine source on disk)
     query_hash: "2e9a5f0bce35867ec4abee29a8a6f3cc1759a310cfb9615ac3fe1f0676e3e28b" # pragma: allowlist secret
     note: query_hash = sha256 of the one-sentence owner ruling the change implements.
-  - lane: freshness-rework-v2
-    role: build
-    seat: claude-sonnet-5-5 implementer (subagent; Co-Authored-By trailer of the v2 fix commit), worktree visa-visa-freshness-engine-20261012.
-    note: >-
-      Cures the REWORK-BUILD defect on a4d7daad (find_anchor exemption accepted portal records that had lost their
-      freshness_policy). No gate verdict is claimed here; the v2 gate is a separate fresh seat.
 pii_scan: clean
 spend:
   wall_clock_hours: 1
