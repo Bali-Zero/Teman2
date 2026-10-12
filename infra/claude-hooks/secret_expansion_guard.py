@@ -16,7 +16,7 @@ control the prose was not.
 
 GRADED, NOT IMPROVISED. The shapes and the verdicts live in
 docs/specs/2026-09-18-secret-expansion-guard-shapes-spec.md (§4 shapes, §5 corpus
-E01-E130) and infra/claude-hooks/test_secret_expansion_guard.py asserts the corpus
+E01-E147) and infra/claude-hooks/test_secret_expansion_guard.py asserts the corpus
 row by row. Where this file and the spec disagree, THE SPEC WINS. Precedent:
 output_hygiene_guard v1 was suspended at three gate rounds, each finding a new
 over-match on an everyday command (cicatrix superscar #3). The over-match trap
@@ -102,7 +102,7 @@ LOCAL_SHELL_HEADS = SHELL_HEADS - {"ssh"}
 # X6: a line selector the session wrote on purpose bounds the accidental env dump
 # (one variable per line). `cut` selects columns, not lines; `sort`/`uniq` alone
 # do not select either.
-LINE_SELECTORS = {"grep", "rg", "awk", "gawk", "sed", "wc"}
+LINE_SELECTORS = {"grep", "egrep", "fgrep", "rg", "awk", "gawk", "sed", "wc"}
 # ssh's own options that take an argument — skipped to find the destination host.
 SSH_ARG_OPTS = set("bcDEeFIiJLlmOopPQRSWwB")
 _HEREDOC_RE = re.compile(r"<<-?\s*(['\"]?)(\w+)\1")
@@ -227,6 +227,21 @@ def _split_quoted(text: str, seps: list[str]) -> list[str]:
             continue
         hit = next((s for s in ordered if text.startswith(s, i)), None)
         if hit:
+            # `&` is syntax inside redirects (`>&`, `<&`, `&>`, `&>>`) and
+            # inside bash's `|&` pipe operator; only a lone `&` separates
+            # statements. The pipeline pass below consumes `|&` as a unit.
+            if hit == "&" and (
+                (i > 0 and text[i - 1] in "<>|")
+                or (i + 1 < n and text[i + 1] == ">")
+            ):
+                buf.append(c)
+                i += 1
+                continue
+            if hit == "|" and i + 1 < n and text[i + 1] == "&":
+                out.append("".join(buf))
+                buf = []
+                i += 2
+                continue
             out.append("".join(buf))
             buf = []
             i += len(hit)
@@ -543,7 +558,7 @@ def _is_count_stage(toks: list[str]) -> bool:
     h = _head_of(toks)
     if h == "wc":
         return True
-    if h in ("grep", "rg"):
+    if h in ("grep", "egrep", "fgrep", "rg"):
         return any(
             _unquote(t) == "--count" or re.match(r"^-[a-z]*c[a-z]*$", _unquote(t))
             for t in toks[1:]
@@ -724,9 +739,9 @@ MAX_SUBSTITUTION_DEPTH = 3
 
 
 def _mask_substitutions(text: str) -> tuple[str, list[str]]:
-    """Blank `$(...)` and backtick spans in `text` and return their bodies.
+    """Mask `$(...)` and backtick spans in `text` and return their bodies.
 
-    The OUTER command is judged on the blanked text, each body on its own
+    The OUTER command is judged with an inert argument placeholder, each body on its own
     (recursively, bounded). Without this, `echo "$(cat STORE)"` is an echo of a
     quoted string (under-match, E52) and `echo "$(curl -H "Bearer $KEY" ...)"`
     is an X1 hit (over-match, E56) — one blind spot, both directions.
@@ -746,7 +761,8 @@ def _mask_substitutions(text: str) -> tuple[str, list[str]]:
                 j += 1
             inner_end = j - 1 if depth == 0 else j
             subs.append(text[i + 2:inner_end])
-            for k in range(i, j):
+            chars[i] = "__NUZ_MASKED_SUBSTITUTION__"
+            for k in range(i + 1, j):
                 if chars[k] != "\n":
                     chars[k] = " "
             i = j
@@ -757,7 +773,8 @@ def _mask_substitutions(text: str) -> tuple[str, list[str]]:
                 i += 1
                 continue
             subs.append(text[i + 1:j])
-            for k in range(i, j + 1):
+            chars[i] = "__NUZ_MASKED_SUBSTITUTION__"
+            for k in range(i + 1, j + 1):
                 if chars[k] != "\n":
                     chars[k] = " "
             i = j + 1
@@ -809,7 +826,7 @@ def _judge_text(
         for statement in _split_quoted(outer, ["&&", "||", ";", "&", "\n"])
         if statement.strip()
     ]
-    for statement_idx, statement in enumerate(statements):
+    for statement in statements:
         stages = [
             (stage, _tokenize(stage))
             for stage in _split_quoted(statement, ["|"])
@@ -823,7 +840,7 @@ def _judge_text(
             head = _head_of(peeled)
             head_ke = _head_of(keep_env)
             later = peeled_all[idx + 1:]
-            if remote and statement_idx == len(statements) - 1 and following:
+            if remote and following:
                 later = later + following
             candidates: list[str | None] = []
             if head:
