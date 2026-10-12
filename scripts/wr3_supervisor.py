@@ -85,6 +85,28 @@ def _is_connection_fatal(err: BaseException) -> bool:
 _HEARTBEAT_TIMEOUT_S = float(os.environ.get("WR3_HEARTBEAT_TIMEOUT", "8.0"))
 
 
+_CLOSE_TIMEOUT_S = 5.0
+
+
+async def _close_quietly(conn: Any, timeout: float = _CLOSE_TIMEOUT_S) -> None:
+    """Close `conn` without ever blocking the reconnect loop.
+
+    A dead asyncpg LISTEN connection makes `close()` hang forever (the socket
+    is gone, the graceful-close handshake never completes), so the supervisor
+    never reached its reconnect. Bound the close; on timeout or any error fall
+    back to `terminate()`, which drops the transport synchronously.
+    """
+    try:
+        await asyncio.wait_for(conn.close(), timeout)
+    except BaseException as e:  # noqa: BLE001 - incl. TimeoutError; re-raise cancellation below
+        if isinstance(e, asyncio.CancelledError):
+            raise
+        try:
+            conn.terminate()
+        except Exception:
+            pass
+
+
 async def _heartbeat(conn: Any, *, timeout: float = _HEARTBEAT_TIMEOUT_S) -> None:
     """Layer 4 — issue a cheap SELECT 1 to detect half-open TCP.
 
@@ -603,10 +625,7 @@ async def run_supervisor(
                     # Non-fatal: keep the listener loop alive
 
             # Graceful shutdown path (stop_event set)
-            try:
-                await conn.close()
-            except Exception:
-                pass
+            await _close_quietly(conn)
             print("[wr3-supervisor] graceful shutdown complete")
             return
 
@@ -616,13 +635,15 @@ async def run_supervisor(
             # references to old _on_notify/_on_terminate (defends against
             # the closure-capture trap even though default-args already pin).
             if conn is not None:
-                try:
-                    await conn.close()
-                except Exception:
-                    pass
+                await _close_quietly(conn)
             # Layer 5 — exponential backoff 2→4→8→16→30 (cap)
             backoff_s = min(2 * (2 ** backoff_attempt), 30)
             backoff_attempt = min(backoff_attempt + 1, 4)
+            print(
+                f"[wr3-supervisor] reconnect attempt: backoff {backoff_s}s "
+                f"(step {backoff_attempt})",
+                file=sys.stderr,
+            )
             await asyncio.sleep(backoff_s)
             continue
 
@@ -632,10 +653,11 @@ async def run_supervisor(
                 file=sys.stderr,
             )
             if conn is not None:
-                try:
-                    await conn.close()
-                except Exception:
-                    pass
+                await _close_quietly(conn)
+            print(
+                "[wr3-supervisor] reconnect attempt: backoff 5s (listener crash)",
+                file=sys.stderr,
+            )
             await asyncio.sleep(5)
 
 
