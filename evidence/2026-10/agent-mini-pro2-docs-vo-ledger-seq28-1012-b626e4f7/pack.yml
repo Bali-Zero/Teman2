@@ -18,17 +18,17 @@ bites:
   observe: python3 scripts/ci/observe_visa_ledger_seq28.py
   expect: "contains:seq-28 ledger holds"
 receipts:
-  - claim: The ledger observer passes and accepts only a full pass of at least 6 tests.
+  - claim: The ledger observer passes and accepts only a full pass of at least 11 tests.
     cmd: python3 scripts/ci/observe_visa_ledger_seq28.py
-    result: "6 passed in 0.02s; seq-28 ledger holds"
+    result: "11 passed in 0.03s; seq-28 ledger holds"
     exit: 0
-    ts: "2026-10-12T03:49:04Z"
+    ts: "2026-10-12T03:55:12Z"
     seat: this session
-  - claim: The observer's summary parser and the ledger tests pass (11 parser cases plus 6 ledger tests).
+  - claim: The observer's summary parser and the ledger tests pass (parser cases plus 11 ledger tests).
     cmd: python3 -m pytest tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq28.py
-    result: "17 passed in 0.02s"
+    result: "22 passed in 0.02s"
     exit: 0
-    ts: "2026-10-12T03:49:04Z"
+    ts: "2026-10-12T03:55:12Z"
     seat: this session
   - claim: The three docs files pass Prettier.
     cmd: node_modules/.bin/prettier --check on the three docs files
@@ -41,7 +41,7 @@ receipts:
     cmd: gh pr view 8300, 8280 and 8287 --json mergedAt,mergeCommit; gh api repos/Bali-Zero/Teman2/issues/comments/6117354289
     result: "8300 7bb50d079e 03:05:56Z; 8280 2630e98c70 2026-10-11T15:40:19Z; 8287 fdce3f78dd 2026-10-11T16:50:19Z; comment URL resolves; grep 03:06:42 returns 0 in both files"
     exit: 0
-    ts: "2026-10-12T03:49:04Z"
+    ts: "2026-10-12T03:55:12Z"
     seat: this session
 decisions:
   - id: D-fold-in-place
@@ -52,4 +52,32 @@ decisions:
     decision: >-
       The bites observer runs a pytest over the three docs files rather than a grep in shell, so the checks
       (activation id, closed rows, one seq-29 row, no duplicate lines) are literal and reviewable.
-dissent: []
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T03-20-43-01a12c69-0546-7ed0-8fdd-b70fbd2325d8.jsonl, model verified in the rollout file: it reads gpt-6.1-sol, not the requested gpt-5.6-sol)"
+    objection: "MEDIUM 1: merge timestamp 03:05:56Z in the diff differs from the 03:06:42Z in the task text."
+    status: RETRACTED
+    disposition: "False alarm. gh pr view 8300 reports mergedAt 2026-10-12T03:05:56Z, merge commit 7bb50d079e; 03:06:42Z was the wrong value in the task text. Re-verified this turn with gh; the new test pins 03:05:56Z and forbids 03:06:42 in the log and both closed rows (commit of this fix)."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T03-20-43-01a12c69-0546-7ed0-8fdd-b70fbd2325d8.jsonl, model verified in the rollout file: it reads gpt-6.1-sol, not the requested gpt-5.6-sol)"
+    objection: "MEDIUM 2: F1-F3 stay open but are buried in a closed row."
+    status: RETRACTED
+    disposition: "Cured: F1-F3 are now a separate open row dated 2026-10-12 with owner and proof-of-armed, the closed row points at it, and test_f1_f3_stay_an_open_row_until_done requires exactly one such row until the work is done (commit of this fix)."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T03-20-43-01a12c69-0546-7ed0-8fdd-b70fbd2325d8.jsonl, model verified in the rollout file: it reads gpt-6.1-sol, not the requested gpt-5.6-sol)"
+    objection: "MEDIUM 3: the observer proves little of the declared mission; MIN_TESTS is only a count."
+    status: RETRACTED
+    disposition: "Cured: five new tests pin exact tuples (sign and merge timestamps, merge hash, #8280/#8287 hashes, times and comments, boundary and T-7, the ten-part proof-of-armed in both closed rows, the chain walk/persona proof, the seq-29 row owner and proof); MIN_TESTS raised 6 to 11 and the parser tests follow. The count remains a floor, not the guarantee (commit of this fix)."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T03-20-43-01a12c69-0546-7ed0-8fdd-b70fbd2325d8.jsonl, model verified in the rollout file: it reads gpt-6.1-sol, not the requested gpt-5.6-sol)"
+    objection: "MEDIUM 4: brief_ref points at the repo-root staged brief, not the brief in the pack directory."
+    status: RETRACTED
+    disposition: "Finding wrong for this repo: CI and the pre-push pack-lint stage the brief at the canonical staged path, so a dated brief_ref fails the lint. No change; the evidence lint stays clean with the canonical value."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T03-20-43-01a12c69-0546-7ed0-8fdd-b70fbd2325d8.jsonl, model verified in the rollout file: it reads gpt-6.1-sol, not the requested gpt-5.6-sol)"
+    objection: "LOW 5: the absolute no E33G visitor landed on NEEDS_INPUT contradicts the recorded unknown NEEDS_INPUT."
+    status: RETRACTED
+    disposition: "Cured: reworded to no E33G visitor reached NEEDS_INPUT for want of the income question (commit of this fix)."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T03-20-43-01a12c69-0546-7ed0-8fdd-b70fbd2325d8.jsonl, model verified in the rollout file: it reads gpt-6.1-sol, not the requested gpt-5.6-sol)"
+    objection: "LOW 6: gear reason says no code path though a CI observer is added."
+    status: RETRACTED
+    disposition: "Cured: brief gear_reason now reads no production, backend, mouth or data runtime path; one bounded no-argument CI observer (commit of this fix)."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T03-20-43-01a12c69-0546-7ed0-8fdd-b70fbd2325d8.jsonl, model verified in the rollout file: it reads gpt-6.1-sol, not the requested gpt-5.6-sol)"
+    objection: "Model note: the rollout model is gpt-6.1-sol where -m gpt-5.6-sol was requested."
+    status: PLAUSIBLE
+    disposition: "Accepted as a limit for the gate to rule on: the alias resolved to gpt-6.1-sol in the rollout file; the finding set is judged on its merits, not on the model name."

@@ -1,7 +1,7 @@
 gear: 1
 gear_reason: >-
   Docs and ledger only (corner skill, live-state log, PENDING-ARMS) plus a no-argument observer with its tests;
-  no code path, no mouth, no backend, no data. The size floor is below 400 churn.
+  no production, backend, mouth or data runtime path; one bounded no-argument CI observer. The size floor is below 400 churn.
 mission: >-
   Every session that loads /visaoracle reads the true post-activation state: seq-28 is the production pack,
   the two seq-28 pending-arms rows are closed with proof, and the seq-29 freshness row is open exactly once.
