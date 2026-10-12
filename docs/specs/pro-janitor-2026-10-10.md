@@ -217,4 +217,4 @@ and for directory rules the entries by name (tool cache revisions, never a user 
 2. This organ, deployed dry-run; observed through at least one merger-tick trough.
 3. (this PR: `infra/janitor-apply-1012`) Apply on, and `disk_janitor.sh`'s `uv cache prune` step removed (one owner per cache).
 
-Bites (the lead): free space held above 90 GiB through a full CI-tick trough, and the journal of what it removed.
+Bites (the lead): free space held at or above 90 GB (decimal, as this spec measures) through a full CI-tick trough, and the journal of what it removed.
