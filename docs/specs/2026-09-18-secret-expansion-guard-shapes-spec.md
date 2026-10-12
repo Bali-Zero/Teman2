@@ -67,6 +67,14 @@ One idea from that segmenter **is** borrowed (`_mask_substitutions`): `$(…)` a
 blanked in the outer text and judged on their own, recursively (depth ≤ 3). Without it,
 `echo "$(cat STORE)"` is an echo of a quoted string (under-match, E52) and
 `echo "$(curl -H "Bearer $KEY" …)"` is an X1 hit (over-match, E56) — one blind spot, both directions.
+**What the outer text keeps in a substitution's place (2026-10-13, E148–E160).** Exactly ONE inert
+placeholder word, glued to whatever bash glues it to: `$(brew --prefix)/bin/printenv` stays one word
+whose basename is `printenv` (E153, E154). The placeholder is an ARGUMENT and never a head: a leading
+placeholder is dropped the way a `VAR=` prefix is, so `$(true) printenv` is judged as `printenv`, after
+`sudo` and `x=1` too (E148–E152, E155). It counts as an argument where an argument changes the verdict —
+`procinfo`'s pid (E145, E156) and `export`/`set` with arguments, which print nothing (E159, E160) — but
+it is never `env`'s program: an expansion made only of assignments still prints the whole environment,
+so `env $(cat vars)` stays DENY while `env $(cat vars) node app.js` has a program (E157, E158).
 
 ## 4. Shapes
 
@@ -108,7 +116,12 @@ inside `'…'` or `"…"` is data, so a quoted payload stays whole and is judged
 is that shape (E131–E136): **`&` is not a statement separator when it belongs to a redirect** — `>&`,
 `<&` (`2>&1`, `>&-`), `&>`, `&>>` — so `launchctl print … 2>&1 | grep state` keeps its selector and
 `env FOO=1 2>&1 ls` keeps its program; a lone `&` still backgrounds and separates. **`|&` is a pipe**
-(bash's `2>&1 |`) and separates stages exactly like `|`, leaving no `&` on the next stage.
+(bash's `2>&1 |`) and separates stages exactly like `|`, leaving no `&` on the next stage. **A redirect
+operator written as its own word consumes the next word as its target** — `>`, `>>`, `<`, and equally
+`&>`, `&>>`, `>&`, `<&` with no fd glued after them — and a target is never a program, a pid, a `ps`
+argument or the ssh remote command (E161–E170, E175): `env &> /dev/stdout` is the bare dump it reads as,
+while `env FOO=1 &> /tmp/log ls` keeps its program. **An escaped `\>`, `\<` or `\|` is a literal
+character**, so the `&` after it is a lone separator (E171, E172).
 
 **X6, measured 2026-10-12.** A subagent ran `ssh pro 'launchctl print gui/501/<label>'` unfiltered.
 `launchctl print` of a service or domain prints an `environment` / `inherited environment` block WITH
@@ -120,7 +133,7 @@ prints one variable per line, so a `grep`/`awk`/`sed` the session wrote on purpo
 accidental dump, and a selector written to pick an env line is a deliberate act, out of scope like
 interpreter one-liners. `ps` gets no such carve-out (a matched line is a whole environment); only a
 pure counter is safe. `cut` is not a line selector: it can shorten every line while still passing the
-whole environment block, so `launchctl print … | cut -c1-300` remains DENY. `egrep` and `fgrep` are line selectors like `grep` (E140, E141). **A local
+whole environment block, so `launchctl print … | cut -c1-300` remains DENY. `egrep` and `fgrep` are line selectors like `grep` (E140, E141), and with `-c` they are counters (E173, E174). **A local
 selector after the ssh stage bounds EVERY remote statement**, not only the last: ssh's stdout carries the
 stdout of the whole remote command, so in `ssh pro 'launchctl print …; launchctl list' | grep state` the
 local `grep` filters both (E142–E144). `launchctl procinfo` with a pid given as a substitution
@@ -300,6 +313,34 @@ print-access-token`, `flyctl auth token` — are not shapes yet (gate finding 20
 | E145 | `sudo launchctl procinfo $(pgrep -f node \| head -1)`                                      | DENY    | X6 — a substituted pid is still a pid (r2 gate N5)                                                                          |
 | E146 | `ssh pro 'cd /tmp && python3 tool.py out/set > log 2>&1; echo rc=$?'`                      | ALLOW   | innocence — no bogus `set` head inside ssh (r2 gate B3)                                                                     |
 | E147 | `ssh pro 'ls -la ~/bin/env > /tmp/o; cat /tmp/o'`                                          | ALLOW   | innocence — no bogus `env` head inside ssh (r2 gate B3)                                                                     |
+| E148 | `$(true) printenv`                                                                         | DENY    | X2 — a leading substitution is not the head (r3 gate D1)                                                                    |
+| E149 | `` `true` printenv ``                                                                      | DENY    | X2 — the same with backticks                                                                                                |
+| E150 | `$(true) launchctl print gui/501/x`                                                        | DENY    | X6 behind a leading substitution                                                                                            |
+| E151 | `ssh pro '$(true) launchctl print gui/501/x'`                                              | DENY    | X6 inside ssh behind a leading substitution                                                                                 |
+| E152 | `` `true` cat STORE ``                                                                     | DENY    | X4 behind a leading substitution                                                                                            |
+| E153 | `$(brew --prefix)/bin/printenv`                                                            | DENY    | X2 — the placeholder glues to its suffix; the basename is `printenv`                                                        |
+| E154 | `$(brew --prefix)/bin/python3 -m pytest -q`                                                | ALLOW   | innocence — the same gluing, an everyday command                                                                            |
+| E155 | `x=1 $(true) printenv`                                                                     | DENY    | X2 — `VAR=` then a placeholder, both dropped                                                                                |
+| E156 | `` launchctl procinfo `pgrep node` ``                                                      | DENY    | X6 — a backtick pid is a pid (E145's other spelling)                                                                        |
+| E157 | `env $(cat /tmp/vars)`                                                                     | DENY    | X2 — a substitution is never env's program; assignments alone still dump                                                    |
+| E158 | `env $(cat /tmp/vars) node app.js`                                                         | ALLOW   | X2 innocence — env has a program                                                                                            |
+| E159 | `export $(grep -v '^#' .env.example \| xargs)`                                             | ALLOW   | X2 innocence — export with arguments prints nothing                                                                         |
+| E160 | `set $(echo a b)`                                                                          | ALLOW   | X2 innocence — set with arguments sets positionals, prints nothing                                                          |
+| E161 | `env &> /dev/stdout`                                                                       | DENY    | X2 — `&>` consumes its target; the bare dump remains (r3 gate D2)                                                           |
+| E162 | `env &>> /tmp/e`                                                                           | DENY    | X2 — the same for `&>>`, as `env > f` is DENY                                                                               |
+| E163 | `env >& /tmp/e`                                                                            | DENY    | X2 — the same for `>&` with a separate target                                                                               |
+| E164 | `set &> /dev/stdout`                                                                       | DENY    | X2 — bare `set` dumps                                                                                                       |
+| E165 | `export &> /dev/stdout`                                                                    | DENY    | X2 — bare `export` dumps                                                                                                    |
+| E166 | `declare &> /dev/stdout`                                                                   | DENY    | X2 — bare `declare` dumps                                                                                                   |
+| E167 | `env FOO=1 &> /tmp/log ls`                                                                 | ALLOW   | X2 innocence — env keeps its program after the redirect                                                                     |
+| E168 | `launchctl procinfo &> /tmp/o`                                                             | ALLOW   | X6 innocence — a redirect target is not a pid                                                                               |
+| E169 | `ps &> errors`                                                                             | ALLOW   | X6 innocence — a redirect target is not a BSD `e` argument                                                                  |
+| E170 | `make build &> build.log`                                                                  | ALLOW   | everyday — build log to a file                                                                                              |
+| E171 | `echo \>& printenv`                                                                        | DENY    | X2 — `\>` is literal, the `&` separates, `printenv` runs                                                                    |
+| E172 | `echo \<& printenv`                                                                        | DENY    | X2 — `\<` is literal, the `&` separates (the `\|&` spelling goes through the same check)                                    |
+| E173 | `ps -E -p 1 \| egrep -c PATH`                                                              | ALLOW   | X6 carve-out — `egrep -c` is a pure counter                                                                                 |
+| E174 | `ps -E -p 1 \| fgrep -c PATH`                                                              | ALLOW   | X6 carve-out — `fgrep -c` is a pure counter                                                                                 |
+| E175 | `ssh pro &> /tmp/log 'launchctl print gui/501/x'`                                          | DENY    | X6 inside ssh — a redirect before the remote command is not the command                                                     |
 
 **E64, the one deliberate hole — narrowed 2026-10-12.** A remote INLINE command cannot be fully judged
 by this guard until the read-vs-write distinction of W94 is written down: a remote WRITE stays remote and
