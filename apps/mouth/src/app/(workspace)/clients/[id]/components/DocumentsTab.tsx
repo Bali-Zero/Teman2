@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Eye, Pencil, Plus } from "lucide-react";
+import { Archive, Eye, Pencil, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { ClientDocument } from "@/lib/api/crm/crm.types";
 import {
@@ -142,6 +144,7 @@ export function DocumentsTab({
   formatDate,
   onAddClick,
   onEditClick,
+  onRefresh,
 }: {
   clientId: number;
   documents: ClientDocument[];
@@ -149,8 +152,29 @@ export function DocumentsTab({
   formatDate: (d: string) => string;
   onAddClick: () => void;
   onEditClick: (doc: ClientDocument) => void;
+  onRefresh: () => void;
 }) {
   const [activeCategory, setActiveCategory] = useState<string>("all");
+
+  // Archive, never delete: DELETE without ?permanent sets is_archived (row and
+  // Drive file kept). Same confirm-toast pattern as ImmigrationTab.
+  const handleArchive = (docId: number, name: string) => {
+    toast(`Archive document "${name || "Document"}"?`, {
+      action: {
+        label: "Archive",
+        onClick: async () => {
+          try {
+            await api.crm.deleteDocument(clientId, docId);
+            toast.success("Document archived");
+            onRefresh();
+          } catch (err) {
+            toast.error("Error", { description: (err as Error).message });
+          }
+        },
+      },
+      cancel: { label: "Cancel", onClick: () => toast.dismiss() },
+    });
+  };
 
   const sortedCategories = useMemo(
     () =>
@@ -424,6 +448,17 @@ export function DocumentsTab({
                     )}
                   >
                     <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Archive ${displayName}`}
+                    onClick={() => handleArchive(d.id, displayName)}
+                    className={cn(
+                      "inline-flex h-7 w-7 items-center justify-center border border-transparent text-[var(--tx-secondary)] hover:border-[var(--line-control)] hover:text-[var(--tx-pure)]",
+                      FOCUS,
+                    )}
+                  >
+                    <Archive className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
                 </div>
               </HairlineRow>

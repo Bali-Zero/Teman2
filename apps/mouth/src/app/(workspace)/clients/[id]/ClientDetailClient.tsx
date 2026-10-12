@@ -1228,6 +1228,7 @@ export function ClientDetailClient({
                 setEditingDocument(doc);
                 setActiveModal("edit_document");
               }}
+              onRefresh={invalidateClient}
             />
           )}
 
