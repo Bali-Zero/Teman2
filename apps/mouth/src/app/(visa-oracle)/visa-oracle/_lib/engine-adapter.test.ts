@@ -223,6 +223,12 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     expect(copy.E31J_REQ_UNDER_18.id).toContain("18 tahun");
     expect(copy.E31J_REQ_UNMARRIED.en).toContain("never married");
     expect(copy.E31J_REQ_UNMARRIED.id).toContain("belum menikah");
+    const other = REVIEW_REASON_COPY.E31J_MARITAL_STATUS_OTHER_REVIEW;
+    expect(other.en).toContain("(E31J)");
+    expect(other.id).toContain("(E31J)");
+    expect(other.en).toContain("another status");
+    expect(other.id).toContain("status lain");
+    expect(other.en).not.toBe(other.id);
     // the E31E sentences stay the E31E sentences
     expect(copy.REQ_UNDER_18.en).toContain("(E31E)");
     expect(copy.E31J_REQ_UNDER_18.en).not.toContain("(E31E)");

@@ -1390,6 +1390,14 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
     `Visa Rumah Kedua (E33) diberikan atas dasar jaminan: properti yang memenuhi syarat senilai minimal ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}, atau deposito bank minimal ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama Anda sendiri di bank milik negara. Angka yang Anda nyatakan untuk jalur yang Anda pilih belum mencapai ambang batasnya, sehingga jalur ini belum dapat dikonfirmasi berdasarkan jawaban Anda. Second Home Studio menampilkan jalur properti dan deposito beserta angka untuk kasus Anda.`,
   ),
 
+  // seq-29 `review.e31j-marital-status-other`: the Kepmen M.IP-08/2025 row for E31J reads "belum
+  // berusia 18 tahun dan belum kawin"; "Another status" does not attest that the applicant has
+  // never married, so the route is held rather than offered or refused. Product name verbatim.
+  E31J_MARITAL_STATUS_OTHER_REVIEW: text(
+    "The Family Visa — Child Joining Sibling ITAS/ITAP Holder (E31J) is only for applicants under 18 who have never married, and your marital status was recorded as another status, so this route is not confirmed on your answers yet. A Bali Zero advisor can go over your marital status with you.",
+    "Visa Keluarga Anak yang Bergabung dengan Saudara Kandung Pemegang ITAS/ITAP (E31J) hanya berlaku untuk pemohon di bawah usia 18 tahun yang belum menikah, dan status perkawinan Anda tercatat sebagai status lain, sehingga jalur ini belum dapat dikonfirmasi berdasarkan jawaban Anda. Konsultan Bali Zero dapat membahas status perkawinan Anda bersama Anda.",
+  ),
+
   // 17 pack-independent codes emitted by evaluate_path.py directly.
   //
   // CONFLICTING_IMMIGRATION_STATUS_REVIEW is a DisclosedReviewFlag
