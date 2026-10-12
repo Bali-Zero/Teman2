@@ -1054,10 +1054,11 @@ def _worktree_recently_active(
     under REPO_ROOT/.git/worktrees/<name>/; HEAD is bumped by commit/checkout —
     codex P2: the `.git` pointer alone is not enough for linked worktrees).
 
-    NB: the gitdir `index` is deliberately NOT probed — `git status` (run by the
-    WIP check that precedes this guard) rewrites the index mtime, so it would
-    read as "active" on every cleanup pass. HEAD is stable under read-only
-    status, so it tracks genuine commit/checkout activity only.
+    NB: the gitdir `index` is deliberately NOT probed — a plain `git status`
+    rewrites the index mtime, so before the WIP probe read with
+    `--no-optional-locks` the cleanup's own check made every worktree read as
+    "active", and any reader (a prompt, an IDE) still moves it. HEAD is stable
+    under reads, so it tracks genuine commit/checkout activity only.
 
     This is a best-effort liveness heuristic, NOT a security control: an
     adversary could `touch` a path to keep an orphan alive. Its only job is to
