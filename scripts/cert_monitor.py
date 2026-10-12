@@ -29,6 +29,7 @@ THRESHOLD_DAYS = 30
 def fetch_certificate(host: str, port: int = PORT) -> Mapping[str, object]:
     """Fetch a verified peer certificate using SNI."""
     context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     with socket.create_connection((host, port), timeout=TIMEOUT_SECONDS) as raw:
         with context.wrap_socket(raw, server_hostname=host) as tls:
             return tls.getpeercert()
