@@ -9,7 +9,7 @@ mission: >-
 lanes:
   - lane: pr04-code-once
     role: build
-    seat: Claude Sonnet 5.5 implementer (subagent), worktree mouth-vn-work-pr04-code-once.
+    seat: claude-sonnet-5 implementer (subagent), worktree mouth-vn-work-pr04-code-once.
   - lane: pr04-ground-truth
     role: ground_truth
     seat: >-
@@ -20,14 +20,7 @@ lanes:
     query_hash: "14df5a8016f3100ff04919d228de901544a0b517fafc0dc4fb6aa54c88d714b2" # pragma: allowlist secret
     note: query_hash = sha256 of OutcomeSheet.tsx at origin/main (before the change).
 pii_scan: clean
-bites:
-  consumer: >-
-    visitors sharing a result on the public Visa Oracle: the card title and the Copy summary text produced by
-    OutcomeSheet; live after promote, a headless walk on https://balizero.com/visa-oracle to an E23-family
-    result shows the code once in the card and in the copied share text, EN and ID.
-  where: ci
-  observe: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.display-name.test.tsx'
-  expect: "contains:7 passed"
+bites: "consumer: the public Visa Oracle result card and Copy summary on https://balizero.com/visa-oracle; observation: after vercel promote, a walk offshore > work > government sponsor > trade office shows the card eyebrow 'E23V', a title without '(E23V)', and a Copy summary containing 'E23V — Working Visa — Trade and Economic Office' (ID: 'E23V — Visa Kerja Kantor Dagang dan Ekonomi') with E23V exactly once."
 receipts:
   - claim: "The whole visa-oracle mouth suite passes with the change."
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
