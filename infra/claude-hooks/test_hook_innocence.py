@@ -232,6 +232,9 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         (bash("cat ~/.nuzantara-secrets.env"), "BLOCK", "E24 X4: content dump of a registered store"),
         (read_("~/.codex/auth.json"), "BLOCK", "E36 X5: Read on a registered store"),
         (bash('echo "$(cat ~/.nuzantara-secrets.env)"'), "BLOCK", "E52 X4 inside a command substitution"),
+        (bash("launchctl print gui/501/com.x"), "BLOCK", "E65 X6: launchctl print prints the environment block with values"),
+        (bash("ssh pro 'launchctl print gui/501/com.x'"), "BLOCK", "E73 X6 inside an ssh inline command"),
+        (bash("ps -axE | grep node"), "BLOCK", "E72 X6: a matched ps -E line carries the whole environment"),
         # INNOCENCE
         (bash('echo "${BAILIAN_TOKEN_PLAN_API_KEY:+SET}"'), "ALLOW", "E06: the sanctioned presence check — one character from E01"),
         (bash('curl -H "Authorization: Bearer $BAILIAN_TOKEN_PLAN_API_KEY" https://api/'), "ALLOW", "E09: THE correct way to use a key"),
@@ -244,6 +247,9 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         (bash("python3 - <<'PY'\nprint(\"cat ~/.nuzantara-secrets.env\")\nPY"), "ALLOW",
          "E57: quoted heredoc to a non-shell is literal data — the repo's editing idiom"),
         (read_("~/.qwen/settings.json"), "ALLOW", "E39: config, not a registered store (spec §4)"),
+        (bash("launchctl print gui/501/com.x | grep -E 'state|runs'"), "ALLOW", "E83: a line selector bounds the dump"),
+        (bash("ps -ef"), "ALLOW", "E86: -e is -A, no environment"),
+        (bash("ssh pro 'cat ~/.nuzantara-secrets.env'"), "ALLOW", "E64: X4 inside ssh inline stays the known boundary"),
         (bash("git diff --stat origin/main...HEAD"), "ALLOW", "everyday command, no secret anywhere"),
     ],
     "output_hygiene_guard.py": [

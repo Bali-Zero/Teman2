@@ -16,7 +16,7 @@ control the prose was not.
 
 GRADED, NOT IMPROVISED. The shapes and the verdicts live in
 docs/specs/2026-09-18-secret-expansion-guard-shapes-spec.md (§4 shapes, §5 corpus
-E01-E59) and infra/claude-hooks/test_secret_expansion_guard.py asserts the corpus
+E01-E95) and infra/claude-hooks/test_secret_expansion_guard.py asserts the corpus
 row by row. Where this file and the spec disagree, THE SPEC WINS. Precedent:
 output_hygiene_guard v1 was suspended at three gate rounds, each finding a new
 over-match on an everyday command (cicatrix superscar #3). The over-match trap
@@ -51,6 +51,14 @@ on a real ~/.config, spec budget 5 ms) and could only deny a store that existed
 at that instant. `set -o pipefail`, `set +x` and `declare -x` were over-matched
 (E47-E49); `declare -p` and command substitutions were under-matched (E51-E53);
 quoted heredocs to a non-shell consumer are literal data, not shell (E57).
+
+X6 2026-10-12: a subagent ran `ssh pro 'launchctl print gui/501/<label>'` unfiltered and a
+VALID Telegram bot token reached the transcript — `launchctl print` prints the
+`environment` block with values, and `ps -E` / `ps eww` do the same for processes. The
+guard had no shape for either, and E64 left every `ssh host '…'` inline command unjudged.
+X6 closes the first; the second is closed narrowly (spec §4, the E64 note): only X2 and X6
+are judged inside a remote inline command, because an environment dump is a READ by
+construction and needs none of W94's read/write distinction.
 """
 from __future__ import annotations
 
@@ -88,9 +96,14 @@ PEELABLE = {"env", "sudo", "time", "nice", "command", "exec", "nohup", "stdbuf"}
 # ssh, remotely) and its output comes back to the transcript — judge the body.
 SHELL_HEADS = {"bash", "sh", "zsh", "dash", "ksh", "ssh"}
 # The same shells when they take their CODE as a `-c` STRING ARGUMENT. `ssh` is
-# deliberately absent: its `-c` is the CIPHER flag, and a remote command needs the
-# read/write distinction of W94 before it can be judged (see the spec's E64 note).
+# deliberately absent: its `-c` is the CIPHER flag. Its remote inline command is
+# judged separately and only for X2/X6 (_ssh_remote_command; the spec's E64 note).
 LOCAL_SHELL_HEADS = SHELL_HEADS - {"ssh"}
+# X6: a line selector the session wrote on purpose bounds the accidental env dump
+# (one variable per line). `cut` selects; `sort`/`uniq` alone do not.
+LINE_SELECTORS = {"grep", "rg", "awk", "gawk", "sed", "cut", "wc"}
+# ssh's own options that take an argument — skipped to find the destination host.
+SSH_ARG_OPTS = set("bcDEeFIiJLlmOopQRSWwB")
 _HEREDOC_RE = re.compile(r"<<-?\s*(['\"]?)(\w+)\1")
 _ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 _REDIRECT_RE = re.compile(r"^\d*(?:>>|<<<|<<-?|&>>|&>|>&\d*|<|>)")
@@ -477,6 +490,74 @@ def _check_x2(toks: list[str], head: str) -> str | None:
     return "X2 environment dump: `env` with only flags/assignments prints the environment."
 
 
+def _is_count_stage(toks: list[str]) -> bool:
+    """`wc …` or `grep -c`/`--count`: a stage that can only report a number."""
+    h = _head_of(toks)
+    if h == "wc":
+        return True
+    if h in ("grep", "rg"):
+        return any(
+            _unquote(t) == "--count" or re.match(r"^-[a-z]*c[a-z]*$", _unquote(t))
+            for t in toks[1:]
+        )
+    return False
+
+
+def _ps_shows_environment(args: list[str]) -> bool:
+    """`ps -E`, a combined `-axE`, or BSD-style `e` in the FIRST dashless argument.
+    `-e` is `-A` (all processes, no environment), so `ps -ef` / `ps -e` are innocent."""
+    for t in map(_unquote, args):
+        if re.match(r"^-[A-Za-z]*E[A-Za-z]*$", t):
+            return True
+    first = _unquote(args[0]) if args else ""
+    return bool(re.match(r"^[A-Za-z]*e[A-Za-z]*$", first))
+
+
+def _check_x6(toks: list[str], head: str, later: list[list[str]], secrets) -> str | None:
+    """X6 — a process or launchd environment dump (measured 2026-10-12)."""
+    if head == "launchctl" and len(toks) >= 2:
+        sub = _unquote(toks[1])
+        if sub in ("print", "dumpstate"):
+            if any(_head_of(s) in LINE_SELECTORS for s in later):
+                return None  # a deliberate line selector bounds the dump
+            return (
+                f"X6 launchd environment dump: `launchctl {sub}` prints the environment block "
+                f"with values and nothing here selects lines. Pipe it through grep/awk/sed for "
+                f"the keys you need (state, runs, last exit)."
+            )
+        if sub == "getenv" and len(toks) >= 3:
+            name = _unquote(toks[2])
+            if _is_secret(name, *secrets):
+                return (
+                    f"X6 launchd environment read: `launchctl getenv {name}` prints a "
+                    f"registered secret's value, even captured into a variable."
+                )
+        return None
+    if head == "ps" and _ps_shows_environment(toks[1:]):
+        if later and _is_count_stage(later[0]):
+            return None
+        return (
+            "X6 process environment dump: `ps -E` / BSD `ps e…` prints every process's "
+            "environment, and a matched line still carries all of it. `ps -e`/`-ef` do not."
+        )
+    return None
+
+
+def _ssh_remote_command(toks: list[str]) -> str:
+    """The remote inline command of `ssh [opts] host cmd…`, or "" if there is none."""
+    i = 1
+    while i < len(toks):
+        t = _unquote(toks[i])
+        if t == "--":
+            i += 1
+            break
+        if not t.startswith("-") or len(t) < 2:
+            break
+        i += 2 if (len(t) == 2 and t[1] in SSH_ARG_OPTS) else 1
+    rest = toks[i + 1:]  # toks[i] is the destination
+    return " ".join(_unquote(t) for t in rest)
+
+
 def _check_x3(toks: list[str], head: str) -> str | None:
     """X3 — Keychain value print."""
     if head != "security" or len(toks) < 2:
@@ -628,28 +709,37 @@ def _judge_command(command: str, cwd: str, reg: dict) -> str | None:
     return _judge_text(text, cwd, _secret_names(reg), _store_patterns(reg), 0)
 
 
-def _judge_text(text: str, cwd: str, secrets, stores: list[str], depth: int) -> str | None:
+def _judge_text(
+    text: str, cwd: str, secrets, stores: list[str], depth: int, remote: bool = False
+) -> str | None:
+    """`remote=True` judges the inline command of an `ssh host '…'`: X2 and X6 only.
+    X1/X3/X4 inside it stay under E64 (a remote WRITE never reaches the transcript)."""
     outer, subs = _mask_substitutions(text)
+    remote_cmds: list[str] = []
     for statement in _split_quoted(outer, ["&&", "||", ";", "&", "\n"]):
         if not statement.strip():
             continue
-        for stage in _split_quoted(statement, ["|"]):
-            if not stage.strip():
-                continue
-            toks = _tokenize(stage)
-            if not toks:
-                continue
-            peeled = _peel(toks)
+        stages = [
+            (stage, _tokenize(stage))
+            for stage in _split_quoted(statement, ["|"])
+            if stage.strip()
+        ]
+        stages = [(s, t) for s, t in stages if t]
+        peeled_all = [_peel(t) for _s, t in stages]
+        for idx, (stage, toks) in enumerate(stages):
+            peeled = peeled_all[idx]
             keep_env = _peel(toks, peel_env=False)
             head = _head_of(peeled)
             head_ke = _head_of(keep_env)
             candidates: list[str | None] = []
             if head:
-                candidates += [
-                    _check_x1(stage, head, secrets),
-                    _check_x3(peeled, head),
-                    _check_x4(peeled, head, cwd, stores),
-                ]
+                if not remote:
+                    candidates += [
+                        _check_x1(stage, head, secrets),
+                        _check_x3(peeled, head),
+                        _check_x4(peeled, head, cwd, stores),
+                    ]
+                candidates.append(_check_x6(peeled, head, peeled_all[idx + 1:], secrets))
             if head_ke:
                 candidates.append(_check_x2(keep_env, head_ke))
             for reason in candidates:
@@ -657,11 +747,18 @@ def _judge_text(text: str, cwd: str, secrets, stores: list[str], depth: int) -> 
                     return reason
             if head:
                 subs.extend(_shell_c_payloads(peeled, head))
+                if head == "ssh":
+                    remote_cmds.append(_ssh_remote_command(peeled))
     if depth < MAX_SUBSTITUTION_DEPTH:
         for body in subs:
-            reason = _judge_text(body, cwd, secrets, stores, depth + 1)
+            reason = _judge_text(body, cwd, secrets, stores, depth + 1, remote)
             if reason:
                 return reason
+        for body in remote_cmds:
+            if body.strip():
+                reason = _judge_text(body, cwd, secrets, stores, depth + 1, True)
+                if reason:
+                    return reason
     return None
 
 
