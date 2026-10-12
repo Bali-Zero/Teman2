@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test_secret_expansion_guard.py — the spec's §5 case corpus (E01-E130), run
+"""test_secret_expansion_guard.py — the spec's §5 case corpus (E01-E147), run
 against the real hook as a subprocess exactly as the harness would (JSON on
 stdin, exit 2 = DENY, exit 0 = ALLOW).
 
@@ -294,6 +294,40 @@ CORPUS: list[tuple[str, object, bool, str]] = [
      'X6 inside ssh inline — the first argument letter of a cluster ends it; the rest is glued'),
     ("E130", lambda: bash("ssh -oControlPath=none -oBatchMode=yes pro 'uptime'"), False,
      'innocence — glued options skipped, harmless remote command'),
+    ("E131", lambda: bash("launchctl print gui/501/x 2>&1 | grep -E 'state|runs'"), False,
+     "X6 carve-out — & in 2>&1 is a redirect, the selector survives"),
+    ("E132", lambda: bash("launchctl print gui/$(id -u)/com.x 2>&1 | grep -E 'state =|last exit'"), False,
+     "the everyday shape of E131"),
+    ("E133", lambda: bash("ssh pro 'launchctl print gui/501/x' 2>&1 | grep state"), False,
+     "E118 plus 2>&1"),
+    ("E134", lambda: bash("ps -E -p 1 2>&1 | wc -l"), False,
+     "E96 plus 2>&1 — the counter is still the next stage"),
+    ("E135", lambda: bash("launchctl print gui/501/x |& grep state"), False,
+     "|& is a pipe; the selector is a later stage"),
+    ("E136", lambda: bash("env FOO=1 2>&1 ls"), False,
+     "X2 innocence — env still has its program after 2>&1"),
+    ("E137", lambda: bash("launchctl print gui/501/x 2>&1 | head"), True,
+     "X6 — 2>&1 does not make head a selector"),
+    ("E138", lambda: bash("printenv 2>&1 &"), True,
+     "X2 — a trailing lone & still separates; the dump is unchanged"),
+    ("E139", lambda: bash("ssh pro 'launchctl print gui/501/x 2>/dev/null'"), True,
+     "X6 inside ssh — a redirect inside the quotes no longer hides the remote command"),
+    ("E140", lambda: bash("launchctl print gui/501/x | egrep 'state|runs'"), False,
+     "X6 carve-out — egrep is a line selector"),
+    ("E141", lambda: bash("launchctl print gui/501/x | fgrep state"), False,
+     "X6 carve-out — fgrep is a line selector"),
+    ("E142", lambda: bash("ssh pro 'launchctl print gui/501/x; launchctl list' | grep state"), False,
+     "the local selector bounds every remote statement"),
+    ("E143", lambda: bash("ssh pro 'launchctl print gui/501/x || true' | grep state"), False,
+     "the local selector bounds every remote statement across ||"),
+    ("E144", lambda: bash("ssh pro 'launchctl print gui/501/a; launchctl print gui/501/b' | head"), True,
+     "X6 — a viewer bounds neither statement"),
+    ("E145", lambda: bash("sudo launchctl procinfo $(pgrep -f node | head -1)"), True,
+     "X6 — a substituted pid is still a pid"),
+    ("E146", lambda: bash("ssh pro 'cd /tmp && python3 tool.py out/set > log 2>&1; echo rc=$?'"), False,
+     "innocence — no bogus set head inside ssh"),
+    ("E147", lambda: bash("ssh pro 'ls -la ~/bin/env > /tmp/o; cat /tmp/o'"), False,
+     "innocence — no bogus env head inside ssh"),
 ]
 
 
