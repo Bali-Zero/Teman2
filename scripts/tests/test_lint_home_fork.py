@@ -467,3 +467,414 @@ def test_main_no_crontab_is_not_an_error(
         "--plist-dir", str(home / "Library/LaunchAgents"), "--discover",
     ])
     assert rc == 0
+
+
+# ---------------------------------------------------------------- mutation survivors
+# Each test below killed a hand-checked mutant that the suite above let live
+# (AST mutation sweep of scripts/lint_home_fork.py, 2026-10-12). Expected values
+# are written from the CONTRACT in the docstrings/exit-code legend, not read back
+# from the implementation. Each carries a guilt case and its innocence twin.
+
+
+def _quiet_subprocess(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        lhf.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 0, "", "")
+    )
+
+
+def _argv(tmp_path: Path, home: Path, repo: Path, *extra: str) -> list[str]:
+    cfg = _write_config(tmp_path, [{"live": "~/scripts/run.sh", "repo": "scripts/run.sh"}])
+    return [
+        "--config", str(cfg), "--home", str(home), "--repo-root", str(repo),
+        "--plist-dir", str(home / "Library/LaunchAgents"), "--no-fetch",
+        "--json-hook-registry", str(tmp_path / "absent-registry.json"), *extra,
+    ]
+
+
+def test_strict_checkout_promotes_a_stale_notice_to_exit_1(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """Default: a checkout trailing origin/main is REPORTED with exit 0 (on M5 it
+    is deliberately left behind). `--strict-checkout` is the opt-in that makes the
+    same notice fail the run with bit 1."""
+    home, repo = make_env(tmp_path)
+    _quiet_subprocess(monkeypatch)
+
+    def fake_check_pairs(pairs, repo_root, home_, label, notices=None, skipped=None):
+        notices.append("scripts/run.sh trails origin/main")
+        return []
+
+    monkeypatch.setattr(lhf, "check_pairs", fake_check_pairs)
+    assert lhf.main(_argv(tmp_path, home, repo, "--check", "--json")) == 0
+    lenient = json.loads(capsys.readouterr().out)
+    assert lenient["check_stale_checkout"] == ["scripts/run.sh trails origin/main"]
+    assert lenient["check_breaches"] == []
+
+    assert lhf.main(_argv(tmp_path, home, repo, "--check", "--json", "--strict-checkout")) == 1
+    strict = json.loads(capsys.readouterr().out)
+    assert strict["check_breaches"] == ["scripts/run.sh trails origin/main"]
+    assert strict["check_stale_checkout"] == []
+
+
+def test_strict_bak_is_exit_bit_8_and_default_is_advisory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    home, repo = make_env(tmp_path)
+    (repo / "scripts/run.sh").write_text("same\n")
+    (home / "scripts/run.sh").write_text("same\n")
+    (home / "scripts/run.sh.bak").write_text("frozen fork\n")
+    _quiet_subprocess(monkeypatch)
+
+    assert lhf.main(_argv(tmp_path, home, repo, "--discover", "--json")) == 0
+    advisory = json.loads(capsys.readouterr().out)
+    assert len(advisory["discover_bak_shadows"]) == 1
+    assert "run.sh.bak" in advisory["discover_bak_shadows"][0]
+
+    assert lhf.main(_argv(tmp_path, home, repo, "--discover", "--strict-bak", "--json")) == 8
+    capsys.readouterr()
+    # INNOCENCE: --strict-bak with nothing to find stays green.
+    (home / "scripts/run.sh.bak").unlink()
+    assert lhf.main(_argv(tmp_path, home, repo, "--discover", "--strict-bak", "--json")) == 0
+    assert json.loads(capsys.readouterr().out)["discover_bak_shadows"] == []
+
+
+def test_system_flag_adds_the_system_launch_dirs_and_nothing_else_does(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home, repo = make_env(tmp_path)
+    _quiet_subprocess(monkeypatch)
+    seen: list[dict] = []
+
+    def spy_discover(plist_dirs, *a, **k):
+        seen.append({"dirs": list(plist_dirs), "registries": k.get("json_registries")})
+        return []
+
+    def spy_bak(pairs, home_, label, errors, include_system=False):
+        seen[-1]["bak_system"] = include_system
+        return []
+
+    monkeypatch.setattr(lhf, "discover_undeclared", spy_discover)
+    monkeypatch.setattr(lhf, "discover_bak_shadows", spy_bak)
+
+    lhf.main(_argv(tmp_path, home, repo, "--discover"))
+    assert seen[-1]["dirs"] == [home / "Library/LaunchAgents"]
+    assert seen[-1]["bak_system"] is False
+
+    lhf.main(_argv(tmp_path, home, repo, "--discover", "--system"))
+    assert seen[-1]["dirs"] == [
+        home / "Library/LaunchAgents",
+        Path("/Library/LaunchAgents"),
+        Path("/Library/LaunchDaemons"),
+    ]
+    assert seen[-1]["bak_system"] is True
+
+
+def test_json_hook_registry_flag_replaces_the_default_list(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home, repo = make_env(tmp_path)
+    _quiet_subprocess(monkeypatch)
+    seen: list = []
+    monkeypatch.setattr(
+        lhf, "discover_undeclared", lambda *a, **k: seen.append(k["json_registries"]) or []
+    )
+    full = _argv(tmp_path, home, repo, "--discover")
+    at = full.index("--json-hook-registry")
+    argv_no_reg = full[:at] + full[at + 2:]
+    assert "--json-hook-registry" not in argv_no_reg
+    lhf.main(argv_no_reg)
+    assert seen[-1] == lhf.DEFAULT_JSON_HOOK_REGISTRIES
+    lhf.main(_argv(tmp_path, home, repo, "--discover"))
+    assert seen[-1] == [tmp_path / "absent-registry.json"]
+
+
+def test_skipped_pair_listing_is_capped_at_ten_but_counts_all(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    home, repo = make_env(tmp_path)
+    _quiet_subprocess(monkeypatch)
+    pairs = [{"live": f"~/scripts/ghost{i}.sh", "repo": f"scripts/ghost{i}.sh"} for i in range(12)]
+    cfg = _write_config(tmp_path, pairs)
+    base = [
+        "--config", str(cfg), "--home", str(home), "--repo-root", str(repo),
+        "--plist-dir", str(home / "Library/LaunchAgents"), "--no-fetch", "--check",
+    ]
+    assert lhf.main(base) == 0  # a skipped pair never touches the exit code
+    out = capsys.readouterr().out
+    assert "12 pair(s) NOT checked" in out
+    assert "showing 10 of 12" in out
+    assert len([ln for ln in out.splitlines() if ln.startswith("    ? ")]) == 10
+    # INNOCENCE: exactly 10 skipped lists all 10, not 9.
+    cfg10 = _write_config(tmp_path, pairs[:10])
+    assert lhf.main([*base[:1], str(cfg10), *base[2:]]) == 0
+    out10 = capsys.readouterr().out
+    assert "showing 10 of 10" in out10
+    assert len([ln for ln in out10.splitlines() if ln.startswith("    ? ")]) == 10
+
+
+def test_bak_shadow_summary_names_six_then_counts_the_rest(tmp_path: Path) -> None:
+    home, _repo = make_env(tmp_path)
+    (home / "scripts/run.sh").write_text("x\n")
+    pairs = [{"live": "~/scripts/run.sh", "repo": "scripts/run.sh", "machines": ["all"]}]
+    for i in range(6):
+        (home / "scripts" / f"run.sh.bak{i}").write_text("b\n")
+    errors: list[str] = []
+    six = lhf.discover_bak_shadows(pairs, home, "pro", errors)
+    assert errors == [] and len(six) == 1
+    assert "6 .bak shadow(s)" in six[0] and "more)" not in six[0]
+    (home / "scripts" / "run.sh.bak6").write_text("b\n")
+    seven = lhf.discover_bak_shadows(pairs, home, "pro", errors)
+    assert "7 .bak shadow(s)" in seven[0] and "(+1 more)" in seven[0]
+    assert len(seven[0].split(" — ", 1)[1].split(": ", 1)[1].split(" (+")[0].split(", ")) == 6
+
+
+def test_bak_scan_skips_malformed_live_entries_and_outside_home_without_system(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home, _repo = make_env(tmp_path)
+    cwd = tmp_path / "cwd"
+    cwd.mkdir()
+    (cwd / "stray.sh.bak").write_text("must not be scanned via an empty live path\n")
+    monkeypatch.chdir(cwd)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "tool.sh").write_text("x\n")
+    (outside / "tool.sh.bak").write_text("b\n")
+    errors: list[str] = []
+    malformed = [{"live": ""}, {"live": 5}, {"live": None}, {}]
+    assert lhf.discover_bak_shadows(malformed, home, "pro", errors) == []
+    assert errors == []
+    # Outside HOME is vendor territory unless --system asks for it.
+    pairs = [{"live": str(outside / "tool.sh"), "repo": "x", "machines": ["all"]}]
+    assert lhf.discover_bak_shadows(pairs, home, "pro", errors) == []
+    assert len(lhf.discover_bak_shadows(pairs, home, "pro", errors, include_system=True)) == 1
+
+
+def test_allow_pattern_matches_the_expanded_form_as_well_as_the_literal(
+    tmp_path: Path,
+) -> None:
+    home = tmp_path / "h"
+    # literal norm vs absolute pattern: only the EXPANDED form can match
+    assert lhf._is_allowed("~/tools/a.sh", home, [f"{home}/tools/*.sh"])
+    # `$HOME` pattern vs literal `~/` norm: both sides expand to the same path
+    assert lhf._is_allowed("~/tools/a.sh", home, ["$HOME/tools/*.sh"])
+    # INNOCENCE: a pattern for another directory or an empty allow-list matches nothing
+    assert not lhf._is_allowed("~/tools/a.sh", home, [f"{home}/other/*.sh"])
+    assert not lhf._is_allowed("~/tools/a.sh", home, [])
+
+
+def test_repo_root_hardening_resolves_a_worktree_to_the_main_checkout(
+    tmp_path: Path,
+) -> None:
+    src = _MODULE_PATH.read_text()
+
+    def load_from(path: Path):
+        path.parent.mkdir(parents=True)
+        path.write_text(src)
+        spec = importlib.util.spec_from_file_location("lhf_probe_" + path.parent.parent.name, path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    main_root = (tmp_path / "main").resolve()
+    in_worktree = load_from(main_root / ".worktrees" / "lane-x" / "scripts" / "lint_home_fork.py")
+    assert in_worktree.REPO_ROOT == main_root  # never the ephemeral worktree itself
+    plain = load_from((tmp_path / "plain").resolve() / "scripts" / "lint_home_fork.py")
+    assert plain.REPO_ROOT == (tmp_path / "plain").resolve()  # INNOCENCE: untouched
+
+
+def test_whole_path_arg_with_shell_metachars_is_split_not_glued(tmp_path: Path) -> None:
+    home, repo = make_env(tmp_path)
+    agents = home / "Library/LaunchAgents"
+    # one ProgramArguments entry that is a shell pipeline, starting with ~/
+    _write_plist(agents, "com.test.pipe.plist", ["/bin/bash", "-c", "~/scripts/a.sh && ~/scripts/b.sh"])
+    errors: list[str] = []
+    findings = lhf.discover_undeclared([agents], "", home, repo, set(), [], errors)
+    assert errors == []
+    joined = "\n".join(findings)
+    assert "~/scripts/a.sh" in joined and "~/scripts/b.sh" in joined
+    assert "a.sh && " not in joined  # never reported as one glued bogus path
+    # INNOCENCE: a clean whole path containing a space stays ONE finding
+    agents2 = tmp_path / "agents2"
+    _write_plist(agents2, "com.test.space.plist", [f"{home}/Application Support/run job.sh"])
+    spaced = lhf.discover_undeclared([agents2], "", home, repo, set(), [], [])
+    assert len(spaced) == 1 and "~/Application Support/run job.sh" in spaced[0]
+
+
+def test_embedded_data_paths_are_not_payloads_but_program_slot_always_is(
+    tmp_path: Path,
+) -> None:
+    home, repo = make_env(tmp_path)
+    agents = home / "Library/LaunchAgents"
+    # data read by a command inside a shell string: not executed code
+    _write_plist(agents, "com.test.data.plist", ["/bin/bash", "-c", "cat ~/notes/todo.txt"])
+    assert lhf.discover_undeclared([agents], "", home, repo, set(), [], []) == []
+    # crontab: same rule for an embedded data argument ...
+    cron = "0 * * * * /usr/bin/tail ~/logs/app.log"
+    assert lhf.discover_undeclared([], cron, home, repo, set(), [], []) == []
+    # ... and the executed script on the same kind of line IS found.
+    cron2 = "0 * * * * ~/scripts/job.sh"
+    assert len(lhf.discover_undeclared([], cron2, home, repo, set(), [], [])) == 1
+    # The `Program` key is executed by construction: no extension, no exec bit needed.
+    agents2 = tmp_path / "agents2"
+    agents2.mkdir()
+    (agents2 / "com.test.prog.plist").write_bytes(
+        plistlib.dumps({"Label": "x", "Program": str(home / "bin" / "mytool")})
+    )
+    found = lhf.discover_undeclared([agents2], "", home, repo, set(), [], [])
+    assert len(found) == 1 and "~/bin/mytool" in found[0]
+
+
+def test_payload_candidate_fails_closed_when_the_filesystem_cannot_answer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "h"
+    (home / "bin").mkdir(parents=True)
+    tool = home / "bin" / "tool"
+    tool.write_text("#!/bin/sh\n")
+    tool.chmod(0o755)
+    assert lhf.is_payload_candidate("~/bin/tool", home) is True  # executable regular file
+
+    def boom(*_a, **_k):
+        raise OSError("EIO")
+
+    monkeypatch.setattr(lhf.os, "access", boom)
+    assert lhf.is_payload_candidate("~/bin/tool", home) is False
+
+
+def test_fetch_origin_main_reports_each_failure_shape_without_claiming_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def raises(exc):
+        def _run(*_a, **_k):
+            raise exc
+
+        return _run
+
+    monkeypatch.setattr(lhf.subprocess, "run", raises(subprocess.TimeoutExpired("git", 7)))
+    assert lhf.fetch_origin_main(tmp_path, timeout=7) == (False, "timed out after 7s")
+    monkeypatch.setattr(lhf.subprocess, "run", raises(FileNotFoundError()))
+    assert lhf.fetch_origin_main(tmp_path) == (False, "FileNotFoundError")
+
+    def returns(rc: int, err):
+        return lambda *a, **k: subprocess.CompletedProcess(a, rc, b"", err)
+
+    monkeypatch.setattr(lhf.subprocess, "run", returns(0, b""))
+    assert lhf.fetch_origin_main(tmp_path) == (True, "ok")
+    monkeypatch.setattr(lhf.subprocess, "run", returns(128, b"fatal: " + b"x" * 300))
+    ok, detail = lhf.fetch_origin_main(tmp_path)
+    assert ok is False and detail.startswith("fatal: ") and len(detail) == 120
+    monkeypatch.setattr(lhf.subprocess, "run", returns(128, b""))
+    assert lhf.fetch_origin_main(tmp_path) == (False, "rc=128")
+    # str stderr (text-mode runner) is handled the same way
+    monkeypatch.setattr(lhf.subprocess, "run", returns(1, "  boom  \n"))
+    assert lhf.fetch_origin_main(tmp_path) == (False, "boom")
+
+
+def test_proprioception_pairs_takes_only_the_home_fork_entry_and_well_formed_pairs(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    (repo / "scripts").mkdir(parents=True)
+    # no proprioception.py at all -> degraded to empty, never an error
+    assert lhf.proprioception_pairs(repo) == []
+    (repo / "scripts" / "proprioception.py").write_text(
+        "DEFAULT_REGISTRY = [\n"
+        "  {'id': 'something_else', 'machines': ['all'],\n"
+        "   'args': {'pairs': [{'live': '~/no.sh', 'repo': 'no.sh'}]}},\n"
+        "  {'id': 'home_fork_scripts', 'machines': ['pro'],\n"
+        "   'args': {'pairs': [\n"
+        "      {'live': '~/a.sh', 'repo': 'a.sh'},\n"
+        "      {'live': '~/only-live.sh'},\n"
+        "      {'repo': 'only-repo.sh'},\n"
+        "   ]}},\n"
+        "]\n"
+    )
+    assert lhf.proprioception_pairs(repo) == [
+        {"live": "~/a.sh", "repo": "a.sh", "machines": ["pro"]}
+    ]
+
+
+def test_exit_code_legend_each_bit_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """1=diverged 2=undeclared 4=scan-error — each bit on its own, so a bit that
+    drifted to another value cannot hide inside the combined-3 case."""
+    home, repo = make_env(tmp_path)
+    (repo / "scripts/run.sh").write_text("same\n")
+    (home / "scripts/run.sh").write_text("same\n")
+    agents = home / "Library/LaunchAgents"
+    _write_plist(agents, "com.test.rogue.plist", [str(home / "scripts/rogue.sh")])
+    _quiet_subprocess(monkeypatch)
+    assert lhf.main(_argv(tmp_path, home, repo, "--discover", "--json")) == 2
+    assert json.loads(capsys.readouterr().out)["exit"] == 2
+    (home / "scripts/run.sh").write_text("diverged\n")
+    assert lhf.main(_argv(tmp_path, home, repo, "--check", "--json")) == 1
+    assert json.loads(capsys.readouterr().out)["exit"] == 1
+
+
+def test_text_report_only_claims_clean_when_it_is_clean(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    home, repo = make_env(tmp_path)
+    (repo / "scripts/run.sh").write_text("same\n")
+    (home / "scripts/run.sh").write_text("same\n")
+    _quiet_subprocess(monkeypatch)
+    assert lhf.main(_argv(tmp_path, home, repo)) == 0
+    clean = capsys.readouterr().out
+    assert "clean — every live copy matches its repo twin" in clean
+    assert "clean — every HOME-executed payload is declared" in clean
+    assert "HOME-FORK LINT FAIL" not in clean
+
+    _write_plist(home / "Library/LaunchAgents", "com.test.rogue.plist", [str(home / "scripts/rogue.sh")])
+    (home / "scripts/run.sh").write_text("diverged\n")
+    assert lhf.main(_argv(tmp_path, home, repo)) == 3
+    dirty = capsys.readouterr().out
+    assert "clean — every live copy matches its repo twin" not in dirty
+    assert "clean — every HOME-executed payload is declared" not in dirty
+    assert "HOME-FORK LINT FAIL (exit 3:" in dirty
+
+
+def test_a_stale_checkout_notice_is_not_reported_as_a_clean_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    home, repo = make_env(tmp_path)
+    _quiet_subprocess(monkeypatch)
+    monkeypatch.setattr(
+        lhf, "check_pairs",
+        lambda pairs, r, h, label, notices=None, skipped=None: notices.append("run.sh trails") or [],
+    )
+    assert lhf.main(_argv(tmp_path, home, repo, "--check")) == 0
+    out = capsys.readouterr().out
+    assert "  ~ run.sh trails" in out
+    assert "no HOME-fork — but 1 pair(s) differ only because this checkout trails" in out
+    assert "clean — every live copy matches" not in out
+
+
+def test_unreadable_plist_dir_and_non_dict_plist_are_errors_not_crashes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home, repo = make_env(tmp_path)
+    arr_dir = tmp_path / "arrdir"
+    arr_dir.mkdir()
+    (arr_dir / "list.plist").write_bytes(plistlib.dumps(["not", "a", "dict"]))
+    errors: list[str] = []
+    assert lhf.discover_undeclared([arr_dir], "", home, repo, set(), [], errors) == []
+    assert errors == [f"plist root is not a dict: {arr_dir / 'list.plist'}"]
+
+    def deny(self, pattern):  # noqa: ANN001
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(lhf.Path, "glob", deny)
+    errors2: list[str] = []
+    assert lhf.discover_undeclared([arr_dir], "", home, repo, set(), [], errors2) == []
+    assert errors2 == [f"plist-dir unreadable (PermissionError): {arr_dir}"]
+
+
+def test_the_same_payload_named_twice_by_one_job_is_one_finding(tmp_path: Path) -> None:
+    home, repo = make_env(tmp_path)
+    agents = home / "Library/LaunchAgents"
+    rogue = str(home / "scripts/rogue.sh")
+    _write_plist(agents, "com.test.twice.plist", [rogue, "--flag", rogue])
+    findings = lhf.discover_undeclared([agents], "", home, repo, set(), [], [])
+    assert len(findings) == 1
