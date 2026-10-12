@@ -13,6 +13,7 @@ import copy
 import hashlib
 import json
 import shutil
+import sys
 import uuid
 from collections import Counter
 from datetime import datetime, timedelta, timezone
@@ -152,6 +153,11 @@ def folded(
         "the committed seq-29 source is not what the fold produces; rerun the fold, never edit it"
     )
     return restamped, candidate, mode
+
+
+@pytest.fixture(scope="module")
+def mode(folded: tuple[dict[str, Any], dict[str, Any], str]) -> str:
+    return folded[2]
 
 
 @pytest.fixture(scope="module")
@@ -395,6 +401,13 @@ class TestE28FForeignParent:
         facts = {**self._FACTS, "investment.foreign_branch_or_subsidiary": _UNKNOWN}
         assert "E28F" not in _decide(pack, facts)["candidates"]
 
+    def test_the_rule_policy_for_an_unanswered_parent_question_is_needs_input(
+        self, seq29: dict[str, Any]
+    ) -> None:
+        # The engine result for an unknown parent fact carries no missing-fact signal on this
+        # walk (D12 still supports), so the result cannot pin the policy: read the field itself.
+        assert _rules(seq29)[fold_mod.E28F_RULE_ID]["on_unknown"] == "NEEDS_INPUT"
+
     def test_the_rule_names_the_parent_fact_in_its_required_facts(
         self, seq29: dict[str, Any]
     ) -> None:
@@ -598,6 +611,35 @@ class TestGoldPersonasOnTheCandidate:
             assert set(persona["expected_candidates"]) <= set(actual["candidates"]), path.name
             checked += 1
         assert checked == len(list(_PERSONAS.glob("*.json"))) >= 28
+
+
+class TestReattestationIsReal:
+    """The dry-run source is production-shaped and passes every gate; only these tests know the difference."""
+
+    def test_a_signed_bundle_never_rests_on_the_dry_run_source(self, mode: str) -> None:
+        if not _SEQ29_SIGNED.exists():
+            pytest.skip("seq-29 is unsigned until the separate signing ceremony")
+        assert mode == "real", (
+            "seq-29 is signed but its source is the --dry-run-reuse-anchor-ledger output; "
+            "the 18-portal re-attestation (SEQ29-21) never happened"
+        )
+
+    def test_the_committed_source_is_still_the_dry_run_until_the_organ_run_lands(
+        self, mode: str
+    ) -> None:
+        if mode != "real":
+            pytest.xfail("hand-off owed: re-run the fold in REAL mode on the newest organ ledger")
+        assert mode == "real"
+
+    def test_guilt_the_signed_gate_refuses_a_dry_run_source(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        fake_signed = tmp_path / "rulepack-prod-029.signed.json"
+        fake_signed.write_text("{}", encoding="utf-8")
+        monkeypatch.setattr(sys.modules[__name__], "_SEQ29_SIGNED", fake_signed)
+        with pytest.raises(AssertionError, match="never happened"):
+            self.test_a_signed_bundle_never_rests_on_the_dry_run_source("dry-run")
+        self.test_a_signed_bundle_never_rests_on_the_dry_run_source("real")
 
 
 class TestSignedBundleTiesToSource:
