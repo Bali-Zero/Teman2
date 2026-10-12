@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test_secret_expansion_guard.py — the spec's §5 case corpus (E01-E73), run
+"""test_secret_expansion_guard.py — the spec's §5 case corpus (E01-E130), run
 against the real hook as a subprocess exactly as the harness would (JSON on
 stdin, exit 2 = DENY, exit 0 = ALLOW).
 
@@ -29,6 +29,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 HOOK = HERE / "secret_expansion_guard.py"
 
 N = "BAILIAN_TOKEN_PLAN_API_KEY"          # registered explicitly
+N3 = "TELEGRAM_BOT_TOKEN"                 # registered via the _TOKEN$ pattern
 N2 = "ANTHROPIC_API_KEY"                  # registered via the ^ANTHROPIC_ pattern
 STORE = "~/.nuzantara-secrets.env"        # registered secret store
 
@@ -195,6 +196,104 @@ CORPUS: list[tuple[str, object, bool, str]] = [
      "X4: an unquoted glued redirect keeps the operand"),
     ("E73", lambda: bash("echo 'a>b'"), False,
      "innocence: a quoted > is data"),
+    # --- 2026-10-12: X6 process/launchd environment dumps, and X2/X6 inside `ssh host '…'`.
+    # A subagent ran an unfiltered `launchctl print` over ssh and a live bot token reached
+    # the transcript. E64 above is UNCHANGED: only X2/X6 are judged in a remote command.
+    ("E74", lambda: bash("launchctl print gui/501/com.x"), True, "X6: service print, unfiltered"),
+    ("E75", lambda: bash("launchctl print gui/$(id -u)/com.x | head -40"), True,
+     "X6: head is a pass-through viewer, not a selector"),
+    ("E76", lambda: bash("launchctl print gui/501"), True, "X6: domain print"),
+    ("E77", lambda: bash("launchctl dumpstate"), True, "X6: dumpstate"),
+    ("E78", lambda: bash(f"launchctl getenv {N3}"), True, "X6: getenv of a registered secret"),
+    ("E79", lambda: bash(f"T=$(launchctl getenv {N3})"), True,
+     "X6: captured into a variable is still the verb on the secret"),
+    ("E80", lambda: bash("ps eww -p 123"), True, "X6: BSD-style e displays the environment"),
+    ("E81", lambda: bash("ps -axE | grep node"), True,
+     "X6: a matched line still carries the whole environment"),
+    ("E82", lambda: bash("ssh pro 'launchctl print gui/501/com.x'"), True, "X6 inside ssh inline"),
+    ("E83", lambda: bash("ssh -o BatchMode=yes -o ConnectTimeout=10 pro "
+                         "'U=$(id -u); launchctl print gui/$U/com.x'"), True,
+     "X6 inside ssh inline, options skipped, remote $(...) tolerated"),
+    ("E84", lambda: bash("ssh pro 'printenv'"), True, "X2 inside ssh inline"),
+    ("E85", lambda: bash("ssh mini 'ps auxe'"), True, "X6 inside ssh inline, BSD flags"),
+    ("E86", lambda: bash("launchctl list"), False, "innocence: no environment"),
+    ("E87", lambda: bash("launchctl list com.x"), False, "innocence"),
+    ("E88", lambda: bash("launchctl print-disabled gui/501"), False, "innocence: not `print`"),
+    ("E89", lambda: bash("launchctl kickstart gui/501/com.x"), False, "innocence"),
+    ("E90", lambda: bash("launchctl bootstrap gui/501 /tmp/x.plist"), False, "innocence"),
+    ("E91", lambda: bash("launchctl blame gui/501/com.x"), False, "innocence"),
+    ("E92", lambda: bash('launchctl print gui/501/com.x | grep -E "state|runs|last exit"'), False,
+     "a line selector bounds the dump"),
+    ("E93", lambda: bash("launchctl print gui/501 | sed -n '/environment/,/}/p' | awk '{print $1}'"),
+     False, "selectors in the chain"),
+    ("E94", lambda: bash("ps aux | grep node"), False, "no environment"),
+    ("E95", lambda: bash("ps -ef"), False, "-e is -A, not -E"),
+    ("E96", lambda: bash("ps -E -p 1 | wc -l"), False, "a pure counter reports no line"),
+    ("E97", lambda: bash("launchctl getenv PATH"), False, "not a registered secret"),
+    ("E98", lambda: bash("ssh pro 'launchctl print gui/501/com.x | grep -E \"state|runs\"'"), False,
+     "selector inside the remote command"),
+    ("E99", lambda: bash("ssh pro 'launchctl list | grep nuzantara'"), False, "innocence"),
+    ("E100", lambda: bash("ssh pro 'set -uo pipefail; ls ~/logs'"), False, "set without xtrace"),
+    ("E101", lambda: bash("ssh pro 'env FOO=1 python3 x.py'"), False, "env sets, does not print"),
+    ("E102", lambda: bash("ps -e"), False, "-e is -A"),
+    ("E103", lambda: bash("ps -A"), False, "innocence"),
+    ("E104", lambda: bash("ps -o pid,command"), False, "innocence: output columns, not env"),
+    # --- 2026-10-12 R2: ssh options after destination, local later stages,
+    # launchctl export/procinfo/asuser, and cut is not a line selector ---
+    ("E105", lambda: bash("ssh pro -t 'launchctl print gui/501/x'"), True,
+     "X6: ssh option after the destination"),
+    ("E106", lambda: bash("ssh pro -o ConnectTimeout=5 'launchctl print gui/501/x'"), True,
+     "X6: argument-taking ssh option after the destination"),
+    ("E107", lambda: bash("ssh pro -- 'launchctl print system'"), True,
+     "X6: post-destination -- is dropped"),
+    ("E108", lambda: bash("ssh pro -q 'ps eww 1'"), True,
+     "X6: flag-only ssh option after the destination"),
+    ("E109", lambda: bash("ssh pro -- printenv"), True,
+     "X2: unquoted remote command after --"),
+    ("E110", lambda: bash(f"ssh pro -o BatchMode=yes 'launchctl getenv {N3}'"), True,
+     "X6: launchctl getenv after a post-destination ssh option"),
+    ("E111", lambda: bash("ssh -tp 22 pro 'launchctl print gui/501/x'"), True,
+     "X6: combined cluster whose last flag consumes the next token"),
+    ("E112", lambda: bash("ssh -P tag pro 'launchctl print gui/501/x'"), True,
+     "X6: -P consumes its argument"),
+    ("E113", lambda: bash("launchctl export"), True,
+     "X6: launchctl export dumps the whole environment"),
+    ("E114", lambda: bash("sudo launchctl procinfo 1"), True,
+     "X6: launchctl procinfo includes the environment"),
+    ("E115", lambda: bash("launchctl asuser 501 launchctl print gui/501/x"), True,
+     "X6: launchctl asuser payload is judged as the command"),
+    ("E116", lambda: bash("launchctl print gui/501/x | cut -c1-300"), True,
+     "X6: cut selects columns, not lines"),
+    ("E117", lambda: bash("ssh pro 'launchctl print gui/501/x' | head -20"), True,
+     "X6: later local head is a viewer"),
+    ("E118", lambda: bash("ssh pro 'launchctl print gui/501/x' | grep -E 'state|runs'"), False,
+     "later local selector bounds ssh's remote stdout"),
+    ("E119", lambda: bash("ssh pro launchctl print gui/501/x | grep state"), False,
+     "unquoted remote command selected by a later local stage"),
+    ("E120", lambda: bash("ssh mini 'ps -E -p 1' | wc -l"), False,
+     "first local stage is the immediate pure counter"),
+    ("E121", lambda: bash(
+        "ssh pro \"launchctl print 'gui/$(id -u)/com.x'\" "
+        "2>/dev/null | grep -q \"state = \""
+    ), False, "verbatim scripts/mini-migration/migrate-job.sh:81 shape"),
+    ("E122", lambda: bash("ssh pro -t 'uptime'"), False,
+     "innocence: post-destination ssh option"),
+    ("E123", lambda: bash("ssh pro -o ConnectTimeout=5 'git -C ~/nuzantara status -sb'"), False,
+     "innocence: argument-taking post-destination ssh option"),
+    ("E124", lambda: bash("ssh pro -- ls ~/logs"), False,
+     "innocence: post-destination -- is dropped"),
+    ("E125", lambda: bash("launchctl print gui/501/x | grep -E 'state' | cut -c1-200"), False,
+     "grep selects lines before the later column selector"),
+    ("E126", lambda: bash("launchctl asuser 501 launchctl list"), False,
+     "innocence: wrapped launchctl command has no environment block"),
+    ("E127", lambda: bash("ssh -oControlPath=none pro 'launchctl print gui/501/x'"), True,
+     'X6 inside ssh inline — glued `-o` value ending in an argument letter does not swallow the host'),
+    ("E128", lambda: bash("ssh pro -oStrictHostKeyChecking=no 'launchctl print gui/501/x'"), True,
+     'X6 inside ssh inline — the same after the destination'),
+    ("E129", lambda: bash("ssh -qtoControlPath=none pro 'launchctl print gui/501/x'"), True,
+     'X6 inside ssh inline — the first argument letter of a cluster ends it; the rest is glued'),
+    ("E130", lambda: bash("ssh -oControlPath=none -oBatchMode=yes pro 'uptime'"), False,
+     'innocence — glued options skipped, harmless remote command'),
 ]
 
 
@@ -312,6 +411,23 @@ def test_multistatement_command_is_judged_per_statement():
     """A clean first statement must not launder a leaking second one."""
     rc, err = bash(f"echo hello && printenv {N}")
     assert rc == 2, f"second statement escaped: {err}"
+
+
+def test_ssh_argument_clusters_distinguish_separate_from_glued_values():
+    """The last short flag decides whether a cluster consumes the next token."""
+    commands = (
+        "ssh -qo BatchMode=yes pro 'launchctl print gui/501/x'",
+        "ssh -p22 pro 'launchctl print gui/501/x'",
+        "ssh -oBatchMode=yes pro 'launchctl print gui/501/x'",
+    )
+    for command in commands:
+        rc, err = bash(command)
+        assert rc == 2, f"ssh option parsing hid the remote command: {command}: {err}"
+
+def test_remote_stage_precedes_local_counter_for_ps():
+    command = "ssh mini 'ps -E -p 1 | cat' | wc -l"
+    rc, err = bash(command)
+    assert rc == 2, f"local counter skipped the immediately-next remote stage: {err}"
 
 
 def test_settings_json_wires_the_hook():
