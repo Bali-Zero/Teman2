@@ -1,4 +1,4 @@
-"""Seq-29 fold gates: the organ re-stamp of signed seq-28 plus six decision-free corrections.
+"""Seq-29 fold gates: the organ re-stamp of signed seq-28 plus four decision-free corrections.
 
 Until the organ run that follows seq-28 exists the committed source is the dry-run output: the
 2026-10-11 ledger is first re-proved (it must reproduce signed seq-28 from signed seq-27) and
@@ -36,12 +36,10 @@ from backend.services.visa_engine.bundle import (
     verify_rule_pack,
 )
 from backend.services.visa_engine.errors import RulePackVerificationError
-from backend.services.visa_engine.models import RulePackPayload, VisaProductVersion
-from backend.services.visa_engine.pricing_adapter import resolve_candidate_pricing
+from backend.services.visa_engine.models import RulePackPayload
 from backend.tests.services.visa_engine import test_interview_walk_census as census
 from backend.tests.services.visa_engine.test_seq28_pack import (
     PROD_TRUST_STORE_JSON,
-    _Catalog,
     _decide,
     _known,
     _portals,
@@ -134,7 +132,7 @@ def folded(
             baseline_root=_RESEARCH,
             ledger_dir=newest_ledger,
         )
-        candidate = fold_mod.apply_content_edits(restamped, catalogue, created_at=created_at)
+        candidate = fold_mod.apply_content_edits(restamped, created_at=created_at)
         mode = "real"
     else:
         restamped, candidate = fold_mod.dry_run_from_anchor_ledger(
@@ -247,20 +245,17 @@ class TestIntegrity:
             moved = {key for key in record if record[key] != before[record_id][key]}
             assert moved == ({"verified_at", "verified_by"} if folded[2] == "real" else set())
 
-    def test_only_e30a_and_e30b_products_change(
-        self, anchor: dict[str, Any], seq29: dict[str, Any]
-    ) -> None:
-        before, after = _products(anchor), _products(seq29)
-        assert set(before) == set(after) and len(after) == 38
-        assert {c for c in after if after[c] != before[c]} == {"E30A", "E30B"}
+    def test_no_product_changes(self, anchor: dict[str, Any], seq29: dict[str, Any]) -> None:
+        assert canonicalize_json(anchor["products"]) == canonicalize_json(seq29["products"])
+        assert len(seq29["products"]) == 38
 
     def test_rule_counts_and_order(self, anchor: dict[str, Any], seq29: dict[str, Any]) -> None:
         before = [r["rule_id"] for r in anchor["rules"]]
         after = [r["rule_id"] for r in seq29["rules"]]
-        assert len(before) == 114 and len(after) == 117
+        assert len(before) == 114 and len(after) == 116
         assert set(before) - set(after) == {"el.e31j-dependency-age"}
-        assert after[-4:] == list(fold_mod.INSERTED_RULE_IDS_IN_ORDER)
-        assert after[:-4] == [r for r in before if r != "el.e31j-dependency-age"]
+        assert after[-3:] == list(fold_mod.INSERTED_RULE_IDS_IN_ORDER)
+        assert after[:-3] == [r for r in before if r != "el.e31j-dependency-age"]
 
     def test_boundary_is_stamp_plus_2764800_seconds(self, seq29: dict[str, Any]) -> None:
         stamps = {r["verified_at"] for r in _portals(seq29)}
@@ -272,7 +267,7 @@ class TestIntegrity:
     def test_model_validates(self, seq29: dict[str, Any]) -> None:
         payload = RulePackPayload.model_validate(seq29)
         assert payload.sequence == 29
-        assert len(payload.rules) == 117
+        assert len(payload.rules) == 116
 
     def test_every_new_or_changed_rule_reads_exactly_the_facts_it_requires(
         self, seq29: dict[str, Any]
@@ -339,9 +334,7 @@ class TestLedger:
     def test_fold_reproduces_the_candidate(
         self, restamped: dict[str, Any], seq29: dict[str, Any]
     ) -> None:
-        rebuilt = fold_mod.apply_content_edits(
-            restamped, _read_json(_CATALOGUE), created_at=seq29["created_at"]
-        )
+        rebuilt = fold_mod.apply_content_edits(restamped, created_at=seq29["created_at"])
         assert canonicalize_json(rebuilt) == canonicalize_json(seq29)
 
     def test_guilt_a_ledger_that_did_not_produce_seq28_is_refused_by_the_dry_run(
@@ -375,59 +368,10 @@ class TestLedger:
                 anchor_signed,
                 newest_ledger,
                 wrong,
-                _read_json(_CATALOGUE),
                 trust_store=StaticTrustStore.from_env(),
                 baseline_root=_RESEARCH,
                 observed_at=datetime.now(timezone.utc) + timedelta(days=2),
             )
-
-
-_A1 = _read_json(_PERSONAS / "A1.json")["overrides"]
-
-
-class TestA1NotConvertible:
-    def test_the_saved_official_page_says_a_visa_exempt_stay_cannot_be_converted(
-        self, newest_ledger: Path
-    ) -> None:
-        """BUILD GATE: the rule cites this page; it must still say what the rule says."""
-
-        ledger = load_ledger(newest_ledger)
-        receipt = next(
-            r for r in ledger.receipts if r["source_record_id"] == fold_mod.SRC_ALIH_STATUS_PORTAL
-        )
-        text = read_receipt_text(ledger.text_dir, receipt)
-        assert "Bebas Visa Kunjungan" in text
-        assert "tidak dapat dialihstatuskan menjadi Izin Tinggal lain" in text
-
-    def test_guilt_a_visitor_who_will_convert_on_shore_loses_a1(
-        self, pack: census.PackUnderTest, old_pack: census.PackUnderTest
-    ) -> None:
-        facts = {**_A1, "process.wants_onshore_conversion": _known(True)}
-        assert "A1" in _decide(old_pack, facts)["candidates"]
-        assert "A1" not in _decide(pack, facts)["candidates"]
-
-    def test_the_exclusion_is_named_when_a1_is_the_only_door(
-        self, pack: census.PackUnderTest
-    ) -> None:
-        rule = _rules(_read_json(_SEQ29_SOURCE))[fold_mod.A1_RULE_ID]
-        assert rule["effect"] == {"type": "EXCLUDE", "reason_code": "A1_NOT_CONVERTIBLE"}
-        assert rule["on_unknown"] == "NO_EFFECT"
-        assert rule["product_version_ids"] == [fold_mod.A1_PRODUCT_VERSION_ID]
-
-    @pytest.mark.parametrize("answer", [_known(False), _UNKNOWN])
-    def test_innocence_no_or_unasked_conversion_keeps_a1(
-        self, pack: census.PackUnderTest, answer: dict[str, Any]
-    ) -> None:
-        facts = {**_A1, "process.wants_onshore_conversion": answer}
-        actual = _decide(pack, facts)
-        assert "A1" in actual["candidates"]
-        assert actual["missing_facts"] == []
-
-    def test_innocence_the_gold_persona_is_unchanged(self, pack: census.PackUnderTest) -> None:
-        persona = _read_json(_PERSONAS / "A1.json")
-        actual = _decide(pack, persona["overrides"])
-        assert actual["state"] == persona["expected_state"]
-        assert "A1" in actual["candidates"]
 
 
 class TestE28FForeignParent:
@@ -609,78 +553,6 @@ class TestE31EReasonsScopedToTheParentRelation:
     def test_the_builder_refuses_an_already_scoped_rule(self, seq29: dict[str, Any]) -> None:
         with pytest.raises(SystemExit):
             fold_mod.build_scoped_e31e_rule(_rules(seq29)[fold_mod.E31E_ADULT_RULE_ID])
-
-
-class TestE30MultiYearOptions:
-    _NOW = datetime(2026, 10, 12, tzinfo=timezone.utc)
-
-    def _quote(self, seq29: dict[str, Any], code: str, stay_days: int) -> int | None:
-        product = VisaProductVersion.model_validate(_products(seq29)[code])
-        resolution = resolve_candidate_pricing(
-            product,
-            pricing_catalog=_Catalog(_read_json(_CATALOGUE)),
-            evaluated_at=self._NOW,
-            stay_days=stay_days,
-        )
-        assert resolution.status == "AVAILABLE"
-        return resolution.amount
-
-    @pytest.mark.parametrize(
-        ("code", "stay_days", "amount"),
-        [
-            ("E30A", 365, 9_000_000),
-            ("E30A", 730, 11_500_000),
-            ("E30B", 365, 9_000_000),
-            ("E30B", 730, 11_500_000),
-            ("E30B", 1000, 15_000_000),
-            ("E30B", 1460, 15_000_000),
-        ],
-    )
-    def test_guilt_a_multi_year_student_is_quoted_the_row_of_their_stay(
-        self, seq29: dict[str, Any], code: str, stay_days: int, amount: int
-    ) -> None:
-        assert self._quote(seq29, code, stay_days) == amount
-
-    def test_the_seq28_pack_quoted_every_stay_at_the_one_year_row(
-        self, anchor: dict[str, Any]
-    ) -> None:
-        for code in ("E30A", "E30B"):
-            assert "duration_options" not in _products(anchor)[code]
-            assert self._quote(anchor, code, 730) == 9_000_000
-
-    def test_innocence_the_one_year_row_and_the_stay_policy_do_not_move(
-        self, anchor: dict[str, Any], seq29: dict[str, Any]
-    ) -> None:
-        for code in ("E30A", "E30B"):
-            before, after = _products(anchor)[code], _products(seq29)[code]
-            assert after["pricing_key"] == before["pricing_key"]
-            assert after["stay_policy"] == before["stay_policy"]
-            assert after["duration_options"][0]["pricing_key"] == before["pricing_key"]
-            assert after["duration_options"][-1]["days"] <= after["stay_policy"]["maximum_days"]
-
-    def test_innocence_the_e31_options_are_byte_identical(
-        self, anchor: dict[str, Any], seq29: dict[str, Any]
-    ) -> None:
-        for code in [c for c in _products(anchor) if c.startswith("E31")]:
-            assert _products(seq29)[code] == _products(anchor)[code]
-
-    def test_guilt_an_option_with_no_catalogue_row_is_refused(self) -> None:
-        catalogue = copy.deepcopy(_read_json(_CATALOGUE))
-        del catalogue["services"]["kitas_permits"]["E30B Higher Education (4 Years)"]
-        with pytest.raises(SystemExit):
-            fold_mod.assert_catalogue_preconditions(catalogue)
-
-    def test_guilt_a_repriced_row_is_refused(self) -> None:
-        catalogue = copy.deepcopy(_read_json(_CATALOGUE))
-        catalogue["services"]["kitas_permits"]["E30A Education Visa (2 Years)"]["price"] = "1 IDR"
-        with pytest.raises(SystemExit):
-            fold_mod.assert_catalogue_preconditions(catalogue)
-
-    def test_guilt_the_builder_refuses_a_product_that_already_has_options(
-        self, seq29: dict[str, Any]
-    ) -> None:
-        with pytest.raises(SystemExit):
-            fold_mod.build_e30_product(_products(seq29)["E30A"])
 
 
 class TestGoldPersonasOnTheCandidate:

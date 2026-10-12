@@ -1,11 +1,11 @@
-"""Fold seq-29: the organ re-stamp of signed seq-28 plus six decision-free corrections.
+"""Fold seq-29: the organ re-stamp of signed seq-28 plus four decision-free corrections.
 
 Chained on the signed seq-28 anchor (payload ``a23a5bf5...``).  The content, in order of
 client impact: three wrong admissions (E31J adults and married applicants, E31D under a
-non-Indonesian step-parent, E28F without a foreign parent company), one visitor gate (A1
-cannot be converted on-shore), one wrong reason (the E31E age and marital exclusions fired
-on every family relation) and one under-quote (E30A/E30B multi-year stays priced as one
-year).  No E33 rule, no E33 copy and no non-portal source record moves.
+non-Indonesian step-parent, E28F without a foreign parent company) and one wrong reason (the
+E31E age and marital exclusions fired on every family relation).  The A1 conversion gate and
+the E30A/E30B multi-year options moved to seq-30 when the slice outgrew ~400 net lines.
+No product moves.  No E33 rule, no E33 copy and no non-portal source record moves.
 
 The production path is fail-closed and two-stage, as in seq-28:
 
@@ -70,21 +70,15 @@ FOLD_CREATED_AT = "2026-10-12T07:30:00Z"
 FOLD_CREATED_BY = "agent.nuzantara.backend-rag.vo-seq29-fold-1012"
 NEW_RULE_VALID_FROM = "2026-10-12T00:00:00Z"
 
-A1_PRODUCT_VERSION_ID = "aee1a12d-3285-526e-8a6f-3d8467fe5d72"
 E28F_PRODUCT_VERSION_ID = "2df6f723-7fc3-585a-b26f-0e8c060a2d8d"
 E31D_PRODUCT_VERSION_ID = "3204e973-59da-5da1-bad0-06a7172e5b2c"
 E31E_PRODUCT_VERSION_ID = "1266d5cb-84a3-51f7-b82d-c6b756254074"
 E31J_PRODUCT_VERSION_ID = "4a4a0f7c-a6a0-5835-acd6-8a096342ef68"
-E30A_PRODUCT_VERSION_ID = "5028908f-25be-5ef1-91b9-0d6bccfc0e1f"
-E30B_PRODUCT_VERSION_ID = "904d99ec-d198-5eb8-9dc4-0b2047e49137"
 
-SRC_BVK_REGULATION = "808d691c-374e-5581-8186-9eb54d0ca7ab"
-SRC_ALIH_STATUS_PORTAL = "dcf08e19-fbc3-5f96-93fa-0325b1ffe91d"
 SRC_E31D_PORTAL = "50457cd0-b67f-5b88-bf66-33bcf62f3d9b"
 SRC_E31J_PORTAL = "2d090f3a-5a93-5181-b3d1-253d87a1a17c"
 SRC_KEPMEN_LAMPIRAN = "e3572ad2-08a9-55bd-b818-353b3e9db715"
 
-A1_RULE_ID = "hf.a1.onshore-conversion-excluded"
 E31D_RULE_ID = "hf.e31d-sponsor-not-indonesian"
 E31J_ADULT_RULE_ID = "hf.e31j-adult-excluded"
 E31J_MARRIED_RULE_ID = "hf.e31j-married-excluded"
@@ -93,22 +87,9 @@ E28F_RULE_ID = "el.e28f.ikn-subsidiary"
 E31E_ADULT_RULE_ID = "hf.e31e-adult-excluded"
 E31E_MARRIED_RULE_ID = "hf.e31e-married-excluded"
 MODIFIED_RULE_IDS = frozenset({E28F_RULE_ID, E31E_ADULT_RULE_ID, E31E_MARRIED_RULE_ID})
-INSERTED_RULE_IDS_IN_ORDER = (A1_RULE_ID, E31D_RULE_ID, E31J_ADULT_RULE_ID, E31J_MARRIED_RULE_ID)
+INSERTED_RULE_IDS_IN_ORDER = (E31D_RULE_ID, E31J_ADULT_RULE_ID, E31J_MARRIED_RULE_ID)
 INSERTED_RULE_IDS = frozenset(INSERTED_RULE_IDS_IN_ORDER)
 RETIRED_RULE_IDS = frozenset({E31J_RETIRED_RULE_ID})
-
-# product_version_id -> ((days, catalogue item_key, price, validity), ...)
-E30_OPTIONS: dict[str, tuple[tuple[int, str, str, str], ...]] = {
-    E30A_PRODUCT_VERSION_ID: (
-        (365, "E30A Education Visa (1 Year)", "9.000.000 IDR", "1 year"),
-        (730, "E30A Education Visa (2 Years)", "11.500.000 IDR", "2 years"),
-    ),
-    E30B_PRODUCT_VERSION_ID: (
-        (365, "E30B Higher Education (1 Year)", "9.000.000 IDR", "1 year"),
-        (730, "E30B Higher Education (2 Years)", "11.500.000 IDR", "2 years"),
-        (1460, "E30B Higher Education (4 Years)", "15.000.000 IDR", "4 years"),
-    ),
-}
 
 _FAMILY = {"op": "intersects", "fact": "intent.purposes", "values": ["FAMILY"]}
 _IDENTITY_KEYS = seq28._IDENTITY_KEYS
@@ -132,43 +113,6 @@ def _relation(value: str) -> dict[str, Any]:
 
 
 # --- item builders -----------------------------------------------------------------------
-
-
-def assert_catalogue_preconditions(catalogue: dict[str, Any]) -> None:
-    """Every E30 option must already be a priced catalogue row; nothing is invented."""
-
-    rows = seq28._catalogue_rows(catalogue)
-    for options in E30_OPTIONS.values():
-        for _days, item_key, price, validity in options:
-            row = rows.get(item_key)
-            if not isinstance(row, dict):
-                _fail(f"pricing row {item_key!r} does not exist")
-            if row.get("price") != price or row.get("validity") != validity:
-                _fail(
-                    f"pricing row {item_key!r} is not {price} / {validity}: "
-                    f"{row.get('price')!r} / {row.get('validity')!r}"
-                )
-
-
-def build_e30_product(product: dict[str, Any]) -> dict[str, Any]:
-    product_id = str(product.get("product_version_id"))
-    options = E30_OPTIONS.get(product_id)
-    if options is None:
-        _fail(f"{product_id!r} is not E30A or E30B")
-    if "duration_options" in product:
-        _fail(f"{product.get('product_code')} already carries duration_options")
-    first_key = {"category": "kitas_permits", "item_key": options[0][1]}
-    if product.get("pricing_key") != first_key:
-        _fail(f"{product.get('product_code')} pricing_key is not its one-year row")
-    stay = product.get("stay_policy") or {}
-    if stay.get("kind") != "FIXED_DAYS" or stay.get("maximum_days") != options[-1][0]:
-        _fail(f"{product.get('product_code')} stay_policy does not end at {options[-1][0]} days")
-    out = copy.deepcopy(product)
-    out["duration_options"] = [
-        {"days": days, "pricing_key": {"category": "kitas_permits", "item_key": item_key}}
-        for days, item_key, _price, _validity in options
-    ]
-    return out
 
 
 def build_e28f_rule(rule: dict[str, Any]) -> dict[str, Any]:
@@ -237,19 +181,6 @@ def _hard_filter(
     }
 
 
-def build_a1_rule() -> dict[str, Any]:
-    # NO_EFFECT, never NEEDS_INPUT: an offshore A1 walk never sets the fact, and an unknown
-    # here must not hold every visa-free holidaymaker.
-    return _hard_filter(
-        A1_RULE_ID,
-        A1_PRODUCT_VERSION_ID,
-        {"op": "eq", "fact": "process.wants_onshore_conversion", "value": True},
-        "A1_NOT_CONVERTIBLE",
-        on_unknown="NO_EFFECT",
-        source_refs=[SRC_BVK_REGULATION, SRC_ALIH_STATUS_PORTAL],
-    )
-
-
 def build_e31d_rule() -> dict[str, Any]:
     return _hard_filter(
         E31D_RULE_ID,
@@ -312,7 +243,6 @@ def build_e31j_married_rule() -> dict[str, Any]:
 
 
 _INSERTED_BUILDERS = {
-    A1_RULE_ID: build_a1_rule,
     E31D_RULE_ID: build_e31d_rule,
     E31J_ADULT_RULE_ID: build_e31j_adult_rule,
     E31J_MARRIED_RULE_ID: build_e31j_married_rule,
@@ -350,11 +280,7 @@ def assert_only_expected_changes(restamped: dict[str, Any], out: dict[str, Any])
     if set(before_products) != set(after_products):
         _fail("product set changed")
     for product_id, before in before_products.items():
-        after = after_products[product_id]
-        if product_id in E30_OPTIONS:
-            if _canon(after) != _canon(build_e30_product(before)):
-                _fail(f"product {before.get('product_code')} differs from its builder output")
-        elif _canon(before) != _canon(after):
+        if _canon(before) != _canon(after_products[product_id]):
             _fail(f"product {before.get('product_code')} changed unexpectedly")
 
     before_rules = _rules_by_id(restamped)
@@ -426,21 +352,11 @@ def _assert_compile_gate(out: dict[str, Any], created_at: str) -> None:
 
 
 def apply_content_edits(
-    restamped: dict[str, Any], catalogue: dict[str, Any], *, created_at: str = FOLD_CREATED_AT
+    restamped: dict[str, Any], *, created_at: str = FOLD_CREATED_AT
 ) -> dict[str, Any]:
     if restamped.get("sequence") != 29:
         _fail(f"restamped base carries sequence {restamped.get('sequence')!r}, expected 29")
-    assert_catalogue_preconditions(catalogue)
     out = copy.deepcopy(restamped)
-
-    products = _products_by_id(out)
-    for product_id in E30_OPTIONS:
-        if product_id not in products:
-            _fail(f"product {product_id} is absent")
-    out["products"] = [
-        build_e30_product(p) if p["product_version_id"] in E30_OPTIONS else p
-        for p in out["products"]
-    ]
 
     rules = _rules_by_id(out)
     for rule_id in MODIFIED_RULE_IDS | RETIRED_RULE_IDS:
@@ -487,7 +403,6 @@ def fold(
     anchor_signed: dict[str, Any],
     ledger_dir: Path,
     organ_candidate: dict[str, Any],
-    catalogue: dict[str, Any],
     *,
     trust_store: StaticTrustStore,
     baseline_root: Path,
@@ -521,7 +436,7 @@ def fold(
         _fail(
             "generic restamp does not equal the organ candidate after identity fields are removed"
         )
-    out = apply_content_edits(restamped, catalogue, created_at=created_at)
+    out = apply_content_edits(restamped, created_at=created_at)
     assert_anchor_relative_changes(anchor, out)
     return restamped, out
 
@@ -566,7 +481,7 @@ def dry_run_from_anchor_ledger(
         _fail("anchor source is not the pinned signed seq-28 payload")
 
     restamped = _with_identity(anchor, created_at, created_by)
-    out = apply_content_edits(restamped, catalogue, created_at=created_at)
+    out = apply_content_edits(restamped, created_at=created_at)
     assert_anchor_relative_changes(anchor, out)
     return restamped, out
 
@@ -634,7 +549,6 @@ def main(argv: list[str] | None = None, *, observed_at: datetime | None = None) 
             seq28._read_json(args.anchor_signed),
             ledger_dir,
             seq28._read_json(candidate_path),
-            catalogue,
             trust_store=trust_store,
             baseline_root=args.baseline_root,
             created_at=args.created_at,
