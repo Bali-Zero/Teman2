@@ -933,6 +933,21 @@ export function enumerateScenarios(): Scenario[] {
       guardian_consent: "no",
     },
   });
+  // seq-29 `hf.e31j-adult-excluded`: E31J is for a minor joining a sibling who holds a stay
+  // permit. The corpus's 25-year-old identity is an adult, so once the pack excludes adult
+  // siblings the two adult SIBLING walks stop naming E31J; this minor walk keeps the product
+  // reachable for the reachability guard. Guardian consent is left to `answerFor` (first
+  // option, "yes"), exactly as the PARENT minor walk above.
+  scenarios.push({
+    label: "offshore/family/SIBLING/spNat=IT/minor",
+    overrides: {
+      ...base,
+      category: "family",
+      family_relation: "SIBLING",
+      family_sponsor_nationalities: "IT",
+      birth_date: MINOR_APPLICANT_BIRTH_DATE,
+    },
+  });
 
   // W-VO-Q (mission SAETTA-VO3): the ten seq-21 qualification questions.
   // Their FIRST option is "yes", so the corpus's own default walks already
