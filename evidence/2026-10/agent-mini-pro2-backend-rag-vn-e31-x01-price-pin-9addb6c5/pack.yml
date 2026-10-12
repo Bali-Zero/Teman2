@@ -12,7 +12,7 @@ lanes:
     role: build
     seat: Kimi (kimi-code/kimi-for-coding, effort high) via seat_build.sh on Mini, 378 s, worktree backend-rag-vn-e31-x01-price-pins.
   - lane: e31-x01-price-pins
-    role: red-team
+    role: review
     seat: Claude session on Pro driving Mini (generator is not grader).
 pii_scan: clean
 spend:
