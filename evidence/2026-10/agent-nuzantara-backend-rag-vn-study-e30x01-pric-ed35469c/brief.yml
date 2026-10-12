@@ -1,0 +1,23 @@
+gear: 2
+gear_reason: >-
+  Test-only change (one backend test file plus its evidence), no product code, no data, no pack and no copy; it only
+  reads the signed pack and the price catalogue. Gear 2 because a test that runs the real signature check, the real
+  pricing service and the evaluate path end to end, with a strict xfail that a later pack must remove, deserves a
+  mutation record and a fresh reviewer.
+mission: >-
+  The price a Visa Oracle visitor is quoted for E30A and E30B is pinned against the real price catalogue on the
+  highest signed pack, E30, E30E and E30F are pinned as deliberately unpriced, and the known longer-stay gap is a
+  strict xfail that the pack adding duration options must remove.
+objective: >-
+  A backend test asserts, on the highest signed pack VERIFIED through verify_rule_pack under the production key,
+  that E30A and E30B price from their (1 Year) catalogue rows and a one-year stay is quoted AVAILABLE at IDR 9,000,000
+  through the real PricingService and through run_evaluation end to end, that all five family rows hold their typed
+  amounts (9.0 / 11.5 / 9.0 / 11.5 / 15.0 million), that E30, E30E and E30F carry no pricing key and resolve to
+  CONTACT_REQUIRED / PRICING_KEY_NOT_CONFIGURED at every stay, and that an edited row, a deleted row, a key re-aimed at
+  a neighbouring row and a pack edited after signing each turn the pin red. A strict xfail (SEQ29-E30-02) asserts the
+  2-year (11,500,000) and 4-year (15,000,000) rows for stays of 730 and 1460 days.
+scope:
+  - apps/backend-rag/backend/tests/services/visa_engine/test_e30_family_pricing.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
