@@ -263,7 +263,7 @@ const SourceCard = ({
       <h4 className="text-sm font-medium text-silver group-hover:text-white font-serif tracking-wide">
         {source.title}
       </h4>
-      <p className="text-[11px] uppercase tracking-widest text-[#666] mt-1">
+      <p className="text-[11px] uppercase tracking-widest text-[#888] mt-1">
         {source.type}
       </p>
     </div>
@@ -375,7 +375,7 @@ const WelcomeOnboarding = ({
     </div>
 
     <div className="border-t border-white/5 pt-8 md:pt-10">
-      <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-6">
+      <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#888] mb-6">
         How it works
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
@@ -464,7 +464,7 @@ const AIMessageContent = ({
       {isTyping && isLatest && (
         <button
           onClick={skip}
-          className="text-[11px] uppercase tracking-widest text-[#555] hover:text-accent-sand transition-colors"
+          className="text-[11px] uppercase tracking-widest text-[#888] hover:text-accent-sand transition-colors"
         >
           Skip &rarr;
         </button>
@@ -547,7 +547,7 @@ const AIMessageContent = ({
                         {result.description}
                       </p>
                       {!compareMode && (
-                        <div className="flex items-center gap-1 mt-2 text-[11px] text-[#555] group-hover:text-accent-sand transition-colors">
+                        <div className="flex items-center gap-1 mt-2 text-[11px] text-[#888] group-hover:text-accent-sand transition-colors">
                           <span>View details</span>
                           <ChevronRight size={10} />
                         </div>
@@ -583,7 +583,7 @@ const AIMessageContent = ({
                   </span>
                   <ChevronRight
                     size={12}
-                    className="text-[#555] group-hover:text-accent-sand"
+                    className="text-[#888] group-hover:text-accent-sand"
                   />
                 </button>
               ))}
@@ -650,12 +650,12 @@ const InspectorChoreographed = ({
 
   if (!data) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-[#444] px-8 text-center">
+      <div className="h-full flex flex-col items-center justify-center text-[#888] px-8 text-center">
         <Search size={48} className="mb-6 opacity-20 stroke-1" />
-        <p className="text-sm font-medium text-[#666] mb-2">
+        <p className="text-sm font-medium text-[#888] mb-2">
           Click on any result to see full details
         </p>
-        <p className="text-xs text-[#444]">
+        <p className="text-xs text-[#888]">
           Licenses, restrictions, risk level and related business codes will
           appear here
         </p>
@@ -765,7 +765,7 @@ const InspectorChoreographed = ({
           <div className="flex items-center gap-1">
             <button
               onClick={handleCopy}
-              className="p-2 rounded hover:bg-white/5 text-[#666] hover:text-accent-sand transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="p-2 rounded hover:bg-white/5 text-[#888] hover:text-accent-sand transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
               title="Copy details"
               aria-label="Copy details"
             >
@@ -801,7 +801,7 @@ const InspectorChoreographed = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#888] mb-4 flex items-center gap-2">
             <FileText size={12} /> Official Description
           </h3>
           <p className="text-sm text-[#CCC] leading-loose font-light border-l border-accent-sand/30 pl-5 italic">
@@ -816,7 +816,7 @@ const InspectorChoreographed = ({
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
           >
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#888] mb-4 flex items-center gap-2">
               <Scale size={12} /> Required Licenses
             </h3>
             <div className="relative">
@@ -834,7 +834,7 @@ const InspectorChoreographed = ({
                     className="flex gap-3"
                   >
                     {/* Step number */}
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-surface-deep border border-white/10 text-[11px] text-[#666] flex items-center justify-center font-mono z-10">
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-surface-deep border border-white/10 text-[11px] text-[#888] flex items-center justify-center font-mono z-10">
                       {idx + 1}
                     </div>
                     <div
@@ -863,7 +863,7 @@ const InspectorChoreographed = ({
                           {lic.sla}
                         </span>
                       </div>
-                      <div className="flex flex-col gap-1 text-xs text-[#666]">
+                      <div className="flex flex-col gap-1 text-xs text-[#888]">
                         <span>
                           Business Size:{" "}
                           <span className="text-[#999]">
@@ -877,7 +877,7 @@ const InspectorChoreographed = ({
                       </div>
                       {lic.requirements.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-white/5">
-                          <p className="text-[11px] text-[#444] uppercase mb-2">
+                          <p className="text-[11px] text-[#888] uppercase mb-2">
                             What you need to do:
                           </p>
                           <ul className="space-y-1">
@@ -918,7 +918,7 @@ const InspectorChoreographed = ({
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#888] mb-4 flex items-center gap-2">
             <Activity size={12} /> Related Business Codes
           </h3>
           <div className="flex flex-wrap gap-2">
@@ -1153,7 +1153,7 @@ export default function KBLIExplorerPage() {
               <span className="font-serif text-lg tracking-wide text-silver">
                 Zantara
               </span>
-              <span className="text-[11px] uppercase tracking-[0.3em] text-[#444] -mt-1">
+              <span className="text-[11px] uppercase tracking-[0.3em] text-[#888] -mt-1">
                 Business Code Guide
               </span>
             </div>
@@ -1168,7 +1168,7 @@ export default function KBLIExplorerPage() {
 
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8">
           <section>
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#333] mb-4 px-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#888] mb-4 px-2">
               2025 Transition
             </h3>
             <button
@@ -1190,7 +1190,7 @@ export default function KBLIExplorerPage() {
           </section>
 
           <section>
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#333] mb-4 px-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#888] mb-4 px-2">
               Official Sources
             </h3>
             <div className="space-y-3">
@@ -1210,7 +1210,7 @@ export default function KBLIExplorerPage() {
               <div className="text-xs font-medium text-silver">
                 Business Assistant
               </div>
-              <div className="text-[11px] text-[#555] uppercase tracking-wider">
+              <div className="text-[11px] text-[#888] uppercase tracking-wider">
                 Ready to help
               </div>
             </div>
@@ -1243,14 +1243,14 @@ export default function KBLIExplorerPage() {
               {/* Rotating placeholder overlay */}
               {!query && (
                 <span
-                  className="absolute left-12 md:left-14 top-1/2 -translate-y-1/2 text-[#444] font-light tracking-wide pointer-events-none text-sm md:text-base transition-opacity duration-300"
+                  className="absolute left-12 md:left-14 top-1/2 -translate-y-1/2 text-[#888] font-light tracking-wide pointer-events-none text-sm md:text-base transition-opacity duration-300"
                   style={{ opacity: placeholderVisible ? 1 : 0 }}
                 >
                   {currentPlaceholder}
                 </span>
               )}
               <Search
-                className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 text-[#444]"
+                className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 text-[#888]"
                 size={18}
                 strokeWidth={1.5}
               />
@@ -1266,7 +1266,7 @@ export default function KBLIExplorerPage() {
                     className={`p-2 rounded-md transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${
                       compareMode
                         ? "bg-accent-sand/15 text-accent-sand"
-                        : "hover:bg-surface-editorial-elevated text-[#555] hover:text-[#888]"
+                        : "hover:bg-surface-editorial-elevated text-[#888] hover:text-[#CCC]"
                     }`}
                     title={compareMode ? "Exit compare mode" : "Compare codes"}
                   >
@@ -1278,7 +1278,7 @@ export default function KBLIExplorerPage() {
                   <button
                     type="button"
                     onClick={handleClearConversation}
-                    className="p-2 rounded-md hover:bg-surface-editorial-elevated text-[#555] hover:text-[#888] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    className="p-2 rounded-md hover:bg-surface-editorial-elevated text-[#888] hover:text-[#CCC] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                     title="Clear conversation"
                     aria-label="Clear conversation"
                   >
@@ -1309,7 +1309,7 @@ export default function KBLIExplorerPage() {
                   exit={{ opacity: 0, y: -10 }}
                   className="absolute top-full mt-2 left-0 w-full bg-surface-deep border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden"
                 >
-                  <div className="p-2 border-b border-white/5 text-[11px] uppercase tracking-widest text-[#555] px-4">
+                  <div className="p-2 border-b border-white/5 text-[11px] uppercase tracking-widest text-[#888] px-4">
                     Related Results
                   </div>
                   <div className="max-h-60 overflow-y-auto custom-scrollbar">
@@ -1328,7 +1328,7 @@ export default function KBLIExplorerPage() {
                         <span className="text-sm text-silver truncate flex-1">
                           {res.title}
                         </span>
-                        <ChevronRight size={12} className="text-[#333]" />
+                        <ChevronRight size={12} className="text-[#888]" />
                       </button>
                     ))}
                   </div>
