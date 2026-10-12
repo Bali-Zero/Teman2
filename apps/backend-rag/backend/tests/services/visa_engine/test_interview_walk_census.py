@@ -1360,9 +1360,16 @@ _EXPECTED_REASONS_ON_SEQ28: dict[str, ReasonPin] = {
     "onshore/business": _BUSINESS_NO_PATH_SEQ28,
     _SEQ28_E33G_59999_WALK: (("E33G_INCOME_BELOW_THRESHOLD",), ()),
 }
+#: seq-29: measured (the replay of the 132-walk corpus on the candidate source against the seq-28
+#: table reports no violation), not derived. The five walks that move keep their state (only
+#: their candidate lists change), and no corpus walk answers "Another status" for an
+#: E31J sibling, so `E31J_MARITAL_STATUS_OTHER_REVIEW` appears in no row; the rule is graded on
+#: the field and by value in `test_seq29_pack.py`.
+_EXPECTED_REASONS_ON_SEQ29: dict[str, ReasonPin] = dict(_EXPECTED_REASONS_ON_SEQ28)
 EXPECTED_REASONS_BY_SEQUENCE: dict[int, dict[str, ReasonPin]] = {
     27: _EXPECTED_REASONS_ON_SEQ27,
     28: _EXPECTED_REASONS_ON_SEQ28,
+    29: _EXPECTED_REASONS_ON_SEQ29,
 }
 EXPECTED_REASONS: dict[str, ReasonPin] = EXPECTED_REASONS_BY_SEQUENCE.get(_SIGNED_SEQUENCE, {})
 
