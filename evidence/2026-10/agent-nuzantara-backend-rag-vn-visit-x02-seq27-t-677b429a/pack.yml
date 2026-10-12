@@ -1,0 +1,100 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  VISA NIGHT plan X02 (family visit, audit findings F013, F043, F073, F103, 2026-10-12): a test-only
+  lane; no owner decision is involved and no rule, copy or price is changed.
+mission: >-
+  The edges of the visit family on the signed seq-27 pack have a witness that fails when a rule moves:
+  B1 60 vs 61 days, C1 and C6 180 vs 181, C6 without a confirmed sponsor, D12 on its named cause, and the
+  two global overstay filters.
+lanes:
+  - lane: x02-seq27-tests
+    role: build
+    seat: Claude Sonnet 5.5 implementer (subagent), worktree backend-rag-vn-visit-x02-seq27-tests.
+  - lane: x02-ground-truth
+    role: ground_truth
+    seat: >-
+      Signed seq-27 pack rules el.b1.tourism (stay_days lte 60), el.c1 tourism (lte 180), el.c6.social
+      (sponsor_confirmed true, stay_days lte 180), hf.d12-onshore-conversion-excluded, hf.overstay-exceeds-60-days
+      (gt 60) and hf.active-overstay (gt 0); the tests assert no rule of their own, they state the corpus
+      personas against those rules.
+    nb: /Users/nuzantara/visa-night/visit/ground/C6.md
+    query_hash: "a9098744e0cd8369fb4fe9ca5bef851705cf43dabb1c69398b63b36985cb42d0" # pragma: allowlist secret
+    note: query_hash = payload sha256 of rulepack-prod-027 (SEQ27_PAYLOAD_SHA256 in test_seq27_pack.py).
+pii_scan: clean
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+results:
+  tests_added: 33
+  visa_engine_suite: "2989 passed, 3 failed and 39 errors in the Postgres-integration files, identical to the run without the new file (2956 passed)"
+  red_team_round_1: "codex gpt-5.6-sol: 1 MEDIUM and 1 LOW cured, 2 INFO noted; verdict CHANGES REQUESTED before the cure"
+bites: >-
+  Consumer: the backend-rag CI pytest job, which collects backend/tests/services/visa_engine on every
+  backend PR. Observation: pytest apps/backend-rag/backend/tests/services/visa_engine/test_visit_family_seq27.py
+  reports 33 passed on the signed seq-27 pack, and with the evaluator's lte operator mutated to lt, gt to
+  gte, or the API boundary's conflicting-status condition inverted, 4, 21 and 10 of them fail (recorded in
+  the receipts), so a moved bound, threshold or consistency guard turns the check red.
+receipts:
+  - claim: "The new file passes against the signed seq-27 pack."
+    cmd: "cd apps/backend-rag && PYTHONPATH=. /Users/nuzantara/visa-night/venv311/bin/python -m pytest backend/tests/services/visa_engine/test_visit_family_seq27.py"
+    result: "33 passed in 1.9s"
+    exit: 0
+    ts: "2026-10-12T10:20:00Z"
+    seat: this session
+  - claim: "Mutation 1: with the evaluator's lte comparison (ast.py line 673) changed to lt, the boundary tests fail."
+    cmd: "sed line 673 of backend/services/visa_engine/ast.py (value <= condition.value -> value < condition.value), run the new file, restore from backup"
+    result: "4 failed, 29 passed (B1 at 60 and 180, C1 at 180, C6 at 180); file restored, git status shows only the new test file"
+    exit: 1
+    ts: "2026-10-12T10:21:00Z"
+    seat: this session
+  - claim: "Mutation 2: with the evaluator's gt comparison (ast.py line 675) changed to gte, the overstay and unknown-fact tests fail."
+    cmd: "sed line 675 of backend/services/visa_engine/ast.py (value > condition.value -> value >= condition.value), run the new file, restore from backup"
+    result: "21 failed, 12 passed; file restored, git status shows only the new test file"
+    exit: 1
+    ts: "2026-10-12T10:21:30Z"
+    seat: this session
+  - claim: "Mutation 3 (red-team cure): with the API boundary's cross-fact conflict condition inverted (api_models.py line 150, currently_in_indonesia.value is False -> is True), the onshore overstay cases and the offshore-contradiction case fail on the conflict notice."
+    cmd: "sed line 150 of backend/services/visa_engine/api_models.py (value is False -> value is True), run the new file, restore from backup"
+    result: "10 failed, 23 passed; file restored, git status shows only the new test file"
+    exit: 1
+    ts: "2026-10-12T10:22:00Z"
+    seat: this session
+  - claim: "The whole backend visa_engine suite after the cure; the failures and errors are the Postgres-integration files (test_evaluate_endpoint, test_shadow_evidence, test_shadow_match, test_visa_engine_retention_fk_registry) on the shared local database and are identical without the new file."
+    cmd: "cd apps/backend-rag && PYTHONPATH=. /Users/nuzantara/visa-night/venv311/bin/python -m pytest backend/tests/services/visa_engine"
+    result: "3 failed, 2989 passed, 15 skipped, 39 errors in 563s; previous run with the new file ignored: 3 failed, 2956 passed, 15 skipped, 39 errors (the 33 added tests are the whole difference)"
+    exit: 1
+    ts: "2026-10-12T10:32:00Z"
+    seat: this session
+decisions:
+  - id: D-seq27-by-name
+    decision: >-
+      The cases evaluate rulepack-prod-027.signed.json by name, not the highest pack on disk, so the file
+      stays a statement about seq-27 after seq-28 is signed; the gold-coverage floor keeps covering the
+      highest pack.
+  - id: D-no-ride-along-pins
+    decision: >-
+      Ride-along reasons beside a named cause (BRIDGING_ONSHORE_ONLY beside a C6 miss, BVK_NATIONALITY_ONLY
+      and AGE_BELOW_55 beside a tourist miss) are not pinned: several are known copy defects awaiting a later
+      pack, and pinning them would turn a defect into a requirement. Only the named cause is asserted, as a subset.
+dissent:
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T09-59-50-01a12dd6-6f78-7411-bbcd-4b987cf32126.jsonl)"
+    objection: "MEDIUM: the overstay tests change only immigration.overstay_days while currently_in_indonesia stays false, so every 61-day case emits CONFLICTING_IMMIGRATION_STATUS_CONDITION (ignored by the tests) and the unknown case pins NEEDS_INPUT for a declared-offshore applicant; the suite pins an impossible state and could block a later fix conditioning overstay on being in Indonesia (UU 6/2011 art. 78)."
+    status: CONFIRMED
+    resolution: cured
+    disposition: "Cured in the follow-up commit: the overstay cases now run on onshore bases (currently_in_indonesia true, current_status_code C1 for the tourist and D12 bases, C6 for the C6 base) proven supported on their own; every overstay case asserts CONFLICTING_IMMIGRATION_STATUS_CONDITION is absent; one test pins that the same overstay on the offshore base DOES raise it (why the bases moved). Mutation 3 (inverting the boundary's conflict condition) turns 10 tests red."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T09-59-50-01a12dd6-6f78-7411-bbcd-4b987cf32126.jsonl)"
+    objection: "LOW: the 'coverage previously absent' rationale is wrong; test_seq23_pack.py already has an engine witness and a mutation/revert proof for ACTIVE_OVERSTAY_SETTLE_FIRST, and the interview census already walks the D12 no-route explorer to its dead end."
+    status: CONFIRMED
+    resolution: cured
+    disposition: "Cured: the module docstring and the PR body now state the real gap. Verified by grep that test_seq23_pack.py holds one C1, 5-day witness on the seq-23 candidate pack, that the census pins D12 no-route to (NO_SUPPORTED_PATH, no candidate) with the code only in comments, and that OVERSTAY_EXCEEDS_60_DAYS is named by no other test in the suite. What this adds: seq-27 by name, 0/1/60/61 boundaries, C6 and D12 through the filters, the OVERSTAY_EXCEEDS_60_DAYS cause, the D12_NOT_CONVERTIBLE reason code with its guilt twin."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T09-59-50-01a12dd6-6f78-7411-bbcd-4b987cf32126.jsonl)"
+    objection: "INFO: no client-facing copy, prices or PNBP split in the diff; the B1 60-day, C1/C6 180-day and D12 non-convertibility facts agree with the official Imigrasi pages; no scope creep."
+    status: RETRACTED
+    resolution: rejected
+    disposition: "Not an objection (a confirmation); recorded for the tally, nothing to cure."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T09-59-50-01a12dd6-6f78-7411-bbcd-4b987cf32126.jsonl)"
+    objection: "INFO: codex could not run pytest in its read-only sandbox (29 FileNotFoundError environment errors, no writable temp dir); calling the 29 test functions directly passed."
+    status: RETRACTED
+    resolution: rejected
+    disposition: "Environment limit of the reviewer's sandbox, not an assertion failure. The suite was run here with a writable temp dir: 33 passed alone, whole visa_engine suite 2989 passed with the 3 failed and 39 errors being the Postgres-integration files, identical without the new file."
