@@ -160,6 +160,12 @@ async def get_user_allowed_folders(
                 FROM team_members tm
                 LEFT JOIN departments d ON tm.department = d.code
                 WHERE tm.email = $1 AND tm.active = true
+                  -- Real-staff guard (fail-closed): client-portal rows
+                  -- (role='client', NULL/blank role = not proven staff) must
+                  -- not match as drive identity — they fall to the not-found
+                  -- default below. Mirrors whatsapp_identity.py.
+                  AND NULLIF(BTRIM(LOWER(COALESCE(tm.role, ''))), '') IS NOT NULL
+                  AND LOWER(BTRIM(COALESCE(tm.role, ''))) <> 'client'
                 """,
                 user_email,
             )
