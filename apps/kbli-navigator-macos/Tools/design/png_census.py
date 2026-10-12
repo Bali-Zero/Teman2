@@ -522,8 +522,8 @@ def c_cases():
         fr = {"matrix.chip": [("0:0", (150, 100, 250, 124))], "ring": [(ringrow, chip_b)]}
         o, f = word("detail", detailrow, (20, 365, 380, 385)); ops += o; fr.update(f)
         if twodetail: fr["detail"] = fr["detail"] * 2   # the same row, marked twice
-        for nb in ([(150, 124 + dy, 250, 148 + dy)] if dy is not None else []) + ([(150, 68, 250, 92 + up)] if up is not None else [])                 + ([(254 + dx, 100, 360 + dx, 124)] if dx is not None else []) + ([(40, 100, 146 + lx, 124)] if lx is not None else []):
-            o, f = chip("matrix.chip", "1:1", nb, nbfill); ops += o; fr["matrix.chip"] += f["matrix.chip"]
+        for n, nb in enumerate(([(150, 124 + dy, 250, 148 + dy)] if dy is not None else []) + ([(150, 68, 250, 92 + up)] if up is not None else [])                 + ([(254 + dx, 100, 360 + dx, 124)] if dx is not None else []) + ([(40, 100, 146 + lx, 124)] if lx is not None else []), 1):
+            o, f = chip("matrix.chip", "1:%d" % n, nb, nbfill); ops += o; fr["matrix.chip"] += f["matrix.chip"]   # each neighbour is its own chip
         if hint:
             o, f = word("hint", "", (150, 170, 300, 182)); ops += o; fr.update(f)
         if dup:   # 0:0 marked twice (a second frame, off by itself) and 1:5, which the record has, never marked: the count balances, the set does not
