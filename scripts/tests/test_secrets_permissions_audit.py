@@ -2461,3 +2461,71 @@ def test_s30_unlistable_custody_dir_says_so_in_its_line(
     assert rc == 2
     assert "CUSTODY ~/.secrets:" in out
     assert "BLIND: directory cannot be listed" in out
+
+
+def test_s31_chmod_that_did_not_stick_is_a_verification_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = _touch(tmp_path / "api_secret.key", 0o644)
+    monkeypatch.setattr(os, "chmod", lambda *args, **kwargs: None)
+
+    fixed, failed, failures = audit.fix_findings(
+        [audit.Finding(path=target, mode=0o644)]
+    )
+
+    assert (fixed, failed) == (0, 1)
+    assert failures == [f"{target}: ModeVerificationMismatch"]
+
+
+def test_s32_reach_is_the_intersection_down_the_chain(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # group is shut one level up, other one level further: the file is
+    # reachable by NEITHER, even though the nearest directory admits "other".
+    module = _load_module(open_chain=False)
+    target = _touch(tmp_path / "api_secret.key", 0o604)
+    answers = iter([(False, True), (False, False)])
+    calls = []
+
+    def walk(directory, cache=None):
+        calls.append(directory)
+        assert len(calls) < 50
+        return next(answers, (False, False))
+
+    monkeypatch.setattr(module, "_dir_traversal", walk)
+
+    assert module.reachable_by(target) == (False, False)
+    assert len(calls) >= 2
+
+
+@pytest.mark.parametrize(
+    "files,p0,digest",
+    [
+        ("custody", 1, 0),
+        ("env", 0, 1),
+    ],
+)
+def test_s33_notify_counts_distinguish_p0_from_digest(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+    files: str,
+    p0: int,
+    digest: int,
+) -> None:
+    _fake_gateway(tmp_path, monkeypatch)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    if files == "custody":
+        _touch(tmp_path / ".secrets" / "probe.json", 0o644, "{}\n")
+        roots = ["--root", str(tmp_path / ".secrets")]
+    else:
+        _touch(tmp_path / "r" / ".env.local", 0o644, "A=1\n")
+        roots = ["--root", str(tmp_path / "r")]
+    args = ["--no-default-roots", *roots, "--notify"]
+
+    rc, payload = _json_main(audit, args + ["--json"], capsys)
+    assert rc == 0
+    assert (payload["notify"]["p0"], payload["notify"]["digest"]) == (p0, digest)
+
+    audit.main(args)
+    assert f"NOTIFY p0={p0} digest={digest} handed=1 failed=0" in capsys.readouterr().out
