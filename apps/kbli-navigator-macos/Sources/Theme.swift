@@ -1,14 +1,14 @@
 import SwiftUI
 
 /// Design tokens — R19 Direction-A palette (design loop 2026-10-09): warm paper by day, deep
-/// blue-ink by night, copper accent, structure blue. Token NAMES are kept stable
+/// anthracite grey by night, copper accent, structure blue. Token NAMES are kept stable
 /// (antracite/ink/inkLift, white, yellow, red, accent, zantara…) so the 100+ call-sites don't
 /// need renaming — only their hex values changed. Every text token is WCAG-AA on its surfaces;
 /// `Tools/contrast/measure_contrast.py` and `derive_tokens.py` check these values against Theme.swift.
 enum Theme {
     /// Two palettes share the SAME token names so the 100+ call-sites (`Theme.antracite`, `.accent`,
     /// `.white`…) never change — only which palette they resolve to. `.light` = day paper;
-    /// `.dark` = night blue-ink (R19 Direction-A, design loop 2026-10-09).
+    /// `.dark` = night anthracite (owner order 2026-10-12).
     enum Mode { case light, dark }
     /// Live theme mode. Driven by `ThemeManager`, synced from SYSTEM appearance by default (D3a,
     /// 2026-08-11) OR from a persisted user override (D3a.2, 2026-08-11 — `RootView.themeToggle` /
@@ -47,29 +47,29 @@ enum Theme {
         return Color(hex: isDark ? darkHC : lightHC)
     }
 
-    // MARK: Backgrounds — day: paper/wash · night: deep blue-ink (R19 Direction-A, design loop 2026-10-09).
-    static var antracite: Color { pick(0xF7F4EE, 0x111922) } // window bg (paper)
-    static var ink: Color       { pick(0xEAE3D8, 0x1C2B3A) } // panel / sidebar (wash)
-    static var inkLift: Color   { pick(0xFFFCF7, 0x16222E) } // raised card / row (elevated)
-    static var surfaceHi: Color { pick(0xEAE3D8, 0x1C2B3A) } // surface hover / footer inset
+    // MARK: Backgrounds — day: paper/wash · night: neutral anthracite grey, no blue cast (owner order 2026-10-12; was the R19 Direction-A blue-ink).
+    static var antracite: Color { pick(0xF7F4EE, 0x232527) } // window bg (paper)
+    static var ink: Color       { pick(0xEAE3D8, 0x2B2E31) } // panel / sidebar (wash)
+    static var inkLift: Color   { pick(0xFFFCF7, 0x272A2C) } // raised card / row (elevated)
+    static var surfaceHi: Color { pick(0xEAE3D8, 0x2B2E31) } // surface hover / footer inset
 
     // MARK: Accent — copper (R19 Direction-A, design loop 2026-10-09)
-    static var accent: Color    { pickAA(0xA44B36, 0xD08371, lightHC: 0x733426, darkHC: 0xE0AEA3) } // copper
+    static var accent: Color    { pickAA(0xA44B36, 0xD08371, lightHC: 0x733426, darkHC: 0xE3B5AA) } // copper
     static var accentHi: Color  { pick(0x853D2C, 0xDA9E90) } // copper hover/pressed
 
     // `red` = danger/closed semantic. Same hex family as pmaClosed/riskHigh — boosts together.
-    static var red: Color       { pickAA(0x86200F, 0xED6F5A, lightHC: 0x86200F, darkHC: 0xF3A194) }
+    static var red: Color       { pickAA(0x86200F, 0xED6F5A, lightHC: 0x86200F, darkHC: 0xF4A99C) }
 
     // MARK: Secondary — zantara shares the structure blue in R19 (periwinkle retired).
-    static var zantara: Color   { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x98B9D3) } // structure blue
+    static var zantara: Color   { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x9FBED6) } // structure blue
     // `statutory` = the renumber / national-reference blue; same value as zantara in R19.
-    static var statutory: Color { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x98B9D3) } // statutory/reference blue
-    static var blue: Color      { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x98B9D3) } // alias of structure blue
+    static var statutory: Color { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x9FBED6) } // statutory/reference blue
+    static var blue: Color      { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x9FBED6) } // alias of structure blue
 
     // MARK: Highlight — amber. Same value as pmaRestricted — boosts together.
-    static var yellow: Color    { pickAA(0x5B4000, 0xC78C00, lightHC: 0x5B4000, darkHC: 0xDBB459) } // amber (facts, numbers)
+    static var yellow: Color    { pickAA(0x5B4000, 0xC78C00, lightHC: 0x5B4000, darkHC: 0xDDBA66) } // amber (facts, numbers)
 
-    // MARK: Text — blue-ink on paper · paper on night blue-ink.
+    // MARK: Text — blue-ink on paper · paper on night anthracite.
     static var white: Color     { pick(0x1D2C3B, 0xF7F4EE) } // PRIMARY TEXT
     // D3b Increase Contrast: "muted → text" — under increased contrast the secondary-text tier
     // stops being a dimmer shade and just IS the primary text color (per instruction, `faint` is
@@ -80,23 +80,23 @@ enum Theme {
     // MARK: Semantic status (open / restricted / closed). D3b: each family gets an independently
     // WCAG-verified Increase-Contrast hex pair (see `pickAA` doc-comment) — all families reach
     // AAA (>=7:1) on the wash when Increase Contrast is on. Risk tiers share the structure blue.
-    static var pmaOpen: Color       { pickAA(0x17452A, 0x39AC69, lightHC: 0x17452A, darkHC: 0x7EC99E) }
-    static var pmaRestricted: Color { pickAA(0x5B4000, 0xC78C00, lightHC: 0x5B4000, darkHC: 0xDBB459) }
-    static var pmaClosed: Color     { pickAA(0x86200F, 0xED6F5A, lightHC: 0x86200F, darkHC: 0xF3A194) }
-    static var green: Color         { pickAA(0x17452A, 0x39AC69, lightHC: 0x17452A, darkHC: 0x7EC99E) }
+    static var pmaOpen: Color       { pickAA(0x17452A, 0x39AC69, lightHC: 0x17452A, darkHC: 0x88CDA5) }
+    static var pmaRestricted: Color { pickAA(0x5B4000, 0xC78C00, lightHC: 0x5B4000, darkHC: 0xDDBA66) }
+    static var pmaClosed: Color     { pickAA(0x86200F, 0xED6F5A, lightHC: 0x86200F, darkHC: 0xF4A99C) }
+    static var green: Color         { pickAA(0x17452A, 0x39AC69, lightHC: 0x17452A, darkHC: 0x88CDA5) }
 
-    static var riskLow: Color          { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x98B9D3) }
-    static var riskMediumLow: Color    { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x98B9D3) }
-    static var riskMediumHigh: Color   { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x98B9D3) }
-    static var riskHigh: Color         { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x98B9D3) }
+    static var riskLow: Color          { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x9FBED6) }
+    static var riskMediumLow: Color    { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x9FBED6) }
+    static var riskMediumHigh: Color   { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x9FBED6) }
+    static var riskHigh: Color         { pickAA(0x233D52, 0x6C9BC0, lightHC: 0x233D52, darkHC: 0x9FBED6) }
 
     // MARK: Borders / fills — opaque lines (R19 Direction-A, design loop 2026-10-09).
     // Increase Contrast: hairline -> lineStrong, hairlineHi -> structure.
-    static var lineSoft: Color   { pick(0xDAD8D1, 0x243649) }
-    static var lineStrong: Color { pick(0xA8ACA9, 0x416283) }
+    static var lineSoft: Color   { pick(0xDAD8D1, 0x3C3F43) }
+    static var lineStrong: Color { pick(0xA8ACA9, 0x62666B) }
     static var hairline: Color   { contrastIncreased ? lineStrong : lineSoft }
     static var hairlineHi: Color { contrastIncreased ? statutory : lineStrong }
-    static var scrim: Color      { pick(0xEAE3D8, 0x1C2B3A) } // opaque hover fill (was a black/white alpha)
+    static var scrim: Color      { pick(0xEAE3D8, 0x2B2E31) } // opaque hover fill (was a black/white alpha)
     // Readable aliases (same values).
     static var wash: Color       { ink }
     static var structure: Color  { statutory }
@@ -106,8 +106,8 @@ enum Theme {
     // MARK: Icon-on-fill ink — BZLogo's fallback glyph and ChatView's send-button glyph paint a
     // FIXED glyph directly on a solid Theme.accent / Theme.zantara circle. R19: paper glyph by day,
     // night ground glyph by night (both >= 4.5:1, see measure_contrast.py).
-    static var iconOnAccentFill: Color  { pick(0xF7F4EE, 0x111922) }
-    static var iconOnZantaraFill: Color { pick(0xF7F4EE, 0x111922) }
+    static var iconOnAccentFill: Color  { pick(0xF7F4EE, 0x232527) }
+    static var iconOnZantaraFill: Color { pick(0xF7F4EE, 0x232527) }
 
     // MARK: D4 "Anima Indonesiana" decorative tokens (2026-08-11, Zero-approved — values ported
     // VERBATIM from the reference draft's own `P` palette object, `kbli-d4-draft.html` §script,
@@ -177,17 +177,17 @@ enum Theme {
     // MARK: Chips, risk ramp, tone (R19 Direction-A, design loop 2026-10-09)
     // Each chip/ramp token is a one-line pick() so measure_contrast.py can parity-check it.
     static var chipOpenFg: Color         { pick(0x17452A, 0xDDEBDF) }
-    static var chipOpenBg: Color         { pick(0xDDEBDF, 0x142F26) }
+    static var chipOpenBg: Color         { pick(0xDDEBDF, 0x1D3528) }
     static var chipRestrictedFg: Color   { pick(0x5B4000, 0xF4E3B9) }
-    static var chipRestrictedBg: Color   { pick(0xF4E3B9, 0x362C11) }
+    static var chipRestrictedBg: Color   { pick(0xF4E3B9, 0x3F3214) }
     static var chipClosedFg: Color       { pick(0x86200F, 0xF4D6D0) }
-    static var chipClosedBg: Color       { pick(0xF4D6D0, 0x4C1C18) }
-    static var riskFillLow: Color        { pick(0xF7F4EE, 0x111922) }
-    static var riskFillMediumLow: Color  { pick(0xD7D9D7, 0x1F2C3A) }
-    static var riskFillMediumHigh: Color { pick(0xADB4B7, 0x314659) }
+    static var chipClosedBg: Color       { pick(0xF4D6D0, 0x54221B) }
+    static var riskFillLow: Color        { pick(0xF7F4EE, 0x232527) }
+    static var riskFillMediumLow: Color  { pick(0xD7D9D7, 0x2E373E) }
+    static var riskFillMediumHigh: Color { pick(0xADB4B7, 0x3D4E5D) }
     static var riskFillHigh: Color       { pick(0x233D52, 0x6C9BC0) }
     static var riskInk: Color            { pick(0x233D52, 0xF7F4EE) }      // text on the three lighter fills
-    static var riskInkOnHigh: Color      { pick(0xF7F4EE, 0x111922) }      // text on the full fill
+    static var riskInkOnHigh: Color      { pick(0xF7F4EE, 0x232527) }      // text on the full fill
 
     enum Tone { case open, restricted, closed, neutral }
 
