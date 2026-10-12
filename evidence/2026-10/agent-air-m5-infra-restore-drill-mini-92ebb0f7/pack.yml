@@ -35,7 +35,7 @@ bites: >-
   be made by the shipping session after the wrapper and plist are installed on Mini (declared pairs): a manual
   launchctl kickstart of com.nuzantara.restore-drill the same day, ending in a Level-5 PASS verdict in
   ~/logs/mini-restore_drill/run.log, ~/.organism/last_seen/mini.restore_drill.json reading ok, and a digest in Telegram.
-  Not yet made: this pack records the pre-merge state, and the final council round (both seats) still lists open findings.
+  Not yet made: this pack records the pre-merge state at final code head e2f2c8a627, and the narrow codex confirmation still lists one open defect.
 decisions:
   - id: D-derive-roles-from-the-dump
     decision: >-
@@ -160,6 +160,25 @@ receipts:
     exit: 0
     ts: "2026-10-12T02:32:40Z"
     seat: kimi-code/k3, codex-gpt-5.6-sol
+  - claim: "R15 — narrow codex confirmation of the container-ID cure on head e2f2c8a627: the previous defect is closed, one new narrow defect."
+    cmd: scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: >-
+      codex VERDICT: REWORK. Confirmed closed: exit 75 from the age guard returns before any container-id is written, so cleanup()
+      removes only the work dir and keeps rc 75 (run_drill.sh:191, 284, 297); the startup-sweep 75 precedes WORK_DIR and the traps;
+      success and post-record timeout remove the recorded ID idempotently; the only remove-by-name is the stale reap after the guard
+      (run_drill.sh:199); no set -e/-u or quoting regression; the two structural tests and bash -n pass. NEW DEFECT: a signal,
+      crash or printf failure between docker run --detach (run_drill.sh:200) and the container-id write (:209) leaves the started
+      container unrecorded, so cleanup and the watchdog (:275) skip docker rm and the container keeps port and VM resources until
+      a later run reaps it after the 1 h guard.
+    exit: 0
+    ts: "2026-10-12T02:49:52Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "R16 — final code head e2f2c8a627: the drill tests, the verifier tests, the registry validator, bash -n, actionlint, watcher coverage and merge-tree all pass."
+    cmd: pytest scripts/restore_drill/tests; pytest scripts/tests/test_restore_drill_verify.py; validate_organs_registry.py; bash -n on both shell files; actionlint restore-drill-tests.yml; check_watcher_coverage.py; git merge-tree --write-tree origin/main HEAD
+    result: "30 passed; 24 passed; registry valid; bash -n ok; actionlint 0; watcher: all 131 live workflows covered; merge-tree exit 0"
+    exit: 0
+    ts: "2026-10-12T02:50:25Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
 dissent:
   - seat: kimi-code/k3 (round 1) and codex-gpt-5.6-sol (round 1)
     objection: >-
@@ -250,8 +269,9 @@ dissent:
       75 through the trap.
     status: CONFIRMED
     disposition: >-
-      OPEN DEFECT, reported to the coordinator, not cured here (this round authorised folding verdicts only and no loop).
-      kimi PASSed the same head and did not raise it.
+      Cured in the commit after afafecfa6f (drill_main records the detach ID in $WORK_DIR/container-id; cleanup() and the watchdog
+      remove only that ID; the stale reap is the only remove-by-name and runs after the age guard); codex confirmed on the narrow
+      round, R15. kimi had PASSed the earlier head.
   - seat: codex-gpt-5.6-sol (final council round)
     objection: >-
       Residual: a dead work dir younger than 60 minutes blocks the next drill until it ages out; the run exits 75, a FAILED
@@ -260,3 +280,12 @@ dissent:
     disposition: >-
       RESIDUAL, accepted: the age heuristic is deliberately safety-first (never delete possibly live data) and the cost is one
       alarmed monthly run in the rare crash case. Also noted, not a defect: shellcheck SC1007 on the empty TG_RELAY_SSH= assignment.
+  - seat: codex-gpt-5.6-sol (narrow confirmation, head e2f2c8a627)
+    objection: >-
+      A signal, crash or printf failure in the few lines between docker run --detach and the container-id write leaves a started
+      container unrecorded; cleanup() and the watchdog then skip docker rm, so it keeps the port and VM resources until a later
+      run reaps it after the one-hour guard. The structural tests do not simulate that window.
+    status: CONFIRMED
+    disposition: >-
+      OPEN, reported to the coordinator, not cured here. Codex classed it DEFECT, not residual. A cure would give the container a
+      unique per-run name or label before the run and remove by that label, which also covers the unrecorded window.

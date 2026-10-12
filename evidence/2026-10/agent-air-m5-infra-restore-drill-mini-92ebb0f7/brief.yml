@@ -59,6 +59,9 @@ assumptions:
   - text: A published port bound to 127.0.0.1 inside the Colima VM is reachable from the macOS host.
     status: unverified
     probe: the payload now requires a host-side select 1 before the download is used; the first kickstart proves it.
+  - text: The council reviewed code head e2f2c8a627 (kimi PASS on the earlier df1c4c829a and 8bff319efc heads; codex's last open finding is the unrecorded-container window).
+    status: unverified
+    probe: see pack.yml R14 to R16 and the last dissent entry.
   - text: Gear 3 needs the independent final-gate verdict on the head SHA, commissioned after the last push.
     status: unverified
     probe: gh pr checks <pr> after the verdict is posted.
