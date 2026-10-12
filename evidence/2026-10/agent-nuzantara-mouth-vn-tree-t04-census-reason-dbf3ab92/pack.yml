@@ -1,0 +1,74 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night plan, 2026-10-12 - merges visit-family T04 (findings F013, F034, F086, F102, F125: pins record
+  only state and candidates, so four visit causes and the paid-activity pair were unpinned) and work-family
+  PR-11 (F56, the same defect on seq-27). One test-only PR, no owner decision needed.
+mission: >-
+  The interview-walk census pins WHY every non-SUPPORTED walk ends where it does, on the signed pack and
+  on the funnel the applicant meets, so a swapped cause turns CI red.
+lanes:
+  - lane: vn-tree-t04-census-reason-pins
+    role: build
+    seat: Claude Sonnet 5.5 implementer, worktree mouth-vn-tree-t04-census-reason-pins on the visa-night run.
+pii_scan: clean
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 0
+results:
+  backend_visa_engine_suite: "2963 passed, 15 skipped, 3 failed, 39 errors - every failure and error is a database-schema or missing-dependency item of this scratch environment in test_evaluate_endpoint, test_shadow_evidence, test_shadow_match, test_visa_engine_retention_fk_registry; none touches the census"
+  census_file: "62 passed, 14 skipped (was 53 passed, 14 skipped before the change)"
+  mouth_visa_oracle_vitest: "54 files, 1425 tests passed"
+  mutation: "swapping E33A_SPONSOR_NOT_GOVERNMENT for another code in the pin table turns test_every_non_supported_walk_ends_in_its_pinned_reasons red, naming offshore/other/paid/employer_no; restored"
+bites:
+  consumer: >-
+    the CI backend shard that runs apps/backend-rag/backend/tests/services/visa_engine against the signed
+    pack (test_every_non_supported_walk_ends_in_its_pinned_reasons and its funnel twin), and every future
+    pack fold, which must add its sequence to EXPECTED_REASONS_BY_SEQUENCE or fail
+    test_the_census_pins_the_signed_sequence by name.
+  where: ci
+receipts:
+  - claim: "Baseline on a fresh origin/main (f4027b5766): the census file is green before the change."
+    cmd: cd apps/backend-rag && venv311/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "53 passed, 14 skipped"
+    exit: 0
+    ts: "2026-10-11T23:20:00Z"
+    seat: this session
+  - claim: "The new reason tests fail before the tables exist (TDD red) and pass after."
+    cmd: cd apps/backend-rag && venv311/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -k "reason or signed_sequence"
+    result: "red: 6 failed, 2 passed (NameError on the missing tables); green after the tables: whole file 62 passed, 14 skipped"
+    exit: 0
+    ts: "2026-10-11T23:40:00Z"
+    seat: this session
+  - claim: "Mutation: one wrong code in the pin table is caught by label and by code."
+    cmd: sed -i '' 's/E33A_SPONSOR_NOT_GOVERNMENT"),$/E33A_SPONSOR_NOT_FOREIGN"),/' test_interview_walk_census.py && pytest -k pinned_reasons; then restored from a cp backup
+    result: "offshore/other/paid/employer_no: expected reasons (PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR, E33A_SPONSOR_NOT_FOREIGN), got (PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR, E33A_SPONSOR_NOT_GOVERNMENT)"
+    exit: 1
+    ts: "2026-10-11T23:42:00Z"
+    seat: this session
+  - claim: "The whole visa_engine backend suite with the change; the remaining red items are environmental."
+    cmd: cd apps/backend-rag && venv311/bin/python -m pytest backend/tests/services/visa_engine
+    result: "3 failed, 2963 passed, 15 skipped, 39 errors - 31 errors in test_evaluate_endpoint (relation public.visa_evaluate_idem... does not exist, a scratch Postgres without the migrations), 8 in test_shadow_evidence/test_shadow_match (migration state of that database), 2 failures in test_visa_engine_retention_fk_registry (same database), 1 in test_evaluate_endpoint (the scratch venv lacks the app's full dependency set); no census, walk, corpus or pack test fails"
+    exit: 1
+    ts: "2026-10-11T23:50:00Z"
+    seat: this session
+  - claim: "The whole mouth visa-oracle subtree is green (no tree, corpus or copy changed)."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 54 passed (54); Tests 1425 passed (1425)"
+    exit: 0
+    ts: "2026-10-11T23:53:00Z"
+    seat: this session
+decisions:
+  - id: D-signed-sequence-only
+    decision: >-
+      The reason table is pinned for the signed sequence (27) only, like the dead-end and state tables:
+      a fold adds its own sequence, and test_the_census_pins_the_signed_sequence names the omission.
+  - id: D-order-pinned
+    decision: >-
+      Reason codes are compared as ordered tuples, because the sheet prints them in that order; a reorder is
+      a visible change to the applicant and a reviewer should see it.
+  - id: D-funnel-delta
+    decision: >-
+      The 7 walks a disclosure flag rewrites are a delta over the engine table, so the funnel sheet is pinned
+      whole without restating the 20 rows the flags do not touch.
+dissent: []

@@ -1,0 +1,17 @@
+gear: 2
+gear_reason: >-
+  Size floor and a pinning surface: one backend test file (a reason-code dimension on the walk census)
+  that every future pack fold must satisfy. No tree, corpus, pack, copy, data or pricing change; the
+  blast radius is the census test file.
+mission: >-
+  The interview-walk census pins WHY every non-SUPPORTED walk ends where it does, on the signed pack and
+  on the funnel the applicant meets, so a swapped cause turns CI red.
+objective: >-
+  EXPECTED_REASONS_BY_SEQUENCE (seq-27) names the no-path and review reason codes of all 20 non-SUPPORTED
+  walks, FUNNEL_REASON_CHANGES the 7 walks a disclosure flag rewrites; the 111 SUPPORTED walks must carry
+  no reason; a fold that signs a new sequence without a reason table fails by name.
+scope:
+  - apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 0

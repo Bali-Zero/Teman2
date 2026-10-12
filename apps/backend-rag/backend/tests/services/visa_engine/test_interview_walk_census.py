@@ -1272,6 +1272,85 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = EXPECTED_OUTCOME_BY_S
     _SIGNED_SEQUENCE, {}
 )
 
+#: Visit-family T04 / work-family PR-11 (visa-night, 2026-10-12): the CAUSE
+#: pins. `EXPECTED_OUTCOME` records (state, candidates) only, so a walk could
+#: change WHY it ends without a red pin — F125 named four unpinned no-path
+#: causes (offshore/business, onshore/business, offshore/other/no_paid_activity,
+#: exploring/sponsor_no/no_route) and F56 the paid-activity pair. One row per
+#: walk whose engine state is not SUPPORTED_CANDIDATES, each the pair
+#: (`no_path_reason_codes`, `review_reason_codes`) in the order the sheet prints
+#: them; the rule each code names is the pack's, read back from the evaluated
+#: actual, never re-derived here. SUPPORTED walks carry no row because they must
+#: carry no reason at all (`_reason_violations` checks that half too).
+#:
+#: Pinned for the SIGNED sequence only — a fold adds its own sequence's table
+#: (`test_the_census_pins_the_signed_sequence` names the omission) rather than
+#: being graded against the previous one.
+ReasonPin = tuple[tuple[str, ...], tuple[str, ...]]
+
+_AGE_BELOW_55: ReasonPin = (("AGE_BELOW_55",), ())
+_RETIREMENT_INCOME_BELOW: ReasonPin = (("RETIREMENT_INCOME_BELOW_THRESHOLD",), ())
+_STUDIO_BELOW_THRESHOLD: ReasonPin = ((), ("SECOND_HOME_BELOW_THRESHOLD_STUDIO",))
+_BUSINESS_NO_PATH: ReasonPin = (
+    ("BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED", "AGE_BELOW_55"),
+    (),
+)
+_REMOTE_NO_PATH: ReasonPin = (
+    (
+        "INDONESIAN_EMPLOYER_NOT_ALLOWED",
+        "INDONESIAN_SOURCE_COMPENSATION_BANNED",
+        "E33G_LOCAL_COMPANY_NOT_ALLOWED",
+    ),
+    (),
+)
+_EXPECTED_REASONS_ON_SEQ27: dict[str, ReasonPin] = {
+    "offshore/business": _BUSINESS_NO_PATH,
+    "onshore/business": _BUSINESS_NO_PATH,
+    "offshore/business/exploring/sponsor_no/no_route": (("D12_NOT_CONVERTIBLE",), ()),
+    "offshore/family/PARENT/spNat=IT/minor/guardian=no": ((), ("MINOR_GUARDIAN_PRIVACY_REVIEW",)),
+    "offshore/invest/bank_deposit/below_threshold": _STUDIO_BELOW_THRESHOLD,
+    "offshore/invest/property/below_threshold": _STUDIO_BELOW_THRESHOLD,
+    "offshore/other/no_paid_activity": (("BVK_NATIONALITY_ONLY",), ()),
+    "offshore/other/paid/employer_no": (
+        ("PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR", "E33A_SPONSOR_NOT_GOVERNMENT"),
+        (),
+    ),
+    "offshore/remote": _REMOTE_NO_PATH,
+    "onshore/remote": _REMOTE_NO_PATH,
+    "offshore/retirement/bank_deposit": _AGE_BELOW_55,
+    "offshore/retirement/family_sponsor": _AGE_BELOW_55,
+    "offshore/retirement/passive_income": _AGE_BELOW_55,
+    "offshore/retirement/property": _AGE_BELOW_55,
+    "offshore/retirement/undecided": _AGE_BELOW_55,
+    "onshore/retirement": _AGE_BELOW_55,
+    "offshore/retirement/bank_deposit/age64/income_2999": _RETIREMENT_INCOME_BELOW,
+    "offshore/retirement/family_sponsor/age64/income_2999": _RETIREMENT_INCOME_BELOW,
+    "offshore/retirement/passive_income/age64/income_2999": _RETIREMENT_INCOME_BELOW,
+    # NEEDS_INPUT: the answer is open, so there is no cause to name yet.
+    "offshore/retirement/undecided/age64/still_unsure": ((), ()),
+}
+EXPECTED_REASONS_BY_SEQUENCE: dict[int, dict[str, ReasonPin]] = {
+    27: _EXPECTED_REASONS_ON_SEQ27,
+}
+EXPECTED_REASONS: dict[str, ReasonPin] = EXPECTED_REASONS_BY_SEQUENCE.get(_SIGNED_SEQUENCE, {})
+
+#: The seven walks a disclosure flag rewrites at FUNNEL level (engine
+#: SUPPORTED_CANDIDATES -> the flag's named dead end or review). Their codes are
+#: the flag tables above (`EXPECTED_NO_PATH_REASON_FOR_DEAD_END_FLAG`,
+#: `EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG`) written out per walk, so the sheet
+#: the applicant meets is pinned whole and not only "contains the flag's code".
+_FUNNEL_ACTIVITY_BOUNDARY: ReasonPin = (("DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH",), ())
+FUNNEL_REASON_CHANGES: dict[str, ReasonPin] = {
+    "offshore/invest/family": _FUNNEL_ACTIVITY_BOUNDARY,
+    "offshore/invest/merit": _FUNNEL_ACTIVITY_BOUNDARY,
+    "offshore/invest/merit/currency_usd": _FUNNEL_ACTIVITY_BOUNDARY,
+    "offshore/invest/undecided": _FUNNEL_ACTIVITY_BOUNDARY,
+    "offshore/invest/undecided/currency_still_unsure": _FUNNEL_ACTIVITY_BOUNDARY,
+    "offshore/other/no_paid_activity/medical": _FUNNEL_ACTIVITY_BOUNDARY,
+    "offshore/tourism/disclosed_criminal": ((), ("DISCLOSED_CRIMINAL_RECORD_REVIEW",)),
+}
+FUNNEL_EXPECTED_REASONS: dict[str, ReasonPin] = {**EXPECTED_REASONS, **FUNNEL_REASON_CHANGES}
+
 #: The state distribution, restated as a total so a reviewer sees the shape of
 #: the funnel in one line. Derived from EXPECTED_OUTCOME on purpose: the two
 #: can never disagree, and the wave PRs edit one table, not two.
@@ -1787,6 +1866,40 @@ def _outcome_violations(
             violations.append(
                 f"{label}: expected {want_state} {list(want_candidates)}, got {got[0]} {list(got[1])}"
             )
+    return violations
+
+
+def _reason_violations(
+    outcomes: dict[str, dict[str, Any]],
+    expected: dict[str, ReasonPin],
+) -> list[str]:
+    """Every walk whose (no_path_reason_codes, review_reason_codes) differ from
+    the pinned pair, in order. A SUPPORTED walk has no row and must carry no
+    reason; a non-SUPPORTED walk must have a row; a row must match a
+    non-SUPPORTED walk that still exists."""
+
+    violations: list[str] = []
+    for label in sorted(set(outcomes) | set(expected)):
+        actual = outcomes.get(label)
+        if actual is None:
+            violations.append(f"{label}: reason-pinned but absent from the corpus")
+            continue
+        got: ReasonPin = (
+            tuple(actual.get("no_path_reason_codes", ())),
+            tuple(actual.get("review_reason_codes", ())),
+        )
+        if actual["state"] == "SUPPORTED_CANDIDATES":
+            if label in expected:
+                violations.append(f"{label}: reason-pinned but now SUPPORTED_CANDIDATES")
+            elif got != ((), ()):
+                violations.append(f"{label}: SUPPORTED_CANDIDATES but carries reasons {got}")
+            continue
+        if label not in expected:
+            violations.append(
+                f"{label}: {actual['state']} but its reasons {got} are not pinned in EXPECTED_REASONS"
+            )
+        elif got != expected[label]:
+            violations.append(f"{label}: expected reasons {expected[label]}, got {got}")
     return violations
 
 
@@ -2397,6 +2510,136 @@ def test_every_walk_ends_in_its_pinned_outcome(outcomes: dict[str, dict[str, Any
     assert not violations, "interview-walk outcomes moved:\n  " + "\n  ".join(violations)
 
 
+def test_every_non_supported_walk_ends_in_its_pinned_reasons(
+    outcomes: dict[str, dict[str, Any]],
+) -> None:
+    """The CAUSE half of the census: (state, candidates) says WHERE a walk
+    ends, this says WHY. A walk whose reason drifts to another code (a swapped
+    cause, a Second Home reason, a dropped one) stays green on
+    ``test_every_walk_ends_in_its_pinned_outcome`` and prints a different
+    sentence to a real person; here it is red, by label and by code."""
+
+    violations = _reason_violations(outcomes, EXPECTED_REASONS)
+    assert not violations, "interview-walk reason codes moved:\n  " + "\n  ".join(violations)
+
+
+def test_every_flagged_walk_ends_in_its_pinned_reasons(
+    flagged_outcomes: dict[str, dict[str, Any]],
+) -> None:
+    """The same pin at FUNNEL level — the sheet the applicant meets, with the
+    walk's own disclosure flags applied. The engine pins, overridden by the
+    seven rows a flag rewrites (``FUNNEL_REASON_CHANGES``), and nothing else."""
+
+    violations = _reason_violations(flagged_outcomes, FUNNEL_EXPECTED_REASONS)
+    assert not violations, "funnel reason codes moved:\n  " + "\n  ".join(violations)
+
+
+def test_the_reason_pins_name_the_causes_this_audit_found_unpinned() -> None:
+    """Visit-family F125 / work-family F56: the four visit causes and the
+    paid-activity pair were the unpinned rows. Stated in code so the pin table
+    cannot be emptied to green without a reviewer seeing the label go."""
+
+    assert EXPECTED_REASONS["offshore/business"] == (
+        ("BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED", "AGE_BELOW_55"),
+        (),
+    )
+    assert EXPECTED_REASONS["onshore/business"] == EXPECTED_REASONS["offshore/business"]
+    assert EXPECTED_REASONS["offshore/other/no_paid_activity"] == (("BVK_NATIONALITY_ONLY",), ())
+    assert EXPECTED_REASONS["offshore/business/exploring/sponsor_no/no_route"] == (
+        ("D12_NOT_CONVERTIBLE",),
+        (),
+    )
+    assert EXPECTED_REASONS["offshore/other/paid/employer_no"] == (
+        ("PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR", "E33A_SPONSOR_NOT_GOVERNMENT"),
+        (),
+    )
+
+
+def test_guilt_a_swapped_cause_is_caught(outcomes: dict[str, dict[str, Any]]) -> None:
+    label = "offshore/other/paid/employer_no"
+    swapped = {
+        **outcomes,
+        label: {**outcomes[label], "no_path_reason_codes": ["BVK_NATIONALITY_ONLY"]},
+    }
+    violations = _reason_violations(swapped, EXPECTED_REASONS)
+    assert len(violations) == 1 and violations[0].startswith(label), violations
+
+
+def test_guilt_a_dropped_or_added_cause_is_caught(outcomes: dict[str, dict[str, Any]]) -> None:
+    label = "offshore/business"
+    dropped = {**outcomes, label: {**outcomes[label], "no_path_reason_codes": ["AGE_BELOW_55"]}}
+    assert [v.split(":")[0] for v in _reason_violations(dropped, EXPECTED_REASONS)] == [label]
+    reordered = {
+        **outcomes,
+        label: {
+            **outcomes[label],
+            "no_path_reason_codes": ["AGE_BELOW_55", "BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED"],
+        },
+    }
+    assert [v.split(":")[0] for v in _reason_violations(reordered, EXPECTED_REASONS)] == [label]
+    moved_to_review = {
+        **outcomes,
+        label: {**outcomes[label], "no_path_reason_codes": [], "review_reason_codes": ["X"]},
+    }
+    assert [v.split(":")[0] for v in _reason_violations(moved_to_review, EXPECTED_REASONS)] == [
+        label
+    ]
+
+
+def test_guilt_a_supported_walk_that_gains_a_reason_is_caught(
+    outcomes: dict[str, dict[str, Any]],
+) -> None:
+    supported = next(
+        label
+        for label, actual in sorted(outcomes.items())
+        if actual["state"] == "SUPPORTED_CANDIDATES"
+    )
+    gained = {**outcomes, supported: {**outcomes[supported], "review_reason_codes": ["SOMETHING"]}}
+    assert [v.split(":")[0] for v in _reason_violations(gained, EXPECTED_REASONS)] == [supported]
+
+
+def test_guilt_a_walk_that_leaves_supported_without_a_pin_is_caught(
+    outcomes: dict[str, dict[str, Any]],
+) -> None:
+    supported = next(
+        label
+        for label, actual in sorted(outcomes.items())
+        if actual["state"] == "SUPPORTED_CANDIDATES"
+    )
+    fallen = {
+        **outcomes,
+        supported: {
+            **outcomes[supported],
+            "state": "NO_SUPPORTED_PATH",
+            "no_path_reason_codes": ["NEW_CAUSE"],
+        },
+    }
+    violations = _reason_violations(fallen, EXPECTED_REASONS)
+    assert len(violations) == 1 and "not pinned" in violations[0], violations
+
+
+def test_guilt_a_pinned_walk_that_vanishes_or_turns_supported_is_caught(
+    outcomes: dict[str, dict[str, Any]],
+) -> None:
+    label = "onshore/retirement"
+    gone = {k: v for k, v in outcomes.items() if k != label}
+    assert [v.split(":")[0] for v in _reason_violations(gone, EXPECTED_REASONS)] == [label]
+    cured = {
+        **outcomes,
+        label: {**outcomes[label], "state": "SUPPORTED_CANDIDATES", "no_path_reason_codes": []},
+    }
+    assert [v.split(":")[0] for v in _reason_violations(cured, EXPECTED_REASONS)] == [label]
+
+
+def test_innocence_the_pinned_reasons_are_exactly_the_non_supported_walks(
+    outcomes: dict[str, dict[str, Any]],
+) -> None:
+    assert sorted(EXPECTED_REASONS) == sorted(
+        label for label, actual in outcomes.items() if actual["state"] != "SUPPORTED_CANDIDATES"
+    )
+    assert not _reason_violations(outcomes, EXPECTED_REASONS)
+
+
 def test_the_census_pins_the_signed_sequence() -> None:
     """A newly signed pack with no pins must fail HERE, by name — not as a
     wall of "evaluated but not pinned" rows, and never by quietly grading the
@@ -2410,6 +2653,11 @@ def test_the_census_pins_the_signed_sequence() -> None:
     )
     assert _SIGNED_SEQUENCE in WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE
     assert _SIGNED_SEQUENCE in EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE
+    assert _SIGNED_SEQUENCE in EXPECTED_REASONS_BY_SEQUENCE, (
+        f"rulepack-prod-{_SIGNED_SEQUENCE:03d} is the highest signed pack and the "
+        "census has no REASON pins for it: add the no-path / review reason codes of "
+        "every non-SUPPORTED walk to `EXPECTED_REASONS_BY_SEQUENCE`"
+    )
     # The sequences share one corpus, so they must pin the same walks.
     common_labels = set(_EXPECTED_OUTCOME_ON_SEQ20) | set(_PR11_RETIREMENT_OUTCOMES)
     for sequence, pins in EXPECTED_OUTCOME_BY_SEQUENCE.items():
