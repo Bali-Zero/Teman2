@@ -1,0 +1,30 @@
+task_id: secret-guard-env-dump
+lane: infra
+machine: m5
+date: 2026-10-12
+gear: 2
+gear_reason: |
+  One hook, one new shape, spec + corpus + tests in one place; a deny-guard where over-match and
+  under-match are both costly (superscar #3), so the spec table is the oracle and a fresh gate reads it.
+objective: |
+  A subagent ran `ssh pro 'launchctl print gui/501/<label>'` unfiltered and a valid bot token reached the
+  transcript: `launchctl print` prints the environment block with values, `ps -E`/`ps eww` do the same, and
+  the guard's E64 left every ssh inline command unjudged. Add shape X6 (launchctl print/dumpstate/getenv,
+  ps environment display) and judge X2/X6 inside an ssh inline command, spec first.
+constraints:
+  - "No existing corpus verdict changes; E64 (`ssh pro 'cat STORE'`) stays ALLOW."
+  - "Kill switch, fail-open contract and stdin/exit-code shape unchanged."
+  - "Tests drive the guard through stdin JSON only; no real launchctl print / ps -E is ever run."
+acceptance:
+  - text: "A1: WHEN a Bash command is `launchctl print <target>` / `dumpstate` with no later line-selector stage, THEN the guard exits 2 (E65-E68)."
+    probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
+  - text: "A2: WHEN `launchctl getenv` names a registered secret or `ps` displays the environment (-E, BSD e) without a pure-counter next stage, THEN exit 2 (E69-E72)."
+    probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
+  - text: "A3: WHEN the same dumps sit inside `ssh host '...'`, THEN exit 2 (E73-E76), while `ssh pro 'cat STORE'` stays ALLOW (E64)."
+    probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
+  - text: "A4: WHEN the command is an innocence row (launchctl list/kickstart/bootstrap, selected print, ps -ef, counted ps -E), THEN exit 0 (E77-E95)."
+    probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py infra/claude-hooks/test_hook_innocence.py -p no:cacheprovider"
+  - text: "A5: WHEN X6 or the ssh-inline judging is disabled, THEN the new guilt rows fail (guilt replay)."
+    probe: "disable check, rerun pytest, restore with cp and verify with cmp"
+consumer_map:
+  - "PreToolUse(Bash|Monitor|Read) wiring in .claude/settings.json invokes this hook on every Bash call; hook-innocence-gate.yml runs the vaccine block on every hooks change."

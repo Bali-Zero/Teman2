@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test_secret_expansion_guard.py — the spec's §5 case corpus (E01-E64), run
+"""test_secret_expansion_guard.py — the spec's §5 case corpus (E01-E95), run
 against the real hook as a subprocess exactly as the harness would (JSON on
 stdin, exit 2 = DENY, exit 0 = ALLOW).
 
@@ -29,6 +29,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 HOOK = HERE / "secret_expansion_guard.py"
 
 N = "BAILIAN_TOKEN_PLAN_API_KEY"          # registered explicitly
+N3 = "TELEGRAM_BOT_TOKEN"                 # registered via the _TOKEN$ pattern
 N2 = "ANTHROPIC_API_KEY"                  # registered via the ^ANTHROPIC_ pattern
 STORE = "~/.nuzantara-secrets.env"        # registered secret store
 
@@ -176,6 +177,48 @@ CORPUS: list[tuple[str, object, bool, str]] = [
      "KNOWN BOUNDARY, not an endorsement: judging a remote inline command needs the "
      "read-vs-write distinction of W94 (a remote WRITE stays remote) and that spec "
      "row is not written yet. Pinned so the gap is visible and flips when it is."),
+    # --- 2026-10-12: X6 process/launchd environment dumps, and X2/X6 inside `ssh host '…'`.
+    # A subagent ran an unfiltered `launchctl print` over ssh and a live bot token reached
+    # the transcript. E64 above is UNCHANGED: only X2/X6 are judged in a remote command.
+    ("E65", lambda: bash("launchctl print gui/501/com.x"), True, "X6: service print, unfiltered"),
+    ("E66", lambda: bash("launchctl print gui/$(id -u)/com.x | head -40"), True,
+     "X6: head is a pass-through viewer, not a selector"),
+    ("E67", lambda: bash("launchctl print gui/501"), True, "X6: domain print"),
+    ("E68", lambda: bash("launchctl dumpstate"), True, "X6: dumpstate"),
+    ("E69", lambda: bash(f"launchctl getenv {N3}"), True, "X6: getenv of a registered secret"),
+    ("E70", lambda: bash(f"T=$(launchctl getenv {N3})"), True,
+     "X6: captured into a variable is still the verb on the secret"),
+    ("E71", lambda: bash("ps eww -p 123"), True, "X6: BSD-style e displays the environment"),
+    ("E72", lambda: bash("ps -axE | grep node"), True,
+     "X6: a matched line still carries the whole environment"),
+    ("E73", lambda: bash("ssh pro 'launchctl print gui/501/com.x'"), True, "X6 inside ssh inline"),
+    ("E74", lambda: bash("ssh -o BatchMode=yes -o ConnectTimeout=10 pro "
+                         "'U=$(id -u); launchctl print gui/$U/com.x'"), True,
+     "X6 inside ssh inline, options skipped, remote $(...) tolerated"),
+    ("E75", lambda: bash("ssh pro 'printenv'"), True, "X2 inside ssh inline"),
+    ("E76", lambda: bash("ssh mini 'ps auxe'"), True, "X6 inside ssh inline, BSD flags"),
+    ("E77", lambda: bash("launchctl list"), False, "innocence: no environment"),
+    ("E78", lambda: bash("launchctl list com.x"), False, "innocence"),
+    ("E79", lambda: bash("launchctl print-disabled gui/501"), False, "innocence: not `print`"),
+    ("E80", lambda: bash("launchctl kickstart gui/501/com.x"), False, "innocence"),
+    ("E81", lambda: bash("launchctl bootstrap gui/501 /tmp/x.plist"), False, "innocence"),
+    ("E82", lambda: bash("launchctl blame gui/501/com.x"), False, "innocence"),
+    ("E83", lambda: bash('launchctl print gui/501/com.x | grep -E "state|runs|last exit"'), False,
+     "a line selector bounds the dump"),
+    ("E84", lambda: bash("launchctl print gui/501 | sed -n '/environment/,/}/p' | awk '{print $1}'"),
+     False, "selectors in the chain"),
+    ("E85", lambda: bash("ps aux | grep node"), False, "no environment"),
+    ("E86", lambda: bash("ps -ef"), False, "-e is -A, not -E"),
+    ("E87", lambda: bash("ps -E -p 1 | wc -l"), False, "a pure counter reports no line"),
+    ("E88", lambda: bash("launchctl getenv PATH"), False, "not a registered secret"),
+    ("E89", lambda: bash("ssh pro 'launchctl print gui/501/com.x | grep -E \"state|runs\"'"), False,
+     "selector inside the remote command"),
+    ("E90", lambda: bash("ssh pro 'launchctl list | grep nuzantara'"), False, "innocence"),
+    ("E91", lambda: bash("ssh pro 'set -uo pipefail; ls ~/logs'"), False, "set without xtrace"),
+    ("E92", lambda: bash("ssh pro 'env FOO=1 python3 x.py'"), False, "env sets, does not print"),
+    ("E93", lambda: bash("ps -e"), False, "-e is -A"),
+    ("E94", lambda: bash("ps -A"), False, "innocence"),
+    ("E95", lambda: bash("ps -o pid,command"), False, "innocence: output columns, not env"),
 ]
 
 
