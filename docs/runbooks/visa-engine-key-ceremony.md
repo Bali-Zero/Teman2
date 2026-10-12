@@ -6,9 +6,11 @@ Two Ed25519 signing keypairs were minted for RulePack signing (spec §3,
 `apps/backend-rag/backend/services/visa_engine/bundle.py`). The runtime NEVER
 reads a private key — it only pins **public** keys via the environment
 variable `VISA_ENGINE_TRUST_STORE_KEYS_JSON`, loaded through
-`StaticTrustStore.from_env`. `bundle.py` ships no `sign_pack.py` script by
-design (FIREBREAK — see `bundle.py` module docstring): key generation and
-signing happen only in the offline environment, never in autonomous code.
+`StaticTrustStore.from_env`. `bundle.py` itself ships no signing code by design (FIREBREAK — see
+`bundle.py` module docstring); the offline operator CLI `sign_pack.py` lives
+under `backend/scripts/visa_engine/` (see the FIREBREAK reminder below). Key
+generation and signing happen only in the offline environment, never in
+autonomous code.
 
 ## Keys (public)
 

@@ -25,7 +25,7 @@ objective: >-
   seq-27 digest, and is the highest signed pack on disk, so the evaluator, the gold replay, the review-hold
   inventory and the mouth pin of E33G_ANNUAL_INCOME_THRESHOLD_USD all read seq-28 and are green.
 constraints:
-  - The signed bundle is never edited after signing; no key is touched; nothing is activated by this branch.
+  - The signed payload is never edited after signing (only a formatter-only prettier --write changes the file bytes, payload digest unchanged, recorded in pack.yml); no key is touched; nothing is activated by this branch.
   - The only differences from seq-27 are identity, the 18 portal stamps, the E33E pricing key, the two age filters, the E33G eligibility conjunct and one appended hard filter.
   - Test and fixture edits that follow the new pack (gold persona 1, option matrix remote_work, mouth age pin) change expectations only, never an engine path.
 appetite:

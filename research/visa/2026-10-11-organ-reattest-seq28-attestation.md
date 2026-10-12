@@ -13,7 +13,7 @@ adversarial_review: codex
 # Organ re-attestation 2026-10-11 — candidate seq-28 (unsigned)
 
 The organ read the OFFICIAL_PORTAL pages of the signed seq-27 pack as reader `organ-sonnet-20261011`
-(judge `claude`) and folded `rulepack-prod-028.source.json` from that ledger. Nothing here is
+and folded `rulepack-prod-028.source.json` from that ledger. Nothing here is
 signed or active. `verified_at` of the candidate is the earliest successful read in the ledger.
 
 ## Attested reads used as the fingerprint baseline

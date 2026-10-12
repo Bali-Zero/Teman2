@@ -1,7 +1,7 @@
 # Gear-3 evidence pack - seq-28: the weekly organ's portal re-stamp of seq-27 plus the owner's E33 edits, SIGNED.
 # Pre-signing receipts are the reports of the seats named on each line (Mini clock, 2026-10-11 UTC); the
 # signature is the owning session nuzantara-57's act on M5; the land receipts at the end are this session's
-# own runs on Mini on 2026-10-11 between 23:03Z and 23:12Z, ts read with date -u in the same shell.
+# own runs on Mini on 2026-10-11 between 23:03Z and 23:15Z, ts read with date -u in the same shell.
 gear: 3
 brief_ref: evidence/brief.yml
 pii_scan: clean
