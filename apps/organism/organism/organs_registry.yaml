@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: f381ed5de3fe38ada161130c2469409c5a2f7779eb766d6d087a10f06f110532 # pragma: allowlist secret
+checksum: 4131fc068f09ee5ae41a37fc8899249d4bb00c6b4b641b9a451b21deb49d56be # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3287,7 +3287,7 @@ organs:
     between GREEN/AMBER/RED/BLACK with hysteresis (enter 130/115/105, leave 140/125/112).
     Runs ONLY an allowlist of three host-cache rules (uv cache prune, npm cache verify,
     old ms-playwright revisions not pinned by the .links registry; BLACK adds no rule, it pages), never docker/Colima/VM
-    and never a process kill. Dry-run first (PRO_JANITOR_APPLY=true arms it). Heartbeat ok
+    and never a process kill. Apply armed since rollout step 3 (PRO_JANITOR_APPLY=true). Heartbeat ok
     unless a rule errors or BLACK (warning). pro.disk_floor stays the independent witness
     of the floor. Kill switch PRO_JANITOR_ENABLED=false. Born via organ_birth.py.'
   cicatrix_refs: []

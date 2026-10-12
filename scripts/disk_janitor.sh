@@ -25,8 +25,7 @@
 #             skipped (ERROR) when the open-file probe (lsof) is unavailable or fails (council R5)
 #   logarch   ~/logs/archive/*.gz  (direct children only)       >60 d (log-rotate-run.sh gzips, nothing pruned)
 #   qdrant    scripts/qdrant_backup_retention.sh                  delegated, same --apply mode
-#   tools     uv cache prune (skipped while a uv process holds the lock) · restic cache --cleanup
-#             · brew cleanup --prune=30
+#   tools     restic cache --cleanup · brew cleanup --prune=30   (uv's cache is pro.janitor's, rule uv-prune)
 # These tool steps land in the receipt's "steps" object with their own df -k delta on the Data volume.
 # Docker and the Colima VM are not this janitor's: scripts/localci/prune.py is their one owner (images
 # by explicit tag, never by age; it also trims the guest after every tick). Ruled 2026-10-10.
@@ -55,7 +54,7 @@ CODEX_DAYS="${DISK_JANITOR_CODEX_DAYS:-14}"
 LOG_ARCHIVE_DAYS="${DISK_JANITOR_LOG_ARCHIVE_DAYS:-60}"
 TOOLS="${DISK_JANITOR_TOOLS:-true}"
 LSOF="${DISK_JANITOR_LSOF:-lsof}"
-CACHE_TIMEOUT="${DISK_JANITOR_CACHE_TIMEOUT-600}"   # uv, restic, brew
+CACHE_TIMEOUT="${DISK_JANITOR_CACHE_TIMEOUT-600}"   # restic, brew
 DF_PATH="${DISK_JANITOR_DF_PATH:-/System/Volumes/Data}"; [ -d "$DF_PATH" ] || DF_PATH=/
 QDRANT_RETENTION="${DISK_JANITOR_QDRANT_RETENTION-$(cd "$(dirname "$0")" && pwd)/qdrant_backup_retention.sh}"
 
@@ -296,20 +295,11 @@ timeout_or() { [ "$2" -eq 124 ] && echo "$3" || echo "$1"; }   # $1 reason, $2 r
 # ── tool caches: only real tools, only their own safe prune verbs ───────────────
 TOOLS_DONE=""; TOOLS_SEEN=""
 if [ "$TOOLS" = "true" ]; then
-  for t in uv brew restic; do command -v "$t" >/dev/null 2>&1 && TOOLS_SEEN="$TOOLS_SEEN $t"; done
+  for t in brew restic; do command -v "$t" >/dev/null 2>&1 && TOOLS_SEEN="$TOOLS_SEEN $t"; done
   # Every external verb below runs through bounded() (a real deadline, TERM then KILL): a daily job
   # hung on one tool would skip every later day behind the wrapper's live-lock (status=warn) instead
   # of failing once, visibly. A timed-out step is an error with a named reason; later steps still run.
-  # uv_cache_prune (skipped while a uv process holds the cache lock)
-  step_begin
-  if ! command -v uv >/dev/null 2>&1; then step_end uv_cache_prune skipped uv-absent
-  elif pgrep -x uv >/dev/null 2>&1; then step_end uv_cache_prune skipped uv-lock-held
-  elif ! $APPLY; then step_end uv_cache_prune dry-run
-  else
-    bounded "$CACHE_TIMEOUT" uv cache prune >/dev/null 2>&1; rc=$?
-    if [ "$rc" -eq 0 ]; then S_N=1; TOOLS_DONE="$TOOLS_DONE uv"; step_end uv_cache_prune "done"
-    else ERRORS=$((ERRORS + 1)); step_end uv_cache_prune error "$(timeout_or prune-failed "$rc" prune-timeout)"; fi
-  fi
+  # uv's cache belongs to pro.janitor (rule uv-prune) since its rollout step 3
   # restic_cache_cleanup: removes only cache dirs restic itself considers stale; no repo needed
   step_begin
   if ! command -v restic >/dev/null 2>&1; then step_end restic_cache_cleanup skipped restic-absent

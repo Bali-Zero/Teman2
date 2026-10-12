@@ -15,7 +15,7 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
-        <key>PRO_JANITOR_APPLY</key><string>false</string>
+        <key>PRO_JANITOR_APPLY</key><string>true</string>
     </dict>
     <key>StandardOutPath</key><string>/Users/nuzantara/logs/pro-janitor/launchd.out</string>
     <key>StandardErrorPath</key><string>/Users/nuzantara/logs/pro-janitor/launchd.err</string>

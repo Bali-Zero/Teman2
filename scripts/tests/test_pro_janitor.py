@@ -66,6 +66,7 @@ class Box:
         self.uv = self.tool("uv")
         self.npm = self.tool("npm")
         self.lsof = self.fake_lsof()
+        self.pgrep = self.tool("pgrep", rc=1, record=False)   # no uv process alive: the host's own uv never decides a test
 
     def tool(self, name, rc=0, body="", record=True):
         p = self.bin / name
@@ -102,7 +103,7 @@ class Box:
         e = {"PATH": "/usr/bin:/bin", "PRO_JANITOR_HOME": str(self.home), "PRO_JANITOR_STATE_DIR": str(self.state),
              "PRO_JANITOR_JOURNAL": str(self.journal), "PRO_JANITOR_NOW": str(now),
              "PRO_JANITOR_UV": str(self.uv), "PRO_JANITOR_NPM": str(self.npm), "PRO_JANITOR_LSOF": str(self.lsof),
-             "PRO_JANITOR_FREE_GB_SEQ": seq, "PRO_JANITOR_TOOL_TIMEOUT": "20", "PRO_JANITOR_TMP": str(self.tmp)}
+             "PRO_JANITOR_PGREP": str(self.pgrep), "PRO_JANITOR_FREE_GB_SEQ": seq, "PRO_JANITOR_TOOL_TIMEOUT": "20", "PRO_JANITOR_TMP": str(self.tmp)}
         if apply:
             e["PRO_JANITOR_APPLY"] = "true"
         e.update(env)
@@ -124,6 +125,15 @@ class Box:
 @pytest.fixture
 def box(tmp_path):
     return Box(tmp_path)
+
+
+@pytest.fixture(autouse=True)
+def no_live_uv(tmp_path, monkeypatch):
+    """In-process Env() reads PRO_JANITOR_PGREP from the environment: pin it to a fake so the host's own uv never decides."""
+    fake = tmp_path / "pgrep-none"
+    fake.write_text("#!/bin/sh\nexit 1\n")
+    fake.chmod(0o755)
+    monkeypatch.setenv("PRO_JANITOR_PGREP", str(fake))
 
 
 def mk(path: Path, age_days: float, files=("data.bin",), now=NOW, size=10):
@@ -825,6 +835,70 @@ def test_a_missing_tool_is_an_error(box):
     assert r.returncode == 10 and box.rules()["uv-prune"]["status"] == "error:tool-missing"
 
 
+def test_a_missing_tool_cools_down_and_does_not_error_every_tick(box):
+    box.run("125", apply=True, PRO_JANITOR_UV=str(box.bin / "nope"))
+    assert box.cooldowns()["uv-prune"] == NOW
+    box.run("125", apply=True, now=NOW + 600, PRO_JANITOR_UV=str(box.bin / "nope"))
+    assert "uv-prune" not in box.rules()   # still in its 6 h cooldown: not retried, not re-paged
+
+
+@pytest.mark.parametrize("link", ["_cacache", "_cacache/content-v2", "_cacache/index-v5", "_cacache/tmp"])
+def test_npm_never_runs_when_a_link_in_its_cache_leaves_the_cache(box, link):
+    outside = box.tmp / "outside"
+    (outside / "keep").mkdir(parents=True)
+    (outside / "keep" / "data").write_text("x")
+    target = box.home / ".npm" / link
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.symlink_to(outside)
+    r = box.run("125", apply=True)
+    assert r.returncode == 0 and box.rules()["npm-verify"]["status"] == "skipped:link-escapes-cache"
+    assert box.rules()["npm-verify"]["link_escape"] == link
+    assert not any(c.startswith("npm ") for c in box.calls()) and (outside / "keep" / "data").exists()
+
+
+def test_the_link_scan_reaches_depth_three_and_no_further(box, tmp_path):
+    root = Path(pj.safe_realpath(str(box.home / ".npm")))
+    outside = tmp_path / "away"
+    outside.mkdir()
+    (root / "a" / "b").mkdir(parents=True)
+    (root / "a" / "b" / "c").symlink_to(outside)              # depth 3: seen
+    assert pj.link_escape(str(root)) == os.path.join("a", "b", "c")
+    (root / "a" / "b" / "c").unlink()
+    (root / "a" / "b" / "c").mkdir()
+    (root / "a" / "b" / "c" / "d").symlink_to(outside)        # depth 4: beyond the declared scan (a stated residual)
+    assert pj.link_escape(str(root)) is None
+
+
+def test_an_unreadable_level_of_the_cache_refuses_the_rule(box):
+    locked = box.home / ".npm" / "_cacache"
+    locked.mkdir()
+    locked.chmod(0)
+    try:
+        r = box.run("125", apply=True)
+        assert r.returncode == 0 and box.rules()["npm-verify"]["status"] == "skipped:link-escapes-cache"
+        assert box.rules()["npm-verify"]["link_escape"] == "unreadable:_cacache"
+        assert not any(c.startswith("npm ") for c in box.calls())
+    finally:
+        locked.chmod(0o755)
+
+
+def test_a_link_that_stays_inside_the_cache_does_not_stop_the_tool(box):
+    inner = box.home / ".cache" / "uv" / "archive-v0" / "abc"
+    inner.mkdir(parents=True)
+    (box.home / ".cache" / "uv" / "wheels-v5").mkdir()
+    (box.home / ".cache" / "uv" / "wheels-v5" / "pkg").symlink_to(inner)   # uv's own layout: wheels link into archive
+    box.run("125", apply=True)
+    assert box.rules()["uv-prune"]["status"] == "done" and any(c.startswith("uv ") for c in box.calls())
+
+
+@pytest.mark.parametrize("rc,why", [(0, "a uv process is alive"), (2, "the probe itself failed: fail closed")])
+def test_uv_prune_waits_while_uv_runs_or_cannot_be_ruled_out(box, rc, why):
+    box.pgrep = box.tool("pgrep", rc=rc, record=False)
+    r = box.run("125", apply=True)
+    assert r.returncode == 0 and box.rules()["uv-prune"]["status"] == "skipped:uv-in-use", why
+    assert not any(c.startswith("uv ") for c in box.calls()) and box.rules()["npm-verify"]["status"] == "done"
+
+
 # ---------------------------------------------------------------- config
 
 @pytest.mark.parametrize("env", [{"PRO_JANITOR_NOW": "abc"}, {"PRO_JANITOR_NOW": "nan"}, {"PRO_JANITOR_NOW": "inf"},
@@ -907,11 +981,11 @@ def test_wrapper_ignores_a_pidfile_whose_live_pid_is_not_a_janitor(tmp_path):
     assert hb["status"] == "ok" and "tier=GREEN" in hb["note"]
 
 
-def test_plist_is_a_dry_run_one_shot_with_no_keepalive():
+def test_plist_is_an_apply_one_shot_with_no_keepalive():
     pl = plistlib.loads(PLIST.read_bytes())
     assert pl["StartInterval"] == 600 and pl["RunAtLoad"] is True and "KeepAlive" not in pl
     assert pl["ProcessType"] == "Background" and pl["LowPriorityIO"] is True   # a 10-minute I/O scanner on a workstation
-    assert pl["EnvironmentVariables"]["PRO_JANITOR_APPLY"] == "false"
+    assert pl["EnvironmentVariables"]["PRO_JANITOR_APPLY"] == "true"   # rollout step 3: apply is armed
     assert pl["EnvironmentVariables"]["PATH"] == "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
     assert pl["ProgramArguments"] == ["/bin/bash", "/Users/nuzantara/scripts/pro-janitor.sh"]
     assert pl["StandardOutPath"].startswith("/Users/nuzantara/logs/pro-janitor/")
