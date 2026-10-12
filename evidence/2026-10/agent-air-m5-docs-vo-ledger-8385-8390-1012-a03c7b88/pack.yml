@@ -56,4 +56,20 @@ decisions:
     decision: >-
       #8390's real observation is the visa_engine suite staying green on main after the 2026-10-18T18:00Z organ ledger lands,
       so it is an open PENDING-ARMS row, appended once, with owner and proof-of-armed.
-dissent: []
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T23-30-44-01a130bc-d47a-7a81-a2b4-ec34fbd5773c.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM: brief_ref evidence/brief.yml does not resolve to a file on disk."
+    status: RETRACTED
+    disposition: "False positive: repo convention requires brief_ref evidence/brief.yml, staged there only during lint and removed after; Codex linted without staging it. No change; lint run with staging ends clean."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T23-30-44-01a130bc-d47a-7a81-a2b4-ec34fbd5773c.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM: the post-organ PENDING-ARMS row accepts green on the organ PR, weakening the post-merge purpose, and the test does not catch it."
+    status: RETRACTED
+    disposition: "Cured in the fix commit after f13c50ad: proof-of-armed now counts only main after the organ ledger merged, pins d00c73dd48 as ancestor and the exact observer command; the test pins ledger path, SHA, prove-live id, main-only wording, absence of the fail-open wording and the observer command."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T23-30-44-01a130bc-d47a-7a81-a2b4-ec34fbd5773c.jsonl, model verified in the rollout file)"
+    objection: "LOW: live-state-log claims every spelling of the threshold while only 60 thousand and 60 ribu are covered."
+    status: RETRACTED
+    disposition: "Cured in the fix commit: wording now names the EN 60 thousand and ID 60 ribu variants."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T23-30-44-01a130bc-d47a-7a81-a2b4-ec34fbd5773c.jsonl, model verified in the rollout file)"
+    objection: "LOW: the F1-F3 test does not check the prove-live identifier."
+    status: RETRACTED
+    disposition: "Cured in the fix commit: test asserts issuecomment-6127011575 in the row."

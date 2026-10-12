@@ -129,6 +129,7 @@ def test_f1_f3_row_is_closed_by_8385_with_its_proof():
         assert k in row, k
     assert row.startswith("- closed 2026-10-12")
     assert "CLOSED BY #8385" in row and "bc35468022" in row
+    assert "issuecomment-6127011575" in row
     assert "pending-on-merge" not in row
     assert "MIN_TESTS 9" in row and "MIN_TESTS 8" not in row
 
@@ -140,6 +141,12 @@ def test_8390_post_organ_row_appears_once_open_with_owner_and_proof():
     assert row.startswith("- opened 2026-10-12")
     assert "owner: me" in row and "proof-of-armed:" in row
     assert "2026-10-18T18:00Z" in row
+    assert "d00c73dd48" in row and "issuecomment-6127248185" in row
+    assert "only main after the organ's ledger has merged counts" in row
+    assert "not the organ's PR" in row
+    assert "on the organ's PR or" not in row
+    assert "python3 scripts/ci/observe_visa_seq28_signed.py" in row
+    assert "research/visa/2026-10-11-organ-reattest-seq28" in row
 
 
 def test_seq29_row_pins_owner_deadline_and_proof():

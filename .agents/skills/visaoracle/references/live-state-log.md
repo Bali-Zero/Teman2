@@ -8,7 +8,7 @@ CURRENT POSITION block in SKILL.md in the same commit.
 Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE STATE — CURRENT POSITION.
 
 - 2026-10-12 (M5, visaoracle E33 lane, ledger after #8385 and #8390; recorded ~15:30Z): **F1-F3 closed, the post-organ seq-28 observation opened, seq-29 signing authorized.**
-  (1) #8385 (E33G income-question tests check every category and every spelling of the threshold, observer floor to the real
+  (1) #8385 (E33G income-question tests check every category and the EN `60 thousand` and ID `60 ribu` variants of the threshold, observer floor to the real
   count; F1-F3 of #8287's gate) merged 2026-10-12T15:04:51Z as `bc35468022`, proven live at
   https://github.com/Bali-Zero/Teman2/pull/8385#issuecomment-6127011575; the F1-F3 PENDING-ARMS row is CLOSED BY #8385.
   (2) #8390 (the seq-28 pack tests fold the ledger that produced seq-28, `research/visa/2026-10-11-organ-reattest-seq28`,
