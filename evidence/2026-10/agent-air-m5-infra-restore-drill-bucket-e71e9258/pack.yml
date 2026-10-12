@@ -4,7 +4,8 @@ ruling: >-
   Installing mini.restore_drill (#8308) on Mini on 2026-10-12 showed the first scheduled run could never
   reach a verdict: the wrapper sources ~/.nuzantara-secrets.env with `set -a`, that file exports a generic
   TIGRIS_BUCKET naming the app's media bucket (no postgres/ prefix), and run_drill.sh read the generic name.
-  The retired workflow had pinned TIGRIS_BUCKET=nuzantara-backups literally, so the bug only exists on Mini.
+  The retired workflow pinned TIGRIS_BUCKET=nuzantara-backups literally (e1b328af52^:.github/workflows/restore-drill.yml:70),
+  so the bug only exists on Mini.
   The same AWS_* credentials list nuzantara-backups/postgres/ from Mini (measured this session; latest dump
   2026-10-12 03:05, 458 MB). Separately, Homebrew awscli on Mini was broken (missing libaws-c-s3 dylib behind
   a python@3.14 pin) and was repaired on the host, outside this diff.
