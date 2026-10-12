@@ -201,3 +201,123 @@ def test_the_repo_itself_passes_and_the_sweep_is_not_empty(monkeypatch):
     # would mean the walker silently stopped (the count IS the control).
     assert scanned > 50, f"only {scanned} jobs scanned — the sweep is not reaching the corpus"
     assert found == [], found
+
+
+# --------------------------------------------------------------------------
+# MUTATION-SWEEP PINS (2026-10-12) — contract is the module docstring:
+# flag only (checkout step by `uses`) AND (declared int timeout) AND (< floor).
+# --------------------------------------------------------------------------
+
+
+def _job(timeout_line: str, step: str = "- uses: actions/checkout@v7") -> str:
+    return f"""
+name: x
+on: [pull_request]
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+{timeout_line}
+    steps:
+      {step}
+"""
+
+
+def test_non_mapping_workflow_documents_are_skipped_without_crash(tmp_path):
+    d = write(tmp_path, "list.yml", "- a\n- b\n")
+    write(tmp_path, "scalar.yml", "just a string\n")
+    write(tmp_path, "good.yml", CHECKOUT_JOB.format(t=2))
+    found, bad, scanned = mod.offenders(d)
+    assert bad == []
+    assert scanned == 1
+    assert found == [("good.yml", "guard", 2)]
+
+
+def test_non_mapping_job_values_are_skipped_and_not_counted(tmp_path):
+    d = write(
+        tmp_path,
+        "w.yml",
+        """
+jobs:
+  empty:
+  scalar: nope
+  real:
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v7
+""",
+    )
+    found, _, scanned = mod.offenders(d)
+    assert scanned == 1
+    assert found == [("w.yml", "real", 3)]
+
+
+def test_file_without_jobs_key_scans_zero(tmp_path):
+    d = write(tmp_path, "w.yml", "name: x\non: [push]\n")
+    assert mod.offenders(d) == ([], [], 0)
+
+
+@pytest.mark.parametrize(
+    "timeout_line",
+    [
+        "    timeout-minutes: ${{ fromJSON(vars.T) }}",
+        "    timeout-minutes: true",
+        '    timeout-minutes: "2"',
+        "    timeout-minutes: 2.5",
+    ],
+)
+def test_a_non_integer_timeout_is_out_of_scope_not_flagged(tmp_path, timeout_line):
+    d = write(tmp_path, "w.yml", _job(timeout_line))
+    found, _, scanned = mod.offenders(d)
+    assert scanned == 1
+    assert found == []
+
+
+def test_checkout_is_judged_by_the_uses_key_not_by_text(tmp_path):
+    d = write(tmp_path, "w.yml", _job("    timeout-minutes: 2", "- run: echo actions/checkout"))
+    assert mod.offenders(d)[0] == []
+    d2 = write(tmp_path, "pinned.yml", _job("    timeout-minutes: 2", "- uses: actions/checkout@0123abcd"))
+    assert [f[0] for f in mod.offenders(d2)[0]] == ["pinned.yml"]
+
+
+def test_a_job_with_null_steps_is_not_flagged_and_does_not_crash(tmp_path):
+    d = write(tmp_path, "w.yml", "jobs:\n  a:\n    timeout-minutes: 2\n    steps:\n")
+    found, _, scanned = mod.offenders(d)
+    assert (found, scanned) == ([], 1)
+
+
+def test_yaml_extension_is_scanned_too(tmp_path):
+    d = write(tmp_path, "w.yaml", CHECKOUT_JOB.format(t=1))
+    assert mod.offenders(d)[0] == [("w.yaml", "guard", 1)]
+
+
+def test_main_reports_each_offender_and_exits_one(tmp_path, monkeypatch, capsys):
+    root = write(tmp_path, "a.yml", CHECKOUT_JOB.format(t=2))
+    write(tmp_path, "b.yml", CHECKOUT_JOB.format(t=4))
+    write(tmp_path, "c.yml", CHECKOUT_JOB.format(t=15))
+    monkeypatch.setattr(sys, "argv", ["lint", "--root", str(root)])
+    assert mod.main() == 1
+    cap = capsys.readouterr()
+    assert "2 job(s) budget the CHECKOUT out of existence (floor 10m, 3 jobs scanned):" in cap.err
+    assert "  a.yml::guard  timeout-minutes: 2" in cap.err
+    assert "  b.yml::guard  timeout-minutes: 4" in cap.err
+    assert "c.yml" not in cap.err
+    assert cap.out == ""
+
+
+def test_main_clean_exits_zero_with_counts_on_stdout(tmp_path, monkeypatch, capsys):
+    root = write(tmp_path, "a.yml", CHECKOUT_JOB.format(t=10))
+    write(tmp_path, "b.yml", NO_CHECKOUT_JOB)
+    monkeypatch.setattr(sys, "argv", ["lint", "--root", str(root)])
+    assert mod.main() == 0
+    cap = capsys.readouterr()
+    assert cap.out.strip() == "workflow timeout floor: clean (2 jobs scanned, floor 10m)"
+    assert cap.err == ""
+
+
+def test_unparseable_file_wins_over_a_real_offender(tmp_path, monkeypatch, capsys):
+    """Cannot-verify (2) outranks finding (1): a sweep that could not read a
+    workflow must not pretend its verdict on the others is complete."""
+    root = write(tmp_path, "a.yml", CHECKOUT_JOB.format(t=2))
+    write(tmp_path, "broken.yml", "jobs:\n  a:\n   - [unclosed\n")
+    monkeypatch.setattr(sys, "argv", ["lint", "--root", str(root)])
+    assert mod.main() == 2
