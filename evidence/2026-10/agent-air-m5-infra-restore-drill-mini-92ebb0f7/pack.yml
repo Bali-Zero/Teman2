@@ -35,7 +35,7 @@ bites: >-
   be made by the shipping session after the wrapper and plist are installed on Mini (declared pairs): a manual
   launchctl kickstart of com.nuzantara.restore-drill the same day, ending in a Level-5 PASS verdict in
   ~/logs/mini-restore_drill/run.log, ~/.organism/last_seen/mini.restore_drill.json reading ok, and a digest in Telegram.
-  Not yet made: this pack records the pre-merge state at final code head e2f2c8a627, and the narrow codex confirmation still lists one open defect.
+  Not yet made: this pack records the pre-merge state at final code head ac83ed8a25; codex's last narrow confirmation lists two points recorded as accepted residuals.
 decisions:
   - id: D-derive-roles-from-the-dump
     decision: >-
@@ -173,11 +173,28 @@ receipts:
     exit: 0
     ts: "2026-10-12T02:49:52Z"
     seat: codex-gpt-5.6-sol
-  - claim: "R16 — final code head e2f2c8a627: the drill tests, the verifier tests, the registry validator, bash -n, actionlint, watcher coverage and merge-tree all pass."
+  - claim: "R16 — code head e2f2c8a627 (superseded by R18): the drill tests, the verifier tests, the registry validator, bash -n, actionlint, watcher coverage and merge-tree all pass."
     cmd: pytest scripts/restore_drill/tests; pytest scripts/tests/test_restore_drill_verify.py; validate_organs_registry.py; bash -n on both shell files; actionlint restore-drill-tests.yml; check_watcher_coverage.py; git merge-tree --write-tree origin/main HEAD
     result: "30 passed; 24 passed; registry valid; bash -n ok; actionlint 0; watcher: all 131 live workflows covered; merge-tree exit 0"
     exit: 0
     ts: "2026-10-12T02:50:25Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R17 — final narrow codex confirmation on code head ac83ed8a25 (per-run label ownership): the unrecorded-container window is closed; two points raised."
+    cmd: scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: >-
+      codex VERDICT: REWORK. Confirmed: (a) the docker run to ID-write window is closed (label present at creation, nothing to
+      record); (b) exit 75 survives the EXIT trap without removing the younger container; (d) success, timeout, TERM/INT, quoting,
+      set -u and an empty valid result are correct, bash -n passes. Raised, recorded below as accepted residuals by the
+      coordinator's ruling at the fix-of-a-fix bound: docker ps failure hidden by 2>/dev/null inside the for-substitution
+      (run_drill.sh:43); mktemp basename reuse after the sweep deletes a stale dir (run_drill.sh:36-43).
+    exit: 0
+    ts: "2026-10-12T03:01:22Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "R18 — final code head ac83ed8a25: drill tests, verifier tests, registry validator, bash -n, actionlint, watcher coverage and merge-tree all pass."
+    cmd: pytest scripts/restore_drill/tests; pytest scripts/tests/test_restore_drill_verify.py; validate_organs_registry.py; bash -n; actionlint restore-drill-tests.yml; check_watcher_coverage.py; git merge-tree --write-tree origin/main HEAD
+    result: "30 passed; 24 passed; registry valid; bash -n ok; actionlint 0; watcher: all 131 live workflows covered; merge-tree exit 0"
+    exit: 0
+    ts: "2026-10-12T03:01:33Z"
     seat: Claude Opus 5.5 (orchestrator, M5)
 dissent:
   - seat: kimi-code/k3 (round 1) and codex-gpt-5.6-sol (round 1)
@@ -287,5 +304,31 @@ dissent:
       run reaps it after the one-hour guard. The structural tests do not simulate that window.
     status: CONFIRMED
     disposition: >-
-      OPEN, reported to the coordinator, not cured here. Codex classed it DEFECT, not residual. A cure would give the container a
-      unique per-run name or label before the run and remove by that label, which also covers the unrecorded window.
+      Cured at ac83ed8a25 (per-run label attached at creation, ID file removed); confirmed by codex in R17 (a) and (b).
+  - seat: codex-gpt-5.6-sol (final narrow confirmation, head ac83ed8a25) — ACCEPTED RESIDUAL 1
+    objection: >-
+      Codex text, verbatim: "DEFECT — scripts/restore_drill/run_drill.sh:43. Un errore di docker ps viene nascosto da 2>/dev/null;
+      dentro for ... in $(...) il suo stato non raggiunge set -e. La funzione ritorna 0, quindi un drill riuscito può uscire verde
+      lasciando il container con dati restaurati sulla VM condivisa."
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED RESIDUAL by the coordinator's ruling at the Builder Contract fix-of-a-fix bound (no further code round). Codex itself
+      classed it DEFECT, so the owner should know: when docker ps fails during cleanup the removal of the drill container is skipped
+      silently. Mitigations that exist: the container is --rm, and the next run reaps it after the one-hour age guard.
+  - seat: codex-gpt-5.6-sol (final narrow confirmation, head ac83ed8a25) — ACCEPTED RESIDUAL 2
+    objection: >-
+      Codex text, verbatim: "DEFECT — scripts/restore_drill/run_drill.sh:36-43. Il basename prodotto da mktemp è unico solo mentre il
+      path esiste, non nel tempo. Dopo lo sweep che cancella una directory stale, mktemp può riutilizzare il suffisso mentre un
+      vecchio container conserva ancora la stessa label. Il filtro può quindi selezionare un container appartenente a un'altra
+      esecuzione; selezionerebbe inoltre qualunque altro job che applicasse quella stessa coppia key/value."
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED RESIDUAL by the coordinator's ruling at the fix-of-a-fix bound. Codex classed it DEFECT. Bound: the stale reap
+      removes the old container by name before creation, a reused suffix needs both a deleted stale dir and a surviving container
+      with the same random mktemp suffix, and the label key is specific to this job.
+  - seat: codex-gpt-5.6-sol (final narrow confirmation, head ac83ed8a25) — ACCEPTED RESIDUAL 3
+    objection: >-
+      Codex text, verbatim: "RESIDUAL — run_drill.sh:23-26,274-281. Un SIGKILL/power loss che elimina anche il watchdog può
+      lasciare il container fino al successivo reap. È esplicitamente documentato e delimitato dalla policy stale."
+    status: PLAUSIBLE
+    disposition: Accepted residual, as documented in the script; the one-hour stale reap bounds it.
