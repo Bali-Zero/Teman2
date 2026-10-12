@@ -208,6 +208,27 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     });
   });
 
+  it("writes the four seq-29 exclusion sentences in both languages, each naming its product and its figure", () => {
+    const copy = SUPPORT_REASON_COPY;
+    for (const [code, product] of [
+      ["A1_NOT_CONVERTIBLE", "(A1)"],
+      ["E31D_REQ_SPONSOR_INDONESIAN", "(E31D)"],
+      ["E31J_REQ_UNDER_18", "(E31J)"],
+      ["E31J_REQ_UNMARRIED", "(E31J)"],
+    ] as const) {
+      expect(copy[code].en).toContain(product);
+      expect(copy[code].id).toContain(product);
+      expect(copy[code].en).not.toBe(copy[code].id);
+    }
+    expect(copy.E31J_REQ_UNDER_18.en).toContain("under 18");
+    expect(copy.E31J_REQ_UNDER_18.id).toContain("18 tahun");
+    expect(copy.E31J_REQ_UNMARRIED.en).toContain("never married");
+    expect(copy.E31J_REQ_UNMARRIED.id).toContain("belum menikah");
+    // the E31E sentences stay the E31E sentences
+    expect(copy.REQ_UNDER_18.en).toContain("(E31E)");
+    expect(copy.E31J_REQ_UNDER_18.en).not.toContain("(E31E)");
+  });
+
   it("never offers a combined property-and-deposit route in Second Home or E33 copy", () => {
     const copy = REVIEW_REASON_COPY[SECOND_HOME_STUDIO_REVIEW_REASON_CODE];
     expect(copy.en).not.toMatch(/combination/i);
