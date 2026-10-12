@@ -8,8 +8,8 @@ ruling: >-
   Zero via nuzantara-57, 2026-10-12T06:55Z - the signing session signs and activates seq-29; the builder brings
   it to READY-TO-SIGN.
 mission: >-
-  seq-29 = signed seq-28 (payload a23a5bf5) plus E31J minor and never-married gate, E31D Indonesian step-parent gate,
-  E28F foreign-parent conjunct and the E31E reasons scoped to the PARENT relation. 116 rules (114 + 3 - 1),
+  seq-29 = signed seq-28 (payload a23a5bf5) plus E31J minor and never-married gate (Another status held for review), E31D Indonesian step-parent gate,
+  E28F foreign-parent conjunct and the E31E reasons scoped to the PARENT relation. 117 rules (114 + 4 - 1),
   38 products unchanged, 28 source records unchanged. Dry-run payload_sha256 below; it changes when the fold is
   re-run on the new organ ledger.
 lanes:
@@ -35,27 +35,27 @@ bites:
 receipts:
   - claim: The dry-run fold re-proves that the 2026-10-11 ledger plus the seq-28 content edits reproduce signed seq-28 from signed seq-27 byte for byte, then applies the seq-29 edits with seq-28 stamps unchanged.
     cmd: PYTHONPATH=. python -m backend.scripts.visa_engine.fold_pack_seq29 --ledger-dir ../../research/visa/2026-10-11-organ-reattest-seq28 --dry-run-reuse-anchor-ledger --output backend/services/visa_engine/contracts/packs/rulepack-prod-029.source.json
-    result: "mode DRY RUN; seq-29 payload_sha256 221b31d46768c08b6181aa4eab5bca14421b72d31c8242595adb5afba16e28f6; modified el.e28f.ikn-subsidiary, hf.e31e-adult-excluded, hf.e31e-married-excluded; inserted hf.e31d-sponsor-not-indonesian, hf.e31j-adult-excluded, hf.e31j-married-excluded; retired el.e31j-dependency-age" # pragma: allowlist secret
+    result: "mode DRY RUN; seq-29 payload_sha256 54ea67a2975259613e89f9d30b879b864861bd48d3ef27a4085f7c257e4da81b; modified el.e28f.ikn-subsidiary, hf.e31e-adult-excluded, hf.e31e-married-excluded; inserted hf.e31d-sponsor-not-indonesian, hf.e31j-adult-excluded, hf.e31j-married-excluded, review.e31j-marital-status-other; retired el.e31j-dependency-age" # pragma: allowlist secret
     exit: 0
     ts: "2026-10-12T08:58:00Z"
     seat: Claude Sonnet 5.5 (implementer)
   - claim: The seq-29 pack gate - guilt and innocence witnesses for each item, builder refusals, ledger checks, every gold persona replayed on the candidate; the four signed-bundle tests skip because nothing is signed.
     cmd: PYTHONPATH=. python -m pytest backend/tests/services/visa_engine/test_seq29_pack.py -p no:cacheprovider
-    result: "51 passed, 5 skipped (the four signed-bundle ties and the signed-gate), 1 xfailed (the hand-off marker: the source is still the dry-run)"
+    result: "55 passed, 5 skipped (the four signed-bundle ties and the signed-gate), 1 xfailed (the hand-off marker: the source is still the dry-run)"
     exit: 0
     ts: "2026-10-12T09:03:00Z"
     seat: Claude Sonnet 5.5 (implementer)
   - claim: Walk census on the candidate - the corpus grows 131 to 132 (a minor sibling keeps E31J named), five walks lose a product, no state moves, and the unreached-product guard accepts E28F depending on the E28D qualifying fact.
     cmd: PYTHONPATH=. python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -p no:cacheprovider
-    result: "71 passed (run before the A1 and E30 items were moved out; re-proved in the whole-suite run below)"
+    result: "83 passed on the rebased head (EXPECTED_REASONS_BY_SEQUENCE[29] added; the replay of the 132-walk corpus against the seq-28 table reported no violation)"
     exit: 0
     ts: "2026-10-12T07:57:00Z"
     seat: Claude Sonnet 5.5 (implementer)
-  - claim: Whole suites on Mini for the committed HEAD 701beb538d (the last code commit; the evidence commit after it changes no code) - backend visa_engine and vitest (visa-oracle). The backend shows only the Mini database environment set.
+  - claim: Whole suites on Mini for the committed HEAD 082a3c5585 (rebased on origin/main 6811421902, after the E31J Another-status hold) - backend visa_engine and vitest (visa-oracle). The backend shows only the Mini database environment set.
     cmd: bash ~/visa-night/mini-suite.sh <worktree> both
-    result: "backend 2 failed, 3095 passed, 6 skipped, 1 xfailed, 31 errors; vitest 56 files, 1448 passed; failing ids are the same 2 failures (test_visa_engine_retention_fk_registry.py) and 31 errors (test_evaluate_endpoint.py) as origin/main c4b045752b"
+    result: "backend 2 failed, 3392 passed, 6 skipped, 1 xfailed, 31 errors; vitest 56 files, 1449 passed; failing ids are the same 2 failures (test_visa_engine_retention_fk_registry.py) and 31 errors (test_evaluate_endpoint.py) as the clean origin/main baseline (c4b045752b)"
     exit: 1
-    ts: "2026-10-12T09:15:00Z"
+    ts: "2026-10-13T07:45:00Z"
     seat: Claude Opus 5.5 (fixer, Mini)
   - claim: Baseline for the environmental failures - the same two test files on a clean detached origin/main worktree on Mini fail identically.
     cmd: ssh mini pytest test_evaluate_endpoint.py test_visa_engine_retention_fk_registry.py at origin/main c4b045752b
@@ -69,6 +69,10 @@ dissent:
     objection: "HIGH - the E31J age-18 and unmarried hard filters are not grounded by the saved E31J page, a 2026-07-21 note warns against hard-coding an E31J age cap, and Permenkumham 11/2024 is not in the rules' source_refs."
     status: PLAUSIBLE
     note: "Builder evidence, not a retraction: the cited Kepmen M.IP-08/2025 Lampiran (source e3572ad2) row for E31J reads 'belum berusia 18 (delapan belas) tahun dan belum kawin' verbatim (research/legal/2026-05-26-kepmen-visa-taxonomy/01-raw-extraction.md:191), the rule cites that record, and a build-gate test now pins the row text; the 2026-07-21 note predates that extraction. Attaching Permenkumham 11/2024 as a source is a non-portal record edit and stays in the sources slice. Kimi k3 verified the same row and signed. The signing session decides."
+  - seat: codex-gpt-5.6-sol (council vote on 966df262c8)
+    objection: "REJECT, blocking - E31J under-filtered OTHER ('Status lain'): the Kepmen row says 'belum kawin', only SINGLE attests it, yet OTHER reached SUPPORTED while the copy said 'only for applicants who have never married'. Asked for neq SINGLE or OTHER -> NEEDS_INPUT/HUMAN_REVIEW."
+    status: CONFIRMED
+    note: "Cured with the HUMAN_REVIEW option (neq SINGLE stays rejected: an earlier red team ruled that excluding OTHER outright is wrong). New rule review.e31j-marital-status-other (FAMILY, SIBLING, marital_status == OTHER, REQUIRE_REVIEW E31J_MARITAL_STATUS_OTHER_REVIEW, on_unknown NO_EFFECT; an unanswered status is still asked by the married filter's NEEDS_INPUT). SINGLE supported; MARRIED/DIVORCED/WIDOWED E31J_REQ_UNMARRIED; OTHER HUMAN_REVIEW_REQUIRED with no candidate. Guilt and innocence tests for all four statuses in test_seq29_pack.py; EN/ID copy in REVIEW_REASON_COPY. Council vote on the new head is the signing session's."
   - seat: codex-gpt-5.6-sol (second red team, read-only; rollout /Users/nuzantara/.codex/sessions/2026/10/12/rollout-2026-10-12T16-45-33-01a12f49-e15a-7c12-97c9-25198f16bd56.jsonl; raw output /private/tmp/claude-501/seq29/rt.out)
     objection: "MEDIUM - E31J_REQ_UNMARRIED used neq SINGLE on person.marital_status, so OTHER ('Another status') was hard-excluded although the criterion is 'belum kawin'; the tests covered only MARRIED and SINGLE."
     status: CONFIRMED
