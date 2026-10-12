@@ -1,5 +1,5 @@
 gear: 1
-brief_ref: evidence/2026-10/agent-air-m5-infra-restore-drill-bucket-e71e9258/brief.yml
+brief_ref: evidence/brief.yml
 ruling: >-
   Installing mini.restore_drill (#8308) on Mini on 2026-10-12 showed the first scheduled run could never
   reach a verdict: the wrapper sources ~/.nuzantara-secrets.env with `set -a`, that file exports a generic
