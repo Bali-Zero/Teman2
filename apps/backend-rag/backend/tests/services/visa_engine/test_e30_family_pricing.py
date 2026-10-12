@@ -26,6 +26,9 @@ offer 1/2 (E30A) and 1/2/4 (E30B) years, but no E30 product carries ``duration_o
 730- or 1460-day stay is still quoted the 1-year price. The day a pack gives them options the
 three xfail rows XPASS, ``strict=True`` turns that into a failure, and whoever signs that pack must
 delete the xfail marker and let the rows become ordinary pins -- the gap cannot close unnoticed.
+The xfail is narrowed to ``AssertionError`` (any other error is a red, never an XFAIL), and today's
+behaviour is ALSO asserted outright (``TestTodaysLongerStayQuoteIsPinnedExplicitly``: the 1-year
+row, same amount, same row hash), so the gap cannot drift in any direction without a review.
 
 The catalogue is read through the real ``PricingService`` (the same exact-key lookup the endpoint
 uses), not a stand-in. A missing artifact FAILS (``_read_json``), it never skips.
@@ -62,6 +65,7 @@ from backend.services.visa_engine.models import PricingKey, VisaProductVersion
 from backend.services.visa_engine.pricing_adapter import (
     ExactPricingCatalog,
     PricingResolution,
+    _parse_exact_idr_amount,
     build_price_quote,
     resolve_candidate_pricing,
 )
@@ -210,9 +214,28 @@ class TestTheCatalogueRowsAreWhatTheVisitorIsQuoted:
         self, item_key: str, amount: int, catalogue: dict[str, Any]
     ) -> None:
         row = catalogue["services"][_CATEGORY][item_key]
-        assert row["price"].split()[0].replace(".", "") == str(amount)
+        # The PRODUCTION parser reads the price string, currency included: "11.500.000 USD" is
+        # refused there (None), so it is refused here -- the pin cannot pass on a digit-only match.
+        assert _parse_exact_idr_amount(row["price"]) == amount
         # One all-inclusive amount: the row carries no fee split.
         assert row["notes"] == "All-inclusive price."
+
+    @pytest.mark.parametrize(("item_key", "amount"), _FAMILY_ROWS)
+    def test_every_family_row_resolves_available_through_the_real_service(
+        self, item_key: str, amount: int, signed: _SignedPack
+    ) -> None:
+        """Even the 2- and 4-year rows, which no pack key reaches yet: a product re-aimed at the
+        row is resolved by the real ``PricingService`` and must come back AVAILABLE in IDR."""
+
+        product = _with_key(signed.products["E30B"], item_key)
+        resolution = _resolve(product, get_pricing_service(), signed.signed_at)
+        assert (resolution.status, resolution.reason_code) == ("AVAILABLE", "PRICE_AVAILABLE")
+        assert resolution.amount == amount
+        quote = build_price_quote(
+            product, resolution, decision_id=uuid.UUID(int=31), stay_days=_ONE_YEAR_STAY_DAYS
+        )
+        assert quote is not None
+        assert (quote.status, quote.currency, quote.amount) == ("AVAILABLE", "IDR", amount)
 
 
 class TestE30AAndE30BAreQuotedTheirOneYearRow:
@@ -267,6 +290,7 @@ class TestTheLongerStaysAreAKnownGapPinnedAsStrictXfail:
     """The catalogue prices a 2- and a 4-year permit; the pack cannot reach those rows yet."""
 
     @pytest.mark.xfail(
+        raises=AssertionError,  # a setup error, an exception or a wrong row is a RED, not an XFAIL
         strict=True,
         reason=(
             "SEQ29-E30-02: E30A/E30B carry no duration_options, so a stay over a year is quoted "
@@ -288,6 +312,25 @@ class TestTheLongerStaysAreAKnownGapPinnedAsStrictXfail:
             signed.products[code], get_pricing_service(), signed.signed_at, stay_days
         )
         assert (resolution.status, resolution.amount) == ("AVAILABLE", amount)
+
+
+class TestTodaysLongerStayQuoteIsPinnedExplicitly:
+    """The CURRENT behaviour, asserted, so the gap cannot move silently in any direction: an
+    exception, CONTACT_REQUIRED, a different amount or a different row are all red here. When the
+    pack that adds ``duration_options`` lands, THIS class goes red too -- that is the review the
+    pin forces; delete it together with the xfail above (SEQ29-E30-02)."""
+
+    @pytest.mark.parametrize(("code", "stay_days"), [("E30A", 730), ("E30B", 730), ("E30B", 1460)])
+    def test_a_stay_over_a_year_is_still_quoted_the_one_year_row(
+        self, code: str, stay_days: int, signed: _SignedPack
+    ) -> None:
+        catalog = get_pricing_service()
+        one_year = _resolve(signed.products[code], catalog, signed.signed_at, _ONE_YEAR_STAY_DAYS)
+        longer = _resolve(signed.products[code], catalog, signed.signed_at, stay_days)
+        assert (longer.status, longer.reason_code) == ("AVAILABLE", "PRICE_AVAILABLE")
+        assert longer.amount == _ONE_YEAR_IDR
+        assert one_year.row_sha256 is not None
+        assert longer.row_sha256 == one_year.row_sha256  # the very same 1-year row
 
 
 class TestTheOtherE30VisasStayUnpriced:
@@ -404,6 +447,19 @@ class TestTheEvaluatePathQuotesE30OnTheRealPack:
         assert quoted <= set(_PRICED)
         assert not quoted & set(_UNPRICED)
 
+        # ... and they are still OFFERED: each sibling is a candidate of the walk, displayed with
+        # CONTACT_REQUIRED / PRICING_KEY_NOT_CONFIGURED and no row. That status is what the mouth
+        # adapter turns into the advisor line ("confirmed by a Bali Zero advisor" EN/ID); it is
+        # pinned in the mouth suite, not here.
+        for code in _UNPRICED:
+            assert code in candidates, f"{code} left the walk's candidates"
+            sibling = [c for c in body["display"]["candidates"] if c["product_code"] == code]
+            assert len(sibling) == 1, code
+            assert sibling[0]["pricing"]["status"] == "CONTACT_REQUIRED", code
+            assert sibling[0]["pricing"]["reason_code"] == "PRICING_KEY_NOT_CONFIGURED", code
+            assert sibling[0]["pricing"]["row_sha256"] is None, code
+            assert "amount" not in sibling[0]["pricing"], code
+
         shown = [c for c in body["display"]["candidates"] if c["product_code"] == "E30A"]
         assert len(shown) == 1
         assert shown[0]["pricing"]["status"] == "AVAILABLE"
@@ -416,8 +472,9 @@ class TestTheEvaluatePathQuotesE30OnTheRealPack:
         }
         assert shown[0]["name"]["id"] and shown[0]["name"]["en"]
 
-        # The quote that is shown is the quote that is persisted.
+        # The quote that is shown is the quote that is persisted, and no unpriced sibling has one.
         assert len(saved) == 1
+        assert not {q.product_code for q in saved[0]["decision"].quotes} & set(_UNPRICED)
         assert [
             (q.product_code, q.amount)
             for q in saved[0]["decision"].quotes
@@ -435,9 +492,7 @@ class TestTheGuardHasTeeth:
     """Guilt twins: the same resolution on a catalogue or key that drifted is NOT the pinned quote."""
 
     @pytest.mark.parametrize("code", sorted(_PRICED))
-    def test_innocence_the_real_product_holds_the_pin(
-        self, code: str, signed: _SignedPack
-    ) -> None:
+    def test_innocence_the_real_product_holds_the_pin(self, code: str, signed: _SignedPack) -> None:
         own = _resolve(signed.products[code], get_pricing_service(), signed.signed_at)
         assert own.row_sha256 is not None
         assert _holds_the_pin(own, own.row_sha256)
@@ -452,6 +507,26 @@ class TestTheGuardHasTeeth:
         assert resolution.status == "AVAILABLE"
         assert resolution.amount == 9_500_000
         assert resolution.amount != _ONE_YEAR_IDR
+
+    @pytest.mark.parametrize("code", sorted(_PRICED))
+    @pytest.mark.parametrize("price", ["9.000.000 USD", "9.000.000", "Rp 9.000.000"])
+    def test_a_corrupted_currency_is_not_a_quote(
+        self, code: str, price: str, signed: _SignedPack, catalogue: dict[str, Any]
+    ) -> None:
+        """The amount digits are right, the currency is not: the production parser refuses it."""
+
+        edited = copy.deepcopy(catalogue)
+        edited["services"][_CATEGORY][_PRICED[code].item_key]["price"] = price
+        assert _parse_exact_idr_amount(price) is None
+        resolution = _resolve(signed.products[code], _EditedCatalog(edited), signed.signed_at)
+        assert resolution.status != "AVAILABLE"
+        assert resolution.amount is None
+
+    @pytest.mark.parametrize("price", ["IDR 9.000.000", "9.000.000 IDR"])
+    def test_innocence_both_valid_idr_notations_parse_to_the_pinned_amount(
+        self, price: str
+    ) -> None:
+        assert _parse_exact_idr_amount(price) == _ONE_YEAR_IDR
 
     @pytest.mark.parametrize("code", sorted(_PRICED))
     def test_a_deleted_row_degrades_to_contact_required(
