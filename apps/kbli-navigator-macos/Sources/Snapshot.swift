@@ -417,12 +417,15 @@ extension Snapshot {
                 // One cell: nothing to choose, so no hint is drawn.
                 let scs = ScaleMatrix.scopes(k.perSkala)
                 let picked = ScalePath.snapshotScope ?? 0
-                let pickable = imm && scs.count >= ScaleMatrix.listFrom ? (scs.indices.contains(picked) ? scs[picked].rows.map(\.row) : []) : k.perSkala
+                let pickable: [(idx: Int, row: PerSkala)] = imm && scs.count >= ScaleMatrix.listFrom
+                    ? (scs.indices.contains(picked) ? scs[picked].rows : []) : k.perSkala.enumerated().map { (idx: $0.offset, row: $0.element) }
                 let cells = pickable.count
-                let chips = pickable.reduce(0) { $0 + Set($1.skalaUsaha).intersection(ScaleMatrix.order).count }   // one chip per (row, scale)
+                // One chip per (row, scale), named as the mark names it ("scale:row"): the SET the sheet must mark, not a count.
+                let chipSet = pickable.flatMap { p in Set(p.row.skalaUsaha).intersection(ScaleMatrix.order).compactMap { sc in
+                    ScaleMatrix.order.firstIndex(of: sc).map { "\($0):\(p.idx)" } } }.sorted()
                 let record: [String: Any] = ["code": code, "national": "\(Theme.tone(k.pmaStatus ?? ""))", "bali": bali,
                                              "headsup": "\(KBLIVerdict.headsUp(record: k, isID: lang.lang == .id).tone)",
-                                             "cells": cells, "chips": chips]
+                                             "cells": cells, "chipSet": chipSet]
                 doc["record"] = record
             }
             if let data = try? JSONSerialization.data(withJSONObject: doc, options: [.prettyPrinted, .sortedKeys]) {
