@@ -462,9 +462,9 @@ jobs:
           # was unreadable BECAUSE of this bug. The comment cited the scar it
           # was reintroducing.
           #
-          # Cure = the errexit-immune capture this repo already uses in
-          # docs-inventory-refresh.yml: `|| rc=$?` puts the assignment in a
-          # condition context, which errexit ignores by definition.
+          # Cure = the errexit-immune capture this repo also uses in the Mini
+          # docs-inventory wrapper: `|| rc=$?` puts the assignment in a condition
+          # context, which errexit ignores by definition.
           set -uo pipefail
 
           rc=0

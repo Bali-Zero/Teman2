@@ -27,8 +27,6 @@
     ".github/workflows/cron-fly-watcher.yml",
     ".github/workflows/cron-kg-staging-promotion.yml",
     ".github/workflows/cron-sentry-quota-check.yml",
-    ".github/workflows/docs-inventory-refresh-liveness.yml",
-    ".github/workflows/docs-inventory-refresh.yml",
     ".github/workflows/fly-deploy.yml",
     ".github/workflows/fly-secrets-check.yml",
     ".github/workflows/frontend-live-sentinel.yml",

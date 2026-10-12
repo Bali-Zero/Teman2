@@ -19,9 +19,9 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 ## Live state
 
 I conteggi di repository e servizi non sono salvati in questo brief. Generali
-con `python3 scripts/docs_sync.py --json` o scarica l'ultimo artifact
-`docs-derived-state` dal workflow `docs-inventory-refresh.yml`. I campi che
-richiedono credenziali live dichiarano esplicitamente `unavailable`.
+con `python3 scripts/docs_sync.py --json` o leggi l'ultimo bundle Mini in
+`~/.local/state/nuzantara/docs-derived-state/latest/`. I campi che richiedono
+credenziali live dichiarano esplicitamente `unavailable`.
 
 L'embedding model resta `text-embedding-3-small` (1536 dims) ed è FROZEN.
 

@@ -840,7 +840,7 @@ def test_regen_only_rejects_check(tmp_path):
 # only DETERMINISTIC per-tree facts (last_touched_date, orphan_eligible_on —
 # pure functions of git history + orphan_days arithmetic) and NEVER decides
 # the orphan time-crossing itself; only a write-mode call (the scheduled
-# docs-inventory-refresh.yml organ) may stamp a fresh orphan_flipped_on.
+# mini.docs_inventory_refresh organ) may stamp a fresh orphan_flipped_on.
 #
 # Tests below, by category:
 #   GUILT      — dates inconsistent with git history -> red (P3A, P3B)
@@ -2107,9 +2107,8 @@ def test_p3prime_flips_this_run_never_rendered_into_committed_inventory(tmp_path
 # ============================================================================
 # Red-team round 1 fixes (2026-07-18): PR #2626, io + Codex Sol xhigh,
 # generator != grader. 4 BLOCKER + 4 MAJOR. MAJOR-8 (common-mode scheduler
-# risk) is documentation + PENDING-ARMS only, no code, so no test here — see
-# .github/workflows/docs-inventory-refresh-liveness.yml's header comment and
-# .claude/skills/modus/PENDING-ARMS.md.
+# risk) is now covered by the Mini organ registry heartbeat and its 14-hour
+# staleness threshold, so no docs-audit unit test belongs here.
 # ============================================================================
 
 

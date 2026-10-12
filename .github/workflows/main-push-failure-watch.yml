@@ -3,9 +3,8 @@ name: Main-push Failure Watch
 # Task #23 (superscar #2, "Esiste ≠ Armato" — cicatrix-superscar.md #2). One
 # generic watcher for every workflow's completion, replacing the pattern this
 # repo independently reinvented three times: fly-deploy.yml's own dedicated
-# alert job, and two narrowly-scoped scripts
-# (scripts/docs_inventory_refresh_liveness.py, scripts/merge_train.py) each
-# hardcoded to one or two workflow names. GitHub aggregates the whole job
+# alert job, and two narrowly-scoped helpers each hardcoded to one or two
+# workflow names. GitHub aggregates the whole job
 # graph into `workflow_run.conclusion`, correctly folding in a skip-cascade
 # from an upstream job failure — the exact `needs:`-completeness trap that
 # bit fly-deploy.yml's own alert job (`deploy-failure-alert` watches only 2
@@ -147,8 +146,7 @@ on:
       - cron - sentry quota check (daily 09:00 WITA)
       - Doc Freshness Report
       - Docs Guardian
-      - cron - docs-inventory-refresh liveness (every 6h)
-      - Docs Inventory Refresh
+      - Docs inventory organ tests
       - Docs Sync Check
       - dynamic-workflow-selftest
       - manual - fly api diagnostics

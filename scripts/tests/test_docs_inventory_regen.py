@@ -1,5 +1,5 @@
 """Tests for scripts/docs_inventory_regen.sh — the SSOT wrapper the
-docs-inventory-refresh.yml organ calls (BLOCKER-3, red-team 2026-07-18).
+mini.docs_inventory_refresh organ calls (BLOCKER-3, red-team 2026-07-18).
 
 The REAL wrapper script is copied verbatim into a fake repo alongside STUB
 scripts/docs_sync.py and scripts/docs_audit.py (both real, controllable

@@ -1053,6 +1053,11 @@
       "machines": ["mini"]
     },
     {
+      "live": "~/scripts/mini-docs-inventory.sh",
+      "repo": "infra/launchagents/wrappers/mini-docs-inventory.sh",
+      "machines": ["mini"]
+    },
+    {
       "live": "~/Library/LaunchAgents/com.nuzantara.zero-sync.plist",
       "repo": "infra/launchagents/com.nuzantara.zero-sync.plist",
       "machines": ["mini"]

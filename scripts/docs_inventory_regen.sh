@@ -21,8 +21,8 @@
 #     docs_audit.py --as-of "$(date -u +%Y-%m-%d)" (real "today"; this is the ONE
 #     legitimate place in the whole pipeline allowed to consult wall-clock for the
 #     orphan-eligibility TIME-CROSSING decision — --check, the PR gate, never does). ONLY
-#     the scheduled refresh organ (.github/workflows/docs-inventory-refresh.yml) should
-#     pass this — it is the one caller whose entire job IS advancing flips from real time.
+#     the scheduled Mini refresh organ (mini.docs_inventory_refresh) should pass this —
+#     it is the one caller whose entire job IS advancing flips from real time.
 #
 # Exit code: 0 for a completed bundle. docs_audit.py's expected content-change
 # exit 1 is accepted; genuine generator crashes propagate.

@@ -42,7 +42,8 @@ def test_templates_are_stable_pointers_not_volatile_values():
     }
     for key, body in docs_sync.TEMPLATES.items():
         assert "scripts/docs_sync.py --json" in body, key
-        assert "docs-derived-state CI artifact" in body, key
+        assert "~/.local/state/nuzantara/docs-derived-state/latest/" in body, key
+        assert "CI artifact" not in body, key
         assert not re.search(
             r"\b\d[\d,]*\s+(routers?|services?|tests?|documents?|nodes?|edges?|plists?)\b",
             body,

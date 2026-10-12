@@ -30,9 +30,10 @@ python3 scripts/docs_sync.py
 bash scripts/docs_inventory_regen.sh
 ```
 
-The scheduled `docs-inventory-refresh.yml` workflow runs the last command and
-publishes `docs-sync.json`, `docs-audit.json`, and `DOCS_INVENTORY.md` as a CI
-artifact.
+The Mini launchd organ `com.nuzantara.docs-inventory-refresh` runs the last
+command twice daily and publishes `docs-sync.json`, `docs-audit.json`, and
+`DOCS_INVENTORY.md` under
+`~/.local/state/nuzantara/docs-derived-state/latest/`.
 
 ## Protected files
 

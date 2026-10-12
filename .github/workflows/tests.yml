@@ -34,8 +34,7 @@ on:
   # is no longer to detect an outage quickly, only to periodically produce
   # a real full-suite verdict against main's current head (catching
   # interaction bugs invisible to per-PR testing) at a sustainable cost.
-  # :17 offset dodges the top-of-hour stampede (same convention as
-  # docs-inventory-refresh-liveness.yml).
+  # :17 offset dodges the top-of-hour stampede.
   schedule:
     - cron: "17 */2 * * *"
 

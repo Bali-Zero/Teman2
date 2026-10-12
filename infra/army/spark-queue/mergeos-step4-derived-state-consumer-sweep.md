@@ -16,7 +16,7 @@ block or count, starting from (but not limited to):
 - every `<!-- DOCSYNC:*_START/END -->` block (grep the markers repo-wide):
   `docs/AI_ONBOARDING.md` QUICK_NUMBERS, `INDEX.md` AUTOMATION_COVERAGE, any others
 - `docs/DOCS_INVENTORY.md` (the scheduled-refresh target)
-- anything `scripts/docs_sync.py` and `.github/workflows/docs-inventory-refresh.yml` write
+- anything `scripts/docs_sync.py` and `infra/launchagents/wrappers/mini-docs-inventory.sh` write
 - any other tracked file a generator script rewrites on a schedule (search
   `infra/launchagents/`, `.github/workflows/`, `scripts/` for writers whose
   target is a tracked `.md`/`.json`)

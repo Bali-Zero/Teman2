@@ -28,7 +28,7 @@ inventory-check "marcisce col calendario"). The cure: `--check` NEVER calls
 DETERMINISTIC per-tree facts (`last_touched_date`, `orphan_eligible_on`, both
 pure functions of git history + orphan_days arithmetic — no "today" anywhere).
 The actual TIME-CROSSING decision (has a doc's `orphan_eligible_on` passed?) is
-made ONLY by write-mode callers (the scheduled `docs-inventory-refresh.yml`
+made ONLY by write-mode callers (the scheduled `mini.docs_inventory_refresh`
 organ), which stamp `orphan_flipped_on` the first time a doc crosses — a
 provenance marker `--check` can verify by DATE-vs-DATE comparison (both stored,
 zero wall-clock) rather than by re-deriving "is it archived yet" itself. A doc
@@ -159,7 +159,7 @@ def parse_args() -> argparse.Namespace:
             "the plain PR-side regen path could commit fresh orphan_flipped_on "
             "stamps that --check (always as_of=None) would then reject as drift "
             "on the SAME PR. scripts/docs_inventory_regen.sh now passes this by "
-            "default; the scheduled refresh organ (docs-inventory-refresh.yml) "
+            "default; the scheduled Mini refresh organ (mini.docs_inventory_refresh) "
             "opts OUT via its own --organ flag, which passes --as-of instead — "
             "it is the one caller that IS supposed to invent fresh flips from "
             "real wall-clock. Mutually exclusive with --check (already "
@@ -1563,7 +1563,7 @@ def render_inventory(rows: List[DocRow], clusters: List[ClusterDef]) -> str:
     out.append(
         "_`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime "
         "deterministic facts (pure functions of git tree history — never of 'today'). "
-        "`inventory-check` verifies these; only the scheduled `docs-inventory-refresh.yml` "
+        "`inventory-check` verifies these; only the scheduled `mini.docs_inventory_refresh` "
         "organ ever writes a fresh `orphan_flipped_on`. See docs_audit.py module docstring._"
     )
     out.append("")

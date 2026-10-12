@@ -43,6 +43,17 @@ edges:
         type: cmd,
         cmd: "launchctl list | grep -F com.nuzantara.mailbox-janitor.daily",
       }
+  - id: com.nuzantara.docs-inventory-refresh
+    kind: launchd
+    machine: mini
+    status: UNKNOWN
+    consumer: "scripts/docs_inventory_regen.sh --organ via mini-docs-inventory.sh; daily 03:00 and 15:00 WITA; heartbeat mini.docs_inventory_refresh"
+    notes: "UNKNOWN until installed on Mini and a real run writes a green heartbeat."
+    probe:
+      {
+        type: cmd,
+        cmd: "launchctl list | grep -F com.nuzantara.docs-inventory-refresh",
+      }
   - id: com.nuzantara.kbli-oss-refresh.weekly
     kind: launchd
     machine: mini

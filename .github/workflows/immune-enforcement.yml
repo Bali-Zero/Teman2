@@ -278,10 +278,8 @@ jobs:
               scripts/tests/test_pii_gate_merge_scope.sh|\
               scripts/tests/test_precommit_print_gate.sh|\
               scripts/docs_audit.py|\
-              scripts/docs_inventory_refresh_liveness.py|\
               scripts/docs_inventory_regen.sh|\
               scripts/tests/test_docs_audit.py|\
-              scripts/tests/test_docs_inventory_refresh_liveness.py|\
               scripts/tests/test_docs_inventory_regen.py|\
               scripts/lib/git_merge_state.sh|\
               scripts/tests/test_docs_inventory_regen_merge_warning.sh|\
@@ -602,7 +600,6 @@ jobs:
             scripts/tests/test_husky_pii_pass_overmatch.py \
             scripts/tests/test_repomap_cap.py \
             scripts/tests/test_docs_audit.py \
-            scripts/tests/test_docs_inventory_refresh_liveness.py \
             scripts/tests/test_docs_inventory_regen.py \
             scripts/tests/test_docs_inventory_render_is_clock_free.py \
             scripts/tests/test_fly_backup_timeouts.py \

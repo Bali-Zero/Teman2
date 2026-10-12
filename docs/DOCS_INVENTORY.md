@@ -5,7 +5,7 @@ with `bash scripts/docs_inventory_regen.sh` or download the latest workflow
 artifact.
 
 <!-- DOCSYNC:DOCS_INVENTORY_START -->
-Current state for documentation inventory is intentionally not stored in git. Run `python3 scripts/docs_sync.py --json` or download the latest [docs-derived-state CI artifact](https://github.com/Bali-Zero/Teman2/actions/workflows/docs-inventory-refresh.yml).
+Current state for documentation inventory is intentionally not stored in git. Read the latest Mini bundle at `~/.local/state/nuzantara/docs-derived-state/latest/` or run `python3 scripts/docs_sync.py --json` for a local snapshot.
 <!-- DOCSYNC:DOCS_INVENTORY_END -->
 
 The local artifact is written under `.artifacts/docs-derived-state/`.

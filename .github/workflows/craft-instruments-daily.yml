@@ -38,9 +38,8 @@ name: Craft instruments (advisory)
 # pattern as `cron-fly-restart-detector.yml`'s cooldown state — GitHub cache
 # keys are immutable once written, so a `-${{ github.run_id }}` suffix plus a
 # prefix `restore-keys` is how a scheduled job keeps state across days without
-# committing back to `main`, matching `docs-inventory-refresh.yml`'s own
-# rationale: "the result is an artifact, never a commit... so global drift
-# cannot blame a PR"). Both raw report outputs AND the ledger are also
+# committing back to `main`: the result is an artifact, never a commit, so
+# global drift cannot blame a PR. Both raw report outputs AND the ledger are also
 # uploaded via `actions/upload-artifact` so "the report artifact on disk"
 # is a downloadable file, not only a step-summary paragraph that scrolls off.
 

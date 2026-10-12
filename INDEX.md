@@ -101,25 +101,25 @@ Lettura per gli agent = `scripts/pg.sh` (read-only, role `nuzantara_readonly`); 
 ### Apps (tutte, enumerate da disco)
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-Current state for apps and packages inventory is intentionally not stored in git. Run `python3 scripts/docs_sync.py --json` or download the latest [docs-derived-state CI artifact](https://github.com/Bali-Zero/Teman2/actions/workflows/docs-inventory-refresh.yml).
+Current state for apps and packages inventory is intentionally not stored in git. Read the latest Mini bundle at `~/.local/state/nuzantara/docs-derived-state/latest/` or run `python3 scripts/docs_sync.py --json` for a local snapshot.
 <!-- DOCSYNC:LIVING_ORGANS_END -->
 
 ### Workflow riusabili (`infra/workflows/`)
 
 <!-- DOCSYNC:WORKFLOWS_INDEX_START -->
-Current state for workflow inventory is intentionally not stored in git. Run `python3 scripts/docs_sync.py --json` or download the latest [docs-derived-state CI artifact](https://github.com/Bali-Zero/Teman2/actions/workflows/docs-inventory-refresh.yml).
+Current state for workflow inventory is intentionally not stored in git. Read the latest Mini bundle at `~/.local/state/nuzantara/docs-derived-state/latest/` or run `python3 scripts/docs_sync.py --json` for a local snapshot.
 <!-- DOCSYNC:WORKFLOWS_INDEX_END -->
 
 ### Skill repo (`.claude/skills/`)
 
 <!-- DOCSYNC:SKILLS_INDEX_START -->
-Current state for skill inventory is intentionally not stored in git. Run `python3 scripts/docs_sync.py --json` or download the latest [docs-derived-state CI artifact](https://github.com/Bali-Zero/Teman2/actions/workflows/docs-inventory-refresh.yml).
+Current state for skill inventory is intentionally not stored in git. Read the latest Mini bundle at `~/.local/state/nuzantara/docs-derived-state/latest/` or run `python3 scripts/docs_sync.py --json` for a local snapshot.
 <!-- DOCSYNC:SKILLS_INDEX_END -->
 
 ### LaunchAgents — copertura documentale
 
 <!-- DOCSYNC:AUTOMATION_COVERAGE_START -->
-Current state for automation coverage is intentionally not stored in git. Run `python3 scripts/docs_sync.py --json` or download the latest [docs-derived-state CI artifact](https://github.com/Bali-Zero/Teman2/actions/workflows/docs-inventory-refresh.yml).
+Current state for automation coverage is intentionally not stored in git. Read the latest Mini bundle at `~/.local/state/nuzantara/docs-derived-state/latest/` or run `python3 scripts/docs_sync.py --json` for a local snapshot.
 <!-- DOCSYNC:AUTOMATION_COVERAGE_END -->
 
 Runbook operativi: indice auto-generato in [docs/runbooks/README.md](docs/runbooks/README.md).

@@ -1,0 +1,49 @@
+name: Docs inventory organ tests
+
+# Executor for the corpus that proves mini.docs_inventory_refresh: a Mini launchd
+# wrapper builds a volatile bundle from a detached local-main worktree, publishes
+# latest atomically, reports every outcome, and always removes the worktree.
+on:
+  pull_request:
+    paths:
+      - "infra/launchagents/wrappers/mini-docs-inventory.sh"
+      - "infra/launchagents/com.nuzantara.docs-inventory-refresh.plist"
+      - "scripts/tests/test_mini_docs_inventory_wrapper.sh"
+      - "scripts/docs_inventory_regen.sh"
+      - ".github/workflows/docs-inventory-organ-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "infra/launchagents/wrappers/mini-docs-inventory.sh"
+      - "infra/launchagents/com.nuzantara.docs-inventory-refresh.plist"
+      - "scripts/tests/test_mini_docs_inventory_wrapper.sh"
+      - "scripts/docs_inventory_regen.sh"
+      - ".github/workflows/docs-inventory-organ-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-inventory-organ-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  docs-inventory-organ-tests:
+    name: Docs inventory organ tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: The wrapper publishes, reports, rotates and cleans up
+        run: bash scripts/tests/test_mini_docs_inventory_wrapper.sh
+
+      - name: The wrapper and plist still parse
+        run: |
+          bash -n infra/launchagents/wrappers/mini-docs-inventory.sh
+          python -c 'import plistlib; plistlib.load(open("infra/launchagents/com.nuzantara.docs-inventory-refresh.plist", "rb"))'

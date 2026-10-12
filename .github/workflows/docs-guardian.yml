@@ -14,7 +14,6 @@ on:
       - "scripts/tests/test_docs_inventory_regen.py"
       - "scripts/tests/test_docs_inventory_render_is_clock_free.py"
       - ".github/workflows/docs-guardian.yml"
-      - ".github/workflows/docs-inventory-refresh.yml"
       # pytest loads these implicitly for scripts/tests/ (its conftest and package marker).
       - "scripts/tests/conftest.py"
       - "scripts/tests/__init__.py"
@@ -50,7 +49,7 @@ jobs:
           fi
           RELEVANT=false
           if printf '%s\n' "$CHANGED" | grep -qE \
-            '^scripts/docs_audit\.py$|^scripts/docs_inventory_regen\.sh$|^scripts/tests/test_docs_(audit|inventory_regen|inventory_render_is_clock_free)\.py$|^\.github/workflows/docs-(guardian|inventory-refresh)\.yml$'; then
+            '^scripts/docs_audit\.py$|^scripts/docs_inventory_regen\.sh$|^scripts/tests/test_docs_(audit|inventory_regen|inventory_render_is_clock_free)\.py$|^\.github/workflows/docs-guardian\.yml$'; then
             RELEVANT=true
           fi
           echo "relevant=$RELEVANT" >> "$GITHUB_OUTPUT"

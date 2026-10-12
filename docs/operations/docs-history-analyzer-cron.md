@@ -42,6 +42,6 @@ crontab -l | grep -v docs-history-analyzer | crontab -
 
 ## Related
 
-- Scheduled: `.github/workflows/docs-inventory-refresh.yml` → artifact (state)
+- Scheduled: `infra/launchagents/wrappers/mini-docs-inventory.sh` → Mini bundle (state)
 - Monthly: `scripts/docs_history_analyzer.py` → `docs/DOCS_TRENDS.md` (trends)
 - Design: `docs/superpowers/specs/2026-04-24-docs-hygiene-design.md`

@@ -421,18 +421,15 @@ def get_kg_stats() -> dict[str, Any]:
 # Stable pointer templates (one per managed marker key)
 # ---------------------------------------------------------------------------
 
-ARTIFACT_URL = (
-    "https://github.com/Bali-Zero/Teman2/actions/workflows/"
-    "docs-inventory-refresh.yml"
-)
+MINI_BUNDLE = "~/.local/state/nuzantara/docs-derived-state/latest/"
 
 
 def _pointer(topic: str) -> str:
     return (
         "\n"
-        f"Current state for {topic} is intentionally not stored in git. Run "
-        "`python3 scripts/docs_sync.py --json` or download the latest "
-        f"[docs-derived-state CI artifact]({ARTIFACT_URL}).\n"
+        f"Current state for {topic} is intentionally not stored in git. Read the "
+        f"latest Mini bundle at `{MINI_BUNDLE}` or run "
+        "`python3 scripts/docs_sync.py --json` for a local snapshot.\n"
     )
 
 
