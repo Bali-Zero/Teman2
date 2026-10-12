@@ -1,0 +1,21 @@
+task_id: mut-home-fork-20261012
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  scripts/lint_home_fork.py (superscar #1 guard) had 63 of 258 AST mutants surviving its five
+  test files. Pin the decisions no test could see: exit-bit values, --strict-checkout /
+  --strict-bak / --system, the capped listings, the expanded-form allow match, worktree root
+  hardening, embedded-vs-whole-path splitting, fetch failure shapes. Test-only change.
+constraints:
+  - "Tests only; scripts/lint_home_fork.py is untouched."
+  - "Each test carries a guilt case and an innocence twin; expected values come from the documented contract, not read back from the code."
+acceptance:
+  - text: "WHEN the sweep is re-run against the extended test file, THEN the surviving mutants drop from 63 to 18, all timeouts, argparse/json cosmetics or provably equivalent."
+    probe: "python3 -m pytest -q scripts/tests/test_lint_home_fork.py"
+consumer_map:
+  - "immune-enforcement.yml unit-test battery already names scripts/tests/test_lint_home_fork.py: the new tests run on every PR touching the guard."
+risks:
+  - "Pinned behaviour is the documented one; the JSON-registry position-0 always-payload rule is deliberately NOT pinned (ambiguous contract)."
+grader: |
+  Mutation re-run (8 hand-restored mutants proven killed by name) plus the existing suite green.
