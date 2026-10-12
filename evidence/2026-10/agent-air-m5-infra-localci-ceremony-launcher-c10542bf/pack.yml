@@ -116,9 +116,9 @@ dissent:
     objection: >-
       .github/workflows/localci-tests.yml:151, agy: "checkout@v7, setup-python@v7, and pytest==9.1.1 are non-existent future
       versions. Additionally, the job lacks a paths: filter."
-    status: REFUTED
+    status: RETRACTED
     disposition: >-
-      R8: the repo uses these versions in 138 and 86 workflow steps, and the file has a paths filter covering scripts/localci/**
+      Refuted by evidence, so recorded as retracted. R8: the repo uses these versions in 138 and 86 workflow steps, and the file has a paths filter covering scripts/localci/**
       and a permissions block. The reserve seat's version knowledge predates them. Kimi, which saw the same diff, left only a
       note asking to confirm the filter, which R8 confirms.
   - seat: agy-gemini-3.1-pro (DEFECT 1) and kimi-code/k3 (NOTE 1)
