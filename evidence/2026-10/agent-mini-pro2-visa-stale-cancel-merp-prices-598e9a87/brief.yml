@@ -1,0 +1,20 @@
+task_id: stale-cancel-merp-prices
+mission: visa-content-prices
+gear: 1
+l_level: L2
+gate_class: opus
+objective: >-
+  The articles no longer quote the Bali Zero IDR 3.5M KITAS cancellation bundle or the standalone
+  MERP price (IDR 4,000,000 / 4-5M), in any language. Owner ruling 2026-10-12: the figures are
+  deleted, not replaced; derived totals and break-even trip counts that embed them are rewritten
+  qualitatively. The single ERP 800,000 and EPO 700,000 figures are catalogue-correct and untouched.
+constraints:
+  - Only apps/mouth content and one vitest guard; generated llms-full.txt and llms-id.txt are not edited, they regenerate at build.
+  - No replacement figure is invented; sentences say the fee is quoted on request.
+appetite:
+  wall_clock_hours: 2
+acceptance:
+  - text: WHEN any article line mentions MERP THEN it SHALL NOT carry a 4M-family amount.
+    probe: apps/mouth/src/content/stale-cancellation-merp-price.test.ts
+  - text: WHEN any article line pairs a cancellation context with RPTKA, IMTA, Wajib Lapor, Bali Zero or KITAS THEN it SHALL NOT carry a 3.5M-family amount.
+    probe: apps/mouth/src/content/stale-cancellation-merp-price.test.ts
