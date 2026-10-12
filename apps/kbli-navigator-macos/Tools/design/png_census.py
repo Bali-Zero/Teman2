@@ -249,7 +249,7 @@ def c26(im, fr, arg):
     """head composition (the live panel takes the card's head, owner 2026-10-12): the title, the glyph beside it and the national plate
     stand apart and whole, and a long title never squashes the plate. The plate holds the chip and, iff the record has a cap, its one
     figure below the chip (`cap` in the record); the plate is tall enough for what it holds; the title overlaps neither the plate nor
-    the glyph; the glyph overlaps neither the plate."""
+    the glyph; the glyph overlaps neither the plate, and beside the title it starts at the plate's top (the two ends of one row)."""
     rec, s = arg; rec = rec or {}; bad = []
     inside = lambda a, b, t=2: a[0] >= b[0] - t and a[1] >= b[1] - t and a[2] <= b[2] + t and a[3] <= b[3] + t
     hit = lambda a, b: a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
@@ -271,6 +271,8 @@ def c26(im, fr, arg):
     for _, g in fr.get("glyph", []):
         if hit(g, title): bad.append("the glyph and the title overlap")
         if hit(g, plate): bad.append("the glyph and the plate overlap")
+        if plate[1] < title[3] and abs(g[1] - plate[1]) > 2 * s:
+            bad.append("the glyph starts %d px from the plate's top: beside the title they share one row's top (a host that moved it moved its mark too)" % abs(g[1] - plate[1]))
     return not bad, "title, %d glyph and the plate (%s): %s" % (len(fr.get("glyph", [])), "chip + cap" if caps else "chip", "; ".join(bad) or "none")
 
 def c25(im, fr, arg):
@@ -561,13 +563,13 @@ def c_cases():
         return ops, fr, {"cells": cells, "chipSet": chipset if chipset is not None else sorted({v for v, _ in fr["matrix.chip"]})}
     for k, kw in ((0, dict(dy=8)), (0, dict(dy=8, up=0, dx=8, lx=-8)), (1, dict(dy=4)), (1, dict(dy=5)), (1, dict(dy=8, up=3)),
                   (1, dict(dy=8, dx=0)), (1, dict(dy=8, lx=0)), (1, dict(dy=8, broken="left")), (1, dict(dy=8, broken="bottom")),
-                  (1, dict(dy=8, ringrow="1")), (1, dict(dy=8, ringat="neighbour")), (1, dict(dy=8, ringrow="1", ringat="neighbour")), (1, dict(dy=8, chipset=["0:0", "1:1", "1:5"])), (1, dict(dy=8, dup=True)), (1, dict(dy=8, twodetail=True)), (1, dict(dy=8, cells=1)), (1, dict(dy=4, nbfill=(0xF4, 0xF1, 0xEB))), (1, dict(dy=8, hint=0)), (0, dict(dy=8, cells=1, hint=0))):
+                  (1, dict(dy=8, ringrow="1")), (1, dict(dy=8, ringat="neighbour")), (1, dict(dy=8, ringrow="1", ringat="neighbour")), (1, dict(dy=8, chipset=["0:0", "1:1", "1:5"])), (1, dict(dy=8, chipset=["0:0"])), (1, dict(dy=8, dup=True)), (1, dict(dy=8, twodetail=True)), (1, dict(dy=8, cells=1)), (1, dict(dy=4, nbfill=(0xF4, 0xF1, 0xEB))), (1, dict(dy=8, hint=0)), (0, dict(dy=8, cells=1, hint=0))):
         ops, fr, rec = sel(**kw); yield "C24", rec, k, ops, fr
     # C26 (the head): title and glyph beside the plate at 1 px per pt, or the plate stacked under the title; a plate that holds a chip and
     # a cap figure, or a chip alone. The guilt: the title over the plate, the cap outside it, the chip under the figure, a squashed plate,
     # the glyph over the title, a record with a cap and no figure, a figure and no cap.
     def headcase(cap=True, rcap=100, plate=(250, 10, 390, 130), chip_b=(260, 20, 320, 40), cap_b=(266, 56, 372, 86), title_b=(14, 14, 180, 50),
-                 glyph_b=(202, 18, 232, 48), stacked=False):
+                 glyph_b=(202, 16, 232, 46), stacked=False):
         if stacked: plate, chip_b, cap_b, title_b, glyph_b = (10, 70, 350, 200), (20, 80, 80, 100), (24, 118, 130, 148), (14, 14, 380, 50), None
         ops = [(plate, TONE_BG["neutral"][0])]
         o, f = word("title", "", title_b); ops += o; fr = dict(f)
@@ -578,7 +580,7 @@ def c_cases():
         return ops, fr, ({"cap": rcap} if rcap is not None else {})
     for k, kw in ((0, {}), (0, dict(stacked=True)), (0, dict(cap=False, rcap=None, plate=(250, 10, 390, 70))),
                   (1, dict(title_b=(14, 14, 266, 50))), (1, dict(plate=(250, 10, 390, 70), cap_b=(266, 80, 372, 110))),
-                  (1, dict(chip_b=(260, 100, 320, 120))), (1, dict(plate=(250, 10, 390, 100))), (1, dict(glyph_b=(150, 18, 190, 48))),
+                  (1, dict(chip_b=(260, 100, 320, 120))), (1, dict(plate=(250, 10, 390, 100))), (1, dict(glyph_b=(150, 16, 190, 46))), (1, dict(glyph_b=(202, 24, 232, 54))),
                   (1, dict(cap=False)), (1, dict(rcap=None))):
         ops, fr, rec = headcase(**kw); yield "C26", rec, k, ops, fr
     # a chip whose own colours touch it on both sides: its seen box is 20 px wider, the centre unmoved (B2, #8276 gate)
