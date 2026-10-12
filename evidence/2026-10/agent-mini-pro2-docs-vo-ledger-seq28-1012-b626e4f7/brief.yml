@@ -1,0 +1,20 @@
+gear: 1
+gear_reason: >-
+  Docs and ledger only (corner skill, live-state log, PENDING-ARMS) plus a no-argument observer with its tests;
+  no code path, no mouth, no backend, no data. The size floor is below 400 churn.
+mission: >-
+  Every session that loads /visaoracle reads the true post-activation state: seq-28 is the production pack,
+  the two seq-28 pending-arms rows are closed with proof, and the seq-29 freshness row is open exactly once.
+objective: >-
+  SKILL.md LIVE STATE, the live-state log and PENDING-ARMS record the 2026-10-12 seq-28 activation with
+  every id, timestamp and PR number checked against GitHub, and a no-argument observer proves the ledger.
+scope:
+  - .agents/skills/visaoracle/SKILL.md
+  - .agents/skills/visaoracle/references/live-state-log.md
+  - .claude/skills/modus/PENDING-ARMS.md
+  - scripts/ci/observe_visa_ledger_seq28.py
+  - tests/scripts/test_visa_ledger_seq28.py
+  - tests/scripts/test_observe_visa_ledger_seq28.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
