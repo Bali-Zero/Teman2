@@ -1,5 +1,5 @@
 # Gear-3 evidence pack — the daily TLS expiry check becomes the Mini launchd organ mini.cert_monitor.
-# Written 2026-10-12 by a dossier session (Claude Sonnet 5.5, M5) for code head bf8a1cecdf (local, not pushed). Every receipt is a
+# Written 2026-10-12 by a dossier session (Claude Sonnet 5.5, M5) for code head 0d5843545e (local, not pushed; round 1 was on bf8a1cecdf, 0d5843545e is the coordinator's cure). Every receipt is a
 # command run in this session; ts is the clock read in the same shell call. Verbatim seat verdicts are in council-journal.jsonl.
 gear: 3
 brief_ref: evidence/brief.yml
@@ -51,14 +51,14 @@ bites:
   observation: >-
     Owed to the shipping session after merge and the declared pair installed on Mini: the sidecar reads ok within a day of the
     first run, run.log under ~/logs/mini-cert-monitor shows monitor_rc=1, and Telegram carries one p0 each for mail, calendar and
-    drive (verify_failed) until the certificates are renewed. Not yet made: this pack records the pre-push state at head bf8a1cecdf.
+    drive (verify_failed) until the certificates are renewed. Not yet made: this pack records the pre-push state at head 0d5843545e.
 ground:
   ts: "2026-10-12T05:35:11Z"
   siblings: >-
     Branch base origin/main e474325994; origin/main has since moved three commits and a merge-tree of origin/main with the head
     is clean. No sibling PR touches the six new files.
 spend:
-  adversarial_rounds: 1
+  adversarial_rounds: 2
   wall_clock_hours: 0.3
 decisions:
   - id: D-keep-expired-hosts
@@ -123,6 +123,24 @@ receipts:
     exit: 0
     ts: "2026-10-12T05:35:40Z"
     seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R9 — code head 0d5843545e: pytest, self-test, wrapper shell test, bash -n and shellcheck -S warning."
+    cmd: python3 -m pytest scripts/tests/test_cert_monitor.py -q; bash scripts/tests/test_mini_cert_monitor_wrapper.sh; bash -n; shellcheck -S warning <wrapper> <test>
+    result: "7 passed; passed 5, failed 0; shellcheck 0"
+    exit: 0
+    ts: "2026-10-12T05:46:00Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R10 — the cure commit changes only security.yml (one comment) and the wrapper (reason= in the FINDING row and the p0 text)."
+    cmd: git show 0d5843545e --stat
+    result: "2 files changed, 6 insertions, 4 deletions"
+    exit: 0
+    ts: "2026-10-12T05:37:00Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R11 — ONE-seat narrow check of 0d5843545e by kimi-code/k3: PASS. The sanitizer keeps only [A-Za-z0-9 .:_()/-] and 80 characters (a Python slice, no cut or tr), reason is printed last so a surplus can never shift host, status or days, hostile reasons run through the real wrapper produced one clean p0 each and created nothing, tg_notify sends no parse_mode, the dedup key stays cert:HOST:STATUS, the 5 existing cases pass on bash 3.2, and the security.yml comment is accurate."
+    cmd: "scripts/with_seat.sh kimi kimi -p <prompt with git show 0d5843545e and the numbered wrapper> -m kimi-code/k3 < /dev/null"
+    result: "rc 0; VERDICT: PASS; 5 NOTEs (see residuals)"
+    exit: 0
+    ts: "2026-10-12T05:45:15Z"
+    seat: kimi-code/k3
 dissent:
   - seat: agy-gemini-3.1-pro (BLOCKER, item 9)
     objection: >-
@@ -146,17 +164,25 @@ dissent:
       indistinguishable without opening run.log, though reason is captured in the JSON (:76). One-line fix in both places."
     status: CONFIRMED
     disposition: >-
-      OPEN, not cured: this session may not edit code. The reason stays in run.log; the alert is still correct and actionable
-      (the host and the status are named). Fast-follow for the shipping session or a later PR; not a blocker for the change.
+      CURED in 0d5843545e: the per-host p0 carries reason=, sanitized to [A-Za-z0-9 .:_()/-] and at most 80 characters, printed
+      last in the TAB row; the dedup key stays cert:HOST:STATUS. Confirmed by kimi in R11 (tab, newline, control and non-ASCII
+      stripped, no field shift, no parse_mode in the Telegram call, the 5 wrapper cases still pass).
   - seat: agy-gemini-3.1-pro (DEFECT, item 7)
     objection: >-
       docs/AUTOMATIONS_REFERENCE.md:52, .github/workflows/security.yml:570, docs/automations/runtime-ownership.md:125 still name
       cron-cert-monitor.yml; "stale documentation and comments, not live operational consumers."
     status: PLAUSIBLE
     disposition: >-
-      Severity overstated by agy's own text (no live consumer). AUTOMATIONS_REFERENCE.md is regenerated from live state (R8) and
-      self-heals; the other two are a comment and a prose line. Left as is.
+      Severity overstated by agy's own text (no live consumer). The security.yml comment is CURED in 0d5843545e ("the former
+      cron-cert-monitor.yml", confirmed by kimi in R11). AUTOMATIONS_REFERENCE.md is regenerated from live state (R8) and self-heals;
+      runtime-ownership.md is a dated historical inventory and editing it pulled an unrelated prettier reformat of a table, so it
+      is left as a residual.
 residuals:
+  - "R11 NOTE (kimi): a reason that strips to empty renders a bare reason= while a missing one renders reason=-; cosmetic (wrapper :110)."
+  - "R11 NOTE (kimi): stripping, not collapsing, concatenates words (nodename and SHIFT become nodenameSHIFT); readability only."
+  - "R11 NOTE (kimi): no fixture in scripts/tests/test_mini_cert_monitor_wrapper.sh carries a hostile reason, so a regression to the raw string would pass the 5 cases; a guilt case is a fast-follow."
+  - "R11 NOTE (kimi): docs/automations/runtime-ownership.md:125 and docs/AUTOMATIONS_REFERENCE.md:52 still name the retired workflow; the first is historical, the second generated."
+  - "R11 NOTE (kimi): the character class is shape-based, so a filesystem path in a future reason would pass verbatim; safe with today's producer (exception strings only)."
   - "R6 NOTE (kimi): ExitTimeOut 60 s against a worst case of 7 hosts x 8 s = 56 s plus the notifications is marginal but bounded; a killed run leaves an error heartbeat through the EXIT trap only if the trap runs, otherwise the 176400 s silence net reports it."
   - "R6 NOTE (kimi): a wedged run gets a daily-refreshed warning heartbeat, never silence; escalation depends on the bridge consuming status, not only freshness."
   - "R6 NOTE (kimi): merge_group in cancel-in-progress of cert-monitor-tests.yml is dead config (no merge_group trigger); the sibling vercel-autopromote-tests.yml carries the same expression. Harmless unless main adopts a merge queue for it."
