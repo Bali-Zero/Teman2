@@ -29,7 +29,6 @@ import json, pathlib, re, sys, tempfile
 from collections import Counter
 from PIL import Image, ImageDraw
 ACCENTS = [(0xA4, 0x4B, 0x36), (0xD0, 0x83, 0x71), (0xB8, 0x86, 0x2B), (0xC2, 0x8D, 0x2D)]
-LINESOFT = [(0xDA, 0xD8, 0xD1), (0x24, 0x36, 0x49)]
 STRUCTURE = [(0x23, 0x3D, 0x51), (0x6C, 0x9B, 0xC0)]
 near = lambda p, cs, d: any(sum((a - b) ** 2 for a, b in zip(p, c)) <= d * d for c in cs)
 THEME = (pathlib.Path(__file__).resolve().parents[2] / "Sources" / "Theme.swift").read_text()
@@ -39,6 +38,7 @@ def tok(name):
     body = re.search(r"static var %s: Color\s*\{([^}]*)\}" % name, THEME).group(1)
     pick = re.search(r"pick\w*\(0x(\w{6}),\s*0x(\w{6})", body)
     return [tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)) for h in pick.groups()] if pick else tok(body.strip())
+LINESOFT = tok("lineSoft")   # read from Theme: the night rule is the anthracite grey, not a copy here
 TONE_BG = {t: tok("chip%sBg" % t.title()) for t in ("open", "restricted", "closed")}; TONE_BG["neutral"] = tok("wash")
 TONE_FG = {t: tok("chip%sFg" % t.title()) for t in ("open", "restricted", "closed")}; TONE_FG["neutral"] = tok("muted")
 GOLD, PAPER, INK = tok("decorGold"), tok("antracite")[0], tok("white")[0]
