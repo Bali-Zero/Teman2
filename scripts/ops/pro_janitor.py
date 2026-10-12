@@ -90,6 +90,7 @@ class Env(object):
         self.tools = {"uv": e.get("PRO_JANITOR_UV", "/opt/homebrew/bin/uv"),
                       "npm": e.get("PRO_JANITOR_NPM", "/opt/homebrew/bin/npm")}
         self.lsof = e.get("PRO_JANITOR_LSOF", "/usr/sbin/lsof")
+        self.pgrep = e.get("PRO_JANITOR_PGREP", "/usr/bin/pgrep")
         self.apply = e.get("PRO_JANITOR_APPLY", "").strip().lower() == "true"
         seq = e.get("PRO_JANITOR_FREE_GB_SEQ")   # test hook: the free-space readings in order, the last one repeats
         self.seq = None
@@ -1111,10 +1112,52 @@ def tool_env(env):
     return {"HOME": env.home, "PATH": TOOL_PATH, "LANG": "C"}
 
 
+LINK_SCAN_DEPTH = 3   # npm's _cacache/{content-v2,index-v5,tmp} sit at depth 2; uv's buckets and their entries at 1-2
+
+
+def link_escape(root, depth=LINK_SCAN_DEPTH):
+    """The first symlink within `depth` levels of `root` that resolves outside it, or an unreadable level, else None.
+    The tool verbs delete inside their cache (npm's gc and its tmp rimraf, uv's prune), so a link that leaves the cache
+    would let them delete outside the allowlist. uv's own links point inside its cache by design and pass."""
+    level = [root]
+    for _ in range(depth):
+        nxt = []
+        for d in level:
+            try:
+                with os.scandir(d) as it:
+                    for de in it:
+                        if de.is_symlink():
+                            target = safe_realpath(de.path)
+                            if target is None or not (target == root or target.startswith(root + os.sep)):
+                                return os.path.relpath(de.path, root)
+                        elif de.is_dir(follow_symlinks=False):
+                            nxt.append(de.path)
+            except OSError:
+                return "unreadable:" + os.path.relpath(d, root)
+        level = nxt
+    return None
+
+
+def uv_in_use(env):
+    """True when a uv process is alive, or when the probe cannot say (fail closed): prune waits for a quiet cache."""
+    try:
+        rc = subprocess.run([env.pgrep, "-x", "uv"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                            env={"PATH": TOOL_PATH, "LANG": "C"}, timeout=10).returncode
+    except (OSError, subprocess.SubprocessError):
+        return True
+    return rc != 1
+
+
 def tool_rule(env, rule, apply_):
     cache = real_root(env, rule["cache"])
     if cache is None:
         return "skipped:root-missing-or-symlinked", []
+    escape = link_escape(cache)
+    if escape is not None:
+        env.notes["link_escape"] = escape
+        return "skipped:link-escapes-cache", []
+    if rule["tool"] == "uv" and uv_in_use(env):
+        return "skipped:uv-in-use", []
     exe = env.tools[rule["tool"]]
     tenv = tool_env(env)
     if rule["tool"] == "uv":
@@ -1204,8 +1247,11 @@ def main():
             res["entries"] = entries
         res.update(env.notes)
         env.notes.clear()
+        # a missing or unspawnable tool is config, not a passing state: it cools down instead of paging every tick; a failed
+        # lsof probe stays uncooled on purpose (the protective probe is retried next tick, and pages until it reads)
         attempted = apply_ and (status == "done" or status.startswith("error:rc=") or status in
-                                ("error:timeout", "error:timeout-unreaped", "error:rmtree-partial", "error:internal"))
+                                ("error:timeout", "error:timeout-unreaped", "error:rmtree-partial", "error:internal",
+                                 "error:tool-missing", "error:spawn"))
         results.append(res)
         if attempted:
             state["rules"][rule["id"]] = env.now

@@ -383,10 +383,10 @@ fake_tools(){
 truns(){ DISK_JANITOR_HOME="$H" DISK_JANITOR_TMP_ROOT="$T" DISK_JANITOR_TOOLS=true DISK_JANITOR_QDRANT_RETENTION="" DISK_JANITOR_LOG="$ROOT/j.log" DISK_JANITOR_JOURNAL="$ROOT/j.jsonl" PATH="$FAKEBIN:$PATH" bash "$SCRIPT" "$@" 2>&1; }
 build; fake_tools
 OUT=$(truns --apply); RC=$?
-[ $RC -eq 0 ] && grep -q "^uv cache prune" "$ROOT/calls" && grep -q "^restic cache --cleanup" "$ROOT/calls" && grep -Fxq "brew cleanup --prune=30 -s" "$ROOT/calls" \
-  && ok "apply: uv cache prune, restic cache --cleanup, brew cleanup each invoked" || no "tool verbs not invoked rc=$RC: $(tr '\n' ';' < "$ROOT/calls")"
-grep -q '"uv_cache_prune":{"status":"done".*"restic_cache_cleanup":{"status":"done"' "$ROOT/j.jsonl" \
-  && grep -q '"tools":"uv restic brew"' "$ROOT/j.jsonl" && ok "receipt: each tool rule is its own step with status/count/df delta" || no "tool steps receipt wrong: $(tail -1 "$ROOT/j.jsonl")"
+[ $RC -eq 0 ] && ! grep -q "^uv " "$ROOT/calls" && grep -q "^restic cache --cleanup" "$ROOT/calls" && grep -Fxq "brew cleanup --prune=30 -s" "$ROOT/calls" \
+  && ok "apply: uv is never invoked (pro.janitor owns its cache); restic cache --cleanup and brew cleanup each invoked" || no "tool verbs not invoked rc=$RC: $(tr '\n' ';' < "$ROOT/calls")"
+grep -q '"restic_cache_cleanup":{"status":"done"' "$ROOT/j.jsonl" && ! grep -q 'uv_cache_prune' "$ROOT/j.jsonl" \
+  && grep -q '"tools":"restic brew"' "$ROOT/j.jsonl" && ok "receipt: each tool rule is its own step with status/count/df delta" || no "tool steps receipt wrong: $(tail -1 "$ROOT/j.jsonl")"
 # Docker and the Colima VM belong to scripts/localci/prune.py (ruled 2026-10-10). This is the guard that the
 # removal is IN FORCE: fake docker + colima record every invocation; a full --apply run must not make one.
 dc_touched(){ [ -s "$ROOT/dc_calls" ]; }
@@ -416,19 +416,19 @@ printf 'x="$JH/.docker/config.json"\nPROTECTED_ROOTS=("$JH/.colima")\n' > "$ROOT
   && ok "innocence: the static detector catches absolute paths, compose, lima, nerdctl, the docker socket and the colima ssh config; a ~/.docker path is quiet" || no "static detector blind or over-matching on paths"
 { exec_invokes_dc "$ROOT/probe1.sh" && exec_invokes_dc "$ROOT/probe2.sh" && ! exec_invokes_dc "$ROOT/probe3.sh"; } \
   && ok "innocence: the static detector fires on docker/colima commands, stays quiet on comments and the .colima path" || no "static detector blind or over-matching"
-build; fake_tools; printf '#!/bin/sh\necho "uv $*" >> %s/calls\nexit 0\n' "$ROOT" > "$FAKEBIN/uv"; printf '#!/bin/sh\nexit 0\n' > "$FAKEBIN/pgrep"   # a uv process is alive: it holds the cache lock
+build; fake_tools; printf '#!/bin/sh\necho "uv $*" >> %s/calls\nexit 0\n' "$ROOT" > "$FAKEBIN/uv"; printf '#!/bin/sh\nexit 0\n' > "$FAKEBIN/pgrep"   # pgrep reports a live uv: disk_janitor no longer asks, it never calls uv either way
 OUT=$(truns --apply); RC=$?
-! grep -q "uv cache prune" "$ROOT/calls" && grep -q '"uv_cache_prune":{"status":"skipped","count":0,"df_delta_bytes":[-0-9]*,"reason":"uv-lock-held"}' "$ROOT/j.jsonl" \
-  && ok "uv process alive: cache prune skipped (lock held), never forced" || no "uv prune ran while a uv process was alive"
+! grep -q "^uv " "$ROOT/calls" && ! grep -q 'uv_cache_prune' "$ROOT/j.jsonl" \
+  && ok "uv present and idle: still never called, no uv step in the receipt" || no "uv was invoked or journaled while pro.janitor owns its cache"
 build; fake_tools; OUT=$(truns); RC=$?
-[ $RC -eq 0 ] && ! grep -q "cache prune\|--cleanup\|brew" "$ROOT/calls" && grep -q '"uv_cache_prune":{"status":"dry-run"' "$ROOT/j.jsonl" && grep -q '"restic_cache_cleanup":{"status":"dry-run"' "$ROOT/j.jsonl" \
+[ $RC -eq 0 ] && ! grep -q "cache prune\|--cleanup\|brew" "$ROOT/calls" && grep -q '"restic_cache_cleanup":{"status":"dry-run"' "$ROOT/j.jsonl" \
   && ok "dry-run: no tool verb executed, steps reported as dry-run" || no "dry-run executed a tool verb rc=$RC: $(tr '\n' ';' < "$ROOT/calls")"
 { ! dc_touched; } && echo "$OUT" | grep -q "would run brew cleanup --prune=30" && ok "dry-run: docker/colima untouched, the plan line names brew only" || no "dry-run touched docker/colima or kept the old plan line"
 build; fake_tools; printf '#!/bin/sh\necho "restic $*" >> %s/calls\nexit 1\n' "$ROOT" > "$FAKEBIN/restic"; chmod +x "$FAKEBIN/restic"
 OUT=$(truns --apply); RC=$?
 [ $RC -eq 1 ] && echo "$OUT" | grep -q "restic_cache_cleanup: error" && grep -q '"restic_cache_cleanup":{"status":"error"' "$ROOT/j.jsonl" && ! grep -q '"tools":"[^"]*restic' "$ROOT/j.jsonl" \
   && ok "failed restic cleanup is an ERROR in log and receipt, rc=1, never listed as done" || no "restic failure not reported as error rc=$RC"
-grep -q '"uv_cache_prune":{"status":"done"' "$ROOT/j.jsonl" && ok "restic failure does not starve the other tool steps" || no "other tool steps starved by the restic failure"
+grep -q 'brew cleanup' "$ROOT/calls" && ok "restic failure does not starve the other tool steps" || no "other tool steps starved by the restic failure"
 
 # F1: bounded() is a real deadline. The fake ignores ALRM and TERM and sleeps 31 s (a Go binary's behaviour).
 # Cases run CONCURRENTLY: each in its own root under $HC (the fixture globals are re-pointed inside a
@@ -455,7 +455,6 @@ hang_case(){ # $1 FAKE_HANG key  $2 step ("" = just errors>=1)  $3 reason  $4 re
     else echo "no|hung '$1': $shape"; fi > "$HC/$HC_N.res"
   ) &
 }
-hang_case "uv:"      uv_cache_prune       prune-timeout   '"restic_cache_cleanup":{"status":"done"'
 hang_case "restic:"  restic_cache_cleanup cleanup-timeout '"tools":"[^"]*brew'
 hang_case "brew:"    "" ""                                '"restic_cache_cleanup":{"status":"done"'
 wait
