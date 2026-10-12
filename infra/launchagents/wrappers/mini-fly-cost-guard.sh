@@ -165,9 +165,13 @@ export MAX_STARTED_CPUS="11"
 export MAX_TOTAL_VOLUME_GB="77"
 export MAX_DEDICATED_IPV4="0"
 
-OUTPUT=$(/usr/bin/perl -e 'alarm shift; exec @ARGV' \
-    "$GUARD_TIMEOUT_SECONDS" "$PYTHON_BIN" "$GUARD" 2>&1)
-RC=$?
+# The guard writes to a file inside the lock, never to a pipe: a descendant that outlives the
+# alarm (a hung flyctl) could hold a pipe open and keep $(...) waiting past the bound.
+GUARD_OUT="$LOCKDIR/guard.out"
+RC=0
+/usr/bin/perl -e 'alarm shift; exec @ARGV' \
+    "$GUARD_TIMEOUT_SECONDS" "$PYTHON_BIN" "$GUARD" > "$GUARD_OUT" 2>&1 || RC=$?
+OUTPUT=$(cat "$GUARD_OUT" 2>/dev/null)
 unset FLY_API_TOKEN FLY_ACCESS_TOKEN
 log_output "$OUTPUT"
 REPORT_LINES=$(printf '%s\n' "$OUTPUT" | sed '/^::error::Fly resource guard:/d; /^Fly resource guard: within limits$/d; /^[[:space:]]*$/d')

@@ -31,6 +31,7 @@ prepare_case() { # $1=guard rc, $2=guard output, $3=credential failure, $4=guard
 #!/bin/bash
 case "$1" in
     */fly_cost_guard.py)
+        [ "${STUB_GUARD_ORPHAN:-0}" = 0 ] || ( sleep "$STUB_GUARD_ORPHAN" ) &
         [ "${STUB_GUARD_SLEEP:-0}" = 0 ] || sleep "$STUB_GUARD_SLEEP"
         printf '%s\n' "$STUB_GUARD_OUTPUT"
         printf '%s|%s|%s|%s|%s|%s|%s\n' \
@@ -75,6 +76,7 @@ invoke_case() { # $1=capture path, $2=test-only timeout seconds
         STUB_CAPTURE_DIR="$CASE_TMP" STUB_GUARD_RC="$STUB_GUARD_RC" \
         STUB_GUARD_OUTPUT="$STUB_GUARD_OUTPUT" STUB_CRED_FAIL="$STUB_CRED_FAIL" \
         STUB_GUARD_SLEEP="$STUB_GUARD_SLEEP" STUB_GATEWAY_ECHO_SECRET="$STUB_GATEWAY_ECHO_SECRET" \
+        STUB_GUARD_ORPHAN="${STUB_GUARD_ORPHAN:-0}" \
         /bin/bash "$WRAPPER" > "$capture_path" 2>&1
     CASE_RC=$?
     CASE_HB="$(cat "$CASE_TMP/home/.organism/last_seen/mini.fly_cost_guard.json" 2>/dev/null)"
@@ -190,6 +192,17 @@ run_case 0 'never reached' false 3 false 1
     && grep -q 'fly cost guard broken' "$CASE_TMP/notify" \
     && ok "guard timeout writes error heartbeat and broken p0" \
     || bad "guard timeout contract" "rc=$CASE_RC heartbeat=$CASE_HB notify=$(cat "$CASE_TMP/notify" 2>/dev/null)"
+
+echo "== timeout: a descendant holding stdout does not stretch the bound =="
+STUB_GUARD_ORPHAN=8
+T0=$(date +%s)
+run_case 0 'never reached' false 3 false 1
+ELAPSED=$(( $(date +%s) - T0 ))
+STUB_GUARD_ORPHAN=0
+[ "$CASE_RC" -eq 2 ] && [ "$ELAPSED" -lt 6 ] \
+    && [ "$(field "$CASE_HB" note)" = "guard timed out after 1 s" ] \
+    && ok "an orphan holding the guard's stdout does not hold the wrapper (${ELAPSED}s)" \
+    || bad "orphan-held output" "rc=$CASE_RC elapsed=${ELAPSED}s heartbeat=$CASE_HB"
 
 echo "== gateway output: stdout and stderr are redacted in the log =="
 run_case 0 'Fly resource guard: within limits' false 0 true 900
