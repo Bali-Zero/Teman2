@@ -62,10 +62,24 @@ def _configure_logging() -> None:
     )
 
 
-def _start_heartbeat_thread(interval_s: int = 60) -> None:
+PROBE_STALE_AFTER_S = 120.0
+
+
+def classify_probe_age(age_s: float | None) -> tuple[str, str]:
+    """Map the LISTEN probe age to (status, note). Never a bare 'ok'."""
+    if age_s is None:
+        return "degraded", "federation alert dispatcher: LISTEN never confirmed, probe_age=unknown"
+    age = int(age_s)
+    if age_s > PROBE_STALE_AFTER_S:
+        return "degraded", f"LISTEN connection unconfirmed, probe_age={age}s"
+    return "ok", f"federation alert dispatcher running probe_age={age}s"
+
+
+def _start_heartbeat_thread(daemon: FederationAlertDaemon, interval_s: int = 60) -> None:
     def _loop() -> None:
         while True:
-            organism_heartbeat(ORGAN_ID, "ok", "federation alert dispatcher running")
+            status, note = classify_probe_age(daemon.probe_age_s())
+            organism_heartbeat(ORGAN_ID, status, note)
             time.sleep(interval_s)
 
     thread = threading.Thread(target=_loop, name="federation-alert-heartbeat", daemon=True)
@@ -78,7 +92,7 @@ async def _main() -> int:
     config.assert_required()
     daemon = FederationAlertDaemon(config)
     organism_heartbeat(ORGAN_ID, "starting", "daemon configured")
-    _start_heartbeat_thread()
+    _start_heartbeat_thread(daemon)
     await daemon.start()
     organism_heartbeat(ORGAN_ID, "ok", "daemon stopped cleanly")
     return 0
