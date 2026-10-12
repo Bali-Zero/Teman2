@@ -313,6 +313,17 @@ extension Snapshot {
                         .environmentObject(state).environmentObject(lang))
                 }
             } else { content = notFound }
+        case "live-sheet":
+            // The sheet as the app MOUNTS it: `SearchListView` with a code selected, `sheetLayer` and its host and all (no `--imm`:
+            // the mount decides flat or immersive, never the harness). `--sheet-open` expands it (the env the live view reads).
+            // png_census C25 compares it with the flat and the immersive twins of `registry-sheet`.
+            if let k = state.store.code(code) {
+                if args.contains("--sheet-open") { setenv("KBLI_SHEET_EXPANDED", "1", 1) }
+                state.browsedSector = KBLIStore.sectorLetter(for: code) ?? "A"
+                state.selected = k
+                content = AnyView(SearchListView().environmentObject(state).environmentObject(lang)
+                    .frame(width: w, height: h, alignment: .top))
+            } else { content = notFound }
         case "sheet-ledger":
             // The registry sheet/ledger (KBLIVerdict.swift's own name for this surface) — the mono
             // UPPERCASE label↔value LedgerPlate table, `KBLIRegistryView`.
@@ -406,10 +417,15 @@ extension Snapshot {
                 // One cell: nothing to choose, so no hint is drawn.
                 let scs = ScaleMatrix.scopes(k.perSkala)
                 let picked = ScalePath.snapshotScope ?? 0
-                let cells = imm && scs.count >= ScaleMatrix.listFrom ? (scs.indices.contains(picked) ? scs[picked].rows.count : 0) : k.perSkala.count
+                let pickable: [(idx: Int, row: PerSkala)] = imm && scs.count >= ScaleMatrix.listFrom
+                    ? (scs.indices.contains(picked) ? scs[picked].rows : []) : k.perSkala.enumerated().map { (idx: $0.offset, row: $0.element) }
+                let cells = pickable.count
+                // One chip per (row, scale), named as the mark names it ("scale:row"): the SET the sheet must mark, not a count.
+                let chipSet = pickable.flatMap { p in Set(p.row.skalaUsaha).intersection(ScaleMatrix.order).compactMap { sc in
+                    ScaleMatrix.order.firstIndex(of: sc).map { "\($0):\(p.idx)" } } }.sorted()
                 let record: [String: Any] = ["code": code, "national": "\(Theme.tone(k.pmaStatus ?? ""))", "bali": bali,
                                              "headsup": "\(KBLIVerdict.headsUp(record: k, isID: lang.lang == .id).tone)",
-                                             "cells": cells]
+                                             "cells": cells, "chipSet": chipSet]
                 doc["record"] = record
             }
             if let data = try? JSONSerialization.data(withJSONObject: doc, options: [.prettyPrinted, .sortedKeys]) {
