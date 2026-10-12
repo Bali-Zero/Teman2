@@ -1,5 +1,5 @@
 # Gear-3 evidence pack — mini.vercel_autopromote moves from --promote-only to --upload --auto-build.
-# Written 2026-10-12 by a dossier session (Claude Sonnet 5.5, M5) for code head 3135c3511e (round 1 was on 7d56d5732f; the cure commit is the coordinator's reply to it). Every receipt is a command run in
+# Written 2026-10-12 by a dossier session (Claude Sonnet 5.5, M5) for code head 2ecc910007 (round 1 was on 7d56d5732f; 3135c3511e and 2ecc910007 are the coordinator's cures). Every receipt is a command run in
 # this session; ts is the clock read in the same shell call. Verbatim seat verdicts are in council-journal.jsonl.
 gear: 3
 brief_ref: evidence/brief.yml
@@ -59,7 +59,7 @@ ground:
     Base origin/main e474325994 is an ancestor of the head; #8320 (origin/agent/air-m5/ops/mouth-upload-skip-domain) is
     armed and not yet on main.
 spend:
-  adversarial_rounds: 2
+  adversarial_rounds: 3
   wall_clock_hours: 0.4
 decisions:
   - id: D-exact-markers-fail-closed
@@ -146,6 +146,25 @@ receipts:
     exit: 0
     ts: "2026-10-12T04:44:49Z"
     seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R13 — code head 2ecc910007: wrapper test, bash -n, shellcheck."
+    cmd: bash scripts/tests/test_mini_vercel_autopromote_wrapper.sh
+    result: "passed 38, failed 0"
+    exit: 0
+    ts: "2026-10-12T04:52:00Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R14 — narrow single-seat check of the one-line cure 2ecc910007 by kimi-code/k3: REWORK. BLOCKER: a zero-padded counter such as 08 is all digits, passes the case, and then aborts the arithmetic as an invalid octal."
+    cmd: "scripts/with_seat.sh kimi kimi -p <prompt with git show 2ecc910007 and wrapper lines 200-235> -m kimi-code/k3 < /dev/null"
+    result: "rc 0; VERDICT: REWORK; BLOCKER wrapper :214-215 (08, 09, 018 abort; 010 miscounts as 8+1); DEFECT conditional :213 (absent file under set -e); NOTE 30-digit wrap; NOTE the empty, newline, two-line and word inputs are cured"
+    exit: 0
+    ts: "2026-10-12T04:50:50Z"
+    seat: kimi-code/k3
+  - claim: "R15 — the octal abort reproduces on the exact lines of the cure; the conditional defect does not (the wrapper sets only set -u, and an absent file gives BUSY=1)."
+    cmd: >-
+      bash -c with set -u running the case and arithmetic of wrapper lines 213-216 on a file holding 08, and on an absent file
+    result: "08: value too great for base (error token is 08), shell exits 1, nothing after the arithmetic runs; absent file: BUSY=1"
+    exit: 0
+    ts: "2026-10-12T04:52:31Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
 dissent:
   - seat: agy-gemini-3.1-pro (DEFECT 2) and kimi-code/k3 (NOTE 5)
     objection: >-
@@ -202,7 +221,8 @@ dissent:
       fixes the whole class. Trigger requires out-of-band corruption of a file only this script writes."
     status: CONFIRMED
     disposition: >-
-      OPEN residual, not cured here: the fix-of-a-fix bound of the Builder Contract is reached (depth 1 is the cure
+      SUPERSEDED: cured for the word, empty, two-line and newline inputs by 2ecc910007 (R14), but the zero-padded case (08) still
+      aborts, see the next entry. Earlier text: the fix-of-a-fix bound of the Builder Contract is reached (depth 1 is the cure
       commit), and this session may not edit code. R12 reproduces it. Likelihood is low (a file only the wrapper writes);
       the failure shows as a stale sidecar, which the sentinel's staleness rule eventually reports.
   - seat: agy-gemini-3.1-pro (R11 DEFECT 2) and kimi-code/k3 (R10 NOTE 4)
@@ -213,6 +233,18 @@ dissent:
     disposition: >-
       ACCEPTED trade-off, not a defect: the identifiers the notes need (9-hex sha, dpl_ plus 24 characters, the rc4 sha) are
       under 32 characters or parsed from the raw output; the full text stays in run.log.
+  - seat: kimi-code/k3 (R14, single-seat check of 2ecc910007)
+    objection: >-
+      infra/launchagents/wrappers/mini-vercel-autopromote.sh:214-215, kimi: "The guard case "$BUSY" in ''|*[!0-9]*
+      rejects only strings containing a non-digit; 08 is all digits, so it passes the case unchanged, and line 215's
+      $(( BUSY + 1 )) evaluates the value as an arithmetic expression where a leading 0 means octal. Cure is one token:
+      BUSY=$(( 10#$BUSY + 1 ))."
+    status: CONFIRMED
+    disposition: >-
+      OPEN, residual, NOT cured: R15 reproduces it. This is a fix-of-a-fix at depth 2 (cure 3135c3511e, then 2ecc910007), past
+      the Builder Contract bound of depth 1, so the surface needs a spec rather than a third patch; and this session may not edit
+      code. The earlier residual is therefore NOT marked cured. Trigger needs out-of-band corruption of a file only the wrapper
+      writes; the symptom is a stale sidecar. The conditional absent-file point of the same kimi answer is not a defect (R15).
 residuals:
   - "R10 NOTE 2 (kimi), quoted: five early exits (node guard, kill switch, invalid mode, pidfile skip, cure missing) do not reset the busy counter; counter at 17, a day of absence, then a short manual lock gives an immediate warning. It fails toward warning and self-heals on the next non-busy tick."
   - "R10 NOTE 3 (kimi), quoted: the 18th-tick boundary is tick-count, not wall-clock; the warning can fire at about 34 minutes."
