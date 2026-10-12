@@ -121,23 +121,25 @@ def test_skill_pins_boundary_t7_and_the_merge():
         assert fact in text, fact
 
 
-def test_f1_f3_row_is_open_with_its_proof_or_closed_by_its_branch():
+def test_f1_f3_row_is_closed_by_8385_with_its_proof():
     rows = [ln for ln in ARMS_LINES if "F1 unknown-category" in ln]
     assert len(rows) == 1
     row = rows[0]
-    # Common to both states: the owner, the proof and the regex fix the row names.
-    for k in ("owner: me", "proof-of-armed:", "NAMES_THE_THRESHOLD"):
+    for k in ("owner: me", "proof-of-armed:", "NAMES_THE_THRESHOLD", "every category"):
         assert k in row, k
-    if row.startswith("- opened 2026-10-12"):
-        assert "MIN_TESTS 6 to 8" in row
-    else:
-        assert row.startswith("- closed 2026-10-12")
-        # Closed: the real floor, the category coverage and a durable reference
-        # (a PR number or an explicit pending-on-merge), never a bare branch.
-        assert "MIN_TESTS 9" in row
-        assert "MIN_TESTS 8" not in row
-        assert "every category" in row
-        assert "CLOSED BY pending-on-merge" in row or re.search(r"CLOSED BY #\d+", row)
+    assert row.startswith("- closed 2026-10-12")
+    assert "CLOSED BY #8385" in row and "bc35468022" in row
+    assert "pending-on-merge" not in row
+    assert "MIN_TESTS 9" in row and "MIN_TESTS 8" not in row
+
+
+def test_8390_post_organ_row_appears_once_open_with_owner_and_proof():
+    rows = [ln for ln in ARMS_LINES if "#8390 post-organ observation" in ln]
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.startswith("- opened 2026-10-12")
+    assert "owner: me" in row and "proof-of-armed:" in row
+    assert "2026-10-18T18:00Z" in row
 
 
 def test_seq29_row_pins_owner_deadline_and_proof():

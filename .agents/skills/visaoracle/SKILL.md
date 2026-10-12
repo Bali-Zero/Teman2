@@ -153,6 +153,8 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   (M5 nuzantara-57).** Next: seq-29 candidate (38-visa night program, conductor on Pro `~/visa-night`; unsigned, chained
   to seq-28) before 2026-11-05; test-hygiene follow-ups F1-F3 from #8287's gate; audit PRs PR-7/PR-4 (post-seq-28),
   PR-10, PR-14, PR-15, PR-18, PR-19/20, PR-16; the 13 batch-2 owner decisions. Detail: `references/live-state-log.md`.
+- **seq-29 is to be signed and activated by the session itself (Zero, 2026-10-12)**, process unchanged (red team, two-titolare council, fresh Opus gate, ceremony, proof-of-armed). The 38-visa night program's seq-29 candidate does not exist yet: Pro has been offline on Tailscale since about 11:10Z 2026-10-12, so the night conductor is halted. F1-F3 closed by #8385 (`bc35468022`).
+- **The seq-28 pack tests are pinned to `research/visa/2026-10-11-organ-reattest-seq28` (#8390, `d00c73dd48`)**; open PENDING-ARMS row: observe main after the organ's 2026-10-18T18:00Z ledger lands (visa_engine suite still green).
 - **SUPERSEDED by seq-28 (history), 2026-10-11 position (E33 / retirement program; production pack then seq-27, boundary 2026-11-09T13:21:22Z).**
   Census (scratch, read-only): interview space 1.1x10^14 combinations (exact DAG count); 256 covering walks =
   186 SUPPORTED / 57 NO_SUPPORTED_PATH / 9 HUMAN_REVIEW / 4 NEEDS_INPUT, 0 errors; offline replay == live 256/256.

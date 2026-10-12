@@ -14,12 +14,12 @@ from observe_visa_ledger_seq28 import summary_ok  # noqa: E402
 @pytest.mark.parametrize(
     "line",
     [
-        "10 passed in 0.02s",
-        "1 failed, 11 passed in 0.03s",
-        "11 passed, 1 skipped in 0.03s",
-        "11 passed, 1 xfailed in 0.03s",
-        "11 passed, 1 warning in 0.03s",
-        "12 passed, 1 error in 0.03s",
+        "11 passed in 0.02s",
+        "1 failed, 12 passed in 0.03s",
+        "12 passed, 1 skipped in 0.03s",
+        "12 passed, 1 xfailed in 0.03s",
+        "12 passed, 1 warning in 0.03s",
+        "13 passed, 1 error in 0.03s",
         "",
         None,
     ],
@@ -29,7 +29,7 @@ def test_rejects_anything_but_a_full_pass(line):
 
 
 @pytest.mark.parametrize(
-    "line", ["11 passed in 0.02s", "===== 12 passed in 1.20s =====", "11 passed in 0.50s (0:00:00)"]
+    "line", ["12 passed in 0.02s", "===== 13 passed in 1.20s =====", "12 passed in 0.50s (0:00:00)"]
 )
 def test_accepts_full_pass_at_or_above_floor(line):
     assert summary_ok(line) is True
