@@ -30,6 +30,10 @@ run_case() {
     local rc="$1" out="$2" host="$3"; shift 3
     local tmp; tmp="$(mktemp -d)"
     mkdir -p "$tmp/bin" "$tmp/home/nuzantara/scripts"
+    if [ -n "${SEED_BUSY:-}" ]; then
+        mkdir -p "$tmp/home/logs/mini-vercel_autopromote"
+        printf '%s\n' "$SEED_BUSY" > "$tmp/home/logs/mini-vercel_autopromote/lock-busy-ticks"
+    fi
 
     printf '#!/bin/bash\necho "%s"\n' "$host" > "$tmp/bin/hostname"
     chmod +x "$tmp/bin/hostname"
@@ -97,7 +101,7 @@ hb=$(echo "$r" | cut -f1)
 r=$(run_case 4 'SUSPENDED abc123def — 2 failed upload builds; waiting for the target sha to change' Mini-Pro2)
 hb=$(echo "$r" | cut -f1)
 [ "$(field "$hb" status)" = "error" ] \
-    && [ "$(field "$hb" note)" = "upload suspended for abc123def after 2 failed builds" ] \
+    && [ "$(field "$hb" note)" = "upload suspended for abc123def after repeated failed builds" ] \
     && ok "rc=4 suspended marker -> error with sha" || bad "rc=4 suspended marker" "$hb"
 
 # A SUCCESSFUL promote off a DEGRADED target. Found by running the real cure on Mini with a
@@ -273,6 +277,28 @@ r=$(rot_case 5242881)
 r=$(rot_case 1024)
 [ "$(echo "$r" | cut -f1)" = "NO" ] && [ "$(echo "$r" | cut -f2)" = "YES" ] && [ "$(echo "$r" | cut -f3)" = "7" ] && [ "$(echo "$r" | cut -f4)" = "YES" ] \
     && ok "run.log under 5 MB -> preserved in place (marker kept, old .1 untouched)" || bad "log rotation (innocence)" "$r"
+
+
+echo "== council cures (agy REWORK on 7d56d5732f) =="
+
+BUSY_LINE='upload already in progress — lock busy, skipping this tick'
+r=$(run_case 0 "$BUSY_LINE" Mini-Pro2); hb=$(echo "$r" | cut -f1)
+[ "$(field "$hb" status)" = "ok" ] && ok "first busy tick -> ok" || bad "first busy tick must be ok" "$hb"
+r=$(SEED_BUSY=17 run_case 0 "$BUSY_LINE" Mini-Pro2); hb=$(echo "$r" | cut -f1)
+[ "$(field "$hb" status)" = "warning" ] && ok "18th consecutive busy tick (36 min) -> warning" || bad "a lock held 36 min must warn" "$hb"
+r=$(SEED_BUSY=17 run_case 0 'production already includes this commit — nothing to do' Mini-Pro2); tmpd=$(echo "$r" | cut -f3)
+[ ! -f "$tmpd/home/logs/mini-vercel_autopromote/lock-busy-ticks" ] && ok "a non-busy outcome resets the busy counter" || bad "busy counter must reset" "$(cat "$tmpd/home/logs/mini-vercel_autopromote/lock-busy-ticks")"
+
+r=$(run_case 1 'error: {"token": "abcdEFGH1234", "x": 1}' Mini-Pro2); hb=$(echo "$r" | cut -f1)
+case "$hb" in *abcdEFGH1234*) bad "JSON-keyed token must be redacted" "$hb" ;; *) ok "JSON-keyed token redacted" ;; esac
+r=$(run_case 1 'fail key=Zm9vYmFyYmF6cXV4cXV1eHF1dXhxdXV4cXV1eA==' Mini-Pro2); hb=$(echo "$r" | cut -f1)
+case "$hb" in *Zm9vYmFy*) bad "a long secret-shaped run must be redacted" "$hb" ;; *) ok "long secret-shaped run redacted" ;; esac
+r=$(run_case 1 "$(printf 'bad\tline\033[31m red')" Mini-Pro2); hb=$(echo "$r" | cut -f1)
+printf '%s' "$hb" | python3 -c 'import json,sys; json.load(sys.stdin)' 2>/dev/null \
+    && ok "control characters cannot break the sidecar JSON" || bad "sidecar must stay valid JSON" "$hb"
+
+r=$(run_case 0 'x' other-host MINI_VERCEL_AUTOPROMOTE_MODE=bogus); hb=$(echo "$r" | cut -f1)
+[ "$(field "$hb" status)" = "disabled" ] && ok "wrong node reports before an invalid mode" || bad "node guard must precede mode validation" "$hb"
 
 echo
 printf 'passed %d, failed %d\n' "$PASS" "$FAIL"

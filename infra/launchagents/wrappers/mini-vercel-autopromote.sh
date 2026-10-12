@@ -14,6 +14,7 @@ mkdir -p "$LOG_DIR"
 SIDECAR_DIR="$HOME/.organism/last_seen"
 PIDFILE="/tmp/nuzantara-mini-vercel_autopromote.pid"
 PIDFILE_MAX_AGE_S=$((35 * 60))
+BUSY_FILE="$LOG_DIR/lock-busy-ticks"
 MODE="${MINI_VERCEL_AUTOPROMOTE_MODE:-autobuild}"
 
 ts() { date '+%Y-%m-%d %H:%M:%S'; }
@@ -25,16 +26,6 @@ heartbeat() { # $1 status, $2 note
     printf '{"ts":"%s","status":"%s","note":"%s"}\n' \
         "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json"
 }
-
-case "$MODE" in
-    autobuild) CURE_ARGS=(--upload --auto-build) ;;
-    promote-only) CURE_ARGS=(--promote-only) ;;
-    *)
-        log "invalid MINI_VERCEL_AUTOPROMOTE_MODE — exiting"
-        heartbeat "error" "invalid MINI_VERCEL_AUTOPROMOTE_MODE"
-        exit 0
-        ;;
-esac
 
 # G4_node_guard — wrong node exits VISIBLY (heartbeat), never silently (#10)
 if [ "$(hostname -s | tr '[:upper:]' '[:lower:]')" != "mini-pro2" ]; then
@@ -50,6 +41,18 @@ if [ "${MINI_VERCEL_AUTOPROMOTE_ENABLED:-true}" = "false" ]; then
     heartbeat "disabled" "kill switch"
     exit 0
 fi
+
+# Mode is validated after the node guard and kill switch: a wrong node or a stopped organ
+# reports that first, whatever the mode says.
+case "$MODE" in
+    autobuild) CURE_ARGS=(--upload --auto-build) ;;
+    promote-only) CURE_ARGS=(--promote-only) ;;
+    *)
+        log "invalid MINI_VERCEL_AUTOPROMOTE_MODE — exiting"
+        heartbeat "error" "invalid MINI_VERCEL_AUTOPROMOTE_MODE"
+        exit 0
+        ;;
+esac
 
 # G10_single_instance — pidfile + liveness probe + age threshold + trap cleanup
 if [ -f "$PIDFILE" ]; then
@@ -181,12 +184,18 @@ safe_last_line() {
     local line
     line="$(printf '%s\n' "$OUT" | awk 'NF { line=$0 } END { print line }')"
     [ -n "$line" ] || line="rc=$RC"
-    printf '%s' "$line" | sed -E \
-        -e 's/([Tt][Oo][Kk][Ee][Nn][[:space:]]*[:=][[:space:]]*)[^[:space:]]+/\1[REDACTED]/g' \
-        -e 's/([Bb][Ee][Aa][Rr][Ee][Rr][[:space:]]+)[^[:space:]]+/\1[REDACTED]/g' \
+    printf '%s' "$line" | LC_ALL=C tr -d '\000-\037\177' | sed -E \
+        -e 's/([Tt][Oo][Kk][Ee][Nn]"?[[:space:]]*[:=][[:space:]]*"?)[^[:space:]",}]+/\1[REDACTED]/g' \
+        -e 's/([Bb][Ee][Aa][Rr][Ee][Rr][[:space:]]+)[^[:space:]",}]+/\1[REDACTED]/g' \
+        -e 's/[A-Za-z0-9_+\/=-]{32,}/[REDACTED]/g' \
         -e 's/\\/\\\\/g' \
         -e 's/"/\\"/g'
 }
+
+# Any outcome other than a busy lock resets the consecutive-busy counter.
+if ! has_output_line '^upload already in progress — lock busy, skipping this tick$'; then
+    rm -f "$BUSY_FILE"
+fi
 
 case "$RC" in
     0)
@@ -199,8 +208,16 @@ case "$RC" in
             heartbeat "warning" "degraded target — git could not be asked"
             log "DEGRADED TARGET — the cure fell back to main HEAD and exited 0; the fetch is broken"
         elif has_output_line '^upload already in progress — lock busy, skipping this tick$'; then
-            heartbeat "ok" "build in progress (lock held)"
-            log "BUILD IN PROGRESS — upload lock held"
+            # A lock held by a wedged or manual run must not read green forever (superscar #2):
+            # count consecutive busy ticks; past 35 minutes of them it is a warning.
+            BUSY=$(( $(cat "$BUSY_FILE" 2>/dev/null || echo 0) + 1 ))
+            printf '%s\n' "$BUSY" > "$BUSY_FILE"
+            if [ $(( BUSY * 120 )) -lt "$PIDFILE_MAX_AGE_S" ]; then
+                heartbeat "ok" "build in progress (lock held)"
+            else
+                heartbeat "warning" "upload lock held for $BUSY consecutive ticks"
+            fi
+            log "BUILD IN PROGRESS — upload lock held (consecutive busy ticks: $BUSY)"
         elif has_output_line '^OK - promoted dpl_[[:alnum:]_-]+; kita\.balizero\.com serves [[:xdigit:]]{9}$'; then
             heartbeat "ok" "built by upload and promoted"
             log "BUILT AND PROMOTED — upload moved production"
@@ -254,11 +271,11 @@ case "$RC" in
         log "USAGE ERROR — the cure rejected the selected mode; NOTHING was cured"
         ;;
     4)
-        SUSPENDED_SHA="$(printf '%s\n' "$OUT" | sed -nE 's/^SUSPENDED ([[:xdigit:]]{9}) — 2 failed upload builds; waiting for the target sha to change$/\1/p' | tail -n 1)"
+        SUSPENDED_SHA="$(printf '%s\n' "$OUT" | sed -nE 's/^SUSPENDED ([[:xdigit:]]{9}) — [0-9]+ failed upload builds; waiting for the target sha to change$/\1/p' | tail -n 1)"
         if [ -n "$SUSPENDED_SHA" ]; then
-            heartbeat "error" "upload suspended for $SUSPENDED_SHA after 2 failed builds"
+            heartbeat "error" "upload suspended for $SUSPENDED_SHA after repeated failed builds"
         else
-            heartbeat "error" "upload suspended after 2 failed builds"
+            heartbeat "error" "upload suspended after repeated failed builds"
         fi
         log "UPLOAD SUSPENDED — failed-build limit reached"
         ;;
