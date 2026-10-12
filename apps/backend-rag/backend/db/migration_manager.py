@@ -17,6 +17,7 @@ from backend.db.migration_base import (
     BaseMigration,
     MigrationError,
     assume_runtime_role,
+    extract_dependencies,
     migration_dsn_is_dedicated,
     resolve_migration_dsn,
     run_with_lock_retry,
@@ -468,6 +469,7 @@ class MigrationManager:
                     "file": sql_file.name,
                     "path": sql_file,
                     "rollback_sql": _extract_rollback_sql(sql_text),
+                    "dependencies": extract_dependencies(sql_text),
                 }
             )
 
@@ -640,6 +642,7 @@ class MigrationManager:
                 migration_number=migration_number,
                 sql_file=sql_file,
                 description=f"Migration {migration_number}",
+                dependencies=migration_info.get("dependencies"),
                 rollback_sql=migration_info.get("rollback_sql"),
             )
 
