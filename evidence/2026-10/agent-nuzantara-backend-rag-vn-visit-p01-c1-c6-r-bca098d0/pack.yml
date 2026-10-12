@@ -70,6 +70,24 @@ receipts:
     exit: 1
     ts: "2026-10-12T08:37:00Z"
     seat: this session
+  - claim: Red-team cure. The test file (15 tests) was red on the printable price list before the edit and is green after; pack-versus-catalogue divergence pinned.
+    cmd: apps/backend-rag/.venv/bin/python -m pytest -p no:cacheprovider tests/scripts/test_c1_c6_price_descriptions.py tests/scripts/test_observe_c1_c6_price_descriptions.py
+    result: "first run 1 failed (price list row) and 14 passed; after the price list edit 25 passed"
+    exit: 0
+    ts: "2026-10-12T08:50:00Z"
+    seat: this session
+  - claim: Whole mouth visa-oracle Vitest tree after the cure commit.
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "54 files, 1425 tests passed"
+    exit: 0
+    ts: "2026-10-12T08:49:30Z"
+    seat: this session
+  - claim: Whole backend visa_engine suite after the cure commit, same environmental set as before.
+    cmd: cd apps/backend-rag && ./.venv/bin/python -m pytest backend/tests/services/visa_engine -p no:cacheprovider
+    result: "2 failed, 2957 passed, 15 skipped, 39 errors in 129.53s; failures only in test_evaluate_endpoint, test_shadow_evidence, test_shadow_match, test_visa_engine_retention_fk_registry (Postgres schema state on the shared local database)"
+    exit: 1
+    ts: "2026-10-12T08:53:00Z"
+    seat: this session
   - claim: Whole mouth visa-oracle Vitest tree and the pricing and book/services tests that read the mirror.
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'; npx vitest run src/lib/pricing-snapshot.test.ts src/lib/bali-zero-prices.test.ts src/components/book src/components/services
     result: "54 files, 1425 tests passed; 6 files, 35 tests passed"
@@ -82,6 +100,61 @@ decisions:
       Price, validity, notes and keys are untouched; the descriptions name no fee split and no invented price.
   - id: D-md-pricelist
     decision: >-
-      docs/pricing/Bali_Zero_Price_List_2026.md (a hand-kept printable list that does not even carry C6) still
-      has the old C1 sentence; flagged as a follow-up, out of scope for this data PR.
-dissent: []
+      Cured after the red team (finding 2): docs/pricing/Bali_Zero_Price_List_2026.md carries the C1 row; the row
+      is the canonical description verbatim and a test pins the equality. A full regeneration with
+      scripts/pricelist_2026/generate.py was NOT used: the checked-in list had drifted from the generator (A1, B1,
+      C6, C8 rows, the compliance-retainers section) and a regeneration would have folded that unrelated churn into
+      this PR. The list still does not carry a C6 row (it never did); adding the product is a catalogue decision.
+      The table was re-padded by prettier because the new sentence is longer than the column; no other row changed.
+  - id: D-pack-divergence
+    decision: >-
+      Cured after the red team (finding 1), without touching the signed pack: a test now reads the latest
+      rulepack-prod source in the tree and pins that the price copy and the pack disagree ONLY on the one recorded
+      activity (C1 business_meetings), and not at all for C6. The test fails the moment the pack drops the field
+      (stale exception) or the copy permits another activity the pack prohibits. The pack field has no runtime
+      reader (grep of backend and mouth: only the model declaration); correcting it is a signing matter for the
+      next sequence and is handed to the owner of that sequence in the PR body.
+dissent:
+  - seat: codex gpt-5.6-sol
+    rollout: rollout-2026-10-12T08-41-19-01a12d8e-8cd1-7870-bfab-3420f2b10a6a
+    severity: HIGH
+    scope: C1 half of finding 1
+    objection: >-
+      C1 copy now allows business discussions while the signed pack (rulepack-prod-027) lists business_meetings as
+      prohibited for C1, so Pricing and Visa Oracle can answer opposite things; the tests only check the old phrase
+      is gone and never compare the catalogue against the pack.
+    status: CONFIRMED
+    disposition: cured
+    reason: >-
+      The divergence is real and stays, because the official imigrasi.go.id C1 page (the authority) allows business
+      discussions, negotiations and signing, so the pack field is the stale side; the pack is signed and out of this
+      PR's reach. Cured by making the divergence explicit and mechanical: test_copy_and_pack_diverge_only_where_recorded
+      reads the latest pack in the tree and pins a single named exception that fails loudly once the pack drops the
+      field or the copy permits anything else the pack prohibits. The pack field has no runtime reader, so no client
+      answer is driven by it today.
+  - seat: codex gpt-5.6-sol
+    rollout: rollout-2026-10-12T08-41-19-01a12d8e-8cd1-7870-bfab-3420f2b10a6a
+    severity: HIGH
+    scope: C6 half of finding 1
+    objection: >-
+      C6 copy contradicts the pack, which lists business_meetings as prohibited for C6.
+    status: RETRACTED
+    disposition: rejected
+    reason: >-
+      The new C6 copy says nothing about business meetings (it names social activity, visiting friends and family,
+      tourism, and prohibits selling goods or services and receiving pay), so it cannot contradict the pack. The
+      report's own text agrees the C6 page is social, tourism and family. The pack test pins an empty divergence for
+      C6.
+  - seat: codex gpt-5.6-sol
+    rollout: rollout-2026-10-12T08-41-19-01a12d8e-8cd1-7870-bfab-3420f2b10a6a
+    severity: MEDIUM
+    scope: finding 2
+    objection: >-
+      The pack defers docs/pricing/Bali_Zero_Price_List_2026.md as hand-kept, but it is generated from the modified
+      JSON and still says C1 cannot be used for business.
+    status: CONFIRMED
+    disposition: cured
+    reason: >-
+      The follow-up belongs to the same concern. The C1 row is now the canonical text and a test compares it, plus a
+      guard that the old sentence is gone from the file. Dissent only on the method: a blanket regeneration is
+      rejected as unrelated churn (see D-md-pricelist).

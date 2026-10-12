@@ -21,6 +21,8 @@ FILES = [
     ROOT / "apps" / "backend-rag" / "backend" / "data" / "bali_zero_official_prices_2026.json",
     ROOT / "apps" / "mouth" / "data" / "bali-zero-prices.json",
 ]
+PACKS = ROOT / "apps" / "backend-rag" / "backend" / "services" / "visa_engine" / "contracts" / "packs"
+PRICE_LIST_MD = ROOT / "docs" / "pricing" / "Bali_Zero_Price_List_2026.md"
 C1 = "C1 Tourism"
 C6 = "C6 Social Activity"
 PRICES = {C1: "2.300.000 IDR", C6: "2.000.000 IDR"}
@@ -111,3 +113,58 @@ def test_pricing_service_get_all_prices_serves_the_new_description(name):
     text = _text(served)
     assert STAY_AND_VALIDITY in text
     assert "business meetings" not in text and "cannot be used" not in text
+
+
+# --- the printable price list is generated from the canonical JSON: it must not keep the old sentence ---
+
+def _price_list_row(name: str) -> str | None:
+    for line in PRICE_LIST_MD.read_text(encoding="utf-8").splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) == 3 and cells[0] == f"**{name}**":
+            return cells[1]
+    return None
+
+
+def test_printable_price_list_c1_row_is_the_canonical_description():
+    canonical = _one(_files_data()[0], C1)["description_en"]
+    row = _price_list_row(C1)
+    assert row is not None, "the C1 Tourism row is missing from the printable price list"
+    assert row == canonical
+    assert "cannot be used for work or business" not in PRICE_LIST_MD.read_text(encoding="utf-8").lower()
+
+
+# --- price catalogue versus the signed rule pack (the Visa Oracle's own answer on the same product) ---
+
+# What the copy PERMITS, as the pack names the activity. Only an activity the copy affirmatively allows
+# is listed; a copy that is silent on an activity cannot contradict the pack.
+PERMITTED_BY_COPY = {"business_meetings": ("business discussions",)}
+# The one known divergence: the official C1 page allows business discussions, negotiations and signing, while the
+# signed pack still lists business_meetings under C1 prohibited_activities. The page is the authority and the
+# pack field has no runtime reader (nothing renders or evaluates it); the pack correction is a signing matter for
+# the next sequence and is not made here. This test fails the moment the pack drops the field (stale exception)
+# or the copy starts to permit something else the pack prohibits (new divergence).
+KNOWN_DIVERGENCE = {C1: {"business_meetings"}, C6: set()}
+
+
+def _pack_prohibited(product_code: str) -> set[str]:
+    source = sorted(PACKS.glob("rulepack-prod-*.source.json"))[-1]
+    pack = json.loads(source.read_text(encoding="utf-8"))
+    found: list[set[str]] = []
+    stack = [pack]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, dict):
+            if node.get("product_code") == product_code and "prohibited_activities" in node:
+                found.append(set(node["prohibited_activities"]))
+            stack.extend(node.values())
+        elif isinstance(node, list):
+            stack.extend(node)
+    assert len(found) == 1, (product_code, source.name, len(found))
+    return found[0]
+
+
+@pytest.mark.parametrize("name,code", ((C1, "C1"), (C6, "C6")))
+def test_copy_and_pack_diverge_only_where_recorded(name, code):
+    text = _text(_one(_files_data()[0], name))
+    permitted = {a for a, phrases in PERMITTED_BY_COPY.items() if any(p in text for p in phrases)}
+    assert permitted & _pack_prohibited(code) == KNOWN_DIVERGENCE[name]
