@@ -1,8 +1,9 @@
-gear: 1
+gear: 2
 gear_reason: >-
   One payload script and its test file: the drill reads drill-scoped variable names instead of generic ones,
   the watchdog's process group is killed with the run, and a dead legacy drill script is removed. No wrapper,
-  plist, registry or workflow change; evidence_pack_lint --print-floor computes 1.
+  plist, registry or workflow change. The floor is 2 by size alone (+232/-185 with the 176-line legacy
+  deletion and this dossier); no hot-zone path.
 mission: >-
   The first scheduled mini.restore_drill run (2026-11-01 12:00 WITA) lists the backups bucket, not the media
   bucket the Mini secrets env names TIGRIS_BUCKET, so the organ installed from #8308 can reach a verdict.
