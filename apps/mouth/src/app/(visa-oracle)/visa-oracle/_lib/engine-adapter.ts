@@ -878,11 +878,7 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Visa Keluarga Anak Pemegang ITAS/ITAP (E31E) hanya berlaku untuk pemohon yang belum menikah, dan status perkawinan yang Anda nyatakan bukan lajang.",
   ),
   // seq-29. Product names verbatim from the pack's `names.en` / `names.id`; each sentence
-  // states only what its rule checks (the Kepmen E31J row, the E31D and Alih Status pages).
-  A1_NOT_CONVERTIBLE: text(
-    "The Visa-Free Tourism Visit (A1) cannot be changed into another permit from inside Indonesia, and you told us you plan to switch permits after you arrive. If you travel on it without switching, answer that question no and it is assessed again.",
-    "Bebas Visa Kunjungan Wisata (A1) tidak dapat dialihkan menjadi izin lain dari dalam Indonesia, sedangkan Anda menyampaikan akan beralih izin setelah tiba. Jika Anda bepergian dengan visa ini tanpa beralih izin, jawab pertanyaan tersebut dengan tidak dan penilaian akan diulang.",
-  ),
+  // states only what its rule checks (the Kepmen E31J row and the E31D page).
   E31D_REQ_SPONSOR_INDONESIAN: text(
     "The Family Visa — Stepchild of Foreigner in Legal Mixed Marriage (E31D) requires the sponsoring step-parent to hold Indonesian nationality, and yours does not.",
     "Visa Keluarga Anak Bawaan WNA Perkawinan Sah WNA-WNI (E31D) mensyaratkan orang tua tiri penjamin berkewarganegaraan Indonesia, dan penjamin Anda bukan WNI.",

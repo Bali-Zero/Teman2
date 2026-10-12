@@ -6325,34 +6325,6 @@
       "safety_critical": false
     },
     {
-      "rule_id": "hf.a1.onshore-conversion-excluded",
-      "stage": "HARD_FILTER",
-      "scope": "PRODUCTS",
-      "product_version_ids": ["aee1a12d-3285-526e-8a6f-3d8467fe5d72"],
-      "when": {
-        "op": "eq",
-        "fact": "process.wants_onshore_conversion",
-        "value": true
-      },
-      "effect": {
-        "type": "EXCLUDE",
-        "reason_code": "A1_NOT_CONVERTIBLE"
-      },
-      "on_unknown": "NO_EFFECT",
-      "priority": 100,
-      "required_facts": ["process.wants_onshore_conversion"],
-      "source_refs": [
-        "808d691c-374e-5581-8186-9eb54d0ca7ab",
-        "dcf08e19-fbc3-5f96-93fa-0325b1ffe91d"
-      ],
-      "valid_period": {
-        "from": "2026-10-12T00:00:00Z",
-        "to": null
-      },
-      "explanation_key": "explain.hf.a1.onshore-conversion-excluded",
-      "safety_critical": true
-    },
-    {
       "rule_id": "hf.e31d-sponsor-not-indonesian",
       "stage": "HARD_FILTER",
       "scope": "PRODUCTS",
@@ -8356,22 +8328,6 @@
         "selling_goods_services",
         "indonesian_source_remuneration",
         "political_activity"
-      ],
-      "duration_options": [
-        {
-          "days": 365,
-          "pricing_key": {
-            "category": "kitas_permits",
-            "item_key": "E30A Education Visa (1 Year)"
-          }
-        },
-        {
-          "days": 730,
-          "pricing_key": {
-            "category": "kitas_permits",
-            "item_key": "E30A Education Visa (2 Years)"
-          }
-        }
       ]
     },
     {
@@ -8427,29 +8383,6 @@
         "selling_goods_services",
         "indonesian_source_remuneration",
         "political_activity"
-      ],
-      "duration_options": [
-        {
-          "days": 365,
-          "pricing_key": {
-            "category": "kitas_permits",
-            "item_key": "E30B Higher Education (1 Year)"
-          }
-        },
-        {
-          "days": 730,
-          "pricing_key": {
-            "category": "kitas_permits",
-            "item_key": "E30B Higher Education (2 Years)"
-          }
-        },
-        {
-          "days": 1460,
-          "pricing_key": {
-            "category": "kitas_permits",
-            "item_key": "E30B Higher Education (4 Years)"
-          }
-        }
       ]
     },
     {

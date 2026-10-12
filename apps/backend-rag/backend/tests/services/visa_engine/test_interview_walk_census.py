@@ -1269,8 +1269,7 @@ EXPECTED_OUTCOME_BY_SEQUENCE[28] = {
 # walk changes state. E31J is excluded for an adult sibling (hf.e31j-adult-excluded), E31D for
 # a step-parent who is not Indonesian (hf.e31d-sponsor-not-indonesian), E28F for an IKN
 # subsidiary with no foreign parent company (el.e28f.ikn-subsidiary). The E31E reason scoping
-# and the A1 conversion filter move no walk: the family walks answer a 121-day stay that C1
-# covers, and no corpus walk sets process.wants_onshore_conversion for A1.
+# moves no walk: the family walks answer a 121-day stay that C1 covers.
 _SEQ29_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/diaspora/SIBLING/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
     "offshore/family/SIBLING/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
