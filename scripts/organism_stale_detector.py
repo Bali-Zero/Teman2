@@ -232,7 +232,7 @@ WARNING_STATUSES: frozenset[str] = frozenset({"warning", "warn"})
 # them (would cause alert-fatigue = the next blindness). Established by the
 # 2026-06-28 triage of all 14 fresh-but-failed organs. Each entry is here because
 # the failure is benign, with the documented reason:
-#   - codex.spark_*        : intentionally disabled by the W81 firebreak (runaway loop)
+#   - codex.spark_*        : REMOVED 2026-10-12 — bridge entries retired (labels unloaded), no sidecar to suppress
 #   - wr2.telegram_gate    : decommissioned 2026-06-11 (.removed-*), genome not pruned
 #   - wr2.carousel_dispatcher: decommissioned 2026-06-11 (.removed-*), genome not pruned
 #   - pro.agent_library_evolver_* : intentionally disabled (deploy-drift quarantine)
@@ -255,9 +255,6 @@ WARNING_STATUSES: frozenset[str] = frozenset({"warning", "warn"})
 # this allow-list is the safe downstream filter. Audit this list when an organ is
 # re-enabled — a re-enabled organ that genuinely fails must NOT stay suppressed.
 KNOWN_BENIGN_FAILED: frozenset[str] = frozenset({
-    "codex.spark_loop",
-    "codex.spark_harvester",
-    "codex.spark_alarm",
     "wr2.telegram_gate",
     "wr2.carousel_dispatcher",
     # "wr3.reflexion_weekly" was suppressed here as "launchctl-disabled on purpose"

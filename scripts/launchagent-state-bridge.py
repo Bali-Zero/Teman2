@@ -196,11 +196,11 @@ BRIDGED_LABELS: tuple[BridgedLaunchAgent, ...] = (
     # expected-permanent condition. Bridging it here would write a perpetual
     # false "label not loaded" failed sidecar for a retired-by-design organ —
     # same rationale as the wr2.canva_* removal above.
-    BridgedLaunchAgent(
-        label="com.nuzantara.codex-spark-alarm",
-        organ_id="codex.spark_alarm",
-        daemon=False,
-    ),
+    # codex.spark_alarm / codex.spark_harvester / codex.spark_loop REMOVED 2026-10-12:
+    # the three com.nuzantara.codex-spark-* labels are unloaded (W81 firebreak, runaway
+    # loop; `launchctl print` -> "Could not find service"). Bridging them wrote a
+    # permanent false failed sidecar and kept organs_heartbeat red — same rationale as
+    # the redis-split-brain / wa_viewer removals.
     # P0o import: scheduled-ok and event-driven LaunchAgents that were
     # live in Pro launchd with matching plist labels but no genome edge.
     # The bridge records launchd status only; script-level success remains
@@ -360,11 +360,8 @@ BRIDGED_LABELS: tuple[BridgedLaunchAgent, ...] = (
         organ_id="wr3.reflexion_weekly",
         daemon=False,
     ),
-    BridgedLaunchAgent(
-        label="com.balizero.yield-optimizer.weekly",
-        organ_id="pro.yield_optimizer_weekly",
-        daemon=False,
-    ),
+    # pro.yield_optimizer_weekly REMOVED 2026-10-12: label not loaded (retired);
+    # bridging it wrote a permanent false "label not loaded" failed sidecar.
     BridgedLaunchAgent(
         label="com.matagaruda.pel-cleaner.weekly",
         organ_id="mata_garuda.pel_cleaner_weekly",
@@ -393,11 +390,6 @@ BRIDGED_LABELS: tuple[BridgedLaunchAgent, ...] = (
     BridgedLaunchAgent(
         label="com.nuzantara.codex-openclaw-analysis",
         organ_id="codex.openclaw_analysis",
-        daemon=False,
-    ),
-    BridgedLaunchAgent(
-        label="com.nuzantara.codex-spark-harvester",
-        organ_id="codex.spark_harvester",
         daemon=False,
     ),
     BridgedLaunchAgent(
@@ -513,11 +505,6 @@ BRIDGED_LABELS: tuple[BridgedLaunchAgent, ...] = (
         label="com.matagaruda.ner.adaptive",
         organ_id="mata_garuda.ner_adaptive.pro",
         daemon=False,
-    ),
-    BridgedLaunchAgent(
-        label="com.nuzantara.codex-spark-loop",
-        organ_id="codex.spark_loop",
-        daemon=True,
     ),
     BridgedLaunchAgent(
         label="com.nuzantara.openclaw-whatsapp-bridge",
