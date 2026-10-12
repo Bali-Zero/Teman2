@@ -1,5 +1,5 @@
 # Gear-3 evidence pack — mini.vercel_autopromote moves from --promote-only to --upload --auto-build.
-# Written 2026-10-12 by a dossier session (Claude Sonnet 5.5, M5) for code head 2ecc910007 (round 1 was on 7d56d5732f; 3135c3511e and 2ecc910007 are the coordinator's cures). Every receipt is a command run in
+# Written 2026-10-12 by a dossier session (Claude Sonnet 5.5, M5) for code head 040ff7c663 (round 1 was on 7d56d5732f; 3135c3511e, 2ecc910007 and 040ff7c663 are the coordinator's cures). Every receipt is a command run in
 # this session; ts is the clock read in the same shell call. Verbatim seat verdicts are in council-journal.jsonl.
 gear: 3
 brief_ref: evidence/brief.yml
@@ -59,7 +59,7 @@ ground:
     Base origin/main e474325994 is an ancestor of the head; #8320 (origin/agent/air-m5/ops/mouth-upload-skip-domain) is
     armed and not yet on main.
 spend:
-  adversarial_rounds: 3
+  adversarial_rounds: 4
   wall_clock_hours: 0.4
 decisions:
   - id: D-exact-markers-fail-closed
@@ -165,6 +165,18 @@ receipts:
     exit: 0
     ts: "2026-10-12T04:52:31Z"
     seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R16 — code head 040ff7c663: wrapper test."
+    cmd: bash scripts/tests/test_mini_vercel_autopromote_wrapper.sh
+    result: "passed 41, failed 0"
+    exit: 0
+    ts: "2026-10-12T05:20:00Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R17 — last narrow single-seat check of 040ff7c663 by kimi-code/k3: PASS. The accept set is exactly the stated domain (0, or 1 to 5 digits without a leading zero); 08, 0017, a 20-digit overflow, negatives and whitespace all reset to 1; validation precedes the arithmetic; the patterns are plain POSIX globs valid on bash 3.2; set -u cannot trip."
+    cmd: "scripts/with_seat.sh kimi kimi -p <prompt with git show 040ff7c663 and wrapper lines 205-230> -m kimi-code/k3 < /dev/null"
+    result: "rc 0; VERDICT: PASS; 2 NOTEs (counter 99999 writes 100000, outside its own stated domain, after about 138 days of continuous busy; the corruption tests assert only status ok, not the file afterwards)"
+    exit: 0
+    ts: "2026-10-12T05:19:00Z"
+    seat: kimi-code/k3
 dissent:
   - seat: agy-gemini-3.1-pro (DEFECT 2) and kimi-code/k3 (NOTE 5)
     objection: >-
@@ -241,11 +253,14 @@ dissent:
       BUSY=$(( 10#$BUSY + 1 ))."
     status: CONFIRMED
     disposition: >-
-      OPEN, residual, NOT cured: R15 reproduces it. This is a fix-of-a-fix at depth 2 (cure 3135c3511e, then 2ecc910007), past
+      CURED in 040ff7c663 by stating the counter's whole accepted domain once (R17, kimi PASS); this entry's earlier text follows.
+      Was: OPEN, residual, NOT cured: R15 reproduces it. This is a fix-of-a-fix at depth 2 (cure 3135c3511e, then 2ecc910007), past
       the Builder Contract bound of depth 1, so the surface needs a spec rather than a third patch; and this session may not edit
-      code. The earlier residual is therefore NOT marked cured. Trigger needs out-of-band corruption of a file only the wrapper
+      code. The residual was open at that point and is cured at 040ff7c663. Trigger needs out-of-band corruption of a file only the wrapper
       writes; the symptom is a stale sidecar. The conditional absent-file point of the same kimi answer is not a defect (R15).
 residuals:
+  - "R17 NOTE 1 (kimi), quoted: wrapper :218-220, input 99999 -> wrapper writes 100000, which violates its own stated writer domain (at most 5 digits) and is itself treated as corruption next tick: the count silently restarts at 1 and reads green for up to 17 more ticks. Reachable only after ~138 days of uninterrupted busy lock (99999 x 120s), and the warning has fired continuously long before, so the operational impact is nil."
+  - "R17 NOTE 2 (kimi), quoted: the four corruption seeds assert only status=ok (never aborts); none asserts the file content afterward. Adequate for the stated contract (restarts, never aborts), weaker than it could be."
   - "R10 NOTE 2 (kimi), quoted: five early exits (node guard, kill switch, invalid mode, pidfile skip, cure missing) do not reset the busy counter; counter at 17, a day of absence, then a short manual lock gives an immediate warning. It fails toward warning and self-heals on the next non-busy tick."
   - "R10 NOTE 3 (kimi), quoted: the 18th-tick boundary is tick-count, not wall-clock; the warning can fire at about 34 minutes."
   - "R10 NOTE 5 (kimi), quoted: the rc4 heartbeat note no longer carries the failure count; it survives in run.log."
