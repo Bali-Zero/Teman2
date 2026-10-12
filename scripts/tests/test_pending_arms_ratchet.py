@@ -970,3 +970,215 @@ def test_an_override_after_a_multiline_comment_closes_is_still_seen():
     """The drop direction of the same fix: text after `-->` is live Markdown."""
     text = "<!--\nnote\n--> RATCHET-OVERRIDE: tech_debt_overdue<=2 -- reviewed\n"
     assert [o["ceiling"] for o in par.parse_ratchet_overrides(text)] == [2]
+
+
+# ---------------------------------------------------------------------------
+# I. Mutation-pinned decisions (lane-4 sweep, 2026-10-12): every case below was
+#    a surviving mutant of the guard's own verdict path. Expected values come
+#    from the docstrings/comments of the functions named, not from reading the
+#    code back.
+# ---------------------------------------------------------------------------
+
+_ROW_A = "- opened 2026-06-01 (t) | **row A** | wire it | session | CI red\n"
+_ROW_B = "- opened 2026-06-01 (t) | **row B** | wire it | session | CI red\n"
+_LATE = "2026-09-01"  # both rows are overdue at this clock
+
+
+def test_invalid_override_note_carries_its_own_reason_and_raw_line():
+    """The author of a typo is told WHAT was wrong and WHICH line — not a generic
+    fallback — whenever the parser supplied both."""
+    bad = {"ceiling": None, "reason": "", "valid": False,
+           "why_invalid": "ceiling is not an integer", "raw": "RATCHET-OVERRIDE: <=44x -- typo"}
+    v = par.ratchet_verdict(1, 1, [bad])
+    assert v["notes"] == [
+        "invalid override ignored — ceiling is not an integer :: RATCHET-OVERRIDE: <=44x -- typo"
+    ]
+
+
+def test_invalid_override_note_falls_back_when_the_parser_gave_nothing():
+    """Innocence twin: a dict with no why/raw, and a non-dict, still produce a
+    reportable note instead of a crash or an empty string."""
+    v = par.ratchet_verdict(1, 1, [{"valid": False}, "garbage"])
+    assert len(v["notes"]) == 2
+    assert "not a well-formed override" in v["notes"][0]
+    assert "not a well-formed override" in v["notes"][1]
+    assert "garbage" in v["notes"][1]
+
+
+def test_insufficient_valid_override_is_named_in_a_note_when_red():
+    v = par.ratchet_verdict(1, 5, [_override(3, "too low")])
+    assert v["status"] == "red"
+    assert any("do not cover head count 5" in n and "3" in n for n in v["notes"]), v["notes"]
+
+
+def test_red_with_no_valid_override_has_no_ceiling_note():
+    """Innocence twin: nothing valid -> nothing to say about ceilings."""
+    v = par.ratchet_verdict(1, 5, [_override(3, "x", valid=False, why_invalid="bad")])
+    assert v["status"] == "red"
+    assert not any("do not cover" in n for n in v["notes"]), v["notes"]
+
+
+def test_resolve_base_reports_the_git_error_verbatim_on_failure(monkeypatch, tmp_path):
+    monkeypatch.setattr(par, "_git", lambda *a, **k: (128, "", "fatal: bad revision 'origin/main'"))
+    assert par._resolve_ratchet_base(tmp_path / "L.md", None) == (
+        None, "fatal: bad revision 'origin/main'"
+    )
+
+
+def test_resolve_base_names_the_exit_code_when_git_said_nothing(monkeypatch, tmp_path):
+    monkeypatch.setattr(par, "_git", lambda *a, **k: (128, "", ""))
+    assert par._resolve_ratchet_base(tmp_path / "L.md", None) == (
+        None, "git merge-base exited 128"
+    )
+
+
+def test_resolve_base_empty_output_is_not_a_base(monkeypatch, tmp_path):
+    monkeypatch.setattr(par, "_git", lambda *a, **k: (0, "", ""))
+    resolved, why = par._resolve_ratchet_base(tmp_path / "L.md", None)
+    assert resolved is None and "no output" in why
+
+
+def test_resolve_base_success_returns_the_sha(monkeypatch, tmp_path):
+    """Innocence twin: a good answer must not be discarded."""
+    monkeypatch.setattr(par, "_git", lambda *a, **k: (0, "abc123", ""))
+    assert par._resolve_ratchet_base(tmp_path / "L.md", None) == (
+        "abc123", "git merge-base origin/main HEAD"
+    )
+
+
+def test_base_commit_date_none_unless_git_succeeded_with_a_date(monkeypatch, tmp_path):
+    import datetime as _dt
+
+    led = tmp_path / "L.md"
+    monkeypatch.setattr(par, "_git", lambda *a, **k: (0, "", ""))
+    assert par._base_commit_date(led, "x") is None          # empty output
+    monkeypatch.setattr(par, "_git", lambda *a, **k: (1, "2026-01-01", "boom"))
+    assert par._base_commit_date(led, "x") is None          # failure carries no date
+    monkeypatch.setattr(par, "_git", lambda *a, **k: (0, "not-a-date", ""))
+    assert par._base_commit_date(led, "x") is None          # unparseable
+    monkeypatch.setattr(par, "_git", lambda *a, **k: (0, "2026-01-01", ""))
+    assert par._base_commit_date(led, "x") == _dt.date(2026, 1, 1)
+
+
+def test_branch_start_date_none_unless_git_succeeded_and_picks_the_oldest(monkeypatch, tmp_path):
+    import datetime as _dt
+
+    led = tmp_path / "L.md"
+    monkeypatch.setattr(par, "_git", lambda *a, **k: (0, "", ""))
+    assert par._branch_start_date(led, "x") is None         # empty range
+    monkeypatch.setattr(par, "_git", lambda *a, **k: (1, "2026-03-01", "boom"))
+    assert par._branch_start_date(led, "x") is None         # failure carries no date
+    # git log lists newest first; the oldest is last. A garbage oldest line is
+    # skipped in favour of the next-oldest valid one.
+    monkeypatch.setattr(par, "_git", lambda *a, **k: (0, "2026-03-05\n2026-03-04\nbogus", ""))
+    assert par._branch_start_date(led, "x") == _dt.date(2026, 3, 4)
+    monkeypatch.setattr(par, "_git", lambda *a, **k: (0, "2026-03-05\n2026-03-01", ""))
+    assert par._branch_start_date(led, "x") == _dt.date(2026, 3, 1)
+
+
+def test_an_undatable_branch_is_cannot_verify_exit_3(monkeypatch, tmp_path, capsys):
+    """Neither the branch start nor the base commit can be dated -> exit 3 exactly,
+    and never a fall back to today's calendar."""
+    ledger, base_sha = _git_repo_with_ledger(tmp_path, _ROW_A, _ROW_A)
+    monkeypatch.setattr(par, "_branch_start_date", lambda *a, **k: None)
+    monkeypatch.setattr(par, "_base_commit_date", lambda *a, **k: None)
+    assert par.run_ratchet(ledger, None, base_sha) == 3
+    assert "CANNOT-VERIFY" in capsys.readouterr().err
+
+
+def test_clock_tolerance_is_two_days_not_one_and_not_three(monkeypatch, tmp_path, capsys):
+    """A clock up to two calendar days ahead is timezone skew (UTC-12..UTC+14);
+    three days ahead is a skewed or forged date."""
+    import datetime as _dt
+
+    ledger, base_sha = _git_repo_with_ledger(tmp_path, _ROW_A, _ROW_A)
+    today = _dt.date.today()
+
+    monkeypatch.setattr(par, "_branch_start_date", lambda *a, **k: today + _dt.timedelta(days=2))
+    assert par.run_ratchet(ledger, None, base_sha) == 0
+    capsys.readouterr()
+
+    monkeypatch.setattr(par, "_branch_start_date", lambda *a, **k: today + _dt.timedelta(days=3))
+    assert par.run_ratchet(ledger, None, base_sha) == 3
+    assert "more than 2 days in the future" in capsys.readouterr().err
+
+
+def test_inherited_override_is_announced_only_when_there_is_one(tmp_path, capsys):
+    ov = "RATCHET-OVERRIDE: tech_debt_overdue<=445 -- PR A's reviewed ceiling\n"
+    ledger, base_sha = _git_repo_with_ledger(tmp_path, _ROW_A + ov, _ROW_A + ov)
+    assert par.run_ratchet(ledger, par._parse_now(_LATE), base_sha) == 0
+    assert "1 override line(s) already present in the base" in capsys.readouterr().err
+
+    ledger2, base2 = _git_repo_with_ledger(tmp_path / "second", _ROW_A, _ROW_A)
+    assert par.run_ratchet(ledger2, par._parse_now(_LATE), base2) == 0
+    assert "already present in the base" not in capsys.readouterr().err
+
+
+def test_accepted_override_lists_the_other_valid_ceilings_only_when_there_are_some(
+    tmp_path, capsys
+):
+    two = (
+        "RATCHET-OVERRIDE: tech_debt_overdue<=2 -- first reviewed reason\n"
+        "RATCHET-OVERRIDE: tech_debt_overdue<=9 -- second reviewed reason\n"
+    )
+    ledger, base_sha = _git_repo_with_ledger(tmp_path, _ROW_A, _ROW_A + _ROW_B + two)
+    assert par.run_ratchet(ledger, par._parse_now(_LATE), base_sha) == 0
+    out = capsys.readouterr().out
+    assert "OVERRIDE ACCEPTED" in out
+    assert "(also present) ceiling 2" in out
+
+    one = "RATCHET-OVERRIDE: tech_debt_overdue<=2 -- the only reviewed reason\n"
+    ledger2, base2 = _git_repo_with_ledger(tmp_path / "second", _ROW_A, _ROW_A + _ROW_B + one)
+    assert par.run_ratchet(ledger2, par._parse_now(_LATE), base2) == 0
+    out2 = capsys.readouterr().out
+    assert "OVERRIDE ACCEPTED" in out2
+    assert "(also present)" not in out2
+
+
+def test_red_output_names_exactly_the_rows_this_branch_introduced(tmp_path, capsys):
+    """The newly-overdue list is the branch's own debt: the NEW overdue row, not
+    the inherited overdue one and not a new row that is merely fresh."""
+    fresh = "- opened 2099-01-01 (t) | **row FRESH** | wire it | session | CI red\n"
+    ledger, base_sha = _git_repo_with_ledger(tmp_path, _ROW_A, _ROW_A + _ROW_B + fresh)
+    assert par.run_ratchet(ledger, par._parse_now(_LATE), base_sha) == 1
+    out = capsys.readouterr().out
+    assert "newly-overdue rows introduced by this branch:" in out
+    listing = out.split("newly-overdue rows introduced by this branch:", 1)[1]
+    assert "row B" in listing
+    assert "row A" not in listing, "an inherited overdue row is not this branch's debt"
+    assert "row FRESH" not in listing, "a fresh row is not overdue"
+    assert "no row is textually new" not in out
+
+
+def test_red_output_says_so_when_no_row_is_textually_new(tmp_path, capsys):
+    """A byte-identical duplicate of an inherited overdue row raises the count but
+    introduces no textually-new row: the report must say that, not print an empty
+    'newly-overdue' heading."""
+    ledger, base_sha = _git_repo_with_ledger(tmp_path, _ROW_A, _ROW_A + _ROW_A)
+    assert par.run_ratchet(ledger, par._parse_now(_LATE), base_sha) == 1
+    out = capsys.readouterr().out
+    assert "ratchet RED" in out
+    assert "count rose but no row is textually new" in out
+    assert "newly-overdue rows introduced" not in out
+
+
+def test_base_ref_without_ratchet_is_a_usage_error_exit_2(tmp_path, capsys):
+    led = tmp_path / "PENDING-ARMS.md"
+    led.write_text(_ROW_A, encoding="utf-8")
+    assert par.main(["--ledger", str(led), "--base-ref", "HEAD"]) == 2
+    assert "--base-ref has no effect without --ratchet" in capsys.readouterr().err
+
+
+def test_base_ref_with_ratchet_is_accepted(tmp_path):
+    """Innocence twin: the same flag WITH --ratchet is a real run, not a usage error."""
+    ledger, base_sha = _git_repo_with_ledger(tmp_path, _ROW_A, _ROW_A)
+    assert par.main(
+        ["--ledger", str(ledger), "--ratchet", "--base-ref", base_sha, "--now", _LATE]
+    ) == 0
+
+
+def test_invalid_now_is_a_usage_error_exit_2(tmp_path, capsys):
+    led = tmp_path / "PENDING-ARMS.md"
+    led.write_text(_ROW_A, encoding="utf-8")
+    assert par.main(["--ledger", str(led), "--now", "not-a-date"]) == 2
+    assert "invalid --now" in capsys.readouterr().err
