@@ -1197,6 +1197,7 @@ async def get_profile(
                     tm.avatar as assigned_to_avatar
                 FROM clients c
                 LEFT JOIN team_members tm ON c.assigned_to = tm.email
+                    AND tm.role IS DISTINCT FROM 'client'
                 WHERE c.id = $1 AND c.deleted_at IS NULL
                 """,
                 client["client_id"],
