@@ -906,8 +906,8 @@ def _coverage_persona_specs() -> list[tuple[str, dict[str, Any]]]:
 
 
 class TestGoldCoverageReplay:
-    def test_corpus_has_twenty_personas(self) -> None:
-        assert len(_coverage_persona_specs()) == 20
+    def test_corpus_has_twenty_seven_personas(self) -> None:
+        assert len(_coverage_persona_specs()) == 27
 
     @pytest.mark.parametrize(
         "name,spec", _coverage_persona_specs(), ids=[n for n, _ in _coverage_persona_specs()]
