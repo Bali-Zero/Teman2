@@ -47,8 +47,17 @@ MIN_CREDENTIAL_ROWS = 5
 # Deliberately requires no nested "(" before the trailing pair, so it does not
 # fire on multi-line or nested-call literals (those are out of scope here —
 # same false-negative tradeoff detect-secrets already accepts for structure).
+# The leading fields are OPTIONAL: a bare two-element pair row (the second
+# example above, the most natural shape of a login/password table) is the
+# pair itself — requiring a field before it made the documented example
+# invisible to the guard.
 _TUPLE_TWO_TRAILING_STRINGS = re.compile(
-    r'^\s*[\(\[][^()\[\]]*,\s*(["\'])[^"\']*\1\s*,\s*(["\'])[^"\']*\2\s*[\)\]],?\s*$',
+    r'^\s*[\(\[](?:[^()\[\]]*,\s*)?(["\'])[^"\']*\1\s*,\s*(["\'])[^"\']*\2\s*[\)\]],?\s*$',
+)
+
+# The bare-pair subset of the above: nothing before the two trailing strings.
+_BARE_PAIR = re.compile(
+    r'^\s*[\(\[](["\'])[^"\']*\1\s*,\s*(["\'])[^"\']*\2\s*[\)\]],?\s*$',
 )
 
 _CREDENTIAL_KEYWORD = re.compile(
@@ -101,6 +110,7 @@ def scan_file(path: Path) -> int:
     lines = text.splitlines()
 
     is_tuple = [bool(_TUPLE_TWO_TRAILING_STRINGS.match(line)) for line in lines]
+    is_pair = [bool(_BARE_PAIR.match(line)) for line in lines]
     is_comment = [line.strip().startswith("#") for line in lines]
 
     best = 0
@@ -119,7 +129,16 @@ def scan_file(path: Path) -> int:
         run_end = i  # exclusive
         if count >= MIN_CREDENTIAL_ROWS:
             window_start = max(0, start - _WINDOW_BEFORE)
-            window = "\n".join(lines[window_start:run_end])
+            # Bare two-field rows (the shape this guard did not see before) are
+            # excluded from the keyword search: their keyword must come from
+            # the DECLARATION (comment, variable name, look-back line). A row
+            # such as ("credential revoked", "security") is a label pair, not
+            # a login, and counting its text would flag every two-field
+            # vocabulary table that merely mentions the word. Rows with a
+            # leading field keep the original behaviour exactly.
+            window = "\n".join(
+                lines[j] for j in range(window_start, run_end) if not is_pair[j]
+            )
             if _CREDENTIAL_KEYWORD.search(window):
                 best = max(best, count)
     return best
