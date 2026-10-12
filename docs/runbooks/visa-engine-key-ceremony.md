@@ -213,8 +213,9 @@ Signing and activation follow the seq-26 recipe above (`sign_pack` with `--kid p
 --environment PRODUCTION --sequence 27 --i-know-this-is-production`, key file
 `~/.config/nuzantara/visa-signing/2026-07-prod-1.ed25519.pem` on M5; then the two-login activation
 on the PG primary via `activate_pack`). Signed offline on M5 on 2026-10-10 (`signed_at`
-2026-10-10T03:42:26Z); the bundle lands in the same PR as the source, so `TestSignedBundleTiesToSource`
-and `scripts/ci/observe_visa_seq27_signed.py` are green at merge. The council seat that ran on
+2026-10-10T03:42:26Z); the bundle landed in the same PR as the source, so `TestSignedBundleTiesToSource`
+and `scripts/ci/observe_visa_seq27_signed.py` were green when seq-27 merged; the observer was retired
+on 2026-10-12 because seq-28 superseded seq-27, and `scripts/ci/observe_visa_seq28_signed.py` replaces it. The council seat that ran on
 the default Codex account model (`gpt-6-astra`) is recorded under that name and kept out of the quorum;
 `codex exec` from `~/.codex` needs an explicit `-m gpt-5.6-sol` to sit the titolare seat.
 

@@ -1,0 +1,84 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Condition 5 of the fresh gate on PR 8300: a follow-up PR from a fresh origin/main, ideally before the
+  weekly re-attestation organ run of 2026-10-18T18:00Z, pins the seq-28 tests to their own ledger.
+mission: >-
+  The seq-28 pack tests fold the ledger that produced the signed seq-28 bundle, not whichever ledger is newest.
+lanes:
+  - lane: seq28-ledger-pin
+    role: build
+    seat: claude-sonnet-5 (Claude Code workflow subagent), worktree backend-rag-vo-seq28-ledger-pin-1012 on M5.
+  - lane: seq28-ground-truth
+    role: ground_truth
+    seat: >-
+      the signed seq-28 bundle on main and the ledger directory research/visa/2026-10-11-organ-reattest-seq28; the
+      change asserts no rule, it only fixes which ledger the tests fold.
+    nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-028.signed.json
+    query_hash: "00f1d66dd0d77f520a3929c5ffa9245a7de99cf9e892fce56ec5ab8f3f16c358" # pragma: allowlist secret
+    note: query_hash = sha256 of rulepack-prod-028.signed.json at origin/main.
+pii_scan: clean
+bites:
+  consumer: >-
+    the weekly re-attestation organ pro.visa_reattestation (next run 2026-10-18T18:00Z) and every CI run of the
+    visa_engine suite, through the seq-28 signed observer.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq28_signed.py
+  expect: "contains:all three consumers green"
+receipts:
+  - claim: The seq-28 pack tests pass folding the pinned ledger, including the two new pin tests.
+    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine/test_seq28_pack.py -p no:cacheprovider
+    result: "34 passed in 6.96s"
+    exit: 0
+    ts: "2026-10-12T11:11:11Z"
+    seat: this session
+  - claim: The seq-28 signed observer passes on the branch head after the rebase.
+    cmd: python3 scripts/ci/observe_visa_seq28_signed.py
+    result: "inventory reads seq-28 and all three consumers green"
+    exit: 0
+    ts: "2026-10-12T11:12:27Z"
+    seat: this session
+  - claim: The seq-28 pack tests still pass after the pin test was strengthened (folded payload vs seq28, vs committed source, vs signed payload_sha256).
+    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine/test_seq28_pack.py -p no:cacheprovider
+    result: "34 passed in 3.94s"
+    exit: 0
+    ts: "2026-10-12T11:28:23Z"
+    seat: this session
+  - claim: Baseline, the same full command on origin/main's merge base (detached worktree at ec3c6ead04, the commit this branch forks from).
+    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine -p no:cacheprovider
+    result: "4 failed, 3051 passed, 15 skipped, 39 errors in 205.55s"
+    exit: 1
+    ts: "2026-10-12T11:32:04Z"
+    seat: this session
+  - claim: Branch, the identical full command on the branch head; same 4 failed and 39 errors as the baseline, 2 more passes are the two new pin tests.
+    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine -p no:cacheprovider
+    result: "4 failed, 3053 passed, 15 skipped, 39 errors in 178.82s"
+    exit: 1
+    ts: "2026-10-12T11:35:07Z"
+    seat: this session
+decisions:
+  - id: D-pin-not-discover
+    decision: >-
+      The test fixture returns the literal ledger directory and a test pins its payload digest; discover_newest_ledger
+      stays in fold_pack_seq28.py for the CLI.
+  - id: D-retire-seq27-observer
+    decision: >-
+      observe_visa_seq27_signed.py is deleted because seq-28 superseded seq-27; the old seq-27 evidence pack that names
+      it is history and is left untouched.
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T19-18-09-01a12fd5-95a4-74e1-8446-b3aa89c8bff1.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM, test_seq28_pack.py pin test only checks folded[2] == real and digests seq28, not the payload the fold produced."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: the test now compares canonicalize_json of folded[1] with seq28 and with the committed source, digests folded[1], and compares it with both the pinned constant and the signed payload_sha256. (seq28 was already folded[1], so the old check was weaker in form than in substance.)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T19-18-09-01a12fd5-95a4-74e1-8446-b3aa89c8bff1.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM, pack.yml brief_ref: evidence/brief.yml does not identify the brief the diff adds."
+    status: PLAUSIBLE
+    disposition: "Not changed: the pre-push pack-lint and CI stage the brief at evidence/brief.yml and a dated or directory brief_ref fails the lint; the brief itself is committed beside the pack and passed as --brief-source-path. Accepted as a repo convention."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T19-18-09-01a12fd5-95a4-74e1-8446-b3aa89c8bff1.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM, pack.yml baseline receipt is prose rather than a re-runnable command and a partial run does not prove the whole-directory claim."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: the partial receipt is replaced by the identical full command run on the merge base ec3c6ead04 (4 failed, 3051 passed, 39 errors) and on the branch (4 failed, 3053 passed, 39 errors); the claim is narrowed to same failures and errors plus 2 new passes."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T19-18-09-01a12fd5-95a4-74e1-8446-b3aa89c8bff1.jsonl, model verified in the rollout file)"
+    objection: "LOW, key-ceremony runbook says the seq-27 test and observer are green at merge, false in time."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: the sentence now uses historical wording (were green when seq-27 merged; observer retired 2026-10-12, replaced by the seq-28 observer)."
