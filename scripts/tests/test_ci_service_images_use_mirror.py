@@ -148,27 +148,6 @@ def test_guilt_mirror_prefix_targets_the_right_upstream_path() -> None:
                     )
 
 
-def test_innocence_postgis_third_party_image_deliberately_untouched() -> None:
-    """SCOPE PIN: restore-drill.yml's postgis image is NOT expected to be
-    mirrored — no verified ECR Public mirror exists for it, and it never
-    gates a PR or the queue. If this ever flips (a mirror appears, or the
-    workflow becomes PR-gating), this test should start failing and prompt a
-    deliberate decision, not a silent divergence from the other four files.
-    """
-    path = WORKFLOWS_DIR / "restore-drill.yml"
-    if not path.is_file():
-        return  # file renamed/removed — nothing to pin against
-    text = path.read_text(encoding="utf-8")
-    assert "postgis/postgis:17-3.5" in text, (
-        "restore-drill.yml's postgis image reference changed — re-check whether "
-        "an ECR Public mirror now exists before deciding whether to touch it"
-    )
-    assert "public.ecr.aws" not in text, (
-        "restore-drill.yml now references public.ecr.aws — update this test's "
-        "docstring/scope note, this was deliberately left out of the original diff"
-    )
-
-
 def _mirrored_refs() -> set[str]:
     doc = yaml.safe_load(MIRROR_WORKFLOW.read_text(encoding="utf-8"))
     images = doc["jobs"]["mirror"]["strategy"]["matrix"]["image"]

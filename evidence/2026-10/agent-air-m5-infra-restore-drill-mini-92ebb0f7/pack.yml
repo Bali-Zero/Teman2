@@ -1,0 +1,334 @@
+# Gear-3 evidence pack — monthly restore drill moves to a Mini launchd job (zero-cutover gate 7b), role-scan cure.
+# Written by the orchestrating session (Claude Opus 5.5, M5) on 2026-10-11. Every receipt is a command run in this
+# session; each ts is the clock read in the same shell call, or the mtime of that seat's output file. Verbatim
+# verdict sections are in council-journal.jsonl.
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+ruling: >-
+  Zero's ruling that the restore drill runs on Mini (zero-cutover gate 7b, 2026-10-11); design and root-cause evidence
+  in the session scratchpad gate7b-launchd-design.md section 6.
+mission: >-
+  Make the monthly DR proof run without Teman2 and stop failing on the dump's production roles, without weakening
+  ON_ERROR_STOP=1 and without ever printing a production row.
+lanes:
+  - lane: restore-drill-build
+    role: build
+    seat: Claude Sonnet subagent (first cut, commit 45cc5e535f); council cures by the orchestrator, Claude Opus 5.5
+  - lane: restore-drill-review-kimi
+    role: review
+    seat: kimi-code/k3 (read-only, rounds 1-2)
+  - lane: restore-drill-review-codex
+    role: review
+    seat: codex-gpt-5.6-sol (read-only, rounds 1-5, model passed explicitly)
+seat_diversity: >-
+  Builder: Anthropic (Sonnet subagent, then Opus). Reviewers: Moonshot (kimi-code/k3) and OpenAI (codex-gpt-5.6-sol),
+  neither of which built anything here.
+pii_scan: clean
+pii_scan_note: >-
+  The job handles a production dump (PII) but the diff prints none of it: restore and verifier output stay in a private
+  tmpdir deleted on exit, alerts carry only status and exit code, and the role scan outputs role names only. The
+  real-dump smoke on Mini printed role names only; the dump was downloaded to a mode-700 tmpdir and removed.
+bites: >-
+  Prose form on purpose: the consumer is the launchd job com.nuzantara.restore-drill on Mini (organ mini.restore_drill),
+  which a CI runner cannot observe without a remote shell, Tigris credentials and a throwaway Postgres. Observation, to
+  be made by the shipping session after the wrapper and plist are installed on Mini (declared pairs): a manual
+  launchctl kickstart of com.nuzantara.restore-drill the same day, ending in a Level-5 PASS verdict in
+  ~/logs/mini-restore_drill/run.log, ~/.organism/last_seen/mini.restore_drill.json reading ok, and a digest in Telegram.
+  Not yet made: this pack records the pre-merge state at final code head ac83ed8a25; codex's last narrow confirmation lists two points recorded as accepted residuals.
+decisions:
+  - id: D-derive-roles-from-the-dump
+    decision: >-
+      Roles are derived from the dump by an SQL-aware tokenizer (strings, E'' escapes, dollar bodies, nested comments
+      blanked; COPY data skipped), created NOLOGIN with every name quoted; pg_* and pseudo-roles are excluded, postgres is
+      created (the drill superuser is "drill"). ON_ERROR_STOP=1 stays.
+  - id: D-age-from-lastmodified
+    decision: >-
+      Dump age comes from the object store's LastModified (UTC), not from the file name, which the producer writes in
+      local time (measured: name 20261011-0300, LastModified 2026-10-10T19:04Z); a future-dated or older-than-72h dump
+      is CANNOT-VERIFY.
+  - id: D-recovery-human-only
+    decision: >-
+      mini.restore_drill recovery_action is human_only: kickstart -k would terminate a restore in progress, and the
+      sentinel's heartbeat_silent rule does not even carry the status it matches on.
+  - id: D-no-start-heartbeat
+    decision: >-
+      The sidecar only ever holds a verdict: no start heartbeat (running reads dead, ok would paint over the last verdict).
+receipts:
+  - claim: "R1 — floor 3 via the hot-zone path term: the workflow, plist and wrapper compute 3 alone; every other file computes 1."
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <one-path-per-file>, per file and for the whole diff
+    result: "3 restore-drill.yml, 3 com.nuzantara.restore-drill.plist, 3 mini-restore-drill.sh, 1 for the other 7 files; whole diff 3"
+    exit: 0
+    ts: "2026-10-11T13:59:01Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R2 — A1: the role scanner against a real pg_dump (the newest Tigris dump, streamed on Mini) yields exactly the 11 production roles measured independently in the design."
+    cmd: scp role_scanner.py to Mini; aws s3 cp the newest dump to a mode-700 tmpdir; python3 role_scanner.py --exclude drill; remove the tmpdir
+    result: "11 role(s): backend_rag_v2, nuzantara_readonly, postgres, repmgr, visa_activation_executor, visa_ledger_owner, visa_pack_writer, visa_policy_writer, visa_privacy_operator, visa_retention_executor, zantara_rag_user; names only"
+    exit: 0
+    ts: "2026-10-11T14:26:48Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R3 — A1/A2/A3: the drill unit tests pass on the final head (28 tests: statement forms, literal and dollar-body blanking, quoting, rejection without echo, static exit-path assertions)."
+    cmd: /Users/balizero/nuzantara/.venv/bin/python -m pytest scripts/restore_drill/tests -q -p no:cacheprovider
+    result: "28 passed in 0.11s"
+    exit: 0
+    ts: "2026-10-11T15:36:37Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R4 — the existing restore-drill workflow wiring and verifier tests still pass after the edit."
+    cmd: pytest scripts/tests/test_restore_drill_workflow_wiring.py scripts/tests/test_restore_drill_verify.py -q -p no:cacheprovider
+    result: "40 passed in 0.45s"
+    exit: 0
+    ts: "2026-10-11T15:36:38Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R5 — A4: the registry loads and the validator passes with recovery_action human_only and the recomputed checksum."
+    cmd: python3 apps/organism/organism/tools/validate_organs_registry.py
+    result: "organs_registry.yaml valid"
+    exit: 0
+    ts: "2026-10-11T15:36:39Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R6 — A3: bash -n and shellcheck -S warning are clean on the payload and the wrapper; plist lints OK; actionlint is clean on the workflow."
+    cmd: bash -n; shellcheck -S warning run_drill.sh mini-restore-drill.sh; plutil -lint; actionlint restore-drill.yml
+    result: "shellcheck 0; plutil OK; actionlint 0"
+    exit: 0
+    ts: "2026-10-11T15:36:40Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R7 — no real textual conflict with current origin/main for head 2e995c2e78."
+    cmd: git merge-tree --write-tree origin/main HEAD
+    result: "exit 0"
+    exit: 0
+    ts: "2026-10-11T15:36:40Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R8 — council round 1 on head 45cc5e535f: both seats REWORK (scanner gaps, PII path in the surviving workflow, no lock, recycled-PID false skip, recovery kick, stale dump, signal exit 0, sidecar races)."
+    cmd: scripts/with_seat.sh kimi kimi -p <prompt> -m kimi-code/k3 < /dev/null; scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: "kimi VERDICT: REWORK (12 items); codex VERDICT: REWORK (6 blockers)"
+    exit: 0
+    ts: "2026-10-11T14:23:00Z"
+    seat: kimi-code/k3, codex-gpt-5.6-sol
+  - claim: "R9 — council round 2 on head 3214921f98 (cure commit): kimi PASS (45+ adversarial scanner inputs, all cures verified), codex REWORK (UTC-vs-local dump age, exit 0 with unreadable verifier JSON, lock takeover race, running heartbeat read dead, scanner exactness, worker survives TERM)."
+    cmd: same invocations, round-2 prompt
+    result: "kimi VERDICT: PASS with 4 advisory notes; codex VERDICT: REWORK (6 items)"
+    exit: 0
+    ts: "2026-10-11T14:42:12Z"
+    seat: kimi-code/k3, codex-gpt-5.6-sol
+  - claim: "R10 — codex rounds 3-5 on heads 9299e8e546, acfd03a66c, 2e995c2e78: REWORK each time with fewer, narrower findings; the last round lists three open items."
+    cmd: scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <round prompt> < /dev/null
+    result: >-
+      round 3 REWORK (start heartbeat painted ok over the last verdict; membership list leaked a comma token);
+      round 4 REWORK (worker group survives a timeout, sidecar write not atomic or fail-closed, SIGPIPE 141 accepted);
+      round 5 REWORK (open: workflow_dispatch still prints the restore log tail, workflow 141 branch, Mini escalation host mapping)
+    exit: 0
+    ts: "2026-10-11T15:36:09Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "R11 — final council round on head 38bdb192c7 (workflow deleted, write_escalation removed, new restore-drill-tests.yml): both seats REWORK."
+    cmd: scripts/with_seat.sh kimi kimi -p <prompt> -m kimi-code/k3 < /dev/null; scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: >-
+      kimi REWORK (2: the new workflow name is missing from main-push-failure-watch.yml so check_watcher_coverage.py exits 1; the
+      verifier and its test are no longer gated). codex REWORK (4: p0 on the restore-drill family is spooled to the Pro board by
+      tg_notify.py instead of reaching Telegram; watcher coverage; verifier ungated; stale grandfathered.json entry)
+    exit: 0
+    ts: "2026-10-11T23:09:43Z"
+    seat: kimi-code/k3, codex-gpt-5.6-sol
+  - claim: "R12 — final council round 2 on head df1c4c829a (watcher list, verifier gate, grandfathered entry, wrapper header): kimi PASS, codex REWORK (3)."
+    cmd: scripts/with_seat.sh kimi kimi -p <prompt> -m kimi-code/k3 < /dev/null; scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: >-
+      kimi VERDICT: PASS. codex VERDICT: REWORK: the board row is acceptable as a seat alert, but the gateway writes it from Mini
+      into the tracked Pro-only shared/escalations_pro.jsonl (tg_notify.py:92, 623); restore.log keeps cleartext production
+      errors on disk (mode 700, deleted on exit, survives SIGKILL or power loss); the CI paths omit scripts/tests/fixtures/restore_drill/**.
+      Checked and clean per codex: watcher coverage passes 131 workflows, 28/28 drill tests, merge-tree no conflict.
+    exit: 0
+    ts: "2026-10-12T01:06:35Z"
+    seat: kimi-code/k3, codex-gpt-5.6-sol
+  - claim: "R13 — council round on head 012e044f69 (p0 sent with board routing off, leftover tmpdirs removed, fixtures in the CI paths): kimi PASS, codex REWORK (2)."
+    cmd: scripts/with_seat.sh kimi kimi -p <prompt> -m kimi-code/k3 < /dev/null; scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: >-
+      kimi VERDICT: PASS. codex VERDICT: REWORK: (1) TG_ACT_ROUTING_ENABLED=false covers only the local gateway; if the local send
+      fails and TG_RELAY_SSH is set, the relay command (tg_notify.py:520) does not carry the flag, so the remote gateway appends the
+      p0 to the board and the local side records sent with no p0_unsent spool; (2) the lock holds only the wrapper PID, so after a
+      SIGKILL of the wrapper a still-live worker in another process group can have its tmpdir deleted by the next run's cleanup
+      (run_drill.sh:26), and its container removed (run_drill.sh:179).
+    exit: 0
+    ts: "2026-10-12T02:12:59Z"
+    seat: kimi-code/k3, codex-gpt-5.6-sol
+  - claim: "R14 — final council round on head c0fcc4d21c (relay emptied, age-guarded sweep and container reap): kimi PASS, codex REWORK (1 defect, 1 residual)."
+    cmd: scripts/with_seat.sh kimi kimi -p <prompt> -m kimi-code/k3 < /dev/null; scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: >-
+      kimi VERDICT: PASS. codex VERDICT: REWORK. Relay cure verified (in-memory run on the real gateway: board_calls=0, p0_unsent
+      spooled); timestamp parsing verified (nano and plain, malformed fails closed); exit 75 reaches a FAILED rc=75 error
+      heartbeat plus p0 (mini-restore-drill.sh:142), neither silent nor green. DEFECT: the guard returns 75 for a young container
+      (run_drill.sh:191) but the EXIT trap (run_drill.sh:61 -> 54) then runs docker rm -f unconditionally, removing the very
+      container the guard meant to protect; no test carries 75 through the trap. RESIDUAL: a dead work dir younger than 60 min
+      blocks one drill with an alarm. Note: shellcheck flags SC1007 on the empty TG_RELAY_SSH= assignment.
+    exit: 0
+    ts: "2026-10-12T02:32:40Z"
+    seat: kimi-code/k3, codex-gpt-5.6-sol
+  - claim: "R15 — narrow codex confirmation of the container-ID cure on head e2f2c8a627: the previous defect is closed, one new narrow defect."
+    cmd: scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: >-
+      codex VERDICT: REWORK. Confirmed closed: exit 75 from the age guard returns before any container-id is written, so cleanup()
+      removes only the work dir and keeps rc 75 (run_drill.sh:191, 284, 297); the startup-sweep 75 precedes WORK_DIR and the traps;
+      success and post-record timeout remove the recorded ID idempotently; the only remove-by-name is the stale reap after the guard
+      (run_drill.sh:199); no set -e/-u or quoting regression; the two structural tests and bash -n pass. NEW DEFECT: a signal,
+      crash or printf failure between docker run --detach (run_drill.sh:200) and the container-id write (:209) leaves the started
+      container unrecorded, so cleanup and the watchdog (:275) skip docker rm and the container keeps port and VM resources until
+      a later run reaps it after the 1 h guard.
+    exit: 0
+    ts: "2026-10-12T02:49:52Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "R16 — code head e2f2c8a627 (superseded by R18): the drill tests, the verifier tests, the registry validator, bash -n, actionlint, watcher coverage and merge-tree all pass."
+    cmd: pytest scripts/restore_drill/tests; pytest scripts/tests/test_restore_drill_verify.py; validate_organs_registry.py; bash -n on both shell files; actionlint restore-drill-tests.yml; check_watcher_coverage.py; git merge-tree --write-tree origin/main HEAD
+    result: "30 passed; 24 passed; registry valid; bash -n ok; actionlint 0; watcher: all 131 live workflows covered; merge-tree exit 0"
+    exit: 0
+    ts: "2026-10-12T02:50:25Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R17 — final narrow codex confirmation on code head ac83ed8a25 (per-run label ownership): the unrecorded-container window is closed; two points raised."
+    cmd: scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: >-
+      codex VERDICT: REWORK. Confirmed: (a) the docker run to ID-write window is closed (label present at creation, nothing to
+      record); (b) exit 75 survives the EXIT trap without removing the younger container; (d) success, timeout, TERM/INT, quoting,
+      set -u and an empty valid result are correct, bash -n passes. Raised, recorded below as accepted residuals by the
+      coordinator's ruling at the fix-of-a-fix bound: docker ps failure hidden by 2>/dev/null inside the for-substitution
+      (run_drill.sh:43); mktemp basename reuse after the sweep deletes a stale dir (run_drill.sh:36-43).
+    exit: 0
+    ts: "2026-10-12T03:01:22Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "R18 — final code head ac83ed8a25: drill tests, verifier tests, registry validator, bash -n, actionlint, watcher coverage and merge-tree all pass."
+    cmd: pytest scripts/restore_drill/tests; pytest scripts/tests/test_restore_drill_verify.py; validate_organs_registry.py; bash -n; actionlint restore-drill-tests.yml; check_watcher_coverage.py; git merge-tree --write-tree origin/main HEAD
+    result: "30 passed; 24 passed; registry valid; bash -n ok; actionlint 0; watcher: all 131 live workflows covered; merge-tree exit 0"
+    exit: 0
+    ts: "2026-10-12T03:01:33Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+dissent:
+  - seat: kimi-code/k3 (round 1) and codex-gpt-5.6-sol (round 1)
+    objection: >-
+      The role scan misses REVOKE FROM, GRANTED BY, CREATE POLICY TO, SET ROLE, ALTER ROLE and memberships, mis-splits
+      quoted object names containing " to ", has no literal or dollar-body awareness, rejects valid quoted roles, excludes
+      postgres and would create pg_* roles.
+    status: CONFIRMED
+    disposition: >-
+      Cured in 3214921f98 (SQL tokenizer) and tightened in 9299e8e546 and acfd03a66c; kimi round 2 ran 45+ adversarial
+      inputs and found only advisory notes; real-dump smoke R2.
+  - seat: kimi-code/k3 (round 1) and codex-gpt-5.6-sol (round 1)
+    objection: >-
+      No concurrency lock (pidfile check-then-create, recycled-PID skip writing an ok sidecar), a launchctl_kickstart
+      recovery that would kill a run, signals that can exit 0, a watchdog that leaves the detached container, a stale or
+      wrong dump that can PASS, dangling image layers.
+    status: CONFIRMED
+    disposition: >-
+      Cured in 3214921f98, 9299e8e546, acfd03a66c and 2e995c2e78: atomic mkdir lock with PID+start-time+command owner,
+      human_only recovery, exit 143/130, docker rm -f in the watchdog and cleanup, LastModified-based age, image removal.
+  - seat: codex-gpt-5.6-sol (round 2)
+    objection: >-
+      Dump age read the producer's local-time name as UTC (a 79 h dump read 71 h); a verifier exiting 0 with unreadable
+      JSON returned 0; running heartbeat is classed dead by sentinel-aggregate; quoted "Drill" folded into the excluded user.
+    status: CONFIRMED
+    disposition: >-
+      Cured in 9299e8e546 (verified: name 20261011-0300 vs LastModified 2026-10-10T19:04Z on Mini).
+  - seat: codex-gpt-5.6-sol (rounds 3-4)
+    objection: >-
+      The start heartbeat painted ok over the last verdict; membership lists leaked a comma role; the worker group survived a
+      timeout; the sidecar write was neither atomic nor fail-closed; gunzip SIGPIPE with psql 0 was accepted.
+    status: CONFIRMED
+    disposition: Cured in acfd03a66c and 2e995c2e78.
+  - seat: codex-gpt-5.6-sol (round 5)
+    objection: >-
+      restore-drill.yml keeps workflow_dispatch and still prints tail -25 of the restore log, which can quote a production
+      row (CONTEXT of a COPY error) into GitHub logs; the workflow keeps a gunzip-141-is-a-warning branch; the wrapper's
+      write_escalation resolves Mini-Pro2 to the pro board (scripts/sentinel_lib/escalations.py maps only Pro/Air), so the
+      first failure would write the tracked shared/escalations_pro.jsonl from Mini.
+    status: CONFIRMED
+    disposition: >-
+      OPEN, reported to the coordinator, not cured here: the workflow is pinned by scripts/tests/test_restore_drill_workflow_wiring.py
+      and deleted with Teman2 (schedule already removed); the escalation host mapping is a shared-library decision (add a
+      mini board, or write the escalation elsewhere).
+  - seat: kimi-code/k3 (round 2, advisory)
+    objection: >-
+      ALTER DEFAULT PRIVILEGES ... REVOKE FROM another role; a quoted role named like a membership keyword; a stale comment in
+      the workflow; a foreign-owned lock directory would make every run skip silently.
+    status: PLAUSIBLE
+    disposition: >-
+      The first two and the comment were fixed in 9299e8e546; the foreign-owned lock stays (single-user host, noted).
+  - seat: kimi-code/k3 and codex-gpt-5.6-sol (final round, head 38bdb192c7)
+    objection: >-
+      (1) .github/workflows/restore-drill-tests.yml is not in the workflow_run list of main-push-failure-watch.yml, so
+      scripts/check_watcher_coverage.py exits 1 (CI red on the PR's own diff); (2) the Level-5 verifier
+      scripts/ci/restore_drill_verify.py and scripts/tests/test_restore_drill_verify.py lost their every-PR gate with the deleted
+      wiring-tests workflow and are not in the new workflow's paths; (3) codex only: tg_notify.py does not treat the
+      restore-drill family as owner-reserved, so a p0 is spooled to the tracked shared/escalations_pro.jsonl instead of being
+      sent to Telegram, which also dirties the Mini checkout; (4) codex only: infra/tg-gateway/grandfathered.json still
+      allows the deleted workflow path. Notes: stale references in docs/AUTOMATIONS_REFERENCE.md:74,
+      docs/connectome/edges/gh-workflows.yaml:338, scripts/ci/check_promotion_readiness.py:96.
+    status: CONFIRMED
+    disposition: >-
+      OPEN, reported to the coordinator; not cured here (this round authorised folding verdicts only). Finding 3 changes the
+      alert path the brief's A2 promises (p0 to Telegram), so it must be cured before the first live run.
+  - seat: codex-gpt-5.6-sol (final council round 2, head df1c4c829a)
+    objection: >-
+      (1) The Mini gateway appends the restore-drill p0 to the tracked Pro-only escalations_pro.jsonl, dirtying the Mini
+      checkout and recreating the stash/pull conflict mini-git-pull.sh documents; (2) restore.log holds psql errors that can
+      quote production rows, left on disk on SIGKILL or power loss; (3) the CI path filter omits
+      scripts/tests/fixtures/restore_drill/**, which the verifier tests load.
+    status: CONFIRMED
+    disposition: >-
+      OPEN, reported to the coordinator, not cured here. The coordinator holds that routing to the board is house design;
+      codex accepts the board as an alert target but not the write into the tracked Pro file from Mini. kimi PASSed the same head.
+  - seat: codex-gpt-5.6-sol (council round after df1c4c829a)
+    objection: >-
+      (1) The relay path (TG_RELAY_SSH) drops TG_ACT_ROUTING_ENABLED=false, so a failed local send can still write the p0 to the
+      board on the relay host while the local gateway records sent; (2) the singleton lock names only the wrapper PID, so a
+      surviving worker after a wrapper SIGKILL can have its tmpdir and the shared container removed by the next run.
+    status: CONFIRMED
+    disposition: >-
+      OPEN, reported to the coordinator, not cured here. Both depend on whether TG_RELAY_SSH is set on Mini and on killing the
+      worker with the wrapper (process group); neither was measured in this session.
+  - seat: codex-gpt-5.6-sol (final council round)
+    objection: >-
+      The young-container guard returns 75, but the EXIT trap removes the container unconditionally, so the protection is
+      cancelled; removal should be ownership-aware (container id or a unique label), in the watchdog too, and a test should carry
+      75 through the trap.
+    status: CONFIRMED
+    disposition: >-
+      Cured in the commit after afafecfa6f (drill_main records the detach ID in $WORK_DIR/container-id; cleanup() and the watchdog
+      remove only that ID; the stale reap is the only remove-by-name and runs after the age guard); codex confirmed on the narrow
+      round, R15. kimi had PASSed the earlier head.
+  - seat: codex-gpt-5.6-sol (final council round)
+    objection: >-
+      Residual: a dead work dir younger than 60 minutes blocks the next drill until it ages out; the run exits 75, a FAILED
+      error heartbeat and a p0 are raised. Codex text: "Accettabile, non richiede un altro loop."
+    status: PLAUSIBLE
+    disposition: >-
+      RESIDUAL, accepted: the age heuristic is deliberately safety-first (never delete possibly live data) and the cost is one
+      alarmed monthly run in the rare crash case. Also noted, not a defect: shellcheck SC1007 on the empty TG_RELAY_SSH= assignment.
+  - seat: codex-gpt-5.6-sol (narrow confirmation, head e2f2c8a627)
+    objection: >-
+      A signal, crash or printf failure in the few lines between docker run --detach and the container-id write leaves a started
+      container unrecorded; cleanup() and the watchdog then skip docker rm, so it keeps the port and VM resources until a later
+      run reaps it after the one-hour guard. The structural tests do not simulate that window.
+    status: CONFIRMED
+    disposition: >-
+      Cured at ac83ed8a25 (per-run label attached at creation, ID file removed); confirmed by codex in R17 (a) and (b).
+  - seat: codex-gpt-5.6-sol (final narrow confirmation, head ac83ed8a25) — ACCEPTED RESIDUAL 1
+    objection: >-
+      Codex text, verbatim: "DEFECT — scripts/restore_drill/run_drill.sh:43. Un errore di docker ps viene nascosto da 2>/dev/null;
+      dentro for ... in $(...) il suo stato non raggiunge set -e. La funzione ritorna 0, quindi un drill riuscito può uscire verde
+      lasciando il container con dati restaurati sulla VM condivisa."
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED RESIDUAL by the coordinator's ruling at the Builder Contract fix-of-a-fix bound (no further code round). Codex itself
+      classed it DEFECT, so the owner should know: when docker ps fails during cleanup the removal of the drill container is skipped
+      silently. Mitigations that exist: the container is --rm, and the next run reaps it after the one-hour age guard.
+  - seat: codex-gpt-5.6-sol (final narrow confirmation, head ac83ed8a25) — ACCEPTED RESIDUAL 2
+    objection: >-
+      Codex text, verbatim: "DEFECT — scripts/restore_drill/run_drill.sh:36-43. Il basename prodotto da mktemp è unico solo mentre il
+      path esiste, non nel tempo. Dopo lo sweep che cancella una directory stale, mktemp può riutilizzare il suffisso mentre un
+      vecchio container conserva ancora la stessa label. Il filtro può quindi selezionare un container appartenente a un'altra
+      esecuzione; selezionerebbe inoltre qualunque altro job che applicasse quella stessa coppia key/value."
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED RESIDUAL by the coordinator's ruling at the fix-of-a-fix bound. Codex classed it DEFECT. Bound: the stale reap
+      removes the old container by name before creation, a reused suffix needs both a deleted stale dir and a surviving container
+      with the same random mktemp suffix, and the label key is specific to this job.
+  - seat: codex-gpt-5.6-sol (final narrow confirmation, head ac83ed8a25) — ACCEPTED RESIDUAL 3
+    objection: >-
+      Codex text, verbatim: "RESIDUAL — run_drill.sh:23-26,274-281. Un SIGKILL/power loss che elimina anche il watchdog può
+      lasciare il container fino al successivo reap. È esplicitamente documentato e delimitato dalla policy stale."
+    status: PLAUSIBLE
+    disposition: Accepted residual, as documented in the script; the one-hour stale reap bounds it.

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Mini install prerequisite:
+    umask 077
+    mkdir -p ~/logs/mini-restore_drill ~/Library/LaunchAgents
+    : >> ~/logs/mini-restore_drill/launchd.out.log
+    : >> ~/logs/mini-restore_drill/launchd.err.log
+    chmod 600 ~/logs/mini-restore_drill/launchd.out.log ~/logs/mini-restore_drill/launchd.err.log
+    install -m 0755 infra/launchagents/wrappers/mini-restore-drill.sh ~/scripts/
+    install -m 0644 infra/launchagents/com.nuzantara.restore-drill.plist ~/Library/LaunchAgents/
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.restore-drill</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/scripts/mini-restore-drill.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/nuzantara</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Day</key>
+        <integer>1</integer>
+        <key>Hour</key>
+        <integer>12</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>ExitTimeOut</key>
+    <integer>1900</integer>
+    <key>Umask</key>
+    <integer>63</integer>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/Users/nuzantara/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/mini-restore_drill/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/mini-restore_drill/launchd.err.log</string>
+</dict>
+</plist>
