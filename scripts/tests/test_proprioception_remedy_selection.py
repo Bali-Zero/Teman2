@@ -271,3 +271,140 @@ def test_innocence_non_m5_remedy_untouched_by_this_change(machine: str) -> None:
         prop._git_alignment_remedy(GIT_ALIGNMENT_ENTRY, machine, BEHIND_120_DIRTY_20_LEDGER_STALE)
         == STATIC_GIT_FIX_HINT
     )
+
+
+# ================================================================ probe_git_alignment
+# mutation round (lane 4, 2026-10-12): fetch failure, behind threshold boundary,
+# dirty count, ledger divergence only when BOTH git answers are real, behind unknown.
+
+_LEDGER = ".claude/skills/modus/PENDING-ARMS.md"
+
+
+def _align_repo(tmp_path: Path, *, behind: int, ledger: bool = False,
+                origin_has_ledger: bool = True) -> Path:
+    """A repo with `behind` commits on refs/remotes/origin/main beyond HEAD."""
+    repo = tmp_path / "r"
+    repo.mkdir(parents=True)
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "t@example.invalid")
+    _git(repo, "config", "user.name", "t")
+    (repo / "base.txt").write_text("0\n")
+    if ledger:
+        (repo / ".claude" / "skills" / "modus").mkdir(parents=True)
+        (repo / _LEDGER).write_text("ledger\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "base")
+    for i in range(behind):
+        (repo / f"n{i}.txt").write_text("x\n")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", f"n{i}")
+    head = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"],
+                          capture_output=True, text=True, check=True, timeout=30).stdout.strip()
+    if ledger and not origin_has_ledger:
+        _git(repo, "rm", "-q", "--cached", _LEDGER)
+        _git(repo, "commit", "-qm", "drop ledger on origin")
+        head = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"],
+                              capture_output=True, text=True, check=True, timeout=30).stdout.strip()
+        _git(repo, "reset", "-q", "--hard", "HEAD~1")
+        _git(repo, "update-ref", "refs/remotes/origin/main", head)
+        return repo
+    _git(repo, "update-ref", "refs/remotes/origin/main", head)
+    if behind:
+        _git(repo, "reset", "-q", "--hard", f"HEAD~{behind}")
+    return repo
+
+
+def test_git_alignment_behind_at_threshold_is_calm_one_over_is_a_finding(tmp_path: Path) -> None:
+    calm = _align_repo(tmp_path / "a", behind=10)
+    status, n, ev = prop.probe_git_alignment(calm, {"no_fetch": True}, 15)
+    assert (status, n) == (prop.RECONCILED, 0)
+    assert "main checkout: 10 behind origin/main, 0 dirty entries" in ev
+    over = _align_repo(tmp_path / "b", behind=11)
+    status, n, ev = prop.probe_git_alignment(over, {"no_fetch": True}, 15)
+    assert (status, n) == (prop.DIVERGED, 1)
+    assert "main checkout: 11 behind origin/main, 0 dirty entries" in ev
+
+
+def test_git_alignment_honours_a_custom_behind_warn(tmp_path: Path) -> None:
+    repo = _align_repo(tmp_path, behind=3)
+    assert prop.probe_git_alignment(repo, {"no_fetch": True, "behind_warn": 3}, 15)[:2] == (prop.RECONCILED, 0)
+    assert prop.probe_git_alignment(repo, {"no_fetch": True, "behind_warn": 2}, 15)[:2] == (prop.DIVERGED, 1)
+
+
+def test_git_alignment_behind_and_stale_ledger_are_two_findings(tmp_path: Path) -> None:
+    repo = _align_repo(tmp_path, behind=11, ledger=True)
+    (repo / _LEDGER).write_text("locally edited\n")
+    status, n, ev = prop.probe_git_alignment(repo, {"no_fetch": True}, 15)
+    assert (status, n) == (prop.DIVERGED, 2)
+    assert any("LEDGER STALE" in e for e in ev)
+
+
+def test_git_alignment_dirty_entries_are_counted_not_a_finding(tmp_path: Path) -> None:
+    repo = _align_repo(tmp_path, behind=0)
+    (repo / "u1.txt").write_text("x\n")
+    (repo / "u2.txt").write_text("x\n")
+    status, n, ev = prop.probe_git_alignment(repo, {"no_fetch": True}, 15)
+    assert (status, n) == (prop.RECONCILED, 0)
+    assert "main checkout: 0 behind origin/main, 2 dirty entries" in ev
+
+
+def test_git_alignment_ledger_missing_on_origin_is_not_a_stale_ledger(tmp_path: Path) -> None:
+    """Both git answers must be real. origin/main without the file makes the second
+    answer an error, and an error string is not a blob that 'differs'."""
+    repo = _align_repo(tmp_path, behind=0, ledger=True, origin_has_ledger=False)
+    assert (repo / _LEDGER).exists()
+    status, n, ev = prop.probe_git_alignment(repo, {"no_fetch": True}, 15)
+    assert not any("LEDGER STALE" in e for e in ev), ev
+    assert n == 0
+
+
+def test_git_alignment_identical_ledger_is_silent(tmp_path: Path) -> None:
+    repo = _align_repo(tmp_path, behind=0, ledger=True)
+    status, n, ev = prop.probe_git_alignment(repo, {"no_fetch": True}, 15)
+    assert (status, n) == (prop.RECONCILED, 0)
+    assert not any("LEDGER STALE" in e for e in ev)
+
+
+def test_git_alignment_unknown_origin_is_unprobeable_not_calm(tmp_path: Path) -> None:
+    """No origin/main ref: behind cannot be counted. Never RECONCILED, zero findings."""
+    repo = tmp_path / "r"
+    repo.mkdir()
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "t@example.invalid")
+    _git(repo, "config", "user.name", "t")
+    (repo / "a.txt").write_text("1\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "c")
+    status, n, ev = prop.probe_git_alignment(repo, {"no_fetch": True}, 15)
+    assert (status, n) == (prop.UNPROBEABLE, 0)
+    assert "main checkout: -1 behind origin/main, 0 dirty entries" in ev
+
+
+def test_git_alignment_not_a_repo_reports_both_unknown(tmp_path: Path) -> None:
+    status, n, ev = prop.probe_git_alignment(tmp_path, {"no_fetch": True}, 15)
+    assert (status, n) == (prop.UNPROBEABLE, 0)
+    assert "main checkout: -1 behind origin/main, -1 dirty entries" in ev
+
+
+def test_git_alignment_fetch_failure_is_evidence_and_falls_back_to_last_known(tmp_path: Path) -> None:
+    """Offline is a natural state: the failed fetch is SAID, and the verdict is still
+    computed from the last-known origin/main rather than going blind."""
+    repo = _align_repo(tmp_path, behind=11)  # no `origin` remote -> `git fetch origin` fails
+    status, n, ev = prop.probe_git_alignment(repo, {}, 15)
+    assert any(e.startswith("fetch failed") for e in ev), ev
+    assert (status, n) == (prop.DIVERGED, 1)
+
+
+def test_git_alignment_no_fetch_never_fetches_and_a_good_fetch_is_silent(tmp_path: Path) -> None:
+    repo = _align_repo(tmp_path / "a", behind=0)
+    status, n, ev = prop.probe_git_alignment(repo, {"no_fetch": True}, 15)
+    assert not any("fetch" in e for e in ev), ev
+    # a reachable origin: fetch succeeds, nothing to report about it
+    good = _align_repo(tmp_path / "b", behind=0)
+    bare = tmp_path / "bare.git"
+    subprocess.run(["git", "clone", "-q", "--bare", str(good), str(bare)],
+                   check=True, capture_output=True, timeout=60)
+    _git(good, "remote", "add", "origin", str(bare))
+    status, n, ev = prop.probe_git_alignment(good, {}, 15)
+    assert not any("fetch" in e for e in ev), ev
+    assert (status, n) == (prop.RECONCILED, 0)
