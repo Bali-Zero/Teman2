@@ -517,7 +517,7 @@ Per aprire un ristorante servono tre cose principali: la company giusta, il vist
 - Serve una PT PMA con codice KBLI 56101 (Restoran)
 - Investimento minimo: Rp 10 miliardi (~USD 625.000)
 - Registrazione via OSS, classificazione rischio medio-basso
-- Costo Bali Zero: **Rp 20.000.000**
+- Costo Bali Zero: **Rp 25.000.000**
 
 **Visto (Investor KITAS)**
 
