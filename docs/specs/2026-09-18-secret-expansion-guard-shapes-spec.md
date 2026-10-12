@@ -344,6 +344,7 @@ print-access-token`, `flyctl auth token` — are not shapes yet (gate finding 20
 | E175 | `ssh pro &> /tmp/log 'launchctl print gui/501/x'`                                          | DENY    | X6 inside ssh — a redirect before the remote command is not the command                                                      |
 | E176 | `$(true)printenv`                                                                          | DENY    | X2 — a placeholder glued to the front of the head is dropped; the rest is the head                                           |
 | E177 | `env &> /dev/null; echo hi`                                                                | DENY    | X2 — known limit: a redirect target is consumed, not interpreted; `/dev/null` included, as `env > /dev/null` is DENY on main |
+| E178 | `env $(echo FOO)=1`                                                                        | DENY    | X2 — the placeholder glues to `=1`, so the word is still an assignment and env has no program (pins the gluing of E153)      |
 
 **E64, the one deliberate hole — narrowed 2026-10-12.** A remote INLINE command cannot be fully judged
 by this guard until the read-vs-write distinction of W94 is written down: a remote WRITE stays remote and
