@@ -1,0 +1,91 @@
+{
+  "run_at": "2026-10-13T07:08:50+08:00",
+  "today": "2026-10-13",
+  "yesterday_seen_count": 8,
+  "new_today_count": 1,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://ortax.org/news",
+      "reason": "http_404",
+      "note": "confirmed, recurring 404 same as prior runs"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, same as prior runs"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "301 to /articles, JS-rendered shell (tailwind CSS layer only, no article entries), same as prior runs"
+    },
+    {
+      "url": "https://peraturan.go.id/rss",
+      "reason": "http_404",
+      "note": "confirmed, same as prior runs"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "HTTP_CODE:000 on initial fetch and the one mechanical retry, 30s each, same as prior runs"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "checked_no_new",
+      "note": "newest dated item 12 Oktober 2026 (labor-regulation-change legal-risk piece), no verbatim act number cited, not citable"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "checked_no_new",
+      "note": "JS-rendered search results not in static HTML; static content only shows filter chips (Tahun: 2026) and pagination, no PMK entries, same as prior runs"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "newest dated items 11-12 Oktober 2026 are operational press releases (PNBP revenue target Rp8.68T, MotoGP Mandalika visa count), not regulatory acts - no Permenkumham/Permenimigrasi/Perpres citation"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest entry still KEP-185/PJ/2026 (2026-09-02), unchanged from prior runs - does not yet reflect KEP-239/PJ/2026 found via DDTC"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest visible entry dated 30 April 2026, unchanged from prior runs"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [
+    {
+      "citation": "KEP-239/PJ/2026",
+      "title_id": "DJP Hapus Sanksi Administratif Pajak hingga 100 Persen",
+      "title_en": "DJP (Directorate General of Taxes) eliminates administrative tax sanctions by up to 100%",
+      "service_line": [
+        "tax"
+      ],
+      "severity": "high",
+      "impact_note": "Clients with pending tax administrative sanctions should evaluate acting now - the reduction/elimination size depends on the timing of meeting requirements, so delay reduces the benefit. Implements the sanction-reduction mechanism introduced by PMK 71/2026.",
+      "summary": "New Kepdirjen (Director General of Taxes decree) grants reduction or full elimination of administrative tax sanctions for a number of obligations; the size of the facility depends on when the taxpayer's requirements are met. A companion DDTC piece the same day clarifies this is not a general tax amnesty ('DJP: Pengurangan Sanksi dalam PMK 71/2026 Bukan Pemutihan Pajak').",
+      "source": "DDTC | https://news.ddtc.co.id/berita/nasional/1823198/kabar-gembira-djp-hapus-sanksi-administratif-pajak-hingga-100-persen",
+      "verbatim_excerpt": "DJP memberi pengurangan atau penghapusan sanksi pajak hingga 100% untuk sejumlah kewajiban. Besaran fasilitas bergantung pada waktu pemenuhan syarat.",
+      "confidence": "medium",
+      "first_seen_at": "2026-10-13T07:08:50+08:00"
+    }
+  ],
+  "seen_citations": [
+    "PMK 55/2026",
+    "PER-6/PJ/2026",
+    "PMK 49/2026",
+    "PER-12/PJ/2026",
+    "PMK 37/2025",
+    "PMK 71/2026",
+    "RUU Pelindungan Ketenagakerjaan",
+    "PER-11/PJ/2026",
+    "KEP-239/PJ/2026"
+  ],
+  "note": "4/4 NB-INTEL: Regulation/Press/Immigration = nessuna novita; Tax re-surfaced PMK 71/2026 (already in seen_citations, non-citable, implementation decree KEP-239/PJ/2026 not yet indexed by NB corpus). Web primary (1-5): hukumonline found only a generic labor-regulation-risk piece (no verbatim act number); DDTC found KEP-239/PJ/2026 (new, citable, tax/sanctions) + PER-13/BC/2026 (DJBC import-quota customs facility, outside Bali Zero's 5 service lines - customs duty, not PPh/PPN/NPWP/Coretax) + PMK 71/2026 resurfaced (already seen) + confirmation piece on PMK 71/2026 sanctions clarification (same, not new); ortax/muc 403/404 as before, ikpi 301->/articles still JS empty shell. Primary returned 1 in-scope delta (<3) so backup web (6-11) also checked: peraturan.go.id/rss 404, bpk.go.id JS-rendered (no static PMK matches), imigrasi newest items (11-12 Oct) are operational press releases not regulatory acts, pajak.go.id still shows KEP-185/PJ/2026 as newest (has not yet indexed KEP-239/PJ/2026), kemnaker outside the 48h window (unchanged from prior runs), jdih.kemenkeu.go.id timeout x2 (initial + 1 mechanical retry). Net result: 1 in-scope delta today (KEP-239/PJ/2026, confidence medium - single source)."
+}
