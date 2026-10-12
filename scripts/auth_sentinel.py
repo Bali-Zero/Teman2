@@ -55,6 +55,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(REPO))
 
+from scripts.codex_model import resolve_codex_model  # noqa: E402
 from scripts.lib.codex_seat import codex_seat_dirs  # noqa: E402
 
 # --- probe result contract -------------------------------------------------
@@ -205,7 +206,8 @@ def probe_codex() -> Probe:
     for seat in seats:
         # cold-start del primo call codex può superare 60s (verificato
         # 2026-07-11: vivo a ~75s). 90s per non falsare in TIMEOUT un seat sano.
-        rc, out = _run(["codex", "exec", "--sandbox", "read-only",
+        rc, out = _run(["codex", "exec", "-m", resolve_codex_model(),
+                        "--sandbox", "read-only",
                         "--skip-git-repo-check", "ping"], timeout=90,
                        env={**os.environ, "CODEX_HOME": seat})
         name = Path(seat).name
