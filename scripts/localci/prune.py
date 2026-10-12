@@ -114,8 +114,8 @@ def run_age_h(run: Path, now_s: float) -> float | None:
 def run_alive(run: Path) -> bool:
     """B16: a run with no status.json is live only while its coordinator holds `state/coordinator.lock` — runner.py's flock,
     held for the whole `run` and dropped by the kernel when the process dies. An evicted, killed or crashed run leaves no
-    status.json and a free lock: read as live, it kept its images for 48 h (Pro, 2026-10-12: three B15 evictions held four deps
-    images through host pressure, 13.3 GB of them reclaimable, so every next run started short and was evicted too). No lock
+    status.json and a free lock: read as live, it kept its images for 48 h (Pro, 2026-10-12: four B15 evictions held two second-slot
+    deps images, about 6.35 GB, through host pressure, so every next run started short and was evicted too). No lock
     file means no coordinator ever ran. A lock that cannot be opened or probed counts as held: unknown keeps the image."""
     lock = run / "state" / "coordinator.lock"
     try:

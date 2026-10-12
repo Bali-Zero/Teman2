@@ -1040,8 +1040,8 @@ def test_b15_a_dry_run_under_pressure_removes_nothing_and_the_flag_says_so(tmp_p
     assert "host_pressure=True" in capsys.readouterr().out
 
 
-# B16: "in progress" is the coordinator's flock, not a missing status.json (Pro, 2026-10-12: evicted runs held 13.3 GB of
-# reclaimable deps images through host pressure, so the next runs started short and were evicted in turn)
+# B16: "in progress" is the coordinator's flock, not a missing status.json (Pro, 2026-10-12: four evicted runs held two
+# second-slot deps images, about 6.35 GB, through host pressure, so the next runs started short and were evicted in turn)
 
 def _evicted(state: Path, run: str, lock: str = "free") -> None:
     """A run B15 evicted: its plan, no status.json, and the lock its dead coordinator left (`free`), none, or one never readable."""
@@ -1092,5 +1092,6 @@ def test_b16_the_lock_of_a_live_coordinator_process_holds_and_its_death_frees_it
     finally:
         child.kill()
         child.wait(timeout=10)
+        child.stdout.close()
     assert pm.run_alive(run) is False   # SIGKILL: no status.json, no cleanup, and the lock is free
     assert pm.run_alive(run) is False   # the probe itself leaves the lock free
