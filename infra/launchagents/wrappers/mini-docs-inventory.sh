@@ -89,8 +89,21 @@ on_exit() {
     [ "$LOCK_HELD" -ne 1 ] || rm -rf "$LOCKDIR"
 }
 trap on_exit EXIT
-trap 'exit 143' TERM
-trap 'exit 130' INT
+REGEN_PID=""
+# shellcheck disable=SC2329 # invoked by the signal traps
+on_signal() {
+    # launchd may signal only this process. The regen waits in the background so this trap runs at
+    # once, and the helper (which group-kills the regen before it dies) is stopped and reaped first:
+    # on_exit must never remove the worktree under a live regen.
+    if [ -n "$REGEN_PID" ]; then
+        kill -TERM "$REGEN_PID" 2>/dev/null || true
+        wait "$REGEN_PID" 2>/dev/null || true
+    fi
+    exit "$1"
+}
+trap 'on_signal 143' TERM
+trap 'on_signal 130' INT
+trap 'on_signal 129' HUP
 
 finish() {
     FINISHED=1
@@ -161,16 +174,34 @@ mkdir "$BUNDLE" 2>> "$LOG" \
 
 # Bounded: a hung regen would otherwise hold the lock and read only "warning" twice a day.
 REGEN_TIMEOUT="${MINI_DOCS_INVENTORY_REGEN_TIMEOUT:-1800}"
+case "$REGEN_TIMEOUT" in
+    ''|*[!0-9]*|0*) # alarm 0 would disable the bound
+        log "regen timeout '$REGEN_TIMEOUT' is not a positive integer — using 1800"
+        REGEN_TIMEOUT=1800 ;;
+esac
 REGEN_RC=0
-# The regen runs in its own process group; at the bound the WHOLE group is killed, so no
-# descendant outlives the run (or runs on in a worktree the EXIT trap is about to remove).
-(cd "$WORKTREE" && DOCS_DERIVED_OUTPUT_DIR="$BUNDLE" /usr/bin/perl -e '
-    my $t = shift; my $pid = fork; die "fork: $!" unless defined $pid;
-    if (!$pid) { setpgrp(0, 0); exec @ARGV or exit 127 }
-    $SIG{ALRM} = sub { kill "TERM", -$pid; sleep 2; kill "KILL", -$pid; waitpid($pid, 0); exit 142 };
+# The regen runs in its own process group; at the bound, or when the helper itself is signalled,
+# the WHOLE group is killed, so no descendant outlives the run (or runs on in a worktree the EXIT
+# trap is about to remove). Both sides set the group, so a signal right after fork still finds it.
+(cd "$WORKTREE" && DOCS_DERIVED_OUTPUT_DIR="$BUNDLE" exec /usr/bin/perl -e '
+    my ($t, $pid) = (shift, 0);
+    my $stop = sub {
+        if ($pid) {
+            kill "TERM", -$pid; kill "TERM", $pid; sleep 2;
+            kill "KILL", -$pid; kill "KILL", $pid; waitpid($pid, 0);
+        }
+        exit shift;
+    };
+    @SIG{qw(ALRM TERM INT HUP)} = (sub { $stop->(142) }, sub { $stop->(143) }, sub { $stop->(130) }, sub { $stop->(129) });
+    $pid = fork; die "fork: $!" unless defined $pid;
+    if (!$pid) { @SIG{qw(ALRM TERM INT HUP)} = ("DEFAULT") x 4; setpgrp(0, 0); exec @ARGV or exit 127 }
+    setpgrp($pid, $pid);
     alarm $t; waitpid($pid, 0);
     exit(($? & 127) ? 128 + ($? & 127) : $? >> 8);
-' "$REGEN_TIMEOUT" bash scripts/docs_inventory_regen.sh --organ) >> "$LOG" 2>&1 || REGEN_RC=$?
+' "$REGEN_TIMEOUT" bash scripts/docs_inventory_regen.sh --organ) >> "$LOG" 2>&1 &
+REGEN_PID=$!
+wait "$REGEN_PID" || REGEN_RC=$?
+REGEN_PID=""
 if [ "$REGEN_RC" -eq 142 ]; then
     finish "error" "inventory broken regen timed out after ${REGEN_TIMEOUT} s" "regen-timeout" 1
 elif [ "$REGEN_RC" -ne 0 ]; then

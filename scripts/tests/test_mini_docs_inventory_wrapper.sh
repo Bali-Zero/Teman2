@@ -27,7 +27,7 @@ set -u
 case "${DOCS_CASE:-success}" in
   regen-fail) exit 9 ;;
   regen-hang) sleep 6 ;;
-  regen-hang-tree) (sleep 31 & echo $! > "$HOME/child.pid"; wait) & sleep 6 ;;
+  regen-hang-tree) (sleep 31 & echo $! > "$HOME/child.pid"; wait) & sleep "${HANG_SECONDS:-6}" ;;
   empty)
     printf '{}\n' > "$DOCS_DERIVED_OUTPUT_DIR/docs-sync.json"
     : > "$DOCS_DERIVED_OUTPUT_DIR/docs-audit.json"
@@ -233,6 +233,54 @@ if [ "$(field "$HB" status)" = "ok" ] && [ -s "$STATE/latest/DOCS_INVENTORY.md" 
     ok "a tag named main does not shadow the main branch"
 else
     bad "tag shadow"
+fi
+
+# A launchd stop while the regen runs: $1=group signals the wrapper's whole process group,
+# $1=main signals only the wrapper. Either way the regen group must be dead before the wrapper
+# exits, and the worktree must go only after it.
+signal_case() {
+    setup_case
+    env -i HOME="$CASE_HOME" PATH="/usr/bin:/bin" DOCS_CASE=regen-hang-tree HANG_SECONDS=30 \
+        HOST_CASE=Mini-Pro2 PY_CASE=new MINI_DOCS_INVENTORY_REGEN_TIMEOUT=1800 \
+        MINI_DOCS_INVENTORY_REPO="$CASE_REPO" MINI_DOCS_INVENTORY_GIT="$CASE_DIR/bin/git" \
+        MINI_DOCS_INVENTORY_PYTHON="$CASE_DIR/bin/python-version" \
+        MINI_DOCS_INVENTORY_HOSTNAME="$CASE_DIR/bin/hostname" \
+        MINI_DOCS_INVENTORY_LOG_DIR="$CASE_HOME/logs" MINI_DOCS_INVENTORY_SIDECAR_DIR="$CASE_HOME/sidecar" \
+        MINI_DOCS_INVENTORY_STATE_DIR="$CASE_HOME/state" MINI_DOCS_INVENTORY_LOCKDIR="$CASE_DIR/lock" \
+        MINI_DOCS_INVENTORY_TMP_BASE="$CASE_DIR/tmp" GIT_CALLS="$CASE_HOME/git.log" \
+        /usr/bin/perl -e 'setpgrp(0, 0); exec @ARGV' /bin/bash "$WRAPPER" >/dev/null 2>&1 &
+    local wpid=$! i
+    for i in $(seq 1 100); do [ -s "$CASE_HOME/child.pid" ] && break; sleep 0.1; done
+    sleep 0.5
+    local t0
+    t0=$(date +%s)
+    if [ "$1" = group ]; then kill -TERM -- "-$wpid"; else kill -TERM "$wpid"; fi
+    WRC=0
+    wait "$wpid" || WRC=$?
+    ELAPSED=$(( $(date +%s) - t0 ))
+    sleep 1
+    CHILD=$(cat "$CASE_HOME/child.pid" 2>/dev/null || echo 0)
+    HB="$CASE_HOME/sidecar/mini.docs_inventory_refresh.json"
+}
+
+for mode in group main; do
+    signal_case "$mode"
+    # Well inside launchd's 60 s ExitTimeOut: a stop that waits for the regen ends in SIGKILL.
+    if [ "$CHILD" != 0 ] && ! kill -0 "$CHILD" 2>/dev/null && [ "$WRC" -eq 143 ] && [ "$ELAPSED" -le 10 ] \
+        && [ "$(field "$HB" status)" = "error" ] && [ ! -e "$CASE_DIR/lock" ] \
+        && [ "$(/usr/bin/git -C "$CASE_REPO" worktree list --porcelain | grep -c '^worktree ')" -eq 1 ]; then
+        ok "a $mode-signalled stop kills the regen tree before the worktree goes"
+    else
+        bad "$mode-signalled stop (child $CHILD alive? rc=$WRC, ${ELAPSED}s)"
+        [ "$CHILD" = 0 ] || kill "$CHILD" 2>/dev/null
+    fi
+done
+
+REGEN_TIMEOUT_CASE=0 run_case success
+if [ "$(field "$HB" status)" = "ok" ] && grep -q "regen timeout '0' is not a positive integer" "$CASE_HOME/logs/run.log"; then
+    ok "a zero or non-numeric bound falls back to 1800 instead of disabling the bound"
+else
+    bad "bound validation"
 fi
 
 printf 'passed %d, failed %d\n' "$PASS" "$FAIL"

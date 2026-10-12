@@ -11,6 +11,9 @@ on:
       - "scripts/tests/test_mini_docs_inventory_wrapper.sh"
       - "scripts/docs_inventory_regen.sh"
       - ".github/workflows/docs-inventory-organ-tests.yml"
+      # The suite pins that these retired workflows stay absent: re-adding one must run it.
+      - ".github/workflows/docs-inventory-refresh.yml"
+      - ".github/workflows/docs-inventory-refresh-liveness.yml"
   push:
     branches:
       - main
@@ -20,6 +23,9 @@ on:
       - "scripts/tests/test_mini_docs_inventory_wrapper.sh"
       - "scripts/docs_inventory_regen.sh"
       - ".github/workflows/docs-inventory-organ-tests.yml"
+      # The suite pins that these retired workflows stay absent: re-adding one must run it.
+      - ".github/workflows/docs-inventory-refresh.yml"
+      - ".github/workflows/docs-inventory-refresh-liveness.yml"
 
 permissions:
   contents: read
