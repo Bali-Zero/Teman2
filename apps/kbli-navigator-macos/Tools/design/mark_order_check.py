@@ -10,17 +10,36 @@ A census frame reports the element's LAYOUT frame, where it is MEANT to land, an
      and ink agree. A static `.offset` on a marked element is allowed only on the explicit ALLOW list, with its reason.
 png_census cannot see the order (it reads ink against the frame), so this reads the source.
 
+THIS IS A FIRST-PASS LINT, NOT A GUARANTEE (lead re-ruling 2026-10-12, #8309 and #8327 gates): a hand-written reader of Swift
+chains is an unbounded surface, so it is declared for what it reads and for what it does not (L1-L9 below). The recommended
+implementation, a SwiftSyntax tool target, is specified in docs/specs/2026-10-12-kbli-nav-census-mark-order.md and is built later,
+in its own lane. None of the unread shapes is live in Sources/ today.
+
 The chain of the marked expression is its postfix chain of `.name`, `.name(args)`, `.name(args) { closure }` and `.name { closure }`
-links, read forwards from the mark and backwards from it, with balanced parens and braces, whatever the line breaks: a link
-that wraps over lines (`.overlay { ... }`, `.modifier(\\n Beat(...))`) is one link. Strings and comments are blanked first, so an
+links, read forwards from the mark and backwards from it, with balanced parens and braces, over the line breaks of the shapes it
+knows: a link that wraps over lines (`.overlay { ... }`, `.modifier(\\n Beat(...))`) is one link. Strings and comments are blanked first, so an
 `.offset(` inside a string or a comment is nothing. What counts, read from Sources/ and never hand-listed:
   ANIMATION  = `.transition`; `.modifier(T(...))` for every type T that is Animatable (declares `animatableData`, or conforms to
                Animatable / AnimatableModifier / GeometryEffect: Beat, DrawnRule, CountUpPercent today); and every helper
                function whose body applies one of these (`func enter(...) { modifier(Beat(...)) }`), to a fixed point.
   MOVE       = `.offset` (a space before the paren included).
-A link inside a closure belongs to the closure's own chain: an offset on an unmarked host whose `.overlay { ... }` holds the marked
-element does not move it, and is not seen. Limit: a mark nested inside a view that a parent animates, through a view that is not in
-the chain, is not seen (none today).
+A link inside a closure belongs to the closure's own chain. So an offset on the host of an `.overlay { ... }` that holds the marked
+element does not move the mark ONLY when it comes BEFORE the overlay (`x.offset(...).overlay { mark }`); AFTER the overlay it moves
+the mark with its ink (L4), and the scan does not see it.
+
+KNOWN UNREAD SHAPES (each is a guilt of the spec, none is live today; the gate's case ids in brackets):
+  L1  a trailing closure with the `{` on the next line, with parens or without (B1a, B1b).
+  L2  labelled trailing closures `label: { ... }`, read forwards and backwards (B2a, B2b).
+  L3  a postfix `#if` / `#elseif` / `#else` / `#endif` inside the chain (B3a-c).
+  L4  a mark inside a closure or an argument whose enclosing chain then moves or animates: `Group { mark }.offset` (B4),
+      `host.overlay { mark }.offset` or `.modifier(Beat)` (B5a, B5b), `ForEach { mark }.offset` (B5c). Measured at +4.0 pt: the
+      frame travels with the move, and on chip.national the census is blind too.
+  L5  a marked view used by name and moved where it is used, e.g. `matrix.offset(...)` (B15): offsets as well as animations.
+  L6  a MOVE helper: a func or a ViewModifier whose body applies `.offset` (B6, B7a), the real `HoverLift` included (B7b).
+  L7  an Animatable conformance declared in an `extension` (B8).
+  L8  a non-Animatable ViewModifier that applies Beat or another animation (B11).
+  L9  built-in render effects, not read: scaleEffect, rotationEffect, rotation3DEffect, transformEffect, projectionEffect,
+      matchedGeometryEffect (B14). `.position` and `.alignmentGuide` are layout, not moves.
 
   mark_order_check.py            check Sources/ (exit 1 on a finding)
   mark_order_check.py --sources DIR  the same on another copy of Sources/ (the real-file mutants)

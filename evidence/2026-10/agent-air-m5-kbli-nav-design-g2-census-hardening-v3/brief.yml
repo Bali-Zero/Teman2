@@ -1,4 +1,4 @@
-task_id: kbli-nav-design-g2-census-hardening-v2
+task_id: kbli-nav-design-g2-census-hardening-v3
 mission: kbli-nav-design-loop (Track A, build, census hardening — G2 and the #8292 / #8297 gate bindings)
 colour: BLUE
 gear: 2
@@ -21,7 +21,7 @@ acceptance:
   - text: A live mount that lost its host, by any spelling, SHALL fail the witness.
     probe: "Pro: source mutants of SearchListView.sheetLayer (host removed, #if false, sibling EmptyView host, transformEnvironment) rebuilt and rendered: C25 FAIL; the text guard passes three at that head; the outside-the-host override passes both"
   - text: A census mark before a Beat or a transition, or a static offset on a marked element, SHALL fail the scan.
-    probe: "Pro: mark_order_check --selftest (13 guilt, 11 innocence); the gate G1-G9 and the innocents I3, I4, I6 on mutated copies of the real KBLIRegistryView, each as wanted; the 21 marks at head rc 0 (the chain is read by structure, the animation types and helpers from Sources/)"
+    probe: "Pro: mark_order_check --selftest (13 guilt, 11 innocence); the gate G1-G9 and the innocents I3, I4, I6 on mutated copies of the real KBLIRegistryView, each as wanted; the 21 marks at head rc 0 (the chain is read by structure, the animation types and helpers from Sources/); the scan is declared a first-pass lint with its unread shapes L1-L9 named, and docs/specs/2026-10-12-kbli-nav-census-mark-order.md specifies the SwiftSyntax tool that replaces it"
   - text: C24 SHALL compare the SET of marked chips with the record, and two details SHALL fail.
     probe: "Pro: 56101 with chip 0:0 marked twice and 1:5 unmarked rc 1; 1:5 unmarked rc 1; the detail marked twice rc 1; the control rc 0"
   - text: The render set SHALL not move.

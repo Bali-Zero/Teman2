@@ -34,7 +34,11 @@ extension View {
     /// So the mark goes AFTER any animation modifier (`Beat`, a transition): the frame keeps the layout position, and a
     /// beat that leaves the element out of place FAILs on ink against frame. A mark placed before the move travels with
     /// it and can never disagree with the ink. A deliberate static nudge on a marked element is layout (`padding`,
-    /// alignment), never `.offset`, so frame and ink agree. `mark_order_check.py` (content_check step 7) holds both.
+    /// alignment), never `.offset`, so frame and ink agree. `mark_order_check.py` (content_check step 7) is a first-pass lint for both,
+    /// not a guarantee: it does not read the shapes L1-L9 that its docstring and docs/specs/2026-10-12-kbli-nav-census-mark-order.md
+    /// name (a trailing or labelled closure on the next line, a postfix `#if`, a mark inside a closure whose enclosing chain moves,
+    /// a marked view moved by name, a MOVE helper such as `HoverLift`, an Animatable conformance in an extension, a ViewModifier that
+    /// applies Beat, the built-in render effects). None is live today.
     /// Where a beat moves a CONTAINER of the marked element, the snapshot that renders mid-motion (`--at-ms`) collects
     /// the frames with the motion at its end; at the final frame both coincide. Off unless a band snapshot collects
     /// (`--layout-json`).
