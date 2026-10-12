@@ -95,9 +95,9 @@ def _family_of(code: str) -> str:
     return "Spouse" if code == _E31A else "Dependent"
 
 
-#: code -> (365-day key, 730-day key). Typed on purpose: the pin must not be derived from
-#: the very rows it guards.
 def _keys(family: str) -> tuple[PricingKey, PricingKey]:
+    """(365-day key, 730-day key) of one family; the row names are typed, not read from the pack."""
+
     return (
         PricingKey(category="kitas_permits", item_key=f"{family} 1 Year (Offshore)"),
         PricingKey(category="kitas_permits", item_key=f"{family} 2 Years (Offshore)"),
@@ -424,6 +424,9 @@ class TestEveryStayLengthQuotesThePinnedAmount:
         assert (quote.product_code, quote.status, quote.currency) == (code, "AVAILABLE", "IDR")
         assert quote.amount == amount
         assert quote.pricing_key == expected_key
+        assert not [f for f in quote.model_dump() if re.search(r"pnbp|fee", f, re.I)], (
+            "a quote carries ONE all-inclusive amount -- a PNBP/fee component field is a split"
+        )
 
         shown = _duration_display(
             product,
