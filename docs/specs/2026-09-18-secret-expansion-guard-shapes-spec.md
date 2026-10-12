@@ -95,6 +95,22 @@ argument**: `bash -c '…'`, a combined `-lc`, and `eval '…'` are judged ident
 heredoc and a `-c` differ in spelling, not in what the child executes, and judging only the first left
 the more idiomatic second wide open. `ssh host '…'` is the one deliberate exception (E64, note below).
 
+**Redirects are read OUTSIDE quotes only (2026-10-12, E65–E78).** Measured on main the same day: a
+redirect INSIDE a quoted `-c`/`eval` payload switched the payload's judgement off. `bash -c 'cat STORE
+2>/dev/null'`, `sh -c 'printenv 2>&1'` and `eval 'cat STORE 2>/dev/null'` were ALLOW, the same commands
+without the redirect DENY. The tokenizer's glued-redirect rule cut the quoted token at its first `>`,
+the payload lost its closing quote, and the cut fragment's last path segment became a bogus head
+(`bash -c 'ls ~/bin/env > /tmp/o'` was DENY as a bare `env`). Three rules, all about the SHELL's reading
+of the text and none about any one shape:
+
+1. **A glued redirect is an operator at an UNQUOTED position of its token.** `cat STORE>/tmp/x` still
+   keeps `STORE` (E72); a `>` or `<` inside `'…'` or `"…"` is data, so a quoted payload stays whole and
+   is judged as the code it is (E65–E71, E73).
+2. **`&` is not a statement separator when it belongs to a redirect:** `>&`, `<&` (`2>&1`, `>&-`), `&>`
+   and `&>>`. A lone `&` (background) still separates statements (E74, E75).
+3. **`|&` is a pipe** — bash's `2>&1 |` — and separates pipeline stages exactly like `|`, leaving no `&`
+   on the next stage (E76, E77).
+
 Explicitly **out of scope**, stated so nobody assumes coverage:
 
 - **Interpreter one-liners.** `python3 -c 'print(os.environ["NAME"])'` is not caught. Detecting it
@@ -184,6 +200,20 @@ print-access-token`, `flyctl auth token` — are not shapes yet (gate finding 20
 | E62 | `bash -c 'echo hello'`                                                    | ALLOW   | innocence for E60/E61 — a `-c` payload with nothing guilty in it                                                            |
 | E63 | `eval 'cat STORE'`                                                        | DENY    | X4 — `eval` runs its argument as code in the CURRENT shell                                                                  |
 | E64 | `ssh pro 'cat STORE'`                                                     | ALLOW   | **KNOWN BOUNDARY**, not an endorsement — see the note below                                                                 |
+| E65 | `bash -c 'cat STORE 2>/dev/null'`                                         | DENY    | X4 — the quoted payload keeps its inner `2>`; was ALLOW (cut at `>`)                                                        |
+| E66 | `bash -c "cat STORE 2>&1"`                                                | DENY    | X4 — the same in double quotes                                                                                              |
+| E67 | `sh -c 'printenv 2>&1'`                                                   | DENY    | X2 — inside a `-c` payload with a redirect                                                                                  |
+| E68 | `bash -lc 'set -x; ls 2>/dev/null'`                                       | DENY    | X2 xtrace — inside a combined `-lc` payload with a redirect                                                                 |
+| E69 | `eval 'cat STORE 2>/dev/null'`                                            | DENY    | X4 — E63's entity with a redirect                                                                                           |
+| E70 | `bash -c 'ls -la ~/bin/env > /tmp/o; cat /tmp/o'`                         | ALLOW   | innocence — no bogus `env` head from a cut token; was DENY                                                                  |
+| E71 | `bash -c 'cd /tmp && python3 tool.py out/set > log 2>&1; echo rc=$?'`     | ALLOW   | innocence — no bogus `set` head; was DENY                                                                                   |
+| E72 | `cat STORE>/tmp/x`                                                        | DENY    | X4 — an UNQUOTED glued redirect still keeps the operand before it                                                           |
+| E73 | `echo 'a>b'`                                                              | ALLOW   | innocence — a quoted `>` is data                                                                                            |
+| E74 | `make build >/tmp/build.log 2>&1 &`                                       | ALLOW   | innocence — `>&` is a redirect; the trailing lone `&` backgrounds                                                           |
+| E75 | `python3 x.py &> /tmp/o`                                                  | ALLOW   | innocence — `&>` is a redirect, not a separator                                                                             |
+| E76 | `cat STORE \|& head`                                                      | DENY    | X4 — `                                                                                                                      | &` is a pipe; the dump is still the first stage |
+| E77 | `printenv \|& grep PATH`                                                  | DENY    | X2 — `                                                                                                                      | &` does not hide an environment dump            |
+| E78 | `ls -la 2>&1 \| head`                                                     | ALLOW   | innocence — everyday `2>&1                                                                                                  | `                                               |
 
 **E64, the one deliberate hole.** A remote INLINE command cannot be judged by this guard until the
 read-vs-write distinction of W94 is written down: a remote WRITE stays remote and never reaches the
