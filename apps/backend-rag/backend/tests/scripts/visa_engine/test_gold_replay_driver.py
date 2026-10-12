@@ -23,6 +23,7 @@ from backend.tests.services.visa_engine.gold_replay import _persona_expected
 from backend.tests.services.visa_engine.test_evaluator_gold import (
     PERSONAS,
     PRODUCTION_REPLAY_EXPECTATIONS,
+    production_replay_expectations_for_sequence,
 )
 
 _GOLD_AT = gf.GOLD_EFFECTIVE_AT
@@ -372,7 +373,7 @@ _PERSONA_1_PRE_SEQ23_EXPECTATION = ("APPLICANT_IS_INDONESIAN_CITIZEN",)
 def test_persona_1_expectation_matches_the_highest_pack_and_the_old_one_does_not() -> None:
     report = driver.build_offline_report(generated_at=_OFFLINE_AT)
     row = next(row for row in report["personas"] if row["persona_id"] == 1)
-    expected = PRODUCTION_REPLAY_EXPECTATIONS[1]
+    expected = production_replay_expectations_for_sequence(report["pack"]["sequence"])[1]
 
     assert row["divergence"] is False
     assert row["actual"]["state"] == "NO_SUPPORTED_PATH"

@@ -1388,6 +1388,29 @@ describe("support reasons are sentences, not machine codes", () => {
     return value;
   }
 
+  it("E33G_ANNUAL_INCOME_THRESHOLD_USD tracks both signed seq-28 income rules", () => {
+    const payload = highestSequencePack();
+
+    const threshold = E33G_ANNUAL_INCOME_THRESHOLD_USD;
+    expect(threshold).toBe(
+      gteThresholdInPack(
+        "el.e33g.remote-work",
+        "work.annual_foreign_income_usd",
+      ),
+    );
+    const hardFilter = (payload.rules ?? []).find(
+      (rule) => rule.rule_id === "hf.e33g.annual-income-below-minimum",
+    );
+    if (!hardFilter) {
+      throw new Error(
+        "hf.e33g.annual-income-below-minimum is absent from seq-28",
+      );
+    }
+    expect(findLtValue(hardFilter.when, "work.annual_foreign_income_usd")).toBe(
+      threshold,
+    );
+  });
+
   // D3-3 gate finding (owner escalation, 2026-09-13): `secondHomeBelow
   // ThresholdReason` (engine-adapter.ts) quotes these two constants to a
   // real applicant as a legal requirement, in both languages. They are a
