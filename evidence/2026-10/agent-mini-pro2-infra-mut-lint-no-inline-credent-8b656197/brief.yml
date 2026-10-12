@@ -1,0 +1,20 @@
+task_id: mut-lint-no-inline-credential-tables-20261012
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  scripts/lint_no_inline_credential_tables.py (inline credential table guard) had 17 of 41 AST mutants surviving its test file.
+  Pin threshold, count, keyword set, look-back window, run splitting, row shapes, unreadable path and main() contract.
+  Test-only change; fixtures are obviously fake rows.
+constraints:
+  - "Tests only unless the PR title says fix; one concern per PR."
+  - "Each new test carries a guilt case and an innocence twin; expected values come from the documented contract."
+acceptance:
+  - text: "WHEN the AST mutation sweep is re-run against the extended tests, THEN the named survivors are killed."
+    probe: "python3 -m pytest -q scripts/tests"
+consumer_map:
+  - "The unit-test battery of immune-enforcement.yml (or the workflow that names the extended test file) runs these tests on every PR touching the guard."
+risks:
+  - "Pinned behaviour is the documented one; ambiguous-contract mutants are listed in the PR body, not pinned."
+grader: |
+  Mutation re-run with named restored mutants plus the existing suite green.
