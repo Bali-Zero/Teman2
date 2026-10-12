@@ -459,6 +459,19 @@ class TestE31DSponsorIndonesian:
 
 
 class TestE31JMinorAndSingle:
+    def test_the_cited_kepmen_row_says_under_18_and_never_married(self) -> None:
+        """BUILD GATE: the rules cite the Kepmen Lampiran (e3572ad2); its extracted E31J row is the ground."""
+
+        raw = (
+            _REPO_ROOT / "research/legal/2026-05-26-kepmen-visa-taxonomy/01-raw-extraction.md"
+        ).read_text(encoding="utf-8")
+        row = next(line for line in raw.splitlines() if line.startswith("| **E31J**"))
+        assert "belum berusia 18 (delapan belas) tahun dan belum kawin" in row
+        assert (
+            fold_mod.SRC_KEPMEN_LAMPIRAN
+            in _rules(_read_json(_SEQ29_SOURCE))[fold_mod.E31J_ADULT_RULE_ID]["source_refs"]
+        )
+
     def test_guilt_an_adult_sibling_loses_e31j(
         self, pack: census.PackUnderTest, old_pack: census.PackUnderTest
     ) -> None:
