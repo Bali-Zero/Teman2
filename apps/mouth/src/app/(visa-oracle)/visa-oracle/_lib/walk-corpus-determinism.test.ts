@@ -128,8 +128,13 @@ import { DEFAULT_OUT_DIR } from "../../../../../scripts/visa-oracle/generate-wal
  * PR-11 (2026-10-11): +13, 116 -> 129 — age-64 retirement walks with explicit
  * money answers on either side of the E33E/E33F bounds (deposit 49,999 /
  * 50,000, state bank, own name, income 2,999 / 3,000); no existing fixture
- * moves. */
-const EXPECTED_WALK_COUNT = 129;
+ * moves.
+ *
+ * Seq-28 Step B (2026-10-11): +2, 129 -> 131 — the E33G annual-income
+ * boundary witnesses 59,999 and 60,000. The active seq-27 pack does not read
+ * the fact, so both remain E33G candidates.
+ */
+const EXPECTED_WALK_COUNT = 131;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)

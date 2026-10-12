@@ -239,6 +239,8 @@ describe("OracleShell authoritative evaluate integration", () => {
         ["remote_compensation", "no"],
         ["work_payer", "no"],
         ["remote_employer_country", "US"],
+        // Seq-28 step B: the remote path now asks the yearly income.
+        ["remote_annual_income_usd", "85000"],
         ["remote_pt_pma", "no"],
       ],
     },

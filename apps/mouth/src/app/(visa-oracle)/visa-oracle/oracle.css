@@ -593,6 +593,14 @@ html[data-oracle-theme-bootstrap="dark"]
     border-color var(--motion-duration-fast) var(--motion-ease-standard),
     transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
+.oracle-option-card--secondary {
+  background: transparent;
+  font-weight: 400;
+  font-size: var(--text-sm, 0.9375rem);
+}
+.oracle-options--secondary {
+  margin-top: var(--space-2);
+}
 .oracle-option-card:hover {
   border-color: var(--oracle-canopy);
 }

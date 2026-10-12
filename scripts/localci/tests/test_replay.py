@@ -186,7 +186,7 @@ def _next_second():
 
 def _runner_that_raises(monkeypatch, rw, exc, when):
     """The gate's runner raises ``exc`` on every candidate ``when(candidate)`` holds for, and runs as before on the others."""
-    def run(argv, cwd, env, timeout):
+    def run(argv, cwd, env, timeout, guard=None):
         if "--candidate" in argv and when(argv[argv.index("--candidate") + 1]):
             raise exc
         return rw.runner(argv, cwd, env, timeout)

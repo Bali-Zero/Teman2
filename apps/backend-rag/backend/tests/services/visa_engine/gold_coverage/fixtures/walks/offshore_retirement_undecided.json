@@ -7,6 +7,7 @@
     "birth_date",
     "category",
     "trip_scope",
+    "retirement_age_notice",
     "retirement_basis",
     "retirement_undecided_basis",
     "secondhome_deposit_usd",
@@ -63,6 +64,10 @@
       "reason": "NOT_ASKED"
     },
     "work.indonesian_work_sponsor_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "work.annual_foreign_income_usd": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },

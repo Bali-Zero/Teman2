@@ -41,6 +41,7 @@ from pydantic import ValidationError
 from backend.services.visa_engine import enums
 from backend.services.visa_engine import models as M
 from backend.services.visa_engine.compiler import compile_rule_pack
+from backend.services.visa_engine.fact_registry import DEFAULT_FACT_REGISTRY
 from backend.tests.services.visa_engine.gold_harness import loader
 
 _UNKNOWN = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
@@ -455,6 +456,10 @@ class TestFactVocabularyExtensionRolloutDefaultE33G:
             M.ApplicantFactsData.model_validate(body)
 
         assert any(error["type"] == "extra_forbidden" for error in exc_info.value.errors())
+
+    def test_the_annual_income_fact_is_sensitive(self) -> None:
+        spec = DEFAULT_FACT_REGISTRY.spec(enums.FactPath.WORK_ANNUAL_FOREIGN_INCOME_USD)
+        assert spec.pii_class is enums.PiiClass.SENSITIVE
 
 
 class TestInvestmentAmountUsdIsRequiredAndTyped:

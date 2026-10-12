@@ -29,7 +29,10 @@ GATED = ["search-chrome", "registry-chrome", "search-field",
          "search-row", "search-peak", "registry-row", "registry-sheet"]                  # EN-1b (Q12)
 STATIC = ["Sources/Views/SearchFieldBar.swift",
           "Sources/Views/SearchListView.swift", "Sources/Views/KBLIRegistryTable.swift",
-          "Sources/Views/RegistryVerdictSheet.swift"]                                    # EN-1b (Q12)
+          "Sources/Views/RegistryVerdictSheet.swift",                                    # EN-1b (Q12)
+          "Sources/Views/KBLIRegistryView.swift", "Sources/Views/ScaleMatrix.swift",
+          "Sources/Views/HeadsUpBlock.swift", "Sources/Views/LeadBody.swift",
+          "Sources/Views/UraianLines.swift"]                                             # PR 5 (Q18)
 REPORTED = ["Sources/Views/KBLIDetailRichView.swift"]   # #8224 gate binding 4: `pmaRisk`; PR 3 brings it to 0
 
 LEX = {}
@@ -1070,7 +1073,9 @@ def scan(src):
                 if not vetted(chain, m.start()):
                     out.append((lineno(m.start()), ".%s(…) reads `%s` — not a vetted label (a localiser, SAFE, or a "
                                 "name bound to vetted code in scope)" % (name, chain)))
+    marks = [(c.end(), balanced(src, c.end() - 1)) for c in re.finditer(r"\.censusFrame\(", src)]
     for m in re.finditer(r"\\\(", src):
+        if any(a <= m.start() < b for a, b in marks): continue   # R25: a census mark's value is collected, never drawn
         end = balanced(src, m.end() - 1)
         for what in raw_reads(code_only(src[m.end():end - 1]), m.start()):
             out.append((lineno(m.start()), "interpolates %s" % what))
@@ -1102,7 +1107,10 @@ def static_selftest():
              # #8227 gate (iii): a closure stored in a name and called later, plain, typed and on several lines
              "func f() {\n let later = { kbli.judul }\n Text(later())\n}",
              "func f() {\n let later: () -> String = { kbli.pmaKondisi ?? \"\" }\n Text(later())\n}",
-             "func f() {\n let later = {\n  kbli.judul\n }\n Text(later())\n}"]
+             "func f() {\n let later = {\n  kbli.judul\n }\n Text(later())\n}",
+             # R25: a census mark's value is no sink, the drawn text beside it still is
+             'chip(x).censusFrame("chip.national", "\\(Theme.tone(kbli.pmaStatus ?? ""))")\nText("\\(kbli.pmaStatus ?? "")")',
+             'Text("\\(kbli.judul)").censusFrame("cap")']
     innocent = ["func a() {\n let title = LabelBook.title(k, isID: i)\n Text(title).help(title)\n}",
                 'TextField(lang.t("search.placeholder"), text: $q)', "Text(LabelBook.pmaStatus(kbli.pmaStatus, isID: isID))",
                 "func a() {\n let t = kbli.judul\n _ = t\n}\nfunc b() {\n let t = lang.t(\"x\")\n Text(t)\n}",
@@ -1117,7 +1125,8 @@ def static_selftest():
                 'func f() {\n let risk = LabelBook.field("x", isID: i)\n Text("\\(risk)")\n}',
                 "static func risk(_ k: KBLI, v: V) -> String {\n let rows = k.perSkala.count\n Text(\"\\(rows)\")\n"
                 " return LabelBook.risk(v.riskLabelRaw, isID: i)\n}",
-                "func f() {\n let later = { LabelBook.title(kbli, isID: i) }\n Text(later())\n}"]
+                "func f() {\n let later = { LabelBook.title(kbli, isID: i) }\n Text(later())\n}",
+                'chip(x).censusFrame("chip.national", "\\(Theme.tone(kbli.pmaStatus ?? ""))")']   # R25
     bad = ["NEVER-DRAWN-SELFTEST guilt not caught: %r" % g for g in guilt if not scan(g)]
     bad += ["NEVER-DRAWN-SELFTEST innocent flagged: %r %s" % (s, scan(s)) for s in innocent if scan(s)]
     return bad

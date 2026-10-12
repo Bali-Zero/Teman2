@@ -1,4 +1,5 @@
 import AppKit
+import PDFKit
 import SwiftUI
 
 /// Off-screen renderer for QA screenshots without a GUI session.
@@ -274,7 +275,9 @@ extension Snapshot {
         let notFound = AnyView(EmptyDetail(text: "code \(code) not found (store: \(state.store.all.count))")
             .environmentObject(lang))
 
+        let imm = Motion.configure(args)   // --imm: the immersive twin of the band; hooks: --at-ms --reduce-motion --ribbon --scale-focus
         let content: AnyView
+        var textView: AnyView?
         switch band {
         case "registry-table":
             // The live scan surface: `SearchListView` browsing the sector --code belongs to, no
@@ -294,12 +297,35 @@ extension Snapshot {
                 content = Self.page(KBLIDossierView(kbli: k, variant: .claude, scrolls: false)
                     .environmentObject(state).environmentObject(lang), width: w, height: h)
             } else { content = notFound }
+        case "registry-sheet":
+            // The sheet the user opens over the table (`SearchListView.sheetLayer`): flat by default, the live layout with --imm.
+            // --sheet-open expands it, which is where its ledger shows: the only live caller of `KBLIRegistryView`.
+            if let k = state.store.code(code) {
+                let open = args.contains("--sheet-open")
+                let sheet = RegistryVerdictSheet(kbli: k, expanded: .constant(open), onClose: {}, scrolls: false)
+                if imm {
+                    content = Self.page(sheet.immersiveHost().environmentObject(state).environmentObject(lang), width: w, height: h)
+                    textView = AnyView(RegistryVerdictSheet(kbli: k, expanded: .constant(open), onClose: {}, scrolls: false)
+                        .immersiveHost().environmentObject(state).environmentObject(lang))
+                } else {
+                    content = Self.page(sheet.environmentObject(state).environmentObject(lang), width: w, height: h)
+                    textView = AnyView(RegistryVerdictSheet(kbli: k, expanded: .constant(open), onClose: {}, scrolls: false)
+                        .environmentObject(state).environmentObject(lang))
+                }
+            } else { content = notFound }
         case "sheet-ledger":
             // The registry sheet/ledger (KBLIVerdict.swift's own name for this surface) — the mono
             // UPPERCASE label↔value LedgerPlate table, `KBLIRegistryView`.
             if let k = state.store.code(code) {
-                content = Self.page(KBLIRegistryView(kbli: k, scrolls: false)
-                    .environmentObject(state).environmentObject(lang), width: w, height: h)
+                if imm {
+                    content = Self.page(KBLIImmersiveLedger(kbli: k, scrolls: false)
+                        .environmentObject(state).environmentObject(lang), width: w, height: h)
+                    textView = AnyView(KBLIImmersiveLedger(kbli: k, scrolls: false).environmentObject(state).environmentObject(lang))
+                } else {
+                    content = Self.page(KBLIRegistryView(kbli: k, scrolls: false)
+                        .environmentObject(state).environmentObject(lang), width: w, height: h)
+                    textView = AnyView(KBLIRegistryView(kbli: k, scrolls: false).environmentObject(state).environmentObject(lang))
+                }
             } else { content = notFound }
         case "chat":
             state.messages = [
@@ -349,10 +375,36 @@ extension Snapshot {
             FileHandle.standardError.write("band snapshot written: \(out)\n".data(using: .utf8)!)
         }
 
+        if let pdfPath = flag("--pdf"), let tv = textView {
+            // Content byte-diff, the encensus way: the un-scrolled View through ImageRenderer into a PDF, read back by PDFKit.
+            let r = ImageRenderer(content: AnyView(tv.frame(width: w, alignment: .top).fixedSize(horizontal: false, vertical: true)
+                .tracking(0.01).background(Theme.antracite)))
+            let data = NSMutableData()
+            r.render { size, draw in
+                var box = CGRect(origin: .zero, size: size)
+                guard let consumer = CGDataConsumer(data: data as CFMutableData),
+                      let ctx = CGContext(consumer: consumer, mediaBox: &box, nil) else { return }
+                ctx.beginPDFPage(nil); draw(ctx); ctx.endPDFPage(); ctx.closePDF()
+            }
+            try? (PDFDocument(data: data as Data)?.string ?? "").write(toFile: pdfPath, atomically: true, encoding: .utf8)
+        }
+
         if let jsonPath = layoutJSONPath {
             let frames = marks.frames.map { f -> [String: Any] in
                 ["name": f.name, "value": f.value, "frame": [f.rect.minX, f.rect.minY, f.rect.width, f.rect.height]] }
-            let doc: [String: Any] = ["width": w, "frames": frames]
+            var doc: [String: Any] = ["width": w, "frames": frames]
+            // The record's own state as the harness reads it, beside the frames (PR 3-h-2b): a mark's value comes from
+            // the record, never from the function that paints the element, and png_census FAILs one that disagrees.
+            if ["detail-card", "dossier", "sheet-ledger", "chat"].contains(band), let k = state.store.code(code) {
+                let bali: String
+                switch KBLIVerdict.of(record: k).bali {
+                case .open: bali = "open"
+                case .blocked: bali = "closed"
+                case .undetermined: bali = "neutral"
+                }
+                doc["record"] = ["code": code, "national": "\(Theme.tone(k.pmaStatus ?? ""))", "bali": bali,
+                                 "headsup": "\(KBLIVerdict.headsUp(record: k, isID: lang.lang == .id).tone)"]
+            }
             if let data = try? JSONSerialization.data(withJSONObject: doc, options: [.prettyPrinted, .sortedKeys]) {
                 try? data.write(to: URL(fileURLWithPath: jsonPath))
                 FileHandle.standardError.write("census frames written: \(jsonPath) (\(frames.count))\n".data(using: .utf8)!)

@@ -35,6 +35,10 @@ MERGER_T = "scripts/localci/tests/test_merger.py"
 B6_WRAP = tuple(f"{MERGER_T}::{t}" for t in ("test_the_tick_decides_first_then_prunes_with_fstrim_and_passes_the_host_reading",
                                              "test_under_the_floor_the_tick_journals_its_skip_the_prune_still_runs_and_the_organ_says_warning",
                                              "test_a_failed_prune_is_a_warning_and_a_failed_tick_is_an_error_after_which_the_prune_still_runs"))
+HF = ("scripts/localci/tests/test_host_floor.py",)   # B15
+B15_PRUNE = tuple(f"{PRUNE_T}::{t}" for t in ("test_b15_under_host_pressure_the_second_slot_of_every_recipe_goes_and_the_newest_never",
+                                              "test_b15_host_pressure_never_removes_the_image_of_the_run_in_progress_or_the_never_list"))
+START_DEFAULT = 'default=HOST_FLOOR_GB + START_MARGIN_GB,\n                   help="the start floor'
 B6_FLOOR = (f"{MERGER_T}::test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why",)
 FLOOR_SH, FLOOR_T = "scripts/ops/pro_disk_floor_tick.sh", "scripts/localci/tests/test_disk_floor.py"
 
@@ -62,6 +66,63 @@ REPORT_SKIP = tuple(f"{REPORT}::{t}" for t in (
     "test_eleven_full_of_which_three_are_skip_agreements_and_one_partial_still_count_and_the_lines_say_three",
     "test_a_skip_here_beside_a_hosted_run_is_partial_so_it_cannot_make_up_the_full_count"))
 TICK_SKIP = (f"{TICK}::test_a_tick_journals_a_change_map_skip_beside_its_verdict_and_only_there",)
+
+# CodeQL contexts: their rules name tests by node id, so a survivor costs seconds, not the whole file
+CQ_T, CQ_SH_FILE, CQ_READER_FILE = "scripts/localci/tests/test_codeql_contexts.py", "scripts/localci/codeql_leg.sh", "scripts/localci/codeql_version_read.py"
+CQ_SARIF_FILE = "scripts/localci/codeql_sarif_check.py"
+
+
+def cq(*names: str) -> tuple[str, ...]:
+    return tuple(f"{CQ_T}::{n}" for n in names)
+
+
+CQ_IMG = cq("test_the_tarball_is_checksum_fetched_into_a_stage_and_never_lands_in_a_layer", "test_a_codeql_pin_that_is_not_plain_is_refused_before_anything_is_built")
+CQ_FLAGS = cq("test_the_leg_flags_are_decided_at_plan_by_the_base_classifier_on_the_changed_files",
+              "test_a_classifier_that_fails_is_hosted_fail_open_the_job_result_is_not_success_and_the_leg_runs")
+CQ_SENT = cq("test_a_hosted_version_that_differs_or_a_read_that_fails_is_blocked_never_green")
+CQ_SKIP = cq("test_a_matrix_not_applicable_step_alone_is_never_a_pass", "test_a_candidate_that_changes_the_config_or_the_script_gets_its_green_blocked")
+CQ_RUN = cq("test_the_results_per_language_go_to_the_receipt_as_data_and_the_leg_gets_the_base_overlay_and_no_git_index",
+            "test_a_laid_judge_whose_hash_differs_from_the_plans_is_no_verdict")
+CQ_PIN = cq("test_a_changed_action_input_in_the_base_workflow_blocks_until_the_matrix_follows")
+CQ_SIG = cq("test_a_command_killed_by_a_signal_is_no_verdict_never_a_fail")
+CQ_CMD = cq("test_the_leg_script_builds_the_exact_command_lines_the_hosted_logs_show", "test_the_augmented_config_replaces_only_the_queries_block")
+CQ_READ = cq("test_the_reader_compares_the_newest_analysis_of_exactly_this_language", "test_the_reader_ignores_another_scanner_uploading_under_the_same_category")
+CQ_RENAME = cq("test_a_rename_lists_both_paths_so_the_leg_runs_as_hosted_does")
+CQ_RUNALL = cq("test_an_unclassified_path_is_run_all_and_both_legs_run")
+CQ_LANG = cq("test_the_sentinel_reads_the_category_of_the_leg_own_language")
+CQ_VERPROBE = cq("test_a_version_probe_killed_by_a_signal_is_no_verdict_and_one_that_fails_is_its_own_exit")
+CQ_SARIF_EXIT = cq("test_the_leg_script_exits_1_on_a_sarif_hosted_would_reject_and_0_on_one_it_takes",
+                   "test_a_driven_leg_whose_sarif_hosted_would_reject_is_a_fail_and_findings_alone_never_are")
+CQ_SARIF_LIMITS = cq("test_each_documented_upload_limit_is_ok_at_the_maximum_and_a_fail_one_over", "test_the_leg_script_exits_1_on_a_sarif_hosted_would_reject_and_0_on_one_it_takes",
+                     "test_a_sarif_whose_gzip_is_over_ten_mb_is_a_fail_even_with_no_other_limit_exceeded")
+CQ_SARIF_GZIP = cq("test_the_gzip_limit_is_ok_at_the_maximum_and_a_fail_one_byte_over_and_names_the_limit",
+                   "test_a_sarif_whose_gzip_is_over_ten_mb_is_a_fail_even_with_no_other_limit_exceeded")
+CQ_SARIF_BOUND = cq("test_the_gzip_limit_is_checked_on_a_bound_of_what_hosted_would_send", "test_what_the_action_would_not_fingerprint_is_not_in_the_bound")
+CQ_SARIF_MIB = cq("test_the_limits_are_the_documented_numbers")
+CQ_SARIF_CRASH = cq("test_a_document_the_checker_cannot_hold_is_no_verdict_exit_70_never_the_exit_1_of_a_rejection",
+                    "test_the_leg_turns_a_checker_crash_into_a_killed_leg_and_the_driver_reads_it_as_error")
+CQ_SARIF_SHAPE = cq("test_a_sarif_without_runs_or_with_a_run_without_results_is_a_fail")
+CQ_OVERRIDE = cq("test_the_override_is_read_at_plan_and_an_active_one_runs_both_languages_as_hosted_does",
+                 "test_a_read_that_fails_is_fail_open_both_flags_true_and_the_job_result_not_success")
+CQ_OVERRIDE_ORG = cq("test_an_organization_variable_alone_is_resolved_for_an_organization_owner_and_not_for_a_user",
+                     "test_the_lists_are_paginated_and_a_variable_on_a_later_page_is_found")
+CQ_OVERRIDE_404 = cq("test_a_list_that_answers_404_is_a_read_error_not_an_unset_variable")
+CQ_OVERRIDE_WINS = cq("test_when_both_exist_the_repository_variable_wins_as_hosted_resolves_it")
+CQ_OVERRIDE_ENV = cq("test_a_base_job_that_names_an_environment_is_fail_open_because_its_variables_are_invisible",
+                     "test_the_plan_passes_the_base_jobs_so_an_environment_in_the_base_workflow_fails_open")
+CQ_OVERRIDE_TOTAL = cq("test_a_total_count_that_disagrees_with_the_rows_collected_is_a_read_error")
+CQ_FORK = cq("test_a_fork_pr_whose_branch_is_named_main_and_is_newer_and_green_does_not_stand_in_for_main",
+             "test_a_fork_pr_named_main_that_is_newer_and_red_does_not_block_a_green_main", "test_only_a_run_of_the_repositorys_own_main_on_a_main_event_is_a_candidate")
+CQ_SKIPKEY = cq("test_an_unexplained_skip_in_one_job_is_not_excused_by_the_matrix_na_of_the_same_step_name_in_another")
+CQ_USES = cq("test_a_bumped_codeql_action_in_the_base_workflow_blocks_until_the_matrix_follows")
+CQ_LOCALVER = cq("test_a_local_cli_other_than_the_pin_is_no_verdict_before_anything_is_extracted", "test_a_driven_leg_on_another_cli_is_error_never_fail_or_pass")
+CQ_STALE = cq("test_the_reader_is_blocked_by_an_analysis_older_than_seven_days", "test_a_stale_newest_analysis_blocks_the_plan_with_the_days_in_the_reason")
+CQ_MAINRED = cq("test_the_reader_is_blocked_when_hosted_main_is_red_on_this_leg", "test_a_red_hosted_main_job_of_the_legs_own_language_blocks_the_plan")
+CQ_MIXED = cq("test_a_leg_that_mixes_the_gate_skip_with_any_other_skip_is_not_a_pass")
+CQ_SEAM = cq("test_a_base_job_env_that_sets_a_leg_seam_blocks_the_plan", "test_a_base_step_env_or_a_matrix_step_env_that_sets_a_leg_seam_blocks_the_plan")
+CQ_REPO = cq("test_the_reader_refuses_a_repo_that_climbs_the_api_path")
+CQ_CONFIG = cq("test_a_queries_block_the_rewriter_cannot_read_as_text_is_no_verdict_and_writes_nothing")
+CQ_CORPUS = ("scripts/localci/tests/test_runner.py::test_the_corpus_check_also_runs_the_gate_flags_corpus_from_base",)
 
 # name: (file, text that must occur once, replacement, test files that must turn red)
 MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
@@ -200,8 +261,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b8-floor-no-remeasure": (PRUNE, '            rec["vm_free_gb"]["after"] = vm_free_gb(docker, state)\n            if rec', "            if rec", (PRUNE_T,)),
     # B8 amended (Pro, 17:26Z: a 60 GiB VM holds one image per recipe plus scratch): under the floor, fewest references first,
     # the newest of a recipe not protected; the cache pruned with -a after every image removal, its size journalled
-    "b8-floor-by-age-only": (PRUNE, 'key=lambda d: (d["refs"], d["created"] is None,', 'key=lambda d: (d["created"] is None,', (PRUNE_T,)),
-    "b8-floor-most-refs-first": (PRUNE, 'key=lambda d: (d["refs"], d["created"] is None,', 'key=lambda d: (-d["refs"], d["created"] is None,', (PRUNE_T,)),
+    "b8-floor-by-age-only": (PRUNE, 'return (d["refs"], d["created"] is None,', 'return (d["created"] is None,', (PRUNE_T,)),
+    "b8-floor-most-refs-first": (PRUNE, 'return (d["refs"], d["created"] is None,', 'return (-d["refs"], d["created"] is None,', (PRUNE_T,)),
     "b8-floor-newest-first": (PRUNE, 'd["created"] or 0, d["tag"])', '-(d["created"] or 0), d["tag"])', (PRUNE_T,)),
     "b8-floor-keeps-newest": (PRUNE, 'not d["remove"] and not d["live"] and not never(', 'not d["remove"] and d["slot"] != 1 and not d["live"] and not never(', (PRUNE_T,)),
     "b8-floor-takes-lease-run": (PRUNE, 'not d["remove"] and not d["live"] and not never(', 'not d["remove"] and not never(', (PRUNE_T,)),
@@ -234,7 +295,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b8-cache-not-after-floor-removal": (PRUNE, "            builder_prune(docker, rec, cache_budget)   # the cache entries", "            pass   # the cache entries", (PRUNE_T,)),
     "b8-cache-size-after-unread": (PRUNE, 'rec["builder_prune"]["cache_gb"]["after"] = build_cache_gb(docker)', 'rec["builder_prune"]["cache_gb"]["after"] = None', (PRUNE_T,)),
     "b8-cache-first-rc-kept": (PRUNE, '    bp["rc"] = rc   # the last call', '    bp["rc"] = rc if bp["rc"] == 0 else bp["rc"]   # the last call', (PRUNE_T,)),
-    "b8-floor-undated-first": (PRUNE, 'key=lambda d: (d["refs"], d["created"] is None, d["created"] or 0,', 'key=lambda d: (d["refs"], d["created"] or 0,', (PRUNE_T,)),
+    "b8-floor-undated-first": (PRUNE, 'd["created"] is None, d["created"] or 0, d["tag"])', 'd["created"] or 0, d["tag"])', (PRUNE_T,)),
     "b8-cache-size-mb-as-gb": (PRUNE, '"MB": 1e6', '"MB": 1e9', (PRUNE_T,)),
     # B8a (Pro, 2026-10-09T02:49:24Z: "built -5.3 h ago"): Created is a UTC instant whatever its offset
     "b8a-offset-ignored": (PRUNE, '+ float(m.group(2) or 0) - off_s', '+ float(m.group(2) or 0)', (PRUNE_T,)),
@@ -255,7 +316,9 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b8b-kill-switch-ignored": (PRUNE, 'os.environ.get("LOCALCI_VM_DISCARD") == "0"', "False", (PRUNE_T,)),
     "b8b-after-the-trim": (PRUNE, '        rec["vm_discard"] = keep_vm_discard(colima)   # before the trim: the trim then finds only what discard has not returned\n        try:\n            t = subprocess.run([colima, "ssh", "--", "sudo", "fstrim", "-av"], capture_output=True, text=True, timeout=900)\n            rec["fstrim"] = {"rc": t.returncode, "tail": (t.stdout or t.stderr).strip()[-160:]}\n        except (OSError, subprocess.TimeoutExpired) as e:\n            rec["fstrim"] = {"rc": None, "tail": type(e).__name__}\n', '        try:\n            t = subprocess.run([colima, "ssh", "--", "sudo", "fstrim", "-av"], capture_output=True, text=True, timeout=900)\n            rec["fstrim"] = {"rc": t.returncode, "tail": (t.stdout or t.stderr).strip()[-160:]}\n        except (OSError, subprocess.TimeoutExpired) as e:\n            rec["fstrim"] = {"rc": None, "tail": type(e).__name__}\n        rec["vm_discard"] = keep_vm_discard(colima)\n', (PRUNE_T,)),
     "b6-rm-forced": (PRUNE, 'None if dry else _docker(docker, "image", "rm", im["tag"])', 'None if dry else _docker(docker, "image", "rm", "-f", im["tag"])', (PRUNE_T,)),
-    "b8-floor-rm-forced": (PRUNE, 'r = _docker(docker, "image", "rm", im["tag"])', 'r = _docker(docker, "image", "rm", "-f", im["tag"])', (PRUNE_T,)),
+    "b8-floor-rm-forced": (PRUNE, 'return _docker(docker, "image", "rm", tag)', 'return _docker(docker, "image", "rm", "-f", tag)', (PRUNE_T,)),
+    "b15-pressure-rm-forced": (PRUNE, 'r = rm_image(docker, im["tag"])\n            if r.returncode != 0:\n                errors.append({"tag": im["tag"], "gb": im["gb"], "rule": "host pressure"',
+                               'r = _docker(docker, "image", "rm", "-f", im["tag"])\n            if r.returncode != 0:\n                errors.append({"tag": im["tag"], "gb": im["gb"], "rule": "host pressure"', B15_PRUNE),
     "b6-builder-never": (PRUNE, "    if not dry:   # the build cache grows", "    if False:   # the build cache grows", (PRUNE_T,)),
     "b6-dry-run-removes": (PRUNE, "r = None if dry else _docker(", "r = None if False else _docker(", (PRUNE_T,)),
     # B6-2: 7 days full, then the bulk goes; 30 days, then only the verdict files
@@ -267,13 +330,33 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-call-graphs-kept": (PRUNE, "f in BULK)", "False)", (PRUNE_T,)),
     "b6-undated-run-trimmed": (PRUNE, "if age_h is None or age_h < FULL_DAYS * 24:", "if age_h is not None and age_h < FULL_DAYS * 24:", (PRUNE_T,)),
     # B6-3: the tick decides, then prunes and trims the VM; under 60 GB host-free no run starts
-    "b6-wrapper-floor-59": (SH, 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-60}"', 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-59}"', B6_WRAP),
+    "b6-wrapper-floor-99": (SH, 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-100}"', 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-99}"', B6_WRAP),
     "b6-wrapper-floor-le": (SH, '[ "$FREE" -lt "$FLOOR_GB" ]', '[ "$FREE" -le "$FLOOR_GB" ]', B6_WRAP),
     "b6-wrapper-no-fstrim": (SH, 'prune --state-dir "$STATE" --fstrim', 'prune --state-dir "$STATE"', B6_WRAP),
     "b6-wrapper-prune-failure-silent": (SH, 'if [ "$PRUNE_RC" -ne 0 ]; then', "if false; then", B6_WRAP),
     "b6-wrapper-never-prunes": (SH, """if [ -f "$CODE/prune.py" ] && grep -q -- '"prune"' "$CODE/merger.py"; then""", "if false; then", B6_WRAP),
     "b6-merger-floor-off": (PY, "if a.host_free_gb is not None and a.host_free_gb < a.min_host_free_gb:", "if False:", B6_FLOOR),
-    "b6-merger-floor-59": (PY, "type=float, default=60.0,", "type=float, default=59.0,", B6_FLOOR),
+    "b6-merger-floor-99": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "99.0"), B6_FLOOR),
+    # B15: Pro's host floor of 90 GB, held through the run
+    "floor-start-60": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "60.0"), HF),
+    "evict-disabled": (PY, "                    if low:\n", "                    if False:\n", HF),
+    "evict-spares-containers": (PY, 'subprocess.run([self.docker, "rm", "-f", "-v", *ids], capture_output=True, timeout=120, env=env)', "None", HF),
+    "evict-kills-foreign-run": (PY, 'f"label=org.nuzantara.localci.run={run_label(self.run_dir)}"', '"label=org.nuzantara.localci.run"', HF),
+    "evict-as-fail": (PY, '{**rec, "kind": "evicted", "why":', '{**rec, "kind": "decision", "overall": "FAIL", "why":', HF),
+    "statvfs-fail-open": (PY, "return (self.blind >= EVICT_BLIND_SAMPLES if free is None else free < self.evict_gb), free",
+                          "return (False if free is None else free < self.evict_gb), free", HF),
+    "evict-not-rotated": (PY, 'if (r.get("kind") == "decision" and not r.get("replay")) or r.get("kind") == "evicted":',
+                          'if (r.get("kind") == "decision" and not r.get("replay")):', HF),
+    "evict-cap-ignored": (PY, "if evictions[(n, head, base_sha)] >= EVICT_CAP:", "if False:", HF),
+    "evict-cap-off-by-one": (PY, "if evictions[(n, head, base_sha)] >= EVICT_CAP:", "if evictions[(n, head, base_sha)] > EVICT_CAP:", HF),
+    "parent-pid-not-handed": (PY, '"LOCALCI_PARENT_PID": str(os.getpid())}', '"LOCALCI_PARENT_PID": "0"}', HF),
+    "parent-watch-unwired": (RUN_PY, '    if a.cmd in ("plan", "run"):\n        watch_parent()', '    if False:\n        watch_parent()', HF),
+    "parent-watch-pid-1": (RUN_PY, 'if not raw.isdigit() or int(raw) <= 1:', 'if not raw.isdigit():', HF),
+    "parent-gone-never": (RUN_PY, "    except ProcessLookupError:\n        return True\n    except PermissionError:", "    except ProcessLookupError:\n        return False\n    except PermissionError:", HF),
+    "prune-pressure-no-builder-prune": (PRUNE, "        if dropped:\n            builder_prune(", "        if False:\n            builder_prune(", (f"{PRUNE_T}::test_b15_host_pressure_runs_the_builder_prune_after_its_removals_and_names_the_rebuild_cost",)),
+    "prune-pressure-rule-silent-on-cost": (PRUNE, 'f"dropping a second-slot image means a cold rebuild of that recipe"})', 'f"x"})', (f"{PRUNE_T}::test_b15_host_pressure_runs_the_builder_prune_after_its_removals_and_names_the_rebuild_cost",)),
+    "prune-host-pressure-ignored": (PRUNE, 'rec["host_pressure"] = pressure_gb is not None and free_before < pressure_gb',
+                                    'rec["host_pressure"] = False', B15_PRUNE),
     "b7-fstrim-only-after-removal": (PRUNE, "    if fstrim and not dry:   # every real prune", "    if fstrim and removed and not dry:   # every real prune", (PRUNE_T,)),
     "b7-fstrim-on-dry-run": (PRUNE, "    if fstrim and not dry:   # every real prune", "    if fstrim:   # every real prune", (PRUNE_T,)),
     "b6-prune-code-sha-dropped": (PY, "    CODE_SHA = a.code_sha or None\n", "    CODE_SHA = None\n", (PRUNE_T,)),
@@ -384,7 +467,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "f2-parents-swapped": (PY, '"-p", old, "-p", head,', '"-p", head, "-p", old,', (PHASEF,)),
     "f2-subject-without-number": (PY, 'subject = title if title.endswith(f"(#{n})") else f"{title} (#{n})"', "subject = title", (PHASEF,)),
     "f2-bites-not-carried": (PY, "([bites] if bites else [])", "[]", (PHASEF,)),
-    "f2-key-in-the-runner-env": (PY, '"PYTHONDONTWRITEBYTECODE": "1"}', '"PYTHONDONTWRITEBYTECODE": "1", "GIT_SSH_COMMAND": "ssh -i " + str(base_wt.parent.parent / KEY_FILE)}', (PHASEF,)),
+    "f2-key-in-the-runner-env": (PY, '"LOCALCI_PARENT_PID": str(os.getpid())}', '"LOCALCI_PARENT_PID": str(os.getpid()), "GIT_SSH_COMMAND": "ssh -i " + str(base_wt.parent.parent / KEY_FILE)}', (PHASEF,)),
     "f2-key-in-the-process-env": (PY, 'env={"GIT_SSH_COMMAND": push_ssh_command(state)}', 'env=os.environ.setdefault("GIT_SSH_COMMAND", push_ssh_command(state)) and {"GIT_SSH_COMMAND": push_ssh_command(state)}', (PHASEF,)),
     "f2-fetch-guard-dropped": (PY, "if anchor is None or halt_reason(state) is not None:", "if True:", (PHASEF,)),
     "f2-fetch-guard-ignores-the-halt": (PY, "if anchor is None or halt_reason(state) is not None:", "if anchor is None:", (PHASEF,)),
@@ -629,6 +712,72 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b12-state-flag-kept": (RUNNER, 'c.pop("gate_pending", None)   # B12: a flag is', 'pass   # B12: a flag is', GP),
     "b12-state-flag-kept-moved": (RUNNER, 'c.pop("gate_pending", None)\n                    store.save(st)', 'store.save(st)', GP),
     "b12-report-replay-counted": (PY, 'r["gate_pending"] and not r["replay"])', 'r["gate_pending"])', (REPORT,)),
+    # CodeQL contexts (LOCALCI-SOVEREIGN): the pinned bundle image, the plan-time flags and sentinel, the BASE-laid judges, the verdict
+    "cq-add-unchecked": (RUNNER, "ADD --checksum=sha256:{sha256} {url} /bundle.tgz", "ADD {url} /bundle.tgz", CQ_IMG),
+    "cq-version-unasserted": (RUNNER, ' && test "$(/opt/codeql/codeql version --format=terse)" = "{version}"', "", CQ_IMG),
+    "cq-tarball-in-a-layer": (RUNNER, "ENV PATH=/opt/codeql:${{PATH}}", "COPY --from=codeqlbundle /bundle.tgz /opt/bundle.tgz\nENV PATH=/opt/codeql:${{PATH}}", CQ_IMG),
+    "cq-sha-unvalidated": (RUNNER, 'or not re.fullmatch(r"[0-9a-f]{64}", raw["sha256"])', "or False", CQ_IMG),
+    "cq-url-any": (RUNNER, 'CODEQL_URL = re.compile(r"https://[A-Za-z0-9._~/%+-]+")', 'CODEQL_URL = re.compile(r"https://\\S+")', CQ_IMG),
+    "cq-classifier-error-skips": (RUNNER, 'return {"result": "failure", "outputs": {n: "true" for n in names}}, f"BASE',
+                                  'return {"result": "success", "outputs": {n: "false" for n in names}}, f"BASE', CQ_FLAGS),
+    "cq-flags-unchecked": (RUNNER, 'all(got.get(n) in ("true", "false") for n in names)', "True", CQ_FLAGS),
+    "cq-flags-not-sealed": (RUNNER, 'stood_in[str(local["classifier"]["job"])] = got',
+                            'stood_in[str(local["classifier"]["job"])] = {"result": "success", "outputs": {"run_codeql_python": "true", "run_codeql_js": "true"}}', CQ_FLAGS),
+    "cq-sentinel-mismatch-passes": (RUNNER, '    if got["rc"] == 0:\n        return None\n    return f"version sentinel',
+                                    '    if got["rc"] is not None:\n        return None\n    return f"version sentinel', CQ_SENT),
+    "cq-sentinel-unreadable-passes": (RUNNER, '    if got["rc"] == 0:\n        return None\n    return f"version sentinel',
+                                      '    if got["rc"] in (0, None):\n        return None\n    return f"version sentinel', CQ_SENT),
+    "cq-skip-any-reason": (RUNNER, 'gated = [s for s in na if IF_FALSE.match(str(s.get("reason", "")))]', "gated = list(na)", CQ_SKIP),
+    "cq-skip-undeclared": (RUNNER, 'if not ran and spec.get("skip_is_pass") and na and', "if not ran and na and", CQ_SKIP),
+    "cq-skip-green-over-rewritten-judge": (RUNNER, '        if spec.get("judge_modified"):\n            return "BLOCKED", f"every step skipped',
+                                           '        if False:\n            return "BLOCKED", f"every step skipped', CQ_SKIP),
+    "cq-overlay-not-judged": (RUNNER, "judged = [wf, *overlay]", "judged = [wf]", CQ_SKIP),
+    "cq-overlay-not-laid": (RUNNER, "            return out\n        overrides[rel] = blob\n", "            return out\n", CQ_RUN),
+    "cq-overlay-hash-unchecked": (RUNNER, 'if blob is None or sha256_bytes(blob) != plan.get("trusted_files_sha256", {}).get(rel):\n            out["infra"]',
+                                  'if blob is None:\n            out["infra"]', CQ_RUN),
+    "cq-git-index-forced": (RUNNER, '"git_index": indexed,', '"git_index": True,', CQ_RUN),
+    "cq-with-pin-ignored": (RUNNER, 'if have != {str(k): " ".join(str(v).split()) for k, v in ms["with_pin"].items()}:', "if False:", CQ_PIN),
+    "cq-signal-swallowed": (CQ_SH_FILE, '    kill -s "$((rc - 128))" "$$" || true', "    true", CQ_SIG),
+    "cq-ram-differs": (CQ_SH_FILE, "RAM=10240", "RAM=14575", CQ_CMD),
+    "cq-trap-options-everywhere": (CQ_SH_FILE, 'if [ "$LANG_" = javascript ]; then', "if true; then", CQ_CMD),
+    "cq-old-queries-kept": (CQ_SH_FILE, 'block = ["queries:"] + [f"  - uses: {q.strip()}"', 'block = ["queries:"] + ["  - uses: old"] + [f"  - uses: {q.strip()}"', CQ_CMD),
+    "cq-reader-oldest": (CQ_READER_FILE, 'return max(mine, key=lambda a: a["created_at"]) if mine else None',
+                         'return min(mine, key=lambda a: a["created_at"]) if mine else None', CQ_READ),
+    "cq-changed-with-renames": (RUNNER, '"diff", "--no-renames", "--name-only", f"{base}..{ident', '"diff", "--name-only", f"{base}..{ident', CQ_RENAME),
+    "cq-run-all-forced-off": (RUNNER, '"MAP_JSON": json.dumps(cm)})\n        got = dict(', '"MAP_JSON": json.dumps({**cm, "run_all": False})})\n        got = dict(', CQ_RUNALL),
+    "cq-sentinel-python-only": (RUNNER, 'lang = str((local.get("leg") or {}).get("language") or "")', 'lang = "python"', CQ_LANG),
+    "cq-gate-flags-corpus-dropped": (RUNNER, '"-m", "unittest", "test_change_map", "test_security_gate_flags"', '"-m", "unittest", "test_change_map"', CQ_CORPUS),
+    "cq-version-probe-unstepped": (CQ_SH_FILE, '  step "$CQ" version --format=terse', '  "$CQ" version --format=terse', CQ_VERPROBE),
+    "cq-reader-any-tool": (CQ_READER_FILE, ' and a["tool"].get("name") == "CodeQL"]', ']', CQ_READ),
+    "cq-reader-category-prefix": (CQ_READER_FILE, 'a.get("category") == category', 'str(a.get("category")).startswith(category)', CQ_READ),
+    # LOCALCI-SOVEREIGN CodeQL fix round 2: SARIF post-processing, the live override, the action pin, the local pin, freshness, the tightened skip
+    "cq-sarif-unreadable-passes": (CQ_SH_FILE, 'python3 -I "$HERE/codeql_sarif_check.py" "$SARIF" "$LANG_"', 'python3 -I "$HERE/codeql_sarif_check.py" "$SARIF" "$LANG_" || true', CQ_SARIF_EXIT),
+    "cq-sarif-limit-ignored": (CQ_SARIF_FILE, "if (problems := limit_problems(doc, gzip_size(doc))):", "if False:", CQ_SARIF_LIMITS),
+    "cq-sarif-gzip-unchecked": (CQ_SARIF_FILE, "if gzip_bytes > GZIP_MAX_BYTES:", "if False:", CQ_SARIF_GZIP),
+    "cq-sarif-gzip-no-bound": (CQ_SARIF_FILE, " + (action_adds(doc) if isinstance(doc, dict) and isinstance(doc.get(\"runs\"), list) else 0)", "", CQ_SARIF_BOUND),
+    "cq-sarif-gzip-mib": (CQ_SARIF_FILE, "GZIP_MAX_BYTES = 10_000_000", "GZIP_MAX_BYTES = 10 * 1024 * 1024", CQ_SARIF_MIB),
+    "cq-sarif-crash-rejects": (CQ_SARIF_FILE, "        return NO_VERDICT_RC\n", "        return 1\n", CQ_SARIF_CRASH),
+    "cq-sarif-crash-swallowed-by-leg": (CQ_SH_FILE, '  *) no_verdict "codeql_sarif_check.py ended', '  *) exit 1 ;;   # no_verdict "codeql_sarif_check.py ended', CQ_SARIF_CRASH),
+    "cq-sarif-shape-ignored": (CQ_SARIF_FILE, "why = why or shape_problem(doc)", "why = why", CQ_SARIF_SHAPE),
+    "cq-override-ignored": (RUNNER, 'if ov["active"]:\n            got = {', 'if False:\n            got = {', CQ_OVERRIDE),
+    "cq-override-org-ignored": (RUNNER, ', *((f"repos/{repo}/actions/organization-variables",) if owner_type == "Organization" else ())', "", CQ_OVERRIDE_ORG),
+    "cq-override-404-unset": (RUNNER, "        if r.returncode != 0:\n            return None\n        body", '        if r.returncode != 0:\n            return rows if "HTTP 404" in r.stderr else None\n        body', CQ_OVERRIDE_404),
+    "cq-override-org-beats-repo": (RUNNER, "                break   # the repository variable wins over the organization's\n", "", CQ_OVERRIDE_WINS),
+    "cq-override-environment-ignored": (RUNNER, 'or any(isinstance(j, dict) and "environment" in j for j in (jobs or {}).values()):', ":", CQ_OVERRIDE_ENV),
+    "cq-override-total-unchecked": (RUNNER, "            return rows if len(rows) == total else None", "            return rows", CQ_OVERRIDE_TOTAL),
+    "cq-sentinel-fork-main": (CQ_READER_FILE, ' and isinstance(head, dict) and isinstance(head.get("full_name"), str) and head["full_name"].lower() == repo.lower())', ")", CQ_FORK),
+    "cq-sentinel-any-event": (CQ_READER_FILE, '\n            and r.get("event") in MAIN_EVENTS', "", CQ_FORK),
+    "cq-skip-name-collision": (RUNNER, "    return (job, name)\n", "    return name\n", CQ_SKIPKEY),
+    "cq-uses-unpinned": (RUNNER, 'if isinstance(ms.get("uses_pin"), str) and ws.get("uses") != ms["uses_pin"]:', "if False:", CQ_USES),
+    "cq-local-version-unchecked": (CQ_SH_FILE, '  [ "$(tail -n 1 "$WORK/version.out")" = "$CODEQL_PIN" ] ||', "  true ||", CQ_LOCALVER),
+    "cq-version-probe-swallowed": (CQ_SH_FILE, '  step "$CQ" version --format=terse >"$WORK/version.out"', '  step "$CQ" version --format=terse >"$WORK/version.out" || true', CQ_VERPROBE),
+    "cq-sentinel-stale-ok": (CQ_READER_FILE, "if age > MAX_AGE_DAYS:", "if False:", CQ_STALE),
+    "cq-sentinel-main-red-ok": (CQ_READER_FILE, 'if mine[0].get("conclusion") != "success":', "if False:", CQ_MAINRED),
+    "cq-skip-mixed-passes": (RUNNER, 'all("not_applicable" in planned.get(key_of(s["name"]), {}) for s in rest)', "True", CQ_MIXED),
+    "cq-leg-seam-open": (RUNNER, '(seam := sorted(LEG_INPUT_ENV & {*jenv, *(st.get("env") or {})}))', "(seam := [])", CQ_SEAM),
+    "cq-reader-repo-dots": (CQ_READER_FILE, ' or any(seg in (".", "..") for seg in args.repo.split("/")):', ":", CQ_REPO),
+    "cq-config-inline-queries-open": (CQ_SH_FILE, 'if re.match(r"^queries\\s*:\\s*\\S", key):', "if False:", CQ_CONFIG),
+    "cq-config-comment-in-block-open": (CQ_SH_FILE, 'if rest[0] in " \\t-":', "if False:", CQ_CONFIG),
 }
 
 
@@ -637,6 +786,9 @@ def copy_tree(dest: Path) -> None:
         shutil.copytree(ROOT / rel, dest / rel, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
     (dest / "scripts" / "tests").mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / "scripts" / "tests" / "test_ban_predicates.py", dest / "scripts" / "tests" / "test_ban_predicates.py")
+    for rel in (".github/workflows/security.yml", ".github/codeql-config.yml"):   # the CodeQL tests plan against the real workflow and config
+        (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / rel, dest / rel)
     for rel in ("scripts/ops/pro_disk_floor_tick.sh", "infra/launchagents/com.nuzantara.disk-floor.plist", "infra/home-fork/declared-pairs.json"):
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)   # B6-4: the disk-floor organ and the files its test reads
         shutil.copy2(ROOT / rel, dest / rel)

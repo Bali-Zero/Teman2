@@ -75,8 +75,8 @@ from backend.tests.services.visa_engine.gold_replay import (
 )
 from backend.tests.services.visa_engine.test_evaluator_gold import (
     PERSONAS,
-    PRODUCTION_REPLAY_EXPECTATIONS,
     Persona,
+    production_replay_expectations_for_sequence,
 )
 
 logger = logging.getLogger("visa_engine.gold_replay_driver")
@@ -344,7 +344,13 @@ def replay_offline_decisions(
 
 
 def _normalized_expected(persona: Persona) -> dict[str, Any]:
-    expected = PRODUCTION_REPLAY_EXPECTATIONS[persona.id]
+    """Backward-compatible default used by existing report-fixture tests (seq < 28)."""
+
+    expected = production_replay_expectations_for_sequence(27)[persona.id]
+    return _normalized_expectation(expected)
+
+
+def _normalized_expectation(expected: Any) -> dict[str, Any]:
     return {
         "state": expected.state.value,
         "candidate_products": list(expected.candidates),
@@ -489,11 +495,20 @@ def build_report(
     accepted = explanations or {}
     persona_reports: list[dict[str, Any]] = []
     for persona, decision in zip(PERSONAS, decisions, strict=True):
-        expected = _normalized_expected(persona)
-        expectation_basis = PRODUCTION_REPLAY_EXPECTATIONS[persona.id]
+        decision_pack = _decision_pack(decision)
+        sequence = decision_pack["sequence"]
+        if not isinstance(sequence, int):
+            raise ValueError(f"persona {persona.id} decision has no pack sequence")
+        expectations = production_replay_expectations_for_sequence(sequence)
+        expected = (
+            _normalized_expectation(expectations[persona.id])
+            if sequence >= 28
+            else _normalized_expected(persona)
+        )
+        expectation_basis = expectations[persona.id]
         actual = _normalized_actual(decision)
         differences = _persona_divergences(persona.id, expected, actual)
-        pack = _decision_pack(decision)
+        pack = decision_pack
         explanation = (
             _matching_explanation(
                 accepted,

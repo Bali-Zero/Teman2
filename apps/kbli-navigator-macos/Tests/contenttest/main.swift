@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // Tests/contenttest — prints, for each frozen code and language, the strings the views produce
 // (same functions, no literal copies), as ONE JSON object for Tools/design/content_check.py.
@@ -72,6 +73,9 @@ let out: [String: Any] = MainActor.assumeIsolated {
         "Sources/Views/SearchListView.swift": ["KBLIVerdict.headsUp(", "OverlayStore.shared.primaryTitle(", "LabelBook.cap("],
         "Sources/Views/KBLIRegistryTable.swift": ["Theme.riskChip(", "Theme.chip(", "LabelBook.title("],
         "Sources/Views/RegistryVerdictSheet.swift": ["LabelBook.title(", "LabelBook.humanise("],
+        "Sources/Views/KBLIRegistryView.swift": ["ScaleMatrix(", "HeadsUpBlock(", "BasisBlock(", "LabelBook.baliChip(",
+                                                 "LabelBook.term("],                                          // PR 5
+        "Sources/Views/ScaleMatrix.swift": ["Theme.riskChip(", "LabelBook.risk(", "LabelBook.term(", "LabelBook.authority("],
     ]
     for (file, calls) in mustCall.sorted(by: { $0.key < $1.key }) {
         guard let src = try? String(contentsOfFile: "\(appRoot)/\(file)", encoding: .utf8) else {
@@ -140,6 +144,127 @@ let out: [String: Any] = MainActor.assumeIsolated {
         }
         if !c.isEmpty { curated[k.kode] = c }
     }
+    // PR 5 (sheet-ledger). D1 (a): the matrix draws every per_skala entry once per scale it lists, through the
+    // function the View calls; the dataset count is pinned, so a dropped row and a dropped record both show.
+    for (code, want) in [("55203", 3), ("51101", 8), ("56101", 6), ("71109", 112)] {
+        guard let k = store.all.first(where: { $0.kode == code }) else { violations.append("ScaleMatrix: no \(code)"); continue }
+        let rows = k.perSkala.reduce(0) { n, r in n + ScaleMatrix.order.filter { r.skalaUsaha.contains($0) }.count }
+        for isID in [false, true] {
+            let got = ScaleMatrix.cells(for: k.perSkala, isID: isID, ledger: true).count
+            if got != want || rows != want {
+                violations.append("ScaleMatrix \(code) \(isID ? "id" : "en"): \(got) cells, dataset \(rows), pinned \(want)")
+            }
+        }
+    }
+    // D4 (a): LeadBody weighs a text and never changes it — every basis and every Bali reason rejoins exactly.
+    var broken: [String] = []
+    for k in store.all {
+        for (t, kind) in [(k.pmaOfficialBasis, LeadBody.Kind.basis), (k.l4Bali?.reason, LeadBody.Kind.reason)] {
+            guard let t, !t.isEmpty else { continue }
+            let p = LeadBody.split(t, kind)
+            if [p.lead, p.body].compactMap({ $0 }).joined(separator: " ") != t { broken.append(k.kode) }
+        }
+    }
+    if !broken.isEmpty { violations.append("LeadBody.split changes the text of \(broken.count) records, e.g. \(broken.prefix(3))") }
+    // Lead ruling 2026-10-10: the verdict stack's two chips share one casing — capitals in Indonesian, sentence
+    // case in English — so the Bali word never reads louder than the national one.
+    let caps = { (s: String) in s.contains(where: \.isLetter) && s == s.uppercased() }
+    var loud: [String] = []
+    for k in store.all where ["TERBUKA", "TERBATAS", "TERTUTUP"].contains(k.pmaStatus?.uppercased() ?? "") {
+        for isID in [false, true] {
+            let national = LabelBook.pmaStatus(k.pmaStatus, isID: isID)
+            let bali = LabelBook.baliChip(KBLIVerdict.of(record: k), isID: isID).word
+            if caps(national) != caps(bali) { loud.append("\(k.kode) \(isID ? "id" : "en") \(national)/\(bali)") }
+        }
+    }
+    if !loud.isEmpty {
+        violations.append("verdict stack: the Bali chip's casing differs from the national chip's in \(loud.count) rows, e.g. \(loud.prefix(3))")
+    }
+    // Q17 in the ledger's curated prose (#8232 F2; Q17 on judul, lead 2026-10-11): the record's own office, term or
+    // title, standing alone, reads in English with its original after it (guilt); one that is the whole of a (…), a
+    // title inside one, one in quotes or a longer name, another code's title, and every Indonesian line stay (innocence).
+    if let k = store.all.first(where: { $0.kode == "01111" }) {
+        let t = "\(LabelBook.title(k, isID: false)) (\(LabelBook.officialTitle(k)))"
+        for (raw, want, isID) in [
+            ("Authority: Bupati/Walikota. Timeline: Otomatis.", "Authority: Regent / Mayor (Bupati/Walikota). Timeline: Instant (Otomatis).", false),
+            ("Issued by Gubernur (Bali = Gubernur Bali).", "Issued by Governor (Gubernur) (Bali = Gubernur Bali).", false),
+            ("Reports go (outside Jakarta: Bupati/Walikota).", "Reports go (outside Jakarta: Regent / Mayor (Bupati/Walikota)).", false),
+            ("Issued automatically (Otomatis) by Gubernur.", "Issued automatically (Otomatis) by Governor (Gubernur).", false),
+            ("Instruksi Gubernur Bali No. 6/2025 applies.", "Instruksi Gubernur Bali No. 6/2025 applies.", false),
+            ("Note the \"Gubernur Daerah Khusus Jakarta\" entry.", "Note the \"Gubernur Daerah Khusus Jakarta\" entry.", false),
+            ("Pertanian Jagung — maize grown for the market.", t + " — maize grown for the market.", false),
+            ("Maize for the market (Pertanian Jagung).", "Maize for the market (Pertanian Jagung).", false),
+            ("Pertanian Kedelai — soybeans, another code.", "Pertanian Kedelai — soybeans, another code.", false),
+            ("Kewenangan: Bupati/Walikota. Pertanian Jagung.", "Kewenangan: Bupati/Walikota. Pertanian Jagung.", true)] {
+            let got = LabelBook.ledgerProse(raw, record: k, isID: isID)
+            if got != want { violations.append("ledgerProse (Q17) 01111: \"\(raw)\" → \"\(got)\", want \"\(want)\"") }
+        }
+        if k.judul != "Pertanian Jagung" || LabelBook.title(k, isID: false) == k.judul { violations.append("ledgerProse: 01111's title moved") }
+    } else { violations.append("ledgerProse: no 01111") }
+    // The ledger's curated meaning draws its markdown emphasis, never its asterisks (3-h-1, 46206's "**live fish …**"):
+    // a pair draws its words emphasised (guilt); a spaced or unclosed "*" stays (innocence); and over every curated
+    // meaning, both languages, a line draws its source minus the "*" markers, nothing else and no link. 18 of the
+    // overlay's 22 emphasised meanings belong to a 2025 code (64921, 86903, 96120 and 96130 have no record to draw).
+    for (raw, want, marked) in [("**Live fish** go by air.", "Live fish go by air.", "Live fish"),
+                                ("This is *not* a lease.", "This is not a lease.", "not"),
+                                ("Spirits >20%, 5 * 3 rows.", "Spirits >20%, 5 * 3 rows.", ""),
+                                ("Bold ** never closed.", "Bold ** never closed.", "")] {
+        let a = LabelBook.ledgerInline(raw)
+        let got = a.runs.filter { $0.inlinePresentationIntent != nil }.map { String(a[$0.range].characters) }.joined()
+        if String(a.characters) != want || got != marked {
+            violations.append("ledgerInline: \"\(raw)\" → \"\(String(a.characters))\" [\(got)], want \"\(want)\" [\(marked)]")
+        }
+    }
+    var unfaithful: [String] = [], emphasised = Set<String>()
+    for k in store.all {
+        for lang in ["en", "id"] {
+            for l in OverlayStore.shared.overlayStrict(k.kode, lang: lang)?.meaning?.components(separatedBy: "\n") ?? [] {
+                let a = LabelBook.ledgerInline(l)
+                if a.runs.contains(where: { $0.inlinePresentationIntent != nil }) { emphasised.insert(k.kode) }
+                if String(a.characters) != l.replacingOccurrences(of: "*", with: "") || a.runs.contains(where: { $0.link != nil }) {
+                    unfaithful.append("\(k.kode) \(lang)")
+                }
+            }
+        }
+    }
+    if emphasised.count != 18 { violations.append("ledgerInline: \(emphasised.count) curated meanings draw emphasis, pinned 18") }
+    if !unfaithful.isEmpty { violations.append("ledgerInline changes \(unfaithful.count) meaning lines beyond their markers, e.g. \(unfaithful.prefix(3))") }
+    // A Bali reason draws its paired emphasis, never its asterisks (lead ruling 2026-10-11: Q24 over Z-3 for pairs):
+    // a pair, single or double, takes the SemiBold cut (guilt); a lone "*" or none draws as written, and a code span
+    // keeps its backticks and the line's face (innocence); and
+    // over every record, both languages, each half LeadBody draws of the reason reads its source with only asterisks
+    // gone and no link. The 15 reasons that carry "*" all pair them, so none is left drawn on any surface.
+    for (raw, want, marked) in [("Allocated as *Vila*, a **State** function.", "Allocated as Vila, a State function.", "VilaState"),
+                                ("A footnote* stays.", "A footnote* stays.", ""),
+                                ("Allocates *Vila* (`dialokasikan` column).", "Allocates Vila (`dialokasikan` column).", "Vila"),
+                                ("No marker at all.", "No marker at all.", "")] {
+        let a = LabelBook.emphasis(raw, size: 13)
+        let got = a.runs.filter { $0.font != nil }.map { String(a[$0.range].characters) }.joined()
+        let code = a.runs.contains { $0.inlinePresentationIntent?.contains(.code) == true }   // SwiftUI draws it monospaced
+        if String(a.characters) != want || got != marked || code {
+            violations.append("emphasis: \"\(raw)\" → \"\(String(a.characters))\" [\(got)], want \"\(want)\" [\(marked)]")
+        }
+    }
+    var reasonUnfaithful: [String] = [], reasonStars: [String] = [], reasonEmphasised = Set<String>()
+    for k in store.all {
+        guard let raw = k.l4Bali?.reason, !raw.isEmpty else { continue }
+        for isID in [false, true] {
+            let s = LabelBook.humanise(OverlayStore.shared.displayReason(raw, isID: isID), record: k, isID: isID)
+            let p = LeadBody.split(s, .reason)
+            // LeadBody's two halves (ledger, rail, card); the whole reason (registry sheet); the heads-up sentence
+            // (HeadsUpBlock, search row and peak), which is the reason itself when the Bali axis is undetermined
+            for half in [p.lead, p.body, s, KBLIVerdict.headsUp(record: k, isID: isID).sentence].compactMap({ $0 }) {
+                let a = LabelBook.emphasis(half, size: 13), drawn = String(a.characters)
+                if a.runs.contains(where: { $0.font != nil }) { reasonEmphasised.insert(k.kode) }
+                if drawn.contains("*") { reasonStars.append("\(k.kode) \(isID ? "id" : "en")") }
+                if drawn.replacingOccurrences(of: "*", with: "") != half.replacingOccurrences(of: "*", with: "")
+                    || a.runs.contains(where: { $0.link != nil }) { reasonUnfaithful.append("\(k.kode) \(isID ? "id" : "en")") }
+            }
+        }
+    }
+    if reasonEmphasised.count != 15 { violations.append("emphasis: \(reasonEmphasised.count) Bali reasons draw emphasis, pinned 15") }
+    if !reasonStars.isEmpty { violations.append("emphasis: a Bali reason still draws \"*\": \(reasonStars.prefix(5))") }
+    if !reasonUnfaithful.isEmpty { violations.append("emphasis changes \(reasonUnfaithful.count) Bali reasons beyond their markers, e.g. \(reasonUnfaithful.prefix(3))") }
     return ["codes": codes, "balanced_rejoin": rejoin, "probe_violations": violations, "curated_language": curated,
             "labelbook_maps": maps]
 }

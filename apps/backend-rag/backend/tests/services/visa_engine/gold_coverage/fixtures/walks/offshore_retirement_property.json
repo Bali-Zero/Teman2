@@ -7,6 +7,7 @@
     "birth_date",
     "category",
     "trip_scope",
+    "retirement_age_notice",
     "retirement_basis",
     "secondhome_property_value_usd",
     "secondhome_passive_income_usd",
@@ -60,6 +61,10 @@
       "reason": "NOT_ASKED"
     },
     "work.indonesian_work_sponsor_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "work.annual_foreign_income_usd": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },

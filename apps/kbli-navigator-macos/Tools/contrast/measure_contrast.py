@@ -73,6 +73,7 @@ PAIRS = [
     ("faint/inkLift", "faint", ("solid","inkLift"), 4.5, "KBLIDetailView.swift:101/206 on card"),
     ("accent/antracite", "accent", ("solid","antracite"), 4.5, "KBLIDetailRichView.swift:379 accent link on window"),
     ("accent/inkLift", "accent", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:137/2014 accent on card"),
+    ("accent/ink", "accent", ("solid","ink"), 3.0, "ScaleMatrix.swift selectionRing: the shown cell's ring touches only the surface (a gap inside it, the surface outside), never the chip fill"),
     ("zantara/antracite", "zantara", ("solid","antracite"), 4.5, "ChatView.swift:48/105/117 zantara label on window"),
     ("zantara/ink", "zantara", ("solid","ink"), 4.5, "KBLIDetailRichView.swift:358/366 zantara on ink"),
     ("statutory/inkLift", "statutory", ("solid","inkLift"), 4.5, "KBLIRegistryView.swift:979 statutory pill text"),
@@ -112,15 +113,15 @@ PAIRS = [
 RISK_CHIP = [("riskInk", "riskFillLow", "rank 1"), ("riskInk", "riskFillMediumLow", "rank 2"),
              ("riskInk", "riskFillMediumHigh", "rank 3"), ("riskInkOnHigh", "riskFillHigh", "rank 4"),
              ("muted", "ink", "unranked")]
-SITES = ["KBLIRegistryView.swift:1528 scopeRow mini risk chip", "KBLIRegistryView.swift:1699 cellDetail risk chip",
-         "KBLIRegistryView.swift:1635 riskMatrix cell", "KBLIRegistryView.swift:1653 riskMatrix legend chip",
+SITES = ["ScaleMatrix.swift:199 matrix and list risk chip", "ScaleMatrix.swift:310 list abbreviation chip and legend",
+         "KBLIRegistryView.swift:1448 cellDetail risk chip",                                     # PR 5 (D1)
          "KBLIRegistryTable.swift:110 RiskCell, the registry table's OSS-risk column"]
 SITE_PAIRS = [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5, "%s — Theme.riskChip %s" % (site, tier))
               for site in SITES for fg, bg, tier in RISK_CHIP]
 # Tone-chip ink painted straight on a row's ground: the ruled heads-up label of the search results, Theme.chip(tone).fg
 # on antracite at rest and on wash (= ink) when selected or hovered. CHIP_FG mirrors Theme.chip's switch (PARITY).
 CHIP_FG = [("chipOpenFg", "open"), ("chipRestrictedFg", "restricted"), ("chipClosedFg", "closed"), ("muted", "neutral")]
-CHIP_SITES = ["SearchListView.swift:661 ruled heads-up label"]
+CHIP_SITES = ["SearchListView.swift:662 ruled heads-up label"]
 SITE_PAIRS += [("%s/%s@%s" % (fg, bg, site.split()[0]), fg, ("solid", bg), 4.5,
                 "%s on %s — Theme.chip(.%s).fg" % (site, ground, tone))
                for site in CHIP_SITES for fg, tone in CHIP_FG

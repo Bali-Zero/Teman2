@@ -872,6 +872,28 @@ export function enumerateScenarios(): Scenario[] {
       remote_pt_pma: "no",
     },
   });
+  scenarios.push({
+    label: "offshore/remote/foreign_only/income_59999",
+    overrides: {
+      ...base,
+      category: "remote",
+      remote_compensation: "no",
+      work_payer: "no",
+      remote_annual_income_usd: "59999",
+      remote_pt_pma: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/remote/foreign_only/income_60000",
+    overrides: {
+      ...base,
+      category: "remote",
+      remote_compensation: "no",
+      work_payer: "no",
+      remote_annual_income_usd: "60000",
+      remote_pt_pma: "no",
+    },
+  });
   // `el.e31e-child-itas-support`: a minor joining a parent who holds a
   // stay permit. Every other family/diaspora walk uses the corpus's
   // 25-year-old identity, so the `derived.age_years < 18` gate could never

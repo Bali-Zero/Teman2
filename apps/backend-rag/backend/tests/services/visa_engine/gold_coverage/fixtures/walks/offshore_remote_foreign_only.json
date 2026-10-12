@@ -12,6 +12,7 @@
     "remote_compensation",
     "work_payer",
     "remote_employer_country",
+    "remote_annual_income_usd",
     "remote_pt_pma",
     "stay_days",
     "review_gate"
@@ -52,6 +53,10 @@
     "work.indonesian_work_sponsor_confirmed": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
+    },
+    "work.annual_foreign_income_usd": {
+      "status": "KNOWN",
+      "value": 1000000000
     },
     "investment.pt_pma_committed": { "status": "KNOWN", "value": false },
     "investment.investment_capital_idr": {

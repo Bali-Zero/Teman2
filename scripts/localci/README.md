@@ -94,7 +94,7 @@ context's `trusted_files` or its workflow (a change of tree entry: bytes, mode o
 `.gitattributes`, a green won with the BASE judge is reported **BLOCKED**: hosted judges with the candidate's copy (or
 materializes other bytes), which this run did not execute. The matrix is operator input, like the runner: pass the trusted copy with
 `--contexts-file`, never the candidate's. `summary.never_claim_parity_for` lists exactly the contexts the runner does not execute
-(the suite checks it); `summary.parity_gaps` lists the steps of executed contexts whose hosted twin can still differ.
+(none today; the suite checks it, and `summary.blocked`); `summary.parity_gaps` lists the steps of executed contexts whose hosted twin can still differ.
 
 **Coordinator interpreter.** The env fingerprint hashes the coordinator venv's `pip freeze`. A venv holding an editable install
 of a moving checkout (Pro's backend-rag venv carries `cell_core` from the main checkout, so its freeze names that checkout's
@@ -143,6 +143,34 @@ matrix expands as hosted expands it. A network failure in the egress sandbox (a 
 verdict on the candidate (the step is BLOCKED, never green; a vulnerability finding stays a verdict): re-run. So is a host reader whose own stderr line starts with the matrix's `no_verdict_when` three times running (the harness gate reader's `CANNOT-VERIFY`, a GitHub 5xx); text it merely echoes cannot trigger it. A BASE `actions/setup-node` pin must equal `deps.node`, or the context is BLOCKED. Repository secrets a step reads are
 overridden with `""` in the matrix (the run never holds them, and never reads the operator's); the parity gaps say what that
 can change.
+
+### CodeQL contexts (`CodeQL Analysis (python)`, `CodeQL Analysis (javascript)`)
+
+Executed, coverage `full` (the READY criterion allows one partial context per compared merge, and E2E holds it). The released repository is Apache-2.0
+(#8241), which the CodeQL terms allow for automated analysis of an open-source codebase on GitHub.com. Hosted never fails this job on
+a finding: it fails on a CLI or action error, a timeout, or (PR lane) an upload failure. The local verdict is the same: PASS when every
+command exits 0 within the BASE `timeout-minutes` (30) and the SARIF is one hosted would take, FAIL when one exits non-zero or the SARIF is one hosted would
+reject, no verdict (ERROR) on a timeout, a kill, or a local CLI that is not the pin. Findings and SARIF counts never change it; the results per language are
+recorded in the receipt (`result.codeql`).
+
+`coverage: full` means the context reproduces every hosted failure class the CODE determines: the CLI commands, the analyze action's post-processing of the
+SARIF, and the PR lane's upload limits. What GitHub's side decides (arch, a processing error outside the documented limits, a transient API error, the
+status-poll timeout, a hosted runner loss) is an environment difference, named in the matrix's `parity_gaps`; it is not a subset of the work left undone, as
+E2E's six empty secrets are.
+
+| surface | how | BLOCKED when |
+|---|---|---|
+| the CLI | `deps.codeql: {version, url, sha256}` builds the **bundle image**: the tarball is fetched by the builder with `ADD --checksum` into a stage of its own and bind-mounted into the one `RUN` that extracts it to `/opt/codeql` (it is never read whole into memory and never lands in a layer); the `RUN` asserts `codeql version` equals the pin. The pin is in the recipe digest: a bump is a new image, and both legs share one (`deps_recipe: codeql`) | the pin is not plain (http, a query string, an uppercase digest), the build fails |
+| the flags | `local.classifier`: BASE's `security_gate_flags.py` runs at plan on the plan's changed files and the trusted change map, as the hosted `changes` job runs it, and its outputs are sealed as `needs.changes`; the leg's `RUN_THIS_LANGUAGE` is then evaluated from the merge_group shape. A classifier that fails or answers a non-boolean is hosted's fail-open: the job result is `failure` and every output reads `true`, so the leg runs. The manual override `vars.MERGEOS_RING_GATING_DISABLED` that hosted's `changes` job honours is read live at plan with the operator's gh, resolved as hosted resolves `vars.X` (the repository variables list, paginated, then the organization's when the owner is an Organization; the repository variable wins; a 404, a bad body, a `total_count` that disagrees with the rows, or a BASE job naming an `environment:` is a read error) and judged by BASE's `scripts/ci/ring_gating_override.sh`, run and not re-implemented; active, or unreadable, both flags are `true`. The result is sealed in the check spec as `ring_gating_override: {read: ok\|error, active}` | the matrix names a classifier that is not a BASE classifier file |
+| a skipped language | the three steps carry their own `if: env.RUN_THIS_LANGUAGE == 'true'`; skipped, the hosted job still reports success. `skip_is_pass: true` makes a leg whose every step is not applicable PASS when each is an `if:` the driver evaluated false or a matrix-declared N/A and at least one is the former (never a matrix-declared skip alone; a step BASE gates with an `if:` and that was skipped any other way makes the leg ERROR), so it compares as AGREE with full coverage | — |
+| the commands | `Initialize CodeQL` and `Perform CodeQL Analysis` run `scripts/localci/codeql_leg.sh <init\|analyze> <lang>`: the hosted logs' command lines (init; traceless extraction with the JS trap-cache options; finalize; run-queries; interpret-results with category `/language:<L>`), the config `queries` replaced by the workflow's input as the action composes it. `Autobuild` is not applicable: the action runs no command for these languages. A command that dies of a signal (the shell's 128+N, an OOM kill) re-raises it, so the verdict is "killed", never a red exit. After `interpret-results` the SARIF is judged as the analyze action and the PR lane's upload judge it (`codeql_sarif_check.py`): not JSON, no `runs` array or a run without `results` is the action's throw, and the documented limits (10,000,000 bytes of gzip, level 6, of the compact JSON plus a bound of what the action adds, 20 runs, 25,000 results and rules per run, 100 extensions, 10,000 thread-flow and 1,000 result locations, 20 tags a rule) are exit 1; the schema is not validated, as the action skips it for CodeQL's own SARIF; the checker's own crash (a `RecursionError`, `MemoryError`) is exit 70, no verdict, never the exit 1 of a rejection. At init the leg compares `codeql version --format=terse` with `CODEQL_PIN` (the matrix passes the recipe's one literal) and gives no verdict on a difference; a `queries:` block the rewriter cannot read as text (inline value, a comment inside the block) is also no verdict. The action inputs are `with_pin`ned and the action refs `uses_pin`ned in the matrix: a BASE workflow that changes them is BLOCKED until the matrix follows; so is a composed env that sets one of the leg's test seams (`CODEQL_BIN`, `CODEQL_SOURCE_ROOT`, `LOCALCI_CODEQL_WORK`, `CODEQL_BASE_CONFIG`) | a pinned input or action ref differs from BASE's, a seam is set |
+| the judges | `.github/codeql-config.yml`, `codeql_leg.sh` and `codeql_sarif_check.py` are `trusted_files` with `trusted_overlay: true`: BASE's bytes are laid over the candidate tree inside the sandbox (hash frozen in the plan), and a candidate that changes either gets its green BLOCKED | a trusted file is absent at BASE |
+| the version sentinel | at plan time BASE's `codeql_version_read.py` reads, with the operator's gh (the host-reader path of the harness floor, retried on its `CANNOT-VERIFY` line), the newest hosted analysis of the language on `refs/heads/main` (`category /language:<L>`), and the newest completed `security.yml` run of the repository's own main (head repository the repo, `head_branch` main, event `schedule` or `workflow_dispatch`: a fork's PR branch named main is not it) with its jobs | its `tool.version` differs from the pin, there is none, it is older than 7 days, the run's `CodeQL Analysis (<L>)` job is not `success` (hosted main is red on this leg, which covers a hosted CLI upgrade failing before upload), or a read fails: BLOCKED, never green |
+| the sandbox | network `none`, memory 12g, `--threads=4 --ram=10240`, no git index (`git_index: false`: the job reads no history) | — |
+
+A pin bump is a matrix PR: change `deps.codeql`, re-run the parity probe (results and rule counts against the newest hosted SARIF of
+the same commit), and land it before hosted's flag moves on, or both contexts are BLOCKED. SARIF upload is out of scope: hosted
+still uploads while its workflows exist.
 
 ### Capacity on Pro (measured 2026-10-07, Colima aarch64, 4 CPU, 8 GiB, 60 GiB; resized 2026-10-10 to 8 CPU, 16 GiB, 80 GiB)
 
@@ -247,8 +275,8 @@ compared-merge rule is unchanged. A decision journalled before B5 records no ski
 
 ## Security: Pysa taint judge (`security.pysa_python`)
 
-CodeQL CLI cannot run on this repo (public, no OSI licence), so the python security queries are stood in for by Pysa
-(Meta, MIT), chosen on a benchmark against the CodeQL flows GitHub produced for the same commit
+Before the repository was released under Apache-2.0 (#8241) the CodeQL CLI could not run on it, so the python security queries were
+stood in for by Pysa (Meta, MIT), chosen on a benchmark against the CodeQL flows GitHub produced for the same commit
 (`~/.nuzantara-pilots/local-ci-followup/benchmark/REPORT_BENCHMARK.md`: 80 % flow recall on log-injection, 100 % on
 stack-trace / path / SSRF / redirect, 135 s, 1.6 GB). The check is planned whenever the diff touches ANY non-test file under
 `apps/backend-rag/backend/` (a `.gitattributes`, a `.pyi` or a config changes what Pysa sees); otherwise NOT_APPLICABLE. It is BLOCKED (never silently green) when the judge or
@@ -625,7 +653,7 @@ The window line separates `merged_prs` (PRs GitHub merged) from `compared_merges
 `skipped` lines by reason. A merge is COMPARED when GitHub merged the very candidate the merger decided (the decided head, its
 merge commit's sole parent the decided base) and at least 12 contexts had a verdict on both sides, at least 11 of them of
 FULL coverage and at most one partial, named (`MIN_COMPARED_CONTEXTS`, `MIN_COMPARED_FULL`, `MAX_COMPARED_PARTIAL`; ruled
-2026-10-08: 14 required − 2 CodeQL hosted-only − 1 E2E partial = 11 full): a merge compared on blind contexts is no evidence,
+2026-10-08, when the 2 CodeQL contexts were still hosted-only: 11 full; with them executed it is 13 full and the E2E partial): a merge compared on blind contexts is no evidence,
 a partial context never counts as full, an unrecorded one counts toward nothing, and the window line prints
 `compared_merges=N (full_only=M, with_partial=K)`. Each compared PR counts once, at
 GitHub's `merged_at` — two decisions of one PR, or the journal's order, cannot widen the span. **The operator reads
@@ -706,10 +734,10 @@ updates mid-run turns every PASS receipt STALE at `status` time (measured on the
 
 1. it reads the host's free GB (`df -Pk /System/Volumes/Data`, whole GB, floored); a `df` that gives no number starts no
    run and the heartbeat is `warning` (`host free space unreadable (df -Pk <path>): no run started`);
-2. `merger.py tick … --host-free-gb=N --min-host-free-gb=60`: under the floor the tick journals
-   `{"kind":"skipped","why":"host_below_floor","free_gb":N,"floor_gb":60}` before the lease and starts no run;
+2. `merger.py tick … --host-free-gb=N --min-host-free-gb=100`: under the start floor the tick journals
+   `{"kind":"skipped","why":"host_below_floor","free_gb":N,"floor_gb":90,"start_floor_gb":100}` before the lease and starts no run (B15);
 3. `merger.py prune --state-dir <state> --fstrim`, after the tick and never before it, whether the tick ran, skipped or failed;
-4. the heartbeat: `error` when the tick failed, `warning` with the number (`host_below_floor free_gb=N floor_gb=60: no run
+4. the heartbeat: `error` when the tick failed, `warning` with the number (`host_below_floor free_gb=N start_floor_gb=100: no run
    started`) under the floor or when the prune failed, `ok` otherwise. The wrapper exits with the tick's code.
 
 A mirror sha older than B6 still ticks: `prune.py` and `runner.py` are extracted only when the sha has them, and the floor
@@ -808,6 +836,31 @@ The prune takes the tick's lease: while a tick holds it, the line is `{"kind": "
 nothing is removed. `failed` lists `images` (an image still in use, an unreadable plan), `builder_prune` or `fstrim` when
 one of them failed; the prune then exits 1 and the organ says `warning`. A VM the probe cannot measure reads `null`. The prune
 reaches Pro when the wrapper's live copy is replaced with the commands of the block above (`cp` beside it, `mv`, `cmp -s`).
+
+### Host floor held through the run (B15)
+
+`docs/specs/localci-host-floor-2026-10-11.md`. Zero's directive: Pro keeps its host free above a floor, always (Zero, 2026-10-11: 90 GB, lowered from 100). B6 checked the host once,
+at the tick's start, against 60 GB; a tick that started at 111 GB ended at 99.6 (one shard container wrote 9.66 GB). kubelet's
+node-pressure model, with one constant (`HOST_FLOOR_GB` 90):
+
+- **Start floor.** A run starts only at `HOST_FLOOR_GB + START_MARGIN_GB` (10) = 100 GB free: `--min-host-free-gb` (default 100;
+  the wrapper's `MERGER_MIN_HOST_FREE_GB`). The skip line carries `floor_gb` (90) and `start_floor_gb` (100).
+- **Hard eviction.** While the runner's `plan` and `run` steps execute, the runner leads its own process group and the host
+  (`shutil.disk_usage` of `/System/Volumes/Data`, decimal GB, the janitor's sample) is read every 5 s. Under
+  `HOST_FLOOR_GB + EVICT_MARGIN_GB` (1.5) = 91.5 GB the group gets TERM, KILL after 10 s, and `docker rm -f -v` removes the
+  containers carrying THIS run dir's label (`org.nuzantara.localci.run=<run_label>`, the label the runner sets — never a name
+  pattern, never an age, never another run's). Three failed reads in a row count as below the floor. `--host-floor-gb 0`
+  turns the watchdog off. The `status` read is never evicted: a verdict already produced is never undone.
+- **An eviction is no verdict.** The tick journals `{"kind":"evicted","why":"host_below_floor_during_run","free_gb","floor_gb",
+  "context_in_flight":[…],"containers_removed":N,"pr","head_sha","base_sha","run_dir"}` — not a `decision`, so it counts toward
+  nothing (READY included) and the same `(pr, head, base)` is decided again on a later tick, once the host is above the start floor. triage treats it as an attempt for ORDER only (behind every head not yet tried), and after `EVICT_CAP` (3) evictions of one `(pr, head, base)` the key is skipped (`{"kind":"skipped","why":"evicted_cap"}`, once) until the base or head moves. The report counts `evicted`.
+- **Orphaned runner.** The runner leaves launchd's job group (its own session): the merger passes `LOCALCI_PARENT_PID`, and the runner's `plan`/`run` TERM their own group when that pid is gone.
+- **Image GC under host pressure.** A prune that finds host free under the start floor (`--min-host-free-gb`, default 100) also
+  removes, by explicit tag, every deps image that is not the newest of its recipe — fewest 48 h plan references first, never the
+  never-list, never the run in progress's image — and the wrapper's `--fstrim` follows. The line carries `host_pressure: true`
+  and `host_free_gb` before and after (also printed on the `merger prune:` line); the `builder prune` follows the removals, and the rule names the cost: dropping a second-slot image means a cold rebuild of that recipe.
+- **Ship step (deploy).** The live wrapper passes `--min-host-free-gb=$FLOOR_GB` explicitly, so the merger default alone does not move the start floor. At deploy, re-install it (`cp scripts/localci/localci_merger_tick.sh ~/.nuzantara-cron/.localci_merger_tick.sh.new`, `mv -f` onto `localci_merger_tick.sh`, `cmp -s` against the `origin/main` copy). Observable: `cmp -s` of the live wrapper against the `origin/main` copy is silent and `scripts/lint_home_fork.py --check` is green for that pair; a `host_below_floor` skip line in the journal carries `start_floor_gb` 100 (the wrapper's start line does not print it).
+- **Not touched.** uv, npm and Playwright caches stay `pro.janitor`'s.
 
 ### Disk floor organ (B6, Pro)
 

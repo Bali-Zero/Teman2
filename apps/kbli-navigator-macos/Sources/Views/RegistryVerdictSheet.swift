@@ -29,6 +29,8 @@ struct RegistryVerdictSheet: View {
     }
 
     @EnvironmentObject var state: AppState
+    @Environment(\.immersive) private var immersive
+    @Environment(\.arrival) private var arrival
     @EnvironmentObject var lang: LanguageManager
 
     private var isID: Bool { lang.lang == .id }
@@ -114,6 +116,8 @@ struct RegistryVerdictSheet: View {
                 .foregroundStyle(Theme.white)
                 .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .modifier(Beat(p: immersive ? arrival : 1, from: 0, to: 0.35, dy: 6))
         .accessibilityElement(children: .combine)
     }
 
@@ -132,14 +136,17 @@ struct RegistryVerdictSheet: View {
                  value: nationalValue(v), color: nationalColor(v),
                  undetermined: v.nationalTag == "UNDETERMINED",
                  source: AxisSource.national(kbli, isID: isID))
+            .modifier(Beat(p: immersive ? arrival : 1, from: 0.35, to: 0.65, dy: 6))
         AxisCard(title: "BALI",
                  value: baliValue(v), color: baliColor(v),
                  undetermined: v.baliTag == "UNDETERMINED",
                  source: AxisSource.bali(kbli, isID: isID))
+            .modifier(Beat(p: immersive ? arrival : 1, from: 0.45, to: 0.75, dy: 6))
         AxisCard(title: isID ? "RISIKO OSS" : "OSS RISK",
                  value: riskValue(v), color: riskColor(v),
                  undetermined: v.risk == .absent,
                  source: AxisSource.risk(kbli, verdict: v, isID: isID))
+            .modifier(Beat(p: immersive ? arrival : 1, from: 0.55, to: 0.85, dy: 6))
     }
 
     // OPEN-1 (2026-09-17): this used to re-phrase the national axis in the sheet's own words
@@ -220,7 +227,7 @@ struct RegistryVerdictSheet: View {
                     .font(Theme.scalable(19, weight: .semibold, design: .serif))
                     .foregroundStyle(Theme.white).fixedSize(horizontal: false, vertical: true)
                 if let reason = v.headlineReason, reason.isEmpty == false {
-                    Text(displayedReason(reason))
+                    Text(LabelBook.emphasis(displayedReason(reason), size: 12))
                         .font(Theme.scalable(12)).foregroundStyle(Theme.muted).lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true)
                         .textSelection(.enabled)
@@ -247,6 +254,7 @@ struct RegistryVerdictSheet: View {
         }
         .overlay(RoundedRectangle(cornerRadius: Theme.radiusMd, style: .continuous)
             .strokeBorder(color.opacity(0.25), lineWidth: 1))
+        .modifier(Beat(p: immersive ? arrival : 1, from: 0.15, to: 0.5, dy: 6))
         .accessibilityElement(children: .combine)
     }
 

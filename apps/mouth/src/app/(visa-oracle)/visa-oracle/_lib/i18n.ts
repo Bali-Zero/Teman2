@@ -158,6 +158,14 @@ const en = {
     "We ask because the applicant is under 18. We record only your answer to this question — no name, no document, no contact details.",
   "why.guardian_consent":
     "The date of birth shows an applicant under 18, so we ask whether a parent or legal guardian is present. Without one, this tool names no visa.",
+  "q.retirement_age_notice":
+    "The retirement visa routes checked here require applicants to be at least 55. Based on the date of birth you entered, you are under 55.",
+  "q.retirement_age_notice.hint":
+    "You turn 55 on {{date}}. You can still go on and see the formal result, or look at another route.",
+  "q.retirement_age_notice.other_routes": "Other options",
+  "q.retirement_age_notice.opt.continue": "Continue to the formal result",
+  "q.retirement_age_notice.opt.second_home": "Look at Second Home",
+  "q.retirement_age_notice.opt.change": "Change my answers",
 
   "lane.expired.notice":
     "Your permit has already expired. We will still check your options; please talk to a Bali Zero advisor about your next step.",
@@ -316,6 +324,13 @@ const en = {
   "q.remote_employer_country.label": "Employer country code",
   "why.remote_employer_country":
     "We record the country code exactly as you enter it and do not interpret it.",
+  "q.remote_annual_income_usd":
+    "What is your yearly salary or income, in US dollars?",
+  "q.remote_annual_income_usd.hint":
+    "Enter the yearly amount in whole US dollars. If you are paid in another currency, enter its US-dollar equivalent.",
+  "q.remote_annual_income_usd.label": "Yearly income",
+  "why.remote_annual_income_usd":
+    "The remote-worker visa (E33G) has a yearly income requirement. The amount is used exactly as you enter it.",
   "q.remote_pt_pma":
     "Is this remote-work plan tied to a committed Indonesian PT PMA?",
   "q.remote_pt_pma.hint":
@@ -411,6 +426,7 @@ const en = {
   "q.unit.idr": "IDR",
   "q.unit.usd": "USD",
   "q.unit.usd_month": "USD per month",
+  "q.unit.usd_year": "USD per year",
 
   "q.family_relation": "How are you related to the proposed sponsor?",
   "q.family_relation.hint": "Choose the relationship that can be documented.",
@@ -1192,6 +1208,14 @@ const id: Record<Keys, string> = {
     "Kami menanyakan ini karena pemohon berusia di bawah 18 tahun. Kami hanya mencatat jawaban Anda atas pertanyaan ini — tanpa nama, tanpa dokumen, tanpa data kontak.",
   "why.guardian_consent":
     "Tanggal lahir menunjukkan pemohon berusia di bawah 18 tahun, jadi kami menanyakan apakah orang tua atau wali sah hadir. Tanpa mereka, alat ini tidak menyebutkan visa.",
+  "q.retirement_age_notice":
+    "Jalur visa pensiun yang diperiksa di sini mensyaratkan pemohon berusia minimal 55 tahun. Berdasarkan tanggal lahir yang Anda masukkan, usia Anda belum 55 tahun.",
+  "q.retirement_age_notice.hint":
+    "Anda berusia 55 tahun pada {{date}}. Anda tetap dapat melanjutkan untuk melihat hasil resminya, atau melihat jalur lain.",
+  "q.retirement_age_notice.other_routes": "Pilihan lain",
+  "q.retirement_age_notice.opt.continue": "Lanjutkan ke hasil resminya",
+  "q.retirement_age_notice.opt.second_home": "Lihat Second Home",
+  "q.retirement_age_notice.opt.change": "Ubah jawaban saya",
 
   "lane.expired.notice":
     "Izin tinggal Anda sudah berakhir. Kami tetap memeriksa pilihan Anda; silakan bicarakan langkah berikutnya dengan konsultan Bali Zero.",
@@ -1348,6 +1372,13 @@ const id: Record<Keys, string> = {
   "q.remote_employer_country.label": "Kode negara pemberi kerja",
   "why.remote_employer_country":
     "Kami mencatat kode negara persis seperti yang Anda masukkan dan tidak menafsirkannya.",
+  "q.remote_annual_income_usd":
+    "Berapa gaji atau penghasilan tahunan Anda, dalam dolar AS?",
+  "q.remote_annual_income_usd.hint":
+    "Masukkan jumlah tahunan dalam dolar AS (angka bulat). Jika Anda dibayar dalam mata uang lain, masukkan nilai setaranya dalam dolar AS.",
+  "q.remote_annual_income_usd.label": "Penghasilan tahunan",
+  "why.remote_annual_income_usd":
+    "Visa pekerja jarak jauh (E33G) memiliki persyaratan penghasilan tahunan. Jumlah ini digunakan persis seperti yang Anda masukkan.",
   "q.remote_pt_pma":
     "Apakah rencana kerja remote ini terikat pada komitmen PT PMA Indonesia?",
   "q.remote_pt_pma.hint":
@@ -1446,6 +1477,7 @@ const id: Record<Keys, string> = {
   "q.unit.idr": "IDR",
   "q.unit.usd": "USD",
   "q.unit.usd_month": "USD per bulan",
+  "q.unit.usd_year": "USD per tahun",
 
   "q.family_relation": "Apa hubungan Anda dengan calon sponsor?",
   "q.family_relation.hint": "Pilih hubungan yang dapat dibuktikan.",

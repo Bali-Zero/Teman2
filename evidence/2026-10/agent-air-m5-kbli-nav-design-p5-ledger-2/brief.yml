@@ -1,0 +1,26 @@
+task_id: kbli-nav-design-p5-ledger-2
+mission: kbli-nav-design-loop (Track A, build, lot PR 5' — the flat ledger redesign, successor of #8278, without marks)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Depth-1 cure of the #8278 gate BLOCK (lead ruling 2026-10-11): the live sheet's risk matrix lost every cue that its
+  cells are selectable. #8278 is frozen and closed; this PR is its 18 commits plus the cure, from a fresh origin/main.
+  The census marks and ARMED rows follow in micro PR 5m. The lead commissions a fresh gate.
+l_level: L1
+gate_class: opus
+objective: >-
+  One concern: the sheet-ledger reads as one ledger, and its risk x scale matrix keeps the cues of main. The cell whose
+  detail is drawn carries the 2 pt ring at open (PP28ScalePanel passes matrixSel ?? defaultCell as the selection); a
+  selectable matrix draws main's own hint line, through LabelBook; the expanded live sheet (RegistryVerdictSheet) is
+  rendered and censused, since it is the only live caller of the ledger.
+constraints:
+  - No fact, verdict, cap, basis, title or reason changes; the hint is main's own string.
+  - No census mark and no ARMED row here (PR 5m).
+  - The worktree is reused from a-prep-3's PR 5 lane; the branch is built from a Pro bundle.
+acceptance:
+  - text: The cell whose detail is drawn SHALL carry the ring at open, and a matrix with selectable cells SHALL draw the hint.
+    probe: "Pro: render_set tall/registry-sheet-open-56101-day-en shows the ringed chip and the hint; encensus registry-sheet-open carries the hint on 1,289 of 1,559 codes (every code with 1-5 scopes), en and id"
+  - text: Nothing else SHALL move in the flat renders.
+    probe: "Pro: render_set against #8278's flat set: 37/39 identical, the two differing are tall/sheet-ledger-56101 day and night"
+  - text: The build, census identity, content gate and contrast SHALL hold.
+    probe: "Pro: BKPM and INTERNAL rc 0; CENSUS_IDENTITY=1 47/47 byte-identical; content_check.sh rc 0; measure_contrast FAIL=0 PARITY=0"

@@ -86,6 +86,11 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
     "Kami mencatat kode negara persis seperti yang Anda masukkan dan tidak menafsirkannya.",
   ],
   [
+    "why.remote_annual_income_usd",
+    "The remote-worker visa (E33G) has a yearly income requirement. The amount is used exactly as you enter it.",
+    "Visa pekerja jarak jauh (E33G) memiliki persyaratan penghasilan tahunan. Jumlah ini digunakan persis seperti yang Anda masukkan.",
+  ],
+  [
     "why.remote_pt_pma",
     "A committed PT PMA can exclude the remote-worker visa, so this answer can change which visas fit. A yes does not mean approval.",
     "Komitmen PT PMA dapat mengecualikan visa pekerja jarak jauh, jadi jawaban ini dapat mengubah visa yang sesuai. Jawaban ya tidak berarti persetujuan.",

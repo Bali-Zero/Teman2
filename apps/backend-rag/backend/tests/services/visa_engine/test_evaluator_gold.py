@@ -17,7 +17,7 @@ out of PR5 scope, see ``evaluator.py``'s module docstring divergence #4):
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import pytest
 
@@ -549,11 +549,68 @@ PRODUCTION_REPLAY_EXPECTATIONS: dict[int, ProductionReplayExpectation] = {
     ),
 }
 
+# Re-derived (seq-28): the E33E/E33F ``AGE_BELOW_55`` hard filters now carry
+# an explicit RETIREMENT purpose conjunct.  Personas 1 (Indonesian citizen),
+# 3 (Calling Visa nationality) and 4 (active overstay) do not declare
+# retirement, so that reason can no longer be emitted for them.  Their state,
+# every other reason, legal basis and rationale remain unchanged.
+SEQ28_PRODUCTION_REPLAY_EXPECTATIONS: dict[int, ProductionReplayExpectation] = {
+    **PRODUCTION_REPLAY_EXPECTATIONS,
+    1: replace(
+        PRODUCTION_REPLAY_EXPECTATIONS[1],
+        no_path_codes=tuple(
+            code
+            for code in PRODUCTION_REPLAY_EXPECTATIONS[1].no_path_codes
+            if code != "AGE_BELOW_55"
+        ),
+    ),
+    3: replace(
+        PRODUCTION_REPLAY_EXPECTATIONS[3],
+        no_path_codes=tuple(
+            code
+            for code in PRODUCTION_REPLAY_EXPECTATIONS[3].no_path_codes
+            if code != "AGE_BELOW_55"
+        ),
+    ),
+    4: replace(
+        PRODUCTION_REPLAY_EXPECTATIONS[4],
+        no_path_codes=tuple(
+            code
+            for code in PRODUCTION_REPLAY_EXPECTATIONS[4].no_path_codes
+            if code != "AGE_BELOW_55"
+        ),
+    ),
+}
+
+
+def production_replay_expectations_for_sequence(
+    sequence: int,
+) -> dict[int, ProductionReplayExpectation]:
+    """The legal expectation table belonging to the pack being replayed."""
+
+    return (
+        SEQ28_PRODUCTION_REPLAY_EXPECTATIONS if sequence >= 28 else PRODUCTION_REPLAY_EXPECTATIONS
+    )
+
+
 assert set(PRODUCTION_REPLAY_EXPECTATIONS) == set(range(1, 21))
+assert set(SEQ28_PRODUCTION_REPLAY_EXPECTATIONS) == set(range(1, 21))
 assert all(
     expectation.legal_citations and expectation.rationale
-    for expectation in PRODUCTION_REPLAY_EXPECTATIONS.values()
+    for table in (PRODUCTION_REPLAY_EXPECTATIONS, SEQ28_PRODUCTION_REPLAY_EXPECTATIONS)
+    for expectation in table.values()
 ), "every production replay expectation needs a named legal citation and rationale"
+
+
+@pytest.mark.parametrize("persona_id", [1, 3, 4])
+def test_seq28_rederived_personas_drop_only_age_below_55(persona_id: int) -> None:
+    before = PRODUCTION_REPLAY_EXPECTATIONS[persona_id]
+    after = SEQ28_PRODUCTION_REPLAY_EXPECTATIONS[persona_id]
+    assert before.no_path_codes.count("AGE_BELOW_55") == 1
+    assert after == replace(
+        before,
+        no_path_codes=tuple(code for code in before.no_path_codes if code != "AGE_BELOW_55"),
+    )
 
 
 @pytest.fixture(scope="module")

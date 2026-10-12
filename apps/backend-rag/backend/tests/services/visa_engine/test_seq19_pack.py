@@ -851,7 +851,7 @@ class TestInnocence:
 
 
 # ---------------------------------------------------------------------------
-# Gold-coverage replay (all 18 personas), against the 019 CompiledRulePack —
+# Gold-coverage replay (19 of 23 personas), against the 019 CompiledRulePack —
 # same evaluate path as gold_coverage_eval._evaluate, minus the repository
 # file-selection/signature step neither script lets a caller override (see
 # module docstring).
@@ -865,7 +865,15 @@ class TestInnocence:
 #: D2__121D needed the 60->180 stay-day cap, neither of which exists in
 #: seq-19 or earlier. This seq-19-scoped gate excludes them by name — not
 #: by loosening the assertion that the remaining 18 must all pass.
-_SEQ19_UNSUPPORTED_COVERAGE_PERSONAS = frozenset({"E33G.json", "D2__121D.json"})
+#: PR-07 adds E23/E23U/E23V to the corpus (grown 20 -> 23). E23 replays green
+#: here, but E23U/E23V have no eligibility support rule before seq-21's
+#: ``el.e23u.diplomatic-household`` / ``el.e23v.trade-office`` (valid from
+#: 2026-09-16; seq-19/20 only carry the ``review.e23u/v.requested-product``
+#: review rules), so no fact set can support them on this pack — same
+#: exclusion-by-name shape as E33G/D2__121D above. The remaining 19 must pass.
+_SEQ19_UNSUPPORTED_COVERAGE_PERSONAS = frozenset(
+    {"E33G.json", "D2__121D.json", "E23U.json", "E23V.json"}
+)
 
 
 def _coverage_persona_specs() -> list[tuple[str, dict[str, Any]]]:
@@ -878,8 +886,8 @@ def _coverage_persona_specs() -> list[tuple[str, dict[str, Any]]]:
 
 
 class TestGoldCoverageReplay:
-    def test_corpus_has_eighteen_personas(self) -> None:
-        assert len(_coverage_persona_specs()) == 18
+    def test_corpus_has_nineteen_personas(self) -> None:
+        assert len(_coverage_persona_specs()) == 19
 
     @pytest.mark.parametrize(
         "name,spec", _coverage_persona_specs(), ids=[n for n, _ in _coverage_persona_specs()]

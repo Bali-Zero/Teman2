@@ -556,6 +556,7 @@ struct SearchListView: View {
                 state.selected = nil
                 sheetExpanded = false
             }
+            .immersiveHost()
             .frame(maxHeight: sheetExpanded ? .infinity : 470)
             .padding(.horizontal, 12).padding(.bottom, 10).padding(.top, 6)
         }
@@ -641,7 +642,7 @@ struct QueryResultRow: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(hu.label).font(Theme.scalable(12, weight: .semibold)).foregroundStyle(c.fg)
                     if let sentence = hu.sentence {
-                        Text(sentence).font(Theme.serif(20)).foregroundStyle(c.fg)
+                        Text(LabelBook.emphasis(sentence, size: 20)).font(Theme.serif(20)).foregroundStyle(c.fg)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -660,7 +661,7 @@ struct QueryResultRow: View {
         let line: Text = {
             let label = Text(hu.label).font(Theme.scalable(13, weight: .semibold)).foregroundColor(c.fg)
             guard let sentence = hu.sentence else { return label }
-            return label + Text("  ") + Text(sentence).font(Theme.scalable(13)).foregroundColor(Theme.muted)
+            return label + Text("  ") + Text(LabelBook.emphasis(sentence, size: 13)).font(Theme.scalable(13)).foregroundColor(Theme.muted)
         }()
         return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {

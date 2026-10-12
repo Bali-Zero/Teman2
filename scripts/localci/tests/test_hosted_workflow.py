@@ -27,10 +27,24 @@ def test_pull_request_and_push_filters_are_the_same_list():
     assert wf["pull_request"] == wf["push"]
 
 
+def _codeql_inputs() -> list[str]:
+    """Every real-repo file the CodeQL suite reads: the ones its fixture BASE is made of, and the trusted files of the CodeQL matrix entries."""
+    from .test_codeql_contexts import base_files, matrix_ctx
+
+    return sorted(set(base_files()) | {f for lang in ("python", "javascript") for f in matrix_ctx(lang)["local"]["trusted_files"]})
+
+
 def test_the_filter_covers_the_suite_the_workflow_and_every_outside_input_it_reads():
     paths = _load()["pull_request"]
     assert "scripts/localci/**" in paths and WORKFLOW in paths
     assert not [f for f in OUTSIDE_INPUTS if not _covered(f, paths)]
+
+
+def test_the_filter_covers_every_real_file_the_codeql_suite_reads():
+    paths = _load()["pull_request"]
+    inputs = _codeql_inputs()
+    assert ".github/workflows/security.yml" in inputs and ".github/codeql-config.yml" in inputs and "scripts/ci/ring_gating_override.sh" in inputs
+    assert not [f for f in inputs if not _covered(f, paths)]
 
 
 def test_the_filter_covers_every_ancestor_pytest_configuration_and_conftest():
