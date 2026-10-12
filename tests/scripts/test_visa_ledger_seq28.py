@@ -120,10 +120,15 @@ def test_skill_pins_boundary_t7_and_the_merge():
         assert fact in text, fact
 
 
-def test_f1_f3_stay_an_open_row_until_done():
-    rows = [ln for ln in ARMS_LINES if ln.startswith("- opened 2026-10-12") and "F1 unknown-category" in ln]
+def test_f1_f3_row_is_open_with_its_proof_or_closed_by_its_branch():
+    rows = [ln for ln in ARMS_LINES if "F1 unknown-category" in ln]
     assert len(rows) == 1
-    assert all(k in rows[0] for k in ("owner: me", "proof-of-armed:", "MIN_TESTS 6 to 8", "NAMES_THE_THRESHOLD"))
+    row = rows[0]
+    if row.startswith("- opened 2026-10-12"):
+        assert all(k in row for k in ("owner: me", "proof-of-armed:", "MIN_TESTS 6 to 8", "NAMES_THE_THRESHOLD"))
+    else:
+        assert row.startswith("- closed 2026-10-12")
+        assert "CLOSED BY" in row
 
 
 def test_seq29_row_pins_owner_deadline_and_proof():

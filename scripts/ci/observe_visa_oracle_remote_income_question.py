@@ -8,7 +8,7 @@ The consumer is the public Visa Oracle interview (remote worker path). The obser
 runs the dedicated Vitest file from `apps/mouth` and requires every test to pass: the
 question follows the employer country, has no not-sure option, is asked on no other
 category, maps 59999 to a known value, and its EN and ID copy is neutral (no threshold,
-no income source, a US-dollar conversion hint). Exit 0 only on a full pass of at least 6 tests.
+no income source, a US-dollar conversion hint). Exit 0 only on a full pass of at least 9 tests.
 """
 
 # bites-observable — no arguments; one literal program, one literal test file.
@@ -26,12 +26,12 @@ TEST_FILE = "src/app/(visa-oracle)/visa-oracle/_lib/remote-income-question.test.
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 
-MIN_TESTS = 6
+MIN_TESTS = 9
 _SUMMARY = re.compile(r"^\s*Tests\s+(\d+) passed \((\d+)\)\s*$")
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a Vitest line that is exactly `Tests  N passed (N)`, N >= 6.
+    """True only for a Vitest line that is exactly `Tests  N passed (N)`, N >= 9.
 
     Anything else (skipped, todo, failed, a reduced count, no line) is False.
     """
