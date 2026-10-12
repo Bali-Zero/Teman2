@@ -6,7 +6,7 @@ objective: >-
   Owner ruling (Zero, 2026-10-12): Bali Zero's PT PMA setup service price
   moves from IDR 20.000.000 to IDR 25.000.000. This PR carries it to the
   public site copy: every balizero.com article stating the fee (all
-  languages), the derived E33G -> E25B total (56-58M -> 61-63M), the
+  languages), every path total that includes the fee (E33G -> E25B 56-58M -> 61-63M and 56M -> 61M, E33G -> E28A 37M+ -> 42M+), the
   kbli-2025-construction-building sentence that mislabelled the fee as a
   capital minimum, the llms-full/llms-id exports (same line edits) and the
   design draft. The canonical catalog ships in #8303.
@@ -27,4 +27,4 @@ assumptions:
       carries it or any PII-shaped string. The commit used the documented
       PII_GATE_ENFORCEMENT=false switch, never --no-verify.
     status: verified
-    probe: git show origin/main:apps/mouth/public/llms-full.txt | grep -c 01.234.567.8-901.000 -> 6; added lines -> 0
+    probe: git show origin/main:apps/mouth/public/llms-full.txt | grep -c 01.234.567.8-901.000 -> 6; added article and llms lines -> 0 (this brief quotes the placeholder itself)
