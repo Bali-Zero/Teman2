@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Mini install prerequisite:
+    umask 077
+    mkdir -p ~/logs/mini-cert-monitor ~/Library/LaunchAgents
+    : >> ~/logs/mini-cert-monitor/launchd.out.log
+    : >> ~/logs/mini-cert-monitor/launchd.err.log
+    chmod 600 ~/logs/mini-cert-monitor/launchd.out.log ~/logs/mini-cert-monitor/launchd.err.log
+    install -m 0755 infra/launchagents/wrappers/mini-cert-monitor.sh ~/scripts/
+    install -m 0644 infra/launchagents/com.nuzantara.cert-monitor.plist ~/Library/LaunchAgents/
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.cert-monitor</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/scripts/mini-cert-monitor.sh</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/nuzantara</string>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>ExitTimeOut</key>
+    <integer>60</integer>
+    <key>Umask</key>
+    <integer>63</integer>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/Users/nuzantara/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/mini-cert-monitor/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/mini-cert-monitor/launchd.err.log</string>
+</dict>
+</plist>

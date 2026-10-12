@@ -43,6 +43,14 @@ edges:
         type: cmd,
         cmd: "launchctl list | grep -F com.nuzantara.mailbox-janitor.daily",
       }
+  - id: com.nuzantara.cert-monitor
+    kind: launchd
+    machine: mini
+    status: UNKNOWN
+    consumer: "scripts/cert_monitor.py via mini-cert-monitor.sh; daily 07:00 WITA; heartbeat mini.cert_monitor"
+    notes: "UNKNOWN until installed on Mini and a real run writes a green heartbeat."
+    probe:
+      { type: cmd, cmd: "launchctl list | grep -F com.nuzantara.cert-monitor" }
   - id: com.nuzantara.kbli-oss-refresh.weekly
     kind: launchd
     machine: mini

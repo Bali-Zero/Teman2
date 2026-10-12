@@ -129,7 +129,6 @@ on:
       - CI image mirror (GHCR)
       - cron - codex autofix reaper (autonomous reap every 48h)
       - Contract Tests (Schemathesis)
-      - cron - cert monitor (daily 07:00 WITA)
       - cron - drive poll monitor
       - cron - fly cost alert (weekly Mon 09:00 WITA)
       - cron - fly restart loop detector (every 15 min)
@@ -307,6 +306,7 @@ on:
       # first run.
       - zantara-core-edit-gate
       - Vercel auto-promote organ tests
+      - Cert monitor tests
       # Added 2026-08-30 (Handoff H2, voa-probe-tests.yml). Listed by the `name:`
       # the workflow declares, not by its filename — the matching rule this file's
       # own GOTCHA section states. Caught by check_watcher_coverage.py on that PR's

@@ -20,7 +20,6 @@
   ],
   "files": [
     ".github/workflows/codex-autofix-reaper.yml",
-    ".github/workflows/cron-cert-monitor.yml",
     ".github/workflows/cron-drive-poll.yml",
     ".github/workflows/cron-fly-cost-alert.yml",
     ".github/workflows/cron-fly-restart-detector.yml",
