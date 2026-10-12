@@ -7,40 +7,104 @@ gear_reason: >-
   makes pro.janitor remove files on Pro.
 l_level: L2
 gate_class: opus
+council_run: council-journal.jsonl
 brief_ref: evidence/brief.yml
 objective: >-
   pro.janitor leaves dry-run (PRO_JANITOR_APPLY=true) and owns the uv cache alone: disk_janitor.sh no longer runs `uv cache prune`.
 acceptance:
   - text: scripts/disk_janitor.sh SHALL never invoke uv and its receipt SHALL carry no uv_cache_prune step, while restic and brew still run.
-    probe: "scripts/test_disk_janitor.sh (TEST 10; guilt shown: with the uv step restored the new assertions fail 3 of 109)"
+    probe: "bash scripts/test_disk_janitor.sh"
   - text: The pro.janitor plist SHALL carry PRO_JANITOR_APPLY=true.
-    probe: "plutil -p infra/launchagents/com.nuzantara.janitor.plist"
+    probe: "python3 -m pytest scripts/tests/test_pro_janitor.py -q -p no:cacheprovider"
+  - text: A tool rule SHALL NOT run when any symlink within three levels of its cache resolves outside the cache (npm's gc and tmp rimraf, uv's prune delete inside it); a link that stays inside (uv's own layout) SHALL NOT stop it.
+    probe: "python3 -m pytest scripts/tests/test_pro_janitor.py -q -p no:cacheprovider"
+  - text: uv-prune SHALL wait while a uv process is alive or the probe cannot rule one out (the guard disk_janitor's removed step carried).
+    probe: "python3 -m pytest scripts/tests/test_pro_janitor.py -q -p no:cacheprovider"
+  - text: A missing or unspawnable tool SHALL cool down instead of erroring every tick; a failed lsof probe stays uncooled by design.
+    probe: "python3 -m pytest scripts/tests/test_pro_janitor.py -q -p no:cacheprovider"
 consumer_map:
   - launchd jobs pro.janitor (com.nuzantara.janitor) and pro.disk_janitor on Pro; journal ~/logs/pro-janitor/journal.jsonl.
 lanes:
   - lane: infra-janitor-apply-1012
     role: build
-    seat: claude-sonnet-5-5 implementer on M5, directed by the LOCALCI lead
+    seat: claude-sonnet-5 implementer on M5 (the flip, the disk_janitor step and its test); the M5 lead (claude-opus-5-5) for the council round's guards
 pii_scan: clean
-pii_scan_note: A plist value, notes text and a bash step removal with its test on tmp fixtures. No client data.
+pii_scan_note: A plist value, notes text, a bash step removal, two guards in the janitor and their tests on tmp fixtures. No client data.
 what_changed: |
   infra/launchagents/com.nuzantara.janitor.plist: PRO_JANITOR_APPLY false -> true. scripts/disk_janitor.sh: the uv_cache_prune step
   removed (header, TOOLS_SEEN, CACHE_TIMEOUT comment). scripts/test_disk_janitor.sh: uv stays as a recording fake and the suite
-  proves it is never called. Notes in declared-pairs.json, organs_registry.yaml and the spec's Rollout say apply is armed.
+  proves it is never called. scripts/ops/pro_janitor.py (council round): link_escape() refuses a tool rule when a symlink within
+  three levels of its cache resolves outside it; uv_in_use() (pgrep -x uv, injectable as PRO_JANITOR_PGREP, fail closed) makes
+  uv-prune wait; error:tool-missing and error:spawn cool down. scripts/tests/test_pro_janitor.py: the plist test reads "true",
+  seven new cases, and an autouse fake pgrep so the host's own uv never decides a test. Notes in declared-pairs.json,
+  organs_registry.yaml and the spec's Rollout say apply is armed.
 bites:
   consumer: launchd jobs pro.janitor (com.nuzantara.janitor) and pro.disk_janitor on Pro.
   observation: >-
-    Owed after merge and deploy: a ~/logs/pro-janitor/journal.jsonl line with "mode": "apply" and a rule status other than
-    dry-run/skipped with its freed bytes, and `grep -c "uv cache prune" ~/scripts/disk_janitor.sh` = 0 on Pro.
+    Owed after merge and deploy (plist, wrapper payload and disk_janitor.sh re-copied to Pro and cmp-checked against origin/main):
+    a ~/logs/pro-janitor/journal.jsonl line with "mode": "apply" and a rule status other than dry-run/skipped with its freed
+    bytes, and `grep -c "uv cache prune" ~/scripts/disk_janitor.sh` = 0 on Pro.
 receipts:
+  - claim: >-
+      Rollout precondition (spec §Rollout: a merger-tick trough observed in dry-run): Pro's journal holds 99 dry-run lines from
+      2026-10-11T08:45:34Z to 2026-10-12T01:06:34Z; the lowest are 83.507 GB at 21:36:20Z, 86.008 at 22:46:23Z and 90.477 at
+      22:36:23Z, all tier BLACK with uv-prune and npm-verify "dry-run" and playwright-old "skipped:no-candidates", during the
+      merger ticks of 20:32:32Z and 21:53:21Z (code dfb6e2b74a, before B15). These are the troughs apply would have acted in.
+    cmd: ssh pro read of ~/logs/pro-janitor/journal.jsonl and ~/logs/localci-merger.out.log (read-only)
+    exit: 0
+    ts: "2026-10-12T01:10:00Z"
+    seat: claude-opus-5-5 lead on M5
+  - claim: "scripts/tests/test_pro_janitor.py: 283 passed (275 before plus 8 new cases)."
+    cmd: python3 -m pytest scripts/tests/test_pro_janitor.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-12T01:08:00Z"
+    seat: claude-opus-5-5 lead on M5
+  - claim: >-
+      Guilt on scratch copies through PJ_PAYLOAD: link_escape disabled -> 4 failed; the uv-in-use guard removed -> 2 failed;
+      tool-missing and spawn dropped from the cooldown -> 1 failed.
+    cmd: PJ_PAYLOAD=<mutant> python3 -m pytest scripts/tests/test_pro_janitor.py -k "link or uv_prune_waits or cools_down"
+    exit: 1
+    ts: "2026-10-12T01:06:00Z"
+    seat: claude-opus-5-5 lead on M5
   - claim: "scripts/test_disk_janitor.sh on the change: PASS=109 FAIL=0 (uv fake on PATH never invoked, receipt tools 'restic brew', no uv_cache_prune key)."
     cmd: bash scripts/test_disk_janitor.sh
     exit: 0
-    ts: "2026-10-12T00:00:00Z"
-    seat: claude-sonnet-5-5 implementer on M5
+    ts: "2026-10-12T01:09:00Z"
+    seat: claude-opus-5-5 lead on M5
   - claim: "Guilt: with the uv_cache_prune step restored (cp backup, restored with cp) the same suite fails 3 assertions: PASS=106 FAIL=3."
     cmd: bash scripts/test_disk_janitor.sh (uv step temporarily re-inserted from origin/main)
     exit: 1
-    ts: "2026-10-12T00:10:00Z"
-    seat: claude-sonnet-5-5 implementer on M5
-dissent: []
+    ts: "2026-10-11T23:20:00Z"
+    seat: claude-sonnet-5 implementer on M5
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "BLOCKER: npm cache verify is pinned to ~/.npm but only ~/.npm is checked for symlinks; a symlinked _cacache (or content-v2/index-v5) lets npm's gc and tmp rimraf delete outside the allowlist (pro_janitor.py tool_rule; cacache verify.js:244)."
+    status: CONFIRMED
+    resolution: "link_escape() scans three levels of the cache without following links and refuses the rule (skipped:link-escapes-cache, the link named in the journal) when any symlink resolves outside; four cases plus an inside-link innocence case; guilt 4 failed."
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM: test_pro_janitor.py still asserts PRO_JANITOR_APPLY == 'false'."
+    status: CONFIRMED
+    resolution: "The test is renamed test_plist_is_an_apply_one_shot_with_no_keepalive and reads 'true'."
+  - seat: codex-gpt-5.6-sol
+    objection: "Blind spot: the rollout precondition (a dry-run trough observed) has no receipt in the pack."
+    status: CONFIRMED
+    resolution: "Receipt added from Pro's journal: troughs of 83.507, 86.008 and 90.477 GB in dry-run on 2026-10-11."
+  - seat: kimi-code/k3
+    objection: "MEDIUM: the ownership transfer drops disk_janitor's uv in-use guard (pgrep -x uv); pro.janitor's uv-prune has no equivalent."
+    status: CONFIRMED
+    resolution: "uv_in_use() restores it (fail closed when the probe errors); two cases; guilt 2 failed. On M5 the guard fired on the host's real uv processes during the first run, which is why the suite now pins a fake pgrep."
+  - seat: kimi-code/k3
+    objection: "LOW: error:tool-missing, error:lsof-*, error:spawn never cool down and error every tick."
+    status: PLAUSIBLE
+    resolution: "tool-missing and spawn now cool down (config, not a passing state). The lsof errors stay uncooled on purpose: test_unsafe_entries_are_never_removed pins that the protective probe is retried next tick; recorded as a residual."
+  - seat: kimi-code/k3
+    objection: "LOW: a stale __dirlock parks playwright-old until removed by hand; the uv-never-called proof is PATH-fake-scoped; pre-existing doc drift (exit 12, next_tier docstring)."
+    status: PLAUSIBLE
+    resolution: "Recorded as residuals; none is introduced by this change."
+residuals:
+  - "The link scan is a point-in-time check: a link created between the scan and the tool's run is not seen. The janitor runs as the same user that owns the caches, so the threat is a misconfiguration, which the scan catches, not an adversary, who could delete those files directly."
+  - "The scan stops at three levels: a link deeper inside npm's content tree is not seen. npm's own content paths are hash-addressed files, not links."
+  - "A failed lsof probe (error:lsof-*) is not cooled down by design and pages every tick until it reads."
+  - "A stale __dirlock parks playwright-old (skipped:install-in-progress, noted stale_dirlock after 1 h) until removed by hand."
+  - "Pre-existing doc drift: exit code 12 is missing from the module docstring; next_tier's docstring says one band at a time while the loop can descend several."
+  - "Carried from rollout step 2 (pack agent-air-m5-infra-pro-janitor-1010-b9ad7512#residuals): L1 mid-walk exception journals 0 bytes, L2 the unreadable link-registry early return has no test, I1 the keepalive TypeError path."
