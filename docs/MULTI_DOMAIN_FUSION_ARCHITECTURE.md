@@ -467,7 +467,7 @@ Language: it
 
 **PRICING** (0.3s -- PricingTool, local):
 
-> PT PMA setup: Rp 20,000,000 (Bali Zero fee)
+> PT PMA setup: Rp 25,000,000 (Bali Zero fee)
 > Investor KITAS: Rp 15,000,000 (Bali Zero fee)
 > Annual tax consulting: Rp 5,000,000/month
 
@@ -497,7 +497,7 @@ Language: it
 
 **PRICING (Bali Zero)** [CONFIRMED - from PricingTool]
 
-- PT PMA setup: Rp 20,000,000
+- PT PMA setup: Rp 25,000,000
 - Investor KITAS: Rp 15,000,000
 - Tax consulting: from Rp 5,000,000/month
 
