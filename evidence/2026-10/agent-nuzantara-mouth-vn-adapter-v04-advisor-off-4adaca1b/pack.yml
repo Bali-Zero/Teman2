@@ -31,6 +31,10 @@ bites: >-
   walk shows "A Bali Zero consultant can pick this up with you once an adult is present"; each with its
   Bahasa Indonesia twin, and none of "we confirm", "reviews your case", "continues from here", "comes back
   to you". Pre-merge, the same phrases are asserted absent by advisor-offer.test.ts.
+appetite_exceeded: >-
+  Two adversarial rounds against a declared ceiling of one: the second is the fresh rollout gate, whose
+  blocking finding (two required Playwright jobs still pinning the old copy) the first red team could not
+  see because it did not run the e2e specs.
 spend:
   wall_clock_hours: 1
   adversarial_rounds: 2
@@ -171,7 +175,7 @@ dissent:
       the gate itself assigns it.
   - seat: "codex gpt-5.6-sol via fresh Opus 5.5 rollout gate at ebc8106927 (N5)"
     objection: "Pre-existing: the E31J text does not name the pack's 18; several edited advisor-check keys are dead in pack 027."
-    status: REJECTED
+    status: CONFIRMED
     disposition: >-
-      Not from this PR (the gate says so). The E31J figure and the dead keys belong to V11's lane
+      TRUE BUT NOT CURED HERE (out of scope). Not from this PR (the gate says so). The E31J figure and the dead keys belong to V11's lane
       (pack-emitted checks); this change rewrites who acts and asserts no new threshold.

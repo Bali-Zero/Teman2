@@ -21,6 +21,9 @@ scope:
   - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/copy-truth.test.ts
   - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx
   - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/NoPathWithoutDoors.test.tsx
+  - apps/mouth/e2e/visa-oracle-v2.spec.ts
+  - apps/mouth/e2e/visa-oracle-fullstack.spec.ts
+  - apps/mouth/e2e/visa-oracle-live-parity.spec.ts
 appetite:
   wall_clock_hours: 2
   adversarial_rounds: 1
