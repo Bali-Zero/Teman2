@@ -1,0 +1,19 @@
+task_id: evoa-extension-850k
+mission: visa-content-prices
+gear: 1
+l_level: L2
+gate_class: opus
+objective: >-
+  The e-VOA guide quotes the Bali Zero VOA at 750,000 and its +30-day extension at 850,000 in all
+  five languages, matching the catalogue rows single_entry_visas "B1 Visa on Arrival (VOA)" and
+  "B1 Visa on Arrival Extension". The unsourced C1/C2 bundle prices are removed. Owner ruling 2026-10-12.
+constraints:
+  - Only apps/mouth content and one vitest guard; no engine, catalogue or backend change.
+  - No replacement figure is invented; the C1/C2 bundles say price on request.
+appetite:
+  wall_clock_hours: 1
+acceptance:
+  - text: WHEN any language of the e-VOA guide is read THEN it SHALL state the catalogue VOA (750,000) and extension (850,000) prices and no 2,300,000 or 13,900,000 figure.
+    probe: apps/mouth/src/content/evoa-extension-price.test.ts
+  - text: WHEN any article line pairs Bali Zero with a VOA extension THEN it SHALL NOT carry 2,300,000.
+    probe: apps/mouth/src/content/evoa-extension-price.test.ts
