@@ -211,7 +211,10 @@ case "$RC" in
             # A lock held by a wedged or manual run must not read green forever (superscar #2):
             # count consecutive busy ticks; past 35 minutes of them it is a warning.
             BUSY="$(cat "$BUSY_FILE" 2>/dev/null)"
-            case "$BUSY" in ''|*[!0-9]*) BUSY=0 ;; esac  # a corrupt counter restarts, never aborts
+            # The counter's whole domain: written only by this wrapper, a decimal integer with no
+            # leading zero and at most 5 digits. Anything else (empty, text, 08 read as octal,
+            # an overflow) is corruption and restarts the count; it never aborts the run.
+            case "$BUSY" in 0|[1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-9][0-9][0-9][0-9]|[1-9][0-9][0-9][0-9][0-9]) ;; *) BUSY=0 ;; esac
             BUSY=$(( BUSY + 1 ))
             printf '%s\n' "$BUSY" > "$BUSY_FILE"
             if [ $(( BUSY * 120 )) -lt "$PIDFILE_MAX_AGE_S" ]; then
