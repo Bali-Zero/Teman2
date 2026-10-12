@@ -326,6 +326,25 @@ def arsenal_card() -> tuple[list[str], list[str]]:
     return [header, rollup, role_line], errs
 
 
+def _intentionally_disabled(organ_id: str) -> bool:
+    """True iff the receptor already declares this organ deliberately unarmed.
+
+    organism_stale_detector.KNOWN_INTENTIONALLY_DISABLED_STALE reports these as
+    kind="disabled" ("deliberate, not a failure"); this digest never asked, so
+    mata_garuda.intel_bridge_daily.mini (plist renamed ...disabled-20260925-owner-pro,
+    ownership moved to Pro) read "silent 440h" at every Mini SessionStart while
+    the receptor next to it called it deliberate. Only the age-silent branch
+    consults this — a fresh sidecar with a bad status still surfaces, so a
+    re-armed organ that fails is not hidden. Import failure returns False.
+    """
+    try:
+        sys.path.insert(0, str(_repo_root() / "scripts"))
+        from organism_stale_detector import KNOWN_INTENTIONALLY_DISABLED_STALE
+    except Exception:
+        return False
+    return organ_id in KNOWN_INTENTIONALLY_DISABLED_STALE
+
+
 def stale_heartbeats(window_stale_h: float = HEARTBEAT_STALE_H) -> tuple[list[str], list[str]]:
     """Organ heartbeats in ~/.organism/last_seen/ that are stale or self-declared degraded."""
     lines: list[str] = []
@@ -360,6 +379,8 @@ def stale_heartbeats(window_stale_h: float = HEARTBEAT_STALE_H) -> tuple[list[st
             continue
         status = str(data.get("status", "")).lower()
         if age_h > window_stale_h:
+            if _intentionally_disabled(path.stem):
+                continue  # deliberate: the receptor reports it as "disabled", not dead
             lines.append(f"organ {path.stem}: silent {age_h:.0f}h")
         elif status and status not in ("ok", "live", "green"):
             lines.append(f"organ {path.stem}: status={status}")
@@ -718,6 +739,23 @@ def _selftest() -> int:
             d = build_digest(24)
             expect("innocence: foreign-host organ not flagged silent",
                    not any("mini.queue_shepherd" in ln for ln in d["organs"]))
+
+            # ---- innocence/guilt: a deliberately unarmed organ (the receptor's
+            # KNOWN_INTENTIONALLY_DISABLED_STALE) is not "silent" — but a
+            # sibling organ of the same prefix that merely went quiet still is.
+            hb8 = fake_home / ".organism" / "last_seen" / "mata_garuda.intel_bridge_daily.mini.json"
+            hb8.write_text(json.dumps({"status": "ok"}))
+            os.utime(hb8, (old, old))
+            hb9 = fake_home / ".organism" / "last_seen" / "mata_garuda.intel_bridge_other.mini.json"
+            hb9.write_text(json.dumps({"status": "ok"}))
+            os.utime(hb9, (old, old))
+            d = build_digest(24)
+            expect("innocence: intentionally-disabled organ not flagged silent",
+                   not any("intel_bridge_daily" in ln for ln in d["organs"]))
+            expect("guilt: same-prefix organ not on the disabled list still flagged",
+                   any("intel_bridge_other" in ln for ln in d["organs"]))
+            os.utime(hb8, None)  # refresh both so later checks keep the line cap to themselves
+            os.utime(hb9, None)
 
             # ---- guilt, the W94 under-match twin: a DECLARED cross-host mirror
             # (CROSS_HOST_SIDECAR_SOURCES) is refreshed here on purpose, so its
