@@ -1,0 +1,98 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night family "work", plan PR-06 (finding F39, group G24): no test pinned the E23-family price or the
+  unpriced state of E23U and E23V against the real catalogue on the active pack, so an edit of the row amount
+  passed CI. Test-only; no owner decision, no pack change.
+mission: >-
+  The price a Visa Oracle visitor is quoted for E23 is pinned against the real price catalogue on the
+  highest signed pack, and E23U and E23V are pinned as deliberately unpriced.
+lanes:
+  - lane: pr06-e23-price-pins
+    role: build
+    seat: Claude Sonnet 5.5 implementer, worktree backend-rag-vn-work-pr06-e23-price-pins on Pro.
+pii_scan: clean
+spend:
+  wall_clock_hours: 1.0
+  adversarial_rounds: 1
+  paid_endpoint_usd: 0
+results:
+  - claim: "The cured test file passes (18 tests) on the red-team-cure tree. Timestamps in this pack are the machine clock (date -u) at the moment of each run; the first version of this pack carried invented times 12 hours in the future and is superseded."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_e23_family_pricing.py
+    result: "18 passed"
+    exit: 0
+    ts: "2026-10-12T00:00:48Z"
+    seat: this session
+  - claim: "Mutation 1 - the Working KITAS (Offshore) catalogue row amount edited 34.500.000 -> 35.000.000 IDR turns the row pin, the service quote, the signed quote, the end-to-end evaluate test and the edited-amount twin's premise red; file restored from a byte copy (cmp)."
+    cmd: same pytest command, catalogue row edited then restored from a copy
+    result: "5 failed, 13 passed"
+    exit: 1
+    ts: "2026-10-12T00:00:51Z"
+    seat: this session
+  - claim: "Mutation 2 - the catalogue key renamed (Working KITAS (Offshore) X) turns the row pin, the quotes, the end-to-end test and the rewire twins red (PRICING_ROW_MISSING)."
+    cmd: same pytest command, catalogue key renamed then restored from a copy
+    result: "11 failed, 7 passed"
+    exit: 1
+    ts: "2026-10-12T00:00:54Z"
+    seat: this session
+  - claim: "Mutation 3 - E23U given the E23 pricing key INSIDE the signed bundle, signature left stale: the pack is now refused by verify_rule_pack, so the verified-pack fixture errors for every test that reads the pack (a bundle edited after signing can no longer pass for the signed one). The one test that passes is the catalogue-row pin, which does not read the pack."
+    cmd: same pytest command, signed pack edited then restored from a copy
+    result: "1 passed, 17 errors (RulePackVerificationError in the signed fixture)"
+    exit: 1
+    ts: "2026-10-12T00:00:57Z"
+    seat: this session
+  - claim: "Mutation 4 - _attach_price_quotes in evaluate_path.py made a no-op: the endpoint-level test goes red and nothing else does, so that test is the one that sees the evaluate path drop the E23 quote. File restored from a byte copy."
+    cmd: same pytest command, evaluate_path.py edited then restored from a copy
+    result: "1 failed, 17 passed"
+    exit: 1
+    ts: "2026-10-12T00:00:59Z"
+    seat: this session
+  - claim: "Innocence of the rewire twins - the Working KITAS (Extend) row repriced from 31.500.000 to the E23 amount 34.500.000 IDR (a neighbour that legitimately costs the same) does NOT turn CI red, because the twin compares the row identity (row_sha256) and the re-aimed key, not the neighbour's number."
+    cmd: same pytest command, neighbour row repriced then restored from a copy
+    result: "18 passed"
+    exit: 0
+    ts: "2026-10-12T00:01:02Z"
+    seat: this session
+  - claim: "The whole visa_engine backend suite, Python 3.11 venv, load average first value 9.39 at start. The 2 failures and 39 errors are all asyncpg/schema errors from the shared local scratch Postgres (UndefinedTableError visa_evaluate_idempotency, DependentObjectsStillExistError visa_decisions, UndefinedColumnError policy_scope, migration 264/281 not live) in test_evaluate_endpoint, test_shadow_evidence, test_shadow_match and test_visa_engine_retention_fk_registry; none reads pricing or this file."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine
+    result: "2973 passed, 15 skipped, 2 failed, 39 errors (all DB-environmental)"
+    exit: 1
+    ts: "2026-10-11T23:57:43Z"
+    seat: this session
+  - claim: "Control: the same suite with the new file ignored gives the same 2 failures and 39 errors and 18 fewer passes, so the DB red is independent of this change (the earlier recorded 31 errors was a different scratch-DB state, not this file). Load first value 6.76 at start."
+    cmd: same pytest command with --ignore=backend/tests/services/visa_engine/test_e23_family_pricing.py
+    result: "2955 passed, 15 skipped, 2 failed, 39 errors"
+    exit: 1
+    ts: "2026-10-12T00:00:38Z"
+    seat: this session
+  - claim: "ruff format and ruff check are clean on the test file; mutated files restored (cmp against the backups) and git status shows only the test file and this evidence dir."
+    cmd: ruff check; git status --short
+    result: "All checks passed; only the test file and the evidence dir"
+    exit: 0
+    ts: "2026-10-12T00:01:10Z"
+    seat: this session
+dissent:
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout 01a12d41-5308-7332-ba1d-640fe2a8c0d3, /Users/nuzantara/.codex/sessions/2026/10/12/rollout-2026-10-12T07-16-58-01a12d41-5308-7332-ba1d-640fe2a8c0d3.jsonl)"
+    objection: "HIGH 1: test_e23_family_pricing.py freezes an unsupported duration (not product.duration_options, 'E23 is a single 365-day option'); Imigrasi publishes 180 days, 1 year and 2 years and the repo records E23 duration as an unresolved gap."
+    status: RETRACTED
+    disposition: "Cured. Real: research/visa/doctrine-factory/cards/E23.md section 8 lists E23 per-entry/total validity as an open claim gap. Every duration assertion (E23 and E23U/E23V) and the 'single 365-day option' message are removed; the module docstring now states that duration is deliberately not pinned. The pin is the quoted price, which holds whatever the pack's duration modelling becomes. I did not re-open the cited Imigrasi pages; the repo's own gap record is enough to withdraw the assertion."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout 01a12d41-5308-7332-ba1d-640fe2a8c0d3)"
+    objection: "HIGH 2: the evidence timestamps are impossible (attested 2026-10-12T12:00Z-12:08Z, over 12 hours after the commit and the review)."
+    status: RETRACTED
+    disposition: "Cured and conceded. The first pack wrote invented times. Every run was re-executed and each ts above is the machine clock (date -u) at that run; the mutation table and the 14-test claim of the first pack are replaced by the runs above (18 tests, 5 mutation/innocence runs). The old 'results' are not carried over."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout 01a12d41-5308-7332-ba1d-640fe2a8c0d3)"
+    objection: "MEDIUM 3: _highest_signed() picks *.signed.json by filename and reads payload directly; it never verifies signature, protected header or trust chain."
+    status: RETRACTED
+    disposition: "Cured. The fixture now selects the pack with the repository's own select_highest_repository_pack, verifies it with verify_rule_pack under the repository production trust store at the pack's signed_at, asserts unsigned_dev is False and payload.sequence equals the file number, and builds its products from the verified model. A guilt twin edits E23U's pricing_key inside the envelope and asserts RulePackVerificationError; mutation 3 shows every pack-reading test erroring on a stale signature."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout 01a12d41-5308-7332-ba1d-640fe2a8c0d3)"
+    objection: "MEDIUM 4: the test calls resolve_candidate_pricing and build_price_quote directly and never goes through the evaluator, _attach_price_quotes, the endpoint, serialization or the EN/ID adapter; it needs an endpoint-level test on the real pack that produces E23."
+    status: PLAUSIBLE
+    disposition: "Cured at the backend boundary, residual stated. New test runs evaluate_path.run_evaluation (ENFORCE) over the real verified signed pack, the real PricingService and the real offshore/work walk of the interview corpus, with only the DB (pack binding, persistence, retention gate) and a throwaway test-only HMAC key stood in; it asserts SUPPORTED_CANDIDATES, E23 among the candidates, exactly one E23 quote AVAILABLE/IDR 34,500,000 with the E23 pricing_key, the display entry's pricing status and row hash equal to the quote, the pack's EN and ID names, the persisted decision's quote, and the wire model validates. Mutation 4 (_attach_price_quotes no-op) turns it red alone. NOT cured here: the mouth EN/ID rendering of the price copy is a TypeScript consumer in apps/mouth, outside this test-only backend lane; the evaluate body is the contract mouth reads, and a mouth-side E23 price render pin would be a separate PR."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout 01a12d41-5308-7332-ba1d-640fe2a8c0d3)"
+    objection: "MEDIUM 5: the four 'guilt twin' neighbour tests do not reroute the E23 key; a legitimate update of a neighbour to the same price turns CI red with no E23 regression; the correct test mutates product.pricing_key and resolves that product."
+    status: RETRACTED
+    disposition: "Cured. The twins now rebuild the real E23 product through the validator with its pricing_key aimed at each neighbour, resolve that product, and assert the pin predicate (amount AND E23 row hash) fails; innocence twin asserts the real E23 product satisfies it. Run 'innocence of the rewire twins' reprices Working KITAS (Extend) to the E23 amount and CI stays green."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout 01a12d41-5308-7332-ba1d-640fe2a8c0d3)"
+    objection: "LOW 6: codex could not run pytest in its sandbox (no writable temp dir) and confirmed 14 tests collect and the catalogue amount and CONTACT_REQUIRED states match; overall verdict BLOCK."
+    status: RETRACTED
+    disposition: "No defect claimed. Confirmations noted; the cure commit re-runs the whole relevant suite on a real interpreter (18 tests in the file, whole visa_engine suite with a control run) and a fresh review of the cure is left to the final gate."
