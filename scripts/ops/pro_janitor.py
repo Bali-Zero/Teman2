@@ -1167,7 +1167,7 @@ def tool_rule(env, rule, apply_):
     else:
         argv = [exe, "cache", "verify", "--cache", cache]
         tenv["npm_config_userconfig"] = "/dev/null"
-        # a second, distinct empty config: npm 11 refuses one file loaded as both user and global ("double-loading
+        # a second, distinct empty config: npm 10 and 11 refuse one file loaded as both user and global ("double-loading
         # config"), exit 1 before the verb runs. /var/empty is root-owned and empty, so this file never exists.
         tenv["npm_config_globalconfig"] = NPM_GLOBALCONFIG
     if not apply_:
