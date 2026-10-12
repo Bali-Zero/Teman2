@@ -33,6 +33,17 @@ _JOB_STATE_ALIASES: dict[str, list[str]] = {
     ],
 }
 
+# Retired job keys whose own <job>.last.json is frozen but still on disk, so
+# the generic candidate order would read the stale file first. These map to the
+# receipt (a filename inside the sensor's state dir) of the job that replaced
+# them and are tried BEFORE the generic candidates.
+# fly_pg_backup: cron line RETIRED 2026-10-04 (dup of the 03:00 fly-backup.sh);
+# fly-backup.sh now writes fly_backup.last.json. Without this the sensor read
+# the frozen fly_pg_backup receipt and pulsed health=red on every cycle.
+_RETIRED_JOB_RECEIPTS: dict[str, list[str]] = {
+    "fly_pg_backup": ["fly_backup.last.json"],
+}
+
 # Expected max period in hours for each watched job.
 # (yellow = 1.5× period, red = 3× period)
 _JOB_PERIODS: dict[str, float] = {
@@ -74,6 +85,7 @@ _JOB_THRESHOLDS: dict[str, tuple[float, float]] = {
 def _state_candidates(state_dir: str, job_name: str) -> list[str]:
     """Return current and legacy heartbeat paths for a watched job."""
     candidates = [
+        *(os.path.join(state_dir, n) for n in _RETIRED_JOB_RECEIPTS.get(job_name, [])),
         os.path.join(state_dir, f"{job_name}.last.json"),
         os.path.join(state_dir, f"{job_name.replace('_', '-')}.last.json"),
         *_JOB_STATE_ALIASES.get(job_name, []),
