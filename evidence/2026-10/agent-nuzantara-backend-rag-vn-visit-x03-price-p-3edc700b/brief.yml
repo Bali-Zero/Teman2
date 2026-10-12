@@ -8,7 +8,7 @@ mission: >-
 objective: >-
   A new backend test file resolves each visit code through the real PricingService on the highest verified signed
   pack and asserts AVAILABLE at the exact typed IDR amount (A1 0, B1 750000, C1 2300000, C2 3600000, C6 2000000,
-  BRIDGING 3500000, D1 6000000, D2 6500000, D12 7500000), the signed quote, the A1 real zero, and guilt twins
+  BRIDGING 3500000, D1 6000000, D2 6500000, D12 7500000), the quote built from the signed product, the A1 real zero, and guilt twins
   (edited amount, prose or range row, deleted row, rewired key, tampered pack).
 scope:
   - apps/backend-rag/backend/tests/services/visa_engine/test_visit_family_pricing.py
