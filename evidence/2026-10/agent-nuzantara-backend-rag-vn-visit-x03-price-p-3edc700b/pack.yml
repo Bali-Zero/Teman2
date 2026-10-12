@@ -1,0 +1,64 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night family "visit", plan X03 (finding F109): no test pinned the exact IDR amount per visit code against the
+  real catalogue on the active pack, nor the fail-closed state of a row rewritten to prose, nor the A1 zero. Test-only;
+  no owner decision, no pack change.
+mission: >-
+  The price a Visa Oracle visitor is quoted for A1, B1, BRIDGING, C1, C2, C6, D1, D2 and D12 is pinned against the
+  real price catalogue on the highest signed pack, and a row rewritten to prose or a range is pinned to fail closed.
+lanes:
+  - lane: x03-visit-price-pins
+    role: build
+    seat: Claude Sonnet 5.5 implementer, worktree backend-rag-vn-visit-x03-price-pins on Pro.
+pii_scan: clean
+bites: >-
+  Consumer is the backend CI test job (apps/backend-rag, pytest over backend/tests/services/visa_engine), which runs
+  test_visit_family_pricing.py on every PR that touches the catalogue, a pack or the pricing adapter. The observation
+  is that job going red when a visit row amount, key or text changes: mutating the C1 row to 2.400.000 IDR and the A1
+  row to "Free" turned 15 of the 93 tests red here, and the unmutated tree passes 93 of 93.
+spend:
+  wall_clock_hours: 1.0
+  adversarial_rounds: 1
+  paid_endpoint_usd: 0
+results:
+  - claim: "The new file passes on the highest signed pack (seq 28), Python 3.11 venv: 93 tests."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_visit_family_pricing.py
+    result: "93 passed"
+    exit: 0
+    ts: "2026-10-12T05:16:20Z"
+    seat: this session
+  - claim: "Mutation - the C1 catalogue row edited 2.300.000 -> 2.400.000 IDR and the A1 row edited 0 IDR -> Free turns the row pin, the service quote and the signed quote red for C1 and A1, the A1 zero test red, and the 8 rewire twins whose neighbour is the broken A1 row (their premise, a priced neighbouring row, no longer holds); the catalogue was restored from a byte copy (cmp clean)."
+    cmd: same pytest command, catalogue rows edited then restored from /tmp copy
+    result: "15 failed, 78 passed"
+    exit: 1
+    ts: "2026-10-12T05:16:51Z"
+    seat: this session
+  - claim: "The whole visa_engine backend suite with the new file, load first value 5.72 at start. The 2 failures and 39 errors are asyncpg/schema errors from the shared local scratch Postgres (migration 264/281 not live, policy_scope column missing, DependentObjectsStillExistError) in test_evaluate_endpoint, test_shadow_evidence, test_shadow_match and test_visa_engine_retention_fk_registry; none reads pricing or this file."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine
+    result: "3087 passed, 15 skipped, 2 failed, 39 errors (all DB-environmental)"
+    exit: 1
+    ts: "2026-10-12T05:19:29Z"
+    seat: this session
+  - claim: "Control: the same suite with the new file ignored gives the same 2 failures and 39 errors and 93 fewer passes, so the DB red is independent of this change. Load first value 6.28 at start."
+    cmd: same pytest command with --ignore=backend/tests/services/visa_engine/test_visit_family_pricing.py
+    result: "2994 passed, 15 skipped, 2 failed, 39 errors"
+    exit: 1
+    ts: "2026-10-12T05:16:15Z"
+    seat: this session
+  - claim: "ruff format and ruff check are clean on the test file."
+    cmd: ruff format; ruff check backend/tests/services/visa_engine/test_visit_family_pricing.py
+    result: "All checks passed"
+    exit: 0
+    ts: "2026-10-12T05:19:42Z"
+    seat: this session
+decisions:
+  - id: D-pin-amounts-typed
+    decision: >-
+      The nine amounts are typed in the test, not read from the row they guard; A1 is pinned as a real zero
+      (an AVAILABLE signed quote with amount 0), and duration or validity is deliberately not pinned.
+dissent:
+  - seat: "none dispatched: a test-only mirror of the cured pattern of PR 8304 (verified-pack fixture, row-identity rewire twins); the final on-disk gate is left to a fresh seat"
+    objection: "Residual: the end-to-end run_evaluation walk and the mouth rendering of the price are not covered here; the evaluate body carries pricing status and the quote carries the amount, and the E23 file already holds the end-to-end pattern."
+    status: PLAUSIBLE
+    disposition: "Stated limit, not cured: the visit codes have no single priced walk in the interview corpus that surfaces all nine, so the pin sits at the resolver and the signed-quote boundary; a mouth render pin would be a separate PR."
