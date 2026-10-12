@@ -433,3 +433,123 @@ def test_replay_unconsumed_signature_uses_positional_dispatch_fn() -> None:
         inspect.Parameter.POSITIONAL_OR_KEYWORD,
     )
     assert "dispatch" not in sig.parameters
+
+
+# ---------------------------------------------------------------------------
+# LISTEN liveness probe — a silently dead connection must trigger reconnect
+# ---------------------------------------------------------------------------
+
+
+class _FakeConn:
+    def __init__(self, *, fetchval_raises: bool = False, closed: bool = False) -> None:
+        self._raises = fetchval_raises
+        self._closed = closed
+        self.probes = 0
+        self.terminated = False
+        self.close_calls = 0
+
+    async def add_listener(self, *_a, **_k) -> None:
+        return None
+
+    def add_termination_listener(self, _cb) -> None:
+        return None
+
+    def is_closed(self) -> bool:
+        return self._closed
+
+    async def fetchval(self, *_a, **_k):
+        self.probes += 1
+        if self._raises:
+            raise OSError("proxy flap")
+        return 1
+
+    async def close(self) -> None:
+        self.close_calls += 1
+
+    def terminate(self) -> None:
+        self.terminated = True
+
+
+async def _run_listen(daemon, conns, monkeypatch, *, run_s: float = 0.15):
+    from backend.services.federation_alerts import daemon as dmod
+
+    monkeypatch.setattr(dmod, "LISTEN_PROBE_INTERVAL_S", 0.01)
+    monkeypatch.setattr(dmod, "LISTEN_PROBE_TIMEOUT_S", 0.05)
+    monkeypatch.setattr(dmod, "LISTEN_IDLE_POLL_S", 0.005)
+    import asyncio
+
+    pending = list(conns)
+    connect = AsyncMock(
+        side_effect=lambda *_a, **_k: pending.pop(0) if len(pending) > 1 else pending[0]
+    )
+    monkeypatch.setattr(dmod.asyncpg, "connect", connect)
+    real_sleep = asyncio.sleep
+    monkeypatch.setattr(dmod.asyncio, "sleep", lambda _s: real_sleep(0))
+    daemon._replay_missed = AsyncMock()
+
+    async def _stopper() -> None:
+        await real_sleep(run_s)
+        daemon._stop_event.set()
+
+    stopper = asyncio.create_task(_stopper())
+    await daemon._listen_loop(MagicMock())
+    await stopper
+    return connect
+
+
+@pytest.mark.asyncio
+async def test_dead_listen_connection_triggers_reconnect_and_replay(
+    daemon_with_audit_mock, monkeypatch
+) -> None:
+    dead, healthy = _FakeConn(fetchval_raises=True), _FakeConn()
+    connect = await _run_listen(daemon_with_audit_mock, [dead, healthy], monkeypatch)
+    assert connect.await_count >= 2
+    assert dead.close_calls == 1
+    daemon_with_audit_mock._replay_missed.assert_awaited_with("reconnect")
+
+
+@pytest.mark.asyncio
+async def test_closed_listen_connection_triggers_reconnect(
+    daemon_with_audit_mock, monkeypatch
+) -> None:
+    closed, healthy = _FakeConn(closed=True), _FakeConn()
+    connect = await _run_listen(daemon_with_audit_mock, [closed, healthy], monkeypatch)
+    assert connect.await_count >= 2
+    daemon_with_audit_mock._replay_missed.assert_awaited_with("reconnect")
+
+
+@pytest.mark.asyncio
+async def test_healthy_idle_connection_never_reconnects(
+    daemon_with_audit_mock, monkeypatch
+) -> None:
+    healthy = _FakeConn()
+    connect = await _run_listen(daemon_with_audit_mock, [healthy], monkeypatch)
+    assert connect.await_count == 1
+    assert healthy.probes >= 3
+    daemon_with_audit_mock._replay_missed.assert_not_awaited()
+    assert daemon_with_audit_mock.probe_age_s() is not None
+
+
+@pytest.mark.asyncio
+async def test_close_quietly_terminates_when_close_hangs() -> None:
+    import asyncio
+
+    from backend.services.federation_alerts.daemon import _close_quietly
+
+    class _Hang(_FakeConn):
+        async def close(self) -> None:
+            await asyncio.sleep(10)
+
+    conn = _Hang()
+    await _close_quietly(conn, timeout=0.01)
+    assert conn.terminated is True
+
+
+def test_heartbeat_classification_by_probe_age() -> None:
+    from backend.scripts.federation_alert_daemon import classify_probe_age
+
+    status, note = classify_probe_age(10)
+    assert status == "ok" and "probe_age=10s" in note
+    status, note = classify_probe_age(500)
+    assert status == "degraded" and "probe_age=500s" in note
+    assert classify_probe_age(None)[0] == "degraded"
