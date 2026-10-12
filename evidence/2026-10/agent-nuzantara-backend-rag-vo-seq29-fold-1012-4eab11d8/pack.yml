@@ -30,8 +30,8 @@ bites:
     endpoint answers pack 29. Before that the consumers are the walk census in candidate mode, the unreached-
     product guard and the mouth copy guard, which all read the highest unsigned source pack on disk.
   where: ci
-  observe: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/services/visa_engine/test_seq29_pack.py backend/tests/services/visa_engine/test_interview_walk_census.py
-  expect: "contains:passed"
+  observe: python3 scripts/ci/observe_visa_seq29_candidate.py
+  expect: "contains:seq-29 candidate gate and census green"
 receipts:
   - claim: The dry-run fold re-proves that the 2026-10-11 ledger plus the seq-28 content edits reproduce signed seq-28 from signed seq-27 byte for byte, then applies the seq-29 edits with seq-28 stamps unchanged.
     cmd: PYTHONPATH=. python -m backend.scripts.visa_engine.fold_pack_seq29 --ledger-dir ../../research/visa/2026-10-11-organ-reattest-seq28 --dry-run-reuse-anchor-ledger --output backend/services/visa_engine/contracts/packs/rulepack-prod-029.source.json
