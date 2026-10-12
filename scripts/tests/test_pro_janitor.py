@@ -836,9 +836,9 @@ def test_a_missing_tool_is_an_error(box):
 
 
 def test_a_missing_tool_cools_down_and_does_not_error_every_tick(box):
-    box.run("125", apply=True, PRO_JANITOR_UV=str(box.bin / "nope"))
+    box.run("115", apply=True, PRO_JANITOR_UV=str(box.bin / "nope"))
     assert box.cooldowns()["uv-prune"] == NOW
-    box.run("125", apply=True, now=NOW + 600, PRO_JANITOR_UV=str(box.bin / "nope"))
+    box.run("115", apply=True, now=NOW + 600, PRO_JANITOR_UV=str(box.bin / "nope"))
     assert "uv-prune" not in box.rules()   # still in its 6 h cooldown: not retried, not re-paged
 
 
@@ -850,7 +850,7 @@ def test_npm_never_runs_when_a_link_in_its_cache_leaves_the_cache(box, link):
     target = box.home / ".npm" / link
     target.parent.mkdir(parents=True, exist_ok=True)
     target.symlink_to(outside)
-    r = box.run("125", apply=True)
+    r = box.run("115", apply=True)
     assert r.returncode == 0 and box.rules()["npm-verify"]["status"] == "skipped:link-escapes-cache"
     assert box.rules()["npm-verify"]["link_escape"] == link
     assert not any(c.startswith("npm ") for c in box.calls()) and (outside / "keep" / "data").exists()
@@ -874,7 +874,7 @@ def test_an_unreadable_level_of_the_cache_refuses_the_rule(box):
     locked.mkdir()
     locked.chmod(0)
     try:
-        r = box.run("125", apply=True)
+        r = box.run("115", apply=True)
         assert r.returncode == 0 and box.rules()["npm-verify"]["status"] == "skipped:link-escapes-cache"
         assert box.rules()["npm-verify"]["link_escape"] == "unreadable:_cacache"
         assert not any(c.startswith("npm ") for c in box.calls())
@@ -887,14 +887,14 @@ def test_a_link_that_stays_inside_the_cache_does_not_stop_the_tool(box):
     inner.mkdir(parents=True)
     (box.home / ".cache" / "uv" / "wheels-v5").mkdir()
     (box.home / ".cache" / "uv" / "wheels-v5" / "pkg").symlink_to(inner)   # uv's own layout: wheels link into archive
-    box.run("125", apply=True)
+    box.run("115", apply=True)
     assert box.rules()["uv-prune"]["status"] == "done" and any(c.startswith("uv ") for c in box.calls())
 
 
 @pytest.mark.parametrize("rc,why", [(0, "a uv process is alive"), (2, "the probe itself failed: fail closed")])
 def test_uv_prune_waits_while_uv_runs_or_cannot_be_ruled_out(box, rc, why):
     box.pgrep = box.tool("pgrep", rc=rc, record=False)
-    r = box.run("125", apply=True)
+    r = box.run("115", apply=True)
     assert r.returncode == 0 and box.rules()["uv-prune"]["status"] == "skipped:uv-in-use", why
     assert not any(c.startswith("uv ") for c in box.calls()) and box.rules()["npm-verify"]["status"] == "done"
 
