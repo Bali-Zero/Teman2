@@ -9,12 +9,16 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
 CONTAINER_NAME="${RESTORE_DRILL_CONTAINER:-nuzantara-pg-drill}"
 IMAGE="${RESTORE_DRILL_IMAGE:-nuzantara/pg-drill:17-postgis}"
-DRILL_PORT="${DRILL_PORT:-15499}"
-DRILL_USER="${DRILL_USER:-drill}"
-DRILL_PASSWORD="${DRILL_PASSWORD:-$(python3 -c 'import secrets; print(secrets.token_hex(16))')}"
-DRILL_DB="${DRILL_DB:-nuzantara_drill}"
-TIGRIS_ENDPOINT="${TIGRIS_ENDPOINT:-https://fly.storage.tigris.dev}"
-TIGRIS_BUCKET="${TIGRIS_BUCKET:-nuzantara-backups}"
+# Every knob is read from a RESTORE_DRILL_* name: the wrapper exports the whole secrets env, so a
+# generic name (DRILL_*, TIGRIS_*) set there for something else must not reach the drill.
+DRILL_PORT="${RESTORE_DRILL_PORT:-15499}"
+DRILL_USER="${RESTORE_DRILL_USER:-drill}"
+DRILL_PASSWORD="${RESTORE_DRILL_PASSWORD:-$(python3 -c 'import secrets; print(secrets.token_hex(16))')}"
+DRILL_DB="${RESTORE_DRILL_DB:-nuzantara_drill}"
+# On Mini that file exports the generic TIGRIS_BUCKET for the app's media bucket: reading the generic
+# name sent every run to a bucket with no postgres/ prefix — a CANNOT-VERIFY p0 every month.
+TIGRIS_ENDPOINT="${RESTORE_DRILL_TIGRIS_ENDPOINT:-https://fly.storage.tigris.dev}"
+TIGRIS_BUCKET="${RESTORE_DRILL_TIGRIS_BUCKET:-nuzantara-backups}"
 TIMEOUT_SECONDS="${RESTORE_DRILL_TIMEOUT_SECONDS:-1800}"
 MIN_VM_FREE_KB="${RESTORE_DRILL_MIN_VM_FREE_KB:-8388608}"
 MAX_DUMP_AGE_HOURS="${RESTORE_DRILL_MAX_DUMP_AGE_HOURS:-72}"
@@ -51,7 +55,7 @@ cleanup() {
     rc=$?
     trap - EXIT INT TERM
     if [ -n "$WATCHDOG_PID" ]; then
-        kill "$WATCHDOG_PID" 2>/dev/null || true
+        kill -- "-$WATCHDOG_PID" 2>/dev/null || kill "$WATCHDOG_PID" 2>/dev/null || true
     fi
     if [ -n "$DRILL_PID" ]; then
         # The worker is a background job: stop its whole process group (not just the leader, which may
@@ -287,7 +291,8 @@ set +e
 wait "$DRILL_PID"
 DRILL_RC=$?
 set -e
-kill "$WATCHDOG_PID" 2>/dev/null || true
+# The watchdog is its own process group (set -m): kill the group, or its `sleep` outlives the run.
+kill -- "-$WATCHDOG_PID" 2>/dev/null || kill "$WATCHDOG_PID" 2>/dev/null || true
 wait "$WATCHDOG_PID" 2>/dev/null || true
 WATCHDOG_PID=""
 set +m

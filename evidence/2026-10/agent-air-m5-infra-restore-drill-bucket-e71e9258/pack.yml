@@ -1,0 +1,105 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Installing mini.restore_drill (#8308) on Mini on 2026-10-12 showed the first scheduled run could never
+  reach a verdict: the wrapper sources ~/.nuzantara-secrets.env with `set -a`, that file exports a generic
+  TIGRIS_BUCKET naming the app's media bucket (no postgres/ prefix), and run_drill.sh read the generic name.
+  The retired workflow pinned TIGRIS_BUCKET=nuzantara-backups literally (e1b328af52^:.github/workflows/restore-drill.yml:70),
+  so the bug only exists on Mini.
+  The same AWS_* credentials list nuzantara-backups/postgres/ from Mini (measured this session; latest dump
+  2026-10-12 03:05, 458 MB). Separately, Homebrew awscli on Mini was broken (missing libaws-c-s3 dylib behind
+  a python@3.14 pin) and was repaired on the host, outside this diff.
+mission: >-
+  The first scheduled mini.restore_drill run (2026-11-01 12:00 WITA) lists the backups bucket, not the media
+  bucket the Mini secrets env names TIGRIS_BUCKET, so the organ installed from #8308 can reach a verdict.
+lanes:
+  - lane: restore-drill-bucket
+    role: build
+    seat: claude-opus-5-5 (this session, worktree infra-restore-drill-bucket; test-harness edit by a claude-sonnet subagent under exact instructions)
+  - lane: restore-drill-bucket-redteam
+    role: review
+    seat: codex gpt-5.6-sol, read-only sandbox, two rounds (57c2eddbb9, a40d444e6a)
+pii_scan: clean
+spend:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 2
+appetite_exceeded: "A second red-team round was needed for the round-1 cures (0.5 h over the 1 h appetite)."
+results:
+  - "scripts/restore_drill/tests/test_restore_drill.py: 35 passed"
+  - "bash -n scripts/restore_drill/run_drill.sh: clean"
+  - "guilt: the generic-bucket test fails on the pre-fix line; the watchdog-group test raises TimeoutExpired and the knob test fails on 57c2eddbb9"
+bites: >-
+  consumer: the Mini launchd organ mini.restore_drill (~/scripts/mini-restore-drill.sh executing
+  ~/nuzantara/scripts/restore_drill/run_drill.sh from local main); observation: after this merges and Mini's
+  git-pull-main lands it, `launchctl kickstart gui/501/com.nuzantara.restore-drill` on Mini writes
+  ~/.organism/last_seen/mini.restore_drill.json with status ok "restore and Level-5 verification passed"
+  (run.log shows the nuzantara-backups listing, never the media bucket).
+receipts:
+  - claim: "On Mini the sourced secrets env sets TIGRIS_BUCKET to a bucket without a postgres/ prefix, and the same credentials list nuzantara-backups/postgres/."
+    cmd: "ssh mini: set -a; . ~/.nuzantara-secrets.env; aws s3 ls s3://$TIGRIS_BUCKET/ ; aws s3 ls s3://nuzantara-backups/postgres/"
+    result: "first listing: client-avatar/, kbli-vault/, tax/, warroom/, wr2-hero/, wr2-ig/ (no postgres/); second: nuzantara-fly-20261012-0300.sql.gz 458382428 bytes"
+    exit: 0
+    ts: "2026-10-12T11:00:00Z"
+    seat: this session
+  - claim: "Of the generic AWS/Docker/DRILL knobs a sourced env could set, only AWS_ENDPOINT_URL_S3 is present on Mini, and every aws call passes --endpoint-url."
+    cmd: "ssh mini: presence probe ${VAR:+SET} over AWS_SESSION_TOKEN..DOCKER_TLS_VERIFY, DRILL_*, TIGRIS_ENDPOINT"
+    result: "AWS_ENDPOINT_URL_S3 SET; all others unset"
+    exit: 0
+    ts: "2026-10-12T11:30:00Z"
+    seat: this session
+  - claim: "The suite is green at head."
+    cmd: python3 -m pytest -q scripts/restore_drill/tests/test_restore_drill.py
+    result: "35 passed"
+    exit: 0
+    ts: "2026-10-12T12:05:00Z"
+    seat: this session
+  - claim: "The new tests are red on the code they guard."
+    cmd: "payload swapped to the pre-fix / 57c2eddbb9 version (cp backup, restored with cp), then the same pytest"
+    result: "pre-fix line: generic-bucket test FAILED; 57c2eddbb9: watchdog-group TimeoutExpired, knob test FAILED"
+    exit: 1
+    ts: "2026-10-12T12:04:00Z"
+    seat: this session
+decisions:
+  - id: D-scoped-names
+    decision: >-
+      Every drill knob (bucket, endpoint, port, user, password, db) reads a RESTORE_DRILL_* name with the
+      retired workflow's defaults; the wrapper keeps sourcing the whole secrets env because it needs the
+      AWS_* credentials and the Telegram gateway's variables.
+  - id: D-aws-credentials-generic
+    decision: >-
+      AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY stay generic: they are the Tigris credentials the daily backup
+      producer uses, and they read the backups bucket (receipt 1). Renaming them would need a secrets-file
+      edit on Mini for no isolation gain.
+  - id: D-legacy-drill-removed
+    decision: >-
+      scripts/pg-restore-drill.sh had no caller, named a deleted workflow and still read TIGRIS_BUCKET; it is
+      removed with its tg-gateway grandfathered entry rather than patched.
+dissent:
+  - seat: "codex gpt-5.6-sol (round 1, 57c2eddbb9)"
+    objection: "MEDIUM: the sourced env is not isolated; generic AWS_* (session token, profile, region, CA bundle, config file), DOCKER_HOST/CONTEXT and DRILL_* still reach the drill."
+    status: PLAUSIBLE
+    disposition: >-
+      CURED where real: DRILL_* now read RESTORE_DRILL_* names. Measured on Mini, none of the AWS/Docker knobs
+      is set except AWS_ENDPOINT_URL_S3, which the explicit --endpoint-url overrides; AWS credentials stay
+      generic by decision D-aws-credentials-generic. Round 2 judged this disposition acceptable.
+  - seat: "codex gpt-5.6-sol (round 1)"
+    objection: "LOW: RESTORE_DRILL_TIGRIS_ENDPOINT is never shown to apply."
+    status: CONFIRMED
+    disposition: "CURED: test_the_drill_scoped_endpoint_override_still_applies pins the argv."
+  - seat: "codex gpt-5.6-sol (round 1)"
+    objection: "LOW: the parent kills the watchdog subshell's PID, not its group; its sleep outlives the run."
+    status: CONFIRMED
+    disposition: "CURED: both exit paths kill -- -WATCHDOG_PID (own group under set -m, verified by round 2 on bash 3.2)."
+  - seat: "codex gpt-5.6-sol (round 1)"
+    objection: "LOW: scripts/pg-restore-drill.sh is a stale executable that still reads TIGRIS_BUCKET."
+    status: CONFIRMED
+    disposition: "CURED: removed with its grandfathered entry (decision D-legacy-drill-removed); round 2 found no consumer."
+  - seat: "codex gpt-5.6-sol (round 2, a40d444e6a)"
+    objection: "LOW: the watchdog test ignored pgrep's return code, so a failed process-table read passed it."
+    status: CONFIRMED
+    disposition: >-
+      CURED in 52c31da236: the test reads pipe lifetime (TimeoutExpired if the sleep survives), red on
+      57c2eddbb9. Not re-reviewed by a third round (test-only change, guilt-checked).
+residuals:
+  - "The kickstart proof (Bites) is made after merge, because Mini runs the payload from its local main."
+  - "Mini's data volume is 97% full (14 GiB free); a restore needs about 8x the 458 MB dump inside the Colima VM."
