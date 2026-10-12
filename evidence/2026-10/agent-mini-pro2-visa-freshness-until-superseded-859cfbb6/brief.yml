@@ -11,7 +11,10 @@ objective: >-
   Add the closed kind UNTIL_SUPERSEDED to SourceFreshnessPolicy (models, exported contract schema), return
   CURRENT / SOURCE_FRESHNESS_NOT_TIME_BOUNDED / max_age_seconds null from the evaluator without bypassing
   applicability, and teach the seq-20 fold horizon, the freshness sentinel (NON_EXPIRING bucket, report only) and
-  the re-attestation organ (no boundary, no T-7) not to choke on it. No pack uses the kind yet.
+  the re-attestation organ (no boundary, no T-7) not to choke on it. No pack uses the kind yet. v2 (supersedes
+  #8342, gate REWORK-BUILD): the organ's no-boundary exemption applies only when EVERY OFFICIAL_PORTAL record
+  carries freshness_policy.kind == UNTIL_SUPERSEDED; a null, missing, non-dict or unknown-kind policy still
+  raises OrganError(anchor), so a pack that lost its policy cannot silence the T-7 alarm.
 scope:
   - apps/backend-rag/backend/services/visa_engine/models.py
   - apps/backend-rag/backend/services/visa_engine/evaluate_path.py
