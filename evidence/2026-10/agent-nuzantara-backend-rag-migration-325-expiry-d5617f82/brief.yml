@@ -1,0 +1,45 @@
+task_id: migration-325-expiry-view-isfinite
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  PROD `client_expiry_alerts_view` fails every read with `cannot subtract infinite dates`: one
+  active client row (client_id 12336) holds an infinite clients.passport_expiry and the view
+  computes `<expiry> - CURRENT_DATE` in each of its four UNION ALL branches. Re-emit the LIVE view
+  definition with an isfinite guard per branch (WHERE filter plus a CASE-guarded subtraction) and
+  add a NOT VALID `CHECK (<col> IS NULL OR isfinite(<col>))` on the four expiry columns so new
+  writes cannot reintroduce the defect. The existing row is left to the operator.
+constraints:
+  - "One migrations_v2 file plus one real-Postgres test module; no data change, no consumer change."
+  - "View columns, order and types identical to the live pg_get_viewdef (CREATE OR REPLACE VIEW contract; client_profile_view depends on it)."
+  - "Guarded on existence: CI's fresh DB has clients and documents but no client_family_members and no view."
+  - "No DDL/DML against PROD from the build lane; PROD was only read (pg_get_viewdef, pg_attribute, counts)."
+acceptance:
+  - text: "WHEN a source row carries -infinity/infinity, THEN the old view raises and the 325 view answers, excluding that row."
+    probe: "test_infinite_row_breaks_the_old_view_and_not_the_new_one"
+  - text: "WHEN only finite rows exist, THEN the 325 view returns exactly the rows the pre-325 view returned."
+    probe: "test_infinite_row_breaks_the_old_view_and_not_the_new_one"
+  - text: "WHEN an INSERT writes an infinite date into any of the four columns after 325, THEN it raises check_violation, and NULL is still admitted."
+    probe: "test_new_infinite_dates_are_rejected_and_null_still_admitted"
+  - text: "WHEN the file is applied twice, THEN the second run is a no-op and the four CHECKs stay NOT VALID."
+    probe: "test_infinite_row_breaks_the_old_view_and_not_the_new_one"
+  - text: "WHEN 325 re-creates the view, THEN it SHALL keep the live ten-column list in order."
+    probe: "test_view_keeps_the_live_column_list_in_order"
+  - text: "WHEN 325 is applied, THEN it SHALL add four NOT VALID finite CHECKs and no VALIDATE."
+    probe: "test_forward_adds_four_not_valid_finite_checks"
+consumer_map:
+  - "apps/backend-rag/backend/app/routers/crm_enhanced.py (client alerts read, WHERE client_id = $1)."
+  - "apps/backend-rag/backend/app/routers/crm_enhanced_alerts.py (alerts list/urgent filters on days_until_expiry)."
+  - "apps/backend-rag/backend/services/rag/agentic/team_crm_tools.py (team assistant CRM tool)."
+  - "scripts/s7_yield_draft_local.py (weekly S7 yield job, rc=3 today)."
+  - "client_profile_view (PROD view that depends on client_expiry_alerts_view)."
+risks:
+  - "Column-shape drift would make CREATE OR REPLACE fail at release_command: the view text minus both guards is identical (whitespace-normalised) to the live pg_get_viewdef captured 2026-10-12."
+  - "ACCESS EXCLUSIVE on clients, documents, client_family_members for the NOT VALID ADD (no scan) and on the view: brief; the runner retries lock timeouts."
+  - "The existing infinite row stays until an operator fixes it; VALIDATE CONSTRAINT would fail until then."
+grader: |
+  Executed red/green/mutation receipts on local PG 17 and a throwaway postgres:15 container (the CI
+  version). Final on-disk gate commissioned by the team lead.
+sibling_check:
+  ts: "2026-10-12T07:38:47Z"
+  open_prs_on_paths: "#7938 (stale, claims migration 324 for practices.practice_type_id) — no file overlap; 325 avoids its number."
