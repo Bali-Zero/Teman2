@@ -137,3 +137,32 @@ jobs:
             --require '^scripts\.localci\.tests\.test_stateful\.TestGateMachine::runTest$' \
             --require '^scripts\.localci\.tests\.test_hosted_compare::' \
             --min-executed 331
+
+  # The ceremony launcher is macOS-only by construction (BSD find semantics, /bin/zsh -f, CLT git,
+  # ACLs), so its harness and mutant table run on a macOS runner, unprivileged, no network.
+  # A missing CLT git fails the job instead of letting tests pass against a stand-in.
+  ceremony-launcher:
+    name: localci ceremony launcher (macOS)
+    runs-on: macos-15
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest
+        run: pip install --quiet pytest==9.1.1
+
+      - name: CLT git is the real tool the launcher pins
+        run: test -x /Library/Developer/CommandLineTools/usr/bin/git && /Library/Developer/CommandLineTools/usr/bin/git --version
+
+      - name: The launcher harness passes
+        run: python -m pytest scripts/localci/ceremonies/tests -q -rs -p no:cacheprovider
+
+      - name: Every launcher mutant is killed
+        run: python scripts/localci/tests/mutants/ceremony_launcher_mutants.py
