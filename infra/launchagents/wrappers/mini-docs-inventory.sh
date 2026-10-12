@@ -131,6 +131,16 @@ fi
 LOCK_HELD=1
 echo $$ > "$LOCKDIR/pid"
 
+# Holding the lock means no other run is alive: any run dir left under TMP_BASE belongs to a
+# run that died without its EXIT trap (SIGKILL, power loss). Remove it and its worktree.
+for stale in "$TMP_BASE"/run.*; do
+    [ -d "$stale" ] || continue
+    "$GIT_BIN" -C "$REPO" worktree remove --force "$stale/worktree" >> "$LOG" 2>&1 || true
+    rm -rf "$stale"
+    log "removed stale run dir ${stale##*/}"
+done
+"$GIT_BIN" -C "$REPO" worktree prune >> "$LOG" 2>&1 || true
+
 if ! "$PYTHON_BIN" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' \
     >> "$LOG" 2>&1; then
     finish "error" "inventory broken python-version" "python-version" 1
@@ -152,8 +162,15 @@ mkdir "$BUNDLE" 2>> "$LOG" \
 # Bounded: a hung regen would otherwise hold the lock and read only "warning" twice a day.
 REGEN_TIMEOUT="${MINI_DOCS_INVENTORY_REGEN_TIMEOUT:-1800}"
 REGEN_RC=0
-(cd "$WORKTREE" && DOCS_DERIVED_OUTPUT_DIR="$BUNDLE" /usr/bin/perl -e 'alarm shift; exec @ARGV' \
-    "$REGEN_TIMEOUT" bash scripts/docs_inventory_regen.sh --organ) >> "$LOG" 2>&1 || REGEN_RC=$?
+# The regen runs in its own process group; at the bound the WHOLE group is killed, so no
+# descendant outlives the run (or runs on in a worktree the EXIT trap is about to remove).
+(cd "$WORKTREE" && DOCS_DERIVED_OUTPUT_DIR="$BUNDLE" /usr/bin/perl -e '
+    my $t = shift; my $pid = fork; die "fork: $!" unless defined $pid;
+    if (!$pid) { setpgrp(0, 0); exec @ARGV or exit 127 }
+    $SIG{ALRM} = sub { kill "TERM", -$pid; sleep 2; kill "KILL", -$pid; waitpid($pid, 0); exit 142 };
+    alarm $t; waitpid($pid, 0);
+    exit(($? & 127) ? 128 + ($? & 127) : $? >> 8);
+' "$REGEN_TIMEOUT" bash scripts/docs_inventory_regen.sh --organ) >> "$LOG" 2>&1 || REGEN_RC=$?
 if [ "$REGEN_RC" -eq 142 ]; then
     finish "error" "inventory broken regen timed out after ${REGEN_TIMEOUT} s" "regen-timeout" 1
 elif [ "$REGEN_RC" -ne 0 ]; then

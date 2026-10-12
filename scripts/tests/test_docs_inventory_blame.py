@@ -181,7 +181,7 @@ def test_summary_block_rows_are_never_treated_as_documents(tmp_path):
 def test_tracked_inventory_pointer_is_not_parsed_as_derived_rows():
     """The retired blame judge must not mistake pointer prose for table state."""
     content = (REPO_ROOT / "docs" / "DOCS_INVENTORY.md").read_text(encoding="utf-8")
-    assert "docs-derived-state CI artifact" in content
+    assert "docs-derived-state/latest/" in content
     assert blame.row_map(content) == {}
 
 

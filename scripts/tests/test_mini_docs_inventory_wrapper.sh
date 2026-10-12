@@ -27,6 +27,7 @@ set -u
 case "${DOCS_CASE:-success}" in
   regen-fail) exit 9 ;;
   regen-hang) sleep 6 ;;
+  regen-hang-tree) (sleep 31 & echo $! > "$HOME/child.pid"; wait) & sleep 6 ;;
   empty)
     printf '{}\n' > "$DOCS_DERIVED_OUTPUT_DIR/docs-sync.json"
     : > "$DOCS_DERIVED_OUTPUT_DIR/docs-audit.json"
@@ -196,6 +197,35 @@ if [ "$(field "$HB" status)" = "error" ] && grep -q 'regen timed out after 1 s' 
     ok "a hung regen is bounded, reported, and its worktree removed"
 else
     bad "regen bound"
+fi
+
+REGEN_TIMEOUT_CASE=1 run_case regen-hang-tree
+sleep 3
+CHILD=$(cat "$CASE_HOME/child.pid" 2>/dev/null || echo 0)
+if [ "$CHILD" != 0 ] && ! kill -0 "$CHILD" 2>/dev/null && grep -q 'regen timed out' "$HB"; then
+    ok "the bound kills the regen's whole process tree"
+else
+    bad "regen tree kill (child $CHILD alive?)"
+    [ "$CHILD" = 0 ] || kill "$CHILD" 2>/dev/null
+fi
+
+setup_case
+/usr/bin/git -C "$CASE_REPO" worktree add -q --detach "$CASE_DIR/tmp/run.dead01/worktree" refs/heads/main
+STALE_SETUP_DIR="$CASE_DIR"
+env -i HOME="$CASE_HOME" PATH="/usr/bin:/bin" DOCS_CASE=success HOST_CASE=Mini-Pro2 PY_CASE=new \
+    MINI_DOCS_INVENTORY_REPO="$CASE_REPO" MINI_DOCS_INVENTORY_GIT="$CASE_DIR/bin/git" \
+    MINI_DOCS_INVENTORY_PYTHON="$CASE_DIR/bin/python-version" \
+    MINI_DOCS_INVENTORY_HOSTNAME="$CASE_DIR/bin/hostname" \
+    MINI_DOCS_INVENTORY_LOG_DIR="$CASE_HOME/logs" MINI_DOCS_INVENTORY_SIDECAR_DIR="$CASE_HOME/sidecar" \
+    MINI_DOCS_INVENTORY_STATE_DIR="$CASE_HOME/state" MINI_DOCS_INVENTORY_LOCKDIR="$CASE_DIR/lock" \
+    MINI_DOCS_INVENTORY_TMP_BASE="$CASE_DIR/tmp" GIT_CALLS="$CASE_HOME/git.log" \
+    /bin/bash "$WRAPPER" >/dev/null 2>&1
+HB="$CASE_HOME/sidecar/mini.docs_inventory_refresh.json"
+if [ ! -e "$STALE_SETUP_DIR/tmp/run.dead01" ] && [ "$(field "$HB" status)" = "ok" ] \
+    && [ "$(/usr/bin/git -C "$CASE_REPO" worktree list --porcelain | grep -c '^worktree ')" -eq 1 ]; then
+    ok "a run killed without its trap is swept by the next run"
+else
+    bad "stale run sweep"
 fi
 
 run_case tag-shadow
