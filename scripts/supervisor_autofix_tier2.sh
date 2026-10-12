@@ -223,9 +223,12 @@ $context"
   local seat
   seat="$(codex_seat_pick 2>/dev/null || true)"
   [ -n "$seat" ] && log "codex seat: $seat"
+  # Pin the model: the default ~/.codex config can name a dead slug (MODEL_ERR).
+  local codex_model
+  codex_model="$(python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/codex_model.py" 2>/dev/null || echo gpt-5.6-sol)"
   (
     [ -n "$seat" ] && export CODEX_HOME="$seat"
-    timeout "$AGENT_TIMEOUT_S" codex exec --sandbox workspace-write --skip-git-repo-check "$prompt" </dev/null
+    timeout "$AGENT_TIMEOUT_S" codex exec -m "$codex_model" --sandbox workspace-write --skip-git-repo-check "$prompt" </dev/null
   ) 2>>"$LOG_FILE" | tee -a "$LOG_FILE"
   return "${PIPESTATUS[0]}"
 }
