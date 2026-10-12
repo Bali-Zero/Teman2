@@ -1,5 +1,5 @@
 # Gear-3 evidence pack — mini.vercel_autopromote moves from --promote-only to --upload --auto-build.
-# Written 2026-10-12 by a dossier session (Claude Sonnet 5.5, M5) for head 7d56d5732f. Every receipt is a command run in
+# Written 2026-10-12 by a dossier session (Claude Sonnet 5.5, M5) for code head 3135c3511e (round 1 was on 7d56d5732f; the cure commit is the coordinator's reply to it). Every receipt is a command run in
 # this session; ts is the clock read in the same shell call. Verbatim seat verdicts are in council-journal.jsonl.
 gear: 3
 brief_ref: evidence/brief.yml
@@ -59,7 +59,7 @@ ground:
     Base origin/main e474325994 is an ancestor of the head; #8320 (origin/agent/air-m5/ops/mouth-upload-skip-domain) is
     armed and not yet on main.
 spend:
-  adversarial_rounds: 1
+  adversarial_rounds: 2
   wall_clock_hours: 0.4
 decisions:
   - id: D-exact-markers-fail-closed
@@ -121,6 +121,31 @@ receipts:
     exit: 0
     ts: "2026-10-12T04:33:24Z"
     seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R9 — code head 3135c3511e: wrapper test, bash -n and shellcheck -S warning."
+    cmd: bash scripts/tests/test_mini_vercel_autopromote_wrapper.sh; bash -n; shellcheck -S warning <wrapper> <test>
+    result: "passed 37, failed 0; shellcheck 0"
+    exit: 0
+    ts: "2026-10-12T04:37:37Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R10 — narrow re-check of the cure commit (git show HEAD, 4 earlier findings) by kimi-code/k3: all four cures confirmed correct (18th-tick boundary exact, redaction order keeps valid JSON, rc4 parse, mode after node guard); REWORK on one new defect."
+    cmd: "scripts/with_seat.sh kimi kimi -p <prompt with the cure commit and the numbered wrapper> -m kimi-code/k3 < /dev/null"
+    result: "rc 0; VERDICT: REWORK; DEFECT 1 unvalidated lock-busy-ticks file read under set -u (wrapper :213-214); NOTE 2 five early exits do not reset the counter; NOTE 3 tick count not wall clock; NOTE 4 32+ redaction eats a 40-hex sha in an rc1/rc3 last line; NOTE 5 rc4 note drops the count"
+    exit: 0
+    ts: "2026-10-12T04:44:33Z"
+    seat: kimi-code/k3
+  - claim: "R11 — the same narrow re-check by agy-gemini-3.1-pro: REWORK, 2 DEFECT, 3 NOTE; boundary and escape order confirmed."
+    cmd: scripts/with_seat.sh agy agy --sandbox --model gemini-3.1-pro-high --print-timeout 900s -p <same prompt> < /dev/null
+    result: "rc 0; VERDICT: REWORK; DEFECT 1 counter file corruption under set -u (:213); DEFECT 2 over-redaction of a 32+ character sha or dpl id (:190)"
+    exit: 0
+    ts: "2026-10-12T04:40:36Z"
+    seat: agy-gemini-3.1-pro
+  - claim: "R12 — the counter-corruption defect both seats name reproduces: the same arithmetic expression as wrapper :213 on a corrupt file."
+    cmd: >-
+      bash -c with set -u evaluating the expression of wrapper line 213 on a file holding foo, 08, empty, and two lines
+    result: "foo: bash: foo: unbound variable (script aborts); 08: value too great for base; empty: BUSY=1; two lines: syntax error in expression"
+    exit: 0
+    ts: "2026-10-12T04:44:49Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
 dissent:
   - seat: agy-gemini-3.1-pro (DEFECT 2) and kimi-code/k3 (NOTE 5)
     objection: >-
@@ -130,7 +155,8 @@ dissent:
       (superscar #2).
     status: CONFIRMED
     disposition: >-
-      OPEN, reported to the coordinator; not cured here (this session adds the dossier only). Kimi bounds the likelihood
+      CURED in 3135c3511e (consecutive busy ticks in lock-busy-ticks, ok below 35 minutes, warning from the 18th tick; both
+      seats confirmed the boundary in R10/R11) but the cure carries the new defect recorded below. Kimi bounds the likelihood
       by the cure's CLI timeout and --no-wait. Cure options: a consecutive lock-busy counter in a state file escalating to
       warning after N ticks, or a distinct rc for lock busy.
   - seat: agy-gemini-3.1-pro (DEFECT 1)
@@ -139,7 +165,7 @@ dissent:
       MINI_VERCEL_AUTOPROMOTE_MODE writes an error heartbeat instead of disabled.
     status: PLAUSIBLE
     disposition: >-
-      Not a defect on the evidence: kimi judged the order correct (a bad mode must be visible; the sidecar is host-local;
+      Mode validation now follows the node guard and the kill switch (3135c3511e), confirmed by kimi. Earlier: kimi judged the order correct (a bad mode must be visible; the sidecar is host-local;
       the variable is set only in the Mini plist). Recorded as a divergence between the seats; at worst harmless noise on
       a foreign host.
   - seat: agy-gemini-3.1-pro (NOTE) and kimi-code/k3 (NOTE 6, NOTE 7)
@@ -149,7 +175,8 @@ dissent:
       sidecar JSON invalid.
     status: CONFIRMED
     disposition: >-
-      OPEN as a latent hardening item (R8 reproduces the gap). Every reachable rc=1 and rc=3 last line of the cure script
+      CURED in 3135c3511e (control characters stripped, optional-quote keyed tokens, 32+ character runs redacted; both seats
+      confirmed). Was latent (R8 reproduces the gap). Every reachable rc=1 and rc=3 last line of the cure script
       today is a fixed clean string or a json.dumps-escaped one, per kimi. Cure: add the three redaction rules and pipe the
       note through tr -d '[:cntrl:]' before the escapes.
   - seat: agy-gemini-3.1-pro (NOTE) and kimi-code/k3 (NOTE 2)
@@ -158,7 +185,7 @@ dissent:
       note falls back to the generic text.
     status: CONFIRMED
     disposition: >-
-      OPEN, cosmetic: the heartbeat stays error either way. Cure: replace the literal 2 by [0-9]+.
+      CURED in 3135c3511e ([0-9]+); confirmed by both seats in R10/R11.
   - seat: kimi-code/k3 (NOTE 3, NOTE 4)
     objection: >-
       A SIGKILLed run leaves a pidfile whose pid may be recycled: up to 35 minutes of ok then warning forever; the
@@ -167,10 +194,32 @@ dissent:
     disposition: >-
       Accepted as a contained residual: launchd does not overlap one label and the cure script holds its own flock; the
       worst case ends in warning, not green past 35 minutes.
+  - seat: kimi-code/k3 (R10 DEFECT 1) and agy-gemini-3.1-pro (R11 DEFECT 1)
+    objection: >-
+      infra/launchagents/wrappers/mini-vercel-autopromote.sh:213-214 reads the lock-busy-ticks file without validating it:
+      a non-numeric word, a leading-zero number or a two-line file makes the arithmetic fail under set -u, so the script
+      aborts before the heartbeat and every later busy tick dies the same way. Kimi: "One case ''|*[!0-9]*) PREV=0 ;; esac
+      fixes the whole class. Trigger requires out-of-band corruption of a file only this script writes."
+    status: CONFIRMED
+    disposition: >-
+      OPEN residual, not cured here: the fix-of-a-fix bound of the Builder Contract is reached (depth 1 is the cure
+      commit), and this session may not edit code. R12 reproduces it. Likelihood is low (a file only the wrapper writes);
+      the failure shows as a stale sidecar, which the sentinel's staleness rule eventually reports.
+  - seat: agy-gemini-3.1-pro (R11 DEFECT 2) and kimi-code/k3 (R10 NOTE 4)
+    objection: >-
+      The 32+ character redaction (:190) also hides a 40-hex sha or a long dpl id in an rc1/rc3 last line. Kimi: "nothing
+      required is hidden; but an sha carried by an error's last line is. Security-first trade-off; acceptable."
+    status: PLAUSIBLE
+    disposition: >-
+      ACCEPTED trade-off, not a defect: the identifiers the notes need (9-hex sha, dpl_ plus 24 characters, the rc4 sha) are
+      under 32 characters or parsed from the raw output; the full text stays in run.log.
 residuals:
+  - "R10 NOTE 2 (kimi), quoted: five early exits (node guard, kill switch, invalid mode, pidfile skip, cure missing) do not reset the busy counter; counter at 17, a day of absence, then a short manual lock gives an immediate warning. It fails toward warning and self-heals on the next non-busy tick."
+  - "R10 NOTE 3 (kimi), quoted: the 18th-tick boundary is tick-count, not wall-clock; the warning can fire at about 34 minutes."
+  - "R10 NOTE 5 (kimi), quoted: the rc4 heartbeat note no longer carries the failure count; it survives in run.log."
   - "NOTE (kimi 1): the marker ^OK after promote — (wrapper :210) is unreachable in both wrapper modes (the cure prints it only on the API-build path); harmless."
   - "NOTE (kimi 9): while the Git integration still produces production builds, it and this organ are two writers; both converge on newest-main by inclusion, and the overlap ends with the public repo."
   - "Order dependency: this change reads the #8320 wording; on a tree without #8320 a successful upload prints a line the wrapper does not know and reads error (fails closed, never green)."
   - "The live production-upload proof of 2026-10-12 was reported by the coordinator and was not re-run in this session."
-  - "Generator is not grader: codex-gpt-5.6-sol built the diff and was not asked to grade it; R9 needs two distinct seats from the roster and is met by kimi plus the agy reserve, declared in seat_fallback_reason."
+  - "Both seats REWORKed the cure commit on one shared defect (the unvalidated counter file); the verdicts are recorded as given, not as PASS. Generator is not grader: codex-gpt-5.6-sol built the diff and was not asked to grade it; R9 needs two distinct seats from the roster and is met by kimi plus the agy reserve, declared in seat_fallback_reason."
 appetite_exceeded: false
