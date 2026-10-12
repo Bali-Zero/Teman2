@@ -1,0 +1,170 @@
+# Gear-3 evidence pack — the LocalCI ceremony launcher as tested code (successor of the suspended PR #8295).
+# Written 2026-10-12 by a dossier session (Claude Sonnet 5.5, M5) for head 18466dbb22. Every receipt is a command run in this
+# session; ts is the clock read in the same shell call. Verbatim seat verdicts are in council-journal.jsonl.
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+seat_fallback_reason: >-
+  The reserve agy-gemini-3.1-pro stands in for the titular tp1-qwen3.8-max, which answered HTTP 403 "Access to model denied"
+  at dispatch (arsenal_probe on M5, 2026-10-12T04:21:16Z, MODEL_ERR; every tp1 seat read the same). The third titular,
+  codex-gpt-5.6-sol, built this diff and is excluded by generator is not grader, not by unavailability. kimi-code/k3 was LIVE
+  and is the titular seat that counts.
+ruling: >-
+  Coordinator's mandate (2026-10-12): after the third same-cause red of PR #8295 the ceremonies ship as tested code, launcher
+  first; the bootstrap (N2) is step 2 and out of scope.
+mission: >-
+  Replace prose instructions with a launcher whose every property is a test and whose tests are themselves tested by
+  mutants, so that tested code equals shipped code.
+lanes:
+  - lane: ceremony-launcher-build
+    role: build
+    seat: codex-gpt-5.6-sol (built launcher, harness, mutants and workflow job; NOT a grader here)
+  - lane: ceremony-launcher-review-kimi
+    role: review
+    seat: kimi-code/k3 (read-only, prompt-only with the files inlined, 1 round)
+  - lane: ceremony-launcher-review-agy
+    role: review
+    seat: agy-gemini-3.1-pro (gemini-3.1-pro-high, --sandbox, prompt-only, 1 round)
+seat_diversity: >-
+  Builder: OpenAI (codex-gpt-5.6-sol). Reviewers: Moonshot (kimi-code/k3) and Google (agy-gemini-3.1-pro); neither built
+  anything here and codex does not grade its own diff.
+pii_scan: clean
+pii_scan_note: >-
+  Shell, Python and workflow code with synthetic fixtures (fake gits, temporary directories). No client data is read or
+  written.
+what_changed: |
+  scripts/localci/ceremonies/launcher.zsh (110 lines), README.md (properties with test pointers), tests/conftest.py and
+  tests/test_launcher.py (40 cases), scripts/localci/tests/mutants/ceremony_launcher_mutants.py (14 mutants) and a macOS job in
+  .github/workflows/localci-tests.yml. 786 added lines, no deletions.
+proof: |
+  See receipts. The harness runs a patched copy of the launcher in a sandbox; a test asserts the copy differs from the shipped
+  file only by the declared patch table; the mutant table mutates the patched copy and expects its named test to fail.
+bites:
+  consumer: >-
+    The CI job "localci ceremony launcher (macOS)" in .github/workflows/localci-tests.yml, which runs the harness and the
+    mutant table on every pull request touching scripts/localci/**, and (step 2) the Pro ceremonies C3 and C12 that execute
+    the installed launcher.
+  observation: >-
+    Owed after the push: the macOS job passes on the pull request with 40 passed in pytest and "14/14 killed; survivors: none"
+    from the mutant table, on a runner that has the real CLT git. Not yet made: this pack records the local state at head
+    18466dbb22; the runner has not run it. Installing the launcher on Pro belongs to step 2.
+ground:
+  ts: "2026-10-12T04:50:00Z"
+  siblings: >-
+    Base origin/main is an ancestor of the head and merge-tree reports no conflict; PR #8295 stays open as the design record.
+spend:
+  adversarial_rounds: 1
+  wall_clock_hours: 0.5
+decisions:
+  - id: D-tested-code-not-prose
+    decision: >-
+      The launcher, not a document, is the normative entry point; the README lists properties and names the test for each, and
+      a test pins the harness patch table so the tested copy cannot drift from the shipped file.
+receipts:
+  - claim: "R1 — floor 3 over the 7 changed files."
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <git diff origin/main...HEAD --name-only>
+    result: "3"
+    exit: 0
+    ts: "2026-10-12T04:53:00Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R2 — A1/A2: the ceremony harness passes on the head."
+    cmd: python3 -m pytest scripts/localci/ceremonies/tests -q -p no:cacheprovider
+    result: "40 passed in 13.28s"
+    exit: 0
+    ts: "2026-10-12T04:53:02Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R3 — A3: the mutant table kills every mutant."
+    cmd: python3 scripts/localci/tests/mutants/ceremony_launcher_mutants.py
+    result: "14/14 killed; survivors: none; errors: none; stale: none"
+    exit: 0
+    ts: "2026-10-12T04:53:49Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R4 — the launcher parses under zsh and the head merges cleanly onto origin/main."
+    cmd: zsh -n launcher.zsh; git merge-base --is-ancestor origin/main HEAD; git merge-tree --write-tree origin/main HEAD
+    result: "zsh-n-ok; ancestor exit 0; merge-tree exit 0"
+    exit: 0
+    ts: "2026-10-12T04:53:49Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R5 — seat liveness at dispatch: kimi, agy and codex LIVE; every tp1 seat MODEL_ERR (HTTP 403)."
+    cmd: python3 scripts/arsenal_probe.py --table --timeout 1
+    result: "6 of 16 seats OK; tp1-qwen3.8-max Access to model denied"
+    exit: 0
+    ts: "2026-10-12T04:21:16Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R6 — council round 1, kimi-code/k3: PASS. Every README property exists in the launcher and behaves as stated; body contract, trust walk, config allow-list, watchdog, journal and C12 pass; the patch set pins tested equal to shipped; no mutant is vacuous. 14 NOTEs, no blocker or defect."
+    cmd: "scripts/with_seat.sh kimi kimi -p <prompt with README, launcher, harness, mutants and workflow diff inlined> -m kimi-code/k3 < /dev/null"
+    result: "rc 0; VERDICT: PASS; notes include the Data refusal pinned only as a literal string (README:14, test_launcher.py:222), an exit-code namespace collision between body and launcher codes (README:53-60 vs launcher.zsh:107), a watchdog that signals only the fetch pid (launcher.zsh:69-71), a -user root predicate with no test or mutant (conftest.py:77), and six properties without a mutant"
+    exit: 0
+    ts: "2026-10-12T05:05:59Z"
+    seat: kimi-code/k3
+  - claim: "R7 — council round 1, agy-gemini-3.1-pro (reserve): REWORK with 1 BLOCKER and 3 DEFECT; body contract, trust walk, config, journal, C12 and the patch set judged PASS."
+    cmd: scripts/with_seat.sh agy agy --sandbox --model gemini-3.1-pro-high --print-timeout 900s -p <same prompt> < /dev/null
+    result: "rc 0; VERDICT: REWORK; BLOCKER workflow action versions and no paths filter (localci-tests.yml:151); DEFECT Data refusal untested dynamically (test_launcher.py:214); DEFECT watchdog wraps only the fetch (launcher.zsh:74); DEFECT three properties without a mutant (mutants.py:42)"
+    exit: 0
+    ts: "2026-10-12T04:57:54Z"
+    seat: agy-gemini-3.1-pro
+  - claim: "R8 — agy's BLOCKER is refuted by the repository: the action versions are the ones the repo already uses, and the job has a path filter and read-only permissions."
+    cmd: >-
+      grep of actions/checkout and actions/setup-python versions across .github/workflows; sed of the on, paths and
+      permissions blocks of localci-tests.yml
+    result: "actions/checkout@v7 appears 138 times and actions/setup-python@v7 86 times; pytest==9.1.1 is pinned in other workflows; paths include scripts/localci/** on pull_request and push; permissions contents read"
+    exit: 0
+    ts: "2026-10-12T05:06:11Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+dissent:
+  - seat: agy-gemini-3.1-pro (BLOCKER, workflow)
+    objection: >-
+      .github/workflows/localci-tests.yml:151, agy: "checkout@v7, setup-python@v7, and pytest==9.1.1 are non-existent future
+      versions. Additionally, the job lacks a paths: filter."
+    status: REFUTED
+    disposition: >-
+      R8: the repo uses these versions in 138 and 86 workflow steps, and the file has a paths filter covering scripts/localci/**
+      and a permissions block. The reserve seat's version knowledge predates them. Kimi, which saw the same diff, left only a
+      note asking to confirm the filter, which R8 confirms.
+  - seat: agy-gemini-3.1-pro (DEFECT 1) and kimi-code/k3 (NOTE 1)
+    objection: >-
+      The /System/Volumes/Data refusal is pinned only as a literal string (test_launcher.py:222, README:14) and is never
+      exercised: no case links a path at /System/Volumes/Data and expects exit 65. Kimi's fix: add a data-link case to
+      test_trust_walk_table.
+    status: CONFIRMED
+    disposition: >-
+      OPEN residual, reported to the coordinator, not cured here (this session adds the dossier only). The README row names the
+      literal test honestly, so the property is stated as a pin, not as a behaviour; the launcher code itself was traced as
+      correct by kimi (launcher.zsh:39).
+  - seat: agy-gemini-3.1-pro (DEFECT 2) and kimi-code/k3 (NOTE 3)
+    objection: >-
+      The watchdog wraps only the fetch (launcher.zsh:74) and signals the fetch pid, not a process group, so git children could
+      outlive a timeout; agy adds that the body has no timeout.
+    status: PLAUSIBLE
+    disposition: >-
+      Not a defect against the stated property: the README claims only that the watchdog kills the exec'd fetch and tells timeout
+      (70) from fetch failure (69), and both are tested (test_watchdog_timeout_is_70_and_leaves_no_fetch_process,
+      test_fetch_failure_is_69). A body timeout and a process-group kill are hardening; recorded as a residual.
+  - seat: agy-gemini-3.1-pro (DEFECT 3) and kimi-code/k3 (NOTE 4, NOTE 6, NOTE 7)
+    objection: >-
+      The mutant table has no mutant for argv validation, the Data refusal, the cleanup receipt, the -user root predicate,
+      chmod 0500 or the install mode; kimi also notes that the name of timeout-same-rc-as-fetch-fail misdescribes the mutant's
+      exit (65, not 69).
+    status: CONFIRMED
+    disposition: >-
+      OPEN residual, reported to the coordinator: the 14 mutants present are valid and non-vacuous by both seats; coverage of
+      the remaining properties is partial. Cure: add mutants for -eq 40, chmod 0500 and -m 0444, rename the one mutant.
+  - seat: kimi-code/k3 (NOTE 2, NOTE 10)
+    objection: >-
+      A body exit code of 64 to 70 is indistinguishable from the launcher's own codes (README:53-60 vs launcher.zsh:107), and the
+      helper's pinned -c flags are last-wins, so README:31 "all network transports denied" overstates the guard for a body that
+      passes its own -c; the body is trusted code from the verified M.
+    status: PLAUSIBLE
+    disposition: >-
+      Residual, hardening: declare 64 to 70 reserved or soften the README sentence.
+residuals:
+  - "kimi NOTE 5, quoted: conftest.py:75 (ceremony-home) counts occurrences dynamically, so a third occurrence added to shipped text is silently absorbed; pin count=2."
+  - "kimi NOTE 8, quoted: argc greater than 2 is never tested, only argc=0; (( $# == 2 )) is correct by inspection."
+  - "kimi NOTE 9, quoted: the EXIT trap does not run on SIGTERM or SIGKILL; an externally killed launcher leaves w.git behind with no receipt; the property is stated for exits only."
+  - "kimi NOTE 14, quoted: BASE's own ancestors are not trust-walked; journal and receipt integrity against other local users rests on provisioning permissions."
+  - "kimi NOTE 12, quoted: C3's HTTPS transport pinning is exercised only statically; behavioural fetches in the tests are always file://."
+  - "The individual gate findings L1 to L6 of PR #8295 are not listed in the PR comments (only N1 and N2 are named), so the council judged the README properties and the body contract; the coordinator should cross-check L1 to L6 against them."
+  - "N2, the bootstrap, is out of scope by the coordinator's ruling and was not reviewed."
+  - "The macOS job has not run on a GitHub runner; the first CI run is the proof that the runner image matches the harness assumptions."
+  - "Generator is not grader: codex-gpt-5.6-sol built the diff and was not asked to grade it; R9 needs two distinct roster seats and is met by kimi plus the agy reserve, declared in seat_fallback_reason."
+appetite_exceeded: false

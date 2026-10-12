@@ -1,0 +1,49 @@
+task: >-
+  Ship the LocalCI ceremony launcher as tested code, the successor of the suspended design PR #8295 (which failed three
+  gate rounds on prose that did not do what it said). The launcher validates its two arguments, verifies its executable
+  closure by a trust walk, fetches from a literal remote into a fresh bare repository under a watchdog, refuses history
+  rewind through a forward-only journal, extracts the ceremony body at the verified commit and runs it in a sterile
+  process with a hardened git helper. A pytest harness, a mutant table and a macOS CI job prove it. The bootstrap (N2 of
+  the gate) is out of scope and is step 2.
+lane: infra
+machine: m5
+date: 2026-10-12
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, measured: evidence_pack_lint --print-floor --changed-files-file over the 7 changed files computes 3
+  (the workflow edit and the launcher path carry hot-zone terms). The floor sets the gear, not the size.
+acceptance:
+  A1:
+    text: >-
+      Every property in scripts/localci/ceremonies/README.md SHALL be true of launcher.zsh and SHALL cite a test that
+      exercises it; the harness SHALL differ from shipped code only by the declared patch table.
+    probe: python3 -m pytest scripts/localci/ceremonies/tests -q -p no:cacheprovider; council review of README against launcher.zsh
+  A2:
+    text: >-
+      The body contract SHALL be "$M" "$d" with cwd=$d, a fixed three-key environment and a 0500 hardened git helper at
+      $d/g; the trust walk SHALL judge the link-parent chain and refuse /System/Volumes/Data; the git config SHALL be an
+      exact allow-list; the watchdog SHALL exec the fetch and return 70 for a timeout and 69 for a fetch failure; the
+      journal SHALL refuse a rewind; C12 SHALL fetch refs/merger/base from a file:// source.
+    probe: council review; python3 -m pytest scripts/localci/ceremonies/tests -q -p no:cacheprovider
+  A3:
+    text: >-
+      Each of the 14 mutants SHALL be killed by the test it names, for the property it names, and none SHALL survive.
+    probe: python3 scripts/localci/tests/mutants/ceremony_launcher_mutants.py
+  A4:
+    text: >-
+      The macOS job in localci-tests.yml SHALL run the harness and the mutant table on a runner with the real CLT git, with
+      read-only permissions and a path filter that covers scripts/localci/**.
+    probe: gh pr checks <pr> (job "localci ceremony launcher (macOS)")
+out_of_scope: >-
+  The bootstrap and its trust walk (N2, step 2); installing the launcher on Pro; the zero-ops and localci accounts;
+  the ceremony bodies other than the test fakes.
+assumptions:
+  - text: The gate findings N1 and L1 to L6 of PR #8295 are covered by the properties table; the individual L1 to L6 texts are not in the PR comments, only N1 and N2 are named there.
+    status: unverified
+    probe: gh pr view 8295 --comments names N1 and N2 only; the council judged the README properties instead.
+  - text: The macOS runner image provides CLT git and BSD find with the semantics the harness assumes.
+    status: unverified
+    probe: the job asserts the CLT git before the tests; first CI run.
+  - text: Gear 3 needs the independent final-gate verdict on the head SHA, commissioned after the last push.
+    status: unverified
+    probe: gh pr checks <pr> after the verdict is posted.
