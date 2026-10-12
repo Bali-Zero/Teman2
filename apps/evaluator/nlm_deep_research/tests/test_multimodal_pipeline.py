@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 
 from apps.evaluator.nlm_deep_research.multimodal_pipeline import (
     ARTIFACT_META,
+    CREATE_RETRY_ATTEMPTS,
     DOWNLOAD_RETRY_ATTEMPTS,
     MIN_REGEN_INTERVAL,
     NOTEBOOKS,
@@ -568,3 +569,66 @@ class TestNlmCreateCommands:
         mock_run.assert_not_called()
         assert ok is True
         assert msg == "dry_run"
+
+
+# ---------------------------------------------------------------------------
+# TestCreateTransientRetry
+# ---------------------------------------------------------------------------
+
+class TestCreateTransientRetry:
+    """A read timeout on `nlm <type> create` is transient and retried (bounded);
+    any other failure is deterministic and must fail on the first attempt."""
+
+    @staticmethod
+    def _proc(returncode: int, stderr: str = "", stdout: str = ""):
+        m = MagicMock()
+        m.returncode = returncode
+        m.stderr = stderr
+        m.stdout = stdout
+        return m
+
+    def test_read_timeout_then_success_is_ok(self):
+        from apps.evaluator.nlm_deep_research.multimodal_pipeline import _run_nlm_create
+
+        results = [
+            self._proc(1, "Studio create failed: ReadTimeout: The read operation timed out"),
+            self._proc(0, stdout="created"),
+        ]
+        with patch("subprocess.run", side_effect=results) as mock_run, patch(
+            "apps.evaluator.nlm_deep_research.multimodal_pipeline.time.sleep"
+        ) as mock_sleep:
+            ok, msg = _run_nlm_create("audio", "nb-id")
+
+        assert ok is True
+        assert msg == "created"
+        assert mock_run.call_count == 2
+        assert mock_sleep.call_count == 1
+
+    def test_read_timeout_exhausts_bounded_attempts(self):
+        from apps.evaluator.nlm_deep_research.multimodal_pipeline import _run_nlm_create
+
+        with patch(
+            "subprocess.run",
+            return_value=self._proc(1, "httpx.ReadTimeout: The read operation timed out"),
+        ) as mock_run, patch(
+            "apps.evaluator.nlm_deep_research.multimodal_pipeline.time.sleep"
+        ):
+            ok, msg = _run_nlm_create("mind-map", "nb-id")
+
+        assert ok is False
+        assert "ReadTimeout" in msg
+        assert mock_run.call_count == CREATE_RETRY_ATTEMPTS
+
+    def test_deterministic_failure_is_not_retried(self):
+        from apps.evaluator.nlm_deep_research.multimodal_pipeline import _run_nlm_create
+
+        with patch(
+            "subprocess.run", return_value=self._proc(1, "Authentication expired — run nlm login")
+        ) as mock_run, patch(
+            "apps.evaluator.nlm_deep_research.multimodal_pipeline.time.sleep"
+        ) as mock_sleep:
+            ok, msg = _run_nlm_create("audio", "nb-id")
+
+        assert ok is False
+        assert mock_run.call_count == 1
+        mock_sleep.assert_not_called()
