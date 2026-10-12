@@ -13,5 +13,5 @@ objective: >-
 scope:
   - apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py
 appetite:
-  wall_clock_hours: 2
-  adversarial_rounds: 0
+  wall_clock_hours: 3
+  adversarial_rounds: 1

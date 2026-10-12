@@ -1903,6 +1903,22 @@ def _reason_violations(
     return violations
 
 
+def _candidate_reason_violations(
+    sequence: int,
+    replayed: dict[str, dict[str, Any]],
+) -> list[str]:
+    """The reason half of the candidate-pack replay: an UNSIGNED fold is graded
+    against its own sequence's reason table before signing, and a candidate with
+    no table is a violation by name (never graded against another sequence's)."""
+
+    if sequence not in EXPECTED_REASONS_BY_SEQUENCE:
+        return [
+            f"candidate seq-{sequence:03d} has no REASON pins: add the no-path / review "
+            "reason codes of every non-SUPPORTED walk to `EXPECTED_REASONS_BY_SEQUENCE`"
+        ]
+    return _reason_violations(replayed, EXPECTED_REASONS_BY_SEQUENCE[sequence])
+
+
 def _dead_end_violations(
     outcomes: dict[str, dict[str, Any]],
     allowlist: dict[str, tuple[DeadEnd, ...]] | None = None,
@@ -2631,6 +2647,46 @@ def test_guilt_a_pinned_walk_that_vanishes_or_turns_supported_is_caught(
     assert [v.split(":")[0] for v in _reason_violations(cured, EXPECTED_REASONS)] == [label]
 
 
+def test_guilt_a_candidate_sequence_without_a_reason_table_is_caught(
+    outcomes: dict[str, dict[str, Any]],
+) -> None:
+    """Red-team T04 round 1 (MEDIUM): the candidate-pack replay graded outcomes,
+    dead ends and the state census but never reasons, so an UNSIGNED fold could
+    reorder or swap a client-visible reason code and stay green until the
+    signing PR. A candidate sequence with no reason table must fail by name."""
+
+    unpinned = max(EXPECTED_REASONS_BY_SEQUENCE) + 1
+    violations = _candidate_reason_violations(unpinned, outcomes)
+    assert len(violations) == 1 and f"seq-{unpinned:03d}" in violations[0], violations
+    assert "EXPECTED_REASONS_BY_SEQUENCE" in violations[0], violations
+
+
+def test_guilt_a_candidate_sequence_that_moves_a_reason_is_caught(
+    outcomes: dict[str, dict[str, Any]],
+) -> None:
+    label = "offshore/other/paid/employer_no"
+    reordered = {
+        **outcomes,
+        label: {
+            **outcomes[label],
+            "no_path_reason_codes": list(reversed(outcomes[label]["no_path_reason_codes"])),
+        },
+    }
+    violations = _candidate_reason_violations(_SIGNED_SEQUENCE, reordered)
+    assert len(violations) == 1 and violations[0].startswith(label), violations
+
+
+def test_innocence_a_candidate_sequence_with_its_table_replays_clean(
+    walks: dict[str, dict[str, Any]],
+) -> None:
+    """The candidate path itself (`_outcomes_on` over a source pack), not the
+    signed-pack fixture: seq-27's own source replays clean against its table."""
+
+    path = PACKS_DIR / f"rulepack-prod-{_SIGNED_SEQUENCE:03d}.source.json"
+    replayed = _outcomes_on(walks, _pack_from_source(path))
+    assert _candidate_reason_violations(_SIGNED_SEQUENCE, replayed) == []
+
+
 def test_innocence_the_pinned_reasons_are_exactly_the_non_supported_walks(
     outcomes: dict[str, dict[str, Any]],
 ) -> None:
@@ -2728,6 +2784,8 @@ def test_every_walk_ends_in_its_pinned_outcome_on_the_candidate_pack(
     assert not dead_ends, "candidate-pack dead ends:\n  " + "\n  ".join(dead_ends)
     unaskable = _unaskable_violations(walks, WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[sequence])
     assert not unaskable, "candidate-pack allowlist reasons are false:\n  " + "\n  ".join(unaskable)
+    reasons = _candidate_reason_violations(sequence, replayed)
+    assert not reasons, "candidate-pack reasons moved:\n  " + "\n  ".join(reasons)
     census = dict(Counter(outcome["state"] for outcome in replayed.values()))
     assert census == EXPECTED_STATE_CENSUS_BY_SEQUENCE[sequence]
     fact_census = Counter(

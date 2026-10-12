@@ -13,11 +13,11 @@ lanes:
     seat: Claude Sonnet 5.5 implementer, worktree mouth-vn-tree-t04-census-reason-pins on the visa-night run.
 pii_scan: clean
 spend:
-  wall_clock_hours: 2
-  adversarial_rounds: 0
+  wall_clock_hours: 3
+  adversarial_rounds: 1
 results:
-  backend_visa_engine_suite: "2963 passed, 15 skipped, 3 failed, 39 errors - every failure and error is a database-schema or missing-dependency item of this scratch environment in test_evaluate_endpoint, test_shadow_evidence, test_shadow_match, test_visa_engine_retention_fk_registry; none touches the census"
-  census_file: "62 passed, 14 skipped (was 53 passed, 14 skipped before the change)"
+  backend_visa_engine_suite: "2966 passed, 15 skipped, 3 failed, 40 errors after the red-team cure (2963 passed, 3 failed, 39 errors before it) - every failure and error is a database-schema, shared-scratch-database concurrency or missing-dependency item of this environment in test_evaluate_endpoint, test_shadow_evidence, test_shadow_match, test_visa_engine_retention_fk_registry; none touches the census"
+  census_file: "65 passed, 14 skipped (was 53 passed, 14 skipped before the change; 62 after the first commit, 3 candidate-reason tests added by the red-team cure)"
   mouth_visa_oracle_vitest: "54 files, 1425 tests passed"
   mutation: "swapping E33A_SPONSOR_NOT_GOVERNMENT for another code in the pin table turns test_every_non_supported_walk_ends_in_its_pinned_reasons red, naming offshore/other/paid/employer_no; restored"
 bites:
@@ -28,6 +28,18 @@ bites:
     test_the_census_pins_the_signed_sequence by name.
   where: ci
 receipts:
+  - claim: "Red-team round 1 cure: the three candidate-reason tests fail before the helper exists (TDD red) and pass after."
+    cmd: cd apps/backend-rag && venv311/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -k candidate_sequence
+    result: "red: 3 failed (NameError on _candidate_reason_violations); green after the helper and the wiring: whole census file 65 passed, 14 skipped"
+    exit: 0
+    ts: "2026-10-12T11:10:00Z"
+    seat: this session
+  - claim: "Red-team round 1 cure: the whole visa_engine backend suite after the cure; remaining red is environmental and census-free."
+    cmd: cd apps/backend-rag && venv311/bin/python -m pytest backend/tests/services/visa_engine
+    result: "3 failed, 2966 passed, 15 skipped, 40 errors - 32 in test_evaluate_endpoint, 8 in test_shadow_evidence/test_shadow_match (missing relations, migration state, tuple concurrently updated and duplicate-function errors on a scratch database shared with other sessions), 2 failures in test_visa_engine_retention_fk_registry and 1 in test_evaluate_endpoint (missing app dependency); no census, walk, corpus or pack test fails"
+    exit: 1
+    ts: "2026-10-12T11:25:00Z"
+    seat: this session
   - claim: "Baseline on a fresh origin/main (f4027b5766): the census file is green before the change."
     cmd: cd apps/backend-rag && venv311/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
     result: "53 passed, 14 skipped"
@@ -71,4 +83,35 @@ decisions:
     decision: >-
       The 7 walks a disclosure flag rewrites are a delta over the engine table, so the funnel sheet is pinned
       whole without restating the 20 rows the flags do not touch.
-dissent: []
+dissent:
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout 01a12dde-3ade-7240-b740-31c4f7afa2db, /Users/nuzantara/.codex/sessions/2026/10/12/rollout-2026-10-12T10-08-21-01a12dde-3ade-7240-b740-31c4f7afa2db.jsonl)"
+    objection: "HIGH: test_interview_walk_census.py:1305 pins PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR for offshore/other/paid/employer_no, but the sheet says flatly no catalogue visa covers the combination, while E33G covers employment by a company established abroad at USD 60,000 a year (bontang.imigrasi.go.id)."
+    status: RETRACTED
+    disposition: >-
+      REJECTED (dissent, no code change): the premise about the copy is false and the rule is not the one E33G answers. (1) The sheet for this
+      code (engine-adapter.ts PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR, EN and ID) does not say no visa
+      covers the combination: it says the work routes are closed because an Indonesian work permit is issued
+      to a sponsoring entity in Indonesia, then NAMES the Second Home Visa - Remote Worker (E33G) as the open
+      door when the work is done from Indonesia for that same foreign employer with no Indonesian-source pay,
+      and the Business Visit Visa (C2) for meetings. (2) The pinned rule hf.employment-without-indonesian-sponsor
+      (seq-27 source) reads purpose EMPLOYMENT (work done in Indonesia) with work.employer_is_indonesian_entity;
+      E33G eligibility (el.e33g.remote-work) reads purpose REMOTE_WORK, a separate interview branch whose walks
+      (offshore/remote, onshore/remote, offshore/remote/foreign_only and its income_59999/income_60000
+      boundary walks) are already pinned, so the USD 60,000 income question belongs to that branch and is not
+      asked on the paid-activity branch by design. (3) The pin records what the signed pack evaluates today
+      (state, candidates and codes were already pinned as NO_SUPPORTED_PATH before this PR); it is a
+      regression pin, not a legal certification, and this PR is test-only with the E33 copy and the pack owned
+      by other tracks. If a reviewer wants the paid-activity branch to route a foreign-employer worker into
+      the remote branch, that is a tree change with its own PR and would move this pin by name, which is what
+      the pin is for.
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout 01a12dde-3ade-7240-b740-31c4f7afa2db, /Users/nuzantara/.codex/sessions/2026/10/12/rollout-2026-10-12T10-08-21-01a12dde-3ade-7240-b740-31c4f7afa2db.jsonl)"
+    objection: "MEDIUM: the candidate-pack replay requires reason pins only for _SIGNED_SEQUENCE and never calls _reason_violations, so an unsigned fold could change reason codes or their order and stay green until signing."
+    status: RETRACTED
+    disposition: >-
+      CURED in the commit that carries this pack: real. Test first: three tests (candidate sequence without a reason table is caught by name, a reordered
+      reason on a candidate replay is caught, seq-27's own source replays clean through the candidate path)
+      failed on NameError. Then _candidate_reason_violations(sequence, replayed) was added and wired into
+      test_every_walk_ends_in_its_pinned_outcome_on_the_candidate_pack, so an unsigned candidate is graded
+      against its own sequence's EXPECTED_REASONS_BY_SEQUENCE row and a candidate with no row fails by name.
+      The candidate test is skipped today (no unsigned source above seq-27), which is why the helper is
+      tested directly, including a replay of seq-27's source through the same _outcomes_on path.
