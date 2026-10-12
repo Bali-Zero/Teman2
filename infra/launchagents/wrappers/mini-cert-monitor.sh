@@ -106,7 +106,9 @@ if {r["host"] for r in rows} != expected: raise ValueError("host set")
 bad=[r for r in rows if r["status"] != "ok"]
 days=[r["days_left"] for r in rows if isinstance(r.get("days_left"),int)]
 print("SUMMARY\t%d\t%d\t%s" % (len(rows),len(bad),min(days) if days else "unknown"))
-for r in bad: print("FINDING\t%s\t%s\t%s" % (r["host"],r["status"],r["days_left"] if r["days_left"] is not None else "unknown"))
+import re
+def clean(x): return re.sub(r"[^A-Za-z0-9 .:_()/-]", "", str(x or "-"))[:80]
+for r in bad: print("FINDING\t%s\t%s\t%s\t%s" % (r["host"],r["status"],r["days_left"] if r["days_left"] is not None else "unknown",clean(r.get("reason"))))
 ') || PARSE_RC=$?
 
 SUMMARY=$(printf '%s\n' "$PARSED" | grep '^SUMMARY' || true)
@@ -122,9 +124,9 @@ if [ "$PARSE_RC" -ne 0 ] || [ -z "$SUMMARY" ] \
 elif [ "$RC" -eq 0 ]; then
     heartbeat "ok" "$TOTAL hosts ok, min ${MIN_DAYS}d"
 else
-    printf '%s\n' "$PARSED" | while IFS=$'\t' read -r tag host status days; do
+    printf '%s\n' "$PARSED" | while IFS=$'\t' read -r tag host status days reason; do
         [ "$tag" = "FINDING" ] || continue
-        notify "cert:$host:$status" "$host status=$status days=$days" \
+        notify "cert:$host:$status" "$host status=$status days=$days reason=$reason" \
             || log "finding alert failed or spooled"
     done
     heartbeat "ok" "$FINDINGS findings"
