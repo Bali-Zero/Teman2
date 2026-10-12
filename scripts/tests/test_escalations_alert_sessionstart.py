@@ -165,6 +165,36 @@ class TestNetPending:
         assert "1 NORMAL pending" in ctx
 
 
+class TestGatewayRoutedAudit:
+    """type=gateway_routed rows are tg_notify's audit trail ("no owner action
+    required"), never resolved by anything. They must not inflate the NORMAL
+    pending count (84 of 97 on 2026-10-12) — and a real NORMAL row must still
+    count (innocence)."""
+
+    @staticmethod
+    def _gw(i: int) -> dict:
+        return {"type": "gateway_routed", "job": f"cron-fail:x{i}", "status": "pending",
+                "priority": "NORMAL", "error_summary": "", "ts": 100 + i,
+                "_writer": "tg-gateway"}
+
+    def test_guilt_gateway_only_board_is_silent(self, tmp_path, tasks_dir):
+        esc = tmp_path / "escalations_pro.jsonl"
+        _write_jsonl(esc, [self._gw(i) for i in range(5)])
+        assert _run_hook(esc, tasks_dir) is None
+
+    def test_innocence_real_normal_row_still_counted_beside_audit_rows(self, tmp_path, tasks_dir):
+        esc = tmp_path / "escalations_pro.jsonl"
+        _write_jsonl(esc, [self._gw(i) for i in range(5)] + [
+            {"job": "qdrant_snapshot", "status": "pending", "priority": "NORMAL",
+             "error_summary": "", "ts": 500},
+        ])
+        out = _run_hook(esc, tasks_dir)
+        assert out is not None
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        assert "1 NORMAL pending" in ctx
+        assert "5 gateway-routed audit row(s)" in ctx
+
+
 class TestCauseGrouping:
     """Dedupe/grouping by (source, normalized cause) — 2026-09-09 session-start
     injection diet. Measured live: healer_pro_tick escalating the SAME "N dead
