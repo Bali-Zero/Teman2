@@ -1,22 +1,34 @@
 """E28 family -- what the visitor is quoted, pinned against the REAL price catalogue.
 
 The seq-7/8/9/11 guards read old packs and ``test_pack_chain_and_pricing`` only checks that a
-``pricing_key`` exists. Nothing asserted the AMOUNT a visitor is shown for E28A on the pack that is
-live, nor that E28B, E28C, E28D and E28F stay deliberately unpriced -- so an edit to the catalogue
-row (or a rewired ``pricing_key``) passed CI. This file closes that, on the HIGHEST SIGNED pack (so
-the day a newer pack is signed the pin follows it and must still hold). The pack is VERIFIED --
-Ed25519 signature, protected header and trust chain through ``verify_rule_pack`` under the
-repository's production key -- never read by file name; a tampered copy is refused (guilt twin).
+``pricing_key`` exists. Nothing asserted the AMOUNT a visitor is shown for E28A on the highest
+signed pack in the repository, nor that E28B, E28C, E28D and E28F stay deliberately unpriced -- so
+an edit to the catalogue row (or a rewired ``pricing_key``) passed CI. This file closes that, on
+the HIGHEST SIGNED pack (so the day a newer pack is signed the pin follows it and must still
+hold). The pack is VERIFIED -- Ed25519 signature and protected header through ``verify_rule_pack``
+under the repository's production key, then ACTIVATABLE: ``validate_activation`` is run against
+its predecessor, so a pack whose ``previous_payload_sha256`` does not chain to the predecessor
+(signed, but not activatable) is refused and can never become the reference. The pack is never
+read by file name; a tampered copy is refused (guilt twin).
+
+What this proves, and what it cannot: the highest repository pack is signed, activatable and
+priced as pinned. Which pack production has ACTIVATED is a database fact (the activation row);
+this file does not read it, and its end-to-end walk stands the database binding in. "Live" here is
+therefore never claimed -- the pin is the repository's highest activatable pack, and rollout of a
+newer pack to production is checked by the deploy, not here. Likewise the wire is pinned up to the
+backend JSON (name, status, reason, hash): how the portal renders ``CONTACT_REQUIRED`` is the
+mouth adapter's contract and is covered by the mouth suite, not here.
 
 * E28A prices from the ``Investor KITAS 2 Years (Offshore)`` row of
   ``bali_zero_official_prices_2026.json`` and the quote is AVAILABLE at IDR 17,000,000 -- one
   all-inclusive amount;
-* E28B, E28C, E28D and E28F carry NO ``pricing_key`` (the catalogue has no row for them) and
-  resolve to CONTACT_REQUIRED / ``PRICING_KEY_NOT_CONFIGURED`` with no amount, so the page says an
-  advisor confirms the price instead of inventing one;
-* the same holds END TO END: ``run_evaluation`` over the real signed pack, the real pricing
-  service and a real full-capital PT PMA walk names E28A, attaches the quote and renders the
-  display;
+* E28B, E28C, E28D and E28F carry NO ``pricing_key`` AND the catalogue holds no row addressed to
+  them (the set of Investor-family rows is pinned, so a new commercial row fails here until the
+  pin is re-read), and resolve to CONTACT_REQUIRED / ``PRICING_KEY_NOT_CONFIGURED`` with no
+  amount -- the wire status the portal turns into "an advisor confirms the price";
+* the same holds END TO END on the backend: ``run_evaluation`` over the real signed pack, the real
+  pricing service and a real full-capital PT PMA walk names E28A, attaches the quote and renders
+  the display JSON (the database binding is stood in);
 * GUILT twins: an edited row amount moves the quote off the pin, a missing row degrades to
   ``PRICING_ROW_MISSING``, and an E28A product RE-AIMED at a neighbouring row (Onshore, Extend, the
   Working KITAS) no longer satisfies the pin -- each of which the pin above turns red on.
@@ -48,13 +60,18 @@ from backend.scripts.visa_engine.gold_replay_driver import (
     _REPOSITORY_PRODUCTION_SIGNING_KEYS,
     _parse_utc,
     _repository_trust_store,
+    _signed_production_sequence,
     build_persona_request,
     select_highest_repository_pack,
 )
 from backend.services.pricing.pricing_service import get_pricing_service
 from backend.services.visa_engine import evaluate_path, shadow
 from backend.services.visa_engine.api_models import VisaOracleEvaluateResponse
-from backend.services.visa_engine.bundle import verify_rule_pack
+from backend.services.visa_engine.bundle import (
+    VerifiedRulePack,
+    validate_activation,
+    verify_rule_pack,
+)
 from backend.services.visa_engine.enums import DecisionState
 from backend.services.visa_engine.errors import RulePackVerificationError
 from backend.services.visa_engine.models import PricingKey, VisaProductVersion
@@ -95,12 +112,30 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 @dataclass(frozen=True)
 class _SignedPack:
-    """The highest signed production pack, VERIFIED -- signature, header and trust chain."""
+    """The highest signed production pack, VERIFIED and ACTIVATABLE over its predecessor."""
 
     path: Path
     envelope: dict[str, Any]
     signed_at: datetime
     products: dict[str, VisaProductVersion]
+    candidate: VerifiedRulePack
+    predecessor: VerifiedRulePack
+
+
+def _verified_predecessor(sequence: int) -> VerifiedRulePack:
+    """The signed PRODUCTION pack at ``sequence - 1``, found by its sequence and verified."""
+
+    found = []
+    for path in sorted(_PACKS.glob("*.signed.json")):
+        selected = _signed_production_sequence(path)
+        if selected is not None and selected[0] == sequence - 1:
+            found.append(selected[1])
+    assert len(found) == 1, f"expected exactly one signed PRODUCTION pack at seq {sequence - 1}"
+    return verify_rule_pack(
+        found[0],
+        trust_store=_repository_trust_store(),
+        observed_at=_parse_utc(found[0]["protected"]["signed_at"]),
+    )
 
 
 @pytest.fixture(scope="module")
@@ -114,11 +149,27 @@ def signed() -> _SignedPack:
     )
     assert verified.unsigned_dev is False
     assert verified.pack.payload.sequence == int(match.group(1))
+    predecessor = _verified_predecessor(verified.pack.payload.sequence)
     return _SignedPack(
         path=path,
         envelope=envelope,
         signed_at=signed_at,
         products={p.product_code: p for p in verified.pack.payload.products},
+        candidate=verified,
+        predecessor=predecessor,
+    )
+
+
+def _activate(candidate: VerifiedRulePack, over: VerifiedRulePack, *, over_sha: bytes) -> None:
+    """The activation gate: sequence, ``previous_payload_sha256`` chain, environment and engine
+    range. The engine side is the pack's own declared contract version (1.0.0)."""
+
+    validate_activation(
+        candidate,
+        current_sequence=over.pack.payload.sequence,
+        current_payload_sha256=over_sha,
+        environment="PRODUCTION",
+        engine_version=candidate.pack.payload.engine_contract_version,
     )
 
 
@@ -168,6 +219,31 @@ class TestThePackUnderTestIsVerifiedNotNamed:
     ) -> None:
         assert {"E28A", *_UNPRICED} <= set(signed.products)
 
+    def test_the_highest_signed_pack_is_activatable_over_its_predecessor(
+        self, signed: _SignedPack
+    ) -> None:
+        """Signed is not enough: a pack that does not chain to the one before it could never be
+        activated, so the pack production serves would still be the previous one."""
+
+        payload = signed.candidate.pack.payload
+        assert payload.previous_payload_sha256 == signed.predecessor.payload_sha256.hex()
+        assert payload.sequence == signed.predecessor.pack.payload.sequence + 1
+        _activate(signed.candidate, signed.predecessor, over_sha=signed.predecessor.payload_sha256)
+
+    def test_guilt_a_pack_that_does_not_chain_to_its_predecessor_is_refused(
+        self, signed: _SignedPack
+    ) -> None:
+        with pytest.raises(RulePackVerificationError):
+            _activate(signed.candidate, signed.predecessor, over_sha=b"\x00" * 32)
+
+    def test_guilt_a_pack_not_above_the_current_sequence_is_refused(
+        self, signed: _SignedPack
+    ) -> None:
+        with pytest.raises(RulePackVerificationError):
+            _activate(
+                signed.predecessor, signed.candidate, over_sha=signed.candidate.payload_sha256
+            )
+
     def test_guilt_a_pack_edited_after_signing_is_refused(self, signed: _SignedPack) -> None:
         tampered = copy.deepcopy(signed.envelope)
         victim = next(p for p in tampered["payload"]["products"] if p["product_code"] == "E28B")
@@ -207,7 +283,41 @@ class TestE28AIsQuotedFromItsCatalogueRow:
         assert quote.pricing_key == _E28A_KEY
 
 
+#: Every catalogue row whose key names the investor / golden-visa family, today. E28B, E28C, E28D
+#: and E28F have NO row of their own; the day one is added this set changes and the pin is re-read.
+_INVESTOR_ROWS = {
+    ("multiple_entry_visas", "D12 Business Investigation (1 Year)"),
+    ("multiple_entry_visas", "D12 Business Investigation (2 Years)"),
+    ("kitas_permits", "Investor KITAS 2 Years (Altus/Onshore)"),
+    ("kitas_permits", "Investor KITAS 2 Years (Offshore)"),
+    ("kitas_permits", "Investor KITAS 2 Years (Extend)"),
+    ("kitap_permits", "Investor KITAP + MERP"),
+}
+_FAMILY_RE = re.compile(r"investor|investigation|golden|\bE28[A-F]?\b|\bIKN\b|nusantara", re.I)
+
+
+def _family_rows(catalogue: dict[str, Any]) -> set[tuple[str, str]]:
+    return {
+        (category, key)
+        for category, rows in catalogue["services"].items()
+        for key in rows
+        if _FAMILY_RE.search(key)
+    }
+
+
 class TestTheOtherInvestorVisasStayUnpriced:
+    def test_the_catalogue_has_no_row_for_them(self, catalogue: dict[str, Any]) -> None:
+        """No row is addressed to E28B/C/D/F by code, golden-visa or IKN name, and the set of
+        Investor-family rows is exactly the known one -- a new commercial row for any of them
+        turns this red even while the pack is still unwired."""
+
+        assert _family_rows(catalogue) == _INVESTOR_ROWS
+
+    def test_guilt_a_new_investor_family_row_is_seen(self, catalogue: dict[str, Any]) -> None:
+        added = copy.deepcopy(catalogue)
+        added["services"]["kitas_permits"]["Investor Golden Visa (E28B)"] = {"price": "1 IDR"}
+        assert _family_rows(added) != _INVESTOR_ROWS
+
     @pytest.mark.parametrize("code", _UNPRICED)
     def test_no_pricing_key(self, code: str, signed: _SignedPack) -> None:
         assert signed.products[code].pricing_key is None
