@@ -1,0 +1,73 @@
+# Gear-3 evidence pack - seq-29 candidate (UNSIGNED): four decision-free rule corrections on signed seq-28.
+# Receipts are this build session's own runs on 2026-10-12 UTC (ts read with date -u). Whole-suite runs are on
+# Mini through the committed HEAD; targeted runs are on Pro.
+gear: 3
+brief_ref: evidence/brief.yml
+pii_scan: clean
+ruling: >-
+  Zero via nuzantara-57, 2026-10-12T06:55Z - the signing session signs and activates seq-29; the builder brings
+  it to READY-TO-SIGN.
+mission: >-
+  seq-29 = signed seq-28 (payload a23a5bf5) plus E31J minor and single gate, E31D Indonesian step-parent gate,
+  E28F foreign-parent conjunct and the E31E reasons scoped to the PARENT relation. 116 rules (114 + 3 - 1),
+  38 products unchanged, 28 source records unchanged. Dry-run payload_sha256 below; it changes when the fold is
+  re-run on the new organ ledger.
+lanes:
+  - lane: seq29-fold
+    role: build
+    seat: Claude Sonnet 5.5 (implementer, worktree backend-rag-vo-seq29-fold-1012)
+  - lane: seq29-ground-truth
+    role: ground_truth
+    seat: >-
+      the saved texts of the 2026-10-11 organ ledger (E31D and E31J pages), the pack's own seq-28 rule shapes, the
+      gold personas and the audit files under ~/visa-night; no notebook, no memory.
+    nb: research/visa/2026-10-11-organ-reattest-seq28/ and apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-028.signed.json
+    query_hash: "a23a5bf55a77a658aef4ff06637cdb6fea476c5569d3d47a56896af2b8557046" # pragma: allowlist secret
+    note: query_hash = the signed seq-28 payload_sha256 that seq-29 chains to.
+bites:
+  consumer: >-
+    The signing session (nuzantara-57) signs this source, and after activation the production /evaluate
+    endpoint answers pack 29. Before that the consumers are the walk census in candidate mode, the unreached-
+    product guard and the mouth copy guard, which all read the highest unsigned source pack on disk.
+  where: ci
+  observe: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/services/visa_engine/test_seq29_pack.py backend/tests/services/visa_engine/test_interview_walk_census.py
+  expect: "contains:passed"
+receipts:
+  - claim: The dry-run fold re-proves that the 2026-10-11 ledger plus the seq-28 content edits reproduce signed seq-28 from signed seq-27 byte for byte, then applies the seq-29 edits with seq-28 stamps unchanged.
+    cmd: PYTHONPATH=. python -m backend.scripts.visa_engine.fold_pack_seq29 --ledger-dir ../../research/visa/2026-10-11-organ-reattest-seq28 --dry-run-reuse-anchor-ledger --output backend/services/visa_engine/contracts/packs/rulepack-prod-029.source.json
+    result: "mode DRY RUN; seq-29 payload_sha256 3434d691e14d2377575f9eddb6af6fea38e967886a48c994a0a76c1bccc2b389; modified el.e28f.ikn-subsidiary, hf.e31e-adult-excluded, hf.e31e-married-excluded; inserted hf.e31d-sponsor-not-indonesian, hf.e31j-adult-excluded, hf.e31j-married-excluded; retired el.e31j-dependency-age" # pragma: allowlist secret
+    exit: 0
+    ts: "2026-10-12T08:07:00Z"
+    seat: Claude Sonnet 5.5 (implementer)
+  - claim: The seq-29 pack gate - guilt and innocence witnesses for each item, builder refusals, ledger checks, every gold persona replayed on the candidate; the four signed-bundle tests skip because nothing is signed.
+    cmd: PYTHONPATH=. python -m pytest backend/tests/services/visa_engine/test_seq29_pack.py -p no:cacheprovider
+    result: "44 passed, 4 skipped"
+    exit: 0
+    ts: "2026-10-12T08:08:00Z"
+    seat: Claude Sonnet 5.5 (implementer)
+  - claim: Walk census on the candidate - the corpus grows 131 to 132 (a minor sibling keeps E31J named), five walks lose a product, no state moves, and the unreached-product guard accepts E28F depending on the E28D qualifying fact.
+    cmd: PYTHONPATH=. python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -p no:cacheprovider
+    result: "71 passed (run before the A1 and E30 items were moved out; re-proved in the whole-suite run below)"
+    exit: 0
+    ts: "2026-10-12T07:57:00Z"
+    seat: Claude Sonnet 5.5 (implementer)
+  - claim: Whole suites on Mini for the committed HEAD f4a84fec10 - backend visa_engine and vitest (visa-oracle). The backend shows only the Mini database environment set.
+    cmd: bash ~/visa-night/mini-suite.sh <worktree> both
+    result: "backend 2 failed, 3088 passed, 5 skipped, 31 errors; vitest 56 files, 1448 passed; failing ids are the same 2 failures (test_visa_engine_retention_fk_registry.py) and 31 errors (test_evaluate_endpoint.py) as origin/main c4b045752b"
+    exit: 1
+    ts: "2026-10-12T08:10:00Z"
+    seat: Claude Sonnet 5.5 (implementer, Mini)
+  - claim: Baseline for the environmental failures - the same two test files on a clean detached origin/main worktree on Mini fail identically.
+    cmd: ssh mini pytest test_evaluate_endpoint.py test_visa_engine_retention_fk_registry.py at origin/main c4b045752b
+    result: "2 failed, 266 passed, 31 errors (asyncpg TooManyColumnsError on test_evaluate_endpoint.py; policy_scope column missing in the retention registry)"
+    exit: 1
+    ts: "2026-10-12T08:02:00Z"
+    seat: Claude Sonnet 5.5 (implementer, Mini)
+dissent: []
+owed:
+  - "Re-run the fold in REAL mode on the newest organ ledger (the dry-run source reuses the 2026-10-11 stamps), commit the regenerated source, re-gate the delta."
+  - "Cross-family red team (Codex), two-titolare council, fresh Opus gate, signing, activation and prove-live: the signing session's."
+  - "Announce the TREE PR (corpus, census pins) and queue it behind any open tree PR."
+spend:
+  wall_clock_hours: 3
+  adversarial_rounds: 0
