@@ -42,6 +42,8 @@ CLOSURE = node("test_executable_closure_rejects_writable_or_acl_entries")
 GIT_ENV = node("test_git_commands_ignore_hostile_caller_env")
 ARGC = node("test_argv_refusals_are_64")
 SYMLINK = node("test_symlink_ceremony_is_refused")
+BODY_AT_M = node("test_body_runs_from_m_not_from_the_fetched_tip")
+MODE_AT_M = node("test_ceremony_mode_is_judged_at_m_not_at_the_fetched_tip")
 
 # name: (old text, replacement, tests that must turn red)
 MUTANTS: dict[str, tuple[str, str, tuple[str, ...]]] = {
@@ -93,6 +95,12 @@ MUTANTS: dict[str, tuple[str, str, tuple[str, ...]]] = {
         "true",
         SYMLINK,
     ),
+    "body-read-at-tip": (
+        'cat-file blob "${M}:${ceremony_path}"',
+        'cat-file blob "refs/ceremony/main:${ceremony_path}"',
+        BODY_AT_M,
+    ),
+    "tree-judged-at-tip": ('ls-tree "$M" -- "$ceremony_path"', 'ls-tree refs/ceremony/main -- "$ceremony_path"', MODE_AT_M),
 }
 
 def run_tests(tree: Path, tests: tuple[str, ...]) -> int:
