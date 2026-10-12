@@ -95,6 +95,12 @@ ENVIRONMENT = "PRODUCTION"
 JURISDICTION = "ID"
 DECISION_DOMAIN = "IMMIGRATION_VISA"
 FRESHNESS_POLICY_KIND = "MAX_AGE_SINCE_VERIFIED_AT"
+# Owner ruling 2026-10-12: a source may carry a policy with NO calendar expiry.
+# The engine reports it CURRENT until superseded (reason
+# SOURCE_FRESHNESS_NOT_TIME_BOUNDED). This sentinel still REPORTS its age since
+# verified_at (drift alarm input) but never classes it STALE/APPROACHING and
+# never as an anomaly.
+FRESHNESS_POLICY_KIND_NON_EXPIRING = "UNTIL_SUPERSEDED"
 
 DEFAULT_WARN_SECONDS = 48 * 3600  # 48h Telegram warning window (spec)
 
@@ -221,6 +227,32 @@ class SourceFinding:
 
 
 @dataclass(frozen=True)
+class SourceNonExpiring:
+    """An OFFICIAL_PORTAL source under the UNTIL_SUPERSEDED policy.
+
+    Informational only: age since verified_at is reported, never judged.
+    """
+
+    source_record_id: str
+    title: str
+    verified_at: datetime
+    age_seconds: int
+
+    @property
+    def short_id(self) -> str:
+        return self.source_record_id[:8]
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "source_record_id": self.source_record_id,
+            "short_id": self.short_id,
+            "title": self.title,
+            "verified_at": self.verified_at.isoformat(),
+            "age_seconds": self.age_seconds,
+        }
+
+
+@dataclass(frozen=True)
 class SourceAnomaly:
     """A portal source the sentinel could not classify as CURRENT/STALE at
     all — mirrors the engine's UNKNOWN posture (never silently CURRENT)."""
@@ -254,6 +286,7 @@ class Verdict:
     approaching: tuple[SourceFinding, ...] = ()
     policy_missing: tuple[SourceAnomaly, ...] = ()
     future_verified: tuple[SourceAnomaly, ...] = ()
+    non_expiring: tuple[SourceNonExpiring, ...] = ()
     pack_sequence: int | None = None
     pack_version: str | None = None
     pack_source: str = "unknown"  # "database" | "repository-fallback" | "unknown"
@@ -270,6 +303,7 @@ class Verdict:
             "approaching": [f.to_json() for f in self.approaching],
             "policy_missing": [a.to_json() for a in self.policy_missing],
             "future_verified": [a.to_json() for a in self.future_verified],
+            "non_expiring": [n.to_json() for n in self.non_expiring],
             "pack_sequence": self.pack_sequence,
             "pack_version": self.pack_version,
             "pack_source": self.pack_source,
@@ -331,6 +365,7 @@ def classify_freshness(
     approaching: list[SourceFinding] = []
     policy_missing: list[SourceAnomaly] = []
     future_verified: list[SourceAnomaly] = []
+    non_expiring: list[SourceNonExpiring] = []
 
     for record in portal_records:
         record_id = str(record.get("source_record_id", "?"))
@@ -361,6 +396,19 @@ def classify_freshness(
             continue
 
         policy = record.get("freshness_policy")
+        if (
+            isinstance(policy, dict)
+            and policy.get("kind") == FRESHNESS_POLICY_KIND_NON_EXPIRING
+        ):
+            # NON_EXPIRING bucket: report the age, never STALE/APPROACHING,
+            # never an anomaly (the engine returns CURRENT for it).
+            age = now - verified_at
+            non_expiring.append(
+                SourceNonExpiring(
+                    record_id, title, verified_at, age.days * 86_400 + age.seconds
+                )
+            )
+            continue
         if not isinstance(policy, dict) or policy.get("kind") != FRESHNESS_POLICY_KIND:
             policy_missing.append(
                 SourceAnomaly(record_id, title, "FRESHNESS_POLICY_NOT_DEFINED")
@@ -421,6 +469,7 @@ def classify_freshness(
         approaching=tuple(approaching),
         policy_missing=tuple(policy_missing),
         future_verified=tuple(future_verified),
+        non_expiring=tuple(non_expiring),
     )
 
 
@@ -723,6 +772,14 @@ def format_alert_text(verdict: Verdict) -> str:
         lines.append(
             f"{len(verdict.future_verified)} portal source(s) have verified_at "
             "in the future (anomaly)."
+        )
+
+    if verdict.non_expiring:
+        oldest = max(n.age_seconds for n in verdict.non_expiring)
+        lines.append(
+            f"{len(verdict.non_expiring)} portal source(s) are NON_EXPIRING "
+            f"(UNTIL_SUPERSEDED; oldest verified {oldest // 86_400}d ago) — "
+            "reported for drift only, never stale."
         )
 
     return "\n".join(lines)

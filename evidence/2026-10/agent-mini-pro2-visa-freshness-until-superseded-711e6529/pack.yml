@@ -1,0 +1,76 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Owner ruling 2026-10-12 (Zero): the Visa Oracle pack must not expire or degrade on a date; internal staleness
+  reporting stays but must not change what clients see. This PR is the engine half only: it adds the closed kind
+  UNTIL_SUPERSEDED. No pack file changes here and no pack carries the kind; switching the pack's policies is a
+  later PR and signing ceremony, and it must follow the engine deploy.
+mission: >-
+  The engine can evaluate a source as CURRENT until it is superseded, with applicability (status, legal period,
+  recorded period, authority) still judged separately, so a later pack can stop time from silencing the card.
+lanes:
+  - lane: freshness-engine
+    role: build
+    seat: claude-sonnet-5-5 implementer (subagent; the Co-Authored-By trailer of the build commit), worktree visa-visa-freshness-engine-20261012.
+  - lane: freshness-ground
+    role: ground_truth
+    seat: >-
+      This session read the code at the cited lines (models.SourceFreshnessPolicy, evaluate_path._evaluate_source_freshness
+      and its three callers, api_models CURRENT requirement, mouth schema.d.ts SourceFreshnessDTO, sentinel, organ, seq-20
+      fold) and the owner ruling; no external regulatory fact is asserted by this change.
+    nb: owner-ruling-2026-10-12 (no NotebookLM query; ground truth is the engine source on disk)
+    query_hash: "2e9a5f0bce35867ec4abee29a8a6f3cc1759a310cfb9615ac3fe1f0676e3e28b" # pragma: allowlist secret
+    note: query_hash = sha256 of the one-sentence owner ruling the change implements.
+pii_scan: clean
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+results:
+  - "visa_engine backend suite: 3037 passed, 15 skipped, 2 failed, 31 errors; every failure and error is in the Postgres-backed files (TooManyColumnsError, missing policy_scope) and the same two failures reproduce on the untouched main checkout"
+  - "scripts/tests sentinel + organ: 115 passed (4 sentinel and 3 organ tests are new)"
+  - "seq-20, schema-contract and the 8 new endpoint freshness tests: green; existing seq-18/25/27/28 W141 pins untouched and green"
+bites: "consumer: Visa Oracle evaluate (engine _evaluate_source_freshness behind the DTO builder, the decisive gate and the safety-critical hold) and the weekly freshness sentinel; observation: the new endpoint tests build a really signed pack whose decisive source carries UNTIL_SUPERSEDED, evaluate at verified_at plus ten years and read status CURRENT, reason SOURCE_FRESHNESS_NOT_TIME_BOUNDED, max_age_seconds null, while the MAX_AGE twin at the same instant is STALE; after deploy, `python3 scripts/visa_freshness_sentinel.py --dry-run` on the active seq pack is unchanged because no pack carries the kind yet."
+receipts:
+  - claim: "The whole visa_engine backend suite on the change."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine
+    result: "3037 passed, 15 skipped, 2 failed, 31 errors (Postgres-backed files only)"
+    exit: 1
+    ts: "2026-10-12T10:00:00Z"
+    seat: this session
+  - claim: "The two failing files give the same result on the untouched main checkout."
+    cmd: cd /Users/nuzantara/nuzantara/apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py
+    result: "2 failed, 2 passed (policy_scope column absent in the shared local database)"
+    exit: 1
+    ts: "2026-10-12T10:05:00Z"
+    seat: this session
+  - claim: "Sentinel and organ tests including the new UNTIL_SUPERSEDED cases."
+    cmd: python -m pytest scripts/tests/test_visa_freshness_sentinel.py scripts/tests/test_visa_reattestation_organ.py
+    result: "115 passed"
+    exit: 0
+    ts: "2026-10-12T10:10:00Z"
+    seat: this session
+  - claim: "Exported contract schema equals the model export (hand-merged to keep the prettier layout)."
+    cmd: python -c "json.load(contract.schema.json) == schema_export.build_schemas()['contract.schema.json']"
+    result: "equal"
+    exit: 0
+    ts: "2026-10-12T09:30:00Z"
+    seat: this session
+decisions:
+  - id: D-closed-union
+    decision: >-
+      A second class under a discriminated union instead of making max_age_seconds optional: a MAX_AGE policy
+      without a window stays a validation error, and UNTIL_SUPERSEDED with a window is rejected (extra=forbid).
+  - id: D-applicability-not-bypassed
+    decision: >-
+      The evaluator branch only answers freshness. status, legal_period, recorded_period and authority are
+      judged by _source_applicability_status and the primary-source gate, which new tests pin (REVOKED, non
+      primary, expired legal period still abstain under UNTIL_SUPERSEDED).
+  - id: D-future-verified-first
+    decision: >-
+      verified_at in the future still returns UNKNOWN before the policy is read, in the engine and in the
+      sentinel; a non-expiring source is not exempt from a clock that cannot be true.
+dissent:
+  - seat: "self-review (implementer)"
+    objection: "An older engine that receives a pack carrying the new kind rejects the pack at schema validation, so the whole Oracle would abstain, not just the source."
+    status: CONFIRMED
+    disposition: "Not cured in code, by design: the closed vocabulary is what makes a typo fail loud. Ordering constraint instead: this engine must be live (build_sha ancestry) before any pack with the kind is signed-and-activated, stated in the PR body."
