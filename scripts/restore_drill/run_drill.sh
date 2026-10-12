@@ -20,6 +20,14 @@ MIN_VM_FREE_KB="${RESTORE_DRILL_MIN_VM_FREE_KB:-8388608}"
 MAX_DUMP_AGE_HOURS="${RESTORE_DRILL_MAX_DUMP_AGE_HOURS:-72}"
 CONTAINER_MEMORY="${RESTORE_DRILL_MEMORY:-3g}"
 CONTAINER_CPUS="${RESTORE_DRILL_CPUS:-2}"
+# A SIGKILL or a power loss skips the EXIT trap and leaves the dump and restore.log (both client
+# data, mode 0700) behind. The wrapper's lock means no other run is alive, so every leftover work
+# dir owned by this user is stale: remove it before starting. /private/tmp is also emptied at boot.
+for stale in /tmp/nuzantara-restore-drill.*; do
+    if [ -d "$stale" ] && [ -O "$stale" ]; then
+        rm -r -f -- "$stale"
+    fi
+done
 WORK_DIR=$(mktemp -d /tmp/nuzantara-restore-drill.XXXXXX)
 WATCHDOG_PID=""
 DRILL_PID=""

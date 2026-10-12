@@ -3,10 +3,9 @@
 # Canon: infra/launchagents/wrappers/mini-restore-drill.sh
 # Live:  ~/scripts/mini-restore-drill.sh (declared pair, node=mini)
 #
-# Where a failure lands: the error heartbeat (the organism board reads it) and a p0 through
-# scripts/tg_notify.py. The gateway routes a p0 whose family is not owner-reserved to the
-# escalation board as a seat-actionable row (ladder-deduped), not to Telegram: the same path
-# healer-mini's p0s take. A failed DR proof is a seat's to investigate. Success goes to the digest.
+# Where a failure lands: the error heartbeat (the organism board reads it) and a p0 sent to
+# Telegram through scripts/tg_notify.py with board routing off (see notify). Success goes to
+# the digest.
 
 set -u
 umask 077
@@ -36,7 +35,12 @@ notify() { # $1 tier, $2 dedup key, $3 safe message
     tier=$1
     key=$2
     message=$3
-    /usr/bin/python3 "$GATEWAY" --tier "$tier" --source restore-drill \
+    # A p0 goes straight to Telegram: board routing would append to the tracked, Pro-only
+    # shared/escalations_pro.jsonl from Mini. TG_ACT_ROUTING_ENABLED=false keeps the gateway's
+    # fail-visible p0_unsent spool when Telegram is unreachable.
+    routing=true
+    [ "$tier" = "p0" ] && routing=false
+    TG_ACT_ROUTING_ENABLED=$routing /usr/bin/python3 "$GATEWAY" --tier "$tier" --source restore-drill \
         --dedup-key "$key" -- "$message" >> "$LOG" 2>&1
 }
 
