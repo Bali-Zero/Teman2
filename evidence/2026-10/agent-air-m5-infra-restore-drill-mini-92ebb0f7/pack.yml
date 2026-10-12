@@ -137,6 +137,17 @@ receipts:
     exit: 0
     ts: "2026-10-12T01:06:35Z"
     seat: kimi-code/k3, codex-gpt-5.6-sol
+  - claim: "R13 — council round on head 012e044f69 (p0 sent with board routing off, leftover tmpdirs removed, fixtures in the CI paths): kimi PASS, codex REWORK (2)."
+    cmd: scripts/with_seat.sh kimi kimi -p <prompt> -m kimi-code/k3 < /dev/null; scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: >-
+      kimi VERDICT: PASS. codex VERDICT: REWORK: (1) TG_ACT_ROUTING_ENABLED=false covers only the local gateway; if the local send
+      fails and TG_RELAY_SSH is set, the relay command (tg_notify.py:520) does not carry the flag, so the remote gateway appends the
+      p0 to the board and the local side records sent with no p0_unsent spool; (2) the lock holds only the wrapper PID, so after a
+      SIGKILL of the wrapper a still-live worker in another process group can have its tmpdir deleted by the next run's cleanup
+      (run_drill.sh:26), and its container removed (run_drill.sh:179).
+    exit: 0
+    ts: "2026-10-12T02:12:59Z"
+    seat: kimi-code/k3, codex-gpt-5.6-sol
 dissent:
   - seat: kimi-code/k3 (round 1) and codex-gpt-5.6-sol (round 1)
     objection: >-
@@ -211,3 +222,12 @@ dissent:
     disposition: >-
       OPEN, reported to the coordinator, not cured here. The coordinator holds that routing to the board is house design;
       codex accepts the board as an alert target but not the write into the tracked Pro file from Mini. kimi PASSed the same head.
+  - seat: codex-gpt-5.6-sol (council round after df1c4c829a)
+    objection: >-
+      (1) The relay path (TG_RELAY_SSH) drops TG_ACT_ROUTING_ENABLED=false, so a failed local send can still write the p0 to the
+      board on the relay host while the local gateway records sent; (2) the singleton lock names only the wrapper PID, so a
+      surviving worker after a wrapper SIGKILL can have its tmpdir and the shared container removed by the next run.
+    status: CONFIRMED
+    disposition: >-
+      OPEN, reported to the coordinator, not cured here. Both depend on whether TG_RELAY_SSH is set on Mini and on killing the
+      worker with the wrapper (process group); neither was measured in this session.
