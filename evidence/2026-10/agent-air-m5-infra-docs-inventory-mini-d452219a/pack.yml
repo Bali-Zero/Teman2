@@ -1,5 +1,6 @@
 # Gear-3 evidence pack — the twice-daily docs inventory becomes the Mini launchd organ mini.docs_inventory_refresh.
-# Written 2026-10-12 by a dossier session (Claude Sonnet 5.5, M5) for code head 66204b0b5f (local, not pushed). Every receipt is a
+# Written 2026-10-12 by a dossier session (Claude Sonnet 5.5, M5), re-bound to code head 287ff09c45 (local, not pushed); commits after
+# that head only touch this dossier. Round 1 was judged at 66204b0b5f, round 2 at a719f65355, round 3 at 287ff09c45. Every receipt is a
 # command run in this session; ts is the clock read in the same shell call. Verbatim seat verdicts are in council-journal.jsonl.
 gear: 3
 brief_ref: evidence/brief.yml
@@ -20,10 +21,13 @@ lanes:
     seat: codex (built the first draft; the shipping session refined it; codex is NOT a grader here)
   - lane: docs-inventory-review-kimi
     role: review
-    seat: kimi-code/k3 (read-only, prompt-only, 1 round)
+    seat: "kimi-code/k3 (read-only, prompt-only, 3 rounds: 66204b0b5f REWORK, a719f65355 REWORK, 287ff09c45 PASS)"
   - lane: docs-inventory-review-agy
     role: review
-    seat: agy-gemini-3.1-pro (gemini-3.1-pro-high, --sandbox, prompt-only, same prompt, 1 round)
+    seat: "agy-gemini-3.1-pro (gemini-3.1-pro-high, --sandbox, prompt-only, 2 rounds: 66204b0b5f REWORK, 287ff09c45 PASS from reading)"
+  - lane: docs-inventory-cure
+    role: build
+    seat: Claude (the shipping session; cures a719f65355 and ade0e00fab with 287ff09c45, the lifecycle spec written before the third cure)
 seat_diversity: >-
   Builder: OpenAI (codex). Reviewers: Moonshot (kimi-code/k3) and Google (agy-gemini-3.1-pro); neither built anything here and
   codex does not grade its own diff.
@@ -39,8 +43,10 @@ what_changed: |
   docs_sync.py's generated pointer, docs_audit.py, docs_inventory_regen.sh, docs-guardian, immune-enforcement, merge-queue-watch, tests.yml,
   craft-instruments-daily and main-push-failure-watch path lists and the grandfathered list.
 proof: |
-  See receipts. The 10-case wrapper corpus, docs_sync.py --check and 113 pytest of the repointed consumers pass. The council found the
-  mechanics sound and the migration open on several points; kimi found a red test the diff leaves on the head (R9), reproduced here.
+  See receipts. At the code head 287ff09c45 the 15-case wrapper corpus passes (R15), the three new cases are red on a719f65355 (R16), and
+  round 3 is PASS from both kimi-code/k3 (suite re-run itself) and agy-gemini-3.1-pro (read only). Rounds 1 and 2 were REWORK and are
+  recorded as given: round 1 found sound mechanics and several open points (R7, R8, R9 reproduced the red blame test); round 2 found that
+  the round-1 cure opened an unbounded-orphan path on a launchd stop (R11), cured under a lifecycle spec (R12, D-regen-lifecycle-spec).
 bites:
   consumer: >-
     The Mini launchd job com.nuzantara.docs-inventory-refresh (03:00 and 15:00 WITA), the organism bridge that reads its sidecar
@@ -49,15 +55,15 @@ bites:
   observation: >-
     Owed to the shipping session after merge and the declared pair installed on Mini: after the next 03:00 or 15:00 slot the sidecar
     reads ok, latest under ~/.local/state/nuzantara/docs-derived-state points at a bundle named for the main sha, and
-    git worktree list on Mini shows no leftover worktree. Not yet made: this pack records the pre-push state at head 66204b0b5f.
+    git worktree list on Mini shows no leftover worktree. Not yet made: this pack records the local, pre-push state at code head 287ff09c45.
 ground:
   ts: "2026-10-12T07:07:23Z"
   siblings: >-
     Branch base origin/main c4b045752b is an ancestor; a merge-tree of origin/main with the head is clean. The Mini zero-sync organ
     keeps the local main that this wrapper reads.
 spend:
-  adversarial_rounds: 1
-  wall_clock_hours: 0.5
+  adversarial_rounds: 3
+  wall_clock_hours: 5.0
 decisions:
   - id: D-local-main-detached-worktree
     decision: >-
@@ -70,6 +76,12 @@ decisions:
   - id: D-retire-artifact-consumers
     decision: >-
       Readers move from the GitHub artifact to the Mini bundle with docs_sync.py --json as the off-Mini fallback.
+  - id: D-regen-lifecycle-spec
+    decision: >-
+      Round 2 REWORKed the round-1 cure (a719f65355) because it was itself wrong, so under the fix-of-a-fix rule (depth 1 stops, the surface
+      is under-specified) the process lifecycle was specified BEFORE the third cure: regen-lifecycle-spec.md fixes rows L1-L6 (normal exit,
+      bound, group-signalled stop, main-only stop, fork-to-setpgrp race, bound validation) and the residual R1 (a direct SIGKILL of the
+      helper). The cure ade0e00fab implements the spec row by row, and each of the three new cases pins a row.
 receipts:
   - claim: "R1 — floor 3 via the hot-zone path terms: the 33 changed files compute 3."
     cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <git diff origin/main...HEAD --name-only>
@@ -131,6 +143,42 @@ receipts:
     exit: 0
     ts: "2026-10-12T07:19:00Z"
     seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R11 — council round 2 on head a719f65355 (the cure for round 1), kimi-code/k3: REWORK. One DEFECT: SIGTERM to the wrapper regresses into an unbounded orphan (the perl helper had no TERM handler, bash defers the TERM trap while a foreground child runs, the setpgrp'd regen group escaped both TERM and the later group KILL). NOTEs: fork-to-setpgrp race, unvalidated timeout (alarm 0), 142 collision, brittle blame-test precondition. Kimi verified clean: setpgrp child-side, rc mapping, no PID/PGID reuse during the kill, the start-of-run sweep, bash 3.2, ubuntu portability; suite 12/12 at that head and exactly the two then-new cases red on its parent."
+    cmd: "scripts/with_seat.sh kimi kimi -p <prompt> -m kimi-code/k3 < /dev/null"
+    result: "rc 0; VERDICT: REWORK; verbatim in council-journal.jsonl (row 3)"
+    exit: 0
+    ts: "2026-10-12T08:09:00Z"
+    seat: kimi-code/k3
+  - claim: "R12 — the lifecycle spec exists and was written before the third cure: regen-lifecycle-spec.md in this dossier, rows L1-L6 and residual R1."
+    cmd: "wc -l <dossier>/regen-lifecycle-spec.md; git log --format=%h\ %s -3 (the spec predates ade0e00fab in the session; the cure message cites the rows)"
+    result: "spec present in the dossier; implemented by ade0e00fab (perl helper handles ALRM/TERM/INT/HUP with a group kill; wrapper waits in the background with on_signal forwarding; bound validation; executor path filters gain the two retired workflow paths) and 287ff09c45 (SC2034 test fix)"
+    exit: 0
+    ts: "2026-10-12T11:30:00Z"
+    seat: Claude (the shipping session)
+  - claim: "R13 — council round 3 on head 287ff09c45, kimi-code/k3: PASS. Every spec row L1-L6 and R1 holds with empirical evidence (probes of rc mapping 143/130/129, a starved-child race 5/5, a second TERM during the grace sleep bounded with no re-entry, bash 3.2 and ubuntu portability); no DEFECT; five NOTEs recorded under residuals."
+    cmd: "scripts/with_seat.sh kimi kimi -p <prompt> -m kimi-code/k3 < /dev/null"
+    result: "rc 0; VERDICT: PASS; verbatim in council-journal.jsonl (row 4)"
+    exit: 0
+    ts: "2026-10-12T11:40:00Z"
+    seat: kimi-code/k3
+  - claim: "R14 — council round 3 on head 287ff09c45, agy-gemini-3.1-pro: PASS, judged from reading. The first headless attempt produced no output (it could not grant a command tool permission), so it was re-run with the code inlined in the prompt; agy did not run the suite. One NOTE (fork-to-assignment window) recorded under residuals."
+    cmd: "scripts/with_seat.sh agy agy --sandbox --model gemini-3.1-pro-high --print-timeout 900s -p <prompt, code inlined> < /dev/null"
+    result: "rc 0; VERDICT: PASS; verbatim in council-journal.jsonl (row 5)"
+    exit: 0
+    ts: "2026-10-12T11:40:00Z"
+    seat: agy-gemini-3.1-pro
+  - claim: "R15 — the builder's wrapper corpus at the code head: 15 cases, including the group-signalled stop, the main-signalled stop and the bound validation. shellcheck -S warning is clean on the wrapper and the test; actionlint and prettier are clean on docs-inventory-organ-tests.yml."
+    cmd: bash scripts/tests/test_mini_docs_inventory_wrapper.sh; shellcheck -S warning <wrapper> <test>; actionlint and prettier --check on .github/workflows/docs-inventory-organ-tests.yml
+    result: "passed 15, failed 0; shellcheck 0; actionlint and prettier clean"
+    exit: 0
+    ts: "2026-10-12T11:20:00Z"
+    seat: Claude (the shipping session)
+  - claim: "R16 — guilt run: with the wrapper swapped back to a719f65355 (cp in, cp out) the same corpus goes red on exactly the three new cases, so they are not vacuous. Kimi reproduced the same three failures in a throwaway clone (R13)."
+    cmd: "cp <wrapper at a719f65355> <wrapper>; bash scripts/tests/test_mini_docs_inventory_wrapper.sh; cp <wrapper at head> <wrapper>"
+    result: "passed 12, failed 3 (group-signalled stop: child alive rc=143 1s; main-signalled stop: child alive rc=143 30s; bound validation)"
+    exit: 1
+    ts: "2026-10-12T11:15:00Z"
+    seat: Claude (the shipping session)
 dissent:
   - seat: kimi-code/k3 (DEFECT 8)
     objection: >-
@@ -139,25 +187,26 @@ dissent:
       asserting retired wording."
     status: CONFIRMED
     disposition: >-
-      OPEN, not cured: this session may not edit code. R9 reproduces a failing test on the head. This is the finding most likely to
-      turn the first CI run red; the shipping session should change the assertion to the new pointer wording (or the pointer) before pushing.
+      CURED in a719f65355 (the blame test now reads the new pointer wording); R9 reproduced the red test on 66204b0b5f, and round 2 verified
+      the blame suite green at a719f65355 (37 passed). Its brittle precondition stays as an accepted NOTE (see the round 2 NOTE entry).
   - seat: kimi-code/k3 (DEFECT 4) and agy-gemini-3.1-pro (BLOCKER 1)
     objection: >-
       wrapper :155-156, agy: "When the SIGALRM fires, the bash process is killed, but it does not kill its children (the actual Python
       scripts executing the regen). The timeout is logged, but the heavy workloads leak into the background and run indefinitely."
     status: CONFIRMED
     disposition: >-
-      OPEN, residual. The mechanism was reproduced in the fly-cost-guard dossier of this session (an orphan outlives the alarm). Here the regen
-      output goes to a file, not a pipe, so the wrapper does not hang waiting for it (the fly case did); the cost is an orphan per
-      timed-out run and a lock released while it still runs. Cure: run the regen in its own process group and kill the group.
+      CURED in a719f65355 (the regen runs in its own process group and the bound kills the group) and re-cured in ade0e00fab after round 2
+      found the first cure left the TERM path unbounded. Pinned by "the bound kills the regen's whole process tree", green at the head.
+      The mechanism was first reproduced in the fly-cost-guard dossier of this session.
   - seat: kimi-code/k3 (DEFECT 1b) and agy-gemini-3.1-pro (DEFECT 5)
     objection: >-
       A SIGKILL, or a TERM that is deferred until the foreground regen returns and then met by launchd's 60 s ExitTimeOut, bypasses
       the EXIT trap and leaves the registered worktree, run.XXXXXX and .latest.$$ behind; later runs prune only their own worktree.
     status: PLAUSIBLE
     disposition: >-
-      OPEN, residual. Read from the code (:60-91, :139-142), not reproduced: both seats agree and the lock and an unpublished bundle heal
-      (dead-pid reclaim, 30-day rotation). Cure: a start-of-run sweep of old run.* directories and git worktree prune, and a longer ExitTimeOut.
+      CURED in a719f65355 (a start-of-run sweep under the lock removes old run.* directories and prunes worktrees) and in ade0e00fab (the
+      TERM is forwarded and reaped at once, so launchd's ExitTimeOut 60 is not reached). Pinned by the stale-sweep case; round 2 and round 3
+      probed the sweep. A direct SIGKILL of the helper alone remains the documented spec residual R1.
   - seat: kimi-code/k3 (DEFECT 2) and agy-gemini-3.1-pro (DEFECT 4)
     objection: >-
       wrapper :142 builds from the local refs/heads/main with no fetch; if the zero-sync organ stalls, the organ writes a green heartbeat
@@ -190,14 +239,48 @@ dissent:
       7200 s, write a warning and never reclaim; the stuck process is never killed.
     status: PLAUSIBLE
     disposition: >-
-      OPEN, residual: the heartbeat reads warning, not green, after two hours; kimi rates it a NOTE. Cure: bound the pre-regen git steps too.
+      OPEN, residual and accepted: the heartbeat reads warning, not green, after two hours; kimi rates it a NOTE. Cure if it ever bites: bound the pre-regen git steps too.
   - seat: kimi-code/k3 (DEFECT 8b)
     objection: >-
       docs-inventory-organ-tests.yml filters omit the retired workflow paths, so a PR that resurrects them never triggers the architecture pin
       (test :184-190), and omit scripts/tg_notify.py.
     status: PLAUSIBLE
     disposition: >-
-      OPEN, residual: add the two retired paths and the gateway to the filters.
+      CLOSED in ade0e00fab for the two retired workflow paths (docs-inventory-refresh.yml and docs-inventory-refresh-liveness.yml were added to
+      the executor path filters, with an architecture-pin check that fails if a retired workflow reappears). scripts/tg_notify.py is
+      deliberately NOT added: the suite stubs the gateway, so a gateway change would not exercise anything in this executor.
+  - seat: kimi-code/k3 (round 2 DEFECT)
+    objection: >-
+      wrapper :167-173 at a719f65355, kimi: "SIGTERM-to-wrapper regresses into an unbounded orphan ... the perl helper has no TERM handler
+      and dies instantly, taking the alarm with it; the setpgrp'd regen group escapes both TERM and the later group-KILL." Pre-cure the regen
+      sat in the wrapper's group and died with launchd's group kill; the cure opened a new orphan path on the routine launchd stop.
+    status: CONFIRMED
+    disposition: >-
+      CURED in ade0e00fab: the helper handles ALRM/TERM/INT/HUP with a group kill (TERM, 2 s, KILL, reap, exit 142/143/130/129) and the wrapper
+      waits in the background with on_signal forwarding TERM to the helper, so the trap fires at once. Verified by round 3 (kimi, with probes and
+      a guilt run; agy from reading) and pinned by the two signalled-stop cases, red on a719f65355 (R16).
+  - seat: kimi-code/k3 (round 2 NOTE, fork-to-setpgrp race)
+    objection: >-
+      If the alarm fires before the child's setpgrp, kill TERM -$pid is ESRCH and the TERM is silently lost.
+    status: CONFIRMED
+    disposition: >-
+      CURED in ade0e00fab: setpgrp is called on both sides (child and parent) and the stop path also signals the leader by pid; round 3 probed a
+      500 ms starved child 5/5 with no orphan (spec row L5).
+  - seat: kimi-code/k3 (round 2 NOTE, unvalidated timeout)
+    objection: >-
+      MINI_DOCS_INVENTORY_REGEN_TIMEOUT=0 or a non-number makes perl alarm 0, which silently disables the bound.
+    status: CONFIRMED
+    disposition: >-
+      CURED in ade0e00fab: a value that is empty, non-numeric or starts with 0 is logged and replaced by 1800 (spec row L6), pinned by the
+      bound-validation case.
+  - seat: kimi-code/k3 (round 2 NOTEs, 142 collision and blame-test brittleness)
+    objection: >-
+      A regen that exits 142 by itself reads as a timeout (the regen has no internal alarm, so about zero chance); the blame test pins doc
+      prose verbatim (the real guard is row_map == {}).
+    status: PLAUSIBLE
+    disposition: >-
+      ACCEPTED, unchanged. The 142 collision has no producer in the regen; the blame test was repointed to the new pointer wording in a719f65355
+      and the wider rewording is not this mandate.
 residuals:
   - "R7 NOTE (kimi): the production Darwin branch mv -fh is never exercised on the ubuntu executor (only the GNU mv -fT branch is); the regen bound and 142 mapping are identical on Linux."
   - "R7 NOTE (kimi): rotation failures are silent (rm -rf in a pipe-fed subshell, rc unchecked) and still finish ok; the bundle name has minute resolution, so two runs in one minute fail on the output dir."
@@ -206,5 +289,11 @@ residuals:
   - "R7 NOTE (kimi): the pointer ~/.local/state/... exists only on Mini; the text does not say so, docs_sync.py --json is the off-Mini fallback."
   - "docs/specs/2026-09-27-evidence-pack-fixed-point.md:447 still names the deleted liveness script (a dated spec) and docs/AUTOMATIONS_REFERENCE.md:67-68 still list the retired workflows until the generated file refreshes from live state."
   - "The real tg_notify.py is stubbed in the corpus, so its behaviour under Mini's python 3.9 is unproven by the executor."
-  - "Both seats REWORKed the head; the verdicts are recorded as given, not as PASS. R9 needs two distinct seats from the roster and is met by kimi plus agy; codex built the first draft and was not asked to grade it."
+  - "R13 NOTE (kimi, accepted): REGEN_PID micro-race — a TERM between wait returning and REGEN_PID being cleared (two adjacent statements, wrapper :203-204) would signal a reaped pid; a same-uid process recycled onto that pid in the window could be hit."
+  - "R13 NOTE (kimi, accepted): a double TERM (launchd group signal plus the wrapper's forward) interrupts the helper's 2 s sleep, so KILL lands at about 0.5 s instead of 2 s; only an already-torn-down run is affected and the unpublished bundle is discarded either way."
+  - "R13 NOTE (kimi, accepted): the INT and HUP paths (130, 129) are probe-verified but unpinned by the suite, whose signal case exercises TERM only."
+  - "R13 NOTE (kimi, accepted): the stop-time assertion ELAPSED <= 10 s has a flake margin on a heavily loaded runner (about 3 s locally, 20 s would still be 3x under ExitTimeOut 60)."
+  - "R13 NOTE (kimi, accepted): a bound with a leading zero such as 010 matches the 0* guard and falls back to 1800; the direction is safe and the fallback is logged."
+  - "R14 NOTE (agy, accepted): sub-millisecond fork-to-assignment window between backgrounding the helper and REGEN_PID=$!; a main-only signal landing there would skip the forward, and the launchd group stop reaches the helper directly anyway (spec row L3)."
+  - "Rounds 1 and 2 were REWORK and round 3 is PASS from both seats; the verdicts are recorded as given. Round 1 had two seats on 66204b0b5f; round 2 only kimi, on a719f65355; round 3 two seats on 287ff09c45 (agy from reading only). Two distinct roster seats (kimi plus agy) judged the final head; codex built the first draft and was not asked to grade it."
 appetite_exceeded: false
