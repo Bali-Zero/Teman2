@@ -1,0 +1,75 @@
+{
+  "_comment": "Placeholder rows the census serves through Playwright route interception (section 8.4 of the R19 wrapper contract). Public KBLI code numbers, invented text, no client data.",
+  "search": [
+    {
+      "code": "56101",
+      "title": "Restaurant",
+      "description": "Census fixture row: a verified PMA verdict.",
+      "score": 0.92,
+      "risk_category": "Low",
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_cap_special": false,
+      "pma_cap_verified": true,
+      "pma_verification_status": "located",
+      "pma_official_basis": "Census fixture basis",
+      "pma_source_vintage": "2025"
+    },
+    {
+      "code": "55130",
+      "title": "Villa",
+      "description": "Census fixture row: an unverified PMA verdict.",
+      "score": 0.81,
+      "risk_category": "Medium Low",
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_cap_special": false,
+      "pma_cap_verified": false,
+      "pma_verification_status": "declared_gap",
+      "pma_official_basis": null,
+      "pma_source_vintage": null
+    }
+  ],
+  "inspect": {
+    "title": "Census fixture code",
+    "description": "Census fixture detail: invented text for the opened-surface walk.",
+    "pma_status": "TERBUKA",
+    "pma_max_asing": 100,
+    "pma_cap_special": false,
+    "pma_cap_verified": true,
+    "pma_verification_status": "located",
+    "pma_official_basis": "Census fixture basis",
+    "pma_source_vintage": "2025",
+    "licensing_status": "VERIFIED",
+    "sector": "Census fixture sector",
+    "risk_profile": "Menengah Rendah",
+    "licenses": [
+      {
+        "type": "NIB",
+        "scale": ["Mikro", "Kecil"],
+        "risk_level": "Menengah Rendah",
+        "sla": "1 day",
+        "requirements": ["Census fixture requirement"]
+      }
+    ],
+    "related_codes": ["55130"],
+    "related_requirements": { "documents": ["Census fixture document"] },
+    "intel": {
+      "whatItMeans": "Census fixture: what it means.",
+      "whatYouNeed": "Census fixture: what you need.",
+      "whatChanged": "Census fixture: what changed.",
+      "baliContext": "Census fixture: Bali context.",
+      "zantaraOpener": "Census fixture opener."
+    }
+  },
+  "messages": [
+    { "role": "user", "content": "census fixture question" },
+    {
+      "role": "ai",
+      "content": "Census fixture answer.",
+      "detected_kbli": ["56101", "55130"],
+      "suggested_queries": ["census fixture follow-up"],
+      "results": "search"
+    }
+  ]
+}

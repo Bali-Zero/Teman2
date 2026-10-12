@@ -21,6 +21,7 @@ import argparse
 import asyncio
 import logging
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,9 @@ from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+from backend.services.crm.drive_registration_visibility import drive_default_client_visible
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -536,8 +540,8 @@ async def process_client(
                         """INSERT INTO documents (
                             client_id, document_type, document_category,
                             file_name, file_id, google_drive_file_url,
-                            storage_type, uploaded_by, status, created_at
-                        ) VALUES ($1, $2, $3, $4, $5, $6, 'google_drive', 'bulk_population', 'active', NOW())
+                            storage_type, uploaded_by, status, created_at, client_visible
+                        ) VALUES ($1, $2, $3, $4, $5, $6, 'google_drive', 'bulk_population', 'active', NOW(), $7)
                         ON CONFLICT DO NOTHING""",
                         cid,
                         doc_type,
@@ -545,6 +549,7 @@ async def process_client(
                         f["name"],
                         file_id,
                         url,
+                        drive_default_client_visible(f["name"]),
                     )
                 result["personal_docs"] += 1
 
@@ -576,8 +581,8 @@ async def process_client(
                 """INSERT INTO documents (
                     client_id, document_type, document_category,
                     file_name, file_id, google_drive_file_url,
-                    storage_type, uploaded_by, status, created_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, 'google_drive', 'bulk_population', 'active', NOW())
+                    storage_type, uploaded_by, status, created_at, client_visible
+                ) VALUES ($1, $2, $3, $4, $5, $6, 'google_drive', 'bulk_population', 'active', NOW(), $7)
                 ON CONFLICT DO NOTHING""",
                 cid,
                 doc_type,
@@ -585,6 +590,7 @@ async def process_client(
                 fname,
                 file_id,
                 url,
+                drive_default_client_visible(fname),
             )
         result["personal_docs"] += 1
 
@@ -653,8 +659,8 @@ async def ingest_personal_docs(
                 """INSERT INTO documents (
                     client_id, document_type, document_category,
                     file_name, file_id, google_drive_file_url,
-                    storage_type, uploaded_by, status, created_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, 'google_drive', 'bulk_population', 'active', NOW())
+                    storage_type, uploaded_by, status, created_at, client_visible
+                ) VALUES ($1, $2, $3, $4, $5, $6, 'google_drive', 'bulk_population', 'active', NOW(), $7)
                 ON CONFLICT DO NOTHING""",
                 client_id,
                 doc_type,
@@ -662,6 +668,7 @@ async def ingest_personal_docs(
                 name,
                 file_id,
                 url,
+                drive_default_client_visible(name),
             )
         added += 1
 

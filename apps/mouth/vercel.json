@@ -8,7 +8,11 @@
     "deploymentEnabled": {
       "gh-readonly-queue/**": false,
       "gh-readonly-queue/*": false,
-      "agent/*/mouth/hourly-*": false
+      "agent/*/mouth/hourly-*": false,
+      "agent/**": false,
+      "agent/*": false,
+      "dependabot/**": false,
+      "dependabot/*": false
     }
   }
 }

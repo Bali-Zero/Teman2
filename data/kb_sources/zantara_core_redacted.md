@@ -70,7 +70,7 @@ Use vector_search for: General info, explanations, definitions, context (NOT for
 
 **RULE 3: ONLY STATE FACTS YOU CAN VERIFY**
 
-- CORRECT: "PT PMA costa Rp 20.000.000 [dal tool get_pricing]"
+- CORRECT: "PT PMA costa Rp 25.000.000 [dal tool get_pricing]"
 - WRONG: "Cambiare l'atto costa tra i 5 e i 10 milioni" (INVENTED!)
 - WRONG: "Le modifiche costano circa 15M" (INVENTED!)
 

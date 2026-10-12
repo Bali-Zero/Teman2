@@ -1,0 +1,83 @@
+gear: 2
+brief_ref: evidence/brief.yml
+pii_scan: clean
+lanes:
+  - lane: holiday-coverage-build
+    role: build
+    seat: Claude Sonnet 5.5 (implementer, worktree ops-visa-holiday-coverage-alert)
+  - lane: holiday-decree-ground-truth
+    role: ground_truth
+    seat: >-
+      the committed decree table itself, read by the code under test (loaded years 2026 and 2027); no notebook, no memory.
+    nb: apps/backend-rag/backend/data/id_holidays.py (DECREED_YEARS, HOLIDAY_DATES)
+    query_hash: "b5b47924a007fa637b80b7232173e93bdcfbeb1e838bdccd68d9dbb722afa4ac" # pragma: allowlist secret
+bites:
+  consumer: The launchd tick com.nuzantara.visa-freshness-sentinel on Pro (every 6 h, scripts/visa_freshness_sentinel.py).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_holiday_coverage.py
+  expect: "contains:holiday coverage observed: OK 100d, WARN 30d, STALE 0d"
+receipts:
+  - claim: "Sentinel suites: the coverage lane (18 tests, incl. the real-gateway owner path and the WITA day) and the existing sentinel suite pass together."
+    cmd: python3 -m pytest scripts/tests/test_visa_holiday_coverage_lane.py scripts/tests/test_visa_freshness_sentinel.py
+    result: "80 passed in 10.06s"
+    exit: 0
+    ts: "2026-10-10T04:22:51Z"
+    seat: Claude Sonnet 5.5 on M5
+  - claim: "Backend: the coverage helper tests (guilt and innocence with a fake loaded-years set) and the existing processing_times suite pass."
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_holiday_coverage.py backend/tests/services/visa_engine/test_processing_times.py"
+    result: "44 passed in 20.38s"
+    exit: 0
+    ts: "2026-10-10T04:23:02Z"
+    seat: Claude Sonnet 5.5 on M5
+  - claim: "Gateway suites around the one-line OWNER_FAMILIES change (tg_gateway, identity ladder, env parse, agent-job gateway, verdict consumers and callers) stay green."
+    cmd: python3 -m pytest scripts/tests/test_tg_gateway.py scripts/tests/test_tg_notify_identity_ladder.py scripts/tests/test_tg_notify_env_parse.py scripts/tests/test_agent_job_telegram_gateway.py scripts/tests/test_tg_gateway_verdict_consumers.py scripts/tests/test_gateway_callers_read_the_verdict.py
+    result: "107 passed in 9.95s"
+    exit: 0
+    ts: "2026-10-10T04:23:29Z"
+    seat: Claude Sonnet 5.5 on M5
+  - claim: "Mutation: with visa-holiday-coverage removed from the default OWNER_FAMILIES, the owner-family twin and the real-gateway test fail (2 failed, 16 passed); restored, 18 passed."
+    cmd: "sed the family out of scripts/tg_notify.py, python3 -m pytest scripts/tests/test_visa_holiday_coverage_lane.py, restore from a cp backup"
+    result: "2 failed, 16 passed with the mutation; 18 passed after the restore"
+    exit: 0
+    ts: "2026-10-10T04:22:51Z"
+    seat: Claude Sonnet 5.5 on M5
+  - claim: "Bites observation: today's real data puts the first gap in November 2027 (OK) and the clock moved around it turns the tiers OK, WARN, STALE."
+    cmd: python3 scripts/ci/observe_visa_holiday_coverage.py
+    result: "first line: HOLIDAY_COVERAGE OK first_gap=2027-11-19 days_left=405 product=E23 year_to_load=2028; last line: holiday coverage observed: OK 100d, WARN 30d, STALE 0d (WARN and STALE would send)"
+    exit: 0
+    ts: "2026-10-10T04:23:40Z"
+    seat: Claude Sonnet 5.5 on M5
+  - claim: "The sentinel runs the lane under Pro's bare interpreter and an empty environment (no venv, no settings): the dry-run outcome line."
+    cmd: env -i PATH=/usr/bin:/bin /usr/bin/python3 scripts/visa_freshness_sentinel.py --coverage-only --dry-run
+    result: "HOLIDAY_COVERAGE OK first_gap=2027-11-19 days_left=405 product=E23 year_to_load=2028 alert=ok-resets-ladder"
+    exit: 0
+    ts: "2026-10-10T04:23:41Z"
+    seat: Claude Sonnet 5.5 on M5
+dissent:
+  - seat: Claude Sonnet 5.5 (builder self-review, not an independent reviewer)
+    objection: >-
+      WARN and STALE are p0 and re-alert daily for as long as the 2028 decree is missing; and the lane does not change the sentinel's exit
+      code, so the Pro heartbeat stays ok while the alert is open.
+    status: PLAUSIBLE
+    disposition: >-
+      Both are by design: a daily nag is the point, and a non-zero exit would put a standing false red on the heartbeat that the healer
+      kickstarts (the comment on ANOMALY in main() records that trap). The board row (HIGH, job visa-holiday-coverage:persistent) is the
+      standing surface.
+  - seat: fresh on-disk gate (REWORK-BUILD, H2)
+    objection: >-
+      visa-holiday-coverage was not in the gateway's OWNER_FAMILIES, so with act-routing on Pro's WARN and STALE went to the board as
+      gateway_routed NORMAL and answered spooled, after which the sentinel pinned route=board: the daily p0 re-alert was false in production.
+    status: CONFIRMED
+    disposition: >-
+      Cured: the family is in the default OWNER_FAMILIES beside visa-freshness; a twin of the visa-freshness owner test calls the real
+      _owner_reserved on a real coverage key, and a test drives three daily cycles through the REAL tg_notify.py subprocess (private spool
+      and board, dry-run) and asserts sent each day with no gateway board row; a guilt twin with a foreign owner list reproduces spooled.
+      Grep: nothing else keys off OWNER_FAMILIES (only tg_notify.py itself and test fixtures that set TG_OWNER_FAMILIES).
+  - seat: fresh on-disk gate (REWORK-BUILD, M1)
+    objection: The result page anchors on the WITA day, the probe on the UTC day.
+    status: CONFIRMED
+    disposition: >-
+      Cured: the probe is given the Asia/Makassar (UTC+8) date; tests pin the argument at 16:30Z and 15:59Z and a real-probe test reads STALE
+      at 16:30Z on D-1 and WARN 31 minutes earlier. L2 (two docstrings) cured as well.
+owed:
+  - L1, L3 and L4 of the gate's findings are left for a later PR, by the lead's decision.

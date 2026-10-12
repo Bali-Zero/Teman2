@@ -140,7 +140,9 @@ describe("KBLI whatChanged data-coherence guardian", () => {
       ),
     ).toEqual({
       noBpsButClaimsAncestry: 0,
-      namedCodeOutsideBps: 14,
+      // 2026-10-11 D-1: 14 -> 12. 01309 and 08996 no longer name an
+      // auto-matched KBLI 2020 code (02119, 07309) outside their BPS ancestors.
+      namedCodeOutsideBps: 12,
     });
     expect(
       contradictionCounts(

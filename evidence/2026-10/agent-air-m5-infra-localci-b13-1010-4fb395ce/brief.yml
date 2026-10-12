@@ -1,0 +1,33 @@
+task_id: localci-b13-1010
+mission: LOCALCI-SOVEREIGN (phase B, step B13)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  A change to the prune organ's cache cap: which docker flag it calls and when it reports failure. No hot-zone path, workflow, plist or
+  wrapper change; image removal rules, floors and VM discard are untouched; the lint floor is 2.
+l_level: L2
+gate_class: opus
+objective: >-
+  The builder prune passes the flag that still means "keep at most this much cache", and fails when buildx says the flag it was
+  given is deprecated or changed. buildx 0.34 turned --keep-storage into a reserved floor (rc 0, Total: 0B against a 22.83 GB cache
+  on Pro). The flag is read once per prune run from `docker builder prune --help` (--max-used-space, else --keep-storage on an old
+  buildx, else --max-used-space); the journal carries flag, freed_gb (the sum of buildx's Total: lines) and du_gb (docker buildx du's
+  summary) as measurements. No size rule judges the cache: BuildKit's cap accounting is opaque (live, 10.29 GB stayed above a 4 GB cap).
+constraints:
+  - Image removal rules, floors and VM discard stay untouched.
+  - Only a deprecation notice that names the flag we passed, on one line, fails the prune; freed_gb and du_gb never do, and an unread du is null.
+acceptance:
+  - text: A buildx whose help lists --max-used-space SHALL be pruned with it, and an old buildx whose help lists only --keep-storage with that; an unreadable help SHALL use --max-used-space.
+    probe: "test_prune.py::test_b13_a_buildx_that_lists_max_used_space_is_pruned_with_it_and_the_line_says_so"
+  - text: The help SHALL be read once per prune run.
+    probe: "test_prune.py::test_b13_the_help_is_read_once_per_prune_run_not_per_call"
+  - text: "buildx's Total: line SHALL be journalled as freed_gb (GB, MB, kB, 0B), null when absent."
+    probe: "test_prune.py::test_b13_the_total_line_is_parsed_into_gb_and_an_absent_one_is_none"
+  - text: A notice on one line that names the flag we passed and says deprecated or has been changed to SHALL set deprecated_flag and name builder_prune in failed; another flag's notice or a clean output SHALL NOT.
+    probe: "test_prune.py::test_b13_the_exact_pro_deprecation_line_naming_our_flag_fails_the_prune"
+  - text: docker buildx du's summary SHALL be journalled as du_gb (shared, private, reclaimable, total), null when unreadable, and SHALL never fail the prune.
+    probe: "test_prune.py::test_b13_the_journal_carries_the_du_after_the_last_call_and_never_fails_on_it"
+consumer_map:
+  - scripts/localci/merger.py prune (the merger tick on Pro) — the builder_prune object of the prune line in the journal, and the organ's failed list.
+pii_scan: clean
+pii_scan_note: Prune code, tests against a fake docker, mutant rules and documentation. No client data was read or written.

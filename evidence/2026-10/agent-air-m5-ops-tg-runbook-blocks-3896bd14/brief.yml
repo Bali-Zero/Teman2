@@ -1,0 +1,41 @@
+task_id: ops-tg-runbook-blocks
+mission: seat-utilization-campaign-2026-10-05
+colour: BLUE
+gear: 3
+gear_reason: >-
+  Computed floor 3, source path: the diff edits .github/workflows/tg-gateway.yml, a hot zone (measured with
+  evidence_pack_lint.py --print-floor / --print-floor-source on the merge-base change set: 3 files, +206/-22
+  before the council's cures).
+l_level: L2
+gate_class: opus
+objective: >-
+  Every fenced shell block of docs/runbooks/telegram-token-rotation.md runs as written when the owner pastes it
+  into the owner's real shells (interactive zsh with interactivecomments off, bracketed or raw paste; bash 3.2, raw
+  paste), and a test in CI fails when a block stops doing so. Cures gate-7990's BLOCKER on step 6 (Fly) and the
+  same cause in steps 3, 4, 5, 7 and 8.
+constraints:
+  - Step 6 is byte-identical to the form gate-7990 verified on a pty (rows C1-C8 of its receipt).
+  - No real token, secrets file, fly or gh secret call anywhere in the test or in its verification; fakes are built by concatenation.
+  - The test runs in the existing tg-gateway job; no new workflow, no required-context change.
+  - No paid per-token API is used.
+acceptance:
+  - text: WHEN a runbook block contains `#`, `exit`, a `read` without -s, or spans lines without being one { ...; } compound, test_runbook_blocks.sh SHALL exit 1 naming the block.
+    probe: bash scripts/ops/test_runbook_blocks.sh <mutant runbook> (mutants m1 inline hash, m2 exit, m4 no braces, m5 read without -s)
+  - text: WHEN step 6 receives a token, the fly shim SHALL receive exactly TELEGRAM_BOT_TOKEN=<fake> once on stdin, and never be called on empty input, in zsh and bash, whole and raw paste.
+    probe: bash scripts/ops/test_runbook_blocks.sh (head) and the m3 read -p mutant
+  - text: WHEN a block is pasted raw (line by line), its shims SHALL record exactly what the whole-paste run records, so no `read` or child swallows a pasted line.
+    probe: bash scripts/ops/test_runbook_blocks.sh <origin/main runbook> exits 1 with raw-paste failures in steps 3, 4, 5, 6, 7 and 8
+  - text: WHEN a pull request touches the runbook or either shell test, the tg-gateway job SHALL run both shell tests with a real zsh.
+    probe: the gateway (anti-regrowth lint) check run on this pull request, step "Telegram rotation runbook blocks and rotation script"
+assumptions:
+  - text: A pipe-fed `zsh -o nointeractivecomments -i -s` reads `#` as a word and lets `read` consume the next stdin line, like a raw paste on a pty.
+    status: verified
+    note: Measured on M5 (`a # b` printed; `read` swallowed the next line), and every runbook block re-run on a real pty with script(1) in both shells.
+    probe: the pty harness in the Dux scratch (36/36 clean on head; origin/main reproduces gate-7990's garbage import)
+consumer_map:
+  - The owner, pasting steps 3-6 on Pro, Mini, GitHub and Fly after BotFather issues the new token.
+  - A Claude session running steps 7-8 after the token is live.
+  - .github/workflows/tg-gateway.yml job gateway runs scripts/ops/test_runbook_blocks.sh and scripts/ops/test_rotate_telegram_token.sh.
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2

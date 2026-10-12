@@ -80,15 +80,15 @@ def redact(text: str) -> str:
     """Return `text` with everything from the earliest credential anchor cut.
 
     Never raises — a regex engine error (should not happen with these fixed
-    patterns) falls back to returning the input unchanged rather than
-    crashing a fail-open logging hook.
+    patterns) falls back to cutting at position 0 and returning "<REDACTED>"
+    rather than crashing a fail-open logging hook.
     """
     if not text:
         return text
     try:
         starts = [m.start() for m in (p.search(text) for p in _COMPILED) if m]
     except Exception:
-        return text
+        return "<REDACTED>"
     if starts:
         return text[: min(starts)] + "<REDACTED>"
     return text

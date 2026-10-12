@@ -1,0 +1,136 @@
+# Gear-3 evidence pack — mata-garuda-tests, the first per-PR executor of apps/mata-garuda/tests.
+# Written by the imperator session (Claude Opus 5.5, M5), verifier and shipper. The workflow and the test cures are a
+# Claude Sonnet builder session's (build-mg-ci). Every receipt is a command run on 2026-10-09; scratch under
+# ~/.agent/campaign-20261005/work/build-mg-ci/ and work/imperator-mgci/ (not committed).
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+ruling: >-
+  Owner 2026-10-09: "fai tutto tu e decidi tu al meglio". Campaign rule after #8079: at least gear 2 so harness-floor
+  holds for the independent final gate; the new workflow file floors this PR at 3.
+mission: >-
+  Give apps/mata-garuda/tests (about 1150 tests, never run by CI) a per-PR executor that can go red, and make the suite
+  run hermetically on the runner: no real NotebookLM CLI call, no real HTTP or DNS outside the suite's live switch.
+lanes:
+  - lane: build
+    role: build
+    seat: >-
+      claude-sonnet-5 (build-mg-ci) wrote the workflow, measured the install set and the repo files the suite reads (a
+      Python audit hook on open and subprocess.Popen events), and made the three rounds of test-side cures.
+  - lane: council
+    role: review
+    seat: >-
+      Sealed council: the Dux position was written to COUNCIL-BRIEF.md at 10:25:01Z before any seat was asked; Codex O2
+      (codex-gpt-5.6-sol roster seat) and Kimi k3 answered on a scratch export of head e0730ac5f9.
+seat_diversity: >-
+  Three families: Anthropic (builder, shipper), OpenAI (Codex O2), Moonshot (Kimi k3). tp1-qwen3.8-max is 429 until
+  2026-10-11T16:00Z. The final gate is a fresh Claude session outside this chain.
+pii_scan: clean
+bites:
+  consumer: >-
+    The mata-garuda-tests job itself, on every PR and main push that touches the app, cell-core or a repo file the suite
+    reads.
+  observation: >-
+    On this PR's head the job runs the suite on ubuntu with no continue-on-error: 1147 passed and 27 skipped on
+    e0730ac5f9 (run 37917212255); on the final head the skip count is the base count plus five and nothing fails.
+decisions:
+  - >-
+    Install only what the suite imports: cell-core editable (imported, undeclared), the dev extra, httpx, tenacity, numpy,
+    scikit-learn, pyyaml. torch and transformers stay out: the NER tests inject a fake transformers module and the
+    setup_team import test fails if torch loads.
+  - >-
+    The paths filter is measured, not guessed: an audit hook recorded every repo file opened outside the app during a full
+    run; exists-only checks and lazily loaded helpers were added from a code read and are named as such.
+  - >-
+    Network tests are gated with the suite's own switch, not rewritten: their assertions stay as they were for live runs;
+    mocking them properly is a follow-up.
+  - >-
+    Re-cut after the final gate's BLOCK (gate-8162, B1): the new workflow was not in main-push-failure-watch.yml's
+    workflows list, so watcher-coverage went red and a red of the job on main would have raised no alert. Listed now.
+    The new job is not a required context: a red on main blocks nothing, the watcher is what makes it heard.
+  - >-
+    Journal note: both council entries carry the append stamp 10:32:54Z; the Kimi entry's "10:4xZ" end time was an
+    estimate written before the stamp and is wrong. Both seats had answered before 10:32:54Z.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: The paths filter missed repo files the tests consume (the invalidation sweep script, the gap consumer plist).
+    status: CONFIRMED
+    resolution: >-
+      Cured. Measured with an audit hook over a full run; the filter now lists every repo file opened outside the app plus
+      three found by a code read (codex_seat.py, host-pins.json, the docs schema).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      test_sprint4's check_regulation_source and scrape_regulations still fetch for real, and scrape accepts [ERROR], so it
+      can pass with fetching broken; the invalid-domain test uses real DNS.
+    status: CONFIRMED
+    resolution: >-
+      Cured by the live switch: all five network tests of the file run only with MATA_GARUDA_LIVE_ENDPOINTS=1. Their
+      vacuous assertions are left for a follow-up that mocks them.
+  - seat: codex-gpt-5.6-sol
+    objection: The NER tests mock transformers, so they do not prove compatibility with the real model; deps are unpinned.
+    status: PLAUSIBLE
+    resolution: >-
+      Declared. The suite tests the extractor's logic; a real-model run is a heavyweight job of its own. Unpinned deps
+      match the app's own pyproject ranges; a lockfile would be a separate concern.
+  - seat: kimi-code/k3
+    objection: >-
+      Paths holes (the matagaruda plists, the invalidation sweep script, docs/mata-garuda) and four test_sprint4 network
+      tests still ungated, two of them passing even with curl missing.
+    status: CONFIRMED
+    resolution: Cured as above (five tests gated; paths measured).
+  - seat: kimi-code/k3
+    objection: >-
+      test_t11_concurrent_reads is green on Linux and red 30/30 on macOS loopback (listen backlog 5); the new gate will
+      not show Mac developers the divergence.
+    status: CONFIRMED
+    resolution: >-
+      Declared, not cured here. The live Mini KG API served 200/200 to 10 concurrent clients over Tailscale (measured), so
+      the backlog bites only on loopback bursts; raising it is a separate production PR.
+receipts:
+  - claim: "R1 — the suite as the workflow runs it, on macOS py3.11.15 in the builder's scratch venv: only the known macOS-loopback test fails."
+    cmd: "cd apps/mata-garuda && python -m pytest -p no:cacheprovider -q"
+    result: "1 failed (tests/api/test_kg_query.py::test_t11_concurrent_reads, ConnectionResetError), 1142 passed, 31 skipped"
+    exit: 1
+    ts: "2026-10-09T10:47:45Z"
+    seat: claude-opus-5.5 (imperator)
+  - claim: "R2 — no test reaches the real nlm CLI: the whole suite under a PATH whose nlm records each call leaves the record empty; the base module alone made 27 calls."
+    cmd: "PATH=<fakebin with a recording nlm>:$PATH python -m pytest -p no:cacheprovider -q  (base: the same on tests/test_idempotent_re_run.py at origin/main)"
+    result: "head suite 0 nlm calls; base module 27 calls, first 'notebook get uuid-00 --json'"
+    exit: 1
+    ts: "2026-10-09T10:48:03Z"
+    seat: claude-opus-5.5 (imperator)
+  - claim: "R3 — the job on ubuntu-latest, head e0730ac5f9 (before the third round), installs zsh and runs the suite green."
+    cmd: "gh run view 37917212255 --log"
+    result: "Setting up zsh (5.9-6ubuntu2); 1147 passed, 27 skipped in 41.34s"
+    exit: 0
+    ts: "2026-10-09T10:26:15Z"
+    seat: claude-opus-5.5 (imperator)
+  - claim: "R4 — the first Linux run, before the cures, named the three causes this PR fixes."
+    cmd: "gh run view 37915039800 --log-failed"
+    result: "9 failed, 1139 passed, 26 skipped: /bin/zsh missing (5), nlm missing (3 tests), peraturan.go.id fetch (1)"
+    exit: 0
+    ts: "2026-10-09T10:03:58Z"
+    seat: claude-opus-5.5 (imperator)
+  - claim: "R5 — the paths filter is measured: the repo files opened outside the app during a full run."
+    cmd: "python -c 'sys.addaudithook(<record open outside apps/mata-garuda and packages/cell-core, and subprocess.Popen>); pytest.main([...])'"
+    result: >-
+      opened: infra/launchagents/com.matagaruda.gap.consumer.plist, agent-library/config/redaction-rules.yaml,
+      scripts/_redact_pii.py, scripts/lib/yaml_strict.py, scripts/mata_garuda_invalidation_sweep.py,
+      scripts/pytest_guards/pytest_verbosity_guard.py; code read: scripts/lib/codex_seat.py, infra/launchagents/host-pins.json,
+      docs/mata-garuda/bridge-wr2-schema.md; Popen: plutil, curl, tail, redis-cli, zsh (tmp copy), the OSINT-Nexus python
+      (default path absent on M5 and the runner)
+    exit: 0
+    ts: "2026-10-09T10:30:25Z"
+    seat: claude-sonnet-5 (build-mg-ci)
+  - claim: "R6 — the workflow lints."
+    cmd: "actionlint .github/workflows/mata-garuda-tests.yml"
+    result: "actionlint-ok"
+    exit: 0
+    ts: "2026-10-09T10:49:13Z"
+    seat: claude-opus-5.5 (imperator)
+  - claim: "R7 — watcher-coverage: every live workflow, the new one included, is covered by main-push-failure-watch.yml."
+    cmd: "python3 scripts/check_watcher_coverage.py"
+    result: "all 131 live workflow(s) covered (before the cure: 1 violation, mata-garuda-tests not covered)"
+    exit: 0
+    ts: "2026-10-09T11:07:22Z"
+    seat: claude-opus-5.5 (imperator)

@@ -1,0 +1,95 @@
+task_id: localci-b11b-1009
+mission: LOCALCI-SOVEREIGN (phase D, step B11b)
+colour: BLUE
+gear: 1
+gear_reason: >-
+  A one-line selection change in the merger's replay (newest first), the tests and mutant rule that pin the order, and two
+  documentation paragraphs. No hot-zone path; the lint floor is 1 by size.
+l_level: L2
+gate_class: opus
+objective: >-
+  The replay judges the newest unreplayed first-parent merge first. The first live replay on Pro (2026-10-09T09:54:00Z, code
+  9d3def7cfebb) judged pr8015's merge commit feb9e84337 of 2026-10-07 with BASE 56c6f70d86 (its first parent, verified): 14 contexts
+  LOCAL_BLIND, overall BLOCKED, 22.3 s, because that BASE's runner executed no context. 81 more first-parent merges stood between it
+  and 86b151beec (2026-10-08T15:51Z), the first base on which a PR decision compared 12 contexts (18:25Z); the PR decisions before it
+  compared 0 to 9. Main took 31 merges on 10-07, 56 on 10-08 and 26 on 10-09 by 09:5xZ; the gate decides about one PR or replay an
+  hour. Oldest-first would spend days on replays that cannot count and build a deps image per old lockfile; newest-first replays a
+  current base and recipe, and the merges left behind are not owed (phase D counts compared merges).
+acceptance:
+  - text: Replays and PR decisions SHALL alternate, newest merge commit first, each merge commit replayed once.
+    probe: "test_replay.py::test_replays_and_pr_decisions_alternate_newest_merge_first_and_a_replayed_commit_is_not_asked_again"
+  - text: The replay SHALL still judge the merge commit with its first parent as the BASE, never the commit's own matrix.
+    probe: "test_replay.py::test_the_replay_judges_the_merge_commit_with_its_first_parent_as_the_base_never_the_commits_own_matrix"
+consumer_map:
+  - scripts/localci/merger.py tick on Pro (launchd com.balizero.localci-merger) — decision lines with replay true in decisions.jsonl, whose merge_commit is the newest unreplayed first-parent merge.
+pii_scan: clean
+pii_scan_note: Merger code, tests on synthetic git repos under tmp, a mutant rule and two documentation paragraphs. No client data was read or written.
+what_changed: |
+  scripts/localci/merger.py replay_pending: `for line in reversed(log):` becomes `for line in log:` (git log is newest first), the
+  docstring says NEWEST and a two-line comment gives the reason. scripts/localci/README.md and
+  docs/specs/localci-sovereign-2026-10-07.md say newest first, with the measurement. test_replay.py: the order test is renamed
+  test_replays_and_pr_decisions_alternate_newest_merge_first_and_a_replayed_commit_is_not_asked_again (order PR3, replay 12, PR4,
+  replay 11); the first-parent test picks the plan whose worktree_head is M1 after 4 ticks; the replay-line test reads #12/M2 and
+  anchors its no-enqueue check on the replay tick's own lines; pulls[12]=None in the unreadable-pull test; the crash and stop tests
+  target M2. merger_mutants.py: rule b11-newest-merge-first is replaced by b11-oldest-merge-first.
+  acd9074a32 (fix) and 0fa3b8198e (test) answer the independent gate at 8838d72bb7 (CONFIRMED, two LOWs): newest first, the replay
+  turn can read a PR seconds after the mirror fetch saw its merge, so a commit whose PR GitHub still shows open (state open) is
+  skipped for this turn and asked again on the next, never journalled replay_unmapped; a PR closed unmerged or merged as another
+  commit is journalled once as before. The spec reads "about one decision an hour". New test
+  test_a_merge_github_still_shows_open_is_not_journalled_unmapped_and_is_replayed_once_github_shows_it and mutant rule
+  b11-open-pull-journalled-unmapped.
+proof: |
+  The committed code on fixtures under tmp (real git repos with merge commits, GitHub and the runner faked); nothing ran on Pro and
+  nothing was pushed. It reaches Pro when the tick next extracts merger.py from main.
+bites:
+  consumer: The launchd tick com.balizero.localci-merger on Pro (decisions.jsonl).
+  observation: >-
+    Owed after merge and the tick's next extraction (this lane does not ship): on Pro, the next decision line with replay true
+    carries a merge_commit that is the newest first-parent merge not yet replayed (not pr8015's feb9e84337 or any older one), with
+    base_sha equal to its first parent, alternating with PR decisions.
+ground:
+  ts: "2026-10-09T10:05:00Z"
+  siblings: >-
+    Worktree from origin/main 9d3def7cfe (B11's merge). Other lanes touching scripts/localci: none known to this lane.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 0.8
+receipts:
+  - claim: "test_replay.py, test_merger_report.py and test_hosted_stale.py on the tree before the commits: 149 passed, 43 s."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_replay.py scripts/localci/tests/test_merger_report.py scripts/localci/tests/test_hosted_stale.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-09T10:08:00Z"
+    seat: claude-sonnet-5 on M5
+  - claim: "test_merger.py -k 'replay or tick or decide': 26 passed (149 deselected), 20 s."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger.py -q -p no:cacheprovider -k "replay or tick or decide"
+    exit: 0
+    ts: "2026-10-09T10:08:30Z"
+    seat: claude-sonnet-5 on M5
+  - claim: "All 18 b11-* mutant rules, among them b11-oldest-merge-first: 18/18 killed; survivors none, errors none, stale none."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --list | grep -o -E "^b11-[a-z0-9-]+" | xargs python3 scripts/localci/tests/mutants/merger_mutants.py --only
+    exit: 0
+    ts: "2026-10-09T10:05:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "Fix round tree 0fa3b8198e: test_replay.py + test_merger_report.py 120 passed, 41 s; test_merger.py -k 'replay or tick or decide' 26 passed (149 deselected)."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_replay.py scripts/localci/tests/test_merger_report.py -q -p no:cacheprovider; PYTHONPATH=. python3 -m pytest scripts/localci/tests/test_merger.py -q -p no:cacheprovider -k "replay or tick or decide"
+    exit: 0
+    ts: "2026-10-09T10:24:00Z"
+    seat: claude-opus-5-5 on M5
+  - claim: "All 19 b11-* mutant rules on the fix round's tree, b11-open-pull-journalled-unmapped included: 19/19 killed; survivors none, errors none, stale none."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --list | grep -o -E "^b11-[a-z0-9-]+" | xargs python3 scripts/localci/tests/mutants/merger_mutants.py --only
+    exit: 0
+    ts: "2026-10-09T10:27:00Z"
+    seat: claude-opus-5-5 on M5
+dissent: []
+residuals:
+  - "Merges older than the newest unreplayed one are never replayed unless the gate catches up; they are not owed, phase D counts compared merges."
+  - "The first live replay's order, and that the newest base compares its contexts, is observable only after merge on Pro; owed as the Bites observation."
+  - "The mutant runs are the lead's; the independent gate re-ran three of them (b11-oldest-merge-first, b11-second-parent-base, b11-not-first-parent-line) on 8838d72bb7: 3/3 killed."
+  - "A commit on main whose PR GitHub shows open for good (no such shape is known: the queue's subject is the merged PR's) would cost one GitHub read per replay turn, never a loop: the turn goes on to older commits."
+  - "A just-merged commit's hosted runs may still be pending at the replay: the tick then records HOSTED_PENDING rows and the report, which re-reads hosted per sha, counts the merge only once GitHub's side is complete."
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN step B11b, from the lead message of 2026-10-09, from origin/main 9d3def7cfe (B11 merge). Nothing is pushed.
+appetite_exceeded: >-
+  Wall clock only: the build fit the declared 0.5 hours; the independent gate's fix round (LOW-1, a just-merged commit whose PR
+  GitHub still shows open, and LOW-2, a spec word) adds 0.3, observed 0.8. No adversarial round.

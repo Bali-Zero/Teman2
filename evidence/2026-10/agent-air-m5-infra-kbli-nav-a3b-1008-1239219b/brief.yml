@@ -1,0 +1,37 @@
+task_id: kbli-nav-a3b-1008
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, Track A, PR-A3' — the depth-1 successor of #8087 (gate BLOCK
+  upheld on f0336f15: a set whose grader or refuter answer was a one-line CLI error reached the arena
+  looking like the cleanest one). It carries #8087's probe and arena blobs plus the cure:
+  scripts/kbli_design/arena.py admits a set only when its verify/<slot>.md and r2/<slot>.md (as
+  seat_io.py ingest writes them) open with a VERDICT: line, and refuses outright when none is left.
+  Gate notes folded: model names glued to digits are redacted (2), Pillow's deprecated getdata is
+  gone (4), the page no longer says which set was repaired (5).
+constraints:
+  - "anti_flatness.py stays <= 150 lines (plan §2.4); its five control lines are unchanged."
+  - "An excluded set prints `excluded <slot>: verify|r2 has no VERDICT: first line`; no admitted set prints one `refused:` line and exits 1, so the workflow's `^arena \\S+ sets=\\d+$` never matches an empty arena."
+  - "The page never names a seat, a vendor, a slot, a kit mockup path or a repair."
+acceptance:
+  - text: "WHEN seat_io.py ingest files a refuter answer `Error: agy exited 1 (quota)` (it prints `refute b by opus kept=0 rejected=1`), THEN arena prints `excluded b: r2 has no VERDICT: first line`, the mapping holds only the admitted set, and sets=1; a set whose files ingest wrote from `VERDICT: PASS` answers is admitted."
+    probe: "python3 -m pytest -q -p no:cacheprovider scripts/tests/test_kbli_design_probe_arena.py"
+  - text: "WHEN a thesis reads `ChatGPT, GPT5, Gemini3 and Claude3 (gpt-5.6-sol, Sonnet's GPTs): solid console, Solana.`, THEN arena prints `leak-redacted <letter> thesis n=8` and the page keeps `solid console, Solana`; WHEN a set was repaired, THEN the page carries neither `(r1)` nor `repair`."
+    probe: "same pytest, test_arena_seals_a_stable_mapping_and_links_only_blind_copies"
+  - text: "WHEN the previous arena.py is restored, THEN 2 tests fail; WHEN the VERDICT gate, the widened regex or the label removal is reverted alone, THEN 1 test fails each."
+    probe: "cp backup, swap the file, pytest, cp back, cmp -s"
+consumer_map:
+  - "infra/workflows/kbli-nav-design.js (on main since #8082): phase Probes runs anti_flatness.py --controls then --kit --stage --slots; phase Arena runs arena.py --kit and requires `^arena \\S+ sets=\\d+$`."
+risks:
+  - "C2, C5 and C10 are proxies, declared in anti_flatness.py's docstring; the graders and Zero's vote cover what they miss."
+  - "The probe and arena tests need Playwright headless Chromium and skip where it is absent (hosted CI); they ran on M5."
+  - "Over 400 net lines: the PR re-carries #8087's 393 lines whole (one concern, the probe and the arena) plus the cure and its tests."
+grader: |
+  #8087 had one cross-family refuter round (codex gpt-5.6-sol xhigh, DEFECT, 4 objections folded).
+  This successor had one more on the delta only (read-only, empty directory, seat_io ingest inlined,
+  VERDICT first): DEFECT, two objections, both folded. A refused run left the previous arena.html
+  standing (now removed at the start of every run, and an excluded letter's gallery copies go too);
+  one fixture was copied by hand (now filed through seat_io ingest). Each fold has a mutant that
+  turns the test red. A fresh Opus 5.5 gate session signs harness/fable-gate on this head sha; this
+  session does not.

@@ -17,7 +17,12 @@ from datetime import date, datetime
 from typing import Any, Literal, Protocol, cast
 
 from backend.services.visa_engine.bundle import JsonValue, canonicalize_json
-from backend.services.visa_engine.models import PriceQuote, VisaProductVersion
+from backend.services.visa_engine.models import (
+    DurationOption,
+    PriceQuote,
+    PricingKey,
+    VisaProductVersion,
+)
 
 
 class ExactPricingCatalog(Protocol):
@@ -111,15 +116,52 @@ def _parse_exact_idr_amount(raw: object) -> int | None:
     return amount
 
 
+def select_duration_option(
+    product: VisaProductVersion, stay_days: int | None
+) -> DurationOption | None:
+    """Pick the option that covers the requested stay; ``None`` if the product has none.
+
+    The smallest option with ``days >= stay_days``. A request longer than every
+    option gets the LAST one, because the permit is extendable and a long wish
+    never excludes the product. An unknown request gets the first option, which
+    is what a product without options priced as before.
+    """
+
+    options = product.duration_options
+    if not options:
+        return None
+    if stay_days is None:
+        return options[0]
+    return next((o for o in options if o.days >= stay_days), options[-1])
+
+
+def effective_pricing_key(product: VisaProductVersion, stay_days: int | None) -> PricingKey | None:
+    option = select_duration_option(product, stay_days)
+    return product.pricing_key if option is None else option.pricing_key
+
+
 def resolve_candidate_pricing(
     product: VisaProductVersion,
     *,
     pricing_catalog: ExactPricingCatalog,
     evaluated_at: datetime,
+    stay_days: int | None = None,
 ) -> PricingResolution:
     """Resolve one product without guessing or fuzzy matching."""
 
-    pricing_key = product.pricing_key
+    return resolve_pricing_key(
+        effective_pricing_key(product, stay_days),
+        pricing_catalog=pricing_catalog,
+        evaluated_at=evaluated_at,
+    )
+
+
+def resolve_pricing_key(
+    pricing_key: PricingKey | None,
+    *,
+    pricing_catalog: ExactPricingCatalog,
+    evaluated_at: datetime,
+) -> PricingResolution:
     if pricing_key is None:
         return PricingResolution(
             status="CONTACT_REQUIRED",
@@ -185,20 +227,22 @@ def build_price_quote(
     resolution: PricingResolution,
     *,
     decision_id: uuid.UUID,
+    stay_days: int | None = None,
 ) -> PriceQuote | None:
     """Convert one exact-key resolution into the signed decision contract."""
 
-    pricing_key = product.pricing_key
+    pricing_key = effective_pricing_key(product, stay_days)
     if pricing_key is None or resolution.status != "AVAILABLE":
         return None
-    quote_seed = ":".join(
-        (
-            str(product.product_version_id),
-            resolution.status,
-            resolution.catalog_sha256 or "no-catalog",
-            resolution.row_sha256 or "no-row",
-        )
-    )
+    seed_parts = [
+        str(product.product_version_id),
+        resolution.status,
+        resolution.catalog_sha256 or "no-catalog",
+        resolution.row_sha256 or "no-row",
+    ]
+    if product.duration_options:
+        seed_parts.append(pricing_key.item_key)
+    quote_seed = ":".join(seed_parts)
     return PriceQuote(
         quote_id=uuid.uuid5(decision_id, quote_seed),
         product_version_id=product.product_version_id,
@@ -221,5 +265,8 @@ __all__ = [
     "PricingResolution",
     "UnavailablePricingCatalog",
     "build_price_quote",
+    "effective_pricing_key",
     "resolve_candidate_pricing",
+    "resolve_pricing_key",
+    "select_duration_option",
 ]

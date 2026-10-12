@@ -1,0 +1,24 @@
+gear: 2
+gear_reason: >-
+  Size floor (diff with tests, observer and pack above 400 churn). Client-copy change on the E33 family in the mouth
+  result page (five LocalizedText entries, two i18n keys, one reason override) plus tests and a no-argument observer;
+  no backend, no pack, no data.
+mission: >-
+  The E33-family copy says what the rule and the official page say: no combination route, a central-government
+  sponsor, the E33B collaboration sentence, and consultation wording for E33A, E33B and E33C.
+objective: >-
+  The Second Home below-threshold hold lists the property and deposit routes only (never combination or kombinasi);
+  E33A names an Indonesian central-government sponsor and the world-figure question asks for a central-government
+  invitation letter; a NONE-sponsor visitor who answered no to the E33B collaboration question reads an E33B
+  sentence while any other sponsor keeps the E33A sentence; E33A, E33B and E33C candidates say the route is handled
+  with a Bali Zero advisor, with no price figure added.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/copy-truth.test.ts
+  - scripts/ci/observe_visa_oracle_e33_family_copy.py
+  - tests/scripts/test_observe_visa_oracle_e33_family_copy.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2

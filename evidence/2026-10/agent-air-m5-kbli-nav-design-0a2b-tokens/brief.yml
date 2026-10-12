@@ -1,0 +1,32 @@
+task_id: kbli-nav-design-0a2b-tokens
+mission: kbli-nav-design-loop (Track A, build, PR 0a-2', successor of #8184)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  evidence_pack_lint's floor for this change set is 2 by its size term alone, with no hot-zone path. The code churns
+  470 lines (+323/−147): #8184's tokens commit carried unchanged, plus the depth-1 cure (KBLIRegistryView.swift two
+  sites, measure_contrast.py). The after-set digest manifest adds 208 lines of JSON evidence.
+l_level: L1
+gate_class: opus
+objective: >-
+  SPEC-swiftui §1.1–1.4 and §1.7, as #8184 (R19 Direction-A tokens; night restricted #C78C00 / HC #DBB459, minimum
+  4.93; spec table §1.1 N2 / §1.2 corrected to its own rule), plus the imperator's depth-1 ruling on the #8184 BLOCK.
+  KBLIRegistryView.swift:1541 and :1708 paint Theme.riskChip instead of literal white on a risk tint. The census
+  measures both sites day / night / dayHC / nightHC, each row citing file:line. measure_contrast.py scans Sources/ for
+  literal white foregrounds and exits 1 on any hit outside an allowlist whose entries carry a reason. Presentation
+  only: no KBLI fact, verdict, cap, basis or Bali overlay changes.
+constraints:
+  - Only the two named sites move to Theme.riskChip; the rest of §3.5 (ledger) stays with PR 5, RiskCell with PR 2.
+  - "#8184's tokens commit is carried byte-identical (cherry-pick, same patch-id)."
+  - No PNG is committed; the after-set ships as a sha256 manifest and the PNGs live in the M5 gallery.
+acceptance:
+  - text: measure_contrast SHALL exit 0 at the head with FAIL=0, PARITY=0 and WHITE=0.
+    probe: "Pro, head: TOTAL=122 FAIL=0 PARITY=0 WHITE=0 rc=0"
+  - text: The census SHALL measure both sites for every riskChip tier, and the worst ranked pair SHALL match §1.4.
+    probe: "Pro, head JSON: 40 site results (2 sites x 5 pairs x 4 themes); worst ranked 5.37 day / 5.98 night"
+  - text: A literal white foreground restored at a site SHALL fail the tool, naming file:line.
+    probe: "Pro guilt: scratch Sources with .white back at KBLIRegistryView.swift:1541 → rc=1 WHITE Views/KBLIRegistryView.swift:1541"
+  - text: measure_contrast SHALL still exit 1 on a contrast FAIL and on PARITY drift, and derive --check SHALL reject the spec table's value.
+    probe: "Pro guilt 1–2 as in #8184: CC8F00 → derive rc=1, PARITY=2 rc=1; dim night yellow → FAIL=4 rc=1"
+  - text: The head SHALL build both variants and render all 24 bands equal to baseline-2026-10-09-after/0a2b-tokens/manifest.json.
+    probe: "Pro build-only mirror detached at the head: INTERNAL_RC=0, BKPM_RC=0, rendered=24 failed=0, manifest_match=24/24"

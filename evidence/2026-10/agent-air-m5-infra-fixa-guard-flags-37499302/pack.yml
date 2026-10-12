@@ -1,0 +1,137 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+plan_ref: >-
+  Branch agent/air-m5/infra/fixa-guard-flags from origin/main 99746b46d1. FIXBATCH-A-20261005
+  finding #1: the rm regex of scripts/guardrails_static_core.py lets split flags, a quoted root and
+  a split-flag tilde through. Seat build (Codex), Dux grade and cure, cross-family review (TP1 Qwen).
+lanes:
+  - lane: fixa-guard-flags-build
+    role: build
+    seat: "codex gpt-5.6-sol (ChatGPT O2) via scripts/seat_build.sh, rc 0, 1027 s, report-a.json"
+  - lane: fixa-guard-flags-grade
+    role: build
+    seat: "claude-opus-5.5 (Dux dux-fix-a; graded the seat diff line by line, cured it, folded the tests into the CI-run file)"
+  - lane: fixa-guard-flags-review-qwen
+    role: review
+    seat: "tp1-qwen3.7-plus (find-a-bypass prompt on the cured diff 8c738d764c; review/tp1-qwen3.7-plus.txt verbatim)"
+  - lane: fixa-guard-flags-cure-build
+    role: build
+    seat: "codex gpt-5.6-sol (ChatGPT O2, session in ~/.codex-o2/sessions, rollout 01a10ed6) via scripts/seat_build.sh; cure of the gate BLOCK, left uncommitted, no REPORT.md; diff snapshotted 2026-10-06T01:42Z (sha256 4d5231e14dca...)"
+  - lane: fixa-guard-flags-cure-verify
+    role: build
+    seat: "claude-opus-5.5 (Dux dux-fix-a2; graded the cure on disk, corrected 3 defects, shipped from a fresh worktree while the seat's auto-continuation kept writing in the old one)"
+what_changed: |
+  guardrails_static_core.py: _dangerous_rm_command runs in _eval_bash before the legacy patterns and
+  can only add blocks. It drops heredoc bodies (data; substitutions inside an unquoted one still run),
+  extracts $(...) and backticks outside single quotes, joins backslash-newline, splits shlex tokens on
+  ; & | ( ) and newline, strips leading assignments, shell keywords and wrappers (sudo, doas, env incl.
+  -S, command, builtin, exec, nohup, time, nice, ionice, stdbuf, caffeinate, watch, timeout, flock,
+  chroot, xargs), recurses into bash/sh/zsh/dash/ksh/fish/su -c and eval, and blocks a recursive rm
+  (any r/R short cluster, --recursive or a prefix of it) whose target, after one level of brace
+  expansion and normpath, is /, /*, /Users, /Users/<x>, home (~, $HOME, ${HOME...}) or their /*.
+  If shlex refuses the line, the raw words are judged the same way (protected target only).
+  test_guardrails_overmatch.py: 52 GUILT rows (all ALLOW on origin/main) and 23 INNOCENCE/KEPT rows.
+  The seat's own test file (scripts/test_guardrails_rm_protected.py) is NOT shipped: pytest-only and
+  run by no workflow; its rows live in the CI-run file (hook-innocence-gate.yml step "Existing hook
+  regression tests", registry surface guardrails_static).
+  Dux changes to the seat diff: (1) newline was whitespace for shlex, so `ls` + newline + rm was
+  never split: whitespace is now " \t\r"; (2) the seat blocked EVERY rm segment when shlex failed:
+  13 real-history commands (heredocs with apostrophes) flipped to BLOCK, now judged by target; (3) the
+  seat protected the whole home subtree for every spelling: rm -r -f /Users/<x>/repo/.worktrees/<y>
+  flipped to BLOCK, now only home itself and its ancestors; (4) wrappers, keywords, assignments,
+  substitutions in double quotes, backticks, other shells, -lc, eval, heredocs, continuation, braces.
+  Cure round 2 (final gate BLOCK 2026-10-05T12:36Z, B1 robustness: _shell_views O(n^2) on
+  backslash-newline joins, super-linear on one big token; the hook runs before every Bash call with
+  no timeout). Seat (Codex O2): continuation joined through lists, _unwrap_command on a deque,
+  a length cap with a linear fail-closed scan above it, 4 timing/cap tests. Dux corrections: (1) the
+  over-cap scan let \rm, r\m, 'r''m', "r"m and r\<newline>m through (ALLOW; the uncured head blocked
+  them): it now reads the text with quotes, backslashes and backslash-newline removed, and accepts
+  env -S<word>; (2) the cap was 256 KiB, where one token through shlex (quadratic token growth)
+  still cost 0.68 s: now 64 KiB (longest of 132,053 real M5 commands is 44,878 chars; a token at the
+  cap 0.049 s); (3) two quadratic paths below the cap: the brace-list regex (80 KB unclosed
+  {a,a,... 13.6 s) is replaced by a linear equal search, and eval / $(...) / sh -c recursion
+  (5000 nested evals 10.9 s then RecursionError) stops at depth 8, where the cheap scan decides
+  (fail closed). Above the cap the parser is skipped: a delete-shaped word (rm, rmdir, unlink, shred,
+  find with -delete) BLOCKs "command too long to analyse safely"; otherwise the base evaluation
+  (legacy BLOCK_PATTERNS) applies unchanged.
+receipts:
+  - claim: the three candidate strings are ALLOW on origin/main and through the LIVE M5 hook
+    cmd: harness.py rows core_main.py - ~/.claude/hooks/guardrails-static.py (113 rows; live == main on all)
+    exit: "0 (G01 G02 G03 ALLOW main, ALLOW live)"
+    ts: "2026-10-05T10:58Z"
+    seat: claude-opus-5.5
+  - claim: new GUILT rows RED on the origin/main core
+    cmd: python3 scripts/test_guardrails_overmatch.py (copy beside the origin/main core)
+    exit: "1 (=== 52 FAIL ===, all GUILT)"
+    ts: "2026-10-05T11:45Z"
+    seat: claude-opus-5.5
+  - claim: every guard suite GREEN on the candidate, Python 3.11 and 3.9.6
+    cmd: python3 scripts/test_guardrails_overmatch.py; /usr/bin/python3 scripts/test_guardrails_overmatch.py; python3 scripts/test_guardrails_core_overmatch.py; pytest -q scripts/test_guardrails_static.py scripts/test_guardrails_overmatch.py scripts/test_guardrails_core_overmatch.py scripts/tests/test_guardrails_patch7_cd_rm_bypass.py; python3 infra/claude-hooks/test_hook_innocence.py; python3 infra/guard-conformance/check_guard_conformance.py; python3 scripts/guardrails_sync_check.py
+    exit: "0 (ALL OK / ALL OK / ALL OK / 5 passed / ALL 164 OK / 0 violations / rc 0)"
+    ts: "2026-10-05T11:45Z"
+    seat: claude-opus-5.5
+  - claim: no verdict change on real commands (old vs new decision function)
+    cmd: harness.py corpus core_main.py core_dux.py corpus_all.json (9715 unique commands, bounded tail of ~/.claude/command-history.log)
+    exit: "0 (ALLOW->BLOCK=0 BLOCK->ALLOW=0 same=9715 errors=0); seat diff alone: ALLOW->BLOCK=13, all shlex parse failures"
+    ts: "2026-10-05T11:45Z"
+    seat: claude-opus-5.5
+  - claim: dux table 142 rows, 0 failures (task table + dux rows + review rows)
+    cmd: harness.py rows core_main.py core_dux.py
+    exit: "0 (rows=142 failures=0)"
+    ts: "2026-10-05T11:45Z"
+    seat: claude-opus-5.5
+  - claim: live evidence of the current heredoc/argument policy
+    cmd: a Bash call of this session whose python -c argument contained a combined-flag rm of /Users/Shared/
+    exit: "BLOCKED by the live hook (rule 'rm -rf on quoted/absolute $HOME'), as on origin/main"
+    ts: "2026-10-05T11:47Z"
+    seat: claude-opus-5.5
+  - claim: cure round 2 bounds the decision time (in-process time.perf_counter, base 99746b46d1 / uncured 5ea970e829 / cured)
+    cmd: timing.py base uncured codex dux (each case in its own subprocess, harmless inputs only)
+    exit: "0 (continuations n=4000 0.005/4.65/0.016 s, n=10000 0.011/32.0/0.015 s; 1 MiB token 0.128/12.95/0.136 s; token at the cap 0.049 s)"
+    ts: "2026-10-06T02:09Z"
+    seat: claude-opus-5.5
+  - claim: the new robustness tests are RED on the uncured head and on the seat-only cure, GREEN on the candidate
+    cmd: python3 scripts/test_guardrails_overmatch.py beside each core (copies exported with git archive, no stash)
+    exit: "1 (uncured: 8 FAIL) / 1 (seat-only cure: 3 FAIL: unquoted over-cap spellings, deep eval chain, unclosed brace list) / 0 (ALL OK, 3.11 and 3.9.6)"
+    ts: "2026-10-06T02:09Z"
+    seat: claude-opus-5.5
+  - claim: mutants of the candidate are killed
+    cmd: mutate.py (cap removed; uncured _shell_views restored; unquote scan removed; depth cap removed; depth cap fails open; brace regex restored)
+    exit: "1 each (no cap: killed at 7.27 GB RSS after 85 s; each other mutant turns its named test red)"
+    ts: "2026-10-06T02:09Z"
+    seat: claude-opus-5.5
+  - claim: no verdict change on real commands, base vs candidate (counts only)
+    cmd: corpus.py over the Bash tool_use inputs of ~/.claude/projects/**/*.jsonl and over ~/.claude/command-history.log
+    exit: "0 (132,053 distinct: 0 BLOCK->ALLOW, 0 ALLOW->BLOCK; 147,266 distinct: 0/0; uncured head also 0/0 on both)"
+    ts: "2026-10-06T02:09Z"
+    seat: claude-opus-5.5
+  - claim: the two guard workflows' commands are green on the candidate
+    cmd: every python3 line of hook-innocence-gate.yml and guard-conformance.yml plus the regression loop, in the worktree
+    exit: "0 except infra/claude-hooks/test_host_boundary.py, which fails identically on origin/main 6243ea54c4 on this host (pre-existing, env-dependent)"
+    ts: "2026-10-06T02:09Z"
+    seat: claude-opus-5.5
+spend:
+  wall_clock_hours: 1.9
+dissent:
+  - seat: tp1-qwen3.7-plus
+    objection: |-
+      (1) Bypasses - `env -S "-i rm -rf /"`: `_unwrap_command` sees `env` in `_WRAPPERS`. It pops `-S` (which is in `_WRAPPERS["env"]`) and then unconditionally pops the next token as the argument to `-S`. `remaining` becomes empty. In a real shell, GNU `env -S` splits the string and executes `rm -rf /`.
+    status: CONFIRMED
+    disposition: >-
+      Reproduced (row X56 ALLOW on 8c738d764c). Cured in c3c6d35494: env -S (separate or attached)
+      re-enters the wrapper stripping with its split argument; GUILT row added to the CI-run table.
+  - seat: tp1-qwen3.7-plus
+    objection: |-
+      (2) Over-matches - `rm -rf /Users/Shared/` and `rm -rf /Users/Shared/*`: the legacy regex only targeted `/Users/<name>`, so this was allowed; the new code blocks it.
+    status: RETRACTED
+    disposition: >-
+      Retracted on evidence (refuted by the Dux, not withdrawn by the seat): origin/main already blocks it: legacy rule 3 matches /Users/[\w.-]+ followed by /, and the live
+      hook blocked a Bash call of this session carrying that string. KEPT row added (verdict unchanged).
+  - seat: final gate gate-7930 (Claude, 2026-10-05T12:36Z, verdict BLOCK)
+    objection: |-
+      B1 (robustness, attack 3): head is O(n^2) in `_shell_views` (growing `carry` on backslash-newline joins) + super-linear on big single tokens. backslash-cont n=1000 827ms, n=2000 10s, n=4000 15s+ (base n=10000 18ms); token 300KB 9.5s, 1MB HANG (base 1.5s). C1/C2: the out-of-reach list omits stdin-fed shells and busybox/multiplexers.
+    status: CONFIRMED
+    disposition: >-
+      Cured in cure round 2 (what_changed): list joins, linear brace search, depth bound 8, a 64 KiB cap with a
+      fail-closed linear scan above it; red-first tests in scripts/test_guardrails_overmatch.py. C1/C2 added to the
+      PR body's out-of-reach list.

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import datetime as dt
+import io
 import json
 import sys
 import threading
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -123,7 +126,7 @@ def test_persistent_rate_limit_at_floor_is_presumed_quota(tmp_path):
 def test_transient_error_retries_then_records_failure(tmp_path):
     dead = {"status": None, "error": "timed out", "usage": {}}
     call = FakeCall([dead, dead])
-    assert runner(tmp_path, call, n=1, max_attempts=2).run() == 0
+    assert runner(tmp_path, call, n=1, max_attempts=2).run() == 4  # its only job failed: not a clean drain
     assert [(r["status"], r["attempts"]) for r in rows(tmp_path)] == [("failed", 2)]
     assert len(call.calls) == 2
 
@@ -213,7 +216,7 @@ def test_second_runner_on_the_same_out_dir_refuses_without_calling(tmp_path):
 def test_malformed_usage_after_a_paid_200_is_not_paid_again(tmp_path, monkeypatch):
     raw = json.dumps({"choices": [{"message": {"content": "{}"}}], "usage": {"total_tokens": "n/a"}})
     sent = []
-    monkeypatch.setattr(tbr, "no_stream_chat_completion", lambda *a: (sent.append(1), (200, raw, ""))[1])
+    monkeypatch.setattr(tbr, "no_stream_chat_completion", lambda *a, **k: (sent.append(1), (200, raw, ""))[1])
 
     def call(model, prompt):
         return tbr.tp1_call_once(model, prompt, "medium", 10, 1.0, "dummy")
@@ -226,16 +229,31 @@ def test_redirects_are_refused_not_followed():
     assert tbr._NoRedirect().redirect_request(None, None, 302, "Found", {}, "https://example.invalid/") is None
 
 
+class Reply(io.BytesIO):
+    """A urlopen() response for an HTTP 200."""
+    status = 200
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
 def through_the_door(monkeypatch, tmp_path, transport):
-    """The real tp1_call_once over a faked transport: counts every request that would be paid."""
+    """The real tp1_call_once AND the real transport (no_stream_chat_completion, which scrubs error
+    bodies) over a faked urlopen: counts every request that would be paid."""
     sent = []
     monkeypatch.setattr(sys.modules["tp1_call"], "TP1_UNPARSEABLE_SCRATCH_DIR", tmp_path / "unparseable")
 
-    def fake(*args):
+    def fake_urlopen(req, timeout=None):
         sent.append(1)
-        return transport()
+        status, body = transport()[:2]
+        if status == 200:
+            return Reply(body.encode())
+        raise urllib.error.HTTPError(req.full_url, status, "error", None, io.BytesIO(body.encode()))
 
-    monkeypatch.setattr(tbr, "no_stream_chat_completion", fake)
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
     return sent, lambda model, prompt: tbr.tp1_call_once(model, prompt, "medium", 10, 1.0, "dummy")
 
 
@@ -307,6 +325,8 @@ def test_quota_error_inside_a_200_stops_the_run_but_an_answer_about_quota_does_n
         (429, "Throttling.AllocationQuota: Allocated quota exceeded", "rate"),
         (429, "Throttling.AllocationQuota: quota exceeded", "rate"),
         (400, "Range of input length should be [1, 98304]", "rejected"),
+        (429, 'quota exceeded\nThrottling.AllocationQuota', "rate"),  # a RAW body keeps its newlines
+        (429, '{\n "message": "quota exceeded"\n}', "quota"),
     ],
 )
 def test_classify_exhaustion_wordings(status, body, kind):
@@ -335,3 +355,161 @@ def test_main_installs_the_no_redirect_opener_before_the_credential(tmp_path, mo
     assert tbr.main(["--queue", str(q), "--out-dir", str(tmp_path / "out")]) == 2
     assert len(installed) == 1
     assert any(isinstance(h, tbr._NoRedirect) for h in installed[0].handlers)
+
+
+OK_RAW = json.dumps({"choices": [{"message": {"content": '{"defects": []}'}}], "usage": {"total_tokens": 5}})
+
+
+@pytest.mark.parametrize("body", [
+    "Throttling.AllocationQuota: quota exceeded",
+    '{"code":"Throttling.AllocationQuota","message":"Allocated quota exceeded"}',
+], ids=["plain", "json"])
+def test_throttling_quota_wording_backs_off_through_the_door(tmp_path, monkeypatch, body):
+    script = [(429, body, body), (200, OK_RAW, "")]
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: script.pop(0))
+    assert runner(tmp_path, call, n=1, concurrency=1).run() == 0
+    assert len(sent) == 2 and [r["status"] for r in rows(tmp_path)] == ["ok"]
+
+
+@pytest.mark.parametrize("status", [400, 200])
+def test_insufficient_account_balance_code_stops_the_run_through_the_door(tmp_path, monkeypatch, status):
+    body = json.dumps({"error": {"code": "insufficient_account_balance", "message": "please recharge"}})
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: (status, body, body))
+    assert runner(tmp_path, call, n=3, concurrency=1).run() == 5
+    assert len(sent) == 1 and not (tmp_path / "results.jsonl").exists()
+
+
+def test_an_auth_error_inside_a_200_stops_the_run_through_the_door(tmp_path, monkeypatch):
+    body = json.dumps({"error": {"code": "invalid_api_key", "message": "Unauthorized"}})
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: (200, body, ""))
+    assert runner(tmp_path, call, n=3, concurrency=1).run() == 5
+    assert len(sent) == 1 and not (tmp_path / "results.jsonl").exists()
+
+
+@pytest.mark.parametrize("status,body,kind", [
+    (0, json.dumps({"type": "authentication_error", "message": "invalid x-api-key"}), "quota"),
+    (0, json.dumps({"code": "AuthenticationFailed"}), "quota"),
+    (400, "Authentication failed: the credential was not accepted", "quota"),
+    (0, json.dumps({"code": "invalid_api_key"}), "quota"),
+    (429, "Too many requests to authentication service", "rate"),  # names the service, not a failed credential
+    (200, json.dumps({"code": "invalid_api_key"}), "quota"),  # row G: a 200's error object, same rules
+    (200, json.dumps({"code": "Throttling.RateQuota"}), "rate"),
+    (200, json.dumps({"code": "SomethingNew"}), "rejected"),
+])
+def test_classify_auth_wordings(status, body, kind):
+    assert tbr.classify(status, body) == kind
+
+
+def test_a_rate_limit_naming_the_auth_service_backs_off_through_the_door(tmp_path, monkeypatch):
+    body = "Too many requests to authentication service"
+    script = [(429, body, body), (200, OK_RAW, "")]
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: script.pop(0))
+    assert runner(tmp_path, call, n=1, concurrency=1).run() == 0
+    assert len(sent) == 2 and [r["status"] for r in rows(tmp_path)] == ["ok"]
+
+
+def test_negative_usage_counts_never_push_the_totals_down(tmp_path, monkeypatch):
+    raw = json.dumps({"choices": [{"message": {"content": "{}"}}],
+                      "usage": {"prompt_tokens": -1000, "completion_tokens": 5, "total_tokens": -995}})
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: (200, raw, ""))
+    assert runner(tmp_path, call, n=1).run() == 0
+    hb = heartbeat(tmp_path)
+    assert (hb["prompt_tokens"], hb["completion_tokens"], hb["total_tokens"]) == (0, 5, 5)
+
+
+def test_a_run_whose_every_sent_job_failed_is_not_reported_as_drained(tmp_path):
+    bad = {"status": 400, "error": "Range of input length should be [1, 98304]", "usage": {}}
+    assert runner(tmp_path, FakeCall([bad, bad]), n=2).run() == 4
+    assert heartbeat(tmp_path)["state"] == "stopped:all-failed" and heartbeat(tmp_path)["ok"] == 0
+    assert runner(tmp_path, FakeCall(), n=2).run() == 0  # nothing left to send is still a clean drain
+
+
+def test_a_reply_without_usage_is_charged_to_the_token_budget(tmp_path, monkeypatch):
+    raw = json.dumps({"choices": [{"message": {"content": "{}"}}]})
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: (200, raw, ""))
+    assert runner(tmp_path, call, n=3, concurrency=1, token_budget=1).run() == 3
+    assert len(sent) == 1
+
+
+# Spec row "quota", the wording seen live: heartbeat last_error of all three M5 jobs, 2026-10-05 15:54-15:55Z,
+# HTTP 429 (the heartbeat keeps a 160-char tail, so the message's head is cut).
+LIVE_QUOTA_MESSAGE = "-plan 1-month quota has been exhausted. The quota will reset at 10-11 16:00:00 UTC."
+
+
+@pytest.mark.parametrize("body", [
+    json.dumps({"error": {"message": LIVE_QUOTA_MESSAGE, "id": "<REDACTED>",
+                          "type": "insufficient_quota", "code": "insufficient_quota"}}),
+    LIVE_QUOTA_MESSAGE,
+], ids=["live-body", "message-only"])
+def test_the_live_2026_10_05_quota_wording_stops_after_one_send(tmp_path, monkeypatch, body):
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: (429, body, body))
+    assert runner(tmp_path, call, n=3, concurrency=1).run() == 5
+    assert len(sent) == 1 and not (tmp_path / "results.jsonl").exists()
+    assert heartbeat(tmp_path)["state"] == "stopped:quota"
+
+
+# Spec "Scrub": decoys built by concatenation (no credential-shaped literal in the repo).
+DECOY_TOKEN = "tp1" + "-decoy-" + "k3y9"  # shorter than 24: only the exact-value redaction can catch it
+DECOY_BEARER = "dcy" + "0" * 6  # a bearer the gateway echoes back, not the caller's own
+DECOY_MAIL = "ops.decoy" + "@" + "client-example.co.id"
+DECOY_RUN = "Q7" * 15  # a 24+ run
+
+
+def leaks(root: Path, capsys) -> list:
+    """Every decoy found in captured stdout/stderr or in any file under root (rows, heartbeat, lock, temp dir)."""
+    seen = capsys.readouterr()
+    texts = [seen.out, seen.err] + [p.read_text(errors="replace") for p in root.rglob("*") if p.is_file()]
+    return [d for d in (DECOY_TOKEN, DECOY_BEARER, DECOY_MAIL, DECOY_RUN) if any(d in t for t in texts)]
+
+
+@pytest.mark.parametrize("status,rc", [(400, 4), (401, 5), (200, 4)],
+                         ids=["rejected-row", "stop-last-error", "gateway-error-in-a-200"])
+def test_an_error_body_echoing_a_token_and_an_email_reaches_no_output(tmp_path, monkeypatch, capsys, status, rc):
+    body = json.dumps({"error": {"message": f"from {DECOY_MAIL}: Authorization: Bearer {DECOY_BEARER}; "
+                                            f"key {DECOY_TOKEN}; trace {DECOY_RUN}"}})
+    # every decoy is in the body, inside last_error's 160-char tail and the row's 300-char tail
+    assert len(body) <= 160 and all(d in body for d in (DECOY_TOKEN, DECOY_BEARER, DECOY_MAIL, DECOY_RUN))
+    sent = []
+
+    def fake_urlopen(req, timeout=None):
+        sent.append(1)
+        if status == 200:
+            return Reply(body.encode())
+        raise urllib.error.HTTPError(req.full_url, status, "error", None, io.BytesIO(body.encode()))
+
+    q, out = tmp_path / "q.jsonl", tmp_path / "out"
+    q.write_text('{"id": "a", "prompt": "x"}\n{"id": "b", "prompt": "y"}\n')
+    # Known limit C1 (tp1_call, pre-existing): a 200 gateway error is also kept RAW in the unparseable
+    # temp dir, so that dir lives outside the scanned out-dir; everything the runner writes is scanned.
+    monkeypatch.setattr(sys.modules["tp1_call"], "TP1_UNPARSEABLE_SCRATCH_DIR", tmp_path / "c1-unscanned")
+    monkeypatch.setattr(tbr.urllib.request, "install_opener", lambda opener: None)
+    monkeypatch.setattr(tbr, "resolve_tp1_key", lambda: (DECOY_TOKEN, "test", None))
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    argv = ["--queue", str(q), "--out-dir", str(out), "--concurrency", "1", "--stop-at", "2099-01-01T00:00:00+00:00"]
+    assert tbr.main(argv) == rc
+    assert len(sent) == (1 if status == 401 else 2) and heartbeat(out)["last_error"]
+    assert [r["status"] for r in rows(out)] == ["rejected"] * 2 if status != 401 else not (out / "results.jsonl").exists()
+    assert leaks(out, capsys) == []
+
+
+def test_a_crashed_calls_exception_text_reaches_no_output(tmp_path, capsys):
+    def crash(model, prompt):
+        raise ConnectionError(f"reset by {DECOY_MAIL}: Bearer {DECOY_BEARER} key {DECOY_TOKEN} trace {DECOY_RUN}")
+
+    assert runner(tmp_path, crash, n=1, max_attempts=2, secrets=[DECOY_TOKEN]).run() == 4
+    assert [r["status"] for r in rows(tmp_path)] == ["failed"] and heartbeat(tmp_path)["last_error"]
+    assert leaks(tmp_path, capsys) == []
+
+
+def test_scrub_error_replaces_the_callers_exact_value_before_the_email_shape():
+    token = "ab" + "@" + "x.io" + "/Z9"  # a secret that also looks like an e-mail: no fragment may survive
+    assert tbr.scrub_error(f"key {token} from {DECOY_MAIL}", [token]) == "key <REDACTED> from <EMAIL>"
+
+
+def test_an_answer_beside_a_gateway_error_is_kept_and_the_next_reply_decides(tmp_path, monkeypatch):
+    both = json.dumps({"error": {"code": "invalid_api_key"}, "choices": [{"message": {"content": "{}"}}],
+                       "usage": {"total_tokens": 5}})
+    script = [(200, both, ""), (401, "Unauthorized", "")]
+    sent, call = through_the_door(monkeypatch, tmp_path, lambda: script.pop(0))
+    assert runner(tmp_path, call, n=3, concurrency=1).run() == 5
+    assert len(sent) == 2 and [r["status"] for r in rows(tmp_path)] == ["ok"]  # paid once, kept, then stopped

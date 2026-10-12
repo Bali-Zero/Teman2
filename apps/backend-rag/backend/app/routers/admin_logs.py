@@ -131,18 +131,16 @@ def verify_log_read_access(
         )
 
     try:
-        from jose import jwt
-
+        from backend.app.utils.jwt_decode import decode_jwt
         from backend.services.security.token_revocation import (
             RevocationStoreUnavailable,
             is_session_revoked_sync,
         )
 
-        payload = jwt.decode(
+        payload = decode_jwt(
             credentials.credentials,
             settings.jwt_secret_key,
             algorithms=["HS256"],
-            options={"verify_exp": True, "require_exp": True},
         )
         if payload.get("type") == "access":
             # Equality on the normalised address, never a substring or a domain

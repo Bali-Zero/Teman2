@@ -1,0 +1,36 @@
+task_id: visa-oracle-processing-time-c3
+mission: visa-oracle-processing-time
+gear: 3
+gear_reason: >-
+  Changes the Visa Oracle evaluate response contract (additive working_days_min/max, a new reason
+  code, an AVAILABLE processing timeline where it was always UNKNOWN) under apps/backend-rag/**,
+  and makes a client-facing promise on the public result page: a typical processing time.
+l_level: L2
+gate_class: opus
+ruling: >-
+  Zero, 2026-10-09 "go" — replace the neutral timeline paragraph with Bali Zero's own typical
+  processing time from the catalogue, marked indicative.
+mission_text: >-
+  The result page shows Bali Zero's typical processing time per product, in Indonesian working
+  days, with the calendar window it implies from today, marked indicative.
+objective: >-
+  A committed snapshot of the production catalogue windows feeds the evaluate path; an estimate
+  walks Indonesian working days (weekends, libur nasional, cuti bersama) after the WITA anchor day
+  and answers UNKNOWN when the walk leaves a decreed holiday year; the mouth renders it in EN and ID.
+constraints:
+  - >-
+    Working days are read conservatively, so N-M business days and N-M days are working days, a
+    week is five working days, Instant is 0-0 and Instant or 1x24h is 0-1.
+  - BRIDGING has no catalogue time and stays UNKNOWN; so does any walk into a year with no decreed holiday table.
+  - UNKNOWN responses stay byte-identical to before (the two new keys are pruned when absent).
+  - The engine stays deterministic, so the catalogue is a committed snapshot and not a live read.
+  - No npm install; the mouth types are regenerated from the backend OpenAPI.
+appetite:
+  wall_clock_hours: 3
+acceptance:
+  - text: WHEN a product has a catalogue window and the walk stays in decreed years THEN its timeline SHALL be AVAILABLE with BALI_ZERO_TYPICAL_PROCESSING_TIME, the window and the working-day dates from the WITA anchor.
+    probe: backend/tests/services/visa_engine/test_processing_times.py::TestDisplayTimeline
+  - text: WHEN the window is unknown or the walk leaves a decreed year THEN the timeline SHALL be the unchanged UNKNOWN object without the new keys.
+    probe: backend/tests/services/visa_engine/test_processing_times.py::TestTimelineDto
+  - text: WHEN the result page shows an AVAILABLE timeline THEN it SHALL render the typical days, the dated window and the indicative hint in EN and ID, and nothing else for an instant product.
+    probe: apps/mouth OutcomeSheet.test.tsx "Bali Zero typical processing time"

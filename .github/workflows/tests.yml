@@ -767,7 +767,6 @@ jobs:
             --ignore-vuln GHSA-8jfx-5878-hv4v
             --ignore-vuln CVE-2025-3000
             --ignore-vuln CVE-2026-4372
-            --ignore-vuln PYSEC-2026-1325
             --ignore-vuln PYSEC-2026-2290
           )
           # The `if` suspends `bash -e` only for that pipeline, so the second lock is

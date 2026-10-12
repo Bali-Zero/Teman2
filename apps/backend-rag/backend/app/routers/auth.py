@@ -9,15 +9,17 @@ from urllib.parse import urlparse
 
 import asyncpg
 import bcrypt
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
+from jwt import PyJWTError
 from pydantic import BaseModel, EmailStr
 
 from backend.app.core.config import settings
 from backend.app.dependencies import get_database_pool
 from backend.app.models import UserProfile
 from backend.app.utils.cookie_auth import clear_auth_cookies, get_jwt_from_cookie, set_auth_cookies
+from backend.app.utils.jwt_decode import decode_jwt
 from backend.app.utils.logging_utils import get_logger, log_error, log_warning
 from backend.app.utils.service_accounts import is_human_team_member
 from backend.services.common.background import spawn
@@ -140,17 +142,16 @@ async def _revoke_request_session(request: Request) -> None:
         return
 
     try:
-        payload = jwt.decode(
+        payload = decode_jwt(
             token,
             JWT_SECRET_KEY,
             algorithms=[JWT_ALGORITHM],
-            options={"verify_exp": True, "require_exp": True},
         )
         jti = payload.get("jti")
         expires_at = payload.get("exp")
         if not isinstance(jti, str) or not jti or not isinstance(expires_at, (int, float)):
             raise HTTPException(status_code=401, detail="Invalid session token")
-    except JWTError as exc:
+    except PyJWTError as exc:
         raise HTTPException(status_code=401, detail="Invalid session token") from exc
 
     ttl_seconds = max(1, int(expires_at - datetime.now(timezone.utc).timestamp()))
@@ -183,17 +184,16 @@ async def get_current_user(
     )
 
     try:
-        payload = jwt.decode(
+        payload = decode_jwt(
             credentials.credentials,
             JWT_SECRET_KEY,
             algorithms=[JWT_ALGORITHM],
-            options={"verify_exp": True, "require_exp": True},
         )
         user_id: str = payload.get("sub")
         email: str = payload.get("email")
         if user_id is None or email is None:
             raise credentials_exception
-    except JWTError as e:
+    except PyJWTError as e:
         raise credentials_exception from e
 
     from backend.services.security.token_revocation import (

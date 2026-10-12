@@ -1,0 +1,216 @@
+# Gear-3 evidence pack — cure main's pip-audit red in the backend-rag locks.
+# Written by the Dux of this mandate (dux-pipaudit, Claude Opus 5.5, M5). Every receipt is a command this
+# writer ran on 2026-10-06 between 02:05Z and 02:45Z UTC; `ts` values are minute-level readings of the
+# session clock. Scratch logs live under ~/.agent/campaign-20261005/work/dux-pipaudit/ and are not committed.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Mandate from the imperator window (team lead), 2026-10-06: appointed Dux for a MAIN-blocking cure, from the
+  round-2 gate receipt of PR #7928 (notice N1: required "Backend Tests (Python)" is red on every backend PR
+  because Backend Static's pip-audit fails on origin/main's own locks).
+mission: >-
+  Bump only the flagged packages to their minimal fixed versions in the locks the job audits, decide
+  python-jose (no fixed release), keep the change minimal because the merge is a Fly production deploy.
+lanes:
+  - lane: pipaudit-build
+    role: build
+    seat: >-
+      Claude Opus 5.5 (Dux, M5): uv pip compile of both locks, the tests.yml ignore and guard, the doc entry,
+      the proofs.
+  - lane: pipaudit-council
+    role: review
+    seat: >-
+      Codex O2 (codex-gpt-5.6-sol roster seat; CLI reported gpt-6.1-sol) and Kimi k3, sealed in parallel,
+      then one refutation round each; verbatim in council-journal.jsonl.
+  - lane: pipaudit-review
+    role: review
+    seat: >-
+      Codex O2 and Kimi k3, read-only review of the full uncommitted diff in the worktree; both VERDICT PASS;
+      verbatim in council-journal.jsonl.
+seat_diversity: >-
+  Three families: Anthropic (the Dux's sealed proposal), OpenAI (Codex O2) and Moonshot (Kimi k3). The builder
+  is Claude; every review is non-Anthropic. TP1 qwen3.8-max (titolare) not asked: the Alibaba monthly quota is
+  exhausted until 2026-10-11 (campaign rules). Gemini agy reads BUSY (owner's windows). No reserve seat counted.
+pii_scan: clean
+bites:
+  consumer: >-
+    (1) The Backend Static (Python) job's pip-audit step on this PR, and through it the REQUIRED aggregate
+    "Backend Tests (Python)" that every apps/backend-rag PR needs (PR #7928 waits on it). (2) The Fly app
+    nuzantara-rag: the merge of this PR deploys requirements-prod.lock.txt (multidict 6.9.1, langgraph-sdk
+    0.4.4) to production automatically.
+  observation: >-
+    Backend Static green on this PR with "pip-audit requirements.lock.txt: clean" and
+    "pip-audit requirements-prod.lock.txt: clean" in its log (gh run view --log); after the merge,
+    `fly status -a nuzantara-rag` (read only) shows the new release's machines started and passing checks,
+    `curl -s -o /dev/null -w '%{http_code}' https://nuzantara-rag.fly.dev/health` prints 200, and a forged
+    bearer token on /api/auth/profile prints 401.
+decisions:
+  - >-
+    python-jose stays and is ignored (CVE-2026-85394 only): it is imported by 11 production modules, so removal
+    is a migration, not a lock edit; both council seats agreed the migration is a separate PR.
+  - >-
+    One id, not two: alias resolution measured (R3). If a future record lacked the alias the step goes red,
+    the safe direction. Kimi's sealed answer asked for both ids (dissent D1).
+  - >-
+    The ignore is bound in CI to python-jose==3.5.0 and to 2026-11-06 (both refutations converged, D2). The
+    guard turns the step red on that date on purpose: the migration or a re-justification is then required.
+receipts:
+  - claim: "R1 — RED reproduced on origin/main (6243ea54c4) locks with the job's own ignore list."
+    cmd: >-
+      audit.sh (replica of the tests.yml pip-audit loop, IGNORES parsed from the workflow) with pip-audit
+      2.10.1 from requirements-ci-tools.txt, on a fresh worktree
+    result: >-
+      rc 1. CI lock: multidict 6.7.1 CVE-2026-104874 (fix 6.9.1), fsspec 2026.4.0 CVE-2026-104851 (2026.6.0),
+      langgraph-sdk 0.4.2 CVE-2026-104873 (0.4.4), python-jose 3.5.0 CVE-2026-85394 (no fix), werkzeug 3.1.8
+      CVE-2026-102598 (3.1.9). Prod lock: multidict, langgraph-sdk, python-jose. Same set as the gate receipt.
+    exit: 1
+    ts: "2026-10-06T02:05Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R2 — the floor is 3 because of tests.yml, 1 without it."
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --repo-root . --changed-files-file <list> --numstat-file <numstat>
+      --print-floor (list = 2 locks + .pip-audit-ignore.md + tests.yml, then without tests.yml)
+    result: "3 with .github/workflows/tests.yml; 1 without. The ignore list exists only in that step."
+    exit: 0
+    ts: "2026-10-06T02:08Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R3 — pip-audit 2.10.1 matches --ignore-vuln through aliases."
+    cmd: >-
+      pip-audit --strict --no-deps --disable-pip -r <python-jose==3.5.0> with no ignore, with
+      --ignore-vuln CVE-2026-85394, with --ignore-vuln GHSA-3qf3-8w2g-rqmx
+    result: "1 vuln (CVE-2026-85394); 'No known vulnerabilities found, 1 ignored'; same, 1 ignored."
+    exit: 0
+    ts: "2026-10-06T02:11Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R4 — only the four packages moved; zero transitive drag; header unchanged."
+    cmd: >-
+      uv pip compile requirements.txt -o requirements.lock.txt --generate-hashes --python-version 3.11
+      --upgrade-package multidict==6.9.1 --upgrade-package fsspec==2026.6.0 --upgrade-package
+      langgraph-sdk==0.4.4 --upgrade-package werkzeug==3.1.9 (and the prod lock with multidict and
+      langgraph-sdk), uv 0.12.3; then lockcmp.py (record-level: version + every hash line vs origin/main)
+    result: >-
+      CI lock 246 = 246 packages, changed only fsspec, langgraph-sdk, multidict, werkzeug; prod lock 201 = 201,
+      changed only langgraph-sdk, multidict. No '#' header line changed. Re-run after the rebase on
+      origin/main: identical result (see R12).
+    exit: 0
+    ts: "2026-10-06T02:07Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R5 — GREEN: the pip-audit step exactly as written in tests.yml is clean on both locks."
+    cmd: >-
+      runstep.py full: yaml.safe_load(tests.yml) -> jobs.backend-static step 'pip-audit' run block, /tmp
+      remapped to scratch, executed with bash -e, pip-audit 2.10.1 on PATH
+    result: >-
+      "pip-audit requirements.lock.txt: clean", "pip-audit requirements-prod.lock.txt: clean",
+      "No known vulnerabilities found, 3 ignored" twice; RC 0.
+    exit: 0
+    ts: "2026-10-06T02:21Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R6 — the jose guard has guilt and innocence (final text, after the grep -Fqx change)."
+    cmd: >-
+      runstep.py guard (block up to the audit loop) with: a lock copy pinned python-jose==3.5.1; the real
+      locks; date forced to 2026-11-06; date forced to 2026-11-05 (and 2027-01-01 on the first text)
+    result: >-
+      RC 1 "::error::requirements-prod.lock.txt no longer pins python-jose==3.5.0 ..."; RC 0; RC 1
+      "::error::the CVE-2026-85394 (python-jose) ignore reached its re-check date 2026-11-06 ..."; RC 0.
+    exit: 0
+    ts: "2026-10-06T02:31Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R7 — CI shard prerequisites pass on the bumped CI lock."
+    cmd: >-
+      fresh venv from requirements.lock.txt + cell-core + the shard's pytest extras; scratch Postgres DB;
+      scripts/ci_bootstrap_schema.py; python -m backend.db.migrate apply-all; scripts/backend_stability_gate.py
+    result: >-
+      installed multidict 6.9.1, fsspec 2026.6.0, langgraph-sdk 0.4.4, werkzeug 3.1.9, python-jose 3.5.0;
+      bootstrap rc 0, migrate rc 0 (through 323_visa_oracle_team_testing), stability gate 91 passed.
+    exit: 0
+    ts: "2026-10-06T02:24Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R8 — full backend pytest on the bumped lock: every failure is the local spaCy model, not the bump."
+    cmd: >-
+      pytest <all 1702 modules from scripts/ci/shard_tests.py enumerate> -p no:cacheprovider -n auto
+      --dist loadfile -ra --no-header --ignore=backend/tests/e2e --tb=short (CI shard env, no -x)
+    result: >-
+      17 failed, 33503 passed, 443 skipped, 7 xfailed in 599 s. All 17 are
+      backend/tests/unit/middleware/test_pii_scanner.py with "OSError: [E050] Can't find model
+      'en_core_web_lg'" (model not installed on M5). The CI shards run on Linux runners with their own install.
+    exit: 1
+    ts: "2026-10-06T02:40Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R9 — positive control: the same 17 fail on origin/main's lock, so they are environmental."
+    cmd: >-
+      venv from origin/main's requirements.lock.txt (multidict 6.7.1, fsspec 2026.4.0, langgraph-sdk 0.4.2,
+      werkzeug 3.1.8); pytest backend/tests/unit/middleware/test_pii_scanner.py on both venvs
+    result: "base venv: 17 failed; bumped venv: 17 failed. Identical."
+    exit: 1
+    ts: "2026-10-06T02:43Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R10 — what the Fly image installs boots and authenticates fail-closed."
+    cmd: >-
+      fresh venv from requirements-prod.lock.txt; python -c 'import backend.app.main_cloud'; uvicorn
+      backend.app.main_cloud:app on 127.0.0.1:18080 (the Dockerfile CMD module, scratch DB); curl /health,
+      /health/ready, /api/auth/profile with a forged HS256 bearer and with none
+    result: >-
+      prod venv multidict 6.9.1, langgraph-sdk 0.4.4, python-jose 3.5.0; IMPORT_OK FastAPI; /health 200,
+      /health/ready 200; forged token 401, no token 401. The uvicorn log carries 5 tracebacks from background
+      workers reading prod-only tables absent in the scratch DB (memory_facts, legal_ingest_jobs), non-fatal.
+    exit: 0
+    ts: "2026-10-06T02:25Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R11 — the Codex council and review answered from account O2."
+    cmd: "find -L ~/.codex ~/.codex-o2 ~/.codex-acct2 -name '*.jsonl' -mmin -12 + grep for the prompt"
+    result: >-
+      the council session rollout-2026-10-06T10-09-43-01a10ef9-52b9-7be2-8da3-2558bd92a624 (local time) exists
+      only under ~/.codex-o2, model gpt-6.1-sol; nothing new under ~/.codex or ~/.codex-acct2 in that window.
+    exit: 0
+    ts: "2026-10-06T02:11Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+  - claim: "R12 — after the rebase on fresh origin/main the lock confinement and the audit still hold."
+    cmd: "git rebase origin/main (f9635d4835); lockcmp.py on both locks; runstep.py full"
+    result: >-
+      rebase clean; CI lock changed only fsspec, langgraph-sdk, multidict, werkzeug; prod lock only
+      langgraph-sdk, multidict; "pip-audit requirements.lock.txt: clean", "pip-audit
+      requirements-prod.lock.txt: clean", RC 0.
+    exit: 0
+    ts: "2026-10-06T02:44Z"
+    seat: Claude Opus 5.5 (Dux, M5)
+dissent:
+  - seat: kimi-code/k3 (sealed council)
+    objection: "Ignore BOTH CVE-2026-85394 and GHSA-3qf3-8w2g-rqmx; one id risks staying red."
+    status: PLAUSIBLE
+    disposition: >-
+      Not adopted. R3 shows pip-audit 2.10.1 resolves aliases, so one id suppresses either form. The residual
+      (a record without the alias) fails red, which is the safe direction; Codex's sealed answer preferred one
+      id once alias resolution was proven.
+  - seat: codex-gpt-5.6-sol and kimi-code/k3 (refutation round, converged)
+    objection: >-
+      The ignore's version and expiry bounds are only documentary: a python-jose change or the re-check date
+      passing would keep the audit green with no re-evaluation.
+    status: CONFIRMED
+    disposition: >-
+      Adopted before the hot-zone edit: the step fails while the ignore exists if either lock stops pinning
+      python-jose==3.5.0 or the date reaches 2026-11-06 (R6 guilt and innocence).
+  - seat: kimi-code/k3 (refutation round)
+    objection: >-
+      The OWED PyJWT migration has no named owner; the repo's own ignore file shows doc-only dates lapsing.
+    status: PLAUSIBLE
+    disposition: >-
+      The date now enforces itself (red step on 2026-11-06). The owner is not chosen here: the OWED line goes in
+      the PR body and in the Dux report to the imperator, who assigns the lane.
+  - seat: codex-gpt-5.6-sol (sealed council)
+    objection: "Build the Fly image before merging; the merge itself deploys."
+    status: PLAUSIBLE
+    disposition: >-
+      Docker is not installed on M5. The nearest proof is R10: the prod lock installed exactly as the
+      Dockerfile does (uv pip install -r requirements-prod.lock.txt), the CMD module imported and booted, health
+      200. The image build happens in the deploy; a failed build leaves the current release serving.
+  - seat: kimi-code/k3 (review)
+    objection: "Scope creep: the diff guts claude-cascade.sh and deletes test_claude_cascade_shell.py."
+    status: RETRACTED
+    disposition: >-
+      Artifact of reviewing against a moving origin/main while the worktree base was 3 commits behind (Codex
+      flagged the same as base drift). The change itself touches only the 4 files plus this evidence dir; the
+      branch was rebased on fresh origin/main before the commit.
+council_run: council-journal.jsonl
+owed:
+  - "Migrate python-jose to PyJWT (11 modules) in a separate PR before 2026-11-06, then drop the ignore and the guard."
+  - "Install en_core_web_lg locally (M5) or mark test_pii_scanner's model dependency; environmental, pre-existing."

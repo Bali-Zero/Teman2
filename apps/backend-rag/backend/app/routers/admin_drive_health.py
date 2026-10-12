@@ -13,6 +13,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 
 from backend.app.dependencies import get_current_user
 from backend.app.utils.crm_utils import is_crm_admin
+from backend.services.crm.drive_registration_visibility import drive_default_client_visible
 
 logger = logging.getLogger(__name__)
 
@@ -585,8 +586,9 @@ async def backfill_drive_documents(
                             await conn.execute(
                                 "INSERT INTO documents "
                                 "(client_id, document_type, document_category, file_name, file_id, "
-                                "google_drive_file_url, status, storage_type, ocr_status) "
-                                "VALUES ($1,$2,$3,$4,$5,$6,'active','google_drive','pending') "
+                                "google_drive_file_url, status, storage_type, ocr_status, "
+                                "client_visible) "
+                                "VALUES ($1,$2,$3,$4,$5,$6,'active','google_drive','pending',$7) "
                                 "ON CONFLICT DO NOTHING",
                                 cid,
                                 doc_type,
@@ -594,6 +596,7 @@ async def backfill_drive_documents(
                                 file_name,
                                 file_id,
                                 url,
+                                drive_default_client_visible(file_name),
                             )
                         existing_fids.add(file_id)
                         added += 1

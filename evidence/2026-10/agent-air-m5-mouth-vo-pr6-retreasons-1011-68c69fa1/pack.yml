@@ -1,0 +1,111 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 (decisions on the E33/retirement program, plan PR-6 from the 2026-10-11 E33 audit) - a
+  retirement visitor below the passive-income bound got a reason that never named the figure the rules
+  check; the page must say USD 3,000 a month, and the deposit reason must name the USD 50,000 figure and
+  the income condition.
+mission: >-
+  A retirement visitor below the passive-income bound is told the figure the rules check - USD 3,000 a month -
+  and the E33E reason names the USD 50,000 deposit and the income condition.
+lanes:
+  - lane: pr6-retirement-reasons
+    role: build
+    seat: Claude Sonnet 5 implementer (subagent), worktree mouth-vo-pr6-retreasons-1011 on M5.
+  - lane: pr6-ground-truth
+    role: ground_truth
+    seat: >-
+      Newest signed pack: hf.e33e and hf.e33f retirement-income-below-minimum (lt 3000) and el.e33e.retirement
+      (gte 50000 deposit, gte 3000 monthly passive income), pinned in engine-adapter.ts as
+      RETIREMENT_INCOME_THRESHOLD_USD and E33E_DEPOSIT_THRESHOLD_USD; the change asserts no rule of its own,
+      it states the visitor's answers against those rules.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "6d6b36a4da16fafd6c9653232d658570811972711047bda12e9a7c65e4ab40a0" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at origin/main (before the change).
+pii_scan: clean
+bites:
+  consumer: >-
+    the reason line of the public Visa Oracle result page on a NO_SUPPORTED_PATH for a retirement visitor
+    below the passive-income bound, and the E33E eligible sentence (engine-adapter.ts reason builder);
+    live after promote, a headless walk on https://balizero.com/visa-oracle of retirement, age 64, passive
+    income USD 2,999 a month shows the declared-figure sentence (and its Indonesian twin) and not the age-55 sentence.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_retirement_reasons.py
+  expect: "contains:retirement reasons hold"
+receipts:
+  - claim: "The branch sits on a fresh origin/main (nothing pushed); the only conflict was engine-adapter.ts, where PR 8256 (c4d6ff4005) added secondHomeDepositHolderReason in the same reason chain, resolved keeping both behaviours."
+    cmd: git fetch origin main && git rebase origin/main
+    result: "one conflict in engine-adapter.ts resolved by chaining both builders (OPERATIONAL -> deposit-holder sentence, RETIREMENT_INCOME_BELOW_THRESHOLD -> income sentence); code commit c4d2928989 on df316e3a09 (red-team cure commit 3f325b1770 on top)"
+    exit: 0
+    ts: "2026-10-11T09:20:00Z"
+    seat: this session
+  - claim: "The visa-oracle _lib Vitest tree at code commit 3f325b1770 (the evidence-only commit on top changes no source)."
+    cmd: cd apps/mouth && vitest run '_lib' --testTimeout=120000
+    result: "Test Files 1 failed | 30 passed (31); Tests 1 failed | 1043 passed (1044) - the one failure is in enumerate-interview-space.test.ts (does not import engine-adapter), a load-bound exhaustive walk at machine load average 120-220; rerun of that file alone with a 600s ceiling: Tests 40 passed (40), exit 0; engine-adapter.test.ts alone 151 passed (151); client-copy, copy-truth and i18n-census files pass inside the tree"
+    exit: 1
+    ts: "2026-10-11T09:55:19Z"
+    seat: this session
+  - claim: "apps/mouth typechecks after the rebase."
+    cmd: cd apps/mouth && tsc --noEmit -p .
+    result: "no output, at code commit 3f325b1770"
+    exit: 0
+    ts: "2026-10-11T09:59:04Z"
+    seat: this session
+  - claim: "The observer passes at 3f325b1770: it reads Vitest's JSON report, full pass, every required title with status passed."
+    cmd: python3 scripts/ci/observe_visa_oracle_retirement_reasons.py
+    result: "adapter 151 passed of 151; retirement reasons hold"
+    exit: 0
+    ts: "2026-10-11T09:50:00Z"
+    seat: this session
+  - claim: "The observer's JSON parser and required-title checks reject skipped, todo, failed, reduced counts, and a text log line carrying a required title."
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_retirement_reasons.py
+    result: "16 passed"
+    exit: 0
+    ts: "2026-10-11T09:50:00Z"
+    seat: this session
+  - claim: "The legacy client-copy guard and the i18n census stay green."
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py && python3 scripts/ci/observe_visa_oracle_i18n_census.py
+    result: "OK visa-oracle client copy: 3539 literals scanned, 0 banned; i18n census Tests 6 passed (6), census holds"
+    exit: 0
+    ts: "2026-10-11T09:34:00Z"
+    seat: this session
+decisions:
+  - id: D-fact-derived
+    decision: >-
+      RETIREMENT_INCOME_BELOW_THRESHOLD is fact-derived: the declared figure is echoed against USD 3,000 a
+      month; a not-sure answer says it counted as zero (the fact mapper's conservative 0); the static
+      fallback names the figure. E33E_RETIREMENT_ELIGIBLE appends the income condition after the deposit figure.
+  - id: D-pinned
+    decision: >-
+      RETIREMENT_INCOME_THRESHOLD_USD = 3000 and E33E_DEPOSIT_THRESHOLD_USD = 50000 are exported and pinned by
+      tests to the newest signed pack, so a pack change fails the build instead of drifting the copy.
+  - id: D-age-rewording-dropped
+    decision: >-
+      The E33E_AGE_55_59_ADVISOR_CHECK rewording is deliberately NOT in this change: the Permenkumham 11/2024
+      text could not be opened, and primary sources show Permenimipas 3/2025 revokes only Pasal 43/45/52-55
+      while the E33 articles 56-63 stay in force. Say so in the PR body.
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T17-34-51-01a12a50-9a41-7001-9c9a-2d814a20cd17.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 1: the retirement code passes through the Second Home and paid-activity builders first, so mixed or stale facts can show a wrong reason."
+    status: RETRACTED
+    disposition: "Cured in 3f325b1770: reason() dispatches RETIREMENT_INCOME_BELOW_THRESHOLD to its own builder only; a test populates unrelated Second Home and paid-activity facts and asserts the retirement sentence wins."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T17-34-51-01a12a50-9a41-7001-9c9a-2d814a20cd17.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 2: the static fallback says the figure you gave is below it, which is unproven or false with absent, 3000 or invalid facts."
+    status: RETRACTED
+    disposition: "Cured in 3f325b1770: the fallback is neutral EN and ID (no claim about the visitor's figure) and the test pins the exact text; only the fact-derived builder says You declared."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T17-34-51-01a12a50-9a41-7001-9c9a-2d814a20cd17.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 3: the recorded full verification is red and names an older HEAD than the reviewed one."
+    status: RETRACTED
+    disposition: "Re-run at code commit 3f325b1770 and recorded: tree 1043 of 1044 passed, the single failure being the load-bound exhaustive walk in enumerate-interview-space.test.ts (machine load 120-220, a file that does not import engine-adapter), which passes 40 of 40 alone with a 600s ceiling; tsc 0; observer 151 of 151. The residual red in the one aggregate command is stated, not hidden; a non-overloaded machine was not available."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T17-34-51-01a12a50-9a41-7001-9c9a-2d814a20cd17.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 4: the Bites names the public page but the observer only runs unit tests, not the rendered page or deploy wiring."
+    status: PLAUSIBLE
+    disposition: "Accepted as a limit of a ci-side observer (observe may only be a no-argument script): it proves the adapter output pre-merge. The in-force observation is the post-promote headless walk on https://balizero.com/visa-oracle (retirement, age 64, USD 2,999 a month: EN and ID sentences present, age-55 sentence absent), recorded after deploy."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T17-34-51-01a12a50-9a41-7001-9c9a-2d814a20cd17.jsonl, model verified in the rollout file)"
+    objection: "LOW 5: the observer parses text output, so a synthetic log line or a no-op test with the same title could satisfy it."
+    status: RETRACTED
+    disposition: "Cured in 3f325b1770: the observer runs Vitest with the JSON reporter, requires success, equal passed and total counts, zero failed/pending/todo, and each required title as an assertion with status passed; pytest covers a text log line being rejected."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T17-34-51-01a12a50-9a41-7001-9c9a-2d814a20cd17.jsonl, model verified in the rollout file)"
+    objection: "LOW 6: brief_ref does not point at the brief added by the diff."
+    status: RETRACTED
+    disposition: "Not a defect: the lane convention and the pre-push pack-lint stage the brief at evidence/brief.yml; a dated path fails the lint. No change."

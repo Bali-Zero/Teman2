@@ -158,7 +158,7 @@ class TestDependencies:
         mock_credentials.credentials = "valid_token"
 
         with (
-            patch("backend.app.deps.auth.jwt.decode") as mock_decode,
+            patch("backend.app.deps.auth.decode_jwt") as mock_decode,
             patch("backend.app.deps.auth.is_session_revoked_sync", return_value=False),
         ):
             mock_decode.return_value = {
@@ -185,10 +185,10 @@ class TestDependencies:
         mock_credentials = MagicMock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "invalid_token"
 
-        with patch("backend.app.deps.auth.jwt.decode") as mock_decode:
-            from jose import JWTError
+        with patch("backend.app.deps.auth.decode_jwt") as mock_decode:
+            from jwt import PyJWTError
 
-            mock_decode.side_effect = JWTError("Invalid token")
+            mock_decode.side_effect = PyJWTError("Invalid token")
 
             with pytest.raises(HTTPException) as exc_info:
                 get_current_user(mock_request, credentials=mock_credentials)
@@ -201,7 +201,7 @@ class TestDependencies:
         mock_credentials = MagicMock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "token"
 
-        with patch("backend.app.deps.auth.jwt.decode") as mock_decode:
+        with patch("backend.app.deps.auth.decode_jwt") as mock_decode:
             mock_decode.return_value = {}  # No email, no sub
 
             with pytest.raises(HTTPException) as exc_info:
@@ -241,10 +241,10 @@ class TestDependencies:
         mock_credentials = MagicMock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "invalid_token"
 
-        with patch("backend.app.deps.auth.jwt.decode") as mock_decode:
-            from jose import JWTError
+        with patch("backend.app.deps.auth.decode_jwt") as mock_decode:
+            from jwt import PyJWTError
 
-            mock_decode.side_effect = JWTError("Invalid token")
+            mock_decode.side_effect = PyJWTError("Invalid token")
 
             user = get_current_user_optional(mock_request, credentials=mock_credentials)
             assert user is None
@@ -257,7 +257,7 @@ class TestDependencies:
         mock_credentials.credentials = "valid_token"
 
         with (
-            patch("backend.app.deps.auth.jwt.decode") as mock_decode,
+            patch("backend.app.deps.auth.decode_jwt") as mock_decode,
             patch("backend.app.deps.auth.is_session_revoked_sync", return_value=False),
         ):
             mock_decode.return_value = {

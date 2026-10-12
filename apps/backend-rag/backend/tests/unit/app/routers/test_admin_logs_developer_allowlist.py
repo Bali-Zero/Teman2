@@ -54,7 +54,7 @@ def _make_jwt(
     tokens, and a test named for one while minting the other proves neither
     (adversarial review, kimi-code/k3, round 1, finding 10).
     """
-    from jose import jwt
+    import jwt
 
     claims: dict[str, object] = {
         "role": role,
@@ -228,9 +228,9 @@ def test_env_side_normalisation_of_the_list(secret, monkeypatch, raw: str) -> No
 
 
 def test_expired_token_of_a_listed_developer_is_rejected(secret, with_developer) -> None:
-    """`verify_exp` pinned by a red test, not by trust in python-jose
+    """`verify_exp` pinned by a red test, not by trust in PyJWT
     (adversarial review, kimi-code/k3, round 2, finding 6)."""
-    from jose import jwt
+    import jwt
 
     expired = jwt.encode(
         {
@@ -249,7 +249,7 @@ def test_expired_token_of_a_listed_developer_is_rejected(secret, with_developer)
 
 def test_token_without_an_exp_claim_is_rejected(secret, with_developer) -> None:
     """`require_exp` — a token that never expires must not be accepted."""
-    from jose import jwt
+    import jwt
 
     no_exp = jwt.encode(
         {"email": DEVELOPER, "role": "member", "type": "access"},

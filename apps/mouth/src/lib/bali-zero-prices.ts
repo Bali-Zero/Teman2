@@ -26,7 +26,7 @@ import path from "path";
 export interface CompanyServicePrice {
   /** Display name from the PricingTool catalog. */
   name: string;
-  /** Price string verbatim from PricingTool, e.g. "20.000.000 IDR". */
+  /** Price string verbatim from PricingTool, e.g. "25.000.000 IDR". */
   price: string;
   /** Stable key (matches the catalog `icon_id`). */
   iconId: string;

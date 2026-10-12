@@ -2,7 +2,7 @@
 
 ``test_gold_coverage_floor.py`` proves the pack can support a product when
 every fact arrives. This file proves the opposite half, and it is the half
-the user lives in: replay the **115 real interview walks** — every distinct
+the user lives in: replay the **131 real interview walks** — every distinct
 path through ``flow.ts``'s two-arm spine and ``getCategoryQuestionIds``'
 eleven categories, each answered through the real ``fact-mapper.ts`` —
 against the highest signed PRODUCTION pack, and pin the outcome census.
@@ -352,7 +352,7 @@ import functools
 import json
 from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -458,10 +458,21 @@ def _candidate_pack() -> PackUnderTest | None:
     path = _candidate_source_pack_path()
     if path is None:
         return None
+    return _pack_from_source(path)
+
+
+def _pack_from_source(path: Path) -> PackUnderTest:
+    """Compile ONE source pack through the unsigned-candidate path, whatever its signing
+    state on disk — a signed sibling may exist (seq-26 ships signed) and a test that
+    targets that pack by sequence must not depend on it being the highest unsigned one."""
     payload = load_rule_pack_payload(path)
     compiled = compiler.build_compiled_pack(wrap_as_unsigned_pack(payload))
     latest = max(rule.valid_period.from_ for rule in payload.rules)
-    return PackUnderTest(compiled=compiled, as_of=latest + timedelta(hours=12))
+    # A re-stamped candidate (seq-25, seq-26) carries portal reads NEWER than its newest
+    # rule: grading before the newest read makes every source "not yet verified" and holds
+    # every walk, so grade after both.
+    latest_read = max(record.verified_at for record in payload.source_records)
+    return PackUnderTest(compiled=compiled, as_of=max(latest, latest_read) + timedelta(hours=12))
 
 
 #: Why an allowlisted NEEDS_INPUT is a DEAD END and not a question the funnel
@@ -630,6 +641,12 @@ WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE: dict[int, dict[str, tuple[DeadEnd, ...]]] =
         "offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW_SEQ24,
     },
 }
+# seq-25 re-stamps the 18 portal sources from the 2026-10-07 read ledger and moves
+# no rule and no product — every seq-24 pin is reproduced byte-for-byte.
+WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[25] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[24]
+WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[26] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[25]
+WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[27] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[26]
+WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[28] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[27]
 WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
 )
@@ -913,6 +930,8 @@ _EXPECTED_OUTCOME_ON_SEQ20: dict[str, tuple[str, tuple[str, ...]]] = {
     # product — which left the highest-demand public product named by no walk
     # in the corpus.
     "offshore/remote/foreign_only": ("SUPPORTED_CANDIDATES", ("E33G",)),
+    "offshore/remote/foreign_only/income_59999": ("SUPPORTED_CANDIDATES", ("E33G",)),
+    "offshore/remote/foreign_only/income_60000": ("SUPPORTED_CANDIDATES", ("E33G",)),
     "offshore/retirement/bank_deposit": ("NO_SUPPORTED_PATH", ()),
     # D3-3 (PR-D3): now ALSO asks `family_sponsor_confirmed` (default "yes"),
     # and the corpus's canned passive-income default clears E33F's own
@@ -1202,6 +1221,53 @@ EXPECTED_OUTCOME_BY_SEQUENCE: dict[int, dict[str, tuple[str, tuple[str, ...]]]] 
         **_SEQ24_OUTCOME_CHANGES,
     },
 }
+# seq-25 re-stamps the 18 portal sources from the 2026-10-07 read ledger and moves
+# no rule and no product — every seq-24 pin is reproduced byte-for-byte.
+EXPECTED_OUTCOME_BY_SEQUENCE[25] = EXPECTED_OUTCOME_BY_SEQUENCE[24]
+EXPECTED_OUTCOME_BY_SEQUENCE[26] = EXPECTED_OUTCOME_BY_SEQUENCE[25]
+#: PR-11 (Visa Oracle retirement audit, 2026-10-11): 13 retirement
+#: walks at age 64, one per side of each bound the pack draws. Every row is the
+#: engine's own replay, then checked against the rule text it exercises:
+#: `el.e33e.retirement` = deposit >= 50,000 AND state bank AND own name AND
+#: income >= 3,000; `el.e33f.retirement` = income >= 3,000 alone. A basis
+#: other than `bank_deposit` and `undecided` asserts the deposit trio
+#: KNOWN(0)/KNOWN(false) (`depositBasisDecisivelyNotChosen`), so those walks can
+#: never name E33E; `undecided` (deposit_or_income) leaves the deposit open and
+#: is the one non-bank_deposit walk that does reach E33E.
+_E33E_AND_E33F = ("SUPPORTED_CANDIDATES", ("E33E", "E33F"))
+_E33F_ONLY = ("SUPPORTED_CANDIDATES", ("E33F",))
+_INCOME_BELOW_FLOOR = ("NO_SUPPORTED_PATH", ())  # RETIREMENT_INCOME_BELOW_THRESHOLD
+_PR11_RETIREMENT_OUTCOMES: dict[str, tuple[str, tuple[str, ...]]] = {
+    "offshore/retirement/bank_deposit/age64/deposit_passing": _E33E_AND_E33F,
+    "offshore/retirement/bank_deposit/age64/deposit_49999": _E33F_ONLY,
+    "offshore/retirement/bank_deposit/age64/deposit_50000": _E33E_AND_E33F,
+    "offshore/retirement/bank_deposit/age64/state_bank_no": _E33F_ONLY,
+    "offshore/retirement/bank_deposit/age64/own_name_no": _E33F_ONLY,
+    "offshore/retirement/bank_deposit/age64/income_3000": _E33E_AND_E33F,
+    "offshore/retirement/bank_deposit/age64/income_2999": _INCOME_BELOW_FLOOR,
+    "offshore/retirement/passive_income/age64/income_3000": _E33F_ONLY,
+    "offshore/retirement/passive_income/age64/income_2999": _INCOME_BELOW_FLOOR,
+    "offshore/retirement/property/age64/income_3000": _E33F_ONLY,
+    "offshore/retirement/family_sponsor/age64/income_3000": _E33F_ONLY,
+    "offshore/retirement/family_sponsor/age64/income_2999": _INCOME_BELOW_FLOOR,
+    "offshore/retirement/undecided/age64/deposit_or_income_passing": _E33E_AND_E33F,
+}
+EXPECTED_OUTCOME_BY_SEQUENCE[27] = EXPECTED_OUTCOME_BY_SEQUENCE[26]
+# seq-28 Step C: once Step B's two income-boundary walks are present,
+# only the 59,999 USD walk changes state.  The 60,000 USD walk remains E33G,
+# inherited from seq-27 through the dictionary expansion.
+_SEQ28_E33G_59999_WALK = "offshore/remote/foreign_only/income_59999"
+EXPECTED_OUTCOME_BY_SEQUENCE[28] = {
+    **EXPECTED_OUTCOME_BY_SEQUENCE[27],
+    _SEQ28_E33G_59999_WALK: ("NO_SUPPORTED_PATH", ()),
+}
+# The sequences share one corpus, so every one of them pins the 13 walks; the
+# replay test `test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence`
+# re-measures them (and the full state census) on each of seq-20..27.
+EXPECTED_OUTCOME_BY_SEQUENCE = {
+    _seq: {**_pins, **_PR11_RETIREMENT_OUTCOMES}
+    for _seq, _pins in EXPECTED_OUTCOME_BY_SEQUENCE.items()
+}
 EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = EXPECTED_OUTCOME_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
 )
@@ -1256,6 +1322,33 @@ EXPECTED_STATE_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
         "SUPPORTED_CANDIDATES": 99,
     },
 }
+# seq-25 re-stamps the 18 portal sources from the 2026-10-07 read ledger and moves
+# no rule and no product — every seq-24 pin is reproduced byte-for-byte.
+EXPECTED_STATE_CENSUS_BY_SEQUENCE[25] = EXPECTED_STATE_CENSUS_BY_SEQUENCE[24]
+EXPECTED_STATE_CENSUS_BY_SEQUENCE[26] = EXPECTED_STATE_CENSUS_BY_SEQUENCE[25]
+EXPECTED_STATE_CENSUS_BY_SEQUENCE[27] = EXPECTED_STATE_CENSUS_BY_SEQUENCE[26]
+# PR-11 adds 10 SUPPORTED_CANDIDATES and 3 NO_SUPPORTED_PATH walks to EVERY
+# sequence (see `_PR11_RETIREMENT_OUTCOMES`), and seq-28 Step B adds the two
+# remote-income boundary witnesses as SUPPORTED_CANDIDATES on seq-20..27;
+# no new NEEDS_INPUT, no new hold.
+EXPECTED_STATE_CENSUS_BY_SEQUENCE = {
+    _seq: {
+        **_census,
+        "NO_SUPPORTED_PATH": _census["NO_SUPPORTED_PATH"] + 3,
+        "SUPPORTED_CANDIDATES": _census["SUPPORTED_CANDIDATES"] + 12,
+    }
+    for _seq, _census in EXPECTED_STATE_CENSUS_BY_SEQUENCE.items()
+}
+# Expected after Step B's 131-walk corpus from the single ruled movement:
+# one walk moves SUPPORTED_CANDIDATES -> NO_SUPPORTED_PATH; age scoping moves
+# reason codes only, never a state.  The candidate replay below re-measures
+# this literal as soon as the real seq-28 source exists on disk.
+EXPECTED_STATE_CENSUS_BY_SEQUENCE[28] = {
+    "HUMAN_REVIEW_REQUIRED": 3,
+    "NEEDS_INPUT": 1,
+    "NO_SUPPORTED_PATH": 17,
+    "SUPPORTED_CANDIDATES": 110,
+}
 
 #: Which fact blocks how many walks — the §2.2 table, EMPTY between PR-3 and
 #: PR-5. A cure that moves walks between blocking facts instead of removing
@@ -1296,6 +1389,12 @@ EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
     # replay, reproduced on the signed tree.
     24: {"secondhome.passive_monthly_income_usd": 1},
 }
+# seq-25 re-stamps the 18 portal sources from the 2026-10-07 read ledger and moves
+# no rule and no product — every seq-24 pin is reproduced byte-for-byte.
+EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[25] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[24]
+EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[26] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[25]
+EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[27] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[26]
+EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[28] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[27]
 EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
 )
@@ -1424,6 +1523,12 @@ STUDIO_HELD_WALKS_BY_SEQUENCE: dict[int, frozenset[str]] = {
         }
     ),
 }
+# seq-25 re-stamps the 18 portal sources from the 2026-10-07 read ledger and moves
+# no rule and no product — every seq-24 pin is reproduced byte-for-byte.
+STUDIO_HELD_WALKS_BY_SEQUENCE[25] = STUDIO_HELD_WALKS_BY_SEQUENCE[24]
+STUDIO_HELD_WALKS_BY_SEQUENCE[26] = STUDIO_HELD_WALKS_BY_SEQUENCE[25]
+STUDIO_HELD_WALKS_BY_SEQUENCE[27] = STUDIO_HELD_WALKS_BY_SEQUENCE[26]
+STUDIO_HELD_WALKS_BY_SEQUENCE[28] = STUDIO_HELD_WALKS_BY_SEQUENCE[27]
 STUDIO_HELD_WALKS: frozenset[str] = STUDIO_HELD_WALKS_BY_SEQUENCE.get(_SIGNED_SEQUENCE, frozenset())
 STUDIO_REVIEW_REASON = "SECOND_HOME_BELOW_THRESHOLD_STUDIO"
 
@@ -2124,7 +2229,37 @@ def candidate_funnel_named(
     return _funnel_named_products(walks, candidate_pack)
 
 
-def test_corpus_is_the_115_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
+def test_r2_retirement_walks_below_55_visit_the_age_notice_and_the_rest_do_not(
+    walks: dict[str, dict[str, Any]],
+) -> None:
+    """R2 (2026-10-11): the interview shows ``retirement_age_notice`` right
+    after ``trip_scope`` to a retirement visitor below 55 on the corpus clock
+    (the generator takes its one option, Continue, so every outcome pin above
+    is unchanged). The age-64 walks never see it. Derived from each walk's own
+    birth date, so a walk added later is judged by the same rule.
+    """
+
+    retirement = {
+        label: spec for label, spec in walks.items() if "retirement_basis" in spec["asked"]
+    }
+    assert retirement, "no retirement walk in the corpus: the check below would be vacuous"
+    visited = {k for k, v in retirement.items() if "retirement_age_notice" in v["asked"]}
+    below_55 = set()
+    for label, spec in retirement.items():
+        born = date.fromisoformat(str(spec["overrides"]["person.birth_date"]["value"]))
+        today = date(2026, 9, 6)
+        age = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+        if age < 55:
+            below_55.add(label)
+    assert below_55, "no retirement walk below 55: the notice is never visited"
+    assert visited == below_55
+    for label in visited:
+        asked = walks[label]["asked"]
+        assert asked.index("retirement_age_notice") == asked.index("trip_scope") + 1
+        assert asked.index("retirement_age_notice") + 1 == asked.index("retirement_basis")
+
+
+def test_corpus_has_the_expected_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
     """An empty or shrunken corpus fails loudly: a census that passes because
     nobody fed it any walks is the green-but-dead shape (cicatrix #2).
 
@@ -2237,9 +2372,20 @@ def test_corpus_is_the_115_real_interview_walks(walks: dict[str, dict[str, Any]]
     `false` arm by a real walk. One existing fixture changes one byte:
     `offshore/family/PARENT/spNat=IT/minor`'s `person.guardian_consent`
     moves from `UNKNOWN NOT_ASKED` to `KNOWN true` (the tree now asks the
-    question and this walk takes its first option)."""
+    question and this walk takes its first option).
 
-    assert len(walks) == 116, f"expected 116 interview walks, found {len(walks)}"
+    PR-11 (Visa Oracle retirement audit, 2026-10-11): adds 13, corpus 116 ->
+    129, and changes NO existing fixture by a byte. All 13 are age-64
+    retirement walks that answer the money questions with explicit values on
+    either side of the pack's bounds (deposit 49,999 / 50,000, state bank,
+    own name, income 2,999 / 3,000) instead of the corpus-wide 1,000,000,000
+    default — see `_PR11_RETIREMENT_OUTCOMES`.
+
+    Seq-28 Step B (2026-10-11): adds 2, corpus 129 -> 131:
+    `offshore/remote/foreign_only/income_59999` and `income_60000`. Both are
+    E33G under seq-20..27 because those packs do not read the new fact."""
+
+    assert len(walks) == 131, f"expected 131 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -2265,10 +2411,10 @@ def test_the_census_pins_the_signed_sequence() -> None:
     assert _SIGNED_SEQUENCE in WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE
     assert _SIGNED_SEQUENCE in EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE
     # The sequences share one corpus, so they must pin the same walks.
-    assert all(
-        sorted(pins) == sorted(_EXPECTED_OUTCOME_ON_SEQ20)
-        for pins in EXPECTED_OUTCOME_BY_SEQUENCE.values()
-    )
+    common_labels = set(_EXPECTED_OUTCOME_ON_SEQ20) | set(_PR11_RETIREMENT_OUTCOMES)
+    for sequence, pins in EXPECTED_OUTCOME_BY_SEQUENCE.items():
+        expected_labels = common_labels | ({_SEQ28_E33G_59999_WALK} if sequence >= 28 else set())
+        assert set(pins) == expected_labels, sequence
     # Every seq-21 change is an ADDITION: no walk loses a candidate the
     # seq-20 table gave it (the one state change keeps no candidate to lose).
     for label, (_state, candidates) in _SEQ21_OUTCOME_CHANGES.items():
@@ -2347,6 +2493,73 @@ def test_every_walk_ends_in_its_pinned_outcome_on_the_candidate_pack(
         label for label, outcome in replayed.items() if outcome["state"] == "HUMAN_REVIEW_REQUIRED"
     }
     assert held == PRIVACY_HELD_WALKS | STUDIO_HELD_WALKS_BY_SEQUENCE[sequence]
+
+
+@pytest.mark.parametrize(
+    "sequence",
+    [
+        sequence
+        for sequence in sorted(EXPECTED_OUTCOME_BY_SEQUENCE)
+        if (PACKS_DIR / f"rulepack-prod-{sequence:03d}.source.json").is_file()
+    ],
+)
+def test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence(
+    walks: dict[str, dict[str, Any]], sequence: int
+) -> None:
+    """The 13 PR-11 pins are replayed, not asserted by copy: each pinned
+    sequence's own source pack evaluates the whole corpus, and both the
+    (state, candidates) table and the state census must equal that sequence's
+    literals exactly."""
+
+    path = PACKS_DIR / f"rulepack-prod-{sequence:03d}.source.json"
+    assert path.is_file(), f"no source pack on disk for pinned seq-{sequence}"
+    replayed = _outcomes_on(walks, _pack_from_source(path))
+    retirement = {k: v for k, v in replayed.items() if k in _PR11_RETIREMENT_OUTCOMES}
+    assert len(retirement) == 13
+    violations = _outcome_violations(retirement, _PR11_RETIREMENT_OUTCOMES)
+    assert not violations, "\n  ".join(violations)
+    census = dict(Counter(o["state"] for o in replayed.values()))
+    assert census == EXPECTED_STATE_CENSUS_BY_SEQUENCE[sequence]
+
+
+#: The three dead ends are NAMED, not just empty: the visitor copy keys off
+#: this code, so a rule that swapped it for another would pass the
+#: (state, candidates) pins above unnoticed. The hf.*.retirement-income-
+#: below-minimum rules first appear in seq-23; seq-20..22 still end these walks
+#: on the generic sentence (seq-21's own census pins that).
+_PR11_INCOME_DEAD_ENDS = (
+    "offshore/retirement/bank_deposit/age64/income_2999",
+    "offshore/retirement/family_sponsor/age64/income_2999",
+    "offshore/retirement/passive_income/age64/income_2999",
+)
+
+
+@pytest.mark.parametrize(
+    "sequence",
+    [
+        sequence
+        for sequence in sorted(EXPECTED_OUTCOME_BY_SEQUENCE)
+        if sequence >= 23
+        and (PACKS_DIR / f"rulepack-prod-{sequence:03d}.source.json").is_file()
+    ],
+)
+def test_retirement_income_dead_ends_name_their_cause_on_every_sequence_that_has_the_rule(
+    walks: dict[str, dict[str, Any]], sequence: int
+) -> None:
+    path = PACKS_DIR / f"rulepack-prod-{sequence:03d}.source.json"
+    replayed = _outcomes_on(walks, _pack_from_source(path))
+    dead_ends = sorted(
+        label
+        for label in _PR11_RETIREMENT_OUTCOMES
+        if _PR11_RETIREMENT_OUTCOMES[label][0] == "NO_SUPPORTED_PATH"
+    )
+    assert dead_ends == sorted(_PR11_INCOME_DEAD_ENDS)
+    for label in dead_ends:
+        assert "RETIREMENT_INCOME_BELOW_THRESHOLD" in replayed[label]["no_path_reason_codes"], label
+    for label, (state, _) in _PR11_RETIREMENT_OUTCOMES.items():
+        if state == "SUPPORTED_CANDIDATES":
+            codes = replayed[label]["no_path_reason_codes"]
+            assert "RETIREMENT_INCOME_BELOW_THRESHOLD" not in codes, label
 
 
 def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(

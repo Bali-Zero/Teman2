@@ -11,9 +11,10 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from jose import JWTError, jwt
+from jwt import PyJWTError
 
 from backend.app.core.config import settings
+from backend.app.utils.jwt_decode import decode_jwt
 from backend.services.security.token_revocation import (
     RevocationStoreUnavailable,
     is_session_revoked,
@@ -90,11 +91,10 @@ async def get_current_user_ws(token: str) -> str | None:
     sessions fail closed when expiry or revocation cannot be verified.
     """
     try:
-        payload = jwt.decode(
+        payload = decode_jwt(
             token,
             settings.jwt_secret_key,
             algorithms=[settings.jwt_algorithm],
-            options={"verify_exp": True, "require_exp": True},
         )
 
         if payload.get("type") != "access":
@@ -109,7 +109,7 @@ async def get_current_user_ws(token: str) -> str | None:
             return None
 
         return user_id
-    except JWTError:
+    except PyJWTError:
         return None
     except RevocationStoreUnavailable:
         logger.error("WebSocket authentication unavailable: session revocation cannot be checked")

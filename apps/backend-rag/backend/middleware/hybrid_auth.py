@@ -670,14 +670,15 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             User context dict if valid, None otherwise
         """
         try:
-            from jose import JWTError, jwt
+            from jwt import PyJWTError
+
+            from backend.app.utils.jwt_decode import decode_jwt
 
             # Stateless validation using secret key. Expiry is mandatory.
-            payload = jwt.decode(
+            payload = decode_jwt(
                 token,
                 settings.jwt_secret_key,
                 algorithms=[settings.jwt_algorithm],
-                options={"verify_exp": True, "require_exp": True},
             )
 
             # Validate required fields
@@ -701,7 +702,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 "status": "active",
             }
 
-        except JWTError as e:
+        except PyJWTError as e:
             logger.warning("JWT token validation failed: %s", e)
             return None
         except RevocationStoreUnavailable:
@@ -715,7 +716,9 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         Stateless JWT authentication
         """
         try:
-            from jose import JWTError, jwt
+            from jwt import PyJWTError
+
+            from backend.app.utils.jwt_decode import decode_jwt
 
             # Extract JWT token from Authorization header
             auth_header = request.headers.get("Authorization")
@@ -725,11 +728,10 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             jwt_token = auth_header[7:]  # Remove "Bearer " prefix
 
             # Stateless validation using secret key. Expiry is mandatory.
-            payload = jwt.decode(
+            payload = decode_jwt(
                 jwt_token,
                 settings.jwt_secret_key,
                 algorithms=[settings.jwt_algorithm],
-                options={"verify_exp": True, "require_exp": True},
             )
 
             # Validate required fields
@@ -754,7 +756,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 "status": "active",
             }
 
-        except JWTError as e:
+        except PyJWTError as e:
             logger.debug("JWT validation failed: %s", e)
             return None
         except RevocationStoreUnavailable:

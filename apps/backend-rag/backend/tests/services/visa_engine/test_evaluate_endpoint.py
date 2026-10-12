@@ -660,6 +660,27 @@ async def test_payload_omitting_guardian_consent_key_is_200_not_422() -> None:
     assert response.status_code == 200
 
 
+@pytest.mark.parametrize("include_income", [True, False])
+async def test_payload_with_or_without_annual_foreign_income_is_200(
+    include_income: bool,
+) -> None:
+    """Step A Bites: old and new callers both cross the HTTP boundary."""
+
+    payload = _wire_payload(_facts_with_purposes(["REMOTE_WORK"]))
+    if include_income:
+        payload["facts"]["work.annual_foreign_income_usd"] = {
+            "status": "KNOWN",
+            "value": 85_000,
+        }
+    else:
+        payload["facts"].pop("work.annual_foreign_income_usd", None)
+
+    async with _client(_build_app(_UntouchedPool())) as client:
+        response = await client.post(_REAL_EVALUATE_URL, json=payload)
+
+    assert response.status_code == 200, response.text
+
+
 async def test_extra_top_level_key_is_422() -> None:
     payload = _wire_payload(_facts_with_purposes(["TOURISM"]))
     payload["bogus"] = 1
@@ -1818,8 +1839,11 @@ async def test_happy_path_http_end_to_end(monkeypatch: pytest.MonkeyPatch) -> No
         assert entry["documentation"]["status"] == "UNKNOWN"
         assert entry["documentation"]["requirements"] == []
         assert entry["documentation"]["checklist"] == []
-        assert entry["processing_timeline"]["status"] == "UNKNOWN"
-        assert entry["processing_timeline"]["anchor_date"] is None
+        # Bali Zero's catalogue window: AVAILABLE while the walk stays in a decreed holiday year.
+        assert entry["processing_timeline"]["status"] in {"AVAILABLE", "UNKNOWN"}
+        assert (entry["processing_timeline"]["anchor_date"] is None) == (
+            entry["processing_timeline"]["status"] == "UNKNOWN"
+        )
         assert entry["pricing"]["status"] == "CONTACT_REQUIRED"
         assert entry["pricing"]["reason_code"] == "PRICING_ROW_NOT_EXACT_AMOUNT"
         assert entry["pricing"]["evaluated_at"] == body["decision"]["evaluated_at"]

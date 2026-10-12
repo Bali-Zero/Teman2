@@ -47,7 +47,307 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-09-22 — keep current)
+## 1. LIVE STATE (last update 2026-10-11 — keep current)
+
+**🟡 2026-10-11 — WHAT THE DESIGN LOOP FOUND IN THE DATA AND THE CODE, PARKED HERE ON ZERO'S ORDER
+("nel corner inserisci tutti i tuoi appunti di cosa dovrebbe essere affrontato nel codice, tu devi
+attenerti al design").** The KBLI Navigator design loop (plan `docs/plans/2026-10-08-kbli-navigator-design-loop.md`,
+mission ledger `~/BATTAGLIA-20261008/DYNAMIC-WORKFLOW-kbli-nav-design/Z-DECISIONI.md` on M5) changes
+presentation only, with content frozen. While measuring EN purity and the detail card, it found defects
+that belong to the DATA and to `apps/mouth` code, not to the design. They are recorded here, so the next
+data lane can start from them. **Only D-1 is in flight. Everything else below is NOT started.**
+
+**D-1 — IN FLIGHT, Zero-approved 2026-10-11 (Q26).** Nine `intel_2026.whatChanged` texts showed
+pipeline notes to clients: correction dates, PR numbers, `pp28_sources`, `score=`, PNG file names and
+Italian. The nine codes are `10433 46100 52101 47771 60101 60103 60203 01309 08996`. Each is rewritten as
+one client sentence stating the BPS Lampiran 10 relation the record already carries. 52101 gains one fact
+the field did not carry: 2020-52101 now maps to 2025-52109, tied to the BPS edge. 01309 and 08996 now
+state the BPS split (01302 → 01302 + 01309; 08999 → 08999 + 08996).
+
+- **Surfaces:**
+  - canonical and its 2 copies;
+  - the website gold layer `apps/mouth/data/kbli-gold-all.json`, which overrides canonical on the page;
+  - `kg_nodes.properties.whatChanged`, a PROD write Zero authorized: guarded script, 9 rows, sha256
+    match on the old value, backup first, dry run shown, readback, `inspect_kbli` served-answer check.
+- **Branch:** `agent/air-m5/kbli-nav-design/d1-whatchanged`, in the shape of the 90200 cure-spec
+  precedent.
+- **What it found besides the 9 texts:**
+  - The old texts labelled 60101/60102 and 60201/60202 as analog/digital. The BPS table says
+    government vs private.
+  - Gold still shows the false 1:1 for 46100, and a single parent for 60103 and 60203.
+- **Live only after `vercel promote`, which is Zero's stop.**
+
+**D-2 — the auto-matched 2020 predecessors. NOT STARTED, proposed and parked.** A read-only audit on
+2026-10-11 covered canonical `c29d6e6aea7a`, `edges-lampiran10.json` (2,560 edges) and 1,559/1,559
+records. Report: `~/BATTAGLIA-20261008/PREVIEW-kbli-nav-design/AUDIT-automatch.md` on M5.
+
+**The good news, measured: the served licensing rows are NOT contaminated.**
+
+- `per_skala` is OSS-RBA 2025 data keyed by the 2025 code on 1,337 records (`_l2_source =
+OSS_RBA_resiko_2025`, `_l2_status` null). Another 13 are OSS-sourced under
+  `absent_pending_corroboration`, which makes 1,350.
+- All 209 `no_oss_risk` records serve `[]`. Check: 1,337 + 13 + 209 = 1,559.
+- The pointer-derived rows live in `per_skala_legacy`, which nothing renders.
+- 01309 serves rows matching its BPS parent 01302, not the wrong pointer 02119.
+- Caveat: the "OSS-keyed" claim rests on `build_kbli_l2_oss_risk.py`'s docstring, because the raw dump
+  `/tmp/oss_risk_raw.jsonl` is gone.
+
+**The bad news: the pointer itself is wrong, and three client surfaces print it.**
+
+| measure                                                                                           | n                                                                   |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `mapping_note` `Auto-matched to X score=NN%` (65–75%)                                             | 33, of which 31 are disjoint from BPS (33203 equal, 66303 a subset) |
+| `Agent mapping:` notes / `PP28 uses KBLI 2020 code X. Match: NN%` notes                           | 68 / 157                                                            |
+| marked fuzzy AND disjoint from BPS (31 auto + 16 agent + 38 title)                                | **85**                                                              |
+| `pp28_sources` with no code in common with `bps_2020_ancestors`, all markers                      | **255** (40 already detached by Batch A)                            |
+| of those 255, the 2025 code itself taken as a 2020 code (vintage-blind identity join, e.g. 01283) | 123                                                                 |
+| partial: BPS codes plus extra codes outside BPS                                                   | 95                                                                  |
+| 2025 codes with no BPS edge at all                                                                | 0                                                                   |
+
+**Client exposure (`apps/mouth`):**
+
+- **The "carried over" banner.** It reads "values below were carried over from KBLI 2020 code(s) X".
+  `pp28ContentInheritedFrom` in `kbli-provenance.ts` fires on **390** records; `kbli-provenance.test.ts`
+  pins that number. The banner itself renders through `licensingContentInheritedFrom(kbli)` in
+  `LicensingSection.tsx`, which returns null on an empty `per_skala`. So it **renders on 340**, and 50
+  of the 390 have no rows.
+- **The "PP 28/2025 licensing source" panel** (`KBLITransitionSources.tsx`) prints the raw
+  `mapping_note` as `Legacy PP28 source-matching note: {transition.mappingNote}`, `score=` included.
+  55201 Homestay still shows `Auto-matched to 80100 (Aktivitas Keamanan Swasta...) score=66%`.
+- **22 `whatChanged` texts name a code BPS does not list,** counting with the record's own code excluded.
+  - **D-1 owns 4 of them:** `01309 08996 10433 60101`. Do NOT regenerate those: their new sentences are
+    Zero-approved (Q26).
+  - 60101 will still trip the mechanical metric after D-1, because its sentence names its 2025 sibling 60103.
+  - **18 remain:** `01616 10113 10305 32111 46442 46452 46791 55106 62199 68123 68299 69103 70209 71203
+74191 77210 85574 93295`.
+
+**The most embarrassing titles:**
+
+| 2025 code           | wrongly matched to |
+| ------------------- | ------------------ |
+| 55201 homestay      | private security   |
+| 64310               | spa                |
+| 73300 PR            | animal health      |
+| 74910 patent broker | health support     |
+| 20297               | tofu industry      |
+| 13139               | accommodation      |
+| 35402               | travel agent       |
+| 39002               | packing            |
+
+**Bali-priority disjoint codes:**
+
+| sector       | codes                                                                               |
+| ------------ | ----------------------------------------------------------------------------------- |
+| hospitality  | 55106, 55201                                                                        |
+| food         | 10113 10217 10218 10297 10305 10307 10501 10502 10773 10793 11020 11040 11053 56102 |
+| real estate  | 68112 68123 68124 68125 68126 68299                                                 |
+| construction | 42914 42915 42991 42994 42995 42998                                                 |
+| consulting   | 70202 70203 71202 71204 72106 73300 74201 74209 74300 74910                         |
+| trade        | 37 codes in 46/47                                                                   |
+
+The 85 marked fuzzy pointers:
+
+- auto: 01309 03234 08996 13139 20229 20297 20298 23991 23993 26703 35402 38219 38309 39002 46791 50123
+  50125 50139 52227 52239 52329 55201 61108 64124 64310 64920 64930 64959 68124 73300 74910
+- agent: 10218 22129 26519 52313 52319 53301 64191 64955 64994 66127 66129 68123 68126 85324 85330 91300
+- title: 01138 01616 02101 02300 10305 11020 11053 35132 35401 42991 42995 42998 46415 46496 46721 46722
+  46731 46732 46733 46792 46796 47246 47690 47765 50115 50126 61102 61103 61905 64940 64996 64997 66197
+  68299 77397 85402 91121 91122
+
+**Proposed cure, in three parts, each needing its own PR and Zero's GO (Legge 5):**
+
+1. **Provenance fields only.**
+   - Re-derive `pp28_sources`, `kbli_2020_source` and `mapping_note` for the 255 disjoint and 95
+     partial records. Set the pointer to the BPS ancestors, or to empty where no PP28 row exists for
+     them.
+   - **Follow the pattern of `scripts/kbli_filiera/cure_metadata_pp28_sources.py`. Do not run it as
+     is.** It never reads or writes `per_skala` / `per_skala_legacy`, which is good. But it writes
+     exactly `pp28_sources`, `aggregation_note`, `intel_2026.whatChanged` and `_data_note`, and never
+     `kbli_2020_source` or `mapping_note`. `load_spec` rejects an empty `pp28_sources`. It refuses any
+     record carrying `per_skala_disputed_*`, which is 40 of the 255. And it takes one code per spec.
+     Run unchanged, it would leave the `score=` note on the panel. It needs extending for
+     `kbli_2020_source`/`mapping_note`, the empty pointer and the 40 detached records.
+   - **Never copy licensing rows from a BPS parent.** That would regress 01309-type records, whose
+     OSS-native rows are already right. It would also flatten merges and splits (03214 has 10
+     ancestors). `bps_2020_ancestors.inheritance_verdict` is `not-adjudicated` on 1,559 / 1,559. (BPS's
+     `sebagian` flags exist but are False on all 2,560 edges, so they cannot carry this rule.)
+2. **Prose.** Regenerate the 18 remaining `whatChanged` texts the D-1 way: a before/after table to Zero
+   first. Leave alone the 4 that D-1 owns.
+3. **UI in `apps/mouth`.** Stop printing `score=` and unconfirmed predecessors, and stop showing the
+   "carried over" banner on OSS-native rows (or show the BPS ancestors instead). This removes the
+   client-visible wrongness without touching the dataset. `kbli-provenance.test.ts` pins today's
+   behaviour, so it needs a spec change.
+
+This is the same phenomenon as the 2026-07-25 "560 codes render two different predecessors side by side"
+finding and §5.4 F3(a), now with its cause named. Decide them together.
+
+**Stale code comments.**
+
+- `apps/mouth/src/lib/kbli-types.ts` says "337 / 217 `pb_umku` inherited". Today, inherited and
+  OSS-native is 340, and `pb_umku` appears on 0 served rows of those; the 217 sit in `per_skala_legacy`.
+  The canonical has 3 `pb_umku` rows in total.
+- `LicensingSection.tsx`: its "390" is current. "336 codes" is stale, and so is "0 of the 390 inherited
+  rows have sources contained in their ancestors": today that is 227 / 390.
+
+These comments mislead the next reader. Fix them with D-2's UI part.
+
+**English strings awaiting Zero's render stop** (Q12: EN mode is all English). Each puts English words on
+a record that carries only Indonesian, and none changes a fact.
+
+- **Written by this design loop:**
+  - "cap verified" / "batas terverifikasi" (#8232, Q23 ruling 4);
+  - the 69102 line "as Open" (#8232);
+  - the Bali-status labels (EN-1b, #8227).
+- **Already in the app before this loop,** found by its census:
+  - "sole proprietorship";
+  - "Health-Worthiness Certificate (SLHS)".
+
+  Both sit in `apps/kbli-navigator-macos/Resources/kbli-data-i18n-en.json` since the 2026-10-08 import
+  (`ebdad0739f`). Their authorship is not recorded.
+
+**Design-loop scars worth keeping (census instrument, app):**
+
+- **#8239's BLOCK (2026-10-11).** An "English reference" word list built from the app's own EN corpus
+  absorbed Indonesian residue (ikan, pak, daftar). A glue-split fallback that accepted two "known"
+  halves then let "Sandikan" = Sand+ikan through: 96 ID-corpus escapes. Every "is English" decision must
+  go through one strict predicate, and scope probes must use word lists the builder has not seen.
+- **A worktree made with a bare `git worktree add` has no `.husky/_`, so no hook ever runs.**
+  `scripts/agent_start.py` creates the symlink. Check `test -e .husky/_` before the first commit.
+- **Start a merge watcher at every PASS.** A lead-session restart kills in-process agents. #8227 and
+  #8228 merged unnoticed for ~3 h.
+- **A docs PR armed at open merges straight through a gate BLOCK.** `harness/fable-gate` is not a
+  required context on main, and the floor recompute passes before any verdict exists. This entry's
+  first PR, #8242, got BLOCK at 01:15Z while already in the merge queue. It was dequeued by hand at
+  01:16Z. On such PRs, watch the verdict and dequeue on BLOCK.
+
+**🟢 2026-10-08 (bis) — THE QDRANT STORE NOW CARRIES THE DISCLOSURE IT SERVES: 1,150 POINTS
+RE-STAMPED FROM THE PINNED CANONICAL, CENSUS AT ZERO, AND THE SYNC TOOL CAN NO LONGER SAY "ALREADY
+AGREES" WITHOUT COMPARING.** Follow-through of the 2026-10-07 finding, all on `main` and proven live:
+
+- **The tool (PR #8059, `333ff0b690`, Fly v4595+):** `kbli_qdrant_pma_sync.py::stale_points()` compares
+  the 7 flat PMA keys for EVERY point, shaped or unshaped; per-code lines read `agrees (flat keys
+compared: 7)` or `STALE: pma_verification_status None → located`. Its first live dry-run found a
+  real stale point the old tool had blessed (85579's gold point), and the full census read
+  `1559/1559 found | 570 already agreed | 1150 point(s) would be written`.
+- **Two points per code, and only one is the PMA record.** Every code has a `doc_type=kbli_bps` point
+  (what `inspect_kbli` selects positively); 314 codes also carry a `kbli_gold` editorial point (since
+  2026-08-09) whose flat keys were the RAW `TERBUKA/100/None` tuple. The router projects through
+  `disclose_pma` (declared_gap → `NOT_VERIFIED`/`None`), so bps drift was MASKED at `inspect_kbli`;
+  but `search_kbli` (`_search_kbli_qdrant`, dense query, no doc_type filter) builds the disclosure from
+  whichever point wins — a gold hit published `NOT_VERIFIED` for the located `01112`. Breakdown of
+  the 1,150: 837 bps (819 declared_gap with text rewrite + 18 unshaped) and 313 gold (161
+  declared_gap, 143 located `None → located`, 9 located with all seven keys wrong, e.g. `16291`).
+- **The cure (2026-10-08, receipts on #8059):** payload backup first — Pro
+  `~/.local/share/nuzantara/kbli-navigator/qdrant_pma_backup_2026-10-08.jsonl` (1,873 points, sha
+  `9e62cade…`, 0600) — then `--apply` in batches: 152 located codes, then 998 declared_gap points;
+  inspect cache evicted 1,445/1,559; census after: `1559 already agreed | 0 point(s) would be
+written`. Live: `inspect_kbli` 16291 TERBATAS/0/located, 47221 TERBATAS/`special`/located,
+  01111 NOT_VERIFIED (unchanged), 51101 TERBATAS/49 (unchanged); `search_kbli` "budidaya padi
+  hibrida" → 01112 TERBUKA/100/located with the Perpres 10/2021 basis. The 9 ADOPT codes' bps
+  blobs carry no "licensing gap" prose any more (7 NOT_VERIFIED as canonical, 93113/93193 located).
+- **The reader is being fixed too:** `search_kbli` must take the disclosure from the code's bps point
+  (lane `kbli-search-pma-bps`, PR #8089 `dd496198fd`, live from Fly v4601: `search_kbli` "pertanian serealia selain padi dan jagung" returns 01112 twice — the gold hit (score 0.45) and the bps hit (0.39) — and BOTH now carry the bps disclosure TERBUKA/100/located with the Perpres 10/2021 basis; the duplicate row and the gold hit's "description unavailable" are ledgered); until then a future gold re-index would re-open
+  the surface.
+- **`91300` risk (PR #8074, `3553d56c77`, Fly v4599):** the resolver skips placeholder/empty risk rows
+  (a `license:sertifikat_standar` node without `kategori_risiko` sorted first), the most severe real
+  reading wins, the licence query has `ORDER BY`; live `risk_profile: Menengah Rendah` (was
+  `Unknown`). The licences are inherited from KBLI 2020 91039 (disclosed) and one inherited row
+  carries agriculture boilerplate — ledgered.
+- **Fleet + deploy chain:** `install-3mac.sh` derives its targets from the driver host (PR #8060) and
+  the fleet was re-installed from Pro at `1596326357` (M5/Pro/Mini, dataset `c29d6e6aea7a`,
+  `check-fleet.sh` rc=0); the Fly image build survived a transient skipped optional dependency only
+  because its self-test refused the image — PR #8073 installs the platform package explicitly, proven
+  in the v4599 deploy log; the D2 dataset anchor becomes a proprioception probe in #8088
+  (merged as PR #8091 `bd01d19f93`, gate PASS on `85013ad3` after a REWORK-BUILD on a false remedy text: the probe reads manifest AND canonical from `origin/main` and its RED remedy names the deliberate `DATASET_MANIFEST.json` re-anchor commit + `build.sh` exit 4). Fly keeps an orphan release record v4597 "running" from a cancelled re-run; no
+  machine ever moved to it.
+
+**🟢 2026-10-08 — THE NATIVE APP HAS ONE OFFICIAL HOME, `apps/kbli-navigator-macos/`, AND THE
+FLEET SERVES IT: ONE `KBLI Navigator - INTERNAL.app` ON THE DESKTOP OF M5, PRO AND MINI, ALL AT
+`ebdad0739f`.** Owner decision 2026-10-07 ("ne vorrei solo una unica e ufficiale sul desk di m5 pro
+e mini"). The standalone source repo had been lost from every machine by the 2026-10-06/07 Desktop
+cleanup (`~/Desktop/logo/kbli-navigator-app` archived to Drive, then deleted); restored from Zero's
+manual download of `gdrive:M5-archive-2026-10-06/logo-tar/kbli-navigator-app.tar`, its six branches
+folded into HEAD, and kept as the full-history ARCHIVE at `~/kbli-navigator-app` on M5 (HEAD
+`e15a920`, 623 MB, 0 remotes). History and the two book PDFs live there and in the Drive tar —
+nowhere in git. PR #8041 (successor of #8040 after the final gate's REWORK-BUILD: four
+`$HOME/Desktop/nuzantara` literals tripped `scripts/lint_tcc_desktop_paths.py`) imported the SOURCE
+only — 137 files, no PDFs, no 37 MB dataset copy: `build.sh` copies canonical + `data/kbli-app-overlay`
+in at every build and reads the PDFs from `KBLI_BOOK_PDF_DIR`, exit 5 naming the Drive archive when
+they are absent. Gate PASS on `8f4ed3fa`; merged 2026-10-08T00:37Z as `ebdad0739f`.
+
+- **Fleet proof 2026-10-08.** Built on Pro (the only machine with Xcode) from `main` at
+  `ebdad0739f`: `MANIFEST.json` `commit=ebdad0739f variant=internal records=1559 dirty=false`,
+  dataset `c29d6e6aea7a…`. Installed as the exact equivalent of `deploy/install-3mac.sh` with
+  targets `m5 mini` (the script assumes M5 drives — ledgered): rsync, quarantine strip, ad-hoc
+  re-sign, then the dataset INSIDE each installed bundle hashed `c29d6e6aea7a` on Nuzantara (Pro),
+  Air-M5 and mini-pro2; each MANIFEST reads `ebdad0739f internal 1559 False`;
+  `codesign --verify --deep --strict` OK and 0 quarantine attrs on all three. Previous fleet:
+  `3fa3e9b` (standalone repo, 2026-09-17).
+- **Build recipe (Pro):** `cd ~/nuzantara/apps/kbli-navigator-macos && KBLI_BOOK_PDF_DIR=~/.local/share/nuzantara/kbli-navigator/book-pdfs zsh build.sh --variant internal`
+  (`~/nuzantara` and `~/Desktop/nuzantara` are the SAME directory on Pro; the PDFs were copied
+  there 2026-10-08 from the archive, sha `380f8a9d…` / `3602c6f9…`). The BKPM variant stays an
+  on-demand hand-off zip (`deploy/make-team-installer.sh`). On M5 the tool's Bash cannot read
+  `~/Desktop` (TCC) — probe the installed app through `ssh localhost`.
+- **Two readers of the gitignored `Resources/KBLI_2025_FINAL_CLEAN.json` went blind with the
+  import:** `deploy/check-fleet.sh` aborted under `pipefail` at its line 97 in any fresh checkout
+  (rc=1 right after the canonical line, no verdict), and `scripts/lib/kbli_fleet_notice.sh` cried
+  "stale: Resources/" forever — false alarms both, the copy is refreshed at build time; the
+  installed-app surface of the notice already read ALIGNED on M5. Cured in PR #8042 (merged 2026-10-08T01:16Z as `93b1b3b528`): the Resources/ surface is dropped from both readers (overlays too, same defect). Re-run from main's content on M5 through `ssh localhost`: `check-fleet.sh` rc=0 — Air-M5, pro and mini `c29d6e6aea7a aligned`, overlay 3 files compared across the 3 machines, "fleet aligned with canonical"; the notice prints "the .app installed on Air-M5 matches canonical".
+- **Residuals ledgered 2026-10-08** (PENDING-ARMS): `install-3mac.sh` M5-driver assumption;
+  `brief.yml` image claim + pack line numbers + the D2 anchor nobody re-measures; predicate P3
+  scanning `.secrets.baseline` (pre-existing, #7156).
+
+**🟢 2026-10-07 — A FULL `inspect_kbli` SWEEP (MUSE SPARK, 1,559/1,559) EXPOSED 35 LOCATED CODES
+SERVED WRONG AT RUNTIME, AND THE SYNC TOOL'S "ALREADY AGREES" WAS THE LIE.** Muse Spark's sweep
+(`.worktrees/ops-kbli-full-inspection/kbli-inspection/`, 2026-10-06, re-aggregated here: 1,559 rows,
+0 missing/dup; PMA `NOT_VERIFIED` 853 · TERBUKA 579 · TERBATAS 68 · TERTUTUP 59) measures the RUNTIME
+surface only; its report never crosses canonical. Crossed here: canonical `located` **722**, runtime
+**706** → 16 codes `NOT_VERIFIED` at runtime, plus 19 whose `pma_official_basis` differed — **35**.
+Three causes, each measured on the stores through the read-only role, never off a tool's report:
+
+- **14 codes (incl. `51101` TERBATAS 49%, proven live 2026-08-02 and REGRESSED since) — the Qdrant
+  BPS point carried `pma_status` but `pma_verification_status: None`**, while KG and
+  `kbli_documents` were `located`. `kbli_qdrant_pma_sync.py::stale_points()` (lines 209-210) SKIPS
+  any point whose blob has no `## Status PMA` block (`unshaped`) and the per-code line prints
+  _"already agrees with canonical"_ without ever comparing the flat keys — superscar #2 shape, a
+  green over a bad world. Cured by a one-off `set_payload` of the 7-key tuple from the canonical
+  (sha `c29d6e6aea7a4fdb`, = `origin/main` 58e74f69e4) on exactly those 14 `doc_type=kbli_bps`
+  points (`20112 26602 42998 51101 82200 85520 85572 85573 85574 85579 85592 85593 85595 85610`),
+  NOT via the tool, because the tool cannot see them. **Tool fix still owed** (ledgered): compare
+  flat fields on unshaped points too and refuse only the PROSE half; guilt test = a point with no
+  block and a stale flat key must be reported stale.
+- **2 codes (`93113`, `93193`) + the other 7 of PR #7161's OSS-refresh ADOPT lot (`19206 20111 75002
+75009 93115 93191 93195`) — canonical cured 2026-09-22, runtime never synced.** #7161's `Bites:`
+  covers the 6 canonical copies only; balizero.com was ahead (reads canonical), WA/webchat/
+  `kbli-explorer`/MCP still served the July gap. Synced code-scoped from the Fly image, dataset
+  pinned: Qdrant pma 2/2 written · `kg_kbli_resync --only` 2/2 · `kbli_documents_cure --pma-only`
+  2/2 + `--licensing-only` 9/9 (cure-run `kbli_adopt_runtime_sync:2026-10-07`, judul/content
+  byte-identical, 9 archive rows) · `kg_kbli_licensing_from_canonical --phase 1a` **8 built, 93191
+  REFUSED** (legacy-served, 5 live edges, Phase 2 `--replace-legacy` — declared, not an error).
+  Note `--cure-run` is REQUIRED with `--apply` on the documents cure: the first apply printed a
+  usage error that a `grep APPLIED` swallowed; verify by SQL, never by the script's tail.
+- **19 codes (13xxx batik/textile cluster, 14200, 14302, 15111-15114)** — stores agree TODAY; the
+  divergence in the sweep was the **30-day inspect cache** (entries pre-date the 2026-09-24 basis
+  rewrites #7231/#7297). Corollary worth the capital letters: **A FULL SWEEP POPULATES THE CACHE FOR
+  ALL 1,559 CODES** — every cure after 2026-10-06 must bust its codes or it is invisible until
+  ~2026-11-05.
+
+Cache: 23 + 20 entries evicted (`kbli_inspect_v8_`). **Prove-live** after eviction: `inspect_kbli
+51101` → `TERBATAS / 49 / located / entry #31`; `13133` → `TERBATAS / 0 / located / Lampiran II
+batik`; `85579` → `TERBUKA / 100 / located`; `93113` → located + 1 licence built; `19206` → licence
+built, `inherited_from 19291` note. Website unchanged and correct (`/kbli/93113` renders the adopted
+rows, `/kbli/51101` the 49%); macOS fleet app dataset = canonical `c29d6e6aea7a4fdb` on M5/Pro/Mini.
+**Declared residuals:** (1) the Qdrant point TEXT (`search_kbli`/RAG blob) for the 9 ADOPT codes
+still carries the July gap prose — `--layer pma` refuses prose it cannot locate and the licensing
+re-index needs `--only` on `reindex_kbli_2025_final.py` (own lane); (2) `kbli_documents.licensing_status`
+stays `PENDING_REGULATION` on the 9 with rows present — the cure derives it from the still-present
+`per_skala_disputed_pp28_collision` marker the ADOPT compiler left behind (nothing reads it off this
+table, conformance-only); (3) `91300` renders `risk_profile: "Unknown"` — `_resolve_risk_profile`'s
+no-`ORDER BY` fallback picks a `Sertifikat Standar` node tiered Unknown over two Menengah Rendah
+rows (the latent fragility ledgered 2026-08-05, now with one live victim). Muse Spark verdict:
+coverage/validation sound and reproducible (nested/flat 520/1039 content-identical), but a runtime
+census without a canonical cross-check reports a distribution, not a defect list — the 35 were
+there to be found and the report called "Irrisolti: nessuno".
 
 **🟢 2026-09-22 — PHASE 1a, THE §7 KG DETECTOR AND PMA RESIDUAL-OPEN LOT 2 ARE ALL SHIPPED AND
 PROVEN LIVE ON ALL FOUR RUNTIME STORES, INCLUDING A PRE-EXISTING 43-CODE DOCUMENTS-LAG RESIDUAL

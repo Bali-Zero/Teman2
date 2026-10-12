@@ -65,11 +65,11 @@ export default function ThinkingIndicator({
                   <stage.icon
                     size={14}
                     className={
-                      idx === activeStage ? "text-accent-sand" : "text-[#555]"
+                      idx === activeStage ? "text-accent-sand" : "text-[#888]"
                     }
                   />
                   <span
-                    className={`text-sm ${idx === activeStage ? "text-[#CCC]" : "text-[#555]"}`}
+                    className={`text-sm ${idx === activeStage ? "text-[#CCC]" : "text-[#888]"}`}
                   >
                     {stage.text}
                   </span>

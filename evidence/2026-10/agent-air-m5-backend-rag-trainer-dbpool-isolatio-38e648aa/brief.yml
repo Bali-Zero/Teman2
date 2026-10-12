@@ -1,0 +1,38 @@
+task: >-
+  Isolate test_conversation_trainer.py::TestConversationTrainer::test_get_db_pool_raises_when_unavailable from a
+  db_pool left on backend.app.main_cloud.app.state by an earlier test in the same process.
+  ConversationTrainer._get_db_pool falls back to that attribute. test_dashboard_coverage.py sets it (the last
+  write is TestDashboardStats::test_stats_db_error) and its fixture never restores app.state. When round-robin
+  shard placement (scripts/ci/shard_tests.py) puts both files on one xdist worker, the expected RuntimeError is
+  not raised. This red Backend Shard 2 on PR #8093 twice, at the same test.
+lane: backend-rag
+machine: m5
+date: 2026-10-08
+gear: 2
+gear_reason: >-
+  Measured floor 1, source none: evidence_pack_lint.py --print-floor on the single changed test file, base
+  bd01d19f93. Gear 2 is declared on the team lead's order so the final gate signs before the merge. Test-only;
+  no production file changes.
+acceptance:
+  A1:
+    text: >-
+      Run in one process with the leaker first, the victim is red before the patch, green with it, and red again
+      with the patch reverted from a cp backup.
+    probe: >-
+      pytest test_dashboard_coverage.py::TestDashboardStats::test_stats_db_error
+      test_conversation_trainer.py::TestConversationTrainer::test_get_db_pool_raises_when_unavailable
+  A2:
+    text: >-
+      The isolation does not depend on which test leaks: the victim pins main_cloud app.state.db_pool to None
+      with monkeypatch, which restores the attribute after the test.
+    probe: the whole dashboard file followed by the whole trainer file pass in one process.
+  A3:
+    text: Backend Shard 2 on PR #8093 is green after gh pr update-branch 8093 picks this merge up.
+    probe: the Backend Shard 2 conclusion on the #8093 head produced by update-branch.
+out_of_scope: >-
+  Restoring app.state in test_dashboard_coverage.py's fixture, and any other test that writes main_cloud
+  app.state. A broader app.state isolation fixture. Production code.
+assumptions:
+  - text: No other leak breaks the victim on #8093's shard 2. The patch neutralises any db_pool leak on that app object.
+    status: unverified
+    probe: Backend Shard 2 on #8093 after update-branch.

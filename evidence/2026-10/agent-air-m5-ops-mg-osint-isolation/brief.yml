@@ -1,0 +1,25 @@
+task: >-
+  tests/test_gap_consumer.py::test_process_gap_does_not_ack_on_case_not_resolved reaches the real OSINT-Nexus LHKPN
+  scraper: process_gap dispatches a known-person LHKPN lookup before the injected fake dispatcher, through the harvester
+  to lhkpn_tools._invoke_osint_nexus, whose default interpreter path exists on Pro. A suite run on Pro would start the
+  scraper against the government portal with test data. Guard the whole test tree so no test reaches the launcher unless
+  it opts in.
+lane: ops
+machine: m5
+date: 2026-10-09
+gear: 2
+gear_reason: >-
+  Measured floor 1 (a new test conftest). Campaign rule after #8079: at least gear 2 so harness-floor holds for the
+  independent final gate.
+acceptance:
+  A1:
+    text: >-
+      With OSINT_NEXUS_PYTHON pointed at a recording fake interpreter, a full suite run records zero launches; without the
+      guard it records one (the test above).
+    probe: a recording fake via OSINT_NEXUS_PYTHON on the whole suite, head and without apps/mata-garuda/tests/conftest.py.
+  A2:
+    text: >-
+      The guard returns the launcher's own failure shape, so the leaking test still asserts what it did (status failed, no
+      ack) and every other test's outcome is unchanged; a test that requests the allow_osint_launch fixture reaches the
+      real launcher.
+    probe: suite counts equal with and without the guard; the test file unchanged.

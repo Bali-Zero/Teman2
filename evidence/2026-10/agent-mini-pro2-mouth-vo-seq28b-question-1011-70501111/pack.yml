@@ -1,0 +1,267 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 (decisions on the E33/retirement program, seq-28 release) - the E33G remote worker gets a real
+  income gate, shipped as one signing in three ordered steps; step A (#8272) made the engine accept
+  work.annual_foreign_income_usd, this step B makes the interview ask it, step C adds the pack rule.
+mission: >-
+  The Visa Oracle interview asks an E33G remote worker for the yearly foreign income, ready for the seq-28 rule.
+lanes:
+  - lane: seq28b-mouth-question
+    role: build
+    seat: >-
+      Codex GPT-5.6-sol via scripts/seat_build.sh on Mini (tier sol, effort high, 1338 s; log
+      /Users/nuzantara/nuzantara/.worktrees/seat-build-codex-20261011T112624Z-12972.log), graded and committed by
+      the orchestrator (19c5a2dcf2, rebased onto origin/main as 6d3c76998f).
+  - lane: seq28b-rebase-evidence
+    role: review
+    seat: >-
+      Claude Opus 5.5 in worktree mouth-vo-seq28b-question-1011 on Mini - rebased onto origin/main (step A
+      hunks resolved to main, R2 retirement_age_notice kept), regenerated the no-path-doors replay, raised the
+      income observer floor to 7 (aaa4206842), wrote this pack.
+  - lane: seq28b-ground-truth
+    role: ground_truth
+    seat: >-
+      The owner decision of 2026-10-11 (E33G remote worker income gate, USD 60,000 a year) as it will be signed
+      in the seq-28 pack rule el.e33g.remote-work; this step asserts the figure only in the E33G below-threshold
+      result copy, never in the interview question.
+    nb: research/visa/2026-07-24-w2-factbase-e33.md
+    query_hash: "1b0f7e94100122ce785e60e958b7bd967668071cf175d5ad5c2536216f1ad741" # pragma: allowlist secret
+    note: >-
+      query_hash = sha256 of the regulatory factbase at origin/main (Permenkumham 22/2023 Pasal 63(2): salary or
+      income of at least USD 60,000 a year; the foreign-employer contract is the separate Pasal 63(3)).
+  - lane: seq28b-redteam-fix
+    role: review
+    seat: >-
+      Claude Opus 5.5 in worktree mouth-vo-seq28b-question-1011 on Mini - cured the cross-family red team findings
+      (d66460dc9c); the red team itself was a separate Claude Opus 5.5 spalla against the Codex build.
+pii_scan: clean
+bites:
+  consumer: >-
+    the public Visa Oracle interview (remote worker path) that asks remote_annual_income_usd right after the employer
+    country, and the fact-mapper that sends work.annual_foreign_income_usd; after the mouth deploy the Remote worker
+    tile (clients abroad, no Indonesian compensation, paid from abroad) shows the new question in EN and ID.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_remote_income_question.py
+  expect: "contains:remote income question holds"
+receipts:
+  - claim: "Red-team cure: the visa-oracle _lib Vitest tree at HEAD d66460dc9c (33 files incl. the new remote-income-question file)."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib'
+    result: "Test Files 33 passed (33); Tests 1113 passed (1113)"
+    exit: 0
+    ts: "2026-10-11T14:20:09Z"
+    seat: this session
+  - claim: "The new bites observer passes, and exits 1 when remote_annual_income_usd is removed from flow.ts (mutation, restored)."
+    cmd: python3 scripts/ci/observe_visa_oracle_remote_income_question.py
+    result: "Tests  6 passed (6); remote income question holds; mutation run exit 1"
+    exit: 0
+    ts: "2026-10-11T14:20:09Z"
+    seat: this session
+  - claim: "Backend census, fact registry, sponsor rollout and Sentry scrub tests after the cure."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py backend/tests/services/visa_engine/test_fact_registry.py backend/tests/services/visa_engine/test_sponsor_type_rollout.py backend/tests/unit/app/setup/test_sentry_pii_redaction.py
+    result: "254 passed, 14 skipped"
+    exit: 0
+    ts: "2026-10-11T14:20:09Z"
+    seat: this session
+  - claim: "Observer parser tests (annual income floor 8, remote income question floor 6) and enumerator dry-run."
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_engine_annual_income_fact.py tests/scripts/test_observe_visa_oracle_remote_income_question.py
+    result: "26 passed; enumerator walks=110461603101408 bound=PROVEN edgesRequired=325 edgesMissing=0; tsc clean; client-copy 0 banned"
+    exit: 0
+    ts: "2026-10-11T14:20:09Z"
+    seat: this session
+  - claim: "The branch was rebased onto a fresh origin/main (nothing pushed); step-A-only files resolved to main's version, the replay fixture regenerated, and the diff against origin/main carries no step-A evidence dir."
+    cmd: git fetch origin main && git rebase origin/main
+    result: "conflicts in step-A files, schema contracts, openapi sha, replay json, tree.test.ts (R2 retirement_age_notice kept beside remote_annual_income_usd, no-notSure count 16), e2e, fact-mapper.test, applicant-fact-paths; resolved; HEAD 6d3c76998f then aaa4206842"
+    exit: 0
+    ts: "2026-10-11T14:01:00Z"
+    seat: this session
+  - claim: "The walk corpus regenerates to no diff (131 walks) after the rebase."
+    cmd: npm run visa-oracle:walk-corpus -w apps/mouth
+    result: "wrote 131 walks; git status clean afterwards"
+    exit: 0
+    ts: "2026-10-11T14:01:30Z"
+    seat: this session
+  - claim: "The visa-oracle _lib Vitest tree at HEAD aaa4206842 (after regenerating the replay with replay-no-path-doors.py)."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib'
+    result: "Test Files 32 passed (32); Tests 1105 passed (1105)"
+    exit: 0
+    ts: "2026-10-11T14:04:51Z"
+    seat: this session
+  - claim: "The enumerator bound stays proven with every edge covered."
+    cmd: cd apps/mouth && npx tsx scripts/visa-oracle/enumerate-interview-space.cli.ts --dry-run
+    result: "walks=110461603101408 maxDepth=27 bound=PROVEN edgesRequired=325 edgesCovered=325 edgesMissing=0"
+    exit: 0
+    ts: "2026-10-11T14:04:55Z"
+    seat: this session
+  - claim: "The interview walk census passes."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "53 passed, 14 skipped (skips: no unsigned production source pack above the highest signed one)"
+    exit: 0
+    ts: "2026-10-11T14:05:21Z"
+    seat: this session
+  - claim: "Fact registry, sponsor-type rollout (incl. the SENSITIVE pin) and Sentry PII scrub tests pass."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_fact_registry.py backend/tests/services/visa_engine/test_sponsor_type_rollout.py backend/tests/unit/app/setup/test_sentry_pii_redaction.py
+    result: "201 passed"
+    exit: 0
+    ts: "2026-10-11T14:05:22Z"
+    seat: this session
+  - claim: "The bites observer passes with the raised floor of 7."
+    cmd: python3 scripts/ci/observe_visa_engine_annual_income_fact.py
+    result: "8 passed in 0.02s; annual income rollout default holds"
+    exit: 0
+    ts: "2026-10-11T14:05:23Z"
+    seat: this session
+  - claim: "The observer's summary parser rejects reduced counts and accepts a full pass at the floor of 7."
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_engine_annual_income_fact.py
+    result: "15 passed"
+    exit: 0
+    ts: "2026-10-11T14:05:24Z"
+    seat: this session
+  - claim: "The legacy client-copy guard stays green."
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3594 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-11T14:05:24Z"
+    seat: this session
+  - claim: "apps/mouth typechecks."
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-11T14:05:25Z"
+    seat: this session
+  - claim: "CI red 1 cured: the seq-21 census pin counts the two seq-28 witness walks (105 answers / 18 no-path / 3 questions / 1 hold)."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq21_pack.py
+    result: "52 passed"
+    exit: 0
+    ts: "2026-10-11T15:05:00Z"
+    seat: this session
+  - claim: "Full visa_engine backend suite, sequential, on Mini. The only failures (2 failed, 31 errors) are DB-schema ones in test_evaluate_endpoint.py and test_visa_engine_retention_fk_registry.py, identical on a detached origin/main worktree (2 failed, 31 errors) - pre-existing, environmental."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine
+    result: "2 failed, 2963 passed, 15 skipped, 31 errors in 121s; same 2 failed + 31 errors on origin/main"
+    exit: 1
+    ts: "2026-10-11T15:05:00Z"
+    seat: this session
+  - claim: "CI red 2 cured, whole visa-oracle tree including _components: the OracleShell remote walk answers remote_annual_income_usd."
+    cmd: cd apps/mouth && ~/nuzantara/node_modules/.bin/vitest run '(visa-oracle)'
+    result: "Test Files 54 passed (54); Tests 1423 passed (1423)"
+    exit: 0
+    ts: "2026-10-11T15:05:00Z"
+    seat: this session
+  - claim: "apps/mouth typechecks after the test edits."
+    cmd: cd apps/mouth && ~/nuzantara/node_modules/.bin/tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-11T15:05:00Z"
+    seat: this session
+decisions:
+  - id: D-replay-027
+    decision: >-
+      The no-path-doors replay is regenerated against seq-27; the guard exemption is now an exact walk+fact pair
+      (still_unsure:secondhome.passive_monthly_income_usd), where the visitor gets the Bali Zero handoff instead of a
+      dead sentence. The live seq-27 NEEDS_INPUT on that walk is a follow-up, not part of this step.
+  - id: D-why-window
+    decision: >-
+      The why copy claims the amount decides eligibility; until the seq-28 pack rule (step C) is active the engine
+      ignores the fact. Recorded as a known window; production promotion of the mouth deploy should wait for step C.
+  - id: D-no-anchor
+    decision: >-
+      The interview copy asks for the yearly income without naming any threshold, and offers no not-sure option
+      (the seq-28 rule will require the figure; an unknown would only re-ask it). The USD 60,000 figure appears
+      only in the E33G_INCOME_BELOW_THRESHOLD result copy, in EN and ID.
+  - id: D-ordered-rollout
+    decision: >-
+      Step B empties the step-A parity exception (ORDERED_ROLLOUT_OPTIONAL_PATHS); the fact is accepted and
+      ignored by the engine until the seq-28 rule activates in step C, so the only visible change is the new
+      question.
+dissent:
+  - id: RT-1
+    seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      MEDIUM. The question and the E33G reason restricted the figure to work for a company outside Indonesia; Pasal 63(2) says salary or income, the foreign-employer contract is the separate Pasal 63(3).
+    status: RETRACTED
+    disposition: >-
+      Cured in d66460dc9c. Neutral copy in EN and ID; copy pins updated.
+  - id: RT-2
+    seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      MEDIUM. Nothing told a non-USD earner to convert to US dollars.
+    status: RETRACTED
+    disposition: >-
+      Cured in d66460dc9c. The hint says to enter the US-dollar equivalent (EN and ID).
+  - id: RT-3
+    seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      MEDIUM. The question is asked on the whole remote tile, including visitors who said an Indonesian entity pays them, and the copy presupposed a company outside Indonesia.
+    status: RETRACTED
+    disposition: >-
+      Cured in d66460dc9c. The neutral copy no longer presupposes a foreign company, so no gating was added; the corpus and enumerator are unchanged.
+  - id: RT-4
+    seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      MEDIUM. The Bites observer could not fail if step B were undone (mutation removing the question left it green).
+    status: RETRACTED
+    disposition: >-
+      Cured in d66460dc9c. New Vitest file remote-income-question.test.ts and observer observe_visa_oracle_remote_income_question.py; the same mutation now exits 1.
+  - id: RT-5
+    seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      MEDIUM. The prove-live path pointed at Work and employment, which does not reach the question; it lives on the Remote worker tile.
+    status: RETRACTED
+    disposition: >-
+      Brief objective and bites consumer corrected in the evidence commit: walk Remote worker, clients abroad, no Indonesian compensation, paid from abroad, employer country, then the new question.
+  - id: RT-6
+    seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      LOW. The why copy says the amount decides whether the visa fits, but the live seq-27 pack does not read the fact until step C.
+    status: PLAUSIBLE
+    disposition: >-
+      Accepted as a window: record a pack decision (D-why-window) - do not promote the mouth deploy to production before the seq-28 pack is signed or active, or accept the short window knowingly.
+  - id: RT-7
+    seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      LOW. The no-path-doors guard was relaxed to walk+fact pairs without disclosure and its comment named the wrong pack.
+    status: RETRACTED
+    disposition: >-
+      Cured in d66460dc9c. Comment now names the seq-27 replay; decision D-replay-027 recorded; the live seq-27 NEEDS_INPUT on that walk is a follow-up.
+  - id: RT-8
+    seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      LOW. The i18n census ceiling was raised 102 to 103 for a tree label nothing renders.
+    status: RETRACTED
+    disposition: >-
+      Cured in d66460dc9c. Label removed from both dictionaries and the allowlist; ceiling back to 102.
+  - id: RT-9
+    seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      LOW. The annual-income observer floor left one test of slack (8 collected, floor 7) and the docstring said N >= 6.
+    status: RETRACTED
+    disposition: >-
+      Cured in d66460dc9c. MIN_TESTS 8, docstring and parser tests updated.
+  - id: RT-10
+    seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      LOW. Mapper boundaries were untested (minimum 0 to 1 survived).
+    status: RETRACTED
+    disposition: >-
+      Cured in d66460dc9c. Added 0 maps to KNOWN 0 and an above-safe-maximum string maps to NOT_PROVIDED.
+  - id: RT-11
+    seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      LOW. Two Indonesian phrasings were calques.
+    status: RETRACTED
+    disposition: >-
+      Cured in d66460dc9c. Dolar penuh dropped for dolar AS (angka bulat); the reason ends berada di bawah batas tersebut.
+  - id: RT-12
+    seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      LOW. The ground_truth lane pointed at the file being modified rather than the regulatory source.
+    status: RETRACTED
+    disposition: >-
+      Evidence commit: nb is research/visa/2026-07-24-w2-factbase-e33.md with its origin/main sha256.
+  - id: RT-13
+    seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      LOW, out of scope. The Sentry scrub covers the backend only; the mouth catch-all proxy runs under a server config whose beforeSend does not scrub bodies, for every fact.
+    status: PLAUSIBLE
+    disposition: >-
+      Accepted as a limit and not touched here: it applies to every fact and was not verified for SDK v10; follow-up for a separate lane.

@@ -1,0 +1,38 @@
+task_id: visa-e31-two-year-seq26
+mission: visa-e31-two-year
+gear: 3
+gear_reason: >-
+  A rule pack for the Visa Oracle production engine under apps/backend-rag/** (hot zone). The
+  unsigned source is inert until the orchestrator signs and activates it on M5, but it is the
+  artifact that will be signed: a wrong option or key here prices a client-facing ITAS wrongly.
+  Hand-written part is about 780 lines, mostly tests; the generated source is about 9,400 lines.
+l_level: L2
+gate_class: opus
+ruling: >-
+  Zero, 2026-10-08 — the E31 family ITAS is a 1- or 2-year duration option of the same product,
+  priced all-inclusive per option from the official 2026 catalogue; never a PNBP figure in client
+  text, never a quote on request.
+mission_text: >-
+  seq-26 = the signed seq-25 plus duration_options on the nine E31 products whose saved portal
+  page says "1 tahun atau 2 tahun". Derived by a deterministic script; not signed, not activated.
+objective: >-
+  rulepack-prod-026.source.json chains to the seq-25 digest, moves only the E31 products'
+  duration modelling, and prices 365 days at each product's 1-year catalogue row and 730 days at
+  the same variant's 2-year row; the walk census, the gold replay and the full visa_engine suite
+  are unchanged against main.
+constraints:
+  - Rules, source records and the eighteen portal stamps are byte-identical to seq-25.
+  - A product whose saved page does not say 2 years gets no option; a missing catalogue sibling aborts.
+  - Do not sign, do not add rulepack-prod-026.signed.json, do not activate.
+  - No UI change in apps/mouth.
+appetite:
+  wall_clock_hours: 3
+acceptance:
+  - text: WHEN seq-26 is derived from seq-25 THEN it SHALL equal the committed source and chain to the seq-25 digest.
+    probe: backend/tests/services/visa_engine/test_seq26_pack.py::TestIntegrity
+  - text: WHEN an E31 product is asked for 365, 730 or 1095 days THEN it SHALL select 365, 730 and 730 with extension_required only for 1095, priced from its own catalogue row.
+    probe: backend/tests/services/visa_engine/test_seq26_pack.py::TestPerProduct
+  - text: WHEN a page does not say 2 years, a sibling row is missing or the anchor is not seq-25 THEN the derivation SHALL refuse.
+    probe: backend/tests/services/visa_engine/test_seq26_pack.py::TestDerivationRefuses
+  - text: WHEN gold personas 6 and 7 ask for 12, 24 or 36 months on the candidate pack THEN their E31 candidates SHALL carry the matching option and price.
+    probe: backend/tests/services/visa_engine/test_seq26_pack.py::TestGoldFamilyPersonasAskForTwoYears

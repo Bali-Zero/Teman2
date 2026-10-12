@@ -1,4 +1,8 @@
-import { APPLICANT_FACT_COUNT } from "@/lib/api/applicant-fact-paths";
+import {
+  APPLICANT_FACT_COUNT,
+  FRONTEND_EMITTED_FACT_COUNT,
+  ORDERED_ROLLOUT_OPTIONAL_PATHS,
+} from "@/lib/api/applicant-fact-paths";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -39,23 +43,8 @@ import {
 // `alias=` in the file (`TimeRange.from_`) has no dot, so the dotted-alias
 // regex below can only ever match ApplicantFactsData fields.
 //
-// `sponsor.type` used to be deliberately omitted from the deployed frontend
-// request during its ordered-rollout window (the `sponsor_category`
-// interview question did not exist yet). That window is now closed: the
-// question ships (see tree.ts/flow.ts), and this mapper emits `sponsor.type`
-// on every call like every other key — KNOWN when answered, otherwise an
-// explicit UNKNOWN (NOT_ASKED by default), never omitted. The key is still
-// optional on the wire (models.py keeps a transitional default so older
-// 40-key clients don't 422) but the frontend emits the complete contract.
-//
-// Widened again 2026-08-23 (owner ruling — Visa Oracle fact vocabulary
-// extension, vocabulary-only, no rule change): three more optional/defaulted
-// keys join the same rollout idiom —
-// `family.stepchild_marriage_certificate_confirmed`,
-// `family.stepchild_birth_certificate_confirmed` and
-// `family.sponsor_permit_basis`. Same posture as `sponsor.type`: this mapper
-// emits all three on every call, KNOWN when answered, otherwise an explicit
-// UNKNOWN, never omitted — the frontend emits the complete contract.
+// Seq-28 Step B closes Step A's one-key rollout seam: the mapper now emits
+// every backend fact path.
 // ---------------------------------------------------------------------------
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -70,6 +59,10 @@ function extractApplicantFactPathsFromModelsPy(): string[] {
   const source = fs.readFileSync(MODELS_PY, "utf-8");
   const matches = source.matchAll(/alias="([a-z_]+\.[a-z_]+)"/g);
   return Array.from(matches, (m) => m[1]);
+}
+
+function requiredFrontendFactPaths(): string[] {
+  return extractApplicantFactPathsFromModelsPy();
 }
 
 const ASSESSMENT_ID = "11111111-1111-4111-8111-111111111111";
@@ -124,24 +117,23 @@ function representativeAnswer(question: OracleQuestion): string {
 
 describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)", () => {
   const backendPaths = extractApplicantFactPathsFromModelsPy();
+  const expectedPaths = requiredFrontendFactPaths();
 
-  it("sanity: the backend contract matches the generated fact count, sponsor.type included", () => {
+  it("sanity: the ordered-rollout exception is empty", () => {
     expect(backendPaths.length).toBe(APPLICANT_FACT_COUNT);
-    expect(backendPaths).toContain("sponsor.type");
-    expect(backendPaths).toContain(
-      "family.stepchild_marriage_certificate_confirmed",
-    );
-    expect(backendPaths).toContain(
-      "family.stepchild_birth_certificate_confirmed",
-    );
-    expect(backendPaths).toContain("family.sponsor_permit_basis");
-    expect(backendPaths).toContain("immigration.renewal_paid");
+    expect(backendPaths.length).toBe(58);
+    expect([...ORDERED_ROLLOUT_OPTIONAL_PATHS]).toEqual([]);
+    expect(
+      backendPaths.filter((factPath) => !expectedPaths.includes(factPath)),
+    ).toEqual([]);
+    expect(expectedPaths.length).toBe(58);
+    expect(expectedPaths.length).toBe(FRONTEND_EMITTED_FACT_COUNT);
   });
 
-  it("emits exactly the backend fact-path keys, sponsor.type included", () => {
+  it("emits all 58 backend fact-path keys", () => {
     const result = mapFacts({});
     const actualKeys = Object.keys(result.facts).sort();
-    expect(actualKeys).toEqual([...backendPaths].sort());
+    expect(actualKeys).toEqual([...expectedPaths].sort());
   });
 
   it("still emits exactly those contract keys on a fully-answered interview (no extra keys sneak in)", () => {
@@ -154,7 +146,7 @@ describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)",
       review_gate: "none",
     });
     const actualKeys = Object.keys(result.facts).sort();
-    expect(actualKeys).toEqual([...backendPaths].sort());
+    expect(actualKeys).toEqual([...expectedPaths].sort());
   });
 });
 
@@ -1013,15 +1005,7 @@ describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
         getCategoryQuestionIds({ category }).includes("sponsor_category"),
     );
     expect([...categoriesAsking].sort()).toEqual(
-      [
-        "diaspora",
-        "family",
-        "invest",
-        "remote",
-        "retirement",
-        "study",
-        "work",
-      ].sort(),
+      ["diaspora", "family", "invest", "remote", "study", "work"].sort(),
     );
     for (const category of categoriesAsking) {
       const result = mapFacts({ category, sponsor_category: "EMPLOYER" });
@@ -1033,11 +1017,35 @@ describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
   });
 
   it("is never asked on categories where the sponsor never discriminates", () => {
-    for (const category of ["tourism", "business", "second_home"] as const) {
+    for (const category of [
+      "tourism",
+      "business",
+      "second_home",
+      "retirement",
+    ] as const) {
       expect(getCategoryQuestionIds({ category })).not.toContain(
         "sponsor_category",
       );
     }
+    // R3 (owner decision 2026-10-11): `retirement` joined the omission list —
+    // sponsor.type stays UNKNOWN(NOT_ASKED) on that branch.
+    expect(mapFacts({ category: "retirement" }).facts["sponsor.type"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+  });
+
+  it("a legacy retirement answer still carrying sponsor_category is tolerated, not stripped (no rule reads it)", () => {
+    // R3 decision: a persisted session or payload from before 2026-10-11 may
+    // still hold `sponsor_category` on the retirement branch. The mapper keeps
+    // forwarding it (KNOWN) exactly as on any branch — harmless, because the
+    // pack-scan guard (sponsor-retirement-guard.test.ts) fails if any rule
+    // covering RETIREMENT ever reads sponsor.type.
+    expect(
+      mapFacts({ category: "retirement", sponsor_category: "EMPLOYER" }).facts[
+        "sponsor.type"
+      ],
+    ).toEqual({ status: "KNOWN", value: "EMPLOYER" });
   });
 
   it("`other`: asked only down the other_paid_activity=yes branch (PR-D4d)", () => {
@@ -2163,6 +2171,47 @@ describe("country-code facts: one code is not a set of one", () => {
         remote_employer_country: "unsure",
       } as OracleFacts).facts["work.employer_country_code"],
     ).toEqual({ status: "UNKNOWN", reason: "UNVERIFIED" });
+  });
+});
+
+describe("annual foreign income fact", () => {
+  it('maps "59999" to KNOWN 59999', () => {
+    expect(
+      mapFacts({ remote_annual_income_usd: "59999" }).facts[
+        "work.annual_foreign_income_usd"
+      ],
+    ).toEqual({ status: "KNOWN", value: 59_999 });
+  });
+
+  it('maps "0" to KNOWN 0 (the lower bound is inclusive)', () => {
+    expect(
+      mapFacts({ remote_annual_income_usd: "0" }).facts[
+        "work.annual_foreign_income_usd"
+      ],
+    ).toEqual({ status: "KNOWN", value: 0 });
+  });
+
+  it("maps a number above the safe maximum to UNKNOWN NOT_PROVIDED", () => {
+    expect(
+      mapFacts({ remote_annual_income_usd: "9007199254740993" }).facts[
+        "work.annual_foreign_income_usd"
+      ],
+    ).toEqual({ status: "UNKNOWN", reason: "NOT_PROVIDED" });
+  });
+
+  it("maps an unanswered question to UNKNOWN NOT_ASKED", () => {
+    expect(mapFacts({}).facts["work.annual_foreign_income_usd"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+  });
+
+  it('maps malformed "12a" to UNKNOWN NOT_PROVIDED', () => {
+    expect(
+      mapFacts({ remote_annual_income_usd: "12a" }).facts[
+        "work.annual_foreign_income_usd"
+      ],
+    ).toEqual({ status: "UNKNOWN", reason: "NOT_PROVIDED" });
   });
 });
 

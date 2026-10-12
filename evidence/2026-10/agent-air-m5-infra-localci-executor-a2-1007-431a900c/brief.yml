@@ -1,0 +1,57 @@
+task_id: localci-executor-a2-1007
+mission: LOCALCI-EXECUTOR (phase A, PR-A2)
+colour: BLUE
+gear: 3
+gear_reason: >-
+  Declared by the mandate: the change decides what a local verdict on three more required contexts may claim, and
+  it reshapes the sandbox candidate code runs in. It flips nothing: GitHub keeps deciding merges until the local gate
+  replaces it (RULED 2026-10-07, docs/rules/RULINGS.md; plan docs/specs/localci-sovereign-2026-10-07.md), and this
+  PR touches no workflow, branch protection or status; the adapter stays inert.
+l_level: L2
+gate_class: opus
+objective: >-
+  Make the runner EXECUTE organ-conformance, guard guilt+innocence and antidotes — every step of their BASE
+  workflow jobs, in a sandbox shaped like the hosted runner — so that hosted_compare.py reads AGREE for seven
+  required contexts on real hosted-green main commits, with no FALSE_GREEN.
+constraints:
+  - No .github/workflows file, branch protection or commit status is touched; gh_status_adapter.py stays inert.
+  - Candidate code runs only inside the container; no network inside it; no host mount.
+  - A context is green only when every step it runs returned 0; a step that cannot run is BLOCKED, never skipped.
+  - A sandbox difference is cured in the sandbox, never by marking a hosted step not_applicable.
+  - No npm install/ci, no new daemon, no secret read or printed, no paid per-token API.
+acceptance:
+  - text: WHEN the runner plans the real matrix, it SHALL account for every step of the organ (11), guard (29) and antidotes (66) BASE jobs and name exactly the seven contexts it does not execute.
+    probe: "test_contexts_exec.py::test_the_real_matrix_accounts_for_every_step_of_every_executed_context_and_names_the_rest"
+  - text: WHEN a contained context runs, the sandbox SHALL rebuild BASE under the candidate (main, origin/main, a fetch of origin main), run the steps in a bare venv of the pinned interpreter fed offline by the steps' own pip installs, as the runner user, with an init, files checked out now.
+    probe: "test_contexts_exec.py::test_the_sandbox_looks_like_a_fresh_hosted_checkout_of_the_pinned_job"
+  - text: WHEN a candidate changes a submodule pointer or a path holding a newline, BASE SHALL NOT be half-rebuilt — the context is BLOCKED at plan.
+    probe: "test_contexts_exec.py::test_the_sandbox_rebuilds_base_under_the_candidate_so_main_and_origin_main_name_it"
+  - text: WHEN a context runs longer than its BASE job's timeout-minutes, it SHALL be ERROR, never PASS.
+    probe: "test_contexts_exec.py::test_the_hosted_jobs_timeout_bounds_the_context_so_no_green_outlasts_it"
+  - text: WHEN a judge's tree entry changes (mode or object), a green SHALL be BLOCKED.
+    probe: "test_contexts_exec.py::test_a_judge_whose_mode_changes_is_a_rewritten_judge"
+  - text: WHEN a matrix step is not_applicable with a flag or a blank instead of a written reason, the context SHALL be BLOCKED.
+    probe: "test_contexts_exec.py::test_not_applicable_needs_a_written_reason_not_a_flag"
+  - text: WHEN the BASE job runs in its own container, beside services, or on another runner image, the context SHALL be BLOCKED; workflow-level env SHALL reach the steps under job and step env.
+    probe: "test_contexts_exec.py::test_a_job_shape_the_sandbox_does_not_stand_in_for_is_blocked"
+  - text: WHEN run on Pro against the newest merged hosted-green main commits, hosted_compare SHALL report AGREE >= 7 and FALSE_GREEN = 0.
+    probe: "final-a2d-main-"
+  - text: WHEN a candidate carries a deliberate violation for organ, guard or antidotes, that context SHALL be RED locally and HOSTED_PENDING in hosted_compare (unpushed sha).
+    probe: "final-a2c-guilt-"
+assumptions:
+  - text: Running a BASE step whose `if:` GitHub might evaluate false can only add red locally, never hide a hosted red.
+    status: unverified
+    note: Carried from PR-A1. Every organ/guard/antidotes step runs locally; the sentinels answer as on merge_group.
+    probe: a candidate where a conditioned step is green locally and the hosted job red, which would contradict it
+  - text: The CLI tools the corpora call behave as on ubuntu-latest because the image is ubuntu 24.04 with the same packages.
+    status: unverified
+    note: The hosted image installs some tools from upstream (git from a PPA, a newer docker); versions were not diffed one by one.
+    probe: the ubuntu-24.04 runner-image software list against `dpkg -l` in the image
+consumer_map:
+  - scripts/localci/hosted_compare.py on Pro — its AGREE rows on main commits are this change's output.
+  - docs/specs/localci-gate-2026-10-06.md §4 sequence step 3 (the runner plans the deterministic contexts from BASE).
+  - docs/specs/localci-sovereign-2026-10-07.md (RULED 2026-10-07) — the local gate that is to decide merges builds on these executed contexts.
+  - The localci-tests hosted job — it builds candidate.Dockerfile and runs the new contained tests.
+appetite:
+  wall_clock_hours: 6
+  adversarial_rounds: 2

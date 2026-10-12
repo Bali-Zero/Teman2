@@ -80,22 +80,43 @@ INCLUDE this commit, not does it EQUAL this sha"); the cure was simply never tau
 rule. Two tools answering "which commit must production serve?" now share one definition and
 a test that reads one out of the other.
 
+NO GITHUB AT ALL: `--upload` (2026-10-11)
+-----------------------------------------
+The public repo Bali-Zero/Teman2 is going away, and `gitSource` above has nothing to point at
+once it does. `--upload --sha <40hex>` is the explicit route that needs no GitHub: it `git archive`s the
+MINIMAL tree a mouth build needs (UPLOAD_INCLUDE) at that canonical sha into a fresh 0700 temp
+dir, links it to the project via `.vercel/project.json`, and runs `vercel deploy` from there.
+The "whole monorepo >25 minutes" failure noted above is why the tree is an include list and not
+the checkout. Vercel stores uploads content-addressed, so after the first upload only changed
+files travel. A CLI upload has no git metadata, so the sha is passed as BUILD_COMMIT_SHA (build
+AND runtime env) and `/api/health` reports it. `--preview` makes a preview deployment; without
+it the deployment is production, and the same verify-then-promote tail as the gitSource path
+runs. Without `--upload`, the gitSource path stays the default and is untouched; with
+`--upload --auto-build`, the normal decision flow substitutes an upload only at its build step.
+
 Usage:
     python3 scripts/vercel_prod_deploy.py            # promote (or, failing that, deploy) the newest bundle-relevant commit
     python3 scripts/vercel_prod_deploy.py --force    # act even if production is already current
     python3 scripts/vercel_prod_deploy.py --dry-run  # report the gap and the plan, change nothing
     python3 scripts/vercel_prod_deploy.py --ref SHA  # override the target commit
+    python3 scripts/vercel_prod_deploy.py --upload [--sha SHA] [--preview]  # one-shot upload; default target if no SHA
+    python3 scripts/vercel_prod_deploy.py --upload --auto-build  # promote-first, then upload if needed
 
 Exit codes: 0 nothing to do or done · 1 the action failed · 3 (--promote-only) there was no
-READY build to promote, and none was created. 3 rather than 2 because argparse owns 2.
+READY build to promote, and none was created · 4 upload suspended after two failed builds for
+the same sha. 3 and 4 avoid argparse's own exit code 2.
 """
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
+import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -119,6 +140,35 @@ POLL_S = 20
 #
 BUNDLE_PATHS = ("apps/mouth", "packages", "package.json", "package-lock.json", "vercel.json")
 BUNDLE_EXCLUDE: tuple[str, ...] = ()
+
+# What a Vercel build of mouth reads, i.e. the tree `--upload` ships. Derived by grepping
+# apps/mouth for reads outside itself (2026-10-11), not guessed; each entry says why. The
+# project's rootDirectory is apps/mouth but its installCommand runs from the repo root, so the
+# layout (not just apps/mouth) must be preserved.
+UPLOAD_INCLUDE: tuple[tuple[str, str], ...] = (
+    ("apps/mouth", "the app itself (src, public, data/, scripts/ used by `npm run build`, vercel.json)"),
+    ("packages/core", "@balizero/core: tsconfig path alias, and globals.css @imports ../../../../packages/core/*.css"),
+    ("data/kbli-filiera/pma-editorial-certifications.json",
+     "imported by apps/mouth/src/lib/kbli-editorial-certification.ts as ../../../../data/... (repo root)"),
+    ("package.json", "root manifest: `npm ci` runs from the root (installCommand) and declares the workspaces"),
+    ("package-lock.json", "root lockfile: `npm ci` refuses to run without it"),
+    ("packages/ts-schemas", "workspace member of the root lockfile: `npm ci` needs its manifest present"),
+    ("apps/admin-dashboard/package.json", "workspace manifest: lockfile sync check of `npm ci`"),
+    ("apps/admin-dashboard-local/package.json", "workspace manifest: lockfile sync check of `npm ci`"),
+    ("apps/autonomous-lab/package.json", "workspace manifest: lockfile sync check of `npm ci`"),
+    ("apps/web/package.json", "workspace manifest: lockfile sync check of `npm ci`"),
+)
+# Deliberately NOT included: scripts/ci/vercel_should_build.sh. vercel.json's ignoreCommand
+# fails OPEN when the file (or git) is absent, so an upload always builds, which is what an
+# explicit deploy means.
+
+_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+UPLOAD_CLI_TIMEOUT_S = 1800
+UPLOAD_STATE_DIR = os.path.expanduser("~/.organism")
+UPLOAD_LEDGER_PATH = os.path.join(UPLOAD_STATE_DIR, "vercel_upload_ledger.json")
+UPLOAD_LOCK_PATH = os.path.join(UPLOAD_STATE_DIR, "vercel_upload.lock")
+UPLOAD_FAILURE_LIMIT = 2
+UPLOAD_MIN_FREE_GIB = 3
 
 
 def _read_auth() -> dict:
@@ -415,6 +465,12 @@ def _probe_until(sha: str, attempts: int) -> bool:
     return False
 
 
+def _dep_sha(dep: dict) -> str | None:
+    """Commit identity for either a Git integration or CLI-upload deployment."""
+    meta = dep.get("meta") or {}
+    return meta.get("githubCommitSha") or meta.get("nzBuildSha")
+
+
 def _ready_deployment_for(sha: str) -> tuple[str, str] | None:
     """Is a production build for this commit ALREADY built and merely waiting to be promoted?
 
@@ -441,7 +497,7 @@ def _ready_deployment_for(sha: str) -> tuple[str, str] | None:
         # and a CANCELED one is the NORMAL outcome for a commit the ignore-step skipped.
         if dep.get("state") != "READY":
             continue
-        if (dep.get("meta") or {}).get("githubCommitSha") != sha:
+        if _dep_sha(dep) != sha:
             continue
         uid = dep.get("uid")
         if not uid:
@@ -480,7 +536,7 @@ def _ready_deployment_including(sha: str) -> tuple[str, str, str] | None:
     for dep in body.get("deployments", []):  # newest first
         if dep.get("state") != "READY":
             continue
-        build_sha = (dep.get("meta") or {}).get("githubCommitSha")
+        build_sha = _dep_sha(dep)
         uid = dep.get("uid")
         if not build_sha or not uid or build_sha == sha:
             continue
@@ -539,7 +595,200 @@ def _ready_deployment_among_recent_bundle_commits(
     return None
 
 
-def main() -> int:
+def _archive_tree(sha: str, dest: str) -> None:
+    """Materialise UPLOAD_INCLUDE as it exists at `sha` into `dest`.
+
+    `git archive` reads the object database, never the working tree, so what ships is the
+    canonical commit and not whatever the checkout happens to hold. A path missing at `sha`
+    makes git fail loudly (pathspec did not match); a silently thinner tree would build a
+    different site.
+    """
+    paths = [p for p, _why in UPLOAD_INCLUDE]
+    archive = subprocess.Popen(
+        ["git", "archive", "--format=tar", sha, "--", *paths],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    assert archive.stdout is not None
+    extract = subprocess.run(["tar", "-x", "-C", dest], stdin=archive.stdout, capture_output=True)
+    archive.stdout.close()
+    err = (archive.stderr.read() if archive.stderr else b"").decode(errors="replace").strip()
+    rc = archive.wait()
+    if rc != 0:
+        raise RuntimeError(f"git archive {sha[:9]} failed (exit {rc}): {err[:300]}")
+    if extract.returncode != 0:
+        raise RuntimeError(f"tar extract failed: {extract.stderr.decode(errors='replace')[:300]}")
+
+
+def _write_project_link(dest: str) -> None:
+    link = os.path.join(dest, ".vercel")
+    os.makedirs(link, mode=0o700, exist_ok=True)
+    with open(os.path.join(link, "project.json"), "w") as fh:
+        json.dump({"orgId": TEAM_ID, "projectId": PROJECT_ID}, fh)
+
+
+def _vercel_deploy_cmd(dest: str, sha: str, preview: bool) -> list[str]:
+    cmd = [
+        "vercel", "deploy", "--yes", "--cwd", dest,
+        "--build-env", f"BUILD_COMMIT_SHA={sha}",
+        "--env", f"BUILD_COMMIT_SHA={sha}",
+        "--meta", f"nzBuildSha={sha}",
+    ]
+    if not preview:
+        cmd.append("--prod")
+    return cmd
+
+
+_URL_RE = re.compile(r"https://[a-z0-9-]+-[a-z0-9]+-[a-z0-9-]+\.vercel\.app")
+
+
+def _cli_deployment_url(stdout: str, stderr: str) -> str | None:
+    """The deployment URL: the CLI prints it alone on stdout when it finishes, and as
+    `Preview|Production <url>` on stderr as soon as the upload ends."""
+    lines = [ln.strip() for ln in stdout.strip().splitlines() if ln.strip()]
+    if lines and lines[-1].startswith("https://"):
+        return lines[-1]
+    found = _URL_RE.findall(stderr)
+    return found[0] if found else None
+
+
+def _upload_main(sha: str, preview: bool) -> int:
+    """`--upload`: deploy a `git archive` of `sha` through the Vercel CLI. No GitHub involved."""
+    _token()  # refreshes an expired CLI credential (never printed); the CLI reads the same file
+    dest = tempfile.mkdtemp(prefix="mouth-upload-")  # mkdtemp is 0700
+    try:
+        t0 = time.time()
+        _archive_tree(sha, dest)
+        _write_project_link(dest)
+        print(f"archived {sha[:9]} -> {dest} in {time.time() - t0:.1f}s")
+        t1 = time.time()
+        proc = subprocess.run(
+            _vercel_deploy_cmd(dest, sha, preview),
+            capture_output=True, text=True, timeout=UPLOAD_CLI_TIMEOUT_S, check=False,
+        )
+        print(f"vercel deploy exited {proc.returncode} after {time.time() - t1:.1f}s")
+        url = _cli_deployment_url(proc.stdout or "", proc.stderr or "")
+        # The CLI's last "Uploading [...] (sent/total)" line: how much actually travelled.
+        # Content-addressed, so a repeat upload of unchanged files reports a small total.
+        sent = [ln.strip() for ln in (proc.stderr or "").replace("\r", "\n").splitlines()
+                if ln.strip().startswith("Uploading")]
+        print(f"upload          : {sent[-1] if sent else 'no upload line (every file already stored)'}")
+        # A non-zero exit does NOT mean the deployment failed: the CLI polls the API after the
+        # upload and dies on a network blip (measured 2026-10-11, `read ETIMEDOUT`, while the
+        # build went on to READY). The URL it printed on stderr is the handle; the API state is
+        # the verdict, so a failed CLI with a URL falls through to the wait below.
+        if proc.returncode != 0:
+            print((proc.stderr or "")[-400:])
+        if not url:
+            print("could not read a deployment URL from the CLI output")
+            return 1
+        print(f"deployment url  : {url}")
+        host = url.removeprefix("https://")
+        status, dep = _api("GET", f"/v13/deployments/{host}")
+        if status != 200:
+            print(f"lookup HTTP {status}: {json.dumps(dep)[:300]}")
+            return 1
+        dpl = dep["id"]
+        state = dep.get("readyState")
+        if state not in ("READY", "ERROR", "CANCELED"):
+            state, _alias = _wait_terminal(dpl)
+        print(f"deployment      : {dpl} state={state}")
+        if state != "READY":
+            print(f"build logs: vercel inspect --logs {dpl}")
+            return 1
+        if preview:
+            print(f"OK (preview) - prove it with: vercel curl /api/health --deployment {url}")
+            return 0
+        if _probe_until(sha, attempts=8) or _promote(dpl, sha):
+            print(f"OK - kita.balizero.com serves {sha[:9]} (deployment {dpl})")
+            return 0
+        print(f"::error::deployment {dpl} is READY but kita.balizero.com did not prove it serves {sha[:9]}")
+        return 1
+    finally:
+        shutil.rmtree(dest, ignore_errors=True)
+
+
+def _read_upload_ledger() -> dict:
+    try:
+        with open(UPLOAD_LEDGER_PATH, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _write_upload_ledger(data: dict) -> None:
+    state_dir = os.path.dirname(UPLOAD_LEDGER_PATH) or "."
+    os.makedirs(state_dir, mode=0o700, exist_ok=True)
+    temp_path = f"{UPLOAD_LEDGER_PATH}.tmp.{os.getpid()}"
+    with open(temp_path, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, sort_keys=True)
+        fh.write("\n")
+    os.replace(temp_path, UPLOAD_LEDGER_PATH)
+
+
+def _attempts_ok(sha: str) -> bool:
+    ledger = _read_upload_ledger()
+    if ledger.get("sha") != sha:
+        _write_upload_ledger({"sha": sha, "failures": 0, "last_result": "target_changed"})
+        return True
+    return int(ledger.get("failures", 0)) < UPLOAD_FAILURE_LIMIT
+
+
+def _record_attempt(sha: str, rc: int) -> None:
+    ledger = _read_upload_ledger()
+    failures = int(ledger.get("failures", 0)) if ledger.get("sha") == sha else 0
+    failures = 0 if rc == 0 else failures + 1
+    _write_upload_ledger({
+        "sha": sha,
+        "failures": failures,
+        "last_result": "success" if rc == 0 else f"rc={rc}",
+        "last_ts": int(time.time()),
+    })
+
+
+def _disk_ok(min_gib: int = UPLOAD_MIN_FREE_GIB) -> bool:
+    free = shutil.disk_usage(tempfile.gettempdir()).free
+    required = min_gib * (1 << 30)
+    if free >= required:
+        return True
+    print(
+        f"refusing upload: temp filesystem has {free / (1 << 30):.2f} GiB free; "
+        f"at least {min_gib} GiB is required"
+    )
+    return False
+
+
+def _upload_with_guards(sha: str, preview: bool) -> int:
+    """Serialize uploads and bound failed build attempts for one target commit."""
+    lock_dir = os.path.dirname(UPLOAD_LOCK_PATH) or "."
+    os.makedirs(lock_dir, mode=0o700, exist_ok=True)
+    with open(UPLOAD_LOCK_PATH, "a+", encoding="utf-8") as lock:
+        try:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            print("upload already in progress — lock busy, skipping this tick")
+            return 0
+        try:
+            if not _attempts_ok(sha):
+                print(
+                    f"SUSPENDED {sha[:9]} — {UPLOAD_FAILURE_LIMIT} failed upload builds; "
+                    "waiting for the target sha to change"
+                )
+                return 4
+            if not _disk_ok():
+                return 1
+            try:
+                rc = _upload_main(sha, preview)
+            except Exception as exc:  # noqa: BLE001 — an unattended exception is a failed attempt
+                print(f"upload failed without a final result ({type(exc).__name__})")
+                rc = 1
+            _record_attempt(sha, rc)
+            return rc
+        finally:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+
+
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--force", action="store_true", help="deploy even when production is already current")
     parser.add_argument("--dry-run", action="store_true", help="report the gap and exit without deploying")
@@ -549,12 +798,54 @@ def main() -> int:
         action="store_true",
         help="promote an existing READY build and NEVER create one (the mode a cron may run)",
     )
-    args = parser.parse_args()
+    parser.add_argument("--upload", action="store_true",
+                        help="deploy a git archive through the Vercel CLI (default target or --sha)")
+    parser.add_argument("--sha", default=None,
+                        help="with --upload: explicit 40-hex commit (default: bundle-relevant head)")
+    parser.add_argument("--preview", action="store_true",
+                        help="with --upload: make a PREVIEW deployment (default is production)")
+    parser.add_argument(
+        "--auto-build",
+        action="store_true",
+        help="with --upload: promote first and upload only when the normal flow would build",
+    )
+    args = parser.parse_args(argv)
+    if args.upload:
+        if args.sha and not _SHA_RE.match(args.sha):
+            parser.error("--sha must be 40 lowercase hex chars")
+        if args.sha and (args.promote_only or args.dry_run or args.force or args.ref):
+            parser.error("--upload --sha cannot be combined with --promote-only/--dry-run/--force/--ref")
+        if not args.auto_build and (args.promote_only or args.dry_run or args.force or args.ref):
+            parser.error("upload decision flags require --auto-build")
+        if args.auto_build and args.preview:
+            parser.error("--auto-build cannot be combined with --preview")
+    elif args.sha or args.preview:
+        parser.error("--sha and --preview only make sense with --upload")
+    if args.auto_build and not args.upload:
+        parser.error("--auto-build requires --upload")
+    return args
 
-    if args.ref:
+
+def main() -> int:
+    args = _parse_args()
+    if args.upload and not args.auto_build:
+        if args.sha:
+            sha = args.sha
+        else:
+            sha, how = _deploy_relevant_head()
+            print(f"target commit   : {sha}")
+            print(f"  chosen as     : {how}")
+        return _upload_with_guards(sha, args.preview)
+
+    if args.sha:
+        sha, how = args.sha, "--sha override"
+    elif args.ref:
         sha, how = args.ref, "--ref override"
     else:
         sha, how = _deploy_relevant_head()
+    if args.upload and how.startswith("main HEAD —"):
+        print(f"no safe upload target: {how} — refusing unattended build")
+        return 3
     live = _served_commit()
     print(f"target commit   : {sha}")
     print(f"  chosen as     : {how}")
@@ -646,6 +937,9 @@ def main() -> int:
         # Fall through rather than fail: the build may be genuinely unusable (an alias
         # conflict, a deployment deleted mid-flight). A rebuild is slower, never wrong.
         print("promote did not prove kita.balizero.com current — falling back to a rebuild")
+
+    if args.upload:
+        return _upload_with_guards(sha, False)
 
     status, deployment = _api("POST", "/v13/deployments", {
         "name": "mouth",

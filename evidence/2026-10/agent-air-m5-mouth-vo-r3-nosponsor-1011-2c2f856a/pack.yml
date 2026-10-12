@@ -1,0 +1,110 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 — decisions on the E33/retirement program: default R3 of the E33 audit taken without
+  objection (the retirement interview stops asking "who sponsors your stay"; no retirement rule reads sponsor.type).
+mission: >-
+  The Visa Oracle retirement interview stops asking who sponsors the stay, because no retirement rule reads it.
+lanes:
+  - lane: vo-r3-nosponsor
+    role: build
+    seat: Claude Sonnet 5 implementer (subagent), worktree mouth-vo-r3-nosponsor-1011 on M5; rebased onto origin/main by Claude Opus 5.5.
+  - lane: vo-r3-ground-truth
+    role: ground_truth
+    seat: >-
+      the newest signed visa-engine pack, which the guard in sponsor-retirement-guard.test.ts scans: no rule covering
+      RETIREMENT reads sponsor.type; the change asserts no rule of its own, it removes a question nothing reads.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts
+    query_hash: "eae89f2e3530c681d1d6f13745d0ff5bfd1a2832bbeb5bd7053df88bcc238ba9" # pragma: allowlist secret
+    note: query_hash = sha256 of flow.ts at origin/main (the retirement question list this change edits).
+pii_scan: clean
+bites:
+  consumer: >-
+    the public Visa Oracle retirement interview (flow.ts question list) and the pack-scan guard in
+    sponsor-retirement-guard.test.ts that keeps the omission safe.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_retirement_no_sponsor.py
+  expect: "contains:retirement never asks sponsor"
+receipts:
+  - claim: The visa-oracle _lib Vitest tree passes after the rebase onto origin/main, including the flow, activity-boundary and fact-mapper updates.
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib'
+    result: "Test Files 32 passed (32), Tests 1055 passed (1055)"
+    exit: 0
+    ts: "2026-10-11T10:52:00Z"
+    seat: this session
+  - claim: apps/mouth typechecks.
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-11T10:42:00Z"
+    seat: this session
+  - claim: The census pytest passes; its pins key on outcomes, so removing the step moves none.
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "52 passed, 14 skipped"
+    exit: 0
+    ts: "2026-10-11T10:42:00Z"
+    seat: this session
+  - claim: The enumerator dry-run proves the bound with no missing edge.
+    cmd: cd apps/mouth && npx tsx scripts/visa-oracle/enumerate-interview-space.cli.ts --dry-run
+    result: "bound=PROVEN edgesRequired=323 edgesCovered=323 edgesMissing=0"
+    exit: 0
+    ts: "2026-10-11T10:42:00Z"
+    seat: this session
+  - claim: Regenerating the walk corpus after the rebase leaves the tree byte-identical (129 walks).
+    cmd: npm run visa-oracle:walk-corpus -w apps/mouth
+    result: "wrote 129 walks; git status clean"
+    exit: 0
+    ts: "2026-10-11T10:36:00Z"
+    seat: this session
+  - claim: The client-copy guard stays green (no new copy).
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3532 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-11T10:42:00Z"
+    seat: this session
+  - claim: The observer runs only the dedicated guard file, requires exactly 3 passed, and repeats the pack scan itself in Python.
+    cmd: python3 scripts/ci/observe_visa_oracle_retirement_no_sponsor.py
+    result: "Tests 3 passed (3); retirement never asks sponsor"
+    exit: 0
+    ts: "2026-10-11T10:50:00Z"
+    seat: this session
+  - claim: The observer's summary parser rejects skipped, todo, failed and reduced counts.
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_retirement_no_sponsor.py
+    result: "16 passed"
+    exit: 0
+    ts: "2026-10-11T10:50:00Z"
+    seat: this session
+decisions:
+  - id: D-omission-mirrors-second-home
+    decision: >-
+      The question is removed from the retirement list only, mirroring and citing the second_home omission ruling;
+      sponsor.type stays UNKNOWN(NOT_ASKED) and no copy is added.
+  - id: D-guard-not-vacuous
+    decision: >-
+      The pack-scan guard requires at least 2 retirement products and at least 1 sponsor rule in the newest signed
+      pack, so it cannot pass by scanning nothing.
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T18-43-42-01a12a8f-ade1-7a82-8b21-abdea4bec833.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM: the observer checked only that the guard title appears in the file; a no-op test under the same title would pass observer and suite."
+    status: RETRACTED
+    disposition: "Cured: the guard moved to its own file sponsor-retirement-guard.test.ts; the observer runs only that file, requires exactly 3 passed, and repeats the pack scan in Python (fails closed). Commit: the fix commit following e35179c29f."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T18-43-42-01a12a8f-ade1-7a82-8b21-abdea4bec833.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM: the newest signed pack could silently degrade to an earlier one when a newer file had no numeric sequence."
+    status: RETRACTED
+    disposition: "Cured: newest = max N from the filename; the payload must be well-formed with sequence === N, else the test throws. The Python scan does the same. Same fix commit."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T18-43-42-01a12a8f-ade1-7a82-8b21-abdea4bec833.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM: the guard needed only two RETIREMENT versions and did not pin E33E and E33F."
+    status: RETRACTED
+    disposition: "Cured: asserts both product codes exist, both cover RETIREMENT, and both version ids are in the scanned set; the Python scan mirrors it. Same fix commit."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T18-43-42-01a12a8f-ade1-7a82-8b21-abdea4bec833.jsonl, model verified in the rollout file)"
+    objection: "LOW: only rule.when was scanned, not the whole rule."
+    status: RETRACTED
+    disposition: "Cured: readsSponsorType scans every string in the whole rule (when, required_facts, ...); unknown scopes fail. A self-test proves required_facts-only reads are detected. Full canonical-schema validation was not added (the pack is signed and schema-validated by the backend loader); accepted as limit."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T18-43-42-01a12a8f-ade1-7a82-8b21-abdea4bec833.jsonl, model verified in the rollout file)"
+    objection: "LOW: legacy answers carrying sponsor_category on the retirement branch were not covered."
+    status: RETRACTED
+    disposition: "Decided: tolerated, not stripped (forwarded KNOWN like on any branch), harmless because the guard fails if any RETIREMENT rule reads sponsor.type. Pinned by a new test in sponsor-retirement-guard.test.ts. Same fix commit."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T18-43-42-01a12a8f-ade1-7a82-8b21-abdea4bec833.jsonl, model verified in the rollout file)"
+    objection: "LOW: brief_ref evidence/brief.yml looks unresolvable next to the dated pack."
+    status: RETRACTED
+    disposition: "False positive: the lane convention requires brief_ref evidence/brief.yml (CI and pre-push lint stage the brief there); a dated brief_ref fails the lint. No change."

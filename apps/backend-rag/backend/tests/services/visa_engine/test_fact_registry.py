@@ -1,7 +1,7 @@
 """Tests for ``backend.services.visa_engine.fact_registry``.
 
-Covers: the default catalog is seeded 1:1 with ``enums.FactPath`` (61
-entries, 57 applicant + 4 derived); ``spec()``/``missing_paths()`` behavior
+Covers: the default catalog is seeded 1:1 with ``enums.FactPath`` (62
+entries, 58 applicant + 4 derived); ``spec()``/``missing_paths()`` behavior
 (the PR1 brief's "required_facts subset-of registry" primitive); commercial
 classification exactly matches ``enums.COMMERCIAL_FACT_PATHS``; PII
 classification spot-checks per this module's own documented rationale;
@@ -44,7 +44,7 @@ class TestDefaultCatalogCompleteness:
             assert spec.path is path
 
     def test_catalog_has_exactly_60_entries(self) -> None:
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 61
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 62
 
     def test_all_paths_matches_fact_path_enum(self) -> None:
         assert DEFAULT_FACT_REGISTRY.all_paths() == frozenset(FactPath)
@@ -141,7 +141,7 @@ class TestRegistryImmutability:
         # must be impossible, not merely type-annotated as read-only.
         with pytest.raises(AttributeError):
             DEFAULT_FACT_REGISTRY._specs.clear()  # type: ignore[attr-defined]
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 61
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 62
 
     def test_specs_mapping_cannot_be_item_assigned(self) -> None:
         with pytest.raises(TypeError):
@@ -266,7 +266,7 @@ class TestValueFormatKindConsistency:
         # hotfix's __post_init__ addition must not retroactively break
         # _DEFAULT_SPECS (module import already proves this at collection
         # time; this is the explicit, readable assertion of it).
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 61
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 62
 
 
 class TestRegistryConstruction:
@@ -298,7 +298,7 @@ class TestRegistryConstruction:
             ]
         )
         assert custom.all_paths() == frozenset({FactPath.PERSON_BIRTH_DATE})
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 61
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 62
 
 
 _UNKNOWN_WIRE = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
@@ -332,6 +332,7 @@ def _applicant_facts(overrides: dict[str, Any], *, assessment_id: uuid.UUID | No
         "work.serves_indonesian_clients": _UNKNOWN_WIRE,
         "work.indonesia_source_compensation": _UNKNOWN_WIRE,
         "work.indonesian_work_sponsor_confirmed": _UNKNOWN_WIRE,
+        "work.annual_foreign_income_usd": _UNKNOWN_WIRE,
         "investment.pt_pma_committed": _UNKNOWN_WIRE,
         "investment.investment_capital_idr": _UNKNOWN_WIRE,
         "investment.paid_up_capital_idr": _UNKNOWN_WIRE,
@@ -435,6 +436,29 @@ class TestDeriveAgeYears:
         )
         assert snapshot.values[FactPath.DERIVED_AGE_YEARS] == KnownFact(value=26)
 
+    @pytest.mark.parametrize(
+        ("birth", "effective", "years"),
+        [
+            # The day before the 55th birthday is still 54; the birthday itself is 55
+            # (`hf.e33e.age-below-55` is `derived.age_years < 55`, so the floor flips on
+            # exactly this day).
+            ("1971-09-06", datetime(2026, 9, 5, tzinfo=timezone.utc), 54),
+            ("1971-09-06", datetime(2026, 9, 6, tzinfo=timezone.utc), 55),
+            # Leap-day birth, non-leap reference year: the birthday falls on 1 March.
+            ("1972-02-29", datetime(2027, 2, 28, tzinfo=timezone.utc), 54),
+            ("1972-02-29", datetime(2027, 3, 1, tzinfo=timezone.utc), 55),
+            # Leap-day birth, leap reference year: 29 February itself is the birthday.
+            ("1972-02-29", datetime(2028, 2, 28, tzinfo=timezone.utc), 55),
+            ("1972-02-29", datetime(2028, 2, 29, tzinfo=timezone.utc), 56),
+        ],
+    )
+    def test_age_55_boundary_is_birthday_inclusive(
+        self, birth: str, effective: datetime, years: int
+    ) -> None:
+        facts = _applicant_facts({"person.birth_date": {"status": "KNOWN", "value": birth}})
+        snapshot = DEFAULT_FACT_REGISTRY.derive(facts, effective_at=effective)
+        assert snapshot.values[FactPath.DERIVED_AGE_YEARS] == KnownFact(value=years)
+
     def test_age_unknown_when_birth_date_unknown(self) -> None:
         snapshot = DEFAULT_FACT_REGISTRY.derive(_applicant_facts({}), effective_at=GOLD_EFFECTIVE_AT)
         assert isinstance(snapshot.values[FactPath.DERIVED_AGE_YEARS], UnknownFact)
@@ -523,9 +547,9 @@ class TestCanonicalFactPayload:
         payload = canonical_fact_payload(_applicant_facts({}))
         assert list(payload.keys()) == sorted(payload.keys())
 
-    def test_covers_all_57_applicant_paths(self) -> None:
+    def test_covers_all_58_applicant_paths(self) -> None:
         payload = canonical_fact_payload(_applicant_facts({}))
-        assert len(payload) == 57
+        assert len(payload) == 58
 
     def test_is_json_serializable(self) -> None:
         import json

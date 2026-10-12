@@ -16,6 +16,9 @@ import {
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   SOURCELESS_NO_PATH_CODES,
   SUPPORT_REASON_COPY,
+  E33G_ANNUAL_INCOME_THRESHOLD_USD,
+  E33E_DEPOSIT_THRESHOLD_USD,
+  RETIREMENT_INCOME_THRESHOLD_USD,
   buildEngineOutcome,
   isSecondHomeStudioOnly,
 } from "./engine-adapter";
@@ -94,6 +97,36 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     },
   );
 
+  it("carries the working-day window into the timeline, and omits it from an older backend", () => {
+    for (const withWindow of [true, false]) {
+      const response = makeVisaOracleResponse();
+      Object.assign(response.display.candidates[0].processing_timeline, {
+        status: "AVAILABLE",
+        reason_code: "BALI_ZERO_TYPICAL_PROCESSING_TIME",
+        anchor_date: "2026-10-09",
+        estimated_completion_from: "2026-10-20",
+        estimated_completion_to: "2026-10-23",
+        ...(withWindow ? { working_days_min: 7, working_days_max: 10 } : {}),
+      });
+      const outcome = buildEngineOutcome(response);
+      if (outcome.state !== "SUPPORTED_CANDIDATES")
+        throw new Error("unexpected state");
+      const timeline = outcome.candidates[0].timeline;
+      expect(timeline).toMatchObject({
+        status: "AVAILABLE",
+        earliestDateIso: "2026-10-20",
+        latestDateIso: "2026-10-23",
+      });
+      expect("workingDaysMin" in timeline).toBe(withWindow);
+      if (withWindow) {
+        expect(timeline).toMatchObject({
+          workingDaysMin: 7,
+          workingDaysMax: 10,
+        });
+      }
+    }
+  });
+
   it("uses only processing/pricing/document assessments, never stay policy or mock content", () => {
     const outcome = buildEngineOutcome(makeVisaOracleResponse());
     expect(outcome.state).toBe("SUPPORTED_CANDIDATES");
@@ -101,9 +134,101 @@ describe("Visa Oracle authoritative outcome adapter", () => {
       throw new Error("unexpected state");
     const candidate = outcome.candidates[0];
     expect(candidate.timeline).toMatchObject({ status: "UNAVAILABLE" });
-    expect(candidate.price).toMatchObject({ status: "CONTACT_REQUIRED" });
+    expect(candidate.price).toEqual({
+      status: "CONTACT_REQUIRED",
+      message: {
+        en: "Price on consultation. You can ask a Bali Zero advisor.",
+        id: "Harga melalui konsultasi. Anda dapat bertanya kepada konsultan Bali Zero.",
+      },
+    });
     expect(candidate.documents).toEqual([]);
     expect(JSON.stringify(candidate)).not.toContain("60 days");
+  });
+
+  it.each([
+    "PRICING_KEY_NOT_CONFIGURED",
+    "PRICING_ROW_MISSING",
+    "PRICING_ROW_NOT_EXACT_AMOUNT",
+  ])(
+    "CONTACT_REQUIRED for %s never claims what that reason code does not prove",
+    (reasonCode) => {
+      // The backend (pricing_adapter.py resolve_pricing_key) returns
+      // CONTACT_REQUIRED for a product left without a pricing key AND for a
+      // catalogue row that is missing or has no exact amount. "No fixed
+      // price is published" is true for the first only, so the one sentence
+      // shown for all three says no more than "price on consultation".
+      const response = makeVisaOracleResponse();
+      response.display.candidates[0].pricing = {
+        ...response.display.candidates[0].pricing,
+        status: "CONTACT_REQUIRED",
+        reason_code: reasonCode,
+      };
+      const outcome = buildEngineOutcome(response);
+      if (outcome.state !== "SUPPORTED_CANDIDATES")
+        throw new Error("unexpected state");
+      const candidatePrice = outcome.candidates[0].price;
+      expect(candidatePrice.status).toBe("CONTACT_REQUIRED");
+      if (candidatePrice.status !== "CONTACT_REQUIRED")
+        throw new Error("unexpected price status");
+      expect(candidatePrice.message.en).not.toMatch(
+        /no fixed price|published/i,
+      );
+      expect(candidatePrice.message.id).not.toMatch(
+        /harga tetap|dipublikasikan/i,
+      );
+      expect(candidatePrice.message.en).toMatch(/Price on consultation/);
+      expect(candidatePrice.message.id).toMatch(/Harga melalui konsultasi/);
+    },
+  );
+
+  it("keeps E33A/B/C consultation copy honest and pins the E33A central-government exclusion in both languages", () => {
+    expect(SUPPORT_REASON_COPY.E33A_GOVERNMENT_INVITATION_ELIGIBLE).toEqual({
+      en: "You told us you hold a written invitation from an Indonesian central-government body for your special expertise — the Second Home Visa — Special-Expertise Government Invitation (E33A). This government-invitation route is handled with a Bali Zero advisor.",
+      id: "Anda menyampaikan bahwa Anda memiliki undangan tertulis dari instansi pemerintah pusat Indonesia atas keahlian khusus Anda — Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A). Jalur undangan pemerintah ini ditangani bersama konsultan Bali Zero.",
+    });
+    expect(SUPPORT_REASON_COPY.E33B_GOVERNMENT_COLLABORATION_ELIGIBLE).toEqual({
+      en: "You told us you have a confirmed collaboration commitment with an Indonesian government body or institution based on your special expertise — the Second Home Golden Visa — Special-Expertise Collaboration (E33B). This collaboration route is handled with a Bali Zero advisor.",
+      id: "Anda menyampaikan bahwa Anda memiliki komitmen kolaborasi yang terkonfirmasi dengan instansi atau lembaga pemerintah Indonesia berdasarkan keahlian khusus Anda — Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B). Jalur kolaborasi ini ditangani bersama konsultan Bali Zero.",
+    });
+    expect(SUPPORT_REASON_COPY.E33C_WORLD_FIGURE_INVITATION_ELIGIBLE).toEqual({
+      en: "You told us you have an invitation letter from an Indonesian central-government agency inviting you as a world figure — the Second Home Golden Visa — World-Figure Government Invitation (E33C). This government-invitation route is handled with a Bali Zero advisor.",
+      id: "Anda menyampaikan bahwa Anda memiliki surat undangan dari instansi pemerintah pusat Indonesia yang mengundang Anda sebagai tokoh dunia — Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C). Jalur undangan pemerintah ini ditangani bersama konsultan Bali Zero.",
+    });
+    expect(SUPPORT_REASON_COPY.E33A_SPONSOR_NOT_GOVERNMENT).toEqual({
+      en: "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian central-government body, and you did not name one as your sponsor.",
+      id: "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah pusat Indonesia, dan Anda tidak menyebutkan instansi pemerintah pusat sebagai penjamin Anda.",
+    });
+  });
+
+  it("states the E33G annual-income exclusion threshold in both languages", () => {
+    expect(E33G_ANNUAL_INCOME_THRESHOLD_USD).toBe(60_000);
+    expect(SUPPORT_REASON_COPY.E33G_INCOME_BELOW_THRESHOLD).toEqual({
+      en: "The Remote Worker visa (E33G) needs a salary or income of at least USD 60,000 a year; the yearly figure you gave is below it.",
+      id: "Visa Rumah Kedua Pekerja Jarak Jauh (E33G) memerlukan gaji atau penghasilan minimal USD 60.000 per tahun; angka tahunan yang Anda berikan berada di bawah batas tersebut.",
+    });
+  });
+
+  it("never offers a combined property-and-deposit route in Second Home or E33 copy", () => {
+    const copy = REVIEW_REASON_COPY[SECOND_HOME_STUDIO_REVIEW_REASON_CODE];
+    expect(copy.en).not.toMatch(/combination/i);
+    expect(copy.id).not.toMatch(/kombinasi/i);
+    const combined = /combination|combined|both together|split|mix/i;
+    const gabungan = /kombinasi|gabungan|campuran/i;
+    const entries = [
+      ...Object.entries(REVIEW_REASON_COPY),
+      ...Object.entries(SUPPORT_REASON_COPY),
+    ].filter(([code]) => /^(SECOND_HOME_|E33)/.test(code));
+    expect(entries.length).toBeGreaterThan(3);
+    for (const [code, value] of entries) {
+      expect([code, value.en]).not.toEqual([
+        code,
+        expect.stringMatching(combined),
+      ]);
+      expect([code, value.id]).not.toEqual([
+        code,
+        expect.stringMatching(gabungan),
+      ]);
+    }
   });
 
   it("renders an exact PricingTool quote as one all-inclusive IDR amount", () => {
@@ -840,12 +965,12 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(message).toContain("Visa on Arrival");
   });
 
-  it("still surfaces an unmapped code instead of blanking it", () => {
-    // A code with no copy must stay visible: hiding it would conceal a new
-    // rule rather than reveal it.
-    expect(firstReasonEn("SOMETHING_NEW_FROM_A_FUTURE_PACK")).toBe(
-      "Verified reason: SOMETHING_NEW_FROM_A_FUTURE_PACK",
-    );
+  it("never prints a raw code for an unmapped reason", () => {
+    // A client must not read a machine code; the unmapped fallback is a
+    // plain sentence.
+    const copy = firstReasonEn("SOMETHING_NEW_FROM_A_FUTURE_PACK");
+    expect(copy).toBe("Confirmed by the rules for this visa.");
+    expect(copy).not.toContain("SOMETHING_NEW_FROM_A_FUTURE_PACK");
   });
 
   it("states the Article 60(2) KITAP prerequisites without inventing status tenure", () => {
@@ -1148,6 +1273,91 @@ describe("support reasons are sentences, not machine codes", () => {
     );
   });
 
+  describe("RETIREMENT_INCOME_BELOW_THRESHOLD names the figure the rules check", () => {
+    function retirementNoPathMessage(facts?: OracleFacts) {
+      const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+      response.decision.no_path_reasons = [
+        {
+          code: "RETIREMENT_INCOME_BELOW_THRESHOLD",
+          rule_ids: ["hf.e33e.retirement-income-below-minimum"],
+          source_refs: [TEST_SOURCE_ID],
+        },
+      ];
+      const outcome = buildEngineOutcome(response, facts ? { facts } : {});
+      if (outcome.state !== "NO_SUPPORTED_PATH")
+        throw new Error("unexpected state");
+      return outcome.noPathReasons[0].message;
+    }
+
+    it("echoes a declared 2,999 and names the USD 3,000 minimum, EN and ID", () => {
+      const message = retirementNoPathMessage({
+        category: "retire",
+        retirement_basis: "passive_income",
+        secondhome_passive_income_usd: "2999",
+      });
+      expect(message.en).toBe(
+        "You declared USD 2,999 a month; the retirement visas (E33E/E33F) need documented passive income of at least USD 3,000 a month.",
+      );
+      expect(message.id).toBe(
+        "Anda menyatakan USD 2.999 per bulan; visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal USD 3.000 per bulan.",
+      );
+    });
+
+    it("says a 'not sure' counted as zero instead of claiming a figure was given", () => {
+      const message = retirementNoPathMessage({
+        category: "retire",
+        retirement_basis: "passive_income",
+        secondhome_passive_income_usd: "unsure",
+      });
+      expect(message.en).toBe(
+        "You were not sure of your monthly passive income, so it counted as zero. The retirement visas need documented passive income of at least USD 3,000 a month: come back with the figure, or ask a Bali Zero advisor.",
+      );
+      expect(message.id).toBe(
+        "Anda belum yakin dengan penghasilan pasif bulanan Anda, sehingga dihitung nol. Visa pensiun memerlukan penghasilan pasif terdokumentasi minimal USD 3.000 per bulan: kembalilah dengan angkanya, atau tanyakan kepada konsultan Bali Zero.",
+      );
+    });
+
+    it("falls back to the neutral static sentence (no claim about the visitor's figure) when the facts do not show a below-minimum income", () => {
+      for (const facts of [
+        undefined,
+        {},
+        { secondhome_passive_income_usd: "3000" },
+        { secondhome_passive_income_usd: "abc" },
+      ] as Array<OracleFacts | undefined>) {
+        const message = retirementNoPathMessage(facts);
+        expect(message).toEqual(
+          SUPPORT_REASON_COPY.RETIREMENT_INCOME_BELOW_THRESHOLD,
+        );
+        expect(message.en).toBe(
+          "The retirement visas (E33E/E33F) need documented passive income of at least USD 3,000 a month.",
+        );
+        expect(message.id).toBe(
+          "Visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal USD 3.000 per bulan.",
+        );
+      }
+    });
+
+    it("keeps the retirement sentence when unrelated Second Home and paid-activity facts are also populated", () => {
+      const message = retirementNoPathMessage({
+        // category "retire" with leftovers that would each trigger a
+        // sibling builder if the retirement code ever reached them.
+        category: "retire",
+        retirement_basis: "passive_income",
+        secondhome_passive_income_usd: "2999",
+        secondhome_basis: "bank_deposit",
+        investment_vehicle: "bank_deposit",
+        secondhome_deposit_usd: "10000",
+        secondhome_state_bank: "no",
+        secondhome_own_name: "no",
+        other_paid_activity: "yes",
+        work_payer: "no",
+      });
+      expect(message.en).toBe(
+        "You declared USD 2,999 a month; the retirement visas (E33E/E33F) need documented passive income of at least USD 3,000 a month.",
+      );
+    });
+  });
+
   it("Slice A10: LEVEL_BAND_DIKTI renders its own copy beside the STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED copy", () => {
     const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
     response.decision.no_path_reasons = [
@@ -1220,6 +1430,29 @@ describe("support reasons are sentences, not machine codes", () => {
     return value;
   }
 
+  it("E33G_ANNUAL_INCOME_THRESHOLD_USD tracks both signed seq-28 income rules", () => {
+    const payload = highestSequencePack();
+
+    const threshold = E33G_ANNUAL_INCOME_THRESHOLD_USD;
+    expect(threshold).toBe(
+      gteThresholdInPack(
+        "el.e33g.remote-work",
+        "work.annual_foreign_income_usd",
+      ),
+    );
+    const hardFilter = (payload.rules ?? []).find(
+      (rule) => rule.rule_id === "hf.e33g.annual-income-below-minimum",
+    );
+    if (!hardFilter) {
+      throw new Error(
+        "hf.e33g.annual-income-below-minimum is absent from seq-28",
+      );
+    }
+    expect(findLtValue(hardFilter.when, "work.annual_foreign_income_usd")).toBe(
+      threshold,
+    );
+  });
+
   // D3-3 gate finding (owner escalation, 2026-09-13): `secondHomeBelow
   // ThresholdReason` (engine-adapter.ts) quotes these two constants to a
   // real applicant as a legal requirement, in both languages. They are a
@@ -1237,6 +1470,41 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(SECOND_HOME_DEPOSIT_THRESHOLD_USD).toBe(
       gteThresholdInPack("el.e33.deposit-basis", "secondhome.bank_deposit_usd"),
     );
+  });
+
+  // Same pin for the retirement pair. The income figure is the `lt` bound of
+  // the two retirement hard filters (the figure the no-path sentence quotes);
+  // the deposit figure is `el.e33e.retirement`'s `gte`.
+  it("RETIREMENT_INCOME_THRESHOLD_USD tracks the signed pack's retirement-income hard filters (lt) and E33E_DEPOSIT_THRESHOLD_USD its el.e33e.retirement gte", () => {
+    for (const ruleId of [
+      "hf.e33e.retirement-income-below-minimum",
+      "hf.e33f.retirement-income-below-minimum",
+    ]) {
+      const rule = (highestSequencePack().rules ?? []).find(
+        (r) => r.rule_id === ruleId,
+      );
+      if (!rule) throw new Error(`${ruleId} is absent from the pack`);
+      expect(
+        findLtValue(rule.when, "secondhome.passive_monthly_income_usd"),
+      ).toBe(RETIREMENT_INCOME_THRESHOLD_USD);
+    }
+    expect(E33E_DEPOSIT_THRESHOLD_USD).toBe(
+      gteThresholdInPack("el.e33e.retirement", "secondhome.bank_deposit_usd"),
+    );
+  });
+
+  // E33E_RETIREMENT_ELIGIBLE states TWO figures; the first-figure reader in
+  // FIGURE_BACKED_BY_RULE below pins the deposit, this pins the income.
+  it("E33E_RETIREMENT_ELIGIBLE's second figure (monthly income) is el.e33e.retirement's passive-income gte, EN and ID", () => {
+    const expected = gteThresholdInPack(
+      "el.e33e.retirement",
+      "secondhome.passive_monthly_income_usd",
+    );
+    const copy = SUPPORT_REASON_COPY.E33E_RETIREMENT_ELIGIBLE;
+    const second = (c: string, sep: RegExp) =>
+      Number([...c.matchAll(/USD\s+([\d.,]+)/g)][1][1].replace(sep, ""));
+    expect(second(copy.en, /,/g)).toBe(expected);
+    expect(second(copy.id, /\./g)).toBe(expected);
   });
 
   // D3c/C-D5 (owner order, 2026-09-13): three more SUPPORT_REASON_COPY
@@ -1302,6 +1570,12 @@ describe("support reasons are sentences, not machine codes", () => {
       readId: usdFromProseId,
     },
     E33F_RETIREMENT_ELIGIBLE: {
+      ruleId: "el.e33f.retirement",
+      fact: "secondhome.passive_monthly_income_usd",
+      readEn: usdFromProse,
+      readId: usdFromProseId,
+    },
+    RETIREMENT_INCOME_BELOW_THRESHOLD: {
       ruleId: "el.e33f.retirement",
       fact: "secondhome.passive_monthly_income_usd",
       readEn: usdFromProse,
@@ -1437,6 +1711,34 @@ describe("support reasons are sentences, not machine codes", () => {
     return outcome.noPathReasons[0].message;
   }
 
+  it("uses the visitor's E33B collaboration answer instead of the E33A sponsor sentence for a sponsorless walk", () => {
+    const message = firstNoPathReason("E33A_SPONSOR_NOT_GOVERNMENT", {
+      sponsor_category: "NONE",
+      sponsor_government_collaboration: "no",
+    });
+    expect(message).toEqual({
+      en: "You told us you do not have a confirmed collaboration commitment with an Indonesian government body or institution based on your special expertise; the Second Home Golden Visa — Special-Expertise Collaboration (E33B) needs that commitment.",
+      id: "Anda menyampaikan bahwa Anda belum memiliki komitmen kolaborasi yang terkonfirmasi dengan instansi atau lembaga pemerintah Indonesia berdasarkan keahlian khusus Anda; Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B) memerlukan komitmen tersebut.",
+    });
+  });
+
+  it("keeps the E33A sentence unless the visitor is sponsorless and answered no to the E33B question", () => {
+    const cases: OracleFacts[] = [
+      { sponsor_category: "EMPLOYER", sponsor_government_collaboration: "no" },
+      {
+        sponsor_category: "INDIVIDUAL",
+        sponsor_government_collaboration: "no",
+      },
+      { sponsor_category: "NONE", sponsor_government_collaboration: "yes" },
+      { sponsor_category: "NONE" },
+    ];
+    for (const facts of cases) {
+      expect(firstNoPathReason("E33A_SPONSOR_NOT_GOVERNMENT", facts)).toEqual(
+        SUPPORT_REASON_COPY.E33A_SPONSOR_NOT_GOVERNMENT,
+      );
+    }
+  });
+
   it("explains the seq-20 local-compensation exclusion in prose, in every locale", () => {
     const code = excludeReasonCodeOfRule("hf.d2.indonesia-source-compensation");
     expect(code).toBe("BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED");
@@ -1541,6 +1843,168 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(otherCode.en).toBe(
       SUPPORT_REASON_COPY.BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED.en,
     );
+  });
+
+  // Audit finding `e33-ownname-dead-end-reason` (2026-10-11): the deposit
+  // route with a deposit at/above the threshold but NOT at a state bank / NOT
+  // in the visitor's own name used to show the unrelated age sentence (under
+  // 55) or the generic catalogue sentence (55+). The 130,000 figure is the
+  // SECOND_HOME_DEPOSIT_THRESHOLD_USD constant pinned to el.e33.deposit-basis
+  // above, never a typed literal.
+  describe("second_home deposit route: holder answers (e33-ownname-dead-end-reason)", () => {
+    const AGE = "AGE_BELOW_55";
+    const OPERATIONAL = "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES";
+    const deposit = (extra: OracleFacts = {}): OracleFacts => ({
+      category: "second_home",
+      secondhome_basis: "bank_deposit",
+      secondhome_deposit_usd: "200000",
+      secondhome_state_bank: "yes",
+      secondhome_own_name: "yes",
+      ...extra,
+    });
+    const tail = {
+      en: "The Second Home Visa (E33) deposit route needs at least USD 130,000 held in your own name at an Indonesian state-owned bank.",
+      id: "Jalur deposito Visa Rumah Kedua (E33) membutuhkan minimal USD 130.000 atas nama Anda sendiri di bank milik negara Indonesia.",
+    };
+
+    it("pins the 130,000 figure to the pack's deposit-basis threshold", () => {
+      expect(tail.en).toContain(
+        `USD ${SECOND_HOME_DEPOSIT_THRESHOLD_USD.toLocaleString("en-US")}`,
+      );
+      expect(tail.id).toContain(
+        `USD ${SECOND_HOME_DEPOSIT_THRESHOLD_USD.toLocaleString("id-ID")}`,
+      );
+    });
+
+    it("state bank = no replaces the age sentence (age code) and the generic one (operational code)", () => {
+      for (const code of [AGE, OPERATIONAL]) {
+        const m = firstNoPathReason(
+          code,
+          deposit({ secondhome_state_bank: "no" }),
+        );
+        expect(m.en).toBe(
+          `You told us your deposit of USD 200,000 is not deposited at an Indonesian state-owned bank. ${tail.en}`,
+        );
+        expect(m.id).toBe(
+          `Anda menyampaikan bahwa deposito Anda sebesar USD 200.000 tidak disimpan di bank milik negara Indonesia. ${tail.id}`,
+        );
+      }
+    });
+
+    it("own name = no", () => {
+      const m = firstNoPathReason(AGE, deposit({ secondhome_own_name: "no" }));
+      expect(m.en).toBe(
+        `You told us your deposit of USD 200,000 is not held in your own name. ${tail.en}`,
+      );
+      expect(m.id).toBe(
+        `Anda menyampaikan bahwa deposito Anda sebesar USD 200.000 tidak atas nama Anda sendiri. ${tail.id}`,
+      );
+    });
+
+    it("both answers = no", () => {
+      const m = firstNoPathReason(
+        OPERATIONAL,
+        deposit({ secondhome_state_bank: "no", secondhome_own_name: "no" }),
+      );
+      expect(m.en).toBe(
+        `You told us your deposit of USD 200,000 is not deposited at an Indonesian state-owned bank. You told us it is not held in your own name. ${tail.en}`,
+      );
+      expect(m.id).toBe(
+        `Anda menyampaikan bahwa deposito Anda sebesar USD 200.000 tidak disimpan di bank milik negara Indonesia. Anda menyampaikan bahwa deposito tersebut tidak atas nama Anda sendiri. ${tail.id}`,
+      );
+    });
+
+    it("'not sure' (conservative no on the wire) is named as not sure, never as a told no", () => {
+      const bank = firstNoPathReason(
+        AGE,
+        deposit({ secondhome_state_bank: "unsure" }),
+      );
+      expect(bank.en).toBe(
+        `You were not sure whether your deposit of USD 200,000 is deposited at an Indonesian state-owned bank. ${tail.en}`,
+      );
+      expect(bank.id).toBe(
+        `Anda belum yakin apakah deposito Anda sebesar USD 200.000 disimpan di bank milik negara Indonesia. ${tail.id}`,
+      );
+      const own = firstNoPathReason(
+        OPERATIONAL,
+        deposit({ secondhome_own_name: "unsure" }),
+      );
+      expect(own.en).toBe(
+        `You were not sure whether your deposit of USD 200,000 is held in your own name. ${tail.en}`,
+      );
+      expect(own.id).toBe(
+        `Anda belum yakin apakah deposito Anda sebesar USD 200.000 atas nama Anda sendiri. ${tail.id}`,
+      );
+      const mixed = firstNoPathReason(
+        AGE,
+        deposit({ secondhome_state_bank: "no", secondhome_own_name: "unsure" }),
+      );
+      expect(mixed.en).toBe(
+        `You told us your deposit of USD 200,000 is not deposited at an Indonesian state-owned bank. You were not sure whether it is held in your own name. ${tail.en}`,
+      );
+    });
+
+    it("the invest deposit route is covered too", () => {
+      const m = firstNoPathReason(AGE, {
+        category: "invest",
+        investment_vehicle: "bank_deposit",
+        secondhome_deposit_usd: "200000",
+        secondhome_state_bank: "no",
+        secondhome_own_name: "yes",
+      });
+      expect(m.en).toContain("is not deposited at an Indonesian state-owned");
+    });
+
+    it("innocence: retirement walks keep the age sentence", () => {
+      const m = firstNoPathReason(AGE, {
+        ...deposit({ secondhome_state_bank: "no" }),
+        category: "retirement",
+      });
+      expect(m.en).toBe(SUPPORT_REASON_COPY.AGE_BELOW_55.en);
+      expect(m.id).toBe(SUPPORT_REASON_COPY.AGE_BELOW_55.id);
+    });
+
+    it("innocence: a deposit below the threshold keeps the existing copy", () => {
+      const m = firstNoPathReason(
+        AGE,
+        deposit({
+          secondhome_deposit_usd: "50000",
+          secondhome_state_bank: "no",
+        }),
+      );
+      expect(m.en).toBe(SUPPORT_REASON_COPY.AGE_BELOW_55.en);
+      const op = firstNoPathReason(
+        OPERATIONAL,
+        deposit({
+          secondhome_deposit_usd: "50000",
+          secondhome_state_bank: "no",
+        }),
+      );
+      expect(op.en).toMatch(/50,000/);
+      expect(op.en).toMatch(/130,000/);
+    });
+
+    it("innocence: both answers yes, a skipped answer, the property basis, or another code keep the existing copy", () => {
+      expect(firstNoPathReason(AGE, deposit()).en).toBe(
+        SUPPORT_REASON_COPY.AGE_BELOW_55.en,
+      );
+      const { secondhome_state_bank: _skipped, ...skipped } = deposit();
+      expect(firstNoPathReason(OPERATIONAL, skipped).en).toBe(
+        SUPPORT_REASON_COPY[OPERATIONAL].en,
+      );
+      expect(
+        firstNoPathReason(AGE, {
+          ...deposit({ secondhome_state_bank: "no" }),
+          secondhome_basis: "property",
+        }).en,
+      ).toBe(SUPPORT_REASON_COPY.AGE_BELOW_55.en);
+      expect(
+        firstNoPathReason(
+          "SECOND_HOME_GUARANTEE_BELOW_THRESHOLD",
+          deposit({ secondhome_state_bank: "no" }),
+        ).en,
+      ).toBe(SUPPORT_REASON_COPY.SECOND_HOME_GUARANTEE_BELOW_THRESHOLD.en);
+    });
   });
 
   // D3-3 (PR-D3): `hf.e33f.sponsor-required` is now reachable — a retirement
@@ -2166,23 +2630,23 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
   it.each([
     [
       "rule",
-      "This result is held because you disclosed a criminal record or an ongoing case. It is one of the two disclosures the signed rules still send to a person; the other nine now stay on your result as named conditions.",
-      "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan yang telah disahkan; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
+      "This result is paused because you disclosed a criminal record or an ongoing case. A Bali Zero advisor can review it with you before any path is confirmed.",
+      "Hasil ini ditunda karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Konsultan Bali Zero dapat meninjaunya bersama Anda sebelum jalur mana pun dikonfirmasi.",
     ],
     [
       "checked",
-      "A specialist reads what you disclosed against the immigration record requirements for the route you asked about, and decides whether it can be submitted as it stands.",
-      "Seorang spesialis membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
+      "A Bali Zero advisor can read what you disclosed against the immigration record requirements for the route you asked about, and assess whether it can be submitted as it stands.",
+      "Konsultan Bali Zero dapat membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
     ],
     [
       "prepare",
-      "Have the dates and the issuing authority of any court or police record ready, together with any document showing the case is closed. Send nothing here — our team tells you where each document goes.",
-      "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — tim kami akan memberi tahu ke mana setiap dokumen harus dikirim.",
+      "Have the dates and the issuing authority of any court or police record ready, together with any document showing the case is closed. Send nothing here — a Bali Zero advisor can tell you where each document goes.",
+      "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — konsultan Bali Zero dapat memberi tahu ke mana setiap dokumen harus dikirim.",
     ],
     [
       "handling",
-      "A specialist reviews this before we confirm a path, and our team comes back to you with the timing for your case.",
-      "Seorang spesialis meninjau hal ini sebelum kami mengonfirmasi jalur, dan tim kami akan mengabari Anda mengenai perkiraan waktu untuk kasus Anda.",
+      "A Bali Zero advisor can review this before a path is confirmed, and can tell you the timing for your case.",
+      "Konsultan Bali Zero dapat meninjau hal ini sebelum jalur dikonfirmasi, dan dapat memberi tahu Anda perkiraan waktu untuk kasus Anda.",
     ],
   ] as const)("pins %s in EN and ID", (field, en, id) => {
     expect(copy[field]).toEqual({ en, id });
@@ -2191,7 +2655,7 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
   it("has exactly four criminal review element fields and exact labels", () => {
     expect(Object.keys(copy)).toHaveLength(4);
     expect(translate("en", "outcome.review.element.rule" as I18nKey)).toBe(
-      "Why this is held",
+      "Why this is paused",
     );
     expect(translate("en", "outcome.review.element.checked" as I18nKey)).toBe(
       "What the reviewer checks",
@@ -2203,7 +2667,7 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
       "How this is handled",
     );
     expect(translate("id", "outcome.review.element.rule" as I18nKey)).toBe(
-      "Mengapa hasil ini ditahan",
+      "Mengapa hasil ini ditunda",
     );
     expect(translate("id", "outcome.review.element.checked" as I18nKey)).toBe(
       "Apa yang diperiksa peninjau",
@@ -2228,8 +2692,8 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
       throw new Error("unexpected state");
     expect(outcome.reviewReasons).toHaveLength(1);
     expect(outcome.reviewReasons[0].message).toEqual({
-      en: "You told us no parent or legal guardian is filling this in with the applicant, who is under 18. A Bali Zero consultant continues from here with an adult present.",
-      id: "Anda menyampaikan bahwa tidak ada orang tua atau wali sah yang mengisi ini bersama pemohon yang berusia di bawah 18 tahun. Konsultan Bali Zero melanjutkan dari sini dengan kehadiran orang dewasa.",
+      en: "You told us no parent or legal guardian is filling this in with the applicant, who is under 18. A Bali Zero consultant can pick this up with you once an adult is present.",
+      id: "Anda menyampaikan bahwa tidak ada orang tua atau wali sah yang mengisi ini bersama pemohon yang berusia di bawah 18 tahun. Konsultan Bali Zero dapat melanjutkan bersama Anda setelah ada orang dewasa yang mendampingi.",
     });
     // The rewritten sentence must not still describe "being a minor" as
     // what raises the code — A7-B narrowed the hold to a declared/unknown
@@ -2259,8 +2723,8 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
       id: "Orang tua atau wali sah yang dapat melengkapi permohonan bersama pemohon.",
     });
     expect(elements.handling).toEqual({
-      en: "A Bali Zero consultant, who confirms the guardian before any application step.",
-      id: "Konsultan Bali Zero, yang memastikan wali sebelum langkah permohonan apa pun.",
+      en: "A Bali Zero consultant can confirm the guardian before any application step.",
+      id: "Konsultan Bali Zero dapat memastikan wali sebelum langkah permohonan apa pun.",
     });
   });
 
@@ -2273,8 +2737,8 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
       throw new Error("unexpected state");
     expect(outcome.reviewReasons).toHaveLength(1);
     expect(outcome.reviewReasons[0].message).toEqual({
-      en: "One of your answers about your planned activity, investment vehicle, retirement basis, or diaspora connection is not one the signed rules can decide on their own, so a person needs to confirm it before a path can be confirmed.",
-      id: "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, kendaraan investasi, dasar pensiun, atau hubungan diaspora bukan jawaban yang dapat diputuskan sendiri oleh aturan yang telah disahkan, sehingga memerlukan konfirmasi oleh seseorang sebelum jalur dapat dipastikan.",
+      en: "One of your answers about your planned activity, investment vehicle, retirement basis or diaspora connection is one these rules cannot decide on their own, so no path can be confirmed yet. A Bali Zero advisor can go over it with you.",
+      id: "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, sarana investasi, dasar pensiun, atau hubungan diaspora tidak dapat diputuskan sendiri oleh aturan ini, sehingga belum ada jalur yang dapat dikonfirmasi. Konsultan Bali Zero dapat membahasnya bersama Anda.",
     });
     expect(
       REVIEW_REASON_ELEMENTS.DISCLOSED_ACTIVITY_BOUNDARY_REVIEW,
@@ -2305,10 +2769,10 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
     if (secondOutcome.state !== "HUMAN_REVIEW_REQUIRED")
       throw new Error("unexpected state");
     expect(firstOutcome.reviewReasons[0].message.en).toBe(
-      "Some of your answers need a person's judgment before we can confirm a path.",
+      "Some of your answers need a review before a path can be confirmed. A Bali Zero advisor can go over them with you.",
     );
     expect(secondOutcome.reviewReasons[0].message.en).toBe(
-      "Some of your answers need a person's judgment before we can confirm a path.",
+      "Some of your answers need a review before a path can be confirmed. A Bali Zero advisor can go over them with you.",
     );
     expect(emitVisaOracleTelemetry).toHaveBeenCalledTimes(1);
     expect(emitVisaOracleTelemetry).toHaveBeenCalledWith({

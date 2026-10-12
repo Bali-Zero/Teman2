@@ -275,11 +275,33 @@ KNOWN_BENIGN_FAILED: frozenset[str] = frozenset({
     # this entry unless a NEW, genuinely-benign failure mode is documented.
 })
 
+# Organs deliberately DISARMED by renaming their plist to
+# `<label>.plist.disabled-*` (W-mini convention since 2026-09-25 — see
+# healer_receptor_registry.py::_renamed_away_disabled_plist, PR #7553). That
+# receptor reads organs_registry.yaml for the organ_id -> launchd-label
+# mapping and so can verify the rename against the live filesystem; this
+# detector is deliberately self-contained (no intra-repo import — see
+# _machine_label's own comment) and has no such mapping. A sidecar never
+# refreshes once its organ stops running, so age-based staleness alone kept
+# reporting the organ "stale" on every tick for 2+ weeks after the deliberate
+# disable (healer ledger: closed 2026-09-25/26/27, still unfixed in THIS
+# detector as of 2026-10-08) even though the registry receptor had already
+# learned to exempt it. Recorded here as a declared exemption, same shape and
+# same audit obligation as KNOWN_BENIGN_FAILED above: remove the entry the day
+# the organ is re-armed, or a genuine future staleness on it goes unreported.
+#   - mata_garuda.intel_bridge_daily.mini : plist renamed
+#     com.matagaruda.intel-bridge.daily.plist.disabled-20260925-owner-pro on
+#     2026-09-25 (ownership transferred to Pro, architectural redis-publish
+#     gap opened 2026-08-17 still open there).
+KNOWN_INTENTIONALLY_DISABLED_STALE: frozenset[str] = frozenset({
+    "mata_garuda.intel_bridge_daily.mini",
+})
+
 
 @dataclass
 class StaleFinding:
     organ_id: str
-    kind: str  # "stale" | "dead_channel" | "corrupt" | "unhealthy"
+    kind: str  # "stale" | "dead_channel" | "corrupt" | "unhealthy" | "disabled"
     age_days: float = field(default=-1.0)
     status: str = field(default="?")
     detail: str = field(default="")
@@ -391,6 +413,7 @@ def scan_sidecars(
     now: float | None = None,
     expect_core: tuple[str, ...] | None = None,
     host: str | None = None,
+    disabled: frozenset[str] = KNOWN_INTENTIONALLY_DISABLED_STALE,
 ) -> list[StaleFinding]:
     """Return findings for organs whose heartbeat is stale, missing, or corrupt.
 
@@ -407,6 +430,12 @@ def scan_sidecars(
     organ_id prefix) is skipped unless it is on the CROSS_HOST_SIDECAR_SOURCES
     allow-list — a stray same-name snapshot orphaned on the wrong machine is
     not evidence that organ is dead, it just isn't this machine's to judge.
+
+    disabled names organs whose sidecar will NEVER refresh again because the
+    organ was deliberately unarmed (see KNOWN_INTENTIONALLY_DISABLED_STALE) —
+    an age-stale entry here is reported as kind="disabled", not "stale", so it
+    stays visible in the human report without re-raising a P1 divergence every
+    tick for a fact already acted on.
     """
     if expect_core is None:
         expect_core = (
@@ -470,15 +499,27 @@ def scan_sidecars(
         )
         age_days = (now - ts) / 86400.0
         if age_days > stale_days:
-            findings.append(
-                StaleFinding(
-                    organ_id=organ_id,
-                    kind="stale",
-                    age_days=age_days,
-                    status=str(payload.get("status", "?")),
-                    detail=f"heartbeat frozen {age_days:.1f}d (threshold {stale_days}d)",
+            if organ_id in disabled:
+                findings.append(
+                    StaleFinding(
+                        organ_id=organ_id,
+                        kind="disabled",
+                        age_days=age_days,
+                        status=str(payload.get("status", "?")),
+                        detail=f"heartbeat frozen {age_days:.1f}d — deliberately disarmed, "
+                        "not a dead channel (see KNOWN_INTENTIONALLY_DISABLED_STALE)",
+                    )
                 )
-            )
+            else:
+                findings.append(
+                    StaleFinding(
+                        organ_id=organ_id,
+                        kind="stale",
+                        age_days=age_days,
+                        status=str(payload.get("status", "?")),
+                        detail=f"heartbeat frozen {age_days:.1f}d (threshold {stale_days}d)",
+                    )
+                )
 
     # A core guardian with NO sidecar at all is the worst case (W2 root): flag it.
     for organ_id in expect_core:
@@ -756,6 +797,11 @@ def _human_report(findings: list[StaleFinding], declared_off: int = 0) -> str:
                 lines.append(f"    💀 {f.organ_id}: NO heartbeat sidecar (core guardian)")
             elif f.kind == "corrupt":
                 lines.append(f"    ❓ {f.organ_id}: corrupt sidecar — {f.detail}")
+            elif f.kind == "disabled":
+                lines.append(
+                    f"    🔕 {f.organ_id}: disarmed, heartbeat frozen {f.age_days:.1f}d "
+                    "(deliberate, not a failure)"
+                )
             else:
                 lines.append(
                     f"    🫥 {f.organ_id}: stale {f.age_days:.1f}d (status={f.status})"

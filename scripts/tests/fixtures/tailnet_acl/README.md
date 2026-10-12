@@ -10,9 +10,14 @@ CORRECTED 2026-08-29: this file used to say each fixture carries "exactly ONE de
 stopped being true when the guard began pinning the whole `hosts` table, because most of these
 fixtures are minimal — three lines of `hosts` — and a minimal table is by definition not the
 fleet's. They now emit `PINNED_HOST_ALIAS_MOVED` alongside the defect they are named for, because a
-three-line `hosts` block is missing five of the six pinned aliases. Nothing is
+three-line `hosts` block is missing six of the seven pinned aliases. Nothing is
 weakened by it (the assertion demands the named code, so the pin cannot carry a fixture on its
 own), but a README claiming a property the files no longer have is the kind of small lie this
 whole directory exists to prevent. The four `hosts_*` fixtures carry the full pinned table
 precisely so that each isolates the spelling it is named for — measured: they emit that one code
 and nothing else.
+
+The `iqoo_*`, `ephemeral_range_*`, `hosts_ip_shaped_alias` and `mini_redis_accept_deleted`
+fixtures added for the 2026-10-11 live-flow exception are full-anchor minimal policies. Each emits exactly its named
+finding so the wide-range exception, destination-only phone role, and accept-test requirements
+cannot mask one another.

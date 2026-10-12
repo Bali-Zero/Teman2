@@ -1,0 +1,132 @@
+task_id: localci-host-floor-1011
+mission: LOCALCI-SOVEREIGN (phase B - B15, Pro's host floor held through the run)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  The lint floor is 2 by size (about 370 net lines, no hot-zone path). The change touches the merger's run path and must never
+  weaken a check, so it is not a Gear 1 diff.
+l_level: L2
+gate_class: opus
+objective: >-
+  Pro keeps its host floor (90 GB, Zero 2026-10-11, lowered from 100) through a localci run: a run starts only at 100 GB, a watchdog
+  evicts the run (process group and its own labelled containers) under 91.5 GB as a host no-verdict, an evicted head rotates and is
+  capped at 3, and the prune drops second-slot deps images under host pressure.
+acceptance:
+  - text: A start under 100 GB free SHALL be skipped and journalled with floor_gb 90 and start_floor_gb 100.
+    probe: "scripts/localci/tests/test_host_floor.py (start floor)"
+  - text: A sample under 91.5 GB SHALL kill the runner's process group and remove exactly this run's labelled containers, never another run's.
+    probe: "scripts/localci/tests/test_host_floor.py (eviction cases)"
+  - text: An eviction SHALL be journalled as kind evicted, not as a decision, and the same key SHALL be decided again.
+    probe: "scripts/localci/tests/test_host_floor.py (no-verdict case)"
+  - text: Under host pressure the prune SHALL drop second-slot images and never the run in progress's image.
+    probe: "scripts/localci/tests/test_prune.py (b15 cases)"
+  - text: An evicted head SHALL rotate behind the others and, after 3 evictions of one (pr, head, base), be skipped with evicted_cap journalled once.
+    probe: "scripts/localci/tests/test_host_floor.py (rotation and cap cases)"
+  - text: The runner SHALL TERM its own process group when the merger pid it was handed is gone.
+    probe: "scripts/localci/tests/test_host_floor.py (parent watch cases)"
+consumer_map:
+  - scripts/localci/merger.py and prune.py (the merger tick on Pro, com.balizero.localci-merger) - every tick after merge.
+pii_scan: clean
+pii_scan_note: Harness code, tests on synthetic fixtures and docs. No client data.
+lanes:
+  - lane: localci-host-floor-1011
+    role: build
+    seat: claude-sonnet-5-5 (implementer on M5, on the lead's spec)
+what_changed: |
+  merger.py: HOST_FLOOR_GB 90 (Zero, 2026-10-11, lowered from 100), START_MARGIN_GB 10, EVICT_MARGIN_GB 1.5; HostGuard (breach: fail-closed after 3 unreadable samples;
+  evict: TERM then KILL to the runner's process group, then docker rm -f -v of the containers carrying this run dir's label);
+  runner_exec(guard=) samples every 5 s in the plan and run steps; HostEvicted is journalled by decide() as kind evicted (never a
+  decision); --min-host-free-gb default 100, --host-floor-gb, --docker; the skip line carries floor_gb and start_floor_gb.
+  Fix round (gate B15): triage(evict_capped=) treats evicted as an attempt for ORDER (last) and never decided, EVICT_CAP 3 with
+  skipped/evicted_cap journalled once in tick(); run_gate hands LOCALCI_PARENT_PID to the runner; the report counts evicted; the
+  skip print says floor_gb=90 start_floor_gb=100. runner.py: parent_gone/watch_parent started by main() for plan and run.
+  prune.py: builder_prune after the host-pressure removals, the rule names the cold-rebuild cost.
+  prune.py: prune(pressure_gb=) removes non-newest, non-live, non-never deps images by tag under host pressure; host_pressure on
+  the line. localci_merger_tick.sh: MERGER_MIN_HOST_FREE_GB default 100. Tests: test_host_floor.py (25), 5 b15 prune tests, evicted report test, B6 floor
+  tests re-pinned; 16 B15 mutants and 2 re-pinned B6.
+proof: |
+  Unit and process-level tests on a fake docker; the eviction test runs a real process group and checks the child is gone and that
+  another run's containers survive. No Pro measurement before merge: the observation is the first live tick (see bites).
+bites:
+  consumer: The merger tick on Pro (com.balizero.localci-merger), which runs merger.py from origin/main at the tick's sha.
+  observation: >-
+    The first tick after merge shows its code sha in the merger_tick line; a run starts only at 100 GB or more, or a host_below_floor
+    skip line carries floor_gb=90 and start_floor_gb=100; over the next 48 h the pro.janitor journal's minimum free_gb_before is 90 or more, or an evicted
+    line names the trough it stopped. Deploy step (gate M1): the live wrapper on Pro passes --min-host-free-gb=$FLOOR_GB explicitly, so it is
+    re-installed at deploy (cp from origin/main beside it, mv -f, cmp -s); the first tick's skip or start line shows start_floor_gb=100 and
+    scripts/lint_home_fork.py --check is green for that pair.
+ground:
+  ts: "2026-10-11T12:00:00Z"
+  siblings: >-
+    Worktree from origin/main 350d089955. Sibling localci lanes (codeql, janitor) touch runner.py, the matrix and their own tests;
+    this lane touches merger.py, prune.py, the wrapper and their tests.
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 2.5
+receipts:
+  - claim: >-
+      Fix round 2026-10-11: test_host_floor.py 25 passed; test_prune.py 125 passed; test_merger.py + test_merger_report.py + test_replay.py
+      301 passed; test_runner.py 110 passed, 2 skipped (runner.py gained parent_gone/watch_parent).
+    cmd: python3 -m pytest <each file> -q -p no:cacheprovider (foreground, one chunk at a time)
+    exit: 0
+    ts: "2026-10-11T14:00:00Z"
+    seat: claude-sonnet-5-5 implementer on M5
+  - claim: "20/20 mutants KILLED (every B15 and B6 floor rule, including evict-not-rotated, evict-cap-ignored, evict-cap-off-by-one, parent-pid-not-handed, parent-watch-unwired, parent-watch-pid-1, parent-gone-never, prune-pressure-no-builder-prune, prune-pressure-rule-silent-on-cost); survivors none, errors none, stale none."
+    cmd: python3 scripts/localci/tests/mutants/merger_mutants.py --only <each rule>
+    exit: 0
+    ts: "2026-10-11T14:00:00Z"
+    seat: claude-sonnet-5-5 implementer on M5
+  - claim: "contract_verify --local printed no failing line; ruff check reports only 6 findings, all in files this change does not touch (test_isolation.py, test_merger_phase_f.py)."
+    cmd: python3 scripts/contract_verify.py --local; ruff check scripts/localci
+    exit: 0
+    ts: "2026-10-11T14:00:00Z"
+    seat: claude-sonnet-5-5 implementer on M5
+residuals:
+  - "L4, pre-existing and not B15: test_runner.py::test_sigterm_during_a_check_leaves_interrupted_not_running uses a fixed threading.Timer(1.0) and races under load; passed in the last run, left alone."
+  - "L-pre-existing, not B15: mutant b6-undated-run-trimmed is STALE on origin/main too (its text no longer occurs in prune.py); not this lane's, left alone, so the full sweep still exits 1 on it."
+  - "LOW, owed: replay evictions have no cap; the EVICT_CAP alternation counts only decisions. Bounded and rare at a 90 floor."
+  - "LOW, owed hardening: the parent watcher has no pid-reuse guard. It fails safe (a reused pid looks alive); the hardening is getppid() != pid for the direct child."
+  - "LOW: the janitor's BLACK band (under 105 GB) will warn on heavy ticks under a 90 floor; aligned in the janitor rollout-3 PR."
+  - "The pro.disk_floor organ (scripts/ops/pro_disk_floor_tick.sh) still warns under 100 GB: a separate organ, not moved to 90 by this change."
+brief_ref: evidence/brief.yml
+dissent:
+  - seat: claude-opus-5-5 fresh final gate (BLOCKED)
+    objection: "M1 MEDIUM, deploy: the live wrapper passes --min-host-free-gb explicitly, so the merger default leaves the start floor at 60 until re-installed."
+    status: CONFIRMED
+    resolution: "Wrapper default 100; the spec section 4, the README ship step and Bites state the re-install (cp from origin/main, mv -f, cmp -s) and the observable (start_floor_gb=100, lint_home_fork --check green)."
+  - seat: claude-opus-5-5 fresh final gate (BLOCKED)
+    objection: "M2 MEDIUM, liveness: an evicted head never entered decided or last, so it headed the queue on every tick and starved the rest and the replays."
+    status: CONFIRMED
+    resolution: "triage puts evicted into last (ORDER only), never decided; EVICT_CAP 3 per (pr, head, base) with skipped/evicted_cap journalled once; tests for rotation and cap; mutants evict-not-rotated, evict-cap-ignored, evict-cap-off-by-one."
+  - seat: claude-opus-5-5 fresh final gate (BLOCKED)
+    objection: "L1 LOW: start_new_session takes the runner out of launchd's group, so a bootout or kickstart -k of the merger leaves it unguarded."
+    status: CONFIRMED
+    resolution: "The merger passes LOCALCI_PARENT_PID; runner.watch_parent (plan and run) TERMs its own group when that pid is gone; tests and mutants parent-pid-not-handed, parent-watch-unwired, parent-watch-pid-1, parent-gone-never."
+  - seat: claude-opus-5-5 fresh final gate (BLOCKED)
+    objection: "L2 LOW: the report did not count evicted; the skip print said floor_gb=<start>."
+    status: CONFIRMED
+    resolution: "Report window and printed line carry evicted; the print says floor_gb=90 start_floor_gb=100; a report test pins the count."
+  - seat: claude-opus-5-5 fresh final gate (BLOCKED)
+    objection: "L3 LOW: host-pressure prune did not run builder_prune and the rule hid the rebuild cost."
+    status: CONFIRMED
+    resolution: "builder_prune runs once after the host-pressure removals; the rule says dropping a second-slot image means a cold rebuild of that recipe; test and two mutants."
+  - seat: claude-opus-5-5 fresh final gate (BLOCKED)
+    objection: "L4 pre-existing: test_runner.py sigterm test races under load."
+    status: CONFIRMED
+    resolution: "Left alone, named in residuals."
+  - seat: claude-opus-5-5 fresh re-gate (BLOCKED)
+    objection: "BLOCKER 1: six mutants STALE after the B15 change and the CodeQL rebase - five B8 floor rules matched twice (the host-pressure loop copied the VM-floor sort key and rm line) and f2-key-in-the-runner-env matched zero times (run_gate's env line gained LOCALCI_PARENT_PID); the full sweep exits 1."
+    status: CONFIRMED
+    resolution: "Sort key and image rm factored into shed_order and rm_image in prune.py, used by both branches; the B8 rules re-anchored on them; f2 re-anchored on the LOCALCI_PARENT_PID text and still injects the key into the runner env; b15-pressure-rm-forced added. A static count over the whole table finds every rule at exactly 1 match except b6-undated-run-trimmed (pre-existing); the 7 re-anchored/new rules and the 18 B15 rules are KILLED."
+  - seat: claude-opus-5-5 fresh re-gate (BLOCKED)
+    objection: "BLOCKER 2: origin/main moved (CodeQL, #8279) over runner.py, merger.py, the README and merger_mutants.py; the branch had to be rebased and both sides' rules kept."
+    status: CONFIRMED
+    resolution: "Rebased onto origin/main without conflicts; the CodeQL mutant rules and the B15 rules both survive; the suites, including test_codeql_contexts.py, re-run after the rebase."
+  - seat: claude-opus-5-5 fresh re-gate (BLOCKED)
+    objection: "LOW: spec section 4 and the README cite 'its start line shows start_floor_gb=100', which the wrapper's start line does not print."
+    status: CONFIRMED
+    resolution: "Both now state the true observable: cmp -s of the live wrapper against origin/main, lint_home_fork --check green, and start_floor_gb on a host_below_floor journal skip line."
+  - seat: claude-opus-5-5 fresh re-gate (BLOCKED)
+    objection: "LOW: the wrapper heartbeat printed floor_gb=100 (the start floor) beside the journal's floor_gb 90."
+    status: CONFIRMED
+    resolution: "The wrapper note prints start_floor_gb=; README and the one test that reads it follow."

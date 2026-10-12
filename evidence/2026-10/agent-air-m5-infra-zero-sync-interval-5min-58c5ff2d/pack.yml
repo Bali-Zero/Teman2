@@ -1,0 +1,181 @@
+# Gear-3 evidence pack — zero-sync cadence 30 min -> 5 min (commit 0ebafbbb90).
+# Written by the orchestrating session (Claude Opus 5.5, M5) on 2026-10-11. Every receipt is a command run in this
+# session; each ts is the clock read in the same shell call (or the mtime of that seat's output file). Verbatim
+# verdict sections are in council-journal.jsonl.
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+ruling: >-
+  Cutover gate 5 of docs/runbooks/zero-cutover.md (backend deploys come from FastLabsNet/zero); owner mandate of
+  2026-10-10 ("fai tutto tu").
+mission: >-
+  Keep canonical-merge to production latency from regressing once deploys come from zero, by running the mirror
+  every 5 minutes.
+lanes:
+  - lane: zero-sync-interval-build
+    role: build
+    seat: Claude Opus 5.5 (orchestrator, M5), commit 0ebafbbb90
+  - lane: zero-sync-interval-review-kimi
+    role: review
+    seat: kimi-code/k3 (read-only, round 1)
+  - lane: zero-sync-interval-review-codex
+    role: review
+    seat: codex-gpt-5.6-sol (read-only, round 1, model passed explicitly)
+seat_diversity: >-
+  Builder: Anthropic (Opus 5.5). Reviewers: Moonshot (kimi-code/k3) and OpenAI (codex-gpt-5.6-sol), neither of
+  which built anything here.
+pii_scan: clean
+pii_scan_note: >-
+  A launchd StartInterval, an organ registry number and doc lines. No client or staff data was read into this diff.
+bites: >-
+  Prose form on purpose: the consumer is the launchd job com.nuzantara.zero-sync on Mini (organ mini.zero_sync),
+  which a CI runner cannot observe without a remote shell. Observation, made by the shipping session after the plist
+  is reinstalled on Mini (copied to the live pair, bootout and bootstrap): two consecutive "run start" lines in
+  ~/logs/mini-zero_sync/run.log about 300 s apart, and ~/.organism/last_seen/mini.zero_sync.json reading ok.
+  Not yet made: this pack records the pre-merge state; the live observation is the closing act after merge.
+decisions:
+  - id: D-interval-300
+    decision: >-
+      StartInterval 300. An up-to-date run takes about 4 s and launchd does not overlap StartInterval runs of one
+      job; the payload's exclusive non-blocking flock is a second layer.
+  - id: D-hb-3900
+    decision: >-
+      expected_hb_seconds 3900 = 300 tick + 3300 RUN_BUDGET + 300 margin (codex's round-2 proposal). History: 1200
+      (REWORK, both seats) -> 3600 (kimi PASS, codex REWORK on zero margin) -> 3900 (codex final PASS on head
+      418274be40). Head SHAs before the rebases (d406012f69, 351d9bec3c, 0a17d5f547, ed7a56545b) are superseded.
+receipts:
+  - claim: "R1 — floor 3 via the hot-zone path term: the plist and the wrapper compute 3 alone; the other three changed files compute 1."
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <one-path-per-file>, per file; whole diff (git diff --name-only origin/main...HEAD) gives 3
+    result: "3 com.nuzantara.zero-sync.plist, 3 mini-zero-sync.sh, 1 organs_registry.yaml, 1 zero-cutover.md, 1 zero_sync/README.md; whole diff 3"
+    exit: 0
+    ts: "2026-10-11T08:02:52Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R2 — A1: the plist lints OK, StartInterval is 300, no KeepAlive key."
+    cmd: plutil -lint infra/launchagents/com.nuzantara.zero-sync.plist; plutil -p ... | grep StartInterval; grep -c KeepAlive ...
+    result: 'OK; "StartInterval" => 300; KeepAlive count 0'
+    exit: 0
+    ts: "2026-10-11T07:58:58Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R3 — A1: scripts/lint_plist_keepalive.py --root . exits 0 (clean, no KeepAlive=true one-shot smell)."
+    cmd: python3 scripts/lint_plist_keepalive.py --root .
+    result: "exit 0, 'clean - no KeepAlive=true wrapper shows a one-shot smell' (unrelated WARN lines for other plists)"
+    exit: 0
+    ts: "2026-10-11T08:00:27Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R4 — A2: the registry YAML loads and mini.zero_sync reads expected_hb_seconds 1200 (superseded by R7)."
+    cmd: python3 -c 'import yaml; ...' over apps/organism/organism/organs_registry.yaml
+    result: "[('mini.zero_sync', 1200)] (head 0ebafbbb90, before the cure; see R7)"
+    exit: 0
+    ts: "2026-10-11T08:00:37Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R5 — A3: kimi-code/k3 round 1 returns REWORK on the heartbeat window."
+    cmd: scripts/with_seat.sh kimi kimi -p <prompt> -m kimi-code/k3 < /dev/null
+    result: "VERDICT: REWORK: expected_hb_seconds 1200 < NET_TIMEOUT 1800 and << worst-case silence ~3600; stale comments (zero_sync.py:38, :542); live plist needs a reinstall step; warning status is classed dead by the Mini healer (note)"
+    exit: 0
+    ts: "2026-10-11T07:54:52Z"
+    seat: kimi-code/k3
+  - claim: "R6 — A3: codex-gpt-5.6-sol round 1 returns REWORK on the heartbeat window."
+    cmd: scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: "VERDICT: REWORK: 1200 s is below a legitimate 1800 s git call, the wrapper emits no in-progress heartbeat, run budget 3300 s approaches the DEAD line 3 x 1200; comment 'under two ticks' now false"
+    exit: 0
+    ts: "2026-10-11T07:49:08Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "R7 — A2 after the cure: the registry YAML loads and mini.zero_sync reads expected_hb_seconds 3600 (head d406012f69, superseded by R11)."
+    cmd: python3 -c 'import yaml; ...' over apps/organism/organism/organs_registry.yaml
+    result: "[('mini.zero_sync', 3600)]"
+    exit: 0
+    ts: "2026-10-11T08:23:22Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R8 — A1 after the cure: plist OK, StartInterval 300, KeepAlive count 0; RUN_BUDGET is 3300 at zero_sync.py:38."
+    cmd: plutil -lint; plutil -p | grep StartInterval; grep -c KeepAlive; grep -n '^RUN_BUDGET' scripts/zero_sync/zero_sync.py
+    result: 'OK; "StartInterval" => 300; 0; 38:RUN_BUDGET = 3300'
+    exit: 0
+    ts: "2026-10-11T08:23:22Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R9 — A3 round 2: kimi-code/k3 returns PASS on d406012f69."
+    cmd: scripts/with_seat.sh kimi kimi -p <round-2 prompt> -m kimi-code/k3 < /dev/null
+    result: "VERDICT: PASS: silence strictly < 300 + 3300 = 3600 for any self-completing run, dead line 10800, both comments accurate (one nit: 'only by hand' over-narrows), reinstall is the open closing step"
+    exit: 0
+    ts: "2026-10-11T08:22:54Z"
+    seat: kimi-code/k3
+  - claim: "R10 — A3 round 2: codex-gpt-5.6-sol returns REWORK on d406012f69."
+    cmd: scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <round-2 prompt> < /dev/null
+    result: "VERDICT: REWORK: 3600 = 300 + 3300 leaves zero margin, a legitimate full-budget run can exceed the stale line (suggest 3900 or a running heartbeat at start); the near-dead false kickstart is resolved (dead is 10800); lock comment correct; docs agree on 300 s"
+    exit: 0
+    ts: "2026-10-11T08:21:54Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "R11 — A2 final: head 418274be40, the registry loads and mini.zero_sync reads expected_hb_seconds 3900; validate_organs_registry passes (checksum and pragma intact)."
+    cmd: python3 -c 'import yaml; ...'; python3 apps/organism/organism/tools/validate_organs_registry.py
+    result: "[3900]; 'organs_registry.yaml valid', exit 0"
+    exit: 0
+    ts: "2026-10-11T09:55:50Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R12 — no real textual conflict with current origin/main for head 418274be40; the diff outside evidence is 6 files, +10/-9."
+    cmd: git merge-tree --write-tree origin/main HEAD; git diff origin/main...HEAD --stat -- . ':!evidence'
+    result: "merge-tree exit 0; 6 files changed, 10 insertions, 9 deletions"
+    exit: 0
+    ts: "2026-10-11T09:55:49Z"
+    seat: Claude Opus 5.5 (orchestrator, M5)
+  - claim: "R13 — rounds 3-5, codex REWORK, each cured: checksum + RUN_BUDGET comment (round 3), then two rebases onto moving main (rounds 4, 5)."
+    cmd: scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <prompt> < /dev/null
+    result: "round 3 REWORK (checksum mismatch, comment 3600); round 4 REWORK (behind main, checksum conflict); round 5 REWORK (behind main, zero-cutover.md conflict); all cured by 0a17d5f547 and the rebases"
+    exit: 0
+    ts: "2026-10-11T09:45:33Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "R14 — A3 final: codex-gpt-5.6-sol returns PASS on head 418274be40 (content judged)."
+    cmd: scripts/with_seat.sh codex codex exec --sandbox read-only -m gpt-5.6-sol <final prompt> < /dev/null
+    result: "VERDICT: PASS: cadence 5 min consistent, 3900 = 300 + 3300 + 300, checksum and pragma intact, validator exit 0, no real textual conflict"
+    exit: 0
+    ts: "2026-10-11T09:55:42Z"
+    seat: codex-gpt-5.6-sol
+dissent:
+  - seat: kimi-code/k3 (round 1)
+    objection: >-
+      expected_hb_seconds 1200 was derived from the tick, not from the run: RUN_BUDGET 3300 and NET_TIMEOUT 1800
+      make a legitimate run exceed it, so the organ reads stale and, near 3 x 1200, dead (healer kickstart).
+    status: CONFIRMED
+    disposition: >-
+      Cured in d406012f69 (expected_hb_seconds 3600 above RUN_BUDGET 3300); round 2 kimi PASS, dead line now 10800.
+  - seat: codex-gpt-5.6-sol (round 1)
+    objection: >-
+      Same window finding; additionally the wrapper checks the sidecar only after the payload returns, so a slow
+      fetch between 1200 and 1800 s is a false silence; suggests in-progress heartbeats or a test that includes run
+      duration.
+    status: CONFIRMED
+    disposition: >-
+      Window finding cured in d406012f69; the residual zero margin (300 + 3300 = 3600 exactly) is raised again in round 2
+      and stays open, see the round-2 entry below.
+  - seat: both seats
+    objection: >-
+      Comments in zero_sync.py:38 ("under two ticks") and :542 ("a run never spans a tick for long") are false at a
+      300 s cadence.
+    status: CONFIRMED
+    disposition: Cured in d406012f69 (both comments rewritten); round 2 kimi found them accurate, with one nit on 'only by hand'.
+  - seat: kimi-code/k3 (round 1)
+    objection: >-
+      The edited plist does not change the loaded job; it is a declared pair that needs copy plus bootout/bootstrap
+      on Mini, and the registry takes effect at merge while the job still runs at 1800 s.
+    status: CONFIRMED
+    disposition: Already in acceptance A4 and in bites (reinstall, then two run.log ticks about 300 s apart).
+  - seat: kimi-code/k3 (round 1, note)
+    objection: >-
+      hb("warning") on red zero CI or push rejection is classed dead by the Mini healer (warning is not in
+      HEALTHY_STATUSES), and more frequent runs mean more such spells.
+    status: PLAUSIBLE
+    disposition: Pre-existing status contract, listed out of scope in the brief.
+  - seat: codex-gpt-5.6-sol (round 2)
+    objection: >-
+      expected_hb_seconds 3600 equals StartInterval 300 + RUN_BUDGET 3300, zero margin: the heartbeat is written only
+      at the end and the watchdog starts after the wrapper, so a legitimate full-budget run can exceed 3600 s of
+      silence. Wants an explicit margin (3900) or a running heartbeat at start. The false near-dead kickstart is
+      resolved (dead is 3 x 3600 = 10800).
+    status: CONFIRMED
+    disposition: >-
+      Cured: expected_hb_seconds 3900 (351d9bec3c, rebased; checksum and comment 0a17d5f547); codex final round PASS on
+      418274be40. kimi had judged the boundary inert at 3600.
+  - seat: codex-gpt-5.6-sol (rounds 3-5)
+    objection: >-
+      Registry checksum not updated after the 3900 edit; RUN_BUDGET comment still named 3600; then the branch was behind
+      main with conflicts in the registry checksum and docs/runbooks/zero-cutover.md.
+    status: CONFIRMED
+    disposition: Cured by 0a17d5f547 and two rebases; the final round judged content, not distance from main, and passed.

@@ -38,6 +38,9 @@ on:
       - "scripts/tg_digest_flush.py"
       - "scripts/lint_tg_direct_senders.py"
       - "scripts/tests/test_tg_gateway.py"
+      - "docs/runbooks/telegram-token-rotation.md"
+      - "scripts/ops/test_runbook_blocks.sh"
+      - "scripts/ops/test_rotate_telegram_token.sh"
       - "infra/tg-gateway/**"
       # These MUST mirror lint_tg_direct_senders.SCAN_SUFFIXES exactly, and
       # scripts/tests/test_tg_gateway_trigger_symmetry.py fails the build when
@@ -146,6 +149,15 @@ jobs:
 
       - name: Direct-sender lint (anti-regrowth + monotone grandfather)
         run: python3 scripts/lint_tg_direct_senders.py
+
+      - name: Telegram rotation runbook blocks and rotation script
+        run: |
+          # The runbook's blocks are pasted into the owner's interactive zsh, so
+          # the test needs a real zsh; the runner image may not ship one, and the
+          # test fails (never skips) without it.
+          command -v zsh >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq zsh; }
+          bash scripts/ops/test_runbook_blocks.sh
+          bash scripts/ops/test_rotate_telegram_token.sh
 
   guard-pins-pytest:
     name: guard-pins-pytest (gateway integration tests)

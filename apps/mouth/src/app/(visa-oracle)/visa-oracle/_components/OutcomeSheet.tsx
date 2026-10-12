@@ -28,6 +28,7 @@ import {
   type LegalSupportStatus,
   type OperationalAvailabilityStatus,
   type OutcomeCandidate,
+  type OutcomeDuration,
   type OutcomePrice,
   type OutcomeReason,
   type OutcomeSource,
@@ -41,6 +42,8 @@ import {
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   SECOND_HOME_STUDIO_URL,
   REVIEW_REASON_ELEMENTS,
+  UNMAPPED_REASON_COPY,
+  isNoPathWithoutDoors,
   isSecondHomeStudioOnly,
 } from "../_lib/engine-adapter";
 import {
@@ -119,15 +122,70 @@ function answerRows(language: Language, facts: OracleFacts) {
   });
 }
 
+function typicalTimingText(
+  language: Language,
+  min: number | undefined,
+  max: number | undefined,
+): string | null {
+  if (min === undefined || max === undefined) return null;
+  if (min === 0 && max === 1) {
+    return translate(language, "outcome.timeline_within_one" as I18nKey);
+  }
+  if (min === max) {
+    return translate(language, "outcome.timeline_typical_exact" as I18nKey, {
+      days: String(min),
+    });
+  }
+  return translate(language, "outcome.timeline_typical_range" as I18nKey, {
+    min: String(min),
+    max: String(max),
+  });
+}
+
+/** Timing for the shared text: no dates (read later), never for UNKNOWN. */
+function shareTimingText(
+  language: Language,
+  timeline: OutcomeTimeline,
+): string | null {
+  if (timeline.status !== "AVAILABLE") return null;
+  const { workingDaysMin: min, workingDaysMax: max } = timeline;
+  if (min === 0 && max === 0) {
+    return translate(language, "outcome.timeline_none" as I18nKey);
+  }
+  const typical = typicalTimingText(language, min, max);
+  return typical === null
+    ? null
+    : translate(language, "outcome.share_timing_indicative" as I18nKey, {
+        typical,
+      });
+}
+
+/**
+ * The pack names 37 of its 38 products with a trailing " (CODE)". The card
+ * eyebrow and the share line already lead with the code, so strip a trailing
+ * "(CODE)" only when it is this candidate's OWN code: a different code in
+ * parentheses, or one that is not at the end, is the pack's wording and stays.
+ * Never returns an empty name.
+ */
+export function candidateDisplayName(code: string, name: string): string {
+  const escaped = code.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const stripped = name.replace(new RegExp(`\\s*\\(${escaped}\\)\\s*$`), "");
+  return stripped.length > 0 ? stripped : name;
+}
+
 function buildShareSummary(
   language: Language,
   outcome: OutcomeViewModel,
 ): string {
   // D23 "OPTION B-STUDIO": the share text must never carry the generic
   // "needs a human, not an algorithm" headline for a Studio-only hold.
+  // Likewise a dead end with no open door must not share "here’s what
+  // instead".
   const headlineKey: I18nKey = isSecondHomeStudioOnly(outcome)
     ? ("verdict.headline.SECOND_HOME_STUDIO" as I18nKey)
-    : (`verdict.headline.${outcome.state}` as I18nKey);
+    : isNoPathWithoutDoors(outcome)
+      ? ("verdict.headline.NO_SUPPORTED_PATH_NO_DOOR" as I18nKey)
+      : (`verdict.headline.${outcome.state}` as I18nKey);
   const lines = [
     translate(language, "outcome.share_title" as I18nKey),
     translate(language, headlineKey),
@@ -141,7 +199,21 @@ function buildShareSummary(
   }
   if (outcome.state === "SUPPORTED_CANDIDATES") {
     for (const candidate of outcome.candidates) {
-      lines.push(`${candidate.code} — ${localized(candidate.name, language)}`);
+      const name = `${candidate.code} — ${candidateDisplayName(
+        candidate.code,
+        localized(candidate.name, language),
+      )}`;
+      const timing = shareTimingText(language, candidate.timeline);
+      const parts = [
+        candidate.price.status === "AVAILABLE"
+          ? formatIDR(candidate.price.amount, language)
+          : null,
+        candidate.duration
+          ? durationLabel(language, candidate.duration.selectedDays, "permit")
+          : null,
+        timing,
+      ].filter((part): part is string => part !== null);
+      lines.push(parts.length > 0 ? `${name}: ${parts.join(" · ")}` : name);
     }
   }
   return lines.join("\n");
@@ -370,7 +442,7 @@ function ReviewReasonGroup({
   );
 }
 
-// ENDING-ROUND E5 regex: matches ONLY the engine-adapter.ts `reasonMessage()`
+// ENDING-ROUND E5 regex: matches the legacy engine-adapter.ts `reasonMessage()`
 // fallback ("Verified reason: CODE" / "Alasan terverifikasi: CODE") — never
 // a mapped SUPPORT_REASON_COPY sentence, which always reads as prose.
 const GENERIC_SUPPORT_REASON_RE =
@@ -410,7 +482,11 @@ function ReasonList({
   let genericShown = false;
   const rows = reasons.flatMap((reason) => {
     const localizedText = localized(reason.message, language);
-    if (genericKey && GENERIC_SUPPORT_REASON_RE.test(localizedText)) {
+    if (
+      genericKey &&
+      (GENERIC_SUPPORT_REASON_RE.test(localizedText) ||
+        localizedText === UNMAPPED_REASON_COPY[language])
+    ) {
       if (genericShown) return [];
       genericShown = true;
       return [{ reason, text: translate(language, genericKey) }];
@@ -490,52 +566,68 @@ function Timeline({
 }) {
   if (timeline.status !== "AVAILABLE") {
     return (
-      <div className="oracle-unverified" role="status">
-        <strong>
-          {translate(
-            language,
-            timeline.status === "CONTACT_REQUIRED"
-              ? "outcome.timeline_contact_required"
-              : "outcome.timeline_unavailable",
-          )}
-        </strong>
-        <p>{localized(timeline.message, language)}</p>
+      <p className="oracle-question__hint oracle-timeline__pending">
+        {translate(language, "outcome.timeline_pending" as I18nKey)}
+      </p>
+    );
+  }
+  const { workingDaysMin: min, workingDaysMax: max } = timeline;
+  if (min === 0 && max === 0) {
+    return (
+      <div className="oracle-timeline">
+        <p>{translate(language, "outcome.timeline_none" as I18nKey)}</p>
       </div>
     );
   }
+  const locale = localeFor(language);
+  const from = formatIsoDateForDisplay(timeline.earliestDateIso, locale);
+  const to = formatIsoDateForDisplay(timeline.latestDateIso, locale);
+  const typical = typicalTimingText(language, min, max);
   return (
     <div className="oracle-timeline">
+      {typical && <p>{typical}</p>}
       <p className="oracle-tabular-nums">
-        {translate(language, "outcome.timeline_dates" as I18nKey, {
-          from: formatIsoDateForDisplay(
-            timeline.earliestDateIso,
-            localeFor(language),
-          ),
-          to: formatIsoDateForDisplay(
-            timeline.latestDateIso,
-            localeFor(language),
-          ),
-        })}
+        {from === to
+          ? translate(language, "outcome.timeline_if_today_single" as I18nKey, {
+              date: from,
+            })
+          : translate(language, "outcome.timeline_if_today" as I18nKey, {
+              from,
+              to,
+            })}
       </p>
       <p className="oracle-question__hint">
-        {translate(language, "outcome.timeline_basis" as I18nKey, {
-          date: formatIsoDateForDisplay(
-            timeline.basisDateIso,
-            localeFor(language),
-          ),
-        })}
+        {translate(language, "outcome.timeline_indicative" as I18nKey)}
       </p>
-      {timeline.note && <p>{localized(timeline.note, language)}</p>}
     </div>
   );
+}
+
+function durationLabel(
+  language: Language,
+  days: number,
+  style: "permit" | "short",
+): string {
+  const years = days % 365 === 0;
+  const count = years ? days / 365 : days;
+  const key = years
+    ? style === "permit"
+      ? "outcome.duration_years"
+      : "outcome.duration_label_years"
+    : style === "permit"
+      ? "outcome.duration_days"
+      : "outcome.duration_label_days";
+  return translate(language, key as I18nKey, { count });
 }
 
 function Price({
   language,
   price,
+  duration,
 }: {
   language: Language;
   price: OutcomePrice;
+  duration?: OutcomeDuration;
 }) {
   if (price.status !== "AVAILABLE") {
     return <p>{localized(price.message, language)}</p>;
@@ -545,9 +637,29 @@ function Price({
       <span className="oracle-price__value oracle-tabular-nums">
         {formatIDR(price.amount, language)}
       </span>
+      {duration && (
+        <span className="oracle-price__duration">
+          {durationLabel(language, duration.selectedDays, "permit")}
+        </span>
+      )}
       <span className="oracle-price__note">
         {translate(language, "outcome.price_all_inclusive")}
       </span>
+      {duration?.options
+        .filter((option) => !option.selected && option.amountIdr !== null)
+        .map((option) => (
+          <span key={option.days} className="oracle-price__note">
+            {translate(language, "outcome.duration_alternative" as I18nKey, {
+              label: durationLabel(language, option.days, "short"),
+              price: formatIDR(option.amountIdr as number, language),
+            })}
+          </span>
+        ))}
+      {duration?.extensionRequired && (
+        <span className="oracle-question__hint">
+          {translate(language, "outcome.duration_extension" as I18nKey)}
+        </span>
+      )}
       {price.validUntilIso && (
         <span className="oracle-question__hint">
           {translate(language, "outcome.price_valid_until" as I18nKey, {
@@ -576,22 +688,25 @@ function CandidateCard({
   checkedDocs: ReadonlySet<string>;
   onToggleDoc: (key: string) => void;
 }) {
-  const ordinal = String(index + 1).padStart(2, "0");
-  const count = String(total).padStart(2, "0");
   return (
     <article className="oracle-candidate-card">
       <header className="oracle-candidate-card__header">
         <div className="oracle-candidate-card__row">
           <p className="oracle-eyebrow">{candidate.code}</p>
-          <span
-            className="oracle-candidate-card__index oracle-tabular-nums"
-            aria-hidden="true"
-          >
-            {ordinal}/{count}
-          </span>
+          {total > 1 && (
+            <span className="oracle-candidate-card__index oracle-tabular-nums">
+              {translate(language, "outcome.path_counter" as I18nKey, {
+                index: index + 1,
+                total,
+              })}
+            </span>
+          )}
         </div>
         <h2 className="oracle-candidate-card__title">
-          {localized(candidate.name, language)}
+          {candidateDisplayName(
+            candidate.code,
+            localized(candidate.name, language),
+          )}
         </h2>
         {candidate.tagline && (
           <p className="oracle-question__hint">
@@ -645,7 +760,11 @@ function CandidateCard({
           <h3 className="oracle-outcome__section-title">
             {translate(language, "outcome.price_label")}
           </h3>
-          <Price language={language} price={candidate.price} />
+          <Price
+            language={language}
+            price={candidate.price}
+            duration={candidate.duration}
+          />
         </section>
       </div>
 
@@ -1215,20 +1334,18 @@ export function OutcomeSheet({
         )}
         {outcome.assessment && (
           <p className="oracle-print-only oracle-tabular-nums">
-            {translate(language, "outcome.assessment_dates" as I18nKey, {
-              effective: formatAssessmentDate(
-                outcome.assessment.effectiveAtIso,
-                language,
-              ),
-              observed: formatAssessmentDate(
-                outcome.assessment.observedAtIso,
-                language,
-              ),
-              evaluated: formatAssessmentDate(
-                outcome.assessment.evaluatedAtIso,
-                language,
-              ),
-            })}
+            {translate(
+              language,
+              (outcome.sources.length > 0
+                ? "outcome.checked_on"
+                : "outcome.checked_on_plain") as I18nKey,
+              {
+                date: formatAssessmentDate(
+                  outcome.assessment.evaluatedAtIso,
+                  language,
+                ),
+              },
+            )}
           </p>
         )}
       </section>

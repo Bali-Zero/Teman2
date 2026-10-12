@@ -231,10 +231,11 @@ def _spec(
 #: product each one unblocks and why one fact per qualification),
 #: plus ``person.guardian_consent`` (2026-09-21, Slice A7-B — the minor-hold
 #: guardian consent assertion; see ``enums.FactPath`` for why it is not an
-#: identity fact)
-#: — 61 entries total.
+#: identity fact), plus ``work.annual_foreign_income_usd`` (2026-10-11,
+#: seq-28 Step A — declared annual foreign income for E33G)
+#: — 62 entries total.
 #: PII classification rationale: immigration status/violation history and
-#: investment capital amounts are SENSITIVE (UU PDP heightened-treatment
+#: investment capital/income amounts are SENSITIVE (UU PDP heightened-treatment
 #: analogues per CLAUDE.md §14 — closest to "criminal"/"financial" data in
 #: this domain); ``process.*``/``commercial.*``/``derived.*`` are NONE
 #: (operational metadata or computed, not raw personal data); everything
@@ -348,6 +349,12 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
     _spec(FactPath.WORK_SERVES_INDONESIAN_CLIENTS, FactValueKind.BOOLEAN, "boolean"),
     _spec(FactPath.WORK_INDONESIA_SOURCE_COMPENSATION, FactValueKind.BOOLEAN, "boolean"),
     _spec(FactPath.WORK_INDONESIAN_WORK_SPONSOR_CONFIRMED, FactValueKind.BOOLEAN, "boolean"),
+    _spec(
+        FactPath.WORK_ANNUAL_FOREIGN_INCOME_USD,
+        FactValueKind.INTEGER,
+        "money_usd",
+        pii_class=PiiClass.SENSITIVE,
+    ),
     _spec(FactPath.INVESTMENT_PT_PMA_COMMITTED, FactValueKind.BOOLEAN, "boolean"),
     _spec(
         FactPath.INVESTMENT_INVESTMENT_CAPITAL_IDR,

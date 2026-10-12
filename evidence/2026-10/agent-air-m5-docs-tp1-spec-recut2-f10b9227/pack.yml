@@ -1,0 +1,119 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+pii_scan_note: >-
+  Spec, corpus, test and journal carry no client data: every phone, ID, date, address, handle and plate shape is
+  synthetic, built by concatenation in the corpus, and the council answers hold only synthetic shapes.
+council_run: journal.jsonl
+seat_override: >-
+  The floor is 3 by path (the workflow file is a hot zone). Seats that sat: Codex O3 (~/.codex-acct2: round 1 sealed,
+  rounds 2 and 3 refutation; Codex O2 built this re-cut, so O3 is the builder's family), Ollama qwen3.5:9b on Mini
+  (round 1 sealed, not in the lint's seat list) and the Claude verifier (round 1 sealed, written before the others were
+  launched). Seats that could not: Kimi K3 out of quota, the TP1 seats answer 429 until 2026-10-11T16:00Z, agy-gemini
+  busy in the owner's windows, no qwen seat. The final gate is the independent check.
+plan_ref: >-
+  team-lead mandate to dux-tp1spec-recut2 (2026-10-07): #8019 suspended after gate-8019-r2 blocked 63c4950bd8 on the
+  same cause as round 1 (B1-r2: the PII enumeration had no catch-all remainder; N-r2-1 unpinned cure sentences; N-r2-2
+  threat-model item 3). Receipts ~/.agent/campaign-20261005/work/gate-8019/receipt.txt and gate-8019-r2/receipt.txt.
+lanes:
+  - lane: recut2-build
+    role: build
+    seat: codex-gpt-5.6-sol
+  - lane: verify-cure-ship
+    role: build
+    seat: claude-opus-5-5
+  - lane: council-codex-o3
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: council-ollama-mini
+    role: review
+    seat: ollama-mini/qwen3.5:9b
+what_changed: |
+  - docs/specs/tp1-input-screen.md: threat-model item 7 = the catch-all remainder rem_pii_other (any personal data
+    outside the four enumerated entities, owner decision pending, UU PDP art. 4(2) and 4(3)); item 3 qualified by the
+    declared rules; unique wordings for the PII precedence, the unlabelled-identity sentence (scope: any issuer or
+    grammar), the reversible-view sentence; rem_phone_label also declares a labelled value outside 7-15 digits;
+    lim_04 declares letter-free Tier S literals that are not >= 32 hex digits; g7988_10 declares a listed family's value
+    outside its stated grammar; table cell "PII enumeration -> rem_pii_other (+ lim_pan, lim_iban)".
+  - scripts/tp1max/screen_corpus.yaml: five rem_pii_other witness rows, row g8019r2_01 (precedence), rule phrases
+    re-pinned or added (g7971n_05, rem_views, rem_crm_key, rem_phone_label, lim_03, rem_id_grammar, lim_iban, lim_04,
+    g7988_10). 351 rows, 28 limits, 49 rule rows.
+  - scripts/tp1max/test_screen_corpus.py: every rule phrase must occur exactly once in the normalised spec; the
+    Closed-vocabularies table must have 19 rows, each naming limit rows.
+proof: |
+  Floor 3, source path (--print-floor / --print-floor-source on the staged change list against origin/main 53de39e6a0).
+  672 passed on 3.11.15 and on 3.9.6. Mutation battery on scratch copies: control green, 16 of 16 mutants red (each
+  pinned sentence deleted, three older phrases reworded, two duplications, two table rows deleted, each new clause dropped).
+seat_note: >-
+  All Codex rows came from ~/.codex-acct2 (sessions 01a116f4, 01a116fa, 01a116fe, verified by the session files).
+  Codex O2 built the candidate through scripts/seat_build.sh before this council.
+dissent:
+  - seat: ollama-mini/qwen3.5:9b
+    objection: "r1 #2-16: the catch-all absorbs dates of birth, handles, plates and addresses that a specific rule should catch."
+    status: PLAUSIBLE
+    resolution: "Not adopted: no such rule exists by design; which categories get a rule is the owner decision that rem_pii_other declares."
+  - seat: codex-gpt-5.6-sol
+    objection: "r2 #11: the schema suite validates the corpus, not implementation coverage."
+    status: PLAUSIBLE
+    resolution: "Behaviour is acceptance 1 of the implementation (PR-C); this PR pins the text so a rule cannot vanish silently."
+review_disposition:
+  - {
+      id: G8019R2-B1,
+      item: "gate-8019-r2: date of birth, alamat RT/RW, Telegram handle, ig_handle, unlabelled plate on neither a rule nor a remainder",
+      disposition: CONFIRMED,
+      proof: "threat-model item 7 rem_pii_other + 5 witness rows pinning its sentence; Codex O3 r1 1-5 HOLDS",
+    }
+  - {
+      id: G8019R2-N1,
+      item: "cure sentences unpinned (g7971n_05, rem_views, precedence, CRM table row)",
+      disposition: CONFIRMED,
+      proof: "unique phrases + exact-once test + vocabulary-table test; mutants M03-M06, M12, M14 red",
+    }
+  - {
+      id: G8019R2-N2,
+      item: "threat-model item 3 promised any grouping or encoding",
+      disposition: CONFIRMED,
+      proof: "item 3 qualified by the declared rules; Codex O3 r1 17 HOLDS",
+    }
+  - {
+      id: V1-V4,
+      item: "verifier: item-7 list read as exhaustive; g7971n_05 narrowed; telepon pin lost; item 3 credentials",
+      disposition: CONFIRMED,
+      proof: "item 7 'whatever its category ... for example'; 'of any issuer or grammar'; r2_07 restored, g8019r2_01 added; mutant M07 red (green on the Codex original)",
+    }
+  - {
+      id: C-O3-R1-6-15-19,
+      item: "short labelled phone; rem_crm_key pinned the table row; PAN/IBAN attribution",
+      disposition: CONFIRMED,
+      proof: "rem_phone_label clause + pin; rem_crm_key pins its sentence; item 7 'other than the PAN and IBAN of item 6'; Codex O3 r2 1-4 HOLDS",
+    }
+  - {
+      id: C-O3-R2-5-6,
+      item: "letter-free Tier S literal; JWT segment under 8 characters",
+      disposition: CONFIRMED,
+      proof: "lim_04 and g7988_10 widened and pinned; Codex O3 r3 2 HOLDS, r3 1 overlap with the >= 32 hex branch folded (not re-refuted)",
+    }
+receipts:
+  - claim: "deterministic floor 3, source path"
+    cmd: "python3 scripts/evidence_pack_lint.py --changed-files-file <changed> --numstat-file <numstat> --patch-file <workflow patch> --print-floor / --print-floor-source"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-10-07T15:22:37Z"
+    seat: claude-opus-5-5
+  - claim: "corpus test green on both interpreters"
+    cmd: "python3 -m pytest -q scripts/tp1max/test_screen_corpus.py; uv run --no-project --python 3.9 --with pytest --with PyYAML==6.0.3 python -m pytest -q <same>"
+    result: "672 passed (3.11.15) / 672 passed (3.9.6, pytest 8.4.2)"
+    exit: 0
+    ts: "2026-10-07T15:34:24Z"
+    seat: claude-opus-5-5
+  - claim: "mutation battery on scratch copies"
+    cmd: "python3 ~/.agent/campaign-20261005/work/dux-tp1spec-recut2/mutants.py <worktree> <scratch>"
+    result: "control green; 16 of 16 mutants red"
+    exit: 0
+    ts: "2026-10-07T15:34:24Z"
+    seat: claude-opus-5-5
+  - claim: "secret guards clean on every changed file"
+    cmd: "~/.agent/campaign-20261005/work/dux-tp1spec-recut2/guards.sh (detect-secrets-hook --baseline in a scratch repo, three lints, built canary, prettier)"
+    result: "recorded in the PR body"
+    exit: 0
+    ts: "2026-10-07T15:34:24Z"
+    seat: claude-opus-5-5

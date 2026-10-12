@@ -1,0 +1,33 @@
+task_id: localci-codeql-1011
+mission: LOCALCI-SOVEREIGN (phase B — the two blocked contexts decided on Pro)
+colour: BLUE
+gear: 3
+gear_reason: >-
+  The lint floor is 3 by path: the fix round adds BASE scripts/ci/test_security_gate_flags.py to the localci-tests workflow's path
+  filter (a hot-zone file), because the trusted classifier corpus check now runs it. The rest is harness code of the local gate and
+  two matrix entries; the hosted CodeQL workflow and every check's own logic stay untouched.
+l_level: L2
+gate_class: opus
+objective: >-
+  CodeQL Analysis (python) and CodeQL Analysis (javascript) stop being mapping blocked (which caps every local verdict at SUBSET_PASS)
+  and are executed on Pro with coverage full: the pinned 2.27.2 bundle, the hosted job's RUN_THIS_LANGUAGE computed from BASE
+  security_gate_flags.py, the probe's exact five CLI commands from a BASE-trusted codeql_leg.sh, and a plan-time version sentinel that
+  BLOCKs when the newest hosted analysis ran another CLI version.
+constraints:
+  - Findings never change the verdict; only a CLI error is FAIL; a timeout, OOM or signal is no verdict.
+  - The candidate never judges itself, the leg script, the CodeQL config and the classifier come from BASE.
+  - No secret in the sandbox (network none); the version read runs on the host with the operator's gh, read-only.
+  - A language the hosted job skips is a PASS leg with if-skipped steps (hosted reports success), never a record skip.
+acceptance:
+  - text: A leg whose RUN_THIS_LANGUAGE is false SHALL be PASS with its steps NOT_APPLICABLE and SHALL compare AGREE, coverage full, against hosted success.
+    probe: "scripts/localci/tests/test_codeql_contexts.py (skip cases)"
+  - text: A hosted tool.version other than the pin, or an unreadable read, SHALL make the context BLOCKED.
+    probe: "scripts/localci/tests/test_codeql_contexts.py (sentinel cases)"
+  - text: codeql_leg.sh SHALL run exactly the probe's command lines (a fake codeql logging argv).
+    probe: "scripts/localci/tests/test_codeql_contexts.py (leg cases)"
+  - text: On Pro, the leg in the new image SHALL reproduce the hosted result counts on the probe's commit (python 2499 results / 172 rules, javascript 186 / 200).
+    probe: "Pro measurement receipt (runner plan + run --only on both contexts)"
+consumer_map:
+  - scripts/localci/runner.py (the merger tick on Pro) — the two CodeQL contexts of every candidate whose BASE carries this change.
+pii_scan: clean
+pii_scan_note: Harness code, a leg script, tests on synthetic fixtures and docs. The Pro measurement reads repo code and public SARIF counts only.

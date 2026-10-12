@@ -1,0 +1,24 @@
+task_id: janitor-apply-1012
+mission: LOCALCI-SOVEREIGN (Pro free-space keeper, rollout step 3 of 3)
+colour: BLUE
+gear: 3
+gear_reason: >-
+  The lint floor is 3 by path (the launchd plist, the declared pairs and the organs registry of a deleting organ); turning apply on
+  makes pro.janitor remove files on Pro, so the Opus gate is owed.
+l_level: L2
+gate_class: opus
+objective: >-
+  Rollout step 3 of docs/specs/pro-janitor-2026-10-10.md: PRO_JANITOR_APPLY=true in the pro.janitor plist, and the uv cache has ONE
+  owner: disk_janitor.sh stops running `uv cache prune` (pro.janitor's uv-prune rule owns it). restic and brew steps are untouched.
+constraints:
+  - Nothing inside Colima or docker, no process kill, no new rule; the allowlist and the blast-radius caps are unchanged.
+  - The PENDING-ARMS row stays open until the live proof (journal line with mode apply on Pro).
+acceptance:
+  - text: scripts/disk_janitor.sh SHALL never invoke uv and its receipt SHALL carry no uv_cache_prune step, while restic and brew still run.
+    probe: "scripts/test_disk_janitor.sh (TEST 10; guilt shown: with the uv step restored the new assertions fail 3 of 109)"
+  - text: The pro.janitor plist SHALL carry PRO_JANITOR_APPLY=true.
+    probe: "plutil -p infra/launchagents/com.nuzantara.janitor.plist"
+consumer_map:
+  - launchd jobs pro.janitor (com.nuzantara.janitor) and pro.disk_janitor on Pro; journal ~/logs/pro-janitor/journal.jsonl.
+pii_scan: clean
+pii_scan_note: A plist value, notes text and a bash step removal with its test on tmp fixtures. No client data.

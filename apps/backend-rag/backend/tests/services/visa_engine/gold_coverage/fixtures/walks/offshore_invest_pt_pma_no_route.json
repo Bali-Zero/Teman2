@@ -70,6 +70,10 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
+    "work.annual_foreign_income_usd": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "investment.pt_pma_committed": { "status": "KNOWN", "value": true },
     "investment.investment_capital_idr": {
       "status": "KNOWN",

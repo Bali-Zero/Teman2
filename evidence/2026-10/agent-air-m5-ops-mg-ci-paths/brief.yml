@@ -1,0 +1,21 @@
+task: >-
+  PR #8164 added apps/mata-garuda/tests/test_run_sentinel_cell.py::test_organ_id_is_the_registry_entry_for_this_job, which
+  reads apps/organism/organism/organs_registry.yaml; the mata-garuda-tests workflow (#8169) does not list that file in
+  its paths filter, so a registry change that breaks the test would reach main without the suite running. Add it.
+lane: ops
+machine: m5
+date: 2026-10-09
+gear: 3
+gear_reason: >-
+  Measured floor 3, source the .github/workflows/ hot zone (two identical path lines). Gear 3 carries a pack and a sealed
+  council.
+acceptance:
+  A1:
+    text: >-
+      Both paths blocks of .github/workflows/mata-garuda-tests.yml list apps/organism/organism/organs_registry.yaml, and
+      the set of repo files the suite opens outside apps/mata-garuda and packages/cell-core (measured with an audit hook on
+      main 05ec82e25d) is fully covered.
+    probe: the audit-hook measurement diffed against both paths blocks; actionlint.
+  A2:
+    text: The job runs on this PR's head and stays green.
+    probe: this PR's own mata-garuda-tests run (the PR touches the workflow file, which is in its own filter).

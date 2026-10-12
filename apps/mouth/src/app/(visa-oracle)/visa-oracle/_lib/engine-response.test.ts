@@ -68,6 +68,53 @@ describe("Visa Oracle engine response runtime guard", () => {
     );
   });
 
+  it("reads an optional working-day window and keeps old responses unchanged", () => {
+    const old = makeVisaOracleResponse();
+    expect(() => parseVisaOracleEvaluateResponse(old)).not.toThrow();
+
+    const available = makeVisaOracleResponse();
+    Object.assign(available.display.candidates[0].processing_timeline, {
+      status: "AVAILABLE",
+      reason_code: "BALI_ZERO_TYPICAL_PROCESSING_TIME",
+      anchor_date: "2026-10-09",
+      estimated_completion_from: "2026-10-20",
+      estimated_completion_to: "2026-10-23",
+      working_days_min: 7,
+      working_days_max: 10,
+    });
+    expect(() => parseVisaOracleEvaluateResponse(available)).not.toThrow();
+
+    for (const [min, max] of [
+      [10, 7],
+      [-1, 3],
+      [1.5, 3],
+      [3, undefined],
+      [undefined, 3],
+    ]) {
+      const bad = structuredClone(available);
+      const line = bad.display.candidates[0].processing_timeline as Record<
+        string,
+        unknown
+      >;
+      line.working_days_min = min;
+      line.working_days_max = max;
+      if (min === undefined) delete line.working_days_min;
+      if (max === undefined) delete line.working_days_max;
+      expect(() => parseVisaOracleEvaluateResponse(bad)).toThrowError(
+        expect.objectContaining({ code: expect.any(String) }),
+      );
+    }
+
+    const unknownWithWindow = makeVisaOracleResponse();
+    Object.assign(unknownWithWindow.display.candidates[0].processing_timeline, {
+      working_days_min: 3,
+      working_days_max: 5,
+    });
+    expect(() =>
+      parseVisaOracleEvaluateResponse(unknownWithWindow),
+    ).toThrowError(expect.objectContaining({ code: "RESPONSE_INVARIANT" }));
+  });
+
   it("rejects calendar dates that JavaScript would silently normalize", () => {
     const response = makeVisaOracleResponse();
     response.display.candidates[0].pricing.catalog_last_updated = "2026-02-30";

@@ -198,6 +198,7 @@ def make_applicant_facts(*, assessment_id: uuid.UUID | None = None) -> M.Applica
         "work.serves_indonesian_clients": unknown,
         "work.indonesia_source_compensation": unknown,
         "work.indonesian_work_sponsor_confirmed": unknown,
+        "work.annual_foreign_income_usd": unknown,
         "investment.pt_pma_committed": unknown,
         "investment.investment_capital_idr": unknown,
         "investment.paid_up_capital_idr": unknown,

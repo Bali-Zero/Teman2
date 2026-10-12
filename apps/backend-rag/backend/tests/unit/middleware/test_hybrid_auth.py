@@ -433,21 +433,24 @@ async def test_auth_none(middleware, mock_request):
 # ============================================================================
 @pytest.mark.asyncio
 async def test_authenticate_jwt_token_valid(middleware):
-    with patch("jose.jwt.decode", return_value={"sub": "1", "email": "a@b.com", "role": "admin"}):
+    with patch(
+        "backend.app.utils.jwt_decode.decode_jwt",
+        return_value={"sub": "1", "email": "a@b.com", "role": "admin"},
+    ):
         user = await middleware.authenticate_jwt_token("token")
         assert user["email"] == "a@b.com"
 
 
 @pytest.mark.asyncio
 async def test_authenticate_jwt_token_missing_claims(middleware):
-    with patch("jose.jwt.decode", return_value={"sub": "1"}):  # Missing email
+    with patch("backend.app.utils.jwt_decode.decode_jwt", return_value={"sub": "1"}):
         user = await middleware.authenticate_jwt_token("token")
         assert user is None
 
 
 @pytest.mark.asyncio
 async def test_authenticate_jwt_token_error(middleware):
-    with patch("jose.jwt.decode", side_effect=Exception("Decode fail")):
+    with patch("backend.app.utils.jwt_decode.decode_jwt", side_effect=Exception("Decode fail")):
         user = await middleware.authenticate_jwt_token("token")
         assert user is None
 
@@ -455,7 +458,10 @@ async def test_authenticate_jwt_token_error(middleware):
 @pytest.mark.asyncio
 async def test_authenticate_jwt_valid(middleware, mock_request):
     mock_request.headers = {"Authorization": "Bearer token"}
-    with patch("jose.jwt.decode", return_value={"sub": "1", "email": "a@b.com"}):
+    with patch(
+        "backend.app.utils.jwt_decode.decode_jwt",
+        return_value={"sub": "1", "email": "a@b.com"},
+    ):
         user = await middleware.authenticate_jwt(mock_request)
         assert user["email"] == "a@b.com"
 
@@ -470,6 +476,6 @@ async def test_authenticate_jwt_invalid_header(middleware, mock_request):
 @pytest.mark.asyncio
 async def test_authenticate_jwt_error(middleware, mock_request):
     mock_request.headers = {"Authorization": "Bearer token"}
-    with patch("jose.jwt.decode", side_effect=Exception("Fail")):
+    with patch("backend.app.utils.jwt_decode.decode_jwt", side_effect=Exception("Fail")):
         user = await middleware.authenticate_jwt(mock_request)
         assert user is None

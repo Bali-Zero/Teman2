@@ -69,7 +69,9 @@ import {
   type FlowState,
 } from "../src/app/(visa-oracle)/visa-oracle/_lib/flow";
 import {
+  GENERIC_REVIEW_REASON,
   buildEngineOutcome,
+  isNoPathWithoutDoors,
   isSecondHomeStudioOnly,
 } from "../src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter";
 import {
@@ -117,13 +119,13 @@ const PARITY_REPORT_PATH = resolve(
     "output/visa-oracle-parity-report.json",
 );
 
-// `engine-adapter.ts`'s `GENERIC_REVIEW_REASON` is not exported (its own
-// throw only fires outside `NODE_ENV=production`, so the promoted bundle
-// falls back to this copy silently on an unmapped code) — duplicated
-// verbatim here so PLAN G2-c red (iv), "the DOM shows GENERIC_REVIEW_
-// REASON's text", has something concrete to assert against.
-const GENERIC_REVIEW_REASON_EN =
-  "Some of your answers need a person's judgment before we can confirm a path.";
+// `engine-adapter.ts`'s `GENERIC_REVIEW_REASON` is exported so this spec reads
+// the sentence it asserts against from the source instead of duplicating it
+// (the duplicate went stale the day the copy was cured). Its throw only fires
+// outside `NODE_ENV=production`, so the promoted bundle falls back to this
+// copy silently on an unmapped code: PLAN G2-c red (iv), "the DOM shows
+// GENERIC_REVIEW_REASON's text", has something concrete to assert against.
+const GENERIC_REVIEW_REASON_EN = GENERIC_REVIEW_REASON.en;
 
 const ALL_ENGINE_STATES: readonly EngineState[] = [
   "SUPPORTED_CANDIDATES",
@@ -520,7 +522,9 @@ if (LIVE_PARITY) {
           "en",
           (isSecondHomeStudioOnly(outcome)
             ? "verdict.headline.SECOND_HOME_STUDIO"
-            : `verdict.headline.${sample.engineState}`) as I18nKey,
+            : isNoPathWithoutDoors(outcome)
+              ? "verdict.headline.NO_SUPPORTED_PATH_NO_DOOR"
+              : `verdict.headline.${sample.engineState}`) as I18nKey,
         );
         const expectedNoticeTexts = outcome.conditions.map((c) =>
           localized(c.message, "en"),

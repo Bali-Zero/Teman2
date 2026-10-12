@@ -1,0 +1,31 @@
+task_id: tp1-spec-recut2
+gear: 3
+l_level: L1
+gate_class: opus
+objective: >-
+  Re-cut 2 of the TP1 input-screen spec and corpus (#8019, suspended after gate-8019-r2 blocked it on the same
+  cause as round 1: personal-data shapes on neither a rule nor a declared remainder). Close the PII enumeration
+  with ONE catch-all remainder for every personal-data category outside the four enumerated entities, pending the
+  owner's decision; pin the round-1 cure sentences with distinct phrases and make the schema test require every
+  rule phrase to occur exactly once in the spec. Gear 3 by the deterministic floor (the workflow file is a hot zone).
+acceptance:
+  - text: >-
+      WHEN the five gate-8019-r2 shapes (date of birth under tanggal_lahir, alamat with RT/RW, a Telegram handle,
+      ig_handle, an unlabelled vehicle plate) are judged on the new text, each SHALL land on the declared remainder
+      rem_pii_other by the wording of threat-model item 7, and a labelled phone, ID or CRM name SHALL stay on its rule.
+    probe: the 138-shape table in the PR body (128 gate shapes + 10 of the verifier's own), each row naming its sentence
+  - text: >-
+      IF any pinned sentence is deleted or duplicated in the spec (the item-7 catch-all, the unlabelled-identity
+      sentence, the reversible-view sentence, the PII precedence, the CRM name keys table row, telepon, lim_03,
+      lim_iban) THEN the schema test SHALL go red.
+    probe: python3 ~/.agent/campaign-20261005/work/dux-tp1spec-recut2/mutants.py <worktree> <scratch> (11 mutants + control)
+  - text: >-
+      WHEN the corpus test runs on Python 3.9 and 3.11 it SHALL pass, and the repo's secret guards SHALL find
+      nothing in the changed files.
+    probe: python3 -m pytest -q scripts/tp1max/test_screen_corpus.py; uv run --no-project --python 3.9 --with pytest --with PyYAML==6.0.3 python -m pytest -q <same>; detect-secrets-hook --baseline .secrets.baseline <files>; lint_pg_dsn_credentials.py, lint_telegram_tokens.py, lint_google_oauth_credentials.py <files>
+assumptions:
+  - text: >-
+      The four starting files are byte-identical to #8019's head 63c4950bd8 (base import commit 4688f23c46 on
+      origin/main 53de39e6a0); the evidence directory is new.
+    status: verified
+    probe: git diff --stat 63c4950bd8 4688f23c46 -- docs/specs/tp1-input-screen.md scripts/tp1max .github/workflows/tp1-runner-tests.yml

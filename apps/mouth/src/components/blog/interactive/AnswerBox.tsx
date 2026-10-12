@@ -6,7 +6,7 @@
  *
  * Usage in MDX:
  * <AnswerBox>
- *   PT PMA is Indonesia's foreign-owned company structure, costing from IDR 20M.
+ *   PT PMA is Indonesia's foreign-owned company structure, costing from IDR 25M.
  * </AnswerBox>
  *
  * <KeyTakeaway points={["KITAS required for work", "PT PMA = 100% foreign ownership"]} />

@@ -47,10 +47,19 @@ from __future__ import annotations
 import uuid
 from collections.abc import Mapping
 from datetime import date, datetime, timedelta, timezone
+from itertools import pairwise
 from types import MappingProxyType
-from typing import Annotated, Final, Literal
+from typing import Annotated, Any, Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from backend.services.visa_engine.ast import Condition
 from backend.services.visa_engine.enums import (
@@ -274,6 +283,15 @@ class StayPolicy(BaseModel):
     maximum_days: Annotated[int, Field(ge=0, le=36_500, strict=True)] | None
 
 
+class DurationOption(BaseModel):
+    """One purchasable stay length of a product, priced by its own catalogue row."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    days: Annotated[int, Field(ge=1, le=36_500, strict=True)]
+    pricing_key: PricingKey
+
+
 class ExtensionPolicy(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -370,6 +388,10 @@ class VisaProductVersion(BaseModel):
     source_refs: tuple[uuid.UUID, ...] = Field(..., min_length=1)
     # StrictBool (PR1b item 3) — see ExtensionPolicy.allowed's comment.
     public_catalog: Annotated[bool, Field(strict=True)]
+    # Additive and optional: a product without options prices through
+    # ``pricing_key`` exactly as before, so every signed pack that predates
+    # this field still validates and keeps its digest.
+    duration_options: tuple[DurationOption, ...] | None = Field(default=None, min_length=1)
 
     @field_validator("legacy_codes", "legacy_slugs", "covered_purposes", "source_refs")
     @classmethod
@@ -377,6 +399,35 @@ class VisaProductVersion(BaseModel):
         if len(set(v)) != len(v):
             raise ValueError("array must have unique items")
         return v
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_duration_options(self, handler: SerializerFunctionWrapHandler) -> Any:
+        # Absent stays absent on the wire: re-serialising a pack that predates
+        # ``duration_options`` must not grow a ``null`` key and shift its bytes.
+        data = handler(self)
+        if data.get("duration_options") is None:
+            data.pop("duration_options", None)
+        return data
+
+    @model_validator(mode="after")
+    def _check_duration_options(self) -> VisaProductVersion:
+        options = self.duration_options
+        if options is None:
+            return self
+        if options[0].pricing_key != self.pricing_key:
+            raise ValueError("pricing_key must equal the first duration option's pricing_key")
+        if self.stay_policy.kind is not StayPolicyKind.FIXED_DAYS:
+            raise ValueError("duration_options require a FIXED_DAYS stay_policy")
+        days = [option.days for option in options]
+        if any(later <= earlier for earlier, later in pairwise(days)):
+            raise ValueError("duration_options days must be strictly increasing")
+        stay = self.stay_policy
+        if stay.kind is StayPolicyKind.FIXED_DAYS:
+            if stay.minimum_days is not None and days[0] < stay.minimum_days:
+                raise ValueError("duration option below stay_policy.minimum_days")
+            if stay.maximum_days is not None and days[-1] > stay.maximum_days:
+                raise ValueError("duration option above stay_policy.maximum_days")
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -1022,6 +1073,18 @@ _GUARDIAN_CONSENT_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
     status="UNKNOWN", reason="NOT_ASKED"
 )
 
+# Same rollout mechanism for seq-28 Step A (2026-10-11). The engine must
+# accept ``work.annual_foreign_income_usd`` before the deployed mouth starts
+# sending it; until Step B ships, omission means only that nobody asked.
+# The default MUST be a built ``UnknownFact``, never a dict or zero: zero
+# would fabricate a below-threshold answer for every existing caller.
+# FOLLOW-UP (remove the default): once Step B's mouth question ships and no
+# client omits this key, per ``TestFactVocabularyExtensionRolloutDefaultE33G``
+# in ``test_sponsor_type_rollout.py``.
+_ANNUAL_FOREIGN_INCOME_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
+    status="UNKNOWN", reason="NOT_ASKED"
+)
+
 
 class ApplicantFactsData(BaseModel):
     """``ApplicantFacts.facts`` (spec §2) — ``additionalProperties: false``
@@ -1030,7 +1093,8 @@ class ApplicantFactsData(BaseModel):
     ``family.sponsor_permit_basis`` fields (2026-08-23),
     ``immigration_renewal_paid`` (2026-08-24), the ten seq-21
     qualification facts (2026-09-13) and ``person_guardian_consent``
-    (2026-09-21, Slice A7-B) below — all the same rollout mechanism.
+    (2026-09-21, Slice A7-B), plus ``work_annual_foreign_income_usd``
+    (2026-10-11, seq-28 Step A) below — all the same rollout mechanism.
     Field order mirrors ``enums.FactPath``'s
     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
@@ -1114,6 +1178,18 @@ class ApplicantFactsData(BaseModel):
     ]
     work_indonesian_work_sponsor_confirmed: Annotated[
         BooleanFact, Field(alias="work.indonesian_work_sponsor_confirmed")
+    ]
+    work_annual_foreign_income_usd: Annotated[
+        NonNegativeIntegerFact,
+        Field(
+            alias="work.annual_foreign_income_usd",
+            # openapi-typescript 7.13 treats an emitted JSON Schema
+            # ``default`` as required even when OpenAPI omits the property
+            # from ``required``. A factory preserves the real Pydantic
+            # rollout default while keeping the generated request key
+            # optional, so Step A does not force a Step B mapper change.
+            default_factory=_ANNUAL_FOREIGN_INCOME_ROLLOUT_DEFAULT.model_copy,
+        ),
     ]
     investment_pt_pma_committed: Annotated[BooleanFact, Field(alias="investment.pt_pma_committed")]
     investment_investment_capital_idr: Annotated[

@@ -1,0 +1,32 @@
+task_id: localci-gatepending-1010
+mission: LOCALCI-SOVEREIGN (phase B, step B12)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  A change to the runner's host-reader verdict mapping and to the merger's triage: it can turn a FAIL into a BLOCKED and make a
+  decided key decided again. No hot-zone path, workflow, plist or wrapper change; the lint floor is 2.
+l_level: L2
+gate_class: opus
+objective: >-
+  A gate verdict not posted yet is no verdict, and is asked again once it is posted. The harness gate reader's
+  ::error::harness_gate_read: PENDING stderr line (matrix key pending_when, line-anchored, not retried) makes the step, the context and
+  overall BLOCKED, never FAIL; the decision records gate_pending; triage decides the same (pr, head, base) again only when the head carries a
+  harness/fable-gate status, at most 3 times; the report counts them and reads them BLIND, not FALSE_RED.
+constraints:
+  - A real verdict line (failure, REWORK, BLOCK) stays FAIL; a pending line on stdout, or with exit 0, is not pending.
+  - A missing verdict at merge time still blocks (executed_contexts_ok false).
+  - The re-decision reads one commit-status list per gate_pending PR per tick, read-only; a failed read is not eligible.
+  - Replays (B11) are unaffected.
+acceptance:
+  - text: A reader whose stderr line starts with the pending marker SHALL give rc None at once (no retry sleep) and the step, context and overall SHALL be BLOCKED.
+    probe: "test_gate_pending.py::test_a_pending_reader_is_no_verdict_and_is_not_retried"
+  - text: A real failure verdict SHALL stay FAIL, and the pending text on stdout only SHALL not fake it.
+    probe: "test_gate_pending.py::test_a_real_verdict_line_stays_a_verdict"
+  - text: A gate_pending key SHALL be decided again only with the harness/fable-gate status on the head, not on a failed read, and at most 3 times.
+    probe: "test_gate_pending.py::test_the_cap_stays_decided_and_is_journalled_once"
+  - text: The report SHALL count gate_pending decisions and class a BLOCKED context BLIND, not FALSE_RED.
+    probe: "test_merger_report.py::test_gate_pending_decisions_are_counted_blind_never_false_red_and_the_report_says_so"
+consumer_map:
+  - scripts/localci/merger.py tick (the launchd tick com.balizero.localci-merger on Pro) — gate_pending on the decision lines of decisions.jsonl, and the report's class column.
+pii_scan: clean
+pii_scan_note: Runner and merger code, tests on temporary git repos and fake GitHub reads, mutant rules and documentation. No client data was read or written.

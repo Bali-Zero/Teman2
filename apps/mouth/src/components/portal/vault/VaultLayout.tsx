@@ -5,8 +5,16 @@ import { VaultFileGrid } from "./VaultFileGrid";
 import { VaultSearchBar } from "./VaultSearchBar";
 import { VaultUploadZone } from "./VaultUploadZone";
 import { VaultErrorBoundary } from "./VaultErrorBoundary";
+import { VaultPracticePicker } from "./VaultPracticePicker";
 import { useVaultFiles } from "@/hooks/useVaultFiles";
 import { useVaultDocumentActions } from "@/hooks/useVaultDocumentActions";
+import { usePortalMatters } from "@/hooks/usePortal";
+import {
+  activeMatters,
+  resolveUploadPractice,
+  uploadNeedsPractice,
+  type UploadPracticeChoice,
+} from "@/lib/vault/uploadPractice";
 import type { VaultFile } from "@/lib/schemas/vault";
 
 export function VaultLayout() {
@@ -20,6 +28,20 @@ export function VaultLayout() {
   const [practiceFilter, setPracticeFilter] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const matters = usePortalMatters();
+  const [uploadChoice, setUploadChoice] =
+    useState<UploadPracticeChoice>(undefined);
+
+  const active = useMemo(
+    () => activeMatters(matters.data?.matters ?? []),
+    [matters.data],
+  );
+  const uploadPracticeId = resolveUploadPractice(active, uploadChoice);
+  const uploadBlockedReason = matters.isLoading
+    ? "Loading your practices…"
+    : uploadNeedsPractice(active, uploadPracticeId)
+      ? "Choose a practice above before uploading."
+      : undefined;
 
   const files = data ?? [];
   const filtered = useMemo(() => {
@@ -56,7 +78,37 @@ export function VaultLayout() {
             <VaultSearchBar value={q} onChange={setQ} />
           </div>
         </div>
-        <VaultUploadZone practiceId={practiceFilter} onDone={() => mutate()} />
+        {matters.isLoading && (
+          <p role="status" className="text-xs text-[var(--bz-text-2)]">
+            Loading your practices…
+          </p>
+        )}
+        {matters.isError && !matters.isLoading && (
+          <div role="alert" className="text-xs text-[var(--bz-text-2)]">
+            We couldn&apos;t load your practices, so this file will be uploaded
+            without one.{" "}
+            <button
+              type="button"
+              onClick={() => matters.refetch()}
+              className="font-medium text-[var(--bz-copper-text)] underline underline-offset-2"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {active.length > 0 && (
+          <VaultPracticePicker
+            matters={active}
+            value={uploadPracticeId}
+            onChange={setUploadChoice}
+          />
+        )}
+        <VaultUploadZone
+          practiceId={uploadPracticeId}
+          disabled={uploadBlockedReason !== undefined}
+          disabledReason={uploadBlockedReason}
+          onDone={() => mutate()}
+        />
         <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
           <VaultSidebar
             files={files}

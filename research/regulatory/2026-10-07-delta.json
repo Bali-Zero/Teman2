@@ -1,0 +1,95 @@
+{
+  "run_at": "2026-10-07T07:06:46+08:00",
+  "today": "2026-10-07",
+  "yesterday_seen_count": 6,
+  "new_today_count": 1,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://ortax.org/news",
+      "reason": "http_404",
+      "note": "confirmed, recurring 404 same as prior runs"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, same as prior runs"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "301->/articles->200, JS-rendered shell, 'Memuat artikel' placeholder persists"
+    },
+    {
+      "url": "https://peraturan.go.id/rss",
+      "reason": "http_404",
+      "note": "confirmed, same as prior runs"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "HTTP_CODE:000 on initial fetch and the one mechanical retry, 30s each, same as prior runs"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "checked_no_new",
+      "note": "newest dated item 2026-10-06; other reg-matches (PP 33/2026 PDP-in-law-enforcement, RUU SDI) outside BZ service-line scope"
+    },
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "newest item 2026-10-06 22:06; tax citations found (PER-12/PJ/2026, PMK 55/2026) already in seen_citations"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "checked_no_new",
+      "note": "JS-rendered search results not in static HTML; static content is only pagination links, no PMK 2026 entries, same as prior runs"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "outside_window",
+      "note": "newest dated entry 2026-10-02, older than the 48h freshness window"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest entry still KEP-185/PJ/2026 (2026-09-02), unchanged from prior runs"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest visible UU 2/2026 Pelindungan Pekerja Rumah Tangga, enacted 30 Apr 2026, unchanged from prior runs; today's RUU Pelindungan Ketenagakerjaan (DPR-approved 2026-10-06) not yet indexed here pending presidential promulgation"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [
+    {
+      "citation": "RUU Pelindungan Ketenagakerjaan",
+      "title_id": "RUU Pelindungan Ketenagakerjaan Disahkan DPR Jadi Undang-Undang",
+      "title_en": "Labor Protection Bill Passed by Parliament into Law",
+      "service_line": [
+        "regulatory",
+        "HR"
+      ],
+      "severity": "high",
+      "impact_note": "Landmark labor-law overhaul passed by DPR plenary 2026-10-06, following up Constitutional Court ruling No.168/PUU-XXI/2023: BNSP strengthened into an independent body reporting directly to the President; new Ketenagakerjaan Oversight Committee (Komite Pengawasan Ketenagakerjaan) formed; BPJS non-compliance now carries up to 4-year imprisonment threat for companies, per a companion Hukumonline report on the same bill. Official UU number is pending presidential signature/promulgation (diundangkan) -- not yet assigned as of 2026-10-07. Track for the numbered citation once gazetted; clients with Indonesian employees/BPJS obligations should be flagged now, ahead of implementing regulations (PP/Permenaker turunan).",
+      "summary": "DPR menyetujui RUU Pelindungan Ketenagakerjaan secara bulat menjadi undang-undang dalam rapat paripurna, Selasa (6/10/2026), menindaklanjuti Putusan MK No.168/PUU-XXI/2023. RUU ini memuat sedikitnya 13 ketentuan baru, termasuk penguatan Badan Nasional Sertifikasi Profesi (BNSP) sebagai lembaga non-struktural independen di bawah Presiden, pembentukan Komite Pengawasan Ketenagakerjaan, dan optimalisasi pengawasan ketenagakerjaan. Nomor UU resmi menunggu proses pengundangan oleh Presiden.",
+      "source": "Hukumonline | https://www.hukumonline.com/berita/a/ruu-pelindungan-ketenagakerjaan-jadi-uu--menaker--era-baru-hukum-ketenagakerjaan-di-indonesia-lt6ac488d8afb88/",
+      "verbatim_excerpt": "\"Kami menanyakan kepada seluruh peserta sidang apakah RUU Pelindungan Ketenagakerjaan dapat disetujui untuk disahkan menjadi UU? Setuju!,\" katanya disambut ucapan setuju seluruh anggota DPR yang hadir rapat paripurna DPR, Selasa (06/10/2026). ... Yassierli mencatat RUU Pelindungan Ketenagakerjaan mengatur sedikitnya 13 ketentuan baru. Pertama, penguatan sertifikasi kompetensi kerja melalui Badan Nasional Sertifikasi Profesi (BNSP).",
+      "first_seen_at": "2026-10-07T07:06:46+08:00",
+      "confidence": "medium"
+    }
+  ],
+  "seen_citations": [
+    "PMK 55/2026",
+    "PER-6/PJ/2026",
+    "PMK 49/2026",
+    "PER-12/PJ/2026",
+    "PMK 37/2025",
+    "PMK 71/2026",
+    "RUU Pelindungan Ketenagakerjaan"
+  ],
+  "note": "4/4 NB-INTEL: Regulation/Press/Immigration = nessuna novita; Tax re-surfaced PMK 71/2026 (already seen yesterday, non-citable). Web: Hukumonline delivered the new UU Pelindungan Ketenagakerjaan delta (DPR plenary approval 2026-10-06, no official number yet -- cited by bill name, verbatim, per hard rule against inventing a number). DDTC delivered only already-seen tax citations (PER-12/PJ/2026 new object codes, PMK 55/2026 competency exam) -- dropped per dedup. Single-outlet confidence (hukumonline only, though corroborated across 4 of its own related articles); no second independent outlet covered it within the window, so confidence stays medium rather than high."
+}

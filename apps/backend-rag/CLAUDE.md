@@ -456,6 +456,13 @@ for a route that bypasses `nuzantara_readonly`.
 
 **A merge to `main` already deploys the backend** (PENDING-ARMS 2026-08-25, closed 2026-09-24). `.github/workflows/fly-deploy.yml` is the SSOT: it triggers on `push: branches:[main]` filtered to `apps/backend-rag/**` (docs/README/CLAUDE.md/tests excluded) and runs, in order, `pre-deploy-gate` → `run-migrations` (via `flyctl ssh console`) → `deploy` (rolling) → `run-sql-v2-migrations-post-deploy` (that last job exists because of the 2026-04-26 scar where new SQL ran against the OLD image and silently did nothing) → `run-python-migrations`. Do **not** follow this section's `fly deploy` block after merging — it fires a SECOND, racing deploy against an app the workflow is already mid-rolling-restart on; the workflow's own `concurrency: group: fly-deploy, cancel-in-progress: false` only guards runs of itself, not a hand-run `flyctl` from a laptop.
 
+**Since 2026-10-11 the workflow runs on `FastLabsNet/zero`, not here** (cutover gate 5, `docs/runbooks/zero-cutover.md`). This repository's `fly-deploy.yml` is disabled through the API. A merge reaches production as follows:
+
+1. `mini.zero_sync` copies it to zero as one commit carrying `Zero-Sync-Canonical: <canonical sha>`.
+2. Zero's copy of the same workflow deploys it, on the self-hosted runner `mini-zero-1`, which it shares with zero CI. `GIT_SHA` is that canonical sha, so `/health` `build_sha` keeps naming this repository's commit.
+
+Expect up to about 30 minutes between merge and live: sync interval + runner queue + deploy. `scripts/post-deploy-verify.sh <PR>` follows the merge into the zero run that contains it and proves it live by `build_sha` ancestry. Watch the run with `gh run list -R FastLabsNet/zero --workflow fly-deploy.yml`.
+
 **Pre-deploy** (run sequentially, before merging):
 ```bash
 git diff --name-only HEAD -- apps/backend-rag/backend/

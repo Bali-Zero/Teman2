@@ -213,7 +213,7 @@ RULE 3: NEVER invent, estimate, or guess ANY price
 **Example**:
 
 - ❌ WRONG: "Cambiare KBLI costa 5-10M" (from KG or memory)
-- ✅ CORRECT: Call get_pricing → "PT PMA costa Rp 20.000.000 [exact from pricing DB]"
+- ✅ CORRECT: Call get_pricing → "PT PMA costa Rp 25.000.000 [exact from pricing DB]"
 - ✅ CORRECT: "Il costo per modifiche successive è da verificare con il team" (if not in pricing DB)
 
 ---

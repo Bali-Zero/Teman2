@@ -1,0 +1,122 @@
+task_id: pro-janitor-1010
+mission: LOCALCI-SOVEREIGN (Pro free-space keeper, rollout step 2 of 3)
+colour: BLUE
+gear: 3
+gear_reason: >-
+  The lint floor is 3 by path (a new launchd organ with wrapper, plist, declared pairs and registry entry); the organ deletes files
+  on Pro.
+l_level: L2
+gate_class: opus
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+objective: >-
+  pro.janitor keeps Pro's free space up from host caches only (uv cache prune, npm cache verify, old unpinned Playwright revisions),
+  with tiers and hysteresis, fd-anchored removal under Playwright's own install lock held as a monotonic lease, blast-radius caps, a
+  kill switch and dry-run first; nothing inside Colima or docker.
+acceptance:
+  - text: A failed INSTALLATION_COMPLETE (EPERM, young, changed, stat error) SHALL stop the candidate with nothing else in it touched.
+    probe: "scripts/tests/test_pro_janitor.py (marker cases, real chflags UF_IMMUTABLE)"
+  - text: Every unlink and rmdir SHALL be refused once the lock lease ran out, the lock is not our inode, or the wall clock drifted from the monotonic clock.
+    probe: "scripts/tests/test_pro_janitor.py (lease cases)"
+  - text: No planted name, number or file SHALL crash the run; journal and state are always written.
+    probe: "scripts/tests/test_pro_janitor.py (symlink chain, vanishing link, error:internal cases)"
+  - text: A tool past its deadline SHALL be killed by process group with its leader un-reaped until the last killpg.
+    probe: "scripts/tests/test_pro_janitor.py (deadline ordering case)"
+consumer_map:
+  - launchd organ pro.janitor on Pro (com.nuzantara.janitor, StartInterval 600), its journal ~/logs/pro-janitor/journal.jsonl and heartbeat ~/.organism/last_seen/pro.janitor.json.
+lanes:
+  - lane: pro-janitor-1010
+    role: build
+    seat: claude-sonnet-5 implementers (the 2026-10-10 lane, then three fix rounds on M5), directed by claude-opus-5-5 (the LOCALCI lead, who took the lane over on 2026-10-11 after its first session ended)
+  - lane: pro-janitor-1010-gate
+    role: review
+    seat: claude-opus-5-5, three fresh read-only seats (gate on 447fe70521, re-gate on cde1879c6d, final gate on 6ceee24845)
+  - lane: pro-janitor-1010-council
+    role: review
+    seat: codex-gpt-5.6-sol and kimi-code/k3, two rounds (council-journal.jsonl)
+pii_scan: clean
+pii_scan_note: A stdlib payload, a bash wrapper, a plist, registry entries and tests on tmp fixtures. Tool cache revision names only; no client data.
+what_changed: |
+  scripts/ops/pro_janitor.py (new, stdlib, Python 3.9): tiers AMBER/RED/BLACK with hysteresis on statvfs of the Data volume; rules
+  uv-prune (6 h), npm-verify (24 h) and playwright-old (24 h, RED) with Playwright's .links registry pins honoured and fail-closed;
+  removal through descriptors anchored at /, re-audited per object (.git in any case, mtime/ctime under 7 days, other device, inode
+  change); invariant 8, Playwright's __dirlock taken the same way and held as a lease on the monotonic clock (acquire within 4 s,
+  refresh every 2 s by a thread with its own fd, check before every unlink and rmdir with a wall/mono drift check, release by the
+  same sequence); invariant 9, INSTALLATION_COMPLETE first and any failure on it stops the candidate; blast radius 10 GB and 200 000
+  objects per run; kill switch read at least once a second; lsof completeness by a held canary; unresolvable input is a skip or
+  error:internal (entries kept, cooldown stamped in apply), never a crash; a tool past 300 s is killed by group with its leader
+  un-reaped until the last killpg. scripts/tests/test_pro_janitor.py (275). infra/launchagents/com.nuzantara.janitor.plist
+  (StartInterval 600, no KeepAlive, PRO_JANITOR_APPLY=false); the wrapper with the organ genes; three declared pairs; the registry
+  entry. docs/specs/pro-janitor-2026-10-10.md: the threat model and invariants 1-9, the arbiter of every review.
+proof: |
+  The suite on tmp fixtures (fake uv/npm/lsof, real chflags, real symlink chains, injected clocks); every gate reproduced its
+  findings and their cures on disk under /usr/bin/python3 -I (3.9.6, Pro's interpreter) with its own scripts, and applied its own
+  guilt mutations through PJ_PAYLOAD. A read-only plan probe on Pro found 25 pins and 0 candidates today.
+bites:
+  consumer: launchd organ pro.janitor on Pro (com.nuzantara.janitor), deployed dry-run.
+  observation: >-
+    Owed after merge: the three files copied from origin/main to ~/scripts/pro-janitor.sh, ~/.nuzantara-cron/pro_janitor.py and
+    ~/Library/LaunchAgents/com.nuzantara.janitor.plist and cmp-checked, ~/logs/pro-janitor created before the bootstrap, the label
+    bootstrapped; the first tick writes one journal line (mode dry-run, the tier for the free space it read, each rule dry-run or
+    skipped with its cause) and a heartbeat ok or warning with the payload's summary line. Quoted in a PR comment.
+ground:
+  ts: "2026-10-11T08:20:00Z"
+  siblings: >-
+    Branch merged with origin/main 509145d5bd (#8252 also changed the organs registry checksum: resolved as the canonical value on
+    line 3 only). The janitor's five files are blob-identical to the gated 6ceee24845. The LOCALCI lead owns prune.py and the VM.
+spend:
+  adversarial_rounds: 5
+  wall_clock_hours: 8.0
+receipts:
+  - claim: "scripts/tests/test_pro_janitor.py at 6ceee24845: 275 passed, twice (209.97 s and 595.05 s on a loaded host)."
+    cmd: PYTHONPATH=. python3 -m pytest scripts/tests/test_pro_janitor.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-10-11T08:10:00Z"
+    seat: claude-opus-5-5 final gate on M5
+  - claim: "Invariant 9 on the real payload: a marker made immutable with chflags UF_IMMUTABLE gives failed:eperm, 0 bytes, the tree identical (round 1's payload left only the marker)."
+    cmd: the gate's own script, /usr/bin/python3 -I, the real remove_candidate, a real Lock and budget env
+    exit: 0
+    ts: "2026-10-11T06:40:00Z"
+    seat: claude-opus-5-5 re-gate on M5
+  - claim: "run_deadline: a TERM-ignoring leader and member are both killed with no touch of the Popen between TERM and the last killpg; a prompt exit takes 2.07 s, no stall."
+    cmd: the final gate's wrapped os.killpg/os.waitpid/Popen recorder, /usr/bin/python3 -I
+    exit: 0
+    ts: "2026-10-11T08:05:00Z"
+    seat: claude-opus-5-5 final gate on M5
+  - claim: "Pro, read-only: none of the three live files exists, the label is not loaded, /usr/bin/python3 is 3.9.6, uv 0.12.3, npm 11.17.0; the Playwright root holds 3 links and 25 pins, 0 candidates."
+    cmd: ssh pro (ls, launchctl print, the payload's plan over stdin with main() stripped)
+    exit: 0
+    ts: "2026-10-11T08:10:00Z"
+    seat: claude-opus-5-5 final gate
+dissent:
+  - seat: codex-gpt-5.6-sol (447fe70521)
+    objection: "BLOCKER: a failed INSTALLATION_COMPLETE unlink lets the walk delete the rest; MEDIUM: release rmdir without a lease re-check after the stat; MEDIUM: a wall-clock jump leaves the lease valid; LOW: unlinked_bytes counts failed unlinks."
+    status: CONFIRMED
+    resolution: cde1879c6d (marker stop, check and release lease-inode-lease with a drift check, bytes counted after success).
+  - seat: claude-opus-5-5 gate (447fe70521)
+    objection: "BLOCKED: the same invariant-9 HIGH reproduced with UF_IMMUTABLE; MEDIUM accounting; MEDIUM a realpath crash with no journal; LOW three surviving mutants, the BLACK page text, pgid reuse."
+    status: CONFIRMED
+    resolution: cde1879c6d; the three mutants killed by new tests; pgid reuse closed in 6ceee24845.
+  - seat: codex-gpt-5.6-sol and kimi-code/k3 (cde1879c6d, round 2)
+    objection: "Codex MEDIUM: error:internal drops the entries already decided and stamps no cooldown; LOWs on audit-error early returns and a self-referential symlink. Kimi pass with LOWs."
+    status: CONFIRMED
+    resolution: Spec amended in 828e195971, implemented in 6ceee24845.
+  - seat: claude-opus-5-5 re-gate (cde1879c6d)
+    objection: "CONFIRMED-WITH-LOW: N1 the same error:internal loss; N2 a keepalive that cannot start leaves the lock; N4 audit-error entries lost on early returns; finding 8 pgid reuse, with a verified mechanism (hold the zombie leader until the last killpg)."
+    status: CONFIRMED
+    resolution: 828e195971 (spec) and 6ceee24845.
+  - seat: claude-opus-5-5 final gate (6ceee24845)
+    objection: "CONFIRMED-WITH-LOW: L1 an exception mid-walk inside a candidate journals it failed:internal with 0 bytes although files went; L2 the unreadable-link-registry early return has no test (mutant survives); I1 an async exception after Thread.start is TypeError in the thread."
+    status: CONFIRMED
+    resolution: Kept as residuals (below); the lane stops at fix-of-fix depth 1.
+residuals:
+  - "L1: an exception raised mid-walk inside a candidate (only through a bug) journals that candidate failed:internal with 0 bytes and the rule error:internal although some of its files were unlinked; rc is 10, the cooldown is stamped and freed_fs_bytes still reports the filesystem's figure."
+  - "L2: the unreadable-link-registry early return keeps its audit-error entries in code, but no test pins it (a mutant that drops them passes the suite)."
+  - "Processes of other users and root are invisible to lsof without root, and a same-user hostile process is out of scope: the organ is a hygiene tool, not a security boundary (the spec's threat model)."
+  - "A browser launched by path from an unpinned revision in the instant between the last look and the unlinks: one failed automation run and a re-download, as Playwright's own GC accepts."
+  - "Dry-run first: the apply flip (PRO_JANITOR_APPLY=true) and the removal of disk_janitor.sh's uv step are rollout step 3, after a merger-tick trough is observed."
+appetite_exceeded: >-
+  The lane is about 4.3k lines (payload 1.2k, tests 2.4k, spec 0.2k) against the ~400 net guideline: one organ whose invariants are
+  only provable together; it ships dry-run.
+plan_ref: >-
+  docs/specs/pro-janitor-2026-10-10.md; owner directive 2026-10-10 ("un demon sofisticato sul pro che continuamente fa pulizie").

@@ -43,7 +43,7 @@ describe("bali-zero-prices (PricingTool source-of-truth)", () => {
   it("resolves the KBLI-CTA prices from the synced catalog, not a literal", () => {
     const { ptPma, virtualOffice } = getKbliCtaPrices();
     // Values are present and come from the catalog (verbatim "… IDR" form).
-    expect(ptPma).toBe("20.000.000 IDR");
+    expect(ptPma).toBe("25.000.000 IDR");
     expect(virtualOffice).toBe("5.000.000 IDR");
   });
 

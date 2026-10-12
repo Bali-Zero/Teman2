@@ -1,0 +1,228 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Mandate LOCALCI-SOVEREIGN phase B (ruling docs/rules/RULINGS.md, RULED 2026-10-07), PR-B2: E2E Tests (Playwright),
+  Frontend Tests (Next.js) (mouth, true) and Visa Oracle fullstack smoke as service contexts. Design anchor:
+  docs/specs/localci-sovereign-2026-10-07.md §2 phase B. The first B2 Dux died mid-work; a fresh Opus 5.5 Dux resumed from
+  its disk state on 2026-10-08, rebased onto origin/main 538251ee69 (B1's seven commits dropped: main carries them as the
+  squash ba445b84a1, #8032) and folded the B1 final gate's notices a-f handed by the team lead.
+lanes:
+  - lane: localci-services-b2-build
+    role: build
+    seat: "claude-opus-5-5 (BLUE Dux of LOCALCI-SOVEREIGN PR-B2, M5; two successive sessions, the second resumed from disk; heavy execution on Pro over ssh)"
+  - lane: localci-services-b2-redteam
+    role: review
+    seat: "codex-gpt-6.1-sol (codex:codex-rescue runtime, read-only, default-to-defective; 2 rounds)"
+  - lane: localci-services-b2-refuter
+    role: review
+    seat: "agy-gemini-3.1-pro (agy --sandbox --model gemini-3.1-pro-high, prompt-only; 2 rounds)"
+council_run: council-journal.jsonl
+seat_override: >-
+  Two external families reviewed the candidate (OpenAI Codex, Google Gemini 3.1 Pro), but the Codex home's configured
+  default is gpt-6.1-sol while the roster names codex-gpt-5.6-sol, so the Codex lines are journalled under their true name
+  and do not qualify for R9 — the position A1's, PR #7991's and PR-B1's packs took.
+seat_fallback_reason: >-
+  The reserve agy-gemini-3.1-pro stood in for the titular seats. The last arsenal probe on record
+  (scripts/arsenal_probe.py --seats kimi,tp1-qwen3.8-max,tp1-glm-5.2, 2026-10-07T15:52:47Z on M5, journalled by PR-B1)
+  read kimi QUOTA_DEAD (membership quota) and both TP1 seats QUOTA_DEAD (HTTP 429, monthly plan quota, reset 2026-10-11
+  16:00 UTC); B2's two rounds ran at 17:41Z and 19:19Z, inside that window. The first B2 Dux journalled no fresh probe.
+pii_scan: clean
+pii_scan_note: Runner code, a contexts matrix, tests, CI logs of the repository's own suites and GitHub check metadata only; no client data was read or written.
+what_changed: |
+  scripts/localci/runner.py (v0.6.0): three more required contexts run as service contexts (kind contained_jobs), every
+  BASE step run verbatim or not_applicable with a written reason. E2E Tests (Playwright): Postgres + Redis, a live FastAPI
+  backend, the Next.js build and the Playwright specs BASE selects; the six repository secrets are stood in for by "" and
+  E2E's coverage is declared partial. Visa Oracle fullstack smoke: a disposable Postgres, the signed TEST RulePack, the
+  fullstack spec. Frontend Tests (Next.js) (mouth, true): exactly the leg the required context names (typed values, bound to
+  the context name). The deps image gains an npm cache filled from the candidate's lock (registry entries with an integrity,
+  workspace links, github repos at a full commit; anything else BLOCKED), the lock's Playwright browser and apt packages,
+  with bounded apt retries; a node-only recipe for Frontend. Step timeout-minutes is emulated in a service context and
+  BLOCKED elsewhere; a network failure in the egress sandbox or a host reader that could not read GitHub is no verdict,
+  never green or red. Folded from the PR-B1 gate (a-f): the queue ref without --pr-number BLOCKS; a declared env.X in a
+  text the runner evaluates itself BLOCKS; a service with volumes BLOCKS; every refusal names its step and variable, never a
+  value; tests.backend_shards/tests.frontend_mouth are superseded once their contexts are planned. Every container the
+  runner removes (candidate, service, reaped orphan) goes with `docker rm -f -v`, so the anonymous volumes postgres/redis
+  declare die with it (89 had filled Pro's VM).
+  scripts/localci/contexts_matrix.yaml: 12 executed, the two CodeQL contexts blocked; parity_gaps for the three contexts.
+  scripts/localci/README.md (service contexts, refusals, capacity); tests/test_service_contexts.py, tests/test_runner.py.
+proof: |
+  See receipts. Nothing in this change posts a status, edits branch protection, touches a workflow or arms the adapter.
+  Before it: E2E, Frontend (mouth, true) and Visa Oracle smoke LOCAL_BLIND on every commit (9/14 with B1). After it, on
+  Pro, the final head 535dbff589 on origin/main's head ebdad0739f read agreement=11/14 false_green=0 false_red=1: E2E,
+  Frontend (mouth, true) and Visa Oracle smoke all executed and AGREE. The one FALSE_RED is Backend Tests, whose service
+  Postgres ran out of disk (DiskFullError, then recovery mode) while the shadow merger ran its own Backend Tests on the
+  same 59 GB VM; it is not the candidate. 1df44b9b65 read 12/14 with all three AGREE (runner 1c26bf7a8b). Guilt
+  candidates turned only their own context red.
+bites:
+  consumer: >-
+    scripts/localci/hosted_compare.py run on Pro over a local run of a merged hosted-green main commit (the comparator
+    spec §4 makes the only place a local claim is stated).
+  observation: >-
+    Pro, 2026-10-08T02:35Z, runner of the final head 535dbff589 (sha256 b8081acd…), origin/main head ebdad0739f (#8041,
+    base 538251ee69), run dir ~/.nuzantara-pilots/local-ci/executor-b/runs/b2h-main-ebdad0739f, live GETs:
+    agreement=11/14 false_green=0 false_red=1 local_blind=2 (CodeQL x2 only). E2E Tests, Frontend Tests (Next.js)
+    (mouth, true) and Visa Oracle fullstack smoke AGREE, executed. Backend Tests FALSE_RED on the VM's disk (a concurrent
+    shadow-merger run), so 12/14 on the final head is owed a run with the VM to itself.
+ground:
+  ts: "2026-10-08T00:54:26Z"
+  siblings: >-
+    `gh pr list --state open --json number,files`: no open PR touches scripts/localci. The branch was rebased onto
+    origin/main 538251ee69 (B1's seven commits dropped, main carries them as ba445b84a1) without conflict; origin/main
+    moved to ebdad0739f (#8041, apps/kbli-navigator-macos only). Pro's main checkout was not written: runs use the B
+    lane's worktree, code archived into ~/.nuzantara-pilots/local-ci/executor-b/code-b2g from a bundle.
+appetite_exceeded: >-
+  About fourteen hours of wall clock against eight (first B2 commit 13:00Z on 2026-10-07, final-head measurement 02:35Z on
+  2026-10-08): the first Dux died mid-work and a fresh one resumed from disk; the deps image needed four build cures on Pro
+  (str.format braces, apt bounded and retried on a stalled mirror, a node-only recipe, the browser path); and two
+  final-head measurements met a full disk on Pro (the leaked volumes, cured here; then a concurrent merger run).
+spend:
+  adversarial_rounds: 2
+  wall_clock_hours: 14
+receipts:
+  - claim: "Final head 535dbff589 on origin/main head ebdad0739f (PR #8041, base 538251ee69), after the owner-side prune left 0 dangling volumes and 17.7 GB free (`docker run --rm alpine df -h /`): agreement=11/14 false_green=0 false_red=1 local_blind=2 hosted_pending=0. AGREE executed: E2E Tests 309 s wall / 215 s CPU, Frontend Tests (Next.js) (mouth, true) 287/508, Visa Oracle fullstack smoke 128/41, Harness floor, antidotes, organ genes, guard guilt+innocence, R1 gate, actionlint, Merah Putih, catE. FALSE_RED: Backend Tests (backend-shard[2] DiskFullError in its service Postgres; backend-shard[3] 11376 passed then 2 errors, `the database system is in recovery mode`). LOCAL_BLIND: the two CodeQL contexts only. Whole run 2652 s; seal minted 01:51:40Z, UNCHANGED at the end; 0 new containers or networks; coordinator venv unchanged."
+    cmd: ssh pro 'zsh chainb2h.sh start' (measure.sh with C=code-b2h and PY=executor-a/venv311; plan --pr-number 8041, run, status --seal, hosted_compare live)
+    exit: 0
+    ts: "2026-10-08T02:35:51Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "The Backend FALSE_RED is the VM's disk under two concurrent runs, not the candidate: free space fell from 17.7 GB to under 1 GB during backend-shard[2]/[3], while the shadow merger ran its own Backend Tests for PR #7961 on the same VM (its shard containers seen live beside ours). A backend shard sandbox's writable layer alone reached 9.5 GB (`docker ps --size`), so two shards at once exhaust a 59 GB VM that also holds 47 GB of images."
+    cmd: ssh pro 'docker run --rm --network none alpine df -m / (polled every 10-15 s); docker ps --size; docker system df'
+    exit: 0
+    ts: "2026-10-08T02:13:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "The -v cure holds live: 0 dangling volumes before the run; 6 after it, created in pairs at 02:07:39Z, 02:09:26Z and 02:11:20Z, the cadence of the merger's PR #7961 shard legs (main's runner, no -v). None coincides with the start of any of this run's service legs (01:59:38Z, 02:04:55Z, 02:06:56Z, 02:16:29Z, 02:33:42Z). On Pro's docker, test_a_removal_takes_the_anonymous_volume_and_spares_a_named_volume_and_a_bind_mount passes."
+    cmd: ssh pro 'docker volume ls -q -f dangling=true; docker volume inspect --format {{.CreatedAt}}; head -1 runs/b2h-main-ebdad0739f/logs/<leg>.log'
+    exit: 0
+    ts: "2026-10-08T02:40:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "535dbff589 removes every container with `docker rm -f -v` (_remove_verified for candidate and service containers, reap_containers for orphans). test_every_container_removal_takes_its_anonymous_volumes_with_it pins -v on every container-removal argv in runner.py's source (AST, both sites) and on the fake docker's argv; dropping -v from either site fails it (two mutants, each `1 failed`). The suite at 535dbff589: Pro with docker 689 passed, 0 skipped (297 s); M5 674 passed, 14 skipped (needs_docker)."
+    cmd: python3 -m pytest scripts/localci/tests -q (M5); PYTHONPATH=$W executor-b/venv311/bin/python -m pytest scripts/localci/tests -q -rs -p no:cacheprovider (Pro)
+    exit: 0
+    ts: "2026-10-08T02:40:51Z"
+    seat: claude-opus-5-5 on M5 and driving Pro over ssh
+  - claim: "First final-head run, 3875569f4d (before the -v cure), on origin/main head ebdad0739f (PR #8041, base 538251ee69): agreement=10/14 false_green=0 false_red=2 local_blind=2 hosted_pending=0. AGREE executed: Frontend Tests (Next.js) (mouth, true) 320 s wall / 518 s CPU, Visa Oracle fullstack smoke 115/44, Harness floor 66, antidotes, organ genes, guard guilt+innocence, R1 gate, actionlint, Merah Putih, catE. FALSE_RED: E2E Tests (npm's install printed 10036 `TAR_ENTRY_ERROR ENOSPC: no space left on device` lines and exited 0, then the collect step failed on a missing @sentry/core file) and Backend Tests (backend-shard[2] `asyncpg.exceptions.DiskFullError: ... No space left on device` in its service Postgres). LOCAL_BLIND: the two CodeQL contexts only. Whole run 2541 s; seal minted 00:51:10Z, UNCHANGED at the end; 0 new containers or networks; coordinator venv (executor-a/venv311) unchanged."
+    cmd: ssh pro 'zsh chainb2g.sh start' (measure.sh with C=code-b2g and PY=executor-a/venv311; plan --pr-number 8041, run, status --seal, hosted_compare live, docker ps -a / network ls before and after)
+    exit: 0
+    ts: "2026-10-08T01:33:31Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "Both FALSE_REDs are the host's disk, not the candidate: Pro's Colima /var/lib/docker read 9.9G free before the run and 13G after it, with 89 dangling anonymous volumes (docker system df: local volumes 9.75 GB, 5.87 GB reclaimable). postgres:15 and redis:7 declare VOLUME, and the runner removes service containers with `docker rm -f` without -v, so every service leg leaves one behind. Visa Oracle smoke, run later from the same deps image, installed with 0 tar errors; the B2 run on 1df44b9b65 had 0 in every npm leg."
+    cmd: ssh pro 'grep -c TAR_ENTRY_ERROR runs/*/logs/ctx.e2e-tests.e2e-tests.log (and the Visa/Frontend legs); docker system df; docker volume ls -q -f dangling=true | wc -l; docker image inspect postgres:15 redis:7'
+    exit: 0
+    ts: "2026-10-08T01:40:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: 'Fold (a) and (c) live: ebdad0739f planned by the final code WITHOUT --pr-number reads ctx.harness-floor BLOCKED (step "Does this PR''s own diff carry evidence/brief.yml?" env MERGE_GROUP_HEAD_REF reads github.event.merge_group.head_ref ... plan again with --pr-number), tests.backend_shards and tests.frontend_mouth NOT_APPLICABLE (superseded by ctx.backend-tests / ctx.frontend-tests-mouth); the three B2 contexts plan as contained_jobs.'
+    cmd: ssh pro 'runner.py plan --run-dir runs/b2g-nopr-ebdad0739f --worktree W --base 538251ee69 (no --pr-number)'
+    exit: 0
+    ts: "2026-10-08T00:51:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "1df44b9b65 (PR #8003, base d961f053b4), runner 1c26bf7a8b: agreement=12/14 false_green=0 false_red=0 local_blind=2 (CodeQL x2). E2E Tests AGREE executed (320 s wall / 207 s CPU), Frontend Tests (mouth, true) AGREE executed (297/515), Visa Oracle smoke AGREE executed (138/47); whole run 2784 s; seal UNCHANGED; 0 new containers/networks. 01d1241330 (PR #8004): 12/14 with the three B2 contexts not triggered by the change map and skipped hosted (agreement by skip, not execution)."
+    cmd: ssh pro 'chainb2.sh run' (measureb2.sh b2-main-1df44b9b65 1df44b9b65 d961f053b4 8003; measureb2.sh b2-main-01d1241330 01d1241330 1df44b9b65 8004)
+    exit: 0
+    ts: "2026-10-07T19:53:12Z"
+    seat: claude-opus-5-5 (first B2 Dux) driving Pro over ssh
+  - claim: "Guilt, unpushed, runner 1c26bf7a8b, base 1df44b9b65: e2e-red f4243e586b (a broken assertion in a spec the hosted grep selects) turns only E2E Tests RED (Run E2E tests rc=1); visa-red cbefb38be8 (a broken fullstack smoke) only Visa Oracle smoke RED (its Guard step rc=1); frontend-red aa46ad875e (a failing mouth vitest case) only Frontend Tests (mouth, true) RED (Run tests (with coverage) rc=1). hosted_compare HOSTED_PENDING on all 14 rows, agreement 0/14, never AGREE. Seals UNCHANGED; 0 new containers/networks."
+    cmd: ssh pro 'guilt-b2.sh 1df44b9b65; UNPUSHED=1 measureb2.sh b2-guilt-<g> <sha> 1df44b9b65'
+    exit: 0
+    ts: "2026-10-07T21:15:46Z"
+    seat: claude-opus-5-5 (first B2 Dux) driving Pro over ssh
+  - claim: "The guilt verdicts carry over to the final code: each guilt candidate planned under 3875569f4d differs from the plan its run used in 24 places of plan.checks, all named: 4 the coordinator interpreter path (executor-b to executor-a venv311), 17 Harness floor now BLOCKED (those runs were planned without --pr-number: fold a), 3 the two legacy records superseded (fold c). Every context that decided guilt (E2E, Visa Oracle smoke, Frontend, Backend) is identical."
+    cmd: ssh pro 'runner.py plan --run-dir runs/p7-guilt-<g> ... (code-b2g, login PATH); planid.py runs/b2-guilt-<g> runs/p7-guilt-<g>'
+    exit: 0
+    ts: "2026-10-08T01:47:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+  - claim: "The localci suite is green at 3875569f4d: on Pro with docker 687 passed, 0 skipped (296 s); on M5 without docker 673 passed, 13 skipped (needs_docker). Each of the five fold commits was green on test_service_contexts.py + test_runner.py before it was committed (232, 236, 242, 243, 244 passed), and the 13 new rows were run against the runner without the folds: the 11 guilt rows fail, the 2 innocence rows pass both ways. The brief's probes test_service_contexts.py::test_a_leg_selector_takes_exactly_the_leg_the_required_context_names, test_service_contexts.py::test_a_host_reader_that_could_not_read_github_is_asked_again_then_gives_no_verdict and test_service_contexts.py::test_a_step_timeout_is_emulated_in_a_service_context_and_blocked_elsewhere pass at this head (13 parametrized rows)."
+    cmd: PYTHONPATH=$W executor-b/venv311/bin/python -m pytest scripts/localci/tests -q -rs -p no:cacheprovider (Pro); python3 -m pytest scripts/localci/tests -q (M5)
+    exit: 0
+    ts: "2026-10-08T01:38:31Z"
+    seat: claude-opus-5-5 on M5 and driving Pro over ssh
+  - claim: "Capacity on Pro (Colima aarch64, 4 CPU, 8 GiB, shared with the shadow merger): E2E Tests 320 s wall / 207 s CPU, Frontend Tests (mouth, true) 297-320 / 515-518, Visa Oracle smoke 115-138 / 44-47; a whole run of 14 required contexts 2784 s on 1df44b9b65. Plan 6.8-7.5 s with the deps images cached. The E2E/Visa deps image is 11.9 GB (Python layers shared with Backend Tests'), Frontend's node-only one 1.4 GB."
+    cmd: ssh pro 'python3 -I timing.py runs/b2-main-1df44b9b65 runs/b2g-main-ebdad0739f; docker images'
+    exit: 0
+    ts: "2026-10-08T01:40:00Z"
+    seat: claude-opus-5-5 driving Pro over ssh
+dissent:
+  - seat: codex-gpt-6.1-sol
+    objection: "BLOCKER (round 1): the Install Playwright browsers step is not_applicable, so a hosted failure of that step (apt + CDN, the W118 flake) is not reproduced."
+    status: PLAUSIBLE
+    resolution: "Kept, by mandate: the browsers live in the deps image (the lock's playwright-core `install --with-deps chromium`, retried at build) and the sandbox never has root or network. Declared in the matrix parity_gaps for E2E and Visa Oracle smoke; a failed build is BLOCKED, never green."
+  - seat: codex-gpt-6.1-sol
+    objection: "BLOCKER (round 1): E2E empties six repository secrets hosted holds (QDRANT_URL, QDRANT_API_KEY, OPENAI_API_KEY, JWT_SECRET, E2E_TEST_EMAIL/PIN)."
+    status: CONFIRMED
+    resolution: "Not curable without prod credentials in a sandbox, which the constraints forbid. Declared: E2E coverage partial, the FALSE_GREEN shape named in parity_gaps; BASE's selected specs (page Page|@offline) read neither credential today."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR (round 1): the egress network rule could turn a real vulnerability finding into no verdict."
+    status: CONFIRMED
+    resolution: "A log that holds a finding keeps its verdict, network error or not (2087d23a2f). Corpus row: test_a_network_failure_in_the_egress_sandbox_is_no_verdict_on_the_candidate."
+  - seat: codex-gpt-6.1-sol
+    objection: "MINOR (round 1): the leg selector compares 1 == true and is not bound to the context name."
+    status: CONFIRMED
+    resolution: "Typed comparison, exactly one leg of the context's own job, its rendered values must end the context name (2087d23a2f). Probe: test_a_leg_selector_takes_exactly_the_leg_the_required_context_names."
+  - seat: codex-gpt-6.1-sol
+    objection: "MINOR (round 1) then PARTIAL (round 2): a 0.001-minute step timeout was dropped; the round-1 cure (ceil) lengthened a 0.06 s budget."
+    status: CONFIRMED
+    resolution: "timeout_s = minutes * 60, exact (d7599e3fe9). Probe: test_a_step_timeout_is_emulated_in_a_service_context_and_blocked_elsewhere."
+  - seat: codex-gpt-6.1-sol
+    objection: "BLOCKER (round 2): a declared parity gap does not stop a GREEN."
+    status: CONFIRMED
+    resolution: "Not cured, owed (B3). Nothing reads `coverage` today: no non-test file under scripts/localci mentions it (hosted_compare.py and merger.py have 0 hits for coverage/parity/partial). E2E is declared `coverage: partial` in contexts_matrix.yaml, but its row in hosted_compare.json carries no coverage key, so a `coverage: partial` AGREE counts as a full AGREE in hosted_compare and in the merger's count of compared contexts."
+  - seat: codex-gpt-6.1-sol
+    objection: "MAJOR (round 2): the reader's no-verdict marker matched echoed text, so a genuine red could become no verdict."
+    status: CONFIRMED
+    resolution: "Only the reader's own stderr line, line-anchored, counts (d7599e3fe9). Probe rows in test_a_host_reader_that_could_not_read_github_is_asked_again_then_gives_no_verdict."
+  - seat: codex-gpt-6.1-sol
+    objection: "MINOR (round 2): the browser symlink is writable within a leg; DEPS_BARE keeps the base image's python3."
+    status: PLAUSIBLE
+    resolution: "Residual, declared: hosted's ~/.cache is user-writable too, and candidate-produced verdicts are already the stated residual. The candidate image keeps /usr/local/bin/python3 (checked on Pro)."
+  - seat: agy-gemini-3.1-pro
+    objection: "BLOCKER (round 1): repository secrets are overridden to empty."
+    status: CONFIRMED
+    resolution: "Same finding as Codex round 1: declared, E2E coverage partial."
+  - seat: agy-gemini-3.1-pro
+    objection: "MAJOR (round 1): upload steps are not_applicable even when the candidate edits its workflow."
+    status: RETRACTED
+    resolution: "Disputed with the code: BASE's workflow is the one planned, and a green won while the candidate changed it is BLOCKED (judge_modified). Probe: test_the_base_service_spec_is_the_one_planned_whatever_the_candidate_writes."
+  - seat: agy-gemini-3.1-pro
+    objection: "MAJOR (round 1): arm64 optional native npm packages differ from hosted x64."
+    status: CONFIRMED
+    resolution: "Declared in parity_gaps (a lock that lacks the linux-x64 optional package hosted needs is GREEN here)."
+  - seat: agy-gemini-3.1-pro
+    objection: "BLOCKER (round 1): a git dependency cannot install offline (Frontend's wa-mirror npm ci)."
+    status: CONFIRMED
+    resolution: "A github dependency pinned to a full 40-hex commit is fetched as its https tarball at plan; a moving ref is BLOCKED (602fc48632). Measured on Pro: Frontend Tests (mouth, true) executed and PASS, wa-mirror included. Probe: test_a_github_dependency_pinned_to_a_full_commit_is_fetched_and_a_moving_one_is_refused."
+  - seat: agy-gemini-3.1-pro
+    objection: "MAJOR (round 1): a string timeout '5' is BLOCKED."
+    status: PLAUSIBLE
+    resolution: "Kept: BLOCKED is no verdict, never a wrong one; the real jobs use numbers."
+  - seat: agy-gemini-3.1-pro
+    objection: "BLOCKER (round 2): the reader's marker in echoed text masks a red."
+    status: CONFIRMED
+    resolution: "Same cure as Codex round 2 (d7599e3fe9): stderr, line-anchored; the echo is stdout."
+  - seat: agy-gemini-3.1-pro
+    objection: "MINOR (round 2): a reader exiting 0 on a network failure would read green."
+    status: RETRACTED
+    resolution: "BASE's reader returns 1 there, and the same script decides hosted."
+  - seat: agy-gemini-3.1-pro
+    objection: "MAJOR (round 2): DEPS_BARE drops Python, which node-gyp needs."
+    status: RETRACTED
+    resolution: "The candidate image keeps python3 at /usr/local/bin (checked on Pro); the node-only recipe starts from it (e543b35266)."
+  - seat: "claude-opus-5-5 (PR-B1 final gate, fresh session)"
+    objection: "Notice (a): a context whose steps read merge_group.head_ref runs on an empty ref when the runner gets no --pr-number."
+    status: CONFIRMED
+    resolution: "BLOCKED naming the step and --pr-number; github.ref and the holders too (f46e6708bc). Seen live on Pro: Harness floor BLOCKED on ebdad0739f planned without --pr-number."
+  - seat: "claude-opus-5-5 (PR-B1 final gate, fresh session)"
+    objection: "Notice (c): the legacy tests.backend_shards record still claims no local backend runner exists."
+    status: CONFIRMED
+    resolution: "Its readers are the suite's fixtures, so the key stays: NOT_APPLICABLE 'superseded by ctx.backend-tests' once that context is planned; tests.frontend_mouth likewise (3875569f4d)."
+  - seat: "claude-opus-5-5 (PR-B1 final gate, fresh session)"
+    objection: "Notices (d), (e), (f): a service's volumes are silently dropped; a declared env.X reads '' where the runner evaluates a text itself; a refused secret does not name its variable."
+    status: CONFIRMED
+    resolution: "Each BLOCKED naming what it refuses, names only (a78908a6fb, 4618fdf492, bf83f6c13d), with guilt and innocence rows."
+residuals:
+  - "Owed (B3): hosted_compare carries each context's `coverage` on its row and the merger counts `partial` AGREEs apart from full ones. Today a `coverage: partial` AGREE (E2E) counts as full in both."
+  - "Gate LOW: test_every_container_removal_takes_its_anonymous_volumes_with_it walks runner.py's AST only; a container removal in another module, or written as a list literal whose first element is a constant, would escape it."
+  - "12/14 on the final head is owed: 535dbff589 read 11/14 with E2E, Frontend and Visa Oracle smoke AGREE, and Backend Tests FALSE_RED on disk while the shadow merger ran beside it. A Backend-only re-run needs the VM to itself (the merger paused, an operator decision), or a larger VM disk. 1df44b9b65 read 12/14 on runner 1c26bf7a8b."
+  - "Until this merges, main's runner (and the live shadow merger) still removes containers without -v: each of its service legs leaves an anonymous volume (6 more appeared during this run)."
+  - "A disk-full failure in a contained step reads FAIL (FALSE_RED), as a network failure did before PR-B2 made it no verdict; an ENOSPC rule, or a free-space floor before a sandbox starts, is owed. The measurement and the merger share one 59 GB VM with no admission control between them."
+  - "E2E runs with the six repository secrets empty: a candidate whose backend start or selected specs fail only with them set is GREEN here and RED hosted (FALSE_GREEN shape, declared in parity_gaps; coverage partial)."
+  - "The browser-install steps of E2E and Visa Oracle smoke are not run (the deps image installs the lock's browser); a hosted failure of that step is not reproduced. npm installs offline on linux/arm64: a lock missing the linux-x64 optional native package hosted needs is GREEN here."
+  - "The six folds (a-f) and the -v cure had no adversarial round of their own: they follow the PR-B1 final gate's notices and carry guilt and innocence rows; the independent final gate is the orchestrator's. tests.frontend_mouth was folded with tests.backend_shards because its context is this PR's."
+  - "PR size: +681/-84 against the merge base 538251ee69 (runner +212/-31, matrix +167/-46, tests +272/-3, README +30/-4), 597 net, above the ~400 guide; the three contexts share one planner path and one deps recipe, and the folds amend the same functions."
+  - "Journal lines name the commits as they were when each seat reviewed them; after the rebase onto 538251ee69, 10e41088e9/5f1ddd436a/9b387e0129/350be47f38/20f2a17f3f/1c26bf7a8b/746d4d3d11 are bdd63777ca/9cbefabaa4/602fc48632/2087d23a2f/7172810893/ffa1b01ece/d7599e3fe9."

@@ -1,0 +1,96 @@
+brief_ref: evidence/brief.yml
+council_run: "council-journal.jsonl"
+seat_override:
+  "The imperator's W0 dispatch prescribes exactly one cross-family refuter (codex-gpt-5.6-sol,
+  xhigh, read-only, one round) and forbids substitute reviewers. The Gear-3 floor is path-only:
+  one new 33-line advisory workflow under .github/workflows/ that runs the replay test, plus its one-line entry in main-push-failure-watch.yml. The second,
+  independent grader is the fresh Opus 5.5 gate session that signs harness/fable-gate on the head."
+plan_ref:
+  "docs/plans/2026-10-08-kbli-navigator-design-loop.md §1, row W0; imperator dispatch 2026-10-08
+  (mission kbli-nav-design-loop/W0, BLUE, Dux Opus 5.5); imperator ruling 2026-10-08 upholding the
+  #8047 gate BLOCK and ordering this depth-1 successor."
+lanes:
+  - lane: kbli-r19-w0c-1008
+    role: build
+    seat:
+      "claude-opus-5-5 (Dux: wrote the census, the contract, the replay test and the workflow, ran
+      the live census, folded the refuter finding, applied the spec fixes from the PR 8047 gate, authored
+      this pack)"
+  - lane: kbli-r19-w0b-1008-refuter-codex
+    role: review
+    seat: "codex-gpt-5.6-sol (round 1 on the same census and contract, REFUTED: 1 finding, folded)"
+
+pii_scan: clean
+pii_scan_note:
+  "KBLI classification data is public. The refuter prompt carried the contract table, the census
+  output, the token definitions, the CSS paint rules and five component sources, and nothing else.
+  Codex ran read-only from an empty directory with env -i (HOME, PATH, TERM only)."
+
+diff:
+  net_lines: |
+    Code: 561 lines for the census with its in-page probe, 103 for the test, 33 for the workflow
+    and 1 in main-push-failure-watch.yml.
+    Data: a 439-line JSON Lines fixture (one read or colour per line) and the 489-line spec, which
+    is mostly the 357-row contract table. The table is the deliverable; the size is the surface.
+    Against #8047's head 94f8f4a1a0, only the spec differs, by 6 changed lines.
+  behaviour_change: >-
+    New read-only tooling and a spec; no runtime surface changes. scripts/mouth/r19_wrapper_token_census.py
+    walks the rendered /kbli* DOM and judges it against the contract table in
+    docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md. A new advisory workflow replays the
+    committed census on PRs touching those paths.
+
+receipts:
+  - claim: "Spec §6 live command, run verbatim from this worktree (base b8cf9e56dc, content as committed). The census started and killed its own dev server. It printed captures 30 ok, 0 failed; reads 310 (var 79, class 206, rule 14, component 11); defined-above-wrapper 78; read-but-undefined: 0; colors-outside-direction-a: 128. The dump matches the committed fixture: reads 310 vs 310 and colours 128 vs 128, both differences empty, no defined mismatch. Afterwards nothing listens on 3419 and no next dev process is left."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --json /tmp/census.json; lsof -nP -iTCP:3419 -sTCP:LISTEN; pgrep -fl 'next dev'"
+    result: "read-but-undefined: 0 / colors-outside-direction-a: 128"
+    exit: 0
+    ts: "2026-10-08T03:55:31Z"
+    seat: claude-opus-5-5
+  - claim: "Spec §6 replay command, run verbatim. It reads the committed .jsonl fixture the #8047 spec misnamed."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --replay scripts/mouth/tests/fixtures/r19_wrapper_census.jsonl"
+    result: "read-but-undefined: 0 / colors-outside-direction-a: 128"
+    exit: 0
+    ts: "2026-10-08T03:58:06Z"
+    seat: claude-opus-5-5
+  - claim: "Path audit: every path or file name the spec mentions, extracted by regex and listed from the repo root. The first pass found 3 that did not resolve from the root (src/test/r19-colour-guard.ts, components/r19/presentation.ts, a bare R19Presentation.module.css). The two paths are now rooted at apps/mouth/, and the bare file name became 'the R19Presentation shell'. The second pass lists 7 of 7, and r19_wrapper_token_probe appears 0 times."
+    cmd: "ls -ld <every path the spec names>"
+    result: "7 OK, 0 MISS"
+    exit: 0
+    ts: "2026-10-08T03:58:06Z"
+    seat: claude-opus-5-5
+  - claim: "Offline replay: 11 tests pass (innocence 0; one extra read gives 1 naming it; one removed row gives 1 naming --color-text-secondary; an incomplete census never prints 0; five contract mutations refused; the CLI prints the verdict last)."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider"
+    result: "11 passed"
+    exit: 0
+    ts: "2026-10-08T03:56:41Z"
+    seat: claude-opus-5-5
+  - claim: "Guilt control on this head: verdict() line 140 replaced with missing = [] in place after a cp backup to scratch. The two guilt tests went red. Restored with cp, cmp -s reports identical, the script equals #8047's blob, and all 11 pass."
+    cmd: "mutate verdict() in a scratch copy, run pytest, restore with cp, cmp -s"
+    result: "2 failed, 9 passed -> 11 passed"
+    exit: 0
+    ts: "2026-10-08T03:56:41Z"
+    seat: claude-opus-5-5
+  - claim: "Workflow conformance on this head: the timeout floor reports 173 jobs clean at the 10m floor, actionlint exits 0 on both touched workflows, and watcher coverage reports all 130 live workflows covered."
+    cmd: "python3 scripts/lint_workflow_timeout_floor.py; actionlint .github/workflows/r19-wrapper-census-tests.yml .github/workflows/main-push-failure-watch.yml; python3 scripts/check_watcher_coverage.py"
+    result: "clean; exit 0; all 130 covered"
+    exit: 0
+    ts: "2026-10-08T03:58:06Z"
+    seat: claude-opus-5-5
+  - claim: "Refuter round 1, codex-gpt-5.6-sol at xhigh effort, read-only, empty directory, scrubbed env; the prompt inlined the contract, the census output and reads, every --kbli-*/--r19-* definition, every CSS paint rule and the surface's core component sources. The census script, fixture and contract rows it judged are unchanged here."
+    cmd: 'env -i HOME="$HOME" PATH="$PATH" TERM=dumb codex exec -s read-only -C <empty dir> -m gpt-5.6-sol -c model_reasoning_effort=xhigh --skip-git-repo-check -o verdict.md "<prompt>" < /dev/null'
+    result: "VERDICT: REFUTED (1 finding)"
+    exit: 0
+    ts: "2026-10-08T00:49:46Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "Fold proof: with font-weight counted as a type read, the live census first printed read-but-undefined: 16. That was 6 weight classes, 6 --font-weight-* vars, strong and .kbli-prose ul li strong, plus NavShell and TrustBand. All 16 were mapped in the contract, and the replay and the head run print 0."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --json <scratch>/census5.jsonl"
+    result: "read-but-undefined: 16 -> 0 after the rows"
+    exit: 0
+    ts: "2026-10-08T03:16:08Z"
+    seat: claude-opus-5-5
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "--font-weight-extrabold (.font-extrabold on h1.kbli-flag-title, /kbli, all six states) is read and missing from the contract: PAINT admits font and font-family but not font-weight."
+    status: CONFIRMED
+    resolution: "Fixed: font-weight is now a type read, because Direction A fixes one weight per face. The re-run found 16 such reads, all now rows. The type scale (size, line-height, letter-spacing) stays declared geometry."

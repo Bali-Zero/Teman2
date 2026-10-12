@@ -1,0 +1,98 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 decisions/audit — the price rows must say what the official pages say about the
+  Second Home permit, not that it is non-working.
+mission: >-
+  The E33 and E33E price rows stop calling the permit non-working.
+lanes:
+  - lane: pr17-e33-price-descriptions
+    role: build
+    seat: Claude Sonnet 5 implementer, worktree pricing-vo-pr17-e33desc-1011 on M5.
+  - lane: pr17-ground-truth
+    role: ground_truth
+    seat: >-
+      the official imigrasi.go.id pages for E33 and E33E, which state "Selain itu, anda juga dapat
+      melakukan kegiatan bekerja, menempuh pendidikan atau kegiatan lainnya ... dengan melakukan
+      pelaporan rangkap kegiatan ke kantor imigrasi yang menerbitkan izin tinggal." The same pages state the prohibition: "Anda dilarang tinggal di wilayah Indonesia melebihi jangka waktu izin tinggal, melakukan pekerjaan yang tidak sesuai dengan izin tinggal, melakukan penjualan barang atau jasa, terkecuali diperlukan dalam pekerjaannya." The E33F page
+      permits business, meetings, shopping and tourism and never mentions work or study, so its rows
+      are untouched.
+    nb: apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+    query_hash: "a9c37a23bdce45f060a160f714a994ed2792dd53585eb11882c7fe440fd38c8c" # pragma: allowlist secret
+    note: >-
+      nb and query_hash identify the TARGET file (sha256 of the pricing file at origin/main before
+      the change), not the official source. Sources as cited in the repo, URLs
+      https://www.imigrasi.go.id/wna/permohonan-visa-republik-indonesia/e33-visa-rumah-kedua (E33),
+      https://www.imigrasi.go.id/wna/permohonan-visa-republik-indonesia/e33e-visa-lanjut-usia (E33E),
+      https://www.imigrasi.go.id/wna/permohonan-visa-republik-indonesia/e33f-visa-lanjut-usia (E33F).
+      No retrieval-date hash of the pages is recorded in this pack; the quoted sentence was read
+      by the lane at build time.
+pii_scan: clean
+bites:
+  consumer: >-
+    PricingService.get_all_prices() (the pricing knowledge layer loader) and the two data files it
+    and the Mouth loader read (canonical price file and its mirror). The public pricing endpoint
+    and the Mouth price cards are left to the post-deploy PROVE-LIVE step, not claimed by this observer.
+  where: ci
+  observe: python3 scripts/ci/observe_e33_price_descriptions.py
+  expect: "contains:E33 descriptions hold"
+receipts:
+  - claim: The data tests (full clause plus the selling prohibition, all three E33F descriptions frozen, mirror parity, PricingService.get_all_prices) and the observer parser tests pass.
+    cmd: python3 -m pytest -q tests/scripts/test_e33_price_descriptions.py tests/scripts/test_observe_e33_price_descriptions.py
+    result: "24 passed"
+    exit: 0
+    ts: "2026-10-11T10:00:00Z"
+    seat: this session
+  - claim: The observer passes on the branch head and accepts only a full pass of at least 12 tests, with a 240s timeout.
+    cmd: python3 scripts/ci/observe_e33_price_descriptions.py
+    result: "14 passed in 0.59s; E33 descriptions hold"
+    exit: 0
+    ts: "2026-10-11T10:00:00Z"
+    seat: this session
+  - claim: The mouth mirror is in sync with the canonical pricing tool.
+    cmd: python3 scripts/sync_frontend_prices.py --check
+    result: "INFO OK: bali-zero-prices.json is in sync with PricingTool canonical."
+    exit: 0
+    ts: "2026-10-11T10:00:00Z"
+    seat: this session
+decisions:
+  - id: D-e33f-untouched
+    decision: >-
+      E33F rows keep their text: its official page never mentions work or study.
+  - id: D-catalogue-followup
+    decision: >-
+      apps/backend-rag/backend/services/visa_check/catalogue.py still says non-working for E33 notes;
+      out of scope here, flagged as a follow-up in the PR body.
+dissent:
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T13-06-05-01a1295a-97f4-75f0-9602-09c529952555.jsonl, model verified in the rollout file)
+    objection: "MEDIUM 1: the test passes on semantically false copy (only checks absence of non-working and presence of rangkap kegiatan) and does not guard E33F."
+    status: RETRACTED
+    disposition: Cured in the fix commit after 8c62179b1e; the test now matches the full normalised clause (work or study only after rangkap kegiatan reporting to the issuing office) and asserts the E33F rows keep non-working residency and never mention rangkap.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T13-06-05-01a1295a-97f4-75f0-9602-09c529952555.jsonl, model verified in the rollout file)
+    objection: "MEDIUM 2: the observer does not traverse the declared consumer (get_all_prices / endpoint / Mouth loader)."
+    status: PLAUSIBLE
+    disposition: Partly cured in the fix commit; the observed test now goes through PricingService.get_all_prices() and asserts mirror parity with the canonical rows that the Mouth loader reads. Accepted limit, a live probe of the public endpoint after the fly deploy is a post-merge prove-live step, not a CI observer.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T13-06-05-01a1295a-97f4-75f0-9602-09c529952555.jsonl, model verified in the rollout file)
+    objection: "MEDIUM 3: the normative source is not reproducible (no URLs, date or hash; nb and query_hash point at the modified file)."
+    status: PLAUSIBLE
+    disposition: Partly cured in the fix commit; exact E33, E33E and E33F URLs recorded and the nb and query_hash fields are labelled as the target. Accepted limit, no page hash or retrieval date was captured.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T13-06-05-01a1295a-97f4-75f0-9602-09c529952555.jsonl, model verified in the rollout file)
+    objection: "LOW 4: the English copy loses that reporting goes to the office that issued the permit."
+    status: RETRACTED
+    disposition: Cured in the fix commit; both files now say reporting to the immigration office that issued the stay permit, mirror in sync.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T13-06-05-01a1295a-97f4-75f0-9602-09c529952555.jsonl, model verified in the rollout file)
+    objection: "LOW 5: the observer has no subprocess timeout."
+    status: RETRACTED
+    disposition: Cured in the fix commit; timeout of 240s, TimeoutExpired prints FAILED and exits 1.
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-25-01a129c7-d6bb-7132-8ab0-8d1f6a968494.jsonl, model verified in the rollout file)
+    objection: "HIGH 1: the new copy omits the official prohibition on selling goods or services, so work reads as unqualified; the test passes anyway."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit; both EN descriptions (canonical and mirror, synced) now end the clause with Selling goods or services is prohibited., a required regex in the data and PricingService tests; the Indonesian prohibition sentence is quoted in the ground-truth lane. Compensation from Indonesian parties: no such clause appears in the fetched E33 or E33E official pages, so it is not asserted."
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-25-01a129c7-d6bb-7132-8ab0-8d1f6a968494.jsonl, model verified in the rollout file)
+    objection: "MEDIUM 2: the Bites consumer names the public endpoint and Mouth cards, but the observer exercises a fresh PricingService and two files."
+    status: PLAUSIBLE
+    disposition: "Cured by narrowing the declared consumer to PricingService.get_all_prices() and the two data files; endpoint and cards are explicitly left to post-deploy PROVE-LIVE."
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-11T15-05-25-01a129c7-d6bb-7132-8ab0-8d1f6a968494.jsonl, model verified in the rollout file)
+    objection: "LOW 3: E33F untouched is not really verified (two rows, two fragments)."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit; an explicit fixture freezes the full description_en of all three E33F rows (Offshore, Altus/Onshore, Extend) in both files; the test is renamed accordingly. Price, validity and note fields are not in the fixture and are guarded by the diff, which touches only two description lines per file."

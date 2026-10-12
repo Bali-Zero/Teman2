@@ -1,0 +1,108 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa night plan (I-X02, investor lane): the E28 family (E28A, E28B, E28C, E28D, E28F) had no gold-coverage
+  persona, so the floor gate could not notice a rule change that unsupported any of the five investor products.
+mission: >-
+  The gold-coverage floor gate replays E28A, E28B, E28C, E28D and E28F on the newest signed pack, so a rule
+  change that unsupports any of the five turns the gate red.
+lanes:
+  - lane: ix02-personas
+    role: build
+    seat: kimi-code/kimi-for-coding via seat_build (built the five personas and the seq-19/seq-20 count wiring in the Mini worktree).
+  - lane: ix02-package
+    role: build
+    seat: claude-sonnet-5 (packager; cured four LOW wording findings, ran the suite, wrote this pack).
+  - lane: ix02-redteam
+    role: review
+    seat: claude-opus (read-only red team; replayed seq-27, ran guilt mutations on all five, replayed seq-19/seq-20, ran the suite).
+pii_scan: clean
+bites: "consumer: the gold-coverage floor gate (test_gold_coverage_floor.py globs gold_coverage/personas and replays them through apps/backend-rag/backend/scripts/visa_engine/gold_coverage_replay.py); observation: in the PR-lane backend-tests run and the merge_group run test_gold_coverage_floor.py passes over 28 personas including E28A, E28B, E28C, E28D, E28F."
+receipts:
+  - claim: "The gold-coverage floor and the seq-19 and seq-20 persona replays are green after the cures (E28A replays on both older packs; E28B, E28C, E28D and E28F are excluded by name there)."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_gold_coverage_floor.py backend/tests/services/visa_engine/test_seq19_pack.py backend/tests/services/visa_engine/test_seq20_pack.py -k "Gold or gold or floor" -p no:cacheprovider
+    result: "53 passed, 131 deselected"
+    exit: 0
+    ts: "2026-10-12T02:29:54Z"
+    seat: this session (Mini worktree)
+  - claim: "The floor test passes over the whole corpus (summary total equals the folder file count, 28; file names match product codes)."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_gold_coverage_floor.py -p no:cacheprovider
+    result: "3 passed (test_corpus_is_not_empty, test_every_corpus_persona_is_supported_for_its_product, test_corpus_file_names_match_their_product_code)"
+    exit: 0
+    ts: "2026-10-12T02:29:54Z"
+    seat: this session (Mini worktree)
+  - claim: "The whole visa_engine service test tree, with xdist, at the cured working tree on top of 12200510b2."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine -p no:cacheprovider -n 6
+    result: "2967 passed, 15 skipped, 2 failed, 31 errors in 32.14s. All 33 non-passes are database-side: 31 errors in test_evaluate_endpoint.py (asyncpg TooManyColumnsError: tables can have at most 1600 columns) and 2 failures in test_visa_engine_retention_fk_registry.py (test_restore_only_reapplies_the_entry_that_was_actually_unwound: migration 281 not live; test_unwind_survives_overlapping_policies_of_two_garuda_scopes: UndefinedColumnError policy_scope)."
+    exit: 1
+    ts: "2026-10-12T02:30:34Z"
+    seat: this session (Mini worktree)
+  - claim: "The same 33 non-passes reproduce on the Mini main checkout at 12200510b2 with no change from this branch, so they come from the local test-database schema, not from the personas."
+    cmd: cd /Users/nuzantara/nuzantara/apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_evaluate_endpoint.py backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py -p no:cacheprovider
+    result: "2 failed, 266 passed, 31 errors - the identical failures and errors (the red team measured the whole tree there as 2965 passed; the +2 here are the new E28A cases on seq-19 and seq-20)"
+    exit: 1
+    ts: "2026-10-12T02:30:50Z"
+    seat: this session (Mini main checkout)
+  - claim: "Red team replay on the newest signed pack (rulepack-prod-027, pinned to its signed_at 2026-10-10T03:42:26Z): all five personas SUPPORTED_CANDIDATES with no missing_facts."
+    cmd: gold_coverage_replay._evaluate_persona over the five personas
+    result: "E28A [E28A]; E28B [D12,E28B]; E28C [D12,E28C]; E28D [D12,E28D]; E28F [D12,E28D,E28F]"
+    exit: 0
+    ts: "2026-10-12T02:30:50Z"
+    seat: claude-opus (red team)
+  - claim: "Guilt mutations: flipping each persona's key fact (pt_pma_committed, paid-up capital, capital, role, purposes to TOURISM for E28A; establishes_indonesian_company, capital_market_only, foreign_branch_or_subsidiary, ikn_subsidiary and meets_published_threshold for E28B/C/D/F) turns every variant red or drops the expected candidate."
+    cmd: gold_coverage_eval on mutated copies of the five personas
+    result: "every mutation red (NEEDS_INPUT, NO_SUPPORTED_PATH, or SUPPORTED with the expected candidate missing)"
+    exit: 0
+    ts: "2026-10-12T02:30:50Z"
+    seat: claude-opus (red team)
+  - claim: "Older-pack replay: E28A is SUPPORTED [E28A] on the seq-19 and seq-20 compiled packs; E28B/C/D/F give SUPPORTED [D12] only there, so the by-name exclusions are justified. el.e28b/c/d/f exist only from rulepack-prod-021 onward."
+    cmd: replay of the five personas against the seq-19 and seq-20 compiled packs; grep of all prod packs
+    result: "E28A green on both; E28B/C/D/F lack E28x on both; packs 001-020 carry only the four review.e28*.*-manual rules"
+    exit: 0
+    ts: "2026-10-12T02:30:50Z"
+    seat: claude-opus (red team)
+decisions:
+  - id: D-exclusion-by-name
+    decision: >-
+      E28B, E28C, E28D and E28F are excluded by name from the seq-19 and seq-20 coverage replays, the shape already
+      used for E33G, D2__121D, E23U and E23V: those packs carry only review.e28b.usd-threshold-manual,
+      review.e28c.usd-threshold-manual, review.e28d.usd-threshold-turnover-manual and
+      review.e28f.ikn-threshold-manual, and the eligibility support rules el.e28b.company-establishment,
+      el.e28c.capital-market, el.e28d.branch-or-subsidiary and el.e28f.ikn-subsidiary first appear in
+      rulepack-prod-021. E28A replays green on both and stays in.
+  - id: D-counts
+    decision: >-
+      seq-19 replays 20 of the 28 personas (test_corpus_has_twenty_personas) and seq-20 replays 22
+      (test_corpus_has_twenty_two_personas); the seq-27 floor replays all 28.
+  - id: D-synthetic
+    decision: >-
+      The personas are synthetic (generic label, nationality, role, age); no real-person data.
+dissent:
+  - seat: "claude-opus (red team)"
+    objection: "LOW 1: the comment in both seq-19 and seq-20 tests says el.e28a.investment exists since seq-15 (seq-19: folded into seq-19); in fact it is already in rulepack-prod-001."
+    status: RETRACTED
+    disposition: "Cured: both comments now say it has existed since the first signed pack, seq-001."
+  - seat: "claude-opus (red team)"
+    objection: "LOW 2: the pattern review.e28b/c/d/f.*-threshold-manual does not match E28D's real review rule review.e28d.usd-threshold-turnover-manual."
+    status: RETRACTED
+    disposition: "Cured: both comments now name the four review rule ids exactly."
+  - seat: "claude-opus (red team)"
+    objection: "LOW 3: the section header at test_seq19_pack.py:854 still says Gold-coverage replay (19 of 23 personas)."
+    status: RETRACTED
+    disposition: "Cured: the header now reads 20 of 28 personas."
+  - seat: "claude-opus (red team)"
+    objection: "LOW 4: E28F.json label says Korean renewables group director (47), but birth_date 1979-12-08 makes the applicant 46 at both the entry date and the pack signed_at."
+    status: RETRACTED
+    disposition: "Cured: the label now says (46)."
+  - seat: "claude-opus (red team)"
+    objection: "INFO: E28A facts pair pt_pma_committed=true with establishes_indonesian_company=false, and its override keys are not alphabetical; a future seq-29 rule linking E28A to company establishment could turn the persona red for a reason the label hides."
+    status: PLAUSIBLE
+    disposition: "Kept as built: the plan's routes-off instruction asked for exactly this, it keeps E28B out of E28A's candidates today, and no rule reads the pair as a conjunct. If seq-29 adds such a conjunct, the persona goes red on that rule change, which is the gate working. Key order is cosmetic and not changed."
+  - seat: "claude-opus (red team)"
+    objection: "INFO: E28A read 'offshore IT' as a software founder with nationality DE; the plan may have meant Italian nationality. No location fact is set on any E28 persona."
+    status: PLAUSIBLE
+    disposition: "Accepted: no rule reads nationality for E28A, and the E23 reference persona sets no location fact either."
+  - seat: "claude-opus (red team)"
+    objection: "Suite note: 2 failures and 31 errors in the visa_engine tree (test_evaluate_endpoint.py, test_visa_engine_retention_fk_registry.py), identical on Mini main at the same HEAD."
+    status: RETRACTED
+    disposition: "Baselined here: the identical 2 failed and 31 errors reproduce on the main checkout at 12200510b2 with this branch absent; neither file touches gold coverage or personas. Local test-database schema state."

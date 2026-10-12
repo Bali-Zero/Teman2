@@ -31,10 +31,12 @@
 #       M5/balizero). Replaced with a physical copy of canonical.
 #
 # OUT OF SCOPE (handled by the native-app deploy script, not the repo):
-#   ~/Desktop/logo/kbli-navigator-app/Resources/KBLI_2025_FINAL_CLEAN.json
-#     — the standalone macOS app (OUTSIDE this repo, NOT apps/kbli-navigator/ above).
-#       deploy/install-3mac.sh copies it from the app's own Resources/. If you change
-#       canonical, re-run the app build+deploy to refresh it.
+#   apps/kbli-navigator-macos/ (the native macOS app) — now IN this repo (imported
+#     2026-10-07; full-history archive at ~/kbli-navigator-app on M5 and in
+#     gdrive:M5-archive-2026-10-06/logo-tar/kbli-navigator-app.tar). Its build.sh copies
+#     canonical into its own Resources/ at every build, and deploy/install-3mac.sh ships
+#     it from there; this script does NOT write into it. If you change canonical,
+#     re-run the app build+deploy to refresh the fleet. NOT apps/kbli-navigator/ above.
 #
 # Usage:
 #   scripts/sync_kbli_dataset.sh           # propagate canonical → all consumers
@@ -114,7 +116,7 @@ if [[ "$MODE" == "--check" ]]; then
 fi
 
 # ── native-app fleet notice (local only — never CI, never --check) ─────────────────
-# The macOS KBLI Navigator (~/Desktop/logo/kbli-navigator-app, OUTSIDE this repo) ships its
+# The macOS KBLI Navigator (apps/kbli-navigator-macos, in this repo since 2026-10-07) ships its
 # own copy of the dataset; its build refreshes from canonical, but only a deploy pushes
 # it to the 3-Mac fleet + the team zip. This block makes the drift VISIBLE at exactly
 # the moment canonical changes (this script is the mandatory step after any change),
@@ -129,7 +131,7 @@ fi
 # NEXT run of install-3mac.sh (a separate, later step) -- until then this notice will
 # correctly report "no .app on <host> to check" rather than silently comparing against
 # a path nothing writes to anymore.
-APP_REPO="${KBLI_APP_REPO:-$HOME/Desktop/logo/kbli-navigator-app}"
+APP_REPO="${KBLI_APP_REPO:-$REPO_ROOT/apps/kbli-navigator-macos}"
 APP_BUNDLE_DIR="${KBLI_APP_BUNDLE_DIR:-$HOME/Desktop/KBLI Navigator - INTERNAL.app}"
 if [[ "$MODE" == "sync" && -z "${CI:-}" ]]; then
   # The verdict itself lives in scripts/lib/kbli_fleet_notice.sh so it can be pointed at a

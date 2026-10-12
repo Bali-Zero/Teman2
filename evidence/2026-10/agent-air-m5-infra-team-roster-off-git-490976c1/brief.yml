@@ -1,0 +1,47 @@
+task: >-
+  One loader for the staff roster, suppliable from outside git, and the end of its stale hand-copied twin.
+  The backend read backend/data/team_members.json from four places with six hardcoded candidate paths, and
+  backend/data/team_members.py carried a second copy of the same staff personal data (19 entries, last
+  updated 2026-04, drifted from the JSON in 28 field values). Products are moving to the private repository
+  FastLabsNet/zero, which must not carry staff personal data: the JSON is already cut from its export, but
+  the .py twin is exported and still holds the data.
+lane: infra
+machine: m5
+date: 2026-10-10
+gear: 2
+gear_reason: >-
+  Deterministic floor 2 via the SIZE term (net -232 lines: the twin's 400 lines of data go); every file
+  alone computes floor 1 and no hot-zone path is touched. A backend-rag merge deploys nuzantara-rag.
+acceptance:
+  A1:
+    text: >-
+      WHEN TEAM_MEMBERS_JSON is set the loader SHALL use it; ELSE WHEN TEAM_MEMBERS_FILE is set it SHALL use that
+      path and raise TeamRosterError if it does not exist; ELSE it SHALL read the package file and return [] only
+      when that file is absent; a malformed source SHALL raise naming the source and never its content.
+    probe: PYTHONPATH=. python -m pytest backend/tests/unit/core/test_team_roster.py (from apps/backend-rag)
+  A2:
+    text: >-
+      team_members.py SHALL carry no data and TEAM_MEMBERS SHALL equal the JSON roster (same count, every JSON
+      email present); CollaboratorService, TeamKnowledgeTool, TimeSheetTool and migration 027 SHALL read through
+      the loader with their previous failure behaviour.
+    probe: >-
+      PYTHONPATH=. python -m pytest backend/tests/services/crm/test_collaborator_service.py
+      backend/tests/services/oracle/test_oracle_database.py backend/tests/services/rag/agentic/test_agentic_tools.py
+      backend/tests/unit/services/rag/agentic/test_tools_coverage.py backend/tests/test_data_invariant_tripwires.py
+  A3:
+    text: Live after the merge-deploy, nuzantara-rag SHALL answer /health green with the roster still read from the package file.
+    probe: curl -s https://nuzantara-rag.fly.dev/health
+out_of_scope: >-
+  Setting the TEAM_MEMBERS_JSON Fly secret (only when zero becomes the deploy source, docs/runbooks/zero-cutover.md
+  gate 4); removing the tracked JSON from this repository; scripts/seed_users.py, scripts/prepare_payloads.py and
+  cli/ingestion_cli.py (manual tools with explicit paths).
+assumptions:
+  - text: The local pre-push backend run's 172 setup errors and 1 failure come from this machine's test database (tables such as garuda_voa_check_results missing) and its venv's google-genai drift, not from this diff.
+    status: verified
+    probe: >-
+      none of the 9 files imports roster code (grep of each file and its conftest chain); on this branch and on an
+      origin/main worktree, test_intake_routing.py gives "1 passed, 12 errors" and the genai pin test "1 failed,
+      5 passed" identically.
+  - text: Gear 2 needs the independent final-gate verdict on the head SHA.
+    status: unverified
+    probe: gh pr checks <pr> after the verdict is posted.

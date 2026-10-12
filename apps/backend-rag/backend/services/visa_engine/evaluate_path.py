@@ -109,6 +109,7 @@ from datetime import datetime, timezone
 from types import MappingProxyType
 from typing import TypeAlias
 from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo
 
 import asyncpg
 
@@ -163,13 +164,17 @@ from backend.services.visa_engine.models import (
     Decision,
     Reason,
     SourceRecord,
+    VisaProductVersion,
 )
 from backend.services.visa_engine.pricing_adapter import (
     ExactPricingCatalog,
     UnavailablePricingCatalog,
     build_price_quote,
     resolve_candidate_pricing,
+    resolve_pricing_key,
+    select_duration_option,
 )
+from backend.services.visa_engine.processing_times import estimate, typical_window
 from backend.services.visa_engine.retention import (
     active_policy_available as active_retention_policy_available,
 )
@@ -185,6 +190,8 @@ from backend.services.visa_engine.shadow_evidence import (
 )
 
 logger = logging.getLogger(__name__)
+
+_WITA = ZoneInfo("Asia/Makassar")
 
 #: A raw, JSON-safe value. Defined locally — no importable shared home in
 #: this package (same convention as ``shadow.py``/``bundle.py``/
@@ -895,19 +902,91 @@ def _build_sources_dto(
     return dtos
 
 
+def _requested_stay_days(facts: ApplicantFacts) -> int | None:
+    """The applicant's stated stay length, or ``None`` when it is not a known answer."""
+
+    fact = facts.facts.intent_stay_days
+    return fact.value if fact.status == "KNOWN" else None
+
+
+def _duration_display(
+    product: VisaProductVersion,
+    *,
+    stay_days: int | None,
+    pricing_catalog: ExactPricingCatalog,
+    evaluated_at: datetime,
+) -> dict[str, JsonValue]:
+    """Additive duration fields; empty for a product that offers a single length."""
+
+    selected = select_duration_option(product, stay_days)
+    if selected is None or not product.duration_options:
+        return {}
+    options: list[JsonValue] = []
+    for option in product.duration_options:
+        resolution = resolve_pricing_key(
+            option.pricing_key, pricing_catalog=pricing_catalog, evaluated_at=evaluated_at
+        )
+        options.append(
+            {
+                "days": option.days,
+                "pricing_key": option.pricing_key.model_dump(mode="json"),
+                "selected": option.days == selected.days,
+                "status": resolution.status,
+                "reason_code": resolution.reason_code,
+                "amount_idr": resolution.amount,
+            }
+        )
+    return {
+        "selected_duration_days": selected.days,
+        "duration_options": options,
+        "extension_required": stay_days is not None
+        and stay_days > product.duration_options[-1].days,
+    }
+
+
+def _processing_timeline(product_code: str, decision: Decision) -> dict[str, JsonValue]:
+    """Bali Zero's typical window from the anchor day, or the pending UNKNOWN object."""
+
+    window = typical_window(product_code)
+    anchor = decision.evaluated_at.astimezone(_WITA).date()
+    span = estimate(anchor, window) if window is not None else None
+    if window is None or span is None:
+        return {
+            "status": "UNKNOWN",
+            "reason_code": "PROCESSING_TIMELINE_NOT_VERIFIED",
+            "observed_at": decision.observed_at.isoformat(),
+            "anchor_date": None,
+            "estimated_completion_from": None,
+            "estimated_completion_to": None,
+        }
+    return {
+        "status": "AVAILABLE",
+        "reason_code": "BALI_ZERO_TYPICAL_PROCESSING_TIME",
+        "observed_at": decision.observed_at.isoformat(),
+        "anchor_date": anchor.isoformat(),
+        "estimated_completion_from": span[0].isoformat(),
+        "estimated_completion_to": span[1].isoformat(),
+        "working_days_min": window[0],
+        "working_days_max": window[1],
+    }
+
+
 def _build_display(
     decision: Decision,
     compiled: CompiledRulePack,
     *,
     request_trace: str,
     pricing_catalog: ExactPricingCatalog,
+    stay_days: int | None = None,
 ) -> dict[str, JsonValue]:
     """The B.2 ``display`` block — pack-backed candidate display data.
 
     Product names and stay/extension policy come from the signed RulePack.
-    Documentation and processing-time assessments remain explicit UNKNOWN
-    until authoritative catalog adapters provide evidence; pricing comes only
-    from the exact-key PricingTool adapter and never invents an amount.
+    The processing timeline comes from the committed Bali Zero catalogue
+    snapshot (UNKNOWN when a product has no window or the working-day walk
+    leaves a decreed holiday year). Documentation remains explicit UNKNOWN
+    until an authoritative catalog adapter provides evidence; pricing comes
+    only from the exact-key PricingTool adapter and never invents an amount.
     """
 
     products = {
@@ -924,6 +1003,7 @@ def _build_display(
             product,
             pricing_catalog=pricing_catalog,
             evaluated_at=decision.evaluated_at,
+            stay_days=stay_days,
         )
         entries.append(
             {
@@ -943,14 +1023,7 @@ def _build_display(
                     "requirements": [],
                     "checklist": [],
                 },
-                "processing_timeline": {
-                    "status": "UNKNOWN",
-                    "reason_code": "PROCESSING_TIMELINE_NOT_VERIFIED",
-                    "observed_at": decision.observed_at.isoformat(),
-                    "anchor_date": None,
-                    "estimated_completion_from": None,
-                    "estimated_completion_to": None,
-                },
+                "processing_timeline": _processing_timeline(str(candidate.product_code), decision),
                 "availability": {
                     "legal_eligibility": "SUPPORTED",
                     "operational_availability": {
@@ -967,6 +1040,12 @@ def _build_display(
                     },
                 },
                 "pricing": pricing.as_json(),
+                **_duration_display(
+                    product,
+                    stay_days=stay_days,
+                    pricing_catalog=pricing_catalog,
+                    evaluated_at=decision.evaluated_at,
+                ),
             }
         )
     if unresolved:
@@ -983,6 +1062,7 @@ def _attach_price_quotes(
     compiled: CompiledRulePack,
     *,
     pricing_catalog: ExactPricingCatalog,
+    stay_days: int | None = None,
 ) -> Decision:
     """Attach exact-key PricingTool quotes before decision sealing/persistence."""
 
@@ -1002,8 +1082,11 @@ def _attach_price_quotes(
             product,
             pricing_catalog=pricing_catalog,
             evaluated_at=decision.evaluated_at,
+            stay_days=stay_days,
         )
-        quote = build_price_quote(product, resolution, decision_id=decision.decision_id)
+        quote = build_price_quote(
+            product, resolution, decision_id=decision.decision_id, stay_days=stay_days
+        )
         if quote is not None:
             quotes.append(quote)
     payload = decision.model_dump(mode="python")
@@ -2136,6 +2219,7 @@ async def run_evaluation(
                 decision,
                 compiled,
                 pricing_catalog=pricing_catalog,
+                stay_days=_requested_stay_days(facts),
             )
         except Exception as exc:
             logger.warning(
@@ -2226,6 +2310,7 @@ async def run_evaluation(
             compiled,
             request_trace=request_trace,
             pricing_catalog=pricing_catalog,
+            stay_days=_requested_stay_days(facts),
         )
         validated = VisaOracleEvaluateResponse.model_validate(envelope)
     except Exception as exc:
