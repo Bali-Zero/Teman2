@@ -52,7 +52,7 @@ from backend.scripts.visa_engine import fold_pack_seq28 as seq28
 from backend.scripts.visa_engine.compile_pack import compile_pack_source
 from backend.scripts.visa_engine.fold_pack_generic import fold as generic_fold
 from backend.scripts.visa_engine.fold_pack_seq24 import (
-    _assert_candidate_review_inventory,
+    STUDIO_RULE_ID,
     assert_no_hard_filter_reads_a_synthesised_twin_basis_fact,
 )
 from backend.scripts.visa_engine.fold_pack_seq25 import PORTAL_AUTHORITY, load_ledger
@@ -82,12 +82,18 @@ SRC_KEPMEN_LAMPIRAN = "e3572ad2-08a9-55bd-b818-353b3e9db715"
 E31D_RULE_ID = "hf.e31d-sponsor-not-indonesian"
 E31J_ADULT_RULE_ID = "hf.e31j-adult-excluded"
 E31J_MARRIED_RULE_ID = "hf.e31j-married-excluded"
+E31J_OTHER_STATUS_RULE_ID = "review.e31j-marital-status-other"
 E31J_RETIRED_RULE_ID = "el.e31j-dependency-age"
 E28F_RULE_ID = "el.e28f.ikn-subsidiary"
 E31E_ADULT_RULE_ID = "hf.e31e-adult-excluded"
 E31E_MARRIED_RULE_ID = "hf.e31e-married-excluded"
 MODIFIED_RULE_IDS = frozenset({E28F_RULE_ID, E31E_ADULT_RULE_ID, E31E_MARRIED_RULE_ID})
-INSERTED_RULE_IDS_IN_ORDER = (E31D_RULE_ID, E31J_ADULT_RULE_ID, E31J_MARRIED_RULE_ID)
+INSERTED_RULE_IDS_IN_ORDER = (
+    E31D_RULE_ID,
+    E31J_ADULT_RULE_ID,
+    E31J_MARRIED_RULE_ID,
+    E31J_OTHER_STATUS_RULE_ID,
+)
 INSERTED_RULE_IDS = frozenset(INSERTED_RULE_IDS_IN_ORDER)
 RETIRED_RULE_IDS = frozenset({E31J_RETIRED_RULE_ID})
 
@@ -248,10 +254,39 @@ def build_e31j_married_rule() -> dict[str, Any]:
     )
 
 
+def build_e31j_other_status_review_rule() -> dict[str, Any]:
+    """"Another status" neither says the applicant never married nor that they did: hold E31J."""
+
+    when = {
+        "op": "all",
+        "args": [
+            dict(_FAMILY),
+            _relation("SIBLING"),
+            {"op": "eq", "fact": "person.marital_status", "value": "OTHER"},
+        ],
+    }
+    return {
+        "rule_id": E31J_OTHER_STATUS_RULE_ID,
+        "stage": "HUMAN_REVIEW",
+        "scope": "PRODUCTS",
+        "product_version_ids": [E31J_PRODUCT_VERSION_ID],
+        "when": when,
+        "effect": {"type": "REQUIRE_REVIEW", "reason_code": "E31J_MARITAL_STATUS_OTHER_REVIEW"},
+        "on_unknown": "NO_EFFECT",
+        "priority": 100,
+        "required_facts": _fact_paths(when),
+        "source_refs": [SRC_E31J_PORTAL, SRC_KEPMEN_LAMPIRAN],
+        "valid_period": {"from": NEW_RULE_VALID_FROM, "to": None},
+        "explanation_key": f"explain.{E31J_OTHER_STATUS_RULE_ID}",
+        "safety_critical": False,
+    }
+
+
 _INSERTED_BUILDERS = {
     E31D_RULE_ID: build_e31d_rule,
     E31J_ADULT_RULE_ID: build_e31j_adult_rule,
     E31J_MARRIED_RULE_ID: build_e31j_married_rule,
+    E31J_OTHER_STATUS_RULE_ID: build_e31j_other_status_review_rule,
 }
 _MODIFIED_BUILDERS = {
     E28F_RULE_ID: build_e28f_rule,
@@ -273,7 +308,7 @@ def _assert_required_facts(rule: dict[str, Any]) -> None:
 
 
 def assert_only_expected_changes(restamped: dict[str, Any], out: dict[str, Any]) -> None:
-    """The seq-28 restamp may differ from the candidate in exactly the seven content paths."""
+    """The seq-28 restamp may differ from the candidate in exactly the eight content paths."""
 
     if set(restamped) != set(out):
         _fail("top-level key set changed")
@@ -340,6 +375,27 @@ def assert_anchor_relative_changes(anchor: dict[str, Any], out: dict[str, Any]) 
     for key in _IDENTITY_KEYS:
         restamped_shape[key] = out[key]
     assert_only_expected_changes(restamped_shape, out)
+
+
+def _assert_candidate_review_inventory(payload: dict[str, Any]) -> None:
+    """The seq-24 inventory (the E33 studio hold only) plus the one E31J hold added here."""
+
+    from backend.scripts.visa_engine.review_hold_inventory import (
+        pack_review_rules,
+        pack_unknown_escalations,
+    )
+
+    validated = RulePackPayload.model_validate(payload)
+    found = [entry.rule_id for entry in pack_review_rules(validated)]
+    expected = [STUDIO_RULE_ID, E31J_OTHER_STATUS_RULE_ID]
+    if sorted(found) != sorted(expected):
+        _fail(f"pack_review_rules returned {found!r}, expected exactly {expected!r}")
+    escalations = pack_unknown_escalations(validated)
+    if escalations:
+        _fail(
+            f"pack_unknown_escalations returned {[e.rule_id for e in escalations]!r}, "
+            "expected none"
+        )
 
 
 def _assert_compile_gate(out: dict[str, Any], created_at: str) -> None:

@@ -6467,6 +6467,53 @@
       },
       "explanation_key": "explain.hf.e31j-married-excluded",
       "safety_critical": true
+    },
+    {
+      "rule_id": "review.e31j-marital-status-other",
+      "stage": "HUMAN_REVIEW",
+      "scope": "PRODUCTS",
+      "product_version_ids": ["4a4a0f7c-a6a0-5835-acd6-8a096342ef68"],
+      "when": {
+        "op": "all",
+        "args": [
+          {
+            "op": "intersects",
+            "fact": "intent.purposes",
+            "values": ["FAMILY"]
+          },
+          {
+            "op": "eq",
+            "fact": "family.relation_to_sponsor",
+            "value": "SIBLING"
+          },
+          {
+            "op": "eq",
+            "fact": "person.marital_status",
+            "value": "OTHER"
+          }
+        ]
+      },
+      "effect": {
+        "type": "REQUIRE_REVIEW",
+        "reason_code": "E31J_MARITAL_STATUS_OTHER_REVIEW"
+      },
+      "on_unknown": "NO_EFFECT",
+      "priority": 100,
+      "required_facts": [
+        "family.relation_to_sponsor",
+        "intent.purposes",
+        "person.marital_status"
+      ],
+      "source_refs": [
+        "2d090f3a-5a93-5181-b3d1-253d87a1a17c",
+        "e3572ad2-08a9-55bd-b818-353b3e9db715"
+      ],
+      "valid_period": {
+        "from": "2026-10-12T00:00:00Z",
+        "to": null
+      },
+      "explanation_key": "explain.review.e31j-marital-status-other",
+      "safety_critical": false
     }
   ],
   "version": "2026.10.12",

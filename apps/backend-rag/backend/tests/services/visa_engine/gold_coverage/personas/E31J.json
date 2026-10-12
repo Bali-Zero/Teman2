@@ -1,7 +1,7 @@
 {
   "expected_candidates": ["E31J"],
   "expected_state": "SUPPORTED_CANDIDATES",
-  "label": "27-year-old Italian joining his sister, who holds an E23 work ITAS in Bali; single, applying offshore for a 1-year dependent sibling stay permit",
+  "label": "14-year-old Italian child joining his sister, who holds an E23 work ITAS in Bali; single, applying offshore for a 1-year dependent sibling stay permit",
   "overrides": {
     "intent.desired_entry_date": {
       "status": "KNOWN",
@@ -31,9 +31,17 @@
       "status": "KNOWN",
       "value": "E23"
     },
+    "person.guardian_consent": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "person.marital_status": {
+      "status": "KNOWN",
+      "value": "SINGLE"
+    },
     "person.birth_date": {
       "status": "KNOWN",
-      "value": "1999-02-25"
+      "value": "2012-02-25"
     },
     "sponsor.type": {
       "status": "KNOWN",
