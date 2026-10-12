@@ -1,5 +1,5 @@
 gear: 1
-brief_ref: evidence/2026-10/agent-nuzantara-backend-rag-vn-work-pr08-e23uv-t-a65b92c8/brief.yml
+brief_ref: evidence/brief.yml
 ruling: >-
   Visa-night family audit 2026-10-12, plan PR-08 (findings F14, F22, F37; dedup group G19): the 7-10 working-day
   figure for E23U and E23V is a catalogue default shared by about thirty codes, the per-code imigrasi.go.id pages
@@ -40,16 +40,7 @@ results:
   - "visa_engine suite (after red team): 2958 passed, 15 skipped; 3 failed and 42 errors only in Postgres-backed files; the 2571 tests outside them all pass"
   - "visa-oracle mouth suite: 1426 passed of 1426 (two OutcomeSheet pins and two client-copy tests follow the reworded sentence)"
   - "tsc --noEmit (apps/mouth): clean"
-bites:
-  consumer: >-
-    the E23U and E23V outcome cards (evaluate_path._processing_timeline, rendered by OutcomeSheet Timeline);
-    live after the backend-rag (Fly) deploy, an evaluate for offshore / work / individual sponsor returns E23U
-    with processing_timeline.status UNKNOWN and reason PROCESSING_TIMELINE_NOT_VERIFIED and no working_days_min,
-    while E23 still returns 20-30; and, after the mouth (Vercel) production promote, the card shows the
-    outcome.timeline_pending sentence in EN and ID ("Bali Zero has no confirmed processing time for this visa
-    yet..." / "Bali Zero belum memiliki kepastian lama proses untuk visa ini...") and no "typically N working
-    days" line. The mouth copy lands staged on Vercel and goes live only on the promote.
-  where: live
+bites: "consumer: the Visa Oracle evaluate response and result card for E23U/E23V; observation: after the Fly deploy (build_sha contains the merge), a live evaluate offshore/work/sponsor individual returns E23U with processing_timeline UNKNOWN / PROCESSING_TIMELINE_NOT_VERIFIED and no working_days, while E23 still returns 20-30 working days; after vercel promote the E23U card shows the pending-timeline sentence in EN and ID."
 receipts:
   - claim: "The new tests failed on the unchanged snapshot (red first)."
     cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_processing_times.py
