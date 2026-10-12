@@ -137,9 +137,23 @@ interesting points spawn round N+1 research. No round limit. Opus 5.5 orchestrat
 hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5); Sonnet implements; research outputs persisted under `research/visa/` in the worktree
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
-## LIVE STATE — CURRENT POSITION (updated 2026-10-11; update on every state change)
+## LIVE STATE — CURRENT POSITION (updated 2026-10-12; update on every state change)
 
-- **2026-10-11 position (E33 / retirement program; production pack still seq-27, boundary 2026-11-09T13:21:22Z).**
+- **2026-10-12 position (production pack seq-28 since 2026-10-12T03:08Z; boundary 2026-11-12T18:00:16Z, organ alert T-7 = 2026-11-05).**
+  Activation `b7c808bd-c0f4-48fe-9fdb-3f7f47f7e86a` (rule_pack_id `b383effb-eea4-5890-9a6a-0f13d816e855`, PR #8300,
+  merge `7bb50d079e`; signed on M5 by nuzantara-57, `signed_at 2026-10-11T22:53:04Z`, kid `prod-2026-07-1`; two-login
+  ceremony from Pro, roles 0; seq-27 activation `471bddfa` closed). Content: the 2026-10-11 organ re-stamp (organ PR
+  #8289, reproduced byte-for-byte, closed superseded) + E33E "E33E Second Home Senior (5 Years)" IDR 45,000,000 +
+  AGE_BELOW_55 scoped to RETIREMENT + E33G income gate `work.annual_foreign_income_usd >= 60000`
+  (`hf.e33g.annual-income-below-minimum`, `E33G_INCOME_BELOW_THRESHOLD`); 114 rules. Proven live 2026-10-12: sentinel
+  `OK pack_sequence 28` 03:09:58Z, `/evaluate` sequence 28 03:10:54Z, E33E quote, AGE_BELOW_55 on retirement 54 only,
+  remote 85000 -> E33G / 59999 -> E33G_INCOME_BELOW_THRESHOLD / unknown -> NEEDS_INPUT, headless walks EN/ID, live gold
+  18/20 (only 9 and 10, known), one open PRODUCTION activation (PR #8300 comment issuecomment-6117354289). Step B
+  (#8280, `2630e98c70`) and the why-copy (#8287, `fdce3f78dd`) are live since 2026-10-11. **TRACK C stays claimed
+  (M5 nuzantara-57).** Next: seq-29 candidate (38-visa night program, conductor on Pro `~/visa-night`; unsigned, chained
+  to seq-28) before 2026-11-05; test-hygiene follow-ups F1-F3 from #8287's gate; audit PRs PR-7/PR-4 (post-seq-28),
+  PR-10, PR-14, PR-15, PR-18, PR-19/20, PR-16; the 13 batch-2 owner decisions. Detail: `references/live-state-log.md`.
+- **SUPERSEDED by seq-28 (history), 2026-10-11 position (E33 / retirement program; production pack then seq-27, boundary 2026-11-09T13:21:22Z).**
   Census (scratch, read-only): interview space 1.1x10^14 combinations (exact DAG count); 256 covering walks =
   186 SUPPORTED / 57 NO_SUPPORTED_PATH / 9 HUMAN_REVIEW / 4 NEEDS_INPUT, 0 errors; offline replay == live 256/256.
   Correctness is proven only where expectations exist: scenario corpus 116/116 (129 after #8258), gold 20/20.
@@ -167,7 +181,7 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   Pasal 43/45). **Ops note:** the M5 main checkout was 146 commits behind origin/main on 2026-10-11 and
   `.claude/skills/visaoracle` is a symlink into it, so M5 sessions read a stale corner skill until it is fast-forwarded
   (owner action). Detail: `references/live-state-log.md`.
-- **Active production pack: seq-27 since 2026-10-10T05:23Z (activation `471bddfa-0423-4fa1-b11f-2d9617615a19`,
+- **SUPERSEDED by seq-28 (history): seq-27 since 2026-10-10T05:23Z (activation `471bddfa-0423-4fa1-b11f-2d9617615a19`,
   PR #8209, merge `2478b87561`; successor of #8204; supersedes organ candidate #8105).** seq-26 with only the 18
   `OFFICIAL_PORTAL` stamps moved to `2026-10-08T13:21:22Z` by the weekly organ; rules, products and prices
   byte-identical. Signed on M5 (kid `prod-2026-07-1`, `signed_at 2026-10-10T03:42:26Z`, payload
