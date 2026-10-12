@@ -249,8 +249,8 @@ signal_case() {
         MINI_DOCS_INVENTORY_STATE_DIR="$CASE_HOME/state" MINI_DOCS_INVENTORY_LOCKDIR="$CASE_DIR/lock" \
         MINI_DOCS_INVENTORY_TMP_BASE="$CASE_DIR/tmp" GIT_CALLS="$CASE_HOME/git.log" \
         /usr/bin/perl -e 'setpgrp(0, 0); exec @ARGV' /bin/bash "$WRAPPER" >/dev/null 2>&1 &
-    local wpid=$! i
-    for i in $(seq 1 100); do [ -s "$CASE_HOME/child.pid" ] && break; sleep 0.1; done
+    local wpid=$!
+    for _ in $(seq 1 100); do [ -s "$CASE_HOME/child.pid" ] && break; sleep 0.1; done
     sleep 0.5
     local t0
     t0=$(date +%s)
