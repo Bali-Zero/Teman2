@@ -1,4 +1,4 @@
-task_id: secret-guard-env-dump
+task_id: secret-guard-env-dump-r2
 lane: infra
 machine: m5
 date: 2026-10-12
@@ -11,6 +11,14 @@ objective: |
   transcript: `launchctl print` prints the environment block with values, `ps -E`/`ps eww` do the same, and
   the guard's E64 left every ssh inline command unjudged. Add shape X6 (launchctl print/dumpstate/getenv,
   ps environment display) and judge X2/X6 inside an ssh inline command, spec first.
+history: |
+  r1 (#8384 @ 240c93431b) was BLOCKED by its final gate: D1, ssh options after the destination (`-t`,
+  `-o K=V`, `--`) hid the remote command, an under-match of the incident class; D2, a local grep/wc after
+  the ssh stage was ignored, an over-match against X6's own rule. Re-cut on a fresh origin/main as a
+  cherry-pick (same patch-id) plus this cure. Folded gate notices: `launchctl export`/`procinfo`/`asuser`,
+  `cut` no longer a selector, `-P` argument-taking. Found by the orchestrator while grading the cure and
+  fixed before commit: a glued option value ending in an argument letter (`-oControlPath=none`) swallowed
+  the host; clusters are now read as getopt reads them (E118-E121).
 constraints:
   - "No existing corpus verdict changes; E64 (`ssh pro 'cat STORE'`) stays ALLOW."
   - "Kill switch, fail-open contract and stdin/exit-code shape unchanged."
@@ -26,5 +34,9 @@ acceptance:
     probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py infra/claude-hooks/test_hook_innocence.py -p no:cacheprovider"
   - text: "A5: WHEN X6 or the ssh-inline judging is disabled, THEN the new guilt rows fail (guilt replay)."
     probe: "disable check, rerun pytest, restore with cp and verify with cmp"
+  - text: "A6 (D1): WHEN ssh options or `--` follow the destination, or a glued option value ends in an argument letter, THEN the remote env dump is still judged and denied (E96-E103, E118-E120)."
+    probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
+  - text: "A7 (D2): WHEN a local selector or counter follows the ssh stage, THEN X6 sees it as a later stage (ALLOW rows E109-E112)."
+    probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
 consumer_map:
   - "PreToolUse(Bash|Monitor|Read) wiring in .claude/settings.json invokes this hook on every Bash call; hook-innocence-gate.yml runs the vaccine block on every hooks change."
