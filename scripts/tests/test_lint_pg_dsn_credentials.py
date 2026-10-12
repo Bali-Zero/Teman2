@@ -196,3 +196,259 @@ def test_mutation_disabling_the_length_floor_is_caught_by_selftest() -> None:
         lint._is_real_looking_password = original
     # With the floor restored, the same innocent (too-short) text must NOT fire.
     assert not lint.scan_text(text)
+
+
+# ------------------------------------------------- mutation-sweep pins (2026-10-12)
+#
+# Expected values come from the module docstring's stated contract: a DSN
+# password is real-looking when it is 10+ characters, has MORE than 4 distinct
+# characters, no `<>${}`, no whitespace and is not an alpha/digit-segmented
+# template; a GOCSPX body is 20+ base64url chars and not a placeholder. Every
+# fixture is a synthetic string assembled from short fragments (the file's own
+# discipline) — none is a credential.
+
+import hashlib
+import re
+import subprocess
+
+
+def _dsn_for(body: str, role: str = "svc_role") -> str:
+    return "postgresql://" + role + ":" + body + "@localhost:5432/db"
+
+
+def _gocspx(body: str) -> str:
+    return "GOCSPX" + "-" + body
+
+
+_TEN = "Kx9" + "mQp2" + "Rz7"  # 10 chars, 10 distinct-ish, mixed
+_NINE = _TEN[:9]  # 9 chars
+
+
+def test_password_length_floor_is_ten_characters() -> None:
+    assert len(_TEN) == 10 and len(_NINE) == 9
+    assert lint.scan_text(_dsn_for(_TEN))
+    assert not lint.scan_text(_dsn_for(_NINE))
+
+
+def test_more_than_four_distinct_characters_is_the_placeholder_boundary() -> None:
+    four = "abcd" * 4  # 16 chars, 4 distinct -> placeholder
+    five = "abcde" * 3  # 15 chars, 5 distinct -> real-looking
+    assert len(set(four)) == 4 and len(set(five)) == 5
+    assert not lint.scan_text(_dsn_for(four))
+    assert lint.scan_text(_dsn_for(five))
+    # same boundary for the GOCSPX shape (shared placeholder rule)
+    assert not lint.scan_text(_gocspx("abcd" * 6))
+    assert lint.scan_text(_gocspx("abcde" * 5))
+
+
+def test_template_shape_needs_two_or_more_clean_segments() -> None:
+    # exactly two clean segments -> template -> innocent
+    assert not lint.scan_text(_dsn_for("abcdefgh" + "_" + "12345678"))
+    # one clean alpha run with no separator -> judged on entropy -> guilty
+    assert lint.scan_text(_dsn_for("abcdefghijkl"))
+    # a mixed segment breaks the template shape -> guilty
+    assert lint.scan_text(_dsn_for("abcdefgh" + "_" + "12ab5678"))
+    # hyphen separates segments just like underscore
+    assert not lint.scan_text(_dsn_for("local" + "-" + "dev" + "-" + "2024" + "-" + "pw"))
+
+
+def test_a_character_outside_the_token_alphabet_means_not_template() -> None:
+    """All-alpha segments, but a '.' makes the body fail the alphabet check, so
+    it is judged on entropy alone and is guilty."""
+    body = "abcdefghij" + "_" + "klmn" + "." + "opqr"
+    assert lint.scan_text(_dsn_for(body))
+
+
+def test_whitespace_in_a_password_candidate_is_never_real_looking() -> None:
+    assert lint._is_real_looking_password("Kx9mQp2Rz7") is True
+    assert lint._is_real_looking_password("Kx9mQp 2Rz7Lb") is False
+    assert lint._is_real_looking_password("Kx9mQp\t2Rz7Lb") is False
+
+
+def test_interpolation_and_bracket_characters_are_placeholders() -> None:
+    for ch in "<>${}":
+        assert lint._is_real_looking_password("Kx9mQp" + ch + "2Rz7Lb") is False
+
+
+def test_dsn_marker_on_the_last_line_does_not_excuse_the_first_line() -> None:
+    dsn = _dsn_for(_TEN)
+    text = f'A = "{dsn}"\nplain\n# synthetic-pg-password\n'
+    assert len(lint.scan_text(text)) == 1
+
+
+def test_dsn_marker_directly_above_excuses_only_the_line_below_it() -> None:
+    d1, d2 = _dsn_for(_TEN, "r_one"), _dsn_for("Qm7" + "vX2pL9" + "sT4", "r_two")
+    text = f"{d1}\n# synthetic-pg-password\n{d2}\n"
+    findings = lint.scan_text(text)
+    assert len(findings) == 1
+    assert ":1:" in findings[0]
+    assert "'r_one'" in findings[0]
+
+
+def test_dsn_finding_names_path_line_role_length_and_fingerprint_only() -> None:
+    text = "first\n" + _dsn_for(_TEN, "my_role") + "\n"
+    (finding,) = lint.scan_text(text, "docs/a.md")
+    fp = hashlib.sha256(_TEN.encode()).hexdigest()[:16]
+    assert finding == (
+        "docs/a.md:2: literal Postgres DSN password for role 'my_role' "
+        f"(10 chars, sha256:{fp})"
+    )
+    assert _TEN not in finding
+
+
+# ---- GOCSPX shape
+
+_GBODY = "aZ3xQ9" + "mR7bN2kP5vT8" + "wY1c"  # 22 chars
+
+
+def test_gocspx_body_length_floor_is_twenty() -> None:
+    nineteen = _GBODY[:19]
+    twenty = _GBODY[:20]
+    assert lint.scan_text(_gocspx(twenty))
+    assert not lint.scan_text(_gocspx(nineteen))
+
+
+def test_gocspx_finding_format_and_fingerprint() -> None:
+    text = "x\n" + _gocspx(_GBODY) + "\n"
+    (finding,) = lint.scan_text(text, "f.py")
+    fp = hashlib.sha256(_GBODY.encode()).hexdigest()[:16]
+    assert finding == (
+        "f.py:2: literal Google OAuth client secret (GOCSPX-...) "
+        f"(22 chars, sha256:{fp})"
+    )
+    assert _GBODY not in finding
+
+
+def test_gocspx_two_matches_on_one_line_are_both_reported() -> None:
+    other = "Hj4Lp8" + "Qw2Rt6Yu0Io3" + "Pa5Dg"
+    text = _gocspx(_GBODY) + " and " + _gocspx(other)
+    assert len(lint.scan_text(text)) == 2
+
+
+def test_gocspx_synthetic_marker_same_line_and_line_above() -> None:
+    same = _gocspx(_GBODY) + "  # synthetic-oauth-secret"
+    above = "# synthetic-oauth-secret\n" + _gocspx(_GBODY)
+    assert not lint.scan_text(same)
+    assert not lint.scan_text(above)
+
+
+def test_gocspx_marker_two_lines_above_or_on_last_line_does_not_reach() -> None:
+    two_above = "# synthetic-oauth-secret\n# other\n" + _gocspx(_GBODY) + "\n"
+    assert len(lint.scan_text(two_above)) == 1
+    wraps = _gocspx(_GBODY) + "\nplain\n# synthetic-oauth-secret\n"
+    assert len(lint.scan_text(wraps)) == 1
+
+
+def test_gocspx_marker_cannot_launder_a_known_burned_secret(monkeypatch) -> None:
+    monkeypatch.setitem(lint.GOCSPX_KNOWN_COMPROMISED, lint._fingerprint(_GBODY), "burned-fixture")
+    hits = lint.scan_text(_gocspx(_GBODY) + "  # synthetic-oauth-secret")
+    assert len(hits) == 1
+    assert hits[0].endswith(" — burned-fixture")
+
+
+def test_synthetic_marker_for_dsn_does_not_hide_a_gocspx_on_a_different_line() -> None:
+    text = "# synthetic-pg-password\n" + _dsn_for(_TEN) + "\nplain\n" + _gocspx(_GBODY) + "\n"
+    findings = lint.scan_text(text)
+    assert len(findings) == 1
+    assert ":4:" in findings[0]
+
+
+# ---- enumeration / paths / entry point
+
+def _git_repo(tmp_path: Path) -> Path:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    return repo
+
+
+def test_tracked_files_skips_vendor_dirs_at_any_depth(tmp_path) -> None:
+    repo = _git_repo(tmp_path)
+    for rel in ("a.md", "docs/b.md", "node_modules/c.md", "pkg/.venv/d.md", "x/dist/e.md", ".next/f.md"):
+        p = repo / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("x\n")
+    subprocess.run(["git", "add", "-A", "-f"], cwd=repo, check=True)
+    assert sorted(lint._tracked_files(repo)) == sorted([repo / "a.md", repo / "docs/b.md"])
+
+
+def test_tracked_files_raises_when_git_fails(tmp_path) -> None:
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    with pytest.raises(subprocess.CalledProcessError):
+        lint._tracked_files(plain)
+
+
+def test_scan_paths_counts_only_readable_text_and_reports_missing(tmp_path) -> None:
+    a = tmp_path / "a.md"
+    a.write_text("clean\n")
+    blob = tmp_path / "blob.bin"
+    blob.write_bytes(b"\xff\xfe\x00")
+    d = tmp_path / "adir"
+    d.mkdir()
+    gone = tmp_path / "gone.md"
+    findings, scanned, missing = lint.scan_paths([a, blob, d, gone], tmp_path)
+    assert (findings, scanned, missing) == ([], 1, [str(gone)])
+
+
+def test_scan_paths_relative_inside_root_absolute_outside(tmp_path) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    inside = root / "leak.md"
+    inside.write_text(_dsn_for(_TEN) + "\n")
+    outside = tmp_path / "leak2.md"
+    outside.write_text(_dsn_for(_TEN) + "\n")
+    findings, scanned, _ = lint.scan_paths([inside, outside], root)
+    assert scanned == 2
+    assert findings[0].startswith("leak.md:1:")
+    assert findings[1].startswith(str(outside) + ":1:")
+
+
+def test_selftest_fails_closed_when_scanner_is_blind(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(lint, "scan_text", lambda text, path="<m>": [])
+    assert lint.selftest() == 1
+    out = capsys.readouterr().out
+    assert "GUILT   miss" in out
+    assert "selftest FAILED (" in out
+
+
+def test_selftest_fails_closed_on_false_positives(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(lint, "scan_text", lambda text, path="<m>": ["hit"])
+    assert lint.selftest() == 1
+    assert "INNOCENCE false positive" in capsys.readouterr().out
+
+
+def test_no_args_is_nothing_to_scan_exit_two(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["lint"])
+    assert lint.main() == 2
+    assert "nothing to scan" in capsys.readouterr().err
+
+
+def test_all_mode_end_to_end_on_a_real_repo(tmp_path, monkeypatch, capsys) -> None:
+    repo = _git_repo(tmp_path)
+    (repo / "ok.md").write_text("DATABASE_URL comes from the environment\n")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr(sys, "argv", ["lint", "--all"])
+    assert lint.main() == 0
+    assert "in 1 tracked text file(s)" in capsys.readouterr().out
+
+    (repo / "leak.md").write_text("x\n" + _dsn_for(_TEN) + "\n")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+    assert lint.main() == 1
+    out = capsys.readouterr().out
+    assert "found in 1 place(s)" in out
+    assert "leak.md:2:" in out
+    assert _TEN not in out
+
+
+def test_outside_a_git_repo_the_guard_never_reports_clean(tmp_path, monkeypatch) -> None:
+    clean = tmp_path / "ok.md"
+    clean.write_text("nothing here\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["lint", str(clean)])
+    try:
+        rc = lint.main()
+    except subprocess.CalledProcessError:
+        return
+    assert rc != 0
