@@ -502,7 +502,9 @@ def _freshness_horizon(source: dict[str, Any]) -> datetime:
     rather than a guess, because guessing here would silently weaken the check
     :func:`_assert_new_rule_shortens_no_freshness_horizon` performs.
     """
-    policy = source.get("freshness_policy") or {}
+    policy = source.get("freshness_policy")
+    if not isinstance(policy, dict):
+        policy = {}
     if policy.get("kind") == "UNTIL_SUPERSEDED":
         return datetime.max.replace(tzinfo=timezone.utc)
     if policy.get("kind") != "MAX_AGE_SINCE_VERIFIED_AT":

@@ -1091,3 +1091,14 @@ def test_guilt_an_unknown_kind_is_still_an_anomaly_not_non_expiring():
     assert verdict.outcome == vfs.OUTCOME_ANOMALY
     assert verdict.policy_missing[0].reason_code == "FRESHNESS_POLICY_NOT_DEFINED"
     assert not verdict.non_expiring
+
+
+@pytest.mark.parametrize("bad", [None, "UNTIL_SUPERSEDED", ["UNTIL_SUPERSEDED"], {}])
+def test_guilt_a_null_or_non_dict_policy_is_an_anomaly_never_non_expiring(bad):
+    record = _until_superseded_record("ffff8888-0000-0000-0000-000000000001", VERIFIED_AT.isoformat())
+    record["freshness_policy"] = bad
+    verdict = vfs.classify_freshness([record], VERIFIED_AT + timedelta(days=1))
+
+    assert verdict.outcome == vfs.OUTCOME_ANOMALY
+    assert verdict.policy_missing[0].reason_code == "FRESHNESS_POLICY_NOT_DEFINED"
+    assert not verdict.non_expiring

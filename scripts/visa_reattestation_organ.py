@@ -94,6 +94,9 @@ def assert_not_shared_checkout(workdir: Path) -> None:
         raise OrganError("worktree", f"{workdir} is not a linked worktree (shared checkout refused)")
 
 
+NON_EXPIRING_KIND = "UNTIL_SUPERSEDED"
+
+
 def boundary_of(payload: dict[str, Any]) -> datetime | None:
     """Earliest verified_at + max_age_seconds over the OFFICIAL_PORTAL records.
 
@@ -105,19 +108,32 @@ def boundary_of(payload: dict[str, Any]) -> datetime | None:
     for rec in payload.get("source_records", []):
         if rec.get("authority_type") != PORTAL:
             continue
-        policy = rec.get("freshness_policy") or {}
+        policy = rec.get("freshness_policy")
+        if not isinstance(policy, dict):
+            continue
         if not rec.get("verified_at") or not isinstance(policy.get("max_age_seconds"), int):
             continue
         ends.append(parse_utc(rec["verified_at"]) + timedelta(seconds=policy["max_age_seconds"]))
     return min(ends) if ends else None
 
 
-def has_portal_record(payload: dict[str, Any]) -> bool:
-    """True when at least one OFFICIAL_PORTAL record carries a verified_at."""
-    return any(
-        rec.get("authority_type") == PORTAL and rec.get("verified_at")
-        for rec in payload.get("source_records", [])
-    )
+def all_portal_until_superseded(payload: dict[str, Any]) -> bool:
+    """True only when there is >=1 OFFICIAL_PORTAL record and EVERY one of them
+    carries ``freshness_policy == {"kind": "UNTIL_SUPERSEDED", ...}`` (exact dict
+    kind match) and a verified_at.  A null, missing, non-dict or unknown-kind policy
+    is NOT non-expiring: that is a pack that lost its policy, and the organ must
+    keep raising rather than silence the T-7 alarm.
+    """
+    portal = [r for r in payload.get("source_records", []) if r.get("authority_type") == PORTAL]
+    if not portal:
+        return False
+    for rec in portal:
+        policy = rec.get("freshness_policy")
+        if not isinstance(policy, dict) or policy.get("kind") != NON_EXPIRING_KIND:
+            return False
+        if not rec.get("verified_at"):
+            return False
+    return True
 
 
 def t7_due(boundary: datetime | None, now: datetime) -> bool:
@@ -228,7 +244,7 @@ def find_anchor(repo: Path, ref: str = "origin/main") -> dict[str, Any]:
     if source_rel not in names:
         raise OrganError("anchor", f"{source_rel} missing next to the signed seq-{seq}")
     boundary = boundary_of(payload)
-    if boundary is None and not has_portal_record(payload):
+    if boundary is None and not all_portal_until_superseded(payload):
         raise OrganError("anchor", f"seq-{seq} has no ageable {PORTAL} record")
     return {"seq": seq, "signed_rel": signed_rel, "source_rel": source_rel, "boundary": boundary}
 

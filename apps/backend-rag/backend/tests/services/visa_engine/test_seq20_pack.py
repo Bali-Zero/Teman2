@@ -555,6 +555,16 @@ class TestLocalCompensationRule:
         with pytest.raises(SystemExit):
             _freshness_horizon({**base, "freshness_policy": {"kind": "SOMETHING_ELSE"}})
 
+    @pytest.mark.parametrize("bad", [None, {}, "UNTIL_SUPERSEDED", {"kind": None}])
+    def test_freshness_horizon_never_reads_a_missing_or_garbled_policy_as_non_expiring(
+        self, bad: Any
+    ) -> None:
+        from backend.scripts.visa_engine.fold_pack_seq20 import _freshness_horizon
+
+        record = {"source_record_id": "s", "verified_at": "2026-08-30T13:18:00Z", "freshness_policy": bad}
+        with pytest.raises(SystemExit):
+            _freshness_horizon(record)
+
 
 # ---------------------------------------------------------------------------
 # Fold guards: innocence (the real payload passes) then guilt (each guard
