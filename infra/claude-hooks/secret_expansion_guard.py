@@ -290,6 +290,34 @@ def _strip_comments(text: str) -> str:
     return "".join(out)
 
 
+def _first_unquoted_redirect(tok: str) -> re.Match[str] | None:
+    """Return the first redirect operator outside quotes and backslash escapes."""
+    quote: str | None = None
+    i, n = 0, len(tok)
+    while i < n:
+        c = tok[i]
+        if quote:
+            if c == "\\" and quote != "'" and i + 1 < n:
+                i += 2
+                continue
+            if c == quote:
+                quote = None
+            i += 1
+            continue
+        if c in "\"'":
+            quote = c
+            i += 1
+            continue
+        if c == "\\" and i + 1 < n:
+            i += 2
+            continue
+        match = _GLUED_REDIRECT_RE.match(tok, i)
+        if match:
+            return match
+        i += 1
+    return None
+
+
 def _tokenize(stage: str) -> list[str]:
     """Shell-ish word split, quote-preserving, redirects removed.
 
@@ -313,7 +341,7 @@ def _tokenize(stage: str) -> list[str]:
             ):
                 skip_next = True
             continue
-        g = _GLUED_REDIRECT_RE.search(tok)
+        g = _first_unquoted_redirect(tok)
         if g and g.start() > 0:
             head = tok[: g.start()].rstrip("0123456789&")
             if head:

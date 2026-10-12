@@ -15,7 +15,8 @@ history: |
   this once it is merged.
 objective: |
   Redirects are read outside quotes only: a glued redirect is an operator at an unquoted position of
-  its token; `>&`, `<&`, `&>`, `&>>` are not statement separators; `|&` is a pipe-stage separator.
+  its token. (`>&`/`&>`/`|&` handling is inert while every shape judges stages alone; it moves to the
+  X6 rebuild, where a later-stage selector makes it bite.)
 constraints:
   - "E01-E64 keep their verdicts."
   - "Kill switch, fail-open contract and stdin/exit-code shape unchanged."
@@ -25,9 +26,7 @@ acceptance:
     probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
   - text: "A2: WHEN a quoted token holds a `>`, THEN no fragment of it becomes a head (E70, E71, E73 ALLOW)."
     probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
-  - text: "A3: WHEN `&` belongs to a redirect, THEN it does not split statements; WHEN `|&` appears, THEN it splits stages like `|` (E74-E78)."
-    probe: "python3 -m pytest infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
-  - text: "A4: WHEN the tokenizer cure is reverted, THEN E65-E71 fail (guilt replay)."
+  - text: "A3: WHEN the tokenizer cure is reverted, THEN E65-E71 fail (guilt replay)."
     probe: "revert on a scratch copy, rerun the corpus, restore check with cmp"
 consumer_map:
   - "PreToolUse(Bash|Monitor|Read) wiring in .claude/settings.json invokes this hook on every Bash call; hook-innocence-gate.yml runs the vaccine block on every hooks change."

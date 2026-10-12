@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test_secret_expansion_guard.py — the spec's §5 case corpus (E01-E64), run
+"""test_secret_expansion_guard.py — the spec's §5 case corpus (E01-E73), run
 against the real hook as a subprocess exactly as the harness would (JSON on
 stdin, exit 2 = DENY, exit 0 = ALLOW).
 
@@ -176,6 +176,25 @@ CORPUS: list[tuple[str, object, bool, str]] = [
      "KNOWN BOUNDARY, not an endorsement: judging a remote inline command needs the "
      "read-vs-write distinction of W94 (a remote WRITE stays remote) and that spec "
      "row is not written yet. Pinned so the gap is visible and flips when it is."),
+    # --- gate 2026-10-12: redirects are operators only outside quotes ---
+    ("E65", lambda: bash(f"bash -c 'cat {STORE} 2>/dev/null'"), True,
+     "X4: quoted payload keeps its inner redirect"),
+    ("E66", lambda: bash(f'bash -c "cat {STORE} 2>&1"'), True,
+     "X4: same in double quotes"),
+    ("E67", lambda: bash("sh -c 'printenv 2>&1'"), True,
+     "X2: -c payload with a redirect"),
+    ("E68", lambda: bash("bash -lc 'set -x; ls 2>/dev/null'"), True,
+     "X2: xtrace in a combined -lc payload with a redirect"),
+    ("E69", lambda: bash(f"eval 'cat {STORE} 2>/dev/null'"), True,
+     "X4: eval payload with a redirect"),
+    ("E70", lambda: bash("bash -c 'ls -la ~/bin/env > /tmp/o; cat /tmp/o'"), False,
+     "innocence: no bogus env head from a cut token"),
+    ("E71", lambda: bash("bash -c 'cd /tmp && python3 tool.py out/set > log 2>&1; echo rc=$?'"), False,
+     "innocence: no bogus set head from a cut token"),
+    ("E72", lambda: bash(f"cat {STORE}>/tmp/x"), True,
+     "X4: an unquoted glued redirect keeps the operand"),
+    ("E73", lambda: bash("echo 'a>b'"), False,
+     "innocence: a quoted > is data"),
 ]
 
 
