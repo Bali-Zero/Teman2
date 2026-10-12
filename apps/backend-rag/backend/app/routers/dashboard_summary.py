@@ -905,6 +905,17 @@ class PortalChallengeEntry(BaseModel):
     prize_slot: int | None = None
     september_rank: int | None = None
     playoff_pending: bool = False
+    # Round 2 sprint minimum (Zero's ruling, 2026-10-12) — None in round 1.
+    sprint_points: int | None = None
+    sprint_reached: bool | None = None
+    sprint_penalty_idr: int | None = None
+
+
+class PortalChallengeSprint(BaseModel):
+    start: datetime
+    end: datetime
+    min_points: int
+    penalty_idr: int
 
 
 class PortalChallengeRecentActivation(BaseModel):
@@ -969,6 +980,7 @@ class PortalChallengeResponse(BaseModel):
     tiers: list[PortalChallengeTier]
     tax_rules: PortalChallengeTaxRules
     rank_prizes: list[PortalChallengeRankPrize] = []
+    sprint: PortalChallengeSprint | None = None
     scoring: PortalChallengeScoringRules | None = None
     team_total_activations: int
     team_total_points: int = 0
@@ -1186,6 +1198,12 @@ async def _build_round2_payload(db_pool: asyncpg.Pool, now: datetime) -> dict[st
         "window_start": r2.ROUND2_START.isoformat(),
         "window_end": r2.ROUND2_END.isoformat(),
         "timezone": "Asia/Makassar",
+        "sprint": {
+            "start": r2.SPRINT_START.isoformat(),
+            "end": r2.SPRINT_END.isoformat(),
+            "min_points": r2.SPRINT_MIN_POINTS,
+            "penalty_idr": r2.SPRINT_PENALTY_IDR,
+        },
         "tiers": [],
         "tax_rules": {
             "podium_super_bonus_idr": TAX_PODIUM_BONUS_IDR,
@@ -1243,6 +1261,9 @@ async def _build_round2_payload(db_pool: asyncpg.Pool, now: datetime) -> dict[st
                 "prize_slot": e.prize_slot,
                 "september_rank": e.september_rank,
                 "playoff_pending": e.playoff_pending,
+                "sprint_points": e.sprint_points,
+                "sprint_reached": e.sprint_reached,
+                "sprint_penalty_idr": e.sprint_penalty_idr,
             }
             for e in snapshot.entries
         ],
@@ -1362,6 +1383,9 @@ async def get_portal_challenge(
             prize_slot=e.get("prize_slot"),
             september_rank=e.get("september_rank"),
             playoff_pending=e.get("playoff_pending", False),
+            sprint_points=e.get("sprint_points"),
+            sprint_reached=e.get("sprint_reached"),
+            sprint_penalty_idr=e.get("sprint_penalty_idr"),
         )
         for e in payload["entries"]
     ]
@@ -1378,6 +1402,7 @@ async def get_portal_challenge(
         tiers=[PortalChallengeTier(**t) for t in payload["tiers"]],
         tax_rules=PortalChallengeTaxRules(**payload["tax_rules"]),
         rank_prizes=[PortalChallengeRankPrize(**p) for p in payload.get("rank_prizes", [])],
+        sprint=PortalChallengeSprint(**payload["sprint"]) if payload.get("sprint") else None,
         scoring=PortalChallengeScoringRules(**payload["scoring"])
         if payload.get("scoring")
         else None,

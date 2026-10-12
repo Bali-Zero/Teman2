@@ -94,6 +94,7 @@ def _parse_optional_int(value: str | None) -> int | None:
 
 _ROSTER_COLUMNS = ["email", "display_name", "department", "role", "active"]
 _AGGREGATES_COLUMNS = ["creator_email", "activations", "invited", "last_activation_at"]
+_R2_AGGREGATES_COLUMNS = [*_AGGREGATES_COLUMNS, "sprint_activations"]
 _RECENT_COLUMNS = ["creator_email", "used_at"]
 _FIRST_DOCUMENT_COLUMNS = [
     "practice_id",
@@ -133,6 +134,8 @@ def _parse_activity_rows(raw: list[dict[str, str]]) -> list[dict]:
             "activations": _parse_int(r["activations"]),
             "invited": _parse_int(r["invited"]),
             "last_activation_at": _parse_ts(r.get("last_activation_at")),
+            # R2 aggregates only; R1 rows have no such column -> 0.
+            "sprint_activations": _parse_int(r.get("sprint_activations")),
         }
         for r in raw
     ]
@@ -231,7 +234,7 @@ def fetch_round2_snapshot(now: datetime) -> r2.Round2Snapshot:
     r1_awarded = compute_awards(merge_roster_and_activity(roster_raw, r1_activity_rows))
 
     registration_rows = _parse_activity_rows(
-        _run_sql(r2.build_registration_aggregates_sql(), _AGGREGATES_COLUMNS)
+        _run_sql(r2.build_registration_aggregates_sql(), _R2_AGGREGATES_COLUMNS)
     )
 
     first_document_rows = [
@@ -309,6 +312,7 @@ def render_round2_table(entries: list[r2.Round2Entry], markdown: bool) -> str:
         "unans",
         "unrev",
         "penalty",
+        "sprint",
         "slot",
         "prize_idr",
         "choice",
@@ -325,6 +329,8 @@ def render_round2_table(entries: list[r2.Round2Entry], markdown: bool) -> str:
             "unans": e.unanswered_requests,
             "unrev": e.unreviewed_documents,
             "penalty": e.penalty_points,
+            "sprint": f"{e.sprint_points}/{r2.SPRINT_MIN_POINTS}"
+            + ("" if e.sprint_reached else f" (-{e.sprint_penalty_idr})"),
             "slot": e.prize_slot if e.prize_slot is not None else "-",
             "prize_idr": "playoff" if e.playoff_pending else e.prize_idr,
             "choice": e.september_choice or "-",
@@ -344,6 +350,13 @@ def _main_round2(args: argparse.Namespace, now: datetime) -> int:
         f"Team total points: {snapshot.team_total_points}\n\n"
     )
     sys.stdout.write(render_round2_table(snapshot.entries, markdown=args.markdown) + "\n\n")
+
+    short = [e for e in snapshot.entries if not e.sprint_reached]
+    sys.stdout.write(
+        f"Sprint from {r2.SPRINT_START.isoformat()}: {r2.SPRINT_MIN_POINTS} net points each, "
+        f"{len(short)} of {len(snapshot.entries)} below it "
+        f"(-{r2.SPRINT_PENALTY_IDR} IDR each, and no rank prize).\n\n"
+    )
 
     mission = snapshot.asya_mission
     sys.stdout.write(
