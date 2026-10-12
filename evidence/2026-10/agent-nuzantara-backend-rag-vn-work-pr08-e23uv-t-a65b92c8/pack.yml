@@ -7,8 +7,11 @@ ruling: >-
   row; conservative default of owner decision OD-5 is the pending timeline. Authority note (red team, checked
   2026-10-12): official sources are silent for these codes, not absent in general. The generic imigrasi.go.id
   klasifikasi-visa-tinggal-terbatas page prints "Empat hari kerja setelah pembayaran visa diterima" 93 times as
-  a template; that page returns byte-identical text for any slug (an invented slug included), and the strings
-  E23U and E23V never occur in it, so it is not a code-specific window. A Kanim Bontang decision dated 2025
+  a template; that page returns byte-identical text for any slug (an invented slug included). It does name E23U
+  and E23V elsewhere (the description list and the stay/extension table), but none of its 93 four-working-day
+  blocks carries a visa code: the text is uniform across classes and covers only the issuance step after
+  payment, so it is not a code-specific, end-to-end window and gives no support to the 7-10 figure. There is no
+  official end-to-end window for these two codes. A Kanim Bontang decision dated 2025
   (WIM.18.IMI.7-1132.PW.02.01) sets a one-hour compensation rule, not a visa standard, and names neither code. The E23 figure and its IMTA source text are untouched
   (production catalogue row, OD-5).
 mission: >-
@@ -17,7 +20,7 @@ mission: >-
 lanes:
   - lane: pr08-e23uv-timeline
     role: build
-    seat: Claude Sonnet 5.5 implementer (subagent), worktree backend-rag-vn-work-pr08-e23uv-timeline.
+    seat: claude-opus-5-5 implementer (subagent; the Co-Authored-By trailer of all three commits), worktree backend-rag-vn-work-pr08-e23uv-timeline.
   - lane: pr08-ground-truth
     role: ground_truth
     seat: >-
@@ -31,7 +34,7 @@ pii_scan: clean
 appetite_exceeded: "The red-team cure round (live check of the official pages, a shared-copy rewording, two more test files and the full suites twice) added 0.7 h to the 0.5 h build."
 spend:
   wall_clock_hours: 1.2
-  adversarial_rounds: 1
+  adversarial_rounds: 2
 results:
   - "test_processing_times.py: 42 passed (6 red before the data change)"
   - "visa_engine suite (after red team): 2958 passed, 15 skipped; 3 failed and 42 errors only in Postgres-backed files; the 2571 tests outside them all pass"
@@ -40,9 +43,12 @@ results:
 bites:
   consumer: >-
     the E23U and E23V outcome cards (evaluate_path._processing_timeline, rendered by OutcomeSheet Timeline);
-    live after the backend-rag deploy, an evaluate for offshore / work / individual sponsor returns E23U with
-    processing_timeline.status UNKNOWN and reason PROCESSING_TIMELINE_NOT_VERIFIED and no working_days_min, and
-    the card shows outcome.timeline_pending.
+    live after the backend-rag (Fly) deploy, an evaluate for offshore / work / individual sponsor returns E23U
+    with processing_timeline.status UNKNOWN and reason PROCESSING_TIMELINE_NOT_VERIFIED and no working_days_min,
+    while E23 still returns 20-30; and, after the mouth (Vercel) production promote, the card shows the
+    outcome.timeline_pending sentence in EN and ID ("Bali Zero has no confirmed processing time for this visa
+    yet..." / "Bali Zero belum memiliki kepastian lama proses untuk visa ini...") and no "typically N working
+    days" line. The mouth copy lands staged on Vercel and goes live only on the promote.
   where: live
 receipts:
   - claim: "The new tests failed on the unchanged snapshot (red first)."
@@ -81,6 +87,12 @@ receipts:
     exit: 0
     ts: "2026-10-12T08:05:00Z"
     seat: this session
+  - claim: "Cure round: the three imigrasi.go.id pages re-fetched; the per-code pages are empty and the generic page names E23U/E23V outside its four-day blocks."
+    cmd: curl -s https://www.imigrasi.go.id/wna/{daftar-visa-indonesia/E23U,daftar-visa-indonesia/E23V,klasifikasi-visa-tinggal-terbatas-indeks-e23v} (HTML stripped, counted)
+    result: "E23U page: Data Belum Tersedia 1, hari kerja 0; E23V page: Data Belum Tersedia 1, hari kerja 0; generic page: E23U 1, E23V 2, Empat hari kerja 93"
+    exit: 0
+    ts: "2026-10-12T09:00:00Z"
+    seat: this session
 decisions:
   - id: D-conservative-default
     decision: >-
@@ -104,7 +116,19 @@ dissent:
     objection: "MEDIUM: the premise that no official source gives a window is false; imigrasi.go.id indexes a 4-day window on the E23V page and a newer Kanim Bontang page a 5-day standard, so sources conflict or are stale, not absent; document and resolve it rather than bake a false premise into tests and the pack."
     status: PLAUSIBLE
     disposition: >-
-      CURED: premise corrected, figure rejected. Checked live 2026-10-12: the per-code pages (daftar-visa-indonesia/E23V and /E23U) say "Data Belum Tersedia". The klasifikasi-visa-tinggal-terbatas-indeks-e23v URL returns the generic page whose text is byte-identical to an invented slug and never contains E23U or E23V, so its "Empat hari kerja" is a template, not an E23V window (and it is the visa-issuance step, while the 7-10 default was never tied to it). The Bontang file reachable from search is a one-hour service-compensation decision and says nothing about E23U or E23V; the 5-day statement was not found, and an office-local standard would not govern a national catalogue figure anyway. UNKNOWN stays (OD-5 owns which authority wins). Cure: the pack ruling, the snapshot interpretation text and the test reasons now say "no code-specific official window" and record the conflict instead of "no official page".
+      CURED, and the objection was partly right. Checked live 2026-10-12 (re-fetched in the cure round): the
+      per-code pages (daftar-visa-indonesia/E23V and /E23U) say "Data Belum Tersedia" and contain no
+      "hari kerja". The generic klasifikasi-visa-tinggal-terbatas-indeks-e23v URL returns a page whose text is
+      byte-identical for an invented slug; it names E23U (once) and E23V (twice) in its description list and
+      stay/extension table, but its 93 "Empat hari kerja setelah pembayaran visa diterima" blocks carry no visa
+      code. So an official generic issuance step of four working days does exist: it is uniform across classes,
+      covers only the issuance after payment, and does not support the 7-10 Bali Zero figure, so no end-to-end
+      window is established for these codes and UNKNOWN stays (OD-5 owns which authority wins). The Bontang file
+      reachable from search is a one-hour service-compensation decision and says nothing about E23U or E23V; the
+      5-day statement was not found, and an office-local standard would not govern a national catalogue figure.
+      An earlier wording of this record said the strings E23U and E23V never occur in the generic page; that
+      premise was false and is withdrawn. The snapshot interpretation and the test reasons say "no code-specific
+      official window" and "the 4-day text ... never names it", which stay literally true.
   - seat: "codex gpt-5.6-sol (red team)"
     rollout: "01a12d18-e796-75d0-99d7-88fbd895de07"
     objection: "MEDIUM: the now-exposed fallback tells clients processing times 'vary by office and season' (EN) and 'bervariasi menurut kantor dan musim' (ID); no rule or page supports a seasonal cause; it should say only that Bali Zero has no verified window."
@@ -116,3 +140,23 @@ dissent:
     objection: "LOW: no price or PNBP split defect; git diff --check clean; the full pytest suite could not run in the read-only sandbox, only a functional probe."
     status: RETRACTED
     disposition: "No defect to cure; the whole suites were run in this lane (see results)."
+  - seat: "codex gpt-5.6-sol (fresh rollout gate on head 64fb19d8a1)"
+    rollout: "fresh gate session, verdict REWORK-BUILD (no rollout id supplied to this lane)"
+    objection: "GATE 1: the pack ruling and the MEDIUM-1 disposition claim the strings E23U and E23V never occur in the generic page; a live fetch shows the page names both codes, so the permanent record carries a false premise."
+    status: CONFIRMED
+    disposition: "CURED: re-fetched the three pages (E23U 1 / E23V 2 mentions on the generic page, none in its 93 four-day blocks) and rewrote the ruling and the MEDIUM-1 disposition with the true statement. Code, data, tests and client copy untouched."
+  - seat: "codex gpt-5.6-sol (fresh rollout gate on head 64fb19d8a1)"
+    rollout: "fresh gate session, verdict REWORK-BUILD (no rollout id supplied to this lane)"
+    objection: "GATE 2: the lane seat 'Claude Sonnet 5.5' is not a roster model."
+    status: CONFIRMED
+    disposition: "CURED: lane seat now reads claude-opus-5-5, the model named in the Co-Authored-By trailer of all three commits."
+  - seat: "codex gpt-5.6-sol (fresh rollout gate on head 64fb19d8a1)"
+    rollout: "fresh gate session, verdict REWORK-BUILD (no rollout id supplied to this lane)"
+    objection: "GATE 3: the PR body is stale (old pending-sentence parenthetical, 'never contains E23U or E23V', 'merging backend-rag is the deploy' with no mouth/Vercel promote) and the Bites line omits the promote and the EN+ID observation."
+    status: CONFIRMED
+    disposition: "CURED: PR body rewritten (What, How, Review, Bites) and pack bites.consumer extended with the Vercel production promote and the EN+ID sentence observation."
+  - seat: "codex gpt-5.6-sol (fresh rollout gate on head 64fb19d8a1)"
+    rollout: "fresh gate session, verdict REWORK-BUILD (no rollout id supplied to this lane)"
+    objection: "OBSERVATION: the change overlaps plan PR-15 (timeline_pending offer wording, client-copy.test.ts:296-300); one new test is a forward guard that passes on the old snapshot."
+    status: PLAUSIBLE
+    disposition: "NOTED, no code change: the copy cure answers a CONFIRMED MEDIUM of the first red team; the post-merge step updates audit.json PR-15 to record timeline_pending as done here. The forward-guard test is kept; the 6 tests that fail without the fix are the proof."
