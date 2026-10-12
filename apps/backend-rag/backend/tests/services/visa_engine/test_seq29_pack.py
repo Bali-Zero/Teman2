@@ -487,6 +487,24 @@ class TestE31JMinorAndSingle:
         assert actual["state"] == "NO_SUPPORTED_PATH"
         assert actual["no_path_reason_codes"] == ["E31J_REQ_UNMARRIED"]
 
+    @pytest.mark.parametrize("status", ["MARRIED", "DIVORCED", "WIDOWED"])
+    def test_guilt_every_status_that_has_been_married_loses_e31j(
+        self, pack: census.PackUnderTest, status: str
+    ) -> None:
+        actual = _decide(pack, _family("SIBLING", **{"person.marital_status": _known(status)}))
+        assert actual["state"] == "NO_SUPPORTED_PATH"
+        assert actual["no_path_reason_codes"] == ["E31J_REQ_UNMARRIED"]
+
+    def test_innocence_another_status_is_not_refused_as_married(
+        self, pack: census.PackUnderTest
+    ) -> None:
+        """The page criterion is 'belum kawin'; 'Another status' does not say the applicant married."""
+
+        actual = _decide(pack, _family("SIBLING", **{"person.marital_status": _known("OTHER")}))
+        assert actual["state"] == "SUPPORTED_CANDIDATES"
+        assert actual["candidates"] == ["E31J"]
+        assert "E31J_REQ_UNMARRIED" not in actual.get("no_path_reason_codes", [])
+
     def test_innocence_a_single_minor_sibling_is_supported(
         self, pack: census.PackUnderTest
     ) -> None:

@@ -6440,9 +6440,9 @@
             "value": "SIBLING"
           },
           {
-            "op": "neq",
+            "op": "in",
             "fact": "person.marital_status",
-            "value": "SINGLE"
+            "values": ["MARRIED", "DIVORCED", "WIDOWED"]
           }
         ]
       },
