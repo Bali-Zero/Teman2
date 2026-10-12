@@ -222,7 +222,11 @@ content_on_main() {
     # NOT three-dot from main). For each, the branch's blob must equal main's
     # blob. A file the branch DELETED (absent on branch) must also be absent on
     # main. Any surviving difference => genuine unmerged content.
-    git diff --name-only "$mb" "$branch" > "$NAMES_TMP" 2>/dev/null
+    # --no-renames: with rename detection ON the name list carries only the
+    # DESTINATION of a rename, so the deleted source path was never verified
+    # against main (a branch that renamed a->b would read "landed" off b alone
+    # while main still carries a). List both halves.
+    git diff --name-only --no-renames "$mb" "$branch" > "$NAMES_TMP" 2>/dev/null
     diff_rc=$?
     [[ $diff_rc -ne 0 ]] && return 2
     if [[ ! -s "$NAMES_TMP" ]]; then
@@ -246,8 +250,19 @@ content_on_main() {
         mh=$(GIT_LITERAL_PATHSPECS=1 git ls-tree --full-tree "$MAIN_REF" -- "$f" 2>/dev/null) || return 2
         read -r _ _ bh _ <<< "$bh"
         read -r _ _ mh _ <<< "$mh"
-        # Both present and SHAs equal -> next file. Anything else (one
-        # absent, both absent, SHAs differ) is a genuine difference -> 1.
+        # Both present and SHAs equal -> next file. One absent, or SHAs
+        # differ, is a genuine difference -> 1.
+        if [[ -z "$bh" && -z "$mh" ]]; then
+            # Absent on BOTH sides. That is a landed DELETION only when the
+            # path demonstrably existed at the merge-base (the branch really
+            # deleted it, and main deleted it too). A git that answers every
+            # read with empty output looks exactly like this, so without the
+            # merge-base witness it stays "not proven" (1, never delete).
+            bh=$(GIT_LITERAL_PATHSPECS=1 git ls-tree --full-tree "$mb" -- "$f" 2>/dev/null) || return 2
+            read -r _ _ bh _ <<< "$bh"
+            [[ -z "$bh" ]] && return 1
+            continue
+        fi
         [[ -z "$bh" || -z "$mh" || "$bh" != "$mh" ]] && return 1
     done < "$NAMES_TMP"
     if (( compared == 0 )); then

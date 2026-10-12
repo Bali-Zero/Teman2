@@ -188,7 +188,7 @@ def test_graveyard_innocence_landed_content_still_deletable(graveyard_repo, env,
     merged = _section(s, "Merged & deletable")
     content = _section(s, "Content-on-main & deletable")
     assert sorted(merged) == ["plain", "reverted"]  # category 1 is ancestry (lossless: still reachable)
-    assert sorted(content) == ["cherry", "empty", "squash"]
+    assert sorted(content) == ["cherry", "deleted", "empty", "squash"]
     assert "unmerged" not in merged + content
     assert not _section(s, "Could not tell")
 
@@ -359,3 +359,82 @@ def test_quarantine_ref_on_main_first_parent_line_is_could_not_tell(quarantine):
     mod, _, work = quarantine
     on_line = _git(work, "rev-parse", "main~1")
     assert mod.classify(on_line)["verdict"] == mod.R_AMBIGUOUS
+
+
+# --------------------------------------------------------------------------- #
+# branch_graveyard_cleanup.sh — deleted and renamed files. The header rule says
+# a file the branch DELETED must also be absent on main; a rename is a delete
+# of the source plus an add of the destination, and both halves must have landed.
+# --------------------------------------------------------------------------- #
+def _rename_repo(tmp_path: Path, env: Path, main_renames: bool, main_has_dest: bool):
+    work = tmp_path / "w"
+    work.mkdir()
+    _git(work, "init", "-q", "-b", "main")
+    (work / "old.txt").write_text("payload that is long enough to be a rename\n" * 5)
+    base = _commit(work, "keep.txt", "root\n", "base")
+    _git(work, "checkout", "-q", "-b", "feature/rename", base)
+    _git(work, "mv", "old.txt", "new.txt")
+    _git(work, "commit", "-q", "-m", "branch renames old->new")
+    _git(work, "checkout", "-q", "main")
+    if main_renames:
+        _git(work, "mv", "old.txt", "new.txt")
+        _git(work, "commit", "-q", "-m", "main renames too")
+    elif main_has_dest:
+        (work / "new.txt").write_text((work / "old.txt").read_text())
+        _git(work, "add", "-A")
+        _git(work, "commit", "-q", "-m", "main copies old->new, keeps old")
+    origin = tmp_path / "o.git"
+    _git(tmp_path, "init", "-q", "--bare", "-b", "main", str(origin))
+    _git(work, "remote", "add", "origin", str(origin))
+    _git(work, "push", "-q", "origin", "main", "feature/rename")
+    return work
+
+
+def test_graveyard_rename_whose_source_survives_on_main_is_not_landed(tmp_path, env):
+    """Guilt: main has the DESTINATION bytes but still carries the source the
+    branch deleted -- the branch's deletion never landed."""
+    work = _rename_repo(tmp_path, env, main_renames=False, main_has_dest=True)
+    s = _run_graveyard(work, env, tmp_path)
+    assert "feature/rename" not in _section(s, "Content-on-main & deletable")
+    assert "feature/rename" not in (_section(s, "Could not tell") or [])
+
+
+def test_graveyard_rename_landed_on_main_is_deletable(tmp_path, env):
+    """Innocence twin: main renamed too, so source is gone and destination matches."""
+    work = _rename_repo(tmp_path, env, main_renames=True, main_has_dest=False)
+    s = _run_graveyard(work, env, tmp_path)
+    assert "feature/rename" in _section(s, "Content-on-main & deletable")
+
+
+def test_graveyard_deleted_file_absent_on_main_is_landed_and_survivor_is_not(tmp_path, env):
+    """Guilt/innocence pair in one repo: branch A deleted d.txt and main did too
+    (landed); branch B deleted e.txt but main still has it (not landed)."""
+    work = tmp_path / "w"
+    work.mkdir()
+    _git(work, "init", "-q", "-b", "main")
+    (work / "d.txt").write_text("d\n")
+    (work / "e.txt").write_text("e\n")
+    base = _commit(work, "keep.txt", "root\n", "base")
+    for name, path in (("feature/del-d", "d.txt"), ("feature/del-e", "e.txt")):
+        _git(work, "checkout", "-q", "-b", name, base)
+        _commit(work, path, None, f"{name} deletes {path}")
+        _git(work, "checkout", "-q", "main")
+    _commit(work, "d.txt", None, "main deletes d.txt too")
+    origin = tmp_path / "o.git"
+    _git(tmp_path, "init", "-q", "--bare", "-b", "main", str(origin))
+    _git(work, "remote", "add", "origin", str(origin))
+    _git(work, "push", "-q", "origin", "main", "feature/del-d", "feature/del-e")
+    s = _run_graveyard(work, env, tmp_path)
+    content = _section(s, "Content-on-main & deletable")
+    assert "feature/del-d" in content
+    assert "feature/del-e" not in content
+
+
+def test_graveyard_lying_git_does_not_turn_a_deletion_check_into_landed(graveyard_repo, env, tmp_path):
+    """A git whose ls-tree answers empty for EVERY path makes 'absent on both
+    sides' true for everything; the merge-base witness must refuse it."""
+    work, _ = graveyard_repo
+    s = _run_graveyard(work, env, tmp_path, FAKE_GIT_RE=r"^ls-tree", FAKE_GIT_MODE="lie")
+    content = _section(s, "Content-on-main & deletable")
+    assert "deleted" not in content and "unmerged" not in content
+
