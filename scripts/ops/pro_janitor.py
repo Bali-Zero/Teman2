@@ -34,6 +34,7 @@ SEVEN_DAYS = 7 * 86400
 H = 3600
 
 TOOL_PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+NPM_GLOBALCONFIG = "/var/empty/pro-janitor-npmrc"
 # id, tier index, cooldown seconds, kind; tools carry the cache dir (relative to HOME) they are pinned to
 RULES = [
     {"id": "uv-prune", "tier": 1, "cooldown": 6 * H, "kind": "tool", "tool": "uv", "cache": ".cache/uv"},
@@ -1166,7 +1167,9 @@ def tool_rule(env, rule, apply_):
     else:
         argv = [exe, "cache", "verify", "--cache", cache]
         tenv["npm_config_userconfig"] = "/dev/null"
-        tenv["npm_config_globalconfig"] = "/dev/null"
+        # a second, distinct empty config: npm 11 refuses one file loaded as both user and global ("double-loading
+        # config"), exit 1 before the verb runs. /var/empty is root-owned and empty, so this file never exists.
+        tenv["npm_config_globalconfig"] = NPM_GLOBALCONFIG
     if not apply_:
         return "dry-run", []
     if not (os.path.isfile(exe) and os.access(exe, os.X_OK)):
