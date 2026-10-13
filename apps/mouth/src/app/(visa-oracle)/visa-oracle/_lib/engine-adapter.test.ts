@@ -1780,21 +1780,100 @@ describe("support reasons are sentences, not machine codes", () => {
   });
 
   it("the shared passport line anchors validity to expiry, not to the date of entry, for D1/D2/D12/E30/E30A/E30B", () => {
+    const pack = highestSequencePack() as unknown as {
+      rules: Array<{ rule_id: string; effect: { reason_code?: string } }>;
+    };
+    for (const ruleId of [
+      "el.d1-passport-validity",
+      "el.d2-passport-validity",
+      "el.d12-passport-validity",
+      "el.e30-passport-validity.e30",
+      "el.e30-passport-validity.e30a",
+      "el.e30-passport-validity.e30b",
+    ]) {
+      expect(
+        pack.rules.find((r) => r.rule_id === ruleId)?.effect.reason_code,
+        ruleId,
+      ).toBe("PASSPORT_VALIDITY_6_MONTHS_REQUIRED");
+    }
+    // Exact pin: any re-anchoring (entry, arrival, border crossing...) is a
+    // change to this sentence and must be a deliberate one.
     const copy = SUPPORT_REASON_COPY.PASSPORT_VALIDITY_6_MONTHS_REQUIRED;
-    expect(copy.en).not.toMatch(/enter|entry|arriv/i);
-    expect(copy.id).not.toMatch(/masuk|tiba|kedatangan/i);
-    expect(copy.en).toContain("6 months");
-    expect(copy.id).toContain("6 bulan");
+    expect(copy.en).toBe(
+      "Your passport must have at least 6 months of validity remaining.",
+    );
+    expect(copy.id).toBe(
+      "Paspor Anda harus masih berlaku paling singkat 6 bulan.",
+    );
   });
 
   it("the shared support-letter line is true for D12 (institution only) and D1/D2 (institution or Indonesian spouse/parent)", () => {
+    const pack = highestSequencePack() as unknown as {
+      rules: Array<{ rule_id: string; effect: { reason_code?: string } }>;
+    };
+    for (const ruleId of [
+      "el.d1-support-letter",
+      "el.d2-support-letter",
+      "el.d12-support-letter",
+    ]) {
+      expect(
+        pack.rules.find((r) => r.rule_id === ruleId)?.effect.reason_code,
+        ruleId,
+      ).toBe("SUPPORT_LETTER_REQUIRED");
+    }
     const copy = SUPPORT_REASON_COPY.SUPPORT_LETTER_REQUIRED;
-    expect(copy.en).toMatch(/government agency or private institution/);
-    expect(copy.en).toMatch(/D1 and D2/);
-    expect(copy.en).toMatch(/spouse or parent/);
-    expect(copy.id).toMatch(/instansi pemerintah atau lembaga swasta/);
-    expect(copy.id).toMatch(/D1 dan D2/);
-    expect(copy.id).toMatch(/suami\/istri atau orang tua WNI/);
+    // The spouse/parent route is scoped to D1/D2 in the sentence itself, and
+    // D12 is never named as accepting it.
+    expect(copy.en).toBe(
+      "You will need a letter, invitation or correspondence from a government agency or private institution explaining its link to you. For the D1 and D2 visit visas, a letter from an Indonesian-citizen spouse or parent also qualifies.",
+    );
+    expect(copy.id).toBe(
+      "Anda memerlukan surat keterangan, undangan, atau korespondensi dari instansi pemerintah atau lembaga swasta yang menjelaskan hubungannya dengan Anda. Untuk visa kunjungan D1 dan D2, surat dari suami/istri atau orang tua WNI juga dapat diterima.",
+    );
+    expect(copy.en).not.toMatch(/D12/);
+    expect(copy.id).not.toMatch(/D12/);
+  });
+
+  // The official-page snapshots the funds figures are quoted from. Reading
+  // them here is what makes a wrong figure RED instead of merely consistent
+  // with itself.
+  it("the D1/D2/D12 funds figures match the saved official-page snapshots and their VERIFIED source records", () => {
+    const snapshotsDir = path.resolve(
+      PACKS_DIR,
+      "../../../../../../..",
+      "research/visa/2026-10-13-organ-reattest-seq29/text",
+    );
+    const pack = highestSequencePack() as unknown as {
+      source_records: Array<{
+        source_record_id: string;
+        canonical_url: string;
+        status: string;
+      }>;
+    };
+    const specs = [
+      { id8: "ca5a2ce8", page: "D1", usd: D1_PROOF_OF_FUNDS_USD },
+      { id8: "d3ad622e", page: "D2", usd: D2_PROOF_OF_FUNDS_USD },
+      { id8: "5e64ec6b", page: "D12", usd: D12_PROOF_OF_FUNDS_USD },
+    ];
+    for (const spec of specs) {
+      const record = pack.source_records.find((r) =>
+        r.source_record_id.startsWith(spec.id8),
+      );
+      expect(record?.canonical_url).toBe(
+        `https://www.imigrasi.go.id/wna/daftar-visa-indonesia/${spec.page}`,
+      );
+      expect(record?.status).toBe("VERIFIED");
+      const file = fs
+        .readdirSync(snapshotsDir)
+        .find((name) => name.startsWith(`${spec.id8}-`));
+      expect(file, `snapshot for ${spec.page}`).toBeDefined();
+      const text = fs.readFileSync(path.join(snapshotsDir, file!), "utf-8");
+      expect(text).toMatch(
+        new RegExp(
+          `rekening koran 3 bulan terakhir[^\\n]*minimal USD${spec.usd}\\b`,
+        ),
+      );
+    }
   });
 
   // Mirror image: these SUPPORT reasons named a dollar figure on `main` with
