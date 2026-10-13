@@ -1,0 +1,63 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night visit audit item V02 (findings F012, F105, code A1): a zero price rendered as an amount with a
+  service-included note. No owner decision; i18n.ts untouched (tree lane).
+mission: >-
+  A zero price in the Visa Oracle outcome sheet and share summary reads Free/Gratis, with no service-included note.
+lanes:
+  - lane: vn-visit-v02-free-price
+    role: build
+    seat: Kimi (kimi-for-coding, tier coding) via scripts/seat_build.sh on Mini, rc 0, 240s.
+  - lane: vn-visit-v02-free-price
+    role: review
+    seat: Claude Opus 5.5 orchestrator (red team, read-only review of git diff origin/main, minimal cure).
+  - lane: v02-ground-truth
+    role: ground_truth
+    seat: >-
+      the i18n table already on main (outcome.price_free = Free EN / Gratis ID in
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts) plus the committed Bali Zero price catalogue that
+      quotes A1 at 0 (apps/backend-rag/backend/data/bali_zero_official_prices_2026.json, entry "A1 Visa-Free
+      Tourism", price "0 IDR"); the change asserts no figure of its own.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+    query_hash: "97dca521a6040c53cbe63198cd1062cc52375fddf0d77ba69626d8df528e12ec" # pragma: allowlist secret
+    note: query_hash = sha256 of OutcomeSheet.tsx at origin/main 4f7715d638 (before the change).
+pii_scan: clean
+spend:
+  wall_clock_hours: 0.5
+  adversarial_rounds: 1
+  paid_endpoint_usd: 0
+bites: >-
+  Consumer: the Visa Oracle outcome sheet and its copy-summary button in apps/mouth. Observation: live walk with a
+  Singapore passport, tourism, 21 days shows the A1 card as Free/Gratis and the copied share text says Free; mouth
+  deploys land STAGED, so the observation is made after vercel promote.
+results:
+  - claim: "Whole visa-oracle suite on the build: 56 files, 1452 tests passed (new tests: zero price in sheet EN+ID, zero price in share summary EN+ID, non-zero regression)."
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
+    result: "56 passed (56 files), 1452 passed (1452 tests)"
+    exit: 0
+    ts: "2026-10-13T04:38:00Z"
+    seat: this session
+  - claim: "Mutation: the sheet zero branch forced to render the amount again (isFree=false and the share branch removed) turns the four zero-price tests red; restored from a byte copy."
+    cmd: npx vitest run OutcomeSheet.test.tsx under the mutation
+    result: "4 failed, 132 passed (136)"
+    exit: 1
+    ts: "2026-10-13T04:36:00Z"
+    seat: this session
+  - claim: "Typecheck of apps/mouth is clean."
+    cmd: npx tsc --noEmit -p apps/mouth
+    result: "no errors"
+    exit: 0
+    ts: "2026-10-13T04:37:00Z"
+    seat: this session
+  - claim: "RT-1 (cosmetic): the build left a double blank line and a Prettier-unclean test file. Cure: prettier --write on the test file only; no behaviour change. i18n.ts is untouched (git diff --stat lists three files only)."
+    cmd: npx prettier --check on the touched files
+    result: "clean after cure"
+    exit: 0
+    ts: "2026-10-13T04:38:00Z"
+    seat: this session
+dissent:
+  - seat: "Claude Opus 5.5 red team"
+    objection: "Alternative durations (option.amountIdr) can still render a zero amount as IDR 0; the task scopes only the candidate amount."
+    status: PLAUSIBLE
+    disposition: "Out of scope by the task acceptance; not cured. Follow-up only if a zero-priced alternative duration exists in a pack."

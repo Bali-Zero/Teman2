@@ -206,7 +206,9 @@ function buildShareSummary(
       const timing = shareTimingText(language, candidate.timeline);
       const parts = [
         candidate.price.status === "AVAILABLE"
-          ? formatIDR(candidate.price.amount, language)
+          ? candidate.price.amount === 0
+            ? translate(language, "outcome.price_free" as I18nKey)
+            : formatIDR(candidate.price.amount, language)
           : null,
         candidate.duration
           ? durationLabel(language, candidate.duration.selectedDays, "permit")
@@ -632,19 +634,27 @@ function Price({
   if (price.status !== "AVAILABLE") {
     return <p>{localized(price.message, language)}</p>;
   }
+  // VN-visit-V02 F012/F105: a zero price is "Free"/"Gratis", never
+  // "IDR 0"/"Rp 0", and carries no "service included" note — there is no
+  // fee to call all-inclusive. Non-zero prices render unchanged.
+  const isFree = price.amount === 0;
   return (
     <div className="oracle-price">
       <span className="oracle-price__value oracle-tabular-nums">
-        {formatIDR(price.amount, language)}
+        {isFree
+          ? translate(language, "outcome.price_free" as I18nKey)
+          : formatIDR(price.amount, language)}
       </span>
       {duration && (
         <span className="oracle-price__duration">
           {durationLabel(language, duration.selectedDays, "permit")}
         </span>
       )}
-      <span className="oracle-price__note">
-        {translate(language, "outcome.price_all_inclusive")}
-      </span>
+      {!isFree && (
+        <span className="oracle-price__note">
+          {translate(language, "outcome.price_all_inclusive")}
+        </span>
+      )}
       {duration?.options
         .filter((option) => !option.selected && option.amountIdr !== null)
         .map((option) => (
