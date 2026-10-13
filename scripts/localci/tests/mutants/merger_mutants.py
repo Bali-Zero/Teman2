@@ -56,6 +56,7 @@ PY, SH = "scripts/localci/merger.py", "scripts/localci/localci_merger_tick.sh"
 HC, RUNNER = "scripts/localci/hosted_compare.py", "scripts/localci/runner.py"
 HCT, RUNT = "scripts/localci/tests/test_hosted_compare.py", "scripts/localci/tests/test_runner.py"
 HD = "scripts/localci/tests/test_host_disk.py"
+CS = "scripts/localci/tests/test_cancelled_superseded.py"
 DRIVER, TP = "scripts/localci/steps_driver.py", "scripts/localci/tests/test_tree_pack.py"   # B14
 RUNT_COV = tuple(f"{RUNT}::{t}" for t in ("test_the_matrix_coverage_is_full_by_default_partial_where_declared_and_never_full_when_unreadable",
                                          "test_every_context_result_in_the_status_carries_the_base_matrix_coverage",
@@ -644,6 +645,10 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b17-supersede-across-apps": (HC, "return e[\"app_id\"] == app_id if is_pinned(app_id) else True", "return True", (HCT,)),
     "b17-supersede-on-unparseable-time": (HC, "and _TS_RE.match(t) else None\n\n    def run(e):", "and _TS_RE.match(t) else \"0\"\n\n    def run(e):", (HCT,)),
     "b17-cancelled-answers-cancelled": (HC, 'if run(o) and o["conclusion"] != "cancelled" and stamp(o)', "if run(o) and stamp(o)", (HCT,)),
+    "b17-reread-ignores-stuck-red": (PY, "return flipped if not stuck and len(flipped) == raw else []", "return flipped if len(flipped) == raw else []", (CS,)),
+    "b17-reread-ignores-count": (PY, "return flipped if not stuck and len(flipped) == raw else []", "return flipped if not stuck else []", (CS,)),
+    "b17-reread-fails-open": (PY, "else []\n    except Exception:  # noqa: BLE001 — unreadable evidence keeps the recorded false green\n        return []",
+                              "else []\n    except Exception:  # noqa: BLE001 — unreadable evidence keeps the recorded false green\n        return [{'pr': 0, 'context': 'x', 'head_sha': 'x', 'stale_why': 'cancelled_superseded', 'superseded_cancelled': []}] * raw", (CS,)),
     "enqueue-host-counted-executed": (PY, "{len(required) - len(non_executed) - len(host)}/", "{len(required) - len(non_executed)}/", (TICK,)),
     "enqueue-host-passes": (PY, '                                                               if host else "") if x) or None)}',
                             '                                                               if False else "") if x) or None)}', (TICK,)),

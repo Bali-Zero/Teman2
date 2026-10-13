@@ -49,3 +49,51 @@ def test_a_sha_that_does_not_answer_the_cancelled_run_keeps_the_row(tmp_path):
 
 def test_an_unreadable_record_keeps_every_row(tmp_path):
     assert mg.reclassify_replay_superseded({"pr": 1, "head_sha": "d" * 40, "run_dir": str(tmp_path / "missing")}, LIVE)[0] == []
+
+
+class _A:
+    repo, base = "o/r", "main"
+
+
+SHA = "5" * 40
+REQ = [{"context": CTX, "app_id": APP}, {"context": "other", "app_id": APP}]
+
+
+def _live(*runs):
+    return {"required_checks": REQ, "check_runs": list(runs), "statuses": []}
+
+
+def _row(count=1, **kw):
+    return {"pr": 8231, "head_sha": "d" * 40, "contexts": {CTX: "OK", "other": "OK"}, "hosted_compare": {"sha": SHA, "counts": {"FALSE_GREEN": count}}, **kw}
+
+
+OTHER_OK = {**_run(9, "success", "2026-10-10T15:00:00Z"), "name": "other"}
+
+
+def test_a_row_without_entry_data_is_reclassified_when_the_reread_shows_cancelled_then_success():
+    lives = {SHA: _live(*LIVE["check_runs"], OTHER_OK)}
+    (x,) = mg.reclassify_by_reread(_A, _row(), lives, 1)
+    assert (x["context"], x["stale_why"], x["superseded_cancelled"]) == (CTX, "cancelled_superseded", [1])
+
+
+def test_a_reread_that_shows_a_later_failure_keeps_the_row():
+    lives = {SHA: _live(_run(1, "cancelled", "2026-10-10T15:29:12Z"), _run(2, "failure", "2026-10-10T15:31:00Z"), OTHER_OK)}
+    assert mg.reclassify_by_reread(_A, _row(), lives, 1) == []
+
+
+def test_a_context_red_for_another_reason_keeps_the_row_even_when_one_flipped():
+    bad = {**_run(8, "failure", "2026-10-10T15:00:00Z"), "name": "other"}
+    assert mg.reclassify_by_reread(_A, _row(), {SHA: _live(*LIVE["check_runs"], bad)}, 1) == []
+
+
+def test_a_recorded_count_that_is_not_the_number_flipped_keeps_the_row():
+    lives = {SHA: _live(*LIVE["check_runs"], OTHER_OK)}
+    assert mg.reclassify_by_reread(_A, _row(2), lives, 2) == [] and mg.reclassify_by_reread(_A, _row(0), lives, 0) == []
+
+
+def test_a_fetch_error_or_an_unreadable_sha_keeps_the_row(monkeypatch):
+    def boom(*_a):
+        raise OSError("gh down")
+    monkeypatch.setattr(mg.hc, "fetch_live", boom)
+    assert mg.reclassify_by_reread(_A, _row(), {}, 1) == []
+    assert mg.reclassify_by_reread(_A, {**_row(), "hosted_compare": {"sha": "nope"}}, {}, 1) == []

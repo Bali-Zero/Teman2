@@ -1591,6 +1591,8 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
                 got, why_kept = reclassify_replay_superseded(d, live)
             else:
                 got, why_kept = reclassify_recorded(a, d, judge, gate) if raw else ([], [])
+            if raw and len(got) < raw and (flipped := reclassify_by_reread(a, d, lives, raw)):   # B17: a row with no per-entry data
+                got, why_kept = flipped, []
             got = got[:raw]
             recorded_raw += raw
             reclassified += got
@@ -1819,6 +1821,35 @@ def reclassify_replay_superseded(d: dict, live: dict) -> tuple[list[dict], list[
     except Exception:  # noqa: BLE001 — unreadable evidence keeps the recorded false green
         return [], kept
     return out, kept
+
+
+def reclassify_by_reread(a, d: dict, lives: dict, raw: int) -> list[dict]:
+    """B17 for a recorded row that journals no per-entry hosted data (only ``hosted_compare.sha`` and the FALSE_GREEN count): re-read the
+    hosted entries of that sha (completed check runs on a fixed sha do not change; ``lives`` is the report's own cache and fetch). All
+    or nothing: the contexts the row judged OK that hosted read RED without B17 and GREEN with it must number exactly ``raw``, and no
+    context judged OK may stay hosted RED. Anything unreadable or ambiguous returns [] and the row stays a false green."""
+    try:
+        sha = (d.get("hosted_compare") or {}).get("sha")
+        local = d.get("contexts") if isinstance(d.get("contexts"), dict) else {}
+        if not is_sha(sha) or not raw:
+            return []
+        if sha not in lives:
+            lives[sha] = hc.fetch_live(a.repo, a.base, sha)
+        live = lives[sha]
+        by = hc.hosted_entries(live["check_runs"], live["statuses"])
+        flipped, stuck = [], 0
+        for chk in live["required_checks"]:
+            if local.get(chk["context"]) != "OK":
+                continue
+            h = hc.hosted_verdict(by.get(chk["context"], []), chk.get("app_id"))
+            if h["verdict"] == "RED":
+                stuck += 1
+            elif h["verdict"] == "GREEN" and h["superseded_cancelled"]:
+                flipped.append({"pr": d.get("pr"), "context": chk["context"], "head_sha": d.get("head_sha"), "stale_why": "cancelled_superseded",
+                                "superseded_cancelled": h["superseded_cancelled"]})
+        return flipped if not stuck and len(flipped) == raw else []
+    except Exception:  # noqa: BLE001 — unreadable evidence keeps the recorded false green
+        return []
 
 
 def reclassify_recorded(a, d: dict, judge, gate: GateJudge | None = None) -> tuple[list[dict], list[dict]]:
