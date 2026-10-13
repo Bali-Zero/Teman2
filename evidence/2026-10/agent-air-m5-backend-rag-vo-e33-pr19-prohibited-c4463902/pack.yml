@@ -1,0 +1,81 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 (E33/retirement audit plan, PR-19) - the signed pack already states each product's
+  prohibited activities but /evaluate does not carry them, so the public result cannot say what the permit
+  does not allow; PR-20 renders it.
+mission: >-
+  The Visa Oracle result can say what each permit does not allow, starting with the signed prohibited
+  activities of E33 carried on the /evaluate display block.
+lanes:
+  - lane: e33-pr19
+    role: build
+    seat: >-
+      codex-gpt-5.6-sol (codex exec, workspace-write, driven by a Claude subagent), worktree
+      backend-rag-vo-e33-pr19-prohibited-1013 on M5; rollout model verified as gpt-5.6-sol.
+  - lane: e33-pr19-evidence
+    role: review
+    seat: Claude Sonnet 5.5 subagent, same worktree (rebase, whole-tree runs, observer, this pack); not a gate.
+  - lane: e33-pr19-ground-truth
+    role: ground_truth
+    seat: >-
+      the signed seq-29 pack states each product's prohibited_activities (E33 carries sale_of_goods_or_services);
+      the change only carries that list to the display and asserts no rule of its own.
+    nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
+    query_hash: "8daa66acd3ba3f6adc9a78304e35d719667fa3e735b32492757ee085ea6bee0e" # pragma: allowlist secret
+    note: query_hash = sha256 of the signed pack at origin/main.
+pii_scan: clean
+bites:
+  consumer: >-
+    PR-20's result renderer, and today the live /evaluate response: display.candidates[i].prohibited_activities
+    (evaluate_path.py _build_display).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_engine_prohibited_activities.py
+  expect: "contains:prohibited activities display holds"
+receipts:
+  - claim: "The branch was rebased onto a fresh origin/main (nothing pushed); no conflict."
+    cmd: git fetch origin main && git rebase origin/main
+    result: "rebase clean; parent b846d2ce04, build commit now 3f73c96aab"
+    exit: 0
+    ts: "2026-10-13T12:30:00Z"
+    seat: this session
+  - claim: "apps/mouth typechecks after the rebase."
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-13T12:34:45Z"
+    seat: this session
+  - claim: "The WHOLE visa-oracle mouth tree (_components and _lib included) passes with the new optional field in schema.d.ts."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 56 passed (56); Tests 1469 passed (1469)"
+    exit: 0
+    ts: "2026-10-13T12:35:46Z"
+    seat: this session
+  - claim: "The new display test file and the observer pass (4 tests, no DB needed)."
+    cmd: python3 scripts/ci/observe_visa_engine_prohibited_activities.py
+    result: "4 passed in 2.28s; prohibited activities display holds"
+    exit: 0
+    ts: "2026-10-13T12:33:00Z"
+    seat: this session
+  - claim: "The observer's summary parser rejects skipped, failed, error, xfailed, deselected and reduced counts."
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_engine_prohibited_activities.py
+    result: "16 passed"
+    exit: 0
+    ts: "2026-10-13T12:33:00Z"
+    seat: this session
+  - claim: "The WHOLE backend/tests/services/visa_engine directory: every non-DB test passes; the failures and errors are all DB-fixture ones (asyncpg UndefinedTable, tuple concurrently updated, deadlock, missing visa_activate_rule_pack, retention FK registry) on the shared local Postgres, in files this change does not touch (test_activation_writer, test_evaluate_endpoint, test_shadow_evidence, test_shadow_match, test_visa_engine_retention_fk_registry); the new display test and test_schema_contracts pass. CI runs these against a clean DB."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/services/visa_engine
+    result: "5 failed, 3610 passed, 15 skipped, 3 xfailed, 55 errors in 164.61s"
+    exit: 1
+    ts: "2026-10-13T12:38:40Z"
+    seat: this session
+decisions:
+  - id: D-additive-always-present
+    decision: >-
+      prohibited_activities is always emitted (empty list when the product has none) and is an optional
+      array in the contract and schema.d.ts, so existing clients and the mouth parser ignore it safely.
+  - id: D-schema-d-ts-by-hand
+    decision: >-
+      schema.d.ts was edited by hand in generator key order (after product_version_id) because no npm
+      install or generator may run in a worktree; the freshness check compares the generated shape.
+dissent: []

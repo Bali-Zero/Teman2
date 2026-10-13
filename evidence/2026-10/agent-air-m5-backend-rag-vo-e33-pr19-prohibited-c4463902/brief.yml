@@ -1,0 +1,23 @@
+gear: 1
+gear_reason: >-
+  Floor 1 (print-floor, churn under 400). Additive field on the engine /evaluate
+  display block, its OpenAPI contract and generated type; backend-rag merge is the deploy.
+mission: >-
+  The Visa Oracle result can say what each permit does not allow, starting with the signed prohibited
+  activities of E33 carried on the /evaluate display block.
+objective: >-
+  Every candidate of display.candidates in /evaluate carries prohibited_activities, the list the signed pack
+  states for that product (E33 carries sale_of_goods_or_services; an empty list when the product has none),
+  declared as an optional array in the contract and the mouth type so PR-20 can render it and today's
+  renderer is unaffected.
+scope:
+  - apps/backend-rag/backend/services/visa_engine/evaluate_path.py
+  - apps/backend-rag/backend/services/visa_engine/api_models.py
+  - apps/backend-rag/backend/services/visa_engine/contracts/contract.schema.json
+  - apps/mouth/src/lib/api/schema.d.ts
+  - apps/backend-rag/backend/tests/services/visa_engine/test_evaluate_path_display.py
+  - scripts/ci/observe_visa_engine_prohibited_activities.py
+  - tests/scripts/test_observe_visa_engine_prohibited_activities.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
