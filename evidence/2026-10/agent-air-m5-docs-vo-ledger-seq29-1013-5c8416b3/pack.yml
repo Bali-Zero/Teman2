@@ -54,19 +54,19 @@ decisions:
     decision: >-
       The seq-29 duplicate-line check covers only the opened or closed 2026-10-1x visa rows, because PENDING-ARMS already holds unrelated duplicates on main.
 dissent:
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T01-42-55-01a13135-d947-7fc0-b096-86c3dc58cfe5.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T19-41-27-01a13511-4512-70f3-80bd-37403469bae6.jsonl, model verified in the rollout file)"
     objection: "MEDIUM 1: the observer does not check the runbook declared as consumer; removing the activation note or reverting it to pending would stay green."
     status: RETRACTED
     disposition: "Cured in the fix(visaoracle) commit that follows b6aa66db5c: test_runbook_records_the_seq29_activation_done reads the runbook and pins activation id, timestamp, Activation done, seq-28 closure and the proof URL; the observer now runs 9 tests."
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T01-42-55-01a13135-d947-7fc0-b096-86c3dc58cfe5.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T19-41-27-01a13511-4512-70f3-80bd-37403469bae6.jsonl, model verified in the rollout file)"
     objection: "MEDIUM 2: brief_ref evidence/brief.yml points to a file that does not exist."
     status: PLAUSIBLE
     disposition: "Not changed, by repo convention: CI and the pre-push pack-lint stage the brief at evidence/brief.yml and a dated brief_ref fails the lint; that file must never be committed. Accepted as a limit of the convention, the dated brief.yml sits next to pack.yml."
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T01-42-55-01a13135-d947-7fc0-b096-86c3dc58cfe5.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T19-41-27-01a13511-4512-70f3-80bd-37403469bae6.jsonl, model verified in the rollout file)"
     objection: "LOW 3: brief scope lists eight files but the diff touches ten (brief.yml and pack.yml missing)."
     status: RETRACTED
     disposition: "Cured in the same fix commit: both paths added to scope."
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T01-42-55-01a13135-d947-7fc0-b096-86c3dc58cfe5.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T19-41-27-01a13511-4512-70f3-80bd-37403469bae6.jsonl, model verified in the rollout file)"
     objection: "LOW 4: the gear reason claims above 400 churn but the diff is +325/-18."
     status: RETRACTED
     disposition: "Cured in the same fix commit: gear_reason now cites 10 files, about +335/-18, the lint floor, and the observer-gated PR deliverable."

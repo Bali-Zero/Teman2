@@ -1,6 +1,6 @@
 gear: 2
 gear_reason: >-
-  Gear 2 by the lint size floor over 10 files with tests, observer and evidence (about +335/-18 before the red-team cure; the floor is the lint count, not a round 400), and because the deliverable is a PR with an observer that gates the ledger. Docs and ledger only, plus a ledger test, an observer and its test; no backend, no pack, no mouth code.
+  Gear 2 declared above the lint computed size floor (floor 1: churn under 400 lines over 10 files with tests, observer and evidence), because the deliverable is a PR with an observer that gates the ledger. Docs and ledger only, plus a ledger test, an observer and its test; no backend, no pack, no mouth code.
 mission: >-
   The /visaoracle ledger, live state, runbook and pending arms say that seq-29 is active in production, and the closed rows carry their proof.
 objective: >-

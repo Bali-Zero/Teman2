@@ -35,7 +35,7 @@ def test_runbook_records_the_seq29_activation_done():
     for fact in (ACTIVATION, "2026-10-13T11:19:00Z", "**Activation: done 2026-10-13T11:19:00Z.**",
                  "b7c808bd-c0f4-48fe-9fdb-3f7f47f7e86a", "closed at 11:18:58Z", PROOF.replace("issuecomment-", "#issuecomment-")):
         assert fact in note, fact
-    assert "Activation: PENDING" not in note
+    assert "activation: pending" not in note.lower()
 
 
 def test_seq28_skill_bullets_are_marked_superseded_by_seq29():
@@ -70,6 +70,7 @@ def test_8390_row_is_closed_with_the_suite_as_proof():
     row = rows[0]
     assert row.startswith("- closed 2026-10-13 (CLOSED BY #8433")
     assert "actions/runs/38382522528/job/115250277579" in row
+    assert "actions/runs/38384044570/job/115255605209" in row  # merge_group run on 2bf9ed3c93
     assert "research/visa/2026-10-13-organ-reattest-seq29" in row
     assert "observe_visa_seq28_signed.py" in row and "retired by #8433" in row
 
