@@ -354,7 +354,7 @@ reports drift between the live required names and the names the run was planned 
 app. Every call is a GET through `gh api`: it posts nothing and needs no arming, so the comparison the adapter was built for does
 not need the adapter armed. A local verdict counts only where the runner recorded a per-context `OK` or `FAIL`; anything else is
 blind. The hosted side is order-free and red-dominant: any red entry GitHub lists under the context's name for the commit is red (latest attempt of each check), and green
-needs a complete entry from the required source (the pinned `app_id` when there is one). A `--fixtures` document is refused unless
+needs a complete entry from the required source (the pinned `app_id` when there is one). (B17) The one exception: a check run `cancelled` (by concurrency) is not red when another completed, non-cancelled run of the same name on the same sha decides (same app when the context is pinned), in either order; that run decides as usual, and the dropped ids are listed as `superseded_cancelled`. A `--fixtures` document is refused unless
 it is bound to the same repo, branch and sha. Exit 0 = compared and complete, 1 = a FALSE_GREEN or name drift, 2 = unusable input,
 3 = incomplete (a required context is still pending). Why this exists and what it measured first (`agreement=0/14` on 2026-10-06):
 `docs/specs/localci-gate-2026-10-06.md`.
@@ -457,7 +457,7 @@ the gate saw could never be the commit GitHub merged. `merger.py report` counts 
 as merged), a compared merge when `compared_enough`, a PR once whichever way it qualified, and prints `replays (B11): N replay
 decision(s) ...; compared_merges=C of which R reached the threshold only through a replay` (`window.replays`,
 `window.compared_merges_from_replays`). A replay's recorded FALSE_GREEN is never re-read for staleness: it counts in `N` and is listed
-under `kept` as `pr<N> all rows: replay: the same tree on both sides, never stale`.
+under `kept` as `pr<N> all rows: replay: the same tree on both sides, never stale`. The one thing re-read for a replay is B17: a recorded row whose only reds were cancelled runs now decided by a sibling run on the judged sha is reclassified (`stale_why: cancelled_superseded`).
 
 **A gate verdict not posted yet is no verdict (B12).** `ctx.harness-floor` reads the real `harness/fable-gate` verdict with BASE's
 `harness_gate_read.py` on the host, at plan time. A pull request whose session has not posted that status yet makes the reader exit 1 with the
