@@ -1,8 +1,8 @@
 gear: 2
 gear_reason: >-
-  Size floor (diff with the regenerated replay fixture, tests, observer and pack above 400 churn).
-  Test and fixture pins plus one comment in the mouth adapter; no copy change, no logic, no backend,
-  no pricing.
+  Gear 2 for the nature of the change: a new CI observer that regenerates the signed-pack replay and
+  fails closed, plus test and fixture pins (committed code churn 426 lines before this evidence commit,
+  excluding the pack and brief edits). No copy change, no logic, no backend, no pricing.
 mission: >-
   The no-door replay fixture and the E33G copy pins test what visitors get under the active signed pack.
 objective: >-

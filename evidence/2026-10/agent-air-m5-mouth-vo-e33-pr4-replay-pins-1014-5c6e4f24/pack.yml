@@ -36,33 +36,33 @@ receipts:
     seat: this session
   - claim: "The whole visa-oracle Vitest tree passes with the change."
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
-    result: "Test Files 56 passed (56), Tests 1475 passed (1475)"
+    result: "Test Files 56 passed (56), Tests 1476 passed (1476)"
     exit: 0
-    ts: "2026-10-13T21:41:17Z"
+    ts: "2026-10-13T21:58:30Z"
     seat: this session
   - claim: "apps/mouth typechecks."
     cmd: cd apps/mouth && npx tsc --noEmit -p .
     result: "no output"
     exit: 0
-    ts: "2026-10-13T21:41:58Z"
+    ts: "2026-10-13T21:58:50Z"
     seat: this session
-  - claim: "The observer passes: no-path-doors and engine-adapter test files, full pass, the 17-dead-end census and the income_59999 walk reported as run."
+  - claim: "The observer passes: it regenerates the replay against the highest signed pack and compares it to the committed fixture, then the no-path-doors and engine-adapter files pass with exactly 252 tests and the required titles (17-dead-end census, income_59999 walk, the E33G sentence pin) reported as run."
     cmd: python3 scripts/ci/observe_visa_oracle_replay_pins.py
-    result: "Tests 251 passed (251); replay pins hold"
+    result: "Tests 252 passed (252); replay pins hold (regenerated replay equals the committed fixture; exact census 252)"
     exit: 0
-    ts: "2026-10-13T21:40:00Z"
+    ts: "2026-10-13T21:59:00Z"
     seat: this session
   - claim: "The observer's parser rejects skipped, todo, failed and reduced counts and a deleted required test."
     cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_replay_pins.py
-    result: "9 passed"
+    result: "14 passed (250/251/253 totals and a hand-edited but coherent replay rejected)"
     exit: 0
-    ts: "2026-10-13T21:40:30Z"
+    ts: "2026-10-13T21:59:29Z"
     seat: this session
-  - claim: "The whole backend visa_engine directory (count pins included): the pin and census tests pass; the 2 failures and 39 errors are database/migration environment problems on this machine (retention, shadow_match, policy tests need a migrated DB, e.g. column policy_scope missing), none in a pin, census or replay test."
+  - claim: "Backend non-regression against a baseline: the whole visa_engine directory run in the same environment on origin/main (2f7e9b2c38, detached worktree) and on HEAD gives the same tally; the branch diff touches nothing under apps/backend-rag. The 2 failures and 39 errors are pre-existing environment problems (database/migration), identical on base."
     cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine
-    result: "3627 passed, 15 skipped, 3 xfailed, 2 failed, 39 errors in 117s"
+    result: "base: 2 failed, 3627 passed, 15 skipped, 3 xfailed, 39 errors; HEAD: 2 failed, 3627 passed, 15 skipped, 3 xfailed, 39 errors; git diff --stat origin/main...HEAD -- apps/backend-rag is empty"
     exit: 1
-    ts: "2026-10-13T21:44:03Z"
+    ts: "2026-10-13T21:57:00Z"
     seat: this session
 decisions:
   - id: D-regenerate-not-edit
@@ -74,4 +74,28 @@ decisions:
     decision: >-
       No copy or logic changes: the adapter already carried the E33G sentence; only a stale comment on the
       retired E33G_INCOME_60K_ADVISOR_CHECK key is corrected.
-dissent: []
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 1 - the active signed pack is not really verified: the observer does not regenerate the replay, so a hand-edited but internally coherent JSON would pass."
+    status: RETRACTED
+    disposition: "Cured in f82a6c3350: the generator takes --out, and the observer regenerates the replay against the highest signed pack into a temp dir and requires equality (pack file, sequence, version, walks) with the committed fixture; unit-tested with a coherent hand-edit."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 2 - the count guard (>=150) lets 101 tests vanish while the receipt records 251."
+    status: RETRACTED
+    disposition: "Cured in f82a6c3350: the observer requires the exact census (252); tests prove 250, 251 and 253 fail."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 3 - the E33G copy pin is only the generic no-raw-code test; a wrong threshold, unit or translation could pass."
+    status: RETRACTED
+    disposition: "Cured in f82a6c3350: a dedicated test compares the rendered EN and ID sentences literally (USD 60,000 a year / USD 60.000 per tahun) through buildEngineOutcome and OutcomeSheet; its title is in REQUIRED_TESTS. The figure is rendered as USD 60,000, not a dollar sign."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 4 - backend non-regression is red (2 failures, 39 errors) with no equivalent baseline."
+    status: RETRACTED
+    disposition: "Cured by measurement, not code: the same suite on origin/main and on HEAD in the same environment gives identical tallies (see receipts); the diff has no backend file."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "LOW 5 - brief_ref evidence/brief.yml looks dangling."
+    status: RETRACTED
+    disposition: "Judged wrong, no change: CI and the pre-push pack-lint stage the brief at evidence/brief.yml and a dated brief_ref fails the lint; the brief is committed beside the pack."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "LOW 6 - the gear reason states a false churn figure."
+    status: RETRACTED
+    disposition: "Cured in the follow-up evidence commit: the brief's gear_reason now states the measured churn of the branch diff."
