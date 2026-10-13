@@ -20,6 +20,9 @@ import {
   C1_MAX_STAY_DAYS,
   C2_MAX_STAY_DAYS,
   C6_MAX_STAY_DAYS,
+  D1_PROOF_OF_FUNDS_USD,
+  D2_PROOF_OF_FUNDS_USD,
+  D12_PROOF_OF_FUNDS_USD,
   E33G_ANNUAL_INCOME_THRESHOLD_USD,
   E33E_DEPOSIT_THRESHOLD_USD,
   RETIREMENT_INCOME_THRESHOLD_USD,
@@ -1706,6 +1709,94 @@ describe("support reasons are sentences, not machine codes", () => {
     }
   });
 
+  // V03: the D1/D2/D12 funds figures are not `gte` nodes (the pack models no
+  // funds fact), so they are pinned to what the pack does carry: the rule id,
+  // its PROOF_OF_FUNDS_* reason code, and a source record whose canonical_url
+  // is the official page the figure is quoted from.
+  it("the D1/D2/D12 proof-of-funds copy states the official-page figure, pinned to its rule and source record, in EN and ID", () => {
+    const pack = highestSequencePack() as unknown as {
+      rules: Array<{
+        rule_id: string;
+        effect: { reason_code?: string };
+        source_refs: string[];
+      }>;
+      source_records: Array<{
+        source_record_id: string;
+        canonical_url: string;
+      }>;
+    };
+    const specs = [
+      {
+        key: "PROOF_OF_FUNDS_D1",
+        rule: "el.d1-funds-usd-2000",
+        page: "/D1",
+        usd: D1_PROOF_OF_FUNDS_USD,
+        en: "USD 2,000",
+        id: "USD 2.000",
+      },
+      {
+        key: "PROOF_OF_FUNDS_D2",
+        rule: "el.d2-funds-usd-2000",
+        page: "/D2",
+        usd: D2_PROOF_OF_FUNDS_USD,
+        en: "USD 2,000",
+        id: "USD 2.000",
+      },
+      {
+        key: "PROOF_OF_FUNDS_D12",
+        rule: "el.d12-funds-usd-5000",
+        page: "/D12",
+        usd: D12_PROOF_OF_FUNDS_USD,
+        en: "USD 5,000",
+        id: "USD 5.000",
+      },
+    ] as const;
+    for (const spec of specs) {
+      const rule = pack.rules.find((r) => r.rule_id === spec.rule);
+      expect(rule, spec.rule).toBeDefined();
+      expect(rule?.effect.reason_code).toBe(spec.key);
+      const urls = (rule?.source_refs ?? []).map(
+        (ref) =>
+          pack.source_records.find((s) => s.source_record_id === ref)
+            ?.canonical_url ?? "",
+      );
+      expect(
+        urls.some((u) => u.endsWith(`/wna/daftar-visa-indonesia${spec.page}`)),
+        `${spec.rule} cites the official ${spec.page} page`,
+      ).toBe(true);
+      const copy = SUPPORT_REASON_COPY[spec.key];
+      expect(copy.en).toContain(spec.en);
+      expect(copy.id).toContain(spec.id);
+      expect(copy.en).toContain("3 months");
+      expect(copy.id).toContain("3 bulan");
+      expect(copy.en).toMatch(/official page/i);
+      // The constant and the sentence agree, and the rule id's own digits
+      // (2000 / 5000) agree with the constant.
+      expect(spec.rule).toContain(String(spec.usd));
+    }
+    expect(SUPPORT_REASON_COPY.PROOF_OF_FUNDS_D12.en).not.toContain("2,000");
+    expect(SUPPORT_REASON_COPY.PROOF_OF_FUNDS_D1.en).not.toContain("5,000");
+    expect(SUPPORT_REASON_COPY.PROOF_OF_FUNDS_D2.id).not.toContain("5.000");
+  });
+
+  it("the shared passport line anchors validity to expiry, not to the date of entry, for D1/D2/D12/E30/E30A/E30B", () => {
+    const copy = SUPPORT_REASON_COPY.PASSPORT_VALIDITY_6_MONTHS_REQUIRED;
+    expect(copy.en).not.toMatch(/enter|entry|arriv/i);
+    expect(copy.id).not.toMatch(/masuk|tiba|kedatangan/i);
+    expect(copy.en).toContain("6 months");
+    expect(copy.id).toContain("6 bulan");
+  });
+
+  it("the shared support-letter line is true for D12 (institution only) and D1/D2 (institution or Indonesian spouse/parent)", () => {
+    const copy = SUPPORT_REASON_COPY.SUPPORT_LETTER_REQUIRED;
+    expect(copy.en).toMatch(/government agency or private institution/);
+    expect(copy.en).toMatch(/D1 and D2/);
+    expect(copy.en).toMatch(/spouse or parent/);
+    expect(copy.id).toMatch(/instansi pemerintah atau lembaga swasta/);
+    expect(copy.id).toMatch(/D1 dan D2/);
+    expect(copy.id).toMatch(/suami\/istri atau orang tua WNI/);
+  });
+
   // Mirror image: these SUPPORT reasons named a dollar figure on `main` with
   // NO backing rule anywhere in the signed pack (verified: no fact for
   // proof-of-funds or living cost exists in ANY rule's `when` tree, and no
@@ -1720,9 +1811,6 @@ describe("support reasons are sentences, not machine codes", () => {
   // applied.
   it("states no figure for SUPPORT reasons the signed pack has no rule to back", () => {
     const NO_BACKING_KEYS = [
-      "PROOF_OF_FUNDS_D1",
-      "PROOF_OF_FUNDS_D2",
-      "PROOF_OF_FUNDS_D12",
       "REQ_FUNDS_2000",
       "LIVING_COST_USD2000",
       "E33G_INCOME_60K_ADVISOR_CHECK",
