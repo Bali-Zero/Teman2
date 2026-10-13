@@ -1616,6 +1616,17 @@
           "title": "Product Version Id",
           "type": "string"
         },
+        "prohibited_activities": {
+          "default": [],
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Prohibited Activities",
+          "type": "array"
+        },
         "rank": {
           "maximum": 256,
           "minimum": 1,

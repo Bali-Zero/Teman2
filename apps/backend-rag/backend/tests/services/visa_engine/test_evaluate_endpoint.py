@@ -1835,6 +1835,7 @@ async def test_happy_path_http_end_to_end(monkeypatch: pytest.MonkeyPatch) -> No
             "processing_timeline",
             "availability",
             "pricing",
+            "prohibited_activities",
         }
         assert set(entry["name"]) == {"id", "en"}
         assert entry["availability"]["legal_eligibility"] == "SUPPORTED"

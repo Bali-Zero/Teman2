@@ -38,6 +38,7 @@ from backend.services.visa_engine.models import (
     ApplicantFacts,
     Decision,
     ExtensionPolicy,
+    Identifier,
     PricingKey,
     ProductCode,
     ProductNames,
@@ -511,6 +512,7 @@ class CandidateDisplayDTO(BaseModel):
     processing_timeline: CandidateProcessingTimelineDTO
     availability: CandidateAvailabilityDTO
     pricing: CandidatePricingDTO
+    prohibited_activities: tuple[Identifier, ...] = ()
     # Additive: present only for products that offer more than one stay length.
     selected_duration_days: int | None = Field(default=None, ge=1, le=36_500, strict=True)
     duration_options: tuple[DurationOptionDisplayDTO, ...] | None = Field(

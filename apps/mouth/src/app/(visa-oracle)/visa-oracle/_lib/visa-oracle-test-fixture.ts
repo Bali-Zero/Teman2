@@ -59,6 +59,7 @@ export function makeVisaOracleResponse(
     rank: 1,
     name: { en: "Visit Visa C1", id: "Visa Kunjungan C1" },
     tagline: { en: "Verified visit path", id: "Jalur kunjungan terverifikasi" },
+    prohibited_activities: [],
     stay_policy: {
       stay: { kind: "FIXED_DAYS" as const, minimum_days: 60, maximum_days: 60 },
       extension: {

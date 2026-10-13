@@ -1038,6 +1038,7 @@ def _build_display(
                     "checklist": [],
                 },
                 "processing_timeline": _processing_timeline(str(candidate.product_code), decision),
+                "prohibited_activities": [str(a) for a in product.prohibited_activities],
                 "availability": {
                     "legal_eligibility": "SUPPORTED",
                     "operational_availability": {

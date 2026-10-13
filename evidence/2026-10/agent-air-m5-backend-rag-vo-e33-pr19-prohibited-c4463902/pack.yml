@@ -1,0 +1,124 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 (E33/retirement audit plan, PR-19) - the signed pack already states each product's
+  prohibited activities but /evaluate does not carry them, so the public result cannot say what the permit
+  does not allow; PR-20 renders it.
+mission: >-
+  The Visa Oracle result can say what each permit does not allow, starting with the signed prohibited
+  activities of E33 carried on the /evaluate display block.
+lanes:
+  - lane: e33-pr19
+    role: build
+    seat: >-
+      codex-gpt-5.6-sol (codex exec, workspace-write, driven by a Claude subagent), worktree
+      backend-rag-vo-e33-pr19-prohibited-1013 on M5; rollout model verified as gpt-5.6-sol.
+  - lane: e33-pr19-evidence
+    role: review
+    seat: claude-sonnet-5 subagent (Claude), same worktree (rebase, whole-tree runs, observer, this pack); not a gate.
+  - lane: e33-pr19-ground-truth
+    role: ground_truth
+    seat: >-
+      the signed seq-29 pack states each product's prohibited_activities (E33 carries sale_of_goods_or_services);
+      the change only carries that list to the display and asserts no rule of its own.
+    nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
+    query_hash: "8daa66acd3ba3f6adc9a78304e35d719667fa3e735b32492757ee085ea6bee0e" # pragma: allowlist secret
+    note: query_hash = sha256 of the signed pack at origin/main.
+pii_scan: clean
+bites:
+  consumer: >-
+    PR-20's result renderer, and today the live /evaluate response: display.candidates[i].prohibited_activities
+    (evaluate_path.py _build_display).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_engine_prohibited_activities.py
+  expect: "contains:prohibited activities display holds"
+receipts:
+  - claim: "The branch was rebased onto a fresh origin/main (nothing pushed); no conflict. Original receipt; its first timestamp was estimated and is only approximate."
+    cmd: git fetch origin main && git rebase origin/main
+    result: "rebase clean; parent b846d2ce04, build commit 3f73c96aab"
+    exit: 0
+    ts: "2026-10-13T12:29:00Z"
+    seat: this session
+  - claim: "The new display test file and the observer pass (4 tests, no DB needed). Re-run for a true timestamp."
+    cmd: python3 scripts/ci/observe_visa_engine_prohibited_activities.py
+    result: "4 passed in 1.58s; prohibited activities display holds"
+    exit: 0
+    ts: "2026-10-13T12:52:28Z"
+    seat: this session (fix round)
+  - claim: "The observer summary parser rejects skipped, failed, error, xfailed, deselected and reduced counts."
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_engine_prohibited_activities.py
+    result: "16 passed"
+    exit: 0
+    ts: "2026-10-13T12:52:30Z"
+    seat: this session (fix round)
+  - claim: "apps/mouth typechecks with the regenerated schema.d.ts and the fixture carrying prohibited_activities."
+    cmd: cd apps/mouth && node ../../node_modules/typescript/bin/tsc --noEmit
+    result: "no output"
+    exit: 0
+    ts: "2026-10-13T12:52:31Z"
+    seat: this session (fix round)
+  - claim: "The WHOLE visa-oracle mouth tree (_components and _lib included) passes with the regenerated required field."
+    cmd: cd apps/mouth && npx vitest run '(visa-oracle)'
+    result: "Test Files 56 passed (56); Tests 1469 passed (1469)"
+    exit: 0
+    ts: "2026-10-13T12:51:31Z"
+    seat: this session (fix round)
+  - claim: "The OpenAPI drift pin matches the live schema after regeneration (red-team finding 1; it failed before the fix)."
+    cmd: cd apps/backend-rag && .venv/bin/python3 -m pytest backend/tests/unit/scripts/test_generate_openapi_schema_pin.py
+    result: "1 passed"
+    exit: 0
+    ts: "2026-10-13T12:52:39Z"
+    seat: this session (fix round)
+  - claim: "The WHOLE backend/tests/services/visa_engine directory: every non-DB test passes; the 2 failures and 39 errors are DB-fixture ones (asyncpg UndefinedTable/UndefinedColumn on the shared local Postgres) in files this change does not touch; the new display test, the pinned display contract in test_evaluate_endpoint and test_schema_contracts pass. CI runs these against a clean DB."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/services/visa_engine
+    result: "2 failed, 3627 passed, 15 skipped, 3 xfailed, 39 errors in 126.71s"
+    exit: 1
+    ts: "2026-10-13T12:54:57Z"
+    seat: this session (fix round)
+decisions:
+  - id: D-additive-always-present
+    decision: >-
+      prohibited_activities is always emitted (empty list when the product has none): an array defaulting
+      to [] in the contract and required in the generated schema.d.ts; the mouth parser ignores unknown keys, so it is safe.
+  - id: D-schema-d-ts-generated
+    decision: >-
+      schema.d.ts and its openapi sha256 pin are rendered by the generators (generate_openapi, then
+      openapi-typescript 7.13.0 from the root node_modules plus prettier; nothing installed). The first
+      hand edit was wrong (optional field) and is replaced; the test fixture carries prohibited_activities.
+dissent:
+  - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      HIGH 1: the OpenAPI drift pin schema.d.ts.openapi-sha256 was not updated; test_generate_openapi_schema_pin fails.
+    status: CONFIRMED
+    disposition: >-
+      Cured in a78aa79742. Cured in the fix commit: generate_openapi rewrote the pin; the pin test passes (receipt).
+  - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      MEDIUM 2: schema.d.ts was hand-edited as optional and differs from the generator; the pack justification was false and tsc hid a needed fixture change.
+    status: CONFIRMED
+    disposition: >-
+      Cured in a78aa79742. Cured in the fix commit: schema.d.ts regenerated (required, default []), fixture carries the field, tsc and the whole vitest tree clean; the decision was rewritten as D-schema-d-ts-generated.
+  - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      LOW 3: the pinned P2-2 display contract in test_evaluate_endpoint omitted prohibited_activities and its loop is vacuous (zero candidates).
+    status: PLAUSIBLE
+    disposition: >-
+      The key is added to the pinned set in the fix commit. A non-empty assertion was not added because the happy-path persona is HUMAN_REVIEW_REQUIRED and would fail; the real-pack E33 display is pinned by the new display test and the observer. Accepted as a limit.
+  - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      LOW 4: the evidence pack needs the pin receipt and the gear may rise to the floor.
+    status: CONFIRMED
+    disposition: >-
+      Cured in a78aa79742. Receipt added; floor re-computed with print-floor and the gear declared at least the floor in the fix commit.
+  - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      LOW 5: seat named a model not in the roster; timestamps looked estimated.
+    status: CONFIRMED
+    disposition: >-
+      Cured in a78aa79742. Seat is now claude-sonnet-5; receipts re-run with real date -u values (the rebase receipt is marked as original).
+  - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
+    objection: >-
+      LOW 6 (forward-looking, PR-20): default () makes a missing key look like none; engine-response.ts does not validate; the list mixes activities with conditions and consequences.
+    status: PLAUSIBLE
+    disposition: >-
+      Not a defect of this diff; carried to PR-20: validate with stringArray when present, treat missing as [], render only non-empty lists, never say no restrictions, map identifiers to grounded EN/ID copy.
