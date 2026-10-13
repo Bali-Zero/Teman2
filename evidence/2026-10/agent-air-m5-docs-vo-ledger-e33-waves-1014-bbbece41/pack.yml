@@ -1,0 +1,49 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, standing rule 2026-10-11 - the /visaoracle corner-skill ledger is updated at every merge; fresh-gate
+  condition C2 of PR 8440.
+mission: >-
+  The /visaoracle ledger names the six E33 audit PRs of waves 1-2 as live and opens their follow-ups.
+lanes:
+  - lane: ledger-e33-waves
+    role: build
+    seat: claude-sonnet-5 (Claude Code workflow subagent)
+pii_scan: clean
+bites:
+  consumer: >-
+    every session that loads /visaoracle and reads PENDING-ARMS, through the seq-29 ledger observer.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_ledger_seq29.py
+  expect: "contains:seq-29 ledger holds"
+receipts:
+  - claim: The four ledger test files pass, including the newest-entry pins moved to 2026-10-14.
+    cmd: python3 -m pytest tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq29.py -p no:cacheprovider -q
+    result: "43 passed"
+    exit: 0
+    ts: "2026-10-13T23:11:29Z"
+    seat: this session
+  - claim: The seq-28 observer holds on the branch head.
+    cmd: python3 scripts/ci/observe_visa_ledger_seq28.py
+    result: "12 passed; seq-28 ledger holds"
+    exit: 0
+    ts: "2026-10-13T23:11:29Z"
+    seat: this session
+  - claim: The seq-29 observer holds on the branch head.
+    cmd: python3 scripts/ci/observe_visa_ledger_seq29.py
+    result: "9 passed; seq-29 ledger holds"
+    exit: 0
+    ts: "2026-10-13T23:11:30Z"
+    seat: this session
+  - claim: PENDING-ARMS holds the new zero-runner row once and the extended rangkap-kegiatan row once.
+    cmd: grep -c "opened 2026-10-14 (M5, infra)" .claude/skills/modus/PENDING-ARMS.md
+    result: "1 (hf.e33.employment-not-covered 1, e33_not_work_visa 1, rangkap 1)"
+    exit: 0
+    ts: "2026-10-13T23:12:00Z"
+    seat: this session
+decisions:
+  - id: D-test-follows-newest
+    decision: >-
+      The two seq-29 tests that pinned 2026-10-13 as newest now pin 2026-10-14, and still assert the
+      2026-10-13 entry exists further down, so no history is lost.
+dissent: []

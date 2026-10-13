@@ -1,0 +1,18 @@
+gear: 1
+gear_reason: >-
+  Docs and ledger only: two skill files, one pending-arms file and one test file that pins the newest
+  ledger entry. Churn is far under 400; no code, no pack, no data.
+mission: >-
+  The /visaoracle ledger names the six E33 audit PRs of waves 1-2 as live and opens their follow-ups.
+objective: >-
+  live-state-log.md carries a 2026-10-14 entry as newest with the six merge shas and prove-live links,
+  SKILL.md reads updated 2026-10-14, and PENDING-ARMS.md holds one new zero-runner row and the extended
+  rangkap-kegiatan row, each exactly once.
+scope:
+  - .agents/skills/visaoracle/references/live-state-log.md
+  - .agents/skills/visaoracle/SKILL.md
+  - .claude/skills/modus/PENDING-ARMS.md
+  - tests/scripts/test_visa_ledger_seq29.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
