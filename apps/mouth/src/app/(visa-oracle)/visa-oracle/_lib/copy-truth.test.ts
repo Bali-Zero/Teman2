@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dict } from "./i18n";
+import { SUPPORT_REASON_COPY } from "./engine-adapter";
 
 // PR-C4-v3: the interview helper copy is judged against what the code does
 // (spec-interview-truth-table-c4v3, pack sha256 dcbc12cd…70cf). Each row is the
@@ -343,6 +344,10 @@ const FALSE_CLAIMS: readonly RegExp[] = [
   /akan memastikannya bersama anda/i,
   /akan memastikan angka sebenarnya/i,
   /tim kami yang meninjau langsung/i,
+  /sponsored by that diplomat/i,
+  /diplomat tersebut sebagai penjamin/i,
+  /sponsored by a government body/i,
+  /penjamin instansi pemerintah/i,
   /kami tetap menilai semua yang bisa dinilai/i,
   /we still assessed everything we could/i,
   /1–2 days left/i,
@@ -805,6 +810,56 @@ describe("interview helper copy tells the truth about what an answer does", () =
   it("the false-claim list is guilty on the old sentences (it would have failed the old copy)", () => {
     for (const [, sample] of FALSE_SAMPLES) {
       expect(FALSE_CLAIMS.some((re) => re.test(sample))).toBe(true);
+    }
+  });
+});
+
+describe("E23U / E23V support reasons restate what the visitor told us", () => {
+  const E23U = SUPPORT_REASON_COPY.E23U_DIPLOMATIC_HOUSEHOLD_ELIGIBLE;
+  const E23V = SUPPORT_REASON_COPY.E23V_TRADE_OFFICE_ELIGIBLE;
+
+  it("E23U names the individual sponsor and the diplomatic household, in EN and ID", () => {
+    expect(E23U.en).toBe(
+      "You told us your sponsor is an individual and the role is in a foreign diplomat's household — the Working Visa — Foreign Diplomat House Assistant (E23U).",
+    );
+    expect(E23U.id).toBe(
+      "Anda menyatakan penjamin Anda perorangan dan posisi ini berada di rumah tangga diplomat asing — Visa Kerja Asisten Rumah Tangga Diplomat Asing (E23U).",
+    );
+  });
+
+  it("E23V names the government sponsor and the trade or economic office, in EN and ID", () => {
+    expect(E23V.en).toBe(
+      "You told us your sponsor is a government body and a foreign trade or economic representative office in Indonesia — the Working Visa — Trade and Economic Office (E23V).",
+    );
+    expect(E23V.id).toBe(
+      "Anda menyatakan penjamin Anda instansi pemerintah dan kantor perwakilan dagang atau ekonomi asing di Indonesia — Visa Kerja Kantor Dagang dan Ekonomi (E23V).",
+    );
+  });
+
+  it("neither sentence states a sponsor identity as law", () => {
+    const offenders: string[] = [];
+    for (const [code, copy] of [
+      ["E23U", E23U],
+      ["E23V", E23V],
+    ] as const) {
+      for (const language of ["en", "id"] as const) {
+        for (const re of FALSE_CLAIMS) {
+          if (re.test(copy[language]))
+            offenders.push(`${code}:${language} ~ ${re}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("the sponsor-as-law bans are guilty on the old sentences", () => {
+    for (const old of [
+      "Employment for a foreign diplomat's household, sponsored by that diplomat as an individual",
+      "dengan diplomat tersebut sebagai penjamin perorangan",
+      "sponsored by a government body — the Working Visa",
+      "dengan penjamin instansi pemerintah",
+    ]) {
+      expect(FALSE_CLAIMS.some((re) => re.test(old))).toBe(true);
     }
   });
 });
