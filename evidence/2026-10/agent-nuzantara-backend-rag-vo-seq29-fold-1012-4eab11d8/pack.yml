@@ -39,9 +39,15 @@ receipts:
     exit: 0
     ts: "2026-10-12T08:58:00Z"
     seat: Claude Sonnet 5.5 (implementer)
+  - claim: "The REAL fold on the organ ledger 2026-10-13 (read 00:07:47Z-00:08:00Z) verifies signed seq-28, requires the generic restamp to equal the organ candidate (PR #8410, bbce36fa2a) minus identity, then applies the seq-29 content. W141 measured - 18/18 portals move verified_at/verified_by only, one stamp 2026-10-13T00:07:47Z (the earliest read), max_age 2764800 s, earliest new boundary 2026-11-14T00:07:47Z (later than the seq-28 boundary 2026-11-12T18:00:16Z), 28 non-portal records byte-identical, 38 products unchanged, 117 rules."
+    cmd: PYTHONPATH=. python -m backend.scripts.visa_engine.fold_pack_seq29 --ledger-dir ../../research/visa/2026-10-13-organ-reattest-seq29 --organ-candidate <organ rulepack-prod-029.source.json> --created-at 2026-10-13T00:30:00Z --output backend/services/visa_engine/contracts/packs/rulepack-prod-029.source.json
+    result: "mode REAL ORGAN RESTAMP; seq-29 payload_sha256 3f3b45ed1aaeadc72ec9dd2a5e33519ded3a0ec1da8408fade150a0ae39b9295; same modified, inserted and retired rules as the dry-run" # pragma: allowlist secret
+    exit: 0
+    ts: "2026-10-13T08:20:00Z"
+    seat: Claude Opus 5.5 (implementer)
   - claim: The seq-29 pack gate - guilt and innocence witnesses for each item, builder refusals, ledger checks, every gold persona replayed on the candidate; the four signed-bundle tests skip because nothing is signed.
     cmd: PYTHONPATH=. python -m pytest backend/tests/services/visa_engine/test_seq29_pack.py -p no:cacheprovider
-    result: "55 passed, 5 skipped (the four signed-bundle ties and the signed-gate), 1 xfailed (the hand-off marker: the source is still the dry-run)"
+    result: "56 passed, 5 skipped (the four signed-bundle ties and the signed-gate); the dry-run xfail marker is gone, the real branch runs (head b455c3f4ce, REAL source)"
     exit: 0
     ts: "2026-10-12T09:03:00Z"
     seat: Claude Sonnet 5.5 (implementer)
@@ -57,6 +63,12 @@ receipts:
     exit: 1
     ts: "2026-10-13T07:45:00Z"
     seat: Claude Opus 5.5 (fixer, Mini)
+  - claim: Whole suites on Mini for the committed HEAD b455c3f4ce (REAL fold, rebased on origin/main bb20f21b95) - backend visa_engine and vitest (visa-oracle); the failing ids are the baseline ones.
+    cmd: bash ~/visa-night/mini-suite.sh <worktree> both
+    result: "backend 2 failed, 3620 passed, 6 skipped, 3 xfailed, 31 errors (the same 2 retention_fk_registry failures and 31 evaluate_endpoint errors); vitest 56 files, 1449 passed; observer 'seq-29 candidate gate and census green'"
+    exit: 1
+    ts: "2026-10-13T08:40:00Z"
+    seat: Claude Opus 5.5 (implementer, Mini)
   - claim: Baseline for the environmental failures - the same two test files on a clean detached origin/main worktree on Mini fail identically.
     cmd: ssh mini pytest test_evaluate_endpoint.py test_visa_engine_retention_fk_registry.py at origin/main c4b045752b
     result: "2 failed, 266 passed, 31 errors (asyncpg TooManyColumnsError on test_evaluate_endpoint.py; policy_scope column missing in the retention registry)"
@@ -94,9 +106,9 @@ dissent:
     status: CONFIRMED
     note: "The four findings above are the whole of it. Codex did not re-run the cured head; the signing session's fresh gate does."
 owed:
-  - "Re-run the fold in REAL mode on the newest organ ledger (the dry-run source reuses the 2026-10-11 stamps), commit the regenerated source, re-gate the delta."
   - "Cross-family red team (Codex), two-titolare council, fresh Opus gate, signing, activation and prove-live: the signing session's."
   - "Announce the TREE PR (corpus, census pins) and queue it behind any open tree PR."
+# adversarial_rounds counts: Codex red team 1, Codex red team 2, council vote on 966df262c8.
 spend:
   wall_clock_hours: 3
-  adversarial_rounds: 0
+  adversarial_rounds: 3
