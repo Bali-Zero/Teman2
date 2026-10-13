@@ -1,0 +1,80 @@
+{
+  "run_at": "2026-10-14T07:00:00+08:00",
+  "today": "2026-10-14",
+  "yesterday_seen_count": 9,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://ortax.org/news",
+      "reason": "http_404",
+      "note": "confirmed, recurring 404 same as prior runs"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, same as prior runs"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "301 to /articles, static HTML only has footer nav (Discover/Quick Links/Contact Us), zero article entries, same as prior runs"
+    },
+    {
+      "url": "https://peraturan.go.id/rss",
+      "reason": "http_404",
+      "note": "confirmed, same as prior runs"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "HTTP_CODE:000 on initial fetch and the one mechanical retry, 30s each, same as prior runs"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "checked_no_new",
+      "note": "newest dated item 13 Oktober 2026, generic labor-regulation-risk piece ('Perusahaan Diminta Petakan Risiko Hukum...'), no verbatim act number cited"
+    },
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "newest items 13 Okt 2026: KEP-239/PJ/2026 resurfaced (already in seen_citations) + PBB-P5L sanction-ease article citing PMK 71/2026 Art.27A (already seen, and PBB-P5L sector is outside Bali Zero's 5 service lines anyway)"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "checked_no_new",
+      "note": "JS-rendered search results not in static HTML; static content only shows filter chips and pagination, no PMK entries, same as prior runs"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "newest dated item 12 Oktober 2026 is an operational press release (PNBP revenue Rp8.68T target achieved), not a regulatory act - no Permenkumham/Permenimigrasi/Perpres citation"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest entry still KEP-185/PJ/2026 (2026-09-02), unchanged from prior runs - has not yet indexed KEP-239/PJ/2026"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest visible entry dated 30 April 2026, unchanged from prior runs"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "PMK 55/2026",
+    "PER-6/PJ/2026",
+    "PMK 49/2026",
+    "PER-12/PJ/2026",
+    "PMK 37/2025",
+    "PMK 71/2026",
+    "RUU Pelindungan Ketenagakerjaan",
+    "PER-11/PJ/2026",
+    "KEP-239/PJ/2026"
+  ],
+  "note": "4/4 NB-INTEL queried successfully (nb_query_errors=[]): Regulation/Press/Immigration = nessuna novita; Tax re-surfaced KEP-239/PJ/2026 (implementation decree of PMK 71/2026, already in seen_citations since 2026-10-13) with no new act. Web primary (1-5): hukumonline generic labor-risk piece with no verbatim act number; DDTC resurfaced KEP-239/PJ/2026 + a PBB-P5L sanction-ease article (Pasal 27A PMK 71/2026) - both already-seen regulations, no new citation, and PBB-P5L (plantation/forestry/mining land tax) falls outside Bali Zero's 5 service lines regardless; ortax/muc 403/404 as before; ikpi 301->/articles still empty shell. Primary returned 0 new in-scope deltas (<3) so backup web (6-11) also checked: peraturan.go.id/rss 404, bpk.go.id JS-rendered with no static PMK matches, imigrasi newest item (12 Oct) is an operational PNBP press release not a regulatory act, pajak.go.id still shows KEP-185/PJ/2026 as newest (has not indexed KEP-239/PJ/2026 yet), kemnaker outside the 48h window (unchanged from prior runs, 30 April 2026), jdih.kemenkeu.go.id timeout x2 (initial + 1 mechanical retry). Net result: 0 new in-scope deltas today - all surfaced citations (KEP-239/PJ/2026, PMK 71/2026) were already in yesterday's seen_citations."
+}
