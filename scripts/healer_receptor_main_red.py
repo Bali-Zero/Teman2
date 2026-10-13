@@ -78,12 +78,17 @@ GhFn = Callable[[str], object]
 # 2026-09-22: bare `gh api` latency to api.github.com ranged 1.6s-10s across
 # consecutive calls, no env/PATH difference from a call that then succeeded
 # immediately after) -- retried once here rather than surfacing a false BLIND.
+# Also covers `gh`'s SECONDARY (abuse/burst) rate limit (PENDING-ARMS row
+# opened 2026-08-31, user ID 226622106): `gh api rate_limit` cannot see this
+# bucket at all -- it only exposes the primary hourly limit -- so there is no
+# honest way to pre-check it, and it clears within tens of seconds rather
+# than the primary limit's full hour.
 _TRANSIENT_ERR_RE = re.compile(
     r"TLS handshake timeout|i/o timeout|connection reset|EOF|dial tcp|"
-    r"Temporary failure in name resolution",
+    r"Temporary failure in name resolution|API rate limit exceeded|secondary rate limit",
     re.IGNORECASE,
 )
-_RETRY_BACKOFF_S = (1.0, 2.0)
+_RETRY_BACKOFF_S = (2.0, 8.0, 20.0)
 
 
 # --------------------------------------------------------------------------

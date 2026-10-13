@@ -229,6 +229,19 @@ def test_gh_api_retries_transient_tls_timeout_then_succeeds():
     assert sleep.call_count == 2  # backed off before attempt 2 and attempt 3
 
 
+def test_gh_api_retries_secondary_rate_limit_then_succeeds():
+    calls = [
+        _FakeProc(1, stderr="API rate limit exceeded for user ID 226622106."),
+        _FakeProc(0, stdout='{"ok": true}'),
+    ]
+    with patch("healer_receptor_main_red.subprocess.run", side_effect=calls) as run, \
+         patch("healer_receptor_main_red.time.sleep") as sleep:
+        result = mod.gh_api("repos/o/r/commits/x/check-runs?per_page=100")
+    assert result == {"ok": True}
+    assert run.call_count == 2
+    assert sleep.call_count == 1
+
+
 def test_gh_api_does_not_retry_a_real_api_error():
     calls = [_FakeProc(1, stderr='{"message": "Not Found", "status": "404"}')]
     with patch("healer_receptor_main_red.subprocess.run", side_effect=calls) as run, \
