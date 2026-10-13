@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 """observe_e33_cards_match_pack.py — bites: observation for the E33-family doctrine cards.
 
-# bites-observable — this script takes NO arguments: the program it runs and the
-# test file it names are literal strings in this file, so nothing an invoker types
-# can name a program to run, a file to write, or a database to reach.
-
 The consumer is the next doctrine or visa session that reads the seven E33 cards and the E33
 fact registry. The observation runs the pytest file that diffs each card against the active signed
 pack and requires a full pass of at least 23 tests.

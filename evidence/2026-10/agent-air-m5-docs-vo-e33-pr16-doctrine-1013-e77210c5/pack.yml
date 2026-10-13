@@ -1,35 +1,24 @@
 gear: 2
 brief_ref: evidence/brief.yml
-ruling: >-
-  Zero, 2026-10-11 (E33 and retirement audit plan, PR-16) - the doctrine cards research/visa/doctrine-factory/cards/E33*.md
-  and research/secondhome/e33-fact-registry.json still described pre-seq-28 rules (no E33G USD 60,000 income rule,
-  AGE_BELOW_55 everywhere, the old E33E price); they must describe the active signed pack and the official pages.
-mission: >-
-  The E33 doctrine cards and fact registry describe the active signed pack and the official pages.
+ruling: "Zero, 2026-10-11 (E33 and retirement audit plan, PR-16) - the doctrine cards research/visa/doctrine-factory/cards/E33*.md and research/secondhome/e33-fact-registry.json still described pre-seq-28 rules (no E33G USD 60,000 income rule, AGE_BELOW_55 everywhere, the old E33E price); they must describe the active signed pack and the official pages."
+mission: "The E33 doctrine cards and fact registry describe the active signed pack and the official pages."
 lanes:
   - lane: e33-pr16
     role: build
     seat: claude-sonnet-5 (Claude Code workflow subagent), worktree docs-vo-e33-pr16-doctrine-1013 on M5.
   - lane: e33-pr16-ground-truth-pack
     role: ground_truth
-    seat: >-
-      rulepack-prod-029.signed.json (the active signed pack) is the source of the rule ids in section 2 of each card;
-      the cards restate it and add no rule of their own. The seven per-code pages on imigrasi.go.id were fetched live
-      on 2026-10-13 (HTTP 200, daftar-visa-indonesia/<code>) because the saved seq-29 text directory holds no E33
-      pages; they are cited as page sources with that date and are not committed.
+    seat: "rulepack-prod-029.signed.json (the active signed pack) is the source of the rule ids in section 2 of each card; the seven per-code imigrasi.go.id pages were fetched live on 2026-10-13 (HTTP 200) and are cited as page sources, not committed."
     nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
     query_hash: "8daa66acd3ba3f6adc9a78304e35d719667fa3e735b32492757ee085ea6bee0e" # pragma: allowlist secret
   - lane: e33-pr16-ground-truth-registry
     role: ground_truth
-    seat: >-
-      research/secondhome/e33-fact-registry.json, the file this change edits; hash is of the file before the change.
+    seat: "research/secondhome/e33-fact-registry.json, the file this change edits; hash is of the file before the change."
     nb: research/secondhome/e33-fact-registry.json
     query_hash: "c056bb86d7bf710d5eea764f525ab5b67e717301ac91323893bbe09239821716" # pragma: allowlist secret
 pii_scan: clean
 bites:
-  consumer: >-
-    the next doctrine or visa session that reads the E33 cards and the E33 fact registry (section 2 of each card is
-    compared to rulepack-prod-029 by scripts/ci/e33_cards_rule_diff.py).
+  consumer: "the next doctrine or visa session that reads the E33 cards and the E33 fact registry (section 2 of each card is compared to rulepack-prod-029 by scripts/ci/e33_cards_rule_diff.py)."
   where: ci
   observe: python3 scripts/ci/observe_e33_cards_match_pack.py
   expect: "contains:cards match the pack"
@@ -38,13 +27,13 @@ receipts:
     cmd: python3 scripts/ci/e33_cards_rule_diff.py
     result: no output
     exit: 0
-    ts: "2026-10-13T12:49:00Z"
+    ts: "2026-10-13T13:02:00Z"
     seat: this session
   - claim: The bites observer passes with a full pass of at least 23 tests.
     cmd: python3 scripts/ci/observe_e33_cards_match_pack.py
     result: "observe_e33_cards_match_pack: 23 passed in 0.02s; observe_e33_cards_match_pack: cards match the pack"
     exit: 0
-    ts: "2026-10-13T12:49:00Z"
+    ts: "2026-10-13T13:02:00Z"
     seat: this session
   - claim: The WHOLE backend visa_engine test directory (it holds the test_seq21_pack.py census pins) at HEAD 8b20f86062. The 4 failures and 39 errors are database or environment state (migration 264 applied, missing column policy_scope, no psutil module, a schema format check) in files a docs-only diff does not touch; not re-run on pristine origin/main.
     cmd: cd apps/backend-rag && python3 -m pytest -p no:cacheprovider backend/tests/services/visa_engine
@@ -52,11 +41,6 @@ receipts:
     exit: 1
     ts: "2026-10-13T12:29:42Z"
     seat: this session
-decisions:
-  - id: D-page-source
-    decision: The cards cite the per-code imigrasi.go.id page as a PAGE source, never an article pinpoint, with the live fetch date 2026-10-13; the page text is not committed because the saved seq-29 text directory holds no E33 pages.
-  - id: D-no-reconcile
-    decision: "Where the page and the pack disagree (E33F sponsor requirement, E33E advisor age) both are recorded and the registry fact is marked disputed; the cards do not reconcile them and carry no PNBP or fee text. SUPERSEDED for the E33F sponsor requirement (red-team cure at 0794ca56ac): the pack metadata sponsor_types INDIVIDUAL agrees with the page, so the fact is confirmed/JELAS. The E33E advisor age stays recorded, not reconciled. The cards carry the all-inclusive catalog price and the pricing key, never a PNBP or service-fee split."
 dissent:
   - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-30-26-01a1353e-1f8e-70e1-8d1b-b3bd3148a052.jsonl, model verified in the rollout file)
     objection: HIGH 1 - the pack's brief_ref evidence/brief.yml does not exist, so the full lint fails.

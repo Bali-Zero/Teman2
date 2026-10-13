@@ -1,23 +1,12 @@
 gear: 2
-gear_reason: >-
-  Size floor (churn above 400 with the card rewrites, tests and pack). Docs, registry and a card-versus-pack diff script and observer; no engine, pack, pricing or mouth file.
-mission: >-
-  The E33 doctrine cards and fact registry describe the active signed pack and the official pages.
-objective: >-
-  The seven E33-family cards carry the rules, pricing key and price of the active signed pack and cite the per-code page as a page source; the registry states the rangkap-kegiatan sentence, the confirmed E33F sponsor fact and the E33G requirements; a no-argument script prints nothing when each card and the pack agree.
+gear_reason: "Size floor (churn above 400 with the card rewrites, tests and pack). Docs, registry and a card-versus-pack diff script and observer; no engine, pack, pricing or mouth file."
+mission: "The E33 doctrine cards and fact registry describe the active signed pack and the official pages."
+objective: "The seven E33-family cards carry the rules, pricing key and price of the active signed pack and cite the per-code page as a page source; the registry states the rangkap-kegiatan sentence, the confirmed E33F sponsor fact and the E33G requirements; a no-argument script prints nothing when each card and the pack agree."
 scope:
-  - research/visa/doctrine-factory/cards/E33.md
-  - research/visa/doctrine-factory/cards/E33A.md
-  - research/visa/doctrine-factory/cards/E33B.md
-  - research/visa/doctrine-factory/cards/E33C.md
-  - research/visa/doctrine-factory/cards/E33E.md
-  - research/visa/doctrine-factory/cards/E33F.md
-  - research/visa/doctrine-factory/cards/E33G.md
+  - research/visa/doctrine-factory/cards/
   - research/secondhome/e33-fact-registry.json
   - scripts/ci/e33_cards_rule_diff.py
   - scripts/ci/observe_e33_cards_match_pack.py
   - tests/scripts/test_e33_cards_match_pack.py
   - tests/scripts/test_observe_e33_cards_match_pack.py
-appetite:
-  wall_clock_hours: 2
-  adversarial_rounds: 1
+appetite: { wall_clock_hours: 2, adversarial_rounds: 1 }
