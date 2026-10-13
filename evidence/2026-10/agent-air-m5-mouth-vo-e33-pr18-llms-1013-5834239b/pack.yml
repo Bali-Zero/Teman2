@@ -15,7 +15,8 @@ lanes:
   - lane: e33-pr18-ground-truth
     role: ground_truth
     seat: >-
-      the E33A, E33B and E33C labels in the Visa Oracle i18n.ts and the "handled with a Bali Zero advisor" text in engine-adapter.ts;
+      the E33A, E33B and E33C labels in the Visa Oracle i18n.ts (sha256 1e23611d94fc7956595c8b6d2bb5b819ae512d88e60f38cc82edd3ce86edb809, English labels at lines 93-98)
+      and the "handled with a Bali Zero advisor" text in engine-adapter.ts (sha256 0e3263543a5ed7890b6c1cafd9de238a9b59419fef5c72a8ef01ebfac3fecea6, lines 703-715);
       the llms.txt line follows them and asserts no price of its own. query_hash = sha256 of apps/mouth/public/llms.txt at origin/main.
     nb: apps/mouth/public/llms.txt
     query_hash: "2a97b0dee3aa6cc08beb82a5f3a211c7f952d59557c3735d98c122821c3ae572" # pragma: allowlist secret
@@ -27,17 +28,17 @@ bites:
   observe: python3 scripts/ci/observe_llms_e33_gov_routes.py
   expect: "contains:llms E33A-C routes hold"
 receipts:
-  - claim: The llms.txt guard test passes with the new E33A/B/C block (3 new tests; 29 in the file).
+  - claim: The llms.txt guard test passes with the new E33A/B/C block (5 new tests; 31 in the file).
     cmd: cd apps/mouth && npx vitest run src/lib/llms-public-file-guard.test.ts
-    result: "Test Files 1 passed (1); Tests 29 passed (29)"
+    result: "Test Files 1 passed (1); Tests 31 passed (31)"
     exit: 0
-    ts: "2026-10-13T12:13:45Z"
+    ts: "2026-10-13T12:23:26Z"
     seat: this session
-  - claim: The no-argument observer passes and accepts only a full pass of at least 29 tests.
+  - claim: The no-argument observer passes and accepts only a full pass of at least 31 tests.
     cmd: python3 scripts/ci/observe_llms_e33_gov_routes.py
-    result: "Tests 29 passed (29); llms E33A-C routes hold"
+    result: "Tests 31 passed (31); llms E33A-C routes hold"
     exit: 0
-    ts: "2026-10-13T12:13:50Z"
+    ts: "2026-10-13T12:23:38Z"
     seat: this session
   - claim: The observer's summary parser rejects skipped, todo, failed and reduced counts.
     cmd: python3 -m pytest tests/scripts/test_observe_llms_e33_gov_routes.py
@@ -83,4 +84,16 @@ decisions:
     decision: >-
       The audit spec gates PR-18 on owner decision 12 (whether E33A-C are sold) and depends_on PR-3; the lane was instructed to implement
       it and PR-3 merge state was not checked here - the PR body must say so.
-dissent: []
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-18-16-01a13532-fdbf-7ed3-a194-76358795b738.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM - the no-price guard regex ^- E33[ABC] does not match the real bold line, so an appended IDR figure would go unseen."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit: the currency predicate now runs on the single line naming E33A, E33B and E33C, and a guilt test appends IDR and Rp to the real bold line."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-18-16-01a13532-fdbf-7ed3-a194-76358795b738.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM - brief_ref evidence/brief.yml does not resolve to a file on disk."
+    status: RETRACTED
+    disposition: "Judged not a defect, no code change: the repo convention requires brief_ref evidence/brief.yml, staged only for the lint and never committed; the documented lint sequence ends clean."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-18-16-01a13532-fdbf-7ed3-a194-76358795b738.jsonl, model verified in the rollout file)"
+    objection: "LOW - provenance records only the old llms.txt hash, and the test checks generic words, not the code-to-description mapping; no Indonesian copy."
+    status: RETRACTED
+    disposition: "Cured in the follow-up commit for the English copy: the real i18n.ts and engine-adapter.ts hashes are recorded and a test pins the three route descriptions. The Indonesian side is out of scope: llms.txt is an English-only file, so there is no ID copy to pin."

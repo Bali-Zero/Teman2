@@ -328,11 +328,28 @@ describe("llms.txt names E33A, E33B and E33C as government-linked routes", () =>
     expect(hits[0]).toMatch(/no published price/i);
   });
 
-  it("publishes no price line for E33A, E33B or E33C", () => {
-    const priced = lines().filter(
-      (l) => /^- E33[ABC]\b/.test(l) && /IDR/.test(l),
-    );
-    expect(priced).toEqual([]);
+  // The currency predicate, applied to a line however it is marked up (the real line is bold).
+  const hasPrice = (l: string) => /IDR|Rp\.?\s?\d|USD\s?\d/i.test(l);
+  const routeLine = (all: string[]) =>
+    all.filter((l) => /E33A/.test(l) && /E33B/.test(l) && /E33C/.test(l));
+
+  it("publishes no price on the E33A, E33B and E33C line", () => {
+    const hits = routeLine(lines());
+    expect(hits).toHaveLength(1);
+    expect(hasPrice(hits[0])).toBe(false);
+  });
+
+  it("guilt: the same predicate flags the real bold line once a price is appended", () => {
+    const real = routeLine(lines())[0];
+    expect(hasPrice(`${real}: IDR 99.000.000`)).toBe(true);
+    expect(hasPrice(`${real}, Rp 99.000.000`)).toBe(true);
+  });
+
+  it("maps each route to the description the Visa Oracle copy uses", () => {
+    const line = routeLine(lines())[0];
+    expect(line).toMatch(/E33A special-expertise government invitation/);
+    expect(line).toMatch(/E33B special-expertise collaboration/);
+    expect(line).toMatch(/E33C world-figure government invitation/);
   });
 
   it("still states the E33E senior price as IDR 45.000.000", () => {

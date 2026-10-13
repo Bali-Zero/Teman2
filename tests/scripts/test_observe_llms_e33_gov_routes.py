@@ -14,12 +14,12 @@ from observe_llms_e33_gov_routes import summary_ok  # noqa: E402
 @pytest.mark.parametrize(
     "line",
     [
-        "      Tests  29 skipped (29)",
-        "      Tests  28 passed (28)",
-        "      Tests  1 failed | 28 passed (29)",
-        "      Tests  29 passed | 1 skipped (30)",
-        "      Tests  29 passed | 1 todo (30)",
-        "      Tests  28 passed (29)",
+        "      Tests  31 skipped (31)",
+        "      Tests  30 passed (30)",
+        "      Tests  1 failed | 30 passed (31)",
+        "      Tests  31 passed | 1 skipped (32)",
+        "      Tests  31 passed | 1 todo (32)",
+        "      Tests  30 passed (31)",
         "",
         None,
     ],
@@ -29,7 +29,7 @@ def test_rejects_anything_but_a_full_pass(line):
 
 
 @pytest.mark.parametrize(
-    "line", ["      Tests  29 passed (29)", "      Tests  30 passed (30)"]
+    "line", ["      Tests  31 passed (31)", "      Tests  32 passed (32)"]
 )
 def test_accepts_full_pass_at_or_above_floor(line):
     assert summary_ok(line) is True
