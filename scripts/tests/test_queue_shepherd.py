@@ -200,6 +200,27 @@ def test_merge_intent_label_is_armed_only_when_the_queue_rule_is_gone(monkeypatc
     assert qs.is_rearm_candidate(_pr(merge_intent_label=True)) is expected
 
 
+def test_flipped_queue_carries_a_github_armed_unlabelled_pr_over(monkeypatch):
+    monkeypatch.setattr(qs, "queue_rule_state", lambda: "absent")
+    assert qs.is_rearm_candidate(_pr(auto_merge_enabled=True)) is True
+    assert qs.is_rearm_candidate(_pr(auto_merge_enabled=True, merge_intent_label=True)) is False
+
+
+def test_queue_present_keeps_a_github_armed_pr_out_of_the_candidates(monkeypatch):
+    monkeypatch.setattr(qs, "queue_rule_state", lambda: "present")
+    assert qs.is_rearm_candidate(_pr(auto_merge_enabled=True)) is False
+
+
+@pytest.mark.parametrize("state,helper", [("absent", True), ("present", False), ("unknown", False)])
+def test_rearm_pr_calls_the_helper_only_when_the_queue_rule_is_gone(monkeypatch, state, helper):
+    calls = []
+    monkeypatch.setattr(qs, "queue_rule_state", lambda: state)
+    monkeypatch.setattr(qs, "_run", lambda cmd, timeout=30: (calls.append(cmd) or (0, "", "")))
+    assert qs.rearm_pr("o/r", 7) is True
+    assert calls[0][0].endswith("signal_merge_intent.sh") is helper
+    assert (calls[0][:3] == ["gh", "pr", "merge"]) is (not helper)
+
+
 def test_normalize_reads_merge_intent_label_from_graphql_nodes():
     node = {"number": 5, "labels": {"nodes": [{"name": "x"}, {"name": qs.MERGE_INTENT_LABEL}]}}
     assert qs._normalize_rearm_pr(node)["merge_intent_label"] is True

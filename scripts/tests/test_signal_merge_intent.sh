@@ -12,6 +12,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPTS="$(cd "$HERE/.." && pwd)"
 HELPER="$SCRIPTS/signal_merge_intent.sh"
 POP="$SCRIPTS/ci/queue_rearm_population.sh"
+PROBE_SRC="$SCRIPTS/merge_queue_rule.sh"
 
 failures=0
 check() { if [ "$2" = "1" ]; then printf '  ok   %s\n' "$1"; else printf '  FAIL %s\n' "$1"; failures=$((failures + 1)); fi; }
@@ -44,17 +45,34 @@ run 7 FAKE_RULES_COUNT=1
 check "queue present: exit 0" "$([ $RC = 0 ] && echo 1 || echo 0)"
 check "queue present: label then arm" "$([ "$(has 'pr edit 7' "$CALLS")" = 1 ] && [ "$(has 'pr merge 7' "$CALLS")" = 1 ] && echo 1 || echo 0)"
 check "queue present: report arm=armed" "$(has 'arm=armed' "$OUT")"
-first="$(printf '%s' "$CALLS" | head -1)"
-check "label is the first call" "$(has 'pr edit' "$first")"
+first="$(printf '%s\n' "$CALLS" | grep -v '^api ' | head -1)"
+check "label is the first mutating call (before the arm)" "$(has 'pr edit' "$first")"
 
 run 7 FAKE_RULES_COUNT=0
 check "queue absent: exit 0" "$([ $RC = 0 ] && echo 1 || echo 0)"
 check "queue absent: label applied, no merge call" "$([ "$(has 'pr edit 7' "$CALLS")" = 1 ] && [ "$(has 'pr merge' "$CALLS")" = 0 ] && echo 1 || echo 0)"
 check "queue absent: report arm=skipped" "$(has 'arm=skipped' "$OUT")"
 
-run 7 FAKE_EDIT_RC=1
-check "label failure: exit 2" "$([ $RC = 2 ] && echo 1 || echo 0)"
-check "label failure: no arm, no rules probe" "$([ "$(has 'pr merge' "$CALLS")" = 0 ] && [ "$(has 'api' "$CALLS")" = 0 ] && echo 1 || echo 0)"
+run 7 FAKE_EDIT_RC=1 FAKE_RULES_COUNT=0
+check "label failure, queue absent: exit 2" "$([ $RC = 2 ] && echo 1 || echo 0)"
+check "label failure, queue absent: no arm" "$([ "$(has 'pr merge' "$CALLS")" = 0 ] && echo 1 || echo 0)"
+
+for q in 1 probefail; do
+  if [ $q = probefail ]; then run 7 FAKE_EDIT_RC=1 FAKE_RULES_RC=1; else run 7 FAKE_EDIT_RC=1 FAKE_RULES_COUNT=1; fi
+  check "label failure, queue $q: still armed, exit 0 (ARM result)" "$([ $RC = 0 ] && [ "$(has 'pr merge 7' "$CALLS")" = 1 ] && echo 1 || echo 0)"
+  check "label failure, queue $q: WARN printed, label=failed reported" "$([ "$(has 'WARN' "$(cat "$SANDBOX/err")")" = 1 ] && [ "$(has 'label=failed' "$OUT")" = 1 ] && echo 1 || echo 0)"
+done
+run 7 FAKE_EDIT_RC=1 FAKE_RULES_COUNT=1 FAKE_MERGE_RC=1
+check "label ko + arm ko, queue present: exit 3 (ARM result)" "$([ $RC = 3 ] && echo 1 || echo 0)"
+
+# Mutant: make a label failure always fatal again (the pre-fix behaviour). The queue-present
+# label-failure scenario must now go red, or the test above would not notice the regression.
+mkdir -p "$SANDBOX/mut"; cp "$HELPER" "$PROBE_SRC" "$SANDBOX/mut/" 2>/dev/null
+sed 's/if \[ "\$queue" = absent \]; then\(.*\)$/if true; then\1/;' "$HELPER" > "$SANDBOX/mut/signal_merge_intent.sh"
+HELPER_REAL="$HELPER"; HELPER="$SANDBOX/mut/signal_merge_intent.sh"
+run 7 FAKE_EDIT_RC=1 FAKE_RULES_COUNT=1
+check "mutant (label failure always fatal) is caught" "$([ $RC = 0 ] && echo 0 || echo 1)"
+HELPER="$HELPER_REAL"
 
 run 7 FAKE_RULES_COUNT=1 FAKE_MERGE_RC=1
 check "arm failure with queue: exit 3" "$([ $RC = 3 ] && echo 1 || echo 0)"
