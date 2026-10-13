@@ -1,0 +1,64 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: "Zero, 2026-10-11 (E33 and retirement audit plan, PR-16) - the doctrine cards research/visa/doctrine-factory/cards/E33*.md and research/secondhome/e33-fact-registry.json still described pre-seq-28 rules (no E33G USD 60,000 income rule, AGE_BELOW_55 everywhere, the old E33E price); they must describe the active signed pack and the official pages."
+mission: "The E33 doctrine cards and fact registry describe the active signed pack and the official pages."
+lanes:
+  - lane: e33-pr16
+    role: build
+    seat: claude-sonnet-5 (Claude Code workflow subagent), worktree docs-vo-e33-pr16-doctrine-1013 on M5.
+  - lane: e33-pr16-ground-truth-pack
+    role: ground_truth
+    seat: "rulepack-prod-029.signed.json (the active signed pack) is the source of the rule ids in section 2 of each card; the seven per-code imigrasi.go.id pages were fetched live on 2026-10-13 (HTTP 200) and are cited as page sources, not committed."
+    nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
+    query_hash: "8daa66acd3ba3f6adc9a78304e35d719667fa3e735b32492757ee085ea6bee0e" # pragma: allowlist secret
+  - lane: e33-pr16-ground-truth-registry
+    role: ground_truth
+    seat: "research/secondhome/e33-fact-registry.json, the file this change edits; hash is of the file before the change."
+    nb: research/secondhome/e33-fact-registry.json
+    query_hash: "c056bb86d7bf710d5eea764f525ab5b67e717301ac91323893bbe09239821716" # pragma: allowlist secret
+pii_scan: clean
+bites:
+  consumer: "the next doctrine or visa session that reads the E33 cards and the E33 fact registry (section 2 of each card is compared to rulepack-prod-029 by scripts/ci/e33_cards_rule_diff.py)."
+  where: ci
+  observe: python3 scripts/ci/observe_e33_cards_match_pack.py
+  expect: "contains:cards match the pack"
+receipts:
+  - claim: "Each card and the active pack agree on rule ids, stage, effect, reason code, thresholds, pricing key and catalog price: the diff prints nothing."
+    cmd: python3 scripts/ci/e33_cards_rule_diff.py
+    result: no output
+    exit: 0
+    ts: "2026-10-13T13:02:00Z"
+    seat: this session
+  - claim: The bites observer passes with a full pass of at least 23 tests.
+    cmd: python3 scripts/ci/observe_e33_cards_match_pack.py
+    result: "observe_e33_cards_match_pack: 23 passed in 0.02s; observe_e33_cards_match_pack: cards match the pack"
+    exit: 0
+    ts: "2026-10-13T13:02:00Z"
+    seat: this session
+  - claim: The WHOLE backend visa_engine test directory (it holds the test_seq21_pack.py census pins) at HEAD 8b20f86062. The 4 failures and 39 errors are database or environment state (migration 264 applied, missing column policy_scope, no psutil module, a schema format check) in files a docs-only diff does not touch; not re-run on pristine origin/main.
+    cmd: cd apps/backend-rag && python3 -m pytest -p no:cacheprovider backend/tests/services/visa_engine
+    result: 4 failed, 3621 passed, 15 skipped, 3 xfailed, 39 errors in 119.16s
+    exit: 1
+    ts: "2026-10-13T12:29:42Z"
+    seat: this session
+dissent:
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-30-26-01a1353e-1f8e-70e1-8d1b-b3bd3148a052.jsonl, model verified in the rollout file)
+    objection: HIGH 1 - the pack's brief_ref evidence/brief.yml does not exist, so the full lint fails.
+    status: RETRACTED
+    disposition: "False positive: the lint convention stages the brief at evidence/brief.yml for the run and a dated brief_ref fails the pre-push lint; with the brief staged the lint ends clean. No change."
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-30-26-01a1353e-1f8e-70e1-8d1b-b3bd3148a052.jsonl, model verified in the rollout file)
+    objection: HIGH 2 - the E33E card carries neither the pack pricing_key nor the resolved price, and the test forbids any IDR string.
+    status: CONFIRMED
+    disposition: "Cured in 0794ca56ac: the E33, E33E, E33F and E33G cards state the pricing key and the all-inclusive catalog price; the test forbids only PNBP and service-fee splits; the diff checks key and price against the pack and the catalog."
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-30-26-01a1353e-1f8e-70e1-8d1b-b3bd3148a052.jsonl, model verified in the rollout file)
+    objection: MEDIUM 3 - E33F sponsor is marked disputed although the pack metadata declares sponsor_types INDIVIDUAL.
+    status: CONFIRMED
+    disposition: "Cured in 0794ca56ac: registry fact is confirmed/JELAS and the card separates declarative metadata from the absence of an enforcement rule; a test pins the pack metadata."
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-30-26-01a1353e-1f8e-70e1-8d1b-b3bd3148a052.jsonl, model verified in the rollout file)
+    objection: MEDIUM 4 - the diff compares only rule-id sets; a mutated USD 60,000 or age 55 still returned an empty diff.
+    status: CONFIRMED
+    disposition: "Cured in 0794ca56ac: the diff also compares stage, effect type, reason code, every numeric threshold and the validity start per rule row; mutation tests pass. Three card rows that omitted figures now state them."
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-30-26-01a1353e-1f8e-70e1-8d1b-b3bd3148a052.jsonl, model verified in the rollout file)
+    objection: MEDIUM 5 - the observer is fixed to rulepack-prod-029 and would stay green after a later activation.
+    status: CONFIRMED
+    disposition: "Cured in 0794ca56ac: the active pack is the highest-numbered signed prod pack on disk and the expected section heading derives from it, so a newer signed pack makes every card rule read as missing; a test simulates the next activation."

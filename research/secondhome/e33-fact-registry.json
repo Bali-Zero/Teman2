@@ -63,32 +63,42 @@
     {
       "id": "e33_not_work_visa",
       "topic": "Base E33 permitted activities",
-      "value": "Base E33 (deposit/property route) is a pure residence permit — it does NOT authorize employment; paid work needs a separate work permit/KITAS",
+      "value": "Base E33 (deposit/property route) is a residence permit; work, study or other activities are allowed only after rangkap-kegiatan (dual-activity) reporting to the immigration office that issued the stay permit",
       "status": "confirmed",
       "confidence": "JELAS",
-      "source": "research/curated-qa-corrections-2026-07-21/visa-golden-investor.jsonl Q17 (round-3 correction)",
-      "source_date": "2026-07-21",
-      "notes": "Work appears only on government-sponsored E33A/E33C variants with dual-activity (rangkap kegiatan) reporting."
+      "source": "live imigrasi.go.id E33 page fetch 2026-10-13 (Subjek: \"melakukan kegiatan bekerja, menempuh pendidikan atau kegiatan lainnya dengan melakukan pelaporan rangkap kegiatan ke kantor imigrasi yang menerbitkan izin tinggal\"); the E33E page carries the same sentence",
+      "source_date": "2026-10-13",
+      "notes": "Replaces the 2026-07-21 wording (\"does NOT authorize employment\"), which the page does not support. The page also says selling goods or services is prohibited unless needed for the work. The pack rule hf.e33.employment-not-covered (rulepack-prod-029) excludes E33 when the declared purposes include both SECOND_HOME and EMPLOYMENT; the registry records the page sentence and the rule as they stand."
     },
     {
       "id": "e33e_requirements",
       "topic": "E33E senior/retirement 5-year golden visa — requirements",
-      "value": "Age 55+, USD 50,000 deposit (state-owned bank) + USD 3,000/month income; 5-year validity",
+      "value": "Age 55+ (as the page states), USD 50,000 deposit (state-owned bank, own name), proof of income or allowance of at least USD 3,000/month; 5-year validity",
       "status": "confirmed",
       "confidence": "BERSYARAT",
-      "source": "live imigrasi.go.id E33E page fetch 2026-07-19; research/curated-qa-corrections-2026-07-21/visa-second-home-variants.jsonl Q7",
-      "source_date": "2026-07-19",
+      "source": "live imigrasi.go.id E33E page fetch 2026-07-19; research/curated-qa-corrections-2026-07-21/visa-second-home-variants.jsonl Q7; live imigrasi.go.id E33E page fetch 2026-10-13",
+      "source_date": "2026-10-13",
       "notes": "BERSYARAT: age threshold is disputed for the 55-59 band in the regulation text itself — see age_55_59_ambiguity_e33e. Financial figures are not disputed."
     },
     {
       "id": "e33f_requirements",
       "topic": "E33F senior 1-year route — requirements",
-      "value": "Senior 1-year route; USD 3,000/month income only (no deposit). USD 1,500/month is the SUPERSEDED pre-2024 figure",
+      "value": "Senior 1-year route; the page asks for proof of income or allowance of at least USD 3,000/month and a 3-month bank statement of at least USD 2,000, and names a sponsor; no deposit. USD 1,500/month is the SUPERSEDED pre-2024 figure",
       "status": "confirmed",
       "confidence": "JELAS",
-      "source": "research/curated-qa-corrections-2026-07-21/visa-second-home-variants.jsonl Q8; visa-catalog-sweep.jsonl KITAP-RET row (round-1 correction: 'USD 3,000/month is current; USD 1,500 is the superseded pre-2024 figure')",
-      "source_date": "2026-07-21",
-      "notes": "Code fixes applied 2026-07-23: catalogue.py E33F notes, match_tree.py _STEPS_RETIREMENT, generate_visa_cards.py E33F card (all said USD 1,500). Family inclusion and sponsor requirement for E33F remain unknown (e33f_family_inclusion, e33f_sponsor_requirement)."
+      "source": "research/curated-qa-corrections-2026-07-21/visa-second-home-variants.jsonl Q8; visa-catalog-sweep.jsonl KITAP-RET row (round-1 correction: 'USD 3,000/month is current; USD 1,500 is the superseded pre-2024 figure'); live imigrasi.go.id E33F page fetch 2026-10-13",
+      "source_date": "2026-10-13",
+      "notes": "Code fixes applied 2026-07-23: catalogue.py E33F notes, match_tree.py _STEPS_RETIREMENT, generate_visa_cards.py E33F card (all said USD 1,500). The page for E33F does not state an age and does not mention a pension; the age 55 rule in rulepack-prod-029 comes from the Permenkumham 22/2023 jo. 11/2024 source record. Family inclusion for E33F remains unknown (e33f_family_inclusion)."
+    },
+    {
+      "id": "e33g_requirements",
+      "topic": "E33G remote worker 1-year route — requirements",
+      "value": "No sponsor; bank account showing salary or income of at least USD 60,000 per year; employment agreement with a company established outside Indonesia; 3-month bank statement of at least USD 2,000; 1-year validity",
+      "status": "confirmed",
+      "confidence": "JELAS",
+      "source": "live imigrasi.go.id E33G page fetch 2026-10-13 (Persyaratan khusus)",
+      "source_date": "2026-10-13",
+      "notes": "Page source, not an article of the regulation. The Indonesian-employer, Indonesian-client, Indonesian-source-compensation and PT PMA exclusions in rulepack-prod-029 are not on the page; they cite the Permenkumham 22/2023 jo. 11/2024 source record."
     },
     {
       "id": "pnbp_5y_amount",
@@ -303,12 +313,12 @@
     {
       "id": "e33f_sponsor_requirement",
       "topic": "E33F sponsor requirement",
-      "value": "Whether E33F requires a local sponsor (visa agent) or is sponsor-free like the golden-visa routes",
-      "status": "unknown",
-      "confidence": "BELUM_DIATUR_PUBLIK",
-      "source": "gap analysis 2026-07-21 (not covered by the 6 letters)",
-      "source_date": "2026-07-21",
-      "notes": "generate_visa_cards.py E33F card currently claims 'Local sponsor required (visa agent)' — unverified, do not propagate until resolved."
+      "value": "The E33F page says a sponsor is needed (\"Anda membutuhkan penjamin/sponsor\") and that the sponsor files the visa; rulepack-prod-029 declares the same in the E33F product metadata (sponsor_types INDIVIDUAL) and has no enforcement rule for it",
+      "status": "confirmed",
+      "confidence": "JELAS",
+      "source": "live imigrasi.go.id E33F page fetch 2026-10-13; rulepack-prod-029 E33F product sponsor_types",
+      "source_date": "2026-10-13",
+      "notes": "Page and pack agree: a sponsor is needed. The only gap is enforcement: the pack carries the requirement as declarative metadata and has no hard filter, which is not a divergence from the page. generate_visa_cards.py E33F card claims \"Local sponsor required (visa agent)\"; the sponsor is an individual per the pack metadata, not necessarily a visa agent."
     },
     {
       "id": "basis_switch_deposit_property_mid_permit",
