@@ -72,7 +72,8 @@ def never_rule(tag: str, stand_ins: frozenset = frozenset()) -> str:
 
 
 def stand_ins(matrix: Path) -> frozenset:
-    """Every value of every `service_images` map in the matrix (BASE image -> local stand-in), read, never hardcoded."""
+    """Every value of every `service_images` map in the matrix (BASE image -> local stand-in) and the image of every `extra_services`
+    entry (the matrix's own stand-ins, digest-pinned), read, never hardcoded."""
     import yaml   # the merger's venv carries PyYAML, as the runner's matrix reader needs it
 
     found, todo = set(), [yaml.safe_load(matrix.read_text())]
@@ -81,6 +82,8 @@ def stand_ins(matrix: Path) -> frozenset:
         if isinstance(node, dict):
             if isinstance(node.get("service_images"), dict):
                 found.update(str(v) for v in node["service_images"].values())
+            if isinstance(node.get("extra_services"), list):
+                found.update(str(e["image"]) for e in node["extra_services"] if isinstance(e, dict) and e.get("image"))
             todo.extend(node.values())
         elif isinstance(node, list):
             todo.extend(node)

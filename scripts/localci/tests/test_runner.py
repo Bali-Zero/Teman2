@@ -696,8 +696,8 @@ def test_every_context_result_in_the_status_carries_the_base_matrix_coverage(fx,
 
 
 @pytest.mark.skipif(not MATRIX.exists(), reason="contexts_matrix.yaml not present yet")
-def test_the_real_matrix_declares_e2e_partial_with_its_reason():
+def test_the_real_matrix_declares_e2e_full_because_its_backend_secrets_are_hermetic_stand_ins():
     c = runner.load_contexts(str(MATRIX))["map"]
-    assert c["E2E Tests (Playwright)"]["coverage"] == "partial" and "secrets" in c["E2E Tests (Playwright)"]["coverage_note"]
+    assert c["E2E Tests (Playwright)"]["coverage"] == "full" and c["E2E Tests (Playwright)"]["coverage_note"] is None
     assert all(v["coverage"] in runner.COVERAGES and (v["coverage"] == "full") == (v["coverage_note"] is None) for v in c.values())
     assert not any(v["note"] for v in c.values())

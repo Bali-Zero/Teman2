@@ -153,10 +153,13 @@ never a code RED. In a matrix `env:` (step or stand-in) the token `$LOCALCI_GEN.
 when the leg starts and held only in the runner's memory: one name is one value in every container of the leg, a new leg gets
 new ones, and nothing is written to disk or to the operator's environment. Every container of the leg has `--network none` or
 the shared loopback netns, so the stand-ins and the candidate have no route to any host outside it.
+Operator step (E2E's Qdrant, once per host, and again when the matrix digest moves): `docker pull qdrant/qdrant@sha256:<digest of the matrix entry>`. Until
+then `ctx.e2e-tests` plans BLOCKED naming it. Nothing prunes it: `prune.py` removes `localci-deps:*` tags only and lists every
+`extra_services` image on its never-list; `pro_janitor.py` and `pro_disk_floor_tick.sh` touch no docker image.
 
 ### CodeQL contexts (`CodeQL Analysis (python)`, `CodeQL Analysis (javascript)`)
 
-Executed, coverage `full` (the READY criterion allows one partial context per compared merge, and E2E holds it). The released repository is Apache-2.0
+Executed, coverage `full` (the READY criterion allows one partial context per compared merge; none holds it since E2E runs hermetic). The released repository is Apache-2.0
 (#8241), which the CodeQL terms allow for automated analysis of an open-source codebase on GitHub.com. Hosted never fails this job on
 a finding: it fails on a CLI or action error, a timeout, or (PR lane) an upload failure. The local verdict is the same: PASS when every
 command exits 0 within the BASE `timeout-minutes` (30) and the SARIF is one hosted would take, FAIL when one exits non-zero or the SARIF is one hosted would
@@ -166,7 +169,7 @@ recorded in the receipt (`result.codeql`).
 `coverage: full` means the context reproduces every hosted failure class the CODE determines: the CLI commands, the analyze action's post-processing of the
 SARIF, and the PR lane's upload limits. What GitHub's side decides (arch, a processing error outside the documented limits, a transient API error, the
 status-poll timeout, a hosted runner loss) is an environment difference, named in the matrix's `parity_gaps`; it is not a subset of the work left undone, as
-E2E's six empty secrets are.
+a context run with its secrets emptied is.
 
 | surface | how | BLOCKED when |
 |---|---|---|
@@ -239,7 +242,7 @@ compared contexts of which ≥ 11 `full` and at most one `partial` (a partial co
 `compared_merges=N (full_only=M, with_partial=K)`, `compared_partial` and `compared_unrecorded` on the window line, and the
 phase E line names the partial context of the compared merges. A decision journalled before B3 carries no coverage record: its
 contexts are unrecorded and never count as full. The enqueue criterion treats a partial context as executed and passing,
-and names it: `executed_required=13/14 (partial: E2E Tests (Playwright))`. A partial FALSE_GREEN is still a FALSE_GREEN.
+and names it: `executed_required=13/14 (partial: <context>)` for any executed context whose matrix coverage is `partial`. A partial FALSE_GREEN is still a FALSE_GREEN.
 
 **A full disk is no verdict.** After every service leg (its log and its egress log) and every contained check, the runner
 reads the output line by line for the error lines a write on a full disk prints: libuv/npm `ENOSPC: no space left on device`
@@ -663,7 +666,7 @@ The window line separates `merged_prs` (PRs GitHub merged) from `compared_merges
 `skipped` lines by reason. A merge is COMPARED when GitHub merged the very candidate the merger decided (the decided head, its
 merge commit's sole parent the decided base) and at least 12 contexts had a verdict on both sides, at least 11 of them of
 FULL coverage and at most one partial, named (`MIN_COMPARED_CONTEXTS`, `MIN_COMPARED_FULL`, `MAX_COMPARED_PARTIAL`; ruled
-2026-10-08, when the 2 CodeQL contexts were still hosted-only: 11 full; with them executed it is 13 full and the E2E partial): a merge compared on blind contexts is no evidence,
+2026-10-08, when the 2 CodeQL contexts were still hosted-only: 11 full; with them executed it was 13 full and the E2E partial, and 14 full once E2E ran hermetic): a merge compared on blind contexts is no evidence,
 a partial context never counts as full, an unrecorded one counts toward nothing, and the window line prints
 `compared_merges=N (full_only=M, with_partial=K)`. Each compared PR counts once, at
 GitHub's `merged_at` — two decisions of one PR, or the journal's order, cannot widen the span. **The operator reads

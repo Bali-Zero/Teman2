@@ -97,3 +97,54 @@ def test_a_planned_job_carries_the_stand_in_after_base_services_and_a_missing_im
     assert [s["name"] for s in spec["jobs"][0]["services"]] == ["postgres", "qdrant"] and spec["jobs"][0]["services"][1]["image"] == REF
     spec = _planned(tmp_path / "gone", monkeypatch, [EXTRA], known=False)
     assert spec["status"] == "BLOCKED" and "not present locally" in spec["reason"] and "docker pull" in spec["reason"]
+
+
+# ------------------------------------------------------------------ the real E2E context
+def _e2e() -> dict:
+    import yaml
+    from .test_service_contexts import MATRIX
+
+    return next(c for c in yaml.safe_load(MATRIX.read_text())["contexts"] if c["name"] == "E2E Tests (Playwright)")["local"]
+
+
+def test_the_real_e2e_context_feeds_the_backend_a_stand_in_for_each_secret_and_holds_no_key_shaped_literal(tmp_path):
+    import yaml
+    from . import fixture_repo as fr
+
+    local = _e2e()
+    backend = next(s for s in local["steps"] if s["workflow_step"].startswith("Start backend"))["env"]
+    base = yaml.safe_load((fr.REAL_REPO / ".github/workflows/tests.yml").read_text())["jobs"]["e2e-tests"]["steps"]
+    base_env = next(s for s in base if s.get("name", "").startswith("Start backend"))["env"]
+    assert set(backend) == {"QDRANT_URL", "QDRANT_API_KEY", "OPENAI_API_KEY", "JWT_SECRET"} <= set(base_env)   # a renamed BASE var is seen here, not fed to nothing
+    assert all(v for v in backend.values()) and backend["QDRANT_URL"] == "http://localhost:6333"
+    assert all(re.fullmatch(r"(sk-)?\$LOCALCI_GEN\.[a-z]+", v) for k, v in backend.items() if k != "QDRANT_URL")   # made up at the leg, never written here
+    svc = local["extra_services"][0]
+    assert svc["env"] == {"QDRANT__SERVICE__API_KEY": backend["QDRANT_API_KEY"]}   # the service starts with the key the backend sends
+    run_env = next(s for s in local["steps"] if s["workflow_step"] == "Run E2E tests")["env"]
+    assert run_env == {"E2E_TEST_EMAIL": "", "E2E_TEST_PIN": ""}   # BASE's 135 selected tests never read them (matrix note)
+    svcs, why = runner.plan_extra_services(local["extra_services"], {"postgres", "redis"}, docker_knowing_ref(tmp_path, svc["image"]))
+    assert why is None and svcs[0]["image"] == svc["image"] and svc["image"].startswith("qdrant/qdrant@sha256:")
+
+
+def docker_knowing_ref(tmp_path, ref: str) -> str:
+    exe = fake_docker(tmp_path)
+    exe.write_text(exe.read_text().replace("postgres:15|redis:7)", f"postgres:15|redis:7|{ref})"))
+    return str(exe)
+
+
+def test_a_leg_hands_the_stand_in_and_the_steps_the_same_made_up_value_and_nothing_is_left_unexpanded(monkeypatch, tmp_path):
+    import json
+
+    from .test_host_disk import _leg_args
+
+    seen = {}
+    monkeypatch.setenv(runner.MIN_FREE_ENV, "0")
+    monkeypatch.setattr(runner, "start_services", lambda docker, svcs, *a, **k: seen.setdefault("svcs", svcs) and ([], None, None))
+    monkeypatch.setattr(runner, "execute_contained", lambda *a, **k: seen.setdefault("extra", a[6]) and (None, "stopped by the test"))
+    spec, job, plan = _leg_args(tmp_path)
+    job.update(git_index=False, services=[{"name": "qdrant", "env": dict(EXTRA["env"]), "image_id": "sha256:" + "a" * 64}],
+               steps=[{"name": "s", "argv": ["true"], "env": {"QDRANT_API_KEY": "$LOCALCI_GEN.qdrant", "OPENAI_API_KEY": "sk-$LOCALCI_GEN.openai"}}])
+    runner._run_leg("ctx.e2e-tests", spec, job, {}, tmp_path, plan, {}, {}, runner._gh_expr())
+    step_env = json.loads(seen["extra"]["cfg/steps.json"])["steps"][0]["env"]
+    key = seen["svcs"][0]["env"]["QDRANT__SERVICE__API_KEY"]
+    assert re.fullmatch(r"[0-9a-f]{48}", key) and step_env["QDRANT_API_KEY"] == key and re.fullmatch(r"sk-[0-9a-f]{48}", step_env["OPENAI_API_KEY"])
