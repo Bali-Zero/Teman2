@@ -310,3 +310,34 @@ describe("the KBLI dump's advertised vintage is the dataset's own", () => {
     expect(advertised(prose)).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// E33A / E33B / E33C are government-linked routes handled by consultation, with no
+// published price (E33 audit PR-18, 2026-10-11). The Visa Oracle copy says so; llms.txt,
+// which LLM crawlers cite, must say the same and must not quote a price for them.
+// ---------------------------------------------------------------------------
+describe("llms.txt names E33A, E33B and E33C as government-linked routes", () => {
+  const lines = () => readFileSync(llmsTxtPath, "utf8").split("\n");
+
+  it("carries one line naming all three routes as government-linked and by consultation", () => {
+    const hits = lines().filter((l) => /E33A/.test(l) && /E33B/.test(l));
+    expect(hits).toHaveLength(1);
+    expect(hits[0]).toMatch(/E33C/);
+    expect(hits[0]).toMatch(/government/i);
+    expect(hits[0]).toMatch(/consultation/i);
+    expect(hits[0]).toMatch(/no published price/i);
+  });
+
+  it("publishes no price line for E33A, E33B or E33C", () => {
+    const priced = lines().filter(
+      (l) => /^- E33[ABC]\b/.test(l) && /IDR/.test(l),
+    );
+    expect(priced).toEqual([]);
+  });
+
+  it("still states the E33E senior price as IDR 45.000.000", () => {
+    expect(lines()).toContain(
+      "- E33E - Second Home Senior 5 Years: IDR 45.000.000 (all-inclusive)",
+    );
+  });
+});
