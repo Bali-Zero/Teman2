@@ -1,0 +1,60 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night family "family", plan entry E31-X01: no test pinned the amount an E31-family member is quoted per stay
+  length against the real catalogue on the active pack (E23, E28 and the visit family already have such pins on main; the E30 sibling is in flight as PR #8408, not on main). Test-only;
+  no owner decision, no pack change.
+mission: >-
+  The price a Visa Oracle visitor is quoted for each E31 family code is pinned per stay length against the real
+  price catalogue on the highest signed pack.
+lanes:
+  - lane: e31-x01-price-pins
+    role: build
+    seat: Kimi (kimi-code/kimi-for-coding, effort high) via seat_build.sh on Mini, 378 s, worktree backend-rag-vn-e31-x01-price-pins. Build commit cff12c7e27 was produced by the Kimi seat although its git trailer reads Claude Opus 5.5 (the brief's mandated trailer; history not rewritten).
+  - lane: e31-x01-price-pins
+    role: review
+    seat: Claude session on Pro driving Mini (generator is not grader).
+pii_scan: clean
+spend:
+  wall_clock_hours: 1.0
+  adversarial_rounds: 1
+  paid_endpoint_usd: 0
+bites: >-
+  Consumer: the merge_group `Tests / Backend Shard 1..3` matrix with the `backend-tests` fan-in, which collects the
+  new file. Observation: the test_e31_price_pins.py test IDs pass in the merge_group shard logs, summing to 177
+  (sharding may split the file); the mutation runs recorded in results turn it red. Test-only: no fly-deploy
+  (fly-deploy.yml excludes **/tests/**), no production surface changes.
+results:
+  - claim: "The new file passes on the highest signed pack (seq-28) under the backend venv on Mini."
+    cmd: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/services/visa_engine/test_e31_price_pins.py -p no:cacheprovider
+    result: "177 passed"
+    exit: 0
+    ts: "2026-10-12T23:50:45Z"
+    seat: this session
+  - claim: "Mutation 1 - catalogue row Dependent 2 Years (Offshore) rewritten 15.000.000 IDR -> 15.000.000 USD turns the pin red (currency); file restored from a byte copy (cmp)."
+    cmd: same pytest command, catalogue row edited then restored from a copy
+    result: "104 failed, 73 passed"
+    exit: 1
+    ts: "2026-10-12T23:50:48Z"
+    seat: this session
+  - claim: "Mutation 2 - catalogue row Spouse 1 Year (Offshore) 11.000.000 -> 11.500.000 IDR turns the E31A 1-year pins red and leaves every Dependent pin green; file restored (cmp)."
+    cmd: same pytest command, catalogue row edited then restored from a copy
+    result: "13 failed, 164 passed"
+    exit: 1
+    ts: "2026-10-12T23:50:51Z"
+    seat: this session
+  - claim: "The whole visa_engine suite with the new file equals the known Mini baseline (2 failed in test_visa_engine_retention_fk_registry.py, 31 errors in test_evaluate_endpoint.py, identical on origin/main)."
+    cmd: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/services/visa_engine -p no:cacheprovider
+    result: "2 failed, 3498 passed, 15 skipped, 31 errors (rerun for the record; the first run, before the evidence was written, gave the same tally)"
+    exit: 1
+    ts: "2026-10-12T23:50:53Z"
+    seat: this session
+dissent:
+  - seat: "red team (this session)"
+    objection: "LOW: the builder pinned no assertion that the PriceQuote model itself carries no PNBP/fee component field; only the duration display keys and the catalogue rows were guarded."
+    status: CONFIRMED
+    disposition: "CURED in a second commit: every quote asserts that no field name matches pnbp|fee. Also removed a stale comment that sat above _keys."
+  - seat: "red team (this session)"
+    objection: "NOTE: the pack pin follows the highest signed pack with a floor of seq-28; a seq-29 that re-prices E31 turns it red by design, which is the intended re-read."
+    status: PLAUSIBLE
+    disposition: "Accepted, same convention as the E28/E23 pins."
