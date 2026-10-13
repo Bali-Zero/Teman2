@@ -1,0 +1,20 @@
+gear: 2
+gear_reason: >-
+  Client-copy change in a few i18n entries of the public Visa Oracle interview, with pinned tests, a
+  no-argument observer and its unit tests; no backend, data, pricing or interview-tree change. The size
+  floor (churn including tests and evidence) is gear 2, so an adversarial codex spalla reviewed the diff and
+  its findings are recorded in dissent; a fresh gate follows.
+mission: >-
+  The retirement basis question uses the official page's term penjamin, and the income question says what
+  Immigration counts, in the page's own words.
+objective: >-
+  The retirement basis options (retirement_basis and retirement_undecided_basis) say penjamin in EN and ID, and
+  the retirement income question asks for income or an allowance the visitor can document, with no figure.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/copy-truth.test.ts
+  - scripts/ci/observe_visa_oracle_penjamin_copy.py
+  - tests/scripts/test_observe_visa_oracle_penjamin_copy.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
