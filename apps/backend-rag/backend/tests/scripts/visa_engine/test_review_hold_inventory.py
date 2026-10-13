@@ -90,11 +90,17 @@ def test_inventory_counts_match_the_signed_pack(real_pack: M.RulePackPayload) ->
     # Printed by `review_hold_inventory --json` on the signed seq-23 tree
     # (Slice A9.3), never typed: seq-22's 9 / 7 became 1 / 0 when seq-23
     # retired 8 review.* rules and flipped the 4 HARD_FILTER escalations to
-    # NEEDS_INPUT — A8.4's derived target.
-    assert len(review_rules) == 1, (
-        f"sequence {real_pack.sequence}: expected 1 HUMAN_REVIEW-stage rule "
-        f"(review.e33.below-threshold-studio), got {len(review_rules)} — "
-        "A8.4 derived exactly 1 for seq-23; a changed count on a later "
+    # NEEDS_INPUT — A8.4's derived target. seq-29 adds the second and last
+    # one: review.e31j-marital-status-other (E31J, marital status "other",
+    # on_unknown NO_EFFECT), printed by the same command on the signed tree.
+    assert {rule.rule_id for rule in review_rules} == {
+        "review.e33.below-threshold-studio",
+        "review.e31j-marital-status-other",
+    }, (
+        f"sequence {real_pack.sequence}: expected 2 HUMAN_REVIEW-stage rules "
+        f"(review.e33.below-threshold-studio, review.e31j-marital-status-other), "
+        f"got {len(review_rules)} — A8.4 derived exactly 1 for seq-23 and seq-29 "
+        "added the E31J marital-status review; a changed count on a later "
         "sequence is real news, not a stale pin"
     )
     assert len(escalations) == 0, (
