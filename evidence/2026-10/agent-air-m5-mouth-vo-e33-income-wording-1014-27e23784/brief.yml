@@ -1,6 +1,6 @@
-gear: 1
+gear: 2
 gear_reason: >-
-  Size floor 1 (small diff: 14 copy lines and 7 test pins in the mouth engine adapter, plus a
+  Size floor 2 after the red-team cure (churn incl. tests and evidence passes 400); first drafted at floor 1 (small diff: 14 copy lines and 7 test pins in the mouth engine adapter, plus a
   no-argument observer and its unit test). Client-copy wording only; no backend, no data, no pricing,
   no interview tree change, no new behaviour.
 mission: >-
@@ -17,4 +17,4 @@ scope:
   - tests/scripts/test_observe_visa_oracle_e33_income_wording.py
 appetite:
   wall_clock_hours: 1
-  adversarial_rounds: 0
+  adversarial_rounds: 1
