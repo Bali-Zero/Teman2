@@ -15,4 +15,4 @@ scope:
   - tests/scripts/test_visa_ledger_seq29.py
 appetite:
   wall_clock_hours: 1
-  adversarial_rounds: 0
+  adversarial_rounds: 1

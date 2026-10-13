@@ -150,7 +150,7 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   post-organ observation is closed (the suite stayed green after the newer ledger landed). **Next: seq-30 from the
   conductor** (A1 on-shore conversion, E30A/E30B multi-year; branch `agent/nuzantara/backend-rag/vo-seq30-a1-e30-material`),
   signed by the session before 2026-11-07; open PENDING-ARMS row for the seq-29 boundary. Detail: `references/live-state-log.md`.
-- **2026-10-14: E33 audit waves 1-2 live** (#8437, #8439, #8440, #8441, #8454, #8456, all proven live 2026-10-13); the zero runner disk-full incident manual incident cure complete; durable fix pending in the infra/healer lane.
+- **2026-10-14: E33 audit waves 1-2 live** (#8437, #8439, #8440, #8441, #8454, #8456, all proven live 2026-10-13); the zero runner disk-full incident manual cure complete; durable fix pending in the infra/healer lane.
 - **Remaining E33 audit items:** PR-7 permit length, PR-10 E33F note, PR-20 render prohibited activities; in flight: PR-8 documents, the income-or-allowance wording fix, the replay freshness test.
 - **SUPERSEDED by seq-29 (history), 2026-10-12 position (production pack seq-28 since 2026-10-12T03:08Z; boundary 2026-11-12T18:00:16Z, organ alert T-7 = 2026-11-05).**
   Activation `b7c808bd-c0f4-48fe-9fdb-3f7f47f7e86a` (rule_pack_id `b383effb-eea4-5890-9a6a-0f13d816e855`, PR #8300,

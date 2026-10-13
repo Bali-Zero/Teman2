@@ -47,31 +47,31 @@ decisions:
       The two seq-29 tests that pinned 2026-10-13 as newest now pin 2026-10-14, and still assert the
       2026-10-13 entry exists further down, so no history is lost.
 dissent:
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T07-12-06-01a13789-96ce-7281-b89c-a20a290a8014.jsonl, model verified in the rollout file)"
     objection: "MEDIUM 1: live-state-log says five audit items open while listing six."
     status: RETRACTED
     disposition: "Cured: now reads six, pinned by test_e33_waves_entry_carries_each_pr_sha_and_proof_exactly_once (fix commit on this branch after 29e69fdb)."
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T07-12-06-01a13789-96ce-7281-b89c-a20a290a8014.jsonl, model verified in the rollout file)"
     objection: "MEDIUM 2: the rangkap-kegiatan consumer list was appended to the proof-of-armed field."
     status: RETRACTED
     disposition: "Cured: moved into the action field before the last separator; one row kept; test_rangkap_row_carries_the_consumer_extension_once_in_the_action_field pins field placement (fix commit after 29e69fdb)."
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T07-12-06-01a13789-96ce-7281-b89c-a20a290a8014.jsonl, model verified in the rollout file)"
     objection: "MEDIUM 3: the PENDING-ARMS receipt result exceeded what its command could produce."
     status: RETRACTED
     disposition: "Cured: receipt re-recorded with a real command that counts the zero-runner row, the rangkap row and the extension token, literal output zr=1 rk=1 tok=1."
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T07-12-06-01a13789-96ce-7281-b89c-a20a290a8014.jsonl, model verified in the rollout file)"
     objection: "MEDIUM 4: tests and observer stayed fail-open for the new content."
     status: RETRACTED
     disposition: "Cured: three new tests isolate the 2026-10-14 entry and pin each PR/merge-sha/proof tuple once, the six open items, the six-count, both PENDING rows with len==1 and the extension tokens; the seq-29 observer runs them (12 passed)."
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T07-12-06-01a13789-96ce-7281-b89c-a20a290a8014.jsonl, model verified in the rollout file)"
     objection: "MEDIUM 5: brief_ref points at evidence/brief.yml instead of the dated sibling brief."
     status: RETRACTED
     disposition: "False positive by repo convention: CI and the pre-push pack-lint stage the brief at evidence/brief.yml and a dated brief_ref fails the lint; pack.yml unchanged on this point, lint clean."
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T07-12-06-01a13789-96ce-7281-b89c-a20a290a8014.jsonl, model verified in the rollout file)"
     objection: "LOW 6: SKILL.md claimed a durable fix with the infra lane, which is only escalated."
     status: RETRACTED
     disposition: "Cured: reads manual incident cure complete; durable fix pending in the infra/healer lane."
-  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T07-12-06-01a13789-96ce-7281-b89c-a20a290a8014.jsonl, model verified in the rollout file)"
     objection: "LOW 7: brief said no pack and called issuecomment IDs links."
     status: RETRACTED
     disposition: "Cured: brief now says no visa-engine production rule pack and prove-live issuecomment IDs."
