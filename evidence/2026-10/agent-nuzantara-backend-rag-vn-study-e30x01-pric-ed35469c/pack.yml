@@ -1,0 +1,130 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night family "study", plan E30-X01 (findings F03, F19, F30, F50, F62, F68, F81): no test pinned the E30A/E30B
+  price or the unpriced state of E30, E30E and E30F against the real catalogue on the active pack, so an edit of a
+  row amount passed CI, and the unreachable 2-year and 4-year rows had no tripwire. Test-only; no owner decision, no
+  pack change.
+mission: >-
+  The price a Visa Oracle visitor is quoted for E30A and E30B is pinned against the real price catalogue on the
+  highest signed pack, E30, E30E and E30F are pinned as deliberately unpriced, and the known longer-stay gap is a
+  strict xfail that the pack adding duration options must remove.
+lanes:
+  - lane: e30x01-price-pins
+    role: build
+    seat: claude-sonnet-5 implementer, worktree backend-rag-vn-study-e30x01-price-pins.
+pii_scan: clean
+bites: >-
+  Consumer: backend-rag CI, which runs backend/tests/services/visa_engine on every change to the price catalogue,
+  the signed packs or the pricing adapter. Observation: the CI run of this PR shows test_e30_family_pricing.py
+  passing (50 passed, 3 xfailed), and no fly-deploy run is triggered (test-only change); the mutation runs show it failing when an E30 row amount is edited, a row is
+  renamed, or a seq-29-style pack-side fix makes the xfail rows XPASS (strict, so red until the mark is removed).
+spend:
+  wall_clock_hours: 1.0
+  adversarial_rounds: 1
+  paid_endpoint_usd: 0
+results:
+  - claim: "The new test file passes on the base tree: 34 passed, 3 xfailed (the strict SEQ29-E30-02 rows). Timestamps are the machine clock (date -u)."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_e30_family_pricing.py
+    result: "34 passed, 3 xfailed"
+    exit: 0
+    ts: "2026-10-12T05:09:27Z"
+    seat: this session
+  - claim: "Mutation 1 - the E30A (1 Year) catalogue row amount edited 9.000.000 -> 9.500.000 IDR turns the row pin, the service quote, the signed quote, the end-to-end test and the edited-amount twin's premise red; file restored from a byte copy (cmp)."
+    cmd: same pytest command, catalogue row edited then restored from a copy
+    result: "6 failed, 28 passed, 3 xfailed"
+    exit: 1
+    ts: "2026-10-12T05:09:30Z"
+    seat: this session
+  - claim: "Mutation 2 - the E30B (4 Years) row, which no pack key reaches yet, edited 15.000.000 -> 14.000.000 IDR: only the family-row pin goes red, so the rows the seq-29 options will use are guarded before they are wired."
+    cmd: same pytest command, catalogue row edited then restored from a copy
+    result: "1 failed, 33 passed, 3 xfailed"
+    exit: 1
+    ts: "2026-10-12T05:09:33Z"
+    seat: this session
+  - claim: "Mutation 3 - the E30B (1 Year) catalogue key renamed: the row pin, the quotes, the end-to-end walk's sibling check and the rewire twins go red (PRICING_ROW_MISSING)."
+    cmd: same pytest command, catalogue key renamed then restored from a copy
+    result: "11 failed, 23 passed, 3 xfailed"
+    exit: 1
+    ts: "2026-10-12T05:09:36Z"
+    seat: this session
+  - claim: "Mutation 4 - seq-29 simulation: effective_pricing_key in pricing_adapter.py made to return the 2-year / 4-year row for E30A/E30B stays over 365 days. The three strict xfail rows XPASS and fail, so the pack that fixes the gap cannot land without removing the mark. File restored from a byte copy (cmp)."
+    cmd: same pytest command, pricing_adapter.py edited then restored from a copy
+    result: "3 failed (XPASS strict), 34 passed"
+    exit: 1
+    ts: "2026-10-12T05:09:39Z"
+    seat: this session
+  - claim: "After the four restores the tree is clean again: the file passes unchanged and git shows only the new test file."
+    cmd: same pytest command plus git status --short
+    result: "34 passed, 3 xfailed; only test_e30_family_pricing.py untracked"
+    exit: 0
+    ts: "2026-10-12T05:09:40Z"
+    seat: this session
+  - claim: "Whole backend/tests/services/visa_engine suite (Python 3.11.11 venv, load average 8 at start). The 2 failed and 39 errors are all asyncpg/schema errors from the shared local scratch Postgres (migrations 264/281 not live, missing policy_scope column) in test_shadow_evidence, test_shadow_match and test_visa_engine_retention_fk_registry."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine
+    result: "2 failed, 3028 passed, 15 skipped, 3 xfailed, 1 warning, 39 errors in 191.81s"
+    exit: 1
+    ts: "2026-10-12T06:08:16Z"
+    seat: this session
+  - claim: "Control run with the new file ignored: the same 2 failed and 39 errors, 34 fewer passes, so the red is independent of this change."
+    cmd: same suite command with --ignore=backend/tests/services/visa_engine/test_e30_family_pricing.py
+    result: "2 failed, 2994 passed, 15 skipped, 1 warning, 39 errors in 204.95s"
+    exit: 1
+    ts: "2026-10-12T06:13:50Z"
+    seat: this session
+  - claim: "Mouth suites and tsc not run: no TypeScript, tree, corpus, pack or fact changed."
+    cmd: git diff --stat origin/main
+    result: "one new file under apps/backend-rag/backend/tests plus this evidence directory"
+    exit: 0
+    ts: "2026-10-12T06:14:00Z"
+    seat: this session
+  - claim: "Red-team cure: the new file passes on the cured tree: 50 passed, 3 xfailed (was 34 passed, 3 xfailed)."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_e30_family_pricing.py
+    result: "50 passed, 3 xfailed"
+    exit: 0
+    ts: "2026-10-12T07:12:29Z"
+    seat: this session
+  - claim: "Cure mutations, each restored byte-for-byte (cmp). (a) E30B (4 Years) price written 15.000.000 USD: 3 failed, 47 passed, 3 xfailed. (b) seq-29 simulation in effective_pricing_key: 6 failed (3 today-pins + 3 strict XPASS), 47 passed. (c) resolve_candidate_pricing raising FileNotFoundError for stays over 365 days: 9 failed, 44 passed (the three rows no longer hide as XFAIL). (d) no-key resolution turned UNKNOWN: 4 failed, 46 passed, 3 xfailed. Timestamp approximate: the four runs finished just before the full-suite start of 06:32Z."
+    cmd: same pytest command, catalogue or pricing_adapter.py edited then restored from a copy
+    result: "(a) 3 failed (b) 6 failed (c) 9 failed (d) 4 failed; after restore 50 passed, 3 xfailed"
+    exit: 1
+    ts: "2026-10-12T06:32:00Z"
+    seat: this session
+  - claim: "Whole backend/tests/services/visa_engine suite after the cure (Python 3.11.11 .venv, load average 11 at start after waiting out a load of 70+): 3044 passed = the earlier 3028 + 16 new tests; the 2 failed and 39 errors are the same asyncpg/schema errors from the shared scratch Postgres (UndefinedColumnError policy_scope, UndefinedTableError visa_evaluate_idem...) as the control run without this change."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine
+    result: "2 failed, 3044 passed, 15 skipped, 3 xfailed, 1 warning, 39 errors in 454.31s"
+    exit: 1
+    ts: "2026-10-12T07:11:11Z"
+    seat: this session
+decisions:
+  - id: D-strict-xfail
+    decision: >-
+      The 730-day (E30A, E30B) and 1460-day (E30B) rows assert the catalogue's 2-year (11,500,000) and 4-year
+      (15,000,000) prices as a strict xfail with reason SEQ29-E30-02, instead of pinning today's under-quote, so the
+      defect is documented without freezing it and the seq-29 pack that adds duration_options is forced to remove
+      the mark.
+  - id: D-one-year-only
+    decision: >-
+      Stays at or below 365 days (and an unstated stay) are pinned to the 1-year row for E30A and E30B, because
+      that is the correct row for them under any future option set.
+dissent:
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T14-15-18-01a12ec0-53fc-78d1-90f9-9b6797b5c81e.jsonl)"
+    objection: "MEDIUM 1 (test_e30_family_pricing.py:213): the catalogue pin checks only the digits of the price string, not the currency, so '11.500.000 USD' would pass and valid 'IDR 11.500.000' would fail; the 2- and 4-year rows have no other real-parser test."
+    status: RETRACTED
+    disposition: "Cured (cure commit on this branch, finding real). The row pin now calls the production _parse_exact_idr_amount on the price string, and every family row, including the 2- and 4-year ones no pack key reaches, is also resolved through the real PricingService (a product re-aimed at the row) to AVAILABLE / IDR / the typed amount. New twins: '9.000.000 USD', '9.000.000' and 'Rp 9.000.000' are not a quote; 'IDR 9.000.000' and '9.000.000 IDR' both parse to the pinned amount. Mutation: E30B (4 Years) price written as '15.000.000 USD' now turns 3 tests red (the old digit-only pin stayed green)."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T14-15-18-01a12ec0-53fc-78d1-90f9-9b6797b5c81e.jsonl)"
+    objection: "MEDIUM 2 (test_e30_family_pricing.py:269): xfail(strict=True) does not pin the known defect; any failure, including an exception, CONTACT_REQUIRED, a wrong amount or a setup FileNotFoundError, counts as XFAIL; pin the current behaviour (9M also for long stays) so any change forces a review."
+    status: RETRACTED
+    disposition: "Cured. The xfail is narrowed to raises=AssertionError, and a new class TestTodaysLongerStayQuoteIsPinnedExplicitly asserts today's behaviour outright for the same three rows: AVAILABLE / PRICE_AVAILABLE, 9,000,000, and the very same row_sha256 as the 1-year row. Mutations: an exception from resolve_candidate_pricing for stays over 365 days turns 9 tests red (was 3 XFAIL); the seq-29 simulation turns the 3 pins and the 3 XPASS red (6 failed); the new pin class and the xfail are to be deleted together by the pack that adds duration_options."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T14-15-18-01a12ec0-53fc-78d1-90f9-9b6797b5c81e.jsonl)"
+    objection: "LOW (test_e30_family_pricing.py:402): 'the page says an advisor confirms the price' is not verified end to end; the test only checks E30, E30E and E30F have no quotes, not that they remain candidates/display as CONTACT_REQUIRED with PRICING_KEY_NOT_CONFIGURED, nor the EN/ID advisor message."
+    status: RETRACTED
+    disposition: "Cured for the backend contract. The end-to-end walk now asserts E30, E30E and E30F are candidates, each displayed once with CONTACT_REQUIRED / PRICING_KEY_NOT_CONFIGURED, row_sha256 null, no amount, and absent from the persisted quotes. Mutation: the no-key resolution turned UNKNOWN turns 4 tests red. The comment that claimed the page wording was removed (the wording is the mouth adapter's, see next entry)."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T14-15-18-01a12ec0-53fc-78d1-90f9-9b6797b5c81e.jsonl)"
+    objection: "LOW remainder of the same finding: the EN/ID advisor wording itself is not asserted by this backend test."
+    status: RETRACTED
+    disposition: "Already satisfied on main: #8314 replaced the CONTACT_REQUIRED price line and pins both the EN line (Price on consultation. You can ask a Bali Zero advisor.) and the Bahasa Indonesia line (Harga melalui konsultasi. Anda dapat bertanya kepada konsultan Bali Zero.) in apps/mouth engine-adapter.test.ts:140-141 and :179-180. This backend test pins the status that line is keyed on; no follow-up is open."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout rollout-2026-10-12T14-15-18-01a12ec0-53fc-78d1-90f9-9b6797b5c81e.jsonl)"
+    objection: "NONE: Codex verified PNBP 6M / 8.5M / 12M plus the 3M internal margin gives 9M / 11.5M / 15M, consistent with the official Imigrasi source, and probed signed pack 028 (E30A/E30B AVAILABLE 9,000,000; E30/E30E/E30F CONTACT_REQUIRED / PRICING_KEY_NOT_CONFIGURED). Codex could not run the full pytest (read-only sandbox, no temp dir)."
+    status: RETRACTED
+    disposition: "Nothing to cure; values confirmed. The full suite was run by this session after the cure (see results)."
