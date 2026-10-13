@@ -8,7 +8,7 @@ mission: >-
 lanes:
   - lane: e33-replay-freshness
     role: build
-    seat: claude-sonnet-5 (Claude Code workflow subagent), worktree mouth-vo-e33-replay-freshness-1014 on M5; evidence by Claude Sonnet 5.5.
+    seat: claude-sonnet-5 (Claude Code workflow subagent), worktree mouth-vo-e33-replay-freshness-1014 on M5; evidence by the same build seat.
   - lane: e33-replay-freshness-ground-truth
     role: ground_truth
     seat: >-
