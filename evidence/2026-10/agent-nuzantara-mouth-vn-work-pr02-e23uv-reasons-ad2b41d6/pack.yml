@@ -51,7 +51,7 @@ dissent:
       these rules fire for an EMPLOYMENT intent. Flagged to the orchestrator.
   - seat: "codex gpt-5.6-sol (red team, MEDIUM)"
     objection: "E23V adds foreign / economic / representative / in Indonesia not in the pack predicate."
-    status: REFUTED
+    status: RETRACTED
     disposition: "These are the exact words of q.sponsor_trade_office (i18n.ts:257) that sets sponsor.trade_office; a test now pins it."
   - seat: "codex gpt-5.6-sol (red team, MEDIUM)"
     objection: "Tests duplicate the sentences and do not pin the rule predicates."
