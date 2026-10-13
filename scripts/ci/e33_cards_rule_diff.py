@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
-"""e33_cards_rule_diff.py — the diff between each E33-family card and the active pack.
+"""e33_cards_rule_diff.py — the diff between each E33-family card and the active signed pack.
 
-The seven doctrine cards research/visa/doctrine-factory/cards/E33*.md each carry a section
-"## 2. Active rules (rulepack-prod-NNN)". Three things must agree with the signed pack:
-the rule ids scoped to the card's product, each rule's stage, effect type, reason code and every
-numeric threshold in its predicate, and the product's pricing key with its all-inclusive catalog
-price. The active pack is the highest-numbered rulepack-prod-NNN.signed.json on disk, so a newer
-signed pack that the cards do not yet describe is named, never silently passed. This script prints
-one line per difference and prints NOTHING when the cards and the pack agree (exit 0).
-
-It takes no arguments: the pack, the cards directory and the registry are literal paths.
-"""
+Per card: rule ids, each rule's stage, effect, reason code, numeric thresholds and validity start,
+and the product's pricing key with its catalog price. The active pack is the highest-numbered
+rulepack-prod-NNN.signed.json on disk, so a newer pack the cards do not describe is named.
+Takes no arguments; prints one line per difference and nothing when they agree (exit 0)."""
 
 from __future__ import annotations
 
@@ -22,120 +16,83 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PACKS_DIR = REPO_ROOT / "apps/backend-rag/backend/services/visa_engine/contracts/packs"
 PRICES = REPO_ROOT / "apps/backend-rag/backend/data/bali_zero_official_prices_2026.json"
-
-
-def active_pack_path() -> Path:
-    """The highest-numbered signed production pack on disk."""
-    found = [
-        (int(m.group(1)), p)
-        for p in PACKS_DIR.glob("rulepack-prod-*.signed.json")
-        if (m := re.fullmatch(r"rulepack-prod-(\d+)\.signed\.json", p.name))
-    ]
-    return max(found)[1]
-
-
-PACK = active_pack_path()
+PACK = max(PACKS_DIR.glob("rulepack-prod-[0-9][0-9][0-9].signed.json"), key=lambda p: p.name)
 PACK_ID = PACK.name.removesuffix(".signed.json")
 CARDS_DIR = REPO_ROOT / "research/visa/doctrine-factory/cards"
 CODES = ("E33", "E33A", "E33B", "E33C", "E33E", "E33F", "E33G")
 SECTION = f"## 2. Active rules ({PACK_ID})"
-RULE_ID = re.compile(r"`((?:hf|el|review)\.[a-z0-9][a-z0-9.-]*)`")
+ROW = re.compile(r"\|\s*`((?:hf|el|review)\.[a-z0-9][a-z0-9.-]*)`\s*\|(.*)\|\s*$")
 
 
 def pack_rules_by_code(pack: dict) -> dict[str, set[str]]:
     """Rule ids the pack scopes to each E33-family product."""
     payload = pack["payload"]
-    version_to_code = {
-        p["product_version_id"]: p["product_code"]
-        for p in payload["products"]
-        if p["product_code"] in CODES
-    }
+    code_of = {p["product_version_id"]: p["product_code"] for p in payload["products"]}
     out: dict[str, set[str]] = {code: set() for code in CODES}
     for rule in payload["rules"]:
         for version in rule.get("product_version_ids") or []:
-            if version in version_to_code:
-                out[version_to_code[version]].add(rule["rule_id"])
+            if code_of.get(version) in out:
+                out[code_of[version]].add(rule["rule_id"])
     return out
 
 
-def card_rule_ids(text: str) -> set[str]:
-    """Backticked rule ids between the rules heading and the next `## ` heading."""
+def _section(text: str) -> str:
+    """The text between the rules heading and the next `## ` heading ("" when absent)."""
     start = text.find(SECTION)
-    if start < 0:
-        return set()
-    body = text[start + len(SECTION) :]
+    body = text[start + len(SECTION) :] if start >= 0 else ""
     end = re.search(r"^## ", body, re.MULTILINE)
-    if end:
-        body = body[: end.start()]
-    return set(RULE_ID.findall(body))
+    return body[: end.start()] if end else body
 
 
 def card_rows(text: str) -> dict[str, list[str]]:
-    """rule_id -> table cells after the id, for the rows of the rules section."""
-    start = text.find(SECTION)
-    if start < 0:
-        return {}
-    body = text[start + len(SECTION) :]
-    end = re.search(r"^## ", body, re.MULTILINE)
-    if end:
-        body = body[: end.start()]
-    rows: dict[str, list[str]] = {}
-    for line in body.splitlines():
-        m = re.match(r"\|\s*`((?:hf|el|review)\.[^`]+)`\s*\|(.*)\|\s*$", line)
-        if m:
-            rows[m.group(1)] = [c.strip() for c in m.group(2).split("|")]
-    return rows
+    """rule_id -> table cells after the id, in the rules section."""
+    matches = map(ROW.match, _section(text).splitlines())
+    return {m.group(1): [c.strip() for c in m.group(2).split("|")] for m in matches if m}
 
 
-def _numbers(node) -> list[float]:
+def card_rule_ids(text: str) -> set[str]:
+    """Backticked rule ids in the rules section, in or out of a table row."""
+    return set(re.findall(r"`((?:hf|el|review)\.[a-z0-9][a-z0-9.-]*)`", _section(text)))
+
+
+def _numbers(node) -> set[int | float]:
     """Every numeric threshold (not bool) in a predicate tree."""
-    out: list[float] = []
-    if isinstance(node, dict):
-        for key, value in node.items():
-            if key in ("value", "values", "lower", "upper"):
-                items = value if isinstance(value, list) else [value]
-                out += [v for v in items if isinstance(v, (int, float)) and not isinstance(v, bool)]
-            else:
-                out += _numbers(value)
-    elif isinstance(node, list):
-        for item in node:
-            out += _numbers(item)
-    return out
+    if isinstance(node, list):
+        return set().union(*map(_numbers, node)) if node else set()
+    if not isinstance(node, dict):
+        return set()
+    found: set[int | float] = set()
+    for key, value in node.items():
+        if key in ("value", "values", "lower", "upper"):
+            found |= {v for v in (value if isinstance(value, list) else [value]) if isinstance(v, (int, float)) and not isinstance(v, bool)}
+        else:
+            found |= _numbers(value)
+    return found
 
 
 def _has_number(text: str, number: float) -> bool:
     forms = {str(int(number)), f"{int(number):,}"} if number == int(number) else {str(number)}
-    return any(re.search(rf"(?<![\d,.]){re.escape(f)}(?![\d]|[,.]\d)", text) for f in forms)
+    return any(re.search(rf"(?<![\d,.]){re.escape(f)}(?!\d|[,.]\d)", text) for f in forms)
 
 
-def rule_content_lines(code: str, rule: dict, cells: list[str]) -> list[str]:
-    """Differences between one pack rule and its card row: stage, effect, reason, thresholds."""
-    rid = rule["rule_id"]
-    if len(cells) < 3:
-        return [f"{code}: {rid}: the card row does not have stage, effect and description cells"]
-    stage, effect_cell, what = cells[0], cells[1], cells[2]
-    lines: list[str] = []
-    effect = rule["effect"]
+def rule_lines(code: str, rule: dict, cells: list[str]) -> list[str]:
+    """Differences between one pack rule and its card row."""
+    rid, (stage, effect_cell, what) = rule["rule_id"], (cells + ["", "", ""])[:3]
+    effect = f"{rule['effect']['type']} / `{rule['effect']['reason_code']}`"
+    lines = []
     if stage != rule["stage"]:
         lines.append(f"{code}: {rid}: stage on the card is {stage}, in the pack {rule['stage']}")
-    expected_effect = f"{effect['type']} / `{effect['reason_code']}`"
-    if effect_cell != expected_effect:
-        lines.append(f"{code}: {rid}: effect on the card is {effect_cell}, in the pack {expected_effect}")
-    for number in sorted(set(_numbers(rule.get("when")))):
-        if not _has_number(what, number):
-            lines.append(f"{code}: {rid}: pack threshold {number:g} is not stated on the card row")
+    if effect_cell != effect:
+        lines.append(f"{code}: {rid}: effect on the card is {effect_cell}, in the pack {effect}")
+    lines += [
+        f"{code}: {rid}: pack threshold {n:g} is not stated on the card row"
+        for n in sorted(_numbers(rule.get("when")))
+        if not _has_number(what, n)
+    ]
     start = rule["valid_period"]["from"][:10]
     if start != "2026-07-24" and f"valid from {start}" not in what:
         lines.append(f"{code}: {rid}: pack validity start {start} is not stated on the card row")
     return lines
-
-
-def pack_pricing_by_code(pack: dict) -> dict[str, str | None]:
-    return {
-        p["product_code"]: (p["pricing_key"] or {}).get("item_key")
-        for p in pack["payload"]["products"]
-        if p["product_code"] in CODES
-    }
 
 
 def catalog_price(prices: dict, item_key: str) -> str | None:
@@ -154,34 +111,26 @@ def catalog_price(prices: dict, item_key: str) -> str | None:
 
 def diff(pack: dict, cards: dict[str, str], prices: dict | None = None) -> list[str]:
     """One line per card-vs-pack difference; empty list when they agree."""
-    if prices is None:
-        prices = json.loads(PRICES.read_text(encoding="utf-8"))
+    prices = prices if prices is not None else json.loads(PRICES.read_text(encoding="utf-8"))
     expected = pack_rules_by_code(pack)
     rules = {r["rule_id"]: r for r in pack["payload"]["rules"]}
-    pricing = pack_pricing_by_code(pack)
+    key_of = {p["product_code"]: (p["pricing_key"] or {}).get("item_key") for p in pack["payload"]["products"]}
     lines: list[str] = []
     for code in CODES:
         text = cards.get(code, "")
-        found = card_rule_ids(text)
-        for rule_id in sorted(expected[code] - found):
-            lines.append(f"{code}: in the pack, missing on the card: {rule_id}")
-        for rule_id in sorted(found - expected[code]):
-            lines.append(f"{code}: on the card, not in the pack: {rule_id}")
-        rows = card_rows(text)
-        for rule_id in sorted(expected[code] & found):
-            if rule_id in rows:
-                lines += rule_content_lines(code, rules[rule_id], rows[rule_id])
-            else:
-                lines.append(f"{code}: {rule_id}: named on the card outside a table row")
-        item_key = pricing[code]
-        if item_key:
-            price = catalog_price(prices, item_key)
-            if item_key not in text:
-                lines.append(f"{code}: pricing key {item_key} is not stated on the card")
+        found, rows = card_rule_ids(text), card_rows(text)
+        lines += [f"{code}: in the pack, missing on the card: {r}" for r in sorted(expected[code] - found)]
+        lines += [f"{code}: on the card, not in the pack: {r}" for r in sorted(found - expected[code])]
+        for rid in sorted(expected[code] & found):
+            lines += rule_lines(code, rules[rid], rows[rid]) if rid in rows else [f"{code}: {rid}: not in a table row"]
+        if key_of.get(code):
+            price = catalog_price(prices, key_of[code])
+            if key_of[code] not in text:
+                lines.append(f"{code}: pricing key {key_of[code]} is not stated on the card")
             if price is None:
-                lines.append(f"{code}: pricing key {item_key} is not in the catalog")
+                lines.append(f"{code}: pricing key {key_of[code]} is not in the catalog")
             elif price not in text:
-                lines.append(f"{code}: catalog price {price} for {item_key} is not stated on the card")
+                lines.append(f"{code}: catalog price {price} for {key_of[code]} is not stated on the card")
     return lines
 
 

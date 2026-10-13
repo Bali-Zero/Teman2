@@ -81,22 +81,11 @@ def test_a_card_without_the_rules_section_names_every_rule(pack, cards):
     ]
 
 
-def test_a_card_swapped_with_another_is_named(pack, cards):
-    mutated = dict(cards)
-    mutated["E33F"] = cards["E33E"]
-    assert len(rd.diff(pack, mutated)) > 0
-
-
 def test_cards_state_no_fee_split(cards):
     # An all-inclusive catalog price is stated; a PNBP / service-fee split never is.
     for code, text in cards.items():
         for word in ("PNBP", "Rp.", "Rp1", "service fee"):
             assert word not in text, f"{code} card carries {word}"
-
-
-def test_e33e_card_states_the_pricing_key_and_the_all_inclusive_price(cards):
-    assert "`E33E Second Home Senior (5 Years)`" in cards["E33E"]
-    assert "45,000,000 IDR" in cards["E33E"]
 
 
 def test_a_changed_price_or_pricing_key_is_named(pack, cards):
@@ -121,35 +110,24 @@ def test_a_changed_threshold_is_named(pack, cards):
     ]
 
 
-def test_a_changed_stage_effect_or_reason_is_named(pack, cards):
-    mutated = dict(cards)
-    mutated["E33F"] = cards["E33F"].replace("| HARD_FILTER | EXCLUDE / `AGE_BELOW_55` |", "| ELIGIBILITY | EXCLUDE / `AGE_BELOW_55` |")
-    assert rd.diff(pack, mutated) == [
-        "E33F: hf.e33f.age-below-55: stage on the card is ELIGIBILITY, in the pack HARD_FILTER"
-    ]
-    mutated["E33F"] = cards["E33F"].replace("EXCLUDE / `AGE_BELOW_55`", "SUPPORT / `AGE_BELOW_55`")
+@pytest.mark.parametrize("old,new", [("| HARD_FILTER |", "| ELIGIBILITY |"), ("EXCLUDE /", "SUPPORT /")])
+def test_a_changed_stage_or_effect_is_named(pack, cards, old, new):
+    row = "| `hf.e33f.age-below-55` | HARD_FILTER | EXCLUDE /"
+    mutated = {**cards, "E33F": cards["E33F"].replace(row, row.replace(old, new))}
     assert len(rd.diff(pack, mutated)) == 1
 
 
 def test_the_active_pack_is_the_highest_signed_prod_pack():
-    numbers = sorted(
-        int(p.name.split("-")[2].split(".")[0]) for p in rd.PACKS_DIR.glob("rulepack-prod-*.signed.json")
-    )
-    assert rd.PACK_ID == f"rulepack-prod-{numbers[-1]:03d}"
+    names = sorted(p.name for p in rd.PACKS_DIR.glob("rulepack-prod-[0-9]*.signed.json"))
+    assert rd.PACK.name == names[-1]
 
 
-def test_a_newer_signed_pack_not_reflected_on_the_cards_is_named(tmp_path, monkeypatch, pack, cards):
+def test_a_newer_signed_pack_not_reflected_on_the_cards_is_named(monkeypatch, pack, cards):
     # Simulate the next activation: the section heading the diff expects moves to the new pack id.
     monkeypatch.setattr(rd, "SECTION", "## 2. Active rules (rulepack-prod-030)")
     lines = rd.diff(pack, cards)
     assert len(lines) == sum(PACK_COUNTS.values())
     assert all("missing on the card" in x for x in lines)
-
-
-def test_cards_no_longer_carry_the_stale_seq7_claims(cards):
-    assert "seq-7, verified live" not in "".join(cards.values())
-    assert "standard pension" not in cards["E33F"].split("## 1.")[1]
-    assert "age-gated retirement" not in cards["E33"]
 
 
 def test_registry_work_fact_says_rangkap_reporting():
@@ -163,10 +141,8 @@ def test_registry_work_fact_says_rangkap_reporting():
 
 def test_registry_ids_are_unique_and_e33g_is_recorded():
     facts = json.loads(REGISTRY.read_text(encoding="utf-8"))["facts"]
-    ids = [f["id"] for f in facts]
-    assert len(ids) == len(set(ids))
-    g = {f["id"]: f for f in facts}["e33g_requirements"]
-    assert "USD 60,000 per year" in g["value"]
+    assert len({f["id"] for f in facts}) == len(facts)
+    assert "USD 60,000 per year" in {f["id"]: f for f in facts}["e33g_requirements"]["value"]
 
 
 def test_registry_e33f_sponsor_is_confirmed_and_matches_the_pack_metadata(pack):

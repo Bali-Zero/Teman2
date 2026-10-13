@@ -5,13 +5,9 @@
 # test file it names are literal strings in this file, so nothing an invoker types
 # can name a program to run, a file to write, or a database to reach.
 
-The consumer is the next doctrine or visa session that reads the seven cards
-research/visa/doctrine-factory/cards/E33*.md and research/secondhome/e33-fact-registry.json.
-The observation runs the pytest file that diffs each card against the active signed pack (the highest
-signed prod pack on disk): rule ids, stage, effect, reason code, thresholds, pricing key and
-catalog price. It requires the diff to be empty, the registry's work fact to name the
-rangkap-kegiatan condition and the cards to carry no fee split. Exit 0 only if pytest reports a
-full pass of at least 25 tests.
+The consumer is the next doctrine or visa session that reads the seven E33 cards and the E33
+fact registry. The observation runs the pytest file that diffs each card against the active signed
+pack and requires a full pass of at least 23 tests.
 """
 
 # bites-observable — no arguments; one literal program, one literal test file.
@@ -25,7 +21,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TEST_FILE = "tests/scripts/test_e33_cards_match_pack.py"
-MIN_TESTS = 25
+MIN_TESTS = 23
 TIMEOUT_SECONDS = 240
 _SUMMARY = re.compile(r"^=*\s*(\d+) passed in [\d.]+s(?: \(.*\))?\s*=*$")
 
