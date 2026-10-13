@@ -53,7 +53,9 @@
       }
     ],
     "related_codes": ["55130"],
-    "related_requirements": { "documents": ["Census fixture document"] },
+    "related_requirements": {
+      "documents": ["Census fixture document"]
+    },
     "intel": {
       "whatItMeans": "Census fixture: what it means.",
       "whatYouNeed": "Census fixture: what you need.",
@@ -63,10 +65,29 @@
     }
   },
   "messages": [
-    { "role": "user", "content": "census fixture question" },
+    {
+      "role": "user",
+      "content": "census fixture question"
+    },
     {
       "role": "ai",
       "content": "Census fixture answer.",
+      "detected_kbli": ["56101", "55130"],
+      "suggested_queries": ["census fixture follow-up"],
+      "results": "search"
+    }
+  ],
+  "chat": {
+    "answer": "Census fixture chat answer."
+  },
+  "glossary": [
+    {
+      "role": "user",
+      "content": "census fixture question"
+    },
+    {
+      "role": "ai",
+      "content": "Census fixture answer about KBLI.",
       "detected_kbli": ["56101", "55130"],
       "suggested_queries": ["census fixture follow-up"],
       "results": "search"
