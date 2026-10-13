@@ -1,0 +1,16 @@
+gear: 1
+gear_reason: >-
+  One mouth component and its two test files; no data, pack, copy file or i18n.ts change.
+mission: >-
+  The Visa Oracle price heading appears only over a real price, and the share line carries the price basis.
+objective: >-
+  A CONTACT_REQUIRED or UNAVAILABLE price renders no All-inclusive price heading (EN+ID); the copied share summary
+  appends the all-inclusive label beside an AVAILABLE non-zero amount and the localized price message for a
+  non-AVAILABLE price; the zero-price Free/Gratis behaviour from V02 is unchanged.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.duration.test.tsx
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

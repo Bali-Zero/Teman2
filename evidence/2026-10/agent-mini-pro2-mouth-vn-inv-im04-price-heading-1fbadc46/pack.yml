@@ -1,0 +1,66 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night investor audit item I-M04 (findings F073, F064; codes E28A E28B E28C E28D E28F, cross-product effect
+  on E23U, E23V and E30*): a price heading rendered over a price that does not exist, and the share line dropped
+  the price basis. No owner decision; i18n.ts, tree.ts and flow.ts untouched (tree lane), existing keys reused.
+mission: >-
+  The Visa Oracle price heading appears only over a real price, and the share line carries the price basis.
+lanes:
+  - lane: vn-inv-im04-price-heading
+    role: build
+    seat: >-
+      Codex (gpt-5.6-sol, effort high) via scripts/seat_build.sh on Mini, rc 0, 301s; seat log
+      /Users/nuzantara/nuzantara/.worktrees/seat-build-codex-20261013T052550Z-14918.log on Mini.
+  - lane: vn-inv-im04-price-heading
+    role: review
+    seat: Claude Opus 5.5 orchestrator (red team, read-only review of git diff origin/main, minimal cure).
+  - lane: v02-ground-truth
+    role: ground_truth
+    seat: >-
+      the i18n table already on main (outcome.price_label, outcome.price_all_inclusive, outcome.price_free in
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts) and the localized price.message the engine already
+      supplies for non-AVAILABLE prices; the change asserts no figure of its own.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+    query_hash: "3f170d7b0bcbc188297cc91f193a21d80bf2db43efbde955f90a6063d67c097d" # pragma: allowlist secret
+    note: query_hash = sha256 of OutcomeSheet.tsx at the merge-base edeb8e3a23 (before the change).
+pii_scan: clean
+spend:
+  wall_clock_hours: 0.5
+  adversarial_rounds: 1
+  paid_endpoint_usd: 0
+bites: >-
+  Consumer: visitors reading and sharing a Visa Oracle result in apps/mouth. Observation after vercel promote: walk
+  offshore / invest / PT PMA / company only; the E28B card shows no All-inclusive price heading and the copied share
+  text includes the price-on-consultation sentence (EN+ID). Mouth deploys land STAGED, so the observation follows
+  vercel promote.
+results:
+  - claim: "Whole visa-oracle suite on the build plus cure: 56 files, 1457 tests passed (new EN+ID tests for CONTACT_REQUIRED, UNAVAILABLE, AVAILABLE non-zero, zero-price regression, and share summary for each)."
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
+    result: "56 passed (56 files), 1457 passed (1457 tests)"
+    exit: 0
+    ts: "2026-10-13T05:34:23Z"
+    seat: this session
+  - claim: "Mutation: the heading condition forced true (heading rendered again for CONTACT_REQUIRED and UNAVAILABLE) turns the two I-M04 heading tests red; restored from a byte copy (cmp clean)."
+    cmd: npx vitest run "src/app/(visa-oracle)" under the mutation
+    result: "2 failed, 1455 passed (1457)"
+    exit: 1
+    ts: "2026-10-13T05:34:23Z"
+    seat: this session
+  - claim: "Typecheck of apps/mouth is clean."
+    cmd: npx tsc --noEmit -p apps/mouth
+    result: "no errors"
+    exit: 0
+    ts: "2026-10-13T05:34:23Z"
+    seat: this session
+  - claim: "RT-1: the build left three stale share-text expectations in OutcomeSheet.duration.test.tsx (the old price-only share line), whole suite 1454/1457. Cure: update only those three expectations to the new line (price, all-inclusive label, duration; non-AVAILABLE shows the message) and prettier --write that file; no source behaviour change. V02 zero-price path and i18n.ts are unchanged (git diff --stat lists three files only)."
+    cmd: npx vitest run OutcomeSheet.duration.test.tsx; npx prettier --check on the touched files
+    result: "10 passed (10); prettier clean after cure"
+    exit: 0
+    ts: "2026-10-13T05:34:23Z"
+    seat: this session
+dissent:
+  - seat: "Claude Opus 5.5 red team"
+    objection: "The cured neither-price share expectation matches any non-colon message; it does not pin the message text."
+    status: PLAUSIBLE
+    disposition: "The message text is pinned by the new I-M04 tests in OutcomeSheet.test.tsx; the duration file only guards shape. Not cured."
