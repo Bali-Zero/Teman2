@@ -102,8 +102,10 @@ echo "in queue now: ${inq:-<empty>}"
 #    which is a measurement instead of a shrug.
 #    (memory: lesson_an_empty_set_impersonates_everything_and_nothing)
 # ---------------------------------------------------------------------------
+MERGE_QUEUE_RULE="$(SIGNAL_INTENT_REPO="$REPO" "$SCRIPT_DIR/../merge_queue_rule.sh")"
+export MERGE_QUEUE_RULE
 all_open=$(gh pr list --repo "$REPO" --state open --limit 100 \
-           --json number,mergeable,autoMergeRequest,title 2>/dev/null)
+           --json number,mergeable,autoMergeRequest,labels,title 2>/dev/null)
 probe_rc=$?
 if (( probe_rc != 0 )); then
   echo "🔌 pull-request probe FAILED (rc=$probe_rc) — no verdict."
@@ -250,7 +252,12 @@ while IFS=$'\t' read -r n title; do
   case "$verdict" in
     INFRA|CANCELLED)
       if (( APPLY )); then
-        out=$(gh pr merge "$n" --repo "$REPO" --squash --auto 2>&1); arc=$?
+        if [[ "$MERGE_QUEUE_RULE" == absent ]]; then
+          # post-flip GitHub refuses the re-arm: carry the intent over as the label
+          out=$(SIGNAL_INTENT_REPO="$REPO" "$SCRIPT_DIR/../signal_merge_intent.sh" "$n" 2>&1); arc=$?
+        else
+          out=$(gh pr merge "$n" --repo "$REPO" --squash --auto 2>&1); arc=$?
+        fi
         # Judge the REPLY, not only the exit code (W104): "already queued" is
         # success, and a zero rc on an unexpected message is not.
         if (( arc == 0 )) || printf '%s' "$out" | grep -qi "already queued"; then

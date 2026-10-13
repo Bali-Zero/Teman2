@@ -413,6 +413,33 @@ def red_cause_fingerprint(run: dict[str, Any] | None, jobs: list[dict[str, Any]]
     return None  # no job-level detail and the run's own conclusion doesn't say infra either
 
 
+MERGE_INTENT_LABEL = "localci:merge-shadow-ok"
+_QUEUE_RULE_TTL_SECONDS = 60
+_queue_rule_cache: tuple[float, str] | None = None
+
+
+def queue_rule_state() -> str:
+    """present | absent | unknown — the shared scripts/merge_queue_rule.sh probe, cached ~per tick.
+
+    A label counts as armed only on `absent` (post-flip); `present`/`unknown` keep arm-based logic."""
+    global _queue_rule_cache
+    now = time.monotonic()
+    if _queue_rule_cache and now - _queue_rule_cache[0] < _QUEUE_RULE_TTL_SECONDS:
+        return _queue_rule_cache[1]
+    try:
+        proc = subprocess.run(
+            [str(Path(__file__).resolve().parent / "merge_queue_rule.sh")],
+            capture_output=True, text=True, timeout=30, env={**os.environ, "SIGNAL_INTENT_REPO": REPO},
+        )
+        state = proc.stdout.strip() if proc.returncode == 0 else "unknown"
+    except (OSError, subprocess.SubprocessError):
+        state = "unknown"
+    if state not in ("present", "absent"):
+        state = "unknown"
+    _queue_rule_cache = (now, state)
+    return state
+
+
 def is_rearm_candidate(pr: dict[str, Any]) -> bool:
     """Pure gate: is this open PR a re-arm candidate this tick?
 
@@ -426,8 +453,11 @@ def is_rearm_candidate(pr: dict[str, Any]) -> bool:
     """
     if pr.get("is_draft"):
         return False
-    if pr.get("in_queue") or pr.get("auto_merge_enabled"):
+    flipped = queue_rule_state() == "absent"
+    if not flipped and (pr.get("in_queue") or pr.get("auto_merge_enabled")):
         return False  # already armed or already queued — W111, not our concern
+    if flipped and pr.get("merge_intent_label"):
+        return False  # the label IS the arm once the merge_queue rule is gone; a GitHub arm no longer counts
     head_ref = pr.get("head_ref_name") or ""
     if not (head_ref.startswith("agent/") or pr.get("has_fable_gate_status")):
         return False  # not armed by this repo's own convention — never touch a PR we didn't arm
@@ -885,6 +915,7 @@ query($owner:String!, $repo:String!, $cursor:String) {
         mergeStateStatus
         autoMergeRequest { enabledAt }
         mergeQueueEntry { state }
+        labels(first: 30) { nodes { name } }
         commits(last:1) {
           nodes {
             commit {
@@ -941,6 +972,10 @@ def _normalize_rearm_pr(node: dict[str, Any]) -> dict[str, Any]:
         "merge_state_status": node.get("mergeStateStatus"),
         "auto_merge_enabled": bool(node.get("autoMergeRequest")),
         "in_queue": bool(node.get("mergeQueueEntry")),
+        "merge_intent_label": any(
+            lb.get("name") == MERGE_INTENT_LABEL
+            for lb in ((node.get("labels") or {}).get("nodes") or [])
+        ),
         "status_rollup_state": rollup_state,
         "has_fable_gate_status": _pr_has_fable_gate_status(node),
     }
@@ -1355,7 +1390,12 @@ def fetch_queued_runs(repo: str = REPO) -> list[dict[str, Any]]:
 def rearm_pr(repo: str, number: int) -> bool:
     """`gh pr merge N --auto` BARE — this repo's merge queue rejects every strategy flag
     (--squash included), per docs/runbooks/merge-queue-discipline.md session discipline."""
-    rc, out, err = _run(["gh", "pr", "merge", str(number), "--auto", "--repo", repo], timeout=30)
+    if queue_rule_state() == "absent":
+        # Post-flip GitHub refuses the re-arm: carry the intent over as the merge-intent label.
+        helper = str(Path(__file__).resolve().parent / "signal_merge_intent.sh")
+        rc, out, err = _run([helper, str(number)], timeout=60)
+    else:
+        rc, out, err = _run(["gh", "pr", "merge", str(number), "--auto", "--repo", repo], timeout=30)
     if rc != 0:
         logger.warning("rearm_pr(#%s) failed rc=%s out=%s err=%s", number, rc, out.strip()[:200], err.strip()[:200])
         return False

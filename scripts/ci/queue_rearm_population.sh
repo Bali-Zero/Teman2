@@ -70,6 +70,16 @@ MODE="${1:-}"
 
 payload=$(cat)
 
+# A PR carrying the LocalCI merge-intent label is armed (scripts/signal_merge_intent.sh)
+# ONLY once the merge_queue rule is gone (MERGE_QUEUE_RULE=absent, from merge_queue_rule.sh):
+# while the queue exists the GitHub arm is what merges, so a labelled-but-unarmed PR
+# stays a re-arm candidate. Unset/unknown keeps the arm-based behaviour.
+# Absent `labels` key reads as unlabelled.
+LABELLED='false'
+if [ "${MERGE_QUEUE_RULE:-unknown}" = absent ]; then
+LABELLED='((.labels // []) | any(.name == "localci:merge-shadow-ok"))'
+fi
+
 # Fail-closed on anything unreadable. `jq -e` so a `null` input is a failure
 # too, not a silent zero.
 if ! printf '%s' "$payload" | jq -e 'type == "array"' > /dev/null 2>&1; then
@@ -84,7 +94,7 @@ case "$MODE" in
     # `autoMergeRequest` reads — see the module comment above for the #5422
     # proof this guards against.
     printf '%s' "$payload" \
-      | jq -r '.[]|select(.mergeable=="MERGEABLE" and .autoMergeRequest==null and .mergeQueueEntry==null)|"\(.number)\t\(.title[0:70])"'
+      | jq -r '.[]|select(.mergeable=="MERGEABLE" and .autoMergeRequest==null and .mergeQueueEntry==null and ('"$LABELLED"' | not))|"\(.number)\t\(.title[0:70])"'
     ;;
   --undecidable)
     # Unarmed AND neither definitively mergeable nor definitively conflicting.
@@ -97,7 +107,7 @@ case "$MODE" in
     # it must not be counted as an undecided orphan just because GitHub
     # hasn't finished recomputing mergeability for an already-queued PR.
     printf '%s' "$payload" \
-      | jq '[.[]|select(.autoMergeRequest==null and .mergeQueueEntry==null and .mergeable!="MERGEABLE" and .mergeable!="CONFLICTING")]|length'
+      | jq '[.[]|select(.autoMergeRequest==null and .mergeQueueEntry==null and ('"$LABELLED"' | not) and .mergeable!="MERGEABLE" and .mergeable!="CONFLICTING")]|length'
     ;;
   --open-count)
     printf '%s' "$payload" | jq 'length'

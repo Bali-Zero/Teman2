@@ -56,6 +56,8 @@ def _silence_log(monkeypatch):
 
 def _happy_path_fake_run(calls, put_ok=True, pr_create_ok=True, pr_merge_ok=True):
     def fake_run(cmd, **kwargs):
+        if cmd[0].endswith("signal_merge_intent.sh"):  # helper = label + `gh pr merge --auto`
+            cmd = ["gh", "pr", "merge", cmd[1], "--auto"]
         calls.append({"cmd": list(cmd), "kwargs": kwargs})
         s = " ".join(cmd)
 
@@ -1189,6 +1191,9 @@ class _FakeGitHub:
             return _res(stdout="\n".join(self.pr_files.get(ref, {})))
         if cmd[:3] == ["gh", "pr", "create"]:
             return _res(stdout="https://github.com/Bali-Zero/Teman2/pull/900\n")
+        if cmd[0].endswith("signal_merge_intent.sh"):
+            # the helper = label + bare `gh pr merge --auto` while the merge queue exists
+            return self(["gh", "pr", "merge", cmd[1], "--auto"], **kwargs)
         if cmd[:3] == ["gh", "pr", "merge"]:
             if self.armed_after_merge:
                 self.armed.add(int(cmd[3]))

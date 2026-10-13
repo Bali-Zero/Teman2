@@ -192,11 +192,11 @@ cmd_arm() {
   # measured live PR #3347: "The merge strategy for main is set by the merge
   # queue"). This is the post-arm-watcher design (Codex F13): arm cannot itself
   # guarantee no future push — mq watch is the guarantee.
-  _gh pr merge "$pr" --repo "$REPO" --auto
-  if (( MQ_RC != 0 )) && ! printf '%s%s' "$MQ_OUT" "$MQ_ERR" | grep -qi "already queued\|auto-merge enabled\|already enabled"; then
-    _die "gh pr merge --auto failed (rc=$MQ_RC): $(printf '%s%s' "$MQ_OUT" "$MQ_ERR" | head -1)"
-  fi
-  echo "arm: ${MQ_OUT:-$MQ_ERR}"
+  # The helper labels first, then arms (bare --auto) while the merge_queue rule exists.
+  local intent_out="" intent_rc=0
+  intent_out="$(SIGNAL_INTENT_REPO="$REPO" "$SCRIPT_DIR/signal_merge_intent.sh" "$pr" 2>&1)" || intent_rc=$?
+  (( intent_rc == 0 )) || _die "signal_merge_intent failed (rc=$intent_rc): ${intent_out:0:300}"
+  echo "arm: $intent_out"
 
   _gh pr view "$pr" --repo "$REPO" --json autoMergeRequest,mergeStateStatus,headRefOid
   if (( MQ_RC == 0 )); then

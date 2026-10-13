@@ -55,6 +55,7 @@
 set -euo pipefail
 
 REPO="${LANE_SHIP_REPO:-Bali-Zero/Teman2}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 _die() {  # _die <reason> [exit_code]
   echo "LANE_SHIP_FAIL reason=\"$1\"" >&2
@@ -226,14 +227,21 @@ if [ "$NO_ARM" -eq 1 ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Step 4 — arm: bare `gh pr merge --auto <N>`, NEVER a strategy flag (the
-# queue refuses them — docs/runbooks/merge-queue-discipline.md). "already
-# queued"/"already enabled"/"clean" is a SUCCESS shape even at non-zero rc
-# (mq.sh cmd_arm precedent, same grep).
+# Step 4 — signal merge intent: label, then bare `gh pr merge --auto` while
+# the merge_queue rule exists (scripts/signal_merge_intent.sh owns both; the
+# queue refuses strategy flags — docs/runbooks/merge-queue-discipline.md).
+# Without a merge_queue rule only the label is set and step 5 has nothing to
+# verify on GitHub's side.
 # ---------------------------------------------------------------------------
-_gh pr merge "$PR_NUMBER" --repo "$REPO" --auto
-if [ "$GH_RC" -ne 0 ] && ! printf '%s' "$GH_OUT" | grep -qi "already queued\|auto-merge enabled\|already enabled\|clean"; then
-  _die "gh pr merge --auto failed on #$PR_NUMBER (rc=$GH_RC): $(printf '%s' "$GH_OUT" | tail -5 | tr '\n' ' ')" 2
+INTENT_OUT="$(cd "$WT_ABS" && SIGNAL_INTENT_REPO="$REPO" "$SCRIPT_DIR/signal_merge_intent.sh" "$PR_NUMBER" 2>&1)"
+INTENT_RC=$?
+if [ "$INTENT_RC" -ne 0 ]; then
+  _die "signal_merge_intent failed on #$PR_NUMBER (rc=$INTENT_RC): $(printf '%s' "$INTENT_OUT" | tail -5 | tr '\n' ' ')" 2
+fi
+if printf '%s' "$INTENT_OUT" | grep -q "arm=skipped"; then
+  LOCAL_HEAD="$(git -C "$WT_ABS" rev-parse HEAD 2>/dev/null || echo unknown)"
+  echo "LANE_SHIP_OK pr=$PR_NUMBER url=$PR_URL head=$LOCAL_HEAD armed=label-only"
+  exit 0
 fi
 
 # ---------------------------------------------------------------------------

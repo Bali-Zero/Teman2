@@ -701,11 +701,23 @@ def _arm_pr(pr_url: str, kind: str) -> bool:
     an alert, not a log line — it would sit there while siblings pile up.
     """
     number = pr_url.rstrip("/").rsplit("/", 1)[-1]
+    repo = f"{GITHUB_OWNER}/{GITHUB_REPO}"
+    intent = Path(__file__).resolve().parents[3] / "scripts" / "signal_merge_intent.sh"
     try:
-        result = subprocess.run(
-            ["gh", "pr", "merge", number, "--auto", "--repo", f"{GITHUB_OWNER}/{GITHUB_REPO}"],
-            capture_output=True, text=True, timeout=30,
-        )
+        if intent.is_file() and os.access(intent, os.X_OK):
+            # label + arm (arm skipped once main has no merge_queue rule — the label is the arm)
+            result = subprocess.run(
+                [str(intent), number], capture_output=True, text=True, timeout=60,
+                env={**os.environ, "SIGNAL_INTENT_REPO": repo},
+            )
+            if result.returncode == 0 and "arm=skipped" in result.stdout:
+                log(f"  ✅ #{number} labelled merge-intent (no merge queue on main)")
+                return True
+        else:
+            result = subprocess.run(
+                ["gh", "pr", "merge", number, "--auto", "--repo", repo],
+                capture_output=True, text=True, timeout=30,
+            )
         if result.returncode != 0:
             _log_gh_failure(f"pr merge --auto #{number}", result)
     except Exception as e:

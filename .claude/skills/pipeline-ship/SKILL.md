@@ -26,6 +26,11 @@ expire together, and the message sends the next reader away from the cause.
 
 ## 1. Arming a PR (post-merge-queue)
 
+> **Signal intent, not just arm.** `mq arm <N>` / `lane_ship.sh` call `scripts/signal_merge_intent.sh`:
+> label `localci:merge-shadow-ok` first, then the bare `gh pr merge --auto` below while a
+> `merge_queue` rule exists on `main`. After the LocalCI flip the rule is gone, the helper
+> labels and skips the arm, and a labelled PR counts as armed for every watcher.
+
 ```bash
 gh pr merge <N> --repo <owner/repo> --auto        # ← the standing gesture
 ```

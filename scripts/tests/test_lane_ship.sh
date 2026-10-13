@@ -80,6 +80,7 @@ case "${1:-}" in
         done
         exit "$rc"
         ;;
+      edit) exit 0 ;;
       merge)
         rc=0
         [ -f "$FAKE_GH_STATE/arm_rc" ] && rc="$(cat "$FAKE_GH_STATE/arm_rc")"
@@ -90,6 +91,7 @@ case "${1:-}" in
     ;;
   api)
     case "${2:-}" in
+      repos/*/rules/branches/*) echo "${FAKE_RULES_COUNT:-1}"; exit 0 ;;
       graphql)
         rc=0
         [ -f "$FAKE_GH_STATE/graphql_rc" ] && rc="$(cat "$FAKE_GH_STATE/graphql_rc")"
@@ -215,6 +217,30 @@ check "exit 0" "$(yesno test "$RC" -eq 0)"
 check "LANE_SHIP_OK armed=skipped" "$(yesno has "armed=skipped" "$OUT")"
 check "gh pr merge was NEVER called" "$(yesno eval '! grep -q "pr merge" "$LOG"')"
 check "gh api graphql was NEVER called" "$(yesno eval '! grep -q "graphql" "$LOG"')"
+
+echo "innocence — queue rule absent: label only, step 5 skipped -> armed=label-only:"
+new_world
+export FAKE_RULES_COUNT=0
+run "$WT" "label only"
+unset FAKE_RULES_COUNT
+check "exit 0" "$(yesno test "$RC" -eq 0)"
+check "LANE_SHIP_OK armed=label-only" "$(yesno has "armed=label-only" "$OUT")"
+check "label was applied" "$(yesno eval 'grep -q "pr edit .*--add-label localci:merge-shadow-ok" "$LOG"')"
+check "gh pr merge was NEVER called" "$(yesno eval '! grep -q "pr merge" "$LOG"')"
+check "gh api graphql was NEVER called (step 5 skipped)" "$(yesno eval '! grep -q "graphql" "$LOG"')"
+
+echo "innocence twin — queue rule present: label AND arm, step 5 verifies:"
+new_world
+printf '{"data":{"repository":{"pullRequest":{"autoMergeRequest":{"enabledAt":"x"},"isInMergeQueue":false,"headRefOid":"abc","url":"u"}}}}\n' > "$W/fgh/graphql_json"
+export FAKE_RULES_COUNT=1
+run "$WT" "label and arm"
+unset FAKE_RULES_COUNT
+check "exit 0" "$(yesno test "$RC" -eq 0)"
+check "armed=yes (not label-only)" "$(yesno has "armed=yes" "$OUT")"
+check "label applied" "$(yesno eval 'grep -q "add-label localci:merge-shadow-ok" "$LOG"')"
+check "gh pr merge --auto WAS called" "$(yesno eval 'grep -q "pr merge .*--auto" "$LOG"')"
+check "graphql verify WAS called" "$(yesno eval 'grep -q "graphql" "$LOG"')"
+
 
 echo "guilt — GraphQL says neither armed nor queued -> LANE_SHIP_FAIL, exit 3:"
 new_world
