@@ -1,0 +1,26 @@
+task_id: infra-localci-e2e-hermetic-1013
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  LocalCI's "E2E Tests (Playwright)" context runs hermetic and moves from coverage partial to full. Hosted starts
+  the backend with six secrets. Locally they were empty, so the backend took another boot path ("initializing":
+  no OpenAI client, the Qdrant probe failing), and a candidate that breaks boot only when the secrets are set was
+  GREEN locally and RED hosted (measured on Pro: such a candidate PASSED on the old matrix and FAILS on the new).
+  The runner now starts digest-pinned stand-ins declared in the BASE matrix (extra_services: a local Qdrant
+  v1.17.0 with a per-run random api key and one collection seeded from BASE Settings), builds a placeholder
+  OpenAI key and a random JWT secret at run time, keeps every container on --network none, requires the backend
+  to have reached the stand-in (Qdrant telemetry, else BLOCKED) and pins the Playwright skipped count exactly to
+  BASE's (else BLOCKED). No real secret, no paid API: the owner approved the design on 2026-10-13. Gear is 2 via
+  the SIZE term (about 640 net lines across five commits, about half of them tests, mutants and docs); the
+  mechanism ships with its only consumer, the E2E context, so it is not split. The gear-2 verdict is not asserted
+  here; a fresh Opus gate reads the diff.
+residuals:
+  - The 14 real hosted collections (names, named-vector config, documents) and the real cloud credentials and
+    reachability are not reproduced. A candidate whose boot or /health raises only on one of them is RED hosted
+    and GREEN here. This is named in the matrix parity_gaps, as CodeQL's environment notes are.
+  - Adversarial only. A candidate's own test output can print a fake trailing Playwright summary line, and a
+    process in the job's network namespace that holds the stand-in key can satisfy the reached check. This is
+    the same trust boundary as any test context, where a candidate can always weaken its own tests.
+  - The Qdrant image is an operator pull (docker pull by digest). Without it the context is BLOCKED, never
+    GREEN. prune.py's never-list keeps it.
