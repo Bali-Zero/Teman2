@@ -1,6 +1,6 @@
 gear: 2
 gear_reason: >-
-  Size floor (diff with tests, observer and evidence above 400 churn). Docs and ledger only, plus a ledger test, an observer and its test; no backend, no pack, no mouth code.
+  Gear 2 by the lint size floor over 10 files with tests, observer and evidence (about +335/-18 before the red-team cure; the floor is the lint count, not a round 400), and because the deliverable is a PR with an observer that gates the ledger. Docs and ledger only, plus a ledger test, an observer and its test; no backend, no pack, no mouth code.
 mission: >-
   The /visaoracle ledger, live state, runbook and pending arms say that seq-29 is active in production, and the closed rows carry their proof.
 objective: >-
@@ -14,6 +14,8 @@ scope:
   - tests/scripts/test_visa_ledger_seq29.py
   - tests/scripts/test_observe_visa_ledger_seq29.py
   - scripts/ci/observe_visa_ledger_seq29.py
+  - evidence/2026-10/agent-air-m5-docs-vo-ledger-seq29-1013-5c8416b3/brief.yml
+  - evidence/2026-10/agent-air-m5-docs-vo-ledger-seq29-1013-5c8416b3/pack.yml
 appetite:
   wall_clock_hours: 2
   adversarial_rounds: 1

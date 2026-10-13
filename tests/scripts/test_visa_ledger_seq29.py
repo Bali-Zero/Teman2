@@ -8,6 +8,7 @@ REPO = Path(__file__).resolve().parents[2]
 SKILL = REPO / ".agents/skills/visaoracle/SKILL.md"
 LOG = REPO / ".agents/skills/visaoracle/references/live-state-log.md"
 ARMS = REPO / ".claude/skills/modus/PENDING-ARMS.md"
+RUNBOOK = REPO / "docs/runbooks/visa-engine-key-ceremony.md"
 ACTIVATION = "84e8a5c5-55eb-4649-8dc4-f620c9f9b00b"
 RULE_PACK = "ed666554-c476-5e67-9c25-921388e64537"
 PAYLOAD = "3f3b45ed1aaeadc72ec9dd2a5e33519ded3a0ec1da8408fade150a0ae39b9295"
@@ -25,6 +26,16 @@ def test_skill_names_the_seq29_activation_and_boundary():
     for fact in (ACTIVATION, RULE_PACK, PAYLOAD, BOUNDARY, "2026-11-07", "2bf9ed3c93", PROOF,
                  "production pack seq-29", "updated 2026-10-13"):
         assert fact in text, fact
+
+
+def test_runbook_records_the_seq29_activation_done():
+    text = RUNBOOK.read_text(encoding="utf-8")
+    note = text[text.index("## Signing + activation note (2026-10-13, seq-29)") :]
+    note = note.split("\n## Rotation", 1)[0]
+    for fact in (ACTIVATION, "2026-10-13T11:19:00Z", "**Activation: done 2026-10-13T11:19:00Z.**",
+                 "b7c808bd-c0f4-48fe-9fdb-3f7f47f7e86a", "closed at 11:18:58Z", PROOF.replace("issuecomment-", "#issuecomment-")):
+        assert fact in note, fact
+    assert "Activation: PENDING" not in note
 
 
 def test_seq28_skill_bullets_are_marked_superseded_by_seq29():
