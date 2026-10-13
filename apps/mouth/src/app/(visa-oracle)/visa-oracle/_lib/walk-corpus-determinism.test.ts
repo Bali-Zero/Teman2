@@ -136,8 +136,13 @@ import { DEFAULT_OUT_DIR } from "../../../../../scripts/visa-oracle/generate-wal
  *
  * Seq-29 (2026-10-12): +1, 131 -> 132 — `offshore/family/SIBLING/spNat=IT/minor`,
  * the one minor sibling that keeps E31J named once the pack excludes adults.
+ *
+ * PR-12 (2026-10-13): +12, 132 -> 144 — the E23-family work-tile variants:
+ * the payer, the Indonesian-sponsor confirmation and the sponsor category
+ * answered away from the default, on the offshore and onshore arms and the
+ * paid-activity `other` branch; no existing fixture moves.
  */
-const EXPECTED_WALK_COUNT = 132;
+const EXPECTED_WALK_COUNT = 144;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)

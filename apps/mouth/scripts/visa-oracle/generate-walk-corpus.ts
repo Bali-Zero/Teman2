@@ -1203,6 +1203,88 @@ export function enumerateScenarios(): Scenario[] {
     overrides: { ...base, category: "tourism", trip_scope: "multiple" },
   });
 
+  // PR-12 (visa-night work family, 2026-10-13): the E23-family work-tile
+  // variants no walk answered. Every row below changes ONE answer of the
+  // default `offshore/work` walk (or of its `onshore`/`other` sibling) so the
+  // walk's whole content is that answer: the payer, the Indonesian-sponsor
+  // confirmation, the sponsor category, and the arm. `work_payer` and
+  // `work_sponsor_confirmed` are asked on every employment-purpose walk, so
+  // each is reachable through the real tree; the household and trade-office
+  // "unsure" answers are NOT walks because their questions are asked only
+  // after a `yes`/`no` sponsor answer and offer no unsure option to the walk.
+  const workWalks: Array<[string, Record<string, string>]> = [
+    ["offshore/work/payer_no", { work_payer: "no" }],
+    ["offshore/work/payer_unsure", { work_payer: "unsure" }],
+    [
+      "offshore/work/no_government_collaboration/payer_unsure",
+      { sponsor_government_collaboration: "no", work_payer: "unsure" },
+    ],
+    [
+      "offshore/work/no_government_collaboration/sponsor_confirmed_unsure",
+      {
+        sponsor_government_collaboration: "no",
+        work_sponsor_confirmed: "unsure",
+      },
+    ],
+    [
+      "offshore/work/no_government_collaboration/sponsor_confirmed_no",
+      { sponsor_government_collaboration: "no", work_sponsor_confirmed: "no" },
+    ],
+    ["offshore/work/sponsor_employer", { sponsor_category: "EMPLOYER" }],
+    [
+      "offshore/work/sponsor_employer/employer_no",
+      { sponsor_category: "EMPLOYER", work_payer: "no" },
+    ],
+    [
+      "offshore/work/sponsor_employer/sponsor_confirmed_no",
+      { sponsor_category: "EMPLOYER", work_sponsor_confirmed: "no" },
+    ],
+    [
+      "offshore/work/sponsor_individual/employer_no",
+      { sponsor_category: "INDIVIDUAL", work_payer: "no" },
+    ],
+  ];
+  for (const [label, answers] of workWalks) {
+    scenarios.push({
+      label,
+      overrides: {
+        in_indonesia: "no",
+        holds_stay_permit: "no",
+        category: "work",
+        ...answers,
+      },
+    });
+  }
+  scenarios.push({
+    label: "onshore/work/sponsor_individual",
+    overrides: {
+      in_indonesia: "yes",
+      holds_stay_permit: "no",
+      category: "work",
+      sponsor_category: "INDIVIDUAL",
+    },
+  });
+  scenarios.push({
+    label: "onshore/work/sponsor_government/trade_office_only",
+    overrides: {
+      in_indonesia: "yes",
+      holds_stay_permit: "no",
+      category: "work",
+      sponsor_category: "GOVERNMENT",
+      sponsor_government_invitation: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/other/paid/sponsor_individual",
+    overrides: {
+      in_indonesia: "no",
+      holds_stay_permit: "no",
+      category: "other",
+      other_paid_activity: "yes",
+      sponsor_category: "INDIVIDUAL",
+    },
+  });
+
   return scenarios;
 }
 
