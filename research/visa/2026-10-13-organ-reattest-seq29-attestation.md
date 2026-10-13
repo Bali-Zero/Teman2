@@ -7,7 +7,7 @@ sources:
   - apps/backend-rag/backend/scripts/visa_engine/portal_read_receipt.py
   - apps/backend-rag/backend/scripts/visa_engine/portal_judge.py
   - apps/backend-rag/backend/scripts/visa_engine/fold_pack_generic.py
-adversarial_review: pending-session
+adversarial_review: codex
 ---
 
 # Organ re-attestation 2026-10-13 — candidate seq-29 (unsigned)
