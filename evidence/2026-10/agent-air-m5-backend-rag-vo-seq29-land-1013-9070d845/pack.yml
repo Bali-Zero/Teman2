@@ -114,7 +114,7 @@ receipts:
     exit: 1
     ts: "2026-10-13T09:06:05Z"
     seat: Claude Sonnet 5.5 (implementer, M5)
-  - claim: The consumer-map push-refusal cure - the #8390 row test no longer names the deleted seq-28 observer; the three affected test files and both observers stay green.
+  - claim: "The consumer-map push-refusal cure - the #8390 row test no longer names the deleted seq-28 observer; the three affected test files and both observers stay green."
     cmd: python3 -m pytest tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_seq29_signed.py
     result: "36 passed"
     exit: 0
