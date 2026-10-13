@@ -123,6 +123,7 @@ CQ_MIXED = cq("test_a_leg_that_mixes_the_gate_skip_with_any_other_skip_is_not_a_
 CQ_SEAM = cq("test_a_base_job_env_that_sets_a_leg_seam_blocks_the_plan", "test_a_base_step_env_or_a_matrix_step_env_that_sets_a_leg_seam_blocks_the_plan")
 CQ_REPO = cq("test_the_reader_refuses_a_repo_that_climbs_the_api_path")
 CQ_CONFIG = cq("test_a_queries_block_the_rewriter_cannot_read_as_text_is_no_verdict_and_writes_nothing")
+RS = ("scripts/localci/tests/test_required_set.py",)   # the required set after the phase F flip
 CQ_CORPUS = ("scripts/localci/tests/test_runner.py::test_the_corpus_check_also_runs_the_gate_flags_corpus_from_base",)
 
 # name: (file, text that must occur once, replacement, test files that must turn red)
@@ -795,6 +796,18 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "cq-reader-repo-dots": (CQ_READER_FILE, ' or any(seg in (".", "..") for seg in args.repo.split("/")):', ":", CQ_REPO),
     "cq-config-inline-queries-open": (CQ_SH_FILE, 'if re.match(r"^queries\\s*:\\s*\\S", key):', "if False:", CQ_CONFIG),
     "cq-config-comment-in-block-open": (CQ_SH_FILE, 'if rest[0] in " \\t-":', "if False:", CQ_CONFIG),
+    # the required set after the flip: the matrix stands in only for GitHub's "Branch not protected" 404 beside the flipped ruleset
+    "rs-any-404-reads-matrix": (HC, 'if "Branch not protected" not in exc.stderr or "(HTTP 404)" not in exc.stderr or not _flipped(repo, branch):', "if False:", RS),
+    "rs-message-not-checked": (HC, 'if "Branch not protected" not in exc.stderr or "(HTTP 404)"', 'if "(HTTP 404)"', RS),
+    "rs-ruleset-unchecked": (HC, "or not _flipped(repo, branch):", ":", RS),
+    "rs-is-target-ignored": (HC, "and flip.is_target(rs) and flip.covers(rs, branch, default))", "and flip.covers(rs, branch, default))", RS),
+    "rs-covers-ignored": (HC, "and flip.is_target(rs) and flip.covers(rs, branch, default))", "and flip.is_target(rs))", RS),
+    "rs-duplicate-ruleset-accepted": (HC, "if len(named) != 1 or not isinstance", "if not named or not isinstance", RS),
+    "rs-matrix-at-candidate": (HC, "?ref={branch}\")", "?ref={branch}~0\")", RS),
+    "rs-pin-dropped": (HC, '"app_id": c.get("required_app_id")}', '"app_id": None}', RS),
+    "rs-source-not-recorded": (HC, '"required_checks": required, "required_source": source,', '"required_checks": required,', RS),
+    "rs-protection-ignored": (HC, 'return (protection.get("checks") if isinstance(protection, dict) else None), "protection"',
+                              'return matrix_required(repo, branch), "matrix_after_flip"', RS),
 }
 
 

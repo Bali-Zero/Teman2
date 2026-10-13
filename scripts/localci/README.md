@@ -385,6 +385,13 @@ it is bound to the same repo, branch and sha. Exit 0 = compared and complete, 1 
 3 = incomplete (a required context is still pending). Why this exists and what it measured first (`agreement=0/14` on 2026-10-06):
 `docs/specs/localci-gate-2026-10-06.md`.
 
+After the phase E flip classic protection is gone, and the read answers 404 `Branch not protected`. Only then, and only when the
+repository's `merge-queue-main` ruleset is the flipped one (`phase_e_flip.is_target`, covering the branch, the only one of its
+name), the required set is the BASE `contexts_matrix.yaml` read at the protected branch's ref, never the candidate's: the same 14
+names, the three Actions-app pins from each context's `required_app_id`. Every other error, and a 404 beside any other ruleset
+state, fails closed as before. `hosted_compare.json`, the journal's `hosted_compare` and the report rows carry
+`required_source: protection|matrix_after_flip`.
+
 ## Merger (phase C, shadow)
 
 `merger.py` is phase C of `docs/specs/localci-sovereign-2026-10-07.md` in SHADOW mode: it decides what the local gate would

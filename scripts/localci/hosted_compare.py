@@ -40,6 +40,8 @@ Exit 0 = compared, complete · 1 = a FALSE_GREEN or name drift · 2 = unusable i
 from __future__ import annotations
 
 import argparse
+import base64
+import importlib.util
 import json
 import re
 import subprocess
@@ -55,6 +57,7 @@ COVERAGES = ("full", "partial")   # anything else a status.json says (or omits) 
 HOSTED_GREEN = frozenset({"success", "skipped", "neutral"})
 HOSTED_RED = frozenset({"failure", "timed_out", "cancelled", "action_required", "startup_failure", "stale", "error"})
 MAX_PAGES = 20
+MATRIX_PATH = "scripts/localci/contexts_matrix.yaml"
 
 EXIT_OK = 0
 EXIT_FOUND = 1
@@ -283,10 +286,16 @@ def gh_argv(path: str) -> list[str]:
     return ["gh", "api", path]
 
 
+class GhError(CompareError):
+    def __init__(self, msg: str, stderr: str = ""):
+        super().__init__(msg)
+        self.stderr = stderr
+
+
 def gh_get(path: str):
     res = subprocess.run(gh_argv(path), capture_output=True, text=True)
     if res.returncode != 0:
-        raise CompareError(f"gh api {path} failed (rc={res.returncode}): {res.stderr.strip()[-200:]}")
+        raise GhError(f"gh api {path} failed (rc={res.returncode}): {res.stderr.strip()[-200:]}", res.stderr)
     try:
         return json.loads(res.stdout)
     except json.JSONDecodeError as exc:
@@ -306,9 +315,69 @@ def _paged(path: str, key: str) -> list:
     raise CompareError(f"gh api {path}: more than {MAX_PAGES} pages of `{key}` — refusing a truncated comparison")
 
 
+def _flip_module():
+    spec = importlib.util.spec_from_file_location("localci_phase_e_flip_hc", Path(__file__).resolve().parent / "phase_e_flip.py")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _flipped(repo: str, branch: str) -> bool:
+    """True only when the repository's ``merge-queue-main`` ruleset is the flipped one (phase_e_flip's own ``is_target``), covers the
+    branch and is the only ruleset of that name. Any other state is False; an unreadable one raises."""
+    flip = _flip_module()
+    named: list = []
+    for page in range(1, MAX_PAGES + 1):
+        batch = gh_get(f"repos/{repo}/rulesets?per_page=100&page={page}")
+        if not isinstance(batch, list):
+            raise CompareError("the rulesets list is not a list")
+        named += [r for r in batch if isinstance(r, dict) and r.get("name") == flip.RULESET and r.get("source_type", "Repository") == "Repository"]
+        if len(batch) < 100:
+            break
+    else:
+        raise CompareError(f"more than {MAX_PAGES} pages of rulesets — refusing a truncated read")
+    if len(named) != 1 or not isinstance(named[0].get("id"), int):
+        return False
+    rs = gh_get(f"repos/{repo}/rulesets/{named[0]['id']}")
+    default = gh_get(f"repos/{repo}").get("default_branch")
+    return (isinstance(rs, dict) and rs.get("target") == "branch" and rs.get("name") == flip.RULESET
+            and flip.is_target(rs) and flip.covers(rs, branch, default))
+
+
+def matrix_required(repo: str, branch: str) -> list[dict]:
+    """The required set the BASE matrix declares, read at the BASE ref (the protected branch) and never at a candidate: one
+    ``{context, app_id}`` per context, ``app_id`` from the matrix's ``required_app_id`` (None: any source), as protection lists them."""
+    import yaml
+    doc = gh_get(f"repos/{repo}/contents/{MATRIX_PATH}?ref={branch}")
+    if not isinstance(doc, dict) or doc.get("encoding") != "base64" or not isinstance(doc.get("content"), str):
+        raise CompareError("the BASE matrix did not come back as base64 content")
+    try:
+        contexts = yaml.safe_load(base64.b64decode(doc["content"]))["contexts"]
+        checks = [{"context": c["name"], "app_id": c.get("required_app_id")} for c in contexts]
+    except (ValueError, KeyError, TypeError, AttributeError, yaml.YAMLError) as exc:
+        raise CompareError(f"the BASE matrix is unreadable: {exc}") from exc
+    if any(c["app_id"] is not None and not is_pinned(c["app_id"]) for c in checks):
+        raise CompareError("the BASE matrix carries a required_app_id that is not a positive integer")
+    required_names(checks)
+    return checks
+
+
+def required_set(repo: str, branch: str) -> tuple[list | None, str]:
+    """(required checks, source): protection when it is there; the BASE matrix only when GitHub says the branch has no protection
+    AND the flipped ruleset is in force. Every other failure raises."""
+    try:
+        protection = gh_get(f"repos/{repo}/branches/{branch}/protection/required_status_checks")
+    except GhError as exc:
+        if "Branch not protected" not in exc.stderr or "(HTTP 404)" not in exc.stderr or not _flipped(repo, branch):
+            raise
+        return matrix_required(repo, branch), "matrix_after_flip"
+    return (protection.get("checks") if isinstance(protection, dict) else None), "protection"
+
+
 def fetch_live(repo: str, branch: str, sha: str) -> dict:
-    protection = gh_get(f"repos/{repo}/branches/{branch}/protection/required_status_checks")
-    return {"repo": repo, "branch": branch, "sha": sha, "required_checks": protection.get("checks") if isinstance(protection, dict) else None,
+    required, source = required_set(repo, branch)
+    return {"repo": repo, "branch": branch, "sha": sha, "required_checks": required, "required_source": source,
             "check_runs": _paged(f"repos/{repo}/commits/{sha}/check-runs", "check_runs"),
             "statuses": _paged(f"repos/{repo}/commits/{sha}/status", "statuses")}
 

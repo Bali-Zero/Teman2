@@ -794,6 +794,7 @@ def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path,
     out = {"sha": head, "note": note}
     try:
         live = hc.fetch_live(repo, base, head)
+        out["required_source"] = live.get("required_source")
         rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"], stale_judge=judge, gate_judge=gate)
         rep.update(source="live", repo=repo, branch=base, **out)
         atomic_write(run_dir / "hosted_compare.json", json.dumps(rep, indent=2) + "\n")
@@ -1618,7 +1619,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
             merged_at = prs[n].get("merged_at") if merged_here else None
             if merged_here and not is_ts(merged_at):
                 raise hc.CompareError(f"#{n} merged at the decided candidate but carries no merged_at")
-            rows.append({"ts": d.get("ts"), "pr": n, "head_sha": head, "hosted_sha": sha, "base_sha": d.get("base_sha"), "overall": d.get("overall"),
+            rows.append({"ts": d.get("ts"), "pr": n, "head_sha": head, "hosted_sha": sha, "required_source": live.get("required_source"), "base_sha": d.get("base_sha"), "overall": d.get("overall"),
                          "github": github, "merged": prs[n].get("merged") is True, "class": classify(merger_side(d.get("overall")), github),
                          "compared_contexts": compared_ctx, "compared_partial": not_full["partial"], "compared_unrecorded": not_full["unrecorded"],
                          "compared_skip_agreed": skip_agreed, "replay": d.get("replay") is True, "gate_pending": d.get("gate_pending") is True,

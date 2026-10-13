@@ -111,6 +111,8 @@ _Status._ F2 (the executor, disarmed by construction) built 2026-10-10: `merger.
 
 **Arming checklist (phase F proper), in this order.** `main` also carries CLASSIC branch protection (14 required status checks, required pull-request reviews present with 0 approvals, `enforce_admins` true), which no deploy key can bypass: a direct push to `main` is refused until it is removed. The DeployKey bypass on `merge-queue-main` is necessary but not sufficient.
 
+_Required set after the flip (2026-10-14)._ Deleting the classic protection removes the list the merger reads live, so the flip would freeze `main` (`hosted_required_green` false, `report()` refused, phase F READY unreadable). `hosted_compare.required_set` takes the BASE `contexts_matrix.yaml` (14 names, `required_app_id` pins) only on 404 `Branch not protected` beside the flipped `merge-queue-main`; any other state fails closed, and the source is journalled as `required_source`.
+
 1. Phase D READY (`merger.py report` reads `phase E READY`).
 2. The write deploy key generated on Pro at `<state>/deploy_key` (0600, owned by the tick's user, never printed) and registered on the repository with write, and github.com's host key pinned into `<state>/known_hosts` (the push runs `StrictHostKeyChecking=yes` against that file alone) — operator[secret].
 3. The phase E flip: `scripts/localci/phase_e_flip.py --apply` (lands in its own PR, not on main yet): `merge-queue-main` restricted to updates with the DeployKey bypass, then the classic protection deleted — operator[gui].
