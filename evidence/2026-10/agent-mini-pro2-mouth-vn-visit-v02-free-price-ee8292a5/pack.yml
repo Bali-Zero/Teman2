@@ -12,6 +12,16 @@ lanes:
   - lane: vn-visit-v02-free-price
     role: review
     seat: Claude Opus 5.5 orchestrator (red team, read-only review of git diff origin/main, minimal cure).
+  - lane: v02-ground-truth
+    role: ground_truth
+    seat: >-
+      the i18n table already on main (outcome.price_free = Free EN / Gratis ID in
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts) plus the committed Bali Zero price catalogue that
+      quotes A1 at 0 (apps/backend-rag/backend/data/bali_zero_official_prices_2026.json, entry "A1 Visa-Free
+      Tourism", price "0 IDR"); the change asserts no figure of its own.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+    query_hash: "97dca521a6040c53cbe63198cd1062cc52375fddf0d77ba69626d8df528e12ec" # pragma: allowlist secret
+    note: query_hash = sha256 of OutcomeSheet.tsx at origin/main 4f7715d638 (before the change).
 pii_scan: clean
 spend:
   wall_clock_hours: 0.5
@@ -26,25 +36,25 @@ results:
     cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
     result: "56 passed (56 files), 1452 passed (1452 tests)"
     exit: 0
-    ts: "2026-10-13T12:38:00Z"
+    ts: "2026-10-13T04:38:00Z"
     seat: this session
   - claim: "Mutation: the sheet zero branch forced to render the amount again (isFree=false and the share branch removed) turns the four zero-price tests red; restored from a byte copy."
     cmd: npx vitest run OutcomeSheet.test.tsx under the mutation
     result: "4 failed, 132 passed (136)"
     exit: 1
-    ts: "2026-10-13T12:36:00Z"
+    ts: "2026-10-13T04:36:00Z"
     seat: this session
   - claim: "Typecheck of apps/mouth is clean."
     cmd: npx tsc --noEmit -p apps/mouth
     result: "no errors"
     exit: 0
-    ts: "2026-10-13T12:37:00Z"
+    ts: "2026-10-13T04:37:00Z"
     seat: this session
   - claim: "RT-1 (cosmetic): the build left a double blank line and a Prettier-unclean test file. Cure: prettier --write on the test file only; no behaviour change. i18n.ts is untouched (git diff --stat lists three files only)."
     cmd: npx prettier --check on the touched files
     result: "clean after cure"
     exit: 0
-    ts: "2026-10-13T12:38:00Z"
+    ts: "2026-10-13T04:38:00Z"
     seat: this session
 dissent:
   - seat: "Claude Opus 5.5 red team"
