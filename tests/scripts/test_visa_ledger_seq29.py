@@ -93,3 +93,56 @@ def test_no_pending_arms_line_is_duplicated():
     visa = [ln for ln in counts.elements() if "VISA-ORACLE" in ln[:200] or "visaoracle" in ln[:200]]
     prefixes = Counter(ln[:140] for ln in visa)
     assert [k[:80] for k, n in prefixes.items() if n > 1] == []
+
+
+E33_WAVES = (
+    ("8437", "8b55c0dfac", "6155366109"),
+    ("8439", "be66630c2e", "6155365619"),
+    ("8440", "6a8f9a4cb6", "6155366644"),
+    ("8441", "b0523a0a70", "6155762792"),
+    ("8454", "762b364f8f", "6157110792"),
+    ("8456", "cf31a25e6f", "6157110398"),
+)
+
+
+def _waves_entry() -> str:
+    dated = [ln for ln in LOG.read_text(encoding="utf-8").splitlines() if ln.startswith("- 20")]
+    entries = [ln for ln in dated if ln.startswith("- 2026-10-14 (M5") and "E33 audit waves 1-2" in ln]
+    assert len(entries) == 1
+    # the entry body is the indented block that follows its heading line
+    text = LOG.read_text(encoding="utf-8")
+    start = text.index(entries[0])
+    end = text.index("\n- 20", start + 1)
+    return " ".join(text[start:end].split())
+
+
+def test_e33_waves_entry_carries_each_pr_sha_and_proof_exactly_once():
+    body = _waves_entry()
+    for pr, sha, proof in E33_WAVES:
+        assert body.count(f"#{pr} ") == 1, pr
+        assert body.count(f"merge `{sha}`") == 1, sha
+        assert body.count(f"issuecomment-{proof}") == 1, proof
+    assert "six audit items still open" in body
+    open_items = ("PR-7 permit length", "PR-10 E33F note", "PR-20 render prohibited",
+                  "PR-8 documents", "income-or-allowance wording fix", "replay freshness test")
+    assert all(body.count(item) >= 1 for item in open_items)
+
+
+def test_zero_runner_row_appears_exactly_once_open():
+    rows = _rows("opened 2026-10-14 (M5, infra)")
+    assert len(rows) == 1
+    row = rows[0]
+    assert "zero-runner-1" in row and "missing arming step:" in row and "proof-of-armed:" in row
+    assert len(_rows("`zero-runner-1` (Mini) pip/uv cache refills")) == 1
+
+
+def test_rangkap_row_carries_the_consumer_extension_once_in_the_action_field():
+    rows = _rows("Copy still contradicting the E33 price card")
+    assert len(rows) == 1
+    fields = rows[0].split(" | ")
+    assert len(fields) == 4
+    action, proof = fields[2], fields[3]
+    for token in ("e33_claim_guard.py", "country-comparator.ts", "faq-data.ts", "hf.e33.employment-not-covered"):
+        assert rows[0].count(token) == 1, token
+        assert token in action and token not in proof, token
+    assert "live page text" in proof

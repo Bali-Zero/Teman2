@@ -17,33 +17,61 @@ bites:
   observe: python3 scripts/ci/observe_visa_ledger_seq29.py
   expect: "contains:seq-29 ledger holds"
 receipts:
-  - claim: The four ledger test files pass, including the newest-entry pins moved to 2026-10-14.
+  - claim: The four ledger test files pass, including the newest-entry pins and the new exactly-once pins for the six PR/sha/proof tuples, the zero-runner row and the rangkap-kegiatan extension.
     cmd: python3 -m pytest tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq29.py -p no:cacheprovider -q
-    result: "43 passed"
+    result: "46 passed in 0.13s"
     exit: 0
-    ts: "2026-10-13T23:11:29Z"
+    ts: "2026-10-13T23:16:10Z"
     seat: this session
   - claim: The seq-28 observer holds on the branch head.
     cmd: python3 scripts/ci/observe_visa_ledger_seq28.py
     result: "12 passed; seq-28 ledger holds"
     exit: 0
-    ts: "2026-10-13T23:11:29Z"
+    ts: "2026-10-13T23:16:11Z"
     seat: this session
   - claim: The seq-29 observer holds on the branch head.
     cmd: python3 scripts/ci/observe_visa_ledger_seq29.py
-    result: "9 passed; seq-29 ledger holds"
+    result: "12 passed; seq-29 ledger holds"
     exit: 0
-    ts: "2026-10-13T23:11:30Z"
+    ts: "2026-10-13T23:16:12Z"
     seat: this session
-  - claim: PENDING-ARMS holds the new zero-runner row once and the extended rangkap-kegiatan row once.
-    cmd: grep -c "opened 2026-10-14 (M5, infra)" .claude/skills/modus/PENDING-ARMS.md
-    result: "1 (hf.e33.employment-not-covered 1, e33_not_work_visa 1, rangkap 1)"
+  - claim: PENDING-ARMS holds the zero-runner row once, the rangkap-kegiatan row once, and the pack-rule token once on that row.
+    cmd: "L=.claude/skills/modus/PENDING-ARMS.md; echo zr=$(grep -c -F 'opened 2026-10-14 (M5, infra)' $L) rk=$(grep -c -F 'Copy still contradicting the E33 price card' $L) tok=$(grep -F 'Copy still contradicting the E33 price card' $L | grep -o 'hf.e33.employment-not-covered' | wc -l)"
+    result: "zr=1 rk=1 tok=1"
     exit: 0
-    ts: "2026-10-13T23:12:00Z"
+    ts: "2026-10-13T23:16:14Z"
     seat: this session
 decisions:
   - id: D-test-follows-newest
     decision: >-
       The two seq-29 tests that pinned 2026-10-13 as newest now pin 2026-10-14, and still assert the
       2026-10-13 entry exists further down, so no history is lost.
-dissent: []
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 1: live-state-log says five audit items open while listing six."
+    status: RETRACTED
+    disposition: "Cured: now reads six, pinned by test_e33_waves_entry_carries_each_pr_sha_and_proof_exactly_once (fix commit on this branch after 29e69fdb)."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 2: the rangkap-kegiatan consumer list was appended to the proof-of-armed field."
+    status: RETRACTED
+    disposition: "Cured: moved into the action field before the last separator; one row kept; test_rangkap_row_carries_the_consumer_extension_once_in_the_action_field pins field placement (fix commit after 29e69fdb)."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 3: the PENDING-ARMS receipt result exceeded what its command could produce."
+    status: RETRACTED
+    disposition: "Cured: receipt re-recorded with a real command that counts the zero-runner row, the rangkap row and the extension token, literal output zr=1 rk=1 tok=1."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 4: tests and observer stayed fail-open for the new content."
+    status: RETRACTED
+    disposition: "Cured: three new tests isolate the 2026-10-14 entry and pin each PR/merge-sha/proof tuple once, the six open items, the six-count, both PENDING rows with len==1 and the extension tokens; the seq-29 observer runs them (12 passed)."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 5: brief_ref points at evidence/brief.yml instead of the dated sibling brief."
+    status: RETRACTED
+    disposition: "False positive by repo convention: CI and the pre-push pack-lint stage the brief at evidence/brief.yml and a dated brief_ref fails the lint; pack.yml unchanged on this point, lint clean."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "LOW 6: SKILL.md claimed a durable fix with the infra lane, which is only escalated."
+    status: RETRACTED
+    disposition: "Cured: reads manual incident cure complete; durable fix pending in the infra/healer lane."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "LOW 7: brief said no pack and called issuecomment IDs links."
+    status: RETRACTED
+    disposition: "Cured: brief now says no visa-engine production rule pack and prove-live issuecomment IDs."
