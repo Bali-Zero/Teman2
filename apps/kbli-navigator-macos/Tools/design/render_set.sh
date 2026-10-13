@@ -46,6 +46,13 @@ if [ -n "${IMM:-}" ]; then
   # The sheet as the app mounts it (SearchListView.sheetLayer): C25 reads it against the flat twin (tall/) and this set's immersive one.
   for c in 56101 55203; do for t in day night; do
     shot live-sheet --sheet-open --theme $t --lang en --code $c --height 2600 "$OUT/live/sheet-open-$c-$t-en.png"; done; done
+  # The longest titles of the dataset (87202 in Indonesian, 199 characters, no scale rows; 77520 and 47192 in English, with a matrix): the head's
+  # title wraps to 2-5 lines and never squashes the plate (C26). The two with a matrix are `sheet-open` renders, so C24 judges them too, on a canvas
+  # tall enough for the detail (77520's reaches y 3618 pt in Indonesian: a 3600 pt canvas cut it, and C24 could not see it).
+  for c in 77520 47192; do for t in day night; do for l in en id; do
+    shot registry-sheet --imm --sheet-open --theme $t --lang $l --code $c --height 4200 "$OUT/imm/sheet-open-$c-$t-$l.png"; done; done; done
+  for t in day night; do for l in en id; do
+    shot registry-sheet --imm --sheet-open --theme $t --lang $l --code 87202 --height 3600 "$OUT/imm/sheet-head-87202-$t-$l.png"; done; done
   # Stacked cells open on the shown cell next to a neighbour chip: High at night, Medium-High by day (the ring must clear it).
   shot registry-sheet --imm --sheet-open --theme night --lang en --code 85510 --height 2600 "$OUT/imm/sheet-open-85510-night-en.png"
   shot registry-sheet --imm --sheet-open --theme day --lang en --code 20111 --height 4000 "$OUT/imm/sheet-open-20111-day-en.png"

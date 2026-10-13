@@ -245,6 +245,36 @@ def c24(im, fr, arg):
     if cells <= 1 and hints: bad.append("a hint over %d cell: nothing to pick" % cells)
     return not bad, "%d rings accent on 4 sides and clear, %d hint over %d cells: %s" % (len(fr["ring"]), len(hints), cells, "; ".join(bad) or "none")
 
+def c26(im, fr, arg):
+    """head composition (the live panel takes the card's head, owner 2026-10-12): the title, the glyph beside it and the national plate
+    stand apart and whole, and a long title never squashes the plate. The plate holds the chip and, iff the record has a cap, its one
+    figure below the chip (`cap` in the record); the plate is tall enough for what it holds; the title overlaps neither the plate nor
+    the glyph; the glyph overlaps neither the plate, and beside the title it starts at the plate's top (the two ends of one row)."""
+    rec, s = arg; rec = rec or {}; bad = []
+    inside = lambda a, b, t=2: a[0] >= b[0] - t and a[1] >= b[1] - t and a[2] <= b[2] + t and a[3] <= b[3] + t
+    hit = lambda a, b: a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+    for n in ("title", "plate", "chip.national"):
+        if len(fr[n]) != 1: bad.append("%d %s frames: the head has one" % (len(fr[n]), n))
+    if bad: return False, "; ".join(bad)
+    title, plate, chip = fr["title"][0][1], fr["plate"][0][1], fr["chip.national"][0][1]
+    caps = fr.get("cap", [])
+    if "cap" in rec and len(caps) != 1: bad.append("the record has a cap of %s and the plate draws %d figures" % (rec["cap"], len(caps)))
+    if "cap" not in rec and caps: bad.append("a cap figure in a plate whose record has no cap")
+    if not inside(chip, plate): bad.append("the chip at %d,%d is outside the plate" % (chip[0], chip[1]))
+    need = (chip[3] - chip[1]) + 32 * s
+    if len(caps) == 1:
+        cap = caps[0][1]; need += cap[3] - cap[1]
+        if not inside(cap, plate): bad.append("the cap figure at %d,%d is outside the plate" % (cap[0], cap[1]))
+        if chip[3] > cap[1] + 2: bad.append("the chip ends at y %d, under the figure that starts at y %d" % (chip[3], cap[1]))
+    if plate[3] - plate[1] < need: bad.append("the plate is %d px tall and holds %d px of content: squashed" % (plate[3] - plate[1], need))
+    if hit(title, plate): bad.append("the title and the plate overlap")
+    for _, g in fr.get("glyph", []):
+        if hit(g, title): bad.append("the glyph and the title overlap")
+        if hit(g, plate): bad.append("the glyph and the plate overlap")
+        if plate[1] < title[3] and abs(g[1] - plate[1]) > 2 * s:
+            bad.append("the glyph starts %d px from the plate's top: beside the title they share one row's top (a host that moved it moved its mark too)" % abs(g[1] - plate[1]))
+    return not bad, "title, %d glyph and the plate (%s): %s" % (len(fr.get("glyph", [])), "chip + cap" if caps else "chip", "; ".join(bad) or "none")
+
 def c25(im, fr, arg):
     """live mount (G2, #8290 gate): the sheet the app mounts, rendered through SearchListView as the user reaches it (live/),
     is the immersive layout: its path nodes (matrix.head) stand as tall as the immersive twin's (imm/) and not as the flat
@@ -264,13 +294,13 @@ def c25(im, fr, arg):
     if abs(flat - imm) < 10: raise Miss("the flat and the immersive twins' path nodes are %.0f and %.0f pt: the witness cannot tell them apart" % (flat, imm))
     return abs(live - imm) <= 2 and abs(live - flat) > 10, "live mount's path nodes %.0f pt; immersive twin %.0f pt, flat twin %.0f pt" % (live, imm, flat)
 
-CHECKS = {"C%d" % n: f for n, f in zip(range(11, 26), (c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25))}
+CHECKS = {"C%d" % n: f for n, f in zip(range(11, 27), (c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26))}
 # The frames each check reads (C23: the ARMED row's own list of chips), and those it reads when present.
 NEEDS = {"C11": ("matrix.head", "matrix.chip"), "C12": ("headsup.label",), "C13": ("cap", "chip.bali", "bali.label"),
          "C14": ("cap",), "C15": ("basis.lead", "basis.body"), "C16": ("bar",), "C17": ("figure", "figure.peak", "card.peak"),
          "C18": ("census", "card"), "C19": ("uraian.item",), "C20": ("row.code", "row.title", "row.chip"),
-         "C21": ("ladder", "matrix"), "C22": ("group.digits", "row.code"), "C23": (), "C24": ("matrix.chip", "ring", "detail"), "C25": ("matrix.head",)}
-OPTIONAL = {"C12": ("headsup.sentence",), "C24": ("hint",)}
+         "C21": ("ladder", "matrix"), "C22": ("group.digits", "row.code"), "C23": (), "C24": ("matrix.chip", "ring", "detail"), "C25": ("matrix.head",), "C26": ("title", "plate", "chip.national")}
+OPTIONAL = {"C12": ("headsup.sentence",), "C24": ("hint",), "C26": ("cap", "glyph")}
 # The census grammar (#8250 gate binding 2): a frame's name is one of these, and its value matches the name's pattern —
 # a tone, a step ("0"…"3" in `scaleOrder`), an ordinal, a fraction, or nothing. Never drawn text.
 TONE, STEP, ORD, FRAC = r"open|restricted|closed|neutral", r"[0-3]", r"[1-9]?", r"0(?:\.\d+)?|1(?:\.0+)?|\.\d+"
@@ -279,7 +309,7 @@ NAMES = {**dict.fromkeys(("matrix.head", "matrix.cell"), STEP), "matrix.chip": S
          **dict.fromkeys(("chip.national", "chip.bali", "headsup"), TONE), "bar": FRAC,
          **dict.fromkeys(("matrix", "ladder", "cap", "bali.label", "basis.lead", "basis.body", "reason.lead", "reason.body",
                           "figure", "figure.peak", "card.peak", "census", "card", "uraian.item", "row.code", "row.title",
-                          "row.chip", "group.digits", "hint"), "")}
+                          "row.chip", "group.digits", "hint", "title", "plate", "glyph"), "")}
 
 NOVALUE = object()
 
@@ -352,9 +382,10 @@ def weight(im, b, cs):
 # of ink at 2 px/pt, day and night, and a 24 pt line 46 px: the sentence's upper bound is 1.1 x 20 pt (44 px).
 LEDGER = re.compile(r"sheet-ledger-")
 SINGLE = re.compile(r"(?:detail-card|dossier|sheet-ledger|chat|registry-sheet|sheet-open)-")
-cap_pt = lambda band: 64 if LEDGER.match(band) else 36
+SHEET = re.compile(r"(?:registry-sheet-open|sheet-open|sheet-head)-")
+cap_pt = lambda band: 64 if LEDGER.match(band) or SHEET.match(band) else 36
 MEASURE = {"cap": (lambda im, b, s, band: .6 * cap_pt(band) * s <= first(im, b) <= cap_pt(band) * s,
-                   lambda band: "§3 size, %s(%d): first ink band 0.6-1.0 x %d pt" % ("display" if LEDGER.match(band) else "title", cap_pt(band), cap_pt(band))),
+                   lambda band: "§3 size, %s(%d): first ink band 0.6-1.0 x %d pt" % ("display" if LEDGER.match(band) or SHEET.match(band) else "title", cap_pt(band), cap_pt(band))),
            "headsup.sentence": (lambda im, b, s, band: .6 * 20 * s <= first(im, b) <= 1.1 * 20 * s,
                                 lambda band: "D2 serif(20): first ink band 0.6-1.1 x 20 pt"),
            "bar": (lambda im, b, s, band: abs(b[3] - b[1] - 2 * s) <= 1 and abs(b[2] - b[0] - 48 * s) <= 2, lambda band: "D5: 48 x 2 pt"),
@@ -375,7 +406,7 @@ def judge(im, fr, s, c, arg, band="", record=None):
         for _, b in fr.get(n, []):
             if inked(im, b) < INK_MIN: raise Miss("frame %s at %s holds no ink: a mark on an empty area" % (n, b))
             if n in MEASURE and not MEASURE[n][0](im, b, s, band): raise Miss("frame %s at %s is not %s" % (n, b, MEASURE[n][1](band)))
-    return CHECKS[c](im, fr, (record, s) if c == "C24" else arg)   # C25's arg is (png, s), made by armed()
+    return CHECKS[c](im, fr, (record, s) if c in ("C24", "C26") else arg)   # C25's arg is (png, s), made by armed()
 # (PNG path relative to the set, as a regex; check; its argument). Each View PR arms its own bands here when it names
 # the frames its checks read (lead ruling 2026-10-11): none is armed by the harness itself.
 LEDGER56 = r"(?:imm/)?sheet-ledger-(?:day|night)-(?:en|id)\.png|tall/sheet-ledger-56101-(?:day|night)-en\.png"
@@ -384,7 +415,7 @@ OPEN = r"tall/registry-sheet-open-\d+-(?:day|night)-(?:en|id)\.png|imm/sheet-ope
 TONES = ("chip.national", "chip.bali")
 ARMED = [(LEDGER56, "C11", 6), (LEDGER56, "C12", None), (LEDGER56, "C13", None), (LEDGER56, "C14", None), (LEDGER56, "C21", None),
          (LEDGER56, "C23", TONES), (TALL71, "C12", None), (TALL71, "C13", None), (TALL71, "C14", None), (TALL71, "C23", TONES),
-         (OPEN, "C24", None), (r"live/sheet-open-\d+-(?:day|night)-en\.png", "C25", None)]
+         (OPEN, "C24", None), (OPEN, "C26", None), (r"imm/sheet-head-\d+-(?:day|night)-(?:en|id)\.png", "C26", None), (r"live/sheet-open-\d+-(?:day|night)-en\.png", "C25", None)]
 
 def frames(png, im):
     """({name: [(value, px box)]} of the frames drawn whole on the canvas, px per pt, the record's own state or None)."""
@@ -532,8 +563,26 @@ def c_cases():
         return ops, fr, {"cells": cells, "chipSet": chipset if chipset is not None else sorted({v for v, _ in fr["matrix.chip"]})}
     for k, kw in ((0, dict(dy=8)), (0, dict(dy=8, up=0, dx=8, lx=-8)), (1, dict(dy=4)), (1, dict(dy=5)), (1, dict(dy=8, up=3)),
                   (1, dict(dy=8, dx=0)), (1, dict(dy=8, lx=0)), (1, dict(dy=8, broken="left")), (1, dict(dy=8, broken="bottom")),
-                  (1, dict(dy=8, ringrow="1")), (1, dict(dy=8, ringat="neighbour")), (1, dict(dy=8, ringrow="1", ringat="neighbour")), (1, dict(dy=8, chipset=["0:0", "1:1", "1:5"])), (1, dict(dy=8, dup=True)), (1, dict(dy=8, twodetail=True)), (1, dict(dy=8, cells=1)), (1, dict(dy=4, nbfill=(0xF4, 0xF1, 0xEB))), (1, dict(dy=8, hint=0)), (0, dict(dy=8, cells=1, hint=0))):
+                  (1, dict(dy=8, ringrow="1")), (1, dict(dy=8, ringat="neighbour")), (1, dict(dy=8, ringrow="1", ringat="neighbour")), (1, dict(dy=8, chipset=["0:0", "1:1", "1:5"])), (1, dict(dy=8, chipset=["0:0"])), (1, dict(dy=8, dup=True)), (1, dict(dy=8, twodetail=True)), (1, dict(dy=8, cells=1)), (1, dict(dy=4, nbfill=(0xF4, 0xF1, 0xEB))), (1, dict(dy=8, hint=0)), (0, dict(dy=8, cells=1, hint=0))):
         ops, fr, rec = sel(**kw); yield "C24", rec, k, ops, fr
+    # C26 (the head): title and glyph beside the plate at 1 px per pt, or the plate stacked under the title; a plate that holds a chip and
+    # a cap figure, or a chip alone. The guilt: the title over the plate, the cap outside it, the chip under the figure, a squashed plate,
+    # the glyph over the title, a record with a cap and no figure, a figure and no cap.
+    def headcase(cap=True, rcap=100, plate=(250, 10, 390, 130), chip_b=(260, 20, 320, 40), cap_b=(266, 56, 372, 86), title_b=(14, 14, 180, 50),
+                 glyph_b=(202, 16, 232, 46), stacked=False):
+        if stacked: plate, chip_b, cap_b, title_b, glyph_b = (10, 70, 350, 200), (20, 80, 80, 100), (24, 118, 130, 148), (14, 14, 380, 50), None
+        ops = [(plate, TONE_BG["neutral"][0])]
+        o, f = word("title", "", title_b); ops += o; fr = dict(f)
+        o, f = chip("chip.national", "open", chip_b, OP); ops += o; fr.update(f)
+        if cap: o, f = word("cap", "", cap_b); ops += o; fr.update(f)
+        if glyph_b: o, f = word("glyph", "", glyph_b); ops += o; fr.update(f)
+        fr["plate"] = [("", plate)]
+        return ops, fr, ({"cap": rcap} if rcap is not None else {})
+    for k, kw in ((0, {}), (0, dict(stacked=True)), (0, dict(cap=False, rcap=None, plate=(250, 10, 390, 70))),
+                  (1, dict(title_b=(14, 14, 266, 50))), (1, dict(plate=(250, 10, 390, 70), cap_b=(266, 80, 372, 110))),
+                  (1, dict(chip_b=(260, 100, 320, 120))), (1, dict(plate=(250, 10, 390, 100))), (1, dict(glyph_b=(150, 16, 190, 46))), (1, dict(glyph_b=(202, 24, 232, 54))),
+                  (1, dict(cap=False)), (1, dict(rcap=None))):
+        ops, fr, rec = headcase(**kw); yield "C26", rec, k, ops, fr
     # a chip whose own colours touch it on both sides: its seen box is 20 px wider, the centre unmoved (B2, #8276 gate)
     yield "C11", 4, 1, *m(*[word("matrix.head", str(i), (x - 10, 10, x + 10, 20)) for i, x in enumerate(xs)],
                           *[([((x - 25, 46, x - 15, 58), OP), ((x + 15, 46, x + 25, 58), OP)] + chip("matrix.chip", str(i), (x - 15, 40, x + 15, 64), OP)[0],
@@ -581,7 +630,7 @@ def c_selftest():
     def run(c, arg, ops, fr):
         im = Image.new("RGB", (400, 400), PAPER); d = ImageDraw.Draw(im)
         for b, col in ops: d.rectangle([b[0], b[1], b[2] - 1, b[3] - 1], fill=col)
-        try: return judge(im, fr, 1, c, arg, "", arg if c == "C24" else None)
+        try: return judge(im, fr, 1, c, arg, "", arg if c in ("C24", "C26") else None)
         except Miss as e: return False, str(e)
     for c, arg, k, ops, fr in c_cases():
         ok, detail = run(c, arg, ops, fr); n += 1

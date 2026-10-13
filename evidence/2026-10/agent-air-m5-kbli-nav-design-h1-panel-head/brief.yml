@@ -1,0 +1,35 @@
+task_id: kbli-nav-design-h1-panel-head
+mission: kbli-nav-design-loop (Track A, build, lot IMM-L H1 — the expanded live sheet takes the head of the redesigned card; owner decision 2026-10-12)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Visible app change with a census check of its own (C26), shipped under the fresh-gate lane (lead ruling 2026-10-12): the
+  gate verdicts of #8348 and #8401 bind this PR (the detail mark keeps its one-expression shape, no new `expanded:` site,
+  steps 7 and 8 quoted from this head). Content frozen: no fact, verdict, cap, basis or reason changes; the one new string is
+  the disclosure label "Source" / "Sumber" (owner ruling). The Nusantara map (H2), the sticky ribbon and hover (2c'), keyboard
+  (2k) and the basis page (M6) are separate PRs.
+l_level: L1
+gate_class: opus
+objective: >-
+  One concern: the expanded RegistryVerdictSheet draws the card's head in place of the verdict block and the three axis
+  cards: the title in display 44 with the division glyph beside it (immersive), the national plate (chip, and the cap
+  figure counting up to its value when the record has a cap), the verdict band with its drawn rule, the OSS risk row, the
+  Bali block; the provenance lines sit behind a "Source" / "Sumber" disclosure; under 780 pt of column the plate goes under
+  the title. png_census gains C26 (the head's composition).
+constraints:
+  - No fact, verdict, cap, basis or reason changes; the only new string is the disclosure label (Source / Sumber).
+  - The path stays in PP 28 (one matrix per page); C24 is untouched except its self-test gaining the chip marked but not in the record.
+  - The `detail` mark keeps `cellDetail(scales[X]).censusFrame("detail", "\(X)")` as one expression and no new `expanded:` site is added.
+acceptance:
+  - text: The sheet SHALL lose no word against the tree before this PR, with every Source open, flat and immersive, en and id.
+    probe: "Pro: encensus registry-sheet-open and registry-sheet-open-imm on 55203, 56101, 51101, 71109 en/id (KBLI_SOURCE_OPEN=1) vs origin/main: nothing lost except the separator `·` and the cap figure fused into the next word (`100%Max`, `49%Maks`, `VilaNASIONAL` are gained); 55203 en loses nothing"
+  - text: The head's composition SHALL be judged on real renders and a wrong one SHALL fail, by its cause.
+    probe: "Pro: png_census.py 0 FAIL, 1 VACUOUS, C26 armed 45 (33 sheet + 12 long-title renders), self-test 196/196; mutants on 56101 imm day: control rc 0; squashed plate rc 1; glyph over the plate rc 1; cap unmarked rc 1; glyph moved 200 pt rc 1; the glyph host offset by 4 pt rc 1 (`the glyph starts 8 px from the plate's top`)"
+  - text: Reduce Motion SHALL draw the final frame, and the gate SHALL bite.
+    probe: "Pro: 56101, 55203, 71109, day and night: RM 0 ms byte-identical to the final frame 6/6; without the switch 0 ms differs 6/6"
+  - text: The narrow layout SHALL stack the plate under the title.
+    probe: "Pro: 700 pt render of 56101 and 55203 judged by C26: 0 FAIL, plate under the title"
+  - text: The detail-identity scan and its mutant table SHALL hold on this head.
+    probe: "Pro: content_check.sh steps 1, 3, 4, 5, 6, 7, 8 ok (rc 0); detail_identity_mutants: 33 case(s), 0 miss(es); detail_identity_check: 0 finding(s) in 2 cellDetail calls and 2 detail marks, 1 exempt line at KBLIRegistryView.swift:1424"
+  - text: The contrast SHALL hold.
+    probe: "Pro: measure_contrast.py TOTAL=196 FAIL=0 PARITY=0 WHITE=0"
