@@ -1,7 +1,7 @@
 {
   "expected_candidates": ["E31D"],
   "expected_state": "SUPPORTED_CANDIDATES",
-  "label": "19-year-old unmarried Dutch woman, dependent stepdaughter of her mother's Dutch husband who holds a spouse KITAS from his legal marriage to an Indonesian citizen in Bali; applying offshore for a 1-year family stay",
+  "label": "19-year-old unmarried Dutch woman, dependent stepdaughter of her mother's husband, an Indonesian citizen, in a legal Dutch-Indonesian marriage registered in Bali; applying offshore for a 1-year family stay",
   "overrides": {
     "family.marriage_registered": {
       "status": "KNOWN",
@@ -17,11 +17,7 @@
     },
     "family.sponsor_nationalities": {
       "status": "KNOWN",
-      "value": ["NL"]
-    },
-    "family.sponsor_status_code": {
-      "status": "KNOWN",
-      "value": "E31A"
+      "value": ["ID"]
     },
     "family.stepchild_birth_certificate_confirmed": {
       "status": "KNOWN",

@@ -145,7 +145,6 @@ def test_8390_post_organ_row_appears_once_open_with_owner_and_proof():
     assert "only main after the organ's ledger has merged counts" in row
     assert "not the organ's PR" in row
     assert "on the organ's PR or" not in row
-    assert "python3 scripts/ci/observe_visa_seq28_signed.py" in row
     assert "research/visa/2026-10-11-organ-reattest-seq28" in row
 
 

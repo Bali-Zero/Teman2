@@ -1155,7 +1155,7 @@ class TestCensusReplay:
             assert after[label]["state"] == after_state, label
             assert before[label]["candidates"] == after[label]["candidates"] == [], label
 
-    def test_without_the_answers_the_census_is_105_answers_18_no_paths_3_questions(
+    def test_without_the_answers_the_census_is_106_answers_18_no_paths_3_questions(
         self,
         seq21_compiled: compiler.CompiledRulePack,
         unasked_walks: dict[str, dict[str, Any]],
@@ -1199,10 +1199,15 @@ class TestCensusReplay:
         Seq-28 step B (2026-10-11) adds two remote-worker witness walks,
         `offshore/remote/foreign_only/income_59999` and `income_60000`, that
         read none of the ten qualification facts and both answer
-        SUPPORTED_CANDIDATES (E33G) on this pack: 105 / 18 / 3 / 1."""
+        SUPPORTED_CANDIDATES (E33G) on this pack: 105 / 18 / 3 / 1.
+
+        Seq-29 (2026-10-12) adds the minor-sibling walk
+        `offshore/family/SIBLING/spNat=IT/minor`, which reads none of the ten
+        qualification facts and answers SUPPORTED_CANDIDATES (C1, E31J) on this
+        pack: 106 / 18 / 3 / 1."""
         replayed = _replay(seq21_compiled, unasked_walks)
         census = Counter(actual["state"] for actual in replayed.values())
-        assert census["SUPPORTED_CANDIDATES"] == 105
+        assert census["SUPPORTED_CANDIDATES"] == 106
         assert census["NO_SUPPORTED_PATH"] == 18
         assert census["NEEDS_INPUT"] == 3
         assert census["HUMAN_REVIEW_REQUIRED"] == 1

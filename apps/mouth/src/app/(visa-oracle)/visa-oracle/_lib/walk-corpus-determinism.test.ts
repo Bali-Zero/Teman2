@@ -133,8 +133,11 @@ import { DEFAULT_OUT_DIR } from "../../../../../scripts/visa-oracle/generate-wal
  * Seq-28 Step B (2026-10-11): +2, 129 -> 131 — the E33G annual-income
  * boundary witnesses 59,999 and 60,000. The active seq-27 pack does not read
  * the fact, so both remain E33G candidates.
+ *
+ * Seq-29 (2026-10-12): +1, 131 -> 132 — `offshore/family/SIBLING/spNat=IT/minor`,
+ * the one minor sibling that keeps E31J named once the pack excludes adults.
  */
-const EXPECTED_WALK_COUNT = 131;
+const EXPECTED_WALK_COUNT = 132;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)

@@ -268,6 +268,78 @@ merge, and so is the mouth pin of `E33G_ANNUAL_INCOME_THRESHOLD_USD`.
 seq-25 and seq-26 notes above, on the PG primary. The `activation_id` and timestamp are recorded in the
 follow-up ledger PR; nothing is recorded here until the ceremony has run.
 
+## Signing + activation note (2026-10-13, seq-29)
+
+`rulepack-prod-029.signed.json` is the weekly re-attestation organ's re-stamp of seq-28 plus the E31
+content batch, signed in ONE signing. Read ledger: `research/visa/2026-10-13-organ-reattest-seq29/`
+(organ candidate PR #8410, superseded by this PR and not to be merged). The pack was built by the
+visa-night conductor on Pro (branch `agent/nuzantara/backend-rag/vo-seq29-fold-1012`, head
+`31eb2ade20`), rebased cleanly on `origin/main` `4646f043d6`. The generic REAL fold on the ledger
+reproduces the source byte for byte (`created_at` 2026-10-13T00:30:00Z, payload digest
+`3f3b45ed1aaeadc72ec9dd2a5e33519ded3a0ec1da8408fade150a0ae39b9295`), chained to the signed seq-28
+(`previous_payload_sha256` `a23a5bf55a77a658aef4ff06637cdb6fea476c5569d3d47a56896af2b8557046`),
+sequence 28 to 29, version `2026.10.12`, `rollback_of_payload_sha256` null. Rules 114 to 117.
+
+What the pack contains:
+
+1. The organ re-stamp: the 18 `OFFICIAL_PORTAL` records move to `2026-10-13T00:07:47Z`; the 10
+   non-portal records (primary law and implementing regulation) are identical to seq-28. New earliest
+   portal freshness boundary: `2026-11-14T00:07:47Z` (stamp + 32 days), against seq-28's
+   `2026-11-12T18:00:16Z`.
+2. E31J (sibling) is limited to under 18 and never married: `hf.e31j-adult-excluded`
+   (`E31J_REQ_UNDER_18`) and `hf.e31j-married-excluded` (`E31J_REQ_UNMARRIED`) are added,
+   `review.e31j-marital-status-other` routes marital status OTHER to human review
+   (`E31J_MARITAL_STATUS_OTHER_REVIEW`, `on_unknown: NO_EFFECT`), and `el.e31j-dependency-age` is
+   retired. Source: the Lampiran row of Kepmen M.IP-08.GR.01.01/2025 for index E31J ("belum berusia
+   18 (delapan belas) tahun dan belum kawin"), Permenkumham 11/2024 Pasal 33(2)(h) angka 9.
+3. E31D (stepchild) requires an Indonesian sponsor: `hf.e31d-sponsor-not-indonesian`
+   (`E31D_REQ_SPONSOR_INDONESIAN`).
+4. E28F (IKN subsidiary) requires a foreign branch or subsidiary: `el.e28f.ikn-subsidiary` modified
+   (`investment.foreign_branch_or_subsidiary == true`).
+5. E31E (parent) adult and married exclusions are scoped to the PARENT relation:
+   `hf.e31e-adult-excluded` and `hf.e31e-married-excluded` modified.
+
+Delta against seq-28 source: +4 (`hf.e31d-sponsor-not-indonesian`, `hf.e31j-adult-excluded`,
+`hf.e31j-married-excluded`, `review.e31j-marital-status-other`), -1 (`el.e31j-dependency-age`), ~3
+(`el.e28f.ikn-subsidiary`, `hf.e31e-adult-excluded`, `hf.e31e-married-excluded`); 114 + 4 - 1 = 117.
+The mouth copy carries the four new reason sentences in EN and ID.
+
+Review chain, none of it the signer's own work: the conductor's build on Pro; the Codex red teams;
+the council on the final content, Codex `gpt-5.6-sol` SIGN and Kimi `k3` SIGN; the fresh Opus gate on
+Pro, READY-TO-SIGN on `31eb2ade20` (all in
+`evidence/2026-10/agent-nuzantara-backend-rag-vo-seq29-fold-1012-4eab11d8/`); the organ attestation
+`research/visa/2026-10-13-organ-reattest-seq29-attestation.md` (adversarial review: Codex
+`gpt-5.6-sol`, `LEDGER: CONFIRMED` on `85c1f3cd90`); then, on the owning session's side, the
+signer-side reproduction (REAL fold re-run byte-identical, W141 re-checked: 18 portal stamps, boundary,
+10 non-portal records identical, rule delta above, suites) and an independent grounding ruling on all
+eight rule items, all SIGN. That ruling **overrules the recorded Codex dissent on E31J** (HIGH,
+marked PLAUSIBLE): the Kepmen M.IP-08/2025 PDF was downloaded from the source record's canonical URL,
+its sha256 `b8e326667c892ab2...` equals the record's `content_sha256`, and the E31J Lampiran row states
+under-18 and never-married verbatim, so the cap the 2026-07-21 note could not find on the portal page
+is in primary law. The missing Permenkumham 11/2024 ref in the rule's `source_refs` is a citation
+completeness gap, not a grounding gap.
+
+Signed offline on M5 by the owning session `nuzantara-57` under Zero's standing authorization of
+2026-10-12: `kid: prod-2026-07-1`, `signed_at` 2026-10-13T08:56:32.221637Z (the value inside the
+bundle), `sign_pack` signed and self-verified, `rule_pack_id` `ed666554-c476-5e67-9c25-921388e64537`,
+`payload_sha256` `3f3b45ed1aaeadc72ec9dd2a5e33519ded3a0ec1da8408fade150a0ae39b9295`, public key
+`gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA` (the `prod-2026-07-1` entry of the trust store above).
+The bundle was signed at file sha256 prefix `f475ebf43bfe0cb9` and Prettier-formatted after signing (as
+seq-25..28; the husky Prettier check requires it), file prefix now `8daa66acd3ba3f6a`; the signature
+covers the JCS payload, so `payload_sha256` is unchanged and `TestSignedBundleTiesToSource` passes on
+the formatted file.
+
+The bundle lands in the same PR as the source, so `TestSignedBundleTiesToSource`,
+`TestReattestationIsReal` and `scripts/ci/observe_visa_seq29_signed.py` are green at merge.
+`scripts/ci/observe_visa_seq28_signed.py` (asserts the highest signed pack is 28) is retired in the
+same PR. `scripts/ci/observe_visa_seq29_candidate.py` (unsigned-candidate gate, census and mouth copy
+guard) is KEPT: it is added by this branch, stays green on the signed tree, and the conductor's history
+pack names it as its observe command, which the bites check requires to exist.
+
+**Activation: pending.** It happens from Pro after merge, the two-login ceremony of the seq-25 and
+seq-26 notes above, on the PG primary. The `activation_id` and timestamp are recorded in the follow-up
+ledger PR; nothing is recorded here until the ceremony has run.
+
 ## Rotation
 
 1. Mint a new kid (e.g. `2027-01-prod-1`) with the same procedure.

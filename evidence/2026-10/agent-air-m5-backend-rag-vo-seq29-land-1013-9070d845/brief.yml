@@ -1,0 +1,36 @@
+task_id: visa-seq29-land
+mission: visa-oracle-38-visas
+gear: 3
+gear_reason: >-
+  The signed rule pack for the Visa Oracle production engine under apps/backend-rag/** (hot zone). It changes who
+  is admitted to E31D, E31J and E28F and which reason a family applicant is shown, and it re-stamps the 18 portal
+  sources whose freshness gates every evaluation (seq-28 goes stale on 2026-11-12T18:00:16Z). Once merged and
+  activated it is what /evaluate answers. The hand-written part is small (observer, test pins, runbook note); the
+  content is the conductor's candidate, reviewed by its own chain.
+l_level: L2
+gate_class: opus
+ruling: >-
+  Zero via nuzantara-57, 2026-10-12 - standing authorization: the owning session signs seq-29 on M5 and activates it
+  after merge; this branch lands the signed bundle and never activates.
+mission_text: >-
+  seq-29 landing = the visa-night conductor's seq-29 candidate (branch agent/nuzantara/backend-rag/vo-seq29-fold-1012,
+  head 31eb2ade20) rebased on origin/main 4646f043d6, plus the bundle signed on M5 (kid prod-2026-07-1, signed_at
+  2026-10-13T08:56:32Z), the signed-state observer replacing the seq-28 one, the one test pin the new review rule
+  moves, and the runbook signing note. Organ candidate PR #8410 is superseded by this PR and is not merged.
+objective: >-
+  rulepack-prod-029.signed.json ties byte for byte to rulepack-prod-029.source.json, verifies under the pinned prod
+  key, and once on main the highest signed pack on disk reads seq-29 for review_hold_inventory and the evaluate path;
+  activation (two-login ceremony from Pro) is a separate step after merge and nothing here records it.
+constraints:
+  - The signed bundle is never re-signed, edited or reformatted by this branch (Prettier was applied once after signing, the seq-25..28 precedent; the payload digest is unchanged).
+  - No private key is read, no credential printed, nothing is activated, nothing is merged by the builder.
+  - The conductor's evidence pack under its own branch slug stays untouched as history.
+appetite:
+  wall_clock_hours: 1
+acceptance:
+  - text: WHEN the signed seq-29 bundle is verified THEN its payload SHALL equal the source, verify under the pinned prod-2026-07-1 key, anchor to the signed seq-28 digest, and a flipped byte SHALL break the signature.
+    probe: backend/tests/services/visa_engine/test_seq29_pack.py::TestSignedBundleTiesToSource
+  - text: WHEN a signed seq-29 bundle exists THEN the source SHALL be the REAL organ re-stamp fold, not the dry run.
+    probe: backend/tests/services/visa_engine/test_seq29_pack.py::TestReattestationIsReal
+  - text: WHEN the review hold inventory reads the highest signed pack THEN it SHALL read seq-29 with exactly the two HUMAN_REVIEW-stage rules.
+    probe: backend/tests/scripts/visa_engine/test_review_hold_inventory.py::test_inventory_counts_match_the_signed_pack

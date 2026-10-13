@@ -2,7 +2,7 @@
 
 ``test_gold_coverage_floor.py`` proves the pack can support a product when
 every fact arrives. This file proves the opposite half, and it is the half
-the user lives in: replay the **131 real interview walks** — every distinct
+the user lives in: replay the **132 real interview walks** — every distinct
 path through ``flow.ts``'s two-arm spine and ``getCategoryQuestionIds``'
 eleven categories, each answered through the real ``fact-mapper.ts`` —
 against the highest signed PRODUCTION pack, and pin the outcome census.
@@ -647,6 +647,7 @@ WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[25] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[24
 WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[26] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[25]
 WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[27] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[26]
 WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[28] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[27]
+WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[29] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[28]
 WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
 )
@@ -788,6 +789,9 @@ _EXPECTED_OUTCOME_ON_SEQ20: dict[str, tuple[str, tuple[str, ...]]] = {
     # arm; see `TestGuardianConsentArms` in test_evaluate_endpoint.py for the
     # `true`/`false`/UNKNOWN arms pinned directly.
     "offshore/family/PARENT/spNat=IT/minor": ("SUPPORTED_CANDIDATES", ("C1", "E31E")),
+    # seq-29 adds this walk to the shared corpus: the one minor sibling, so E31J stays named
+    # once the pack excludes adult siblings. Every sequence from seq-20 on answers it the same.
+    "offshore/family/SIBLING/spNat=IT/minor": ("SUPPORTED_CANDIDATES", ("C1", "E31J")),
     # Slice A7-M, 2026-09-22: same facts as the walk above, only
     # `guardian_consent: "no"` differs — the earned hold, now exercised by a
     # real walk instead of only PR 1's persona test.
@@ -1261,6 +1265,22 @@ EXPECTED_OUTCOME_BY_SEQUENCE[28] = {
     **EXPECTED_OUTCOME_BY_SEQUENCE[27],
     _SEQ28_E33G_59999_WALK: ("NO_SUPPORTED_PATH", ()),
 }
+# seq-29 (measured on the candidate replay, 132 walks): five walks lose a product and no
+# walk changes state. E31J is excluded for an adult sibling (hf.e31j-adult-excluded), E31D for
+# a step-parent who is not Indonesian (hf.e31d-sponsor-not-indonesian), E28F for an IKN
+# subsidiary with no foreign parent company (el.e28f.ikn-subsidiary). The E31E reason scoping
+# moves no walk: the family walks answer a 121-day stay that C1 covers.
+_SEQ29_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {
+    "offshore/diaspora/SIBLING/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/SIBLING/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/diaspora/STEPCHILD/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/STEPCHILD/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/invest/pt_pma/ikn_subsidiary": ("SUPPORTED_CANDIDATES", ("C2", "E28B")),
+}
+EXPECTED_OUTCOME_BY_SEQUENCE[29] = {
+    **EXPECTED_OUTCOME_BY_SEQUENCE[28],
+    **_SEQ29_OUTCOME_CHANGES,
+}
 # The sequences share one corpus, so every one of them pins the 13 walks; the
 # replay test `test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence`
 # re-measures them (and the full state census) on each of seq-20..27.
@@ -1340,9 +1360,16 @@ _EXPECTED_REASONS_ON_SEQ28: dict[str, ReasonPin] = {
     "onshore/business": _BUSINESS_NO_PATH_SEQ28,
     _SEQ28_E33G_59999_WALK: (("E33G_INCOME_BELOW_THRESHOLD",), ()),
 }
+#: seq-29: measured (the replay of the 132-walk corpus on the candidate source against the seq-28
+#: table reports no violation), not derived. The five walks that move keep their state (only
+#: their candidate lists change), and no corpus walk answers "Another status" for an
+#: E31J sibling, so `E31J_MARITAL_STATUS_OTHER_REVIEW` appears in no row; the rule is graded on
+#: the field and by value in `test_seq29_pack.py`.
+_EXPECTED_REASONS_ON_SEQ29: dict[str, ReasonPin] = dict(_EXPECTED_REASONS_ON_SEQ28)
 EXPECTED_REASONS_BY_SEQUENCE: dict[int, dict[str, ReasonPin]] = {
     27: _EXPECTED_REASONS_ON_SEQ27,
     28: _EXPECTED_REASONS_ON_SEQ28,
+    29: _EXPECTED_REASONS_ON_SEQ29,
 }
 EXPECTED_REASONS: dict[str, ReasonPin] = EXPECTED_REASONS_BY_SEQUENCE.get(_SIGNED_SEQUENCE, {})
 
@@ -1426,7 +1453,7 @@ EXPECTED_STATE_CENSUS_BY_SEQUENCE = {
     _seq: {
         **_census,
         "NO_SUPPORTED_PATH": _census["NO_SUPPORTED_PATH"] + 3,
-        "SUPPORTED_CANDIDATES": _census["SUPPORTED_CANDIDATES"] + 12,
+        "SUPPORTED_CANDIDATES": _census["SUPPORTED_CANDIDATES"] + 13,
     }
     for _seq, _census in EXPECTED_STATE_CENSUS_BY_SEQUENCE.items()
 }
@@ -1438,8 +1465,10 @@ EXPECTED_STATE_CENSUS_BY_SEQUENCE[28] = {
     "HUMAN_REVIEW_REQUIRED": 3,
     "NEEDS_INPUT": 1,
     "NO_SUPPORTED_PATH": 17,
-    "SUPPORTED_CANDIDATES": 110,
+    "SUPPORTED_CANDIDATES": 111,
 }
+# seq-29 moves products, never a state: measured again on the candidate replay.
+EXPECTED_STATE_CENSUS_BY_SEQUENCE[29] = dict(EXPECTED_STATE_CENSUS_BY_SEQUENCE[28])
 
 #: Which fact blocks how many walks — the §2.2 table, EMPTY between PR-3 and
 #: PR-5. A cure that moves walks between blocking facts instead of removing
@@ -1486,6 +1515,7 @@ EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[25] = EXPECTED_DEAD_END_FACT_CENSUS_BY
 EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[26] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[25]
 EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[27] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[26]
 EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[28] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[27]
+EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[29] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[28]
 EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
 )
@@ -1620,6 +1650,7 @@ STUDIO_HELD_WALKS_BY_SEQUENCE[25] = STUDIO_HELD_WALKS_BY_SEQUENCE[24]
 STUDIO_HELD_WALKS_BY_SEQUENCE[26] = STUDIO_HELD_WALKS_BY_SEQUENCE[25]
 STUDIO_HELD_WALKS_BY_SEQUENCE[27] = STUDIO_HELD_WALKS_BY_SEQUENCE[26]
 STUDIO_HELD_WALKS_BY_SEQUENCE[28] = STUDIO_HELD_WALKS_BY_SEQUENCE[27]
+STUDIO_HELD_WALKS_BY_SEQUENCE[29] = STUDIO_HELD_WALKS_BY_SEQUENCE[28]
 STUDIO_HELD_WALKS: frozenset[str] = STUDIO_HELD_WALKS_BY_SEQUENCE.get(_SIGNED_SEQUENCE, frozenset())
 STUDIO_REVIEW_REASON = "SECOND_HOME_BELOW_THRESHOLD_STUDIO"
 
@@ -2524,9 +2555,12 @@ def test_corpus_has_the_expected_real_interview_walks(walks: dict[str, dict[str,
 
     Seq-28 Step B (2026-10-11): adds 2, corpus 129 -> 131:
     `offshore/remote/foreign_only/income_59999` and `income_60000`. Both are
-    E33G under seq-20..27 because those packs do not read the new fact."""
+    E33G under seq-20..27 because those packs do not read the new fact.
 
-    assert len(walks) == 131, f"expected 131 interview walks, found {len(walks)}"
+    Seq-29 (2026-10-12): adds 1, corpus 131 -> 132: `offshore/family/SIBLING/spNat=IT/
+    minor`, the one minor sibling that keeps E31J named once the pack excludes adults."""
+
+    assert len(walks) == 132, f"expected 132 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -4258,6 +4292,11 @@ SEQ21_QUALIFYING_FACT = {
 }
 
 
+#: seq-29: `el.e28f.ikn-subsidiary` now also reads `investment.foreign_branch_or_subsidiary`,
+#: the E28D qualifying fact, so a tree that stopped asking it leaves E28F unreached too.
+SEQ29_CO_UNREACHED: dict[str, tuple[str, ...]] = {"E28D": ("E28F",)}
+
+
 @pytest.mark.parametrize("product", SEQ21_ADDED_PRODUCTS)
 def test_guilt_the_candidate_guard_catches_a_seq21_product_losing_its_walks(
     walks: dict[str, dict[str, Any]],
@@ -4299,7 +4338,10 @@ def test_guilt_the_candidate_guard_catches_a_seq21_product_losing_its_walks(
     for code, labels in renamed.items():
         mutated.setdefault(code, []).extend(labels)
     named = {code: tuple(labels) for code, labels in mutated.items() if labels}
-    assert _unreached_support_products(named, pack=candidate_pack) == [product]
+    expected = [product]
+    if candidate_pack.compiled.sequence >= 29:
+        expected = sorted([product, *SEQ29_CO_UNREACHED.get(product, ())])
+    assert _unreached_support_products(named, pack=candidate_pack) == expected
 
 
 def test_unreachable_by_ruling_holds_only_the_bridging_row() -> None:
