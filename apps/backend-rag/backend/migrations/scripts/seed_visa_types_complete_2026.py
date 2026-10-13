@@ -748,7 +748,7 @@ VISA_TYPES = [
         "name": "Working Visa Special Economic Zone",
         "category": "KITAS/Limited Stay",
         "duration": "See details",
-        "cost_visa": "IDR 34.500.000 (Offshore) / 36.000.000 (Onshore)",
+        "cost_visa": "Contact for quote",
         "requirements": [],
         "description": "Official title: Working Visa Special Economic Zone",
         "metadata": {
@@ -763,7 +763,7 @@ VISA_TYPES = [
         "name": "Working Visa Foreign Diplomat House Assistant",
         "category": "KITAS/Limited Stay",
         "duration": "See details",
-        "cost_visa": "IDR 34.500.000 (Offshore) / 36.000.000 (Onshore)",
+        "cost_visa": "Contact for quote",
         "requirements": [],
         "description": "Official title: Working Visa Foreign Diplomat House Assistant",
         "metadata": {
@@ -778,7 +778,7 @@ VISA_TYPES = [
         "name": "Working Visa Kantor Dagang dan Ekonomi",
         "category": "KITAS/Limited Stay",
         "duration": "See details",
-        "cost_visa": "IDR 34.500.000 (Offshore) / 36.000.000 (Onshore)",
+        "cost_visa": "Contact for quote",
         "requirements": [],
         "description": "Official title: Working Visa Kantor Dagang dan Ekonomi",
         "metadata": {
@@ -793,7 +793,7 @@ VISA_TYPES = [
         "name": "Working Visa Indonesian Government Expert",
         "category": "KITAS/Limited Stay",
         "duration": "See details",
-        "cost_visa": "IDR 34.500.000 (Offshore) / 36.000.000 (Onshore)",
+        "cost_visa": "Contact for quote",
         "requirements": [],
         "description": "Official title: Working Visa Indonesian Government Expert",
         "metadata": {
@@ -808,7 +808,7 @@ VISA_TYPES = [
         "name": "Working Visa Digital Field Expert",
         "category": "KITAS/Limited Stay",
         "duration": "See details",
-        "cost_visa": "IDR 34.500.000 (Offshore) / 36.000.000 (Onshore)",
+        "cost_visa": "Contact for quote",
         "requirements": [],
         "description": "Official title: Working Visa Digital Field Expert",
         "metadata": {
