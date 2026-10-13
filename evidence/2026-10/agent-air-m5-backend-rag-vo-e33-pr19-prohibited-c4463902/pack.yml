@@ -89,15 +89,15 @@ dissent:
   - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
     objection: >-
       HIGH 1: the OpenAPI drift pin schema.d.ts.openapi-sha256 was not updated; test_generate_openapi_schema_pin fails.
-    status: RETRACTED
+    status: CONFIRMED
     disposition: >-
-      Cured in the fix commit: generate_openapi rewrote the pin; the pin test passes (receipt).
+      Cured in a78aa79742. Cured in the fix commit: generate_openapi rewrote the pin; the pin test passes (receipt).
   - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
     objection: >-
       MEDIUM 2: schema.d.ts was hand-edited as optional and differs from the generator; the pack justification was false and tsc hid a needed fixture change.
-    status: RETRACTED
+    status: CONFIRMED
     disposition: >-
-      Cured in the fix commit: schema.d.ts regenerated (required, default []), fixture carries the field, tsc and the whole vitest tree clean; the decision was rewritten as D-schema-d-ts-generated.
+      Cured in a78aa79742. Cured in the fix commit: schema.d.ts regenerated (required, default []), fixture carries the field, tsc and the whole vitest tree clean; the decision was rewritten as D-schema-d-ts-generated.
   - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
     objection: >-
       LOW 3: the pinned P2-2 display contract in test_evaluate_endpoint omitted prohibited_activities and its loop is vacuous (zero candidates).
@@ -107,15 +107,15 @@ dissent:
   - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
     objection: >-
       LOW 4: the evidence pack needs the pin receipt and the gear may rise to the floor.
-    status: RETRACTED
+    status: CONFIRMED
     disposition: >-
-      Receipt added; floor re-computed with print-floor and the gear declared at least the floor in the fix commit.
+      Cured in a78aa79742. Receipt added; floor re-computed with print-floor and the gear declared at least the floor in the fix commit.
   - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
     objection: >-
       LOW 5: seat named a model not in the roster; timestamps looked estimated.
-    status: RETRACTED
+    status: CONFIRMED
     disposition: >-
-      Seat is now claude-sonnet-5; receipts re-run with real date -u values (the rebase receipt is marked as original).
+      Cured in a78aa79742. Seat is now claude-sonnet-5; receipts re-run with real date -u values (the rebase receipt is marked as original).
   - seat: "claude-opus-5.5 (cross-family red team; the lane was built by Codex)"
     objection: >-
       LOW 6 (forward-looking, PR-20): default () makes a missing key look like none; engine-response.ts does not validate; the list mixes activities with conditions and consequences.
