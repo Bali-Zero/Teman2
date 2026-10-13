@@ -687,13 +687,18 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // routes: no source record in the pack states the Golden Visa USD
   // minimums, so the rule turns on a DECLARED "meets the published minimum"
   // and the copy says exactly that.
+  // Each sentence restates the answers the rule checks (el.e23u.diplomatic-household:
+  // sponsor.type = INDIVIDUAL AND sponsor.diplomatic_household = true;
+  // el.e23v.trade-office: sponsor.type = GOVERNMENT AND sponsor.trade_office
+  // = true, both rulepack-prod-028) as what the visitor told us, never as a
+  // sponsor identity stated as law.
   E23U_DIPLOMATIC_HOUSEHOLD_ELIGIBLE: text(
-    "Employment for a foreign diplomat's household, sponsored by that diplomat as an individual — the Working Visa — Foreign Diplomat House Assistant (E23U).",
-    "Pekerjaan untuk rumah tangga diplomat asing, dengan diplomat tersebut sebagai penjamin perorangan — Visa Kerja Asisten Rumah Tangga Diplomat Asing (E23U).",
+    "You told us your sponsor is an individual and the role is in a foreign diplomat's household — the Working Visa — Foreign Diplomat House Assistant (E23U).",
+    "Anda menyatakan penjamin Anda perorangan dan posisi ini berada di rumah tangga diplomat asing — Visa Kerja Asisten Rumah Tangga Diplomat Asing (E23U).",
   ),
   E23V_TRADE_OFFICE_ELIGIBLE: text(
-    "Employment with a foreign trade and economic representative office, sponsored by a government body — the Working Visa — Trade and Economic Office (E23V).",
-    "Pekerjaan pada kantor perwakilan dagang dan ekonomi asing, dengan penjamin instansi pemerintah — Visa Kerja Kantor Dagang dan Ekonomi (E23V).",
+    "You told us your sponsor is a government body and a foreign trade or economic representative office in Indonesia — the Working Visa — Trade and Economic Office (E23V).",
+    "Anda menyatakan penjamin Anda instansi pemerintah dan kantor perwakilan dagang atau ekonomi asing di Indonesia — Visa Kerja Kantor Dagang dan Ekonomi (E23V).",
   ),
   E33A_GOVERNMENT_INVITATION_ELIGIBLE: text(
     "You told us you hold a written invitation from an Indonesian central-government body for your special expertise — the Second Home Visa — Special-Expertise Government Invitation (E33A). This government-invitation route is handled with a Bali Zero advisor.",

@@ -405,3 +405,18 @@ describe("next steps follow the real situation of the visitor", () => {
     ).toBe(nextStepsFor("HUMAN_REVIEW_REQUIRED"));
   });
 });
+
+describe("E23U / E23V reasons are client copy", () => {
+  it("both codes carry a non-empty EN and ID sentence that quotes the visitor's answers", () => {
+    const u = SUPPORT_REASON_COPY.E23U_DIPLOMATIC_HOUSEHOLD_ELIGIBLE;
+    const v = SUPPORT_REASON_COPY.E23V_TRADE_OFFICE_ELIGIBLE;
+    expect(u.en).toMatch(/^You told us your sponsor is an individual/);
+    expect(u.id).toMatch(/^Anda menyatakan penjamin Anda perorangan/);
+    expect(v.en).toMatch(/^You told us your sponsor is a government body/);
+    expect(v.id).toMatch(/^Anda menyatakan penjamin Anda instansi pemerintah/);
+    for (const copy of [u, v]) {
+      expect(copy.en).not.toMatch(/bali zero|advisor/i);
+      expect(copy.id).not.toMatch(/bali zero|konsultan/i);
+    }
+  });
+});
