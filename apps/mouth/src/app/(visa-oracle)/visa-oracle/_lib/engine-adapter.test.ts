@@ -1541,8 +1541,14 @@ describe("support reasons are sentences, not machine codes", () => {
       "C2_BUSINESS_ELIGIBLE",
       "C6_SOCIAL_ELIGIBLE",
     ]) {
-      expect(SUPPORT_REASON_COPY[code].en).not.toContain("60 days");
-      expect(SUPPORT_REASON_COPY[code].id).not.toContain("60 hari");
+      // The old (wrong) bound, stated as the whole stay; a future sentence may
+      // still name the 60-day initial stay when a snapshot supports it.
+      expect(SUPPORT_REASON_COPY[code].en).not.toContain("60 days or less");
+      expect(SUPPORT_REASON_COPY[code].id).not.toContain("60 hari atau kurang");
+      expect(SUPPORT_REASON_COPY[code].en).toContain("planned total stay");
+      expect(SUPPORT_REASON_COPY[code].id).toContain(
+        "rencana total masa tinggal",
+      );
     }
     expect(SUPPORT_REASON_COPY.C2_BUSINESS_ELIGIBLE.en).toContain(
       "confirmed sponsor",
