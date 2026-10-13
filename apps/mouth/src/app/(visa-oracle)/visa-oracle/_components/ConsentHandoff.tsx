@@ -79,7 +79,7 @@ const COPY = {
     consultationConsent:
       "Saya setuju membuka WhatsApp untuk berbicara dengan konsultan Bali Zero. Jawaban wawancara saya tidak disertakan.",
     guardian:
-      "Saya mengonfirmasi bahwa saya adalah orang tua atau wali sah dan menyetujui handoff ini untuk anak.",
+      "Saya mengonfirmasi bahwa saya adalah orang tua atau wali sah dan menyetujui pengalihan ke WhatsApp ini untuk anak di bawah umur.",
     guardianFirst:
       "Konfirmasikan kewenangan orang tua atau wali sebelum persetujuan WhatsApp.",
     localReceipt:

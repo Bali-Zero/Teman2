@@ -1,0 +1,55 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night E31 audit item M05 (finding F150, codes E31C E31D E31E E31F E31J): an English loanword in the
+  Indonesian guardian consent. No owner decision; i18n.ts untouched (tree lane), the string lives in ConsentHandoff.tsx.
+mission: >-
+  The Indonesian guardian consent in the Visa Oracle WhatsApp handoff says pengalihan, not the English word handoff.
+lanes:
+  - lane: vn-e31-m05-pengalihan
+    role: build
+    seat: Kimi (kimi-code/kimi-for-coding, tier coding) via scripts/seat_build.sh on Mini, rc 0, 218s, log /Users/nuzantara/nuzantara/.worktrees/seat-build-kimi-20261013T054151Z-31097.log.
+  - lane: vn-e31-m05-pengalihan
+    role: review
+    seat: Claude Opus 5.5 orchestrator (red team, read-only review of git diff origin/main; no cure needed).
+  - lane: e31-ground-truth
+    role: ground_truth
+    seat: >-
+      the sibling ID string already on main in the same file (qr: "Kode QR untuk pengalihan WhatsApp yang telah
+      disetujui") which uses pengalihan for the same concept; the change asserts no figure of its own.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.tsx
+    query_hash: "0832fbfcebb5389a90bd59620a434d7ac4eb85a73a5f396e10534fe2a62d749e" # pragma: allowlist secret
+    note: query_hash = sha256 of ConsentHandoff.tsx at merge-base 45198f199d (before the change).
+pii_scan: clean
+spend:
+  wall_clock_hours: 0.5
+  adversarial_rounds: 1
+  paid_endpoint_usd: 0
+bites: >-
+  Consumer: a parent completing a minor's WhatsApp handoff in Indonesian on the Visa Oracle consent screen in apps/mouth.
+  Observation: after vercel promote (mouth deploys land STAGED), the live minor walk consent screen in ID shows
+  pengalihan, not handoff (desktop; iQOO if available).
+results:
+  - claim: "Whole visa-oracle suite on the build: 56 files, 1455 tests passed (new test: ID guardian string contains pengalihan, no handoff in the rendered ID consent)."
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
+    result: "56 passed (56 files), 1455 passed (1455 tests)"
+    exit: 0
+    ts: "2026-10-13T05:47:27Z"
+    seat: this session
+  - claim: "Mutation: handoff put back in the ID guardian string turns the new test red; restored from a byte copy (cmp clean), 20 of 20 green again."
+    cmd: npx vitest run ConsentHandoff.test.tsx under the mutation
+    result: "1 failed, 19 passed (20)"
+    exit: 1
+    ts: "2026-10-13T05:47:27Z"
+    seat: this session
+  - claim: "Typecheck of apps/mouth is clean and Prettier is clean on both touched files."
+    cmd: cd apps/mouth && npx tsc --noEmit; npx prettier --check on the touched files
+    result: "no errors; all matched files use Prettier code style"
+    exit: 0
+    ts: "2026-10-13T05:47:27Z"
+    seat: this session
+dissent:
+  - seat: "Claude Opus 5.5 red team"
+    objection: "Test asserts /handoff/i over the whole body textContent, which covers the rendered ID strings in that state; strings not rendered in that state (unavailable, consultation) are not covered by the test."
+    status: PLAUSIBLE
+    disposition: "Acceptable for this one-concern fix; all ID values were read in the diff and none contains handoff. Not cured."

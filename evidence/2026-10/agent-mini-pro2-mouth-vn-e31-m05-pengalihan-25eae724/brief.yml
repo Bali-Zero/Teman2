@@ -1,0 +1,14 @@
+gear: 1
+gear_reason: >-
+  One mouth component string and its test; no data, pack, copy file or i18n.ts change.
+mission: >-
+  The Indonesian guardian consent in the Visa Oracle WhatsApp handoff says pengalihan, not the English word handoff.
+objective: >-
+  The id guardian consent reads "...menyetujui pengalihan ke WhatsApp ini untuk anak di bawah umur."; no Indonesian
+  string in ConsentHandoff contains handoff; English copy is unchanged.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.test.tsx
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
