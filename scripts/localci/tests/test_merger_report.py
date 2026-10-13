@@ -260,10 +260,10 @@ def merged_world(n_prs, span_days=0.0, contexts=None):
     return recs, FakeGH(pulls, checks)
 
 
-# lead's ruling 2026-10-07: READY needs >= 50 compared merges AND >= 14 days between the first and the last AND 0 FALSE_GREEN
-@pytest.mark.parametrize("n_prs,span_days,ready", [(50, 14.0, True), (49, 14.0, False), (50, 14 - 1 / 86400, False), (50, 0.0, False),
-                                                   (2, 14.0, False)])
-def test_phase_e_readiness_needs_fifty_compared_merges_and_fourteen_days_between_them(tmp_path, monkeypatch, capsys, n_prs, span_days,
+# lead's ruling 2026-10-07: READY needs >= 50 compared merges AND >= 5 days between (owner ruling 2026-10-13, was 14) the first and the last AND 0 FALSE_GREEN
+@pytest.mark.parametrize("n_prs,span_days,ready", [(50, 5.0, True), (50, 14.0, True), (49, 5.0, False), (50, 5 - 1 / 86400, False),
+                                                   (50, 0.0, False), (2, 5.0, False)])
+def test_phase_e_readiness_needs_fifty_compared_merges_and_five_days_between_them(tmp_path, monkeypatch, capsys, n_prs, span_days,
                                                                                       ready):
     recs, gh = merged_world(n_prs, span_days)
     rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
@@ -272,9 +272,9 @@ def test_phase_e_readiness_needs_fifty_compared_merges_and_fourteen_days_between
 
 
 def test_the_journal_order_does_not_change_readiness(tmp_path, monkeypatch):
-    recs, gh = merged_world(50, 14.0)
+    recs, gh = merged_world(50, 5.0)
     rc, rep = run_report(tmp_path, monkeypatch, recs[::-1], gh)
-    assert rep["window"]["compared_days"] == 14.0 and rep["phase_e_ready"] is True and rc == 0
+    assert rep["window"]["compared_days"] == 5.0 and rep["phase_e_ready"] is True and rc == 0
 
 
 def test_one_merge_decided_twice_fourteen_days_apart_is_one_merge_and_no_span(tmp_path, monkeypatch):
@@ -292,15 +292,15 @@ def test_merges_compared_on_fewer_contexts_than_phase_b_are_not_evidence(tmp_pat
     assert rep["window"]["merged_prs"] == 50 and rep["window"]["compared_merges"] == 0 and rep["phase_e_ready"] is False and rc == 0
 
 
-def test_fourteen_days_of_decisions_without_a_compared_merge_are_not_ready(tmp_path, monkeypatch):
+def test_weeks_of_decisions_without_a_compared_merge_are_not_ready(tmp_path, monkeypatch):
     recs = [decision(1, A, "BLOCKED", ts="2026-10-01T00:00:00Z"), decision(1, A, "BLOCKED", ts="2026-10-20T00:00:00Z")]
     rc, rep = run_report(tmp_path, monkeypatch, recs, FakeGH({1: pull(A)}, {A: "success"}))
-    assert rep["window"]["days"] >= 14 and rep["window"]["compared_merges"] == 0 and rep["phase_e_ready"] is False and rc == 0
+    assert rep["window"]["days"] >= mg.READY_MIN_DAYS and rep["window"]["compared_merges"] == 0 and rep["phase_e_ready"] is False and rc == 0
 
 
 @pytest.mark.parametrize("source", ["recorded", "context-now", "decision"])
 def test_any_one_false_green_keeps_fifty_compared_merges_not_ready(tmp_path, monkeypatch, source):
-    recs, gh = merged_world(50, 14.0)   # ready on counts and days: only the false green stands in the way
+    recs, gh = merged_world(50, 5.0)   # ready on counts and days: only the false green stands in the way
     if source == "recorded":
         recs[7] = {**recs[7], "hosted_compare": {"counts": {"FALSE_GREEN": 1}}}
     else:   # an open PR whose head GitHub has red: the local gate said OK on its contexts (and, for "decision", PASS overall)

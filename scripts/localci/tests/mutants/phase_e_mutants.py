@@ -35,6 +35,7 @@ MUTANTS = {
     "pe-report-age-unchecked": ("        elif age > max_age:", "        elif False:"),
     "pe-window-merges-unchecked": ("cm >= READY_MERGES", "cm >= 0"),
     "pe-window-days-unchecked": ("cd >= READY_DAYS", "cd >= 0"),
+    "pe-window-days-strict": ("cd >= READY_DAYS", "cd > READY_DAYS"),
     "pe-window-false-green-unchecked": ("and all(type(x) is int and x == 0 for x in fgs)", "and True"),
     "pe-false-green-one-level-only": ('fgs = (counts.get("FALSE_GREEN"), ctx.get("FALSE_GREEN"), rep.get("recorded_context_false_green"))',
                                       'fgs = (counts.get("FALSE_GREEN"),)'),
