@@ -1,7 +1,7 @@
 gear: 2
 brief_ref: evidence/brief.yml
 plan_ref: >-
-  visa-night work plan PR-02 (/Users/nuzantara/visa-night/work/PR-02.task.md), built on origin/main edeb8e3a23
+  visa-night work plan PR-02 (/Users/nuzantara/visa-night/work/PR-02.task.md), built on origin/main 9011e91177
   which contains V01 #8422. Generated 2026-10-13T05:11:26Z.
 mission: >-
   The Visa Oracle support reasons for E23U and E23V restate the answers the visitor gave.
@@ -19,7 +19,7 @@ lanes:
       Indonesia) are the wording of q.sponsor_trade_office in i18n.ts, the question that sets the boolean.
     nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
     query_hash: "59f4227ad7405b4d4dfe2a92b06342e9e0bc1e229214da23493d2d7319caab76" # pragma: allowlist secret
-    note: query_hash = sha256 of engine-adapter.ts at origin/main edeb8e3a23 (before the change).
+    note: query_hash = sha256 of engine-adapter.ts at origin/main 9011e91177 (before the change).
 pii_scan: clean
 bites: >-
   Consumer: the public Visa Oracle result page (OutcomeSheet reading SUPPORT_REASON_COPY in engine-adapter.ts) and the
@@ -31,19 +31,25 @@ spend:
   adversarial_rounds: 1
   paid_api: none
   note: >-
-    One implementer session plus one red-team round by codex gpt-5.6-sol (subscription CLI, rollout rollout-2026-10-13T01-53-54-01a1313f-e759-72f1-833a-186c08a667c6); no paid per-token API.
+    One implementer session plus one red-team round by codex gpt-5.6-sol (subscription CLI, rollout rollout-2026-10-13T12-59-21-01a133a1-26b2-7bb0-96f8-c082613f8401); no paid per-token API.
 results:
   - claim: "The whole visa-oracle mouth suite after the change."
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
     result: "Test Files 56 passed (56); Tests 1457 passed (1457) at the head"
+    exit: 0
+    ts: "2026-10-13T05:11:26Z"
+    ts_note: "upper bound (pack authoring time, read from the clock); the run itself was earlier"
   - claim: "Mutation: sponsored by that diplomat put back in the E23U EN reason."
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/copy-truth.test.ts'
     result: "2 failed (exact-sentence pin and the false-claim ban); restored afterwards"
+    exit: 1
+    ts: "2026-10-13T05:11:26Z"
+    ts_note: "upper bound (pack authoring time, read from the clock); the run itself was earlier"
 decisions:
   - id: D-em-dash
     decision: "Sentences keep the pack's em dash before the product name, as the product names and neighbouring reasons do."
 dissent:
-  - seat: "codex gpt-5.6-sol, rollout rollout-2026-10-13T01-53-54-01a1313f-e759-72f1-833a-186c08a667c6 (red team, HIGH)"
+  - seat: "codex gpt-5.6-sol, rollout rollout-2026-10-13T12-59-21-01a133a1-26b2-7bb0-96f8-c082613f8401 (red team, HIGH)"
     objection: "The sentences omit the EMPLOYMENT purpose that both rules check."
     status: PLAUSIBLE
     disposition: >-
