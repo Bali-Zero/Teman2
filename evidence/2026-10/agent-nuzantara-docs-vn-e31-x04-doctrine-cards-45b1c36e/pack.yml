@@ -1,0 +1,58 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night family "e31", plan entry E31-X04 (findings F045, F144, F145): the doctrine cards contradicted the regulation text
+  on E31D (age/marital gate), left E31G's child-age rule as a GAP, did not record that E31F has no age limit, and did not
+  record that the E31B page document list and the 36/2021 Penjamin instrument are repealed. Docs-only; no owner decision.
+mission: >-
+  The four E31 doctrine cards say only what the cited regulation and the official pages say.
+lanes:
+  - lane: e31-x04-doctrine-cards
+    role: build
+    seat: Claude Opus 5.5 session on Pro (worktree docs-vn-e31-x04-doctrine-cards).
+  - lane: e31-x04-doctrine-cards
+    role: review
+    seat: Codex gpt-5.6-sol read-only red team (generator is not grader); model verified in the rollout file.
+pii_scan: clean
+bites: >-
+  Consumer: whoever reads these cards as input to a pack fold or an engine change. No code parses the cards (claim_ledger.py
+  parses the claims/*.md ledgers, not cards/*.md); the readers are the /visaoracle corner skill and the seq-29 author, and
+  apps/mouth/.../fact-mapper.ts points at E31B.md section 4 in a comment. Observation: after merge, a grep of
+  research/visa/doctrine-factory/cards/E31D.md on origin/main finds no sentence proposing `applicant.age < 18` as a gate and
+  finds the "Age limits. None." paragraph in section 3.10; E31G.md section 3.4 contains "21 (dua puluh satu) tahun atau lebih".
+results:
+  - claim: "Permenkumham 22/2023 Pasal 33(2)h angka 4/6/7 and Pasal 46/48/49 read as the cards now state (BPK PDF, pdftotext)."
+    cmd: pdftotext -layout Permenkumham-22-2023.pdf and read Pasal 33, 43-50
+    result: "angka 4 and Pasal 46: no age/marital limit; angka 6 and Pasal 48: none; angka 7 and Pasal 49: 21 (dua puluh satu) tahun atau lebih"
+    exit: 0
+    ts: "2026-10-13T09:30:00Z"
+    seat: this session
+  - claim: "The official E31D, E31F and E31G page snapshots (seq-28 reattest text) state no age or marital limit."
+    cmd: grep -n -i -E 'usia|umur|belum kawin|21|18 \(' research/visa/2026-10-11-organ-reattest-seq28/text/{50457cd0,f9306203,86880290}-*.txt
+    result: "no age or marital-status line on any of the three pages"
+    exit: 0
+    ts: "2026-10-13T09:35:00Z"
+    seat: this session
+  - claim: "Permenimipas 5/2025 Pasal 1 repeals Permenkumham 36/2021 (ditetapkan 7 February 2025, effective on promulgation)."
+    cmd: pdftotext -layout Permen-Imipas-5-2025.pdf and read Pasal 1-2
+    result: "Pasal 1: dicabut dan dinyatakan tidak berlaku"
+    exit: 0
+    ts: "2026-10-13T09:40:00Z"
+    seat: this session
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T09-00-02-01a132c6-0be0-7703-96fb-f221e54bd669.jsonl, model verified in the rollout file)"
+    objection: "HIGH: E31D adversarial-review finding 2 still read 'CONFIRMED, cured' and attributed the under-18 limit to Pasal 46(2); a 'Superseded' note after it did not remove the contradiction."
+    status: CONFIRMED
+    disposition: "CURED: finding 2 is rewritten as WITHDRAWN with the correct anchor (angka 5 / Pasal 47, E31E)."
+  - seat: "codex-gpt-5.6-sol (same red team)"
+    objection: "MEDIUM: E31B said the page 'follows a revoked article'; the sources prove the text matches Pasal 43 and diverges from Pasal 44, not which norm the page was derived from."
+    status: CONFIRMED
+    disposition: "CURED: now 'reproduces the former Pasal 43 document pattern and is inconsistent with operative Pasal 44'."
+  - seat: "codex-gpt-5.6-sol (same red team)"
+    objection: "LOW: E31B said 36/2021 'is not cited by this card' while the same section cites it."
+    status: CONFIRMED
+    disposition: "CURED: 'No E31 rule relies on 36/2021 as authority; this note mentions it only to record its repeal.'"
+  - seat: "red team (this session)"
+    objection: "NOTE: the audit finding F145 says E31 pages link 36/2021; the saved page text shows no such citation under Dasar hukum, so the card states the repeal and treats a live link, if any, as unverified."
+    status: PLAUSIBLE
+    disposition: "Accepted; the card says so explicitly rather than asserting the link."

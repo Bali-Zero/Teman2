@@ -1,0 +1,19 @@
+gear: 1
+gear_reason: >-
+  Docs-only change to four research doctrine cards (markdown, no runtime code, no data, no pack, no copy). No hot zone is touched.
+mission: >-
+  The four E31 doctrine cards (E31D, E31G, E31F, E31B) say only what the cited regulation and the official imigrasi.go.id
+  pages say, so a seq-29 author reading them is not sent to build a gate the regulation does not contain.
+objective: >-
+  E31D no longer proposes an under-18/unmarried gate (Pasal 33(2)h angka 4 / Pasal 46 carry no age or marital limit; that is
+  E31E, angka 5 / Pasal 47); E31G records the child-age rule 21 or older (angka 7 / Pasal 49); E31F records that no source
+  states an age limit (angka 6 / Pasal 48); E31B records that the page document list mirrors repealed Pasal 43 while Pasal 44
+  is its article, and that Permenkumham 36/2021 is repealed by Permenimipas 5/2025.
+scope:
+  - research/visa/doctrine-factory/cards/E31D.md
+  - research/visa/doctrine-factory/cards/E31G.md
+  - research/visa/doctrine-factory/cards/E31F.md
+  - research/visa/doctrine-factory/cards/E31B.md
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
