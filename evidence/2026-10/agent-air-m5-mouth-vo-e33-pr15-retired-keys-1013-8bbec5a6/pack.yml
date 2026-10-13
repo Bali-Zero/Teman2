@@ -10,6 +10,14 @@ lanes:
   - lane: e33-pr15
     role: build
     seat: claude-sonnet-5 (Claude Code workflow subagent), worktree mouth-vo-e33-pr15-retired-keys-1013 on M5.
+  - lane: e33-pr15-ground-truth
+    role: ground_truth
+    seat: >-
+      The signed rule packs (seq 6 to 29) as the emission source: the change asserts no rule of its own, it only
+      pins which reason codes the signed packs emit against the copy table in engine-adapter.ts.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "0e3263543a5ed7890b6c1cafd9de238a9b59419fef5c72a8ef01ebfac3fecea6" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at origin/main (before the change).
 pii_scan: clean
 bites:
   consumer: >-
