@@ -1,0 +1,56 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night family "e31", follow-up E31-X04b from the #8415 gate: the E31D card section 3.11 said all three document classes are
+  sworn-translated into Indonesian unless in English, but Pasal 46(2) huruf b angka 2 and huruf c carry no translation. Docs-only;
+  no owner decision.
+mission: >-
+  The E31D doctrine card says only what Pasal 46(2) and the official E31D page say about sworn translation.
+lanes:
+  - lane: e31-x04b-e31d-translation
+    role: build
+    seat: Claude Opus 5.5 session on Pro (worktree docs-vn-e31-x04b-e31d-translation).
+  - lane: e31-x04b-e31d-translation
+    role: review
+    seat: Codex gpt-5.6-sol read-only red team (generator is not grader); model verified in the rollout file.
+pii_scan: clean
+bites: >-
+  Consumer: the seq-29 author and the /visaoracle corner skill, who read the E31D card as input to a pack fold or engine change
+  (no code parses cards/*.md). Observation: after merge, a grep of research/visa/doctrine-factory/cards/E31D.md on origin/main
+  shows the "huruf b angka 2" sentence and no "All three document classes are mandatory, sworn-translated".
+results:
+  - claim: "Pasal 46(2) puts the sworn translation on huruf a (birth certificate) and huruf b angka 1 (foreign marriage certificate), each except in English; huruf b angka 2 (buku nikah/akta perkawinan, Indonesia) and huruf c (KK) have none."
+    cmd: grep -n -A45 'Pasal 46' permenkumham-22-2023.txt (scratchpad rt copy), lines 1806-1850
+    result: "translation clause present only in huruf a and huruf b angka 1; absent in huruf b angka 2 and huruf c"
+    exit: 0
+    ts: "2026-10-13T04:40:00Z"
+    seat: this session
+  - claim: "The official E31D page lists the same, with the asterisk 'tidak diperlukan jika dokumen dalam bahasa Inggris'."
+    cmd: sed -n 95,110p research/visa/2026-10-11-organ-reattest-seq28/text/50457cd0-20261011T180020Z.txt
+    result: "translation marked on akta kelahiran and the foreign marriage record; buku nikah (Indonesia) and KK unmarked"
+    exit: 0
+    ts: "2026-10-13T04:41:00Z"
+    seat: this session
+  - claim: "The old overclaim sentence is gone from the card."
+    cmd: grep -c 'All three document classes are mandatory, sworn' research/visa/doctrine-factory/cards/E31D.md
+    result: "0 matches"
+    exit: 1
+    ts: "2026-10-13T04:42:00Z"
+    seat: this session
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T12-36-25-01a1338c-2636-7171-a16b-bdf642d7bb83.jsonl, model verified in the rollout file)"
+    objection: "HIGH: item 17 says all four documents are authenticated/legalized/apostilled; neither Pasal 46(2) nor the page requires it."
+    status: CONFIRMED
+    disposition: "CURED in a separate commit: reworded to civil-registry/official documents, not self-declared."
+  - seat: "codex-gpt-5.6-sol (same red team)"
+    objection: "HIGH: item 16 keeps 'sworn-translation/legalization requirement'; legalization is unsupported, and the four-document bundle omits the Pasal 46(1) general items."
+    status: CONFIRMED
+    disposition: "CURED: legalization claim removed, pointer to item 11 and to the Pasal 46(1) general items added."
+  - seat: "codex-gpt-5.6-sol (same red team)"
+    objection: "MEDIUM: item 11 lead-in 'certified, authenticated proof' is unsupported."
+    status: CONFIRMED
+    disposition: "CURED: now 'Independent documentary proof'."
+  - seat: "codex-gpt-5.6-sol (same red team)"
+    objection: "Verdict: the new item 11 block (lines 84-90) adheres to Pasal 46(2) and the page."
+    status: CONFIRMED
+    disposition: "No change needed."

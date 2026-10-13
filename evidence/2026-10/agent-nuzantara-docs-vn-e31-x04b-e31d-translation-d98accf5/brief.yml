@@ -1,0 +1,15 @@
+gear: 1
+gear_reason: >-
+  Docs-only change to one research doctrine card (markdown, no runtime code, no data, no pack, no copy). No hot zone is touched.
+mission: >-
+  The E31D doctrine card says the sworn Indonesian translation applies only where Permenkumham 22/2023 Pasal 46(2) puts it
+  (birth certificate; foreign marriage certificate), so a seq-29 author is not sent to demand a translation of a buku nikah
+  issued in Indonesia or of the Kartu Keluarga.
+objective: >-
+  Card section 3.11 no longer says all three document classes are sworn-translated; it states huruf a and huruf b angka 1 carry
+  the translation, huruf b angka 2 and huruf c do not, and drops the unsupported legalization/apostille wording (items 11, 16, 17).
+scope:
+  - research/visa/doctrine-factory/cards/E31D.md
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
