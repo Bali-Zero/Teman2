@@ -23,6 +23,12 @@ a mission Zero declared ORANGE, which releases that one mission under PARABELLUM
    permits it.
 2. **Arm means freeze.** After `mq arm`, the branch is read-only. Put every follow-up in a new
    PR created from a fresh `origin/main`.
+   **"Arm" is "signal merge intent".** `scripts/signal_merge_intent.sh <PR>` (called by `mq arm` and
+   `lane_ship.sh`) applies the label `localci:merge-shadow-ok` first, then arms GitHub auto-merge
+   only while `rules/branches/main` still carries a `merge_queue` rule; with no such rule it sets
+   the label and skips the arm (not an error). The LocalCI merger merges only labelled PRs, so a
+   labelled-but-unarmed PR is armed: `queue_rearm`, `queue_shepherd` and
+   `queue_rearm_population.sh` count the label and never re-arm or alarm on it.
 3. **Never rerun a check without first knowing WHY it is red.** The gesture depends on the cause,
    and a blanket prohibition here deadlocked two PRs on 2026-08-21. If the red is the CODE or the
    base has moved, `gh run rerun` replays a stale merge ref (W111) — repoint it: `mq requeue`, or

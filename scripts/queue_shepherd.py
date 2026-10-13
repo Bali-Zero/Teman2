@@ -413,6 +413,9 @@ def red_cause_fingerprint(run: dict[str, Any] | None, jobs: list[dict[str, Any]]
     return None  # no job-level detail and the run's own conclusion doesn't say infra either
 
 
+MERGE_INTENT_LABEL = "localci:merge-shadow-ok"
+
+
 def is_rearm_candidate(pr: dict[str, Any]) -> bool:
     """Pure gate: is this open PR a re-arm candidate this tick?
 
@@ -428,6 +431,8 @@ def is_rearm_candidate(pr: dict[str, Any]) -> bool:
         return False
     if pr.get("in_queue") or pr.get("auto_merge_enabled"):
         return False  # already armed or already queued — W111, not our concern
+    if pr.get("merge_intent_label"):
+        return False  # LocalCI merge-intent label IS the arm once the merge_queue rule is gone
     head_ref = pr.get("head_ref_name") or ""
     if not (head_ref.startswith("agent/") or pr.get("has_fable_gate_status")):
         return False  # not armed by this repo's own convention — never touch a PR we didn't arm
@@ -885,6 +890,7 @@ query($owner:String!, $repo:String!, $cursor:String) {
         mergeStateStatus
         autoMergeRequest { enabledAt }
         mergeQueueEntry { state }
+        labels(first: 30) { nodes { name } }
         commits(last:1) {
           nodes {
             commit {
@@ -941,6 +947,10 @@ def _normalize_rearm_pr(node: dict[str, Any]) -> dict[str, Any]:
         "merge_state_status": node.get("mergeStateStatus"),
         "auto_merge_enabled": bool(node.get("autoMergeRequest")),
         "in_queue": bool(node.get("mergeQueueEntry")),
+        "merge_intent_label": any(
+            lb.get("name") == MERGE_INTENT_LABEL
+            for lb in ((node.get("labels") or {}).get("nodes") or [])
+        ),
         "status_rollup_state": rollup_state,
         "has_fable_gate_status": _pr_has_fable_gate_status(node),
     }

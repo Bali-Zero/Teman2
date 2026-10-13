@@ -103,7 +103,7 @@ echo "in queue now: ${inq:-<empty>}"
 #    (memory: lesson_an_empty_set_impersonates_everything_and_nothing)
 # ---------------------------------------------------------------------------
 all_open=$(gh pr list --repo "$REPO" --state open --limit 100 \
-           --json number,mergeable,autoMergeRequest,title 2>/dev/null)
+           --json number,mergeable,autoMergeRequest,labels,title 2>/dev/null)
 probe_rc=$?
 if (( probe_rc != 0 )); then
   echo "🔌 pull-request probe FAILED (rc=$probe_rc) — no verdict."

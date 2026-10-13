@@ -194,6 +194,16 @@ def test_candidate_innocence_clean_disarmed_agent_branch_is_selected():
     assert qs.is_rearm_candidate(_pr()) is True
 
 
+def test_candidate_guilt_merge_intent_label_counts_as_armed():
+    assert qs.is_rearm_candidate(_pr(merge_intent_label=True)) is False
+
+
+def test_normalize_reads_merge_intent_label_from_graphql_nodes():
+    node = {"number": 5, "labels": {"nodes": [{"name": "x"}, {"name": qs.MERGE_INTENT_LABEL}]}}
+    assert qs._normalize_rearm_pr(node)["merge_intent_label"] is True
+    assert qs._normalize_rearm_pr({"number": 5})["merge_intent_label"] is False
+
+
 def test_candidate_innocence_blocked_with_green_rollup_is_selected():
     assert qs.is_rearm_candidate(_pr(merge_state_status="BLOCKED", status_rollup_state="SUCCESS")) is True
 

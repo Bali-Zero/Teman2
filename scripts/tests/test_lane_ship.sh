@@ -80,6 +80,7 @@ case "${1:-}" in
         done
         exit "$rc"
         ;;
+      edit) exit 0 ;;
       merge)
         rc=0
         [ -f "$FAKE_GH_STATE/arm_rc" ] && rc="$(cat "$FAKE_GH_STATE/arm_rc")"
@@ -90,6 +91,7 @@ case "${1:-}" in
     ;;
   api)
     case "${2:-}" in
+      repos/*/rules/branches/*) echo "${FAKE_RULES_COUNT:-1}"; exit 0 ;;
       graphql)
         rc=0
         [ -f "$FAKE_GH_STATE/graphql_rc" ] && rc="$(cat "$FAKE_GH_STATE/graphql_rc")"

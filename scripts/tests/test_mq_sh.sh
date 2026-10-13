@@ -102,6 +102,7 @@ case "${1:-}" in
         echo '{}'
         exit 0
         ;;
+      edit) exit 0 ;;
       merge)
         case " $* " in
           *" --disable-auto "*)
@@ -119,6 +120,7 @@ case "${1:-}" in
     esac
     ;;
 esac
+if [ "${1:-}" = api ] && [ "${2#repos/}" != "${2:-}" ]; then echo 1; exit 0; fi  # rules/branches probe: queue present
 echo "FAKE_GH: unhandled invocation: $*" >&2
 exit 99
 FAKEGH
