@@ -14,9 +14,10 @@ import re
 from pathlib import Path
 
 REPO_ROOT = next(p for p in Path(__file__).resolve().parents if (p / "apps").is_dir())
-SEED_PATH = REPO_ROOT / "apps/backend-rag/backend/migrations/scripts/seed_visa_types_complete_2026.py"
+SEED_PATH = (
+    REPO_ROOT / "apps/backend-rag/backend/migrations/scripts/seed_visa_types_complete_2026.py"
+)
 PACKS_DIR = REPO_ROOT / "apps/backend-rag/backend/services/visa_engine/contracts/packs"
-PROD_PACK = re.compile(r"^rulepack-prod-(\d+)\.signed\.json$")
 QUOTE = "contact for quote"
 
 
@@ -27,20 +28,33 @@ def _seed_rows() -> list[dict]:
     return ast.literal_eval(m.group(1))
 
 
+def _active_pack() -> dict:
+    packs = []
+    for path in PACKS_DIR.glob("rulepack-prod-*.signed.json"):
+        pack = json.loads(path.read_text())
+        if pack["protected"]["environment"] == "PRODUCTION":
+            packs.append((pack["payload"]["sequence"], pack))
+    assert packs, "no signed PRODUCTION pack found"
+    return max(packs, key=lambda item: item[0])[1]
+
+
 def _active_pack_pricing_keys() -> dict[str, object]:
-    packs = [(int(m.group(1)), p) for p in PACKS_DIR.iterdir() if (m := PROD_PACK.match(p.name))]
-    assert packs, "no signed prod pack found"
-    _, path = max(packs)
-    products = json.loads(path.read_text())["payload"]["products"]
-    return {p["product_code"]: p["pricing_key"] for p in products}
+    return {p["product_code"]: p["pricing_key"] for p in _active_pack()["payload"]["products"]}
 
 
 def _e23_children() -> list[dict]:
     return [r for r in _seed_rows() if r.get("metadata", {}).get("inherited_from") == "E23"]
 
 
-def test_e23_children_exist():
-    assert {r["code"] for r in _e23_children()} >= {"E23U", "E23V"}
+def test_e23_children_are_the_audited_set():
+    assert {r["code"] for r in _e23_children()} == {"E23A", "E23U", "E23V", "E23X", "E23Y"}
+
+
+def test_pack_declares_e23u_and_e23v_with_null_pricing_key():
+    pricing = _active_pack_pricing_keys()
+    assert pricing["E23"] is not None
+    assert "E23U" in pricing and pricing["E23U"] is None
+    assert "E23V" in pricing and pricing["E23V"] is None
 
 
 def test_unpriced_e23_children_carry_contact_for_quote():
