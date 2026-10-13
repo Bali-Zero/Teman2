@@ -1898,7 +1898,7 @@ describe("OutcomeSheet — typical processing time in the share summary", () => 
       const w = { ...WINDOW, workingDaysMin: min, workingDaysMax: max };
       const summary = await summaryFor(w);
       expect(summary).toMatch(
-        /TEST-1 — Test path: IDR\s1,000,000 · 2-year stay permit · /,
+        /TEST-1 — Test path: IDR\s1,000,000 · Government fees and Bali Zero service included\. · 2-year stay permit · /,
       );
       expect(summary).toContain(` · ${en}`);
       expect(summary).not.toMatch(/Oct|2026-10|today/);
@@ -1932,39 +1932,64 @@ describe("OutcomeSheet — typical processing time in the share summary", () => 
   });
 });
 
-describe("OutcomeSheet — zero price reads Free/Gratis (VN-visit-V02 F012/F105)", () => {
-  function candidateWithAmount(amount: number): OutcomeCandidate {
-    const price: OutcomePrice = {
+describe("OutcomeSheet — price heading and shared price basis (VN-investor-I-M04)", () => {
+  function availablePrice(amount: number): OutcomePrice {
+    return {
       status: "AVAILABLE",
       currency: "IDR",
       amount,
       allInclusive: true,
       quotedAtIso: "2026-07-23T00:00:00Z",
     };
-    return { ...CANDIDATE, price };
   }
 
-  function outcomeWithCandidate(candidate: OutcomeCandidate): OutcomeViewModel {
+  function outcomeWithPrice(price: OutcomePrice): OutcomeViewModel {
     const base = outcomeFor("SUPPORTED_CANDIDATES");
     if (base.state !== "SUPPORTED_CANDIDATES") {
       throw new Error("test fixture state mismatch");
     }
-    return { ...base, candidates: [candidate] };
+    return { ...base, candidates: [{ ...CANDIDATE, price }] };
+  }
+
+  function renderPrice(language: Language, price: OutcomePrice) {
+    return render(
+      <OutcomeSheet
+        language={language}
+        outcome={outcomeWithPrice(price)}
+        facts={FACTS}
+      />,
+    );
+  }
+
+  async function copySummary(
+    language: Language,
+    price: OutcomePrice,
+  ): Promise<string> {
+    renderPrice(language, price);
+    const writeText = navigator.clipboard.writeText as ReturnType<typeof vi.fn>;
+    writeText.mockClear();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: language === "id" ? /salin ringkasan/i : "Copy summary",
+      }),
+    );
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    return writeText.mock.calls[0]?.[0] as string;
   }
 
   it.each<Language>(["en", "id"])(
     "renders the sheet's zero price as %s Free/Gratis, with no IDR 0 and no all-inclusive note",
     (language) => {
-      const { container } = render(
-        <OutcomeSheet
-          language={language}
-          outcome={outcomeWithCandidate(candidateWithAmount(0))}
-          facts={FACTS}
-        />,
-      );
+      const { container } = renderPrice(language, availablePrice(0));
       const value = container.querySelector(".oracle-price__value");
       expect(value).toHaveTextContent(language === "id" ? "Gratis" : "Free");
       expect(value).not.toHaveTextContent(/IDR|Rp/);
+      expect(
+        screen.getByRole("heading", {
+          name:
+            language === "id" ? "Harga all-inclusive" : "All-inclusive price",
+        }),
+      ).toBeInTheDocument();
       expect(
         screen.queryByText(
           language === "id"
@@ -1978,46 +2003,67 @@ describe("OutcomeSheet — zero price reads Free/Gratis (VN-visit-V02 F012/F105)
   it.each<Language>(["en", "id"])(
     "writes the share summary's zero price as %s Free/Gratis, never IDR 0 / Rp 0",
     async (language) => {
-      render(
-        <OutcomeSheet
-          language={language}
-          outcome={outcomeWithCandidate(candidateWithAmount(0))}
-          facts={FACTS}
-        />,
-      );
-      const writeText = navigator.clipboard.writeText as ReturnType<
-        typeof vi.fn
-      >;
-      writeText.mockClear();
-      fireEvent.click(
-        screen.getByRole("button", {
-          name: language === "id" ? /salin ringkasan/i : "Copy summary",
-        }),
-      );
-      await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-      const summary = writeText.mock.calls[0]?.[0] as string;
+      const summary = await copySummary(language, availablePrice(0));
       expect(summary).toContain(
         language === "id"
           ? "TEST-1 — Jalur uji: Gratis"
           : "TEST-1 — Test path: Free",
       );
       expect(summary).not.toMatch(/IDR|Rp/);
+      expect(summary).not.toMatch(/Government fees|biaya pemerintah/);
     },
   );
 
-  it("keeps the non-zero price as IDR with the all-inclusive note (regression)", () => {
-    const { container } = render(
-      <OutcomeSheet
-        language="en"
-        outcome={outcomeWithCandidate(candidateWithAmount(1_000_000))}
-        facts={FACTS}
-      />,
-    );
-    expect(container.querySelector(".oracle-price__value")).toHaveTextContent(
-      /IDR.*1,000,000/,
-    );
-    expect(
-      screen.getByText("Government fees and Bali Zero service included."),
-    ).toBeInTheDocument();
-  });
+  it.each<Language>(["en", "id"])(
+    "keeps the %s non-zero price heading and carries its all-inclusive basis into the share line",
+    async (language) => {
+      const { container } = renderPrice(language, availablePrice(1_000_000));
+      expect(container.querySelector(".oracle-price__value")).toHaveTextContent(
+        language === "id" ? /Rp.*1\.000\.000/ : /IDR.*1,000,000/,
+      );
+      const label =
+        language === "id" ? "Harga all-inclusive" : "All-inclusive price";
+      const basis =
+        language === "id"
+          ? "Sudah termasuk biaya pemerintah dan jasa Bali Zero."
+          : "Government fees and Bali Zero service included.";
+      expect(screen.getByRole("heading", { name: label })).toBeInTheDocument();
+      expect(screen.getByText(basis)).toBeInTheDocument();
+      cleanup();
+      expect(await copySummary(language, availablePrice(1_000_000))).toContain(
+        ` · ${basis}`,
+      );
+    },
+  );
+
+  it.each([
+    [
+      "CONTACT_REQUIRED",
+      "Price on consultation",
+      "Harga berdasarkan konsultasi",
+    ],
+    ["UNAVAILABLE", "Price unavailable", "Harga belum tersedia"],
+  ] as const)(
+    "%s renders no price heading and shares the localized message in EN and ID",
+    async (status, en, id) => {
+      const price: OutcomePrice = { status, message: text(en, id) };
+      for (const language of ["en", "id"] as const) {
+        renderPrice(language, price);
+        expect(
+          screen.queryByRole("heading", {
+            name:
+              language === "id" ? "Harga all-inclusive" : "All-inclusive price",
+          }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByText(language === "id" ? id : en),
+        ).toBeInTheDocument();
+        cleanup();
+        expect(await copySummary(language, price)).toContain(
+          `: ${language === "id" ? id : en}`,
+        );
+        cleanup();
+      }
+    },
+  );
 });

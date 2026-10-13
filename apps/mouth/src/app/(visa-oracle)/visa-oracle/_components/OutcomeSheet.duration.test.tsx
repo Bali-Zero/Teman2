@@ -170,13 +170,15 @@ describe("OutcomeSheet — stay-permit duration under the price", () => {
         option(730, 15_000_000, true),
       ],
     });
-    expect(summary).toMatch(/: IDR\s15,000,000 · 2-year stay permit$/m);
+    expect(summary).toMatch(
+      /: IDR\s15,000,000 · Government fees and Bali Zero service included\. · 2-year stay permit$/m,
+    );
   });
 
   it("share summary: a priced candidate without a duration still carries its price", async () => {
     const summary = await copiedSummary({});
     expect(summary.replace(/[\u00a0\u202f]/g, " ")).toMatch(
-      /^[A-Z0-9]+ — .+: IDR 15,000,000$/m,
+      /^[A-Z0-9]+ — .+: IDR 15,000,000 · Government fees and Bali Zero service included\.$/m,
     );
     expect(summary).not.toMatch(/stay permit/);
   });
@@ -184,7 +186,7 @@ describe("OutcomeSheet — stay-permit duration under the price", () => {
   it("share summary: a candidate with neither price nor duration is just its name", async () => {
     const summary = await copiedSummary({}, "en", false);
     expect(summary).not.toMatch(/stay permit|·|IDR/);
-    expect(summary).toMatch(/^[A-Z0-9]+ — [^:]+$/m);
+    expect(summary).toMatch(/^[A-Z0-9]+ — [^:]+: [^·]+$/m);
   });
 
   it("share summary reads in Indonesian", async () => {

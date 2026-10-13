@@ -204,12 +204,17 @@ function buildShareSummary(
         localized(candidate.name, language),
       )}`;
       const timing = shareTimingText(language, candidate.timeline);
-      const parts = [
+      const priceParts =
         candidate.price.status === "AVAILABLE"
           ? candidate.price.amount === 0
-            ? translate(language, "outcome.price_free" as I18nKey)
-            : formatIDR(candidate.price.amount, language)
-          : null,
+            ? [translate(language, "outcome.price_free" as I18nKey)]
+            : [
+                formatIDR(candidate.price.amount, language),
+                translate(language, "outcome.price_all_inclusive" as I18nKey),
+              ]
+          : [localized(candidate.price.message, language)];
+      const parts = [
+        ...priceParts,
         candidate.duration
           ? durationLabel(language, candidate.duration.selectedDays, "permit")
           : null,
@@ -767,9 +772,11 @@ function CandidateCard({
           <Timeline language={language} timeline={candidate.timeline} />
         </section>
         <section>
-          <h3 className="oracle-outcome__section-title">
-            {translate(language, "outcome.price_label")}
-          </h3>
+          {candidate.price.status === "AVAILABLE" && (
+            <h3 className="oracle-outcome__section-title">
+              {translate(language, "outcome.price_label")}
+            </h3>
+          )}
           <Price
             language={language}
             price={candidate.price}
