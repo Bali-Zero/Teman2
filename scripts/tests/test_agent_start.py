@@ -2944,3 +2944,21 @@ def test_cleanup_force_does_not_reap_unexpired_closed_worktree(fake_repo, monkey
     wt, _, _ = _closed_candidate(mod, monkeypatch, "closed-force")
     assert mod.cmd_cleanup(force=True) == 0
     assert wt.exists()
+
+
+def test_remote_branch_sha_ignores_a_line_for_a_different_ref(fake_repo, monkeypatch):
+    mod, repo = fake_repo
+    sha = "a" * 40
+    for line in (f"{sha}\trefs/heads/other-branch\n", f"{sha}\trefs/heads/mine-longer\n"):
+        monkeypatch.setattr(
+            mod, "_run_git",
+            lambda args, _l=line, **kw: subprocess.CompletedProcess(args, 0, _l, ""),
+        )
+        assert mod._remote_branch_sha(repo, "mine") == ""
+    monkeypatch.setattr(
+        mod, "_run_git",
+        lambda args, **kw: subprocess.CompletedProcess(
+            args, 0, f"{sha}\trefs/heads/mine\n", ""
+        ),
+    )
+    assert mod._remote_branch_sha(repo, "mine") == sha
