@@ -72,7 +72,7 @@ _FULL_SHA = re.compile(r"[0-9a-f]{40}")
 # A compared merge (spec §2 phase D, ruled 2026-10-08): >= 12 contexts compared on both sides, >= 11 of them full and at most one
 # partial, named on the line. The arithmetic the real matrix allows: 14 required - 1 E2E (partial: no repository secrets) = 13 full
 # (11 while the 2 CodeQL contexts were hosted-only, which is the floor the ruling states). An unrecorded coverage counts toward none of the three.
-READY_MIN_MERGES, READY_MIN_DAYS = 50, 14   # phase D's READY (spec §2): the report and the tick's precheck both read these
+READY_MIN_MERGES, READY_MIN_DAYS = 50, 5   # phase D's READY (spec §2): the report and the tick's precheck both read these; days was 14 until the owner's ruling of 2026-10-13 (arm phase F earlier), merges and FALSE_GREEN 0 unchanged
 READY_SPAN_SLACK_DAYS = 1   # the report's span runs on GitHub's merged_at, which can precede its own decision line by up to one tick: the precheck's window starts a day earlier so it never says false while READY is true
 KNOWN_HOSTS_FILE = "known_hosts"   # F2: github.com's host key, pinned by the operator in the state dir; the push trusts nothing else
 MIN_COMPARED_CONTEXTS = 12
@@ -1737,7 +1737,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
                                                             + (f" (gate: {x['gate']})" if x.get("gate") else "") for x in kept_fg) + "])")
     for h in hosted_red_merged:
         print(f"hosted_red_merged: #{h['pr']} merged at {h['merge_commit_sha'][:12]} with required red: {', '.join(h['red'])}")
-    print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= 50 compared merges and >= 14 days between the first "
+    print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= {READY_MIN_MERGES} compared merges and >= {READY_MIN_DAYS} days between the first "
           f"and last compared merge (a merge counts when GitHub merged the decided candidate and >= {MIN_COMPARED_CONTEXTS} contexts were "
           f"compared, >= {MIN_COMPARED_FULL} of them full and at most {MAX_COMPARED_PARTIAL} partial); now false_green={fg} {stale_note}, "
           f"compared_merges={compared_merges} (full_only={compared_merges - len(with_partial)}, with_partial={len(with_partial)}: "
@@ -1830,7 +1830,7 @@ def reclassify_recorded(a, d: dict, judge, gate: GateJudge | None = None) -> tup
 
 
 def _days(first: str, last: str) -> float:
-    return (int(_epoch(last) - _epoch(first)) * 1000 // 86400) / 1000   # floored in integers: 13.9999 days is not 14, 14 days is
+    return (int(_epoch(last) - _epoch(first)) * 1000 // 86400) / 1000   # floored in integers: 4.9999 days is not 5, 5 days is
 
 
 def _longest_gap_h(stamps) -> float:

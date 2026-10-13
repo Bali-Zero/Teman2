@@ -556,7 +556,7 @@ each one that does not (a disarmed tick does exactly what F1 did and adds only t
 | condition | `why` when false |
 | --- | --- |
 | env `LOCALCI_MERGER_PHASE_F=1` in the tick's environment | `LOCALCI_MERGER_PHASE_F unset` |
-| phase D READY, recomputed from the journal by `report(emit=False)` — the report's own function, so the thresholds (>= 50 compared merges over >= 14 days, 0 FALSE_GREEN) exist once. Evaluated LAST and ONLY when `LOCALCI_MERGER_PHASE_F` is `1` and every local condition in this table already holds (the full report costs about 4 minutes and hundreds of GitHub reads) | `READY false` / `READY unreadable: ...` / `READY not evaluated` (a local condition above is already false) |
+| phase D READY, recomputed from the journal by `report(emit=False)` — the report's own function, so the thresholds (>= 50 compared merges over >= 5 days, 0 FALSE_GREEN; the days were 14 until the owner ruling of 2026-10-13) exist once. Evaluated LAST and ONLY when `LOCALCI_MERGER_PHASE_F` is `1` and every local condition in this table already holds (the full report costs about 4 minutes and hundreds of GitHub reads) | `READY false` / `READY unreadable: ...` / `READY not evaluated` (a local condition above is already false) |
 | `<state>/deploy_key` exists, is a regular file (a symlink is not), mode exactly 0600, owned by the running user — read with `lstat` only, its content is never opened | `deploy_key missing` / `mode 0644, not 0600` / `not a regular file` / `not owned by the running user` |
 | the decision meets the C3a-2 criterion exactly as `enqueue_step` computed it (`enq["criterion"]`, every sub-criterion incl. `label_privileged`), and the enqueue step journalled `would_enqueue` — never `enqueued`, `enqueue_refused` or `enqueue_error` (GitHub's merge queue path owns those; `LOCALCI_MERGER_ARMED` must be UNSET in phase F) | `criterion false: <names>` / `enqueue step '<kind>', not 'would_enqueue' ...` |
 | F1's `would_merge`: `clean`, `base_current` (GitHub's main by `ls-remote` == the decided base), the mirror's `refs/merger/base` == the decided base, and the tree F1 rehearsed equals the tree of the candidate the gate judged (`rev-parse <candidate_sha>^{tree}`; a `merge=union` attribute or any merge-strategy difference would make them differ) | `merge not clean` / `base_current false` / `mirror main is not the decided base` / `merged tree differs from the judged candidate tree` / `judged candidate tree unreadable` |
@@ -657,7 +657,7 @@ FULL coverage and at most one partial, named (`MIN_COMPARED_CONTEXTS`, `MIN_COMP
 a partial context never counts as full, an unrecorded one counts toward nothing, and the window line prints
 `compared_merges=N (full_only=M, with_partial=K)`. Each compared PR counts once, at
 GitHub's `merged_at` — two decisions of one PR, or the journal's order, cannot widen the span. **The operator reads
-`compared_merges`, not `days`:** the phase E line says READY only on 0 FALSE_GREEN AND ≥ 50 compared merges AND ≥ 14 days
+`compared_merges`, not `days`:** the phase E line says READY only on 0 FALSE_GREEN AND ≥ 50 compared merges AND ≥ 5 days (owner ruling 2026-10-13, was 14)
 between the first and the last compared merge (spec §2, ruled 2026-10-07: both, never either) — a window that only aged,
 with nothing compared, is never READY, and until phase B lands no merge is compared at all. Days are floored in integer
 seconds (13.9999 is not 14; 14 is). Three silences are printed: the longest gap between DECISIONS (errors and skips keep a
@@ -921,7 +921,7 @@ writes — any of them that moved since the plan changes the digest); the report
 is of the same repository, was generated within the last 2 hours less 5 minutes — the plan and `--apply` judge the same age,
 and the per-write re-read keeps the full 2 hours — (and not more than 5 minutes ahead; either refusal says to run the report
 now, step 1), and its own window shows
-READY (`compared_merges` >= 50, `compared_days` >= 14, and `FALSE_GREEN` the integer 0 at every level the merger sums for READY —
+READY (`compared_merges` >= 50, `compared_days` >= 5, and `FALSE_GREEN` the integer 0 at every level the merger sums for READY —
 `counts`, `context_counts`, `recorded_context_false_green`; a contradiction is refused, a malformed report is refused, never
 raised); exactly one deploy key with write exists (the DeployKey bypass covers every write key of the repository; every page of
 the list is read) and it is the merger's: its `SHA256:` fingerprint — the form `ssh-keygen -lf` and GitHub's key page print —

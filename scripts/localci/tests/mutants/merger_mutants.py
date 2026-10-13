@@ -178,8 +178,9 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "ready-on-days-alone": (PY, "ready = fg == 0 and compared_merges >= READY_MIN_MERGES and compared_days >= READY_MIN_DAYS",
                             "ready = fg == 0 and compared_merges >= READY_MIN_MERGES and days >= READY_MIN_DAYS", (REPORT,)),
     "ready-ignores-ctx-fg": (PY, "ready = fg == 0 and", 'ready = (counts["FALSE_GREEN"] + recorded_fg) == 0 and', (REPORT,)),
-    "ready-49": (PY, "READY_MIN_MERGES, READY_MIN_DAYS = 50, 14", "READY_MIN_MERGES, READY_MIN_DAYS = 49, 14", (REPORT,)),
-    "ready-days-boundary": (PY, "READY_MIN_MERGES, READY_MIN_DAYS = 50, 14", "READY_MIN_MERGES, READY_MIN_DAYS = 50, 13.999", (REPORT,)),
+    "ready-49": (PY, "READY_MIN_MERGES, READY_MIN_DAYS = 50, 5", "READY_MIN_MERGES, READY_MIN_DAYS = 49, 5", (REPORT,)),
+    "ready-days-boundary": (PY, "READY_MIN_MERGES, READY_MIN_DAYS = 50, 5", "READY_MIN_MERGES, READY_MIN_DAYS = 50, 4.999", (REPORT,)),
+    "ready-days-4": (PY, "READY_MIN_MERGES, READY_MIN_DAYS = 50, 5", "READY_MIN_MERGES, READY_MIN_DAYS = 50, 4", (REPORT,)),
     "days-float": (PY, "return (int(_epoch(last) - _epoch(first)) * 1000 // 86400) / 1000",
                    "return round((_epoch(last) - _epoch(first)) / 86400, 3)", (REPORT,)),
     # B4: hosted's four xdist workers on the backend shards (two before the 2026-10-10 VM resize) and nowhere else; a timeout after a dead worker names it and stays no verdict

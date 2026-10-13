@@ -40,7 +40,7 @@ class Hub:
                                     "completed_at": None} for c in self.required]}
         return self.gh(path)
 
-    def seed(self, state, n=50, days=14, age=20):
+    def seed(self, state, n=50, days=5, age=20):
         """n merged, compared PRs spanning `days`: exactly phase D's threshold."""
         state.mkdir(parents=True, exist_ok=True)
         lines = []
@@ -221,7 +221,7 @@ DISARM = [
     ("env-true", lambda w, mp: mp.setenv(mg.PHASE_F_ENV, "true"), f"{mg.PHASE_F_ENV} unset"),
     ("ready-false", lambda w, mp: (w.state / "decisions.jsonl").unlink(), "READY false"),
     ("ready-49", lambda w, mp: w.hub.seed(w.state, n=49), "READY false"),
-    ("ready-13-days", lambda w, mp: w.hub.seed(w.state, days=13), "READY false"),
+    ("ready-4-days", lambda w, mp: w.hub.seed(w.state, days=4), "READY false"),
     ("ready-unreadable", lambda w, mp: (w.state / "decisions.jsonl").write_text("{torn\n"), "READY unreadable"),
     ("key-missing", lambda w, mp: w.key.unlink(), "deploy_key missing"),
     ("key-0644", lambda w, mp: _key_mode(w), "mode 0644, not 0600"),
@@ -479,7 +479,7 @@ def test_the_quiet_report_writes_no_file_and_prints_nothing(fw, capsys):
 
 def test_the_thresholds_exist_once_the_tick_reads_the_reports_own_function():
     src = (mg.Path(mg.__file__)).read_text()
-    assert src.count("READY_MIN_MERGES, READY_MIN_DAYS = 50, 14") == 1   # 14 days is defined once
+    assert src.count("READY_MIN_MERGES, READY_MIN_DAYS = 50, 5") == 1   # the 5 days are defined once
     assert "days + READY_SPAN_SLACK_DAYS < READY_MIN_DAYS" in src and "decided < READY_MIN_MERGES" in src   # the precheck reads the same constants
     assert "compared_merges >= READY_MIN_MERGES and compared_days >= READY_MIN_DAYS" in src
     assert "report(argparse.Namespace(" in src   # the tick calls it; there is no second ready computation
@@ -529,7 +529,7 @@ def test_a_journal_younger_than_the_window_is_not_ready_and_the_full_report_is_n
     assert fw.tick() == 0
     assert calls == []
     (why,) = [x for x in fw.wm()["phase_f"]["why"] if x.startswith("READY")]
-    assert re.fullmatch(r"READY false: journal window \d\.\d days \(\+1 of slack\) < 14", why) and why.startswith("READY false: journal window 3.")
+    assert re.fullmatch(r"READY false: journal window \d\.\d days \(\+1 of slack\) < 5", why) and why.startswith("READY false: journal window 3.")
     assert_nothing_merged(fw, "journal window")
 
 
@@ -556,7 +556,7 @@ def test_the_precheck_never_says_ready_and_an_unreadable_journal_rules_nothing_o
 
 
 def test_the_precheck_window_starts_a_day_before_the_first_decision_so_it_never_says_false_while_ready_is_true(fw):
-    """merged_at can precede its own decision line by up to one tick: at 13 days of journal the report's span can already be 14."""
+    """merged_at can precede its own decision line by up to one tick: at 4 days of journal the report's span can already be 5."""
     def first_decision_ago(days, delta_s):
         import time
         at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(int(time.time()) - days * 86400 + delta_s))
@@ -566,10 +566,10 @@ def test_the_precheck_window_starts_a_day_before_the_first_decision_so_it_never_
             r["ts"] = max(r["ts"], at)
         (fw.state / "decisions.jsonl").write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in lines))
     fw.hub.seed(fw.state, age=2)
-    first_decision_ago(13, -120)   # a hair OVER 13 days: with the day of slack the window is 14: undecided, the report decides
+    first_decision_ago(4, -120)   # a hair OVER 4 days: with the day of slack the window is 5: undecided, the report decides
     assert mg.ready_precheck(fw.state) is None
-    first_decision_ago(13, 120)    # a hair UNDER 13 days: 13.99 even with the slack: false
-    assert mg.ready_precheck(fw.state).startswith("READY false: journal window 12.9 days (+1 of slack) < 14")
+    first_decision_ago(4, 120)    # a hair UNDER 4 days: 4.99 even with the slack: false
+    assert mg.ready_precheck(fw.state).startswith("READY false: journal window 3.9 days (+1 of slack) < 5")
     assert mg.READY_SPAN_SLACK_DAYS == 1
 
 
