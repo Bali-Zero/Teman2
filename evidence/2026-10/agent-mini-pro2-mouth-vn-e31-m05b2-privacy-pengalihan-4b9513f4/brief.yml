@@ -1,0 +1,14 @@
+gear: 1
+gear_reason: >-
+  One Indonesian string in the Visa Oracle privacy page and its test; no data, pack, copy file or i18n.ts change.
+mission: >-
+  The Indonesian privacy notice of the Visa Oracle says pengalihan, not the English word handoff.
+objective: >-
+  The id minors paragraph on /visa-oracle/privacy ends "...rekomendasi yang didukung maupun pengalihan."; the ID
+  privacy page contains no handoff; English copy is unchanged.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/privacy/page.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/privacy/page.test.tsx
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

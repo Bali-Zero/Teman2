@@ -55,7 +55,7 @@ const COPY = {
       "Membuka WhatsApp memerlukan pilihan persetujuan tersendiri yang tidak dicentang sebelumnya dan hanya mengirim status hasil serta, jika tersedia, referensi asesmen yang tidak bermakna. Tindakan ini tidak membuat catatan CRM. Pembuatan atau kontak CRM di masa depan memerlukan persetujuan eksplisit yang terpisah.",
     minorsTitle: "Perlindungan anak",
     minors:
-      "Kasus yang melibatkan anak memerlukan keterlibatan orang tua atau wali yang terkonfirmasi. Tanpa konfirmasi tersebut, Visa Oracle mengirim kasus ke peninjauan manusia dan tidak mengotomatiskan rekomendasi yang didukung maupun handoff.",
+      "Kasus yang melibatkan anak memerlukan keterlibatan orang tua atau wali yang terkonfirmasi. Tanpa konfirmasi tersebut, Visa Oracle mengirim kasus ke peninjauan manusia dan tidak mengotomatiskan rekomendasi yang didukung maupun pengalihan.",
     rightsTitle: "Hak Anda",
     rights:
       "Anda dapat meminta akses, koreksi, pembatasan, penarikan persetujuan, atau penghapusan. Permintaan yang valid ditanggapi dan ditindaklanjuti dalam 3 × 24 jam, kecuali terdapat kewajiban hukum atau legal hold yang terdokumentasi. Identitas diverifikasi secara proporsional dan buktinya tidak dimasukkan ke log teknis.",
