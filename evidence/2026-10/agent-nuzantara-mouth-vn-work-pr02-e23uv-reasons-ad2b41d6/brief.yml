@@ -1,0 +1,18 @@
+gear: 2
+gear_reason: >-
+  Public client copy on the Visa Oracle (two support reasons that stated a sponsor identity as law instead of
+  the answers their rules check) with a rule-pinning test; touches no rule, no pack, no data, no pricing, no backend.
+mission: >-
+  The Visa Oracle support reasons for E23U and E23V restate the answers the visitor gave, in English and Bahasa
+  Indonesia, with no sponsor identity stated as law.
+objective: >-
+  Work plan PR-02 (findings F04 F16 F28 F40 F62 F78). E23U said the diplomat sponsors as an individual and E23V said
+  a government body sponsors; the rules el.e23u.diplomatic-household and el.e23v.trade-office check the visitor's declared
+  sponsor type and one boolean each. Rewrite both sentences as "you told us", add four ban regexes, pin the rules.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/copy-truth.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/client-copy.test.ts
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

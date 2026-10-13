@@ -1,0 +1,59 @@
+gear: 2
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  visa-night work plan PR-02 (/Users/nuzantara/visa-night/work/PR-02.task.md), built on origin/main edeb8e3a23
+  which contains V01 #8422. Generated 2026-10-13T05:11:26Z.
+mission: >-
+  The Visa Oracle support reasons for E23U and E23V restate the answers the visitor gave.
+lanes:
+  - lane: pr02-e23uv-reasons
+    role: build
+    seat: Claude Opus 5.5 implementer (as in the commit co-author lines), worktree mouth-vn-work-pr02-e23uv-reasons.
+  - lane: pr02-ground-truth
+    role: ground_truth
+    seat: >-
+      The signed pack rulepack-prod-028 (seq-28), source rules el.e23u.diplomatic-household (intent.purposes intersects
+      EMPLOYMENT, sponsor.type eq INDIVIDUAL, sponsor.diplomatic_household eq true) and el.e23v.trade-office
+      (intent.purposes intersects EMPLOYMENT, sponsor.type eq GOVERNMENT, sponsor.trade_office eq true). Product names are
+      the pack's products[].names verbatim. The E23V qualifiers (foreign, trade or economic representative office, in
+      Indonesia) are the wording of q.sponsor_trade_office in i18n.ts, the question that sets the boolean.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "59f4227ad7405b4d4dfe2a92b06342e9e0bc1e229214da23493d2d7319caab76" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at origin/main edeb8e3a23 (before the change).
+pii_scan: clean
+bites: >-
+  Consumer: the public Visa Oracle result page (OutcomeSheet reading SUPPORT_REASON_COPY in engine-adapter.ts) and the
+  copy-truth.test.ts pins in the mouth suite on every PR. Observation, after the mouth deploy is promoted: an offshore
+  work visitor with an individual sponsor in a diplomat household, and one with a government sponsor and a trade office,
+  see the new EN and ID sentences on the E23U / E23V outcome cards. Pre-merge, the vitest pins run.
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+  paid_api: none
+  note: >-
+    One implementer session plus one red-team round by codex gpt-5.6-sol (subscription CLI, rollout rollout-2026-10-13T01-53-54-01a1313f-e759-72f1-833a-186c08a667c6); no paid per-token API.
+results:
+  - claim: "The whole visa-oracle mouth suite after the change."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 56 passed (56); Tests 1457 passed (1457) at the head"
+  - claim: "Mutation: sponsored by that diplomat put back in the E23U EN reason."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/copy-truth.test.ts'
+    result: "2 failed (exact-sentence pin and the false-claim ban); restored afterwards"
+decisions:
+  - id: D-em-dash
+    decision: "Sentences keep the pack's em dash before the product name, as the product names and neighbouring reasons do."
+dissent:
+  - seat: "codex gpt-5.6-sol, rollout rollout-2026-10-13T01-53-54-01a1313f-e759-72f1-833a-186c08a667c6 (red team, HIGH)"
+    objection: "The sentences omit the EMPLOYMENT purpose that both rules check."
+    status: PLAUSIBLE
+    disposition: >-
+      REJECTED for this PR: the mandated sentence says "the role" and names the Working Visa; the card renders only when
+      these rules fire for an EMPLOYMENT intent. Flagged to the orchestrator.
+  - seat: "codex gpt-5.6-sol (red team, MEDIUM)"
+    objection: "E23V adds foreign / economic / representative / in Indonesia not in the pack predicate."
+    status: REFUTED
+    disposition: "These are the exact words of q.sponsor_trade_office (i18n.ts:257) that sets sponsor.trade_office; a test now pins it."
+  - seat: "codex gpt-5.6-sol (red team, MEDIUM)"
+    objection: "Tests duplicate the sentences and do not pin the rule predicates."
+    status: CONFIRMED
+    disposition: "CURED in the second commit: copy-truth.test.ts reads the seq-28 pack and asserts both rules' predicates."
