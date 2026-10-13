@@ -109,46 +109,39 @@ def _hv(runs, app_id=ACTIONS):
     return hc.hosted_verdict(hc.hosted_entries(runs, [])["a"], app_id)
 
 
-def test_b17_a_run_cancelled_by_concurrency_and_answered_by_a_later_success_is_no_red():
-    h = _hv(_runs("a", ("cancelled", T1, None), ("success", T2, None)))
-    assert h["verdict"] == "GREEN" and h["superseded_cancelled"] == [1] and h["red"] == [] and h["completed_at"] == T2
-    assert _one("OK", _runs("a", ("cancelled", T1, None), ("success", T2, None))) == "AGREE"
+def test_b17_a_cancelled_run_is_dropped_in_either_order_when_a_completed_run_decides():
+    for runs in (_runs("a", ("cancelled", T1, None), ("success", T2, None)), _runs("a", ("success", T1, None), ("cancelled", T2, None))):
+        h = _hv(runs)
+        assert h["verdict"] == "GREEN" and len(h["superseded_cancelled"]) == 1 and h["red"] == []
+        assert _one("OK", runs) == "AGREE"
 
 
-def test_b17_the_8231_shape_cancelled_then_success_on_one_sha():
-    runs = [{**_run("catE-sovereignty-lint", "cancelled", at="2026-10-10T15:29:12Z"), "id": 114246937884},
-            {**_run("catE-sovereignty-lint", "success", at="2026-10-10T15:31:40Z"), "id": 114246937999}]
+def test_b17_the_8231_shape_success_first_then_a_rerun_cancelled_by_concurrency():
+    runs = [{**_run("catE-sovereignty-lint", "success", at="2026-10-10T15:18:52Z"), "id": 114244599437},
+            {**_run("catE-sovereignty-lint", "cancelled", at="2026-10-10T15:29:12Z"), "id": 114246937884}]
     rep = hc.compare(_status({"catE-sovereignty-lint": _local("OK")}), _req("catE-sovereignty-lint"), runs, [])
     row = rep["rows"][0]
     assert row["class"] == "AGREE" and row["superseded_cancelled"] == [114246937884] and hc.exit_code(rep) == 0
 
 
-def test_b17_a_later_failure_still_decides_and_is_red():
-    h = _hv(_runs("a", ("cancelled", T1, None), ("failure", T2, None)))
-    assert h["verdict"] == "RED" and h["superseded_cancelled"] == [1] and [e["id"] for e in h["red"]] == [2]
-    assert _one("OK", _runs("a", ("cancelled", T1, None), ("failure", T2, None))) == "FALSE_GREEN"
+def test_b17_a_decisive_failure_stays_red_whichever_side_the_cancelled_run_is_on():
+    for runs in (_runs("a", ("cancelled", T1, None), ("failure", T2, None)), _runs("a", ("failure", T1, None), ("cancelled", T2, None))):
+        h = _hv(runs)
+        assert h["verdict"] == "RED" and len(h["superseded_cancelled"]) == 1 and [e["conclusion"] for e in h["red"]] == ["failure"]
+        assert _one("OK", runs) == "FALSE_GREEN"
 
 
-def test_b17_a_cancelled_run_that_is_the_latest_or_alone_stays_red():
-    for runs in (_runs("a", ("success", T1, None), ("cancelled", T2, None)), _runs("a", ("cancelled", T1, None)),
-                 _runs("a", ("cancelled", T1, None), ("success", T1, None))):
+def test_b17_a_lone_cancelled_run_or_cancelled_runs_only_stay_red():
+    for runs in (_runs("a", ("cancelled", T1, None)), _runs("a", ("cancelled", T1, None), ("cancelled", T2, None))):
         h = _hv(runs)
         assert h["verdict"] == "RED" and h["superseded_cancelled"] == [], runs
         assert _one("OK", runs) == "FALSE_GREEN"
 
 
-@pytest.mark.parametrize("bad", [None, "", "yesterday", "2026-10-10T15:29:12+00:00"])
-def test_b17_an_unreadable_timestamp_on_either_side_keeps_the_cancelled_run_red(bad):
-    for runs in (_runs("a", ("cancelled", bad, None), ("success", T2, None)), _runs("a", ("cancelled", T1, None), ("success", bad, None))):
-        h = _hv(runs)
-        assert h["verdict"] == "RED" and h["superseded_cancelled"] == []
-
-
-def test_b17_a_later_cancelled_run_answers_nothing_and_a_pending_one_neither():
-    h = _hv(_runs("a", ("cancelled", T1, None), ("cancelled", T2, None)))
-    assert h["verdict"] == "RED" and h["superseded_cancelled"] == []
-    pending = [*_runs("a", ("cancelled", T1, None)), {**_run("a", None, status="in_progress", at=T3), "id": 9}]
-    assert _hv(pending)["verdict"] == "RED" and _hv(pending)["superseded_cancelled"] == []
+def test_b17_a_cancelled_run_beside_a_pending_one_is_pending_and_beside_a_pending_and_a_success_is_green():
+    pending = {**_run("a", None, status="in_progress", at=None), "id": 9}
+    assert _hv([*_runs("a", ("cancelled", T1, None)), pending])["verdict"] == "RED"   # no decisive sibling: as before
+    assert _hv([*_runs("a", ("cancelled", T1, None), ("success", T2, None)), pending])["verdict"] == "PENDING"
 
 
 def test_b17_two_contexts_do_not_supersede_each_other():
@@ -157,7 +150,7 @@ def test_b17_two_contexts_do_not_supersede_each_other():
     assert (_klass(rep, "a"), _klass(rep, "b")) == ("FALSE_GREEN", "AGREE")
 
 
-def test_b17_a_pinned_context_is_answered_only_by_its_own_app():
+def test_b17_a_pinned_context_is_decided_only_by_its_own_app():
     assert _hv(_runs("a", ("cancelled", T1, ACTIONS), ("success", T2, 999)))["verdict"] == "RED"
     assert _hv(_runs("a", ("cancelled", T1, 999), ("success", T2, ACTIONS)))["superseded_cancelled"] == []
     assert _hv(_runs("a", ("cancelled", T1, ACTIONS), ("success", T2, ACTIONS)))["verdict"] == "GREEN"
@@ -168,6 +161,8 @@ def test_b17_other_reds_and_commit_statuses_are_untouched():
     for concl in ("failure", "timed_out", "startup_failure", "action_required"):
         h = _hv(_runs("a", (concl, T1, None), ("success", T2, None)))
         assert h["verdict"] == "RED" and h["superseded_cancelled"] == [], concl
+    h = _hv(_runs("a", ("timed_out", T1, None), ("cancelled", T2, None), ("success", T3, None)))
+    assert h["verdict"] == "RED" and len(h["superseded_cancelled"]) == 1
     ents = hc.hosted_entries(_runs("a", ("cancelled", T1, None), ("success", T2, None)), [{"context": "a", "state": "failure", "updated_at": T3}])["a"]
     assert hc.hosted_verdict(ents, None)["verdict"] == "RED"
     ents = hc.hosted_entries([], [{"context": "a", "state": "error", "updated_at": T1}, {"context": "a", "state": "success", "updated_at": T3}])["a"]

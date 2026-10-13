@@ -95,22 +95,18 @@ def is_pinned(app_id) -> bool:
 
 
 def superseded_cancelled(entries: list, app_id) -> list:
-    """B17: the entries (by identity: an id may be absent) of check runs of one context cancelled by concurrency and answered by a LATER completed run of the same name on the same
-    commit. GitHub judges the newest run of a name, so such a cancelled run is no red. Fail closed: both completed_at must parse, the
-    answer must be a completed non-cancelled check run (same app, and the pinned app when the context is pinned) strictly later."""
-    def stamp(e):
-        t = e.get("completed_at")
-        return t if isinstance(t, str) and _TS_RE.match(t) else None
-
+    """B17: the entries (by identity: an id may be absent) of check runs cancelled by concurrency whose verdict another run decides. A
+    cancellation judges nothing, so order does not matter: a cancelled check run is dropped when another check run of the same name on the
+    commit (the pinned app's, when the context is pinned) completed with a non-cancelled conclusion, which then decides as usual. A lone
+    cancelled run, or one beside pending runs only, is kept."""
     def run(e):
         return e["source"] != "commit-status" and e["conclusion"] is not None
 
     def same_app(e):
         return e["app_id"] == app_id if is_pinned(app_id) else True
 
-    answers = [o for o in entries if run(o) and o["conclusion"] != "cancelled" and stamp(o) and same_app(o)]
-    return [e for e in entries if run(e) and e["conclusion"] == "cancelled" and stamp(e) and same_app(e)
-            and any(stamp(o) > stamp(e) for o in answers)]
+    decided = any(run(o) and o["conclusion"] != "cancelled" and same_app(o) for o in entries)
+    return [e for e in entries if decided and run(e) and e["conclusion"] == "cancelled" and same_app(e)]
 
 
 def hosted_verdict(entries: list, app_id) -> dict:

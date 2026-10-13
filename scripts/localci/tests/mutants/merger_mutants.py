@@ -640,11 +640,11 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "runner-no-verdict-anywhere": (RUNNER, 'HOST_NO_VERDICT = re.compile(r"^(?:host_disk_full|', 'HOST_NO_VERDICT = re.compile(r".*?(?:host_disk_full|',
                                    (HD,)),
     "hc-no-verdict-unnamed": (HC, '''+ (f" {res['no_verdict']}" if isinstance(res.get("no_verdict"), str) else "")''', '+ ""', (HCT,)),
-    # B17 — a check run cancelled by concurrency and answered by a LATER completed run of the same name is no red
-    "b17-supersede-regardless-of-order": (HC, "and any(stamp(o) > stamp(e) for o in answers)]", "and any(True for o in answers)]", (HCT,)),
-    "b17-supersede-across-apps": (HC, "return e[\"app_id\"] == app_id if is_pinned(app_id) else True", "return True", (HCT,)),
-    "b17-supersede-on-unparseable-time": (HC, "and _TS_RE.match(t) else None\n\n    def run(e):", "and _TS_RE.match(t) else \"0\"\n\n    def run(e):", (HCT,)),
-    "b17-cancelled-answers-cancelled": (HC, 'if run(o) and o["conclusion"] != "cancelled" and stamp(o)', "if run(o) and stamp(o)", (HCT,)),
+    # B17 — a check run cancelled by concurrency is no verdict whenever a completed non-cancelled run of the same name decides, in either order
+    "b17-drop-a-lone-cancelled": (HC, "return [e for e in entries if decided and run(e)", "return [e for e in entries if run(e)", (HCT,)),
+    "b17-drop-across-apps": (HC, "return e[\"app_id\"] == app_id if is_pinned(app_id) else True", "return True", (HCT,)),
+    "b17-drop-timed-out-too": (HC, 'and e["conclusion"] == "cancelled" and same_app(e)]', 'and e["conclusion"] in ("cancelled", "timed_out") and same_app(e)]', (HCT,)),
+    "b17-cancelled-sibling-decides": (HC, 'decided = any(run(o) and o["conclusion"] != "cancelled" and same_app(o)', "decided = any(run(o) and same_app(o)", (HCT,)),
     "b17-reread-ignores-stuck-red": (PY, "return flipped if not stuck and len(flipped) == raw else []", "return flipped if len(flipped) == raw else []", (CS,)),
     "b17-reread-ignores-count": (PY, "return flipped if not stuck and len(flipped) == raw else []", "return flipped if not stuck else []", (CS,)),
     "b17-reread-fails-open": (PY, "else []\n    except Exception:  # noqa: BLE001 — unreadable evidence keeps the recorded false green\n        return []",
