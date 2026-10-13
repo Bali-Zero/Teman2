@@ -78,8 +78,9 @@ decisions:
       Seq-27, 28 and 29 emit only E33E_AGE_55_59_ADVISOR_CHECK and E33_PROPERTY_QUALIFICATION_ADVISOR_CHECK.
   - id: D-copy-kept
     decision: >-
-      The copy stays in SUPPORT_REASON_COPY because signed packs 6 and 7 still replay these codes; no copy text
-      changed and nothing was re-pointed at a live rule. The second test makes dropping E33G from the list
+      The copy of the two replayable keys (E33E_DEPOSIT_INCOME_BASIS, E33G_INCOME_60K) stays in SUPPORT_REASON_COPY
+      because signed packs 6 and 7 still replay them; the two never-emitted keys (E33B, E33F) have their EN/ID copy
+      removed (see D-split-retired). Nothing was re-pointed at a live rule. The second test makes dropping E33G from the list
       red, which is the proof it is dead.
   - id: D-mutation
     decision: >-
@@ -95,11 +96,11 @@ decisions:
 dissent:
   - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-21-00-01a13535-7a18-7201-b828-fe5c2128e3bc.jsonl, model verified in the rollout file)"
     objection: "MEDIUM 1: the test iterates SUPPORT_REASON_COPY keys, so deleting the copy of the live E33E_AGE_55_59_ADVISOR_CHECK leaves both new tests green; the stated purpose (a live code losing its copy) is not tested."
-    status: RETRACTED
+    status: CONFIRMED
     disposition: "Cured in 0b39bbe6f1: the second test now derives every E33 advisor-check code from the highest signed pack, requires at least two, and asserts each is a key of SUPPORT_REASON_COPY. Mutation check (rename the E33E_AGE_55_59 copy key) fails 2 tests."
   - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-21-00-01a13535-7a18-7201-b828-fe5c2128e3bc.jsonl, model verified in the rollout file)"
     objection: "MEDIUM 2: the invariant forces every retired key to keep its copy, justified by replay of packs 6 and 7, which preserves a known-false EN/ID E33F sentence (discretionary vs the live EXCLUDE) in the runtime table."
-    status: RETRACTED
+    status: CONFIRMED
     disposition: "Cured in 0b39bbe6f1: retired keys split into replayable (copy kept) and never-emitted (E33B, E33F: copy removed, test asserts no pack emits them and no copy exists). A grep over apps and backend found neither code in any pack."
   - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-21-00-01a13535-7a18-7201-b828-fe5c2128e3bc.jsonl, model verified in the rollout file)"
     objection: "LOW 3a: brief_ref points at evidence/brief.yml, not the dated brief present in the diff."
