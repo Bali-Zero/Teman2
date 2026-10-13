@@ -58,6 +58,12 @@ receipts:
     exit: 1
     ts: "2026-10-13T23:17:18Z"
     seat: this session
+  - claim: Fix round - change_map signed-pack guilt case, observer summary-selection tests, whole change_map suite (one pre-existing failure, the scripts-coupling census is stale for three scripts this diff does not touch).
+    cmd: python3 -m pytest scripts/ci/test_change_map.py tests/scripts/test_observe_visa_oracle_no_door_replay_freshness.py
+    result: "92 passed, 1 failed (test_scripts_coupling_census_is_not_stale)"
+    exit: 1
+    ts: "2026-10-13T23:27:05Z"
+    seat: this session
 decisions:
   - id: D-numeric-highest
     decision: >-
@@ -67,4 +73,16 @@ decisions:
     decision: >-
       The test carries guilt cases (an older recorded name, a newer pack appearing in the directory) and an innocence case
       (highest picked numerically), so the pin is neither over- nor under-matching.
-dissent: []
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T07-18-44-01a1378f-a989-75f2-a3aa-fdd9cd0c694a.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM - a signed-pack-only change (rulepack-prod-030.signed.json) classified mouth false and skipped frontend-tests, so the guard could be bypassed by the exact change it targets."
+    status: RETRACTED
+    disposition: "Cured in 538d307009: change_map.py REGEX_RULES routes rulepack-prod-N.signed.json to backend_python+mouth; guilt case added in scripts/ci/test_change_map.py."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T07-18-44-01a1378f-a989-75f2-a3aa-fdd9cd0c694a.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM - brief_ref evidence/brief.yml does not resolve."
+    status: RETRACTED
+    disposition: "False positive: the lane convention is brief_ref evidence/brief.yml with the brief staged there only while linting and never committed; re-linted with the staged copy, clean. No code change."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T07-18-44-01a1378f-a989-75f2-a3aa-fdd9cd0c694a.jsonl, model verified in the rollout file)"
+    objection: "LOW - the observer took the first Tests line, so an early logged line could spoof the real Vitest summary."
+    status: RETRACTED
+    disposition: "Cured in 538d307009: last_summary_line() takes the LAST Tests line; two new pytest cases including an early acceptable line followed by a rejected real summary."
