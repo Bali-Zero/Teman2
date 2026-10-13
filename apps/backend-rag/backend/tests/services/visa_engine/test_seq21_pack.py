@@ -1188,7 +1188,7 @@ class TestCensusReplay:
             assert after[label]["state"] == after_state, label
             assert before[label]["candidates"] == after[label]["candidates"] == [], label
 
-    def test_without_the_answers_the_census_is_106_answers_18_no_paths_3_questions(
+    def test_without_the_answers_the_census_is_110_answers_21_no_paths_8_questions(
         self,
         seq21_compiled: compiler.CompiledRulePack,
         unasked_walks: dict[str, dict[str, Any]],

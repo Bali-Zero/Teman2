@@ -1338,9 +1338,11 @@ _PR12_WORK_OUTCOMES_SEQ20: dict[str, tuple[str, tuple[str, ...]]] = {
     "onshore/work/sponsor_government/trade_office_only": ("SUPPORTED_CANDIDATES", ("E23",)),
     "offshore/other/paid/sponsor_individual": ("SUPPORTED_CANDIDATES", ("E23",)),
 }
-# The sequences share one corpus, so every one of them pins the 13 walks; the
-# replay test `test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence`
-# re-measures them (and the full state census) on each of seq-20..27.
+# The sequences share one corpus, so every one of them pins the 13 PR-11 walks and the 12
+# PR-12 walks; the replay tests
+# `test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence` and
+# `test_the_e23_work_walks_replay_to_their_pins_on_every_pinned_sequence` re-measure
+# them (and the full state census) on each pinned sequence that has a source pack.
 EXPECTED_OUTCOME_BY_SEQUENCE = {
     _seq: {
         **_pins,
@@ -1554,7 +1556,8 @@ EXPECTED_STATE_CENSUS_BY_SEQUENCE = {
     }
     for _seq, _census in EXPECTED_STATE_CENSUS_BY_SEQUENCE.items()
 }
-# Expected after Step B's 131-walk corpus from the single ruled movement:
+# Expected after Step B's 131-walk corpus (144 with PR-12's work walks, folded in below)
+# from the single ruled movement:
 # one walk moves SUPPORTED_CANDIDATES -> NO_SUPPORTED_PATH; age scoping moves
 # reason codes only, never a state.  The candidate replay below re-measures
 # this literal as soon as the real seq-28 source exists on disk.
@@ -2674,7 +2677,11 @@ def test_corpus_has_the_expected_real_interview_walks(walks: dict[str, dict[str,
     E33G under seq-20..27 because those packs do not read the new fact.
 
     Seq-29 (2026-10-12): adds 1, corpus 131 -> 132: `offshore/family/SIBLING/spNat=IT/
-    minor`, the one minor sibling that keeps E31J named once the pack excludes adults."""
+    minor`, the one minor sibling that keeps E31J named once the pack excludes adults.
+
+    PR-12 (2026-10-13): adds 12, corpus 132 -> 144: the E23-family work-tile
+    variants (payer, sponsor confirmation and sponsor category answered away
+    from the default; see `_PR12_WORK_OUTCOMES`)."""
 
     assert len(walks) == 144, f"expected 144 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
