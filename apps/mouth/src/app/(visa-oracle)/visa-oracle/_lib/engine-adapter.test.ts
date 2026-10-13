@@ -1423,10 +1423,10 @@ describe("support reasons are sentences, not machine codes", () => {
         secondhome_passive_income_usd: "2999",
       });
       expect(message.en).toBe(
-        "You declared USD 2,999 a month; the retirement visas (E33E/E33F) need documented passive income of at least USD 3,000 a month.",
+        "You declared USD 2,999 a month; the retirement visas (E33E/E33F) need documented income or allowance of at least USD 3,000 a month.",
       );
       expect(message.id).toBe(
-        "Anda menyatakan USD 2.999 per bulan; visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal USD 3.000 per bulan.",
+        "Anda menyatakan USD 2.999 per bulan; visa pensiun (E33E/E33F) memerlukan penghasilan atau tunjangan terdokumentasi minimal USD 3.000 per bulan.",
       );
     });
 
@@ -1437,10 +1437,10 @@ describe("support reasons are sentences, not machine codes", () => {
         secondhome_passive_income_usd: "unsure",
       });
       expect(message.en).toBe(
-        "You were not sure of your monthly passive income, so it counted as zero. The retirement visas need documented passive income of at least USD 3,000 a month: come back with the figure, or ask a Bali Zero advisor.",
+        "You were not sure of your monthly income or allowance, so it counted as zero. The retirement visas need documented income or allowance of at least USD 3,000 a month: come back with the figure, or ask a Bali Zero advisor.",
       );
       expect(message.id).toBe(
-        "Anda belum yakin dengan penghasilan pasif bulanan Anda, sehingga dihitung nol. Visa pensiun memerlukan penghasilan pasif terdokumentasi minimal USD 3.000 per bulan: kembalilah dengan angkanya, atau tanyakan kepada konsultan Bali Zero.",
+        "Anda belum yakin dengan penghasilan atau tunjangan bulanan Anda, sehingga dihitung nol. Visa pensiun memerlukan penghasilan atau tunjangan terdokumentasi minimal USD 3.000 per bulan: kembalilah dengan angkanya, atau tanyakan kepada konsultan Bali Zero.",
       );
     });
 
@@ -1456,10 +1456,10 @@ describe("support reasons are sentences, not machine codes", () => {
           SUPPORT_REASON_COPY.RETIREMENT_INCOME_BELOW_THRESHOLD,
         );
         expect(message.en).toBe(
-          "The retirement visas (E33E/E33F) need documented passive income of at least USD 3,000 a month.",
+          "The retirement visas (E33E/E33F) need documented income or allowance of at least USD 3,000 a month.",
         );
         expect(message.id).toBe(
-          "Visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal USD 3.000 per bulan.",
+          "Visa pensiun (E33E/E33F) memerlukan penghasilan atau tunjangan terdokumentasi minimal USD 3.000 per bulan.",
         );
       }
     });
@@ -1480,7 +1480,7 @@ describe("support reasons are sentences, not machine codes", () => {
         work_payer: "no",
       });
       expect(message.en).toBe(
-        "You declared USD 2,999 a month; the retirement visas (E33E/E33F) need documented passive income of at least USD 3,000 a month.",
+        "You declared USD 2,999 a month; the retirement visas (E33E/E33F) need documented income or allowance of at least USD 3,000 a month.",
       );
     });
   });
