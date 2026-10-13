@@ -24,7 +24,7 @@ def _rows(needle: str) -> list[str]:
 def test_skill_names_the_seq29_activation_and_boundary():
     text = SKILL.read_text(encoding="utf-8")
     for fact in (ACTIVATION, RULE_PACK, PAYLOAD, BOUNDARY, "2026-11-07", "2bf9ed3c93", PROOF,
-                 "production pack seq-29", "updated 2026-10-13"):
+                 "production pack seq-29", "updated 2026-10-14"):
         assert fact in text, fact
 
 
@@ -52,8 +52,10 @@ def test_live_state_log_entry_carries_activation_merge_and_proof():
 def test_live_state_log_entry_is_the_newest():
     text = LOG.read_text(encoding="utf-8")
     dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
-    assert dated[0].startswith("- 2026-10-13 (M5")
-    assert "seq-29 active" in dated[0]
+    assert dated[0].startswith("- 2026-10-14 (M5")
+    assert "E33 audit waves 1-2" in dated[0]
+    seq29 = [ln for ln in dated if ln.startswith("- 2026-10-13 (M5")]
+    assert seq29 and "seq-29 active" in seq29[0]
 
 
 def test_freshness_row_is_closed_with_its_proof():

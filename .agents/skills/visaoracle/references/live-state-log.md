@@ -7,6 +7,20 @@ CURRENT POSITION block in SKILL.md in the same commit.
 
 Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE STATE — CURRENT POSITION.
 
+- 2026-10-14 (M5, visaoracle E33 lane, ledger after the E33 audit waves 1-2; recorded 2026-10-13T23:10Z): **six E33-audit PRs live, the zero runner disk-full incident cured, five audit items still open.**
+  (1) Live for visitors, each proven live on 2026-10-13: #8437 (llms.txt states E33A, E33B and E33C correctly), merge `8b55c0dfac`,
+  prove-live issuecomment-6155366109; #8439 (retired E33 reason keys no longer surface), merge `be66630c2e`, issuecomment-6155365619;
+  #8440 (the E33 doctrine cards match the active pack), merge `6a8f9a4cb6`, issuecomment-6155366644; #8441 (prohibited activities
+  appear in the `/evaluate` display), merge `b0523a0a70`, issuecomment-6155762792; #8454 (the penjamin and income-counting
+  question), merge `762b364f8f`, issuecomment-6157110792; #8456 (no-door replay and E33G pins on the active pack), merge
+  `cf31a25e6f`, issuecomment-6157110398. (2) Incident: the self-hosted runner `zero-runner-1` on Mini hit 100% disk
+  (13:53Z to 21:30Z); the pip `http-v2` cache had grown to 29G. The deploy of `b0523a0a70` (#8441) failed in pre-deploy validation.
+  Cured at 21:19Z by deleting the cache while the runner was idle; the deploy was rerun green and `/health` reported
+  `b0523a0a70` at 21:30Z; the notifier crons are green from 21:22Z. The durable fix is escalated to the infra lane (PENDING-ARMS
+  row opened 2026-10-14). (3) Remaining E33 audit items: PR-7 permit length, PR-10 E33F note, PR-20 render prohibited
+  activities, PR-8 documents (in flight), the income-or-allowance wording fix (in flight), the replay freshness test (in flight).
+  The consumer-side `e33_not_work_visa` follow-up of #8440's gate (condition C2) is recorded on the 2026-10-11 rangkap-kegiatan row.
+
 - 2026-10-13 (M5, Zero's standing seq-29 authorization of 2026-10-12; signing session nuzantara-57): **seq-29 active; the #8390 post-organ observation and the seq-29 freshness row closed.**
   (1) seq-29 signed on M5 (`signed_at 2026-10-13T08:56:32Z`, kid `prod-2026-07-1`), landing PR #8433 merged
   2026-10-13T10:46:12Z as `2bf9ed3c93c345db1ebd7675fed60111b4bf15e3`; backend live on it (post-deploy-verify exit 0 at
