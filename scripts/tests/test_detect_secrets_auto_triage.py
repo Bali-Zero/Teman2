@@ -322,8 +322,8 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # trail are derived from the live registry post-merge, not summed by
     # hand (team-lead's call: a rule appears once in the trail regardless of
     # how many PRs tried to add it).
-    assert len(CONTENT_KEYED_RULES) == 42, (
-        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 42. "
+    assert len(CONTENT_KEYED_RULES) == 43, (
+        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 43. "
         "If you just ADDED a rule: bump this number AND append a `# +1: <what> "
         "(<date>, PR #NNNN)` line below, matching the existing trail's format — "
         "that comment IS the audit record this assert exists to force. "
@@ -367,6 +367,7 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: infra/claude-hooks/secret-expansion-registry.json `_secret_env_var_patterns_doc`/`_secret_files_doc` prose fields — variable NAMES and store paths, never a value (2026-09-19, PR #6787)
     # +1: research/operations/<date>-visa-oracle-live-enumeration/prove-live-*.json edge label (2026-09-21, PR #7015)
     # +1: research/operations/<date>-visa-oracle-live-enumeration/prove-live-*.json content hash (2026-09-21, PR #7015)
+    # +1: apps/backend-rag/backend/data/bali_zero_documentation_catalog_2026.json content_sha256 of a saved public imigrasi.go.id page (2026-10-14, E33 documents catalogue)
     #
     # Note (2026-08-23): "appended last" is no longer a constraint. It was
     # true only because this test and the two Google-OAuth tests below

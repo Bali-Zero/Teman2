@@ -130,6 +130,7 @@ from backend.services.visa_engine.crypto import (
     resolve_identity_provider,
 )
 from backend.services.visa_engine.decision_seal import seal_decision
+from backend.services.visa_engine.documentation_catalog import documentation_for
 from backend.services.visa_engine.enums import (
     DecisionState,
     EngineMode,
@@ -998,8 +999,9 @@ def _build_display(
     Product names and stay/extension policy come from the signed RulePack.
     The processing timeline comes from the committed Bali Zero catalogue
     snapshot (UNKNOWN when a product has no window or the working-day walk
-    leaves a decreed holiday year). Documentation remains explicit UNKNOWN
-    until an authoritative catalog adapter provides evidence; pricing comes
+    leaves a decreed holiday year). Documentation comes from the committed
+    source-stamped catalogue (AVAILABLE only for the products it verifies,
+    explicit UNKNOWN for every other); pricing comes
     only from the exact-key PricingTool adapter and never invents an amount.
     """
 
@@ -1030,13 +1032,9 @@ def _build_display(
                     "stay": product.stay_policy.model_dump(mode="json"),
                     "extension": product.extension_policy.model_dump(mode="json"),
                 },
-                "documentation": {
-                    "status": "UNKNOWN",
-                    "reason_code": "DOCUMENTATION_CATALOG_NOT_VERIFIED",
-                    "observed_at": decision.observed_at.isoformat(),
-                    "requirements": [],
-                    "checklist": [],
-                },
+                "documentation": documentation_for(
+                    str(candidate.product_code), decision.observed_at.isoformat()
+                ),
                 "processing_timeline": _processing_timeline(str(candidate.product_code), decision),
                 "prohibited_activities": [str(a) for a in product.prohibited_activities],
                 "availability": {
