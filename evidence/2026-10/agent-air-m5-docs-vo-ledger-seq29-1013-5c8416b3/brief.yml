@@ -1,0 +1,21 @@
+gear: 2
+gear_reason: >-
+  Gear 2 declared above the lint computed size floor (floor 1: churn under 400 lines over 10 files with tests, observer and evidence), because the deliverable is a PR with an observer that gates the ledger. Docs and ledger only, plus a ledger test, an observer and its test; no backend, no pack, no mouth code.
+mission: >-
+  The /visaoracle ledger, live state, runbook and pending arms say that seq-29 is active in production, and the closed rows carry their proof.
+objective: >-
+  After the 2026-10-13 seq-29 activation the corner skill records the activation (84e8a5c5, rule pack ed666554, 117 rules, boundary 2026-11-14T00:07:47Z), closes the seq-29 freshness row and the #8390 row with proof, opens the next freshness row exactly once, and a no-argument observer proves it on main.
+scope:
+  - .agents/skills/visaoracle/SKILL.md
+  - .agents/skills/visaoracle/references/live-state-log.md
+  - .claude/skills/modus/PENDING-ARMS.md
+  - docs/runbooks/visa-engine-key-ceremony.md
+  - tests/scripts/test_visa_ledger_seq28.py
+  - tests/scripts/test_visa_ledger_seq29.py
+  - tests/scripts/test_observe_visa_ledger_seq29.py
+  - scripts/ci/observe_visa_ledger_seq29.py
+  - evidence/2026-10/agent-air-m5-docs-vo-ledger-seq29-1013-5c8416b3/brief.yml
+  - evidence/2026-10/agent-air-m5-docs-vo-ledger-seq29-1013-5c8416b3/pack.yml
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
