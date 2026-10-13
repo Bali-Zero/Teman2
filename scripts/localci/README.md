@@ -153,6 +153,12 @@ never a code RED. In a matrix `env:` (step or stand-in) the token `$LOCALCI_GEN.
 when the leg starts and held only in the runner's memory: one name is one value in every container of the leg, a new leg gets
 new ones, and nothing is written to disk or to the operator's environment. Every container of the leg has `--network none` or
 the shared loopback netns, so the stand-ins and the candidate have no route to any host outside it.
+An entry may carry `seed:` `{file, class, name_field, size_field, distance, api_key_env}`: once the stand-in is healthy the runner makes
+ONE empty collection in it (a `docker exec` of a fixed script, with the container's own key), so the code that walks collections runs
+here as it does hosted (E2E: 1 collection here, 14 there; the loop that reads a collection broke nothing with 0). Its name and
+vector size are the defaults the BASE `Settings` class declares (`ast` on the BASE blob at plan time, frozen in the plan; a name that
+is not a plain identifier, a size that is not a positive int or a candidate-edited file is refused or ignored); the distance is the one
+every collection migration creates. A seed that fails is BLOCKED (no verdict), never a green on an unseeded stand-in.
 Operator step (E2E's Qdrant, once per host, and again when the matrix digest moves): `docker pull qdrant/qdrant@sha256:<digest of the matrix entry>`. Until
 then `ctx.e2e-tests` plans BLOCKED naming it. Nothing prunes it: `prune.py` removes `localci-deps:*` tags only and lists every
 `extra_services` image on its never-list; `pro_janitor.py` and `pro_disk_floor_tick.sh` touch no docker image.

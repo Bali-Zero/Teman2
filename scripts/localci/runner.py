@@ -856,7 +856,8 @@ def plan_services(job: dict, images: dict, docker: str) -> tuple[list | None, st
 
 
 GEN_RE = re.compile(r"\$LOCALCI_GEN\.([a-z][a-z0-9_]*)")   # a value the run makes up, named: the same name is the same value in every container of the leg
-EXTRA_SERVICE_KEYS = {"name", "image", "env", "health"}
+EXTRA_SERVICE_KEYS = {"name", "image", "env", "health", "seed"}
+SEED_KEYS = {"file", "class", "name_field", "size_field", "distance", "api_key_env"}
 DIGEST_IMAGE = re.compile(r"[a-z0-9][a-z0-9._/-]*@sha256:[0-9a-f]{64}")
 
 
@@ -866,7 +867,38 @@ def fill_generated(env: dict, store: dict) -> dict:
     return {k: GEN_RE.sub(lambda m: store.setdefault(m.group(1), os.urandom(24).hex()), str(v)) for k, v in env.items()}
 
 
-def plan_extra_services(extra: object, taken: set, docker: str) -> tuple[list | None, str | None]:
+def read_seed(seed: object, read_base) -> tuple[dict | None, str | None]:
+    """The one collection a Qdrant stand-in is seeded with, EMPTY, so the code that walks collections runs here as it does hosted (it
+    holds 14 there). Its name and vector size are the defaults the backend's own Settings class declares at BASE (read with ast from
+    the BASE blob at plan time and frozen in the plan, never typed into the matrix); the distance is the one every collection
+    migration of the backend creates (`Cosine`)."""
+    if not isinstance(seed, dict) or set(seed) != SEED_KEYS:
+        return None, f"seed needs exactly {sorted(SEED_KEYS)}"
+    blob = read_base(str(seed["file"]))
+    if blob is None:
+        return None, f"seed: {seed['file']} is absent from BASE"
+    import ast
+    try:
+        cls = next(n for n in ast.parse(blob).body if isinstance(n, ast.ClassDef) and n.name == seed["class"])
+        got = {n.target.id: n.value.value for n in cls.body if isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name)
+               and isinstance(n.value, ast.Constant)}
+    except (SyntaxError, ValueError, StopIteration):
+        return None, f"seed: class {seed['class']} unreadable in BASE {seed['file']}"
+    name, size = got.get(seed["name_field"]), got.get(seed["size_field"])
+    if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name) or type(size) is not int or not 0 < size <= 65536:
+        return None, f"seed: BASE declares no plain {seed['name_field']} / {seed['size_field']} constant"
+    if seed["distance"] not in ("Cosine", "Dot", "Euclid") or not re.fullmatch(r"[A-Z0-9_]+", str(seed["api_key_env"])):
+        return None, "seed: distance or api_key_env unreadable"
+    return {"collection": name, "size": size, "distance": seed["distance"], "api_key_env": str(seed["api_key_env"])}, None
+
+
+SEED_SCRIPT = """exec 3<>/dev/tcp/127.0.0.1/6333
+B='{"vectors":{"size":%d,"distance":"%s"}}'
+printf 'PUT /collections/%s HTTP/1.0\\r\\napi-key: %%s\\r\\nContent-Type: application/json\\r\\nContent-Length: %%d\\r\\n\\r\\n%%s' "$%s" ${#B} "$B" >&3
+head -1 <&3 | grep -q ' 200 '"""
+
+
+def plan_extra_services(extra: object, taken: set, docker: str, read_base=lambda rel: None) -> tuple[list | None, str | None]:
     """Stand-ins the MATRIX adds beside BASE's `services:` (hosted points a secret at a cloud endpoint no container here can be): each is
     pinned by DIGEST in the matrix (a tag is a moving target), present locally (never pulled by a run), and gets the same shape and the
     same start, health budget and teardown as a BASE service. Its env is the matrix's literal map; only `$LOCALCI_GEN.<name>` is made up."""
@@ -889,12 +921,17 @@ def plan_extra_services(extra: object, taken: set, docker: str) -> tuple[list | 
             budget = (int(health["retries"]) + 1) * (_seconds(health["interval"]) + _seconds(health["timeout"]))
         except (ValueError, KeyError) as e:
             return None, f"service {name}: health unreadable ({type(e).__name__}: {e})"
+        seed = None
+        if svc.get("seed") is not None:
+            seed, why = read_seed(svc["seed"], read_base)
+            if why or seed["api_key_env"] not in env:
+                return None, f"service {name}: {why or 'seed api_key_env is not in the service env'}"
         iid = (_try([docker, "image", "inspect", "--format", "{{.Id}}", ref]) or "").strip()
         if not iid.startswith("sha256:"):
             return None, f"service {name}: image {ref} is not present locally (docker pull it, then plan again)"
         taken = taken | {name}
         out.append({"name": name, "image": ref, "local_image": ref, "image_id": iid, "env": env, "ports": [], "health": health,
-                    "health_budget_s": budget + 60})
+                    "health_budget_s": budget + 60, **({"seed": seed} if seed else {})})
     return out, None
 
 
@@ -1329,7 +1366,8 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                             f"leg {want!r} is not exactly one leg of the context's own job, the one whose check run is {name!r}")
         svcs, why3 = plan_services(job, local.get("service_images") or {}, iso["docker"])
         if svcs is not None:
-            extra_svcs, why3 = plan_extra_services(jl.get("extra_services"), {s["name"] for s in svcs}, iso["docker"])
+            extra_svcs, why3 = plan_extra_services(jl.get("extra_services"), {s["name"] for s in svcs}, iso["docker"],
+                                                          lambda rel: _extract_base_file(wt, base, safe_tree_path(rel)))
             svcs = svcs + extra_svcs if extra_svcs is not None else None
         if why or why2 or why3:
             return _blocked(f"job {jid}: {why or why2 or why3}")
@@ -2331,6 +2369,13 @@ def start_services(docker: str, svcs: list, prefix: str, label: str, denv: dict,
             fh.write(f"# service {s['name']} ({s['local_image']} {s['image_id'][:19]} for {s['image']}): {state} after {time.monotonic() - t0:.1f}s\n")
         if state != "healthy":
             return names, owner, f"service {s['name']} is {state!r} after {time.monotonic() - t0:.0f}s (BASE health check, budget {s['health_budget_s']:.0f}s)"
+        if (sd := s.get("seed")):   # the matrix's stand-in, once healthy: its one empty collection, made by the container itself (its own key, no host variable)
+            script = SEED_SCRIPT % (sd["size"], sd["distance"], sd["collection"], sd["api_key_env"])
+            r = _try([docker, "exec", ctr, "bash", "-c", script + " && echo seeded"], 60)
+            with open(log, "a") as fh:
+                fh.write(f"# service {s['name']}: seeded empty collection {sd['collection']} ({sd['size']}, {sd['distance']}): {'ok' if r and 'seeded' in r else 'FAILED'}\n")
+            if not r or "seeded" not in r:
+                return names, owner, f"service {s['name']} could not be seeded with collection {sd['collection']}: no verdict"
     return names, owner, None
 
 

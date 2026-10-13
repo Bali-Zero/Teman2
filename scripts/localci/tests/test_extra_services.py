@@ -122,8 +122,10 @@ def test_the_real_e2e_context_feeds_the_backend_a_stand_in_for_each_secret_and_h
     assert svc["env"] == {"QDRANT__SERVICE__API_KEY": backend["QDRANT_API_KEY"]}   # the service starts with the key the backend sends
     run_env = next(s for s in local["steps"] if s["workflow_step"] == "Run E2E tests")["env"]
     assert run_env == {"E2E_TEST_EMAIL": "", "E2E_TEST_PIN": ""}   # BASE's 135 selected tests never read them (matrix note)
-    svcs, why = runner.plan_extra_services(local["extra_services"], {"postgres", "redis"}, docker_knowing_ref(tmp_path, svc["image"]))
+    svcs, why = runner.plan_extra_services(local["extra_services"], {"postgres", "redis"}, docker_knowing_ref(tmp_path, svc["image"]),
+                                           lambda rel: (fr.REAL_REPO / rel).read_bytes())
     assert why is None and svcs[0]["image"] == svc["image"] and svc["image"].startswith("qdrant/qdrant@sha256:")
+    assert svcs[0]["seed"] == {"collection": "knowledge_base", "size": 1536, "distance": "Cosine", "api_key_env": "QDRANT__SERVICE__API_KEY"}
 
 
 def docker_knowing_ref(tmp_path, ref: str) -> str:
@@ -148,3 +150,70 @@ def test_a_leg_hands_the_stand_in_and_the_steps_the_same_made_up_value_and_nothi
     step_env = json.loads(seen["extra"]["cfg/steps.json"])["steps"][0]["env"]
     key = seen["svcs"][0]["env"]["QDRANT__SERVICE__API_KEY"]
     assert re.fullmatch(r"[0-9a-f]{48}", key) and step_env["QDRANT_API_KEY"] == key and re.fullmatch(r"sk-[0-9a-f]{48}", step_env["OPENAI_API_KEY"])
+
+
+# ------------------------------------------------------------------ the seed: one empty collection, named and sized by BASE
+CONFIG = b'class Settings:\n    qdrant_collection_name: str = "knowledge_base"\n    embedding_dimensions: int = 1536\n'
+SEED = {"file": "cfg.py", "class": "Settings", "name_field": "qdrant_collection_name", "size_field": "embedding_dimensions",
+        "distance": "Cosine", "api_key_env": "QDRANT__SERVICE__API_KEY"}
+
+
+def test_the_seed_is_what_base_settings_declare_read_as_data_and_frozen_in_the_plan(tmp_path):
+    got, why = runner.read_seed(SEED, lambda rel: CONFIG)
+    assert why is None and got == {"collection": "knowledge_base", "size": 1536, "distance": "Cosine", "api_key_env": "QDRANT__SERVICE__API_KEY"}
+    svcs, why = runner.plan_extra_services([{**EXTRA, "seed": SEED}], set(), docker_knowing(tmp_path), lambda rel: CONFIG)
+    assert why is None and svcs[0]["seed"]["collection"] == "knowledge_base"
+
+
+@pytest.mark.parametrize("blob,seed,needle", [
+    (None, SEED, "absent from BASE"),
+    (b"class Other:\n    x: int = 1\n", SEED, "unreadable"),
+    (b"class Settings:\n    qdrant_collection_name: str = 'a/b'\n    embedding_dimensions: int = 1536\n", SEED, "no plain"),    # a name that is a path
+    (b"class Settings:\n    qdrant_collection_name: str = 'k'\n    embedding_dimensions: int = 0\n", SEED, "no plain"),
+    (b"class Settings:\n    qdrant_collection_name: str = 'k'\n    embedding_dimensions: int = True\n", SEED, "no plain"),
+    (b"class Settings:\n    qdrant_collection_name: str = os.getenv('K')\n    embedding_dimensions: int = 1\n", SEED, "no plain"),
+    (CONFIG, {**SEED, "distance": "x; rm"}, "unreadable"),
+    (CONFIG, {k: v for k, v in SEED.items() if k != "class"}, "needs exactly"),
+])
+def test_a_seed_BASE_does_not_declare_plainly_is_refused(blob, seed, needle):
+    got, why = runner.read_seed(seed, lambda rel: blob)
+    assert got is None and needle in why
+
+
+def test_a_seed_whose_key_is_not_in_the_service_env_is_refused(tmp_path):
+    svcs, why = runner.plan_extra_services([{**EXTRA, "env": {}, "seed": SEED}], set(), docker_knowing(tmp_path), lambda rel: CONFIG)
+    assert svcs is None and "api_key_env" in why
+
+
+def test_the_seed_runs_in_the_healthy_container_with_its_own_key_and_a_failed_seed_is_no_verdict(tmp_path):
+    docker = docker_knowing(tmp_path)
+    exe = tmp_path / "bin" / "docker"
+    exe.write_text(exe.read_text().replace('  *) exit 0;;', '  exec\\ *) echo seeded;;\n  *) exit 0;;', 1))
+    extra, _ = runner.plan_extra_services([{**EXTRA, "seed": SEED}], set(), docker, lambda rel: CONFIG)
+    names, owner, why = runner.start_services(docker, extra, "e2eh", "lbl", runner.trusted_env(), tmp_path / "log")
+    argv = (tmp_path / "docker.argv").read_text()   # the script has newlines: the fake logs it over several lines
+    assert why is None and argv.count("\nexec ") + argv.startswith("exec ") == 1
+    assert "PUT /collections/knowledge_base" in argv and '"size":1536' in argv and "$QDRANT__SERVICE__API_KEY" in argv
+    assert "seeded empty collection knowledge_base (1536, Cosine): ok" in (tmp_path / "log").read_text()
+    exe.write_text(exe.read_text().replace('echo seeded;;', 'exit 1;;'))   # the container refuses: the context has no verdict, never a green on an unseeded stand-in
+    names, owner, why = runner.start_services(docker, extra, "e2eh2", "lbl", runner.trusted_env(), tmp_path / "log2")
+    assert why and "could not be seeded" in why and names
+
+
+def test_the_seed_a_plan_freezes_is_the_one_in_base_whatever_the_candidate_writes(tmp_path, monkeypatch):
+    import yaml
+
+    from . import test_service_contexts as sc
+
+    evil = CONFIG.replace(b"knowledge_base", b"evil").replace(b"1536", b"7")
+    orig = sc.fake_docker
+
+    def fake(tp, health="healthy"):
+        exe = orig(tp, health)
+        exe.write_text(exe.read_text().replace("postgres:15|redis:7)", f"postgres:15|redis:7|{REF})"))
+        return exe
+
+    monkeypatch.setattr(sc, "fake_docker", fake)
+    ctx = sc.svc_ctx(jobs=[{"job_id": "unit", "extra_services": [{**EXTRA, "seed": {**SEED, "file": "cfg.py"}}], "steps": [{"workflow_step": "test"}]}])
+    spec = sc.planned_svc(tmp_path, monkeypatch, {"cfg.py": evil.decode()}, ctx, {sc.WF: yaml.safe_dump(sc.WORKFLOW), "cfg.py": CONFIG.decode()})
+    assert spec["jobs"][0]["services"][1]["seed"]["collection"] == "knowledge_base" and spec["jobs"][0]["services"][1]["seed"]["size"] == 1536

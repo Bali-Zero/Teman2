@@ -33,6 +33,13 @@ MUTANTS = {
     "es-not-added-to-job": (RN, 'svcs = svcs + extra_svcs if extra_svcs is not None else None', 'svcs = svcs if extra_svcs is not None else None'),
     "es-service-env-unfilled": (RN, '[{**sv, "env": fill_generated(sv["env"], gen)} for sv in job["services"]]', 'job["services"]'),
     "es-step-env-unfilled": (RN, '        if st.get("env"):\n            st["env"] = fill_generated(st["env"], gen)\n', ''),
+    "seed-not-run": (RN, 'if (sd := s.get("seed")):', 'if False:'),
+    "seed-failure-ignored": (RN, 'if not r or "seeded" not in r:\n                return names', 'if False:\n                return names'),
+    "seed-name-unchecked": (RN, 'not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name) or', ''),
+    "seed-bool-size-accepted": (RN, 'type(size) is not int or not 0 < size <= 65536', 'not isinstance(size, int) or not 0 < size <= 65536'),
+    "seed-distance-unchecked": (RN, 'if seed["distance"] not in ("Cosine", "Dot", "Euclid") or not re.fullmatch(r"[A-Z0-9_]+", str(seed["api_key_env"])):', 'if False:'),
+    "seed-key-env-unchecked": (RN, 'if why or seed["api_key_env"] not in env:', 'if why:'),
+    "seed-not-read-from-base": (RN, 'lambda rel: _extract_base_file(wt, base, safe_tree_path(rel)))', 'lambda rel: _extract_base_file(wt, cand, safe_tree_path(rel)))'),
     "es-never-list-drops-extra": (PR, 'if isinstance(node.get("extra_services"), list):', 'if False:'),
 }
 
@@ -54,6 +61,8 @@ def main(argv: list[str] | None = None) -> int:
         copy_tree(tree)
         (tree / ".github/workflows").mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / ".github/workflows/tests.yml", tree / ".github/workflows/tests.yml")   # the real-context test reads BASE's job
+        (tree / "apps/backend-rag/backend/app/core").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / "apps/backend-rag/backend/app/core/config.py", tree / "apps/backend-rag/backend/app/core/config.py")   # and the seed's source
         originals = {f: (tree / f).read_text() for f in (RN, PR)}
         if (rc := run_tests(tree, T_RN + T_PR)) != 0:
             print(f"baseline: the unmutated copy gives pytest exit {rc} — nothing to measure", file=sys.stderr)
