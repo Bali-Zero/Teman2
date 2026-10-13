@@ -16,6 +16,10 @@ import {
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   SOURCELESS_NO_PATH_CODES,
   SUPPORT_REASON_COPY,
+  B1_MAX_STAY_DAYS,
+  C1_MAX_STAY_DAYS,
+  C2_MAX_STAY_DAYS,
+  C6_MAX_STAY_DAYS,
   E33G_ANNUAL_INCOME_THRESHOLD_USD,
   E33E_DEPOSIT_THRESHOLD_USD,
   RETIREMENT_INCOME_THRESHOLD_USD,
@@ -1469,6 +1473,82 @@ describe("support reasons are sentences, not machine codes", () => {
     );
     expect(SECOND_HOME_DEPOSIT_THRESHOLD_USD).toBe(
       gteThresholdInPack("el.e33.deposit-basis", "secondhome.bank_deposit_usd"),
+    );
+  });
+
+  function findLteValue(node: unknown, fact: string): number | undefined {
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        const found = findLteValue(item, fact);
+        if (found !== undefined) return found;
+      }
+      return undefined;
+    }
+    if (node === null || typeof node !== "object") return undefined;
+    const record = node as Record<string, unknown>;
+    if (
+      record.op === "lte" &&
+      record.fact === fact &&
+      typeof record.value === "number"
+    ) {
+      return record.value;
+    }
+    return Array.isArray(record.args)
+      ? findLteValue(record.args, fact)
+      : undefined;
+  }
+
+  function stayBoundInPack(ruleId: string): number {
+    const rule = (highestSequencePack().rules ?? []).find(
+      (r) => r.rule_id === ruleId,
+    );
+    if (!rule) throw new Error(`${ruleId} is absent from the pack`);
+    const value = findLteValue(rule.when, "intent.stay_days");
+    if (value === undefined) {
+      throw new Error(`no lte(intent.stay_days) node in ${ruleId}`);
+    }
+    return value;
+  }
+
+  it("B1/C1/C2/C6 stay-bound constants track the signed pack's lte(intent.stay_days) nodes", () => {
+    expect(B1_MAX_STAY_DAYS).toBe(stayBoundInPack("el.b1.tourism"));
+    expect(C1_MAX_STAY_DAYS).toBe(stayBoundInPack("el.c1.tourism-family"));
+    expect(C2_MAX_STAY_DAYS).toBe(stayBoundInPack("el.c2.business"));
+    expect(C6_MAX_STAY_DAYS).toBe(stayBoundInPack("el.c6.social"));
+    expect([B1_MAX_STAY_DAYS, C1_MAX_STAY_DAYS]).toEqual([60, 180]);
+  });
+
+  it("the B1/C1/C2/C6 support reasons name the stay bound their rule checks, in EN and ID", () => {
+    const bounds = {
+      B1_VOA_ELIGIBLE: B1_MAX_STAY_DAYS,
+      C1_VISIT_ELIGIBLE: C1_MAX_STAY_DAYS,
+      C2_BUSINESS_ELIGIBLE: C2_MAX_STAY_DAYS,
+      C6_SOCIAL_ELIGIBLE: C6_MAX_STAY_DAYS,
+    } as const;
+    for (const [code, days] of Object.entries(bounds)) {
+      const copy = SUPPORT_REASON_COPY[code];
+      expect(copy.en).toContain(`${days} days or less`);
+      expect(copy.id).toContain(`${days} hari atau kurang`);
+    }
+    expect(SUPPORT_REASON_COPY.B1_VOA_ELIGIBLE.en).not.toContain(
+      "30 days or less",
+    );
+    expect(SUPPORT_REASON_COPY.B1_VOA_ELIGIBLE.id).not.toContain(
+      "30 hari atau kurang",
+    );
+    for (const code of [
+      "C1_VISIT_ELIGIBLE",
+      "C2_BUSINESS_ELIGIBLE",
+      "C6_SOCIAL_ELIGIBLE",
+    ]) {
+      expect(SUPPORT_REASON_COPY[code].en).not.toContain("60 days");
+      expect(SUPPORT_REASON_COPY[code].id).not.toContain("60 hari");
+    }
+    expect(SUPPORT_REASON_COPY.C2_BUSINESS_ELIGIBLE.en).toContain(
+      "confirmed sponsor",
+    );
+    expect(SUPPORT_REASON_COPY.C6_SOCIAL_ELIGIBLE.en).toContain(
+      "confirmed sponsor",
     );
   });
 
