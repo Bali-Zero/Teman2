@@ -1,0 +1,49 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night E31 audit item M05b (finding F150): an English loanword in the Indonesian privacy notice. No owner
+  decision; i18n.ts untouched. The ConsentHandoff half of the original Kimi candidate a963a43b33 is superseded by
+  #8430 on main and was dropped on re-base.
+mission: >-
+  The Indonesian privacy notice of the Visa Oracle says pengalihan, not the English word handoff.
+lanes:
+  - lane: vn-e31-m05b2-privacy-pengalihan
+    role: build
+    seat: Kimi (kimi-code/kimi-for-coding, tier coding) via scripts/seat_build.sh on Mini, rc 0, 192s, log /Users/nuzantara/nuzantara/.worktrees/seat-build-kimi-20261013T055306Z-39420.log (commit a963a43b33, privacy files re-based by Claude).
+  - lane: vn-e31-m05b2-privacy-pengalihan
+    role: review
+    seat: Claude Opus 5.5 orchestrator (red team, read-only review of git diff origin/main; no cure needed).
+  - lane: e31-ground-truth
+    role: ground_truth
+    seat: >-
+      the sibling ID string already on main in ConsentHandoff.tsx (qr: "Kode QR untuk pengalihan WhatsApp yang telah
+      disetujui") which uses pengalihan for the same concept; the change asserts no figure of its own.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/privacy/page.tsx
+    query_hash: "4ede5c24e41e072d85a72144b561b0d449882f8abb2b7b91029d0889b2cd2d8d" # pragma: allowlist secret
+    note: query_hash = sha256 of privacy/page.tsx at origin/main 22550d0128 (before the change).
+pii_scan: clean
+spend:
+  wall_clock_hours: 0.5
+  adversarial_rounds: 1
+  paid_endpoint_usd: 0
+bites: >-
+  Consumer: an Indonesian reader of balizero.com/visa-oracle/privacy. Observation: after vercel promote (mouth
+  deploys land STAGED), the minors paragraph in ID shows pengalihan, not handoff.
+results:
+  - claim: "Whole visa-oracle suite on the re-based build: 56 files, 1459 tests passed."
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)"
+    result: "56 passed (56 files), 1459 passed (1459 tests)"
+    exit: 0
+    ts: "2026-10-13T06:24:56Z"
+    seat: this session
+  - claim: "Mutation: handoff put back in the ID privacy string turns the new test red; restored from a byte copy (cmp clean), 5 of 5 green again."
+    cmd: npx vitest run privacy under the mutation
+    result: "1 failed, 4 passed (5)"
+    exit: 1
+    ts: "2026-10-13T06:24:56Z"
+    seat: this session
+dissent:
+  - seat: "Claude Opus 5.5 red team"
+    objection: "Test asserts /handoff/i over the whole main textContent in the ID state only; EN copy is covered by the existing tests."
+    status: PLAUSIBLE
+    disposition: "Acceptable for a one-string fix. Not cured."

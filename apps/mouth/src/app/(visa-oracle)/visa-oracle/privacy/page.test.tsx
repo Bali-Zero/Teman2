@@ -42,4 +42,20 @@ describe("Visa Oracle Privacy Policy V1", () => {
     ).toBeInTheDocument();
     expect(document.documentElement.lang).toBe("id");
   });
+
+  it("uses natural Bahasa Indonesia for the minors transfer wording", async () => {
+    const user = userEvent.setup();
+    render(<VisaOraclePrivacyPage />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Switch to Bahasa Indonesia" }),
+    );
+
+    expect(
+      screen.getByText(
+        /tidak mengotomatiskan rekomendasi yang didukung maupun pengalihan/i,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("main")).not.toHaveTextContent(/handoff/i);
+  });
 });
