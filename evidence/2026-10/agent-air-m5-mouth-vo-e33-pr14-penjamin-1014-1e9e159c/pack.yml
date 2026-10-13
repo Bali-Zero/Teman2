@@ -1,0 +1,72 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 (decisions on the E33 audit, PR-14 of the retirement audit plan) - the retirement basis
+  question must use the term the official page uses (penjamin) and the income question must say what
+  Immigration counts, using only what the page says.
+mission: >-
+  The retirement basis question uses the official page's term penjamin, and the income question says what
+  Immigration counts, in the page's own words.
+lanes:
+  - lane: e33-pr14
+    role: build
+    seat: claude-sonnet-5 (Claude Code workflow subagent), worktree mouth-vo-e33-pr14-penjamin-1014 on M5.
+pii_scan: clean
+bites:
+  consumer: >-
+    the public Visa Oracle interview: the retirement basis question options and the retirement income
+    question (i18n.ts, EN and ID).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_penjamin_copy.py
+  expect: "contains:penjamin copy holds"
+receipts:
+  - claim: "The branch sits on a fresh origin/main (nothing pushed), HEAD 2f7e9b2c38 plus the one fix commit."
+    cmd: git fetch origin main && git rebase origin/main
+    result: "branch already up to date, no conflict"
+    exit: 0
+    ts: "2026-10-13T21:40:00Z"
+    seat: this session
+  - claim: "The whole visa-oracle Vitest tree passes with the change."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 56 passed (56); Tests 1477 passed (1477)"
+    exit: 0
+    ts: "2026-10-13T21:41:57Z"
+    seat: this session
+  - claim: "apps/mouth typechecks."
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-13T21:41:57Z"
+    seat: this session
+  - claim: "The observer passes: copy-truth.test.ts fully green with both PR-14 tests reported as run."
+    cmd: python3 scripts/ci/observe_visa_oracle_penjamin_copy.py
+    result: "Tests 72 passed (72); penjamin copy holds"
+    exit: 0
+    ts: "2026-10-13T21:42:02Z"
+    seat: this session
+  - claim: "The observer's parser and required-test checks reject skipped, todo, failed and reduced counts."
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_penjamin_copy.py
+    result: "11 passed"
+    exit: 0
+    ts: "2026-10-13T21:42:02Z"
+    seat: this session
+  - claim: "The legacy client-copy guard stays green."
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3600 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-13T21:41:57Z"
+    seat: this session
+decisions:
+  - id: D-page-words-only
+    decision: >-
+      The income question and hint say income or an allowance the visitor can document, which is the page's own
+      wording (Bukti penghasilan atau tunjangan). The audit's list of pension, rent and dividends and the
+      employment-pay exclusion are not on the page and are not written.
+  - id: D-no-figure
+    decision: >-
+      No digit appears in the four changed keys; a test pins it so the interview does not anchor the answer.
+  - id: D-passive-left
+    decision: >-
+      The option label Regular passive monthly income, the field label and the assumption copy still say passive;
+      they are outside this PR and stay for a follow-up.
+dissent: []
