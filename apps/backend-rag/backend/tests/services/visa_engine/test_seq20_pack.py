@@ -1084,6 +1084,10 @@ class TestLocalCompensationWitnesses:
 #: ``review.e28d.usd-threshold-turnover-manual`` and
 #: ``review.e28f.ikn-threshold-manual``), so no fact set can support them on
 #: this pack — same exclusion-by-name shape. The remaining 22 must all pass.
+#: The X01 visit-family lane adds C1/C1__180D/A1__TRANSIT/A1__30D_BOUNDARY
+#: (grown 35 -> 39); seq-20 already carries the 180-day C1 cap and the 30-day
+#: A1 bound, so all four replay green here — no new exclusions. The remaining
+#: 33 must all pass.
 _SEQ20_UNSUPPORTED_COVERAGE_PERSONAS = frozenset(
     {"E23U.json", "E23V.json", "E28B.json", "E28C.json", "E28D.json", "E28F.json"}
 )
@@ -1098,8 +1102,8 @@ def _coverage_persona_specs() -> list[tuple[str, dict[str, Any]]]:
 
 
 class TestGoldCoverageReplay:
-    def test_corpus_has_twenty_nine_personas(self) -> None:
-        assert len(_coverage_persona_specs()) == 29
+    def test_corpus_has_thirty_three_personas(self) -> None:
+        assert len(_coverage_persona_specs()) == 33
 
     @pytest.mark.parametrize(
         "name,spec", _coverage_persona_specs(), ids=[n for n, _ in _coverage_persona_specs()]

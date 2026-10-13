@@ -1,0 +1,73 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa night family "visit", plan item X01 (audit findings F014 F026 F038 F042 F057 F082 F091 F128): C1 and the
+  A1 transit and 30-day boundary had no gold persona. D2, D2__121D and C2 already exist on main and were not
+  re-added.
+mission: >-
+  The visit-family products C1 and A1 gain gold personas at their stay-day and nationality boundaries.
+lanes:
+  - lane: x01-personas
+    role: build
+    seat: kimi (kimi-code/kimi-for-coding) via seat_build.sh on Mini, rc 0, 706 s; prepare-only seat, verified by a Claude session.
+  - lane: x01-ground-truth
+    role: ground_truth
+    seat: >-
+      Rule predicates of el.a1.tourism, el.b1.tourism, el.c1.tourism-family, el.c2.business, el.c6.social,
+      el.d1-multi-entry-support, el.d2-multi-entry-support re-read in rulepack-prod-028.signed.json (seq 28) and
+      each new persona set re-derived by hand before comparing with the engine.
+    nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-028.signed.json
+    query_hash: "00f1d66dd0d77f520a3929c5ffa9245a7de99cf9e892fce56ec5ab8f3f16c358" # pragma: allowlist secret
+    note: query_hash = sha256 of rulepack-prod-028.signed.json.
+pii_scan: clean
+bites: "consumer: the CI gold-coverage floor gate (test_gold_coverage_floor.py) in the merge_group Backend shards, replaying every persona on the active pack seq-28; observation: the merge_group JUnit lists C1.json, C1__180D.json, A1__TRANSIT.json and A1__30D_BOUNDARY.json passing in gold_coverage_replay (39 of 39)."
+receipts:
+  - claim: "Gold-coverage folder, floor test and the seq19/seq20 pack tests pass with the four personas."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/gold_coverage backend/tests/services/visa_engine/test_gold_coverage_floor.py backend/tests/services/visa_engine/test_seq19_pack.py backend/tests/services/visa_engine/test_seq20_pack.py
+    result: "210 passed"
+    exit: 0
+    ts: "2026-10-13T05:05:12Z"
+    seat: this session
+  - claim: "Corpus replay on seq-28 passes for all 39 personas."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.gold_coverage_replay --corpus backend/tests/services/visa_engine/gold_coverage/personas --as-of signed_at-of-seq-28
+    result: "passed 39, failed 0, total 39"
+    exit: 0
+    ts: "2026-10-13T05:05:12Z"
+    seat: this session
+  - claim: "Whole visa_engine suite equals the known Mini baseline."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine
+    result: "2 failed, 3568 passed, 15 skipped, 3 xfailed, 31 errors (baseline 2 failed, 31 errors)"
+    exit: 1
+    ts: "2026-10-13T05:05:12Z"
+    seat: this session
+  - claim: "The floor is red when a persona expectation is flipped and green after byte-copy revert."
+    cmd: "flip C1__180D expected_candidates to [C1, D2], run test_gold_coverage_floor.py, restore with cp from a byte copy"
+    result: "mutated: 1 failed, 2 passed (C1__180D.json missing D2); reverted: cmp identical"
+    exit: 1
+    ts: "2026-10-13T05:05:12Z"
+    seat: this session
+decisions:
+  - id: D-no-bridging-relative-expiry
+    decision: >-
+      BRIDGING.json keeps its fixed expiry: the persona loader and replay driver have no relative-date syntax,
+      and adding one is an engine-side change outside this test-only concern.
+  - id: D-no-relabel-d1
+    decision: >-
+      D1.json label is accurate: with BUSINESS_MEETINGS and TOURISM both declared only D1 covers both purposes
+      under COVER_ALL_DECLARED_PURPOSES, so [D1] is rule-justified.
+dissent:
+  - seat: claude opus 5.5 red team
+    objection: >-
+      LOW: the gold floor compares expected_candidates as a SUBSET of the engine output, so existing D2, D2__121D
+      and C2 personas under-assert (engine returns D1+D2, C2+D1+D2, C2+D2 respectively). The four new personas
+      list the exact engine set, each re-derived from the predicates.
+    status: CONFIRMED
+    disposition: >-
+      Not cured here: tightening would also tighten the seq-19/seq-20 subset replays and belongs to its own PR.
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+results:
+  new_personas: 4
+  corpus_files: "35 to 39"
+  mini_baseline_delta: none

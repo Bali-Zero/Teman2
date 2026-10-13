@@ -1,0 +1,17 @@
+gear: 2
+gear_reason: >-
+  Test-only addition of four visit-family gold personas to the CI gold-coverage corpus plus the persona-count pins
+  in two pack tests. No engine, pack, pricing or runtime change; Gear 2 because it moves a merge_group floor gate.
+mission: >-
+  The visit-family products C1 and A1 gain gold personas at their stay-day and nationality boundaries, so a
+  regression of the 180-day C1 cap or the 30-day A1 bound turns the CI gold-coverage floor red.
+objective: >-
+  Add C1, C1__180D, A1__TRANSIT and A1__30D_BOUNDARY personas asserting the exact supported set on the active
+  pack seq-28, and move the corpus-count pins in test_seq19_pack.py and test_seq20_pack.py (35 to 39 files).
+scope:
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/personas/
+  - apps/backend-rag/backend/tests/services/visa_engine/test_seq19_pack.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_seq20_pack.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

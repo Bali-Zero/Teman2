@@ -851,7 +851,7 @@ class TestInnocence:
 
 
 # ---------------------------------------------------------------------------
-# Gold-coverage replay (20 of 28 personas), against the 019 CompiledRulePack —
+# Gold-coverage replay (30 of 39 personas), against the 019 CompiledRulePack —
 # same evaluate path as gold_coverage_eval._evaluate, minus the repository
 # file-selection/signature step neither script lets a caller override (see
 # module docstring).
@@ -881,7 +881,13 @@ class TestInnocence:
 #: ``review.e28d.usd-threshold-turnover-manual`` and
 #: ``review.e28f.ikn-threshold-manual``), so no fact set can support them on
 #: this pack — same exclusion-by-name shape.
-#: The remaining 20 must pass.
+#: The X01 visit-family lane adds C1/C1__180D/A1__TRANSIT/A1__30D_BOUNDARY
+#: to the corpus (grown 35 -> 39). C1 (60-day FAMILY stay), A1__TRANSIT and
+#: A1__30D_BOUNDARY replay green here, but C1__180D needs the 180-day C1
+#: stay-day cap introduced at seq-20 (seq-19 caps C1 at 60 days), so no fact
+#: set with a 180-day stay can support it on this pack — same
+#: exclusion-by-name shape as E33G/D2__121D above.
+#: The remaining 30 must pass.
 _SEQ19_UNSUPPORTED_COVERAGE_PERSONAS = frozenset(
     {
         "E33G.json",
@@ -892,6 +898,7 @@ _SEQ19_UNSUPPORTED_COVERAGE_PERSONAS = frozenset(
         "E28C.json",
         "E28D.json",
         "E28F.json",
+        "C1__180D.json",
     }
 )
 
@@ -906,8 +913,8 @@ def _coverage_persona_specs() -> list[tuple[str, dict[str, Any]]]:
 
 
 class TestGoldCoverageReplay:
-    def test_corpus_has_twenty_seven_personas(self) -> None:
-        assert len(_coverage_persona_specs()) == 27
+    def test_corpus_has_thirty_personas(self) -> None:
+        assert len(_coverage_persona_specs()) == 30
 
     @pytest.mark.parametrize(
         "name,spec", _coverage_persona_specs(), ids=[n for n, _ in _coverage_persona_specs()]
