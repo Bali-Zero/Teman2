@@ -1,0 +1,17 @@
+gear: 1
+gear_reason: >-
+  One data concern in a one-off seed script (five rows) plus one new unit test over the seed list; no engine,
+  tree, pack or migration change, and no database write.
+mission: >-
+  The seed stops giving E23's IDR amount to E23 sub-codes that the active rule pack does not price, so a re-run
+  of the seed cannot overwrite the live 'Contact for quote' rows of E23U and E23V with a price nobody signed.
+objective: >-
+  Set cost_visa to 'Contact for quote' on E23A, E23U, E23V, E23X and E23Y in the seed, and pin by a test that
+  every inherited_from E23 row whose product in the highest signed PRODUCTION pack has a null pricing_key (or is
+  absent from it) carries no IDR amount, the set being derived from the pack and not from a hand list.
+scope:
+  - apps/backend-rag/backend/migrations/scripts/seed_visa_types_complete_2026.py
+  - apps/backend-rag/backend/tests/test_visa_types_seed_e23_pricing.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

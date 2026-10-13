@@ -1,0 +1,71 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night family audit 2026-10-12, plan PR-09: the seed copied E23's IDR amount onto every E23 sub-code.
+  The active pack (rulepack-prod-028, seq-28, signed 2026-10-11) prices only E23 (pricing_key kitas_permits /
+  "Working KITAS (Offshore)"); E23U and E23V are products with pricing_key null, and E23A, E23X and E23Y are not
+  products of the pack at all. The audit named E23A/E23X/E23Y as null-priced: verified, they are absent rather
+  than null, and either way no signed price exists for them. The change asserts no price of its own.
+mission: >-
+  The seed stops giving E23's IDR amount to E23 sub-codes that the active rule pack does not price, so a re-run
+  of the seed cannot overwrite the live 'Contact for quote' rows of E23U and E23V with a price nobody signed.
+lanes:
+  - lane: backend-rag-vn-work-pr09-seed-contact-quote
+    role: build
+    seat: claude-opus-5-5 implementer (the Co-Authored-By trailer of every build commit)
+pii_scan: clean
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+results:
+  - "test_visa_types_seed_e23_pricing.py: 4 passed; the same file on the unchanged seed: 1 failed, 2 passed (red first, before the two extra pins)"
+  - "seed neighbours (test_visa_types_seed_vs_migration_tripwire.py, visa_check/test_catalogue.py): 23 passed together with the new file"
+  - "visa_engine suite: 3313 passed, 15 skipped, 2 failed, 39 errors, all in Postgres-backed files; the four failing files give the identical 2 failed / 39 errors with the seed taken from origin/main"
+bites: >-
+  consumer: the seed's own write path (its __main__ UPDATE of visa_types.cost_visa, which rewrites every column of
+  an existing row) and the two readers of the seed text, visa_check/catalogue.py and scripts/imigrasi_mirror
+  verify_codes. observation: the live knowledge API rows are NOT fed by the merge (a seed script, not a
+  migration; the merge of apps/backend-rag deploys the app and does not run it). Before this change
+  GET https://nuzantara-rag.fly.dev/api/knowledge/visa/code/E23U and /E23V already return cost_visa
+  'Contact for quote' (rows id 227 and 228, checked 2026-10-13); they must still return it after the Fly deploy
+  (unchanged is the expected observation, a regression would show an IDR amount). The seed side is observed by
+  the new test, which is red on the old seed and green on this one.
+receipts:
+  - claim: "The new test is red on the unchanged seed."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/test_visa_types_seed_e23_pricing.py with the seed file taken from origin/main
+    result: "1 failed, 2 passed"
+    exit: 1
+    ts: "2026-10-13T08:00:00Z"
+    seat: this session
+  - claim: "Test plus seed neighbours green on the changed seed."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/test_visa_types_seed_e23_pricing.py backend/tests/test_visa_types_seed_vs_migration_tripwire.py backend/tests/services/visa_check/test_catalogue.py
+    result: "23 passed"
+    exit: 0
+    ts: "2026-10-13T08:01:00Z"
+    seat: this session
+  - claim: "Live API before the change."
+    cmd: curl -s https://nuzantara-rag.fly.dev/api/knowledge/visa/code/E23U ; same for E23V
+    result: "cost_visa 'Contact for quote' on both (ids 227, 228)"
+    exit: 0
+    ts: "2026-10-13T07:50:00Z"
+    seat: this session
+dissent:
+  - seat: "codex gpt-5.6-sol (red team)"
+    objection: "HIGH: the seed is a one-off script, so merging does not update the live rows; the change cannot be observed on the live API."
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED as scope, not fixed: the brief forbids a prod migration and a DB write, and the live rows are
+      already correct. The Bites line says so and names the true consumer (a re-run of the seed would overwrite
+      the correct rows with the E23 price).
+  - seat: "codex gpt-5.6-sol (red team)"
+    objection: "MEDIUM: absent product and pricing_key null are treated alike."
+    status: CONFIRMED
+    disposition: "CURED: a separate test pins E23U and E23V as present with null pricing_key; the absent codes are named as such in the ruling."
+  - seat: "codex gpt-5.6-sol (red team)"
+    objection: "MEDIUM: the test picks the pack by file name, without payload.sequence or environment."
+    status: CONFIRMED
+    disposition: "CURED: pack chosen by max payload.sequence among files whose protected.environment is PRODUCTION."
+  - seat: "codex gpt-5.6-sol (red team)"
+    objection: "LOW: existence pin covered only E23U/E23V; the priced set is empty today."
+    status: CONFIRMED
+    disposition: "CURED for the first: the child set is pinned to exactly E23A, E23U, E23V, E23X, E23Y. The empty priced set is true today and left as a guard against a future downgrade."
