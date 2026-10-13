@@ -1,0 +1,20 @@
+gear: 2
+gear_reason: >-
+  Size floor (diff with tests, observer and pack above 400 churn). Mouth adapter bookkeeping only: a
+  retired-keys list and two tests over the signed packs, plus a no-argument observer; no copy text, no
+  backend, no data, no pricing.
+mission: >-
+  The E33 reason-copy keys that no signed pack emits any more are listed as retired, so a test fails if one silently comes back or a live code loses its copy.
+objective: >-
+  engine-adapter.ts exports RETIRED_SUPPORT_REASON_KEYS (four E33 advisor-check keys, copy kept for replay of
+  signed packs 6 and 7); the engine-adapter suite fails if a signed pack at seq 28 or later emits a retired
+  key, and fails if an E33 advisor-check key in the copy table is neither emitted by the highest signed pack
+  nor listed as retired.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+  - scripts/ci/observe_visa_oracle_e33_retired_keys.py
+  - tests/scripts/test_observe_visa_oracle_e33_retired_keys.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2

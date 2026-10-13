@@ -1,0 +1,74 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 (mandate to close the E33 family end to end; E33/retirement audit plan, PR-15) - reason-copy
+  keys in engine-adapter.ts that no signed pack emits any more are listed as retired, so a test fails if one
+  silently comes back or a live code loses its copy.
+mission: >-
+  The E33 reason-copy keys that no signed pack emits any more are listed as retired, so a test fails if one silently comes back or a live code loses its copy.
+lanes:
+  - lane: e33-pr15
+    role: build
+    seat: claude-sonnet-5 (Claude Code workflow subagent), worktree mouth-vo-e33-pr15-retired-keys-1013 on M5.
+pii_scan: clean
+bites:
+  consumer: >-
+    the engine-adapter test suite in the required mouth CI leg (retired-keys tests over the signed packs).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_e33_retired_keys.py
+  expect: "contains:e33 retired keys hold"
+receipts:
+  - claim: "The branch sits on a fresh origin/main (nothing pushed); fetch, rebase no-op."
+    cmd: git fetch origin main && git rebase origin/main
+    result: "branch already up to date on origin/main 6324ac93e9, one commit ahead (bfba8dc145)"
+    exit: 0
+    ts: "2026-10-13T12:16:00Z"
+    seat: this session
+  - claim: "The no-argument observer passes: engine-adapter file fully green and both retirement tests reported as run."
+    cmd: python3 scripts/ci/observe_visa_oracle_e33_retired_keys.py
+    result: "adapter Tests  165 passed (165); e33 retired keys hold"
+    exit: 0
+    ts: "2026-10-13T12:16:45Z"
+    seat: this session
+  - claim: "The observer's summary parser and required-test check reject skipped, todo, failed and reduced counts and a deleted or skipped required test."
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_e33_retired_keys.py
+    result: "11 passed"
+    exit: 0
+    ts: "2026-10-13T12:17:00Z"
+    seat: this session
+  - claim: "The whole visa-oracle Vitest tree (_components and _lib included) passes."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 56 passed (56); Tests 1471 passed (1471)"
+    exit: 0
+    ts: "2026-10-13T12:17:30Z"
+    seat: this session
+  - claim: "apps/mouth typechecks."
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-13T12:17:35Z"
+    seat: this session
+  - claim: "The whole backend visa_engine test directory (this lane touches no backend file): no failure is in a count-pin or pack file; the 2 failures and 39 errors are all in DB-backed files whose local database lacks the deployed migrations (test_evaluate_endpoint 31, test_shadow_evidence 6, test_shadow_match 2 errors; test_visa_engine_retention_fk_registry 2 failures), unrelated to this diff and without a database in CI-less local runs."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/services/visa_engine
+    result: "2 failed, 3623 passed, 15 skipped, 3 xfailed, 39 errors in 137.31s"
+    exit: 1
+    ts: "2026-10-13T12:20:03Z"
+    seat: this session
+decisions:
+  - id: D-four-keys
+    decision: >-
+      Four keys are retired, not the three the audit listed. Emission was derived by walking every reason_code at
+      any depth in each signed pack payload: E33G_INCOME_60K_ADVISOR_CHECK and E33E_DEPOSIT_INCOME_BASIS_ADVISOR_CHECK
+      were last emitted by signed seq-7 (seq-29 emits E33G_INCOME_BELOW_THRESHOLD), and
+      E33B_EXPERTISE_QUALIFICATION_ADVISOR_CHECK and E33F_AGE_UNDER_55_ADVISOR_CHECK are emitted by no signed pack.
+      Seq-27, 28 and 29 emit only E33E_AGE_55_59_ADVISOR_CHECK and E33_PROPERTY_QUALIFICATION_ADVISOR_CHECK.
+  - id: D-copy-kept
+    decision: >-
+      The copy stays in SUPPORT_REASON_COPY because signed packs 6 and 7 still replay these codes; no copy text
+      changed and nothing was re-pointed at a live rule. The second test makes dropping E33G from the list
+      red, which is the proof it is dead.
+  - id: D-mutation
+    decision: >-
+      Mutation check recorded by the build seat: adding the live E33E_AGE_55_59_ADVISOR_CHECK to the retired
+      list made both new tests fail (2 failed, 163 passed); the file was restored.
+dissent: []
