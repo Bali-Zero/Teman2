@@ -32,7 +32,7 @@ bites: >-
   the new test, which is red on the old seed and green on this one.
 receipts:
   - claim: "The new test is red on the unchanged seed."
-    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/test_visa_types_seed_e23_pricing.py # seed taken from origin/main
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/test_visa_types_seed_e23_pricing.py with the seed file taken from origin/main
     result: "1 failed, 2 passed"
     exit: 1
     ts: "2026-10-13T08:00:00Z"
