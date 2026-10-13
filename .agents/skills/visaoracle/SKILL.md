@@ -137,9 +137,20 @@ interesting points spawn round N+1 research. No round limit. Opus 5.5 orchestrat
 hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5); Sonnet implements; research outputs persisted under `research/visa/` in the worktree
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
-## LIVE STATE — CURRENT POSITION (updated 2026-10-12; update on every state change)
+## LIVE STATE — CURRENT POSITION (updated 2026-10-13; update on every state change)
 
-- **2026-10-12 position (production pack seq-28 since 2026-10-12T03:08Z; boundary 2026-11-12T18:00:16Z, organ alert T-7 = 2026-11-05).**
+- **2026-10-13 position (production pack seq-29 since 2026-10-13T11:19:00Z; boundary 2026-11-14T00:07:47Z, organ alert T-7 = 2026-11-07).**
+  Activation `84e8a5c5-55eb-4649-8dc4-f620c9f9b00b` (rule_pack_id `ed666554-c476-5e67-9c25-921388e64537`, payload
+  `3f3b45ed1aaeadc72ec9dd2a5e33519ded3a0ec1da8408fade150a0ae39b9295`, 117 rules, PR #8433, merge `2bf9ed3c93`
+  at 2026-10-13T10:46:12Z; signed on M5 by nuzantara-57, `signed_at 2026-10-13T08:56:32Z`; two-login ceremony from
+  Pro, dry then apply, roles 0; seq-28 activation `b7c808bd` closed 11:18:58Z). Content: the 2026-10-13 organ re-stamp +
+  E31J under 18 and never married + E31D Indonesian sponsor + E28F foreign branch or subsidiary + E31E parent scope.
+  Proof-of-armed 13/13 PASS (https://github.com/Bali-Zero/Teman2/pull/8433#issuecomment-6144652983, issuecomment-6144652983):
+  sentinel `OK pack 29`, `/evaluate` sequence 29, gold 18/20 (known personas 9 and 10), one open activation. The #8390
+  post-organ observation is closed (the suite stayed green after the newer ledger landed). **Next: seq-30 from the
+  conductor** (A1 on-shore conversion, E30A/E30B multi-year; branch `agent/nuzantara/backend-rag/vo-seq30-a1-e30-material`),
+  signed by the session before 2026-11-07; open PENDING-ARMS row for the seq-29 boundary. Detail: `references/live-state-log.md`.
+- **SUPERSEDED by seq-29 (history), 2026-10-12 position (production pack seq-28 since 2026-10-12T03:08Z; boundary 2026-11-12T18:00:16Z, organ alert T-7 = 2026-11-05).**
   Activation `b7c808bd-c0f4-48fe-9fdb-3f7f47f7e86a` (rule_pack_id `b383effb-eea4-5890-9a6a-0f13d816e855`, PR #8300,
   merge `7bb50d079e`; signed on M5 by nuzantara-57, `signed_at 2026-10-11T22:53:04Z`, kid `prod-2026-07-1`; two-login
   ceremony from Pro, roles 0; seq-27 activation `471bddfa` closed). Content: the 2026-10-11 organ re-stamp (organ PR
@@ -153,8 +164,8 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   (M5 nuzantara-57).** Next: seq-29 candidate (38-visa night program, conductor on Pro `~/visa-night`; unsigned, chained
   to seq-28) before 2026-11-05; test-hygiene follow-ups F1-F3 from #8287's gate; audit PRs PR-7/PR-4 (post-seq-28),
   PR-10, PR-14, PR-15, PR-18, PR-19/20, PR-16; the 13 batch-2 owner decisions. Detail: `references/live-state-log.md`.
-- **seq-29 is to be signed and activated by the session itself (Zero, 2026-10-12)**, process unchanged (red team, two-titolare council, fresh Opus gate, ceremony, proof-of-armed). The 38-visa night program's seq-29 candidate does not exist yet: Pro has been offline on Tailscale since about 11:10Z 2026-10-12, so the night conductor is halted. F1-F3 closed by #8385 (`bc35468022`).
-- **The seq-28 pack tests are pinned to `research/visa/2026-10-11-organ-reattest-seq28` (#8390, `d00c73dd48`)**; open PENDING-ARMS row: observe main after the organ's 2026-10-18T18:00Z ledger lands (visa_engine suite still green).
+- **SUPERSEDED by seq-29 (history):** **seq-29 is to be signed and activated by the session itself (Zero, 2026-10-12)**, process unchanged (red team, two-titolare council, fresh Opus gate, ceremony, proof-of-armed). The 38-visa night program's seq-29 candidate does not exist yet: Pro has been offline on Tailscale since about 11:10Z 2026-10-12, so the night conductor is halted. F1-F3 closed by #8385 (`bc35468022`).
+- **SUPERSEDED by seq-29 (history, observation closed 2026-10-13):** **The seq-28 pack tests are pinned to `research/visa/2026-10-11-organ-reattest-seq28` (#8390, `d00c73dd48`)**; open PENDING-ARMS row: observe main after the organ's 2026-10-18T18:00Z ledger lands (visa_engine suite still green).
 - **SUPERSEDED by seq-28 (history), 2026-10-11 position (E33 / retirement program; production pack then seq-27, boundary 2026-11-09T13:21:22Z).**
   Census (scratch, read-only): interview space 1.1x10^14 combinations (exact DAG count); 256 covering walks =
   186 SUPPORTED / 57 NO_SUPPORTED_PATH / 9 HUMAN_REVIEW / 4 NEEDS_INPUT, 0 errors; offline replay == live 256/256.

@@ -306,8 +306,9 @@ The mouth copy carries the four new reason sentences in EN and ID.
 
 Review chain, none of it the signer's own work: the conductor's build on Pro; the Codex red teams;
 the council on the final content, Codex `gpt-5.6-sol` SIGN and Kimi `k3` SIGN; the fresh Opus gate on
-Pro, READY-TO-SIGN on `31eb2ade20` (all in
-`evidence/2026-10/agent-nuzantara-backend-rag-vo-seq29-fold-1012-4eab11d8/`); the organ attestation
+Pro, READY-TO-SIGN on `31eb2ade20` (the council votes and the gate verdict are recorded in
+`evidence/2026-10/agent-air-m5-backend-rag-vo-seq29-land-1013-9070d845/journal.jsonl` and on Pro under
+`~/visa-night`, not in the fold-1012 evidence directory); the organ attestation
 `research/visa/2026-10-13-organ-reattest-seq29-attestation.md` (adversarial review: Codex
 `gpt-5.6-sol`, `LEDGER: CONFIRMED` on `85c1f3cd90`); then, on the owning session's side, the
 signer-side reproduction (REAL fold re-run byte-identical, W141 re-checked: 18 portal stamps, boundary,
@@ -329,16 +330,23 @@ seq-25..28; the husky Prettier check requires it), file prefix now `8daa66acd3ba
 covers the JCS payload, so `payload_sha256` is unchanged and `TestSignedBundleTiesToSource` passes on
 the formatted file.
 
-The bundle lands in the same PR as the source, so `TestSignedBundleTiesToSource`,
-`TestReattestationIsReal` and `scripts/ci/observe_visa_seq29_signed.py` are green at merge.
-`scripts/ci/observe_visa_seq28_signed.py` (asserts the highest signed pack is 28) is retired in the
+The bundle landed in the same PR as the source (#8433), so `TestSignedBundleTiesToSource`,
+`TestReattestationIsReal` and `scripts/ci/observe_visa_seq29_signed.py` were green at merge.
+`scripts/ci/observe_visa_seq28_signed.py` (asserts the highest signed pack is 28) was retired in the
 same PR. `scripts/ci/observe_visa_seq29_candidate.py` (unsigned-candidate gate, census and mouth copy
-guard) is KEPT: it is added by this branch, stays green on the signed tree, and the conductor's history
-pack names it as its observe command, which the bites check requires to exist.
+guard) was added by that branch and stays green on the signed tree; nothing in the bites check requires
+keeping it any longer.
 
-**Activation: pending.** It happens from Pro after merge, the two-login ceremony of the seq-25 and
-seq-26 notes above, on the PG primary. The `activation_id` and timestamp are recorded in the follow-up
-ledger PR; nothing is recorded here until the ceremony has run.
+**Activation: done 2026-10-13T11:19:00Z.** PR #8433 merged 2026-10-13T10:46:12Z as
+`2bf9ed3c93c345db1ebd7675fed60111b4bf15e3`; the backend was live on it (post-deploy-verify exit 0 at
+11:13:51Z). The ceremony ran from Pro, dry run first and then apply, the two-login procedure of the
+seq-25 and seq-26 notes above, on the PG primary, with ceremony roles left 0. `activation_id`
+`84e8a5c5-55eb-4649-8dc4-f620c9f9b00b` (`rule_pack_id` `ed666554-c476-5e67-9c25-921388e64537`); the
+seq-28 activation `b7c808bd-c0f4-48fe-9fdb-3f7f47f7e86a` closed at 11:18:58Z. Proof-of-armed 13/13
+PASS: https://github.com/Bali-Zero/Teman2/pull/8433#issuecomment-6144652983
+
+Ceremony gotcha: the activation script reads `PACK` relative to `apps/backend-rag`, so a copy of the
+bundle extracted with `git show` is passed by a path relative to that directory.
 
 ## Rotation
 

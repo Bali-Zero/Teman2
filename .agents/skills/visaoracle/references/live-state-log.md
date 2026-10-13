@@ -7,6 +7,34 @@ CURRENT POSITION block in SKILL.md in the same commit.
 
 Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE STATE — CURRENT POSITION.
 
+- 2026-10-13 (M5, Zero's standing seq-29 authorization of 2026-10-12; signing session nuzantara-57): **seq-29 active; the #8390 post-organ observation and the seq-29 freshness row closed.**
+  (1) seq-29 signed on M5 (`signed_at 2026-10-13T08:56:32Z`, kid `prod-2026-07-1`), landing PR #8433 merged
+  2026-10-13T10:46:12Z as `2bf9ed3c93c345db1ebd7675fed60111b4bf15e3`; backend live on it (post-deploy-verify exit 0 at
+  11:13:51Z); mouth `dpl_8V8qTy4xedXAe7GD7r3AESbcw1Qq` promoted at 10:56:31Z; organ PR #8410 closed as superseded.
+  ACTIVATED 2026-10-13T11:19:00Z from Pro (dry run then apply, roles left 0): activation_id
+  `84e8a5c5-55eb-4649-8dc4-f620c9f9b00b`, rule_pack_id `ed666554-c476-5e67-9c25-921388e64537`, payload
+  `3f3b45ed1aaeadc72ec9dd2a5e33519ded3a0ec1da8408fade150a0ae39b9295`, 117 rules; the seq-28 activation
+  `b7c808bd-c0f4-48fe-9fdb-3f7f47f7e86a` closed at 11:18:58Z. **New earliest portal boundary 2026-11-14T00:07:47Z**
+  (T-7 = 2026-11-07). Content: the organ re-stamp of 2026-10-13 (ledger `research/visa/2026-10-13-organ-reattest-seq29`) +
+  E31J limited to under 18 and never married (`E31J_REQ_UNDER_18`, `E31J_REQ_UNMARRIED`, marital status OTHER ->
+  `E31J_MARITAL_STATUS_OTHER_REVIEW`) + E31D requires an Indonesian sponsor (`E31D_REQ_SPONSOR_INDONESIAN`) + E28F only
+  with a foreign branch or subsidiary + E31E adult/married exclusions scoped to PARENT; 114 -> 117 rules.
+  (2) Review chain: the conductor's build on Pro and the Codex red teams; council Codex gpt-5.6-sol + Kimi k3 both SIGN;
+  fresh Opus gate on Pro; signer-side REAL fold reproduction byte-identical plus an independent grounding ruling 8/8 SIGN,
+  which overruled the E31J dissent on the Kepmen M.IP-08/2025 Lampiran row; landing Codex red team; fresh Opus gates.
+  (3) Proof-of-armed 13/13 PASS (PR #8433 comment issuecomment-6144652983): sentinel `OK pack 29` with boundary 2026-11-14T00:07:47Z; `/evaluate` sequence 29; E31J adult -> E31J_REQ_UNDER_18, single minor -> SUPPORTED, OTHER ->
+  E31J_MARITAL_STATUS_OTHER_REVIEW, MARRIED -> E31J_REQ_UNMARRIED; E31D non-Indonesian sponsor ->
+  E31D_REQ_SPONSOR_INDONESIAN, Indonesian -> SUPPORTED; E28F only with foreign_branch_or_subsidiary; seq-28 regressions
+  hold; gold 18/20 (the known personas 9 and 10); one open activation via `scripts/pg.sh` read-only; EN/ID site walks on
+  Pro. (4) #8390 observation closed: the newer ledger `research/visa/2026-10-13-organ-reattest-seq29` landed on main with
+  #8433 and the visa_engine suite stayed green (Backend Tests (Python) pass,
+  https://github.com/Bali-Zero/Teman2/actions/runs/38382522528/job/115250277579); `test_seq28_pack.py` still pins
+  `2026-10-11-organ-reattest-seq28`. `observe_visa_seq28_signed.py` was retired by #8433, so the proof is the suite.
+  (5) Pro outage of 2026-10-12 (about 11:10Z to 16:35Z): the night conductor was halted and restarted after Pro
+  returned; the seq-29 candidate was built after the restart. (6) Moved to seq-30: A1 on-shore conversion and E30A/E30B
+  multi-year (branch `agent/nuzantara/backend-rag/vo-seq30-a1-e30-material`). The next freshness row is open
+  (before 2026-11-14T00:07:47Z).
+
 - 2026-10-12 (M5, visaoracle E33 lane, ledger after #8385 and #8390; recorded ~15:30Z): **F1-F3 closed, the post-organ seq-28 observation opened, seq-29 signing authorized.**
   (1) #8385 (E33G income-question tests check every category and the EN `60 thousand` and ID `60 ribu` variants of the threshold, observer floor to the real
   count; F1-F3 of #8287's gate) merged 2026-10-12T15:04:51Z as `bc35468022`, proven live at

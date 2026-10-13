@@ -42,6 +42,8 @@ def test_both_seq28_rows_are_closed_with_proof():
 def test_seq29_freshness_row_appears_exactly_once():
     rows = [ln for ln in ARMS_LINES if "VISA-ORACLE freshness, after seq-28)" in ln]
     assert len(rows) == 1
+    # Open with its original pins, or closed by #8433 (seq-29 activation).
+    assert rows[0].startswith("- opened 2026-10-12") or rows[0].startswith("- closed 2026-10-13 (CLOSED BY #8433")
     assert "2026-11-12T18:00:16Z" in rows[0] and "OK pack_sequence 29" in rows[0]
 
 
@@ -138,7 +140,10 @@ def test_8390_post_organ_row_appears_once_open_with_owner_and_proof():
     rows = [ln for ln in ARMS_LINES if "#8390 post-organ observation" in ln]
     assert len(rows) == 1
     row = rows[0]
-    assert row.startswith("- opened 2026-10-12")
+    # Either still open, or closed by #8433 (seq-29 landed the newer organ ledger).
+    assert row.startswith("- opened 2026-10-12") or (
+        row.startswith("- closed 2026-10-13 (CLOSED BY #8433") and "actions/runs/38382522528" in row
+    )
     assert "owner: me" in row and "proof-of-armed:" in row
     assert "2026-10-18T18:00Z" in row
     assert "d00c73dd48" in row and "issuecomment-6127248185" in row

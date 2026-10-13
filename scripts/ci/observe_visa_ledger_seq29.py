@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""observe_visa_ledger_seq29.py — bites: observation for the seq-29 corner-skill ledger.
+
+# bites-observable — this script takes NO arguments: the program it runs and the
+# test file it names are literal strings in this file, so nothing an invoker types
+# can name a program to run, a file to write, or a database to reach (the bar
+# `scripts/ci/bites_parse.py::_guard_observable_script` sets).
+
+The consumer is every session that loads /visaoracle. The observation runs the
+ledger test file and requires every test in it to pass: SKILL.md and the
+live-state log carry the seq-29 activation, the seq-29 freshness row and the #8390
+row are closed with proof, the next freshness row (after seq-29) appears exactly
+once and open, and no PENDING-ARMS line is duplicated.
+"""
+
+# bites-observable — no arguments; one literal program, one literal test file.
+
+from __future__ import annotations
+
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+TEST_FILE = "tests/scripts/test_visa_ledger_seq29.py"
+MIN_TESTS = 8
+_SUMMARY = re.compile(r"^=*\s*(\d+) passed in [0-9.]+s(?: \([0-9:]+\))?\s*=*$")
+
+
+def summary_ok(line: str | None) -> bool:
+    """True only for a pytest line that is exactly `N passed in Xs`, N >= 8.
+
+    Anything else (failed, skipped, error, xfail, a reduced count, no line) is False.
+    """
+    if line is None:
+        return False
+    match = _SUMMARY.match(line.strip())
+    return match is not None and int(match.group(1)) >= MIN_TESTS
+
+
+def main() -> int:
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", TEST_FILE, "-p", "no:cacheprovider"],
+        cwd=REPO_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    out = result.stdout + result.stderr
+    lines = [ln for ln in out.splitlines() if re.search(r"\bin [0-9.]+s", ln)]
+    line = lines[-1] if lines else None
+    summary = line.strip() if line else "no pytest summary"
+    if result.returncode != 0 or not summary_ok(line):
+        print(f"observe_visa_ledger_seq29: FAILED ({summary})\n{out[-1500:]}")
+        return result.returncode or 1
+    print(f"observe_visa_ledger_seq29: {summary}")
+    print("observe_visa_ledger_seq29: seq-29 ledger holds")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
