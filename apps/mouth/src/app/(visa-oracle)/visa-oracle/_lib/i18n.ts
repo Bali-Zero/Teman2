@@ -517,7 +517,8 @@ const en = {
   "q.retirement_basis.opt.bank_deposit": "A bank deposit in my own name",
   "q.retirement_basis.opt.property": "A property arrangement",
   "q.retirement_basis.opt.passive_income": "Regular passive monthly income",
-  "q.retirement_basis.opt.family_sponsor": "A confirmed family sponsor",
+  "q.retirement_basis.opt.family_sponsor":
+    "A penjamin (a licensed visa agency or a person in Indonesia) supports my application",
   "q.retirement_basis.opt.undecided": "I have not chosen a basis",
   "why.retirement_basis":
     "Your choice decides which questions come next and which retirement visas can fit your situation.",
@@ -527,7 +528,7 @@ const en = {
   "q.retirement_undecided_basis.opt.deposit_or_income":
     "A bank deposit or documented passive income",
   "q.retirement_undecided_basis.opt.family_sponsor":
-    "A confirmed family sponsor",
+    "A penjamin (a licensed visa agency or a person in Indonesia) supports my application",
   "q.retirement_undecided_basis.opt.still_unsure": "I still can't say",
   "why.retirement_undecided_basis":
     "As with the basis question above, this decides which questions come next.",
@@ -561,9 +562,9 @@ const en = {
   "why.secondhome_property_value_usd":
     "We record the exact value you give. Ownership and tenure are not assumed.",
   "q.secondhome_passive_income_usd":
-    "What passive monthly income can you document?",
+    "What monthly income or allowance can you document?",
   "q.secondhome_passive_income_usd.hint":
-    "Enter the exact whole-dollar monthly amount.",
+    "Income or an allowance counts if you can document it. Enter the exact whole-dollar monthly amount.",
   "q.secondhome_passive_income_usd.label": "Documented passive income",
   "why.secondhome_passive_income_usd":
     "The monthly amount is used as you enter it and is never estimated from your assets.",
@@ -1569,7 +1570,8 @@ const id: Record<Keys, string> = {
   "q.retirement_basis.opt.bank_deposit": "Deposito bank atas nama saya",
   "q.retirement_basis.opt.property": "Pengaturan properti",
   "q.retirement_basis.opt.passive_income": "Penghasilan pasif bulanan tetap",
-  "q.retirement_basis.opt.family_sponsor": "Sponsor keluarga yang dikonfirmasi",
+  "q.retirement_basis.opt.family_sponsor":
+    "Seorang penjamin (biro visa berlisensi atau seseorang di Indonesia) mendukung permohonan saya",
   "q.retirement_basis.opt.undecided": "Saya belum memilih dasar",
   "why.retirement_basis":
     "Pilihan Anda menentukan pertanyaan berikutnya dan visa pensiun mana yang dapat sesuai dengan situasi Anda.",
@@ -1580,7 +1582,7 @@ const id: Record<Keys, string> = {
   "q.retirement_undecided_basis.opt.deposit_or_income":
     "Deposito bank atau penghasilan pasif yang terdokumentasi",
   "q.retirement_undecided_basis.opt.family_sponsor":
-    "Sponsor keluarga yang dikonfirmasi",
+    "Seorang penjamin (biro visa berlisensi atau seseorang di Indonesia) mendukung permohonan saya",
   "q.retirement_undecided_basis.opt.still_unsure":
     "Saya masih belum bisa memastikan",
   "why.retirement_undecided_basis":
@@ -1616,9 +1618,9 @@ const id: Record<Keys, string> = {
   "why.secondhome_property_value_usd":
     "Kami mencatat nilai persis yang Anda berikan. Kepemilikan dan bentuk penguasaan tidak diasumsikan.",
   "q.secondhome_passive_income_usd":
-    "Berapa penghasilan pasif bulanan yang dapat Anda buktikan?",
+    "Berapa penghasilan atau tunjangan bulanan yang dapat Anda buktikan?",
   "q.secondhome_passive_income_usd.hint":
-    "Masukkan jumlah bulanan dolar bulat yang tepat.",
+    "Penghasilan atau tunjangan dihitung jika dapat Anda buktikan dengan dokumen. Masukkan jumlah bulanan dolar bulat yang tepat.",
   "q.secondhome_passive_income_usd.label": "Penghasilan pasif terdokumentasi",
   "why.secondhome_passive_income_usd":
     "Jumlah bulanan dipakai persis seperti yang Anda masukkan dan tidak pernah diperkirakan dari aset.",

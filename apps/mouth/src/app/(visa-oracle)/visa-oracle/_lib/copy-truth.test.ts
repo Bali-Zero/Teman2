@@ -294,6 +294,26 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
     "If you are unsure whether you have a penjamin, this assessment treats that answer as “no”; Bali Zero can act as your penjamin.",
     "Jika Anda belum yakin apakah Anda sudah memiliki penjamin, penilaian ini memperlakukan jawaban tersebut sebagai “tidak”; Bali Zero dapat bertindak sebagai penjamin Anda.",
   ],
+  [
+    "q.retirement_basis.opt.family_sponsor",
+    "A penjamin (a licensed visa agency or a person in Indonesia) supports my application",
+    "Seorang penjamin (biro visa berlisensi atau seseorang di Indonesia) mendukung permohonan saya",
+  ],
+  [
+    "q.retirement_undecided_basis.opt.family_sponsor",
+    "A penjamin (a licensed visa agency or a person in Indonesia) supports my application",
+    "Seorang penjamin (biro visa berlisensi atau seseorang di Indonesia) mendukung permohonan saya",
+  ],
+  [
+    "q.secondhome_passive_income_usd",
+    "What monthly income or allowance can you document?",
+    "Berapa penghasilan atau tunjangan bulanan yang dapat Anda buktikan?",
+  ],
+  [
+    "q.secondhome_passive_income_usd.hint",
+    "Income or an allowance counts if you can document it. Enter the exact whole-dollar monthly amount.",
+    "Penghasilan atau tunjangan dihitung jika dapat Anda buktikan dengan dokumen. Masukkan jumlah bulanan dolar bulat yang tepat.",
+  ],
 ];
 
 // Sentences the code proved false: a review that does not exist, a rule that
@@ -908,5 +928,32 @@ describe("E23U / E23V sentences follow the seq-28 rule predicates", () => {
     expect(SUPPORT_REASON_COPY.E23V_TRADE_OFFICE_ELIGIBLE.en).toContain(
       "foreign trade or economic representative office in Indonesia",
     );
+  });
+});
+
+describe("the retirement basis and income questions use the official page's words", () => {
+  const KEYS = [
+    "q.retirement_basis.opt.family_sponsor",
+    "q.retirement_undecided_basis.opt.family_sponsor",
+    "q.secondhome_passive_income_usd",
+    "q.secondhome_passive_income_usd.hint",
+  ] as const;
+
+  it("the basis options say penjamin and no longer say family sponsor", () => {
+    for (const key of KEYS.slice(0, 2)) {
+      expect(dict.en[key]).toMatch(/penjamin/);
+      expect(dict.id[key]).toMatch(/penjamin/);
+      expect(dict.en[key]).not.toMatch(/family sponsor/i);
+      expect(dict.id[key]).not.toMatch(/sponsor keluarga/i);
+    }
+  });
+
+  it("the income question names income or an allowance and anchors on no figure", () => {
+    expect(dict.en["q.secondhome_passive_income_usd"]).toMatch(/allowance/);
+    expect(dict.id["q.secondhome_passive_income_usd"]).toMatch(/tunjangan/);
+    for (const key of KEYS) {
+      expect(dict.en[key]).not.toMatch(/\d/);
+      expect(dict.id[key]).not.toMatch(/\d/);
+    }
   });
 });
