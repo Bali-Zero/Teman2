@@ -1,0 +1,18 @@
+gear: 1
+gear_reason: >-
+  Size floor 1 (about 230 churn with tests, observer and pack, below 400). One line in the public llms.txt, its guard test and a
+  no-argument observer; no backend, no engine, no price.
+mission: >-
+  llms.txt names E33A, E33B and E33C as Second Home government-linked routes handled by consultation, as the official pages and the live Visa Oracle copy do.
+objective: >-
+  The public llms.txt carries exactly one line naming E33A (special-expertise government invitation), E33B (special-expertise collaboration)
+  and E33C (world-figure government invitation) as government-linked routes handled by consultation with a Bali Zero advisor and no
+  published price; no E33A/B/C line carries an IDR figure; the E33E price line is unchanged.
+scope:
+  - apps/mouth/public/llms.txt
+  - apps/mouth/src/lib/llms-public-file-guard.test.ts
+  - scripts/ci/observe_llms_e33_gov_routes.py
+  - tests/scripts/test_observe_llms_e33_gov_routes.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2

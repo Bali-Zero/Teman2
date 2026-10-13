@@ -1,0 +1,86 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 E33/retirement audit plan PR-18 - E33A, E33B and E33C are priced on consultation (Zero 2026-10-11);
+  the public llms.txt read by LLM crawlers must describe them as government-linked routes, as the official pages and the live Visa Oracle copy (#8266) do.
+mission: >-
+  llms.txt names E33A, E33B and E33C as Second Home government-linked routes handled by consultation, as the official pages and the live Visa Oracle copy do.
+lanes:
+  - lane: e33-pr18
+    role: build
+    seat: claude-sonnet-5 (Claude Code workflow subagent), worktree mouth-vo-e33-pr18-llms-1013 on M5.
+  - lane: e33-pr18-evidence
+    role: build
+    seat: claude-sonnet-5-5 (Claude Code workflow subagent), same worktree; observer, pytest and pack.
+  - lane: e33-pr18-ground-truth
+    role: ground_truth
+    seat: >-
+      the E33A, E33B and E33C labels in the Visa Oracle i18n.ts and the "handled with a Bali Zero advisor" text in engine-adapter.ts;
+      the llms.txt line follows them and asserts no price of its own. query_hash = sha256 of apps/mouth/public/llms.txt at origin/main.
+    nb: apps/mouth/public/llms.txt
+    query_hash: "2a97b0dee3aa6cc08beb82a5f3a211c7f952d59557c3735d98c122821c3ae572" # pragma: allowlist secret
+pii_scan: clean
+bites:
+  consumer: >-
+    LLM crawlers reading https://balizero.com/llms.txt (the apps/mouth/public/llms.txt file the guard test pins).
+  where: ci
+  observe: python3 scripts/ci/observe_llms_e33_gov_routes.py
+  expect: "contains:llms E33A-C routes hold"
+receipts:
+  - claim: The llms.txt guard test passes with the new E33A/B/C block (3 new tests; 29 in the file).
+    cmd: cd apps/mouth && npx vitest run src/lib/llms-public-file-guard.test.ts
+    result: "Test Files 1 passed (1); Tests 29 passed (29)"
+    exit: 0
+    ts: "2026-10-13T12:13:45Z"
+    seat: this session
+  - claim: The no-argument observer passes and accepts only a full pass of at least 29 tests.
+    cmd: python3 scripts/ci/observe_llms_e33_gov_routes.py
+    result: "Tests 29 passed (29); llms E33A-C routes hold"
+    exit: 0
+    ts: "2026-10-13T12:13:50Z"
+    seat: this session
+  - claim: The observer's summary parser rejects skipped, todo, failed and reduced counts.
+    cmd: python3 -m pytest tests/scripts/test_observe_llms_e33_gov_routes.py
+    result: "10 passed"
+    exit: 0
+    ts: "2026-10-13T12:13:48Z"
+    seat: this session
+  - claim: The whole visa-oracle mouth tree (the _components and _lib trees included) passes on the rebased head.
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 56 passed (56), Tests 1469 passed (1469)"
+    exit: 0
+    ts: "2026-10-13T12:14:06Z"
+    seat: this session
+  - claim: The llms guard and article-export tests pass together.
+    cmd: cd apps/mouth && npx vitest run src/lib/llms-public-file-guard.test.ts src/lib/llms-article-exports.test.ts
+    result: "Test Files 2 passed (2), Tests 37 passed (37)"
+    exit: 0
+    ts: "2026-10-13T12:14:48Z"
+    seat: this session
+  - claim: apps/mouth typechecks.
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-13T12:14:55Z"
+    seat: this session
+  - claim: >-
+      The whole backend visa_engine test directory has 4 failures and 39 errors from the local M5 environment (missing psutil module,
+      no scratch Postgres schema); the diff touches no backend path and no Python test reads llms.txt, so CI is the arbiter. Not green locally.
+    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine -p no:cacheprovider
+    result: "4 failed, 3621 passed, 15 skipped, 3 xfailed, 39 errors"
+    exit: 1
+    ts: "2026-10-13T12:17:07Z"
+    seat: this session
+decisions:
+  - id: D-no-price
+    decision: >-
+      The E33A/B/C line carries no IDR figure (priced on consultation, Zero 2026-10-11); a guard test pins that and pins the E33E line
+      at IDR 45.000.000 as unchanged.
+  - id: D-observer-reuse-guard
+    decision: >-
+      The observer runs the existing llms-public-file-guard test file rather than a new script-side parser, so the file CI already reads is the file observed.
+  - id: D-owner-decision-12
+    decision: >-
+      The audit spec gates PR-18 on owner decision 12 (whether E33A-C are sold) and depends_on PR-3; the lane was instructed to implement
+      it and PR-3 merge state was not checked here - the PR body must say so.
+dissent: []
