@@ -334,6 +334,44 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     });
   }
 
+  // E33G copy pin (E33 audit PR-4): the remote persona at foreign income
+  // 59,999 reads the threshold, the unit and the translation as literal
+  // sentences, so a changed figure, a monthly unit or a mistranslation goes
+  // red here and not only a missing or raw code.
+  it("pins the E33G income-threshold sentence in EN and ID, figure and yearly unit included: offshore/remote/foreign_only/income_59999", () => {
+    const walk = replay.walks.find(
+      (candidate) =>
+        candidate.label === "offshore/remote/foreign_only/income_59999",
+    );
+    if (!walk) throw new Error("the income_59999 walk is not recorded");
+    expect(noPathReasonCodes(walk)).toEqual(["E33G_INCOME_BELOW_THRESHOLD"]);
+    const EN =
+      "The Remote Worker visa (E33G) needs a salary or income of at least USD 60,000 a year; the yearly figure you gave is below it.";
+    const ID =
+      "Visa Rumah Kedua Pekerja Jarak Jauh (E33G) memerlukan gaji atau penghasilan minimal USD 60.000 per tahun; angka tahunan yang Anda berikan berada di bawah batas tersebut.";
+    const outcome = outcomeFor(walk);
+    if (outcome.state !== "NO_SUPPORTED_PATH") {
+      throw new Error(`expected NO_SUPPORTED_PATH, got ${outcome.state}`);
+    }
+    expect(outcome.noPathReasons).toHaveLength(1);
+    expect(outcome.noPathReasons[0].message.en).toBe(EN);
+    expect(outcome.noPathReasons[0].message.id).toBe(ID);
+    for (const [language, sentence] of [
+      ["en", EN],
+      ["id", ID],
+    ] as const) {
+      const { unmount } = render(
+        <OutcomeSheet
+          language={language}
+          outcome={outcome}
+          facts={factsFor(walk)}
+        />,
+      );
+      expect(screen.getAllByText(sentence).length).toBeGreaterThan(0);
+      unmount();
+    }
+  });
+
   // The assertions above can fail: an unmapped code really renders the
   // unmapped fallback, and the generic code renders the generic sentence.
   it("proves the fallback assertions bite: an unmapped code reads as the unmapped copy", () => {

@@ -27,6 +27,7 @@ fingerprints the walk files this evidence was measured on and goes red the
 moment they change, because a door proven on stale facts is not proven.
 """
 
+import argparse
 import hashlib
 import json
 import subprocess
@@ -152,7 +153,15 @@ def counterexamples() -> list[dict]:
     return rows
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=OUT,
+        help="write the replay here instead of the committed fixture (no prettier pass)",
+    )
+    out_path = parser.parse_args(argv).out
     walks = []
     pack = None
     digest = hashlib.sha256()
@@ -223,15 +232,15 @@ def main() -> int:
         lines.append(f"    }}{tail}")
     lines.append("  ]")
     lines.append("}")
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     # Hand it to the repo's own formatter: lint-staged reformats this file on
     # commit either way, and a generator whose output differs from what lands
     # in the tree makes every regeneration look like a change.
     prettier = REPO / "node_modules" / ".bin" / "prettier"
-    if prettier.exists():
+    if out_path == OUT and prettier.exists():
         subprocess.run([str(prettier), "--write", str(OUT)], check=True, cwd=REPO)
-    print(f"{len(walks)} non-supported walks -> {OUT}")
+    print(f"{len(walks)} non-supported walks -> {out_path}")
     return 0
 
 
