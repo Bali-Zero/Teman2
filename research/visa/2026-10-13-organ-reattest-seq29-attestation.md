@@ -13,7 +13,9 @@ adversarial_review: pending-session
 # Organ re-attestation 2026-10-13 — candidate seq-29 (unsigned)
 
 The organ read the OFFICIAL_PORTAL pages of the signed seq-28 pack as reader `organ-sonnet-20261013`
-(judge `claude`) and folded `rulepack-prod-029.source.json` from that ledger. Nothing here is
+(17 of 18 judgements are `judge: fingerprint` against the attested baseline; the one page whose text
+changed, `3da72c7b` (Bridging, sidebar text only), got a semantic judgement by the organ's Claude
+judge, `semantic_change: none`, a row that carries no `judge` field) and folded `rulepack-prod-029.source.json` from that ledger. Nothing here is
 signed or active. `verified_at` of the candidate is the earliest successful read in the ledger.
 
 ## Attested reads used as the fingerprint baseline

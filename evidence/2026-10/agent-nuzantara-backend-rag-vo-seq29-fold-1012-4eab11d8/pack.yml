@@ -39,7 +39,7 @@ receipts:
     exit: 0
     ts: "2026-10-12T08:58:00Z"
     seat: Claude Sonnet 5.5 (implementer)
-  - claim: "The REAL fold on the organ ledger 2026-10-13 (read 00:07:47Z-00:08:00Z) verifies signed seq-28, requires the generic restamp to equal the organ candidate (PR #8410, bbce36fa2a) minus identity, then applies the seq-29 content. W141 measured - 18/18 portals move verified_at/verified_by only, one stamp 2026-10-13T00:07:47Z (the earliest read), max_age 2764800 s, earliest new boundary 2026-11-14T00:07:47Z (later than the seq-28 boundary 2026-11-12T18:00:16Z), 28 non-portal records byte-identical, 38 products unchanged, 117 rules."
+  - claim: "The REAL fold on the organ ledger 2026-10-13 (read 00:07:47Z-00:08:00Z) verifies signed seq-28, requires the generic restamp to equal the organ candidate (PR #8410, bbce36fa2a) minus identity, then applies the seq-29 content. W141 measured - 18/18 portals move verified_at/verified_by only, one stamp 2026-10-13T00:07:47Z (the earliest read), max_age 2764800 s, earliest new boundary 2026-11-14T00:07:47Z (later than the seq-28 boundary 2026-11-12T18:00:16Z), 10 non-portal records byte-identical (28 records in total), 38 products unchanged, 117 rules."
     cmd: PYTHONPATH=. python -m backend.scripts.visa_engine.fold_pack_seq29 --ledger-dir ../../research/visa/2026-10-13-organ-reattest-seq29 --organ-candidate <organ rulepack-prod-029.source.json> --created-at 2026-10-13T00:30:00Z --output backend/services/visa_engine/contracts/packs/rulepack-prod-029.source.json
     result: "mode REAL ORGAN RESTAMP; seq-29 payload_sha256 3f3b45ed1aaeadc72ec9dd2a5e33519ded3a0ec1da8408fade150a0ae39b9295; same modified, inserted and retired rules as the dry-run" # pragma: allowlist secret
     exit: 0
