@@ -20,31 +20,31 @@ lanes:
     query_hash: "00f1d66dd0d77f520a3929c5ffa9245a7de99cf9e892fce56ec5ab8f3f16c358" # pragma: allowlist secret
     note: query_hash = sha256 of rulepack-prod-028.signed.json.
 pii_scan: clean
-bites: "consumer: the CI gold-coverage floor gate (test_gold_coverage_floor.py) in the merge_group Backend shards, replaying every persona on the active pack seq-28; observation: the merge_group JUnit lists C1.json, C1__180D.json, A1__TRANSIT.json and A1__30D_BOUNDARY.json passing in gold_coverage_replay (39 of 39)."
+bites: "consumer: the CI gold-coverage floor gate (test_gold_coverage_floor.py, one aggregate test) plus the seq-19/seq-20 pack tests in the merge_group Backend shards; observation: the merge_group JUnit lists the personas as passing test ids test_seq19_pack.py::TestGoldCoverageReplay::test_persona_is_supported_against_seq19[C1.json], [A1__TRANSIT.json], [A1__30D_BOUNDARY.json] and test_seq20_pack.py::TestGoldCoverageReplay::test_persona_is_supported_against_seq20[C1.json], [C1__180D.json], [A1__TRANSIT.json], [A1__30D_BOUNDARY.json]."
 receipts:
   - claim: "Gold-coverage folder, floor test and the seq19/seq20 pack tests pass with the four personas."
     cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/gold_coverage backend/tests/services/visa_engine/test_gold_coverage_floor.py backend/tests/services/visa_engine/test_seq19_pack.py backend/tests/services/visa_engine/test_seq20_pack.py
     result: "210 passed"
     exit: 0
-    ts: "2026-10-13T05:05:12Z"
+    ts: "2026-10-13T05:22:28Z"
     seat: this session
   - claim: "Corpus replay on seq-28 passes for all 39 personas."
-    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.gold_coverage_replay --corpus backend/tests/services/visa_engine/gold_coverage/personas --as-of signed_at-of-seq-28
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.gold_coverage_replay --corpus backend/tests/services/visa_engine/gold_coverage/personas --as-of 2026-10-11T22:53:04.266030Z
     result: "passed 39, failed 0, total 39"
     exit: 0
-    ts: "2026-10-13T05:05:12Z"
+    ts: "2026-10-13T05:25:04Z"
     seat: this session
   - claim: "Whole visa_engine suite equals the known Mini baseline."
     cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine
     result: "2 failed, 3568 passed, 15 skipped, 3 xfailed, 31 errors (baseline 2 failed, 31 errors)"
     exit: 1
-    ts: "2026-10-13T05:05:12Z"
+    ts: "2026-10-13T05:24:41Z"
     seat: this session
   - claim: "The floor is red when a persona expectation is flipped and green after byte-copy revert."
     cmd: "flip C1__180D expected_candidates to [C1, D2], run test_gold_coverage_floor.py, restore with cp from a byte copy"
     result: "mutated: 1 failed, 2 passed (C1__180D.json missing D2); reverted: cmp identical"
     exit: 1
-    ts: "2026-10-13T05:05:12Z"
+    ts: "2026-10-13T05:24:43Z"
     seat: this session
 decisions:
   - id: D-no-bridging-relative-expiry
