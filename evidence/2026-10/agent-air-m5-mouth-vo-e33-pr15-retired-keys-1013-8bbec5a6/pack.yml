@@ -17,7 +17,7 @@ lanes:
       pins which reason codes the signed packs emit against the copy table in engine-adapter.ts.
     nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
     query_hash: "0e3263543a5ed7890b6c1cafd9de238a9b59419fef5c72a8ef01ebfac3fecea6" # pragma: allowlist secret
-    note: query_hash = sha256 of engine-adapter.ts at origin/main (before the change).
+    note: query_hash = sha256 of engine-adapter.ts at origin/main b846d2ce04 (before the change; unchanged by the rebase).
 pii_scan: clean
 bites:
   consumer: >-
@@ -26,41 +26,47 @@ bites:
   observe: python3 scripts/ci/observe_visa_oracle_e33_retired_keys.py
   expect: "contains:e33 retired keys hold"
 receipts:
-  - claim: "The branch sits on a fresh origin/main (nothing pushed); fetch, rebase no-op."
+  - claim: "Final code head 0b39bbe6f1 (fix commit on top of bfba8dc145), rebased onto fresh origin/main b846d2ce04 right before the evidence step, nothing pushed."
     cmd: git fetch origin main && git rebase origin/main
-    result: "branch already up to date on origin/main 6324ac93e9, one commit ahead (bfba8dc145)"
+    result: "rebased 4 commits onto b846d2ce04; engine-adapter.ts hash at origin/main unchanged"
     exit: 0
-    ts: "2026-10-13T12:16:00Z"
+    ts: "2026-10-13T12:30:00Z"
     seat: this session
-  - claim: "The no-argument observer passes: engine-adapter file fully green and both retirement tests reported as run."
+  - claim: "The no-argument observer passes at the final code head: engine-adapter file fully green and both retirement tests reported as run."
     cmd: python3 scripts/ci/observe_visa_oracle_e33_retired_keys.py
     result: "adapter Tests  165 passed (165); e33 retired keys hold"
     exit: 0
-    ts: "2026-10-13T12:16:45Z"
+    ts: "2026-10-13T12:31:27Z"
     seat: this session
   - claim: "The observer's summary parser and required-test check reject skipped, todo, failed and reduced counts and a deleted or skipped required test."
     cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_e33_retired_keys.py
     result: "11 passed"
     exit: 0
-    ts: "2026-10-13T12:17:00Z"
+    ts: "2026-10-13T12:31:30Z"
     seat: this session
   - claim: "The whole visa-oracle Vitest tree (_components and _lib included) passes."
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
     result: "Test Files 56 passed (56); Tests 1471 passed (1471)"
     exit: 0
-    ts: "2026-10-13T12:17:30Z"
+    ts: "2026-10-13T12:33:00Z"
     seat: this session
   - claim: "apps/mouth typechecks."
     cmd: cd apps/mouth && npx tsc --noEmit -p .
     result: "no output"
     exit: 0
-    ts: "2026-10-13T12:17:35Z"
+    ts: "2026-10-13T12:33:30Z"
     seat: this session
-  - claim: "The whole backend visa_engine test directory (this lane touches no backend file): no failure is in a count-pin or pack file; the 2 failures and 39 errors are all in DB-backed files whose local database lacks the deployed migrations (test_evaluate_endpoint 31, test_shadow_evidence 6, test_shadow_match 2 errors; test_visa_engine_retention_fk_registry 2 failures), unrelated to this diff and without a database in CI-less local runs."
+  - claim: "The whole backend visa_engine test directory (this lane touches no backend file): every failure and error is in a DB-backed file whose local database lacks the deployed migrations (test_evaluate_endpoint, test_shadow_evidence, test_shadow_match, test_activation_writer, test_visa_engine_retention_fk_registry); none is in a count-pin or pack file. Counts move a little between local runs as the shared DB state moves."
     cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/services/visa_engine
-    result: "2 failed, 3623 passed, 15 skipped, 3 xfailed, 39 errors in 137.31s"
+    result: "3 failed, 3621 passed, 15 skipped, 3 xfailed, 41 errors in 179.09s"
     exit: 1
-    ts: "2026-10-13T12:20:03Z"
+    ts: "2026-10-13T12:35:50Z"
+    seat: this session
+  - claim: "Mutation check at the final head: renaming the live E33E_AGE_55_59_ADVISOR_CHECK copy key makes the live-code-keeps-its-copy test and the pre-existing every-SUPPORT-code test fail; file restored."
+    cmd: rename the copy key, run vitest on engine-adapter.test.ts, restore
+    result: "2 failed, 163 passed (165)"
+    exit: 1
+    ts: "2026-10-13T12:29:00Z"
     seat: this session
 decisions:
   - id: D-four-keys
@@ -79,4 +85,27 @@ decisions:
     decision: >-
       Mutation check recorded by the build seat: adding the live E33E_AGE_55_59_ADVISOR_CHECK to the retired
       list made both new tests fail (2 failed, 163 passed); the file was restored.
-dissent: []
+  - id: D-split-retired
+    decision: >-
+      Review fix 0b39bbe6f1: the retired list is split into REPLAYABLE (E33E_DEPOSIT_INCOME_BASIS, E33G_INCOME_60K,
+      emitted by older signed packs, copy kept and asserted) and NEVER_EMITTED (E33B_EXPERTISE_QUALIFICATION,
+      E33F_AGE_UNDER_55, emitted by no signed pack ever, copy removed and asserted absent). RETIRED_SUPPORT_REASON_KEYS
+      stays as the union. The E33F copy that said discretionary against a live EXCLUDE is gone, so no runtime
+      table carries it in either language.
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-21-00-01a13535-7a18-7201-b828-fe5c2128e3bc.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 1: the test iterates SUPPORT_REASON_COPY keys, so deleting the copy of the live E33E_AGE_55_59_ADVISOR_CHECK leaves both new tests green; the stated purpose (a live code losing its copy) is not tested."
+    status: RETRACTED
+    disposition: "Cured in 0b39bbe6f1: the second test now derives every E33 advisor-check code from the highest signed pack, requires at least two, and asserts each is a key of SUPPORT_REASON_COPY. Mutation check (rename the E33E_AGE_55_59 copy key) fails 2 tests."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-21-00-01a13535-7a18-7201-b828-fe5c2128e3bc.jsonl, model verified in the rollout file)"
+    objection: "MEDIUM 2: the invariant forces every retired key to keep its copy, justified by replay of packs 6 and 7, which preserves a known-false EN/ID E33F sentence (discretionary vs the live EXCLUDE) in the runtime table."
+    status: RETRACTED
+    disposition: "Cured in 0b39bbe6f1: retired keys split into replayable (copy kept) and never-emitted (E33B, E33F: copy removed, test asserts no pack emits them and no copy exists). A grep over apps and backend found neither code in any pack."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-21-00-01a13535-7a18-7201-b828-fe5c2128e3bc.jsonl, model verified in the rollout file)"
+    objection: "LOW 3a: brief_ref points at evidence/brief.yml, not the dated brief present in the diff."
+    status: RETRACTED
+    disposition: "False positive: the repo convention (CI and the pre-push pack-lint stage the brief at evidence/brief.yml) requires exactly this value; a dated brief_ref fails the pre-push lint. No change."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-21-00-01a13535-7a18-7201-b828-fe5c2128e3bc.jsonl, model verified in the rollout file)"
+    objection: "LOW 3b: receipts name the old head bfba8dc145 while the reviewed candidate is 8c7c5d7f, so they do not prove the current HEAD."
+    status: RETRACTED
+    disposition: "Cured: all receipts re-run after fix commit 0b39bbe6f1 and the rebase onto b846d2ce04, with the verified head recorded in the first receipt; the pack commit that follows touches only evidence."
