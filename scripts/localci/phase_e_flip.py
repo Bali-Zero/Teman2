@@ -56,7 +56,7 @@ REPORT_MAX_AGE = timedelta(hours=2)
 APPLY_MARGIN = timedelta(minutes=5)   # the plan and --apply want a report this much younger, so it does not expire during a
                                       # normal run (seconds); the per-write re-read keeps the full limit
 REPORT_MAX_SKEW = timedelta(minutes=5)
-READY_MERGES, READY_DAYS = 50, 14   # phase D's READY as ruled 2026-10-07; read back from the report, never relaxed here
+READY_MERGES, READY_DAYS = 50, 5   # phase D's READY as ruled 2026-10-07, days 14 -> 5 by the owner ruling of 2026-10-13; read back from the report, never relaxed here
 TARGET_RULES = [{"type": "update", "parameters": {"update_allows_fetch_and_merge": False}}]
 TARGET_BYPASS = [{"actor_id": None, "actor_type": "DeployKey", "bypass_mode": "always"}]
 CLASSIC_FLAGS = ("required_linear_history", "allow_force_pushes", "allow_deletions", "block_creations",
