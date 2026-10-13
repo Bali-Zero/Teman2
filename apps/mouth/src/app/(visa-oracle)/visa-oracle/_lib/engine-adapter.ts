@@ -302,6 +302,26 @@ export const C1_MAX_STAY_DAYS = 180;
 export const C2_MAX_STAY_DAYS = 180;
 export const C6_MAX_STAY_DAYS = 180;
 
+/**
+ * E33-family reason-copy keys that NO signed pack at or after seq-28 emits
+ * (PR-15 of the 2026-10-11 E33 audit, re-derived from the signed packs
+ * themselves at seq-29, never typed from the audit's seq-28 reading). The
+ * copy stays in `SUPPORT_REASON_COPY` -- not deleted -- because signed packs
+ * 6 and 7 still replay these codes, but a key listed here must never reach a
+ * visitor from a current pack. engine-adapter.test.ts fails if a signed pack
+ * at seq >= 28 emits one of them (it silently came back), and if a key listed
+ * here loses its copy while an older pack could still replay it.
+ *
+ * Do NOT re-point any of these at a live rule: the E33F under-55 sentence
+ * says "discretionary" where the live rule `hf.e33f.age-below-55` EXCLUDES.
+ */
+export const RETIRED_SUPPORT_REASON_KEYS: readonly string[] = [
+  "E33B_EXPERTISE_QUALIFICATION_ADVISOR_CHECK",
+  "E33E_DEPOSIT_INCOME_BASIS_ADVISOR_CHECK",
+  "E33F_AGE_UNDER_55_ADVISOR_CHECK",
+  "E33G_INCOME_60K_ADVISOR_CHECK",
+];
+
 export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   A1_BVK_ELIGIBLE: text(
     "Your nationality is on the visa-free (BVK) list for tourism or transit, and your stay is 30 days or less.",
@@ -557,6 +577,7 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // unchanged: this figure is dropped — same "confirm the current figure"
   // template already used by the three sibling advisor checks below, for
   // the same reason.
+  // RETIRED: last emitted by signed seq-7; seq-29 states the figure itself via E33G_INCOME_BELOW_THRESHOLD. See RETIRED_SUPPORT_REASON_KEYS.
   E33G_INCOME_60K_ADVISOR_CHECK: text(
     "This route has a minimum annual income threshold. We confirm the current figure and your evidence with one of our advisors.",
     "Jalur ini memiliki ambang penghasilan tahunan minimum. Kami memastikan angka terkini dan bukti Anda bersama konsultan kami.",
@@ -577,10 +598,12 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "This IKN route has its own investment threshold. A Bali Zero advisor can confirm the current figure and your evidence with you.",
     "Jalur IKN ini memiliki ambang investasi tersendiri. Konsultan Bali Zero dapat memastikan angka terkini dan bukti Anda bersama Anda.",
   ),
+  // RETIRED: no signed pack emits it; the E33B hold was retired in seq-22 (#6683). See RETIRED_SUPPORT_REASON_KEYS.
   E33B_EXPERTISE_QUALIFICATION_ADVISOR_CHECK: text(
     "This route is judged on your professional qualifications. We review them with one of our advisors before filing.",
     "Jalur ini dinilai berdasarkan kualifikasi profesional Anda. Kami meninjaunya bersama konsultan kami sebelum pengajuan.",
   ),
+  // RETIRED: last emitted by signed seq-7. See RETIRED_SUPPORT_REASON_KEYS.
   E33E_DEPOSIT_INCOME_BASIS_ADVISOR_CHECK: text(
     "This route can be met on a deposit basis or a passive-income basis. We work out which one fits you with one of our advisors.",
     "Jalur ini dapat dipenuhi berbasis deposito atau penghasilan pasif. Kami menentukan mana yang sesuai untuk Anda bersama konsultan kami.",
@@ -589,6 +612,7 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Between 55 and 59 the age requirement for this route is read differently by different offices. We check how it currently applies to you.",
     "Antara usia 55 dan 59, persyaratan usia jalur ini ditafsirkan berbeda oleh kantor yang berbeda. Kami memeriksa penerapannya untuk Anda saat ini.",
   ),
+  // RETIRED: no signed pack emits it; its wording contradicts the hf.e33f.age-below-55 EXCLUDE. See RETIRED_SUPPORT_REASON_KEYS.
   E33F_AGE_UNDER_55_ADVISOR_CHECK: text(
     "Under 55 this route is discretionary. We check whether it is open to you before filing.",
     "Di bawah usia 55, jalur ini bersifat diskresioner. Kami memeriksa apakah jalur ini terbuka untuk Anda sebelum pengajuan.",
