@@ -331,9 +331,10 @@ the formatted file.
 
 The bundle lands in the same PR as the source, so `TestSignedBundleTiesToSource`,
 `TestReattestationIsReal` and `scripts/ci/observe_visa_seq29_signed.py` are green at merge.
-`scripts/ci/observe_visa_seq28_signed.py` (asserts the highest signed pack is 28) and
-`scripts/ci/observe_visa_seq29_candidate.py` (unsigned-candidate gate, now subsumed by the signed
-observer) are retired in the same PR.
+`scripts/ci/observe_visa_seq28_signed.py` (asserts the highest signed pack is 28) is retired in the
+same PR. `scripts/ci/observe_visa_seq29_candidate.py` (unsigned-candidate gate, census and mouth copy
+guard) is KEPT: it is added by this branch, stays green on the signed tree, and the conductor's history
+pack names it as its observe command, which the bites check requires to exist.
 
 **Activation: pending.** It happens from Pro after merge, the two-login ceremony of the seq-25 and
 seq-26 notes above, on the PG primary. The `activation_id` and timestamp are recorded in the follow-up

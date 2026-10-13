@@ -124,6 +124,18 @@ dissent:
     objection: "DEFECT - the attestation misstated judgement provenance (17 of 18 judgements are fingerprint-based, not Claude-judged)."
     status: CONFIRMED
     note: "Cured by 736ec9ac6c and the adversarial-review line of efa86a3333 (LEDGER: CONFIRMED on 85c1f3cd90); preflight_pack R1 passes on the attestation."
+  - seat: codex-gpt-5.6-sol (red team, runbook wording)
+    objection: "LOW - the runbook note says the seq-29 candidate observer is retired in the same PR, but the file exists at HEAD."
+    status: CONFIRMED
+    note: "Stale wording; the observer is kept on purpose (decisions below). Cured by rewording the runbook note to say it is kept and why."
+  - seat: codex-gpt-5.6-sol (red team, conductor pack wording)
+    objection: "LOW - the conductor pack/brief says 'Nothing is signed ... by this branch' while the landing carries the signed bundle."
+    status: PLAUSIBLE
+    note: "Not a false claim about the landing: the conductor pack is a dated historical statement written before signing and is left byte-for-byte as the conductor wrote it. The signing is recorded in this pack (nuzantara-57 claim) and in the runbook note."
+  - seat: codex-gpt-5.6-sol (cross-family review completeness)
+    objection: "MEDIUM - Codex never delivered a consolidated objection list (first run timed out at ~1200s with commentary only, the narrower re-run hit 580s), so the cross-family review is only partially evidenced."
+    status: PLAUSIBLE
+    note: "Accepted as a limit, not cured: Codex verified results were green and its two itemised defects (judgement provenance, E31J grounding) are recorded above; its unitemised 'documentary defects' remain unknown. Compensating evidence: Codex council ledger vote SIGN on the final content, Kimi k3 SIGN, signer-side 8 of 8 grounding ruling, fresh Opus gate READY-TO-SIGN."
 decisions:
   - decision: Sign and land with the Codex red team's E31J objection overruled.
     why: >-
