@@ -94,21 +94,43 @@ def is_pinned(app_id) -> bool:
     return isinstance(app_id, int) and not isinstance(app_id, bool) and app_id > 0
 
 
+def superseded_cancelled(entries: list, app_id) -> list:
+    """B17: the entries (by identity: an id may be absent) of check runs of one context cancelled by concurrency and answered by a LATER completed run of the same name on the same
+    commit. GitHub judges the newest run of a name, so such a cancelled run is no red. Fail closed: both completed_at must parse, the
+    answer must be a completed non-cancelled check run (same app, and the pinned app when the context is pinned) strictly later."""
+    def stamp(e):
+        t = e.get("completed_at")
+        return t if isinstance(t, str) and _TS_RE.match(t) else None
+
+    def run(e):
+        return e["source"] != "commit-status" and e["conclusion"] is not None
+
+    def same_app(e):
+        return e["app_id"] == app_id if is_pinned(app_id) else True
+
+    answers = [o for o in entries if run(o) and o["conclusion"] != "cancelled" and stamp(o) and same_app(o)]
+    return [e for e in entries if run(e) and e["conclusion"] == "cancelled" and stamp(e) and same_app(e)
+            and any(stamp(o) > stamp(e) for o in answers)]
+
+
 def hosted_verdict(entries: list, app_id) -> dict:
-    counted = [e for e in entries if not is_pinned(app_id) or e["app_id"] == app_id]
-    if any(e["verdict"] == "RED" for e in entries):
+    dropped = superseded_cancelled(entries, app_id)
+    seen = [e for e in entries if not any(e is d for d in dropped)]
+    counted = [e for e in seen if not is_pinned(app_id) or e["app_id"] == app_id]
+    if any(e["verdict"] == "RED" for e in seen):
         verdict = "RED"
     elif not counted or any(e["verdict"] == "PENDING" for e in counted):
         verdict = "PENDING"
     else:
         verdict = "GREEN"
-    decisive = [e for e in entries if e["verdict"] == "RED"] if verdict == "RED" else counted   # the entries that made the verdict
+    decisive = [e for e in seen if e["verdict"] == "RED"] if verdict == "RED" else counted   # the entries that made the verdict
     stamps = [e.get("completed_at") for e in decisive]
     when = max(stamps) if verdict != "PENDING" and stamps and all(isinstance(t, str) and _TS_RE.match(t) for t in stamps) else None
     return {"verdict": verdict, "entries": len(entries), "counted": len(counted), "sources": sorted({e["source"] for e in entries}),
             "conclusions": sorted({str(e["conclusion"]) for e in entries}), "completed_at": when,
             "red": [{"id": e.get("id"), "conclusion": e.get("conclusion"), "completed_at": e.get("completed_at")}
-                    for e in entries if e["verdict"] == "RED"]}   # B12b: a status has no id
+                    for e in seen if e["verdict"] == "RED"],   # B12b: a status has no id
+            "superseded_cancelled": [e.get("id") for e in dropped]}
 
 
 def local_verdicts(status: dict) -> dict:
@@ -240,7 +262,8 @@ def compare(status: dict, required_checks, check_runs, statuses, stale_judge=Non
                      "hosted_counted": h["counted"], "hosted_sources": h["sources"], "hosted_conclusions": h["conclusions"],
                      "local": lo["verdict"], "local_detail": lo["detail"], "coverage": lo["coverage"], "coverage_note": lo["coverage_note"],
                      "app_id": app_id, "source_pinned": is_pinned(app_id), **skip_reading(lo, h),
-                     **({"hosted_red": h["red"]} if h["verdict"] == "RED" else {})})   # B12b: the report finds these very runs again
+                     **({"hosted_red": h["red"]} if h["verdict"] == "RED" else {}),   # B12b: the report finds these very runs again
+                     **({"superseded_cancelled": h["superseded_cancelled"]} if h["superseded_cancelled"] else {})})   # B17: what the verdict dropped
     counts = {k: sum(1 for r in rows if r["class"] == k) for k in CLASSES}
     compared = [r for r in rows if r["class"] in COMPARED]
     coverage = {"compared_full": sum(1 for r in compared if r["coverage"] == "full"),

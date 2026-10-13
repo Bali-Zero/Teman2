@@ -1588,7 +1588,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
             judge = None if d.get("replay") else judges.setdefault(str(d.get("base_sha")), StaleJudge(state / "repo.git", str(d.get("base_sha"))))
             gate = None if judge is None else GateJudge(a.repo, judge, plan_time(d.get("run_dir")), frozen_reads(d.get("run_dir")), gate_reads)   # B12b, never on a replay
             if raw and judge is None:   # a replay's hosted verdict is on its own tree: every recorded row is kept, and says why
-                got, why_kept = [], [{"pr": d.get("pr"), "context": None, "head_sha": d.get("head_sha"), "why": REPLAY_KEPT}]
+                got, why_kept = reclassify_replay_superseded(d, live)
             else:
                 got, why_kept = reclassify_recorded(a, d, judge, gate) if raw else ([], [])
             got = got[:raw]
@@ -1731,7 +1731,9 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
     stale_note = (f"(recorded={recorded_raw}, reclassified HOSTED_STALE={len(reclassified)}: ["
                   + ", ".join(f"pr{x['pr']} {x['context']}: " + (
                       f"hosted ran {x['hosted_completed_at']}, before the gate post at {x['gate_posted_at']} the local run read (gate_posted_after_hosted)"
-                      if x.get("stale_why") == "gate_posted_after_hosted" else f"main moved {', '.join(x['main_moved_paths'][:3])}"
+                      if x.get("stale_why") == "gate_posted_after_hosted" else
+                      f"hosted check runs {x['superseded_cancelled']} cancelled by concurrency, answered by a later run (cancelled_superseded)"
+                      if x.get("stale_why") == "cancelled_superseded" else f"main moved {', '.join(x['main_moved_paths'][:3])}"
                       + (", …" if x["main_moved_count"] > 3 else "") + f" after hosted ran {x['hosted_completed_at']}") for x in reclassified) + "]"
                   + f", kept={len(kept_fg)}: [" + ", ".join(f"pr{x['pr']} {x['context'] or 'all rows'}: {x['why']}"
                                                             + (f" (gate: {x['gate']})" if x.get("gate") else "") for x in kept_fg) + "])")
@@ -1794,6 +1796,31 @@ def recorded_gate(a, gate: GateJudge, head: str, r: dict, statuses: list) -> dic
     return hc.gate_reading(gate, name, {"verdict": "RED", "completed_at": at, "red": red}, statuses)
 
 
+def superseded_cleared(r: dict, h: dict) -> bool:
+    """B17: the red a recorded row stood on was only check runs cancelled by concurrency, each now answered by a later run (the hosted
+    verdict names them in ``superseded_cancelled``) and nothing else is red. A row journalling no ``hosted_red`` cannot be found again."""
+    red = r.get("hosted_red")
+    return (h["verdict"] == "GREEN" and isinstance(red, list) and bool(red)
+            and all(isinstance(e, dict) and e.get("conclusion") == "cancelled" and type(e.get("id")) is int
+                    and e["id"] in h["superseded_cancelled"] for e in red))
+
+
+def reclassify_replay_superseded(d: dict, live: dict) -> tuple[list[dict], list[dict]]:
+    """B17 for a replay (its rows are otherwise kept whole, REPLAY_KEPT): the replay's hosted verdict is read on the judged sha, so a
+    recorded row whose only reds were cancelled runs that sha now answers is reclassified; anything unreadable keeps every row."""
+    kept = [{"pr": d.get("pr"), "context": None, "head_sha": d.get("head_sha"), "why": REPLAY_KEPT}]
+    try:
+        doc = json.loads((Path(str(d["run_dir"])) / "hosted_compare.json").read_text())
+        rows = [r for r in doc["rows"] if r.get("class") == "FALSE_GREEN"]
+        hosted = hc.hosted_entries(live["check_runs"], live["statuses"])
+        out = [{"pr": d.get("pr"), "context": r["context"], "head_sha": d.get("head_sha"), "stale_why": "cancelled_superseded",
+                "superseded_cancelled": [e["id"] for e in r["hosted_red"]]}
+               for r in rows if superseded_cleared(r, hc.hosted_verdict(hosted.get(r["context"], []), r.get("app_id")))]
+    except Exception:  # noqa: BLE001 — unreadable evidence keeps the recorded false green
+        return [], kept
+    return out, kept
+
+
 def reclassify_recorded(a, d: dict, judge, gate: GateJudge | None = None) -> tuple[list[dict], list[dict]]:
     """B10, the past: re-read a decision's recorded FALSE_GREEN rows (its run dir's hosted_compare.json) and apply the stale rule from
     the mirror. Read-only: GETs (branch protection, the check-runs and the statuses of the head), git reads in the mirror, nothing
@@ -1817,6 +1844,10 @@ def reclassify_recorded(a, d: dict, judge, gate: GateJudge | None = None) -> tup
             continue
         gk = {"gate": g["gate_check"]} if g else {}
         h = hc.hosted_verdict(hosted.get(r["context"], []), r.get("app_id"))
+        if superseded_cleared(r, h):   # B17: only cancelled runs, each answered by a later one on the head
+            out.append({"pr": pr, "context": r["context"], "head_sha": head, "stale_why": "cancelled_superseded",
+                        "superseded_cancelled": [e["id"] for e in r["hosted_red"]]})
+            continue
         if h["verdict"] != "RED":
             kept.append({"pr": pr, "context": r["context"], "head_sha": head, **gk, "why": f"the hosted verdict is now {h['verdict']}, not the red the tick recorded"})
             continue

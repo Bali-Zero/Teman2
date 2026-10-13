@@ -639,6 +639,11 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "runner-no-verdict-anywhere": (RUNNER, 'HOST_NO_VERDICT = re.compile(r"^(?:host_disk_full|', 'HOST_NO_VERDICT = re.compile(r".*?(?:host_disk_full|',
                                    (HD,)),
     "hc-no-verdict-unnamed": (HC, '''+ (f" {res['no_verdict']}" if isinstance(res.get("no_verdict"), str) else "")''', '+ ""', (HCT,)),
+    # B17 — a check run cancelled by concurrency and answered by a LATER completed run of the same name is no red
+    "b17-supersede-regardless-of-order": (HC, "and any(stamp(o) > stamp(e) for o in answers)]", "and any(True for o in answers)]", (HCT,)),
+    "b17-supersede-across-apps": (HC, "return e[\"app_id\"] == app_id if is_pinned(app_id) else True", "return True", (HCT,)),
+    "b17-supersede-on-unparseable-time": (HC, "and _TS_RE.match(t) else None\n\n    def run(e):", "and _TS_RE.match(t) else \"0\"\n\n    def run(e):", (HCT,)),
+    "b17-cancelled-answers-cancelled": (HC, 'if run(o) and o["conclusion"] != "cancelled" and stamp(o)', "if run(o) and stamp(o)", (HCT,)),
     "enqueue-host-counted-executed": (PY, "{len(required) - len(non_executed) - len(host)}/", "{len(required) - len(non_executed)}/", (TICK,)),
     "enqueue-host-passes": (PY, '                                                               if host else "") if x) or None)}',
                             '                                                               if False else "") if x) or None)}', (TICK,)),
