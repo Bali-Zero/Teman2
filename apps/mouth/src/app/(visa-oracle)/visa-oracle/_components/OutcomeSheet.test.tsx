@@ -33,6 +33,7 @@ import type {
   HumanReviewOutcome,
   NoSupportedPathOutcome,
   OutcomeCandidate,
+  OutcomePrice,
   OutcomeReason,
   OutcomeState,
   OutcomeViewModel,
@@ -1928,5 +1929,95 @@ describe("OutcomeSheet — typical processing time in the share summary", () => 
   it("carries no timing line when an old backend sent no working days", async () => {
     const summary = await summaryFor({ ...WINDOW });
     expect(summary).not.toMatch(/Typically|indicative|working day/i);
+  });
+});
+
+describe("OutcomeSheet — zero price reads Free/Gratis (VN-visit-V02 F012/F105)", () => {
+  function candidateWithAmount(amount: number): OutcomeCandidate {
+    const price: OutcomePrice = {
+      status: "AVAILABLE",
+      currency: "IDR",
+      amount,
+      allInclusive: true,
+      quotedAtIso: "2026-07-23T00:00:00Z",
+    };
+    return { ...CANDIDATE, price };
+  }
+
+  function outcomeWithCandidate(candidate: OutcomeCandidate): OutcomeViewModel {
+    const base = outcomeFor("SUPPORTED_CANDIDATES");
+    if (base.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("test fixture state mismatch");
+    }
+    return { ...base, candidates: [candidate] };
+  }
+
+  it.each<Language>(["en", "id"])(
+    "renders the sheet's zero price as %s Free/Gratis, with no IDR 0 and no all-inclusive note",
+    (language) => {
+      const { container } = render(
+        <OutcomeSheet
+          language={language}
+          outcome={outcomeWithCandidate(candidateWithAmount(0))}
+          facts={FACTS}
+        />,
+      );
+      const value = container.querySelector(".oracle-price__value");
+      expect(value).toHaveTextContent(language === "id" ? "Gratis" : "Free");
+      expect(value).not.toHaveTextContent(/IDR|Rp/);
+      expect(
+        screen.queryByText(
+          language === "id"
+            ? "Sudah termasuk biaya pemerintah dan jasa Bali Zero."
+            : "Government fees and Bali Zero service included.",
+        ),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it.each<Language>(["en", "id"])(
+    "writes the share summary's zero price as %s Free/Gratis, never IDR 0 / Rp 0",
+    async (language) => {
+      render(
+        <OutcomeSheet
+          language={language}
+          outcome={outcomeWithCandidate(candidateWithAmount(0))}
+          facts={FACTS}
+        />,
+      );
+      const writeText = navigator.clipboard.writeText as ReturnType<
+        typeof vi.fn
+      >;
+      writeText.mockClear();
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: language === "id" ? /salin ringkasan/i : "Copy summary",
+        }),
+      );
+      await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+      const summary = writeText.mock.calls[0]?.[0] as string;
+      expect(summary).toContain(
+        language === "id"
+          ? "TEST-1 — Jalur uji: Gratis"
+          : "TEST-1 — Test path: Free",
+      );
+      expect(summary).not.toMatch(/IDR|Rp/);
+    },
+  );
+
+  it("keeps the non-zero price as IDR with the all-inclusive note (regression)", () => {
+    const { container } = render(
+      <OutcomeSheet
+        language="en"
+        outcome={outcomeWithCandidate(candidateWithAmount(1_000_000))}
+        facts={FACTS}
+      />,
+    );
+    expect(container.querySelector(".oracle-price__value")).toHaveTextContent(
+      /IDR.*1,000,000/,
+    );
+    expect(
+      screen.getByText("Government fees and Bali Zero service included."),
+    ).toBeInTheDocument();
   });
 });

@@ -192,7 +192,6 @@ const UNRENDERED_ALLOWLIST: readonly {
       "verdict.eligibility.likely",
       "verdict.eligibility.conditional",
       "verdict.eligibility.likely-not",
-      "outcome.price_free",
       "outcome.whatsapp_summary_header",
       "outcome.whatsapp_cta",
       "outcome.qr_aria",

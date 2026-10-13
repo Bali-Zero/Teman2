@@ -1,0 +1,15 @@
+gear: 1
+gear_reason: >-
+  One mouth component, its test and one census allowlist line; no data, pack, copy file or i18n.ts change.
+mission: >-
+  A zero price in the Visa Oracle outcome sheet and share summary reads Free/Gratis, with no service-included note.
+objective: >-
+  When a candidate amount is 0 the outcome sheet and the copied share summary render Free (EN) / Gratis (ID), never
+  IDR 0 / Rp 0, and the all-inclusive note is not shown; non-zero and missing prices are unchanged.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n-census.test.ts
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
