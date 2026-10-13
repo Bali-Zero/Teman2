@@ -1,0 +1,66 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa night plan (E30-X02, study lane): the E30 family had positive gold personas only; the negative and
+  minor sides of the study products were pinned nowhere on the signed pack.
+mission: >-
+  The negative-persona replay pins, on the highest signed pack, that a minor without a confirmed sponsor and an
+  unconfirmed admission each reach NO_SUPPORTED_PATH with their named reason, and that an individual sponsor
+  does not support E30F.
+lanes:
+  - lane: study-e30x02-personas
+    role: build
+    seat: kimi-code/kimi-for-coding via seat_build, gear 2, 129 s (built the three personas and the test file in the Mini worktree; this is a non-Anthropic build, prettier-formatted by the session).
+  - lane: study-e30x02-redteam
+    role: review
+    seat: claude-opus-5-5 (red team of the Kimi build; re-measured on seq-28, ran the guilt mutation, ran the suite, cured one label).
+pii_scan: clean
+bites: "consumer: merge_group Tests / Backend Shard 1..3 (and the backend-tests fan-in), which run test_gold_coverage_negative_personas.py; observation: the shard logs list test_negative_persona_decides_as_pinned for E30A__minor, E30B__admission_false and E30F__individual_sponsor passing. No fly-deploy: every changed path is under tests."
+receipts:
+  - claim: "Measured on the highest signed pack (rulepack-prod-028, seq 28, version 2026.10.11) through the same _evaluate path as the floor."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.gold_coverage_eval --persona <scratch copy of each persona>
+    result: "E30A__minor NO_SUPPORTED_PATH [] MINOR_SPONSOR_NOT_CONFIRMED+LEVEL_BAND_DIKTI; E30B__admission_false NO_SUPPORTED_PATH [] STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED+LEVEL_BAND_DASMEN; E30F__individual_sponsor SUPPORTED_CANDIDATES [E30,E30B,E30E] (E30F absent)"
+    exit: 0
+    ts: "2026-10-13T01:20:00Z"
+    seat: claude-opus-5-5 (red team)
+  - claim: "New negative-persona tests, the gold floor and the seq-19 and seq-20 pack tests are green (no count pin moved)."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_gold_coverage_negative_personas.py backend/tests/services/visa_engine/test_gold_coverage_floor.py backend/tests/services/visa_engine/test_seq19_pack.py backend/tests/services/visa_engine/test_seq20_pack.py -p no:cacheprovider
+    result: "216 passed"
+    exit: 0
+    ts: "2026-10-13T01:40:00Z"
+    seat: claude-opus-5-5 (Mini worktree)
+  - claim: "Guilt mutation: flipping E30B__admission_false study.admission_confirmed to true in place turns the replay red; the file was then restored byte for byte."
+    cmd: mutate the persona, pytest test_gold_coverage_negative_personas.py, cp back
+    result: "2 failed, 11 passed (test_negative_persona_decides_as_pinned and the twin-diff test for E30B__admission_false: state SUPPORTED_CANDIDATES != NO_SUPPORTED_PATH)"
+    exit: 1
+    ts: "2026-10-13T01:38:00Z"
+    seat: claude-opus-5-5 (red team)
+  - claim: "Whole visa_engine tree at the branch head, xdist."
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine -p no:cacheprovider -n 6
+    result: "3561 passed, 15 skipped, 3 xfailed, 2 failed, 31 errors in 36.35s; the 2 failures (test_visa_engine_retention_fk_registry.py) and 31 errors (test_evaluate_endpoint.py) are the Mini local-database baseline, identical on origin/main."
+    exit: 1
+    ts: "2026-10-13T01:45:00Z"
+    seat: claude-opus-5-5 (Mini worktree)
+decisions:
+  - id: D-sibling-dir
+    decision: >-
+      The three personas live in gold_coverage/negative_personas/, not personas/. The positive corpus is
+      positive-only by design: test_gold_coverage_floor.py::test_corpus_file_names_match_their_product_code
+      requires product_code in expected_candidates, and the seq-19/20 replays grade every file there as
+      SUPPORTED. Adding negatives there would break those or force exclusions and count pins; the sibling
+      directory keeps every existing pin untouched.
+  - id: D-ride-alongs
+    decision: >-
+      The LEVEL_BAND_DIKTI / LEVEL_BAND_DASMEN codes are pinned because they were measured on seq-28, and the
+      module docstring says they follow the study level, not the fact under test.
+  - id: D-synthetic
+    decision: "The personas are synthetic (nationality code, age, level); no real-person data."
+dissent:
+  - seat: "claude-opus-5-5 (red team)"
+    objection: "LOW: the E30B__admission_false label said 'admitted ... admission NOT confirmed', contradicting the fact it pins."
+    status: RETRACTED
+    disposition: "Cured in the second commit: the label now says applying, admission not confirmed."
+  - seat: "claude-opus-5-5 (red team)"
+    objection: "INFO: LEVEL_BAND_DIKTI on a 12-year-old SECONDARY pupil looks odd as a level-band label; it may be a pack copy defect."
+    status: PLAUSIBLE
+    disposition: "Kept: measured on seq-28 and pinned as a ride-along; if a later pack corrects it the persona goes red on that change, which is the gate working."

@@ -1,0 +1,26 @@
+gear: 2
+gear_reason: >-
+  Size and surface floor: three new negative gold-persona fixtures plus one new test file under
+  apps/backend-rag (a backend-rag merge is a deploy path, but every changed path is under tests, which
+  fly-deploy excludes). Test-only, no engine code, no rule data, no pricing, no migration.
+ruling: >-
+  Visa night plan (E30-X02, study lane): the E30 family had positive gold personas only, so no gate noticed
+  a rule change that let a minor without a confirmed sponsor, an unconfirmed admission, or an individual
+  sponsor through to a study product.
+mission: >-
+  The negative-persona replay pins, on the highest signed pack, that a minor without a confirmed sponsor and an
+  unconfirmed admission each reach NO_SUPPORTED_PATH with their named reason, and that an individual sponsor
+  does not support E30F.
+objective: >-
+  Add E30A__minor, E30B__admission_false and E30F__individual_sponsor under a new gold_coverage/negative_personas
+  directory (the positive personas/ corpus is positive-only by design and its floor, name and seq-19/20 replay
+  tests are left untouched, so no count pin moves) plus test_gold_coverage_negative_personas.py that replays
+  them on the highest signed pack pinned to its signed_at.
+scope:
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/negative_personas/E30A__minor.json
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/negative_personas/E30B__admission_false.json
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/negative_personas/E30F__individual_sponsor.json
+  - apps/backend-rag/backend/tests/services/visa_engine/test_gold_coverage_negative_personas.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
