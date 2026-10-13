@@ -1,0 +1,56 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-11 standing rule that the /visaoracle ledger is updated at every merge and state change; Zero, 2026-10-12 standing signing authorization (seq-29 signed on M5 by nuzantara-57 at 2026-10-13T08:56:32Z); #8433 gate conditions 2, 4, 6 and 7 (activation recorded in the ledger PR, the #8390 row rewritten and closed, LOW wording fixes).
+mission: >-
+  The /visaoracle ledger, live state, runbook and pending arms say that seq-29 is active in production, and the closed rows carry their proof.
+lanes:
+  - lane: ledger-seq29
+    role: build
+    seat: claude-sonnet-5 (Claude Code workflow subagent); evidence pack by the same family under the conductor's instruction.
+pii_scan: clean
+bites:
+  consumer: >-
+    every session that loads /visaoracle and reads PENDING-ARMS and the key-ceremony runbook.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_ledger_seq29.py
+  expect: "contains:seq-29 ledger holds"
+receipts:
+  - claim: The four ledger test files pass (seq28, observe seq28, seq29, observe seq29).
+    cmd: python3 -m pytest -p no:cacheprovider tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq29.py
+    result: "42 passed in 0.05s"
+    exit: 0
+    ts: "2026-10-13T11:40:39Z"
+    seat: this session
+  - claim: The seq-29 observer passes and accepts only a full pass of at least 8 tests.
+    cmd: python3 scripts/ci/observe_visa_ledger_seq29.py
+    result: "8 passed in 0.02s; seq-29 ledger holds"
+    exit: 0
+    ts: "2026-10-13T11:40:39Z"
+    seat: this session
+  - claim: The seq-28 observer still passes with the closed forms accepted.
+    cmd: python3 scripts/ci/observe_visa_ledger_seq28.py
+    result: "12 passed in 0.03s; seq-28 ledger holds"
+    exit: 0
+    ts: "2026-10-13T11:40:39Z"
+    seat: this session
+  - claim: The seq-28 and seq-29 pack tests pass from apps/backend-rag (JWT and API key placeholders, trust-store JSON from the runbook); the lane touches no engine code and the whole visa_engine directory and the mouth tree were not re-run.
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest test_seq28_pack.py test_seq29_pack.py
+    result: "95 passed in 6.04s"
+    exit: 0
+    ts: "2026-10-13T11:30:00Z"
+    seat: implementer lane
+  - claim: No consumer-map drift.
+    cmd: python3 scripts/prepush_classify.py --check-consumers --base origin/main
+    result: "CONSUMER_MAP_LIVE_COUNT=0"
+    exit: 0
+    ts: "2026-10-13T11:30:00Z"
+    seat: implementer lane
+decisions:
+  - id: D-closed-not-deleted
+    decision: >-
+      Rows are closed in place with proof and nothing is deleted or reordered; the next freshness row is appended once. The seq-28 ledger tests accept the closed forms, still exactly one row each.
+  - id: D-dup-check-scoped
+    decision: >-
+      The seq-29 duplicate-line check covers only the opened or closed 2026-10-1x visa rows, because PENDING-ARMS already holds unrelated duplicates on main.
+dissent: []
