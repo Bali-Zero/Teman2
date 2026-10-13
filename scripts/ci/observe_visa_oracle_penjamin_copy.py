@@ -17,9 +17,11 @@ Exit 0 only if Vitest reports the file passed with zero failures.
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -28,54 +30,66 @@ TEST_FILE = "src/app/(visa-oracle)/visa-oracle/_lib/copy-truth.test.ts"
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 MIN_TESTS = 70
-# Each must be reported as run, so deleting one cannot hide behind the file total.
+# Each must be reported as run and passed, so deleting one cannot hide behind the file total.
 REQUIRED_TESTS = (
     "the basis options say penjamin and no longer say family sponsor",
     "the income question names income or an allowance and anchors on no figure",
+    "the same journey no longer calls the income only passive",
 )
-_SUMMARY = re.compile(r"^\s*Tests\s+(\d+) passed \((\d+)\)\s*$")
 
 
-def summary_ok(line: str | None) -> bool:
-    """True only for a Vitest line that is exactly `Tests  N passed (N)`, N >= 70.
+def verdict(report: object) -> list[str]:
+    """Problems found in a Vitest JSON report; empty only for a full, complete pass.
 
-    Anything else (skipped, todo, failed, a reduced count, no line) is False.
+    Reads structured data only: printed test output cannot satisfy it.
     """
-    if line is None:
-        return False
-    match = _SUMMARY.match(line)
-    if match is None:
-        return False
-    passed, total = int(match.group(1)), int(match.group(2))
-    return passed == total and passed >= MIN_TESTS
-
-
-def missing_tests(out: str) -> list[str]:
-    """Required test titles absent from a passing (checkmark) verbose line."""
-    passed = [l for l in out.splitlines() if "✓" in l or "✔" in l]
-    return [t for t in REQUIRED_TESTS if not any(t in l for l in passed)]
+    if not isinstance(report, dict):
+        return ["report is not an object"]
+    problems: list[str] = []
+    total, passed = report.get("numTotalTests"), report.get("numPassedTests")
+    if not isinstance(total, int) or not isinstance(passed, int):
+        return ["report has no integer test counts"]
+    if report.get("success") is not True:
+        problems.append("report success is not true")
+    if passed != total or passed < MIN_TESTS:
+        problems.append(f"{passed} passed of {total} (need all, at least {MIN_TESTS})")
+    for key in ("numFailedTests", "numPendingTests", "numTodoTests"):
+        if report.get(key) not in (0, None):
+            problems.append(f"{key} is {report.get(key)}")
+    status: dict[str, str] = {}
+    for suite in report.get("testResults") or []:
+        for case in (suite or {}).get("assertionResults") or []:
+            status[str(case.get("title"))] = str(case.get("status"))
+            status[str(case.get("fullName"))] = str(case.get("status"))
+    for title in REQUIRED_TESTS:
+        hits = [s for name, s in status.items() if name.endswith(title)]
+        if not hits or any(s != "passed" for s in hits):
+            problems.append(f"required test not passed: {title}")
+    return problems
 
 
 def main() -> int:
-    result = subprocess.run(
-        ["npx", "vitest", "run", "--reporter=verbose", TEST_FILE],
-        cwd=MOUTH_DIR,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    out = ANSI.sub("", result.stdout + result.stderr)
-    tests = re.search(r"^\s*Tests\s.*$", out, re.MULTILINE)
-    line = tests.group(0) if tests else None
-    summary = line.strip() if line else "no Vitest summary"
-    if result.returncode != 0 or not summary_ok(line):
-        print(f"observe_visa_oracle_penjamin_copy: FAILED ({summary})\n{out[-1500:]}")
+    with tempfile.TemporaryDirectory() as tmp:
+        out_file = Path(tmp) / "report.json"
+        result = subprocess.run(
+            ["npx", "vitest", "run", "--reporter=json", f"--outputFile={out_file}", TEST_FILE],
+            cwd=MOUTH_DIR,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        try:
+            report = json.loads(out_file.read_text())
+        except (OSError, ValueError):
+            report = None
+    problems = verdict(report) if result.returncode == 0 else [f"vitest exit {result.returncode}"]
+    if report is None:
+        problems = problems or ["no JSON report"]
+    if problems:
+        print(f"observe_visa_oracle_penjamin_copy: FAILED {problems}")
+        print(ANSI.sub("", result.stdout + result.stderr)[-1500:])
         return result.returncode or 1
-    absent = missing_tests(out)
-    if absent:
-        print(f"observe_visa_oracle_penjamin_copy: FAILED (required tests absent: {absent})")
-        return 1
-    print(f"observe_visa_oracle_penjamin_copy: {summary}")
+    print(f"observe_visa_oracle_penjamin_copy: Tests {report['numPassedTests']} passed ({report['numTotalTests']})")
     print("observe_visa_oracle_penjamin_copy: penjamin copy holds")
     return 0
 

@@ -226,8 +226,8 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
   ],
   [
     "assumption.secondhome_passive_income_usd",
-    "For this assessment, passive monthly income you cannot confirm counts as zero. You can discuss it with a Bali Zero advisor.",
-    "Dalam penilaian ini, penghasilan pasif bulanan yang belum dapat Anda konfirmasi dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
+    "For this assessment, monthly income or allowance you cannot confirm counts as zero. You can discuss it with a Bali Zero advisor.",
+    "Dalam penilaian ini, penghasilan atau tunjangan bulanan yang belum dapat Anda konfirmasi dihitung sebagai nol. Anda dapat membahasnya dengan konsultan Bali Zero.",
   ],
   [
     "assumption.secondhome_state_bank",
@@ -296,13 +296,13 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
   ],
   [
     "q.retirement_basis.opt.family_sponsor",
-    "A penjamin (a licensed visa agency or a person in Indonesia) supports my application",
-    "Seorang penjamin (biro visa berlisensi atau seseorang di Indonesia) mendukung permohonan saya",
+    "A penjamin supports my application",
+    "Permohonan saya didukung oleh penjamin",
   ],
   [
     "q.retirement_undecided_basis.opt.family_sponsor",
-    "A penjamin (a licensed visa agency or a person in Indonesia) supports my application",
-    "Seorang penjamin (biro visa berlisensi atau seseorang di Indonesia) mendukung permohonan saya",
+    "A penjamin supports my application",
+    "Permohonan saya didukung oleh penjamin",
   ],
   [
     "q.secondhome_passive_income_usd",
@@ -311,8 +311,8 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
   ],
   [
     "q.secondhome_passive_income_usd.hint",
-    "Income or an allowance counts if you can document it. Enter the exact whole-dollar monthly amount.",
-    "Penghasilan atau tunjangan dihitung jika dapat Anda buktikan dengan dokumen. Masukkan jumlah bulanan dolar bulat yang tepat.",
+    "Immigration asks for documentary proof of income or an allowance. Enter the exact whole-dollar monthly amount.",
+    "Imigrasi meminta bukti dokumen penghasilan atau tunjangan. Masukkan jumlah bulanan dolar bulat yang tepat.",
   ],
 ];
 
@@ -932,28 +932,52 @@ describe("E23U / E23V sentences follow the seq-28 rule predicates", () => {
 });
 
 describe("the retirement basis and income questions use the official page's words", () => {
-  const KEYS = [
+  const BASIS = [
     "q.retirement_basis.opt.family_sponsor",
     "q.retirement_undecided_basis.opt.family_sponsor",
+  ] as const;
+  const KEYS = [
+    ...BASIS,
     "q.secondhome_passive_income_usd",
     "q.secondhome_passive_income_usd.hint",
   ] as const;
 
   it("the basis options say penjamin and no longer say family sponsor", () => {
-    for (const key of KEYS.slice(0, 2)) {
-      expect(dict.en[key]).toMatch(/penjamin/);
-      expect(dict.id[key]).toMatch(/penjamin/);
-      expect(dict.en[key]).not.toMatch(/family sponsor/i);
-      expect(dict.id[key]).not.toMatch(/sponsor keluarga/i);
+    for (const key of BASIS) {
+      expect(dict.en[key]).toBe("A penjamin supports my application");
+      expect(dict.id[key]).toBe("Permohonan saya didukung oleh penjamin");
     }
   });
 
   it("the income question names income or an allowance and anchors on no figure", () => {
-    expect(dict.en["q.secondhome_passive_income_usd"]).toMatch(/allowance/);
-    expect(dict.id["q.secondhome_passive_income_usd"]).toMatch(/tunjangan/);
+    expect(dict.en["q.secondhome_passive_income_usd"]).toBe(
+      "What monthly income or allowance can you document?",
+    );
+    expect(dict.id["q.secondhome_passive_income_usd"]).toBe(
+      "Berapa penghasilan atau tunjangan bulanan yang dapat Anda buktikan?",
+    );
+    expect(dict.en["q.secondhome_passive_income_usd.hint"]).toMatch(
+      /^Immigration asks for documentary proof of income or an allowance\./,
+    );
+    expect(dict.id["q.secondhome_passive_income_usd.hint"]).toMatch(
+      /^Imigrasi meminta bukti dokumen penghasilan atau tunjangan\./,
+    );
     for (const key of KEYS) {
       expect(dict.en[key]).not.toMatch(/\d/);
       expect(dict.id[key]).not.toMatch(/\d/);
+    }
+  });
+
+  it("the same journey no longer calls the income only passive", () => {
+    for (const key of [
+      "q.retirement_basis.opt.passive_income",
+      "q.secondhome_passive_income_usd.label",
+      "assumption.secondhome_passive_income_usd",
+    ] as const) {
+      expect(dict.en[key]).not.toMatch(/passive/i);
+      expect(dict.id[key]).not.toMatch(/pasif/i);
+      expect(dict.en[key]).toMatch(/allowance/);
+      expect(dict.id[key]).toMatch(/tunjangan/);
     }
   });
 });
