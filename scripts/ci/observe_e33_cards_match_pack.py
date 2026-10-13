@@ -27,7 +27,7 @@ _SUMMARY = re.compile(r"^=*\s*(\d+) passed in [\d.]+s(?: \(.*\))?\s*=*$")
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a pytest line that is a pure pass (no failed/skipped/error), N >= 18."""
+    """True only for a pytest line that is a pure pass (no failed/skipped/error), N >= 23."""
     if line is None:
         return False
     match = _SUMMARY.match(line.strip())

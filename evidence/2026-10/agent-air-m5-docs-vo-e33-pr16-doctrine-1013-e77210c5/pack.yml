@@ -64,17 +64,17 @@ dissent:
     disposition: "False positive: the lint convention stages the brief at evidence/brief.yml for the run and a dated brief_ref fails the pre-push lint; with the brief staged the lint ends clean. No change."
   - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-30-26-01a1353e-1f8e-70e1-8d1b-b3bd3148a052.jsonl, model verified in the rollout file)
     objection: HIGH 2 - the E33E card carries neither the pack pricing_key nor the resolved price, and the test forbids any IDR string.
-    status: RETRACTED
+    status: CONFIRMED
     disposition: "Cured in 0794ca56ac: the E33, E33E, E33F and E33G cards state the pricing key and the all-inclusive catalog price; the test forbids only PNBP and service-fee splits; the diff checks key and price against the pack and the catalog."
   - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-30-26-01a1353e-1f8e-70e1-8d1b-b3bd3148a052.jsonl, model verified in the rollout file)
     objection: MEDIUM 3 - E33F sponsor is marked disputed although the pack metadata declares sponsor_types INDIVIDUAL.
-    status: RETRACTED
+    status: CONFIRMED
     disposition: "Cured in 0794ca56ac: registry fact is confirmed/JELAS and the card separates declarative metadata from the absence of an enforcement rule; a test pins the pack metadata."
   - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-30-26-01a1353e-1f8e-70e1-8d1b-b3bd3148a052.jsonl, model verified in the rollout file)
     objection: MEDIUM 4 - the diff compares only rule-id sets; a mutated USD 60,000 or age 55 still returned an empty diff.
-    status: RETRACTED
+    status: CONFIRMED
     disposition: "Cured in 0794ca56ac: the diff also compares stage, effect type, reason code, every numeric threshold and the validity start per rule row; mutation tests pass. Three card rows that omitted figures now state them."
   - seat: codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T20-30-26-01a1353e-1f8e-70e1-8d1b-b3bd3148a052.jsonl, model verified in the rollout file)
     objection: MEDIUM 5 - the observer is fixed to rulepack-prod-029 and would stay green after a later activation.
-    status: RETRACTED
+    status: CONFIRMED
     disposition: "Cured in 0794ca56ac: the active pack is the highest-numbered signed prod pack on disk and the expected section heading derives from it, so a newer signed pack makes every card rule read as missing; a test simulates the next activation."
