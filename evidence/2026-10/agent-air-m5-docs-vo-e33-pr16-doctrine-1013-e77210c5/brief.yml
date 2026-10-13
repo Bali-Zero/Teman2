@@ -1,0 +1,29 @@
+gear: 2
+gear_reason: >-
+  Size floor (diff with the card rewrites, tests, observer and pack above 400 churn). Docs and registry
+  only plus a no-argument card-versus-pack diff script and its observer; no engine, no pack, no pricing,
+  no mouth file.
+mission: >-
+  The E33-family doctrine cards and the E33 fact registry describe the active signed pack and the official
+  imigrasi pages, so the next session that reads them is not misled by pre-seq-28 rules.
+objective: >-
+  The seven cards E33, E33A, E33B, E33C, E33E, E33F and E33G carry the rules of rulepack-prod-029 and cite
+  the per-code imigrasi.go.id page as a page source; the E33 fact registry states the rangkap-kegiatan
+  sentence, the disputed E33F sponsor fact and the E33G requirements; a no-argument script prints nothing
+  when each card and the active pack agree on rule ids.
+scope:
+  - research/visa/doctrine-factory/cards/E33.md
+  - research/visa/doctrine-factory/cards/E33A.md
+  - research/visa/doctrine-factory/cards/E33B.md
+  - research/visa/doctrine-factory/cards/E33C.md
+  - research/visa/doctrine-factory/cards/E33E.md
+  - research/visa/doctrine-factory/cards/E33F.md
+  - research/visa/doctrine-factory/cards/E33G.md
+  - research/secondhome/e33-fact-registry.json
+  - scripts/ci/e33_cards_rule_diff.py
+  - scripts/ci/observe_e33_cards_match_pack.py
+  - tests/scripts/test_e33_cards_match_pack.py
+  - tests/scripts/test_observe_e33_cards_match_pack.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
