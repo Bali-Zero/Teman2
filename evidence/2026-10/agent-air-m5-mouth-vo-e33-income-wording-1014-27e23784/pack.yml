@@ -1,0 +1,95 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Fresh gate of #8454, condition C1 - the result sentences must say income or allowance (penghasilan atau
+  tunjangan), as the official E33-family pages and the interview (since #8454) do. The #8454 pack's
+  D-passive-aligned decision and its dissent #5 disposition overstated the cure, because the verdict
+  sentences in engine-adapter.ts still said passive income.
+mission: >-
+  The E33-family result sentences say "income or allowance" (penghasilan atau tunjangan), as the official page and the interview now do.
+copy_rule: >-
+  Say only what the rule or the official page says: the retirement route (E33E/E33F) asks for documented
+  income or allowance of at least USD 3,000 per month; the change swaps the word and asserts no figure, route
+  or condition of its own.
+lanes:
+  - lane: e33-income-wording
+    role: build
+    seat: claude-sonnet-5 (Claude Code workflow subagent), worktree mouth-vo-e33-income-wording-1014 on M5.
+  - lane: e33-income-wording-ground-truth
+    role: ground_truth
+    seat: >-
+      the official E33-family pages and the interview copy (i18n.ts, since #8454), which say income or
+      allowance (penghasilan atau tunjangan); engine-adapter.ts is the file changed and the change only aligns its
+      visible wording to them.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "7d82dfaf0b3efd39ae38ab4a1084252f031c2decdcbdb7cc2dfb855f156d91c1" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at origin/main cf31a25e6f (before the change).
+pii_scan: clean
+bites:
+  consumer: >-
+    the public Visa Oracle result page - the E33-family result sentences built in engine-adapter.ts, EN and ID.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_e33_income_wording.py
+  expect: "contains:income wording holds"
+receipts:
+  - claim: "The branch is one commit on a fresh origin/main (nothing pushed), so no rebase was needed."
+    cmd: git fetch origin main && git merge-base --is-ancestor origin/main HEAD
+    result: "origin/main cf31a25e6f is an ancestor of HEAD; branch is 1 commit ahead (6536ebbcfd)"
+    exit: 0
+    ts: "2026-10-13T23:11:00Z"
+    seat: this session
+  - claim: "The whole visa-oracle Vitest tree, _components included, on the changed tree."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 56 passed (56); Tests 1483 passed (1483)"
+    exit: 0
+    ts: "2026-10-13T23:14:02Z"
+    seat: this session
+  - claim: "apps/mouth typechecks."
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-13T23:14:02Z"
+    seat: this session
+  - claim: "The new observer passes: no visible passive-income copy line in engine-adapter.ts, both new phrases present, adapter test file fully green with the four retirement-income pin tests reported as run."
+    cmd: python3 scripts/ci/observe_visa_oracle_e33_income_wording.py
+    result: "Tests 165 passed (165); income wording holds"
+    exit: 0
+    ts: "2026-10-13T23:12:38Z"
+    seat: this session
+  - claim: "The observer's parsers and banned-phrase scan reject skipped, todo, failed, reduced counts, banned copy lines and absent phrases."
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_e33_income_wording.py
+    result: "17 passed"
+    exit: 0
+    ts: "2026-10-13T23:12:00Z"
+    seat: this session
+  - claim: "The replay-pins observer is unchanged by the wording swap."
+    cmd: python3 scripts/ci/observe_visa_oracle_replay_pins.py
+    result: "Tests 252 passed (252); replay pins hold"
+    exit: 0
+    ts: "2026-10-13T23:14:10Z"
+    seat: this session
+  - claim: "The legacy client-copy guard stays green."
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3600 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-13T23:14:10Z"
+    seat: this session
+  - claim: "The whole backend visa_engine test directory was run although no backend file changed; 4 failed, 39 errors, all DB-state or environment (missing public.visa_evaluate_idempotency, migration-264 rollback state, a jsonschema date-time format check), none touching the mouth adapter, on this machine's local database."
+    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine
+    result: "4 failed, 3625 passed, 15 skipped, 3 xfailed, 39 errors in 207.37s; failures in test_evaluate_endpoint, test_shadow_evidence, test_shadow_match, test_visa_engine_retention_fk_registry and test_bundle_verify (DB schema / env), no count-pin test failed"
+    exit: 1
+    ts: "2026-10-13T23:17:55Z"
+    seat: this session
+decisions:
+  - id: D-word-swap-only
+    decision: >-
+      Only visible EN/ID copy changes ("passive income" to "income or allowance", "penghasilan pasif" to
+      "penghasilan atau tunjangan", "passive-income basis" to "income-or-allowance basis"); fact and basis
+      keys (passive_income, secondhome_passive_income_usd) and code comments are untouched, no threshold or
+      route logic moves.
+  - id: D-observer-scans-source
+    decision: >-
+      The observer scans the adapter source for banned phrases outside comment lines and requires the new
+      phrases, then runs the adapter test file with the four retirement-income pin tests required as run, so
+      reverting the wording turns it red.
+dissent: []
