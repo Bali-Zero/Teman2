@@ -2687,6 +2687,7 @@ def test_gh_pr_record_for_branch_carries_merge_fields_of_latest_exact_head_pr(
         "state": "MERGED",
         "number": 42,
         "mergedAt": "2026-08-25T01:00:00Z",
+        "closedAt": None,
         "headRefOid": "bbb",
     }
     assert mod._gh_pr_state_for_branch("some/branch", cwd=repo) == "MERGED"
@@ -2737,4 +2738,209 @@ def test_early_reap_removal_failure_is_not_a_cleanup_issue(
     assert mod.cmd_cleanup() == 0
     out = capsys.readouterr().out
     assert "WARN: early reap of early-locked failed: worktree is locked" in out
+    assert wt.exists()
+
+
+# ---------------------------------------------------------------------------
+# cleanup — reap-on-close for a CLOSED, pushed PR (CLOSED_GRACE_MINUTES)
+# ---------------------------------------------------------------------------
+
+
+def _closed_candidate(mod, monkeypatch, task_id, *, expired=False):
+    """A clean, idle worktree whose branch is pushed to origin and whose latest
+    exact-head PR was CLOSED 7h ago. Returns (wt, record, branch)."""
+    wt = mod.cmd_create("wr2", task_id, ttl_minutes=1440)
+    (wt / "closed.txt").write_text("work\n")
+    _commit_in_worktree(wt, mod, "closed.txt", "closed work")
+    branch = json.loads((wt / mod.TASK_METADATA_FILENAME).read_text())["branch"]
+    subprocess.run(
+        ["git", "push", "origin", f"HEAD:refs/heads/{branch}"],
+        cwd=wt, check=True, capture_output=True, text=True,
+    )
+    _backdate_worktree_mtime(wt, minutes=600)
+    if expired:
+        _backdate_metadata(wt, mod, minutes=2000)
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=wt, check=True, capture_output=True, text=True
+    ).stdout.strip()
+    closed_at = datetime.now(timezone.utc) - timedelta(minutes=420)
+    record = {
+        "state": "CLOSED",
+        "number": 8350,
+        "mergedAt": None,
+        "closedAt": closed_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "headRefOid": head,
+    }
+    monkeypatch.setattr(mod, "_worktree_has_live_process", lambda p: False)
+    monkeypatch.setattr(mod, "_gh_pr_record_for_branch", lambda b, **kw: record)
+    return wt, record, branch
+
+
+@pytest.mark.parametrize("expired", [False, True], ids=["unexpired", "expired"])
+def test_cleanup_reaps_closed_pushed_worktree_and_keeps_branch(
+    fake_repo, capsys, monkeypatch, expired
+):
+    mod, repo = fake_repo
+    wt, _, branch = _closed_candidate(mod, monkeypatch, "closed-001", expired=expired)
+    assert mod.cmd_cleanup() == 0
+    assert not wt.exists()
+    out = capsys.readouterr().out
+    assert "removed closed worktree closed-001 (PR #8350 closed 420 min ago" in out
+    ref = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"],
+        cwd=repo, capture_output=True, text=True,
+    )
+    assert ref.returncode == 0
+
+
+def _cbreak_dirty(wt, record, branch, mod, monkeypatch):
+    (wt / "wip.txt").write_text("uncommitted\n")
+    _backdate_worktree_mtime(wt, minutes=600)
+
+
+def _cbreak_untracked_only(wt, record, branch, mod, monkeypatch):
+    (wt / "scratch.txt").write_text("untracked\n")
+    _backdate_worktree_mtime(wt, minutes=600)
+
+
+def _cbreak_recent(wt, record, branch, mod, monkeypatch):
+    past = time.time() - 30 * 60
+    os.utime(wt, (past, past))
+
+
+def _cbreak_live_process(wt, record, branch, mod, monkeypatch):
+    monkeypatch.setattr(mod, "_worktree_has_live_process", lambda p: True)
+
+
+def _cbreak_gh_unusable(wt, record, branch, mod, monkeypatch):
+    monkeypatch.setattr(mod, "_gh_pr_record_for_branch", lambda b, **kw: None)
+
+
+def _cbreak_reopened(wt, record, branch, mod, monkeypatch):
+    record["state"] = "OPEN"
+
+
+def _cbreak_merged(wt, record, branch, mod, monkeypatch):
+    record["state"] = "MERGED"
+
+
+def _cbreak_closed_recently(wt, record, branch, mod, monkeypatch):
+    young = datetime.now(timezone.utc) - timedelta(minutes=mod.CLOSED_GRACE_MINUTES - 5)
+    record["closedAt"] = young.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _cbreak_closed_at_missing(wt, record, branch, mod, monkeypatch):
+    record["closedAt"] = None
+
+
+def _cbreak_head_moved_locally(wt, record, branch, mod, monkeypatch):
+    (wt / "later.txt").write_text("unpushed\n")
+    _commit_in_worktree(wt, mod, "later.txt", "unpushed work")
+    _backdate_worktree_mtime(wt, minutes=600)
+
+
+def _cbreak_pr_head_differs(wt, record, branch, mod, monkeypatch):
+    record["headRefOid"] = "0" * 40
+
+
+def _cbreak_remote_deleted(wt, record, branch, mod, monkeypatch):
+    subprocess.run(
+        ["git", "push", "origin", "--delete", branch],
+        cwd=wt, check=True, capture_output=True, text=True,
+    )
+
+
+def _cbreak_remote_differs(wt, record, branch, mod, monkeypatch):
+    kept = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=wt, check=True, capture_output=True, text=True
+    ).stdout.strip()
+    (wt / "diverged.txt").write_text("elsewhere\n")
+    _commit_in_worktree(wt, mod, "diverged.txt", "diverged on remote")
+    subprocess.run(
+        ["git", "push", "-f", "origin", f"HEAD:refs/heads/{branch}"],
+        cwd=wt, check=True, capture_output=True, text=True,
+    )
+    subprocess.run(
+        ["git", "reset", "--hard", kept],
+        cwd=wt, check=True, capture_output=True, text=True,
+    )
+    _backdate_worktree_mtime(wt, minutes=600)
+
+
+@pytest.mark.parametrize("expired", [False, True], ids=["unexpired", "expired"])
+@pytest.mark.parametrize(
+    "breaker",
+    [
+        _cbreak_dirty,
+        _cbreak_untracked_only,
+        _cbreak_recent,
+        _cbreak_live_process,
+        _cbreak_gh_unusable,
+        _cbreak_reopened,
+        _cbreak_closed_recently,
+        _cbreak_closed_at_missing,
+        _cbreak_head_moved_locally,
+        _cbreak_pr_head_differs,
+        _cbreak_remote_deleted,
+        _cbreak_remote_differs,
+    ],
+    ids=lambda f: f.__name__,
+)
+def test_cleanup_does_not_reap_closed_worktree_when_one_guard_fails(
+    fake_repo, capsys, monkeypatch, breaker, expired
+):
+    mod, _ = fake_repo
+    wt, record, branch = _closed_candidate(
+        mod, monkeypatch, "closed-guard", expired=expired
+    )
+    breaker(wt, record, branch, mod, monkeypatch)
+    mod.cmd_cleanup()
+    out = capsys.readouterr().out
+    assert wt.exists()
+    assert "removed closed worktree" not in out
+
+
+def test_cleanup_closed_reap_does_not_fire_for_a_merged_pr(
+    fake_repo, capsys, monkeypatch
+):
+    mod, _ = fake_repo
+    wt, record, branch = _closed_candidate(mod, monkeypatch, "closed-merged")
+    record["state"] = "MERGED"
+    record["mergedAt"] = record["closedAt"]
+    mod.cmd_cleanup()
+    out = capsys.readouterr().out
+    assert "removed closed worktree" not in out
+
+
+def test_cleanup_closed_skip_warning_names_the_failed_guard(
+    fake_repo, capsys, monkeypatch
+):
+    mod, _ = fake_repo
+    wt, record, branch = _closed_candidate(mod, monkeypatch, "closed-why", expired=True)
+    _cbreak_remote_deleted(wt, record, branch, mod, monkeypatch)
+    mod.cmd_cleanup()
+    out = capsys.readouterr().out
+    assert "remote branch gone or differs from HEAD" in out
+    assert "operator must inspect" in out
+
+
+def test_cleanup_closed_reap_removal_failure_is_not_a_cleanup_issue(
+    fake_repo, capsys, monkeypatch
+):
+    mod, _ = fake_repo
+    wt, _, _ = _closed_candidate(mod, monkeypatch, "closed-locked")
+
+    def boom(*a, **kw):
+        raise subprocess.CalledProcessError(1, ["git"], stderr="worktree is locked")
+
+    monkeypatch.setattr(mod, "_remove_worktree", boom)
+    assert mod.cmd_cleanup() == 0
+    assert "WARN: closed-PR reap of closed-locked failed" in capsys.readouterr().out
+    assert wt.exists()
+
+
+def test_cleanup_force_does_not_reap_unexpired_closed_worktree(fake_repo, monkeypatch):
+    mod, _ = fake_repo
+    wt, _, _ = _closed_candidate(mod, monkeypatch, "closed-force")
+    assert mod.cmd_cleanup(force=True) == 0
     assert wt.exists()

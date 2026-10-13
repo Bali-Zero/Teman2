@@ -340,6 +340,14 @@ RECENT_ACTIVITY_MINUTES = 10
 # RECENT_ACTIVITY_MINUTES because nothing but the grace window protects it.
 MERGED_GRACE_MINUTES = 60
 
+# Reap-on-close: a worktree whose PR was CLOSED unmerged, whose work is
+# preserved on the remote branch, is reaped once the PR has been closed this
+# long. Longer than MERGED_GRACE_MINUTES because a closed PR may be reopened or
+# superseded by its owner (a merge has no such second act); 6h outlasts a work
+# session, while the loss is zero either way (the pushed branch and the kept
+# local ref recreate the checkout).
+CLOSED_GRACE_MINUTES = 360
+
 # W62 ANTIBODY #2/#3: a worktree older than this multiple of its TTL is a
 # suspected orphan (surfaced by --list, gated by the CI hygiene test).
 ORPHAN_TTL_MULTIPLE = 2
@@ -1254,7 +1262,7 @@ def _gh_pr_record_for_branch(
                 "gh", "pr", "list",
                 "--head", branch,
                 "--state", "all",
-                "--json", "number,state,createdAt,headRefName,mergedAt,headRefOid",
+                "--json", "number,state,createdAt,headRefName,mergedAt,closedAt,headRefOid",
             ],
             cwd=str(cwd),
             capture_output=True,
@@ -1313,6 +1321,7 @@ def _gh_pr_record_for_branch(
         "state": state,
         "number": latest.get("number"),
         "mergedAt": latest.get("mergedAt"),
+        "closedAt": latest.get("closedAt"),
         "headRefOid": latest.get("headRefOid"),
     }
 
@@ -1849,6 +1858,76 @@ def _merged_pr_reap_facts(
     return record.get("number"), merged_minutes
 
 
+def _remote_branch_sha(wt: Path, branch: str) -> str:
+    """Sha of origin's `branch`, "" when absent or ls-remote failed."""
+    proc = _run_git(
+        ["ls-remote", "origin", f"refs/heads/{branch}"], cwd=wt, check=False
+    )
+    if proc.returncode != 0:
+        return ""
+    parts = proc.stdout.split()
+    return parts[0] if len(parts) >= 2 and parts[1] == f"refs/heads/{branch}" else ""
+
+
+def _closed_pr_reap_facts(
+    wt: Path, branch: str, *, now: datetime
+) -> tuple[tuple[int | None, int] | None, str]:
+    """((PR number, minutes since close), "") when the worktree is reapable
+    because its latest PR was CLOSED unmerged at least CLOSED_GRACE_MINUTES ago
+    and the work is preserved on origin; else (None, reason).
+
+    Fail-closed like `_merged_pr_reap_facts`; the local checks run first, the
+    gh call next, the network ls-remote last. A reopened PR is the latest PR
+    again and reads OPEN, so it never reaches here.
+    """
+    if not wt.is_dir():
+        return None, "worktree missing"
+    if _worktree_recently_active(wt, threshold_minutes=MERGED_GRACE_MINUTES):
+        return None, "recent activity"
+    if _worktree_has_wip(wt):
+        return None, "uncommitted WIP"
+    if _worktree_has_live_process(wt):
+        return None, "live process in worktree"
+    record = _gh_pr_record_for_branch(branch, cwd=wt)
+    if record is None or record.get("state") != "CLOSED":
+        return None, "PR state not verifiable as CLOSED"
+    closed_at = _parse_github_timestamp(record.get("closedAt"))
+    if closed_at is None:
+        return None, "closedAt missing"
+    closed_minutes = int((now - closed_at).total_seconds() // 60)
+    if closed_minutes < CLOSED_GRACE_MINUTES:
+        return None, f"closed only {closed_minutes} min ago"
+    head = _worktree_head_sha(wt)
+    if not head or head != record.get("headRefOid"):
+        return None, "HEAD differs from the PR head"
+    if _remote_branch_sha(wt, branch) != head:
+        return None, "remote branch gone or differs from HEAD"
+    return (record.get("number"), closed_minutes), ""
+
+
+def _reap_closed(meta, wt: Path, closed: tuple[int | None, int]) -> bool:
+    """Remove a closed-and-pushed worktree (branch ref kept). A removal failure
+    is a WARN, never a cleanup issue: the next tick retries."""
+    pr_number, closed_minutes = closed
+    try:
+        _remove_worktree(wt, meta.branch, delete_branch=False)
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or "").strip()
+        logger.warning("closed-PR reap of %s failed: %s", meta.task_id, detail)
+        print(f"WARN: closed-PR reap of {meta.task_id} failed: {detail}")
+        return False
+    logger.info(
+        "cleanup reaped closed worktree %s — PR #%s closed %d min ago, work "
+        "preserved on origin",
+        meta.task_id, pr_number, closed_minutes,
+    )
+    print(
+        f"removed closed worktree {meta.task_id} (PR #{pr_number} closed "
+        f"{closed_minutes} min ago, branch pushed) ({wt})"
+    )
+    return True
+
+
 def cmd_cleanup(
     *, force: bool = False, skip_recent_minutes: int = RECENT_ACTIVITY_MINUTES
 ) -> int:
@@ -1904,6 +1983,9 @@ def cmd_cleanup(
                 continue
             facts = _merged_pr_reap_facts(wt, meta.branch, now=now)
             if facts is None:
+                closed, _ = _closed_pr_reap_facts(wt, meta.branch, now=now)
+                if closed is not None:
+                    _reap_closed(meta, wt, closed)
                 continue
             pr_number, merged_minutes = facts
             try:
@@ -2026,6 +2108,10 @@ def cmd_cleanup(
                         "once merged or closed"
                     )
                 elif reason == "gh-closed":
+                    closed, why = _closed_pr_reap_facts(wt, meta.branch, now=now)
+                    if closed is not None:
+                        _reap_closed(meta, wt, closed)
+                        continue
                     logger.warning(
                         "cleanup skip %s — branch %s's pull request was "
                         "CLOSED without merging",
@@ -2034,7 +2120,7 @@ def cmd_cleanup(
                     )
                     print(
                         f"WARN: skip {meta.task_id} (branch '{meta.branch}''s "
-                        "pull request was CLOSED without merging) — "
+                        f"pull request was CLOSED without merging; {why}) — "
                         "protecting checkout, operator must inspect"
                     )
                 else:
