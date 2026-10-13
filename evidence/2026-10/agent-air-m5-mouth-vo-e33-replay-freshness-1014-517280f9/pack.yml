@@ -1,0 +1,70 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Fresh gate of #8456, condition C4 - nothing fails when a new signed pack lands and no-path-doors.replay.json
+  stays recorded on an older one, which is how the fixture went stale before.
+mission: >-
+  The no-door replay fixture can no longer go stale silently when a new signed pack lands.
+lanes:
+  - lane: e33-replay-freshness
+    role: build
+    seat: claude-sonnet-5 (Claude Code workflow subagent), worktree mouth-vo-e33-replay-freshness-1014 on M5; evidence by Claude Sonnet 5.5.
+  - lane: e33-replay-freshness-ground-truth
+    role: ground_truth
+    seat: >-
+      the highest signed rulepack in apps/backend-rag/backend/services/visa_engine/contracts/packs/ (rulepack-prod-029,
+      sequence 29); the test only reads the directory listing and the fixture, it asserts no rule of its own.
+    nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
+    query_hash: "8daa66acd3ba3f6adc9a78304e35d719667fa3e735b32492757ee085ea6bee0e" # pragma: allowlist secret
+    note: query_hash = sha256 of rulepack-prod-029.signed.json at origin/main.
+pii_scan: clean
+bites:
+  consumer: >-
+    the required mouth CI leg on every future signed-pack PR (the Vitest tree under (visa-oracle)).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_no_door_replay_freshness.py
+  expect: "contains:no-door replay is fresh"
+receipts:
+  - claim: The freshness test passes on main against rulepack-prod-029.signed.json (4 tests, observer accepts only a full pass of at least 4).
+    cmd: python3 scripts/ci/observe_visa_oracle_no_door_replay_freshness.py
+    result: "Tests  4 passed (4); no-door replay is fresh"
+    exit: 0
+    ts: "2026-10-13T23:12:15Z"
+    seat: this session
+  - claim: The observer's summary parser rejects skipped, todo, failed and reduced counts.
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_no_door_replay_freshness.py
+    result: "10 passed"
+    exit: 0
+    ts: "2026-10-13T23:12:16Z"
+    seat: this session
+  - claim: The whole visa-oracle Vitest tree passes (components included).
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 57 passed (57), Tests 1487 passed (1487)"
+    exit: 0
+    ts: "2026-10-13T23:13:33Z"
+    seat: this session
+  - claim: apps/mouth typechecks.
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-13T23:13:33Z"
+    seat: this session
+  - claim: >-
+      The whole backend visa_engine directory ran locally without the CI database; the diff touches no backend file,
+      so the 4 failures and 39 errors are environment (no psutil, no migrated Postgres schema, no format-checker extra)
+      and not this change. CI is the authority for that directory.
+    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine
+    result: "4 failed, 3625 passed, 15 skipped, 3 xfailed, 39 errors in 216.67s"
+    exit: 1
+    ts: "2026-10-13T23:17:18Z"
+    seat: this session
+decisions:
+  - id: D-numeric-highest
+    decision: >-
+      The newest pack is chosen by the number in rulepack-prod-NNN.signed.json, not by string order; test and source packs
+      are ignored. The pin reads both pack.file and pack.sequence of the fixture.
+  - id: D-guilt-innocence
+    decision: >-
+      The test carries guilt cases (an older recorded name, a newer pack appearing in the directory) and an innocence case
+      (highest picked numerically), so the pin is neither over- nor under-matching.
+dissent: []
