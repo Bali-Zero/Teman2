@@ -50,6 +50,25 @@ describe("ConsentHandoff", () => {
     expect(screen.getByRole("img")).toBeVisible();
   });
 
+  it("uses Indonesian 'pengalihan' for the guardian consent, never 'handoff'", () => {
+    render(
+      <ConsentHandoff
+        language="id"
+        state="HUMAN_REVIEW_REQUIRED"
+        whatsappNumber="628123456789"
+        guardianConsentRequired
+      />,
+    );
+
+    const guardianText =
+      screen.getAllByRole("checkbox")[0].closest("label")?.textContent ?? "";
+    expect(guardianText).toContain(
+      "menyetujui pengalihan ke WhatsApp ini untuk anak di bawah umur",
+    );
+    expect(guardianText).not.toContain("handoff");
+    expect(document.body.textContent).not.toMatch(/handoff/i);
+  });
+
   it.each(HANDOFF_CONTEXTS)(
     "requires guardian confirmation for %j",
     (context) => {
