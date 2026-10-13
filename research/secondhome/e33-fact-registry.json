@@ -313,12 +313,12 @@
     {
       "id": "e33f_sponsor_requirement",
       "topic": "E33F sponsor requirement",
-      "value": "The E33F page says a sponsor is needed (\"Anda membutuhkan penjamin/sponsor\") and that the sponsor files the visa; rulepack-prod-029 has no sponsor rule for E33F",
-      "status": "disputed",
-      "confidence": "BERSYARAT",
-      "source": "live imigrasi.go.id E33F page fetch 2026-10-13; rulepack-prod-029 (no E33F sponsor rule)",
+      "value": "The E33F page says a sponsor is needed (\"Anda membutuhkan penjamin/sponsor\") and that the sponsor files the visa; rulepack-prod-029 declares the same in the E33F product metadata (sponsor_types INDIVIDUAL) and has no enforcement rule for it",
+      "status": "confirmed",
+      "confidence": "JELAS",
+      "source": "live imigrasi.go.id E33F page fetch 2026-10-13; rulepack-prod-029 E33F product sponsor_types",
       "source_date": "2026-10-13",
-      "notes": "Page and pack differ and are recorded as they stand. generate_visa_cards.py E33F card claims \"Local sponsor required (visa agent)\"; do not propagate a sponsor claim or a sponsor-free claim until the owner decides."
+      "notes": "Page and pack agree: a sponsor is needed. The only gap is enforcement: the pack carries the requirement as declarative metadata and has no hard filter, which is not a divergence from the page. generate_visa_cards.py E33F card claims \"Local sponsor required (visa agent)\"; the sponsor is an individual per the pack metadata, not necessarily a visa agent."
     },
     {
       "id": "basis_switch_deposit_property_mid_permit",
