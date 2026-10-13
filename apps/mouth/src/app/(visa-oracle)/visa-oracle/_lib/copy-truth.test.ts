@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
 import { dict } from "./i18n";
 import { SUPPORT_REASON_COPY } from "./engine-adapter";
@@ -861,5 +864,49 @@ describe("E23U / E23V support reasons restate what the visitor told us", () => {
     ]) {
       expect(FALSE_CLAIMS.some((re) => re.test(old))).toBe(true);
     }
+  });
+});
+
+describe("E23U / E23V sentences follow the seq-28 rule predicates", () => {
+  const PACK = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../../../../../../..",
+    "apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-028.source.json",
+  );
+  type Leaf = { fact?: string; value?: unknown; values?: unknown };
+  const rule = (id: string) => {
+    const pack = JSON.parse(fs.readFileSync(PACK, "utf-8")) as {
+      rules: { rule_id: string; when: { args: Leaf[] } }[];
+    };
+    const found = pack.rules.find((r) => r.rule_id === id);
+    if (!found) throw new Error(`rule ${id} missing from seq-28 pack`);
+    return found.when.args.map(
+      (a) => `${a.fact}=${JSON.stringify(a.value ?? a.values)}`,
+    );
+  };
+
+  it("el.e23u.diplomatic-household checks an individual sponsor and the diplomatic household", () => {
+    expect(rule("el.e23u.diplomatic-household")).toEqual([
+      'intent.purposes=["EMPLOYMENT"]',
+      'sponsor.type="INDIVIDUAL"',
+      "sponsor.diplomatic_household=true",
+    ]);
+  });
+
+  it("el.e23v.trade-office checks a government sponsor and the trade office", () => {
+    expect(rule("el.e23v.trade-office")).toEqual([
+      'intent.purposes=["EMPLOYMENT"]',
+      'sponsor.type="GOVERNMENT"',
+      "sponsor.trade_office=true",
+    ]);
+  });
+
+  it("the qualifiers on the trade office are the wording of the question the visitor answered", () => {
+    expect(dict.en["q.sponsor_trade_office"]).toContain(
+      "foreign trade or economic representative office in Indonesia",
+    );
+    expect(SUPPORT_REASON_COPY.E23V_TRADE_OFFICE_ELIGIBLE.en).toContain(
+      "foreign trade or economic representative office in Indonesia",
+    );
   });
 });
