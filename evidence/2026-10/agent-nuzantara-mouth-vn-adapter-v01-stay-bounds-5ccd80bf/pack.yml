@@ -1,0 +1,71 @@
+gear: 2
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  visa-night family "visit" plan V01 (/Users/nuzantara/visa-night/visit/audit.json). Re-verified on
+  origin/main 9918e0517a: the four old sentences were still present.
+mission: >-
+  The Visa Oracle support reasons for B1, C1, C2 and C6 name the stay bound their rule checks.
+lanes:
+  - lane: v01-stay-bounds
+    role: build
+    seat: Claude Opus 5.5 implementer (as in the commit co-author lines), worktree mouth-vn-adapter-v01-stay-bounds on the visa night run.
+  - lane: v01-ground-truth
+    role: ground_truth
+    seat: >-
+      The signed pack rulepack-prod-028.signed.json (the active seq-28 pack): lte(intent.stay_days) is 60 on
+      el.b1.tourism and 180 on el.c1.tourism-family, el.c2.business and el.c6.social. B1 initial stay 30 days,
+      extendable once to 60: the imigrasi.go.id B1 page as recorded in
+      research/visa/2026-08-23-voa-product-regulatory-and-engine-audit.md section 1.1 (the seq-28 VOA list
+      snapshot carries no stay text). No saved snapshot of the C1/C2/C6 pages exists, so their sentences
+      state only the rule's bound.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "1c8885cee446750b29ce86b9423a1dd53b05e4c4f1d3edfef07f44faa70366c8" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at origin/main 9918e0517a (before the change).
+pii_scan: clean
+bites: >-
+  Consumer: the public Visa Oracle result page (OutcomeSheet reading SUPPORT_REASON_COPY in engine-adapter.ts)
+  and the engine-adapter.test.ts pin in the mouth suite on every PR. Observation, after the mouth deploy is
+  promoted: tourism / Italian passport / 45 days shows B1 "Why this fits" with 60 days (EN and ID);
+  tourism / 121 days shows C1 with 180 days. Pre-merge, the pin and the sentence assertions run in vitest.
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+  paid_api: none
+  note: >-
+    One implementer session plus one red-team round by codex gpt-5.6-sol (subscription CLI, rollout
+    rollout-2026-10-13T09-28-51-01a132e0-6d12-71c1-af1a-a6244856978b); no paid per-token API.
+results:
+  - claim: "The whole visa-oracle mouth suite after the change."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 56 passed (56); Tests 1449 passed (1449) at the head"
+  - claim: "apps/mouth typechecks."
+    cmd: cd apps/mouth && npx tsc --noEmit
+    result: "no output, exit 0"
+  - claim: "Constants equal the pack."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' -t 'stay-bound'
+    result: "B1_MAX_STAY_DAYS 60 and C1/C2/C6_MAX_STAY_DAYS 180 equal the pack's lte nodes; the sentences carry the figure in EN and ID"
+decisions:
+  - id: D-no-c-structure
+    decision: >-
+      C1/C2/C6 sentences state only the rule's bound ("a planned total stay of 180 days or less"); no first-stay
+      and extension structure, because no saved snapshot of those pages exists. B1 states 30 + one extension
+      to 60 from the recorded B1 page. No fee or PNBP wording.
+dissent:
+  - seat: "codex gpt-5.6-sol, rollout 01a132e0-6d12-71c1-af1a-a6244856978b (red team, HIGH)"
+    objection: >-
+      "a stay of 180 days or less" can be read as an initial 180-day permit; 180 is the engine's total-stay
+      bound and no snapshot describes C1/C2/C6 stay structure.
+    status: CONFIRMED
+    disposition: "CURED. C1/C2/C6 now read 'planned total stay' / 'rencana total masa tinggal'."
+  - seat: "codex gpt-5.6-sol (red team, MEDIUM)"
+    objection: "The test forbade any mention of 60 days on C1/C2/C6, blocking a future correct 60-initial sentence."
+    status: CONFIRMED
+    disposition: "CURED. The test now forbids only '60 days or less' / '60 hari atau kurang' and requires the new wording."
+  - seat: "codex gpt-5.6-sol (red team, LOW)"
+    objection: "'masa tinggal pertama' reads as a translation."
+    status: CONFIRMED
+    disposition: "CURED. 'masa tinggal awal' (EN 'initial stay')."
+  - seat: "codex gpt-5.6-sol (red team, LOW)"
+    objection: "'penjamin terkonfirmasi' is rigid; 'Anda telah mengonfirmasi adanya penjamin' is closer to the user-declared fact."
+    status: PLAUSIBLE
+    disposition: "REJECTED for this PR: the mandate keeps 'confirmed sponsor' on C2/C6 and the phrase pre-dates the change."

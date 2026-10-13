@@ -1,0 +1,17 @@
+gear: 2
+gear_reason: >-
+  Public client copy on the Visa Oracle (four support reasons whose stated stay bound disagreed with the
+  rule that decided) with a pack-pinning test; touches no rule, no pack, no data, no pricing and no backend.
+mission: >-
+  The Visa Oracle support reasons for B1, C1, C2 and C6 name the stay bound their rule checks (B1 60,
+  C1/C2/C6 180), in English and Bahasa Indonesia.
+objective: >-
+  Visit plan V01. B1 copy said 30 days or less while el.b1.tourism checks lte 60; C1/C2/C6 copy said 60
+  while el.c1.tourism-family, el.c2.business and el.c6.social check lte 180. Export the four bounds as
+  constants, build the sentences from them, and pin the constants to the seq-28 pack in engine-adapter.test.ts.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

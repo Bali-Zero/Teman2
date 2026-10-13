@@ -289,26 +289,39 @@ export const SOURCELESS_NO_PATH_CODES: ReadonlySet<string> = new Set([
   "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH",
 ]);
 
+/**
+ * The `lte` stay bounds the active pack (seq-28, `rulepack-prod-028.signed.json`)
+ * checks on `intent.stay_days` for the four routes whose support reason
+ * quotes one: `el.b1.tourism` 60, `el.c1.tourism-family` /
+ * `el.c2.business` / `el.c6.social` 180. Copied once and pinned by
+ * engine-adapter.test.ts the same way the Second Home thresholds are, so the
+ * sentence cannot drift from the rule that decided.
+ */
+export const B1_MAX_STAY_DAYS = 60;
+export const C1_MAX_STAY_DAYS = 180;
+export const C2_MAX_STAY_DAYS = 180;
+export const C6_MAX_STAY_DAYS = 180;
+
 export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   A1_BVK_ELIGIBLE: text(
     "Your nationality is on the visa-free (BVK) list for tourism or transit, and your stay is 30 days or less.",
     "Kewarganegaraan Anda ada dalam daftar bebas visa (BVK) untuk wisata atau transit, dan masa tinggal Anda 30 hari atau kurang.",
   ),
   B1_VOA_ELIGIBLE: text(
-    "Your nationality is on the Visa on Arrival list for tourism, and your stay is 30 days or less.",
-    "Kewarganegaraan Anda ada dalam daftar Visa on Arrival untuk wisata, dan masa tinggal Anda 30 hari atau kurang.",
+    `Your nationality is on the Visa on Arrival list for tourism, and your stay is ${B1_MAX_STAY_DAYS} days or less in total: the initial stay is 30 days, and it can be extended once, up to ${B1_MAX_STAY_DAYS} days.`,
+    `Kewarganegaraan Anda ada dalam daftar Visa on Arrival untuk wisata, dan total masa tinggal Anda ${B1_MAX_STAY_DAYS} hari atau kurang: masa tinggal awal 30 hari, dan dapat diperpanjang satu kali hingga ${B1_MAX_STAY_DAYS} hari.`,
   ),
   C1_VISIT_ELIGIBLE: text(
-    "A tourism or family visit with a stay of 60 days or less.",
-    "Kunjungan wisata atau keluarga dengan masa tinggal 60 hari atau kurang.",
+    `A tourism or family visit with a planned total stay of ${C1_MAX_STAY_DAYS} days or less.`,
+    `Kunjungan wisata atau keluarga dengan rencana total masa tinggal ${C1_MAX_STAY_DAYS} hari atau kurang.`,
   ),
   C2_BUSINESS_ELIGIBLE: text(
-    "Business meetings or investment, with a confirmed sponsor and a stay of 60 days or less.",
-    "Pertemuan bisnis atau investasi, dengan penjamin terkonfirmasi dan masa tinggal 60 hari atau kurang.",
+    `Business meetings or investment, with a confirmed sponsor and a planned total stay of ${C2_MAX_STAY_DAYS} days or less.`,
+    `Pertemuan bisnis atau investasi, dengan penjamin terkonfirmasi dan rencana total masa tinggal ${C2_MAX_STAY_DAYS} hari atau kurang.`,
   ),
   C6_SOCIAL_ELIGIBLE: text(
-    "A social or other stated purpose, with a confirmed sponsor and a stay of 60 days or less.",
-    "Tujuan sosial atau lainnya, dengan penjamin terkonfirmasi dan masa tinggal 60 hari atau kurang.",
+    `A social or other stated purpose, with a confirmed sponsor and a planned total stay of ${C6_MAX_STAY_DAYS} days or less.`,
+    `Tujuan sosial atau lainnya, dengan penjamin terkonfirmasi dan rencana total masa tinggal ${C6_MAX_STAY_DAYS} hari atau kurang.`,
   ),
   E28A_INVESTMENT_ELIGIBLE: text(
     "You committed to a PT PMA as shareholder-director or shareholder-commissioner, with paid-up capital of IDR 2.5 billion or more.",
@@ -1060,7 +1073,7 @@ const DOOR_PRODUCT_NAMES: Record<string, LocalizedText> = {
  * thresholds above are — a bound the pack owns, copied once, tested against
  * the replay fixture rather than remembered.
  */
-export const TOURIST_VISIT_MAX_STAY_DAYS = 180;
+export const TOURIST_VISIT_MAX_STAY_DAYS = C1_MAX_STAY_DAYS;
 
 /** A declared Second Home basis the pack's own conditions accept: the right
  * amount AND, on the deposit basis, the two answers the rule also reads (the
