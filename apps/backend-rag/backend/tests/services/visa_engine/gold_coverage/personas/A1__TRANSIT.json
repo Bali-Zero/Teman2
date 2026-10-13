@@ -1,0 +1,28 @@
+{
+  "expected_candidates": ["A1"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "Vietnamese software engineer, 31, one-week Bali stopover en route to a conference in Melbourne, visa-free BVK transit",
+  "overrides": {
+    "intent.desired_entry_date": {
+      "status": "KNOWN",
+      "value": "2026-09-12"
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["TRANSIT"]
+    },
+    "intent.stay_days": {
+      "status": "KNOWN",
+      "value": 7
+    },
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "1995-04-20"
+    },
+    "person.nationalities": {
+      "status": "KNOWN",
+      "value": ["VN"]
+    }
+  },
+  "product_code": "A1"
+}
