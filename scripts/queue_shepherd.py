@@ -414,6 +414,30 @@ def red_cause_fingerprint(run: dict[str, Any] | None, jobs: list[dict[str, Any]]
 
 
 MERGE_INTENT_LABEL = "localci:merge-shadow-ok"
+_QUEUE_RULE_TTL_SECONDS = 60
+_queue_rule_cache: tuple[float, str] | None = None
+
+
+def queue_rule_state() -> str:
+    """present | absent | unknown — the shared scripts/merge_queue_rule.sh probe, cached ~per tick.
+
+    A label counts as armed only on `absent` (post-flip); `present`/`unknown` keep arm-based logic."""
+    global _queue_rule_cache
+    now = time.monotonic()
+    if _queue_rule_cache and now - _queue_rule_cache[0] < _QUEUE_RULE_TTL_SECONDS:
+        return _queue_rule_cache[1]
+    try:
+        proc = subprocess.run(
+            [str(Path(__file__).resolve().parent / "merge_queue_rule.sh")],
+            capture_output=True, text=True, timeout=30, env={**os.environ, "SIGNAL_INTENT_REPO": REPO},
+        )
+        state = proc.stdout.strip() if proc.returncode == 0 else "unknown"
+    except (OSError, subprocess.SubprocessError):
+        state = "unknown"
+    if state not in ("present", "absent"):
+        state = "unknown"
+    _queue_rule_cache = (now, state)
+    return state
 
 
 def is_rearm_candidate(pr: dict[str, Any]) -> bool:
@@ -431,8 +455,8 @@ def is_rearm_candidate(pr: dict[str, Any]) -> bool:
         return False
     if pr.get("in_queue") or pr.get("auto_merge_enabled"):
         return False  # already armed or already queued — W111, not our concern
-    if pr.get("merge_intent_label"):
-        return False  # LocalCI merge-intent label IS the arm once the merge_queue rule is gone
+    if pr.get("merge_intent_label") and queue_rule_state() == "absent":
+        return False  # the label IS the arm only once the merge_queue rule is gone
     head_ref = pr.get("head_ref_name") or ""
     if not (head_ref.startswith("agent/") or pr.get("has_fable_gate_status")):
         return False  # not armed by this repo's own convention — never touch a PR we didn't arm

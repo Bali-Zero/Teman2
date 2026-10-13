@@ -102,6 +102,8 @@ echo "in queue now: ${inq:-<empty>}"
 #    which is a measurement instead of a shrug.
 #    (memory: lesson_an_empty_set_impersonates_everything_and_nothing)
 # ---------------------------------------------------------------------------
+MERGE_QUEUE_RULE="$(SIGNAL_INTENT_REPO="$REPO" "$SCRIPT_DIR/../merge_queue_rule.sh")"
+export MERGE_QUEUE_RULE
 all_open=$(gh pr list --repo "$REPO" --state open --limit 100 \
            --json number,mergeable,autoMergeRequest,labels,title 2>/dev/null)
 probe_rc=$?

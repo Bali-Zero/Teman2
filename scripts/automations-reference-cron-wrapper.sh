@@ -205,7 +205,13 @@ EOF
   # method and --squash is rejected outright (pipeline-ship skill, 2026-07-27+).
   RUN_NOTE=""
   [ "$RUN_RC" -ne 0 ] && RUN_NOTE=" (generator exit=$RUN_RC — partial output)"
-  if gh pr merge "$PR_NUM" --auto >>"$LOG" 2>&1; then
+  # label + arm via the shared helper (falls back to the bare arm if this checkout predates it)
+  if [ -x "$REPO_ROOT/scripts/signal_merge_intent.sh" ]; then
+    "$REPO_ROOT/scripts/signal_merge_intent.sh" "$PR_NUM" >>"$LOG" 2>&1; ARM_RC=$?
+  else
+    gh pr merge "$PR_NUM" --auto >>"$LOG" 2>&1; ARM_RC=$?
+  fi
+  if [ "$ARM_RC" -eq 0 ]; then
     heartbeat ok "promoted docs/AUTOMATIONS_REFERENCE.md via $PR_URL (auto-merge armed)$RUN_NOTE"
   else
     log "WARN: could not arm auto-merge on PR #$PR_NUM — needs manual arm"

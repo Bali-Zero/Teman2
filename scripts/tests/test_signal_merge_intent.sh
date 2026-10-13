@@ -70,8 +70,20 @@ pop='[{"number":1,"title":"labelled","mergeable":"MERGEABLE","autoMergeRequest":
       {"number":2,"title":"bare","mergeable":"MERGEABLE","autoMergeRequest":null,"mergeQueueEntry":null,"labels":[]},
       {"number":3,"title":"unknown-labelled","mergeable":"UNKNOWN","autoMergeRequest":null,"mergeQueueEntry":null,"labels":[{"name":"localci:merge-shadow-ok"}]},
       {"number":4,"title":"unknown-bare","mergeable":"UNKNOWN","autoMergeRequest":null,"mergeQueueEntry":null,"labels":[]}]'
-cand="$(printf '%s' "$pop" | bash "$POP" --candidates)"
-check "watcher: labelled PR is armed, not a candidate" "$([ "$(has $'1\t' "$cand")" = 0 ] && [ "$(has $'2\t' "$cand")" = 1 ] && echo 1 || echo 0)"
-check "watcher: labelled UNKNOWN not undecided (1 of 2 counted)" "$([ "$(printf '%s' "$pop" | bash "$POP" --undecidable)" = 1 ] && echo 1 || echo 0)"
+popcall() { printf '%s' "$pop" | env MERGE_QUEUE_RULE="$1" bash "$POP" "$2"; }
+for state in present unknown; do
+  cand="$(popcall $state --candidates)"
+  check "watcher, queue $state: labelled-unarmed PR stays a re-arm candidate" "$([ "$(has $'1\t' "$cand")" = 1 ] && [ "$(has $'2\t' "$cand")" = 1 ] && echo 1 || echo 0)"
+  check "watcher, queue $state: labelled UNKNOWN still undecided (2)" "$([ "$(popcall $state --undecidable)" = 2 ] && echo 1 || echo 0)"
+done
+cand="$(popcall absent --candidates)"
+check "watcher, queue absent: labelled PR is armed, not a candidate" "$([ "$(has $'1\t' "$cand")" = 0 ] && [ "$(has $'2\t' "$cand")" = 1 ] && echo 1 || echo 0)"
+check "watcher, queue absent: labelled UNKNOWN not undecided (1)" "$([ "$(popcall absent --undecidable)" = 1 ] && echo 1 || echo 0)"
+
+PROBE="$SCRIPTS/merge_queue_rule.sh"
+probe() { env FAKE_GH_LOG="$SANDBOX/log" PATH="$SANDBOX/bin:$PATH" "$@" bash "$PROBE"; }
+check "probe: present" "$([ "$(probe FAKE_RULES_COUNT=2)" = present ] && echo 1 || echo 0)"
+check "probe: absent" "$([ "$(probe FAKE_RULES_COUNT=0)" = absent ] && echo 1 || echo 0)"
+check "probe: failure => unknown" "$([ "$(probe FAKE_RULES_RC=1)" = unknown ] && echo 1 || echo 0)"
 
 [ "$failures" = 0 ] && echo "ALL PASS" || { echo "$failures FAILED"; exit 1; }

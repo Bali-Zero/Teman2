@@ -28,13 +28,7 @@ if [ "$rc" -ne 0 ]; then
   exit 2
 fi
 
-queue=unknown
-rules="$(gh api "repos/$REPO/rules/branches/$BASE" --jq '[.[] | select(.type == "merge_queue")] | length' 2>/dev/null)" || rules=""
-case "$rules" in
-  0) queue=absent ;;
-  ''|*[!0-9]*) queue=unknown ;;
-  *) queue=present ;;
-esac
+queue="$(SIGNAL_INTENT_REPO="$REPO" SIGNAL_INTENT_BASE="$BASE" "$(dirname "${BASH_SOURCE[0]}")/merge_queue_rule.sh")"
 
 if [ "$queue" = absent ]; then
   echo "SIGNAL_INTENT pr=$PR label=applied queue=absent arm=skipped"

@@ -70,10 +70,15 @@ MODE="${1:-}"
 
 payload=$(cat)
 
-# A PR carrying the LocalCI merge-intent label is armed (scripts/signal_merge_intent.sh):
-# after the phase-F flip no GitHub arm exists to read, so the label is the arm.
+# A PR carrying the LocalCI merge-intent label is armed (scripts/signal_merge_intent.sh)
+# ONLY once the merge_queue rule is gone (MERGE_QUEUE_RULE=absent, from merge_queue_rule.sh):
+# while the queue exists the GitHub arm is what merges, so a labelled-but-unarmed PR
+# stays a re-arm candidate. Unset/unknown keeps the arm-based behaviour.
 # Absent `labels` key reads as unlabelled.
+LABELLED='false'
+if [ "${MERGE_QUEUE_RULE:-unknown}" = absent ]; then
 LABELLED='((.labels // []) | any(.name == "localci:merge-shadow-ok"))'
+fi
 
 # Fail-closed on anything unreadable. `jq -e` so a `null` input is a failure
 # too, not a silent zero.

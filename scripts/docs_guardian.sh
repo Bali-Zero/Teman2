@@ -371,7 +371,12 @@ PR_BODY_FILE=""
 # Enable auto-merge only if there's no manual work pending
 if [[ "$BROKEN" == "0" && -n "$PR_URL" && "$PR_URL" =~ ^https://github.com/.+/pull/[0-9]+$ ]]; then
   PR_NUM=$(echo "$PR_URL" | awk -F'/' '{print $NF}')
-  gh pr merge "$PR_NUM" --auto --squash >/dev/null 2>&1 || true
+  # label + bare arm (the queue refuses --squash); helper lives next to this script's checkout
+  if [ -x scripts/signal_merge_intent.sh ]; then
+    scripts/signal_merge_intent.sh "$PR_NUM" >/dev/null 2>&1 || true
+  else
+    gh pr merge "$PR_NUM" --auto >/dev/null 2>&1 || true
+  fi
 fi
 
 # Return to main branch for clean state

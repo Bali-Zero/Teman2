@@ -194,8 +194,10 @@ def test_candidate_innocence_clean_disarmed_agent_branch_is_selected():
     assert qs.is_rearm_candidate(_pr()) is True
 
 
-def test_candidate_guilt_merge_intent_label_counts_as_armed():
-    assert qs.is_rearm_candidate(_pr(merge_intent_label=True)) is False
+@pytest.mark.parametrize("state,expected", [("absent", False), ("present", True), ("unknown", True)])
+def test_merge_intent_label_is_armed_only_when_the_queue_rule_is_gone(monkeypatch, state, expected):
+    monkeypatch.setattr(qs, "queue_rule_state", lambda: state)
+    assert qs.is_rearm_candidate(_pr(merge_intent_label=True)) is expected
 
 
 def test_normalize_reads_merge_intent_label_from_graphql_nodes():
