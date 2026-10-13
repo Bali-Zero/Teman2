@@ -1,7 +1,9 @@
-gear: 1
+gear: 2
 gear_reason: >-
-  Client-copy change in two i18n entries of the public Visa Oracle interview, plus pinned tests and a
-  no-argument observer; no backend, no data, no pricing, no interview-tree change. Size floor not reached.
+  Client-copy change in a few i18n entries of the public Visa Oracle interview, with pinned tests, a
+  no-argument observer and its unit tests; no backend, data, pricing or interview-tree change. The size
+  floor (churn including tests and evidence) is gear 2, so an adversarial codex spalla reviewed the diff and
+  its findings are recorded in dissent; a fresh gate follows.
 mission: >-
   The retirement basis question uses the official page's term penjamin, and the income question says what
   Immigration counts, in the page's own words.
