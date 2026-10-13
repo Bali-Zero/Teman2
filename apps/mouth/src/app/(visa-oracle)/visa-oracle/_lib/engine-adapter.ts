@@ -572,11 +572,11 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // so. Zero's ruling (2026-08-09): offer the route and name the check.
   // Where the figure is not in the rule itself it is deliberately NOT stated
   // here rather than guessed.
-  // D3c/C-D5 (historical, written under seq-7..27): no rule in the signed
-  // pack carried this reason code (no `E33G_INCOME_60K_ADVISOR_CHECK`
+  // D3c/C-D5 (historical, written under seq-8..27): no rule in those signed
+  // packs carried this reason code (no `E33G_INCOME_60K_ADVISOR_CHECK`
   // reason_code anywhere, and no fact held an ANNUAL income threshold).
-  // Seq-29 now tests the figure and emits E33G_INCOME_BELOW_THRESHOLD, so the
-  // key below is RETIRED and kept only to replay old packs. Narrowed (PR-D3d,
+  // E33G_INCOME_BELOW_THRESHOLD came in with seq-28 and carries into seq-29,
+  // so the key below is RETIRED and kept only to replay old packs. Narrowed (PR-D3d,
   // 2026-09-13, fresh grader review): the pack's only income fact —
   // `secondhome.passive_monthly_income_usd`, gte 3000, on
   // `el.e33e.age-55-59-disputed-band` / `el.e33e.retirement` /
