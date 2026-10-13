@@ -3035,6 +3035,21 @@ def test_the_e23_work_walks_replay_to_their_pins_on_every_pinned_sequence(
     assert len(work) == 12
     violations = _outcome_violations(work, pins)
     assert not violations, "\n  ".join(violations)
+    # The causes, not only the states (red team, 2026-10-13): every no-path walk
+    # names the seq-27 reasons from seq-21 on and the generic sentence on seq-20,
+    # and every NEEDS_INPUT walk blocks on exactly the fact its allowlist row names.
+    for label, (state, _candidates) in pins.items():
+        actual = work[label]
+        if state == "NO_SUPPORTED_PATH":
+            expected_codes = (
+                ["OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"]
+                if sequence == 20
+                else list(_EXPECTED_REASONS_ON_SEQ27[label][0])
+            )
+            assert actual["no_path_reason_codes"] == expected_codes, (sequence, label)
+        if state == "NEEDS_INPUT":
+            rows = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[sequence][label]
+            assert actual["missing_facts"] == [row.fact for row in rows], (sequence, label)
 
 
 #: The three dead ends are NAMED, not just empty: the visitor copy keys off
