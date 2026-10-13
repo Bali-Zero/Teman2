@@ -643,6 +643,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     # B17 — a check run cancelled by concurrency is no verdict whenever a completed non-cancelled run of the same name decides, in either order
     "b17-drop-a-lone-cancelled": (HC, "return [e for e in entries if decided and run(e)", "return [e for e in entries if run(e)", (HCT,)),
     "b17-drop-across-apps": (HC, "return e[\"app_id\"] == app_id if is_pinned(app_id) else True", "return True", (HCT,)),
+    "b17-status-decides": (HC, 'return e["source"] != "commit-status" and e["conclusion"] is not None', 'return e["conclusion"] is not None', (HCT,)),
     "b17-drop-timed-out-too": (HC, 'and e["conclusion"] == "cancelled" and same_app(e)]', 'and e["conclusion"] in ("cancelled", "timed_out") and same_app(e)]', (HCT,)),
     "b17-cancelled-sibling-decides": (HC, 'decided = any(run(o) and o["conclusion"] != "cancelled" and same_app(o)', "decided = any(run(o) and same_app(o)", (HCT,)),
     "b17-reread-ignores-stuck-red": (PY, "return flipped if not stuck and len(flipped) == raw else []", "return flipped if len(flipped) == raw else []", (CS,)),

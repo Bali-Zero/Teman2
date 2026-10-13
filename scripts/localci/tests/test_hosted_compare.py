@@ -157,6 +157,12 @@ def test_b17_a_pinned_context_is_decided_only_by_its_own_app():
     assert _hv(_runs("a", ("cancelled", T1, ACTIONS), ("success", T2, 999)), app_id=None)["verdict"] == "GREEN"
 
 
+def test_b17_a_commit_status_never_decides_the_drop():
+    ents = hc.hosted_entries(_runs("a", ("cancelled", T1, None)), [{"context": "a", "state": "success", "updated_at": T2}])["a"]
+    h = hc.hosted_verdict(ents, None)
+    assert h["verdict"] == "RED" and h["superseded_cancelled"] == []
+
+
 def test_b17_other_reds_and_commit_statuses_are_untouched():
     for concl in ("failure", "timed_out", "startup_failure", "action_required"):
         h = _hv(_runs("a", (concl, T1, None), ("success", T2, None)))
