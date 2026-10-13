@@ -282,6 +282,19 @@ class ChangeMapTests(unittest.TestCase):
                     ["backend-tests", "frontend-tests", "e2e-tests"],
                 )
 
+    def test_guilt_signed_pack_only_change_runs_frontend(self) -> None:
+        # The no-door replay freshness test (mouth) goes red when a new signed
+        # pack lands without a re-recorded fixture, so a signed-only PR must
+        # reach frontend-tests.
+        for path in (
+            "apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-030.signed.json",
+            "apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-9.signed.json",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertTrue(result["domains"]["mouth"])
+                self.assertIn("frontend-tests", result["suggested_jobs"])
+
     def test_innocence_non_rulepack_pack_file_does_not_couple_to_frontend(
         self,
     ) -> None:

@@ -47,6 +47,13 @@ def summary_ok(line: str | None) -> bool:
     return passed == total and passed >= MIN_TESTS
 
 
+def last_summary_line(out: str) -> str | None:
+    """The LAST line beginning with `Tests`: Vitest prints its real summary at the end,
+    so an earlier test-logged line cannot spoof it."""
+    found = re.findall(r"^\s*Tests\s.*$", out, re.MULTILINE)
+    return found[-1] if found else None
+
+
 def main() -> int:
     result = subprocess.run(
         ["npx", "vitest", "run", TEST_FILE],
@@ -56,8 +63,7 @@ def main() -> int:
         text=True,
     )
     out = ANSI.sub("", result.stdout + result.stderr)
-    tests = re.search(r"^\s*Tests\s.*$", out, re.MULTILINE)
-    line = tests.group(0) if tests else None
+    line = last_summary_line(out)
     summary = line.strip() if line else "no Vitest summary"
     if result.returncode != 0 or not summary_ok(line):
         print(f"observe_visa_oracle_no_door_replay_freshness: FAILED ({summary})\n{out[-1500:]}")
