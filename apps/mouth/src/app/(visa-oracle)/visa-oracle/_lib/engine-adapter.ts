@@ -611,7 +611,7 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   ),
   // RETIRED (replayable): last emitted by signed seq-7. See RETIRED_SUPPORT_REASON_KEYS.
   E33E_DEPOSIT_INCOME_BASIS_ADVISOR_CHECK: text(
-    "This route can be met on a deposit basis or an income-or-allowance basis. We work out which one fits you with one of our advisors.",
+    "This route can be met on a deposit basis or an income or allowance basis. We work out which one fits you with one of our advisors.",
     "Jalur ini dapat dipenuhi berbasis deposito atau berbasis penghasilan atau tunjangan. Kami menentukan mana yang sesuai untuk Anda bersama konsultan kami.",
   ),
   E33E_AGE_55_59_ADVISOR_CHECK: text(

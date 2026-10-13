@@ -6,12 +6,15 @@
 # can name a program to run, a file to write, or a database to reach (the bar
 # `scripts/ci/bites_parse.py::_guard_observable_script` sets).
 
-The consumer is the public Visa Oracle result page. The E33-family result sentences
+The consumer is the adapter contract that builds the public result sentences (source
+plus its unit tests; the live page is observed after deploy, outside CI). The E33-family result sentences
 say "income or allowance" (EN) and "penghasilan atau tunjangan" (ID), as the official
 page and the interview do. Two observations, both required:
 
 1. a literal scan of the engine adapter source: no visible copy line carries "passive
-   income" or "penghasilan pasif" (comment lines are not copy and are skipped);
+   income", "penghasilan pasif" or the hyphenated "income-or-allowance", and each of
+   the E33-family sentences (EN and ID, every dynamic branch) carries its wording on
+   its own line (comment lines are not copy and are skipped);
 2. the engine-adapter test file passes in full, with the tests that pin the retirement
    income sentences reported as run.
 
@@ -34,8 +37,32 @@ TEST_FILE = "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts"
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 MIN_TESTS = 100
-BANNED = re.compile(r"passive[ -]income|penghasilan pasif", re.IGNORECASE)
-REQUIRED_COPY = ("income or allowance", "penghasilan atau tunjangan")
+BANNED = re.compile(
+    r"passive[ -]income|penghasilan pasif|income-or-allowance|penghasilan-atau-tunjangan",
+    re.IGNORECASE,
+)
+EN_PHRASE = "income or allowance"
+ID_PHRASE = "penghasilan atau tunjangan"
+REQUIRED_COPY = (EN_PHRASE, ID_PHRASE)
+# One row per E33-family result sentence: a literal anchor that identifies exactly one
+# copy line, and the wording that line must carry. Each sentence is checked on its own,
+# so a third wording on one sentence cannot hide behind the others.
+SENTENCES = (
+    ("plus income or allowance of ${usd(RETIREMENT_INCOME_THRESHOLD_USD, \"en-US\")}", EN_PHRASE),
+    ("ditambah penghasilan atau tunjangan minimal", ID_PHRASE),
+    ('"Retirement with income or allowance of USD 3,000', EN_PHRASE),
+    ('"Pensiun dengan penghasilan atau tunjangan minimal USD 3.000', ID_PHRASE),
+    ('"This route can be met on a deposit basis or an', EN_PHRASE),
+    ('"Jalur ini dapat dipenuhi berbasis deposito', ID_PHRASE),
+    ("plus monthly income or allowance; for a visit", EN_PHRASE),
+    ("ditambah penghasilan atau tunjangan bulanan; untuk kunjungan", ID_PHRASE),
+    ("`The retirement visas (E33E/E33F) need documented", EN_PHRASE),
+    ("`Visa pensiun (E33E/E33F) memerlukan", ID_PHRASE),
+    ("`You were not sure of your monthly", EN_PHRASE),
+    ("`Anda belum yakin dengan", ID_PHRASE),
+    ("`You declared ${usd(value", EN_PHRASE),
+    ("`Anda menyatakan ${usd(value", ID_PHRASE),
+)
 REQUIRED_TESTS = (
     "echoes a declared 2,999 and names the USD 3,000 minimum, EN and ID",
     "says a 'not sure' counted as zero instead of claiming a figure was given",
@@ -78,10 +105,23 @@ def copy_present(source: str) -> list[str]:
     return [p for p in REQUIRED_COPY if p not in source]
 
 
+def sentence_problems(source: str) -> list[str]:
+    """Anchors that match no line, more than one line, or a line without its wording."""
+    lines = source.splitlines()
+    problems = []
+    for anchor, phrase in SENTENCES:
+        found = [l for l in lines if anchor in l and not l.lstrip().startswith("//")]
+        if len(found) != 1:
+            problems.append(f"{anchor!r}: {len(found)} lines")
+        elif phrase not in found[0]:
+            problems.append(f"{anchor!r}: lacks {phrase!r}")
+    return problems
+
+
 def main() -> int:
     source = (MOUTH_DIR / ADAPTER).read_text(encoding="utf-8")
     hits = banned_lines(source)
-    absent_copy = copy_present(source)
+    absent_copy = copy_present(source) + sentence_problems(source)
     if hits or absent_copy:
         print(
             "observe_visa_oracle_e33_income_wording: FAILED "

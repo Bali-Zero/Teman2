@@ -12,7 +12,9 @@ from observe_visa_oracle_e33_income_wording import (  # noqa: E402
     REQUIRED_TESTS,
     banned_lines,
     copy_present,
+    SENTENCES,
     missing_tests,
+    sentence_problems,
     summary_ok,
 )
 
@@ -55,6 +57,7 @@ def test_missing_tests_names_absent_and_skipped_titles():
         '  "On a passive-income basis.",',
         '  "Pensiun dengan penghasilan pasif minimal.",',
         '  "PASSIVE INCOME",',
+        '  "An income-or-allowance basis.",',
     ],
 )
 def test_banned_phrase_in_copy_is_caught(src):
@@ -70,3 +73,24 @@ def test_clean_copy_has_no_hits_and_required_phrases_present():
     assert banned_lines(src) == []
     assert copy_present(src) == []
     assert copy_present("nothing") == ["income or allowance", "penghasilan atau tunjangan"]
+
+
+def _good_source():
+    return "\n".join(f"{a} {p}" for a, p in SENTENCES)
+
+
+def test_every_sentence_row_passes_on_a_good_source():
+    assert sentence_problems(_good_source()) == []
+
+
+def test_one_sentence_with_a_third_wording_is_caught_individually():
+    anchor, phrase = SENTENCES[4]
+    bad = _good_source().replace(f"{anchor} {phrase}", f"{anchor} income-or-allowance")
+    assert len(sentence_problems(bad)) == 1
+    assert sentence_problems(bad)[0].startswith(repr(anchor))
+
+
+def test_missing_or_duplicated_anchor_is_caught():
+    src = _good_source()
+    assert len(sentence_problems(src.split("\n", 1)[1])) == 1
+    assert len(sentence_problems(src + "\n" + src.split("\n")[0])) == 1
