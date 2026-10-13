@@ -310,3 +310,51 @@ describe("the KBLI dump's advertised vintage is the dataset's own", () => {
     expect(advertised(prose)).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// E33A / E33B / E33C are government-linked routes handled by consultation, with no
+// published price (E33 audit PR-18, 2026-10-11). The Visa Oracle copy says so; llms.txt,
+// which LLM crawlers cite, must say the same and must not quote a price for them.
+// ---------------------------------------------------------------------------
+describe("llms.txt names E33A, E33B and E33C as government-linked routes", () => {
+  const lines = () => readFileSync(llmsTxtPath, "utf8").split("\n");
+
+  it("carries one line naming all three routes as government-linked and by consultation", () => {
+    const hits = lines().filter((l) => /E33A/.test(l) && /E33B/.test(l));
+    expect(hits).toHaveLength(1);
+    expect(hits[0]).toMatch(/E33C/);
+    expect(hits[0]).toMatch(/government/i);
+    expect(hits[0]).toMatch(/consultation/i);
+    expect(hits[0]).toMatch(/no published price/i);
+  });
+
+  // The currency predicate, applied to a line however it is marked up (the real line is bold).
+  const hasPrice = (l: string) => /IDR|Rp\.?\s?\d|USD\s?\d/i.test(l);
+  const routeLine = (all: string[]) =>
+    all.filter((l) => /E33A/.test(l) && /E33B/.test(l) && /E33C/.test(l));
+
+  it("publishes no price on the E33A, E33B and E33C line", () => {
+    const hits = routeLine(lines());
+    expect(hits).toHaveLength(1);
+    expect(hasPrice(hits[0])).toBe(false);
+  });
+
+  it("guilt: the same predicate flags the real bold line once a price is appended", () => {
+    const real = routeLine(lines())[0];
+    expect(hasPrice(`${real}: IDR 99.000.000`)).toBe(true);
+    expect(hasPrice(`${real}, Rp 99.000.000`)).toBe(true);
+  });
+
+  it("maps each route to the description the Visa Oracle copy uses", () => {
+    const line = routeLine(lines())[0];
+    expect(line).toMatch(/E33A special-expertise government invitation/);
+    expect(line).toMatch(/E33B special-expertise collaboration/);
+    expect(line).toMatch(/E33C world-figure government invitation/);
+  });
+
+  it("still states the E33E senior price as IDR 45.000.000", () => {
+    expect(lines()).toContain(
+      "- E33E - Second Home Senior 5 Years: IDR 45.000.000 (all-inclusive)",
+    );
+  });
+});
