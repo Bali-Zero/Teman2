@@ -41,6 +41,7 @@ ISO = {"mode": "container", "docker": "/nonexistent/docker", "image_id": "sha256
 
 def _plan(monkeypatch, tmp_path, wt, sha, name):
     monkeypatch.setattr(runner, "plan_services", lambda job, images, docker: ([], None))      # no docker: the services are not what is judged
+    monkeypatch.setattr(runner, "plan_extra_services", lambda *a: ([], None))
     monkeypatch.setattr(runner, "plan_deps_image", lambda *a, **k: ("sha256:" + "d" * 64, "deps image (faked)"))
     spec = runner.plan_service_context(wt, sha, sha, tmp_path / "trusted", name, _ctx(name), [], {"container": "3.12.15",
                                        "container_extra": {"3.11.17": "/opt/py311/bin"}}, ISO, {}, tmp_path / "run", 8077)

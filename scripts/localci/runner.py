@@ -855,6 +855,123 @@ def plan_services(job: dict, images: dict, docker: str) -> tuple[list | None, st
     return out, None
 
 
+GEN_RE = re.compile(r"\$LOCALCI_GEN\.([a-z][a-z0-9_]*)")   # a value the run makes up, named: the same name is the same value in every container of the leg
+EXTRA_SERVICE_KEYS = {"name", "image", "env", "health", "seed", "reached"}
+REACHED_KEYS = {"request", "min", "api_key_env"}
+SEED_KEYS = {"file", "class", "name_field", "size_field", "distance", "api_key_env"}
+DIGEST_IMAGE = re.compile(r"[a-z0-9][a-z0-9._/-]*@sha256:[0-9a-f]{64}")
+
+
+def fill_generated(env: dict, store: dict) -> dict:
+    """`$LOCALCI_GEN.<name>` in an env value becomes 48 random hex characters, made now, once per name per leg and kept only in `store`
+    (this process's memory): the stand-in services and the steps of one leg agree on them, and no run, host or disk ever holds the same."""
+    return {k: GEN_RE.sub(lambda m: store.setdefault(m.group(1), os.urandom(24).hex()), str(v)) for k, v in env.items()}
+
+
+def read_seed(seed: object, read_base) -> tuple[dict | None, str | None]:
+    """The one collection a Qdrant stand-in is seeded with, EMPTY, so the code that walks collections runs here as it does hosted (it
+    holds 14 there). Its name and vector size are the defaults the backend's own Settings class declares at BASE (read with ast from
+    the BASE blob at plan time and frozen in the plan, never typed into the matrix); the distance is the one every collection
+    migration of the backend creates (`Cosine`)."""
+    if not isinstance(seed, dict) or set(seed) != SEED_KEYS:
+        return None, f"seed needs exactly {sorted(SEED_KEYS)}"
+    blob = read_base(str(seed["file"]))
+    if blob is None:
+        return None, f"seed: {seed['file']} is absent from BASE"
+    import ast
+    try:
+        cls = next(n for n in ast.parse(blob).body if isinstance(n, ast.ClassDef) and n.name == seed["class"])
+        got = {n.target.id: n.value.value for n in cls.body if isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name)
+               and isinstance(n.value, ast.Constant)}
+    except (SyntaxError, ValueError, StopIteration):
+        return None, f"seed: class {seed['class']} unreadable in BASE {seed['file']}"
+    name, size = got.get(seed["name_field"]), got.get(seed["size_field"])
+    if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name) or type(size) is not int or not 0 < size <= 65536:
+        return None, f"seed: BASE declares no plain {seed['name_field']} / {seed['size_field']} constant"
+    if seed["distance"] not in ("Cosine", "Dot", "Euclid") or not re.fullmatch(r"[A-Z0-9_]+", str(seed["api_key_env"])):
+        return None, "seed: distance or api_key_env unreadable"
+    return {"collection": name, "size": size, "distance": seed["distance"], "api_key_env": str(seed["api_key_env"])}, None
+
+
+SEED_SCRIPT = """exec 3<>/dev/tcp/127.0.0.1/6333
+B='{"vectors":{"size":%d,"distance":"%s"}}'
+printf 'PUT /collections/%s HTTP/1.0\\r\\napi-key: %%s\\r\\nContent-Type: application/json\\r\\nContent-Length: %%d\\r\\n\\r\\n%%s' "$%s" ${#B} "$B" >&3
+head -1 <&3 | grep -q ' 200 '"""
+
+
+TELEMETRY_SCRIPT = """exec 3<>/dev/tcp/127.0.0.1/6333
+printf 'GET /telemetry?details_level=3 HTTP/1.0\\r\\napi-key: %%s\\r\\n\\r\\n' "$%s" >&3
+tail -n 1 <&3"""
+
+
+def requests_seen(docker: str, ctr: str, reached: dict) -> int | None:
+    """How many 2xx answers the stand-in gave to `reached["request"]` (Qdrant's own telemetry counts them per route), read from inside
+    the container with its key. None when it cannot be read. The seed makes a PUT, the container's health check opens a socket: a
+    `GET /collections` is the backend's own boot probe or /health, so zero means the backend never reached the stand-in."""
+    out = _try([docker, "exec", ctr, "bash", "-c", TELEMETRY_SCRIPT % reached["api_key_env"]], 60)
+    try:
+        by_status = json.loads(out or "")["result"]["requests"]["rest"]["responses"].get(reached["request"], {})
+        return sum(int(v["count"]) for k, v in by_status.items() if str(k).startswith("2"))
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return None
+
+
+def step_summary(log_text: str, step_name: str) -> dict | None:
+    """{'passed': n, 'skipped': n} from the LAST Playwright summary lines inside one driver step's output (the segment between its
+    `##[localci] step N: <name>` marker and its `step N rc=` line); None when the step or its summary is absent."""
+    m = re.search(r"^##\[localci\] step (\d+): " + re.escape(step_name) + r"$", log_text, re.M)
+    if not m:
+        return None
+    end = re.search(rf"^##\[localci\] step {m.group(1)} rc=", log_text[m.end():], re.M)
+    seg = log_text[m.end():m.end() + end.start()] if end else log_text[m.end():]
+    passed = re.findall(r"^\s+(\d+) passed(?: \([^)]*\))?\s*$", seg, re.M)
+    skipped = re.findall(r"^\s+(\d+) skipped\s*$", seg, re.M)
+    return {"passed": int(passed[-1]), "skipped": int(skipped[-1]) if skipped else 0} if passed else None
+
+
+def plan_extra_services(extra: object, taken: set, docker: str, read_base=lambda rel: None) -> tuple[list | None, str | None]:
+    """Stand-ins the MATRIX adds beside BASE's `services:` (hosted points a secret at a cloud endpoint no container here can be): each is
+    pinned by DIGEST in the matrix (a tag is a moving target), present locally (never pulled by a run), and gets the same shape and the
+    same start, health budget and teardown as a BASE service. Its env is the matrix's literal map; only `$LOCALCI_GEN.<name>` is made up."""
+    out = []
+    for i, svc in enumerate(extra if isinstance(extra, list) else [] if extra is None else [None]):
+        if not isinstance(svc, dict) or (bad := sorted(set(svc) - EXTRA_SERVICE_KEYS)):
+            return None, f"extra_services[{i}]: a mapping of {sorted(EXTRA_SERVICE_KEYS)} only (got {None if not isinstance(svc, dict) else bad})"
+        name, ref, h = str(svc.get("name") or ""), str(svc.get("image") or ""), svc.get("health")
+        if not re.fullmatch(r"[a-z][a-z0-9-]*", name) or name in taken:
+            return None, f"extra_services[{i}]: name {name!r} is not a plain name, or is already a service of the job"
+        if not DIGEST_IMAGE.fullmatch(ref):
+            return None, f"service {name}: image {ref!r} is not pinned by digest (repo@sha256:<64 hex>)"
+        env = {str(k): str(v) for k, v in (svc.get("env") or {}).items()}
+        if (expr := sorted(k for k, v in env.items() if "${{" in v)):
+            return None, f"service {name}: env {expr} carry expressions"
+        if not isinstance(h, dict) or set(h) != {"cmd", "interval", "timeout", "retries"} or not h["cmd"]:
+            return None, f"service {name}: health needs exactly cmd, interval, timeout and retries"
+        try:
+            health = {k: str(v) for k, v in h.items()}
+            budget = (int(health["retries"]) + 1) * (_seconds(health["interval"]) + _seconds(health["timeout"]))
+        except (ValueError, KeyError) as e:
+            return None, f"service {name}: health unreadable ({type(e).__name__}: {e})"
+        seed = None
+        if svc.get("seed") is not None:
+            seed, why = read_seed(svc["seed"], read_base)
+            if why or seed["api_key_env"] not in env:
+                return None, f"service {name}: {why or 'seed api_key_env is not in the service env'}"
+        reached = svc.get("reached")
+        if reached is not None and (not isinstance(reached, dict) or set(reached) != REACHED_KEYS
+                                    or not re.fullmatch(r"(GET|PUT|POST) /[A-Za-z0-9/_-]*", str(reached["request"]))
+                                    or type(reached["min"]) is not int or reached["min"] < 1 or str(reached["api_key_env"]) not in env):
+            return None, f"service {name}: reached needs exactly {sorted(REACHED_KEYS)}: a plain `GET /path`, a count >= 1, a key env of the service"
+        iid = (_try([docker, "image", "inspect", "--format", "{{.Id}}", ref]) or "").strip()
+        if not iid.startswith("sha256:"):
+            return None, f"service {name}: image {ref} is not present locally (docker pull it, then plan again)"
+        taken = taken | {name}
+        out.append({"name": name, "image": ref, "local_image": ref, "image_id": iid, "env": env, "ports": [], "health": health,
+                    "health_budget_s": budget + 60, **({"seed": seed} if seed else {}),
+                    **({"reached": {k: reached[k] for k in sorted(REACHED_KEYS)}} if reached else {})})
+    return out, None
+
+
 def matrix_legs(job: dict) -> tuple[list | None, str | None]:
     m = (job.get("strategy") or {}).get("matrix")
     if m is None:
@@ -1285,6 +1402,10 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
             why2 = why2 or (None if shown and jid == ctx.get("job_id") and name.endswith(shown) else
                             f"leg {want!r} is not exactly one leg of the context's own job, the one whose check run is {name!r}")
         svcs, why3 = plan_services(job, local.get("service_images") or {}, iso["docker"])
+        if svcs is not None:
+            extra_svcs, why3 = plan_extra_services(jl.get("extra_services"), {s["name"] for s in svcs}, iso["docker"],
+                                                          lambda rel: _extract_base_file(wt, base, safe_tree_path(rel)))
+            svcs = svcs + extra_svcs if extra_svcs is not None else None
         if why or why2 or why3:
             return _blocked(f"job {jid}: {why or why2 or why3}")
         nodes = {str((s.get("with") or {}).get("node-version", "")) for s in job.get("steps") or [] if str(s.get("uses", "")).startswith("actions/setup-node@")}
@@ -1372,7 +1493,12 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                                                   re.sub(r"[^a-z0-9-]", "-", str(local.get("deps_recipe") or str(ctx["check"])[4:])))
             if image_id is None:
                 return _blocked(f"job {jid}: {deps_note}")
+        pw = jl.get("playwright_skips")
+        if pw is not None and (not isinstance(pw, dict) or set(pw) != {"step", "skipped"} or type(pw["skipped"]) is not int or pw["skipped"] < 0
+                               or pw["step"] not in {st["name"] for st in steps}):
+            return _blocked(f"job {jid}: playwright_skips needs exactly {{step: <a step of the job>, skipped: <int >= 0>}}")
         planned.append({"job_id": jid, "needs": needs, "legs": legs, "steps": steps, "job_env": jenv, "services": svcs, "path_prefix": prefix,
+                        **({"playwright_skips": {"step": pw["step"], "skipped": pw["skipped"]}} if pw else {}),
                         "checkout": checkout, "image_id": image_id, "deps": deps_note, "venv": local.get("bare_venv", True) is not False,
                         "git_index": jl.get("git_index", True) is not False, "timeout_s": tm * 60})
         upstream.add(jid)
@@ -2285,6 +2411,13 @@ def start_services(docker: str, svcs: list, prefix: str, label: str, denv: dict,
             fh.write(f"# service {s['name']} ({s['local_image']} {s['image_id'][:19]} for {s['image']}): {state} after {time.monotonic() - t0:.1f}s\n")
         if state != "healthy":
             return names, owner, f"service {s['name']} is {state!r} after {time.monotonic() - t0:.0f}s (BASE health check, budget {s['health_budget_s']:.0f}s)"
+        if (sd := s.get("seed")):   # the matrix's stand-in, once healthy: its one empty collection, made by the container itself (its own key, no host variable)
+            script = SEED_SCRIPT % (sd["size"], sd["distance"], sd["collection"], sd["api_key_env"])
+            r = _try([docker, "exec", ctr, "bash", "-c", script + " && echo seeded"], 60)
+            with open(log, "a") as fh:
+                fh.write(f"# service {s['name']}: seeded empty collection {sd['collection']} ({sd['size']}, {sd['distance']}): {'ok' if r and 'seeded' in r else 'FAILED'}\n")
+            if not r or "seeded" not in r:
+                return names, owner, f"service {s['name']} could not be seeded with collection {sd['collection']}: no verdict"
     return names, owner, None
 
 
@@ -2346,9 +2479,11 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
     inner = ["python", "-I", "/cfg/steps_driver.py", "/cfg/steps.json", "/out/junit.xml"]
     cfg_base = {"root": "/w", "path_prefix": job["path_prefix"], "venv": job["venv"], "env": {**CONTAINED_STEP_ENV, **SERVICE_STEP_ENV},
                 "job_env": job["job_env"], "expr": ctx}
-    steps = []
+    steps, gen = [], {}
     for st in job["steps"]:
         st = dict(st)
+        if st.get("env"):
+            st["env"] = fill_generated(st["env"], gen)
         if (st.get("side") or {}).get("where") == "egress":
             st["precomputed"] = _run_egress(name, spec, job, st, slug, cfg_base, base_extra, env, inner, run_dir, plan)
             out["logs"].append(str(run_dir / "logs" / f"{name}.{slug}.egress.log"))   # written by this leg: read for a full disk too
@@ -2383,7 +2518,7 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
             why += [err] if err else []
         return "; ".join(why) or None
 
-    ctrs, owner = [], None
+    ctrs, owner, unreached = [], None, None
     try:
         with open(log, "w") as fh:
             fh.write(f"# {now()} {label}: image {job['image_id'][:19]} services {[s['name'] for s in job['services']]}\n")
@@ -2393,13 +2528,20 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
                 fh.write(f"# not started: {floor}\n")
             out["infra"] = ("BLOCKED", floor)
             return out
-        ctrs, owner, why = start_services(iso["docker"], job["services"], f"localci-{plan['run_id']}-{name}-{slug}", run_label(run_dir), denv, log)
+        ctrs, owner, why = start_services(iso["docker"], [{**sv, "env": fill_generated(sv["env"], gen)} for sv in job["services"]], f"localci-{plan['run_id']}-{name}-{slug}", run_label(run_dir), denv, log)
         if why:
             out["infra"] = ("BLOCKED", f"{label}: {why}")
             return out
         rc, err = execute_contained(f"{name}.{slug}", spec, run_dir, plan, inner, overrides, extra, env, log, junit, job["timeout_s"], "/w",
                                     network=f"container:{owner}" if owner else "none", image_id=job["image_id"], memory=spec.get("memory", "4g"),
                                     collect=collect if uploads else None, files=files)
+        for sv, c in zip(job["services"], ctrs):   # before teardown: what the stand-in was asked, counted by the stand-in
+            if sv.get("reached"):
+                seen = requests_seen(iso["docker"], c, sv["reached"])
+                with open(log, "a") as fh:
+                    fh.write(f"# service {sv['name']}: answered {seen} x {sv['reached']['request']} (2xx), needs >= {sv['reached']['min']}\n")
+                if seen is None or seen < sv["reached"]["min"]:
+                    unreached = f"service {sv['name']} answered {'an unreadable count of' if seen is None else seen} {sv['reached']['request']} (needs >= {sv['reached']['min']}): the backend never reached it"
     finally:
         for c in ctrs:
             try:
@@ -2421,6 +2563,14 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
         if s["status"] == "BLOCKED" and (planned.get("precomputed") or {}).get("gate_pending") is True:
             s["gate_pending"] = True
     out.update(rc=rc, steps=got, cpu=round(sum(s["cpu"] for s in got), 3))
+    if want == 0 and (pw := job.get("playwright_skips")):   # a pass whose skips are not exactly BASE's selection's is not hosted's work
+        sm = step_summary(Path(log).read_text(errors="replace"), pw["step"])
+        if sm is None or sm["skipped"] != pw["skipped"]:
+            out["infra"] = ("BLOCKED", f"{label}: {pw['step']} " + ("printed no Playwright summary" if sm is None else f"expected {pw['skipped']} skipped (BASE's selection), saw {sm['skipped']}")
+                            + " — more skips than BASE's (a credential-gated test.skip runs hosted) or fewer (BASE changed: update `playwright_skips` with it) is no verdict, never PASS")
+            return out
+    if want == 0 and unreached:   # the claim of a hermetic run is that the SET paths ran: a stand-in nobody asked is the old path under a new name
+        out["infra"] = ("BLOCKED", f"{label}: {unreached}")
     return out
 
 

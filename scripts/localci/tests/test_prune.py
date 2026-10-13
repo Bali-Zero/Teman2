@@ -582,9 +582,17 @@ STAND_INS = sorted(pm.stand_ins(pm.MATRIX))
 
 def test_the_matrix_names_the_stand_ins_and_the_list_is_read_not_hardcoded(tmp_path):
     assert {"postgres:15", "redis:7"} <= set(STAND_INS)
+    assert any(t.startswith("qdrant/qdrant@sha256:") for t in STAND_INS)   # E2E's extra_services stand-in is on the never-list too
     m = tmp_path / "m.yaml"
     m.write_text('contexts:\n  x:\n    local:\n      service_images:\n        "ghcr.io/x/mysql:8": "mysql:8"\n')
     assert pm.stand_ins(m) == {"mysql:8"} and pm.never("mysql:8", pm.stand_ins(m)) and not pm.protected("postgres:15", pm.stand_ins(m))
+
+
+def test_an_extra_services_image_is_a_stand_in_never_pruned(tmp_path):
+    m = tmp_path / "m.yaml"
+    ref = "qdrant/qdrant@sha256:" + "e" * 64
+    m.write_text(f'contexts:\n  x:\n    local:\n      extra_services:\n        - name: q\n          image: "{ref}"\n')
+    assert pm.stand_ins(m) == {ref} and pm.never(ref, pm.stand_ins(m)) and "stand-in" in pm.never_rule(ref, pm.stand_ins(m))
 
 
 @pytest.mark.parametrize("stand_in", STAND_INS)

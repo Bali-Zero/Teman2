@@ -58,7 +58,7 @@ summary:
     - "Backend Tests: node (24, the official image's) and the data the suite downloads (tiktoken cl100k_base, spaCy en_core_web_lg 3.8.0) are sha256-pinned in the matrix; hosted takes whatever the runner image and the network serve that day"
     - "Backend Tests: matrix legs run one after another in fresh sandboxes (parallelism 1 on Colima 8 CPU / 16 GiB, the VM since 2026-10-10); hosted runs them on separate runners at once"
     - "Harness floor: the Gear >= 2 verdict reader runs at plan time on the host with the operator's gh, reading the PR's commit status as it stands then; hosted read it when the queue ran"
-    - "E2E Tests: hosted starts the backend with four repository secrets (QDRANT_URL, QDRANT_API_KEY, OPENAI_API_KEY, JWT_SECRET) and runs the specs with E2E_TEST_EMAIL/PIN set; here all six are empty. BASE's selected specs (page Page|@offline) read neither credential today, but a candidate whose backend start or selected specs fail only when they are set is GREEN here and RED hosted (a FALSE_GREEN shape no prod-credential-free run can close; Visa Oracle smoke reads no secret)"
+    - "E2E Tests: hosted starts the backend with four repository secrets (QDRANT_URL, QDRANT_API_KEY, OPENAI_API_KEY, JWT_SECRET) and runs the specs with E2E_TEST_EMAIL/PIN set. Here the backend gets hermetic stand-ins made up per leg (a local Qdrant pinned by digest started with the same generated key, a non-functional OpenAI key, a random JWT_SECRET: the SET code paths of the boot and of /health run, and the leg has no route to api.openai.com or to anyone), and E2E_TEST_EMAIL/PIN stay empty because BASE's 135 selected tests (page Page|@offline, 21 files, `playwright test --list` on BASE) import neither and never sign in or call :8000. Not reproduced, because the cloud decides it and not the code: that the real Qdrant cluster is reachable, that the real keys are still valid, and what the cluster holds (hosted /health counts and reads each of its 14 collections; the stand-in holds one EMPTY collection, named and sized by BASE's Settings, so the loop that reads a collection runs, but the real collections' names, vector configs and documents are not reproduced) — the boot treats a failed Qdrant probe as non-fatal (service_initializer.py, UNAVAILABLE), so none of them turns the hosted job red for BASE's code. For a CANDIDATE it is otherwise: one whose boot or /health code raises (a BaseException, or outside get_qdrant_stats's catch-all) only on a real collection's name, its named-vector config or its documents goes RED hosted and GREEN here on the one empty seeded collection; that stays a residual of `full`, as the environment notes of the CodeQL contexts do. Two gates keep the claim honest: after the job the stand-in's own telemetry must show the backend asked it (`reached`: zero is no verdict, the old empty-secret path under a new name), and the run's skips must equal BASE's selection's (`playwright_skips`: a credential-gated test.skip runs hosted and is skipped here, which is no verdict). Adversarial residuals, each needing a candidate that deliberately games its own gate (the trust boundary of any test context, where a candidate can always weaken its own tests): its tests' output can print a fake trailing Playwright summary line, and any process in the job's network namespace that holds the generated key can satisfy `reached`. A secret rotated to a value that breaks the hosted start is invisible here (Visa Oracle smoke reads no secret)"
     - "E2E, Visa Oracle smoke and Frontend Tests: npm installs offline from a cache filled at plan time on linux/arm64 (a lock that lacks the linux-x64 optional native package hosted needs is GREEN here); hosted fetches them, and the browser-install steps of E2E and Visa Oracle smoke (apt + CDN, one 600 s attempt hosted, the W118 flake) are replaced by the deps image's install of the lock's playwright-core browser (retried at build), so a hosted failure or timeout of that step is not reproduced"
     - "CodeQL (python, javascript) version: the hosted CLI version is set per run by GitHub feature flags. Local pins the bundle; the plan is BLOCKED when the newest hosted analysis of the language on main reports another version, is older than 7 days, or when the newest completed security.yml run of the repository's own main (schedule or workflow_dispatch, head repository the repo: not a fork's PR branch named main) has this language's CodeQL job red (a hosted CLI upgrade that dies before it uploads shows only there); the leg itself compares the CLI it runs with the pin and gives no verdict on a difference. The flag can still move between those reads and the queue run"
     - "CodeQL (python, javascript) flags: the action's CLI flags are transcribed from the 2026-10-10 hosted logs and the action source, so a feature-flag change to them is not seen. interpret-results is reconstructed from src/codeql.ts; it adds metadata only. The per-language run flags come from BASE's security_gate_flags.py on the plan's changed files, and the manual override vars.MERGEOS_RING_GATING_DISABLED is read live at plan with the operator's gh (the repository variables, then the organization's for an Organization owner; the repository variable wins, as hosted resolves it) and judged by BASE's ring_gating_override.sh (active, or unreadable, or a BASE job naming an environment: both languages run, as hosted); the variable can change between that read and the queue run. A failed hosted 'Self-test ring-gating override' step (security.yml, pip install pyyaml from the network) makes the hosted changes job non-success and hosted runs both languages; local does not reproduce that"
@@ -106,6 +106,30 @@ contexts:
             sha256: 293e9547a655b25499198ab15a525b05b9407a75f10255e405e8c3854329ab63 # pragma: allowlist secret — a public file's digest
             path: /opt/wheels/en_core_web_lg-3.8.0-py3-none-any.whl
             install: true
+      extra_services: # not on BASE's job: hosted's QDRANT_URL is a cloud cluster. Pinned by digest (qdrant v1.17.0, the version of docker-compose.test.yml; qdrant-client 1.19.0 in the lock); docker pull it on the host
+        - name: qdrant
+          image: qdrant/qdrant@sha256:f1c7272cdac52b38c1a0e89313922d940ba50afd90d593a1605dbbc214e66ffb
+          env:
+            QDRANT__SERVICE__API_KEY: $LOCALCI_GEN.qdrant # pragma: allowlist secret
+          health:
+            {
+              cmd: "bash -c ':> /dev/tcp/127.0.0.1/6333'",
+              interval: 2s,
+              timeout: 5s,
+              retries: 15,
+            }
+          seed: # one EMPTY collection once healthy, so the code that walks collections runs here as hosted (14 there): name and size are the defaults of the backend's Settings at BASE
+            file: apps/backend-rag/backend/app/core/config.py
+            class: Settings
+            name_field: qdrant_collection_name
+            size_field: embedding_dimensions
+            distance: Cosine
+            api_key_env: QDRANT__SERVICE__API_KEY # pragma: allowlist secret — a variable NAME
+          reached: # after the job, the stand-in itself says how often the backend asked it: none means the boot read UNAVAILABLE, the old empty-secret path
+            request: GET /collections
+            min: 1
+            api_key_env: QDRANT__SERVICE__API_KEY # pragma: allowlist secret — a variable NAME
+      playwright_skips: { step: Run E2E tests, skipped: 1 } # EXACT, both ways: a PR that un-skips or adds a skip in the gated selection updates this in the same PR (it is judged on the old value, BLOCKED, the safe side). BASE's selection skips 1 of its 135 tests (the visual gallery spec, gated on BZ_VISUAL_GALLERY; measured 2026-10-13: Pro 134 passed 1 skipped, hosted run 38359020063 the same); more is a credential-gated skip hosted would run: no verdict
       needs:
         changes: { result: success, outputs: { run_e2e_tests: "true" } }
       steps:
@@ -113,11 +137,11 @@ contexts:
           not_applicable: the deps image carries node 24 (the official image's binary and npm); the plan checks the BASE pin against it
         - workflow_step: Install backend dependencies (uv, lock-pinned)
         - workflow_step: Start backend (FastAPI on :8000)
-          env: # hosted reads four repository secrets here; this run holds none of them and never reads the operator's
-            QDRANT_URL: ""
-            QDRANT_API_KEY: ""
-            OPENAI_API_KEY: ""
-            JWT_SECRET: ""
+          env: # hosted reads four repository secrets here; this run holds none of them and never reads the operator's: hermetic stand-ins, so the SET code paths run
+            QDRANT_URL: http://localhost:6333 # the extra_services Qdrant below, on the shared loopback
+            QDRANT_API_KEY: $LOCALCI_GEN.qdrant # pragma: allowlist secret — made up per leg, the stand-in is started with the same value
+            OPENAI_API_KEY: sk-$LOCALCI_GEN.openai # pragma: allowlist secret — made up per leg and non-functional: every container here has no route to api.openai.com
+            JWT_SECRET: $LOCALCI_GEN.jwt # pragma: allowlist secret — made up per leg (the backend reads JWT_SECRET_KEY, set by BASE; hosted sets this one too)
         - workflow_step: Install Node dependencies
         - workflow_step: Cache Next.js build cache (mouth)
           not_applicable: no cache layer; a cold Next.js build is what a cache miss runs hosted
@@ -136,10 +160,7 @@ contexts:
         - workflow_step: Upload Playwright report
           not_applicable: an upload with if-no-files-found warn cannot fail the job; there is no artifact store here
     mapping: executed
-    coverage: partial
-    coverage_note: >-
-      the six repository secrets hosted holds (QDRANT_URL, QDRANT_API_KEY, OPENAI_API_KEY, JWT_SECRET, E2E_TEST_EMAIL/PIN) are "" here,
-      and the browser comes from the deps image, not the hosted install step (parity_gaps)
+    coverage: full
     blocker: ""
 
   - name: "Backend Tests (Python)"
@@ -321,7 +342,7 @@ contexts:
       The findings (results per language) are recorded in the receipt as data and never change the verdict: hosted never fails on them either.
       Reproduced, from codeql-action v4.38.2 and the GitHub docs: the CLI commands, on the same CLI pinned through the version sentinel and
       checked again at run time; the analyze action's SARIF post-processing and the PR lane's upload limits, judged by codeql_sarif_check.py.
-      Not reproduced (parity_gaps, an environment difference and not a subset of the work left undone, unlike E2E's six empty secrets): arch,
+      Not reproduced (parity_gaps, an environment difference and not a subset of the work left undone, unlike a context that runs with its secrets emptied): arch,
       a GitHub-side processing error outside the documented limits, a transient API error, the status-poll timeout, a hosted runner loss
     blocker: ""
 
@@ -386,7 +407,7 @@ contexts:
       The findings (results per language) are recorded in the receipt as data and never change the verdict: hosted never fails on them either.
       Reproduced, from codeql-action v4.38.2 and the GitHub docs: the CLI commands, on the same CLI pinned through the version sentinel and
       checked again at run time; the analyze action's SARIF post-processing and the PR lane's upload limits, judged by codeql_sarif_check.py.
-      Not reproduced (parity_gaps, an environment difference and not a subset of the work left undone, unlike E2E's six empty secrets): arch,
+      Not reproduced (parity_gaps, an environment difference and not a subset of the work left undone, unlike a context that runs with its secrets emptied): arch,
       a GitHub-side processing error outside the documented limits, a transient API error, the status-poll timeout, a hosted runner loss
     blocker: ""
 

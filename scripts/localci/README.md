@@ -141,12 +141,38 @@ Node jobs (E2E, Visa Oracle smoke) add three deps keys, all built into the same 
 A required context that is one leg of a matrix (`Frontend Tests (Next.js) (mouth, true)`) names it with `leg:`; an include-only
 matrix expands as hosted expands it. A network failure in the egress sandbox (a timeout or refused connection in its log) is no
 verdict on the candidate (the step is BLOCKED, never green; a vulnerability finding stays a verdict): re-run. So is a host reader whose own stderr line starts with the matrix's `no_verdict_when` three times running (the harness gate reader's `CANNOT-VERIFY`, a GitHub 5xx); text it merely echoes cannot trigger it. A BASE `actions/setup-node` pin must equal `deps.node`, or the context is BLOCKED. Repository secrets a step reads are
-overridden with `""` in the matrix (the run never holds them, and never reads the operator's); the parity gaps say what that
+overridden in the matrix (the run never holds them, and never reads the operator's); the parity gaps say what that
 can change.
+
+A job whose hosted twin points a secret at an endpoint no container here can be (E2E's Qdrant cloud) may add stand-ins with
+`extra_services:` on its job entry in the matrix (BASE's `services:` cannot name them: hosted has none). Each is
+`{name, image, env, health}`: the image is pinned **by digest** (`repo@sha256:<64 hex>`, a tag is refused), must already be
+present on the host (a run never pulls: absent is BLOCKED with `docker pull it`), and starts after BASE's services in the same
+loopback-only netns with the same health budget and teardown, so an unhealthy stand-in is BLOCKED (no verdict), never green and
+never a code RED. In a matrix `env:` (step or stand-in) the token `$LOCALCI_GEN.<name>` becomes 48 random hex characters, made
+when the leg starts and held only in the runner's memory: one name is one value in every container of the leg, a new leg gets
+new ones, and nothing is written to disk or to the operator's environment. Every container of the leg has `--network none` or
+the shared loopback netns, so the stand-ins and the candidate have no route to any host outside it.
+An entry may carry `seed:` `{file, class, name_field, size_field, distance, api_key_env}`: once the stand-in is healthy the runner makes
+ONE empty collection in it (a `docker exec` of a fixed script, with the container's own key), so the code that walks collections runs
+here as it does hosted (E2E: 1 collection here, 14 there; the loop that reads a collection broke nothing with 0). Its name and
+vector size are the defaults the BASE `Settings` class declares (`ast` on the BASE blob at plan time, frozen in the plan; a name that
+is not a plain identifier, a size that is not a positive int or a candidate-edited file is refused or ignored); the distance is the one
+every collection migration creates. A seed that fails is BLOCKED (no verdict), never a green on an unseeded stand-in.
+`reached:` `{request, min, api_key_env}` makes the stand-in itself the witness: after the job, before teardown, the runner reads the container's
+own Qdrant telemetry and a passing run whose count of 2xx answers to `request` is below `min` (or unreadable) is BLOCKED, because a backend that
+never reached its stand-in read UNAVAILABLE and passed the old empty-secret path. A job entry may also carry `playwright_skips: {step, skipped}`:
+the last `N skipped` line of that step's Playwright summary must EQUAL BASE's own count (a candidate `test.skip(!credentials)` runs hosted and
+is skipped here; a BASE that un-skips would otherwise let one slip). More, fewer or no summary to count is BLOCKED ("expected 1 skipped, saw 2"),
+never PASS, and a failing step stays a FAIL. A PR that legitimately un-skips or adds a skip in the gated selection updates `skipped` in the same PR:
+it is judged on the old value, BLOCKED, the safe side.
+Operator step (E2E's Qdrant, once per host, and again when the matrix digest moves): `docker pull qdrant/qdrant@sha256:<digest of the matrix entry>`. Until
+then `ctx.e2e-tests` plans BLOCKED naming it. Nothing prunes it: `prune.py` removes `localci-deps:*` tags only and lists every
+`extra_services` image on its never-list; `pro_janitor.py` and `pro_disk_floor_tick.sh` touch no docker image.
 
 ### CodeQL contexts (`CodeQL Analysis (python)`, `CodeQL Analysis (javascript)`)
 
-Executed, coverage `full` (the READY criterion allows one partial context per compared merge, and E2E holds it). The released repository is Apache-2.0
+Executed, coverage `full` (the READY criterion allows one partial context per compared merge; none holds it since E2E runs hermetic). The released repository is Apache-2.0
 (#8241), which the CodeQL terms allow for automated analysis of an open-source codebase on GitHub.com. Hosted never fails this job on
 a finding: it fails on a CLI or action error, a timeout, or (PR lane) an upload failure. The local verdict is the same: PASS when every
 command exits 0 within the BASE `timeout-minutes` (30) and the SARIF is one hosted would take, FAIL when one exits non-zero or the SARIF is one hosted would
@@ -156,7 +182,7 @@ recorded in the receipt (`result.codeql`).
 `coverage: full` means the context reproduces every hosted failure class the CODE determines: the CLI commands, the analyze action's post-processing of the
 SARIF, and the PR lane's upload limits. What GitHub's side decides (arch, a processing error outside the documented limits, a transient API error, the
 status-poll timeout, a hosted runner loss) is an environment difference, named in the matrix's `parity_gaps`; it is not a subset of the work left undone, as
-E2E's six empty secrets are.
+a context run with its secrets emptied is.
 
 | surface | how | BLOCKED when |
 |---|---|---|
@@ -229,7 +255,7 @@ compared contexts of which ≥ 11 `full` and at most one `partial` (a partial co
 `compared_merges=N (full_only=M, with_partial=K)`, `compared_partial` and `compared_unrecorded` on the window line, and the
 phase E line names the partial context of the compared merges. A decision journalled before B3 carries no coverage record: its
 contexts are unrecorded and never count as full. The enqueue criterion treats a partial context as executed and passing,
-and names it: `executed_required=13/14 (partial: E2E Tests (Playwright))`. A partial FALSE_GREEN is still a FALSE_GREEN.
+and names it: `executed_required=13/14 (partial: <context>)` for any executed context whose matrix coverage is `partial`. A partial FALSE_GREEN is still a FALSE_GREEN.
 
 **A full disk is no verdict.** After every service leg (its log and its egress log) and every contained check, the runner
 reads the output line by line for the error lines a write on a full disk prints: libuv/npm `ENOSPC: no space left on device`
@@ -653,7 +679,7 @@ The window line separates `merged_prs` (PRs GitHub merged) from `compared_merges
 `skipped` lines by reason. A merge is COMPARED when GitHub merged the very candidate the merger decided (the decided head, its
 merge commit's sole parent the decided base) and at least 12 contexts had a verdict on both sides, at least 11 of them of
 FULL coverage and at most one partial, named (`MIN_COMPARED_CONTEXTS`, `MIN_COMPARED_FULL`, `MAX_COMPARED_PARTIAL`; ruled
-2026-10-08, when the 2 CodeQL contexts were still hosted-only: 11 full; with them executed it is 13 full and the E2E partial): a merge compared on blind contexts is no evidence,
+2026-10-08, when the 2 CodeQL contexts were still hosted-only: 11 full; with them executed it was 13 full and the E2E partial, and 14 full once E2E ran hermetic): a merge compared on blind contexts is no evidence,
 a partial context never counts as full, an unrecorded one counts toward nothing, and the window line prints
 `compared_merges=N (full_only=M, with_partial=K)`. Each compared PR counts once, at
 GitHub's `merged_at` — two decisions of one PR, or the journal's order, cannot widen the span. **The operator reads
