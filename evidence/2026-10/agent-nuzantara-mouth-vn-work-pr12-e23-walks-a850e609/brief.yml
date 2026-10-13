@@ -1,0 +1,20 @@
+gear: 2
+gear_reason: >-
+  Test-only change to the Visa Oracle walk corpus and its census pins: twelve walks, regenerated fixtures and the
+  per-sequence tables they feed; touches no rule, no pack, no tree, no copy and no engine adapter.
+mission: >-
+  The walk corpus covers the E23-family work-tile variants, and the census pins each new walk's outcome and reasons on
+  every pinned sequence including seq-29.
+objective: >-
+  Work plan PR-12 (audit of seq-27, re-measured on seq-20..29). Add twelve walks that answer the work payer, the
+  Indonesian-sponsor confirmation or the sponsor category away from the default, on the offshore and onshore arms and the
+  paid-activity other branch; pin outcome, reason codes, state census, dead-end facts and NOT_CERTAIN flags per sequence.
+scope:
+  - apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks
+  - apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_seq21_pack.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
