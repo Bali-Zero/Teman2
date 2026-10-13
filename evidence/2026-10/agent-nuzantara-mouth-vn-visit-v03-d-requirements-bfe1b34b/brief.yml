@@ -1,0 +1,17 @@
+gear: 2
+gear_reason: >-
+  Public client copy on the Visa Oracle (D1/D2/D12 requirement lines) with pack-pinning tests; touches no rule,
+  no pack, no data, no pricing and no backend.
+mission: >-
+  The Visa Oracle D1/D2/D12 requirement lines say what the official imigrasi.go.id pages say: passport validity
+  anchored to expiry, support letter true for all three, proof of funds USD 2,000 (D1, D2) / USD 5,000 (D12).
+objective: >-
+  Visit plan V03. The passport line said "on the date you enter" (shared with E30/E30A/E30B), the support letter
+  line omitted that D1/D2 also accept an Indonesian spouse/parent letter, and the funds lines stated no figure.
+  Export three constants, build the sentences from them, pin them to rule ids, source records and the saved page snapshots.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
