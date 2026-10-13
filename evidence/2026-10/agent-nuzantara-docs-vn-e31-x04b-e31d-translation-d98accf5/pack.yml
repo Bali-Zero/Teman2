@@ -23,19 +23,19 @@ results:
     cmd: grep -n -A45 'Pasal 46' permenkumham-22-2023.txt (scratchpad rt copy), lines 1806-1850
     result: "translation clause present only in huruf a and huruf b angka 1; absent in huruf b angka 2 and huruf c"
     exit: 0
-    ts: "2026-10-13T12:40:00Z"
+    ts: "2026-10-13T04:40:00Z"
     seat: this session
   - claim: "The official E31D page lists the same, with the asterisk 'tidak diperlukan jika dokumen dalam bahasa Inggris'."
     cmd: sed -n 95,110p research/visa/2026-10-11-organ-reattest-seq28/text/50457cd0-20261011T180020Z.txt
     result: "translation marked on akta kelahiran and the foreign marriage record; buku nikah (Indonesia) and KK unmarked"
     exit: 0
-    ts: "2026-10-13T12:41:00Z"
+    ts: "2026-10-13T04:41:00Z"
     seat: this session
   - claim: "The old overclaim sentence is gone from the card."
     cmd: grep -c 'All three document classes are mandatory, sworn' research/visa/doctrine-factory/cards/E31D.md
     result: "0 matches"
     exit: 1
-    ts: "2026-10-13T12:42:00Z"
+    ts: "2026-10-13T04:42:00Z"
     seat: this session
 dissent:
   - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-13T12-36-25-01a1338c-2636-7171-a16b-bdf642d7bb83.jsonl, model verified in the rollout file)"
