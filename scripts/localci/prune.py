@@ -508,9 +508,10 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
             if rec["vm_free_gb"]["after"] is None:
                 break
         rec["vm_floor"]["met"] = rec["vm_free_gb"]["after"] is not None and rec["vm_free_gb"]["after"] >= floor
-    # B15: the host under the start floor (Zero's 100 GB + the margin) is pressure too: every deps image beyond the newest of its recipe
+    # B15: the host under the pressure threshold (start floor + run headroom) is pressure too: every deps image beyond the newest of its recipe
     # goes, fewest 48 h plan references first (the VM order), never the never-list and never the run in progress's; the trim follows
     free_before = rec["host_free_gb"]["before"]
+    rec["pressure_gb"] = pressure_gb
     rec["host_pressure"] = pressure_gb is not None and free_before < pressure_gb
     if rec["host_pressure"] and not (dry or blind):
         dropped = False
