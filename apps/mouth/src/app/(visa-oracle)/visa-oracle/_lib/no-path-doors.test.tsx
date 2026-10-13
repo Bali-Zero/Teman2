@@ -147,7 +147,7 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     ).toBe(replay.walk_corpus_fingerprint);
   });
 
-  it("covers the 16 dead ends, 3 held walks and 1 missing-input walk the current census reports", () => {
+  it("covers the 17 dead ends, 3 held walks and 1 missing-input walk the current census reports", () => {
     // D19 (2026-09-16): the corpus regeneration this pin depends on surfaced
     // one walk the previous evidence had omitted —
     // `offshore_business_exploring_sponsor_no_no_route.json`, D12_NOT_CONVERTIBLE —
@@ -204,15 +204,21 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     // distribution to 16 NO_SUPPORTED_PATH / 3 HUMAN_REVIEW_REQUIRED /
     // 1 NEEDS_INPUT; its two new E33G income witnesses are supported and do
     // not enter this non-supported fixture.
+    //
+    // E33 audit PR-4 (2026-10-14) re-measures against the highest signed
+    // pack, seq-29. `offshore/remote/foreign_only/income_59999` now ends in
+    // NO_SUPPORTED_PATH with E33G_INCOME_BELOW_THRESHOLD, so the dead ends
+    // go 16 -> 17; the business walks lose AGE_BELOW_55 (seq-28) without
+    // changing their state. HUMAN_REVIEW_REQUIRED and NEEDS_INPUT hold.
     const states = replay.walks.map((walk) => walk.state);
     expect(
       states.filter((state) => state === "NO_SUPPORTED_PATH"),
-    ).toHaveLength(16);
+    ).toHaveLength(17);
     expect(
       states.filter((state) => state === "HUMAN_REVIEW_REQUIRED"),
     ).toHaveLength(3);
     expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(1);
-    expect(replay.pack.file).toBe("rulepack-prod-027.signed.json");
+    expect(replay.pack.file).toBe("rulepack-prod-029.signed.json");
   });
 
   for (const walk of replay.walks.filter(
