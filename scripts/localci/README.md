@@ -161,9 +161,11 @@ is not a plain identifier, a size that is not a positive int or a candidate-edit
 every collection migration creates. A seed that fails is BLOCKED (no verdict), never a green on an unseeded stand-in.
 `reached:` `{request, min, api_key_env}` makes the stand-in itself the witness: after the job, before teardown, the runner reads the container's
 own Qdrant telemetry and a passing run whose count of 2xx answers to `request` is below `min` (or unreadable) is BLOCKED, because a backend that
-never reached its stand-in read UNAVAILABLE and passed the old empty-secret path. A job entry may also carry `playwright_skips: {step, max}`:
-the last `N skipped` of that step's Playwright summary is compared with BASE's own count (a candidate `test.skip(!credentials)` runs hosted and
-is skipped here); more skips, or no summary to count, is BLOCKED, never PASS.
+never reached its stand-in read UNAVAILABLE and passed the old empty-secret path. A job entry may also carry `playwright_skips: {step, skipped}`:
+the last `N skipped` line of that step's Playwright summary must EQUAL BASE's own count (a candidate `test.skip(!credentials)` runs hosted and
+is skipped here; a BASE that un-skips would otherwise let one slip). More, fewer or no summary to count is BLOCKED ("expected 1 skipped, saw 2"),
+never PASS, and a failing step stays a FAIL. A PR that legitimately un-skips or adds a skip in the gated selection updates `skipped` in the same PR:
+it is judged on the old value, BLOCKED, the safe side.
 Operator step (E2E's Qdrant, once per host, and again when the matrix digest moves): `docker pull qdrant/qdrant@sha256:<digest of the matrix entry>`. Until
 then `ctx.e2e-tests` plans BLOCKED naming it. Nothing prunes it: `prune.py` removes `localci-deps:*` tags only and lists every
 `extra_services` image on its never-list; `pro_janitor.py` and `pro_disk_floor_tick.sh` touch no docker image.

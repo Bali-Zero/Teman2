@@ -924,8 +924,8 @@ def step_summary(log_text: str, step_name: str) -> dict | None:
         return None
     end = re.search(rf"^##\[localci\] step {m.group(1)} rc=", log_text[m.end():], re.M)
     seg = log_text[m.end():m.end() + end.start()] if end else log_text[m.end():]
-    passed = re.findall(r"^\s+(\d+) passed\b", seg, re.M)
-    skipped = re.findall(r"^\s+(\d+) skipped\b", seg, re.M)
+    passed = re.findall(r"^\s+(\d+) passed(?: \([^)]*\))?\s*$", seg, re.M)
+    skipped = re.findall(r"^\s+(\d+) skipped\s*$", seg, re.M)
     return {"passed": int(passed[-1]), "skipped": int(skipped[-1]) if skipped else 0} if passed else None
 
 
@@ -1494,11 +1494,11 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
             if image_id is None:
                 return _blocked(f"job {jid}: {deps_note}")
         pw = jl.get("playwright_skips")
-        if pw is not None and (not isinstance(pw, dict) or set(pw) != {"step", "max"} or type(pw["max"]) is not int or pw["max"] < 0
+        if pw is not None and (not isinstance(pw, dict) or set(pw) != {"step", "skipped"} or type(pw["skipped"]) is not int or pw["skipped"] < 0
                                or pw["step"] not in {st["name"] for st in steps}):
-            return _blocked(f"job {jid}: playwright_skips needs exactly {{step: <a step of the job>, max: <int >= 0>}}")
+            return _blocked(f"job {jid}: playwright_skips needs exactly {{step: <a step of the job>, skipped: <int >= 0>}}")
         planned.append({"job_id": jid, "needs": needs, "legs": legs, "steps": steps, "job_env": jenv, "services": svcs, "path_prefix": prefix,
-                        **({"playwright_skips": {"step": pw["step"], "max": pw["max"]}} if pw else {}),
+                        **({"playwright_skips": {"step": pw["step"], "skipped": pw["skipped"]}} if pw else {}),
                         "checkout": checkout, "image_id": image_id, "deps": deps_note, "venv": local.get("bare_venv", True) is not False,
                         "git_index": jl.get("git_index", True) is not False, "timeout_s": tm * 60})
         upstream.add(jid)
@@ -2563,11 +2563,11 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
         if s["status"] == "BLOCKED" and (planned.get("precomputed") or {}).get("gate_pending") is True:
             s["gate_pending"] = True
     out.update(rc=rc, steps=got, cpu=round(sum(s["cpu"] for s in got), 3))
-    if want == 0 and (pw := job.get("playwright_skips")):   # a pass that skipped more than BASE's selection does is a subset of hosted's work
+    if want == 0 and (pw := job.get("playwright_skips")):   # a pass whose skips are not exactly BASE's selection's is not hosted's work
         sm = step_summary(Path(log).read_text(errors="replace"), pw["step"])
-        if sm is None or sm["skipped"] > pw["max"]:
-            out["infra"] = ("BLOCKED", f"{label}: {pw['step']} " + ("printed no Playwright summary" if sm is None else f"skipped {sm['skipped']} tests, BASE's selection skips {pw['max']}")
-                            + " — a skip hosted may not take (a credential-gated test.skip) is no verdict, never PASS")
+        if sm is None or sm["skipped"] != pw["skipped"]:
+            out["infra"] = ("BLOCKED", f"{label}: {pw['step']} " + ("printed no Playwright summary" if sm is None else f"expected {pw['skipped']} skipped (BASE's selection), saw {sm['skipped']}")
+                            + " — more skips than BASE's (a credential-gated test.skip runs hosted) or fewer (BASE changed: update `playwright_skips` with it) is no verdict, never PASS")
             return out
     if want == 0 and unreached:   # the claim of a hermetic run is that the SET paths ran: a stand-in nobody asked is the old path under a new name
         out["infra"] = ("BLOCKED", f"{label}: {unreached}")

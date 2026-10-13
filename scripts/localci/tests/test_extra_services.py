@@ -244,17 +244,17 @@ def test_the_stand_ins_own_count_of_a_request_is_read_from_its_telemetry(tmp_pat
     assert runner.requests_seen(str(exe), "ctr", REACHED) == want
 
 
-def _leg(monkeypatch, tmp_path, *, seen, log_text="", pw=None, services=True):
+def _leg(monkeypatch, tmp_path, *, seen, log_text="", pw=None, services=True, fail=False):
     from .test_host_disk import _leg_args
 
-    junit_ok = [{"name": "s", "status": "PASS", "reason": "rc=0", "cpu": 0.0}]
+    junit_ok = [{"name": "s", "status": "FAIL" if fail else "PASS", "reason": "rc=1" if fail else "rc=0", "cpu": 0.0}]
     monkeypatch.setenv(runner.MIN_FREE_ENV, "0")
     monkeypatch.setattr(runner, "start_services", lambda docker, svcs, *a, **k: (["c1"] if services else [], None, None))
     monkeypatch.setattr(runner, "requests_seen", lambda docker, ctr, reached: seen)
 
     def execute(*a, **k):
         Path(a[8]).write_text(Path(a[8]).read_text() + log_text)
-        return 0, None
+        return (1 if fail else 0), None
     monkeypatch.setattr(runner, "execute_contained", execute)
     monkeypatch.setattr(runner, "parse_expr_junit", lambda p: junit_ok)
     spec, job, plan = _leg_args(tmp_path)
@@ -272,16 +272,31 @@ def test_a_stand_in_the_backend_never_asked_makes_a_passing_run_no_verdict(monke
 SUMMARY = "##[localci] step 1: Run E2E tests\n{body}\n##[localci] step 1 rc=0\n"
 
 
-@pytest.mark.parametrize("body,max_,blocked", [
+@pytest.mark.parametrize("body,expected,blocked", [
     ("  135 passed (1.2m)", 0, False),
     ("  1 skipped\n  134 passed (1.2m)", 0, True),            # a cred-gated test.skip: hosted runs it
     ("  1 skipped\n  134 passed (1.2m)", 1, False),
+    ("  2 skipped\n  133 passed (1.2m)", 1, True),
+    ("  134 passed (1.2m)", 1, True),                         # fewer than BASE's own: BASE changed, main must say so too
     ("  134 passed (1.2m)\n  1 flaky", 0, False),
     ("no summary at all", 0, True),                           # nothing to count is not a pass
 ])
-def test_a_run_that_skipped_more_than_bases_selection_does_is_no_verdict(monkeypatch, tmp_path, body, max_, blocked):
-    out = _leg(monkeypatch, tmp_path, seen=1, log_text=SUMMARY.format(body=body), pw={"step": "Run E2E tests", "max": max_}, services=False)
+def test_a_run_whose_skips_are_not_exactly_bases_is_no_verdict_in_both_directions(monkeypatch, tmp_path, body, expected, blocked):
+    out = _leg(monkeypatch, tmp_path, seen=1, log_text=SUMMARY.format(body=body), pw={"step": "Run E2E tests", "skipped": expected}, services=False)
     assert (out["infra"] is not None and out["infra"][0] == "BLOCKED" and "never PASS" in out["infra"][1]) if blocked else out["infra"] is None
+    if blocked and "summary" not in out["infra"][1]:
+        assert f"expected {expected} skipped" in out["infra"][1] and "saw" in out["infra"][1]   # names the direction
+
+
+@pytest.mark.parametrize("fail", [True])
+def test_a_failing_step_stays_red_whatever_the_skips_and_whatever_the_stand_in_counted(monkeypatch, tmp_path, fail):
+    out = _leg(monkeypatch, tmp_path, seen=0, log_text=SUMMARY.format(body="  9 skipped\n  1 passed"), pw={"step": "Run E2E tests", "skipped": 1}, fail=fail)
+    assert out["infra"] is None and out["rc"] == 1 and [s["status"] for s in out["steps"]] == ["FAIL"]   # a real FAIL is a verdict, never relabelled no-verdict
+
+
+def test_only_the_reporters_own_trailing_lines_count_not_a_number_inside_a_test_log_line():
+    body = "##[localci] step 1: Run E2E tests\n  ok  1 [chromium] › a › b (0.1s)\n  134 passed (5m)\n  1 skipped\n  note: 7 skipped in my log\n  8 skipped by a test\n  9 passed so far\n##[localci] step 1 rc=0\n"
+    assert runner.step_summary(body, "Run E2E tests") == {"passed": 134, "skipped": 1}
 
 
 def test_the_summary_is_the_steps_own_last_one_and_a_line_a_test_printed_earlier_does_not_count():
