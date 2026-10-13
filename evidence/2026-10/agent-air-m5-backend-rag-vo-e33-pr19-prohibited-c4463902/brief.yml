@@ -1,4 +1,4 @@
-gear: 1
+gear: 2
 gear_reason: >-
   Floor 1 (print-floor, churn under 400). Additive field on the engine /evaluate
   display block, its OpenAPI contract and generated type; backend-rag merge is the deploy.
@@ -8,7 +8,7 @@ mission: >-
 objective: >-
   Every candidate of display.candidates in /evaluate carries prohibited_activities, the list the signed pack
   states for that product (E33 carries sale_of_goods_or_services; an empty list when the product has none),
-  declared as an optional array in the contract and the mouth type so PR-20 can render it and today's
+  declared as an array defaulting to [] in the contract and as a required array in the generated mouth type (the test fixture carries it) so PR-20 can render it and today's
   renderer is unaffected.
 scope:
   - apps/backend-rag/backend/services/visa_engine/evaluate_path.py
