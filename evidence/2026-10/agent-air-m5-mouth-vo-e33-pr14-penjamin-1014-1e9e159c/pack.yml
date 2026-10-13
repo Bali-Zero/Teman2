@@ -16,9 +16,9 @@ lanes:
     seat: >-
       The official E33F page as quoted in research/visa/2026-07-24-w2-factbase-e33.md (Bukti penghasilan atau
       tunjangan; penjamin); the change asserts no rule of its own and uses only those words.
-    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
-    query_hash: "1e23611d94fc7956595c8b6d2bb5b819ae512d88e60f38cc82edd3ce86edb809" # pragma: allowlist secret
-    note: query_hash = sha256 of i18n.ts at origin/main (before the change).
+    nb: research/visa/2026-07-24-w2-factbase-e33.md
+    query_hash: "1b0f7e94100122ce785e60e958b7bd967668071cf175d5ad5c2536216f1ad741" # pragma: allowlist secret
+    note: query_hash = sha256 of the E33 factbase file at origin/main (the quoted official page words); the copy asserts nothing beyond them.
 pii_scan: clean
 bites:
   consumer: >-
@@ -28,41 +28,47 @@ bites:
   observe: python3 scripts/ci/observe_visa_oracle_penjamin_copy.py
   expect: "contains:penjamin copy holds"
 receipts:
-  - claim: "The branch sits on a fresh origin/main (nothing pushed), HEAD 2f7e9b2c38 plus the one fix commit."
-    cmd: git fetch origin main && git rebase origin/main
-    result: "branch already up to date, no conflict"
+  - claim: "Code HEAD of the reviewed candidate; the commit after it touches only evidence/ (this pack)."
+    cmd: git rev-parse HEAD
+    result: "fbb837ef1b57e57ad2b070ee1be36a58e116e37b (copy, tests, observer)"
     exit: 0
-    ts: "2026-10-13T21:40:00Z"
+    ts: "2026-10-13T21:53:45Z"
     seat: this session
-  - claim: "The whole visa-oracle Vitest tree passes with the change."
+  - claim: "The whole visa-oracle Vitest tree passes at the code HEAD."
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
-    result: "Test Files 56 passed (56); Tests 1477 passed (1477)"
+    result: "Test Files 56 passed (56); Tests 1478 passed (1478)"
     exit: 0
-    ts: "2026-10-13T21:41:57Z"
+    ts: "2026-10-13T21:50:00Z"
     seat: this session
-  - claim: "apps/mouth typechecks."
+  - claim: "apps/mouth typechecks at the code HEAD."
     cmd: cd apps/mouth && npx tsc --noEmit -p .
     result: "no output"
     exit: 0
-    ts: "2026-10-13T21:41:57Z"
+    ts: "2026-10-13T21:50:00Z"
     seat: this session
-  - claim: "The observer passes: copy-truth.test.ts fully green with both PR-14 tests reported as run."
+  - claim: "The observer reads the Vitest JSON report and passes: 3 required tests passed by fullName and status."
     cmd: python3 scripts/ci/observe_visa_oracle_penjamin_copy.py
-    result: "Tests 72 passed (72); penjamin copy holds"
+    result: "Tests 73 passed (73); penjamin copy holds"
     exit: 0
-    ts: "2026-10-13T21:42:02Z"
+    ts: "2026-10-13T21:50:30Z"
     seat: this session
-  - claim: "The observer's parser and required-test checks reject skipped, todo, failed and reduced counts."
+  - claim: "The observer verdict rejects forged text, skipped, todo, failed, missing and reduced-count reports."
     cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_penjamin_copy.py
-    result: "11 passed"
+    result: "8 passed"
     exit: 0
-    ts: "2026-10-13T21:42:02Z"
+    ts: "2026-10-13T21:51:00Z"
     seat: this session
   - claim: "The legacy client-copy guard stays green."
     cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
     result: "OK visa-oracle client copy: 3600 literals scanned, 0 banned"
     exit: 0
-    ts: "2026-10-13T21:41:57Z"
+    ts: "2026-10-13T21:51:00Z"
+    seat: this session
+  - claim: "Backend visa_engine directory: the diff touches no backend path; the failures are local-environment (jsonschema date-time format, local DB lacks migrated columns) and are not caused by this change."
+    cmd: cd apps/backend-rag/backend && python3 -m pytest tests/services/visa_engine
+    result: "4 failed, 3625 passed, 15 skipped, 3 xfailed, 39 errors (DB-schema and format-check cases; no copy or count pin among them)"
+    exit: 1
+    ts: "2026-10-13T21:53:00Z"
     seat: this session
 decisions:
   - id: D-page-words-only
@@ -73,8 +79,32 @@ decisions:
   - id: D-no-figure
     decision: >-
       No digit appears in the four changed keys; a test pins it so the interview does not anchor the answer.
-  - id: D-passive-left
+  - id: D-passive-aligned
     decision: >-
-      The option label Regular passive monthly income, the field label and the assumption copy still say passive;
-      they are outside this PR and stay for a follow-up.
-dissent: []
+      The option label, the deposit-or-income option, the field label, the assumption copy and the tree label
+      say income or allowance in the same PR (EN and ID), so the journey never shows passive then allowance.
+  - id: D-hint-neutral
+    decision: >-
+      The hint says Immigration asks for documentary proof; it does not say documented income automatically
+      qualifies. The basis option says only A penjamin supports my application, with no category list.
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "i18n.ts:521,1574 the penjamin option adds categories (licensed agency, person in Indonesia) the page does not state and the ID uses seorang for an organization."
+    status: RETRACTED
+    disposition: "Cured: EN A penjamin supports my application, ID Permohonan saya didukung oleh penjamin, exact assertions in the test. Curing commit fbb837ef1b."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "i18n.ts:567,1623 the hint turns a documentary requirement into a sufficiency rule (counts if documentable)."
+    status: RETRACTED
+    disposition: "Cured: hint now says Immigration asks for documentary proof of income or an allowance, no sufficiency claim. Curing commit fbb837ef1b."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "copy-truth.test.ts:950 and the observer:53,68 pass without proving the whole requirement; the observer accepted any checkmark line and the first summary-like line, so printed output could forge both."
+    status: RETRACTED
+    disposition: "Cured: test asserts exact EN and ID strings, income and penjamin wording and passive-free labels; the observer reads the Vitest JSON report and checks title and status of three required tests; 8 unit cases include forged text and a forged ancestor title. Curing commit fbb837ef1b."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "pack.yml:2,19-21,31 brief_ref, provenance of the NB and query hash, and a HEAD that is not the reviewed commit."
+    status: RETRACTED
+    disposition: "Cured in part: brief_ref stays evidence/brief.yml by the repo rule (the brief is staged there by CI and the lint), so that part is not changed; ground_truth now names the E33 factbase file and its sha256 at origin/main; receipts are rerun at code HEAD fbb837ef1b with the evidence-only pack commit after it. Curing commit fbb837ef1b."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl, model verified in the rollout file)"
+    objection: "i18n.ts:519,569 and pack.yml:78 the journey still presents the value as passive income."
+    status: RETRACTED
+    disposition: "Cured: option, deposit-or-income option, field label, assumption and tree label aligned in EN and ID, with a test that the three user-facing keys no longer say passive/pasif. Curing commit fbb837ef1b."
