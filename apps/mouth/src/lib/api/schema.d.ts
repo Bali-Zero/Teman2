@@ -20068,8 +20068,11 @@ export interface components {
        * Format: uuid
        */
       product_version_id: string;
-      /** Prohibited Activities */
-      prohibited_activities?: string[];
+      /**
+       * Prohibited Activities
+       * @default []
+       */
+      prohibited_activities: string[];
       /** Rank */
       rank: number;
       /** Selected Duration Days */
