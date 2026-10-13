@@ -1,0 +1,24 @@
+task_id: infra-ship-label-intent-1014
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  The fleet's ship gesture signals merge intent with the label localci:merge-shadow-ok as well as the GitHub arm,
+  so PRs keep merging after the LocalCI phase F flip. After the flip, ruleset merge-queue-main keeps only an update
+  rule with a DeployKey bypass and the classic protection is gone: there is no merge queue and no required check,
+  so an auto-merge arm is inert or refused, and the LocalCI merger merges only PRs carrying that label applied by an
+  admin/maintain User (merger.py label_arm). Measured 2026-10-13: 28 open PRs armed, 0 labelled. One helper
+  (scripts/signal_merge_intent.sh) labels first and arms only while rules/branches/main has a merge_queue rule (one
+  shared probe, scripts/merge_queue_rule.sh: present|absent|unknown). The ship callers route through it. The
+  watchers count label-only as armed, and route their re-arms through the helper, ONLY when the probe says absent,
+  so before the flip every path behaves exactly as today. Gear is 2 via the SIZE term (about 350 net lines across
+  20 files, much of it tests). The gear-2 verdict is not asserted here; a fresh Opus gate reads the diff.
+residuals:
+  - infra/launchagents/wrappers/regulatory-watcher-run.sh (a gear-3 hot zone) is not routed here and ships in its
+    own PR. Until then its PRs carry no label and need one applied by hand after the flip.
+  - queue_rearm.sh's re-arm branch with the queue absent is only syntax-checked (bash -n); the script has no test
+    harness. The shepherd's equivalent path is tested.
+  - Bot-authored PRs (dependabot, docs-sync) are armed by a Bot, whose label the merger refuses; after the flip an
+    admin session or cron must label them.
+  - queue_rearm.sh's queue-present branch still arms with --squash --auto, which merge-queue-discipline.md says arms
+    nothing under the queue. This is pre-existing and unchanged here.
