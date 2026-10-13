@@ -40,6 +40,15 @@ MUTANTS = {
     "seed-distance-unchecked": (RN, 'if seed["distance"] not in ("Cosine", "Dot", "Euclid") or not re.fullmatch(r"[A-Z0-9_]+", str(seed["api_key_env"])):', 'if False:'),
     "seed-key-env-unchecked": (RN, 'if why or seed["api_key_env"] not in env:', 'if why:'),
     "seed-not-read-from-base": (RN, 'lambda rel: _extract_base_file(wt, base, safe_tree_path(rel)))', 'lambda rel: _extract_base_file(wt, cand, safe_tree_path(rel)))'),
+    "net-standin-on-bridge": (RN, '"--network", f"container:{owner}" if owner else "none", "--health-cmd"', '"--network", "bridge", "--health-cmd"'),
+    "gen-shared-across-legs": (RN, '    steps, gen = [], {}\n', '    steps, gen = [], globals().setdefault("_SHARED_GEN", {})\n'),
+    "reached-not-checked": (RN, "    if want == 0 and unreached:", "    if False:"),
+    "reached-zero-accepted": (RN, 'if seen is None or seen < sv["reached"]["min"]:', 'if seen is not None and seen < 0:'),
+    "reached-counts-every-status": (RN, 'if str(k).startswith("2"))', "if True)"),
+    "skip-gate-off": (RN, 'if want == 0 and (pw := job.get("playwright_skips")):', "if False:"),
+    "skip-gate-off-by-one": (RN, 'sm["skipped"] > pw["max"]:', 'sm["skipped"] > pw["max"] + 1:'),
+    "skip-no-summary-passes": (RN, 'if sm is None or sm["skipped"] > pw["max"]:', 'if sm is not None and sm["skipped"] > pw["max"]:'),
+    "summary-first-not-last": (RN, "int(skipped[-1]) if skipped else 0", "int(skipped[0]) if skipped else 0"),
     "es-never-list-drops-extra": (PR, 'if isinstance(node.get("extra_services"), list):', 'if False:'),
 }
 

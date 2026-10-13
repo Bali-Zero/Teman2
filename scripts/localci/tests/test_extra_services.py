@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 import pytest
 
@@ -217,3 +218,95 @@ def test_the_seed_a_plan_freezes_is_the_one_in_base_whatever_the_candidate_write
     ctx = sc.svc_ctx(jobs=[{"job_id": "unit", "extra_services": [{**EXTRA, "seed": {**SEED, "file": "cfg.py"}}], "steps": [{"workflow_step": "test"}]}])
     spec = sc.planned_svc(tmp_path, monkeypatch, {"cfg.py": evil.decode()}, ctx, {sc.WF: yaml.safe_dump(sc.WORKFLOW), "cfg.py": CONFIG.decode()})
     assert spec["jobs"][0]["services"][1]["seed"]["collection"] == "knowledge_base" and spec["jobs"][0]["services"][1]["seed"]["size"] == 1536
+
+
+# ------------------------------------------------------------------ the gates after the run: the stand-in was asked, the skips are BASE's
+REACHED = {"request": "GET /collections", "min": 1, "api_key_env": "QDRANT__SERVICE__API_KEY"}
+
+
+@pytest.mark.parametrize("change", [{"request": "GET /a b"}, {"request": "DELETE /collections"}, {"min": 0}, {"min": True}, {"api_key_env": "OTHER"}, {"extra": 1}])
+def test_a_reached_gate_the_runner_cannot_read_is_refused(tmp_path, change):
+    svcs, why = runner.plan_extra_services([{**EXTRA, "reached": {**REACHED, **change}}], set(), docker_knowing(tmp_path))
+    assert svcs is None and "reached needs exactly" in why
+    ok, why = runner.plan_extra_services([{**EXTRA, "reached": REACHED}], set(), docker_knowing(tmp_path))
+    assert why is None and ok[0]["reached"] == REACHED
+
+
+@pytest.mark.parametrize("body,want", [
+    ('{"result":{"requests":{"rest":{"responses":{"GET /collections":{"200":{"count":3},"401":{"count":9}}}}}}}', 3),   # only 2xx answers count
+    ('{"result":{"requests":{"rest":{"responses":{"PUT /collections/k":{"200":{"count":1}}}}}}}', 0),                   # the seed's PUT is not the backend's GET
+    ('{"result":{"requests":{"rest":{"responses":{}}}}}', 0),
+    ("not json", None), ("", None), ('{"result":{}}', None),
+])
+def test_the_stand_ins_own_count_of_a_request_is_read_from_its_telemetry(tmp_path, body, want):
+    exe = fake_docker(tmp_path)
+    exe.write_text(exe.read_text().replace("  *) exit 0;;", f"  exec\\ *) echo '{body}';;\n  *) exit 0;;", 1))
+    assert runner.requests_seen(str(exe), "ctr", REACHED) == want
+
+
+def _leg(monkeypatch, tmp_path, *, seen, log_text="", pw=None, services=True):
+    from .test_host_disk import _leg_args
+
+    junit_ok = [{"name": "s", "status": "PASS", "reason": "rc=0", "cpu": 0.0}]
+    monkeypatch.setenv(runner.MIN_FREE_ENV, "0")
+    monkeypatch.setattr(runner, "start_services", lambda docker, svcs, *a, **k: (["c1"] if services else [], None, None))
+    monkeypatch.setattr(runner, "requests_seen", lambda docker, ctr, reached: seen)
+
+    def execute(*a, **k):
+        Path(a[8]).write_text(Path(a[8]).read_text() + log_text)
+        return 0, None
+    monkeypatch.setattr(runner, "execute_contained", execute)
+    monkeypatch.setattr(runner, "parse_expr_junit", lambda p: junit_ok)
+    spec, job, plan = _leg_args(tmp_path)
+    job.update(git_index=False, steps=[{"name": "s", "argv": ["true"]}], **({"playwright_skips": pw} if pw else {}),
+               services=[{"name": "qdrant", "env": {}, "image_id": "sha256:" + "a" * 64, "reached": REACHED}] if services else [])
+    return runner._run_leg("ctx.e2e-tests", spec, job, {}, tmp_path, plan, {}, {}, runner._gh_expr())
+
+
+@pytest.mark.parametrize("seen,blocked", [(0, True), (None, True), (1, False), (14, False)])
+def test_a_stand_in_the_backend_never_asked_makes_a_passing_run_no_verdict(monkeypatch, tmp_path, seen, blocked):
+    out = _leg(monkeypatch, tmp_path, seen=seen)
+    assert (out["infra"] is not None and out["infra"][0] == "BLOCKED" and "never reached it" in out["infra"][1]) if blocked else out["infra"] is None
+
+
+SUMMARY = "##[localci] step 1: Run E2E tests\n{body}\n##[localci] step 1 rc=0\n"
+
+
+@pytest.mark.parametrize("body,max_,blocked", [
+    ("  135 passed (1.2m)", 0, False),
+    ("  1 skipped\n  134 passed (1.2m)", 0, True),            # a cred-gated test.skip: hosted runs it
+    ("  1 skipped\n  134 passed (1.2m)", 1, False),
+    ("  134 passed (1.2m)\n  1 flaky", 0, False),
+    ("no summary at all", 0, True),                           # nothing to count is not a pass
+])
+def test_a_run_that_skipped_more_than_bases_selection_does_is_no_verdict(monkeypatch, tmp_path, body, max_, blocked):
+    out = _leg(monkeypatch, tmp_path, seen=1, log_text=SUMMARY.format(body=body), pw={"step": "Run E2E tests", "max": max_}, services=False)
+    assert (out["infra"] is not None and out["infra"][0] == "BLOCKED" and "never PASS" in out["infra"][1]) if blocked else out["infra"] is None
+
+
+def test_the_summary_is_the_steps_own_last_one_and_a_line_a_test_printed_earlier_does_not_count():
+    forged = "##[localci] step 1: Run E2E tests\n  0 skipped\n  9 passed\n  5 skipped\n  8 passed (1m)\n##[localci] step 1 rc=0\n  0 skipped\n"
+    assert runner.step_summary(forged, "Run E2E tests") == {"passed": 8, "skipped": 5}
+    assert runner.step_summary("##[localci] step 1: other\n  1 passed\n", "Run E2E tests") is None
+
+
+def test_two_legs_never_share_a_made_up_value_and_every_container_is_on_none_or_the_job_netns(monkeypatch, tmp_path):
+    import json
+
+    keys = []
+    for i in range(2):
+        seen = {}
+        from .test_host_disk import _leg_args
+        monkeypatch.setenv(runner.MIN_FREE_ENV, "0")
+        monkeypatch.setattr(runner, "start_services", lambda docker, svcs, *a, **k: seen.setdefault("svcs", svcs) and ([], None, None))
+        monkeypatch.setattr(runner, "execute_contained", lambda *a, **k: seen.setdefault("extra", a[6]) and (None, "stopped"))
+        (tmp_path / f"l{i}").mkdir()
+        spec, job, plan = _leg_args(tmp_path / f"l{i}")
+        job.update(git_index=False, services=[{"name": "q", "env": dict(EXTRA["env"]), "image_id": "sha256:" + "a" * 64}],
+                   steps=[{"name": "s", "argv": ["true"], "env": {"K": "$LOCALCI_GEN.qdrant"}}])
+        runner._run_leg("ctx.e2e-tests", spec, job, {}, tmp_path / f"l{i}", plan, {}, {}, runner._gh_expr())
+        keys.append(json.loads(seen["extra"]["cfg/steps.json"])["steps"][0]["env"]["K"])
+    assert keys[0] != keys[1]
+    src = Path(runner.__file__).read_text()
+    started = src.split("def start_services")[1].split("def _collect_dir")[0]
+    assert started.count('"--network", f"container:{owner}" if owner else "none"') == 1 and "bridge" not in started   # the first service owns a none netns, the rest join it

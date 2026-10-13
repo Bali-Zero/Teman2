@@ -159,6 +159,11 @@ here as it does hosted (E2E: 1 collection here, 14 there; the loop that reads a 
 vector size are the defaults the BASE `Settings` class declares (`ast` on the BASE blob at plan time, frozen in the plan; a name that
 is not a plain identifier, a size that is not a positive int or a candidate-edited file is refused or ignored); the distance is the one
 every collection migration creates. A seed that fails is BLOCKED (no verdict), never a green on an unseeded stand-in.
+`reached:` `{request, min, api_key_env}` makes the stand-in itself the witness: after the job, before teardown, the runner reads the container's
+own Qdrant telemetry and a passing run whose count of 2xx answers to `request` is below `min` (or unreadable) is BLOCKED, because a backend that
+never reached its stand-in read UNAVAILABLE and passed the old empty-secret path. A job entry may also carry `playwright_skips: {step, max}`:
+the last `N skipped` of that step's Playwright summary is compared with BASE's own count (a candidate `test.skip(!credentials)` runs hosted and
+is skipped here); more skips, or no summary to count, is BLOCKED, never PASS.
 Operator step (E2E's Qdrant, once per host, and again when the matrix digest moves): `docker pull qdrant/qdrant@sha256:<digest of the matrix entry>`. Until
 then `ctx.e2e-tests` plans BLOCKED naming it. Nothing prunes it: `prune.py` removes `localci-deps:*` tags only and lists every
 `extra_services` image on its never-list; `pro_janitor.py` and `pro_disk_floor_tick.sh` touch no docker image.
