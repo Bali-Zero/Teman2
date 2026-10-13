@@ -1275,3 +1275,8 @@ def test_the_re_read_before_each_write_keeps_the_full_age_limit(fake, tmp_path, 
 def test_the_flips_ready_term_is_the_mergers_so_the_two_copies_cannot_drift():
     from scripts.localci import merger
     assert (pef.READY_MERGES, pef.READY_DAYS) == (merger.READY_MIN_MERGES, merger.READY_MIN_DAYS) == (50, 5)
+
+
+def test_a_report_at_exactly_readys_five_day_term_lets_the_flip_finish(fake, tmp_path, capsys):
+    rc, out, _ = apply(fake, tmp_path, capsys, rep=report(tmp_path, compared_days=float(pef.READY_DAYS)))
+    assert rc == 0 and "flipped: the classic protection is gone" in out
