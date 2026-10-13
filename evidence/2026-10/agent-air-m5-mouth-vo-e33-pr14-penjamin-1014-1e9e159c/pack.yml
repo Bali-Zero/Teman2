@@ -11,6 +11,14 @@ lanes:
   - lane: e33-pr14
     role: build
     seat: claude-sonnet-5 (Claude Code workflow subagent), worktree mouth-vo-e33-pr14-penjamin-1014 on M5.
+  - lane: e33-pr14-ground-truth
+    role: ground_truth
+    seat: >-
+      The official E33F page as quoted in research/visa/2026-07-24-w2-factbase-e33.md (Bukti penghasilan atau
+      tunjangan; penjamin); the change asserts no rule of its own and uses only those words.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
+    query_hash: "1e23611d94fc7956595c8b6d2bb5b819ae512d88e60f38cc82edd3ce86edb809" # pragma: allowlist secret
+    note: query_hash = sha256 of i18n.ts at origin/main (before the change).
 pii_scan: clean
 bites:
   consumer: >-
