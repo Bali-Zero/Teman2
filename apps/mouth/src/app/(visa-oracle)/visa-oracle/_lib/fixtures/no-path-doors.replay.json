@@ -1,22 +1,19 @@
 {
   "generator": "apps/mouth/scripts/visa-oracle/replay-no-path-doors.py",
   "pack": {
-    "file": "rulepack-prod-027.signed.json",
-    "sequence": 27,
-    "version": "2026.10.8"
+    "file": "rulepack-prod-029.signed.json",
+    "sequence": 29,
+    "version": "2026.10.12"
   },
-  "as_of": "2026-10-10 03:42:26.641001+00:00",
+  "as_of": "2026-10-13 08:56:32.221637+00:00",
   "age_55_birth_date": "1971-09-01",
-  "walk_corpus_fingerprint": "64d7a743d3720fd3b5536e79f6b47cbddf05cd78e626f179737f1cd770e9b7de",
+  "walk_corpus_fingerprint": "b7a2571e4d8723678bc1c5324e84a40fb36009fa08d97af9d6fa85bc1c5339d5",
   "walks": [
     {
       "label": "offshore/business",
       "walk_fixture": "offshore_business.json",
       "state": "NO_SUPPORTED_PATH",
-      "no_path_reason_codes": [
-        "BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED",
-        "AGE_BELOW_55"
-      ],
+      "no_path_reason_codes": ["BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED"],
       "missing_facts": [],
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
     },
@@ -80,6 +77,14 @@
         "INDONESIAN_SOURCE_COMPENSATION_BANNED",
         "E33G_LOCAL_COMPANY_NOT_ALLOWED"
       ],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/remote/foreign_only/income_59999",
+      "walk_fixture": "offshore_remote_foreign_only_income_59999.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["E33G_INCOME_BELOW_THRESHOLD"],
       "missing_facts": [],
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
     },
@@ -167,10 +172,7 @@
       "label": "onshore/business",
       "walk_fixture": "onshore_business.json",
       "state": "NO_SUPPORTED_PATH",
-      "no_path_reason_codes": [
-        "BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED",
-        "AGE_BELOW_55"
-      ],
+      "no_path_reason_codes": ["BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED"],
       "missing_facts": [],
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
     },
@@ -208,8 +210,7 @@
       "state": "NO_SUPPORTED_PATH",
       "no_path_reason_codes": [
         "APPLICANT_IS_INDONESIAN_CITIZEN",
-        "BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED",
-        "AGE_BELOW_55"
+        "BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED"
       ],
       "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": [] }
     },
@@ -219,10 +220,7 @@
       "why": "C1 covers the declared stay up to 180 days; 181 already has no path",
       "ui": { "stay_days": "400" },
       "state": "NO_SUPPORTED_PATH",
-      "no_path_reason_codes": [
-        "BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED",
-        "AGE_BELOW_55"
-      ],
+      "no_path_reason_codes": ["BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED"],
       "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": [] }
     },
     {

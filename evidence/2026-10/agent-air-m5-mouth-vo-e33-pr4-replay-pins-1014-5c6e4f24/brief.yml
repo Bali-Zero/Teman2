@@ -1,0 +1,20 @@
+gear: 2
+gear_reason: >-
+  Gear 2 for the nature of the change: a new CI observer that regenerates the signed-pack replay and
+  fails closed, plus test and fixture pins (committed code churn 426 lines before this evidence commit,
+  excluding the pack and brief edits). No copy change, no logic, no backend, no pricing.
+mission: >-
+  The no-door replay fixture and the E33G copy pins test what visitors get under the active signed pack.
+objective: >-
+  The no-path-doors replay fixture is regenerated from the active signed pack (seq-29), the dead-end
+  census pin and the pack pin follow it, and the stale comment on the retired E33G key is corrected;
+  the E33G income-threshold sentence is pinned for the remote persona at foreign income 59,999.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fixtures/no-path-doors.replay.json
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/no-path-doors.test.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - scripts/ci/observe_visa_oracle_replay_pins.py
+  - tests/scripts/test_observe_visa_oracle_replay_pins.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
