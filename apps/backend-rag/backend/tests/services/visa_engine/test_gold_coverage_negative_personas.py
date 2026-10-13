@@ -25,6 +25,9 @@ highest signed PRODUCTION pack:
   absent from the candidates (an INDIVIDUAL sponsor does not qualify the
   exchange visa; the engine must redirect, not dead-end).
 
+The LEVEL_BAND_* codes ride along with the named cause and are pinned only because they
+were measured on seq-28; they follow the study level, not the negative fact under test.
+
 A missing artifact FAILS here, never skips: the directory must hold exactly
 the three pinned file names, and every file name's ``__``-prefix must equal
 its ``product_code`` (same rule as the floor test).  Each positive twin is

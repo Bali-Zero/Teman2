@@ -5,7 +5,7 @@
     "STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED"
   ],
   "expected_state": "NO_SUPPORTED_PATH",
-  "label": "24-year-old German national admitted to a master's programme at an Indonesian university, admission NOT confirmed",
+  "label": "24-year-old German national applying for a master's programme at an Indonesian university, admission not confirmed",
   "overrides": {
     "intent.desired_entry_date": {
       "status": "KNOWN",
