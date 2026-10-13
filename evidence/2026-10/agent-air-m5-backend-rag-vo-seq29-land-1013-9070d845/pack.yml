@@ -114,6 +114,12 @@ receipts:
     exit: 1
     ts: "2026-10-13T09:06:05Z"
     seat: Claude Sonnet 5.5 (implementer, M5)
+  - claim: The consumer-map push-refusal cure - the #8390 row test no longer names the deleted seq-28 observer; the three affected test files and both observers stay green.
+    cmd: python3 -m pytest tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_seq29_signed.py
+    result: "36 passed"
+    exit: 0
+    ts: "2026-10-13T10:00:00Z"
+    seat: Claude Sonnet 5.5 (implementer, M5)
 council_run: journal.jsonl
 dissent:
   - seat: codex-gpt-5.6-sol (conductor red team, read-only)
@@ -151,8 +157,8 @@ decisions:
     why: >-
       seq-29 adds review.e31j-marital-status-other by design (OTHER marital status is held for review); the test says a changed count is real news, and the inventory
       printed 2 on the signed tree.
-  - decision: The PENDING-ARMS row naming observe_visa_seq28_signed.py is not edited here.
+  - decision: The PENDING-ARMS row naming observe_visa_seq28_signed.py is not edited here; the test no longer asserts the deleted observer's name.
     why: >-
-      The post-activation ledger PR handles it; test_visa_ledger_seq28.py asserts the literal in that row and stays green.
+      The pre-push consumer-map hook refused the first push because tests/scripts/test_visa_ledger_seq28.py asserted the deleted observer's literal inside the #8390 row, a live consumer. That one assertion is removed (the test still pins the row once, open, owner, proof-of-armed, the 2026-10-18T18:00Z date and the 2026-10-11-organ-reattest-seq28 ledger name; file test count unchanged). The row text and the post-activation ledger PR that closes it are untouched.
 spend:
   wall_clock_hours: 1
