@@ -1,0 +1,20 @@
+gear: 2
+gear_reason: >-
+  Gear 2 declared above the size floor because the adapter is shared with other E33 lanes and the retirement list is a ground-truth-adjacent claim. Mouth adapter bookkeeping only: a
+  retired-keys list and two tests over the signed packs, plus a no-argument observer; the only
+  runtime change is the removal of two EN/ID reason sentences that no signed pack can reach; no backend, no data, no pricing.
+mission: >-
+  The E33 reason-copy keys that no signed pack emits any more are listed as retired, so a test fails if one silently comes back or a live code loses its copy.
+objective: >-
+  engine-adapter.ts exports RETIRED_SUPPORT_REASON_KEYS (four E33 advisor-check keys: two replayable, E33E_DEPOSIT_INCOME_BASIS and E33G_INCOME_60K, keep their
+  copy for replay of signed packs 6 and 7; two never emitted, E33B_EXPERTISE_QUALIFICATION and E33F_AGE_UNDER_55, have their EN/ID copy removed); the engine-adapter suite fails if a signed pack at seq 28 or later emits a retired
+  key, and fails if an E33 advisor-check key in the copy table is neither emitted by the highest signed pack
+  nor listed as retired.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+  - scripts/ci/observe_visa_oracle_e33_retired_keys.py
+  - tests/scripts/test_observe_visa_oracle_e33_retired_keys.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2

@@ -11,6 +11,9 @@ import {
   NOTICE_CONDITION_COPY,
   REVIEW_REASON_ELEMENTS,
   REVIEW_REASON_COPY,
+  RETIRED_NEVER_EMITTED_SUPPORT_REASON_KEYS,
+  RETIRED_REPLAYABLE_SUPPORT_REASON_KEYS,
+  RETIRED_SUPPORT_REASON_KEYS,
   SECOND_HOME_DEPOSIT_THRESHOLD_USD,
   SECOND_HOME_PROPERTY_THRESHOLD_USD,
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
@@ -1229,6 +1232,100 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(codes.size).toBeGreaterThanOrEqual(34);
     const missing = [...codes].filter((code) => !(code in SUPPORT_REASON_COPY));
     expect(missing).toEqual([]);
+  });
+
+  /**
+   * PR-15 (E33 audit, 2026-10-11): every reason_code, at any depth, of every
+   * SIGNED pack whose sequence is at or after `fromSequence`, keyed by that
+   * sequence. Any depth, not only `effect.reason_code` of a SUPPORT rule, so
+   * an EXCLUDE, a HUMAN_REVIEW or a notice cannot carry a retired key past it.
+   */
+  function reasonCodesOfSignedPacksFrom(
+    fromSequence: number,
+  ): Map<number, Set<string>> {
+    const bySequence = new Map<number, Set<string>>();
+    for (const full of signedProductionPackFiles()) {
+      const envelope = JSON.parse(fs.readFileSync(full, "utf-8")) as {
+        payload?: { sequence?: unknown };
+      };
+      const sequence = envelope.payload?.sequence;
+      if (typeof sequence !== "number" || sequence < fromSequence) continue;
+      const codes = new Set<string>();
+      const walk = (node: unknown): void => {
+        if (Array.isArray(node)) return node.forEach(walk);
+        if (node === null || typeof node !== "object") return;
+        for (const [key, value] of Object.entries(node)) {
+          if (key === "reason_code" && typeof value === "string") {
+            codes.add(value);
+          }
+          walk(value);
+        }
+      };
+      walk(envelope.payload);
+      bySequence.set(sequence, codes);
+    }
+    return bySequence;
+  }
+
+  it("retired E33 advisor-check keys: none is emitted by a signed pack at seq >= 28; replayable ones keep copy, never-emitted ones have none (PR-15)", () => {
+    const packs = reasonCodesOfSignedPacksFrom(28);
+    // Guard the guard: seq-28 and seq-29 are on disk, so fewer than two packs
+    // means the glob or the envelope shape broke and the loop below would pass
+    // vacuously.
+    expect(packs.size).toBeGreaterThanOrEqual(2);
+    // And the walk must really see reason codes: a live E33 advisor check
+    // proves it reads what the packs emit, not an empty set.
+    for (const codes of packs.values()) {
+      expect(codes.has("E33E_AGE_55_59_ADVISOR_CHECK")).toBe(true);
+    }
+    expect(RETIRED_SUPPORT_REASON_KEYS.length).toBeGreaterThanOrEqual(4);
+    const cameBack: string[] = [];
+    for (const [sequence, codes] of packs) {
+      for (const key of RETIRED_SUPPORT_REASON_KEYS) {
+        if (codes.has(key)) cameBack.push(`seq-${sequence}: ${key}`);
+      }
+    }
+    expect(cameBack).toEqual([]);
+    // Replayable: signed packs still emit each one somewhere, so its copy
+    // must stay; never-emitted: no pack emits it, so it carries no copy.
+    const everywhere = reasonCodesOfSignedPacksFrom(0);
+    const emittedAnywhere = new Set<string>();
+    for (const codes of everywhere.values()) {
+      codes.forEach((code) => emittedAnywhere.add(code));
+    }
+    expect(
+      RETIRED_REPLAYABLE_SUPPORT_REASON_KEYS.filter(
+        (key) => !emittedAnywhere.has(key) || !(key in SUPPORT_REASON_COPY),
+      ),
+    ).toEqual([]);
+    expect(
+      RETIRED_NEVER_EMITTED_SUPPORT_REASON_KEYS.filter(
+        (key) => emittedAnywhere.has(key) || key in SUPPORT_REASON_COPY,
+      ),
+    ).toEqual([]);
+  });
+
+  it("every E33 advisor-check key in the copy table is emitted by the highest signed pack or listed as retired (PR-15)", () => {
+    const packs = reasonCodesOfSignedPacksFrom(0);
+    const highest = Math.max(...packs.keys());
+    const live = packs.get(highest)!;
+    // Direction 1: every E33 advisor-check code the highest pack emits has copy.
+    const liveE33 = [...live].filter((key) =>
+      /^E33[A-Z]?_.*_ADVISOR_CHECK$/.test(key),
+    );
+    expect(liveE33.length).toBeGreaterThanOrEqual(2);
+    expect(liveE33.filter((key) => !(key in SUPPORT_REASON_COPY))).toEqual([]);
+    // Direction 2: every copy key is live or listed as retired.
+    const orphans = Object.keys(SUPPORT_REASON_COPY)
+      .filter((key) => /^E33[A-Z]?_.*_ADVISOR_CHECK$/.test(key))
+      .filter(
+        (key) => !live.has(key) && !RETIRED_SUPPORT_REASON_KEYS.includes(key),
+      );
+    expect(orphans).toEqual([]);
+    // A retired key is, by definition, not live on the highest signed pack.
+    expect(RETIRED_SUPPORT_REASON_KEYS.filter((key) => live.has(key))).toEqual(
+      [],
+    );
   });
 
   /**
