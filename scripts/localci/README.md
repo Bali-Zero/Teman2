@@ -141,8 +141,18 @@ Node jobs (E2E, Visa Oracle smoke) add three deps keys, all built into the same 
 A required context that is one leg of a matrix (`Frontend Tests (Next.js) (mouth, true)`) names it with `leg:`; an include-only
 matrix expands as hosted expands it. A network failure in the egress sandbox (a timeout or refused connection in its log) is no
 verdict on the candidate (the step is BLOCKED, never green; a vulnerability finding stays a verdict): re-run. So is a host reader whose own stderr line starts with the matrix's `no_verdict_when` three times running (the harness gate reader's `CANNOT-VERIFY`, a GitHub 5xx); text it merely echoes cannot trigger it. A BASE `actions/setup-node` pin must equal `deps.node`, or the context is BLOCKED. Repository secrets a step reads are
-overridden with `""` in the matrix (the run never holds them, and never reads the operator's); the parity gaps say what that
+overridden in the matrix (the run never holds them, and never reads the operator's); the parity gaps say what that
 can change.
+
+A job whose hosted twin points a secret at an endpoint no container here can be (E2E's Qdrant cloud) may add stand-ins with
+`extra_services:` on its job entry in the matrix (BASE's `services:` cannot name them: hosted has none). Each is
+`{name, image, env, health}`: the image is pinned **by digest** (`repo@sha256:<64 hex>`, a tag is refused), must already be
+present on the host (a run never pulls: absent is BLOCKED with `docker pull it`), and starts after BASE's services in the same
+loopback-only netns with the same health budget and teardown, so an unhealthy stand-in is BLOCKED (no verdict), never green and
+never a code RED. In a matrix `env:` (step or stand-in) the token `$LOCALCI_GEN.<name>` becomes 48 random hex characters, made
+when the leg starts and held only in the runner's memory: one name is one value in every container of the leg, a new leg gets
+new ones, and nothing is written to disk or to the operator's environment. Every container of the leg has `--network none` or
+the shared loopback netns, so the stand-ins and the candidate have no route to any host outside it.
 
 ### CodeQL contexts (`CodeQL Analysis (python)`, `CodeQL Analysis (javascript)`)
 

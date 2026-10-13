@@ -855,6 +855,49 @@ def plan_services(job: dict, images: dict, docker: str) -> tuple[list | None, st
     return out, None
 
 
+GEN_RE = re.compile(r"\$LOCALCI_GEN\.([a-z][a-z0-9_]*)")   # a value the run makes up, named: the same name is the same value in every container of the leg
+EXTRA_SERVICE_KEYS = {"name", "image", "env", "health"}
+DIGEST_IMAGE = re.compile(r"[a-z0-9][a-z0-9._/-]*@sha256:[0-9a-f]{64}")
+
+
+def fill_generated(env: dict, store: dict) -> dict:
+    """`$LOCALCI_GEN.<name>` in an env value becomes 48 random hex characters, made now, once per name per leg and kept only in `store`
+    (this process's memory): the stand-in services and the steps of one leg agree on them, and no run, host or disk ever holds the same."""
+    return {k: GEN_RE.sub(lambda m: store.setdefault(m.group(1), os.urandom(24).hex()), str(v)) for k, v in env.items()}
+
+
+def plan_extra_services(extra: object, taken: set, docker: str) -> tuple[list | None, str | None]:
+    """Stand-ins the MATRIX adds beside BASE's `services:` (hosted points a secret at a cloud endpoint no container here can be): each is
+    pinned by DIGEST in the matrix (a tag is a moving target), present locally (never pulled by a run), and gets the same shape and the
+    same start, health budget and teardown as a BASE service. Its env is the matrix's literal map; only `$LOCALCI_GEN.<name>` is made up."""
+    out = []
+    for i, svc in enumerate(extra if isinstance(extra, list) else [] if extra is None else [None]):
+        if not isinstance(svc, dict) or (bad := sorted(set(svc) - EXTRA_SERVICE_KEYS)):
+            return None, f"extra_services[{i}]: a mapping of {sorted(EXTRA_SERVICE_KEYS)} only (got {None if not isinstance(svc, dict) else bad})"
+        name, ref, h = str(svc.get("name") or ""), str(svc.get("image") or ""), svc.get("health")
+        if not re.fullmatch(r"[a-z][a-z0-9-]*", name) or name in taken:
+            return None, f"extra_services[{i}]: name {name!r} is not a plain name, or is already a service of the job"
+        if not DIGEST_IMAGE.fullmatch(ref):
+            return None, f"service {name}: image {ref!r} is not pinned by digest (repo@sha256:<64 hex>)"
+        env = {str(k): str(v) for k, v in (svc.get("env") or {}).items()}
+        if (expr := sorted(k for k, v in env.items() if "${{" in v)):
+            return None, f"service {name}: env {expr} carry expressions"
+        if not isinstance(h, dict) or set(h) != {"cmd", "interval", "timeout", "retries"} or not h["cmd"]:
+            return None, f"service {name}: health needs exactly cmd, interval, timeout and retries"
+        try:
+            health = {k: str(v) for k, v in h.items()}
+            budget = (int(health["retries"]) + 1) * (_seconds(health["interval"]) + _seconds(health["timeout"]))
+        except (ValueError, KeyError) as e:
+            return None, f"service {name}: health unreadable ({type(e).__name__}: {e})"
+        iid = (_try([docker, "image", "inspect", "--format", "{{.Id}}", ref]) or "").strip()
+        if not iid.startswith("sha256:"):
+            return None, f"service {name}: image {ref} is not present locally (docker pull it, then plan again)"
+        taken = taken | {name}
+        out.append({"name": name, "image": ref, "local_image": ref, "image_id": iid, "env": env, "ports": [], "health": health,
+                    "health_budget_s": budget + 60})
+    return out, None
+
+
 def matrix_legs(job: dict) -> tuple[list | None, str | None]:
     m = (job.get("strategy") or {}).get("matrix")
     if m is None:
@@ -1285,6 +1328,9 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
             why2 = why2 or (None if shown and jid == ctx.get("job_id") and name.endswith(shown) else
                             f"leg {want!r} is not exactly one leg of the context's own job, the one whose check run is {name!r}")
         svcs, why3 = plan_services(job, local.get("service_images") or {}, iso["docker"])
+        if svcs is not None:
+            extra_svcs, why3 = plan_extra_services(jl.get("extra_services"), {s["name"] for s in svcs}, iso["docker"])
+            svcs = svcs + extra_svcs if extra_svcs is not None else None
         if why or why2 or why3:
             return _blocked(f"job {jid}: {why or why2 or why3}")
         nodes = {str((s.get("with") or {}).get("node-version", "")) for s in job.get("steps") or [] if str(s.get("uses", "")).startswith("actions/setup-node@")}
@@ -2346,9 +2392,11 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
     inner = ["python", "-I", "/cfg/steps_driver.py", "/cfg/steps.json", "/out/junit.xml"]
     cfg_base = {"root": "/w", "path_prefix": job["path_prefix"], "venv": job["venv"], "env": {**CONTAINED_STEP_ENV, **SERVICE_STEP_ENV},
                 "job_env": job["job_env"], "expr": ctx}
-    steps = []
+    steps, gen = [], {}
     for st in job["steps"]:
         st = dict(st)
+        if st.get("env"):
+            st["env"] = fill_generated(st["env"], gen)
         if (st.get("side") or {}).get("where") == "egress":
             st["precomputed"] = _run_egress(name, spec, job, st, slug, cfg_base, base_extra, env, inner, run_dir, plan)
             out["logs"].append(str(run_dir / "logs" / f"{name}.{slug}.egress.log"))   # written by this leg: read for a full disk too
@@ -2393,7 +2441,7 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
                 fh.write(f"# not started: {floor}\n")
             out["infra"] = ("BLOCKED", floor)
             return out
-        ctrs, owner, why = start_services(iso["docker"], job["services"], f"localci-{plan['run_id']}-{name}-{slug}", run_label(run_dir), denv, log)
+        ctrs, owner, why = start_services(iso["docker"], [{**sv, "env": fill_generated(sv["env"], gen)} for sv in job["services"]], f"localci-{plan['run_id']}-{name}-{slug}", run_label(run_dir), denv, log)
         if why:
             out["infra"] = ("BLOCKED", f"{label}: {why}")
             return out
