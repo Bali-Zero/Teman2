@@ -472,13 +472,7 @@ EOF
     _pr_num=$(print -r -- "$_pr_url" | grep -oE '[0-9]+$')
     # NOT --squash: once a merge queue governs main, the ruleset owns the merge
     # method and --squash is rejected outright (pipeline-ship skill).
-    local _intent="$REGWATCH_REPO_ROOT/scripts/signal_merge_intent.sh" _arm_rc
-    if [ -x "$_intent" ]; then
-        SIGNAL_INTENT_REPO="$REGWATCH_GH_REPO" "$_intent" "$_pr_num" >> "$LOG" 2>&1; _arm_rc=$?
-    else
-        gh pr merge "$_pr_num" --repo "$REGWATCH_GH_REPO" --auto >> "$LOG" 2>&1; _arm_rc=$?
-    fi
-    if [ "$_arm_rc" -eq 0 ]; then
+    if gh pr merge "$_pr_num" --repo "$REGWATCH_GH_REPO" --auto >> "$LOG" 2>&1; then
         echo "[$(date)] promote: auto-merge armed on PR #$_pr_num" >> "$LOG"
     else
         echo "[$(date)] promote: WARN could not arm auto-merge on PR #$_pr_num — needs manual arm" >> "$LOG"
