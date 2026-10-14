@@ -28,10 +28,11 @@ MUTANTS = {
     "pe-rollback-confirm-unchecked": ('    if a.confirm != dig:\n        print("REFUSED: --confirm does not match this plan\'s digest", file',
                                       '    if False:\n        print("REFUSED: --confirm does not match this plan\'s digest", file'),
     # the flip waits for an empty merge queue, and an unreadable one is not empty
-    "pe-queue-blockers-dropped": ("blockers + queue_blockers(a.repo, a.branch) + rep_blockers", "blockers + rep_blockers"),
+    "pe-queue-blockers-dropped": ("blockers + queue_blockers(a.repo, a.branch, state) + rep_blockers", "blockers + rep_blockers"),
     "pe-queue-count-unchecked": ('if count else []', 'if False else []'),
     "pe-queue-unreadable-is-empty": ("    except (FlipError, KeyError, TypeError) as exc:\n        return [", "    except (FlipError, KeyError, TypeError) as exc:\n        return [] and ["),
-    "pe-queue-not-rechecked-at-apply": (" + queue_blockers(a.repo, a.branch))\n", ")\n"),
+    "pe-queue-not-rechecked-at-apply": (" + queue_blockers(a.repo, a.branch, fresh))\n", ")\n"),
+    "pe-queue-asked-after-its-rule-is-gone": ('    if "merge_queue" not in {r.get("type") for r in state["ruleset"]["rules"]}:\n        return []\n', ""),
     "pe-blockers-ignored": ("    if all_blockers:\n", "    if False:\n"),
     # READY is the report's, fresh, of this repo, and consistent with its own window
     "pe-ready-not-required": ('if rep.get("phase_e_ready") is not True:', "if False:"),

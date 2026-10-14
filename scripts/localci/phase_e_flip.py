@@ -116,8 +116,12 @@ def gh_all(path: str) -> list:
     raise FlipError(f"gh api {path}: more than {MAX_PAGES} pages — refusing a truncated count")
 
 
-def queue_blockers(repo: str, branch: str) -> list[str]:
-    """The flip strands whatever GitHub's merge queue still holds: it must be empty, and an unreadable queue is not empty."""
+def queue_blockers(repo: str, branch: str, state: dict) -> list[str]:
+    """The flip strands whatever GitHub's merge queue still holds: it must be empty, and an unreadable queue is not empty. Asked only
+    while the ruleset still holds its ``merge_queue`` rule: once write 1 removes it GitHub answers ``mergeQueue: null``, which is the
+    expected state of a half-done flip, not an unreadable queue."""
+    if "merge_queue" not in {r.get("type") for r in state["ruleset"]["rules"]}:
+        return []
     owner, name = repo.split("/")
     try:
         doc = gh("graphql", "-f", "query=query($owner: String!, $name: String!, $branch: String!) { repository(owner: $owner, name: $name) "
@@ -460,7 +464,7 @@ def execute(repo: str, branch: str, writes: list[dict], expected: list[dict], to
             raise FlipError(f"before write {i}/{n}: the object could not be read again ({exc}); nothing written by this step") from exc
         if differ := diverges(fresh, expected[i - 1]):
             raise FlipError(f"before write {i}/{n}: changed since plan: {differ}; nothing written by this step")
-        if recheck is not None and (why := recheck()):   # W1 for the precondition that is not GitHub's: READY, read again
+        if recheck is not None and (why := recheck(fresh)):   # W1 for the precondition that is not GitHub's: READY, read again
             raise FlipError(f"before write {i}/{n}: the report no longer proves READY ({why}); nothing written by this step")
         args = ["--method", w["method"], w["path"]] + (["--input", "-"] if w["body"] is not None else [])
         sent.append(i)   # from here the write may have landed, whatever the answer says
@@ -495,7 +499,7 @@ def run_flip(a: argparse.Namespace) -> int:
         return EXIT_OK
     print("writes the flip makes, in order:")
     print("\n".join(show_writes(writes)))
-    all_blockers = blockers + queue_blockers(a.repo, a.branch) + rep_blockers
+    all_blockers = blockers + queue_blockers(a.repo, a.branch, state) + rep_blockers
     print("blockers for --apply: " + ("; ".join(all_blockers) if all_blockers else "none"))
     print(f"plan digest: {dig}  (--apply needs --confirm {dig}, read from a plan of this very state)")
     print(QUIESCENCE)
@@ -520,8 +524,8 @@ def run_flip(a: argparse.Namespace) -> int:
         ok = isinstance(answer, dict) and is_target(answer) and answer.get("conditions") == state["ruleset"]["conditions"]
         return None if ok else "the ruleset's answer is not the target"
 
-    def still_ready() -> str:
-        return "; ".join(read_report(a.report, a.repo, a.branch)[0] + queue_blockers(a.repo, a.branch))
+    def still_ready(fresh: dict) -> str:
+        return "; ".join(read_report(a.report, a.repo, a.branch)[0] + queue_blockers(a.repo, a.branch, fresh))
 
     sent: list = []
     a.sent = sent   # main reads it: a failure outside W4's handler after a send is still exit 3

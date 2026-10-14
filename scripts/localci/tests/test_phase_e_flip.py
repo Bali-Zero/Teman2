@@ -146,7 +146,10 @@ class FakeGH:
             self.graphql.append(args)
             if self.queue == "error":
                 return subprocess.CompletedProcess(argv, 1, "", "gh: boom")
-            queue = self.queue.pop(0) if isinstance(self.queue, list) else self.queue   # a list: one answer per read
+            if not any(r["type"] == "merge_queue" for rs in self.rulesets.values() for r in rs["rules"]):
+                queue = None   # GitHub answers null for a branch whose rule set holds no merge queue — the state after write 1
+            else:
+                queue = self.queue.pop(0) if isinstance(self.queue, list) else self.queue   # a list: one answer per read
             return subprocess.CompletedProcess(argv, 0, json.dumps({"data": {"repository": {"mergeQueue": queue}}}), "")
         method, path = (args[1], args[2]) if args[0] == "--method" else ("GET", args[0])
         # the exact argv real gh needs: a GET is one path; a write is --method M path, plus --input - when it carries a body
@@ -1311,3 +1314,16 @@ def test_a_queue_that_fills_between_the_plan_and_the_first_write_writes_nothing(
     dig = plan_digest(fake, tmp_path, capsys)
     rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
     assert rc != 0 and "holds 1 entries" in err and fake.writes() == []
+
+
+def test_a_full_apply_completes_although_the_queue_reads_null_once_write_1_removed_its_rule(fake, tmp_path, capsys):
+    rc, out, err = apply(fake, tmp_path, capsys)
+    assert rc == 0 and [(m, p) for m, p, _ in fake.writes()] == [("PUT", f"repos/{REPO}/rulesets/{MQ}"), ("DELETE", f"repos/{REPO}/branches/main/protection")], err
+    assert fake.classic is None and "flipped:" in out
+
+
+def test_a_non_empty_queue_still_blocks_before_write_1_and_the_gate_is_not_lifted_by_the_rule_check(fake, tmp_path, capsys):
+    fake.queue = {"entries": {"totalCount": 2}}
+    dig = plan_digest(fake, tmp_path, capsys)
+    rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
+    assert rc != 0 and "holds 2 entries" in err and fake.writes() == [] and fake.classic is not None

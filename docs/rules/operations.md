@@ -28,7 +28,9 @@ a mission Zero declared ORANGE, which releases that one mission under PARABELLUM
    only while `rules/branches/main` still carries a `merge_queue` rule; with no such rule it sets
    the label and skips the arm (not an error). While the rule exists the GitHub arm is what
    merges: a label failure only WARNs and the arm still runs, and a labelled-but-unarmed PR is
-   still a re-arm candidate. After the LocalCI flip (no `merge_queue` rule) the LocalCI merger
+   still a re-arm candidate. **After any push to an open PR, re-run the helper**: on a PR that already
+   carries the label it refreshes it (remove, then add), and the merger accepts the label only if
+   its event postdates the head's first check suite. After the LocalCI flip (no `merge_queue` rule) the LocalCI merger
    merges only labelled PRs, so the label is the arm: `queue_rearm`, `queue_shepherd` and
    `queue_rearm_population.sh` count it as armed, a failed label is fatal, and their re-arms
    call the helper (label, no GitHub arm) instead of `gh pr merge`.

@@ -95,7 +95,7 @@ class FakeGraphQL:
         (p,) = [x for x in self.gh.prs if x["number"] == variables["number"]]
         names = [lb["name"] for lb in p["labels"]]
         return {"repository": {"pullRequest": {
-            "id": f"PR_node_{p['number']}", "state": "OPEN", "isDraft": p["draft"], "isCrossRepository": False, "baseRefName": "main",
+            "id": f"PR_node_{p['number']}", "number": p["number"], "state": "OPEN", "isDraft": p["draft"], "isCrossRepository": False, "baseRefName": "main",
             "headRefOid": p["head"]["sha"], "body": BODY, "isInMergeQueue": False, "mergeQueueEntry": None, "labels": {"nodes": [{"name": n} for n in names]},
             "timelineItems": {"nodes": [labelled(n, "maint") for n in names]}, **self.over}}}
 

@@ -371,6 +371,7 @@ def test_a_pr_merged_at_a_later_head_without_a_merge_commit_sha_is_named_not_ref
     gh = FakeGH({2: {**pull(B, merged=True), "merge_commit_sha": None}}, {A: "success"})
     rc, rep = run_report(tmp_path, monkeypatch, [decision(2, A, "FAIL", ctx="FAIL")], gh)   # an older head: judged on itself
     assert rc == 0 and rep["merged_without_merge_commit_sha"] == [2] and rep["hosted_red_merged"] == []
+    assert rep["rows"][0]["no_comparison"] is None   # judged on its own older head: a comparison, not a missing one
 
 
 def test_a_pr_closed_as_merged_by_a_push_with_a_null_merge_commit_sha_is_no_comparison_never_an_exception(tmp_path, monkeypatch):

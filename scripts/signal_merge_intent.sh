@@ -26,8 +26,17 @@ esac
 
 queue="$(SIGNAL_INTENT_REPO="$REPO" SIGNAL_INTENT_BASE="$BASE" "$(dirname "${BASH_SOURCE[0]}")/merge_queue_rule.sh")"
 
+# Re-running on a PR that already carries the label REFRESHES it (remove, then add): adding an
+# existing label creates no event, and the merger accepts the label only if its LabeledEvent
+# postdates the head (B2a) — so after any push to an open PR, re-run this helper.
 label=applied
-out="$(gh pr edit "$PR" --repo "$REPO" --add-label "$LABEL" 2>&1)"; rc=$?
+rc=0; out=""
+if gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name' 2>/dev/null | grep -qxF "$LABEL"; then
+  out="$(gh pr edit "$PR" --repo "$REPO" --remove-label "$LABEL" 2>&1)"; rc=$?
+fi
+if [ "$rc" -eq 0 ]; then
+  out="$(gh pr edit "$PR" --repo "$REPO" --add-label "$LABEL" 2>&1)"; rc=$?
+fi
 if [ "$rc" -ne 0 ]; then
   msg="SIGNAL_INTENT_FAIL pr=$PR label=failed queue=$queue (rc=$rc): $(printf '%s' "$out" | tail -3 | tr '\n' ' ')"
   if [ "$queue" = absent ]; then

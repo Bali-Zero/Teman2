@@ -157,6 +157,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
                                         "        for n in sorted(r[\"pr\"] for r in rows if r[\"compared_merge\"]):", (REPORT,)),
     "hosted-red-merged-no-sha-raises": (PY, "                merged_without_sha.append(n)", '                raise hc.CompareError(f"#{n} is merged but carries no merge commit sha")', (REPORT,)),
     "b3d-queue-sha-null-raises": (PY, "        return str(d.get(\"head_sha\"))   # B3d", '        raise hc.CompareError("no merge_commit_sha")   # B3d', (REPORT,)),
+    "b3d-no-comparison-ignores-the-head": (PY, 'and head_of(prs[n]) == d.get("head_sha")\n                             and not is_sha', "and not is_sha", (REPORT,)),
     "b3d-no-comparison-unsaid": (PY, "and not is_sha(prs[n].get(\"merge_commit_sha\"))) else None,", "and False) else None,", (REPORT,)),
     "hosted-red-merged-first-only": (PY, '                hosted_red_merged.append({"pr": n, "merge_commit_sha": mc, "red": red})',
                                      '                hosted_red_merged.append({"pr": n, "merge_commit_sha": mc, "red": red})\n                break', (REPORT,)),
@@ -850,6 +851,9 @@ def copy_tree(dest: Path) -> None:
     (dest / "scripts" / "tests").mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / "scripts" / "tests" / "test_ban_predicates.py", dest / "scripts" / "tests" / "test_ban_predicates.py")
     for rel in (".github/workflows/security.yml", ".github/codeql-config.yml"):   # the CodeQL tests plan against the real workflow and config
+        (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / rel, dest / rel)
+    for rel in ("apps/organism/organism/organs_registry.yaml",):   # test_merger.py reads it
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, dest / rel)
     for rel in ("scripts/ops/pro_disk_floor_tick.sh", "infra/launchagents/com.nuzantara.disk-floor.plist", "infra/home-fork/declared-pairs.json"):

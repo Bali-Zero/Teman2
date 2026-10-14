@@ -822,7 +822,7 @@ def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path,
 ENQUEUE_BASE = "main"
 _LOGIN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}")
 PR_QUERY = ("query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) {"
-            " id state title isDraft isCrossRepository baseRefName headRefOid body isInMergeQueue mergeQueueEntry { id position state }"
+            " id number state title isDraft isCrossRepository baseRefName headRefOid body isInMergeQueue mergeQueueEntry { id position state }"
             " labels(first: 100) { nodes { name } } timelineItems(itemTypes: [LABELED_EVENT, UNLABELED_EVENT], last: 100) { nodes {"
             " __typename ... on LabeledEvent { createdAt label { name } actor { __typename login } } ... on UnlabeledEvent { label { name } } } } } } }")
 
@@ -867,10 +867,10 @@ def label_arm(repo: str, p: dict) -> tuple[str | None, str | None]:
     role = perm.get("role_name") if isinstance(perm, dict) else None
     if role not in ARM_ROLES:
         return f"{ARM_LABEL} applied by {login}, whose role is {role!r}, not admin or maintain", login
-    return label_postdates_head(repo, p.get("headRefOid"), labelled_at), login
+    return label_postdates_head(repo, p.get("headRefOid"), labelled_at, p.get("number")), login
 
 
-def label_postdates_head(repo: str, head, labelled_at) -> str | None:
+def label_postdates_head(repo: str, head, labelled_at, number=None) -> str | None:
     """B2a: the label approves the head only if GitHub stamped it no earlier than it stamped the head's first check suite (the push
     receipt, server time): a push after the label is a head nobody approved. Commit dates are the client's and never read."""
     if not (is_sha(head) and is_ts(labelled_at)):
@@ -884,7 +884,8 @@ def label_postdates_head(repo: str, head, labelled_at) -> str | None:
     except Exception as exc:  # noqa: BLE001 — the push receipt that cannot be read cannot be compared: the label does not count
         return f"check suites of {str(head)[:12]} unreadable ({type(exc).__name__}): the label cannot be shown to postdate the head"
     if _epoch(labelled_at) < min(_epoch(x) for x in stamps):
-        return f"{ARM_LABEL} predates the head {str(head)[:12]} (labelled {labelled_at}, pushed {min(stamps)}): a push after the label needs a re-label"
+        return (f"{ARM_LABEL} predates the head {str(head)[:12]} (labelled {labelled_at}, pushed {min(stamps)}): "
+                f"label predates head {str(head)[:12]}: re-run scripts/signal_merge_intent.sh {number or '<PR>'}")
     return None
 
 

@@ -745,7 +745,7 @@ def test_a_label_applied_after_the_push_arms(lab, suite, labelled_at):
 def test_a_push_after_the_label_is_refused_and_the_reason_says_to_re_label(lab):
     lab.suite_at = "2026-10-10T00:00:01Z"
     why, login = mg.label_arm(REPO, _arm_pull("2026-10-10T00:00:00Z"))
-    assert "predates the head" in why and "re-label" in why and login == "boss"
+    assert "predates the head" in why and "re-run scripts/signal_merge_intent.sh <PR>" in why and login == "boss"
 
 
 def test_the_time_of_the_last_label_event_counts_not_the_first(lab):
