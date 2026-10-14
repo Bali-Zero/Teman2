@@ -380,3 +380,39 @@ def test_an_alarm_during_decide_is_still_its_error_decision(fw, monkeypatch):
     monkeypatch.setattr(mg, "hosted_summary", lambda *a, **k: os.kill(os.getpid(), signal.SIGALRM))
     assert fw.tick() == 1
     assert [r["overall"] for r in fw.live() if r["kind"] == "decision"] == ["ERROR"]
+
+
+def test_the_retry_alone_raises_when_an_alarm_was_swallowed_inside_it(fw, monkeypatch):
+    import os
+    import signal
+    state = decided_while_hosted_pends(fw, monkeypatch)
+    state["green"] = True
+    real, fired = mg.label_arm, []
+
+    def label_arm(repo, p):
+        if not fired:
+            fired.append(1)
+            os.kill(os.getpid(), signal.SIGALRM)
+        return real(repo, p)
+    monkeypatch.setattr(mg, "label_arm", label_arm)
+    old = signal.signal(signal.SIGALRM, mg._raise(mg.TickTimeout, "tick exceeded"))
+    try:
+        with pytest.raises(mg.TickTimeout):
+            retry(fw)
+    finally:
+        signal.signal(signal.SIGALRM, old)
+
+
+def test_an_alarm_swallowed_inside_replay_selection_ends_the_tick_before_any_decision(fw, monkeypatch):
+    import os
+    import signal
+
+    def swallowing(*a, **k):
+        try:
+            os.kill(os.getpid(), signal.SIGALRM)
+        except Exception:  # noqa: BLE001 — replay_pending's own broad except
+            pass
+    monkeypatch.setattr(mg, "replay_pending", swallowing)
+    monkeypatch.setattr(mg, "decide", lambda *a, **k: pytest.fail("decided after the watchdog fired"))
+    assert fw.tick() == 1
+    assert "watchdog" in [r for r in fw.live() if r["kind"] == "error"][-1]["error"]
