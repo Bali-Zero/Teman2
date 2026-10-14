@@ -8,11 +8,11 @@
 
 The consumer is the public Visa Oracle result page. The observation runs the
 engine-adapter, OutcomeSheet, client-copy and E33E/E33F pack-scan test files
-from `apps/mouth` and requires every test in them to pass, and each PR-10 test title to be reported as
-run: a retirement result with E33F but not E33E carries a candidate-scoped note on
-the E33F card (never in the global conditions) saying what the 5-year E33E would
-also need, in English and Bahasa Indonesia, and no note appears when E33E is also
-a candidate, when E33F is absent, or on dead ends. It also runs the pack-scan
+from `apps/mouth` and requires every test in them to pass, and each PR-10 test
+title to be reported as run: a retirement result with E33F but not E33E carries a
+candidate-scoped note on the E33F card (never in the global conditions) saying
+what the 5-year E33E would also need, in English and Bahasa Indonesia, and no
+note appears when E33E is also a candidate, when E33F is absent, or on dead ends. It also runs the pack-scan
 guard pinning that the newest signed pack separates E33E from E33F only by the
 deposit trio on retirement eligibility and matches the note's threshold and
 conditions.
@@ -38,7 +38,7 @@ TEST_FILES = (
     f"{BASE}/_lib/e33e-e33f-pack-scan.test.ts",
 )
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
-MIN_TESTS = 380
+MIN_TESTS = 389
 # Titles that prove this change; each must be reported as run, so deleting one
 # cannot hide behind the file total staying above MIN_TESTS.
 REQUIRED_TESTS = (
@@ -60,9 +60,18 @@ REQUIRED_TESTS = (
     "no rule targets both E33E and E33F",
     "the note's EN and ID figures equal the pack's deposit threshold",
     "the note names the state-owned bank and the own-name condition in EN and ID",
+    "a harmless new identical twin pair does not fail the scan",
     "guilt: a changed deposit threshold fails the scan",
     "guilt: removing the deposit clause from el.e33e.retirement fails the scan",
+    "guilt: appending an age cap to el.e33e.retirement fails the scan",
+    "guilt: appending a second deposit leaf to el.e33e.retirement fails the scan",
+    "guilt: appending a contradictory state-bank leaf to el.e33e.retirement fails the scan",
     "guilt: a new E33E-only EXCLUDE rule fails the scan",
+    "guilt: a new E33F-only SUPPORT rule fails the scan",
+    "guilt: adding or removing a global rule fails the scan",
+    "guilt: a twin whose on_unknown differs fails the scan",
+    "guilt: el.e33e.retirement no longer covering RETIREMENT fails the scan",
+    "guilt: el.e33e.retirement with a closed validity period fails the scan",
     "guilt: turning the disputed-band rule into an EXCLUDE fails the scan",
     "guilt: a rule that targets both products fails the scan",
 )
