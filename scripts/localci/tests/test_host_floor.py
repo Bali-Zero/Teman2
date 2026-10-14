@@ -176,18 +176,59 @@ def test_after_evict_cap_evictions_the_key_is_skipped_and_journalled_once_until_
     world.gh.prs = [pr(1, world.head1)]
     recs = [eviction(1, world.head1, world.base, f"2026-10-11T10:0{i}:00Z") for i in range(mg.EVICT_CAP)]
     capped: list = []
-    todo, _ = mg.triage(world.gh.prs, REPO, recs[:-1], world.base, evict_capped=capped)
+    now = mg._epoch("2026-10-11T11:00:00Z")
+    todo, _ = mg.triage(world.gh.prs, REPO, recs[:-1], world.base, evict_capped=capped, now_s=now)
     assert [p["number"] for p in todo] == [1] and capped == []   # one short of the cap: still tried
-    todo, _ = mg.triage(world.gh.prs, REPO, recs, world.base, evict_capped=capped)
+    todo, _ = mg.triage(world.gh.prs, REPO, recs, world.base, evict_capped=capped, now_s=now)
     assert todo == [] and [p["number"] for p in capped] == [1]
-    todo, _ = mg.triage(world.gh.prs, REPO, recs, "f" * 40, evict_capped=[])
+    todo, _ = mg.triage(world.gh.prs, REPO, recs, "f" * 40, evict_capped=[], now_s=now)
     assert [p["number"] for p in todo] == [1]   # the base moved: a fresh key
     world.state.mkdir(parents=True, exist_ok=True)
     for line in recs:
-        mg.journal(world.state, line)
+        mg.journal(world.state, {**line, "ts": mg.now()})
     assert world.tick() == 0 and world.tick() == 0
     skips = [r for r in world.journal() if r["kind"] == "skipped" and r["why"] == "evicted_cap"]
     assert len(skips) == 1 and skips[0]["pr"] == 1 and not [r for r in world.journal() if r["kind"] == "decision"]
+
+
+def window_world(world, stamps, now="2026-10-12T12:00:00Z"):
+    world.gh.prs = [pr(1, world.head1)]
+    recs = [eviction(1, world.head1, world.base, t) for t in stamps]
+    capped: list = []
+    todo, _ = mg.triage(world.gh.prs, REPO, recs, world.base, evict_capped=capped, now_s=mg._epoch(now))
+    return [p["number"] for p in todo], [p["number"] for p in capped]
+
+
+OLD = "2026-10-10T10:00:00Z"
+NEW = "2026-10-12T11:00:00Z"
+
+
+def test_three_evictions_older_than_the_window_do_not_cap_the_key(world):   # noqa: F811
+    assert window_world(world, [OLD] * 3) == ([1], [])
+
+
+def test_three_evictions_inside_the_window_cap_the_key(world):   # noqa: F811
+    assert window_world(world, [NEW] * 3) == ([], [1])
+
+
+def test_two_old_and_one_recent_eviction_do_not_cap_the_key(world):   # noqa: F811
+    assert window_world(world, [OLD, OLD, NEW]) == ([1], [])
+
+
+def test_an_eviction_with_an_unreadable_ts_counts_toward_the_cap(world):   # noqa: F811
+    assert window_world(world, [OLD, "garbage", None]) == ([1], [])   # one counted: not capped
+    assert window_world(world, ["garbage", None, "x"]) == ([], [1])
+
+
+def test_the_window_edge_is_inside(world):   # noqa: F811
+    assert window_world(world, ["2026-10-12T06:00:00Z"] * 3) == ([], [1])   # exactly EVICT_WINDOW_S old
+    assert window_world(world, ["2026-10-12T05:59:59Z"] * 3) == ([1], [])
+
+
+def test_an_old_eviction_still_orders_the_head_behind_the_others(world):   # noqa: F811
+    prs = [pr(1, world.head1, created="2026-01-01"), pr(3, "3" * 40, created="2026-10-01")]
+    todo, _ = mg.triage(prs, REPO, [eviction(1, world.head1, world.base, OLD)], world.base, now_s=mg._epoch("2026-10-12T12:00:00Z"))
+    assert [p["number"] for p in todo] == [3, 1]
 
 
 def test_the_floor_print_names_both_floors(world, capsys):   # noqa: F811

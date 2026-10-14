@@ -59,6 +59,8 @@ _The agreed skip._ A required context the trusted change_map does not select is 
 
 **Phase B, step B6: the gate keeps its host above the floor — retention is part of every tick** (RULED 2026-10-08 under Zero's directive: Pro keeps > 100 GB free, always; Zero lowered the floor to 90 GB on 2026-10-11, which `pro.disk_floor` and the merger's host floor B15 follow).
 
+**B15, eviction cap window.** An eviction counts toward `EVICT_CAP` only within `EVICT_WINDOW_S` (6 h) of the tick. An older eviction is history for ORDER, never a cap: the host that could not afford a run then may afford it now.
+
 _Measured._ Pro's data volume fell 82 → 46 → 13 GiB free in 48 h with the merger running. The writer is the gate itself: five `localci-deps:<digest>` images in 24 h (1.4–11.9 GB each — a new backend image per lockfile change, a new E2E image per recipe change), 34 GB in the VM; and, on the host, Pysa receipts of ~630 MB per run that executes the taint judge (`receipts/pysa/{base,candidate}/results/*.json`), plus closed executor and gate directories nothing prunes because the janitor protects `~/.nuzantara-pilots` wholesale. The `LOCALCI_MIN_FREE_GB` floor (B3) refuses a leg under 12 GB; it reclaims nothing.
 
 _The rule._ Every tick ends with a prune the merger owns and journals (`kind: prune`, what was removed, GB before/after, the rule that allowed each removal):

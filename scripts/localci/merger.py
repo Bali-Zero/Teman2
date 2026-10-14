@@ -291,7 +291,7 @@ def gate_ready(repo: str, head: str, names: list) -> bool:
 
 
 def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_ready=None, capped: list | None = None,
-           evict_capped: list | None = None) -> tuple[list[dict], list[dict]]:
+           evict_capped: list | None = None, now_s: float | None = None) -> tuple[list[dict], list[dict]]:
     """(same-repo PRs to decide, in order; fork PRs to journal). Drafts and PRs that ask for no merge are not the merger's.
 
     Order: a head never decided at any base first, then the head whose last decision is oldest, then created_at —
@@ -304,7 +304,9 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
 
     B15: an ``evicted`` record is an attempt for ORDER (it goes into ``last`` with its ts, so the head rotates behind the others) and
     never a decision (the key is still undecided). After EVICT_CAP evictions of one (pr, head, base) the key is appended to
-    ``evict_capped`` and skipped until the base or the head moves."""
+    ``evict_capped`` and skipped until the base or the head moves. An eviction counts toward the cap only within EVICT_WINDOW_S of
+    ``now_s``: an older one is history for ORDER, never a cap, and an unreadable ts counts (it fails closed toward the cap)."""
+    now = time.time() if now_s is None else now_s
     decided = {(r.get("pr"), r.get("head_sha"), r.get("base_sha")) for r in recs if (r.get("kind") == "decision" and not r.get("replay"))
                or r.get("why") == "head_in_base"}
     refused = {(r.get("pr"), r.get("head_sha")) for r in recs if r.get("kind") == "refused"}
@@ -322,7 +324,9 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
         if (r.get("kind") == "decision" and not r.get("replay")) or r.get("kind") == "evicted":
             last[(r.get("pr"), r.get("head_sha"))] = max(last.get((r.get("pr"), r.get("head_sha")), ""), str(r.get("ts")))
         if r.get("kind") == "evicted":
-            evictions[(r.get("pr"), r.get("head_sha"), r.get("base_sha"))] += 1
+            ts = r.get("ts")
+            if not is_ts(ts) or now - _epoch(ts) <= EVICT_WINDOW_S:
+                evictions[(r.get("pr"), r.get("head_sha"), r.get("base_sha"))] += 1
     todo, forks = [], []
     for pr in prs:
         n, head = pr.get("number"), head_of(pr)
@@ -391,6 +395,7 @@ HOST_FLOOR_GB = 90.0     # Zero, 2026-10-11, lowered from 100
 START_MARGIN_GB = 10.0     # the start floor is 100
 EVICT_MARGIN_GB = 1.5
 EVICT_CAP = 3               # evictions of one (pr, head, base) before it is skipped: a head the host cannot afford does not starve the queue
+EVICT_WINDOW_S = 6 * 3600   # an eviction older than this is history for ORDER, never a cap: the host that could not afford a run then may afford it now
 EVICT_SAMPLE_S = 5
 EVICT_KILL_GRACE_S = 10
 EVICT_BLIND_SAMPLES = 3      # a statvfs that fails this many times in a row counts as below the floor: an unmeasured disk keeps no filling
