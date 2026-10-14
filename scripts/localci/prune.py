@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import calendar
 import fcntl
+import gzip
 import importlib.util
 import json
 import math
@@ -32,7 +33,6 @@ VM_MIN_FREE_GB = 15.0       # B8: under it after the cap every deps image but th
                             # plan references first, ties oldest, the newest included (env LOCALCI_VM_MIN_FREE_GB)
 BUILDER_CACHE_GB = 4        # B8: the build cache is kept to this budget (env LOCALCI_BUILDER_CACHE_GB), not by age
 FULL_DAYS, VERDICT_DAYS = 7, 30
-BULK_KEEP_H = 24   # B26: the Pysa call graphs of a FINISHED run (one with a status.json) go after this, not after FULL_DAYS
 RECIPE_LABEL = "org.nuzantara.localci.recipe"
 TAG_RE = re.compile(r"localci-deps:[0-9a-f]{16}\b")
 ID_RE = re.compile(r"sha256:[0-9a-f]{64}")
@@ -40,6 +40,8 @@ RUN_TS_RE = re.compile(r"-(\d{8}T\d{6}Z)$")
 BULK = ("call-graph.json", "higher-order-call-graph.json")   # Pysa's, 77-114 MB each (Pro, 2026-10-08); taint-output.json is the verdict
 TREE_PACK = ("tree.pack", "tree.pack.part", "tree.pack.json")   # B14's ~845 MB pack: the run's `finally` removes it, a SIGKILL or reboot does not
 TREE_PACK_STALE_H = 24   # a live run can last hours; a pack older than a day belongs to a run that is gone
+BULK_KEEP_H = TREE_PACK_STALE_H   # B26 U1': the same criterion for the Pysa call graphs, finished run or not (no status.json is asked)
+COMPRESS = ("taint-output.json", "dependency-graph.json")   # B26 U5: kept, gzipped in place after TREE_PACK_STALE_H
 VERDICT = ("status.json", "hosted_compare.json", "state/plan.json")
 HOST_PATH = "/System/Volumes/Data" if os.path.isdir("/System/Volumes/Data") else "/"
 CANDIDATE_IMAGE = "localci-candidate:1"
@@ -317,11 +319,73 @@ def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, 
              "live": im["tag"] in in_progress or im["id"] in in_progress} for im in images]
 
 
+class _Count:
+    """A write-only sink that counts: a dry run measures the gzip without writing it."""
+
+    def __init__(self):
+        self.n = 0
+
+    def write(self, b):
+        self.n += len(b)
+        return len(b)
+
+    def flush(self):
+        pass
+
+
+def compress_receipts(run: Path, skip: set, dry: bool) -> tuple[int, bool]:
+    """B26 U5: gzip COMPRESS under `receipts/pysa/*/results/` in place, atomically (`.gz.part`, fsync, rename, then the original goes).
+    Returns (bytes freed, whether a receipt was compressed). A `.gz.part` is never valid: it is removed. A file with its `.gz` beside it
+    only loses its original; no symlink is followed (a linked directory is not entered, a linked file is not read); `skip` is what the
+    trim already doomed. An OSError on one file leaves that file whole."""
+    freed, hit = 0, False
+    base = run / "receipts" / "pysa"
+    if run.is_symlink() or (run / "receipts").is_symlink() or base.is_symlink() or not base.is_dir():
+        return 0, False
+    for side in sorted(base.iterdir()):
+        res = side / "results"
+        if side.is_symlink() or res.is_symlink() or not res.is_dir():
+            continue
+        for stale in sorted(res.glob("*.gz.part")):
+            freed += stale.lstat().st_size
+            if not dry:
+                stale.unlink()
+        for name in COMPRESS:
+            src, gz, part = res / name, res / f"{name}.gz", res / f"{name}.gz.part"
+            if src in skip or src.is_symlink() or not src.is_file() or gz.is_symlink():
+                continue
+            try:
+                before = src.lstat().st_size
+                if gz.is_file():   # a rename that landed and an unlink that did not: the .gz is whole by construction
+                    after = 0
+                elif dry:
+                    sink = _Count()
+                    with open(src, "rb") as fi, gzip.GzipFile(filename=name, fileobj=sink, mode="wb", mtime=0, compresslevel=3) as g:
+                        shutil.copyfileobj(fi, g, 1 << 20)
+                    after = sink.n
+                else:
+                    with open(src, "rb") as fi, open(part, "wb") as fo:
+                        with gzip.GzipFile(filename=name, fileobj=fo, mode="wb", mtime=0, compresslevel=3) as g:
+                            shutil.copyfileobj(fi, g, 1 << 20)
+                        fo.flush()
+                        os.fsync(fo.fileno())
+                    os.replace(part, gz)
+                    after = gz.lstat().st_size
+                if not dry:
+                    src.unlink()
+                freed += before - after
+                hit = True
+            except OSError:
+                continue
+    return freed, hit
+
+
 def trim_runs(runs: Path, now_s: float, dry: bool) -> dict:
     """7 days full; then `logs/` and the Pysa call graphs go; after 30 days only VERDICT stays. A run older than TREE_PACK_STALE_H
-    loses a tree pack its `finally` never removed, whatever its age. B26: a FINISHED run (it has a status.json) loses the Pysa call
-    graphs from BULK_KEEP_H on, listed as `trimmed_bulk`; the verdict and the rest keep their retention. Symlinks are removed as links."""
-    out = {"trimmed_7d": [], "trimmed_30d": [], "trimmed_pack": [], "trimmed_bulk": [], "freed_gb": 0.0}
+    loses a tree pack its `finally` never removed, whatever its age. B26: from BULK_KEEP_H on a run loses the Pysa call graphs
+    (`trimmed_bulk`) and has COMPRESS gzipped in place (`compressed`); the verdict and the rest keep their retention. Symlinks are
+    removed as links."""
+    out = {"trimmed_7d": [], "trimmed_30d": [], "trimmed_pack": [], "trimmed_bulk": [], "compressed": [], "freed_gb": 0.0}
     if runs.is_symlink():   # the prune never leaves the merger's state dir: a linked runs/ is someone else's tree
         return {**out, "refused": f"{runs} is a symlink"}
     freed = 0
@@ -330,8 +394,7 @@ def trim_runs(runs: Path, now_s: float, dry: bool) -> dict:
         if age_h is None or age_h < TREE_PACK_STALE_H:
             continue
         full = age_h < FULL_DAYS * 24
-        status = run / "status.json"
-        bulk_now = age_h >= BULK_KEEP_H and status.is_file() and not status.is_symlink()
+        bulk_now = age_h >= BULK_KEEP_H
         doomed, pack_hit, bulk_hit = [], False, False
         for root, dirs, files in os.walk(run):
             rel_root = Path(root).relative_to(run)
@@ -342,23 +405,26 @@ def trim_runs(runs: Path, now_s: float, dry: bool) -> dict:
                 pack_hit, bulk_hit = pack_hit or pack, bulk_hit or bulk
                 if pack or bulk or (not full and ((age_h >= VERDICT_DAYS * 24 and rel not in VERDICT) or (age_h < VERDICT_DAYS * 24 and (rel == "logs" or rel.startswith("logs/") or f in BULK)))):
                     doomed.append(Path(root) / f)
-        if not doomed:
-            continue
-        for p in doomed:
-            freed += p.lstat().st_size
-            if not dry:
-                p.unlink()
-        if not dry and not full:   # a young run keeps its layout: only the pack goes
-            for root, dirs, _ in sorted(os.walk(run, topdown=False), key=lambda w: -len(w[0])):
-                if root != str(run) and not os.listdir(root):
-                    os.rmdir(root)
-        if full:
-            if pack_hit:
-                out["trimmed_pack"].append(run.name)
-            if bulk_hit:
-                out["trimmed_bulk"].append(run.name)
-        else:
-            out["trimmed_30d" if age_h >= VERDICT_DAYS * 24 else "trimmed_7d"].append(run.name)
+        if doomed:
+            for p in doomed:
+                freed += p.lstat().st_size
+                if not dry:
+                    p.unlink()
+            if not dry and not full:   # a young run keeps its layout: only the pack goes
+                for root, dirs, _ in sorted(os.walk(run, topdown=False), key=lambda w: -len(w[0])):
+                    if root != str(run) and not os.listdir(root):
+                        os.rmdir(root)
+            if full:
+                if pack_hit:
+                    out["trimmed_pack"].append(run.name)
+                if bulk_hit:
+                    out["trimmed_bulk"].append(run.name)
+            else:
+                out["trimmed_30d" if age_h >= VERDICT_DAYS * 24 else "trimmed_7d"].append(run.name)
+        saved, hit = compress_receipts(run, set(doomed), dry)
+        freed += saved
+        if hit:
+            out["compressed"].append(run.name)
     out["freed_gb"] = round(freed / 1e9, 2)
     return out
 

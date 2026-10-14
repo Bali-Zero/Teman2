@@ -1036,12 +1036,18 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "pi-missing-311-silent": (RUNNER, '        if py == "python":\n            notes.append(', '        if False:\n            notes.append(', ("scripts/localci/tests/test_pytest_indexed.py",)),
     "pi-history-dropped": (RUNNER, '"history": hist, "argv": argv', '"history": None, "argv": argv', ("scripts/localci/tests/test_pytest_indexed.py",)),
     # B26: the bulk receipts of a finished run go after 24 hours
-    "bulk-status-not-required": (PRUNE, 'bulk_now = age_h >= BULK_KEEP_H and status.is_file() and not status.is_symlink()', "bulk_now = age_h >= BULK_KEEP_H", B26_T),
-    "bulk-24h-ignored": (PRUNE, "bulk_now = age_h >= BULK_KEEP_H and", "bulk_now = age_h >= FULL_DAYS * 24 and", B26_T),
+    "bulk-status-required-again": (PRUNE, "bulk_now = age_h >= BULK_KEEP_H\n", 'bulk_now = age_h >= BULK_KEEP_H and (run / "status.json").is_file()\n', B26_T),
+    "bulk-24h-ignored": (PRUNE, "bulk_now = age_h >= BULK_KEEP_H\n", "bulk_now = age_h >= FULL_DAYS * 24\n", B26_T),
+    "gzip-original-unlinked-before-the-rename": (PRUNE, "                    os.replace(part, gz)\n                    after = gz.lstat().st_size\n                if not dry:\n                    src.unlink()\n",
+                                                 "                    src.unlink()\n                    os.replace(part, gz)\n                    after = gz.lstat().st_size\n", B26_T),
+    "gzip-file-symlink-followed": (PRUNE, "if src in skip or src.is_symlink() or not src.is_file() or gz.is_symlink():", "if src in skip or not src.is_file() or gz.is_symlink():", B26_T),
+    "gzip-dir-symlink-followed": (PRUNE, "if side.is_symlink() or res.is_symlink() or not res.is_dir():", "if not res.is_dir():", B26_T),
+    "taint-output-deleted-not-compressed": (PRUNE, "                    os.replace(part, gz)\n                    after = gz.lstat().st_size\n", "                    part.unlink()\n                    after = 0\n", B26_T),
+    "gzip-stray-part-kept": (PRUNE, "            if not dry:\n                stale.unlink()\n", "            if False:\n                stale.unlink()\n", B26_T),
+    "gzip-ignores-existing-gz": (PRUNE, "                if gz.is_file():", "                if False:", B26_T),
     "bulk-includes-the-verdict": (PRUNE, "bulk = full and bulk_now and f in BULK", 'bulk = full and bulk_now and (f in BULK or f == "taint-output.json")', B26_T),
-    "bulk-status-link-accepted": (PRUNE, "and status.is_file() and not status.is_symlink()", "and status.exists()", B26_T),
     "bulk-symlink-followed": (PRUNE, "for root, dirs, files in os.walk(run):", "for root, dirs, files in os.walk(run, followlinks=True):", B26_T),
-    "bulk-not-listed": (PRUNE, '            if bulk_hit:\n                out["trimmed_bulk"].append(run.name)\n', "            if False:\n                out[\"trimmed_bulk\"].append(run.name)\n", B26_T),
+    "bulk-not-listed": (PRUNE, '                if bulk_hit:\n                    out["trimmed_bulk"].append(run.name)\n', '                if False:\n                    out["trimmed_bulk"].append(run.name)\n', B26_T),
 }
 
 

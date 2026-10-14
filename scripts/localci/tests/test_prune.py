@@ -283,10 +283,14 @@ RUN_FILES = ("status.json", "hosted_compare.json", "merger.log", "state/plan.jso
              "receipts/ctx.a.junit.xml", "receipts/ctx.a.json", "logs/ctx.a.log", "logs/deps-backend-tests.log",
              "receipts/pysa/base/results/call-graph.json", "receipts/pysa/base/results/higher-order-call-graph.json",
              "receipts/pysa/base/results/taint-output.json", "receipts/pysa/candidate/results/call-graph.json")
-SEVEN_DAY_KEEPS = {f for f in RUN_FILES if not f.startswith("logs/") and not f.endswith("call-graph.json")}
+def gz(files_):   # B26 U5: a run past 24 h keeps its taint-output gzipped
+    return {f + ".gz" if f.endswith("taint-output.json") else f for f in files_}
 
 
-FINISHED_25H = {f for f in RUN_FILES if not f.endswith("call-graph.json")}   # B26: a finished run past 24 h has lost only BULK
+SEVEN_DAY_KEEPS = gz(f for f in RUN_FILES if not f.startswith("logs/") and not f.endswith("call-graph.json"))
+
+
+FINISHED_25H = gz(f for f in RUN_FILES if not f.endswith("call-graph.json"))   # B26: a run past 24 h has lost BULK and gzipped its taint-output
 
 
 def run_dir(runs: Path, age_days: float) -> Path:
@@ -1359,24 +1363,9 @@ def test_b26_a_finished_run_at_25h_loses_bulk_and_keeps_the_verdict_the_status_a
     runs = tmp_path / "runs"
     old, fresh = aged(runs, 25), aged(runs, 23)
     out = pm.trim_runs(runs, NOW, dry=False)
-    assert files(old) == FINISHED_25H and {"receipts/pysa/base/results/taint-output.json", "status.json", "state/plan.json", "logs/ctx.a.log"} <= files(old)
+    assert files(old) == FINISHED_25H and {"receipts/pysa/base/results/taint-output.json.gz", "status.json", "state/plan.json", "logs/ctx.a.log"} <= files(old)
     assert files(fresh) == set(RUN_FILES)
     assert out["trimmed_bulk"] == [old.name] and out["trimmed_pack"] == [] and out["trimmed_7d"] == [] and out["trimmed_30d"] == []
-
-
-def test_b26_a_run_without_status_json_at_three_days_keeps_bulk(tmp_path):
-    runs = tmp_path / "runs"
-    dead = aged(runs, 72, [f for f in RUN_FILES if f != "status.json"])
-    out = pm.trim_runs(runs, NOW, dry=False)
-    assert files(dead) == set(RUN_FILES) - {"status.json"} and out["trimmed_bulk"] == []
-
-
-def test_b26_a_status_json_that_is_a_link_does_not_make_a_run_finished(tmp_path):
-    runs = tmp_path / "runs"
-    run = aged(runs, 72, [f for f in RUN_FILES if f != "status.json"])
-    (tmp_path / "elsewhere.json").write_text("{}")
-    (run / "status.json").symlink_to(tmp_path / "elsewhere.json")
-    assert pm.trim_runs(runs, NOW, dry=False)["trimmed_bulk"] == [] and (run / "receipts/pysa/base/results/call-graph.json").exists()
 
 
 def test_b26_a_link_named_like_bulk_goes_as_a_link_and_its_target_stays(tmp_path):
@@ -1417,3 +1406,109 @@ def test_b26_a_linked_directory_is_never_walked_so_a_bulk_file_behind_it_stays(t
     (run / "receipts" / "linked").symlink_to(outside)
     pm.trim_runs(runs, NOW, dry=False)
     assert (outside / "call-graph.json").read_text() == "someone else's"
+
+
+def test_b26_u1_prime_a_gone_run_without_status_json_loses_bulk_at_25h_and_keeps_it_at_23h(tmp_path):
+    runs = tmp_path / "runs"
+    no_status = [f for f in RUN_FILES if f != "status.json"]
+    gone, fresh = aged(runs, 25, no_status), aged(runs, 23, no_status)
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert files(gone) == gz(set(no_status) - {f for f in no_status if f.endswith("call-graph.json")}) and files(fresh) == set(no_status)
+    assert out["trimmed_bulk"] == [gone.name]
+
+
+# ------------------------------------------------------------------ B26 U5: the kept pysa receipts are gzipped in place, atomically
+import gzip  # noqa: E402
+
+RES = "receipts/pysa/base/results"
+
+
+def gunzip(p: Path) -> bytes:
+    return gzip.decompress(p.read_bytes())
+
+
+def test_b26_u5_a_run_past_24h_has_its_taint_output_and_dependency_graph_gzipped_in_place_and_a_younger_one_does_not(tmp_path):
+    runs = tmp_path / "runs"
+    old, fresh = aged(runs, 25), aged(runs, 23)
+    for run in (old, fresh):
+        (run / RES / "dependency-graph.json").write_text("dep graph " * 1000)
+        (run / RES / "taint-output.json").write_text("taint " * 100000)
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert gunzip(old / RES / "taint-output.json.gz") == ("taint " * 100000).encode() and gunzip(old / RES / "dependency-graph.json.gz") == ("dep graph " * 1000).encode()
+    assert not (old / RES / "taint-output.json").exists() and not (old / RES / "dependency-graph.json").exists()
+    assert (fresh / RES / "taint-output.json").exists() and not (fresh / RES / "taint-output.json.gz").exists()
+    assert out["compressed"] == [old.name]
+    assert pm.trim_runs(runs, NOW, dry=False)["compressed"] == []   # not compressed twice
+
+
+def test_b26_u5_freed_gb_counts_the_difference_and_a_dry_run_writes_and_removes_nothing(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    src = run / RES / "taint-output.json"
+    src.write_text("a" * 60_000_000)
+    dry = pm.trim_runs(runs, NOW, dry=True)
+    assert dry["compressed"] == [run.name] and dry["freed_gb"] >= 0.05 and src.exists() and not (run / RES / "taint-output.json.gz").exists()
+    assert not list((run / RES).glob("*.part"))
+    real = pm.trim_runs(runs, NOW, dry=False)
+    assert real["freed_gb"] == dry["freed_gb"] and not src.exists()
+
+
+def test_b26_u5_an_already_gz_file_is_skipped_and_an_original_beside_its_gz_only_loses_the_original(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    (run / RES / "taint-output.json").unlink()
+    (run / RES / "taint-output.json.gz").write_bytes(b"already")
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert (run / RES / "taint-output.json.gz").read_bytes() == b"already" and out["compressed"] == []
+    (run / RES / "dependency-graph.json").write_text("original")
+    (run / RES / "dependency-graph.json.gz").write_bytes(b"landed")
+    pm.trim_runs(runs, NOW, dry=False)
+    assert not (run / RES / "dependency-graph.json").exists() and (run / RES / "dependency-graph.json.gz").read_bytes() == b"landed"
+
+
+def test_b26_u5_a_crash_before_the_rename_leaves_the_original_whole_and_the_next_prune_cleans_the_part_and_finishes(tmp_path, monkeypatch):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    src = run / RES / "taint-output.json"
+    src.write_text("verdict " * 1000)
+    with monkeypatch.context() as m:
+        m.setattr(pm.os, "replace", lambda *a, **k: (_ for _ in ()).throw(OSError("crash")))
+        out = pm.trim_runs(runs, NOW, dry=False)
+    assert src.read_text() == "verdict " * 1000 and not (run / RES / "taint-output.json.gz").exists() and out["compressed"] == []
+    (run / RES / "taint-output.json.gz.part").write_bytes(b"torn")
+    pm.trim_runs(runs, NOW, dry=False)
+    assert not list((run / RES).glob("*.part")) and gunzip(run / RES / "taint-output.json.gz") == ("verdict " * 1000).encode() and not src.exists()
+
+
+def test_b26_u5_a_stray_part_is_never_valid_it_is_removed_and_never_stands_for_a_gz(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    (run / RES / "dependency-graph.json.gz.part").write_bytes(b"torn")
+    pm.trim_runs(runs, NOW, dry=False)
+    assert not (run / RES / "dependency-graph.json.gz.part").exists() and not (run / RES / "dependency-graph.json.gz").exists()
+
+
+def test_b26_u5_symlinks_are_not_followed_neither_a_linked_file_nor_a_linked_directory(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    outside = tmp_path / "outside"
+    (outside / "results").mkdir(parents=True)
+    (outside / "results" / "taint-output.json").write_text("not ours")
+    (run / "receipts/pysa/linked").symlink_to(outside)
+    elsewhere = tmp_path / "elsewhere.json"
+    elsewhere.write_text("target")
+    (run / RES / "dependency-graph.json").symlink_to(elsewhere)
+    pm.trim_runs(runs, NOW, dry=False)
+    assert (outside / "results" / "taint-output.json").read_text() == "not ours" and not list(outside.rglob("*.gz"))
+    assert elsewhere.read_text() == "target" and (run / RES / "dependency-graph.json").is_symlink() and not (run / RES / "dependency-graph.json.gz").exists()
+
+
+def test_b26_u5_the_thirty_day_rule_is_unchanged_a_gz_goes_like_the_original_did(tmp_path):
+    runs = tmp_path / "runs"
+    month = aged(runs, 30.5 * 24)
+    (month / RES / "taint-output.json.gz").write_bytes(b"x")
+    pm.trim_runs(runs, NOW, dry=False)
+    assert files(month) == {"status.json", "hosted_compare.json", "state/plan.json"}
+    week = aged(runs, 9 * 24 + 1)
+    pm.trim_runs(runs, NOW, dry=False)
+    assert (week / RES / "taint-output.json.gz").exists() and gunzip(week / RES / "taint-output.json.gz") == b"receipts/pysa/base/results/taint-output.json"
