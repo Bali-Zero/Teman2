@@ -79,40 +79,40 @@ decisions:
       The lint on CI runs from the BASE checkout, so this PR cannot use the new seat for itself; the first
       PR that can is PR-8.
 dissent:
-  - seat: codex-gpt-5.6-sol (read-only red team, rollout 2026-10-14T05-42-48, model verified in the rollout file)
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout-2026-10-14T11-27-41-01a13873, model verified in the rollout file)
     objection: >-
       HIGH - the trust-allowlist change was auto-demoted to Gear 1 (brief gear: 1) although it changes which
       reviewers count toward the Gear-3 quorum in a hot zone; receipts were all produced by this session.
     status: RETRACTED
     disposition: >-
-      Cured in the follow-up commit - brief and pack declare gear 3, a council journal carries a second
+      Cured in the follow-up commit (b2e175f3b8) - brief and pack declare gear 3, a council journal carries a second
       cross-family seat (agy-gemini-4-argon-high, SIGN), and the bootstrap exception is written out as
       seat_override instead of lowering the gear. The fresh Opus 5.5 xhigh gate on the final SHA is the
       orchestrator's step and is NOT recorded here as done.
-  - seat: codex-gpt-5.6-sol (same review)
+  - seat: codex-gpt-5.6-sol (same review, rollout-2026-10-14T11-27-41-01a13873)
     objection: >-
       MEDIUM - the observer printed "council reserve seat holds" but only ran the local allowlist tests, so it
       could be green while the seat answers 403.
     status: RETRACTED
     disposition: >-
-      Cured - the observation now says "allowlist semantics hold", and a separate receipt records a real agy
+      Cured (b2e175f3b8) - the observation now says "allowlist semantics hold", and a separate receipt records a real agy
       dispatch to gemini-4-argon-high answering PONG (exit 0).
-  - seat: codex-gpt-5.6-sol (same review)
+  - seat: codex-gpt-5.6-sol (same review, rollout-2026-10-14T11-27-41-01a13873)
     objection: >-
       MEDIUM - the fuzzy -k selector with a >= 3 count could pass without the two mandatory Gemini tests.
     status: RETRACTED
     disposition: >-
-      Cured - the observer passes two explicit pytest node-ids and requires exactly 2 passed; a unit test pins
+      Cured (b2e175f3b8) - the observer passes two explicit pytest node-ids and requires exactly 2 passed; a unit test pins
       the node-ids and a reduced run fails closed.
-  - seat: codex-gpt-5.6-sol (same review)
+  - seat: codex-gpt-5.6-sol (same review, rollout-2026-10-14T11-27-41-01a13873)
     objection: >-
       MEDIUM - MODEL_ROSTER.md still listed gemini-3.1-pro-high as the seat and claimed a -low variant.
     status: RETRACTED
     disposition: >-
-      Cured - the row is gemini-4-argon-high, names the three variants agy lists, and marks capabilities
+      Cured (b2e175f3b8) - the row is gemini-4-argon-high, names the three variants agy lists, and marks capabilities
       unmeasured instead of carrying over Gemini 3.1 Pro claims.
-  - seat: codex-gpt-5.6-sol (same review)
+  - seat: codex-gpt-5.6-sol (same review, rollout-2026-10-14T11-27-41-01a13873)
     objection: LOW - test_observer_takes_no_arguments_marker only checked that a comment is present.
     status: RETRACTED
     disposition: >-
-      Cured - replaced by a test that sets hostile argv and asserts main() builds the pytest command without it.
+      Cured (b2e175f3b8) - replaced by a test that sets hostile argv and asserts main() builds the pytest command without it.

@@ -169,7 +169,7 @@ none is quorum-eligible pending a separate owner promotion.
 > beside a titolare — must be explained via a non-empty `seat_fallback_reason`; second limb of
 > `check_council_run_gear3` in `scripts/evidence_pack_lint.py`). `deepseek-v4-pro` and
 > `glm-5.2` therefore flip to `quorum: YES` above alongside `qwen3.8-max`; the `codex`/`kimi`/
-> `gemini-3.1-pro` rows above carry the matching titolare/reserve marker rather than a `quorum:`
+> `gemini-4-argon-high` row above carries the matching titolare/reserve marker rather than a `quorum:`
 > cell, because they sit outside this TP1 table and `test_roster_quorum_column_matches_the_lint`
 > only cross-checks `tp1-`-prefixed seats against `COUNCIL_REVIEW_SEATS` — a literal `quorum:`
 > reading on a non-TP1 row would trip that parser against a set it was never meant to check.
