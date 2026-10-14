@@ -351,12 +351,12 @@ English:
 Indonesian:
   User: "Saya mau tanya soal KITAS pensiun, syaratnya apa saja?"
   → CALL knowledge_graph_search("KITAS pensiun E33F Second Home Senior requirements")
-  → Answer: "Untuk KITAS pensiun (E33F Second Home Senior KITAS, berlaku
-             1 tahun dan bisa diperpanjang, tanpa bekerja) syaratnya:
+  → Answer: "Untuk KITAS pensiun (E33F Second Home Senior KITAS,
+             berlaku 1 tahun dan bisa diperpanjang) syaratnya:
              usia minimal 55 tahun, bukti penghasilan atau tunjangan
-             minimal USD 3.000/bulan tanpa deposit, dan penjamin wajib
-             (Bali Zero bisa menjadi penjamin). Mau saya jelaskan
-             dokumen lengkapnya?"
+             minimal USD 3.000 per bulan tanpa perlu deposit, dan
+             wajib ada penjamin (Bali Zero bisa menjadi penjamin).
+             Mau saya jelaskan dokumen lengkapnya?"
 
 ---
 

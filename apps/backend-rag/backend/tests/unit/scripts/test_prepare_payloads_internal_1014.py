@@ -18,6 +18,7 @@ import importlib.util
 import json
 import os
 import sys
+import unittest.mock
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,7 @@ BACKEND_RAG_ROOT = Path(__file__).resolve().parents[4]
 SCRIPT_PATH = BACKEND_RAG_ROOT / "scripts" / "prepare_payloads.py"
 CATALOG_PATH = BACKEND_RAG_ROOT / "backend" / "data" / "bali_zero_official_prices_2026.json"
 
+_ENV_BEFORE_IMPORT: dict[str, str] = dict(os.environ)
 _had_openai_key = "OPENAI_API_KEY" in os.environ
 if not _had_openai_key:
     os.environ["OPENAI_API_KEY"] = "test-placeholder-key-not-called"
@@ -36,10 +38,12 @@ try:
     assert _SPEC and _SPEC.loader
     prepare_mod = importlib.util.module_from_spec(_SPEC)
     sys.modules[_SPEC.name] = prepare_mod
-    _SPEC.loader.exec_module(prepare_mod)
+    with unittest.mock.patch("dotenv.load_dotenv", return_value=False):
+        _SPEC.loader.exec_module(prepare_mod)
 finally:
     if not _had_openai_key:
         os.environ.pop("OPENAI_API_KEY", None)
+_ENV_AFTER_IMPORT: dict[str, str] = dict(os.environ)
 
 
 def _walk_catalog_rows(
@@ -76,6 +80,11 @@ def _walk_catalog_rows(
                 public_names.append(item_name)
 
     return public_names, internal_names
+
+
+def test_import_does_not_pollute_os_environ() -> None:
+    assert set(_ENV_AFTER_IMPORT) == set(_ENV_BEFORE_IMPORT)
+    assert _ENV_AFTER_IMPORT == _ENV_BEFORE_IMPORT
 
 
 def test_guilt_synthetic_catalog_skips_internal_rows_and_keeps_public() -> None:

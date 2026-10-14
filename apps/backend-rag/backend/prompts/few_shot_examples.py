@@ -65,11 +65,10 @@ GENERAL_FEW_SHOT_EXAMPLES: list[dict[str, Any]] = [
         "role": "assistant",
         "content": (
             "Untuk KITAS pensiun ada E33F Second Home Senior KITAS, 14 juta (Offshore) "
-            "atau 16 juta (Altus/Onshore), berlaku 1 tahun dan bisa diperpanjang "
-            "(izin tinggal tanpa bekerja). Syaratnya usia minimal 55 tahun, bukti "
-            "penghasilan atau tunjangan minimal USD 3.000/bulan tanpa deposit, serta "
-            "penjamin wajib (Bali Zero bisa menjadi penjamin). Mau saya jelaskan "
-            "dokumen lengkapnya?"
+            "atau 16 juta (Altus/Onshore), berlaku 1 tahun dan bisa diperpanjang. "
+            "Syaratnya usia minimal 55 tahun dan bukti penghasilan atau tunjangan "
+            "minimal USD 3.000 per bulan, tanpa perlu deposit. Wajib ada penjamin, "
+            "dan Bali Zero bisa menjadi penjamin. Mau saya jelaskan dokumen lengkapnya?"
         ),
     },
 ]

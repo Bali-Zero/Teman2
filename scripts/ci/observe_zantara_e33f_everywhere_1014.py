@@ -32,16 +32,18 @@ BACKEND_ROOT = REPO_ROOT / "apps" / "backend-rag"
 TIMEOUT_SECONDS = 600
 
 ROOT_TESTS = ["tests/scripts/test_sync_pricing_collection_prices_internal_1014.py"]
-ROOT_FLOOR = 5
+ROOT_FLOOR = 6
 
 BACKEND_TESTS = [
     "backend/tests/services/pricing/test_internal_rows_leave_search_1014.py",
+    "backend/tests/unit/prompts/test_few_shot_e33f_everywhere_1014.py",
+    "backend/tests/unit/scripts/test_prepare_payloads_internal_1014.py",
     "backend/tests/services/pricing/test_pricing_service.py",
     "backend/tests/routers/test_dynamic_pricing.py",
     "backend/tests/services/test_visa_oracle_service.py",
     "backend/tests/services/misc/test_zantara_tools.py",
 ]
-BACKEND_FLOOR = 95
+BACKEND_FLOOR = 108
 
 _SUMMARY = re.compile(r"^=*\s*(\d+) passed in [\d.]+s(?: \(.*\))?\s*=*$")
 

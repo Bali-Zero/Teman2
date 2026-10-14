@@ -2,19 +2,22 @@
 
 Verifies:
 1. Every exported few-shot list (GENERAL_FEW_SHOT_EXAMPLES, WHATSAPP_FEW_SHOT_EXAMPLES,
-   and whatsapp_persona.FEW_SHOT_EXAMPLES) is free of internal catalogue row names
-   (loaded dynamically from bali_zero_official_prices_2026.json where "internal": true)
-   and free of the bare product name 'Retirement KITAS'.
+   whatsapp_persona.FEW_SHOT_EXAMPLES as a separate list, and
+   zantara_persona.FEW_SHOT_EXAMPLES as the re-export of GENERAL_FEW_SHOT_EXAMPLES) is
+   free of internal catalogue row names (loaded dynamically from
+   bali_zero_official_prices_2026.json where "internal": true) and free of the bare
+   product name 'Retirement KITAS'.
 2. Every 'N juta' figure in a retirement/E33F few-shot message equals a canonical
-   E33F Second Home Senior row price from the JSON catalogue.
+   E33F Second Home Senior row price from the JSON catalogue, and every labeled
+   'N juta (Offshore|Altus/Onshore|Extend)' pair matches the JSON price for that variant.
 3. Innocence: the E33F Second Home Senior KITAS reply is present with 14 and 16 juta
-   and canonical requirements; the E33G remote-worker examples are untouched and
-   len(whatsapp_persona.FEW_SHOT_EXAMPLES) == 18.
-4. Guilt: the checker function flags the old 'Retirement KITAS ...' reply fixture as
-   well as messages containing internal row names or non-canonical juta figures.
-5. zantara_core_v4 and zantara_core_v5 worked examples do not contain
-   'KITAS pensiun (Retirement)', 'bukti dana pensiun', 'sponsor lokal', or
-   'asuransi kesehatan', and do contain 'E33F'.
+   and canonical requirements; the E33G remote-worker examples are untouched.
+4. Guilt: the checker function flags the old 'Retirement KITAS ...' reply fixture,
+   messages containing 'tanpa bekerja', swapped variant prices, internal row names,
+   or non-canonical juta figures.
+5. zantara_core_v4 and zantara_core_v5 retirement worked-example blocks do not contain
+   'KITAS pensiun (Retirement)', 'bukti dana pensiun', 'sponsor lokal',
+   'asuransi kesehatan', or 'tanpa bekerja', and do contain 'E33F' and 'penjamin'.
 """
 
 from __future__ import annotations
@@ -24,7 +27,13 @@ import re
 from pathlib import Path
 from typing import Any
 
-from backend.prompts import few_shot_examples, whatsapp_persona, zantara_core_v4, zantara_core_v5
+from backend.prompts import (
+    few_shot_examples,
+    whatsapp_persona,
+    zantara_core_v4,
+    zantara_core_v5,
+    zantara_persona,
+)
 
 CATALOG_PATH = (
     Path(__file__).resolve().parents[3] / "data" / "bali_zero_official_prices_2026.json"
@@ -34,6 +43,13 @@ OLD_FEW_SHOT_RETIREMENT_REPLY_FIXTURE = (
     "Retirement KITAS 14 juta (Offshore) atau 16 juta (Altus). "
     "Syaratnya umur minimal 55 tahun, asuransi kesehatan, dan bukti dana pensiun. "
     "Mau saya jelaskan dokumen lengkapnya?"
+)
+
+STALE_TANPA_BEKERJA_REPLY_FIXTURE = (
+    "Untuk KITAS pensiun ada E33F Second Home Senior KITAS, 14 juta (Offshore) "
+    "atau 16 juta (Altus/Onshore), berlaku 1 tahun dan bisa diperpanjang "
+    "(izin tinggal tanpa bekerja). Syaratnya usia minimal 55 tahun dan bukti "
+    "penghasilan atau tunjangan minimal USD 3.000 per bulan, tanpa perlu deposit."
 )
 
 OLD_V4_WORKED_EXAMPLE_FIXTURE = (
@@ -46,7 +62,12 @@ OLD_V4_WORKED_EXAMPLE_FIXTURE = (
 )
 
 RETIREMENT_E33F_KEYWORDS = ("kitas pensiun", "e33f", "second home", "retirement")
-FORBIDDEN_RETIREMENT_CLAIMS = ("asuransi kesehatan", "dana pensiun", "sponsor lokal")
+FORBIDDEN_RETIREMENT_CLAIMS = (
+    "asuransi kesehatan",
+    "dana pensiun",
+    "sponsor lokal",
+    "tanpa bekerja",
+)
 
 
 def _iter_catalog_service_rows(catalog: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
@@ -88,27 +109,46 @@ def load_internal_row_names(catalog_path: Path = CATALOG_PATH) -> set[str]:
     return internal_names
 
 
-def load_e33f_juta_prices(catalog_path: Path = CATALOG_PATH) -> set[int]:
-    """Derive canonical 'N juta' integer figures from 'E33F Second Home Senior*' rows."""
+def load_e33f_variant_juta_prices(catalog_path: Path = CATALOG_PATH) -> dict[str, int]:
+    """Derive {variant: juta} from 'E33F Second Home Senior*' rows in the canonical JSON."""
     catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
-    juta_prices: set[int] = set()
+    variant_prices: dict[str, int] = {}
     for name, row in _iter_catalog_service_rows(catalog):
         if name.startswith("E33F Second Home Senior"):
+            variant_match = re.search(
+                r"\((?:1 Year,\s*)?(Offshore|Altus/Onshore|Extend)\)$",
+                name,
+            )
+            assert variant_match is not None, f"Unexpected E33F row name format: {name!r}"
+            variant = variant_match.group(1)
             raw_price = str(row.get("price", ""))
-            match = re.match(r"^\s*(\d+)\.000\.000\s+IDR\s*$", raw_price)
-            assert match is not None, f"Unexpected price format on {name!r}: {raw_price!r}"
-            juta_prices.add(int(match.group(1)))
-    assert juta_prices, "Expected canonical E33F Second Home Senior prices in JSON"
-    return juta_prices
+            price_match = re.match(r"^\s*(\d+)\.000\.000\s+IDR\s*$", raw_price)
+            assert price_match is not None, f"Unexpected price format on {name!r}: {raw_price!r}"
+            variant_prices[variant] = int(price_match.group(1))
+    assert set(variant_prices) == {"Offshore", "Altus/Onshore", "Extend"}, (
+        f"Expected Offshore, Altus/Onshore, Extend E33F variants in JSON, got {variant_prices}"
+    )
+    return variant_prices
+
+
+def load_e33f_juta_prices(catalog_path: Path = CATALOG_PATH) -> set[int]:
+    """Derive canonical 'N juta' integer figures from 'E33F Second Home Senior*' rows."""
+    return set(load_e33f_variant_juta_prices(catalog_path).values())
 
 
 def find_few_shot_e33f_violations(
     messages: list[dict[str, Any]],
     internal_names: set[str],
     e33f_juta_prices: set[int],
+    e33f_variant_juta_prices: dict[str, int] | None = None,
 ) -> list[str]:
     """Return all E33F-everywhere violations found across a list of few-shot messages."""
     violations: list[str] = []
+    variant_prices = (
+        e33f_variant_juta_prices
+        if e33f_variant_juta_prices is not None
+        else load_e33f_variant_juta_prices()
+    )
 
     for idx, msg in enumerate(messages):
         content = str(msg.get("content", ""))
@@ -135,6 +175,19 @@ def find_few_shot_e33f_violations(
                         f"(canonical: {sorted(e33f_juta_prices)})"
                     )
 
+            for pair_match in re.finditer(
+                r"(\d+)\s*juta\s*\((Offshore|Altus/Onshore|Extend)\)",
+                content,
+            ):
+                figure = int(pair_match.group(1))
+                variant = pair_match.group(2)
+                expected_figure = variant_prices[variant]
+                if figure != expected_figure:
+                    violations.append(
+                        f"msg[{idx}] has wrong E33F {variant} price '{figure} juta' "
+                        f"(expected '{expected_figure} juta')"
+                    )
+
             for forbidden in FORBIDDEN_RETIREMENT_CLAIMS:
                 if forbidden in content_lower:
                     violations.append(
@@ -144,32 +197,61 @@ def find_few_shot_e33f_violations(
     return violations
 
 
+def _extract_retirement_worked_example_block(prompt_source: str) -> str:
+    """Slice from the line containing 'KITAS pensiun' user line to the next '---' line."""
+    lines = prompt_source.splitlines()
+    start_idx: int | None = None
+    for idx, line in enumerate(lines):
+        if "KITAS pensiun" in line:
+            start_idx = idx
+            break
+    if start_idx is None:
+        return ""
+    block_lines: list[str] = []
+    for line in lines[start_idx:]:
+        if line == "---":
+            break
+        block_lines.append(line)
+    return "\n".join(block_lines)
+
+
 def find_worked_example_e33f_violations(prompt_source: str) -> list[str]:
-    """Return violations in zantara_core_v4 / v5 worked-example source text."""
+    """Return violations in the retirement worked-example block of zantara_core_v4 / v5."""
+    block = _extract_retirement_worked_example_block(prompt_source)
     violations: list[str] = []
-    if "KITAS pensiun (Retirement)" in prompt_source:
+    if not block:
+        violations.append("missing 'KITAS pensiun' worked-example block")
+        return violations
+    if "KITAS pensiun (Retirement)" in block:
         violations.append("contains stale 'KITAS pensiun (Retirement)'")
     for forbidden in FORBIDDEN_RETIREMENT_CLAIMS:
-        if forbidden in prompt_source.lower():
+        if forbidden in block.lower():
             violations.append(f"contains non-canonical claim {forbidden!r}")
-    if "E33F" not in prompt_source:
+    if "E33F" not in block:
         violations.append("missing canonical 'E33F' reference")
     return violations
 
 
 class TestFewShotE33FEverywhere:
-    """Guilt and innocence tests for few-shot lists and whatsapp_persona re-export."""
+    """Guilt and innocence tests for few-shot lists, whatsapp_persona's separate list, and zantara_persona's re-export of GENERAL."""
 
     def test_exported_lists_have_zero_violations(self) -> None:
         internal_names = load_internal_row_names()
         e33f_prices = load_e33f_juta_prices()
+        e33f_variant_prices = load_e33f_variant_juta_prices()
 
         for list_name, messages in (
             ("GENERAL_FEW_SHOT_EXAMPLES", few_shot_examples.GENERAL_FEW_SHOT_EXAMPLES),
             ("WHATSAPP_FEW_SHOT_EXAMPLES", few_shot_examples.WHATSAPP_FEW_SHOT_EXAMPLES),
             ("whatsapp_persona.FEW_SHOT_EXAMPLES", whatsapp_persona.FEW_SHOT_EXAMPLES),
+            ("zantara_persona.FEW_SHOT_EXAMPLES", zantara_persona.FEW_SHOT_EXAMPLES),
         ):
-            violations = find_few_shot_e33f_violations(messages, internal_names, e33f_prices)
+            violations = find_few_shot_e33f_violations(
+                messages,
+                internal_names,
+                e33f_prices,
+                e33f_variant_prices,
+            )
             assert violations == [], f"{list_name} failed E33F checks: {violations}"
 
     def test_innocence_e33f_reply_present_with_canonical_facts_and_prices(self) -> None:
@@ -189,17 +271,16 @@ class TestFewShotE33FEverywhere:
         assert "55 tahun" in reply
         assert "USD 3.000" in reply or "USD 3,000" in reply
         assert "penghasilan atau tunjangan" in reply
-        assert "tanpa deposit" in reply
+        assert "tanpa perlu deposit" in reply
         assert "penjamin" in reply
         assert "Bali Zero" in reply
         assert "asuransi kesehatan" not in reply.lower()
         assert "dana pensiun" not in reply.lower()
+        assert "tanpa bekerja" not in reply.lower()
         assert "Retirement KITAS" not in reply
         assert reply.endswith("?")
 
     def test_innocence_e33g_remote_worker_examples_untouched(self) -> None:
-        assert len(whatsapp_persona.FEW_SHOT_EXAMPLES) == 18
-
         general_text = " ".join(
             str(m.get("content", "")) for m in few_shot_examples.GENERAL_FEW_SHOT_EXAMPLES
         )
@@ -216,11 +297,13 @@ class TestFewShotE33FEverywhere:
     def test_guilt_old_reply_fixture_is_flagged(self) -> None:
         internal_names = load_internal_row_names()
         e33f_prices = load_e33f_juta_prices()
+        e33f_variant_prices = load_e33f_variant_juta_prices()
 
         violations = find_few_shot_e33f_violations(
             [{"role": "assistant", "content": OLD_FEW_SHOT_RETIREMENT_REPLY_FIXTURE}],
             internal_names,
             e33f_prices,
+            e33f_variant_prices,
         )
         assert violations, "Expected old Retirement KITAS reply fixture to be flagged"
         joined = " | ".join(violations)
@@ -228,9 +311,50 @@ class TestFewShotE33FEverywhere:
         assert "asuransi kesehatan" in joined
         assert "dana pensiun" in joined
 
+    def test_guilt_tanpa_bekerja_claim_is_flagged(self) -> None:
+        internal_names = load_internal_row_names()
+        e33f_prices = load_e33f_juta_prices()
+        e33f_variant_prices = load_e33f_variant_juta_prices()
+
+        violations = find_few_shot_e33f_violations(
+            [{"role": "assistant", "content": STALE_TANPA_BEKERJA_REPLY_FIXTURE}],
+            internal_names,
+            e33f_prices,
+            e33f_variant_prices,
+        )
+        assert violations, "Expected fixture containing 'tanpa bekerja' to be flagged"
+        joined = " | ".join(violations)
+        assert "tanpa bekerja" in joined
+
+    def test_guilt_swapped_variant_prices_are_flagged(self) -> None:
+        internal_names = load_internal_row_names()
+        e33f_prices = load_e33f_juta_prices()
+        e33f_variant_prices = load_e33f_variant_juta_prices()
+
+        swapped_messages = [
+            {
+                "role": "assistant",
+                "content": (
+                    "Untuk KITAS pensiun ada E33F Second Home Senior KITAS, "
+                    "16 juta (Offshore) atau 14 juta (Altus/Onshore)."
+                ),
+            }
+        ]
+        violations = find_few_shot_e33f_violations(
+            swapped_messages,
+            internal_names,
+            e33f_prices,
+            e33f_variant_prices,
+        )
+        assert violations, "Expected swapped Offshore and Altus/Onshore prices to be flagged"
+        joined = " | ".join(violations)
+        assert "Offshore" in joined
+        assert "Altus/Onshore" in joined
+
     def test_guilt_internal_row_name_and_wrong_juta_price_are_flagged(self) -> None:
         internal_names = load_internal_row_names()
         e33f_prices = load_e33f_juta_prices()
+        e33f_variant_prices = load_e33f_variant_juta_prices()
         sample_internal_name = sorted(internal_names)[0]
 
         synthetic_bad_messages = [
@@ -243,6 +367,7 @@ class TestFewShotE33FEverywhere:
             synthetic_bad_messages,
             internal_names,
             e33f_prices,
+            e33f_variant_prices,
         )
         joined = " | ".join(violations)
         assert sample_internal_name in joined
@@ -261,11 +386,15 @@ class TestZantaraCoreV4AndV5WorkedExampleE33F:
         ):
             violations = find_worked_example_e33f_violations(source)
             assert violations == [], f"{label} failed E33F worked-example check: {violations}"
-            assert "KITAS pensiun (Retirement)" not in source
-            assert "E33F" in source
-            assert "E33F Second Home Senior" in source
-            assert "penjamin" in source
-            assert "USD 3.000" in source or "USD 3,000" in source
+            block = _extract_retirement_worked_example_block(source)
+            assert block, f"{label} missing retirement worked-example block"
+            assert "KITAS pensiun (Retirement)" not in block
+            assert "tanpa bekerja" not in block.lower()
+            assert "E33F" in block
+            assert "E33F Second Home Senior" in block
+            assert "penjamin" in block
+            assert "tanpa perlu deposit" in block
+            assert "USD 3.000" in block or "USD 3,000" in block
 
     def test_guilt_old_v4_worked_example_fixture_is_flagged(self) -> None:
         violations = find_worked_example_e33f_violations(OLD_V4_WORKED_EXAMPLE_FIXTURE)

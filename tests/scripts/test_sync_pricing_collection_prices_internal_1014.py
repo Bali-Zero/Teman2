@@ -386,4 +386,3 @@ def test_apply_with_purge_internal_false_updates_public_without_deleting_interna
     out = capsys.readouterr().out
     assert "DELETED" not in out
     assert "APPLIED 1 point(s) in bali_zero_pricing_hybrid" in out
-
