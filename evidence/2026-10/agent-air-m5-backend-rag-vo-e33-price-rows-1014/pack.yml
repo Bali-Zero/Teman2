@@ -1,0 +1,66 @@
+gear: 2
+brief_ref: evidence/2026-10/agent-air-m5-backend-rag-vo-e33-price-rows-1014/brief.yml
+ruling: >-
+  Zero, 2026-10-11 decisions/audit (PR17 evidence pack) and 2026-10-14 plan P1/P2 — the Retirement
+  and E33-family price rows must say what the signed rules (seq-29) and the official pages say:
+  55+ age floor, the selling exception, and "income or allowance" wording.
+mission: >-
+  The Retirement and E33-family price rows say what the signed rules and the official pages say — 55+,
+  the selling exception, income or allowance.
+lanes:
+  - lane: gem-prices-retirement-and-e33
+    role: build
+    seat: Gemini 4 Argon (High) builder, worktree backend-rag-vo-e33-price-rows-1014 on Air-M5.
+  - lane: gem-prices-ground-truth
+    role: ground_truth
+    seat: >-
+      1) Signed rule pack apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
+      (seq-29): rules hf.e33e.age-below-55 and hf.e33f.age-below-55 both test
+      {"fact": "derived.age_years", "op": "lt", "value": 55} -> EXCLUDE AGE_BELOW_55; el.e33e.retirement
+      tests derived.age_years gte 55; research/visa/doctrine-factory/cards/E33E.md states "Age: the page
+      says 55 years or more. It does not mention 60."
+      2) Official imigrasi.go.id E33 and E33E pages state the selling exception: "Anda dilarang tinggal
+      di wilayah Indonesia melebihi jangka waktu izin tinggal, melakukan pekerjaan yang tidak sesuai
+      dengan izin tinggal, melakukan penjualan barang atau jasa, terkecuali diperlukan dalam pekerjaannya"
+      (cards/E33.md:64 and cards/E33E.md:59: "Selling goods or services is prohibited unless needed for
+      the work.").
+      3) research/visa/doctrine-factory/cards/E33F.md:52 and cards/E33E.md:51 state "Income: proof of
+      income or allowance of at least US$3,000 per month" (live E33F page: "Bukti penghasilan atau
+      tunjangan dengan nilai sekurang-kurangnya US$3.000 ... per bulan"; cards/E33F.md:13/21 note that
+      the page "does not mention a pension").
+    nb: apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+    query_hash: "be6bf44d2d6f8ee8e766ac3b8007c274b84fe7773a516a59ce2f9629049ec3f9" # pragma: allowlist secret
+    note: >-
+      query_hash is the content_sha256 of source_record 6f5135f2-1f77-571f-88ed-26d1d2b9efba
+      (Kepmen M.IP-08.GR.01.01/2025 — Indeks Visa Indonesia, katalog daftar-visa imigrasi.go.id) in
+      rulepack-prod-029.signed.json.
+pii_scan: clean
+bites:
+  consumer: >-
+    balizero.com/services/visa (apps/mouth/src/data/services_data.ts:78 renders description_en of every
+    kitas_permits row, and notes as features), the balizero.com/book retirement and Second Home cards
+    (book-data.ts:565/578, tagline = "Retirement (Offshore)".description_en), and the backend
+    PricingService.get_all_prices() behind the pricing tools.
+  where: ci
+  observe: python3 scripts/ci/observe_retirement_price_descriptions.py && python3 scripts/ci/observe_e33_price_descriptions.py
+  expect: "contains:Retirement descriptions hold; E33 descriptions hold"
+receipts:
+  - claim: Retirement price description tests (22 tests) and E33-family price description tests (34 tests) plus their observer parser unit tests (10 + 10 tests) prepared for verification by the Claude conductor session.
+    cmd: python3 -m pytest -q tests/scripts/test_retirement_price_descriptions.py tests/scripts/test_observe_retirement_price_descriptions.py tests/scripts/test_e33_price_descriptions.py tests/scripts/test_observe_e33_price_descriptions.py
+    result: "91 passed (5 lane test files); observers 34 and 22 passed"
+    exit: 0
+    ts: "2026-10-14T09:37:00+08:00"
+    seat: agent-air-m5-backend-rag-vo-e33-price-rows-1014
+decisions:
+  - id: D-e33f-untouched
+    decision: >-
+      E33F rows keep "non-working residency": the E33F official page never mentions work or study.
+  - id: D-no-e33f-sponsor-clause
+    decision: >-
+      No sponsor clause is added to the E33F service rows; whether an all-inclusive service row should
+      name the sponsor requirement is Zero's catalogue decision (P2 needs_owner_decision).
+  - id: D-retirement-generic-rows-kept
+    decision: >-
+      The generic Retirement (Altus/Onshore), Retirement (Offshore) and Retirement (Extend) rows and
+      keys are kept intact because /book and pricing-snapshot tests pin them; repointing /book to E33F
+      is Zero's catalogue call (P1 needs_owner_decision).

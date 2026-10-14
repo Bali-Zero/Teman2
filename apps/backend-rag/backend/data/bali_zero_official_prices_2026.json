@@ -347,7 +347,7 @@
         "duration": "",
         "validity": "5 years",
         "notes": "All-inclusive price. Requires the client's own qualifying USD 130,000 deposit at a state-owned Indonesian bank (or USD 1,000,000 qualifying property); Bali Zero never holds client funds.",
-        "description_en": "Second Home Visa / KITAS (E33) for foreigners who hold a qualifying USD 130,000 deposit in their own name at a state-owned Indonesian bank (or a USD 1,000,000 qualifying property). Valid 5 years, renewable; residency; work or study only after dual-activity (rangkap kegiatan) reporting to the immigration office that issued the stay permit. Selling goods or services is prohibited. Bali Zero manages document preparation, submission, and the 90-day post-grant commitment gate; the deposit always remains in the client's own account.",
+        "description_en": "Second Home Visa / KITAS (E33) for foreigners who hold a qualifying USD 130,000 deposit in their own name at a state-owned Indonesian bank (or a USD 1,000,000 qualifying property). Valid 5 years, renewable; residency; work or study only after dual-activity (rangkap kegiatan) reporting to the immigration office that issued the stay permit. Selling goods or services is prohibited unless needed for the work. Bali Zero manages document preparation, submission, and the 90-day post-grant commitment gate; the deposit always remains in the client's own account.",
         "icon_id": "kitas-investor"
       },
       "E33E Second Home Senior (5 Years)": {
@@ -356,8 +356,8 @@
         "tier_range": null,
         "duration": "",
         "validity": "5 years",
-        "notes": "All-inclusive price. Senior 55+ route: USD 50,000 deposit at a state-owned Indonesian bank plus USD 3,000/month passive income.",
-        "description_en": "Second Home Visa / KITAS senior route (E33E) for applicants 55+ holding a USD 50,000 deposit in their own name at a state-owned Indonesian bank plus proven USD 3,000/month passive income. Valid 5 years; residency; work or study only after dual-activity (rangkap kegiatan) reporting to the immigration office that issued the stay permit. Selling goods or services is prohibited.",
+        "notes": "All-inclusive price. Senior 55+ route: USD 50,000 deposit at a state-owned Indonesian bank plus USD 3,000/month income or allowance.",
+        "description_en": "Second Home Visa / KITAS senior route (E33E) for applicants 55+ holding a USD 50,000 deposit in their own name at a state-owned Indonesian bank plus proof of income or allowance of at least USD 3,000/month. Valid 5 years; residency; work or study only after dual-activity (rangkap kegiatan) reporting to the immigration office that issued the stay permit. Selling goods or services is prohibited unless needed for the work.",
         "icon_id": "kitas-investor"
       },
       "E33E Second Home Senior (Extend)": {
@@ -367,7 +367,7 @@
         "duration": "",
         "validity": "",
         "notes": "All-inclusive price. Onshore annual extension of an existing E33E senior permit (deposit/income proof re-validated).",
-        "description_en": "Onshore annual extension of an existing E33E Second Home senior permit. USD 50,000 deposit and USD 3,000/month passive income proof are re-validated at each extension.",
+        "description_en": "Onshore annual extension of an existing E33E Second Home senior permit. USD 50,000 deposit and USD 3,000/month income or allowance proof are re-validated at each extension.",
         "icon_id": "kitas-investor"
       },
       "E33F Second Home Senior (1 Year, Offshore)": {
@@ -376,8 +376,8 @@
         "tier_range": null,
         "duration": "",
         "validity": "1 year",
-        "notes": "All-inclusive price. Senior 55+ income-only route: proven USD 3,000/month passive income, no deposit required.",
-        "description_en": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proven USD 3,000/month passive income (pension or equivalent); no deposit required. Valid 1 year, renewable; non-working residency. Offshore process for applicants outside Indonesia.",
+        "notes": "All-inclusive price. Senior 55+ income-only route: proof of income or allowance of at least USD 3,000/month, no deposit required.",
+        "description_en": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proof of income or allowance of at least USD 3,000/month; no deposit required. Valid 1 year, renewable; non-working residency. Offshore process for applicants outside Indonesia.",
         "icon_id": "kitas-investor"
       },
       "E33F Second Home Senior (1 Year, Altus/Onshore)": {
@@ -386,8 +386,8 @@
         "tier_range": null,
         "duration": "",
         "validity": "1 year",
-        "notes": "All-inclusive price. Senior 55+ income-only route: proven USD 3,000/month passive income, no deposit required.",
-        "description_en": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proven USD 3,000/month passive income (pension or equivalent); no deposit required. Valid 1 year, renewable; non-working residency. Onshore process via Altus.",
+        "notes": "All-inclusive price. Senior 55+ income-only route: proof of income or allowance of at least USD 3,000/month, no deposit required.",
+        "description_en": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proof of income or allowance of at least USD 3,000/month; no deposit required. Valid 1 year, renewable; non-working residency. Onshore process via Altus.",
         "icon_id": "kitas-investor"
       },
       "E33F Second Home Senior (Extend)": {
@@ -397,7 +397,7 @@
         "duration": "",
         "validity": "",
         "notes": "All-inclusive price. Onshore annual extension of an existing E33F senior permit (income proof re-validated).",
-        "description_en": "Onshore annual extension of an existing E33F Second Home senior permit. USD 3,000/month passive income proof is re-validated at each extension.",
+        "description_en": "Onshore annual extension of an existing E33F Second Home senior permit. USD 3,000/month income or allowance proof is re-validated at each extension.",
         "icon_id": "kitas-investor"
       },
       "E30A Education Visa (1 Year)": {
@@ -587,7 +587,7 @@
         "duration": "",
         "validity": "",
         "notes": "",
-        "description_en": "Retirement KITAS for foreign nationals 60+ meeting income requirements. Onshore process via Altus.",
+        "description_en": "Retirement KITAS for foreign nationals 55+ meeting income requirements. Onshore process via Altus.",
         "icon_id": "kitap-permanent"
       },
       "Retirement (Offshore)": {
@@ -597,7 +597,7 @@
         "duration": "",
         "validity": "",
         "notes": "",
-        "description_en": "Retirement KITAS for foreign nationals 60+ meeting income requirements. Offshore process for applicants outside Indonesia.",
+        "description_en": "Retirement KITAS for foreign nationals 55+ meeting income requirements. Offshore process for applicants outside Indonesia.",
         "icon_id": "kitap-permanent"
       },
       "Retirement (Extend)": {

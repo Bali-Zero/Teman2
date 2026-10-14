@@ -1,0 +1,29 @@
+gear: 2
+gear_reason: >-
+  Client-facing price-row wording on a ground-truth path (pricing table), two mirrored data files,
+  printable markdown list, tests and CI observers; deploys on merge.
+mission: >-
+  The Retirement and E33-family price rows say what the signed rules and the official pages say — 55+,
+  the selling exception, income or allowance.
+objective: >-
+  1) Retirement (Altus/Onshore) and Retirement (Offshore) description_en say "foreign nationals 55+"
+  matching seq-29 rules hf.e33e.age-below-55 and hf.e33f.age-below-55 (lt 55).
+  2) E33 Second Home (5 Years) and E33E Second Home Senior (5 Years) qualify the selling prohibition
+  with "Selling goods or services is prohibited unless needed for the work." per the official E33/E33E
+  pages ("melakukan penjualan barang atau jasa, terkecuali diperlukan dalam pekerjaannya").
+  3) E33E and E33F rows replace "passive income (pension or equivalent)" / "passive income" with
+  "income or allowance" ("income or allowance of at least US$3,000 per month").
+  Prices, validity, row keys, and E33F "non-working residency" remain unchanged; no sponsor clause added.
+scope:
+  - apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+  - apps/mouth/data/bali-zero-prices.json
+  - docs/pricing/Bali_Zero_Price_List_2026.md
+  - tests/scripts/test_retirement_price_descriptions.py
+  - scripts/ci/observe_retirement_price_descriptions.py
+  - tests/scripts/test_observe_retirement_price_descriptions.py
+  - tests/scripts/test_e33_price_descriptions.py
+  - scripts/ci/observe_e33_price_descriptions.py
+  - tests/scripts/test_observe_e33_price_descriptions.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
