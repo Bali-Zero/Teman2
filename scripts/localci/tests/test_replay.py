@@ -269,7 +269,7 @@ def test_a_merge_phase_f_made_is_not_replayed_and_an_undecided_queue_merge_still
 
 def test_a_pre_flip_queue_merge_not_yet_decided_is_replayed_as_today(rw):
     rw.tick()
-    mg.journal(rw.state, {"kind": "merged", "pr": 12, "head_sha": rw.heads[12], "merge_commit": rw.m["m2"], "base_sha": rw.m["m1"]})
+    mg.journal(rw.state, {"kind": "pushed", "pr": 12, "head_sha": rw.heads[12], "merge_commit": rw.m["m2"], "base_sha": rw.m["m1"]})
     a = type("A", (), {"repo": REPO})()
     got = mg.replay_pending(a, rw.state, rw.state / "repo.git", mg.read_journal(rw.state))
     assert got and got["merge_commit"] == rw.m["m1"]
@@ -284,15 +284,16 @@ def test_a_merge_github_shows_with_a_null_merge_commit_sha_is_journalled_unmappe
     assert any(r.get("why") == "replay_unmapped" and r.get("merge_commit") == rw.m["m2"] for r in mg.read_journal(rw.state))
 
 
-def test_b21_replay_pending_is_none_once_a_pushed_row_exists_and_unchanged_before(rw):
+def test_b21_replay_pending_is_none_only_while_phase_f_is_armed_and_replays_again_after_a_rollback(rw, monkeypatch):
     a = type("A", (), {"repo": REPO})()
     for _ in range(2):   # PR 3, then the replay of M2
         assert rw.tick() == 0
-    recs = mg.read_journal(rw.state)
-    assert [bool(d.get("replay")) for d in rw.decisions()] == [False, True]
-    assert mg.replay_pending(a, rw.state, rw.state / "repo.git", recs)["merge_commit"] == rw.m["m1"]   # before any push: M1 is still owed
     mg.journal(rw.state, {"kind": "pushed", "pr": 12, "merge_commit": rw.m["m2"], "base_sha": rw.m["m1"]})
-    assert mg.replay_pending(a, rw.state, rw.state / "repo.git", mg.read_journal(rw.state)) is None
-    for _ in range(3):
-        assert rw.tick() == 0
-    assert [bool(d.get("replay")) for d in rw.decisions()] == [False, True, False]   # PR 4 only: nothing is replayed after the push
+    recs = mg.read_journal(rw.state)
+    repo = rw.state / "repo.git"
+    monkeypatch.delenv(mg.PHASE_F_ENV, raising=False)
+    assert mg.replay_pending(a, rw.state, repo, recs)["merge_commit"] == rw.m["m1"]   # env unset (before the flip, or after step 0 of a rollback): as before
+    monkeypatch.setenv(mg.PHASE_F_ENV, "1")
+    assert mg.replay_pending(a, rw.state, repo, recs) is None   # armed: nothing is GitHub's verdict to compare
+    monkeypatch.setenv(mg.PHASE_F_ENV, "0")
+    assert mg.replay_pending(a, rw.state, repo, recs)["merge_commit"] == rw.m["m1"]

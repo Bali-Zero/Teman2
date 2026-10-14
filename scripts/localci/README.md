@@ -628,11 +628,11 @@ removes the halt, until GitHub's main again contains the last pushed merge.) The
 `git ls-remote` of `refs/heads/main` on the push remote with the same `GIT_SSH_COMMAND`, under `REMOTE_TIMEOUT_S`. Main equal to the merge
 commit: the push landed, `pushed` is journalled with `readback: true` and `refs/merger/base` moves as on success, no halt. Main equal to
 the old main and the failure a TRANSPORT one (timeout, connection reset or refused, "Could not read from remote repository", ssh
-connect and kex errors, broken pipe): `kind: push_unlanded`, no halt, `refs/merger/base` unmoved, the next tick may retry (the key is not
+connect and kex errors, broken pipe), on two reads 5 s apart (`READBACK_SETTLE_S`): `kind: push_unlanded`, no halt, `refs/merger/base` unmoved, the next tick may retry (the key is not
 merged; B19's pending-merge retry must read a `merged` row followed by `push_unlanded` as not merged). Main equal to the old main and an
-explicit rejection (`! [remote rejected]`, non-fast-forward, protected branch, permission denied) or any unclassified text: halt, as
-before; a rejection marker beats a transport marker in the same text. A failed read-back, or a main that is neither: halt. A `Stopped`
-still halts, then re-raises. Once the journal holds a `pushed` row `replay_pending` returns None: every later commit on main is phase F's
+explicit rejection (`! [remote rejected]`, non-fast-forward, protected branch, permission denied, "marked as read only", any line starting `ERROR:`) or any unclassified text: halt, as
+before; a rejection marker beats a transport marker in the same text. A failed read-back, or a main that is neither: halt. After `PUSH_UNLANDED_CAP` (3) `push_unlanded` rows in a row the next push failure halts ("push_unlanded N times in a row"). A `Stopped`
+still halts, then re-raises. While `LOCALCI_MERGER_PHASE_F=1` `replay_pending` returns None (unset, as after a rollback's step 0, replays are as before): every later commit on main is phase F's
 own or an operator's recovery push, and neither is GitHub's verdict to compare.
 
 **Rollback order once phase F is armed.** Step 0: `touch <state>/phase_f_halt`, or unset `LOCALCI_MERGER_PHASE_F` and reload the plist;
