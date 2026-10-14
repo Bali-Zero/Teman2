@@ -229,7 +229,12 @@ DEFAULT_CLAUDE_MODEL = os.environ.get("MATA_GARUDA_CLAUDE_MODEL", "claude-sonnet
 # that stands in for each. The swap is logged as a WARNING on every call: a
 # stale MATA_GARUDA_*_MODEL in a plist must be fixed there — this only keeps
 # the tick alive meanwhile instead of failing it in silence.
-RETIRED_AGY_MODELS: dict[str, str] = {"gemini-3.5-flash": "gemini-3.8-flash-high"}
+RETIRED_AGY_MODELS: dict[str, str] = {
+    "gemini-3.5-flash": "gemini-3.8-flash-high",
+    "gemini-3.1-pro": "gemini-4-argon-high",
+    "gemini-3.1-pro-high": "gemini-4-argon-high",
+    "gemini-3.1-pro-low": "gemini-4-argon-low",
+}
 
 
 def served_agy_model(name: str) -> str:

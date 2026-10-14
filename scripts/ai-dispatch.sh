@@ -56,7 +56,7 @@ AGY_BIN="${AGY_BIN:-agy}"
 
 # Gemini model labels (retained for reference; run_gemini now routes through `agy -p`
 # after the 2026-06-18 Gemini-CLI sunset — these no longer select a live backend).
-GEMINI_MODEL_PRIMARY="gemini-3.1-pro-preview"
+GEMINI_MODEL_PRIMARY="gemini-4-argon-high"
 GEMINI_MODEL_FALLBACK="gemini-2.5-pro"
 GEMINI_MODEL_FAST="gemini-2.5-flash"
 GEMINI_MODEL="${GEMINI_MODEL:-$GEMINI_MODEL_PRIMARY}"

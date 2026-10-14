@@ -38,6 +38,7 @@ from evidence_pack_lint import (  # noqa: E402
     SIZE_GEAR2_THRESHOLD,
     SIZE_GEAR3_THRESHOLD,
     _is_anthropic_seat,
+    _read_council_journal_seats,
     _seat_rule_verdict,
     _size_term_net_lines,
     check_acceptance_probe_pairing,
@@ -2515,8 +2516,23 @@ def test_council_run_guilt_all_fallback_no_reason_rejected(tmp_path):
     viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
     assert len(viol) == 1
     assert "council_fallback_reason" in viol[0]
-    assert "tp1-deepseek-v4-pro" in viol[0] and "agy-gemini-3.1-pro" in viol[0]
+    assert "tp1-deepseek-v4-pro" in viol[0] and "agy-gemini-4-argon" in viol[0]
     assert notice is None
+
+
+def test_council_run_guilt_agy_legacy_and_argon_aliases_collapse_to_one_seat(tmp_path):
+    """GUILT: legacy `agy-gemini-3.1-pro` and canonical/suffixed `agy-gemini-4-argon*`
+    name the SAME reviewer seat and must collapse to a single canonical seat
+    (`agy-gemini-4-argon`) before quorum counting — never 2 distinct votes."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "agy-gemini-3.1-pro", "role": "review", "ok": True, "ts": "a"},
+        {"seat": "agy-gemini-4-argon", "role": "review", "ok": True, "ts": "b"},
+        {"seat": "agy-gemini-4-argon-high", "role": "review", "ok": True, "ts": "c"},
+    ])
+    assert _read_council_journal_seats(tmp_path, "journal.jsonl") == {"agy-gemini-4-argon"}
+    pack = {"council_run": "journal.jsonl", "seat_fallback_reason": "titolari down"}
+    viol, _ = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert len(viol) == 1 and "council_run" in viol[0]
 
 
 def test_council_run_innocence_fallback_reason_declared_passes(tmp_path):

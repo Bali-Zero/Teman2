@@ -157,8 +157,10 @@ def cmd_append(args: argparse.Namespace) -> int:
     print(f"council_journal: appended seat={seat} ok={ok} ts={entry['ts']} -> {journal}")
 
     if ok:
-        qualifying = set(getattr(_load_lint_module(), "COUNCIL_REVIEW_SEATS", ()))
-        if seat not in qualifying:
+        lint_mod = _load_lint_module()
+        qualifying = set(getattr(lint_mod, "COUNCIL_REVIEW_SEATS", ()))
+        canon_fn = getattr(lint_mod, "canonicalize_council_review_seat", lambda s: s.strip())
+        if canon_fn(seat) not in qualifying:
             # A NOTE, not a refusal: a council may legitimately include seats R9 does not count
             # (agy/Gemini gave the single most plan-changing objection on #5519). Recording them
             # is right; letting the author believe they counted toward quorum is not.
