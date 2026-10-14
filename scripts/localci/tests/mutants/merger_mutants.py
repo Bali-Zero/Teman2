@@ -124,6 +124,7 @@ CQ_MIXED = cq("test_a_leg_that_mixes_the_gate_skip_with_any_other_skip_is_not_a_
 CQ_SEAM = cq("test_a_base_job_env_that_sets_a_leg_seam_blocks_the_plan", "test_a_base_step_env_or_a_matrix_step_env_that_sets_a_leg_seam_blocks_the_plan")
 CQ_REPO = cq("test_the_reader_refuses_a_repo_that_climbs_the_api_path")
 CQ_CONFIG = cq("test_a_queries_block_the_rewriter_cannot_read_as_text_is_no_verdict_and_writes_nothing")
+RC = "scripts/localci/tests/test_ready_cache.py"   # B20
 RS = ("scripts/localci/tests/test_required_set.py",)   # the required set after the phase F flip
 CQ_CORPUS = ("scripts/localci/tests/test_runner.py::test_the_corpus_check_also_runs_the_gate_flags_corpus_from_base",)
 
@@ -848,6 +849,16 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "rs-source-not-recorded": (HC, '"required_checks": required, "required_source": source,', '"required_checks": required,', RS),
     "rs-protection-ignored": (HC, '_CACHE[key] = ("protection", protection.get("checks") if isinstance(protection, dict) else None)',
                               '_CACHE[key] = ("matrix_after_flip", None)', RS),
+    # B20: READY read once per journal state and hour
+    "b20-key-ignores-decisions": (PY, 'rows = [r for r in strict_journal(state) if r.get("kind") == "decision"]\n    blob', "rows = []\n    blob", (RC,)),
+    "b20-key-over-all-rows": (PY, 'rows = [r for r in strict_journal(state) if r.get("kind") == "decision"]\n    blob', "rows = strict_journal(state)\n    blob", (RC,)),
+    "b20-ttl-ignored": (PY, "or not 0 <= age < READY_TTL_S)", "or not 0 <= age)", (RC,)),
+    "b20-refused-cached": (PY, 'if key is not None and not rep.get("refused") and isinstance(', "if key is not None and isinstance(", (RC,)),
+    "b20-cached-false-stored-true": (PY, '"phase_e_ready": rep["phase_e_ready"], "refused": None,', '"phase_e_ready": True, "refused": None,', (RC,)),
+    "b20-cached-false-read-true": (PY, "return doc, int(age)", 'return {**doc, "phase_e_ready": True}, int(age)', (RC,)),
+    "b20-cache-write-not-atomic": (PY, "atomic_write(state / READY_CACHE_FILE, json.dumps(facts, sort_keys=True)", "(state / READY_CACHE_FILE).write_text(json.dumps(facts, sort_keys=True)", (RC,)),
+    "b20-corrupt-cache-raises": (PY, "except (OSError, ValueError, KeyError, TypeError, AttributeError):\n        return None\n\n\ndef ready_state",
+                                 "except OSError:\n        return None\n\n\ndef ready_state", (RC,)),
 }
 
 

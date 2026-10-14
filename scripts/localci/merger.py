@@ -74,6 +74,7 @@ _FULL_SHA = re.compile(r"[0-9a-f]{40}")
 # (11 while the 2 CodeQL contexts were hosted-only, which is the floor the ruling states). An unrecorded coverage counts toward none of the three.
 READY_MIN_MERGES, READY_MIN_DAYS = 50, 5   # phase D's READY (spec §2): the report and the tick's precheck both read these; days was 14 until the owner's ruling of 2026-10-13 (arm phase F earlier), merges and FALSE_GREEN 0 unchanged
 READY_SPAN_SLACK_DAYS = 1   # the report's span runs on GitHub's merged_at, which can precede its own decision line by up to one tick: the precheck's window starts a day earlier so it never says false while READY is true
+READY_CACHE_FILE, READY_TTL_S = "ready_cache.json", 3600   # B20: the report's READY is read once per journal state and hour, not per merge attempt
 KNOWN_HOSTS_FILE = "known_hosts"   # F2: github.com's host key, pinned by the operator in the state dir; the push trusts nothing else
 MIN_COMPARED_CONTEXTS = 12
 MIN_COMPARED_FULL = 11      # implied by the two around it (12 - at most 1 partial); stated because the ruling states it
@@ -1112,6 +1113,53 @@ def ready_precheck(state: Path) -> str | None:
     return None
 
 
+def ready_key(a, state: Path) -> str:
+    """Every journal row ``report()``'s READY reads, hashed: its ``decision`` rows, replays included (the rest of the window only feeds
+    counts and ages that READY never consults). Added to them are the repo and base the report is asked about. Any change to a decision
+    changes the key; a prune, would_merge or evicted row cannot. An unreadable journal raises, and the caller treats that as a miss."""
+    rows = [r for r in strict_journal(state) if r.get("kind") == "decision"]
+    blob = json.dumps({"repo": str(a.repo).lower(), "base": a.base, "decisions": rows}, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(blob.encode()).hexdigest()
+
+
+def read_ready_cache(state: Path, key: str) -> tuple[dict, int] | None:
+    """(the cached READY, its age in seconds) when the file is readable, the key is this journal's and it is younger than the TTL, else
+    None. A corrupt, foreign-shaped, refused or future-dated file is a miss, never an error."""
+    try:
+        doc = json.loads((state / READY_CACHE_FILE).read_text())
+        age = time.time() - doc["computed_at"]
+        if (doc["key"] != key or not isinstance(doc["phase_e_ready"], bool) or doc.get("refused") or not 0 <= age < READY_TTL_S):
+            return None
+        return doc, int(age)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
+
+
+def ready_state(a, state: Path) -> tuple[dict, str, int | None]:
+    """(the report's READY facts, ``cache`` or ``computed``, the cache's age in seconds or None). A valid cache spares the report's
+    hundreds of GitHub reads; otherwise the report runs as it always did and a successful result is stored under the journal's key as
+    it stood BEFORE the run. A refusal is returned and never stored. Exceptions from the report propagate to the caller."""
+    try:
+        key: str | None = ready_key(a, state)
+    except (hc.CompareError, OSError, ValueError, TypeError, AttributeError):
+        key = None   # the report will say why it cannot read the journal
+    if key is not None and (hit := read_ready_cache(state, key)) is not None:
+        return hit[0], "cache", hit[1]
+    started = time.time()
+    _, rep = report(argparse.Namespace(repo=a.repo, base=a.base, state_dir=str(state), since=None), emit=False)
+    if key is not None and not rep.get("refused") and isinstance(rep.get("phase_e_ready"), bool):
+        win = rep.get("window") if isinstance(rep.get("window"), dict) else {}
+        facts = {"key": key, "computed_at": started, "phase_e_ready": rep["phase_e_ready"], "refused": None,
+                 "compared_merges": win.get("compared_merges"), "compared_days": win.get("compared_days"),
+                 "false_green": (rep.get("counts") or {}).get("FALSE_GREEN", 0) + (rep.get("context_counts") or {}).get("FALSE_GREEN", 0)
+                                + (rep.get("recorded_context_false_green") or 0)}
+        try:
+            atomic_write(state / READY_CACHE_FILE, json.dumps(facts, sort_keys=True) + "\n")
+        except OSError:
+            pass   # no cache is a slower tick, never a wrong one
+    return rep, "computed", None
+
+
 def phase_f_arming(a, state: Path, repo_dir: Path, enq: dict, line: dict, base: str) -> tuple[dict, dict]:
     """(the PR as read now, ``{armed, why}``): ``armed`` only when every condition holds, checked now, and ``why`` names each that
     does not. Nothing here writes. The local conditions come first; READY (the journal precheck, then the report's own function —
@@ -1120,6 +1168,7 @@ def phase_f_arming(a, state: Path, repo_dir: Path, enq: dict, line: dict, base: 
     condition is a false one."""
     why: list[str] = []
     pull: dict = {}
+    ready_info: dict = {}
     if os.environ.get(PHASE_F_ENV) != "1":
         why.append(f"{PHASE_F_ENV} unset")
     if (bad := key_problem(state)):
@@ -1149,7 +1198,8 @@ def phase_f_arming(a, state: Path, repo_dir: Path, enq: dict, line: dict, base: 
         why.append(early)
     else:
         try:
-            _, rep = report(argparse.Namespace(repo=a.repo, base=a.base, state_dir=str(state), since=None), emit=False)
+            rep, source, age = ready_state(a, state)
+            ready_info = {"ready_source": source, **({"ready_cache_age_s": age} if age is not None else {})}
             if rep.get("refused"):
                 why.append(f"READY unreadable: {rep['refused']}")
             elif rep.get("phase_e_ready") is not True:
@@ -1177,7 +1227,7 @@ def phase_f_arming(a, state: Path, repo_dir: Path, enq: dict, line: dict, base: 
             raise
         except Exception as exc:  # noqa: BLE001
             why.append(redact(f"head re-read failed: {type(exc).__name__}: {exc}"))
-    return pull, {"armed": not why, "why": why}
+    return pull, {"armed": not why, "why": why, **ready_info}
 
 
 def judged_tree(repo_dir: Path, enq: dict) -> str | None:

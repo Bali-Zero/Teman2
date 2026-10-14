@@ -114,7 +114,7 @@ def test_every_condition_true_makes_the_merge_commit_pushes_it_and_moves_the_mir
     assert fw.tick() == 0
     assert fw.kinds() == ["decision", "would_enqueue", "would_merge", "merged", "pushed"]
     wm, merged, pushed = fw.wm(), fw.journal()[-2], fw.journal()[-1]
-    assert wm["phase_f"] == {"armed": True, "why": []}
+    assert wm["phase_f"] == {"armed": True, "why": [], "ready_source": "computed"}   # B20: the first READY of a journal is computed
     mc = merged["merge_commit"]
     assert g(fw.mirror, "rev-list", "--parents", "-n1", mc).split() == [mc, fw.base, fw.head1]   # first parent = the old base, second = the head
     assert g(fw.mirror, "show", "-s", "--format=%an|%ae|%cn|%ce", mc) == "localci-merger|localci-merger@localhost|localci-merger|localci-merger@localhost"
@@ -594,7 +594,7 @@ def test_a_non_utf8_halt_file_halts_and_the_fetch_is_not_the_guarded_one(fw):
 def test_the_pr_gate_reads_after_the_local_ones_and_a_clean_pull_arms(fw, monkeypatch):
     """Innocence for the re-read: every local condition and every re-read field right means armed."""
     monkeypatch.setattr(mg, "pr_view", lambda a, n: full_pull(fw))
-    assert fw.tick() == 0 and fw.wm()["phase_f"] == {"armed": True, "why": []} and fw.kinds()[-1] == "pushed"
+    assert fw.tick() == 0 and fw.wm()["phase_f"] == {"armed": True, "why": [], "ready_source": "computed"} and fw.kinds()[-1] == "pushed"
 
 
 def test_ready_is_not_evaluated_when_the_env_half_is_missing_and_the_why_says_so(fw, monkeypatch):
