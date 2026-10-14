@@ -13,7 +13,13 @@ mission: >-
 lanes:
   - lane: backend-rag-vo-visa-check-catalogue-1014
     role: build
-    seat: Antigravity implementer (prepared for Claude verification), worktree backend-rag-vo-visa-check-catalogue-1014 on M5.
+    seat: gemini-4-argon-high via agy (build, prepare-only) with the Claude driver; worktree backend-rag-vo-visa-check-catalogue-1014 on M5.
+  - lane: red-team-opus
+    role: red_team
+    seat: claude-opus-5-5 adversarial review, read-only, head c22fd7de70.
+  - lane: red-team-codex
+    role: red_team
+    seat: gpt-5.6-sol via codex exec, read-only, session rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl.
   - lane: cat-visa-check-e33-e33g-ground-truth
     role: ground_truth
     seat: >-
@@ -49,13 +55,13 @@ receipts:
     cmd: python3 scripts/ci/observe_visa_check_catalogue_e33.py
     result: "observe_visa_check_catalogue_e33: 55 passed in 0.12s; E33 and E33G catalogue notes hold"
     exit: 0
-    ts: "2026-10-14T06:30:00Z"
+    ts: "2026-10-14T02:09:16Z"
     seat: claude-sonnet-5-5 (verifier of the gemini-4-argon-high build)
   - claim: Whole visa_check backend test directory green after the fix round.
     cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_check -p no:cacheprovider
     result: "488 passed in 10.75s"
     exit: 0
-    ts: "2026-10-14T06:30:00Z"
+    ts: "2026-10-14T02:09:16Z"
     seat: claude-sonnet-5-5 (verifier of the gemini-4-argon-high build)
 decisions:
   - id: D-stored-visa-checks-untouched
