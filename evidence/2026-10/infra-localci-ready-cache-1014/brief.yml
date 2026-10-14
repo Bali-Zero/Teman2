@@ -1,0 +1,24 @@
+task_id: infra-localci-ready-cache-1014
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Phase F computed READY by calling report() on every merge attempt: on Pro's journal (273 decisions) 1051 GitHub
+  calls and 1045 s, linear in the journal, and one transient GitHub error left READY unreadable and disarmed the
+  merge (B20). READY is now a signal the tick computes apart and the merge only reads. A refresh runs at the start
+  of a tick when ready_cache.json is missing or its completed_at is 3600 s old, ends its tick (a decision never
+  shares a refresh's watchdog budget), and is followed by a decision tick by a mark written before the reads.
+  The refresh runs ready_precheck first, else report() with a final-read memo (hosted_memo.json: a closed PR's
+  reads, projected to the fields report() reads, kept once the PR's newest decision is 48 h old and no required
+  context is pending; keys name repo, branch, sha and base). phase_f_arming never calls report(): it refuses on a
+  torn journal, a missing, corrupt, false, refused or stale (7200 s) cache. On a copy of Pro's real journal the
+  first refresh took about 1100 s and 1054 calls, the second with the memo about 274 s and 239 calls, with an
+  identical report. Gear is 2 via the SIZE term (mostly tests, mutants and docs); a fresh Opus gate reads the diff.
+residuals:
+  - A hosted re-run that flips a check on a closed PR more than 48 h after its decision, or a reopened PR, is not
+    seen by READY (documented bound C2).
+  - The recurring refresh cost grows with the decisions of the last 48 h (about 35 a day), not with the journal.
+  - A decision tick that outlasts READY_MAX_AGE_S leaves its merge pending (READY stale); B19's retry merges it
+    after the next refresh tick (tested), a refresh tick running no retries of its own.
+  - report() itself is unchanged and still reads GitHub for rows younger than 48 h; the standalone report command
+    runs without the memo.
