@@ -24,6 +24,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import queue_shepherd as qs  # noqa: E402
 
+_REAL_QUEUE_RULE_STATE = qs.queue_rule_state
+
 NOW = _dt.datetime(2026, 8, 27, 12, 0, 0, tzinfo=_dt.timezone.utc)
 
 
@@ -3492,3 +3494,29 @@ def test_report_says_CORRUPT_when_the_rearm_fail_file_is_unparseable_M27(monkeyp
     named = corrupt_lines[0].split(" — CORRUPT")[0]
     assert str(corrupt) in named, named
     assert str(tmp_path / "budget.json") not in named, named
+
+
+class _Proc:
+    def __init__(self, returncode, stdout):
+        self.returncode, self.stdout = returncode, stdout
+
+
+@pytest.mark.parametrize(
+    "proc",
+    [_Proc(1, "present\n"), _Proc(0, ""), _Proc(0, "garbage"), OSError("no probe")],
+)
+def test_a_failed_or_garbled_probe_reads_unknown_and_the_rearm_pass_rearms_nothing(monkeypatch, proc):
+    def fake_run(*args, **kwargs):
+        if isinstance(proc, Exception):
+            raise proc
+        return proc
+
+    monkeypatch.setattr(qs, "_queue_rule_cache", None)
+    monkeypatch.setattr(qs.subprocess, "run", fake_run)
+    assert _REAL_QUEUE_RULE_STATE() == "unknown"
+    monkeypatch.setattr(qs, "queue_rule_state", _REAL_QUEUE_RULE_STATE)
+    monkeypatch.setattr(qs, "_queue_rule_cache", None)
+    monkeypatch.setattr(qs, "fetch_open_prs", lambda repo: (_ for _ in ()).throw(AssertionError("read")))
+    monkeypatch.setattr(qs, "_run", lambda *a, **k: (_ for _ in ()).throw(AssertionError("ran")))
+    result = qs.run_rearm_pass(dry_run=False, now=NOW)
+    assert result["rearmed"] == 0 and result["cannot_verify"] is None
