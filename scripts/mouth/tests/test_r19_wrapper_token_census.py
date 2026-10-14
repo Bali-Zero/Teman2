@@ -52,7 +52,7 @@ def census() -> dict:
 def test_innocence_the_committed_contract_defines_every_live_read(census):
     out = verdict(census)
     assert undefined(out) == ("read-but-undefined: 0", [])
-    assert len(census["captures"]) == 30 and census["failed"] == []
+    assert len(census["captures"]) == 54 and census["failed"] == []
     assert any(line.startswith("colors-outside-direction-a: ") for line in out)
     assert out[-1].startswith("state-colors-off-contract: ")
 
@@ -118,7 +118,7 @@ def test_export_hands_the_armed_test_the_same_probe_and_states(capsys, census):
     assert census_mod.main(["--export"]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out["probe"] == census_mod.PROBE_JS
-    assert out["pages"] == census_mod.PAGES
+    assert out["pages"] == [p for p in census_mod.PAGES if p != census_mod.SECTOR_PAGE]
     assert [s["name"] for s in out["states"]] == census["states"]
     assert out["direction_a"] == census_mod.DIRECTION_A
     assert all(v >= 4.5 for v in out["semantic_on_paper"].values())
@@ -293,7 +293,7 @@ def test_the_rest_copper_borders_were_ruled_to_line():
 def test_the_origin_main_walk_is_the_pre_w2_number(census):
     """The fixture is the live walk on origin/main 463ec63b76 (apps/mouth unchanged through f75a4fee92), dumped by
     W0d-2: 10 walks, 51 state classes off contract, 0 unseen. W2''' regenerates it and the pin moves to 0."""
-    assert len(census["walks"]) == 10 and census["walk_failed"] == []
+    assert len(census["walks"]) == 18 and census["walk_failed"] == []
     out = verdict(census)
     assert out[-1] == "state-colors-off-contract: 51"
     assert "state-rows-unseen: 0" in out
@@ -395,6 +395,18 @@ def test_e2e_innocence_a_bracket_typed_class_painting_its_row_counts_zero(tmp_pa
     census = walk_page(tmp_path, monkeypatch, *bracket_page("#233D52"))
     assert census["state_obs"][BRACKET]["observed"] == ["#233D52"]
     assert census_mod.judge_states(census, STATES)[1] == 0
+
+
+@needs_browser
+def test_e2e_the_state_walk_hovers_an_entrance_held_with_forwards_at_its_end_state(tmp_path, monkeypatch):
+    """W0d-3b-2: the state walk finishes motion as the resolvers do. Removed, the entrance would sit under the bar,
+    covered, and its hover would never be observed."""
+    body, css = bracket_page("#233D52")
+    bar = '<div style="position:relative;z-index:2;height:64px;background:#1D2C3B"></div>'
+    census = walk_page(tmp_path, monkeypatch, bar + body.replace('class="group"', 'class="group in"'),
+                       css + ".in{display:block;transform:translateY(-64px);animation:drop .3s forwards}"
+                             "@keyframes drop{to{transform:none}}")
+    assert census["state_obs"][BRACKET]["observed"] == ["#233D52"]
 
 
 @needs_browser
@@ -674,7 +686,7 @@ def test_a_forced_theme_holds_after_hydration_or_the_walk_fails_naming_it(seq, f
 def test_an_over_image_only_walk_fails_yet_its_grounds_are_listed():
     out = verdict_of({"opened": [walk("x", [run("#16161A", fg="#F5F6F7", image="gradient")])]})
     assert out[0] == "opened-surfaces: 0 ok, 1 failed"
-    assert out[1].startswith("  x desktop/light: failed:over-image-only (1 runs)")
+    assert out[1 + len(census_mod.NOT_JUDGEABLE)].startswith("  x desktop/light: failed:over-image-only (1 runs)")
     assert lines_of(out, "opened-grounds-off-contract:").startswith("opened-grounds-off-contract: 1 (INCOMPLETE")
     for prefix in ("opened-outside-wrapper:", "ground-resolver-disagree:", "opened-text-below-4.5:"):
         assert "INCOMPLETE" in lines_of(out, prefix), prefix
@@ -886,6 +898,41 @@ def test_guilt_a_scratch_edit_to_the_r19_presentation_styles_is_unpinned(tmp_pat
     assert lines_of(out, "shared-touched-unpinned:") == "shared-touched-unpinned: 1"
 
 
+def test_the_census_walks_51_opened_surfaces_on_9_pages():
+    """SPEC-W0d section 1.a: 9 pages (the sector route resolved at run time), 25 + 26 opened walks."""
+    walks = {"all": 6, "walk": 2, "mobile": 1, "mobile-all": 3}
+    assert len(census_mod.PAGES) == 9 and census_mod.SECTOR_PAGE in census_mod.PAGES
+    assert sum(walks[sc[2]] for sc in census_mod.SCENARIOS) == 51
+    opened = [u for u in census_mod.scenarios(*census_mod.measure_literals()) if u[1] == "opened"]
+    assert len(opened) == 51 - len(census_mod.NOT_JUDGEABLE) == 50
+
+
+def test_the_declared_not_judgeable_walks_are_exactly_the_pending_mobile_variant():
+    """W0d-3b-2a: the exemption is a named row, one variant, and it leaves the list rather than hiding in it."""
+    assert set(census_mod.NOT_JUDGEABLE) == {("zantara-pending", "mobile/system-dark")}
+    names = {n for _, _, n, _ in census_mod.scenarios(*census_mod.measure_literals())}
+    assert "zantara-pending desktop/light" in names and "zantara-pending mobile/system-dark" not in names
+    assert "declared-not-judgeable: zantara-pending mobile/system-dark" in CONTRACT
+    assert "declared-not-judgeable: zantara-pending mobile/system-dark" in census_mod.opened_verdict(
+        {"opened": []}, {}, {}, None, [])
+
+
+def test_guilt_an_all_over_image_walk_is_still_failed():
+    run = {"state": "ok", "clip": False, "image": "gradient", "spread": 0}
+    assert census_mod.walk_state({"roots": 1, "runs": [run, run]})[0] == "failed:over-image-only"
+
+
+def test_the_sector_route_is_the_first_card_the_server_links(tmp_path):
+    (tmp_path / "kbli").mkdir()
+    (tmp_path / "kbli/sectors").write_text('<a href="/kbli">KBLI</a><a href="/kbli/sectors/A">A</a>'
+                                           '<a href="/kbli/sectors/B">B</a>')
+    server = serve(tmp_path, "")
+    try:
+        assert census_mod.sector_route(f"http://127.0.0.1:{server.server_port}") == "/kbli/sectors/A"
+    finally:
+        server.shutdown()
+
+
 @pytest.mark.parametrize("census", [{"opened": [walk("sector-drawer", [], error="load: timeout")]},
                                     {"opened": []}, {}],
                          ids=["a surface failed to open", "nothing opened", "no opened walk"])
@@ -946,6 +993,11 @@ RELOAD = ("<script>addEventListener('scroll', () => { if (!sessionStorage.r) { s
           " location.reload(); } })</script>")
 QUERY = ("; document.body.insertAdjacentHTML('beforeend', `<div class=\"tsqd-parent-container\"><div style=\""
          "position:fixed;left:0;bottom:0;width:140px;height:60px;background:#111111;z-index:40\"></div></div>`)")
+# A ground that script motion cycles unless the reader asks for reduced motion: the census asks, so it reads the
+# final frame (W0d-3b-2).
+SCRIPTED = ("<script>if (!matchMedia('(prefers-reduced-motion: reduce)').matches) { const s = document.getElementById('s');"
+            " let t = 0; (function f() { t += 1; s.style.background = t % 2 ? '#111111' : '#222222';"
+            " requestAnimationFrame(f); })(); }</script>")
 REHYDRATE = ("<script>setTimeout(() => { const h = document.documentElement;"
              " if (h.getAttribute('data-theme') === 'light') h.setAttribute('data-theme', 'dark'); }, 300)</script>")
 LIFTED = "position:relative;z-index:10;background:#FFFCF7;padding:16px"
@@ -1106,6 +1158,12 @@ CASES = [
      appended(SCRIM.format("rgba(29,44,59,.45)") + '<div id="d" style="position:fixed;left:0;bottom:0;width:100%;'
               f'height:64px;background:#FFFCF7;z-index:20">{p(INK, "Menu")}</div>'), ["#s", "#d"],
      (2, 0, 0, "ok", None)),
+    # W0d-3b-2: a surface that fades in and holds its end state is read at its end state, not at opacity 0.
+    ("I-surface-entrance-held", surface("background:#FFFCF7;padding:16px", p(INK)),
+     "#s{opacity:0;animation:fade .3s forwards}@keyframes fade{to{opacity:1}}", REVEAL, ["#s"], (0, 0, 0, "ok", None)),
+    # W0d-3b-2: script motion that honours reduced motion is read at its final frame.
+    ("I-reduced-motion-final-frame", surface("background:#FFFCF7;padding:16px", p(INK)) + SCRIPTED, "", REVEAL,
+     ["#s"], (0, 0, 0, "ok", None)),
     # The #8228 gate's notes. 1: a run that stays under a fixed glow on a page that cannot scroll is counted.
     ("G-badge-unscrollable", surface(f"{AT_BOTTOM}background:#222222", p(LIGHT, "Villa")) + p(INK), "",
      REVEAL + GLOW, ["#s", "#s ~ p"], (0, 1, 0, "ok", "  occluded 'Villa' at ")),
@@ -1220,6 +1278,23 @@ PAGE_CASES = [
     # The content of a closed <details> is laid out under the section after it: it is not rendered, not occluded.
     ("I-closed-details", f'<details><summary style="color:{INK}">More</summary>{p(INK, "Hidden")}</details>'
                          f'<div style="background:#FFFCF7;padding:24px">{p(INK, "Body")}</div>', 0, None),
+    # Its guilt twin (the #8249 gate's binding 1): an open <details> is rendered, and covered it is counted.
+    ("G-open-details-covered", f'<details open><summary style="color:{INK}">More</summary>{p(INK, "Shown")}</details>'
+                               '<div style="position:relative;z-index:2;margin-top:-96px;height:96px;'
+                               'background:#1D2C3B"></div>', 2, "occluded 'Shown' at "),
+    # W0d-3b-2: an entrance that starts collapsed and holds its end state with `forwards` is read at its end state,
+    # not collapsed under the bar above it (the explorer's 2025-transition card under its composer, W0d-3b-1).
+    ("I-entrance-held", '<style>.in{transform:translateY(-64px);animation:drop .3s forwards}'
+                        '@keyframes drop{to{transform:none}}</style>'
+                        '<div style="position:relative;z-index:2;height:64px;background:#1D2C3B"></div>'
+                        f'<div class="in" style="background:#FFFCF7;padding:8px">{p(INK, "Notice")}</div>', 0, None),
+    # The guilt side: an entrance without `forwards` ends where it started, collapsed under the bar, which is what
+    # a reader sees, and it is still counted.
+    ("G-entrance-not-held", '<style>.in{transform:translateY(-64px);animation:drop .3s}'
+                            '@keyframes drop{to{transform:none}}</style>'
+                            '<div style="position:relative;z-index:2;height:64px;background:#1D2C3B"></div>'
+                            f'<div class="in" style="background:#FFFCF7;padding:8px">{p(INK, "Notice")}</div>', 1,
+     "occluded 'Notice' at "),
     # W0d-3, the #8228 gate's note 1 at rest: text under a fixed glow on a page that cannot scroll is counted.
     ("G-occluded-at-rest", f'<div style="{AT_BOTTOM}background:#FFFCF7">{p(INK, "Villa")}</div>', 1,
      "occluded 'Villa' at ", '<div style="position:fixed;left:0;bottom:0;width:64px;height:64px;filter:blur(6px);'
@@ -1238,7 +1313,7 @@ def test_e2e_page_grounds_at_rest(tmp_path, case):
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(executable_path=m.CHROME)
-            page = browser.new_context(viewport={"width": 1440, "height": 900}).new_page()
+            page = census_mod.new_context(browser, 1440, 900, "light").new_page()
             page.goto(f"http://127.0.0.1:{server.server_port}/o.html", wait_until="load")
             res = census_mod.page_grounds(page, "local desktop/light")
             browser.close()
@@ -1248,6 +1323,28 @@ def test_e2e_page_grounds_at_rest(tmp_path, case):
     assert out[-1] == f"page-grounds-off-contract: {g}", out
     if excerpt:
         assert any(excerpt in ln for ln in out), out
+
+
+@needs_browser
+def test_e2e_a_static_page_reads_the_same_with_and_without_reduced_motion(tmp_path):
+    """W0d-3b-2, innocence: asking for reduced motion changes nothing on a page that does not move."""
+    from playwright.sync_api import sync_playwright
+    body = f'<div style="background:#1D2C3B;padding:8px">{p(ELEVATED, "Indonesia")}</div>{p(INK, "Body")}'
+    server = serve(tmp_path, PAGE.format(css="", body=body, tail=""))
+    m = census_mod._load_measure()
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(executable_path=m.CHROME)
+            reads = []
+            for ctx in (census_mod.new_context(browser, 1440, 900, "light"),
+                        browser.new_context(viewport={"width": 1440, "height": 900}, color_scheme="light")):
+                page = ctx.new_page()
+                page.goto(f"http://127.0.0.1:{server.server_port}/o.html", wait_until="load")
+                reads.append(census_mod.page_grounds(page, "local desktop/light"))
+            browser.close()
+    finally:
+        server.shutdown()
+    assert reads[0] == reads[1] and reads[0]["page_runs"] == 2
 
 
 @needs_browser
@@ -1266,13 +1363,13 @@ def test_the_origin_main_opened_walk_is_the_guilt(census):
     """Main today, by pixels: every surface opens; the dropdown titles are white and readable, the red code chips
     are not; the resolvers agree on every run once the dev indicator is hidden and the glow retargets."""
     out = verdict_of(census, PIN, [])
-    assert out[0] == "opened-surfaces: 25 ok, 0 failed"
-    assert lines_of(out, "opened-outside-wrapper:") == "opened-outside-wrapper: 10"
-    assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 135"
+    assert out[0] == "opened-surfaces: 50 ok, 0 failed"
+    assert lines_of(out, "opened-outside-wrapper:") == "opened-outside-wrapper: 18"
+    assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 188"
     assert lines_of(out, "ground-resolver-disagree:") == "ground-resolver-disagree: 0"
     assert lines_of(out, "shared-touched-unpinned:") == "shared-touched-unpinned: 0"
     assert lines_of(out, "shared-component-drift:") == "shared-component-drift: 0"
-    assert out[-1] == "opened-text-below-4.5: 675"
+    assert out[-1] == "opened-text-below-4.5: 784"
     drop = next(o for o in census["opened"] if o["name"] == "search-dropdown" and o["walk"] == "desktop/light")
     below = [(round(census_mod.contrast(census_mod.text_colour(r), r["a"]), 2), r["fg"], r["text"])
              for r in drop["runs"] if r["state"] == "ok" and r["fg"]
@@ -1282,7 +1379,7 @@ def test_the_origin_main_opened_walk_is_the_guilt(census):
 
 def test_the_origin_main_page_grounds_name_the_consultation_card_over_its_gradient(census):
     """G25 on main: KBLIConsultationCTA's inline gradient puts its text over an image, on every state of 55203."""
-    assert census_mod.page_verdict(census)[-1] == "page-grounds-off-contract: 440"
+    assert census_mod.page_verdict(census)[-1] == "page-grounds-off-contract: 579"
     card = {c["state"] for c in census["captures"] if c["page"] == "/kbli/55203"
             for ln in c["page_off"].values()
             if "over-image (gradient)" in ln and "section.rp-dark-island.mt-12>div.rounded-2xl" in ln}
@@ -1310,8 +1407,9 @@ def test_guilt_8161s_head_reads_ink_titles_on_the_dark_dropdown():
 # `wrapper-census-part` jobs dump for the aggregate.
 UNITS = census_mod.scenarios(*census_mod.measure_literals())
 WORKFLOW = (census_mod.ROOT / ".github/workflows/r19-wrapper-census-tests.yml").read_text()
-EXIT_LINES = ["scenarios-off-manifest: 0", "captures: 30 ok, 0 failed", "opened-surfaces: 25 ok, 0 failed",
-              "shared-touched-unpinned: 0", "shared-component-drift: 0"]
+EXIT_LINES = ["scenarios-off-manifest: 0", "captures: 54 ok, 0 failed",
+              "opened-surfaces: 50 ok, 0 failed", "shared-touched-unpinned: 0", "shared-component-drift: 0"]
+EXIT_BLOCK = re.search(r"### 8\.8 .*?```\n(.*?)```", CONTRACT, re.S).group(1)
 
 
 def cut(census: dict) -> dict[str, dict]:
@@ -1346,11 +1444,11 @@ def replay(capsys, path: Path) -> str:
 def test_the_parts_cut_from_one_list_cover_it_once():
     keys = [f"{kind} {name}" for _, kind, name, _ in UNITS]
     by_part = {p: {f"{k} {n}" for q, k, n, _ in UNITS if q == p} for p in census_mod.PARTS}
-    assert len(keys) == len(set(keys)) == 30 + 10 + 25 + 24
+    assert len(keys) == len(set(keys)) == 54 + 18 + 50 + 24
     assert {q for q, *_ in UNITS} == set(census_mod.PARTS) and all(by_part.values())
     assert set().union(*by_part.values()) == set(keys)
     assert all(not (by_part[a] & by_part[b]) for a in by_part for b in by_part if a < b)
-    assert {p: len(v) for p, v in by_part.items()} == {"rest": 40, "kbli": 18, "explorer": 7, "shared": 24}
+    assert {p: len(v) for p, v in by_part.items()} == {"rest": 72, "kbli": 33, "explorer": 17, "shared": 24}
 
 
 def test_each_part_waits_for_every_route_it_loads():
@@ -1359,7 +1457,7 @@ def test_each_part_waits_for_every_route_it_loads():
     shared = {sc[1] for sc in census_mod.SHARED}
     assert all(census_mod.routes_of([u for u in UNITS if u[0] == p]) for p in census_mod.PARTS)
     assert set(census_mod.routes_of([u for u in UNITS if u[0] == "shared"])) == shared
-    assert census_mod.routes_of(UNITS)[:5] == census_mod.PAGES and set(census_mod.routes_of(UNITS)) == {
+    assert census_mod.routes_of(UNITS)[:len(census_mod.PAGES)] == census_mod.PAGES and set(census_mod.routes_of(UNITS)) == {
         *census_mod.PAGES, *shared}
 
 
@@ -1404,9 +1502,9 @@ DROPS = {"capture": ("captures", lambda c: (c["page"], c["state"]) == ("/kbli-ex
                      "capture /kbli-explorer mobile/forced-dark", "read-but-undefined: 0 (INCOMPLETE: 1 captures "
                      "failed, not a verdict)"),
          "walk": ("walks", lambda w: w == "/kbli/56101 mobile/system-dark", "walk /kbli/56101 mobile/system-dark",
-                  "state-colors-off-contract: INCOMPLETE (1 walks failed, 9 ok, not a verdict)"),
+                  "state-colors-off-contract: INCOMPLETE (1 walks failed, 17 ok, not a verdict)"),
          "opened": ("opened", lambda o: (o["name"], o["walk"]) == ("explorer-compare", "desktop/light"),
-                    "opened explorer-compare desktop/light", "opened-surfaces: 24 ok, 1 failed"),
+                    "opened explorer-compare desktop/light", "opened-surfaces: 49 ok, 1 failed"),
          "shared": ("shared", lambda s: (s["name"], s["walk"]) == ("Footer R19 blog /news", "mobile/light"),
                     "shared Footer R19 blog /news mobile/light",
                     "shared-component-drift: INCOMPLETE (1 shared walks failed, not a verdict)")}
@@ -1448,15 +1546,15 @@ def test_guilt_a_missing_part_is_every_one_of_its_scenarios_missing(tmp_path, ca
 def test_guilt_no_dump_at_all_is_the_whole_list_missing(tmp_path, capsys):
     (tmp_path / "census.jsonl").write_text("")
     out = replay(capsys, tmp_path / "census.jsonl").splitlines()
-    assert out[0] == "scenarios-off-manifest: 89 (INCOMPLETE: 89 scenarios not received, not a verdict)"
-    assert "captures: 0 ok, 30 failed" in out and "opened-surfaces: 0 ok, 25 failed" in out
+    assert out[0] == "scenarios-off-manifest: 146 (INCOMPLETE: 146 scenarios not received, not a verdict)"
+    assert "captures: 0 ok, 54 failed" in out and "opened-surfaces: 0 ok, 50 failed" in out
 
 
 def test_guilt_a_part_twice_and_a_scenario_off_the_list_are_named(tmp_path, capsys):
     path = parts_file(tmp_path, census_mod.load(FIXTURE))
     path.write_text(path.read_text() + (tmp_path / "census-explorer.jsonl").read_text())
     out = replay(capsys, path).splitlines()
-    assert out[0] == "scenarios-off-manifest: 7" and "  twice: opened explorer-compare desktop/light" in out
+    assert out[0] == "scenarios-off-manifest: 17" and "  twice: opened explorer-compare desktop/light" in out
     census = census_mod.load(FIXTURE)
     census["opened"][0]["name"] = "ghost-surface"
     out = replay(capsys, parts_file(tmp_path, census)).splitlines()
@@ -1488,7 +1586,7 @@ def test_innocence_a_failed_scenario_is_received_not_missing(tmp_path, capsys):
     gone = census["captures"].pop(7)
     census["failed"].append(f"{gone['page']} {gone['state']}: opener: Timeout 30000ms: waiting for x: y")
     out = replay(capsys, parts_file(tmp_path, census)).splitlines()
-    assert out[:2] == ["scenarios-off-manifest: 0", "captures: 29 ok, 1 failed"]
+    assert out[:2] == ["scenarios-off-manifest: 0", "captures: 53 ok, 1 failed"]
 
 
 def test_the_sector_opener_moves_the_pointer_off_the_card_it_clicked():
@@ -1520,12 +1618,26 @@ def test_innocence_the_exit_step_passes_the_parts_judged_together(tmp_path, caps
     assert [ln for ln in r.stdout.splitlines() if ln.startswith("ok: ")] == [f"ok: {w}" for w in EXIT_LINES]
 
 
+def test_innocence_the_exit_step_passes_the_exit_block(tmp_path):
+    assert EXIT_LINES == [ln for ln in EXIT_BLOCK.splitlines() if ln in EXIT_LINES]
+    r = run_exit_step(tmp_path, "  a walk line\n" + EXIT_BLOCK)
+    assert r.returncode == 0, r.stdout
+    assert [ln for ln in r.stdout.splitlines() if ln.startswith("ok: ")] == [f"ok: {w}" for w in EXIT_LINES]
+
+
 @pytest.mark.parametrize("want", EXIT_LINES)
-def test_guilt_the_exit_step_fails_a_log_carrying_1(tmp_path, capsys, want):
-    log = replay(capsys, parts_file(tmp_path, census_mod.load(FIXTURE)))
+def test_guilt_the_exit_step_fails_a_log_carrying_1(tmp_path, want):
     bad = re.sub(r"\b0(?= failed$)|(?<=: )0$", "1", want)
-    r = run_exit_step(tmp_path, log.replace(want + "\n", bad + "\n"))
+    r = run_exit_step(tmp_path, EXIT_BLOCK.replace(want + "\n", bad + "\n"))
     assert r.returncode == 1 and f"::error::the census did not print '{want}'" in r.stdout, r.stdout
+
+
+def test_guilt_the_exit_step_fails_an_incomplete_log(tmp_path):
+    log = (EXIT_BLOCK.replace("opened-surfaces: 50 ok, 0 failed", "opened-surfaces: 49 ok, 1 failed")
+           .replace("captures: 54 ok, 0 failed", "captures: 53 ok, 1 failed")
+           .replace("shared-component-drift: 0", "shared-component-drift: 0 (INCOMPLETE: 1 walk failed, not a verdict)"))
+    r = run_exit_step(tmp_path, log)
+    assert r.returncode == 1 and r.stdout.count("::error::") == 3, r.stdout
 
 
 def test_guilt_the_exit_step_fails_a_missing_scenario_and_a_red_part(tmp_path, capsys):

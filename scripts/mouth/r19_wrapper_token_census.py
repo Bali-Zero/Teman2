@@ -47,7 +47,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CONTRACT = ROOT / "docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md"
 MEASURE = ROOT / ".claude/skills/design/strumenti/measure.py"
-PAGES = ["/kbli", "/kbli/55203", "/kbli/51101", "/kbli/56101", "/kbli-explorer"]
+# Every route the wrapper holds (SPEC-W0d section 1.a). `[id]` is the first sector card /kbli/sectors links to,
+# read at run time: 9 pages, 54 captures.
+SECTOR_PAGE = "/kbli/sectors/[id]"
+PAGES = ["/kbli", "/kbli/55203", "/kbli/51101", "/kbli/56101", "/kbli-explorer", "/kbli/sectors", SECTOR_PAGE,
+         "/kbli/builder", "/kbli/decoder"]
 DIRECTION_A = {"paper": "#F7F4EE", "elevated": "#FFFCF7", "wash": "#EAE3D8",
                "ink": "#1D2C3B", "muted": "#58626B", "structure": "#233D52",
                "copper": "#A44B36", "line": "#DAD8D1", "line-strong": "#A8ACA9"}
@@ -684,7 +688,9 @@ STATE_JS = r"""
     || (document.getElementById("kbli-explorer-jsonld") || {}).parentElement;
   if (!root) return { root: null };
   const style = document.createElement("style");
-  style.textContent = "*,*::before,*::after{transition:none!important;animation:none!important}";
+  // Motion is finished, not removed, as NO_MOTION does for the resolvers (W0d-3b-2).
+  style.textContent = "*,*::before,*::after{transition:none!important;animation-duration:0s!important;"
+    + "animation-delay:0s!important;animation-iteration-count:1!important}";
   document.head.append(style);
   const ctx = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
   // The rgb channels of the computed colour with the alpha DROPPED, for every syntax Chrome computes
@@ -831,7 +837,9 @@ def export() -> dict:
     states = [{"name": f"{v}/{t}", "width": w, "height": h, "scheme": scheme, "forced": forced}
               for v, (w, h) in viewports.items()
               for t, (scheme, forced) in themes.items()]
-    return {"probe": PROBE_JS, "pages": PAGES, "core": core_components(), "states": states,
+    # The armed apps/mouth test loads fixed routes only: the sector route needs a server to resolve.
+    return {"probe": PROBE_JS, "pages": [p for p in PAGES if p != SECTOR_PAGE], "core": core_components(),
+            "states": states,
             "direction_a": DIRECTION_A, "semantic": SEMANTIC,
             "semantic_on_paper": {k: round(contrast(h, DIRECTION_A["paper"]), 2) for k, h in SEMANTIC.items()}}
 
@@ -848,6 +856,15 @@ def _wait(url: str, seconds: int) -> None:
     raise SystemExit(f"dev server never answered {url}")
 
 
+def sector_route(base: str) -> str:
+    """The first sector card on /kbli/sectors, as its server HTML links it."""
+    with urllib.request.urlopen(base + "/kbli/sectors", timeout=300) as r:
+        hit = re.search(r'href="(/kbli/sectors/[^"/?#]+)"', r.read().decode("utf-8", "replace"))
+    if not hit:
+        raise SystemExit("/kbli/sectors links no sector card: the sector route cannot be resolved")
+    return hit.group(1)
+
+
 def live(base: str, part: str | None = None) -> dict:
     """One full census, or the scenarios of one part (section 9): either way the scenarios run in the order
     of the one list, scenarios()."""
@@ -857,8 +874,13 @@ def live(base: str, part: str | None = None) -> dict:
     census: dict = {"schema": 1, "pages": PAGES, "captures": [], "failed": [], "reads": {}, "colors": {},
                     "state_obs": {}, "walks": [], "walk_failed": [], "parts": [part or "full"],
                     "states": [f"{v}/{t}" for v in m.VIEWPORTS for t in m.THEMES]}
-    for p in routes_of(units):
-        _wait(base + p, 300)
+    routes = routes_of(units)
+    if SECTOR_PAGE in routes:
+        _wait(base + "/kbli/sectors", 300)
+        census["routes"] = {SECTOR_PAGE: sector_route(base)}
+    # Every route a capture or a walk loads is compiled first: a cold compile mid-walk can reload the page.
+    for p in routes:
+        _wait(base + url_path(census, p), 300)
     seconds = {}
     with sync_playwright() as pw:
         browser = pw.chromium.launch(executable_path=m.CHROME)
@@ -881,6 +903,11 @@ def routes_of(units: list) -> list[str]:
                               for _, kind, _, how in units))
 
 
+def url_path(census: dict, page: str) -> str:
+    """The URL path a page of the list loads: the sector route as this run resolved it, any other as written."""
+    return census.get("routes", {}).get(page, page)
+
+
 def capture_pages(browser, m, base: str, census: dict, units: list | None = None) -> None:
     """Each page in each of the six states: the tokens read, the colours painted, the grounds at rest."""
     core = core_components()
@@ -890,11 +917,11 @@ def capture_pages(browser, m, base: str, census: dict, units: list | None = None
         w, h = m.VIEWPORTS[vname]
         scheme, forced = m.THEMES[tname]
         state = f"{vname}/{tname}"
-        ctx = browser.new_context(viewport={"width": w, "height": h}, color_scheme=scheme)
+        ctx = new_context(browser, w, h, scheme)
         ctx.add_init_script(FREEZE_JS)
         page = ctx.new_page()
         try:
-            resp = page.goto(base + page_path, wait_until="load", timeout=180000)
+            resp = page.goto(base + url_path(census, page_path), wait_until="load", timeout=180000)
             if resp is None or resp.status >= 400:
                 raise RuntimeError(f"HTTP {resp.status if resp else 'none'}")
             page.wait_for_timeout(250)
@@ -946,10 +973,10 @@ def walk_states(browser, m, base: str, census: dict, units: list | None = None) 
         w, h = m.VIEWPORTS[vname]
         scheme, forced = m.THEMES[tname]
         name = f"{page_path} {vname}/{tname}"
-        ctx = browser.new_context(viewport={"width": w, "height": h}, color_scheme=scheme)
+        ctx = new_context(browser, w, h, scheme)
         page = ctx.new_page()
         try:
-            resp = page.goto(base + page_path, wait_until="load", timeout=180000)
+            resp = page.goto(base + url_path(census, page_path), wait_until="load", timeout=180000)
             if resp is None or resp.status >= 400:
                 raise RuntimeError(f"HTTP {resp.status if resp else 'none'}")
             page.wait_for_timeout(250)
@@ -1323,6 +1350,10 @@ RESOLVE_JS = r"""
 }
 """
 SETTLE = {"load": 250, "ready": 1500, "open": 2500, "scroll": 150}
+# Motion is finished, not removed: an entrance that holds its end state with `forwards` starts from opacity 0,
+# so removing the animation left its text invisible to the walk (W0d-3, the Zantara chat).
+NO_MOTION = ("*,*::before,*::after{transition:none!important;animation-duration:0s!important;"
+             "animation-delay:0s!important;animation-iteration-count:1!important}")
 # Scroll positions a walk may take before it is INCOMPLETE. The spec says 8; the sector drawer needs 77 on
 # mobile (contract section 8.4, a declared deviation), so every walk gets room for the longest code page.
 CAPS = {"opened": 250, "shared": 250, "page": 250}
@@ -1370,10 +1401,16 @@ def open_page(page, url: str, forced: str | None, opener, selectors: list[str]) 
             opener(page)
         except Exception as exc:  # the reason names the opener, never "never opened" bare
             raise RuntimeError(f"opener: {exc}".splitlines()[0][:160]) from exc
-    page.add_style_tag(content="*,*::before,*::after{transition:none!important;animation:none!important}")
+    page.add_style_tag(content=NO_MOTION)
     page.wait_for_timeout(SETTLE["open"])
     force_theme(page, forced)
     return bool(page.evaluate(ROOTS_JS, selectors))
+
+
+def new_context(browser, w: int, h: int, scheme: str):
+    """Every census context asks for reduced motion: a page that honours it shows the final frame of its motion,
+    script-driven motion included, so a walk reads what the motion settles on (W0d-3b-2)."""
+    return browser.new_context(viewport={"width": w, "height": h}, color_scheme=scheme, reduced_motion="reduce")
 
 
 def quiet(page) -> None:
@@ -1506,22 +1543,51 @@ OPENED_FIXTURE = Path(__file__).resolve().parent / "tests/fixtures/r19_opened_su
 EXPLORER_SURFACES = ["main", "main ~ aside", '[class*="h-[70vh]"]']
 
 
-def _stub(ctx, fixture: dict, search_status: int = 200) -> None:
-    """Search and inspect answer from the fixture: the walk never needs the backend."""
+def _stub(ctx, fixture: dict, stubs: dict) -> None:
+    """Every backend call a walk makes answers from the fixture: `stubs` names each call's status, or "never" for
+    a request left pending. A walk never needs the backend."""
     def reply(route, body, status=200):
         origin = route.request.headers.get("origin", "*")
         route.fulfill(status=status, content_type="application/json", body=json.dumps(body),
                       headers={"access-control-allow-origin": origin, "access-control-allow-credentials": "true"})
-    ctx.route("**/api/v1/kbli-notebook/search**",
-              lambda route: reply(route, fixture["search"]) if search_status == 200
-              else reply(route, {"detail": f"HTTP {search_status}"}, search_status))
-    ctx.route("**/api/v1/kbli-notebook/inspect/**",
-              lambda route: reply(route, {**fixture["inspect"], "code": route.request.url.rstrip("/").split("/")[-1]}))
+
+    def answer(call, body_of):
+        status = stubs[call]
+
+        def handle(route):
+            if status == "never":
+                return  # neither fulfilled nor aborted: the page waits, as it would on a slow backend
+            reply(route, body_of(route) if status == 200 else {"detail": f"HTTP {status}"}, status)
+        return handle
+    routes = {"search": ("**/api/v1/kbli-notebook/search**", lambda route: fixture["search"]),
+              "inspect": ("**/api/v1/kbli-notebook/inspect/**",
+                          lambda route: {**fixture["inspect"], "code": route.request.url.rstrip("/").split("/")[-1]}),
+              "chat": ("**/api/v1/kbli-notebook/chat**", lambda route: fixture["chat"])}
+    for call in stubs:
+        ctx.route(routes[call][0], answer(call, routes[call][1]))
 
 
-def _seed(ctx, fixture: dict) -> None:
-    msgs = [{**m, "results": fixture["search"]} if m.get("results") == "search" else m for m in fixture["messages"]]
+def _seed(ctx, fixture: dict, seed: str) -> None:
+    msgs = [{**m, "results": fixture["search"]} if m.get("results") == "search" else m for m in fixture[seed]]
     ctx.add_init_script(f"sessionStorage.setItem('kbli-messages', {json.dumps(json.dumps(msgs))})")
+
+
+# A timer of 2 s or more never fires on a walk that holds them: a toast stays up, a staged indicator stays
+# on its first stage.
+HOLD_JS = ("(() => { const st = window.setTimeout;"
+           " window.setTimeout = (fn, ms, ...a) => (Number(ms) >= 2000 ? 0 : st(fn, ms, ...a)); })()")
+
+
+def prepare(ctx, fixture: dict, stubs: dict | None, seed: str | bool, opts: dict) -> None:
+    """A walk's context: its stubs, its seeded conversation, held timers and the clipboard when it asks."""
+    if stubs:
+        _stub(ctx, fixture, stubs)
+    if seed:
+        _seed(ctx, fixture, "messages" if seed is True else seed)
+    if opts.get("hold"):
+        ctx.add_init_script(HOLD_JS)
+    if opts.get("clipboard"):
+        ctx.grant_permissions(["clipboard-read", "clipboard-write"])
 
 
 def _type_query(page) -> None:
@@ -1541,6 +1607,39 @@ def _open_sector(page) -> None:
     page.locator('a[href^="/kbli/sectors/"]').first.click()
     page.wait_for_selector('[role="dialog"]', timeout=60000)
     page.mouse.move(0, 0)  # the card under the pointer is not the drawer's state (#8202 gate)
+
+
+def _open_code_detail(page) -> None:
+    _open_sector(page)
+    page.locator('[data-testid="kbli-panel-code-grid"] a[href^="/kbli/"]').first.click()
+    page.wait_for_selector('[data-testid="kbli-panel-code-grid"]', state="detached", timeout=30000)
+    page.mouse.move(0, 0)
+
+
+def _open_table(page) -> None:
+    page.locator('[role="tab"]', has_text="Table").click()
+    page.wait_for_selector("div:has(> table)", timeout=30000)
+    page.mouse.move(0, 0)
+
+
+def _open_details(page) -> None:
+    page.evaluate("() => document.querySelectorAll('details').forEach((d) => { d.open = true; })")
+
+
+def _ask_zantara(until: str):
+    def opener(page) -> None:
+        page.locator('[role="log"] ~ div > button').first.click()
+        page.mouse.move(0, 0)
+        page.wait_for_function(until, timeout=40000)
+    return opener
+
+
+def _select_compare(page) -> None:
+    page.locator('button[title="Compare codes"]').click()
+    for code in ("56101", "55130"):
+        page.locator("main button", has_text=code).first.click()
+    page.wait_for_selector("div.sticky.bottom-0.z-30", timeout=30000)
+    page.mouse.move(0, 0)
 
 
 def _open_compare(page) -> None:
@@ -1565,17 +1664,67 @@ def _open_mobile_nav(page) -> None:
     page.wait_for_selector('[role="dialog"]', timeout=30000)
 
 
-# name, page, walks ("all" = the six states), stub (search status or None), seed, opener, surface selectors
+def _focus_term(page) -> None:
+    page.locator('span[role="button"][aria-expanded]', has_text="KBLI").first.focus()
+    page.wait_for_selector('span[role="button"][aria-expanded="true"] > span', timeout=15000)
+
+
+def _copy_details(page) -> None:
+    page.locator('button[aria-label="Copy details"]:visible').first.click()
+    page.wait_for_selector("[data-sonner-toast]", timeout=30000)
+    page.mouse.move(0, 0)
+
+
+def _await_toast(page) -> None:
+    page.wait_for_selector("[data-sonner-toast]", timeout=30000)
+
+
+def _ask_explorer(page) -> None:
+    box = page.locator('input[aria-label="Ask a question about KBLI"]')
+    box.fill("census fixture question")
+    box.press("Enter")
+    page.wait_for_selector("div.flex.items-start:has(> div.rounded-full > svg.lucide-sparkles)", timeout=30000)
+    page.wait_for_timeout(12500)  # the progress bar stops at 95% after 12 s
+
+
+ANSWERED = "() => document.querySelectorAll('[role=\"log\"] .prose').length > 0"
+PENDING = "() => !!document.querySelector('[role=\"log\"] [role=\"status\"]')"
+FAILED = "() => (document.querySelector('[role=\"log\"]')?.innerText || '').includes('Something went wrong')"
+ZANTARA = ['div:has(> [role="log"])']
+# Declared, not deleted (W0d-3b-2a): a walk whose every text run is over an image has no ground to judge, and the
+# rule that fails it stays. The exemption ends with W2''', which gives the badge a solid plate, puts the walk
+# back and shows it ok (contract section 8.4).
+NOT_JUDGEABLE = {("zantara-pending", "mobile/system-dark"):
+                 "every text run is over-image (gradient-clip title, badge spread 15, bubble on gradient)"}
+OK = {"search": 200, "inspect": 200}
+# name, page, walks ("all" = the six states), stubs, seed, opener, surface selectors[, options]
 SCENARIOS = [
-    ("search-dropdown", "/kbli", "all", 200, False, _type_query, ['div:has(> [role="listbox"])']),
-    ("search-active-row", "/kbli", "walk", 200, False, _active_row, ['div:has(> [role="listbox"])']),
-    ("search-error", "/kbli", "walk", 503, False, _type_query, ['div:has(> [role="listbox"])']),
+    ("search-dropdown", "/kbli", "all", OK, False, _type_query, ['div:has(> [role="listbox"])']),
+    ("search-active-row", "/kbli", "walk", OK, False, _active_row, ['div:has(> [role="listbox"])']),
+    ("search-error", "/kbli", "walk", {**OK, "search": 503}, False, _type_query, ['div:has(> [role="listbox"])']),
     ("sector-drawer", "/kbli", "walk", None, False, _open_sector, ['[role="dialog"]']),
-    ("explorer-answer-inspector", "/kbli-explorer?inspect=56101", "walk", 200, True, None, EXPLORER_SURFACES),
-    ("explorer-compare", "/kbli-explorer", "walk", 200, True, _open_compare, ['[role="dialog"]']),
-    ("explorer-black-book", "/kbli-explorer", "walk", 200, False, _open_black_book,
+    ("sector-code-detail", "/kbli", "walk", None, False, _open_code_detail, ['[role="dialog"]']),
+    ("sector-table", "/kbli", "walk", None, False, _open_table, ["div:has(> table)"]),
+    ("details-55203", "/kbli/55203", "walk", None, False, _open_details, ["details[open]"]),
+    ("details-51101", "/kbli/51101", "walk", None, False, _open_details, ["details[open]"]),
+    ("details-56101", "/kbli/56101", "walk", None, False, _open_details, ["details[open]"]),
+    ("zantara-answer", "/kbli", "walk", {"chat": 200}, False, _ask_zantara(ANSWERED), ZANTARA),
+    ("zantara-pending", "/kbli", "walk", {"chat": "never"}, False, _ask_zantara(PENDING), ZANTARA),
+    ("zantara-error", "/kbli", "walk", {"chat": 500}, False, _ask_zantara(FAILED), ZANTARA),
+    ("explorer-answer-inspector", "/kbli-explorer?inspect=56101", "walk", OK, True, None, EXPLORER_SURFACES),
+    ("explorer-compare", "/kbli-explorer", "walk", OK, True, _open_compare, ['[role="dialog"]']),
+    ("explorer-compare-bar", "/kbli-explorer", "walk", OK, True, _select_compare, ["div.sticky.bottom-0.z-30"]),
+    ("explorer-black-book", "/kbli-explorer", "walk", OK, False, _open_black_book,
      ['[aria-labelledby="kbli-transition-title"] > :last-child']),
-    ("explorer-mobile-sidebar", "/kbli-explorer", "mobile", 200, True, _open_sidebar, ["aside:has(h3)"]),
+    ("explorer-mobile-sidebar", "/kbli-explorer", "mobile", OK, True, _open_sidebar, ["aside:has(h3)"]),
+    ("explorer-glossary-tooltip", "/kbli-explorer", "walk", OK, "glossary", _focus_term,
+     ['span[role="button"][aria-expanded="true"] > span'], {"focus": True}),
+    ("explorer-toast-success", "/kbli-explorer?inspect=56101", "walk", OK, True, _copy_details,
+     ["[data-sonner-toast]"], {"hold": True, "clipboard": True}),
+    ("explorer-toast-error", "/kbli-explorer?inspect=56101", "walk", {**OK, "inspect": 500}, True, _await_toast,
+     ["[data-sonner-toast]"], {"hold": True}),
+    ("explorer-thinking", "/kbli-explorer", "walk", {**OK, "chat": "never"}, False, _ask_explorer,
+     ["div.flex.items-start:has(> div.rounded-full > svg.lucide-sparkles)"], {"hold": True}),
     ("kbli-mobile-nav", "/kbli", "mobile-all", None, False, _open_mobile_nav, ['[role="dialog"]']),
     ("kbli-code-mobile-nav", "/kbli/55203", "mobile-all", None, False, _open_mobile_nav, ['[role="dialog"]']),
 ]
@@ -1650,7 +1799,7 @@ def scenarios(viewports: dict, themes: dict) -> list[tuple[str, str, str, tuple]
         name, path, which = sc[:3]
         part = "shared" if which in SHARED_WALKS else "explorer" if path.startswith("/kbli-explorer") else "kbli"
         out += [(part, "shared" if part == "shared" else "opened", f"{name} {v}/{t}", (sc, v, t))
-                for v, t in walks[which]]
+                for v, t in walks[which] if (name, f"{v}/{t}") not in NOT_JUDGEABLE]
     return out
 
 
@@ -1713,16 +1862,14 @@ def walk_opened(browser, m, base: str, census: dict, units: list | None = None) 
     for _, kind, _, (sc, vname, tname) in scenarios(m.VIEWPORTS, m.THEMES) if units is None else units:
         if kind not in ("opened", "shared"):
             continue
-        name, path, which, status, seed, opener, selectors = sc
+        name, path, which, stubs, seed, opener, selectors, *rest = sc
+        opts = rest[0] if rest else {}
         shared = which in SHARED_WALKS
         w, h = m.VIEWPORTS[vname]
         scheme, forced = m.THEMES[tname]
-        ctx = browser.new_context(viewport={"width": w, "height": h}, color_scheme=scheme)
+        ctx = new_context(browser, w, h, scheme)
         ctx.add_init_script(FREEZE_JS)
-        if status is not None:
-            _stub(ctx, fixture, status)
-        if seed:
-            _seed(ctx, fixture)
+        prepare(ctx, fixture, stubs, seed, opts)
         page = ctx.new_page()
         row: dict = {"name": name, "walk": f"{vname}/{tname}", "roots": 0, "runs": []}
         branch = None
@@ -1740,13 +1887,15 @@ def walk_opened(browser, m, base: str, census: dict, units: list | None = None) 
                     if opener and not opened:
                         open_page(page, base + path, forced, opener, selectors)
                     branch = page.evaluate(BRANCH_JS, name.split()[0]) if shared else None
-                    row.update(resolve(page, "shared" if shared else "opened", selectors))
+                    row.update(resolve(page, "shared" if shared else "opened", selectors,
+                                       focus=opts.get("focus", False)))
                     break
                 except Exception as exc:  # a page that reloaded under the walk is walked once more
                     if attempt == 2 or not RELOADED.search(str(exc)):
                         raise
         except Exception as exc:  # a surface that did not open must never read as clean
             row["error"] = str(exc).splitlines()[0][:200]
+        ctx.unroute_all(behavior="ignoreErrors")  # a request left pending ends with its walk
         ctx.close()
         row["state"], row["reason"] = walk_state(row)
         if shared:
@@ -1756,7 +1905,6 @@ def walk_opened(browser, m, base: str, census: dict, units: list | None = None) 
             census["shared"].append({"name": name, "walk": row["walk"], "fingerprint": fingerprint(row, branch)})
             continue
         census["opened"].append(row)
-
 
 def fingerprint(row: dict, branch: str | None) -> list[str]:
     """What a shared pin holds: each measured run as its colour on A's ground (or its own colour over an
@@ -1823,7 +1971,7 @@ def disagreements(census: dict) -> list[str]:
 
 def page_grounds(page, where: str) -> dict:
     """The resolvers on every text run of the wrapper at rest (SPEC-W0d section 2.6)."""
-    page.add_style_tag(content="*,*::before,*::after{transition:none!important;animation:none!important}")
+    page.add_style_tag(content=NO_MOTION)
     page.wait_for_timeout(SETTLE["scroll"])
     res = resolve(page, "page")
     off, disagree = judge_runs(res["runs"], where, page_level=True)
@@ -1936,6 +2084,7 @@ def opened_verdict(census: dict, surfaces: dict, contract: dict, pin: dict | Non
     failed = [o for o in opened if o["state"] != "ok"]
     short = [o for o in opened if o.get("incomplete")]
     out = [f"opened-surfaces: {len(ok)} ok, {len(failed)} failed"]
+    out += [f"declared-not-judgeable: {name} {walk}" for name, walk in sorted(NOT_JUDGEABLE)]
     below = []
     for o in opened:
         runs = o.get("runs", [])
