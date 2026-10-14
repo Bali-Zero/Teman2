@@ -13,13 +13,37 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_current_user
-from backend.services.pricing.pricing_service import get_pricing_service
+from backend.services.pricing.pricing_service import (
+    _is_internal_service,
+    get_pricing_service,
+)
 
 OptionalUser = dict | None  # User dict from get_current_user, or None if unauthenticated
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/pricing", tags=["pricing"])
+
+
+def _omit_internal_rows(node: Any, svc: Any = None) -> Any:
+    """Return a deep copy of ``node`` omitting dict entries marked ``"internal": true``."""
+    if isinstance(node, dict):
+        cleaned: dict[str, Any] = {}
+        for key, value in node.items():
+            if isinstance(value, dict) and _is_internal_service(svc, str(key), value):
+                continue
+            cleaned[key] = _omit_internal_rows(value, svc)
+        return cleaned
+    if isinstance(node, list):
+        return [
+            _omit_internal_rows(item, svc)
+            for item in node
+            if not (
+                isinstance(item, dict)
+                and _is_internal_service(svc, str(item.get("name", "")), item)
+            )
+        ]
+    return node
 
 
 @router.get("/all")
@@ -32,7 +56,7 @@ async def get_all_prices() -> dict[str, Any]:
     result = svc.get_all_prices()
     if "error" in result:
         raise HTTPException(status_code=503, detail=result["error"])
-    return result
+    return _omit_internal_rows(result, svc)
 
 
 @router.get("/search")
@@ -47,37 +71,7 @@ async def search_pricing(
     result = svc.search_service(q)
     if "error" in result:
         raise HTTPException(status_code=503, detail=result["error"])
-    return result
-
-
-def _is_internal_service(svc: Any, key: str, entry: dict[str, Any]) -> bool:
-    """True when the catalogue row carries ``"internal": true``.
-
-    ``PricingService.get_service_by_key`` returns a projected dict and must keep
-    resolving internal rows for backend callers, so check both the returned dict
-    and the raw catalogue entry in ``svc.prices``.
-    """
-    if entry.get("internal") is True:
-        return True
-    services = getattr(svc, "prices", {}).get("services", {})
-    category_data = services.get(entry.get("category", ""), {})
-    if not isinstance(category_data, dict):
-        return False
-    qualifier, sep, bare_name = key.partition("::")
-    if not sep:
-        bare_name = key
-        qualifier = ""
-    raw = category_data.get(bare_name)
-    if isinstance(raw, dict) and ("price" in raw or "tier_range" in raw):
-        return raw.get("internal") is True
-    for sub_name, sub_block in category_data.items():
-        if qualifier and sub_name != qualifier:
-            continue
-        if isinstance(sub_block, dict):
-            sub_raw = sub_block.get(bare_name)
-            if isinstance(sub_raw, dict) and sub_raw.get("internal") is True:
-                return True
-    return False
+    return _omit_internal_rows(result, svc)
 
 
 @router.get("/service")

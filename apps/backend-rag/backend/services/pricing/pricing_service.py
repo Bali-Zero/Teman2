@@ -97,6 +97,40 @@ def _entry_display_price(entry: dict[str, Any]) -> str:
     return "Contact"
 
 
+def _is_internal_service(svc: Any, key: str, entry: dict[str, Any]) -> bool:
+    """True when the catalogue row carries ``"internal": true``.
+
+    ``PricingService.get_service_by_key`` returns a projected dict and must keep
+    resolving internal rows for backend callers, so check both the returned dict
+    and the raw catalogue entry in ``svc.prices``.
+    """
+    if not isinstance(entry, dict):
+        return False
+    if entry.get("internal") is True:
+        return True
+    services = getattr(svc, "prices", {}).get("services", {})
+    if not isinstance(services, dict):
+        return False
+    category_data = services.get(entry.get("category", ""), {})
+    if not isinstance(category_data, dict):
+        return False
+    qualifier, sep, bare_name = key.partition("::")
+    if not sep:
+        bare_name = key
+        qualifier = ""
+    raw = category_data.get(bare_name)
+    if isinstance(raw, dict) and ("price" in raw or "tier_range" in raw):
+        return raw.get("internal") is True
+    for sub_name, sub_block in category_data.items():
+        if qualifier and sub_name != qualifier:
+            continue
+        if isinstance(sub_block, dict):
+            sub_raw = sub_block.get(bare_name)
+            if isinstance(sub_raw, dict) and sub_raw.get("internal") is True:
+                return True
+    return False
+
+
 # Namespace separator for a QUALIFIED ``get_service_by_key`` argument
 # (``"<sub_block or category>::<service_name>"``). Chosen over "/" because
 # several real catalogue display names already contain a bare "/" (e.g.
@@ -412,6 +446,8 @@ class PricingService:
             service_data: dict[str, Any],
             container: dict[str, Any] | None = None,
         ) -> None:
+            if _is_internal_service(self, service_name, service_data):
+                return
             service_text = service_name.lower()
             service_text += " " + str(service_data.get("name", "")).lower()
             service_text += " " + str(service_data.get("notes", "")).lower()
@@ -419,6 +455,9 @@ class PricingService:
             legacy_names = service_data.get("legacy_names", [])
             if isinstance(legacy_names, list):
                 service_text += " " + " ".join(n.lower() for n in legacy_names)
+            keywords = service_data.get("keywords", [])
+            if isinstance(keywords, list):
+                service_text += " " + " ".join(str(k).lower() for k in keywords)
             match_count = sum(1 for term in clean_keywords if term in service_text)
             if match_count > 0:
                 target = container if container is not None else results
@@ -430,6 +469,8 @@ class PricingService:
                 for service_item in category_services:
                     if not isinstance(service_item, dict):
                         continue
+                    if _is_internal_service(self, str(service_item.get("name", "")), service_item):
+                        continue
                     code = str(service_item.get("code", "")).lower()
                     name = str(service_item.get("name", "")).lower()
                     notes = str(service_item.get("notes", "")).lower()
@@ -439,6 +480,9 @@ class PricingService:
                     legacy_names = service_item.get("legacy_names", [])
                     if isinstance(legacy_names, list):
                         service_text += " " + " ".join(n.lower() for n in legacy_names)
+                    keywords = service_item.get("keywords", [])
+                    if isinstance(keywords, list):
+                        service_text += " " + " ".join(str(k).lower() for k in keywords)
 
                     match_count = sum(1 for term in clean_keywords if term in service_text)
                     if match_count > 0:
@@ -631,6 +675,8 @@ class PricingService:
             for item in category_data:
                 if isinstance(item, dict):
                     name = item.get("name", item.get("code", "Unknown"))
+                    if _is_internal_service(self, str(name), item):
+                        continue
                     price_idr = item.get("price_idr", item.get("price", "Contact"))
                     price_usd = item.get("price_usd_approx", "")
                     duration = item.get("duration", "")
@@ -644,6 +690,8 @@ class PricingService:
         elif isinstance(category_data, dict):
             for name, data in category_data.items():
                 if isinstance(data, dict):
+                    if _is_internal_service(self, name, data):
+                        continue
                     # Detect tax_accounting-style sub-block: a dict whose
                     # values look like service entries themselves (have
                     # ``name`` and either ``price`` or ``tier_range``).
@@ -684,8 +732,9 @@ class PricingService:
         ]
 
         services = self.prices.get("services", {})
+        include_all = service_type in (None, "all")
 
-        if service_type == "visa" or service_type is None:
+        if service_type == "visa" or include_all:
             context_parts.append("## VISA PRICES")
             context_parts.extend(self._format_service_list(services.get("single_entry_visas", {})))
             context_parts.extend(
@@ -693,29 +742,29 @@ class PricingService:
             )
             context_parts.append("")
 
-        if service_type == "kitas" or service_type is None:
+        if service_type == "kitas" or include_all:
             context_parts.append("## KITAS/KITAP PERMITS")
             context_parts.extend(self._format_service_list(services.get("kitas_permits", {})))
             context_parts.extend(self._format_service_list(services.get("kitap_permits", {})))
             context_parts.append("")
 
-        if service_type == "business" or service_type is None:
+        if service_type == "business" or include_all:
             context_parts.append("## COMPANY & CONSULTANT SERVICES")
             context_parts.extend(self._format_service_list(services.get("company_services", {})))
             context_parts.extend(self._format_service_list(services.get("consultant_services", {})))
             context_parts.append("")
 
-        if service_type == "tax" or service_type is None:
+        if service_type == "tax" or include_all:
             context_parts.append("## TAX & ACCOUNTING")
             context_parts.extend(self._format_service_list(services.get("tax_accounting", {})))
             context_parts.append("")
 
-        if service_type == "other" or service_type is None:
+        if service_type == "other" or include_all:
             context_parts.append("## OTHER SERVICES")
             context_parts.extend(self._format_service_list(services.get("other_process", {})))
             context_parts.append("")
 
-        if service_type == "urgent" or service_type is None:
+        if service_type == "urgent" or include_all:
             context_parts.append("## URGENT PROCESSING")
             context_parts.extend(self._format_service_list(services.get("urgent_processing", {})))
             context_parts.append("")

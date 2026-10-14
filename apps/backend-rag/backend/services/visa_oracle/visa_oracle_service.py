@@ -12,7 +12,10 @@ import secrets
 from typing import Any
 from urllib.parse import quote
 
-from backend.services.pricing.pricing_service import get_pricing_service
+from backend.services.pricing.pricing_service import (
+    _is_internal_service,
+    get_pricing_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +43,7 @@ PURPOSE_KEYWORDS: dict[str, list[str]] = {
     "visit": ["tourism", "tourist", "c1", "visit", "voa"],
     "work": ["working", "work", "employment", "kitas", "imta"],
     "invest": ["investor", "invest", "kitas"],
-    "retire": ["retirement", "retire", "pensioner", "pension"],
+    "retire": ["e33f", "retirement", "retire", "pensioner", "pension"],
     "digital_nomad": ["remote", "freelance", "e33g", "digital", "nomad"],
     "family": ["spouse", "dependent", "family", "child"],
     "study": ["internship", "student", "c22", "study", "education"],
@@ -94,6 +97,18 @@ VISA_METADATA: dict[str, dict[str, str]] = {
         "validity": "KITAS — offshore process",
     },
     "Investor KITAS 2 Years (Extend)": {"duration": "2 years", "validity": "KITAS — renewal"},
+    "E33F Second Home Senior (1 Year, Altus/Onshore)": {
+        "duration": "1 year",
+        "validity": "KITAS — renewable",
+    },
+    "E33F Second Home Senior (1 Year, Offshore)": {
+        "duration": "1 year",
+        "validity": "KITAS — offshore process",
+    },
+    "E33F Second Home Senior (Extend)": {
+        "duration": "1 year",
+        "validity": "KITAS — renewal",
+    },
     "Retirement (Altus/Onshore)": {"duration": "1 year", "validity": "KITAS — renewable"},
     "Retirement (Offshore)": {"duration": "1 year", "validity": "KITAS — offshore process"},
     "Retirement (Extend)": {"duration": "1 year", "validity": "KITAS — renewal"},
@@ -247,7 +262,13 @@ class VisaOracleService:
 
         for category in relevant_categories:
             category_data = services.get(category, {})
+            if not isinstance(category_data, dict):
+                continue
             for visa_name, details in category_data.items():
+                if not isinstance(details, dict) or _is_internal_service(
+                    self._pricing, visa_name, details
+                ):
+                    continue
                 score = self._score_visa(
                     visa_name=visa_name,
                     details=details,
@@ -301,7 +322,13 @@ class VisaOracleService:
         services = {**self._pricing.prices.get("services", {}), **self._VOA_DATA}
 
         for category, entries in services.items():
+            if not isinstance(entries, dict):
+                continue
             for visa_name, details in entries.items():
+                if not isinstance(details, dict) or _is_internal_service(
+                    self._pricing, visa_name, details
+                ):
+                    continue
                 result.append(
                     {
                         "name": visa_name,
@@ -450,10 +477,17 @@ class VisaOracleService:
         """
         score = 0.0
         name_lower = visa_name.lower()
+        entry_keywords = details.get("keywords", [])
+        extra_text = (
+            " ".join(str(k).lower() for k in entry_keywords)
+            if isinstance(entry_keywords, list)
+            else ""
+        )
+        searchable_text = f"{name_lower} {extra_text}".strip()
 
         # Keyword matching
         for kw in keywords:
-            if kw.lower() in name_lower:
+            if kw.lower() in searchable_text:
                 score += SCORE_KEYWORD_MATCH
 
         # Duration fit — check pricing data first, fall back to VISA_METADATA

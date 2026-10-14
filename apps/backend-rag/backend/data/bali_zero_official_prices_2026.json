@@ -378,7 +378,15 @@
         "validity": "1 year",
         "notes": "All-inclusive price. Senior 55+ income-only route: proof of income or allowance of at least USD 3,000/month, no deposit required.",
         "description_en": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proof of income or allowance of at least USD 3,000/month; no deposit required. Valid 1 year, renewable; non-working residency. Offshore process for applicants outside Indonesia. A sponsor (penjamin) is required; Bali Zero can act as one.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "keywords": [
+          "retirement",
+          "retire",
+          "pension",
+          "pensiun",
+          "pensioner",
+          "pensiunan"
+        ]
       },
       "E33F Second Home Senior (1 Year, Altus/Onshore)": {
         "name": "E33F Second Home Senior (1 Year, Altus/Onshore)",
@@ -388,7 +396,15 @@
         "validity": "1 year",
         "notes": "All-inclusive price. Senior 55+ income-only route: proof of income or allowance of at least USD 3,000/month, no deposit required.",
         "description_en": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proof of income or allowance of at least USD 3,000/month; no deposit required. Valid 1 year, renewable; non-working residency. Onshore process via Altus. A sponsor (penjamin) is required; Bali Zero can act as one.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "keywords": [
+          "retirement",
+          "retire",
+          "pension",
+          "pensiun",
+          "pensioner",
+          "pensiunan"
+        ]
       },
       "E33F Second Home Senior (Extend)": {
         "name": "E33F Second Home Senior (Extend)",
@@ -398,7 +414,15 @@
         "validity": "",
         "notes": "All-inclusive price. Onshore annual extension of an existing E33F senior permit (income proof re-validated).",
         "description_en": "Onshore annual extension of an existing E33F Second Home senior permit. USD 3,000/month income or allowance proof is re-validated at each extension. A sponsor (penjamin) is required; Bali Zero can act as one.",
-        "icon_id": "kitas-investor"
+        "icon_id": "kitas-investor",
+        "keywords": [
+          "retirement",
+          "retire",
+          "pension",
+          "pensiun",
+          "pensioner",
+          "pensiunan"
+        ]
       },
       "E30A Education Visa (1 Year)": {
         "name": "E30A Education Visa (1 Year)",

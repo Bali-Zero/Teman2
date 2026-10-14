@@ -115,3 +115,122 @@ class TestScenarioPricing:
         )
 
         assert response.status_code == 503
+
+
+class TestInternalRowFiltering:
+    @pytest.mark.integration
+    def test_get_all_prices_omits_internal_rows_without_mutating_service(
+        self,
+        client: TestClient,
+    ) -> None:
+        from backend.services.pricing.pricing_service import PricingService
+
+        real_svc = PricingService()
+        with patch(
+            "backend.app.routers.dynamic_pricing.get_pricing_service",
+            return_value=real_svc,
+        ):
+            response = client.get("/api/pricing/all")
+
+        assert response.status_code == 200
+        body = response.json()
+        kitas = body["services"]["kitas_permits"]
+        for internal_key in (
+            "Retirement (Altus/Onshore)",
+            "Retirement (Offshore)",
+            "Retirement (Extend)",
+        ):
+            assert internal_key not in kitas
+            # Raw in-memory catalogue on PricingService must stay unmutated
+            assert internal_key in real_svc.prices["services"]["kitas_permits"]
+
+        assert "E33F Second Home Senior (1 Year, Offshore)" in kitas
+        assert "E33F Second Home Senior (1 Year, Altus/Onshore)" in kitas
+        assert "E33F Second Home Senior (Extend)" in kitas
+        assert "Retirement KITAP + MERP" in body["services"]["kitap_permits"]
+
+    @pytest.mark.integration
+    def test_get_all_prices_omits_internal_rows_at_nested_depth(
+        self,
+        client: TestClient,
+    ) -> None:
+        service = MagicMock()
+        service.prices = {}
+        service.get_all_prices.return_value = {
+            "services": {
+                "tax_accounting": {
+                    "annual_standalone": {
+                        "Public Tax": {"name": "Public Tax", "price": "3.000.000 IDR"},
+                        "Hidden Tax": {
+                            "name": "Hidden Tax",
+                            "price": "1.000.000 IDR",
+                            "internal": True,
+                        },
+                    }
+                }
+            }
+        }
+        with patch(
+            "backend.app.routers.dynamic_pricing.get_pricing_service",
+            return_value=service,
+        ):
+            response = client.get("/api/pricing/all")
+
+        assert response.status_code == 200
+        sub = response.json()["services"]["tax_accounting"]["annual_standalone"]
+        assert "Public Tax" in sub
+        assert "Hidden Tax" not in sub
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("query", ["retirement", "pensiun", "pensiunan"])
+    def test_search_pricing_returns_e33f_and_omits_internal_rows(
+        self,
+        client: TestClient,
+        query: str,
+    ) -> None:
+        from backend.services.pricing.pricing_service import PricingService
+
+        real_svc = PricingService()
+        with patch(
+            "backend.app.routers.dynamic_pricing.get_pricing_service",
+            return_value=real_svc,
+        ):
+            response = client.get("/api/pricing/search", params={"q": query})
+
+        assert response.status_code == 200
+        kitas = response.json()["results"]["kitas_permits"]
+        for internal_key in (
+            "Retirement (Altus/Onshore)",
+            "Retirement (Offshore)",
+            "Retirement (Extend)",
+        ):
+            assert internal_key not in kitas
+        assert "E33F Second Home Senior (1 Year, Offshore)" in kitas
+        assert "E33F Second Home Senior (1 Year, Altus/Onshore)" in kitas
+        assert "E33F Second Home Senior (Extend)" in kitas
+
+    @pytest.mark.integration
+    def test_service_endpoint_404_for_internal_and_200_for_e33f(
+        self,
+        client: TestClient,
+    ) -> None:
+        from backend.services.pricing.pricing_service import PricingService
+
+        real_svc = PricingService()
+        with patch(
+            "backend.app.routers.dynamic_pricing.get_pricing_service",
+            return_value=real_svc,
+        ):
+            r_internal = client.get(
+                "/api/pricing/service",
+                params={"key": "Retirement (Offshore)"},
+            )
+            r_public = client.get(
+                "/api/pricing/service",
+                params={"key": "E33F Second Home Senior (1 Year, Offshore)"},
+            )
+
+        assert r_internal.status_code == 404
+        assert r_public.status_code == 200
+        assert r_public.json()["price"] == "14.000.000 IDR"
+        assert callable(dynamic_pricing_module._is_internal_service)
