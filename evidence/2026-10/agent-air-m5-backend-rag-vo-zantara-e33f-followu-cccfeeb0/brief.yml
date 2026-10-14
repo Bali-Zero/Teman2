@@ -1,0 +1,40 @@
+task_id: vo-zantara-e33f-followup-1014
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Follow-up of Zero's 2026-10-14 ruling "E33F everywhere" (session question, recorded in memory as a
+  decision), carrying the fresh Opus gate conditions F2 and F3 of PR 8505. Zantara's few-shot reply and
+  the v3/v4 core-prompt worked example for retirement no longer name the generic internal Retirement KITAS
+  row; they name the E33F Second Home Senior KITAS with its canonical prices (14 juta Offshore, 16 juta
+  Altus/Onshore). prepare_payloads.py stops building payloads from internal catalogue rows. The price-sync
+  purge guard gets the missing test (surviving mutation M9 of 8505).
+acceptance:
+  - text: >-
+      No few-shot list (GENERAL, WHATSAPP, zantara_persona) and no v4 worked example names an internal
+      catalogue row, says "Retirement KITAS", or claims "tanpa bekerja"; each juta figure equals the
+      canonical E33F row of the variant it is attached to.
+    probe: >-
+      cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/prompts/test_few_shot_e33f_everywhere_1014.py -p no:cacheprovider
+  - text: >-
+      prepare_payloads.flatten_services skips rows with internal true and keeps the others.
+    probe: >-
+      cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/scripts/test_prepare_payloads_internal_1014.py -p no:cacheprovider
+  - text: >-
+      run(apply=True, purge_internal=False) makes no delete call and still applies routine price updates.
+    probe: python3 -m pytest tests/scripts/test_sync_pricing_collection_prices_internal_1014.py -p no:cacheprovider
+  - text: >-
+      One no-argument observer runs the lane tests and exits 0.
+    probe: python3 scripts/ci/observe_zantara_e33f_everywhere_1014.py
+assumptions:
+  - text: >-
+      The saved E33F official page is research/visa/2026-10-14-e33-documents/text/429f10c0-20261013T231106Z.txt
+      (not the seq29 folder). It carries the 1 year stay extendable online, the penjamin/sponsor sentence and the
+      income or allowance proof of USD 3.000 per month; age 55 comes from the signed rule hf.e33f.age-below-55
+      and the three E33F catalogue rows, "no deposit" from the rows.
+    status: verified
+    probe: grep -c "penjamin" research/visa/2026-10-14-e33-documents/text/429f10c0-20261013T231106Z.txt
+  - text: >-
+      Nothing in this lane touches production Qdrant or Fly.
+    status: verified
+    probe: git diff --stat origin/main..HEAD

@@ -1,0 +1,123 @@
+brief_ref: evidence/2026-10/agent-air-m5-backend-rag-vo-zantara-e33f-followu-cccfeeb0/brief.yml
+plan_ref: >-
+  Branch agent/air-m5/backend-rag/vo-zantara-e33f-followup-1014 on origin/main bf2235545a, two commits
+  (9442cecc03 build, 429db83ebf review cure). Ruling: Zero 2026-10-14 "E33F everywhere" (session question,
+  recorded in memory as a decision); conditions F2/F3 of the fresh Opus gate on PR 8505.
+lanes:
+  - lane: e33f-followup-build
+    role: build
+    seat: "gemini-4-argon-high via agy (external, edits files only, never runs git; Claude driver verified and committed)"
+  - lane: e33f-followup-redteam-opus
+    role: review
+    seat: "claude-opus-5-5 adversarial red team (read-only), head 9442cecc03"
+  - lane: e33f-followup-redteam-codex
+    role: review
+    seat: "codex gpt-5.6-sol; rollout /Users/balizero/.codex/sessions/2026/10/15/rollout-2026-10-15T01-01-01-01a13b5c-324c-71a3-a864-f6fe061c7070.jsonl"
+what_changed: |
+  few_shot_examples.py: the pensiun reply names E33F Second Home Senior KITAS, 14 juta (Offshore) or 16 juta
+  (Altus/Onshore), 1 year, age 55+, income or allowance of USD 3.000 per month, penjamin required (Bali Zero can
+  act as one); no "tanpa bekerja", no health insurance, no pension fund.
+  zantara_core_v4.py and zantara_core_v3.py: the same worked example with the same true facts (v5 imports v4).
+  prepare_payloads.py: flatten_services skips internal rows in both paths.
+  Tests: test_few_shot_e33f_everywhere_1014.py, test_prepare_payloads_internal_1014.py, and the M9 test in
+  tests/scripts/test_sync_pricing_collection_prices_internal_1014.py. Observer floors raised (root 6, backend 108).
+proof: |
+  Bites: the consumer is Zantara's LLM, which copies the few-shot and worked example into client replies. The
+  observation is scripts/ci/observe_zantara_e33f_everywhere_1014.py (no arguments): 6 root tests and 108
+  backend tests pure pass, and the guilt mutations below go red.
+dissent:
+  - seat: claude-opus-5-5
+    objection: "MEDIUM: the juta check only tested membership in {10,14,16}; swapped prices (16 Offshore, 14 Altus) passed."
+    status: CONFIRMED
+    resolution: "Cured in 429db83ebf: each figure is tied to its variant row read from the catalogue; a swapped-price fixture is flagged. Re-proved this turn by mutation (receipt 6)."
+  - seat: claude-opus-5-5
+    objection: "MEDIUM: the prepare_payloads test imported the script at collection, whose load_dotenv() pulled the untracked apps/backend-rag/.env into os.environ."
+    status: CONFIRMED
+    resolution: "Cured in 429db83ebf: the import runs with dotenv.load_dotenv patched and the test asserts os.environ is unchanged."
+  - seat: claude-opus-5-5
+    objection: "LOW: the build report claimed the saved pages hold no E33F text; the page exists at research/visa/2026-10-14-e33-documents/text/429f10c0-20261013T231106Z.txt."
+    status: CONFIRMED
+    resolution: "The claim is dropped; the PR body cites that page, the rules el.e33f.retirement and hf.e33f.age-below-55, and the three E33F rows."
+  - seat: claude-opus-5-5
+    objection: "LOW: zantara_core_v3.py still carries the old KITAS pensiun worked example."
+    status: CONFIRMED
+    resolution: "Cured in 429db83ebf: v3 gets the same text as v4 (zantara_core.py untouched)."
+  - seat: claude-opus-5-5
+    objection: "LOW: kg_enhanced_retrieval.py golden route investor_kitas_retirement names Retirement KITAS and makes claims the page does not support."
+    status: PLAUSIBLE
+    resolution: "Out of scope, not widened here; to be opened as a separate follow-up lane under the E33F everywhere ruling."
+  - seat: claude-opus-5-5
+    objection: "LOW: stiff Indonesian wording (serta penjamin wajib, deposit phrase read as qualifying income, clipped tanpa bekerja)."
+    status: CONFIRMED
+    resolution: "Cured in 429db83ebf: reply reworded (Wajib ada penjamin; tanpa perlu deposit), tanpa bekerja removed."
+  - seat: claude-opus-5-5
+    objection: "LOW: brittle checks, len(whatsapp FEW_SHOT) == 18 pinned and forbidden claims scanned across the whole v4/v5 prompt."
+    status: CONFIRMED
+    resolution: "Cured in 429db83ebf: the forbidden-claim scan is limited to the retirement worked-example block."
+  - seat: claude-opus-5-5
+    objection: "LOW: the persona re-export is zantara_persona.FEW_SHOT_EXAMPLES, not whatsapp_persona's separate list."
+    status: CONFIRMED
+    resolution: "Cured in 429db83ebf: the test loops over GENERAL, WHATSAPP and zantara_persona."
+  - seat: claude-opus-5-5
+    objection: "LOW: observer ROOT_FLOOR stayed 5 and the new backend files were not in BACKEND_TESTS."
+    status: CONFIRMED
+    resolution: "Cured in 429db83ebf: ROOT_FLOOR 6, both new files added, BACKEND_FLOOR 108 (observer ran 108 passed this turn)."
+  - seat: claude-opus-5-5
+    objection: "LOW, for information: the signed pack declares E33F sponsor_types INDIVIDUAL while the catalogue rows say Bali Zero can act as sponsor."
+    status: PLAUSIBLE
+    resolution: "No change in this PR; open question for Zero (reconcile the catalogue sentence or the pack metadata). Stated in the PR body."
+  - seat: codex gpt-5.6-sol
+    objection: "HIGH: 'tanpa bekerja' is more absolute than the saved E33F page, which allows business, meeting and purchase activities."
+    status: CONFIRMED
+    resolution: "Cured in 429db83ebf: phrase removed from the few-shot reply and the v3/v4 example, added to FORBIDDEN_RETIREMENT_CLAIMS with a dedicated guilt fixture."
+  - seat: codex gpt-5.6-sol
+    objection: "LOW: trailing blank line at the end of the M9 test file, git diff --check red."
+    status: CONFIRMED
+    resolution: "Cured in 429db83ebf; git diff --check origin/main..HEAD exit 0 this turn."
+receipts:
+  - claim: "Root suites: M9 purge guard test, price-sync tests, catalogue decisions."
+    cmd: "python3 -m pytest tests/scripts/test_sync_pricing_collection_prices_internal_1014.py scripts/test_sync_pricing_collection_prices.py tests/scripts/test_catalogue_decisions_1014.py -p no:cacheprovider"
+    result: "32 passed in 0.64s"
+    exit: 0
+    ts: "2026-10-14T17:39:18Z"
+    seat: claude-sonnet-5-5 (driver, not the builder)
+  - claim: "Frontend price mirror in sync."
+    cmd: "python3 scripts/sync_frontend_prices.py --check"
+    result: "OK: bali-zero-prices.json is in sync with PricingTool canonical"
+    exit: 0
+    ts: "2026-10-14T17:39:18Z"
+    seat: claude-sonnet-5-5 (driver, not the builder)
+  - claim: "Whitespace clean over the whole lane diff."
+    cmd: "git diff --check origin/main..HEAD"
+    result: "no output"
+    exit: 0
+    ts: "2026-10-14T17:39:18Z"
+    seat: claude-sonnet-5-5 (driver, not the builder)
+  - claim: "Bites observer: no-argument run of the lane tests."
+    cmd: "python3 scripts/ci/observe_zantara_e33f_everywhere_1014.py"
+    result: "root 6 passed; backend 108 passed; internal Retirement rows leave client paths, raw rows still resolve"
+    exit: 0
+    ts: "2026-10-14T17:39:34Z"
+    seat: claude-sonnet-5-5 (driver, not the builder)
+  - claim: "Guilt mutation: swapped variant prices in the few-shot reply go red, then file restored byte-equal."
+    cmd: "sed swap 14/16 in apps/backend-rag/backend/prompts/few_shot_examples.py, then pytest backend/tests/unit/prompts/test_few_shot_e33f_everywhere_1014.py; cp back and cmp"
+    result: "1 failed, 8 passed (test_exported_lists_have_zero_violations); cmp restored; git status clean"
+    exit: 0
+    ts: "2026-10-14T17:40:05Z"
+    seat: claude-sonnet-5-5 (driver, not the builder)
+  - claim: "Innocence after restore: both new backend test files green."
+    cmd: "cd apps/backend-rag && JWT_SECRET_KEY=<test value> API_KEYS=<test value> .venv/bin/python -m pytest backend/tests/unit/prompts/test_few_shot_e33f_everywhere_1014.py backend/tests/unit/scripts/test_prepare_payloads_internal_1014.py -p no:cacheprovider"
+    result: "13 passed in 0.73s"
+    exit: 0
+    ts: "2026-10-14T17:40:05Z"
+    seat: claude-sonnet-5-5 (driver, not the builder)
+pii_scan: clean
+pii_scan_note: "No client data; synthetic prompt text and public catalogue prices only."
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 2
+diff:
+  base_merge_sha: bf2235545a
+  scope: "the whole PR against origin/main, two commits"
+  insertions: 663
+  deletions: 29
