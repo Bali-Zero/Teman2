@@ -1,5 +1,5 @@
 gear: 1
-brief_ref: evidence/2026-10/agent-air-m5-mouth-vo-e33-invest-id-1014-29a21044/brief.yml
+brief_ref: evidence/brief.yml
 ruling: >-
   Audit finding F11 (verified real, MEDIUM): the Indonesian option dropped the word "qualifying" the English carries, while
   rule el.e33.property-basis (seq-29) requires a qualifying property.
