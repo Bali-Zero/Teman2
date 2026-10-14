@@ -145,10 +145,52 @@ def plan_deps(doc):
                 yield (name[4:] if name.startswith("ctx.") else name), tag
 
 
+ALWAYS_INPUTS = ("scripts/localci/runner.py", "scripts/localci/contexts_matrix.yaml")   # templates and pins enter every deps digest
+MATRIX_REL = "scripts/localci/contexts_matrix.yaml"
+KEEPER_SCAN = 300   # the newest replay-decision and pushed rows the keeper looks at
+
+
+def recipe_inputs(git, base: str) -> dict:
+    """Per recipe (the check without `ctx.`), the paths its deps digest reads, from the BASE tree's matrix: the requirement files, each
+    npm lock with the package.json beside it and its plain-path workspaces, plus ALWAYS_INPUTS. A recipe whose inputs cannot be
+    determined maps to a reason string."""
+    import yaml
+    shown = git("show", f"{base}:{MATRIX_REL}")
+    if shown.returncode != 0:
+        return {}
+    todo, out = [yaml.safe_load(shown.stdout)], {}
+    while todo:
+        node = todo.pop()
+        if isinstance(node, dict):
+            loc = node.get("local")
+            if isinstance(loc, dict) and isinstance(loc.get("check"), str):
+                recipe, deps = loc["check"][4:] if loc["check"].startswith("ctx.") else loc["check"], loc.get("deps") or {}
+                paths = [*ALWAYS_INPUTS, *(str(p) for p in deps.get("requirements") or [])]
+                npm = deps.get("npm") or []
+                for lock in [npm] if isinstance(npm, str) else npm:
+                    root = lock.rsplit("/", 1)[0] + "/" if "/" in lock else ""
+                    manifest = git("show", f"{base}:{root}package.json")
+                    try:
+                        ws = json.loads(manifest.stdout).get("workspaces") or []
+                    except (ValueError, AttributeError):
+                        ws = None
+                    if manifest.returncode != 0 or ws is None:
+                        paths = f"{root}package.json is unreadable in the BASE tree"
+                        break
+                    ws = ws.get("packages") or [] if isinstance(ws, dict) else ws
+                    paths += [str(lock), f"{root}package.json", *(f"{root}{str(w).rstrip('/')}/package.json" for w in ws)]
+                out[recipe] = paths
+            todo.extend(node.values())
+        elif isinstance(node, list):
+            todo.extend(node)
+    return out
+
+
 def main_keeper(state: Path) -> dict:
-    """B22: main's deps tag per recipe, from the newest judged commit of main the journal holds: a replay `decision` that is not
-    ERROR, or a `pushed` row (its run is the `merged` row's), whose merge_commit is an ancestor of (or equal to) the mirror's
-    refs/merger/base. Anything unreadable or erroring is unknown: `tags` None with the `reason`, never a crash."""
+    """B22: per recipe, main's deps tag from the judged commit of main TOPOLOGICALLY nearest to the mirror's refs/merger/base whose
+    run's plan names a tag for that recipe (a replay `decision` that is not ERROR, or a `pushed` row with its `merged` row's run),
+    unless a path the recipe's digest reads changed between that commit and base (`stale: <paths>`). Anything unreadable or
+    erroring is unknown: `tags` None with the `reason`, never a crash."""
     def unknown(why: str) -> dict:
         return {"tags": None, "evidence": None, "reason": why}
     rows = []
@@ -172,32 +214,55 @@ def main_keeper(state: Path) -> dict:
             cands.append(("replay", mc, r.get("run_dir")))
         elif r.get("kind") == "pushed":
             cands.append(("pushed", mc, merged_run.get(mc)))
-    repo, chosen = str(state / "repo.git"), None
+    repo, dist = str(state / "repo.git"), {}
+    git = lambda *a: subprocess.run(["git", "-C", repo, *a], capture_output=True, text=True, timeout=30)  # noqa: E731
     try:
-        base = subprocess.run(["git", "-C", repo, "rev-parse", "--verify", "--quiet", "refs/merger/base^{commit}"], capture_output=True, text=True, timeout=30)
+        base = git("rev-parse", "--verify", "--quiet", "refs/merger/base^{commit}")
         if base.returncode != 0:
             return unknown("the mirror has no refs/merger/base")
-        for cand in reversed(cands):
-            rc = subprocess.run(["git", "-C", repo, "merge-base", "--is-ancestor", cand[1], base.stdout.strip()], capture_output=True, text=True, timeout=30).returncode
-            if rc == 0:
-                chosen = cand
-                break
-            if rc != 1:
+        base = base.stdout.strip()
+        for mc in {c[1] for c in cands[-KEEPER_SCAN:]}:
+            rc = git("merge-base", "--is-ancestor", mc, base).returncode
+            if rc not in (0, 1):
                 return unknown(f"git merge-base --is-ancestor failed (rc {rc})")
-    except (OSError, subprocess.SubprocessError) as exc:
+            if rc == 0:
+                count = git("rev-list", "--count", f"{mc}..{base}")
+                if count.returncode != 0 or not count.stdout.strip().isdigit():
+                    return unknown(f"git rev-list --count failed (rc {count.returncode})")
+                dist[mc] = int(count.stdout)
+        inputs = recipe_inputs(git, base)
+        per, plans = {}, {}   # recipe -> [(distance, position, kind, mc, run_dir, tag)]
+        for pos, (kind, mc, run_dir) in enumerate(cands[-KEEPER_SCAN:]):
+            if mc not in dist or not isinstance(run_dir, str):
+                continue
+            if run_dir not in plans:
+                try:
+                    plans[run_dir] = {}
+                    for recipe, tag in plan_deps(json.loads((Path(run_dir) / "state" / "plan.json").read_text())):
+                        plans[run_dir][recipe] = min(tag, plans[run_dir].get(recipe, tag))
+                except (OSError, ValueError, TypeError):
+                    plans[run_dir] = {}
+            for recipe, tag in plans[run_dir].items():
+                per.setdefault(recipe, []).append((dist[mc], -pos, kind, mc, run_dir, tag))
+        if not per:
+            return unknown("no judged commit of main in the journal names a deps image")
+        tags, evidence = {}, {}
+        for recipe, found in sorted(per.items()):
+            d, _, kind, mc, run_dir, tag = min(found)   # nearest to base; a tie goes to the later journal position
+            paths = inputs.get(recipe)
+            if not isinstance(paths, list):
+                tags[recipe], evidence[recipe] = None, {"reason": paths or f"the BASE matrix names no inputs for {recipe}"}
+                continue
+            diff = git("diff", "--name-only", mc, base, "--", *paths)
+            if diff.returncode != 0:
+                tags[recipe], evidence[recipe] = None, {"reason": f"git diff failed (rc {diff.returncode})"}
+            elif diff.stdout.split():
+                tags[recipe], evidence[recipe] = None, {"reason": "stale: " + ", ".join(diff.stdout.split())}
+            else:
+                tags[recipe], evidence[recipe] = tag, {"kind": kind, "merge_commit": mc, "distance": d, "run_dir": run_dir}
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
         return unknown(f"git unavailable ({type(exc).__name__})")
-    if chosen is None:
-        return unknown("no judged commit of main in the journal")
-    kind, mc, run_dir = chosen
-    evidence = {"kind": kind, "merge_commit": mc, "run_dir": run_dir}
-    try:
-        doc = json.loads((Path(str(run_dir)) / "state" / "plan.json").read_text())
-    except (OSError, ValueError, TypeError) as exc:
-        return {**unknown(f"the plan of {kind} {mc[:12]} is unreadable ({type(exc).__name__})"), "evidence": evidence}
-    tags = {}
-    for recipe, tag in plan_deps(doc):
-        tags[recipe] = min(tag, tags.get(recipe, tag))
-    return {"tags": tags, "evidence": evidence, "reason": None} if tags else {**unknown(f"the plan of {kind} {mc[:12]} names no deps image"), "evidence": evidence}
+    return {"tags": tags, "evidence": evidence, "reason": None}
 
 
 def plan_refs(runs: Path, now_s: float) -> tuple[dict, dict, dict, list, set]:
@@ -533,7 +598,8 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
     rec["main_tags"], rec["main_evidence"] = mk["tags"], mk["evidence"]
     if mk["tags"] is None:
         rec["main_reason"] = mk["reason"]
-    decided = image_decisions(deps_images(docker, tags), recent, ids, recipes, now_s, in_progress, keep, named, frozenset((mk["tags"] or {}).values()))
+    main = frozenset(t for t in (mk["tags"] or {}).values() if t)
+    decided = image_decisions(deps_images(docker, tags), recent, ids, recipes, now_s, in_progress, keep, named, main)
     blind = bool(errors)   # an unreadable plan or matrix; a refused removal below is an error too, but it blinds nothing
     for d in decided if blind else []:
         d.update(remove=False, rule=f"kept: {len(errors)} input(s) unreadable, see errors") if d["remove"] else None

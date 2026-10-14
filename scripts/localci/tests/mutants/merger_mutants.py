@@ -40,10 +40,10 @@ B15_PRUNE = tuple(f"{PRUNE_T}::{t}" for t in ("test_b15_under_host_pressure_the_
                                               "test_b15_host_pressure_never_removes_the_image_of_the_run_in_progress_or_the_never_list"))
 HEADROOM = tuple(f"{PRUNE_T}::{t}" for t in ("test_headroom_at_105_over_a_start_floor_of_100_the_second_slots_are_shed_in_shed_order", "test_headroom_at_120_nothing_is_shed", "test_headroom_leaves_the_start_floor_where_it_was", "test_headroom_a_non_default_flag_moves_the_line"))
 K = lambda *names: tuple(f"{PRUNE_T}::test_b22_{n}" for n in names)  # noqa: E731
-B22 = K("the_08_00z_case_main_is_kept_and_the_newer_pr_image_is_shed_under_pressure",
-        "after_a_lock_bump_the_newest_replay_names_the_new_main_image_and_it_is_kept_with_fewer_refs",
-        "a_replay_whose_merge_commit_is_not_an_ancestor_of_base_is_ignored", "an_errored_replay_is_not_evidence",
-        "a_git_error_on_the_ancestry_check_is_unknown", "the_cap_rule_does_not_shed_main_without_pressure")
+B22 = K("the_08_00z_case_both_recipes_mouth_from_31_commits_back", "topological_distance_beats_journal_order",
+        "a_changed_input_makes_that_recipe_unknown_and_only_that_recipe", "the_scan_is_bounded_to_the_newest_300_rows",
+        "an_errored_replay_is_not_evidence", "a_replay_whose_merge_commit_is_not_an_ancestor_of_base_is_ignored",
+        "a_git_error_on_the_ancestry_check_is_unknown", "the_cap_rule_does_not_shed_main_without_pressure", "the_vm_floor_can_still_remove_main")
 START_DEFAULT = 'default=HOST_FLOOR_GB + START_MARGIN_GB,\n                   help="the start floor'
 B6_FLOOR = (f"{MERGER_T}::test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why",)
 FLOOR_SH, FLOOR_T = "scripts/ops/pro_disk_floor_tick.sh", "scripts/localci/tests/test_disk_floor.py"
@@ -243,7 +243,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     # B6-1: deps images by explicit tag, 48 h unreferenced, never the newest of a recipe, never the candidate or base images
     "b6-ref-window-shorter": (PRUNE, "REF_WINDOW_H = 48", "REF_WINDOW_H = 46", (PRUNE_T,)),
     "b6-ref-window-longer": (PRUNE, "REF_WINDOW_H = 48", "REF_WINDOW_H = 72", (PRUNE_T,)),
-    "b6-newest-guard-off": (PRUNE, 'elif top is None or im["created"] is None or im["created"] == top["created"]:', 'elif top is None or im["created"] is None:', (PRUNE_T,)),
+    "b6-newest-guard-off": (PRUNE, 'elif top is None or im["created"] is None or im["created"] == top["created"] or im["tag"] in main:', 'elif top is None or im["created"] is None or im["tag"] in main:', (PRUNE_T,)),
     "b6-never-list-off": (PRUNE, "    return tag.startswith(NEVER) or tag in stand_ins\n", "    return False\n", (PRUNE_T,)),
     # lead's addenda (2026-10-08): service stand-ins from the BASE matrix, a cap of 2 per recipe, a tick in flight, the run in progress
     "b6-stand-ins-ignored": (PRUNE, "    return tag.startswith(NEVER) or tag in stand_ins\n", "    return tag.startswith(NEVER)\n", (PRUNE_T,)),
@@ -381,12 +381,17 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "prune-headroom-default-zero": (PY, "RUN_HEADROOM_GB = 15.0 ", "RUN_HEADROOM_GB = 0.0 ", HEADROOM),
     "prune-headroom-flag-ignored": (PY, "pressure_gb=a.min_host_free_gb + a.run_headroom_gb,", "pressure_gb=a.min_host_free_gb + RUN_HEADROOM_GB,", HEADROOM),
     "prune-pressure-not-journalled": (PRUNE, '    rec["pressure_gb"] = pressure_gb\n', "", HEADROOM),
-    "b22-evidence-ignores-ancestry": (PRUNE, "            if rc == 0:\n                chosen = cand", "            if rc in (0, 1):\n                chosen = cand", B22),
-    "b22-oldest-evidence-used": (PRUNE, "for cand in reversed(cands):", "for cand in cands:", B22),
-    "b22-main-shed-under-pressure": (PRUNE, 'named, frozenset((mk["tags"] or {}).values()))', "named, frozenset())", B22),
+    "b22-evidence-ignores-ancestry": (PRUNE, "            if rc == 0:\n                count", "            if rc in (0, 1):\n                count", B22),
+    "b22-journal-order-not-topological": (PRUNE, "= min(found)", "= min(found, key=lambda f: f[1])", B22),
+    "b22-staleness-ignored": (PRUNE, "            elif diff.stdout.split():", "            elif False:", B22),
+    "b22-single-plan-for-all-recipes": (PRUNE, "enumerate(cands[-KEEPER_SCAN:]):", "enumerate(cands[-1:]):", B22),
+    "b22-scan-unbounded": (PRUNE, "KEEPER_SCAN = 300 ", "KEEPER_SCAN = 10**6 ", B22),
+    "b22-main-shed-under-pressure": (PRUNE, "named, main)", "named, frozenset())", B22),
     "b22-cap-rule-sheds-main": (PRUNE, "        if mains:\n            top = max(", "        if False:\n            top = max(", B22),
     "b22-errored-replay-accepted": (PRUNE, 'r.get("overall") != "ERROR":\n            cands', 'True:\n            cands', B22),
-    "b22-git-error-ignored": (PRUNE, "            if rc != 1:\n                return unknown", "            if False:\n                return unknown", B22),
+    "b22-git-error-ignored": (PRUNE, "            if rc not in (0, 1):\n                return unknown(f\"git merge-base", "            if False:\n                return unknown(f\"git merge-base", B22),
+    "b22-vm-floor-spares-main": (PRUNE, 'for im in sorted((d for d in decided if not d["remove"] and not d["live"] and not never(d["tag"], keep)),\n                         key=shed_order):\n            if rec["vm_free_gb"]',
+                                 'for im in sorted((d for d in decided if not d["remove"] and not d["live"] and d["tag"] not in main and not never(d["tag"], keep)),\n                         key=shed_order):\n            if rec["vm_free_gb"]', B22),
     "prune-host-pressure-ignored": (PRUNE, 'rec["host_pressure"] = pressure_gb is not None and free_before < pressure_gb',
                                     'rec["host_pressure"] = False', B15_PRUNE),
     "b7-fstrim-only-after-removal": (PRUNE, "    if fstrim and not dry:   # every real prune", "    if fstrim and removed and not dry:   # every real prune", (PRUNE_T,)),
