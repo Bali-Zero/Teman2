@@ -1,0 +1,70 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night audit item E31-B01 (conductor lane): a global dead end shows only global causes.
+mission: >-
+  A visitor whose passport or citizenship dead-ends the Visa Oracle sees the one reason that is
+  theirs, not the exclusions of products they were never shopping for.
+lanes:
+  - lane: e31-b01
+    role: build
+    seat: claude-sonnet-5-5 (Claude Code session), worktree backend-rag-vn-e31-b01-global-nopath on Pro.
+  - lane: e31-b01-redteam
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (codex exec, read-only, high effort); rollout model verified as gpt-5.6-sol,
+      rollout ~/.codex/sessions/2026/10/14/rollout-2026-10-14T11-51-15-01a13889-28e3-75f1-8f0b-84c270a94de0.jsonl
+  - lane: e31-b01-ground-truth
+    role: ground_truth
+    seat: >-
+      the rule scope marking (GLOBAL or PRODUCTS) of the signed seq-29 pack; the change asserts no rule of its own.
+    nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
+    query_hash: "8daa66acd3ba3f6adc9a78304e35d719667fa3e735b32492757ee085ea6bee0e" # pragma: allowlist secret
+    note: query_hash = sha256 of the signed pack at origin/main ac8a106930.
+pii_scan: clean
+bites:
+  consumer: >-
+    A family visitor with a Calling Visa passport on POST /evaluate (offshore, family, SPOUSE,
+    sponsor nationality IT, nationality NG), and the live visa-oracle dead end that renders no_path_reasons.
+  where: ci
+  observe: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/services/visa_engine/test_evaluator_global_no_path_reasons.py
+  expect: "contains:9 passed"
+receipts:
+  - claim: "The new test file passes on the build head (9 tests, seq-29 acceptance, seq-28 guilt witness, two innocence pins)."
+    cmd: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/services/visa_engine/test_evaluator_global_no_path_reasons.py
+    result: "9 passed in 0.67s"
+    exit: 0
+    ts: "2026-10-14T04:06:42Z"
+    seat: this session
+  - claim: "Mutation: switching the global-cause override off fails 3 of the first 6 tests; searching only the purpose-feasible proofs fails the FAMILY+STUDY test."
+    cmd: local edit of evaluator.py, pytest the new file, restore from a copy (not committed)
+    result: "3 failed, 3 passed; then 1 failed, 8 passed"
+    exit: 1
+    ts: "2026-10-14T04:06:42Z"
+    seat: this session
+  - claim: "Whole backend/tests/services/visa_engine on Mini (detached worktree of the build head 02206c3677, a DB-less baseline run on clean origin/main for the four DB files). Failures: 2 retention_fk_registry and 31 evaluate_endpoint errors are the known baseline; 3 activation_writer errors and 8 failures pass in isolation on both trees (DB state of a full run); 4 are pins that MOVE: test_gold_coverage_negative_personas E30A__minor, test_seq28_pack personas 1/3/4 (see decisions)."
+    cmd: ssh mini, cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine
+    result: "14 failed, 3626 passed, 15 skipped, 3 xfailed, 1 warning, 34 errors in 136.57s"
+    exit: 1
+    ts: "2026-10-14T03:54:09Z"
+    seat: this session
+decisions:
+  - id: D-global-by-scope
+    decision: >-
+      "Global" is rule.scope is RuleScope.GLOBAL from the compiled pack. Every EXCLUDED proof is
+      searched, not only the purpose-feasible ones, so a global cause is never hidden behind the
+      no-product-covers-the-purposes fallback.
+  - id: D-gold-pins-not-edited
+    decision: >-
+      Four gold pins encode the old leaked reason sets and were NOT edited by this build (stop and
+      report): E30A__minor.json (LEVEL_BAND_DIKTI would go), and the seq-28 replay expectations of
+      gold personas 1, 3 and 4 (BVK_NATIONALITY_ONLY and VOA_* would go). The census stayed green.
+dissent:
+  - seat: "codex-gpt-5.6-sol (cross-family red team)"
+    objection: "LOW: no test with purpose_feasible=False (FAMILY plus a second purpose); a restriction to feasible proofs would pass."
+    status: CONFIRMED
+    disposition: "Cured in the separate test commit; the mutation of that restriction now fails."
+  - seat: "codex-gpt-5.6-sol (cross-family red team)"
+    objection: "LOW: multiple global causes, and no-allowlist, not pinned."
+    status: CONFIRMED
+    disposition: "Cured in the same commit: two-cause test (ID plus NG). Runtime defects found: none."
