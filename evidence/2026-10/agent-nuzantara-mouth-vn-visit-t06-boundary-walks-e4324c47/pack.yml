@@ -1,0 +1,67 @@
+gear: 2
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  visa-night visit tree-lane item T06, built on origin/main 3d2c743a48 (seq-29 active). One tree PR fleet-wide: no open
+  PR touched generate-walk-corpus.ts, fixtures/walks, test_interview_walk_census.py or the _lib tree/flow/i18n files.
+mission: >-
+  The walk corpus covers the visit stay bounds and entry patterns with outcome and reason pins on seq-20..29.
+lanes:
+  - lane: t06-boundary-walks
+    role: build
+    seat: claude-sonnet-5-5 implementer (worktree mouth-vn-visit-t06-boundary-walks; the commit trailers carry the roster label Claude Opus 5.5 required by the task).
+pii_scan: clean
+bites: >-
+  Consumer: the census gate on every pack fold and tree change (test_interview_walk_census.py, test_seq21_pack.py and
+  walk-corpus-determinism.test.ts). Observation: the census run lists the new walks pinned and green on every pinned
+  sequence 20..29 including seq-29 (test_the_t06_visit_walks_replay_to_their_pins_on_every_pinned_sequence, 10 params).
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+  paid_api: none
+  note: >-
+    One implementer session plus one red-team round by codex gpt-5.6-sol (subscription CLI, rollout
+    rollout-2026-10-14T18-34-36-01a139fa-6e8f-79f1-92d6-dea370f2f8c0, model line gpt-5.6-sol); no paid per-token API.
+results:
+  - claim: "Backend census files: interview walk census, seq-21 pack and seq-29 pack (171-walk corpus)."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py backend/tests/services/visa_engine/test_seq21_pack.py backend/tests/services/visa_engine/test_seq29_pack.py
+    result: "203 passed, 14 skipped"
+    exit: 0
+    ts: "2026-10-14T10:59:21Z"
+  - claim: "Whole visa_engine suite on Mini in a detached worktree (baseline failures only: retention_fk_registry x2, test_evaluate_endpoint x31 errors)."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine -n 4
+    result: "3703 passed, 15 skipped, 3 xfailed, 2 failed, 31 errors (all baseline)"
+    exit: 1
+    ts: "2026-10-14T10:48:44Z"
+  - claim: "The whole visa-oracle mouth suite including walk-corpus-determinism at 171 walks and the option-coverage guard."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 59 passed (59); Tests 1593 passed (1593)"
+    exit: 0
+    ts: "2026-10-14T11:00:34Z"
+  - claim: "Mutation: one pinned boundary outcome flipped (offshore/tourism/sg/stay_31 B1,C1 -> A1,B1,C1) turns the census red."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -k "t06 or pinned_outcome"
+    result: "11 failed, 1 passed, 1 skipped; restored afterwards (cp backup, working tree clean)"
+    exit: 1
+    ts: "2026-10-14T10:55:17Z"
+    ts_note: "run before the final census run; ts is the date -u after the run"
+decisions:
+  - id: D-global-filters-out
+    decision: "Global-filter walks (nationality ID, calling visa, overstay, minor, criminal) are not added: they wait for backend PR 8496."
+  - id: D-walks-measured
+    decision: "Every pin is the replay on each source pack seq-20..29; seq-20..27 share one reason table, seq-28..29 another, the stay-361 explorer differs on seq-20."
+  - id: D-other-unpaid
+    decision: "The other_purpose and other-stay walks answer other_paid_activity = no: its first option (yes) turns the walk into EMPLOYMENT, where the purpose and the OTHER stay bound are not what the walk exercises."
+  - id: D-c6-funnel-held
+    decision: "The six non-transit other_purpose walks, the C6 stay 180/181 walks and the training/other business walks raise ACTIVITY_BOUNDARY: engine-supported, funnel-held. C6 remains never shown to the applicant; the witness pin now lists all its engine walks."
+dissent:
+  - seat: "codex gpt-5.6-sol, rollout rollout-2026-10-14T18-34-36-01a139fa-6e8f-79f1-92d6-dea370f2f8c0 (red team, HIGH)"
+    objection: "Reason codes were checked only for seq-27..29; seq-20..26 skipped silently, and the seq-20 stay-361 explorer names two E28A causes, not the generic sentence."
+    status: CONFIRMED
+    disposition: "CURED in the cure commit: reasons asserted on every sequence (seq-20..27 share the seq-27 table), the seq-20 explorer pinned to the two E28A codes."
+  - seat: "codex gpt-5.6-sol, same rollout (red team, HIGH)"
+    objection: "Per-option coverage of business_activity and other_purpose is not verified: options are context questions, the fixtures differ by label only."
+    status: CONFIRMED
+    disposition: "CURED: walk-corpus-determinism.test.ts binds the corpus to the option list of the real tree (every key is some walk's answer). The label-only twins stay by design."
+  - seat: "codex gpt-5.6-sol, same rollout (red team, MED)"
+    objection: "No pin checks the exact stay values of the named bounds; a regenerated witness moved off its bound keeps every outcome green."
+    status: CONFIRMED
+    disposition: "CURED: test_the_t06_boundary_walks_sit_on_the_bound_they_are_named_for pins stay_days, nationality and entry pattern per walk."
