@@ -201,7 +201,7 @@ def test_wave3_entry_does_not_call_the_wave_live_without_the_proof_level():
     body = _wave3_entry()
     assert "live proof partial" in body and "merged and live" not in body
     assert body.count("proof level:") >= 5
-    assert "ID NOT proven" in body and "only the PR-8 and PR-7 v2 changes have visitor-level walks" in body
+    assert "ID NOT proven" in body and "retirement persona shows the block under E33E and E33F, remote-worker innocence persona shows no block" in body
 
 
 def test_wave3_entry_states_the_documentation_catalogue_as_the_code_holds_it():
@@ -212,11 +212,19 @@ def test_wave3_entry_states_the_documentation_catalogue_as_the_code_holds_it():
     assert codes == {"E33", "E33A", "E33B", "E33C", "E33E", "E33F", "E33G"}
     body = _wave3_entry()
     assert "all seven catalogued E33 codes (E33, E33A, E33B, E33C, E33E, E33F, E33G)" in body
-    assert "only E33F was observed in a live walk" in body and "out-of-catalogue code UNKNOWN" in body
+    assert "E33F seen in the browser walk (EN/ID penjamin line); E33E and E33B seen AVAILABLE in the synthetic-driver probe; E33, E33A, E33C and E33G not seen live" in body and "out-of-catalogue code UNKNOWN" in body
     assert "six wave-3 PRs merged, live proof partial" in body and "seven Zero decisions" in body
     for token in ("dpl_4V8f1nWHfYgEWYcbJ6e4QNjfMJaB", "dpl_7kib2aoAPDm1vZrN94dzTbHLxAGv",
                   "issuecomment-6166176350", "issuecomment-6166321868", "Rp 14.000.000", "45.000.000"):
         assert body.count(token) >= 1, token
+
+
+def test_wave3_entry_records_8459_8460_and_the_corrected_proof_levels():
+    body = _wave3_entry()
+    for token in ("bd45ad8e33", "098b7f8025", "issuecomment-6158197835", "issuecomment-6158440541",
+                  "dpl_hKpvZA2NAD3DrVr8nvEqurj7HuDq", "eff946e0d4"):
+        assert body.count(token) == 1, token
+    assert "`/health` matched only" not in body and "a test, not a live observation" not in body
 
 
 def test_wave3_entry_names_the_three_c4_items_and_the_in_flight_lanes():

@@ -4,7 +4,7 @@ ruling: >-
   Zero, standing rule 2026-10-11 - the /visaoracle corner-skill ledger is updated at every merge; ledger finding F2
   (observer floor below the true test count).
 mission: >-
-  The /visaoracle ledger names E33 wave 3 (#8466-#8469, #8493, #8494) as live, records Zero's 2026-10-14 decisions
+  The /visaoracle ledger records E33 wave 3 (#8466-#8469, #8493, #8494) as merged with live proof partial, records Zero's 2026-10-14 decisions
   and opens the follow-ups.
 lanes:
   - lane: ledger-e33-wave3
@@ -20,13 +20,13 @@ bites:
 receipts:
   - claim: The four ledger test files pass, including the wave-3 pins (six PR/sha tuples once, the three C4 items, the in-flight lanes, the SKILL lead, the six pending rows once each with owner and proof).
     cmd: python3 -m pytest tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq29.py -p no:cacheprovider -q
-    result: "55 passed in 0.55s"
+    result: "56 passed in 0.31s"
     exit: 0
     ts: "2026-10-14T10:38:56Z"
     seat: this session
-  - claim: The seq-29 observer holds with its floor raised to 20, the true count of the ledger test file.
+  - claim: The seq-29 observer holds with its floor raised to 21, the true count of the ledger test file.
     cmd: python3 scripts/ci/observe_visa_ledger_seq29.py
-    result: "20 passed; seq-29 ledger holds"
+    result: "21 passed; seq-29 ledger holds"
     exit: 0
     ts: "2026-10-14T10:38:57Z"
     seat: this session
@@ -43,10 +43,10 @@ receipts:
     ts: "2026-10-14T10:37:00Z"
     seat: this session
 decisions:
-  - id: D-floor-20
+  - id: D-floor-21
     decision: >-
-      The observer floor is the true count after the new pins (20), not the minimum of 12; the parser unit tests
-      move to 19 (rejected) and 20/21 (accepted).
+      The observer floor is the true count after the new pins (21), not the minimum of 12; the parser unit tests
+      move to 20 (rejected) and 21/22 (accepted).
   - id: D-council-owner
     decision: >-
       The council-seat row is owned operator[secret] because the pending-arms report treats the compound
@@ -62,5 +62,27 @@ decisions:
       now seven live probes, observed URLs and a fingerprint; LOW '#8485 closed' INVALID as to fact (gh pr view 8485
       reports state CLOSED at 2026-10-14T09:32:45Z), cured anyway by citing that receipt in the entry.
 dissent:
-  - seat: codex gpt-5.6-sol
-    point: all six findings above; none rejected on substance, the LOW only on the fact it questioned.
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout /Users/balizero/.codex/sessions/2026/10/14/rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl)"
+    objection: "HIGH 1: live-claim overreach (the entry calls the wave live without a proof level per PR)"
+    status: RETRACTED
+    disposition: "Cured: retitled to merged with live proof partial, a proof level per PR; pinned by test_wave3_entry_does_not_call_the_wave_live_without_the_proof_level."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout /Users/balizero/.codex/sessions/2026/10/14/rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl)"
+    objection: "MEDIUM 2: documentation catalogue status stated beyond what the code holds"
+    status: RETRACTED
+    disposition: "Cured: text states the seven snapshot codes as coded; pinned against the snapshot JSON."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout /Users/balizero/.codex/sessions/2026/10/14/rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl)"
+    objection: "MEDIUM 3: PENDING-ARMS owners outside the ledger grammar"
+    status: RETRACTED
+    disposition: "Cured: owner grammar me (...) or passivo; annual row is NATURAL-WAIT; operator[secret/business] changed to operator[secret]; parser-classification test added."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout /Users/balizero/.codex/sessions/2026/10/14/rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl)"
+    objection: "MEDIUM 4: PR-to-sha pairing not pinned per segment"
+    status: RETRACTED
+    disposition: "Cured: per-segment pair pin plus a swapped-sha guilt test."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout /Users/balizero/.codex/sessions/2026/10/14/rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl)"
+    objection: "MEDIUM 5: annual re-read row proof too weak"
+    status: RETRACTED
+    disposition: "Cured: proof now names seven live probes, observed URLs and a fingerprint."
+  - seat: "codex gpt-5.6-sol (read-only red team, rollout /Users/balizero/.codex/sessions/2026/10/14/rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl)"
+    objection: "LOW 6: '#8485 closed' not evidenced"
+    status: RETRACTED
+    disposition: "INVALID as to fact (gh pr view 8485 reports CLOSED at 2026-10-14T09:32:45Z); cured anyway by citing that receipt in the entry."
