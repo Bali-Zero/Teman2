@@ -4470,7 +4470,23 @@ describe("V05 product-aware next steps: free A1 and onshore-only BRIDGING", () =
         /quote|timing|price|advisor|e-?form|book travel|penawaran|jadwal|harga|konsultan|formulir|pesan perjalanan/i,
       );
     }
+    expect(nextSteps.map((item) => item.title)).toEqual([
+      {
+        en: "At arrival, show a valid passport with at least 6 months left before it expires, and a return ticket or a ticket onward to another country (the official page exempts transport crew who stop over to join their vessel and travel on).",
+        id: "Saat kedatangan, tunjukkan paspor yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis, serta tiket kembali atau tiket terusan ke negara lain (halaman resmi mengecualikan awak alat angkut yang singgah untuk bergabung dengan kapalnya dan melanjutkan perjalanan).",
+      },
+      {
+        en: "You can stay up to 30 days from the day you arrive. This stay cannot be extended or converted into another stay permit.",
+        id: "Anda dapat tinggal maksimal 30 hari sejak tanggal kedatangan. Izin tinggal ini tidak dapat diperpanjang dan tidak dapat dialihkan menjadi izin tinggal lain.",
+      },
+      {
+        en: "Do not sell goods or services, and do not receive payment or wages for work or business from anyone in Indonesia.",
+        id: "Jangan menjual barang atau jasa, dan jangan menerima imbalan atau upah atas kerja atau usaha dari siapa pun di Indonesia.",
+      },
+    ]);
     expect(nextSteps[0].title.en).toMatch(/at least 6 months/);
+    expect(nextSteps[0].title.en).toMatch(/transport crew/);
+    expect(nextSteps[0].title.id).toMatch(/awak alat angkut/);
     expect(nextSteps[0].title.en).toMatch(/return ticket or a ticket onward/);
     expect(nextSteps[0].title.id).toMatch(/paling singkat 6 bulan/);
     expect(nextSteps[0].title.id).toMatch(/tiket kembali atau tiket terusan/);
@@ -4524,6 +4540,14 @@ describe("V05 product-aware next steps: free A1 and onshore-only BRIDGING", () =
       expect(exit?.title.en).toMatch(/stops being valid if you leave/);
       expect(exit?.title.id).toMatch(/tidak berlaku lagi apabila Anda keluar/);
     }
+    expect(
+      outcomeFor("BRIDGING").nextSteps.find(
+        (item) => item.id === "bridging-do-not-leave-indonesia",
+      )?.title,
+    ).toEqual({
+      en: "Do not leave Indonesia while the Bridging permit is in use: it stops being valid if you leave.",
+      id: "Jangan keluar dari wilayah Indonesia selama Izin Tinggal Peralihan digunakan: izin ini tidak berlaku lagi apabila Anda keluar.",
+    });
     expect(outcomeFor("BRIDGING").nextSteps).toHaveLength(3);
     expect(outcomeFor("BRIDGING", "B1").nextSteps).toHaveLength(3);
   });

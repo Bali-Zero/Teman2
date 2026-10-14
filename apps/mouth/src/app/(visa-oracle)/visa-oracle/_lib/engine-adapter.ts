@@ -156,8 +156,8 @@ const NEXT_STEPS_BY_STATE: Record<OutcomeStateName, OutcomeNextSteps> = {
 const A1_ONLY_NEXT_STEPS: OutcomeNextSteps = [
   step(
     "free-visit-arrival-documents",
-    "At arrival, show a passport valid for at least 6 months before it expires and a return ticket or a ticket onward to another country.",
-    "Saat kedatangan, tunjukkan paspor yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis, serta tiket kembali atau tiket terusan ke negara lain.",
+    "At arrival, show a valid passport with at least 6 months left before it expires, and a return ticket or a ticket onward to another country (the official page exempts transport crew who stop over to join their vessel and travel on).",
+    "Saat kedatangan, tunjukkan paspor yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis, serta tiket kembali atau tiket terusan ke negara lain (halaman resmi mengecualikan awak alat angkut yang singgah untuk bergabung dengan kapalnya dan melanjutkan perjalanan).",
   ),
   step(
     "free-visit-thirty-days",
@@ -196,8 +196,8 @@ const BRIDGING_MIXED_NEXT_STEPS: OutcomeNextSteps = [
   NEXT_STEPS_BY_STATE.SUPPORTED_CANDIDATES[0],
   step(
     "bridging-do-not-leave-indonesia",
-    "If you take the Bridging permit, do not leave Indonesia while it is in use: it stops being valid if you leave.",
-    "Jika Anda mengambil Izin Tinggal Peralihan, jangan keluar dari wilayah Indonesia selama izin itu digunakan: izin ini tidak berlaku lagi apabila Anda keluar.",
+    "If you use the Bridging permit, do not leave Indonesia while it is in use: it stops being valid if you leave.",
+    "Jika Anda menggunakan Izin Tinggal Peralihan, jangan keluar dari wilayah Indonesia selama izin itu digunakan: izin ini tidak berlaku lagi apabila Anda keluar.",
   ),
   NEXT_STEPS_BY_STATE.SUPPORTED_CANDIDATES[1],
 ];
