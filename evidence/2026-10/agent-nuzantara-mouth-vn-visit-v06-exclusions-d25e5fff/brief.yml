@@ -1,0 +1,16 @@
+gear: 2
+gear_reason: >-
+  Public client copy and reason de-stacking on the Visa Oracle; touches no rule, no pack, no pricing and no backend.
+mission: >-
+  On an overstay of more than 60 days the Visa Oracle shows one overstay reason that names 60 days, and the
+  visa-free (BVK) reason names the official Immigration list.
+objective: >-
+  Visit plan V06 (finding F028, root cause RC18). Both overstay exclusions (hf.active-overstay and
+  hf.overstay-exceeds-60-days) fire past 60 days and rendered two stacked reasons; the BVK sentence named a fixed
+  list without saying where it is published.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
