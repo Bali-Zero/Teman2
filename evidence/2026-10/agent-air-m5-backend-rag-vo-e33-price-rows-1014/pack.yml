@@ -1,9 +1,9 @@
 gear: 2
 brief_ref: evidence/2026-10/agent-air-m5-backend-rag-vo-e33-price-rows-1014/brief.yml
 ruling: >-
-  Zero, 2026-10-11 decisions/audit (PR17 evidence pack) and 2026-10-14 plan P1/P2 — the Retirement
-  and E33-family price rows must say what the signed rules (seq-29) and the official pages say:
-  55+ age floor, the selling exception, and "income or allowance" wording.
+  P2 (E33-family wording) rests on Zero's 2026-10-11 ruling (price rows say what the official pages
+  say); P1 (Retirement 55+) rests on the signed seq-29 rules hf.e33e.age-below-55 /
+  hf.e33f.age-below-55 (lt 55) and the E33E card, with no owner ruling.
 mission: >-
   The Retirement and E33-family price rows say what the signed rules and the official pages say — 55+,
   the selling exception, income or allowance.
@@ -42,15 +42,32 @@ bites:
     (book-data.ts:565/578, tagline = "Retirement (Offshore)".description_en), and the backend
     PricingService.get_all_prices() behind the pricing tools.
   where: ci
-  observe: python3 scripts/ci/observe_retirement_price_descriptions.py && python3 scripts/ci/observe_e33_price_descriptions.py
-  expect: "contains:Retirement descriptions hold; E33 descriptions hold"
+  observe: python3 scripts/ci/observe_e33_family_and_retirement_price_descriptions.py
+  expect: "contains:E33-family and Retirement price descriptions hold"
 receipts:
-  - claim: Retirement price description tests (22 tests) and E33-family price description tests (34 tests) plus their observer parser unit tests (10 + 10 tests) prepared for verification by the Claude conductor session.
-    cmd: python3 -m pytest -q tests/scripts/test_retirement_price_descriptions.py tests/scripts/test_observe_retirement_price_descriptions.py tests/scripts/test_e33_price_descriptions.py tests/scripts/test_observe_e33_price_descriptions.py
-    result: "91 passed (5 lane test files); observers 34 and 22 passed"
+  - claim: C1/C6, Retirement, and E33-family price description tests (15 + 22 + 34 tests) plus observer parser unit tests (10 + 10 + 10 tests) across 6 lane test files prepared for verification by the Claude conductor session.
+    cmd: python3 -m pytest -p no:cacheprovider tests/scripts/test_c1_c6_price_descriptions.py tests/scripts/test_retirement_price_descriptions.py tests/scripts/test_observe_retirement_price_descriptions.py tests/scripts/test_e33_price_descriptions.py tests/scripts/test_observe_e33_price_descriptions.py tests/scripts/test_observe_e33_family_and_retirement_price_descriptions.py
+    result: "101 passed (6 lane test files); observers 22, 34 and 56 passed"
     exit: 0
-    ts: "2026-10-14T09:37:00+08:00"
+    ts: "2026-10-14T09:57:00+08:00"
     seat: agent-air-m5-backend-rag-vo-e33-price-rows-1014
+dissent:
+  - seat: gem-prices-ground-truth
+    objection: >-
+      F21 note: Permenkumham 11/2024 Pasal 33(10)(d) still reads 60 years for the retirement age floor,
+      whereas the official imigrasi.go.id E33E/E33F pages and signed seq-29 rule pack state 55+.
+    status: PLAUSIBLE
+    resolution: >-
+      Rows follow the signed pack (seq-29 hf.e33e.age-below-55 / hf.e33f.age-below-55) and official
+      page, flagged.
+  - seat: gem-prices-retirement-and-e33
+    objection: >-
+      Two catalogue questions left open for Zero: repointing the generic Retirement rows to E33F, and a
+      sponsor clause on E33F rows.
+    status: OPEN
+    resolution: >-
+      Deferred to Zero as owner catalogue decisions (P1/P2 needs_owner_decision); generic Retirement
+      rows and sponsor-free E33F wording are left unchanged in this PR.
 decisions:
   - id: D-e33f-untouched
     decision: >-
