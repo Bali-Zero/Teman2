@@ -1571,7 +1571,7 @@ def queue_sha(a, pr: dict, d: dict, parents: dict) -> str:
         return str(d.get("head_sha"))
     mc = pr.get("merge_commit_sha")
     if not is_sha(mc):
-        raise hc.CompareError(f"#{d.get('pr')} merged at the decided head but carries no merge_commit_sha")
+        return str(d.get("head_sha"))   # B3d: closed as merged by a direct push (phase F) GitHub may leave it null: no comparison, said on the row
     if mc not in parents:
         commit = hc.gh_get(f"repos/{a.repo}/commits/{mc}")
         parents[mc] = [x.get("sha") for x in commit.get("parents") or []] if isinstance(commit, dict) else []
@@ -1659,16 +1659,20 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
                          "compared_contexts": compared_ctx, "compared_partial": not_full["partial"], "compared_unrecorded": not_full["unrecorded"],
                          "compared_skip_agreed": skip_agreed, "replay": d.get("replay") is True, "gate_pending": d.get("gate_pending") is True,
                          "merged_at": merged_at, "code_sha": d.get("code_sha"),
+                         "no_comparison": "merged at the decided head but GitHub carries no merge_commit_sha" if (
+                             not d.get("replay") and prs[n].get("merged") is True and head_of(prs[n]) == d.get("head_sha")
+                             and not is_sha(prs[n].get("merge_commit_sha"))) else None,
                          "elapsed_s": d.get("elapsed_s") if is_num(d.get("elapsed_s")) else None,
                          "compared_merge": merged_here and github != "PENDING" and d.get("contexts_status") == "ok"
                                            and compared_enough(compared_ctx, len(not_full["partial"]))})
         # GitHub merged a red required check: a HOSTED failure, read on every merged PR's own merge commit whichever candidate the
         # merger decided (#8026 was decided on an older base and is judged above on its green head), counted apart, never a class
-        hosted_red_merged = []
+        hosted_red_merged, merged_without_sha = [], []
         for n in sorted(k for k, v in prs.items() if v.get("merged") is True):
             mc = prs[n].get("merge_commit_sha")
             if not is_sha(mc):
-                raise hc.CompareError(f"#{n} is merged but carries no merge commit sha")
+                merged_without_sha.append(n)   # B3d: nothing to read the hosted verdict on: named in the report, never an exception
+                continue
             if (mc, f"{mc}^1") not in lives:   # R2: a merge commit is judged at the BASE it was built on, its first parent, never at itself
                 lives[(mc, f"{mc}^1")] = hc.fetch_live(a.repo, a.base, mc, base_matrix(state / "repo.git", mc, parent=True))
                 hc.required_names(lives[(mc, f"{mc}^1")]["required_checks"])
@@ -1734,7 +1738,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
                       "last_line_age_h": last_line_age_h, "future_lines": future_lines, "errors": errors, "evicted": evicted, "skipped": skipped,
                       "decisions_without_code_sha": without_code_sha, "enqueue": enqueue, "would_merge": would_merge,
                       "code_shas": sorted({r["code_sha"] for r in rows if is_sha(r["code_sha"])}), "ticks": ticks},
-           "counts": counts, "hosted_red_merged": hosted_red_merged, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "recorded_false_green_as_journalled": recorded_raw,
+           "counts": counts, "hosted_red_merged": hosted_red_merged, "merged_without_merge_commit_sha": merged_without_sha, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "recorded_false_green_as_journalled": recorded_raw,
            "recorded_reclassified_hosted_stale": reclassified, "recorded_kept_false_green": kept_fg, "phase_e_ready": ready, "phase_f": phase_f, "phase_f_halted": os.path.lexists(state / HALT_FILE), "rows": rows,
            "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
     if not emit:

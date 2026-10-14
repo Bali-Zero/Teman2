@@ -273,3 +273,12 @@ def test_a_pre_flip_queue_merge_not_yet_decided_is_replayed_as_today(rw):
     a = type("A", (), {"repo": REPO})()
     got = mg.replay_pending(a, rw.state, rw.state / "repo.git", mg.read_journal(rw.state))
     assert got and got["merge_commit"] == rw.m["m1"]
+
+
+def test_a_merge_github_shows_with_a_null_merge_commit_sha_is_journalled_unmapped_not_an_exception(rw):
+    rw.hub.pulls[12] = {**rw.hub.pulls[12], "merge_commit_sha": None}
+    rw.tick()
+    a = type("A", (), {"repo": REPO})()
+    got = mg.replay_pending(a, rw.state, rw.state / "repo.git", mg.read_journal(rw.state))
+    assert got and got["merge_commit"] == rw.m["m1"]
+    assert any(r.get("why") == "replay_unmapped" and r.get("merge_commit") == rw.m["m2"] for r in mg.read_journal(rw.state))
