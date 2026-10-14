@@ -71,23 +71,23 @@ OTHER_OK = {**_run(9, "success", "2026-10-10T15:00:00Z"), "name": "other"}
 
 
 def test_a_row_without_entry_data_is_reclassified_when_the_reread_shows_cancelled_then_success():
-    lives = {SHA: _live(*LIVE["check_runs"], OTHER_OK)}
+    lives = {(SHA, None): _live(*LIVE["check_runs"], OTHER_OK)}
     (x,) = mg.reclassify_by_reread(_A, _row(), lives, 1)
     assert (x["context"], x["stale_why"], x["superseded_cancelled"]) == (CTX, "cancelled_superseded", [1])
 
 
 def test_a_reread_that_shows_a_later_failure_keeps_the_row():
-    lives = {SHA: _live(_run(1, "cancelled", "2026-10-10T15:29:12Z"), _run(2, "failure", "2026-10-10T15:31:00Z"), OTHER_OK)}
+    lives = {(SHA, None): _live(_run(1, "cancelled", "2026-10-10T15:29:12Z"), _run(2, "failure", "2026-10-10T15:31:00Z"), OTHER_OK)}
     assert mg.reclassify_by_reread(_A, _row(), lives, 1) == []
 
 
 def test_a_context_red_for_another_reason_keeps_the_row_even_when_one_flipped():
     bad = {**_run(8, "failure", "2026-10-10T15:00:00Z"), "name": "other"}
-    assert mg.reclassify_by_reread(_A, _row(), {SHA: _live(*LIVE["check_runs"], bad)}, 1) == []
+    assert mg.reclassify_by_reread(_A, _row(), {(SHA, None): _live(*LIVE["check_runs"], bad)}, 1) == []
 
 
 def test_a_recorded_count_that_is_not_the_number_flipped_keeps_the_row():
-    lives = {SHA: _live(*LIVE["check_runs"], OTHER_OK)}
+    lives = {(SHA, None): _live(*LIVE["check_runs"], OTHER_OK)}
     assert mg.reclassify_by_reread(_A, _row(2), lives, 2) == [] and mg.reclassify_by_reread(_A, _row(0), lives, 0) == []
 
 

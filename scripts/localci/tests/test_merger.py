@@ -1297,6 +1297,16 @@ def test_the_tick_hands_the_stale_judge_the_mirror_and_the_decided_base(world, m
     assert isinstance(judge, mg.StaleJudge) and judge.base == world.base and judge.repo == world.state / "repo.git"
 
 
+def test_the_tick_reads_the_required_set_at_the_decided_base_never_at_the_head(world, monkeypatch):
+    world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
+    seen = []
+    real = mg.hosted_summary
+    monkeypatch.setattr(mg, "hosted_summary", lambda *a, **kw: seen.append(kw.get("matrix")) or real(*a, **kw))
+    assert world.tick() == 0
+    (matrix,) = seen
+    assert matrix[0] == world.base != world.head1
+
+
 def test_the_tick_hands_the_gate_judge_the_stale_judges_matrix_and_the_runs_own_plan_time_and_reads(world, monkeypatch):
     world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
     seen, asked, frozen = [], [], []

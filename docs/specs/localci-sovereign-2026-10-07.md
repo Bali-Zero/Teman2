@@ -111,7 +111,13 @@ _Status._ F2 (the executor, disarmed by construction) built 2026-10-10: `merger.
 
 **Arming checklist (phase F proper), in this order.** `main` also carries CLASSIC branch protection (14 required status checks, required pull-request reviews present with 0 approvals, `enforce_admins` true), which no deploy key can bypass: a direct push to `main` is refused until it is removed. The DeployKey bypass on `merge-queue-main` is necessary but not sufficient.
 
-_Required set after the flip (2026-10-14)._ Deleting the classic protection removes the list the merger reads live, so the flip would freeze `main` (`hosted_required_green` false, `report()` refused, phase F READY unreadable). `hosted_compare.required_set` takes the BASE `contexts_matrix.yaml` (14 names, `required_app_id` pins) only on 404 `Branch not protected` beside the flipped `merge-queue-main`; any other state fails closed, and the source is journalled as `required_source`.
+_Required set after the flip (2026-10-14) — the required set's BASE._ Deleting the classic protection removes the list the merger reads live, so the flip would freeze `main` (`hosted_required_green` false, `report()` refused, phase F READY unreadable). `hosted_compare.required_set` takes the BASE `contexts_matrix.yaml` (14 names, `required_app_id` pins) only on 404 `Branch not protected` beside the flipped `merge-queue-main`; any other state fails closed, and the source is journalled as `required_source`. The flipped state is restated in `hosted_compare.py` (the tick wrapper extracts no `phase_e_flip.py`) and pinned to it by a parity test.
+
+- **R1** The required set that judges commit X is read from the matrix at the BASE X was built on, never at X itself and never from GitHub.
+- **R2** The BASE per call site: a PR decision is judged at `d["base_sha"]`; a replay of merge commit M is judged at `M^1` (its decision carries `base_sha = M^1`; `report()`'s re-read of a merged PR's merge commit resolves `M^1` in the mirror), because a squash M carries the candidate's own change, so M's matrix is the candidate's; `report()`'s per-decision re-read uses `d["base_sha"]`; `decide()` uses `base_sha`, never `head`.
+- **R3** The cache key is `(sha, base)`, never `sha` alone.
+- **R4** A BASE or blob that is unavailable fails closed (`CompareError`).
+- **R5** A BASE matrix without `required_app_id` (every base older than this change) is judged unpinned and says so (`pins: absent_at_base` in the journal's `hosted_compare` and in the report row). A known residual for decisions made before it; pins are never borrowed from another ref.
 
 1. Phase D READY (`merger.py report` reads `phase E READY`).
 2. The write deploy key generated on Pro at `<state>/deploy_key` (0600, owned by the tick's user, never printed) and registered on the repository with write, and github.com's host key pinned into `<state>/known_hosts` (the push runs `StrictHostKeyChecking=yes` against that file alone) — operator[secret].

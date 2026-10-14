@@ -405,7 +405,8 @@ def required_set(repo: str, branch: str, base=None) -> tuple[list | None, str]:
 
 def fetch_live(repo: str, branch: str, sha: str, base=None) -> dict:
     required, source = required_set(repo, branch, base)
-    return {"repo": repo, "branch": branch, "sha": sha, "required_checks": required, "required_source": source,
+    pins = None if source == "protection" else ("present" if any(c["app_id"] for c in required) else "absent_at_base")   # R5, named
+    return {"repo": repo, "branch": branch, "sha": sha, "required_checks": required, "required_source": source, "pins": pins,
             "check_runs": _paged(f"repos/{repo}/commits/{sha}/check-runs", "check_runs"),
             "statuses": _paged(f"repos/{repo}/commits/{sha}/status", "statuses")}
 

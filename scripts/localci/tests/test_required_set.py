@@ -245,3 +245,11 @@ def test_the_journal_carries_the_source(monkeypatch):
     monkeypatch.setattr(mg.hc, "fetch_live", lambda *a: {"required_checks": [], "required_source": "matrix_after_flip", "check_runs": [], "statuses": []})
     out, got = mg.hosted_summary(REPO, BRANCH, {}, SHA, Path("/nonexistent"))
     assert out["required_source"] == "matrix_after_flip"
+
+
+def test_a_base_matrix_without_pins_is_judged_unpinned_and_says_so(monkeypatch):
+    old = "contexts:\n" + "".join(f"  - name: ctx{i}\n" for i in range(3))
+    got = live(monkeypatch, Gh(NOT_PROTECTED), reader(old))
+    assert got["pins"] == "absent_at_base" and [c["app_id"] for c in got["required_checks"]] == [None] * 3
+    assert live(monkeypatch, Gh(NOT_PROTECTED))["pins"] == "present"
+    assert live(monkeypatch, Gh({"checks": PROTECTION_CHECKS}))["pins"] is None
