@@ -1,0 +1,61 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-14 - the gear-3 council reserve seat agy-gemini-3.1-pro is replaced by agy-gemini-4-argon-high.
+  Observed the same day on M5: agy 1.3.4 lists gemini-4-argon-low/-medium/-high and gemini-3.8-flash-* but no
+  Gemini 3.1 Pro; Kimi K3 answers 403 weekly usage limit; TP1 qwen3.8-max, deepseek-v4-pro and glm-5.2 answer
+  HTTP 403 access denied; only codex-gpt-5.6-sol is alive, so no gear-3 PR can reach the 2-seat quorum.
+mission: >-
+  The gear-3 council reserve bench names a seat that exists: agy-gemini-4-argon-high replaces
+  agy-gemini-3.1-pro, which agy no longer offers.
+lanes:
+  - lane: council-reserve-gemini4
+    role: build
+    seat: claude-sonnet-5 (Claude Code workflow subagent), worktree infra-council-reserve-gemini4-1014 on M5.
+pii_scan: clean
+bites:
+  consumer: >-
+    the evidence lint on every future gear-3 PR, first PR-8 (agent/air-m5/backend-rag/vo-e33-pr8-documents-1014),
+    whose council is codex-gpt-5.6-sol plus agy-gemini-4-argon-high with the Kimi K3 substitution note.
+  where: ci
+  observe: python3 scripts/ci/observe_council_reserve_seat.py
+  expect: "contains:council reserve seat holds"
+receipts:
+  - claim: The lint and council-journal suites pass with the new seat, including the two new reserve tests.
+    cmd: python3 -m pytest scripts/tests/test_evidence_pack_lint.py scripts/tests/test_council_journal.py -p no:cacheprovider -q
+    result: "991 passed"
+    exit: 0
+    ts: "2026-10-14T03:27:00Z"
+    seat: this session
+  - claim: The roster dispatch lint agrees that the roster quorum column matches the lint.
+    cmd: python3 -m pytest scripts/tests/test_lint_roster_dispatch.py -p no:cacheprovider -q
+    result: "15 passed"
+    exit: 0
+    ts: "2026-10-14T03:27:00Z"
+    seat: this session
+  - claim: The observer passes on the branch head and accepts only a full pass of at least 3 tests.
+    cmd: python3 scripts/ci/observe_council_reserve_seat.py
+    result: "3 passed, 969 deselected; council reserve seat holds"
+    exit: 0
+    ts: "2026-10-14T03:26:46Z"
+    seat: this session
+  - claim: The observer's summary parser rejects reduced, failed, skipped, error, warning and missing summaries.
+    cmd: python3 -m pytest tests/scripts/test_observe_council_reserve_seat.py -p no:cacheprovider -q
+    result: "4 passed"
+    exit: 0
+    ts: "2026-10-14T03:26:46Z"
+    seat: this session
+decisions:
+  - id: D-journal-test-unchanged
+    decision: >-
+      test_council_journal.py keeps agy-gemini-3.1-pro at the not-a-member line: the retired name is now
+      genuinely unknown, so it still proves recorded-but-not-counted; only a comment was added.
+  - id: D-endpoint-profile-left
+    decision: >-
+      infra/conductor endpoint profile and capability index entries for agy-gemini-3.1-pro are declared,
+      known_unmeasured, automated_routing=false metadata that no council check reads; left as is.
+  - id: D-self-bootstrap
+    decision: >-
+      The lint on CI runs from the BASE checkout, so this PR cannot use the new seat for itself; the first
+      PR that can is PR-8.
+dissent: []

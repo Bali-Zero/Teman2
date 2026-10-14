@@ -1,0 +1,22 @@
+gear: 1
+gear_reason: >-
+  Small diff (one seat name in the council fallback tuple, two new tests, a roster and rulings line, a
+  no-argument observer). evidence_pack_lint.py is a hot zone by name but the rule set is untouched.
+mission: >-
+  The gear-3 council reserve bench names a seat that exists: agy-gemini-4-argon-high replaces
+  agy-gemini-3.1-pro, which agy no longer offers.
+objective: >-
+  COUNCIL_REVIEW_SEATS_FALLBACK in the evidence lint lists agy-gemini-4-argon-high and not
+  agy-gemini-3.1-pro; the new seat counts toward the council quorum only next to a titolare and with a
+  seat_fallback_reason; the retired name no longer counts; MODEL_ROSTER.md and RULINGS.md say the same.
+scope:
+  - scripts/evidence_pack_lint.py
+  - scripts/tests/test_evidence_pack_lint.py
+  - scripts/tests/test_council_journal.py
+  - MODEL_ROSTER.md
+  - docs/rules/RULINGS.md
+  - scripts/ci/observe_council_reserve_seat.py
+  - tests/scripts/test_observe_council_reserve_seat.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
