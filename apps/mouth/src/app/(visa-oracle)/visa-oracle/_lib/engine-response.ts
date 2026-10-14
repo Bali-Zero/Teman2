@@ -42,11 +42,6 @@ const APPLICABILITY = new Set([
   "UNKNOWN",
 ]);
 const FRESHNESS = new Set(["CURRENT", "STALE", "UNKNOWN"]);
-const STAY_POLICY_KINDS = new Set([
-  "FIXED_DAYS",
-  "VARIABLE_BY_GRANT",
-  "NOT_APPLICABLE",
-]);
 const EXTENSION_POLICY_STATUSES = new Set(["VERIFIED", "UNKNOWN"]);
 const UTC_INSTANT =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(?:Z|\+00:00)$/;
@@ -352,7 +347,7 @@ function stayPolicy(value: unknown): void {
   ) {
     malformed();
   }
-  const kind = oneOf(stay.kind, STAY_POLICY_KINDS);
+  string(stay.kind);
   const minDays =
     stay.minimum_days === null ? null : integer(stay.minimum_days, 0);
   const maxDays =
@@ -361,13 +356,6 @@ function stayPolicy(value: unknown): void {
     (minDays !== null && minDays > 36_500) ||
     (maxDays !== null && maxDays > 36_500)
   ) {
-    malformed();
-  }
-  if (kind === "FIXED_DAYS" && maxDays === null) malformed();
-  if (kind === "NOT_APPLICABLE" && (minDays !== null || maxDays !== null)) {
-    malformed();
-  }
-  if (minDays !== null && maxDays !== null && minDays > maxDays) {
     malformed();
   }
 
