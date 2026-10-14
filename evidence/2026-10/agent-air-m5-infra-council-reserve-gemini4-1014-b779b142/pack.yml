@@ -1,4 +1,12 @@
-gear: 1
+gear: 3
+council_run: council-journal.jsonl
+seat_fallback_reason: >-
+  agy-gemini-4-argon-high stands in for kimi-code/k3 (403 weekly usage limit, observed 2026-10-14 on M5) and
+  tp1-qwen3.8-max (HTTP 403 access denied via scripts/tp1_call.py, observed 2026-10-14).
+seat_override: >-
+  BOOTSTRAP: CI runs the lint from the BASE checkout, where agy-gemini-4-argon-high is not yet a council seat,
+  so the second journal line cannot count there. The journal is real and counts with this branch's lint; the
+  first PR that exercises the new seat on a base that has it is PR-8.
 brief_ref: evidence/brief.yml
 ruling: >-
   Zero, 2026-10-14 - the gear-3 council reserve seat agy-gemini-3.1-pro is replaced by agy-gemini-4-argon-high.
@@ -19,32 +27,44 @@ bites:
     whose council is codex-gpt-5.6-sol plus agy-gemini-4-argon-high with the Kimi K3 substitution note.
   where: ci
   observe: python3 scripts/ci/observe_council_reserve_seat.py
-  expect: "contains:council reserve seat holds"
+  expect: "contains:allowlist semantics hold"
 receipts:
   - claim: The lint and council-journal suites pass with the new seat, including the two new reserve tests.
     cmd: python3 -m pytest scripts/tests/test_evidence_pack_lint.py scripts/tests/test_council_journal.py -p no:cacheprovider -q
-    result: "991 passed"
+    result: "992 passed"
     exit: 0
-    ts: "2026-10-14T03:27:00Z"
+    ts: "2026-10-14T03:38:00Z"
     seat: this session
   - claim: The roster dispatch lint agrees that the roster quorum column matches the lint.
     cmd: python3 -m pytest scripts/tests/test_lint_roster_dispatch.py -p no:cacheprovider -q
     result: "15 passed"
     exit: 0
-    ts: "2026-10-14T03:27:00Z"
+    ts: "2026-10-14T03:38:00Z"
     seat: this session
-  - claim: The observer passes on the branch head and accepts only a full pass of at least 3 tests.
+  - claim: The observer passes on the branch head, runs two explicit node-ids and accepts only exactly 2 passed.
     cmd: python3 scripts/ci/observe_council_reserve_seat.py
-    result: "3 passed, 969 deselected; council reserve seat holds"
+    result: "2 passed; allowlist semantics hold"
     exit: 0
-    ts: "2026-10-14T03:26:46Z"
+    ts: "2026-10-14T03:33:00Z"
     seat: this session
-  - claim: The observer's summary parser rejects reduced, failed, skipped, error, warning and missing summaries.
+  - claim: The observer's summary parser and main() reject reduced, inflated, deselected, failed, skipped, error and warning runs, and ignore argv.
     cmd: python3 -m pytest tests/scripts/test_observe_council_reserve_seat.py -p no:cacheprovider -q
-    result: "4 passed"
+    result: "6 passed"
     exit: 0
-    ts: "2026-10-14T03:26:46Z"
+    ts: "2026-10-14T03:33:00Z"
     seat: this session
+  - claim: Liveness of the new seat, separate from the allowlist - a real dispatch through the agy CLI answers.
+    cmd: agy --model gemini-4-argon-high --print-timeout 100s -p "Reply with exactly the single word PONG."
+    result: "PONG"
+    exit: 0
+    ts: "2026-10-14T03:36:23Z"
+    seat: this session
+  - claim: Cross-family read-only review by the new seat on the follow-up diff.
+    cmd: agy --model gemini-4-argon-high --mode plan -p "<review prompt + diff>"
+    result: "no concrete defects; SIGN"
+    exit: 0
+    ts: "2026-10-14T03:38:08Z"
+    seat: agy-gemini-4-argon-high
 decisions:
   - id: D-journal-test-unchanged
     decision: >-
@@ -58,4 +78,41 @@ decisions:
     decision: >-
       The lint on CI runs from the BASE checkout, so this PR cannot use the new seat for itself; the first
       PR that can is PR-8.
-dissent: []
+dissent:
+  - seat: codex-gpt-5.6-sol (read-only red team, rollout 2026-10-14T05-42-48, model verified in the rollout file)
+    objection: >-
+      HIGH - the trust-allowlist change was auto-demoted to Gear 1 (brief gear: 1) although it changes which
+      reviewers count toward the Gear-3 quorum in a hot zone; receipts were all produced by this session.
+    status: RETRACTED
+    disposition: >-
+      Cured in the follow-up commit - brief and pack declare gear 3, a council journal carries a second
+      cross-family seat (agy-gemini-4-argon-high, SIGN), and the bootstrap exception is written out as
+      seat_override instead of lowering the gear. The fresh Opus 5.5 xhigh gate on the final SHA is the
+      orchestrator's step and is NOT recorded here as done.
+  - seat: codex-gpt-5.6-sol (same review)
+    objection: >-
+      MEDIUM - the observer printed "council reserve seat holds" but only ran the local allowlist tests, so it
+      could be green while the seat answers 403.
+    status: RETRACTED
+    disposition: >-
+      Cured - the observation now says "allowlist semantics hold", and a separate receipt records a real agy
+      dispatch to gemini-4-argon-high answering PONG (exit 0).
+  - seat: codex-gpt-5.6-sol (same review)
+    objection: >-
+      MEDIUM - the fuzzy -k selector with a >= 3 count could pass without the two mandatory Gemini tests.
+    status: RETRACTED
+    disposition: >-
+      Cured - the observer passes two explicit pytest node-ids and requires exactly 2 passed; a unit test pins
+      the node-ids and a reduced run fails closed.
+  - seat: codex-gpt-5.6-sol (same review)
+    objection: >-
+      MEDIUM - MODEL_ROSTER.md still listed gemini-3.1-pro-high as the seat and claimed a -low variant.
+    status: RETRACTED
+    disposition: >-
+      Cured - the row is gemini-4-argon-high, names the three variants agy lists, and marks capabilities
+      unmeasured instead of carrying over Gemini 3.1 Pro claims.
+  - seat: codex-gpt-5.6-sol (same review)
+    objection: LOW - test_observer_takes_no_arguments_marker only checked that a comment is present.
+    status: RETRACTED
+    disposition: >-
+      Cured - replaced by a test that sets hostile argv and asserts main() builds the pytest command without it.

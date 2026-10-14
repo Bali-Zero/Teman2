@@ -1,7 +1,8 @@
-gear: 1
+gear: 3
 gear_reason: >-
-  Small diff (one seat name in the council fallback tuple, two new tests, a roster and rulings line, a
-  no-argument observer). evidence_pack_lint.py is a hot zone by name but the rule set is untouched.
+  The diff is small, but it changes which reviewers count toward the Gear-3 quorum inside
+  evidence_pack_lint.py, a hot zone. A trust allowlist is declared at Gear 3 (red team, Codex
+  gpt-5.6-sol 2026-10-14, HIGH): independent adversarial review plus a fresh gate on the final SHA.
 mission: >-
   The gear-3 council reserve bench names a seat that exists: agy-gemini-4-argon-high replaces
   agy-gemini-3.1-pro, which agy no longer offers.

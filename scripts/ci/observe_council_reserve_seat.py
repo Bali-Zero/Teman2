@@ -5,13 +5,14 @@
 # the test file and the selector are literal strings below, so nothing an invoker types can
 # name a program to run, a file to write, or a database to reach.
 
-The consumer is the evidence lint on every gear-3 PR. The observation runs the tests that pin
-the reserve bench: agy-gemini-4-argon-high counts toward quorum only with a substitution note,
-and the retired agy-gemini-3.1-pro no longer counts. Exit 0 only for a full pass of at least
-MIN_TESTS tests.
+The consumer is the evidence lint on every gear-3 PR. The observation runs the two tests that pin
+the reserve bench ALLOWLIST SEMANTICS: agy-gemini-4-argon-high counts toward quorum only with a
+substitution note, and the retired agy-gemini-3.1-pro no longer counts. It does NOT prove the seat
+answers requests - liveness is a separate receipt (a real dispatch through the agy CLI).
+Exit 0 only for a full pass of exactly EXPECTED_TESTS explicit pytest node-ids.
 """
 
-# bites-observable — no arguments; one literal program, one literal test file.
+# bites-observable — no arguments; one literal program, two literal test node-ids.
 
 from __future__ import annotations
 
@@ -22,23 +23,26 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TEST_FILE = "scripts/tests/test_evidence_pack_lint.py"
-SELECTOR = "gemini4_argon_high or retired_gemini_3_1_pro or reserve"
-MIN_TESTS = 3
-_SUMMARY = re.compile(r"^=*\s*(\d+) passed(?:, \d+ deselected)?(?: in [\d.]+s)?\s*=*$")
+NODE_IDS = (
+    f"{TEST_FILE}::test_gemini4_argon_high_counts_toward_quorum_only_with_substitution_note",
+    f"{TEST_FILE}::test_retired_gemini_3_1_pro_no_longer_counts_toward_quorum",
+)
+EXPECTED_TESTS = len(NODE_IDS)
+_SUMMARY = re.compile(r"^=*\s*(\d+) passed(?: in [\d.]+s)?\s*=*$")
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a pytest line with N passed, N >= MIN_TESTS, and nothing else
-    (no failed, skipped, error, xfail or warnings token)."""
+    """True only for a pytest line with exactly EXPECTED_TESTS passed and nothing else
+    (no failed, skipped, deselected, error, xfail or warnings token)."""
     if line is None:
         return False
     match = _SUMMARY.match(line.strip())
-    return match is not None and int(match.group(1)) >= MIN_TESTS
+    return match is not None and int(match.group(1)) == EXPECTED_TESTS
 
 
 def main() -> int:
     result = subprocess.run(
-        [sys.executable, "-m", "pytest", TEST_FILE, "-k", SELECTOR, "-p", "no:cacheprovider", "-q"],
+        [sys.executable, "-m", "pytest", *NODE_IDS, "-p", "no:cacheprovider", "-q"],
         cwd=REPO_ROOT,
         check=False,
         capture_output=True,
@@ -52,7 +56,7 @@ def main() -> int:
         print(f"observe_council_reserve_seat: FAILED ({summary})\n{out[-1500:]}")
         return result.returncode or 1
     print(f"observe_council_reserve_seat: {summary}")
-    print("observe_council_reserve_seat: council reserve seat holds")
+    print("observe_council_reserve_seat: allowlist semantics hold")
     return 0
 
 
