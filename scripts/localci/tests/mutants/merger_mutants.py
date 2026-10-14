@@ -517,8 +517,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b2a-label-time-from-first-event": (PY, "actor, labelled_at = (ev.get(\"actor\"), ev.get(\"createdAt\")) if", "actor, labelled_at = (ev.get(\"actor\"), labelled_at or ev.get(\"createdAt\")) if", (PHASEF,)),
     # B3c: phase F's own merges (journal kinds merged, pushed) are never replayed
     "b3c-own-merges-replayed": (PY, "done = own | {", "done = {", (REPLAY,)),
-    "b3c-own-merged-row-ignored": (PY, 'in ("merged", "pushed")}', 'in ("pushed",)}', (REPLAY,)),
-    "b3c-own-pushed-row-ignored": (PY, 'in ("merged", "pushed")}', 'in ("merged",)}', (REPLAY,)),
+    "b3c-own-merged-row-ignored": (PY, 'if r.get("kind") == "merged"}', 'if r.get("kind") == "x"}', (REPLAY,)),
     "f2-ssh-config-not-nulled": (PY, "ssh -F /dev/null -o IdentityAgent=none -i ", "ssh -o IdentityAgent=none -i ", (PHASEF,)),
     "f2-ssh-agent-allowed": (PY, "ssh -F /dev/null -o IdentityAgent=none -i ", "ssh -F /dev/null -i ", (PHASEF,)),
     "f2-ssh-known-hosts-unpinned": (PY, 'f"-o {shlex.quote(known)} -o StrictHostKeyChecking=yes")', 'f"-o StrictHostKeyChecking=yes")', (PHASEF,)),
@@ -848,6 +847,14 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "rs-source-not-recorded": (HC, '"required_checks": required, "required_source": source,', '"required_checks": required,', RS),
     "rs-protection-ignored": (HC, '_CACHE[key] = ("protection", protection.get("checks") if isinstance(protection, dict) else None)',
                               '_CACHE[key] = ("matrix_after_flip", None)', RS),
+    # B21: a push of unknown outcome is read back before it halts; after phase F's first push, nothing is replayed
+    "b21-unknown-error-is-transport": (PY, "or bool(PUSH_TRANSPORT.search(err))", "or True", (PHASEF,)),
+    "b21-readback-skipped": (PY, "landed = push_read_back(state, repo_dir, base)", "landed = None", (PHASEF,)),
+    "b21-unlanded-moves-the-ref": (PY, '            journal(state, {"kind": "push_unlanded"', '            git(repo_dir, "update-ref", "refs/merger/base", commit, old, check=False)\n            journal(state, {"kind": "push_unlanded"', (PHASEF,)),
+    "b21-replays-after-push": (PY, 'if any(r.get("kind") == "pushed" for r in recs):', "if False:", (REPLAY,)),
+    "b21-landed-without-ref-update": (PY, 'updated = git(repo_dir, "update-ref", "refs/merger/base", commit, old, check=False).returncode == 0',
+                                      'updated = readback or git(repo_dir, "update-ref", "refs/merger/base", commit, old, check=False).returncode == 0', (PHASEF,)),
+    "b21-rejection-marker-loses-to-transport": (PY, "    if PUSH_REJECTED.search(err):\n        return False\n", "", (PHASEF,)),
 }
 
 

@@ -359,17 +359,122 @@ def test_a_push_that_errors_is_refused_and_halts_like_a_rejection(fw, monkeypatc
     assert g(fw.mirror, "rev-parse", "refs/merger/base") == fw.base and fw.origin_main() == fw.base
 
 
-def test_a_push_that_times_out_is_a_refusal_not_a_success(fw, monkeypatch):
+# ------------------------------------------------------------------ B21: a push of unknown outcome is read back before it halts
+def _push_reports(monkeypatch, *, lands: bool, rc: int = 0, stderr: str = "", timeout: bool = False):
+    """The push subprocess reports a failure (a timeout, or rc/stderr); with `lands` the real push happens first, so the remote HAS the commit."""
     real = mg.git
 
-    def slow(cwd, *a, **kw):
+    def fake(cwd, *a, **kw):
         if a and a[0] == "push":
+            if lands:
+                real(cwd, *a, **kw)
+            if timeout:
+                raise subprocess.TimeoutExpired(["git", "push"], kw["timeout"])
+            return subprocess.CompletedProcess(["git", "push"], rc, "", stderr)
+        return real(cwd, *a, **kw)
+    monkeypatch.setattr(mg, "git", fake)
+
+
+def test_b21_a_timeout_where_the_remote_never_received_the_push_is_push_unlanded_with_no_halt(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, timeout=True)
+    assert fw.tick() == 0
+    assert fw.kinds()[-2:] == ["merged", "push_unlanded"] and "TimeoutExpired" in fw.journal()[-1]["error"]
+    assert not (fw.state / mg.HALT_FILE).exists() and "pushed" not in fw.kinds() and "push_refused" not in fw.kinds()
+    assert g(fw.mirror, "rev-parse", "refs/merger/base") == fw.base and fw.origin_main() == fw.base
+
+
+def test_b21_a_transport_error_text_with_main_unchanged_is_push_unlanded(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, rc=128, stderr="ssh: connect to host github.com port 22: Connection timed out\nfatal: Could not read from remote repository.")
+    assert fw.tick() == 0
+    assert fw.kinds()[-1] == "push_unlanded" and not (fw.state / mg.HALT_FILE).exists()
+    assert g(fw.mirror, "rev-parse", "refs/merger/base") == fw.base
+
+
+def test_b21_a_timeout_where_the_remote_did_receive_the_push_is_pushed_with_readback_and_no_halt(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=True, timeout=True)
+    assert fw.tick() == 0
+    assert fw.kinds()[-2:] == ["merged", "pushed"] and fw.journal()[-1]["readback"] is True and fw.journal()[-1]["mirror_updated"] is True
+    merged = fw.journal()[-2]["merge_commit"]
+    assert not (fw.state / mg.HALT_FILE).exists() and fw.origin_main() == merged and g(fw.mirror, "rev-parse", "refs/merger/base") == merged
+
+
+def test_b21_an_explicit_rejection_with_main_unchanged_halts(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, rc=1, stderr=" ! [remote rejected] abc -> main (protected branch hook declined)\nerror: failed to push some refs")
+    assert fw.tick() == 0
+    assert fw.kinds()[-2:] == ["merged", "push_refused"] and (fw.state / mg.HALT_FILE).exists()
+    assert g(fw.mirror, "rev-parse", "refs/merger/base") == fw.base
+
+
+def test_b21_a_rejection_marker_beats_a_transport_marker_in_the_same_text(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, rc=128, stderr="git@github.com: Permission denied (publickey).\nfatal: Could not read from remote repository.")
+    assert fw.tick() == 0
+    assert fw.kinds()[-1] == "push_refused" and (fw.state / mg.HALT_FILE).exists()
+
+
+def test_b21_an_unknown_error_text_is_a_rejection_and_halts(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, rc=1, stderr="something nobody has seen before")
+    assert fw.tick() == 0
+    assert fw.kinds()[-1] == "push_refused" and (fw.state / mg.HALT_FILE).exists()
+
+
+def test_b21_a_failed_read_back_halts_even_after_a_timeout(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, timeout=True)
+    real = mg.git
+
+    def no_ls_remote(cwd, *a, **kw):
+        if a and a[0] == "ls-remote" and (kw.get("env") or {}).get("GIT_SSH_COMMAND"):   # the read-back alone: F1's own ls-remote carries no key
+            raise subprocess.TimeoutExpired(["git", "ls-remote"], kw["timeout"])
+        return real(cwd, *a, **kw)
+    monkeypatch.setattr(mg, "git", no_ls_remote)
+    assert fw.tick() == 0
+    assert fw.kinds()[-1] == "push_refused" and (fw.state / mg.HALT_FILE).exists()
+
+
+def test_b21_main_moved_to_a_third_commit_halts_even_after_a_timeout(fw, monkeypatch):
+    moved = _origin_moves_before_the_push(fw, monkeypatch)
+    real = mg.git
+
+    def timing_out(cwd, *a, **kw):
+        if a and a[0] == "push":
+            real(cwd, *a, **kw)   # rejected: origin moved; the caller sees a timeout instead
             raise subprocess.TimeoutExpired(["git", "push"], kw["timeout"])
         return real(cwd, *a, **kw)
-    monkeypatch.setattr(mg, "git", slow)
+    monkeypatch.setattr(mg, "git", timing_out)
     assert fw.tick() == 0
-    assert fw.kinds()[-2:] == ["merged", "push_refused"] and "TimeoutExpired" in fw.journal()[-1]["error"] and (fw.state / mg.HALT_FILE).exists()
+    assert fw.kinds()[-1] == "push_refused" and (fw.state / mg.HALT_FILE).exists() and fw.origin_main() == moved["sha"]
     assert g(fw.mirror, "rev-parse", "refs/merger/base") == fw.base
+
+
+def test_b21_the_read_back_runs_once_with_the_deploy_key_ssh_command(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, timeout=True)
+    seen = []
+    real = mg.git
+
+    def spy(cwd, *a, **kw):
+        if a and a[0] == "ls-remote":
+            seen.append(((a, kw.get("env")), kw.get("timeout")))
+        return real(cwd, *a, **kw)
+    monkeypatch.setattr(mg, "git", spy)
+    fw.tick()
+    readbacks = [x for x in seen if x[0][0][-1] == "refs/heads/main" and (x[0][1] or {}).get("GIT_SSH_COMMAND")]
+    assert len(readbacks) == 1 and readbacks[0][0][1] == {"GIT_SSH_COMMAND": SSH_COMMAND(fw)} and readbacks[0][1] == mg.REMOTE_TIMEOUT_S
+
+
+def test_b21_a_stopped_during_the_read_back_halts_first_and_still_propagates(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, timeout=True)
+    real = mg.git
+
+    def stopped(cwd, *a, **kw):
+        if a and a[0] == "ls-remote" and (kw.get("env") or {}).get("GIT_SSH_COMMAND"):
+            raise mg.Stopped("SIGTERM")
+        return real(cwd, *a, **kw)
+    monkeypatch.setattr(mg, "git", stopped)
+    try:
+        fw.tick()
+    except mg.Stopped:
+        pass
+    assert (fw.state / mg.HALT_FILE).exists() and "interrupted" in json.loads((fw.state / mg.HALT_FILE).read_text())["why"]
+    assert {"pushed", "push_unlanded", "push_refused"}.isdisjoint(fw.kinds()) and g(fw.mirror, "rev-parse", "refs/merger/base") == fw.base
 
 
 def test_a_failure_making_the_merge_commit_is_a_merge_error_with_no_push_and_no_halt(fw, monkeypatch):

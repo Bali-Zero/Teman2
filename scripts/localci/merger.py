@@ -1214,6 +1214,33 @@ def push_ssh_command(state: Path) -> str:
             f"-o {shlex.quote(known)} -o StrictHostKeyChecking=yes")
 
 
+PUSH_REJECTED = re.compile(r"\[(?:remote )?rejected\]|non-fast-forward|protected branch|permission denied|repository not found|does not appear to be a git repository"
+                           r"|host key verification failed|\bGH0\d\d\b|\bdenied\b|rule violations", re.I)
+PUSH_TRANSPORT = re.compile(r"connection (?:reset|refused|timed out|closed)|could not read from remote repository|ssh: connect to host|kex_exchange_identification"
+                            r"|ssh_exchange_identification|broken pipe|could not resolve hostname|network is unreachable|no route to host|operation timed out", re.I)
+
+
+def push_failure_is_transport(err: str, exc: BaseException | None = None) -> bool:
+    """B21: a failed push is a flap only on evidence. A rejection marker beats a transport marker (an auth failure also says "Could not
+    read from remote repository"); text that is neither is a rejection — an unknown failure fails closed."""
+    if PUSH_REJECTED.search(err):
+        return False
+    return isinstance(exc, (subprocess.TimeoutExpired, ConnectionError)) or bool(PUSH_TRANSPORT.search(err))
+
+
+def push_read_back(state: Path, repo_dir: Path, base: str) -> str | None:
+    """B21 S1: GitHub's main as the push remote shows it, through the deploy key; None when it cannot be read."""
+    try:
+        url = git(repo_dir, "remote", "get-url", "--push", "origin").stdout.strip()
+        res = git(repo_dir, "ls-remote", url, f"refs/heads/{base}", env={"GIT_SSH_COMMAND": push_ssh_command(state)}, check=False, timeout=REMOTE_TIMEOUT_S)
+    except Stopped:
+        raise
+    except Exception:  # noqa: BLE001 — a read-back that fails is outcome (d): the caller halts
+        return None
+    sha = res.stdout.split("\t")[0].strip() if res.returncode == 0 else ""
+    return sha if is_sha(sha) else None
+
+
 def phase_f_merge(state: Path, repo_dir: Path, enq: dict, wm: dict, pull: dict, decision: dict, base: str) -> None:
     """The armed path: (1) the merge commit in the mirror — ``commit-tree`` writes an object and no ref, so nothing half-written can
     exist — on top of ``refs/merger/base``, (2) ``merged`` journalled, (3) a plain fast-forward push of that commit to GitHub's main,
@@ -1235,17 +1262,33 @@ def phase_f_merge(state: Path, repo_dir: Path, enq: dict, wm: dict, pull: dict, 
         return
     journal(state, {"kind": "merged", "pr": n, "head_sha": head, "base_sha": enq["base_sha"], "merge_commit": commit, "tree": wm["merge_tree"],
                     "subject": subject, "decision_ts": decision.get("ts"), "run_dir": decision.get("run_dir"), "lease_id": enq.get("lease_id")})
+    transport = False
     try:
         res = git(repo_dir, "push", "origin", f"{commit}:refs/heads/{base}", env={"GIT_SSH_COMMAND": push_ssh_command(state)}, check=False, timeout=PUSH_TIMEOUT_S)
         err = None if res.returncode == 0 else f"rc={res.returncode}: {redact(res.stderr.strip()[-300:])}"
+        transport = bool(err) and push_failure_is_transport(res.stderr)
     except Exception as exc:  # noqa: BLE001 — a push of unknown outcome is a refusal until an operator looks; a Stopped one halts too, BEFORE it propagates
         err = redact(f"{type(exc).__name__}: {exc}")
         if isinstance(exc, Stopped):
             halt(state, f"push of {commit} for #{n} interrupted, outcome unknown: {err}")
             raise
+        transport = push_failure_is_transport(str(exc), exc)
     except BaseException as exc:
         halt(state, f"push of {commit} for #{n} interrupted, outcome unknown: {type(exc).__name__}")
         raise
+    readback = False
+    if err:   # B21: a push that reports failure may have landed, or may be a flap — GitHub's main decides, never the error text alone
+        try:
+            landed = push_read_back(state, repo_dir, base)
+        except BaseException as exc:
+            halt(state, f"read-back after the push of {commit} for #{n} interrupted: {type(exc).__name__}")
+            raise
+        if landed == commit:
+            err, readback = None, True
+        elif landed == old and transport:
+            journal(state, {"kind": "push_unlanded", "pr": n, "head_sha": head, "merge_commit": commit, "error": err, "lease_id": enq.get("lease_id")})
+            print(f"merger: #{n} push_unlanded — main unchanged after a transport failure, not halted", file=sys.stderr)
+            return
     if err:
         halt(state, f"push of {commit} for #{n} refused: {err}")   # the halt first: a journal line that fails to write must not leave the door open
         journal(state, {"kind": "push_refused", "pr": n, "head_sha": head, "merge_commit": commit, "error": err, "lease_id": enq.get("lease_id")})
@@ -1253,7 +1296,7 @@ def phase_f_merge(state: Path, repo_dir: Path, enq: dict, wm: dict, pull: dict, 
         return
     updated = git(repo_dir, "update-ref", "refs/merger/base", commit, old, check=False).returncode == 0
     journal(state, {"kind": "pushed", "pr": n, "head_sha": head, "base_sha": enq["base_sha"], "merge_commit": commit, "mirror_updated": updated,
-                    "lease_id": enq.get("lease_id")})
+                    "lease_id": enq.get("lease_id"), **({"readback": True} if readback else {})})
     print(f"merger: #{n} merged {commit[:12]} onto {base} and pushed")
 
 
@@ -1383,11 +1426,13 @@ def replay_pending(a, state: Path, repo_dir: Path, recs: list[dict]) -> dict | N
     confirmation is journalled once (``skipped: replay_unmapped``) and never asked again — unless GitHub still shows its PR open (newest
     first, a merge can be seconds old at the fetch): then it is asked again on the next replay turn; an ERROR replay is retried once. Any read that
     fails returns None: a replay turn that cannot find its work falls back to a PR decision."""
+    if any(r.get("kind") == "pushed" for r in recs):   # B21 S4: past phase F's first push, main holds its own commits and operator recovery pushes
+        return None
     firsts = [str(r["ts"]) for r in recs if r.get("kind") == "decision" and not r.get("replay") and r.get("ts")]
     if not firsts:
         return None
     errors = Counter(r.get("merge_commit") for r in recs if r.get("replay") and r.get("kind") == "decision" and r.get("overall") == "ERROR")
-    own = {r.get("merge_commit") for r in recs if r.get("kind") in ("merged", "pushed")}   # B3c: phase F's own merges are not GitHub's to judge twice
+    own = {r.get("merge_commit") for r in recs if r.get("kind") == "merged"}   # B3c: phase F's own merges are not GitHub's to judge twice (a pushed one ends replays, B21 S4)
     done = own | {r.get("merge_commit") for r in recs if (r.get("replay") and r.get("kind") == "decision" and r.get("overall") != "ERROR")
             or (r.get("kind") == "skipped" and r.get("why") == "replay_unmapped")} | {m for m, k in errors.items() if k >= 2}
     try:
