@@ -1,39 +1,27 @@
-// Two-tier MDX article compilation guard:
-// - Tier 1 compiles every en+id article using `serialize` from "next-mdx-remote/serialize"
-//   (compile-only, no evaluation) with the production mdxOptions.
-// - Tier 2 evaluates the dangerous-identifier files with the production `renderMDXBody`,
-//   because compiling+evaluating all ~1,700 files took ~100 s (over the 60 s CI budget).
+// Single-tier MDX article compilation guard:
+// Compiles every en+id article using `serialize` from "next-mdx-remote/serialize"
+// (compile-only, `skipRender: true`) with the exact production compileMDX options
+// (`blockJS: false`, `blockDangerousJS: true`, `remarkGfm`, `development: false`).
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import { serialize } from "next-mdx-remote/serialize";
 import remarkGfm from "remark-gfm";
-import { describe, expect, it } from "vitest";
-import { renderMDXBody } from "./MDXContentRSC";
+import { stripImports } from "@/lib/blog/strip-imports";
 
-function stripImports(content: string): string {
-  return content
-    .replace(/^import\s+[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, "")
-    .replace(/^import\s*{[\s\S]*?}\s*from\s*['"][^'"]+['"];?\s*$/gm, "")
-    .trim();
-}
+// Anchored to this file (vite-node provides __dirname), never to process.cwd().
+export const ARTICLES_ROOT = path.resolve(__dirname, "../../content/articles");
 
-const ARTICLES_ROOT = path.join(process.cwd(), "src/content/articles");
+const SECURITY_KEY_RE =
+  /(?:^\s*|[{,]\s*)(Function|constructor|eval|__proto__|prototype|module|process|global|globalThis|exports|require|fs|http|https|net|vm|Reflect|child_process|Buffer|window|document)\s*:/;
 
-const DANGEROUS_IDENTIFIER_RE =
-  /\b(Function|constructor|eval|__proto__|prototype)\b/;
+const SECURITY_MEMBER_RE =
+  /\b(process|global|globalThis|module|exports|require|Function|constructor|eval|__proto__|prototype|fs|http|https|net|vm|Reflect|child_process|Buffer|window|document)\s*(?:\.[A-Za-z_$]|\[)/;
 
-const TIER1_SERIALIZE_OPTIONS = {
-  mdxOptions: {
-    remarkPlugins: [remarkGfm],
-    development: false,
-  },
-};
+export const CURE_MESSAGE =
+  "Cure: a bare '<' before a digit/space/'=' is parsed by MDX as the start of a JSX tag - write &lt; (renders '<') or words ('kurang dari'); an unbalanced </InfoCard> or an unclosed JSX tag must be closed on its own line after a blank line; an unescaped { } in prose must be written as \\{ \\}; an object key named like a JS global (Function, module, process, global, ...) must be quoted: \"Function\": ...";
 
-const CURE_MESSAGE =
-  "Cure: a bare '<' before a digit/space/'=' is parsed by MDX as the start of a JSX tag - write &lt; (renders '<') or words ('kurang dari'); an unbalanced </InfoCard> or an unclosed JSX tag must be closed on its own line after a blank line; an unescaped { } in prose must be written as \\{ \\}.";
-
-interface CompileFailure {
+export interface CompileFailure {
   file: string;
   message: string;
 }
@@ -89,17 +77,18 @@ function extractErrorLine(err: unknown): number | null {
   return null;
 }
 
-function findFirstDangerousLine(body: string): number | null {
+function findSecurityErrorLine(body: string): number | null {
   const lines = body.split("\n");
   for (let i = 0; i < lines.length; i++) {
-    if (DANGEROUS_IDENTIFIER_RE.test(lines[i])) {
+    const line = lines[i];
+    if (SECURITY_KEY_RE.test(line) || SECURITY_MEMBER_RE.test(line)) {
       return i + 1;
     }
   }
   return null;
 }
 
-async function compileOne(
+export async function compileOne(
   source: string,
   lineOffset = 0,
 ): Promise<string | null> {
@@ -118,21 +107,27 @@ async function compileOne(
     ? lineOffset +
       (sourceTrimmed.split("\n").length - cleaned.split("\n").length)
     : 0;
-  const formatLine = (bodyLine: number, note?: string): string => {
+  const formatLine = (bodyLine: number): string => {
     if (isSuffix) {
       const fileLine = bodyLine + effectiveOffset;
-      return note ? `line ${fileLine} (${note})` : `line ${fileLine}`;
+      return `line ${fileLine}`;
     }
-    return note
-      ? `line ${bodyLine} (${note}, body line, imports/frontmatter stripped)`
-      : `line ${bodyLine} (body line, imports/frontmatter stripped)`;
+    return `line ${bodyLine} (body line, imports/frontmatter stripped)`;
   };
 
   try {
-    await serialize(cleaned, TIER1_SERIALIZE_OPTIONS);
-    if (DANGEROUS_IDENTIFIER_RE.test(cleaned)) {
-      await renderMDXBody(cleaned);
-    }
+    await serialize(
+      cleaned,
+      {
+        blockJS: false,
+        blockDangerousJS: true,
+        mdxOptions: {
+          remarkPlugins: [remarkGfm],
+          development: false,
+        },
+      },
+      true,
+    );
     return null;
   } catch (err) {
     const rawMessage = err instanceof Error ? err.message : String(err);
@@ -142,9 +137,8 @@ async function compileOne(
     // Re-compile the same stripped source with raw @mdx-js/mdx to read VFileMessage
     // position fields (`err.line` or `err.place?.start?.line` / `err.place?.line`).
     let bodyLine: number | null = extractErrorLine(err);
-    let rawCompileSucceeded = false;
 
-    if (bodyLine === null) {
+    if (bodyLine === null && !/security/i.test(rawMessage)) {
       try {
         const { compile } = await import("@mdx-js/mdx");
         try {
@@ -152,7 +146,6 @@ async function compileOne(
             remarkPlugins: [remarkGfm],
             development: false,
           });
-          rawCompileSucceeded = true;
         } catch (rawErr) {
           bodyLine = extractErrorLine(rawErr);
         }
@@ -161,27 +154,16 @@ async function compileOne(
       }
     }
 
-    let lineLabel: string;
-    if (bodyLine !== null) {
-      lineLabel = formatLine(bodyLine);
-    } else if (rawCompileSucceeded) {
-      const dangerousLine = /security/i.test(rawMessage)
-        ? findFirstDangerousLine(cleaned)
-        : null;
-      if (dangerousLine !== null) {
-        lineLabel = formatLine(dangerousLine, "first dangerous identifier");
-      } else {
-        lineLabel = `line unknown (evaluation: ${snippet.slice(0, 120)})`;
-      }
-    } else {
-      lineLabel = "line unknown";
+    if (bodyLine === null && /security/i.test(rawMessage)) {
+      bodyLine = findSecurityErrorLine(cleaned);
     }
 
+    const lineLabel = bodyLine !== null ? formatLine(bodyLine) : "line unknown";
     return `${lineLabel}: ${snippet}`;
   }
 }
 
-function walkMdxFiles(dir: string): string[] {
+export function walkMdxFiles(dir: string): string[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   const results: string[] = [];
   for (const entry of entries) {
@@ -195,7 +177,7 @@ function walkMdxFiles(dir: string): string[] {
   return results.sort();
 }
 
-async function compileArticlesInChunks(
+export async function compileArticlesInChunks(
   files: string[],
   chunkSize = 8,
 ): Promise<CompileFailure[]> {
@@ -204,7 +186,7 @@ async function compileArticlesInChunks(
     const batch = files.slice(i, i + chunkSize);
     const batchResults = await Promise.all(
       batch.map(async (absPath): Promise<CompileFailure | null> => {
-        const relFile = path.relative(process.cwd(), absPath);
+        const relFile = path.relative(ARTICLES_ROOT, absPath);
         const raw = fs.readFileSync(absPath, "utf8");
         const parsed = matter(raw);
         const offset =
@@ -225,7 +207,7 @@ async function compileArticlesInChunks(
   return failures;
 }
 
-function formatFailureAssertionMessage(
+export function formatFailureAssertionMessage(
   localeLabel: string,
   failures: CompileFailure[],
 ): string {
@@ -234,48 +216,3 @@ function formatFailureAssertionMessage(
     ? `${localeLabel} MDX compilation failed:\n${details}\n${CURE_MESSAGE}`
     : CURE_MESSAGE;
 }
-
-const allMdxFiles = walkMdxFiles(ARTICLES_ROOT);
-const englishFiles = allMdxFiles.filter(
-  (file) => !/\.(id|it|fr|ru)\.mdx$/.test(path.basename(file)),
-);
-const indonesianFiles = allMdxFiles.filter((file) => file.endsWith(".id.mdx"));
-
-describe("MDXContentRSC article compilation guard", () => {
-  it("detects unescaped '<' before a digit and unquoted dangerous keys (guilt) and passes escaped/quoted forms (innocence)", async () => {
-    const guilt = await compileOne("- Habiskan <183 hari/tahun di Indonesia");
-    expect(guilt).not.toBeNull();
-    expect(guilt).toMatch(/^line 1:/);
-
-    const innocence = await compileOne(
-      "- Habiskan &lt;183 hari/tahun di Indonesia",
-    );
-    expect(innocence).toBeNull();
-
-    const tier2Guilt = await compileOne('<Box items={[{ Function: "x" }]} />');
-    expect(tier2Guilt).not.toBeNull();
-    expect(tier2Guilt).toMatch(/^line 1 \(first dangerous identifier\):/);
-    expect(tier2Guilt).toContain("Security");
-
-    const tier2Innocence = await compileOne(
-      '<Box items={[{ "Function": "x" }]} />',
-    );
-    expect(tier2Innocence).toBeNull();
-  });
-
-  it("every English article compiles", async () => {
-    const failures = await compileArticlesInChunks(englishFiles, 8);
-    expect(
-      failures,
-      formatFailureAssertionMessage("English", failures),
-    ).toEqual([]);
-  }, 180000);
-
-  it("every Indonesian article compiles", async () => {
-    const failures = await compileArticlesInChunks(indonesianFiles, 8);
-    expect(
-      failures,
-      formatFailureAssertionMessage("Indonesian", failures),
-    ).toEqual([]);
-  }, 180000);
-});
