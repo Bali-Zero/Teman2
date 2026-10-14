@@ -1577,6 +1577,26 @@ def evaluate_with_trace(
     # them into one applicant-facing sentence is a PUBLIC-SHAPING concern and
     # happens at that boundary — `evaluate_path.apply_public_policy_adapters`.
     no_path_reasons = _dedupe_reasons(reason for proof in excluded for reason in proof.reasons)
+    # E31-B01: a GLOBAL hard filter that fired excluded EVERY product, so it is
+    # the one cause that is the applicant's own whatever they were shopping for;
+    # the reasons of other products' PRODUCTS-scoped filters are about products
+    # that were never the blocker and must not ride along. "Global" is the
+    # pack's own marking (`rule.scope is RuleScope.GLOBAL`), never a code list.
+    # A global rule fires identically in each product's proof, so every EXCLUDED
+    # proof is searched, not only the purpose-feasible ones: a global cause must
+    # not be hidden behind the "no product covers the purposes" fallback.
+    global_rule_ids = frozenset(
+        rule.rule_id for rule in compiled_pack.rules if rule.scope is RuleScope.GLOBAL
+    )
+    global_causes = _dedupe_reasons(
+        reason
+        for proof in proofs
+        if proof.status is ProductProofStatus.EXCLUDED
+        for reason in proof.reasons
+        if reason.rule_ids and all(rule_id in global_rule_ids for rule_id in reason.rule_ids)
+    )
+    if global_causes:
+        no_path_reasons = global_causes
     if not no_path_reasons:
         no_path_reasons = (_fallback_no_path_reason(products, compiled_pack),)
     return assemble(state=DecisionState.NO_SUPPORTED_PATH, no_path_reasons=no_path_reasons)
