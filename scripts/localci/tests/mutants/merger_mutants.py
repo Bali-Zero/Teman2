@@ -850,7 +850,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
                               '_CACHE[key] = ("matrix_after_flip", None)', RS),
     # B21: a push of unknown outcome is read back before it halts; after phase F's first push, nothing is replayed
     "b21-unknown-error-is-transport": (PY, "or bool(PUSH_TRANSPORT.search(err))", "or True", (PHASEF,)),
-    "b21-readback-skipped": (PY, "landed = push_read_back(state, repo_dir, base)", "landed = None", (PHASEF,)),
+    "b21-readback-skipped": (PY, "first = push_read_back(state, repo_dir, base)", "first = None", (PHASEF,)),
     "b21-unlanded-moves-the-ref": (PY, '            journal(state, {"kind": "push_unlanded"', '            git(repo_dir, "update-ref", "refs/merger/base", commit, old, check=False)\n            journal(state, {"kind": "push_unlanded"', (PHASEF,)),
     "b21-replays-with-phase-f-armed": (PY, 'if os.environ.get(PHASE_F_ENV) == "1":   # B21 S4', "if False:   # B21 S4", (REPLAY,)),
     "b21-replay-off-by-any-pushed-row": (PY, 'if os.environ.get(PHASE_F_ENV) == "1":   # B21 S4', 'if any(r.get("kind") == "pushed" for r in recs):   # B21 S4', (REPLAY,)),
