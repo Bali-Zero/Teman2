@@ -52,7 +52,8 @@ receipts:
     cmd: ssh mini, cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine backend/scripts/visa_engine backend/tests/scripts/visa_engine
     result: "2 failed, 3979 passed, 15 skipped, 3 xfailed, 1 warning, 31 errors in 155.37s"
     exit: 1
-    ts: "2026-10-14T05:20:00Z"
+    ts: "2026-10-14T05:15:32Z"
+    note: "ts bounded by commit time; run artifact unavailable"
     seat: claude-sonnet-5-5 (re-pin continuation, trailer names Opus 5.5 as the mandate prescribed)
   - claim: "The bites observer passes on the build head."
     cmd: python3 scripts/ci/observe_visa_engine_global_no_path_reasons.py
