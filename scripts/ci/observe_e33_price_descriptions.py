@@ -8,8 +8,8 @@
 The consumer is the pricing knowledge layer (get_all_prices / the public pricing
 endpoint), which serves the rows of bali_zero_official_prices_2026.json and its
 mouth mirror. The observation runs the pytest file that goes through PricingService.get_all_prices()
-and requires the E33 and E33E rows to carry no "non-working" and to name the rangkap kegiatan condition, in both files.
-Exit 0 only if pytest reports a full pass of at least 12 tests.
+and requires the E33 and E33E rows to carry no "non-working", to name the rangkap kegiatan condition and the selling exception, and the E33E/E33F rows to use "income or allowance" wording, in both files.
+Exit 0 only if pytest reports a full pass of at least 34 tests.
 """
 
 # bites-observable — no arguments; one literal program, one literal test file.
@@ -23,13 +23,13 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TEST_FILE = "tests/scripts/test_e33_price_descriptions.py"
-MIN_TESTS = 14
+MIN_TESTS = 34
 TIMEOUT_SECONDS = 240
 _SUMMARY = re.compile(r"^=*\s*(\d+) passed in [\d.]+s(?: \(.*\))?\s*=*$")
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a pytest line that is a pure pass (no failed/skipped/error), N >= 14."""
+    """True only for a pytest line that is a pure pass (no failed/skipped/error), N >= 34."""
     if line is None:
         return False
     match = _SUMMARY.match(line.strip())

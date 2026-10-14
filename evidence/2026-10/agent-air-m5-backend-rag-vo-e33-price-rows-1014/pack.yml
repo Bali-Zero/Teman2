@@ -1,0 +1,111 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  P2 (E33-family wording) rests on Zero's 2026-10-11 ruling (price rows say what the official pages
+  say); P1 (Retirement 55+) rests on the signed seq-29 rules hf.e33e.age-below-55 /
+  hf.e33f.age-below-55 (lt 55) and the E33E card, with no owner ruling.
+mission: >-
+  The Retirement and E33-family price rows say what the signed rules and the official pages say — 55+,
+  the selling exception, income or allowance.
+lanes:
+  - lane: gem-prices-retirement-and-e33
+    role: build
+    seat: Gemini 4 Argon (High) builder via agy (gemini-4-argon-high), edits files only; Claude driver verifies and commits. Worktree backend-rag-vo-e33-price-rows-1014 on Air-M5.
+  - lane: redteam-claude
+    role: review
+    seat: claude-opus-5-5 adversarial red team, read-only, head 74f642c1aa.
+  - lane: redteam-codex
+    role: review
+    seat: codex gpt-5.6-sol, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl (model gpt-5.6-sol confirmed).
+  - lane: gem-prices-ground-truth
+    role: ground_truth
+    seat: >-
+      1) Signed rule pack apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
+      (seq-29): rules hf.e33e.age-below-55 and hf.e33f.age-below-55 both test
+      {"fact": "derived.age_years", "op": "lt", "value": 55} -> EXCLUDE AGE_BELOW_55; el.e33e.retirement
+      tests derived.age_years gte 55; research/visa/doctrine-factory/cards/E33E.md states "Age: the page
+      says 55 years or more. It does not mention 60."
+      2) Official imigrasi.go.id E33 and E33E pages state the selling exception: "Anda dilarang tinggal
+      di wilayah Indonesia melebihi jangka waktu izin tinggal, melakukan pekerjaan yang tidak sesuai
+      dengan izin tinggal, melakukan penjualan barang atau jasa, terkecuali diperlukan dalam pekerjaannya"
+      (cards/E33.md:64 and cards/E33E.md:59: "Selling goods or services is prohibited unless needed for
+      the work.").
+      3) research/visa/doctrine-factory/cards/E33F.md:52 and cards/E33E.md:51 state "Income: proof of
+      income or allowance of at least US$3,000 per month" (live E33F page: "Bukti penghasilan atau
+      tunjangan dengan nilai sekurang-kurangnya US$3.000 ... per bulan"; cards/E33F.md:13/21 note that
+      the page "does not mention a pension").
+    nb: apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+    query_hash: "be6bf44d2d6f8ee8e766ac3b8007c274b84fe7773a516a59ce2f9629049ec3f9" # pragma: allowlist secret
+    note: >-
+      query_hash is the content_sha256 of source_record 6f5135f2-1f77-571f-88ed-26d1d2b9efba
+      (Kepmen M.IP-08.GR.01.01/2025 — Indeks Visa Indonesia, katalog daftar-visa imigrasi.go.id) in
+      rulepack-prod-029.signed.json.
+pii_scan: clean
+bites:
+  consumer: >-
+    balizero.com/services/visa (apps/mouth/src/data/services_data.ts:78 renders description_en of every
+    kitas_permits row, and notes as features), the balizero.com/book retirement and Second Home cards
+    (book-data.ts:565/578, tagline = "Retirement (Offshore)".description_en), and the backend
+    PricingService.get_all_prices() behind the pricing tools.
+  where: ci
+  observe: python3 scripts/ci/observe_e33_family_and_retirement_price_descriptions.py
+  expect: "contains:E33-family and Retirement price descriptions hold"
+receipts:
+  - claim: C1/C6, Retirement, and E33-family price description tests (15 + 22 + 34 tests) plus observer parser unit tests (10 + 10 + 10 tests) across 6 lane test files prepared for verification by the Claude conductor session.
+    cmd: python3 -m pytest -p no:cacheprovider tests/scripts/test_c1_c6_price_descriptions.py tests/scripts/test_retirement_price_descriptions.py tests/scripts/test_observe_retirement_price_descriptions.py tests/scripts/test_e33_price_descriptions.py tests/scripts/test_observe_e33_price_descriptions.py tests/scripts/test_observe_e33_family_and_retirement_price_descriptions.py
+    result: "101 passed (6 lane test files); observers 22, 34 and 56 passed"
+    exit: 0
+    ts: "2026-10-14T09:57:00+08:00"
+    seat: agent-air-m5-backend-rag-vo-e33-price-rows-1014
+dissent:
+  - seat: gem-prices-ground-truth
+    objection: >-
+      F21 note: Permenkumham 11/2024 Pasal 33(10)(d) still reads 60 years for the retirement age floor,
+      whereas the official imigrasi.go.id E33E/E33F pages and signed seq-29 rule pack state 55+.
+    status: PLAUSIBLE
+    resolution: >-
+      Rows follow the signed pack (seq-29 hf.e33e.age-below-55 / hf.e33f.age-below-55) and official
+      page, flagged.
+  - seat: gem-prices-retirement-and-e33
+    objection: >-
+      Two catalogue questions left open for Zero: repointing the generic Retirement rows to E33F, and a
+      sponsor clause on E33F rows.
+    status: PLAUSIBLE
+    resolution: >-
+      Deferred to Zero as owner catalogue decisions (P1/P2 needs_owner_decision); generic Retirement
+      rows and sponsor-free E33F wording are left unchanged in this PR.
+decisions:
+  - id: D-e33f-untouched
+    decision: >-
+      E33F rows keep "non-working residency": the E33F official page never mentions work or study.
+  - id: D-no-e33f-sponsor-clause
+    decision: >-
+      No sponsor clause is added to the E33F service rows; whether an all-inclusive service row should
+      name the sponsor requirement is Zero's catalogue decision (P2 needs_owner_decision).
+  - id: D-retirement-generic-rows-kept
+    decision: >-
+      The generic Retirement (Altus/Onshore), Retirement (Offshore) and Retirement (Extend) rows and
+      keys are kept intact because /book and pricing-snapshot tests pin them; repointing /book to E33F
+      is Zero's catalogue call (P1 needs_owner_decision).
+  - seat: claude-opus-5-5 red team
+    objection: >-
+      HIGH: pack.yml bites.observe chained two observers with '&&', which bites_parse.py rejects as a
+      shell metacharacter (malformed pack, harness-floor Step 8 exit 1), and the expect string could never
+      match two separate outputs.
+    status: CONFIRMED
+    resolution: >-
+      Cured in commit 4dfea3d062: single chainless wrapper
+      scripts/ci/observe_e33_family_and_retirement_price_descriptions.py with its summary_ok unit test;
+      observe/expect re-parsed with bites_parse.py.
+  - seat: claude-opus-5-5 red team and codex gpt-5.6-sol
+    objection: >-
+      LOW: the receipt result (91 passed) did not match its recorded cmd; ruling credited Zero for P1;
+      no dissent block; build-report backend numbers came from a python without the backend venv; the
+      search_service('pension') behaviour change; retirement-age floor read from an unverified pack file;
+      other surfaces (renewal_rules.py, second-home/new/page.tsx, second-home-visa-indonesia.mdx,
+      secondhome SKILL.md) still say passive income.
+    status: CONFIRMED
+    resolution: >-
+      Receipt, ruling and dissent corrected in 4dfea3d062 (receipt re-run this turn). Search alias for
+      'pension', verified-pack loader for the floor test and the other surfaces are out of scope here and
+      left to separate follow-ups; 'pension' must not return to the copy.
