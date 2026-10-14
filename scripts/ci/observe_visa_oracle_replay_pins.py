@@ -32,7 +32,7 @@ LIB = "src/app/(visa-oracle)/visa-oracle/_lib/"
 TEST_FILES = (LIB + "no-path-doors.test.tsx", LIB + "engine-adapter.test.ts")
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 # The exact census of the two files: a lost test is a red observer, not a quiet drop.
-EXPECTED_TESTS = 310
+EXPECTED_TESTS = 312
 REPLAY = (
     MOUTH_DIR / "src" / "app" / "(visa-oracle)" / "visa-oracle" / "_lib" / "fixtures" / "no-path-doors.replay.json"
 )
