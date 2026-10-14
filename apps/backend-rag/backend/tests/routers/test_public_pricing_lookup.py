@@ -194,3 +194,36 @@ def test_compliance_retainer_cadence_and_confirmed_price_notes(client: TestClien
     # provisional "pending owner confirmation" marker must no longer appear.
     assert "USD reference:" in body["notes"]
     assert "pending owner confirmation" not in body["notes"].lower()
+
+
+# ── internal catalogue rows: hidden from public route, kept in backend ────────
+
+INTERNAL_RETIREMENT_KEYS = (
+    "Retirement (Altus/Onshore)",
+    "Retirement (Offshore)",
+    "Retirement (Extend)",
+)
+
+
+@pytest.mark.parametrize("internal_key", INTERNAL_RETIREMENT_KEYS)
+def test_internal_catalogue_rows_are_404_on_public_route(
+    client: TestClient, internal_key: str
+) -> None:
+    """Rows carrying `"internal": true` in the canonical catalogue must not be
+    served by the anonymous lookup route."""
+    resp = client.get("/api/pricing/service", params={"key": internal_key})
+    assert resp.status_code == 404, (
+        f"{internal_key!r} resolved to {resp.text} — internal row leaked on public route"
+    )
+
+
+def test_internal_catalogue_rows_still_resolve_in_pricing_service() -> None:
+    """Backend innocence: `PricingService.get_service_by_key` must keep
+    resolving internal rows for backend callers (pricing_adapter, renewal_rules)."""
+    svc = get_pricing_service()
+    for internal_key in INTERNAL_RETIREMENT_KEYS:
+        entry = svc.get_service_by_key(internal_key)
+        assert entry is not None, (
+            f"{internal_key!r} stopped resolving in PricingService.get_service_by_key"
+        )
+        assert entry["key"] == internal_key

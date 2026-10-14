@@ -50,6 +50,36 @@ async def search_pricing(
     return result
 
 
+def _is_internal_service(svc: Any, key: str, entry: dict[str, Any]) -> bool:
+    """True when the catalogue row carries ``"internal": true``.
+
+    ``PricingService.get_service_by_key`` returns a projected dict and must keep
+    resolving internal rows for backend callers, so check both the returned dict
+    and the raw catalogue entry in ``svc.prices``.
+    """
+    if entry.get("internal") is True:
+        return True
+    services = getattr(svc, "prices", {}).get("services", {})
+    category_data = services.get(entry.get("category", ""), {})
+    if not isinstance(category_data, dict):
+        return False
+    qualifier, sep, bare_name = key.partition("::")
+    if not sep:
+        bare_name = key
+        qualifier = ""
+    raw = category_data.get(bare_name)
+    if isinstance(raw, dict) and ("price" in raw or "tier_range" in raw):
+        return raw.get("internal") is True
+    for sub_name, sub_block in category_data.items():
+        if qualifier and sub_name != qualifier:
+            continue
+        if isinstance(sub_block, dict):
+            sub_raw = sub_block.get(bare_name)
+            if isinstance(sub_raw, dict) and sub_raw.get("internal") is True:
+                return True
+    return False
+
+
 @router.get("/service")
 async def get_service_price(
     key: str = Query(
@@ -81,7 +111,9 @@ async def get_service_price(
         raise HTTPException(status_code=503, detail="Official prices not loaded")
 
     entry = svc.get_service_by_key(key)
-    if entry is None:
+    # An `"internal": true` row is hidden from public surfaces: same 404 as unknown.
+    # (Kept out of the docstring: it feeds the OpenAPI description and its pin.)
+    if entry is None or entry.get("internal") is True or _is_internal_service(svc, key, entry):
         raise HTTPException(status_code=404, detail=f"Unknown service key: {key}")
     return entry
 
