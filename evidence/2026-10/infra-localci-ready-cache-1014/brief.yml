@@ -12,8 +12,9 @@ objective: >-
   reads, projected to the fields report() reads, kept once the PR's newest decision is 48 h old and no required
   context is pending; keys name repo, branch, sha and base). phase_f_arming never calls report(): it refuses on a
   torn journal, a missing, corrupt, false, refused or stale (7200 s) cache. On a copy of Pro's real journal the
-  first refresh took about 1100 s and 1054 calls, the second with the memo about 274 s and 239 calls, with an
-  identical report. Gear is 2 via the SIZE term (mostly tests, mutants and docs); a fresh Opus gate reads the diff.
+  first refresh took about 1090 s and 1073 calls (memo 6.0 MB, against 75.9 MB raw), the second with the memo
+  about 312 s and 257 calls; replayed from one recording of GitHub's answers the two reports are identical except
+  last_line_age_h, a wall-clock age. Gear is 2 via the SIZE term (mostly tests, mutants and docs); a fresh Opus gate reads the diff.
 residuals:
   - A hosted re-run that flips a check on a closed PR more than 48 h after its decision, or a reopened PR, is not
     seen by READY (documented bound C2).
