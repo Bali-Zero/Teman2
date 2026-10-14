@@ -250,6 +250,7 @@ class ClientCreate(BaseModel):
     passport_number: str | None = None
     passport_expiry: str | None = None  # ISO date string (YYYY-MM-DD)
     date_of_birth: str | None = None  # ISO date string (YYYY-MM-DD)
+    gender: str | None = None
     status: str = "active"  # 'active', 'inactive', 'prospect', 'lead'
     client_type: str = "individual"  # 'individual' or 'company'
     assigned_to: str | None = None  # team member email
@@ -323,6 +324,16 @@ class ClientCreate(BaseModel):
                 raise
             # Invalid date format — handled elsewhere
         return v
+
+    @field_validator("gender", mode="before")
+    @classmethod
+    def normalize_gender(cls, v: str | None) -> str | None:
+        """Normalize gender values: M→male, F→female, O→other (same as ClientUpdate)."""
+        if not v:
+            return None
+        normalized = v.strip().lower()
+        mapping = {"m": "male", "f": "female", "o": "other"}
+        return mapping.get(normalized, normalized)
 
 
 TAX_CONSULTANT_VALUES: set[str] = {

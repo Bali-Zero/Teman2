@@ -78,6 +78,7 @@ class ClientValidator(BaseModel):
     passport_expiry: str | None = None
     date_of_birth: str | None = None
     company_name: str | None = None
+    gender: str | None = None
 
     @field_validator("full_name")
     @classmethod
