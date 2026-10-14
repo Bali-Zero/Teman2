@@ -743,3 +743,22 @@ def test_a_merged_pr_is_read_at_its_merge_commits_first_parent_never_at_the_comm
     gh = FakeGH({2: pull(B, merged=True, merge_commit=red_mc)}, {B: "success", red_mc: "failure"}, parents={red_mc: ["3" * 40]})
     run_report(tmp_path, monkeypatch, [decision(2, B, "FAIL", ctx="FAIL")], gh)
     assert (red_mc, f"{red_mc}^1") in seen and (red_mc, red_mc) not in seen
+
+
+def test_retry_rows_of_a_pending_merge_are_counted_apart_and_change_neither_the_decisions_nor_ready(tmp_path, monkeypatch):
+    t = "2026-10-08T01:00:00Z"
+    base = [decision(1, A, "BLOCKED", ts=t), {"kind": "would_enqueue", "ts": t, "pr": 1, "head_sha": A, "ok": False},
+            {"kind": "would_merge", "ts": t, "pr": 1, "head_sha": A, "ok": False, "clean": True, "base_current": True, "merge_tree": M, "remote_main": BASE}]
+    retries = [{"kind": "would_enqueue", "ts": t, "pr": 1, "head_sha": A, "ok": True, "retry": True},
+               {"kind": "would_merge", "ts": t, "pr": 1, "head_sha": A, "ok": True, "clean": True, "base_current": True, "merge_tree": M, "remote_main": BASE, "retry": True},
+               {"kind": "would_merge", "ts": t, "pr": 1, "head_sha": A, "ok": False, "clean": False, "base_current": False, "merge_tree": M, "remote_main": M, "retry": True}]
+    (tmp_path / "plain").mkdir()
+    (tmp_path / "retry").mkdir()
+    gh = FakeGH({1: pull(A)}, {A: "success"})
+    _, plain = run_report(tmp_path / "plain", monkeypatch, base, gh)
+    _, both = run_report(tmp_path / "retry", monkeypatch, base + retries, FakeGH({1: pull(A)}, {A: "success"}))
+    assert both["window"]["pending_retry"] == {"would_enqueue": 1, "would_merge": 2, "would_merge_ok": 1}
+    assert plain["window"]["pending_retry"] == {"would_enqueue": 0, "would_merge": 0, "would_merge_ok": 0}
+    for key in ("enqueue", "would_merge", "decisions"):
+        assert both["window"][key] == plain["window"][key]
+    assert (both["phase_e_ready"], both["counts"], both["context_counts"]) == (plain["phase_e_ready"], plain["counts"], plain["context_counts"])

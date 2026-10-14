@@ -646,6 +646,15 @@ Arming order (spec §2 phase F): (1) phase D READY; (2) the deploy key generated
 Report: `phase_f` reads `shadow` until the window holds a `merged` or `push_refused` line, then `armed (N merged, M refused)`;
 `phase_f_halted` and the line `phase F executor: ...` (with `HALTED` when the file exists) say the rest; the READY line is unchanged.
 
+**B19: a PASS waits, it is not spent** (spec B19). `decide()` tries the enqueue and the merge once, and `triage()` never decides a key twice, so a
+LocalCI PASS refused only for a term that changes with time (hosted CI still running, the label missing or older than the head, READY false) would
+wait for a base that, after the flip, only the merger moves. Each tick therefore starts with `retry_pending_merges`: for up to `PENDING_RETRY_MAX`
+(3) pending keys whose last attempt is `PENDING_RETRY_S` (900) s old, and whose base and head are still current, it re-reads the hosted side (required
+set at the BASE) and `pr_side`, copies the local terms from the original `would_enqueue` row, journals a `would_enqueue` and a `would_merge` with
+`retry: true`, and merges through the same `phase_f_arming` when it is armed (one merge per tick). A key older than `PENDING_TTL_S` (24 h) is
+journalled once as `skipped: pending_expired`. Retry rows are counted in `window.pending_retry` (`would_enqueue`, `would_merge`, `would_merge_ok`),
+never as decisions. Before the flip it runs as shadow and changes nothing on GitHub.
+
 ### Report (phase D's instrument)
 
     python scripts/localci/merger.py report [--repo Bali-Zero/Teman2] [--base main] [--state-dir ...] [--since 2026-10-07]

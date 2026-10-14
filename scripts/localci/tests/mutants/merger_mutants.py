@@ -52,6 +52,7 @@ GP = ("scripts/localci/tests/test_gate_pending.py",)   # B12
 GS = ("scripts/localci/tests/test_gate_stale.py",)   # B12b
 ROOT = Path(__file__).resolve().parents[4]
 REPORT = "scripts/localci/tests/test_merger_report.py"
+PENDING = ("scripts/localci/tests/test_merger_pending.py",)   # B19
 TICK = "scripts/localci/tests/test_merger.py"
 PY, SH = "scripts/localci/merger.py", "scripts/localci/localci_merger_tick.sh"
 HC, RUNNER = "scripts/localci/hosted_compare.py", "scripts/localci/runner.py"
@@ -868,6 +869,31 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b21-landed-without-ref-update": (PY, 'updated = git(repo_dir, "update-ref", "refs/merger/base", commit, old, check=False).returncode == 0',
                                       'updated = readback or git(repo_dir, "update-ref", "refs/merger/base", commit, old, check=False).returncode == 0', (PHASEF,)),
     "b21-rejection-marker-loses-to-transport": (PY, "    if PUSH_REJECTED.search(err):\n        return False\n", "", (PHASEF,)),
+    # B19: a PASS waits, it is not spent
+    "pending-ignores-base": (PY, 'if base != base_sha or heads.get(n) != head or p["expired"]:', 'if heads.get(n) != head or p["expired"]:', PENDING),
+    "pending-ignores-head": (PY, 'if base != base_sha or heads.get(n) != head or p["expired"]:', 'if base != base_sha or p["expired"]:', PENDING),
+    "pending-local-terms-not-required": (PY, "                or not all(crit.get(x) is True for x in LOCAL_TERMS) or w.get(\"clean\") is not True\n", "                or w.get(\"clean\") is not True\n", PENDING),
+    "pending-no-ttl": (PY, 'if clock - _epoch(p["decision"]["ts"]) > PENDING_TTL_S:', "if False:", PENDING),
+    "pending-no-interval": (PY, 'elif clock - p["last"] >= PENDING_RETRY_S:', "elif True:", PENDING),
+    "pending-no-per-tick-cap": (PY, "[:PENDING_RETRY_MAX]:", "[:99]:", PENDING),
+    "pending-no-merge-cap": (PY, 'if sum(1 for r in read_journal(state) if r.get("kind") in MERGE_ATTEMPT) > tried_before:\n            return True', "if False:\n            return True", PENDING),
+    "pending-retry-rows-counted-as-decisions": (PY, 'r.get("kind") == "would_merge" and not r.get("retry")]', 'r.get("kind") == "would_merge"]', (REPORT,)),
+    "pending-retry-enqueue-counted": (PY, 'and r.get("ok") is True and not r.get("retry"))', 'and r.get("ok") is True)', (REPORT,)),
+    "pending-expired-journalled-twice": (PY, 'or p["expired"]:', ":", PENDING),
+    "pending-enq-from-another-head": (PY, 'e, w, crit = enq.get(k), wm.get(k), (enq.get(k) or {}).get("criterion")',
+                                      'e = next((v for kk, v in enq.items() if kk[::2] == k[::2]), None)\n        w, crit = wm.get(k), (e or {}).get("criterion")', PENDING),
+    "pending-retry-without-base-matrix": (PY, "hc.fetch_live(a.repo, a.base, head, base_matrix(repo_dir, base_sha))", "hc.fetch_live(a.repo, a.base, head)", PENDING),
+    "pending-interval-from-decision": (PY, 'elif clock - p["last"] >= PENDING_RETRY_S:', 'elif clock - _epoch(p["decision"]["ts"]) >= PENDING_RETRY_S:', PENDING),
+    "pending-ttl-from-last-attempt": (PY, 'if clock - _epoch(p["decision"]["ts"]) > PENDING_TTL_S:', 'if clock - p["last"] > PENDING_TTL_S:', PENDING),
+    "pending-armed-env-retries": (PY, '    if os.environ.get(ARM_ENV) == "1":   # GitHub\'s merge queue owns this path\n        return False\n', "", PENDING),
+    "pending-swallows-the-watchdog": (PY, "        except (Stopped, TickTimeout):\n            raise\n        except Exception as exc:  # noqa: BLE001 — a retry never raises", "        except Stopped:\n            raise\n        except Exception as exc:  # noqa: BLE001 — a retry never raises", PENDING),
+    "pending-fetch-swallows-the-watchdog": (PY, "            except (Stopped, TickTimeout):\n                raise\n            except Exception as exc:  # noqa: BLE001 — an unreadable hosted side", "            except Stopped:\n                raise\n            except Exception as exc:  # noqa: BLE001 — an unreadable hosted side", PENDING),
+    "pending-watchdog-is-a-plain-merger-error": (PY, 'signal.SIGALRM, _raise(TickTimeout, f"tick exceeded', 'signal.SIGALRM, _raise(MergerError, f"tick exceeded', PENDING),
+    "pending-bounds-merged-not-attempts": (PY, 'if sum(1 for r in read_journal(state) if r.get("kind") in MERGE_ATTEMPT) > tried_before:', 'if sum(1 for r in read_journal(state) if r.get("kind") == "merged") > tried_before:', PENDING),
+    "pending-push-unlanded-ignored": (PY, '        elif kind == "push_unlanded" and k not in pushed:', '        elif False:', PENDING),
+    "pending-watchdog-flag-never-checked-after-retry": (PY, "        check_watchdog()\n        if sum(1", "        if sum(1", PENDING),
+    "pending-watchdog-flag-reset-mid-tick": (PY, "    check_watchdog()   # B19-W4", "    _WATCHDOG[\"fired\"] = False\n    check_watchdog()   # B19-W4", PENDING),
+    "pending-push-unlanded-beats-pushed": (PY, '        elif kind == "push_unlanded" and k not in pushed:', '        elif kind == "push_unlanded":', PENDING),
 }
 
 
