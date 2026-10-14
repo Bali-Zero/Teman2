@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  E33F_E33E_DEPOSIT_NOTE_CODE,
   GENERIC_NOTICE_CONDITION,
   NOTICE_CONDITION_COPY,
   PROHIBITED_ACTIVITY_COPY,
@@ -23,6 +24,7 @@ import {
 } from "./outcome-fallbacks";
 import { buildPreviewOutcome } from "./preview-adapter";
 import type { OutcomeState } from "./outcome-view-model";
+import type { OracleFacts } from "./tree";
 
 const STATES: readonly OutcomeState[] = [
   "SUPPORTED_CANDIDATES",
@@ -246,6 +248,95 @@ describe("client-visible copy", () => {
       BANNED.filter((re) => re.test(withoutAllowed(value))).map(
         (re) => `${re} :: ${value.slice(0, 80)}`,
       ),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it("the E33F-only retirement deposit note sentences (across non-deposit bases and deposit failures/unsure) carry no engine jargon or promise words", () => {
+    const makeE33fOnlyResponse = () => {
+      const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+      for (const candidate of response.decision.candidates) {
+        candidate.product_code = "E33F";
+      }
+      for (const candidate of response.display.candidates) {
+        candidate.product_code = "E33F";
+      }
+      return response;
+    };
+
+    const sentences: string[] = [];
+    const nonDepositBasisFacts: OracleFacts[] = [
+      { retirement_basis: "passive_income" },
+      { retirement_basis: "family_sponsor" },
+      { retirement_basis: "property" },
+      {
+        retirement_basis: "undecided",
+        retirement_undecided_basis: "family_sponsor",
+      },
+    ];
+    for (const basisFacts of nonDepositBasisFacts) {
+      const outcome = buildEngineOutcome(makeE33fOnlyResponse(), {
+        facts: {
+          category: "retirement",
+          age: "64",
+          retirement_income_usd: "3500",
+          ...basisFacts,
+        },
+      });
+      if (outcome.state !== "SUPPORTED_CANDIDATES") throw new Error("state");
+      const note = outcome.conditions.find(
+        (c) => c.code === E33F_E33E_DEPOSIT_NOTE_CODE,
+      );
+      if (!note) throw new Error("missing note");
+      sentences.push(note.message.en, note.message.id);
+    }
+
+    for (const retirement_basis of ["bank_deposit", "deposit_or_income"]) {
+      for (const secondhome_deposit_usd of ["49999", "60000", "unsure"]) {
+        for (const secondhome_state_bank of ["yes", "no", "unsure"]) {
+          for (const secondhome_own_name of ["yes", "no", "unsure"]) {
+            if (
+              secondhome_deposit_usd === "60000" &&
+              secondhome_state_bank === "yes" &&
+              secondhome_own_name === "yes"
+            ) {
+              continue;
+            }
+            const outcome = buildEngineOutcome(makeE33fOnlyResponse(), {
+              facts: {
+                category: "retirement",
+                age: "64",
+                retirement_income_usd: "3500",
+                retirement_basis,
+                secondhome_deposit_usd,
+                secondhome_state_bank,
+                secondhome_own_name,
+              },
+            });
+            if (outcome.state !== "SUPPORTED_CANDIDATES") {
+              throw new Error("state");
+            }
+            const note = outcome.conditions.find(
+              (c) => c.code === E33F_E33E_DEPOSIT_NOTE_CODE,
+            );
+            if (!note) throw new Error("missing note");
+            sentences.push(note.message.en, note.message.id);
+          }
+        }
+      }
+    }
+
+    expect(new Set(sentences).size).toBeGreaterThan(4);
+    const offenders = sentences.flatMap((value) =>
+      [
+        ...BANNED,
+        /\bE33F_E33E_DEPOSIT_NOTE\b/,
+        /\bqualif(?:y|ies|ied)\b/i,
+        /\bwill get\b/i,
+        /\beligible\b/i,
+      ]
+        .filter((re) => re.test(withoutAllowed(value)))
+        .map((re) => `${re} :: ${value.slice(0, 80)}`),
     );
     expect(offenders).toEqual([]);
   });

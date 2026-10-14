@@ -37,8 +37,13 @@ import {
   type ServiceAvailabilityStatus,
 } from "../_lib/outcome-view-model";
 import { translate, type I18nKey } from "../_lib/i18n";
-import { ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS } from "../_lib/fact-mapper";
 import {
+  ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS,
+  depositBasisDecisivelyNotChosen,
+  resolveConservativeAnswers,
+} from "../_lib/fact-mapper";
+import {
+  E33F_E33E_DEPOSIT_NOTE_CODE,
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   SECOND_HOME_STUDIO_URL,
   REVIEW_REASON_ELEMENTS,
@@ -358,6 +363,12 @@ export function demonstratedReviewCauses(
   const gateItem = REVIEW_GATE_CAUSE_ITEM[code];
   if (gateItem && (facts.review_gate?.split(",") ?? []).includes(gateItem)) {
     add("review_gate");
+  }
+  if (
+    code === E33F_E33E_DEPOSIT_NOTE_CODE &&
+    depositBasisDecisivelyNotChosen(resolveConservativeAnswers(facts))
+  ) {
+    add("retirement_basis");
   }
 
   return [...causes].map(([questionId, value]) => ({ questionId, value }));
@@ -1033,7 +1044,12 @@ export function OutcomeSheet({
             {translate(language, "outcome.conditions.title")}
           </h2>
           <p>{translate(language, "outcome.conditions.intro")}</p>
-          <ReasonList language={language} reasons={outcome.conditions} />
+          <ReasonList
+            language={language}
+            reasons={outcome.conditions}
+            causeFacts={facts}
+            onEditMissingInput={onEditMissingInput}
+          />
         </section>
       )}
 
