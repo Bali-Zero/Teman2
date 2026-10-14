@@ -119,7 +119,7 @@ case_agy_tier_flash_argv() {
 d=json.load(sys.stdin)
 argv=d["argv"]
 assert "--model" in argv and argv[argv.index("--model")+1] == "gemini-3.8-flash-high", argv
-assert "--print-timeout" in argv and argv[argv.index("--print-timeout")+1] == "8m", argv
+assert "--print-timeout" in argv and argv[argv.index("--print-timeout")+1] == "10m", argv
 assert "--effort" not in argv, argv
 assert "-p" in argv, argv' <<< "$out"
 }
@@ -132,7 +132,7 @@ case_agy_tier_pro_derived_xhigh_clamps_high() {
 d=json.load(sys.stdin)
 argv=d["argv"]
 assert argv[2] == "Tier test task, small.", argv
-assert argv[argv.index("--model")+1] == "gemini-3.1-pro", argv
+assert argv[argv.index("--model")+1] == "gemini-4-argon", argv
 assert argv[argv.index("--effort")+1] == "high", argv' <<< "$out"
 }
 
@@ -143,7 +143,7 @@ case_agy_tier_pro_explicit_low_stays_low() {
     python3 -c 'import json,sys
 d=json.load(sys.stdin)
 argv=d["argv"]
-assert argv[argv.index("--model")+1] == "gemini-3.1-pro", argv
+assert argv[argv.index("--model")+1] == "gemini-4-argon", argv
 assert argv[argv.index("--effort")+1] == "low", argv' <<< "$out"
 }
 
@@ -154,7 +154,7 @@ case_agy_tier_pro_explicit_medium_clamps_high() {
     python3 -c 'import json,sys
 d=json.load(sys.stdin)
 argv=d["argv"]
-assert argv[argv.index("--model")+1] == "gemini-3.1-pro", argv
+assert argv[argv.index("--model")+1] == "gemini-4-argon", argv
 assert argv[argv.index("--effort")+1] == "high", argv' <<< "$out"
 }
 
@@ -257,18 +257,19 @@ case_codex_sol_handles_same_big_file() {
     [ "$rc" -eq 0 ]
 }
 
-# ── R4: agy pro/flash ctx+role gate ──────────────────────────────────────────
+# ── agy/pro (Gemini 4 Argon): direct pro dispatch (R4 forced downgrade retired) ──
 
-case_agy_pro_small_input_downgrades_to_flash() {
+case_agy_pro_small_input_keeps_pro() {
     local out
     out="$(seat_env "$SEAT_BUILD" --seat agy --tier pro --worktree "$LINKED_WT" \
         --task-file "$TASK_FILE" --dry-run 2>/dev/null)" || return 1
     python3 -c 'import json,sys
 d=json.load(sys.stdin)
-assert d["tier"] == "flash", d
-assert d["tier_downgraded_from"] == "pro", d  # caller must be able to tell (codex-sol #5044)
+assert d["tier"] == "pro", d
+assert d["tier_downgraded_from"] is None, d
 argv=d["argv"]
-assert argv[argv.index("--model")+1] == "gemini-3.8-flash-high", argv' <<< "$out"
+assert argv[argv.index("--model")+1] == "gemini-4-argon", argv
+assert argv[argv.index("--effort")+1] == "high", argv' <<< "$out"
 }
 
 case_agy_pro_large_input_keeps_pro() {
@@ -280,7 +281,7 @@ d=json.load(sys.stdin)
 assert d["tier"] == "pro", d
 assert d["tier_downgraded_from"] is None, d
 argv=d["argv"]
-assert argv[argv.index("--model")+1] == "gemini-3.1-pro", argv' <<< "$out"
+assert argv[argv.index("--model")+1] == "gemini-4-argon", argv' <<< "$out"
 }
 
 case_agy_pro_role_synthesis_keeps_pro_on_small_input() {
@@ -304,7 +305,7 @@ agy_pro_effort_case() {  # agy_pro_effort_case <want-argv-effort> <want-report-e
     python3 -c 'import json,sys
 d=json.load(sys.stdin)
 argv=d["argv"]
-assert argv[argv.index("--model")+1] == "gemini-3.1-pro", argv
+assert argv[argv.index("--model")+1] == "gemini-4-argon", argv
 assert argv[argv.index("--effort")+1] == sys.argv[1], argv
 assert d["effort"] == sys.argv[2], d' "$want_argv" "$want_report" <<< "$out"
 }
@@ -320,14 +321,16 @@ case_agy_pro_invalid_effort_refused_64() {
     [ "$rc" -eq 64 ]
 }
 
-case_agy_pro_downgrade_drops_effort_flag() {
+case_agy_tier_argon_alias_resolves_to_pro() {
     local out
-    out="$(seat_env "$SEAT_BUILD" --seat agy --tier pro --effort high \
+    out="$(seat_env "$SEAT_BUILD" --seat agy --tier argon --effort high \
         --worktree "$LINKED_WT" --task-file "$TASK_FILE" --dry-run 2>/dev/null)" || return 1
     python3 -c 'import json,sys
 d=json.load(sys.stdin)
-assert d["tier"] == "flash" and d["tier_downgraded_from"] == "pro", d
-assert "--effort" not in d["argv"], d' <<< "$out"
+assert d["tier"] == "pro" and d["tier_downgraded_from"] is None, d
+argv=d["argv"]
+assert argv[argv.index("--model")+1] == "gemini-4-argon", argv
+assert argv[argv.index("--effort")+1] == "high", argv' <<< "$out"
 }
 
 # ── tier defaulting / SEAT_BUILD_TIER_REQUIRED ───────────────────────────────
@@ -400,14 +403,14 @@ run_case "R2: codex/sol max without --gear 3 refused (65)" case_codex_sol_max_wi
 run_case "R3: kimi/highspeed capped at medium, high refused (65)" case_kimi_highspeed_high_capped
 run_case "ctx-check: 900KB task on kimi/coding overflows (66)" case_kimi_coding_ctx_overflow
 run_case "ctx-check: same 900KB task fits codex/sol window" case_codex_sol_handles_same_big_file
-run_case "R4: agy/pro downgrades to flash on small input" case_agy_pro_small_input_downgrades_to_flash
-run_case "R4: agy/pro keeps pro on >200k-token input" case_agy_pro_large_input_keeps_pro
-run_case "R4: agy/pro keeps pro under --role synthesis" case_agy_pro_role_synthesis_keeps_pro_on_small_input
+run_case "agy/pro keeps pro on small input (Gemini 4 Argon)" case_agy_pro_small_input_keeps_pro
+run_case "agy/pro keeps pro on >200k-token input" case_agy_pro_large_input_keeps_pro
+run_case "agy/pro keeps pro under --role synthesis" case_agy_pro_role_synthesis_keeps_pro_on_small_input
 run_case "agy/pro keeps explicit --effort high" case_agy_pro_explicit_high_stays_high
 run_case "agy/pro clamps explicit max to high, report keeps max" case_agy_pro_explicit_max_clamps_high
 run_case "agy/pro default effort (medium) clamps to high" case_agy_pro_default_effort_clamps_high
 run_case "agy/pro invalid --effort refused (64)" case_agy_pro_invalid_effort_refused_64
-run_case "agy/pro downgraded to flash sends no --effort" case_agy_pro_downgrade_drops_effort_flag
+run_case "agy/argon alias resolves to pro and gemini-4-argon" case_agy_tier_argon_alias_resolves_to_pro
 run_case "missing --tier defaults with a stderr NOTICE" case_missing_tier_notice_defaults
 run_case "SEAT_BUILD_TIER_REQUIRED=1 turns missing --tier into exit 64" case_missing_tier_required_env_exit64
 run_case "unknown --tier value is refused (64)" case_invalid_tier_value_refused

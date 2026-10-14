@@ -14,12 +14,13 @@
 # no seat was invoked (for example, validation failures and --dry-run).
 #
 # --tier selects the model within a seat: codex sol|terra|luna, kimi
-# k3|coding|highspeed, agy flash|pro. Omitting it defaults (terra/coding/flash)
-# with a stderr NOTICE; SEAT_BUILD_TIER_REQUIRED=1 turns that NOTICE into exit 64
-# (mandatory from 2026-09-02). qwen has no tiers and ignores --tier entirely.
-# --gear names the diff's CI-recomputed gear floor (1|2|3) — only consulted to
-# gate codex/sol at effort xhigh|max (R2). --role, currently only "synthesis",
-# lets agy/pro survive on a small task file without the usual ctx downgrade (R4).
+# k3|coding|highspeed, agy flash|pro (or argon alias -> pro). Omitting it defaults
+# (terra/coding/flash) with a stderr NOTICE; SEAT_BUILD_TIER_REQUIRED=1 turns that
+# NOTICE into exit 64 (mandatory from 2026-09-02). qwen has no tiers and ignores
+# --tier entirely. --gear names the diff's CI-recomputed gear floor (1|2|3) — only
+# consulted to gate codex/sol at effort xhigh|max (R2). --role is accepted for
+# backward compatibility (R4's 200k-token downgrade of agy/pro to flash is retired
+# with Gemini 4 Argon).
 #
 # This wrapper never ships:
 # no commit, push, merge, hosting, deployment, or service-control operations.
@@ -369,10 +370,10 @@ main() {
             binary_name="agy"
             seat_tier_default agy flash
             case "$TIER" in
-                flash|pro) ;;
-                *) refuse 64 "invalid --tier for seat agy: $TIER (expected flash|pro)" ;;
+                flash) MODEL="gemini-3.8-flash-high" ;;
+                pro|argon) TIER="pro"; MODEL="gemini-4-argon" ;;
+                *) refuse 64 "invalid --tier for seat agy: $TIER (expected flash|pro|argon)" ;;
             esac
-            MODEL="pending"  # finalized below, after the pro/flash ctx+role gate (R4)
             ;;
         qwen)
             binary_name="qwen"; MODEL="qwen-default"
@@ -403,19 +404,6 @@ main() {
     derive_effort_from_floor
 
     INPUT_TOKENS_EST=$(( $(wc -c < "$TASK_FILE" | tr -d '[:space:]') / 4 ))
-
-    if [ "$SEAT" = "agy" ]; then
-        if [ "$TIER" = "pro" ] && [ "$INPUT_TOKENS_EST" -le 200000 ] && [ "$ROLE" != "synthesis" ]; then
-            printf 'seat_build: R4 — agy/pro needs >200000 estimated input tokens or --role synthesis (got ~%s tokens, role=%s); downgrading to flash\n' \
-                "$INPUT_TOKENS_EST" "${ROLE:-none}" >&2
-            TIER_DOWNGRADED_FROM="pro"
-            TIER=flash
-        fi
-        case "$TIER" in
-            flash) MODEL="gemini-3.8-flash-high" ;;
-            pro) MODEL="gemini-3.1-pro" ;;
-        esac
-    fi
 
     if [ -n "$TIER" ]; then
         enforce_effort_cap
@@ -451,9 +439,9 @@ main() {
             ;;
         kimi) seat_argv=("$seat_binary" -p "$task_text" -m "$MODEL"); task_index=2 ;;
         agy)
-            seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --print-timeout 8m)
+            seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --print-timeout 10m)
             task_index=2
-            if [ "$MODEL" = "gemini-3.1-pro" ]; then
+            if [ "$MODEL" = "gemini-4-argon" ]; then
                 # argv gets the normalised low|high; report.effort keeps the REQUESTED value.
                 [ "$EFFORT" = low ] && seat_argv+=(--effort low) || seat_argv+=(--effort high)
             fi
