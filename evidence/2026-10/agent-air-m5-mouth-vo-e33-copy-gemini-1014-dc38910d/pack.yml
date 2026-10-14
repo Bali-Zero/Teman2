@@ -73,13 +73,13 @@ receipts:
     cmd: "cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'"
     result: "59 files passed; 1583 tests passed (1583)"
     exit: 0
-    ts: "2026-10-15T04:0xZ (local 04:0x WITA, rerun after the load fell)"
+    ts: "2026-10-15 (local WITA, after the 03:44 first run; exact minute not recorded)"
     seat: claude-sonnet-5.5
   - claim: "Types clean."
     cmd: "cd apps/mouth && npx tsc --noEmit -p ."
     result: "no output"
     exit: 0
-    ts: "2026-10-15T04:0xZ (same rerun)"
+    ts: "2026-10-15 (same rerun)"
     seat: claude-sonnet-5.5
   - claim: "The bites observer runs the engine-adapter file and requires the six titles."
     cmd: "python3 scripts/ci/observe_visa_oracle_e33_family_copy.py"
