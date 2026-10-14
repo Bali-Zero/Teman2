@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import ast
 import calendar
+import copy
 from collections import Counter
 from statistics import median
 import fcntl
@@ -75,6 +76,7 @@ _FULL_SHA = re.compile(r"[0-9a-f]{40}")
 READY_MIN_MERGES, READY_MIN_DAYS = 50, 5   # phase D's READY (spec §2): the report and the tick's precheck both read these; days was 14 until the owner's ruling of 2026-10-13 (arm phase F earlier), merges and FALSE_GREEN 0 unchanged
 READY_SPAN_SLACK_DAYS = 1   # the report's span runs on GitHub's merged_at, which can precede its own decision line by up to one tick: the precheck's window starts a day earlier so it never says false while READY is true
 READY_CACHE_FILE, READY_REFRESH_S, READY_RETRY_S, READY_MAX_AGE_S = "ready_cache.json", 3600, 900, 7200   # B20: the tick computes READY apart, phase F only reads it
+READY_MARK_FILE, MEMO_FILE, FINAL_AFTER_S = "ready_refresh_tick", "hosted_memo.json", 172800   # B20: a refresh tick's mark; the final-read memo; a row's age before its reads are final
 KNOWN_HOSTS_FILE = "known_hosts"   # F2: github.com's host key, pinned by the operator in the state dir; the push trusts nothing else
 MIN_COMPARED_CONTEXTS = 12
 MIN_COMPARED_FULL = 11      # implied by the two around it (12 - at most 1 partial); stated because the ruling states it
@@ -1135,41 +1137,55 @@ def read_ready(state: Path) -> tuple[str | None, dict]:
     if not 0 <= age < READY_MAX_AGE_S:
         return f"READY stale: computed {age}s ago", facts
     if doc.get("phase_e_ready") is not True:
-        return "READY false (cache)", facts
+        return (f"{doc['reason']} (cache)" if isinstance(doc.get("reason"), str) and doc["reason"] else "READY false (cache)"), facts
     return None, facts
 
 
 def ready_refresh_due(state: Path, recs: list[dict]) -> bool:
+    """C1: due when the cache is missing or its ``completed_at`` (its ``computed_at`` for a file that has none) is a refresh interval
+    old, and no failed refresh is younger than the retry interval."""
     doc = read_ready_doc(state)
-    if doc is not None and 0 <= time.time() - doc["computed_at"] < READY_REFRESH_S:
+    done = doc.get("completed_at") if doc is not None and is_num(doc.get("completed_at")) else doc["computed_at"] if doc is not None else None
+    if done is not None and 0 <= time.time() - done < READY_REFRESH_S:
         return False
     failed = [_epoch(r["ts"]) for r in recs if r.get("kind") == "ready_refresh_failed" and is_ts(r.get("ts"))]
     return not (failed and 0 <= time.time() - max(failed) < READY_RETRY_S)
 
 
-def refresh_ready(a, state: Path, lease_id: str) -> bool:
-    """Run the report once and store its READY; True when the cache was written. A refusal or failure keeps the old cache, is
-    journalled, and is False. The tick's watchdog and a stop propagate: they end the tick, not the refresh."""
-    started, rows = time.time(), len(read_journal(state))
-    try:
-        _, rep = report(argparse.Namespace(repo=a.repo, base=a.base, state_dir=str(state), since=None), emit=False)
-        err = rep.get("refused") or (None if isinstance(rep.get("phase_e_ready"), bool) else "report gave no READY")
-    except (MergerError, Stopped):
-        raise
-    except Exception as exc:  # noqa: BLE001 — a READY that cannot be computed leaves the old one to age out
-        err = f"{type(exc).__name__}: {exc}"
+def refresh_ready(a, state: Path, lease_id: str) -> None:
+    """A refresh tick's whole work: the precheck, else the report with the read memo (C2), stored as the cache (R1) and journalled
+    (C4). A refusal or failure keeps the old cache and is journalled as such. The tick's watchdog and a stop propagate: they end the
+    tick, not the refresh (the memo is still saved)."""
+    started, rows, memo = time.time(), len(read_journal(state)), ReadMemo(state / MEMO_FILE)
+    rep: dict = {}
+    err, early = None, ready_precheck(state)
+    if early is None:
+        try:
+            _, rep = report(argparse.Namespace(repo=a.repo, base=a.base, state_dir=str(state), since=None), emit=False, memo=memo)
+            err = rep.get("refused") or (None if isinstance(rep.get("phase_e_ready"), bool) else "report gave no READY")
+        except (MergerError, Stopped):
+            raise
+        except Exception as exc:  # noqa: BLE001 — a READY that cannot be computed leaves the old one to age out
+            err = f"{type(exc).__name__}: {exc}"
+        finally:
+            try:
+                memo.save()
+            except OSError:
+                pass   # no memo is a slower refresh, never a wrong one
+    seen = {"duration_s": round(time.time() - started, 1), "memo_hits": memo.hits, "memo_misses": memo.misses, "lease_id": lease_id}
     if err:
-        journal(state, {"kind": "ready_refresh_failed", "error": redact(err), "lease_id": lease_id})
+        journal(state, {"kind": "ready_refresh_failed", "error": redact(err), "result": "failed", **seen})
         print(f"merger: READY refresh failed — {redact(err)}", file=sys.stderr)
-        return False
+        return
     win = rep.get("window") if isinstance(rep.get("window"), dict) else {}
-    facts = {"computed_at": started, "phase_e_ready": rep["phase_e_ready"], "refused": None, "compared_merges": win.get("compared_merges"),
+    facts = {"computed_at": started, "completed_at": time.time(), "phase_e_ready": False if early else rep["phase_e_ready"], "refused": None,
+             "reason": early, "compared_merges": win.get("compared_merges"), "compared_days": win.get("compared_days"), "journal_rows": rows,
              "false_green": (rep.get("counts") or {}).get("FALSE_GREEN", 0) + (rep.get("context_counts") or {}).get("FALSE_GREEN", 0)
-                            + (rep.get("recorded_context_false_green") or 0),
-             "compared_days": win.get("compared_days"), "journal_rows": rows}
+                            + (rep.get("recorded_context_false_green") or 0)}
     atomic_write(state / READY_CACHE_FILE, json.dumps(facts, sort_keys=True) + "\n")
-    print(f"merger: READY refreshed: phase_e_ready={facts['phase_e_ready']} compared_merges={facts['compared_merges']} — this tick decides nothing else")
-    return True
+    result = "precheck_false" if early else "true" if facts["phase_e_ready"] else "false"
+    journal(state, {"kind": "ready_refreshed", "result": result, **seen})
+    print(f"merger: READY refreshed: {result} compared_merges={facts['compared_merges']} in {seen['duration_s']}s (memo {memo.hits} hit, {memo.misses} read) — this tick decides nothing else")
 
 
 def phase_f_arming(a, state: Path, repo_dir: Path, enq: dict, line: dict, base: str) -> tuple[dict, dict]:
@@ -1209,9 +1225,14 @@ def phase_f_arming(a, state: Path, repo_dir: Path, enq: dict, line: dict, base: 
     elif (early := ready_precheck(state)):
         why.append(early)
     else:
-        reason, ready_info = read_ready(state)
-        if reason:
-            why.append(reason)
+        try:
+            strict_journal(state)   # C5: a torn line is a journal READY was not computed from
+        except hc.CompareError as exc:
+            why.append(redact(f"READY unreadable: {exc}"))
+        else:
+            reason, ready_info = read_ready(state)
+            if reason:
+                why.append(reason)
     if a is not None and not why:   # the head, re-read at the moment of merging: only when nothing else already says no (a disarmed tick adds no call)
         try:
             pull = pr_view(a, enq["pr"])
@@ -1472,8 +1493,13 @@ def tick(a, state: Path, lease_id: str) -> int:
     shutil.rmtree(state / "cand", ignore_errors=True)   # a killed tick's leftovers: nothing else uses them while the lease is ours
     git(repo_dir, "worktree", "prune", check=False)
     recs = read_journal(state)
-    if ready_refresh_due(state, recs) and refresh_ready(a, state, lease_id):   # B20: a refresh is its own tick: ~17 min of GitHub reads beside a decision's budget
-        return 0
+    mark = state / READY_MARK_FILE
+    if mark.exists():   # B20 C1: the previous tick was a refresh (or died in one): this one decides, whatever the cache says
+        mark.unlink(missing_ok=True)
+    elif ready_refresh_due(state, recs):
+        atomic_write(mark, now() + "\n")   # before the reads: a watchdog kill inside the refresh still leaves a decision tick next
+        refresh_ready(a, state, lease_id)
+        return 0   # a refresh is its own tick: its GitHub reads do not share a decision's watchdog budget
     if not fetch_base(a, state, repo_dir, recs):
         return 1
     base_sha = git(repo_dir, "rev-parse", "refs/merger/base^{commit}").stdout.strip()
@@ -1564,6 +1590,48 @@ def merger_side(overall) -> str:
     return "GREEN" if overall == "PASS" else "RED" if overall == "FAIL" else "BLIND"
 
 
+class ReadMemo:
+    """C2: the report's GitHub reads of a journalled row, kept once final. ``path`` None is a memo that remembers nothing (the
+    standalone report). A corrupt or foreign file is an empty memo, never an error; ``save`` is atomic at 0600."""
+    KINDS = ("pulls", "lives", "parents")
+
+    def __init__(self, path: Path | None):
+        self.path, self.hits, self.misses = path, 0, 0
+        self.data: dict = {k: {} for k in self.KINDS}
+        self.dirty = False
+        try:
+            doc = json.loads(path.read_text()) if path is not None else {}
+            if isinstance(doc, dict) and doc.get("v") == 1:
+                self.data = {k: doc[k] if isinstance(doc.get(k), dict) else {} for k in self.KINDS}
+        except (OSError, ValueError):
+            pass
+
+    def get(self, kind: str, key: str):
+        if self.path is None:
+            return None
+        got = self.data[kind].get(key)
+        self.hits += got is not None
+        return copy.deepcopy(got)
+
+    def put(self, kind: str, key: str, value) -> None:
+        if self.path is not None and self.data[kind].get(key) != value:
+            self.data[kind][key] = copy.deepcopy(value)
+            self.dirty = True
+
+    def save(self) -> None:
+        if self.path is not None and self.dirty:
+            atomic_write(self.path, json.dumps({"v": 1, **self.data}, sort_keys=True) + "\n")
+            self.dirty = False
+
+
+def live_is_final(live: dict) -> bool:
+    """C2: every required context of the sha has a verdict that is not PENDING."""
+    try:
+        return "PENDING" not in required_verdicts(live).values()
+    except Exception:  # noqa: BLE001 — a hosted document the verdict cannot read is not final
+        return False
+
+
 def required_verdicts(live: dict) -> dict:
     by = hc.hosted_entries(live["check_runs"], live["statuses"])
     return {c["context"]: hc.hosted_verdict(by.get(c["context"], []), c.get("app_id"))["verdict"] for c in live["required_checks"]}
@@ -1618,7 +1686,7 @@ def strict_journal(state: Path) -> list[dict]:
     return recs
 
 
-def queue_sha(a, pr: dict, d: dict, parents: dict) -> str:
+def queue_sha(a, pr: dict, d: dict, parents: dict, mem: "ReadMemo | None" = None) -> str:
     """The sha whose hosted verdict judges decision ``d``: the merge commit when the queue merged this head ON THE DECIDED BASE
     (the very candidate, with its merge_group runs), else the head. A replay (B11) judged the merge commit itself: its sha is that
     commit when GitHub confirms it is the PR's merge commit, else the head (a row that then compares nothing as merged)."""
@@ -1631,8 +1699,16 @@ def queue_sha(a, pr: dict, d: dict, parents: dict) -> str:
     if not is_sha(mc):
         return str(d.get("head_sha"))   # B3d: closed as merged by a direct push (phase F) GitHub may leave it null: no comparison, said on the row
     if mc not in parents:
-        commit = hc.gh_get(f"repos/{a.repo}/commits/{mc}")
-        parents[mc] = [x.get("sha") for x in commit.get("parents") or []] if isinstance(commit, dict) else []
+        got = mem.get("parents", f"{a.repo}@{mc}") if mem is not None else None   # a commit's parents never change
+        if got is None:
+            if mem is not None:
+                mem.misses += 1
+            commit = hc.gh_get(f"repos/{a.repo}/commits/{mc}")
+            parents[mc] = [x.get("sha") for x in commit.get("parents") or []] if isinstance(commit, dict) else []
+            if mem is not None and isinstance(commit, dict):
+                mem.put("parents", f"{a.repo}@{mc}", parents[mc])
+        else:
+            parents[mc] = got
     return mc if parents[mc] == [d.get("base_sha")] else str(d.get("head_sha"))
 
 
@@ -1640,7 +1716,7 @@ def cmd_report(a) -> int:
     return report(a)[0]
 
 
-def report(a, emit: bool = True) -> tuple[int, dict]:
+def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, dict]:
     """The report's one implementation: ``(rc, out)``. ``emit=False`` computes and returns without a file or a line — the tick's
     phase F READY check reads ``out["phase_e_ready"]`` from this very function, so the thresholds exist once."""
     state = Path(a.state_dir).expanduser().resolve()
@@ -1661,19 +1737,36 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
             raise hc.CompareError(f"{state} belongs to {bound!r}, not {a.repo!r}")
         window = [r for r in strict_journal(state) if str(r["ts"]) >= (a.since or "")]
         decisions = [r for r in window if r.get("kind") == "decision"]
+        mem = memo if memo is not None else ReadMemo(None)   # without a memo path every read is a miss, exactly as before
+        newest = {}
+        for d in decisions:
+            newest[d.get("pr")] = max(newest.get(d.get("pr"), 0.0), _epoch(d["ts"]))
+        settled = lambda n: prs[n].get("state") == "closed" and time.time() - newest.get(n, time.time()) >= FINAL_AFTER_S   # noqa: E731 — C2
         if any(str(d.get("repo", a.repo)).lower() != a.repo.lower() for d in decisions):
             raise hc.CompareError("a decision in the window belongs to another repository")
         for d in decisions:
             n, head = d.get("pr"), str(d.get("head_sha"))
             if n not in prs:
-                prs[n] = hc.gh_get(f"repos/{a.repo}/pulls/{n}")
-            sha = queue_sha(a, prs[n], d, parents)
+                old_enough = time.time() - newest.get(n, time.time()) >= FINAL_AFTER_S
+                prs[n] = mem.get("pulls", f"{a.repo}#{n}") if old_enough else None
+                if prs[n] is None:
+                    mem.misses += 1
+                    prs[n] = hc.gh_get(f"repos/{a.repo}/pulls/{n}")
+                    if settled(n):
+                        mem.put("pulls", f"{a.repo}#{n}", prs[n])
+            sha = queue_sha(a, prs[n], d, parents, mem)
             # GitHub merged THIS candidate only when its merge commit sits on the decided base; a decision on another base is
             # judged by the head's own checks like any open PR
             merged_here = sha != head and sha == prs[n].get("merge_commit_sha")
             lkey = (sha, d.get("base_sha"))   # R3: the required set belongs to the BASE the sha was judged on, so the cache does too
             if lkey not in lives:
-                lives[lkey] = hc.fetch_live(a.repo, a.base, sha, base_matrix(state / "repo.git", d.get("base_sha")))
+                mkey = f"{a.repo}@{a.base}:{sha}:{d.get('base_sha')}"
+                lives[lkey] = mem.get("lives", mkey) if settled(n) else None
+                if lives[lkey] is None:
+                    mem.misses += 1
+                    lives[lkey] = hc.fetch_live(a.repo, a.base, sha, base_matrix(state / "repo.git", d.get("base_sha")))
+                    if settled(n) and live_is_final(lives[lkey]):
+                        mem.put("lives", mkey, lives[lkey])
                 hc.required_names(lives[lkey]["required_checks"])
             live = lives[lkey]
             github = github_side(live)
@@ -1732,7 +1825,13 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
                 merged_without_sha.append(n)   # B3d: nothing to read the hosted verdict on: named in the report, never an exception
                 continue
             if (mc, f"{mc}^1") not in lives:   # R2: a merge commit is judged at the BASE it was built on, its first parent, never at itself
-                lives[(mc, f"{mc}^1")] = hc.fetch_live(a.repo, a.base, mc, base_matrix(state / "repo.git", mc, parent=True))
+                mkey = f"{a.repo}@{a.base}:{mc}:^1"
+                lives[(mc, f"{mc}^1")] = mem.get("lives", mkey) if settled(n) else None
+                if lives[(mc, f"{mc}^1")] is None:
+                    mem.misses += 1
+                    lives[(mc, f"{mc}^1")] = hc.fetch_live(a.repo, a.base, mc, base_matrix(state / "repo.git", mc, parent=True))
+                    if settled(n) and live_is_final(lives[(mc, f"{mc}^1")]):
+                        mem.put("lives", mkey, lives[(mc, f"{mc}^1")])
                 hc.required_names(lives[(mc, f"{mc}^1")]["required_checks"])
             red = sorted(k for k, v in required_verdicts(lives[(mc, f"{mc}^1")]).items() if v == "RED")
             if red:
