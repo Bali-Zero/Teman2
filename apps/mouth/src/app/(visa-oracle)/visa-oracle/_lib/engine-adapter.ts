@@ -2352,6 +2352,38 @@ function renewalCopyFor(
 }
 
 /**
+ * Known engine `StayPolicyKind` values (`backend/services/visa_engine/enums.py`).
+ */
+const STAY_POLICY_KINDS: ReadonlySet<string> = new Set([
+  "FIXED_DAYS",
+  "NOT_APPLICABLE",
+  "VARIABLE_BY_GRANT",
+]);
+
+function stayPolicyBreaksInvariant(
+  stay:
+    NonNullable<VisaOracleCandidateDisplay["stay_policy"]>["stay"] | undefined,
+): boolean {
+  if (!stay) return false;
+  if (!STAY_POLICY_KINDS.has(stay.kind)) return true;
+  if (stay.kind === "FIXED_DAYS" && stay.maximum_days === null) return true;
+  if (
+    stay.kind === "NOT_APPLICABLE" &&
+    (stay.minimum_days != null || stay.maximum_days != null)
+  ) {
+    return true;
+  }
+  if (
+    stay.minimum_days != null &&
+    stay.maximum_days != null &&
+    stay.minimum_days > stay.maximum_days
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Spread into the candidate: priced duration-option candidates use their
  * selected option; priced fixed-days candidates without duration_options use
  * `stay_policy` when the fixed day count is in `STAY_PERMIT_LENGTH_DAYS`.
@@ -2361,6 +2393,7 @@ function duration(
   response: VisaOracleEvaluateResponse,
   facts?: OracleFacts,
 ): { duration: OutcomeDuration } | Record<string, never> {
+  if (stayPolicyBreaksInvariant(candidate.stay_policy?.stay)) return {};
   if (candidate.selected_duration_days != null) {
     // No matching quote, no label: a permit length is only shown beside its own price.
     if (price(candidate, response).status !== "AVAILABLE") return {};

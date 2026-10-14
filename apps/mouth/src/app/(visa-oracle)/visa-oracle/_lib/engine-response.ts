@@ -347,6 +347,8 @@ function stayPolicy(value: unknown): void {
   ) {
     malformed();
   }
+  // The stay-kind invariants are deliberately not enforced in the parser;
+  // the adapter omits only the length line so the page never fails closed.
   string(stay.kind);
   const minDays =
     stay.minimum_days === null ? null : integer(stay.minimum_days, 0);
