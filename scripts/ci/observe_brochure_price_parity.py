@@ -28,6 +28,11 @@ BACKEND_DIR = REPO_ROOT / "apps" / "backend-rag"
 TEST_FILE = "backend/tests/services/crm/test_brochure_price_parity.py"
 MIN_TESTS = 17
 TIMEOUT_SECONDS = 240
+BROCHURE_CURE = (
+    "Cure: cd apps/backend-rag && .venv/bin/python scripts/generate_brochure.py "
+    "(no arguments; needs Playwright in the backend venv and network for the Montserrat font), "
+    "then commit apps/mouth/public/static/brochure_balizero_en.pdf - that PDF is what clients receive."
+)
 
 _SUMMARY = re.compile(r"^=*\s*(\d+) passed in [\d.]+s(?: \(.*\))?\s*=*$")
 _ANSI = re.compile(r"\x1b\[[0-9;]*m")
@@ -66,11 +71,12 @@ def main() -> int:
     summary = line.strip() if line else "no pytest summary"
     if result.returncode != 0 or not summary_ok(line):
         print(f"observe_brochure_price_parity: FAILED ({summary})\n{out[-1500:]}")
-        print(
-            "observe_brochure_price_parity: Cure: run "
-            "`python3 apps/backend-rag/scripts/generate_brochure.py` "
-            "and commit apps/mouth/public/static/brochure_balizero_en.pdf"
-        )
+        if (
+            "Missing anchored sequence in PDF" in out
+            or "test_guilt_f_pdf_does_not_print_14m_for_e33e" in out
+            or "generate_brochure.py" in out
+        ):
+            print(BROCHURE_CURE)
         return result.returncode or 1
     print(f"observe_brochure_price_parity: {summary}")
     print("observe_brochure_price_parity: brochure prices match the canonical catalogue")

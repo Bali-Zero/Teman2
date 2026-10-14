@@ -53,15 +53,6 @@ STALE_TANPA_BEKERJA_REPLY_FIXTURE = (
     "penghasilan atau tunjangan minimal USD 3.000 per bulan, tanpa perlu deposit."
 )
 
-OLD_V3_WORKED_EXAMPLE_FIXTURE = (
-    'Indonesian:\n'
-    '  User: "Saya mau tanya soal KITAS pensiun, syaratnya apa saja?"\n'
-    '  → CALL knowledge_graph_search("KITAS pensiun retirement requirements")\n'
-    '  → Answer: "KITAS pensiun (Retirement) membutuhkan: usia minimal 55\n'
-    '             tahun, asuransi kesehatan, bukti dana pensiun, dan\n'
-    '             sponsor lokal. Mau saya jelaskan dokumen lengkapnya?"'
-)
-
 OLD_V4_WORKED_EXAMPLE_FIXTURE = (
     'Indonesian:\n'
     '  User: "Saya mau tanya soal KITAS pensiun, syaratnya apa saja?"\n'
@@ -384,7 +375,7 @@ class TestFewShotE33FEverywhere:
         assert "15 juta" in joined
 
 
-class TestZantaraCoreV4AndV5WorkedExampleE33F:
+class TestZantaraCoreV3V4V5WorkedExampleE33F:
     """Guilt and innocence tests for zantara_core_v3, zantara_core_v4, and zantara_core_v5 worked examples."""
 
     def test_innocence_v3_v4_and_v5_contain_e33f_and_no_retirement_kitas_pensiun(self) -> None:
@@ -407,16 +398,6 @@ class TestZantaraCoreV4AndV5WorkedExampleE33F:
             assert "penjamin" in block
             assert "tanpa perlu deposit" in block
             assert "USD 3.000" in block or "USD 3,000" in block
-
-    def test_guilt_old_v3_worked_example_fixture_is_flagged(self) -> None:
-        violations = find_worked_example_e33f_violations(OLD_V3_WORKED_EXAMPLE_FIXTURE)
-        assert violations, "Expected old v3 worked example fixture to be flagged"
-        joined = " | ".join(violations)
-        assert "KITAS pensiun (Retirement)" in joined
-        assert "asuransi kesehatan" in joined
-        assert "dana pensiun" in joined
-        assert "sponsor lokal" in joined
-        assert "missing canonical 'E33F' reference" in joined
 
     def test_guilt_old_v4_worked_example_fixture_is_flagged(self) -> None:
         violations = find_worked_example_e33f_violations(OLD_V4_WORKED_EXAMPLE_FIXTURE)

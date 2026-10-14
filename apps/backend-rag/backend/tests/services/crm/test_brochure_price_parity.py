@@ -610,10 +610,9 @@ def _anchored_pdf_sequence(placeholder: str, pricing: dict) -> str:
 
 
 PDF_PARITY_CURE = (
-    "Cure: regenerate the brochure with "
-    "`python3 apps/backend-rag/scripts/generate_brochure.py` from the repo root "
-    "(it takes no arguments) and commit "
-    "apps/mouth/public/static/brochure_balizero_en.pdf - that PDF is what clients receive."
+    "Cure: cd apps/backend-rag && .venv/bin/python scripts/generate_brochure.py "
+    "(no arguments; needs Playwright in the backend venv and network for the Montserrat font), "
+    "then commit apps/mouth/public/static/brochure_balizero_en.pdf - that PDF is what clients receive."
 )
 
 STALE_E33E_14M_RE = re.compile(
@@ -846,6 +845,7 @@ def test_pdf_parity_failure_message_carries_the_cure() -> None:
     with pytest.raises(AssertionError, match="PRICE_E33E") as exc_info:
         _assert_pdf_parity(pdf_text, pricing)
     err_msg = str(exc_info.value)
+    assert PDF_PARITY_CURE in err_msg
     assert "generate_brochure.py" in err_msg
     assert "brochure_balizero_en.pdf" in err_msg
 
@@ -859,23 +859,23 @@ def test_guilt_f_pdf_does_not_print_14m_for_e33e() -> None:
 def test_guilt_f_helper_bites_on_the_pre_8506_pdf_row() -> None:
     """GUILT (f): qualifier-tolerant helper flags both pre-#8506 and onshore/offshore 14M E33E rows."""
     pre_8506_row = (
-        "Spouse 1 year Offshore Rp 11.000.000 "
+        "Spouse or dependent, 1 year Offshore Rp 11.000.000 "
         "E33E Second Home Senior, 5 years Offshore Rp 14.000.000 "
-        "Retirement E33F Second Home Senior, 1 year Offshore Rp 14.000.000"
+        "KITAP — permanent Permit Bali Zero fee Investor KITAP — re-entry included Rp 55.000.000"
     )
     onshore_variant_row = (
-        "Spouse 1 year Offshore Rp 11.000.000 "
+        "Spouse or dependent, 1 year Offshore Rp 11.000.000 "
         "E33E Second Home Senior, 5 years Offshore / onshore Rp 14.000.000 "
-        "Retirement E33F Second Home Senior, 1 year Offshore Rp 14.000.000"
+        "KITAP — permanent Permit Bali Zero fee Investor KITAP — re-entry included Rp 55.000.000"
     )
-    canonical_45m_row = (
-        "Spouse 1 year Offshore Rp 11.000.000 "
+    current_row = (
+        "Spouse or dependent, 1 year Offshore Rp 11.000.000 "
         "E33E Second Home Senior, 5 years Offshore / onshore Rp 45.000.000 "
-        "Retirement E33F Second Home Senior, 1 year Offshore Rp 14.000.000"
+        "KITAP — permanent Permit Bali Zero fee Investor KITAP — re-entry included Rp 55.000.000"
     )
     assert _pdf_prints_stale_e33e_14m(pre_8506_row) is True
     assert _pdf_prints_stale_e33e_14m(onshore_variant_row) is True
-    assert _pdf_prints_stale_e33e_14m(canonical_45m_row) is False
+    assert _pdf_prints_stale_e33e_14m(current_row) is False
 
 
 def test_guilt_g_hardcoded_idr_in_paragraph_is_flagged() -> None:

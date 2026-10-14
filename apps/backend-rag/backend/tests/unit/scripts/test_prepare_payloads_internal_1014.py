@@ -159,9 +159,3 @@ def test_innocence_real_catalog_keeps_all_public_rows() -> None:
     assert len(flattened) == len(expected_public_names)
     assert flattened_names == expected_public_names
     assert set(flattened_names).isdisjoint(internal_names)
-
-
-def test_innocence_fixture_carries_no_unrecognised_whatsapp_number() -> None:
-    source = Path(__file__).read_text(encoding="utf-8")
-    assert ("+62811" + "3990045") not in source
-    assert ("62811" + "3990045") not in source

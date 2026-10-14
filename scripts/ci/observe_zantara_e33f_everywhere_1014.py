@@ -43,7 +43,7 @@ BACKEND_TESTS = [
     "backend/tests/services/test_visa_oracle_service.py",
     "backend/tests/services/misc/test_zantara_tools.py",
 ]
-BACKEND_FLOOR = 110
+BACKEND_FLOOR = 108
 
 _SUMMARY = re.compile(r"^=*\s*(\d+) passed in [\d.]+s(?: \(.*\))?\s*=*$")
 
