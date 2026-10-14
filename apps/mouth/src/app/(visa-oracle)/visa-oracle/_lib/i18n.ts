@@ -899,6 +899,14 @@ const en = {
   "outcome.duration_alternative": "Also available: {{label}} — {{price}}",
   "outcome.duration_extension":
     "Your planned stay is longer than the longest permit here — ask your advisor about renewal before it expires.",
+  "outcome.stay_permit_length.365": "1-year stay permit",
+  "outcome.stay_permit_length.1825": "5-year stay permit",
+  "outcome.stay_permit_renewal.365_5":
+    "This permit is renewable 1 year at a time, up to 5 times.",
+  "outcome.stay_permit_longer_stay.verified":
+    "Your planned stay is longer than the first permit — your plan continues by renewal.",
+  "outcome.stay_permit_longer_stay.unknown":
+    "Your planned stay is longer than the first permit — a Bali Zero advisor confirms how a longer stay continues.",
   "outcome.duration_label_years": "{{count}} {{plural:year|years}}",
   "outcome.duration_label_days": "{{count}} days",
   "outcome.price_valid_until": "Quote valid until {{date}}",
@@ -1931,6 +1939,14 @@ const id: Record<Keys, string> = {
   "outcome.duration_alternative": "Pilihan lain: {{label}} — {{price}}",
   "outcome.duration_extension":
     "Rencana tinggal Anda lebih lama dari izin terpanjang di sini — tanyakan perpanjangan kepada konsultan Anda sebelum izin berakhir.",
+  "outcome.stay_permit_length.365": "Izin tinggal 1 tahun",
+  "outcome.stay_permit_length.1825": "Izin tinggal 5 tahun",
+  "outcome.stay_permit_renewal.365_5":
+    "Izin tinggal ini dapat diperpanjang 1 tahun setiap kali, hingga 5 kali.",
+  "outcome.stay_permit_longer_stay.verified":
+    "Rencana tinggal Anda lebih lama dari izin pertama — rencana Anda dilanjutkan melalui perpanjangan.",
+  "outcome.stay_permit_longer_stay.unknown":
+    "Rencana tinggal Anda lebih lama dari izin pertama — konsultan Bali Zero mengonfirmasi bagaimana masa tinggal yang lebih lama dilanjutkan.",
   "outcome.duration_label_years": "{{count}} tahun",
   "outcome.duration_label_days": "{{count}} hari",
   "outcome.price_valid_until": "Penawaran berlaku hingga {{date}}",

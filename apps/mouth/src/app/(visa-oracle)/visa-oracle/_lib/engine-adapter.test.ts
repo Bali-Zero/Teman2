@@ -20,6 +20,9 @@ import {
   SECOND_HOME_PROPERTY_THRESHOLD_USD,
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   SOURCELESS_NO_PATH_CODES,
+  STAY_PERMIT_LENGTH_COPY,
+  STAY_PERMIT_LONGER_STAY_COPY,
+  STAY_PERMIT_RENEWAL_COPY,
   SUPPORT_REASON_COPY,
   B1_MAX_STAY_DAYS,
   C1_MAX_STAY_DAYS,
@@ -4580,6 +4583,429 @@ describe("V05 product-aware next steps: free A1 and onshore-only BRIDGING", () =
           /\b(we|our team|advisor (will|reviews|confirms))\b|kami|tim kami|konsultan (akan|memastikan)|PNBP|service fee|biaya jasa/i,
         );
       }
+    }
+  });
+});
+
+describe("stay-permit length, verified renewal, and longer-stay continuation (PR-7)", () => {
+  function makePricedResponse(
+    code = "E33F",
+    amount = 14_000_000,
+    pricingKey = { category: "visa", item_key: code },
+  ) {
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    const candidate = response.display.candidates[0];
+    response.decision.candidates[0].product_code = code;
+    candidate.product_code = code;
+    candidate.pricing = {
+      status: "AVAILABLE",
+      reason_code: "PRICE_AVAILABLE",
+      evaluated_at: TEST_NOW,
+      catalog_last_updated: "2026-08-03",
+      catalog_sha256: "b".repeat(64),
+      row_sha256: "c".repeat(64),
+    };
+    response.decision.quotes = [
+      {
+        quote_id: "55555555-5555-4555-8555-555555555555",
+        product_version_id: candidate.product_version_id,
+        product_code: code,
+        status: "AVAILABLE",
+        currency: "IDR",
+        amount,
+        pricing_key: pricingKey,
+        catalog_version: "2026.08",
+        catalog_sha256: "b".repeat(64),
+        row_sha256: "c".repeat(64),
+        quoted_at: TEST_NOW,
+        valid_until: "2026-08-10T04:00:00Z",
+        reason_code: "PRICE_AVAILABLE",
+      },
+    ];
+    return response;
+  }
+
+  it("shows 1-year length, verified renewal, and continues-by-renewal for E33F at 400 days", () => {
+    const response = makePricedResponse("E33F", 14_000_000);
+    response.display.candidates[0].stay_policy = {
+      stay: {
+        kind: "FIXED_DAYS",
+        minimum_days: 365,
+        maximum_days: 365,
+      },
+      extension: {
+        status: "VERIFIED",
+        reason_code: "OFFICIAL_EXTENSION_POLICY_VERIFIED",
+        allowed: true,
+        maximum_extensions: 5,
+        days_per_extension: 365,
+      },
+    };
+
+    const outcome = buildEngineOutcome(response, {
+      facts: { stay_days: "400" },
+    });
+    if (outcome.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("expected SUPPORTED_CANDIDATES");
+    }
+    const duration = outcome.candidates[0].duration;
+    expect(duration).toEqual({
+      selectedDays: 365,
+      options: [],
+      extensionRequired: false,
+      label: {
+        en: "1-year stay permit",
+        id: "Izin tinggal 1 tahun",
+      },
+      renewal: {
+        en: "This permit is renewable 1 year at a time, up to 5 times.",
+        id: "Izin tinggal ini dapat diperpanjang 1 tahun setiap kali, hingga 5 kali.",
+      },
+      longerStay: {
+        en: "Your planned stay is longer than the first permit — your plan continues by renewal.",
+        id: "Rencana tinggal Anda lebih lama dari izin pertama — rencana Anda dilanjutkan melalui perpanjangan.",
+      },
+    });
+
+    // When requested stay_days do not exceed the first permit, longerStay is omitted.
+    const withinFirstPermit = buildEngineOutcome(response, {
+      facts: { stay_days: "365" },
+    });
+    if (withinFirstPermit.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("expected SUPPORTED_CANDIDATES");
+    }
+    expect(
+      withinFirstPermit.candidates[0].duration?.longerStay,
+    ).toBeUndefined();
+    expect(withinFirstPermit.candidates[0].duration?.renewal?.en).toContain(
+      "renewable 1 year at a time, up to 5 times",
+    );
+  });
+
+  it("shows 5-year length for E33 and E33E with no extension sentence, and advisor longer-stay note when stay_days exceed 1825", () => {
+    for (const [code, amount] of [
+      ["E33", 19_000_000],
+      ["E33E", 45_000_000],
+    ] as const) {
+      const response = makePricedResponse(code, amount);
+      response.display.candidates[0].stay_policy = {
+        stay: {
+          kind: "FIXED_DAYS",
+          minimum_days: 1825,
+          maximum_days: 1825,
+        },
+        extension: {
+          status: "UNKNOWN",
+          reason_code: "EXTENSION_POLICY_NOT_ENCODED_IN_PACK",
+          allowed: false,
+          maximum_extensions: 0,
+          days_per_extension: null,
+        },
+      };
+
+      const normal = buildEngineOutcome(response, {
+        facts: { stay_days: "1825" },
+      });
+      if (normal.state !== "SUPPORTED_CANDIDATES") {
+        throw new Error("expected SUPPORTED_CANDIDATES");
+      }
+      expect(normal.candidates[0].price).toMatchObject({
+        status: "AVAILABLE",
+        amount,
+      });
+      expect(normal.candidates[0].duration).toEqual({
+        selectedDays: 1825,
+        options: [],
+        extensionRequired: false,
+        label: {
+          en: "5-year stay permit",
+          id: "Izin tinggal 5 tahun",
+        },
+      });
+      expect(normal.candidates[0].duration?.renewal).toBeUndefined();
+      expect(normal.candidates[0].duration?.longerStay).toBeUndefined();
+
+      const longer = buildEngineOutcome(response, {
+        facts: { stay_days: "2000" },
+      });
+      if (longer.state !== "SUPPORTED_CANDIDATES") {
+        throw new Error("expected SUPPORTED_CANDIDATES");
+      }
+      expect(longer.candidates[0].duration?.renewal).toBeUndefined();
+      expect(longer.candidates[0].duration?.longerStay).toEqual({
+        en: "Your planned stay is longer than the first permit — a Bali Zero advisor confirms how a longer stay continues.",
+        id: "Rencana tinggal Anda lebih lama dari izin pertama — konsultan Bali Zero mengonfirmasi bagaimana masa tinggal yang lebih lama dilanjutkan.",
+      });
+    }
+  });
+
+  it("omits permit length for unquoted candidates (E33A, E33B, E33C)", () => {
+    for (const code of ["E33A", "E33B", "E33C"] as const) {
+      const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+      response.decision.candidates[0].product_code = code;
+      response.display.candidates[0].product_code = code;
+      response.decision.quotes = [];
+      response.display.candidates[0].pricing.status = "UNAVAILABLE";
+      response.display.candidates[0].stay_policy = {
+        stay: {
+          kind: "FIXED_DAYS",
+          minimum_days: 1825,
+          maximum_days: 1825,
+        },
+        extension: {
+          status: "UNKNOWN",
+          reason_code: "EXTENSION_POLICY_NOT_ENCODED_IN_PACK",
+          allowed: false,
+          maximum_extensions: 0,
+          days_per_extension: null,
+        },
+      };
+
+      const outcome = buildEngineOutcome(response, {
+        facts: { stay_days: "2000" },
+      });
+      if (outcome.state !== "SUPPORTED_CANDIDATES") {
+        throw new Error("expected SUPPORTED_CANDIDATES");
+      }
+      expect(outcome.candidates[0].price.status).not.toBe("AVAILABLE");
+      expect(outcome.candidates[0].duration).toBeUndefined();
+    }
+  });
+
+  it("keeps E31 duration-option candidates unchanged", () => {
+    const response = makePricedResponse("E31A", 1_000_000, {
+      category: "test",
+      item_key: "test_item",
+    });
+    response.display.candidates[0].selected_duration_days = 365;
+    response.display.candidates[0].extension_required = true;
+    response.display.candidates[0].duration_options = [
+      {
+        days: 365,
+        pricing_key: { category: "test", item_key: "test_item" },
+        amount_idr: 1_000_000,
+        selected: true,
+        status: "AVAILABLE",
+        reason_code: "PRICE_AVAILABLE",
+      },
+      {
+        days: 730,
+        pricing_key: { category: "test", item_key: "test_item_2y" },
+        amount_idr: 2_000_000,
+        selected: false,
+        status: "AVAILABLE",
+        reason_code: "PRICE_AVAILABLE",
+      },
+    ];
+    response.display.candidates[0].stay_policy = {
+      stay: {
+        kind: "FIXED_DAYS",
+        minimum_days: 365,
+        maximum_days: 365,
+      },
+      extension: {
+        status: "VERIFIED",
+        reason_code: "OFFICIAL_EXTENSION_POLICY_VERIFIED",
+        allowed: true,
+        maximum_extensions: 5,
+        days_per_extension: 365,
+      },
+    };
+
+    const outcome = buildEngineOutcome(response, {
+      facts: { stay_days: "400" },
+    });
+    if (outcome.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("expected SUPPORTED_CANDIDATES");
+    }
+    expect(outcome.candidates[0].duration).toEqual({
+      selectedDays: 365,
+      options: [
+        { days: 365, amountIdr: 1_000_000, selected: true },
+        { days: 730, amountIdr: 2_000_000, selected: false },
+      ],
+      extensionRequired: true,
+    });
+  });
+
+  it.each([null, undefined, "UNKNOWN"] as const)(
+    "guilt: extension with status=%s and allowed=true renders no renewal line and no 'not extendable' text in EN or ID",
+    (status) => {
+      const response = makePricedResponse("E33F", 14_000_000);
+      response.display.candidates[0].stay_policy = {
+        stay: {
+          kind: "FIXED_DAYS",
+          minimum_days: 365,
+          maximum_days: 365,
+        },
+        extension: {
+          ...(status !== undefined ? { status } : {}),
+          reason_code: null,
+          allowed: true,
+          maximum_extensions: 5,
+          days_per_extension: 365,
+        },
+      };
+
+      const outcome = buildEngineOutcome(response, {
+        facts: { stay_days: "400" },
+      });
+      if (outcome.state !== "SUPPORTED_CANDIDATES") {
+        throw new Error("expected SUPPORTED_CANDIDATES");
+      }
+      const duration = outcome.candidates[0].duration;
+      expect(duration?.label).toEqual({
+        en: "1-year stay permit",
+        id: "Izin tinggal 1 tahun",
+      });
+      // Mutation check: turning `extension.status === "VERIFIED"` into `allowed === true` alone MUST turn this assertion RED.
+      expect(duration?.renewal).toBeUndefined();
+      expect(duration?.longerStay).toEqual(
+        STAY_PERMIT_LONGER_STAY_COPY.unknown,
+      );
+      expect(JSON.stringify(duration)).not.toMatch(
+        /not extendable|tidak dapat diperpanjang/i,
+      );
+    },
+  );
+
+  it("guilt: E28A (x100 renewal), E30A (range), BRIDGING (null minimum), unmapped fixed day counts, and A1 (allowed=false) render no unauthorized length or renewal", () => {
+    // E28A: 730-day fixed stay + maximum_extensions 100 -> neither length nor renewal
+    const e28a = makePricedResponse("E28A", 20_000_000);
+    e28a.display.candidates[0].stay_policy = {
+      stay: { kind: "FIXED_DAYS", minimum_days: 730, maximum_days: 730 },
+      extension: {
+        status: "VERIFIED",
+        reason_code: "OFFICIAL_EXTENSION_POLICY_VERIFIED",
+        allowed: true,
+        maximum_extensions: 100,
+        days_per_extension: 730,
+      },
+    };
+    const e28aOutcome = buildEngineOutcome(e28a);
+    if (e28aOutcome.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("expected SUPPORTED_CANDIDATES");
+    }
+    expect(e28aOutcome.candidates[0].duration).toBeUndefined();
+
+    // Mapped 365-day stay with x100 renewal -> shows 1-year length, NO renewal line
+    const x100On365 = makePricedResponse("E28A", 20_000_000);
+    x100On365.display.candidates[0].stay_policy = {
+      stay: { kind: "FIXED_DAYS", minimum_days: 365, maximum_days: 365 },
+      extension: {
+        status: "VERIFIED",
+        reason_code: "OFFICIAL_EXTENSION_POLICY_VERIFIED",
+        allowed: true,
+        maximum_extensions: 100,
+        days_per_extension: 365,
+      },
+    };
+    const x100Outcome = buildEngineOutcome(x100On365, {
+      facts: { stay_days: "400" },
+    });
+    if (x100Outcome.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("expected SUPPORTED_CANDIDATES");
+    }
+    expect(x100Outcome.candidates[0].duration?.label?.en).toBe(
+      "1-year stay permit",
+    );
+    expect(x100Outcome.candidates[0].duration?.renewal).toBeUndefined();
+    expect(x100Outcome.candidates[0].duration?.longerStay).toBeUndefined();
+
+    // E30A range: minimum_days !== maximum_days -> no length
+    const e30a = makePricedResponse("E30A", 15_000_000);
+    e30a.display.candidates[0].stay_policy = {
+      stay: { kind: "FIXED_DAYS", minimum_days: 365, maximum_days: 1825 },
+      extension: {
+        status: "VERIFIED",
+        reason_code: "OFFICIAL_EXTENSION_POLICY_VERIFIED",
+        allowed: true,
+        maximum_extensions: 5,
+        days_per_extension: 365,
+      },
+    };
+    const e30aOutcome = buildEngineOutcome(e30a);
+    if (e30aOutcome.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("expected SUPPORTED_CANDIDATES");
+    }
+    expect(e30aOutcome.candidates[0].duration).toBeUndefined();
+
+    // BRIDGING: null minimum_days -> no length
+    const bridging = makePricedResponse("BRIDGING", 5_000_000);
+    bridging.display.candidates[0].stay_policy = {
+      stay: {
+        kind: "VARIABLE_BY_GRANT",
+        minimum_days: null,
+        maximum_days: 365,
+      },
+      extension: {
+        status: "VERIFIED",
+        reason_code: "OFFICIAL_EXTENSION_POLICY_VERIFIED",
+        allowed: false,
+        maximum_extensions: 0,
+        days_per_extension: null,
+      },
+    };
+    const bridgingOutcome = buildEngineOutcome(bridging);
+    if (bridgingOutcome.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("expected SUPPORTED_CANDIDATES");
+    }
+    expect(bridgingOutcome.candidates[0].duration).toBeUndefined();
+
+    // Unmapped fixed day counts (30, 60, 180, 730) -> no length, never raw days
+    for (const days of [30, 60, 180, 730]) {
+      const unmapped = makePricedResponse("C1", 3_250_000);
+      unmapped.display.candidates[0].stay_policy = {
+        stay: { kind: "FIXED_DAYS", minimum_days: days, maximum_days: days },
+        extension: {
+          status: "VERIFIED",
+          reason_code: null,
+          allowed: false,
+          maximum_extensions: 0,
+          days_per_extension: null,
+        },
+      };
+      const out = buildEngineOutcome(unmapped);
+      if (out.state !== "SUPPORTED_CANDIDATES") {
+        throw new Error("expected SUPPORTED_CANDIDATES");
+      }
+      expect(out.candidates[0].duration).toBeUndefined();
+    }
+
+    // A1: allowed=false -> renders no renewal line and never "not extendable"
+    const a1 = makePricedResponse("A1", 0);
+    a1.display.candidates[0].stay_policy = {
+      stay: { kind: "FIXED_DAYS", minimum_days: 365, maximum_days: 365 },
+      extension: {
+        status: "VERIFIED",
+        reason_code: "OFFICIAL_EXTENSION_POLICY_VERIFIED",
+        allowed: false,
+        maximum_extensions: 5,
+        days_per_extension: 365,
+      },
+    };
+    const a1Outcome = buildEngineOutcome(a1, { facts: { stay_days: "400" } });
+    if (a1Outcome.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("expected SUPPORTED_CANDIDATES");
+    }
+    expect(a1Outcome.candidates[0].duration?.renewal).toBeUndefined();
+    expect(a1Outcome.candidates[0].duration?.longerStay).toBeUndefined();
+    expect(JSON.stringify(a1Outcome.candidates[0].duration)).not.toMatch(
+      /not extendable|tidak dapat diperpanjang/i,
+    );
+  });
+
+  it("maintains non-empty distinct EN/ID parity across all PR-7 stay-permit copy tables", () => {
+    for (const entry of [
+      ...Object.values(STAY_PERMIT_LENGTH_COPY),
+      ...Object.values(STAY_PERMIT_RENEWAL_COPY),
+      ...Object.values(STAY_PERMIT_LONGER_STAY_COPY),
+    ]) {
+      expect(entry.en.trim().length).toBeGreaterThan(0);
+      expect(entry.id.trim().length).toBeGreaterThan(0);
+      expect(entry.en).not.toBe(entry.id);
+      expect(entry.en).not.toMatch(/not extendable/i);
+      expect(entry.id).not.toMatch(/tidak dapat diperpanjang/i);
     }
   });
 });

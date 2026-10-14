@@ -2195,23 +2195,129 @@ function documents(candidate: VisaOracleCandidateDisplay): OutcomeDocument[] {
   return result;
 }
 
-/** Spread into the candidate: absent unless the engine sent `selected_duration_days`. */
+export const STAY_PERMIT_LENGTH_COPY: Readonly<Record<number, LocalizedText>> =
+  {
+    365: text(
+      translate("en", "outcome.stay_permit_length.365"),
+      translate("id", "outcome.stay_permit_length.365"),
+    ),
+    1825: text(
+      translate("en", "outcome.stay_permit_length.1825"),
+      translate("id", "outcome.stay_permit_length.1825"),
+    ),
+  };
+
+export const STAY_PERMIT_RENEWAL_COPY: Readonly<Record<string, LocalizedText>> =
+  {
+    "365:5": text(
+      translate("en", "outcome.stay_permit_renewal.365_5"),
+      translate("id", "outcome.stay_permit_renewal.365_5"),
+    ),
+  };
+
+export const STAY_PERMIT_LONGER_STAY_COPY = {
+  verified: text(
+    translate("en", "outcome.stay_permit_longer_stay.verified"),
+    translate("id", "outcome.stay_permit_longer_stay.verified"),
+  ),
+  unknown: text(
+    translate("en", "outcome.stay_permit_longer_stay.unknown"),
+    translate("id", "outcome.stay_permit_longer_stay.unknown"),
+  ),
+} as const satisfies Readonly<Record<"verified" | "unknown", LocalizedText>>;
+
+function renewalCopyFor(
+  extension:
+    | NonNullable<VisaOracleCandidateDisplay["stay_policy"]>["extension"]
+    | undefined,
+): LocalizedText | undefined {
+  if (
+    !extension ||
+    extension.status !== "VERIFIED" ||
+    extension.allowed !== true ||
+    typeof extension.days_per_extension !== "number" ||
+    typeof extension.maximum_extensions !== "number"
+  ) {
+    return undefined;
+  }
+  return STAY_PERMIT_RENEWAL_COPY[
+    `${extension.days_per_extension}:${extension.maximum_extensions}`
+  ];
+}
+
+function parsedStayDays(facts: OracleFacts | undefined): number | null {
+  const raw = facts?.stay_days as unknown;
+  if (typeof raw === "number") {
+    return Number.isSafeInteger(raw) && raw >= 1 && raw <= 36_500 ? raw : null;
+  }
+  if (typeof raw !== "string" || !/^(0|[1-9]\d*)$/.test(raw)) return null;
+  const parsed = Number(raw);
+  return Number.isSafeInteger(parsed) && parsed >= 1 && parsed <= 36_500
+    ? parsed
+    : null;
+}
+
+/**
+ * Spread into the candidate: priced duration-option candidates use their
+ * selected option; priced fixed-days candidates without duration_options use
+ * `stay_policy` when the fixed day count maps in `STAY_PERMIT_LENGTH_COPY`.
+ */
 function duration(
   candidate: VisaOracleCandidateDisplay,
   response: VisaOracleEvaluateResponse,
+  facts?: OracleFacts,
 ): { duration: OutcomeDuration } | Record<string, never> {
-  if (candidate.selected_duration_days == null) return {};
+  if (candidate.selected_duration_days != null) {
+    // No matching quote, no label: a permit length is only shown beside its own price.
+    if (price(candidate, response).status !== "AVAILABLE") return {};
+    return {
+      duration: {
+        selectedDays: candidate.selected_duration_days,
+        options: (candidate.duration_options ?? []).map((option) => ({
+          days: option.days,
+          amountIdr: option.amount_idr ?? null,
+          selected: option.selected,
+        })),
+        extensionRequired: candidate.extension_required === true,
+      },
+    };
+  }
+  if ((candidate.duration_options?.length ?? 0) > 0) return {};
   // No matching quote, no label: a permit length is only shown beside its own price.
   if (price(candidate, response).status !== "AVAILABLE") return {};
+  const stay = candidate.stay_policy?.stay;
+  if (
+    !stay ||
+    stay.kind !== "FIXED_DAYS" ||
+    typeof stay.minimum_days !== "number" ||
+    typeof stay.maximum_days !== "number" ||
+    stay.minimum_days !== stay.maximum_days
+  ) {
+    return {};
+  }
+  const label = STAY_PERMIT_LENGTH_COPY[stay.maximum_days];
+  if (!label) return {};
+
+  const extension = candidate.stay_policy?.extension;
+  const renewal = renewalCopyFor(extension);
+  const requestedStayDays = parsedStayDays(facts);
+  let longerStay: LocalizedText | undefined;
+  if (requestedStayDays !== null && requestedStayDays > stay.maximum_days) {
+    if (renewal) {
+      longerStay = STAY_PERMIT_LONGER_STAY_COPY.verified;
+    } else if (extension?.status == null || extension.status === "UNKNOWN") {
+      longerStay = STAY_PERMIT_LONGER_STAY_COPY.unknown;
+    }
+  }
+
   return {
     duration: {
-      selectedDays: candidate.selected_duration_days,
-      options: (candidate.duration_options ?? []).map((option) => ({
-        days: option.days,
-        amountIdr: option.amount_idr ?? null,
-        selected: option.selected,
-      })),
-      extensionRequired: candidate.extension_required === true,
+      selectedDays: stay.maximum_days,
+      options: [],
+      extensionRequired: false,
+      label,
+      ...(renewal ? { renewal } : {}),
+      ...(longerStay ? { longerStay } : {}),
     },
   };
 }
@@ -2539,7 +2645,7 @@ function buildValidatedOutcome(
           ),
           timeline: timeline(projected),
           price: price(projected, response),
-          ...duration(projected, response),
+          ...duration(projected, response, options.facts),
           documents: documents(projected),
           prohibitedActivities: prohibitedActivitiesFor(
             projected.product_code,

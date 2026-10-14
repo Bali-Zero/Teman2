@@ -42,6 +42,20 @@ const APPLICABILITY = new Set([
   "UNKNOWN",
 ]);
 const FRESHNESS = new Set(["CURRENT", "STALE", "UNKNOWN"]);
+const STAY_POLICY_KINDS = new Set([
+  "FIXED_DAYS",
+  "VARIABLE_BY_GRANT",
+  "NOT_APPLICABLE",
+]);
+const EXTENSION_POLICY_STATUSES = new Set(["VERIFIED", "UNKNOWN"]);
+const STAY_KEYS = new Set(["kind", "minimum_days", "maximum_days"]);
+const EXTENSION_KEYS = new Set([
+  "status",
+  "reason_code",
+  "allowed",
+  "maximum_extensions",
+  "days_per_extension",
+]);
 const UTC_INSTANT =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(?:Z|\+00:00)$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -333,6 +347,68 @@ function verifyStateInvariants(decision: JsonRecord): void {
   }
 }
 
+function stayPolicy(value: unknown): void {
+  const policy = record(value);
+  const policyKeys = Object.keys(policy);
+  if (
+    policyKeys.some((key) => key !== "stay" && key !== "extension") ||
+    !("stay" in policy) ||
+    !("extension" in policy)
+  ) {
+    malformed();
+  }
+  const stay = record(policy.stay);
+  if (
+    Object.keys(stay).some((key) => !STAY_KEYS.has(key)) ||
+    !("kind" in stay) ||
+    !("minimum_days" in stay) ||
+    !("maximum_days" in stay)
+  ) {
+    malformed();
+  }
+  const kind = oneOf(stay.kind, STAY_POLICY_KINDS);
+  const minDays =
+    stay.minimum_days === null ? null : integer(stay.minimum_days, 0);
+  const maxDays =
+    stay.maximum_days === null ? null : integer(stay.maximum_days, 0);
+  if (
+    (minDays !== null && minDays > 36_500) ||
+    (maxDays !== null && maxDays > 36_500)
+  ) {
+    malformed();
+  }
+  if (kind === "FIXED_DAYS" && maxDays === null) malformed();
+  if (kind === "NOT_APPLICABLE" && (minDays !== null || maxDays !== null)) {
+    malformed();
+  }
+  if (minDays !== null && maxDays !== null && minDays > maxDays) {
+    malformed();
+  }
+
+  const extension = record(policy.extension);
+  if (
+    Object.keys(extension).some((key) => !EXTENSION_KEYS.has(key)) ||
+    !("allowed" in extension) ||
+    !("maximum_extensions" in extension) ||
+    !("days_per_extension" in extension)
+  ) {
+    malformed();
+  }
+  if (extension.status !== undefined && extension.status !== null) {
+    oneOf(extension.status, EXTENSION_POLICY_STATUSES);
+  }
+  if (extension.reason_code !== undefined && extension.reason_code !== null) {
+    string(extension.reason_code);
+  }
+  if (typeof extension.allowed !== "boolean") malformed();
+  const maxExtensions = integer(extension.maximum_extensions, 0);
+  if (maxExtensions > 100) malformed();
+  if (extension.days_per_extension !== null) {
+    const daysPerExt = integer(extension.days_per_extension, 1);
+    if (daysPerExt > 3650) malformed();
+  }
+}
+
 /**
  * Runtime projection guard for the generated OpenAPI response. It validates
  * all fields the UI consumes plus cross-array/state integrity. Unknown JSON
@@ -425,6 +501,9 @@ export function parseVisaOracleEvaluateResponse(
     referencedSources.push(...candidateSourceRefs);
     productNames(projected.name);
     if (projected.tagline !== null) productNames(projected.tagline);
+    if (projected.stay_policy !== undefined) {
+      stayPolicy(projected.stay_policy);
+    }
     if (projected.prohibited_activities !== undefined) {
       for (const item of array(projected.prohibited_activities)) {
         if (string(item).trim().length === 0) malformed();

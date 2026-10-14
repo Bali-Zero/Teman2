@@ -160,6 +160,12 @@ export interface OutcomeDuration {
     selected: boolean;
   }[];
   extensionRequired: boolean;
+  /** Explicit localized permit-length label from the fixed-days copy table (PR-7). */
+  label?: LocalizedText;
+  /** Verified renewal line from the signed pack's extension policy (PR-7). */
+  renewal?: LocalizedText;
+  /** Continuation note when the applicant's requested stay_days exceed the first permit (PR-7). */
+  longerStay?: LocalizedText;
 }
 
 export interface OutcomeStep {
