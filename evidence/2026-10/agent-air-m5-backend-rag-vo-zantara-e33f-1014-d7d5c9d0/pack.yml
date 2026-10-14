@@ -43,10 +43,10 @@ bites:
   where: ci
   observe: python3 scripts/ci/observe_zantara_e33f_everywhere_1014.py
   expect: "contains:internal Retirement rows leave client paths, raw rows still resolve"
-  caveat: >-
-    The Qdrant vector path is NOT yet in force: Zantara's vector retrieval keeps surfacing the three internal points
-    until an authorized run of the purge. Exact dry-run command (changes nothing):
-    python3 scripts/sync_pricing_collection_prices.py --purge-internal ; the delete needs the same command with --apply.
+bites_caveat: >-
+  The Qdrant vector path is NOT yet in force: Zantara's vector retrieval keeps surfacing the three internal points
+  until an authorized run of the purge. Exact dry-run command (changes nothing):
+  python3 scripts/sync_pricing_collection_prices.py --purge-internal ; the delete needs the same command with --apply.
 receipts:
   - claim: The mouth price mirror is in sync with the backend catalogue (the keywords field does not leak into it).
     cmd: python3 scripts/sync_frontend_prices.py --check
@@ -140,7 +140,7 @@ dissent:
   - seat: claude-opus-5-5 (adversarial red team, head 49e6ee2107)
     objection: "LOW - the Qdrant vector path keeps serving internal points until the purge is run; the legacy prepare_payloads.py has no internal skip."
     status: CONFIRMED
-    note: "Not cured by design (no production run in this PR). Stated in bites.caveat with the exact dry-run command and listed under owed."
+    note: "Not cured by design (no production run in this PR). Stated in bites_caveat with the exact dry-run command and listed under owed."
   - seat: claude-opus-5-5 (adversarial red team, head 49e6ee2107)
     objection: "LOW - the claim that observe_visa_oracle_replay_pins.py exits 0 could not be reproduced (red at the merge base)."
     status: CONFIRMED
