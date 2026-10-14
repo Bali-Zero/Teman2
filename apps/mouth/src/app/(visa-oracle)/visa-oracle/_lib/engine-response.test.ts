@@ -274,4 +274,211 @@ describe("Visa Oracle engine response runtime guard", () => {
         .prohibited_activities,
     ).toEqual(["overstay", "overstay"]);
   });
+
+  it("parses valid stay_policy shapes and optional nulls", () => {
+    const valid = makeVisaOracleResponse();
+    expect(
+      parseVisaOracleEvaluateResponse(valid).display.candidates[0].stay_policy,
+    ).toEqual(valid.display.candidates[0].stay_policy);
+
+    const withNulls = makeVisaOracleResponse();
+    withNulls.display.candidates[0].stay_policy = {
+      stay: {
+        kind: "VARIABLE_BY_GRANT",
+        minimum_days: null,
+        maximum_days: 60,
+      },
+      extension: {
+        status: null,
+        reason_code: null,
+        allowed: false,
+        maximum_extensions: 0,
+        days_per_extension: null,
+      },
+    };
+    expect(() => parseVisaOracleEvaluateResponse(withNulls)).not.toThrow();
+
+    const notApplicable = makeVisaOracleResponse();
+    notApplicable.display.candidates[0].stay_policy = {
+      stay: {
+        kind: "NOT_APPLICABLE",
+        minimum_days: null,
+        maximum_days: null,
+      },
+      extension: {
+        status: "UNKNOWN",
+        reason_code: "EXTENSION_POLICY_NOT_ENCODED_IN_PACK",
+        allowed: false,
+        maximum_extensions: 0,
+        days_per_extension: null,
+      },
+    };
+    expect(() => parseVisaOracleEvaluateResponse(notApplicable)).not.toThrow();
+  });
+
+  it("accepts unknown extra keys on stay_policy, stay, and extension", () => {
+    const response = makeVisaOracleResponse();
+    const policy = response.display.candidates[0]
+      .stay_policy as unknown as Record<string, unknown>;
+    policy.extra_policy_key = "forward-compatible";
+    (policy.stay as Record<string, unknown>).extra_stay_key = 1;
+    (policy.extension as Record<string, unknown>).extra_extension_key = true;
+    expect(() => parseVisaOracleEvaluateResponse(response)).not.toThrow();
+  });
+
+  it("rejects a display candidate with an absent stay_policy", () => {
+    const absent = makeVisaOracleResponse();
+    delete (absent.display.candidates[0] as unknown as Record<string, unknown>)
+      .stay_policy;
+    expect(() => parseVisaOracleEvaluateResponse(absent)).toThrowError(
+      expect.objectContaining({ code: "MALFORMED_RESPONSE" }),
+    );
+  });
+
+  it("rejects malformed stay_policy shapes", () => {
+    const corruptions: Array<
+      [string, (candidate: Record<string, unknown>) => void]
+    > = [
+      [
+        "allowed as string 'true'",
+        (c) => {
+          (
+            (c.stay_policy as Record<string, unknown>).extension as Record<
+              string,
+              unknown
+            >
+          ).allowed = "true";
+        },
+      ],
+      [
+        "allowed as number 1",
+        (c) => {
+          (
+            (c.stay_policy as Record<string, unknown>).extension as Record<
+              string,
+              unknown
+            >
+          ).allowed = 1;
+        },
+      ],
+      [
+        "non-integer maximum_days",
+        (c) => {
+          (
+            (c.stay_policy as Record<string, unknown>).stay as Record<
+              string,
+              unknown
+            >
+          ).maximum_days = 365.5;
+        },
+      ],
+      [
+        "negative maximum_days",
+        (c) => {
+          (
+            (c.stay_policy as Record<string, unknown>).stay as Record<
+              string,
+              unknown
+            >
+          ).maximum_days = -1;
+        },
+      ],
+      [
+        "minimum_days greater than maximum_days",
+        (c) => {
+          const stay = (c.stay_policy as Record<string, unknown>)
+            .stay as Record<string, unknown>;
+          stay.minimum_days = 730;
+          stay.maximum_days = 365;
+        },
+      ],
+      [
+        "FIXED_DAYS with null maximum_days",
+        (c) => {
+          const stay = (c.stay_policy as Record<string, unknown>)
+            .stay as Record<string, unknown>;
+          stay.kind = "FIXED_DAYS";
+          stay.minimum_days = null;
+          stay.maximum_days = null;
+        },
+      ],
+      [
+        "NOT_APPLICABLE with non-null days",
+        (c) => {
+          const stay = (c.stay_policy as Record<string, unknown>)
+            .stay as Record<string, unknown>;
+          stay.kind = "NOT_APPLICABLE";
+          stay.minimum_days = 60;
+          stay.maximum_days = 60;
+        },
+      ],
+      [
+        "unknown stay.kind",
+        (c) => {
+          (
+            (c.stay_policy as Record<string, unknown>).stay as Record<
+              string,
+              unknown
+            >
+          ).kind = "OPEN_ENDED";
+        },
+      ],
+      [
+        "stay missing",
+        (c) => {
+          delete (c.stay_policy as Record<string, unknown>).stay;
+        },
+      ],
+      [
+        "extension missing",
+        (c) => {
+          delete (c.stay_policy as Record<string, unknown>).extension;
+        },
+      ],
+      [
+        "unknown extension.status",
+        (c) => {
+          (
+            (c.stay_policy as Record<string, unknown>).extension as Record<
+              string,
+              unknown
+            >
+          ).status = "MAYBE";
+        },
+      ],
+      [
+        "maximum_extensions > 100",
+        (c) => {
+          (
+            (c.stay_policy as Record<string, unknown>).extension as Record<
+              string,
+              unknown
+            >
+          ).maximum_extensions = 101;
+        },
+      ],
+      [
+        "days_per_extension < 1",
+        (c) => {
+          (
+            (c.stay_policy as Record<string, unknown>).extension as Record<
+              string,
+              unknown
+            >
+          ).days_per_extension = 0;
+        },
+      ],
+    ];
+
+    for (const [label, corrupt] of corruptions) {
+      const response = makeVisaOracleResponse();
+      corrupt(
+        response.display.candidates[0] as unknown as Record<string, unknown>,
+      );
+      expect(
+        () => parseVisaOracleEvaluateResponse(response),
+        label,
+      ).toThrowError(expect.objectContaining({ code: "MALFORMED_RESPONSE" }));
+    }
+  });
 });

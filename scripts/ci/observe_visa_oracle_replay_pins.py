@@ -32,14 +32,14 @@ LIB = "src/app/(visa-oracle)/visa-oracle/_lib/"
 TEST_FILES = (LIB + "no-path-doors.test.tsx", LIB + "engine-adapter.test.ts")
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 # The exact census of the two files: a lost test is a red observer, not a quiet drop.
-EXPECTED_TESTS = 255
+EXPECTED_TESTS = 293
 REPLAY = (
     MOUTH_DIR / "src" / "app" / "(visa-oracle)" / "visa-oracle" / "_lib" / "fixtures" / "no-path-doors.replay.json"
 )
 GENERATOR = MOUTH_DIR / "scripts" / "visa-oracle" / "replay-no-path-doors.py"
 PACKS_DIR = REPO_ROOT / "apps" / "backend-rag" / "backend" / "services" / "visa_engine" / "contracts" / "packs"
 REQUIRED_TESTS = (
-    "covers the 17 dead ends, 3 held walks and 1 missing-input walk the current census reports",
+    "covers the 21 dead ends, 3 held walks and 3 missing-input walks the current census reports",
     "names a door the pack actually supports: offshore/remote/foreign_only/income_59999",
     "states every cause in words, EN and ID: offshore/remote/foreign_only/income_59999",
     "pins the E33G income-threshold sentence in EN and ID, figure and yearly unit included: offshore/remote/foreign_only/income_59999",

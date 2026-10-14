@@ -7,7 +7,7 @@
   },
   "as_of": "2026-10-13 08:56:32.221637+00:00",
   "age_55_birth_date": "1971-09-01",
-  "walk_corpus_fingerprint": "b7a2571e4d8723678bc1c5324e84a40fb36009fa08d97af9d6fa85bc1c5339d5",
+  "walk_corpus_fingerprint": "05928bb6491e93334aa3fea7550e818ef637de254dc49d2ddf5a29f8030cddf0",
   "walks": [
     {
       "label": "offshore/business",
@@ -166,6 +166,64 @@
       "state": "NEEDS_INPUT",
       "no_path_reason_codes": [],
       "missing_facts": ["secondhome.passive_monthly_income_usd"],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/work/no_government_collaboration/payer_unsure",
+      "walk_fixture": "offshore_work_no_government_collaboration_payer_unsure.json",
+      "state": "NEEDS_INPUT",
+      "no_path_reason_codes": [],
+      "missing_facts": ["work.employer_is_indonesian_entity"],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/work/no_government_collaboration/sponsor_confirmed_no",
+      "walk_fixture": "offshore_work_no_government_collaboration_sponsor_confirmed_no.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["E33A_SPONSOR_NOT_GOVERNMENT"],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/work/no_government_collaboration/sponsor_confirmed_unsure",
+      "walk_fixture": "offshore_work_no_government_collaboration_sponsor_confirmed_unsure.json",
+      "state": "NEEDS_INPUT",
+      "no_path_reason_codes": [],
+      "missing_facts": ["work.indonesian_work_sponsor_confirmed"],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/work/payer_no",
+      "walk_fixture": "offshore_work_payer_no.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR",
+        "E33A_SPONSOR_NOT_GOVERNMENT"
+      ],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/work/sponsor_employer/employer_no",
+      "walk_fixture": "offshore_work_sponsor_employer_employer_no.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR",
+        "E33A_SPONSOR_NOT_GOVERNMENT",
+        "E33B_SPONSOR_NOT_GOVERNMENT_OR_NONE"
+      ],
+      "missing_facts": [],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/work/sponsor_employer/sponsor_confirmed_no",
+      "walk_fixture": "offshore_work_sponsor_employer_sponsor_confirmed_no.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "E33A_SPONSOR_NOT_GOVERNMENT",
+        "E33B_SPONSOR_NOT_GOVERNMENT_OR_NONE"
+      ],
+      "missing_facts": [],
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
     },
     {
