@@ -1,5 +1,5 @@
 gear: 1
-brief_ref: evidence/brief.yml
+brief_ref: evidence/2026-10/agent-air-m5-mouth-vo-e33-invest-id-1014-29a21044/brief.yml
 ruling: >-
   Audit finding F11 (verified real, MEDIUM): the Indonesian option dropped the word "qualifying" the English carries, while
   rule el.e33.property-basis (seq-29) requires a qualifying property.
@@ -11,7 +11,6 @@ lanes:
   - lane: e33-invest-id
     role: build
     seat: gemini-4-argon-high via agy (external seat, edits files only), verified by Claude.
-pii_scan: clean
 bites:
   consumer: >-
     the investment_vehicle question of the public Visa Oracle interview in the Indonesian locale (tree.ts renders the key, flow.ts asks it on the invest route).
@@ -22,27 +21,23 @@ bites:
 receipts:
   - claim: "The whole visa-oracle Vitest tree on the final code."
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
-    result: "Test Files 57 passed (57); Tests 1490 passed (1490)"
+    result: "Test Files 57 passed (57); Tests 1489 passed (1489)"
     exit: 0
-    ts: "2026-10-14T00:00:00Z"
     seat: this session
   - claim: "The observer passes: source scan and i18n.test.ts full pass with the three new tests run."
     cmd: python3 scripts/ci/observe_visa_oracle_i18n_qualifying.py
-    result: "Tests 12 passed (12); i18n qualifying holds"
+    result: "Tests 11 passed (11); i18n qualifying holds"
     exit: 0
-    ts: "2026-10-14T00:00:00Z"
     seat: this session
   - claim: "The observer's unit tests."
     cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_i18n_qualifying.py
     result: "15 passed"
     exit: 0
-    ts: "2026-10-14T00:00:00Z"
     seat: this session
   - claim: "Replay pins unchanged."
     cmd: python3 scripts/ci/observe_visa_oracle_replay_pins.py
     result: "Tests 252 passed (252); replay pins hold"
     exit: 0
-    ts: "2026-10-14T00:00:00Z"
     seat: this session
 decisions:
   - id: D-no-hybrid

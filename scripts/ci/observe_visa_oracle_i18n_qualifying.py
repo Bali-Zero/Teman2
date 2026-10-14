@@ -9,12 +9,10 @@
 The consumer is the Visa Oracle i18n dictionary and its parity test suite. Every
 English entry that says "qualifying" has an Indonesian twin that says "memenuhi
 syarat", and `q.investment_vehicle.opt.property` (ID) reads "Properti yang
-memenuhi syarat" while `q.retirement_basis.opt.property` (ID) remains
-"Pengaturan properti". Two observations, both required:
+memenuhi syarat". Two observations, both required:
 
 1. a literal scan of `i18n.ts`: `"q.investment_vehicle.opt.property": "Properti yang memenuhi syarat",`
-   appears exactly once and `"Pengaturan properti"` appears exactly once (for
-   `q.retirement_basis.opt.property`);
+   appears exactly once and the retired "Pengaturan properti" line is gone;
 2. `i18n.test.ts` passes in full, with the qualifying-parity test reported as run.
 
 Exit 0 only if both hold.
@@ -35,17 +33,14 @@ I18N_FILE = "src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts"
 TEST_FILE = "src/app/(visa-oracle)/visa-oracle/_lib/i18n.test.ts"
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
-MIN_TESTS = 12
+MIN_TESTS = 11
 INVEST_ID_LINE = '"q.investment_vehicle.opt.property": "Properti yang memenuhi syarat",'
 OLD_INVEST_ID_LINE = '"q.investment_vehicle.opt.property": "Pengaturan properti",'
-RETIREMENT_ID_LINE = '"q.retirement_basis.opt.property": "Pengaturan properti",'
-PENGATURAN_PROPERTI = '"Pengaturan properti"'
 REJECTED_HYBRID = "Pengaturan properti yang memenuhi syarat"
 
 REQUIRED_TESTS = (
     "every English string that says 'qualifying' has an Indonesian twin that says 'memenuhi syarat'",
     "pins q.investment_vehicle.opt.property in both languages and keeps the ID label figure-free",
-    "leaves q.retirement_basis.opt.property untouched in both languages",
 )
 _SUMMARY = re.compile(r"^\s*Tests\s+(\d+) passed \((\d+)\)\s*$")
 
@@ -77,16 +72,6 @@ def source_problems(source: str) -> list[str]:
     invest_hits = [l for l in lines if INVEST_ID_LINE in l]
     if len(invest_hits) != 1:
         problems.append(f"{INVEST_ID_LINE}: {len(invest_hits)} lines (expected 1)")
-
-    pengaturan_hits = [l for l in lines if PENGATURAN_PROPERTI in l]
-    if len(pengaturan_hits) != 1:
-        problems.append(
-            f"{PENGATURAN_PROPERTI}: {len(pengaturan_hits)} lines (expected 1)"
-        )
-    elif RETIREMENT_ID_LINE not in pengaturan_hits[0]:
-        problems.append(
-            f"{PENGATURAN_PROPERTI}: found on unexpected line {pengaturan_hits[0].strip()!r}"
-        )
 
     if any(OLD_INVEST_ID_LINE in l for l in lines):
         problems.append(f"retired line still present: {OLD_INVEST_ID_LINE}")

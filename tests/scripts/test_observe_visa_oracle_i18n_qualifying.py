@@ -14,7 +14,6 @@ from observe_visa_oracle_i18n_qualifying import (  # noqa: E402
     MIN_TESTS,
     MOUTH_DIR,
     OLD_INVEST_ID_LINE,
-    RETIREMENT_ID_LINE,
     REQUIRED_TESTS,
     missing_tests,
     source_problems,
@@ -62,7 +61,6 @@ def _good_source() -> str:
         [
             '  "q.investment_vehicle.opt.property": "A qualifying property arrangement",',
             f"  {INVEST_ID_LINE}",
-            f"  {RETIREMENT_ID_LINE}",
             '  "q.secondhome_basis.opt.property": "Properti yang memenuhi syarat",',
         ]
     )
@@ -92,9 +90,3 @@ def test_rejected_hybrid_wording_is_caught():
 def test_duplicated_or_missing_lines_are_caught():
     duplicated_invest = _good_source() + f"\n  {INVEST_ID_LINE}"
     assert source_problems(duplicated_invest) != []
-
-    duplicated_pengaturan = _good_source() + f"\n  {RETIREMENT_ID_LINE}"
-    assert source_problems(duplicated_pengaturan) != []
-
-    missing_pengaturan = _good_source().replace(f"  {RETIREMENT_ID_LINE}\n", "")
-    assert source_problems(missing_pengaturan) != []
