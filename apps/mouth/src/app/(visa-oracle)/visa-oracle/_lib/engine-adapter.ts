@@ -1745,8 +1745,8 @@ export const GENERIC_NOTICE_CONDITION: LocalizedText = text(
 export const PROHIBITED_ACTIVITY_COPY: Readonly<Record<string, LocalizedText>> =
   {
     business_meetings: text(
-      "Attending business meetings or conducting business activities",
-      "Menghadiri pertemuan bisnis atau melakukan kegiatan bisnis",
+      "Attending business meetings",
+      "Menghadiri pertemuan bisnis",
     ),
     continuous_supervision_production_sales: text(
       "Continuously supervising production or sales activities in Indonesia",
@@ -1765,8 +1765,8 @@ export const PROHIBITED_ACTIVITY_COPY: Readonly<Record<string, LocalizedText>> =
       "Bekerja dalam hubungan kerja di Indonesia",
     ),
     exit_terminates_permit: text(
-      "Leaving Indonesia — leaving ends this permit",
-      "Keluar dari Indonesia — keluar mengakhiri izin ini",
+      "Leaving Indonesia ends this permit",
+      "Izin ini berakhir apabila Anda keluar dari wilayah Indonesia",
     ),
     guarantee_value_below_commitment: text(
       "Letting the immigration guarantee fall below the amount in your commitment letter while the permit is valid",
@@ -1782,7 +1782,7 @@ export const PROHIBITED_ACTIVITY_COPY: Readonly<Record<string, LocalizedText>> =
     ),
     indonesian_source_compensation_including_in_kind: text(
       "Receiving compensation, wages, or in-kind benefits from an Indonesian source",
-      "Menerima imbalan, upah, atau imbalan dalam bentuk barang dari sumber di Indonesia",
+      "Menerima imbalan atau upah, termasuk dalam bentuk barang, dari sumber di Indonesia",
     ),
     indonesian_source_remuneration: text(
       "Receiving wages, fees, or similar remuneration from a person or company in Indonesia",
@@ -1793,8 +1793,8 @@ export const PROHIBITED_ACTIVITY_COPY: Readonly<Record<string, LocalizedText>> =
       "Melakukan kegiatan jurnalistik atau peliputan berita",
     ),
     operational_work: text(
-      "Performing day-to-day work or business operations while on the bridging permit",
-      "Melakukan pekerjaan atau kegiatan usaha sehari-hari selama memegang izin tinggal peralihan",
+      "Performing day-to-day operational work in the company",
+      "Melakukan pekerjaan operasional sehari-hari di perusahaan",
     ),
     operational_work_beyond_management_and_ownership: text(
       "Performing day-to-day technical or hands-on work beyond company management and ownership",
@@ -1825,17 +1825,14 @@ export const PROHIBITED_ACTIVITY_COPY: Readonly<Record<string, LocalizedText>> =
       "Menjual barang atau jasa, kecuali diperlukan dalam pekerjaan Anda",
     ),
     sale_of_goods_or_services_beyond_remote_work: text(
-      "Selling goods or services beyond remote work for your employer outside Indonesia, unless your work requires it",
-      "Menjual barang atau jasa di luar pekerjaan jarak jauh untuk pemberi kerja di luar Indonesia, kecuali diperlukan dalam pekerjaan Anda",
+      "Selling goods or services in Indonesia beyond your remote work for an employer outside Indonesia",
+      "Menjual barang atau jasa di Indonesia di luar pekerjaan jarak jauh untuk pemberi kerja di luar Indonesia",
     ),
     selling_goods_services: text(
-      "Selling goods or services, unless your work requires it",
-      "Menjual barang atau jasa, kecuali diperlukan dalam pekerjaan Anda",
+      "Selling goods or services",
+      "Menjual barang atau jasa",
     ),
-    study: text(
-      "Studying or enrolling in a formal education program in Indonesia",
-      "Menempuh pendidikan formal di Indonesia",
-    ),
+    study: text("Studying in Indonesia", "Menempuh pendidikan di Indonesia"),
     work_for_indonesian_entity: text(
       "Working for an employer or entity based in Indonesia",
       "Bekerja untuk pemberi kerja atau badan usaha yang berkedudukan di Indonesia",
@@ -1853,21 +1850,21 @@ export const PROHIBITED_ACTIVITY_COPY: Readonly<Record<string, LocalizedText>> =
       "Bekerja untuk perusahaan komersial atau korporasi umum di Indonesia",
     ),
     work_inconsistent_with_permit: text(
-      "Work that does not match your stay permit",
+      "Doing work that does not match your stay permit",
       "Melakukan pekerjaan yang tidak sesuai dengan izin tinggal",
     ),
   };
 
 const E33_DUAL_ACTIVITY_REPORTING_COPY: LocalizedText = text(
-  "Working or studying without reporting it as a dual activity to the immigration office that issued your permit",
-  "Bekerja atau menempuh pendidikan tanpa melaporkan rangkap kegiatan ke kantor imigrasi yang menerbitkan izin tinggal Anda",
+  "Working or studying without reporting it to Immigration as a dual activity",
+  "Bekerja atau menempuh pendidikan tanpa melaporkannya ke Imigrasi sebagai rangkap kegiatan",
 );
 
 /**
  * Product-scoped overrides for shared `prohibited_activities` identifiers.
  * Only E33 and E33E carry the official imigrasi.go.id sentence allowing work
- * or study through dual-activity reporting (pelaporan rangkap kegiatan) to the
- * issuing immigration office; E33A/B/C/F keep the base sentence.
+ * or study through dual-activity reporting (pelaporan rangkap kegiatan) to
+ * Immigration; E33A/B/C/F keep the base sentence.
  */
 export const PROHIBITED_ACTIVITY_PRODUCT_COPY: Readonly<
   Record<string, Readonly<Record<string, LocalizedText>>>
@@ -1885,12 +1882,29 @@ export function prohibitedActivitiesFor(
   identifiers: readonly string[] | undefined,
 ): LocalizedText[] {
   if (!identifiers || identifiers.length === 0) return [];
-  const overrides = PROHIBITED_ACTIVITY_PRODUCT_COPY[productCode];
+  const overrides = Object.prototype.hasOwnProperty.call(
+    PROHIBITED_ACTIVITY_PRODUCT_COPY,
+    productCode,
+  )
+    ? PROHIBITED_ACTIVITY_PRODUCT_COPY[productCode]
+    : undefined;
+  const seenIdentifiers = new Set<string>();
+  const seenEn = new Set<string>();
   const resolved: LocalizedText[] = [];
   for (const identifier of identifiers) {
+    if (seenIdentifiers.has(identifier)) continue;
+    seenIdentifiers.add(identifier);
     const copy =
-      overrides?.[identifier] ?? PROHIBITED_ACTIVITY_COPY[identifier];
-    if (copy !== undefined) {
+      overrides && Object.prototype.hasOwnProperty.call(overrides, identifier)
+        ? overrides[identifier]
+        : Object.prototype.hasOwnProperty.call(
+              PROHIBITED_ACTIVITY_COPY,
+              identifier,
+            )
+          ? PROHIBITED_ACTIVITY_COPY[identifier]
+          : undefined;
+    if (copy !== undefined && !seenEn.has(copy.en)) {
+      seenEn.add(copy.en);
       resolved.push(copy);
     }
   }

@@ -828,8 +828,10 @@ function CandidateCard({
             {translate(language, "outcome.prohibited_title")}
           </h3>
           <ul className="oracle-reason-list">
-            {candidate.prohibitedActivities.map((item) => (
-              <li key={item.en}>{localized(item, language)}</li>
+            {candidate.prohibitedActivities.map((item, itemIndex) => (
+              <li key={`${itemIndex}:${item.en}`}>
+                {localized(item, language)}
+              </li>
             ))}
           </ul>
         </section>

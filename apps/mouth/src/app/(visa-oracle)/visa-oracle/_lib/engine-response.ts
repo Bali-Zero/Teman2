@@ -425,8 +425,10 @@ export function parseVisaOracleEvaluateResponse(
     referencedSources.push(...candidateSourceRefs);
     productNames(projected.name);
     if (projected.tagline !== null) productNames(projected.tagline);
-    for (const identifier of stringArray(projected.prohibited_activities)) {
-      if (identifier.trim().length === 0) malformed();
+    if (projected.prohibited_activities !== undefined) {
+      for (const item of array(projected.prohibited_activities)) {
+        if (string(item).trim().length === 0) malformed();
+      }
     }
 
     const availabilityProjection = record(projected.availability);

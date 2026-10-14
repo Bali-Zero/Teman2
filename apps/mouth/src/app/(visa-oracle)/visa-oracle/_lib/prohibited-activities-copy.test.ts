@@ -144,13 +144,13 @@ describe("prohibited_activities copy census (PR-20)", () => {
 
   it("keeps work_inconsistent_with_permit base copy generic for E33A/B/C/F and applies dual-activity reporting only to E33 and E33E", () => {
     expect(PROHIBITED_ACTIVITY_COPY.work_inconsistent_with_permit).toEqual({
-      en: "Work that does not match your stay permit",
+      en: "Doing work that does not match your stay permit",
       id: "Melakukan pekerjaan yang tidak sesuai dengan izin tinggal",
     });
 
     const expectedReporting = {
-      en: "Working or studying without reporting it as a dual activity to the immigration office that issued your permit",
-      id: "Bekerja atau menempuh pendidikan tanpa melaporkan rangkap kegiatan ke kantor imigrasi yang menerbitkan izin tinggal Anda",
+      en: "Working or studying without reporting it to Immigration as a dual activity",
+      id: "Bekerja atau menempuh pendidikan tanpa melaporkannya ke Imigrasi sebagai rangkap kegiatan",
     };
 
     for (const code of ["E33", "E33E"] as const) {
@@ -158,8 +158,14 @@ describe("prohibited_activities copy census (PR-20)", () => {
         "work_inconsistent_with_permit",
       ]);
       expect(resolved).toEqual([expectedReporting]);
-      expect(resolved[0].en).toContain("reporting it as a dual activity");
-      expect(resolved[0].id).toContain("melaporkan rangkap kegiatan");
+      expect(resolved[0].en).toContain(
+        "reporting it to Immigration as a dual activity",
+      );
+      expect(resolved[0].id).toContain(
+        "melaporkannya ke Imigrasi sebagai rangkap kegiatan",
+      );
+      expect(resolved[0].en).not.toMatch(/issuing/i);
+      expect(resolved[0].id).not.toMatch(/menerbitkan/i);
     }
 
     for (const code of ["E33A", "E33B", "E33C", "E33F"] as const) {
@@ -182,27 +188,95 @@ describe("prohibited_activities copy census (PR-20)", () => {
     );
   });
 
-  it("includes the official work-required exception clause on selling prohibitions and remote-work scoping on E33G", () => {
+  it("maps operational_work to company operational work with no bridging/peralihan wording on E28B/E28C/E28F", () => {
+    expect(PROHIBITED_ACTIVITY_COPY.operational_work).toEqual({
+      en: "Performing day-to-day operational work in the company",
+      id: "Melakukan pekerjaan operasional sehari-hari di perusahaan",
+    });
+
+    const { products } = newestSignedPack();
+    const withOperationalWork = products.filter((product) =>
+      (product.prohibited_activities ?? []).includes("operational_work"),
+    );
+    expect(
+      withOperationalWork.map((product) => product.product_code).sort(),
+    ).toEqual(["E28B", "E28C", "E28F"]);
+
+    for (const product of withOperationalWork) {
+      const resolved = prohibitedActivitiesFor(
+        product.product_code ?? "",
+        product.prohibited_activities,
+      );
+      expect(resolved.length).toBeGreaterThan(0);
+      for (const item of resolved) {
+        expect(item.en, `${product.product_code} en`).not.toMatch(
+          /bridging|peralihan/i,
+        );
+        expect(item.id, `${product.product_code} id`).not.toMatch(
+          /bridging|peralihan/i,
+        );
+      }
+    }
+
+    const keysWithBridgingTerms = Object.entries(PROHIBITED_ACTIVITY_COPY)
+      .filter(
+        ([, copy]) =>
+          /bridging|peralihan/i.test(copy.en) ||
+          /bridging|peralihan/i.test(copy.id),
+      )
+      .map(([key]) => key);
+    for (const key of keysWithBridgingTerms) {
+      expect(["employment_relationship", "exit_terminates_permit"]).toContain(
+        key,
+      );
+    }
+  });
+
+  it("keeps the work-required exception clause only on sale_of_goods_or_services, keeps selling_goods_services flat, and scopes E33G to remote work without an exception clause", () => {
     expect(PROHIBITED_ACTIVITY_COPY.sale_of_goods_or_services).toEqual({
       en: "Selling goods or services, unless your work requires it",
       id: "Menjual barang atau jasa, kecuali diperlukan dalam pekerjaan Anda",
     });
-    expect(PROHIBITED_ACTIVITY_COPY.selling_goods_services).toEqual({
-      en: "Selling goods or services, unless your work requires it",
-      id: "Menjual barang atau jasa, kecuali diperlukan dalam pekerjaan Anda",
-    });
+    expect(PROHIBITED_ACTIVITY_COPY.sale_of_goods_or_services.en).toContain(
+      "unless your work requires it",
+    );
+    expect(PROHIBITED_ACTIVITY_COPY.sale_of_goods_or_services.id).toContain(
+      "kecuali diperlukan dalam pekerjaan Anda",
+    );
 
-    const e33gSale =
-      PROHIBITED_ACTIVITY_COPY.sale_of_goods_or_services_beyond_remote_work;
-    expect(e33gSale.en).toContain("Selling goods or services");
-    expect(e33gSale.en).toContain("beyond remote work");
-    expect(e33gSale.en).toContain("unless your work requires it");
-    expect(e33gSale.id).toContain("Menjual barang atau jasa");
-    expect(e33gSale.id).toContain("di luar pekerjaan jarak jauh");
-    expect(e33gSale.id).toContain("kecuali diperlukan dalam pekerjaan Anda");
+    expect(PROHIBITED_ACTIVITY_COPY.selling_goods_services).toEqual({
+      en: "Selling goods or services",
+      id: "Menjual barang atau jasa",
+    });
+    expect(PROHIBITED_ACTIVITY_COPY.selling_goods_services.en).not.toMatch(
+      /unless|kecuali/i,
+    );
+    expect(PROHIBITED_ACTIVITY_COPY.selling_goods_services.id).not.toMatch(
+      /unless|kecuali/i,
+    );
+
+    expect(
+      PROHIBITED_ACTIVITY_COPY.sale_of_goods_or_services_beyond_remote_work,
+    ).toEqual({
+      en: "Selling goods or services in Indonesia beyond your remote work for an employer outside Indonesia",
+      id: "Menjual barang atau jasa di Indonesia di luar pekerjaan jarak jauh untuk pemberi kerja di luar Indonesia",
+    });
+    expect(
+      PROHIBITED_ACTIVITY_COPY.sale_of_goods_or_services_beyond_remote_work.en,
+    ).not.toMatch(/unless|kecuali/i);
+    expect(
+      PROHIBITED_ACTIVITY_COPY.sale_of_goods_or_services_beyond_remote_work.id,
+    ).not.toMatch(/unless|kecuali/i);
+
+    const both = prohibitedActivitiesFor("D1", [
+      "selling_goods_services",
+      "sale_of_goods_or_services",
+    ]);
+    expect(both).toHaveLength(2);
+    expect(new Set(both.map((item) => item.en)).size).toBe(2);
   });
 
-  it("pins guarantee_value_below_commitment, deposit_value_below_commitment, and exit_terminates_permit in EN and ID", () => {
+  it("pins guarantee_value_below_commitment, deposit_value_below_commitment, exit_terminates_permit, and wording updates in EN and ID", () => {
     expect(PROHIBITED_ACTIVITY_COPY.guarantee_value_below_commitment).toEqual({
       en: "Letting the immigration guarantee fall below the amount in your commitment letter while the permit is valid",
       id: "Membiarkan nilai Jaminan Keimigrasian turun di bawah nilai dalam surat pernyataan komitmen selama izin tinggal berlaku",
@@ -212,15 +286,32 @@ describe("prohibited_activities copy census (PR-20)", () => {
       id: "Membiarkan nilai deposito Jaminan Keimigrasian turun di bawah nilai dalam surat pernyataan komitmen selama izin tinggal berlaku",
     });
     expect(PROHIBITED_ACTIVITY_COPY.exit_terminates_permit).toEqual({
-      en: "Leaving Indonesia — leaving ends this permit",
-      id: "Keluar dari Indonesia — keluar mengakhiri izin ini",
+      en: "Leaving Indonesia ends this permit",
+      id: "Izin ini berakhir apabila Anda keluar dari wilayah Indonesia",
+    });
+    expect(
+      PROHIBITED_ACTIVITY_COPY.indonesian_source_compensation_including_in_kind,
+    ).toEqual({
+      en: "Receiving compensation, wages, or in-kind benefits from an Indonesian source",
+      id: "Menerima imbalan atau upah, termasuk dalam bentuk barang, dari sumber di Indonesia",
+    });
+    expect(PROHIBITED_ACTIVITY_COPY.business_meetings).toEqual({
+      en: "Attending business meetings",
+      id: "Menghadiri pertemuan bisnis",
+    });
+    expect(PROHIBITED_ACTIVITY_COPY.study).toEqual({
+      en: "Studying in Indonesia",
+      id: "Menempuh pendidikan di Indonesia",
     });
   });
 
-  it("drops unknown identifiers silently without leaking raw codes", () => {
+  it("drops unknown identifiers, Object.prototype keys, and duplicate identifiers without leaking raw codes", () => {
     const resolved = prohibitedActivitiesFor("E33", [
       "overstay",
       "unknown_future_code_xyz",
+      "constructor",
+      "toString",
+      "overstay",
       "sale_of_goods_or_services",
     ]);
     expect(resolved).toEqual([
@@ -228,5 +319,8 @@ describe("prohibited_activities copy census (PR-20)", () => {
       PROHIBITED_ACTIVITY_COPY.sale_of_goods_or_services,
     ]);
     expect(JSON.stringify(resolved)).not.toContain("unknown_future_code_xyz");
+    expect(
+      prohibitedActivitiesFor("constructor", ["constructor", "toString"]),
+    ).toEqual([]);
   });
 });
