@@ -44,8 +44,8 @@ results:
 dissent:
   - seat: "Codex gpt-5.6-sol (red team)"
     objection: "MEDIUM: E31F personas do not prove the decisive document (court decision on the legal relationship, KK) that the official E31F page requires."
-    status: REFUTED
-    disposition: "The fact registry carries no document fact for E31F, so the engine cannot decide on it; the persona facts match the page where a fact exists (WNI parent sponsor, 1 or 2 year stay, research/visa/2026-10-13-organ-reattest-seq29/text/f9306203-20261013T000754Z.txt lines 73, 93, 100-101). No change."
+    status: RETRACTED
+    disposition: "Not accepted (refuted by the registry): the fact registry carries no document fact for E31F, so the engine cannot decide on it; the persona facts match the page where a fact exists (WNI parent sponsor, 1 or 2 year stay, research/visa/2026-10-13-organ-reattest-seq29/text/f9306203-20261013T000754Z.txt lines 73, 93, 100-101). No change."
   - seat: "Codex gpt-5.6-sol (red team)"
     objection: "MEDIUM: E31F__minor differs from E31F in two facts (birth date plus guardian consent), no test protects the delta of the positive variants."
     status: CONFIRMED
