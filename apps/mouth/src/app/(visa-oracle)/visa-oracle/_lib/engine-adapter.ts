@@ -143,6 +143,66 @@ const NEXT_STEPS_BY_STATE: Record<OutcomeStateName, OutcomeNextSteps> = {
 };
 
 /**
+ * A1 (free visit) when it is the ONLY supported candidate. A1 costs Rp 0 and
+ * carries no Bali Zero quote, so the generic "send it to an advisor for the
+ * price and the timing" / "book travel only once the timing is confirmed"
+ * steps would promise a quote that does not exist. Each step is quoted from
+ * the official page https://www.imigrasi.go.id/wna/daftar-visa-indonesia/A1
+ * (saved: research/visa/2026-10-14-v05-a1-page/a1-bebas-visa-wisata-*.txt):
+ * passport :87 and return/onward ticket :88 (one step), 30 days and no extension or
+ * conversion :75/:77, no selling or paid work :95. The page offers an
+ * e-form only as one of two alternative routes, so no e-form step is made.
+ */
+const A1_ONLY_NEXT_STEPS: OutcomeNextSteps = [
+  step(
+    "free-visit-arrival-documents",
+    "At arrival, show a valid passport with at least 6 months left before it expires, and a return ticket or a ticket onward to another country (the official page exempts transport crew who stop over to join their vessel and travel on).",
+    "Saat kedatangan, tunjukkan paspor yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis, serta tiket kembali atau tiket terusan ke negara lain (halaman resmi mengecualikan awak alat angkut yang singgah untuk bergabung dengan kapalnya dan melanjutkan perjalanan).",
+  ),
+  step(
+    "free-visit-thirty-days",
+    "You can stay up to 30 days from the day you arrive. This stay cannot be extended or converted into another stay permit.",
+    "Anda dapat tinggal maksimal 30 hari sejak tanggal kedatangan. Izin tinggal ini tidak dapat diperpanjang dan tidak dapat dialihkan menjadi izin tinggal lain.",
+  ),
+  step(
+    "free-visit-no-selling-or-paid-work",
+    "Do not sell goods or services, and do not receive payment or wages for work or business from anyone in Indonesia.",
+    "Jangan menjual barang atau jasa, dan jangan menerima imbalan atau upah atas kerja atau usaha dari siapa pun di Indonesia.",
+  ),
+];
+
+/**
+ * The Bridging permit is onshore-only. Source: Imigrasi press release
+ * 2024-04-24 (research/visa/2026-10-13-organ-reattest-seq29/text/
+ * 3da72c7b-20261013T000748Z.txt:59): "hanya berlaku secara onshore ... Izin
+ * tinggal ini tidak berlaku lagi apabila WNA keluar wilayah Indonesia."
+ */
+const BRIDGING_EXIT_WARNING_STEP = step(
+  "bridging-do-not-leave-indonesia",
+  "Do not leave Indonesia while the Bridging permit is in use: it stops being valid if you leave.",
+  "Jangan keluar dari wilayah Indonesia selama Izin Tinggal Peralihan digunakan: izin ini tidak berlaku lagi apabila Anda keluar.",
+);
+const BRIDGING_ONLY_NEXT_STEPS: OutcomeNextSteps = [
+  NEXT_STEPS_BY_STATE.SUPPORTED_CANDIDATES[0],
+  BRIDGING_EXIT_WARNING_STEP,
+  step(
+    "bridging-send-to-advisor",
+    "Send this summary to a Bali Zero advisor on WhatsApp: an advisor can go over your case with you.",
+    "Kirim ringkasan ini ke konsultan Bali Zero lewat WhatsApp: konsultan dapat membahas kasus Anda bersama Anda.",
+  ),
+];
+/** BRIDGING next to other products: the generic list with the exit warning in place of the travel-booking step. */
+const BRIDGING_MIXED_NEXT_STEPS: OutcomeNextSteps = [
+  NEXT_STEPS_BY_STATE.SUPPORTED_CANDIDATES[0],
+  step(
+    "bridging-do-not-leave-indonesia",
+    "If you use the Bridging permit, do not leave Indonesia while it is in use: it stops being valid if you leave.",
+    "Jika Anda menggunakan Izin Tinggal Peralihan, jangan keluar dari wilayah Indonesia selama izin itu digunakan: izin ini tidak berlaku lagi apabila Anda keluar.",
+  ),
+  NEXT_STEPS_BY_STATE.SUPPORTED_CANDIDATES[1],
+];
+
+/**
  * A NO_SUPPORTED_PATH that carries no alternative: the generic list's
  * "look at the open door above" would point at nothing, so it is dropped.
  */
@@ -183,8 +243,21 @@ const STUDIO_NEXT_STEPS: OutcomeNextSteps = [
  */
 export function nextStepsFor(
   state: OutcomeStateName,
-  options: { studioOnly?: boolean; noDoors?: boolean } = {},
+  options: {
+    studioOnly?: boolean;
+    noDoors?: boolean;
+    /** Product codes of the SUPPORTED candidates, for product-aware steps. */
+    productCodes?: readonly string[];
+  } = {},
 ): OutcomeNextSteps {
+  if (state === "SUPPORTED_CANDIDATES" && options.productCodes?.length) {
+    const codes = options.productCodes;
+    if (codes.every((code) => code === "A1")) return A1_ONLY_NEXT_STEPS;
+    if (codes.every((code) => code === "BRIDGING")) {
+      return BRIDGING_ONLY_NEXT_STEPS;
+    }
+    if (codes.includes("BRIDGING")) return BRIDGING_MIXED_NEXT_STEPS;
+  }
   if (state === "HUMAN_REVIEW_REQUIRED" && options.studioOnly) {
     return STUDIO_NEXT_STEPS;
   }
@@ -2480,7 +2553,9 @@ function buildValidatedOutcome(
       return {
         ...base,
         state: "SUPPORTED_CANDIDATES",
-        nextSteps: nextStepsFor("SUPPORTED_CANDIDATES"),
+        nextSteps: nextStepsFor("SUPPORTED_CANDIDATES", {
+          productCodes: candidates.map((candidate) => candidate.code),
+        }),
         pathsRemaining: candidates.length,
         candidates: nonEmpty(candidates),
       };

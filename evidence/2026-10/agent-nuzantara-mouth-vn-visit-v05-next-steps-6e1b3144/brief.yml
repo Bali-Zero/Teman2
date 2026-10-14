@@ -1,0 +1,18 @@
+gear: 2
+gear_reason: >-
+  Public client copy on the Visa Oracle (next steps for A1-only and BRIDGING outcomes) with source-pinning tests;
+  touches no rule, no pack, no pricing and no backend.
+mission: >-
+  The Visa Oracle shows product-aware next steps: an A1-only outcome lists what the official A1 page says and no
+  quote/timing step; a BRIDGING outcome carries the do-not-leave-Indonesia warning.
+objective: >-
+  Visit plan V05 (findings F010, F011, F016, F037). The generic next steps promised an advisor quote and timing for
+  the free A1 and never warned that the Bridging permit ends if the holder leaves Indonesia.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/advisor-offer.test.ts
+  - research/visa/2026-10-14-v05-a1-page/
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

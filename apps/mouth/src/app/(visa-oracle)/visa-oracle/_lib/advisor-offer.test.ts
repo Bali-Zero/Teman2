@@ -91,6 +91,13 @@ describe("the advisor is offered, never promised (every non-E33 code; E33 is Tra
         rows.push([`nextSteps.${state}.${step.id}`, step.title]);
       }
     }
+    for (const codes of [["A1"], ["BRIDGING"], ["BRIDGING", "B1"]]) {
+      for (const step of nextStepsFor("SUPPORTED_CANDIDATES", {
+        productCodes: codes,
+      })) {
+        rows.push([`nextSteps.${codes.join("+")}.${step.id}`, step.title]);
+      }
+    }
     expect(offenders(rows)).toEqual([]);
   });
 
