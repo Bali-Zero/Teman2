@@ -141,8 +141,12 @@ import { DEFAULT_OUT_DIR } from "../../../../../scripts/visa-oracle/generate-wal
  * the payer, the Indonesian-sponsor confirmation and the sponsor category
  * answered away from the default, on the offshore and onshore arms and the
  * paid-activity `other` branch; no existing fixture moves.
+ *
+ * T06 (2026-10-14): +27, 144 -> 171 — the visit stay bounds (30/31, 60/61,
+ * 180/181, 360/361), the MULTIPLE entry walks, and every `business_activity`
+ * and `other_purpose` answer no walk gave; no existing fixture moves.
  */
-const EXPECTED_WALK_COUNT = 144;
+const EXPECTED_WALK_COUNT = 171;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)

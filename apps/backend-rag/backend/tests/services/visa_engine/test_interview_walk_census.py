@@ -2,7 +2,7 @@
 
 ``test_gold_coverage_floor.py`` proves the pack can support a product when
 every fact arrives. This file proves the opposite half, and it is the half
-the user lives in: replay the **144 real interview walks** — every distinct
+the user lives in: replay the **171 real interview walks** — every distinct
 path through ``flow.ts``'s two-arm spine and ``getCategoryQuestionIds``'
 eleven categories, each answered through the real ``fact-mapper.ts`` —
 against the highest signed PRODUCTION pack, and pin the outcome census.
@@ -1338,6 +1338,63 @@ _PR12_WORK_OUTCOMES_SEQ20: dict[str, tuple[str, tuple[str, ...]]] = {
     "onshore/work/sponsor_government/trade_office_only": ("SUPPORTED_CANDIDATES", ("E23",)),
     "offshore/other/paid/sponsor_individual": ("SUPPORTED_CANDIDATES", ("E23",)),
 }
+#: T06 (visa-night visit family, 2026-10-14): 27 walks, one per side of every stay
+#: bound and entry pattern of the visit rules, plus the `business_activity` and
+#: `other_purpose` answers no walk gave. Every row is the engine's own replay on
+#: seq-20..29, then read against the rule it exercises: A1 (SG, <= 30), B1 (<= 60),
+#: C1 (<= 180), D2 (<= 180), D1 (MULTIPLE, <= 180), C6 (OTHER, <= 180), D12 (<= 360).
+#: Only the explorer's 361-day walk differs by sequence: seq-20 has no investor
+#: route question, seq-21+ names the E28 products. The six `other_purpose` walks
+#: and the two non-meeting `business_activity` walks raise ACTIVITY_BOUNDARY, so
+#: they are engine-supported and funnel-held (see the flag table).
+_T06_VISIT_OUTCOMES: dict[str, tuple[str, tuple[str, ...]]] = {
+    "offshore/tourism/sg/stay_30": ("SUPPORTED_CANDIDATES", ("A1", "B1", "C1")),
+    "offshore/tourism/sg/stay_31": ("SUPPORTED_CANDIDATES", ("B1", "C1")),
+    "offshore/tourism/stay_60": ("SUPPORTED_CANDIDATES", ("B1", "C1")),
+    "offshore/tourism/stay_61": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/tourism/stay_180": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/tourism/stay_181": ("NO_SUPPORTED_PATH", ()),
+    "offshore/tourism/voa_60d/multiple": ("SUPPORTED_CANDIDATES", ("B1", "C1", "D1")),
+    "offshore/tourism/stay_180/multiple": ("SUPPORTED_CANDIDATES", ("C1", "D1")),
+    "offshore/tourism/stay_181/multiple": ("NO_SUPPORTED_PATH", ()),
+    "offshore/business/no_local_compensation/stay_180": ("SUPPORTED_CANDIDATES", ("D2",)),
+    "offshore/business/no_local_compensation/stay_181": ("NO_SUPPORTED_PATH", ()),
+    "offshore/business/no_local_compensation/multiple": ("SUPPORTED_CANDIDATES", ("D1", "D2")),
+    "offshore/business/negotiation/no_local_compensation": ("SUPPORTED_CANDIDATES", ("D2",)),
+    "offshore/business/conference/no_local_compensation": ("SUPPORTED_CANDIDATES", ("D2",)),
+    "offshore/business/training/no_local_compensation": ("SUPPORTED_CANDIDATES", ("D2",)),
+    "offshore/business/other/no_local_compensation": ("SUPPORTED_CANDIDATES", ("D2",)),
+    "offshore/business/exploring/offshore_application/stay_360": ("SUPPORTED_CANDIDATES", ("D12",)),
+    "offshore/business/exploring/offshore_application/stay_361": (
+        "SUPPORTED_CANDIDATES",
+        ("E28B", "E28D", "E28F"),
+    ),
+    "offshore/other/transit/multiple": ("SUPPORTED_CANDIDATES", ("D1",)),
+    "offshore/other/medical/stay_180": ("SUPPORTED_CANDIDATES", ("C6",)),
+    "offshore/other/medical/stay_181": ("NO_SUPPORTED_PATH", ()),
+    "offshore/other/volunteer": ("SUPPORTED_CANDIDATES", ("C6",)),
+    "offshore/other/religious": ("SUPPORTED_CANDIDATES", ("C6",)),
+    "offshore/other/arts_sport": ("SUPPORTED_CANDIDATES", ("C6",)),
+    "offshore/other/journalism": ("SUPPORTED_CANDIDATES", ("C6",)),
+    "offshore/other/crew": ("SUPPORTED_CANDIDATES", ("C6",)),
+    "offshore/other/other": ("SUPPORTED_CANDIDATES", ("C6",)),
+}
+_T06_EXPLORER_361 = "offshore/business/exploring/offshore_application/stay_361"
+_T06_VISIT_OUTCOMES_SEQ20: dict[str, tuple[str, tuple[str, ...]]] = {
+    **_T06_VISIT_OUTCOMES,
+    _T06_EXPLORER_361: ("NO_SUPPORTED_PATH", ()),
+}
+#: The C6 walks and the flagged walks, named once: the flag table, the C6 witness
+#: pin and the funnel reasons below all read them.
+_T06_C6_WALKS = tuple(
+    label for label, (_state, candidates) in _T06_VISIT_OUTCOMES.items() if candidates == ("C6",)
+)
+_T06_FLAGGED_WALKS = (
+    *_T06_C6_WALKS,
+    "offshore/other/medical/stay_181",
+    "offshore/business/training/no_local_compensation",
+    "offshore/business/other/no_local_compensation",
+)
 # The sequences share one corpus, so every one of them pins the 13 PR-11 walks and the 12
 # PR-12 walks; the replay tests
 # `test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence` and
@@ -1348,6 +1405,7 @@ EXPECTED_OUTCOME_BY_SEQUENCE = {
         **_pins,
         **_PR11_RETIREMENT_OUTCOMES,
         **(_PR12_WORK_OUTCOMES_SEQ20 if _seq == 20 else _PR12_WORK_OUTCOMES),
+        **(_T06_VISIT_OUTCOMES_SEQ20 if _seq == 20 else _T06_VISIT_OUTCOMES),
     }
     for _seq, _pins in EXPECTED_OUTCOME_BY_SEQUENCE.items()
 }
@@ -1434,6 +1492,13 @@ _EXPECTED_REASONS_ON_SEQ27: dict[str, ReasonPin] = {
         ("E33A_SPONSOR_NOT_GOVERNMENT", "E33B_SPONSOR_NOT_GOVERNMENT_OR_NONE"),
         (),
     ),
+    # T06 (measured on seq-27): a tourism stay past C1's 180 days names the nationality
+    # cause and, until seq-28 scopes it, AGE_BELOW_55; the business visitor past D2's 180
+    # names AGE_BELOW_55 alone; an OTHER stay past C6's 180 names the bridging cause.
+    "offshore/tourism/stay_181": (("BVK_NATIONALITY_ONLY", "AGE_BELOW_55"), ()),
+    "offshore/tourism/stay_181/multiple": (("BVK_NATIONALITY_ONLY", "AGE_BELOW_55"), ()),
+    "offshore/business/no_local_compensation/stay_181": (("AGE_BELOW_55",), ()),
+    "offshore/other/medical/stay_181": (("BRIDGING_ONSHORE_ONLY",), ()),
 }
 #: seq-28 (E33G Step C, #8300): the business no-path stops naming AGE_BELOW_55
 #: next to BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED (measured from the evaluated
@@ -1445,6 +1510,14 @@ _EXPECTED_REASONS_ON_SEQ28: dict[str, ReasonPin] = {
     "offshore/business": _BUSINESS_NO_PATH_SEQ28,
     "onshore/business": _BUSINESS_NO_PATH_SEQ28,
     _SEQ28_E33G_59999_WALK: (("E33G_INCOME_BELOW_THRESHOLD",), ()),
+    # T06: seq-28 scopes AGE_BELOW_55 to the retirement products, so these three lose it
+    # (the business stay-181 walk is left with the generic operational sentence).
+    "offshore/tourism/stay_181": (("BVK_NATIONALITY_ONLY",), ()),
+    "offshore/tourism/stay_181/multiple": (("BVK_NATIONALITY_ONLY",), ()),
+    "offshore/business/no_local_compensation/stay_181": (
+        ("OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",),
+        (),
+    ),
 }
 #: seq-29: measured (the replay of the 132-walk corpus on the candidate source against the seq-28
 #: table reports no violation), not derived. The five walks that move keep their state (only
@@ -1473,6 +1546,12 @@ FUNNEL_REASON_CHANGES: dict[str, ReasonPin] = {
     "offshore/invest/undecided/currency_still_unsure": _FUNNEL_ACTIVITY_BOUNDARY,
     "offshore/other/no_paid_activity/medical": _FUNNEL_ACTIVITY_BOUNDARY,
     "offshore/tourism/disclosed_criminal": ((), ("DISCLOSED_CRIMINAL_RECORD_REVIEW",)),
+    **dict.fromkeys(_T06_FLAGGED_WALKS, _FUNNEL_ACTIVITY_BOUNDARY),
+    # The one flagged walk already at NO_SUPPORTED_PATH keeps its own cause beside the flag's.
+    "offshore/other/medical/stay_181": (
+        ("BRIDGING_ONSHORE_ONLY", "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH"),
+        (),
+    ),
 }
 FUNNEL_EXPECTED_REASONS: dict[str, ReasonPin] = {**EXPECTED_REASONS, **FUNNEL_REASON_CHANGES}
 
@@ -1569,6 +1648,17 @@ EXPECTED_STATE_CENSUS_BY_SEQUENCE[28] = {
 }
 # seq-29 moves products, never a state: measured again on the candidate replay.
 EXPECTED_STATE_CENSUS_BY_SEQUENCE[29] = dict(EXPECTED_STATE_CENSUS_BY_SEQUENCE[28])
+# T06 adds 27 visit walks to EVERY sequence (derived from `_T06_VISIT_OUTCOMES`, the one
+# table the replay test re-measures; seq-20 differs by the explorer's 361-day walk).
+_T06_STATE_DELTA = Counter(state for state, _candidates in _T06_VISIT_OUTCOMES.values())
+_T06_STATE_DELTA_SEQ20 = Counter(state for state, _c in _T06_VISIT_OUTCOMES_SEQ20.values())
+EXPECTED_STATE_CENSUS_BY_SEQUENCE = {
+    _seq: {
+        _state: _count + (_T06_STATE_DELTA_SEQ20 if _seq == 20 else _T06_STATE_DELTA).get(_state, 0)
+        for _state, _count in _census.items()
+    }
+    for _seq, _census in EXPECTED_STATE_CENSUS_BY_SEQUENCE.items()
+}
 
 #: Which fact blocks how many walks — the §2.2 table, EMPTY between PR-3 and
 #: PR-5. A cure that moves walks between blocking facts instead of removing
@@ -1695,6 +1785,9 @@ EXPECTED_DISCLOSED_REVIEW_FLAGS: dict[str, tuple[str, ...]] = {
     "offshore/work/payer_unsure": ("NOT_CERTAIN",),
     "offshore/work/no_government_collaboration/payer_unsure": ("NOT_CERTAIN",),
     "offshore/work/no_government_collaboration/sponsor_confirmed_unsure": ("NOT_CERTAIN",),
+    # T06: every non-transit `other_purpose` and the two non-meeting business activities
+    # are an undecidable purpose, so the interview raises the activity-boundary flag.
+    **dict.fromkeys(_T06_FLAGGED_WALKS, ("ACTIVITY_BOUNDARY",)),
     "offshore/tourism/disclosed_conditions": (
         "AMBIGUOUS_SPONSOR",
         "BLACKLIST_ENTRY",
@@ -2681,9 +2774,12 @@ def test_corpus_has_the_expected_real_interview_walks(walks: dict[str, dict[str,
 
     PR-12 (2026-10-13): adds 12, corpus 132 -> 144: the E23-family work-tile
     variants (payer, sponsor confirmation and sponsor category answered away
-    from the default; see `_PR12_WORK_OUTCOMES`)."""
+    from the default; see `_PR12_WORK_OUTCOMES`).
 
-    assert len(walks) == 144, f"expected 144 interview walks, found {len(walks)}"
+    T06 (2026-10-14): adds 27, corpus 144 -> 171: the visit stay bounds, entry
+    patterns, business activities and other purposes (see `_T06_VISIT_OUTCOMES`)."""
+
+    assert len(walks) == 171, f"expected 171 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -2905,7 +3001,10 @@ def test_the_census_pins_the_signed_sequence() -> None:
     )
     # The sequences share one corpus, so they must pin the same walks.
     common_labels = (
-        set(_EXPECTED_OUTCOME_ON_SEQ20) | set(_PR11_RETIREMENT_OUTCOMES) | set(_PR12_WORK_OUTCOMES)
+        set(_EXPECTED_OUTCOME_ON_SEQ20)
+        | set(_PR11_RETIREMENT_OUTCOMES)
+        | set(_PR12_WORK_OUTCOMES)
+        | set(_T06_VISIT_OUTCOMES)
     )
     for sequence, pins in EXPECTED_OUTCOME_BY_SEQUENCE.items():
         expected_labels = common_labels | ({_SEQ28_E33G_59999_WALK} if sequence >= 28 else set())
@@ -3057,6 +3156,37 @@ def test_the_e23_work_walks_replay_to_their_pins_on_every_pinned_sequence(
         if state == "NEEDS_INPUT":
             rows = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[sequence][label]
             assert actual["missing_facts"] == [row.fact for row in rows], (sequence, label)
+
+
+@pytest.mark.parametrize(
+    "sequence",
+    [
+        sequence
+        for sequence in sorted(EXPECTED_OUTCOME_BY_SEQUENCE)
+        if (PACKS_DIR / f"rulepack-prod-{sequence:03d}.source.json").is_file()
+    ],
+)
+def test_the_t06_visit_walks_replay_to_their_pins_on_every_pinned_sequence(
+    walks: dict[str, dict[str, Any]], sequence: int
+) -> None:
+    """T06: the 27 visit walks are replayed on each pinned sequence's own source
+    pack (seq-20..29), never trusted from the signed sequence's table alone, and
+    every no-path walk must name its measured cause (seq-27..29 tables; seq-20
+    names the generic sentence)."""
+
+    path = PACKS_DIR / f"rulepack-prod-{sequence:03d}.source.json"
+    replayed = _outcomes_on(walks, _pack_from_source(path))
+    pins = _T06_VISIT_OUTCOMES_SEQ20 if sequence == 20 else _T06_VISIT_OUTCOMES
+    visit = {k: v for k, v in replayed.items() if k in pins}
+    assert len(visit) == 27
+    violations = _outcome_violations(visit, pins)
+    assert not violations, "\n  ".join(violations)
+    reasons = EXPECTED_REASONS_BY_SEQUENCE.get(sequence)
+    for label, (state, _candidates) in pins.items():
+        if state == "NO_SUPPORTED_PATH" and reasons is not None:
+            assert visit[label]["no_path_reason_codes"] == list(reasons[label][0]), (sequence, label)
+        if state == "SUPPORTED_CANDIDATES":
+            assert not visit[label]["no_path_reason_codes"], (sequence, label)
 
 
 #: The three dead ends are NAMED, not just empty: the visitor copy keys off
@@ -3959,13 +4089,20 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
         "offshore/invest/undecided",
         "offshore/invest/undecided/currency_still_unsure",
         "offshore/other/no_paid_activity/medical",
+        # T06: the six `other_purpose` and two `business_activity` walks whose answer is an
+        # undecidable purpose, and the C6 stay-181 walk that is already a no-path.
+        *_T06_FLAGGED_WALKS,
     }
     dead_ended_from_a_supported_or_needs_input_base = {
         label
         for label in disclosure_dead_ended
         if outcomes[label]["state"] in ("SUPPORTED_CANDIDATES", "NEEDS_INPUT")
     }
-    assert dead_ended_from_a_supported_or_needs_input_base == disclosure_dead_ended
+    # A base already at NO_SUPPORTED_PATH keeps its state (the flag's cause is appended), so
+    # only that one T06 walk is outside the supported-base set.
+    assert disclosure_dead_ended - dead_ended_from_a_supported_or_needs_input_base == {
+        "offshore/other/medical/stay_181"
+    }
     assert funnel_census["NO_SUPPORTED_PATH"] == engine_census.get("NO_SUPPORTED_PATH", 0) + len(
         dead_ended_from_a_supported_or_needs_input_base
     )
@@ -4082,7 +4219,7 @@ def test_every_disclosure_flag_reports_the_walks_it_rewrites(
                 )
 
     assert {flag: len(rows) for flag, rows in per_flag.items()} == {
-        "ACTIVITY_BOUNDARY": 6,
+        "ACTIVITY_BOUNDARY": 6 + len(_T06_FLAGGED_WALKS),  # T06: +10 undecidable-purpose walks
         "NOT_CERTAIN": 5,  # PR-12: +3 unsure work-tile walks
         # A4 (mission VISA-ORACLE-DW-20260919): one walk each, the nine
         # conditioning items on `offshore/tourism/disclosed_conditions` plus
@@ -4298,7 +4435,7 @@ def test_the_products_the_applicant_is_never_shown_are_pinned_by_cause(
     (`PRIVACY_HELD_WALKS`) instead of the UnknownFact one."""
 
     assert sorted(set(engine_named) - set(funnel_named)) == ["C6"]
-    assert engine_named["C6"] == ("offshore/other/no_paid_activity/medical",)
+    assert set(engine_named["C6"]) == {"offshore/other/no_paid_activity/medical", *_T06_C6_WALKS}
     assert "C6" not in funnel_named
     assert set(engine_named["E31E"]) == {
         "offshore/family/PARENT/spNat=IT/minor",
