@@ -60,7 +60,7 @@ CS = "scripts/localci/tests/test_cancelled_superseded.py"
 DRIVER, TP = "scripts/localci/steps_driver.py", "scripts/localci/tests/test_tree_pack.py"   # B14
 RUNT_COV = tuple(f"{RUNT}::{t}" for t in ("test_the_matrix_coverage_is_full_by_default_partial_where_declared_and_never_full_when_unreadable",
                                          "test_every_context_result_in_the_status_carries_the_base_matrix_coverage",
-                                         "test_the_real_matrix_declares_e2e_partial_with_its_reason"))
+                                         "test_the_real_matrix_declares_e2e_full_because_its_backend_secrets_are_hermetic_stand_ins"))
 # B5: a red read with a rewritten BASE judge, a skip compared as a skip, and the report's count of skip agreements
 JR, SKC = "scripts/localci/tests/test_judge_rewritten.py", "scripts/localci/tests/test_skip_compare.py"
 REPORT_SKIP = tuple(f"{REPORT}::{t}" for t in (
@@ -397,7 +397,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "enqueue-env-any-value": (PY, "armed_env = os.environ.get(ARM_ENV) == \"1\"", "armed_env = bool(os.environ.get(ARM_ENV))", (TICK,)),
     "enqueue-label-not-an-arm": (PY, 'if not (armed_env and criterion["label_privileged"]) else', "if not armed_env else", (TICK,)),
     "enqueue-label-any-role": (PY, "    if role not in ARM_ROLES:\n", "    if not role:\n", (TICK,)),
-    "enqueue-label-first-actor": (PY, 'actor = ev.get("actor") if ev.get("__typename") == "LabeledEvent" else None', 'actor = actor or ev.get("actor")', (TICK,)),
+    "enqueue-label-first-actor": (PY, '(ev.get("actor"), ev.get("createdAt")) if ev.get("__typename")', '(actor or ev.get("actor"), ev.get("createdAt")) if ev.get("__typename")', (TICK,)),
     "enqueue-blocked-executed-ok": (PY, 'if res.get("mapping") in NON_EXECUTED and res.get("verdict") == "BLOCKED":', 'if res.get("verdict") == "BLOCKED":', (TICK,)),
     "enqueue-check-blocked-only-fail": (PY, 'v not in CHECK_OK}', 'v == "FAIL"}', (TICK,)),
     "enqueue-review-any": (PY, 'None if review in ("QUEUED", "PASS") else', 'None if review != "FAIL" else', (TICK,)),
