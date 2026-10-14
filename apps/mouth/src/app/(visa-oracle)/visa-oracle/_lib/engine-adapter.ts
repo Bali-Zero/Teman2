@@ -244,6 +244,19 @@ export const RETIREMENT_INCOME_THRESHOLD_USD = 3_000;
 export const E33E_DEPOSIT_THRESHOLD_USD = 50_000;
 export const E33G_ANNUAL_INCOME_THRESHOLD_USD = 60_000;
 
+// Visit-visa proof-of-funds minimums (V03, 2026-10-13). The signed pack models
+// NO funds fact (its `el.d1/d2/d12-funds-*` rules test purpose/stay only), so
+// these are not `gte` nodes: they are quoted from the official pages the
+// rules cite, and engine-adapter.test.ts pins each constant to its rule id and
+// to the source record (canonical_url) in the highest signed pack. Official
+// text (imigrasi.go.id, snapshots 2026-10-13T00:07Z under
+// research/visa/2026-10-13-organ-reattest-seq29/text/): D1 `ca5a2ce8-*.txt:86`
+// and D2 `d3ad622e-*.txt:94` "rekening koran 3 bulan terakhir ... minimal
+// USD2000"; D12 `5e64ec6b-*.txt:87` "... minimal USD5000".
+export const D1_PROOF_OF_FUNDS_USD = 2_000;
+export const D2_PROOF_OF_FUNDS_USD = 2_000;
+export const D12_PROOF_OF_FUNDS_USD = 5_000;
+
 // D23 "OPTION B-STUDIO" (2026-09-16): the one review reason code that routes
 // to a self-serve page instead of a person — named here so OutcomeSheet.tsx
 // never types the code or the route a second time.
@@ -429,34 +442,34 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "You will need to provide a travel itinerary with your application.",
     "Anda perlu melampirkan rencana perjalanan pada permohonan Anda.",
   ),
+  // One key serves D1, D2 and D12. The official pages (D1 `ca5a2ce8-*.txt:91-92`,
+  // D2 `d3ad622e-*.txt:99-100`, D12 `5e64ec6b-*.txt:92`): an institution's
+  // letter, invitation or correspondence; D1/D2 ALSO accept a letter from an
+  // Indonesian-citizen spouse or parent (with a family card). D12 does not.
   SUPPORT_LETTER_REQUIRED: text(
-    "You will need a support letter with your application.",
-    "Anda memerlukan surat dukungan pada permohonan Anda.",
+    "You will need a letter, invitation or correspondence from a government agency or private institution explaining its link to you. For the D1 and D2 visit visas, a letter from an Indonesian-citizen spouse or parent also qualifies.",
+    "Anda memerlukan surat keterangan, undangan, atau korespondensi dari instansi pemerintah atau lembaga swasta yang menjelaskan hubungannya dengan Anda. Untuk visa kunjungan D1 dan D2, surat dari suami/istri atau orang tua WNI juga dapat diterima.",
   ),
+  // Shared with E30/E30A/E30B: the official wording is "valid at least 6
+  // months before it expires" (D1 `ca5a2ce8-*.txt:85`), not a check at entry.
   PASSPORT_VALIDITY_6_MONTHS_REQUIRED: text(
-    "Your passport must be valid for at least 6 months on the date you enter.",
-    "Paspor Anda harus berlaku minimal 6 bulan pada tanggal Anda masuk.",
+    "Your passport must have at least 6 months of validity remaining.",
+    "Paspor Anda harus masih berlaku paling singkat 6 bulan.",
   ),
-  // D3c/C-D5 (2026-09-13): no fact in the signed pack models a proof-of-funds
-  // amount at all (`el.d1-funds-usd-2000`/`el.d2-funds-usd-2000`/
-  // `el.e31a-funds-2000`/`el.d12-funds-usd-5000`'s `when` trees test only
-  // purpose/stay-days/entry-pattern — verified, no `gte` node on any funds
-  // fact exists anywhere in the pack). A dollar figure with nothing tying it
-  // to the pack is the same class of risk the pinned Second Home thresholds
-  // guard against, so it is not stated here — same treatment as
-  // `CV_REQUIRED`/`ITINERARY_REQUIRED` above, which never claimed a number
-  // either.
+  // V03 (2026-10-13): the official pages state a funds minimum for D1, D2 and
+  // D12 (see D1_PROOF_OF_FUNDS_USD above); the figure is attributed to the
+  // page, never presented as something the rule tested.
   PROOF_OF_FUNDS_D1: text(
-    "You will need to show proof of funds.",
-    "Anda perlu menunjukkan bukti dana.",
+    `The official page asks for bank statements for the last 3 months of at least ${usd(D1_PROOF_OF_FUNDS_USD, "en-US")} (or the equivalent in another currency).`,
+    `Halaman resmi mensyaratkan rekening koran 3 bulan terakhir sebesar minimal ${usd(D1_PROOF_OF_FUNDS_USD, "id-ID")} (atau setara dalam mata uang lain).`,
   ),
   PROOF_OF_FUNDS_D2: text(
-    "You will need to show proof of funds.",
-    "Anda perlu menunjukkan bukti dana.",
+    `The official page asks for bank statements for the last 3 months of at least ${usd(D2_PROOF_OF_FUNDS_USD, "en-US")} (or the equivalent in another currency).`,
+    `Halaman resmi mensyaratkan rekening koran 3 bulan terakhir sebesar minimal ${usd(D2_PROOF_OF_FUNDS_USD, "id-ID")} (atau setara dalam mata uang lain).`,
   ),
   PROOF_OF_FUNDS_D12: text(
-    "You will need to show proof of funds.",
-    "Anda perlu menunjukkan bukti dana.",
+    `The official page asks for bank statements for the last 3 months of at least ${usd(D12_PROOF_OF_FUNDS_USD, "en-US")} (or the equivalent in another currency).`,
+    `Halaman resmi mensyaratkan rekening koran 3 bulan terakhir sebesar minimal ${usd(D12_PROOF_OF_FUNDS_USD, "id-ID")} (atau setara dalam mata uang lain).`,
   ),
   REQ_FUNDS_2000: text(
     "You will need to show proof of funds.",

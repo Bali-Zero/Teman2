@@ -1,0 +1,50 @@
+gear: 2
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  visa-night family "visit" item V03 (/Users/nuzantara/visa-night/visit/V03.body.md), built on origin/main 6324ac93e9
+  with the seq-29 pack (rulepack-prod-029.signed.json) active.
+mission: >-
+  The Visa Oracle D1/D2/D12 requirement lines say what the official pages say.
+lanes:
+  - lane: v03-d-requirements
+    role: build
+    seat: Claude Sonnet 5.5 implementer, worktree mouth-vn-visit-v03-d-requirements.
+  - lane: v03-ground-truth
+    role: ground_truth
+    seat: >-
+      Saved imigrasi.go.id snapshots research/visa/2026-10-13-organ-reattest-seq29/text/ca5a2ce8-20261013T000756Z.txt
+      (D1: passport :85, funds "minimal USD2000" :86, letters :91-92), d3ad622e-20261013T000757Z.txt (D2: passport :93,
+      funds USD2000 :94, letters :99-100), 5e64ec6b-20261013T000758Z.txt (D12: passport :86, funds "minimal USD5000"
+      :87, institution letter only :92). Source records in rulepack-prod-029.signed.json: ca5a2ce8 (D1), d3ad622e (D2),
+      5e64ec6b (D12). The pack models no funds fact, so the figures are pinned to rule id plus source record plus snapshot.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "0e3263543a5ed7890b6c1cafd9de238a9b59419fef5c72a8ef01ebfac3fecea6" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at merge-base 6324ac93e9 (before the change).
+pii_scan: clean
+bites: >-
+  Consumer: the public Visa Oracle result page (OutcomeSheet reading SUPPORT_REASON_COPY in engine-adapter.ts) and the
+  engine-adapter.test.ts pins in the mouth suite on every PR. Observation, after the mouth deploy is promoted on
+  balizero.com/visa-oracle: business MULTIPLE walk shows D1/D2 funds reason with USD 2,000 (EN) / USD 2.000 (ID);
+  explorer (pre-investment) walk shows the D12 reason with USD 5,000 / USD 5.000. Pre-merge, vitest runs the pins.
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+  paid_api: none
+  note: One implementer session plus one red-team round by codex gpt-5.6-sol (subscription CLI, rollout rollout-2026-10-13T20-07-05-01a13528-be56-7a22-87a7-9c2238f8aa66); no paid per-token API.
+results:
+  - claim: "The whole visa-oracle mouth suite after the change."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 56 passed (56); Tests 1473 passed (1473)"
+    ts: "2026-10-13T12:17:02Z"
+  - claim: "Mutation: D12_PROOF_OF_FUNDS_USD 5_000 -> 2_000, and the D12 snapshot USD5000 -> USD2000."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts'
+    result: "each mutation: 1 failed | 166 passed (167); reverted"
+    ts: "2026-10-13T12:17:02Z"
+decisions:
+  - id: D-funds-attributed
+    decision: "Funds sentences say 'The official page asks for ...' and never claim the rule tested the applicant's funds."
+dissent:
+  - seat: "codex gpt-5.6-sol, rollout rollout-2026-10-13T20-07-05-01a13528-be56-7a22-87a7-9c2238f8aa66 (red team, MEDIUM x3, no HIGH)"
+    objection: "Tests used a blacklist for the passport anchor, did not pin D12-institution-only, and did not read the snapshots they cite."
+    status: CONFIRMED
+    disposition: "CURED in a separate commit: exact-sentence pins, six passport rule ids and three support-letter rule ids asserted, snapshots read with exact URL and VERIFIED status."

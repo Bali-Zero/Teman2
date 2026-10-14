@@ -25,6 +25,9 @@ import {
   C1_MAX_STAY_DAYS,
   C2_MAX_STAY_DAYS,
   C6_MAX_STAY_DAYS,
+  D1_PROOF_OF_FUNDS_USD,
+  D2_PROOF_OF_FUNDS_USD,
+  D12_PROOF_OF_FUNDS_USD,
   E33G_ANNUAL_INCOME_THRESHOLD_USD,
   E33E_DEPOSIT_THRESHOLD_USD,
   RETIREMENT_INCOME_THRESHOLD_USD,
@@ -1808,6 +1811,173 @@ describe("support reasons are sentences, not machine codes", () => {
     }
   });
 
+  // V03: the D1/D2/D12 funds figures are not `gte` nodes (the pack models no
+  // funds fact), so they are pinned to what the pack does carry: the rule id,
+  // its PROOF_OF_FUNDS_* reason code, and a source record whose canonical_url
+  // is the official page the figure is quoted from.
+  it("the D1/D2/D12 proof-of-funds copy states the official-page figure, pinned to its rule and source record, in EN and ID", () => {
+    const pack = highestSequencePack() as unknown as {
+      rules: Array<{
+        rule_id: string;
+        effect: { reason_code?: string };
+        source_refs: string[];
+      }>;
+      source_records: Array<{
+        source_record_id: string;
+        canonical_url: string;
+      }>;
+    };
+    const specs = [
+      {
+        key: "PROOF_OF_FUNDS_D1",
+        rule: "el.d1-funds-usd-2000",
+        page: "/D1",
+        usd: D1_PROOF_OF_FUNDS_USD,
+        en: "USD 2,000",
+        id: "USD 2.000",
+      },
+      {
+        key: "PROOF_OF_FUNDS_D2",
+        rule: "el.d2-funds-usd-2000",
+        page: "/D2",
+        usd: D2_PROOF_OF_FUNDS_USD,
+        en: "USD 2,000",
+        id: "USD 2.000",
+      },
+      {
+        key: "PROOF_OF_FUNDS_D12",
+        rule: "el.d12-funds-usd-5000",
+        page: "/D12",
+        usd: D12_PROOF_OF_FUNDS_USD,
+        en: "USD 5,000",
+        id: "USD 5.000",
+      },
+    ] as const;
+    for (const spec of specs) {
+      const rule = pack.rules.find((r) => r.rule_id === spec.rule);
+      expect(rule, spec.rule).toBeDefined();
+      expect(rule?.effect.reason_code).toBe(spec.key);
+      const urls = (rule?.source_refs ?? []).map(
+        (ref) =>
+          pack.source_records.find((s) => s.source_record_id === ref)
+            ?.canonical_url ?? "",
+      );
+      expect(
+        urls.some((u) => u.endsWith(`/wna/daftar-visa-indonesia${spec.page}`)),
+        `${spec.rule} cites the official ${spec.page} page`,
+      ).toBe(true);
+      const copy = SUPPORT_REASON_COPY[spec.key];
+      expect(copy.en).toContain(spec.en);
+      expect(copy.id).toContain(spec.id);
+      expect(copy.en).toContain("3 months");
+      expect(copy.id).toContain("3 bulan");
+      expect(copy.en).toMatch(/official page/i);
+      // The constant and the sentence agree, and the rule id's own digits
+      // (2000 / 5000) agree with the constant.
+      expect(spec.rule).toContain(String(spec.usd));
+    }
+    expect(SUPPORT_REASON_COPY.PROOF_OF_FUNDS_D12.en).not.toContain("2,000");
+    expect(SUPPORT_REASON_COPY.PROOF_OF_FUNDS_D1.en).not.toContain("5,000");
+    expect(SUPPORT_REASON_COPY.PROOF_OF_FUNDS_D2.id).not.toContain("5.000");
+  });
+
+  it("the shared passport line anchors validity to expiry, not to the date of entry, for D1/D2/D12/E30/E30A/E30B", () => {
+    const pack = highestSequencePack() as unknown as {
+      rules: Array<{ rule_id: string; effect: { reason_code?: string } }>;
+    };
+    for (const ruleId of [
+      "el.d1-passport-validity",
+      "el.d2-passport-validity",
+      "el.d12-passport-validity",
+      "el.e30-passport-validity.e30",
+      "el.e30-passport-validity.e30a",
+      "el.e30-passport-validity.e30b",
+    ]) {
+      expect(
+        pack.rules.find((r) => r.rule_id === ruleId)?.effect.reason_code,
+        ruleId,
+      ).toBe("PASSPORT_VALIDITY_6_MONTHS_REQUIRED");
+    }
+    // Exact pin: any re-anchoring (entry, arrival, border crossing...) is a
+    // change to this sentence and must be a deliberate one.
+    const copy = SUPPORT_REASON_COPY.PASSPORT_VALIDITY_6_MONTHS_REQUIRED;
+    expect(copy.en).toBe(
+      "Your passport must have at least 6 months of validity remaining.",
+    );
+    expect(copy.id).toBe(
+      "Paspor Anda harus masih berlaku paling singkat 6 bulan.",
+    );
+  });
+
+  it("the shared support-letter line is true for D12 (institution only) and D1/D2 (institution or Indonesian spouse/parent)", () => {
+    const pack = highestSequencePack() as unknown as {
+      rules: Array<{ rule_id: string; effect: { reason_code?: string } }>;
+    };
+    for (const ruleId of [
+      "el.d1-support-letter",
+      "el.d2-support-letter",
+      "el.d12-support-letter",
+    ]) {
+      expect(
+        pack.rules.find((r) => r.rule_id === ruleId)?.effect.reason_code,
+        ruleId,
+      ).toBe("SUPPORT_LETTER_REQUIRED");
+    }
+    const copy = SUPPORT_REASON_COPY.SUPPORT_LETTER_REQUIRED;
+    // The spouse/parent route is scoped to D1/D2 in the sentence itself, and
+    // D12 is never named as accepting it.
+    expect(copy.en).toBe(
+      "You will need a letter, invitation or correspondence from a government agency or private institution explaining its link to you. For the D1 and D2 visit visas, a letter from an Indonesian-citizen spouse or parent also qualifies.",
+    );
+    expect(copy.id).toBe(
+      "Anda memerlukan surat keterangan, undangan, atau korespondensi dari instansi pemerintah atau lembaga swasta yang menjelaskan hubungannya dengan Anda. Untuk visa kunjungan D1 dan D2, surat dari suami/istri atau orang tua WNI juga dapat diterima.",
+    );
+    expect(copy.en).not.toMatch(/D12/);
+    expect(copy.id).not.toMatch(/D12/);
+  });
+
+  // The official-page snapshots the funds figures are quoted from. Reading
+  // them here is what makes a wrong figure RED instead of merely consistent
+  // with itself.
+  it("the D1/D2/D12 funds figures match the saved official-page snapshots and their VERIFIED source records", () => {
+    const snapshotsDir = path.resolve(
+      PACKS_DIR,
+      "../../../../../../..",
+      "research/visa/2026-10-13-organ-reattest-seq29/text",
+    );
+    const pack = highestSequencePack() as unknown as {
+      source_records: Array<{
+        source_record_id: string;
+        canonical_url: string;
+        status: string;
+      }>;
+    };
+    const specs = [
+      { id8: "ca5a2ce8", page: "D1", usd: D1_PROOF_OF_FUNDS_USD },
+      { id8: "d3ad622e", page: "D2", usd: D2_PROOF_OF_FUNDS_USD },
+      { id8: "5e64ec6b", page: "D12", usd: D12_PROOF_OF_FUNDS_USD },
+    ];
+    for (const spec of specs) {
+      const record = pack.source_records.find((r) =>
+        r.source_record_id.startsWith(spec.id8),
+      );
+      expect(record?.canonical_url).toBe(
+        `https://www.imigrasi.go.id/wna/daftar-visa-indonesia/${spec.page}`,
+      );
+      expect(record?.status).toBe("VERIFIED");
+      const file = fs
+        .readdirSync(snapshotsDir)
+        .find((name) => name.startsWith(`${spec.id8}-`));
+      expect(file, `snapshot for ${spec.page}`).toBeDefined();
+      const text = fs.readFileSync(path.join(snapshotsDir, file!), "utf-8");
+      expect(text).toMatch(
+        new RegExp(
+          `rekening koran 3 bulan terakhir[^\\n]*minimal USD${spec.usd}\\b`,
+        ),
+      );
+    }
+  });
+
   // Mirror image: these SUPPORT reasons named a dollar figure on `main` with
   // NO backing rule anywhere in the signed pack (verified: no fact for
   // proof-of-funds or living cost exists in ANY rule's `when` tree, and no
@@ -1822,9 +1992,6 @@ describe("support reasons are sentences, not machine codes", () => {
   // applied.
   it("states no figure for SUPPORT reasons the signed pack has no rule to back", () => {
     const NO_BACKING_KEYS = [
-      "PROOF_OF_FUNDS_D1",
-      "PROOF_OF_FUNDS_D2",
-      "PROOF_OF_FUNDS_D12",
       "REQ_FUNDS_2000",
       "LIVING_COST_USD2000",
       "E33G_INCOME_60K_ADVISOR_CHECK",
