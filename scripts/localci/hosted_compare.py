@@ -40,8 +40,6 @@ Exit 0 = compared, complete · 1 = a FALSE_GREEN or name drift · 2 = unusable i
 from __future__ import annotations
 
 import argparse
-import base64
-import importlib.util
 import json
 import re
 import subprocess
@@ -57,7 +55,6 @@ COVERAGES = ("full", "partial")   # anything else a status.json says (or omits) 
 HOSTED_GREEN = frozenset({"success", "skipped", "neutral"})
 HOSTED_RED = frozenset({"failure", "timed_out", "cancelled", "action_required", "startup_failure", "stale", "error"})
 MAX_PAGES = 20
-MATRIX_PATH = "scripts/localci/contexts_matrix.yaml"
 
 EXIT_OK = 0
 EXIT_FOUND = 1
@@ -315,24 +312,42 @@ def _paged(path: str, key: str) -> list:
     raise CompareError(f"gh api {path}: more than {MAX_PAGES} pages of `{key}` — refusing a truncated comparison")
 
 
-def _flip_module():
-    spec = importlib.util.spec_from_file_location("localci_phase_e_flip_hc", Path(__file__).resolve().parent / "phase_e_flip.py")
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = mod
-    spec.loader.exec_module(mod)
-    return mod
+# The flipped state phase_e_flip.py writes, restated here because the tick wrapper extracts only a handful of files into the
+# code dir (localci_merger_tick.sh): importing phase_e_flip.py would raise FileNotFoundError exactly after the flip.
+# tests/test_required_set.py pins every constant and both predicates to phase_e_flip.py's.
+FLIP_RULESET = "merge-queue-main"
+FLIP_RULES = [{"type": "update", "parameters": {"update_allows_fetch_and_merge": False}}]
+FLIP_BYPASS = [{"actor_id": None, "actor_type": "DeployKey", "bypass_mode": "always"}]
+NOT_PROTECTED = "Branch not protected"
+_GLOB = re.compile(r"[*?\[]")
+_CACHE: dict = {}   # per process; keyed by the gh reader too, so a replaced reader never sees another's answers
+
+
+def is_flipped_ruleset(rs, branch: str, default_branch) -> bool:
+    """The flipped ruleset by meaning: enforced, one ``update`` rule allowing no fetch-and-merge, the DeployKey the one bypass actor,
+    always, and the branch included by name and excluded by nothing."""
+    if not isinstance(rs, dict):
+        return False
+    rules, bypass = rs.get("rules") or [], rs.get("bypass_actors") or []
+    ref = (rs.get("conditions") or {}).get("ref_name") or {}
+    names = {f"refs/heads/{branch}", "~ALL", *(["~DEFAULT_BRANCH"] if branch == default_branch else [])}
+    exclude = ref.get("exclude") or []
+    return (rs.get("name") == FLIP_RULESET and rs.get("target") == "branch" and rs.get("enforcement") == "active"
+            and len(rules) == 1 and rules[0].get("type") == "update"
+            and (rules[0].get("parameters") or {}).get("update_allows_fetch_and_merge") is False
+            and len(bypass) == 1 and bypass[0].get("actor_type") == "DeployKey" and bypass[0].get("bypass_mode") == "always"
+            and bool(names & set(ref.get("include") or [])) and not names & set(exclude) and not any(_GLOB.search(x) for x in exclude))
 
 
 def _flipped(repo: str, branch: str) -> bool:
-    """True only when the repository's ``merge-queue-main`` ruleset is the flipped one (phase_e_flip's own ``is_target``), covers the
-    branch and is the only ruleset of that name. Any other state is False; an unreadable one raises."""
-    flip = _flip_module()
+    """True only when the repository has exactly one ``merge-queue-main`` ruleset and it is the flipped one. Any other state is False;
+    an unreadable one raises."""
     named: list = []
     for page in range(1, MAX_PAGES + 1):
         batch = gh_get(f"repos/{repo}/rulesets?per_page=100&page={page}")
         if not isinstance(batch, list):
             raise CompareError("the rulesets list is not a list")
-        named += [r for r in batch if isinstance(r, dict) and r.get("name") == flip.RULESET and r.get("source_type", "Repository") == "Repository"]
+        named += [r for r in batch if isinstance(r, dict) and r.get("name") == FLIP_RULESET and r.get("source_type", "Repository") == "Repository"]
         if len(batch) < 100:
             break
     else:
@@ -341,19 +356,15 @@ def _flipped(repo: str, branch: str) -> bool:
         return False
     rs = gh_get(f"repos/{repo}/rulesets/{named[0]['id']}")
     default = gh_get(f"repos/{repo}").get("default_branch")
-    return (isinstance(rs, dict) and rs.get("target") == "branch" and rs.get("name") == flip.RULESET
-            and flip.is_target(rs) and flip.covers(rs, branch, default))
+    return is_flipped_ruleset(rs, branch, default)
 
 
-def matrix_required(repo: str, branch: str) -> list[dict]:
-    """The required set the BASE matrix declares, read at the BASE ref (the protected branch) and never at a candidate: one
-    ``{context, app_id}`` per context, ``app_id`` from the matrix's ``required_app_id`` (None: any source), as protection lists them."""
+def matrix_required(text) -> list[dict]:
+    """The required set a BASE matrix declares: one ``{context, app_id}`` per context, ``app_id`` from the matrix's ``required_app_id``
+    (None: any source), as protection lists them."""
     import yaml
-    doc = gh_get(f"repos/{repo}/contents/{MATRIX_PATH}?ref={branch}")
-    if not isinstance(doc, dict) or doc.get("encoding") != "base64" or not isinstance(doc.get("content"), str):
-        raise CompareError("the BASE matrix did not come back as base64 content")
     try:
-        contexts = yaml.safe_load(base64.b64decode(doc["content"]))["contexts"]
+        contexts = yaml.safe_load(text)["contexts"]
         checks = [{"context": c["name"], "app_id": c.get("required_app_id")} for c in contexts]
     except (ValueError, KeyError, TypeError, AttributeError, yaml.YAMLError) as exc:
         raise CompareError(f"the BASE matrix is unreadable: {exc}") from exc
@@ -363,20 +374,37 @@ def matrix_required(repo: str, branch: str) -> list[dict]:
     return checks
 
 
-def required_set(repo: str, branch: str) -> tuple[list | None, str]:
+def required_set(repo: str, branch: str, base=None) -> tuple[list | None, str]:
     """(required checks, source): protection when it is there; the BASE matrix only when GitHub says the branch has no protection
-    AND the flipped ruleset is in force. Every other failure raises."""
-    try:
-        protection = gh_get(f"repos/{repo}/branches/{branch}/protection/required_status_checks")
-    except GhError as exc:
-        if "Branch not protected" not in exc.stderr or "(HTTP 404)" not in exc.stderr or not _flipped(repo, branch):
-            raise
-        return matrix_required(repo, branch), "matrix_after_flip"
-    return (protection.get("checks") if isinstance(protection, dict) else None), "protection"
+    AND the flipped ruleset is in force. ``base`` is ``(ref, reader)``: the decision's own BASE ref and a callable returning the matrix
+    text at that ref from the merger's mirror; without it the matrix path fails closed. Every other failure raises. The protection
+    and ruleset reads are made once per (repo, branch) per process, the matrix once per ref."""
+    key = (gh_get, repo, branch)
+    if key not in _CACHE:
+        try:
+            protection = gh_get(f"repos/{repo}/branches/{branch}/protection/required_status_checks")
+            _CACHE[key] = ("protection", protection.get("checks") if isinstance(protection, dict) else None)
+        except GhError as exc:
+            if NOT_PROTECTED not in exc.stderr or "(HTTP 404)" not in exc.stderr or not _flipped(repo, branch):
+                raise
+            _CACHE[key] = ("matrix_after_flip", None)
+    source, checks = _CACHE[key]
+    if source == "protection":
+        return checks, source
+    if not (isinstance(base, tuple) and len(base) == 2 and isinstance(base[0], str) and base[0] and callable(base[1])):
+        raise CompareError("the branch has no protection and this decision names no BASE ref to read the required set from")
+    mkey = (*key, base[0])
+    if mkey not in _CACHE:
+        try:
+            text = base[1]()
+        except Exception as exc:  # noqa: BLE001 — a blob that cannot be read is no required set
+            raise CompareError(f"the BASE matrix at {base[0][:12]} is unreadable: {type(exc).__name__}") from exc
+        _CACHE[mkey] = matrix_required(text)
+    return _CACHE[mkey], source
 
 
-def fetch_live(repo: str, branch: str, sha: str) -> dict:
-    required, source = required_set(repo, branch)
+def fetch_live(repo: str, branch: str, sha: str, base=None) -> dict:
+    required, source = required_set(repo, branch, base)
     return {"repo": repo, "branch": branch, "sha": sha, "required_checks": required, "required_source": source,
             "check_runs": _paged(f"repos/{repo}/commits/{sha}/check-runs", "check_runs"),
             "statuses": _paged(f"repos/{repo}/commits/{sha}/status", "statuses")}

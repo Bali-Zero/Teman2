@@ -387,8 +387,11 @@ it is bound to the same repo, branch and sha. Exit 0 = compared and complete, 1 
 
 After the phase E flip classic protection is gone, and the read answers 404 `Branch not protected`. Only then, and only when the
 repository's `merge-queue-main` ruleset is the flipped one (`phase_e_flip.is_target`, covering the branch, the only one of its
-name), the required set is the BASE `contexts_matrix.yaml` read at the protected branch's ref, never the candidate's: the same 14
-names, the three Actions-app pins from each context's `required_app_id`. Every other error, and a 404 beside any other ruleset
+name; restated in `hosted_compare.py`, because the tick wrapper extracts no `phase_e_flip.py`, and pinned to it by a parity test),
+the required set is the `contexts_matrix.yaml` AT THE DECISION'S OWN BASE sha, read from the merger's mirror (`git show`), never from
+GitHub or the candidate; no base sha or no blob fails closed. It is the same 14 names, the three Actions-app pins from each
+context's `required_app_id`. Protection, ruleset and matrix reads are made once per process (matrix once per base). Adding a required
+context means updating `tests/fixtures/protection_required_checks_*.json` in the same PR. Every other error, and a 404 beside any other ruleset
 state, fails closed as before. `hosted_compare.json`, the journal's `hosted_compare` and the report rows carry
 `required_source: protection|matrix_after_flip`.
 
