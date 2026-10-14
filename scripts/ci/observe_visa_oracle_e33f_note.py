@@ -7,12 +7,15 @@
 # `scripts/ci/bites_parse.py::_guard_observable_script` sets).
 
 The consumer is the public Visa Oracle result page. The observation runs the
-engine-adapter, OutcomeSheet and client-copy test files from `apps/mouth` and
-requires every test in them to pass, and each PR-10 test title to be reported as
+engine-adapter, OutcomeSheet, client-copy and E33E/E33F pack-scan test files
+from `apps/mouth` and requires every test in them to pass, and each PR-10 test title to be reported as
 run: a retirement result with E33F but not E33E carries a candidate-scoped note on
 the E33F card (never in the global conditions) saying what the 5-year E33E would
 also need, in English and Bahasa Indonesia, and no note appears when E33E is also
-a candidate, when E33F is absent, or on dead ends.
+a candidate, when E33F is absent, or on dead ends. It also runs the pack-scan
+guard pinning that the newest signed pack separates E33E from E33F only by the
+deposit trio on retirement eligibility and matches the note's threshold and
+conditions.
 Exit 0 only if Vitest reports each file passed with zero failures.
 """
 
@@ -32,9 +35,10 @@ TEST_FILES = (
     f"{BASE}/_lib/engine-adapter.test.ts",
     f"{BASE}/_components/OutcomeSheet.test.tsx",
     f"{BASE}/_lib/client-copy.test.ts",
+    f"{BASE}/_lib/e33e-e33f-pack-scan.test.ts",
 )
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
-MIN_TESTS = 368
+MIN_TESTS = 380
 # Titles that prove this change; each must be reported as run, so deleting one
 # cannot hide behind the file total staying above MIN_TESTS.
 REQUIRED_TESTS = (
@@ -49,6 +53,18 @@ REQUIRED_TESTS = (
     "attributes retirement_basis in demonstratedReviewCauses only when depositBasisDecisivelyNotChosen holds",
     "does not render the E33F_E33E_DEPOSIT_NOTE sentence when E33E+E33F are both supported",
     "carry no engine jargon or promise words",
+    "innocence: the newest signed pack has no problems (E33E-only rules are the four named, each twin identical)",
+    "the E33E-only rules are exactly the hard filters with identical twins plus el.e33e.retirement and the disputed-band rule",
+    "el.e33e.retirement is the E33F rule plus age 55 or more plus the deposit trio",
+    "the disputed-band rule never excludes and itself requires the deposit trio",
+    "no rule targets both E33E and E33F",
+    "the note's EN and ID figures equal the pack's deposit threshold",
+    "the note names the state-owned bank and the own-name condition in EN and ID",
+    "guilt: a changed deposit threshold fails the scan",
+    "guilt: removing the deposit clause from el.e33e.retirement fails the scan",
+    "guilt: a new E33E-only EXCLUDE rule fails the scan",
+    "guilt: turning the disputed-band rule into an EXCLUDE fails the scan",
+    "guilt: a rule that targets both products fails the scan",
 )
 _SUMMARY = re.compile(r"^\s*Tests\s+(\d+) passed \((\d+)\)\s*$")
 

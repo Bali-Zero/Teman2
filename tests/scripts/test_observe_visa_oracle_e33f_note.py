@@ -44,3 +44,18 @@ def test_missing_tests_names_a_deleted_required_test():
     assert missing_tests(partial) == [REQUIRED_TESTS[0]]
     skipped = full.replace("✓", "-", 1)
     assert missing_tests(skipped) == [REQUIRED_TESTS[0]]
+
+
+def test_pack_scan_guard_is_observed_and_its_titles_are_required():
+    import observe_visa_oracle_e33f_note as obs
+
+    assert any(f.endswith("e33e-e33f-pack-scan.test.ts") for f in obs.TEST_FILES)
+    for title in (
+        "guilt: a changed deposit threshold fails the scan",
+        "guilt: removing the deposit clause from el.e33e.retirement fails the scan",
+        "guilt: a new E33E-only EXCLUDE rule fails the scan",
+        "guilt: turning the disputed-band rule into an EXCLUDE fails the scan",
+        "guilt: a rule that targets both products fails the scan",
+        "no rule targets both E33E and E33F",
+    ):
+        assert title in REQUIRED_TESTS
