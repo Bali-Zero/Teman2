@@ -1,0 +1,116 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero's mandate to close the E33 family end to end, 2026-10-11 E33/retirement audit plan PR-8 -
+  evaluate_path.py hard-coded documentation as UNKNOWN for every product, so an E33-family visitor never
+  saw the documents the official page asks for, although the mouth already renders AVAILABLE lists.
+mission: >-
+  An E33-family visitor sees the official document checklist on the result, and only where a saved
+  official page backs it.
+lanes:
+  - lane: e33-pr8
+    role: build
+    seat: claude-sonnet-5 (Claude Code workflow subagent), worktree backend-rag-vo-e33-pr8-documents-1014 on M5; evidence pack by the same lane.
+  - lane: e33-pr8-ground-truth
+    role: ground_truth
+    seat: >-
+      seven official Imigrasi pages (E33A-E33G) fetched on 2026-10-13T23:11Z with the repo's own reader
+      (portal_read_receipt.read_one); text and sha256 receipts saved under research/visa/2026-10-14-e33-documents/
+      because no earlier ledger (seq25, seq27, seq28, seq29) holds them. Every catalogue item carries a page_quote
+      that is a verbatim fragment of the saved text; the Indonesian wording follows the page, the English is a translation.
+    nb: apps/backend-rag/backend/services/visa_engine/evaluate_path.py
+    query_hash: "91facd66cef420a6b39a8edca64b2e1635ff4b084efcb3a02bf28571516fdadc" # pragma: allowlist secret
+    note: >-
+      query_hash = sha256 of evaluate_path.py at origin/main, the hard-coded UNKNOWN documentation block this change
+      replaces; the catalogue file is new in this diff and has no origin/main hash.
+pii_scan: clean
+council_run: journal.jsonl
+seat_fallback_reason: 'Zero ruling 2026-10-14: agy-gemini-4-argon-high replaces agy-gemini-3.1-pro on the reserve bench (in force on main through #8479: canonical seat agy-gemini-4-argon, with agy-gemini-4-argon-high as an accepted alias). It substitutes the titolare kimi-code/k3, observed dead on 2026-10-14 on M5: kimi -p ... -m kimi-code/k3 exited 1 with "provider.auth_error: 403 You have reached your weekly (7-day) usage limit". The third titolare tp1-qwen3.8-max answered HTTP 403 "Access to model denied" via scripts/tp1_call.py the same day.'
+bites:
+  consumer: >-
+    the documentation block of the Visa Oracle /evaluate result (documentation_for in documentation_catalog.py),
+    which the public result page renders; after the merge (the Fly deploy) the E33F persona probe returns
+    AVAILABLE with the penjamin letter, a headless replay on the live page shows the checklist under E33F, and an E31B persona still shows none.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_engine_documentation_catalog.py
+  expect: "contains:documentation catalogue holds"
+receipts:
+  - claim: The observer passes on the rebased head and accepts only a full pass of at least 20 tests.
+    cmd: python3 scripts/ci/observe_visa_engine_documentation_catalog.py
+    result: "29 passed in 3.35s; documentation catalogue holds"
+    exit: 0
+    ts: "2026-10-14T02:20:00Z"
+    seat: this session
+  - claim: The observer's summary parser rejects skipped, failed, errored, xfailed, deselected and reduced counts.
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_engine_documentation_catalog.py -p no:cacheprovider
+    result: "16 passed in 0.02s"
+    exit: 0
+    ts: "2026-10-14T02:20:00Z"
+    seat: this session
+  - claim: The content_sha256 triage rule and its guilt/innocence cases pass (run apart from the observer test, because the two root test dirs shadow the scripts package when collected in one command).
+    cmd: python3 -m pytest scripts/tests/test_detect_secrets_auto_triage.py -p no:cacheprovider
+    result: "143 passed in 1.68s"
+    exit: 0
+    ts: "2026-10-14T02:20:00Z"
+    seat: this session
+  - claim: The catalogue tests and the post-deploy probe's checker tests pass.
+    cmd: cd apps/backend-rag && python -m pytest backend/tests/services/visa_engine/test_documentation_catalog.py backend/tests/services/visa_engine/test_documentation_live_probe.py -p no:cacheprovider
+    result: "34 passed in 3.26s"
+    exit: 0
+    ts: "2026-10-14T02:25:00Z"
+    seat: this session
+  - claim: The whole visa_engine backend directory shows only the M5 database-baseline failures (31 test_evaluate_endpoint, 6 test_shadow_evidence, 2 test_shadow_match errors; 2 test_visa_engine_retention_fk_registry failures), identical to clean origin/main; every other test passes. CI is the venue for those 41.
+    cmd: cd apps/backend-rag && python -m pytest backend/tests/services/visa_engine -p no:cacheprovider
+    result: "2 failed, 3684 passed, 15 skipped, 3 xfailed, 39 errors in 258.51s"
+    exit: 1
+    ts: "2026-10-14T02:30:00Z"
+    seat: this session
+  - claim: The whole visa-oracle Vitest tree passes on the rebased head (includes the recorded AVAILABLE documents test).
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 59 passed (59), Tests 1528 passed (1528)"
+    exit: 0
+    ts: "2026-10-14T02:33:00Z"
+    seat: this session
+  - claim: The post-deploy live observer was NOT run because nothing is deployed; it runs after the Fly deploy, and a headless replay of the rendered checklist stays a separate prove-live step.
+    cmd: python3 scripts/ci/observe_visa_engine_documentation_catalog_live.py
+    result: "not run (pre-deploy)"
+    exit: 0
+    ts: "2026-10-14T02:33:00Z"
+    seat: this session
+decisions:
+  - id: D-catalogue-source
+    decision: >-
+      The seven pages were fetched in this PR (no ledger holds them) and saved with sha256 receipts; the catalogue is
+      stamped with fetched_at and content_sha256 and a stale guard fails the test run once any fetched_at is older than
+      31536000 s (red on 2027-10-13, by design).
+  - id: D-available-only-in-catalogue
+    decision: >-
+      documentation_for returns AVAILABLE only for catalogue codes; every other product gets the exact old UNKNOWN /
+      DOCUMENTATION_CATALOG_NOT_VERIFIED block, so E31B and the rest are unchanged.
+  - id: D-e33a-included
+    decision: E33A is a pack product because its page lists documents. The post-entry Immigration Guarantee upkeep line is not a document and was removed from E33 and E33E.
+  - id: D-secrets-triage-rule
+    decision: >-
+      A content-keyed rule (42 to 43) in detect_secrets_auto_triage.py lets the pre-commit hook pass the catalogue's
+      64-hex sha256 stamps; it is outside the one concern but was needed to commit, and can be split if the gate asks.
+  - id: D-receipts-file-name
+    decision: >-
+      The saved receipts file is named e33-documents.receipts.jsonl so the seq29 ledger discovery (any *-receipts.jsonl) does not
+      mistake the directory for the newest ledger.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM, scripts/ci/observe_visa_engine_documentation_catalog.py:53 - the observer runs only local pytest and can pass without querying /evaluate, the Fly deploy or the public page; the Bites line needs a synthetic-driver check (E33F AVAILABLE, E31B UNKNOWN) and a headless replay."
+    status: CONFIRMED
+    note: "Cured in 4f1953c5b1: scripts/ci/observe_visa_engine_documentation_catalog_live.py (no arguments, post-deploy) runs documentation_live_probe.py against live /evaluate (E33F AVAILABLE containing surat penjaminan, E31B UNKNOWN, both codes required) and checks the public page returns 200. Not run pre-deploy; the headless replay of the rendered checklist stays a separate prove-live step."
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM, catalogue E33 and E33E - 'The value of the Immigration Guarantee must be kept' is a post-entry obligation, not a document, yet mouth shows it as a selectable REQUIRED document."
+    status: CONFIRMED
+    note: "Cured in 4f1953c5b1: the entry is removed from E33 and E33E; a test forbids 'must be kept' and 'dipertahankan' in the catalogue. The 90-day report entries stay (proof submitted to immigration)."
+  - seat: codex-gpt-5.6-sol
+    objection: "LOW, travel EN drift between products; LOW, no tests for the content_sha256 triage rule."
+    status: CONFIRMED
+    note: "Cured in 4f1953c5b1: E33C/E33F/E33G read 'Travel history (itinerary)' with a test pinning each Indonesian text to its English, and a content_sha256 rule test covers path, key, length, case and ride-alongs."
+  - seat: agy-gemini-4-argon-high
+    objection: "LOW x5 - E33 US$130.000 quote unanchored; E33B 3,5 GPA quote truncated; E33C travel EN; stale guard without a lower bound; stale 'N >= 4' docstring (plus a duplicate of the triage-test finding)."
+    status: CONFIRMED
+    note: "All cured in 4f1953c5b1: both quotes are verbatim substrings of the saved pages and pinned by tests, the stale guard is 0 <= age <= 31536000, the docstring says N >= MIN_TESTS (20). No HIGH or MEDIUM from this seat."
