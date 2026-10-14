@@ -36,6 +36,10 @@ BROCHURE_CURE = (
 
 _SUMMARY = re.compile(r"^=*\s*(\d+) passed in [\d.]+s(?: \(.*\))?\s*=*$")
 _ANSI = re.compile(r"\x1b\[[0-9;]*m")
+_PDF_FAILED = re.compile(
+    r"^FAILED \S+::(test_committed_pdf_anchored_rows_match_canonical_prices|test_guilt_f_pdf_does_not_print_14m_for_e33e)\b",
+    re.M,
+)
 
 
 def summary_ok(line: str | None) -> bool:
@@ -54,7 +58,7 @@ def main() -> int:
     env["_".join(("API", "KEYS"))] = "synthetic-placeholder"
     try:
         result = subprocess.run(
-            [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", TEST_FILE],
+            [sys.executable, "-m", "pytest", "-ra", "-p", "no:cacheprovider", TEST_FILE],
             cwd=BACKEND_DIR,
             env=env,
             check=False,
@@ -71,11 +75,10 @@ def main() -> int:
     summary = line.strip() if line else "no pytest summary"
     if result.returncode != 0 or not summary_ok(line):
         print(f"observe_brochure_price_parity: FAILED ({summary})\n{out[-1500:]}")
-        if (
-            "Missing anchored sequence in PDF" in out
-            or "test_guilt_f_pdf_does_not_print_14m_for_e33e" in out
-            or "generate_brochure.py" in out
-        ):
+        # The cure is claimed only for a PDF-parity failure: a -ra FAILED line naming one of the two
+        # PDF tests, or the literal assertion text. Bare test-name or script-name substrings match on
+        # every run (--durations, --tb=short tracebacks), so they are not used.
+        if _PDF_FAILED.search(out) or "Missing anchored sequence in PDF" in out:
             print(BROCHURE_CURE)
         return result.returncode or 1
     print(f"observe_brochure_price_parity: {summary}")
