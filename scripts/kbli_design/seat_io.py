@@ -99,7 +99,7 @@ def launch(seat: str, prompt: str) -> str:
                                 "-s", "read-only", "--skip-git-repo-check", "-o", str(out), prompt],
                                stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=TIMEOUT_S[seat], env=codex_seat_env())
                 return out.read_text(encoding="utf-8") if out.is_file() else ""
-            return subprocess.run(["agy", "-p", prompt, "--model", "gemini-3.1-pro-high", "--output-format", "text"],
+            return subprocess.run(["agy", "-p", prompt, "--model", "gemini-4-argon-high", "--output-format", "text"],
                                   stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=TIMEOUT_S[seat], cwd=tmp).stdout
     except (OSError, subprocess.SubprocessError):
         return ""

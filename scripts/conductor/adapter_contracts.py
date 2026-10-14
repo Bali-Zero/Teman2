@@ -38,7 +38,7 @@ SURFACES = {
     "qwen_tp1": Surface("qwen3.8-max", True, "medium"),
     "qwen_native": Surface(None),
     "deepseek_tp1": Surface("deepseek-v4-pro", True),
-    "gemini_agy": Surface("gemini-3.1-pro-high", True),
+    "gemini_agy": Surface("gemini-4-argon-high", True),
     "glm_tp1": Surface("glm-5.2", True),
     "local_r1": Surface("deepseek-r1:32b"),
 }
