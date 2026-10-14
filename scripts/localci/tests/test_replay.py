@@ -254,3 +254,22 @@ def test_a_pr_decision_that_crashes_outside_the_gate_errors_is_no_decision_as_be
     with pytest.raises(RuntimeError, match="boom"):
         rw.tick()
     assert rw.decisions() == []
+
+
+# ------------------------------------------------------------------ B3c: phase F's own merges are never replayed
+def test_a_merge_phase_f_made_is_not_replayed_and_an_undecided_queue_merge_still_is(rw):
+    rw.tick()   # the first PR decision: the journal now has a window to replay from
+    own = {"kind": "pushed", "pr": 12, "head_sha": rw.heads[12], "merge_commit": rw.m["m2"], "base_sha": rw.m["m1"]}
+    mg.journal(rw.state, own)
+    mg.journal(rw.state, {**own, "kind": "merged", "pr": 11, "merge_commit": rw.m["m1"]})
+    recs = mg.read_journal(rw.state)
+    a = type("A", (), {"repo": REPO})()
+    assert mg.replay_pending(a, rw.state, rw.state / "repo.git", recs) is None
+
+
+def test_a_pre_flip_queue_merge_not_yet_decided_is_replayed_as_today(rw):
+    rw.tick()
+    mg.journal(rw.state, {"kind": "pushed", "pr": 12, "head_sha": rw.heads[12], "merge_commit": rw.m["m2"], "base_sha": rw.m["m1"]})
+    a = type("A", (), {"repo": REPO})()
+    got = mg.replay_pending(a, rw.state, rw.state / "repo.git", mg.read_journal(rw.state))
+    assert got and got["merge_commit"] == rw.m["m1"]

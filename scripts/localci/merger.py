@@ -824,7 +824,7 @@ _LOGIN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}")
 PR_QUERY = ("query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) {"
             " id state title isDraft isCrossRepository baseRefName headRefOid body isInMergeQueue mergeQueueEntry { id position state }"
             " labels(first: 100) { nodes { name } } timelineItems(itemTypes: [LABELED_EVENT, UNLABELED_EVENT], last: 100) { nodes {"
-            " __typename ... on LabeledEvent { label { name } actor { __typename login } } ... on UnlabeledEvent { label { name } } } } } } }")
+            " __typename ... on LabeledEvent { createdAt label { name } actor { __typename login } } ... on UnlabeledEvent { label { name } } } } } } }")
 
 
 def gh_graphql(query: str, **variables) -> dict:
@@ -856,16 +856,36 @@ def label_arm(repo: str, p: dict) -> tuple[str | None, str | None]:
     """The label half of the arm: ARM_LABEL on the PR, applied last by a user whose role on the repo is admin or maintain."""
     if ARM_LABEL not in {lb.get("name") for lb in (p.get("labels") or {}).get("nodes") or [] if isinstance(lb, dict)}:
         return f"label {ARM_LABEL} absent", None
-    actor = None
+    actor, labelled_at = None, None
     for ev in (p.get("timelineItems") or {}).get("nodes") or []:
         if isinstance(ev, dict) and (ev.get("label") or {}).get("name") == ARM_LABEL:
-            actor = ev.get("actor") if ev.get("__typename") == "LabeledEvent" else None
+            actor, labelled_at = (ev.get("actor"), ev.get("createdAt")) if ev.get("__typename") == "LabeledEvent" else (None, None)
     login = actor.get("login") if isinstance(actor, dict) and actor.get("__typename") == "User" else None
     if not isinstance(login, str) or not _LOGIN_RE.fullmatch(login):
         return f"{ARM_LABEL} was not applied last by a user account (actor {actor})", None
     perm = hc.gh_get(f"repos/{repo}/collaborators/{login}/permission")
     role = perm.get("role_name") if isinstance(perm, dict) else None
-    return (None if role in ARM_ROLES else f"{ARM_LABEL} applied by {login}, whose role is {role!r}, not admin or maintain"), login
+    if role not in ARM_ROLES:
+        return f"{ARM_LABEL} applied by {login}, whose role is {role!r}, not admin or maintain", login
+    return label_postdates_head(repo, p.get("headRefOid"), labelled_at), login
+
+
+def label_postdates_head(repo: str, head, labelled_at) -> str | None:
+    """B2a: the label approves the head only if GitHub stamped it no earlier than it stamped the head's first check suite (the push
+    receipt, server time): a push after the label is a head nobody approved. Commit dates are the client's and never read."""
+    if not (is_sha(head) and is_ts(labelled_at)):
+        return f"{ARM_LABEL} event time or PR head unreadable ({labelled_at!r}, {head!r}): the label cannot be shown to postdate the head"
+    try:
+        doc = hc.gh_get(f"repos/{repo}/commits/{head}/check-suites?per_page=100")
+        suites = doc.get("check_suites") if isinstance(doc, dict) else None
+        stamps = [x.get("created_at") for x in suites] if isinstance(suites, list) and suites and doc.get("total_count") == len(suites) else None
+        if not stamps or not all(is_ts(x) for x in stamps):
+            raise ValueError("no complete, timestamped check-suites list")
+    except Exception as exc:  # noqa: BLE001 — the push receipt that cannot be read cannot be compared: the label does not count
+        return f"check suites of {str(head)[:12]} unreadable ({type(exc).__name__}): the label cannot be shown to postdate the head"
+    if _epoch(labelled_at) < min(_epoch(x) for x in stamps):
+        return f"{ARM_LABEL} predates the head {str(head)[:12]} (labelled {labelled_at}, pushed {min(stamps)}): a push after the label needs a re-label"
+    return None
 
 
 def pr_side(a, state: Path, n: int, head: str, why: dict) -> dict:
@@ -1149,8 +1169,8 @@ def phase_f_arming(a, state: Path, repo_dir: Path, enq: dict, line: dict, base: 
                 why.append("the PR is a draft now")
             if pull.get("baseRefName") != a.base:
                 why.append(f"PR base {pull.get('baseRefName')!r}, not {a.base!r}")
-            if ARM_LABEL not in {lb.get("name") for lb in (pull.get("labels") or {}).get("nodes") or [] if isinstance(lb, dict)}:
-                why.append(f"label {ARM_LABEL} absent at the moment of merging")
+            if reason := label_arm(a.repo, pull)[0]:   # B2b: the label AND its actor, as of now: the slow READY read left a window to remove and re-add it
+                why.append(f"{reason} at the moment of merging")
         except Stopped:
             raise
         except Exception as exc:  # noqa: BLE001
@@ -1365,7 +1385,8 @@ def replay_pending(a, state: Path, repo_dir: Path, recs: list[dict]) -> dict | N
     if not firsts:
         return None
     errors = Counter(r.get("merge_commit") for r in recs if r.get("replay") and r.get("kind") == "decision" and r.get("overall") == "ERROR")
-    done = {r.get("merge_commit") for r in recs if (r.get("replay") and r.get("kind") == "decision" and r.get("overall") != "ERROR")
+    own = {r.get("merge_commit") for r in recs if r.get("kind") in ("merged", "pushed")}   # B3c: phase F's own merges are not GitHub's to judge twice
+    done = own | {r.get("merge_commit") for r in recs if (r.get("replay") and r.get("kind") == "decision" and r.get("overall") != "ERROR")
             or (r.get("kind") == "skipped" and r.get("why") == "replay_unmapped")} | {m for m, k in errors.items() if k >= 2}
     try:
         log = git(repo_dir, "log", "--first-parent", "--format=%H%x00%P%x00%s", f"--after={min(firsts)}", "refs/merger/base").stdout.splitlines()
