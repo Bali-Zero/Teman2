@@ -40,3 +40,8 @@ def test_missing_tests_names_absent_and_skipped_titles():
     assert missing_tests(ok) == []
     assert missing_tests(ok.replace("✓", "-")) == list(REQUIRED_TESTS)
     assert missing_tests("") == list(REQUIRED_TESTS)
+
+
+def test_required_tests_pin_the_e33_no_path_and_e33g_titles():
+    assert "E33-family no-path sentences restate the signed product record" in REQUIRED_TESTS
+    assert "states the E33G remote-work support threshold in both languages" in REQUIRED_TESTS

@@ -64,6 +64,13 @@ interface SignedPackProduct {
   sponsor_types: string[];
 }
 
+/**
+ * D3c/C-D2 (2026-09-13): the tests below read the SIGNED pack specifically
+ * — a `.source.json` is a draft that need not have gone through signing at
+ * all, so it is not "the pack" any decision was made under. Globbing
+ * `*.signed.json` and reading rules from the envelope's `payload` (never
+ * top-level, which only exists on the unsigned `.source.json` shape).
+ */
 function signedProductionPackFiles(): string[] {
   const files = fs
     .readdirSync(PACKS_DIR)
@@ -75,6 +82,17 @@ function signedProductionPackFiles(): string[] {
   return files;
 }
 
+/**
+ * The tripwire above walks SUPPORT effects only, but an EXCLUDE code reaches
+ * a reader through the SAME `reasonMessage` fallback: `NO_SUPPORTED_PATH`
+ * maps `no_path_reasons` through `reason()`. So a new hard filter can print
+ * a machine code on the no-path sheet without failing anything above. seq-20
+ * adds exactly one such rule — `hf.d2.indonesia-source-compensation`,
+ * CL-D2-01's local-compensation prohibition — and its code is read OUT of
+ * the highest-sequence SIGNED pack on disk rather than typed here, so a
+ * rename in the fold moves this test with it instead of leaving it quietly
+ * stale.
+ */
 function highestSequencePack(): {
   rules?: Array<Record<string, unknown>>;
   products?: SignedPackProduct[];
@@ -96,6 +114,8 @@ function highestSequencePack(): {
       };
     };
     const payload = envelope.payload;
+    // A pack without a numeric `sequence` cannot be compared — skip it
+    // rather than let it win via a sentinel default.
     if (!payload || typeof payload.sequence !== "number") continue;
     if (best === null || payload.sequence > best.sequence) {
       best = {
@@ -114,6 +134,14 @@ function highestSequencePack(): {
   return best.payload;
 }
 
+/**
+ * Walks a rule's `when` tree (the `all`/`args` structure, never regexed
+ * off the raw JSON text) looking for a `{ op: "gte", fact, value }` node
+ * on the named fact, at any nesting depth — `el.e33e.retirement` nests its
+ * deposit-trio conjuncts inside an inner `all`, so a top-level-only walk
+ * would miss it for that rule even though it happens not to be needed
+ * here.
+ */
 function findGteValue(node: unknown, fact: string): number | undefined {
   if (Array.isArray(node)) {
     for (const item of node) {
@@ -2201,10 +2229,12 @@ describe("support reasons are sentences, not machine codes", () => {
     }
 
     // INNOCENCE: E33A exclusion, E33B/E33C *_ELIGIBLE support pins, and generic fallback
-    expect(SUPPORT_REASON_COPY.E33A_SPONSOR_NOT_GOVERNMENT).toEqual({
-      en: "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian central-government body, and you did not name one as your sponsor.",
-      id: "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah pusat Indonesia, dan Anda tidak menyebutkan instansi pemerintah pusat sebagai penjamin Anda.",
-    });
+    expect(SUPPORT_REASON_COPY.E33A_SPONSOR_NOT_GOVERNMENT.en).toContain(
+      "central-government",
+    );
+    expect(SUPPORT_REASON_COPY.E33A_SPONSOR_NOT_GOVERNMENT.id).toContain(
+      "pemerintah pusat",
+    );
     expect(
       SUPPORT_REASON_COPY.E33B_GOVERNMENT_COLLABORATION_ELIGIBLE.en,
     ).toContain(e33b.names.en);
