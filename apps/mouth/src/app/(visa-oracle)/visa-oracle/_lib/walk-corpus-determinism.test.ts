@@ -25,7 +25,13 @@ import { join } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { writeWalkCorpus } from "../../../../../scripts/visa-oracle/generate-walk-corpus";
+import { QUESTIONS } from "./tree";
+
+import {
+  enumerateScenarios,
+  runWalk,
+  writeWalkCorpus,
+} from "../../../../../scripts/visa-oracle/generate-walk-corpus";
 import { DEFAULT_OUT_DIR } from "../../../../../scripts/visa-oracle/generate-walk-corpus.cli";
 
 /** The corpus size as committed. A PR that adds an interview branch — or, as
@@ -190,4 +196,41 @@ describe("interview-walk corpus is regenerable byte-for-byte", () => {
       expect(fromGenerator.equals(fromRepo)).toBe(true);
     },
   );
+});
+
+/**
+ * T06: `business_activity` and `other_purpose` are context questions, so their
+ * options share the wire facts and the per-option walks differ by label only.
+ * Byte-identity cannot tell a dropped or duplicated option from a kept one, so
+ * this binds the corpus to the OPTION LIST of the real tree: every key must be
+ * the answer of at least one walk (the default first option included).
+ */
+describe("every business_activity and other_purpose option is some walk's answer", () => {
+  const answered = (
+    question: string,
+    keep: (overrides: Record<string, string>) => boolean,
+  ): Set<string> =>
+    new Set(
+      enumerateScenarios()
+        .filter((scenario) => keep(scenario.overrides))
+        .map((scenario) => runWalk(scenario.overrides).facts[question]),
+    );
+
+  it("business_activity", () => {
+    const keys = QUESTIONS.business_activity.options.map((o) => o.key);
+    const seen = answered(
+      "business_activity",
+      (o) => o.category === "business",
+    );
+    expect(keys.filter((key) => !seen.has(key))).toEqual([]);
+  });
+
+  it("other_purpose, on the unpaid branch where it decides the purpose", () => {
+    const keys = QUESTIONS.other_purpose.options.map((o) => o.key);
+    const seen = answered(
+      "other_purpose",
+      (o) => o.category === "other" && o.other_paid_activity === "no",
+    );
+    expect(keys.filter((key) => !seen.has(key))).toEqual([]);
+  });
 });

@@ -1380,6 +1380,27 @@ _T06_VISIT_OUTCOMES: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/other/other": ("SUPPORTED_CANDIDATES", ("C6",)),
 }
 _T06_EXPLORER_361 = "offshore/business/exploring/offshore_application/stay_361"
+_T06_EXPLORER_361_SEQ20_REASONS = ("E28A_PAID_CAPITAL_BELOW_MIN", "E28A_TOTAL_INVESTMENT_BELOW_MIN")
+#: The stay and nationality each boundary walk is NAMED for, read back from the
+#: committed fixture: a regenerated corpus that moved a witness off its bound
+#: (30 -> 29, 61 -> 121) keeps every outcome pin green, so the bound is pinned too.
+_T06_BOUNDS: dict[str, tuple[int, tuple[str, ...]]] = {
+    "offshore/tourism/sg/stay_30": (30, ("SG",)),
+    "offshore/tourism/sg/stay_31": (31, ("SG",)),
+    "offshore/tourism/stay_60": (60, ("IT",)),
+    "offshore/tourism/stay_61": (61, ("IT",)),
+    "offshore/tourism/stay_180": (180, ("IT",)),
+    "offshore/tourism/stay_181": (181, ("IT",)),
+    "offshore/tourism/voa_60d/multiple": (45, ("IT",)),
+    "offshore/tourism/stay_180/multiple": (180, ("IT",)),
+    "offshore/tourism/stay_181/multiple": (181, ("IT",)),
+    "offshore/business/no_local_compensation/stay_180": (180, ("IT",)),
+    "offshore/business/no_local_compensation/stay_181": (181, ("IT",)),
+    "offshore/business/exploring/offshore_application/stay_360": (360, ("IT",)),
+    "offshore/business/exploring/offshore_application/stay_361": (361, ("IT",)),
+    "offshore/other/medical/stay_180": (180, ("IT",)),
+    "offshore/other/medical/stay_181": (181, ("IT",)),
+}
 _T06_VISIT_OUTCOMES_SEQ20: dict[str, tuple[str, tuple[str, ...]]] = {
     **_T06_VISIT_OUTCOMES,
     _T06_EXPLORER_361: ("NO_SUPPORTED_PATH", ()),
@@ -3158,6 +3179,27 @@ def test_the_e23_work_walks_replay_to_their_pins_on_every_pinned_sequence(
             assert actual["missing_facts"] == [row.fact for row in rows], (sequence, label)
 
 
+def test_the_t06_boundary_walks_sit_on_the_bound_they_are_named_for(
+    walks: dict[str, dict[str, Any]],
+) -> None:
+    """T06: every boundary walk carries the exact stay and nationality of its
+    name, and the `MULTIPLE` walks carry the entry pattern (the fixtures hold the
+    wire facts, so the bound is read from the corpus, never from the label)."""
+
+    assert set(_T06_BOUNDS) <= set(walks)
+    for label, (stay, nationalities) in _T06_BOUNDS.items():
+        facts = walks[label]["overrides"]
+        assert facts["intent.stay_days"] == {"status": "KNOWN", "value": stay}, label
+        assert facts["person.nationalities"]["value"] == list(nationalities), label
+    for label in walks:
+        if label.endswith("/multiple") and label in _T06_VISIT_OUTCOMES:
+            assert walks[label]["overrides"]["intent.entry_pattern"]["value"] == "MULTIPLE", label
+    assert (
+        walks["offshore/other/transit/multiple"]["overrides"]["intent.entry_pattern"]["value"]
+        == "MULTIPLE"
+    )
+
+
 @pytest.mark.parametrize(
     "sequence",
     [
@@ -3171,8 +3213,9 @@ def test_the_t06_visit_walks_replay_to_their_pins_on_every_pinned_sequence(
 ) -> None:
     """T06: the 27 visit walks are replayed on each pinned sequence's own source
     pack (seq-20..29), never trusted from the signed sequence's table alone, and
-    every no-path walk must name its measured cause (seq-27..29 tables; seq-20
-    names the generic sentence)."""
+    every no-path walk must name its measured cause on EVERY sequence: seq-20..27
+    share the seq-27 table (measured, not assumed), seq-28..29 their own, and the
+    stay-361 explorer on seq-20 names the two E28A capital causes."""
 
     path = PACKS_DIR / f"rulepack-prod-{sequence:03d}.source.json"
     replayed = _outcomes_on(walks, _pack_from_source(path))
@@ -3181,10 +3224,15 @@ def test_the_t06_visit_walks_replay_to_their_pins_on_every_pinned_sequence(
     assert len(visit) == 27
     violations = _outcome_violations(visit, pins)
     assert not violations, "\n  ".join(violations)
-    reasons = EXPECTED_REASONS_BY_SEQUENCE.get(sequence)
+    reasons = EXPECTED_REASONS_BY_SEQUENCE[28 if sequence >= 28 else 27]
     for label, (state, _candidates) in pins.items():
-        if state == "NO_SUPPORTED_PATH" and reasons is not None:
-            assert visit[label]["no_path_reason_codes"] == list(reasons[label][0]), (sequence, label)
+        if state == "NO_SUPPORTED_PATH":
+            expected = (
+                list(_T06_EXPLORER_361_SEQ20_REASONS)
+                if sequence == 20 and label == _T06_EXPLORER_361
+                else list(reasons[label][0])
+            )
+            assert visit[label]["no_path_reason_codes"] == expected, (sequence, label)
         if state == "SUPPORTED_CANDIDATES":
             assert not visit[label]["no_path_reason_codes"], (sequence, label)
 
