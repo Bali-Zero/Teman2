@@ -1,0 +1,22 @@
+task_id: infra-localci-scripts-impacted-env-1014
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Eight LocalCI FAIL decisions in Pro's journal (2026-10-09 to 10-14) came from the non-required check
+  tests.scripts_impacted, and every one was the sandbox, not the candidate: the container had no .git (git
+  rev-parse and ls-files exit 128, which also turns test_door_canon_parity's case-insensitive-volume probe red),
+  pytest's parent was the container init (test_n7_launcher_from_ppid reads launcher=launchd), and the image default
+  interpreter is 3.12 where hosted's scripts-tests-sweep runs 3.11 (test_t9d deep-object-recursion). The candidate
+  pytest leg now runs the BASE-built wrapper scripts/localci/pytest_indexed.py (python -I, shipped beside the BASE
+  steps driver, never the candidate's copy): it indexes the tree as a commit (B14 tree pack and BASE history; a BASE
+  that cannot be rebuilt is indexed alone, as hosted's depth-1 checkout is, and the log says so) and runs pytest as
+  its child on the image's 3.11 with that interpreter first on PATH (the log says so when the image has none). The
+  exit code passes through unchanged. No check is excluded or weakened. Live on Pro against refs/merger/base: the
+  BASE runner 14 failed, this one 223 passed (1 skipped, as before). No failure was a real red.
+residuals:
+  - The container still lacks pytest-asyncio, pytest-mock and fakeredis that hosted's sweep installs; no recorded
+    failure came from that.
+  - HEAD~1 and origin/main exist in the sandbox when BASE history is rebuilt; hosted's depth-1 checkout has neither.
+    A test that asserted their absence would be a hosted-only quirk; none is known.
+  - The ppid-is-not-1 property is proved locally only as ppid > 1 (the wrapper), and live by the Pro run.

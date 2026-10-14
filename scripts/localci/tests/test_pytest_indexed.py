@@ -83,3 +83,79 @@ def test_the_candidate_pytest_leg_ships_the_wrapper_runs_hosteds_python_and_the_
     assert cfg["root"] == "/w" and cfg["history"]["added"] == ["new.py"] and cfg["tree_pack"]["tree"] == "t" * 40
     assert seen["extra"]["cfg/steps_driver.py"] == runner.STEPS_DRIVER.read_bytes() and seen["extra"]["cfg/pytest_indexed.py"] == runner.PYTEST_INDEXED.read_bytes()
     assert seen["env"]["PYTHONPATH"] == "/w"
+
+
+def _leg(tmp_path, monkeypatch, *, pythons=None, history=None, wt_files=None, modules=("scripts/tests/test_a.py", "scripts/tests/test_b.py")):
+    """Drive the candidate pytest leg to the container call and hand back what it would ship."""
+    seen = {}
+    monkeypatch.setattr(runner, "history_delta", lambda wt, base, cand: {"added": [], "base": []} if history is None else history)
+    monkeypatch.setattr(runner, "tree_pack_ship_safe", lambda run_dir, plan: (None, {}, None))
+    monkeypatch.setattr(runner, "execute_contained", lambda *a, **k: seen.update(inner=a[4], extra=a[6], env=a[7]) or (None, "stopped by the test"))
+    wt = tmp_path / "wt"
+    wt.mkdir(exist_ok=True)
+    for rel, body in (wt_files or {}).items():
+        (wt / rel).parent.mkdir(parents=True, exist_ok=True)
+        (wt / rel).write_text(body)
+    iso = {"pythons": {"3.11.17": "/opt/py311/bin"} if pythons is None else pythons, "docker": "docker", "user": "1:1", "image_id": "sha256:" + "a" * 64}
+    spec = {"kind": "pytest", "cwd": str(wt), "modules": list(modules), "isolation": iso}
+    plan = {"worktree": str(wt), "base_sha": "b" * 40, "candidate_sha": "c" * 40, "run_id": "r"}
+    out = runner._execute_candidate_contained("tests.scripts_impacted", spec, tmp_path, plan, 60, tmp_path / "log", tmp_path / "junit.xml")
+    seen["out"], seen["log"] = out, (tmp_path / "log").read_text()
+    return seen
+
+
+def test_the_full_argv_carries_every_module_in_order_and_nothing_else(tmp_path, monkeypatch):
+    seen = _leg(tmp_path, monkeypatch)
+    cfg = json.loads(seen["extra"]["cfg/pytest_indexed.json"])
+    assert cfg["argv"] == ["/opt/py311/bin/python3", "-m", "pytest", "-p", "no:cacheprovider", "-q", "--junitxml=/out/junit.xml",
+                           "scripts/tests/test_a.py", "scripts/tests/test_b.py"]
+    assert cfg["path_prefix"] == "/opt/py311/bin"
+
+
+def test_the_wrapper_shipped_is_the_base_runners_even_when_the_candidate_tree_carries_its_own(tmp_path, monkeypatch):
+    seen = _leg(tmp_path, monkeypatch, wt_files={"scripts/localci/pytest_indexed.py": "raise SystemExit(0)  # the candidate's own\n",
+                                                 "scripts/localci/steps_driver.py": "# the candidate's own\n"})
+    assert seen["extra"]["cfg/pytest_indexed.py"] == runner.PYTEST_INDEXED.read_bytes() and b"candidate's own" not in seen["extra"]["cfg/pytest_indexed.py"]
+    assert seen["extra"]["cfg/steps_driver.py"] == runner.STEPS_DRIVER.read_bytes()
+
+
+def _run_wrapper(tmp_path, argv, **extra):
+    tree = tmp_path / "w"
+    tree.mkdir(exist_ok=True)
+    (tree / "marker.txt").write_text("x\n")
+    cfg = _cfg_dir(tmp_path) if not (tmp_path / "cfg").exists() else tmp_path / "cfg"
+    (cfg / "pytest_indexed.json").write_text(json.dumps({"root": str(tree), "history": None, "argv": argv, **extra}))
+    return subprocess.run([sys.executable, "-I", str(cfg / "pytest_indexed.py"), str(cfg / "pytest_indexed.json")], capture_output=True, text=True,
+                          env={"PATH": os.environ["PATH"], "HOME": str(tmp_path), "PYTHONDONTWRITEBYTECODE": "1"})
+
+
+def test_pytests_exit_code_is_the_containers_exit_code_unchanged(tmp_path):
+    for rc in (0, 1, 2, 5):
+        assert _run_wrapper(tmp_path, [sys.executable, "-c", f"raise SystemExit({rc})"]).returncode == rc
+
+
+def test_the_images_311_comes_first_on_the_childs_path(tmp_path):
+    fake = tmp_path / "py311bin"
+    fake.mkdir()
+    (fake / "python3").write_text("#!/bin/sh\necho py311\n")
+    (fake / "python3").chmod(0o755)
+    res = _run_wrapper(tmp_path, [sys.executable, "-c", "import shutil; print(shutil.which('python3'))"], path_prefix=str(fake))
+    assert res.stdout.strip() == str(fake / "python3"), res.stdout + res.stderr
+    res = _run_wrapper(tmp_path, [sys.executable, "-c", "import shutil; print(shutil.which('python3'))"])
+    assert res.stdout.strip() != str(fake / "python3")
+
+
+def test_a_base_that_cannot_be_rebuilt_is_indexed_alone_not_an_error_and_the_log_says_so(tmp_path, monkeypatch):
+    seen = _leg(tmp_path, monkeypatch, history="more than 3000 paths changed")
+    assert json.loads(seen["extra"]["cfg/pytest_indexed.json"])["history"] is None
+    assert seen["out"]["status"] == "ERROR" and "stopped by the test" in seen["out"]["reason"]   # reached the container, the test's own stop
+    assert "# history: BASE not rebuilt" in seen["log"] and "more than 3000 paths" in seen["log"]
+
+
+def test_an_image_without_a_311_says_so_in_the_log_and_one_with_it_says_nothing(tmp_path, monkeypatch):
+    seen = _leg(tmp_path, monkeypatch, pythons={"3.12.1": "/x/bin"})
+    assert json.loads(seen["extra"]["cfg/pytest_indexed.json"])["argv"][0] == "python" and "path_prefix" not in json.loads(seen["extra"]["cfg/pytest_indexed.json"])
+    assert "# python: the image carries no 3.11 interpreter" in seen["log"]
+    other = tmp_path / "other"
+    other.mkdir()
+    assert "# python:" not in _leg(other, monkeypatch)["log"]

@@ -2155,17 +2155,24 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
     if kind == "pytest":
         if not spec.get("modules"):
             return {"status": "ERROR", "reason": "zero test modules selected — missing evidence is not PASS", "rc": None, "counts": {"collected": 0, "executed": 0}}
-        argv = [hosted_python(spec["isolation"]), "-m", "pytest", "-p", "no:cacheprovider", "-q", "--junitxml=/out/junit.xml", *spec["modules"]]
+        py = hosted_python(spec["isolation"])
+        notes = []
+        if py == "python":
+            notes.append(f"# python: the image carries no {HOSTED_SCRIPTS_PYTHON} interpreter — pytest runs on the image default, which is not hosted's\n")
+        argv = [py, "-m", "pytest", "-p", "no:cacheprovider", "-q", "--junitxml=/out/junit.xml", *spec["modules"]]
         env["PYTHONPATH"] = workdir
         hist = history_delta(Path(plan["worktree"]), plan["base_sha"], plan["candidate_sha"])   # hosted checks the tree out as a repository: so does the sandbox
-        if isinstance(hist, str):
-            return {"status": "ERROR", "reason": f"the sandbox cannot rebuild BASE as a commit: {hist}", "rc": None, "counts": None}
+        if isinstance(hist, str):   # hosted's checkout is depth 1: the indexed tree alone is what it has, so a BASE that cannot be rebuilt is no verdict-changer
+            notes.append(f"# history: BASE not rebuilt as a commit ({hist[:160]}) — the tree is indexed alone, as hosted's depth-1 checkout is\n")
+            hist = None
         extra["cfg/steps_driver.py"] = STEPS_DRIVER.read_bytes()
         extra["cfg/pytest_indexed.py"] = PYTEST_INDEXED.read_bytes()
-        for (rel, _mode, oid), blob in zip(hist["base"], read_blobs(Path(plan["worktree"]), [o for _, _, o in hist["base"]])):
+        for (rel, _mode, oid), blob in zip((hist or {"base": []})["base"], read_blobs(Path(plan["worktree"]), [o for _, _, o in (hist or {"base": []})["base"]])):
             extra[f"cfg/base/{rel}"] = blob
         tp, files, pack_note = tree_pack_ship_safe(run_dir, plan)
-        extra["cfg/pytest_indexed.json"] = json.dumps({"root": workdir, "history": hist, "argv": argv, **({"tree_pack": tp} if tp else {})}).encode()
+        pack_note = "".join(notes) + (pack_note or "")
+        extra["cfg/pytest_indexed.json"] = json.dumps({"root": workdir, "history": hist, "argv": argv, **({"path_prefix": str(Path(py).parent)} if py != "python" else {}),
+                                                       **({"tree_pack": tp} if tp else {})}).encode()
         inner = ["python", "-I", "/cfg/pytest_indexed.py", "/cfg/pytest_indexed.json"]
     elif kind == "contained_steps":
         drv = STEPS_DRIVER.read_bytes()
