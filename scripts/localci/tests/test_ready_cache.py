@@ -345,3 +345,105 @@ def test_a_torn_journal_line_refuses_to_arm_even_with_a_fresh_true_cache(fw, mon
         fh.write("{torn\n")
     assert fw.tick() == 0
     assert any(x.startswith("READY unreadable: decisions.jsonl line") for x in fw.wm()["phase_f"]["why"]) and "pushed" not in live_kinds(fw)
+
+
+# ------------------------------------------------------------------ C2 soundness: what the memo may serve, and under which key
+def fill_memo(w, monkeypatch):
+    memo = mg.ReadMemo(w.state / mg.MEMO_FILE)
+    out, _ = run_report(w, monkeypatch, memo)
+    memo.save()
+    return out
+
+
+def edit_memo(w, change):
+    doc = json.loads((w.state / mg.MEMO_FILE).read_text())
+    change(doc)
+    (w.state / mg.MEMO_FILE).write_text(json.dumps(doc))
+
+
+def test_a_stored_entry_of_a_pull_that_is_open_is_read_again(fw, monkeypatch):
+    plain = fill_memo(fw, monkeypatch)
+    edit_memo(fw, lambda d: d["pulls"][f"{REPO}#1001"].update(state="open", merged=False))   # a planted or damaged entry
+    again, reads = run_report(fw, monkeypatch, mg.ReadMemo(fw.state / mg.MEMO_FILE))
+    assert f"repos/{REPO}/pulls/1001" in reads and f"repos/{REPO}/pulls/1002" not in reads and again == plain
+
+
+def test_a_stored_hosted_document_with_a_pending_required_context_is_read_again(fw, monkeypatch):
+    plain = fill_memo(fw, monkeypatch)
+    key = f"{REPO}@main:{M}:{'f' * 40}"
+    edit_memo(fw, lambda d: d["lives"][key]["check_runs"][0].update(status="in_progress", conclusion=None))
+    again, reads = run_report(fw, monkeypatch, mg.ReadMemo(fw.state / mg.MEMO_FILE))
+    assert any(r.startswith(f"repos/{REPO}/commits/{M}/check-runs") for r in reads) and again == plain
+
+
+@pytest.mark.parametrize("age_h,final", [(49, True), (48, True), (47, False), (1, False)])
+def test_the_final_age_boundary_is_48_hours_from_the_newest_decision_of_the_pr(monkeypatch, age_h, final):
+    monkeypatch.setattr(mg.time, "time", lambda: 1_800_000_000.0)
+    closed = {"state": "closed", "merged": True}
+    assert mg.FINAL_AFTER_S == 48 * 3600
+    assert mg.memo_final_pr(closed, 1_800_000_000.0 - age_h * 3600) is final
+
+
+def test_a_pull_is_final_only_when_closed_and_known(monkeypatch):
+    monkeypatch.setattr(mg.time, "time", lambda: 1_800_000_000.0)
+    old = 1_800_000_000.0 - mg.FINAL_AFTER_S - 1
+    assert mg.memo_final_pr({"state": "closed"}, old) and not mg.memo_final_pr({"state": "open"}, old)
+    assert not mg.memo_final_pr(None, old) and not mg.memo_final_pr({"state": "closed"}, None) and not mg.memo_final_pr({}, old)
+
+
+def test_the_memo_key_names_repo_branch_sha_and_base_and_one_head_on_two_bases_is_two_entries(fw, monkeypatch):
+    head, a_base, b_base = "7" * 40, "e" * 40, "d" * 40
+    fw.hub.pulls[2001] = {"merged": False, "state": "closed", "head": {"sha": head}, "merge_commit_sha": None, "merged_at": None}
+    with (fw.state / "decisions.jsonl").open("a") as fh:
+        for at, base in ((60, a_base), (120, b_base)):   # the same head decided on two bases
+            fh.write(json.dumps({"kind": "decision", "ts": mg.time.strftime("%Y-%m-%dT%H:%M:%SZ", mg.time.gmtime(time.time() - 20 * 86400 + at)),
+                                 "pr": 2001, "head_sha": head, "base_sha": base, "overall": "BLOCKED"}, sort_keys=True) + "\n")
+    memo = mg.ReadMemo(fw.state / mg.MEMO_FILE)
+    run_report(fw, monkeypatch, memo)
+    assert sorted(k for k in memo.data["lives"] if head in k) == [f"{REPO}@main:{head}:{b_base}", f"{REPO}@main:{head}:{a_base}"]
+    assert all(k.startswith(f"{REPO}@main:") for k in memo.data["lives"]) and all(k.startswith(f"{REPO}#") for k in memo.data["pulls"])
+    assert all(k.startswith(f"{REPO}@") for k in memo.data["parents"]) and memo.hits == 0
+
+
+# ------------------------------------------------------------------ the memo stores the projection, not the payload
+def test_the_memo_keeps_only_what_the_report_reads_and_the_report_is_unchanged(fw, monkeypatch):
+    real = fw.hub.__call__
+    bulk = {"output": {"title": "t", "summary": "s" * 4000, "text": "x" * 4000}, "html_url": "u" * 200, "details_url": "d" * 200,
+            "check_suite": {"id": 1}, "app": {"id": 15368, "slug": "github-actions", "owner": {"login": "o" * 50}, "description": "D" * 500}}
+
+    def fat(path):
+        got = real(path)
+        if "/check-runs" in path:
+            got = {"check_runs": [{**r, **bulk, "app": {**r["app"], **bulk["app"]}, "started_at": "2026-10-01T00:00:00Z"} for r in got["check_runs"]]}
+        elif re_pull.fullmatch(path):
+            got = {**got, "body": "b" * 3000, "user": {"login": "u"}, "base": {"repo": {"description": "r" * 1000}}}
+        return got
+    re_pull = re.compile(rf"repos/{REPO}/pulls/\d+")
+    monkeypatch.setattr(mg.hc, "gh_get", fat)
+    fat_plain, _ = run_report(fw, monkeypatch, None)
+    memo = mg.ReadMemo(fw.state / mg.MEMO_FILE)
+    first, _ = run_report(fw, monkeypatch, memo)
+    memo.save()
+    full, reads = run_report(fw, monkeypatch, mg.ReadMemo(fw.state / mg.MEMO_FILE))
+    assert fat_plain == first == full and reads == []
+    raw = (fw.state / mg.MEMO_FILE).read_text()
+    assert "summary" not in raw and "html_url" not in raw and "owner" not in raw and '"body"' not in raw
+    doc = json.loads(raw)
+    assert {tuple(sorted(v)) for v in doc["pulls"].values()} == {("head", "merge_commit_sha", "merged", "merged_at", "state")}
+    run0 = next(iter(doc["lives"].values()))["check_runs"][0]
+    assert set(run0) == {"id", "name", "status", "conclusion", "head_sha", "completed_at", "app"} and set(run0["app"]) == {"id", "slug"}
+    assert len(raw) < 20 * 1024 * (len(doc["lives"]) + len(doc["pulls"]))
+
+
+# ------------------------------------------------------------------ B19 beside the refresh tick
+def test_a_merge_disarmed_by_a_stale_ready_waits_a_refresh_tick_then_the_retry_reads_the_new_cache_and_merges(fw, monkeypatch):
+    monkeypatch.setattr(mg, "PENDING_RETRY_S", 0)
+    age_cache(fw, mg.READY_MAX_AGE_S + 100)   # the decision started late in a cycle: READY has aged out meanwhile
+    assert fw.tick() == 0   # the refresh is off in the world fixture: this is the decision tick
+    assert live_kinds(fw) == ["decision", "would_enqueue", "would_merge"] and any(x.startswith("READY stale") for x in fw.wm()["phase_f"]["why"])
+    refresh_on(monkeypatch)
+    assert fw.tick() == 0   # the refresh tick ends after the refresh: the retry waits one tick
+    assert live_kinds(fw)[3:] == ["ready_refreshed"] and fw.pushes == [] and cache(fw)["phase_e_ready"] is True
+    assert fw.tick() == 0   # the retry goes through phase_f_arming, which reads the refreshed cache
+    assert live_kinds(fw)[4:] == ["would_enqueue", "would_merge", "merged", "pushed"]
+    assert [r for r in fw.live() if r["kind"] == "would_merge"][-1]["retry"] is True and armed_by_cache(fw.wm()["phase_f"])

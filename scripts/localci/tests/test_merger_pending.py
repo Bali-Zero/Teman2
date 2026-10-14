@@ -7,7 +7,7 @@ import re
 import pytest
 
 from .test_merger import REPO, mg, pr, world  # noqa: F401 — `world` is a fixture
-from .test_merger_phase_f import Hub, fw, assert_nothing_merged  # noqa: F401 — `fw` is a fixture
+from .test_merger_phase_f import Hub, armed_by_cache, fw, assert_nothing_merged  # noqa: F401 — `fw` is a fixture
 
 @pytest.fixture(autouse=True)
 def watchdog_reset():
@@ -64,7 +64,7 @@ def test_a_pass_refused_only_for_pending_hosted_is_retried_next_tick_and_merged_
     enq, wm = rows(fw, "would_enqueue")[0], rows(fw, "would_merge")[0]
     decision = next(r for r in fw.live() if r["kind"] == "decision")
     assert enq["ok"] is True and enq["retry"] is True and enq["decision_ts"] == decision["ts"] and "decision" not in [r["kind"] for r in fw.live()][1:]
-    assert wm["retry"] is True and wm["phase_f"] == {"armed": True, "why": []}
+    assert wm["retry"] is True and armed_by_cache(wm["phase_f"])
     assert len(fw.pushes) == 1 and fw.origin_main() == fw.journal()[-1]["merge_commit"]
     assert fw.journal()[-2]["decision_ts"] == decision["ts"]
     assert fw.runner.calls and len([c for c in fw.runner.calls if c["sub"] == "plan"]) == 1   # no new run for the same key

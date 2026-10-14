@@ -1191,6 +1191,7 @@ def refresh_ready(a, state: Path, lease_id: str) -> None:
                 memo.save()
             except OSError:
                 pass   # no memo is a slower refresh, never a wrong one
+        check_watchdog()   # B19-W: an alarm swallowed by a broad except inside the report still ends the tick
     seen = {"duration_s": round(time.time() - started, 1), "memo_hits": memo.hits, "memo_misses": memo.misses, "lease_id": lease_id}
     if err:
         journal(state, {"kind": "ready_refresh_failed", "error": redact(err), "result": "failed", **seen})
@@ -1801,6 +1802,44 @@ class ReadMemo:
             self.dirty = False
 
 
+def memo_final_pr(pr, newest) -> bool:
+    """C2: a PR's reads are final when the PR is closed per the read itself and its newest decision row is at least FINAL_AFTER_S old."""
+    return isinstance(pr, dict) and pr.get("state") == "closed" and isinstance(newest, (int, float)) and time.time() - newest >= FINAL_AFTER_S
+
+
+def memo_pull_served(mem: "ReadMemo", repo: str, n) -> dict | None:
+    """The stored pull of ``n`` without counting a hit: what the final-ness test looks at before the memo is asked for it."""
+    got = mem.data["pulls"].get(f"{repo}#{n}") if mem.path is not None else None
+    return got if isinstance(got, dict) else None
+
+
+def mem_live(mem: "ReadMemo", key: str):
+    """A stored hosted document, served only while it is final on its own face (a planted or damaged pending one is read again)."""
+    got = mem.data["lives"].get(key) if mem.path is not None else None
+    if isinstance(got, dict) and live_is_final(got):
+        return mem.get("lives", key)
+    return None
+
+
+def project_pull(pr: dict) -> dict:
+    """The fields ``report()`` reads of a pull (merged, state, merge_commit_sha, merged_at, head.sha): the rest of the payload is not kept."""
+    head = pr.get("head") if isinstance(pr.get("head"), dict) else {}
+    return {"merged": pr.get("merged"), "state": pr.get("state"), "merge_commit_sha": pr.get("merge_commit_sha"), "merged_at": pr.get("merged_at"),
+            "head": {"sha": head.get("sha")}}
+
+
+def project_live(live: dict) -> dict:
+    """The fields the comparison reads of a hosted document: a check run's name, status, conclusion, completed_at, id, head_sha and app
+    id and slug, a commit status's context, state and updated_at; the required set and its source are kept whole."""
+    def run(r):
+        app = r.get("app") if isinstance(r.get("app"), dict) else {}
+        return {"id": r.get("id"), "name": r.get("name"), "status": r.get("status"), "conclusion": r.get("conclusion"), "head_sha": r.get("head_sha"),
+                "completed_at": r.get("completed_at"), "app": {"id": app.get("id"), "slug": app.get("slug")}}
+    return {**{k: v for k, v in live.items() if k not in ("check_runs", "statuses")},
+            "check_runs": [run(r) for r in live["check_runs"]],
+            "statuses": [{"context": x.get("context"), "state": x.get("state"), "updated_at": x.get("updated_at")} for x in live["statuses"]]}
+
+
 def live_is_final(live: dict) -> bool:
     """C2: every required context of the sha has a verdict that is not PENDING."""
     try:
@@ -1918,19 +1957,18 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
         newest = {}
         for d in decisions:
             newest[d.get("pr")] = max(newest.get(d.get("pr"), 0.0), _epoch(d["ts"]))
-        settled = lambda n: prs[n].get("state") == "closed" and time.time() - newest.get(n, time.time()) >= FINAL_AFTER_S   # noqa: E731 — C2
+        settled = lambda n: memo_final_pr(prs[n], newest.get(n))   # noqa: E731 — C2
         if any(str(d.get("repo", a.repo)).lower() != a.repo.lower() for d in decisions):
             raise hc.CompareError("a decision in the window belongs to another repository")
         for d in decisions:
             n, head = d.get("pr"), str(d.get("head_sha"))
             if n not in prs:
-                old_enough = time.time() - newest.get(n, time.time()) >= FINAL_AFTER_S
-                prs[n] = mem.get("pulls", f"{a.repo}#{n}") if old_enough else None
+                prs[n] = mem.get("pulls", f"{a.repo}#{n}") if memo_final_pr(memo_pull_served(mem, a.repo, n), newest.get(n)) else None
                 if prs[n] is None:
                     mem.misses += 1
                     prs[n] = hc.gh_get(f"repos/{a.repo}/pulls/{n}")
                     if settled(n):
-                        mem.put("pulls", f"{a.repo}#{n}", prs[n])
+                        mem.put("pulls", f"{a.repo}#{n}", project_pull(prs[n]))
             sha = queue_sha(a, prs[n], d, parents, mem)
             # GitHub merged THIS candidate only when its merge commit sits on the decided base; a decision on another base is
             # judged by the head's own checks like any open PR
@@ -1938,12 +1976,12 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
             lkey = (sha, d.get("base_sha"))   # R3: the required set belongs to the BASE the sha was judged on, so the cache does too
             if lkey not in lives:
                 mkey = f"{a.repo}@{a.base}:{sha}:{d.get('base_sha')}"
-                lives[lkey] = mem.get("lives", mkey) if settled(n) else None
+                lives[lkey] = mem_live(mem, mkey) if settled(n) else None
                 if lives[lkey] is None:
                     mem.misses += 1
                     lives[lkey] = hc.fetch_live(a.repo, a.base, sha, base_matrix(state / "repo.git", d.get("base_sha")))
                     if settled(n) and live_is_final(lives[lkey]):
-                        mem.put("lives", mkey, lives[lkey])
+                        mem.put("lives", mkey, project_live(lives[lkey]))
                 hc.required_names(lives[lkey]["required_checks"])
             live = lives[lkey]
             github = github_side(live)
@@ -2003,12 +2041,12 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
                 continue
             if (mc, f"{mc}^1") not in lives:   # R2: a merge commit is judged at the BASE it was built on, its first parent, never at itself
                 mkey = f"{a.repo}@{a.base}:{mc}:^1"
-                lives[(mc, f"{mc}^1")] = mem.get("lives", mkey) if settled(n) else None
+                lives[(mc, f"{mc}^1")] = mem_live(mem, mkey) if settled(n) else None
                 if lives[(mc, f"{mc}^1")] is None:
                     mem.misses += 1
                     lives[(mc, f"{mc}^1")] = hc.fetch_live(a.repo, a.base, mc, base_matrix(state / "repo.git", mc, parent=True))
                     if settled(n) and live_is_final(lives[(mc, f"{mc}^1")]):
-                        mem.put("lives", mkey, lives[(mc, f"{mc}^1")])
+                        mem.put("lives", mkey, project_live(lives[(mc, f"{mc}^1")]))
                 hc.required_names(lives[(mc, f"{mc}^1")]["required_checks"])
             red = sorted(k for k, v in required_verdicts(lives[(mc, f"{mc}^1")]).items() if v == "RED")
             if red:
