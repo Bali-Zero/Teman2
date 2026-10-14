@@ -332,3 +332,58 @@ def test_purge_internal_with_apply_deletes_only_internal_points_and_updates_publ
     out = capsys.readouterr().out
     assert "DELETED 3 internal point(s) from bali_zero_pricing_hybrid" in out
     assert "APPLIED 1 point(s) in bali_zero_pricing_hybrid" in out
+
+
+def test_apply_with_purge_internal_false_updates_public_without_deleting_internal(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("QDRANT_URL", "https://fake-qdrant.local")
+    monkeypatch.setenv("QDRANT_API_KEY", "fake-key")
+
+    set_calls: list[tuple[Any, dict[str, Any]]] = []
+    delete_calls: list[list[Any]] = []
+
+    async def fake_scroll(
+        client: Any,
+        base_url: str,
+        headers: dict[str, str],
+    ) -> list[dict[str, Any]]:
+        return _sample_qdrant_points()
+
+    async def fake_set_payload(
+        client: Any,
+        base_url: str,
+        headers: dict[str, str],
+        point_id: Any,
+        payload: dict[str, Any],
+    ) -> None:
+        set_calls.append((point_id, payload))
+
+    async def fake_delete_points(
+        client: Any,
+        base_url: str,
+        headers: dict[str, str],
+        point_ids: list[Any],
+    ) -> None:
+        delete_calls.append(list(point_ids))
+
+    monkeypatch.setattr(sync_mod, "_scroll_all_points", fake_scroll)
+    monkeypatch.setattr(sync_mod, "_set_payload", fake_set_payload)
+    monkeypatch.setattr(sync_mod, "_delete_points", fake_delete_points)
+
+    rc = asyncio.run(
+        sync_mod.run(
+            str(sync_mod.DEFAULT_CATALOG),
+            apply=True,
+            today="2026-10-14",
+            purge_internal=False,
+        )
+    )
+    assert rc == 0
+    assert [point_id for point_id, _payload in set_calls] == ["pt-e33f-offshore"]
+    assert delete_calls == []
+    out = capsys.readouterr().out
+    assert "DELETED" not in out
+    assert "APPLIED 1 point(s) in bali_zero_pricing_hybrid" in out
+

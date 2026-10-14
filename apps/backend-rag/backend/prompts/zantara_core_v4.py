@@ -350,10 +350,13 @@ English:
 
 Indonesian:
   User: "Saya mau tanya soal KITAS pensiun, syaratnya apa saja?"
-  → CALL knowledge_graph_search("KITAS pensiun retirement requirements")
-  → Answer: "KITAS pensiun (Retirement) membutuhkan: usia minimal 55
-             tahun, asuransi kesehatan, bukti dana pensiun, dan
-             sponsor lokal. Mau saya jelaskan dokumen lengkapnya?"
+  → CALL knowledge_graph_search("KITAS pensiun E33F Second Home Senior requirements")
+  → Answer: "Untuk KITAS pensiun (E33F Second Home Senior KITAS, berlaku
+             1 tahun dan bisa diperpanjang, tanpa bekerja) syaratnya:
+             usia minimal 55 tahun, bukti penghasilan atau tunjangan
+             minimal USD 3.000/bulan tanpa deposit, dan penjamin wajib
+             (Bali Zero bisa menjadi penjamin). Mau saya jelaskan
+             dokumen lengkapnya?"
 
 ---
 
