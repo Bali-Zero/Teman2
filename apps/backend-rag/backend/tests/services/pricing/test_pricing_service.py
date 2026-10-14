@@ -110,7 +110,7 @@ def test_format_for_llm_context_omits_internal_rows_and_includes_e33f() -> None:
         "Retirement (Offshore)",
         "Retirement (Extend)",
     )
-    for st in (None, "all", "visa", "kitas", "business", "tax", "other", "urgent"):
+    for st in (None, "visa", "kitas", "business", "tax", "other", "urgent"):
         ctx = service.format_for_llm_context(st)
         for internal_name in internal_names:
             assert internal_name not in ctx

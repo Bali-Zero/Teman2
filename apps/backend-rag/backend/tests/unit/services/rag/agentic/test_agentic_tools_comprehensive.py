@@ -242,7 +242,7 @@ class TestPricingTool:
         ):
             tool = PricingTool()
             # get_pricing is not async, it's a regular method
-            mock_pricing_service.get_pricing.return_value = {
+            mock_pricing_service.get_pricing_for_clients.return_value = {
                 "items": [{"name": "KITAS", "price": "15000000"}],
             }
 
@@ -257,7 +257,7 @@ class TestPricingTool:
             return_value=mock_pricing_service,
         ):
             tool = PricingTool()
-            mock_pricing_service.get_pricing.return_value = {"items": []}
+            mock_pricing_service.get_pricing_for_clients.return_value = {"items": []}
 
             result = await tool.execute()
             assert result is not None

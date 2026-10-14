@@ -590,7 +590,8 @@ def test_get_visa_oracle_service_singleton() -> None:
 
 
 def test_recommend_visas_retire_ranks_e33f_and_excludes_internal_rows() -> None:
-    """Guilt: recommend_visas(purpose='retire') returns E33F rows and no internal rows."""
+    """Guilt: recommend_visas(purpose='retire') returns one deduplicated E33F row,
+    no (Extend) row, and no internal rows."""
     from backend.services.pricing.pricing_service import PricingService
 
     real_pricing = PricingService()
@@ -608,13 +609,65 @@ def test_recommend_visas_retire_ranks_e33f_and_excludes_internal_rows() -> None:
     )
     assert len(result) > 0
     names = [r["visa_name"] for r in result]
-    assert all("E33F" in n for n in names)
+    e33f_names = [n for n in names if "E33F" in n]
+    assert e33f_names == ["E33F Second Home Senior (1 Year, Altus/Onshore)"]
+    assert all(not n.endswith("(Extend)") for n in names)
     for internal_name in (
         "Retirement (Altus/Onshore)",
         "Retirement (Offshore)",
         "Retirement (Extend)",
     ):
         assert internal_name not in names
+
+
+def test_recommend_visas_retire_omits_stub_internal_row_that_would_rank_first() -> None:
+    """Guilt: a stub catalogue row with 'internal': True and all retire keywords
+    is omitted even when its score would rank first ahead of a public row."""
+    stub_prices = {
+        "services": {
+            "kitas_permits": {
+                "Internal Retirement Top (Altus/Onshore)": {
+                    "name": "Internal Retirement Top (Altus/Onshore)",
+                    "internal": True,
+                    "price": "16.000.000 IDR",
+                    "duration": "1 year",
+                    "validity": "1 year",
+                    "keywords": [
+                        "e33f",
+                        "retirement",
+                        "retire",
+                        "pensioner",
+                        "pension",
+                    ],
+                },
+                "E33F Second Home Senior (1 Year, Altus/Onshore)": {
+                    "name": "E33F Second Home Senior (1 Year, Altus/Onshore)",
+                    "price": "16.000.000 IDR",
+                    "duration": "1 year",
+                    "validity": "1 year",
+                    "keywords": ["retire"],
+                },
+            },
+        },
+    }
+    mock_pricing = MagicMock()
+    mock_pricing.prices = stub_prices
+
+    with patch(
+        "backend.services.visa_oracle.visa_oracle_service.get_pricing_service",
+        return_value=mock_pricing,
+    ):
+        svc = VisaOracleService()
+
+    result = svc.recommend_visas(
+        nationality="Australian",
+        purpose="retire",
+        duration="medium",
+        family=False,
+    )
+    names = [r["visa_name"] for r in result]
+    assert "Internal Retirement Top (Altus/Onshore)" not in names
+    assert names == ["E33F Second Home Senior (1 Year, Altus/Onshore)"]
 
 
 def test_recommend_visas_retire_innocence_other_purposes_and_kitap() -> None:

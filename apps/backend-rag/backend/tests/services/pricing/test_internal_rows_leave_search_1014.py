@@ -27,13 +27,18 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.app.dependencies import get_current_user
+from backend.app.routers import agents as agents_router
 from backend.app.routers import dynamic_pricing as dynamic_pricing_router
+from backend.plugins.bali_zero.pricing_plugin import PricingPlugin, PricingQueryInput
 from backend.services.compliance.renewal_rules import RENEWAL_RULES
 from backend.services.compliance.revenue_estimator import estimate_renewal_revenue
+from backend.services.misc.zantara_tools import ZantaraTools
 from backend.services.pricing.pricing_service import (
     PricingService,
     _is_internal_service,
+    get_pricing_service,
 )
+from backend.services.rag.agentic.tools import PricingTool
 from backend.services.visa_engine.models import PricingKey
 from backend.services.visa_engine.pricing_adapter import resolve_pricing_key
 from backend.services.visa_oracle.visa_oracle_service import VisaOracleService
@@ -137,7 +142,7 @@ def test_search_service_innocence_kitap_and_non_f_e33_rows_unaffected(
 
 @pytest.mark.parametrize(
     "service_type",
-    [None, "all", "visa", "kitas", "business", "tax", "other", "urgent"],
+    [None, "visa", "kitas", "business", "tax", "other", "urgent"],
 )
 def test_format_for_llm_context_guilt_never_cites_internal_rows(
     pricing_service: PricingService,
@@ -151,12 +156,21 @@ def test_format_for_llm_context_guilt_never_cites_internal_rows(
 def test_format_for_llm_context_innocence_includes_e33f_and_public_rows(
     pricing_service: PricingService,
 ) -> None:
-    for st in (None, "all", "kitas"):
-        text = pricing_service.format_for_llm_context(st)
-        for e33f_key in E33F_ROWS:
-            assert e33f_key in text
-        assert "Retirement KITAP + MERP" in text
-        assert "Working KITAS (Offshore)" in text
+    text = pricing_service.format_for_llm_context(None)
+    for e33f_key in E33F_ROWS:
+        assert e33f_key in text
+    assert "Retirement KITAP + MERP" in text
+    assert "Working KITAS (Offshore)" in text
+
+
+def test_format_for_llm_context_kitas_has_e33f_and_no_internal_names(
+    pricing_service: PricingService,
+) -> None:
+    text = pricing_service.format_for_llm_context("kitas")
+    for e33f_key in E33F_ROWS:
+        assert e33f_key in text
+    for internal_key in INTERNAL_RETIREMENT_ROWS:
+        assert internal_key not in text
 
 
 # ---------------------------------------------------------------------------
@@ -281,3 +295,92 @@ def test_in_process_pricing_adapter_and_compliance_renewal_rules_keep_resolving(
     assert rule.renewal_pricing_key == "Retirement (Extend)"
     rev = estimate_renewal_revenue(rule, pricing_service.get_all_prices())
     assert rev == 10_000_000.0
+
+
+# ---------------------------------------------------------------------------
+# (6) Client-facing no-query callers use get_pricing_for_clients (FIX 1)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("service_type", ["kitas", "long_stay_permit", "all"])
+async def test_pricing_tool_no_query_omits_internal_and_includes_e33f(
+    service_type: str,
+) -> None:
+    svc = get_pricing_service()
+    output = await PricingTool(svc).execute(service_type=service_type)
+    for internal_key in INTERNAL_RETIREMENT_ROWS:
+        assert internal_key not in output
+    for e33f_key in E33F_ROWS:
+        assert e33f_key in output
+
+
+def test_agents_router_pricing_calculate_no_query_omits_internal_and_includes_e33f() -> None:
+    app = FastAPI()
+    app.include_router(agents_router.router)
+    app.dependency_overrides[get_current_user] = lambda: {
+        "email": "test@balizero.com",
+        "role": "admin",
+    }
+    agents_client = TestClient(app)
+
+    resp = agents_client.post(
+        "/api/agents/pricing/calculate",
+        json={"service_type": "kitas"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["success"] is True
+    keys = _collect_all_dict_keys(body)
+    for internal_key in INTERNAL_RETIREMENT_ROWS:
+        assert internal_key not in keys
+    kitas_permits = body["data"]["kitas_permits"]
+    for e33f_key, expected_price in E33F_ROWS.items():
+        assert e33f_key in kitas_permits
+        assert kitas_permits[e33f_key]["price"] == expected_price
+
+
+@pytest.mark.asyncio
+async def test_zantara_tools_and_pricing_plugin_no_query_omit_internal_and_include_e33f() -> None:
+    svc = get_pricing_service()
+
+    tools = ZantaraTools.__new__(ZantaraTools)
+    tools.pricing_service = svc
+    zantara_res = await tools.execute_tool("get_pricing", {"service_type": "kitas"})
+    assert zantara_res["success"] is True
+    zantara_keys = _collect_all_dict_keys(zantara_res)
+    for internal_key in INTERNAL_RETIREMENT_ROWS:
+        assert internal_key not in zantara_keys
+    for e33f_key, expected_price in E33F_ROWS.items():
+        assert zantara_res["data"]["kitas_permits"][e33f_key]["price"] == expected_price
+
+    plugin = PricingPlugin(pricing_service=svc)
+    plugin_out = await plugin.execute(PricingQueryInput(service_type="kitas"))
+    assert plugin_out.success is True
+    plugin_keys = _collect_all_dict_keys(plugin_out.data)
+    for internal_key in INTERNAL_RETIREMENT_ROWS:
+        assert internal_key not in plugin_keys
+    for e33f_key, expected_price in E33F_ROWS.items():
+        assert plugin_out.data["kitas_permits"][e33f_key]["price"] == expected_price
+
+
+def test_get_pricing_vs_get_pricing_for_clients_innocence() -> None:
+    svc = get_pricing_service()
+    raw_all = svc.get_pricing("all")
+    client_all = svc.get_pricing_for_clients("all")
+
+    raw_keys = _collect_all_dict_keys(raw_all)
+    client_keys = _collect_all_dict_keys(client_all)
+    for internal_key in INTERNAL_RETIREMENT_ROWS:
+        assert internal_key in raw_keys
+        assert internal_key not in client_keys
+    for e33f_key in E33F_ROWS:
+        assert e33f_key in client_keys
+
+    assert (
+        estimate_renewal_revenue(
+            RENEWAL_RULES["kitas_retirement_extend"],
+            svc.get_pricing("all"),
+        )
+        == 10_000_000
+    )

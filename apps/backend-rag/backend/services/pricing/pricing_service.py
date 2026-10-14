@@ -131,6 +131,27 @@ def _is_internal_service(svc: Any, key: str, entry: dict[str, Any]) -> bool:
     return False
 
 
+def _omit_internal_rows(node: Any, svc: Any = None) -> Any:
+    """Return a deep copy of ``node`` omitting dict entries marked ``"internal": true``."""
+    if isinstance(node, dict):
+        cleaned: dict[str, Any] = {}
+        for key, value in node.items():
+            if isinstance(value, dict) and _is_internal_service(svc, str(key), value):
+                continue
+            cleaned[key] = _omit_internal_rows(value, svc)
+        return cleaned
+    if isinstance(node, list):
+        return [
+            _omit_internal_rows(item, svc)
+            for item in node
+            if not (
+                isinstance(item, dict)
+                and _is_internal_service(svc, str(item.get("name", "")), item)
+            )
+        ]
+    return node
+
+
 # Namespace separator for a QUALIFIED ``get_service_by_key`` argument
 # (``"<sub_block or category>::<service_name>"``). Chosen over "/" because
 # several real catalogue display names already contain a bare "/" (e.g.
@@ -269,6 +290,10 @@ class PricingService:
             return self.get_all_prices()
         # Try to search for the service
         return self.search_service(service_type)
+
+    def get_pricing_for_clients(self, service_type: str = "all") -> dict[str, Any]:
+        """Get pricing for client-facing and LLM callers, omitting internal rows."""
+        return _omit_internal_rows(self.get_pricing(service_type), self)
 
     def get_service_by_key(self, key: str) -> dict[str, Any] | None:
         """Look up ONE service by its exact catalogue key.
@@ -732,9 +757,8 @@ class PricingService:
         ]
 
         services = self.prices.get("services", {})
-        include_all = service_type in (None, "all")
 
-        if service_type == "visa" or include_all:
+        if service_type == "visa" or service_type is None:
             context_parts.append("## VISA PRICES")
             context_parts.extend(self._format_service_list(services.get("single_entry_visas", {})))
             context_parts.extend(
@@ -742,29 +766,29 @@ class PricingService:
             )
             context_parts.append("")
 
-        if service_type == "kitas" or include_all:
+        if service_type == "kitas" or service_type is None:
             context_parts.append("## KITAS/KITAP PERMITS")
             context_parts.extend(self._format_service_list(services.get("kitas_permits", {})))
             context_parts.extend(self._format_service_list(services.get("kitap_permits", {})))
             context_parts.append("")
 
-        if service_type == "business" or include_all:
+        if service_type == "business" or service_type is None:
             context_parts.append("## COMPANY & CONSULTANT SERVICES")
             context_parts.extend(self._format_service_list(services.get("company_services", {})))
             context_parts.extend(self._format_service_list(services.get("consultant_services", {})))
             context_parts.append("")
 
-        if service_type == "tax" or include_all:
+        if service_type == "tax" or service_type is None:
             context_parts.append("## TAX & ACCOUNTING")
             context_parts.extend(self._format_service_list(services.get("tax_accounting", {})))
             context_parts.append("")
 
-        if service_type == "other" or include_all:
+        if service_type == "other" or service_type is None:
             context_parts.append("## OTHER SERVICES")
             context_parts.extend(self._format_service_list(services.get("other_process", {})))
             context_parts.append("")
 
-        if service_type == "urgent" or include_all:
+        if service_type == "urgent" or service_type is None:
             context_parts.append("## URGENT PROCESSING")
             context_parts.extend(self._format_service_list(services.get("urgent_processing", {})))
             context_parts.append("")

@@ -16,6 +16,9 @@ class FakePricingService:
     def get_pricing(self, service_type: str) -> dict[str, str]:
         return {"service_type": service_type, "price": "official"}
 
+    def get_pricing_for_clients(self, service_type: str = "all") -> dict[str, str]:
+        return {"service_type": service_type, "price": "official"}
+
 
 class FakeCollaboratorService:
     def __init__(self) -> None:

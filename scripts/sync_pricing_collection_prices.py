@@ -22,9 +22,12 @@ conversational Qdrant collection):
 
 By default it NEVER re-embeds vectors, deletes points or creates points. Catalog
 rows with no point and points with no catalog row are REPORTED, never acted on.
-When ``--purge-internal`` is passed, Qdrant points whose payload ``name`` matches
-a catalog row marked ``"internal": true`` are listed for deletion (dry-run by
-default; combine ``--purge-internal --apply`` to delete those exact point IDs).
+Without ``--purge-internal``, Qdrant points matching catalog rows marked
+``"internal": true`` are reported (``INTERNAL (report only; pass --purge-internal
+to delete) id=<id> <name!r>``) and never upserted or counted in ``no_catalog_row``.
+When ``--purge-internal`` is passed, those points are listed for deletion (dry-run
+by default; ``--purge-internal --apply`` deletes those exact point IDs and also
+applies pending price updates in the same run — use ``--only`` to narrow).
 Any refusal (old price not found exactly once, ambiguous name) exits non-zero and
 ``--apply`` then applies NOTHING.
 
@@ -33,6 +36,7 @@ Usage:
     QDRANT_URL=... QDRANT_API_KEY=... python scripts/sync_pricing_collection_prices.py --apply
     QDRANT_URL=... QDRANT_API_KEY=... python scripts/sync_pricing_collection_prices.py --purge-internal
     QDRANT_URL=... QDRANT_API_KEY=... python scripts/sync_pricing_collection_prices.py --purge-internal --apply
+    # Note: --purge-internal --apply also applies pending price updates in the same run (use --only to narrow)
     ... --catalog PATH     # default: the canonical JSON in the repo; "-" reads stdin
     ... --only "New Company (PT PMA)"   # scope to one catalog name (repeatable)
 """
@@ -162,6 +166,9 @@ class Plan:
     deletes: list[dict[str, Any]] = field(
         default_factory=list
     )  # id,name (populated only when purge_internal=True)
+    internal_points: list[dict[str, Any]] = field(
+        default_factory=list
+    )  # id,name (populated when purge_internal=False for internal catalog rows)
     refusals: list[str] = field(default_factory=list)
     no_point: list[str] = field(default_factory=list)
     no_catalog_row: list[str] = field(default_factory=list)
@@ -192,9 +199,11 @@ def build_plan(
             plan.no_point.append(name)
     for name, group in by_name.items():
         if name in internal_names:
-            if purge_internal:
-                for p in group:
+            for p in group:
+                if purge_internal:
                     plan.deletes.append({"id": p["id"], "name": name})
+                else:
+                    plan.internal_points.append({"id": p["id"], "name": name})
             continue
         if name not in prices:
             plan.no_catalog_row.append(name)
@@ -239,6 +248,11 @@ def print_plan(plan: Plan) -> None:
         print(f"UPDATE id={u['id']} {u['name']!r}: {u['old']} -> {u['new']}")
     for d in plan.deletes:
         print(f"DELETE id={d['id']} {d['name']!r}")
+    for ip in plan.internal_points:
+        print(
+            "INTERNAL (report only; pass --purge-internal to delete) "
+            f"id={ip['id']} {ip['name']!r}"
+        )
     for r in plan.refusals:
         print(f"REFUSED {r}")
     for n in plan.no_point:
@@ -247,6 +261,7 @@ def print_plan(plan: Plan) -> None:
         print(f"NO-CATALOG-ROW (report only) point {n!r}")
     print(
         f"SUMMARY updates={len(plan.updates)} deletes={len(plan.deletes)} "
+        f"internal_points={len(plan.internal_points)} "
         f"refused={len(plan.refusals)} in_sync={plan.in_sync} "
         f"catalog_rows_without_point={len(plan.no_point)} "
         f"points_without_catalog_row={len(plan.no_catalog_row)}"

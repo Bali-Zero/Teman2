@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from backend.app.dependencies import get_current_user
 from backend.services.pricing.pricing_service import (
     _is_internal_service,
+    _omit_internal_rows,
     get_pricing_service,
 )
 
@@ -23,27 +24,6 @@ OptionalUser = dict | None  # User dict from get_current_user, or None if unauth
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/pricing", tags=["pricing"])
-
-
-def _omit_internal_rows(node: Any, svc: Any = None) -> Any:
-    """Return a deep copy of ``node`` omitting dict entries marked ``"internal": true``."""
-    if isinstance(node, dict):
-        cleaned: dict[str, Any] = {}
-        for key, value in node.items():
-            if isinstance(value, dict) and _is_internal_service(svc, str(key), value):
-                continue
-            cleaned[key] = _omit_internal_rows(value, svc)
-        return cleaned
-    if isinstance(node, list):
-        return [
-            _omit_internal_rows(item, svc)
-            for item in node
-            if not (
-                isinstance(item, dict)
-                and _is_internal_service(svc, str(item.get("name", "")), item)
-            )
-        ]
-    return node
 
 
 @router.get("/all")

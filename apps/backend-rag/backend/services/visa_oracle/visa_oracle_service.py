@@ -468,7 +468,7 @@ class VisaOracleService:
         """Compute relevance score for a single visa type.
 
         Scoring:
-        - +2.0 per keyword that appears in visa_name (case-insensitive)
+        - +2.0 per keyword that appears in visa_name or details["keywords"] (case-insensitive)
         - +1.5 if stated duration fits the visa's duration field
         - +1.0 if family=True and visa_name contains spouse/dependent/family
 
@@ -509,24 +509,21 @@ class VisaOracleService:
 
         return score
 
+    _VARIANT_SUFFIX_RE = re.compile(r"\s*\((?:[^()]*,\s*)?(?:Altus/Onshore|Offshore|Extend)\)$")
+
     @staticmethod
     def _get_visa_base_name(visa_name: str) -> str:
         """Strip process variant suffixes to group similar visa types.
 
         E.g. "E33G Remote Worker (Altus/Onshore)" → "E33G Remote Worker"
+             "E33F Second Home Senior (1 Year, Offshore)" → "E33F Second Home Senior"
+             "E33F Second Home Senior (1 Year, Altus/Onshore)" → "E33F Second Home Senior"
+             "E33F Second Home Senior (Extend)" → "E33F Second Home Senior"
              "Spouse 2 Years (Offshore)" → "Spouse 2 Years"
              "B1 Visa on Arrival (VOA)" → "B1 Visa on Arrival (VOA)" (unchanged)
         """
-        variant_suffixes = (
-            "(Altus/Onshore)",
-            "(Offshore)",
-            "(Extend)",
-        )
         name = visa_name.strip()
-        for suffix in variant_suffixes:
-            if name.endswith(suffix):
-                return name[: -len(suffix)].strip()
-        return name
+        return VisaOracleService._VARIANT_SUFFIX_RE.sub("", name).strip()
 
     @staticmethod
     def _parse_duration_days(duration_str: str) -> int | None:
