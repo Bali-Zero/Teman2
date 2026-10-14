@@ -139,7 +139,7 @@ def test_book_retirement_card_points_to_e33f_offshore_with_same_price():
     normalized_book_text = re.sub(r"\(\s+", "(", normalized_book_text)
     target_call = (
         'pricingBackedVisaService("kitas_permits", '
-        '"E33F Second Home Senior (1 Year, Offshore)")'
+        '"E33F Second Home Senior (1 Year, Offshore)"'
     )
     assert target_call in normalized_book_text
     assert '"Retirement (Offshore)"' not in book_text
@@ -206,3 +206,64 @@ def test_sync_script_omits_internal_rows_in_build_payload_and_iter_service_rows(
     assert category == "kitas_permits"
     assert key == "Normal Row"
     assert row["name"] == "Normal Row"
+
+
+# 6. Retirement KITAP + MERP description_en (E33F naming, no generic Retirement KITAS)
+OLD_RETIREMENT_KITAP_DESCRIPTION = (
+    "Permanent residence permit (KITAP) for retirees who have already held a "
+    "Retirement KITAS, bundled with Multiple Exit Re-entry Permit (MERP). The "
+    "Multiple Exit Re-entry Permit (MERP) is automatically included in the KITAP "
+    "per UU 63/2024 — no separate document or fee."
+)
+
+
+def _kitap_permits(data: dict) -> dict[str, dict]:
+    if "services" in data:
+        return data["services"]["kitap_permits"]
+    return data["services_by_category"]["kitap_permits"]
+
+
+def _check_retirement_kitap_description(data: dict) -> list[str]:
+    """Return violations if 'Retirement KITAP + MERP' description_en lacks 'E33F' or contains 'Retirement KITAS'."""
+    desc = _kitap_permits(data)["Retirement KITAP + MERP"]["description_en"]
+    issues: list[str] = []
+    if "E33F" not in desc:
+        issues.append("missing 'E33F'")
+    if "retirement kitas" in desc.lower():
+        issues.append("contains 'Retirement KITAS'")
+    return issues
+
+
+def test_retirement_kitap_merp_description_names_e33f_and_convicts_old_text():
+    canonical = _load_json(CANONICAL_PATH)
+    assert _check_retirement_kitap_description(canonical) == []
+
+    mutated_canonical = copy.deepcopy(canonical)
+    mutated_canonical["services"]["kitap_permits"]["Retirement KITAP + MERP"][
+        "description_en"
+    ] = OLD_RETIREMENT_KITAP_DESCRIPTION
+    assert _check_retirement_kitap_description(mutated_canonical) == [
+        "missing 'E33F'",
+        "contains 'Retirement KITAS'",
+    ]
+
+    mirror = _load_json(MIRROR_PATH)
+    assert _check_retirement_kitap_description(mirror) == []
+    assert (
+        mirror["services_by_category"]["kitap_permits"]["Retirement KITAP + MERP"][
+            "description_en"
+        ]
+        == canonical["services"]["kitap_permits"]["Retirement KITAP + MERP"][
+            "description_en"
+        ]
+    )
+
+    mutated_mirror = copy.deepcopy(mirror)
+    mutated_mirror["services_by_category"]["kitap_permits"]["Retirement KITAP + MERP"][
+        "description_en"
+    ] = OLD_RETIREMENT_KITAP_DESCRIPTION
+    assert _check_retirement_kitap_description(mutated_mirror) == [
+        "missing 'E33F'",
+        "contains 'Retirement KITAS'",
+    ]
+
