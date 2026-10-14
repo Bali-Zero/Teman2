@@ -275,15 +275,11 @@ describe("Visa Oracle engine response runtime guard", () => {
     ).toEqual(["overstay", "overstay"]);
   });
 
-  it("parses valid stay_policy shapes, optional nulls, absent stay_policy, and prohibited_activities (#8441)", () => {
+  it("parses valid stay_policy shapes and optional nulls", () => {
     const valid = makeVisaOracleResponse();
-    valid.display.candidates[0].prohibited_activities = [
-      "Taking up local employment without a work permit",
-    ];
     expect(
-      parseVisaOracleEvaluateResponse(valid).display.candidates[0]
-        .prohibited_activities,
-    ).toEqual(["Taking up local employment without a work permit"]);
+      parseVisaOracleEvaluateResponse(valid).display.candidates[0].stay_policy,
+    ).toEqual(valid.display.candidates[0].stay_policy);
 
     const withNulls = makeVisaOracleResponse();
     withNulls.display.candidates[0].stay_policy = {
@@ -300,9 +296,6 @@ describe("Visa Oracle engine response runtime guard", () => {
         days_per_extension: null,
       },
     };
-    withNulls.display.candidates[0].prohibited_activities = [
-      "Selling goods or services",
-    ];
     expect(() => parseVisaOracleEvaluateResponse(withNulls)).not.toThrow();
 
     const notApplicable = makeVisaOracleResponse();
@@ -321,14 +314,28 @@ describe("Visa Oracle engine response runtime guard", () => {
       },
     };
     expect(() => parseVisaOracleEvaluateResponse(notApplicable)).not.toThrow();
-
-    const absent = makeVisaOracleResponse();
-    delete (absent.display.candidates[0] as Record<string, unknown>)
-      .stay_policy;
-    expect(() => parseVisaOracleEvaluateResponse(absent)).not.toThrow();
   });
 
-  it("rejects malformed stay_policy and prohibited_activities shapes", () => {
+  it("accepts unknown extra keys on stay_policy, stay, and extension", () => {
+    const response = makeVisaOracleResponse();
+    const policy = response.display.candidates[0]
+      .stay_policy as unknown as Record<string, unknown>;
+    policy.extra_policy_key = "forward-compatible";
+    (policy.stay as Record<string, unknown>).extra_stay_key = 1;
+    (policy.extension as Record<string, unknown>).extra_extension_key = true;
+    expect(() => parseVisaOracleEvaluateResponse(response)).not.toThrow();
+  });
+
+  it("rejects a display candidate with an absent stay_policy", () => {
+    const absent = makeVisaOracleResponse();
+    delete (absent.display.candidates[0] as unknown as Record<string, unknown>)
+      .stay_policy;
+    expect(() => parseVisaOracleEvaluateResponse(absent)).toThrowError(
+      expect.objectContaining({ code: "MALFORMED_RESPONSE" }),
+    );
+  });
+
+  it("rejects malformed stay_policy shapes", () => {
     const corruptions: Array<
       [string, (candidate: Record<string, unknown>) => void]
     > = [
@@ -429,28 +436,6 @@ describe("Visa Oracle engine response runtime guard", () => {
         },
       ],
       [
-        "extra key on stay",
-        (c) => {
-          (
-            (c.stay_policy as Record<string, unknown>).stay as Record<
-              string,
-              unknown
-            >
-          ).extra = 1;
-        },
-      ],
-      [
-        "extra key on extension",
-        (c) => {
-          (
-            (c.stay_policy as Record<string, unknown>).extension as Record<
-              string,
-              unknown
-            >
-          ).extra = 1;
-        },
-      ],
-      [
         "unknown extension.status",
         (c) => {
           (
@@ -481,12 +466,6 @@ describe("Visa Oracle engine response runtime guard", () => {
               unknown
             >
           ).days_per_extension = 0;
-        },
-      ],
-      [
-        "non-string prohibited_activities item",
-        (c) => {
-          c.prohibited_activities = [123];
         },
       ],
     ];

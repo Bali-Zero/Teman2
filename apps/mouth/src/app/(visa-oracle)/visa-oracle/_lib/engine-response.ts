@@ -48,14 +48,6 @@ const STAY_POLICY_KINDS = new Set([
   "NOT_APPLICABLE",
 ]);
 const EXTENSION_POLICY_STATUSES = new Set(["VERIFIED", "UNKNOWN"]);
-const STAY_KEYS = new Set(["kind", "minimum_days", "maximum_days"]);
-const EXTENSION_KEYS = new Set([
-  "status",
-  "reason_code",
-  "allowed",
-  "maximum_extensions",
-  "days_per_extension",
-]);
 const UTC_INSTANT =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(?:Z|\+00:00)$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -349,17 +341,11 @@ function verifyStateInvariants(decision: JsonRecord): void {
 
 function stayPolicy(value: unknown): void {
   const policy = record(value);
-  const policyKeys = Object.keys(policy);
-  if (
-    policyKeys.some((key) => key !== "stay" && key !== "extension") ||
-    !("stay" in policy) ||
-    !("extension" in policy)
-  ) {
+  if (!("stay" in policy) || !("extension" in policy)) {
     malformed();
   }
   const stay = record(policy.stay);
   if (
-    Object.keys(stay).some((key) => !STAY_KEYS.has(key)) ||
     !("kind" in stay) ||
     !("minimum_days" in stay) ||
     !("maximum_days" in stay)
@@ -387,7 +373,6 @@ function stayPolicy(value: unknown): void {
 
   const extension = record(policy.extension);
   if (
-    Object.keys(extension).some((key) => !EXTENSION_KEYS.has(key)) ||
     !("allowed" in extension) ||
     !("maximum_extensions" in extension) ||
     !("days_per_extension" in extension)
@@ -501,9 +486,7 @@ export function parseVisaOracleEvaluateResponse(
     referencedSources.push(...candidateSourceRefs);
     productNames(projected.name);
     if (projected.tagline !== null) productNames(projected.tagline);
-    if (projected.stay_policy !== undefined) {
-      stayPolicy(projected.stay_policy);
-    }
+    stayPolicy(projected.stay_policy);
     if (projected.prohibited_activities !== undefined) {
       for (const item of array(projected.prohibited_activities)) {
         if (string(item).trim().length === 0) malformed();

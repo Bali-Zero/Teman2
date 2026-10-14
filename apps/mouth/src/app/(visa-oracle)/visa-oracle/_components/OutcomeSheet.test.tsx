@@ -2237,14 +2237,13 @@ describe("OutcomeSheet — fixed-days stay-permit length, verified renewal, and 
         selectedDays: 365,
         options: [],
         extensionRequired: false,
-        label: text("1-year stay permit", "Izin tinggal 1 tahun"),
         renewal: text(
           "This permit is renewable 1 year at a time, up to 5 times.",
-          "Izin tinggal ini dapat diperpanjang 1 tahun setiap kali, hingga 5 kali.",
+          "Izin tinggal ini dapat diperpanjang hingga 5 kali, masing-masing 1 tahun.",
         ),
         longerStay: text(
-          "Your planned stay is longer than the first permit — your plan continues by renewal.",
-          "Rencana tinggal Anda lebih lama dari izin pertama — rencana Anda dilanjutkan melalui perpanjangan.",
+          "Your planned stay is longer than the first permit — your stay can continue by renewal.",
+          "Rencana tinggal Anda lebih lama dari izin pertama — masa tinggal Anda dapat dilanjutkan dengan perpanjangan.",
         ),
       });
       const { container } = render(
@@ -2259,18 +2258,29 @@ describe("OutcomeSheet — fixed-days stay-permit length, verified renewal, and 
         language === "id" ? "Izin tinggal 1 tahun" : "1-year stay permit";
       const expectedRenewal =
         language === "id"
-          ? "Izin tinggal ini dapat diperpanjang 1 tahun setiap kali, hingga 5 kali."
+          ? "Izin tinggal ini dapat diperpanjang hingga 5 kali, masing-masing 1 tahun."
           : "This permit is renewable 1 year at a time, up to 5 times.";
       const expectedLongerStay =
         language === "id"
-          ? "Rencana tinggal Anda lebih lama dari izin pertama — rencana Anda dilanjutkan melalui perpanjangan."
-          : "Your planned stay is longer than the first permit — your plan continues by renewal.";
+          ? "Rencana tinggal Anda lebih lama dari izin pertama — masa tinggal Anda dapat dilanjutkan dengan perpanjangan."
+          : "Your planned stay is longer than the first permit — your stay can continue by renewal.";
 
       expect(
         container.querySelector(".oracle-price__duration"),
       ).toHaveTextContent(expectedLength);
-      expect(screen.getByText(expectedRenewal)).toBeInTheDocument();
-      expect(screen.getByText(expectedLongerStay)).toBeInTheDocument();
+      const renewalEl = screen.getByText(expectedRenewal);
+      expect(renewalEl).toBeInTheDocument();
+      expect(renewalEl).toHaveClass("oracle-question__hint");
+      expect(renewalEl).not.toHaveClass("oracle-price__note");
+      const priceNote = container.querySelector(".oracle-price__note");
+      expect(priceNote).not.toBeNull();
+      expect(
+        priceNote!.compareDocumentPosition(renewalEl) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      const longerStayEl = screen.getByText(expectedLongerStay);
+      expect(longerStayEl).toBeInTheDocument();
+      expect(longerStayEl).toHaveClass("oracle-question__hint");
       expect(container.textContent).not.toMatch(
         /not extendable|tidak dapat diperpanjang/i,
       );
@@ -2298,10 +2308,9 @@ describe("OutcomeSheet — fixed-days stay-permit length, verified renewal, and 
           selectedDays: 1825,
           options: [],
           extensionRequired: false,
-          label: text("5-year stay permit", "Izin tinggal 5 tahun"),
           longerStay: text(
             "Your planned stay is longer than the first permit — a Bali Zero advisor confirms how a longer stay continues.",
-            "Rencana tinggal Anda lebih lama dari izin pertama — konsultan Bali Zero mengonfirmasi bagaimana masa tinggal yang lebih lama dilanjutkan.",
+            "Rencana tinggal Anda lebih lama dari izin pertama — konsultan Bali Zero akan memastikan cara melanjutkan masa tinggal yang lebih lama.",
           ),
         },
         19_000_000,
@@ -2320,12 +2329,12 @@ describe("OutcomeSheet — fixed-days stay-permit length, verified renewal, and 
         language === "id" ? "Izin tinggal 5 tahun" : "5-year stay permit",
       );
       expect(container.textContent).not.toMatch(
-        /renewable 1 year at a time|dapat diperpanjang 1 tahun setiap kali|not extendable|tidak dapat diperpanjang/i,
+        /renewable 1 year at a time|dapat diperpanjang hingga 5 kali|not extendable|tidak dapat diperpanjang/i,
       );
       expect(
         screen.getByText(
           language === "id"
-            ? "Rencana tinggal Anda lebih lama dari izin pertama — konsultan Bali Zero mengonfirmasi bagaimana masa tinggal yang lebih lama dilanjutkan."
+            ? "Rencana tinggal Anda lebih lama dari izin pertama — konsultan Bali Zero akan memastikan cara melanjutkan masa tinggal yang lebih lama."
             : "Your planned stay is longer than the first permit — a Bali Zero advisor confirms how a longer stay continues.",
         ),
       ).toBeInTheDocument();
