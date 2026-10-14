@@ -15,10 +15,10 @@ lanes:
     role: build
     seat: gemini-4-argon-high via agy (build, prepare-only) with the Claude driver; worktree backend-rag-vo-visa-check-catalogue-1014 on M5.
   - lane: red-team-opus
-    role: red_team
+    role: review
     seat: claude-opus-5-5 adversarial review, read-only, head c22fd7de70.
   - lane: red-team-codex
-    role: red_team
+    role: review
     seat: gpt-5.6-sol via codex exec, read-only, session rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl.
   - lane: cat-visa-check-e33-e33g-ground-truth
     role: ground_truth
