@@ -226,7 +226,7 @@ PRICE_MAP: dict[str, tuple[tuple[str, ...], str]] = {
     "PRICE_E33G_ALT":      (('kitas_permits', 'E33G Remote Worker (Altus/Onshore)'), 'E33G Remote Worker (Altus/Onshore)'),
     "PRICE_INV_OFF":       (('kitas_permits', 'Investor KITAS 2 Years (Offshore)'), 'Investor KITAS 2 Years (Offshore)'),
     "PRICE_E23_OFF":       (('kitas_permits', 'Freelance E23 (Offshore)'), 'Freelance E23 (Offshore)'),
-    "PRICE_RET_OFF":       (('kitas_permits', 'Retirement (Offshore)'), 'Retirement (Offshore)'),
+    "PRICE_RET_OFF":       (('kitas_permits', 'E33F Second Home Senior (1 Year, Offshore)'), 'E33F Second Home Senior (1 Year, Offshore)'),
     "PRICE_SPOUSE_OFF":    (('kitas_permits', 'Spouse 1 Year (Offshore)'), 'Spouse 1 Year (Offshore)'),
     "PRICE_E33E":          (('kitas_permits', 'E33E Second Home Senior (5 Years)'), 'E33E Second Home Senior (5 Years)'),
     "PRICE_KITAP_INV":     (('kitap_permits', 'Investor KITAP + MERP'), 'Investor KITAP + MERP'),

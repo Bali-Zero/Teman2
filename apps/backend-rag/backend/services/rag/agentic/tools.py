@@ -624,7 +624,7 @@ class PricingTool(BaseTool):
             if query:
                 result = self.pricing_service.search_service(query)
             else:
-                result = self.pricing_service.get_pricing(service_type)
+                result = self.pricing_service.get_pricing_for_clients(service_type)
             return str(result)
         except Exception as e:
             logger.error("Pricing lookup failed: %s", e)

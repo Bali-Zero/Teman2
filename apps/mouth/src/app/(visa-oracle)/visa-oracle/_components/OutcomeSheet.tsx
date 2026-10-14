@@ -670,9 +670,19 @@ function Price({
             })}
           </span>
         ))}
+      {duration?.renewal && (
+        <span className="oracle-question__hint">
+          {localized(duration.renewal, language)}
+        </span>
+      )}
       {duration?.extensionRequired && (
         <span className="oracle-question__hint">
           {translate(language, "outcome.duration_extension" as I18nKey)}
+        </span>
+      )}
+      {duration?.longerStay && (
+        <span className="oracle-question__hint">
+          {localized(duration.longerStay, language)}
         </span>
       )}
       {price.validUntilIso && (

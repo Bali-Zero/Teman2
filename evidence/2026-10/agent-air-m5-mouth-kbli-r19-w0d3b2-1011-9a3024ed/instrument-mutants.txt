@@ -1,0 +1,10 @@
+M1 no reduced motion | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-reduce
+M2 motion removed at rest | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_page_grounds_at_rest[I-entrance-held]
+M3 motion removed on an opened surface | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-surfac
+M4 finished motion forces its end state | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_page_grounds_at_rest[G-entrance-not-held]
+M5 the state walk removes motion | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_the_state_walk_hovers_an_entrance_held_with_forwar
+M6 every details content skipped (the #8249 gate's N2) | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_page_grounds_at_rest[G-open-details-covered]
+S1 the sector route is the last card | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_cli_replay_prints_the_verdict_last
+S2 a scenario dropped from the list | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_cli_replay_prints_the_verdict_last
+S3 the armed test is handed the sector template | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_cli_replay_prints_the_verdict_last
+S4 the declared row dropped | KILLED | offline rows (the declared list pin, the 50-walk count, the replay of the live dump)

@@ -13,6 +13,7 @@ from jsonschema import Draft202012Validator
 from backend.services.visa_engine.api_models import CandidateDisplayDTO, VisaOracleEvaluateResponse
 from backend.services.visa_engine.bundle import StaticTrustStore, verify_rule_pack
 from backend.services.visa_engine.compiler import build_compiled_pack
+from backend.services.visa_engine.documentation_catalog import catalogue_codes
 from backend.services.visa_engine.evaluate_path import _build_display, _build_sources_dto
 from backend.services.visa_engine.pricing_adapter import UnavailablePricingCatalog
 from backend.tests.services.visa_engine import test_interview_walk_census as census
@@ -144,3 +145,23 @@ def test_response_validates_against_dto_and_committed_contract_schema(
         {"$defs": contract["$defs"], "$ref": "#/$defs/VisaOracleEvaluateResponse"}
     )
     assert list(validator.iter_errors(payload)) == []
+
+
+def test_documentation_is_available_only_for_catalogue_products(
+    candidate_displays: list[tuple[Any, Any, dict[str, Any]]],
+) -> None:
+    shown_codes: set[str] = set()
+    for _decision, _compiled, display in candidate_displays:
+        for shown in display["candidates"]:
+            documentation = shown["documentation"]
+            shown_codes.add(shown["product_code"])
+            if shown["product_code"] in catalogue_codes():
+                assert documentation["status"] == "AVAILABLE"
+                assert documentation["requirements"]
+            else:
+                assert documentation["status"] == "UNKNOWN"
+                assert documentation["reason_code"] == "DOCUMENTATION_CATALOG_NOT_VERIFIED"
+                assert documentation["requirements"] == []
+                assert documentation["checklist"] == []
+    assert shown_codes & catalogue_codes()
+    assert shown_codes - catalogue_codes()

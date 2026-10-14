@@ -142,10 +142,14 @@ def _build_sections(data: dict, assets_dir: Path | None, embed_assets: bool) -> 
                     "services": [],
                 }
                 for _name, svc in sub_entries.items():
+                    if svc.get("internal") is True:
+                        continue
                     sub["services"].append(_decorate_svc(svc, assets_dir, embed_assets))
                 sec.subsections.append(sub)
         else:
             for _name, svc in services_root[category_key].items():
+                if svc.get("internal") is True:
+                    continue
                 sec.services.append(_decorate_svc(svc, assets_dir, embed_assets))
 
         sections.append(sec)

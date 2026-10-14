@@ -489,6 +489,7 @@ python3 scripts/mouth/r19_wrapper_token_census.py --replay scripts/mouth/tests/f
 
 The verdict is the printed `read-but-undefined:` line, never the exit code.
 `state-colors-off-contract:` follows `colors-outside-direction-a:` and `state-rows-unseen:`; §7.5 defines both.
+§8.8 lists the exit block W2''' is judged on.
 The opened-surface lines of §8.4 come last, and the last printed line is `opened-text-below-4.5:`.
 
 ## 7. Amendment 2026-10-09: the state contract (W0b)
@@ -882,12 +883,18 @@ for a stated reason. The colour type comes from the PNG header (`IHDR`).
 
 After the state walk, the census runs an opened-surface walk. Each scenario loads its page in
 a fresh context and opens the surface with real input. The census waits 2.5 s with transitions
-and animations off, then measures. Every context suppresses `setInterval` timers of 2 s or more,
+and animations finished, not removed, then measures: an entrance that starts collapsed or at
+opacity 0 and holds its end state with `forwards` is read at that end state, at rest and opened
+alike (W0d-3b-2). Every context asks for reduced motion (`prefers-reduced-motion: reduce`), so
+a page that honours it, script motion included, is read at its final frame. Every context
+suppresses `setInterval` timers of 2 s or more,
 so a rotating placeholder holds its first state and the count does not depend on the moment it
-is read. The search and inspect APIs answer from
-`scripts/mouth/tests/fixtures/r19_opened_surfaces.json` through Playwright route interception.
-The fixture holds placeholder rows and no client data. The walk therefore needs no backend, and
-it runs offline and in CI.
+is read. The search, inspect and chat APIs answer from
+`scripts/mouth/tests/fixtures/r19_opened_surfaces.json` through Playwright route interception,
+with the status each scenario names, or never (the request stays pending). The fixture holds
+placeholder rows and no client data. The walk therefore needs no backend, and it runs offline
+and in CI. A scenario that reads a toast or a staged indicator also suppresses `setTimeout`
+timers of 2 s or more, so the toast stays up and the indicator holds its first stage (W0d-3).
 
 | scenario                    | page                                   | opened by                                                                                                                                                                           | walks                                                    |
 | --------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
@@ -899,6 +906,19 @@ it runs offline and in CI.
 | `explorer-compare`          | `/kbli-explorer`                       | the seeded answer, the compare toggle, two results, then "Compare 2 codes"                                                                                                          | the same two                                             |
 | `explorer-black-book`       | `/kbli-explorer`                       | "Ask about your codes"                                                                                                                                                              | the same two                                             |
 | `explorer-mobile-sidebar`   | `/kbli-explorer`                       | the menu button                                                                                                                                                                     | mobile/system-dark                                       |
+| `sector-code-detail`        | `/kbli`                                | the sector drawer, then the first code in its grid                                                                                                                                  | desktop/light, mobile/system-dark                        |
+| `sector-table`              | `/kbli`                                | the "Table" tab of the sector browser                                                                                                                                               | the same two                                             |
+| `details-55203`             | `/kbli/55203`                          | every `details` in the page set open                                                                                                                                                | the same two                                             |
+| `details-51101`             | `/kbli/51101`                          | the same                                                                                                                                                                            | the same two                                             |
+| `details-56101`             | `/kbli/56101`                          | the same                                                                                                                                                                            | the same two                                             |
+| `zantara-answer`            | `/kbli`                                | the first suggestion chip of the Zantara chat, answered by the fixture                                                                                                              | the same two                                             |
+| `zantara-pending`           | `/kbli`                                | the same chip, with the chat never answering                                                                                                                                        | the same two                                             |
+| `zantara-error`             | `/kbli`                                | the same chip, with the chat answering 500                                                                                                                                          | the same two                                             |
+| `explorer-compare-bar`      | `/kbli-explorer`                       | the seeded answer, the compare toggle and two results, read before the modal                                                                                                        | the same two                                             |
+| `explorer-glossary-tooltip` | `/kbli-explorer`                       | a seeded answer that holds `KBLI`, then focus on the term (the focus is kept)                                                                                                       | the same two                                             |
+| `explorer-toast-success`    | `/kbli-explorer?inspect=56101`         | the inspector, then "Copy details", with the clipboard granted                                                                                                                      | the same two                                             |
+| `explorer-toast-error`      | `/kbli-explorer?inspect=56101`         | the inspect deep link, with the API answering 500                                                                                                                                   | the same two                                             |
+| `explorer-thinking`         | `/kbli-explorer`                       | a question sent, the chat never answering, read once the progress bar stops                                                                                                         | the same two                                             |
 | `kbli-mobile-nav`           | `/kbli`                                | the nav's hamburger (`button[aria-label="Open menu"]`)                                                                                                                              | mobile, all three themes                                 |
 | `kbli-code-mobile-nav`      | `/kbli/55203`                          | the same                                                                                                                                                                            | mobile, all three themes                                 |
 | shared components           | the ten pins of §8.5, outside `/kbli*` | the hamburger for MobileNav; none for NavShell and Footer, read at rest                                                                                                             | mobile/light and mobile/system-dark; NavShell on desktop |
@@ -929,9 +949,11 @@ by the painters (`SPEC-W0d-census.md` §2).
   or a shadow paints past the element's box, where `elementsFromPoint` never names it, so a
   point near the box is under the overlay too (W0d-3). Each side reaches three blur radii, and
   each visible outer shadow's blur plus spread less its offset away from that side, up to 64px:
-  a shadow cast down from a bottom bar reaches nothing above the bar. It reaches only from an
-  overlay painted above the run, one that `elementsFromPoint` names before the run's own
-  ancestors where the overlay's box comes nearest the point. A run with even one point under
+  a shadow cast down from a bottom bar reaches nothing above the bar. The reach counts only from
+  an overlay painted above the run, one that `elementsFromPoint` names before the run's own
+  ancestors where the overlay's box comes nearest the point. A `drop-shadow()` in `filter`
+  reaches nothing: Direction A paints none (§5, "drop-shadow filter: Direction A is flat"), and
+  a surface that adds one needs its reach here first (W0d-3b-2). A run with even one point under
   such an overlay is read again once it is brought to the middle of the viewport (W0d-2').
   Below the run, each element adds its `::after` and
   `::before`, its replaced content (`img`, `video`, `canvas`, `iframe`, `object`, `embed`, a
@@ -976,7 +998,6 @@ by the painters (`SPEC-W0d-census.md` §2).
   an image.
 - **The scroll cap is 250 positions, not 8.** The sector drawer holds about 1,700 runs and needs
   39 positions on desktop and 77 on mobile. A walk over the cap is still INCOMPLETE.
-- **Rest captures are 30, not 54.** The four routes §1.a adds come with W0d-3's second lot.
 
 **Added by W0d-3** (the #8202 and #8228 gates' notes, on the same scenarios):
 
@@ -992,6 +1013,23 @@ by the painters (`SPEC-W0d-census.md` §2).
   it paints a colour, or an image or a backdrop filter at an opacity of 0.1 or more. A scrim
   with no colour, or over an image, is off contract: a scrim is translucent ink.
 - **The sector card is not hovered.** The opener moves the pointer away once the drawer is open.
+
+**Added by W0d-3b-2** (`SPEC-W0d-census.md` §1.a):
+
+- **Nine pages, 54 captures.** `/kbli/sectors`, its first sector (`/kbli/sectors/[id]`, the
+  first card the server links, resolved at run time), `/kbli/builder` and `/kbli/decoder` join
+  the five. The armed apps/mouth test loads the eight fixed routes.
+- **One walk is declared not judgeable: `zantara-pending` at `mobile/system-dark`.** Every text
+  run of the state is over-image (a gradient-clip title, the "OSS Intelligence System" badge on a
+  non-uniform ground with a spread of 15 against the limit of 6, a bubble on a gradient); the
+  composer holds a placeholder, which the probe does not read, and the typing line is `sr-only`.
+  The walk would end `failed:over-image-only`, and that rule is unchanged. The scenario leaves
+  the list under a named row (`NOT_JUDGEABLE` in the census), the census prints
+  `declared-not-judgeable: zantara-pending mobile/system-dark` after `opened-surfaces:`, and a
+  test pins the declared list to exactly that variant: another variant without a row here fails.
+  **Binding for W2''':** the badge gets a solid plate (constraint C2, text never over imagery);
+  W2''' then puts the variant back in the walks and shows it `ok`. The exemption ends there.
+  That makes 50 opened walks, and 146 scenarios (rest 72, kbli 33, explorer 17, shared 24).
 
 **Verdict states.** Each walk prints one state:
 
@@ -1186,10 +1224,45 @@ The three `hover:` variants of `components/ui/button.tsx` render only inside the
 They have no §7 row, and the scan lists them as the only state-variant background classes
 without one. The lot that walks the boundaries adds their §7 rows.
 
+### 8.7 The overlay inventory (W0d-3b-2b)
+
+Lands with W0d-3b-2b: every overlay the fence can mount, claimed by a scenario or declared, and
+its `surfaces-unclaimed: U` line in the exit block below.
+
+### 8.8 The exit block (W0d-3)
+
+The census output must contain these lines exactly, in this order, the last line last
+(`SPEC-W0d-census.md` §4). CI asserts each with `grep -Fxq` after `set -o pipefail` around
+`| tee`, and never reads an exit code.
+
+```
+scenarios-off-manifest: 0
+captures: 54 ok, 0 failed
+read-but-undefined: 0
+colors-outside-direction-a: 0
+state-rows-unseen: 0
+state-colors-off-contract: 0
+page-grounds-off-contract: 0
+opened-surfaces: 50 ok, 0 failed
+opened-outside-wrapper: 0
+opened-grounds-off-contract: 0
+ground-resolver-disagree: 0
+shared-touched-unpinned: 0
+shared-component-drift: 0
+opened-text-below-4.5: 0
+```
+
+- **W0d asserts the instrument lines only:** `scenarios-off-manifest: 0`, `captures: 54 ok, 0 failed`,
+  `opened-surfaces: 50 ok, 0 failed`, `shared-touched-unpinned: 0` and
+  `shared-component-drift: 0`. The others are reported on `origin/main` (§8.4) and gated by
+  W2'''.
+- **The assert step proves itself.** CI replays it on a log carrying `: 1` and on an INCOMPLETE
+  log; both must exit 1.
+
 ## 9. Amendment 2026-10-10: the census in parts (W0d-3a)
 
 In one CI job the census took 28 min 39 s on its 30 captures (W0d-2'), against a 75-minute
-timeout, and W0d-3 grows it to 54 captures and 51 walks. CI therefore runs it in parts, side by
+timeout, and W0d-3 grows it to 54 captures and 50 walks. CI therefore runs it in parts, side by
 side. Every count it prints is unchanged.
 
 **The one list.** `scenarios()` lists every scenario of a full run in the order the run takes
@@ -1197,10 +1270,12 @@ them, each with the one part that runs it:
 
 | part       | scenarios                                                            | count |
 | ---------- | -------------------------------------------------------------------- | ----- |
-| `rest`     | the 30 captures (5 pages in 6 states) and the 10 state walks of §7.5 | 40    |
-| `kbli`     | the opened-surface walks of §8.4 on `/kbli` and `/kbli/55203`        | 18    |
-| `explorer` | the opened-surface walks of §8.4 on `/kbli-explorer`                 | 7     |
+| `rest`     | the 54 captures (9 pages in 6 states) and the 18 state walks of §7.5 | 72    |
+| `kbli`     | the opened-surface walks of §8.4 on `/kbli` and the three code pages | 33    |
+| `explorer` | the opened-surface walks of §8.4 on `/kbli-explorer`                 | 17    |
 | `shared`   | the shared-component walks of §8.5                                   | 24    |
+
+W0d-3b-2 grew the list from 89 to 146 (rest 40 → 72, kbli 18 → 33, explorer 7 → 17).
 
 `--part P` runs the scenarios of P and nothing else. With no `--part`, the census runs the whole
 list in one job, as before. Either way the server answers every route the scenarios load before
@@ -1231,8 +1306,8 @@ holds. A dump from before the parts has no list, and its replay prints no S line
 - `wrapper-census-states` keeps its name. It downloads the dumps and replays them. It then asserts
   these five lines exactly:
   - `scenarios-off-manifest: 0`;
-  - `captures: 30 ok, 0 failed`;
-  - `opened-surfaces: 25 ok, 0 failed`;
+  - `captures: 54 ok, 0 failed`;
+  - `opened-surfaces: 50 ok, 0 failed`;
   - `shared-touched-unpinned: 0`;
   - `shared-component-drift: 0`.
 - The aggregate also fails when any part job did not succeed. The browser guilt and innocence

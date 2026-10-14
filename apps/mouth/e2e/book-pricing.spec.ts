@@ -26,7 +26,7 @@ test("book visa cards use exact PricingTool identities without overflow", async 
     ["single_entry_visas", "C2 Business"],
     ["multiple_entry_visas", "D1 Tourism (1 Year)"],
     ["kitas_permits", "E33G Remote Worker (Offshore)"],
-    ["kitas_permits", "Retirement (Offshore)"],
+    ["kitas_permits", "E33F Second Home Senior (1 Year, Offshore)"],
   ] as const) {
     const price = getExactSnapshotPrice(category, key);
     expect(price).not.toBeNull();

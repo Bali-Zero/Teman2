@@ -160,6 +160,10 @@ export interface OutcomeDuration {
     selected: boolean;
   }[];
   extensionRequired: boolean;
+  /** Verified renewal line from the signed pack's extension policy (PR-7). */
+  renewal?: LocalizedText;
+  /** Continuation note when the applicant's requested stay_days exceed the first permit (PR-7). */
+  longerStay?: LocalizedText;
 }
 
 export interface OutcomeStep {

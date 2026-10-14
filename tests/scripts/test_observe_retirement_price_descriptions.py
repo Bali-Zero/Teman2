@@ -14,11 +14,11 @@ from observe_retirement_price_descriptions import summary_ok  # noqa: E402
 @pytest.mark.parametrize(
     "line",
     [
-        "22 skipped in 0.1s",
-        "21 passed in 0.1s",
-        "1 failed, 21 passed in 0.1s",
-        "22 passed, 1 skipped in 0.1s",
-        "22 passed, 1 error in 0.1s",
+        "20 skipped in 0.1s",
+        "19 passed in 0.1s",
+        "1 failed, 19 passed in 0.1s",
+        "20 passed, 1 skipped in 0.1s",
+        "20 passed, 1 error in 0.1s",
         "",
         None,
     ],
@@ -27,6 +27,6 @@ def test_rejects_anything_but_a_full_pass(line):
     assert summary_ok(line) is False
 
 
-@pytest.mark.parametrize("line", ["22 passed in 0.02s", "23 passed in 1.20s", "==== 22 passed in 0.02s ===="])
+@pytest.mark.parametrize("line", ["20 passed in 0.02s", "21 passed in 1.20s", "==== 20 passed in 0.02s ===="])
 def test_accepts_full_pass_at_or_above_floor(line):
     assert summary_ok(line) is True

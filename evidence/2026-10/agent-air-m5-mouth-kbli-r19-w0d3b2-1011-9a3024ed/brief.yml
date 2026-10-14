@@ -1,0 +1,40 @@
+task_id: kbli-r19-w0d3b2-1011
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, Track W, lot W0d-3b-2a (ruling: the 3b-2 split, a then b): the
+  census grows to the scope SPEC-W0d-census section 1.a sets, and reads motion at its end.
+    1. Nine pages, 54 captures: /kbli/sectors, its first sector (resolved at run time from the
+       first card the server links), /kbli/builder and /kbli/decoder join the five.
+    2. S5-S21: 50 opened walks (51 scenarios, one declared not judgeable: zantara-pending at mobile/system-dark, whose every text run is over-image; W2''' puts it back) (sector code detail and table, the three code pages' details,
+       the Zantara chat answered / pending / failed, the explorer compare bar, glossary tooltip,
+       toasts and thinking state), with stubs that answer, fail or never answer.
+    3. Motion is finished, not removed (NO_MOTION), at rest, opened and in the state walk; every
+       context asks for reduced motion, so script motion that honours it is read at its final
+       frame. The composer row proves both directions: an entrance held with `forwards` is read
+       at its end state, one without it is still counted where it ends.
+    4. The exit block asserts captures 54 and opened-surfaces 50; the kbli part's CI headroom is
+       re-measured on the grown list (the #8237 gate's note 5).
+  The fixture is regenerated on M5 and a CI pair runs on the head.
+constraints:
+  - "Zero files under apps/mouth/src (SPEC-W0d section 5)."
+  - "Nothing of W0d-3b-2b: the section 8.7 overlay inventory and surfaces-unclaimed, the bg-black/60 per-surface row, the section 8.5 cells, the logo proof."
+  - "No npm install or npm ci. Census dev servers on 3519 and above, started and stopped by this lot."
+acceptance:
+  - text: "WHEN the list is cut by part, THEN it holds 146 scenarios (rest 72, kbli 33, explorer 17, shared 24), the union is the list and the parts are disjoint."
+    probe: "python3 -m pytest scripts/mouth/tests -q -k 'cut_from_one_list or walks_51'"
+  - text: "WHEN a motion change is undone, THEN its row fails (reduced motion, held entrances at rest, opened and in the state walk, the not-held entrance); WHEN a scope change is undone, THEN its row fails."
+    probe: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3b2-1011-9a3024ed/instrument_mutants.py"
+  - text: "WHEN the regenerated fixture is replayed, THEN it prints the M5 live verdict byte for byte."
+    probe: "python3 -m pytest scripts/mouth/tests -q -k 'not e2e'"
+  - text: "WHEN CI runs the four parts and, on the same commit, the single full job, THEN the two verdicts are byte-identical, captures 54 ok and opened-surfaces 50 ok, and no part takes more than 30 minutes."
+    probe: 'gh workflow run r19-wrapper-census-tests.yml --ref agent/air-m5/mouth/kbli-r19-w0d3b2-1011 (default parts, then -f parts=''["full"]''); cmp the two verdict texts; phase-seconds per part'
+consumer_map:
+  - "r19-wrapper-census-tests / wrapper-census-states asserts captures 54 and opened-surfaces 50 on every census PR; W2''' is judged on this list."
+  - "r19-wrapper-census-tests / census-replay runs the motion rows on every census PR."
+risks:
+  - "The grown list lengthens the rest and kbli parts; each part's phase-seconds is reported, and rest is split again if it passes 30 minutes in CI."
+  - "Asking for reduced motion changes what a page that honours it paints; a static page reads the same either way (row)."
+grader: |
+  A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha.

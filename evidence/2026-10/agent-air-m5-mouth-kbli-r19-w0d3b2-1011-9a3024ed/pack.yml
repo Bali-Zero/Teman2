@@ -1,0 +1,80 @@
+brief_ref: evidence/brief.yml
+seat_override: >-
+  Dispatched by the imperator: mission kbli-nav-design-loop, Track W, lot W0d-3b-2a (BLUE), the
+  first of the two lots the 3b-2 split ruled. The Dux (site-dux) resumed the worktree of w2-dux-3,
+  which died in a session restart, and built and ran every command. It does not self-sign; the
+  imperator commissions a fresh Opus gate.
+plan_ref: >-
+  ~/BATTAGLIA-20261008/DYNAMIC-WORKFLOW-kbli-nav-design/Z-DECISIONI.md Q21-Q22; the #8249 gate
+  comment (bindings 1, 5, 6, 7, 8 belong here); the contract
+  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md sections 8.4 and 9.
+lanes:
+  - lane: kbli-r19-w0d3b2-1011
+    role: build
+    seat: "claude-sonnet-5-5 (Dux)"
+pii_scan: clean
+pii_scan_note: "Census dumps, verdict texts and mutant outputs hold public page labels, colours, CSS paths and route paths only. No client data, no external seat. No PNG in this pack."
+provenance: >-
+  Carved from the protected W0d-3 WIP (local commit 1b406d7c8f, never pushed), rebased onto
+  origin/main after #8249 merged. The 3b-2b content (section 8.7 overlay inventory and
+  surfaces-unclaimed, the bg-black/60 per-surface row, the section 8.5 cells, the logo proof,
+  #8249 bindings 2, 3 and 4) stays in that WIP commit and is not in this diff.
+diff:
+  net_lines: |
+    About 360 net beyond the fixture and evidence:
+      - census script +186 -37;
+      - tests +136 -24;
+      - contract +90 -15;
+      - opened-surface fixture +23 -2 (chat and glossary rows);
+      - workflow +3 -1.
+    The census fixture is regenerated in place. No apps/mouth/src file.
+  behaviour_change: >-
+    The census walks nine pages (54 captures) and 50 opened surfaces (51 scenarios, one declared
+    not judgeable) and every browser context asks for reduced motion; motion is finished, not
+    removed. M5, the full run: G 579, O 18, K 188, M 784, state 51, drift 0, R 0, D 0.
+    One walk is declared, not hidden: zantara-pending at mobile/system-dark ends
+    failed:over-image-only (all three text runs over a gradient; the badge has a spread of 15
+    against the limit of 6). The rule is unchanged; the variant leaves the list under a named row
+    and the census prints declared-not-judgeable after opened-surfaces.
+receipts:
+  - claim: "The offline suite passes on the regenerated fixture."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'"
+    result: "149 passed, 79 deselected"
+    exit: 0
+    ts: "2026-10-12T08:20:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "The browser rows (guilt and innocence through the real walk, the page judge, the opener) pass on M5."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k e2e"
+    result: "79 passed, 149 deselected in 206.55s"
+    exit: 0
+    ts: "2026-10-12T08:31:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "The armed apps/mouth test still reads the probe, pages and states through --export."
+    cmd: "cd apps/mouth && npm test -- r19-wrapper --run --reporter=dot"
+    result: "Test Files 1 passed; Tests 5 passed, 1 skipped (747.86s)"
+    exit: 0
+    ts: "2026-10-12T08:46:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Every cure undone fails a row: 6 through the real walk, 3 offline, and the declared row dropped."
+    cmd: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3b2-1011-9a3024ed/instrument_mutants.py (instrument-mutants.txt)"
+    result: "9 of 9 killed, plus S4 (NOT_JUDGEABLE emptied: 16 offline rows fail); the census cmp-identical to before"
+    exit: 0
+    ts: "2026-10-12T00:00:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "M5, the full census on port 3531 with the cured instrument: the fixture is its dump, and the fixture's replay is its live verdict byte for byte."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --port 3531 --diff-base origin/main --json <fixture>; --replay <fixture>; cmp"
+    result: "496 lines, identical (sha256 fe95cde32e91d86f). S 0, captures 54 ok, opened 50 ok 0 failed, declared-not-judgeable 1, G 579, O 18, K 188, D 0, N 0, drift 0, M 784. phase-seconds: full capture 1160, walk 222, opened 998, shared 353."
+    exit: 0
+    ts: "2026-10-11T23:38:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "The fence: no file under apps/mouth/src."
+    cmd: "git diff --name-only origin/main...HEAD | grep -c '^apps/mouth/src'"
+    result: "0"
+    exit: 1
+    ts: "2026-10-13T00:00:00Z"
+    seat: claude-sonnet-5-5
+dissent:
+  - seat: claude-sonnet-5-5
+    objection: "The first full run printed opened-surfaces: 50 ok, 1 failed (zantara-pending mobile/system-dark, failed:over-image-only), deterministic over five isolated runs, not load."
+    status: CONFIRMED
+    resolution: "Every text run of that state is over a gradient; the composer holds a placeholder the probe does not read and the typing line is sr-only. Ruled by the imperator: the variant is declared not judgeable, the rule stays, a test pins the declared list to that one variant, and W2''' re-arms it (badge on a solid plate, constraint C2)."

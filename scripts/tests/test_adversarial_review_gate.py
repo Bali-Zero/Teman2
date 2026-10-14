@@ -168,6 +168,17 @@ def test_innocence_qwen_seat_accepted(tmp_path):
     assert v.ok is True
 
 
+def test_innocence_gemini_4_argon_seat_accepted(tmp_path):
+    p = _write(
+        tmp_path,
+        "research/operations/x.md",
+        "---\ndate: 2026-10-14\nadversarial_review: gemini-4-argon-high\n---\n\n"
+        "# Title\n\n## Adversarial review\n\nnone survived, 1 raised\n",
+    )
+    v = car.evaluate_file(p)
+    assert v.ok is True
+
+
 def test_innocence_human_seat_accepted(tmp_path):
     p = _write(
         tmp_path,

@@ -547,7 +547,8 @@ def _launch_seat(seat: str, prompt: str, timeout: int, kit: Path) -> str:
         elif kind == "tp1":
             cmd = ["qwen", "--model", seat, "--approval-mode", "plan", prompt]
         elif kind == "agy":
-            cmd = ["agy", "-p", prompt, "--model", seat, "--output-format", "text"]
+            agy_model = AGY_MODEL_MAP.get(_canonical_seat(seat), seat)
+            cmd = ["agy", "-p", prompt, "--model", agy_model, "--output-format", "text"]
         elif kind == "astra":
             # PR3i (first real run, 2026-09-19): codex's `-o` target lives in THIS call's own
             # temp dir, never in the kit. It used to be the hardcoded kit/r1/astra.md for every
@@ -873,7 +874,18 @@ FAMILY_MAP: dict[str, frozenset[str]] = {
     "alibaba": frozenset({"qwen3.8-max", "qwen3.7-plus", "qwen3.6-flash"}),
     "deepseek": frozenset({"deepseek-v4-pro", "deepseek-v4-flash"}),
     "zhipu": frozenset({"glm-5.2"}),
-    "google": frozenset({"gemini-3.1-pro-high", "gemini-3.8-flash"}),
+    "google": frozenset({
+        "gemini-4-argon-high",
+        "gemini-4-argon-medium",
+        "gemini-4-argon-low",
+        "gemini-3.1-pro",
+        "gemini-3.1-pro-high",
+        "gemini-3.1-pro-low",
+        "gemini-3.8-flash-high",
+        "gemini-3.8-flash-medium",
+        "gemini-3.8-flash-low",
+        "gemini-3.8-flash",
+    }),
 }
 
 
@@ -903,6 +915,15 @@ def _canonical_seat(seat: str) -> str:
 KIMI_MODEL_MAP: dict[str, str] = {
     "kimi-k3": "kimi-code/k3",
     "kimi-code/kimi-for-coding-highspeed": "kimi-code/kimi-for-coding-highspeed",
+}
+
+# Retired or unsuffixed agy model slugs are upgraded at launch to their served `agy models`
+# equivalents while keeping the caller's seat id / on-disk slug intact.
+AGY_MODEL_MAP: dict[str, str] = {
+    "gemini-3.1-pro": "gemini-4-argon-high",
+    "gemini-3.1-pro-high": "gemini-4-argon-high",
+    "gemini-3.1-pro-low": "gemini-4-argon-low",
+    "gemini-3.8-flash": "gemini-3.8-flash-high",
 }
 
 

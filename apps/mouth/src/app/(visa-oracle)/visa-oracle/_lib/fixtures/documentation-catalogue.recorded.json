@@ -1,0 +1,46 @@
+{
+  "_note": "Recorded from documentation_for() in apps/backend-rag (the backend's own /evaluate display.documentation block) for an E33F candidate and an E31B candidate.",
+  "E33F": {
+    "status": "AVAILABLE",
+    "reason_code": "OFFICIAL_IMIGRASI_DOCUMENT_CHECKLIST",
+    "observed_at": "2026-10-14T01:00:00+00:00",
+    "requirements": [
+      {
+        "en": "Sponsorship letter from the sponsor (surat penjaminan)",
+        "id": "Surat penjaminan dari penjamin"
+      },
+      {
+        "en": "Valid passport, valid for at least 6 months before it expires",
+        "id": "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis"
+      },
+      {
+        "en": "Proof of living costs in Indonesia: bank statement for the last 3 months in the name of the foreigner or the sponsor, of at least USD 2,000 (or the equivalent)",
+        "id": "Bukti memiliki biaya hidup selama berada di wilayah Indonesia berupa rekening koran 3 bulan terakhir atas nama Orang Asing atau penjamin dengan jumlah minimal USD 2.000 atau jumlah yang setara"
+      },
+      {
+        "en": "Recent colour passport photo (taken within the last year)",
+        "id": "Pasfoto berwarna terbaru (setahun terakhir)"
+      },
+      {
+        "en": "Curriculum vitae",
+        "id": "Daftar riwayat hidup"
+      },
+      {
+        "en": "Travel history (itinerary)",
+        "id": "Riwayat perjalanan (itinerary)"
+      },
+      {
+        "en": "Proof of income or allowance of at least USD 3,000 per month",
+        "id": "Bukti penghasilan atau tunjangan dengan nilai sekurang-kurangnya US$3.000 per bulan"
+      }
+    ],
+    "checklist": []
+  },
+  "E31B": {
+    "status": "UNKNOWN",
+    "reason_code": "DOCUMENTATION_CATALOG_NOT_VERIFIED",
+    "observed_at": "2026-10-14T01:00:00+00:00",
+    "requirements": [],
+    "checklist": []
+  }
+}

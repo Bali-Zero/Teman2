@@ -25,6 +25,15 @@ vendor/evoskill/scripts/
 vendor/evoskill/README.md
 vendor/evoskill/Dockerfile
 vendor/evoskill/uv.lock
+# vendor/yasikvlad/ — Vlad Yasko workshop skills, byte-identical to upstream (vendor/yasikvlad/UPSTREAM.md).
+# The thin loaders in .claude/skills/<name>/SKILL.md ARE prettier-formatted.
+vendor/yasikvlad/
+
+# Vendored third-party Claude Code skills (byte-identical to upstream — see
+# vendor/*/UPSTREAM.md). Loaded through .claude/skills/<name> symlinks.
+vendor/marketing-skills/skills/
+vendor/marketing-skills/README.md
+vendor/humanizer-ru/SKILL.md
 
 # Logs
 *.log

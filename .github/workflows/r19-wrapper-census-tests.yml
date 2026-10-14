@@ -178,12 +178,14 @@ jobs:
           cat /dev/null "$RUNNER_TEMP"/parts/*.jsonl > "$RUNNER_TEMP/census.jsonl"
           python scripts/mouth/r19_wrapper_token_census.py --replay "$RUNNER_TEMP/census.jsonl" \
             --diff-base "$DIFF_BASE" | tee "$RUNNER_TEMP/census.txt"
+      # Contract section 8.8: the W0d instrument lines of the exit block, exactly. The census-replay job
+      # replays this step on a log carrying `: 1`, an INCOMPLETE log and a red part, and each exits 1.
       - name: Every scenario received, every capture and every surface opened, every shared component pinned and unchanged
         env:
           PARTS_RESULT: ${{ needs.wrapper-census-part.result }}
         run: |
           fail=0
-          for want in "scenarios-off-manifest: 0" "captures: 30 ok, 0 failed" "opened-surfaces: 25 ok, 0 failed" \
+          for want in "scenarios-off-manifest: 0" "captures: 54 ok, 0 failed" "opened-surfaces: 50 ok, 0 failed" \
                       "shared-touched-unpinned: 0" "shared-component-drift: 0"; do
             if grep -Fxq "$want" "$RUNNER_TEMP/census.txt"; then
               echo "ok: $want"

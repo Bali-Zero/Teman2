@@ -99,7 +99,7 @@ class PricingPlugin(Plugin):
             if query:
                 result = self.pricing_service.search_service(query)
             else:
-                result = self.pricing_service.get_pricing(service_type)
+                result = self.pricing_service.get_pricing_for_clients(service_type)
 
             # Check if pricing loaded successfully
             if not self.pricing_service.loaded:

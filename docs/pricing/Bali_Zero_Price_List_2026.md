@@ -102,9 +102,8 @@ _Long-stay residence permits for foreign nationals._
 | **Dependent 2 Years (Offshore)**           | Dependent KITAS valid 2 years for children or dependent family members of a primary KITAS/KITAP holder. Offshore process for applicants outside Indonesia. | 15.000.000 IDR |
 | **Dependent 2 Years (Extend)**             | Onshore extension of an existing 2-year Dependent KITAS.                                                                                                   | 15.000.000 IDR |
 | **Born KITAS**                             | KITAS issuance for foreign children born in Indonesia, processed alongside the birth registration.                                                         | 9.000.000 IDR  |
-| **Retirement (Altus/Onshore)**             | Retirement KITAS for foreign nationals 55+ meeting income requirements. Onshore process via Altus.                                                         | 16.000.000 IDR |
-| **Retirement (Offshore)**                  | Retirement KITAS for foreign nationals 55+ meeting income requirements. Offshore process for applicants outside Indonesia.                                 | 14.000.000 IDR |
-| **Retirement (Extend)**                    | Onshore extension of an existing Retirement KITAS.                                                                                                         | 10.000.000 IDR |
+
+Retirement (55+) is offered through the Second Home senior routes (E33F, 1 year, income route; E33E, 5 years). Please contact us for the current price of your route.
 
 ---
 

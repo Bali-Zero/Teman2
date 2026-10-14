@@ -1,0 +1,21 @@
+gear: 1
+gear_reason: >-
+  Docs, ledger and test pins only: two skill files, one pending-arms file, two test files and the observer floor
+  constant. Churn is far under 400; no visa-engine production rule pack, no data.
+mission: >-
+  The /visaoracle ledger records E33 wave 3 (#8466-#8469, #8493, #8494) as merged with live proof partial, records Zero's 2026-10-14 decisions
+  and opens the follow-ups.
+objective: >-
+  live-state-log.md carries a 2026-10-14 wave-3 entry as newest with the six merge shas, SKILL.md leads its LIVE STATE
+  with wave 3, PENDING-ARMS.md holds six new open rows each exactly once, and the seq-29 ledger observer floor
+  is raised from 9 to 21 with pins for the new content.
+scope:
+  - .agents/skills/visaoracle/references/live-state-log.md
+  - .agents/skills/visaoracle/SKILL.md
+  - .claude/skills/modus/PENDING-ARMS.md
+  - tests/scripts/test_visa_ledger_seq29.py
+  - tests/scripts/test_observe_visa_ledger_seq29.py
+  - scripts/ci/observe_visa_ledger_seq29.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

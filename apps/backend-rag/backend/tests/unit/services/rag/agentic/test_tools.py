@@ -158,7 +158,7 @@ class TestPricingTool:
         """Test executing without query"""
         with patch("backend.services.rag.agentic.tools.get_pricing_service") as mock_pricing:
             mock_service = MagicMock()
-            mock_service.get_pricing = MagicMock(return_value={"visa": 100})
+            mock_service.get_pricing_for_clients = MagicMock(return_value={"visa": 100})
             mock_pricing.return_value = mock_service
 
             tool = PricingTool()
@@ -170,7 +170,7 @@ class TestPricingTool:
         """Test executing with error"""
         with patch("backend.services.rag.agentic.tools.get_pricing_service") as mock_pricing:
             mock_service = MagicMock()
-            mock_service.get_pricing = MagicMock(side_effect=Exception("Error"))
+            mock_service.get_pricing_for_clients = MagicMock(side_effect=Exception("Error"))
             mock_pricing.return_value = mock_service
 
             tool = PricingTool()

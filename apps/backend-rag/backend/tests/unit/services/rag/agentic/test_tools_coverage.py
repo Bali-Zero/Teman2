@@ -408,7 +408,7 @@ class TestPricingTool:
         mock_service = MagicMock()
         mock_service.loaded = loaded
         mock_service.search_service.return_value = {"KITAS": "Rp 10.000.000"}
-        mock_service.get_pricing.return_value = {"visa": "see list"}
+        mock_service.get_pricing_for_clients.return_value = {"visa": "see list"}
         return PricingTool(pricing_service=mock_service)
 
     def test_name(self):
@@ -461,7 +461,7 @@ class TestPricingTool:
 
         mock_service = MagicMock()
         mock_service.loaded = True
-        mock_service.get_pricing.side_effect = RuntimeError("db down")
+        mock_service.get_pricing_for_clients.side_effect = RuntimeError("db down")
         tool = PricingTool(pricing_service=mock_service)
         result = await tool.execute(service_type="all")
         assert "failed" in result.lower()

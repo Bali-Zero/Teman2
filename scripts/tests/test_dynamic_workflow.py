@@ -1373,6 +1373,37 @@ def test_launch_seat_still_returns_empty_when_the_cli_raises(tmp_path, monkeypat
     assert dw._launch_seat("kimi-k3", "prompt text", 5, kit) == ""
 
 
+@pytest.mark.parametrize(
+    "seat,expected_model",
+    [
+        ("gemini-4-argon-high", "gemini-4-argon-high"),
+        ("gemini-4-argon-medium", "gemini-4-argon-medium"),
+        ("gemini-4-argon-low", "gemini-4-argon-low"),
+        ("gemini-3.1-pro", "gemini-4-argon-high"),
+        ("gemini-3.1-pro-high", "gemini-4-argon-high"),
+        ("gemini-3.1-pro-low", "gemini-4-argon-low"),
+        ("gemini-3.8-flash", "gemini-3.8-flash-high"),
+    ],
+)
+def test_launch_seat_agy_argon_and_retired_alias_model_mapping(
+    tmp_path, monkeypatch, seat, expected_model
+):
+    """Gemini 4 Argon seats map to the google family and pass their served `agy models`
+    slug to `--model`, while retired `gemini-3.1-pro*` / unsuffixed `gemini-3.8-flash`
+    auto-upgrade to `gemini-4-argon-*` / `gemini-3.8-flash-high` at launch."""
+    assert set(dw.AGY_MODEL_MAP.keys()).issubset(dw.FAMILY_MAP["google"])
+    assert dw._seat_family(seat) == "google"
+    seen_cmd: list[str] = []
+
+    def _fake_run(cmd, **_kwargs):
+        seen_cmd.extend(cmd)
+        return argparse.Namespace(stdout="ok")
+
+    monkeypatch.setattr(dw.subprocess, "run", _fake_run)
+    assert dw._launch_seat(seat, "prompt text", 5, tmp_path / "k") == "ok"
+    assert seen_cmd[seen_cmd.index("--model") + 1] == expected_model
+
+
 # --------------------------------------------------------------- slug collision (guilt + innocence)
 # Gate-4 finding, PR2e addendum (scripts/dynamic_workflow.py:420): _file_slug collapses '/' to
 # '__', so 'vendor/x' and a literal 'vendor__x' seat id both produce r1/vendor__x.md — the

@@ -35,6 +35,7 @@ const HARDCODED_SERVICE_MONEY =
 
 interface CanonicalRow {
   name?: string;
+  internal?: boolean;
   price?: string;
   duration?: string;
   validity?: string;
@@ -74,6 +75,9 @@ function canonicalRowsByCategory(
         for (const [key, row] of Object.entries(
           block as unknown as Record<string, CanonicalRow>,
         )) {
+          if (row.internal === true) {
+            continue;
+          }
           expected[projectedCategory][key] = projectedRow(
             projectedCategory,
             key,
@@ -85,6 +89,9 @@ function canonicalRowsByCategory(
     }
     expected[category] = {};
     for (const [key, row] of Object.entries(categoryPayload)) {
+      if (row.internal === true) {
+        continue;
+      }
       expected[category][key] = projectedRow(category, key, row);
     }
   }
@@ -99,7 +106,7 @@ describe("generated PricingTool snapshot", () => {
     ["single_entry_visas", "C2 Business"],
     ["multiple_entry_visas", "D1 Tourism (1 Year)"],
     ["kitas_permits", "E33G Remote Worker (Offshore)"],
-    ["kitas_permits", "Retirement (Offshore)"],
+    ["kitas_permits", "E33F Second Home Senior (1 Year, Offshore)"],
     ["company_services", "New Company (PT PMA)"],
   ] as const;
 
@@ -111,7 +118,24 @@ describe("generated PricingTool snapshot", () => {
         (count, rows) => count + Object.keys(rows).length,
         0,
       ),
-    ).toBe(118);
+    ).toBe(115);
+  });
+
+  it("omits internal Retirement rows from the mirror while keeping them in canonical", () => {
+    const mirrorKitasKeys = Object.keys(
+      generated.services_by_category.kitas_permits,
+    );
+    expect(
+      mirrorKitasKeys.filter((key) => key.startsWith("Retirement (")),
+    ).toEqual([]);
+    for (const key of [
+      "Retirement (Altus/Onshore)",
+      "Retirement (Offshore)",
+      "Retirement (Extend)",
+    ]) {
+      expect(canonical.services.kitas_permits[key]?.internal).toBe(true);
+      expect(getPricingSnapshotEntry("kitas_permits", key)).toBeUndefined();
+    }
   });
 
   it.each(selectedRows)("keeps %s:%s in parity", (category, key) => {

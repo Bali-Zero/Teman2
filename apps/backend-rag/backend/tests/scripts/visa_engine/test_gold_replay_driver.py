@@ -284,6 +284,17 @@ def test_offline_replay_match_count_does_not_regress_below_measured_floor() -> N
     ``process.application_channel``, so the engine cannot tell an onshore
     conversion or a status-bridging request from an offshore one.
 
+    Re-measured 2026-10-14 (E31-B01, owner-approved OPS-2) against signed pack
+    sequence 29: a no-path decision caused by a global hard filter now lists
+    only the global causes, so the per-product nationality codes
+    (``BVK_NATIONALITY_ONLY``, ``VOA_NATIONALITY_ONLY``,
+    ``VOA_DUAL_NATIONALITY_NOT_ASSESSED``) left personas 1, 3 and 4.  That
+    moves reason-code matches only: state and candidate set are identical on
+    all 20 personas before and after.  Against the old expectations the count
+    fell to 15/20; with the three expectations re-pinned in
+    ``SEQ28_PRODUCTION_REPLAY_EXPECTATIONS`` it is measured 18/20 again, 2
+    divergences (personas 9 and 10), so the floor stays 18 and the ceiling 2.
+
     The previous floor was measured 2026-08-23:
     ``python -m backend.scripts.visa_engine.gold_replay_driver --offline``
     against the highest-sequence signed PRODUCTION pack then in the
@@ -367,7 +378,13 @@ def test_engine_gap_pin_fails_when_persona_9_gets_worse() -> None:
         _assert_engine_gap_pinned(report)
 
 
-_PERSONA_1_PRE_SEQ23_EXPECTATION = ("APPLICANT_IS_INDONESIAN_CITIZEN",)
+# The persona-1 list before E31-B01 (OPS-2): the citizen exclusion plus the
+# per-product nationality codes that no longer ride along with a global cause.
+_PERSONA_1_PRE_E31_EXPECTATION = (
+    "BVK_NATIONALITY_ONLY",
+    "APPLICANT_IS_INDONESIAN_CITIZEN",
+    "VOA_DUAL_NATIONALITY_NOT_ASSESSED",
+)
 
 
 def test_persona_1_expectation_matches_the_highest_pack_and_the_old_one_does_not() -> None:
@@ -379,7 +396,7 @@ def test_persona_1_expectation_matches_the_highest_pack_and_the_old_one_does_not
     assert row["actual"]["state"] == "NO_SUPPORTED_PATH"
     assert tuple(row["actual"]["no_path_reason_codes"]) == expected.no_path_codes
     assert "APPLICANT_IS_INDONESIAN_CITIZEN" in expected.no_path_codes
-    assert tuple(row["actual"]["no_path_reason_codes"]) != _PERSONA_1_PRE_SEQ23_EXPECTATION
+    assert tuple(row["actual"]["no_path_reason_codes"]) != _PERSONA_1_PRE_E31_EXPECTATION
 
 
 def test_every_production_expectation_has_a_named_legal_basis() -> None:

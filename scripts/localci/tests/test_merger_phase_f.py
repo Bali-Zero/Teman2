@@ -86,6 +86,7 @@ def fw(world, monkeypatch):  # noqa: F811
     world.key.write_text(f"-----BEGIN FAKE KEY-----\n{SENTINEL}\n-----END FAKE KEY-----\n")
     world.key.chmod(0o600)
     monkeypatch.setenv(mg.PHASE_F_ENV, "1")
+    monkeypatch.setattr(mg, "READBACK_SETTLE_S", 0)
     world.mirror = world.state / "repo.git"
     world.live = lambda: [r for r in world.journal() if not (r.get("pr") or 0) >= 1001]   # the seeded history is not the tick's
     world.kinds = lambda: [r["kind"] for r in world.live()]
@@ -376,17 +377,239 @@ def test_a_push_that_errors_is_refused_and_halts_like_a_rejection(fw, monkeypatc
     assert g(fw.mirror, "rev-parse", "refs/merger/base") == fw.base and fw.origin_main() == fw.base
 
 
-def test_a_push_that_times_out_is_a_refusal_not_a_success(fw, monkeypatch):
+# ------------------------------------------------------------------ B21: a push of unknown outcome is read back before it halts
+def _push_reports(monkeypatch, *, lands: bool, rc: int = 0, stderr: str = "", timeout: bool = False):
+    """The push subprocess reports a failure (a timeout, or rc/stderr); with `lands` the real push happens first, so the remote HAS the commit."""
     real = mg.git
 
-    def slow(cwd, *a, **kw):
+    def fake(cwd, *a, **kw):
         if a and a[0] == "push":
+            if lands:
+                real(cwd, *a, **kw)
+            if timeout:
+                raise subprocess.TimeoutExpired(["git", "push"], kw["timeout"])
+            return subprocess.CompletedProcess(["git", "push"], rc, "", stderr)
+        return real(cwd, *a, **kw)
+    monkeypatch.setattr(mg, "git", fake)
+
+
+def test_b21_a_timeout_where_the_remote_never_received_the_push_is_push_unlanded_with_no_halt(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, timeout=True)
+    assert fw.tick() == 0
+    assert fw.kinds()[-2:] == ["merged", "push_unlanded"] and "TimeoutExpired" in fw.journal()[-1]["error"]
+    merged, unlanded = fw.journal()[-2:]
+    assert all(unlanded[k] == merged[k] and unlanded[k] for k in ("pr", "head_sha", "base_sha"))   # B19 matches a merged row to its push_unlanded on these three
+    assert not (fw.state / mg.HALT_FILE).exists() and "pushed" not in fw.kinds() and "push_refused" not in fw.kinds()
+    assert g(fw.mirror, "rev-parse", "refs/merger/base") == fw.base and fw.origin_main() == fw.base
+
+
+def test_b21_a_transport_error_text_with_main_unchanged_is_push_unlanded(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, rc=128, stderr="ssh: connect to host github.com port 22: Connection timed out\nfatal: Could not read from remote repository.")
+    assert fw.tick() == 0
+    assert fw.kinds()[-1] == "push_unlanded" and not (fw.state / mg.HALT_FILE).exists()
+    assert g(fw.mirror, "rev-parse", "refs/merger/base") == fw.base
+
+
+def test_b21_a_timeout_where_the_remote_did_receive_the_push_is_pushed_with_readback_and_no_halt(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=True, timeout=True)
+    assert fw.tick() == 0
+    assert fw.kinds()[-2:] == ["merged", "pushed"] and fw.journal()[-1]["readback"] is True and fw.journal()[-1]["mirror_updated"] is True
+    merged = fw.journal()[-2]["merge_commit"]
+    assert not (fw.state / mg.HALT_FILE).exists() and fw.origin_main() == merged and g(fw.mirror, "rev-parse", "refs/merger/base") == merged
+
+
+def test_b21_an_explicit_rejection_with_main_unchanged_halts(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, rc=1, stderr=" ! [remote rejected] abc -> main (protected branch hook declined)\nerror: failed to push some refs")
+    assert fw.tick() == 0
+    assert fw.kinds()[-2:] == ["merged", "push_refused"] and (fw.state / mg.HALT_FILE).exists()
+    assert g(fw.mirror, "rev-parse", "refs/merger/base") == fw.base
+
+
+def test_b21_a_rejection_marker_beats_a_transport_marker_in_the_same_text(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, rc=128, stderr="git@github.com: Permission denied (publickey).\nfatal: Could not read from remote repository.")
+    assert fw.tick() == 0
+    assert fw.kinds()[-1] == "push_refused" and (fw.state / mg.HALT_FILE).exists()
+
+
+def test_b21_an_unknown_error_text_is_a_rejection_and_halts(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, rc=1, stderr="something nobody has seen before")
+    assert fw.tick() == 0
+    assert fw.kinds()[-1] == "push_refused" and (fw.state / mg.HALT_FILE).exists()
+
+
+def test_b21_a_failed_read_back_halts_even_after_a_timeout(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, timeout=True)
+    real = mg.git
+
+    def no_ls_remote(cwd, *a, **kw):
+        if a and a[0] == "ls-remote" and (kw.get("env") or {}).get("GIT_SSH_COMMAND"):   # the read-back alone: F1's own ls-remote carries no key
+            raise subprocess.TimeoutExpired(["git", "ls-remote"], kw["timeout"])
+        return real(cwd, *a, **kw)
+    monkeypatch.setattr(mg, "git", no_ls_remote)
+    assert fw.tick() == 0
+    assert fw.kinds()[-1] == "push_refused" and (fw.state / mg.HALT_FILE).exists()
+
+
+def test_b21_main_moved_to_a_third_commit_halts_even_after_a_timeout(fw, monkeypatch):
+    moved = _origin_moves_before_the_push(fw, monkeypatch)
+    real = mg.git
+
+    def timing_out(cwd, *a, **kw):
+        if a and a[0] == "push":
+            real(cwd, *a, **kw)   # rejected: origin moved; the caller sees a timeout instead
             raise subprocess.TimeoutExpired(["git", "push"], kw["timeout"])
         return real(cwd, *a, **kw)
-    monkeypatch.setattr(mg, "git", slow)
+    monkeypatch.setattr(mg, "git", timing_out)
     assert fw.tick() == 0
-    assert fw.kinds()[-2:] == ["merged", "push_refused"] and "TimeoutExpired" in fw.journal()[-1]["error"] and (fw.state / mg.HALT_FILE).exists()
+    assert fw.kinds()[-1] == "push_refused" and (fw.state / mg.HALT_FILE).exists() and fw.origin_main() == moved["sha"]
     assert g(fw.mirror, "rev-parse", "refs/merger/base") == fw.base
+
+
+def test_b21_the_read_back_runs_twice_with_the_deploy_key_ssh_command(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, timeout=True)
+    seen = []
+    real = mg.git
+
+    def spy(cwd, *a, **kw):
+        if a and a[0] == "ls-remote":
+            seen.append(((a, kw.get("env")), kw.get("timeout")))
+        return real(cwd, *a, **kw)
+    monkeypatch.setattr(mg, "git", spy)
+    fw.tick()
+    readbacks = [x for x in seen if x[0][0][-1] == "refs/heads/main" and (x[0][1] or {}).get("GIT_SSH_COMMAND")]
+    assert len(readbacks) == 2 and all(r[0][1] == {"GIT_SSH_COMMAND": SSH_COMMAND(fw)} and r[1] == mg.REMOTE_TIMEOUT_S for r in readbacks)
+
+
+def _readbacks(monkeypatch, per_call):
+    """Run `per_call[i]` (a callable or None) before the i-th key-carrying ls-remote, i.e. the read-backs; F1's own ls-remote carries no key."""
+    real, calls = mg.git, []
+
+    def spy(cwd, *a, **kw):
+        if a and a[0] == "ls-remote" and (kw.get("env") or {}).get("GIT_SSH_COMMAND"):
+            calls.append(a)
+            if len(calls) <= len(per_call) and per_call[len(calls) - 1]:
+                per_call[len(calls) - 1](real, cwd, a, kw)
+        return real(cwd, *a, **kw)
+    monkeypatch.setattr(mg, "git", spy)
+    return calls
+
+
+def test_b21_unlanded_needs_two_agreeing_reads_a_settle_apart(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, timeout=True)
+    monkeypatch.setattr(mg, "READBACK_SETTLE_S", 7)
+    slept = []
+    monkeypatch.setattr(mg.time, "sleep", lambda t: slept.append(t))
+    calls = _readbacks(monkeypatch, [])
+    assert fw.tick() == 0
+    assert fw.kinds()[-1] == "push_unlanded" and len(calls) == 2 and slept.count(7) == 1
+
+
+def test_b21_a_push_that_lands_between_the_two_reads_is_pushed_not_unlanded(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, timeout=True)
+    pushed = {}
+
+    def land(real, cwd, a, kw):
+        pushed["sha"] = fw.journal()[-1]["merge_commit"]
+        g(fw.mirror, "push", "origin", f"{pushed['sha']}:refs/heads/main")   # the remote receives the commit the timed-out push was carrying
+    _readbacks(monkeypatch, [None, land])
+    assert fw.tick() == 0
+    assert fw.kinds()[-1] == "pushed" and fw.journal()[-1]["readback"] is True and not (fw.state / mg.HALT_FILE).exists()
+    assert g(fw.mirror, "rev-parse", "refs/merger/base") == pushed["sha"]
+
+
+def test_b21_a_second_read_that_fails_halts(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, timeout=True)
+
+    def fail(real, cwd, a, kw):
+        raise subprocess.TimeoutExpired(["git", "ls-remote"], 1)
+    _readbacks(monkeypatch, [None, fail])
+    assert fw.tick() == 0
+    assert fw.kinds()[-1] == "push_refused" and (fw.state / mg.HALT_FILE).exists()
+
+
+def test_b21_a_second_read_that_differs_from_old_and_ours_halts(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, timeout=True)
+
+    def third(real, cwd, a, kw):
+        g(fw.src, "checkout", "-q", "main")
+        commit(fw.src, {"third.txt": "x\n"}, "someone else pushes")
+        g(fw.origin, "fetch", "-q", str(fw.src), "+refs/heads/main:refs/heads/main")
+    _readbacks(monkeypatch, [None, third])
+    assert fw.tick() == 0
+    assert fw.kinds()[-1] == "push_refused" and (fw.state / mg.HALT_FILE).exists()
+
+
+@pytest.mark.parametrize("text", ["ERROR: The key you are authenticating with has been marked as read only.\nfatal: Could not read from remote repository.",
+                                  "remote: whatever\nERROR: Permission to Bali-Zero/Teman2.git denied to deploy key.\nfatal: Could not read from remote repository.",
+                                  "ERROR: something else GitHub says server-side\nfatal: Could not read from remote repository."],
+                         ids=["read-only", "denied-to-deploy-key", "server-side-error-prefix"])
+def test_b21_githubs_server_side_errors_are_rejections_even_beside_could_not_read(fw, monkeypatch, text):
+    assert not mg.push_failure_is_transport(text)
+    _push_reports(monkeypatch, lands=False, rc=128, stderr=text)
+    assert fw.tick() == 0
+    assert fw.kinds()[-1] == "push_refused" and (fw.state / mg.HALT_FILE).exists()
+
+
+def test_b21_the_error_prefix_matches_only_at_a_line_start(fw):
+    assert mg.push_failure_is_transport("ssh: connect to host github.com port 22: Connection timed out\nfatal: Could not read from remote repository.")
+    assert mg.push_failure_is_transport("fatal: mid-line ERROR: text\nfatal: Could not read from remote repository.")
+
+
+def _unlanded_rows(fw, n):
+    for _ in range(n):
+        mg.journal(fw.state, {"kind": "push_unlanded", "pr": 99, "merge_commit": "c" * 40, "error": "TimeoutExpired"})
+
+
+def test_b21_after_the_cap_the_next_transport_failure_halts_with_the_streak_in_the_reason(fw, monkeypatch):
+    _unlanded_rows(fw, mg.PUSH_UNLANDED_CAP)
+    _push_reports(monkeypatch, lands=False, timeout=True)
+    assert fw.tick() == 0
+    assert fw.kinds()[-1] == "push_refused" and (fw.state / mg.HALT_FILE).exists()
+    assert f"push_unlanded {mg.PUSH_UNLANDED_CAP} times in a row" in json.loads((fw.state / mg.HALT_FILE).read_text())["why"]
+
+
+def test_b21_below_the_cap_the_failure_is_still_unlanded_and_a_pushed_row_resets_the_streak(fw, monkeypatch):
+    _unlanded_rows(fw, mg.PUSH_UNLANDED_CAP)
+    mg.journal(fw.state, {"kind": "pushed", "pr": 98, "merge_commit": fw.base})   # main is the mirror's: the storage guard holds
+    _unlanded_rows(fw, 1)
+    assert mg.unlanded_streak(fw.state) == 1
+    _push_reports(monkeypatch, lands=False, timeout=True)
+    assert fw.tick() == 0
+    assert fw.kinds()[-1] == "push_unlanded" and not (fw.state / mg.HALT_FILE).exists()
+
+
+def test_b21_the_read_back_goes_through_the_push_url_not_the_fetch_url(fw, monkeypatch):
+    stale = fw.state.parent / "stale-fetch.git"
+    subprocess.run(["git", "clone", "-q", "--bare", str(fw.origin), str(stale)], check=True, env=GIT_ENV)   # main = the old main, forever
+    real = mg.git
+
+    def lands_then_times_out(cwd, *a, **kw):
+        if a and a[0] == "push":
+            real(cwd, "config", "remote.origin.url", str(stale))
+            real(cwd, "config", "remote.origin.pushurl", str(fw.origin))
+            real(cwd, *a, **kw)
+            raise subprocess.TimeoutExpired(["git", "push"], kw["timeout"])
+        return real(cwd, *a, **kw)
+    monkeypatch.setattr(mg, "git", lands_then_times_out)
+    assert fw.tick() == 0
+    assert fw.kinds()[-1] == "pushed" and fw.journal()[-1]["readback"] is True and fw.origin_main() == fw.journal()[-1]["merge_commit"]
+
+
+def test_b21_a_stopped_during_the_read_back_halts_first_and_still_propagates(fw, monkeypatch):
+    _push_reports(monkeypatch, lands=False, timeout=True)
+    real = mg.git
+
+    def stopped(cwd, *a, **kw):
+        if a and a[0] == "ls-remote" and (kw.get("env") or {}).get("GIT_SSH_COMMAND"):
+            raise mg.Stopped("SIGTERM")
+        return real(cwd, *a, **kw)
+    monkeypatch.setattr(mg, "git", stopped)
+    try:
+        fw.tick()
+    except mg.Stopped:
+        pass
+    assert (fw.state / mg.HALT_FILE).exists() and "interrupted" in json.loads((fw.state / mg.HALT_FILE).read_text())["why"]
+    assert {"pushed", "push_unlanded", "push_refused"}.isdisjoint(fw.kinds()) and g(fw.mirror, "rev-parse", "refs/merger/base") == fw.base
 
 
 def test_a_failure_making_the_merge_commit_is_a_merge_error_with_no_push_and_no_halt(fw, monkeypatch):

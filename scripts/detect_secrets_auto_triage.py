@@ -244,6 +244,24 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "(same class as the contracts/packs/rulepack-*.json rule above), "
         "never a credential",
     ),
+    # apps/backend-rag/backend/data/bali_zero_documentation_catalog_2026.json:
+    # the committed document checklist snapshot of the imigrasi.go.id per-code
+    # visa pages. `content_sha256` is the sha256 of the saved PUBLIC page text
+    # (re-derived from research/visa/2026-10-14-e33-documents/ by
+    # test_documentation_catalog.py) - the same class of value as the
+    # contracts/packs/rulepack-*.json content hashes, never a credential.
+    # Content-keyed: the exact catalogue path and an end-anchored
+    # `"content_sha256": "<64-hex>"` line; a credential on any other key or in
+    # any other data file stays unaudited.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/data/bali_zero_documentation_catalog_2026\.json$"
+        ),
+        re.compile(r'^\s*"content_sha256"\s*:\s*"[0-9a-f]{64}"\s*,?\s*$'),
+        "documentation catalogue: content_sha256 is the sha256 of a saved "
+        "public imigrasi.go.id page, re-derived by test; exact path/key/shape "
+        "only, never bearer material",
+    ),
     # lint_telegram_tokens.py: KNOWN_COMPROMISED maps a 16-hex truncated
     # sha256 of a burned Telegram bot token to a human-readable note, so a
     # re-introduction is NAMED ("this is the @Balizerobot token") rather than

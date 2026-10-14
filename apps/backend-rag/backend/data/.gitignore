@@ -17,5 +17,8 @@
 # Public Bali Zero typical processing times (catalogue snapshot, no client data)
 !bali_zero_processing_times_2026.json
 
+# Public official document checklists (imigrasi.go.id page snapshot, no client data)
+!bali_zero_documentation_catalog_2026.json
+
 # Keep this directory in git
 !.gitignore

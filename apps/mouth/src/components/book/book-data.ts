@@ -575,7 +575,10 @@ export const SERVICES: Service[] = [
   pricingBackedVisaService("single_entry_visas", "C2 Business"),
   pricingBackedVisaService("multiple_entry_visas", "D1 Tourism (1 Year)"),
   pricingBackedVisaService("kitas_permits", "E33G Remote Worker (Offshore)"),
-  pricingBackedVisaService("kitas_permits", "Retirement (Offshore)"),
+  pricingBackedVisaService(
+    "kitas_permits",
+    "E33F Second Home Senior (1 Year, Offshore)",
+  ),
   {
     serviceKey: "pt-pma",
     pricingCategory: "company_services",

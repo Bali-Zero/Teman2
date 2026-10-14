@@ -104,6 +104,15 @@ SHA does NOT reset this) state in `QUEUE_SHEPHERD_RED_FILE` (default
 open) and overrides `allowed` regardless of class or budget; no Telegram (Mini's stall notifier
 already reports the disarmed PR). A None cause (no correlated run found) never counts.
 
+AFTER THE FLIP THE SHEPHERD NEVER APPLIES MERGE INTENT: when `queue_rule_state()` is `absent`
+(flipped) or `unknown`, the rearm pass labels nothing and arms nothing; `run_rearm_pass` returns
+at once, journalling `flipped: no merge queue, nothing to rearm` or `queue state unknown: rearm
+skipped` once per run, and `rearm_pr` refuses to act unless the state is `present`. Merge intent
+after the flip is only a human's, or a ship session's own, `scripts/signal_merge_intent.sh <PR>`.
+The pre-flip arms are carried over ONCE by the flip operator (runbook step in
+`scripts/localci/README.md`). Why: an admin removing the label to stop a merge was re-labelled by
+the shepherd from a stale pre-flip INFRA ejection, approving a head nobody approved.
+
 NEVER-QUEUED IS NOT AN EJECTION: `fetch_last_ejection` returns the literal string "NEVER_QUEUED"
 (never plain None, which stays reserved for "last item is Added" / genuinely UNKNOWN) when a PR's
 timeline carries no Added/Removed-from-merge-queue event at all — that PR simply never went
@@ -1390,12 +1399,12 @@ def fetch_queued_runs(repo: str = REPO) -> list[dict[str, Any]]:
 def rearm_pr(repo: str, number: int) -> bool:
     """`gh pr merge N --auto` BARE — this repo's merge queue rejects every strategy flag
     (--squash included), per docs/runbooks/merge-queue-discipline.md session discipline."""
-    if queue_rule_state() == "absent":
-        # Post-flip GitHub refuses the re-arm: carry the intent over as the merge-intent label.
-        helper = str(Path(__file__).resolve().parent / "signal_merge_intent.sh")
-        rc, out, err = _run([helper, str(number)], timeout=60)
-    else:
-        rc, out, err = _run(["gh", "pr", "merge", str(number), "--auto", "--repo", repo], timeout=30)
+    if queue_rule_state() != "present":
+        # Defence in depth behind run_rearm_pass's gate: after the flip merge intent is a human's
+        # (or a ship session's) `signal_merge_intent.sh`, never this organ's.
+        logger.warning("rearm_pr(#%s) refused: merge queue rule is not present", number)
+        return False
+    rc, out, err = _run(["gh", "pr", "merge", str(number), "--auto", "--repo", repo], timeout=30)
     if rc != 0:
         logger.warning("rearm_pr(#%s) failed rc=%s out=%s err=%s", number, rc, out.strip()[:200], err.strip()[:200])
         return False
@@ -1574,6 +1583,14 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
         "cannot_verify": None,
         "detail": None,
     }
+    rule_state = queue_rule_state()
+    if rule_state != "present":
+        logger.info(
+            "flipped: no merge queue, nothing to rearm"
+            if rule_state == "absent"
+            else "queue state unknown: rearm skipped"
+        )
+        return result
     try:
         # Letter G (S1, 2026-09-10): dry-run READS every state file — budget/alerted/red/rearm-fail
         # — same as a live tick; only the WRITE at the end of this pass is skipped for dry_run.

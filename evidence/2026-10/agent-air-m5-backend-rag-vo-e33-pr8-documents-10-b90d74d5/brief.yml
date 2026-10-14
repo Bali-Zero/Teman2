@@ -1,0 +1,33 @@
+gear: 3
+gear_reason: >-
+  Size floor 3 (diff with tests, catalogue, saved pages and pack above 400 churn). A source-stamped
+  documentation catalogue and one engine call site, with tests, a recorded mouth fixture and a
+  no-argument observer.
+mission: >-
+  An E33-family visitor sees the official document checklist on the result, and only where a saved
+  official page backs it.
+objective: >-
+  /evaluate returns documentation.status AVAILABLE with reason_code OFFICIAL_IMIGRASI_DOCUMENT_CHECKLIST and a
+  page-quoted item list for the seven catalogue products (E33, E33A, E33B, E33C, E33E, E33F, E33G), the
+  penjamin letter first for E33F; every other product keeps the UNKNOWN block with empty lists.
+scope:
+  - apps/backend-rag/backend/data/bali_zero_documentation_catalog_2026.json
+  - apps/backend-rag/backend/data/.gitignore
+  - apps/backend-rag/backend/services/visa_engine/documentation_catalog.py
+  - apps/backend-rag/backend/services/visa_engine/evaluate_path.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_documentation_catalog.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_evaluate_path_display.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_evaluate_endpoint.py
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.documents.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fixtures/documentation-catalogue.recorded.json
+  - research/visa/2026-10-14-e33-documents/
+  - apps/backend-rag/backend/scripts/visa_engine/documentation_live_probe.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_documentation_live_probe.py
+  - scripts/ci/observe_visa_engine_documentation_catalog.py
+  - scripts/ci/observe_visa_engine_documentation_catalog_live.py
+  - tests/scripts/test_observe_visa_engine_documentation_catalog.py
+  - scripts/detect_secrets_auto_triage.py
+  - scripts/tests/test_detect_secrets_auto_triage.py
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2

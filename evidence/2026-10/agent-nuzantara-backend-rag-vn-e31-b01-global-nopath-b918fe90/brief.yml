@@ -1,0 +1,18 @@
+gear: 2
+gear_reason: >-
+  Floor 1 by size and path; declared 2 because the evaluator is the engine behind every /evaluate
+  answer and a backend-rag merge is the deploy.
+mission: >-
+  A visitor whose passport or citizenship dead-ends the Visa Oracle sees the one reason that is
+  theirs, not the exclusions of products they were never shopping for.
+objective: >-
+  When a NO_SUPPORTED_PATH decision has a cause from a rule the pack marks GLOBAL, no_path_reasons
+  lists only the global causes (found from rule scope, never a code list); with no global cause the
+  product reasons are unchanged.
+scope:
+  - apps/backend-rag/backend/services/visa_engine/evaluator.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_evaluator_global_no_path_reasons.py
+  - scripts/ci/observe_visa_engine_global_no_path_reasons.py
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1

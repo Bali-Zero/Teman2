@@ -1,0 +1,24 @@
+task_id: infra-localci-pending-merge-retry-1014
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  After the phase F flip, main moves only by the merger's own merge. A LocalCI PASS whose merge is refused at
+  decision time only for a term that changes with time (hosted CI still running or re-run, the label missing or
+  older than the head, READY false) was decided once and never tried again until the base moved, so main froze
+  (B19; on Pro 107 of 143 would_enqueue rows had hosted not green at decision time). Each tick now retries the
+  pending merges before triage: the local terms are copied from the original would_enqueue row, the hosted side
+  (required set read at the BASE) and the PR side are re-read, and the same merge_shadow_step / phase_f_arming
+  decide, with all arming checks unchanged. Bounds are 3 keys per tick, 900 s per key, 24 h TTL from the decision
+  and one merge attempt per tick. Retry rows carry retry true and the report counts them apart from decisions.
+  With LOCALCI_MERGER_ARMED=1 the retry does nothing. The SIGALRM watchdog is sticky (B19-W): a flag set by the
+  handler is checked after each retry, before triage and after replay selection, so an alarm swallowed by a broad
+  except still ends the tick. A merged row followed by push_unlanded (B21) is not a merge. Gear is 2 via the SIZE
+  term (646 net lines, mostly tests, mutants and docs); the mechanism ships with its only consumer, the merger.
+  The gear-2 verdict is not asserted here; a fresh Opus gate reads the diff.
+residuals:
+  - On the decide path, a watchdog swallowed inside enqueue_step ends the tick with rc 0 and no error line. It
+    fails closed and is pre-existing; the retry path is covered by the sticky flag.
+  - The watchdog flag reset lives in cmd_tick; direct tick() callers rely on the test fixture to reset it.
+  - B21 (#8497) has landed, and its real push_unlanded row (pr, head_sha, base_sha) satisfies the pending predicate,
+    pinned by an integration test on B21's real code path (transport failure, read-back, retry merges once).

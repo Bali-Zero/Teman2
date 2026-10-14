@@ -119,3 +119,38 @@ def test_generate_html_contains_qr_link(fixture_data, stub_assets, tmp_path):
         "the embedded QR was not built from contact.wa_link -- it encodes some "
         "other value, which is exactly the shape of the original defect"
     )
+
+
+def test_generate_markdown_skips_internal_rows(fixture_data, tmp_path):
+    fixture_data["services"]["single_entry_visas"]["Retirement (Offshore)"] = {
+        "name": "Retirement (Offshore)",
+        "internal": True,
+        "price": "14.000.000 IDR",
+        "tier_range": None,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Retirement KITAS for foreign nationals 55+ meeting income requirements.",
+        "icon_id": "visa-tourism",
+    }
+    fixture_data["services"]["tax_accounting"]["monthly_tax_basic"]["Internal Tax Tier"] = {
+        "name": "Internal Tax Tier",
+        "internal": True,
+        "price": "9.900.000 IDR",
+        "tier_range": None,
+        "duration": "",
+        "validity": "monthly",
+        "notes": "",
+        "description_en": "Internal-only tax row.",
+        "icon_id": "tax-monthly",
+    }
+    out_md = tmp_path / "out.md"
+    generate.render_markdown(
+        data=fixture_data,
+        out_path=out_md,
+    )
+    md = out_md.read_text()
+    assert "Retirement (Offshore)" not in md
+    assert "Internal Tax Tier" not in md
+    assert "C1 Tourism" in md
+    assert "Monthly Tax Report — 0 to 50 transactions" in md

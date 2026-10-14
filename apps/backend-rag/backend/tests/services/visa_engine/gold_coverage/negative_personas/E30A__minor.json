@@ -1,9 +1,6 @@
 {
   "expected_candidates": [],
-  "expected_no_path_reason_codes": [
-    "LEVEL_BAND_DIKTI",
-    "MINOR_SPONSOR_NOT_CONFIRMED"
-  ],
+  "expected_no_path_reason_codes": ["MINOR_SPONSOR_NOT_CONFIRMED"],
   "expected_state": "NO_SUPPORTED_PATH",
   "label": "12-year-old Dutch pupil, guardian consent given, no confirmed sponsor",
   "overrides": {

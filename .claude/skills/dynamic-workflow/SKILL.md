@@ -73,7 +73,7 @@ No tools, no browsing, no file reads. Output only the answer.
 ```
 
 ```bash
-python3 scripts/dynamic_workflow.py r1 --kit <K> --seats kimi-k3,qwen3.8-max,deepseek-v4-pro,gemini-3.1-pro-high [--astra-fallback]
+python3 scripts/dynamic_workflow.py r1 --kit <K> --seats kimi-k3,qwen3.8-max,deepseek-v4-pro,gemini-4-argon-high [--astra-fallback]
 python3 scripts/dynamic_workflow.py r1 --kit <K> --register astra   # hand-pasted window answer
 ```
 

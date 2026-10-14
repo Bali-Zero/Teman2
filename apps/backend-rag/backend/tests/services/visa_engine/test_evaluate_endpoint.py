@@ -71,6 +71,7 @@ from backend.services.visa_engine.bundle import (
 from backend.services.visa_engine.compiler import CompiledRulePack, build_compiled_pack
 from backend.services.visa_engine.crypto import FactsFingerprintKey, resolve_engine_hmac_keyring
 from backend.services.visa_engine.decision_seal import seal_decision, verify_decision_seal
+from backend.services.visa_engine.documentation_catalog import catalogue_codes
 from backend.services.visa_engine.enums import (
     DecisionState,
     EngineMode,
@@ -1841,9 +1842,14 @@ async def test_happy_path_http_end_to_end(monkeypatch: pytest.MonkeyPatch) -> No
         assert entry["availability"]["legal_eligibility"] == "SUPPORTED"
         assert entry["availability"]["operational_availability"]["status"] == "UNKNOWN"
         assert entry["availability"]["bali_zero_service_availability"]["status"] == "UNKNOWN"
-        assert entry["documentation"]["status"] == "UNKNOWN"
-        assert entry["documentation"]["requirements"] == []
-        assert entry["documentation"]["checklist"] == []
+        # AVAILABLE only for a product the source-stamped catalogue verifies; UNKNOWN otherwise.
+        if entry["product_code"] in catalogue_codes():
+            assert entry["documentation"]["status"] == "AVAILABLE"
+            assert entry["documentation"]["requirements"] or entry["documentation"]["checklist"]
+        else:
+            assert entry["documentation"]["status"] == "UNKNOWN"
+            assert entry["documentation"]["requirements"] == []
+            assert entry["documentation"]["checklist"] == []
         # Bali Zero's catalogue window: AVAILABLE while the walk stays in a decreed holiday year.
         assert entry["processing_timeline"]["status"] in {"AVAILABLE", "UNKNOWN"}
         assert (entry["processing_timeline"]["anchor_date"] is None) == (
@@ -2146,9 +2152,7 @@ def test_holding_set_is_exactly_the_ruling() -> None:
     names the ruling it is breaking.
     """
 
-    assert evaluate_path.HOLDING_DISCLOSED_FLAGS == frozenset(
-        {DisclosedReviewFlag.CRIMINAL_RECORD}
-    )
+    assert evaluate_path.HOLDING_DISCLOSED_FLAGS == frozenset({DisclosedReviewFlag.CRIMINAL_RECORD})
 
 
 def test_dead_end_set_is_exactly_activity_boundary() -> None:
@@ -2189,9 +2193,7 @@ def test_activity_boundary_is_a_named_dead_end_on_a_supported_base() -> None:
         "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH"
     ]
     assert reviewed.no_path_reasons[0].source_refs == ()
-    assert reviewed.no_path_reasons[0].rule_ids == (
-        "system.disclosed-no-path.activity-boundary",
-    )
+    assert reviewed.no_path_reasons[0].rule_ids == ("system.disclosed-no-path.activity-boundary",)
     # The dead-end id differs from the baseline's own id (B4).
     assert reviewed.decision_id != baseline.decision_id
     assert reviewed.public_id != baseline.public_id
@@ -2222,9 +2224,12 @@ def test_activity_boundary_dead_end_ids_differ_from_the_holding_ids_and_are_stab
     assert dead_ended_once.decision_id == uuid.uuid5(
         baseline.decision_id, "no-path:ACTIVITY_BOUNDARY"
     )
-    assert dead_ended_once.public_id == hashlib.sha256(
-        f"{baseline.public_id}:no-path:ACTIVITY_BOUNDARY".encode()
-    ).hexdigest()[:20]
+    assert (
+        dead_ended_once.public_id
+        == hashlib.sha256(f"{baseline.public_id}:no-path:ACTIVITY_BOUNDARY".encode()).hexdigest()[
+            :20
+        ]
+    )
 
     monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, "ACTIVITY_BOUNDARY")
     held = evaluate_path._apply_disclosed_review_flags(
@@ -2385,9 +2390,9 @@ _ZERO_RECOGNIZED_WITNESSES: tuple[tuple[str, str], ...] = (
 
 
 @pytest.mark.parametrize(
-    "value", [value for _label, value in _ZERO_RECOGNIZED_WITNESSES], ids=[
-        label for label, _value in _ZERO_RECOGNIZED_WITNESSES
-    ]
+    "value",
+    [value for _label, value in _ZERO_RECOGNIZED_WITNESSES],
+    ids=[label for label, _value in _ZERO_RECOGNIZED_WITNESSES],
 )
 def test_resolve_holding_flags_fails_closed_when_zero_tokens_recognized(
     value: str,
@@ -2482,9 +2487,7 @@ def test_resolve_holding_flags_documented_kill_switch_form_holds_activity_bounda
         _supported_baseline(), (DisclosedReviewFlag.ACTIVITY_BOUNDARY,)
     )
     assert held.state.value == "HUMAN_REVIEW_REQUIRED"
-    assert [reason.code for reason in held.review_reasons] == [
-        "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
-    ]
+    assert [reason.code for reason in held.review_reasons] == ["DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"]
 
 
 def test_resolve_holding_flags_fails_closed_on_mixed_recognized_and_unknown(
@@ -2883,9 +2886,7 @@ class TestGuardianConsentArms:
         held = evaluate_path._apply_minor_privacy_hold(baseline, minor_facts)
         assert held.state is DecisionState.HUMAN_REVIEW_REQUIRED
         assert held.candidates == ()
-        assert [reason.code for reason in held.review_reasons] == [
-            "MINOR_GUARDIAN_PRIVACY_REVIEW"
-        ]
+        assert [reason.code for reason in held.review_reasons] == ["MINOR_GUARDIAN_PRIVACY_REVIEW"]
 
     def test_declared_true_guardian_consent_is_not_held(self) -> None:
         """B4's second persona: the SAME minor, only ``true`` this time,

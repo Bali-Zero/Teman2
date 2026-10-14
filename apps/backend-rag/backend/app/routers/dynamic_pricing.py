@@ -13,7 +13,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_current_user
-from backend.services.pricing.pricing_service import get_pricing_service
+from backend.services.pricing.pricing_service import (
+    _is_internal_service,
+    _omit_internal_rows,
+    get_pricing_service,
+)
 
 OptionalUser = dict | None  # User dict from get_current_user, or None if unauthenticated
 
@@ -32,7 +36,7 @@ async def get_all_prices() -> dict[str, Any]:
     result = svc.get_all_prices()
     if "error" in result:
         raise HTTPException(status_code=503, detail=result["error"])
-    return result
+    return _omit_internal_rows(result, svc)
 
 
 @router.get("/search")
@@ -47,7 +51,7 @@ async def search_pricing(
     result = svc.search_service(q)
     if "error" in result:
         raise HTTPException(status_code=503, detail=result["error"])
-    return result
+    return _omit_internal_rows(result, svc)
 
 
 @router.get("/service")
@@ -81,7 +85,9 @@ async def get_service_price(
         raise HTTPException(status_code=503, detail="Official prices not loaded")
 
     entry = svc.get_service_by_key(key)
-    if entry is None:
+    # An `"internal": true` row is hidden from public surfaces: same 404 as unknown.
+    # (Kept out of the docstring: it feeds the OpenAPI description and its pin.)
+    if entry is None or entry.get("internal") is True or _is_internal_service(svc, key, entry):
         raise HTTPException(status_code=404, detail=f"Unknown service key: {key}")
     return entry
 

@@ -624,12 +624,36 @@ anchor. While the halt file exists the fetch is the plain one of before, and the
 removes the halt, until GitHub's main again contains the last pushed merge.) There is no re-anchor gesture: clearing a halt is an operator act, done only after reconciling GitHub's main with the mirror, and after reading why: a
 `push_refused` can be a plain race (a commit reached GitHub's main between the `ls-remote` and the push).
 
+**A push of unknown outcome is read back (B21).** When the push returns non-zero or raises (timeout, transport), the merger runs one
+`git ls-remote` of `refs/heads/main` on the push remote with the same `GIT_SSH_COMMAND`, under `REMOTE_TIMEOUT_S`. Main equal to the merge
+commit: the push landed, `pushed` is journalled with `readback: true` and `refs/merger/base` moves as on success, no halt. Main equal to
+the old main and the failure a TRANSPORT one (timeout, connection reset or refused, "Could not read from remote repository", ssh
+connect and kex errors, broken pipe), on two reads 5 s apart (`READBACK_SETTLE_S`): `kind: push_unlanded`, no halt, `refs/merger/base` unmoved, the next tick may retry (the key is not
+merged; B19's pending-merge retry must read a `merged` row followed by `push_unlanded` as not merged). Main equal to the old main and an
+explicit rejection (`! [remote rejected]`, non-fast-forward, protected branch, permission denied, "marked as read only", any line starting `ERROR:`) or any unclassified text: halt, as
+before; a rejection marker beats a transport marker in the same text. A failed read-back, or a main that is neither: halt. After `PUSH_UNLANDED_CAP` (3) `push_unlanded` rows in a row the next push failure halts ("push_unlanded N times in a row"). A `Stopped`
+still halts, then re-raises. While `LOCALCI_MERGER_PHASE_F=1` `replay_pending` returns None (unset, as after a rollback's step 0, replays are as before): every later commit on main is phase F's
+own or an operator's recovery push, and neither is GitHub's verdict to compare.
+
+**Rollback order once phase F is armed.** Step 0: `touch <state>/phase_f_halt`, or unset `LOCALCI_MERGER_PHASE_F` and reload the plist;
+then `phase_e_flip.py --rollback`; then re-run `scripts/signal_merge_intent.sh <n>` on the open labelled PRs, so they are armed for the
+restored merge queue. Remove the halt only when phase F is re-armed.
+
 READY precheck: before the full report (about 4 minutes on Pro's journal, hundreds of GitHub reads) the tick asks the journal alone whether READY can be true yet — the first decision (less `READY_SPAN_SLACK_DAYS` = one day: the report's span runs on GitHub's `merged_at`, which can precede its own decision line by up to one tick) to now under `READY_MIN_DAYS`, or fewer than `READY_MIN_MERGES` distinct decided PRs (both constants are the report's own) — and says `READY false: journal window N.N days (+1 of slack) < 14` without running it. Neither runs unless the env half and every local condition hold: a disarmed tick pays for neither (`READY not evaluated`). The precheck only ever short-circuits to false; past it the full report decides.
 
 Arming order (spec §2 phase F): (1) phase D READY; (2) the deploy key generated on Pro at `<state>/deploy_key` (0600) and registered with write, and github.com's host key pinned into `<state>/known_hosts` (verified out of band against GitHub's published fingerprints; the push uses `StrictHostKeyChecking=yes`, so without it the push is refused and halts) — operator[secret]; (3) the phase E flip, `scripts/localci/phase_e_flip.py --apply` (lands in its own PR, not on main yet): `merge-queue-main` restricted with the DeployKey bypass, then `main`'s classic protection (14 required checks, reviews, `enforce_admins`), which no deploy key bypasses, deleted — operator[gui]; (4) the live wrapper re-installed and identical to main's (`cmp -s ~/.nuzantara-cron/localci_merger_tick.sh scripts/localci/localci_merger_tick.sh` from an `origin/main` checkout — until then it force-fetches `refs/merger/base` and a storage divergence rewinds it) and `LOCALCI_MERGER_ARMED` unset (with it set every armed decision is `enqueued` into GitHub's queue and phase F never acts); (5) `LOCALCI_MERGER_PHASE_F=1` in the tick's environment, only after (3) and (4): before them the first push is refused and writes the sticky halt.
 
 Report: `phase_f` reads `shadow` until the window holds a `merged` or `push_refused` line, then `armed (N merged, M refused)`;
 `phase_f_halted` and the line `phase F executor: ...` (with `HALTED` when the file exists) say the rest; the READY line is unchanged.
+
+**B19: a PASS waits, it is not spent** (spec B19). `decide()` tries the enqueue and the merge once, and `triage()` never decides a key twice, so a
+LocalCI PASS refused only for a term that changes with time (hosted CI still running, the label missing or older than the head, READY false) would
+wait for a base that, after the flip, only the merger moves. Each tick therefore starts with `retry_pending_merges`: for up to `PENDING_RETRY_MAX`
+(3) pending keys whose last attempt is `PENDING_RETRY_S` (900) s old, and whose base and head are still current, it re-reads the hosted side (required
+set at the BASE) and `pr_side`, copies the local terms from the original `would_enqueue` row, journals a `would_enqueue` and a `would_merge` with
+`retry: true`, and merges through the same `phase_f_arming` when it is armed (one merge per tick). A key older than `PENDING_TTL_S` (24 h) is
+journalled once as `skipped: pending_expired`. Retry rows are counted in `window.pending_retry` (`would_enqueue`, `would_merge`, `would_merge_ok`),
+never as decisions. Before the flip it runs as shadow and changes nothing on GitHub.
 
 ### Report (phase D's instrument)
 
@@ -889,7 +913,7 @@ node-pressure model, with one constant (`HOST_FLOOR_GB` 90):
   turns the watchdog off. The `status` read is never evicted: a verdict already produced is never undone.
 - **An eviction is no verdict.** The tick journals `{"kind":"evicted","why":"host_below_floor_during_run","free_gb","floor_gb",
   "context_in_flight":[…],"containers_removed":N,"pr","head_sha","base_sha","run_dir"}` — not a `decision`, so it counts toward
-  nothing (READY included) and the same `(pr, head, base)` is decided again on a later tick, once the host is above the start floor. triage treats it as an attempt for ORDER only (behind every head not yet tried), and after `EVICT_CAP` (3) evictions of one `(pr, head, base)` the key is skipped (`{"kind":"skipped","why":"evicted_cap"}`, once) until the base or head moves. The report counts `evicted`.
+  nothing (READY included) and the same `(pr, head, base)` is decided again on a later tick, once the host is above the start floor. triage treats it as an attempt for ORDER only (behind every head not yet tried), and after `EVICT_CAP` (3) evictions of one `(pr, head, base)` the key is skipped (`{"kind":"skipped","why":"evicted_cap"}`, once) until the base or head moves. An eviction counts toward `EVICT_CAP` only within `EVICT_WINDOW_S` (6 h) of the tick. An older eviction is history for ORDER, never a cap: the host that could not afford a run then may afford it now. The report counts `evicted`.
 - **Orphaned runner.** The runner leaves launchd's job group (its own session): the merger passes `LOCALCI_PARENT_PID`, and the runner's `plan`/`run` TERM their own group when that pid is gone.
 - **Image GC under host pressure.** A prune that finds host free under the start floor (`--min-host-free-gb`, default 100) PLUS `RUN_HEADROOM_GB` (`--run-headroom-gb`, default 15: measured on Pro 2026-10-13, one run uses >= 13.4 GB, so the cache is shed before a run starves; the start floor and the eviction line are unchanged; the prune row journals `pressure_gb`) also
   removes, by explicit tag, every deps image that is not the newest of its recipe — fewest 48 h plan references first, never the
@@ -1032,6 +1056,16 @@ a checkout at `origin/main`, on a host whose `gh` is the owner's (the ruleset an
 merger's `.pub` and a report.json under 2 hours old copied beside it if that host is not Pro (`--key-pub`, `--report`); keep the
 printed state file. (4) Only then `LOCALCI_MERGER_PHASE_F=1` in the tick's
 environment: before (3) the first push is refused and halts. A session runs the plan only and never `--apply`.
+
+**After the flip, the shepherd never applies merge intent.** When `queue_rule_state()` is `absent` (flipped) or `unknown`, the rearm
+pass of `scripts/queue_shepherd.py` labels nothing and arms nothing; it journals `flipped: no merge queue, nothing to rearm`, or
+`queue state unknown: rearm skipped`, once per run. Merge intent after the flip is only a human's, or a ship session's own,
+`scripts/signal_merge_intent.sh <PR>`. The pre-flip arms are carried over ONCE by the flip operator: at flip time, the admin-armed
+open PRs are labelled from a snapshot (bots skipped, only admin/maintain arms) (operator runbook step, run right after step (3), before the shepherd's next tick):
+
+```bash
+gh pr list --repo Bali-Zero/Teman2 --state open --limit 500 --json number,labels,autoMergeRequest --jq '.[]|select(.autoMergeRequest!=null and (.autoMergeRequest.enabledBy.is_bot|not) and ([.labels[].name]|index("localci:merge-shadow-ok")|not))|"\(.number) \(.autoMergeRequest.enabledBy.login)"' | while read -r n who; do role=$(gh api "repos/Bali-Zero/Teman2/collaborators/$who/permission" --jq .role_name) || { echo "skip #$n"; continue; }; case "$role" in admin|maintain) scripts/signal_merge_intent.sh "$n";; *) echo "skip #$n: $who $role";; esac; done
+```
 
 ## Tests
 

@@ -100,12 +100,12 @@ def test_refusals_are_printed_lines_jobs_run_once_and_the_kit_stays_outside_git(
     calls, bin_dir = tmp_path / "calls", tmp_path / "bin"
     bin_dir.mkdir()
     (tmp_path / "canned.md").write_text(answer())
-    (bin_dir / "agy").write_text(f"#!/bin/sh\necho x >> {calls}\ncat {tmp_path / 'canned.md'}\n")
+    (bin_dir / "agy").write_text(f"#!/bin/sh\necho \"x $3 $4\" >> {calls}\ncat {tmp_path / 'canned.md'}\n")
     (bin_dir / "agy").chmod(0o755)
     env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"}
     assert io(kit, app, "run", "--slot", "b", "--seat", "gemini", "--stage", "r1", env=env).splitlines()[-1].startswith("b r1 files=12")
     assert io(kit, app, "_job", "--slot", "b", "--seat", "gemini", "--stage", "r1", env=env).startswith("refused: r1/b has no pending grant")
-    assert calls.read_text().count("x") == 1
+    assert calls.read_text() == "x --model gemini-4-argon-high\n"
     inside = tmp_path / "checkout"
     (inside / ".git").mkdir(parents=True)
     (inside / "kit").mkdir()
