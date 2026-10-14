@@ -2364,12 +2364,10 @@ describe("OutcomeSheet · PR-10 E33F-only retirement deposit note and branch-swi
     return response;
   }
 
-  it("renders the E33F_E33E_DEPOSIT_NOTE sentence in EN and ID and wires the retirement_basis branch-switch affordance on E33F-only non-deposit bases", () => {
+  it("renders the E33F_E33E_DEPOSIT_NOTE sentence in EN and ID inside the E33F candidate card (never in .oracle-outcome__conditions) and wires the retirement_basis branch-switch affordance on E33F-only non-deposit bases", () => {
     const facts: OracleFacts = {
       category: "retirement",
       retirement_basis: "passive_income",
-      age: "64",
-      retirement_income_usd: "3500",
     };
     const outcome = buildEngineOutcome(makeRetirementResponse(["E33F"]), {
       facts,
@@ -2385,23 +2383,25 @@ describe("OutcomeSheet · PR-10 E33F-only retirement deposit note and branch-swi
           onEditMissingInput={onEditMissingInput}
         />,
       );
-      expect(container.textContent).toContain(
+      expect(container.querySelector(".oracle-outcome__conditions")).toBeNull();
+
+      const card = container.querySelector(".oracle-candidate-card");
+      expect(card).not.toBeNull();
+      const notesBox = (card as HTMLElement).querySelector(
+        ".oracle-candidate-card__notes",
+      );
+      expect(notesBox).not.toBeNull();
+      expect(card!.textContent).toContain(
         SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE[language],
       );
-      expect(container.textContent).toContain(
+      expect(card!.textContent).toContain(
         translate(language, "q.retirement_basis.opt.bank_deposit"),
       );
-      expect(container.textContent).toContain(
+      expect(card!.textContent).toContain(
         translate(language, "q.retirement_basis.opt.passive_income"),
       );
 
-      const conditionsBox = container.querySelector(
-        ".oracle-outcome__conditions",
-      );
-      expect(conditionsBox).not.toBeNull();
-      const editButton = within(conditionsBox as HTMLElement).getByRole(
-        "button",
-      );
+      const editButton = within(card as HTMLElement).getByRole("button");
       fireEvent.click(editButton);
       expect(onEditMissingInput).toHaveBeenCalledWith("retirement_basis");
       cleanup();
@@ -2431,7 +2431,11 @@ describe("OutcomeSheet · PR-10 E33F-only retirement deposit note and branch-swi
     }
     const depositFactCases: OracleFacts[] = [
       { category: "retirement", retirement_basis: "bank_deposit" },
-      { category: "retirement", retirement_basis: "deposit_or_income" },
+      {
+        category: "retirement",
+        retirement_basis: "undecided",
+        retirement_undecided_basis: "deposit_or_income",
+      },
     ];
     for (const depositFacts of depositFactCases) {
       expect(
@@ -2440,28 +2444,61 @@ describe("OutcomeSheet · PR-10 E33F-only retirement deposit note and branch-swi
     }
   });
 
-  it("does not render the E33F_E33E_DEPOSIT_NOTE sentence when E33E+E33F are both supported", () => {
+  it("does not render the E33F_E33E_DEPOSIT_NOTE sentence when E33E+E33F are both supported, and renders it only on the E33F card when paired with a non-E33E sibling", () => {
     const facts: OracleFacts = {
       category: "retirement",
-      retirement_basis: "bank_deposit",
-      age: "64",
-      retirement_income_usd: "3500",
-      secondhome_deposit_usd: "60000",
-      secondhome_state_bank: "yes",
-      secondhome_own_name: "yes",
+      retirement_basis: "passive_income",
     };
-    const outcome = buildEngineOutcome(
+    const bothSupported = buildEngineOutcome(
       makeRetirementResponse(["E33E", "E33F"]),
       { facts },
     );
 
     for (const language of ["en", "id"] as const) {
       const { container } = render(
-        <OutcomeSheet outcome={outcome} language={language} facts={facts} />,
+        <OutcomeSheet
+          outcome={bothSupported}
+          language={language}
+          facts={facts}
+        />,
       );
       expect(container.textContent).not.toContain(
         SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE[language],
       );
+      expect(
+        container.querySelector(".oracle-candidate-card__notes"),
+      ).toBeNull();
+      expect(container.querySelector(".oracle-outcome__conditions")).toBeNull();
+      cleanup();
+    }
+
+    const withSibling = buildEngineOutcome(
+      makeRetirementResponse(["E33F", "C1"]),
+      { facts },
+    );
+    for (const language of ["en", "id"] as const) {
+      const { container } = render(
+        <OutcomeSheet
+          outcome={withSibling}
+          language={language}
+          facts={facts}
+        />,
+      );
+      const cards = container.querySelectorAll(".oracle-candidate-card");
+      expect(cards).toHaveLength(2);
+      expect(cards[0].textContent).toContain(
+        SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE[language],
+      );
+      expect(
+        cards[0].querySelector(".oracle-candidate-card__notes"),
+      ).not.toBeNull();
+      expect(cards[1].textContent).not.toContain(
+        SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE[language],
+      );
+      expect(
+        cards[1].querySelector(".oracle-candidate-card__notes"),
+      ).toBeNull();
+      expect(container.querySelector(".oracle-outcome__conditions")).toBeNull();
       cleanup();
     }
   });

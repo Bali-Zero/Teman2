@@ -278,20 +278,25 @@ describe("client-visible copy", () => {
       const outcome = buildEngineOutcome(makeE33fOnlyResponse(), {
         facts: {
           category: "retirement",
-          age: "64",
-          retirement_income_usd: "3500",
           ...basisFacts,
         },
       });
       if (outcome.state !== "SUPPORTED_CANDIDATES") throw new Error("state");
-      const note = outcome.conditions.find(
-        (c) => c.code === E33F_E33E_DEPOSIT_NOTE_CODE,
-      );
+      const note = outcome.candidates
+        .find((c) => c.code === "E33F")
+        ?.notes?.find((c) => c.code === E33F_E33E_DEPOSIT_NOTE_CODE);
       if (!note) throw new Error("missing note");
       sentences.push(note.message.en, note.message.id);
     }
 
-    for (const retirement_basis of ["bank_deposit", "deposit_or_income"]) {
+    const depositBasisFactCases: OracleFacts[] = [
+      { retirement_basis: "bank_deposit" },
+      {
+        retirement_basis: "undecided",
+        retirement_undecided_basis: "deposit_or_income",
+      },
+    ];
+    for (const depositBasisFacts of depositBasisFactCases) {
       for (const secondhome_deposit_usd of ["49999", "60000", "unsure"]) {
         for (const secondhome_state_bank of ["yes", "no", "unsure"]) {
           for (const secondhome_own_name of ["yes", "no", "unsure"]) {
@@ -305,9 +310,7 @@ describe("client-visible copy", () => {
             const outcome = buildEngineOutcome(makeE33fOnlyResponse(), {
               facts: {
                 category: "retirement",
-                age: "64",
-                retirement_income_usd: "3500",
-                retirement_basis,
+                ...depositBasisFacts,
                 secondhome_deposit_usd,
                 secondhome_state_bank,
                 secondhome_own_name,
@@ -316,9 +319,9 @@ describe("client-visible copy", () => {
             if (outcome.state !== "SUPPORTED_CANDIDATES") {
               throw new Error("state");
             }
-            const note = outcome.conditions.find(
-              (c) => c.code === E33F_E33E_DEPOSIT_NOTE_CODE,
-            );
+            const note = outcome.candidates
+              .find((c) => c.code === "E33F")
+              ?.notes?.find((c) => c.code === E33F_E33E_DEPOSIT_NOTE_CODE);
             if (!note) throw new Error("missing note");
             sentences.push(note.message.en, note.message.id);
           }

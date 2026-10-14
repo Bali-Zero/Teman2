@@ -5137,7 +5137,17 @@ describe("PR-10 · E33F-only retirement result explains what the 5-year E33E als
       e33fResponse("SUPPORTED_CANDIDATES"),
       facts ? { facts } : {},
     );
-    return outcome.conditions.find(
+    if (outcome.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("unexpected state");
+    }
+    expect(
+      outcome.conditions.find(
+        (item) => item.code === E33F_E33E_DEPOSIT_NOTE_CODE,
+      ),
+    ).toBeUndefined();
+    expect(outcome.conditions).toEqual([]);
+    const e33f = outcome.candidates.find((c) => c.code === "E33F");
+    return e33f?.notes?.find(
       (item) => item.code === E33F_E33E_DEPOSIT_NOTE_CODE,
     );
   }
@@ -5172,7 +5182,7 @@ describe("PR-10 · E33F-only retirement result explains what the 5-year E33E als
       );
       expect(condition!.message).toEqual({
         en: `${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.en} You chose "${chosenEn}", so we did not ask about a deposit; if you hold one, change your answer to "${bankDepositEn}".`,
-        id: `${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id} Anda memilih "${chosenId}", sehingga kami tidak menanyakan tentang deposito; jika Anda memilikinya, ubah jawaban Anda menjadi "${bankDepositId}".`,
+        id: `${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id} Anda memilih "${chosenId}", sehingga kami tidak menanyakan soal deposito; jika Anda memilikinya, ubah jawaban Anda menjadi "${bankDepositId}".`,
       });
     },
   );
@@ -5219,12 +5229,10 @@ describe("PR-10 · E33F-only retirement result explains what the 5-year E33E als
     }
   });
 
-  // `deposit_or_income` is a `retirement_undecided_basis` option in tree.ts;
-  // `e33fE33eDepositNote` accepts both a direct `retirement_basis: "deposit_or_income"`
-  // and the tree walk `retirement_basis: "undecided", retirement_undecided_basis: "deposit_or_income"`.
+  // `deposit_or_income` is a `retirement_undecided_basis` option in tree.ts,
+  // reached via the tree walk `retirement_basis: "undecided", retirement_undecided_basis: "deposit_or_income"`.
   it.each<OracleFacts>([
     { retirement_basis: "bank_deposit" },
-    { retirement_basis: "deposit_or_income" },
     {
       retirement_basis: "undecided",
       retirement_undecided_basis: "deposit_or_income",
@@ -5285,7 +5293,8 @@ describe("PR-10 · E33F-only retirement result explains what the 5-year E33E als
 
     const allThree = depositNoteCondition({
       category: "retirement",
-      retirement_basis: "deposit_or_income",
+      retirement_basis: "undecided",
+      retirement_undecided_basis: "deposit_or_income",
       secondhome_deposit_usd: "49999",
       secondhome_state_bank: "no",
       secondhome_own_name: "no",
@@ -5322,7 +5331,7 @@ describe("PR-10 · E33F-only retirement result explains what the 5-year E33E als
     });
     expect(bankUnsure?.message).toEqual({
       en: `You were not sure whether the deposit is at an Indonesian state-owned bank, so it counted as no. ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.en}`,
-      id: `Anda belum yakin apakah deposito tersebut disimpan di bank milik negara Indonesia, sehingga dihitung tidak. ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id}`,
+      id: `Anda belum yakin apakah deposito tersebut disimpan di bank milik negara Indonesia, sehingga dianggap "tidak". ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id}`,
     });
     expect(bankUnsure?.message.en).not.toMatch(/You told us|is not at/);
     expect(bankUnsure?.message.id).not.toMatch(
@@ -5338,7 +5347,7 @@ describe("PR-10 · E33F-only retirement result explains what the 5-year E33E als
     });
     expect(nameUnsure?.message).toEqual({
       en: `You were not sure whether the deposit is in your own name, so it counted as no. ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.en}`,
-      id: `Anda belum yakin apakah deposito tersebut atas nama Anda sendiri, sehingga dihitung tidak. ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id}`,
+      id: `Anda belum yakin apakah deposito tersebut atas nama Anda sendiri, sehingga dianggap "tidak". ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id}`,
     });
     expect(nameUnsure?.message.en).not.toMatch(/You told us|is not in/);
     expect(nameUnsure?.message.id).not.toMatch(
@@ -5368,15 +5377,17 @@ describe("PR-10 · E33F-only retirement result explains what the 5-year E33E als
       },
     ] as OracleFacts[]) {
       const outcome = buildEngineOutcome(e33eAndE33fResponse(), { facts });
-      expect(
-        outcome.conditions.find(
-          (item) => item.code === E33F_E33E_DEPOSIT_NOTE_CODE,
-        ),
-      ).toBeUndefined();
+      if (outcome.state !== "SUPPORTED_CANDIDATES") {
+        throw new Error("unexpected state");
+      }
+      expect(outcome.conditions).toEqual([]);
+      for (const candidate of outcome.candidates) {
+        expect(candidate.notes).toBeUndefined();
+      }
     }
   });
 
-  it("innocence: emits no note when E33F is absent, on dead ends, or on non-retirement categories", () => {
+  it("innocence: emits no note when E33F is absent, on sibling candidates, on dead ends, or on non-retirement categories, and keeps conditions restricted to PENJAMIN", () => {
     const retirementFacts: OracleFacts = {
       category: "retirement",
       retirement_basis: "passive_income",
@@ -5386,7 +5397,63 @@ describe("PR-10 · E33F-only retirement result explains what the 5-year E33E als
       makeVisaOracleResponse("SUPPORTED_CANDIDATES"),
       { facts: retirementFacts },
     );
+    if (c1Only.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("unexpected state");
+    }
     expect(c1Only.conditions).toEqual([]);
+    for (const candidate of c1Only.candidates) {
+      expect(candidate.notes).toBeUndefined();
+    }
+
+    // Sibling candidate alongside E33F: only E33F gets `notes`, never the sibling;
+    // `conditions` stays exactly what main produced (e.g. E33F_PENJAMIN_NOTE only).
+    const e33fAndC1Response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    const firstDec = e33fAndC1Response.decision.candidates[0];
+    const firstDisp = e33fAndC1Response.display.candidates[0];
+    e33fAndC1Response.decision.candidates = [
+      {
+        ...firstDec,
+        rank: 1,
+        product_code: "E33F",
+        product_version_id: "e33f-version-id",
+      },
+      {
+        ...firstDec,
+        rank: 2,
+        product_code: "C1",
+        product_version_id: "c1-version-id",
+      },
+    ];
+    e33fAndC1Response.display.candidates = [
+      {
+        ...firstDisp,
+        rank: 1,
+        product_code: "E33F",
+        product_version_id: "e33f-version-id",
+      },
+      {
+        ...firstDisp,
+        rank: 2,
+        product_code: "C1",
+        product_version_id: "c1-version-id",
+      },
+    ];
+    const e33fAndC1 = buildEngineOutcome(e33fAndC1Response, {
+      facts: {
+        ...retirementFacts,
+        retirement_penjamin_confirmed: "no",
+      },
+    });
+    if (e33fAndC1.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("unexpected state");
+    }
+    expect(e33fAndC1.conditions.map((c) => c.code)).toEqual([
+      "E33F_PENJAMIN_NOTE",
+    ]);
+    expect(e33fAndC1.candidates[0].notes?.map((n) => n.code)).toEqual([
+      E33F_E33E_DEPOSIT_NOTE_CODE,
+    ]);
+    expect(e33fAndC1.candidates[1].notes).toBeUndefined();
 
     // Dead end (NO_SUPPORTED_PATH) and other non-supported states
     for (const state of [
@@ -5398,6 +5465,7 @@ describe("PR-10 · E33F-only retirement result explains what the 5-year E33E als
         facts: retirementFacts,
       });
       expect(nonSupported.conditions).toEqual([]);
+      expect(nonSupported.candidates).toEqual([]);
     }
 
     // Non-retirement categories even when candidate is E33F
@@ -5415,7 +5483,13 @@ describe("PR-10 · E33F-only retirement result explains what the 5-year E33E als
           },
         },
       );
+      if (nonRetirement.state !== "SUPPORTED_CANDIDATES") {
+        throw new Error("unexpected state");
+      }
       expect(nonRetirement.conditions).toEqual([]);
+      for (const candidate of nonRetirement.candidates) {
+        expect(candidate.notes).toBeUndefined();
+      }
     }
   });
 
@@ -5438,7 +5512,8 @@ describe("PR-10 · E33F-only retirement result explains what the 5-year E33E als
       },
       {
         category: "retirement",
-        retirement_basis: "deposit_or_income",
+        retirement_basis: "undecided",
+        retirement_undecided_basis: "deposit_or_income",
         secondhome_deposit_usd: "60000",
         secondhome_state_bank: "no",
         secondhome_own_name: "yes",

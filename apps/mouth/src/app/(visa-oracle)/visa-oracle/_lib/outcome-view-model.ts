@@ -143,6 +143,8 @@ export interface OutcomeCandidate {
   operational: OutcomeStatusAxis<OperationalAvailabilityStatus>;
   service: OutcomeStatusAxis<ServiceAvailabilityStatus>;
   decisionReasons: readonly OutcomeReason[];
+  /** Candidate-scoped advisory, not a condition of the verdict, not verified by the team. */
+  notes?: readonly OutcomeReason[];
   timeline: OutcomeTimeline;
   price: OutcomePrice;
   /** Present only when the engine priced a stay-permit duration (seq-26). */

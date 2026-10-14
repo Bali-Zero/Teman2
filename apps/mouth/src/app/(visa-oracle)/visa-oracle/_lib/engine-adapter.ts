@@ -1226,13 +1226,12 @@ export function e33fE33eDepositNote(
     const chosenId = translate("id", basisKey);
     return text(
       `${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.en} You chose "${chosenEn}", so we did not ask about a deposit; if you hold one, change your answer to "${bankDepositEn}".`,
-      `${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id} Anda memilih "${chosenId}", sehingga kami tidak menanyakan tentang deposito; jika Anda memilikinya, ubah jawaban Anda menjadi "${bankDepositId}".`,
+      `${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id} Anda memilih "${chosenId}", sehingga kami tidak menanyakan soal deposito; jika Anda memilikinya, ubah jawaban Anda menjadi "${bankDepositId}".`,
     );
   }
 
   const isDepositBasis =
     resolved.retirement_basis === "bank_deposit" ||
-    resolved.retirement_basis === "deposit_or_income" ||
     (resolved.retirement_basis === "undecided" &&
       resolved.retirement_undecided_basis === "deposit_or_income");
   if (!isDepositBasis) return undefined;
@@ -1268,7 +1267,7 @@ export function e33fE33eDepositNote(
       "You were not sure whether the deposit is at an Indonesian state-owned bank, so it counted as no.",
     );
     idParts.push(
-      "Anda belum yakin apakah deposito tersebut disimpan di bank milik negara Indonesia, sehingga dihitung tidak.",
+      'Anda belum yakin apakah deposito tersebut disimpan di bank milik negara Indonesia, sehingga dianggap "tidak".',
     );
   } else if (rawBank === "no") {
     enParts.push(
@@ -1285,7 +1284,7 @@ export function e33fE33eDepositNote(
       "You were not sure whether the deposit is in your own name, so it counted as no.",
     );
     idParts.push(
-      "Anda belum yakin apakah deposito tersebut atas nama Anda sendiri, sehingga dihitung tidak.",
+      'Anda belum yakin apakah deposito tersebut atas nama Anda sendiri, sehingga dianggap "tidak".',
     );
   } else if (rawOwnName === "no") {
     enParts.push("You told us the deposit is not in your own name.");
@@ -2703,22 +2702,6 @@ function buildValidatedOutcome(
     });
   }
 
-  if (
-    response.decision.state === "SUPPORTED_CANDIDATES" &&
-    hasE33F &&
-    !hasE33E &&
-    options.facts
-  ) {
-    const depositNote = e33fE33eDepositNote(options.facts);
-    if (depositNote) {
-      conditions.push({
-        code: E33F_E33E_DEPOSIT_NOTE_CODE,
-        message: depositNote,
-        sourceIds: [],
-      });
-    }
-  }
-
   const base = {
     provenance: "ENGINE" as const,
     assessment,
@@ -2729,6 +2712,10 @@ function buildValidatedOutcome(
 
   switch (response.decision.state) {
     case "SUPPORTED_CANDIDATES": {
+      const depositNote =
+        !hasE33E && options.facts
+          ? e33fE33eDepositNote(options.facts)
+          : undefined;
       const candidates = response.display.candidates.map((projected, index) => {
         const decisionCandidate = response.decision.candidates[index];
         requireDecisiveRefs(decisionCandidate.source_refs);
@@ -2771,6 +2758,17 @@ function buildValidatedOutcome(
           decisionReasons: decisionCandidate.reason_codes.map((code) =>
             reason(code, decisionCandidate.source_refs, trustedIds),
           ),
+          ...(projected.product_code === "E33F" && depositNote
+            ? {
+                notes: [
+                  {
+                    code: E33F_E33E_DEPOSIT_NOTE_CODE,
+                    message: depositNote,
+                    sourceIds: [],
+                  },
+                ],
+              }
+            : {}),
           timeline: timeline(projected),
           price: price(projected, response),
           ...duration(projected, response, options.facts),
