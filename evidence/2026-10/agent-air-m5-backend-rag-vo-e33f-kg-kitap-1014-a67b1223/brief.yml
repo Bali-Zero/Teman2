@@ -1,0 +1,30 @@
+task_id: vo-e33f-kg-kitap-1014
+gear: 2
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+objective: |
+  Zero ruled "E33F everywhere" on 2026-10-14: the generic "Retirement KITAS" name gives way to
+  the E33F Second Home Senior KITAS on every surface Zantara or clients read. The fresh Opus gate
+  of #8515 (C4) named three leftovers: the golden route investor_kitas_retirement in
+  kg_enhanced_retrieval.py, the public row "Retirement KITAP + MERP" description_en, and a comment
+  in visa_check/match_tree.py. Each claim of the route is kept only if a saved official page or
+  the signed pack seq-29 supports it, corrected to the source's wording otherwise, and removed if
+  no saved source supports it. No new claim is added.
+constraints:
+  - "route_id investor_kitas_retirement unchanged (its only consumer is kg_enhanced_retrieval.py)."
+  - "Price rows, prices and every other description word unchanged; no fee split."
+  - "zantara_core.py is not touched."
+acceptance:
+  - text: "No golden route text names 'Retirement KITAS'; every USD figure of investor_kitas_retirement equals its signed-pack threshold or saved-page figure, bound per claim."
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/rag/test_kg_golden_route_e33f_1014.py -p no:cacheprovider"
+  - text: "The KITAP row description_en names the E33F Second Home Senior KITAS, not 'Retirement KITAS', in the canonical JSON, the mouth mirror and the public price list."
+    probe: "python3 -m pytest tests/scripts/test_catalogue_decisions_1014.py -p no:cacheprovider"
+  - text: "The no-argument observer runs both lanes' tests at their floors."
+    probe: "python3 scripts/ci/observe_zantara_e33f_everywhere_1014.py"
+consumer_map:
+  - "Zantara RAG: format_golden_route in kg_enhanced_retrieval.py hands the route text verbatim to the model."
+  - "Public price list and mouth price snapshot (apps/mouth/data/bali-zero-prices.json) read by clients."
+risks:
+  - "Removing unsupported claims (IMTA, health certificate, STM, KITAP after 3 years) makes the route say less; that is the intended direction."
+grader: "Fresh Opus 5.5 final gate commissioned by the team lead; red teams: claude-opus-5-5 and codex gpt-5.6-sol, read-only."
