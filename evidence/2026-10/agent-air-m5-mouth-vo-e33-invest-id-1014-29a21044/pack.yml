@@ -1,0 +1,97 @@
+gear: 1
+brief_ref: evidence/brief.yml
+pii_scan: clean
+ruling: >-
+  Audit finding F11 (verified real, MEDIUM): the Indonesian option dropped the word "qualifying" the English carries, while
+  rule el.e33.property-basis (seq-29) requires a qualifying property.
+mission: >-
+  The Indonesian investment-basis property option says "Properti yang memenuhi syarat", as the English says "qualifying".
+copy_rule: >-
+  Say only what the signed rule says; an interview option carries no figure (the 1,000,000 stays with the rule and the value question).
+lanes:
+  - lane: e33-invest-id
+    role: build
+    seat: gemini-4-argon-high via agy (external seat, edits files only), verified by Claude.
+  - lane: e33-invest-id-ground-truth
+    role: ground_truth
+    seat: >-
+      the committed signed pack (ACTIVE rulepack-prod-029.signed.json, seq-29) and the saved official page; no notebook, no memory.
+    nb: >-
+      apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json (rule el.e33.property-basis, a qualifying property)
+    query_hash: >-
+      read of the el.e33.property-basis rule in rulepack-prod-029 (seq-29): the rule requires a qualifying property; result: the Indonesian option now says memenuhi syarat, as the English says qualifying
+  - lane: e33-invest-id-redteam-opus
+    role: review
+    seat: claude-opus-5-5 adversarial red team (read-only), head 1f46ca26d0; four LOW findings, three cured by Claude in 2e90ca252e.
+bites:
+  consumer: >-
+    the investment_vehicle question of the public Visa Oracle interview in the Indonesian locale (tree.ts renders the key, flow.ts asks it on the invest route).
+    The rendered page is observed after the mouth deploy is promoted, outside CI.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_i18n_qualifying.py
+  expect: "contains:i18n qualifying holds"
+receipts:
+  - claim: "The whole visa-oracle Vitest tree on the final code, run on this head."
+    cmd: "cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'"
+    result: "Test Files 59 passed (59); Tests 1585 passed (1585)"
+    exit: 0
+    ts: "2026-10-14T21:57:58Z"
+    seat: this session
+  - claim: "The observer passes: source scan and i18n.test.ts full pass with the new tests run."
+    cmd: "python3 scripts/ci/observe_visa_oracle_i18n_qualifying.py"
+    result: "Tests 11 passed (11); i18n qualifying holds"
+    exit: 0
+    ts: "2026-10-14T21:59:51Z"
+    seat: this session
+  - claim: "The observer's unit tests."
+    cmd: "python3 -m pytest -q tests/scripts/test_observe_visa_oracle_i18n_qualifying.py"
+    result: "15 passed"
+    exit: 0
+    ts: "2026-10-14T21:59:52Z"
+    seat: this session
+  - claim: "Replay pins unchanged."
+    cmd: "python3 scripts/ci/observe_visa_oracle_replay_pins.py"
+    result: "Tests 307 passed (307); replay pins hold"
+    exit: 0
+    ts: "2026-10-14T21:59:53Z"
+    seat: this session
+  - claim: "The mouth typecheck is clean."
+    cmd: "cd apps/mouth && npx tsc --noEmit -p ."
+    result: "no diagnostics"
+    exit: 0
+    ts: "2026-10-14T21:59:47Z"
+    seat: this session
+decisions:
+  - id: D-no-hybrid
+    decision: >-
+      The auditor's "Pengaturan properti yang memenuhi syarat" is rejected because it keeps the vague "pengaturan"; the repo's own
+      wording "Properti yang memenuhi syarat" is used. q.retirement_basis.opt.property is out of scope (EN and ID agree there).
+dissent:
+  - severity: LOW
+    seat: claude-opus-5-5 red team
+    where: i18n.test.ts, observer and its test (retirement-basis pin)
+    objection: The PR pinned the out-of-scope q.retirement_basis.opt.property copy.
+    status: CONFIRMED
+    disposition: Cured in 2e90ca252e; the pin, the observer's retirement checks and the matching pytest assertions were removed.
+  - severity: LOW
+    seat: claude-opus-5-5 red team
+    where: i18n.test.ts family rule
+    objection: The /\bqualif/ regex over-matches (for example qualification).
+    status: CONFIRMED
+    disposition: Cured in 2e90ca252e; narrowed to qualif(y|ying|ies|ied) with a comment.
+  - severity: LOW
+    seat: claude-opus-5-5 red team
+    where: i18n.test.ts figure-free assertion
+    objection: The no-digit assertion cannot fail on its own after the exact pin.
+    status: PLAUSIBLE
+    disposition: Accepted as is; the spec asked for it and a family-wide digit ban is out of scope.
+  - severity: LOW
+    seat: claude-opus-5-5 red team
+    where: pack.yml
+    objection: Placeholder receipt timestamps and an unbacked pii_scan line.
+    status: CONFIRMED
+    disposition: Cured in 2e90ca252e, completed here with real run times and a scan.
+note: >-
+  The Codex red team named in the mandate has no recorded verdict for this lane in the earlier findings file, so none is claimed.
+  Gear 1, floor 1 (lint --print-floor), so no council_run is required. pii_scan: clean was backed by a scan of the added lines
+  for e-mail and long-digit patterns (0 hits).
