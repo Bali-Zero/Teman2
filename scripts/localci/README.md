@@ -960,6 +960,8 @@ silence is a `warning`, recovery `launchctl kickstart`. Arming (operator of Pro,
     python scripts/localci/phase_e_flip.py --apply --confirm <digest> --quiescent   # operator[gui], after READY and the key
     python scripts/localci/phase_e_flip.py --rollback <pre-flip-*.json> [--apply --confirm <digest> --quiescent]
 
+Before step 1 the report must also read `liveness_ok: true` (B24): READY proves the merger is safe, `liveness_ok` that it would merge — at least 10 mergeable `would_enqueue` rows in the last 48 h and at least 80 % of the GitHub-merged PRs it decided carrying one at their merged head. Phase F arming does not require it.
+
 Step 1 recomputes `report.json`, which nothing regenerates on a schedule (since F2 the tick judges READY in memory and writes
 no report). `hand_report.sh` runs the merger's own `merger.py report` the way the tick runs it: the code read from the mirror's
 ref (`refs/merger/wrapper`, else `refs/merger/base`, resolved once), the same files extracted beside it — the report's

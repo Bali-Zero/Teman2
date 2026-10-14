@@ -1,0 +1,31 @@
+task_id: infra-localci-liveness-gate-1014
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Phase E READY (0 FALSE_GREEN, at least 50 compared merges, at least 5 days) proves SAFETY, not LIVENESS: on Pro
+  the shadow's would_merge ok was 0 of 46 since 10-11, so a flip would merge nothing while READY read true (B24).
+  merger.py report now computes a liveness block over the trailing 48 h, apart from phase_e_ready: mergeable_rows
+  (would_enqueue rows, original or retry, whose criterion has every term true except label_privileged,
+  not_in_queue and first_enqueue), label_ok_rows (how many of those also had the label), coverage_decided (among
+  PRs GitHub merged in the window and that LocalCI decided at the merged head by a NON-replay decision, the fraction
+  with a mergeable row at that head), coverage_all_approx (reported only) and liveness_ok = mergeable_rows >= 10 and
+  coverage_decided >= 0.8. The phase E line prints READY and liveness_ok explicitly. liveness_ok is a precondition
+  of the flip runbook and of arming checklist step 1; phase_f_arming does not require it, and phase_e_ready is
+  unchanged (pinned by tests with READY true and liveness false, and the reverse). The tick's report(emit=False)
+  computes the block without the closed-PR listing read. Measured on a read-only copy of Pro's journal (last 48 h,
+  after the replay cure): mergeable_rows 1, merged_decided 1 (24 more PRs were only replayed after the merge),
+  coverage_decided 0.0, label_ok_rows 0, liveness_ok false while READY true. Consumer: the report command and the
+  flip runbook. The gear-2 verdict is not asserted here; a fresh Opus gate reads the diff.
+residuals:
+  - coverage_all_approx reads ONE page of 100 closed PRs of the base, so it is approximate by construction and an
+    unreadable listing leaves it null; it never feeds liveness_ok.
+  - The window intersects --since: a --since newer than 48 h narrows the measure.
+  - The 10-row and 0.8 thresholds are first rulings, not calibrated on a flipped system; a quiet two days can fail
+    liveness_ok for lack of PRs, which blocks the flip until traffic returns.
+  - A PR decided only by replay is outside coverage_decided by design; if LocalCI decides most merged PRs only after
+    GitHub merged them, coverage_decided has no denominator and liveness_ok stays false.
+  - label_privileged is excluded from mergeable_rows, not required; label_ok_rows reports it apart and nothing gates on it.
+  - >-
+    The phase E line changed from "phase E READY|NOT READY" to "phase E READY: true|false liveness_ok: true|false";
+    two existing tests were updated, no script parses it (grep of scripts, docs and apps/organism).
