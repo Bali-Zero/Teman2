@@ -1,4 +1,4 @@
-"""Negative gold personas for the E30 (study) family.
+"""Negative gold personas for the E30 (study) family and E31C (family).
 
 The positive corpus under ``gold_coverage/personas/`` is POSITIVE-ONLY by
 design: ``test_gold_coverage_floor.py`` requires every file there to replay
@@ -23,13 +23,16 @@ highest signed PRODUCTION pack:
   STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED + LEVEL_BAND_DASMEN;
 * E30F__individual_sponsor -> SUPPORTED_CANDIDATES but with E30F itself
   absent from the candidates (an INDIVIDUAL sponsor does not qualify the
-  exchange visa; the engine must redirect, not dead-end).
+  exchange visa; the engine must redirect, not dead-end);
+* E31C__marriage_unregistered -> SUPPORTED_CANDIDATES with only E31F: a KNOWN
+  "parents' marriage not registered" drops E31C (child of a registered
+  WNA-WNI marriage) and the engine redirects to E31F, measured on seq-29.
 
 The LEVEL_BAND_* codes ride along with the named cause and are pinned only because they
 were measured on seq-28; they follow the study level, not the negative fact under test.
 
 A missing artifact FAILS here, never skips: the directory must hold exactly
-the three pinned file names, and every file name's ``__``-prefix must equal
+the four pinned file names, and every file name's ``__``-prefix must equal
 its ``product_code`` (same rule as the floor test).  Each positive twin is
 also replayed to SUPPORTED with its own product — a negative whose twin is
 already broken would be vacuous, and this guards against that.
@@ -53,7 +56,12 @@ NEGATIVE_DIR = Path(__file__).resolve().parent / "gold_coverage" / "negative_per
 POSITIVE_DIR = Path(__file__).resolve().parent / "gold_coverage" / "personas"
 
 EXPECTED_FILE_NAMES = frozenset(
-    {"E30A__minor.json", "E30B__admission_false.json", "E30F__individual_sponsor.json"}
+    {
+        "E30A__minor.json",
+        "E30B__admission_false.json",
+        "E30F__individual_sponsor.json",
+        "E31C__marriage_unregistered.json",
+    }
 )
 
 #: The ONE intended fact change per negative persona, relative to its
@@ -70,6 +78,9 @@ _INTENDED_FACT_DIFFS = {
     },
     "E30F__individual_sponsor": {
         "sponsor.type": {"status": "KNOWN", "value": "INDIVIDUAL"},
+    },
+    "E31C__marriage_unregistered": {
+        "family.marriage_registered": {"status": "KNOWN", "value": False},
     },
 }
 
@@ -90,7 +101,7 @@ def _load(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def test_negative_corpus_is_exactly_the_three_expected_files() -> None:
+def test_negative_corpus_is_exactly_the_expected_files() -> None:
     """A missing artifact FAILS here; nothing in this module may skip."""
     files = {p.name for p in NEGATIVE_DIR.glob("*.json")}
     assert files == set(EXPECTED_FILE_NAMES), (

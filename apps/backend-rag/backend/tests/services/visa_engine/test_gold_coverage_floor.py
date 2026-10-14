@@ -18,8 +18,10 @@ from pathlib import Path
 import pytest
 
 from backend.scripts.visa_engine import gold_coverage_replay as replay
+from backend.scripts.visa_engine.gold_coverage_eval import _evaluate
 from backend.scripts.visa_engine.gold_replay_driver import (
     PACKS_DIR,
+    _parse_utc,
     select_highest_repository_pack,
 )
 
@@ -80,3 +82,39 @@ def test_corpus_file_names_match_their_product_code() -> None:
         product_code = path.stem.split("__", 1)[0]
         assert spec.get("product_code") == product_code, path.name
         assert product_code in (spec.get("expected_candidates") or []), path.name
+
+
+#: Named-case positive variants whose delta from the base persona is PINNED, so a
+#: variant that drifts by an extra fact cannot silently move the goalposts.  A
+#: minor needs two facts (age plus the guardian consent that is the only other
+#: fact a minor application carries) — the same exception as E30A__minor.
+_VARIANT_DELTAS: dict[str, dict[str, dict]] = {
+    "E31F__minor": {
+        "person.birth_date": {"status": "KNOWN", "value": "2013-05-10"},
+        "person.guardian_consent": {"status": "KNOWN", "value": True},
+    },
+    "E31F__two_year": {
+        "intent.stay_days": {"status": "KNOWN", "value": 730},
+    },
+}
+
+
+@pytest.mark.parametrize("case", sorted(_VARIANT_DELTAS))
+def test_e31f_variants_differ_from_the_base_in_exactly_the_pinned_facts(case: str) -> None:
+    variant = json.loads((CORPUS_DIR / f"{case}.json").read_text(encoding="utf-8"))
+    base = json.loads((CORPUS_DIR / "E31F.json").read_text(encoding="utf-8"))
+    v, b = variant["overrides"], base["overrides"]
+    changed = {k for k in set(v) | set(b) if v.get(k) != b.get(k)}
+    assert changed == set(_VARIANT_DELTAS[case]), (case, sorted(changed))
+    for path, fact in _VARIANT_DELTAS[case].items():
+        assert v[path] == fact, (case, path)
+
+
+@pytest.mark.parametrize("case", sorted(_VARIANT_DELTAS))
+def test_e31f_variants_decide_exactly_e31f_on_the_highest_signed_pack(case: str) -> None:
+    """The floor only needs E31F to be PRESENT; these variants are pinned as the
+    EXACT candidate list [E31F], so a spurious extra product turns this red."""
+    spec = json.loads((CORPUS_DIR / f"{case}.json").read_text(encoding="utf-8"))
+    out = _evaluate(spec["overrides"], spec["label"], as_of=_parse_utc(_AS_OF))
+    assert out["actual"]["state"] == "SUPPORTED_CANDIDATES", case
+    assert sorted(out["actual"]["candidates"] or []) == ["E31F"], case

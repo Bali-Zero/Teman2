@@ -1,0 +1,23 @@
+gear: 2
+gear_reason: >-
+  Test-only change: three synthetic persona JSON files plus count pins and one pinned-delta test, no product code, no
+  data, no pack and no copy. Gear 2 because the count pins in two older pack tests had to move with the corpus.
+mission: >-
+  The E31 family gold-coverage corpus covers the E31F minor and two-year-stay cases and pins the E31C unregistered-marriage
+  redirect on the active seq-29 pack.
+objective: >-
+  On the highest signed pack (seq-29) E31F__minor (guardian consent, confirmed sponsor) and E31F__two_year (730 days)
+  decide exactly [E31F] and are collected by the gold-coverage floor; E31C__marriage_unregistered (marriage not registered,
+  365 days) is pinned as measured, SUPPORTED with only E31F and E31C absent, in the negative-persona corpus; E31D, E31E,
+  E31G, E31H and E31J already meet the acceptance on origin/main and are left untouched.
+scope:
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/personas/E31F__minor.json
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/personas/E31F__two_year.json
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/negative_personas/E31C__marriage_unregistered.json
+  - apps/backend-rag/backend/tests/services/visa_engine/test_gold_coverage_floor.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_gold_coverage_negative_personas.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_seq19_pack.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_seq20_pack.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

@@ -1088,6 +1088,8 @@ class TestLocalCompensationWitnesses:
 #: (grown 35 -> 39); seq-20 already carries the 180-day C1 cap and the 30-day
 #: A1 bound, so all four replay green here — no new exclusions. The remaining
 #: 33 must all pass.
+#: The X02 E31 lane adds E31F__minor and E31F__two_year (grown 39 -> 41); both
+#: replay green on seq-20 too, so the remaining 35 must all pass.
 _SEQ20_UNSUPPORTED_COVERAGE_PERSONAS = frozenset(
     {"E23U.json", "E23V.json", "E28B.json", "E28C.json", "E28D.json", "E28F.json"}
 )
@@ -1102,8 +1104,8 @@ def _coverage_persona_specs() -> list[tuple[str, dict[str, Any]]]:
 
 
 class TestGoldCoverageReplay:
-    def test_corpus_has_thirty_three_personas(self) -> None:
-        assert len(_coverage_persona_specs()) == 33
+    def test_corpus_has_thirty_five_personas(self) -> None:
+        assert len(_coverage_persona_specs()) == 35
 
     @pytest.mark.parametrize(
         "name,spec", _coverage_persona_specs(), ids=[n for n, _ in _coverage_persona_specs()]

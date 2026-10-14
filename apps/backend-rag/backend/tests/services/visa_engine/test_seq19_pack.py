@@ -851,7 +851,7 @@ class TestInnocence:
 
 
 # ---------------------------------------------------------------------------
-# Gold-coverage replay (30 of 39 personas), against the 019 CompiledRulePack —
+# Gold-coverage replay (32 of 41 personas), against the 019 CompiledRulePack —
 # same evaluate path as gold_coverage_eval._evaluate, minus the repository
 # file-selection/signature step neither script lets a caller override (see
 # module docstring).
@@ -887,7 +887,8 @@ class TestInnocence:
 #: stay-day cap introduced at seq-20 (seq-19 caps C1 at 60 days), so no fact
 #: set with a 180-day stay can support it on this pack — same
 #: exclusion-by-name shape as E33G/D2__121D above.
-#: The remaining 30 must pass.
+#: The X02 E31 lane adds E31F__minor and E31F__two_year (grown 39 -> 41); both
+#: replay green here, so no new exclusion. The remaining 32 must pass.
 _SEQ19_UNSUPPORTED_COVERAGE_PERSONAS = frozenset(
     {
         "E33G.json",
@@ -913,8 +914,8 @@ def _coverage_persona_specs() -> list[tuple[str, dict[str, Any]]]:
 
 
 class TestGoldCoverageReplay:
-    def test_corpus_has_thirty_personas(self) -> None:
-        assert len(_coverage_persona_specs()) == 30
+    def test_corpus_has_thirty_two_personas(self) -> None:
+        assert len(_coverage_persona_specs()) == 32
 
     @pytest.mark.parametrize(
         "name,spec", _coverage_persona_specs(), ids=[n for n, _ in _coverage_persona_specs()]
