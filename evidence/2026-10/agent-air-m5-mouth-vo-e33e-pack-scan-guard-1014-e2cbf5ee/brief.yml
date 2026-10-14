@@ -1,0 +1,22 @@
+task_id: mouth-vo-e33e-pack-scan-guard-1014
+gear: 2
+gear_reason: >-
+  Test-only change (one new vitest file plus the observer that requires its titles). Gear is 2 via the SIZE term alone
+  (about 1000 lines of test). No pack, no rule, no engine adapter, no visitor-visible copy is touched. The gear-2
+  verdict is not asserted here; a fresh gate reads the diff.
+objective: >-
+  Carry-over condition 3 of the fresh Opus re-sign of PR #8511: nothing failed if a future signed pack broke the scan
+  that justifies the E33F-only deposit note. A vitest file reads the highest-sequence signed production pack, scans
+  what separates E33E from E33F, and fails with the cure sentence when a pack changes it.
+acceptance:
+  - text: WHEN the newest signed pack is scanned THEN the E33E-only rules SHALL be exactly the hard-filter rules with identical E33F twins plus el.e33e.retirement and el.e33e.age-55-59-disputed-band, el.e33e.retirement SHALL be the E33F rule plus age 55 or more plus the deposit trio, and no rule SHALL target both products.
+    probe: python3 scripts/ci/observe_visa_oracle_e33f_note.py (runs the new file; 389 passed)
+  - text: WHEN the pack is mutated in memory (threshold, deposit clause removed, extra or duplicate clause, E33E-only EXCLUDE, E33F-only SUPPORT, global rule count, twin on_unknown, retirement purpose or validity, disputed-band turned EXCLUDE, rule targeting both) THEN the scan SHALL fail.
+    probe: e33e-e33f-pack-scan.test.ts, the guilt titles (21 tests in the file)
+  - text: WHEN the note's EN or ID figure or its bank or own-name wording drifts from the pack THEN the guard SHALL fail with the cure sentence.
+    probe: e33e-e33f-pack-scan.test.ts, the note tests
+assumptions:
+  - text: The newest rulepack-prod-NNN.signed.json is the pack the engine serves.
+    status: verified
+    note: seq-29 version 2026.10.12 is the highest file; the test follows future packs by sequence number
+    probe: ls apps/backend-rag/backend/services/visa_engine/contracts/packs
