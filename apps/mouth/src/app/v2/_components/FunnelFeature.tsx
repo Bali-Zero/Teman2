@@ -84,7 +84,7 @@ const CONFIGS: Record<
       "AI drafts. Our licensed Indonesian team signs.",
       "24+ visa categories · Multilingual (EN · IT · ID)",
       "Every answer cited from primary sources",
-      "5,000+ expat cases handled since 2019",
+      "5,000+ expat cases handled since 2020",
     ],
     cta: "Try Visa Oracle",
     searchPlaceholder: "e.g. Can I open a PT PMA on a C1 visa?",
