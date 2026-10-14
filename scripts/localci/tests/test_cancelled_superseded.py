@@ -71,23 +71,23 @@ OTHER_OK = {**_run(9, "success", "2026-10-10T15:00:00Z"), "name": "other"}
 
 
 def test_a_row_without_entry_data_is_reclassified_when_the_reread_shows_cancelled_then_success():
-    lives = {SHA: _live(*LIVE["check_runs"], OTHER_OK)}
+    lives = {(SHA, None): _live(*LIVE["check_runs"], OTHER_OK)}
     (x,) = mg.reclassify_by_reread(_A, _row(), lives, 1)
     assert (x["context"], x["stale_why"], x["superseded_cancelled"]) == (CTX, "cancelled_superseded", [1])
 
 
 def test_a_reread_that_shows_a_later_failure_keeps_the_row():
-    lives = {SHA: _live(_run(1, "cancelled", "2026-10-10T15:29:12Z"), _run(2, "failure", "2026-10-10T15:31:00Z"), OTHER_OK)}
+    lives = {(SHA, None): _live(_run(1, "cancelled", "2026-10-10T15:29:12Z"), _run(2, "failure", "2026-10-10T15:31:00Z"), OTHER_OK)}
     assert mg.reclassify_by_reread(_A, _row(), lives, 1) == []
 
 
 def test_a_context_red_for_another_reason_keeps_the_row_even_when_one_flipped():
     bad = {**_run(8, "failure", "2026-10-10T15:00:00Z"), "name": "other"}
-    assert mg.reclassify_by_reread(_A, _row(), {SHA: _live(*LIVE["check_runs"], bad)}, 1) == []
+    assert mg.reclassify_by_reread(_A, _row(), {(SHA, None): _live(*LIVE["check_runs"], bad)}, 1) == []
 
 
 def test_a_recorded_count_that_is_not_the_number_flipped_keeps_the_row():
-    lives = {SHA: _live(*LIVE["check_runs"], OTHER_OK)}
+    lives = {(SHA, None): _live(*LIVE["check_runs"], OTHER_OK)}
     assert mg.reclassify_by_reread(_A, _row(2), lives, 2) == [] and mg.reclassify_by_reread(_A, _row(0), lives, 0) == []
 
 
@@ -97,3 +97,34 @@ def test_a_fetch_error_or_an_unreadable_sha_keeps_the_row(monkeypatch):
     monkeypatch.setattr(mg.hc, "fetch_live", boom)
     assert mg.reclassify_by_reread(_A, _row(), {}, 1) == []
     assert mg.reclassify_by_reread(_A, {**_row(), "hosted_compare": {"sha": "nope"}}, {}, 1) == []
+
+
+# ------------------------------------------------------------------ R2: a re-read that can CLEAR a false green reads the decision's own base
+BASEX = "b" * 40
+CLEARING = {"required_checks": REQ, "check_runs": [*LIVE["check_runs"], OTHER_OK], "statuses": []}
+HOLDING = {"required_checks": REQ, "check_runs": [LIVE["check_runs"][0], OTHER_OK], "statuses": []}   # the cancelled run is never answered
+
+
+class _AS:
+    repo, base, state_dir = "o/r", "main", "/nonexistent-state"
+
+
+def _by_ref(seen):
+    """A GitHub whose answer depends on the BASE ref asked: the clearing evidence only for any ref but the decision's own."""
+    def fetch(repo, branch, sha, base=None):
+        seen.append(base[0] if base else None)
+        return HOLDING if base and base[0] == BASEX else CLEARING
+    return fetch
+
+
+def test_the_b17b_reread_reads_at_the_decisions_own_base_so_another_ref_cannot_clear_a_false_green(monkeypatch):
+    seen = []
+    monkeypatch.setattr(mg.hc, "fetch_live", _by_ref(seen))
+    assert mg.reclassify_by_reread(_AS, _row(base_sha=BASEX), {}, 1) == [] and seen == [BASEX]
+
+
+def test_the_b10_reread_reads_at_the_decisions_own_base_so_another_ref_cannot_clear_a_false_green(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr(mg.hc, "fetch_live", _by_ref(seen))
+    out, kept = mg.reclassify_recorded(_AS, {**_d(tmp_path, RED1), "base_sha": BASEX}, lambda name, at: {"stale": False})
+    assert out == [] and len(kept) == 1 and seen == [BASEX]

@@ -115,6 +115,26 @@ def test_the_replay_judges_the_merge_commit_with_its_first_parent_as_the_base_ne
     assert g(rw.state / "repo.git", "show", f"{rw.m['m1']}:{mg.MATRIX}") == REWRITTEN.strip()
 
 
+def test_the_replay_reads_the_required_set_at_the_first_parent_never_at_the_merge_commit(rw, monkeypatch):
+    seen, real = [], mg.hosted_summary
+    monkeypatch.setattr(mg, "hosted_summary", lambda *a, **kw: seen.append((a[3], kw.get("matrix"))) or real(*a, **kw))
+    for _ in range(4):   # PR 3, M2, PR 4, M1
+        rw.tick()
+    (matrix,) = [m for sha, m in seen if sha == rw.m["m1"]]
+    assert matrix[0] == rw.m["m0"] and matrix[1]() == BASE_MATRIX != REWRITTEN   # the first parent's matrix, not the rewrite M1 carries
+    assert [d["base_sha"] for d in rw.decisions() if d.get("replay") and d["merge_commit"] == rw.m["m1"]] == [rw.m["m0"]]
+
+
+def test_a_merge_commits_required_set_base_is_its_first_parent_and_a_missing_one_fails_closed(rw):
+    repo = rw.state / "repo.git"
+    rw.tick()
+    ref, read = mg.base_matrix(repo, rw.m["m1"], parent=True)
+    assert ref == f"{rw.m['m1']}^1" and read() == BASE_MATRIX
+    with pytest.raises(mg.MergerError):
+        mg.base_matrix(repo, "5" * 40, parent=True)[1]()
+    assert mg.base_matrix(repo, None, parent=True) is None
+
+
 def test_the_replay_line_carries_the_decision_fields_and_enqueues_and_rehearses_nothing(rw):
     rw.tick()
     mutations, before = len(rw.gql.mutations()), len(mg.read_journal(rw.state))

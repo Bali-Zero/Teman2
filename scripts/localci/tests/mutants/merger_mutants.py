@@ -123,6 +123,7 @@ CQ_MIXED = cq("test_a_leg_that_mixes_the_gate_skip_with_any_other_skip_is_not_a_
 CQ_SEAM = cq("test_a_base_job_env_that_sets_a_leg_seam_blocks_the_plan", "test_a_base_step_env_or_a_matrix_step_env_that_sets_a_leg_seam_blocks_the_plan")
 CQ_REPO = cq("test_the_reader_refuses_a_repo_that_climbs_the_api_path")
 CQ_CONFIG = cq("test_a_queries_block_the_rewriter_cannot_read_as_text_is_no_verdict_and_writes_nothing")
+RS = ("scripts/localci/tests/test_required_set.py",)   # the required set after the phase F flip
 CQ_CORPUS = ("scripts/localci/tests/test_runner.py::test_the_corpus_check_also_runs_the_gate_flags_corpus_from_base",)
 
 # name: (file, text that must occur once, replacement, test files that must turn red)
@@ -795,6 +796,36 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "cq-reader-repo-dots": (CQ_READER_FILE, ' or any(seg in (".", "..") for seg in args.repo.split("/")):', ":", CQ_REPO),
     "cq-config-inline-queries-open": (CQ_SH_FILE, 'if re.match(r"^queries\\s*:\\s*\\S", key):', "if False:", CQ_CONFIG),
     "cq-config-comment-in-block-open": (CQ_SH_FILE, 'if rest[0] in " \\t-":', "if False:", CQ_CONFIG),
+    # the required set after the flip: the matrix stands in only for GitHub's "Branch not protected" 404 beside the flipped ruleset
+    "rs-any-404-reads-matrix": (HC, 'if NOT_PROTECTED not in exc.stderr or "(HTTP 404)" not in exc.stderr or not _flipped(repo, branch):', "if False:", RS),
+    "rs-message-not-checked": (HC, 'if NOT_PROTECTED not in exc.stderr or "(HTTP 404)"', 'if "(HTTP 404)"', RS),
+    "rs-ruleset-unchecked": (HC, "or not _flipped(repo, branch):", ":", RS),
+    "rs-is-target-ignored": (HC, 'and len(rules) == 1 and rules[0].get("type") == "update"', "and len(rules) >= 0 and True", RS),
+    "rs-bypass-unchecked": (HC, 'and len(bypass) == 1 and bypass[0].get("actor_type") == "DeployKey" and bypass[0].get("bypass_mode") == "always"', "and True", RS),
+    "rs-fetch-and-merge-unchecked": (HC, '(rules[0].get("parameters") or {}).get("update_allows_fetch_and_merge") is False', "True", RS),
+    "rs-enforcement-unchecked": (HC, 'and rs.get("enforcement") == "active"', "", RS),
+    "rs-covers-ignored": (HC, 'and bool(names & set(ref.get("include") or [])) and not names & set(exclude)', "and not names & set(exclude)", RS),
+    "rs-excludes-ignored": (HC, "and not names & set(exclude) and not any(_GLOB.search(x) for x in exclude))", ")", RS),
+    "rs-duplicate-ruleset-accepted": (HC, "if len(named) != 1 or not isinstance", "if not named or not isinstance", RS),
+    "rs-no-base-guard": (HC, "    if not (isinstance(base, tuple) and len(base) == 2 and isinstance(base[0], str) and base[0] and callable(base[1])):", "    if False:", RS),
+    "rs-not-memoized": (HC, "    if key not in _CACHE:\n        try:\n            protection", "    if True:\n        try:\n            protection", RS),
+    "rs-matrix-not-memoized": (HC, "    if mkey not in _CACHE:", "    if True:", RS),
+    "rs-imports-phase-e-flip": (HC, "    if not isinstance(rs, dict):\n        return False\n    rules, bypass", "    import phase_e_flip  # noqa\n    if not isinstance(rs, dict):\n        return False\n    rules, bypass", RS),
+    # R2/R3: each call site reads the required set at the BASE its commit was built on
+    "rs-report-reads-at-the-sha": (PY, 'base_matrix(state / "repo.git", d.get("base_sha")))\n                hc.required_names(lives[lkey]', 'base_matrix(state / "repo.git", sha))\n                hc.required_names(lives[lkey]', (REPORT,)),
+    "rs-report-cache-keyed-by-sha": (PY, 'lkey = (sha, d.get("base_sha"))   # R3', 'lkey = (sha, None)   # R3', (REPORT,)),
+    "rs-decide-reads-at-the-head": (PY, "gate=GateJudge(a.repo, judge, plan_time(run_dir), frozen_reads(run_dir)),\n                                         matrix=base_matrix(repo_dir, base_sha))",
+                                    "gate=GateJudge(a.repo, judge, plan_time(run_dir), frozen_reads(run_dir)),\n                                         matrix=base_matrix(repo_dir, head))", (f"{TICK}::test_the_tick_reads_the_required_set_at_the_decided_base_never_at_the_head",)),
+    "rs-replay-reads-at-the-merge-commit": (PY, "REPLAY_NOTE, matrix=base_matrix(repo_dir, base_sha))", "REPLAY_NOTE, matrix=base_matrix(repo_dir, cand_sha))", ("scripts/localci/tests/test_replay.py",)),
+    "rs-merged-pr-reads-at-the-merge-commit": (PY, "base_matrix(state / \"repo.git\", mc, parent=True)", "base_matrix(state / \"repo.git\", mc)", (REPORT,)),
+    "rs-parent-ref-is-the-commit": (PY, "return f\"{ref}^1\", lambda:", "return ref, lambda:", ("scripts/localci/tests/test_replay.py",)),
+    "rs-pins-always-present": (HC, '("present" if any(c["app_id"] for c in required) else "absent_at_base")', '"present"', RS),
+    "rs-b17b-reread-reads-at-the-sha": (PY, 'repo.git", d.get("base_sha")))\n        live = lives[lkey]', 'repo.git", sha))\n        live = lives[lkey]', (f"{CS}",)),
+    "rs-b10-reread-reads-at-the-head": (PY, 'repo.git", d.get("base_sha")))\n        hosted = hc.hosted_entries', 'repo.git", head))\n        hosted = hc.hosted_entries', (f"{CS}",)),
+    "rs-pin-dropped": (HC, '"app_id": c.get("required_app_id")}', '"app_id": None}', RS),
+    "rs-source-not-recorded": (HC, '"required_checks": required, "required_source": source,', '"required_checks": required,', RS),
+    "rs-protection-ignored": (HC, '_CACHE[key] = ("protection", protection.get("checks") if isinstance(protection, dict) else None)',
+                              '_CACHE[key] = ("matrix_after_flip", None)', RS),
 }
 
 

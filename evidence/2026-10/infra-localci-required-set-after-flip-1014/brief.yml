@@ -1,0 +1,27 @@
+task_id: infra-localci-required-set-after-flip-1014
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  After the phase F flip, scripts/localci/phase_e_flip.py --apply deletes the classic protection of main, so the
+  merger's live read of the required checks answers 404 "Branch not protected", hosted_required_green is false,
+  report() is refused and phase F READY is unreadable: main would freeze with the flip. The required set now
+  comes from the BASE contexts_matrix.yaml, only when the protection read is that exact 404 AND the repository's
+  merge-queue-main ruleset is the flipped one (one update rule, the DeployKey the only bypass, the branch
+  included); every other state fails closed as before. The matrix is read from the merger's mirror at the BASE
+  each commit was built on (a PR decision at its base_sha, a merge commit at its first parent), never at the
+  commit itself, never from GitHub, cached by (sha, base). The flipped state is restated in hosted_compare.py
+  because the tick wrapper extracts no phase_e_flip.py, and a parity test pins it. The three Actions-app pins
+  move into the matrix as required_app_id. The source is journalled (required_source, pins). Gear is 2 via the
+  SIZE term (about 500 net lines, more than half of them tests, mutants and docs); the mechanism ships with its
+  only consumer, the merger. The gear-2 verdict is not asserted here; a fresh Opus gate reads the diff.
+residuals:
+  - A BASE matrix older than this change has no required_app_id, so a decision judged on it is unpinned (any
+    source satisfies a context). It is named in the row (pins absent_at_base). Pins are never borrowed from
+    another ref.
+  - The operator-only CLI of hosted_compare.py has no BASE ref to pass, so after the flip it fails closed on this
+    path. The merger does not use it.
+  - test_merger.py as a whole cannot run in the mutation harness's temporary copy (it reads apps/organism); the
+    mutant for decide() names its one test instead.
+  - The fixture tests/fixtures/protection_required_checks_*.json is a tripwire, so adding a required context means
+    updating it in the same PR.

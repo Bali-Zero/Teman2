@@ -705,3 +705,32 @@ def test_evictions_are_counted_beside_errors_and_skips(tmp_path, monkeypatch, ca
             {"kind": "evicted", "pr": 1, "head_sha": A, "ts": "2026-10-01T07:00:00Z"}, decision(1, A, "BLOCKED", ts="2026-10-02T00:00:00Z")]
     rc, rep = run_report(tmp_path, monkeypatch, recs, FakeGH({1: pull(A)}, {A: "success"}))
     assert rep["window"]["evicted"] == 2 and rep["window"]["errors"] == 0 and "evicted=2" in capsys.readouterr().out and rc == 0
+
+
+def _record_bases(monkeypatch):
+    seen, real = [], mg.hc.fetch_live
+    monkeypatch.setattr(mg.hc, "fetch_live", lambda repo, branch, sha, base=None: seen.append((sha, base[0] if base else None)) or real(repo, branch, sha, base))
+    return seen
+
+
+def test_the_report_reads_a_decisions_required_set_at_that_decisions_own_base_never_at_the_sha(tmp_path, monkeypatch):
+    seen = _record_bases(monkeypatch)
+    gh = FakeGH({2: pull(B)}, {B: "success"})
+    run_report(tmp_path, monkeypatch, [decision(2, B, "PASS")], gh)
+    assert seen == [(B, BASE)]
+
+
+def test_two_decisions_on_one_sha_and_two_bases_are_two_reads_never_one_shared_required_set(tmp_path, monkeypatch):
+    seen = _record_bases(monkeypatch)
+    gh = FakeGH({2: pull(B)}, {B: "success"})
+    other = {**decision(2, B, "PASS", ts="2026-10-07T08:05:00Z"), "base_sha": "9" * 40}
+    run_report(tmp_path, monkeypatch, [decision(2, B, "PASS"), other], gh)
+    assert sorted(seen) == sorted([(B, BASE), (B, "9" * 40)])
+
+
+def test_a_merged_pr_is_read_at_its_merge_commits_first_parent_never_at_the_commit_itself(tmp_path, monkeypatch):
+    seen = _record_bases(monkeypatch)
+    red_mc = "2" * 40
+    gh = FakeGH({2: pull(B, merged=True, merge_commit=red_mc)}, {B: "success", red_mc: "failure"}, parents={red_mc: ["3" * 40]})
+    run_report(tmp_path, monkeypatch, [decision(2, B, "FAIL", ctx="FAIL")], gh)
+    assert (red_mc, f"{red_mc}^1") in seen and (red_mc, red_mc) not in seen

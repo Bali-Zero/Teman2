@@ -788,12 +788,25 @@ def stale_entry(r: dict) -> dict:
     return {k: r[k] for k in B10_KEYS}
 
 
+def base_matrix(repo_dir: Path, ref, parent: bool = False) -> tuple | None:
+    """``(ref, reader)`` for ``hc.fetch_live``: the required set after the flip is the matrix AT the decision's own BASE ref, read from
+    the mirror (``git show <ref>:<MATRIX>``), never from GitHub. ``parent``: the BASE of the merge commit ``ref`` is its first parent
+    (``<ref>^1``, resolved when the matrix is read, so a mirror lacking it fails closed only then). None when no sha is named."""
+    if not is_sha(ref):
+        return None
+    if not parent:
+        return ref, lambda: git(repo_dir, "show", f"{ref}:{MATRIX}", timeout=60).stdout
+    return f"{ref}^1", lambda: git(repo_dir, "show", f"{git(repo_dir, 'rev-parse', '--verify', f'{ref}^1^{{commit}}', timeout=60).stdout.strip()}:{MATRIX}",
+                                   timeout=60).stdout
+
+
 def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path, judge=None, note: str = HEAD_NOTE,
-                   gate=None) -> tuple[dict, dict | None]:
+                   gate=None, matrix=None) -> tuple[dict, dict | None]:
     """The comparison journalled beside the verdict, and the hosted document it read (None when the read or the comparison failed)."""
     out = {"sha": head, "note": note}
     try:
-        live = hc.fetch_live(repo, base, head)
+        live = hc.fetch_live(repo, base, head, matrix)
+        out["required_source"], out["pins"] = live.get("required_source"), live.get("pins")
         rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"], stale_judge=judge, gate_judge=gate)
         rep.update(source="live", repo=repo, branch=base, **out)
         atomic_write(run_dir / "hosted_compare.json", json.dumps(rep, indent=2) + "\n")
@@ -1292,10 +1305,11 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
         ctx = status.get("contexts") if isinstance(status.get("contexts"), dict) and not gate.get("error") else {}   # an unvouched status lends no verdict
         results = ctx.get("results") if isinstance(ctx.get("results"), dict) else {}
         if replay:   # the hosted verdict is on the very tree judged here: nothing can be stale
-            hosted, live = hosted_summary(a.repo, a.base, status, cand_sha, run_dir, None, REPLAY_NOTE)
+            hosted, live = hosted_summary(a.repo, a.base, status, cand_sha, run_dir, None, REPLAY_NOTE, matrix=base_matrix(repo_dir, base_sha))
         else:
             judge = StaleJudge(repo_dir, base_sha)
-            hosted, live = hosted_summary(a.repo, a.base, status, head, run_dir, judge, gate=GateJudge(a.repo, judge, plan_time(run_dir), frozen_reads(run_dir)))
+            hosted, live = hosted_summary(a.repo, a.base, status, head, run_dir, judge, gate=GateJudge(a.repo, judge, plan_time(run_dir), frozen_reads(run_dir)),
+                                         matrix=base_matrix(repo_dir, base_sha))
         loc = local_side({} if gate.get("error") else status)
         pending_ctx = sorted(k for k, v in results.items() if isinstance(v, dict) and v.get("no_verdict") == "gate_pending")
         gate_pending = bool(pending_ctx) and status.get("overall") == "BLOCKED"   # B12: on a FAIL the missing gate verdict changes nothing
@@ -1578,10 +1592,11 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
             # GitHub merged THIS candidate only when its merge commit sits on the decided base; a decision on another base is
             # judged by the head's own checks like any open PR
             merged_here = sha != head and sha == prs[n].get("merge_commit_sha")
-            if sha not in lives:
-                lives[sha] = hc.fetch_live(a.repo, a.base, sha)
-                hc.required_names(lives[sha]["required_checks"])
-            live = lives[sha]
+            lkey = (sha, d.get("base_sha"))   # R3: the required set belongs to the BASE the sha was judged on, so the cache does too
+            if lkey not in lives:
+                lives[lkey] = hc.fetch_live(a.repo, a.base, sha, base_matrix(state / "repo.git", d.get("base_sha")))
+                hc.required_names(lives[lkey]["required_checks"])
+            live = lives[lkey]
             github = github_side(live)
             # what the tick saw is kept: a red GitHub later re-ran green, or a context it no longer requires, cannot erase it
             raw = recorded_false_green(d)
@@ -1618,7 +1633,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
             merged_at = prs[n].get("merged_at") if merged_here else None
             if merged_here and not is_ts(merged_at):
                 raise hc.CompareError(f"#{n} merged at the decided candidate but carries no merged_at")
-            rows.append({"ts": d.get("ts"), "pr": n, "head_sha": head, "hosted_sha": sha, "base_sha": d.get("base_sha"), "overall": d.get("overall"),
+            rows.append({"ts": d.get("ts"), "pr": n, "head_sha": head, "hosted_sha": sha, "required_source": live.get("required_source"), "pins": live.get("pins"), "base_sha": d.get("base_sha"), "overall": d.get("overall"),
                          "github": github, "merged": prs[n].get("merged") is True, "class": classify(merger_side(d.get("overall")), github),
                          "compared_contexts": compared_ctx, "compared_partial": not_full["partial"], "compared_unrecorded": not_full["unrecorded"],
                          "compared_skip_agreed": skip_agreed, "replay": d.get("replay") is True, "gate_pending": d.get("gate_pending") is True,
@@ -1633,10 +1648,10 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
             mc = prs[n].get("merge_commit_sha")
             if not is_sha(mc):
                 raise hc.CompareError(f"#{n} is merged but carries no merge commit sha")
-            if mc not in lives:
-                lives[mc] = hc.fetch_live(a.repo, a.base, mc)
-                hc.required_names(lives[mc]["required_checks"])
-            red = sorted(k for k, v in required_verdicts(lives[mc]).items() if v == "RED")
+            if (mc, f"{mc}^1") not in lives:   # R2: a merge commit is judged at the BASE it was built on, its first parent, never at itself
+                lives[(mc, f"{mc}^1")] = hc.fetch_live(a.repo, a.base, mc, base_matrix(state / "repo.git", mc, parent=True))
+                hc.required_names(lives[(mc, f"{mc}^1")]["required_checks"])
+            red = sorted(k for k, v in required_verdicts(lives[(mc, f"{mc}^1")]).items() if v == "RED")
             if red:
                 hosted_red_merged.append({"pr": n, "merge_commit_sha": mc, "red": red})
     except (hc.CompareError, OSError, KeyError, TypeError, AttributeError) as exc:
@@ -1833,9 +1848,10 @@ def reclassify_by_reread(a, d: dict, lives: dict, raw: int) -> list[dict]:
         local = d.get("contexts") if isinstance(d.get("contexts"), dict) else {}
         if not is_sha(sha) or not raw:
             return []
-        if sha not in lives:
-            lives[sha] = hc.fetch_live(a.repo, a.base, sha)
-        live = lives[sha]
+        lkey = (sha, d.get("base_sha"))
+        if lkey not in lives:
+            lives[lkey] = hc.fetch_live(a.repo, a.base, sha, base_matrix(Path(str(a.state_dir)).expanduser().resolve() / "repo.git", d.get("base_sha")))
+        live = lives[lkey]
         by = hc.hosted_entries(live["check_runs"], live["statuses"])
         flipped, stuck = [], 0
         for chk in live["required_checks"]:
@@ -1863,7 +1879,7 @@ def reclassify_recorded(a, d: dict, judge, gate: GateJudge | None = None) -> tup
     try:
         doc = json.loads((Path(str(d["run_dir"])) / "hosted_compare.json").read_text())
         rows = [r for r in doc["rows"] if r.get("class") == "FALSE_GREEN"]
-        live = hc.fetch_live(a.repo, a.base, str(head))
+        live = hc.fetch_live(a.repo, a.base, str(head), base_matrix(Path(str(a.state_dir)).expanduser().resolve() / "repo.git", d.get("base_sha")))
         hosted = hc.hosted_entries(live["check_runs"], live["statuses"])
     except Exception as exc:  # noqa: BLE001 — unreadable evidence leaves the recorded false green where it is, and says why
         return [], [{"pr": pr, "context": None, "head_sha": head, "why": redact(f"unknown ({type(exc).__name__}: {exc})")}]

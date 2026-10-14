@@ -741,6 +741,7 @@ contexts:
     blocker: ""
 
   - name: "Visa Oracle fullstack smoke"
+    required_app_id: 15368 # branch protection pins this context to GitHub Actions; the post-flip required set (hosted_compare.required_set) keeps the pin
     workflow_file: .github/workflows/tests.yml
     job_id: visa-oracle-fullstack-smoke
     purpose: Disposable-DB fullstack smoke of Visa Oracle (backend.scripts.visa_engine.fullstack_smoke) with Playwright chromium.
@@ -805,6 +806,7 @@ contexts:
     blocker: ""
 
   - name: "Merah Putih DAY palette holds its contrast law"
+    required_app_id: 15368 # branch protection pins this context to GitHub Actions; the post-flip required set (hosted_compare.required_set) keeps the pin
     workflow_file: .github/workflows/merah-putih-day-contrast.yml
     job_id: contrast-guard
     purpose: WCAG-style contrast law over the Merah Putih DAY palette tokens, plus a guilt control that mutates the ink token and expects the guard to go red.
@@ -825,6 +827,7 @@ contexts:
     blocker: ""
 
   - name: "catE-sovereignty-lint"
+    required_app_id: 15368 # branch protection pins this context to GitHub Actions; the post-flip required set (hosted_compare.required_set) keeps the pin
     workflow_file: .github/workflows/catE-sovereignty-lint.yml
     job_id: catE-sovereignty-lint
     purpose: Category-E guardian — paid-Anthropic-endpoint ban (constructor + env assignment), ban-prose lint, Law-5 no-autonomous-publish lint, world-readable apps/*/.env, plus its own corpora.
