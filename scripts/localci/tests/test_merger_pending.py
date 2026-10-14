@@ -416,3 +416,28 @@ def test_an_alarm_swallowed_inside_replay_selection_ends_the_tick_before_any_dec
     monkeypatch.setattr(mg, "decide", lambda *a, **k: pytest.fail("decided after the watchdog fired"))
     assert fw.tick() == 1
     assert "watchdog" in [r for r in fw.live() if r["kind"] == "error"][-1]["error"]
+
+
+def test_a_retry_whose_push_fails_in_transport_stays_pending_and_the_next_retry_merges_once(fw, monkeypatch):
+    """B19 x B21 on B21's real code path: the push times out, the read-back shows main unchanged twice, push_unlanded; the next retry merges."""
+    import subprocess
+    state = decided_while_hosted_pends(fw, monkeypatch)
+    state["green"] = True
+    monkeypatch.setattr(mg, "READBACK_SETTLE_S", 0)
+    real, broken = mg.git, [True]
+
+    def git_(cwd, *a, **kw):
+        if a and a[0] == "push":
+            fw.pushes.append((a, dict(kw.get("env") or {})))
+            if broken[0]:
+                raise subprocess.TimeoutExpired(["git", "push"], kw["timeout"])
+        return real(cwd, *a, **kw)
+    monkeypatch.setattr(mg, "git", git_)
+    assert fw.tick() == 0
+    assert fw.kinds()[-3:] == ["would_merge", "merged", "push_unlanded"] and not (fw.state / mg.HALT_FILE).exists()
+    assert fw.origin_main() == fw.base and list(mg.pending_merges(fw.journal())) == [(1, fw.head1, fw.base)]
+    broken[0] = False
+    assert fw.tick() == 0
+    assert fw.kinds()[-4:] == ["would_enqueue", "would_merge", "merged", "pushed"] and fw.kinds().count("decision") == 1
+    assert fw.origin_main() == fw.journal()[-1]["merge_commit"] and len([c for c in fw.runner.calls if c["sub"] == "plan"]) == 1
+    assert mg.pending_merges(fw.journal()) == {}
