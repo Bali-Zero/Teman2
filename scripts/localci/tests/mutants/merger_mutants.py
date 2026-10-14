@@ -820,6 +820,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "rs-merged-pr-reads-at-the-merge-commit": (PY, "base_matrix(state / \"repo.git\", mc, parent=True)", "base_matrix(state / \"repo.git\", mc)", (REPORT,)),
     "rs-parent-ref-is-the-commit": (PY, "return f\"{ref}^1\", lambda:", "return ref, lambda:", ("scripts/localci/tests/test_replay.py",)),
     "rs-pins-always-present": (HC, '("present" if any(c["app_id"] for c in required) else "absent_at_base")', '"present"', RS),
+    "rs-b17b-reread-reads-at-the-sha": (PY, 'repo.git", d.get("base_sha")))\n        live = lives[lkey]', 'repo.git", sha))\n        live = lives[lkey]', (f"{CS}",)),
+    "rs-b10-reread-reads-at-the-head": (PY, 'repo.git", d.get("base_sha")))\n        hosted = hc.hosted_entries', 'repo.git", head))\n        hosted = hc.hosted_entries', (f"{CS}",)),
     "rs-pin-dropped": (HC, '"app_id": c.get("required_app_id")}', '"app_id": None}', RS),
     "rs-source-not-recorded": (HC, '"required_checks": required, "required_source": source,', '"required_checks": required,', RS),
     "rs-protection-ignored": (HC, '_CACHE[key] = ("protection", protection.get("checks") if isinstance(protection, dict) else None)',

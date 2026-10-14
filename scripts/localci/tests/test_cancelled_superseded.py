@@ -97,3 +97,34 @@ def test_a_fetch_error_or_an_unreadable_sha_keeps_the_row(monkeypatch):
     monkeypatch.setattr(mg.hc, "fetch_live", boom)
     assert mg.reclassify_by_reread(_A, _row(), {}, 1) == []
     assert mg.reclassify_by_reread(_A, {**_row(), "hosted_compare": {"sha": "nope"}}, {}, 1) == []
+
+
+# ------------------------------------------------------------------ R2: a re-read that can CLEAR a false green reads the decision's own base
+BASEX = "b" * 40
+CLEARING = {"required_checks": REQ, "check_runs": [*LIVE["check_runs"], OTHER_OK], "statuses": []}
+HOLDING = {"required_checks": REQ, "check_runs": [LIVE["check_runs"][0], OTHER_OK], "statuses": []}   # the cancelled run is never answered
+
+
+class _AS:
+    repo, base, state_dir = "o/r", "main", "/nonexistent-state"
+
+
+def _by_ref(seen):
+    """A GitHub whose answer depends on the BASE ref asked: the clearing evidence only for any ref but the decision's own."""
+    def fetch(repo, branch, sha, base=None):
+        seen.append(base[0] if base else None)
+        return HOLDING if base and base[0] == BASEX else CLEARING
+    return fetch
+
+
+def test_the_b17b_reread_reads_at_the_decisions_own_base_so_another_ref_cannot_clear_a_false_green(monkeypatch):
+    seen = []
+    monkeypatch.setattr(mg.hc, "fetch_live", _by_ref(seen))
+    assert mg.reclassify_by_reread(_AS, _row(base_sha=BASEX), {}, 1) == [] and seen == [BASEX]
+
+
+def test_the_b10_reread_reads_at_the_decisions_own_base_so_another_ref_cannot_clear_a_false_green(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr(mg.hc, "fetch_live", _by_ref(seen))
+    out, kept = mg.reclassify_recorded(_AS, {**_d(tmp_path, RED1), "base_sha": BASEX}, lambda name, at: {"stale": False})
+    assert out == [] and len(kept) == 1 and seen == [BASEX]
