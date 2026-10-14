@@ -53,9 +53,10 @@ def test_live_state_log_entry_is_the_newest():
     text = LOG.read_text(encoding="utf-8")
     dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
     assert dated[0].startswith("- 2026-10-14 (M5")
-    assert "ledger after E33 wave 3" in dated[0]
+    assert "ledger after E33 wave 4" in dated[0]
+    assert "ledger after E33 wave 3" in dated[1]
     waves12 = [ln for ln in dated if "ledger after the E33 audit waves 1-2" in ln]
-    assert len(waves12) == 1 and dated.index(waves12[0]) == 1
+    assert len(waves12) == 1 and dated.index(waves12[0]) == 2
     seq29 = [ln for ln in dated if ln.startswith("- 2026-10-13 (M5")]
     assert seq29 and "seq-29 active" in seq29[0]
 
@@ -238,11 +239,11 @@ def test_wave3_entry_names_the_three_c4_items_and_the_in_flight_lanes():
 def test_skill_live_state_leads_with_wave3_and_stays_an_index():
     text = SKILL.read_text(encoding="utf-8")
     block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
-    assert block.index("2026-10-14 (newest): E33 wave 3 merged, live proof partial") < block.index("2026-10-13 position")
+    assert block.index("2026-10-14 (wave 3): E33 wave 3 merged, live proof partial") < block.index("2026-10-13 position")
     for pr, sha in E33_WAVE3:
         assert block.count(f"#{pr} ") == 1, pr
         assert block.count(f"`{sha}`") == 1, sha
-    assert "ID not proven" in block and "In flight, not merged" in block
+    assert "ID not proven" in block
 
 
 WAVE3_ROWS = (
@@ -296,3 +297,119 @@ def test_wave3_rows_parse_with_the_ledger_grammar_and_classify_as_intended():
     annual = _rows("re-read before 2027-10-13")[0]
     for token in ("seven successful live probes", "observed URLs", "fingerprint"):
         assert token in annual, token
+
+
+E33_WAVE4 = (("8501", "f91af7a8f7"), ("8505", "4776e2c04e"), ("8506", "7d0fb6393e"))
+WAVE4_COMMENTS = ("issuecomment-6169157235", "issuecomment-6170065306", "issuecomment-6170187076", "issuecomment-6171198490")
+
+
+def _wave4_entry() -> str:
+    text = LOG.read_text(encoding="utf-8")
+    heads = [ln for ln in text.splitlines() if ln.startswith("- 2026-10-14 (M5") and "ledger after E33 wave 4" in ln]
+    assert len(heads) == 1
+    start = text.index(heads[0])
+    end = text.index("\n- 20", start + 1)
+    return " ".join(text[start:end].split())
+
+
+def test_wave4_entry_carries_each_pr_and_merge_sha_once_and_the_comment_urls():
+    import re
+
+    body = _wave4_entry()
+    for pr, sha in E33_WAVE4:
+        assert body.count(f"merge `{sha}`") == 1, sha
+        seg = re.search(rf"#{pr} .*?(?=\(\d\) |$)", body)
+        assert seg and f"merge `{sha}`" in seg.group(0), pr
+    for token in WAVE4_COMMENTS + ("run 38580739053", "dpl_3DB1orjU1pPXsoHxaMQuc5wUiHr4", "88896ff89797595c", "d460923bf1"):
+        assert body.count(token) == 1, token
+
+
+def test_wave4_entry_states_the_gaps_and_does_not_overclaim():
+    body = _wave4_entry()
+    assert "'pensiun' live query was NOT run" in body
+    assert "the Qdrant pricing collection still serves the three internal points" in body
+    assert "`line-clamp-5`" in body and "Altus/Onshore row (16.000.000) is not printed" in body
+    assert "RED on main since #8496" in body and "No CI workflow runs this observer" in body
+    assert "closed" not in body.split("(1)")[0].lower()
+
+
+def test_wave4_entry_names_the_in_flight_lanes_by_name():
+    body = _wave4_entry()
+    for lane in ("pr10", "vo-copy", "tree-invest", "stay-invariants", "zantara-e33f-followup", "book-sponsor"):
+        assert body.count(lane) >= 1, lane
+
+
+def test_skill_live_state_leads_with_wave4_and_stays_an_index():
+    text = SKILL.read_text(encoding="utf-8")
+    block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
+    assert block.index("2026-10-14 (newest): E33 wave 4 merged and live") < block.index("2026-10-14 (wave 3)")
+    for pr, sha in E33_WAVE4:
+        assert block.count(f"#{pr} ") == 1, pr
+        assert block.count(f"`{sha}`") == 1, sha
+    assert "In flight, not merged" in block and "purge not run" in block and "'pensiun' live query NOT run" in block
+    assert len([ln for ln in block.splitlines() if ln.startswith("- **2026-10-14")]) == 2
+
+
+WAVE4_ROWS = (
+    ("Qdrant pricing collection still serves", "owner: operator[secret]"),
+    ("does not print the E33F Altus/Onshore row", "owner: me (next Visa Oracle session, with Zero deciding whether the brochure prints it)"),
+    ("observe_visa_oracle_replay_pins.py` is red on main", "owner: me (nuzantara-57)"),
+    ("'pensiun' live query of #8505 was not run", "owner: me (nuzantara-57)"),
+    ("brochure guard LOW follow-ups", "owner: me (nuzantara-57)"),
+)
+
+
+def test_wave4_pending_rows_each_open_exactly_once_with_owner_and_proof():
+    opened = _rows("opened 2026-10-14 (M5, VISA-ORACLE E33 wave 4)")
+    assert len(opened) == len(WAVE4_ROWS) == 5
+    for needle, owner in WAVE4_ROWS:
+        rows = [r for r in opened if needle in r]
+        assert len(rows) == 1, needle
+        fields = rows[0].split(" | ")
+        assert len(fields) == 5, needle
+        assert fields[2].startswith("missing arming step:"), needle
+        assert fields[3] == owner, needle
+        assert fields[4].startswith("proof-of-armed:"), needle
+    qdrant = [r for r in opened if "Qdrant pricing collection" in r][0]
+    for token in ("--purge-internal", "--apply", "updates=0 deletes=3", "M9 test", "Zero authorises"):
+        assert token in qdrant, token
+
+
+def test_wave4_council_row_is_updated_in_place_and_c6_is_closed_once():
+    council = _rows("Council seats degraded")
+    assert len(council) == 1 and council[0].count("seat_override promised a second roster review seat") == 1
+    assert council[0].split(" | ")[3] == "owner: operator[secret]"
+    closed = _rows("closed 2026-10-14 (M5, VISA-ORACLE E33 wave 4)")
+    assert len(closed) == 1 and "C6" in closed[0] and "#8506" in closed[0]
+
+
+def test_wave4_rows_parse_with_the_ledger_grammar_and_classify_as_intended():
+    import json
+    import subprocess
+    import sys
+
+    out = subprocess.run([sys.executable, str(REPO / "scripts/pending_arms_report.py"), "--json"],
+                         capture_output=True, text=True, check=True, cwd=REPO).stdout
+    found: list[dict] = []
+
+    def walk(o):
+        if isinstance(o, dict):
+            if "owner" in o and "class" in o and "VISA-ORACLE E33 wave 4" in json.dumps(o)[:4000]:
+                found.append(o)
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+
+    walk(json.loads(out))
+    assert sorted(f["owner"] for f in found) == sorted(o.removeprefix("owner: ") for _, o in WAVE4_ROWS)
+    assert all(f["class"] != "PHANTOM" for f in found)
+
+
+def test_observer_floor_is_the_true_count_of_this_file():
+    import re
+
+    own = len(re.findall(r"^def test_", Path(__file__).read_text(encoding="utf-8"), flags=re.M))
+    observer = (REPO / "scripts/ci/observe_visa_ledger_seq29.py").read_text(encoding="utf-8")
+    assert int(re.search(r"^MIN_TESTS = (\d+)$", observer, flags=re.M).group(1)) == own
