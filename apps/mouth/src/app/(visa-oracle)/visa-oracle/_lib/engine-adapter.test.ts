@@ -33,6 +33,7 @@ import {
   RETIREMENT_INCOME_THRESHOLD_USD,
   buildEngineOutcome,
   isSecondHomeStudioOnly,
+  nextStepsFor,
 } from "./engine-adapter";
 import {
   TEST_NOW,
@@ -4425,5 +4426,136 @@ describe("prohibitedActivities adapter mapping (PR-20)", () => {
       responseForProduct("constructor", ["constructor", "toString"]),
     );
     expect(protoOnly.candidates[0]?.prohibitedActivities).toEqual([]);
+  });
+});
+
+describe("V05 product-aware next steps: free A1 and onshore-only BRIDGING", () => {
+  const HERE = path.dirname(fileURLToPath(import.meta.url));
+  const REPO = path.resolve(HERE, "../../../../../../..");
+
+  function outcomeFor(...productCodes: string[]) {
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    const [decision] = response.decision.candidates;
+    const [display] = response.display.candidates;
+    response.decision.candidates = productCodes.map((code, index) => ({
+      ...decision,
+      rank: index + 1,
+      product_code: code,
+      product_version_id: `22222222-2222-4222-8222-22222222222${index}`,
+    }));
+    response.display.candidates = productCodes.map((code, index) => ({
+      ...display,
+      rank: index + 1,
+      product_code: code,
+      product_version_id: `22222222-2222-4222-8222-22222222222${index}`,
+    }));
+    return buildEngineOutcome(parseVisaOracleEvaluateResponse(response));
+  }
+
+  const joined = (steps: ReturnType<typeof nextStepsFor>, lang: "en" | "id") =>
+    steps.map((item) => item.title[lang]).join("\n");
+
+  it("A1 alone: exactly the three official-page steps, no quote, timing or advisor step, EN and ID", () => {
+    const { nextSteps } = outcomeFor("A1");
+    expect(nextSteps.map((item) => item.id)).toEqual([
+      "free-visit-arrival-documents",
+      "free-visit-thirty-days",
+      "free-visit-no-selling-or-paid-work",
+    ]);
+    expect(nextSteps).toBe(
+      nextStepsFor("SUPPORTED_CANDIDATES", { productCodes: ["A1"] }),
+    );
+    for (const lang of ["en", "id"] as const) {
+      expect(joined(nextSteps, lang)).not.toMatch(
+        /quote|timing|price|advisor|e-?form|book travel|penawaran|jadwal|harga|konsultan|formulir|pesan perjalanan/i,
+      );
+    }
+    expect(nextSteps[0].title.en).toMatch(/at least 6 months/);
+    expect(nextSteps[0].title.en).toMatch(/return ticket or a ticket onward/);
+    expect(nextSteps[0].title.id).toMatch(/paling singkat 6 bulan/);
+    expect(nextSteps[0].title.id).toMatch(/tiket kembali atau tiket terusan/);
+    expect(nextSteps[1]?.title.en).toMatch(
+      /30 days[^]*cannot be extended or converted/,
+    );
+    expect(nextSteps[1]?.title.id).toMatch(
+      /30 hari[^]*tidak dapat diperpanjang dan tidak dapat dialihkan/,
+    );
+    expect(nextSteps[2]?.title.en).toMatch(/sell goods or services/);
+    expect(nextSteps[2]?.title.id).toMatch(/menjual barang atau jasa/);
+  });
+
+  it("A1 next to another product keeps the generic list (a quote can exist)", () => {
+    const generic = nextStepsFor("SUPPORTED_CANDIDATES");
+    expect(outcomeFor("A1", "B1").nextSteps).toBe(generic);
+    expect(outcomeFor("C1").nextSteps).toBe(generic);
+  });
+
+  it("the A1 items are quoted from the saved official A1 page", () => {
+    const dir = path.join(REPO, "research/visa/2026-10-14-v05-a1-page");
+    const file = fs.readdirSync(dir).find((name) => name.endsWith(".txt"));
+    expect(file).toBeDefined();
+    const lines = fs.readFileSync(path.join(dir, file!), "utf-8").split("\n");
+    const at = (n: number) => lines[n - 1];
+    expect(at(87)).toMatch(
+      /paspor yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis/,
+    );
+    expect(at(88)).toMatch(/tiket kembali atau tiket terusan ke negara lain/);
+    expect(at(77)).toMatch(
+      /maksimal 30 hari, dihitung sejak tanggal kedatangan/,
+    );
+    expect(at(75)).toMatch(
+      /tidak dapat diperpanjang dan tidak dapat dialihkan menjadi izin tinggal lain/,
+    );
+    expect(at(95)).toMatch(
+      /dilarang menjual barang atau jasa atau menerima imbalan, upah/,
+    );
+  });
+
+  it("BRIDGING: the steps carry the exit warning, EN and ID", () => {
+    for (const codes of [["BRIDGING"], ["BRIDGING", "B1"]]) {
+      const { nextSteps } = outcomeFor(...codes);
+      const exit = nextSteps.find(
+        (item) => item.id === "bridging-do-not-leave-indonesia",
+      );
+      expect(exit?.title.en).toMatch(/do not leave Indonesia while/i);
+      expect(exit?.title.id).toMatch(
+        /jangan keluar dari wilayah Indonesia selama/i,
+      );
+      expect(exit?.title.en).toMatch(/stops being valid if you leave/);
+      expect(exit?.title.id).toMatch(/tidak berlaku lagi apabila Anda keluar/);
+    }
+    expect(outcomeFor("BRIDGING").nextSteps).toHaveLength(3);
+    expect(outcomeFor("BRIDGING", "B1").nextSteps).toHaveLength(3);
+  });
+
+  it("BRIDGING exit warning is quoted from the saved official press release", () => {
+    const dir = path.join(
+      REPO,
+      "research/visa/2026-10-13-organ-reattest-seq29/text",
+    );
+    const file = fs
+      .readdirSync(dir)
+      .find((name) => name.startsWith("3da72c7b-"));
+    const line = fs
+      .readFileSync(path.join(dir, file!), "utf-8")
+      .split("\n")[58];
+    expect(line).toMatch(/hanya berlaku secara onshore/);
+    expect(line).toMatch(
+      /tidak berlaku lagi apabila WNA keluar wilayah Indonesia/,
+    );
+  });
+
+  it("the product-aware lists carry no advisor promise and no fee split", () => {
+    for (const steps of [
+      outcomeFor("A1").nextSteps,
+      outcomeFor("BRIDGING").nextSteps,
+      outcomeFor("BRIDGING", "B1").nextSteps,
+    ]) {
+      for (const lang of ["en", "id"] as const) {
+        expect(joined(steps, lang)).not.toMatch(
+          /\b(we|our team|advisor (will|reviews|confirms))\b|kami|tim kami|konsultan (akan|memastikan)|PNBP|service fee|biaya jasa/i,
+        );
+      }
+    }
   });
 });
