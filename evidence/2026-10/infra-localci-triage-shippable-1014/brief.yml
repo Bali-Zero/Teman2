@@ -1,0 +1,21 @@
+task_id: infra-localci-triage-shippable-1014
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  About 55% of LocalCI runs on Pro's journal go to PRs that cannot merge yet, and unshipped PRs eat the single
+  lane (GitHub merges 33-89 PRs a day against a lane ceiling of about 60 decisions). B23 changes triage() so the
+  lane goes to PRs that can merge. PRs carrying localci:merge-shadow-ok are ordered before the unlabelled ones,
+  with the old order inside each group, and with LOCALCI_MERGER_PHASE_F=1 an unlabelled PR is not selected at
+  all (label presence only; the full label_arm check stays at merge time). A (pr, head) whose newest non-replay
+  decision at any base was BLOCKED with gate_pending is not decided at a new base until gate_ready is true (the
+  read B12 uses; a failed read defers), and each deferred (pr, head) is journalled once as skipped
+  gate_pending_deferred. B12's same-key re-decision and its cap are unchanged. Gear is 2 via the SIZE term and
+  the phase F critical path; the mechanism ships with its only consumer, the merger tick. The gear-2 verdict is
+  not asserted here; a fresh Opus gate reads the diff.
+residuals:
+  - Before the flip, labelled-first shrinks the share of unlabelled PRs in the compared-merge evidence. Measured
+    2026-10-14, 5 of 56 open PRs are armed but unlabelled, against 23 labelled.
+  - A head whose gate verdict never posts stays deferred at every new base. That is the intent, and the skip row
+    names it once.
+  - The old B12 test that a new base needs no status read was replaced by the T2 and T4 pair.
