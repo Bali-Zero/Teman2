@@ -891,6 +891,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "pending-watchdog-is-a-plain-merger-error": (PY, 'signal.SIGALRM, _raise(TickTimeout, f"tick exceeded', 'signal.SIGALRM, _raise(MergerError, f"tick exceeded', PENDING),
     "pending-bounds-merged-not-attempts": (PY, 'if sum(1 for r in read_journal(state) if r.get("kind") in MERGE_ATTEMPT) > tried_before:', 'if sum(1 for r in read_journal(state) if r.get("kind") == "merged") > tried_before:', PENDING),
     "pending-push-unlanded-ignored": (PY, '        elif kind == "push_unlanded" and k not in pushed:', '        elif False:', PENDING),
+    "pending-watchdog-flag-never-checked-after-retry": (PY, "        check_watchdog()\n        if sum(1", "        if sum(1", PENDING),
+    "pending-watchdog-flag-reset-mid-tick": (PY, "    check_watchdog()\n    todo, forks", "    _WATCHDOG[\"fired\"] = False\n    check_watchdog()\n    todo, forks", PENDING),
     "pending-push-unlanded-beats-pushed": (PY, '        elif kind == "push_unlanded" and k not in pushed:', '        elif kind == "push_unlanded":', PENDING),
 }
 

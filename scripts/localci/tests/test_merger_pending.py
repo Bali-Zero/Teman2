@@ -9,6 +9,13 @@ import pytest
 from .test_merger import REPO, mg, pr, world  # noqa: F401 — `world` is a fixture
 from .test_merger_phase_f import Hub, fw, assert_nothing_merged  # noqa: F401 — `fw` is a fixture
 
+@pytest.fixture(autouse=True)
+def watchdog_reset():
+    mg._WATCHDOG["fired"] = False
+    yield
+    mg._WATCHDOG["fired"] = False
+
+
 H1, H2, B0 = "a" * 40, "b" * 40, "c" * 40
 T0 = "2026-10-14T00:00:00Z"
 
@@ -341,3 +348,35 @@ def test_the_real_alarm_handler_firing_inside_a_retry_ends_the_tick_with_a_timeo
     monkeypatch.setattr(mg, "decide", lambda *a, **k: pytest.fail("the tick decided after the watchdog fired"))
     assert fw.tick() == 1
     assert "tick exceeded" in [r for r in fw.live() if r["kind"] == "error"][-1]["error"]
+
+
+def test_an_alarm_swallowed_inside_pr_side_during_a_retry_still_ends_the_tick_before_triage(fw, monkeypatch):
+    import os
+    import signal
+    state = decided_while_hosted_pends(fw, monkeypatch)
+    state["green"] = True
+    real, fired, after = mg.label_arm, [], []
+
+    def label_arm(repo, p):
+        if not fired:
+            fired.append(1)
+            os.kill(os.getpid(), signal.SIGALRM)
+        return real(repo, p)
+    monkeypatch.setattr(mg, "label_arm", label_arm)
+    monkeypatch.setattr(mg, "triage", lambda *a, **k: after.append("triage") or pytest.fail("triage ran after the watchdog"))
+    assert fw.tick() == 1 and fired and after == []
+    assert "watchdog" in [r for r in fw.live() if r["kind"] == "error"][-1]["error"]
+    assert mg._WATCHDOG["fired"] is True
+
+
+def test_the_flag_is_reset_where_a_tick_arms_the_alarm(fw, monkeypatch):
+    mg._WATCHDOG["fired"] = True
+    assert fw.tick() == 0 and mg._WATCHDOG["fired"] is False
+
+
+def test_an_alarm_during_decide_is_still_its_error_decision(fw, monkeypatch):
+    import os
+    import signal
+    monkeypatch.setattr(mg, "hosted_summary", lambda *a, **k: os.kill(os.getpid(), signal.SIGALRM))
+    assert fw.tick() == 1
+    assert [r["overall"] for r in fw.live() if r["kind"] == "decision"] == ["ERROR"]

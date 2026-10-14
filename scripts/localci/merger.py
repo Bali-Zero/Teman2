@@ -1567,6 +1567,7 @@ def retry_pending_merges(a, state: Path, repo_dir: Path, lease_id: str, recs: li
             raise
         except Exception as exc:  # noqa: BLE001 — a retry never raises into the tick
             print(f"merger: #{n} pending retry not completed — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
+        check_watchdog()
         if sum(1 for r in read_journal(state) if r.get("kind") in MERGE_ATTEMPT) > tried_before:
             return True   # phase_f_merge was called (merged or merge_error): the base may have moved, no second attempt this tick
     return False
@@ -1585,6 +1586,7 @@ def tick(a, state: Path, lease_id: str) -> int:
     prs = open_prs(a.repo, a.base)
     if retry_pending_merges(a, state, repo_dir, lease_id, recs, base_sha, prs):
         return 0
+    check_watchdog()
     todo, forks = triage(prs, a.repo, recs, base_sha, lambda n, head, names: gate_ready(a.repo, head, names), capped, evict_capped)
     for why, prs in (("gate_pending_cap", capped), ("evicted_cap", evict_capped)):   # B12, B15: journalled once per key, however many ticks pass
         for pr in prs:
@@ -1598,6 +1600,7 @@ def tick(a, state: Path, lease_id: str) -> int:
     # B11: replays and PR decisions alternate — a replay when the previous decision was a PR decision (or there is no PR to decide)
     reason = "alternation: the previous decision was not a replay" if not after_replay else "no pull request to decide" if not todo else None
     pick = replay_pending(a, state, repo_dir, recs) if reason else None
+    check_watchdog()   # B19-W4: replay_pending swallows broad exceptions too
     if pick:
         return decide(a, state, repo_dir, lease_id, pick["pr"], pick["head"], pick["base_sha"], {"merge_commit": pick["merge_commit"], "schedule": reason})
     if not todo:
@@ -1612,8 +1615,19 @@ def tick(a, state: Path, lease_id: str) -> int:
     return decide(a, state, repo_dir, lease_id, n, head, base_sha)
 
 
+_WATCHDOG = {"fired": False}   # B19-W: set by the alarm handler BEFORE it raises, reset only where a tick arms the alarm
+
+
+def check_watchdog() -> None:
+    """B19-W1: a watchdog that fired inside a handler that swallows broad exceptions is still a watchdog — end the tick now."""
+    if _WATCHDOG["fired"]:
+        raise TickTimeout("tick exceeded its watchdog (the alarm fired inside a handler that swallowed it)")
+
+
 def _raise(exc_type, why: str):
     def handler(signum, _frame):
+        if exc_type is TickTimeout:
+            _WATCHDOG["fired"] = True
         raise exc_type(f"{why} (signal {signum})")
     return handler
 
@@ -1649,6 +1663,7 @@ def cmd_tick(a) -> int:
     # superscar #2: a hung tick holds the lease and looks alive — the watchdog turns it into an ERROR decision; a stop is no verdict
     old = {s: signal.signal(s, h) for s, h in ((signal.SIGALRM, _raise(TickTimeout, f"tick exceeded --tick-timeout {a.tick_timeout}s")),
                                                (signal.SIGTERM, _raise(Stopped, "stopped")))}
+    _WATCHDOG["fired"] = False   # B19-W2
     signal.alarm(a.tick_timeout)
     try:
         if lease["reclaimed"] is not None:
