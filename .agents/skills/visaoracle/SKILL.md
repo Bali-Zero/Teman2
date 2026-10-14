@@ -139,6 +139,8 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE — CURRENT POSITION (updated 2026-10-14; update on every state change)
 
+- **2026-10-14 (newest): E33 wave 3 live, on top of waves 1-2** (waves 1-2: #8437, #8439, #8440, #8441, #8454, #8456, proven live 2026-10-13). Wave 3, all merged 2026-10-14: #8466 prices (55+, selling exception, income or allowance) `7c9184772a`; #8467 PR-20 "What this permit does not allow" `ac8a106930` (mouth promoted); #8468 llms.txt work clause `a14ee32144` (EN proven live, **ID not proven**, open row); #8469 visa_check catalogue E33/E33G notes `7391929b46`; #8493 PR-8 documentation catalogue `55edebae5b` (E33F AVAILABLE with 'surat penjaminan', every other product UNKNOWN until its page is walked; Zero confirmed audit decision 19); #8494 PR-7 v2 permit length `3d2c743a48` (supersedes #8485; E33F 1 year, E33 5 years; iQOO not run). Zero decisions 2026-10-14: /book retirement card is the E33F row; E33F price rows add the penjamin note; legacy /api/visa/match stays and is corrected; agy-gemini-4-argon on the council reserve bench; generic Retirement rows hidden from public surfaces but kept in the backend catalogue; 'E33F everywhere' (Zantara/WhatsApp, team pricing tools); decision 19 confirmed.
+- **In flight, not merged:** catalogue-decisions, zantara-e33f, brochure-prices (the public brochure prints E33E Offshore Rp 14.000.000 vs canonical 45.000.000), stay-invariants, pr10 (E33F card deposit note), vo-copy, tree-invest. **Open (PENDING-ARMS, opened 2026-10-14):** E33 pages re-read before 2027-10-13, runtime staleness check in `documentation_for`, the ID surfaces of 8468, three PR-20 C4 items for seq-30, council seats (Kimi weekly quota, TP1 403), iQOO not attached to Pro since 2026-09-26. The zero runner disk-full incident manual cure is complete; durable fix pending in the infra/healer lane. Detail: `references/live-state-log.md`.
 - **2026-10-13 position (production pack seq-29 since 2026-10-13T11:19:00Z; boundary 2026-11-14T00:07:47Z, organ alert T-7 = 2026-11-07).**
   Activation `84e8a5c5-55eb-4649-8dc4-f620c9f9b00b` (rule_pack_id `ed666554-c476-5e67-9c25-921388e64537`, payload
   `3f3b45ed1aaeadc72ec9dd2a5e33519ded3a0ec1da8408fade150a0ae39b9295`, 117 rules, PR #8433, merge `2bf9ed3c93`
@@ -150,8 +152,6 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   post-organ observation is closed (the suite stayed green after the newer ledger landed). **Next: seq-30 from the
   conductor** (A1 on-shore conversion, E30A/E30B multi-year; branch `agent/nuzantara/backend-rag/vo-seq30-a1-e30-material`),
   signed by the session before 2026-11-07; open PENDING-ARMS row for the seq-29 boundary. Detail: `references/live-state-log.md`.
-- **2026-10-14: E33 audit waves 1-2 live** (#8437, #8439, #8440, #8441, #8454, #8456, all proven live 2026-10-13); the zero runner disk-full incident manual cure complete; durable fix pending in the infra/healer lane.
-- **Remaining E33 audit items:** PR-7 permit length, PR-10 E33F note, PR-20 render prohibited activities; in flight: PR-8 documents, the income-or-allowance wording fix, the replay freshness test.
 - **SUPERSEDED by seq-29 (history), 2026-10-12 position (production pack seq-28 since 2026-10-12T03:08Z; boundary 2026-11-12T18:00:16Z, organ alert T-7 = 2026-11-05).**
   Activation `b7c808bd-c0f4-48fe-9fdb-3f7f47f7e86a` (rule_pack_id `b383effb-eea4-5890-9a6a-0f13d816e855`, PR #8300,
   merge `7bb50d079e`; signed on M5 by nuzantara-57, `signed_at 2026-10-11T22:53:04Z`, kid `prod-2026-07-1`; two-login

@@ -53,7 +53,9 @@ def test_live_state_log_entry_is_the_newest():
     text = LOG.read_text(encoding="utf-8")
     dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
     assert dated[0].startswith("- 2026-10-14 (M5")
-    assert "E33 audit waves 1-2" in dated[0]
+    assert "ledger after E33 wave 3" in dated[0]
+    waves12 = [ln for ln in dated if "ledger after the E33 audit waves 1-2" in ln]
+    assert len(waves12) == 1 and dated.index(waves12[0]) == 1
     seq29 = [ln for ln in dated if ln.startswith("- 2026-10-13 (M5")]
     assert seq29 and "seq-29 active" in seq29[0]
 
@@ -146,3 +148,75 @@ def test_rangkap_row_carries_the_consumer_extension_once_in_the_action_field():
         assert rows[0].count(token) == 1, token
         assert token in action and token not in proof, token
     assert "live page text" in proof
+
+
+E33_WAVE3 = (
+    ("8466", "7c9184772a"),
+    ("8467", "ac8a106930"),
+    ("8468", "a14ee32144"),
+    ("8469", "7391929b46"),
+    ("8493", "55edebae5b"),
+    ("8494", "3d2c743a48"),
+)
+
+
+def _wave3_entry() -> str:
+    text = LOG.read_text(encoding="utf-8")
+    heads = [ln for ln in text.splitlines() if ln.startswith("- 2026-10-14 (M5") and "ledger after E33 wave 3" in ln]
+    assert len(heads) == 1
+    start = text.index(heads[0])
+    end = text.index("\n- 20", start + 1)
+    return " ".join(text[start:end].split())
+
+
+def test_wave3_entry_carries_each_pr_and_merge_sha_exactly_once():
+    body = _wave3_entry()
+    for pr, sha in E33_WAVE3:
+        assert body.count(f"#{pr} ") == 1, pr
+        assert body.count(f"merge `{sha}`") == 1, sha
+    assert "six wave-3 PRs merged" in body and "seven Zero decisions" in body
+    for token in ("dpl_4V8f1nWHfYgEWYcbJ6e4QNjfMJaB", "dpl_7kib2aoAPDm1vZrN94dzTbHLxAGv",
+                  "issuecomment-6166176350", "issuecomment-6166321868", "Rp 14.000.000", "45.000.000"):
+        assert body.count(token) >= 1, token
+
+
+def test_wave3_entry_names_the_three_c4_items_and_the_in_flight_lanes():
+    body = _wave3_entry()
+    for token in ("business_meetings", "terkecuali diperlukan dalam pekerjaannya", "paid_employment",
+                  "catalogue-decisions", "zantara-e33f", "brochure-prices", "stay-invariants",
+                  "pr10", "vo-copy", "tree-invest", "ID NOT proven"):
+        assert body.count(token) >= 1, token
+
+
+def test_skill_live_state_leads_with_wave3_and_stays_an_index():
+    text = SKILL.read_text(encoding="utf-8")
+    block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
+    assert block.index("2026-10-14 (newest): E33 wave 3 live") < block.index("2026-10-13 position")
+    for pr, sha in E33_WAVE3:
+        assert block.count(f"#{pr} ") == 1, pr
+        assert block.count(f"`{sha}`") == 1, sha
+    assert "ID not proven" in block and "In flight, not merged" in block
+
+
+WAVE3_ROWS = (
+    ("re-read before 2027-10-13", "owner: the Visa Oracle session"),
+    ("No runtime staleness check", "owner: the Visa Oracle session"),
+    ("#8468 Indonesian surfaces not proven live", "owner: nuzantara-57"),
+    ("Three PR-20 C4 items", "owner: visa-night conductor + signer"),
+    ("Council seats degraded", "owner: operator[secret]"),
+    ("iQOO has not been attached to Pro since 2026-09-26", "owner: operator[physical]"),
+)
+
+
+def test_wave3_pending_rows_each_open_exactly_once_with_owner_and_proof():
+    opened = _rows("opened 2026-10-14 (M5, VISA-ORACLE E33 wave 3)")
+    assert len(opened) == len(WAVE3_ROWS) == 6
+    for needle, owner in WAVE3_ROWS:
+        rows = [r for r in opened if needle in r]
+        assert len(rows) == 1, needle
+        fields = rows[0].split(" | ")
+        assert len(fields) == 5, needle
+        assert fields[2].startswith("missing arming step:"), needle
+        assert fields[3] == owner, needle
+        assert fields[4].startswith("proof-of-armed:"), needle
+    assert any("2027-10-13T23:11Z" in r for r in opened)

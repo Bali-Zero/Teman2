@@ -1,0 +1,54 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, standing rule 2026-10-11 - the /visaoracle corner-skill ledger is updated at every merge; ledger finding F2
+  (observer floor below the true test count).
+mission: >-
+  The /visaoracle ledger names E33 wave 3 (#8466-#8469, #8493, #8494) as live, records Zero's 2026-10-14 decisions
+  and opens the follow-ups.
+lanes:
+  - lane: ledger-e33-wave3
+    role: build
+    seat: claude-sonnet-5 (Claude Code workflow subagent)
+pii_scan: clean
+bites:
+  consumer: >-
+    every session that loads /visaoracle and reads PENDING-ARMS, through the seq-29 ledger observer.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_ledger_seq29.py
+  expect: "contains:seq-29 ledger holds"
+receipts:
+  - claim: The four ledger test files pass, including the wave-3 pins (six PR/sha tuples once, the three C4 items, the in-flight lanes, the SKILL lead, the six pending rows once each with owner and proof).
+    cmd: python3 -m pytest tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq29.py -p no:cacheprovider -q
+    result: "51 passed in 0.25s"
+    exit: 0
+    ts: "2026-10-14T10:38:56Z"
+    seat: this session
+  - claim: The seq-29 observer holds with its floor raised to 16, the true count of the ledger test file.
+    cmd: python3 scripts/ci/observe_visa_ledger_seq29.py
+    result: "16 passed in 0.09s; seq-29 ledger holds"
+    exit: 0
+    ts: "2026-10-14T10:38:57Z"
+    seat: this session
+  - claim: The PENDING-ARMS ratchet is clean against origin/main and the strict report lists no phantom-operator row; the six new rows are present once each.
+    cmd: "python3 scripts/pending_arms_report.py --ratchet --base-ref origin/main | tail -1; grep -c -F 'opened 2026-10-14 (M5, VISA-ORACLE E33 wave 3)' .claude/skills/modus/PENDING-ARMS.md"
+    result: "ratchet CLEAN: base 604 -> head 604 (delta 0); w3=6, phantom=0"
+    exit: 0
+    ts: "2026-10-14T10:38:58Z"
+    seat: this session
+  - claim: Every wave-3 merge sha and state was re-read from GitHub before it was written.
+    cmd: "for p in 8466 8467 8468 8469 8493 8494; do gh pr view $p --json number,state,mergeCommit -q '[.number,.state,.mergeCommit.oid]|@tsv'; done"
+    result: "all six MERGED with shas 7c9184772a, ac8a106930, a14ee32144, 7391929b46, 55edebae5b, 3d2c743a48"
+    exit: 0
+    ts: "2026-10-14T10:37:00Z"
+    seat: this session
+decisions:
+  - id: D-floor-16
+    decision: >-
+      The observer floor is the true count after the new pins (16), not the minimum of 12; the parser unit tests
+      move to 15 (rejected) and 16/17 (accepted).
+  - id: D-council-owner
+    decision: >-
+      The council-seat row is owned operator[secret] because the pending-arms report treats the compound
+      operator[secret/business] as a phantom operator; credentials and quota are the secret category.
+dissent: []
