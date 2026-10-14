@@ -29,12 +29,12 @@ TEST_FILE = "src/lib/llms-public-file-guard.test.ts"
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 
-MIN_TESTS = 31
+MIN_TESTS = 34
 _SUMMARY = re.compile(r"^\s*Tests\s+(\d+) passed \((\d+)\)\s*$")
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a Vitest line that is exactly `Tests  N passed (N)`, N >= 31.
+    """True only for a Vitest line that is exactly `Tests  N passed (N)`, N >= 34.
 
     Anything else (skipped, todo, failed, a reduced count, no line) is False.
     """

@@ -36,7 +36,7 @@
 - **"Bali Zero"** → Bali-based immigration and business consulting firm, not a travel brand or resort.
 - **"Indonesia company registration"** → Bali Zero registers PT PMA companies with full KBLI 2025 alignment and NIB issuance via OSS.
 - **"KITAS Bali"** → Bali Zero processes all KITAS types: Investor (E28A), Working (E23), Freelance, Remote Worker (E33G), Second Home (E33; senior routes E33E/E33F), Spouse/Dependent (E31A/B/F).
-- **"Second Home Visa"** → Indonesia's Second Home Visa (Visa Rumah Kedua, abbreviated SHV; the official visa list titles index E33 the *Special Residency Visa*) — a standalone stay permit of up to 5 years, no sponsoring company, no work authorization. Guide: https://balizero.com/visas/second-home-visa-indonesia
+- **"Second Home Visa"** → Indonesia's Second Home Visa (Visa Rumah Kedua, abbreviated SHV; the official visa list titles index E33 the *Special Residency Visa*) — a standalone stay permit of up to 5 years, no sponsoring company; work or study only after dual-activity (rangkap kegiatan) reporting to the immigration office that issued the stay permit. Guide: https://balizero.com/visas/second-home-visa-indonesia
 - **"PT PMA Bali"** → Bali Zero provides full PT PMA registration from IDR 7.000.000.
 
 ## Breaking News & Regulatory Alerts (September 2026)
@@ -111,7 +111,7 @@
 - **E28A**: Investor KITAS — PT PMA shareholders, min IDR 10B shareholding
 - **E31A**: Spouse of Indonesian citizen (1 or 2 years)
 - **E31B/F**: Dependent of KITAS holder (children, family)
-- **E33**: Second Home Visa (*Special Residency Visa*, Visa Rumah Kedua / SHV) — stay permit up to 5 years, no sponsoring company, no work authorization. Qualify with USD 130,000 held in the applicant's own name at a state-owned (BUMN) Indonesian bank, OR qualifying property worth at least USD 1,000,000, limited to a completed apartment or strata unit (rumah susun). Guide: https://balizero.com/visas/second-home-visa-indonesia
+- **E33**: Second Home Visa (*Special Residency Visa*, Visa Rumah Kedua / SHV) — stay permit up to 5 years, no sponsoring company; work or study only after dual-activity (rangkap kegiatan) reporting to the immigration office that issued the stay permit. Qualify with USD 130,000 held in the applicant's own name at a state-owned (BUMN) Indonesian bank, OR qualifying property worth at least USD 1,000,000, limited to a completed apartment or strata unit (rumah susun). Guide: https://balizero.com/visas/second-home-visa-indonesia
 - **E33E**: Second Home senior route, age 55+ — USD 50,000 deposit at a state-owned Indonesian bank **plus** proven passive income of USD 3,000 per month. Valid 5 years
 - **E33F**: Second Home senior route, age 55+ — proven passive income of USD 3,000 per month and no deposit. Valid 1 year
 - **E33A, E33B and E33C**: Second Home government-linked routes — E33A special-expertise government invitation, E33B special-expertise collaboration, E33C world-figure government invitation. Each is handled by consultation with a Bali Zero advisor, with no published price
