@@ -20,13 +20,13 @@ bites:
 receipts:
   - claim: The four ledger test files pass, including the wave-3 pins (six PR/sha tuples once, the three C4 items, the in-flight lanes, the SKILL lead, the six pending rows once each with owner and proof).
     cmd: python3 -m pytest tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq29.py -p no:cacheprovider -q
-    result: "51 passed in 0.25s"
+    result: "55 passed in 0.55s"
     exit: 0
     ts: "2026-10-14T10:38:56Z"
     seat: this session
-  - claim: The seq-29 observer holds with its floor raised to 16, the true count of the ledger test file.
+  - claim: The seq-29 observer holds with its floor raised to 20, the true count of the ledger test file.
     cmd: python3 scripts/ci/observe_visa_ledger_seq29.py
-    result: "16 passed in 0.09s; seq-29 ledger holds"
+    result: "20 passed; seq-29 ledger holds"
     exit: 0
     ts: "2026-10-14T10:38:57Z"
     seat: this session
@@ -43,12 +43,24 @@ receipts:
     ts: "2026-10-14T10:37:00Z"
     seat: this session
 decisions:
-  - id: D-floor-16
+  - id: D-floor-20
     decision: >-
-      The observer floor is the true count after the new pins (16), not the minimum of 12; the parser unit tests
-      move to 15 (rejected) and 16/17 (accepted).
+      The observer floor is the true count after the new pins (20), not the minimum of 12; the parser unit tests
+      move to 19 (rejected) and 20/21 (accepted).
   - id: D-council-owner
     decision: >-
       The council-seat row is owned operator[secret] because the pending-arms report treats the compound
       operator[secret/business] as a phantom operator; credentials and quota are the secret category.
-dissent: []
+  - id: D-redteam-codex
+    decision: >-
+      Red team by codex gpt-5.6-sol (high, read-only; session file
+      /Users/balizero/.codex/sessions/2026/10/14/rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl).
+      Dispositions: HIGH live-claim overreach VALID, retitled to merged with live proof partial and a proof level per PR;
+      MEDIUM catalogue status VALID (snapshot holds seven E33 codes, all AVAILABLE), text and a pin against the snapshot;
+      MEDIUM owners VALID (grammar me (...) or passivo; annual row now NATURAL-WAIT), a parser-classification test;
+      MEDIUM PR-to-sha pairing VALID, per-segment pair pin plus a swapped-sha guilt test; MEDIUM annual proof VALID,
+      now seven live probes, observed URLs and a fingerprint; LOW '#8485 closed' INVALID as to fact (gh pr view 8485
+      reports state CLOSED at 2026-10-14T09:32:45Z), cured anyway by citing that receipt in the entry.
+dissent:
+  - seat: codex gpt-5.6-sol
+    point: all six findings above; none rejected on substance, the LOW only on the fact it questioned.
