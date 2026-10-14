@@ -137,7 +137,7 @@ interesting points spawn round N+1 research. No round limit. Opus 5.5 orchestrat
 hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5); Sonnet implements; research outputs persisted under `research/visa/` in the worktree
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
-## LIVE STATE — CURRENT POSITION (updated 2026-10-13; update on every state change)
+## LIVE STATE — CURRENT POSITION (updated 2026-10-14; update on every state change)
 
 - **2026-10-13 position (production pack seq-29 since 2026-10-13T11:19:00Z; boundary 2026-11-14T00:07:47Z, organ alert T-7 = 2026-11-07).**
   Activation `84e8a5c5-55eb-4649-8dc4-f620c9f9b00b` (rule_pack_id `ed666554-c476-5e67-9c25-921388e64537`, payload
@@ -150,6 +150,8 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   post-organ observation is closed (the suite stayed green after the newer ledger landed). **Next: seq-30 from the
   conductor** (A1 on-shore conversion, E30A/E30B multi-year; branch `agent/nuzantara/backend-rag/vo-seq30-a1-e30-material`),
   signed by the session before 2026-11-07; open PENDING-ARMS row for the seq-29 boundary. Detail: `references/live-state-log.md`.
+- **2026-10-14: E33 audit waves 1-2 live** (#8437, #8439, #8440, #8441, #8454, #8456, all proven live 2026-10-13); the zero runner disk-full incident manual cure complete; durable fix pending in the infra/healer lane.
+- **Remaining E33 audit items:** PR-7 permit length, PR-10 E33F note, PR-20 render prohibited activities; in flight: PR-8 documents, the income-or-allowance wording fix, the replay freshness test.
 - **SUPERSEDED by seq-29 (history), 2026-10-12 position (production pack seq-28 since 2026-10-12T03:08Z; boundary 2026-11-12T18:00:16Z, organ alert T-7 = 2026-11-05).**
   Activation `b7c808bd-c0f4-48fe-9fdb-3f7f47f7e86a` (rule_pack_id `b383effb-eea4-5890-9a6a-0f13d816e855`, PR #8300,
   merge `7bb50d079e`; signed on M5 by nuzantara-57, `signed_at 2026-10-11T22:53:04Z`, kid `prod-2026-07-1`; two-login
