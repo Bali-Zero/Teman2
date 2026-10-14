@@ -1,0 +1,163 @@
+# Gear-3 evidence pack - E33F everywhere: the internal Retirement rows leave every client-facing pricing path.
+# Receipts are commands run by the verifying Claude session on M5 (Air-M5) on 2026-10-14 between 13:13Z and 13:20Z,
+# ts read with date -u in the same shell. Lane head 29f8005544b2d4ffdb756c382d9ce6fdf70ab8ec on base f91af7a8f7.
+gear: 3
+brief_ref: evidence/brief.yml
+pii_scan: clean
+ruling: >-
+  Zero, 2026-10-14 (session question, answer 'E33F everywhere'; recorded in memory as a decision), extending the
+  catalogue decisions of the same day (#8501).
+mission: >-
+  Zantara and the team pricing tools stop citing the three internal generic Retirement rows and propose the E33F
+  rows. Search, LLM context, the no-query client projection, the legacy recommender and the two pricing list routes
+  skip internal rows; the raw lookups stay raw for old signed packs and the renewal rules; the Qdrant sync script
+  stops upserting internal rows and gains --purge-internal (dry-run by default). Nothing was run against production.
+lanes:
+  - lane: e33f-build
+    role: build
+    seat: gemini-4-argon-high via agy (external seat; edits files, never runs git), three builds, driven and verified by Claude Opus 5.5
+  - lane: e33f-red-team-claude
+    role: review
+    seat: claude-opus-5-5 (adversarial, read-only) on head 49e6ee2107; one HIGH, one MEDIUM, four LOW
+  - lane: e33f-red-team-codex
+    role: review
+    seat: codex-gpt-5.6-sol (high); rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7 under ~/.codex/sessions/2026/10/14; one HIGH, one LOW
+  - lane: e33f-cure
+    role: build
+    seat: gemini-4-argon-high via agy, commit 29f8005544 cures every red-team HIGH/MEDIUM and four LOW
+  - lane: e33f-second-seat-attempts
+    role: review
+    seat: kimi-code/k3, tp1-qwen3.8-max, tp1-glm-5.2, tp1-deepseek-v4-pro all asked this turn on the head-29f8005544 source diff and none answered (see seat_override and council-journal.jsonl)
+  - lane: e33f-ground-truth
+    role: ground_truth
+    seat: the official pricing table on disk (the three E33F rows and the three internal rows, read in the verifying session); no notebook, no memory.
+    nb: apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+    query_hash: "30fe221cb943b3a2e0e7097acc6d49ae8e0580caf22e54d0d0171051deb58c4c" # pragma: allowlist secret
+    note: query_hash = sha256 of the catalogue file at the lane head; prices are unchanged by this lane (only a keywords list was added to the three E33F rows).
+bites:
+  consumer: >-
+    The client-facing pricing paths: PricingService.search_service and format_for_llm_context (agentic PricingTool,
+    orchestrator, Zantara tools), get_pricing_for_clients (PricingTool, /api/agents/pricing/calculate, zantara_tools,
+    pricing_plugin, nuzantara-mcp calculate_pricing), recommend_visas('retire'), /api/pricing/all and /search. The
+    observer runs the lane's guilt and innocence tests against the real catalogue file.
+  where: ci
+  observe: python3 scripts/ci/observe_zantara_e33f_everywhere_1014.py
+  expect: "contains:internal Retirement rows leave client paths, raw rows still resolve"
+bites_caveat: >-
+  The Qdrant vector path is NOT yet in force: Zantara's vector retrieval keeps surfacing the three internal points
+  until an authorized run of the purge. Exact dry-run command (changes nothing):
+  python3 scripts/sync_pricing_collection_prices.py --purge-internal ; the delete needs the same command with --apply.
+receipts:
+  - claim: The mouth price mirror is in sync with the backend catalogue (the keywords field does not leak into it).
+    cmd: python3 scripts/sync_frontend_prices.py --check
+    result: "OK: apps/mouth/data/bali-zero-prices.json is in sync with PricingTool canonical"
+    exit: 0
+    ts: "2026-10-14T13:13:00Z"
+    seat: Claude Opus 5.5 (verifying session)
+  - claim: Repo-root lane suites plus the new observer's parser tests are green.
+    cmd: python3 -m pytest tests/scripts/test_catalogue_decisions_1014.py tests/scripts/test_retirement_price_descriptions.py tests/scripts/test_e33_price_descriptions.py tests/scripts/test_sync_pricing_collection_prices_internal_1014.py scripts/test_sync_pricing_collection_prices.py tests/scripts/test_observe_zantara_e33f_everywhere_1014.py -p no:cacheprovider
+    result: "95 passed"
+    exit: 0
+    ts: "2026-10-14T13:13:30Z"
+    seat: Claude Opus 5.5 (verifying session)
+  - claim: Backend lane suites pass, including the old-pack and renewal resolution tests (internal rows still resolve in-process) and every file touching search_service, format_for_llm_context, the pricing routes, recommend_visas and the Zantara and agentic tools.
+    cmd: "(apps/backend-rag, JWT_SECRET_KEY and API_KEYS test values) .venv/bin/python -m pytest backend/tests/routers/test_public_pricing_lookup.py backend/tests/services/pricing backend/tests/services/compliance backend/tests/services/visa_oracle backend/tests/services/visa_engine/test_seq28_pack.py backend/tests/routers/test_dynamic_pricing.py backend/tests/services/test_visa_oracle_service.py backend/tests/routers/test_visa_oracle.py backend/tests/services/misc/test_zantara_tools.py backend/tests/unit/services/rag/agentic/test_tools.py backend/tests/unit/services/rag/agentic/test_tools_coverage.py backend/tests/unit/services/rag/agentic/test_agentic_tools_comprehensive.py -p no:cacheprovider"
+    result: "878 passed in 26.74s, no failure, no skip"
+    exit: 0
+    ts: "2026-10-14T13:14:51Z"
+    seat: Claude Opus 5.5 (verifying session)
+  - claim: The nuzantara-mcp pricing tool tests are green.
+    cmd: "(apps/nuzantara-mcp) python3 -m pytest tests/test_tools_pricing.py tests/test_per_tool_auth.py -p no:cacheprovider"
+    result: "23 passed"
+    exit: 0
+    ts: "2026-10-14T13:14:55Z"
+    seat: Claude Opus 5.5 (verifying session)
+  - claim: Probe of the cured HIGH - the no-query projection holds none of the three internal names and the raw lookups still return them.
+    cmd: "(apps/backend-rag) .venv/bin/python probe: for t in kitas, long_stay_permit, all compare json of get_pricing_for_clients(t) with get_pricing(t); get_service_by_key('Retirement (Extend)')"
+    result: "clients: no internal name for all three types, E33F Second Home Senior present (6 mentions each); raw get_pricing: 3 internal names for all three types; get_service_by_key('Retirement (Extend)') resolves"
+    exit: 0
+    ts: "2026-10-14T13:12:20Z"
+    seat: Claude Opus 5.5 (verifying session)
+  - claim: Probe of the cured MEDIUM - recommend_visas for purpose retire shows one E33F row and never the Extend row.
+    cmd: "(apps/backend-rag) .venv/bin/python probe: VisaOracleService().recommend_visas('X','retire',duration,False) for short and long"
+    result: "top-1 'E33F Second Home Senior (1 Year, Altus/Onshore)' 16.000.000 IDR for both; no '(Extend)' entry and no second E33F row"
+    exit: 0
+    ts: "2026-10-14T13:12:50Z"
+    seat: Claude Opus 5.5 (verifying session)
+  - claim: "The bites observer runs the lane's acceptance probes (apps/backend-rag/backend/tests/services/pricing/test_internal_rows_leave_search_1014.py, apps/backend-rag/backend/tests/services/pricing/test_pricing_service.py, tests/scripts/test_sync_pricing_collection_prices_internal_1014.py) and prints its contract line."
+    cmd: python3 scripts/ci/observe_zantara_e33f_everywhere_1014.py (picks the backend venv interpreter itself)
+    result: "root: 5 passed; backend: 95 passed; 'internal Retirement rows leave client paths, raw rows still resolve'"
+    exit: 0
+    ts: "2026-10-14T13:16:33Z"
+    seat: Claude Opus 5.5 (verifying session)
+  - claim: ruff check on every changed Python file (lane plus observer and its test) is clean.
+    cmd: ruff check on the changed .py files, then ruff format on the two new files
+    result: "All checks passed; the two new files reformatted, then re-observed"
+    exit: 0
+    ts: "2026-10-14T13:14:56Z"
+    seat: Claude Opus 5.5 (verifying session)
+  - claim: The visa-oracle replay pins observer is RED, and it is red at the base f91af7a8f7 too (checked in a detached worktree of that commit, since removed) - 'committed replay differs from a fresh regeneration against the active pack'. origin/main differs from the base only by two skills commits, so main is red the same way. This lane touches no mouth, pack or replay file.
+    cmd: python3 scripts/ci/observe_visa_oracle_replay_pins.py (in the lane worktree and in a detached worktree of f91af7a8f7)
+    result: "FAILED (replay drift) in both; not caused by this lane, owed to the replay regeneration lane"
+    exit: 1
+    ts: "2026-10-14T13:10:00Z"
+    seat: Claude Opus 5.5 (verifying session)
+  - claim: Kimi and the three TP1 reserves could not be reached for a second review seat.
+    cmd: "python3 scripts/kimi_client.py <diff prompt>; python3 scripts/tp1_call.py --model {qwen3.8-max, glm-5.2, deepseek-v4-pro} --effort high --task-file <same prompt>"
+    result: "kimi: provider.auth_error 403 weekly (7-day) usage limit reached; all three TP1 models: HTTP 403 Access to model denied"
+    exit: 1
+    ts: "2026-10-14T13:06:00Z"
+    seat: Claude Opus 5.5 (verifying session)
+council_run: council-journal.jsonl
+seat_override: >-
+  Only one qualifying review seat could answer (codex-gpt-5.6-sol). Asked this turn on the head-29f8005544 source
+  diff: kimi-code/k3 returned provider.auth_error 403 (weekly 7-day quota reached); tp1-qwen3.8-max, tp1-glm-5.2 and
+  tp1-deepseek-v4-pro each returned HTTP 403 Access to model denied. The only other roster seat, agy-gemini-4-argon,
+  is the build seat of this lane and generator is never grader. No seat is fabricated; the four failed attempts are
+  journalled ok:false. The gate should treat this as a one-seat council plus the independent Claude red team and
+  re-ask a second roster seat when Kimi or TP1 is back.
+dissent:
+  - seat: claude-opus-5-5 (adversarial red team, head 49e6ee2107)
+    objection: "HIGH - no-query tool paths (agentic PricingTool, /api/agents/pricing/calculate, zantara_tools, pricing_plugin, nuzantara-mcp calculate_pricing via kitas/all) go through get_pricing and still returned the three internal rows; the consumer report was factually wrong (it missed zantara_tools, pricing_plugin, wa_package_builder, pricing_bridge and the gateway executor)."
+    status: CONFIRMED
+    note: "Cured in 29f8005544 - get_pricing_for_clients wraps get_pricing with the single _omit_internal_rows helper in pricing_service.py and the four call sites use it; get_pricing, get_all_prices and get_service_by_key stay raw for compliance alert_wiring, predictive_engine, cron_notifiers and the events handler. Probed this turn (receipt above). The mcp tool reaches the backend through the same agents route."
+  - seat: claude-opus-5-5 (adversarial red team, head 49e6ee2107)
+    objection: "MEDIUM - recommend_visas(purpose='retire') offered all three E33F variants including the Extend row to a new applicant, because _get_visa_base_name did not collapse '(1 Year, Offshore)' style variants; the test locked the broken shape in."
+    status: CONFIRMED
+    note: "Cured in 29f8005544 - the base-name dedupe collapses the comma variants; probe this turn shows one E33F row and no Extend row."
+  - seat: claude-opus-5-5 (adversarial red team, head 49e6ee2107)
+    objection: "LOW - no test pinned the internal-row skip in recommend_visas (mutation M2 stayed green)."
+    status: CONFIRMED
+    note: "Cured in 29f8005544 with a stub guilt test whose internal row would otherwise rank first. The mutation was not re-run by the verifier this turn."
+  - seat: claude-opus-5-5 (adversarial red team, head 49e6ee2107)
+    objection: "LOW - format_for_llm_context('all') silently changed from header-only to the whole catalogue."
+    status: CONFIRMED
+    note: "Cured in 29f8005544 - the base semantics for 'all' are kept (the build log of that commit)."
+  - seat: claude-opus-5-5 (adversarial red team, head 49e6ee2107)
+    objection: "LOW - without --purge-internal the sync script printed nothing for internal Qdrant points, and --purge-internal --apply also applies pending price updates."
+    status: CONFIRMED
+    note: "First half cured in 29f8005544 (report-only line per internal point). Second half (apply couples purge with price updates) is not changed; --only narrows it, and the purge is not run in this PR."
+  - seat: claude-opus-5-5 (adversarial red team, head 49e6ee2107)
+    objection: "LOW - the Qdrant vector path keeps serving internal points until the purge is run; the legacy prepare_payloads.py has no internal skip."
+    status: CONFIRMED
+    note: "Not cured by design (no production run in this PR). Stated in bites_caveat with the exact dry-run command and listed under owed."
+  - seat: claude-opus-5-5 (adversarial red team, head 49e6ee2107)
+    objection: "LOW - the claim that observe_visa_oracle_replay_pins.py exits 0 could not be reproduced (red at the merge base)."
+    status: CONFIRMED
+    note: "Re-measured this turn: the observer is red at the base f91af7a8f7 and in this lane for the same reason (replay drift); not caused by the lane; recorded as a receipt with exit 1 and owed."
+  - seat: codex-gpt-5.6-sol (high, rollout rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7)
+    objection: "HIGH - get_pricing('kitas') and get_pricing('all') return the three internal rows to PricingTool, ZantaraTools and /api/agents/pricing/calculate without a query."
+    status: CONFIRMED
+    note: "Same defect and same cure as the first Claude HIGH (29f8005544); probed this turn."
+  - seat: codex-gpt-5.6-sol (high)
+    objection: "LOW - the visa_oracle_service scoring docstring still said matching is on visa_name only."
+    status: CONFIRMED
+    note: "Cured - the docstring now reads 'visa_name or details[keywords]' (visa_oracle_service.py line 471, read this turn)."
+owed:
+  - "Authorized production run of the Qdrant purge: dry-run python3 scripts/sync_pricing_collection_prices.py --purge-internal, then the same with --apply, so Zantara's vector retrieval stops surfacing the three internal points; add the internal-row skip to the legacy prepare_payloads.py or record it as retired."
+  - "A second roster review seat (Kimi or a TP1 titolare) on the head-29f8005544 diff once their quota or access returns."
+  - "Regenerate the no-path-doors replay fixture (npm run visa-oracle:walk-corpus -w apps/mouth from the repo root) - the replay pins observer is red at the base before this lane."
+  - "Rebase onto origin/main before the push (two skills-only commits ahead) and cite the real pins tally after the regeneration."
+spend:
+  wall_clock_hours: 4
+  adversarial_rounds: 2

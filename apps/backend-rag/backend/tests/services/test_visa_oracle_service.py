@@ -582,3 +582,123 @@ def test_get_visa_oracle_service_singleton() -> None:
 
     # Clean up singleton so other tests are not affected
     module._visa_oracle_service = None
+
+
+# ---------------------------------------------------------------------------
+# E33F Everywhere (2026-10-14 ruling) — retire purpose & internal row filtering
+# ---------------------------------------------------------------------------
+
+
+def test_recommend_visas_retire_ranks_e33f_and_excludes_internal_rows() -> None:
+    """Guilt: recommend_visas(purpose='retire') returns one deduplicated E33F row,
+    no (Extend) row, and no internal rows."""
+    from backend.services.pricing.pricing_service import PricingService
+
+    real_pricing = PricingService()
+    with patch(
+        "backend.services.visa_oracle.visa_oracle_service.get_pricing_service",
+        return_value=real_pricing,
+    ):
+        svc = VisaOracleService()
+
+    result = svc.recommend_visas(
+        nationality="Dutch",
+        purpose="retire",
+        duration="medium",
+        family=False,
+    )
+    assert len(result) > 0
+    names = [r["visa_name"] for r in result]
+    e33f_names = [n for n in names if "E33F" in n]
+    assert e33f_names == ["E33F Second Home Senior (1 Year, Altus/Onshore)"]
+    assert all(not n.endswith("(Extend)") for n in names)
+    for internal_name in (
+        "Retirement (Altus/Onshore)",
+        "Retirement (Offshore)",
+        "Retirement (Extend)",
+    ):
+        assert internal_name not in names
+
+
+def test_recommend_visas_retire_omits_stub_internal_row_that_would_rank_first() -> None:
+    """Guilt: a stub catalogue row with 'internal': True and all retire keywords
+    is omitted even when its score would rank first ahead of a public row."""
+    stub_prices = {
+        "services": {
+            "kitas_permits": {
+                "Internal Retirement Top (Altus/Onshore)": {
+                    "name": "Internal Retirement Top (Altus/Onshore)",
+                    "internal": True,
+                    "price": "16.000.000 IDR",
+                    "duration": "1 year",
+                    "validity": "1 year",
+                    "keywords": [
+                        "e33f",
+                        "retirement",
+                        "retire",
+                        "pensioner",
+                        "pension",
+                    ],
+                },
+                "E33F Second Home Senior (1 Year, Altus/Onshore)": {
+                    "name": "E33F Second Home Senior (1 Year, Altus/Onshore)",
+                    "price": "16.000.000 IDR",
+                    "duration": "1 year",
+                    "validity": "1 year",
+                    "keywords": ["retire"],
+                },
+            },
+        },
+    }
+    mock_pricing = MagicMock()
+    mock_pricing.prices = stub_prices
+
+    with patch(
+        "backend.services.visa_oracle.visa_oracle_service.get_pricing_service",
+        return_value=mock_pricing,
+    ):
+        svc = VisaOracleService()
+
+    result = svc.recommend_visas(
+        nationality="Australian",
+        purpose="retire",
+        duration="medium",
+        family=False,
+    )
+    names = [r["visa_name"] for r in result]
+    assert "Internal Retirement Top (Altus/Onshore)" not in names
+    assert names == ["E33F Second Home Senior (1 Year, Altus/Onshore)"]
+
+
+def test_recommend_visas_retire_innocence_other_purposes_and_kitap() -> None:
+    """Innocence: other purposes and Retirement KITAP + MERP metadata/scoring remain intact."""
+    from backend.services.pricing.pricing_service import PricingService
+    from backend.services.visa_oracle.visa_oracle_service import VISA_METADATA
+
+    assert VISA_METADATA["Retirement KITAP + MERP"] == {
+        "duration": "5 years",
+        "validity": "KITAP — permanent residence",
+    }
+    assert "E33F Second Home Senior (1 Year, Offshore)" in VISA_METADATA
+    assert "E33F Second Home Senior (1 Year, Altus/Onshore)" in VISA_METADATA
+    assert "E33F Second Home Senior (Extend)" in VISA_METADATA
+
+    real_pricing = PricingService()
+    with patch(
+        "backend.services.visa_oracle.visa_oracle_service.get_pricing_service",
+        return_value=real_pricing,
+    ):
+        svc = VisaOracleService()
+
+    all_types = {v["name"] for v in svc.get_all_visa_types()}
+    assert "Retirement KITAP + MERP" in all_types
+    assert "E33F Second Home Senior (1 Year, Offshore)" in all_types
+    assert "Retirement (Offshore)" not in all_types
+
+    work_res = svc.recommend_visas(
+        nationality="British",
+        purpose="work",
+        duration="medium",
+        family=False,
+    )
+    assert any("Working KITAS" in r["visa_name"] for r in work_res)

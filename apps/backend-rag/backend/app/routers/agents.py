@@ -646,7 +646,7 @@ async def calculate_dynamic_pricing(
     if body.query:
         result = svc.search_service(body.query)
     else:
-        result = svc.get_pricing(body.service_type)
+        result = svc.get_pricing_for_clients(body.service_type)
 
     return {
         "success": True,
