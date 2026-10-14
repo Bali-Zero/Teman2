@@ -543,10 +543,11 @@ export interface Service {
   badge?: string;
 }
 
-function pricingBackedVisaService(
+export function pricingBackedVisaService(
   pricingCategory: string,
   pricingItemKey: string,
   badge?: string,
+  highlight?: string,
 ): Service {
   const entry = getPricingSnapshotEntry(pricingCategory, pricingItemKey);
   if (!entry) {
@@ -554,9 +555,22 @@ function pricingBackedVisaService(
       `Missing generated PricingTool row: ${pricingCategory}:${pricingItemKey}`,
     );
   }
-  const features = [entry.duration, entry.validity, entry.notes].filter(
-    (value): value is string => Boolean(value?.trim()),
-  );
+  if (
+    highlight !== undefined &&
+    (!highlight.trim() ||
+      !entry.description_en ||
+      !entry.description_en.includes(highlight))
+  ) {
+    throw new Error(
+      `PricingTool row ${pricingCategory}:${pricingItemKey} description_en does not contain highlight: ${highlight}`,
+    );
+  }
+  const features = [
+    highlight,
+    entry.duration,
+    entry.validity,
+    entry.notes,
+  ].filter((value): value is string => Boolean(value?.trim()));
   return {
     serviceKey: `${pricingCategory}:${pricingItemKey}`,
     pricingCategory,
@@ -578,6 +592,8 @@ export const SERVICES: Service[] = [
   pricingBackedVisaService(
     "kitas_permits",
     "E33F Second Home Senior (1 Year, Offshore)",
+    undefined,
+    "A sponsor (penjamin) is required; Bali Zero can act as one.",
   ),
   {
     serviceKey: "pt-pma",
