@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-10/agent-air-m5-mouth-vo-e33-public-copy-1014-a6048580/brief.yml
+brief_ref: evidence/brief.yml
 plan_ref: >-
   Branch agent/air-m5/mouth/vo-e33-public-copy-1014, head 8021dbc7d5 on origin/main ad3278690d. Rulings it executes:
   Gemini 4 Argon copy audit of 2026-10-14 (findings F14 and F15, confirmed by adversarial refutation); the #8460
