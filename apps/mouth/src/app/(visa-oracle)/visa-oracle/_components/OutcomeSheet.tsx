@@ -216,9 +216,7 @@ function buildShareSummary(
       const parts = [
         ...priceParts,
         candidate.duration
-          ? candidate.duration.label
-            ? localized(candidate.duration.label, language)
-            : durationLabel(language, candidate.duration.selectedDays, "permit")
+          ? durationLabel(language, candidate.duration.selectedDays, "permit")
           : null,
         timing,
       ].filter((part): part is string => part !== null);
@@ -654,19 +652,12 @@ function Price({
       </span>
       {duration && (
         <span className="oracle-price__duration">
-          {duration.label
-            ? localized(duration.label, language)
-            : durationLabel(language, duration.selectedDays, "permit")}
+          {durationLabel(language, duration.selectedDays, "permit")}
         </span>
       )}
       {!isFree && (
         <span className="oracle-price__note">
           {translate(language, "outcome.price_all_inclusive")}
-        </span>
-      )}
-      {duration?.renewal && (
-        <span className="oracle-price__note">
-          {localized(duration.renewal, language)}
         </span>
       )}
       {duration?.options
@@ -679,6 +670,11 @@ function Price({
             })}
           </span>
         ))}
+      {duration?.renewal && (
+        <span className="oracle-question__hint">
+          {localized(duration.renewal, language)}
+        </span>
+      )}
       {duration?.extensionRequired && (
         <span className="oracle-question__hint">
           {translate(language, "outcome.duration_extension" as I18nKey)}

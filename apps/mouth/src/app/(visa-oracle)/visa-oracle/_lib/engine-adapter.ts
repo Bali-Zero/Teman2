@@ -2,6 +2,7 @@ import {
   requireEngineResponse,
   VisaOracleResponseError,
 } from "./engine-response";
+import { mapStayDays } from "./fact-mapper";
 import { QUESTIONS, type OracleFacts } from "./tree";
 import { followUpPrerequisitesMet, walkQuestionIds } from "./flow";
 import { translate, type I18nKey } from "./i18n";
@@ -2122,17 +2123,7 @@ function documents(candidate: VisaOracleCandidateDisplay): OutcomeDocument[] {
   return result;
 }
 
-export const STAY_PERMIT_LENGTH_COPY: Readonly<Record<number, LocalizedText>> =
-  {
-    365: text(
-      translate("en", "outcome.stay_permit_length.365"),
-      translate("id", "outcome.stay_permit_length.365"),
-    ),
-    1825: text(
-      translate("en", "outcome.stay_permit_length.1825"),
-      translate("id", "outcome.stay_permit_length.1825"),
-    ),
-  };
+const STAY_PERMIT_LENGTH_DAYS = new Set([365, 1825]);
 
 export const STAY_PERMIT_RENEWAL_COPY: Readonly<Record<string, LocalizedText>> =
   {
@@ -2172,22 +2163,10 @@ function renewalCopyFor(
   ];
 }
 
-function parsedStayDays(facts: OracleFacts | undefined): number | null {
-  const raw = facts?.stay_days as unknown;
-  if (typeof raw === "number") {
-    return Number.isSafeInteger(raw) && raw >= 1 && raw <= 36_500 ? raw : null;
-  }
-  if (typeof raw !== "string" || !/^(0|[1-9]\d*)$/.test(raw)) return null;
-  const parsed = Number(raw);
-  return Number.isSafeInteger(parsed) && parsed >= 1 && parsed <= 36_500
-    ? parsed
-    : null;
-}
-
 /**
  * Spread into the candidate: priced duration-option candidates use their
  * selected option; priced fixed-days candidates without duration_options use
- * `stay_policy` when the fixed day count maps in `STAY_PERMIT_LENGTH_COPY`.
+ * `stay_policy` when the fixed day count is in `STAY_PERMIT_LENGTH_DAYS`.
  */
 function duration(
   candidate: VisaOracleCandidateDisplay,
@@ -2218,20 +2197,34 @@ function duration(
     stay.kind !== "FIXED_DAYS" ||
     typeof stay.minimum_days !== "number" ||
     typeof stay.maximum_days !== "number" ||
-    stay.minimum_days !== stay.maximum_days
+    stay.minimum_days !== stay.maximum_days ||
+    !STAY_PERMIT_LENGTH_DAYS.has(stay.maximum_days)
   ) {
     return {};
   }
-  const label = STAY_PERMIT_LENGTH_COPY[stay.maximum_days];
-  if (!label) return {};
 
   const extension = candidate.stay_policy?.extension;
   const renewal = renewalCopyFor(extension);
-  const requestedStayDays = parsedStayDays(facts);
+  const mappedStay = facts ? mapStayDays(facts) : null;
+  const requestedStayDays =
+    mappedStay?.status === "KNOWN" ? mappedStay.value : null;
   let longerStay: LocalizedText | undefined;
   if (requestedStayDays !== null && requestedStayDays > stay.maximum_days) {
-    if (renewal) {
-      longerStay = STAY_PERMIT_LONGER_STAY_COPY.verified;
+    if (
+      extension?.status === "VERIFIED" &&
+      extension.allowed === true &&
+      typeof extension.maximum_extensions === "number" &&
+      Number.isFinite(extension.maximum_extensions) &&
+      typeof extension.days_per_extension === "number" &&
+      Number.isFinite(extension.days_per_extension)
+    ) {
+      const coverage =
+        stay.maximum_days +
+        extension.maximum_extensions * extension.days_per_extension;
+      longerStay =
+        requestedStayDays <= coverage
+          ? STAY_PERMIT_LONGER_STAY_COPY.verified
+          : STAY_PERMIT_LONGER_STAY_COPY.unknown;
     } else if (extension?.status == null || extension.status === "UNKNOWN") {
       longerStay = STAY_PERMIT_LONGER_STAY_COPY.unknown;
     }
@@ -2242,7 +2235,6 @@ function duration(
       selectedDays: stay.maximum_days,
       options: [],
       extensionRequired: false,
-      label,
       ...(renewal ? { renewal } : {}),
       ...(longerStay ? { longerStay } : {}),
     },
