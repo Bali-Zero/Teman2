@@ -29,7 +29,7 @@ lanes:
       ACTIVE signed pack rulepack-prod-029.signed.json (seq-29); the change asserts no rule of its own,
       it states the pack's stay_policy and extension_policy on the candidate.
     nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
-    query_hash: 8daa66acd3ba3f6adc9a78304e35d719667fa3e735b32492757ee085ea6bee0e # pragma: allowlist secret
+    query_hash: "8daa66acd3ba3f6adc9a78304e35d719667fa3e735b32492757ee085ea6bee0e" # pragma: allowlist secret
     note: query_hash = sha256 of the signed pack file in the worktree.
 pii_scan: clean
 bites:
@@ -106,7 +106,7 @@ dissent:
       "Cured: coverage = stay maximum + maximum_extensions x days_per_extension from the VERIFIED
       and allowed policy only; the verified sentence needs stay_days <= coverage, above it the advisor line.
       Guilt test pins 2190 verified and 2191, 3000, 36500 advisor."
-    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+    cure_commit: "372fb039df789fb821b9086e27d639b49ce27fb6" # pragma: allowlist secret
   - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
     severity: MEDIUM
     where: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-response.ts:354,362,390
@@ -117,7 +117,7 @@ dissent:
     disposition:
       "Cured: the three extra-key checks removed; required key, type, range and enum checks kept;
       a test now pins that extra keys are tolerated."
-    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+    cure_commit: "372fb039df789fb821b9086e27d639b49ce27fb6" # pragma: allowlist secret
   - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
     severity: MEDIUM
     where: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-response.ts:507-511
@@ -128,7 +128,7 @@ dissent:
     disposition:
       "Cured: the block and its cases are gone from this PR (the diff against main carries no
       prohibited_activities line change); PR-20's validation is kept as written on rebase."
-    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+    cure_commit: "372fb039df789fb821b9086e27d639b49ce27fb6" # pragma: allowlist secret
   - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
     severity: LOW
     where: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts:1933-1943; i18n.ts; OutcomeSheet.tsx
@@ -139,7 +139,7 @@ dissent:
     disposition:
       "Cured: label field, the 2x2 i18n keys and the sheet ternaries dropped; the existing durationLabel
       path renders the text."
-    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+    cure_commit: "372fb039df789fb821b9086e27d639b49ce27fb6" # pragma: allowlist secret
   - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
     severity: LOW
     where: engine-adapter.test.ts:4431-4555
@@ -151,7 +151,7 @@ dissent:
       "Partly cured: E28A, E30A, BRIDGING and A1 now use the signed-pack shapes, E33G and E23
       are covered. NOT added: a census test that reads rulepack-prod-029.signed.json and builds every product.
       Left for the E33 closing PR; the live replay on the pack is the Bites observation."
-    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+    cure_commit: "372fb039df789fb821b9086e27d639b49ce27fb6" # pragma: allowlist secret
   - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
     severity: LOW
     where: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts:2041-2046
@@ -162,7 +162,7 @@ dissent:
     disposition:
       "Cured: the line is decided by the coverage arithmetic (VERIFIED, allowed, stay_days <=
       coverage); E23 at 600 days gets the verified continuation, at 800 days the advisor line."
-    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+    cure_commit: "372fb039df789fb821b9086e27d639b49ce27fb6" # pragma: allowlist secret
   - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
     severity: LOW
     where: i18n.ts:905-909,1943-1948
@@ -173,21 +173,21 @@ dissent:
     disposition:
       "Cured: EN 'your stay can continue by renewal'; ID verified line 'masa tinggal Anda
       dapat dilanjutkan dengan perpanjangan'; ID unknown line softened as the commit records."
-    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+    cure_commit: "372fb039df789fb821b9086e27d639b49ce27fb6" # pragma: allowlist secret
   - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
     severity: LOW
     where: OutcomeSheet.tsx:667-671
     objection: The renewal line used the price-note style and could read as renewals included in the price.
     status: CONFIRMED
     disposition: "Cured: rendered as a hint after the price notes, with no price wording."
-    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+    cure_commit: "372fb039df789fb821b9086e27d639b49ce27fb6" # pragma: allowlist secret
   - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
     severity: LOW
     where: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts:1983-1994
     objection: parsedStayDays repeated the integer parsing of fact-mapper.
     status: CONFIRMED
     disposition: "Cured: the adapter reuses mapStayDays(facts)."
-    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+    cure_commit: "372fb039df789fb821b9086e27d639b49ce27fb6" # pragma: allowlist secret
   - seat:
       codex gpt-5.6-sol (rollout-2026-10-14T09-07-45-01a137f3-7a43-7893-8175-d7a02e114851.jsonl, model
       gpt-5.6-sol verified)
@@ -200,7 +200,7 @@ dissent:
     disposition:
       "Cured: stay_policy is required on every display candidate; the test now asserts rejection
       of an absent stay_policy."
-    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+    cure_commit: "372fb039df789fb821b9086e27d639b49ce27fb6" # pragma: allowlist secret
   - seat:
       codex gpt-5.6-sol (rollout-2026-10-14T09-07-45-01a137f3-7a43-7893-8175-d7a02e114851.jsonl, model
       gpt-5.6-sol verified)
@@ -213,7 +213,7 @@ dissent:
     disposition:
       "Partly cured: exact pack shapes for E28A, E30A, BRIDGING, A1, and the cases assert no
       length, renewal, continuation or raw identifier. Same open item as the red-team census suggestion."
-    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+    cure_commit: "372fb039df789fb821b9086e27d639b49ce27fb6" # pragma: allowlist secret
   - seat:
       codex gpt-5.6-sol (rollout-2026-10-14T09-07-45-01a137f3-7a43-7893-8175-d7a02e114851.jsonl, model
       gpt-5.6-sol verified)
@@ -222,4 +222,4 @@ dissent:
     objection: "Unrequested scope: prohibited_activities validation inconsistent with closed identifiers."
     status: CONFIRMED
     disposition: "Cured: removed from this PR, as above."
-    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+    cure_commit: "372fb039df789fb821b9086e27d639b49ce27fb6" # pragma: allowlist secret
