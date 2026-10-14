@@ -24,6 +24,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import queue_shepherd as qs  # noqa: E402
 
+_REAL_QUEUE_RULE_STATE = qs.queue_rule_state
+
 NOW = _dt.datetime(2026, 8, 27, 12, 0, 0, tzinfo=_dt.timezone.utc)
 
 
@@ -45,6 +47,7 @@ def _isolate_state_files(monkeypatch, tmp_path):
     monkeypatch.setattr(qs, "RED_FILE", tmp_path / "red-causes.json")
     monkeypatch.setattr(qs, "REARM_FAIL_FILE", tmp_path / "rearm-write-failures.json")
     monkeypatch.setattr(qs, "LOG_FILE", tmp_path / "queue-shepherd.log")
+    monkeypatch.setattr(qs, "queue_rule_state", lambda: "present")
 
 
 def _iso(dt: _dt.datetime) -> str:
@@ -211,14 +214,49 @@ def test_queue_present_keeps_a_github_armed_pr_out_of_the_candidates(monkeypatch
     assert qs.is_rearm_candidate(_pr(auto_merge_enabled=True)) is False
 
 
-@pytest.mark.parametrize("state,helper", [("absent", True), ("present", False), ("unknown", False)])
-def test_rearm_pr_calls_the_helper_only_when_the_queue_rule_is_gone(monkeypatch, state, helper):
+@pytest.mark.parametrize("state,gh_called", [("absent", False), ("present", True), ("unknown", False)])
+def test_rearm_pr_acts_only_when_the_queue_rule_is_present(monkeypatch, state, gh_called):
     calls = []
     monkeypatch.setattr(qs, "queue_rule_state", lambda: state)
     monkeypatch.setattr(qs, "_run", lambda cmd, timeout=30: (calls.append(cmd) or (0, "", "")))
-    assert qs.rearm_pr("o/r", 7) is True
-    assert calls[0][0].endswith("signal_merge_intent.sh") is helper
-    assert (calls[0][:3] == ["gh", "pr", "merge"]) is (not helper)
+    assert qs.rearm_pr("o/r", 7) is gh_called
+    assert bool(calls) is gh_called
+    assert not any(str(c[0]).endswith("signal_merge_intent.sh") for c in calls)
+
+
+def _unlabelled_pr_with_preflip_infra_ejection(monkeypatch):
+    pr = _pr(number=7, head_sha="newhead0000", merge_intent_label=False)
+    monkeypatch.setattr(qs, "fetch_open_prs", lambda repo: [pr])
+    ejection = {"reason": "failed_checks", "removed_at": "2026-08-27T10:00:00Z"}
+    monkeypatch.setattr(qs, "fetch_last_ejection", lambda repo, n: ejection)
+    monkeypatch.setattr(qs, "fetch_infra_hint_and_fingerprint", lambda repo, n, at: (True, None))
+
+
+@pytest.mark.parametrize(
+    "state,message",
+    [
+        ("absent", "flipped: no merge queue, nothing to rearm"),
+        ("unknown", "queue state unknown: rearm skipped"),
+    ],
+)
+def test_rearm_pass_labels_and_arms_nothing_when_flipped_or_unknown(monkeypatch, caplog, state, message):
+    runs = []
+    monkeypatch.setattr(qs, "queue_rule_state", lambda: state)
+    monkeypatch.setattr(qs, "_run", lambda cmd, timeout=30: (runs.append(cmd) or (0, "", "")))
+    _unlabelled_pr_with_preflip_infra_ejection(monkeypatch)
+    with caplog.at_level("INFO"):
+        result = qs.run_rearm_pass(dry_run=False, now=NOW)
+    assert runs == []
+    assert result["rearmed"] == 0 and result["cannot_verify"] is None
+    assert sum(message in r.getMessage() for r in caplog.records) == 1
+
+
+def test_rearm_pass_still_rearms_the_unlabelled_pr_when_the_queue_rule_is_present(monkeypatch):
+    runs = []
+    monkeypatch.setattr(qs, "_run", lambda cmd, timeout=30: (runs.append(cmd) or (0, "", "")))
+    _unlabelled_pr_with_preflip_infra_ejection(monkeypatch)
+    assert qs.run_rearm_pass(dry_run=False, now=NOW)["rearmed"] == 1
+    assert runs == [["gh", "pr", "merge", "7", "--auto", "--repo", qs.REPO]]
 
 
 def test_normalize_reads_merge_intent_label_from_graphql_nodes():
@@ -3456,3 +3494,29 @@ def test_report_says_CORRUPT_when_the_rearm_fail_file_is_unparseable_M27(monkeyp
     named = corrupt_lines[0].split(" — CORRUPT")[0]
     assert str(corrupt) in named, named
     assert str(tmp_path / "budget.json") not in named, named
+
+
+class _Proc:
+    def __init__(self, returncode, stdout):
+        self.returncode, self.stdout = returncode, stdout
+
+
+@pytest.mark.parametrize(
+    "proc",
+    [_Proc(1, "present\n"), _Proc(0, ""), _Proc(0, "garbage"), OSError("no probe")],
+)
+def test_a_failed_or_garbled_probe_reads_unknown_and_the_rearm_pass_rearms_nothing(monkeypatch, proc):
+    def fake_run(*args, **kwargs):
+        if isinstance(proc, Exception):
+            raise proc
+        return proc
+
+    monkeypatch.setattr(qs, "_queue_rule_cache", None)
+    monkeypatch.setattr(qs.subprocess, "run", fake_run)
+    assert _REAL_QUEUE_RULE_STATE() == "unknown"
+    monkeypatch.setattr(qs, "queue_rule_state", _REAL_QUEUE_RULE_STATE)
+    monkeypatch.setattr(qs, "_queue_rule_cache", None)
+    monkeypatch.setattr(qs, "fetch_open_prs", lambda repo: (_ for _ in ()).throw(AssertionError("read")))
+    monkeypatch.setattr(qs, "_run", lambda *a, **k: (_ for _ in ()).throw(AssertionError("ran")))
+    result = qs.run_rearm_pass(dry_run=False, now=NOW)
+    assert result["rearmed"] == 0 and result["cannot_verify"] is None
