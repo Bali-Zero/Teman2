@@ -26,6 +26,12 @@ vendor/evoskill/README.md
 vendor/evoskill/Dockerfile
 vendor/evoskill/uv.lock
 
+# Vendored third-party Claude Code skills (byte-identical to upstream — see
+# vendor/*/UPSTREAM.md). Loaded through .claude/skills/<name> symlinks.
+vendor/marketing-skills/skills/
+vendor/marketing-skills/README.md
+vendor/humanizer-ru/SKILL.md
+
 # Logs
 *.log
 
