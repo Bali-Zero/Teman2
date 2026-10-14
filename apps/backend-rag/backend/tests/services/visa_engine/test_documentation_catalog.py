@@ -101,9 +101,10 @@ def test_stale_guard_fails_when_a_page_was_read_more_than_one_year_ago() -> None
     for code, row in _raw()["products"].items():
         fetched = datetime.fromisoformat(row["fetched_at"].replace("Z", "+00:00"))
         age = (now - fetched).total_seconds()
-        assert age <= _MAX_AGE_SECONDS, (
-            f"{code} page read {age:.0f}s ago exceeds the {_MAX_AGE_SECONDS}s freshness max age: "
-            "re-read the official page and re-stamp the catalogue"
+        assert 0 <= age <= _MAX_AGE_SECONDS, (
+            f"{code} page read {age:.0f}s ago is in the future or exceeds the "
+            f"{_MAX_AGE_SECONDS}s freshness max age: re-read the official page and re-stamp "
+            "the catalogue"
         )
 
 
@@ -185,3 +186,35 @@ def test_available_exactly_where_the_catalogue_verifies_and_unknown_everywhere_e
                 assert documentation["requirements"] == [] and documentation["checklist"] == []
     # The census reaches both sides: an E31B persona shows none, every E33-family code shows its list.
     assert "E31B" in seen and _EXPECTED_CODES <= seen
+
+
+# The approved EN/ID pairs for the items whose two languages must say the same thing.
+_TRAVEL_PAIRS = {
+    "Riwayat perjalanan dan rencana perjalanan (itinerary)": "Travel history and travel plan (itinerary)",
+    "Riwayat perjalanan (itinerary)": "Travel history (itinerary)",
+}
+
+
+def test_the_travel_items_pin_the_approved_english_for_each_indonesian_text() -> None:
+    seen: set[str] = set()
+    for code, row in _raw()["products"].items():
+        for item in [*row["requirements"], *row["checklist"]]:
+            if item["id"] in _TRAVEL_PAIRS:
+                seen.add(item["id"])
+                assert item["en"] == _TRAVEL_PAIRS[item["id"]], (code, item)
+            else:
+                assert "itinerary" not in item["id"].lower(), (code, item["id"])
+    assert seen == set(_TRAVEL_PAIRS)
+
+
+def test_no_post_entry_obligation_is_listed_as_a_document() -> None:
+    blob = json.dumps(_raw()["products"], ensure_ascii=False)
+    assert "must be kept" not in blob and "dipertahankan" not in blob
+
+
+def test_the_two_numeric_thresholds_are_anchored_on_the_page() -> None:
+    products = _raw()["products"]
+    e33_quotes = [_norm(i["page_quote"]) for i in products["E33"]["requirements"]]
+    assert any("us$130.000" in q and "pernyataan komitmen" in q for q in e33_quotes)
+    e33b_quotes = [_norm(i["page_quote"]) for i in products["E33B"]["requirements"]]
+    assert any("paling sedikit 3,5" in q for q in e33b_quotes)

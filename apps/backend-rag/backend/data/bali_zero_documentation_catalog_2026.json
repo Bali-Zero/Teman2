@@ -37,7 +37,7 @@
         {
           "en": "Commitment statement (Surat Pernyataan Komitmen) as the Immigration Guarantee: to place at least USD 130,000 (or the equivalent) in an own-name account at a state-owned bank",
           "id": "Surat Pernyataan Komitmen sebagai Jaminan Keimigrasian: akan menyimpan dana pada rekening atas nama sendiri pada bank milik negara senilai paling sedikit US$130.000 atau setara",
-          "page_quote": "Jaminan Keimigrasian dengan melampirkan Surat Pernyataan Komitmen akan menanamkan investasi di Indonesia sebagai berikut"
+          "page_quote": "pernyataan komitmen akan menyimpan dana pada rekening atas nama sendiri pada bank milik negara senilai paling sedikit US$130.000 (seratus tiga puluh ribu Dolar Amerika) atau setara"
         },
         {
           "en": "Or, instead, a commitment statement to buy an apartment (rumah susun) in Indonesia worth at least USD 1,000,000 (or the equivalent)",
@@ -55,11 +55,6 @@
           "en": "Or, instead, proof of ownership of an apartment (rumah susun) in Indonesia worth at least USD 1,000,000 (or the equivalent), reported within the same 90 days",
           "id": "Atau, sebagai gantinya, bukti kepemilikan properti berupa rumah susun atau apartemen di Indonesia senilai paling sedikit US$1.000.000 atau setara, dilaporkan dalam 90 hari yang sama",
           "page_quote": "Bukti kepemilihan properti berupa rumah susun atau apartemen di Indonesia senilai paling sedikit US$1.000.000"
-        },
-        {
-          "en": "The value of the Immigration Guarantee must be kept at no less than the commitment statement for as long as the stay permit is valid",
-          "id": "Nilai Jaminan Keimigrasian harus dipertahankan paling sedikit sesuai dengan surat pernyataan komitmen selama izin tinggalnya masih berlaku",
-          "page_quote": "Nilai Jaminan Keimigrasian harus dipertahankan paling sedikit sesuai dengan surat pernyataan komitmen pada saat permohonan visa selama izin tinggalnya masih berlaku"
         }
       ]
     },
@@ -166,7 +161,7 @@
         {
           "en": "Or, instead, proof of graduation from one of the world's top 100 universities within the last 3 years, with a cumulative GPA of at least 3.5 (or equivalent)",
           "id": "Atau, sebagai gantinya, bukti kelulusan dari salah satu dari daftar 100 universitas terbaik dunia dalam 3 tahun terakhir dengan indeks prestasi kumulatif (grade point average) paling sedikit 3,5 atau setara",
-          "page_quote": "bukti kelulusan dari salah satu dari daftar 100 (seratus) universitas terbaik dunia dalam 3 (tiga) tahun terakhir dengan nilai indeks prestasi"
+          "page_quote": "bukti kelulusan dari salah satu dari daftar 100 (seratus) universitas terbaik dunia dalam 3 (tiga) tahun terakhir dengan nilai indeks prestasi kumulatif/grade point average paling sedikit 3,5 (tiga koma lima) atau setara"
         }
       ],
       "checklist": [
@@ -209,7 +204,7 @@
           "page_quote": "Daftar riwayat hidup"
         },
         {
-          "en": "Travel history and travel plan (itinerary)",
+          "en": "Travel history (itinerary)",
           "id": "Riwayat perjalanan (itinerary)",
           "page_quote": "Riwayat perjalanan ( itinerary )"
         },
@@ -283,11 +278,6 @@
           "en": "Within 90 days of entry into Indonesia, report to the immigration office that issued the stay permit, with proof of at least USD 50,000 (or the equivalent) in an own-name account at a state-owned bank",
           "id": "Dalam waktu paling lama 90 hari sejak masuk ke Indonesia, laporkan ke Kantor Imigrasi yang menerbitkan Izin Tinggal Terbatas dengan bukti dana pada rekening sendiri di bank milik negara senilai paling sedikit US$50.000 atau setara",
           "page_quote": "dalam waktu paling lama 90 hari terhitung sejak tanggal masuk ke Indonesia dengan melampirkan bukti kepemilikan dana pada rekening sendiri di bank milik negara senilai paling sedikit US$50.000 atau setara"
-        },
-        {
-          "en": "The value of the Immigration Guarantee must be kept at no less than the commitment statement for as long as the stay permit is valid",
-          "id": "Nilai Jaminan Keimigrasian harus dipertahankan paling sedikit sesuai dengan surat pernyataan komitmen selama izin tinggalnya masih berlaku",
-          "page_quote": "Nilai Jaminan Keimigrasian harus dipertahankan paling sedikit sesuai dengan surat pernyataan komitmen pada saat permohonan visa selama izin tinggalnya masih berlaku"
         }
       ]
     },
@@ -323,7 +313,7 @@
           "page_quote": "Daftar riwayat hidup"
         },
         {
-          "en": "Travel plan (itinerary)",
+          "en": "Travel history (itinerary)",
           "id": "Riwayat perjalanan (itinerary)",
           "page_quote": "Riwayat perjalanan ( itinerary )"
         },
@@ -362,7 +352,7 @@
           "page_quote": "Daftar riwayat hidup"
         },
         {
-          "en": "Travel plan (itinerary)",
+          "en": "Travel history (itinerary)",
           "id": "Riwayat perjalanan (itinerary)",
           "page_quote": "Riwayat perjalanan ( itinerary )"
         },

@@ -1607,6 +1607,38 @@ def test_fold_seq18_rule_is_exact_and_rejects_ride_alongs() -> None:
     assert "credential" in reason
 
 
+DOC_CATALOGUE = "apps/backend-rag/backend/data/bali_zero_documentation_catalog_2026.json"
+
+
+def test_documentation_catalogue_content_sha256_rule_is_exact_and_rejects_ride_alongs() -> None:
+    """Guilt and innocence for the catalogue fingerprint rule: the exact path AND the
+    exact `"content_sha256": "<64 lowercase hex>"` line; any other path, key, length,
+    case or ride-along stays flagged. Looked up by reason text, not list position."""
+    path_pat, content_pat, reason = _find_content_keyed_rule(
+        "documentation catalogue: content_sha256"
+    )
+    digest = "a" * 64
+    good = f'      "content_sha256": "{digest}",'
+    # Correct path, correct key.
+    assert path_pat.search(DOC_CATALOGUE)
+    assert content_pat.match(good)
+    assert content_pat.match(f'"content_sha256": "{digest}"')
+    # Wrong path: a sibling data file or a copy elsewhere is not forgiven.
+    assert not path_pat.search("apps/backend-rag/backend/data/other_catalog.json")
+    assert not path_pat.search("scripts/" + DOC_CATALOGUE)
+    assert not path_pat.search(DOC_CATALOGUE + ".bak")
+    # Wrong key, wrong length, wrong case.
+    assert content_pat.match(f'      "api_key": "{digest}",') is None
+    assert content_pat.match(f'      "content_sha256_x": "{digest}",') is None
+    assert content_pat.match(f'      "content_sha256": "{"a" * 63}",') is None
+    assert content_pat.match(f'      "content_sha256": "{"a" * 65}",') is None
+    assert content_pat.match(f'      "content_sha256": "{"A" * 64}",') is None
+    # Ride-alongs: a second pair on the same line is not content-keyed away.
+    assert content_pat.match(f'{good} "token": "real-secret"') is None
+    assert content_pat.match(f'      "content_sha256": "{digest}", "secret": "real-secret"') is None
+    assert "never bearer material" in reason
+
+
 GOOGLE_OAUTH_LINT = "scripts/lint_google_oauth_credentials.py"
 
 

@@ -32,7 +32,7 @@ _SUMMARY = re.compile(r"^(?:=+ )?(\d+) passed(?:, \d+ warnings?)? in [\d.]+s(?: 
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a pytest line that is a pure pass (warnings aside), N >= 4.
+    """True only for a pytest line that is a pure pass (warnings aside), N >= MIN_TESTS (20).
 
     Anything else (failed, error, skipped, xfailed, deselected, a reduced count,
     no line) is False.
