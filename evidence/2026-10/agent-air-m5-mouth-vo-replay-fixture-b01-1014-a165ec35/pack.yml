@@ -1,0 +1,50 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling:
+  "The Visa Oracle session owns the no-door replay fixture since PR 8456; the drift is the
+  consequence of PR 8496 (merge d460923bf1, B01), which made a no-path decision caused by a global
+  hard filter list only the global causes."
+mission:
+  The committed no-path-doors replay fixture is regenerated from the active signed pack so the
+  Indonesian-citizen counterexample lists only its global cause and the replay-pins observer is green.
+lanes:
+  - lane: replay-fixture
+    role: build
+    seat: claude-sonnet-5 driver (regenerates with the repo generator, no hand edit of the fixture)
+  - lane: replay-fixture-gate
+    role: review
+    seat: claude-opus-5-5 fresh final on-disk gate (signs only, to run after this commit)
+  - lane: replay-fixture-ground-truth
+    role: ground_truth
+    seat:
+      ACTIVE signed pack rulepack-prod-029.signed.json; the change asserts no rule of its own, the
+      fixture is the generator's replay of that pack (the fixture's own pack.file names it).
+    nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
+    query_hash: "8daa66acd3ba3f6adc9a78304e35d719667fa3e735b32492757ee085ea6bee0e" # pragma: allowlist secret
+    note: query_hash = sha256 of the signed pack file in the worktree, computed this turn.
+pii_scan: clean
+bites:
+  consumer: the observer scripts/ci/observe_visa_oracle_replay_pins.py and the two vitest files it runs
+  where: pro
+  observe: python3 scripts/ci/observe_visa_oracle_replay_pins.py
+  expect: contains:replay pins hold
+receipts:
+  - claim: The generator, run without --out against the active signed pack, rewrites only the Indonesian-citizen row.
+    cmd: apps/backend-rag/.venv/bin/python apps/mouth/scripts/visa-oracle/replay-no-path-doors.py
+    result: 27 non-supported walks written; git diff touches one file, +1/-4, the no_path_reason_codes of indonesian-nationality
+    exit: 0
+    ts: "2026-10-15T00:20:00Z"
+    seat: this session
+  - claim: The replay-pins observer is green again at the unchanged census.
+    cmd: python3 scripts/ci/observe_visa_oracle_replay_pins.py
+    result: Tests 293 passed (293); replay pins hold
+    exit: 0
+    ts: "2026-10-15T01:14:00Z"
+    seat: this session
+  - claim: The two no-path-doors vitest files pass on the regenerated fixture.
+    cmd: cd apps/mouth && npx vitest run '(visa-oracle)/visa-oracle/_lib/no-path-doors' '(visa-oracle)/visa-oracle/_lib/no-path-doors-fixture-freshness'
+    result: Test Files 2 passed (2); Tests 109 passed (109)
+    exit: 0
+    ts: "2026-10-15T01:15:40Z"
+    seat: this session
+dissent: []
