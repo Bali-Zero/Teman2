@@ -132,6 +132,8 @@ class FakeGH:
         self.calls: list[tuple[str, str, object]] = []
         self.classic_error: str | None = None
         self.pauses: list[float] = []
+        self.graphql: list = []
+        self.queue: object = {"entries": {"totalCount": 0}}   # "error", None (no queue) or a mergeQueue object
         self.honour_writes, self.fail = True, None
         self.state_dir = tmp_path / "state"
         self.state_files_at_first_write: list | None = None
@@ -139,6 +141,13 @@ class FakeGH:
     def __call__(self, argv, input=None, capture_output=True, text=True):
         assert argv[:2] == ["gh", "api"] and capture_output and text
         args = argv[2:]
+        if args[0] == "graphql":   # a read-only query: gh sends it as a POST, GitHub's merge queue has no REST list
+            assert "mutation" not in " ".join(args) and any(a.startswith("query=query(") for a in args), args
+            self.graphql.append(args)
+            if self.queue == "error":
+                return subprocess.CompletedProcess(argv, 1, "", "gh: boom")
+            queue = self.queue.pop(0) if isinstance(self.queue, list) else self.queue   # a list: one answer per read
+            return subprocess.CompletedProcess(argv, 0, json.dumps({"data": {"repository": {"mergeQueue": queue}}}), "")
         method, path = (args[1], args[2]) if args[0] == "--method" else ("GET", args[0])
         # the exact argv real gh needs: a GET is one path; a write is --method M path, plus --input - when it carries a body
         expected = [path] if method == "GET" else ["--method", method, path, *(["--input", "-"] if input is not None else [])]
@@ -1280,3 +1289,25 @@ def test_the_flips_ready_term_is_the_mergers_so_the_two_copies_cannot_drift():
 def test_a_report_at_exactly_readys_five_day_term_lets_the_flip_finish(fake, tmp_path, capsys):
     rc, out, _ = apply(fake, tmp_path, capsys, rep=report(tmp_path, compared_days=float(pef.READY_DAYS)))
     assert rc == 0 and "flipped: the classic protection is gone" in out
+
+
+@pytest.mark.parametrize("queue,says", [({"entries": {"totalCount": 3}}, "holds 3 entries"), ("error", "could not be read"),
+                                        (None, "could not be read"), ({"entries": {"totalCount": "3"}}, "non-integer")])
+def test_a_merge_queue_that_is_not_empty_or_not_readable_blocks_the_flip(fake, tmp_path, capsys, queue, says):
+    fake.queue = queue
+    dig = plan_digest(fake, tmp_path, capsys)
+    rc, out, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
+    assert rc != 0 and says in out and says in err and fake.writes() == []
+
+
+def test_an_empty_merge_queue_does_not_block_the_flip(fake, tmp_path, capsys):
+    _, out, _ = run(fake, tmp_path, capsys)
+    assert "blockers for --apply: none" in out and fake.graphql
+
+
+def test_a_queue_that_fills_between_the_plan_and_the_first_write_writes_nothing(fake, tmp_path, capsys):
+    empty, full = {"entries": {"totalCount": 0}}, {"entries": {"totalCount": 1}}
+    fake.queue = [empty, empty, full]   # the plan, the apply's blockers, then the re-read before write 1
+    dig = plan_digest(fake, tmp_path, capsys)
+    rc, _, err = run(fake, tmp_path, capsys, "--apply", "--confirm", dig)
+    assert rc != 0 and "holds 1 entries" in err and fake.writes() == []

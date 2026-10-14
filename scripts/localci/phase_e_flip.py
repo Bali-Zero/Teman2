@@ -116,6 +116,20 @@ def gh_all(path: str) -> list:
     raise FlipError(f"gh api {path}: more than {MAX_PAGES} pages — refusing a truncated count")
 
 
+def queue_blockers(repo: str, branch: str) -> list[str]:
+    """The flip strands whatever GitHub's merge queue still holds: it must be empty, and an unreadable queue is not empty."""
+    owner, name = repo.split("/")
+    try:
+        doc = gh("graphql", "-f", "query=query($owner: String!, $name: String!, $branch: String!) { repository(owner: $owner, name: $name) "
+                 "{ mergeQueue(branch: $branch) { entries { totalCount } } } }", "-f", f"owner={owner}", "-f", f"name={name}", "-f", f"branch={branch}")
+        count = doc["data"]["repository"]["mergeQueue"]["entries"]["totalCount"]   # a repo with no queue answers null: unreadable, not empty
+    except (FlipError, KeyError, TypeError) as exc:
+        return [f"the merge queue of {branch} could not be read ({type(exc).__name__}): an unreadable queue is not an empty one"]
+    if type(count) is not int:
+        return [f"the merge queue of {branch} answered a non-integer entry count {count!r}"]
+    return [f"the merge queue of {branch} holds {count} entries: let it drain before the flip"] if count else []
+
+
 def classic_body(doc: dict) -> dict:
     """The GET shape of a classic protection turned into the PUT body that recreates it; a setting this tool cannot restore
     exactly is refused, never dropped."""
@@ -481,7 +495,7 @@ def run_flip(a: argparse.Namespace) -> int:
         return EXIT_OK
     print("writes the flip makes, in order:")
     print("\n".join(show_writes(writes)))
-    all_blockers = blockers + rep_blockers
+    all_blockers = blockers + queue_blockers(a.repo, a.branch) + rep_blockers
     print("blockers for --apply: " + ("; ".join(all_blockers) if all_blockers else "none"))
     print(f"plan digest: {dig}  (--apply needs --confirm {dig}, read from a plan of this very state)")
     print(QUIESCENCE)
@@ -507,7 +521,7 @@ def run_flip(a: argparse.Namespace) -> int:
         return None if ok else "the ruleset's answer is not the target"
 
     def still_ready() -> str:
-        return "; ".join(read_report(a.report, a.repo, a.branch)[0])
+        return "; ".join(read_report(a.report, a.repo, a.branch)[0] + queue_blockers(a.repo, a.branch))
 
     sent: list = []
     a.sent = sent   # main reads it: a failure outside W4's handler after a send is still exit 3
