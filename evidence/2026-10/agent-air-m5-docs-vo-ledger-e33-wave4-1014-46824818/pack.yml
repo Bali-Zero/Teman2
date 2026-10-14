@@ -52,4 +52,27 @@ decisions:
       The live observations (page, MCP, PDF, deploy-path and replay-drift facts) were verified by nuzantara-57 on
       2026-10-14 and are recorded as handed over; this session re-read only the merge shas, PR states, merge times,
       the deploy run and the comment URLs with gh.
-dissent: []
+dissent:
+  - seat: codex gpt-5.6-sol (the 01-07-43 rollout of 2026-10-15, "model":"gpt-5.6-sol" confirmed; retry after the first run the 00-36-22 rollout hit the 1500s timeout, exit 124, no findings; the retry prompt added "~15 min budget, do not run pytest/vitest", a deviation from the given prompt)
+    head: c0cc0bbf2a
+    findings:
+      - {
+          severity: MEDIUM,
+          where: "test_visa_ledger_seq29.py:407",
+          disposition: "VALID, cured: parser emits PHANTOM-OPERATOR so the != PHANTOM pin was vacuous; now asserts Qdrant row OPERATOR-GATED and exactly 4 TECH-DEBT of 5",
+        }
+      - {
+          severity: MEDIUM,
+          where: "PENDING-ARMS.md replay-pins row",
+          disposition: "VALID, cured: missing step and proof now require a named workflow job or receptor plus one green observation after the fixture merge",
+        }
+      - {
+          severity: MEDIUM,
+          where: "PENDING-ARMS.md Qdrant row",
+          disposition: "VALID, cured: step lists three separate conditions (M9 on origin/main, Zero's recorded authorisation, operator credentials) and the proof checks M9 ancestry and the authorisation link before dry run and --apply; owner kept operator[secret] so the class stays OPERATOR-GATED",
+        }
+      - {
+          severity: LOW,
+          where: "test_visa_ledger_seq29.py:336",
+          disposition: "VALID, cured: replay-fixture added to the in-flight lane pin",
+        }

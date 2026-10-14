@@ -335,7 +335,7 @@ def test_wave4_entry_states_the_gaps_and_does_not_overclaim():
 
 def test_wave4_entry_names_the_in_flight_lanes_by_name():
     body = _wave4_entry()
-    for lane in ("pr10", "vo-copy", "tree-invest", "stay-invariants", "zantara-e33f-followup", "book-sponsor"):
+    for lane in ("pr10", "vo-copy", "tree-invest", "stay-invariants", "zantara-e33f-followup", "book-sponsor", "replay-fixture"):
         assert body.count(lane) >= 1, lane
 
 
@@ -362,6 +362,8 @@ WAVE4_ROWS = (
 def test_wave4_pending_rows_each_open_exactly_once_with_owner_and_proof():
     opened = _rows("opened 2026-10-14 (M5, VISA-ORACLE E33 wave 4)")
     assert len(opened) == len(WAVE4_ROWS) == 5
+    replay = [r for r in opened if "observe_visa_oracle_replay_pins.py` is red" in r][0]
+    assert "AND a named workflow job or receptor runs it" in replay.split(" | ")[4]
     for needle, owner in WAVE4_ROWS:
         rows = [r for r in opened if needle in r]
         assert len(rows) == 1, needle
@@ -371,7 +373,7 @@ def test_wave4_pending_rows_each_open_exactly_once_with_owner_and_proof():
         assert fields[3] == owner, needle
         assert fields[4].startswith("proof-of-armed:"), needle
     qdrant = [r for r in opened if "Qdrant pricing collection" in r][0]
-    for token in ("--purge-internal", "--apply", "updates=0 deletes=3", "M9 test", "Zero authorises"):
+    for token in ("--purge-internal", "--apply", "updates=0 deletes=3", "M9 test", "Zero authorises", "is on origin/main", "recorded authorisation"):
         assert token in qdrant, token
 
 
@@ -404,7 +406,9 @@ def test_wave4_rows_parse_with_the_ledger_grammar_and_classify_as_intended():
 
     walk(json.loads(out))
     assert sorted(f["owner"] for f in found) == sorted(o.removeprefix("owner: ") for _, o in WAVE4_ROWS)
-    assert all(f["class"] != "PHANTOM" for f in found)
+    classes = {f["owner"]: f["class"] for f in found}
+    assert classes["operator[secret]"] == "OPERATOR-GATED"
+    assert [f["class"] for f in found].count("TECH-DEBT") == 4 and len(found) == 5
 
 
 def test_observer_floor_is_the_true_count_of_this_file():
