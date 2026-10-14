@@ -231,6 +231,18 @@ def test_an_old_eviction_still_orders_the_head_behind_the_others(world):   # noq
     assert [p["number"] for p in todo] == [3, 1]
 
 
+def test_a_tick_reads_the_clock_when_it_counts_evictions(world):   # noqa: F811
+    world.gh.prs = [pr(1, world.head1), pr(2, world.head2)]
+    world.state.mkdir(parents=True, exist_ok=True)
+    stamp = lambda ago_s: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - ago_s))
+    for n, head, ago in ((1, world.head1, 7 * 3600), (2, world.head2, 3600)):
+        for _ in range(mg.EVICT_CAP):
+            mg.journal(world.state, {**eviction(n, head, world.base, stamp(ago))})
+    world.tick()
+    skipped = {r["pr"] for r in world.journal() if r["kind"] == "skipped" and r["why"] == "evicted_cap"}
+    assert skipped == {2}   # 7 h old: history; 1 h old: a cap
+
+
 def test_the_floor_print_names_both_floors(world, capsys):   # noqa: F811
     world.gh.prs = [pr(1, world.head1)]
     args = ["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--remote-url", str(world.origin), "--python", "py"]
