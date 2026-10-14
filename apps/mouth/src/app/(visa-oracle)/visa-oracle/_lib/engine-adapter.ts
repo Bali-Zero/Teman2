@@ -357,8 +357,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Anda berkomitmen pada PT PMA sebagai pemegang saham-direktur atau pemegang saham-komisaris, dengan modal disetor minimal Rp 2,5 miliar.",
   ),
   E33E_RETIREMENT_ELIGIBLE: text(
-    `Retirement, age 55 or over, with a deposit of ${usd(E33E_DEPOSIT_THRESHOLD_USD, "en-US")} or more held in your own name at a state bank, plus passive income of ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} or more a month.`,
-    `Pensiun, usia 55 tahun ke atas, dengan deposito minimal ${usd(E33E_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama sendiri di bank BUMN, ditambah penghasilan pasif minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan.`,
+    `Retirement, age 55 or over, with a deposit of ${usd(E33E_DEPOSIT_THRESHOLD_USD, "en-US")} or more held in your own name at a state bank, plus income or allowance of ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} or more a month.`,
+    `Pensiun, usia 55 tahun ke atas, dengan deposito minimal ${usd(E33E_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama sendiri di bank BUMN, ditambah penghasilan atau tunjangan minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan.`,
   ),
   // PR-M (owner ruling 2026-09-27): neutral on purpose — no sponsor clause.
   // Rule packs <= 23 gate E33F on `family.sponsor_confirmed`; from seq-24 a
@@ -366,8 +366,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // candidate and the verdict carries `E33F_PENJAMIN_NOTE`), so this sentence
   // must not promise a sponsor the pack may not require.
   E33F_RETIREMENT_ELIGIBLE: text(
-    "Retirement with passive income of USD 3,000 per month or more.",
-    "Pensiun dengan penghasilan pasif minimal USD 3.000 per bulan.",
+    "Retirement with income or allowance of USD 3,000 per month or more.",
+    "Pensiun dengan penghasilan atau tunjangan minimal USD 3.000 per bulan.",
   ),
   // `hf.e33f.sponsor-required` (EXCLUDE, `family.sponsor_confirmed == false`)
   // — reachable via `no_path_reasons` since D3-3's retirement-basis
@@ -611,8 +611,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   ),
   // RETIRED (replayable): last emitted by signed seq-7. See RETIRED_SUPPORT_REASON_KEYS.
   E33E_DEPOSIT_INCOME_BASIS_ADVISOR_CHECK: text(
-    "This route can be met on a deposit basis or a passive-income basis. We work out which one fits you with one of our advisors.",
-    "Jalur ini dapat dipenuhi berbasis deposito atau penghasilan pasif. Kami menentukan mana yang sesuai untuk Anda bersama konsultan kami.",
+    "This route can be met on a deposit basis or an income or allowance basis. We work out which one fits you with one of our advisors.",
+    "Jalur ini dapat dipenuhi berbasis deposito atau berbasis penghasilan atau tunjangan. Kami menentukan mana yang sesuai untuk Anda bersama konsultan kami.",
   ),
   E33E_AGE_55_59_ADVISOR_CHECK: text(
     "Between 55 and 59 the age requirement for this route is read differently by different offices. We check how it currently applies to you.",
@@ -760,8 +760,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // Second Home amounts are interpolated from the constants above (which the
   // pack owns) rather than typed a third time.
   SECOND_HOME_GUARANTEE_BELOW_THRESHOLD: text(
-    `The Second Home route is granted against a guarantee: a bank deposit of at least ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")} held in your own name at a state bank, or qualifying property worth at least ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "en-US")}. What you declared is below both. If you are 55 or over, the Retirement KITAS (E33E) is assessed on a smaller deposit plus monthly passive income; for a visit rather than a stay, the open door is the Tourism Visit Visa (C1).`,
-    `Jalur Rumah Kedua diberikan atas dasar jaminan: deposito bank minimal ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama Anda sendiri di bank milik negara, atau properti yang memenuhi syarat senilai minimal ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}. Yang Anda nyatakan berada di bawah keduanya. Jika usia Anda 55 tahun atau lebih, KITAS Pensiun (E33E) dinilai atas deposito yang lebih kecil ditambah penghasilan pasif bulanan; untuk kunjungan dan bukan tinggal, pintu yang terbuka adalah Visa Kunjungan Wisata (C1).`,
+    `The Second Home route is granted against a guarantee: a bank deposit of at least ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")} held in your own name at a state bank, or qualifying property worth at least ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "en-US")}. What you declared is below both. If you are 55 or over, the Retirement KITAS (E33E) is assessed on a smaller deposit plus monthly income or allowance; for a visit rather than a stay, the open door is the Tourism Visit Visa (C1).`,
+    `Jalur Rumah Kedua diberikan atas dasar jaminan: deposito bank minimal ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama Anda sendiri di bank milik negara, atau properti yang memenuhi syarat senilai minimal ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}. Yang Anda nyatakan berada di bawah keduanya. Jika usia Anda 55 tahun atau lebih, KITAS Pensiun (E33E) dinilai atas deposito yang lebih kecil ditambah penghasilan atau tunjangan bulanan; untuk kunjungan dan bukan tinggal, pintu yang terbuka adalah Visa Kunjungan Wisata (C1).`,
   ),
   // A seq-20 exclusion that no census walk surfaced until seq-21: once E33A
   // has an eligibility rule covering EMPLOYMENT it is purpose-feasible for a
@@ -839,8 +839,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Visa pelajar memerlukan penerimaan dan sponsor yang sudah dikonfirmasi; Anda belum mengonfirmasi keduanya.",
   ),
   RETIREMENT_INCOME_BELOW_THRESHOLD: text(
-    `The retirement visas (E33E/E33F) need documented passive income of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month.`,
-    `Visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan.`,
+    `The retirement visas (E33E/E33F) need documented income or allowance of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month.`,
+    `Visa pensiun (E33E/E33F) memerlukan penghasilan atau tunjangan terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan.`,
   ),
 
   // Slice A10 — 14 EXCLUDE codes reachable in signed seq-23 that predate
@@ -997,8 +997,8 @@ function retirementIncomeBelowThresholdReason(
   const raw = facts.secondhome_passive_income_usd;
   if (raw === "unsure") {
     return text(
-      `You were not sure of your monthly passive income, so it counted as zero. The retirement visas need documented passive income of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month: come back with the figure, or ask a Bali Zero advisor.`,
-      `Anda belum yakin dengan penghasilan pasif bulanan Anda, sehingga dihitung nol. Visa pensiun memerlukan penghasilan pasif terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan: kembalilah dengan angkanya, atau tanyakan kepada konsultan Bali Zero.`,
+      `You were not sure of your monthly income or allowance, so it counted as zero. The retirement visas need documented income or allowance of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month: come back with the figure, or ask a Bali Zero advisor.`,
+      `Anda belum yakin dengan penghasilan atau tunjangan bulanan Anda, sehingga dihitung nol. Visa pensiun memerlukan penghasilan atau tunjangan terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan: kembalilah dengan angkanya, atau tanyakan kepada konsultan Bali Zero.`,
     );
   }
   if (raw === undefined || !/^(0|[1-9]\d*)$/.test(raw)) return undefined;
@@ -1010,8 +1010,8 @@ function retirementIncomeBelowThresholdReason(
     return undefined;
   }
   return text(
-    `You declared ${usd(value, "en-US")} a month; the retirement visas (E33E/E33F) need documented passive income of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month.`,
-    `Anda menyatakan ${usd(value, "id-ID")} per bulan; visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan.`,
+    `You declared ${usd(value, "en-US")} a month; the retirement visas (E33E/E33F) need documented income or allowance of at least ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} a month.`,
+    `Anda menyatakan ${usd(value, "id-ID")} per bulan; visa pensiun (E33E/E33F) memerlukan penghasilan atau tunjangan terdokumentasi minimal ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "id-ID")} per bulan.`,
   );
 }
 

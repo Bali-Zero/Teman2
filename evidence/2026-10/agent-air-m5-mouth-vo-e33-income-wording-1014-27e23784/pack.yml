@@ -1,0 +1,120 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Fresh gate of #8454, condition C1 - the result sentences must say income or allowance (penghasilan atau
+  tunjangan), as the official E33-family pages and the interview (since #8454) do. The #8454 pack's
+  D-passive-aligned decision and its dissent #5 disposition overstated the cure, because the verdict
+  sentences in engine-adapter.ts still said passive income.
+mission: >-
+  The E33-family result sentences say "income or allowance" (penghasilan atau tunjangan), as the official page and the interview now do.
+copy_rule: >-
+  Say only what the rule or the official page says: the retirement route (E33E/E33F) asks for documented
+  income or allowance of at least USD 3,000 per month; the change swaps the word and asserts no figure, route
+  or condition of its own.
+lanes:
+  - lane: e33-income-wording
+    role: build
+    seat: claude-sonnet-5 (Claude Code workflow subagent), worktree mouth-vo-e33-income-wording-1014 on M5.
+  - lane: e33-income-wording-ground-truth
+    role: ground_truth
+    seat: >-
+      the official E33-family pages and the interview copy (i18n.ts, since #8454), which say income or
+      allowance (penghasilan atau tunjangan); engine-adapter.ts is the file changed and the change only aligns its
+      visible wording to them.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "7d82dfaf0b3efd39ae38ab4a1084252f031c2decdcbdb7cc2dfb855f156d91c1" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at origin/main cf31a25e6f (before the change).
+pii_scan: clean
+bites:
+  consumer: >-
+    the adapter contract that builds the public Visa Oracle result sentences (engine-adapter.ts source plus its unit tests,
+    EN and ID, each sentence checked on its own). The rendered public page is observed after the mouth deploy, outside CI, by a headless
+    replay on Pro (walk2.mjs) of a retirement passive-income persona.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_e33_income_wording.py
+  expect: "contains:income wording holds"
+receipts:
+  - claim: "Receipts below are bound to code commit 0c5c79ef8d (engine-adapter.ts, observer and its pytest in their final bytes); only pack and brief change after it."
+    cmd: git rev-parse --short=10 0c5c79ef8d
+    result: "0c5c79ef8d on a fresh origin/main cf31a25e6f (ancestor; nothing pushed)"
+    exit: 0
+    ts: "2026-10-13T23:30:00Z"
+    seat: this session
+  - claim: "The whole visa-oracle Vitest tree, _components included, on the final code."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 56 passed (56); Tests 1483 passed (1483)"
+    exit: 0
+    ts: "2026-10-13T23:34:00Z"
+    seat: this session
+  - claim: "apps/mouth typechecks on the final code."
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-13T23:35:00Z"
+    seat: this session
+  - claim: "The observer passes on the final code: no banned copy line (hyphenated form included), each of the 14 sentences carries its wording, adapter test file fully green with the four pin tests run."
+    cmd: python3 scripts/ci/observe_visa_oracle_e33_income_wording.py
+    result: "Tests 165 passed (165); income wording holds"
+    exit: 0
+    ts: "2026-10-13T23:29:36Z"
+    seat: this session
+  - claim: "The observer's parsers, banned scan and per-sentence check reject skipped/todo/failed/reduced counts, banned copy lines, a third wording on one sentence and a missing or duplicated anchor."
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_e33_income_wording.py
+    result: "21 passed"
+    exit: 0
+    ts: "2026-10-13T23:28:00Z"
+    seat: this session
+  - claim: "Mutation: restoring the hyphenated income-or-allowance on the replayable sentence turns the observer scan red (banned line and sentence lacks the phrase) - the miss the red team found."
+    cmd: in-process call of banned_lines and sentence_problems on the source with the old line 614 wording
+    result: "banned_lines -> [614]; sentence_problems -> 1 problem on the deposit-or-income anchor"
+    exit: 0
+    ts: "2026-10-13T23:29:36Z"
+    seat: this session
+  - claim: "The replay-pins observer is unchanged by the wording swap."
+    cmd: python3 scripts/ci/observe_visa_oracle_replay_pins.py
+    result: "Tests 252 passed (252); replay pins hold"
+    exit: 0
+    ts: "2026-10-13T23:35:30Z"
+    seat: this session
+  - claim: "The legacy client-copy guard stays green."
+    cmd: python3 scripts/ci/observe_visa_oracle_client_copy.py
+    result: "OK visa-oracle client copy: 3600 literals scanned, 0 banned"
+    exit: 0
+    ts: "2026-10-13T23:35:30Z"
+    seat: this session
+  - claim: "The whole backend visa_engine test directory was run although no backend file changed; 4 failed, 39 errors, all DB-state or environment (missing psutil, DB schema state such as the absent policy_scope column and migration 281), none touching the mouth adapter or a count pin, on this machine's local database."
+    cmd: cd apps/backend-rag && python3 -m pytest backend/tests/services/visa_engine
+    result: "4 failed, 3625 passed, 15 skipped, 3 xfailed, 39 errors in 938.90s (pytest process exit 1; env/DB failures, same tally as the first run)"
+    exit: 1
+    ts: "2026-10-13T23:52:28Z"
+    seat: this session
+decisions:
+  - id: D-word-swap-only
+    decision: >-
+      Only visible EN/ID copy changes ("passive income" to "income or allowance", "penghasilan pasif" to
+      "penghasilan atau tunjangan", "passive-income basis" to "an income or allowance basis" / "berbasis penghasilan atau tunjangan"); fact and basis
+      keys (passive_income, secondhome_passive_income_usd) and code comments are untouched, no threshold or
+      route logic moves.
+  - id: D-observer-scans-source
+    decision: >-
+      The observer scans the adapter source for banned phrases (now including the hyphenated income-or-allowance)
+      outside comment lines, checks each of the 14 E33 sentences (EN and ID, both dynamic branches) on its own line against
+      its expected wording, then runs the adapter test file with the four retirement-income pin tests required as run, so
+      reverting the wording turns it red.
+dissent:
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T07-19-23-01a13790-40d3-74a3-b631-98c527ed5569.jsonl, model verified in the rollout file)"
+    objection: "M1 - the replayable sentence at engine-adapter.ts:614 said income-or-allowance (hyphenated), not income or allowance."
+    status: RETRACTED
+    disposition: "Cured in 0c5c79ef8d: the sentence now reads on an income or allowance basis; the observer bans the hyphenated form."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T07-19-23-01a13790-40d3-74a3-b631-98c527ed5569.jsonl, model verified in the rollout file)"
+    objection: "M2 - the observer only checked that the two phrases appear somewhere in the file (fail-open per sentence, passed 165/165 despite M1) and named the public page as consumer while observing source and unit tests."
+    status: RETRACTED
+    disposition: "Cured in 0c5c79ef8d: a 14-row table anchors every E33 sentence (EN and ID, both dynamic branches) to one line and its wording; a mutation of line 614 now turns it red. The bites consumer is declared honestly as the adapter contract; the rendered page is observed after deploy by the Pro headless replay."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T07-19-23-01a13790-40d3-74a3-b631-98c527ed5569.jsonl, model verified in the rollout file)"
+    objection: "M3 - the pack fails its own linter: brief_ref evidence/brief.yml does not resolve to a file on disk."
+    status: RETRACTED
+    disposition: "False positive, no code change: brief_ref must be evidence/brief.yml by repo convention (CI and pre-push stage the brief there; a dated brief_ref fails the pre-push lint). The reviewer linted without staging; the lint is clean when run as the convention prescribes."
+  - seat: "codex-gpt-5.6-sol (read-only red team, rollout rollout-2026-10-14T07-19-23-01a13790-40d3-74a3-b631-98c527ed5569.jsonl, model verified in the rollout file)"
+    objection: "L4 - receipts were recorded against 6536ebbcfd, not the reviewed HEAD b74fff82."
+    status: RETRACTED
+    disposition: "Cured: every check was re-run after the last code change and the receipts are bound to code commit 0c5c79ef8d; the pack and brief are the only files that change after it."

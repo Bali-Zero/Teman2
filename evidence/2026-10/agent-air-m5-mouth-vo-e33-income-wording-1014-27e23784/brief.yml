@@ -1,0 +1,20 @@
+gear: 2
+gear_reason: >-
+  Size floor 2 after the red-team cure (churn incl. tests and evidence passes 400); first drafted at floor 1 (small diff: 14 copy lines and 7 test pins in the mouth engine adapter, plus a
+  no-argument observer and its unit test). Client-copy wording only; no backend, no data, no pricing,
+  no interview tree change, no new behaviour.
+mission: >-
+  The E33-family result sentences say "income or allowance" (penghasilan atau tunjangan), as the official page and the interview now do.
+objective: >-
+  The six EN/ID outcome sentences in engine-adapter.ts that still said "passive income" or "penghasilan pasif"
+  (E33E/E33F candidate line, retirement-income line, the combined deposit-or-income consultation line, the
+  Second Home hold line, the retirement-income-below-minimum sentences) say "income or allowance" and
+  "penghasilan atau tunjangan"; fact and basis keys are untouched.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+  - scripts/ci/observe_visa_oracle_e33_income_wording.py
+  - tests/scripts/test_observe_visa_oracle_e33_income_wording.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
