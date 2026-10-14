@@ -286,6 +286,9 @@ RUN_FILES = ("status.json", "hosted_compare.json", "merger.log", "state/plan.jso
 SEVEN_DAY_KEEPS = {f for f in RUN_FILES if not f.startswith("logs/") and not f.endswith("call-graph.json")}
 
 
+FINISHED_25H = {f for f in RUN_FILES if not f.endswith("call-graph.json")}   # B26: a finished run past 24 h has lost only BULK
+
+
 def run_dir(runs: Path, age_days: float) -> Path:
     stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime(NOW - age_days * 24 * H))
     run = runs / f"pr1-{'a' * 12}-{'b' * 12}-{stamp}"
@@ -303,7 +306,7 @@ def test_a_run_keeps_everything_for_seven_days_then_its_verdict_and_loses_logs_a
     runs = tmp_path / "runs"
     young, week, month_less, month = (run_dir(runs, d) for d in (6.5, 7.5, 29.5, 30.5))
     out = pm.trim_runs(runs, NOW, dry=False)
-    assert files(young) == set(RUN_FILES)
+    assert files(young) == FINISHED_25H
     assert files(week) == files(month_less) == SEVEN_DAY_KEEPS and not (week / "logs").exists()
     assert files(month) == {"status.json", "hosted_compare.json", "state/plan.json"} and not (month / "receipts").exists()
     assert (set(out["trimmed_7d"]), out["trimmed_30d"]) == ({week.name, month_less.name}, [month.name]) and out["freed_gb"] >= 0
@@ -343,8 +346,8 @@ def test_b14_a_pack_a_dead_run_left_goes_after_24_hours_and_nothing_else_of_a_yo
     runs = tmp_path / "runs"
     stale, young = packed_run(runs, 25), packed_run(runs, 23)
     out = pm.trim_runs(runs, NOW, dry=False)
-    assert files(stale) == set(RUN_FILES) and files(young) == set(RUN_FILES) | set(PACK_FILES)
-    assert out["trimmed_pack"] == [stale.name] and out["trimmed_7d"] == [] and out["trimmed_30d"] == [] and out["freed_gb"] >= 0
+    assert files(stale) == FINISHED_25H and files(young) == set(RUN_FILES) | set(PACK_FILES)
+    assert out["trimmed_pack"] == [stale.name] and out["trimmed_bulk"] == [stale.name] and out["trimmed_7d"] == [] and out["trimmed_30d"] == [] and out["freed_gb"] >= 0
 
 
 def test_b14_an_eight_day_run_loses_its_pack_with_its_logs_and_call_graphs(tmp_path):
@@ -360,7 +363,7 @@ def test_b14_a_dry_run_removes_no_pack_and_a_run_without_one_is_not_listed(tmp_p
     out = pm.trim_runs(runs, NOW, dry=True)
     assert out["trimmed_pack"] == [stale.name] and files(stale) == set(RUN_FILES) | set(PACK_FILES)
     clean = run_dir(tmp_path / "other", 25 / 24)
-    assert pm.trim_runs(tmp_path / "other", NOW, dry=False)["trimmed_pack"] == [] and files(clean) == set(RUN_FILES)
+    assert pm.trim_runs(tmp_path / "other", NOW, dry=False)["trimmed_pack"] == [] and files(clean) == FINISHED_25H
 
 
 def test_prune_journals_the_trim_and_never_touches_the_decisions_journal(tmp_path):
@@ -1340,3 +1343,77 @@ def test_b22_the_python_prefix_of_the_job_is_part_of_the_recomputed_tag(tmp_path
     state, docker, imgs, m = _keeper_world(tmp_path, monkeypatch)
     assert m.tag(MOUTH, prefix="/opt/py312/bin") != m.tag(MOUTH, prefix="")   # the digest depends on it
     assert prune_line(state, docker)["main_tags"][MOUTH] == imgs[MOUTH][0]["tag"]
+
+
+# ------------------------------------------------------------------ B26: the bulk receipts of a finished run go after 24 hours
+def aged(runs: Path, age_h: float, files_=RUN_FILES) -> Path:
+    stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime(NOW - age_h * H))
+    run = runs / f"pr1-{'a' * 12}-{'b' * 12}-{stamp}"
+    for rel in files_:
+        (run / rel).parent.mkdir(parents=True, exist_ok=True)
+        (run / rel).write_text(rel)
+    return run
+
+
+def test_b26_a_finished_run_at_25h_loses_bulk_and_keeps_the_verdict_the_status_and_the_plan(tmp_path):
+    runs = tmp_path / "runs"
+    old, fresh = aged(runs, 25), aged(runs, 23)
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert files(old) == FINISHED_25H and {"receipts/pysa/base/results/taint-output.json", "status.json", "state/plan.json", "logs/ctx.a.log"} <= files(old)
+    assert files(fresh) == set(RUN_FILES)
+    assert out["trimmed_bulk"] == [old.name] and out["trimmed_pack"] == [] and out["trimmed_7d"] == [] and out["trimmed_30d"] == []
+
+
+def test_b26_a_run_without_status_json_at_three_days_keeps_bulk(tmp_path):
+    runs = tmp_path / "runs"
+    dead = aged(runs, 72, [f for f in RUN_FILES if f != "status.json"])
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert files(dead) == set(RUN_FILES) - {"status.json"} and out["trimmed_bulk"] == []
+
+
+def test_b26_a_status_json_that_is_a_link_does_not_make_a_run_finished(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 72, [f for f in RUN_FILES if f != "status.json"])
+    (tmp_path / "elsewhere.json").write_text("{}")
+    (run / "status.json").symlink_to(tmp_path / "elsewhere.json")
+    assert pm.trim_runs(runs, NOW, dry=False)["trimmed_bulk"] == [] and (run / "receipts/pysa/base/results/call-graph.json").exists()
+
+
+def test_b26_a_link_named_like_bulk_goes_as_a_link_and_its_target_stays(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25, [f for f in RUN_FILES if not f.endswith("call-graph.json")])
+    target = tmp_path / "outside.json"
+    target.write_text("keep")
+    (run / "receipts/pysa/base/results/call-graph.json").symlink_to(target)
+    pm.trim_runs(runs, NOW, dry=False)
+    assert not (run / "receipts/pysa/base/results/call-graph.json").is_symlink() and target.read_text() == "keep"
+
+
+def test_b26_freed_gb_counts_the_bulk_and_a_dry_run_removes_nothing(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    big = run / "receipts/pysa/base/results/call-graph.json"
+    big.write_bytes(b"x" * 30_000_000)
+    dry = pm.trim_runs(runs, NOW, dry=True)
+    assert dry["trimmed_bulk"] == [run.name] and dry["freed_gb"] >= 0.03 and big.exists()
+    real = pm.trim_runs(runs, NOW, dry=False)
+    assert real["freed_gb"] == dry["freed_gb"] and not big.exists()
+    assert pm.trim_runs(runs, NOW, dry=False)["trimmed_bulk"] == []   # not trimmed twice
+
+
+def test_b26_a_run_past_seven_days_is_listed_under_its_old_class_and_not_as_bulk(tmp_path):
+    runs = tmp_path / "runs"
+    week = aged(runs, 8 * 24)
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert out["trimmed_7d"] == [week.name] and out["trimmed_bulk"] == []
+
+
+def test_b26_a_linked_directory_is_never_walked_so_a_bulk_file_behind_it_stays(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "call-graph.json").write_text("someone else's")
+    (run / "receipts" / "linked").symlink_to(outside)
+    pm.trim_runs(runs, NOW, dry=False)
+    assert (outside / "call-graph.json").read_text() == "someone else's"

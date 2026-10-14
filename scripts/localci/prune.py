@@ -32,6 +32,7 @@ VM_MIN_FREE_GB = 15.0       # B8: under it after the cap every deps image but th
                             # plan references first, ties oldest, the newest included (env LOCALCI_VM_MIN_FREE_GB)
 BUILDER_CACHE_GB = 4        # B8: the build cache is kept to this budget (env LOCALCI_BUILDER_CACHE_GB), not by age
 FULL_DAYS, VERDICT_DAYS = 7, 30
+BULK_KEEP_H = 24   # B26: the Pysa call graphs of a FINISHED run (one with a status.json) go after this, not after FULL_DAYS
 RECIPE_LABEL = "org.nuzantara.localci.recipe"
 TAG_RE = re.compile(r"localci-deps:[0-9a-f]{16}\b")
 ID_RE = re.compile(r"sha256:[0-9a-f]{64}")
@@ -318,8 +319,9 @@ def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, 
 
 def trim_runs(runs: Path, now_s: float, dry: bool) -> dict:
     """7 days full; then `logs/` and the Pysa call graphs go; after 30 days only VERDICT stays. A run older than TREE_PACK_STALE_H
-    loses a tree pack its `finally` never removed, whatever its age. Symlinks are removed as links."""
-    out = {"trimmed_7d": [], "trimmed_30d": [], "trimmed_pack": [], "freed_gb": 0.0}
+    loses a tree pack its `finally` never removed, whatever its age. B26: a FINISHED run (it has a status.json) loses the Pysa call
+    graphs from BULK_KEEP_H on, listed as `trimmed_bulk`; the verdict and the rest keep their retention. Symlinks are removed as links."""
+    out = {"trimmed_7d": [], "trimmed_30d": [], "trimmed_pack": [], "trimmed_bulk": [], "freed_gb": 0.0}
     if runs.is_symlink():   # the prune never leaves the merger's state dir: a linked runs/ is someone else's tree
         return {**out, "refused": f"{runs} is a symlink"}
     freed = 0
@@ -328,13 +330,17 @@ def trim_runs(runs: Path, now_s: float, dry: bool) -> dict:
         if age_h is None or age_h < TREE_PACK_STALE_H:
             continue
         full = age_h < FULL_DAYS * 24
-        doomed = []
+        status = run / "status.json"
+        bulk_now = age_h >= BULK_KEEP_H and status.is_file() and not status.is_symlink()
+        doomed, pack_hit, bulk_hit = [], False, False
         for root, dirs, files in os.walk(run):
             rel_root = Path(root).relative_to(run)
             for f in files + [d for d in dirs if (Path(root) / d).is_symlink()]:
                 rel = (rel_root / f).as_posix()
                 pack = rel_root.as_posix() == "state" and f in TREE_PACK
-                if pack or (not full and ((age_h >= VERDICT_DAYS * 24 and rel not in VERDICT) or (age_h < VERDICT_DAYS * 24 and (rel == "logs" or rel.startswith("logs/") or f in BULK)))):
+                bulk = full and bulk_now and f in BULK
+                pack_hit, bulk_hit = pack_hit or pack, bulk_hit or bulk
+                if pack or bulk or (not full and ((age_h >= VERDICT_DAYS * 24 and rel not in VERDICT) or (age_h < VERDICT_DAYS * 24 and (rel == "logs" or rel.startswith("logs/") or f in BULK)))):
                     doomed.append(Path(root) / f)
         if not doomed:
             continue
@@ -347,7 +353,10 @@ def trim_runs(runs: Path, now_s: float, dry: bool) -> dict:
                 if root != str(run) and not os.listdir(root):
                     os.rmdir(root)
         if full:
-            out["trimmed_pack"].append(run.name)
+            if pack_hit:
+                out["trimmed_pack"].append(run.name)
+            if bulk_hit:
+                out["trimmed_bulk"].append(run.name)
         else:
             out["trimmed_30d" if age_h >= VERDICT_DAYS * 24 else "trimmed_7d"].append(run.name)
     out["freed_gb"] = round(freed / 1e9, 2)
