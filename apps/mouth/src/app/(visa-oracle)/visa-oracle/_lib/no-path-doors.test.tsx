@@ -147,7 +147,7 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     ).toBe(replay.walk_corpus_fingerprint);
   });
 
-  it("covers the 17 dead ends, 3 held walks and 1 missing-input walk the current census reports", () => {
+  it("covers the 21 dead ends, 3 held walks and 3 missing-input walks the current census reports", () => {
     // D19 (2026-09-16): the corpus regeneration this pin depends on surfaced
     // one walk the previous evidence had omitted —
     // `offshore_business_exploring_sponsor_no_no_route.json`, D12_NOT_CONVERTIBLE —
@@ -210,14 +210,24 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     // NO_SUPPORTED_PATH with E33G_INCOME_BELOW_THRESHOLD, so the dead ends
     // go 16 -> 17; the business walks lose AGE_BELOW_55 (seq-28) without
     // changing their state. HUMAN_REVIEW_REQUIRED and NEEDS_INPUT hold.
+    //
+    // E33 audit PR-7 rebuild (2026-10-14): #8478 added six E23-family
+    // work-tile variants to the walk corpus without regenerating this
+    // fixture (main's observer was already red on the fingerprint). Re-run
+    // of replay-no-path-doors.py against seq-29 measures four new
+    // NO_SUPPORTED_PATH walks (17 -> 21: work/payer_no,
+    // work/sponsor_employer/{employer_no,sponsor_confirmed_no},
+    // work/no_government_collaboration/sponsor_confirmed_no) and two new
+    // NEEDS_INPUT walks (1 -> 3: payer_unsure, sponsor_confirmed_unsure).
+    // HUMAN_REVIEW_REQUIRED holds at 3. No pre-existing walk changed state.
     const states = replay.walks.map((walk) => walk.state);
     expect(
       states.filter((state) => state === "NO_SUPPORTED_PATH"),
-    ).toHaveLength(17);
+    ).toHaveLength(21);
     expect(
       states.filter((state) => state === "HUMAN_REVIEW_REQUIRED"),
     ).toHaveLength(3);
-    expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(1);
+    expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(3);
     expect(replay.pack.file).toBe("rulepack-prod-029.signed.json");
   });
 

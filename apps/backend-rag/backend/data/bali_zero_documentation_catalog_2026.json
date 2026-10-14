@@ -1,0 +1,373 @@
+{
+  "schema_version": 1,
+  "source": "imigrasi.go.id per-code visa pages, fetched 2026-10-13 (research/visa/2026-10-14-e33-documents/)",
+  "interpretation": "requirements = documents the page asks for when the visa is filed (including the page's special requirements); checklist = what the page asks after entry. Items are the page's own wording (id) with a faithful English rendering (en); page_quote is a verbatim fragment of the saved page text. Vendor-only items (health insurance, domestic helper) are deliberately absent. The catalogue lists documents only and adds no eligibility gate. Every product not listed here keeps UNKNOWN / DOCUMENTATION_CATALOG_NOT_VERIFIED.",
+  "products": {
+    "E33": {
+      "canonical_url": "https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E33",
+      "fetched_at": "2026-10-13T23:11:03Z",
+      "content_sha256": "874e7cce7e9661d618b560f9408302ee79f0190bab7e787998185ffc67ced50a",
+      "text_file": "research/visa/2026-10-14-e33-documents/text/13e920cb-20261013T231103Z.txt",
+      "requirements": [
+        {
+          "en": "Valid passport, valid for at least 6 months before it expires",
+          "id": "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
+          "page_quote": "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis"
+        },
+        {
+          "en": "Personal bank statement of at least USD 2,000 (or the equivalent) covering the last 3 months, showing name, period dates and balance",
+          "id": "Rekening koran pribadi dengan jumlah minimal USD 2.000 atau jumlah yang setara dalam kurun waktu 3 bulan terakhir (termasuk nama, tanggal periode, dan saldo rekening)",
+          "page_quote": "rekening koran pribadi dengan jumlah minimal USD $2000 (dua ribu Dolar Amerika Serikat) atau jumlah yang setara dalam kurun waktu 3 bulan terakhir (termasuk nama, tanggal periode, dan saldo rekening)"
+        },
+        {
+          "en": "Recent colour passport photo (taken within the last year)",
+          "id": "Pasfoto berwarna terbaru (setahun terakhir)",
+          "page_quote": "pasfoto berwarna terbaru (setahun terakhir)"
+        },
+        {
+          "en": "Curriculum vitae",
+          "id": "Daftar riwayat hidup",
+          "page_quote": "Daftar riwayat hidup"
+        },
+        {
+          "en": "Travel history and travel plan (itinerary)",
+          "id": "Riwayat perjalanan dan rencana perjalanan (itinerary)",
+          "page_quote": "Riwayat perjalanan dan rencana perjalanan ( itinerary)"
+        },
+        {
+          "en": "Commitment statement (Surat Pernyataan Komitmen) as the Immigration Guarantee: to place at least USD 130,000 (or the equivalent) in an own-name account at a state-owned bank",
+          "id": "Surat Pernyataan Komitmen sebagai Jaminan Keimigrasian: akan menyimpan dana pada rekening atas nama sendiri pada bank milik negara senilai paling sedikit US$130.000 atau setara",
+          "page_quote": "pernyataan komitmen akan menyimpan dana pada rekening atas nama sendiri pada bank milik negara senilai paling sedikit US$130.000 (seratus tiga puluh ribu Dolar Amerika) atau setara"
+        },
+        {
+          "en": "Or, instead, a commitment statement to buy an apartment (rumah susun) in Indonesia worth at least USD 1,000,000 (or the equivalent)",
+          "id": "Atau, sebagai gantinya, pernyataan komitmen akan membeli properti berupa rumah susun atau apartemen di Indonesia senilai paling sedikit US$1.000.000 atau setara",
+          "page_quote": "Pernyataan komitmen akan membeli properti berupa rumah susun atau apartemen di Indonesia senilai paling sedikit US$1.000.000"
+        }
+      ],
+      "checklist": [
+        {
+          "en": "Within 90 days of entry, report to the immigration office that issued the stay permit, with proof of at least USD 130,000 (or the equivalent) in an own-name account at a state-owned bank",
+          "id": "Dalam waktu paling lama 90 hari sejak masuk ke Indonesia, laporkan ke Kantor Imigrasi yang menerbitkan Izin Tinggal Terbatas dengan bukti kepemilikan dana pada rekening atas nama sendiri di bank milik negara senilai paling sedikit US$130.000 atau setara",
+          "page_quote": "Bukti kepemilihan dana pada rekening atas nama sendiri pada bank milik negara senilai paling sedikit US$130.000"
+        },
+        {
+          "en": "Or, instead, proof of ownership of an apartment (rumah susun) in Indonesia worth at least USD 1,000,000 (or the equivalent), reported within the same 90 days",
+          "id": "Atau, sebagai gantinya, bukti kepemilikan properti berupa rumah susun atau apartemen di Indonesia senilai paling sedikit US$1.000.000 atau setara, dilaporkan dalam 90 hari yang sama",
+          "page_quote": "Bukti kepemilihan properti berupa rumah susun atau apartemen di Indonesia senilai paling sedikit US$1.000.000"
+        }
+      ]
+    },
+    "E33A": {
+      "canonical_url": "https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E33A",
+      "fetched_at": "2026-10-13T23:11:04Z",
+      "content_sha256": "8cdf4e5240d6b2d05578da267156d7b94927da38c2977837d35b6b1ac3ec6181",
+      "text_file": "research/visa/2026-10-14-e33-documents/text/1bedd93f-20261013T231104Z.txt",
+      "requirements": [
+        {
+          "en": "Valid passport, valid for at least 6 months before it expires",
+          "id": "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
+          "page_quote": "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis"
+        },
+        {
+          "en": "Proof of sponsorship from the sponsor, which is the central government",
+          "id": "Bukti penjaminan dari penjamin, yang merupakan pemerintah pusat",
+          "page_quote": "bukti penjaminan dari Penjamin, yang merupakan pemerintah pusat"
+        },
+        {
+          "en": "Personal bank statement of at least USD 2,000 (or the equivalent) covering the last 3 months, showing name, period dates and balance",
+          "id": "Rekening koran pribadi dengan jumlah minimal USD 2.000 atau jumlah yang setara dalam kurun waktu 3 bulan terakhir (termasuk nama, tanggal periode, dan saldo rekening)",
+          "page_quote": "rekening koran pribadi dengan jumlah minimal USD $2000 (dua ribu Dolar Amerika Serikat) atau jumlah yang setara dalam kurun waktu 3 bulan terakhir (termasuk nama, tanggal periode, dan saldo rekening)"
+        },
+        {
+          "en": "Recent colour passport photo (taken within the last year)",
+          "id": "Pasfoto berwarna terbaru (setahun terakhir)",
+          "page_quote": "pasfoto berwarna terbaru (setahun terakhir)"
+        },
+        {
+          "en": "Curriculum vitae",
+          "id": "Daftar riwayat hidup",
+          "page_quote": "Daftar riwayat hidup"
+        },
+        {
+          "en": "Travel history and travel plan (itinerary)",
+          "id": "Riwayat perjalanan dan rencana perjalanan (itinerary)",
+          "page_quote": "Riwayat perjalanan dan rencana perjalanan ( itinerary"
+        },
+        {
+          "en": "Other documents explaining the purpose of the foreigner's arrival",
+          "id": "Dokumen lain untuk menerangkan maksud/tujuan kedatangan Orang Asing",
+          "page_quote": "dokumen lain untuk menerangkan maksud/tujuan kedatangan Orang Asing"
+        },
+        {
+          "en": "Invitation or statement from the central government explaining why the foreigner is invited as a person with special expertise",
+          "id": "Undangan atau keterangan dari pemerintah pusat yang menjelaskan urgensi Orang Asing tersebut diundang sebagai orang yang memiliki keahlian khusus",
+          "page_quote": "Undangan atau keterangan dari pemerintah pusat yang menjelaskan urgensi Orang Asing tersebut diundang sebagai orang yang memiliki keahlian khusus"
+        }
+      ],
+      "checklist": []
+    },
+    "E33B": {
+      "canonical_url": "https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E33B",
+      "fetched_at": "2026-10-13T23:11:04Z",
+      "content_sha256": "463b3da2ea3bccfa132ef25adcf917c0b03f298b7bc6a489bf50a3a8f18c14ab",
+      "text_file": "research/visa/2026-10-14-e33-documents/text/d276549e-20261013T231104Z.txt",
+      "requirements": [
+        {
+          "en": "Valid passport, valid for at least 6 months before it expires",
+          "id": "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
+          "page_quote": "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis"
+        },
+        {
+          "en": "Proof of the Immigration Guarantee (Jaminan Keimigrasian)",
+          "id": "Bukti Jaminan Keimigrasian",
+          "page_quote": "bukti Jaminan Keimigrasian"
+        },
+        {
+          "en": "Personal bank statement of at least USD 2,000 (or the equivalent) covering the last 3 months, showing name, period dates and balance",
+          "id": "Rekening koran pribadi dengan jumlah minimal USD 2.000 atau jumlah yang setara dalam kurun waktu 3 bulan terakhir (termasuk nama, tanggal periode, dan saldo rekening)",
+          "page_quote": "rekening koran pribadi dengan jumlah minimal USD $2000 (dua ribu Dolar Amerika Serikat) atau jumlah yang setara dalam kurun waktu 3 bulan terakhir (termasuk nama, tanggal periode, dan saldo rekening)"
+        },
+        {
+          "en": "Recent colour passport photo (taken within the last year)",
+          "id": "Pasfoto berwarna terbaru (setahun terakhir)",
+          "page_quote": "pasfoto berwarna terbaru (setahun terakhir)"
+        },
+        {
+          "en": "Curriculum vitae",
+          "id": "Daftar riwayat hidup",
+          "page_quote": "Daftar riwayat hidup"
+        },
+        {
+          "en": "Travel history and travel plan (itinerary)",
+          "id": "Riwayat perjalanan dan rencana perjalanan (itinerary)",
+          "page_quote": "Riwayat perjalanan dan rencana perjalanan ( itinerary"
+        },
+        {
+          "en": "Other documents explaining the purpose of the foreigner's arrival",
+          "id": "Dokumen lain untuk menerangkan maksud/tujuan kedatangan Orang Asing",
+          "page_quote": "dokumen lain untuk menerangkan maksud/tujuan kedatangan Orang Asing"
+        },
+        {
+          "en": "Commitment statement (Surat Pernyataan Komitmen) as the Immigration Guarantee: to submit proof of cooperation with the government or a state institution",
+          "id": "Surat Pernyataan Komitmen sebagai Jaminan Keimigrasian: akan menyampaikan bukti kerja sama dengan pemerintah atau lembaga negara",
+          "page_quote": "Jaminan Keimigrasian dengan melampirkan Surat Pernyataan Komitmen akan menyampaikan bukti kerja sama dengan pemerintah atau lembaga negara"
+        },
+        {
+          "en": "Other document explaining the purpose of arrival: a certificate in a special field of expertise needed by the state",
+          "id": "Dokumen lain untuk menerangkan maksud/tujuan kedatangan: sertifikat di bidang keahlian khusus yang dibutuhkan oleh negara",
+          "page_quote": "sertifikat di bidang keahlian khusus yang dibutuhkan oleh negara; atau"
+        },
+        {
+          "en": "Or, instead, proof of graduation from one of the world's top 100 universities within the last 3 years, with a cumulative GPA of at least 3.5 (or equivalent)",
+          "id": "Atau, sebagai gantinya, bukti kelulusan dari salah satu dari daftar 100 universitas terbaik dunia dalam 3 tahun terakhir dengan indeks prestasi kumulatif (grade point average) paling sedikit 3,5 atau setara",
+          "page_quote": "bukti kelulusan dari salah satu dari daftar 100 (seratus) universitas terbaik dunia dalam 3 (tiga) tahun terakhir dengan nilai indeks prestasi kumulatif/grade point average paling sedikit 3,5 (tiga koma lima) atau setara"
+        }
+      ],
+      "checklist": [
+        {
+          "en": "Within 90 days of entry into Indonesia, report to the immigration office that issued the stay permit, with proof of cooperation with the government or a state institution",
+          "id": "Dalam waktu paling lama 90 hari sejak tanggal masuk ke Indonesia, laporkan ke Kantor Imigrasi yang menerbitkan Izin Tinggal Terbatas dengan melampirkan bukti kerja sama dengan pemerintah atau lembaga negara",
+          "page_quote": "dalam waktu paling lama 90 hari terhitung sejak tanggal masuk ke Indonesia dengan melampirkan bukti kerja sama dengan pemerintah atau lembaga negara"
+        }
+      ]
+    },
+    "E33C": {
+      "canonical_url": "https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E33C",
+      "fetched_at": "2026-10-13T23:11:05Z",
+      "content_sha256": "e5309909243c5793e2070f58bed913174a692600ee49a62aa7f2601aa4218140",
+      "text_file": "research/visa/2026-10-14-e33-documents/text/8712f82e-20261013T231105Z.txt",
+      "requirements": [
+        {
+          "en": "Valid passport, valid for at least 6 months before it expires",
+          "id": "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
+          "page_quote": "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis"
+        },
+        {
+          "en": "Proof of sponsorship from the sponsor, a central government agency",
+          "id": "Bukti penjaminan dari penjamin dari instansi pemerintah pusat",
+          "page_quote": "bukti penjaminan dari penjamin dari instansi pemerintah pusat"
+        },
+        {
+          "en": "Personal bank statement of at least USD 2,000 (or the equivalent) covering the last 3 months, showing name, period dates and balance",
+          "id": "Rekening koran pribadi dengan jumlah minimal USD 2.000 atau jumlah yang setara dalam kurun waktu 3 bulan terakhir (termasuk nama, tanggal periode, dan saldo rekening)",
+          "page_quote": "rekening koran pribadi dengan jumlah minimal USD $2000 (dua ribu Dolar Amerika Serikat) atau jumlah yang setara dalam kurun waktu 3 bulan terakhir (termasuk nama, tanggal periode, dan saldo rekening)"
+        },
+        {
+          "en": "Recent colour passport photo (taken within the last year)",
+          "id": "Pasfoto berwarna terbaru (setahun terakhir)",
+          "page_quote": "pasfoto berwarna terbaru (setahun terakhir)"
+        },
+        {
+          "en": "Curriculum vitae",
+          "id": "Daftar riwayat hidup",
+          "page_quote": "Daftar riwayat hidup"
+        },
+        {
+          "en": "Travel history (itinerary)",
+          "id": "Riwayat perjalanan (itinerary)",
+          "page_quote": "Riwayat perjalanan ( itinerary )"
+        },
+        {
+          "en": "Other documents explaining the purpose of the foreigner's arrival",
+          "id": "Dokumen lain untuk menerangkan maksud/tujuan kedatangan Orang Asing",
+          "page_quote": "dokumen lain untuk menerangkan maksud/tujuan kedatangan Orang Asing"
+        },
+        {
+          "en": "Other document: invitation or statement from a central government agency",
+          "id": "Dokumen lain berupa undangan atau keterangan dari instansi pemerintah pusat",
+          "page_quote": "dokumen lain berupa undangan atau keterangan dari instansi pemerintah pusat"
+        }
+      ],
+      "checklist": []
+    },
+    "E33E": {
+      "canonical_url": "https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E33E",
+      "fetched_at": "2026-10-13T23:11:05Z",
+      "content_sha256": "1568c1b0af2e178f543bed6b5b3349c22bbd3f5088c9ad51b444243ae4aeced6",
+      "text_file": "research/visa/2026-10-14-e33-documents/text/a5785df8-20261013T231105Z.txt",
+      "requirements": [
+        {
+          "en": "Valid passport, valid for at least 6 months before it expires",
+          "id": "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
+          "page_quote": "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis"
+        },
+        {
+          "en": "Proof of the Immigration Guarantee (Jaminan Keimigrasian)",
+          "id": "Bukti Jaminan Keimigrasian",
+          "page_quote": "bukti Jaminan Keimigrasian"
+        },
+        {
+          "en": "Personal bank statement of at least USD 2,000 (or the equivalent) covering the last 3 months, showing name, period dates and balance",
+          "id": "Rekening koran pribadi dengan jumlah minimal USD 2.000 atau jumlah yang setara dalam kurun waktu 3 bulan terakhir (termasuk nama, tanggal periode, dan saldo rekening)",
+          "page_quote": "rekening koran pribadi dengan jumlah minimal USD $2000 (dua ribu Dolar Amerika Serikat) atau jumlah yang setara dalam kurun waktu 3 bulan terakhir (termasuk nama, tanggal periode, dan saldo rekening)"
+        },
+        {
+          "en": "Recent colour passport photo (taken within the last year)",
+          "id": "Pasfoto berwarna terbaru (setahun terakhir)",
+          "page_quote": "pasfoto berwarna terbaru (setahun terakhir)"
+        },
+        {
+          "en": "Curriculum vitae",
+          "id": "Daftar riwayat hidup",
+          "page_quote": "Daftar riwayat hidup"
+        },
+        {
+          "en": "Travel history and travel plan (itinerary)",
+          "id": "Riwayat perjalanan dan rencana perjalanan (itinerary)",
+          "page_quote": "Riwayat perjalanan dan rencana perjalanan ( itinerary"
+        },
+        {
+          "en": "Other documents explaining the purpose of the foreigner's arrival",
+          "id": "Dokumen lain untuk menerangkan maksud/tujuan kedatangan Orang Asing",
+          "page_quote": "dokumen lain untuk menerangkan maksud/tujuan kedatangan Orang Asing"
+        },
+        {
+          "en": "Commitment statement (Surat Pernyataan Komitmen) as the Immigration Guarantee: to keep at least USD 50,000 (or the equivalent) in an own-name account at a state-owned bank",
+          "id": "Surat pernyataan komitmen menyimpan dana pada rekening sendiri di bank milik negara senilai paling sedikit US$50.000 atau setara",
+          "page_quote": "surat pernyataan komitmen menyimpan dana pada rekening sendiri di bank milik negara senilai paling sedikit US$50.000 atau setara"
+        },
+        {
+          "en": "Proof of income or allowance of at least USD 3,000 per month",
+          "id": "Bukti penghasilan atau tunjangan dengan nilai sekurang-kurangnya US$3.000 per bulan",
+          "page_quote": "Bukti penghasilan atau tunjangan dengan nilai sekurang-kurangnya US$3.000"
+        }
+      ],
+      "checklist": [
+        {
+          "en": "Within 90 days of entry into Indonesia, report to the immigration office that issued the stay permit, with proof of at least USD 50,000 (or the equivalent) in an own-name account at a state-owned bank",
+          "id": "Dalam waktu paling lama 90 hari sejak masuk ke Indonesia, laporkan ke Kantor Imigrasi yang menerbitkan Izin Tinggal Terbatas dengan bukti dana pada rekening sendiri di bank milik negara senilai paling sedikit US$50.000 atau setara",
+          "page_quote": "dalam waktu paling lama 90 hari terhitung sejak tanggal masuk ke Indonesia dengan melampirkan bukti kepemilikan dana pada rekening sendiri di bank milik negara senilai paling sedikit US$50.000 atau setara"
+        }
+      ]
+    },
+    "E33F": {
+      "canonical_url": "https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E33F",
+      "fetched_at": "2026-10-13T23:11:06Z",
+      "content_sha256": "3943be0e88fc42f03825e27aa050aba435f4f21283645e519972b3b2461695fa",
+      "text_file": "research/visa/2026-10-14-e33-documents/text/429f10c0-20261013T231106Z.txt",
+      "requirements": [
+        {
+          "en": "Sponsorship letter from the sponsor (surat penjaminan)",
+          "id": "Surat penjaminan dari penjamin",
+          "page_quote": "Surat penjaminan dari penjamin"
+        },
+        {
+          "en": "Valid passport, valid for at least 6 months before it expires",
+          "id": "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
+          "page_quote": "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis"
+        },
+        {
+          "en": "Proof of living costs in Indonesia: bank statement for the last 3 months in the name of the foreigner or the sponsor, of at least USD 2,000 (or the equivalent)",
+          "id": "Bukti memiliki biaya hidup selama berada di wilayah Indonesia berupa rekening koran 3 bulan terakhir atas nama Orang Asing atau penjamin dengan jumlah minimal USD 2.000 atau jumlah yang setara",
+          "page_quote": "bukti memiliki biaya hidup selama berada di wilayah Indonesia berupa rekening koran 3 bulan terakhir atas nama Orang Asing atau penjamin dengan jumlah minimal USD $2000 (dua ribu Dolar Amerika Serikat) atau jumlah yang setara"
+        },
+        {
+          "en": "Recent colour passport photo (taken within the last year)",
+          "id": "Pasfoto berwarna terbaru (setahun terakhir)",
+          "page_quote": "pasfoto berwarna terbaru (setahun terakhir)"
+        },
+        {
+          "en": "Curriculum vitae",
+          "id": "Daftar riwayat hidup",
+          "page_quote": "Daftar riwayat hidup"
+        },
+        {
+          "en": "Travel history (itinerary)",
+          "id": "Riwayat perjalanan (itinerary)",
+          "page_quote": "Riwayat perjalanan ( itinerary )"
+        },
+        {
+          "en": "Proof of income or allowance of at least USD 3,000 per month",
+          "id": "Bukti penghasilan atau tunjangan dengan nilai sekurang-kurangnya US$3.000 per bulan",
+          "page_quote": "Bukti penghasilan atau tunjangan dengan nilai sekurang-kurangnya US$3.000"
+        }
+      ],
+      "checklist": []
+    },
+    "E33G": {
+      "canonical_url": "https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E33G",
+      "fetched_at": "2026-10-13T23:11:07Z",
+      "content_sha256": "0d417e52229b562e1d544823dcae8fd503b900fb71c1ac2d1c9fa02b17e3327f",
+      "text_file": "research/visa/2026-10-14-e33-documents/text/36b1e6a4-20261013T231107Z.txt",
+      "requirements": [
+        {
+          "en": "Valid passport, valid for at least 6 months before it expires",
+          "id": "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
+          "page_quote": "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis"
+        },
+        {
+          "en": "Proof of living costs in Indonesia: bank statement for the last 3 months in the name of the foreigner or the sponsor, of at least USD 2,000 (or the equivalent)",
+          "id": "Bukti memiliki biaya hidup selama berada di wilayah Indonesia berupa rekening koran 3 bulan terakhir atas nama Orang Asing atau penjamin dengan jumlah minimal USD 2.000 atau jumlah yang setara",
+          "page_quote": "bukti memiliki biaya hidup selama berada di wilayah Indonesia berupa rekening koran 3 bulan terakhir atas nama Orang Asing atau penjamin dengan jumlah minimal USD $2000 (dua ribu Dolar Amerika Serikat) atau jumlah yang setara"
+        },
+        {
+          "en": "Recent colour passport photo (taken within the last year)",
+          "id": "Pasfoto berwarna terbaru (setahun terakhir)",
+          "page_quote": "pasfoto berwarna terbaru (setahun terakhir)"
+        },
+        {
+          "en": "Curriculum vitae",
+          "id": "Daftar riwayat hidup",
+          "page_quote": "Daftar riwayat hidup"
+        },
+        {
+          "en": "Travel history (itinerary)",
+          "id": "Riwayat perjalanan (itinerary)",
+          "page_quote": "Riwayat perjalanan ( itinerary )"
+        },
+        {
+          "en": "Bank account showing salary or income of at least USD 60,000 per year",
+          "id": "Rekening bank yang membuktikan penghasilan berupa gaji atau penghasilan senilai paling sedikit US$60.000 per tahun",
+          "page_quote": "Rekening bank yang membuktikan penghasilan berupa gaji atau penghasilan senilai paling sedikit US$60.000 per tahun"
+        },
+        {
+          "en": "Employment agreement with a company established outside Indonesia",
+          "id": "Perjanjian kerja dengan perusahaan yang didirikan di luar Wilayah Indonesia",
+          "page_quote": "Perjanjian kerja dengan perusahaan yang didirikan di luar Wilayah Indonesia"
+        }
+      ],
+      "checklist": []
+    }
+  }
+}

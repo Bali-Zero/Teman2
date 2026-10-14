@@ -63,6 +63,8 @@ export function makeVisaOracleResponse(
     stay_policy: {
       stay: { kind: "FIXED_DAYS" as const, minimum_days: 60, maximum_days: 60 },
       extension: {
+        status: "VERIFIED" as const,
+        reason_code: null,
         allowed: true,
         maximum_extensions: 2,
         days_per_extension: 60,

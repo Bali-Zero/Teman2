@@ -2200,3 +2200,144 @@ describe("OutcomeSheet — What this permit does not allow (PR-20)", () => {
     },
   );
 });
+
+describe("OutcomeSheet — fixed-days stay-permit length, verified renewal, and longer-stay continuation (PR-7)", () => {
+  function outcomeWithDuration(
+    duration: OutcomeCandidate["duration"],
+    amount = 14_000_000,
+  ): OutcomeViewModel {
+    const base = outcomeFor("SUPPORTED_CANDIDATES");
+    if (base.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("test fixture state mismatch");
+    }
+    return {
+      ...base,
+      candidates: [
+        {
+          ...CANDIDATE,
+          code: "E33F",
+          name: text("Retirement KITAS", "KITAS Pensiun"),
+          price: {
+            status: "AVAILABLE",
+            currency: "IDR",
+            amount,
+            allInclusive: true,
+            quotedAtIso: "2026-10-14T00:00:00Z",
+          },
+          ...(duration ? { duration } : {}),
+        },
+      ],
+    };
+  }
+
+  it.each<Language>(["en", "id"])(
+    "renders E33F 1-year permit length, verified renewal line, and longer-stay renewal note in %s and carries the length into the share summary",
+    async (language) => {
+      const outcome = outcomeWithDuration({
+        selectedDays: 365,
+        options: [],
+        extensionRequired: false,
+        renewal: text(
+          "This permit is renewable 1 year at a time, up to 5 times.",
+          "Izin tinggal ini dapat diperpanjang hingga 5 kali, masing-masing 1 tahun.",
+        ),
+        longerStay: text(
+          "Your planned stay is longer than the first permit — your stay can continue by renewal.",
+          "Rencana tinggal Anda lebih lama dari izin pertama — masa tinggal Anda dapat dilanjutkan dengan perpanjangan.",
+        ),
+      });
+      const { container } = render(
+        <OutcomeSheet
+          language={language}
+          outcome={outcome}
+          facts={{ ...FACTS, stay_days: "400" }}
+        />,
+      );
+
+      const expectedLength =
+        language === "id" ? "Izin tinggal 1 tahun" : "1-year stay permit";
+      const expectedRenewal =
+        language === "id"
+          ? "Izin tinggal ini dapat diperpanjang hingga 5 kali, masing-masing 1 tahun."
+          : "This permit is renewable 1 year at a time, up to 5 times.";
+      const expectedLongerStay =
+        language === "id"
+          ? "Rencana tinggal Anda lebih lama dari izin pertama — masa tinggal Anda dapat dilanjutkan dengan perpanjangan."
+          : "Your planned stay is longer than the first permit — your stay can continue by renewal.";
+
+      expect(
+        container.querySelector(".oracle-price__duration"),
+      ).toHaveTextContent(expectedLength);
+      const renewalEl = screen.getByText(expectedRenewal);
+      expect(renewalEl).toBeInTheDocument();
+      expect(renewalEl).toHaveClass("oracle-question__hint");
+      expect(renewalEl).not.toHaveClass("oracle-price__note");
+      const priceNote = container.querySelector(".oracle-price__note");
+      expect(priceNote).not.toBeNull();
+      expect(
+        priceNote!.compareDocumentPosition(renewalEl) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      const longerStayEl = screen.getByText(expectedLongerStay);
+      expect(longerStayEl).toBeInTheDocument();
+      expect(longerStayEl).toHaveClass("oracle-question__hint");
+      expect(container.textContent).not.toMatch(
+        /not extendable|tidak dapat diperpanjang/i,
+      );
+
+      const writeText = navigator.clipboard.writeText as ReturnType<
+        typeof vi.fn
+      >;
+      writeText.mockClear();
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: language === "id" ? /salin ringkasan/i : "Copy summary",
+        }),
+      );
+      await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+      const summary = writeText.mock.calls[0]?.[0] as string;
+      expect(summary).toContain(expectedLength);
+    },
+  );
+
+  it.each<Language>(["en", "id"])(
+    "renders E33 5-year permit length with no renewal sentence and advisor longer-stay note when stay exceeds 5 years in %s",
+    (language) => {
+      const outcome = outcomeWithDuration(
+        {
+          selectedDays: 1825,
+          options: [],
+          extensionRequired: false,
+          longerStay: text(
+            "Your planned stay is longer than the first permit — a Bali Zero advisor confirms how a longer stay continues.",
+            "Rencana tinggal Anda lebih lama dari izin pertama — konsultan Bali Zero akan memastikan cara melanjutkan masa tinggal yang lebih lama.",
+          ),
+        },
+        19_000_000,
+      );
+      const { container } = render(
+        <OutcomeSheet
+          language={language}
+          outcome={outcome}
+          facts={{ ...FACTS, stay_days: "2000" }}
+        />,
+      );
+
+      expect(
+        container.querySelector(".oracle-price__duration"),
+      ).toHaveTextContent(
+        language === "id" ? "Izin tinggal 5 tahun" : "5-year stay permit",
+      );
+      expect(container.textContent).not.toMatch(
+        /renewable 1 year at a time|dapat diperpanjang hingga 5 kali|not extendable|tidak dapat diperpanjang/i,
+      );
+      expect(
+        screen.getByText(
+          language === "id"
+            ? "Rencana tinggal Anda lebih lama dari izin pertama — konsultan Bali Zero akan memastikan cara melanjutkan masa tinggal yang lebih lama."
+            : "Your planned stay is longer than the first permit — a Bali Zero advisor confirms how a longer stay continues.",
+        ),
+      ).toBeInTheDocument();
+    },
+  );
+});
