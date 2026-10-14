@@ -390,7 +390,7 @@ def drop_worktree(repo: Path, path: Path) -> None:
 HOST_FLOOR_GB = 90.0     # Zero, 2026-10-11, lowered from 100
 START_MARGIN_GB = 10.0     # the start floor is 100
 EVICT_MARGIN_GB = 1.5
-RUN_HEADROOM_GB = 12.0      # prune sheds second slots under start floor + this: a backend-tests run writes ~9.7 GB (pip install in /opt/py311) + ~2 GB run dir/containers
+RUN_HEADROOM_GB = 15.0      # prune sheds second slots under start floor + this. Measured on Pro 2026-10-13: a prune at 19:21Z saw 104.9 GB free and PR 8441 was evicted at 19:44Z at 91.48, so one run uses >= 13.4 GB
 EVICT_CAP = 3               # evictions of one (pr, head, base) before it is skipped: a head the host cannot afford does not starve the queue
 EVICT_SAMPLE_S = 5
 EVICT_KILL_GRACE_S = 10

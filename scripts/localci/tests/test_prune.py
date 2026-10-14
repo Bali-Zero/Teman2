@@ -693,10 +693,12 @@ def test_b8_a_tie_in_plans_gives_slot_2_to_the_youngest_reference(tmp_path):
     assert (d[young["tag"]]["slot"], d[old["tag"]]["remove"]) == (2, True)
 
 
-def two_recipes_with_slot_2(tmp_path: Path, vm_gb: float, extra_images: list = (), **kw) -> tuple[Path, str, list]:
+def two_recipes_with_slot_2(tmp_path: Path, vm_gb: float, extra_images: list = (), newest_plan: bool = False, **kw) -> tuple[Path, str, list]:
     imgs = [image("a" * 16, 50, "e2e-tests", gb=2.0), image("b" * 16, 1, "e2e-tests", gb=5.35),
             image("d" * 16, 30, "backend-tests", gb=2.0), image("e" * 16, 1, "backend-tests", gb=4.64)]
-    plans = {"pr1-x-20261008T100000Z": (5, {"ctx.e2e-tests": imgs[0]["tag"], "ctx.backend-tests": imgs[2]["tag"]})}
+    plans = {"pr1-x-20261008T100000Z": (5, {"ctx.e2e-tests": imgs[0]["tag"], "ctx.backend-tests": imgs[2]["tag"]}),}
+    if newest_plan:   # refs tie with the slot-2 image: the newest is the keeper
+        plans["pr2-x-20261008T110000Z"] = (4, {"ctx.e2e-tests": imgs[1]["tag"], "ctx.backend-tests": imgs[3]["tag"]})
     return (*world(tmp_path, imgs + list(extra_images), plans, vm_avail_kb=kb(vm_gb), **kw), imgs)
 
 
@@ -1000,11 +1002,11 @@ def test_b13_a_total_of_zero_is_zero_not_none(tmp_path):
 # ------------------------------------------------------------------ B15: image GC under host pressure
 def test_b15_under_host_pressure_the_second_slot_of_every_recipe_goes_and_the_newest_never(tmp_path, monkeypatch):
     monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 99)   # under 100 + 12 headroom
-    state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)   # VM above its own floor: only the host asks
+    state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30, newest_plan=True)   # VM above its own floor: only the host asks
     line = prune_line(state, docker)
     assert line["host_pressure"] is True and line["host_free_gb"]["before"] == 99.0
     assert [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"], imgs[2]["tag"]]   # both slot 2: a plan of the last 5 h names them
-    assert all(r["rule"].startswith("host pressure: host free 99 GB < 112 GB; slot 2 of its recipe, 1 plan(s)") for r in line["images"]["removed"])
+    assert all(r["rule"].startswith("host pressure: host free 99 GB < 115 GB; slot 2 of its recipe, 1 plan(s)") for r in line["images"]["removed"])
     assert [c for c in calls(tmp_path) if c.startswith("image rm")] == [f"image rm {imgs[0]['tag']}", f"image rm {imgs[2]['tag']}"]   # by explicit tag
     kept = {k["tag"] for k in line["images"]["kept"]}
     assert {imgs[1]["tag"], imgs[3]["tag"]} <= kept   # the newest of each recipe stays
@@ -1012,14 +1014,14 @@ def test_b15_under_host_pressure_the_second_slot_of_every_recipe_goes_and_the_ne
 
 def test_b15_host_pressure_runs_the_builder_prune_after_its_removals_and_names_the_rebuild_cost(tmp_path, monkeypatch):
     monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 99)
-    state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)   # the VM is above its own floor: only the host asks
+    state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30, newest_plan=True)   # the VM is above its own floor: only the host asks
     line = prune_line(state, docker)
     seq = [c for c in calls(tmp_path) if c.startswith(("image rm", "builder prune"))]
     assert [c.split()[0] for c in seq].count("image") == 2 and seq[-1].startswith("builder prune") and "builder_prune" in line
     assert all("cold rebuild of that recipe" in r["rule"] for r in line["images"]["removed"])
 
 
-@pytest.mark.parametrize("free", [112, 500])
+@pytest.mark.parametrize("free", [115, 500])
 def test_b15_at_or_above_the_start_floor_there_is_no_host_pressure_and_nothing_extra_goes(tmp_path, monkeypatch, free):
     monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", free)
     state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)
@@ -1031,7 +1033,8 @@ def test_b15_host_pressure_never_removes_the_image_of_the_run_in_progress_or_the
     monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 50)
     imgs = [image("a" * 16, 50, "e2e-tests", gb=1.0), image("b" * 16, 1, "e2e-tests", gb=1.0), image("c" * 16, 80, "backend-tests", gb=1.0),
             image("d" * 16, 2, "backend-tests", gb=1.0)]
-    plans = {"pr1-x-20261008T100000Z": (2, {"ctx.e2e-tests": imgs[0]["tag"]}), "pr2-x-20261008T110000Z": (3, {"ctx.backend-tests": imgs[2]["tag"]})}
+    plans = {"pr1-x-20261008T100000Z": (2, {"ctx.e2e-tests": imgs[0]["tag"]}), "pr2-x-20261008T110000Z": (3, {"ctx.backend-tests": imgs[2]["tag"]}),
+             "pr3-x-20261008T120000Z": (1, {"ctx.e2e-tests": imgs[1]["tag"], "ctx.backend-tests": imgs[3]["tag"]})}   # refs tie: the newest is the keeper
     state, docker = world(tmp_path, imgs, plans, in_progress=("pr1-x-20261008T100000Z",), vm_avail_kb=kb(30),
                           others=["localci-candidate:1", "localci-deps-base:1", *STAND_INS])
     line = prune_line(state, docker)
@@ -1042,7 +1045,7 @@ def test_b15_host_pressure_never_removes_the_image_of_the_run_in_progress_or_the
 
 def test_b15_a_dry_run_under_pressure_removes_nothing_and_the_flag_says_so(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 50)
-    state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)
+    state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30, newest_plan=True)
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--dry-run"]) == 0
     assert journal(state)[-1]["host_pressure"] is True and not [c for c in calls(tmp_path) if c.startswith("image rm")]
     assert "host_pressure=True" in capsys.readouterr().out
@@ -1063,7 +1066,8 @@ def _evicted(state: Path, run: str, lock: str = "free") -> None:
 
 def _pressure_world(tmp_path: Path, lock: str) -> tuple[Path, str, list]:
     imgs = [image("a" * 16, 50, "e2e-tests", gb=11.9), image("b" * 16, 1, "e2e-tests", gb=11.9)]
-    state, docker = world(tmp_path, imgs, {"pr8307-x-20261012T041205Z": (1, {"ctx.e2e-tests": imgs[0]["tag"]})}, vm_avail_kb=kb(39))
+    state, docker = world(tmp_path, imgs, {"pr8307-x-20261012T041205Z": (1, {"ctx.e2e-tests": imgs[0]["tag"]}),
+                                           "pr8308-x-20261012T051205Z": (0.5, {"ctx.e2e-tests": imgs[1]["tag"]})}, vm_avail_kb=kb(39))
     _evicted(state, "pr8307-x-20261012T041205Z", lock)
     return state, docker, imgs
 
@@ -1074,7 +1078,7 @@ def test_b16_an_evicted_run_does_not_keep_its_image_under_host_pressure(tmp_path
     state, docker, imgs = _pressure_world(tmp_path, lock)
     line = prune_line(state, docker)
     assert [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"]]   # slot 2, named by a dead run's plan only
-    assert line["images"]["removed"][0]["rule"].startswith("host pressure: host free 89 GB < 112 GB; slot 2 of its recipe, 1 plan(s)")
+    assert line["images"]["removed"][0]["rule"].startswith("host pressure: host free 89 GB < 115 GB; slot 2 of its recipe, 1 plan(s)")
     assert {k["tag"]: k["rule"] for k in line["images"]["kept"]}[imgs[1]["tag"]] == "the newest image of recipe e2e-tests"
 
 
@@ -1108,7 +1112,7 @@ def test_b16_the_lock_of_a_live_coordinator_process_holds_and_its_death_frees_it
 # ------------------------------------------------------------------ headroom: the prune sheds before a run starves
 def test_headroom_at_105_over_a_start_floor_of_100_the_second_slots_are_shed_in_shed_order(tmp_path, monkeypatch):   # guilt: the Pro rest state
     monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 105)
-    state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)
+    state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30, newest_plan=True)
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--min-host-free-gb", "100", "--run-headroom-gb", "12"]) == 0
     line = journal(state)[-1]
     assert line["pressure_gb"] == 112 and line["host_pressure"] is True
@@ -1116,16 +1120,54 @@ def test_headroom_at_105_over_a_start_floor_of_100_the_second_slots_are_shed_in_
     assert {imgs[1]["tag"], imgs[3]["tag"]} <= {k["tag"] for k in line["images"]["kept"]}   # slot 1 stays
 
 
-def test_headroom_at_115_nothing_is_shed(tmp_path, monkeypatch):   # innocence
-    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 115)
+def test_headroom_at_120_nothing_is_shed(tmp_path, monkeypatch):   # innocence
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 120)
     state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)
     line = prune_line(state, docker)
-    assert line["pressure_gb"] == 112 and line["host_pressure"] is False and line["images"]["removed"] == []
+    assert line["pressure_gb"] == 115 and line["host_pressure"] is False and line["images"]["removed"] == []
 
 
 def test_headroom_leaves_the_start_floor_where_it_was(tmp_path, monkeypatch):
     monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 100)   # at the start floor, under the pressure line: a prune sheds, no run is blocked
-    assert mg.HOST_FLOOR_GB + mg.START_MARGIN_GB == 100 and mg.RUN_HEADROOM_GB == 12
-    state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)
+    assert mg.HOST_FLOOR_GB + mg.START_MARGIN_GB == 100 and mg.RUN_HEADROOM_GB == 15
+    state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30, newest_plan=True)
     line = prune_line(state, docker)
-    assert line["pressure_gb"] == 112 and line["host_pressure"] is True
+    assert line["pressure_gb"] == 115 and line["host_pressure"] is True
+
+
+def test_headroom_a_non_default_flag_moves_the_line(tmp_path, monkeypatch):   # 112 free: calm at 12, pressure at 20
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 112)
+    state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)
+    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--run-headroom-gb", "20"]) == 0
+    line = journal(state)[-1]
+    assert line["pressure_gb"] == 120 and line["host_pressure"] is True and len(line["images"]["removed"]) == 2
+
+
+def _referenced_world(tmp_path: Path, old_refs: int, in_progress: tuple = ()):
+    imgs = [image("a" * 16, 50, "e2e-tests", gb=11.9), image("b" * 16, 1, "e2e-tests", gb=11.9)]   # [0] older, [1] newest
+    plans = {f"pr{n}-x-20261008T10{n:02d}00Z": (5 + n * 0.1, {"ctx.e2e-tests": imgs[0]["tag"]}) for n in range(old_refs)}
+    plans["pr99-x-20261008T120000Z"] = (0.5, {"ctx.e2e-tests": imgs[1]["tag"]})
+    state, docker = world(tmp_path, imgs, plans, in_progress=in_progress, vm_avail_kb=kb(30))
+    return state, docker, imgs
+
+
+def test_keeper_under_pressure_the_most_referenced_image_stays_and_the_newest_with_one_ref_goes(tmp_path, monkeypatch):   # guilt
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 105)
+    state, docker, imgs = _referenced_world(tmp_path, 16)
+    line = prune_line(state, docker)
+    assert [r["tag"] for r in line["images"]["removed"]] == [imgs[1]["tag"]]
+    assert imgs[0]["tag"] in {k["tag"] for k in line["images"]["kept"]}
+
+
+def test_keeper_without_pressure_the_slots_are_today_s_and_nothing_goes(tmp_path, monkeypatch):   # innocence
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 200)
+    state, docker, imgs = _referenced_world(tmp_path, 16)
+    line = prune_line(state, docker)
+    assert line["host_pressure"] is False and line["images"]["removed"] == []
+
+
+def test_keeper_an_in_use_image_is_never_shed_even_when_it_is_the_less_referenced(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 105)
+    state, docker, imgs = _referenced_world(tmp_path, 16, in_progress=("pr99-x-20261008T120000Z",))
+    line = prune_line(state, docker)
+    assert imgs[1]["tag"] not in [r["tag"] for r in line["images"]["removed"]]

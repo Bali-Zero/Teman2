@@ -515,7 +515,11 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
     rec["host_pressure"] = pressure_gb is not None and free_before < pressure_gb
     if rec["host_pressure"] and not (dry or blind):
         dropped = False
-        for im in sorted((d for d in decided if not d["remove"] and not d["live"] and d["slot"] != 1 and not never(d["tag"], keep)),
+        keeper = {}   # per recipe, the image most plans of the 48 h window name (ties: the newest) is the one kept, not the newest by clock
+        for d in decided:
+            if not d["remove"] and not never(d["tag"], keep) and (d["recipe"] not in keeper or (d["refs"], d["created"] or 0) > (keeper[d["recipe"]]["refs"], keeper[d["recipe"]]["created"] or 0)):
+                keeper[d["recipe"]] = d
+        for im in sorted((d for d in decided if not d["remove"] and not d["live"] and d["id"] != keeper[d["recipe"]]["id"] and not never(d["tag"], keep)),
                          key=shed_order):
             r = rm_image(docker, im["tag"])
             if r.returncode != 0:

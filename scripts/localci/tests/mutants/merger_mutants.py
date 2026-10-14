@@ -38,7 +38,8 @@ B6_WRAP = tuple(f"{MERGER_T}::{t}" for t in ("test_the_tick_decides_first_then_p
 HF = ("scripts/localci/tests/test_host_floor.py",)   # B15
 B15_PRUNE = tuple(f"{PRUNE_T}::{t}" for t in ("test_b15_under_host_pressure_the_second_slot_of_every_recipe_goes_and_the_newest_never",
                                               "test_b15_host_pressure_never_removes_the_image_of_the_run_in_progress_or_the_never_list"))
-HEADROOM = tuple(f"{PRUNE_T}::{t}" for t in ("test_headroom_at_105_over_a_start_floor_of_100_the_second_slots_are_shed_in_shed_order", "test_headroom_at_115_nothing_is_shed", "test_headroom_leaves_the_start_floor_where_it_was"))
+HEADROOM = tuple(f"{PRUNE_T}::{t}" for t in ("test_headroom_at_105_over_a_start_floor_of_100_the_second_slots_are_shed_in_shed_order", "test_headroom_at_120_nothing_is_shed", "test_headroom_leaves_the_start_floor_where_it_was", "test_headroom_a_non_default_flag_moves_the_line"))
+KEEPER = tuple(f"{PRUNE_T}::{t}" for t in ("test_keeper_under_pressure_the_most_referenced_image_stays_and_the_newest_with_one_ref_goes", "test_keeper_without_pressure_the_slots_are_today_s_and_nothing_goes", "test_keeper_an_in_use_image_is_never_shed_even_when_it_is_the_less_referenced"))
 START_DEFAULT = 'default=HOST_FLOOR_GB + START_MARGIN_GB,\n                   help="the start floor'
 B6_FLOOR = (f"{MERGER_T}::test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why",)
 FLOOR_SH, FLOOR_T = "scripts/ops/pro_disk_floor_tick.sh", "scripts/localci/tests/test_disk_floor.py"
@@ -364,7 +365,11 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "prune-pressure-no-builder-prune": (PRUNE, "        if dropped:\n            builder_prune(", "        if False:\n            builder_prune(", (f"{PRUNE_T}::test_b15_host_pressure_runs_the_builder_prune_after_its_removals_and_names_the_rebuild_cost",)),
     "prune-pressure-rule-silent-on-cost": (PRUNE, 'f"dropping a second-slot image means a cold rebuild of that recipe"})', 'f"x"})', (f"{PRUNE_T}::test_b15_host_pressure_runs_the_builder_prune_after_its_removals_and_names_the_rebuild_cost",)),
     "prune-pressure-without-headroom": (PY, "pressure_gb=a.min_host_free_gb + a.run_headroom_gb,", "pressure_gb=a.min_host_free_gb,", HEADROOM),
-    "prune-headroom-default-zero": (PY, "RUN_HEADROOM_GB = 12.0 ", "RUN_HEADROOM_GB = 0.0 ", HEADROOM),
+    "prune-headroom-default-zero": (PY, "RUN_HEADROOM_GB = 15.0 ", "RUN_HEADROOM_GB = 0.0 ", HEADROOM),
+    "prune-headroom-flag-ignored": (PY, "pressure_gb=a.min_host_free_gb + a.run_headroom_gb,", "pressure_gb=a.min_host_free_gb + RUN_HEADROOM_GB,", HEADROOM),
+    "prune-keeper-is-newest": (PRUNE, 'd["id"] != keeper[d["recipe"]]["id"]', 'd["slot"] != 1', KEEPER),
+    "prune-keeper-ignores-refs": (PRUNE, '(d["refs"], d["created"] or 0) > (keeper[d["recipe"]]["refs"], keeper[d["recipe"]]["created"] or 0)', '(d["created"] or 0) > (keeper[d["recipe"]]["created"] or 0)', KEEPER),
+    "prune-keeper-sheds-live": (PRUNE, 'not d["remove"] and not d["live"] and d["id"]', 'not d["remove"] and d["id"]', KEEPER),
     "prune-pressure-not-journalled": (PRUNE, '    rec["pressure_gb"] = pressure_gb\n', "", HEADROOM),
     "prune-host-pressure-ignored": (PRUNE, 'rec["host_pressure"] = pressure_gb is not None and free_before < pressure_gb',
                                     'rec["host_pressure"] = False', B15_PRUNE),
