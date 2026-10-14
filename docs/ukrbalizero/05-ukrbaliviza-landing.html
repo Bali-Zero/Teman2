@@ -1,170 +1,292 @@
 <title>Укрбалівіза</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Commissioner:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
-/* Layout: a left-aligned document column with full-width bands; the only "object" on the page is the price card. */
+/* Layout: a dark "ocean" opening band with a round immigration stamp over a white price card; below it, sand-paper document sections
+   with one informative graphic (a year on visa runs vs a year on E33G) and boarding-pass cards for the two side offers. */
 :root{
-  --paper:#f6f4ee; --ink:#171a21; --ink-2:#4a4f5c; --rule:#d9d6cc; --band:#eceae2;
-  --navy:#1e3863; --navy-2:#24406e; --gold:#a8792a; --ok:#2f6b43; --card:#ffffff;
-  --display:"IBM Plex Serif",Georgia,"Times New Roman",serif;
-  --body:"IBM Plex Sans","Segoe UI",Roboto,Arial,sans-serif;
+  --paper:#f1f3ef; --paper-2:#e6ebe6; --ink:#10232a; --ink-2:#4e6066; --line:#d3dbd7; --card:#ffffff;
+  --sea:#0f3d4a; --sea-2:#0a2c37; --on-sea:#e9f3f1; --on-sea-2:#a9c4c3;
+  --sun:#f2c14e; --sun-ink:#3a2b00; --ok:#2f7a4f;
+  --display:"Unbounded","Arial Black",Arial,sans-serif;
+  --body:"Commissioner","Segoe UI",Roboto,Arial,sans-serif;
   --mono:"IBM Plex Mono",Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --paper:#14161b; --ink:#e9e7e0; --ink-2:#a9aab0; --rule:#2c3039; --band:#1b1e25;
-  --navy:#9db6e6; --navy-2:#8aa6d9; --gold:#d5aa5c; --ok:#7fbf92; --card:#1d2027; color-scheme:dark}}
+  --paper:#0e1a1e; --paper-2:#132227; --ink:#e8eeec; --ink-2:#9fb0ad; --line:#24383d; --card:#142429;
+  --sea:#0b2a33; --sea-2:#07202a; --on-sea:#e9f3f1; --on-sea-2:#a9c4c3; --ok:#7fc79a; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --paper:#14161b; --ink:#e9e7e0; --ink-2:#a9aab0; --rule:#2c3039; --band:#1b1e25;
-  --navy:#9db6e6; --navy-2:#8aa6d9; --gold:#d5aa5c; --ok:#7fbf92; --card:#1d2027; color-scheme:dark}
+  --paper:#0e1a1e; --paper-2:#132227; --ink:#e8eeec; --ink-2:#9fb0ad; --line:#24383d; --card:#142429;
+  --sea:#0b2a33; --sea-2:#07202a; --on-sea:#e9f3f1; --on-sea-2:#a9c4c3; --ok:#7fc79a; color-scheme:dark}
 *{box-sizing:border-box}
-body{background:var(--paper);color:var(--ink);font:16px/1.6 var(--body);margin:0}
-h1,h2,h3{font-family:var(--display);font-weight:600;line-height:1.15;text-wrap:balance;margin:0}
-h1{font-size:clamp(30px,4.6vw,46px)}
-h2{font-size:clamp(24px,3vw,32px)}
-h3{font-size:20px}
+body{background:var(--paper);color:var(--ink);font:16px/1.6 var(--body);margin:0;overflow-x:hidden}
+h1,h2,h3{font-family:var(--display);line-height:1.08;text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(34px,5.4vw,64px);font-weight:700}
+h2{font-size:clamp(24px,3.2vw,38px);font-weight:700}
+h3{font-size:19px;font-weight:500}
 p{margin:0}
-a{color:var(--navy)}
-.band{padding-block:56px}
-.band.alt{background:var(--band)}
-.in{max-width:1040px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
-.prose{max-width:66ch}
-.stack{display:flex;flex-direction:column;gap:14px}
-.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:28px}
+a{color:inherit}
+.in{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.band{padding-block:64px}
+.band.sand{background:var(--paper-2)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:28px;height:2px;background:var(--sun)}
+.prose{max-width:62ch}
+.muted{color:var(--ink-2)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:36px}
 .cols>*{min-width:0}
-ul.plain{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
-ul.plain li{padding-left:22px;position:relative}
-ul.plain li::before{content:"";position:absolute;left:0;top:.72em;width:12px;height:1.5px;background:var(--navy)}
-.ph{background:color-mix(in srgb,var(--gold) 14%,transparent);border-bottom:1px dashed var(--gold);padding:0 3px}
+ul.plain{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px}
+ul.plain li{padding-left:26px;position:relative}
+ul.plain li::before{content:"";position:absolute;left:0;top:.55em;width:14px;height:14px;border-radius:50%;background:var(--sun);box-shadow:inset 0 0 0 4px var(--paper)}
+.band.sand ul.plain li::before{box-shadow:inset 0 0 0 4px var(--paper-2)}
+.ph{background:color-mix(in srgb,var(--sun) 28%,transparent);border-bottom:1px dashed var(--sun-ink);padding:0 3px;color:var(--ink)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;font:inherit;font-weight:600;padding:14px 20px;border-radius:999px;text-decoration:none;border:2px solid transparent;cursor:pointer;transition:transform .15s ease,background .15s ease}
+.btn:hover{transform:translateY(-1px)}
+.btn:focus-visible{outline:3px solid var(--sun);outline-offset:3px}
+.btn.sun{background:var(--sun);color:var(--sun-ink)}
+.btn.sea{background:var(--sea);color:var(--on-sea)}
+.btn.ghost{background:transparent;color:var(--on-sea);border-color:var(--on-sea-2)}
+.btn.line{background:transparent;color:var(--ink);border-color:var(--ink)}
 /* header */
-header.top{position:sticky;top:env(safe-area-inset-top,0px);background:var(--paper);border-bottom:1px solid var(--rule);z-index:5}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--sea);color:var(--on-sea)}
 header.top .in{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:14px}
-.brand{font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:.01em;color:var(--ink);text-decoration:none}
-.brand small{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);font-weight:500}
-nav.menu{display:flex;gap:18px;flex-wrap:wrap;font-size:14.5px}
-nav.menu a{color:var(--ink-2);text-decoration:none;border-bottom:1px solid transparent}
-nav.menu a:hover,nav.menu a:focus-visible{color:var(--ink);border-color:var(--gold);outline:none}
+.brand{font-family:var(--display);font-weight:700;font-size:20px;text-decoration:none;display:flex;align-items:center;gap:10px}
+.brand i{width:12px;height:12px;border-radius:50%;background:var(--sun);display:inline-block}
+nav.menu{display:flex;gap:20px;flex-wrap:wrap;font-size:14.5px}
+nav.menu a{color:var(--on-sea-2);text-decoration:none}
+nav.menu a:hover,nav.menu a:focus-visible{color:var(--sun);outline:none}
 /* hero */
-.hero .in{display:grid;grid-template-columns:1.25fr 1fr;gap:40px;align-items:start}
-.hero .lead{font-size:18.5px;color:var(--ink-2);max-width:60ch;margin-top:18px}
-.hero .facts{display:flex;gap:28px;flex-wrap:wrap;margin-top:26px}
-.hero .facts div{min-width:0;flex:1 1 150px}
-.hero .facts b{display:block;font-family:var(--mono);font-size:22px;font-weight:500;color:var(--navy);font-variant-numeric:tabular-nums}
-.hero .facts span{font-size:13.5px;color:var(--ink-2)}
-.pricecard{background:var(--card);border:1.5px solid var(--navy);border-radius:6px;padding:26px 26px 22px;box-shadow:0 1px 0 var(--rule)}
-.pricecard .lbl{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
-.pricecard .amount{font-family:var(--mono);font-size:clamp(34px,4vw,42px);font-weight:500;color:var(--navy);line-height:1.1;margin-top:6px;font-variant-numeric:tabular-nums}
-.pricecard .incl{margin-top:8px;font-size:15px}
-.timeline{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
-.timeline div{border:1px solid var(--rule);border-radius:4px;padding:10px 12px;min-width:0}
-.timeline small{display:block;font-size:12px;color:var(--ink-2);letter-spacing:.04em;text-transform:uppercase}
-.timeline b{font-family:var(--mono);font-weight:500;font-size:17px;font-variant-numeric:tabular-nums}
-.btn{display:inline-block;background:var(--navy);color:var(--paper);font-weight:600;padding:13px 18px;border-radius:4px;text-decoration:none;border:0;font:inherit;font-weight:600;cursor:pointer;width:100%;text-align:center;margin-top:16px}
-.btn:hover{background:var(--navy-2)}
-.btn:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
-.btn.secondary{background:transparent;color:var(--navy);border:1.5px solid var(--navy)}
-.actor{font-size:14px;color:var(--ink-2);margin-top:14px;line-height:1.5}
+.hero{background:radial-gradient(1200px 600px at 85% -10%,#1a5b6a 0%,var(--sea) 55%,var(--sea-2) 100%);color:var(--on-sea);padding-block:56px 0;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:auto 0 0 0;height:120px;background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--sea-2) 60%,transparent))}
+.hero .in{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:end;position:relative;z-index:1;padding-bottom:70px}
+.hero .eyebrow{color:var(--on-sea-2)}
+.hero .lead{font-size:19px;color:var(--on-sea-2);max-width:56ch;margin-top:22px;line-height:1.55}
+.hero .lead b{color:var(--on-sea);font-weight:500}
+.hero-cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+.docwrap{position:relative;padding-top:175px}
+.pricecard{background:var(--card);color:var(--ink);border-radius:14px;padding:30px 28px 24px;box-shadow:0 30px 60px -30px rgba(0,0,0,.55);position:relative}
+.pricecard .lbl{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
+.pricecard .amount{font-family:var(--display);font-weight:700;font-size:clamp(30px,3.4vw,40px);color:var(--sea);line-height:1.05;margin-top:8px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+:root[data-theme="dark"] .pricecard .amount{color:var(--on-sea)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pricecard .amount{color:var(--on-sea)}}
+.pricecard .incl{margin-top:10px;font-size:15px}
+.timeline{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.timeline div{border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-width:0}
+.timeline small{display:block;font-size:11.5px;color:var(--ink-2);letter-spacing:.08em;text-transform:uppercase;font-family:var(--mono)}
+.timeline b{font-family:var(--mono);font-weight:500;font-size:16px;font-variant-numeric:tabular-nums}
+.pricecard .btn{width:100%;margin-top:18px}
+.actor{font-size:13.5px;color:var(--ink-2);margin-top:14px;line-height:1.5}
+/* stamp */
+.stamp{position:absolute;top:-6px;right:-34px;width:min(240px,46vw);aspect-ratio:1;z-index:2;transform:rotate(-12deg);filter:url(#ink) drop-shadow(0 8px 14px rgba(0,0,0,.25));pointer-events:none}
+.stamp svg{width:100%;height:100%;overflow:visible}
+@media (prefers-reduced-motion:no-preference){
+  .stamp{animation:stampin .7s cubic-bezier(.2,.9,.3,1.2) .25s both}
+  @keyframes stampin{from{transform:rotate(-12deg) scale(1.6);opacity:0}to{transform:rotate(-12deg) scale(1);opacity:1}}
+}
+/* ticker */
+.ticker{border-top:1px solid color-mix(in srgb,var(--on-sea) 18%,transparent);background:var(--sea-2);color:var(--on-sea-2);font-family:var(--mono);font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+.ticker .in{display:flex;flex-wrap:wrap;gap:8px 28px;padding-block:12px}
+.ticker b{color:var(--sun);font-weight:500}
+/* year graphic */
+.year{display:grid;gap:22px;margin-top:28px}
+.yrow{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:center}
+.yrow .rl{font-family:var(--display);font-size:14px;font-weight:500}
+.yrow .rr{grid-column:2;font-family:var(--mono);font-size:12.5px;color:var(--ink-2);letter-spacing:.04em}
+.segs{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.seg{position:relative;height:46px;border:1.5px dashed var(--ink-2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;color:var(--ink-2);min-width:0}
+.seg svg{position:absolute;right:-13px;top:50%;width:20px;height:20px;transform:translateY(-50%);z-index:1;fill:var(--sun-ink);background:var(--sun);border-radius:50%;padding:3px}
+.seg:last-child svg{display:none}
+.bar{height:46px;border-radius:6px;background:linear-gradient(90deg,var(--sea),#1a5b6a);color:var(--on-sea);display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-family:var(--mono);font-size:13px}
+.bar b{color:var(--sun);font-weight:500}
+.ynote{margin-top:18px;font-size:14.5px;color:var(--ink-2);max-width:70ch}
 /* quiz */
-.quiz{background:var(--card);border:1px solid var(--rule);border-radius:6px;padding:24px;max-width:720px}
+.quiz{background:var(--card);border-radius:16px;padding:28px;max-width:760px;box-shadow:0 1px 0 var(--line),0 20px 40px -30px rgba(0,0,0,.35)}
 .q{display:none}.q.on{display:block}
-.q p.qt{font-family:var(--display);font-size:20px;font-weight:600;margin-bottom:14px}
-.opts{display:flex;flex-direction:column;gap:8px}
-.opts button{text-align:left;background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:12px 14px;font:inherit;color:var(--ink);cursor:pointer}
-.opts button:hover{border-color:var(--navy)}
-.opts button:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
-.qres{border-top:1px solid var(--rule);padding-top:18px;margin-top:6px}
-.qres h3{color:var(--navy)}
-.qres .amount{font-family:var(--mono);font-size:26px;font-weight:500;color:var(--navy);margin:8px 0;font-variant-numeric:tabular-nums}
-.linkbtn{background:none;border:0;color:var(--navy);text-decoration:underline;font:inherit;cursor:pointer;padding:0;margin-top:12px}
-.progress{font-family:var(--mono);font-size:12px;color:var(--ink-2);letter-spacing:.1em;margin-bottom:10px}
+.q p.qt{font-family:var(--display);font-size:20px;font-weight:500;margin-bottom:16px}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.opts button{text-align:left;background:var(--paper);border:1.5px solid var(--line);border-radius:12px;padding:14px 16px;font:inherit;color:var(--ink);cursor:pointer;transition:border-color .15s,transform .15s;min-width:0}
+.opts button:hover{border-color:var(--sea);transform:translateY(-1px)}
+.opts button:focus-visible{outline:3px solid var(--sun);outline-offset:1px}
+.qres h3{font-size:22px;font-weight:700;color:var(--sea)}
+:root[data-theme="dark"] .qres h3{color:var(--on-sea)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .qres h3{color:var(--on-sea)}}
+.qres .amount{font-family:var(--mono);font-size:24px;font-weight:500;margin:10px 0;font-variant-numeric:tabular-nums}
+.qres .btn{margin-top:16px}
+.linkbtn{background:none;border:0;color:var(--ink-2);text-decoration:underline;font:inherit;cursor:pointer;padding:0;margin-top:14px}
+.progress{font-family:var(--mono);font-size:12px;color:var(--ink-2);letter-spacing:.12em;margin-bottom:10px}
 /* steps */
-ol.steps{list-style:none;counter-reset:s;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px 28px}
-ol.steps li{counter-increment:s;padding-top:12px;border-top:1px solid var(--rule);min-width:0}
-ol.steps li::before{content:counter(s,decimal-leading-zero);font-family:var(--mono);color:var(--gold);font-size:13px;letter-spacing:.1em;display:block;margin-bottom:6px}
-ol.steps b{display:block;margin-bottom:4px}
-/* tables */
-.tbl{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:15px}
-th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
-th{font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
-td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
-/* offers B C */
-.offer{border-top:2px solid var(--navy);padding-top:18px}
-.offer .amount{font-family:var(--mono);font-size:24px;font-weight:500;color:var(--navy);margin:10px 0 4px;font-variant-numeric:tabular-nums}
-.tariffs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
-.tariffs div{border:1px solid var(--rule);border-radius:4px;padding:10px 12px;min-width:0}
-.tariffs b{font-family:var(--mono);font-weight:500;font-size:17px;display:block;font-variant-numeric:tabular-nums}
-.tariffs small{color:var(--ink-2);font-size:12.5px}
+ol.steps{list-style:none;counter-reset:s;padding:0;margin:28px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:22px}
+ol.steps li{counter-increment:s;background:var(--card);border-radius:14px;padding:22px 22px 22px 70px;position:relative;min-width:0}
+ol.steps li::before{content:counter(s);position:absolute;left:20px;top:20px;width:36px;height:36px;border-radius:50%;background:var(--sun);color:var(--sun-ink);font-family:var(--display);font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center}
+ol.steps b{display:block;margin-bottom:4px;font-weight:600}
+/* requirements */
+.req{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:24px}
+.req div{border-top:3px solid var(--sea);padding-top:12px;min-width:0}
+.req small{display:block;font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);margin-bottom:6px}
+.req b{font-weight:600}
+/* boarding passes */
+.passes{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:26px;margin-top:28px}
+.pass{display:grid;grid-template-columns:1fr 150px;background:var(--card);border-radius:14px;overflow:hidden;position:relative;min-width:0}
+.pass .main{padding:24px}
+.pass .stub{border-left:2px dashed var(--line);padding:24px 16px;display:flex;flex-direction:column;justify-content:space-between;gap:12px;background:color-mix(in srgb,var(--sun) 16%,var(--card));min-width:0}
+.pass::before,.pass::after{content:"";position:absolute;right:150px;width:22px;height:22px;border-radius:50%;background:var(--paper-2);transform:translateX(50%)}
+.pass::before{top:-11px}.pass::after{bottom:-11px}
+.pass .code{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+.pass .amount{font-family:var(--display);font-weight:700;font-size:18px;line-height:1.2;color:var(--sea);font-variant-numeric:tabular-nums}
+:root[data-theme="dark"] .pass .amount{color:var(--on-sea)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pass .amount{color:var(--on-sea)}}
+.pass .stub .btn{padding:10px 12px;font-size:13.5px}
+.tariffs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.tariffs div{border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+.tariffs b{font-family:var(--mono);font-weight:500;font-size:14.5px;display:block;font-variant-numeric:tabular-nums}
+.tariffs small{color:var(--ink-2);font-size:11.5px}
 /* trust */
-.trust dl{display:grid;grid-template-columns:max-content 1fr;gap:8px 18px;margin:0}
-.trust dt{color:var(--ink-2);font-size:14px}
+.trust dl{display:grid;grid-template-columns:max-content 1fr;gap:10px 18px;margin:0}
+.trust dt{color:var(--ink-2);font-size:14px;font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;padding-top:2px}
 .trust dd{margin:0}
 /* faq */
-details{border-top:1px solid var(--rule);padding:14px 0}
-details:last-of-type{border-bottom:1px solid var(--rule)}
-summary{cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between;gap:12px}
+details{border-top:1px solid var(--line);padding:16px 0}
+details:last-of-type{border-bottom:1px solid var(--line)}
+summary{cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between;gap:12px;font-size:17px}
 summary::-webkit-details-marker{display:none}
-summary::after{content:"+";font-family:var(--mono);color:var(--gold)}
+summary::after{content:"+";font-family:var(--mono);color:var(--sun-ink);background:var(--sun);width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none;font-size:16px}
 details[open] summary::after{content:"–"}
 details p{margin-top:10px;max-width:70ch;color:var(--ink-2)}
 /* form */
-form.check{background:var(--card);border:1px solid var(--rule);border-radius:6px;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;max-width:760px}
+form.check{background:var(--card);border-radius:16px;padding:28px;display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;max-width:800px}
 form.check label{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--ink-2);min-width:0}
 form.check label.full{grid-column:1/-1}
-form.check input,form.check select,form.check textarea{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:10px 12px;width:100%}
-form.check input:focus-visible,form.check select:focus-visible,form.check textarea:focus-visible{outline:2px solid var(--navy);outline-offset:1px}
+form.check input,form.check select,form.check textarea{font:inherit;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;width:100%}
+form.check input:focus-visible,form.check select:focus-visible,form.check textarea:focus-visible{outline:2px solid var(--sea);outline-offset:1px}
 form.check .btn{grid-column:1/-1;margin-top:4px}
-.done{grid-column:1/-1;border-left:3px solid var(--ok);padding:10px 14px;background:color-mix(in srgb,var(--ok) 10%,transparent)}
-footer{border-top:1px solid var(--rule);padding-block:28px;font-size:14px;color:var(--ink-2)}
+.done{grid-column:1/-1;border-left:3px solid var(--ok);padding:10px 14px;border-radius:0 8px 8px 0;background:color-mix(in srgb,var(--ok) 10%,transparent)}
+footer{background:var(--sea-2);color:var(--on-sea-2);padding-block:28px;font-size:14px}
 footer .in{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-between}
-@media (max-width:760px){.hero .in{grid-template-columns:1fr}.tariffs{grid-template-columns:1fr}form.check{grid-template-columns:1fr}.band{padding-block:40px}}
+/* sticky price bar (narrow screens) */
+.stick{position:fixed;left:0;right:0;bottom:0;z-index:7;background:var(--sea);color:var(--on-sea);padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:none;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -10px 30px rgba(0,0,0,.25)}
+.stick b{font-family:var(--mono);font-weight:500;font-variant-numeric:tabular-nums}
+.stick small{display:block;font-size:12px;color:var(--on-sea-2)}
+.stick .btn{padding:10px 14px;font-size:14px}
+.stick.on{display:flex}
+@media (min-width:761px){.stick.on{display:none}}
+@media (max-width:760px){
+  .hero .in{grid-template-columns:1fr;gap:24px;padding-bottom:48px}
+  .docwrap{padding-top:125px}
+  .stamp{right:-8px;width:170px}
+  .yrow{grid-template-columns:1fr}
+  .yrow .rr{grid-column:1}
+  .segs{gap:4px}
+  .seg{height:38px;font-size:10.5px}
+  .seg svg{right:-10px;width:16px;height:16px}
+  .pass{grid-template-columns:1fr}
+  .pass .stub{border-left:0;border-top:2px dashed var(--line)}
+  .pass::before,.pass::after{display:none}
+  .tariffs{grid-template-columns:1fr}
+  form.check{grid-template-columns:1fr}
+  .band{padding-block:44px}
+  body{padding-bottom:84px}
+}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 </style>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="ink" x="-10%" y="-10%" width="120%" height="120%">
+    <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="7" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+
 <header class="top">
   <div class="in">
-    <a class="brand" href="#top">Укрбалівіза<small>Візи та KITAS на Балі українською</small></a>
+    <a class="brand" href="#top"><i></i>Укрбалівіза</a>
     <nav class="menu" aria-label="Розділи">
       <a href="#quiz">Яка віза мені потрібна</a>
-      <a href="#e33g">E33G</a>
+      <a href="#year">E33G</a>
       <a href="#family">Сімʼя</a>
-      <a href="#tax">Бухгалтерія PT PMA</a>
+      <a href="#tax">Бухгалтерія</a>
       <a href="#faq">Питання</a>
     </nav>
   </div>
 </header>
 
-<section class="band hero" id="top">
+<section class="hero" id="top">
   <div class="in">
     <div>
       <p class="eyebrow">E33G Remote Worker KITAS · 1 рік</p>
-      <h1>Рік без візаранів для тих, хто працює з Балі на закордонну компанію.</h1>
-      <p class="lead">Ви працюєте з ноутбука на компанію або клієнтів поза Індонезією і живете на туристичних візах, продовженнях і візаранах. E33G дає рік легального перебування для віддаленої роботи. Оригінал паспорта лишається у вас.</p>
-      <div class="facts">
-        <div><b>7–10</b><span>робочих днів після подачі</span></div>
-        <div><b>1 візит</b><span>в імміграцію, на фото і співбесіду</span></div>
-        <div><b>0</b><span>поїздок за штампом протягом року</span></div>
+      <h1>Рік без візаранів.</h1>
+      <p class="lead">Для тих, хто працює з Балі на закордонну компанію. Ви працюєте з ноутбука на компанію або клієнтів поза Індонезією і живете на туристичних візах, продовженнях і візаранах. E33G дає рік легального перебування для віддаленої роботи. <b>Оригінал паспорта лишається у вас.</b></p>
+      <div class="hero-cta">
+        <a class="btn sun" href="#check">Перевірити документи до оплати</a>
+        <a class="btn ghost" href="#quiz">Яка віза мені потрібна</a>
       </div>
     </div>
-    <aside class="pricecard" aria-label="Ціна">
-      <p class="lbl">Повна ціна</p>
-      <p class="amount">IDR 11 000 000</p>
-      <p class="incl">Все включено. Державний збір усередині. Нічого не додається в кінці.</p>
-      <div class="timeline">
-        <div><small>Рік 1</small><b>IDR 11 000 000</b></div>
-        <div><small>Рік 2, продовження</small><b>IDR 10 500 000</b></div>
+    <div class="docwrap">
+      <div class="stamp" aria-hidden="true">
+        <svg viewBox="0 0 240 240">
+          <defs><path id="ring" d="M120,120 m-92,0 a92,92 0 1,1 184,0 a92,92 0 1,1 -184,0"/></defs>
+          <g fill="none" stroke="#f2c14e" stroke-width="4"><circle cx="120" cy="120" r="112"/><circle cx="120" cy="120" r="104" stroke-width="1.5" stroke-dasharray="3 5"/><circle cx="120" cy="120" r="72" stroke-width="2"/></g>
+          <text fill="#f2c14e" font-family="IBM Plex Mono,monospace" font-size="13" letter-spacing="3" font-weight="500"><textPath href="#ring" startOffset="2%">REMOTE WORKER · E33G · REPUBLIK INDONESIA · BALI · UKRBALIVIZA ·</textPath></text>
+          <text x="120" y="112" text-anchor="middle" fill="#f2c14e" font-family="Unbounded,Arial Black,sans-serif" font-weight="700" font-size="46">365</text>
+          <text x="120" y="138" text-anchor="middle" fill="#f2c14e" font-family="IBM Plex Mono,monospace" font-size="12" letter-spacing="2">ДНІВ · 1 ВІЗИТ</text>
+          <text x="120" y="160" text-anchor="middle" fill="#f2c14e" font-family="IBM Plex Mono,monospace" font-size="10" letter-spacing="2">0 ВІЗАРАНІВ</text>
+        </svg>
       </div>
-      <a class="btn" href="#check">Перевірити мої документи до оплати</a>
-      <p class="actor">Рішення ухвалює Імміграційна служба Індонезії. Спершу перевіряємо ваш паспорт і документи, потім оплата.</p>
-    </aside>
+      <aside class="pricecard" aria-label="Ціна">
+        <p class="lbl">Повна ціна</p>
+        <p class="amount">IDR 11 000 000</p>
+        <p class="incl">Все включено. Державний збір усередині. Нічого не додається в кінці.</p>
+        <div class="timeline">
+          <div><small>Рік 1</small><b>IDR 11 000 000</b></div>
+          <div><small>Рік 2, продовження</small><b>IDR 10 500 000</b></div>
+        </div>
+        <a class="btn sea" href="#check">Перевірити мої документи до оплати</a>
+        <p class="actor">Рішення ухвалює Імміграційна служба Індонезії. Спершу перевіряємо ваш паспорт і документи, потім оплата.</p>
+      </aside>
+    </div>
+  </div>
+  <div class="ticker">
+    <div class="in">
+      <span><b>7–10</b> робочих днів після подачі</span>
+      <span><b>1</b> візит в імміграцію</span>
+      <span><b>0</b> поїздок за штампом</span>
+      <span><b>UA</b> відповідь українською</span>
+      <span><b>Паспорт</b> лишається у вас</span>
+    </div>
   </div>
 </section>
 
-<section class="band alt" id="quiz">
+<section class="band" id="year">
+  <div class="in">
+    <p class="eyebrow">Той самий рік, два способи його прожити</p>
+    <h2>Кожні 60 днів знову імміграція або кордон. Або один раз.</h2>
+    <div class="year" aria-label="Порівняння року на туристичній візі та року на E33G">
+      <div class="yrow">
+        <span class="rl">Туристична віза</span>
+        <div class="segs">
+          <div class="seg">60 дн<svg viewBox="0 0 24 24"><path d="M2.5 19l19-7-19-7v5.5l13 1.5-13 1.5z"/></svg></div>
+          <div class="seg">60 дн<svg viewBox="0 0 24 24"><path d="M2.5 19l19-7-19-7v5.5l13 1.5-13 1.5z"/></svg></div>
+          <div class="seg">60 дн<svg viewBox="0 0 24 24"><path d="M2.5 19l19-7-19-7v5.5l13 1.5-13 1.5z"/></svg></div>
+          <div class="seg">60 дн<svg viewBox="0 0 24 24"><path d="M2.5 19l19-7-19-7v5.5l13 1.5-13 1.5z"/></svg></div>
+          <div class="seg">60 дн<svg viewBox="0 0 24 24"><path d="M2.5 19l19-7-19-7v5.5l13 1.5-13 1.5z"/></svg></div>
+          <div class="seg">60 дн<svg viewBox="0 0 24 24"><path d="M2.5 19l19-7-19-7v5.5l13 1.5-13 1.5z"/></svg></div>
+        </div>
+        <span class="rr">5–6 візитів в імміграцію або виїздів · кожен з особистим фото і співбесідою · 1 500–3 000 USD на рік · робота з ноутбука поза статусом</span>
+      </div>
+      <div class="yrow">
+        <span class="rl">E33G</span>
+        <div class="bar"><span>365 днів</span><b>1 візит · 0 візаранів</b></div>
+        <span class="rr">IDR 11 000 000, все включено · статус для віддаленої роботи · продовження через рік за IDR 10 500 000</span>
+      </div>
+    </div>
+    <p class="ynote">Штраф за кожен день понад дозволений термін: IDR 1 000 000. Одинадцять таких днів коштують стільки ж, скільки річний KITAS.</p>
+  </div>
+</section>
+
+<section class="band sand" id="quiz">
   <div class="in">
     <p class="eyebrow">Три питання</p>
     <h2>Яка віза мені потрібна</h2>
-    <p class="prose" style="margin:12px 0 22px;color:var(--ink-2)">Відповідь і ціна одразу, без форми і без очікування.</p>
+    <p class="prose muted" style="margin:12px 0 24px">Відповідь і ціна одразу, без форми і без очікування.</p>
     <div class="quiz" id="quizbox">
       <div class="q on" data-q="1">
         <p class="progress">ПИТАННЯ 1 / 3</p>
@@ -210,13 +332,13 @@ footer .in{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-betwe
   </div>
 </section>
 
-<section class="band" id="e33g">
+<section class="band">
   <div class="in">
     <div class="cols">
       <div>
         <p class="eyebrow">Для кого</p>
         <h2>Це для вас, якщо</h2>
-        <ul class="plain" style="margin-top:16px">
+        <ul class="plain" style="margin-top:18px">
           <li>Ви працюєте віддалено на компанію, зареєстровану поза Індонезією, або маєте контракт із закордонним клієнтом.</li>
           <li>Ваш дохід від 60 000 USD на рік, і його можна підтвердити документами.</li>
           <li>Паспорт дійсний щонайменше 6 місяців.</li>
@@ -226,7 +348,7 @@ footer .in{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-betwe
       <div>
         <p class="eyebrow">Не для кого</p>
         <h2>Це не для вас, якщо</h2>
-        <ul class="plain" style="margin-top:16px">
+        <ul class="plain" style="margin-top:18px">
           <li>Ви працюєте на індонезійську компанію або відкриваєте бізнес на Балі. Тоді потрібна інша віза, і ми її назвемо.</li>
           <li>Дохід нижчий за поріг або його неможливо підтвердити. Ми скажемо це до оплати і запропонуємо C1 або D1.</li>
         </ul>
@@ -235,13 +357,13 @@ footer .in{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-betwe
   </div>
 </section>
 
-<section class="band alt">
+<section class="band sand">
   <div class="in">
     <div class="cols">
       <div>
         <p class="eyebrow">Що входить у IDR 11 000 000</p>
         <h2>Що ви отримуєте</h2>
-        <ul class="plain" style="margin-top:16px">
+        <ul class="plain" style="margin-top:18px">
           <li><b>Перевірка документів до оплати.</b> Письмово: проходите, не проходите, що доповнити.</li>
           <li><b>Підготовка пакета і переклад.</b> Контракт, виписки, CV, фото, маршрут.</li>
           <li><b>Подача і відстеження.</b> Статус у повідомленнях на кожному етапі.</li>
@@ -253,13 +375,13 @@ footer .in{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-betwe
       <div>
         <p class="eyebrow">Без доплати</p>
         <h2>Що додаємо до пакета</h2>
-        <ul class="plain" style="margin-top:16px">
+        <ul class="plain" style="margin-top:18px">
           <li><b>Податкова памʼятка резидента.</b> 183 дні, джерело доходу, що змінюється після KITAS. Щоб порахувати, а не боятися.</li>
           <li><b>Паспорт-контроль.</b> Перевірка терміну паспорта за 9 місяців до продовження і план, якщо він закінчується.</li>
           <li><b>Нагадування за 60 днів до продовження.</b> Не за три дні.</li>
           <li><b>Рік 2 за IDR 10 500 000.</b> Фіксована ціна продовження, відома сьогодні.</li>
         </ul>
-        <p style="margin-top:18px;font-size:14.5px;color:var(--ink-2)">SKTT, якщо він вам знадобиться, оформлюємо за окрему оплату.</p>
+        <p class="muted" style="margin-top:18px;font-size:14.5px">SKTT, якщо він вам знадобиться, оформлюємо за окрему оплату.</p>
       </div>
     </div>
   </div>
@@ -269,7 +391,7 @@ footer .in{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-betwe
   <div class="in">
     <p class="eyebrow">Процес</p>
     <h2>Шість кроків, один візит</h2>
-    <ol class="steps" style="margin-top:24px">
+    <ol class="steps">
       <li><b>Ви описуєте ситуацію</b>Хто платить, скільки, через що, термін паспорта, скільки часу на Балі.</li>
       <li><b>Письмова відповідь за 24 робочі години</b>Проходите чи ні, і чек-лист документів.</li>
       <li><b>Оплата після «проходите»</b>Пропозиція з кодом, ціною, виконавцем, датою, умовами повернення і способами оплати.</li>
@@ -280,65 +402,70 @@ footer .in{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-betwe
   </div>
 </section>
 
-<section class="band alt">
+<section class="band sand">
   <div class="in">
     <p class="eyebrow">Вимоги імміграції · imigrasi.go.id, перевірено 13.10.2026</p>
     <h2>Що перевіряє імміграція</h2>
-    <div class="tbl" style="margin-top:20px">
-      <table>
-        <thead><tr><th>Вимога</th><th>Що підходить</th></tr></thead>
-        <tbody>
-          <tr><td>Паспорт</td><td>Дійсний щонайменше 6 місяців</td></tr>
-          <tr><td>Робота</td><td>Трудовий договір або контракт із компанією, зареєстрованою поза Індонезією</td></tr>
-          <tr><td>Дохід</td><td>Від 60 000 USD на рік, підтверджений документами</td></tr>
-          <tr><td>Кошти на проживання</td><td>Виписка з банку за 3 місяці з балансом від 2 000 USD на ваше імʼя</td></tr>
-          <tr><td>Інше</td><td>CV, кольорове фото за останній рік, маршрут</td></tr>
-        </tbody>
-      </table>
+    <div class="req">
+      <div><small>Паспорт</small><b>Дійсний щонайменше 6 місяців</b></div>
+      <div><small>Робота</small><b>Договір або контракт із компанією поза Індонезією</b></div>
+      <div><small>Дохід</small><b>Від 60 000 USD на рік, підтверджений документами</b></div>
+      <div><small>Кошти</small><b>Виписка за 3 місяці з балансом від 2 000 USD</b></div>
+      <div><small>Інше</small><b>CV, кольорове фото за останній рік, маршрут</b></div>
     </div>
-    <p class="prose" style="margin-top:16px;color:var(--ink-2)">Дохід ФОП, кілька клієнтів, виплати через Wise або Payoneer: це найчастіше питання. Саме тому перевірка йде до оплати, а не після.</p>
+    <p class="prose muted" style="margin-top:20px">Дохід ФОП, кілька клієнтів, виплати через Wise або Payoneer: це найчастіше питання. Саме тому перевірка йде до оплати, а не після.</p>
   </div>
 </section>
 
 <section class="band" id="family">
   <div class="in">
-    <div class="cols">
-      <div class="offer">
-        <p class="eyebrow">Сімейний пакет</p>
-        <h3>Сімʼя на одну дату</h3>
-        <p style="margin-top:10px;color:var(--ink-2)">E33G для того, хто працює, і Dependent KITAS для партнера та дітей. Один чек-лист, одна дата подачі, один виконавець, одне продовження через рік. Дитина отримує документ, який приймає школа.</p>
-        <p class="amount">IDR 11 000 000 + IDR <span class="ph">[Dependent]</span> за особу</p>
-        <p style="font-size:14.5px">Одна сума за сімʼю у письмовій пропозиції. Все включено. Оригінали паспортів лишаються у сімʼї.</p>
-        <ul class="plain" style="margin-top:14px">
-          <li>Переклад свідоцтв про шлюб і народження включено.</li>
-          <li>Дзвінок 20 хвилин до подачі: хто, що, коли приносить.</li>
-          <li>Віза для батьків за 10 хвилин: VOA, C1 чи D1, строк і ціна, коли вирішите їх запросити.</li>
-        </ul>
-        <a class="btn secondary" href="#check">Розрахувати суму для моєї сімʼї</a>
-      </div>
-      <div class="offer" id="tax">
-        <p class="eyebrow">Бухгалтерія PT PMA</p>
-        <h3>Спокійний місяць</h3>
-        <p style="margin-top:10px;color:var(--ink-2)">Щомісячна звітність, LKPM і річна декларація вашої PT PMA. Після кожного місяця одне повідомлення українською: що здано, скільки сплачено, що далі. Листи податкової перекладаємо і пояснюємо протягом робочого дня.</p>
-        <div class="tariffs" aria-label="Тарифи за кількістю операцій">
-          <div><small>до <span class="ph">[X]</span> операцій/міс</small><b>IDR 1 500 000</b></div>
-          <div><small><span class="ph">[X]–[Y]</span> операцій/міс</small><b>IDR 2 500 000</b></div>
-          <div><small><span class="ph">[Y]–[Z]</span> операцій/міс</small><b>IDR 3 500 000</b></div>
+    <p class="eyebrow">Ще два маршрути</p>
+    <h2>Для сімʼї і для власників PT PMA</h2>
+    <div class="passes">
+      <article class="pass">
+        <div class="main">
+          <p class="code">Сімейний пакет · E33G + Dependent KITAS</p>
+          <h3 style="margin-top:8px">Сімʼя на одну дату</h3>
+          <p class="muted" style="margin-top:10px">E33G для того, хто працює, і Dependent KITAS для партнера та дітей. Один чек-лист, одна дата подачі, один виконавець, одне продовження через рік. Дитина отримує документ, який приймає школа.</p>
+          <ul class="plain" style="margin-top:14px;font-size:15px">
+            <li>Переклад свідоцтв про шлюб і народження включено.</li>
+            <li>Дзвінок 20 хвилин до подачі: хто, що, коли приносить.</li>
+            <li>Віза для батьків за 10 хвилин: VOA, C1 чи D1, строк і ціна.</li>
+          </ul>
         </div>
-        <p style="font-size:14.5px">На місяць, все включено. Переходите від іншого бухгалтера: незакриті періоди закриваємо обовʼязково, обсяг і оплату погоджуємо письмово до початку робіт. Суми податків визначає DJP.</p>
-        <a class="btn secondary" href="#check">Підрахувати мої операції і отримати тариф</a>
-      </div>
+        <div class="stub">
+          <div><p class="code">Сума за сімʼю</p><p class="amount">IDR 11 000 000 + <span class="ph">[Dependent]</span> за особу</p><p class="muted" style="font-size:12.5px;margin-top:6px">Все включено. Паспорти лишаються у вас.</p></div>
+          <a class="btn sea" href="#check">Розрахувати</a>
+        </div>
+      </article>
+      <article class="pass" id="tax">
+        <div class="main">
+          <p class="code">Бухгалтерія PT PMA · щомісяця</p>
+          <h3 style="margin-top:8px">Спокійний місяць</h3>
+          <p class="muted" style="margin-top:10px">Щомісячна звітність, LKPM і річна декларація вашої PT PMA. Після кожного місяця одне повідомлення українською: що здано, скільки сплачено, що далі. Листи податкової перекладаємо і пояснюємо протягом робочого дня.</p>
+          <div class="tariffs" aria-label="Тарифи за кількістю операцій">
+            <div><small>до <span class="ph">[X]</span> оп./міс</small><b>IDR 1 500 000</b></div>
+            <div><small><span class="ph">[X]–[Y]</span> оп./міс</small><b>IDR 2 500 000</b></div>
+            <div><small><span class="ph">[Y]–[Z]</span> оп./міс</small><b>IDR 3 500 000</b></div>
+          </div>
+          <p class="muted" style="font-size:14px">Переходите від іншого бухгалтера: незакриті періоди закриваємо обовʼязково, обсяг і оплату погоджуємо письмово до початку робіт. Суми податків визначає DJP.</p>
+        </div>
+        <div class="stub">
+          <div><p class="code">На місяць</p><p class="amount">від операцій вашої компанії</p><p class="muted" style="font-size:12.5px;margin-top:6px">Три фіксовані тарифи, все включено.</p></div>
+          <a class="btn sea" href="#check">Отримати тариф</a>
+        </div>
+      </article>
     </div>
   </div>
 </section>
 
-<section class="band alt trust">
+<section class="band sand trust">
   <div class="in">
     <div class="cols">
       <div>
         <p class="eyebrow">Хто ми</p>
         <h2>Укрбалівіза</h2>
-        <p class="prose" style="margin-top:14px;color:var(--ink-2)">Українська команда у складі Bali Zero, компанії, яка з 2019 року веде візові, корпоративні та податкові справи на Балі. Ми говоримо з вами українською, а з імміграцією та податковою індонезійською.</p>
+        <p class="prose muted" style="margin-top:16px">Українська команда у складі Bali Zero, компанії, яка з 2019 року веде візові, корпоративні та податкові справи на Балі. Ми говоримо з вами українською, а з імміграцією та податковою індонезійською.</p>
       </div>
       <div>
         <dl>
@@ -357,7 +484,7 @@ footer .in{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-betwe
   <div class="in">
     <p class="eyebrow">Перед оплатою</p>
     <h2>Запитання і відповіді</h2>
-    <div style="margin-top:20px;max-width:800px">
+    <div style="margin-top:22px;max-width:820px">
       <details><summary>У чаті роблять за 8 мільйонів. Чому у вас 11?</summary><p>Порівнюйте, що входить. У нашій сумі державний збір, підготовка і переклад, подача, людина з іменем, яка відповідає, і умови повернення на папері. Оригінал паспорта лишається у вас. Нічого не додається в кінці.</p></details>
       <details><summary>А якщо імміграція відмовить?</summary><p>Рішення ухвалює Імміграційна служба Індонезії. Якщо наша перевірка сказала «проходите», а відмова сталася з причини, яку ми мали побачити, сервісний збір повертається повністю. Державний збір не повертається. Умови записані в пропозиції до оплати. <span class="ph">[Формулювання підтвердити.]</span></p></details>
       <details><summary>У мене ФОП і три клієнти, а не «роботодавець». Проходжу?</summary><p>Залежить від документів, які ви можете показати. Опишіть ситуацію у формі нижче, і протягом 24 робочих годин ви отримаєте письмову відповідь. Якщо ні, назвемо візу, яка підходить, і її ціну.</p></details>
@@ -370,11 +497,11 @@ footer .in{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-betwe
   </div>
 </section>
 
-<section class="band alt" id="check">
+<section class="band sand" id="check">
   <div class="in">
     <p class="eyebrow">Перевірка до оплати · безкоштовно</p>
     <h2>Опишіть ситуацію, відповімо письмово за 24 робочі години</h2>
-    <p class="prose" style="margin:12px 0 22px;color:var(--ink-2)">Проходите, не проходите, або що доповнити. Якщо E33G не підходить, назвемо візу, яка підходить, і її ціну.</p>
+    <p class="prose muted" style="margin:12px 0 24px">Проходите, не проходите, або що доповнити. Якщо E33G не підходить, назвемо візу, яка підходить, і її ціну.</p>
     <form class="check" id="checkform" novalidate>
       <label>Імʼя<input id="f-name" name="name" type="text" autocomplete="given-name" required></label>
       <label>Месенджер для відповіді<input id="f-contact" name="contact" type="text" placeholder="Telegram або WhatsApp" required></label>
@@ -390,10 +517,10 @@ footer .in{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-betwe
         <option value="less">Менше 6 місяців</option>
       </select></label>
       <label class="full">Ситуація: хто платить, скільки, через що, скільки часу на Балі<textarea id="f-text" name="text" rows="4" required></textarea></label>
-      <button class="btn" type="submit">Надіслати на перевірку</button>
+      <button class="btn sun" type="submit">Надіслати на перевірку</button>
       <p class="done" id="formdone" hidden></p>
     </form>
-    <p style="margin-top:14px;font-size:13.5px;color:var(--ink-2)">Прототип: форма нічого не надсилає. У робочій версії заявка йде виконавцю, а ви отримуєте підтвердження в месенджері.</p>
+    <p class="muted" style="margin-top:14px;font-size:13.5px">Прототип: форма нічого не надсилає. У робочій версії заявка йде виконавцю, а ви отримуєте підтвердження в месенджері.</p>
   </div>
 </section>
 
@@ -404,6 +531,11 @@ footer .in{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-betwe
     <p>Текст сторінки підготовлено з допомогою ШІ і перевірено командою.</p>
   </div>
 </footer>
+
+<div class="stick" id="stick" aria-hidden="true">
+  <div><b>IDR 11 000 000</b><small>E33G, все включено</small></div>
+  <a class="btn sun" href="#check">Перевірити документи</a>
+</div>
 
 <script>
 (function(){
@@ -421,7 +553,7 @@ footer .in{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-betwe
     else if(ans.q2==='lo'){h='C1 або D1, поки дохід нижчий за поріг';a='IDR 2 200 000 / IDR 6 000 000';p='E33G вимагає від 60 000 USD на рік. Назвемо варіант, який підходить зараз, і що змінити, щоб перейти на E33G.';}
     else if(ans.q2==='mid'){h=(ans.q1==='family'?'Сімейний пакет, після перевірки доходу':'E33G, після перевірки доходу');a='IDR 11 000 000';p='Дохід ФОП або від кількох клієнтів часто проходить, але залежить від документів. Опишіть ситуацію у формі нижче, відповімо письмово за 24 робочі години.';}
     else{h=(ans.q1==='family'?'Сімейний пакет: E33G + Dependent KITAS':'E33G Remote Worker KITAS, 1 рік');a=(ans.q1==='family'?'IDR 11 000 000 + Dependent за особу':'IDR 11 000 000');p='Все включено, нічого не додається в кінці. Продовження через рік: IDR 10 500 000. Наступний крок: перевірка документів до оплати.';}
-    res.innerHTML='<h3>'+h+'</h3>'+(a?'<p class="amount">'+a+'</p>':'')+'<p>'+p+'</p><a class="btn" href="#check">Перевірити мої документи до оплати</a>';
+    res.innerHTML='<h3>'+h+'</h3>'+(a?'<p class="amount">'+a+'</p>':'')+'<p class="muted">'+p+'</p><a class="btn sea" href="#check">Перевірити мої документи до оплати</a>';
     show('res');
   }
   box.addEventListener('click',function(e){
@@ -438,10 +570,18 @@ footer .in{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-betwe
   f.addEventListener('submit',function(e){
     e.preventDefault();
     var name=document.getElementById('f-name').value.trim(), txt=document.getElementById('f-text').value.trim(), c=document.getElementById('f-contact').value.trim();
-    if(!name||!txt||!c){d.hidden=false;d.textContent='Заповніть імʼя, контакт і опис ситуації: без них ми не зможемо відповісти.';d.style.borderColor='var(--gold)';return;}
+    if(!name||!txt||!c){d.hidden=false;d.textContent='Заповніть імʼя, контакт і опис ситуації: без них ми не зможемо відповісти.';d.style.borderColor='var(--sun)';return;}
     d.style.borderColor='var(--ok)';
     d.hidden=false;
     d.textContent='Прийнято, '+name+'. Письмова відповідь протягом 24 робочих годин у '+c+'. (Прототип: заявку не надіслано.)';
   });
+
+  var stick=document.getElementById('stick'), card=document.querySelector('.pricecard'), form=document.getElementById('check');
+  if('IntersectionObserver' in window && stick && card){
+    var cardOut=false, formIn=false;
+    function upd(){stick.classList.toggle('on',cardOut && !formIn);}
+    new IntersectionObserver(function(es){es.forEach(function(x){cardOut=!x.isIntersecting && x.boundingClientRect.top<0;});upd();},{threshold:0}).observe(card);
+    new IntersectionObserver(function(es){es.forEach(function(x){formIn=x.isIntersecting;});upd();},{threshold:.15}).observe(form);
+  }
 })();
 </script>
