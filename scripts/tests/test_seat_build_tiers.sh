@@ -132,8 +132,8 @@ case_agy_tier_pro_derived_xhigh_clamps_high() {
 d=json.load(sys.stdin)
 argv=d["argv"]
 assert argv[2] == "Tier test task, small.", argv
-assert argv[argv.index("--model")+1] == "gemini-4-argon", argv
-assert argv[argv.index("--effort")+1] == "high", argv' <<< "$out"
+assert argv[argv.index("--model")+1] == "gemini-4-argon-high", argv
+assert "--effort" not in argv, argv' <<< "$out"
 }
 
 case_agy_tier_pro_explicit_low_stays_low() {
@@ -143,19 +143,19 @@ case_agy_tier_pro_explicit_low_stays_low() {
     python3 -c 'import json,sys
 d=json.load(sys.stdin)
 argv=d["argv"]
-assert argv[argv.index("--model")+1] == "gemini-4-argon", argv
-assert argv[argv.index("--effort")+1] == "low", argv' <<< "$out"
+assert argv[argv.index("--model")+1] == "gemini-4-argon-low", argv
+assert "--effort" not in argv, argv' <<< "$out"
 }
 
-case_agy_tier_pro_explicit_medium_clamps_high() {
+case_agy_tier_pro_explicit_medium_maps_medium() {
     local out
     out="$(seat_env "$SEAT_BUILD" --seat agy --tier pro --role synthesis --gear 3 --effort medium \
         --worktree "$LINKED_WT" --task-file "$TASK_FILE" --dry-run 2>/dev/null)" || return 1
     python3 -c 'import json,sys
 d=json.load(sys.stdin)
 argv=d["argv"]
-assert argv[argv.index("--model")+1] == "gemini-4-argon", argv
-assert argv[argv.index("--effort")+1] == "high", argv' <<< "$out"
+assert argv[argv.index("--model")+1] == "gemini-4-argon-medium", argv
+assert "--effort" not in argv, argv' <<< "$out"
 }
 
 case_qwen_unchanged_ignores_tier() {
@@ -268,8 +268,8 @@ d=json.load(sys.stdin)
 assert d["tier"] == "pro", d
 assert d["tier_downgraded_from"] is None, d
 argv=d["argv"]
-assert argv[argv.index("--model")+1] == "gemini-4-argon", argv
-assert argv[argv.index("--effort")+1] == "high", argv' <<< "$out"
+assert argv[argv.index("--model")+1] == "gemini-4-argon-medium", argv
+assert "--effort" not in argv, argv' <<< "$out"
 }
 
 case_agy_pro_large_input_keeps_pro() {
@@ -281,7 +281,7 @@ d=json.load(sys.stdin)
 assert d["tier"] == "pro", d
 assert d["tier_downgraded_from"] is None, d
 argv=d["argv"]
-assert argv[argv.index("--model")+1] == "gemini-4-argon", argv' <<< "$out"
+assert argv[argv.index("--model")+1] == "gemini-4-argon-medium", argv' <<< "$out"
 }
 
 case_agy_pro_role_synthesis_keeps_pro_on_small_input() {
@@ -294,25 +294,26 @@ assert d["tier"] == "pro", d
 assert d["tier_downgraded_from"] is None, d' <<< "$out"
 }
 
-# agy/pro effort coverage. argv carries the NORMALISED effort (low stays low,
-# everything else is sent as high); report.effort keeps the value the caller
-# REQUESTED (or the default medium), so the two legitimately differ.
-agy_pro_effort_case() {  # agy_pro_effort_case <want-argv-effort> <want-report-effort> [seat_build args...]
-    local want_argv="$1" want_report="$2" out
+# agy/pro effort coverage. argv carries the advertised suffixed model
+# (gemini-4-argon-{low,medium,high}); report.effort keeps the value the caller
+# REQUESTED (or the default medium).
+agy_pro_effort_case() {  # agy_pro_effort_case <want-model> <want-report-effort> [seat_build args...]
+    local want_model="$1" want_report="$2" out
     shift 2
     out="$(seat_env "$SEAT_BUILD" --seat agy --tier pro --role synthesis \
         --worktree "$LINKED_WT" --task-file "$TASK_FILE" --dry-run "$@" 2>/dev/null)" || return 1
     python3 -c 'import json,sys
 d=json.load(sys.stdin)
 argv=d["argv"]
-assert argv[argv.index("--model")+1] == "gemini-4-argon", argv
-assert argv[argv.index("--effort")+1] == sys.argv[1], argv
-assert d["effort"] == sys.argv[2], d' "$want_argv" "$want_report" <<< "$out"
+assert argv[argv.index("--model")+1] == sys.argv[1], argv
+assert d["model"] == sys.argv[1], d
+assert "--effort" not in argv, argv
+assert d["effort"] == sys.argv[2], d' "$want_model" "$want_report" <<< "$out"
 }
 
-case_agy_pro_explicit_high_stays_high() { agy_pro_effort_case high high --effort high; }
-case_agy_pro_explicit_max_clamps_high() { agy_pro_effort_case high max --gear 3 --effort max; }
-case_agy_pro_default_effort_clamps_high() { agy_pro_effort_case high medium; }
+case_agy_pro_explicit_high_stays_high() { agy_pro_effort_case gemini-4-argon-high high --effort high; }
+case_agy_pro_explicit_max_clamps_high() { agy_pro_effort_case gemini-4-argon-high max --gear 3 --effort max; }
+case_agy_pro_default_effort_maps_medium() { agy_pro_effort_case gemini-4-argon-medium medium; }
 
 case_agy_pro_invalid_effort_refused_64() {
     local rc=0
@@ -321,16 +322,26 @@ case_agy_pro_invalid_effort_refused_64() {
     [ "$rc" -eq 64 ]
 }
 
-case_agy_tier_argon_alias_resolves_to_pro() {
+case_agy_tier_argon_alias_and_topology_membership() {
     local out
     out="$(seat_env "$SEAT_BUILD" --seat agy --tier argon --effort high \
         --worktree "$LINKED_WT" --task-file "$TASK_FILE" --dry-run 2>/dev/null)" || return 1
-    python3 -c 'import json,sys
-d=json.load(sys.stdin)
+    python3 - "$REPO_ROOT/FLEET_TOPOLOGY.json" <<< "$out" <<'PY'
+import json
+import sys
+
+topo_path = sys.argv[1]
+d = json.load(sys.stdin)
 assert d["tier"] == "pro" and d["tier_downgraded_from"] is None, d
-argv=d["argv"]
-assert argv[argv.index("--model")+1] == "gemini-4-argon", argv
-assert argv[argv.index("--effort")+1] == "high", argv' <<< "$out"
+argv = d["argv"]
+assert argv[argv.index("--model") + 1] == "gemini-4-argon-high", argv
+assert "--effort" not in argv, argv
+
+with open(topo_path, encoding="utf-8") as f:
+    agy_models = set(json.load(f)["orchestrators"]["agy"]["models"])
+for slug in ("gemini-3.8-flash-high", "gemini-4-argon-low", "gemini-4-argon-medium", "gemini-4-argon-high"):
+    assert slug in agy_models, (slug, agy_models)
+PY
 }
 
 # ── tier defaulting / SEAT_BUILD_TIER_REQUIRED ───────────────────────────────
@@ -389,9 +400,9 @@ run_case "codex/luna argv carries -m gpt-5.6-luna" case_codex_tier_luna_argv
 run_case "kimi/k3 argv carries -m kimi-code/k3" case_kimi_tier_k3_argv
 run_case "kimi/highspeed at medium effort is allowed" case_kimi_tier_highspeed_medium_ok
 run_case "agy/flash argv carries --model gemini-3.8-flash-high" case_agy_tier_flash_argv
-run_case "agy/pro derives xhigh and clamps it to --effort high" case_agy_tier_pro_derived_xhigh_clamps_high
-run_case "agy/pro keeps explicit --effort low" case_agy_tier_pro_explicit_low_stays_low
-run_case "agy/pro clamps explicit medium to --effort high" case_agy_tier_pro_explicit_medium_clamps_high
+run_case "agy/pro derives xhigh and maps to gemini-4-argon-high" case_agy_tier_pro_derived_xhigh_clamps_high
+run_case "agy/pro maps explicit --effort low to gemini-4-argon-low" case_agy_tier_pro_explicit_low_stays_low
+run_case "agy/pro maps explicit --effort medium to gemini-4-argon-medium" case_agy_tier_pro_explicit_medium_maps_medium
 run_case "qwen ignores --tier entirely" case_qwen_unchanged_ignores_tier
 run_case "ctx-check fails CLOSED on a missing/unreadable config" case_ctx_config_missing_is_hard_error
 run_case "ctx-check exempts a legitimately-absent pair (qwen)" case_ctx_config_valid_absence_is_exempt
@@ -406,11 +417,11 @@ run_case "ctx-check: same 900KB task fits codex/sol window" case_codex_sol_handl
 run_case "agy/pro keeps pro on small input (Gemini 4 Argon)" case_agy_pro_small_input_keeps_pro
 run_case "agy/pro keeps pro on >200k-token input" case_agy_pro_large_input_keeps_pro
 run_case "agy/pro keeps pro under --role synthesis" case_agy_pro_role_synthesis_keeps_pro_on_small_input
-run_case "agy/pro keeps explicit --effort high" case_agy_pro_explicit_high_stays_high
-run_case "agy/pro clamps explicit max to high, report keeps max" case_agy_pro_explicit_max_clamps_high
-run_case "agy/pro default effort (medium) clamps to high" case_agy_pro_default_effort_clamps_high
+run_case "agy/pro maps explicit --effort high to gemini-4-argon-high" case_agy_pro_explicit_high_stays_high
+run_case "agy/pro clamps explicit max to gemini-4-argon-high, report keeps max" case_agy_pro_explicit_max_clamps_high
+run_case "agy/pro default effort (medium) maps to gemini-4-argon-medium" case_agy_pro_default_effort_maps_medium
 run_case "agy/pro invalid --effort refused (64)" case_agy_pro_invalid_effort_refused_64
-run_case "agy/argon alias resolves to pro and gemini-4-argon" case_agy_tier_argon_alias_resolves_to_pro
+run_case "agy/argon alias and FLEET_TOPOLOGY.json model membership" case_agy_tier_argon_alias_and_topology_membership
 run_case "missing --tier defaults with a stderr NOTICE" case_missing_tier_notice_defaults
 run_case "SEAT_BUILD_TIER_REQUIRED=1 turns missing --tier into exit 64" case_missing_tier_required_env_exit64
 run_case "unknown --tier value is refused (64)" case_invalid_tier_value_refused

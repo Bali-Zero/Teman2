@@ -19,12 +19,12 @@ from mata_garuda.workers import gap_consumer
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PLIST = REPO_ROOT / "infra" / "launchagents" / "com.matagaruda.gap.consumer.plist"
 
-# `agy models`, 2026-09-24 — research/operations/2026-09-24-agy-seat-probe.md.
+# `agy models`, 2026-10-14 (antigravity-cli 1.3.4).
 SERVED_AGY_MODELS = {
     "gemini-3.8-flash-high", "gemini-3.8-flash-medium", "gemini-3.8-flash-low",
     "gemini-3.7-flash-high", "gemini-3.7-flash-medium", "gemini-3.7-flash-low",
     "gemini-3.6-flash-high", "gemini-3.6-flash-medium", "gemini-3.6-flash-low",
-    "gemini-3.1-pro-high", "gemini-3.1-pro-low",
+    "gemini-4-argon-high", "gemini-4-argon-medium", "gemini-4-argon-low",
 }
 
 
@@ -72,11 +72,18 @@ def test_retired_model_is_swapped_for_a_served_one_with_a_warning(caplog):
     assert "gemini-3.8-flash-high" in cmd
     assert "gemini-3.5-flash" not in cmd
     assert any("retired" in rec.message for rec in caplog.records)
+    caplog.clear()
+    rt_pro = cli_runtime.CLIRuntime(model="agy:gemini-3.1-pro-high")
+    with caplog.at_level(logging.WARNING, logger=cli_runtime.logger.name):
+        cmd_pro = rt_pro._build_command("ping")
+    assert "gemini-4-argon-high" in cmd_pro
+    assert "gemini-3.1-pro-high" not in cmd_pro
+    assert any("retired" in rec.message for rec in caplog.records)
 
 
 def test_served_model_passes_through_silently(caplog):
     with caplog.at_level(logging.WARNING, logger=cli_runtime.logger.name):
-        assert cli_runtime.served_agy_model("gemini-3.1-pro-high") == "gemini-3.1-pro-high"
+        assert cli_runtime.served_agy_model("gemini-4-argon-high") == "gemini-4-argon-high"
     assert not caplog.records
 
 

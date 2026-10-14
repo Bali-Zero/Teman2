@@ -370,10 +370,11 @@ main() {
             binary_name="agy"
             seat_tier_default agy flash
             case "$TIER" in
-                flash) MODEL="gemini-3.8-flash-high" ;;
-                pro|argon) TIER="pro"; MODEL="gemini-4-argon" ;;
+                flash) ;;
+                pro|argon) TIER="pro" ;;
                 *) refuse 64 "invalid --tier for seat agy: $TIER (expected flash|pro|argon)" ;;
             esac
+            MODEL="pending"  # finalized below after derive_effort_from_floor
             ;;
         qwen)
             binary_name="qwen"; MODEL="qwen-default"
@@ -402,6 +403,19 @@ main() {
     case "$GEAR" in ""|1|2|3) ;; *) refuse 64 "invalid --gear: $GEAR (expected 1|2|3)" ;; esac
 
     derive_effort_from_floor
+
+    if [ "$SEAT" = "agy" ]; then
+        case "$TIER" in
+            flash) MODEL="gemini-3.8-flash-high" ;;
+            pro)
+                case "$EFFORT" in
+                    low) MODEL="gemini-4-argon-low" ;;
+                    medium) MODEL="gemini-4-argon-medium" ;;
+                    *) MODEL="gemini-4-argon-high" ;;
+                esac
+                ;;
+        esac
+    fi
 
     INPUT_TOKENS_EST=$(( $(wc -c < "$TASK_FILE" | tr -d '[:space:]') / 4 ))
 
@@ -441,10 +455,6 @@ main() {
         agy)
             seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --print-timeout 10m)
             task_index=2
-            if [ "$MODEL" = "gemini-4-argon" ]; then
-                # argv gets the normalised low|high; report.effort keeps the REQUESTED value.
-                [ "$EFFORT" = low ] && seat_argv+=(--effort low) || seat_argv+=(--effort high)
-            fi
             ;;
         qwen) seat_argv=("$seat_binary" -p "$task_text"); task_index=2 ;;  # unchanged
         tp1) seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --effort "$EFFORT"); task_index=2 ;;
