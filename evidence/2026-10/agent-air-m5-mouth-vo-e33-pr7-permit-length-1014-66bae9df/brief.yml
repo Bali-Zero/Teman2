@@ -1,0 +1,33 @@
+gear: 2
+gear_reason:
+  One tree PR in a single public surface (adapter, response guard, view model, sheet, i18n
+  twins, tests); no backend, no data, no deploy beyond the normal mouth merge. The deterministic floor
+  from the diff is 2 (size term), so no council journal is required.
+ruling:
+  "Zero, 2026-10-11 E33 audit plan PR-7 and the mandate to close the E33 family end to end: every
+  priced result states its stay-permit length from the signed pack, renewal only where the pack verifies
+  it, never a promise."
+mission:
+  The Visa Oracle result page shows the stay-permit length (1-year / 5-year) beside a priced candidate,
+  from stay_policy in the signed pack (ACTIVE rulepack-prod-029, seq-29).
+objective:
+  A priced candidate with no duration options and a single FIXED_DAYS stay of 365 or 1825 days
+  shows its permit length; the renewal line shows only for extension VERIFIED and allowed with 365 x 5;
+  the longer-stay sentence follows the pack coverage (stay plus renewals) and never promises beyond it;
+  UNKNOWN says nothing about extension.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-response.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/outcome-view-model.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/visa-oracle-test-fixture.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-response.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx
+  - scripts/ci/observe_visa_oracle_replay_pins.py
+  - scripts/ci/observe_visa_oracle_stay_permit_length.py
+  - tests/scripts/test_observe_visa_oracle_stay_permit_length.py
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1

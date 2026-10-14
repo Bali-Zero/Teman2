@@ -1,0 +1,225 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling:
+  "Zero, 2026-10-11 E33 audit plan PR-7 and the mandate to close the E33 family end to end: every
+  priced result states its stay-permit length from the signed pack, renewal only where the pack verifies
+  it, never a promise."
+mission:
+  The Visa Oracle result page shows the stay-permit length (1-year / 5-year) beside a priced candidate,
+  from stay_policy in the signed pack (ACTIVE rulepack-prod-029, seq-29).
+lanes:
+  - lane: pr7-permit-length
+    role: build
+    seat:
+      gemini-4-argon-high via agy (external seat, edits files, never runs git), Claude Sonnet 5.5 driver
+      verifies and commits; worktree mouth-vo-e33-pr7-permit-length-1014 on M5. First run network timeout,
+      retry wrote the first build, round 2 fixed adapter tests and tsc, a cure round followed the red teams
+      (372fb039df).
+  - lane: pr7-red-team-opus
+    role: review
+    seat: claude-opus-5-5 adversarial red team, read-only, head 251af84645
+  - lane: pr7-red-team-codex
+    role: review
+    seat:
+      codex gpt-5.6-sol, rollout name rollout-2026-10-14T09-07-45-01a137f3-7a43-7893-8175-d7a02e114851.jsonl,
+      model gpt-5.6-sol verified
+  - lane: pr7-ground-truth
+    role: ground_truth
+    seat:
+      ACTIVE signed pack rulepack-prod-029.signed.json (seq-29); the change asserts no rule of its own,
+      it states the pack's stay_policy and extension_policy on the candidate.
+    nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
+    query_hash: 8daa66acd3ba3f6adc9a78304e35d719667fa3e735b32492757ee085ea6bee0e # pragma: allowlist secret
+    note: query_hash = sha256 of the signed pack file in the worktree.
+pii_scan: clean
+bites:
+  consumer:
+    the public Visa Oracle result page (OutcomeSheet and its share summary), and the CI observer
+    that runs the stay-permit tests.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_stay_permit_length.py
+  expect: contains:stay-permit length holds
+receipts:
+  - claim:
+      The new observer runs engine-response, engine-adapter and OutcomeSheet test files and requires
+      every stay-permit test by title.
+    cmd: python3 scripts/ci/observe_visa_oracle_stay_permit_length.py
+    result:
+      engine-response 19 passed (19); engine-adapter 182 passed (182); OutcomeSheet 147 passed (147);
+      'stay-permit length holds'
+    exit: 0
+    ts: "2026-10-14T05:11:00Z"
+    seat: this session
+  - claim: The whole Visa Oracle subtree passes.
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: Test Files 58 passed (58), Tests 1525 passed (1525)
+    exit: 0
+    ts: "2026-10-14T05:20:00Z"
+    seat: this session
+  - claim: The mouth type check is clean.
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: no output
+    exit: 0
+    ts: "2026-10-14T05:20:00Z"
+    seat: this session
+  - claim: The replay-pins census is exact at the new floor.
+    cmd: python3 scripts/ci/observe_visa_oracle_replay_pins.py
+    result: Tests  269 passed (269); replay pins hold
+    exit: 0
+    ts: "2026-10-14T05:14:10Z"
+    seat: this session
+  - claim: The observer's parser has guilt and innocence tests.
+    cmd: python3 -m pytest -q -p no:cacheprovider tests/scripts/test_observe_visa_oracle_stay_permit_length.py
+    result: 12 passed
+    exit: 0
+    ts: "2026-10-14T05:09:00Z"
+    seat: this session
+  - claim: The deterministic gear floor of the diff is 2.
+    cmd:
+      python3 scripts/evidence_pack_lint.py --changed-files-file <diff names> --numstat-file <diff numstat>
+      --print-floor
+    result: "2"
+    exit: 0
+    ts: "2026-10-14T05:05:00Z"
+    seat: this session
+decisions:
+  - id: D-coverage-not-promise
+    decision:
+      The longer-stay verified sentence is bounded by the pack's own coverage (stay maximum plus
+      renewals); beyond it the advisor sentence is shown, never a promise.
+  - id: D-no-prohibited-activities
+    decision: prohibited_activities validation stays out of this PR; PR-20 owns it.
+  - id: D-census-open
+    decision:
+      A pack-driven census test over every product is not in this PR; recorded as PLAUSIBLE dissent,
+      to be taken up in the E33 closing PR.
+dissent:
+  - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
+    severity: HIGH
+    where: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts:2040-2042
+    objection:
+      The longer-stay VERIFIED sentence fired for any stay_days above the first permit with no
+      upper limit; the signed rule for E33F/E33G covers 365 days plus 5 renewals of 365 (2190 days), so
+      at 3000 or 36500 days the page promised what the pack does not say.
+    status: CONFIRMED
+    disposition:
+      "Cured: coverage = stay maximum + maximum_extensions x days_per_extension from the VERIFIED
+      and allowed policy only; the verified sentence needs stay_days <= coverage, above it the advisor line.
+      Guilt test pins 2190 verified and 2191, 3000, 36500 advisor."
+    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+  - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
+    severity: MEDIUM
+    where: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-response.ts:354,362,390
+    objection:
+      stayPolicy() rejected any extra key, unlike every other check in the parser; a future optional
+      pack field would turn every evaluate response into MALFORMED_RESPONSE until mouth ships.
+    status: CONFIRMED
+    disposition:
+      "Cured: the three extra-key checks removed; required key, type, range and enum checks kept;
+      a test now pins that extra keys are tolerated."
+    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+  - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
+    severity: MEDIUM
+    where: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-response.ts:507-511
+    objection:
+      "Unrequested scope: PR-7 added a weaker prohibited_activities validation that would conflict
+      with PR-20's stricter one."
+    status: CONFIRMED
+    disposition:
+      "Cured: the block and its cases are gone from this PR (the diff against main carries no
+      prohibited_activities line change); PR-20's validation is kept as written on rebase."
+    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+  - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
+    severity: LOW
+    where: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts:1933-1943; i18n.ts; OutcomeSheet.tsx
+    objection:
+      The label field and the outcome.stay_permit_length keys duplicated outcome.duration_years
+      word for word.
+    status: CONFIRMED
+    disposition:
+      "Cured: label field, the 2x2 i18n keys and the sheet ternaries dropped; the existing durationLabel
+      path renders the text."
+    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+  - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
+    severity: LOW
+    where: engine-adapter.test.ts:4431-4555
+    objection:
+      Guilt tests used stay policies that are not in the signed pack; no E33G test; no test pinned
+      the E23 line.
+    status: PLAUSIBLE
+    disposition:
+      "Partly cured: E28A, E30A, BRIDGING and A1 now use the signed-pack shapes, E33G and E23
+      are covered. NOT added: a census test that reads rulepack-prod-029.signed.json and builds every product.
+      Left for the E33 closing PR; the live replay on the pack is the Bites observation."
+    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+  - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
+    severity: LOW
+    where: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts:2041-2046
+    objection:
+      A VERIFIED, allowed policy with a renewal combination not in the table got no longer-stay
+      line even inside its coverage (E23 at 600 days).
+    status: CONFIRMED
+    disposition:
+      "Cured: the line is decided by the coverage arithmetic (VERIFIED, allowed, stay_days <=
+      coverage); E23 at 600 days gets the verified continuation, at 800 days the advisor line."
+    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+  - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
+    severity: LOW
+    where: i18n.ts:905-909,1943-1948
+    objection:
+      "Copy register: 'your plan continues by renewal' states as fact what Immigration grants
+      case by case; the Indonesian was word for word."
+    status: CONFIRMED
+    disposition:
+      "Cured: EN 'your stay can continue by renewal'; ID verified line 'masa tinggal Anda
+      dapat dilanjutkan dengan perpanjangan'; ID unknown line softened as the commit records."
+    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+  - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
+    severity: LOW
+    where: OutcomeSheet.tsx:667-671
+    objection: The renewal line used the price-note style and could read as renewals included in the price.
+    status: CONFIRMED
+    disposition: "Cured: rendered as a hint after the price notes, with no price wording."
+    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+  - seat: claude-opus-5-5 adversarial red team, PR-7, head 251af8464594ed44ee2a7ec0ead110aca8db48b7, read-only
+    severity: LOW
+    where: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts:1983-1994
+    objection: parsedStayDays repeated the integer parsing of fact-mapper.
+    status: CONFIRMED
+    disposition: "Cured: the adapter reuses mapStayDays(facts)."
+    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+  - seat:
+      codex gpt-5.6-sol (rollout-2026-10-14T09-07-45-01a137f3-7a43-7893-8175-d7a02e114851.jsonl, model
+      gpt-5.6-sol verified)
+    severity: MEDIUM
+    where: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-response.ts:504; engine-response.test.ts:284
+    objection:
+      A missing stay_policy passed the runtime guard and a test declared the absence valid, so
+      a degraded payload showed a price with no permit length.
+    status: CONFIRMED
+    disposition:
+      "Cured: stay_policy is required on every display candidate; the test now asserts rejection
+      of an absent stay_policy."
+    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+  - seat:
+      codex gpt-5.6-sol (rollout-2026-10-14T09-07-45-01a137f3-7a43-7893-8175-d7a02e114851.jsonl, model
+      gpt-5.6-sol verified)
+    severity: LOW
+    where: engine-adapter.test.ts:4431 and :4534
+    objection:
+      Guilt tests used synthetic shapes instead of the signed-pack candidates; the A1 test did
+      not assert duration undefined.
+    status: PLAUSIBLE
+    disposition:
+      "Partly cured: exact pack shapes for E28A, E30A, BRIDGING, A1, and the cases assert no
+      length, renewal, continuation or raw identifier. Same open item as the red-team census suggestion."
+    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
+  - seat:
+      codex gpt-5.6-sol (rollout-2026-10-14T09-07-45-01a137f3-7a43-7893-8175-d7a02e114851.jsonl, model
+      gpt-5.6-sol verified)
+    severity: LOW
+    where: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-response.ts:507; engine-response.test.ts:237
+    objection: "Unrequested scope: prohibited_activities validation inconsistent with closed identifiers."
+    status: CONFIRMED
+    disposition: "Cured: removed from this PR, as above."
+    cure_commit: 372fb039df789fb821b9086e27d639b49ce27fb6 # pragma: allowlist secret
