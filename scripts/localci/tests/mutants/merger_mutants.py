@@ -52,6 +52,7 @@ GP = ("scripts/localci/tests/test_gate_pending.py",)   # B12
 GS = ("scripts/localci/tests/test_gate_stale.py",)   # B12b
 ROOT = Path(__file__).resolve().parents[4]
 REPORT = "scripts/localci/tests/test_merger_report.py"
+PENDING = ("scripts/localci/tests/test_merger_pending.py",)   # B19
 TICK = "scripts/localci/tests/test_merger.py"
 PY, SH = "scripts/localci/merger.py", "scripts/localci/localci_merger_tick.sh"
 HC, RUNNER = "scripts/localci/hosted_compare.py", "scripts/localci/runner.py"
@@ -868,6 +869,17 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b21-landed-without-ref-update": (PY, 'updated = git(repo_dir, "update-ref", "refs/merger/base", commit, old, check=False).returncode == 0',
                                       'updated = readback or git(repo_dir, "update-ref", "refs/merger/base", commit, old, check=False).returncode == 0', (PHASEF,)),
     "b21-rejection-marker-loses-to-transport": (PY, "    if PUSH_REJECTED.search(err):\n        return False\n", "", (PHASEF,)),
+    # B19: a PASS waits, it is not spent
+    "pending-ignores-base": (PY, 'if base != base_sha or heads.get(n) != head or p["expired"]:', 'if heads.get(n) != head or p["expired"]:', PENDING),
+    "pending-ignores-head": (PY, 'if base != base_sha or heads.get(n) != head or p["expired"]:', 'if base != base_sha or p["expired"]:', PENDING),
+    "pending-local-terms-not-required": (PY, "                or not all(crit.get(x) is True for x in LOCAL_TERMS) or w.get(\"clean\") is not True\n", "                or w.get(\"clean\") is not True\n", PENDING),
+    "pending-no-ttl": (PY, 'if clock - _epoch(p["decision"]["ts"]) > PENDING_TTL_S:', "if False:", PENDING),
+    "pending-no-interval": (PY, 'elif clock - p["last"] >= PENDING_RETRY_S:', "elif True:", PENDING),
+    "pending-no-per-tick-cap": (PY, "[:PENDING_RETRY_MAX]:", "[:99]:", PENDING),
+    "pending-no-merge-cap": (PY, 'if sum(1 for r in read_journal(state) if r.get("kind") == "merged") > merged_before:\n            return True', "if False:\n            return True", PENDING),
+    "pending-retry-rows-counted-as-decisions": (PY, 'r.get("kind") == "would_merge" and not r.get("retry")]', 'r.get("kind") == "would_merge"]', (REPORT,)),
+    "pending-retry-enqueue-counted": (PY, 'and r.get("ok") is True and not r.get("retry"))', 'and r.get("ok") is True)', (REPORT,)),
+    "pending-expired-journalled-twice": (PY, 'or p["expired"]:', ":", PENDING),
 }
 
 

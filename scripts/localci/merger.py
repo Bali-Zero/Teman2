@@ -238,6 +238,10 @@ def wants_merge(pr: dict) -> bool:
 
 
 GATE_CONTEXT = "harness/fable-gate"
+PENDING_RETRY_MAX = 3      # B19: pending merges retried in one tick
+PENDING_RETRY_S = 900      # B19: a key is retried at most this often
+PENDING_TTL_S = 86400      # B19: a pending merge older than this (from its decision) is never retried
+LOCAL_TERMS = ("local_checks_clean", "review_independent", "executed_contexts_ok", "same_repo")
 GATE_PENDING_CAP = 3   # B12: decisions of one (pr, head, base) that found no gate verdict posted yet
 
 
@@ -853,6 +857,8 @@ def gh_graphql(query: str, **variables) -> dict:
 
 def hosted_side(live) -> str | None:
     """None when every context branch protection requires is GREEN on the PR head, red-dominant (skipped/neutral pass, as on GitHub)."""
+    if isinstance(live, Exception):   # B19: a retry's failed read keeps its own message
+        return redact(f"the hosted read on the PR head failed: {type(live).__name__}: {live}")
     if not isinstance(live, dict):
         return "the hosted read on the PR head failed"
     hc.required_names(live.get("required_checks"))
@@ -1019,7 +1025,8 @@ def merge_shadow_step(state: Path, repo_dir: Path, enq: dict, base: str = "main"
     crit = enq.get("criterion") if isinstance(enq.get("criterion"), dict) else {}
     line = {"kind": "would_merge", "pr": enq["pr"], "head_sha": head, "base_sha": base_sha, "mirror_main": None, "remote_main": None, "base_current": False,
             "head_unchanged": crit.get("head_unchanged") is True, "merge_tree": None, "clean": False, "conflicts": [], "criterion": crit,
-            "armed_env": enq.get("armed_env"), "bites": enq.get("bites") is True, "ok": False, "lease_id": enq.get("lease_id")}
+            "armed_env": enq.get("armed_env"), "bites": enq.get("bites") is True, "ok": False, "lease_id": enq.get("lease_id"),
+            **({"retry": True, "decision_ts": enq.get("decision_ts")} if enq.get("retry") is True else {})}
     errors = []
     try:
         res = git(repo_dir, "ls-remote", "origin", f"refs/heads/{base}", check=False, timeout=REMOTE_TIMEOUT_S)
@@ -1483,6 +1490,77 @@ def replay_pending(a, state: Path, repo_dir: Path, recs: list[dict]) -> dict | N
     return None
 
 
+def pending_merges(recs: list[dict]) -> dict:
+    """B19 P1: ``(pr, head, base)`` -> ``{decision, enq, last, expired}`` for every non-replay decision whose original ``would_enqueue`` had the
+    local terms true and whose original ``would_merge`` was clean and disarmed, with no ``merged``/``pushed`` row. ``last`` is the epoch of
+    the key's last ``would_enqueue`` (original or retry). A key with no readable timestamp is not pending."""
+    dec, enq, wm, last, closed, expired = {}, {}, {}, {}, set(), set()
+    for r in recs:
+        k = (r.get("pr"), r.get("head_sha"), r.get("base_sha"))
+        kind = r.get("kind")
+        if kind == "decision" and not r.get("replay"):
+            dec[k] = r
+            enq.pop(k, None)
+            wm.pop(k, None)
+            last.pop(k, None)
+        elif kind == "would_enqueue" and is_ts(r.get("ts")):
+            last[k] = max(last.get(k, 0.0), _epoch(r["ts"]))
+            if not r.get("retry") and k in dec:
+                enq[k] = r
+        elif kind == "would_merge" and not r.get("retry") and k in dec:
+            wm[k] = r
+        elif kind in ("merged", "pushed"):
+            closed.add(k)
+        elif kind == "skipped" and r.get("why") == "pending_expired":
+            expired.add(k)
+    out = {}
+    for k, d in dec.items():
+        e, w, crit = enq.get(k), wm.get(k), (enq.get(k) or {}).get("criterion")
+        if (k in closed or e is None or w is None or not isinstance(crit, dict) or not is_ts(d.get("ts")) or d.get("gate_pending") is True
+                or d.get("overall") in ("CONFLICT", "ERROR", "FAIL") or e.get("kind") != "would_enqueue"
+                or not all(crit.get(x) is True for x in LOCAL_TERMS) or w.get("clean") is not True
+                or (w.get("phase_f") or {}).get("armed") is not False or not isinstance(e.get("executed_required"), str)):
+            continue
+        out[k] = {"decision": d, "enq": e, "last": last[k], "expired": k in expired}
+    return out
+
+
+def retry_pending_merges(a, state: Path, repo_dir: Path, lease_id: str, recs: list[dict], base_sha: str, prs: list[dict]) -> bool:
+    """B19: retry the time-varying terms of the pending merges (``pending_merges``) whose base and head are still current. Returns True
+    when a retry merged (the base moved: the tick decides nothing more). A read error is a false term on the retry's own row."""
+    heads = {p.get("number"): head_of(p) for p in prs if isinstance(p, dict)}
+    clock, due = time.time(), []
+    for (n, head, base), p in pending_merges(recs).items():
+        if base != base_sha or heads.get(n) != head or p["expired"]:
+            continue
+        if clock - _epoch(p["decision"]["ts"]) > PENDING_TTL_S:
+            journal(state, {"kind": "skipped", "why": "pending_expired", "pr": n, "head_sha": head, "base_sha": base, "lease_id": lease_id})
+        elif clock - p["last"] >= PENDING_RETRY_S:
+            due.append((p["last"], n, head, p))
+    for _, n, head, p in sorted(due, key=lambda x: x[:3])[:PENDING_RETRY_MAX]:
+        d, row = p["decision"], p["enq"]
+        loc = {"why": dict.fromkeys(LOCAL_TERMS[:3]), "executed_required": row["executed_required"], "non_executed": row.get("non_executed") or {},
+               "partial": row.get("partial") or {}, "host_no_verdict": row.get("host_no_verdict") or {}}   # same_repo: pr_side reads it fresh
+        merged_before = sum(1 for r in read_journal(state) if r.get("kind") == "merged")
+        try:
+            try:
+                live = hc.fetch_live(a.repo, a.base, head, base_matrix(repo_dir, base_sha))
+            except Stopped:
+                raise
+            except Exception as exc:  # noqa: BLE001 — an unreadable hosted side is a false term with the read's message (hosted_side)
+                live = exc
+            enq = enqueue_step(a, state, {"repo": a.repo, "pr": n, "head_sha": head, "base_sha": base_sha, "candidate_sha": d.get("candidate_sha"),
+                                          "lease_id": lease_id, "retry": True, "decision_ts": d["ts"]}, loc, live)
+            merge_shadow_step(state, repo_dir, enq, a.base, a, d)
+        except Stopped:
+            raise
+        except Exception as exc:  # noqa: BLE001 — a retry never raises into the tick
+            print(f"merger: #{n} pending retry not completed — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
+        if sum(1 for r in read_journal(state) if r.get("kind") == "merged") > merged_before:
+            return True
+    return False
+
+
 def tick(a, state: Path, lease_id: str) -> int:
     repo_dir = ensure_mirror(state, a.remote_url or f"https://github.com/{a.repo}.git", a.seed, push_url_of(a))
     shutil.rmtree(state / "cand", ignore_errors=True)   # a killed tick's leftovers: nothing else uses them while the lease is ours
@@ -1493,7 +1571,10 @@ def tick(a, state: Path, lease_id: str) -> int:
     base_sha = git(repo_dir, "rev-parse", "refs/merger/base^{commit}").stdout.strip()
     capped: list = []
     evict_capped: list = []
-    todo, forks = triage(open_prs(a.repo, a.base), a.repo, recs, base_sha, lambda n, head, names: gate_ready(a.repo, head, names), capped, evict_capped)
+    prs = open_prs(a.repo, a.base)
+    if retry_pending_merges(a, state, repo_dir, lease_id, recs, base_sha, prs):
+        return 0
+    todo, forks = triage(prs, a.repo, recs, base_sha, lambda n, head, names: gate_ready(a.repo, head, names), capped, evict_capped)
     for why, prs in (("gate_pending_cap", capped), ("evicted_cap", evict_capped)):   # B12, B15: journalled once per key, however many ticks pass
         for pr in prs:
             key = {"pr": pr["number"], "head_sha": head_of(pr), "base_sha": base_sha}
@@ -1788,9 +1869,13 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
     evicted = sum(1 for r in window if r.get("kind") == "evicted")
     n_merged, n_refused = (sum(1 for r in window if r.get("kind") == k) for k in ("merged", "push_refused"))
     phase_f = "shadow" if not (n_merged or n_refused) else f"armed ({n_merged} merged, {n_refused} refused)"   # F2: the journal says what ran
-    enqueue = {k: sum(1 for r in window if r.get("kind") == k) for k in ("enqueued", "enqueue_refused", "enqueue_error")}
-    enqueue["would_enqueue"] = sum(1 for r in window if r.get("kind") == "would_enqueue" and r.get("ok") is True)   # every sub-criterion true
-    wm = [r for r in window if r.get("kind") == "would_merge"]   # phase F, shadow: the merge rehearsed, never made
+    enqueue = {k: sum(1 for r in window if r.get("kind") == k and not r.get("retry")) for k in ("enqueued", "enqueue_refused", "enqueue_error")}
+    enqueue["would_enqueue"] = sum(1 for r in window if r.get("kind") == "would_enqueue" and r.get("ok") is True and not r.get("retry"))   # every sub-criterion true
+    retried = [r for r in window if r.get("retry") is True]   # B19: a pending merge tried again is never a second decision
+    pending_retry = {"would_enqueue": sum(1 for r in retried if r.get("kind") == "would_enqueue"),
+                     "would_merge": sum(1 for r in retried if r.get("kind") == "would_merge"),
+                     "would_merge_ok": sum(1 for r in retried if r.get("kind") == "would_merge" and r.get("ok") is True)}
+    wm = [r for r in window if r.get("kind") == "would_merge" and not r.get("retry")]   # phase F, shadow: the merge rehearsed, never made
     would_merge = {"total": len(wm), "ok": sum(1 for r in wm if r.get("ok") is True), "conflicted": sum(1 for r in wm if r.get("clean") is False and is_sha(r.get("merge_tree")) and not r.get("error")),
                    "base_moved": sum(1 for r in wm if r.get("base_current") is False and is_sha(r.get("remote_main"))),
                    "errors": sum(1 for r in wm if r.get("error"))}
@@ -1808,7 +1893,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
                       "compared_merges_skip_agreed": merged_skip_agreed,
                       "compared_days": compared_days, "longest_silence_h": silence_h, "longest_decision_gap_h": decision_gap_h,
                       "last_line_age_h": last_line_age_h, "future_lines": future_lines, "errors": errors, "evicted": evicted, "skipped": skipped,
-                      "decisions_without_code_sha": without_code_sha, "enqueue": enqueue, "would_merge": would_merge,
+                      "decisions_without_code_sha": without_code_sha, "enqueue": enqueue, "would_merge": would_merge, "pending_retry": pending_retry,
                       "code_shas": sorted({r["code_sha"] for r in rows if is_sha(r["code_sha"])}), "ticks": ticks},
            "counts": counts, "hosted_red_merged": hosted_red_merged, "merged_without_merge_commit_sha": merged_without_sha, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "recorded_false_green_as_journalled": recorded_raw,
            "recorded_reclassified_hosted_stale": reclassified, "recorded_kept_false_green": kept_fg, "phase_e_ready": ready, "phase_f": phase_f, "phase_f_halted": os.path.lexists(state / HALT_FILE), "rows": rows,
