@@ -27,8 +27,8 @@ bites:
     A family visitor with a Calling Visa passport on POST /evaluate (offshore, family, SPOUSE,
     sponsor nationality IT, nationality NG), and the live visa-oracle dead end that renders no_path_reasons.
   where: ci
-  observe: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/services/visa_engine/test_evaluator_global_no_path_reasons.py
-  expect: "contains:9 passed"
+  observe: python3 scripts/ci/observe_visa_engine_global_no_path_reasons.py
+  expect: "contains:global no-path reasons hold"
 receipts:
   - claim: "The new test file passes on the build head (9 tests, seq-29 acceptance, seq-28 guilt witness, two innocence pins)."
     cmd: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/services/visa_engine/test_evaluator_global_no_path_reasons.py
@@ -47,6 +47,12 @@ receipts:
     result: "14 failed, 3626 passed, 15 skipped, 3 xfailed, 1 warning, 34 errors in 136.57s"
     exit: 1
     ts: "2026-10-14T03:54:09Z"
+    seat: this session
+  - claim: "The bites observer passes on the build head."
+    cmd: python3 scripts/ci/observe_visa_engine_global_no_path_reasons.py
+    result: "9 passed in 0.80s; global no-path reasons hold"
+    exit: 0
+    ts: "2026-10-14T04:07:40Z"
     seat: this session
 decisions:
   - id: D-global-by-scope
