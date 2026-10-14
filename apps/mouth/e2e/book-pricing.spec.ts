@@ -175,3 +175,25 @@ test("public visa service cards expose only exact all-inclusive PricingTool rows
   await expect(dialog).toBeHidden();
   await expect(detailsTrigger).toBeFocused();
 });
+
+test("book E33F card shows the sponsor sentence visibly at 320px and 1280px", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const width of [320, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/book/services");
+    const cards = page.getByTestId("book-service-cards");
+    await cards.scrollIntoViewIfNeeded();
+    const card = cards.locator(":scope > *").filter({
+      has: page.getByRole("heading", {
+        name: "E33F Second Home Senior (1 Year, Offshore)",
+      }),
+    });
+    const firstFeature = card.getByRole("listitem").first();
+    await expect(firstFeature).toBeVisible();
+    await expect(firstFeature).toContainText(
+      "A sponsor (penjamin) is required; Bali Zero can act as one.",
+    );
+  }
+});

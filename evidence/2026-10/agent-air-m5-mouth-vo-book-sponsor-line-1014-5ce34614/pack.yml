@@ -1,0 +1,116 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero ruled on 2026-10-14 that the E33F price rows carry exactly the sentence 'A sponsor (penjamin) is required;
+  Bali Zero can act as one.' (shipped in #8501). nuzantara-57's #8501 prove-live finding: on /book the sentence is in
+  the DOM but clamped away by line-clamp-5 on the tagline, so it is invisible at 320px and 1280px.
+mission: >-
+  The /book E33F card shows the sponsor sentence as its first feature, bound verbatim to the catalogue row.
+lanes:
+  - lane: book-sponsor-line
+    role: build
+    seat: "gemini-4-argon-high via agy (accept-edits, sandbox, scrubbed env, no shell; edits files only), Claude driver verified and committed. Two agy rounds: round 1 built the three files, round 2 fixed the e2e locator."
+  - lane: book-sponsor-line
+    role: review
+    seat: "claude-opus-5-5 adversarial red team (read-only), head ec42e56262: 1 MEDIUM, 5 LOW, 1 informational"
+  - lane: book-sponsor-line
+    role: review
+    seat: "codex gpt-5.6-sol read-only red team, reasoning high, rollout session id 01a13b51-05e8-7a72-84f6-6936e5fb0046 (model line in the run header: gpt-5.6-sol), head ec42e56262: LGTM, no HIGH/MEDIUM/LOW. Its own vitest could not start in the read-only sandbox (EPERM on the Vite temp dir) and Playwright was not run on M5: environment limits, covered by the receipts below"
+pii_scan: clean
+pii_scan_note: "Code-only lane: a component data module, tests and an e2e spec on public catalogue strings. No client data reached any seat."
+bites: >-
+  Consumer: the /book page (apps/mouth/src/app/(book)/book/BookPage.tsx renders SERVICES through
+  ServicePricingCard.tsx, which shows features.slice(0,3) unclamped). Observation before merge:
+  python3 scripts/ci/observe_book_sponsor_line_1014.py runs the lane's vitest file and exits 0 only on 6 of 6 passed;
+  with the highlight line removed from the builder it exits non-zero (2 failed). Observation after deploy: a merge on
+  mouth is not live until the staged deployment is promoted (vercel promote), then on balizero.com/book/services at
+  320px and 1280px the first listitem of the E33F card is visible and contains the sentence (the same assertion as the
+  e2e test, run against the live URL with PLAYWRIGHT_EXTERNAL_SERVER=1 on Pro).
+results:
+  - claim: "The lane's bites observer passes: 6 of 6 vitest tests in book-sponsor-line.test.ts."
+    cmd: "python3 scripts/ci/observe_book_sponsor_line_1014.py"
+    result: "Tests  6 passed (6); exit 0"
+    exit: 0
+    ts: "2026-10-14T17:09:00Z"
+    seat: this session (Claude driver)
+  - claim: "The observer bites: the highlight removed from the features array (mutation, restored by cp) turns it red."
+    cmd: "remove 'highlight,' from the features array in book-data.ts, python3 scripts/ci/observe_book_sponsor_line_1014.py, restore by cp"
+    result: "FAILED (Tests  2 failed | 4 passed (6)); expected '1 year' to be 'A sponsor (penjamin) is required; ...'; file restored, git status clean"
+    exit: 1
+    ts: "2026-10-14T17:09:30Z"
+    seat: this session (Claude driver)
+  - claim: "The observer's summary parser rejects partial passes and accepts only a full pass."
+    cmd: "python3 -m pytest -q -p no:cacheprovider tests/scripts/test_observe_book_sponsor_line_1014.py"
+    result: "8 passed"
+    exit: 0
+    ts: "2026-10-14T17:09:00Z"
+    seat: this session (Claude driver)
+  - claim: "Lane vitest: the whole src/components/book directory."
+    cmd: "cd apps/mouth && npx --no-install vitest run src/components/book"
+    result: "Test Files  3 passed (3); Tests  15 passed (15)"
+    exit: 0
+    ts: "2026-10-14T17:10:00Z"
+    seat: this session (Claude driver)
+  - claim: "Typecheck of the mouth app."
+    cmd: "cd apps/mouth && npx --no-install tsc --noEmit -p ."
+    result: "no output"
+    exit: 0
+    ts: "2026-10-14T17:10:20Z"
+    seat: this session (Claude driver)
+  - claim: "The frontend price mirror is in sync with the canonical catalogue (no catalogue file changed)."
+    cmd: "python3 scripts/sync_frontend_prices.py --check"
+    result: "INFO OK: apps/mouth/data/bali-zero-prices.json is in sync with PricingTool canonical."
+    exit: 0
+    ts: "2026-10-14T17:10:30Z"
+    seat: this session (Claude driver)
+  - claim: "Formatting of the three touched mouth files."
+    cmd: "npx --no-install prettier --check apps/mouth/src/components/book/book-data.ts apps/mouth/src/components/book/book-sponsor-line.test.ts apps/mouth/e2e/book-pricing.spec.ts"
+    result: "All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-10-14T17:10:40Z"
+    seat: this session (Claude driver)
+  - claim: "Single commit on origin/main whose trailer is the required one (red-team MEDIUM cured)."
+    cmd: "git log origin/main..HEAD --format=%h; git log origin/main..HEAD --format=%B | grep -c 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'"
+    result: "c3fec98dd6 (one commit); trailer count 1"
+    exit: 0
+    ts: "2026-10-14T17:07:00Z"
+    seat: this session (Claude driver)
+  - claim: "E2E (visible at 320px and 1280px) passed on Pro in chromium, Mobile Chrome and webkit. Reported by the build driver from an earlier turn on head ec42e56262, whose spec is byte-identical in the squashed head; NOT re-run in this turn. Firefox is not installed on Pro (environment gap)."
+    cmd: "ssh pro: detached worktree from a git bundle, node_modules symlinked, BZ_E2E_PORT=3917, playwright test e2e/book-pricing.spec.ts --project=chromium --project='Mobile Chrome' --project=webkit"
+    result: "9 passed (60s), PW_EXIT=0"
+    exit: 0
+    ts: "2026-10-14T00:00:00Z"
+    seat: build driver (earlier turn, inherited receipt)
+
+dissent:
+  - seat: "claude-opus-5-5 adversarial red team (read-only), head ec42e56262"
+    objection: "MEDIUM: both commits ended with 'Co-Authored-By: Claude Sonnet 5.5', not the required Opus 5.5 trailer; uncorrectable after push (amend and force-push banned)."
+    status: CONFIRMED
+    disposition: "CURED before any push: reset --soft to origin/main and one fresh commit c3fec98dd6 with the Opus 5.5 trailer (receipt above)."
+  - seat: "claude-opus-5-5 adversarial red team"
+    objection: "LOW: CI's e2e step (--project=chromium --grep 'page Page|@offline') matches neither the new test nor the two existing ones in the file, so the visibility proof exists only as the manual Pro run."
+    status: CONFIRMED
+    disposition: "ACCEPTED, no code change: CI keeps the vitest features[0] guard; the live visibility observation is named in the Bites line (after vercel promote, on balizero.com/book at 320px and 1280px)."
+  - seat: "claude-opus-5-5 adversarial red team"
+    objection: "LOW: the guard fails open on a blank highlight ('' is contained in any string and is then dropped by the filter), so the card silently loses the highlight."
+    status: CONFIRMED
+    disposition: "CURED in c3fec98dd6: the guard also throws when highlight.trim() is empty; guilt test 'throws when highlight is blank or whitespace-only'."
+  - seat: "claude-opus-5-5 adversarial red team"
+    objection: "LOW: the guilt test used a bare .toThrow(), which accepts any throw."
+    status: CONFIRMED
+    disposition: "CURED in c3fec98dd6: all three guilt assertions use .toThrow(/does not contain highlight/)."
+  - seat: "claude-opus-5-5 adversarial red team"
+    objection: "LOW: innocence checks are thin; C1/C2/E33G snapshot rows have empty duration/validity/notes so their expected features are [] and only D1 carries weight."
+    status: CONFIRMED
+    disposition: "CURED in c3fec98dd6: a non-vacuity assertion (the compared set of other services is non-empty) was added; the innocence arrays are computed from the snapshot rows, not by hand."
+  - seat: "claude-opus-5-5 adversarial red team"
+    objection: "LOW: running the e2e from a real checkout rewrites two tracked screenshots under docs/audits/screenshots/visa-oracle-v2/."
+    status: CONFIRMED
+    disposition: "ACCEPTED, no code change: the Pro run used a throwaway checkout; no refreshed PNG is committed (git status of docs is clean)."
+  - seat: "claude-opus-5-5 adversarial red team"
+    objection: "INFORMATIONAL: the sentence is in the DOM twice (clamped tagline and first feature) so a screen reader reads it twice; on it/id/ru/zh /book it shows in English like every other catalogue string."
+    status: PLAUSIBLE
+    disposition: "ACCEPTED as out of scope: the spec keeps the tagline and clamp and forbids new wording; localised /book copy is a separate catalogue-localisation lane."
+
+spend:
+  adversarial_rounds: 1

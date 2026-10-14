@@ -1,0 +1,21 @@
+gear: 1
+gear_reason: >-
+  Measured floor 1: three files under apps/mouth (one component data module, one new vitest file, one e2e spec),
+  147 insertions and 4 deletions, no hot zone, no catalogue JSON, no backend. A client-facing card, but one string
+  moves position and no price or wording is created.
+mission: >-
+  The /book E33F card shows the sponsor sentence Zero ruled on 2026-10-14, instead of clamping it away.
+objective: >-
+  On /book the E33F card (kitas_permits, E33F Second Home Senior (1 Year, Offshore)) shows 'A sponsor (penjamin) is
+  required; Bali Zero can act as one.' as its first feature, visible at 320px and 1280px. The sentence is bound
+  verbatim to the catalogue row: the builder throws at module load if the row's description_en does not contain it.
+  The catalogue text, the tagline clamp, every other card and /services are unchanged.
+scope:
+  - apps/mouth/src/components/book/book-data.ts
+  - apps/mouth/src/components/book/book-sponsor-line.test.ts
+  - apps/mouth/e2e/book-pricing.spec.ts
+  - scripts/ci/observe_book_sponsor_line_1014.py
+  - tests/scripts/test_observe_book_sponsor_line_1014.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
