@@ -100,6 +100,10 @@ class MergerError(RuntimeError):
     that (pr, head, base) — retried at the next base, so one poisoned PR cannot hold the queue — which reads as blind."""
 
 
+class TickTimeout(MergerError):
+    """The SIGALRM watchdog's own exception (B19): a handler that swallows broad exceptions re-raises it, as it does ``Stopped``."""
+
+
 def now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
@@ -241,6 +245,7 @@ GATE_CONTEXT = "harness/fable-gate"
 PENDING_RETRY_MAX = 3      # B19: pending merges retried in one tick
 PENDING_RETRY_S = 900      # B19: a key is retried at most this often
 PENDING_TTL_S = 86400      # B19: a pending merge older than this (from its decision) is never retried
+MERGE_ATTEMPT = ("merged", "merge_error")   # B19: the rows phase_f_merge always leaves
 LOCAL_TERMS = ("local_checks_clean", "review_independent", "executed_contexts_ok", "same_repo")
 GATE_PENDING_CAP = 3   # B12: decisions of one (pr, head, base) that found no gate verdict posted yet
 
@@ -1492,9 +1497,9 @@ def replay_pending(a, state: Path, repo_dir: Path, recs: list[dict]) -> dict | N
 
 def pending_merges(recs: list[dict]) -> dict:
     """B19 P1: ``(pr, head, base)`` -> ``{decision, enq, last, expired}`` for every non-replay decision whose original ``would_enqueue`` had the
-    local terms true and whose original ``would_merge`` was clean and disarmed, with no ``merged``/``pushed`` row. ``last`` is the epoch of
+    local terms true and whose original ``would_merge`` was clean and disarmed, with no ``merged``/``pushed`` row (a ``merged`` row followed by ``push_unlanded`` is no merge; ``pushed`` always is). ``last`` is the epoch of
     the key's last ``would_enqueue`` (original or retry). A key with no readable timestamp is not pending."""
-    dec, enq, wm, last, closed, expired = {}, {}, {}, {}, set(), set()
+    dec, enq, wm, last, closed, pushed, expired = {}, {}, {}, {}, set(), set(), set()
     for r in recs:
         k = (r.get("pr"), r.get("head_sha"), r.get("base_sha"))
         kind = r.get("kind")
@@ -1511,6 +1516,10 @@ def pending_merges(recs: list[dict]) -> dict:
             wm[k] = r
         elif kind in ("merged", "pushed"):
             closed.add(k)
+            if kind == "pushed":
+                pushed.add(k)
+        elif kind == "push_unlanded" and k not in pushed:   # B21: the push failed in transport and main did not move: the merge did not happen
+            closed.discard(k)
         elif kind == "skipped" and r.get("why") == "pending_expired":
             expired.add(k)
     out = {}
@@ -1527,7 +1536,9 @@ def pending_merges(recs: list[dict]) -> dict:
 
 def retry_pending_merges(a, state: Path, repo_dir: Path, lease_id: str, recs: list[dict], base_sha: str, prs: list[dict]) -> bool:
     """B19: retry the time-varying terms of the pending merges (``pending_merges``) whose base and head are still current. Returns True
-    when a retry merged (the base moved: the tick decides nothing more). A read error is a false term on the retry's own row."""
+    when a retry attempted a merge (the base may have moved: the tick decides nothing more). A read error is a false term on the retry's own row."""
+    if os.environ.get(ARM_ENV) == "1":   # GitHub's merge queue owns this path
+        return False
     heads = {p.get("number"): head_of(p) for p in prs if isinstance(p, dict)}
     clock, due = time.time(), []
     for (n, head, base), p in pending_merges(recs).items():
@@ -1541,23 +1552,23 @@ def retry_pending_merges(a, state: Path, repo_dir: Path, lease_id: str, recs: li
         d, row = p["decision"], p["enq"]
         loc = {"why": dict.fromkeys(LOCAL_TERMS[:3]), "executed_required": row["executed_required"], "non_executed": row.get("non_executed") or {},
                "partial": row.get("partial") or {}, "host_no_verdict": row.get("host_no_verdict") or {}}   # same_repo: pr_side reads it fresh
-        merged_before = sum(1 for r in read_journal(state) if r.get("kind") == "merged")
+        tried_before = sum(1 for r in read_journal(state) if r.get("kind") in MERGE_ATTEMPT)
         try:
             try:
                 live = hc.fetch_live(a.repo, a.base, head, base_matrix(repo_dir, base_sha))
-            except Stopped:
+            except (Stopped, TickTimeout):
                 raise
             except Exception as exc:  # noqa: BLE001 — an unreadable hosted side is a false term with the read's message (hosted_side)
                 live = exc
             enq = enqueue_step(a, state, {"repo": a.repo, "pr": n, "head_sha": head, "base_sha": base_sha, "candidate_sha": d.get("candidate_sha"),
                                           "lease_id": lease_id, "retry": True, "decision_ts": d["ts"]}, loc, live)
             merge_shadow_step(state, repo_dir, enq, a.base, a, d)
-        except Stopped:
+        except (Stopped, TickTimeout):
             raise
         except Exception as exc:  # noqa: BLE001 — a retry never raises into the tick
             print(f"merger: #{n} pending retry not completed — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
-        if sum(1 for r in read_journal(state) if r.get("kind") == "merged") > merged_before:
-            return True
+        if sum(1 for r in read_journal(state) if r.get("kind") in MERGE_ATTEMPT) > tried_before:
+            return True   # phase_f_merge was called (merged or merge_error): the base may have moved, no second attempt this tick
     return False
 
 
@@ -1636,7 +1647,7 @@ def cmd_tick(a) -> int:
         print("merger: the lease is held — nothing done")
         return 0
     # superscar #2: a hung tick holds the lease and looks alive — the watchdog turns it into an ERROR decision; a stop is no verdict
-    old = {s: signal.signal(s, h) for s, h in ((signal.SIGALRM, _raise(MergerError, f"tick exceeded --tick-timeout {a.tick_timeout}s")),
+    old = {s: signal.signal(s, h) for s, h in ((signal.SIGALRM, _raise(TickTimeout, f"tick exceeded --tick-timeout {a.tick_timeout}s")),
                                                (signal.SIGTERM, _raise(Stopped, "stopped")))}
     signal.alarm(a.tick_timeout)
     try:

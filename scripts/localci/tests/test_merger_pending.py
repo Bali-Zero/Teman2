@@ -213,3 +213,131 @@ def test_a_retry_that_raises_inside_never_escapes_the_tick(fw, monkeypatch):
     state["green"] = True
     monkeypatch.setattr(mg, "merge_shadow_step", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("shadow exploded")))
     assert retry(fw) is False and fw.kinds().count("decision") == 1
+
+
+# ------------------------------------------------------------------ the gate's gaps (L1-L4, B21)
+import calendar  # noqa: E402
+import time as real_time  # noqa: E402
+
+from .test_merger import g  # noqa: E402
+
+
+class Clock:
+    def __init__(self, t):
+        self.t = t
+
+    def time(self):
+        return self.t
+
+    def __getattr__(self, name):
+        return getattr(real_time, name)
+
+
+def stamp(t):
+    return real_time.strftime("%Y-%m-%dT%H:%M:%SZ", real_time.gmtime(t))
+
+
+def keyed(fw, decision_at, enqueues=(), n=1, head=None):
+    """A pending key at the current base, its decision at ``decision_at`` and further would_enqueue rows at ``enqueues`` (epochs)."""
+    head = head or fw.head1
+    recs = [{**x, "pr": n, "head_sha": head, "base_sha": fw.base, "ts": stamp(decision_at)} for x in good()]
+    recs += [{"kind": "would_enqueue", "ts": stamp(t), "pr": n, "head_sha": head, "base_sha": fw.base, "retry": True} for t in enqueues]
+    return recs
+
+
+def run_retry(fw, recs, prs=None):
+    return mg.retry_pending_merges(args(), fw.state, fw.mirror, "L", recs, fw.base, fw.gh.prs if prs is None else prs)
+
+
+def test_the_local_terms_come_from_the_same_key_only():
+    bad = {**dict.fromkeys(mg.CRITERION, True), "local_checks_clean": False, "hosted_required_green": False}
+    other = [{**r, "head_sha": H2} for r in good({1: {"criterion": bad}})]
+    other_base = [{**r, "base_sha": "e" * 40} for r in good({1: {"criterion": bad}})]
+    for noise in (other, other_base):
+        assert list(mg.pending_merges([*noise, *good()])) == [(1, H1, B0)] and list(mg.pending_merges([*good(), *noise])) == [(1, H1, B0)]
+
+
+def test_the_retry_reads_the_hosted_side_at_the_decided_base_matrix(fw, monkeypatch):
+    state = decided_while_hosted_pends(fw, monkeypatch)
+    state["green"] = True
+    seen = []
+    real = mg.hc.fetch_live
+    monkeypatch.setattr(mg.hc, "fetch_live", lambda repo, base, head, matrix=None: seen.append((base, head, matrix)) or real(repo, base, head, matrix))
+    retry(fw)
+    base, head, matrix = seen[0]   # the retry reads first; READY reads more later
+    assert (base, head) == ("main", fw.head1) and matrix is not None and matrix[0] == fw.base
+    assert matrix[1]().strip() == g(fw.mirror, "show", f"{fw.base}:{mg.MATRIX}")
+
+
+def test_the_interval_runs_from_the_last_attempt_not_from_the_decision(fw, monkeypatch):
+    now = calendar.timegm(real_time.gmtime())
+    monkeypatch.setattr(mg, "time", Clock(now))
+    monkeypatch.setattr(mg, "phase_f_arming", lambda *a, **k: ({}, {"armed": False, "why": ["test"]}))
+    run_retry(fw, keyed(fw, now - 5000, [now - 100]))
+    assert rows(fw, "would_enqueue") == []   # the decision is old, the last attempt is 100 s ago
+    run_retry(fw, keyed(fw, now - 5000, [now - 1000]))
+    assert len(rows(fw, "would_enqueue")) == 1
+
+
+def test_the_ttl_runs_from_the_decision_not_from_the_last_attempt(fw, monkeypatch):
+    now = calendar.timegm(real_time.gmtime())
+    monkeypatch.setattr(mg, "time", Clock(now))
+    run_retry(fw, keyed(fw, now - mg.PENDING_TTL_S - 50, [now - 1000]))
+    assert [r["why"] for r in fw.live() if r["kind"] == "skipped"] == ["pending_expired"] and rows(fw, "would_enqueue") == []
+
+
+def test_with_the_enqueue_env_armed_the_retry_does_nothing_at_all(fw, monkeypatch):
+    state = decided_while_hosted_pends(fw, monkeypatch)
+    state["green"] = True
+    monkeypatch.setenv(mg.ARM_ENV, "1")
+    n = len(fw.journal())
+    assert retry(fw) is False and len(fw.journal()) == n and fw.gql.mutations() == []
+
+
+def test_a_watchdog_or_a_stop_during_a_retry_ends_the_tick(fw, monkeypatch):
+    state = decided_while_hosted_pends(fw, monkeypatch)
+    state["green"] = True
+    for exc in (mg.TickTimeout("tick exceeded"), mg.Stopped("stopped")):
+        for where in ("fetch_live", "merge_shadow_step"):
+            with monkeypatch.context() as m:
+                m.setattr(mg.hc if where == "fetch_live" else mg, where, lambda *a, _e=exc, **k: (_ for _ in ()).throw(_e))
+                with pytest.raises(type(exc)):
+                    retry(fw)
+    assert issubclass(mg.TickTimeout, mg.MergerError)
+
+
+def test_the_tick_timeout_is_raised_by_the_alarm_handler_and_by_nothing_else():
+    with pytest.raises(mg.TickTimeout):
+        mg._raise(mg.TickTimeout, "x")(0, None)
+
+
+def test_one_merge_attempt_per_tick_even_when_it_fails(fw, monkeypatch):
+    recs, nums = many(fw, monkeypatch)
+    made = []
+
+    def failing(state, repo_dir, enq, wm, pull, decision, base):
+        made.append(enq["pr"])
+        mg.journal(state, {"kind": "merge_error", "pr": enq["pr"], "head_sha": enq["head_sha"], "base_sha": enq["base_sha"]})
+    monkeypatch.setattr(mg, "phase_f_arming", lambda *a, **k: ({}, {"armed": True, "why": []}))
+    monkeypatch.setattr(mg, "phase_f_merge", failing)
+    assert run_retry(fw, recs) is True and made == nums[:1]
+
+
+def test_a_push_unlanded_after_merged_leaves_the_key_pending_and_pushed_always_closes_it():
+    k = {"pr": 1, "head_sha": H1, "base_sha": B0}
+    assert mg.pending_merges([*good(), {"kind": "merged", **k}]) == {}
+    assert list(mg.pending_merges([*good(), {"kind": "merged", **k}, {"kind": "push_unlanded", **k}])) == [(1, H1, B0)]
+    assert mg.pending_merges([*good(), {"kind": "merged", **k}, {"kind": "pushed", **k}, {"kind": "push_unlanded", **k}]) == {}
+    assert mg.pending_merges([*good(), {"kind": "merged", **k}, {"kind": "push_unlanded", **k}, {"kind": "merged", **k}]) == {}
+    assert list(mg.pending_merges([*good(), {"kind": "push_unlanded", **{**k, "head_sha": H2}}, {"kind": "merged", **k}, {"kind": "push_unlanded", **k}])) == [(1, H1, B0)]
+
+
+def test_the_real_alarm_handler_firing_inside_a_retry_ends_the_tick_with_a_timeout_error_line(fw, monkeypatch):
+    import os
+    import signal
+    state = decided_while_hosted_pends(fw, monkeypatch)
+    state["green"] = True
+    monkeypatch.setattr(mg, "merge_shadow_step", lambda *a, **k: os.kill(os.getpid(), signal.SIGALRM) or None)
+    monkeypatch.setattr(mg, "decide", lambda *a, **k: pytest.fail("the tick decided after the watchdog fired"))
+    assert fw.tick() == 1
+    assert "tick exceeded" in [r for r in fw.live() if r["kind"] == "error"][-1]["error"]
