@@ -80,6 +80,12 @@ decisions:
       e33_not_work_visa (confirmed, live fetch 2026-10-13) quotes "pelaporan rangkap kegiatan ke kantor imigrasi
       yang menerbitkan izin tinggal" and says E33E carries the same sentence (doctrine cards E33.md:62-64,
       E33E.md:57-58). The copy says only "report to Immigration", without the issuing-office detail.
+  - id: D-business-meetings-unrendered
+    decision: >-
+      business_meetings renders nothing (UNRENDERED_PROHIBITED_ACTIVITIES, no copy). The pack lists it on A1/B1/C1/C6
+      but the official C1 page, doctrine cards CL-A1B1-01 and tests/scripts/test_c1_c6_price_descriptions.py
+      (KNOWN_DIVERGENCE) say those visas allow business meetings, negotiations and signing. The pack field is a
+      seq-30 correction item; until then the result must not contradict the price catalogue.
   - id: D-census-floor
     decision: >-
       EXPECTED_TESTS in observe_visa_oracle_replay_pins.py goes 252 to 255 because the lane adds tests to pinned
@@ -139,6 +145,22 @@ dissent:
     status: CONFIRMED
     disposition: >-
       The floor bump is legitimate (the lane adds tests to pinned files); the new observer observe_visa_oracle_prohibited_activities_copy.py runs the census test with required names.
+  - seat: fresh final gate (a9556558)
+    objection: "F1 BLOCKING: A1/B1/C1/C6 results showed 'Attending business meetings' under what the permit does not allow, contradicting the official pages and the catalogue."
+    status: CONFIRMED
+    disposition: "Cured: business_meetings copy removed and the identifier listed as intentionally unrendered; a test pins it renders nothing on A1/B1/C1/C6 and that no copy mentions business meetings."
+  - seat: fresh final gate (a9556558)
+    objection: "F2 LOW: selling_goods_services and paid_employment are stricter than the E30/E31 pages."
+    status: CONFIRMED
+    disposition: "Deferred, not a block: copy follows the signed identifiers; pack harmonization is a seq-30 item."
+  - seat: fresh final gate (a9556558)
+    objection: "F3: the live observation of the second_home walk is owed after merge (mouth merge lands staged until vercel promote)."
+    status: CONFIRMED
+    disposition: "Owed after merge and promote: headless replay on Pro of a second_home walk with a 130k deposit showing the block under E33."
+  - seat: fresh final gate (a9556558)
+    objection: "F5 NIT: ID copy says izin kerja for a visa kerja; census lookup throws on Object.prototype names."
+    status: CONFIRMED
+    disposition: "Cured: ID copy now says visa kerja ini; the census lookup uses hasOwnProperty and a guilt case covers 'constructor'."
 spend:
   wall_clock_hours: 4
   adversarial_rounds: 1

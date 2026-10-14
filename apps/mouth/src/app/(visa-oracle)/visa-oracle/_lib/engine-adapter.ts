@@ -1742,12 +1742,16 @@ export const GENERIC_NOTICE_CONDITION: LocalizedText = text(
  * unknown identifier from a future pack is silently dropped by
  * `prohibitedActivitiesFor` so a raw identifier code never reaches the DOM.
  */
+export const UNRENDERED_PROHIBITED_ACTIVITIES: ReadonlySet<string> = new Set([
+  // The signed pack lists business_meetings on A1/B1/C1/C6, but the official
+  // pages and Bali Zero's own catalogue say those visas allow business
+  // meetings, negotiations and signing (tests/scripts/test_c1_c6_price_descriptions.py).
+  // No copy means nothing renders; the divergence is a pack-side item.
+  "business_meetings",
+]);
+
 export const PROHIBITED_ACTIVITY_COPY: Readonly<Record<string, LocalizedText>> =
   {
-    business_meetings: text(
-      "Attending business meetings",
-      "Menghadiri pertemuan bisnis",
-    ),
     continuous_supervision_production_sales: text(
       "Continuously supervising production or sales activities in Indonesia",
       "Mengawasi kegiatan produksi atau penjualan secara terus-menerus di Indonesia",
@@ -1814,7 +1818,7 @@ export const PROHIBITED_ACTIVITY_COPY: Readonly<Record<string, LocalizedText>> =
     ),
     passive_investment_management: text(
       "Using this work permit solely to hold or manage passive investments",
-      "Menggunakan izin kerja ini semata-mata untuk memegang atau mengelola investasi pasif",
+      "Menggunakan visa kerja ini semata-mata untuk memegang atau mengelola investasi pasif",
     ),
     political_activity: text(
       "Participating in political activities in Indonesia",

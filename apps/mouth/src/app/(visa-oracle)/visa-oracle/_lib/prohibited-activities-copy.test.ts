@@ -6,6 +6,7 @@ import {
   PROHIBITED_ACTIVITY_COPY,
   PROHIBITED_ACTIVITY_PRODUCT_COPY,
   SUPPORT_REASON_COPY,
+  UNRENDERED_PROHIBITED_ACTIVITIES,
   prohibitedActivitiesFor,
 } from "./engine-adapter";
 import type { LocalizedText } from "./outcome-view-model";
@@ -73,7 +74,9 @@ function missingCopyIdentifiers(
 ): string[] {
   const missing: string[] = [];
   for (const id of packIdentifiers) {
-    const entry = copyTable[id];
+    const entry = Object.prototype.hasOwnProperty.call(copyTable, id)
+      ? copyTable[id]
+      : undefined;
     if (!entry || !entry.en.trim() || !entry.id.trim()) {
       missing.push(id);
     }
@@ -92,8 +95,19 @@ describe("prohibited_activities copy census (PR-20)", () => {
     expect(liveIdentifiers.size).toBeGreaterThanOrEqual(28);
 
     expect(
-      missingCopyIdentifiers(liveIdentifiers, PROHIBITED_ACTIVITY_COPY),
+      missingCopyIdentifiers(
+        [...liveIdentifiers].filter(
+          (id) => !UNRENDERED_PROHIBITED_ACTIVITIES.has(id),
+        ),
+        PROHIBITED_ACTIVITY_COPY,
+      ),
     ).toEqual([]);
+    // An intentionally unrendered identifier is still a live pack identifier
+    // and must never also carry copy.
+    for (const id of UNRENDERED_PROHIBITED_ACTIVITIES) {
+      expect(liveIdentifiers.has(id)).toBe(true);
+      expect(Object.keys(PROHIBITED_ACTIVITY_COPY)).not.toContain(id);
+    }
 
     const orphans = Object.keys(PROHIBITED_ACTIVITY_COPY)
       .filter((key) => !liveIdentifiers.has(key))
@@ -102,8 +116,13 @@ describe("prohibited_activities copy census (PR-20)", () => {
   });
 
   it("guilt: the census helper reports any pack identifier lacking EN/ID copy", () => {
-    const live = new Set(["overstay", "unmapped_future_prohibition"]);
+    const live = new Set([
+      "overstay",
+      "unmapped_future_prohibition",
+      "constructor",
+    ]);
     expect(missingCopyIdentifiers(live, PROHIBITED_ACTIVITY_COPY)).toEqual([
+      "constructor",
       "unmapped_future_prohibition",
     ]);
   });
@@ -123,7 +142,7 @@ describe("prohibited_activities copy census (PR-20)", () => {
       ),
     ];
 
-    expect(allEntries.length).toBeGreaterThanOrEqual(30);
+    expect(allEntries.length).toBeGreaterThanOrEqual(29);
 
     for (const { label, copy } of allEntries) {
       expect(copy.en.trim().length, `${label}: empty en`).toBeGreaterThan(0);
@@ -295,10 +314,14 @@ describe("prohibited_activities copy census (PR-20)", () => {
       en: "Receiving compensation, wages, or in-kind benefits from an Indonesian source",
       id: "Menerima imbalan atau upah, termasuk dalam bentuk barang, dari sumber di Indonesia",
     });
-    expect(PROHIBITED_ACTIVITY_COPY.business_meetings).toEqual({
-      en: "Attending business meetings",
-      id: "Menghadiri pertemuan bisnis",
-    });
+    // Official pages and the price catalogue allow business meetings on
+    // A1/B1/C1/C6, so the pack's business_meetings identifier renders nothing.
+    for (const code of ["A1", "B1", "C1", "C6"]) {
+      expect(prohibitedActivitiesFor(code, ["business_meetings"])).toEqual([]);
+    }
+    expect(JSON.stringify(PROHIBITED_ACTIVITY_COPY).toLowerCase()).not.toMatch(
+      /business meeting|pertemuan bisnis/,
+    );
     expect(PROHIBITED_ACTIVITY_COPY.study).toEqual({
       en: "Studying in Indonesia",
       id: "Menempuh pendidikan di Indonesia",
