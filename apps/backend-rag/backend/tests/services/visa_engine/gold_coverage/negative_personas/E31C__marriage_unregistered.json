@@ -1,7 +1,9 @@
 {
-  "expected_candidates": ["E31C"],
+  "expected_absent": ["E31C"],
+  "expected_candidates": ["E31F"],
+  "expected_no_path_reason_codes": [],
   "expected_state": "SUPPORTED_CANDIDATES",
-  "label": "21-year-old French national whose parents' marriage is NOT registered, moving to Bali under his Indonesian mother's sponsorship for a year (no paid work)",
+  "label": "21-year-old French national whose parents' marriage is NOT registered, moving to Bali under his Indonesian mother's sponsorship for a year (no paid work); E31C drops out and the engine redirects to E31F",
   "overrides": {
     "family.marriage_registered": {
       "status": "KNOWN",
