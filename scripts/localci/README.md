@@ -900,6 +900,10 @@ node-pressure model, with one constant (`HOST_FLOOR_GB` 90):
 - **Ship step (deploy).** The live wrapper passes `--min-host-free-gb=$FLOOR_GB` explicitly, so the merger default alone does not move the start floor. At deploy, re-install it (`cp scripts/localci/localci_merger_tick.sh ~/.nuzantara-cron/.localci_merger_tick.sh.new`, `mv -f` onto `localci_merger_tick.sh`, `cmp -s` against the `origin/main` copy). Observable: `cmp -s` of the live wrapper against the `origin/main` copy is silent and `scripts/lint_home_fork.py --check` is green for that pair; a `host_below_floor` skip line in the journal carries `start_floor_gb` 100 (the wrapper's start line does not print it).
 - **Not touched.** uv, npm and Playwright caches stay `pro.janitor`'s.
 
+### READY read once (B20)
+
+Phase F asks "is phase E READY?" before every merge attempt, and the answer is `report()`: on Pro's journal of 273 decisions 1051 GitHub calls and 1045 s. `ready_state(a, state)` reads `<state>/ready_cache.json` first. The cache holds `{key, computed_at, phase_e_ready, refused, compared_merges, false_green, compared_days}`, is written atomically (temp file beside it, `os.replace`) with mode 0600, and is valid iff its key equals the journal's now and it is under `READY_TTL_S` (3600 s) old. The key is sha256 over the canonical JSON of every `decision` row of `decisions.jsonl` (replays too) with the repo and base: nothing else in the journal reaches READY, so a prune, `would_merge` or `evicted` row leaves it alone and any decision added or changed recomputes. The key is taken before the report runs, so a decision journalled during its 17 minutes makes the next attempt recompute. A refused or raised report is never stored. A corrupt or unreadable file is a miss. `ready_source` (`cache`|`computed`) and, from the cache, `ready_cache_age_s` are written in the `would_merge` line's `phase_f`. `merger.py report` and READY's thresholds are untouched. To force a recompute, remove the file.
+
 ### Disk floor organ (B6, Pro)
 
 `pro.disk_floor` (`scripts/ops/pro_disk_floor_tick.sh`, `infra/launchagents/com.nuzantara.disk-floor.plist`) reads
