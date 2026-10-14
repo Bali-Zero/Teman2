@@ -1,0 +1,165 @@
+gear: 2
+brief_ref: evidence/2026-10/agent-air-m5-backend-rag-vo-catalogue-decisions-7ac48963/brief.yml
+ruling: >-
+  Zero ruled on 2026-10-14 in two direct session questions, recorded in memory as decisions: the /book
+  retirement card uses the E33F row, and the three generic Retirement rows are hidden from public
+  surfaces but kept in the backend catalogue. The sponsor sentence on E33F rows executes Zero's
+  2026-09-27 penjamin ruling (b).
+mission: >-
+  Zero's 2026-10-14 catalogue decisions: /book's retirement card uses the E33F row, the generic
+  Retirement rows leave the mirror, the price list, the public lookup and the brochure template, and the
+  E33F rows name the sponsor.
+lanes:
+  - lane: gem-catalogue-decisions
+    role: build
+    seat: Gemini 4 Argon (High) builder via agy (gemini-4-argon-high), edits files only; Claude driver verifies and commits. Worktree backend-rag-vo-catalogue-decisions-1014 on Air-M5.
+  - lane: redteam-claude
+    role: review
+    seat: claude-opus-5-5 adversarial red team, read-only, on head d6cec6e9bb.
+  - lane: redteam-codex
+    role: review
+    seat: codex gpt-5.6-sol, rollout rollout-2026-10-14T15-42-41-01a1395d-08ff-7d42-8a82-83a90493a828.jsonl (model gpt-5.6-sol confirmed).
+  - lane: gem-catalogue-ground-truth
+    role: ground_truth
+    seat: >-
+      Signed rule pack apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
+      (seq-29): E33F product metadata sponsor_types [INDIVIDUAL]; research/visa/doctrine-factory/cards/E33F.md
+      states the official page requires a sponsor. Prices copied unchanged from the existing catalogue rows
+      (parity recorded in decisions).
+    nb: apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+    query_hash: "be6bf44d2d6f8ee8e766ac3b8007c274b84fe7773a516a59ce2f9629049ec3f9" # pragma: allowlist secret
+    note: >-
+      query_hash is the content_sha256 of source_record 6f5135f2-1f77-571f-88ed-26d1d2b9efba
+      (Indeks Visa Indonesia catalogue) in rulepack-prod-029.signed.json.
+pii_scan: clean
+bites:
+  consumer: >-
+    The public price surfaces: apps/mouth/data/bali-zero-prices.json (mirror read by balizero.com/services
+    and the /book cards), the anonymous GET /api/pricing/service route, the printable price list and the
+    client brochure. The /book retirement card reads the E33F Offshore row.
+  where: ci
+  observe: python3 scripts/ci/observe_catalogue_decisions_1014.py
+  expect: "contains:catalogue decisions of 2026-10-14 hold"
+receipts:
+  - claim: Mirror in sync with the canonical catalogue (118 rows to 115, generic Retirement rows left out).
+    cmd: python3 scripts/sync_frontend_prices.py --check
+    result: "OK, mirror in sync with PricingTool canonical"
+    exit: 0
+    ts: "2026-10-14T18:22:00+08:00"
+    seat: agent-air-m5-backend-rag-vo-catalogue-decisions-1014
+  - claim: Lane root tests, the new bites observer and its parser tests pass.
+    cmd: python3 -m pytest -q tests/scripts/test_retirement_price_descriptions.py tests/scripts/test_e33_price_descriptions.py tests/scripts/test_catalogue_decisions_1014.py tests/scripts/test_observe_catalogue_decisions_1014.py -p no:cacheprovider
+    result: "80 passed"
+    exit: 0
+    ts: "2026-10-14T18:22:00+08:00"
+    seat: agent-air-m5-backend-rag-vo-catalogue-decisions-1014
+  - claim: Price-list generator skips internal rows.
+    cmd: PYTHONPATH=. python3 -m pytest -q scripts/pricelist_2026/tests -p no:cacheprovider
+    result: "18 passed"
+    exit: 0
+    ts: "2026-10-14T18:22:00+08:00"
+    seat: agent-air-m5-backend-rag-vo-catalogue-decisions-1014
+  - claim: The new bites observer holds on this head.
+    cmd: python3 scripts/ci/observe_catalogue_decisions_1014.py
+    result: "16 passed; catalogue decisions of 2026-10-14 hold"
+    exit: 0
+    ts: "2026-10-14T18:22:00+08:00"
+    seat: agent-air-m5-backend-rag-vo-catalogue-decisions-1014
+  - claim: Backend route 404 for internal rows, backend catalogue consumers (compliance renewal rules, signed packs, visa oracle), OpenAPI pin and data tripwires unaffected.
+    cmd: cd apps/backend-rag && JWT_SECRET_KEY=<test value> API_KEYS=<test value> .venv/bin/python -m pytest backend/tests/routers/test_public_pricing_lookup.py backend/tests/routers/test_dynamic_pricing.py backend/tests/unit/scripts/test_generate_openapi_schema_pin.py backend/tests/test_data_invariant_tripwires.py backend/tests/services/visa_engine/test_seq28_pack.py backend/tests/services/compliance backend/tests/services/visa_oracle -p no:cacheprovider
+    result: "561 passed"
+    exit: 0
+    ts: "2026-10-14T18:25:00+08:00"
+    seat: agent-air-m5-backend-rag-vo-catalogue-decisions-1014
+  - claim: Mouth pricing snapshot and /book unit tests pass; typecheck clean.
+    cmd: cd apps/mouth && npx vitest run src/lib/pricing-snapshot.test.ts src/components/book && npx tsc --noEmit -p .
+    result: "3 files, 20 passed; tsc exit 0"
+    exit: 0
+    ts: "2026-10-14T18:23:00+08:00"
+    seat: agent-air-m5-backend-rag-vo-catalogue-decisions-1014
+  - claim: "Replay pins census is green after the rebase past #8494."
+    cmd: python3 scripts/ci/observe_visa_oracle_replay_pins.py
+    result: "293 passed; replay pins hold"
+    exit: 0
+    ts: "2026-10-14T18:22:00+08:00"
+    seat: agent-air-m5-backend-rag-vo-catalogue-decisions-1014
+dissent:
+  - seat: claude-opus-5-5 red team
+    objection: >-
+      MEDIUM: the claim "only the card title changes" is false; the /book/services fifth Visa card takes
+      title, tagline, features and the WhatsApp prefill from the E33F snapshot row.
+    status: CONFIRMED
+    resolution: >-
+      No code to cure; the PR body states the five real changes (heading, tagline = E33F description_en,
+      features validity plus notes, USD 3,000/month shown twice, WhatsApp prefill). Price unchanged at 14.000.000.
+  - seat: claude-opus-5-5 red team
+    objection: >-
+      MEDIUM: the edited e2e spec apps/mouth/e2e/book-pricing.spec.ts was never executed; CI runs only
+      titles matching "page Page|@offline".
+    status: CONFIRMED
+    resolution: >-
+      Open, not cured by code. Playwright never runs on M5; the spec must run on Pro (chromium and Mobile
+      Chrome 320px) and /book/services be checked on the iQOO after vercel promote. Recorded here as an
+      arming precondition, not claimed done.
+  - seat: claude-opus-5-5 red team
+    objection: >-
+      MEDIUM: scripts/pricelist_2026/generate.py ignored the internal flag, so the price list and its PDF
+      still published the generic rows.
+    status: CONFIRMED
+    resolution: >-
+      Cured by the Gemini fix in e4cb4683d8: both loops in _build_sections skip internal rows, test
+      test_generate_markdown_skips_internal_rows.
+  - seat: claude-opus-5-5 red team
+    objection: >-
+      MEDIUM: the client brochure still publishes Retirement (Offshore) (PRICE_RET_OFF and brochure_en.html).
+    status: CONFIRMED
+    resolution: >-
+      Cured in e4cb4683d8: PRICE_RET_OFF points to the E33F Offshore row (same 14.000.000 IDR) and the
+      template row is relabelled. Residual: the committed brochure PDF is not regenerated and carries a stale E33E price.
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      HIGH: the anonymous /api/pricing/service still returned the internal Retirement rows; the flag was
+      honoured only by the mirror generator.
+    status: CONFIRMED
+    resolution: >-
+      Cured in e4cb4683d8 and 9fb3f2208c: the route returns 404 for internal rows through a helper in
+      dynamic_pricing.py; PricingService.get_service_by_key is unchanged. Three 404 tests plus a
+      backend-innocence test in test_public_pricing_lookup.py; the docstring note was moved out of the route
+      docstring to hold the OpenAPI pin.
+  - seat: claude-opus-5-5 red team
+    objection: >-
+      LOW: the commit title overclaims "leave public surfaces"; PricingService.search_service,
+      format_for_llm_context, legacy recommend_visas, the Qdrant pricing collection and /api/pricing/all
+      (which exposes the internal marker) still serve the generic rows.
+    status: CONFIRMED
+    resolution: >-
+      Claim narrowed in the PR body; those are backend and conversational paths the ruling keeps. Whether
+      search_service and format_for_llm_context should skip internal rows is a question for Zero, a separate PR.
+  - seat: claude-opus-5-5 red team
+    objection: "LOW: the price-list note was too technical and exposed catalogue mechanics."
+    status: CONFIRMED
+    resolution: Cured in e4cb4683d8 with client-facing wording naming E33F and E33E.
+  - seat: claude-opus-5-5 red team and codex gpt-5.6-sol
+    objection: >-
+      LOW: observer docstrings (floors 54 and 20, "both files and the printable list") and the
+      sync_pricing_collection_prices.py docstring were stale.
+    status: CONFIRMED
+    resolution: >-
+      Cured in e4cb4683d8, docstrings only; sync_pricing_collection_prices.py states it deliberately keeps
+      syncing internal rows.
+  - seat: claude-opus-5-5 red team
+    objection: "LOW: tests/scripts/test_catalogue_decisions_1014.py is not collected by any CI job."
+    status: CONFIRMED
+    resolution: >-
+      Cured in this pack: the new no-argument observer scripts/ci/observe_catalogue_decisions_1014.py runs
+      that file and is the bites observation, with its parser unit test.
+decisions:
+  - id: D-generic-rows-kept
+    decision: >-
+      The three generic Retirement rows and their keys stay in the backend catalogue at unchanged prices;
+      signed packs seq-009..027 resolve "Retirement (Offshore)" and renewal_rules.py uses "Retirement (Extend)".
+  - id: D-price-parity
+    decision: >-
+      E33F Offshore 14.000.000 equals Retirement (Offshore) 14.000.000; E33F Altus 16.000.000 equals
+      Retirement (Altus/Onshore) 16.000.000; E33F Extend 10.000.000 equals Retirement (Extend) 10.000.000.
+      No price changes.

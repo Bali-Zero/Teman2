@@ -1,0 +1,28 @@
+gear: 2
+gear_reason: >-
+  Client-facing price surfaces on a ground-truth path: the pricing catalogue JSON, its mouth mirror,
+  the price-list and brochure generators, an anonymous pricing route and the /book card; deploys on merge.
+mission: >-
+  Zero's 2026-10-14 catalogue decisions: /book's retirement card uses the E33F row, the three generic
+  Retirement rows are hidden from public surfaces but kept in the backend catalogue, and every E33F
+  price row names the sponsor.
+objective: >-
+  1) /book retirement card points to "E33F Second Home Senior (1 Year, Offshore)" (same 14.000.000 IDR).
+  2) Rows "Retirement (Altus/Onshore)", "Retirement (Offshore)" and "Retirement (Extend)" carry
+  internal: true and are skipped by the mirror sync, the price-list generator, the anonymous
+  /api/pricing/service route (404) and the brochure template; never deleted, renamed or repriced.
+  3) Every E33F price row description_en gains "A sponsor (penjamin) is required; Bali Zero can act as one."
+scope:
+  - apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+  - apps/backend-rag/backend/app/routers/dynamic_pricing.py
+  - apps/backend-rag/scripts/generate_brochure.py
+  - apps/backend-rag/scripts/brochure/brochure_en.html
+  - apps/mouth/data/bali-zero-prices.json
+  - apps/mouth/src/components/book/book-data.ts
+  - scripts/sync_frontend_prices.py
+  - scripts/pricelist_2026/generate.py
+  - docs/pricing/Bali_Zero_Price_List_2026.md
+  - scripts/ci/observe_catalogue_decisions_1014.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
