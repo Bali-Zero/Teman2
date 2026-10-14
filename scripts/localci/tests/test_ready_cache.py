@@ -447,3 +447,33 @@ def test_a_merge_disarmed_by_a_stale_ready_waits_a_refresh_tick_then_the_retry_r
     assert fw.tick() == 0   # the retry goes through phase_f_arming, which reads the refreshed cache
     assert live_kinds(fw)[4:] == ["would_enqueue", "would_merge", "merged", "pushed"]
     assert [r for r in fw.live() if r["kind"] == "would_merge"][-1]["retry"] is True and armed_by_cache(fw.wm()["phase_f"])
+
+
+# ------------------------------------------------------------------ the guards of the hosted-document path (gate round)
+def test_a_hosted_document_is_read_live_for_a_row_whose_pr_is_not_settled_even_when_the_memo_holds_it(fw, monkeypatch):
+    """The lives guard itself: a young row (a B11 replay of a merged PR shares its key with the original compared row) must be re-read, not
+    served, however final the stored document looks. The pull is read live too (young), so only the lives guard can stop the stored copy."""
+    head, base = "6" * 40, "c" * 40
+    fw.hub.pulls[3001] = {"merged": False, "state": "closed", "head": {"sha": head}, "merge_commit_sha": None, "merged_at": None}
+    with (fw.state / "decisions.jsonl").open("a") as fh:
+        fh.write(json.dumps({"kind": "decision", "ts": mg.time.strftime("%Y-%m-%dT%H:%M:%SZ", mg.time.gmtime(time.time() - 3600)), "pr": 3001,
+                             "head_sha": head, "base_sha": base, "overall": "BLOCKED"}, sort_keys=True) + "\n")
+    fill_memo(fw, monkeypatch)
+    donor = f"{REPO}@main:{M}:{'f' * 40}"
+    edit_memo(fw, lambda d: d["lives"].__setitem__(f"{REPO}@main:{head}:{base}", {**d["lives"][donor], "sha": head}))   # a stored, final-looking document
+    assert mg.live_is_final(json.loads((fw.state / mg.MEMO_FILE).read_text())["lives"][f"{REPO}@main:{head}:{base}"])
+    _, reads = run_report(fw, monkeypatch, mg.ReadMemo(fw.state / mg.MEMO_FILE))
+    assert f"repos/{REPO}/pulls/3001" in reads
+    assert any(r.startswith(f"repos/{REPO}/commits/{head}/check-runs") for r in reads)
+
+
+def test_the_projection_keeps_the_status_updated_at_and_the_entries_built_from_it_are_the_same(fw):
+    live = {"repo": REPO, "branch": "main", "sha": M, "required_checks": [{"context": "st-ctx", "app_id": None}], "required_source": "protection", "pins": None,
+            "check_runs": [], "statuses": [{"context": "st-ctx", "state": "failure", "updated_at": "2026-10-01T00:00:00Z", "description": "d" * 50, "target_url": "u",
+                                            "id": 7, "creator": {"login": "x"}}]}
+    kept = mg.project_live(live)
+    assert kept["statuses"] == [{"context": "st-ctx", "state": "failure", "updated_at": "2026-10-01T00:00:00Z"}]
+    before, after = mg.hc.hosted_entries(live["check_runs"], live["statuses"]), mg.hc.hosted_entries(kept["check_runs"], kept["statuses"])
+    assert before == after and after["st-ctx"][0]["completed_at"] == "2026-10-01T00:00:00Z"   # the completed_at the reclassifications read
+    assert mg.hc.hosted_verdict(before["st-ctx"], None) == mg.hc.hosted_verdict(after["st-ctx"], None)
+    assert mg.hc.hosted_verdict(after["st-ctx"], None)["completed_at"] == "2026-10-01T00:00:00Z"
