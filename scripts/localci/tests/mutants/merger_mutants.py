@@ -36,6 +36,7 @@ B6_WRAP = tuple(f"{MERGER_T}::{t}" for t in ("test_the_tick_decides_first_then_p
                                              "test_under_the_floor_the_tick_journals_its_skip_the_prune_still_runs_and_the_organ_says_warning",
                                              "test_a_failed_prune_is_a_warning_and_a_failed_tick_is_an_error_after_which_the_prune_still_runs"))
 HF = ("scripts/localci/tests/test_host_floor.py",)   # B15
+LV = ("scripts/localci/tests/test_liveness.py",)   # B24
 B15_PRUNE = tuple(f"{PRUNE_T}::{t}" for t in ("test_b15_under_host_pressure_the_second_slot_of_every_recipe_goes_and_the_newest_never",
                                               "test_b15_host_pressure_never_removes_the_image_of_the_run_in_progress_or_the_never_list"))
 HEADROOM = tuple(f"{PRUNE_T}::{t}" for t in ("test_headroom_at_105_over_a_start_floor_of_100_the_second_slots_are_shed_in_shed_order", "test_headroom_at_120_nothing_is_shed", "test_headroom_leaves_the_start_floor_where_it_was", "test_headroom_a_non_default_flag_moves_the_line"))
@@ -366,6 +367,15 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "evict-window-inverted": (PY, "if not is_ts(ts) or now - _epoch(ts) <= EVICT_WINDOW_S:", "if not is_ts(ts) or now - _epoch(ts) > EVICT_WINDOW_S:", HF),
     "evict-unreadable-ts-not-counted": (PY, "if not is_ts(ts) or now - _epoch(ts) <= EVICT_WINDOW_S:", "if is_ts(ts) and now - _epoch(ts) <= EVICT_WINDOW_S:", HF),
     "evict-now-zero": (PY, "now = time.time() if now_s is None else now_s", "now = 0.0 if now_s is None else now_s", HF),
+    # B24 (liveness is measured before the flip)
+    "liveness-label-not-excluded": (PY, 'LIVENESS_EXCLUDED = ("label_privileged", "not_in_queue", "first_enqueue")', 'LIVENESS_EXCLUDED = ("not_in_queue", "first_enqueue")', LV),
+    "liveness-extra-term-excluded": (PY, 'LIVENESS_EXCLUDED = ("label_privileged", "not_in_queue", "first_enqueue")',
+                                     'LIVENESS_EXCLUDED = ("label_privileged", "not_in_queue", "first_enqueue", "hosted_required_green")', LV),
+    "liveness-coverage-over-all-merged": (PY, '\n               and (n, head_of(p)) in decided_heads]', ']', LV),
+    "liveness-window-ignored": (PY, "    return is_ts(ts) and clock - _epoch(ts) <= LIVENESS_WINDOW_S", "    return is_ts(ts)", LV),
+    "liveness-feeds-ready": (PY, '"phase_e_ready": ready, "liveness": live_block', '"phase_e_ready": ready and live_block["liveness_ok"], "liveness": live_block', LV),
+    "liveness-rows-off-by-one": (PY, "len(mergeable) >= LIVENESS_MIN_ROWS", "len(mergeable) > LIVENESS_MIN_ROWS", LV),
+    "liveness-coverage-off-by-one": (PY, "cov_decided >= LIVENESS_MIN_COVERAGE", "cov_decided > LIVENESS_MIN_COVERAGE", LV),
     "parent-pid-not-handed": (PY, '"LOCALCI_PARENT_PID": str(os.getpid())}', '"LOCALCI_PARENT_PID": "0"}', HF),
     "parent-watch-unwired": (RUN_PY, '    if a.cmd in ("plan", "run"):\n        watch_parent()', '    if False:\n        watch_parent()', HF),
     "parent-watch-pid-1": (RUN_PY, 'if not raw.isdigit() or int(raw) <= 1:', 'if not raw.isdigit():', HF),

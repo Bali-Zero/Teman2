@@ -74,6 +74,8 @@ _FULL_SHA = re.compile(r"[0-9a-f]{40}")
 # A compared merge (spec §2 phase D, ruled 2026-10-08): >= 12 contexts compared on both sides, >= 11 of them full and at most one
 # partial, named on the line. The arithmetic the real matrix allows: 14 required - 1 E2E (partial: no repository secrets) = 13 full
 # (11 while the 2 CodeQL contexts were hosted-only, which is the floor the ruling states). An unrecorded coverage counts toward none of the three.
+LIVENESS_WINDOW_S, LIVENESS_MIN_ROWS, LIVENESS_MIN_COVERAGE = 48 * 3600, 10, 0.8   # B24: the shadow would merge, measured apart from READY
+LIVENESS_EXCLUDED = ("label_privileged", "not_in_queue", "first_enqueue")   # B24 L1: false before the flip by construction (`armed_env` is journalled apart)
 READY_MIN_MERGES, READY_MIN_DAYS = 50, 5   # phase D's READY (spec §2): the report and the tick's precheck both read these; days was 14 until the owner's ruling of 2026-10-13 (arm phase F earlier), merges and FALSE_GREEN 0 unchanged
 READY_SPAN_SLACK_DAYS = 1   # the report's span runs on GitHub's merged_at, which can precede its own decision line by up to one tick: the precheck's window starts a day earlier so it never says false while READY is true
 KNOWN_HOSTS_FILE = "known_hosts"   # F2: github.com's host key, pinned by the operator in the state dir; the push trusts nothing else
@@ -1890,6 +1892,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
     compared_days = _days(merges[0], merges[-1]) if merges else 0.0
     fg = counts["FALSE_GREEN"] + ctx_counts["FALSE_GREEN"] + recorded_fg
     ready = fg == 0 and compared_merges >= READY_MIN_MERGES and compared_days >= READY_MIN_DAYS   # lead's ruling 2026-10-07: both, never either
+    live_block = liveness(window, decisions, prs, merged_listing(a) if emit else None, clock)   # B24: apart from `ready`, which it never feeds
     skipped = dict(sorted(Counter(str(r.get("why")) for r in window if r.get("kind") == "skipped").items()))
     errors = sum(1 for r in window if r.get("kind") == "error")
     evicted = sum(1 for r in window if r.get("kind") == "evicted")
@@ -1922,7 +1925,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
                       "decisions_without_code_sha": without_code_sha, "enqueue": enqueue, "would_merge": would_merge, "pending_retry": pending_retry,
                       "code_shas": sorted({r["code_sha"] for r in rows if is_sha(r["code_sha"])}), "ticks": ticks},
            "counts": counts, "hosted_red_merged": hosted_red_merged, "merged_without_merge_commit_sha": merged_without_sha, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "recorded_false_green_as_journalled": recorded_raw,
-           "recorded_reclassified_hosted_stale": reclassified, "recorded_kept_false_green": kept_fg, "phase_e_ready": ready, "phase_f": phase_f, "phase_f_halted": os.path.lexists(state / HALT_FILE), "rows": rows,
+           "recorded_reclassified_hosted_stale": reclassified, "recorded_kept_false_green": kept_fg, "phase_e_ready": ready, "liveness": live_block, "phase_f": phase_f, "phase_f_halted": os.path.lexists(state / HALT_FILE), "rows": rows,
            "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
     if not emit:
         return (1 if fg else 0), out
@@ -1964,7 +1967,10 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
                                                             + (f" (gate: {x['gate']})" if x.get("gate") else "") for x in kept_fg) + "])")
     for h in hosted_red_merged:
         print(f"hosted_red_merged: #{h['pr']} merged at {h['merge_commit_sha'][:12]} with required red: {', '.join(h['red'])}")
-    print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= {READY_MIN_MERGES} compared merges and >= {READY_MIN_DAYS} days between the first "
+    lv = live_block
+    print(f"liveness (B24, last {lv['window_h']} h): mergeable_rows={lv['mergeable_rows']} (needs >= {LIVENESS_MIN_ROWS}), coverage_decided={lv['coverage_decided']} "
+          f"of {lv['merged_decided']} merged-and-decided PR(s) (needs >= {LIVENESS_MIN_COVERAGE}), coverage_all={lv['coverage_all']} of {lv['merged_all']} merged PR(s) (reported only)")
+    print(f"phase E READY: {str(ready).lower()} liveness_ok: {str(lv['liveness_ok']).lower()}: needs 0 FALSE_GREEN and >= {READY_MIN_MERGES} compared merges and >= {READY_MIN_DAYS} days between the first "
           f"and last compared merge (a merge counts when GitHub merged the decided candidate and >= {MIN_COMPARED_CONTEXTS} contexts were "
           f"compared, >= {MIN_COMPARED_FULL} of them full and at most {MAX_COMPARED_PARTIAL} partial); now false_green={fg} {stale_note}, "
           f"compared_merges={compared_merges} (full_only={compared_merges - len(with_partial)}, with_partial={len(with_partial)}: "
@@ -1976,6 +1982,41 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
           f"blocks READY, a local false green on it does); enqueued={enqueue['enqueued']} would_enqueue={enqueue['would_enqueue']} "
           f"enqueue_refused={enqueue['enqueue_refused']} enqueue_error={enqueue['enqueue_error']}")
     return (1 if fg else 0), out
+
+
+def mergeable_row(r: dict) -> bool:
+    """B24 L1: a ``would_enqueue`` row (original or retry) whose criterion has every term true but the ones that cannot be true before the flip."""
+    c = r.get("criterion")
+    return r.get("kind") == "would_enqueue" and isinstance(c, dict) and all(c.get(k) is True for k in CRITERION if k not in LIVENESS_EXCLUDED)
+
+
+def in_liveness_window(ts, clock: float) -> bool:
+    return is_ts(ts) and clock - _epoch(ts) <= LIVENESS_WINDOW_S
+
+
+def liveness(window: list, decisions: list, merged_prs: dict, listing: list | None, clock: float) -> dict:
+    """B24: ``mergeable_rows`` over the trailing 48 h; ``coverage_decided`` over the PRs GitHub merged in it that LocalCI decided at their
+    merged head; ``coverage_all`` (reported only) over every PR GitHub merged in it, ``None`` when ``listing`` is. ``liveness_ok`` needs both."""
+    mergeable = [r for r in window if mergeable_row(r) and in_liveness_window(r.get("ts"), clock)]
+    heads = {(r.get("pr"), r.get("head_sha")) for r in mergeable}
+    decided_heads = {(d.get("pr"), d.get("head_sha")) for d in decisions}
+    decided = [(n, head_of(p)) for n, p in merged_prs.items() if p.get("merged") is True and in_liveness_window(p.get("merged_at"), clock)
+               and (n, head_of(p)) in decided_heads]
+    cov_decided = sum(1 for k in decided if k in heads) / len(decided) if decided else None
+    everyone = [(p.get("number"), head_of(p)) for p in listing or [] if isinstance(p, dict) and in_liveness_window(p.get("merged_at"), clock)]
+    cov_all = sum(1 for k in everyone if k in heads) / len(everyone) if listing is not None and everyone else None
+    return {"window_h": LIVENESS_WINDOW_S // 3600, "mergeable_rows": len(mergeable), "merged_decided": len(decided), "coverage_decided": cov_decided,
+            "merged_all": len(everyone) if listing is not None else None, "coverage_all": cov_all,
+            "liveness_ok": len(mergeable) >= LIVENESS_MIN_ROWS and cov_decided is not None and cov_decided >= LIVENESS_MIN_COVERAGE}
+
+
+def merged_listing(a) -> list | None:
+    """B24 L2: the closed PRs of the base, newest update first, one read-only page; an unreadable listing is ``None`` (reported only, never a refusal)."""
+    try:
+        got = hc.gh_get(f"repos/{a.repo}/pulls?state=closed&base={quote(a.base)}&sort=updated&direction=desc&per_page=100")
+    except Exception:  # noqa: BLE001 — coverage_all is the capacity view, reported only
+        return None
+    return got if isinstance(got, list) else None
 
 
 def compared_enough(full: int, partial: int) -> bool:

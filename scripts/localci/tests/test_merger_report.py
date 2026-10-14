@@ -266,7 +266,7 @@ def test_phase_e_readiness_needs_fifty_compared_merges_and_five_days_between_the
     recs, gh = merged_world(n_prs, span_days)
     rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
     assert rep["window"]["compared_merges"] == n_prs and rep["phase_e_ready"] is ready and rc == 0
-    assert ("phase E READY" if ready else "phase E NOT READY") in capsys.readouterr().out
+    assert f"phase E READY: {str(ready).lower()}" in capsys.readouterr().out
 
 
 def test_the_journal_order_does_not_change_readiness(tmp_path, monkeypatch):
