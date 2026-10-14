@@ -132,6 +132,24 @@ class TestGlobalCauseListsOnlyGlobalCauses:
         )
         assert _codes(decision) == ["MINOR_SPONSOR_NOT_CONFIRMED"]
 
+    def test_a_global_cause_is_not_hidden_when_no_product_covers_the_purposes(
+        self, seq29: tuple[Any, Any]
+    ) -> None:
+        """FAMILY+STUDY: no single product claims both purposes, so the
+        purpose-feasible filter would leave nothing and fall back to the
+        'no product covers the purposes' reason; the global cause must still win."""
+        overrides = _family("SPOUSE", nationality="NG")
+        overrides["intent.purposes"] = _known(["FAMILY", "STUDY"])
+        assert _codes(_decide(seq29, overrides)) == ["CALLING_VISA_NATIONALITY_NOT_ASSESSED"]
+
+    def test_two_global_causes_are_both_kept(self, seq29: tuple[Any, Any]) -> None:
+        overrides = _family("SPOUSE", nationality="ID")
+        overrides["person.nationalities"] = _known(["ID", "NG"])
+        assert sorted(_codes(_decide(seq29, overrides))) == [
+            "APPLICANT_IS_INDONESIAN_CITIZEN",
+            "CALLING_VISA_NATIONALITY_NOT_ASSESSED",
+        ]
+
     def test_every_listed_reason_comes_from_a_rule_the_pack_marks_global(
         self, seq29: tuple[Any, Any]
     ) -> None:
@@ -146,6 +164,15 @@ class TestGlobalCauseListsOnlyGlobalCauses:
 
 
 class TestInnocence:
+    def test_no_global_cause_keeps_the_no_product_covers_the_purposes_fallback(
+        self, seq29: tuple[Any, Any]
+    ) -> None:
+        overrides = _family("SPOUSE")
+        overrides["intent.purposes"] = _known(["FAMILY", "STUDY"])
+        assert _codes(_decide(seq29, overrides)) == [
+            "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
+        ]
+
     def test_adult_parent_without_a_global_cause_keeps_its_product_reasons(
         self, seq29: tuple[Any, Any]
     ) -> None:
