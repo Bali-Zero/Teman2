@@ -45,5 +45,5 @@ decisions:
 dissent:
   - seat: "codex gpt-5.6-sol, rollout /Users/nuzantara/.codex/sessions/2026/10/14/rollout-2026-10-14T17-36-35-01a139c5-5189-7d32-b0d9-328fba8a31f9.jsonl (red team, MEDIUM x1, no HIGH)"
     objection: "The official URL is plain text: OutcomeSheet renders reason messages in a span without linkification."
-    status: ACCEPTED-DEFERRED
-    disposition: "OutcomeSheet.tsx is out of this item's scope; the URL is visible and copyable in the sentence. Linkifying needs a renderer change in a separate item."
+    status: CONFIRMED
+    disposition: "DEFERRED, not cured: OutcomeSheet.tsx is out of this item's scope; the URL is visible and copyable in the sentence. Linkifying needs a renderer change in a separate item."
