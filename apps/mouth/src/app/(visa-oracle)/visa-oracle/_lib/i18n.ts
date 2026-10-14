@@ -1398,7 +1398,7 @@ const id: Record<Keys, string> = {
   "q.investment_vehicle.hint":
     "Pilihan Anda menentukan jalur mana yang kami lihat dan pertanyaan apa yang muncul berikutnya.",
   "q.investment_vehicle.opt.pt_pma": "Komitmen PT PMA Indonesia",
-  "q.investment_vehicle.opt.property": "Pengaturan properti",
+  "q.investment_vehicle.opt.property": "Properti yang memenuhi syarat",
   "q.investment_vehicle.opt.bank_deposit": "Deposito bank atas nama saya",
   "q.investment_vehicle.opt.merit": "Prestasi, talenta, atau kontribusi publik",
   "q.investment_vehicle.opt.family": "Jalur terkait keluarga",

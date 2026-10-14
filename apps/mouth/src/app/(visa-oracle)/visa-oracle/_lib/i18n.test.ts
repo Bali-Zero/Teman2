@@ -40,6 +40,39 @@ describe("i18n.ts — EN/ID key parity", () => {
       );
     }
   });
+
+  it("every English string that says 'qualifying' has an Indonesian twin that says 'memenuhi syarat'", () => {
+    const qualifyingKeys = (
+      Object.keys(dict.en) as Array<keyof typeof dict.en>
+    ).filter((key) => /\bqualif/i.test(dict.en[key]));
+    expect(qualifyingKeys.length).toBeGreaterThan(0);
+    expect(qualifyingKeys).toContain("q.investment_vehicle.opt.property");
+    expect(qualifyingKeys).toContain("q.secondhome_basis.opt.property");
+    for (const key of qualifyingKeys) {
+      expect(dict.id[key], `id.${key} must say "memenuhi syarat"`).toMatch(
+        /memenuhi syarat/i,
+      );
+    }
+  });
+
+  it("pins q.investment_vehicle.opt.property in both languages and keeps the ID label figure-free", () => {
+    expect(dict.en["q.investment_vehicle.opt.property"]).toBe(
+      "A qualifying property arrangement",
+    );
+    expect(dict.id["q.investment_vehicle.opt.property"]).toBe(
+      "Properti yang memenuhi syarat",
+    );
+    expect(dict.id["q.investment_vehicle.opt.property"]).not.toMatch(/\d/);
+  });
+
+  it("leaves q.retirement_basis.opt.property untouched in both languages", () => {
+    expect(dict.en["q.retirement_basis.opt.property"]).toBe(
+      "A property arrangement",
+    );
+    expect(dict.id["q.retirement_basis.opt.property"]).toBe(
+      "Pengaturan properti",
+    );
+  });
 });
 
 describe("i18n.ts — translate()", () => {

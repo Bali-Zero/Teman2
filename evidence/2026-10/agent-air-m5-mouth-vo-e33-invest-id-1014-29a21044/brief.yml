@@ -1,0 +1,18 @@
+gear: 1
+gear_reason: >-
+  Small diff: one Indonesian copy line, three test pins, a no-argument observer and its unit test. Client-copy
+  wording only; no backend, no data, no pricing, no interview tree change, no new behaviour.
+mission: >-
+  The Indonesian investment-basis property option says "Properti yang memenuhi syarat", as the English says "qualifying".
+objective: >-
+  q.investment_vehicle.opt.property (ID) changes from "Pengaturan properti" to "Properti yang memenuhi syarat", the same
+  wording the repo already uses for q.secondhome_basis.opt.property; the English line and q.retirement_basis.opt.property
+  are untouched.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.test.ts
+  - scripts/ci/observe_visa_oracle_i18n_qualifying.py
+  - tests/scripts/test_observe_visa_oracle_i18n_qualifying.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
