@@ -101,16 +101,16 @@ dissent:
   - seat: codex-gpt-5.6-sol
     objection: "MEDIUM, scripts/ci/observe_visa_engine_documentation_catalog.py:53 - the observer runs only local pytest and can pass without querying /evaluate, the Fly deploy or the public page; the Bites line needs a synthetic-driver check (E33F AVAILABLE, E31B UNKNOWN) and a headless replay."
     status: CONFIRMED
-    note: "Cured in 4f1953c5b1: scripts/ci/observe_visa_engine_documentation_catalog_live.py (no arguments, post-deploy) runs documentation_live_probe.py against live /evaluate (E33F AVAILABLE containing surat penjaminan, E31B UNKNOWN, both codes required) and checks the public page returns 200. Not run pre-deploy; the headless replay of the rendered checklist stays a separate prove-live step."
+    note: "Cured in b0c8cbc8ba: scripts/ci/observe_visa_engine_documentation_catalog_live.py (no arguments, post-deploy) runs documentation_live_probe.py against live /evaluate (E33F AVAILABLE containing surat penjaminan, E31B UNKNOWN, both codes required) and checks the public page returns 200. Not run pre-deploy; the headless replay of the rendered checklist stays a separate prove-live step."
   - seat: codex-gpt-5.6-sol
     objection: "MEDIUM, catalogue E33 and E33E - 'The value of the Immigration Guarantee must be kept' is a post-entry obligation, not a document, yet mouth shows it as a selectable REQUIRED document."
     status: CONFIRMED
-    note: "Cured in 4f1953c5b1: the entry is removed from E33 and E33E; a test forbids 'must be kept' and 'dipertahankan' in the catalogue. The 90-day report entries stay (proof submitted to immigration)."
+    note: "Cured in b0c8cbc8ba: the entry is removed from E33 and E33E; a test forbids 'must be kept' and 'dipertahankan' in the catalogue. The 90-day report entries stay (proof submitted to immigration)."
   - seat: codex-gpt-5.6-sol
     objection: "LOW, travel EN drift between products; LOW, no tests for the content_sha256 triage rule."
     status: CONFIRMED
-    note: "Cured in 4f1953c5b1: E33C/E33F/E33G read 'Travel history (itinerary)' with a test pinning each Indonesian text to its English, and a content_sha256 rule test covers path, key, length, case and ride-alongs."
+    note: "Cured in b0c8cbc8ba: E33C/E33F/E33G read 'Travel history (itinerary)' with a test pinning each Indonesian text to its English, and a content_sha256 rule test covers path, key, length, case and ride-alongs."
   - seat: agy-gemini-4-argon-high
     objection: "LOW x5 - E33 US$130.000 quote unanchored; E33B 3,5 GPA quote truncated; E33C travel EN; stale guard without a lower bound; stale 'N >= 4' docstring (plus a duplicate of the triage-test finding)."
     status: CONFIRMED
-    note: "All cured in 4f1953c5b1: both quotes are verbatim substrings of the saved pages and pinned by tests, the stale guard is 0 <= age <= 31536000, the docstring says N >= MIN_TESTS (20). No HIGH or MEDIUM from this seat."
+    note: "All cured in b0c8cbc8ba: both quotes are verbatim substrings of the saved pages and pinned by tests, the stale guard is 0 <= age <= 31536000, the docstring says N >= MIN_TESTS (20). No HIGH or MEDIUM from this seat."
