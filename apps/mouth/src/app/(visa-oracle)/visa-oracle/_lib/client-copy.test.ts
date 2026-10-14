@@ -86,12 +86,11 @@ const BANNED: readonly RegExp[] = [
 ];
 
 // Exact phrases that are ordinary language, not engine voice: a deposit "held
-// in your own name", property "held and valued", a pass "held with no sponsor",
-// and owner-approved lines that name "a person" as the reviewer.
+// in your own name", property "held and valued", and owner-approved lines
+// that name "a person" as the reviewer.
 const ALLOWED_PHRASES: readonly string[] = [
   "held in your own name",
   "how it is held and valued",
-  "held with no sponsor",
   "ditinjau oleh seseorang",
   "ditinjau seseorang",
   "a licensed visa agency or a person in Indonesia",
@@ -358,6 +357,13 @@ describe("client-visible copy", () => {
     ]) {
       expect(DOTTED_IDENTIFIER.test(withoutAllowed(innocent))).toBe(false);
     }
+  });
+
+  it("convicts 'held with no sponsor' once the retired allowlist entry is gone", () => {
+    const retired =
+      "The visa is sponsored only by an Indonesian government body or held with no sponsor.";
+    expect(BANNED.some((re) => re.test(withoutAllowed(retired)))).toBe(true);
+    expect(/\bheld\b/i.test(withoutAllowed(retired))).toBe(true);
   });
 
   it("never leaks an internal note into the price or timeline copy", () => {

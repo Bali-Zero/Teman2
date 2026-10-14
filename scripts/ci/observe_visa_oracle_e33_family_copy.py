@@ -37,6 +37,8 @@ REQUIRED_TESTS = (
     "never offers a combined property-and-deposit route",
     "uses the visitor's E33B collaboration answer",
     "keeps the E33A sentence unless the visitor is sponsorless",
+    "E33-family no-path sentences restate the signed product record",
+    "states the E33G remote-work support threshold in both languages",
 )
 _SUMMARY = re.compile(r"^\s*Tests\s+(\d+) passed \((\d+)\)\s*$")
 
