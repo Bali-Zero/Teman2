@@ -48,6 +48,12 @@ receipts:
     exit: 1
     ts: "2026-10-14T03:54:09Z"
     seat: this session
+  - claim: "Re-pin lane (OPS-2): whole visa_engine on Mini incl. backend/tests/scripts/visa_engine (the gold replay driver tests) and backend/scripts/visa_engine (no test files), detached worktree of the re-pin head c2a4aa4bae. Only the known baseline remains: 2 retention_fk_registry failures and 31 evaluate_endpoint errors. Before the re-pin the same set showed 8 failures (E30A__minor, seq28 personas 1/3/4, replay floor, persona-1 highest-pack) beyond baseline. Offline replay, base b5d84994a2 vs build: state and candidates identical on all 20 personas; only reason codes of personas 1, 3, 4 changed; match count 15/20 on old pins, 18/20 after re-pin."
+    cmd: ssh mini, cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine backend/scripts/visa_engine backend/tests/scripts/visa_engine
+    result: "2 failed, 3979 passed, 15 skipped, 3 xfailed, 1 warning, 31 errors in 155.37s"
+    exit: 1
+    ts: "2026-10-14T05:20:00Z"
+    seat: claude-sonnet-5-5 (re-pin continuation, trailer names Opus 5.5 as the mandate prescribed)
   - claim: "The bites observer passes on the build head."
     cmd: python3 scripts/ci/observe_visa_engine_global_no_path_reasons.py
     result: "9 passed in 0.80s; global no-path reasons hold"
@@ -62,9 +68,19 @@ decisions:
       no-product-covers-the-purposes fallback.
   - id: D-gold-pins-not-edited
     decision: >-
-      Four gold pins encode the old leaked reason sets and were NOT edited by this build (stop and
-      report): E30A__minor.json (LEVEL_BAND_DIKTI would go), and the seq-28 replay expectations of
-      gold personas 1, 3 and 4 (BVK_NATIONALITY_ONLY and VOA_* would go). The census stayed green.
+      Superseded by D-gold-pins-repinned. The build stopped on four gold pins that encoded the old leaked
+      reason sets; the owner approved the re-pin (OPS-2).
+  - id: D-gold-pins-repinned
+    decision: >-
+      Owner approval OPS-2 option (a), Zero 2026-10-14. Moved pins, each measured by offline replay and not
+      guessed: E30A__minor.json LEVEL_BAND_DIKTI dropped; seq-28 persona 1
+      [BVK_NATIONALITY_ONLY, APPLICANT_IS_INDONESIAN_CITIZEN, VOA_DUAL_NATIONALITY_NOT_ASSESSED] ->
+      [APPLICANT_IS_INDONESIAN_CITIZEN]; persona 3 [BVK_NATIONALITY_ONLY, CALLING_VISA_NATIONALITY_NOT_ASSESSED,
+      VOA_NATIONALITY_ONLY] -> [CALLING_VISA_NATIONALITY_NOT_ASSESSED]; persona 4
+      [BVK_NATIONALITY_ONLY, ACTIVE_OVERSTAY_SETTLE_FIRST] -> [ACTIVE_OVERSTAY_SETTLE_FIRST]. Replay floor stays
+      18 (ceiling 2): 15/20 on the old pins, 18/20 re-pinned. test_persona_1_expectation: the not-equal pin now
+      names the pre-E31 three-code list, because the new list equals the old pre-seq23 one. State and candidate
+      sets did not change for any persona.
 dissent:
   - seat: "codex-gpt-5.6-sol (cross-family red team)"
     objection: "LOW: no test with purpose_feasible=False (FAMILY plus a second purpose); a restriction to feasible proofs would pass."
