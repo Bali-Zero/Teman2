@@ -109,7 +109,6 @@ _STEPS_TOURISM: list[str] = [
 
 _STEPS_DIGITAL_NOMAD: list[str] = [
     "Proof of remote employment with a foreign company",
-    "Bank statement showing ≥ USD 60,000 balance (12 months)",
     "Passport valid ≥ 18 months",
     "Health insurance with Indonesia coverage",
     "CV + LinkedIn URL for immigration review",
@@ -198,6 +197,10 @@ _STEPS_BY_VISA: dict[VisaType, list[str]] = {
     VisaType.E33F: [
         "Proof of pension or passive income \u2265 USD 3,000/month "
         "\u2014 this route requires no deposit",
+    ],
+    # E33G requires annual foreign salary/income (not C1/C2/E23-FREELANCE).
+    VisaType.E33G: [
+        "Bank proof of salary or income of at least USD 60,000 a year",
     ],
 }
 
@@ -415,7 +418,7 @@ def recommend_visa(
 
     Rules:
     1. `OTHER` always refers to WhatsApp.
-    2. Under-budget investors refer (E28A, D12, E33G all require budget).
+    2. Under-budget investors refer (the investor routes all require a minimum capital commitment).
     3. Tourism > 6 months refers (Indonesian tourism visas cap at ~180d).
     4. Everything else: filter VISA_META by purpose tag, score, top-N.
 
@@ -465,8 +468,8 @@ def recommend_visa(
             pre_arrival_steps=[],
             referral_mode=True,
             referral_reason=(
-                "Investor routes (E28A, D12, E33G) all have minimum-capital or "
-                "savings requirements that a sub-IDR 50M budget does not meet. "
+                "Investor routes such as the Investor KITAS need a minimum "
+                "capital commitment that a budget under IDR 50M does not meet. "
                 "Let's talk through what kind of business you want to open on "
                 "WhatsApp — there may be a staged approach."
             ),

@@ -318,7 +318,9 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             min_budget_idr=500_000_000,  # commercial tier flag, not the legal USD 130k deposit threshold
             notes="Base Second Home (bank route): USD 130,000 own-name deposit at a "
             "state-owned (BUMN) bank, or USD 1,000,000 qualifying completed "
-            "strata-title property. 5-year first grant, no sponsor, non-working residency.",
+            "strata-title property. First stay permit of up to 5 years, no sponsor; "
+            "work or study only after rangkap kegiatan (dual-activity) reporting to "
+            "the immigration office that issued the stay permit.",
             seed_source=SEED,
             duration_source=NB2,
             fit_tags=frozenset({FitTag.GOLDEN_VISA}),
@@ -352,11 +354,12 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             name_en="Second Home Visa Remote Worker / Digital Nomad Golden Visa",
             name_id="Visa Rumah Kedua Pekerja Jarak Jauh Golden Visa",
             category="KITAS/Limited Stay",
-            purposes=frozenset({Purpose.WORK_REMOTE, Purpose.INVESTOR}),
+            purposes=frozenset({Purpose.WORK_REMOTE}),
             duration_days=365,
             extensions=(1, 365),
             min_budget_idr=50_000_000,
-            notes="Remote worker salaried by foreign employer. USD 60k savings proof.",
+            notes="Remote worker employed by a company outside Indonesia. "
+            "Bank proof of salary or income of at least USD 60,000 a year.",
             seed_source=SEED,
             duration_source=NB2,
             fit_tags=frozenset({FitTag.FOREIGN_EMPLOYER_SALARY}),

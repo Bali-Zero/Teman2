@@ -1,0 +1,101 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-14 audit plan (entry CAT-visa-check-e33-e33g, follow-up to PR17 D-catalogue-followup) —
+  the legacy visa_check catalogue's E33 and E33G notes and E33G purposes must follow the signed rulepack
+  (seq-29) and saved official imigrasi.go.id pages: dual-activity (rangkap kegiatan) reporting for E33,
+  annual foreign salary/income proof of at least USD 60,000 a year (no savings claim) and WORK_REMOTE-only
+  purpose for E33G.
+mission: >-
+  The legacy visa_check catalogue's E33 and E33G notes and E33G purposes follow the signed rulepack
+  and official pages: dual-activity (rangkap kegiatan) reporting for E33, annual salary/income proof
+  of at least USD 60,000 a year (not savings) and WORK_REMOTE-only purpose for E33G.
+lanes:
+  - lane: backend-rag-vo-visa-check-catalogue-1014
+    role: build
+    seat: gemini-4-argon-high via agy (build, prepare-only) with the Claude driver; worktree backend-rag-vo-visa-check-catalogue-1014 on M5.
+  - lane: red-team-opus
+    role: review
+    seat: claude-opus-5-5 adversarial review, read-only, head c22fd7de70.
+  - lane: red-team-codex
+    role: review
+    seat: gpt-5.6-sol via codex exec, read-only, session rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl.
+  - lane: cat-visa-check-e33-e33g-ground-truth
+    role: ground_truth
+    seat: >-
+      ACTIVE signed pack apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
+      (seq-29), where rule el.e33g.remote-work requires {"fact": "work.annual_foreign_income_usd", "op": "gte",
+      "value": 60000} (yearly income, not savings), hf.e33g.annual-income-below-minimum is lt 60000, the E33G
+      product has covered_purposes ["REMOTE_WORK", "TOURISM", "FAMILY"] and prohibited_activities including
+      "indonesian_company_ownership", and hf.e33g.local-company-ownership excludes on investment.pt_pma_committed;
+      research/visa/2026-07-24-w2-factbase-e33.md:131 quoting the official E33G page verbatim:
+      "Rekening bank yang membuktikan penghasilan berupa gaji atau penghasilan senilai paling sedikit US$60.000
+      per tahun"; and research/secondhome/e33-fact-registry.json fact e33_not_work_visa (JELAS, fetched
+      2026-10-13) stating for the E33 page that "work, study or other activities are allowed only after
+      rangkap-kegiatan (dual-activity) reporting to the immigration office that issued the stay permit".
+    nb: apps/backend-rag/backend/services/visa_check/catalogue.py
+    note: >-
+      nb identifies the modified target file in the repository. Normative sources are in-tree:
+      apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json,
+      research/visa/2026-07-24-w2-factbase-e33.md:131, and research/secondhome/e33-fact-registry.json
+      (fact e33_not_work_visa).
+pii_scan: clean
+bites:
+  consumer: >-
+    match_tree._reason() via recommend_visa() behind POST /api/visa/match on nuzantara-rag (reading
+    VISA_META[E33].notes, VISA_META[E33G].notes and VISA_META[E33G].purposes). The UI door /visa/match
+    has been a 308 to /visa-oracle since 2026-08-25, so the remaining callers are direct API calls and
+    any new stored result. Post-merge live verification on nuzantara-rag is a read-only in-container
+    probe via fly ssh console (no DB write, unlike POST /api/visa/match which inserts a visa_checks row).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_check_catalogue_e33.py
+  expect: "contains:E33 and E33G catalogue notes hold"
+receipts:
+  - claim: Catalogue E33/E33G notes, E33G checklist and investor referral follow the signed pack; observer holds the 55-test floor.
+    cmd: python3 scripts/ci/observe_visa_check_catalogue_e33.py
+    result: "observe_visa_check_catalogue_e33: 55 passed in 0.12s; E33 and E33G catalogue notes hold"
+    exit: 0
+    ts: "2026-10-14T02:09:16Z"
+    seat: claude-sonnet-5-5 (verifier of the gemini-4-argon-high build)
+  - claim: Whole visa_check backend test directory green after the fix round.
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_check -p no:cacheprovider
+    result: "488 passed in 10.75s"
+    exit: 0
+    ts: "2026-10-14T02:09:16Z"
+    seat: claude-sonnet-5-5 (verifier of the gemini-4-argon-high build)
+decisions:
+  - id: D-stored-visa-checks-untouched
+    decision: >-
+      Stored visa_checks database rows are left untouched as historical records; no migration or data
+      backfill is performed.
+  - id: D-endpoint-retire-owner-decision
+    decision: >-
+      Whether to retire POST /api/visa/match now that the UI door /visa/match is a 308 to /visa-oracle
+      is an owner decision not taken here; this change repairs the catalogue notes and purposes served
+      by the live endpoint.
+  - id: D-other-fields-untouched
+    decision: >-
+      duration_days, extensions and min_budget_idr on E33 and E33G are left untouched; the audit finding's
+      min_days, max_days and cost_label do not exist on VisaMeta.
+
+dissent:
+  - seat: claude-opus-5-5 red team
+    objection: "MEDIUM: E33G pre_arrival_steps still said 'USD 60,000 balance' (savings claim) via _STEPS_DIGITAL_NOMAD."
+    status: CONFIRMED
+    resolution: "Fixed: the line left the purpose-level list; a per-product _STEPS_BY_VISA[E33G] entry states annual salary or income; two tests pin it."
+  - seat: claude-opus-5-5 red team
+    objection: "MEDIUM: INVESTOR under-50M referral still named E33G as an investor route and 'savings'."
+    status: CONFIRMED
+    resolution: "Fixed: the reason names the Investor KITAS in words, no visa code, no savings; one test pins it."
+  - seat: claude-opus-5-5 red team, gpt-5.6-sol
+    objection: "MEDIUM: the receipt said pending yet recorded exit 0, and the pack had no dissent."
+    status: CONFIRMED
+    resolution: "Fixed: receipts rewritten from the real runs (55 passed, 488 passed), this dissent block added."
+  - seat: claude-opus-5-5 red team
+    objection: "LOW: hand-typed 60000 literal in the test; '5-year first grant' wording."
+    status: CONFIRMED
+    resolution: "Fixed: the literal pin is the note-against-pack comparison only; E33 notes say 'First stay permit of up to 5 years'."
+  - seat: gpt-5.6-sol
+    objection: "LOW: observer main() untested."
+    status: CONFIRMED
+    resolution: "Fixed: four main() tests with a mocked subprocess.run (success, failure, timeout, missing names)."

@@ -126,22 +126,57 @@ class TestWorkRemote:
         if freelance is not None:
             assert "invoices_indonesian_clients" in freelance.fit_tags
 
+    def test_mid_budget_e33g_reason_states_annual_income_not_savings(self):
+        r = _call(purpose=Purpose.WORK_REMOTE, budget_band=BudgetBand.MID_50_500M)
+        e33g = next((rv for rv in r.ranking if rv.visa == VisaType.E33G), None)
+        assert e33g is not None
+        assert "USD 60,000 a year" in e33g.reason
+        assert "salary or income" in e33g.reason
+        assert "savings" not in e33g.reason.lower()
+        assert r.reason == e33g.reason
+
+    def test_mid_budget_e33g_steps_state_annual_income_not_balance(self):
+        r = _call(purpose=Purpose.WORK_REMOTE, budget_band=BudgetBand.MID_50_500M)
+        assert r.recommended_visa is VisaType.E33G
+        assert any("USD 60,000 a year" in s for s in r.pre_arrival_steps)
+        for step in r.pre_arrival_steps:
+            lowered = step.lower()
+            assert "balance" not in lowered
+            assert "savings" not in lowered
+
+    def test_over_budget_e33g_steps_state_annual_income_not_balance(self):
+        r = _call(purpose=Purpose.WORK_REMOTE, budget_band=BudgetBand.OVER_500M)
+        assert r.recommended_visa is VisaType.E33G
+        assert any("USD 60,000 a year" in s for s in r.pre_arrival_steps)
+        for step in r.pre_arrival_steps:
+            lowered = step.lower()
+            assert "balance" not in lowered
+            assert "savings" not in lowered
+
 
 class TestInvestor:
     def test_high_budget_is_E28A(self):
         r = _call(purpose=Purpose.INVESTOR, budget_band=BudgetBand.OVER_500M)
         assert r.recommended_visa is VisaType.E28A
 
-    def test_mid_budget_ranking_includes_e33g_and_e28a(self):
+    def test_mid_budget_ranking_excludes_e33g(self):
         r = _call(purpose=Purpose.INVESTOR, budget_band=BudgetBand.MID_50_500M)
         visas = {rv.visa for rv in r.ranking}
-        assert VisaType.E33G in visas
+        assert VisaType.E33G not in visas
         assert VisaType.D12 in visas or VisaType.E28A in visas
 
     def test_under_budget_refers(self):
         r = _call(purpose=Purpose.INVESTOR, budget_band=BudgetBand.UNDER_50M)
         assert r.recommended_visa is None
         assert r.referral_mode is True
+
+    def test_under_budget_referral_names_no_visa_code_and_no_savings(self):
+        r = _call(purpose=Purpose.INVESTOR, budget_band=BudgetBand.UNDER_50M)
+        assert r.referral_mode is True
+        lowered = r.reason.lower()
+        assert "e33g" not in lowered
+        assert "savings" not in lowered
+        assert "whatsapp" in lowered
 
 
 class TestSimpleBranches:
@@ -274,7 +309,6 @@ class TestPreArrivalStepsBelongToTheRecommendedVisa:
     def test_other_purposes_keep_their_steps_unchanged(self):
         """The per-visa layer must not disturb branches that never needed it."""
         for purpose in (
-            Purpose.WORK_REMOTE,
             Purpose.INVESTOR,
             Purpose.WORK_EMPLOYEE,
             Purpose.FAMILY,
