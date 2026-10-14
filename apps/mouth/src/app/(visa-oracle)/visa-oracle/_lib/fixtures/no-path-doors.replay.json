@@ -266,10 +266,7 @@
       "why": "the pack answers APPLICANT_IS_INDONESIAN_CITIZEN under every purpose",
       "ui": { "nationalities": "ID" },
       "state": "NO_SUPPORTED_PATH",
-      "no_path_reason_codes": [
-        "APPLICANT_IS_INDONESIAN_CITIZEN",
-        "BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED"
-      ],
+      "no_path_reason_codes": ["APPLICANT_IS_INDONESIAN_CITIZEN"],
       "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": [] }
     },
     {

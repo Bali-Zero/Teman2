@@ -1,0 +1,20 @@
+gear: 1
+gear_reason:
+  One generated fixture row, one file, +1/-4 lines, no hot zone; the deterministic floor from the
+  diff is 1 (print-floor), so no council journal is required.
+ruling:
+  "The Visa Oracle session owns the no-door replay fixture since PR 8456; the drift is the
+  consequence of PR 8496 (merge d460923bf1, B01), which made a no-path decision caused by a global
+  hard filter list only the global causes."
+mission:
+  The committed no-path-doors replay fixture is regenerated from the active signed pack so the
+  Indonesian-citizen counterexample lists only its global cause and the replay-pins observer is green.
+objective:
+  counterexamples[0] (indonesian-nationality) no_path_reason_codes is exactly
+  [APPLICANT_IS_INDONESIAN_CITIZEN]; nothing else in the fixture changes;
+  scripts/ci/observe_visa_oracle_replay_pins.py exits 0 with 293 passed.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fixtures/no-path-doors.replay.json
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
