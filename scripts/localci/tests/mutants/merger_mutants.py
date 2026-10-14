@@ -916,6 +916,12 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "ship-failed-read-means-ready": (PY, "                except (hc.CompareError, OSError) as exc:\n                    ready = False\n", "                except (hc.CompareError, OSError) as exc:\n                    ready = True\n", SHIPPABLE),
     "ship-skip-journalled-every-tick": (PY, '        if not any(r.get("kind") == "skipped" and r.get("why") == "gate_pending_deferred" and all(r.get(k) == v for k, v in key.items()) for r in recs):\n', "        if True:\n", SHIPPABLE),
     "ship-defers-on-any-old-decision": (PY, "for x in names)) else None\n    shadow_only", "for x in names)) else newest.get((r.get(\"pr\"), r.get(\"head_sha\")))\n    shadow_only", SHIPPABLE),
+||||||| parent of 431e96a970 (fix(localci): the candidate pytest sandbox is a git repository on hosted's python, under a wrapper that is not init (tests.scripts_impacted))
+    # tests.scripts_impacted: the sandbox of kind "pytest" is a repository, on hosted's interpreter, under a wrapper that is not init
+    "pi-default-python": (RUNNER, 'argv = [hosted_python(spec["isolation"]), "-m"', 'argv = ["python", "-m"', ("scripts/localci/tests/test_pytest_indexed.py",)),
+    "pi-tree-not-indexed": ("scripts/localci/pytest_indexed.py", 'steps_driver.index_tree(cfg["root"], cfg.get("history"), HERE / "base", cfg.get("tree_pack"))', "pass", ("scripts/localci/tests/test_pytest_indexed.py",)),
+    "pi-wrapper-not-shipped": (RUNNER, 'extra["cfg/pytest_indexed.py"] = PYTEST_INDEXED.read_bytes()', "pass", ("scripts/localci/tests/test_pytest_indexed.py",)),
+    "pi-history-dropped": (RUNNER, '"history": hist, "argv": argv', '"history": None, "argv": argv', ("scripts/localci/tests/test_pytest_indexed.py",)),
 }
 
 
