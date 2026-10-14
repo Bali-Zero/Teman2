@@ -98,7 +98,7 @@ export const COPY = {
     seniorFunding: {
       heading: "Which senior funding profile matches you?",
       body: "Applicants aged 55 and over may have access to senior-specific routes, subject to age-band review and supporting evidence.",
-      why: "E33E is based on a USD 50,000 deposit plus at least USD 3,000 per month in income or allowance. E33F is based on at least USD 3,000 per month in income, without the deposit.",
+      why: "E33E is based on a USD 50,000 deposit plus at least USD 3,000 per month in income or allowance. E33F is based on at least USD 3,000 per month in income or allowance, without the deposit.",
       options: {
         deposit_50k_income: "USD 50,000 deposit plus USD 3,000 monthly income",
         income_only_3k: "USD 3,000 monthly income only",

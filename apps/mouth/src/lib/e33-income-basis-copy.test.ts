@@ -17,7 +17,10 @@ const idMdxPath = join(
 );
 
 export function incomeBasisIsPassive(line: string): boolean {
-  return /E33[EF]/.test(line) && /passive income|pendapatan pasif/i.test(line);
+  return (
+    /E33[EF]/.test(line) &&
+    /passive income|(?:pendapatan|penghasilan) pasif/i.test(line)
+  );
 }
 
 function pickSeniorRouteLine(filePath: string): string[] {
@@ -57,9 +60,14 @@ describe("E33E/E33F income basis in e28a-investor-kitas-guide (EN + ID parity)",
       "penghasilan atau tunjangan",
       "pendapatan pasif",
     );
+    const mutatedIdPenghasilan = idLine.replace(
+      "penghasilan atau tunjangan",
+      "penghasilan pasif",
+    );
 
     expect(incomeBasisIsPassive(mutatedEn)).toBe(true);
     expect(incomeBasisIsPassive(mutatedId)).toBe(true);
+    expect(incomeBasisIsPassive(mutatedIdPenghasilan)).toBe(true);
   });
 
   it("innocence: an unrelated line mentioning passive income without E33E/E33F is not convicted", () => {

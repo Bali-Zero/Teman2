@@ -19,6 +19,8 @@ import { COPY } from "../copy";
  *   directly, independent of the literal word "split".
  * - P2-C14: "and you're there" reads as an eligibility confirmation
  *   (arrival/conclusion idiom) rather than a preliminary fit-check result.
+ * - `passiveIncomeBasis` is a #8460 gate C4 addition (2026-10-14): the
+ *   E33-family basis is "income or allowance", never "passive income".
  */
 const FORBIDDEN_PATTERNS: Record<string, RegExp> = {
   priceUsd1500: /US?D?\s*\$?\s*1[,.]?500/i,
