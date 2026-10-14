@@ -660,6 +660,7 @@ ones (the old order inside each group), and with `LOCALCI_MERGER_PHASE_F=1` sele
 timing are still checked at merge time). A `(pr, head)` whose newest decision, at any base, was BLOCKED with `gate_pending` is not decided
 again at a new base until `gate_ready` says its gate verdict is posted and its pending hosted runs completed after it; a failed read
 defers. Each deferred `(pr, head)` is journalled once as `skipped: gate_pending_deferred`.
+Before the flip, labelled-first shrinks the share of unlabelled PRs in the compared-merge evidence (2026-10-14: 5 of 56 open PRs armed but unlabelled, 23 labelled).
 
 ### Report (phase D's instrument)
 

@@ -120,6 +120,7 @@ See `scripts/localci/README.md` (B19).
 - **T2, a gate-pending head waits for its gate across bases.** When the NEWEST non-replay decision of a `(pr, head)`, at ANY base, is BLOCKED with `gate_pending`, a new key for that same `(pr, head)` at another base is deferred until `gate_ready(pr, head, contexts)` is true: the same read B12 uses (the status exists on the head AND the pending contexts' hosted runs completed after it). A failed read, or no callable, means deferred. B12's own same-key re-decision and its cap are unchanged.
 - **T3, journalled once.** Each deferred `(pr, head)` is journalled once as `skipped: gate_pending_deferred`, as B12 and B15 journal their skips.
 - **T4, nothing else changes.** A PR whose newest decision was not `gate_pending` is selected exactly as before.
+- **Evidence note.** Before the flip, labelled-first shrinks the share of unlabelled PRs in the compared-merge evidence: measured 2026-10-14, 5 of 56 open PRs are armed but unlabelled, against 23 labelled.
 
 See `scripts/localci/README.md` (B23).
 

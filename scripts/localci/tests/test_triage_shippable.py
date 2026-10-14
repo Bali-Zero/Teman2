@@ -105,3 +105,12 @@ def test_the_skip_is_journalled_once_per_head_across_ticks_and_bases(fw, monkeyp
     assert len(skips) == 1 and skips[0]["pr"] == 1 and skips[0]["head_sha"] == fw.head1
     assert [r for r in fw.live() if r["kind"] == "decision"] == [r for r in fw.live() if r["kind"] == "decision" and r["base_sha"] == "a" * 40]
     assert fw.runner.calls == []
+
+
+def test_a_deferred_pr_listed_before_a_selectable_one_does_not_stop_the_scan():
+    prs = [plain(1, H1, "2026-10-01T00:00:00Z"), plain(2, H2, "2026-10-02T00:00:00Z")]
+    deferred: list = []
+    assert order(prs, [dec(base=B2)], lambda n, h, names: False, deferred=deferred) == [2] and [p["number"] for p in deferred] == [1]
+    fork_first = [pr(9, H3, fork=True), plain(1, H1, "2026-10-01T00:00:00Z"), plain(2, H2, "2026-10-02T00:00:00Z")]
+    todo, forks = mg.triage(fork_first, REPO, [dec(base=B2)], B1, lambda n, h, names: False)
+    assert [p["number"] for p in todo] == [2] and [p["number"] for p in forks] == [9]

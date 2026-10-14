@@ -896,6 +896,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "pending-watchdog-flag-reset-mid-tick": (PY, "    check_watchdog()   # B19-W4", "    _WATCHDOG[\"fired\"] = False\n    check_watchdog()   # B19-W4", PENDING),
     "pending-push-unlanded-beats-pushed": (PY, '        elif kind == "push_unlanded" and k not in pushed:', '        elif kind == "push_unlanded":', PENDING),
     # B23: the lane goes to PRs that can merge
+    "ship-deferred-stops-the-scan": (PY, "                        deferred.append(pr)\n                    continue\n", "                        deferred.append(pr)\n                    break\n", SHIPPABLE),
     "ship-labels-ignored-in-ordering": (PY, "todo.sort(key=lambda p: (not has_arm_label(p), ", "todo.sort(key=lambda p: (False, ", SHIPPABLE),
     "ship-unlabelled-picked-under-phase-f": (PY, "if shadow_only and not has_arm_label(pr) and", "if False and", SHIPPABLE),
     "ship-gate-pending-defer-ignored": (PY, "            if newest.get((n, head)):\n", "            if False:\n", SHIPPABLE + ("scripts/localci/tests/test_gate_pending.py",)),
