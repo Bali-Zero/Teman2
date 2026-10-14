@@ -380,6 +380,8 @@ def test_b21_a_timeout_where_the_remote_never_received_the_push_is_push_unlanded
     _push_reports(monkeypatch, lands=False, timeout=True)
     assert fw.tick() == 0
     assert fw.kinds()[-2:] == ["merged", "push_unlanded"] and "TimeoutExpired" in fw.journal()[-1]["error"]
+    merged, unlanded = fw.journal()[-2:]
+    assert all(unlanded[k] == merged[k] and unlanded[k] for k in ("pr", "head_sha", "base_sha"))   # B19 matches a merged row to its push_unlanded on these three
     assert not (fw.state / mg.HALT_FILE).exists() and "pushed" not in fw.kinds() and "push_refused" not in fw.kinds()
     assert g(fw.mirror, "rev-parse", "refs/merger/base") == fw.base and fw.origin_main() == fw.base
 

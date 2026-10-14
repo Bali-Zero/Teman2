@@ -1306,7 +1306,7 @@ def phase_f_merge(state: Path, repo_dir: Path, enq: dict, wm: dict, pull: dict, 
         if first == commit or (first == old and second == commit):
             err, readback = None, True
         elif first == old and second == old:
-            journal(state, {"kind": "push_unlanded", "pr": n, "head_sha": head, "merge_commit": commit, "error": err, "lease_id": enq.get("lease_id")})
+            journal(state, {"kind": "push_unlanded", "pr": n, "head_sha": head, "base_sha": enq["base_sha"], "merge_commit": commit, "error": err, "lease_id": enq.get("lease_id")})
             print(f"merger: #{n} push_unlanded — main unchanged after a transport failure, not halted", file=sys.stderr)
             return
     if err:
