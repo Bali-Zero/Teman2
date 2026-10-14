@@ -1,0 +1,30 @@
+gear: 2
+gear_reason: >-
+  Public Visa Oracle client-copy change in the mouth adapter, view model and result sheet (EN and ID); no
+  backend, no pack, no pricing, no tree file, no question added. Gear 2 because it ships on the public
+  funnel; the red-team pair already ran and its MEDIUM/HIGH finding is cured.
+mission: >-
+  A visitor whose retirement result shows E33F but not the 5-year E33E sees, under the E33F card, what
+  the E33E would also need, in English and Bahasa Indonesia, without any promise.
+objective: >-
+  E33 audit plan PR-10. When the category is retirement and the candidates include E33F but not E33E,
+  the E33F card carries a candidate-scoped note: on a deposit basis it names the failed deposit answers
+  (amount below the pack threshold, not a state-owned bank, not in own name); on a passive income,
+  family sponsor or property basis it says the E33E also needs the deposit and offers the existing
+  branch-switch edit row to the bank deposit answer. No note when E33E is a candidate, when E33F is
+  absent, or on dead ends. No question is added.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/outcome-view-model.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/client-copy.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fixtures/no-path-doors.replay.json
+  - scripts/ci/observe_visa_oracle_replay_pins.py
+  - scripts/ci/observe_visa_oracle_e33f_note.py
+  - tests/scripts/test_observe_visa_oracle_e33f_note.py
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 2
