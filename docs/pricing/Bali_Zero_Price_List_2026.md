@@ -103,7 +103,7 @@ _Long-stay residence permits for foreign nationals._
 | **Dependent 2 Years (Extend)**             | Onshore extension of an existing 2-year Dependent KITAS.                                                                                                   | 15.000.000 IDR |
 | **Born KITAS**                             | KITAS issuance for foreign children born in Indonesia, processed alongside the birth registration.                                                         | 9.000.000 IDR  |
 
-Retirement KITAS is offered under the Second Home senior route (E33F); the generic Retirement price rows are internal catalogue entries and are not published.
+Retirement (55+) is offered through the Second Home senior routes (E33F, 1 year, income route; E33E, 5 years). Please contact us for the current price of your route.
 
 ---
 

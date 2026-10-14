@@ -50,6 +50,36 @@ async def search_pricing(
     return result
 
 
+def _is_internal_service(svc: Any, key: str, entry: dict[str, Any]) -> bool:
+    """True when the catalogue row carries ``"internal": true``.
+
+    ``PricingService.get_service_by_key`` returns a projected dict and must keep
+    resolving internal rows for backend callers, so check both the returned dict
+    and the raw catalogue entry in ``svc.prices``.
+    """
+    if entry.get("internal") is True:
+        return True
+    services = getattr(svc, "prices", {}).get("services", {})
+    category_data = services.get(entry.get("category", ""), {})
+    if not isinstance(category_data, dict):
+        return False
+    qualifier, sep, bare_name = key.partition("::")
+    if not sep:
+        bare_name = key
+        qualifier = ""
+    raw = category_data.get(bare_name)
+    if isinstance(raw, dict) and ("price" in raw or "tier_range" in raw):
+        return raw.get("internal") is True
+    for sub_name, sub_block in category_data.items():
+        if qualifier and sub_name != qualifier:
+            continue
+        if isinstance(sub_block, dict):
+            sub_raw = sub_block.get(bare_name)
+            if isinstance(sub_raw, dict) and sub_raw.get("internal") is True:
+                return True
+    return False
+
+
 @router.get("/service")
 async def get_service_price(
     key: str = Query(
@@ -71,7 +101,8 @@ async def get_service_price(
     for a human typing a keyword and wrong for a page rendering a number: a
     near-miss shown as "the price" is worse than no price at all.
 
-    404 for an unknown key, 503 when the catalogue itself failed to load — the
+    404 for an unknown key (or an `"internal": true` row hidden from public
+    surfaces), 503 when the catalogue itself failed to load — the
     caller must be able to tell "this service does not exist" from "the price
     source is down", because only the second one should fall back to a cached
     literal.
@@ -81,7 +112,7 @@ async def get_service_price(
         raise HTTPException(status_code=503, detail="Official prices not loaded")
 
     entry = svc.get_service_by_key(key)
-    if entry is None:
+    if entry is None or entry.get("internal") is True or _is_internal_service(svc, key, entry):
         raise HTTPException(status_code=404, detail=f"Unknown service key: {key}")
     return entry
 

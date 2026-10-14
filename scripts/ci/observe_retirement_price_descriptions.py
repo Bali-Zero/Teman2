@@ -8,7 +8,7 @@
 The consumer is the pricing knowledge layer (get_all_prices / the public pricing
 endpoint), which serves the rows of bali_zero_official_prices_2026.json and its
 mouth mirror. The observation runs the pytest file that goes through PricingService.get_all_prices()
-and requires the Retirement rows to name the 55+ age floor from the signed rule pack, in both files and the printable list.
+and requires the Retirement rows to name the 55+ age floor from the signed rule pack in the canonical file only; the mouth mirror and the printable list must omit them.
 Exit 0 only if pytest reports a full pass of at least 20 tests.
 """
 
@@ -29,7 +29,7 @@ _SUMMARY = re.compile(r"^=*\s*(\d+) passed in [\d.]+s(?: \(.*\))?\s*=*$")
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a pytest line that is a pure pass (no failed/skipped/error), N >= 22."""
+    """True only for a pytest line that is a pure pass (no failed/skipped/error), N >= 20."""
     if line is None:
         return False
     match = _SUMMARY.match(line.strip())

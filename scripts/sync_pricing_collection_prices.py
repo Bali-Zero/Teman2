@@ -10,7 +10,9 @@ reaches ``backend/app/modules/knowledge/service.py``'s pricing queries until the
 points are patched. ``scripts/patch_pricing_contact_block.py`` is the sibling
 patcher (contact block); this one handles price drift.
 
-What it does, per catalog row (same traversal as
+What it does, per catalog row (deliberately keeps syncing ``internal`` rows —
+backend truth, as the Qdrant collection serves conversational lookups — and so
+does NOT share the internal-row skip of
 ``scripts/sync_frontend_prices.py::_iter_service_rows``):
   - matches a point by payload ``name`` == catalog ``name``;
   - expected price = catalog ``price``, or, for tier rows with an empty price,
@@ -66,7 +68,7 @@ SCROLL_BATCH_SIZE = 100
 def _iter_service_rows(
     services: dict[str, Any],
 ) -> Iterator[tuple[str, str, dict[str, Any]]]:
-    """Same traversal as scripts/sync_frontend_prices.py::_iter_service_rows."""
+    """Deliberately keeps syncing internal rows (backend truth, the Qdrant collection serves conversational lookups) and so does NOT share the internal-row skip of sync_frontend_prices.py::_iter_service_rows."""
     for category, category_payload in services.items():
         if not isinstance(category_payload, dict):
             continue
