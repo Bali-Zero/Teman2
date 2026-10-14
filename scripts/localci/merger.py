@@ -390,6 +390,7 @@ def drop_worktree(repo: Path, path: Path) -> None:
 HOST_FLOOR_GB = 90.0     # Zero, 2026-10-11, lowered from 100
 START_MARGIN_GB = 10.0     # the start floor is 100
 EVICT_MARGIN_GB = 1.5
+RUN_HEADROOM_GB = 15.0      # prune sheds second slots under start floor + this. Measured on Pro 2026-10-13: a prune at 19:21Z saw 104.9 GB free and PR 8441 was evicted at 19:44Z at 91.48, so one run uses >= 13.4 GB
 EVICT_CAP = 3               # evictions of one (pr, head, base) before it is skipped: a head the host cannot afford does not starve the queue
 EVICT_SAMPLE_S = 5
 EVICT_KILL_GRACE_S = 10
@@ -1962,7 +1963,7 @@ def cmd_prune(a) -> int:
         print("merger prune: skipped — the lease is held")
         return 0
     try:
-        rec = pm.prune(state, a.docker, dry=a.dry_run, fstrim=a.fstrim, colima=a.colima, pressure_gb=a.min_host_free_gb,
+        rec = pm.prune(state, a.docker, dry=a.dry_run, fstrim=a.fstrim, colima=a.colima, pressure_gb=a.min_host_free_gb + a.run_headroom_gb,
                       **({"matrix": Path(a.matrix)} if a.matrix else {}))
     except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as exc:
         journal(state, {"kind": "prune", "dry_run": a.dry_run, "error": redact(f"{type(exc).__name__}: {exc}")})
@@ -2056,7 +2057,9 @@ def main(argv: list[str] | None = None) -> int:
     pr.add_argument("--fstrim", action="store_true", help="after an image removal, `colima ssh -- sudo fstrim -av`")
     pr.add_argument("--colima", default="colima")
     pr.add_argument("--min-host-free-gb", type=float, default=HOST_FLOOR_GB + START_MARGIN_GB,
-                    help="B15: host free under it is host pressure: the second slot of a recipe goes too")
+                    help="the start floor (unchanged); host pressure is this plus --run-headroom-gb")
+    pr.add_argument("--run-headroom-gb", type=float, default=RUN_HEADROOM_GB,
+                    help="B15: host free under start floor + this is host pressure: the second slot of a recipe goes before a run starves")
     pr.add_argument("--matrix", help="the BASE contexts matrix whose service stand-ins are never pruned (default: beside prune.py)")
     pr.add_argument("--code-sha", help="the origin/main commit this merger.py was extracted from (the launchd wrapper passes it)")
     sub.add_parser("merge", help=PHASE_E)
