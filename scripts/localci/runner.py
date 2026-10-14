@@ -388,6 +388,8 @@ SUPERSEDED_RECORDS = {"tests.backend_shards": "ctx.backend-tests", "tests.fronte
 MODULE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_.]*$")
 IMPLICIT_USES = ("actions/checkout@", "actions/setup-python@")   # stood in for by the tree copy and the image/host interpreter
 STEPS_DRIVER = Path(__file__).with_name("steps_driver.py")
+PYTEST_INDEXED = Path(__file__).with_name("pytest_indexed.py")
+HOSTED_SCRIPTS_PYTHON = "3.11"   # scripts-tests-sweep.yml's setup-python: the interpreter hosted runs scripts/tests with
 # What a contained step sees of GitHub: the merge_group event (the build whose verdict lands on main), and an offline pip.
 CONTAINED_STEP_ENV = {"CI": "true", "GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "merge_group", "GITHUB_WORKSPACE": "/w",
                       "HOME": "/home/runner", "SHELL": "/bin/bash", "PIP_FIND_LINKS": "/opt/wheels",
@@ -2124,6 +2126,14 @@ def _remove_verified(docker: str, ctr: str, denv: dict) -> None:
         raise ContainerCleanupError(f"candidate container {ctr} still present or its absence unverifiable after docker rm -f -v (inspect rc={gone.returncode})")
 
 
+def hosted_python(iso: dict) -> str:
+    """The interpreter of hosted's scripts/tests run, from the image's extra interpreters; the image default when it carries none."""
+    for ver, bindir in sorted((iso.get("pythons") or {}).items()):
+        if ver == HOSTED_SCRIPTS_PYTHON or ver.startswith(HOSTED_SCRIPTS_PYTHON + "."):
+            return f"{bindir}/python3"
+    return "python"
+
+
 def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int, log: Path, junit: Path) -> dict:
     kind = spec["kind"]
     env = {"HOME": "/tmp", "PYTHONDONTWRITEBYTECODE": "1", "LANG": "C.UTF-8"}
@@ -2145,8 +2155,25 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
     if kind == "pytest":
         if not spec.get("modules"):
             return {"status": "ERROR", "reason": "zero test modules selected — missing evidence is not PASS", "rc": None, "counts": {"collected": 0, "executed": 0}}
-        inner = ["python", "-m", "pytest", "-p", "no:cacheprovider", "-q", "--junitxml=/out/junit.xml", *spec["modules"]]
+        py = hosted_python(spec["isolation"])
+        notes = []
+        if py == "python":
+            notes.append(f"# python: the image carries no {HOSTED_SCRIPTS_PYTHON} interpreter — pytest runs on the image default, which is not hosted's\n")
+        argv = [py, "-m", "pytest", "-p", "no:cacheprovider", "-q", "--junitxml=/out/junit.xml", *spec["modules"]]
         env["PYTHONPATH"] = workdir
+        hist = history_delta(Path(plan["worktree"]), plan["base_sha"], plan["candidate_sha"])   # hosted checks the tree out as a repository: so does the sandbox
+        if isinstance(hist, str):   # hosted's checkout is depth 1: the indexed tree alone is what it has, so a BASE that cannot be rebuilt is no verdict-changer
+            notes.append(f"# history: BASE not rebuilt as a commit ({hist[:160]}) — the tree is indexed alone, as hosted's depth-1 checkout is\n")
+            hist = None
+        extra["cfg/steps_driver.py"] = STEPS_DRIVER.read_bytes()
+        extra["cfg/pytest_indexed.py"] = PYTEST_INDEXED.read_bytes()
+        for (rel, _mode, oid), blob in zip((hist or {"base": []})["base"], read_blobs(Path(plan["worktree"]), [o for _, _, o in (hist or {"base": []})["base"]])):
+            extra[f"cfg/base/{rel}"] = blob
+        tp, files, pack_note = tree_pack_ship_safe(run_dir, plan)
+        pack_note = "".join(notes) + (pack_note or "")
+        extra["cfg/pytest_indexed.json"] = json.dumps({"root": workdir, "history": hist, "argv": argv, **({"path_prefix": str(Path(py).parent)} if py != "python" else {}),
+                                                       **({"tree_pack": tp} if tp else {})}).encode()
+        inner = ["python", "-I", "/cfg/pytest_indexed.py", "/cfg/pytest_indexed.json"]
     elif kind == "contained_steps":
         drv = STEPS_DRIVER.read_bytes()
         if sha256_bytes(drv) != spec.get("driver_sha256"):

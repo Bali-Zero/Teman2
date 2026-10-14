@@ -227,6 +227,16 @@ recipe: 394 s cold at plan (download, install, export), then a cache hit while t
 E2E and Visa Oracle smoke share one recipe (the backend closure plus node 24, the root lock's npm cache, chromium and
 postgresql-client: 11.9 GB, its Python layers shared with Backend Tests'); Frontend Tests' node-only recipe is 1.4 GB.
 
+### Sandbox of kind `pytest` sees what hosted sees (`tests.scripts_impacted`)
+
+Eight FAIL decisions of Pro's journal (2026-10-09 to 10-14) were environment, not candidate: the container had no `.git` (`git rev-parse
+--show-toplevel` exit 128, `git ls-files` exit 128, and the case-insensitive-volume probe of `test_door_canon_parity` that falls out of a failed
+`ls-files`), pytest's parent was the container's init (`launcher=launchd` where `test_n7_launcher_from_ppid` expects a shell), and the image
+default interpreter is 3.12 where hosted's `scripts-tests-sweep.yml` runs 3.11 (`test_t9d...[deep-object-recursion]`: 3.12 parses a 5000-deep
+object, 3.11 raises `RecursionError`). The leg now runs `pytest_indexed.py` in the container: it indexes the tree as a commit (`steps_driver.index_tree`, the B14
+tree pack and BASE history included) and runs pytest as its CHILD on the image's 3.11 (`hosted_python`; the image default when it carries none). No check is
+excluded or weakened; the modules and the verdict rule are unchanged.
+
 ### Sandbox git index (B14)
 
 Every sandbox whose steps config has `git_index: true` indexes the tree as a git commit before its first step, and that time is
