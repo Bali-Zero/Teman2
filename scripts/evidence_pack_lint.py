@@ -2986,6 +2986,7 @@ COUNCIL_REVIEW_SEATS: tuple[str, ...] = (
 #: deduplication so one agy reviewer can never count as two distinct seats.
 COUNCIL_REVIEW_SEAT_ALIASES: dict[str, str] = {
     "agy-gemini-3.1-pro": "agy-gemini-4-argon",
+    "agy-gemini-3.1-pro-low": "agy-gemini-4-argon",
     "agy-gemini-3.1-pro-high": "agy-gemini-4-argon",
     "agy-gemini-4-argon-low": "agy-gemini-4-argon",
     "agy-gemini-4-argon-medium": "agy-gemini-4-argon",

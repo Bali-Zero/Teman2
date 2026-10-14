@@ -38,6 +38,7 @@ from evidence_pack_lint import (  # noqa: E402
     SIZE_GEAR2_THRESHOLD,
     SIZE_GEAR3_THRESHOLD,
     _is_anthropic_seat,
+    _read_council_journal_seats,
     _seat_rule_verdict,
     _size_term_net_lines,
     check_acceptance_probe_pairing,
