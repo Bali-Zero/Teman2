@@ -1,0 +1,121 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling:
+  2026-10-11 E33 audit plan PR-10 (findings ret-e33e-silent-drop-on-deposit-fail, ret-passive-income-basis-hides-e33e,
+  e33e-deposit-hidden-by-basis-choice), under Zero's mandate to close the E33 family end to end.
+mission:
+  A visitor whose retirement result shows E33F but not the 5-year E33E sees, under the E33F card, what the
+  E33E would also need, in English and Bahasa Indonesia, without any promise.
+lanes:
+  - lane: pr10-ground-truth
+    role: ground_truth
+    seat:
+      "Signed rule pack rulepack-prod-029.signed.json (ACTIVE, seq-29): el.e33f.retirement and el.e33e.retirement
+      (E33E adds the deposit conjunct), hf.e33f.age-below-55; saved official page research/visa/2026-10-13-organ-reattest-seq29/text/."
+    nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
+    query_hash: "8daa66acd3ba3f6adc9a78304e35d719667fa3e735b32492757ee085ea6bee0e" # pragma: allowlist secret
+    note: query_hash = sha256 of the signed pack file at this head.
+  - lane: pr10-build
+    role: build
+    seat:
+      gemini-4-argon-high via agy (external seat, edits files, never runs git), 4 rounds plus one fix round; the
+      Claude driver verified and committed.
+  - lane: pr10-redteam-opus
+    role: review
+    seat: claude-opus-5-5 adversarial red team on the build head 7fb760e7486e22c233dc329a0c8c8a7ca87218b4.
+  - lane: pr10-redteam-codex
+    role: review
+    seat: codex gpt-5.6-sol HIGH, same build head, found the same defect as the Opus seat.
+pii_scan: clean
+bites:
+  "consumer: the public Visa Oracle result page on https://balizero.com/visa-oracle; observation: scripts/ci/observe_visa_oracle_e33f_note.py
+  runs the adapter, result-sheet and client-copy tests and exits 0 only if every PR-10 test ran and passed; after
+  vercel promote a walk retirement / passive_income / age 64 / income 3,500 shows the E33E note inside the E33F
+  card, and retirement / bank_deposit / age 64 / 60k state-bank own-name deposit (E33E + E33F) shows no note."
+receipts:
+  - claim: apps/mouth typechecks.
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: no output; TSC=0
+    exit: 0
+    ts: "2026-10-14T17:02:40Z"
+    seat: this session
+  - claim: The whole Visa Oracle mouth suite passes.
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: Test Files 59 passed (59); Tests 1580 passed (1580)
+    exit: 0
+    ts: "2026-10-14T17:04:20Z"
+    seat: this session
+  - claim: The replay-pins census is exact at the floor of 305.
+    cmd: python3 scripts/ci/observe_visa_oracle_replay_pins.py
+    result: Tests 305 passed (305); replay pins hold
+    exit: 0
+    ts: "2026-10-14T17:02:44Z"
+    seat: this session
+  - claim: The no-argument bites observer runs the three PR-10 test files and every required title.
+    cmd: python3 scripts/ci/observe_visa_oracle_e33f_note.py
+    result: Tests 368 passed (368); e33f note holds
+    exit: 0
+    ts: "2026-10-14T17:01:00Z"
+    seat: this session
+  - claim: The observer's parser unit tests pass.
+    cmd: python3 -m pytest -q tests/scripts/test_observe_visa_oracle_e33f_note.py
+    result: 9 passed
+    exit: 0
+    ts: "2026-10-14T17:00:30Z"
+    seat: this session
+decisions:
+  - id: D-card-scoped-note
+    decision:
+      The note is a candidate-scoped notes list on the E33F card with the retirement_basis edit row, not an
+      item of the global conditions, whose intro says the team checks each one.
+  - id: D-no-new-question
+    decision: No deposit question is added; the D3-3 router stands and a deposit follow-up stays owner decision 6.
+dissent:
+  - seat: claude-opus-5-5 red team
+    objection:
+      "MEDIUM: the E33E deposit note was pushed into the global outcome.conditions, under the intro 'our
+      team checks each one', which is untrue for a note about another product (and the spec asked for a note under
+      the E33F card)."
+    status: CONFIRMED
+    disposition:
+      "Cured in commit 6a62a33cd6: the note is a candidate-scoped notes list on the E33F card only, rendered
+      with the retirement_basis edit row, no conditions intro; the conditions block is back to its original behaviour."
+  - seat: codex gpt-5.6-sol HIGH (read-only, rollout name session)
+    objection:
+      "HIGH: same defect: the note read as a verified condition attached to the E33F result, inviting the
+      visitor to change an answer under a false intro."
+    status: CONFIRMED
+    disposition:
+      "Cured in commit 6a62a33cd6: the note is a candidate-scoped notes list on the E33F card only, rendered
+      with the retirement_basis edit row, no conditions intro; the conditions block is back to its original behaviour.
+      New tests assert the note is in the E33F card only, not in a sibling card and not in outcome.conditions."
+  - seat: claude-opus-5-5 red team
+    objection: "LOW: dead check retirement_basis === deposit_or_income; five tests pinned an impossible shape."
+    status: CONFIRMED
+    disposition:
+      "Cured in 6a62a33cd6: check dropped, tests use retirement_basis undecided plus retirement_undecided_basis
+      deposit_or_income, the census loops over both real shapes."
+  - seat: claude-opus-5-5 red team
+    objection:
+      "LOW: render-level innocence test used passing deposit facts, so mutation M1 (deleting the E33E check)
+      stayed green there."
+    status: CONFIRMED
+    disposition: "Cured in 6a62a33cd6: non-deposit facts are used, so only the E33E check keeps the note off the page."
+  - seat: claude-opus-5-5 red team
+    objection: "LOW: fake fact keys age and retirement_income_usd in tests; Indonesian wording nits; two stale comments."
+    status: CONFIRMED
+    disposition: "Cured in 6a62a33cd6: real keys, wording changed, comments updated."
+  - seat: claude-opus-5-5 red team
+    objection:
+      "LOW: duplicated deposit-failure sentence builder; undecided to family_sponsor edit-row wording (both
+      called optional)."
+    status: PLAUSIBLE
+    disposition: "Not taken: optional, not blockers; the copy is correct and covered by the EN/ID parity test."
+spend:
+  wall_clock_hours: 4
+  adversarial_rounds: 2
+results:
+  mouth_visa_oracle_suite: 59 files, 1580 tests passed
+  mouth_tsc: clean
+  replay_pins_floor: 305
+  observer: 368 tests in 3 files, 11 required titles

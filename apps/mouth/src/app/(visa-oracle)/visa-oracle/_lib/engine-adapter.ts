@@ -4,6 +4,10 @@ import {
 } from "./engine-response";
 import { mapStayDays } from "./fact-mapper";
 import { QUESTIONS, type OracleFacts } from "./tree";
+import {
+  depositBasisDecisivelyNotChosen,
+  resolveConservativeAnswers,
+} from "./fact-mapper";
 import { followUpPrerequisitesMet, walkQuestionIds } from "./flow";
 import { translate, type I18nKey } from "./i18n";
 import { trustedPrimarySourceUrl } from "./trusted-source-url";
@@ -478,6 +482,10 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   E33F_PENJAMIN_NOTE: text(
     "A penjamin (licensed visa agency or person) must sponsor your E33F. Bali Zero can act as your penjamin.",
     "Visa E33F Anda harus disponsori oleh penjamin (biro visa berlisensi atau perorangan). Bali Zero dapat bertindak sebagai penjamin Anda.",
+  ),
+  E33F_E33E_DEPOSIT_NOTE: text(
+    `The 5-year E33E also needs a deposit of at least ${usd(E33E_DEPOSIT_THRESHOLD_USD, "en-US")} in your own name at an Indonesian state-owned bank.`,
+    `Visa E33E 5 tahun juga memerlukan deposito minimal ${usd(E33E_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama Anda sendiri di bank milik negara Indonesia.`,
   ),
   E33_DEPOSIT_BASIS_ELIGIBLE: text(
     `Second Home on the deposit basis: ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")} or more held in your own name at a state bank.`,
@@ -1183,6 +1191,113 @@ function secondHomeDepositHolderReason(
   return text(
     `${enParts.join(" ")} The Second Home Visa (E33) deposit route needs at least ${en(SECOND_HOME_DEPOSIT_THRESHOLD_USD)} held in your own name at an Indonesian state-owned bank.`,
     `${idParts.join(" ")} Jalur deposito Visa Rumah Kedua (E33) membutuhkan minimal ${id(SECOND_HOME_DEPOSIT_THRESHOLD_USD)} atas nama Anda sendiri di bank milik negara Indonesia.`,
+  );
+}
+
+export const E33F_E33E_DEPOSIT_NOTE_CODE = "E33F_E33E_DEPOSIT_NOTE";
+
+export function e33fE33eDepositNote(
+  facts: OracleFacts,
+): LocalizedText | undefined {
+  if (facts.category !== "retirement") return undefined;
+  const resolved = resolveConservativeAnswers(facts);
+  if (depositBasisDecisivelyNotChosen(resolved)) {
+    const chosenBasis =
+      resolved.retirement_basis === "undecided"
+        ? resolved.retirement_undecided_basis
+        : resolved.retirement_basis;
+    if (
+      chosenBasis !== "property" &&
+      chosenBasis !== "passive_income" &&
+      chosenBasis !== "family_sponsor"
+    ) {
+      return undefined;
+    }
+    const basisKey = `q.retirement_basis.opt.${chosenBasis}` as I18nKey;
+    const bankDepositEn = translate(
+      "en",
+      "q.retirement_basis.opt.bank_deposit",
+    );
+    const bankDepositId = translate(
+      "id",
+      "q.retirement_basis.opt.bank_deposit",
+    );
+    const chosenEn = translate("en", basisKey);
+    const chosenId = translate("id", basisKey);
+    return text(
+      `${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.en} You chose "${chosenEn}", so we did not ask about a deposit; if you hold one, change your answer to "${bankDepositEn}".`,
+      `${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id} Anda memilih "${chosenId}", sehingga kami tidak menanyakan soal deposito; jika Anda memilikinya, ubah jawaban Anda menjadi "${bankDepositId}".`,
+    );
+  }
+
+  const isDepositBasis =
+    resolved.retirement_basis === "bank_deposit" ||
+    (resolved.retirement_basis === "undecided" &&
+      resolved.retirement_undecided_basis === "deposit_or_income");
+  if (!isDepositBasis) return undefined;
+
+  const en = (n: number) => usd(n, "en-US");
+  const id = (n: number) => usd(n, "id-ID");
+  const enParts: string[] = [];
+  const idParts: string[] = [];
+
+  const rawDeposit = facts.secondhome_deposit_usd;
+  if (rawDeposit === "unsure") {
+    enParts.push(
+      "You were not sure of your bank deposit amount, so it counted as zero.",
+    );
+    idParts.push(
+      "Anda belum yakin dengan jumlah deposito bank Anda, sehingga dihitung nol.",
+    );
+  } else if (rawDeposit !== undefined && /^(0|[1-9]\d*)$/.test(rawDeposit)) {
+    const amount = Number(rawDeposit);
+    if (Number.isSafeInteger(amount) && amount < E33E_DEPOSIT_THRESHOLD_USD) {
+      enParts.push(
+        `You declared a bank deposit of ${en(amount)}, which is below ${en(E33E_DEPOSIT_THRESHOLD_USD)}.`,
+      );
+      idParts.push(
+        `Anda menyatakan deposito bank sebesar ${id(amount)}, di bawah ${id(E33E_DEPOSIT_THRESHOLD_USD)}.`,
+      );
+    }
+  }
+
+  const rawBank = facts.secondhome_state_bank;
+  if (rawBank === "unsure") {
+    enParts.push(
+      "You were not sure whether the deposit is at an Indonesian state-owned bank, so it counted as no.",
+    );
+    idParts.push(
+      'Anda belum yakin apakah deposito tersebut disimpan di bank milik negara Indonesia, sehingga dianggap "tidak".',
+    );
+  } else if (rawBank === "no") {
+    enParts.push(
+      "You told us the deposit is not at an Indonesian state-owned bank.",
+    );
+    idParts.push(
+      "Anda menyampaikan bahwa deposito tersebut tidak disimpan di bank milik negara Indonesia.",
+    );
+  }
+
+  const rawOwnName = facts.secondhome_own_name;
+  if (rawOwnName === "unsure") {
+    enParts.push(
+      "You were not sure whether the deposit is in your own name, so it counted as no.",
+    );
+    idParts.push(
+      'Anda belum yakin apakah deposito tersebut atas nama Anda sendiri, sehingga dianggap "tidak".',
+    );
+  } else if (rawOwnName === "no") {
+    enParts.push("You told us the deposit is not in your own name.");
+    idParts.push(
+      "Anda menyampaikan bahwa deposito tersebut tidak atas nama Anda sendiri.",
+    );
+  }
+
+  if (enParts.length === 0) return undefined;
+
+  return text(
+    `${enParts.join(" ")} ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.en}`,
+    `${idParts.join(" ")} ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id}`,
   );
 }
 
@@ -2568,13 +2683,17 @@ function buildValidatedOutcome(
   // it. The interview's raw fact
   // can still carry "unsure" here (`resolveConservativeAnswers` maps it to
   // "no" only at the wire seam), so both answers count.
+  const hasE33F = response.display.candidates.some(
+    (candidate) => candidate.product_code === "E33F",
+  );
+  const hasE33E = response.display.candidates.some(
+    (candidate) => candidate.product_code === "E33E",
+  );
   const penjaminAnswer = options.facts?.retirement_penjamin_confirmed;
   if (
     response.decision.state === "SUPPORTED_CANDIDATES" &&
     (penjaminAnswer === "no" || penjaminAnswer === "unsure") &&
-    response.display.candidates.some(
-      (candidate) => candidate.product_code === "E33F",
-    )
+    hasE33F
   ) {
     conditions.push({
       code: "E33F_PENJAMIN_NOTE",
@@ -2593,6 +2712,10 @@ function buildValidatedOutcome(
 
   switch (response.decision.state) {
     case "SUPPORTED_CANDIDATES": {
+      const depositNote =
+        !hasE33E && options.facts
+          ? e33fE33eDepositNote(options.facts)
+          : undefined;
       const candidates = response.display.candidates.map((projected, index) => {
         const decisionCandidate = response.decision.candidates[index];
         requireDecisiveRefs(decisionCandidate.source_refs);
@@ -2635,6 +2758,17 @@ function buildValidatedOutcome(
           decisionReasons: decisionCandidate.reason_codes.map((code) =>
             reason(code, decisionCandidate.source_refs, trustedIds),
           ),
+          ...(projected.product_code === "E33F" && depositNote
+            ? {
+                notes: [
+                  {
+                    code: E33F_E33E_DEPOSIT_NOTE_CODE,
+                    message: depositNote,
+                    sourceIds: [],
+                  },
+                ],
+              }
+            : {}),
           timeline: timeline(projected),
           price: price(projected, response),
           ...duration(projected, response, options.facts),

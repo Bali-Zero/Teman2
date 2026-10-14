@@ -37,8 +37,13 @@ import {
   type ServiceAvailabilityStatus,
 } from "../_lib/outcome-view-model";
 import { translate, type I18nKey } from "../_lib/i18n";
-import { ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS } from "../_lib/fact-mapper";
 import {
+  ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS,
+  depositBasisDecisivelyNotChosen,
+  resolveConservativeAnswers,
+} from "../_lib/fact-mapper";
+import {
+  E33F_E33E_DEPOSIT_NOTE_CODE,
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   SECOND_HOME_STUDIO_URL,
   REVIEW_REASON_ELEMENTS,
@@ -299,11 +304,13 @@ const REVIEW_GATE_CAUSE_ITEM: Readonly<Record<string, string>> = {
  * The answers of THIS interview that demonstrably raised `code` — never a
  * guess, never a plausible-looking cause. Each branch mirrors the exact
  * trigger `fact-mapper.ts::mapDisclosedReviewFlags` uses to raise the flag
- * the backend turns into this code, so a cause shown here is one the
- * applicant can act on. When nothing demonstrates the code (a backend-only
- * trigger, or a relation-driven hold the interview cannot attribute to one
- * answer), this returns `[]` and only the code's own copy is shown — an
- * unexplained hold is better than an invented explanation.
+ * the backend turns into this code (or, for `E33F_E33E_DEPOSIT_NOTE`,
+ * `e33fE33eDepositNote` / `depositBasisDecisivelyNotChosen`), so a cause
+ * shown here is one the applicant can act on. When nothing demonstrates the
+ * code (a backend-only trigger, or a relation-driven hold the interview
+ * cannot attribute to one answer), this returns `[]` and only the code's
+ * own copy is shown — an unexplained hold is better than an invented
+ * explanation.
  *
  * Every returned `questionId` is a key of `facts`, and `flow.ts::pruneFacts`
  * keeps `facts` a subset of the questions this walk actually asked — so
@@ -358,6 +365,12 @@ export function demonstratedReviewCauses(
   const gateItem = REVIEW_GATE_CAUSE_ITEM[code];
   if (gateItem && (facts.review_gate?.split(",") ?? []).includes(gateItem)) {
     add("review_gate");
+  }
+  if (
+    code === E33F_E33E_DEPOSIT_NOTE_CODE &&
+    depositBasisDecisivelyNotChosen(resolveConservativeAnswers(facts))
+  ) {
+    add("retirement_basis");
   }
 
   return [...causes].map(([questionId, value]) => ({ questionId, value }));
@@ -464,9 +477,10 @@ function ReasonList({
 }: {
   language: Language;
   reasons: readonly OutcomeReason[];
-  /** Supplied under HUMAN_REVIEW and, since A3'-M (M4), under
-   * NO_SUPPORTED_PATH too: the interview whose answers may be shown as the
-   * demonstrated cause of each reason. Absent elsewhere — a candidate's
+  /** Supplied under HUMAN_REVIEW, under NO_SUPPORTED_PATH (since A3'-M M4),
+   * and for a candidate's `notes` (the edit row is how the visitor switches
+   * basis): the interview whose answers may be shown as the demonstrated
+   * cause of each reason. Absent on a candidate's `decisionReasons` — a
    * support reason is not something the applicant "caused". */
   causeFacts?: OracleFacts;
   onEditMissingInput?: (questionId: string) => void;
@@ -703,6 +717,8 @@ function CandidateCard({
   total,
   checkedDocs,
   onToggleDoc,
+  facts,
+  onEditMissingInput,
 }: {
   language: Language;
   candidate: OutcomeCandidate;
@@ -712,6 +728,8 @@ function CandidateCard({
   total: number;
   checkedDocs: ReadonlySet<string>;
   onToggleDoc: (key: string) => void;
+  facts?: OracleFacts;
+  onEditMissingInput?: (questionId: string) => void;
 }) {
   return (
     <article className="oracle-candidate-card">
@@ -772,6 +790,17 @@ function CandidateCard({
           variant="support"
         />
       </details>
+
+      {candidate.notes && candidate.notes.length > 0 && (
+        <div className="oracle-candidate-card__notes">
+          <ReasonList
+            language={language}
+            reasons={candidate.notes}
+            causeFacts={facts}
+            onEditMissingInput={onEditMissingInput}
+          />
+        </div>
+      )}
 
       <div className="oracle-candidate-card__details">
         <section>
@@ -1274,6 +1303,8 @@ export function OutcomeSheet({
                 total={outcome.candidates.length}
                 checkedDocs={checkedDocs}
                 onToggleDoc={toggleDoc}
+                facts={facts}
+                onEditMissingInput={onEditMissingInput}
               />
             ))}
           </div>

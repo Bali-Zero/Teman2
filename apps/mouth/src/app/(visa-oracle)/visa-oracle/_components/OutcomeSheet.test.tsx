@@ -19,16 +19,20 @@ import {
 import {
   PROHIBITED_ACTIVITY_COPY,
   PROHIBITED_ACTIVITY_PRODUCT_COPY,
+  E33F_E33E_DEPOSIT_NOTE_CODE,
   REVIEW_REASON_COPY,
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   SECOND_HOME_STUDIO_URL,
   prohibitedActivitiesFor,
+  SUPPORT_REASON_COPY,
+  buildEngineOutcome,
 } from "../_lib/engine-adapter";
+import { makeVisaOracleResponse } from "../_lib/visa-oracle-test-fixture";
 import {
   ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS,
   mapDisclosedReviewFlags,
 } from "../_lib/fact-mapper";
-import { QUESTIONS, REVIEW_GATE_ITEMS } from "../_lib/tree";
+import { QUESTIONS, REVIEW_GATE_ITEMS, type OracleFacts } from "../_lib/tree";
 import { translate, type I18nKey } from "../_lib/i18n";
 import { assumptionDisplay } from "./ConfirmationCard";
 import type { Language } from "../_lib/flow";
@@ -2340,4 +2344,164 @@ describe("OutcomeSheet — fixed-days stay-permit length, verified renewal, and 
       ).toBeInTheDocument();
     },
   );
+});
+
+describe("OutcomeSheet · PR-10 E33F-only retirement deposit note and branch-switch affordance", () => {
+  function makeRetirementResponse(codes: readonly string[]) {
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    const firstDec = response.decision.candidates[0];
+    const firstDisp = response.display.candidates[0];
+    response.decision.candidates = codes.map((code, index) => ({
+      ...firstDec,
+      rank: index + 1,
+      product_code: code,
+      product_version_id: `${code.toLowerCase()}-version-id`,
+    }));
+    response.display.candidates = codes.map((code, index) => ({
+      ...firstDisp,
+      rank: index + 1,
+      product_code: code,
+      product_version_id: `${code.toLowerCase()}-version-id`,
+    }));
+    return response;
+  }
+
+  it("renders the E33F_E33E_DEPOSIT_NOTE sentence in EN and ID inside the E33F candidate card (never in .oracle-outcome__conditions) and wires the retirement_basis branch-switch affordance on E33F-only non-deposit bases", () => {
+    const facts: OracleFacts = {
+      category: "retirement",
+      retirement_basis: "passive_income",
+    };
+    const outcome = buildEngineOutcome(makeRetirementResponse(["E33F"]), {
+      facts,
+    });
+
+    for (const language of ["en", "id"] as const) {
+      const onEditMissingInput = vi.fn();
+      const { container } = render(
+        <OutcomeSheet
+          outcome={outcome}
+          language={language}
+          facts={facts}
+          onEditMissingInput={onEditMissingInput}
+        />,
+      );
+      expect(container.querySelector(".oracle-outcome__conditions")).toBeNull();
+
+      const card = container.querySelector(".oracle-candidate-card");
+      expect(card).not.toBeNull();
+      const notesBox = (card as HTMLElement).querySelector(
+        ".oracle-candidate-card__notes",
+      );
+      expect(notesBox).not.toBeNull();
+      expect(card!.textContent).toContain(
+        SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE[language],
+      );
+      expect(card!.textContent).toContain(
+        translate(language, "q.retirement_basis.opt.bank_deposit"),
+      );
+      expect(card!.textContent).toContain(
+        translate(language, "q.retirement_basis.opt.passive_income"),
+      );
+
+      const editButton = within(card as HTMLElement).getByRole("button");
+      fireEvent.click(editButton);
+      expect(onEditMissingInput).toHaveBeenCalledWith("retirement_basis");
+      cleanup();
+    }
+  });
+
+  it("attributes retirement_basis in demonstratedReviewCauses only when depositBasisDecisivelyNotChosen holds", () => {
+    const nonDepositFactCases: OracleFacts[] = [
+      { category: "retirement", retirement_basis: "passive_income" },
+      { category: "retirement", retirement_basis: "family_sponsor" },
+      { category: "retirement", retirement_basis: "property" },
+      {
+        category: "retirement",
+        retirement_basis: "undecided",
+        retirement_undecided_basis: "family_sponsor",
+      },
+    ];
+    for (const nonDepositFacts of nonDepositFactCases) {
+      expect(
+        demonstratedReviewCauses(E33F_E33E_DEPOSIT_NOTE_CODE, nonDepositFacts),
+      ).toEqual([
+        {
+          questionId: "retirement_basis",
+          value: nonDepositFacts.retirement_basis,
+        },
+      ]);
+    }
+    const depositFactCases: OracleFacts[] = [
+      { category: "retirement", retirement_basis: "bank_deposit" },
+      {
+        category: "retirement",
+        retirement_basis: "undecided",
+        retirement_undecided_basis: "deposit_or_income",
+      },
+    ];
+    for (const depositFacts of depositFactCases) {
+      expect(
+        demonstratedReviewCauses(E33F_E33E_DEPOSIT_NOTE_CODE, depositFacts),
+      ).toEqual([]);
+    }
+  });
+
+  it("does not render the E33F_E33E_DEPOSIT_NOTE sentence when E33E+E33F are both supported, and renders it only on the E33F card when paired with a non-E33E sibling", () => {
+    const facts: OracleFacts = {
+      category: "retirement",
+      retirement_basis: "passive_income",
+    };
+    const bothSupported = buildEngineOutcome(
+      makeRetirementResponse(["E33E", "E33F"]),
+      { facts },
+    );
+
+    for (const language of ["en", "id"] as const) {
+      const { container } = render(
+        <OutcomeSheet
+          outcome={bothSupported}
+          language={language}
+          facts={facts}
+        />,
+      );
+      expect(container.textContent).not.toContain(
+        SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE[language],
+      );
+      expect(
+        container.querySelector(".oracle-candidate-card__notes"),
+      ).toBeNull();
+      expect(container.querySelector(".oracle-outcome__conditions")).toBeNull();
+      cleanup();
+    }
+
+    const withSibling = buildEngineOutcome(
+      makeRetirementResponse(["E33F", "C1"]),
+      { facts },
+    );
+    for (const language of ["en", "id"] as const) {
+      const { container } = render(
+        <OutcomeSheet
+          outcome={withSibling}
+          language={language}
+          facts={facts}
+        />,
+      );
+      const cards = container.querySelectorAll(".oracle-candidate-card");
+      expect(cards).toHaveLength(2);
+      expect(cards[0].textContent).toContain(
+        SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE[language],
+      );
+      expect(
+        cards[0].querySelector(".oracle-candidate-card__notes"),
+      ).not.toBeNull();
+      expect(cards[1].textContent).not.toContain(
+        SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE[language],
+      );
+      expect(
+        cards[1].querySelector(".oracle-candidate-card__notes"),
+      ).toBeNull();
+      expect(container.querySelector(".oracle-outcome__conditions")).toBeNull();
+      cleanup();
+    }
+  });
 });

@@ -32,8 +32,10 @@ import {
   D12_PROOF_OF_FUNDS_USD,
   E33G_ANNUAL_INCOME_THRESHOLD_USD,
   E33E_DEPOSIT_THRESHOLD_USD,
+  E33F_E33E_DEPOSIT_NOTE_CODE,
   RETIREMENT_INCOME_THRESHOLD_USD,
   buildEngineOutcome,
+  e33fE33eDepositNote,
   isSecondHomeStudioOnly,
   nextStepsFor,
 } from "./engine-adapter";
@@ -5083,6 +5085,473 @@ describe("stay-permit length, verified renewal, and longer-stay continuation (PR
       expect(entry.en).not.toBe(entry.id);
       expect(entry.en).not.toMatch(/not extendable/i);
       expect(entry.id).not.toMatch(/tidak dapat diperpanjang/i);
+    }
+  });
+});
+
+describe("PR-10 · E33F-only retirement result explains what the 5-year E33E also needs", () => {
+  function e33fResponse(state: "SUPPORTED_CANDIDATES" | "NO_SUPPORTED_PATH") {
+    const response = makeVisaOracleResponse(state);
+    for (const candidate of response.decision.candidates) {
+      candidate.product_code = "E33F";
+    }
+    for (const candidate of response.display.candidates) {
+      candidate.product_code = "E33F";
+    }
+    return response;
+  }
+
+  function e33eAndE33fResponse() {
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    const firstDec = response.decision.candidates[0];
+    const firstDisp = response.display.candidates[0];
+    response.decision.candidates = [
+      {
+        ...firstDec,
+        rank: 1,
+        product_code: "E33E",
+        product_version_id: "e33e-version-id",
+      },
+      {
+        ...firstDec,
+        rank: 2,
+        product_code: "E33F",
+        product_version_id: "e33f-version-id",
+      },
+    ];
+    response.display.candidates = [
+      {
+        ...firstDisp,
+        rank: 1,
+        product_code: "E33E",
+        product_version_id: "e33e-version-id",
+      },
+      {
+        ...firstDisp,
+        rank: 2,
+        product_code: "E33F",
+        product_version_id: "e33f-version-id",
+      },
+    ];
+    return response;
+  }
+
+  function depositNoteCondition(facts?: OracleFacts) {
+    const outcome = buildEngineOutcome(
+      e33fResponse("SUPPORTED_CANDIDATES"),
+      facts ? { facts } : {},
+    );
+    if (outcome.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("unexpected state");
+    }
+    expect(
+      outcome.conditions.find(
+        (item) => item.code === E33F_E33E_DEPOSIT_NOTE_CODE,
+      ),
+    ).toBeUndefined();
+    expect(outcome.conditions).toEqual([]);
+    const e33f = outcome.candidates.find((c) => c.code === "E33F");
+    return e33f?.notes?.find(
+      (item) => item.code === E33F_E33E_DEPOSIT_NOTE_CODE,
+    );
+  }
+
+  // `property` is a real retirement_basis option in tree.ts (`q.retirement_basis.opt.property`),
+  // and `depositBasisDecisivelyNotChosen` returns true for `passive_income`,
+  // `family_sponsor`, and `property`.
+  it.each(["passive_income", "family_sponsor", "property"] as const)(
+    "non-deposit basis %s produces the fixed note naming the chosen option and the bank-deposit option in EN and ID",
+    (basis) => {
+      const condition = depositNoteCondition({
+        category: "retirement",
+        retirement_basis: basis,
+      });
+      expect(condition).toBeDefined();
+      expect(condition!.sourceIds).toEqual([]);
+      const chosenEn = translate(
+        "en",
+        `q.retirement_basis.opt.${basis}` as I18nKey,
+      );
+      const chosenId = translate(
+        "id",
+        `q.retirement_basis.opt.${basis}` as I18nKey,
+      );
+      const bankDepositEn = translate(
+        "en",
+        "q.retirement_basis.opt.bank_deposit",
+      );
+      const bankDepositId = translate(
+        "id",
+        "q.retirement_basis.opt.bank_deposit",
+      );
+      expect(condition!.message).toEqual({
+        en: `${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.en} You chose "${chosenEn}", so we did not ask about a deposit; if you hold one, change your answer to "${bankDepositEn}".`,
+        id: `${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id} Anda memilih "${chosenId}", sehingga kami tidak menanyakan soal deposito; jika Anda memilikinya, ubah jawaban Anda menjadi "${bankDepositId}".`,
+      });
+    },
+  );
+
+  it("quotes the localized bank_deposit option label from i18n in EN and ID", () => {
+    const note = e33fE33eDepositNote({
+      category: "retirement",
+      retirement_basis: "passive_income",
+    });
+    expect(note).toBeDefined();
+    expect(translate("en", "q.retirement_basis.opt.bank_deposit")).toBe(
+      "A bank deposit in my own name",
+    );
+    expect(note!.en).toContain(
+      translate("en", "q.retirement_basis.opt.bank_deposit"),
+    );
+    expect(note!.id).toContain(
+      translate("id", "q.retirement_basis.opt.bank_deposit"),
+    );
+  });
+
+  it("undecided -> family_sponsor walk carries the note naming the family_sponsor option and never 'undecided'", () => {
+    for (const basis of ["undecided", "unsure"] as const) {
+      const condition = depositNoteCondition({
+        category: "retirement",
+        retirement_basis: basis,
+        retirement_undecided_basis: "family_sponsor",
+      });
+      expect(condition).toBeDefined();
+      expect(condition!.message.en).toContain(
+        translate("en", "q.retirement_basis.opt.family_sponsor"),
+      );
+      expect(condition!.message.id).toContain(
+        translate("id", "q.retirement_basis.opt.family_sponsor"),
+      );
+      expect(condition!.message.en.toLowerCase()).not.toContain("undecided");
+      expect(condition!.message.id.toLowerCase()).not.toContain("undecided");
+      expect(condition!.message.en).not.toContain(
+        translate("en", "q.retirement_basis.opt.undecided"),
+      );
+      expect(condition!.message.id).not.toContain(
+        translate("id", "q.retirement_basis.opt.undecided"),
+      );
+    }
+  });
+
+  // `deposit_or_income` is a `retirement_undecided_basis` option in tree.ts,
+  // reached via the tree walk `retirement_basis: "undecided", retirement_undecided_basis: "deposit_or_income"`.
+  it.each<OracleFacts>([
+    { retirement_basis: "bank_deposit" },
+    {
+      retirement_basis: "undecided",
+      retirement_undecided_basis: "deposit_or_income",
+    },
+  ])(
+    "deposit basis %j with a 49,999 deposit names USD 49,999 and USD 50,000 in EN and ID, and shows no note at 50,000+ when bank and name are yes",
+    (basisFacts) => {
+      const below = depositNoteCondition({
+        category: "retirement",
+        ...basisFacts,
+        secondhome_deposit_usd: "49999",
+        secondhome_state_bank: "yes",
+        secondhome_own_name: "yes",
+      });
+      expect(below).toBeDefined();
+      expect(below!.message).toEqual({
+        en: `You declared a bank deposit of USD 49,999, which is below USD 50,000. ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.en}`,
+        id: `Anda menyatakan deposito bank sebesar USD 49.999, di bawah USD 50.000. ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id}`,
+      });
+
+      for (const clearingAmount of ["50000", "60000"]) {
+        const cleared = depositNoteCondition({
+          category: "retirement",
+          ...basisFacts,
+          secondhome_deposit_usd: clearingAmount,
+          secondhome_state_bank: "yes",
+          secondhome_own_name: "yes",
+        });
+        expect(cleared).toBeUndefined();
+      }
+    },
+  );
+
+  it("names state bank = no, own name = no, and their combination on deposit bases", () => {
+    const bankNo = depositNoteCondition({
+      category: "retirement",
+      retirement_basis: "bank_deposit",
+      secondhome_deposit_usd: "60000",
+      secondhome_state_bank: "no",
+      secondhome_own_name: "yes",
+    });
+    expect(bankNo?.message).toEqual({
+      en: `You told us the deposit is not at an Indonesian state-owned bank. ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.en}`,
+      id: `Anda menyampaikan bahwa deposito tersebut tidak disimpan di bank milik negara Indonesia. ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id}`,
+    });
+
+    const ownNameNo = depositNoteCondition({
+      category: "retirement",
+      retirement_basis: "bank_deposit",
+      secondhome_deposit_usd: "60000",
+      secondhome_state_bank: "yes",
+      secondhome_own_name: "no",
+    });
+    expect(ownNameNo?.message).toEqual({
+      en: `You told us the deposit is not in your own name. ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.en}`,
+      id: `Anda menyampaikan bahwa deposito tersebut tidak atas nama Anda sendiri. ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id}`,
+    });
+
+    const allThree = depositNoteCondition({
+      category: "retirement",
+      retirement_basis: "undecided",
+      retirement_undecided_basis: "deposit_or_income",
+      secondhome_deposit_usd: "49999",
+      secondhome_state_bank: "no",
+      secondhome_own_name: "no",
+    });
+    expect(allThree?.message).toEqual({
+      en: `You declared a bank deposit of USD 49,999, which is below USD 50,000. You told us the deposit is not at an Indonesian state-owned bank. You told us the deposit is not in your own name. ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.en}`,
+      id: `Anda menyatakan deposito bank sebesar USD 49.999, di bawah USD 50.000. Anda menyampaikan bahwa deposito tersebut tidak disimpan di bank milik negara Indonesia. Anda menyampaikan bahwa deposito tersebut tidak atas nama Anda sendiri. ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id}`,
+    });
+  });
+
+  it("explains each 'unsure' deposit answer as a conservative count and never asserts failure", () => {
+    const amountUnsure = depositNoteCondition({
+      category: "retirement",
+      retirement_basis: "bank_deposit",
+      secondhome_deposit_usd: "unsure",
+      secondhome_state_bank: "yes",
+      secondhome_own_name: "yes",
+    });
+    expect(amountUnsure?.message).toEqual({
+      en: `You were not sure of your bank deposit amount, so it counted as zero. ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.en}`,
+      id: `Anda belum yakin dengan jumlah deposito bank Anda, sehingga dihitung nol. ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id}`,
+    });
+    expect(amountUnsure?.message.en).not.toMatch(/You declared|You told us/);
+    expect(amountUnsure?.message.id).not.toMatch(
+      /Anda menyatakan|Anda menyampaikan/,
+    );
+
+    const bankUnsure = depositNoteCondition({
+      category: "retirement",
+      retirement_basis: "bank_deposit",
+      secondhome_deposit_usd: "60000",
+      secondhome_state_bank: "unsure",
+      secondhome_own_name: "yes",
+    });
+    expect(bankUnsure?.message).toEqual({
+      en: `You were not sure whether the deposit is at an Indonesian state-owned bank, so it counted as no. ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.en}`,
+      id: `Anda belum yakin apakah deposito tersebut disimpan di bank milik negara Indonesia, sehingga dianggap "tidak". ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id}`,
+    });
+    expect(bankUnsure?.message.en).not.toMatch(/You told us|is not at/);
+    expect(bankUnsure?.message.id).not.toMatch(
+      /Anda menyampaikan|tidak disimpan/,
+    );
+
+    const nameUnsure = depositNoteCondition({
+      category: "retirement",
+      retirement_basis: "bank_deposit",
+      secondhome_deposit_usd: "60000",
+      secondhome_state_bank: "yes",
+      secondhome_own_name: "unsure",
+    });
+    expect(nameUnsure?.message).toEqual({
+      en: `You were not sure whether the deposit is in your own name, so it counted as no. ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.en}`,
+      id: `Anda belum yakin apakah deposito tersebut atas nama Anda sendiri, sehingga dianggap "tidak". ${SUPPORT_REASON_COPY.E33F_E33E_DEPOSIT_NOTE.id}`,
+    });
+    expect(nameUnsure?.message.en).not.toMatch(/You told us|is not in/);
+    expect(nameUnsure?.message.id).not.toMatch(
+      /Anda menyampaikan|tidak atas nama/,
+    );
+  });
+
+  it("innocence: emits no note when E33E is also a candidate (E33E + E33F)", () => {
+    for (const facts of [
+      {
+        category: "retirement",
+        retirement_basis: "bank_deposit",
+        secondhome_deposit_usd: "60000",
+        secondhome_state_bank: "yes",
+        secondhome_own_name: "yes",
+      },
+      {
+        category: "retirement",
+        retirement_basis: "passive_income",
+      },
+      {
+        category: "retirement",
+        retirement_basis: "bank_deposit",
+        secondhome_deposit_usd: "49999",
+        secondhome_state_bank: "no",
+        secondhome_own_name: "no",
+      },
+    ] as OracleFacts[]) {
+      const outcome = buildEngineOutcome(e33eAndE33fResponse(), { facts });
+      if (outcome.state !== "SUPPORTED_CANDIDATES") {
+        throw new Error("unexpected state");
+      }
+      expect(outcome.conditions).toEqual([]);
+      for (const candidate of outcome.candidates) {
+        expect(candidate.notes).toBeUndefined();
+      }
+    }
+  });
+
+  it("innocence: emits no note when E33F is absent, on sibling candidates, on dead ends, or on non-retirement categories, and keeps conditions restricted to PENJAMIN", () => {
+    const retirementFacts: OracleFacts = {
+      category: "retirement",
+      retirement_basis: "passive_income",
+    };
+    // E33F absent (default fixture candidate is C1)
+    const c1Only = buildEngineOutcome(
+      makeVisaOracleResponse("SUPPORTED_CANDIDATES"),
+      { facts: retirementFacts },
+    );
+    if (c1Only.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("unexpected state");
+    }
+    expect(c1Only.conditions).toEqual([]);
+    for (const candidate of c1Only.candidates) {
+      expect(candidate.notes).toBeUndefined();
+    }
+
+    // Sibling candidate alongside E33F: only E33F gets `notes`, never the sibling;
+    // `conditions` stays exactly what main produced (e.g. E33F_PENJAMIN_NOTE only).
+    const e33fAndC1Response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    const firstDec = e33fAndC1Response.decision.candidates[0];
+    const firstDisp = e33fAndC1Response.display.candidates[0];
+    e33fAndC1Response.decision.candidates = [
+      {
+        ...firstDec,
+        rank: 1,
+        product_code: "E33F",
+        product_version_id: "e33f-version-id",
+      },
+      {
+        ...firstDec,
+        rank: 2,
+        product_code: "C1",
+        product_version_id: "c1-version-id",
+      },
+    ];
+    e33fAndC1Response.display.candidates = [
+      {
+        ...firstDisp,
+        rank: 1,
+        product_code: "E33F",
+        product_version_id: "e33f-version-id",
+      },
+      {
+        ...firstDisp,
+        rank: 2,
+        product_code: "C1",
+        product_version_id: "c1-version-id",
+      },
+    ];
+    const e33fAndC1 = buildEngineOutcome(e33fAndC1Response, {
+      facts: {
+        ...retirementFacts,
+        retirement_penjamin_confirmed: "no",
+      },
+    });
+    if (e33fAndC1.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("unexpected state");
+    }
+    expect(e33fAndC1.conditions.map((c) => c.code)).toEqual([
+      "E33F_PENJAMIN_NOTE",
+    ]);
+    expect(e33fAndC1.candidates[0].notes?.map((n) => n.code)).toEqual([
+      E33F_E33E_DEPOSIT_NOTE_CODE,
+    ]);
+    expect(e33fAndC1.candidates[1].notes).toBeUndefined();
+
+    // Dead end (NO_SUPPORTED_PATH) and other non-supported states
+    for (const state of [
+      "NO_SUPPORTED_PATH",
+      "HUMAN_REVIEW_REQUIRED",
+      "NEEDS_INPUT",
+    ] as const) {
+      const nonSupported = buildEngineOutcome(makeVisaOracleResponse(state), {
+        facts: retirementFacts,
+      });
+      expect(nonSupported.conditions).toEqual([]);
+      expect(nonSupported.candidates).toEqual([]);
+    }
+
+    // Non-retirement categories even when candidate is E33F
+    for (const category of ["second_home", "invest", "tourism", "family"]) {
+      const nonRetirement = buildEngineOutcome(
+        e33fResponse("SUPPORTED_CANDIDATES"),
+        {
+          facts: {
+            category,
+            retirement_basis: "passive_income",
+            secondhome_basis: "property",
+            secondhome_deposit_usd: "49999",
+            secondhome_state_bank: "no",
+            secondhome_own_name: "no",
+          },
+        },
+      );
+      if (nonRetirement.state !== "SUPPORTED_CANDIDATES") {
+        throw new Error("unexpected state");
+      }
+      expect(nonRetirement.conditions).toEqual([]);
+      for (const candidate of nonRetirement.candidates) {
+        expect(candidate.notes).toBeUndefined();
+      }
+    }
+  });
+
+  it("EN/ID parity: every produced note is non-empty in both locales, differs between EN and ID, matches USD figure counts, and carries no raw code, promise words, or price/PNBP split", () => {
+    const factCases: OracleFacts[] = [
+      { category: "retirement", retirement_basis: "passive_income" },
+      { category: "retirement", retirement_basis: "family_sponsor" },
+      { category: "retirement", retirement_basis: "property" },
+      {
+        category: "retirement",
+        retirement_basis: "undecided",
+        retirement_undecided_basis: "family_sponsor",
+      },
+      {
+        category: "retirement",
+        retirement_basis: "bank_deposit",
+        secondhome_deposit_usd: "49999",
+        secondhome_state_bank: "yes",
+        secondhome_own_name: "yes",
+      },
+      {
+        category: "retirement",
+        retirement_basis: "undecided",
+        retirement_undecided_basis: "deposit_or_income",
+        secondhome_deposit_usd: "60000",
+        secondhome_state_bank: "no",
+        secondhome_own_name: "yes",
+      },
+      {
+        category: "retirement",
+        retirement_basis: "bank_deposit",
+        secondhome_deposit_usd: "60000",
+        secondhome_state_bank: "yes",
+        secondhome_own_name: "no",
+      },
+      {
+        category: "retirement",
+        retirement_basis: "bank_deposit",
+        secondhome_deposit_usd: "unsure",
+        secondhome_state_bank: "unsure",
+        secondhome_own_name: "unsure",
+      },
+    ];
+
+    for (const facts of factCases) {
+      const note = e33fE33eDepositNote(facts);
+      expect(note).toBeDefined();
+      expect(note!.en.length).toBeGreaterThan(0);
+      expect(note!.id.length).toBeGreaterThan(0);
+      expect(note!.en).not.toBe(note!.id);
+      const enUsdCount = (note!.en.match(/USD\s+[\d,]+/g) ?? []).length;
+      const idUsdCount = (note!.id.match(/USD\s+[\d.]+/g) ?? []).length;
+      expect(enUsdCount).toBeGreaterThanOrEqual(1);
+      expect(idUsdCount).toBe(enUsdCount);
+      for (const copy of [note!.en, note!.id]) {
+        expect(copy).not.toContain(E33F_E33E_DEPOSIT_NOTE_CODE);
+        expect(copy).not.toMatch(/qualif|will get|eligible|PNBP|IDR|\bRp\b/i);
+      }
     }
   });
 });

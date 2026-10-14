@@ -894,7 +894,7 @@ function mapMarriageRegistered(facts: OracleFacts): FactValue<boolean> {
  * a genuine "I still can't say" leaves this UNKNOWN on purpose, see
  * `retirement_undecided_basis`'s tree.ts comment).
  */
-function depositBasisDecisivelyNotChosen(facts: OracleFacts): boolean {
+export function depositBasisDecisivelyNotChosen(facts: OracleFacts): boolean {
   if (facts.category === "second_home") {
     return facts.secondhome_basis === "property";
   }
