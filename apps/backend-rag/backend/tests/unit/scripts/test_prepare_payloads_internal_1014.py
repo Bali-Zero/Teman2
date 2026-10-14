@@ -89,7 +89,7 @@ def test_import_does_not_pollute_os_environ() -> None:
 
 def test_guilt_synthetic_catalog_skips_internal_rows_and_keeps_public() -> None:
     synthetic_catalog: dict[str, Any] = {
-        "metadata": {"contact": {"whatsapp": "+628113990045"}},
+        "metadata": {"contact": {"whatsapp": "+620000000000"}},
         "services": {
             "kitas_permits": {
                 "Retirement (Offshore)": {
@@ -159,3 +159,9 @@ def test_innocence_real_catalog_keeps_all_public_rows() -> None:
     assert len(flattened) == len(expected_public_names)
     assert flattened_names == expected_public_names
     assert set(flattened_names).isdisjoint(internal_names)
+
+
+def test_innocence_fixture_carries_no_unrecognised_whatsapp_number() -> None:
+    source = Path(__file__).read_text(encoding="utf-8")
+    assert ("+62811" + "3990045") not in source
+    assert ("62811" + "3990045") not in source

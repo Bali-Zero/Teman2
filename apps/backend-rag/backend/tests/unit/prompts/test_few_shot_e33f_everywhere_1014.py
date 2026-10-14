@@ -15,8 +15,8 @@ Verifies:
 4. Guilt: the checker function flags the old 'Retirement KITAS ...' reply fixture,
    messages containing 'tanpa bekerja', swapped variant prices, internal row names,
    or non-canonical juta figures.
-5. zantara_core_v4 and zantara_core_v5 retirement worked-example blocks do not contain
-   'KITAS pensiun (Retirement)', 'bukti dana pensiun', 'sponsor lokal',
+5. zantara_core_v3, zantara_core_v4, and zantara_core_v5 retirement worked-example blocks
+   do not contain 'KITAS pensiun (Retirement)', 'bukti dana pensiun', 'sponsor lokal',
    'asuransi kesehatan', or 'tanpa bekerja', and do contain 'E33F' and 'penjamin'.
 """
 
@@ -30,6 +30,7 @@ from typing import Any
 from backend.prompts import (
     few_shot_examples,
     whatsapp_persona,
+    zantara_core_v3,
     zantara_core_v4,
     zantara_core_v5,
     zantara_persona,
@@ -50,6 +51,15 @@ STALE_TANPA_BEKERJA_REPLY_FIXTURE = (
     "atau 16 juta (Altus/Onshore), berlaku 1 tahun dan bisa diperpanjang "
     "(izin tinggal tanpa bekerja). Syaratnya usia minimal 55 tahun dan bukti "
     "penghasilan atau tunjangan minimal USD 3.000 per bulan, tanpa perlu deposit."
+)
+
+OLD_V3_WORKED_EXAMPLE_FIXTURE = (
+    'Indonesian:\n'
+    '  User: "Saya mau tanya soal KITAS pensiun, syaratnya apa saja?"\n'
+    '  → CALL knowledge_graph_search("KITAS pensiun retirement requirements")\n'
+    '  → Answer: "KITAS pensiun (Retirement) membutuhkan: usia minimal 55\n'
+    '             tahun, asuransi kesehatan, bukti dana pensiun, dan\n'
+    '             sponsor lokal. Mau saya jelaskan dokumen lengkapnya?"'
 )
 
 OLD_V4_WORKED_EXAMPLE_FIXTURE = (
@@ -216,7 +226,7 @@ def _extract_retirement_worked_example_block(prompt_source: str) -> str:
 
 
 def find_worked_example_e33f_violations(prompt_source: str) -> list[str]:
-    """Return violations in the retirement worked-example block of zantara_core_v4 / v5."""
+    """Return violations in the retirement worked-example block of zantara_core_v3 / v4 / v5."""
     block = _extract_retirement_worked_example_block(prompt_source)
     violations: list[str] = []
     if not block:
@@ -375,10 +385,12 @@ class TestFewShotE33FEverywhere:
 
 
 class TestZantaraCoreV4AndV5WorkedExampleE33F:
-    """Guilt and innocence tests for zantara_core_v4 and zantara_core_v5 worked examples."""
+    """Guilt and innocence tests for zantara_core_v3, zantara_core_v4, and zantara_core_v5 worked examples."""
 
-    def test_innocence_v4_and_v5_contain_e33f_and_no_retirement_kitas_pensiun(self) -> None:
+    def test_innocence_v3_v4_and_v5_contain_e33f_and_no_retirement_kitas_pensiun(self) -> None:
         for label, source in (
+            ("v3.WORKED_EXAMPLES", zantara_core_v3.WORKED_EXAMPLES),
+            ("v3.ZANTARA_MASTER_TEMPLATE", zantara_core_v3.ZANTARA_MASTER_TEMPLATE),
             ("v4.WORKED_EXAMPLES", zantara_core_v4.WORKED_EXAMPLES),
             ("v4.ZANTARA_MASTER_TEMPLATE", zantara_core_v4.ZANTARA_MASTER_TEMPLATE),
             ("v5.WORKED_EXAMPLES", zantara_core_v5.WORKED_EXAMPLES),
@@ -395,6 +407,16 @@ class TestZantaraCoreV4AndV5WorkedExampleE33F:
             assert "penjamin" in block
             assert "tanpa perlu deposit" in block
             assert "USD 3.000" in block or "USD 3,000" in block
+
+    def test_guilt_old_v3_worked_example_fixture_is_flagged(self) -> None:
+        violations = find_worked_example_e33f_violations(OLD_V3_WORKED_EXAMPLE_FIXTURE)
+        assert violations, "Expected old v3 worked example fixture to be flagged"
+        joined = " | ".join(violations)
+        assert "KITAS pensiun (Retirement)" in joined
+        assert "asuransi kesehatan" in joined
+        assert "dana pensiun" in joined
+        assert "sponsor lokal" in joined
+        assert "missing canonical 'E33F' reference" in joined
 
     def test_guilt_old_v4_worked_example_fixture_is_flagged(self) -> None:
         violations = find_worked_example_e33f_violations(OLD_V4_WORKED_EXAMPLE_FIXTURE)

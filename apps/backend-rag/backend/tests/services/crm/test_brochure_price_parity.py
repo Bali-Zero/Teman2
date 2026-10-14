@@ -609,12 +609,30 @@ def _anchored_pdf_sequence(placeholder: str, pricing: dict) -> str:
     return " ".join([label, *qualifiers, _oracle_price(entry)])
 
 
+PDF_PARITY_CURE = (
+    "Cure: regenerate the brochure with "
+    "`python3 apps/backend-rag/scripts/generate_brochure.py` from the repo root "
+    "(it takes no arguments) and commit "
+    "apps/mouth/public/static/brochure_balizero_en.pdf - that PDF is what clients receive."
+)
+
+STALE_E33E_14M_RE = re.compile(
+    r"E33E Second Home Senior, 5 years[^R]{0,40}Rp 14\.000\.000"
+)
+
+
+def _pdf_prints_stale_e33e_14m(pdf_text: str) -> bool:
+    """Return True if normalised PDF text prints Rp 14.000.000 on the E33E 5-year row."""
+    return STALE_E33E_14M_RE.search(pdf_text) is not None
+
+
 def _assert_pdf_parity(pdf_text: str, pricing: dict) -> None:
     """Assert every EXPECTED_ROWS entry is present as an anchored sequence in the PDF."""
     for placeholder in EXPECTED_ROWS:
         anchored = _anchored_pdf_sequence(placeholder, pricing)
         assert re.search(re.escape(anchored), pdf_text) is not None, (
-            f"Missing anchored sequence in PDF for {placeholder}: {anchored!r}"
+            f"Missing anchored sequence in PDF for {placeholder}: {anchored!r}. "
+            f"{PDF_PARITY_CURE}"
         )
 
 
@@ -818,11 +836,46 @@ def test_guilt_e_pdf_parity_fails_when_e33e_canonical_price_changed_to_14m() -> 
         _assert_pdf_parity(pdf_text, pricing)
 
 
-def test_guilt_f_pdf_does_not_print_14m_for_e33e() -> None:
-    """GUILT (f): PDF text does not contain 'Rp 14.000.000' directly after E33E row prefix."""
+def test_pdf_parity_failure_message_carries_the_cure() -> None:
+    """PDF parity failure message explains how to regenerate and commit the brochure PDF."""
+    pricing = copy.deepcopy(GEN.load_pricing())
+    pricing["services"]["kitas_permits"]["E33E Second Home Senior (5 Years)"]["price"] = (
+        "14.000.000 IDR"
+    )
     pdf_text = _extract_normalised_pdf_text(GEN.OUTPUT_PATH)
-    stale_e33e = "E33E Second Home Senior, 5 years Offshore / onshore Rp 14.000.000"
-    assert re.search(re.escape(stale_e33e), pdf_text) is None
+    with pytest.raises(AssertionError, match="PRICE_E33E") as exc_info:
+        _assert_pdf_parity(pdf_text, pricing)
+    err_msg = str(exc_info.value)
+    assert "generate_brochure.py" in err_msg
+    assert "brochure_balizero_en.pdf" in err_msg
+
+
+def test_guilt_f_pdf_does_not_print_14m_for_e33e() -> None:
+    """INNOCENCE (f): committed PDF does not print Rp 14.000.000 on the E33E 5-year row."""
+    pdf_text = _extract_normalised_pdf_text(GEN.OUTPUT_PATH)
+    assert _pdf_prints_stale_e33e_14m(pdf_text) is False
+
+
+def test_guilt_f_helper_bites_on_the_pre_8506_pdf_row() -> None:
+    """GUILT (f): qualifier-tolerant helper flags both pre-#8506 and onshore/offshore 14M E33E rows."""
+    pre_8506_row = (
+        "Spouse 1 year Offshore Rp 11.000.000 "
+        "E33E Second Home Senior, 5 years Offshore Rp 14.000.000 "
+        "Retirement E33F Second Home Senior, 1 year Offshore Rp 14.000.000"
+    )
+    onshore_variant_row = (
+        "Spouse 1 year Offshore Rp 11.000.000 "
+        "E33E Second Home Senior, 5 years Offshore / onshore Rp 14.000.000 "
+        "Retirement E33F Second Home Senior, 1 year Offshore Rp 14.000.000"
+    )
+    canonical_45m_row = (
+        "Spouse 1 year Offshore Rp 11.000.000 "
+        "E33E Second Home Senior, 5 years Offshore / onshore Rp 45.000.000 "
+        "Retirement E33F Second Home Senior, 1 year Offshore Rp 14.000.000"
+    )
+    assert _pdf_prints_stale_e33e_14m(pre_8506_row) is True
+    assert _pdf_prints_stale_e33e_14m(onshore_variant_row) is True
+    assert _pdf_prints_stale_e33e_14m(canonical_45m_row) is False
 
 
 def test_guilt_g_hardcoded_idr_in_paragraph_is_flagged() -> None:
