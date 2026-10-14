@@ -1029,6 +1029,16 @@ merger's `.pub` and a report.json under 2 hours old copied beside it if that hos
 printed state file. (4) Only then `LOCALCI_MERGER_PHASE_F=1` in the tick's
 environment: before (3) the first push is refused and halts. A session runs the plan only and never `--apply`.
 
+**After the flip, the shepherd never applies merge intent.** When `queue_rule_state()` is `absent` (flipped) or `unknown`, the rearm
+pass of `scripts/queue_shepherd.py` labels nothing and arms nothing; it journals `flipped: no merge queue, nothing to rearm`, or
+`queue state unknown: rearm skipped`, once per run. Merge intent after the flip is only a human's, or a ship session's own,
+`scripts/signal_merge_intent.sh <PR>`. The pre-flip arms are carried over ONCE by the flip operator: at flip time, the admin-armed
+open PRs are labelled from a snapshot (operator runbook step, run right after step (3), before the shepherd's next tick):
+
+```bash
+gh pr list --repo Bali-Zero/Teman2 --state open --json number,labels,autoMergeRequest --jq '.[] | select(.autoMergeRequest != null and ([.labels[].name] | index("localci:merge-shadow-ok") | not)) | .number' | while read -r n; do scripts/signal_merge_intent.sh "$n"; done
+```
+
 ## Tests
 
 `PYTHONPATH=<worktree> python -m pytest scripts/localci/tests -q` (real temporary git repos; the hypothesis state machine
