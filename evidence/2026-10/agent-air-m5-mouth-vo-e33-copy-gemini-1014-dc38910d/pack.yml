@@ -1,0 +1,112 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Branch agent/air-m5/mouth/vo-e33-copy-gemini-1014 on origin/main ba0105c684: the E33-family result sentences say
+  what the signed product record says (ACTIVE pack rulepack-prod-029, seq-29) - E33B and E33C sponsor, the E33
+  pack name, the E33G yearly income - in English and Bahasa Indonesia. Ruling: Gemini 4 Argon copy audit of
+  2026-10-14, findings F1-F8 confirmed by adversarial refutation. Copy rule: say only what the signed rule or the
+  official page says; never promise; no fee split.
+lanes:
+  - lane: vo-e33-copy-build
+    role: build
+    seat: "gemini-4-argon-high via agy (external seat, no shell, edits files only) with a Claude driver who verified and committed"
+  - lane: vo-e33-copy-redteam-claude
+    role: review
+    seat: "claude-opus-5.5 (adversarial red team on head 221aefecf5: nothing HIGH or MEDIUM, five LOWs)"
+  - lane: vo-e33-copy-redteam-codex
+    role: review
+    seat: "codex gpt-5.6-sol (codex exec, rollout name gpt-5.6-sol): one LOW on the observer pytest"
+  - lane: vo-e33-copy-fix-round
+    role: build
+    seat: "gemini-4-argon-high via agy plus the Claude driver (comments restored, observer docstring, looser E33A pin, observer title pins)"
+  - lane: vo-e33-copy-ground-truth
+    role: ground_truth
+    seat: >-
+      the committed signed seq-29 pack and the saved official pages of the 2026-10-13 re-attestation read; no
+      notebook, no memory. The tests read the pack from disk, so the copy cannot drift from it.
+    nb: >-
+      research/visa/2026-10-13-organ-reattest-seq29/text/ and
+      apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
+    query_hash: "3f3b45ed1aaeadc72ec9dd2a5e33519ded3a0ec1da8408fade150a0ae39b9295" # pragma: allowlist secret
+    note: query_hash = the signed seq-29 payload_sha256.
+what_changed: |
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts: the E33B and E33C dead-end sentences state the
+  sponsor in each signed product record, the E33 below-threshold sentences use the pack name "Second Home Visa (E33)",
+  and the E33G support sentence names the signed yearly-income figure (EN and ID).
+  engine-adapter.test.ts and client-copy.test.ts: the new tests (E33-family no-path sentences restate the signed product
+  record; E33G threshold in both languages) read the signed pack from disk; pack helpers moved to the top with their
+  comments restored.
+  scripts/ci/observe_visa_oracle_e33_family_copy.py and its pytest: the two new test titles are required; the replay-pins
+  observer census is 307 (305 plus the two new tests), measured after the rebase on ba0105c684.
+proof: |
+  Receipts below, all run in this turn on head d63090ba43. Red-before-green: with the origin/main adapter and the new
+  test file, 3 failed and 199 passed (202); with the fix, 202 passed.
+dissent:
+  - seat: claude-opus-5.5
+    objection: "Red team: nothing HIGH or MEDIUM. LOW 1: the Gemini build deleted four explanatory comment blocks of the moved pack-reading helpers."
+    status: CONFIRMED
+    resolution: "Restored word for word from origin/main in the fix round (commit d63090ba43)."
+  - seat: claude-opus-5.5
+    objection: "LOW 2: the observer module docstring did not list the new E33B/E33C sponsor, pack-name and E33G income checks."
+    status: CONFIRMED
+    resolution: "Sentence added to the docstring (commit d63090ba43)."
+  - seat: claude-opus-5.5
+    objection: "LOW 3: the evidence pack named in the spec was not built."
+    status: CONFIRMED
+    resolution: "This pack, with the red result measured again in this turn."
+  - seat: claude-opus-5.5
+    objection: "LOW 4: the new test repeated the full E33A sponsor sentence as a second exact pin."
+    status: CONFIRMED
+    resolution: "Replaced by two looser contains checks, central-government and pemerintah pusat (commit d63090ba43)."
+  - seat: codex gpt-5.6-sol
+    objection: "LOW: the observer pytest did not pin the two new required test titles."
+    status: CONFIRMED
+    resolution: "test_required_tests_pin_the_e33_no_path_and_e33g_titles added (commit d63090ba43)."
+bites:
+  consumer: >-
+    The public Visa Oracle result page, through engine-adapter.ts reading the signed seq-29 pack; the observer runs
+    the whole engine-adapter test file and requires the E33-family sentence tests and the E33G income test by title.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_e33_family_copy.py
+  expect: "contains:e33 family copy holds"
+receipts:
+  - claim: "Whole Visa Oracle tree green on the head (a first run under load 100+ ended 3 failed of 1583, cause not diagnosed there; the rerun below is clean)."
+    cmd: "cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'"
+    result: "59 files passed; 1583 tests passed (1583)"
+    exit: 0
+    ts: "2026-10-15 (local WITA, after the 03:44 first run; exact minute not recorded)"
+    seat: claude-sonnet-5.5
+  - claim: "Types clean."
+    cmd: "cd apps/mouth && npx tsc --noEmit -p ."
+    result: "no output"
+    exit: 0
+    ts: "2026-10-15 (same rerun)"
+    seat: claude-sonnet-5.5
+  - claim: "The bites observer runs the engine-adapter file and requires the six titles."
+    cmd: "python3 scripts/ci/observe_visa_oracle_e33_family_copy.py"
+    result: "Tests 202 passed (202); e33 family copy holds"
+    exit: 0
+    ts: "2026-10-15"
+    seat: claude-sonnet-5.5
+  - claim: "Observer pytest."
+    cmd: "python3 -m pytest -q tests/scripts/test_observe_visa_oracle_e33_family_copy.py"
+    result: "12 passed"
+    exit: 0
+    ts: "2026-10-15"
+    seat: claude-sonnet-5.5
+  - claim: "Replay-pins census after the rebase."
+    cmd: "python3 scripts/ci/observe_visa_oracle_replay_pins.py"
+    result: "Tests 307 passed (307); replay pins hold"
+    exit: 0
+    ts: "2026-10-15"
+    seat: claude-sonnet-5.5
+  - claim: "The new tests bite: with the origin/main adapter restored and the new test file, three tests fail; the adapter was copied back afterward and git status showed no apps change."
+    cmd: "cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' (adapter = git show origin/main)"
+    result: "3 failed, 199 passed (202): E33-family no-path sentences restate the signed product record; keeps E33A/B/C consultation copy honest; states the E33G remote-work support threshold in both languages"
+    exit: 1
+    ts: "2026-10-15"
+    seat: claude-sonnet-5.5
+pii_scan: clean
+pii_scan_note: "No client data; the tests read the signed rule pack and use synthetic answers."
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 2

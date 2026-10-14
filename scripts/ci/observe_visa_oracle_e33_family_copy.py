@@ -13,6 +13,10 @@ the route is handled with a Bali Zero advisor, E33A names a central-government
 sponsor, the Second Home Studio hold never offers a combination route (EN and ID),
 and a sponsorless visitor who answered no to the E33B collaboration question gets
 the E33B sentence while any other sponsor, a yes answer or a missing answer keeps the E33A one.
+The E33B and E33C dead-end sentences state the sponsor in each signed product record
+(none for E33B, a central-government body for E33C), the E33 below-threshold sentences
+use the pack name "Second Home Visa (E33)", and the E33G support sentence names the
+signed yearly-income figure in EN and ID.
 Exit 0 only if Vitest reports the file passed with zero failures.
 """
 
@@ -37,6 +41,8 @@ REQUIRED_TESTS = (
     "never offers a combined property-and-deposit route",
     "uses the visitor's E33B collaboration answer",
     "keeps the E33A sentence unless the visitor is sponsorless",
+    "E33-family no-path sentences restate the signed product record",
+    "states the E33G remote-work support threshold in both languages",
 )
 _SUMMARY = re.compile(r"^\s*Tests\s+(\d+) passed \((\d+)\)\s*$")
 

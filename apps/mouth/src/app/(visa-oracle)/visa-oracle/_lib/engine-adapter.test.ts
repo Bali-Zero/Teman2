@@ -51,6 +51,136 @@ import {
   VisaOracleResponseError,
 } from "./engine-response";
 
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const PACKS_DIR = path.resolve(
+  HERE,
+  "../../../../../../..",
+  "apps/backend-rag/backend/services/visa_engine/contracts/packs",
+);
+
+interface SignedPackProduct {
+  product_code: string;
+  names: { en: string; id: string };
+  sponsor_types: string[];
+}
+
+/**
+ * D3c/C-D2 (2026-09-13): the tests below read the SIGNED pack specifically
+ * — a `.source.json` is a draft that need not have gone through signing at
+ * all, so it is not "the pack" any decision was made under. Globbing
+ * `*.signed.json` and reading rules from the envelope's `payload` (never
+ * top-level, which only exists on the unsigned `.source.json` shape).
+ */
+function signedProductionPackFiles(): string[] {
+  const files = fs
+    .readdirSync(PACKS_DIR)
+    .filter((name) => /^rulepack-prod-\d+\.signed\.json$/.test(name))
+    .map((name) => path.join(PACKS_DIR, name));
+  if (files.length === 0) {
+    throw new Error(`no signed production packs found under ${PACKS_DIR}`);
+  }
+  return files;
+}
+
+/**
+ * The tripwire above walks SUPPORT effects only, but an EXCLUDE code reaches
+ * a reader through the SAME `reasonMessage` fallback: `NO_SUPPORTED_PATH`
+ * maps `no_path_reasons` through `reason()`. So a new hard filter can print
+ * a machine code on the no-path sheet without failing anything above. seq-20
+ * adds exactly one such rule — `hf.d2.indonesia-source-compensation`,
+ * CL-D2-01's local-compensation prohibition — and its code is read OUT of
+ * the highest-sequence SIGNED pack on disk rather than typed here, so a
+ * rename in the fold moves this test with it instead of leaving it quietly
+ * stale.
+ */
+function highestSequencePack(): {
+  rules?: Array<Record<string, unknown>>;
+  products?: SignedPackProduct[];
+} {
+  let best: {
+    payload: {
+      sequence: number;
+      rules?: Array<Record<string, unknown>>;
+      products?: SignedPackProduct[];
+    };
+    sequence: number;
+  } | null = null;
+  for (const full of signedProductionPackFiles()) {
+    const envelope = JSON.parse(fs.readFileSync(full, "utf-8")) as {
+      payload?: {
+        sequence?: unknown;
+        rules?: Array<Record<string, unknown>>;
+        products?: SignedPackProduct[];
+      };
+    };
+    const payload = envelope.payload;
+    // A pack without a numeric `sequence` cannot be compared — skip it
+    // rather than let it win via a sentinel default.
+    if (!payload || typeof payload.sequence !== "number") continue;
+    if (best === null || payload.sequence > best.sequence) {
+      best = {
+        payload: payload as {
+          sequence: number;
+          rules?: Array<Record<string, unknown>>;
+          products?: SignedPackProduct[];
+        },
+        sequence: payload.sequence,
+      };
+    }
+  }
+  if (best === null) {
+    throw new Error(`no signed pack under ${PACKS_DIR} had a numeric sequence`);
+  }
+  return best.payload;
+}
+
+/**
+ * Walks a rule's `when` tree (the `all`/`args` structure, never regexed
+ * off the raw JSON text) looking for a `{ op: "gte", fact, value }` node
+ * on the named fact, at any nesting depth — `el.e33e.retirement` nests its
+ * deposit-trio conjuncts inside an inner `all`, so a top-level-only walk
+ * would miss it for that rule even though it happens not to be needed
+ * here.
+ */
+function findGteValue(node: unknown, fact: string): number | undefined {
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const found = findGteValue(item, fact);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  }
+  if (node === null || typeof node !== "object") return undefined;
+  const record = node as Record<string, unknown>;
+  if (
+    record.op === "gte" &&
+    record.fact === fact &&
+    typeof record.value === "number"
+  ) {
+    return record.value;
+  }
+  if (Array.isArray(record.args)) {
+    return findGteValue(record.args, fact);
+  }
+  return undefined;
+}
+
+function gteThresholdInPack(ruleId: string, fact: string): number {
+  const rule = (highestSequencePack().rules ?? []).find(
+    (r) => r.rule_id === ruleId,
+  );
+  if (!rule) {
+    throw new Error(`${ruleId} is absent from the highest-sequence pack`);
+  }
+  const value = findGteValue(rule.when, fact);
+  if (value === undefined) {
+    throw new Error(
+      `no gte(${fact}) node found in ${ruleId}'s when-tree — the rule's shape changed`,
+    );
+  }
+  return value;
+}
+
 describe("Visa Oracle authoritative outcome adapter", () => {
   it("shows each source's own dates, not the decision's evaluation clock", () => {
     // The backend's `_build_sources_dto` stamps EVERY cited source's
@@ -218,6 +348,14 @@ describe("Visa Oracle authoritative outcome adapter", () => {
       en: "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian central-government body, and you did not name one as your sponsor.",
       id: "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah pusat Indonesia, dan Anda tidak menyebutkan instansi pemerintah pusat sebagai penjamin Anda.",
     });
+    expect(SUPPORT_REASON_COPY.E33B_SPONSOR_NOT_GOVERNMENT_OR_NONE).toEqual({
+      en: "The Second Home Golden Visa — Special-Expertise Collaboration (E33B) is applied for without a sponsor, and you named a sponsor for your stay.",
+      id: "Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B) diajukan tanpa penjamin, sedangkan Anda menyebutkan penjamin untuk masa tinggal Anda.",
+    });
+    expect(SUPPORT_REASON_COPY.E33C_SPONSOR_NOT_GOVERNMENT_OR_NONE).toEqual({
+      en: "The Second Home Golden Visa — World-Figure Government Invitation (E33C) is sponsored only by an Indonesian central-government body, and you did not name one as your sponsor.",
+      id: "Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C) hanya dijamin oleh instansi pemerintah pusat Indonesia, dan Anda tidak menyebutkan instansi pemerintah pusat sebagai penjamin Anda.",
+    });
   });
 
   it("states the E33G annual-income exclusion threshold in both languages", () => {
@@ -226,6 +364,29 @@ describe("Visa Oracle authoritative outcome adapter", () => {
       en: "The Remote Worker visa (E33G) needs a salary or income of at least USD 60,000 a year; the yearly figure you gave is below it.",
       id: "Visa Rumah Kedua Pekerja Jarak Jauh (E33G) memerlukan gaji atau penghasilan minimal USD 60.000 per tahun; angka tahunan yang Anda berikan berada di bawah batas tersebut.",
     });
+  });
+
+  it("states the E33G remote-work support threshold in both languages", () => {
+    const threshold = gteThresholdInPack(
+      "el.e33g.remote-work",
+      "work.annual_foreign_income_usd",
+    );
+    expect(SUPPORT_REASON_COPY.REMOTE_WORK_ELIGIBLE).toEqual({
+      en: "You work remotely for a non-Indonesian employer, serve no Indonesian clients, take no Indonesian-source compensation, and have a salary or income of USD 60,000 or more a year.",
+      id: "Anda bekerja jarak jauh untuk pemberi kerja non-Indonesia, tidak melayani klien Indonesia, tidak menerima kompensasi dari sumber Indonesia, dan memiliki gaji atau penghasilan minimal USD 60.000 per tahun.",
+    });
+    expect(SUPPORT_REASON_COPY.REMOTE_WORK_ELIGIBLE.en).toContain(
+      `USD ${threshold.toLocaleString("en-US")}`,
+    );
+    expect(SUPPORT_REASON_COPY.REMOTE_WORK_ELIGIBLE.id).toContain(
+      `USD ${threshold.toLocaleString("id-ID")}`,
+    );
+    expect(SUPPORT_REASON_COPY.REMOTE_WORK_ELIGIBLE.en).toContain(
+      "salary or income",
+    );
+    expect(SUPPORT_REASON_COPY.REMOTE_WORK_ELIGIBLE.id).toContain(
+      "gaji atau penghasilan",
+    );
   });
 
   it("writes the three seq-29 exclusion sentences in both languages, each naming its product and its figure", () => {
@@ -948,13 +1109,6 @@ describe("Slice A3'-M: a sourceless named dead end (M1, M2)", () => {
 });
 
 describe("support reasons are sentences, not machine codes", () => {
-  const HERE = path.dirname(fileURLToPath(import.meta.url));
-  const PACKS_DIR = path.resolve(
-    HERE,
-    "../../../../../../..",
-    "apps/backend-rag/backend/services/visa_engine/contracts/packs",
-  );
-
   /**
    * Every production pack, not just the one that happens to be active. Pinning
    * a single filename made this tripwire blind to the pack being authored:
@@ -1053,69 +1207,6 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(codes.length).toBeGreaterThanOrEqual(13);
     expect(codes.filter((code) => !(code in SUPPORT_REASON_COPY))).toEqual([]);
   });
-
-  /**
-   * D3c/C-D2 (2026-09-13): the tests below read the SIGNED pack specifically
-   * — a `.source.json` is a draft that need not have gone through signing at
-   * all, so it is not "the pack" any decision was made under. Globbing
-   * `*.signed.json` and reading rules from the envelope's `payload` (never
-   * top-level, which only exists on the unsigned `.source.json` shape).
-   */
-  function signedProductionPackFiles(): string[] {
-    const files = fs
-      .readdirSync(PACKS_DIR)
-      .filter((name) => /^rulepack-prod-\d+\.signed\.json$/.test(name))
-      .map((name) => path.join(PACKS_DIR, name));
-    if (files.length === 0) {
-      throw new Error(`no signed production packs found under ${PACKS_DIR}`);
-    }
-    return files;
-  }
-
-  /**
-   * The tripwire above walks SUPPORT effects only, but an EXCLUDE code reaches
-   * a reader through the SAME `reasonMessage` fallback: `NO_SUPPORTED_PATH`
-   * maps `no_path_reasons` through `reason()`. So a new hard filter can print
-   * a machine code on the no-path sheet without failing anything above. seq-20
-   * adds exactly one such rule — `hf.d2.indonesia-source-compensation`,
-   * CL-D2-01's local-compensation prohibition — and its code is read OUT of
-   * the highest-sequence SIGNED pack on disk rather than typed here, so a
-   * rename in the fold moves this test with it instead of leaving it quietly
-   * stale.
-   */
-  function highestSequencePack(): { rules?: Array<Record<string, unknown>> } {
-    let best: {
-      payload: { sequence: number; rules?: Array<Record<string, unknown>> };
-      sequence: number;
-    } | null = null;
-    for (const full of signedProductionPackFiles()) {
-      const envelope = JSON.parse(fs.readFileSync(full, "utf-8")) as {
-        payload?: {
-          sequence?: unknown;
-          rules?: Array<Record<string, unknown>>;
-        };
-      };
-      const payload = envelope.payload;
-      // A pack without a numeric `sequence` cannot be compared — skip it
-      // rather than let it win via a sentinel default.
-      if (!payload || typeof payload.sequence !== "number") continue;
-      if (best === null || payload.sequence > best.sequence) {
-        best = {
-          payload: payload as {
-            sequence: number;
-            rules?: Array<Record<string, unknown>>;
-          },
-          sequence: payload.sequence,
-        };
-      }
-    }
-    if (best === null) {
-      throw new Error(
-        `no signed pack under ${PACKS_DIR} had a numeric sequence`,
-      );
-    }
-    return best.payload;
-  }
 
   function excludeReasonCodeOfRule(ruleId: string): string {
     for (const rule of highestSequencePack().rules ?? []) {
@@ -1522,53 +1613,6 @@ describe("support reasons are sentences, not machine codes", () => {
       SUPPORT_REASON_COPY.STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED,
     );
   });
-
-  /**
-   * Walks a rule's `when` tree (the `all`/`args` structure, never regexed
-   * off the raw JSON text) looking for a `{ op: "gte", fact, value }` node
-   * on the named fact, at any nesting depth — `el.e33e.retirement` nests its
-   * deposit-trio conjuncts inside an inner `all`, so a top-level-only walk
-   * would miss it for that rule even though it happens not to be needed
-   * here.
-   */
-  function findGteValue(node: unknown, fact: string): number | undefined {
-    if (Array.isArray(node)) {
-      for (const item of node) {
-        const found = findGteValue(item, fact);
-        if (found !== undefined) return found;
-      }
-      return undefined;
-    }
-    if (node === null || typeof node !== "object") return undefined;
-    const record = node as Record<string, unknown>;
-    if (
-      record.op === "gte" &&
-      record.fact === fact &&
-      typeof record.value === "number"
-    ) {
-      return record.value;
-    }
-    if (Array.isArray(record.args)) {
-      return findGteValue(record.args, fact);
-    }
-    return undefined;
-  }
-
-  function gteThresholdInPack(ruleId: string, fact: string): number {
-    const rule = (highestSequencePack().rules ?? []).find(
-      (r) => r.rule_id === ruleId,
-    );
-    if (!rule) {
-      throw new Error(`${ruleId} is absent from the highest-sequence pack`);
-    }
-    const value = findGteValue(rule.when, fact);
-    if (value === undefined) {
-      throw new Error(
-        `no gte(${fact}) node found in ${ruleId}'s when-tree — the rule's shape changed`,
-      );
-    }
-    return value;
-  }
 
   it("E33G_ANNUAL_INCOME_THRESHOLD_USD tracks both signed seq-28 income rules", () => {
     const payload = highestSequencePack();
@@ -2123,6 +2167,91 @@ describe("support reasons are sentences, not machine codes", () => {
         SUPPORT_REASON_COPY.E33A_SPONSOR_NOT_GOVERNMENT,
       );
     }
+  });
+
+  it("E33-family no-path sentences restate the signed product record", () => {
+    const products = highestSequencePack().products ?? [];
+    const productByCode = (code: string) => {
+      const found = products.find((p) => p.product_code === code);
+      if (!found) {
+        throw new Error(
+          `product ${code} is absent from the highest-sequence pack`,
+        );
+      }
+      return found;
+    };
+    const e33 = productByCode("E33");
+    const e33b = productByCode("E33B");
+    const e33c = productByCode("E33C");
+
+    // GUILT: E33B sponsor_types is ["NONE"]
+    expect(e33b.sponsor_types).toEqual(["NONE"]);
+    const e33bCopy = SUPPORT_REASON_COPY.E33B_SPONSOR_NOT_GOVERNMENT_OR_NONE;
+    expect(e33bCopy.en.startsWith(`The ${e33b.names.en}`)).toBe(true);
+    expect(e33bCopy.id.startsWith(e33b.names.id)).toBe(true);
+    expect(e33bCopy.en).toMatch(/without a sponsor/);
+    expect(e33bCopy.en).not.toMatch(/government/i);
+    expect(e33bCopy.id).toMatch(/tanpa penjamin/);
+    expect(e33bCopy.id).not.toMatch(/pemerintah/);
+
+    // GUILT: E33C sponsor_types is ["GOVERNMENT"]
+    expect(e33c.sponsor_types).toEqual(["GOVERNMENT"]);
+    const e33cCopy = SUPPORT_REASON_COPY.E33C_SPONSOR_NOT_GOVERNMENT_OR_NONE;
+    expect(e33cCopy.en.startsWith(`The ${e33c.names.en}`)).toBe(true);
+    expect(e33cCopy.id.startsWith(e33c.names.id)).toBe(true);
+    expect(e33cCopy.en).toMatch(/central-government/);
+    expect(e33cCopy.en).not.toMatch(/no sponsor|without a sponsor/i);
+    expect(e33cCopy.id).toMatch(/pemerintah pusat/);
+    expect(e33cCopy.id).not.toMatch(/tanpa penjamin/);
+
+    // GUILT: below-threshold Second Home property and deposit sentences use E33's pack name, not "Golden"
+    const propertyBelow = firstNoPathReason(
+      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+      {
+        category: "invest",
+        investment_vehicle: "property",
+        secondhome_property_value_usd: "500000",
+      },
+    );
+    const depositBelow = firstNoPathReason(
+      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+      {
+        category: "invest",
+        investment_vehicle: "bank_deposit",
+        secondhome_deposit_usd: "50000",
+      },
+    );
+    for (const msg of [propertyBelow, depositBelow]) {
+      expect(msg.en).toContain(e33.names.en);
+      expect(msg.en).not.toContain("Golden");
+      expect(msg.id).toContain(e33.names.id);
+      expect(msg.id).not.toContain("Golden");
+    }
+
+    // INNOCENCE: E33A exclusion, E33B/E33C *_ELIGIBLE support pins, and generic fallback
+    expect(SUPPORT_REASON_COPY.E33A_SPONSOR_NOT_GOVERNMENT.en).toContain(
+      "central-government",
+    );
+    expect(SUPPORT_REASON_COPY.E33A_SPONSOR_NOT_GOVERNMENT.id).toContain(
+      "pemerintah pusat",
+    );
+    expect(
+      SUPPORT_REASON_COPY.E33B_GOVERNMENT_COLLABORATION_ELIGIBLE.en,
+    ).toContain(e33b.names.en);
+    expect(
+      SUPPORT_REASON_COPY.E33B_GOVERNMENT_COLLABORATION_ELIGIBLE.id,
+    ).toContain(e33b.names.id);
+    expect(
+      SUPPORT_REASON_COPY.E33C_WORLD_FIGURE_INVITATION_ELIGIBLE.en,
+    ).toContain(e33c.names.en);
+    expect(
+      SUPPORT_REASON_COPY.E33C_WORLD_FIGURE_INVITATION_ELIGIBLE.id,
+    ).toContain(e33c.names.id);
+    expect(
+      firstNoPathReason("OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"),
+    ).toEqual(
+      SUPPORT_REASON_COPY.OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES,
+    );
   });
 
   it("explains the seq-20 local-compensation exclusion in prose, in every locale", () => {

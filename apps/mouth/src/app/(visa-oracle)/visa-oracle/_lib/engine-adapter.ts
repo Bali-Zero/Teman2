@@ -496,8 +496,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     `Rumah Kedua berbasis properti: properti memenuhi syarat senilai minimal ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}.`,
   ),
   REMOTE_WORK_ELIGIBLE: text(
-    "You work remotely for a non-Indonesian employer, serve no Indonesian clients, and take no Indonesian-source compensation.",
-    "Anda bekerja jarak jauh untuk pemberi kerja non-Indonesia, tidak melayani klien Indonesia, dan tidak menerima kompensasi dari sumber Indonesia.",
+    `You work remotely for a non-Indonesian employer, serve no Indonesian clients, take no Indonesian-source compensation, and have a salary or income of ${usd(E33G_ANNUAL_INCOME_THRESHOLD_USD, "en-US")} or more a year.`,
+    `Anda bekerja jarak jauh untuk pemberi kerja non-Indonesia, tidak melayani klien Indonesia, tidak menerima kompensasi dari sumber Indonesia, dan memiliki gaji atau penghasilan minimal ${usd(E33G_ANNUAL_INCOME_THRESHOLD_USD, "id-ID")} per tahun.`,
   ),
   BRIDGING_DESTINATION_STATED: text(
     "You named a destination status other than the bridging permit itself, so a bridging route can be assessed.",
@@ -971,12 +971,12 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Visa Investor (E28A) memerlukan total modal investasi minimal IDR 10.000.000.000, dan angka yang Anda berikan berada di bawahnya.",
   ),
   E33B_SPONSOR_NOT_GOVERNMENT_OR_NONE: text(
-    "The Second Home Golden Visa — Special-Expertise Collaboration (E33B) is sponsored only by an Indonesian government body or held with no sponsor, and your sponsor type is neither.",
-    "Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B) hanya dapat diajukan dengan penjamin instansi pemerintah Indonesia atau tanpa penjamin, dan jenis penjamin Anda bukan keduanya.",
+    "The Second Home Golden Visa — Special-Expertise Collaboration (E33B) is applied for without a sponsor, and you named a sponsor for your stay.",
+    "Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B) diajukan tanpa penjamin, sedangkan Anda menyebutkan penjamin untuk masa tinggal Anda.",
   ),
   E33C_SPONSOR_NOT_GOVERNMENT_OR_NONE: text(
-    "The Second Home Golden Visa — World-Figure Government Invitation (E33C) is sponsored only by an Indonesian government body or held with no sponsor, and your sponsor type is neither.",
-    "Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C) hanya dapat diajukan dengan penjamin instansi pemerintah Indonesia atau tanpa penjamin, dan jenis penjamin Anda bukan keduanya.",
+    "The Second Home Golden Visa — World-Figure Government Invitation (E33C) is sponsored only by an Indonesian central-government body, and you did not name one as your sponsor.",
+    "Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C) hanya dijamin oleh instansi pemerintah pusat Indonesia, dan Anda tidak menyebutkan instansi pemerintah pusat sebagai penjamin Anda.",
   ),
   LEVEL_BAND_DASMEN: text(
     "The Primary/Secondary Education Visa (E30A) covers primary and secondary study levels only, and the level you declared is not one of them.",
@@ -1062,8 +1062,8 @@ function secondHomeBelowThresholdReason(
       return undefined;
     }
     return text(
-      `You declared a qualifying property worth ${usd(value, "en-US")}. The Second Home Golden Visa requires at least ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "en-US")}.`,
-      `Anda menyatakan properti yang memenuhi syarat senilai ${usd(value, "id-ID")}. Visa Rumah Kedua mensyaratkan setidaknya ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}.`,
+      `You declared a qualifying property worth ${usd(value, "en-US")}. The Second Home Visa (E33) requires at least ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "en-US")}.`,
+      `Anda menyatakan properti yang memenuhi syarat senilai ${usd(value, "id-ID")}. Visa Rumah Kedua (E33) mensyaratkan setidaknya ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}.`,
     );
   }
   if (basis === "bank_deposit") {
@@ -1072,8 +1072,8 @@ function secondHomeBelowThresholdReason(
       return undefined;
     }
     return text(
-      `You declared a bank deposit of ${usd(value, "en-US")}. The Second Home Golden Visa requires at least ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")}.`,
-      `Anda menyatakan deposito bank senilai ${usd(value, "id-ID")}. Visa Rumah Kedua mensyaratkan setidaknya ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")}.`,
+      `You declared a bank deposit of ${usd(value, "en-US")}. The Second Home Visa (E33) requires at least ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")}.`,
+      `Anda menyatakan deposito bank senilai ${usd(value, "id-ID")}. Visa Rumah Kedua (E33) mensyaratkan setidaknya ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")}.`,
     );
   }
   return undefined;
