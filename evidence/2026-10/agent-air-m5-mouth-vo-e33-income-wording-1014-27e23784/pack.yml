@@ -92,7 +92,7 @@ decisions:
   - id: D-word-swap-only
     decision: >-
       Only visible EN/ID copy changes ("passive income" to "income or allowance", "penghasilan pasif" to
-      "penghasilan atau tunjangan", "passive-income basis" to "income-or-allowance basis"); fact and basis
+      "penghasilan atau tunjangan", "passive-income basis" to "an income or allowance basis" / "berbasis penghasilan atau tunjangan"); fact and basis
       keys (passive_income, secondhome_passive_income_usd) and code comments are untouched, no threshold or
       route logic moves.
   - id: D-observer-scans-source
