@@ -7,6 +7,7 @@ is (a) present in the seed and (b) has matching name/category.
 from __future__ import annotations
 
 import ast
+import json
 import re
 from pathlib import Path
 
@@ -36,6 +37,9 @@ def _find_repo_root(start: Path) -> Path:
 REPO_ROOT = _find_repo_root(Path(__file__).resolve())
 SEED_PATH = (
     REPO_ROOT / "apps/backend-rag/backend/migrations/scripts/seed_visa_types_complete_2026.py"
+)
+PACKS_DIR = (
+    REPO_ROOT / "apps/backend-rag/backend/services/visa_engine/contracts/packs"
 )
 
 
@@ -163,3 +167,86 @@ class TestPurposeCoverage:
                 continue
             candidates = [vt for vt, m in VISA_META.items() if p in m.purposes]
             assert candidates, f"no VisaType has purpose {p.value}"
+
+
+def _find_dict(node: object, match) -> dict | None:
+    """Structure-agnostic recursive search for the first dict satisfying `match`."""
+    if isinstance(node, dict):
+        if match(node):
+            return node
+        for value in node.values():
+            found = _find_dict(value, match)
+            if found is not None:
+                return found
+    elif isinstance(node, list):
+        for item in node:
+            found = _find_dict(item, match)
+            if found is not None:
+                return found
+    return None
+
+
+def _highest_signed_prod_pack() -> Path:
+    packs = list(PACKS_DIR.glob("rulepack-prod-*.signed.json"))
+    assert packs, f"no rulepack-prod-*.signed.json found in {PACKS_DIR}"
+
+    def _seq(path: Path) -> int:
+        m = re.search(r"rulepack-prod-(\d+)\.signed\.json$", path.name)
+        assert m, f"unexpected pack filename: {path.name}"
+        return int(m.group(1))
+
+    return max(packs, key=_seq)
+
+
+class TestE33Notes:
+    """E33 and E33G catalogue notes follow the signed rulepack and official pages."""
+
+    def test_e33_notes_state_rangkap_kegiatan_and_not_non_working(self):
+        notes = VISA_META[VisaType.E33].notes
+        assert "non-working" not in notes.lower()
+        assert "rangkap kegiatan" in notes
+        assert (
+            "work or study only after rangkap kegiatan (dual-activity) reporting "
+            "to the immigration office that issued the stay permit."
+        ) in notes
+
+    def test_e33g_notes_state_annual_income_from_signed_pack_and_not_savings(self):
+        pack = json.loads(_highest_signed_prod_pack().read_text(encoding="utf-8"))
+        rule = _find_dict(
+            pack["payload"],
+            lambda d: d.get("rule_id") == "el.e33g.remote-work"
+            or d.get("id") == "el.e33g.remote-work",
+        )
+        assert rule is not None, "el.e33g.remote-work missing from signed pack payload"
+        predicate = _find_dict(
+            rule,
+            lambda d: d.get("fact") == "work.annual_foreign_income_usd"
+            and d.get("op") == "gte",
+        )
+        assert predicate is not None, (
+            "work.annual_foreign_income_usd gte predicate missing in el.e33g.remote-work"
+        )
+        threshold = predicate["value"]
+        assert threshold == 60000
+
+        notes = VISA_META[VisaType.E33G].notes
+        assert "savings" not in notes.lower()
+        assert "salary or income" in notes
+        assert "employed by a company outside Indonesia" in notes
+        assert f"USD {threshold:,}" in notes
+        assert f"USD {threshold:,} a year" in notes
+
+    def test_e33g_purposes_is_work_remote_only(self):
+        assert VISA_META[VisaType.E33G].purposes == frozenset({Purpose.WORK_REMOTE})
+
+    def test_e33_and_e33g_innocence_invariants_preserved(self):
+        e33 = VISA_META[VisaType.E33]
+        assert "USD 130,000" in e33.notes
+        assert "no sponsor" in e33.notes
+        assert e33.purposes == frozenset()
+
+        e33g = VISA_META[VisaType.E33G]
+        assert e33g.duration_days == 365
+        assert e33g.extensions == (1, 365)
+        assert e33g.min_budget_idr == 50_000_000
+        assert Purpose.WORK_REMOTE in e33g.purposes

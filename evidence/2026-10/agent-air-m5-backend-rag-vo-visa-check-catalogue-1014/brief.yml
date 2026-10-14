@@ -1,0 +1,25 @@
+gear: 2
+gear_reason: >-
+  Client-facing visa-match recommendation copy on a ground-truth path (legacy visa_check catalogue
+  notes and purposes read by match_tree._reason() behind POST /api/visa/match), plus unit tests and
+  a CI observer; deploys on merge.
+mission: >-
+  The legacy visa_check catalogue's E33 and E33G notes and E33G purposes follow the signed rulepack
+  and official pages: dual-activity (rangkap kegiatan) reporting for E33, annual salary/income proof
+  of at least USD 60,000 a year (not savings) and WORK_REMOTE-only purpose for E33G.
+objective: >-
+  VisaMeta[E33].notes states work or study only after rangkap kegiatan (dual-activity) reporting to
+  the immigration office that issued the stay permit (replacing "non-working residency");
+  VisaMeta[E33G].notes states remote worker employed by a company outside Indonesia with bank proof
+  of salary or income of at least USD 60,000 a year (replacing "USD 60k savings proof");
+  VisaMeta[E33G].purposes drops Purpose.INVESTOR and keeps only Purpose.WORK_REMOTE; duration_days,
+  extensions, min_budget_idr and stored visa_checks database rows untouched.
+scope:
+  - apps/backend-rag/backend/services/visa_check/catalogue.py
+  - apps/backend-rag/backend/tests/services/visa_check/test_catalogue.py
+  - apps/backend-rag/backend/tests/services/visa_check/test_match_tree.py
+  - scripts/ci/observe_visa_check_catalogue_e33.py
+  - tests/scripts/test_observe_visa_check_catalogue_e33.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
