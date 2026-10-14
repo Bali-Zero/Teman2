@@ -1,6 +1,6 @@
 brief_ref: evidence/2026-10/agent-air-m5-backend-rag-vo-zantara-e33f-followu-cccfeeb0/brief.yml
 plan_ref: >-
-  Branch agent/air-m5/backend-rag/vo-zantara-e33f-followup-1014 on origin/main bf2235545a, two commits
+  Branch agent/air-m5/backend-rag/vo-zantara-e33f-followup-1014 on origin/main bf2235545a, three commits
   (9442cecc03 build, 429db83ebf review cure). Ruling: Zero 2026-10-14 "E33F everywhere" (session question,
   recorded in memory as a decision); conditions F2/F3 of the fresh Opus gate on PR 8505.
 lanes:
@@ -118,6 +118,6 @@ spend:
   adversarial_rounds: 2
 diff:
   base_merge_sha: bf2235545a
-  scope: "the whole PR against origin/main, two commits"
-  insertions: 663
+  scope: "the whole PR against origin/main, three commits"
+  insertions: 826
   deletions: 29
