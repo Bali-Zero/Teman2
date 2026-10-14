@@ -35,6 +35,7 @@ FULL_DAYS, VERDICT_DAYS = 7, 30
 RECIPE_LABEL = "org.nuzantara.localci.recipe"
 TAG_RE = re.compile(r"localci-deps:[0-9a-f]{16}\b")
 ID_RE = re.compile(r"sha256:[0-9a-f]{64}")
+SHA_RE = re.compile(r"[0-9a-f]{40}")
 RUN_TS_RE = re.compile(r"-(\d{8}T\d{6}Z)$")
 BULK = ("call-graph.json", "higher-order-call-graph.json")   # Pysa's, 77-114 MB each (Pro, 2026-10-08); taint-output.json is the verdict
 TREE_PACK = ("tree.pack", "tree.pack.part", "tree.pack.json")   # B14's ~845 MB pack: the run's `finally` removes it, a SIGKILL or reboot does not
@@ -136,6 +137,69 @@ def run_alive(run: Path) -> bool:
         return False
 
 
+def plan_deps(doc):
+    """(recipe, tag) for every deps image a parsed plan's jobs name: the check `ctx.backend-tests` is the recipe `backend-tests`."""
+    for name, spec in (doc.get("checks") or {}).items() if isinstance(doc, dict) else []:
+        for job in (spec.get("jobs") or []) if isinstance(spec, dict) else []:
+            for tag in TAG_RE.findall(str((job or {}).get("deps") or "")):
+                yield (name[4:] if name.startswith("ctx.") else name), tag
+
+
+def main_keeper(state: Path) -> dict:
+    """B22: main's deps tag per recipe, from the newest judged commit of main the journal holds: a replay `decision` that is not
+    ERROR, or a `pushed` row (its run is the `merged` row's), whose merge_commit is an ancestor of (or equal to) the mirror's
+    refs/merger/base. Anything unreadable or erroring is unknown: `tags` None with the `reason`, never a crash."""
+    def unknown(why: str) -> dict:
+        return {"tags": None, "evidence": None, "reason": why}
+    rows = []
+    try:
+        for line in (state / "decisions.jsonl").read_text(errors="replace").splitlines():
+            try:
+                row = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(row, dict):
+                rows.append(row)
+    except OSError as exc:
+        return unknown(f"journal unreadable ({type(exc).__name__})")
+    merged_run = {r["merge_commit"]: r.get("run_dir") for r in rows if r.get("kind") == "merged" and isinstance(r.get("merge_commit"), str)}
+    cands = []
+    for r in rows:
+        mc = r.get("merge_commit")
+        if not (isinstance(mc, str) and SHA_RE.fullmatch(mc)):
+            continue
+        if r.get("kind") == "decision" and r.get("replay") is True and r.get("overall") != "ERROR":
+            cands.append(("replay", mc, r.get("run_dir")))
+        elif r.get("kind") == "pushed":
+            cands.append(("pushed", mc, merged_run.get(mc)))
+    repo, chosen = str(state / "repo.git"), None
+    try:
+        base = subprocess.run(["git", "-C", repo, "rev-parse", "--verify", "--quiet", "refs/merger/base^{commit}"], capture_output=True, text=True, timeout=30)
+        if base.returncode != 0:
+            return unknown("the mirror has no refs/merger/base")
+        for cand in reversed(cands):
+            rc = subprocess.run(["git", "-C", repo, "merge-base", "--is-ancestor", cand[1], base.stdout.strip()], capture_output=True, text=True, timeout=30).returncode
+            if rc == 0:
+                chosen = cand
+                break
+            if rc != 1:
+                return unknown(f"git merge-base --is-ancestor failed (rc {rc})")
+    except (OSError, subprocess.SubprocessError) as exc:
+        return unknown(f"git unavailable ({type(exc).__name__})")
+    if chosen is None:
+        return unknown("no judged commit of main in the journal")
+    kind, mc, run_dir = chosen
+    evidence = {"kind": kind, "merge_commit": mc, "run_dir": run_dir}
+    try:
+        doc = json.loads((Path(str(run_dir)) / "state" / "plan.json").read_text())
+    except (OSError, ValueError, TypeError) as exc:
+        return {**unknown(f"the plan of {kind} {mc[:12]} is unreadable ({type(exc).__name__})"), "evidence": evidence}
+    tags = {}
+    for recipe, tag in plan_deps(doc):
+        tags[recipe] = min(tag, tags.get(recipe, tag))
+    return {"tags": tags, "evidence": evidence, "reason": None} if tags else {**unknown(f"the plan of {kind} {mc[:12]} names no deps image"), "evidence": evidence}
+
+
 def plan_refs(runs: Path, now_s: float) -> tuple[dict, dict, dict, list, set]:
     """Tags and image ids named by a plan of the last 48 h (tag -> youngest age in hours), each tag's recipe as the plans
     read it (the check whose job names it: `ctx.backend-tests` -> `backend-tests`), and the plans that could not be read —
@@ -154,10 +218,8 @@ def plan_refs(runs: Path, now_s: float) -> tuple[dict, dict, dict, list, set]:
             doc = json.loads(raw)
         except ValueError:
             doc = None
-        for name, spec in (doc.get("checks") or {}).items() if isinstance(doc, dict) else []:
-            for job in (spec.get("jobs") or []) if isinstance(spec, dict) else []:
-                for tag in TAG_RE.findall(str((job or {}).get("deps") or "")):
-                    recipes.setdefault(tag, set()).add(name[4:] if name.startswith("ctx.") else name)
+        for recipe, tag in plan_deps(doc):
+            recipes.setdefault(tag, set()).add(recipe)
         if age_h <= REF_WINDOW_H:
             for tag in TAG_RE.findall(raw):
                 recent[tag] = min(recent.get(tag, age_h), age_h)
@@ -206,12 +268,12 @@ def deps_images(docker: str, tags: list[str] | None = None) -> list[dict]:
 
 
 def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, now_s: float, in_progress: set = frozenset(),
-                    stand_ins: frozenset = frozenset(), named: dict | None = None) -> list[dict]:
+                    stand_ins: frozenset = frozenset(), named: dict | None = None, main: frozenset = frozenset()) -> list[dict]:
     """Every deps image with `remove`, `slot` and the rule that decided it. Per recipe, MAX_IMAGES_PER_RECIPE slots held by
     distinct images: the newest holds the first; the others go to the images most plans of the last 48 h name (ties: the
     youngest reference, then the newest image). Beyond the slots an image stays only when the run in progress names it (a run
     of the last 48 h with no status.json whose coordinator holds its lock; the prune never runs beside the lease holder) — no clock grace (B8). An image no
-    plan of the window names takes no slot and goes. The never-list is always kept. A recipe nothing records is its own."""
+    plan of the window names takes no slot and goes. B22: main's tags (`main`) hold slot 1 in place of the newest and are never beyond the cap. The never-list is always kept. A recipe nothing records is its own."""
     named = named or {}
     for im in images:
         im["recipe"] = im.get("label_recipe") or recipes.get(im["tag"]) or f"unknown:{im['tag']}"
@@ -225,6 +287,9 @@ def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, 
     out = {}
     for r, ims in by_recipe.items():
         top, slots = newest.get(r), {}   # image id -> slot number
+        mains = [im for im in ims if im["tag"] in main and not never(im["tag"], stand_ins)]
+        if mains:
+            top = max(mains, key=lambda im: im["created"] or 0)   # B22: main's image is the keeper, whatever the clock says
         used = {1} if top is not None else set()   # slot 1 is the newest's, even when the run in progress holds it
         rest = []
         for im in ims:
@@ -232,9 +297,10 @@ def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, 
                 out[im["tag"]] = (False, never_rule(im["tag"], stand_ins), None)
             elif im["tag"] in in_progress or im["id"] in in_progress:
                 out[im["tag"]] = (False, "named by the run in progress (no status.json yet, its coordinator holds the lock)", None)
-            elif top is None or im["created"] is None or im["created"] == top["created"]:
+            elif top is None or im["created"] is None or im["created"] == top["created"] or im["tag"] in main:
                 slots[im["id"]] = 1   # an image built at the same instant, or undated, ranks with the newest
-                out[im["tag"]] = (False, f"the newest image of recipe {r}", 1)
+                out[im["tag"]] = (False, f"main's image of recipe {r} (named by the newest judged commit on main)" if im["tag"] in main
+                                  else f"the newest image of recipe {r}", 1)
             else:
                 rest.append(im)
         named_rest = sorted((im for im in rest if ref_of(im) is not None),
@@ -463,7 +529,11 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
         keep = frozenset()
         errors.append({"matrix": str(matrix), "error": f"unreadable ({type(exc).__name__}): no image is removed without the stand-in list"})
     tags = all_tags(docker)
-    decided = image_decisions(deps_images(docker, tags), recent, ids, recipes, now_s, in_progress, keep, named)
+    mk = main_keeper(state)   # B22: read-only; unknown means today's rule (the newest is slot 1)
+    rec["main_tags"], rec["main_evidence"] = mk["tags"], mk["evidence"]
+    if mk["tags"] is None:
+        rec["main_reason"] = mk["reason"]
+    decided = image_decisions(deps_images(docker, tags), recent, ids, recipes, now_s, in_progress, keep, named, frozenset((mk["tags"] or {}).values()))
     blind = bool(errors)   # an unreadable plan or matrix; a refused removal below is an error too, but it blinds nothing
     for d in decided if blind else []:
         d.update(remove=False, rule=f"kept: {len(errors)} input(s) unreadable, see errors") if d["remove"] else None

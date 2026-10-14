@@ -1137,3 +1137,109 @@ def test_headroom_a_non_default_flag_moves_the_line(tmp_path, monkeypatch):   # 
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--run-headroom-gb", "20"]) == 0
     line = journal(state)[-1]
     assert line["pressure_gb"] == 120 and line["host_pressure"] is True and len(line["images"]["removed"]) == 2
+
+
+# ------------------------------------------------------------------ B22: the keeper is the image main's newest judged commit names
+def _mirror(state: Path) -> dict:
+    """A bare mirror: c1 <- c2 (refs/merger/base) and x, a commit on no path to it."""
+    repo = state / "repo.git"
+    subprocess.run(["git", "init", "--bare", "-q", str(repo)], check=True)
+    git = lambda *a, inp=None: subprocess.run(["git", "-C", str(repo), *a], input=inp, capture_output=True, text=True, check=True).stdout.strip()  # noqa: E731
+    tree = git("mktree", inp="")
+    env = ["-c", "user.name=t", "-c", "user.email=t@t"]
+    c1 = subprocess.run(["git", "-C", str(repo), *env, "commit-tree", tree, "-m", "c1"], capture_output=True, text=True, check=True).stdout.strip()
+    c2 = subprocess.run(["git", "-C", str(repo), *env, "commit-tree", tree, "-p", c1, "-m", "c2"], capture_output=True, text=True, check=True).stdout.strip()
+    x = subprocess.run(["git", "-C", str(repo), *env, "commit-tree", tree, "-m", "x"], capture_output=True, text=True, check=True).stdout.strip()
+    git("update-ref", "refs/merger/base", c2)
+    return {"c1": c1, "c2": c2, "x": x}
+
+
+def _rows(state: Path, *rows: dict) -> None:
+    with open(state / "decisions.jsonl", "a") as fh:
+        for r in rows:
+            fh.write(json.dumps(r) + "\n")
+
+
+def _replay(state: Path, run: str, mc: str, **kw) -> dict:
+    return {"kind": "decision", "replay": True, "overall": "GREEN", "merge_commit": mc, "run_dir": str(state / "runs" / run), **kw}
+
+
+def _keeper_world(tmp_path: Path, monkeypatch, free: float = 105, images=None, plans=None, mirror: bool = True):
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", free)
+    imgs = images or [image("a" * 16, 50, "e2e-tests", gb=11.9), image("b" * 16, 1, "e2e-tests", gb=11.9)]   # [0] main's, [1] a PR's, newer
+    plans = plans or {"pr1-x-20261008T100000Z": (5, {"ctx.e2e-tests": imgs[0]["tag"]}), "pr2-x-20261008T110000Z": (4, {"ctx.e2e-tests": imgs[0]["tag"]}),
+                      "pr3-x-20261008T120000Z": (1, {"ctx.e2e-tests": imgs[1]["tag"]})}
+    state, docker = world(tmp_path, imgs, plans, vm_avail_kb=kb(30))
+    return state, docker, imgs, (_mirror(state) if mirror else None)
+
+
+def test_b22_the_08_00z_case_main_is_kept_and_the_newer_pr_image_is_shed_under_pressure(tmp_path, monkeypatch):
+    state, docker, imgs, sha = _keeper_world(tmp_path, monkeypatch)
+    _rows(state, _replay(state, "pr1-x-20261008T100000Z", sha["c2"]))
+    line = prune_line(state, docker)
+    assert line["host_pressure"] is True and [r["tag"] for r in line["images"]["removed"]] == [imgs[1]["tag"]]
+    assert line["main_tags"] == {"e2e-tests": imgs[0]["tag"]} and line["main_evidence"]["kind"] == "replay" and line["main_evidence"]["merge_commit"] == sha["c2"]
+    assert {k["tag"]: k["rule"] for k in line["images"]["kept"]}[imgs[0]["tag"]].startswith("main's image of recipe e2e-tests")
+
+
+def test_b22_after_a_lock_bump_the_newest_replay_names_the_new_main_image_and_it_is_kept_with_fewer_refs(tmp_path, monkeypatch):
+    imgs = [image("a" * 16, 50, "e2e-tests", gb=11.9), image("b" * 16, 5, "e2e-tests", gb=11.9)]   # old main, new main
+    plans = {f"pr{n}-x-20261008T10{n:02d}00Z": (6 + n * 0.1, {"ctx.e2e-tests": imgs[0]["tag"]}) for n in range(16)}   # old: 16 refs
+    plans["pr90-x-20261008T120000Z"] = (1, {"ctx.e2e-tests": imgs[1]["tag"]})   # new: 1 ref
+    state, docker, imgs, sha = _keeper_world(tmp_path, monkeypatch, images=imgs, plans=plans)
+    _rows(state, _replay(state, "pr0-x-20261008T100000Z", sha["c1"]), _replay(state, "pr90-x-20261008T120000Z", sha["c2"]))
+    line = prune_line(state, docker)
+    assert line["main_tags"] == {"e2e-tests": imgs[1]["tag"]} and [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"]]
+
+
+def test_b22_a_replay_whose_merge_commit_is_not_an_ancestor_of_base_is_ignored(tmp_path, monkeypatch):
+    state, docker, imgs, sha = _keeper_world(tmp_path, monkeypatch)
+    _rows(state, _replay(state, "pr1-x-20261008T100000Z", sha["c2"]), _replay(state, "pr3-x-20261008T120000Z", sha["x"]))   # the newer row is no commit of main
+    line = prune_line(state, docker)
+    assert line["main_tags"] == {"e2e-tests": imgs[0]["tag"]} and [r["tag"] for r in line["images"]["removed"]] == [imgs[1]["tag"]]
+
+
+def test_b22_an_errored_replay_is_not_evidence(tmp_path, monkeypatch):
+    state, docker, imgs, sha = _keeper_world(tmp_path, monkeypatch)
+    _rows(state, _replay(state, "pr1-x-20261008T100000Z", sha["c1"]), _replay(state, "pr3-x-20261008T120000Z", sha["c2"], overall="ERROR"))
+    assert prune_line(state, docker)["main_evidence"]["merge_commit"] == sha["c1"]
+
+
+def test_b22_a_pushed_row_is_evidence_and_its_run_is_the_merged_rows(tmp_path, monkeypatch):
+    state, docker, imgs, sha = _keeper_world(tmp_path, monkeypatch)
+    run = str(state / "runs" / "pr1-x-20261008T100000Z")
+    _rows(state, {"kind": "merged", "merge_commit": sha["c2"], "run_dir": run}, {"kind": "pushed", "merge_commit": sha["c2"]})
+    line = prune_line(state, docker)
+    assert line["main_evidence"] == {"kind": "pushed", "merge_commit": sha["c2"], "run_dir": run}
+    assert [r["tag"] for r in line["images"]["removed"]] == [imgs[1]["tag"]]
+
+
+def test_b22_unknown_main_is_todays_rule_the_newest_is_slot_1(tmp_path, monkeypatch):
+    state, docker, imgs, sha = _keeper_world(tmp_path, monkeypatch)   # no evidence row at all
+    line = prune_line(state, docker)
+    assert line["main_tags"] is None and line["main_reason"] and [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"]]
+
+
+def test_b22_a_missing_mirror_is_unknown_and_the_prune_still_runs(tmp_path, monkeypatch):
+    state, docker, imgs, sha = _keeper_world(tmp_path, monkeypatch, mirror=False)
+    _rows(state, _replay(state, "pr1-x-20261008T100000Z", "c" * 40))
+    line = prune_line(state, docker)
+    assert line["main_tags"] is None and "refs/merger/base" in line["main_reason"] and [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"]]
+
+
+def test_b22_a_git_error_on_the_ancestry_check_is_unknown(tmp_path, monkeypatch):
+    state, docker, imgs, sha = _keeper_world(tmp_path, monkeypatch)
+    _rows(state, _replay(state, "pr1-x-20261008T100000Z", "c" * 40))   # a commit the mirror does not hold: merge-base exits 128
+    line = prune_line(state, docker)
+    assert line["main_tags"] is None and "failed" in line["main_reason"] and [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"]]
+
+
+def test_b22_the_cap_rule_does_not_shed_main_without_pressure(tmp_path, monkeypatch):
+    imgs = [image("a" * 16, 50, "e2e-tests"), image("b" * 16, 20, "e2e-tests"), image("c" * 16, 1, "e2e-tests")]   # [0] main, 1 ref; [1] 16 refs; [2] newest, 1 ref
+    plans = {f"pr{n}-x-20261008T10{n:02d}00Z": (6 + n * 0.1, {"ctx.e2e-tests": imgs[1]["tag"]}) for n in range(1, 17)}
+    plans["pr20-x-20261008T120000Z"] = (7, {"ctx.e2e-tests": imgs[0]["tag"]})
+    plans["pr21-x-20261008T130000Z"] = (1, {"ctx.e2e-tests": imgs[2]["tag"]})
+    state, docker, imgs, sha = _keeper_world(tmp_path, monkeypatch, free=500, images=imgs, plans=plans)
+    _rows(state, _replay(state, "pr20-x-20261008T120000Z", sha["c2"]))
+    line = prune_line(state, docker)
+    assert imgs[0]["tag"] in {k["tag"] for k in line["images"]["kept"]} and [r["tag"] for r in line["images"]["removed"]] == [imgs[2]["tag"]]
