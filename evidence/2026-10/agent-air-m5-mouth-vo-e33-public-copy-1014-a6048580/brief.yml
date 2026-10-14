@@ -1,0 +1,21 @@
+task_id: mouth-vo-e33-public-copy-1014
+gear: 2
+l_level: L2
+gate_class: opus
+objective: Public Second Home copy (llms.txt, the Second Home Studio copy, the e28a investor-KITAS guide EN and ID) says what the official page says - work or study only after dual-activity (rangkap kegiatan) reporting, and income or allowance as the E33-family income basis - and no longer says "no work authorization" or "passive income".
+constraints:
+  - Visa Oracle copy rules - say only what the signed rule (seq-29) or the saved official page says; EN plus natural Bahasa Indonesia; never promise; no threshold figures inside interview questions.
+  - Keep every other sentence of the edited lines; the it, fr and ru e28a variants and the Second Home guide are out of scope and named as follow-ups.
+  - External build seat (agy) edits files only and never runs git; Claude verifies and commits; no hook bypass.
+acceptance:
+  - text: WHEN llms.txt is read the Second Home lines SHALL carry the dual-activity clause and SHALL NOT carry "no work authorization" or "passive income".
+    probe: apps/mouth/src/lib/llms-public-file-guard.test.ts and python3 scripts/ci/observe_llms_e33_gov_routes.py
+  - text: WHEN the Studio copy, the e28a EN mdx and the e28a ID mdx are read the E33-family income basis SHALL read income or allowance (penghasilan atau tunjangan in Indonesian).
+    probe: apps/mouth/src/lib/e33-income-basis-copy.test.ts and apps/mouth/src/lib/secondhome-studio/__tests__/forbidden-claims.test.ts
+consumer_map:
+  - balizero.com/llms.txt, the file AI crawlers cite - served from apps/mouth/public/llms.txt after merge and vercel promote.
+  - apps/mouth/src/lib/llms-public-file-guard.test.ts and scripts/ci/observe_llms_e33_gov_routes.py - run the guard on every CI pass of apps/mouth vitest and via the observer.
+assumptions:
+  - text: llms-full.txt and llms-id.txt are regenerated from the mdx by the build script (LLMS_GENERATE_ARTICLES_ONLY=1 tsx scripts/generate-llms-full.ts) before next build, so the stale committed copies do not reach the live site.
+    status: unverified
+    probe: after vercel promote, curl -s https://balizero.com/llms-full.txt | grep -c "documented passive income" expects 0, and the same on llms-id.txt for "penghasilan pasif terdokumentasi".
