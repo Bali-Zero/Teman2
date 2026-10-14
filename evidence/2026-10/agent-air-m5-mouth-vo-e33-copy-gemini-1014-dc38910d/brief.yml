@@ -1,0 +1,31 @@
+task_id: mouth-vo-e33-copy-gemini-1014
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Gemini 4 Argon copy audit of 2026-10-14, findings F1-F8 confirmed by adversarial refutation
+  (entries VO-A-e33-no-path-product-record and VO-B-e33g-remote-work-income). The Visa Oracle
+  result sentences for the E33 family must say what the signed product record says and nothing
+  else: the E33B and E33C dead-end sentences state the sponsor in each record (none for E33B,
+  a central-government body for E33C), the below-threshold sentences use the pack name
+  "Second Home Visa (E33)", and the E33G remote-work support sentence names the signed
+  yearly-income figure, in English and Bahasa Indonesia. Copy rule: say only what the signed
+  rule or the saved official page says.
+acceptance:
+  - text: >-
+      The engine-adapter test file passes whole, including the E33-family no-path sentence test
+      and the E33G threshold test in both languages.
+    probe: python3 scripts/ci/observe_visa_oracle_e33_family_copy.py
+  - text: >-
+      The two pinned test files keep their exact census (307 tests).
+    probe: python3 scripts/ci/observe_visa_oracle_replay_pins.py
+  - text: >-
+      The observer's own pytest pins the required test titles.
+    probe: python3 -m pytest -q tests/scripts/test_observe_visa_oracle_e33_family_copy.py
+assumptions:
+  - text: >-
+      The three new tests fail against the pre-fix adapter and pass with the fix.
+    status: verified
+    probe: >-
+      Red-team measurement with the HEAD~1 adapter: 3 failed, 164 passed (167); recorded in
+      the pack receipts.
