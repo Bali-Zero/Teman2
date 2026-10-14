@@ -172,7 +172,7 @@ def test_the_queue_commit_judges_only_a_decision_on_the_base_it_was_built_on(tmp
     assert rep["window"]["compared_merges"] == 0   # GitHub merged another candidate (same head, another base)
 
 
-@pytest.mark.parametrize("case", ["state-bound-elsewhere", "decision-of-another-repo", "unreadable-line", "merged-without-merge-sha",
+@pytest.mark.parametrize("case", ["state-bound-elsewhere", "decision-of-another-repo", "unreadable-line",
                                   "merged-without-merged-at", "bad-since", "ts-with-newline"])
 def test_unusable_inputs_are_refused_never_counted(tmp_path, monkeypatch, case):
     recs, gh, extra = [decision(1, A, "PASS")], FakeGH({1: pull(A)}, {A: "failure"}), []
@@ -182,8 +182,6 @@ def test_unusable_inputs_are_refused_never_counted(tmp_path, monkeypatch, case):
         (state / "repo").write_text("other/repo\n")
     elif case == "decision-of-another-repo":
         recs = [{**recs[0], "repo": "other/repo"}]
-    elif case == "merged-without-merge-sha":
-        gh.pulls[1] = {**pull(A, merged=True), "merge_commit_sha": None}
     elif case == "merged-without-merged-at":
         gh.pulls[1], gh.checks[M] = {**pull(A, merged=True), "merged_at": None}, "success"
     elif case == "bad-since":
@@ -369,10 +367,21 @@ def test_a_pr_merged_red_on_another_base_than_the_decided_one_is_still_listed_as
     assert rep["hosted_red_merged"] == [{"pr": 2, "merge_commit_sha": red_mc, "red": list(CTX)}] and rc == 0
 
 
-def test_a_pr_merged_at_a_later_head_without_a_merge_commit_sha_is_refused(tmp_path, monkeypatch, capsys):
+def test_a_pr_merged_at_a_later_head_without_a_merge_commit_sha_is_named_not_refused(tmp_path, monkeypatch, capsys):
     gh = FakeGH({2: {**pull(B, merged=True), "merge_commit_sha": None}}, {A: "success"})
     rc, rep = run_report(tmp_path, monkeypatch, [decision(2, A, "FAIL", ctx="FAIL")], gh)   # an older head: judged on itself
-    assert rc == 2 and rep is None and "#2 is merged but carries no merge commit sha" in capsys.readouterr().err
+    assert rc == 0 and rep["merged_without_merge_commit_sha"] == [2] and rep["hosted_red_merged"] == []
+    assert rep["rows"][0]["no_comparison"] is None   # judged on its own older head: a comparison, not a missing one
+
+
+def test_a_pr_closed_as_merged_by_a_push_with_a_null_merge_commit_sha_is_no_comparison_never_an_exception(tmp_path, monkeypatch):
+    # B3d: phase F pushes the merge itself; GitHub may close the PR as merged and leave merge_commit_sha null
+    gh = FakeGH({2: {**pull(B, merged=True), "merge_commit_sha": None}}, {B: "success"})
+    rc, rep = run_report(tmp_path, monkeypatch, [decision(2, B, "PASS")], gh)
+    row = rep["rows"][0]
+    assert rc in (0, 1) and "refused" not in rep
+    assert (row["hosted_sha"], row["compared_merge"], row["merged"]) == (B, False, True) and "no merge_commit_sha" in row["no_comparison"]
+    assert rep["merged_without_merge_commit_sha"] == [2] and rep["window"]["compared_merges"] == 0
 
 
 @pytest.mark.parametrize("mixed,github,red", [({"ctx-03": "failure", "ctx-05": None}, "RED", ["ctx-03"]),

@@ -27,6 +27,12 @@ MUTANTS = {
     "pe-digest-unbound-to-state": ('json.dumps({"state": state, "writes": writes}', 'json.dumps({"writes": writes}'),
     "pe-rollback-confirm-unchecked": ('    if a.confirm != dig:\n        print("REFUSED: --confirm does not match this plan\'s digest", file',
                                       '    if False:\n        print("REFUSED: --confirm does not match this plan\'s digest", file'),
+    # the flip waits for an empty merge queue, and an unreadable one is not empty
+    "pe-queue-blockers-dropped": ("blockers + queue_blockers(a.repo, a.branch, state) + rep_blockers", "blockers + rep_blockers"),
+    "pe-queue-count-unchecked": ('if count else []', 'if False else []'),
+    "pe-queue-unreadable-is-empty": ("    except (FlipError, KeyError, TypeError) as exc:\n        return [", "    except (FlipError, KeyError, TypeError) as exc:\n        return [] and ["),
+    "pe-queue-not-rechecked-at-apply": (" + queue_blockers(a.repo, a.branch, fresh))\n", ")\n"),
+    "pe-queue-asked-after-its-rule-is-gone": ('    if "merge_queue" not in {r.get("type") for r in state["ruleset"]["rules"]}:\n        return []\n', ""),
     "pe-blockers-ignored": ("    if all_blockers:\n", "    if False:\n"),
     # READY is the report's, fresh, of this repo, and consistent with its own window
     "pe-ready-not-required": ('if rep.get("phase_e_ready") is not True:', "if False:"),
@@ -161,8 +167,8 @@ MUTANTS = {
     "pe-main-ctrl-c-escapes": ("    except (Exception, KeyboardInterrupt) as exc:   # Ctrl-C included", "    except Exception as exc:   # Ctrl-C included"),
     "pe-plan-margin-ignored": ("rep_blockers, rep_line = read_report(a.report, a.repo, a.branch, max_age=REPORT_MAX_AGE - APPLY_MARGIN)",
                                "rep_blockers, rep_line = read_report(a.report, a.repo, a.branch)"),
-    "pe-recheck-uses-margin": ('        return "; ".join(read_report(a.report, a.repo, a.branch)[0])',
-                               '        return "; ".join(read_report(a.report, a.repo, a.branch, max_age=REPORT_MAX_AGE - APPLY_MARGIN)[0])'),
+    "pe-recheck-uses-margin": ('        return "; ".join(read_report(a.report, a.repo, a.branch)[0] + queue_blockers',
+                               '        return "; ".join(read_report(a.report, a.repo, a.branch, max_age=REPORT_MAX_AGE - APPLY_MARGIN)[0] + queue_blockers'),
     "pe-report-ahead-accepted": ("        elif age < -REPORT_MAX_SKEW:", "        elif False:"),
     "pe-after-send-state-file-lost": ("    a.sent, a.state_file = sent, a.rollback", "    a.sent, a.state_file = sent, None"),
     "pe-key-title-kept": ('"fingerprint": key_fingerprint(k.get("key"))}', '"fingerprint": key_fingerprint(k.get("key")), "title": k.get("title")}'),

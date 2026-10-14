@@ -10,7 +10,7 @@ import subprocess
 
 import pytest
 
-from .test_merger import GIT_ENV, REPO, FakeRunner, g, commit, mg, mirror_world, pr, world, wrap  # noqa: F401 — `world` is a fixture
+from .test_merger import GIT_ENV, REPO, FakeGH, FakeRunner, g, labelled, commit, mg, mirror_world, pr, world, wrap  # noqa: F401 — `world` is a fixture
 
 CTX = tuple(f"ctx-{i:02d}" for i in range(mg.MIN_COMPARED_CONTEXTS))
 M, OLD_BASE = "1" * 40, "f" * 40
@@ -97,7 +97,7 @@ def SSH_COMMAND(w):
 def full_pull(w, **over):
     """The PR as the moment-of-merging re-read sees it when nothing is wrong."""
     return {"headRefOid": w.head1, "state": "OPEN", "isInMergeQueue": False, "isDraft": False, "baseRefName": "main",
-            "labels": {"nodes": [{"name": mg.ARM_LABEL}]}, **over}
+            "labels": {"nodes": [{"name": mg.ARM_LABEL}]}, "timelineItems": {"nodes": [labelled(mg.ARM_LABEL, "maint")]}, **over}
 
 
 def assert_nothing_merged(w, why_part=None):
@@ -241,6 +241,10 @@ DISARM = [
     ("pr-draft-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, isDraft=True)), "a draft now"),
     ("pr-retargeted-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, baseRefName="release")), "PR base 'release', not 'main'"),
     ("label-gone-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, labels={"nodes": []})), f"label {mg.ARM_LABEL} absent at the moment"),
+    ("label-readded-by-a-writer-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, timelineItems={"nodes": [labelled(mg.ARM_LABEL, "dev")]})),
+     "whose role is 'write'"),
+    ("label-predates-the-push-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: (setattr(w.gh, "suite_at", "2026-10-11T00:00:00Z"), full_pull(w))[1]),
+     "predates the head"),
     ("enqueue-step-enqueued", lambda w, mp: mp.setenv(mg.ARM_ENV, "1"), "not 'would_enqueue'"),
     ("halt-file-not-utf8", lambda w, mp: (w.state / mg.HALT_FILE).write_bytes(b"\xff\xfe\x00 not text"), f"{mg.HALT_FILE} present: unreadable"),
     ("halt-file-a-directory", lambda w, mp: (w.state / mg.HALT_FILE).mkdir(), f"{mg.HALT_FILE} present: unreadable"),
@@ -714,3 +718,64 @@ def test_only_a_would_enqueue_step_can_be_merged_by_phase_f(fw, kind):
     line = {"base_sha": fw.base, "mirror_main": fw.base, "base_current": True, "clean": True}
     _, pf = mg.phase_f_arming(a, fw.state, fw.mirror, enq, line, "main")
     assert not pf["armed"] and any("not 'would_enqueue'" in x and "merge queue" in x for x in pf["why"]), pf
+
+
+# ------------------------------------------------------------------ B2a: the label postdates the head it approves
+HEAD = "a" * 40
+
+
+def _arm_pull(at="2026-10-10T00:00:00Z", login="boss", head=HEAD):
+    return {"headRefOid": head, "labels": {"nodes": [{"name": mg.ARM_LABEL}]}, "timelineItems": {"nodes": [labelled(mg.ARM_LABEL, login, at=at)]}}
+
+
+@pytest.fixture
+def lab(monkeypatch):
+    gh = FakeGH()
+    monkeypatch.setattr(mg.hc, "gh_get", gh)
+    return gh
+
+
+@pytest.mark.parametrize("suite,labelled_at", [("2026-10-09T00:00:00Z", "2026-10-10T00:00:00Z"), ("2026-10-10T00:00:00Z", "2026-10-10T00:00:00Z"),
+                                               (["2026-10-10T00:00:05Z", "2026-10-10T00:00:01Z"], "2026-10-10T00:00:03Z")])
+def test_a_label_applied_after_the_push_arms(lab, suite, labelled_at):
+    lab.suite_at = suite
+    assert mg.label_arm(REPO, _arm_pull(labelled_at)) == (None, "boss")   # at the second, and against the EARLIEST of several suites
+
+
+def test_a_push_after_the_label_is_refused_and_the_reason_says_to_re_label(lab):
+    lab.suite_at = "2026-10-10T00:00:01Z"
+    why, login = mg.label_arm(REPO, _arm_pull("2026-10-10T00:00:00Z"))
+    assert "predates the head" in why and "re-run scripts/signal_merge_intent.sh <PR>" in why and login == "boss"
+
+
+def test_the_time_of_the_last_label_event_counts_not_the_first(lab):
+    lab.suite_at = "2026-10-10T00:00:00Z"
+    pull = _arm_pull("2026-10-09T00:00:00Z")   # labelled, then the head was pushed, then the label was removed and re-added by the same admin
+    pull["timelineItems"]["nodes"] += [labelled(mg.ARM_LABEL, "boss", kind="UnlabeledEvent", at="2026-10-10T00:00:30Z"), labelled(mg.ARM_LABEL, "boss", at="2026-10-10T00:01:00Z")]
+    pull["timelineItems"]["nodes"].pop(1)   # the timeline window may hold two labelled events with no removal between: the LAST one is the label
+    assert mg.label_arm(REPO, pull) == (None, "boss")
+    pull["timelineItems"]["nodes"][-1] = labelled(mg.ARM_LABEL, "boss", at="2026-10-09T23:00:00Z")   # re-added, but still before the push
+    assert "predates the head" in mg.label_arm(REPO, pull)[0]
+
+
+def _suites(doc):
+    def read(path):
+        if isinstance(doc, Exception):
+            raise doc
+        return doc
+    return read
+
+
+@pytest.mark.parametrize("doc", [RuntimeError("HTTP 502"), None, [], {"total_count": 0, "check_suites": []},
+                                 {"total_count": 3, "check_suites": [{"created_at": "2026-10-09T00:00:00Z"}]},   # a truncated list
+                                 {"total_count": 1, "check_suites": [{"created_at": None}]}], ids=["raises", "none", "list", "empty", "truncated", "no-stamp"])
+def test_a_push_receipt_that_cannot_be_read_refuses_the_label(lab, monkeypatch, doc):
+    real = lab.__call__
+    monkeypatch.setattr(mg.hc, "gh_get", lambda path: _suites(doc)(path) if "check-suites" in path else real(path))
+    why, _ = mg.label_arm(REPO, _arm_pull())
+    assert why and "cannot be shown to postdate the head" in why
+
+
+@pytest.mark.parametrize("pull", [_arm_pull(at=None), _arm_pull(at="yesterday"), _arm_pull(head=None), _arm_pull(head="abc")])
+def test_a_label_event_without_a_server_time_or_a_head_without_a_sha_refuses(lab, pull):
+    assert "cannot be shown to postdate the head" in mg.label_arm(REPO, pull)[0]

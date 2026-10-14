@@ -52,6 +52,7 @@ class FakeGH:
         self.paths: list = []
         self.conclusion = "success"
         self.roles = {"maint": "maintain", "boss": "admin"}
+        self.suite_at: object = "2026-10-09T00:00:00Z"   # when GitHub received the push; a list of stamps, or an Exception to raise
 
     def __call__(self, path):
         self.paths.append(path)
@@ -65,6 +66,12 @@ class FakeGH:
                                     "app": {"id": 15368, "slug": "github-actions"}}]}
         if m:
             return {"statuses": []}
+        m = re.fullmatch(rf"repos/{REPO}/commits/([0-9a-f]{{40}})/check-suites\?per_page=100", path)
+        if m:
+            if isinstance(self.suite_at, Exception):
+                raise self.suite_at
+            stamps = self.suite_at if isinstance(self.suite_at, list) else [self.suite_at]
+            return {"total_count": len(stamps), "check_suites": [{"head_sha": m[1], "created_at": t} for t in stamps]}
         m = re.fullmatch(rf"repos/{REPO}/collaborators/([A-Za-z0-9-]+)/permission", path)
         if m:
             return {"role_name": self.roles.get(m[1], "write")}
@@ -88,7 +95,7 @@ class FakeGraphQL:
         (p,) = [x for x in self.gh.prs if x["number"] == variables["number"]]
         names = [lb["name"] for lb in p["labels"]]
         return {"repository": {"pullRequest": {
-            "id": f"PR_node_{p['number']}", "state": "OPEN", "isDraft": p["draft"], "isCrossRepository": False, "baseRefName": "main",
+            "id": f"PR_node_{p['number']}", "number": p["number"], "state": "OPEN", "isDraft": p["draft"], "isCrossRepository": False, "baseRefName": "main",
             "headRefOid": p["head"]["sha"], "body": BODY, "isInMergeQueue": False, "mergeQueueEntry": None, "labels": {"nodes": [{"name": n} for n in names]},
             "timelineItems": {"nodes": [labelled(n, "maint") for n in names]}, **self.over}}}
 
@@ -96,8 +103,8 @@ class FakeGraphQL:
         return [v for q, v in self.calls if q == mg.ENQUEUE]
 
 
-def labelled(name, login, kind="LabeledEvent", actor="User"):
-    return {"__typename": kind, "label": {"name": name}, "actor": {"__typename": actor, "login": login}}
+def labelled(name, login, kind="LabeledEvent", actor="User", at="2026-10-10T00:00:00Z"):
+    return {"__typename": kind, "createdAt": at, "label": {"name": name}, "actor": {"__typename": actor, "login": login}}
 
 
 class FakeRunner:

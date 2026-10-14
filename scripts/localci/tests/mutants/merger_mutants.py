@@ -60,7 +60,7 @@ CS = "scripts/localci/tests/test_cancelled_superseded.py"
 DRIVER, TP = "scripts/localci/steps_driver.py", "scripts/localci/tests/test_tree_pack.py"   # B14
 RUNT_COV = tuple(f"{RUNT}::{t}" for t in ("test_the_matrix_coverage_is_full_by_default_partial_where_declared_and_never_full_when_unreadable",
                                          "test_every_context_result_in_the_status_carries_the_base_matrix_coverage",
-                                         "test_the_real_matrix_declares_e2e_partial_with_its_reason"))
+                                         "test_the_real_matrix_declares_e2e_full_because_its_backend_secrets_are_hermetic_stand_ins"))
 # B5: a red read with a rewritten BASE judge, a skip compared as a skip, and the report's count of skip agreements
 JR, SKC = "scripts/localci/tests/test_judge_rewritten.py", "scripts/localci/tests/test_skip_compare.py"
 REPORT_SKIP = tuple(f"{REPORT}::{t}" for t in (
@@ -151,15 +151,18 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "merged-pending-is-green": (PY, "            github = github_side(live)", "            github = github_side(live)\n            github = \"GREEN\" if merged_here and github == \"PENDING\" else github", (REPORT,)),
     "merged-red-is-green": (PY, "            github = github_side(live)", "            github = \"GREEN\" if merged_here else github_side(live)", (REPORT,)),
     "hosted-red-merged-never": (PY, "            if red:\n                hosted_red_merged.append(", "            if False:\n                hosted_red_merged.append(", (REPORT,)),
-    "hosted-red-merged-any-not-green": (PY, 'red = sorted(k for k, v in required_verdicts(lives[mc]).items() if v == "RED")',
-                                        'red = sorted(k for k, v in required_verdicts(lives[mc]).items() if v != "GREEN")', (REPORT,)),
+    "hosted-red-merged-any-not-green": (PY, 'red = sorted(k for k, v in required_verdicts(lives[(mc, f"{mc}^1")]).items() if v == "RED")',
+                                        'red = sorted(k for k, v in required_verdicts(lives[(mc, f"{mc}^1")]).items() if v != "GREEN")', (REPORT,)),
     "hosted-red-merged-compared-only": (PY, "        for n in sorted(k for k, v in prs.items() if v.get(\"merged\") is True):",
                                         "        for n in sorted(r[\"pr\"] for r in rows if r[\"compared_merge\"]):", (REPORT,)),
-    "hosted-red-merged-no-sha-skipped": (PY, '                raise hc.CompareError(f"#{n} is merged but carries no merge commit sha")', "                continue", (REPORT,)),
+    "hosted-red-merged-no-sha-raises": (PY, "                merged_without_sha.append(n)", '                raise hc.CompareError(f"#{n} is merged but carries no merge commit sha")', (REPORT,)),
+    "b3d-queue-sha-null-raises": (PY, "        return str(d.get(\"head_sha\"))   # B3d", '        raise hc.CompareError("no merge_commit_sha")   # B3d', (REPORT,)),
+    "b3d-no-comparison-ignores-the-head": (PY, 'and head_of(prs[n]) == d.get("head_sha")\n                             and not is_sha', "and not is_sha", (REPORT,)),
+    "b3d-no-comparison-unsaid": (PY, "and not is_sha(prs[n].get(\"merge_commit_sha\"))) else None,", "and False) else None,", (REPORT,)),
     "hosted-red-merged-first-only": (PY, '                hosted_red_merged.append({"pr": n, "merge_commit_sha": mc, "red": red})',
                                      '                hosted_red_merged.append({"pr": n, "merge_commit_sha": mc, "red": red})\n                break', (REPORT,)),
-    "hosted-red-merged-all-contexts": (PY, 'red = sorted(k for k, v in required_verdicts(lives[mc]).items() if v == "RED")',
-                                       'red = sorted(required_verdicts(lives[mc])) if "RED" in required_verdicts(lives[mc]).values() else []', (REPORT,)),
+    "hosted-red-merged-all-contexts": (PY, 'red = sorted(k for k, v in required_verdicts(lives[(mc, f"{mc}^1")]).items() if v == "RED")',
+                                       'red = sorted(required_verdicts(lives[(mc, f"{mc}^1")])) if "RED" in required_verdicts(lives[(mc, f"{mc}^1")]).values() else []', (REPORT,)),
     "github-side-green-dominant": (PY, '    return "RED" if "RED" in seen else "PENDING" if "PENDING" in seen else "GREEN"',
                                    '    return "GREEN" if "GREEN" in seen else "RED" if "RED" in seen else "PENDING"', (REPORT,)),
     "github-side-pending-over-red": (PY, '    return "RED" if "RED" in seen else "PENDING" if "PENDING" in seen else "GREEN"',
@@ -393,8 +396,9 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     # the enqueue path (C3a-2): each sub-criterion, the two halves of the arm, the one mutation
     "enqueue-env-any-value": (PY, "armed_env = os.environ.get(ARM_ENV) == \"1\"", "armed_env = bool(os.environ.get(ARM_ENV))", (TICK,)),
     "enqueue-label-not-an-arm": (PY, 'if not (armed_env and criterion["label_privileged"]) else', "if not armed_env else", (TICK,)),
-    "enqueue-label-any-role": (PY, "(None if role in ARM_ROLES else", "(None if role else", (TICK,)),
-    "enqueue-label-first-actor": (PY, 'actor = ev.get("actor") if ev.get("__typename") == "LabeledEvent" else None', 'actor = actor or ev.get("actor")', (TICK,)),
+    "enqueue-label-any-role": (PY, "    if role not in ARM_ROLES:\n", "    if not role:\n", (TICK,)),
+    "enqueue-label-first-actor": (PY, '(ev.get("actor"), ev.get("createdAt")) if ev.get("__typename") == "LabeledEvent" else (None, None)',
+                                  '(actor or ev.get("actor"), ev.get("createdAt")) if ev.get("__typename") == "LabeledEvent" else (actor, labelled_at)', (TICK,)),
     "enqueue-blocked-executed-ok": (PY, 'if res.get("mapping") in NON_EXECUTED and res.get("verdict") == "BLOCKED":', 'if res.get("verdict") == "BLOCKED":', (TICK,)),
     "enqueue-check-blocked-only-fail": (PY, 'v not in CHECK_OK}', 'v == "FAIL"}', (TICK,)),
     "enqueue-review-any": (PY, 'None if review in ("QUEUED", "PASS") else', 'None if review != "FAIL" else', (TICK,)),
@@ -496,7 +500,20 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "f2-reread-queue-ignored": (PY, 'if pull.get("isInMergeQueue") is not False:', "if False:", (PHASEF,)),
     "f2-reread-draft-ignored": (PY, 'if pull.get("isDraft") is not False:', "if False:", (PHASEF,)),
     "f2-reread-base-ignored": (PY, 'if pull.get("baseRefName") != a.base:', "if False:", (PHASEF,)),
-    "f2-reread-label-ignored": (PY, "if ARM_LABEL not in {lb.get(\"name\") for lb in (pull.get(\"labels\")", "if False and ARM_LABEL not in {lb.get(\"name\") for lb in (pull.get(\"labels\")", (PHASEF,)),
+    "f2-reread-label-ignored": (PY, "if reason := label_arm(a.repo, pull)[0]:", "if False:", (PHASEF,)),
+    # B2b: the label's ACTOR is read again at the moment of merging, not only its presence
+    "b2b-reread-label-presence-only": (PY, "if reason := label_arm(a.repo, pull)[0]:",
+                                       'if reason := (None if ARM_LABEL in {lb.get("name") for lb in (pull.get("labels") or {}).get("nodes") or [] if isinstance(lb, dict)} else "label absent"):', (PHASEF,)),
+    # B2a: the label counts only if it postdates the head's first check suite (server time); unreadable fails closed
+    "b2a-label-time-unchecked": (PY, "if _epoch(labelled_at) < min(_epoch(x) for x in stamps):", "if False:", (PHASEF,)),
+    "b2a-latest-suite-not-earliest": (PY, "< min(_epoch(x) for x in stamps):", "< max(_epoch(x) for x in stamps):", (PHASEF,)),
+    "b2a-event-time-or-head-unchecked": (PY, "if not (is_sha(head) and is_ts(labelled_at)):", "if False:", (PHASEF,)),
+    "b2a-truncated-suites-accepted": (PY, 'doc.get("total_count") == len(suites)', "True", (PHASEF,)),
+    "b2a-label-time-from-first-event": (PY, "actor, labelled_at = (ev.get(\"actor\"), ev.get(\"createdAt\")) if", "actor, labelled_at = (ev.get(\"actor\"), labelled_at or ev.get(\"createdAt\")) if", (PHASEF,)),
+    # B3c: phase F's own merges (journal kinds merged, pushed) are never replayed
+    "b3c-own-merges-replayed": (PY, "done = own | {", "done = {", (REPLAY,)),
+    "b3c-own-merged-row-ignored": (PY, 'in ("merged", "pushed")}', 'in ("pushed",)}', (REPLAY,)),
+    "b3c-own-pushed-row-ignored": (PY, 'in ("merged", "pushed")}', 'in ("merged",)}', (REPLAY,)),
     "f2-ssh-config-not-nulled": (PY, "ssh -F /dev/null -o IdentityAgent=none -i ", "ssh -o IdentityAgent=none -i ", (PHASEF,)),
     "f2-ssh-agent-allowed": (PY, "ssh -F /dev/null -o IdentityAgent=none -i ", "ssh -F /dev/null -i ", (PHASEF,)),
     "f2-ssh-known-hosts-unpinned": (PY, 'f"-o {shlex.quote(known)} -o StrictHostKeyChecking=yes")', 'f"-o StrictHostKeyChecking=yes")', (PHASEF,)),
@@ -835,6 +852,9 @@ def copy_tree(dest: Path) -> None:
     (dest / "scripts" / "tests").mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / "scripts" / "tests" / "test_ban_predicates.py", dest / "scripts" / "tests" / "test_ban_predicates.py")
     for rel in (".github/workflows/security.yml", ".github/codeql-config.yml"):   # the CodeQL tests plan against the real workflow and config
+        (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / rel, dest / rel)
+    for rel in ("apps/organism/organism/organs_registry.yaml",):   # test_merger.py reads it
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, dest / rel)
     for rel in ("scripts/ops/pro_disk_floor_tick.sh", "infra/launchagents/com.nuzantara.disk-floor.plist", "infra/home-fork/declared-pairs.json"):
