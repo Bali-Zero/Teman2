@@ -92,7 +92,7 @@ def test_every_class_on_its_own_fixture(tmp_path, monkeypatch):
     rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
     assert [r["class"] for r in rep["rows"]] == ["AGREE", "FALSE_RED", "PENDING", "AGREE", "BLIND"]
     assert rc == 0 and rep["window"]["merged_prs"] == 2 and rep["window"]["distinct_prs"] == 4 and rep["window"]["compared_merges"] == 1
-    assert rep["context_counts"] == {"AGREE": 2 * K, "FALSE_GREEN": 0, "FALSE_RED": K, "LOCAL_BLIND": K, "HOSTED_PENDING": K, "HOSTED_STALE": 0}
+    assert rep["context_counts"] == {"AGREE": 2 * K, "FALSE_GREEN": 0, "FALSE_RED": K, "LOCAL_BLIND": K, "HOSTED_PENDING": K, "HOSTED_STALE": 0, "HOSTED_ABORTED": 0}
     assert rep["rows"][0]["hosted_sha"] == M and rep["rows"][2]["hosted_sha"] == D   # a merged candidate is judged where the queue judged it
 
 

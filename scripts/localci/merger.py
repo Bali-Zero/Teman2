@@ -704,7 +704,43 @@ class StaleJudge:
         return {"stale": bool(selected), "hosted_main": main, "main_moved_paths": selected[:20], "main_moved_count": len(selected)}
 
 
-class GateJudge:
+class HostedReads:
+    """The two read-only GETs the hosted judges share, cached per check run (``cache`` is the report's, shared across decisions): a check
+    run's failure annotations and the actions job whose ``check_run_url`` names it."""
+    ANN_CAP = 50   # GitHub keeps at most 50 annotations per job: a list that long may be cut, so it proves nothing
+
+    def __init__(self, repo: str, cache: dict | None = None):
+        self.repo = repo
+        self._cache = {} if cache is None else cache   # (kind, run id) -> a read; the report shares one across decisions
+
+    def failures(self, rid: int) -> list[str]:
+        if ("annotations", rid) not in self._cache:
+            raw = gh_pages(f"repos/{self.repo}/check-runs/{rid}/annotations")
+            if len(raw) >= self.ANN_CAP:
+                raise MergerError(f"check run {rid} carries {len(raw)} annotations, at GitHub's per-job cap of {self.ANN_CAP}: the list may be cut")
+            self._cache[("annotations", rid)] = [str(x.get("message")) for x in raw
+                                                 if x.get("annotation_level") not in ("notice", "warning")]   # an unknown level counts as a failure
+        return self._cache[("annotations", rid)]
+
+    def job_doc(self, rid: int) -> dict:
+        if ("jobdoc", rid) not in self._cache:
+            job = hc.gh_get(f"repos/{self.repo}/actions/jobs/{rid}")
+            url = job.get("check_run_url") if isinstance(job, dict) else None
+            if not isinstance(url, str) or not url.endswith(f"/check-runs/{rid}"):
+                raise MergerError(f"actions job {rid} does not name check run {rid} as its own (check_run_url {url!r})")
+            self._cache[("jobdoc", rid)] = job
+        return self._cache[("jobdoc", rid)]
+
+    def job_steps(self, rid: int) -> list[dict]:
+        if ("job", rid) not in self._cache:
+            steps = self.job_doc(rid).get("steps")
+            if not isinstance(steps, list) or not steps or any(not isinstance(x, dict) for x in steps):
+                raise MergerError(f"actions job {rid} carries no steps")
+            self._cache[("job", rid)] = steps
+        return self._cache[("job", rid)]
+
+
+class GateJudge(HostedReads):
     """B12b: was the hosted RED of a gate-reading context its reader's PENDING read, given before the gate verdict the local run read?
     Called by ``hc.compare`` for a compared row as ``judge(context, hosted, statuses)`` (``hosted`` is ``hc.hosted_verdict``'s answer,
     ``statuses`` the head's combined status); None when the ground does not apply: a hosted verdict that is not RED, or a context whose
@@ -718,32 +754,10 @@ class GateJudge:
     check run) failed on the reader step alone, every step the BASE matrix lists after it skipped. Anything it cannot read raises:
     ``hc.gate_reading`` keeps the class and says unknown."""
     EXIT_LINE = re.compile(r"Process completed with exit code \d+\.")
-    ANN_CAP = 50   # GitHub keeps at most 50 annotations per job: a list that long may be cut, so it proves nothing
 
     def __init__(self, repo: str, matrix: StaleJudge, plan_at, reads, cache: dict | None = None):
-        self.repo, self.matrix, self.plan_at, self.reads = repo, matrix, plan_at, reads
-        self._cache = {} if cache is None else cache   # (kind, run id) -> a read; the report shares one across decisions
-
-    def failures(self, rid: int) -> list[str]:
-        if ("annotations", rid) not in self._cache:
-            raw = gh_pages(f"repos/{self.repo}/check-runs/{rid}/annotations")
-            if len(raw) >= self.ANN_CAP:
-                raise MergerError(f"check run {rid} carries {len(raw)} annotations, at GitHub's per-job cap of {self.ANN_CAP}: the list may be cut")
-            self._cache[("annotations", rid)] = [str(x.get("message")) for x in raw
-                                                 if x.get("annotation_level") not in ("notice", "warning")]   # an unknown level counts as a failure
-        return self._cache[("annotations", rid)]
-
-    def job_steps(self, rid: int) -> list[dict]:
-        if ("job", rid) not in self._cache:
-            job = hc.gh_get(f"repos/{self.repo}/actions/jobs/{rid}")
-            url = job.get("check_run_url") if isinstance(job, dict) else None
-            if not isinstance(url, str) or not url.endswith(f"/check-runs/{rid}"):
-                raise MergerError(f"actions job {rid} does not name check run {rid} as its own (check_run_url {url!r})")
-            steps = job.get("steps")
-            if not isinstance(steps, list) or not steps or any(not isinstance(x, dict) for x in steps):
-                raise MergerError(f"actions job {rid} carries no steps")
-            self._cache[("job", rid)] = steps
-        return self._cache[("job", rid)]
+        super().__init__(repo, cache)
+        self.matrix, self.plan_at, self.reads = matrix, plan_at, reads
 
     def __call__(self, name: str, hosted: dict, statuses: list) -> dict | None:
         if hosted["verdict"] != "RED":
@@ -798,6 +812,92 @@ class GateJudge:
             if failed != [p["step"]] or ran:
                 return {"stale": False, "why": f"actions job {e['id']} did not fail on the reader step alone: failed {failed}, ran after it {ran}"}
         return {"stale": True, "gate_posted_at": posted, "plan_at": self.plan_at}
+
+
+SETUP_ACTIONS = ("actions/checkout", "actions/setup-python", "actions/setup-node", "actions/cache", "actions/download-artifact")   # B27, by repository
+ABORT_TIMEOUT, ABORT_CANCELED = "exceeded the maximum execution time", "The operation was canceled."
+
+
+class AbortJudge(HostedReads):
+    """B27: was a hosted RED a job that died in setup, with no logic step run? Called by ``hc.compare`` for a compared row whose hosted verdict
+    is RED as ``judge(context, hosted)``; every red run of the context must qualify. A red run qualifies when (1) it is a check run concluded
+    ``cancelled``; (2) its failure annotations are at least one "exceeded the maximum execution time" and nothing else but the runner's
+    "The operation was canceled."; (3) its job, matched to ONE workflow job AT THE JOB'S ``head_sha`` (mirror, ``git show``), maps step for
+    step onto that job's steps ("Set up job", the workflow steps by name, then only ``Post`` steps and "Complete job"), and the one cancelled
+    step is a setup step by its ``uses:`` repository (``SETUP_ACTIONS``), never by its name; (4) every step before it is a setup step that did
+    not fail, every step after it is skipped. Anything it cannot read or match raises ``MergerError``: ``hc.abort_reading`` keeps the class."""
+    def __init__(self, repo: str, mirror: Path, cache: dict | None = None):
+        super().__init__(repo, cache)
+        self.mirror = mirror
+
+    def workflow_steps(self, job: dict) -> list[dict]:
+        import yaml   # the merger's venv carries PyYAML, as StaleJudge needs it
+        sha, wname, jname = job.get("head_sha"), job.get("workflow_name"), job.get("name")
+        if not is_sha(sha) or not isinstance(wname, str) or not isinstance(jname, str):
+            raise MergerError("the actions job carries no head_sha, workflow_name or name")
+        found = []
+        for path in git(self.mirror, "ls-tree", "-r", "--name-only", sha, "--", ".github/workflows", timeout=60).stdout.split("\n"):
+            if not path.endswith((".yml", ".yaml")):
+                continue
+            doc = yaml.safe_load(git(self.mirror, "show", f"{sha}:{path}", timeout=60).stdout)
+            if not isinstance(doc, dict) or not isinstance(doc.get("jobs"), dict) or (doc.get("name") or path) != wname:
+                continue
+            found += [d for k, d in doc["jobs"].items() if isinstance(d, dict) and str(d.get("name") or k) == jname]
+        if len(found) != 1:
+            raise MergerError(f"{len(found)} workflow jobs named {jname!r} in the workflow {wname!r} at {sha[:12]}, not one")
+        d = found[0]
+        if "uses" in d or "strategy" in d or "${{" in jname or not isinstance(d.get("steps"), list) or any(not isinstance(x, dict) for x in d["steps"]):
+            raise MergerError(f"workflow job {jname!r} is a matrix, a reusable workflow or carries no readable steps")
+        return d["steps"]
+
+    @staticmethod
+    def is_setup(step: dict) -> bool:
+        uses = step.get("uses")
+        if not isinstance(uses, str) or uses.startswith(("./", "docker://")):
+            return False
+        return "/".join(uses.split("@")[0].split("/")[:2]).lower() in SETUP_ACTIONS
+
+    def setup_step(self, steps: list[dict], wf: list[dict]) -> tuple[str | None, str]:
+        """``(the cancelled setup step's name, "")`` or ``(None, why not)``; an unmappable job raises."""
+        n = len(wf)
+        if len(steps) < n + 1 or steps[0].get("name") != "Set up job":
+            raise MergerError("the job's steps do not start with 'Set up job' and carry the workflow's steps")
+        main, tail = steps[1:1 + n], steps[1 + n:]
+        if any(not (str(x.get("name")).startswith("Post ") or x.get("name") == "Complete job") for x in tail):
+            raise MergerError("the job carries steps beyond the workflow's, other than Post steps and 'Complete job'")
+        for i, (js, ws) in enumerate(zip(main, wf)):
+            want = ws.get("name") if "name" in ws else f"Run {ws['uses']}" if isinstance(ws.get("uses"), str) else None
+            if js.get("number") not in (None, i + 2) or (want is not None and js.get("name") != want):
+                raise MergerError(f"job step {i + 2} {js.get('name')!r} is not the workflow's step {i + 1} {want!r}")
+        hit = [i for i, x in enumerate(main) if x.get("conclusion") == "cancelled"]
+        if len(hit) != 1:
+            return None, f"{len(hit)} cancelled steps, not one"
+        i = hit[0]
+        if not all(self.is_setup(w) for w in wf[:i + 1]):
+            return None, f"the cancelled step or one before it ({main[i].get('name')!r}) is not a setup action"
+        if any(x.get("conclusion") not in ("success", "skipped") for x in main[:i]):
+            return None, "a step before the cancelled one did not succeed"
+        if any(x.get("conclusion") != "skipped" for x in main[i + 1:]):
+            return None, "a step after the cancelled one ran"
+        return str(main[i].get("name")), ""
+
+    def __call__(self, name: str, hosted: dict) -> dict | None:
+        red = hosted.get("red") or []
+        if hosted.get("verdict") != "RED" or not red:
+            return None
+        runs = []
+        for e in red:
+            rid = e.get("id")
+            if type(rid) is not int or e.get("conclusion") != "cancelled":
+                return {"aborted": False, "why": "a red that is not a check run cancelled"}
+            fails = self.failures(rid)
+            if not any(ABORT_TIMEOUT in m for m in fails) or any(ABORT_TIMEOUT not in m and m != ABORT_CANCELED for m in fails):
+                return {"aborted": False, "why": f"check run {rid} was not cancelled by the job timeout alone: {len(fails)} failure annotation(s)"}
+            step, why = self.setup_step(self.job_steps(rid), self.workflow_steps(self.job_doc(rid)))
+            if step is None:
+                return {"aborted": False, "why": f"check run {rid}: {why}"}
+            runs.append({"check_run_id": rid, "step": step})
+        return {"aborted": True, "runs": runs}
 
 
 def plan_time(run_dir) -> str | None:
@@ -1979,6 +2079,8 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
     recorded_fg, recorded_raw, reclassified, kept_fg = 0, 0, [], []   # B10: a recorded FALSE_GREEN the evidence shows was a stale hosted verdict
     judges: dict = {}
     gate_reads: dict = {}   # B12b: one annotation and one job read per hosted check run, whichever decisions name it
+    aborted_seen: dict = {}   # B27: (pr, head, context, check run id) -> the setup step it died in, from the live rows and the recorded ones
+    abort = AbortJudge(a.repo, state / "repo.git", gate_reads)   # B27: shares the gate judge's reads
     check_max_s: dict = {}   # the slowest run of each check in the window: where a tick's time goes
     try:
         if a.since and not _SINCE_RE.fullmatch(a.since):
@@ -2027,12 +2129,16 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
             if raw and judge is None:   # a replay's hosted verdict is on its own tree: every recorded row is kept, and says why
                 got, why_kept = reclassify_replay_superseded(d, live)
             else:
-                got, why_kept = reclassify_recorded(a, d, judge, gate) if raw else ([], [])
+                got, why_kept = reclassify_recorded(a, d, judge, gate, abort) if raw else ([], [])
             if raw and len(got) < raw and (flipped := reclassify_by_reread(a, d, lives, raw)):   # B17: a row with no per-entry data
                 got, why_kept = flipped, []
             got = got[:raw]
             recorded_raw += raw
-            reclassified += got
+            for x in (x for x in got if x.get("stale_why") == "hosted_aborted"):   # B27: listed apart, not among the HOSTED_STALE
+                for run in x["aborted_runs"]:
+                    aborted_seen[(n, head, x["context"], run["check_run_id"])] = run["step"]
+            got_stale = [x for x in got if x.get("stale_why") != "hosted_aborted"]
+            reclassified += got_stale
             kept_fg += why_kept[:max(raw - len(got), 0)]
             recorded_fg += raw - len(got)
             for k, v in (d.get("durations") if isinstance(d.get("durations"), dict) else {}).items():
@@ -2045,7 +2151,14 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
                 skip = d.get("skipped") if isinstance(d.get("skipped"), dict) else {}   # B5; a line before it records none: an execution
                 status = {"candidate_sha": d.get("candidate_sha"), "contexts": {"status": d["contexts_status"], "results": {
                     k: {"verdict": v, "coverage": cov.get(k), "skipped": skip.get(k)} for k, v in (d.get("contexts") or {}).items()}}}
-                rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"], stale_judge=judge, gate_judge=gate)
+                rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"], stale_judge=judge, gate_judge=gate,
+                                 abort_judge=abort)
+                for row in (x for x in rep["rows"] if x["class"] == "HOSTED_ABORTED"):   # B27
+                    for run in row["aborted_runs"]:
+                        aborted_seen[(n, head, row["context"], run["check_run_id"])] = run["step"]
+                red_ctx = {k for k, v in required_verdicts(live).items() if v == "RED"}
+                if github == "RED" and red_ctx and red_ctx <= {x["context"] for x in rep["rows"] if x["class"] == "HOSTED_ABORTED"}:
+                    github = "PENDING"   # B27: every red required context is a job that died in setup: the PR has no hosted verdict yet, so no pr-level class
                 for k, v in rep["counts"].items():
                     ctx_counts[k] += v
                 compared_ctx = rep["coverage"]["compared_full"]   # a partial AGREE is an agreement on a subset: shown, never counted
@@ -2117,6 +2230,9 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
     merged_skip_agreed = sum({r["pr"]: len(r["compared_skip_agreed"]) for r in rows if r["compared_merge"]}.values())   # a PR counts once
     compared_days = _days(merges[0], merges[-1]) if merges else 0.0
     fg = counts["FALSE_GREEN"] + ctx_counts["FALSE_GREEN"] + recorded_fg
+    fg_breakdown = {"pr": counts["FALSE_GREEN"], "context": ctx_counts["FALSE_GREEN"], "recorded": recorded_fg}   # one event can show at several levels
+    aborted = [{"pr": k[0], "head_sha": k[1], "context": k[2], "check_run_id": k[3], "step": v}
+               for k, v in sorted(aborted_seen.items(), key=lambda kv: tuple(str(x) for x in kv[0]))]   # B27
     ready = fg == 0 and compared_merges >= READY_MIN_MERGES and compared_days >= READY_MIN_DAYS   # lead's ruling 2026-10-07: both, never either
     live_block = liveness(window, decisions, prs, merged_listing(a) if emit else None, clock)   # B24: apart from `ready`, which it never feeds
     skipped = dict(sorted(Counter(str(r.get("why")) for r in window if r.get("kind") == "skipped").items()))
@@ -2151,7 +2267,8 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
                       "decisions_without_code_sha": without_code_sha, "enqueue": enqueue, "would_merge": would_merge, "pending_retry": pending_retry,
                       "code_shas": sorted({r["code_sha"] for r in rows if is_sha(r["code_sha"])}), "ticks": ticks},
            "counts": counts, "hosted_red_merged": hosted_red_merged, "merged_without_merge_commit_sha": merged_without_sha, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "recorded_false_green_as_journalled": recorded_raw,
-           "recorded_reclassified_hosted_stale": reclassified, "recorded_kept_false_green": kept_fg, "phase_e_ready": ready, "liveness": live_block, "phase_f": phase_f, "phase_f_halted": os.path.lexists(state / HALT_FILE), "rows": rows,
+           "recorded_reclassified_hosted_stale": reclassified, "recorded_kept_false_green": kept_fg, "phase_e_ready": ready, "false_green_breakdown": fg_breakdown, "hosted_aborted": {"count": len(aborted), "list": aborted},
+           "liveness": live_block, "phase_f": phase_f, "phase_f_halted": os.path.lexists(state / HALT_FILE), "rows": rows,
            "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
     if not emit:
         return (1 if fg else 0), out
@@ -2193,6 +2310,10 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
                                                             + (f" (gate: {x['gate']})" if x.get("gate") else "") for x in kept_fg) + "])")
     for h in hosted_red_merged:
         print(f"hosted_red_merged: #{h['pr']} merged at {h['merge_commit_sha'][:12]} with required red: {', '.join(h['red'])}")
+    print(f"false_green={fg} = pr-level {fg_breakdown['pr']} + context-level {fg_breakdown['context']} + recorded {fg_breakdown['recorded']} "
+          "(one event can show at more than one level)")
+    print(f"hosted_aborted (B27, no hosted verdict, never compared): {len(aborted)}" + "".join(
+        f" | #{x['pr']} {str(x['head_sha'])[:12]} {x['context']}: check run {x['check_run_id']} died in {x['step']!r}" for x in aborted))
     lv = live_block
     print(f"liveness (B24, last {lv['window_h']} h): mergeable_rows={lv['mergeable_rows']} (needs >= {LIVENESS_MIN_ROWS}), coverage_decided={lv['coverage_decided']} "
           f"of {lv['merged_decided']} merged-and-decided PR(s) (needs >= {LIVENESS_MIN_COVERAGE}), label_ok_rows={lv['label_ok_rows']}, coverage_all_approx={lv['coverage_all_approx']} of {lv['merged_all_approx']} merged PR(s) (one page of 100 closed PRs; reported only)")
@@ -2291,6 +2412,23 @@ def recorded_gate(a, gate: GateJudge, head: str, r: dict, statuses: list) -> dic
     return hc.gate_reading(gate, name, {"verdict": "RED", "completed_at": at, "red": red}, statuses)
 
 
+def recorded_abort(a, abort: AbortJudge, head: str, r: dict) -> dict:
+    """B27, the past: a recorded FALSE_GREEN row whose reds were all check runs cancelled (``hosted_red``), each found again by its id among
+    EVERY attempt of the head's runs of that name (a manual re-run replaced it in the latest), judged by ``abort`` as the live row would be.
+    {} when the row cannot be a setup abort; an unreadable ground answers ``abort_check: unknown`` and the row is kept."""
+    name, red = r["context"], r.get("hosted_red")
+    if not (isinstance(red, list) and red and all(isinstance(e, dict) and type(e.get("id")) is int and e.get("conclusion") == "cancelled" for e in red)):
+        return {}
+    try:
+        runs = gh_pages(f"repos/{a.repo}/commits/{head}/check-runs?check_name={quote(name, safe='')}&filter=all", "check_runs")
+        listed = {x.get("id"): x for x in runs if x.get("name") == name and x.get("status") == "completed" and x.get("conclusion") == "cancelled"}
+        if any(e["id"] not in listed for e in red):
+            return {"abort_check": f"unknown (a cancelled {name} run the tick recorded is no longer listed cancelled on the head)"}
+        return abort(name, {"verdict": "RED", "red": [{"id": e["id"], "conclusion": "cancelled", "completed_at": listed[e["id"]].get("completed_at")} for e in red]}) or {}
+    except Exception as exc:  # noqa: BLE001 — an unreadable ground keeps the row, and says why
+        return {"abort_check": redact(f"unknown ({type(exc).__name__}: {exc})")}
+
+
 def superseded_cleared(r: dict, h: dict) -> bool:
     """B17: the red a recorded row stood on was only check runs cancelled by concurrency, each now answered by a later run (the hosted
     verdict names them in ``superseded_cancelled``) and nothing else is red. A row journalling no ``hosted_red`` cannot be found again."""
@@ -2346,7 +2484,7 @@ def reclassify_by_reread(a, d: dict, lives: dict, raw: int) -> list[dict]:
         return []
 
 
-def reclassify_recorded(a, d: dict, judge, gate: GateJudge | None = None) -> tuple[list[dict], list[dict]]:
+def reclassify_recorded(a, d: dict, judge, gate: GateJudge | None = None, abort: AbortJudge | None = None) -> tuple[list[dict], list[dict]]:
     """B10, the past: re-read a decision's recorded FALSE_GREEN rows (its run dir's hosted_compare.json) and apply the stale rule from
     the mirror. Read-only: GETs (branch protection, the check-runs and the statuses of the head), git reads in the mirror, nothing
     written anywhere. Returns ``(reclassified, kept)``: a row is reclassified only when the red the tick saw is still the hosted
@@ -2367,6 +2505,11 @@ def reclassify_recorded(a, d: dict, judge, gate: GateJudge | None = None) -> tup
         if g.get("stale") is True:   # B12b: the red the tick saw was the PENDING read, given before the gate post the local run read
             out.append({"pr": pr, "context": r["context"], "head_sha": head, **{k: g[k] for k in ("stale_why", "hosted_completed_at", "gate_posted_at", "plan_at")}})
             continue
+        if abort is not None:   # B27: the red the tick saw was a job that died in a setup step, no hosted verdict
+            ab = recorded_abort(a, abort, str(head), r)
+            if ab.get("aborted") is True:
+                out.append({"pr": pr, "context": r["context"], "head_sha": head, "stale_why": "hosted_aborted", "aborted_runs": ab["runs"]})
+                continue
         gk = {"gate": g["gate_check"]} if g else {}
         h = hc.hosted_verdict(hosted.get(r["context"], []), r.get("app_id"))
         if superseded_cleared(r, h):   # B17: only cancelled runs, each answered by a later one on the head

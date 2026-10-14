@@ -37,6 +37,7 @@ B6_WRAP = tuple(f"{MERGER_T}::{t}" for t in ("test_the_tick_decides_first_then_p
                                              "test_a_failed_prune_is_a_warning_and_a_failed_tick_is_an_error_after_which_the_prune_still_runs"))
 HF = ("scripts/localci/tests/test_host_floor.py",)   # B15
 LV = ("scripts/localci/tests/test_liveness.py",)   # B24
+HA = ("scripts/localci/tests/test_hosted_aborted.py",)   # B27
 B15_PRUNE = tuple(f"{PRUNE_T}::{t}" for t in ("test_b15_under_host_pressure_the_second_slot_of_every_recipe_goes_and_the_newest_never",
                                               "test_b15_host_pressure_never_removes_the_image_of_the_run_in_progress_or_the_never_list"))
 HEADROOM = tuple(f"{PRUNE_T}::{t}" for t in ("test_headroom_at_105_over_a_start_floor_of_100_the_second_slots_are_shed_in_shed_order", "test_headroom_at_120_nothing_is_shed", "test_headroom_leaves_the_start_floor_where_it_was", "test_headroom_a_non_default_flag_moves_the_line"))
@@ -387,6 +388,26 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "liveness-label-ok-uncounted": (PY, '"label_ok_rows": sum(1 for r in mergeable if r["criterion"].get("label_privileged") is True)', '"label_ok_rows": 0', LV),
     "liveness-rows-off-by-one": (PY, "len(mergeable) >= LIVENESS_MIN_ROWS", "len(mergeable) > LIVENESS_MIN_ROWS", LV),
     "liveness-coverage-off-by-one": (PY, "cov_decided >= LIVENESS_MIN_COVERAGE", "cov_decided > LIVENESS_MIN_COVERAGE", LV),
+    # B27 (a hosted job that died in setup is no verdict)
+    "b27-annotation-unchecked": (PY, 'if not any(ABORT_TIMEOUT in m for m in fails) or any(ABORT_TIMEOUT not in m and m != ABORT_CANCELED for m in fails):', "if False:", HA),
+    "b27-extra-failure-annotation-allowed": (PY, "or any(ABORT_TIMEOUT not in m and m != ABORT_CANCELED for m in fails):", "or False:", HA),
+    "b27-conclusion-unchecked": (PY, 'if type(rid) is not int or e.get("conclusion") != "cancelled":', "if type(rid) is not int:", HA),
+    "b27-setup-by-name-substring": (PY, '        if not isinstance(uses, str) or uses.startswith(("./", "docker://")):\n            return False\n        return "/".join(uses.split("@")[0].split("/")[:2]).lower() in SETUP_ACTIONS',
+                                    '        return any(k in str(step.get("name")).lower() for k in ("checkout", "setup", "cache", "artifact"))', HA),
+    "b27-after-steps-unchecked": (PY, 'if any(x.get("conclusion") != "skipped" for x in main[i + 1:]):', "if False:", HA),
+    "b27-before-steps-unchecked": (PY, 'if any(x.get("conclusion") not in ("success", "skipped") for x in main[:i]):', "if False:", HA),
+    "b27-earlier-steps-need-not-be-setup": (PY, "if not all(self.is_setup(w) for w in wf[:i + 1]):", "if not self.is_setup(wf[i]):", HA),
+    "b27-step-names-unmatched": (PY, 'if js.get("number") not in (None, i + 2) or (want is not None and js.get("name") != want):', "if False:", HA),
+    "b27-two-jobs-allowed": (PY, "if len(found) != 1:", "if len(found) < 1:", HA),
+    "b27-matrix-allowed": (PY, 'if "uses" in d or "strategy" in d or', 'if "uses" in d or', HA),
+    "b27-aborted-counts-as-agree": (HC, 'reading["class_before"], klass = klass, "HOSTED_ABORTED"', 'reading["class_before"], klass = klass, "AGREE"', HA),
+    "b27-aborted-is-compared": (HC, 'COMPARED = ("AGREE", "FALSE_GREEN", "FALSE_RED")', 'COMPARED = ("AGREE", "FALSE_GREEN", "FALSE_RED", "HOSTED_ABORTED")', HA),
+    "b27-judge-asked-on-green": (HC, 'and h["verdict"] == "RED" and reading.get("stale") is not True:', 'and reading.get("stale") is not True:', HA),
+    "b27-live-rows-unjudged": (PY, "stale_judge=judge, gate_judge=gate,\n                                 abort_judge=abort)", "stale_judge=judge, gate_judge=gate)", HA),
+    "b27-recorded-rows-unjudged": (PY, "ab = recorded_abort(a, abort, str(head), r)", "ab = {}", HA),
+    "b27-recorded-attempt-unfound": (PY, 'if any(e["id"] not in listed for e in red):', "if False:", HA),
+    "b27-pr-level-stays-red": (PY, 'github = "PENDING"   # B27', 'github = "RED"   # B27', HA),
+    "b27-pr-level-one-aborted-is-enough": (PY, "red_ctx <= {x[", "red_ctx & {x[", HA),
     "parent-pid-not-handed": (PY, '"LOCALCI_PARENT_PID": str(os.getpid())}', '"LOCALCI_PARENT_PID": "0"}', HF),
     "parent-watch-unwired": (RUN_PY, '    if a.cmd in ("plan", "run"):\n        watch_parent()', '    if False:\n        watch_parent()', HF),
     "parent-watch-pid-1": (RUN_PY, 'if not raw.isdigit() or int(raw) <= 1:', 'if not raw.isdigit():', HF),

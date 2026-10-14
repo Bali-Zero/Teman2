@@ -15,6 +15,9 @@ commit statuses of the run's candidate sha) with the local per-context verdict a
                     module has no git); without one, or when the judge cannot read its evidence, the row keeps its class and says so.
                     (B12b) Also when the hosted RED of a gate-reading context was its reader's PENDING read, given before the gate
                     verdict the local run read (``stale_why: gate_posted_after_hosted``), decided by a caller-supplied ``gate_judge``
+    HOSTED_ABORTED  (B27) the hosted RED was a check run cancelled by the job timeout in a SETUP step with no logic step run: no hosted
+                    verdict at all, so the pair is never compared. Decided by a caller-supplied ``abort_judge``; without one, or when it
+                    cannot read its evidence, the row keeps its class.
 
 The hosted verdict of a context is order-free and RED-DOMINANT: red if ANY entry GitHub lists
 under that name for the commit is red (the latest attempt of each check; a red that a re-run
@@ -48,7 +51,7 @@ from pathlib import Path
 
 DEFAULT_REPO = "Bali-Zero/Teman2"
 DEFAULT_BRANCH = "main"
-CLASSES = ("AGREE", "FALSE_GREEN", "FALSE_RED", "LOCAL_BLIND", "HOSTED_PENDING", "HOSTED_STALE")
+CLASSES = ("AGREE", "FALSE_GREEN", "FALSE_RED", "LOCAL_BLIND", "HOSTED_PENDING", "HOSTED_STALE", "HOSTED_ABORTED")
 COMPARED = ("AGREE", "FALSE_GREEN", "FALSE_RED")   # a local verdict set beside a hosted one
 COVERAGES = ("full", "partial")   # anything else a status.json says (or omits) is "unrecorded", which is never full
 # skipped/neutral satisfy a required check on GitHub, so they are green FOR THE GATE; the raw conclusions stay in the row.
@@ -225,6 +228,26 @@ def gate_reading(judge, name: str, h: dict, statuses: list) -> dict:
             "hosted_completed_at": h["completed_at"], "gate_posted_at": got.get("gate_posted_at"), "plan_at": got.get("plan_at")}
 
 
+def abort_reading(judge, name: str, h: dict) -> dict:
+    """B27: what ``judge(name, hosted)`` makes of one compared row whose hosted verdict is RED: did every red run die in a setup step with no
+    logic step run? The judge answers None when the ground does not apply (nothing is added). Total like ``gate_reading``: a judge that raises
+    or answers in any other shape gives ``abort_check: unknown (<why>)`` and the row keeps its class."""
+    try:
+        got = judge(name, h)
+        if got is None:
+            return {}
+        aborted = got.get("aborted")
+        if aborted not in (True, False):
+            raise CompareError(f"the abort judge answered aborted={aborted!r}")
+        if aborted and not (isinstance(got.get("runs"), list) and got["runs"]):
+            raise CompareError("the abort judge named no run")
+    except Exception as exc:  # noqa: BLE001 — see the docstring
+        return {"abort_check": f"unknown ({type(exc).__name__}: {str(exc)[-200:]})"}
+    if not aborted:
+        return {"abort_check": f"fresh ({str(got.get('why'))[-300:]})"}
+    return {"aborted": True, "abort_check": "aborted", "aborted_runs": got["runs"]}
+
+
 def with_gate(reading: dict, gate: dict) -> dict:
     """B10's reading and B12b's on one row: stale when either ground is, else unknown when either is, else fresh; with no B10 reading
     (no ``stale_judge``), what the gate judge said and nothing it did not."""
@@ -237,7 +260,7 @@ def with_gate(reading: dict, gate: dict) -> dict:
             "stale_check": gate["gate_check"] if gate["gate_check"].startswith("unknown") and not prior.startswith("unknown") else prior}
 
 
-def compare(status: dict, required_checks, check_runs, statuses, stale_judge=None, gate_judge=None) -> dict:
+def compare(status: dict, required_checks, check_runs, statuses, stale_judge=None, gate_judge=None, abort_judge=None) -> dict:
     names = required_names(required_checks)
     if not isinstance(check_runs, list) or not isinstance(statuses, list) or any(not isinstance(x, dict) for x in check_runs + statuses):
         raise CompareError("check_runs / statuses are not lists of objects")
@@ -253,7 +276,12 @@ def compare(status: dict, required_checks, check_runs, statuses, stale_judge=Non
             reading = with_gate(reading, gate_reading(gate_judge, name, h, statuses))
         if reading.get("stale") is True:
             reading["class_before"], klass = klass, "HOSTED_STALE"   # every compared class: a stale GREEN beside a local GREEN is no AGREE either
+        if abort_judge is not None and klass in COMPARED and h["verdict"] == "RED" and reading.get("stale") is not True:
+            reading = {**reading, **abort_reading(abort_judge, name, h)}
+            if reading.get("aborted") is True:   # B27: no hosted verdict ran, so no compared class either
+                reading["class_before"], klass = klass, "HOSTED_ABORTED"
         reading.pop("stale", None)
+        reading.pop("aborted", None)
         rows.append({**reading, "context": name, "class": klass, "hosted": h["verdict"], "hosted_entries": h["entries"],
                      "hosted_counted": h["counted"], "hosted_sources": h["sources"], "hosted_conclusions": h["conclusions"],
                      "local": lo["verdict"], "local_detail": lo["detail"], "coverage": lo["coverage"], "coverage_note": lo["coverage_note"],
