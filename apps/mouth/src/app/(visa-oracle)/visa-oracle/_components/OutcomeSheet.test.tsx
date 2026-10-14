@@ -17,9 +17,12 @@ import {
   demonstratedReviewCauses,
 } from "./OutcomeSheet";
 import {
+  PROHIBITED_ACTIVITY_COPY,
+  PROHIBITED_ACTIVITY_PRODUCT_COPY,
   REVIEW_REASON_COPY,
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   SECOND_HOME_STUDIO_URL,
+  prohibitedActivitiesFor,
 } from "../_lib/engine-adapter";
 import {
   ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS,
@@ -118,6 +121,7 @@ const CANDIDATE: OutcomeCandidate = {
       sourceIds: [source.id],
     },
   ],
+  prohibitedActivities: [],
 };
 
 function common() {
@@ -2064,6 +2068,135 @@ describe("OutcomeSheet — price heading and shared price basis (VN-investor-I-M
         );
         cleanup();
       }
+    },
+  );
+});
+
+describe("OutcomeSheet — What this permit does not allow (PR-20)", () => {
+  const E33_IDENTIFIERS = [
+    "overstay",
+    "work_inconsistent_with_permit",
+    "sale_of_goods_or_services",
+    "guarantee_value_below_commitment",
+  ] as const;
+
+  function outcomeWithProhibitions(
+    productCode: string,
+    identifiers: readonly string[] | undefined,
+  ): OutcomeViewModel {
+    const base = outcomeFor("SUPPORTED_CANDIDATES");
+    if (base.state !== "SUPPORTED_CANDIDATES") {
+      throw new Error("test fixture state mismatch");
+    }
+    return {
+      ...base,
+      candidates: [
+        {
+          ...CANDIDATE,
+          code: productCode,
+          prohibitedActivities: prohibitedActivitiesFor(
+            productCode,
+            identifiers,
+          ),
+        },
+      ],
+    };
+  }
+
+  it.each<Language>(["en", "id"])(
+    "renders the prohibited activities heading and bullets for E33 in %s, including selling goods or services and dual-activity reporting, with no raw codes",
+    (language) => {
+      expect(translate("en", "outcome.prohibited_title")).toBe(
+        "What this permit does not allow",
+      );
+      expect(translate("id", "outcome.prohibited_title")).toBe(
+        "Yang tidak diperbolehkan dengan izin ini",
+      );
+
+      const { container } = render(
+        <OutcomeSheet
+          language={language}
+          outcome={outcomeWithProhibitions("E33", E33_IDENTIFIERS)}
+          facts={FACTS}
+        />,
+      );
+
+      expect(
+        screen.getByRole("heading", {
+          name: translate(language, "outcome.prohibited_title"),
+        }),
+      ).toBeInTheDocument();
+
+      const items = container.querySelectorAll(
+        ".oracle-candidate__prohibited .oracle-reason-list > li",
+      );
+      expect(items).toHaveLength(4);
+      expect(items[0]).toHaveTextContent(
+        PROHIBITED_ACTIVITY_COPY.overstay[language],
+      );
+      expect(items[1]).toHaveTextContent(
+        PROHIBITED_ACTIVITY_PRODUCT_COPY.E33.work_inconsistent_with_permit[
+          language
+        ],
+      );
+      expect(items[2]).toHaveTextContent(
+        PROHIBITED_ACTIVITY_COPY.sale_of_goods_or_services[language],
+      );
+      expect(items[3]).toHaveTextContent(
+        PROHIBITED_ACTIVITY_COPY.guarantee_value_below_commitment[language],
+      );
+
+      for (const rawId of E33_IDENTIFIERS) {
+        expect(container.innerHTML).not.toContain(rawId);
+      }
+    },
+  );
+
+  it.each<Language>(["en", "id"])(
+    "omits the prohibited activities section when prohibited_activities is absent, empty, or contains only prototype keys, and renders duplicate identifiers once in %s",
+    (language) => {
+      for (const identifiers of [
+        undefined,
+        [] as const,
+        ["constructor", "toString"] as const,
+      ]) {
+        const { container, unmount } = render(
+          <OutcomeSheet
+            language={language}
+            outcome={outcomeWithProhibitions("E33", identifiers)}
+            facts={FACTS}
+          />,
+        );
+
+        expect(
+          screen.queryByRole("heading", {
+            name: translate(language, "outcome.prohibited_title"),
+          }),
+        ).toBeNull();
+        expect(
+          container.querySelector(".oracle-candidate__prohibited"),
+        ).toBeNull();
+        unmount();
+      }
+
+      const { container } = render(
+        <OutcomeSheet
+          language={language}
+          outcome={outcomeWithProhibitions("E33", [
+            "overstay",
+            "overstay",
+            "constructor",
+          ])}
+          facts={FACTS}
+        />,
+      );
+      const items = container.querySelectorAll(
+        ".oracle-candidate__prohibited .oracle-reason-list > li",
+      );
+      expect(items).toHaveLength(1);
+      expect(items[0]).toHaveTextContent(
+        PROHIBITED_ACTIVITY_COPY.overstay[language],
+      );
     },
   );
 });

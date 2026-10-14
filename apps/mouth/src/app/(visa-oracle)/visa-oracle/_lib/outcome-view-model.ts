@@ -148,6 +148,8 @@ export interface OutcomeCandidate {
   /** Present only when the engine priced a stay-permit duration (seq-26). */
   duration?: OutcomeDuration;
   documents: readonly OutcomeDocument[];
+  /** Curated EN/ID sentences for what this permit does not allow (PR-20). */
+  prohibitedActivities: readonly LocalizedText[];
 }
 
 export interface OutcomeDuration {

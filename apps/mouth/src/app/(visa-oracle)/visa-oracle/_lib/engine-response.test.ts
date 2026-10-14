@@ -233,4 +233,45 @@ describe("Visa Oracle engine response runtime guard", () => {
       );
     }
   });
+
+  it("validates display.candidates[].prohibited_activities (optional, malformed shapes, duplicates allowed)", () => {
+    const valid = makeVisaOracleResponse();
+    valid.display.candidates[0].prohibited_activities = [
+      "overstay",
+      "sale_of_goods_or_services",
+    ];
+    expect(
+      parseVisaOracleEvaluateResponse(valid).display.candidates[0]
+        .prohibited_activities,
+    ).toEqual(["overstay", "sale_of_goods_or_services"]);
+
+    const withoutKey = makeVisaOracleResponse();
+    delete (
+      withoutKey.display.candidates[0] as unknown as Record<string, unknown>
+    ).prohibited_activities;
+    expect(
+      parseVisaOracleEvaluateResponse(withoutKey).display.candidates[0]
+        .prohibited_activities,
+    ).toBeUndefined();
+
+    for (const bad of [null, "overstay", 123, [42], [""], ["   "]]) {
+      const malformed = makeVisaOracleResponse();
+      (
+        malformed.display.candidates[0] as unknown as Record<string, unknown>
+      ).prohibited_activities = bad;
+      expect(() => parseVisaOracleEvaluateResponse(malformed)).toThrowError(
+        expect.objectContaining({ code: "MALFORMED_RESPONSE" }),
+      );
+    }
+
+    const duplicate = makeVisaOracleResponse();
+    duplicate.display.candidates[0].prohibited_activities = [
+      "overstay",
+      "overstay",
+    ];
+    expect(
+      parseVisaOracleEvaluateResponse(duplicate).display.candidates[0]
+        .prohibited_activities,
+    ).toEqual(["overstay", "overstay"]);
+  });
 });

@@ -1,0 +1,171 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  2026-10-11 E33 audit plan PR-20 (scratchpad e33-audit-result.json, key plan): Zero's mandate to
+  close the E33 family end to end. The result says what the permit does not allow, from the signed
+  pack's prohibited_activities (PR-19 backend) rendered on the mouth.
+mission: >-
+  A visitor reading a Visa Oracle result sees, in English or Bahasa Indonesia, what their permit
+  does not allow, in words the signed rule and the official pages support.
+lanes:
+  - lane: pr20-build
+    role: build
+    seat: >-
+      gemini-4-argon-high via agy (external seat: edits files, never runs git), run 3 (runs 1-2 died
+      on a headless shell denial and a network flap, no edits); Claude driver touched: whitespace-only
+      identifier rejected as malformed, optional chaining for tsc, prettier, then the cure commit.
+  - lane: pr20-redteam-opus
+    role: review
+    seat: claude-opus-5-5 adversarial red team, read-only review of origin/main...HEAD at 220c10f6cf.
+  - lane: pr20-redteam-codex
+    role: review
+    seat: >-
+      codex gpt-5.6-sol, rollout-2026-10-14T09-07-45-01a137f3-7a43-7893-8175-d7a02e114851.jsonl
+      (second run; the first, session 01a137dc, timed out with no final message).
+  - lane: pr20-ground-truth
+    role: ground_truth
+    seat: >-
+      Signed pack seq-29 (rulepack-prod-029.signed.json) prohibited_activities per product, and the saved
+      official pages in research/visa/2026-10-13-organ-reattest-seq29/text/; E33/E33E reporting wording from
+      research/secondhome/e33-fact-registry.json#e33_not_work_visa.
+    nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
+    query_hash: "0000000000000000000000000000000000000000000000000000000000000000" # pragma: allowlist secret
+    note: >-
+      Placeholder hash: this lane read files on disk, no notebook was queried; the census test reads the
+      newest signed pack itself.
+pii_scan: clean
+bites:
+  consumer: >-
+    the public Visa Oracle result card (OutcomeSheet "What this permit does not allow" block, fed by
+    engine-adapter prohibitedActivitiesFor) on https://balizero.com/visa-oracle, observed by the census test
+    that reads the newest signed pack.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_prohibited_activities_copy.py
+  expect: "contains:prohibited-activities copy holds"
+receipts:
+  - claim: The PR-20 observer runs the copy census test and requires all 8 tests plus four named ones.
+    cmd: python3 scripts/ci/observe_visa_oracle_prohibited_activities_copy.py
+    result: "Tests  8 passed (8); prohibited-activities copy holds"
+    exit: 0
+    ts: "2026-10-14T07:44:00Z"
+    seat: this session
+  - claim: The observer's verdict helpers are guilt-and-innocence tested.
+    cmd: python3 -m pytest scripts/tests/test_observe_visa_oracle_prohibited_activities_copy.py -q -p no:cacheprovider
+    result: "4 passed"
+    exit: 0
+    ts: "2026-10-14T07:44:30Z"
+    seat: this session
+  - claim: The whole visa-oracle mouth tree passes at head 73bd656a0f.
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 58 passed (58); Tests 1503 passed (1503)"
+    exit: 0
+    ts: "2026-10-14T07:46:00Z"
+    seat: this session
+  - claim: apps/mouth typechecks.
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-14T07:46:30Z"
+    seat: this session
+  - claim: The replay-pins census holds at its new floor of 255.
+    cmd: python3 scripts/ci/observe_visa_oracle_replay_pins.py
+    result: "Tests  255 passed (255); replay pins hold"
+    exit: 0
+    ts: "2026-10-14T07:47:00Z"
+    seat: this session
+decisions:
+  - id: D-reporting-wording
+    decision: >-
+      The E33_EMPLOYMENT_NOT_COVERED change from "permission" to "reporting" is kept: the fact registry entry
+      e33_not_work_visa (confirmed, live fetch 2026-10-13) quotes "pelaporan rangkap kegiatan ke kantor imigrasi
+      yang menerbitkan izin tinggal" and says E33E carries the same sentence (doctrine cards E33.md:62-64,
+      E33E.md:57-58). The copy says only "report to Immigration", without the issuing-office detail.
+  - id: D-business-meetings-unrendered
+    decision: >-
+      business_meetings renders nothing (UNRENDERED_PROHIBITED_ACTIVITIES, no copy). The pack lists it on A1/B1/C1/C6
+      but the official C1 page, doctrine cards CL-A1B1-01 and tests/scripts/test_c1_c6_price_descriptions.py
+      (KNOWN_DIVERGENCE) say those visas allow business meetings, negotiations and signing. The pack field is a
+      seq-30 correction item; until then the result must not contradict the price catalogue.
+  - id: D-census-floor
+    decision: >-
+      EXPECTED_TESTS in observe_visa_oracle_replay_pins.py goes 252 to 255 because the lane adds tests to pinned
+      files; the new copy census test file is covered by its own observer, not by the pins.
+dissent:
+  - seat: claude-opus-5-5 red team
+    objection: "HIGH: operational_work copy named the bridging permit, but seq-29 carries it on E28B, E28C and E28F."
+    status: CONFIRMED
+    disposition: >-
+      Cured in 73bd656a0f: the bridging clause is removed; a test asserts no bridging or peralihan wording on E28B/E28C/E28F.
+  - seat: claude-opus-5-5 red team
+    objection: "HIGH: selling_goods_services added an unless-your-work-requires-it exception that the D1/D2/D12 pages do not state."
+    status: CONFIRMED
+    disposition: >-
+      Cured in 73bd656a0f: selling_goods_services is flat; the exception stays only on sale_of_goods_or_services (E33 family), pinned by test.
+  - seat: claude-opus-5-5 red team
+    objection: "MEDIUM: the parser threw on a missing or duplicated prohibited_activities, stricter than the optional contract key."
+    status: CONFIRMED
+    disposition: >-
+      Cured in 73bd656a0f: the key is validated only when present, duplicates are dropped in the resolver, null, non-array and blank values stay malformed.
+  - seat: claude-opus-5-5 red team
+    objection: "LOW: exit_terminates_permit reads as a ban on leaving Indonesia."
+    status: CONFIRMED
+    disposition: "Cured in 73bd656a0f: reworded as the permit ending when the holder leaves, EN and ID."
+  - seat: claude-opus-5-5 red team
+    objection: "LOW: unnatural wording (repeated imbalan, E33G double exception, heading, bare noun phrase)."
+    status: CONFIRMED
+    disposition: "Cured in 73bd656a0f: wording polished and the pins updated."
+  - seat: claude-opus-5-5 red team
+    objection: "LOW: business_meetings and study copy go beyond their identifiers."
+    status: CONFIRMED
+    disposition: "Cured in 73bd656a0f: copy kept to the identifier."
+  - seat: claude-opus-5-5 red team
+    objection: "LOW: list key collision on identical EN text, and plain-object lookups resolve Object.prototype names."
+    status: CONFIRMED
+    disposition: >-
+      Cured in 73bd656a0f: own-property lookups (Object.prototype.hasOwnProperty.call) and de-duplication by resolved text; an unknown or prototype identifier renders nothing.
+  - seat: claude-opus-5-5 red team
+    objection: "LOW: the reporting wording change lacks its source in the PR."
+    status: CONFIRMED
+    disposition: "Cited in decision D-reporting-wording and in the PR body."
+  - seat: codex gpt-5.6-sol
+    objection: "MEDIUM: operational_work says bridging permit but seq-29 assigns it to E28B/E28C/E28F."
+    status: CONFIRMED
+    disposition: "Same finding as the Opus HIGH; cured in 73bd656a0f."
+  - seat: codex gpt-5.6-sol
+    objection: "MEDIUM: the E33/E33E override adds the issuing office, which the saved page does not support."
+    status: CONFIRMED
+    disposition: 'Cured in 73bd656a0f: the override says only "report to Immigration".'
+  - seat: codex gpt-5.6-sol
+    objection: "LOW: the census test proves identifier coverage, not that each sentence is honest per product."
+    status: CONFIRMED
+    disposition: >-
+      Cured in 73bd656a0f: product-to-resolved-copy assertions for E28B/E28C/E28F, D1 and the E33 family were added to the census test.
+  - seat: codex gpt-5.6-sol
+    objection: "LOW: the replay-pins floor bump runs neither the new copy census nor the render test."
+    status: CONFIRMED
+    disposition: >-
+      The floor bump is legitimate (the lane adds tests to pinned files); the new observer observe_visa_oracle_prohibited_activities_copy.py runs the census test with required names.
+  - seat: fresh final gate (a9556558)
+    objection: "F1 BLOCKING: A1/B1/C1/C6 results showed 'Attending business meetings' under what the permit does not allow, contradicting the official pages and the catalogue."
+    status: CONFIRMED
+    disposition: "Cured: business_meetings copy removed and the identifier listed as intentionally unrendered; a test pins it renders nothing on A1/B1/C1/C6 and that no copy mentions business meetings."
+  - seat: fresh final gate (a9556558)
+    objection: "F2 LOW: selling_goods_services and paid_employment are stricter than the E30/E31 pages."
+    status: CONFIRMED
+    disposition: "Deferred, not a block: copy follows the signed identifiers; pack harmonization is a seq-30 item."
+  - seat: fresh final gate (a9556558)
+    objection: "F3: the live observation of the second_home walk is owed after merge (mouth merge lands staged until vercel promote)."
+    status: CONFIRMED
+    disposition: "Owed after merge and promote: headless replay on Pro of a second_home walk with a 130k deposit showing the block under E33."
+  - seat: fresh final gate (a9556558)
+    objection: "F5 NIT: ID copy says izin kerja for a visa kerja; census lookup throws on Object.prototype names."
+    status: CONFIRMED
+    disposition: "Cured: ID copy now says visa kerja ini; the census lookup uses hasOwnProperty and a guilt case covers 'constructor'."
+spend:
+  wall_clock_hours: 4
+  adversarial_rounds: 1
+results:
+  mouth_visa_oracle_suite: "58 files, 1503 tests passed"
+  mouth_tsc: clean
+  replay_pins: "255 passed"
+  census_test: "8 passed"

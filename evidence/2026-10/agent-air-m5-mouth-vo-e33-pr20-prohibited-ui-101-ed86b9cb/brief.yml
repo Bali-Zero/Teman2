@@ -1,0 +1,26 @@
+task_id: vo-e33-pr20-prohibited-ui-20261014
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  E33 audit plan PR-20 (Zero's mandate to close the E33 family end to end): the Visa Oracle
+  result card shows a "What this permit does not allow" block built from the signed pack's
+  prohibited_activities identifiers (seq-29), in English and Bahasa Indonesia. Every identifier
+  in the newest signed pack has copy; an identifier with no copy renders nothing, never a raw
+  code. The E33 and E33E employment-not-covered sentence says reporting to Immigration, as the
+  official E33/E33E page does. Wording follows only the signed rule and the saved official pages.
+acceptance:
+  - text: >-
+      The copy census test passes: every pack identifier has EN and ID copy, no bridging wording
+      on operational_work, the work-required exception only on sale_of_goods_or_services, unknown
+      and Object.prototype identifiers render nothing.
+    probe: python3 scripts/ci/observe_visa_oracle_prohibited_activities_copy.py
+  - text: The whole visa-oracle mouth suite, tsc and the replay pins stay green.
+    probe: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+assumptions:
+  - text: >-
+      The reporting wording for E33/E33E is supported by the fact registry entry
+      e33_not_work_visa (live imigrasi.go.id fetch 2026-10-13), not by the seq-29 saved-page
+      folder, which holds no E33 page.
+    status: verified
+    probe: grep -n rangkap research/secondhome/e33-fact-registry.json
