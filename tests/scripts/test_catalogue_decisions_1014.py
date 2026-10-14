@@ -139,7 +139,9 @@ def test_book_retirement_card_points_to_e33f_offshore_with_same_price():
     normalized_book_text = re.sub(r"\(\s+", "(", normalized_book_text)
     target_call = (
         'pricingBackedVisaService("kitas_permits", '
-        '"E33F Second Home Senior (1 Year, Offshore)"'
+        '"E33F Second Home Senior (1 Year, Offshore)", '
+        "undefined, "
+        f'"{SPONSOR_SENTENCE}")'
     )
     assert target_call in normalized_book_text
     assert '"Retirement (Offshore)"' not in book_text
@@ -209,12 +211,22 @@ def test_sync_script_omits_internal_rows_in_build_payload_and_iter_service_rows(
 
 
 # 6. Retirement KITAP + MERP description_en (E33F naming, no generic Retirement KITAS)
+PRICELIST_MD_PATH = ROOT / "docs" / "pricing" / "Bali_Zero_Price_List_2026.md"
+EXPECTED_RETIREMENT_KITAP_PRICE = "45.000.000 IDR"
+EXPECTED_RETIREMENT_KITAP_DESCRIPTION = (
+    "Permanent residence permit (KITAP) for retirees who have already held an "
+    "E33F Second Home Senior KITAS, bundled with Multiple Exit Re-entry Permit "
+    "(MERP). The Multiple Exit Re-entry Permit (MERP) is automatically included "
+    "in the KITAP per UU 63/2024 — no separate document or fee."
+)
 OLD_RETIREMENT_KITAP_DESCRIPTION = (
     "Permanent residence permit (KITAP) for retirees who have already held a "
     "Retirement KITAS, bundled with Multiple Exit Re-entry Permit (MERP). The "
     "Multiple Exit Re-entry Permit (MERP) is automatically included in the KITAP "
     "per UU 63/2024 — no separate document or fee."
 )
+FORBIDDEN_KITAP_SPLIT_TOKENS = ("pnbp", "split", "+ service")
+FEE_SPLIT_SUFFIX = " PNBP 7.000.000 + service fee 38.000.000"
 
 
 def _kitap_permits(data: dict) -> dict[str, dict]:
@@ -224,18 +236,47 @@ def _kitap_permits(data: dict) -> dict[str, dict]:
 
 
 def _check_retirement_kitap_description(data: dict) -> list[str]:
-    """Return violations if 'Retirement KITAP + MERP' description_en lacks 'E33F' or contains 'Retirement KITAS'."""
-    desc = _kitap_permits(data)["Retirement KITAP + MERP"]["description_en"]
+    """Return violations for 'Retirement KITAP + MERP' price, description_en, or forbidden fee-split tokens."""
+    row = _kitap_permits(data)["Retirement KITAP + MERP"]
+    desc = row["description_en"]
     issues: list[str] = []
+    if row.get("price") != EXPECTED_RETIREMENT_KITAP_PRICE:
+        issues.append(f"unexpected price: {row.get('price')!r}")
     if "E33F" not in desc:
         issues.append("missing 'E33F'")
     if "retirement kitas" in desc.lower():
+        issues.append("contains 'Retirement KITAS'")
+    for token in FORBIDDEN_KITAP_SPLIT_TOKENS:
+        if token in desc.lower():
+            issues.append(f"contains forbidden token {token!r}")
+    if desc != EXPECTED_RETIREMENT_KITAP_DESCRIPTION:
+        issues.append("description_en does not match expected verbatim string")
+    return issues
+
+
+def _check_retirement_kitap_md(md_text: str) -> list[str]:
+    """Return violations if the MD 'Retirement KITAP + MERP' row lacks E33F or names Retirement KITAS."""
+    matching_lines = [
+        line for line in md_text.splitlines() if "**Retirement KITAP + MERP**" in line
+    ]
+    if len(matching_lines) != 1:
+        return [f"expected 1 Retirement KITAP + MERP row, found {len(matching_lines)}"]
+    row_line = matching_lines[0]
+    issues: list[str] = []
+    if "E33F Second Home Senior KITAS" not in row_line:
+        issues.append("missing 'E33F Second Home Senior KITAS'")
+    if "retirement kitas" in row_line.lower():
         issues.append("contains 'Retirement KITAS'")
     return issues
 
 
 def test_retirement_kitap_merp_description_names_e33f_and_convicts_old_text():
     canonical = _load_json(CANONICAL_PATH)
+    canonical_row = canonical["services"]["kitap_permits"]["Retirement KITAP + MERP"]
+    assert canonical_row["price"] == EXPECTED_RETIREMENT_KITAP_PRICE
+    assert canonical_row["description_en"] == EXPECTED_RETIREMENT_KITAP_DESCRIPTION
+    for token in FORBIDDEN_KITAP_SPLIT_TOKENS:
+        assert token not in canonical_row["description_en"].lower()
     assert _check_retirement_kitap_description(canonical) == []
 
     mutated_canonical = copy.deepcopy(canonical)
@@ -245,18 +286,24 @@ def test_retirement_kitap_merp_description_names_e33f_and_convicts_old_text():
     assert _check_retirement_kitap_description(mutated_canonical) == [
         "missing 'E33F'",
         "contains 'Retirement KITAS'",
+        "description_en does not match expected verbatim string",
+    ]
+
+    mutated_canonical_split = copy.deepcopy(canonical)
+    mutated_canonical_split["services"]["kitap_permits"]["Retirement KITAP + MERP"][
+        "description_en"
+    ] = EXPECTED_RETIREMENT_KITAP_DESCRIPTION + FEE_SPLIT_SUFFIX
+    assert _check_retirement_kitap_description(mutated_canonical_split) == [
+        "contains forbidden token 'pnbp'",
+        "contains forbidden token '+ service'",
+        "description_en does not match expected verbatim string",
     ]
 
     mirror = _load_json(MIRROR_PATH)
+    mirror_row = mirror["services_by_category"]["kitap_permits"]["Retirement KITAP + MERP"]
+    assert mirror_row["price"] == EXPECTED_RETIREMENT_KITAP_PRICE
+    assert mirror_row["description_en"] == EXPECTED_RETIREMENT_KITAP_DESCRIPTION
     assert _check_retirement_kitap_description(mirror) == []
-    assert (
-        mirror["services_by_category"]["kitap_permits"]["Retirement KITAP + MERP"][
-            "description_en"
-        ]
-        == canonical["services"]["kitap_permits"]["Retirement KITAP + MERP"][
-            "description_en"
-        ]
-    )
 
     mutated_mirror = copy.deepcopy(mirror)
     mutated_mirror["services_by_category"]["kitap_permits"]["Retirement KITAP + MERP"][
@@ -265,5 +312,26 @@ def test_retirement_kitap_merp_description_names_e33f_and_convicts_old_text():
     assert _check_retirement_kitap_description(mutated_mirror) == [
         "missing 'E33F'",
         "contains 'Retirement KITAS'",
+        "description_en does not match expected verbatim string",
     ]
 
+    mutated_mirror_split = copy.deepcopy(mirror)
+    mutated_mirror_split["services_by_category"]["kitap_permits"]["Retirement KITAP + MERP"][
+        "description_en"
+    ] = EXPECTED_RETIREMENT_KITAP_DESCRIPTION + FEE_SPLIT_SUFFIX
+    assert _check_retirement_kitap_description(mutated_mirror_split) == [
+        "contains forbidden token 'pnbp'",
+        "contains forbidden token '+ service'",
+        "description_en does not match expected verbatim string",
+    ]
+
+    md_text = PRICELIST_MD_PATH.read_text(encoding="utf-8")
+    assert _check_retirement_kitap_md(md_text) == []
+    mutated_md = md_text.replace(
+        "who have already held an E33F Second Home Senior KITAS",
+        "who have already held a Retirement KITAS",
+    )
+    assert _check_retirement_kitap_md(mutated_md) == [
+        "missing 'E33F Second Home Senior KITAS'",
+        "contains 'Retirement KITAS'",
+    ]

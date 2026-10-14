@@ -115,11 +115,11 @@ Retirement (55+) is offered through the Second Home senior routes (E33F, 1 year,
 
 _Permanent residence permits and multiple re-entry permits._
 
-| Service                     | Description                                                                                                                                   | Price          |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
-| **Investor KITAP + MERP**   | Permanent residence permit (KITAP) for investors holding shares in a PT PMA, bundled with Multiple Exit Re-entry Permit (MERP).               | 55.000.000 IDR |
-| **Dependent KITAP + MERP**  | Permanent residence permit (KITAP) for dependent family members of a primary KITAP holder, bundled with Multiple Exit Re-entry Permit (MERP). | 33.000.000 IDR |
-| **Retirement KITAP + MERP** | Permanent residence permit (KITAP) for retirees who have already held a Retirement KITAS, bundled with Multiple Exit Re-entry Permit (MERP).  | 45.000.000 IDR |
+| Service                     | Description                                                                                                                                                | Price          |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| **Investor KITAP + MERP**   | Permanent residence permit (KITAP) for investors holding shares in a PT PMA, bundled with Multiple Exit Re-entry Permit (MERP).                            | 55.000.000 IDR |
+| **Dependent KITAP + MERP**  | Permanent residence permit (KITAP) for dependent family members of a primary KITAP holder, bundled with Multiple Exit Re-entry Permit (MERP).              | 33.000.000 IDR |
+| **Retirement KITAP + MERP** | Permanent residence permit (KITAP) for retirees who have already held an E33F Second Home Senior KITAS, bundled with Multiple Exit Re-entry Permit (MERP). | 45.000.000 IDR |
 
 ---
 

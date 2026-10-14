@@ -31,8 +31,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_ROOT = REPO_ROOT / "apps" / "backend-rag"
 TIMEOUT_SECONDS = 600
 
-ROOT_TESTS = ["tests/scripts/test_sync_pricing_collection_prices_internal_1014.py"]
-ROOT_FLOOR = 6
+ROOT_TESTS = [
+    "tests/scripts/test_sync_pricing_collection_prices_internal_1014.py",
+    "tests/scripts/test_catalogue_decisions_1014.py",
+]
+ROOT_FLOOR = 23
 
 BACKEND_TESTS = [
     "backend/tests/services/pricing/test_internal_rows_leave_search_1014.py",
