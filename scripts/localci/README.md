@@ -655,6 +655,12 @@ set at the BASE) and `pr_side`, copies the local terms from the original `would_
 journalled once as `skipped: pending_expired`. Retry rows are counted in `window.pending_retry` (`would_enqueue`, `would_merge`, `would_merge_ok`),
 never as decisions. Before the flip it runs as shadow and changes nothing on GitHub.
 
+**B23: the lane goes to PRs that can merge** (spec B23). `triage()` orders PRs labelled `localci:merge-shadow-ok` before the unlabelled
+ones (the old order inside each group), and with `LOCALCI_MERGER_PHASE_F=1` selects no unlabelled PR at all (the label's actor and
+timing are still checked at merge time). A `(pr, head)` whose newest decision, at any base, was BLOCKED with `gate_pending` is not decided
+again at a new base until `gate_ready` says its gate verdict is posted and its pending hosted runs completed after it; a failed read
+defers. Each deferred `(pr, head)` is journalled once as `skipped: gate_pending_deferred`.
+
 ### Report (phase D's instrument)
 
     python scripts/localci/merger.py report [--repo Bali-Zero/Teman2] [--base main] [--state-dir ...] [--since 2026-10-07]
