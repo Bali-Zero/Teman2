@@ -183,6 +183,12 @@ def get_price(pricing: dict, path: tuple[str, ...], expected_name: str) -> str:
     if not isinstance(node, dict):
         raise SystemExit(f"\n❌ PRICE PATH IS NOT AN ENTRY — services.{'.'.join(path)}\n")
 
+    if node.get("internal") is True:
+        raise SystemExit(
+            f"\n❌ INTERNAL PRICE ROW — refusing to print a row marked internal in the price list.\n"
+            f"   path: services.{'.'.join(path)}\n"
+        )
+
     actual_name = node.get("name", "")
     if actual_name != expected_name:
         raise SystemExit(
