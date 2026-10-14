@@ -66,7 +66,29 @@ def test_coverage_decided_counts_only_prs_localci_decided_at_the_merged_head_and
     listing = [merged(A, n=1), merged(B, n=2), merged(C, n=3), {**merged(A, n=4), "merged_at": None}]
     got = measure(rows, [(1, A), (2, B), (3, "d" * 40)], prs, listing)   # PR 3 was decided at another head than the one merged
     assert (got["merged_decided"], got["coverage_decided"]) == (2, 0.5)
-    assert (got["merged_all"], got["coverage_all"]) == (3, pytest.approx(1 / 3))
+    assert (got["merged_all_approx"], got["coverage_all_approx"]) == (3, pytest.approx(1 / 3))
+
+
+def test_a_replay_decision_is_not_a_decided_head():
+    replay = {"kind": "decision", "pr": 1, "head_sha": A, "replay": True}
+    got = mg.liveness([row(pr=2, head=B)], [replay, {"kind": "decision", "pr": 2, "head_sha": B}], {1: merged(A), 2: merged(B)}, None, NOW)
+    assert got["merged_decided"] == 1 and got["coverage_decided"] == 1.0   # PR 1 was only replayed: it never had a would_enqueue to be covered by
+
+
+def test_label_ok_rows_counts_the_mergeable_rows_that_also_carry_the_label():
+    got = measure([row(pr=1), row(pr=2, false=("label_privileged",)), row(pr=3, false=("label_privileged",)), row(pr=4, false=("open",))])
+    assert got["mergeable_rows"] == 3 and got["label_ok_rows"] == 1
+
+
+def test_the_ticks_report_never_reads_the_merged_listing(tmp_path, monkeypatch):
+    recs, gh = ready_world()
+    state = tmp_path / "state"
+    state.mkdir()
+    (state / "decisions.jsonl").write_text("".join(__import__("json").dumps(r) + "\n" for r in recs))
+    monkeypatch.setattr(mg.hc, "gh_get", gh)
+    monkeypatch.setattr(mg, "merged_listing", lambda a: pytest.fail("the tick's report read the closed-PR listing"))
+    _, out = mg.report(__import__("argparse").Namespace(repo="o/r", base="main", state_dir=str(state), since=None), emit=False)
+    assert out["liveness"]["coverage_all_approx"] is None and out["liveness"]["merged_all_approx"] is None
 
 
 def test_a_row_at_another_head_of_the_same_pr_is_no_coverage():
@@ -76,7 +98,7 @@ def test_a_row_at_another_head_of_the_same_pr_is_no_coverage():
 
 def test_an_unreadable_listing_leaves_coverage_all_null_and_never_touches_the_decided_view():
     got = measure([row()], [(1, A)], {1: merged(A)}, listing=None)
-    assert got["coverage_all"] is None and got["merged_all"] is None and got["coverage_decided"] == 1.0
+    assert got["coverage_all_approx"] is None and got["merged_all_approx"] is None and got["coverage_decided"] == 1.0
 
 
 @pytest.mark.parametrize(("n_rows", "covered", "of", "ok"), [(10, 4, 5, True), (9, 4, 5, False), (10, 3, 4, False), (10, 0, 0, False), (10, 1, 1, True)])
@@ -98,7 +120,7 @@ def test_the_report_carries_the_block_and_prints_ready_and_liveness_ok_explicitl
     rc, rep = run_report(tmp_path, monkeypatch, recs, gh)
     lv = rep["liveness"]
     assert lv["mergeable_rows"] == 1 and lv["merged_decided"] == 1 and lv["coverage_decided"] == 1.0 and lv["liveness_ok"] is False   # one row of ten
-    assert lv["coverage_all"] is None   # FakeGH has no listing: reported, not refused
+    assert lv["coverage_all_approx"] is None   # FakeGH has no listing: reported, not refused
     out = capsys.readouterr().out
     assert "phase E READY: false liveness_ok: false:" in out and "liveness (B24, last 48 h): mergeable_rows=1" in out
 

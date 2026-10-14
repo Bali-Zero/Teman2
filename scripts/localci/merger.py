@@ -1969,7 +1969,7 @@ def report(a, emit: bool = True) -> tuple[int, dict]:
         print(f"hosted_red_merged: #{h['pr']} merged at {h['merge_commit_sha'][:12]} with required red: {', '.join(h['red'])}")
     lv = live_block
     print(f"liveness (B24, last {lv['window_h']} h): mergeable_rows={lv['mergeable_rows']} (needs >= {LIVENESS_MIN_ROWS}), coverage_decided={lv['coverage_decided']} "
-          f"of {lv['merged_decided']} merged-and-decided PR(s) (needs >= {LIVENESS_MIN_COVERAGE}), coverage_all={lv['coverage_all']} of {lv['merged_all']} merged PR(s) (reported only)")
+          f"of {lv['merged_decided']} merged-and-decided PR(s) (needs >= {LIVENESS_MIN_COVERAGE}), label_ok_rows={lv['label_ok_rows']}, coverage_all_approx={lv['coverage_all_approx']} of {lv['merged_all_approx']} merged PR(s) (one page of 100 closed PRs; reported only)")
     print(f"phase E READY: {str(ready).lower()} liveness_ok: {str(lv['liveness_ok']).lower()}: needs 0 FALSE_GREEN and >= {READY_MIN_MERGES} compared merges and >= {READY_MIN_DAYS} days between the first "
           f"and last compared merge (a merge counts when GitHub merged the decided candidate and >= {MIN_COMPARED_CONTEXTS} contexts were "
           f"compared, >= {MIN_COMPARED_FULL} of them full and at most {MAX_COMPARED_PARTIAL} partial); now false_green={fg} {stale_note}, "
@@ -1996,17 +1996,20 @@ def in_liveness_window(ts, clock: float) -> bool:
 
 def liveness(window: list, decisions: list, merged_prs: dict, listing: list | None, clock: float) -> dict:
     """B24: ``mergeable_rows`` over the trailing 48 h; ``coverage_decided`` over the PRs GitHub merged in it that LocalCI decided at their
-    merged head; ``coverage_all`` (reported only) over every PR GitHub merged in it, ``None`` when ``listing`` is. ``liveness_ok`` needs both."""
+    merged head (replay decisions do not count as decided); ``label_ok_rows`` of the mergeable rows also had ``label_privileged`` true;
+    ``coverage_all_approx`` (reported only, one page of 100 closed PRs) over every PR GitHub merged in it, ``None`` when ``listing`` is.
+    ``liveness_ok`` needs rows and ``coverage_decided``."""
     mergeable = [r for r in window if mergeable_row(r) and in_liveness_window(r.get("ts"), clock)]
     heads = {(r.get("pr"), r.get("head_sha")) for r in mergeable}
-    decided_heads = {(d.get("pr"), d.get("head_sha")) for d in decisions}
+    decided_heads = {(d.get("pr"), d.get("head_sha")) for d in decisions if d.get("replay") is not True}   # a replay never journals a would_enqueue
     decided = [(n, head_of(p)) for n, p in merged_prs.items() if p.get("merged") is True and in_liveness_window(p.get("merged_at"), clock)
                and (n, head_of(p)) in decided_heads]
     cov_decided = sum(1 for k in decided if k in heads) / len(decided) if decided else None
     everyone = [(p.get("number"), head_of(p)) for p in listing or [] if isinstance(p, dict) and in_liveness_window(p.get("merged_at"), clock)]
     cov_all = sum(1 for k in everyone if k in heads) / len(everyone) if listing is not None and everyone else None
     return {"window_h": LIVENESS_WINDOW_S // 3600, "mergeable_rows": len(mergeable), "merged_decided": len(decided), "coverage_decided": cov_decided,
-            "merged_all": len(everyone) if listing is not None else None, "coverage_all": cov_all,
+            "label_ok_rows": sum(1 for r in mergeable if r["criterion"].get("label_privileged") is True),
+            "merged_all_approx": len(everyone) if listing is not None else None, "coverage_all_approx": cov_all,
             "liveness_ok": len(mergeable) >= LIVENESS_MIN_ROWS and cov_decided is not None and cov_decided >= LIVENESS_MIN_COVERAGE}
 
 
