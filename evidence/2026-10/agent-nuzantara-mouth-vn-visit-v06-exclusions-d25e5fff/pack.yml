@@ -39,6 +39,10 @@ results:
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts'
     result: "1 failed | 181 passed (182); reverted"
     ts: "2026-10-14T09:28:30Z"
+  - claim: "The whole visa-oracle mouth suite after merging origin/main (E33 stay-permit length) into the branch."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 59 passed (59); Tests 1568 passed (1568)"
+    ts: "2026-10-14T10:20:08Z"
 decisions:
   - id: D-keep-60-day
     decision: "Of the overstay pair the 60-day reason is kept; ACTIVE_OVERSTAY_SETTLE_FIRST is dropped only when both are present."
