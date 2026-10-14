@@ -53,7 +53,9 @@ def test_live_state_log_entry_is_the_newest():
     text = LOG.read_text(encoding="utf-8")
     dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
     assert dated[0].startswith("- 2026-10-14 (M5")
-    assert "E33 audit waves 1-2" in dated[0]
+    assert "ledger after E33 wave 3" in dated[0]
+    waves12 = [ln for ln in dated if "ledger after the E33 audit waves 1-2" in ln]
+    assert len(waves12) == 1 and dated.index(waves12[0]) == 1
     seq29 = [ln for ln in dated if ln.startswith("- 2026-10-13 (M5")]
     assert seq29 and "seq-29 active" in seq29[0]
 
@@ -146,3 +148,151 @@ def test_rangkap_row_carries_the_consumer_extension_once_in_the_action_field():
         assert rows[0].count(token) == 1, token
         assert token in action and token not in proof, token
     assert "live page text" in proof
+
+
+E33_WAVE3 = (
+    ("8466", "7c9184772a"),
+    ("8467", "ac8a106930"),
+    ("8468", "a14ee32144"),
+    ("8469", "7391929b46"),
+    ("8493", "55edebae5b"),
+    ("8494", "3d2c743a48"),
+)
+
+
+def _wave3_entry() -> str:
+    text = LOG.read_text(encoding="utf-8")
+    heads = [ln for ln in text.splitlines() if ln.startswith("- 2026-10-14 (M5") and "ledger after E33 wave 3" in ln]
+    assert len(heads) == 1
+    start = text.index(heads[0])
+    end = text.index("\n- 20", start + 1)
+    return " ".join(text[start:end].split())
+
+
+def _pairs_ok(body: str) -> bool:
+    """Each `#PR ...` segment (up to the next `; #` or the end of clause (1)) carries ITS OWN merge sha."""
+    import re
+
+    for pr, sha in E33_WAVE3:
+        seg = re.search(rf"#{pr} .*?(?=; #\d{{4}} |\n|$)", body)
+        if not seg or f"merge `{sha}`" not in seg.group(0):
+            return False
+        if any(f"merge `{o}`" in seg.group(0) for _, o in E33_WAVE3 if o != sha):
+            return False
+    return True
+
+
+def test_wave3_entry_carries_each_pr_and_merge_sha_exactly_once():
+    body = _wave3_entry()
+    for pr, sha in E33_WAVE3:
+        assert body.count(f"#{pr} ") == 1, pr
+        assert body.count(f"merge `{sha}`") == 1, sha
+    assert _pairs_ok(body)
+
+
+def test_wave3_pr_to_sha_pairing_fails_when_two_shas_are_swapped():
+    body = _wave3_entry()
+    a, b = E33_WAVE3[0][1], E33_WAVE3[1][1]
+    swapped = body.replace(a, "@@").replace(b, a).replace("@@", b)
+    assert swapped != body and not _pairs_ok(swapped)
+
+
+def test_wave3_entry_does_not_call_the_wave_live_without_the_proof_level():
+    body = _wave3_entry()
+    assert "live proof partial" in body and "merged and live" not in body
+    assert body.count("proof level:") >= 5
+    assert "ID NOT proven" in body and "retirement persona shows the block under E33E and E33F, remote-worker innocence persona shows no block" in body
+
+
+def test_wave3_entry_states_the_documentation_catalogue_as_the_code_holds_it():
+    import json
+
+    snap = REPO / "apps/backend-rag/backend/data/bali_zero_documentation_catalog_2026.json"
+    codes = set(json.loads(snap.read_text(encoding="utf-8"))["products"])
+    assert codes == {"E33", "E33A", "E33B", "E33C", "E33E", "E33F", "E33G"}
+    body = _wave3_entry()
+    assert "all seven catalogued E33 codes (E33, E33A, E33B, E33C, E33E, E33F, E33G)" in body
+    assert "E33F seen in the browser walk (EN/ID penjamin line); E33E and E33B seen AVAILABLE in the synthetic-driver probe; E33, E33A, E33C and E33G not seen live" in body and "out-of-catalogue code UNKNOWN" in body
+    assert "six wave-3 PRs merged, live proof partial" in body and "seven Zero decisions" in body
+    for token in ("dpl_4V8f1nWHfYgEWYcbJ6e4QNjfMJaB", "dpl_7kib2aoAPDm1vZrN94dzTbHLxAGv",
+                  "issuecomment-6166176350", "issuecomment-6166321868", "Rp 14.000.000", "45.000.000"):
+        assert body.count(token) >= 1, token
+
+
+def test_wave3_entry_records_8459_8460_and_the_corrected_proof_levels():
+    body = _wave3_entry()
+    for token in ("bd45ad8e33", "098b7f8025", "issuecomment-6158197835", "issuecomment-6158440541",
+                  "dpl_hKpvZA2NAD3DrVr8nvEqurj7HuDq", "eff946e0d4"):
+        assert body.count(token) == 1, token
+    assert "`/health` matched only" not in body and "a test, not a live observation" not in body
+
+
+def test_wave3_entry_names_the_three_c4_items_and_the_in_flight_lanes():
+    body = _wave3_entry()
+    for token in ("business_meetings", "terkecuali diperlukan dalam pekerjaannya", "paid_employment",
+                  "catalogue-decisions", "zantara-e33f", "brochure-prices", "stay-invariants",
+                  "pr10", "vo-copy", "tree-invest", "ID NOT proven"):
+        assert body.count(token) >= 1, token
+
+
+def test_skill_live_state_leads_with_wave3_and_stays_an_index():
+    text = SKILL.read_text(encoding="utf-8")
+    block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
+    assert block.index("2026-10-14 (newest): E33 wave 3 merged, live proof partial") < block.index("2026-10-13 position")
+    for pr, sha in E33_WAVE3:
+        assert block.count(f"#{pr} ") == 1, pr
+        assert block.count(f"`{sha}`") == 1, sha
+    assert "ID not proven" in block and "In flight, not merged" in block
+
+
+WAVE3_ROWS = (
+    ("re-read before 2027-10-13", "owner: me (passivo — verifica 2027-10-13, next Visa Oracle session)"),
+    ("No runtime staleness check", "owner: me (sessione M5, next Visa Oracle session)"),
+    ("#8468 Indonesian surfaces not proven live", "owner: me (next session, nuzantara-57)"),
+    ("Three PR-20 C4 items", "owner: me (next session, visa-night conductor and signer)"),
+    ("Council seats degraded", "owner: operator[secret]"),
+    ("iQOO has not been attached to Pro since 2026-09-26", "owner: operator[physical]"),
+)
+WAVE3_CLASSES = ("NATURAL-WAIT", "TECH-DEBT", "TECH-DEBT", "TECH-DEBT", "OPERATOR-GATED", "OPERATOR-GATED")
+
+
+def test_wave3_pending_rows_each_open_exactly_once_with_owner_and_proof():
+    opened = _rows("opened 2026-10-14 (M5, VISA-ORACLE E33 wave 3)")
+    assert len(opened) == len(WAVE3_ROWS) == 6
+    for needle, owner in WAVE3_ROWS:
+        rows = [r for r in opened if needle in r]
+        assert len(rows) == 1, needle
+        fields = rows[0].split(" | ")
+        assert len(fields) == 5, needle
+        assert fields[2].startswith("missing arming step:"), needle
+        assert fields[3] == owner, needle
+        assert fields[4].startswith("proof-of-armed:"), needle
+    assert any("2027-10-13T23:11Z" in r for r in opened)
+
+
+def test_wave3_rows_parse_with_the_ledger_grammar_and_classify_as_intended():
+    import json
+    import subprocess
+    import sys
+
+    out = subprocess.run([sys.executable, str(REPO / "scripts/pending_arms_report.py"), "--json"],
+                         capture_output=True, text=True, check=True, cwd=REPO).stdout
+    found: list[dict] = []
+
+    def walk(o):
+        if isinstance(o, dict):
+            if "owner" in o and "class" in o and "VISA-ORACLE E33 wave 3" in json.dumps(o)[:4000]:
+                found.append(o)
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+
+    walk(json.loads(out))
+    assert [(f["owner"], f["class"]) for f in found] == [
+        (o.removeprefix("owner: "), c) for (_, o), c in zip(WAVE3_ROWS, WAVE3_CLASSES)
+    ]
+    annual = _rows("re-read before 2027-10-13")[0]
+    for token in ("seven successful live probes", "observed URLs", "fingerprint"):
+        assert token in annual, token
