@@ -852,6 +852,22 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "rs-source-not-recorded": (HC, '"required_checks": required, "required_source": source,', '"required_checks": required,', RS),
     "rs-protection-ignored": (HC, '_CACHE[key] = ("protection", protection.get("checks") if isinstance(protection, dict) else None)',
                               '_CACHE[key] = ("matrix_after_flip", None)', RS),
+    # B21: a push of unknown outcome is read back before it halts; after phase F's first push, nothing is replayed
+    "b21-unknown-error-is-transport": (PY, "or bool(PUSH_TRANSPORT.search(err))", "or True", (PHASEF,)),
+    "b21-readback-skipped": (PY, "first = push_read_back(state, repo_dir, base)", "first = None", (PHASEF,)),
+    "b21-unlanded-moves-the-ref": (PY, '            journal(state, {"kind": "push_unlanded"', '            git(repo_dir, "update-ref", "refs/merger/base", commit, old, check=False)\n            journal(state, {"kind": "push_unlanded"', (PHASEF,)),
+    "b21-replays-with-phase-f-armed": (PY, 'if os.environ.get(PHASE_F_ENV) == "1":   # B21 S4', "if False:   # B21 S4", (REPLAY,)),
+    "b21-replay-off-by-any-pushed-row": (PY, 'if os.environ.get(PHASE_F_ENV) == "1":   # B21 S4', 'if any(r.get("kind") == "pushed" for r in recs):   # B21 S4', (REPLAY,)),
+    "b21-single-read-is-enough": (PY, "second = push_read_back(state, repo_dir, base)", "second = first", (PHASEF,)),
+    "b21-no-settle": (PY, "time.sleep(READBACK_SETTLE_S)", "pass", (PHASEF,)),
+    "b21-second-read-ignored": (PY, "if first == commit or (first == old and second == commit):", "if first == commit:", (PHASEF,)),
+    "b21-readback-via-fetch-url": (PY, 'url = git(repo_dir, "remote", "get-url", "--push", "origin").stdout.strip()', 'url = "origin"', (PHASEF,)),
+    "b21-read-only-key-is-transport": (PY, "|marked as read only|^ERROR:\", re.I | re.M)", "\", re.I | re.M)", (PHASEF,)),
+    "b21-unlanded-streak-uncapped": (PY, "if streak >= PUSH_UNLANDED_CAP:", "if False:", (PHASEF,)),
+    "b21-unlanded-streak-counts-past-pushed": (PY, '        if r.get("kind") == "pushed":\n            break\n        n += ', '        n += ', (PHASEF,)),
+    "b21-landed-without-ref-update": (PY, 'updated = git(repo_dir, "update-ref", "refs/merger/base", commit, old, check=False).returncode == 0',
+                                      'updated = readback or git(repo_dir, "update-ref", "refs/merger/base", commit, old, check=False).returncode == 0', (PHASEF,)),
+    "b21-rejection-marker-loses-to-transport": (PY, "    if PUSH_REJECTED.search(err):\n        return False\n", "", (PHASEF,)),
 }
 
 

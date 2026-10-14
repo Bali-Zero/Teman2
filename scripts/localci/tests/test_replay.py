@@ -282,3 +282,18 @@ def test_a_merge_github_shows_with_a_null_merge_commit_sha_is_journalled_unmappe
     got = mg.replay_pending(a, rw.state, rw.state / "repo.git", mg.read_journal(rw.state))
     assert got and got["merge_commit"] == rw.m["m1"]
     assert any(r.get("why") == "replay_unmapped" and r.get("merge_commit") == rw.m["m2"] for r in mg.read_journal(rw.state))
+
+
+def test_b21_replay_pending_is_none_only_while_phase_f_is_armed_and_replays_again_after_a_rollback(rw, monkeypatch):
+    a = type("A", (), {"repo": REPO})()
+    for _ in range(2):   # PR 3, then the replay of M2
+        assert rw.tick() == 0
+    mg.journal(rw.state, {"kind": "pushed", "pr": 12, "merge_commit": rw.m["m2"], "base_sha": rw.m["m1"]})
+    recs = mg.read_journal(rw.state)
+    repo = rw.state / "repo.git"
+    monkeypatch.delenv(mg.PHASE_F_ENV, raising=False)
+    assert mg.replay_pending(a, rw.state, repo, recs)["merge_commit"] == rw.m["m1"]   # env unset (before the flip, or after step 0 of a rollback): as before
+    monkeypatch.setenv(mg.PHASE_F_ENV, "1")
+    assert mg.replay_pending(a, rw.state, repo, recs) is None   # armed: nothing is GitHub's verdict to compare
+    monkeypatch.setenv(mg.PHASE_F_ENV, "0")
+    assert mg.replay_pending(a, rw.state, repo, recs)["merge_commit"] == rw.m["m1"]

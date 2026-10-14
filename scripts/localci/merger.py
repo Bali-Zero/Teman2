@@ -52,6 +52,8 @@ ARM_LABEL, ARM_ENV, ARM_ROLES = "localci:merge-shadow-ok", "LOCALCI_MERGER_ARMED
 AUTHOR = "localci-merger"
 PHASE_F_ENV, KEY_FILE, HALT_FILE = "LOCALCI_MERGER_PHASE_F", "deploy_key", "phase_f_halt"   # F2: the env half of the arm, the key and the sticky halt in the state dir
 PUSH_TIMEOUT_S = 120
+READBACK_SETTLE_S = 5      # B21: (b) needs two reads this far apart to agree
+PUSH_UNLANDED_CAP = 3      # B21: this many push_unlanded rows in a row, and the next push failure halts
 PHASE_E = "phase E not armed: see docs/specs/localci-sovereign-2026-10-07.md"
 REPLAY_NOTE = "B11 replay: the hosted verdict is read on the merge commit GitHub put on main, the very candidate judged here"
 REPLAY_KEPT = "replay: the same tree on both sides, never stale"
@@ -1219,6 +1221,43 @@ def push_ssh_command(state: Path) -> str:
             f"-o {shlex.quote(known)} -o StrictHostKeyChecking=yes")
 
 
+PUSH_REJECTED = re.compile(r"\[(?:remote )?rejected\]|non-fast-forward|protected branch|permission denied|repository not found|does not appear to be a git repository"
+                           r"|host key verification failed|\bGH0\d\d\b|\bdenied\b|rule violations|marked as read only|^ERROR:", re.I | re.M)
+PUSH_TRANSPORT = re.compile(r"connection (?:reset|refused|timed out|closed)|could not read from remote repository|ssh: connect to host|kex_exchange_identification"
+                            r"|ssh_exchange_identification|broken pipe|could not resolve hostname|network is unreachable|no route to host|operation timed out", re.I)
+
+
+def push_failure_is_transport(err: str, exc: BaseException | None = None) -> bool:
+    """B21: a failed push is a flap only on evidence. A rejection marker beats a transport marker (an auth failure also says "Could not
+    read from remote repository"); text that is neither is a rejection — an unknown failure fails closed."""
+    if PUSH_REJECTED.search(err):
+        return False
+    return isinstance(exc, (subprocess.TimeoutExpired, ConnectionError)) or bool(PUSH_TRANSPORT.search(err))
+
+
+def unlanded_streak(state: Path) -> int:
+    """B21: the push_unlanded rows at the end of the journal with no ``pushed`` between them."""
+    n = 0
+    for r in reversed(read_journal(state)):
+        if r.get("kind") == "pushed":
+            break
+        n += r.get("kind") == "push_unlanded"
+    return n
+
+
+def push_read_back(state: Path, repo_dir: Path, base: str) -> str | None:
+    """B21 S1: GitHub's main as the push remote shows it, through the deploy key; None when it cannot be read."""
+    try:
+        url = git(repo_dir, "remote", "get-url", "--push", "origin").stdout.strip()
+        res = git(repo_dir, "ls-remote", url, f"refs/heads/{base}", env={"GIT_SSH_COMMAND": push_ssh_command(state)}, check=False, timeout=REMOTE_TIMEOUT_S)
+    except Stopped:
+        raise
+    except Exception:  # noqa: BLE001 — a read-back that fails is outcome (d): the caller halts
+        return None
+    sha = res.stdout.split("\t")[0].strip() if res.returncode == 0 else ""
+    return sha if is_sha(sha) else None
+
+
 def phase_f_merge(state: Path, repo_dir: Path, enq: dict, wm: dict, pull: dict, decision: dict, base: str) -> None:
     """The armed path: (1) the merge commit in the mirror — ``commit-tree`` writes an object and no ref, so nothing half-written can
     exist — on top of ``refs/merger/base``, (2) ``merged`` journalled, (3) a plain fast-forward push of that commit to GitHub's main,
@@ -1240,17 +1279,41 @@ def phase_f_merge(state: Path, repo_dir: Path, enq: dict, wm: dict, pull: dict, 
         return
     journal(state, {"kind": "merged", "pr": n, "head_sha": head, "base_sha": enq["base_sha"], "merge_commit": commit, "tree": wm["merge_tree"],
                     "subject": subject, "decision_ts": decision.get("ts"), "run_dir": decision.get("run_dir"), "lease_id": enq.get("lease_id")})
+    transport = False
     try:
         res = git(repo_dir, "push", "origin", f"{commit}:refs/heads/{base}", env={"GIT_SSH_COMMAND": push_ssh_command(state)}, check=False, timeout=PUSH_TIMEOUT_S)
         err = None if res.returncode == 0 else f"rc={res.returncode}: {redact(res.stderr.strip()[-300:])}"
+        transport = bool(err) and push_failure_is_transport(res.stderr)
     except Exception as exc:  # noqa: BLE001 — a push of unknown outcome is a refusal until an operator looks; a Stopped one halts too, BEFORE it propagates
         err = redact(f"{type(exc).__name__}: {exc}")
         if isinstance(exc, Stopped):
             halt(state, f"push of {commit} for #{n} interrupted, outcome unknown: {err}")
             raise
+        transport = push_failure_is_transport(str(exc), exc)
     except BaseException as exc:
         halt(state, f"push of {commit} for #{n} interrupted, outcome unknown: {type(exc).__name__}")
         raise
+    readback = False
+    if err:   # B21: a push that reports failure may have landed, or may be a flap — GitHub's main decides, never the error text alone
+        first = second = None
+        try:
+            first = push_read_back(state, repo_dir, base)
+            if first == old and transport:
+                streak = unlanded_streak(state)
+                if streak >= PUSH_UNLANDED_CAP:   # a failure that never lands is not a flap: the backstop for an error text read as transport wrongly
+                    err = f"push_unlanded {streak} times in a row: {err}"
+                else:
+                    time.sleep(READBACK_SETTLE_S)   # (b) needs two agreeing reads: a push in flight can land between one read and the verdict
+                    second = push_read_back(state, repo_dir, base)
+        except BaseException as exc:
+            halt(state, f"read-back after the push of {commit} for #{n} interrupted: {type(exc).__name__}")
+            raise
+        if first == commit or (first == old and second == commit):
+            err, readback = None, True
+        elif first == old and second == old:
+            journal(state, {"kind": "push_unlanded", "pr": n, "head_sha": head, "base_sha": enq["base_sha"], "merge_commit": commit, "error": err, "lease_id": enq.get("lease_id")})
+            print(f"merger: #{n} push_unlanded — main unchanged after a transport failure, not halted", file=sys.stderr)
+            return
     if err:
         halt(state, f"push of {commit} for #{n} refused: {err}")   # the halt first: a journal line that fails to write must not leave the door open
         journal(state, {"kind": "push_refused", "pr": n, "head_sha": head, "merge_commit": commit, "error": err, "lease_id": enq.get("lease_id")})
@@ -1258,7 +1321,7 @@ def phase_f_merge(state: Path, repo_dir: Path, enq: dict, wm: dict, pull: dict, 
         return
     updated = git(repo_dir, "update-ref", "refs/merger/base", commit, old, check=False).returncode == 0
     journal(state, {"kind": "pushed", "pr": n, "head_sha": head, "base_sha": enq["base_sha"], "merge_commit": commit, "mirror_updated": updated,
-                    "lease_id": enq.get("lease_id")})
+                    "lease_id": enq.get("lease_id"), **({"readback": True} if readback else {})})
     print(f"merger: #{n} merged {commit[:12]} onto {base} and pushed")
 
 
@@ -1388,6 +1451,8 @@ def replay_pending(a, state: Path, repo_dir: Path, recs: list[dict]) -> dict | N
     confirmation is journalled once (``skipped: replay_unmapped``) and never asked again — unless GitHub still shows its PR open (newest
     first, a merge can be seconds old at the fetch): then it is asked again on the next replay turn; an ERROR replay is retried once. Any read that
     fails returns None: a replay turn that cannot find its work falls back to a PR decision."""
+    if os.environ.get(PHASE_F_ENV) == "1":   # B21 S4: with phase F armed main holds its own commits and operator recovery pushes, no GitHub verdict
+        return None
     firsts = [str(r["ts"]) for r in recs if r.get("kind") == "decision" and not r.get("replay") and r.get("ts")]
     if not firsts:
         return None
