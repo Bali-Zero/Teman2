@@ -40,10 +40,10 @@ B15_PRUNE = tuple(f"{PRUNE_T}::{t}" for t in ("test_b15_under_host_pressure_the_
                                               "test_b15_host_pressure_never_removes_the_image_of_the_run_in_progress_or_the_never_list"))
 HEADROOM = tuple(f"{PRUNE_T}::{t}" for t in ("test_headroom_at_105_over_a_start_floor_of_100_the_second_slots_are_shed_in_shed_order", "test_headroom_at_120_nothing_is_shed", "test_headroom_leaves_the_start_floor_where_it_was", "test_headroom_a_non_default_flag_moves_the_line"))
 K = lambda *names: tuple(f"{PRUNE_T}::test_b22_{n}" for n in names)  # noqa: E731
-B22 = K("the_08_00z_case_both_recipes_mouth_from_31_commits_back", "topological_distance_beats_journal_order",
-        "a_changed_input_makes_that_recipe_unknown_and_only_that_recipe", "the_scan_is_bounded_to_the_newest_300_rows",
-        "an_errored_replay_is_not_evidence", "a_replay_whose_merge_commit_is_not_an_ancestor_of_base_is_ignored",
-        "a_git_error_on_the_ancestry_check_is_unknown", "the_cap_rule_does_not_shed_main_without_pressure", "the_vm_floor_can_still_remove_main")
+B22 = K("main_is_recomputed_and_kept_under_pressure_the_prs_newer_images_go", "the_cap_rule_does_not_shed_main_without_pressure",
+        "main_is_judged_at_base_not_at_a_pr_head", "a_new_candidate_image_id_moves_the_tag_and_the_old_image_is_no_longer_main",
+        "no_candidate_image_means_unknown_and_todays_rule", "an_exception_in_the_keeper_is_unknown_never_a_crash",
+        "the_vm_floor_can_still_remove_main", "deps_recipe_digests_equal_the_recorded_ones")
 START_DEFAULT = 'default=HOST_FLOOR_GB + START_MARGIN_GB,\n                   help="the start floor'
 B6_FLOOR = (f"{MERGER_T}::test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why",)
 FLOOR_SH, FLOOR_T = "scripts/ops/pro_disk_floor_tick.sh", "scripts/localci/tests/test_disk_floor.py"
@@ -381,15 +381,14 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "prune-headroom-default-zero": (PY, "RUN_HEADROOM_GB = 15.0 ", "RUN_HEADROOM_GB = 0.0 ", HEADROOM),
     "prune-headroom-flag-ignored": (PY, "pressure_gb=a.min_host_free_gb + a.run_headroom_gb,", "pressure_gb=a.min_host_free_gb + RUN_HEADROOM_GB,", HEADROOM),
     "prune-pressure-not-journalled": (PRUNE, '    rec["pressure_gb"] = pressure_gb\n', "", HEADROOM),
-    "b22-evidence-ignores-ancestry": (PRUNE, "            if rc == 0:\n                count", "            if rc in (0, 1):\n                count", B22),
-    "b22-journal-order-not-topological": (PRUNE, "= min(found)", "= min(found, key=lambda f: f[1])", B22),
-    "b22-staleness-ignored": (PRUNE, "            elif diff.stdout.split():", "            elif False:", B22),
-    "b22-single-plan-for-all-recipes": (PRUNE, "enumerate(cands[-KEEPER_SCAN:]):", "enumerate(cands[-1:]):", B22),
-    "b22-scan-unbounded": (PRUNE, "KEEPER_SCAN = 300 ", "KEEPER_SCAN = 10**6 ", B22),
+    "b22-wrong-cand-pr-head": (PRUNE, "runner.deps_recipe(Path(repo), base,", 'runner.deps_recipe(Path(repo), "HEAD",', B22),
+    "b22-stale-image-id-ignored": (PRUNE, "iso = runner.isolation_of_inspect(CANDIDATE_IMAGE, lines, docker)", 'iso = {**runner.isolation_of_inspect(CANDIDATE_IMAGE, lines, docker), "image_id": "sha256:" + "c1" * 32}', B22),
+    "b22-keeper-exception-propagates": (PRUNE, "except Exception as exc:  # noqa: BLE001 — the keeper never", "except ZeroDivisionError as exc:  # noqa: BLE001 — the keeper never", B22),
+    "b22-candidate-image-unchecked": (PRUNE, 'if insp.returncode != 0 or not lines or not lines[0].startswith("sha256:"):', "if False:", B22),
+    "b22-digest-field-dropped-fetch": (RUN_PY, '"packages": pkgs, "fetch": fetch, "node": node,', '"packages": pkgs, "node": node,', B22),
+    "b22-digest-field-dropped-python": (RUN_PY, 'recipe = {"base": iso["image_id"], "python": py, "requirements"', 'recipe = {"base": iso["image_id"], "requirements"', B22),
     "b22-main-shed-under-pressure": (PRUNE, "named, main)", "named, frozenset())", B22),
     "b22-cap-rule-sheds-main": (PRUNE, "        if mains:\n            top = max(", "        if False:\n            top = max(", B22),
-    "b22-errored-replay-accepted": (PRUNE, 'r.get("overall") != "ERROR":\n            cands', 'True:\n            cands', B22),
-    "b22-git-error-ignored": (PRUNE, "            if rc not in (0, 1):\n                return unknown(f\"git merge-base", "            if False:\n                return unknown(f\"git merge-base", B22),
     "b22-vm-floor-spares-main": (PRUNE, 'for im in sorted((d for d in decided if not d["remove"] and not d["live"] and not never(d["tag"], keep)),\n                         key=shed_order):\n            if rec["vm_free_gb"]',
                                  'for im in sorted((d for d in decided if not d["remove"] and not d["live"] and d["tag"] not in main and not never(d["tag"], keep)),\n                         key=shed_order):\n            if rec["vm_free_gb"]', B22),
     "prune-host-pressure-ignored": (PRUNE, 'rec["host_pressure"] = pressure_gb is not None and free_before < pressure_gb',
