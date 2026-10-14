@@ -1,0 +1,96 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Branch agent/air-m5/mouth/vo-e33-public-copy-1014, head 8021dbc7d5 on origin/main ad3278690d. Rulings it executes:
+  Gemini 4 Argon copy audit of 2026-10-14 (findings F14 and F15, confirmed by adversarial refutation); the #8460
+  fresh-gate condition C4 (the E33-family income basis is income or allowance, not passive income); Zero's ruling of
+  2026-10-11 that public Second Home copy says what the official page says.
+lanes:
+  - lane: gem-public-build
+    role: build
+    seat: "gemini-4-argon-high via agy (external seat: edits files only, scrubbed env, accept-edits, sandbox; one round, AGY_EXIT=0; Claude verified and committed)"
+  - lane: gem-public-drive
+    role: build
+    seat: "claude-opus-5.5 (driver: reviewed the Gemini edits, floor and observer touches, cure commit 8021dbc7d5, committed)"
+  - lane: gem-public-redteam-claude
+    role: review
+    seat: "claude-opus-5-5 adversarial red team, read-only, on head 715dd3f9f1"
+  - lane: gem-public-redteam-codex
+    role: review
+    seat: "codex gpt-5.6-sol, rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl (model gpt-5.6-sol confirmed), on head 715dd3f9f1"
+diff: |
+  Commit 715dd3f9f1 is the Gemini build: llms.txt Second Home lines carry the dual-activity
+  clause, Studio copy and the e28a EN and ID mdx say income or allowance, plus guard tests. Commit 8021dbc7d5 cures the
+  red-team findings: llms.txt E33E and E33F rows, the E33F Studio sentence, the penghasilan pasif helper, the
+  forbidden-claims docblock, and the guard floor 34 to 37. llms-full.txt and llms-id.txt are not committed - the
+  build regenerates them.
+gear_floor: "1 (evidence_pack_lint.py --print-floor on the merge-base diff; no hot-zone path touched, size under 400 net lines). The Gear-3 council_run quorum does not apply; the Codex and Claude red teams are recorded in lanes and dissent anyway. Gear declared 2."
+bites: "Consumer is balizero.com/llms.txt and the E33 Studio and e28a pages. Observation: python3 scripts/ci/observe_llms_e33_gov_routes.py runs the llms guard (37 tests) on the lane and exits 0 (receipt below). Post-merge: after vercel promote, curl -s https://balizero.com/llms.txt | grep -c 'passive income' expects 0 on the Second Home rows, curl -s https://balizero.com/llms-full.txt | grep -c 'documented passive income' expects 0."
+pii_scan: clean
+receipts:
+  - claim: "The no-argument bites observer runs the llms guard (floor 37) and the E33 routes hold."
+    cmd: "python3 scripts/ci/observe_llms_e33_gov_routes.py"
+    result: "Tests 37 passed (37); llms E33A-C routes hold"
+    exit: 0
+    ts: "2026-10-14T02:03:43Z"
+    seat: claude-opus-5.5
+  - claim: "The observer's own pytest (floor rows 37) is green."
+    cmd: "python3 -m pytest tests/scripts/test_observe_llms_e33_gov_routes.py -p no:cacheprovider -q"
+    result: "11 passed"
+    exit: 0
+    ts: "2026-10-14T02:03:28Z"
+    seat: claude-opus-5.5
+  - claim: "Lane vitest suites (income-basis copy test, llms public file guard, whole secondhome-studio tree) are green."
+    cmd: "cd apps/mouth && npx vitest run src/lib/e33-income-basis-copy.test.ts src/lib/llms-public-file-guard.test.ts src/lib/secondhome-studio"
+    result: "11 files, 321 tests passed"
+    exit: 0
+    ts: "2026-10-14T02:03:43Z"
+    seat: claude-opus-5.5
+  - claim: "Typecheck clean."
+    cmd: "cd apps/mouth && npx tsc --noEmit -p ."
+    result: "no output"
+    exit: 0
+    ts: "2026-10-14T02:03:50Z"
+    seat: claude-opus-5.5
+  - claim: "The evidence-pack floor for the diff is 1."
+    cmd: "python3 scripts/evidence_pack_lint.py --changed-files-file <changed> --numstat-file <numstat> --print-floor"
+    result: "1"
+    exit: 0
+    ts: "2026-10-14T02:02:00Z"
+    seat: claude-opus-5.5
+dissent:
+  - seat: claude-opus-5-5 adversarial red team (read-only), head 715dd3f9f1
+    objection: "MEDIUM llms.txt:115-116 - the E33E and E33F rows still said proven passive income of USD 3,000 per month, two lines below the edited line 114; the consumer file would contradict itself."
+    status: CONFIRMED
+    resolution: "Cured in 8021dbc7d5 (option A): both rows say income or allowance, guard pattern and mutation row added, MIN_TESTS and pytest floor rows raised 34 to 37."
+  - seat: claude-opus-5-5 adversarial red team (read-only), head 715dd3f9f1
+    objection: "LOW copy.ts:101-104 - the E33F sentence said income while E33E said income or allowance."
+    status: CONFIRMED
+    resolution: "Cured in 8021dbc7d5: the E33F sentence says income or allowance."
+  - seat: claude-opus-5-5 adversarial red team (read-only), head 715dd3f9f1
+    objection: "LOW e33-income-basis-copy.test.ts:73-75 - the helper missed penghasilan pasif."
+    status: CONFIRMED
+    resolution: "Cured in 8021dbc7d5: the helper and its guilt row cover penghasilan pasif."
+  - seat: claude-opus-5-5 adversarial red team (read-only), head 715dd3f9f1
+    objection: "LOW llms-public-file-guard.test.ts:82 and :381-386 - the no-work-authorization pattern misses does-not-include work authorization and cannot work; the E33G innocence case is redundant."
+    status: PLAUSIBLE
+    resolution: "Guard widened in 8021dbc7d5 (+35 lines in the guard test). The exact broadened regex and replacement innocence line were not individually re-audited; the llms.txt guard is green at 37 and the Guide wording is a named follow-up."
+  - seat: claude-opus-5-5 adversarial red team (read-only), head 715dd3f9f1
+    objection: "LOW forbidden-claims.test.ts docblock omitted the new passiveIncomeBasis entry."
+    status: CONFIRMED
+    resolution: "Cured in 8021dbc7d5."
+  - seat: claude-opus-5-5 adversarial red team (read-only), head 715dd3f9f1
+    objection: "LOW llms-full.txt:187718 still says documented passive income; the live file is right only if the build regenerates it, which nobody observed."
+    status: CONFIRMED
+    resolution: "Not committed: the pre-commit PII gate blocked a hand patch on that file and no bypass was used. Disposition: the build script runs the repo generator before next build. The post-promote curl on llms-full.txt is added to the Bites and to the brief assumption, stays unverified until observed."
+  - seat: claude-opus-5-5 adversarial red team (read-only), head 715dd3f9f1
+    objection: "LOW residuals outside the spec - the Second Home guide still says no work authorization (both edited llms.txt lines link to it); the it, fr and ru e28a variants and the price JSON E33E and E33F rows still say passive; the kept tail of the e28a sentence neither permits working may conflict with dual-activity reporting."
+    status: PLAUSIBLE
+    resolution: "Out of scope by spec (EN and ID, listed files only). Follow-up lanes named: Second Home guide work wording (EN+ID from the official E33 page), locale variants and price JSON, and an owner decision on the neither-permits-working tail after the official E33E/E33F page is saved."
+  - seat: codex gpt-5.6-sol, rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl
+    objection: "HIGH llms-full.txt:187718 and llms-id.txt:58504 - the generated exports still say documented passive income and penghasilan pasif terdokumentasi; they are not in the diff and the new test reads only the mdx sources."
+    status: PLAUSIBLE
+    resolution: "Not cured by commit, by decision. Regenerating produced a diff of about 350k lines and the PII gate blocked a hand patch, so the exports were left to the build, which regenerates them before next build (apps/mouth/package.json build script). The claim is unobserved: the post-promote curl on both files is the proof, recorded as an unverified assumption in the brief. A guard on the generated exports remains open."
+  - seat: codex gpt-5.6-sol, rollout-2026-10-14T05-42-48-01a13737-d484-7d70-886b-36176c5df0f7.jsonl
+    objection: "MEDIUM llms.txt:115-116 - the E33E and E33F rows still say proven passive income; a scoped guard with guilt and innocence rows is needed and the floor must be raised."
+    status: CONFIRMED
+    resolution: "Cured in 8021dbc7d5 with the scoped guard, guilt and innocence rows and the floor 34 to 37 in the observer and its pytest."

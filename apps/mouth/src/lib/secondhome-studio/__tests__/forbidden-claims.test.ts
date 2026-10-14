@@ -19,6 +19,8 @@ import { COPY } from "../copy";
  *   directly, independent of the literal word "split".
  * - P2-C14: "and you're there" reads as an eligibility confirmation
  *   (arrival/conclusion idiom) rather than a preliminary fit-check result.
+ * - `passiveIncomeBasis` is a #8460 gate C4 addition (2026-10-14): the
+ *   E33-family basis is "income or allowance", never "passive income".
  */
 const FORBIDDEN_PATTERNS: Record<string, RegExp> = {
   priceUsd1500: /US?D?\s*\$?\s*1[,.]?500/i,
@@ -35,6 +37,7 @@ const FORBIDDEN_PATTERNS: Record<string, RegExp> = {
   splitDepositEuphemism:
     /divided\s+across\s+multiple\s+accounts|multiple\s+accounts?\s+do(es)?\s+not\s+qualify/i,
   youreThere: /you'?re\s+there|you\s+are\s+there/i,
+  passiveIncomeBasis: /passive\s+income/i,
 };
 
 /** Generalized IDR price-literal check for the JSX source-scan (P2-C13) —
@@ -175,6 +178,10 @@ describe("guilt fixtures — each pattern actually fires on a known-bad string",
       pattern: "youreThere",
       text: "Once you hit the threshold, you are there.",
     },
+    {
+      pattern: "passiveIncomeBasis",
+      text: "E33E is based on a deposit plus USD 3,000 per month in passive income.",
+    },
   ];
 
   it.each(guiltCases)("$pattern fires on: $text", ({ pattern, text }) => {
@@ -271,6 +278,18 @@ describe("innocence pins — legitimate copy must NOT trip the guard (superscar 
         "The threshold must be met through one qualifying deposit. Split deposits do not qualify.",
       ),
     ).toBe(true);
+  });
+
+  it("'income or allowance' (and the live seniorFunding.why string) does not trip passiveIncomeBasis", () => {
+    expect(
+      FORBIDDEN_PATTERNS.passiveIncomeBasis.test(
+        "E33E is based on a USD 50,000 deposit plus at least USD 3,000 per month in income or allowance.",
+      ),
+    ).toBe(false);
+    expect(
+      FORBIDDEN_PATTERNS.passiveIncomeBasis.test(COPY.wizard.seniorFunding.why),
+    ).toBe(false);
+    expect(COPY.wizard.seniorFunding.why).toContain("income or allowance");
   });
 });
 

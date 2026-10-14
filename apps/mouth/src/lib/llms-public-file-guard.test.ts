@@ -77,6 +77,16 @@ const FORBIDDEN: ForbiddenPattern[] = [
     pattern: /(?<![\d.,])180(?![\d.,])/,
     secondHomeLineOnly: true,
   },
+  {
+    id: "second-home-no-work-authorization",
+    pattern: /\bno work authori[sz]ation\b|\bnon-working\b/i,
+    secondHomeLineOnly: true,
+  },
+  {
+    id: "second-home-passive-income-basis",
+    pattern: /\bpassive income\b/i,
+    secondHomeLineOnly: true,
+  },
 ];
 
 export function findForbidden(text: string): string[] {
@@ -144,6 +154,14 @@ const MUTATIONS: [string, string][] = [
   [
     "second-home-180-days",
     "- **E33**: Second Home Visa — 180 days to complete the commitment",
+  ],
+  [
+    "second-home-no-work-authorization",
+    "- **E33**: Second Home Visa — stay permit up to 5 years, no work authorization",
+  ],
+  [
+    "second-home-passive-income-basis",
+    "- **E33E**: Second Home senior route, age 55+ — proven passive income of USD 3,000 per month",
   ],
 ];
 
@@ -356,5 +374,61 @@ describe("llms.txt names E33A, E33B and E33C as government-linked routes", () =>
     expect(lines()).toContain(
       "- E33E - Second Home Senior 5 Years: IDR 45.000.000 (all-inclusive)",
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Second Home (E33) work clause (F14/F15, 2026-10-14): the official E33 page
+// states that holders may work or study only after dual-activity (rangkap
+// kegiatan) reporting to the immigration office that issued the stay permit,
+// never that the permit carries "no work authorization" / "non-working".
+// ---------------------------------------------------------------------------
+describe("llms.txt states the Second Home (E33) dual-activity work or study reporting clause", () => {
+  const REQUIRED_WORK_CLAUSE =
+    "work or study only after dual-activity (rangkap kegiatan) reporting to the immigration office that issued the stay permit";
+  const lines = () => readFileSync(llmsTxtPath, "utf8").split("\n");
+
+  it("the published E33 lines (disambiguation and visa-types rows) each carry the dual-activity reporting clause", () => {
+    const disambiguation = lines().filter((l) =>
+      l.includes('**"Second Home Visa"**'),
+    );
+    const visaRow = lines().filter((l) => l.startsWith("- **E33**:"));
+    expect(disambiguation).toHaveLength(1);
+    expect(visaRow).toHaveLength(1);
+    expect(disambiguation[0]).toContain(REQUIRED_WORK_CLAUSE);
+    expect(visaRow[0]).toContain(REQUIRED_WORK_CLAUSE);
+  });
+
+  it("innocence: the E33G Remote Worker line ('working for foreign employers') is not convicted by findForbidden", () => {
+    const innocentLine =
+      "- **E33G**: Remote Worker KITAS — digital nomads working for foreign employers";
+    const augmented = `${readFileSync(llmsTxtPath, "utf8")}\n${innocentLine}\n`;
+    expect(findForbidden(augmented)).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Second Home senior (E33E / E33F) income basis (#8460, 2026-10-14): the
+// official immigration rule states "income or allowance", never "passive income".
+// ---------------------------------------------------------------------------
+describe("llms.txt states the Second Home senior (E33E / E33F) income or allowance basis", () => {
+  const REQUIRED_INCOME_CLAUSE =
+    "proven income or allowance of USD 3,000 per month";
+  const lines = () => readFileSync(llmsTxtPath, "utf8").split("\n");
+
+  it("the E33E and E33F rows of the real llms.txt contain 'proven income or allowance of USD 3,000 per month'", () => {
+    const e33eRow = lines().filter((l) => l.startsWith("- **E33E**:"));
+    const e33fRow = lines().filter((l) => l.startsWith("- **E33F**:"));
+    expect(e33eRow).toHaveLength(1);
+    expect(e33fRow).toHaveLength(1);
+    expect(e33eRow[0]).toContain(REQUIRED_INCOME_CLAUSE);
+    expect(e33fRow[0]).toContain(REQUIRED_INCOME_CLAUSE);
+  });
+
+  it("innocence: a non-Second-Home line mentioning passive income is not convicted by findForbidden", () => {
+    const innocentLine =
+      "- Managing personal investments (passive income from abroad)";
+    const augmented = `${readFileSync(llmsTxtPath, "utf8")}\n${innocentLine}\n`;
+    expect(findForbidden(augmented)).toEqual([]);
   });
 });
