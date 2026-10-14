@@ -1,7 +1,8 @@
-"""Unit tests for the parsers in scripts/ci/observe_visa_check_catalogue_e33.py."""
+"""Unit tests for the parsers and runner in scripts/ci/observe_visa_check_catalogue_e33.py."""
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -9,6 +10,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts" / "ci"))
 
+import observe_visa_check_catalogue_e33 as obs  # noqa: E402
 from observe_visa_check_catalogue_e33 import (  # noqa: E402
     MIN_TESTS,
     REQUIRED_TESTS,
@@ -56,7 +58,9 @@ def test_required_names_accepts_ra_short_test_summary_output():
         f"PASSED backend/tests/services/visa_check/test_file.py::{name}"
         for name in REQUIRED_TESTS
     ]
-    output = "\n".join(["=== short test summary info ===", *lines, "52 passed in 0.12s"])
+    output = "\n".join(
+        ["=== short test summary info ===", *lines, f"{MIN_TESTS} passed in 0.12s"]
+    )
     assert required_names_ok(output) is True
 
 
@@ -86,3 +90,70 @@ def test_required_names_rejects_missing_or_non_passed_test():
 
     assert required_names_ok("") is False
     assert required_names_ok(None) is False
+
+
+def test_main_succeeds_when_all_required_tests_and_summary_pass(monkeypatch, capsys):
+    seen: dict[str, object] = {}
+    passed_lines = [
+        f"PASSED backend/tests/services/visa_check/test_file.py::{name}"
+        for name in REQUIRED_TESTS
+    ]
+    stdout = "\n".join([*passed_lines, f"{MIN_TESTS} passed in 0.1s"])
+
+    def fake(cmd, **kwargs):
+        seen["cmd"] = cmd
+        seen.update(kwargs)
+        return subprocess.CompletedProcess(
+            args=cmd, returncode=0, stdout=stdout, stderr=""
+        )
+
+    monkeypatch.setattr(obs.subprocess, "run", fake)
+    assert obs.main() == 0
+    assert seen["cwd"] == obs.BACKEND_DIR
+    assert seen["env"] == {"PYTHONPATH": ".", "PATH": "/usr/bin:/bin"}
+    assert seen["timeout"] == obs.TIMEOUT_SECONDS
+    cmd = seen["cmd"]
+    assert isinstance(cmd, list)
+    assert "-m" in cmd and "pytest" in cmd
+    assert "E33 and E33G catalogue notes hold" in capsys.readouterr().out
+
+
+def test_main_returns_nonzero_on_pytest_failure(monkeypatch, capsys):
+    passed_lines = [
+        f"PASSED backend/tests/services/visa_check/test_file.py::{name}"
+        for name in REQUIRED_TESTS
+    ]
+    stdout = "\n".join([*passed_lines, f"1 failed, {MIN_TESTS} passed in 0.1s"])
+
+    def fake(cmd, **kwargs):
+        return subprocess.CompletedProcess(
+            args=cmd, returncode=1, stdout=stdout, stderr=""
+        )
+
+    monkeypatch.setattr(obs.subprocess, "run", fake)
+    assert obs.main() != 0
+    assert "FAILED" in capsys.readouterr().out
+
+
+def test_main_returns_one_on_timeout(monkeypatch, capsys):
+    def fake(cmd, **kwargs):
+        raise subprocess.TimeoutExpired(cmd="x", timeout=1)
+
+    monkeypatch.setattr(obs.subprocess, "run", fake)
+    assert obs.main() == 1
+    assert "timeout" in capsys.readouterr().out
+
+
+def test_main_returns_nonzero_when_summary_passes_but_required_names_missing(
+    monkeypatch, capsys
+):
+    stdout = f"{MIN_TESTS} passed in 0.1s\n"
+
+    def fake(cmd, **kwargs):
+        return subprocess.CompletedProcess(
+            args=cmd, returncode=0, stdout=stdout, stderr=""
+        )
+
+    monkeypatch.setattr(obs.subprocess, "run", fake)
+    assert obs.main() != 0
+    assert "FAILED" in capsys.readouterr().out

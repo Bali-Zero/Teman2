@@ -10,7 +10,7 @@ The consumer is `match_tree._reason()` via `recommend_visa()` behind
 `POST /api/visa/match` on `nuzantara-rag`, which reads `VISA_META[...].notes` and
 `VISA_META[...].purposes` from `catalogue.py`. The observation runs `test_catalogue.py`
 and `test_match_tree.py` and requires:
-1. Every test in both files to pass (`summary_ok` with floor `MIN_TESTS = 52`);
+1. Every test in both files to pass (`summary_ok` with floor `MIN_TESTS = 55`);
 2. All required E33/E33G catalogue and match-tree tests to be reported as `PASSED`
    in the run output (`required_names_ok`).
 """
@@ -40,9 +40,10 @@ ANSI = re.compile(r"\x1b\[[0-9;]*m")
 #   + TestOther 1 + TestLongTourism 3 + TestWorkRemote 4 + TestInvestor 3
 #   + TestSimpleBranches 6 + TestPreArrivalSteps 1 + TestCoverageSweep 1
 #   + TestPreArrivalStepsBelongToTheRecommendedVisa 6)
-#   + 1 new in TestWorkRemote (TestInvestor test renamed in place) = 33 tests.
-# Total = 19 + 33 = 52 tests.
-MIN_TESTS = 52
+#   + 3 new in TestWorkRemote + 1 new in TestInvestor (plus 1 TestInvestor test
+#   renamed in place) = 36 tests.
+# Total = 19 + 36 = 55 tests.
+MIN_TESTS = 55
 TIMEOUT_SECONDS = 240
 
 REQUIRED_TESTS: tuple[str, ...] = (
@@ -51,7 +52,10 @@ REQUIRED_TESTS: tuple[str, ...] = (
     "TestE33Notes::test_e33g_purposes_is_work_remote_only",
     "TestE33Notes::test_e33_and_e33g_innocence_invariants_preserved",
     "TestWorkRemote::test_mid_budget_e33g_reason_states_annual_income_not_savings",
+    "TestWorkRemote::test_mid_budget_e33g_steps_state_annual_income_not_balance",
+    "TestWorkRemote::test_over_budget_e33g_steps_state_annual_income_not_balance",
     "TestInvestor::test_mid_budget_ranking_excludes_e33g",
+    "TestInvestor::test_under_budget_referral_names_no_visa_code_and_no_savings",
 )
 
 _SUMMARY = re.compile(
@@ -60,7 +64,7 @@ _SUMMARY = re.compile(
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a pytest line that is a pure pass (warnings aside), N >= 52.
+    """True only for a pytest line that is a pure pass (warnings aside), N >= 55.
 
     Anything else (failed, error, skipped, xfailed, deselected, a reduced count,
     no line) is False.

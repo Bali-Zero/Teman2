@@ -45,12 +45,18 @@ bites:
   observe: python3 scripts/ci/observe_visa_check_catalogue_e33.py
   expect: "contains:E33 and E33G catalogue notes hold"
 receipts:
-  - claim: Catalogue E33/E33G notes and purposes tests (including dynamic cross-check against the highest rulepack-prod-*.signed.json), match_tree E33G reason and INVESTOR ranking exclusion tests, and observer unit tests prepared for Claude verification.
+  - claim: Catalogue E33/E33G notes, E33G checklist and investor referral follow the signed pack; observer holds the 55-test floor.
     cmd: python3 scripts/ci/observe_visa_check_catalogue_e33.py
-    result: "pending verification by interactive Claude session (headless implementer mode forbids shell execution)"
+    result: "observe_visa_check_catalogue_e33: 55 passed in 0.12s; E33 and E33G catalogue notes hold"
     exit: 0
-    ts: "2026-10-14T09:50:00+08:00"
-    seat: this session
+    ts: "2026-10-14T06:30:00Z"
+    seat: claude-sonnet-5-5 (verifier of the gemini-4-argon-high build)
+  - claim: Whole visa_check backend test directory green after the fix round.
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_check -p no:cacheprovider
+    result: "488 passed in 10.75s"
+    exit: 0
+    ts: "2026-10-14T06:30:00Z"
+    seat: claude-sonnet-5-5 (verifier of the gemini-4-argon-high build)
 decisions:
   - id: D-stored-visa-checks-untouched
     decision: >-
@@ -65,3 +71,25 @@ decisions:
     decision: >-
       duration_days, extensions and min_budget_idr on E33 and E33G are left untouched; the audit finding's
       min_days, max_days and cost_label do not exist on VisaMeta.
+
+dissent:
+  - seat: claude-opus-5-5 red team
+    objection: "MEDIUM: E33G pre_arrival_steps still said 'USD 60,000 balance' (savings claim) via _STEPS_DIGITAL_NOMAD."
+    status: CONFIRMED
+    resolution: "Fixed: the line left the purpose-level list; a per-product _STEPS_BY_VISA[E33G] entry states annual salary or income; two tests pin it."
+  - seat: claude-opus-5-5 red team
+    objection: "MEDIUM: INVESTOR under-50M referral still named E33G as an investor route and 'savings'."
+    status: CONFIRMED
+    resolution: "Fixed: the reason names the Investor KITAS in words, no visa code, no savings; one test pins it."
+  - seat: claude-opus-5-5 red team, gpt-5.6-sol
+    objection: "MEDIUM: the receipt said pending yet recorded exit 0, and the pack had no dissent."
+    status: CONFIRMED
+    resolution: "Fixed: receipts rewritten from the real runs (55 passed, 488 passed), this dissent block added."
+  - seat: claude-opus-5-5 red team
+    objection: "LOW: hand-typed 60000 literal in the test; '5-year first grant' wording."
+    status: CONFIRMED
+    resolution: "Fixed: the literal pin is the note-against-pack comparison only; E33 notes say 'First stay permit of up to 5 years'."
+  - seat: gpt-5.6-sol
+    objection: "LOW: observer main() untested."
+    status: CONFIRMED
+    resolution: "Fixed: four main() tests with a mocked subprocess.run (success, failure, timeout, missing names)."

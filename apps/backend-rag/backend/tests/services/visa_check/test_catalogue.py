@@ -204,6 +204,7 @@ class TestE33Notes:
     def test_e33_notes_state_rangkap_kegiatan_and_not_non_working(self):
         notes = VISA_META[VisaType.E33].notes
         assert "non-working" not in notes.lower()
+        assert "first stay permit of up to 5 years" in notes.lower()
         assert "rangkap kegiatan" in notes
         assert (
             "work or study only after rangkap kegiatan (dual-activity) reporting "
@@ -227,7 +228,7 @@ class TestE33Notes:
             "work.annual_foreign_income_usd gte predicate missing in el.e33g.remote-work"
         )
         threshold = predicate["value"]
-        assert threshold == 60000
+        assert isinstance(threshold, int) and threshold > 0
 
         notes = VISA_META[VisaType.E33G].notes
         assert "savings" not in notes.lower()

@@ -318,9 +318,9 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             min_budget_idr=500_000_000,  # commercial tier flag, not the legal USD 130k deposit threshold
             notes="Base Second Home (bank route): USD 130,000 own-name deposit at a "
             "state-owned (BUMN) bank, or USD 1,000,000 qualifying completed "
-            "strata-title property. 5-year first grant, no sponsor; work or study "
-            "only after rangkap kegiatan (dual-activity) reporting to the "
-            "immigration office that issued the stay permit.",
+            "strata-title property. First stay permit of up to 5 years, no sponsor; "
+            "work or study only after rangkap kegiatan (dual-activity) reporting to "
+            "the immigration office that issued the stay permit.",
             seed_source=SEED,
             duration_source=NB2,
             fit_tags=frozenset({FitTag.GOLDEN_VISA}),
