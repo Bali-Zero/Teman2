@@ -1,0 +1,106 @@
+gear: 2
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Lane E33E-PACK-SCAN-GUARD-1014 on branch agent/air-m5/mouth/vo-e33e-pack-scan-guard-1014, based on origin/main
+  da14603a95. Spec: the fresh Opus re-sign of #8511 (merge 500da5c3d0), condition 3: a pack-scan guard that pins
+  what the scan found. Ruling: that re-sign, under Zero's mandate to close the E33 family end to end.
+mission: >-
+  A future signed pack that changes what separates E33E from E33F makes a vitest fail, naming the cure.
+lanes:
+  - lane: e33e-pack-scan-build
+    role: build
+    seat: "gemini-4-argon-high via agy (external seat, edits files only, never runs git); Claude driver verified and committed"
+  - lane: e33e-pack-scan-redteam-opus
+    role: review
+    seat: "claude-opus-5-5 adversarial red team"
+  - lane: e33e-pack-scan-redteam-codex
+    role: review
+    seat: "codex gpt-5.6-sol, rollout-2026-10-15T04-11-13-01a13c0a-5625-7e22-9db1-3e5b8dc019ea"
+pii_scan: clean
+bites: >-
+  Consumer: the mouth vitest run on every PR (apps/mouth, the visa-oracle tree) and the observer
+  scripts/ci/observe_visa_oracle_e33f_note.py with its pytest. Observation: the observer runs the new
+  e33e-e33f-pack-scan.test.ts, reports Tests 389 passed (389) and requires all 21 of its titles; with the threshold
+  check or the global-rule check disabled in the scan, the matching guilt test goes red (two mutants run this turn).
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 2
+  paid_api: none
+  note: One agy build round, one Opus red team and one Codex red team (subscription CLIs); no paid per-token API.
+results:
+  - claim: "New scan file plus engine-adapter: all pass."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/e33e-e33f-pack-scan' 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter'
+    result: "Test Files 3 passed (3); Tests 224 passed (224)"
+    exit: 0
+    ts: "2026-10-15T04:40:20+08:00"
+    seat: claude-sonnet-5.5 driver
+  - claim: "Typecheck of apps/mouth."
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output"
+    exit: 0
+    ts: "2026-10-15T04:41:00+08:00"
+    seat: claude-sonnet-5.5 driver
+  - claim: "The bites observer runs the lane's tests and requires their titles."
+    cmd: python3 scripts/ci/observe_visa_oracle_e33f_note.py
+    result: "Tests 389 passed (389); e33f note holds"
+    exit: 0
+    ts: "2026-10-15T04:41:30+08:00"
+    seat: claude-sonnet-5.5 driver
+  - claim: "Observer pytest pins all 21 scan titles."
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_e33f_note.py -p no:cacheprovider
+    result: "10 passed"
+    exit: 0
+    ts: "2026-10-15T04:41:40+08:00"
+    seat: claude-sonnet-5.5 driver
+  - claim: "Replay-pin census unchanged by the lane."
+    cmd: python3 scripts/ci/observe_visa_oracle_replay_pins.py
+    result: "Tests 305 passed (305); replay pins hold"
+    exit: 0
+    ts: "2026-10-15T04:41:50+08:00"
+    seat: claude-sonnet-5.5 driver
+  - claim: "Mutant 1: the threshold-vs-note check disabled in the scan turns exactly the threshold guilt test red."
+    cmd: "python3 inline: prefix 'false && ' to the condition facts.depositThreshold !== facts.noteThresholdUsd, then vitest run on the scan file; file restored from cp backup (cmp ok)"
+    result: "1 failed | 20 passed (21): guilt: a changed deposit threshold fails the scan"
+    exit: 1
+    ts: "2026-10-15T04:46:00+08:00"
+    seat: claude-sonnet-5.5 driver
+  - claim: "Mutant 2: the global-rule-count check disabled turns exactly the global-rule guilt test red."
+    cmd: "python3 inline: prefix 'false && ' to facts.globalRuleCount !== EXPECTED_GLOBAL_RULE_COUNT, then vitest run on the scan file; restored (cmp ok)"
+    result: "1 failed | 20 passed (21): guilt: adding or removing a global rule fails the scan"
+    exit: 1
+    ts: "2026-10-15T04:46:30+08:00"
+    seat: claude-sonnet-5.5 driver
+decisions:
+  - id: D-whole-tree-not-run
+    decision: "The whole-tree vitest of (visa-oracle) was NOT run in this evidence turn: another lane held a push-intent lock younger than 3 h and load average was about 60. The pusher runs it in its quiet window before push. Argued risk is low: the directory-walking tests exclude *.test.ts."
+  - id: D-gear-2-no-council
+    decision: "The deterministic floor is 2 (size term), so no council_run journal is required; two real red-team seats reviewed anyway."
+dissent:
+  - seat: "claude-opus-5-5 adversarial red team (MEDIUM)"
+    objection: "The delta of el.e33e.retirement was taken with find() and unexpected leaves filtered by fact name, so a second leaf on an expected fact (age cap, a higher second deposit leaf, state_bank false) passed."
+    status: CONFIRMED
+    disposition: "CURED in 303695b760: exact clause multiset; guilt tests for an appended age cap, a second deposit leaf and a contradictory state-bank leaf are in the file."
+  - seat: "claude-opus-5-5 adversarial red team (MEDIUM)"
+    objection: "The deposit-threshold guilt test did not prove the threshold check (the check disabled left all tests green)."
+    status: CONFIRMED
+    disposition: "CURED in 303695b760 and re-proved this turn: mutant 1 turns the threshold guilt test red."
+  - seat: "claude-opus-5-5 adversarial red team (MEDIUM)"
+    objection: "The E33F side was not pinned: a new E33F-only SUPPORT rule passed."
+    status: CONFIRMED
+    disposition: "CURED in 303695b760: guilt test 'a new E33F-only SUPPORT rule fails the scan'."
+  - seat: "claude-opus-5-5 adversarial red team (LOW x4)"
+    objection: "Twins compared on effect.type and when only; exact-list equality over-matched a harmless new twin pair; the cure sentence printed only on the innocence test; the pytest pinned 6 of 12 titles."
+    status: CONFIRMED
+    disposition: "CURED in 303695b760: on_unknown, validity and RETIREMENT coverage guilt tests; a harmless twin pair test; CURE_MESSAGE on the active-pack assertions (53 uses); the pytest pins all 21 titles. The observer docstring was re-wrapped in this evidence commit."
+  - seat: "claude-opus-5-5 adversarial red team (LOW)"
+    objection: "The whole-tree visa-oracle vitest was not run and the observer docstring line was too long."
+    status: PLAUSIBLE
+    disposition: "Docstring re-wrapped. Whole-tree run left to the pusher's quiet window (see D-whole-tree-not-run); not claimed as run."
+  - seat: "codex gpt-5.6-sol, rollout-2026-10-15T04-11-13-01a13c0a-5625-7e22-9db1-3e5b8dc019ea (HIGH)"
+    objection: "unexpectedLeaves accepts any extra clause that uses one of the four allowed facts, and find() keeps the first match."
+    status: CONFIRMED
+    disposition: "CURED in 303695b760 (same cure as the Opus MEDIUM): exact multiset of the four delta clauses with cardinality; extra and duplicate clause guilt probes."
+  - seat: "codex gpt-5.6-sol, rollout-2026-10-15T04-11-13-01a13c0a-5625-7e22-9db1-3e5b8dc019ea (MEDIUM)"
+    objection: "globalRuleCount was computed but never enforced."
+    status: CONFIRMED
+    disposition: "CURED in 303695b760: the scan reports a violation when the count is not the signed 5; mutant 2 re-proved it this turn."
