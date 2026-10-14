@@ -2486,7 +2486,8 @@ def test_council_run_innocence_pre_flip_notice_not_fail(tmp_path):
 
 def test_council_run_quorum_reached_by_two_distinct_fallback_seats(tmp_path):
     """QUORUM: before this ruling, tp1-deepseek-v4-pro/tp1-glm-5.2/
-    agy-gemini-3.1-pro were not COUNCIL_REVIEW_SEATS members at all and
+    agy-gemini-3.1-pro (later agy-gemini-4-argon-high, Zero 2026-10-14) were
+    not COUNCIL_REVIEW_SEATS members at all and
     counted toward nothing. Post-ruling they are COUNCIL_REVIEW_SEATS_FALLBACK
     members, so 2 distinct ones DO reach the >=2 quorum — the guilt this
     test proves is `council_fallback_reason` (all-reserve, no reason), NOT
@@ -2509,14 +2510,49 @@ def test_council_run_guilt_all_fallback_no_reason_rejected(tmp_path):
     a `council_fallback_reason` violation, distinct from the quorum rule."""
     _write_journal(tmp_path, "journal.jsonl", [
         {"seat": "tp1-deepseek-v4-pro", "role": "review", "ok": True, "ts": "a"},
-        {"seat": "agy-gemini-3.1-pro", "role": "review", "ok": True, "ts": "b"},
+        {"seat": "agy-gemini-4-argon-high", "role": "review", "ok": True, "ts": "b"},
     ])
     pack = {"council_run": "journal.jsonl"}
     viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
     assert len(viol) == 1
     assert "council_fallback_reason" in viol[0]
-    assert "tp1-deepseek-v4-pro" in viol[0] and "agy-gemini-3.1-pro" in viol[0]
+    assert "tp1-deepseek-v4-pro" in viol[0] and "agy-gemini-4-argon-high" in viol[0]
     assert notice is None
+
+
+def test_gemini4_argon_high_counts_toward_quorum_only_with_substitution_note(tmp_path):
+    """GUILT/INNOCENCE (Zero 2026-10-14): agy-gemini-4-argon-high is the Gemini
+    reserve. Beside a titolare it reaches quorum, but without
+    `seat_fallback_reason` it is a council_fallback_reason violation; with the
+    note it is clean."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": True, "ts": "a"},
+        {"seat": "agy-gemini-4-argon-high", "role": "review", "ok": True, "ts": "b"},
+    ])
+    pack = {"council_run": "journal.jsonl"}
+    viol, _ = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert len(viol) == 1 and "council_fallback_reason" in viol[0]
+    assert "agy-gemini-4-argon-high" in viol[0]
+    pack["seat_fallback_reason"] = "kimi-code/k3 replaced: 403 weekly usage limit observed 2026-10-14"
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert viol == [] and notice is None
+
+
+def test_retired_gemini_3_1_pro_no_longer_counts_toward_quorum(tmp_path):
+    """GUILT: the retired seat name (agy no longer offers Gemini 3.1 Pro) is
+    not a COUNCIL_REVIEW_SEATS member, so beside one titolare it is NOT a
+    quorum of two."""
+    import evidence_pack_lint as _epl
+
+    assert "agy-gemini-3.1-pro" not in _epl.COUNCIL_REVIEW_SEATS
+    assert "agy-gemini-4-argon-high" in _epl.COUNCIL_REVIEW_SEATS_FALLBACK
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": True, "ts": "a"},
+        {"seat": "agy-gemini-3.1-pro", "role": "review", "ok": True, "ts": "b"},
+    ])
+    pack = {"council_run": "journal.jsonl", "seat_fallback_reason": "x"}
+    viol, _ = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert len(viol) == 1 and "council_run" in viol[0]
 
 
 def test_council_run_innocence_fallback_reason_declared_passes(tmp_path):

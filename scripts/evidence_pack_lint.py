@@ -2970,10 +2970,17 @@ COUNCIL_REVIEW_SEATS_TITOLARI: tuple[str, ...] = (
 #: down?" — the lint has no liveness data, and a guard that judges what it
 #: cannot see is the guard-over-match family this repo already has scars in.
 #: What is enforced is that somebody had to WRITE the substitution down.
+#:
+#: Zero RULED 2026-10-14 that the Gemini reserve seat `agy-gemini-3.1-pro` is
+#: replaced by `agy-gemini-4-argon-high`. Observed the same day on M5: agy 1.3.4
+#: `agy models` lists gemini-4-argon-low/-medium/-high and gemini-3.8-flash-*
+#: but no Gemini 3.1 Pro, so the old seat was dead by construction. The new seat
+#: is still a RESERVE: it counts toward quorum only with `seat_fallback_reason`
+#: naming the titolare it replaced and how that unavailability was observed.
 COUNCIL_REVIEW_SEATS_FALLBACK: tuple[str, ...] = (
     "tp1-deepseek-v4-pro",
     "tp1-glm-5.2",
-    "agy-gemini-3.1-pro",
+    "agy-gemini-4-argon-high",
 )
 
 COUNCIL_REVIEW_SEATS: tuple[str, ...] = (
