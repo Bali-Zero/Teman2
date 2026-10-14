@@ -1,4 +1,4 @@
-"""Negative gold personas for the E30 (study) family.
+"""Negative gold personas for the E30 (study) family and E31C (family).
 
 The positive corpus under ``gold_coverage/personas/`` is POSITIVE-ONLY by
 design: ``test_gold_coverage_floor.py`` requires every file there to replay

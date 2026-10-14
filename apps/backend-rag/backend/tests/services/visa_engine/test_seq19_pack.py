@@ -851,7 +851,7 @@ class TestInnocence:
 
 
 # ---------------------------------------------------------------------------
-# Gold-coverage replay (30 of 39 personas), against the 019 CompiledRulePack —
+# Gold-coverage replay (32 of 41 personas), against the 019 CompiledRulePack —
 # same evaluate path as gold_coverage_eval._evaluate, minus the repository
 # file-selection/signature step neither script lets a caller override (see
 # module docstring).
