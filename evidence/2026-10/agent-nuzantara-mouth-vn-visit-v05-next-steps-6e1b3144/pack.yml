@@ -1,0 +1,51 @@
+gear: 2
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  visa-night family "visit" item V05 (/Users/nuzantara/visa-night/visit/V05.body.md), built on origin/main ed49e69ee2
+  with the seq-29 pack active.
+mission: >-
+  The Visa Oracle A1-only outcome lists the official-page requirements without a quote/timing step; the BRIDGING
+  outcome warns not to leave Indonesia while the permit is in use.
+lanes:
+  - lane: v05-next-steps
+    role: build
+    seat: claude-sonnet-5-5 implementer, worktree mouth-vn-visit-v05-next-steps.
+  - lane: v05-ground-truth
+    role: ground_truth
+    seat: >-
+      claude-sonnet-5-5. Saved A1 page research/visa/2026-10-14-v05-a1-page/a1-bebas-visa-wisata-20261014T050945Z.txt
+      (fetched from imigrasi.go.id/wna/daftar-visa-indonesia/A1 this run; the repo held no earlier A1 page snapshot;
+      sha256 5f81e8a777e0cd65ad61589f1e6138e6601726ccf1958e21d044396e9350200e): stay :75/:77, passport :87, ticket
+      with crew exemption :88, no selling :95. BRIDGING exit: research/visa/2026-10-13-organ-reattest-seq29/text/
+      3da72c7b-20261013T000748Z.txt:59 (source record 3da72c7b in rulepack-prod-029).
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "e69e5a21331a3774bdf6883d163fde8528098b71531ed6ac6f4455f97741f4a9" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at merge-base ed49e69ee2 (before the change).
+pii_scan: clean
+bites: >-
+  Consumer: the public Visa Oracle result page (OutcomeSheet rendering nextSteps from nextStepsFor in
+  engine-adapter.ts) and the engine-adapter.test.ts pins in the mouth suite on every PR. Observation, after the
+  mouth deploy is promoted on balizero.com/visa-oracle: a Singapore transit walk (A1 alone) shows the A1 steps and
+  no quote step; an onshore walk reaching BRIDGING shows the exit warning (EN and ID).
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+  paid_api: none
+  note: One implementer session plus one red-team round by codex gpt-5.6-sol (subscription CLI, rollout rollout-2026-10-14T13-15-27-01a138d6-3f13-7a42-91d1-02d69576b56f); no paid per-token API.
+results:
+  - claim: "The whole visa-oracle mouth suite after the change."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 58 passed (58); Tests 1513 passed (1513)"
+    ts: "2026-10-14T05:25:01Z"
+  - claim: "Mutation: drop the BRIDGING exit warning from the BRIDGING-only list."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' -t V05
+    result: "1 failed | 5 passed | 172 skipped (178); reverted"
+    ts: "2026-10-14T05:25:01Z"
+decisions:
+  - id: D-three-steps
+    decision: "OutcomeNextSteps is a 2-3 tuple type (outcome-view-model.ts), so A1 passport and ticket share one step."
+dissent:
+  - seat: "codex gpt-5.6-sol, rollout rollout-2026-10-14T13-15-27-01a138d6-3f13-7a42-91d1-02d69576b56f (red team, MEDIUM x2, LOW x1, no HIGH)"
+    objection: "Ticket line dropped the page's transport-crew exemption; paid-work sentence not pinned in full; passport and 'take the permit' wording unnatural."
+    status: CONFIRMED
+    disposition: "CURED in a separate commit: crew exemption kept in EN and ID, full step sentences pinned with toEqual, wording reworded."
