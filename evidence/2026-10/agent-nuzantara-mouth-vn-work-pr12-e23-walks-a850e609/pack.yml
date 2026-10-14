@@ -1,0 +1,54 @@
+gear: 2
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  visa-night work plan PR-12 + T05, built on origin/main 6324ac93e9 (seq-29 active, #8433). Generated 2026-10-13T12:52:45Z.
+mission: >-
+  The walk corpus covers the E23-family work-tile variants with outcome and reason pins on seq-20..29.
+lanes:
+  - lane: pr12-e23-walks
+    role: build
+    seat: Claude Sonnet 5.5 implementer (worktree mouth-vn-work-pr12-e23-walks).
+pii_scan: clean
+bites: >-
+  Consumer: the census gate on every pack fold and tree change (test_interview_walk_census.py, test_seq21_pack.py and
+  walk-corpus-determinism.test.ts). Observation: the census run replays the 144-walk corpus and lists the twelve new walks
+  pinned and green on every pinned sequence 20..29 including seq-29 (test_the_e23_work_walks_replay_to_their_pins_on_every_pinned_sequence, 10 params).
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
+  paid_api: none
+  note: >-
+    One implementer session plus two red-team rounds by codex gpt-5.6-sol (subscription CLI, rollouts
+    rollout-2026-10-13T20-27-03-01a1353b-05aa-73f0-9a60-4b501ea5504d and
+    rollout-2026-10-13T20-43-40-01a1354a-3f62-76c1-b4a4-fb59ec38833c); no paid per-token API.
+results:
+  - claim: "Backend visa_engine census files and the rest of the visa_engine suites (DB-backed files excluded: no scratch database)."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine backend/tests/scripts/visa_engine -n 4 --ignore=test_evaluate_endpoint.py --ignore=test_shadow_evidence.py --ignore=test_shadow_match.py --ignore=test_visa_engine_retention_fk_registry.py
+    result: "3626 passed, 15 skipped, 3 xfailed"
+    exit: 0
+    ts: "2026-10-13T12:52:45Z"
+  - claim: "The whole visa-oracle mouth suite including walk-corpus-determinism at 144 walks."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 56 passed (56); Tests 1481 passed (1481)"
+    exit: 0
+    ts: "2026-10-13T12:52:45Z"
+  - claim: "Mutation: one pinned outcome flipped (offshore/work/sponsor_employer E23 -> E23U) turns the census red."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "1 failed (test_every_walk_ends_in_its_pinned_outcome), 68 passed; restored afterwards"
+    exit: 1
+    ts: "2026-10-13T12:52:45Z"
+    ts_note: "run earlier in the session; ts is the pack-authoring clock, an upper bound"
+decisions:
+  - id: D-T05-out
+    decision: "T05 (global hard filters on visit and employment walks) is left out: its filters are not specified in the task and the cap is about 400 hand-written lines."
+  - id: D-walks-measured
+    decision: "Every pin is the replay on each source pack seq-20..29; seq-20 differs from seq-21..29, which share one table."
+dissent:
+  - seat: "codex gpt-5.6-sol, rollout rollout-2026-10-13T20-27-03-01a1353b-05aa-73f0-9a60-4b501ea5504d (red team, MEDIUM)"
+    objection: "The per-sequence replay checks outcomes only, not reason codes or blocking facts."
+    status: CONFIRMED
+    disposition: "CURED in the second commit: the replay also asserts no-path reason codes and the allowlisted missing fact per sequence."
+  - seat: "codex gpt-5.6-sol, rollout rollout-2026-10-13T20-43-40-01a1354a-3f62-76c1-b4a4-fb59ec38833c (red team, LOW x4)"
+    objection: "Stale 106/18/3 test name and 132/131/13-walk comments in the census."
+    status: CONFIRMED
+    disposition: "CURED in the third commit except the module docstring at line 9 (pre-existing 112-walk wording, not touched by this PR)."

@@ -152,6 +152,21 @@ NAMED_CAUSE_WALKS: dict[str, str] = {
     "offshore/work/sponsor_government/trade_office_only/employer_no": EMPLOYMENT_SPONSOR_REASON,
 }
 
+#: PR-12 (2026-10-13): the work-tile walks whose no-path reason codes MOVE from
+#: seq-20 to seq-21 beyond `NAMED_CAUSE_WALKS`. Four swap the generic sentence
+#: for a named cause; `offshore/work/sponsor_individual/employer_no` instead
+#: leaves the dead end for E23U (see `_PR12_NO_PATH_TO_SUPPORTED`).
+_PR12_REASON_MOVED_WALKS = (
+    "offshore/work/no_government_collaboration/sponsor_confirmed_no",
+    "offshore/work/payer_no",
+    "offshore/work/sponsor_employer/employer_no",
+    "offshore/work/sponsor_employer/sponsor_confirmed_no",
+    "offshore/work/sponsor_individual/employer_no",
+)
+#: The one PR-12 walk whose STATE moves seq-20 -> seq-21 other than a question
+#: becoming an answer: a dead end that gains E23U.
+_PR12_NO_PATH_TO_SUPPORTED = ("offshore/work/sponsor_individual/employer_no",)
+
 _GENERIC_CAUSE = "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
 
 #: PR-11: the three age-64 retirement walks one US dollar below the
@@ -193,6 +208,14 @@ EXPECTED_SEQ21_GAINS: dict[str, tuple[str, ...]] = {
     # confirmed` ("unsure") on seq-20, SUPPORTED [E33B] on seq-21 — the
     # default NONE sponsor answers the collaboration question "yes".
     "offshore/other/paid/sponsor_unsure": ("E33B",),
+    # PR-12: the work-tile variants. `payer_unsure` is the other state that
+    # moves (NEEDS_INPUT -> SUPPORTED [E33B]); `employer_no` on an INDIVIDUAL
+    # sponsor leaves its dead end for E23U.
+    "offshore/other/paid/sponsor_individual": ("E23U",),
+    "offshore/work/payer_unsure": ("E33B",),
+    "offshore/work/sponsor_individual/employer_no": ("E23U",),
+    "onshore/work/sponsor_government/trade_office_only": ("E23V",),
+    "onshore/work/sponsor_individual": ("E23U",),
     "offshore/work": ("E33B",),
     "offshore/work/sponsor_government": ("E23V", "E33A"),
     "offshore/work/sponsor_government/invitation_only": ("E33A",),
@@ -1122,6 +1145,16 @@ _UNASKED_DRIFT_ALLOWLIST: dict[str, tuple[str, str]] = {
         "NO_SUPPORTED_PATH",
         "NEEDS_INPUT",
     ),
+    # PR-12: the same shape on two more work-tile walks — a known "no" whose
+    # stripped qualification answer leaves a question behind.
+    # `sponsor_confirmed_no` loses the government-collaboration answer E33B
+    # reads; the INDIVIDUAL `employer_no` walk loses the diplomatic-household
+    # answer E23U reads.
+    "offshore/work/no_government_collaboration/sponsor_confirmed_no": (
+        "NO_SUPPORTED_PATH",
+        "NEEDS_INPUT",
+    ),
+    "offshore/work/sponsor_individual/employer_no": ("NO_SUPPORTED_PATH", "NEEDS_INPUT"),
 }
 
 
@@ -1136,7 +1169,7 @@ class TestCensusReplay:
         UNKNOWN (the interview before W-VO-Q), no walk gains a product and —
         what must never happen — no walk loses its answer, and no
         ``on_unknown: NEEDS_INPUT`` rule turns a decided dead end into a
-        question, with exactly one named, checked exception —
+        question, with the named, checked exceptions of
         ``_UNASKED_DRIFT_ALLOWLIST`` — where a dead end becomes a QUESTION
         (never a lost answer) for a reason pinned above."""
         before = _replay(seq20_compiled, unasked_walks)
@@ -1155,7 +1188,7 @@ class TestCensusReplay:
             assert after[label]["state"] == after_state, label
             assert before[label]["candidates"] == after[label]["candidates"] == [], label
 
-    def test_without_the_answers_the_census_is_106_answers_18_no_paths_3_questions(
+    def test_without_the_answers_the_census_is_110_answers_21_no_paths_8_questions(
         self,
         seq21_compiled: compiler.CompiledRulePack,
         unasked_walks: dict[str, dict[str, Any]],
@@ -1204,12 +1237,18 @@ class TestCensusReplay:
         Seq-29 (2026-10-12) adds the minor-sibling walk
         `offshore/family/SIBLING/spNat=IT/minor`, which reads none of the ten
         qualification facts and answers SUPPORTED_CANDIDATES (C1, E31J) on this
-        pack: 106 / 18 / 3 / 1."""
+        pack: 106 / 18 / 3 / 1.
+
+        PR-12 (2026-10-13) adds twelve work-tile walks over a 128 -> 140
+        unasked corpus: four SUPPORTED on this pack plus the six whose
+        stripped answers stay decided, and the two allowlisted drifts above
+        become questions here (a dead end whose qualification answer is
+        withdrawn): 110 / 21 / 8 / 1."""
         replayed = _replay(seq21_compiled, unasked_walks)
         census = Counter(actual["state"] for actual in replayed.values())
-        assert census["SUPPORTED_CANDIDATES"] == 106
-        assert census["NO_SUPPORTED_PATH"] == 18
-        assert census["NEEDS_INPUT"] == 3
+        assert census["SUPPORTED_CANDIDATES"] == 110
+        assert census["NO_SUPPORTED_PATH"] == 21
+        assert census["NEEDS_INPUT"] == 8
         assert census["HUMAN_REVIEW_REQUIRED"] == 1
         held = [
             label
@@ -1255,7 +1294,7 @@ class TestCensusReplay:
                 gains[label] = gained
             if before[label]["state"] != after[label]["state"]:
                 assert (before[label]["state"], after[label]["state"]) == (
-                    "NEEDS_INPUT",
+                    "NO_SUPPORTED_PATH" if label in _PR12_NO_PATH_TO_SUPPORTED else "NEEDS_INPUT",
                     "SUPPORTED_CANDIDATES",
                 ), label
         assert gains == EXPECTED_SEQ21_GAINS
@@ -1305,7 +1344,7 @@ class TestCensusReplay:
             for label in before
             if before[label]["no_path_reason_codes"] != after[label]["no_path_reason_codes"]
         )
-        assert moved == sorted(NAMED_CAUSE_WALKS)
+        assert moved == sorted([*NAMED_CAUSE_WALKS, *_PR12_REASON_MOVED_WALKS])
 
     def test_every_no_path_code_seq21_emits_on_the_corpus_has_visitor_copy(
         self,

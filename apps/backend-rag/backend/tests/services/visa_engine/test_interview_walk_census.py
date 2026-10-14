@@ -2,7 +2,7 @@
 
 ``test_gold_coverage_floor.py`` proves the pack can support a product when
 every fact arrives. This file proves the opposite half, and it is the half
-the user lives in: replay the **132 real interview walks** — every distinct
+the user lives in: replay the **144 real interview walks** — every distinct
 path through ``flow.ts``'s two-arm spine and ``getCategoryQuestionIds``'
 eleven categories, each answered through the real ``fact-mapper.ts`` —
 against the highest signed PRODUCTION pack, and pin the outcome census.
@@ -648,6 +648,32 @@ WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[26] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[25
 WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[27] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[26]
 WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[28] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[27]
 WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[29] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[28]
+#: PR-12: the three unsure work walks. Both questions ARE asked in each walk
+#: and the mapper refuses to certify "unsure" (`ANSWER_NEVER_CERTIFIED`), so
+#: the fact stays open; the sponsor-confirmation walk is the same shape as the
+#: seq-20 `offshore/other/paid/sponsor_unsure` row above, on the `work` tile.
+#: `offshore/work/payer_unsure` is NEEDS_INPUT on seq-20 only.
+_PR12_UNSURE_PAYER_ROW = (
+    DeadEnd(
+        fact="work.employer_is_indonesian_entity",
+        source_question="work_payer",
+        why_unaskable=ANSWER_NEVER_CERTIFIED,
+    ),
+)
+_PR12_UNSURE_SPONSOR_ROW = (
+    DeadEnd(
+        fact="work.indonesian_work_sponsor_confirmed",
+        source_question="work_sponsor_confirmed",
+        why_unaskable=ANSWER_NEVER_CERTIFIED,
+    ),
+)
+for _seq, _rows in WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE.items():
+    _rows["offshore/work/no_government_collaboration/payer_unsure"] = _PR12_UNSURE_PAYER_ROW
+    _rows["offshore/work/no_government_collaboration/sponsor_confirmed_unsure"] = (
+        _PR12_UNSURE_SPONSOR_ROW
+    )
+    if _seq == 20:
+        _rows["offshore/work/payer_unsure"] = _PR12_UNSURE_PAYER_ROW
 WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
 )
@@ -1281,11 +1307,48 @@ EXPECTED_OUTCOME_BY_SEQUENCE[29] = {
     **EXPECTED_OUTCOME_BY_SEQUENCE[28],
     **_SEQ29_OUTCOME_CHANGES,
 }
-# The sequences share one corpus, so every one of them pins the 13 walks; the
-# replay test `test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence`
-# re-measures them (and the full state census) on each of seq-20..27.
+#: PR-12 (visa-night work family, 2026-10-13): the 12 E23-family work-tile walks.
+#: Every row is the engine's own replay on each pinned sequence's source pack
+#: (seq-20..29), never the audit's seq-27 prediction copied: seq-20 reads none
+#: of the sponsor qualification facts, so it differs from seq-21..29, which
+#: share one table. The pins record behaviour, not a legal claim: the
+#: `payer_unsure` walk is SUPPORTED [E33B] from seq-21 because E33B reads the
+#: government-collaboration answer and never the payer, while the same unsure
+#: payer on the `no_government_collaboration` walk leaves nothing to name and
+#: asks for the employer fact.
+_PR12_WORK_OUTCOMES: dict[str, tuple[str, tuple[str, ...]]] = {
+    "offshore/work/payer_no": ("NO_SUPPORTED_PATH", ()),
+    "offshore/work/payer_unsure": ("SUPPORTED_CANDIDATES", ("E33B",)),
+    "offshore/work/no_government_collaboration/payer_unsure": ("NEEDS_INPUT", ()),
+    "offshore/work/no_government_collaboration/sponsor_confirmed_unsure": ("NEEDS_INPUT", ()),
+    "offshore/work/no_government_collaboration/sponsor_confirmed_no": ("NO_SUPPORTED_PATH", ()),
+    "offshore/work/sponsor_employer": ("SUPPORTED_CANDIDATES", ("E23",)),
+    "offshore/work/sponsor_employer/employer_no": ("NO_SUPPORTED_PATH", ()),
+    "offshore/work/sponsor_employer/sponsor_confirmed_no": ("NO_SUPPORTED_PATH", ()),
+    "offshore/work/sponsor_individual/employer_no": ("SUPPORTED_CANDIDATES", ("E23U",)),
+    "onshore/work/sponsor_individual": ("SUPPORTED_CANDIDATES", ("E23", "E23U")),
+    "onshore/work/sponsor_government/trade_office_only": ("SUPPORTED_CANDIDATES", ("E23", "E23V")),
+    "offshore/other/paid/sponsor_individual": ("SUPPORTED_CANDIDATES", ("E23", "E23U")),
+}
+_PR12_WORK_OUTCOMES_SEQ20: dict[str, tuple[str, tuple[str, ...]]] = {
+    **_PR12_WORK_OUTCOMES,
+    "offshore/work/payer_unsure": ("NEEDS_INPUT", ()),
+    "offshore/work/sponsor_individual/employer_no": ("NO_SUPPORTED_PATH", ()),
+    "onshore/work/sponsor_individual": ("SUPPORTED_CANDIDATES", ("E23",)),
+    "onshore/work/sponsor_government/trade_office_only": ("SUPPORTED_CANDIDATES", ("E23",)),
+    "offshore/other/paid/sponsor_individual": ("SUPPORTED_CANDIDATES", ("E23",)),
+}
+# The sequences share one corpus, so every one of them pins the 13 PR-11 walks and the 12
+# PR-12 walks; the replay tests
+# `test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence` and
+# `test_the_e23_work_walks_replay_to_their_pins_on_every_pinned_sequence` re-measure
+# them (and the full state census) on each pinned sequence that has a source pack.
 EXPECTED_OUTCOME_BY_SEQUENCE = {
-    _seq: {**_pins, **_PR11_RETIREMENT_OUTCOMES}
+    _seq: {
+        **_pins,
+        **_PR11_RETIREMENT_OUTCOMES,
+        **(_PR12_WORK_OUTCOMES_SEQ20 if _seq == 20 else _PR12_WORK_OUTCOMES),
+    }
     for _seq, _pins in EXPECTED_OUTCOME_BY_SEQUENCE.items()
 }
 EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = EXPECTED_OUTCOME_BY_SEQUENCE.get(
@@ -1348,6 +1411,29 @@ _EXPECTED_REASONS_ON_SEQ27: dict[str, ReasonPin] = {
     "offshore/retirement/passive_income/age64/income_2999": _RETIREMENT_INCOME_BELOW,
     # NEEDS_INPUT: the answer is open, so there is no cause to name yet.
     "offshore/retirement/undecided/age64/still_unsure": ((), ()),
+    # PR-12 (measured on seq-27, 28 and 29): the work-tile walks that end without a path.
+    "offshore/work/payer_no": (
+        ("PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR", "E33A_SPONSOR_NOT_GOVERNMENT"),
+        (),
+    ),
+    "offshore/work/no_government_collaboration/payer_unsure": ((), ()),
+    "offshore/work/no_government_collaboration/sponsor_confirmed_unsure": ((), ()),
+    "offshore/work/no_government_collaboration/sponsor_confirmed_no": (
+        ("E33A_SPONSOR_NOT_GOVERNMENT",),
+        (),
+    ),
+    "offshore/work/sponsor_employer/employer_no": (
+        (
+            "PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR",
+            "E33A_SPONSOR_NOT_GOVERNMENT",
+            "E33B_SPONSOR_NOT_GOVERNMENT_OR_NONE",
+        ),
+        (),
+    ),
+    "offshore/work/sponsor_employer/sponsor_confirmed_no": (
+        ("E33A_SPONSOR_NOT_GOVERNMENT", "E33B_SPONSOR_NOT_GOVERNMENT_OR_NONE"),
+        (),
+    ),
 }
 #: seq-28 (E33G Step C, #8300): the business no-path stops naming AGE_BELOW_55
 #: next to BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED (measured from the evaluated
@@ -1457,15 +1543,29 @@ EXPECTED_STATE_CENSUS_BY_SEQUENCE = {
     }
     for _seq, _census in EXPECTED_STATE_CENSUS_BY_SEQUENCE.items()
 }
-# Expected after Step B's 131-walk corpus from the single ruled movement:
+# PR-12 adds 12 work-tile walks to EVERY sequence: seq-20 = 3 NEEDS_INPUT + 5
+# NO_SUPPORTED_PATH + 4 SUPPORTED_CANDIDATES, seq-21..29 = 2 + 4 + 6 (see
+# `_PR12_WORK_OUTCOMES`). Folded into the literals below for seq-28/29.
+_PR12_STATE_DELTA_SEQ20 = {"NEEDS_INPUT": 3, "NO_SUPPORTED_PATH": 5, "SUPPORTED_CANDIDATES": 4}
+_PR12_STATE_DELTA = {"NEEDS_INPUT": 2, "NO_SUPPORTED_PATH": 4, "SUPPORTED_CANDIDATES": 6}
+EXPECTED_STATE_CENSUS_BY_SEQUENCE = {
+    _seq: {
+        _state: _count
+        + (_PR12_STATE_DELTA_SEQ20 if _seq == 20 else _PR12_STATE_DELTA).get(_state, 0)
+        for _state, _count in _census.items()
+    }
+    for _seq, _census in EXPECTED_STATE_CENSUS_BY_SEQUENCE.items()
+}
+# Expected after Step B's 131-walk corpus (144 with PR-12's work walks, folded in below)
+# from the single ruled movement:
 # one walk moves SUPPORTED_CANDIDATES -> NO_SUPPORTED_PATH; age scoping moves
 # reason codes only, never a state.  The candidate replay below re-measures
 # this literal as soon as the real seq-28 source exists on disk.
 EXPECTED_STATE_CENSUS_BY_SEQUENCE[28] = {
     "HUMAN_REVIEW_REQUIRED": 3,
-    "NEEDS_INPUT": 1,
-    "NO_SUPPORTED_PATH": 17,
-    "SUPPORTED_CANDIDATES": 111,
+    "NEEDS_INPUT": 1 + _PR12_STATE_DELTA["NEEDS_INPUT"],
+    "NO_SUPPORTED_PATH": 17 + _PR12_STATE_DELTA["NO_SUPPORTED_PATH"],
+    "SUPPORTED_CANDIDATES": 111 + _PR12_STATE_DELTA["SUPPORTED_CANDIDATES"],
 }
 # seq-29 moves products, never a state: measured again on the candidate replay.
 EXPECTED_STATE_CENSUS_BY_SEQUENCE[29] = dict(EXPECTED_STATE_CENSUS_BY_SEQUENCE[28])
@@ -1516,6 +1616,20 @@ EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[26] = EXPECTED_DEAD_END_FACT_CENSUS_BY
 EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[27] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[26]
 EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[28] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[27]
 EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[29] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[28]
+# PR-12: the unsure payer / unsure sponsor-confirmation work walks dead-end on the fact
+# their own answered question refuses to certify (seq-20 also holds the old
+# `offshore/other/paid/sponsor_unsure` row on the sponsor fact).
+EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE = {
+    _seq: {
+        **_facts,
+        "work.employer_is_indonesian_entity": 2 if _seq == 20 else 1,
+        "work.indonesian_work_sponsor_confirmed": _facts.get(
+            "work.indonesian_work_sponsor_confirmed", 0
+        )
+        + 1,
+    }
+    for _seq, _facts in EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE.items()
+}
 EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
 )
@@ -1576,6 +1690,11 @@ EXPECTED_DISCLOSED_REVIEW_FLAGS: dict[str, tuple[str, ...]] = {
     "offshore/other/no_paid_activity/medical": ("ACTIVITY_BOUNDARY",),
     "offshore/other/paid/sponsor_unsure": ("NOT_CERTAIN",),
     "offshore/work/sponsor_unsure": ("NOT_CERTAIN",),
+    # PR-12: an "unsure" payer or sponsor confirmation on the work tile raises
+    # the same flag the sponsor-category and paid-activity "unsure" walks do.
+    "offshore/work/payer_unsure": ("NOT_CERTAIN",),
+    "offshore/work/no_government_collaboration/payer_unsure": ("NOT_CERTAIN",),
+    "offshore/work/no_government_collaboration/sponsor_confirmed_unsure": ("NOT_CERTAIN",),
     "offshore/tourism/disclosed_conditions": (
         "AMBIGUOUS_SPONSOR",
         "BLACKLIST_ENTRY",
@@ -2558,9 +2677,13 @@ def test_corpus_has_the_expected_real_interview_walks(walks: dict[str, dict[str,
     E33G under seq-20..27 because those packs do not read the new fact.
 
     Seq-29 (2026-10-12): adds 1, corpus 131 -> 132: `offshore/family/SIBLING/spNat=IT/
-    minor`, the one minor sibling that keeps E31J named once the pack excludes adults."""
+    minor`, the one minor sibling that keeps E31J named once the pack excludes adults.
 
-    assert len(walks) == 132, f"expected 132 interview walks, found {len(walks)}"
+    PR-12 (2026-10-13): adds 12, corpus 132 -> 144: the E23-family work-tile
+    variants (payer, sponsor confirmation and sponsor category answered away
+    from the default; see `_PR12_WORK_OUTCOMES`)."""
+
+    assert len(walks) == 144, f"expected 144 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -2781,7 +2904,9 @@ def test_the_census_pins_the_signed_sequence() -> None:
         "every non-SUPPORTED walk to `EXPECTED_REASONS_BY_SEQUENCE`"
     )
     # The sequences share one corpus, so they must pin the same walks.
-    common_labels = set(_EXPECTED_OUTCOME_ON_SEQ20) | set(_PR11_RETIREMENT_OUTCOMES)
+    common_labels = (
+        set(_EXPECTED_OUTCOME_ON_SEQ20) | set(_PR11_RETIREMENT_OUTCOMES) | set(_PR12_WORK_OUTCOMES)
+    )
     for sequence, pins in EXPECTED_OUTCOME_BY_SEQUENCE.items():
         expected_labels = common_labels | ({_SEQ28_E33G_59999_WALK} if sequence >= 28 else set())
         assert set(pins) == expected_labels, sequence
@@ -2892,6 +3017,46 @@ def test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence(
     assert not violations, "\n  ".join(violations)
     census = dict(Counter(o["state"] for o in replayed.values()))
     assert census == EXPECTED_STATE_CENSUS_BY_SEQUENCE[sequence]
+
+
+@pytest.mark.parametrize(
+    "sequence",
+    [
+        sequence
+        for sequence in sorted(EXPECTED_OUTCOME_BY_SEQUENCE)
+        if (PACKS_DIR / f"rulepack-prod-{sequence:03d}.source.json").is_file()
+    ],
+)
+def test_the_e23_work_walks_replay_to_their_pins_on_every_pinned_sequence(
+    walks: dict[str, dict[str, Any]], sequence: int
+) -> None:
+    """PR-12: the 12 work-tile walks are replayed on each pinned sequence's
+    own source pack (seq-20..29), never trusted from the signed sequence's
+    table alone: seq-20 reads none of the sponsor qualification facts, so its
+    table differs from seq-21..29's."""
+
+    path = PACKS_DIR / f"rulepack-prod-{sequence:03d}.source.json"
+    replayed = _outcomes_on(walks, _pack_from_source(path))
+    pins = _PR12_WORK_OUTCOMES_SEQ20 if sequence == 20 else _PR12_WORK_OUTCOMES
+    work = {k: v for k, v in replayed.items() if k in pins}
+    assert len(work) == 12
+    violations = _outcome_violations(work, pins)
+    assert not violations, "\n  ".join(violations)
+    # The causes, not only the states (red team, 2026-10-13): every no-path walk
+    # names the seq-27 reasons from seq-21 on and the generic sentence on seq-20,
+    # and every NEEDS_INPUT walk blocks on exactly the fact its allowlist row names.
+    for label, (state, _candidates) in pins.items():
+        actual = work[label]
+        if state == "NO_SUPPORTED_PATH":
+            expected_codes = (
+                ["OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"]
+                if sequence == 20
+                else list(_EXPECTED_REASONS_ON_SEQ27[label][0])
+            )
+            assert actual["no_path_reason_codes"] == expected_codes, (sequence, label)
+        if state == "NEEDS_INPUT":
+            rows = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[sequence][label]
+            assert actual["missing_facts"] == [row.fact for row in rows], (sequence, label)
 
 
 #: The three dead ends are NAMED, not just empty: the visitor copy keys off
@@ -3225,20 +3390,29 @@ def test_allowlist_has_exactly_the_two_pr_d3_rows() -> None:
     (`NO_QUESTION_IN_TREE`). Slice A7-M, 2026-09-22: `tree.ts` now asks the
     question, so that row is CURED the same way PR-D3 cured PR-5's two — the
     walk answers instead of dead-ending, and the count returns to the
-    original two."""
+    original two.
 
-    assert set(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[20]) == {
+    PR-12 (2026-10-13): the two honest-non-answer work walks join every
+    sequence and `offshore/work/payer_unsure` joins seq-20 only (it names E33B
+    from seq-21) — `_PR12_UNSURE_PAYER_ROW` / `_PR12_UNSURE_SPONSOR_ROW`."""
+
+    pr12 = {
+        "offshore/work/no_government_collaboration/payer_unsure",
+        "offshore/work/no_government_collaboration/sponsor_confirmed_unsure",
+    }
+    assert set(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[20]) == pr12 | {
+        "offshore/work/payer_unsure",
         "offshore/other/paid/sponsor_unsure",
         "offshore/retirement/undecided/age64/still_unsure",
     }
-    assert set(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[21]) == {
+    assert set(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[21]) == pr12 | {
         "offshore/retirement/undecided/age64/still_unsure",
     }
-    assert set(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[22]) == {
+    assert set(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[22]) == pr12 | {
         "offshore/retirement/undecided/age64/still_unsure",
     }
     assert WALK_DEAD_END_ALLOWLIST is WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[_SIGNED_SEQUENCE]
-    assert len(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[20]) == 2
+    assert len(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[20]) == 5
 
 
 def _unaskable_violations(
@@ -3909,7 +4083,7 @@ def test_every_disclosure_flag_reports_the_walks_it_rewrites(
 
     assert {flag: len(rows) for flag, rows in per_flag.items()} == {
         "ACTIVITY_BOUNDARY": 6,
-        "NOT_CERTAIN": 2,
+        "NOT_CERTAIN": 5,  # PR-12: +3 unsure work-tile walks
         # A4 (mission VISA-ORACLE-DW-20260919): one walk each, the nine
         # conditioning items on `offshore/tourism/disclosed_conditions` plus
         # the two single-item walks.
