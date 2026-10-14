@@ -237,6 +237,10 @@ def head_of(pr: dict) -> str:
     return sha if is_sha(sha) else ""
 
 
+def has_arm_label(pr: dict) -> bool:
+    return ARM_LABEL in {lb.get("name") for lb in pr.get("labels") or [] if isinstance(lb, dict)}
+
+
 def wants_merge(pr: dict) -> bool:
     return bool(pr.get("auto_merge")) or bool({LABEL, ARM_LABEL} & {lb.get("name") for lb in pr.get("labels") or [] if isinstance(lb, dict)})
 
@@ -302,7 +306,7 @@ def gate_ready(repo: str, head: str, names: list) -> bool:
 
 
 def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_ready=None, capped: list | None = None,
-           evict_capped: list | None = None, now_s: float | None = None) -> tuple[list[dict], list[dict]]:
+           evict_capped: list | None = None, now_s: float | None = None, deferred: list | None = None) -> tuple[list[dict], list[dict]]:
     """(same-repo PRs to decide, in order; fork PRs to journal). Drafts and PRs that ask for no merge are not the merger's.
 
     Order: a head never decided at any base first, then the head whose last decision is oldest, then created_at —
@@ -316,7 +320,11 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
     B15: an ``evicted`` record is an attempt for ORDER (it goes into ``last`` with its ts, so the head rotates behind the others) and
     never a decision (the key is still undecided). After EVICT_CAP evictions of one (pr, head, base) the key is appended to
     ``evict_capped`` and skipped until the base or the head moves. An eviction counts toward the cap only within EVICT_WINDOW_S of
-    ``now_s``: an older one is history for ORDER, never a cap, and an unreadable ts counts (it fails closed toward the cap)."""
+    ``now_s``: an older one is history for ORDER, never a cap, and an unreadable ts counts (it fails closed toward the cap).
+
+    B23: PRs carrying ARM_LABEL are ordered before the unlabelled ones, and with LOCALCI_MERGER_PHASE_F=1 an unlabelled PR is not selected
+    at all. A (pr, head) whose NEWEST non-replay decision, at any base, was gate_pending is not decided at a NEW base until
+    ``gate_ready`` says its verdict is posted (a failed read, or no callable, defers it); it is appended to ``deferred``."""
     now = time.time() if now_s is None else now_s
     decided = {(r.get("pr"), r.get("head_sha"), r.get("base_sha")) for r in recs if (r.get("kind") == "decision" and not r.get("replay"))
                or r.get("why") == "head_in_base"}
@@ -338,10 +346,19 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
             ts = r.get("ts")
             if not is_ts(ts) or now - _epoch(ts) <= EVICT_WINDOW_S:
                 evictions[(r.get("pr"), r.get("head_sha"), r.get("base_sha"))] += 1
+    newest: dict = {}   # B23: (pr, head) -> the newest non-replay decision's pending contexts, None when it was not gate_pending
+    for r in recs:
+        if r.get("kind") == "decision" and not r.get("replay"):
+            names = r.get("gate_pending_contexts")
+            newest[(r.get("pr"), r.get("head_sha"))] = names if (r.get("gate_pending") is True and r.get("overall") == "BLOCKED" and isinstance(names, list)
+                                                              and names and all(isinstance(x, str) for x in names)) else None
+    shadow_only = os.environ.get(PHASE_F_ENV) == "1"
     todo, forks = [], []
     for pr in prs:
         n, head = pr.get("number"), head_of(pr)
         if pr.get("draft") is not False or not wants_merge(pr) or not isinstance(n, int) or not head:
+            continue
+        if shadow_only and not has_arm_label(pr) and repo_of(pr.get("head")) == repo.lower() and repo_of(pr.get("base")) == repo.lower():
             continue
         if repo_of(pr.get("head")) != repo.lower() or repo_of(pr.get("base")) != repo.lower():
             if (n, head) not in refused:
@@ -351,6 +368,16 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
                 if evict_capped is not None:
                     evict_capped.append(pr)
                 continue
+            if newest.get((n, head)):
+                try:
+                    ready = gate_ready is not None and bool(gate_ready(n, head, newest[(n, head)]))
+                except (hc.CompareError, OSError) as exc:
+                    ready = False
+                    print(f"merger: #{n} gate status or hosted re-run not read — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
+                if not ready:
+                    if deferred is not None:
+                        deferred.append(pr)
+                    continue
             todo.append(pr)
         elif (count := pending.get((n, head, base_sha), [0, None]))[1]:
             if count[0] >= GATE_PENDING_CAP:
@@ -362,7 +389,7 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
                     todo.append(pr)
             except (hc.CompareError, OSError) as exc:
                 print(f"merger: #{n} gate status or hosted re-run not read — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
-    todo.sort(key=lambda p: ((p["number"], head_of(p)) in last, last.get((p["number"], head_of(p)), ""), str(p.get("created_at")), p["number"]))
+    todo.sort(key=lambda p: (not has_arm_label(p), (p["number"], head_of(p)) in last, last.get((p["number"], head_of(p)), ""), str(p.get("created_at")), p["number"]))
     return todo, forks
 
 
@@ -1583,16 +1610,22 @@ def tick(a, state: Path, lease_id: str) -> int:
     base_sha = git(repo_dir, "rev-parse", "refs/merger/base^{commit}").stdout.strip()
     capped: list = []
     evict_capped: list = []
+    deferred: list = []
     prs = open_prs(a.repo, a.base)
     if retry_pending_merges(a, state, repo_dir, lease_id, recs, base_sha, prs):
         return 0
     check_watchdog()
-    todo, forks = triage(prs, a.repo, recs, base_sha, lambda n, head, names: gate_ready(a.repo, head, names), capped, evict_capped)
+    todo, forks = triage(prs, a.repo, recs, base_sha, lambda n, head, names: gate_ready(a.repo, head, names), capped, evict_capped,
+                         deferred=deferred)
     for why, prs in (("gate_pending_cap", capped), ("evicted_cap", evict_capped)):   # B12, B15: journalled once per key, however many ticks pass
         for pr in prs:
             key = {"pr": pr["number"], "head_sha": head_of(pr), "base_sha": base_sha}
             if not any(r.get("kind") == "skipped" and r.get("why") == why and all(r.get(k) == v for k, v in key.items()) for r in recs):
                 journal(state, {"kind": "skipped", "why": why, **key, "lease_id": lease_id})
+    for pr in deferred:   # B23: once per (pr, head), whatever the base
+        key = {"pr": pr["number"], "head_sha": head_of(pr)}
+        if not any(r.get("kind") == "skipped" and r.get("why") == "gate_pending_deferred" and all(r.get(k) == v for k, v in key.items()) for r in recs):
+            journal(state, {"kind": "skipped", "why": "gate_pending_deferred", **key, "base_sha": base_sha, "lease_id": lease_id})
     for pr in forks:
         journal(state, {"kind": "refused", "why": "fork", "pr": pr["number"], "head_sha": head_of(pr), "base_sha": base_sha, "lease_id": lease_id})
     last = [r for r in recs if r.get("kind") == "decision"][-1:]

@@ -52,6 +52,7 @@ GP = ("scripts/localci/tests/test_gate_pending.py",)   # B12
 GS = ("scripts/localci/tests/test_gate_stale.py",)   # B12b
 ROOT = Path(__file__).resolve().parents[4]
 REPORT = "scripts/localci/tests/test_merger_report.py"
+SHIPPABLE = ("scripts/localci/tests/test_triage_shippable.py",)   # B23
 PENDING = ("scripts/localci/tests/test_merger_pending.py",)   # B19
 TICK = "scripts/localci/tests/test_merger.py"
 PY, SH = "scripts/localci/merger.py", "scripts/localci/localci_merger_tick.sh"
@@ -894,6 +895,13 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "pending-watchdog-flag-never-checked-after-retry": (PY, "        check_watchdog()\n        if sum(1", "        if sum(1", PENDING),
     "pending-watchdog-flag-reset-mid-tick": (PY, "    check_watchdog()   # B19-W4", "    _WATCHDOG[\"fired\"] = False\n    check_watchdog()   # B19-W4", PENDING),
     "pending-push-unlanded-beats-pushed": (PY, '        elif kind == "push_unlanded" and k not in pushed:', '        elif kind == "push_unlanded":', PENDING),
+    # B23: the lane goes to PRs that can merge
+    "ship-labels-ignored-in-ordering": (PY, "todo.sort(key=lambda p: (not has_arm_label(p), ", "todo.sort(key=lambda p: (False, ", SHIPPABLE),
+    "ship-unlabelled-picked-under-phase-f": (PY, "if shadow_only and not has_arm_label(pr) and", "if False and", SHIPPABLE),
+    "ship-gate-pending-defer-ignored": (PY, "            if newest.get((n, head)):\n", "            if False:\n", SHIPPABLE + ("scripts/localci/tests/test_gate_pending.py",)),
+    "ship-failed-read-means-ready": (PY, "                except (hc.CompareError, OSError) as exc:\n                    ready = False\n", "                except (hc.CompareError, OSError) as exc:\n                    ready = True\n", SHIPPABLE),
+    "ship-skip-journalled-every-tick": (PY, '        if not any(r.get("kind") == "skipped" and r.get("why") == "gate_pending_deferred" and all(r.get(k) == v for k, v in key.items()) for r in recs):\n', "        if True:\n", SHIPPABLE),
+    "ship-defers-on-any-old-decision": (PY, "for x in names)) else None\n    shadow_only", "for x in names)) else newest.get((r.get(\"pr\"), r.get(\"head_sha\")))\n    shadow_only", SHIPPABLE),
 }
 
 
