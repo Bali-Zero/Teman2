@@ -1,0 +1,25 @@
+gear: 2
+gear_reason: >-
+  Tests-only lane (two backend test files, one parity test file, one CI observer and its pytest). No
+  production code, prompt, catalogue or PDF byte changes. The measured gear floor from the lint is 1.
+mission: >-
+  E33F everywhere: carry the gate conditions of #8515 (fresh Opus gate C3) and the re-sign follow-ups
+  of #8506 into tests.
+objective: >-
+  The E33F worked-example guard also covers the v3 fallback prompt, the payload fixture no longer
+  carries a number that is not ours, and the brochure guilt test fails on the pre-#8506 PDF while
+  passing on the current one; a PDF-parity failure names the exact regeneration cure.
+scope:
+  - apps/backend-rag/backend/tests/unit/prompts/test_few_shot_e33f_everywhere_1014.py
+  - apps/backend-rag/backend/tests/unit/scripts/test_prepare_payloads_internal_1014.py
+  - apps/backend-rag/backend/tests/services/crm/test_brochure_price_parity.py
+  - scripts/ci/observe_brochure_price_parity.py (cure line, MIN_TESTS) and its pytest
+  - scripts/ci/observe_zantara_e33f_everywhere_1014.py (BACKEND_FLOOR, measured)
+acceptance:
+  - text: WHEN the pre-E33F v3 worked examples are restored THEN the E33F guard SHALL go red.
+    probe: python3 scripts/ci/observe_zantara_e33f_everywhere_1014.py
+  - text: WHEN the pre-#8506 brochure PDF is committed THEN test_guilt_f SHALL fail; on the current PDF it SHALL pass.
+    probe: python3 scripts/ci/observe_brochure_price_parity.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

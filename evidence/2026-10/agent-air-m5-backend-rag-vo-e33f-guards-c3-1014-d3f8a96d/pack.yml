@@ -1,0 +1,154 @@
+# Gear-2 evidence pack - E33F guards, carry-overs of #8515 (gate C3) and #8506 (re-sign follow-ups).
+# Every receipt is a command run on 2026-10-14 (UTC) in the lane worktree by the Claude driver.
+gear: 2
+brief_ref: evidence/brief.yml
+pii_scan: clean
+ruling: >-
+  The fresh Opus gate C3 of #8515 and the fresh re-sign follow-ups of #8506, under Zero's 2026-10-14
+  ruling "E33F everywhere".
+mission: >-
+  Tests-only: guard the v3 fallback prompt with the E33F worked-example check, replace the
+  unrecognised WhatsApp number in the payload fixture with a placeholder, give the brochure guilt test
+  teeth against the pre-#8506 PDF, and put the regeneration cure in the PDF-parity failure message.
+lanes:
+  - lane: e33f-guards-c3-build
+    role: build
+    seat: >-
+      gemini-4-argon-high via agy (external seat, edits files only, never git) with the Claude driver;
+      commits e8d1d71ec2 and 498d62f2cf, verified and committed by Claude.
+  - lane: e33f-guards-c3-redteam-opus
+    role: review
+    seat: claude-opus-5-5 adversarial red team, read-only, on head e8d1d71ec2.
+  - lane: e33f-guards-c3-redteam-codex
+    role: review
+    seat: >-
+      codex gpt-5.6-sol high, read-only, on head e8d1d71ec2; rollout name
+      rollout-2026-10-15T04-11-13-01a13c0a-5625-7e22-9db1-3e5b8dc019ea (model gpt-5.6-sol verified).
+bites:
+  consumer: >-
+    the backend CI shard that collects the E33F everywhere guard and the brochure price-parity test; the
+    two observers below run those tests and assert their floors.
+  where: ci
+  observe: python3 scripts/ci/observe_brochure_price_parity.py
+  expect: "contains:brochure prices match the canonical catalogue"
+what_changed: |
+  test_few_shot_e33f_everywhere_1014.py: zantara_core_v3 WORKED_EXAMPLES and master template join the guard loop.
+  test_prepare_payloads_internal_1014.py: fixture WhatsApp number replaced by the placeholder +620000000000.
+  test_brochure_price_parity.py: PDF_PARITY_CURE in the failure message; test_guilt_f strengthened with a
+  qualifier-tolerant helper and a bite test on the verbatim pre-#8506 PDF window.
+  observe_brochure_price_parity.py: prints the same cure on PDF-parity failures only; MIN_TESTS 17.
+  observe_zantara_e33f_everywhere_1014.py: BACKEND_FLOOR is unchanged at 108 (it rose to 110 during the build and came back by measurement; no diff on that line).
+dissent:
+  - seat: claude-opus-5-5
+    objection: >-
+      MEDIUM, cure used root-relative system python3 instead of the generator's documented invocation
+      (test_brochure_price_parity.py PDF_PARITY_CURE, observe_brochure_price_parity.py).
+    status: CONFIRMED
+    resolution: >-
+      Cured in 498d62f2cf, one cure string in both places, "cd apps/backend-rag && .venv/bin/python
+      scripts/generate_brochure.py (no arguments; needs Playwright in the backend venv and network for the
+      Montserrat font)", then commit the PDF; the parity test asserts the full string.
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      MEDIUM, same finding: the cure used the system python3, not the backend venv.
+    status: CONFIRMED
+    resolution: >-
+      Cured in 498d62f2cf with the generator's own documented invocation (cd into apps/backend-rag, venv
+      python) rather than the repo-root form the seat suggested; same string as the Opus finding.
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      HIGH, test_innocence_fixture_carries_no_unrecognised_whatsapp_number rebuilt the unrecognised number
+      by concatenation, so the identifier stayed in the artifact in split form.
+    status: CONFIRMED
+    resolution: >-
+      Cured in 498d62f2cf, the test is deleted; the fixture carries only the placeholder +620000000000. No
+      fragment of the old number is committed.
+  - seat: claude-opus-5-5
+    objection: >-
+      LOW, the split-number test (same code as the Codex HIGH) was unrequested and re-committed the number.
+    status: CONFIRMED
+    resolution: Cured in 498d62f2cf by deleting the test, BACKEND_FLOOR lowered by measurement.
+  - seat: claude-opus-5-5
+    objection: >-
+      LOW, the pre-#8506 row fixture in test_guilt_f_helper_bites was invented text, not the verbatim PDF window.
+    status: CONFIRMED
+    resolution: Cured in 498d62f2cf, the fixture is the verbatim pypdf window of the old PDF.
+  - seat: claude-opus-5-5
+    objection: >-
+      LOW, OLD_V3_WORKED_EXAMPLE_FIXTURE duplicated the v4 fixture, so the new v3 guilt test could not fail
+      by itself and inflated the floor.
+    status: CONFIRMED
+    resolution: >-
+      Cured in 498d62f2cf, the duplicate test is removed, BACKEND_FLOOR 110 to 108 (measured); the v3 teeth
+      are the two innocence-loop entries, proven by mutation M1 below.
+  - seat: claude-opus-5-5
+    objection: >-
+      LOW, the observer printed the regenerate-PDF cure on every non-timeout failure.
+    status: CONFIRMED
+    resolution: >-
+      Cured in 498d62f2cf, the cure prints only when the output names the anchored-sequence failure, the
+      test_guilt_f test or generate_brochure.py.
+  - seat: claude-opus-5-5
+    objection: >-
+      LOW, nothing pins BACKEND_FLOOR (the observer test uses a fixed 95); setting it to 0 turns no test red.
+    status: PLAUSIBLE
+    resolution: >-
+      Not cured here: pre-existing and outside the lane spec; the floor is measured on every run by the
+      observer itself. Left as a follow-up.
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      LOW, the observer's cure line has no test (only the summary parser is tested).
+    status: PLAUSIBLE
+    resolution: >-
+      The parity test now asserts the full cure string in the failure message (cured); the observer cure
+      is now gated on a -ra FAILED line naming a PDF test or the literal 'Missing anchored sequence in PDF' (gate C1);
+      receipts M2 (cure printed) and M3 (cure not printed) below.
+receipts:
+  - claim: Observer pytests for both observers pass with the new floors.
+    cmd: python3 -m pytest tests/scripts/test_observe_brochure_price_parity.py tests/scripts/test_observe_zantara_e33f_everywhere_1014.py -p no:cacheprovider
+    result: "21 passed in 0.09s"
+    exit: 0
+    ts: "2026-10-14T20:28:08Z"
+    seat: Claude driver (M5)
+  - claim: The E33F everywhere observer runs root and backend suites at the measured floor.
+    cmd: python3 scripts/ci/observe_zantara_e33f_everywhere_1014.py
+    result: "root 6 passed, backend 108 passed; final line: internal Retirement rows leave client paths, raw rows still resolve"
+    exit: 0
+    ts: "2026-10-14T20:28:20Z"
+    seat: Claude driver (M5)
+  - claim: The brochure parity observer passes at MIN_TESTS 17.
+    cmd: python3 scripts/ci/observe_brochure_price_parity.py
+    result: "17 passed in 2.08s; brochure prices match the canonical catalogue"
+    exit: 0
+    ts: "2026-10-14T20:28:30Z"
+    seat: Claude driver (M5)
+  - claim: The four backend lane test files pass.
+    cmd: "cd apps/backend-rag && JWT_SECRET_KEY=<test value> API_KEYS=<test value> .venv/bin/python -m pytest backend/tests/unit/prompts/test_few_shot_e33f_everywhere_1014.py backend/tests/unit/scripts/test_prepare_payloads_internal_1014.py backend/tests/services/crm/test_brochure_price_parity.py backend/tests/unit/test_zantara_core_v3.py -p no:cacheprovider"
+    result: "44 passed in 3.34s"
+    exit: 0
+    ts: "2026-10-14T20:28:31Z"
+    seat: Claude driver (M5)
+  - claim: "Mutation M1: the old v3 prompt (git show bf2235545a) restored makes the E33F guard red; file restored with cp and cmp."
+    cmd: "git show bf2235545a:apps/backend-rag/backend/prompts/zantara_core_v3.py > apps/backend-rag/backend/prompts/zantara_core_v3.py; pytest backend/tests/unit/prompts/test_few_shot_e33f_everywhere_1014.py backend/tests/unit/test_zantara_core_v3.py"
+    result: "1 failed, 22 passed: test_innocence_v3_v4_and_v5_contain_e33f_and_no_retirement_kitas_pensiun, v3.WORKED_EXAMPLES stale 'KITAS pensiun (Retirement)', 'asuransi kesehatan', 'dana pensiun', 'sponsor lokal', missing E33F; cmp clean after restore"
+    exit: 1
+    ts: "2026-10-14T20:29:08Z"
+    seat: Claude driver (M5)
+  - claim: "Mutation M2: the pre-#8506 PDF (git show 7d0fb6393e^) swapped in makes the strengthened test_guilt_f red; file restored with cp and cmp, git status clean."
+    cmd: "git show 7d0fb6393e^:apps/mouth/public/static/brochure_balizero_en.pdf > apps/mouth/public/static/brochure_balizero_en.pdf; pytest backend/tests/services/crm/test_brochure_price_parity.py"
+    result: "4 failed, 13 passed: anchored rows, guilt_e, cure-message test and test_guilt_f_pdf_does_not_print_14m_for_e33e (assert True is False); after restore the observer is 17 passed"
+    exit: 1
+    ts: "2026-10-14T20:29:16Z"
+    seat: Claude driver (M5)
+  - claim: "Gate C1 M2: the pre-#8506 PDF swapped in makes the observer fail AND print the regenerate-PDF cure; PDF restored from a cp backup, git status clean."
+    cmd: "git show 7d0fb6393e^:apps/mouth/public/static/brochure_balizero_en.pdf > apps/mouth/public/static/brochure_balizero_en.pdf; python3 scripts/ci/observe_brochure_price_parity.py"
+    result: "FAILED (4 failed, 13 passed); the line 'Cure: cd apps/backend-rag && .venv/bin/python scripts/generate_brochure.py ...' is printed"
+    exit: 1
+    ts: "2026-10-14T20:55:00Z"
+    seat: Claude driver (M5)
+  - claim: "Gate C1 M3: a literal 'Rp 9.900.000' added to a <p> in brochure_en.html fails the observer WITHOUT printing the cure; file restored with cp and cmp."
+    cmd: "python3 scripts/ci/observe_brochure_price_parity.py (with the template mutated)"
+    result: "FAILED (1 failed, 16 passed); no Cure line printed"
+    exit: 1
+    ts: "2026-10-14T20:56:00Z"
+    seat: Claude driver (M5)

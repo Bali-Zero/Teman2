@@ -15,8 +15,8 @@ Verifies:
 4. Guilt: the checker function flags the old 'Retirement KITAS ...' reply fixture,
    messages containing 'tanpa bekerja', swapped variant prices, internal row names,
    or non-canonical juta figures.
-5. zantara_core_v4 and zantara_core_v5 retirement worked-example blocks do not contain
-   'KITAS pensiun (Retirement)', 'bukti dana pensiun', 'sponsor lokal',
+5. zantara_core_v3, zantara_core_v4, and zantara_core_v5 retirement worked-example blocks
+   do not contain 'KITAS pensiun (Retirement)', 'bukti dana pensiun', 'sponsor lokal',
    'asuransi kesehatan', or 'tanpa bekerja', and do contain 'E33F' and 'penjamin'.
 """
 
@@ -30,6 +30,7 @@ from typing import Any
 from backend.prompts import (
     few_shot_examples,
     whatsapp_persona,
+    zantara_core_v3,
     zantara_core_v4,
     zantara_core_v5,
     zantara_persona,
@@ -216,7 +217,7 @@ def _extract_retirement_worked_example_block(prompt_source: str) -> str:
 
 
 def find_worked_example_e33f_violations(prompt_source: str) -> list[str]:
-    """Return violations in the retirement worked-example block of zantara_core_v4 / v5."""
+    """Return violations in the retirement worked-example block of zantara_core_v3 / v4 / v5."""
     block = _extract_retirement_worked_example_block(prompt_source)
     violations: list[str] = []
     if not block:
@@ -374,11 +375,13 @@ class TestFewShotE33FEverywhere:
         assert "15 juta" in joined
 
 
-class TestZantaraCoreV4AndV5WorkedExampleE33F:
-    """Guilt and innocence tests for zantara_core_v4 and zantara_core_v5 worked examples."""
+class TestZantaraCoreV3V4V5WorkedExampleE33F:
+    """Guilt and innocence tests for zantara_core_v3, zantara_core_v4, and zantara_core_v5 worked examples."""
 
-    def test_innocence_v4_and_v5_contain_e33f_and_no_retirement_kitas_pensiun(self) -> None:
+    def test_innocence_v3_v4_and_v5_contain_e33f_and_no_retirement_kitas_pensiun(self) -> None:
         for label, source in (
+            ("v3.WORKED_EXAMPLES", zantara_core_v3.WORKED_EXAMPLES),
+            ("v3.ZANTARA_MASTER_TEMPLATE", zantara_core_v3.ZANTARA_MASTER_TEMPLATE),
             ("v4.WORKED_EXAMPLES", zantara_core_v4.WORKED_EXAMPLES),
             ("v4.ZANTARA_MASTER_TEMPLATE", zantara_core_v4.ZANTARA_MASTER_TEMPLATE),
             ("v5.WORKED_EXAMPLES", zantara_core_v5.WORKED_EXAMPLES),

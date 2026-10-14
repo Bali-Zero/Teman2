@@ -10,7 +10,7 @@ which proves: every printed brochure row equals its canonical row (label, qualif
 column), E33E prints 45.000.000 and not the old 14.000.000, no internal Retirement row is printed,
 no IDR literal sits in the template, the committed PDF text carries the same anchored rows, and
 the guilt mutants (stale literal, swapped placeholders, relabelled row, drifted price, stale PDF)
-all fail. Exit 0 only on a full pass of at least 15 tests.
+all fail. Exit 0 only on a full pass of at least 17 tests.
 """
 
 # bites-observable — no arguments; one literal program, one literal test file.
@@ -26,15 +26,24 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_DIR = REPO_ROOT / "apps" / "backend-rag"
 TEST_FILE = "backend/tests/services/crm/test_brochure_price_parity.py"
-MIN_TESTS = 15
+MIN_TESTS = 17
 TIMEOUT_SECONDS = 240
+BROCHURE_CURE = (
+    "Cure: cd apps/backend-rag && .venv/bin/python scripts/generate_brochure.py "
+    "(no arguments; needs Playwright in the backend venv and network for the Montserrat font), "
+    "then commit apps/mouth/public/static/brochure_balizero_en.pdf - that PDF is what clients receive."
+)
 
 _SUMMARY = re.compile(r"^=*\s*(\d+) passed in [\d.]+s(?: \(.*\))?\s*=*$")
 _ANSI = re.compile(r"\x1b\[[0-9;]*m")
+_PDF_FAILED = re.compile(
+    r"^FAILED \S+::(test_committed_pdf_anchored_rows_match_canonical_prices|test_guilt_f_pdf_does_not_print_14m_for_e33e)\b",
+    re.M,
+)
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a pytest line that is a pure pass (no failed/skipped/error), N >= 15."""
+    """True only for a pytest line that is a pure pass (no failed/skipped/error), N >= 17."""
     if line is None:
         return False
     match = _SUMMARY.match(_ANSI.sub("", line).strip())
@@ -49,7 +58,7 @@ def main() -> int:
     env["_".join(("API", "KEYS"))] = "synthetic-placeholder"
     try:
         result = subprocess.run(
-            [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", TEST_FILE],
+            [sys.executable, "-m", "pytest", "-ra", "-p", "no:cacheprovider", TEST_FILE],
             cwd=BACKEND_DIR,
             env=env,
             check=False,
@@ -66,6 +75,11 @@ def main() -> int:
     summary = line.strip() if line else "no pytest summary"
     if result.returncode != 0 or not summary_ok(line):
         print(f"observe_brochure_price_parity: FAILED ({summary})\n{out[-1500:]}")
+        # The cure is claimed only for a PDF-parity failure: a -ra FAILED line naming one of the two
+        # PDF tests, or the literal assertion text. Bare test-name or script-name substrings match on
+        # every run (--durations, --tb=short tracebacks), so they are not used.
+        if _PDF_FAILED.search(out) or "Missing anchored sequence in PDF" in out:
+            print(BROCHURE_CURE)
         return result.returncode or 1
     print(f"observe_brochure_price_parity: {summary}")
     print("observe_brochure_price_parity: brochure prices match the canonical catalogue")

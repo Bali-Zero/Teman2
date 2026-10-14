@@ -89,7 +89,7 @@ def test_import_does_not_pollute_os_environ() -> None:
 
 def test_guilt_synthetic_catalog_skips_internal_rows_and_keeps_public() -> None:
     synthetic_catalog: dict[str, Any] = {
-        "metadata": {"contact": {"whatsapp": "+628113990045"}},
+        "metadata": {"contact": {"whatsapp": "+620000000000"}},
         "services": {
             "kitas_permits": {
                 "Retirement (Offshore)": {
