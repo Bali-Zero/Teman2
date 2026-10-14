@@ -33,43 +33,43 @@ results:
     result: "Test Files 3 passed (3); Tests 224 passed (224)"
     exit: 0
     ts: "2026-10-15T04:40:20+08:00"
-    seat: claude-sonnet-5.5 driver
+    seat: claude-sonnet-5-5 driver
   - claim: "Typecheck of apps/mouth."
     cmd: cd apps/mouth && npx tsc --noEmit -p .
     result: "no output"
     exit: 0
     ts: "2026-10-15T04:41:00+08:00"
-    seat: claude-sonnet-5.5 driver
+    seat: claude-sonnet-5-5 driver
   - claim: "The bites observer runs the lane's tests and requires their titles."
     cmd: python3 scripts/ci/observe_visa_oracle_e33f_note.py
     result: "Tests 389 passed (389); e33f note holds"
     exit: 0
     ts: "2026-10-15T04:41:30+08:00"
-    seat: claude-sonnet-5.5 driver
+    seat: claude-sonnet-5-5 driver
   - claim: "Observer pytest pins all 21 scan titles."
     cmd: python3 -m pytest tests/scripts/test_observe_visa_oracle_e33f_note.py -p no:cacheprovider
     result: "10 passed"
     exit: 0
     ts: "2026-10-15T04:41:40+08:00"
-    seat: claude-sonnet-5.5 driver
+    seat: claude-sonnet-5-5 driver
   - claim: "Replay-pin census unchanged by the lane."
     cmd: python3 scripts/ci/observe_visa_oracle_replay_pins.py
     result: "Tests 305 passed (305); replay pins hold"
     exit: 0
     ts: "2026-10-15T04:41:50+08:00"
-    seat: claude-sonnet-5.5 driver
+    seat: claude-sonnet-5-5 driver
   - claim: "Mutant 1: the threshold-vs-note check disabled in the scan turns exactly the threshold guilt test red."
     cmd: "python3 inline: prefix 'false && ' to the condition facts.depositThreshold !== facts.noteThresholdUsd, then vitest run on the scan file; file restored from cp backup (cmp ok)"
     result: "1 failed | 20 passed (21): guilt: a changed deposit threshold fails the scan"
     exit: 1
     ts: "2026-10-15T04:46:00+08:00"
-    seat: claude-sonnet-5.5 driver
+    seat: claude-sonnet-5-5 driver
   - claim: "Mutant 2: the global-rule-count check disabled turns exactly the global-rule guilt test red."
     cmd: "python3 inline: prefix 'false && ' to facts.globalRuleCount !== EXPECTED_GLOBAL_RULE_COUNT, then vitest run on the scan file; restored (cmp ok)"
     result: "1 failed | 20 passed (21): guilt: adding or removing a global rule fails the scan"
     exit: 1
     ts: "2026-10-15T04:46:30+08:00"
-    seat: claude-sonnet-5.5 driver
+    seat: claude-sonnet-5-5 driver
 decisions:
   - id: D-whole-tree-not-run
     decision: "The whole-tree vitest of (visa-oracle) was NOT run in this evidence turn: another lane held a push-intent lock younger than 3 h and load average was about 60. The pusher runs it in its quiet window before push. Argued risk is low: the directory-walking tests exclude *.test.ts."

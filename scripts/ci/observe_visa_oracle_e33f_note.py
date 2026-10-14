@@ -13,9 +13,9 @@ title to be reported as run: a retirement result with E33F but not E33E carries 
 candidate-scoped note on the E33F card (never in the global conditions) saying
 what the 5-year E33E would also need, in English and Bahasa Indonesia, and no
 note appears when E33E is also a candidate, when E33F is absent, or on dead ends.
-It also runs the pack-scan guard pinning that the newest signed pack separates E33E from E33F only by the
-deposit trio on retirement eligibility and matches the note's threshold and
-conditions.
+It also runs the pack-scan guard pinning that the newest signed pack separates
+E33E from E33F only by the deposit trio on retirement eligibility and matches
+the note's threshold and conditions.
 Exit 0 only if Vitest reports each file passed with zero failures.
 """
 
