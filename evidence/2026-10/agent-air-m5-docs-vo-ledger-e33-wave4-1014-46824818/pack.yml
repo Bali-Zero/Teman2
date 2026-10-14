@@ -20,21 +20,21 @@ bites:
 receipts:
   - claim: The four ledger test files pass, including the wave-4 pins (three PR/sha pairs once, the comment URLs, the stated gaps, the in-flight lanes, the SKILL lead, the five pending rows once each with owner and proof, the council update, the closed C6 row, the grammar classification, the floor equal to the file's test count).
     cmd: python3 -m pytest tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq29.py -p no:cacheprovider -q
-    result: "64 passed in 12.81s"
+    result: "64 passed in 1.02s"
     exit: 0
-    ts: "2026-10-14T16:31:00Z"
+    ts: "2026-10-14T17:33:00Z"
     seat: this session
   - claim: The seq-29 observer holds with its floor raised to 29, the true count of the ledger test file.
     cmd: python3 scripts/ci/observe_visa_ledger_seq29.py
     result: "29 passed; seq-29 ledger holds"
     exit: 0
-    ts: "2026-10-14T16:31:20Z"
+    ts: "2026-10-14T17:33:10Z"
     seat: this session
   - claim: The PENDING-ARMS ratchet is clean against origin/main and the five new open rows are present once each.
     cmd: "python3 scripts/pending_arms_report.py --ratchet --base-ref origin/main | tail -1; grep -c -F 'opened 2026-10-14 (M5, VISA-ORACLE E33 wave 4)' .claude/skills/modus/PENDING-ARMS.md"
-    result: "ratchet CLEAN: base 604 -> head 604 (delta 0); wave-4 opened rows = 5"
+    result: "ratchet CLEAN: base 605 -> head 605 (delta 0); wave-4 opened rows = 5"
     exit: 0
-    ts: "2026-10-14T16:31:48Z"
+    ts: "2026-10-14T17:33:20Z"
     seat: this session
   - claim: Every wave-4 merge sha, state, merge time, deploy run and comment URL was re-read from GitHub before it was written.
     cmd: "for p in 8501 8505 8506; do gh pr view $p --json state,mergeCommit,mergedAt -q '[.state,.mergeCommit.oid,.mergedAt]'; done; gh run list --repo FastLabsNet/zero --workflow 'Deploy Backend to Fly.io' -L 5 --json databaseId,createdAt,conclusion"
@@ -53,26 +53,19 @@ decisions:
       2026-10-14 and are recorded as handed over; this session re-read only the merge shas, PR states, merge times,
       the deploy run and the comment URLs with gh.
 dissent:
-  - seat: codex gpt-5.6-sol (the 01-07-43 rollout of 2026-10-15, "model":"gpt-5.6-sol" confirmed; retry after the first run the 00-36-22 rollout hit the 1500s timeout, exit 124, no findings; the retry prompt added "~15 min budget, do not run pytest/vitest", a deviation from the given prompt)
-    head: c0cc0bbf2a
-    findings:
-      - {
-          severity: MEDIUM,
-          where: "test_visa_ledger_seq29.py:407",
-          disposition: "VALID, cured: parser emits PHANTOM-OPERATOR so the != PHANTOM pin was vacuous; now asserts Qdrant row OPERATOR-GATED and exactly 4 TECH-DEBT of 5",
-        }
-      - {
-          severity: MEDIUM,
-          where: "PENDING-ARMS.md replay-pins row",
-          disposition: "VALID, cured: missing step and proof now require a named workflow job or receptor plus one green observation after the fixture merge",
-        }
-      - {
-          severity: MEDIUM,
-          where: "PENDING-ARMS.md Qdrant row",
-          disposition: "VALID, cured: step lists three separate conditions (M9 on origin/main, Zero's recorded authorisation, operator credentials) and the proof checks M9 ancestry and the authorisation link before dry run and --apply; owner kept operator[secret] so the class stays OPERATOR-GATED",
-        }
-      - {
-          severity: LOW,
-          where: "test_visa_ledger_seq29.py:336",
-          disposition: "VALID, cured: replay-fixture added to the in-flight lane pin",
-        }
+  - seat: "codex gpt-5.6-sol (rollout 01-07-43 of 2026-10-15, head c0cc0bbf2a; first run hit the 1500s timeout with no findings, retry prompt added a 15 min budget and no pytest/vitest)"
+    objection: "MEDIUM test_visa_ledger_seq29.py:407: the != PHANTOM pin is vacuous because the parser emits PHANTOM-OPERATOR."
+    status: CONFIRMED
+    disposition: "Cured: the pin now asserts the Qdrant row is OPERATOR-GATED and exactly 4 of the 5 rows are TECH-DEBT."
+  - seat: "codex gpt-5.6-sol (rollout 01-07-43 of 2026-10-15, head c0cc0bbf2a; first run hit the 1500s timeout with no findings, retry prompt added a 15 min budget and no pytest/vitest)"
+    objection: "MEDIUM PENDING-ARMS.md replay-pins row: the missing step and proof are not named."
+    status: CONFIRMED
+    disposition: "Cured: the step and proof now require a named workflow job or receptor plus one green observation after the fixture merge."
+  - seat: "codex gpt-5.6-sol (rollout 01-07-43 of 2026-10-15, head c0cc0bbf2a; first run hit the 1500s timeout with no findings, retry prompt added a 15 min budget and no pytest/vitest)"
+    objection: "MEDIUM PENDING-ARMS.md Qdrant row: the three separate preconditions are conflated."
+    status: CONFIRMED
+    disposition: "Cured: the step lists M9 on origin/main, Zero's recorded authorisation and operator credentials separately; the proof checks M9 ancestry and the authorisation link before the dry run and --apply; owner kept operator[secret] so the class stays OPERATOR-GATED."
+  - seat: "codex gpt-5.6-sol (rollout 01-07-43 of 2026-10-15, head c0cc0bbf2a; first run hit the 1500s timeout with no findings, retry prompt added a 15 min budget and no pytest/vitest)"
+    objection: "LOW test_visa_ledger_seq29.py:336: the replay-fixture lane is missing from the in-flight lane pin."
+    status: CONFIRMED
+    disposition: "Cured: replay-fixture added to the in-flight lane pin."
