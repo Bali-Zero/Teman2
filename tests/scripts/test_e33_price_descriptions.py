@@ -16,9 +16,9 @@ FILES = [
 # Explicit fixture: the full description_en of all three E33F rows, frozen as shipped
 # (the E33F official page never mentions work or study, so the work clause stays as it was).
 E33F_FROZEN = {
-    "E33F Second Home Senior (1 Year, Offshore)": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proof of income or allowance of at least USD 3,000/month; no deposit required. Valid 1 year, renewable; non-working residency. Offshore process for applicants outside Indonesia.",
-    "E33F Second Home Senior (1 Year, Altus/Onshore)": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proof of income or allowance of at least USD 3,000/month; no deposit required. Valid 1 year, renewable; non-working residency. Onshore process via Altus.",
-    "E33F Second Home Senior (Extend)": "Onshore annual extension of an existing E33F Second Home senior permit. USD 3,000/month income or allowance proof is re-validated at each extension.",
+    "E33F Second Home Senior (1 Year, Offshore)": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proof of income or allowance of at least USD 3,000/month; no deposit required. Valid 1 year, renewable; non-working residency. Offshore process for applicants outside Indonesia. A sponsor (penjamin) is required; Bali Zero can act as one.",
+    "E33F Second Home Senior (1 Year, Altus/Onshore)": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proof of income or allowance of at least USD 3,000/month; no deposit required. Valid 1 year, renewable; non-working residency. Onshore process via Altus. A sponsor (penjamin) is required; Bali Zero can act as one.",
+    "E33F Second Home Senior (Extend)": "Onshore annual extension of an existing E33F Second Home senior permit. USD 3,000/month income or allowance proof is re-validated at each extension. A sponsor (penjamin) is required; Bali Zero can act as one.",
 }
 E33F_NAMES = tuple(E33F_FROZEN)
 NAMES = ("E33 Second Home (5 Years)", "E33E Second Home Senior (5 Years)")

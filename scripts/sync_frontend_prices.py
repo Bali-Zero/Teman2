@@ -40,6 +40,7 @@ DST = REPO_ROOT / "apps/mouth/data/bali-zero-prices.json"
 def _iter_service_rows(
     services: dict[str, Any],
 ) -> Iterator[tuple[str, str, dict[str, Any]]]:
+    """Yield public service rows, skipping entries whose ``internal`` flag is true."""
     for category, category_payload in services.items():
         if not isinstance(category_payload, dict):
             continue
@@ -48,11 +49,11 @@ def _iter_service_rows(
                 if not isinstance(sub_block, dict):
                     continue
                 for key, row in sub_block.items():
-                    if isinstance(row, dict):
+                    if isinstance(row, dict) and row.get("internal") is not True:
                         yield f"{category}.{sub_block_name}", key, row
             continue
         for key, row in category_payload.items():
-            if isinstance(row, dict):
+            if isinstance(row, dict) and row.get("internal") is not True:
                 yield category, key, row
 
 

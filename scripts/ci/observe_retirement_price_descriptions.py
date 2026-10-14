@@ -9,7 +9,7 @@ The consumer is the pricing knowledge layer (get_all_prices / the public pricing
 endpoint), which serves the rows of bali_zero_official_prices_2026.json and its
 mouth mirror. The observation runs the pytest file that goes through PricingService.get_all_prices()
 and requires the Retirement rows to name the 55+ age floor from the signed rule pack, in both files and the printable list.
-Exit 0 only if pytest reports a full pass of at least 22 tests.
+Exit 0 only if pytest reports a full pass of at least 20 tests.
 """
 
 # bites-observable — no arguments; one literal program, one literal test file.
@@ -23,7 +23,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TEST_FILE = "tests/scripts/test_retirement_price_descriptions.py"
-MIN_TESTS = 22
+MIN_TESTS = 20
 TIMEOUT_SECONDS = 240
 _SUMMARY = re.compile(r"^=*\s*(\d+) passed in [\d.]+s(?: \(.*\))?\s*=*$")
 

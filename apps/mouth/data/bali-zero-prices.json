@@ -452,7 +452,7 @@
         "duration": "",
         "validity": "1 year",
         "notes": "All-inclusive price. Senior 55+ income-only route: proof of income or allowance of at least USD 3,000/month, no deposit required.",
-        "description_en": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proof of income or allowance of at least USD 3,000/month; no deposit required. Valid 1 year, renewable; non-working residency. Offshore process for applicants outside Indonesia.",
+        "description_en": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proof of income or allowance of at least USD 3,000/month; no deposit required. Valid 1 year, renewable; non-working residency. Offshore process for applicants outside Indonesia. A sponsor (penjamin) is required; Bali Zero can act as one.",
         "icon_id": "kitas-investor",
         "tier_range": null
       },
@@ -464,7 +464,7 @@
         "duration": "",
         "validity": "1 year",
         "notes": "All-inclusive price. Senior 55+ income-only route: proof of income or allowance of at least USD 3,000/month, no deposit required.",
-        "description_en": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proof of income or allowance of at least USD 3,000/month; no deposit required. Valid 1 year, renewable; non-working residency. Onshore process via Altus.",
+        "description_en": "Second Home Visa / KITAS senior route (E33F) for applicants 55+ with proof of income or allowance of at least USD 3,000/month; no deposit required. Valid 1 year, renewable; non-working residency. Onshore process via Altus. A sponsor (penjamin) is required; Bali Zero can act as one.",
         "icon_id": "kitas-investor",
         "tier_range": null
       },
@@ -476,7 +476,7 @@
         "duration": "",
         "validity": "",
         "notes": "All-inclusive price. Onshore annual extension of an existing E33F senior permit (income proof re-validated).",
-        "description_en": "Onshore annual extension of an existing E33F Second Home senior permit. USD 3,000/month income or allowance proof is re-validated at each extension.",
+        "description_en": "Onshore annual extension of an existing E33F Second Home senior permit. USD 3,000/month income or allowance proof is re-validated at each extension. A sponsor (penjamin) is required; Bali Zero can act as one.",
         "icon_id": "kitas-investor",
         "tier_range": null
       },
@@ -694,42 +694,6 @@
         "notes": "",
         "description_en": "KITAS issuance for foreign children born in Indonesia, processed alongside the birth registration.",
         "icon_id": "kitas-spouse",
-        "tier_range": null
-      },
-      "Retirement (Altus/Onshore)": {
-        "category": "kitas_permits",
-        "key": "Retirement (Altus/Onshore)",
-        "name": "Retirement (Altus/Onshore)",
-        "price": "16.000.000 IDR",
-        "duration": "",
-        "validity": "",
-        "notes": "",
-        "description_en": "Retirement KITAS for foreign nationals 55+ meeting income requirements. Onshore process via Altus.",
-        "icon_id": "kitap-permanent",
-        "tier_range": null
-      },
-      "Retirement (Offshore)": {
-        "category": "kitas_permits",
-        "key": "Retirement (Offshore)",
-        "name": "Retirement (Offshore)",
-        "price": "14.000.000 IDR",
-        "duration": "",
-        "validity": "",
-        "notes": "",
-        "description_en": "Retirement KITAS for foreign nationals 55+ meeting income requirements. Offshore process for applicants outside Indonesia.",
-        "icon_id": "kitap-permanent",
-        "tier_range": null
-      },
-      "Retirement (Extend)": {
-        "category": "kitas_permits",
-        "key": "Retirement (Extend)",
-        "name": "Retirement (Extend)",
-        "price": "10.000.000 IDR",
-        "duration": "",
-        "validity": "",
-        "notes": "",
-        "description_en": "Onshore extension of an existing Retirement KITAS.",
-        "icon_id": "kitap-permanent",
         "tier_range": null
       }
     },
