@@ -1,0 +1,36 @@
+task_id: vo-brochure-prices-1014
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  nuzantara-57 found on 2026-10-14 that the client brochure PDF
+  (apps/mouth/public/static/brochure_balizero_en.pdf, attached to client welcome
+  emails) still printed E33E Second Home Senior 5 years at Rp 14.000.000 while
+  the canonical row in bali_zero_official_prices_2026.json is 45.000.000 IDR.
+  The canonical JSON is the single source of truth. Together with Zero's
+  catalogue decisions of 2026-10-14 (generic Retirement rows hidden from public
+  surfaces, already on main as PR 8501), this lane regenerates the PDF and adds a
+  guard that binds every printed brochure row to its canonical row.
+acceptance:
+  - text: >-
+      Every printed brochure row (label, qualifier cells, price) equals its
+      canonical row; E33E prints 45.000.000; no internal Retirement row prints;
+      the committed PDF text carries the same anchored rows.
+    probe: python3 scripts/ci/observe_brochure_price_parity.py
+  - text: >-
+      The frontend price mirror is still in sync with the canonical JSON.
+    probe: python3 scripts/sync_frontend_prices.py --check
+  - text: >-
+      After deploy and promote, kita.balizero.com and balizero.com serve the
+      regenerated PDF (sha256 starts 88896ff89797595c) and pdftotext shows E33E
+      at Rp 45.000.000.
+    probe: >-
+      curl -s https://kita.balizero.com/static/brochure_balizero_en.pdf | shasum -a 256
+assumptions:
+  - text: >-
+      The brochure row labels keep their short marketing wording (for example
+      "E33E Second Home Senior, 5 years"); only the price source and the
+      guard changed. Whether the visible labels should be rewritten to the
+      canonical long names is an owner wording decision.
+    status: unverified
+    probe: none
