@@ -14,11 +14,11 @@ objective: >-
   With LOCALCI_MERGER_ARMED=1 the retry does nothing. The SIGALRM watchdog is sticky (B19-W): a flag set by the
   handler is checked after each retry, before triage and after replay selection, so an alarm swallowed by a broad
   except still ends the tick. A merged row followed by push_unlanded (B21) is not a merge. Gear is 2 via the SIZE
-  term (597 net lines, mostly tests, mutants and docs); the mechanism ships with its only consumer, the merger.
+  term (646 net lines, mostly tests, mutants and docs); the mechanism ships with its only consumer, the merger.
   The gear-2 verdict is not asserted here; a fresh Opus gate reads the diff.
 residuals:
   - On the decide path, a watchdog swallowed inside enqueue_step ends the tick with rc 0 and no error line. It
     fails closed and is pre-existing; the retry path is covered by the sticky flag.
   - The watchdog flag reset lives in cmd_tick; direct tick() callers rely on the test fixture to reset it.
-  - The push_unlanded predicate is inert until B21 (#8497) lands; it is pinned by synthetic rows and must carry
-    pr, head_sha and base_sha.
+  - B21 (#8497) has landed, and its real push_unlanded row (pr, head_sha, base_sha) satisfies the pending predicate,
+    pinned by an integration test on B21's real code path (transport failure, read-back, retry merges once).

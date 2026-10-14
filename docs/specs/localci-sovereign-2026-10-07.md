@@ -113,7 +113,6 @@ See `scripts/localci/README.md` (B19).
 - **S3.** In (b) the key is NOT merged. The pending-merge retry rule (B19, a separate PR, not on main yet) MUST treat "a `merged` row followed by `push_unlanded` for the same key" as not merged; B21 does not implement that dependency.
 - **S4.** `replay_pending` returns None while `LOCALCI_MERGER_PHASE_F` is `1` (the env, not the journal): with phase F armed every later commit on main is phase F's own or an operator's recovery push, and neither is GitHub's verdict to compare (replaying one is noise that can produce a FALSE_GREEN, which freezes READY). Unset (before the flip, or after step 0 of S5's rollback) replays are unchanged, and phase F's own `merged`/`pushed` commits stay excluded as B3c has it.
 - **S5, rollback order (docs).** Step 0: `touch <state>/phase_f_halt`, or unset `LOCALCI_MERGER_PHASE_F` and reload the plist; then `phase_e_flip.py --rollback`; then re-run `scripts/signal_merge_intent.sh <n>` on the open labelled PRs, so they are armed for the restored merge queue; remove the halt only when phase F is re-armed.
-||||||| parent of a846032bc1 (docs(localci): B19 spec — a PASS waits, it is not spent)
 
 Phase E never precedes D. If D shows a false green, the flip waits and the executor is fixed first. The operator reads `compared_merges`, never the age of the window: error lines and undecided ticks age a journal without proving anything.
 
