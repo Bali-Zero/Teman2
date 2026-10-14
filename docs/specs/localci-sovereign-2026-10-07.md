@@ -161,6 +161,14 @@ See `scripts/localci/README.md` (B19).
 
 See `scripts/localci/README.md` (B23).
 
+**B26 (2026-10-15): the bulk receipts of a finished run go after 24 hours.** Measured on Pro 2026-10-15: host free 94.6 GB against a start floor of 100 and an eviction line of 91.5, a run's transient use about 12 GB, so runs keep being evicted (#8508 at 17:36Z, `host_below_floor_during_run`) and the liveness evidence before the flip starves. The merger's `runs/` holds 12.5 GB over 302 runs; a recent run is about 645 MB, of which 636 MB is `receipts/pysa/{base,candidate}/results/`. `prune.py` already names `BULK = (call-graph.json, higher-order-call-graph.json)` as not the verdict (77-114 MB each), but `trim_runs` removed them only after `FULL_DAYS = 7`. Rules:
+
+- **U1.** The BULK files of a FINISHED run (one with a `status.json`) are removed once the run is older than `BULK_KEEP_H = 24` hours, instead of 7 days. A run without `status.json` (in progress, or killed) keeps today's rule. `taint-output.json` (the verdict) and every other file keep their current retention. Symlinks are not followed, as before.
+- **U2.** The prune row lists the runs that lost BULK under this rule as `trimmed_bulk: [run names]`, and `freed_gb` counts the bytes.
+- **U3.** Proof that nothing reads them: no code under `scripts/` outside `prune.py` and the tests names `call-graph.json` or `higher-order-call-graph.json`; Pysa writes them into its results directory and `pysa_check.py` reads only `taint-output.json` there, during the run.
+
+See `scripts/localci/README.md` (B26).
+
 Phase E never precedes D. If D shows a false green, the flip waits and the executor is fixed first. The operator reads `compared_merges`, never the age of the window: error lines and undecided ticks age a journal without proving anything.
 
 _Phase E, prepared (2026-10-10)._ `scripts/localci/phase_e_flip.py` (README, "Phase E flip"): a read-only plan by default; the operator's `--apply` rewrites `merge-queue-main` (merge queue out, `update` in, the DeployKey bypass its only actor) and then deletes the classic protection of `main` — which the flip needs as much as the ruleset: classic protection requires a pull request and the 14 checks and exempts no deploy key, so the phase F credential paragraph's ruleset bypass alone would leave the merger's push refused. Deletion and force-push stay forbidden by the `Copilot review for default branch` ruleset. Refused unless the plan's digest is confirmed, the report is READY and fresh, and exactly one write deploy key exists and is the merger's; every write obeys the README's write discipline; the pre-flip state is saved for `--rollback`.
