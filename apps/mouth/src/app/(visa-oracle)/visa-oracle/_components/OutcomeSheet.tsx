@@ -821,6 +821,19 @@ function CandidateCard({
           </fieldset>
         </section>
       )}
+
+      {candidate.prohibitedActivities.length > 0 && (
+        <section className="oracle-candidate__prohibited">
+          <h3 className="oracle-outcome__section-title">
+            {translate(language, "outcome.prohibited_title")}
+          </h3>
+          <ul className="oracle-reason-list">
+            {candidate.prohibitedActivities.map((item) => (
+              <li key={item.en}>{localized(item, language)}</li>
+            ))}
+          </ul>
+        </section>
+      )}
     </article>
   );
 }

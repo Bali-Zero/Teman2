@@ -9,6 +9,8 @@ vi.mock("./telemetry", () => ({ emitVisaOracleTelemetry }));
 import {
   GENERIC_NOTICE_CONDITION,
   NOTICE_CONDITION_COPY,
+  PROHIBITED_ACTIVITY_COPY,
+  PROHIBITED_ACTIVITY_PRODUCT_COPY,
   REVIEW_REASON_ELEMENTS,
   REVIEW_REASON_COPY,
   RETIRED_NEVER_EMITTED_SUPPORT_REASON_KEYS,
@@ -4140,5 +4142,97 @@ describe("notices render as named conditions (slice A2)", () => {
         sourceIds: [TEST_SOURCE_ID],
       },
     ]);
+  });
+});
+
+describe("prohibitedActivities adapter mapping (PR-20)", () => {
+  function responseForProduct(
+    productCode: string,
+    prohibitedActivities: string[],
+  ) {
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    response.decision.candidates[0].product_code = productCode;
+    response.display.candidates[0].product_code = productCode;
+    response.display.candidates[0].prohibited_activities = prohibitedActivities;
+    return response;
+  }
+
+  it("maps prohibited_activities in order and maps an empty list to []", () => {
+    const emptyOutcome = buildEngineOutcome(responseForProduct("C1", []));
+    expect(emptyOutcome.candidates[0]?.prohibitedActivities).toEqual([]);
+
+    const outcome = buildEngineOutcome(
+      responseForProduct("E33G", [
+        "overstay",
+        "sale_of_goods_or_services_beyond_remote_work",
+        "work_for_indonesian_entity",
+      ]),
+    );
+    expect(outcome.candidates[0]?.prohibitedActivities).toEqual([
+      PROHIBITED_ACTIVITY_COPY.overstay,
+      PROHIBITED_ACTIVITY_COPY.sale_of_goods_or_services_beyond_remote_work,
+      PROHIBITED_ACTIVITY_COPY.work_for_indonesian_entity,
+    ]);
+  });
+
+  it("resolves work_inconsistent_with_permit to dual-activity reporting only on E33 and E33E, and keeps the base copy on E33A/B/C/F", () => {
+    for (const code of ["E33", "E33E"] as const) {
+      const outcome = buildEngineOutcome(
+        responseForProduct(code, [
+          "overstay",
+          "work_inconsistent_with_permit",
+          "sale_of_goods_or_services",
+        ]),
+      );
+      expect(outcome.candidates[0]?.prohibitedActivities).toEqual([
+        PROHIBITED_ACTIVITY_COPY.overstay,
+        PROHIBITED_ACTIVITY_PRODUCT_COPY[code].work_inconsistent_with_permit,
+        PROHIBITED_ACTIVITY_COPY.sale_of_goods_or_services,
+      ]);
+      expect(outcome.candidates[0]?.prohibitedActivities[1]?.en).toContain(
+        "reporting it as a dual activity",
+      );
+      expect(outcome.candidates[0]?.prohibitedActivities[1]?.id).toContain(
+        "melaporkan rangkap kegiatan",
+      );
+    }
+
+    for (const code of ["E33A", "E33B", "E33C", "E33F"] as const) {
+      const outcome = buildEngineOutcome(
+        responseForProduct(code, [
+          "overstay",
+          "work_inconsistent_with_permit",
+          "sale_of_goods_or_services",
+        ]),
+      );
+      expect(outcome.candidates[0]?.prohibitedActivities).toEqual([
+        PROHIBITED_ACTIVITY_COPY.overstay,
+        PROHIBITED_ACTIVITY_COPY.work_inconsistent_with_permit,
+        PROHIBITED_ACTIVITY_COPY.sale_of_goods_or_services,
+      ]);
+      expect(outcome.candidates[0]?.prohibitedActivities[1]?.en).not.toMatch(
+        /dual activity|rangkap/i,
+      );
+      expect(outcome.candidates[0]?.prohibitedActivities[1]?.id).not.toMatch(
+        /rangkap kegiatan|melaporkan/i,
+      );
+    }
+  });
+
+  it("silently drops an unknown identifier without throwing or leaking the raw code into the view model", () => {
+    const outcome = buildEngineOutcome(
+      responseForProduct("E33", [
+        "overstay",
+        "unknown_future_identifier_code",
+        "sale_of_goods_or_services",
+      ]),
+    );
+    expect(outcome.candidates[0]?.prohibitedActivities).toEqual([
+      PROHIBITED_ACTIVITY_COPY.overstay,
+      PROHIBITED_ACTIVITY_COPY.sale_of_goods_or_services,
+    ]);
+    expect(JSON.stringify(outcome)).not.toContain(
+      "unknown_future_identifier_code",
+    );
   });
 });

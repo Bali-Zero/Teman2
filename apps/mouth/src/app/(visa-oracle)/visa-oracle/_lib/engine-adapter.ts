@@ -819,8 +819,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Oracle tidak menilai Izin Tinggal Peralihan setelah adanya overstay, deportasi, penangkalan, atau pemeriksaan keimigrasian yang Anda ungkapkan — konsultasi adalah jalurnya.",
   ),
   E33_EMPLOYMENT_NOT_COVERED: text(
-    "The Second Home visa doesn’t by itself allow employment; working while holding it needs a separate dual-activity permission (rangkap kegiatan), which the Oracle doesn’t assess — a consultation is the route.",
-    "Visa Rumah Kedua tidak dengan sendirinya mengizinkan bekerja; bekerja selama memegangnya memerlukan izin rangkap kegiatan tersendiri, yang tidak dinilai oleh Oracle — konsultasi adalah jalurnya.",
+    "The Second Home visa doesn’t by itself allow employment; working while holding it needs separate dual-activity reporting (rangkap kegiatan), which the Oracle doesn’t assess — a consultation is the route.",
+    "Visa Rumah Kedua tidak dengan sendirinya mengizinkan bekerja; bekerja selama memegangnya memerlukan pelaporan rangkap kegiatan tersendiri, yang tidak dinilai oleh Oracle — konsultasi adalah jalurnya.",
   ),
   E33G_LOCAL_MARKET_NOT_ALLOWED: text(
     "The Remote Worker visa (E33G) covers work for a company based outside Indonesia, and its permit bars selling services in Indonesia; the Oracle can’t confirm it for work serving Indonesian clients — a consultation is the route.",
@@ -1736,6 +1736,167 @@ export const GENERIC_NOTICE_CONDITION: LocalizedText = text(
   "Kondisi tambahan berlaku untuk hasil ini — konsultan Bali Zero dapat membahasnya bersama Anda sebelum pengajuan.",
 );
 
+/**
+ * Per-identifier copy for `display.candidates[].prohibited_activities` (PR-20).
+ * Every identifier in the newest signed pack must have an entry here; an
+ * unknown identifier from a future pack is silently dropped by
+ * `prohibitedActivitiesFor` so a raw identifier code never reaches the DOM.
+ */
+export const PROHIBITED_ACTIVITY_COPY: Readonly<Record<string, LocalizedText>> =
+  {
+    business_meetings: text(
+      "Attending business meetings or conducting business activities",
+      "Menghadiri pertemuan bisnis atau melakukan kegiatan bisnis",
+    ),
+    continuous_supervision_production_sales: text(
+      "Continuously supervising production or sales activities in Indonesia",
+      "Mengawasi kegiatan produksi atau penjualan secara terus-menerus di Indonesia",
+    ),
+    corporate_establishment: text(
+      "Establishing or incorporating a company in Indonesia",
+      "Mendirikan perusahaan di Indonesia",
+    ),
+    deposit_value_below_commitment: text(
+      "Letting the immigration guarantee deposit fall below the amount in your commitment letter while the permit is valid",
+      "Membiarkan nilai deposito Jaminan Keimigrasian turun di bawah nilai dalam surat pernyataan komitmen selama izin tinggal berlaku",
+    ),
+    employment_relationship: text(
+      "Working under an employment relationship in Indonesia",
+      "Bekerja dalam hubungan kerja di Indonesia",
+    ),
+    exit_terminates_permit: text(
+      "Leaving Indonesia — leaving ends this permit",
+      "Keluar dari Indonesia — keluar mengakhiri izin ini",
+    ),
+    guarantee_value_below_commitment: text(
+      "Letting the immigration guarantee fall below the amount in your commitment letter while the permit is valid",
+      "Membiarkan nilai Jaminan Keimigrasian turun di bawah nilai dalam surat pernyataan komitmen selama izin tinggal berlaku",
+    ),
+    hr_personnel_positions: text(
+      "Holding a human resources or personnel management position",
+      "Menduduki jabatan yang mengurusi personalia atau sumber daya manusia",
+    ),
+    indonesian_company_ownership: text(
+      "Owning or holding shares in a company in Indonesia",
+      "Memiliki perusahaan atau saham perusahaan di Indonesia",
+    ),
+    indonesian_source_compensation_including_in_kind: text(
+      "Receiving compensation, wages, or in-kind benefits from an Indonesian source",
+      "Menerima imbalan, upah, atau imbalan dalam bentuk barang dari sumber di Indonesia",
+    ),
+    indonesian_source_remuneration: text(
+      "Receiving wages, fees, or similar remuneration from a person or company in Indonesia",
+      "Menerima upah, imbalan, atau sejenisnya dari perorangan atau perusahaan di Indonesia",
+    ),
+    journalism: text(
+      "Conducting journalism or news-reporting activities",
+      "Melakukan kegiatan jurnalistik atau peliputan berita",
+    ),
+    operational_work: text(
+      "Performing day-to-day work or business operations while on the bridging permit",
+      "Melakukan pekerjaan atau kegiatan usaha sehari-hari selama memegang izin tinggal peralihan",
+    ),
+    operational_work_beyond_management_and_ownership: text(
+      "Performing day-to-day technical or hands-on work beyond company management and ownership",
+      "Melakukan pekerjaan teknis sehari-hari di luar pengelolaan dan kepemilikan perusahaan",
+    ),
+    operational_work_outside_managing_subsidiary: text(
+      "Performing day-to-day work outside establishing and managing the Indonesian subsidiary or branch",
+      "Melakukan pekerjaan sehari-hari di luar pendirian dan pengelolaan cabang atau anak perusahaan di Indonesia",
+    ),
+    overstay: text(
+      "Staying in Indonesia beyond the validity period of your stay permit",
+      "Tinggal di wilayah Indonesia melebihi jangka waktu izin tinggal",
+    ),
+    paid_employment: text(
+      "Engaging in paid employment in Indonesia",
+      "Melakukan pekerjaan berbayar di Indonesia",
+    ),
+    passive_investment_management: text(
+      "Using this work permit solely to hold or manage passive investments",
+      "Menggunakan izin kerja ini semata-mata untuk memegang atau mengelola investasi pasif",
+    ),
+    political_activity: text(
+      "Participating in political activities in Indonesia",
+      "Mengikuti kegiatan politik di Indonesia",
+    ),
+    sale_of_goods_or_services: text(
+      "Selling goods or services, unless your work requires it",
+      "Menjual barang atau jasa, kecuali diperlukan dalam pekerjaan Anda",
+    ),
+    sale_of_goods_or_services_beyond_remote_work: text(
+      "Selling goods or services beyond remote work for your employer outside Indonesia, unless your work requires it",
+      "Menjual barang atau jasa di luar pekerjaan jarak jauh untuk pemberi kerja di luar Indonesia, kecuali diperlukan dalam pekerjaan Anda",
+    ),
+    selling_goods_services: text(
+      "Selling goods or services, unless your work requires it",
+      "Menjual barang atau jasa, kecuali diperlukan dalam pekerjaan Anda",
+    ),
+    study: text(
+      "Studying or enrolling in a formal education program in Indonesia",
+      "Menempuh pendidikan formal di Indonesia",
+    ),
+    work_for_indonesian_entity: text(
+      "Working for an employer or entity based in Indonesia",
+      "Bekerja untuk pemberi kerja atau badan usaha yang berkedudukan di Indonesia",
+    ),
+    work_for_non_diplomat_employer: text(
+      "Working for any employer other than the sponsoring foreign diplomat",
+      "Bekerja untuk pemberi kerja selain diplomat asing yang menjadi penjamin",
+    ),
+    work_for_non_sponsor_entity: text(
+      "Working for a company or entity other than the sponsoring company",
+      "Bekerja untuk perusahaan atau badan usaha selain perusahaan penjamin",
+    ),
+    work_for_standard_corporate_employers: text(
+      "Working for a standard commercial or corporate employer in Indonesia",
+      "Bekerja untuk perusahaan komersial atau korporasi umum di Indonesia",
+    ),
+    work_inconsistent_with_permit: text(
+      "Work that does not match your stay permit",
+      "Melakukan pekerjaan yang tidak sesuai dengan izin tinggal",
+    ),
+  };
+
+const E33_DUAL_ACTIVITY_REPORTING_COPY: LocalizedText = text(
+  "Working or studying without reporting it as a dual activity to the immigration office that issued your permit",
+  "Bekerja atau menempuh pendidikan tanpa melaporkan rangkap kegiatan ke kantor imigrasi yang menerbitkan izin tinggal Anda",
+);
+
+/**
+ * Product-scoped overrides for shared `prohibited_activities` identifiers.
+ * Only E33 and E33E carry the official imigrasi.go.id sentence allowing work
+ * or study through dual-activity reporting (pelaporan rangkap kegiatan) to the
+ * issuing immigration office; E33A/B/C/F keep the base sentence.
+ */
+export const PROHIBITED_ACTIVITY_PRODUCT_COPY: Readonly<
+  Record<string, Readonly<Record<string, LocalizedText>>>
+> = {
+  E33: {
+    work_inconsistent_with_permit: E33_DUAL_ACTIVITY_REPORTING_COPY,
+  },
+  E33E: {
+    work_inconsistent_with_permit: E33_DUAL_ACTIVITY_REPORTING_COPY,
+  },
+};
+
+export function prohibitedActivitiesFor(
+  productCode: string,
+  identifiers: readonly string[] | undefined,
+): LocalizedText[] {
+  if (!identifiers || identifiers.length === 0) return [];
+  const overrides = PROHIBITED_ACTIVITY_PRODUCT_COPY[productCode];
+  const resolved: LocalizedText[] = [];
+  for (const identifier of identifiers) {
+    const copy =
+      overrides?.[identifier] ?? PROHIBITED_ACTIVITY_COPY[identifier];
+    if (copy !== undefined) {
+      resolved.push(copy);
+    }
+  }
+  return resolved;
+}
+
 /** Codes already reported this session (N3): a monitored event fires once
  * per unmapped code, never once per render. Module-scoped by design — the
  * gap is in this table, not in one particular decision. */
@@ -2276,6 +2437,10 @@ function buildValidatedOutcome(
           price: price(projected, response),
           ...duration(projected, response),
           documents: documents(projected),
+          prohibitedActivities: prohibitedActivitiesFor(
+            projected.product_code,
+            projected.prohibited_activities,
+          ),
         } satisfies OutcomeCandidate;
       });
       if (candidates.length === 0) {

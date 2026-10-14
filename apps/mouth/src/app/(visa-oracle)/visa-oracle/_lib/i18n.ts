@@ -909,6 +909,7 @@ const en = {
   "outcome.price_free": "Free",
   "outcome.whatsapp_summary_header": "Visa Oracle decision summary:",
   "outcome.checklist_title": "Documents you’ll want ready",
+  "outcome.prohibited_title": "What this permit does not allow",
   "outcome.next_steps_title": "What to do next",
   "outcome.whatsapp_cta": "Continue on WhatsApp",
   "outcome.qr_aria":
@@ -1936,6 +1937,7 @@ const id: Record<Keys, string> = {
   "outcome.price_free": "Gratis",
   "outcome.whatsapp_summary_header": "Ringkasan keputusan Visa Oracle:",
   "outcome.checklist_title": "Dokumen yang perlu Anda siapkan",
+  "outcome.prohibited_title": "Yang tidak diizinkan pada izin ini",
   "outcome.next_steps_title": "Langkah berikutnya",
   "outcome.whatsapp_cta": "Lanjutkan di WhatsApp",
   "outcome.qr_aria":

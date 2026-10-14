@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   GENERIC_NOTICE_CONDITION,
   NOTICE_CONDITION_COPY,
+  PROHIBITED_ACTIVITY_COPY,
+  PROHIBITED_ACTIVITY_PRODUCT_COPY,
   REVIEW_REASON_COPY,
   REVIEW_REASON_ELEMENTS,
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
@@ -158,8 +160,19 @@ function clientStrings(): { where: string; value: string; strict?: boolean }[] {
       ...SUPPORT_REASON_COPY,
       ...REVIEW_REASON_COPY,
       ...NOTICE_CONDITION_COPY,
+      ...PROHIBITED_ACTIVITY_COPY,
     })) {
       rows.push({ where: `${language}:reason.${name}`, value: copy[language] });
+    }
+    for (const [productCode, overrides] of Object.entries(
+      PROHIBITED_ACTIVITY_PRODUCT_COPY,
+    )) {
+      for (const [name, copy] of Object.entries(overrides)) {
+        rows.push({
+          where: `${language}:prohibited.${productCode}.${name}`,
+          value: copy[language],
+        });
+      }
     }
     for (const [key, value] of Object.entries(ATLAS_COPY[language])) {
       rows.push({ where: `${language}:atlas.${key}`, value });
