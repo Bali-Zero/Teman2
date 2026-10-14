@@ -229,7 +229,7 @@ postgresql-client: 11.9 GB, its Python layers shared with Backend Tests'); Front
 
 ### Sandbox of kind `pytest` sees what hosted sees (`tests.scripts_impacted`)
 
-Seven FAIL decisions of Pro's journal (2026-10-09 to 10-14) were environment, not candidate: the container had no `.git` (`git rev-parse
+Eight FAIL decisions of Pro's journal (2026-10-09 to 10-14) were environment, not candidate: the container had no `.git` (`git rev-parse
 --show-toplevel` exit 128, `git ls-files` exit 128, and the case-insensitive-volume probe of `test_door_canon_parity` that falls out of a failed
 `ls-files`), pytest's parent was the container's init (`launcher=launchd` where `test_n7_launcher_from_ppid` expects a shell), and the image
 default interpreter is 3.12 where hosted's `scripts-tests-sweep.yml` runs 3.11 (`test_t9d...[deep-object-recursion]`: 3.12 parses a 5000-deep

@@ -3,8 +3,8 @@ gear: 2
 l_level: L1
 gate_class: opus
 objective: >-
-  Eight LocalCI FAIL decisions in Pro's journal (2026-10-09 to 10-14) came from the non-required check
-  tests.scripts_impacted, and every one was the sandbox, not the candidate: the container had no .git (git
+  Eight LocalCI FAIL decisions in Pro's journal (2026-10-09 to 10-14) came from tests.scripts_impacted (not a required
+  context, but local_checks_clean refuses on it, so a red blocks the merge locally), and every one was the sandbox, not the candidate: the container had no .git (git
   rev-parse and ls-files exit 128, which also turns test_door_canon_parity's case-insensitive-volume probe red),
   pytest's parent was the container init (test_n7_launcher_from_ppid reads launcher=launchd), and the image default
   interpreter is 3.12 where hosted's scripts-tests-sweep runs 3.11 (test_t9d deep-object-recursion). The candidate
@@ -18,5 +18,5 @@ residuals:
   - The container still lacks pytest-asyncio, pytest-mock and fakeredis that hosted's sweep installs; no recorded
     failure came from that.
   - HEAD~1 and origin/main exist in the sandbox when BASE history is rebuilt; hosted's depth-1 checkout has neither.
-    A test that asserted their absence would be a hosted-only quirk; none is known.
+    The risk is a test that NEEDS that history and so passes here but not on hosted; none is known.
   - The ppid-is-not-1 property is proved locally only as ppid > 1 (the wrapper), and live by the Pro run.
