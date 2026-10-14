@@ -824,8 +824,8 @@ class AbortJudge(HostedReads):
     ``cancelled``; (2) its failure annotations are at least one "exceeded the maximum execution time" and nothing else but the runner's
     "The operation was canceled."; (3) its job, matched to ONE workflow job AT THE JOB'S ``head_sha`` (mirror, ``git show``), maps step for
     step onto that job's steps ("Set up job", the workflow steps by name, then only ``Post`` steps and "Complete job"), and the one cancelled
-    step is a setup step by its ``uses:`` repository (``SETUP_ACTIONS``), never by its name; (4) every step before it is a setup step that did
-    not fail, every step after it is skipped. Anything it cannot read or match raises ``MergerError``: ``hc.abort_reading`` keeps the class."""
+    step is a setup step by its ``uses:`` repository (``SETUP_ACTIONS``), never by its name; (4) every step before it did not fail and is a setup step
+    or a ``run:`` step before the first checkout (an empty workspace: it judged no repository code), every step after it is skipped. Anything it cannot read or match raises ``MergerError``: ``hc.abort_reading`` keeps the class."""
     def __init__(self, repo: str, mirror: Path, cache: dict | None = None):
         super().__init__(repo, cache)
         self.mirror = mirror
@@ -873,8 +873,14 @@ class AbortJudge(HostedReads):
         if len(hit) != 1:
             return None, f"{len(hit)} cancelled steps, not one"
         i = hit[0]
-        if not all(self.is_setup(w) for w in wf[:i + 1]):
-            return None, f"the cancelled step or one before it ({main[i].get('name')!r}) is not a setup action"
+        if not self.is_setup(wf[i]):
+            return None, f"the cancelled step ({main[i].get('name')!r}) is not a setup action"
+        checked_out = False
+        for k, w in enumerate(wf[:i]):   # a `run:` step before the first checkout ran with an empty workspace: it judged no repository code
+            if self.is_setup(w):
+                checked_out = checked_out or ("/".join(w["uses"].split("@")[0].split("/")[:2]).lower() == "actions/checkout" and main[k].get("conclusion") == "success")
+            elif checked_out or "run" not in w or "uses" in w:
+                return None, f"the step before the cancelled one ({main[k].get('name')!r}) is neither a setup action nor a `run:` step before the first checkout"
         if any(x.get("conclusion") not in ("success", "skipped") for x in main[:i]):
             return None, "a step before the cancelled one did not succeed"
         if any(x.get("conclusion") != "skipped" for x in main[i + 1:]):

@@ -81,6 +81,36 @@ def test_the_runners_own_cancel_line_beside_the_timeout_is_still_a_timeout(tmp_p
     assert judge(tmp_path, monkeypatch, annotations=(TIMEOUT, "The operation was canceled."))(NAME, RED)["aborted"] is True
 
 
+ASSERT = "      - name: Assert every upstream job succeeded\n        run: test \"$RESULT\" = success\n"
+WITH_ASSERT = WORKFLOW.replace("    steps:\n", "    steps:\n" + ASSERT)
+ASSERT_HUNG = [HUNG[0], ("Assert every upstream job succeeded", "success"), *HUNG[1:]]
+
+
+def test_a_run_step_before_the_first_checkout_judged_no_repository_code_the_real_8514_shape(tmp_path, monkeypatch):
+    got = judge(tmp_path, monkeypatch, workflow=WITH_ASSERT, steps=ASSERT_HUNG)(NAME, RED)
+    assert got == {"aborted": True, "runs": [{"check_run_id": 11, "step": "Checkout code"}]}
+
+
+def test_a_run_step_before_the_cancelled_one_that_ran_after_a_checkout_stays_a_false_green(tmp_path, monkeypatch):
+    wf = WORKFLOW.replace("      - name: Set up Python\n", "      - name: Probe\n        run: pytest --collect-only\n      - name: Set up Python\n")
+    steps = [("Set up job", "success"), ("Checkout code", "success"), ("Probe", "success"), ("Set up Python", "cancelled"), ("Run unit tests", "skipped"), *POST]
+    assert judge(tmp_path, monkeypatch, workflow=wf, steps=steps)(NAME, RED)["aborted"] is False
+
+
+def test_a_run_step_before_a_checkout_that_was_skipped_does_not_count_as_before_the_checkout(tmp_path, monkeypatch):
+    wf = WITH_ASSERT.replace("      - name: Set up Python\n", "      - name: Probe\n        run: pytest --collect-only\n      - name: Set up Python\n")
+    steps = [("Set up job", "success"), ("Assert every upstream job succeeded", "success"), ("Checkout code", "skipped"), ("Probe", "success"),
+             ("Set up Python", "cancelled"), ("Run unit tests", "skipped"), *POST]
+    assert judge(tmp_path, monkeypatch, workflow=wf, steps=steps)(NAME, RED)["aborted"] is True   # nothing was checked out: the probe ran on an empty workspace
+
+
+def test_a_third_party_or_local_action_before_the_checkout_is_not_an_empty_workspace_step(tmp_path, monkeypatch):
+    for uses in ("someone/else@v1", "./.github/actions/prepare"):
+        wf = WORKFLOW.replace("    steps:\n", f"    steps:\n      - name: Prepare\n        uses: {uses}\n")
+        steps = [HUNG[0], ("Prepare", "success"), *HUNG[1:]]
+        assert judge(tmp_path, monkeypatch, workflow=wf, steps=steps)(NAME, RED)["aborted"] is False, uses
+
+
 def test_a_timeout_in_a_logic_step_stays_a_false_green(tmp_path, monkeypatch):
     steps = [("Set up job", "success"), ("Checkout code", "success"), ("Set up Python", "success"), ("Run unit tests", "cancelled"), *POST]
     assert judge(tmp_path, monkeypatch, steps=steps)(NAME, RED)["aborted"] is False
@@ -232,7 +262,7 @@ def incident(tmp_path, monkeypatch, workflow=WORKFLOW, **hub):
 
 
 def test_the_incident_counted_twice_is_zero_false_greens_and_one_listed_abort(tmp_path, monkeypatch, capsys):
-    d, gh = incident(tmp_path, monkeypatch, WORKFLOW.replace("Backend Tests (Python)", CTX[0]))
+    d, gh = incident(tmp_path, monkeypatch, WITH_ASSERT.replace("Backend Tests (Python)", CTX[0]), steps=ASSERT_HUNG)
     rc, rep = run_report(tmp_path, monkeypatch, [d], gh)
     assert rc == 0 and rep["context_counts"]["FALSE_GREEN"] == 0 and rep["context_counts"]["HOSTED_ABORTED"] == 1 and rep["counts"]["FALSE_GREEN"] == 0
     assert rep["recorded_context_false_green"] == 0 and rep["recorded_false_green_as_journalled"] == 1 and rep["recorded_reclassified_hosted_stale"] == []

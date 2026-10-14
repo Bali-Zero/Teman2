@@ -17,6 +17,10 @@ objective: >-
   criterion are untouched. The report prints false_green as pr-level + context-level + recorded, and keeps the
   phase E READY line format. The gear-2 verdict is not asserted here; a fresh Opus gate reads the diff.
 residuals:
+  - >-
+    Rule 4 as first written (every earlier step a setup step) would NOT have classified #8514: its job ran a run step,
+    "Assert every upstream job succeeded", before the hung checkout. The rule now also allows a run step that came before
+    the first successful checkout (empty workspace, no repository code judged); a run step after a checkout still blocks it.
   - Beyond the brief, the PR-level class follows the contexts (spec A6) - the owner's request named only the context
     and recorded levels; without it an open PR whose only hosted red is a setup hang still froze READY at the PR level.
   - The workflow file is read at the check run's head_sha, not the pull_request merge ref the hosted run executed; a
