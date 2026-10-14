@@ -2344,6 +2344,8 @@ describe("OutcomeSheet — fixed-days stay-permit length, verified renewal, and 
       ).toBeInTheDocument();
     },
   );
+});
+
 describe("OutcomeSheet · PR-10 E33F-only retirement deposit note and branch-switch affordance", () => {
   function makeRetirementResponse(codes: readonly string[]) {
     const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");

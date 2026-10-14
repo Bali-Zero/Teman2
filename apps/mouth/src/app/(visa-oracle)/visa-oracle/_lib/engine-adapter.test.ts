@@ -5085,6 +5085,10 @@ describe("stay-permit length, verified renewal, and longer-stay continuation (PR
       expect(entry.en).not.toBe(entry.id);
       expect(entry.en).not.toMatch(/not extendable/i);
       expect(entry.id).not.toMatch(/tidak dapat diperpanjang/i);
+    }
+  });
+});
+
 describe("PR-10 · E33F-only retirement result explains what the 5-year E33E also needs", () => {
   function e33fResponse(state: "SUPPORTED_CANDIDATES" | "NO_SUPPORTED_PATH") {
     const response = makeVisaOracleResponse(state);
