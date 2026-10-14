@@ -101,8 +101,7 @@ async def get_service_price(
     for a human typing a keyword and wrong for a page rendering a number: a
     near-miss shown as "the price" is worse than no price at all.
 
-    404 for an unknown key (or an `"internal": true` row hidden from public
-    surfaces), 503 when the catalogue itself failed to load — the
+    404 for an unknown key, 503 when the catalogue itself failed to load — the
     caller must be able to tell "this service does not exist" from "the price
     source is down", because only the second one should fall back to a cached
     literal.
@@ -112,6 +111,8 @@ async def get_service_price(
         raise HTTPException(status_code=503, detail="Official prices not loaded")
 
     entry = svc.get_service_by_key(key)
+    # An `"internal": true` row is hidden from public surfaces: same 404 as unknown.
+    # (Kept out of the docstring: it feeds the OpenAPI description and its pin.)
     if entry is None or entry.get("internal") is True or _is_internal_service(svc, key, entry):
         raise HTTPException(status_code=404, detail=f"Unknown service key: {key}")
     return entry
