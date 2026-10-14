@@ -554,31 +554,26 @@ PRODUCTION_REPLAY_EXPECTATIONS: dict[int, ProductionReplayExpectation] = {
 # 3 (Calling Visa nationality) and 4 (active overstay) do not declare
 # retirement, so that reason can no longer be emitted for them.  Their state,
 # every other reason, legal basis and rationale remain unchanged.
+#
+# Re-pinned (E31-B01, owner-approved OPS-2, 2026-10-14): a no-path decision
+# caused by a GLOBAL hard filter now lists only the global causes, so the
+# per-product nationality codes (BVK_NATIONALITY_ONLY, VOA_NATIONALITY_ONLY,
+# VOA_DUAL_NATIONALITY_NOT_ASSESSED) that rode along with them are gone.
+# State and candidate set are unchanged for every persona; only the reason-code
+# list of personas 1, 3 and 4 moved.
 SEQ28_PRODUCTION_REPLAY_EXPECTATIONS: dict[int, ProductionReplayExpectation] = {
     **PRODUCTION_REPLAY_EXPECTATIONS,
     1: replace(
         PRODUCTION_REPLAY_EXPECTATIONS[1],
-        no_path_codes=tuple(
-            code
-            for code in PRODUCTION_REPLAY_EXPECTATIONS[1].no_path_codes
-            if code != "AGE_BELOW_55"
-        ),
+        no_path_codes=("APPLICANT_IS_INDONESIAN_CITIZEN",),
     ),
     3: replace(
         PRODUCTION_REPLAY_EXPECTATIONS[3],
-        no_path_codes=tuple(
-            code
-            for code in PRODUCTION_REPLAY_EXPECTATIONS[3].no_path_codes
-            if code != "AGE_BELOW_55"
-        ),
+        no_path_codes=("CALLING_VISA_NATIONALITY_NOT_ASSESSED",),
     ),
     4: replace(
         PRODUCTION_REPLAY_EXPECTATIONS[4],
-        no_path_codes=tuple(
-            code
-            for code in PRODUCTION_REPLAY_EXPECTATIONS[4].no_path_codes
-            if code != "AGE_BELOW_55"
-        ),
+        no_path_codes=("ACTIVE_OVERSTAY_SETTLE_FIRST",),
     ),
 }
 
@@ -603,14 +598,17 @@ assert all(
 
 
 @pytest.mark.parametrize("persona_id", [1, 3, 4])
-def test_seq28_rederived_personas_drop_only_age_below_55(persona_id: int) -> None:
+def test_seq28_rederived_personas_only_shed_reason_codes(persona_id: int) -> None:
     before = PRODUCTION_REPLAY_EXPECTATIONS[persona_id]
     after = SEQ28_PRODUCTION_REPLAY_EXPECTATIONS[persona_id]
     assert before.no_path_codes.count("AGE_BELOW_55") == 1
-    assert after == replace(
-        before,
-        no_path_codes=tuple(code for code in before.no_path_codes if code != "AGE_BELOW_55"),
-    )
+    # E31-B01 (OPS-2): the per-product nationality codes that rode along with
+    # a global cause are gone too, so the list may only SHRINK from `before`
+    # minus AGE_BELOW_55; state, citations and rationale are untouched.
+    surviving = tuple(code for code in before.no_path_codes if code != "AGE_BELOW_55")
+    assert set(after.no_path_codes) <= set(surviving)
+    assert after.no_path_codes
+    assert replace(after, no_path_codes=before.no_path_codes) == before
 
 
 @pytest.fixture(scope="module")
