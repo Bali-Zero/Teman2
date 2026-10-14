@@ -2974,12 +2974,28 @@ COUNCIL_REVIEW_SEATS_FALLBACK: tuple[str, ...] = (
     "tp1-deepseek-v4-pro",
     "tp1-glm-5.2",
     "agy-gemini-4-argon",
-    "agy-gemini-3.1-pro",
 )
 
 COUNCIL_REVIEW_SEATS: tuple[str, ...] = (
     COUNCIL_REVIEW_SEATS_TITOLARI + COUNCIL_REVIEW_SEATS_FALLBACK
 )
+
+#: Canonicalization map for legacy / suffixed council seat identifiers.
+#: Collapses `agy-gemini-3.1-pro*` and `agy-gemini-4-argon-{low,medium,high}`
+#: to the single canonical reserve seat `agy-gemini-4-argon` before quorum
+#: deduplication so one agy reviewer can never count as two distinct seats.
+COUNCIL_REVIEW_SEAT_ALIASES: dict[str, str] = {
+    "agy-gemini-3.1-pro": "agy-gemini-4-argon",
+    "agy-gemini-3.1-pro-high": "agy-gemini-4-argon",
+    "agy-gemini-4-argon-low": "agy-gemini-4-argon",
+    "agy-gemini-4-argon-medium": "agy-gemini-4-argon",
+    "agy-gemini-4-argon-high": "agy-gemini-4-argon",
+}
+
+
+def canonicalize_council_review_seat(seat: str) -> str:
+    raw = seat.strip()
+    return COUNCIL_REVIEW_SEAT_ALIASES.get(raw, raw)
 
 
 def _read_council_journal_seats(pack_dir: Path, council_run: Any) -> set[str]:
@@ -3025,8 +3041,10 @@ def _read_council_journal_seats(pack_dir: Path, council_run: Any) -> set[str]:
         if not isinstance(ts, str) or not ts.strip():
             continue  # the declared minimal schema requires "ts" too
         seat = entry.get("seat")
-        if isinstance(seat, str) and seat.strip() in COUNCIL_REVIEW_SEATS:
-            seats.add(seat.strip())
+        if isinstance(seat, str):
+            canon = canonicalize_council_review_seat(seat)
+            if canon in COUNCIL_REVIEW_SEATS:
+                seats.add(canon)
     return seats
 
 
