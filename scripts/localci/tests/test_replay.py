@@ -68,6 +68,7 @@ def rw(tmp_path, monkeypatch):
     subprocess.run(["git", "clone", "-q", "--bare", str(src), str(origin)], check=True, env=GIT_ENV)
     for n in (3, 4):
         g(origin, "update-ref", f"refs/pull/{n}/head", heads[n])
+    monkeypatch.setattr(mg, "ready_refresh_due", lambda state, recs: False)   # B20: a READY refresh is a tick of its own
     gh, runner = FakeGH(), FakeRunner()
     hub = Hub(gh)
     hub.pulls = {11: merged_pull(m["m1"], heads[11]), 12: merged_pull(m["m2"], heads[12]),

@@ -7,6 +7,7 @@ import json
 import os
 import re
 import subprocess
+import time
 
 import pytest
 
@@ -52,6 +53,18 @@ class Hub:
         (state / "decisions.jsonl").write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in lines))
 
 
+def write_ready(state, **over):
+    """The cache the tick's refresh leaves (B20): READY true, computed now. The refresh itself is driven in test_ready_cache.py."""
+    doc = {"computed_at": time.time(), "phase_e_ready": True, "refused": None, "compared_merges": 50, "false_green": 0, "compared_days": 5.0, "journal_rows": 50}
+    (state / mg.READY_CACHE_FILE).write_text(json.dumps({**doc, **over}))
+
+
+def armed_by_cache(pf):
+    """B20: armed, nothing in `why`, and READY read from the tick's cache with an age."""
+    age = pf.get("ready_age_s")
+    return {k: v for k, v in pf.items() if k != "ready_age_s"} == {"armed": True, "why": [], "ready_source": "cache"} and isinstance(age, int) and 0 <= age < 60
+
+
 def time_at(offset_s: int, age_days: int = 20) -> str:
     """Seeded history starts `age_days` before the real clock: the tick's precheck reads now."""
     import time
@@ -68,6 +81,7 @@ def fw(world, monkeypatch):  # noqa: F811
     world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
     world.gql.over["title"] = "Add b to the tree"
     world.hub.seed(world.state)
+    write_ready(world.state)
     world.key = world.state / mg.KEY_FILE
     world.key.write_text(f"-----BEGIN FAKE KEY-----\n{SENTINEL}\n-----END FAKE KEY-----\n")
     world.key.chmod(0o600)
@@ -114,7 +128,7 @@ def test_every_condition_true_makes_the_merge_commit_pushes_it_and_moves_the_mir
     assert fw.tick() == 0
     assert fw.kinds() == ["decision", "would_enqueue", "would_merge", "merged", "pushed"]
     wm, merged, pushed = fw.wm(), fw.journal()[-2], fw.journal()[-1]
-    assert wm["phase_f"] == {"armed": True, "why": [], "ready_source": "computed"}   # B20: the first READY of a journal is computed
+    assert armed_by_cache(wm["phase_f"])
     mc = merged["merge_commit"]
     assert g(fw.mirror, "rev-list", "--parents", "-n1", mc).split() == [mc, fw.base, fw.head1]   # first parent = the old base, second = the head
     assert g(fw.mirror, "show", "-s", "--format=%an|%ae|%cn|%ce", mc) == "localci-merger|localci-merger@localhost|localci-merger|localci-merger@localhost"
@@ -220,9 +234,12 @@ DISARM = [
     ("env-zero", lambda w, mp: mp.setenv(mg.PHASE_F_ENV, "0"), f"{mg.PHASE_F_ENV} unset"),
     ("env-true", lambda w, mp: mp.setenv(mg.PHASE_F_ENV, "true"), f"{mg.PHASE_F_ENV} unset"),
     ("ready-false", lambda w, mp: (w.state / "decisions.jsonl").unlink(), "READY false"),
-    ("ready-49", lambda w, mp: w.hub.seed(w.state, n=49), "READY false"),
-    ("ready-4-days", lambda w, mp: w.hub.seed(w.state, days=4), "READY false"),
-    ("ready-unreadable", lambda w, mp: (w.state / "decisions.jsonl").write_text("{torn\n"), "READY unreadable"),
+    ("ready-fewer-decided-prs-than-the-threshold", lambda w, mp: w.hub.seed(w.state, n=39), "READY false: 40 distinct"),
+    ("ready-false-in-the-cache", lambda w, mp: write_ready(w.state, phase_e_ready=False), "READY false (cache)"),
+    ("ready-refused-in-the-cache", lambda w, mp: write_ready(w.state, refused="CompareError: boom"), "READY unreadable: CompareError: boom (cache)"),
+    ("ready-stale-in-the-cache", lambda w, mp: write_ready(w.state, computed_at=time.time() - mg.READY_MAX_AGE_S - 5), "READY stale: computed 72"),
+    ("ready-no-cache", lambda w, mp: (w.state / mg.READY_CACHE_FILE).unlink(), "READY unknown: no cache"),
+    ("ready-cache-corrupt", lambda w, mp: (w.state / mg.READY_CACHE_FILE).write_text("{torn"), "READY unknown: no cache"),
     ("key-missing", lambda w, mp: w.key.unlink(), "deploy_key missing"),
     ("key-0644", lambda w, mp: _key_mode(w), "mode 0644, not 0600"),
     ("key-0400", lambda w, mp: w.key.chmod(0o400), "mode 0400, not 0600"),
@@ -263,7 +280,7 @@ def test_one_false_condition_alone_means_no_merge_no_push_and_the_line_names_it(
     if name.startswith("ready-"):   # every local condition held, so READY was evaluated and is the one thing false
         assert others == [], others
     elif name.startswith(("pr-", "head-", "label-")):   # READY was evaluated and true; the re-read at the moment of merging is what says no
-        assert others == [] and calls == [{"emit": False}], (others, calls)
+        assert others == [] and calls == [], (others, calls)
     else:   # a local condition is false: no minutes of report to learn a no
         assert others == ["READY not evaluated"] and calls == [], (others, calls)
 
@@ -548,7 +565,7 @@ def test_a_journal_with_fewer_decided_prs_than_the_threshold_is_not_ready_and_th
 def test_an_old_journal_with_enough_prs_runs_the_full_report_and_can_be_ready(fw, monkeypatch):
     calls = _spy_report(monkeypatch)
     assert fw.tick() == 0
-    assert calls == [{"emit": False}] and fw.wm()["phase_f"]["armed"] is True
+    assert calls == [] and fw.wm()["phase_f"]["armed"] is True and fw.wm()["phase_f"]["ready_source"] == "cache"
 
 
 def test_the_precheck_never_says_ready_and_an_unreadable_journal_rules_nothing_out(fw):
@@ -594,7 +611,7 @@ def test_a_non_utf8_halt_file_halts_and_the_fetch_is_not_the_guarded_one(fw):
 def test_the_pr_gate_reads_after_the_local_ones_and_a_clean_pull_arms(fw, monkeypatch):
     """Innocence for the re-read: every local condition and every re-read field right means armed."""
     monkeypatch.setattr(mg, "pr_view", lambda a, n: full_pull(fw))
-    assert fw.tick() == 0 and fw.wm()["phase_f"] == {"armed": True, "why": [], "ready_source": "computed"} and fw.kinds()[-1] == "pushed"
+    assert fw.tick() == 0 and armed_by_cache(fw.wm()["phase_f"]) and fw.kinds()[-1] == "pushed"
 
 
 def test_ready_is_not_evaluated_when_the_env_half_is_missing_and_the_why_says_so(fw, monkeypatch):

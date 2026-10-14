@@ -1,159 +1,154 @@
-"""B20: phase F reads READY from a cache keyed on the journal's decision rows, so a retried merge does not replay the report's
-~1000 GitHub reads. The real report runs against the seeded journal of test_merger_phase_f; the counting spy sits on ``report``."""
+"""B20: READY is computed apart by the tick (``refresh_ready``) and only read by phase F (``read_ready``). The real report runs against the
+seeded journal of test_merger_phase_f; the counting spy sits on ``report``."""
 from __future__ import annotations
 
-import argparse
 import json
 import stat
 import time
 
 import pytest
 
-from .test_merger import REPO, mg, world  # noqa: F401 — `world` is a fixture
-from .test_merger_phase_f import _spy_report, fw, full_pull  # noqa: F401 — `fw` is a fixture
+from .test_merger import mg, world  # noqa: F401 — `world` is a fixture
+from .test_merger_phase_f import _spy_report, armed_by_cache, fw, write_ready  # noqa: F401 — `fw` is a fixture
+
+REAL_DUE = mg.ready_refresh_due   # the world fixture switches the refresh off; these tests turn it back on
 
 
-def arm(w, monkeypatch):
-    """phase_f_arming with every local condition true, so READY is the only thing evaluated; returns a callable that runs it."""
-    monkeypatch.setattr(mg, "judged_tree", lambda repo_dir, enq: "t" * 40)
-    monkeypatch.setattr(mg, "pr_view", lambda a, n: full_pull(w))
-    enq = {"kind": "would_enqueue", "pr": 1, "head_sha": w.head1, "base_sha": w.base, "candidate_sha": "9" * 40,
-           "criterion": {k: True for k in mg.CRITERION}, "ok": True}
-    line = {"base_sha": w.base, "mirror_main": w.base, "base_current": True, "clean": True, "merge_tree": "t" * 40}
-    a = argparse.Namespace(repo=REPO, base="main")
-    return lambda: mg.phase_f_arming(a, w.state, w.mirror, enq, line, "main")[1]
+def cache_path(w):
+    return w.state / mg.READY_CACHE_FILE
 
 
 def cache(w):
-    return json.loads((w.state / mg.READY_CACHE_FILE).read_text())
+    return json.loads(cache_path(w).read_text())
 
 
-def append(w, rec):
-    with (w.state / "decisions.jsonl").open("a") as fh:
-        fh.write(json.dumps(rec, sort_keys=True) + "\n")
+def refresh_on(monkeypatch):
+    monkeypatch.setattr(mg, "ready_refresh_due", REAL_DUE)
 
 
-def clock(monkeypatch, plus_s):
-    real = time.time
-    monkeypatch.setattr(mg.time, "time", lambda: real() + plus_s)
+def age_cache(w, seconds):
+    write_ready(w.state, computed_at=time.time() - seconds)
 
 
-def test_two_arming_attempts_on_an_unchanged_journal_run_the_report_once(fw, monkeypatch):
-    calls, go = _spy_report(monkeypatch), arm(fw, monkeypatch)
-    first, second = go(), go()
-    assert len(calls) == 1 and first["armed"] and second["armed"]
-    assert first["ready_source"] == "computed" and "ready_cache_age_s" not in first
-    assert second["ready_source"] == "cache" and 0 <= second["ready_cache_age_s"] < 60
+def refusing(monkeypatch, how):
+    calls = []
+
+    def fake(*a, **kw):
+        calls.append(kw)
+        if how == "refuse":
+            return 2, {"phase_e_ready": False, "refused": "CompareError: unexpected end of JSON input"}
+        raise how
+    monkeypatch.setattr(mg, "report", fake)
+    return calls
 
 
-def test_a_new_decision_row_means_recompute(fw, monkeypatch):
-    calls, go = _spy_report(monkeypatch), arm(fw, monkeypatch)
-    go()
-    append(fw, {"kind": "decision", "ts": mg.now(), "pr": 7, "head_sha": "a" * 40, "base_sha": "f" * 40, "overall": "BLOCKED"})
-    assert go()["ready_source"] == "computed" and len(calls) == 2
+def live_kinds(w):
+    return [r["kind"] for r in w.live()]
 
 
-def test_a_replay_decision_row_and_a_changed_decision_row_recompute_too(fw, monkeypatch):
-    calls, go = _spy_report(monkeypatch), arm(fw, monkeypatch)
-    go()
-    append(fw, {"kind": "decision", "ts": mg.now(), "pr": 8, "head_sha": "b" * 40, "base_sha": "f" * 40, "replay": True, "merge_commit": "1" * 40})
-    go()
-    assert len(calls) == 2
-    p = fw.state / "decisions.jsonl"
-    p.write_text(p.read_text().replace('"overall": "BLOCKED"', '"overall": "PASS"', 1))
-    go()
-    assert len(calls) == 3
+# ------------------------------------------------------------------ the read: phase F never runs the report
+def test_a_fresh_true_cache_arms_the_merge_right_after_the_tick_journalled_its_own_decision_and_the_report_is_never_called(fw, monkeypatch):
+    calls = _spy_report(monkeypatch)
+    refresh_on(monkeypatch)
+    assert fw.tick() == 0
+    assert live_kinds(fw)[:3] == ["decision", "would_enqueue", "would_merge"] and calls == []   # the gate's scenario: a new decision, still no report
+    assert armed_by_cache(fw.wm()["phase_f"]) and live_kinds(fw)[-1] == "pushed"
 
 
-@pytest.mark.parametrize("kind", ["prune", "would_merge", "would_enqueue", "evicted", "skipped", "error"])
-def test_a_row_the_ready_computation_ignores_does_not_change_the_key(fw, monkeypatch, kind):
-    calls, go = _spy_report(monkeypatch), arm(fw, monkeypatch)
-    go()
-    append(fw, {"kind": kind, "ts": mg.now(), "pr": 1, "why": "x"})
-    assert go()["ready_source"] == "cache" and len(calls) == 1
+@pytest.mark.parametrize("over,why", [({"phase_e_ready": False}, "READY false (cache)"),
+                                      ({"refused": "CompareError: boom"}, "READY unreadable: CompareError: boom (cache)"),
+                                      ({"computed_at": time.time() - mg.READY_MAX_AGE_S - 1}, "READY stale: computed "),
+                                      ({"phase_e_ready": "yes"}, "READY false (cache)"),
+                                      ({"computed_at": time.time() + 5000}, "READY stale: computed -")])
+def test_read_ready_refuses_what_is_not_a_fresh_true_cache(fw, over, why):
+    write_ready(fw.state, **over)
+    reason, facts = mg.read_ready(fw.state)
+    assert reason is not None and reason.startswith(why) and facts["ready_source"] == "cache"
 
 
-def test_the_key_depends_on_the_repo_and_base_it_was_asked_about(fw):
-    a = argparse.Namespace(repo=REPO, base="main")
-    first, again = mg.ready_key(a, fw.state), mg.ready_key(argparse.Namespace(repo=REPO.upper(), base="main"), fw.state)
-    assert first == again   # the repo is compared lowercased, as the report does
-    assert first != mg.ready_key(argparse.Namespace(repo=REPO, base="release"), fw.state)
+def test_read_ready_accepts_a_cache_just_under_the_max_age_and_refuses_it_at_the_max_age(fw):
+    age_cache(fw, mg.READY_MAX_AGE_S - 30)
+    assert mg.read_ready(fw.state)[0] is None
+    age_cache(fw, mg.READY_MAX_AGE_S + 1)
+    assert mg.read_ready(fw.state)[0].startswith("READY stale")
 
 
-def test_after_the_ttl_the_result_is_recomputed(fw, monkeypatch):
-    calls, go = _spy_report(monkeypatch), arm(fw, monkeypatch)
-    go()
-    clock(monkeypatch, mg.READY_TTL_S - 5)
-    assert go()["ready_source"] == "cache" and len(calls) == 1
-    clock(monkeypatch, mg.READY_TTL_S + 5)
-    assert go()["ready_source"] == "computed" and len(calls) == 2
+@pytest.mark.parametrize("junk", ["{torn", "[]", "null", '{"phase_e_ready": true}', '{"computed_at": "now", "phase_e_ready": true}', ""])
+def test_a_missing_or_corrupt_cache_is_unknown_never_an_error(fw, junk):
+    cache_path(fw).write_text(junk)
+    assert mg.read_ready(fw.state) == ("READY unknown: no cache", {"ready_source": "cache"})
+    cache_path(fw).unlink()
+    assert mg.read_ready(fw.state)[0] == "READY unknown: no cache"
 
 
-def test_a_refused_result_is_not_cached(fw, monkeypatch):
-    calls, go = _spy_report(monkeypatch), arm(fw, monkeypatch)
-    real = mg.hc.gh_get
-    monkeypatch.setattr(mg.hc, "gh_get", lambda path: (_ for _ in ()).throw(mg.hc.CompareError("unexpected end of JSON input")))
-    pf = go()
-    assert not pf["armed"] and any(x.startswith("READY unreadable: ") for x in pf["why"]) and not (fw.state / mg.READY_CACHE_FILE).exists()
-    monkeypatch.setattr(mg.hc, "gh_get", real)
-    assert go()["armed"] and len(calls) == 2
-
-
-def test_an_exception_from_the_report_is_not_cached_either(fw, monkeypatch):
-    def boom(*a, **kw):
-        raise RuntimeError("boom")
-    monkeypatch.setattr(mg, "report", boom)
-    pf = arm(fw, monkeypatch)()
-    assert not pf["armed"] and any(x.startswith("READY unreadable: RuntimeError") for x in pf["why"]) and not (fw.state / mg.READY_CACHE_FILE).exists()
-
-
-@pytest.mark.parametrize("junk", ["{torn", "[]", "null", '{"key": 1}', ""])
-def test_a_corrupt_cache_file_is_a_miss_never_an_error(fw, monkeypatch, junk):
-    calls, go = _spy_report(monkeypatch), arm(fw, monkeypatch)
-    (fw.state / mg.READY_CACHE_FILE).write_text(junk)
-    pf = go()
-    assert pf["armed"] and pf["ready_source"] == "computed" and len(calls) == 1
-    assert cache(fw)["phase_e_ready"] is True   # the miss repaired the file
-
-
-def test_a_cached_refusal_or_future_dated_or_unboolean_file_is_a_miss(fw, monkeypatch):
-    calls, go = _spy_report(monkeypatch), arm(fw, monkeypatch)
-    go()
-    good = cache(fw)
-    for bad in ({**good, "refused": "boom"}, {**good, "computed_at": time.time() + 5000}, {**good, "phase_e_ready": "yes"}):
-        (fw.state / mg.READY_CACHE_FILE).write_text(json.dumps(bad))
-        assert go()["ready_source"] == "computed"
-    assert len(calls) == 4
-
-
-def test_a_cached_ready_false_is_still_a_refusal(fw, monkeypatch):
-    calls, go = _spy_report(monkeypatch), arm(fw, monkeypatch)
-    fw.hub.seed(fw.state, n=50, days=4)   # a 4-day span of compared merges: the precheck cannot rule it out, the report says false
-    first = go()
-    assert "READY false" in first["why"] and not first["armed"] and cache(fw)["phase_e_ready"] is False
-    second = go()
-    assert "READY false" in second["why"] and not second["armed"] and second["ready_source"] == "cache" and len(calls) == 1
-
-
-def test_the_cache_holds_the_documented_fields_with_mode_0600_and_leaves_no_temp_file(fw, monkeypatch):
-    arm(fw, monkeypatch)()
-    f = fw.state / mg.READY_CACHE_FILE
-    assert stat.S_IMODE(f.stat().st_mode) == 0o600
-    assert set(cache(fw)) == {"key", "computed_at", "phase_e_ready", "refused", "compared_merges", "false_green", "compared_days"}
-    assert cache(fw)["refused"] is None and cache(fw)["compared_merges"] >= mg.READY_MIN_MERGES and cache(fw)["false_green"] == 0
+# ------------------------------------------------------------------ the refresh: the tick's own work, once an hour
+def test_a_tick_with_a_cache_older_than_the_refresh_interval_refreshes_and_decides_nothing_else(fw, monkeypatch):
+    calls = _spy_report(monkeypatch)
+    refresh_on(monkeypatch)
+    age_cache(fw, mg.READY_REFRESH_S + 60)
+    assert fw.tick() == 0
+    assert calls == [{"emit": False}] and live_kinds(fw) == [] and fw.pushes == []   # a refresh is its own tick
+    doc = cache(fw)
+    assert doc["phase_e_ready"] is True and doc["refused"] is None and doc["compared_merges"] >= mg.READY_MIN_MERGES and doc["false_green"] == 0
+    assert set(doc) == {"computed_at", "phase_e_ready", "refused", "compared_merges", "false_green", "compared_days", "journal_rows"}
+    assert stat.S_IMODE(cache_path(fw).stat().st_mode) == 0o600 and time.time() - doc["computed_at"] < 600
     assert [p.name for p in fw.state.iterdir() if p.name.startswith(mg.READY_CACHE_FILE)] == [mg.READY_CACHE_FILE]
 
 
-def test_the_write_is_an_atomic_replace_of_a_temp_file_in_the_same_directory(fw, monkeypatch):
-    seen = []
-    real = mg.os.replace
-    monkeypatch.setattr(mg.os, "replace", lambda src, dst: seen.append((str(src), str(dst))) or real(src, dst))
-    arm(fw, monkeypatch)()
-    (src, dst), = [x for x in seen if x[1].endswith(mg.READY_CACHE_FILE)]
-    assert src != dst and src.rsplit("/", 1)[0] == dst.rsplit("/", 1)[0] and src.endswith(".tmp")
+def test_the_tick_after_a_refresh_merges_on_the_cache_it_wrote(fw, monkeypatch):
+    calls = _spy_report(monkeypatch)
+    refresh_on(monkeypatch)
+    cache_path(fw).unlink()
+    assert fw.tick() == 0 and len(calls) == 1 and live_kinds(fw) == []
+    assert fw.tick() == 0 and len(calls) == 1
+    assert armed_by_cache(fw.wm()["phase_f"]) and live_kinds(fw)[-1] == "pushed"
 
 
-def test_an_unwritable_cache_costs_a_recompute_not_the_tick(fw, monkeypatch):
-    calls, go = _spy_report(monkeypatch), arm(fw, monkeypatch)
-    (fw.state / mg.READY_CACHE_FILE).mkdir()
-    assert go()["armed"] and go()["armed"] and len(calls) == 2
+def test_a_tick_with_a_cache_younger_than_the_refresh_interval_does_not_refresh(fw, monkeypatch):
+    calls = _spy_report(monkeypatch)
+    refresh_on(monkeypatch)
+    age_cache(fw, mg.READY_REFRESH_S - 60)
+    assert fw.tick() == 0 and calls == [] and live_kinds(fw)[:1] == ["decision"]
+
+
+def test_a_false_result_is_stored_and_a_later_merge_is_refused_on_it(fw, monkeypatch):
+    refresh_on(monkeypatch)
+    fw.hub.seed(fw.state, n=50, days=4)   # a 4-day span of compared merges: the precheck cannot rule it out, the report says false
+    age_cache(fw, mg.READY_REFRESH_S + 60)
+    assert fw.tick() == 0 and cache(fw)["phase_e_ready"] is False
+    assert fw.tick() == 0 and "READY false (cache)" in fw.wm()["phase_f"]["why"] and "pushed" not in live_kinds(fw)
+
+
+@pytest.mark.parametrize("how", ["refuse", RuntimeError("boom")], ids=["refused", "raised"])
+def test_a_failed_refresh_keeps_the_old_cache_journals_it_and_the_tick_goes_on(fw, monkeypatch, how):
+    refresh_on(monkeypatch)
+    age_cache(fw, mg.READY_REFRESH_S + 60)
+    before = cache_path(fw).read_text()
+    calls = refusing(monkeypatch, how)
+    assert fw.tick() == 0
+    assert cache_path(fw).read_text() == before and len(calls) == 1
+    (failed,) = [r for r in fw.live() if r["kind"] == "ready_refresh_failed"]
+    assert failed["error"] and live_kinds(fw)[:2] == ["ready_refresh_failed", "decision"]   # the tick decided as usual
+    assert fw.tick() == 0 and len(calls) == 1   # not tried again inside READY_RETRY_S
+
+
+def test_a_failed_refresh_is_tried_again_once_the_retry_interval_has_passed(fw, monkeypatch):
+    refresh_on(monkeypatch)
+    age_cache(fw, mg.READY_REFRESH_S + 60)
+    calls = refusing(monkeypatch, "refuse")
+    fw.tick()
+    real = time.time
+    monkeypatch.setattr(mg.time, "time", lambda: real() + mg.READY_RETRY_S + 5)
+    fw.tick()
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize("exc", [mg.MergerError("tick exceeded --tick-timeout (signal 14)"), mg.Stopped("stopped (signal 15)")], ids=["watchdog", "stop"])
+def test_a_watchdog_or_a_stop_during_a_refresh_ends_the_tick(fw, monkeypatch, exc):
+    refresh_on(monkeypatch)
+    age_cache(fw, mg.READY_REFRESH_S + 60)
+    before = cache_path(fw).read_text()
+    refusing(monkeypatch, exc)
+    assert fw.tick() == 1
+    assert live_kinds(fw) == ["error"] and cache_path(fw).read_text() == before and fw.pushes == []
+    assert fw.live()[0]["error"].startswith(str(exc)[:20])

@@ -74,7 +74,7 @@ _FULL_SHA = re.compile(r"[0-9a-f]{40}")
 # (11 while the 2 CodeQL contexts were hosted-only, which is the floor the ruling states). An unrecorded coverage counts toward none of the three.
 READY_MIN_MERGES, READY_MIN_DAYS = 50, 5   # phase D's READY (spec §2): the report and the tick's precheck both read these; days was 14 until the owner's ruling of 2026-10-13 (arm phase F earlier), merges and FALSE_GREEN 0 unchanged
 READY_SPAN_SLACK_DAYS = 1   # the report's span runs on GitHub's merged_at, which can precede its own decision line by up to one tick: the precheck's window starts a day earlier so it never says false while READY is true
-READY_CACHE_FILE, READY_TTL_S = "ready_cache.json", 3600   # B20: the report's READY is read once per journal state and hour, not per merge attempt
+READY_CACHE_FILE, READY_REFRESH_S, READY_RETRY_S, READY_MAX_AGE_S = "ready_cache.json", 3600, 900, 7200   # B20: the tick computes READY apart, phase F only reads it
 KNOWN_HOSTS_FILE = "known_hosts"   # F2: github.com's host key, pinned by the operator in the state dir; the push trusts nothing else
 MIN_COMPARED_CONTEXTS = 12
 MIN_COMPARED_FULL = 11      # implied by the two around it (12 - at most 1 partial); stated because the ruling states it
@@ -1113,57 +1113,69 @@ def ready_precheck(state: Path) -> str | None:
     return None
 
 
-def ready_key(a, state: Path) -> str:
-    """Every journal row ``report()``'s READY reads, hashed: its ``decision`` rows, replays included (the rest of the window only feeds
-    counts and ages that READY never consults). Added to them are the repo and base the report is asked about. Any change to a decision
-    changes the key; a prune, would_merge or evicted row cannot. An unreadable journal raises, and the caller treats that as a miss."""
-    rows = [r for r in strict_journal(state) if r.get("kind") == "decision"]
-    blob = json.dumps({"repo": str(a.repo).lower(), "base": a.base, "decisions": rows}, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(blob.encode()).hexdigest()
-
-
-def read_ready_cache(state: Path, key: str) -> tuple[dict, int] | None:
-    """(the cached READY, its age in seconds) when the file is readable, the key is this journal's and it is younger than the TTL, else
-    None. A corrupt, foreign-shaped, refused or future-dated file is a miss, never an error."""
+def read_ready_doc(state: Path) -> dict | None:
+    """The cache file as a dict with a numeric ``computed_at``, or None when it is missing, unreadable or not that shape."""
     try:
         doc = json.loads((state / READY_CACHE_FILE).read_text())
-        age = time.time() - doc["computed_at"]
-        if (doc["key"] != key or not isinstance(doc["phase_e_ready"], bool) or doc.get("refused") or not 0 <= age < READY_TTL_S):
-            return None
-        return doc, int(age)
-    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+    except (OSError, ValueError):
         return None
+    return doc if isinstance(doc, dict) and is_num(doc.get("computed_at")) and not isinstance(doc.get("computed_at"), bool) else None
 
 
-def ready_state(a, state: Path) -> tuple[dict, str, int | None]:
-    """(the report's READY facts, ``cache`` or ``computed``, the cache's age in seconds or None). A valid cache spares the report's
-    hundreds of GitHub reads; otherwise the report runs as it always did and a successful result is stored under the journal's key as
-    it stood BEFORE the run. A refusal is returned and never stored. Exceptions from the report propagate to the caller."""
+def read_ready(state: Path) -> tuple[str | None, dict]:
+    """(why READY does not hold, or None; the ``phase_f`` facts about the cache). Reads the file only: the report is the tick's
+    refresh, never the merge's."""
+    doc = read_ready_doc(state)
+    if doc is None:
+        return "READY unknown: no cache", {"ready_source": "cache"}
+    age = int(time.time() - doc["computed_at"])
+    facts = {"ready_source": "cache", "ready_age_s": age}
+    if doc.get("refused"):
+        return redact(f"READY unreadable: {doc['refused']} (cache)"), facts
+    if not 0 <= age < READY_MAX_AGE_S:
+        return f"READY stale: computed {age}s ago", facts
+    if doc.get("phase_e_ready") is not True:
+        return "READY false (cache)", facts
+    return None, facts
+
+
+def ready_refresh_due(state: Path, recs: list[dict]) -> bool:
+    doc = read_ready_doc(state)
+    if doc is not None and 0 <= time.time() - doc["computed_at"] < READY_REFRESH_S:
+        return False
+    failed = [_epoch(r["ts"]) for r in recs if r.get("kind") == "ready_refresh_failed" and is_ts(r.get("ts"))]
+    return not (failed and 0 <= time.time() - max(failed) < READY_RETRY_S)
+
+
+def refresh_ready(a, state: Path, lease_id: str) -> bool:
+    """Run the report once and store its READY; True when the cache was written. A refusal or failure keeps the old cache, is
+    journalled, and is False. The tick's watchdog and a stop propagate: they end the tick, not the refresh."""
+    started, rows = time.time(), len(read_journal(state))
     try:
-        key: str | None = ready_key(a, state)
-    except (hc.CompareError, OSError, ValueError, TypeError, AttributeError):
-        key = None   # the report will say why it cannot read the journal
-    if key is not None and (hit := read_ready_cache(state, key)) is not None:
-        return hit[0], "cache", hit[1]
-    started = time.time()
-    _, rep = report(argparse.Namespace(repo=a.repo, base=a.base, state_dir=str(state), since=None), emit=False)
-    if key is not None and not rep.get("refused") and isinstance(rep.get("phase_e_ready"), bool):
-        win = rep.get("window") if isinstance(rep.get("window"), dict) else {}
-        facts = {"key": key, "computed_at": started, "phase_e_ready": rep["phase_e_ready"], "refused": None,
-                 "compared_merges": win.get("compared_merges"), "compared_days": win.get("compared_days"),
-                 "false_green": (rep.get("counts") or {}).get("FALSE_GREEN", 0) + (rep.get("context_counts") or {}).get("FALSE_GREEN", 0)
-                                + (rep.get("recorded_context_false_green") or 0)}
-        try:
-            atomic_write(state / READY_CACHE_FILE, json.dumps(facts, sort_keys=True) + "\n")
-        except OSError:
-            pass   # no cache is a slower tick, never a wrong one
-    return rep, "computed", None
+        _, rep = report(argparse.Namespace(repo=a.repo, base=a.base, state_dir=str(state), since=None), emit=False)
+        err = rep.get("refused") or (None if isinstance(rep.get("phase_e_ready"), bool) else "report gave no READY")
+    except (MergerError, Stopped):
+        raise
+    except Exception as exc:  # noqa: BLE001 — a READY that cannot be computed leaves the old one to age out
+        err = f"{type(exc).__name__}: {exc}"
+    if err:
+        journal(state, {"kind": "ready_refresh_failed", "error": redact(err), "lease_id": lease_id})
+        print(f"merger: READY refresh failed — {redact(err)}", file=sys.stderr)
+        return False
+    win = rep.get("window") if isinstance(rep.get("window"), dict) else {}
+    facts = {"computed_at": started, "phase_e_ready": rep["phase_e_ready"], "refused": None, "compared_merges": win.get("compared_merges"),
+             "false_green": (rep.get("counts") or {}).get("FALSE_GREEN", 0) + (rep.get("context_counts") or {}).get("FALSE_GREEN", 0)
+                            + (rep.get("recorded_context_false_green") or 0),
+             "compared_days": win.get("compared_days"), "journal_rows": rows}
+    atomic_write(state / READY_CACHE_FILE, json.dumps(facts, sort_keys=True) + "\n")
+    print(f"merger: READY refreshed: phase_e_ready={facts['phase_e_ready']} compared_merges={facts['compared_merges']} — this tick decides nothing else")
+    return True
 
 
 def phase_f_arming(a, state: Path, repo_dir: Path, enq: dict, line: dict, base: str) -> tuple[dict, dict]:
     """(the PR as read now, ``{armed, why}``): ``armed`` only when every condition holds, checked now, and ``why`` names each that
-    does not. Nothing here writes. The local conditions come first; READY (the journal precheck, then the report's own function —
-    minutes and hundreds of GitHub reads) is evaluated ONLY when ``LOCALCI_MERGER_PHASE_F`` is "1" and every local condition already
+    does not. Nothing here writes. The local conditions come first; READY (the journal precheck, then the tick's cache
+    of the report, B20: this function never runs the report) is read ONLY when ``LOCALCI_MERGER_PHASE_F`` is "1" and every local condition already
     holds, else ``why`` says ``READY not evaluated``. The PR re-read is last and only happens when all else holds. An unreadable
     condition is a false one."""
     why: list[str] = []
@@ -1197,17 +1209,9 @@ def phase_f_arming(a, state: Path, repo_dir: Path, enq: dict, line: dict, base: 
     elif (early := ready_precheck(state)):
         why.append(early)
     else:
-        try:
-            rep, source, age = ready_state(a, state)
-            ready_info = {"ready_source": source, **({"ready_cache_age_s": age} if age is not None else {})}
-            if rep.get("refused"):
-                why.append(f"READY unreadable: {rep['refused']}")
-            elif rep.get("phase_e_ready") is not True:
-                why.append("READY false")
-        except Stopped:
-            raise
-        except Exception as exc:  # noqa: BLE001 — READY that cannot be computed is not READY
-            why.append(redact(f"READY unreadable: {type(exc).__name__}: {exc}"))
+        reason, ready_info = read_ready(state)
+        if reason:
+            why.append(reason)
     if a is not None and not why:   # the head, re-read at the moment of merging: only when nothing else already says no (a disarmed tick adds no call)
         try:
             pull = pr_view(a, enq["pr"])
@@ -1468,6 +1472,8 @@ def tick(a, state: Path, lease_id: str) -> int:
     shutil.rmtree(state / "cand", ignore_errors=True)   # a killed tick's leftovers: nothing else uses them while the lease is ours
     git(repo_dir, "worktree", "prune", check=False)
     recs = read_journal(state)
+    if ready_refresh_due(state, recs) and refresh_ready(a, state, lease_id):   # B20: a refresh is its own tick: ~17 min of GitHub reads beside a decision's budget
+        return 0
     if not fetch_base(a, state, repo_dir, recs):
         return 1
     base_sha = git(repo_dir, "rev-parse", "refs/merger/base^{commit}").stdout.strip()

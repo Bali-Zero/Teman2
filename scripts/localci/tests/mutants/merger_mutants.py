@@ -849,16 +849,19 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "rs-source-not-recorded": (HC, '"required_checks": required, "required_source": source,', '"required_checks": required,', RS),
     "rs-protection-ignored": (HC, '_CACHE[key] = ("protection", protection.get("checks") if isinstance(protection, dict) else None)',
                               '_CACHE[key] = ("matrix_after_flip", None)', RS),
-    # B20: READY read once per journal state and hour
-    "b20-key-ignores-decisions": (PY, 'rows = [r for r in strict_journal(state) if r.get("kind") == "decision"]\n    blob', "rows = []\n    blob", (RC,)),
-    "b20-key-over-all-rows": (PY, 'rows = [r for r in strict_journal(state) if r.get("kind") == "decision"]\n    blob', "rows = strict_journal(state)\n    blob", (RC,)),
-    "b20-ttl-ignored": (PY, "or not 0 <= age < READY_TTL_S)", "or not 0 <= age)", (RC,)),
-    "b20-refused-cached": (PY, 'if key is not None and not rep.get("refused") and isinstance(', "if key is not None and isinstance(", (RC,)),
-    "b20-cached-false-stored-true": (PY, '"phase_e_ready": rep["phase_e_ready"], "refused": None,', '"phase_e_ready": True, "refused": None,', (RC,)),
-    "b20-cached-false-read-true": (PY, "return doc, int(age)", 'return {**doc, "phase_e_ready": True}, int(age)', (RC,)),
-    "b20-cache-write-not-atomic": (PY, "atomic_write(state / READY_CACHE_FILE, json.dumps(facts, sort_keys=True)", "(state / READY_CACHE_FILE).write_text(json.dumps(facts, sort_keys=True)", (RC,)),
-    "b20-corrupt-cache-raises": (PY, "except (OSError, ValueError, KeyError, TypeError, AttributeError):\n        return None\n\n\ndef ready_state",
-                                 "except OSError:\n        return None\n\n\ndef ready_state", (RC,)),
+    # B20: READY is computed apart by the tick and only read by the merge
+    "b20-arming-runs-the-report-inline": (PY, "reason, ready_info = read_ready(state)\n        if reason:",
+                                          "_, rep = report(argparse.Namespace(repo=a.repo, base=a.base, state_dir=str(state), since=None), emit=False)\n        reason, ready_info = (None if rep.get('phase_e_ready') else 'READY false'), {}\n        if reason:", (RC, PHASEF)),
+    "b20-max-age-ignored": (PY, "if not 0 <= age < READY_MAX_AGE_S:", "if False:", (RC,)),
+    "b20-false-cache-read-true": (PY, 'if doc.get("phase_e_ready") is not True:', "if False:", (RC, PHASEF)),
+    "b20-refused-cache-read-true": (PY, 'if doc.get("refused"):', "if False:", (RC, PHASEF)),
+    "b20-failed-refresh-overwrites": (PY, "    if err:\n        journal(state, {\"kind\": \"ready_refresh_failed\"",
+                                      "    if err:\n        atomic_write(state / READY_CACHE_FILE, json.dumps({\"computed_at\": time.time(), \"phase_e_ready\": False, \"refused\": err}))\n        journal(state, {\"kind\": \"ready_refresh_failed\"", (RC,)),
+    "b20-refresh-every-tick": (PY, "0 <= time.time() - doc[\"computed_at\"] < READY_REFRESH_S:\n        return False", "False:\n        return False", (RC,)),
+    "b20-refresh-never": (PY, "    return not (failed and 0 <= time.time() - max(failed) < READY_RETRY_S)", "    return False", (RC,)),
+    "b20-failed-refresh-retried-every-tick": (PY, "    return not (failed and 0 <= time.time() - max(failed) < READY_RETRY_S)", "    return True", (RC,)),
+    "b20-watchdog-swallowed": (PY, "    except (MergerError, Stopped):\n        raise\n    except Exception as exc:  # noqa: BLE001 — a READY that cannot", "    except Exception as exc:  # noqa: BLE001 — a READY that cannot", (RC,)),
+    "b20-refresh-then-decides": (PY, "and refresh_ready(a, state, lease_id):   # B20", "and (refresh_ready(a, state, lease_id) and False):   # B20", (RC,)),
 }
 
 
