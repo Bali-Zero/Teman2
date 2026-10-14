@@ -137,24 +137,26 @@ def flatten_services(data: dict[str, Any]) -> list[dict[str, Any]]:
                 and all(_is_service_entry(v) for v in item_data.values())
             ):
                 for sub_name, sub_entry in item_data.items():
-                    items.append(
-                        {
-                            "name": sub_name,
-                            "category": f"{category}/{item_name}",
-                            "data": sub_entry,
-                            "contact_info": contact_info,
-                        }
-                    )
+                    if sub_entry.get("internal") is not True:
+                        items.append(
+                            {
+                                "name": sub_name,
+                                "category": f"{category}/{item_name}",
+                                "data": sub_entry,
+                                "contact_info": contact_info,
+                            }
+                        )
                 continue
 
-            items.append(
-                {
-                    "name": item_name,
-                    "category": category,
-                    "data": item_data,
-                    "contact_info": contact_info,
-                }
-            )
+            if item_data.get("internal") is not True:
+                items.append(
+                    {
+                        "name": item_name,
+                        "category": category,
+                        "data": item_data,
+                        "contact_info": contact_info,
+                    }
+                )
 
     return items
 
