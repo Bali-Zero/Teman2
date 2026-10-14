@@ -1,0 +1,18 @@
+gear: 1
+gear_reason: >-
+  Size floor 1 (one new Vitest file, one no-argument observer and its pytest, plus the pack; well under 400 churn).
+  Test-only apart from a routing-only widening in scripts/ci/change_map.py (signed-pack PRs also run frontend-tests): no mouth source, no backend, no pack, no fixture change.
+mission: >-
+  The no-door replay fixture can no longer go stale silently when a new signed pack lands.
+objective: >-
+  A Vitest pin fails the required mouth CI leg whenever no-path-doors.replay.json is recorded on any signed
+  rulepack other than the numerically highest rulepack-prod-NNN.signed.json (today rulepack-prod-029, sequence 29).
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/no-path-doors-fixture-freshness.test.ts
+  - scripts/ci/observe_visa_oracle_no_door_replay_freshness.py
+  - tests/scripts/test_observe_visa_oracle_no_door_replay_freshness.py
+  - scripts/ci/change_map.py
+  - scripts/ci/test_change_map.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
