@@ -1,0 +1,60 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Visa-night family e31, plan entries E31-X02 and E31-X03: gold-coverage personas for the E31 codes. #7941 is already
+  merged and #8433 (seq-29) re-derived E31D and E31J, so E31D, E31E, E31G, E31H and E31J meet the acceptance on origin/main
+  and are untouched; the gap was the E31F variants and the E31C unregistered-marriage case. Test-only; no owner decision.
+mission: >-
+  The E31 gold-coverage corpus covers E31F minor and two-year stay, and pins the E31C unregistered-marriage redirect, on seq-29.
+lanes:
+  - lane: e31-x0203-personas
+    role: build
+    seat: claude-sonnet-5-5 (this session, on Pro; suites run on Mini)
+  - lane: e31-x0203-personas
+    role: review
+    seat: Codex gpt-5.6-sol, effort high, read-only, rollout ~/.codex/sessions/2026/10/14/rollout-2026-10-14T11-53-39-01a1388b-5a5e-7353-8b7e-0f4faff9e6de.jsonl (model line verified gpt-5.6-sol)
+pii_scan: clean
+spend:
+  wall_clock_hours: 1.0
+  adversarial_rounds: 1
+  paid_endpoint_usd: 0
+bites: >-
+  Consumer: the gold-coverage floor CI job (test_gold_coverage_floor.py, Tests / Backend Shard matrix). Observation: on
+  origin/main after merge the floor test collects E31F__minor and E31F__two_year (41 personas) and passes; the mutation
+  recorded below turns it red.
+results:
+  - claim: "Measured on seq-29 (signed_at as-of): E31F__minor and E31F__two_year decide exactly [E31F]; E31C__marriage_unregistered decides SUPPORTED_CANDIDATES [E31F] with E31C absent; E31D/E31E/E31G/E31H/E31J pass unchanged; 41/41 positive personas pass."
+    cmd: "cd apps/backend-rag && PYTHONPATH=. python -m pytest -p no:cacheprovider backend/tests/services/visa_engine/test_gold_coverage_floor.py backend/tests/services/visa_engine/test_gold_coverage_negative_personas.py backend/tests/services/visa_engine/test_seq19_pack.py backend/tests/services/visa_engine/test_seq20_pack.py backend/tests/services/visa_engine/test_seq29_pack.py"
+    result: "296 passed"
+    exit: 0
+    ts: "2026-10-14T04:14:47Z"
+    seat: this session
+  - claim: "Mutation: E31F__two_year expected_candidates E31F -> E31H turns the floor red (2 failed), file restored (cmp)."
+    cmd: "same venv, pytest backend/tests/services/visa_engine/test_gold_coverage_floor.py with the persona edited then restored"
+    result: "2 failed, 5 passed"
+    exit: 1
+    ts: "2026-10-14T04:14:47Z"
+    seat: this session
+  - claim: "Whole visa_engine suite on Mini equals the known baseline: the same 2 failed (retention_fk_registry) and 31 errors (test_evaluate_endpoint, asyncpg TooManyColumns) as clean origin/main ac8a106930, which gave 2 failed, 3635 passed, 31 errors; with this PR 3647 passed (+12 new tests)."
+    cmd: "cd apps/backend-rag && PYTHONPATH=. python -m pytest -p no:cacheprovider backend/tests/services/visa_engine"
+    result: "2 failed, 3647 passed, 15 skipped, 3 xfailed, 31 errors"
+    exit: 1
+    ts: "2026-10-14T04:17:08Z"
+    seat: this session
+dissent:
+  - seat: "Codex gpt-5.6-sol (red team)"
+    objection: "MEDIUM: E31F personas do not prove the decisive document (court decision on the legal relationship, KK) that the official E31F page requires."
+    status: REFUTED
+    disposition: "The fact registry carries no document fact for E31F, so the engine cannot decide on it; the persona facts match the page where a fact exists (WNI parent sponsor, 1 or 2 year stay, research/visa/2026-10-13-organ-reattest-seq29/text/f9306203-20261013T000754Z.txt lines 73, 93, 100-101). No change."
+  - seat: "Codex gpt-5.6-sol (red team)"
+    objection: "MEDIUM: E31F__minor differs from E31F in two facts (birth date plus guardian consent), no test protects the delta of the positive variants."
+    status: CONFIRMED
+    disposition: "CURED in commit 8f48ddfffd: _VARIANT_DELTAS pins both variants' exact fact delta (minor = age plus guardian consent, the E30A exception) in test_gold_coverage_floor.py."
+  - seat: "Codex gpt-5.6-sol (red team)"
+    objection: "MEDIUM: [E31F] is only a subset check in the seq19/20/29 and floor readers; a spurious extra candidate would stay green."
+    status: CONFIRMED
+    disposition: "CURED in commit 8f48ddfffd: a new floor test asserts the exact candidate list [E31F] for both variants on the highest signed pack."
+  - seat: "Codex gpt-5.6-sol (red team)"
+    objection: "LOW: stale docstring (negative-persona module names only E30) and stale '30 of 39' comment in test_seq19_pack.py."
+    status: CONFIRMED
+    disposition: "CURED in commit 8f48ddfffd."
