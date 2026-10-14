@@ -624,6 +624,21 @@ anchor. While the halt file exists the fetch is the plain one of before, and the
 removes the halt, until GitHub's main again contains the last pushed merge.) There is no re-anchor gesture: clearing a halt is an operator act, done only after reconciling GitHub's main with the mirror, and after reading why: a
 `push_refused` can be a plain race (a commit reached GitHub's main between the `ls-remote` and the push).
 
+**A push of unknown outcome is read back (B21).** When the push returns non-zero or raises (timeout, transport), the merger runs one
+`git ls-remote` of `refs/heads/main` on the push remote with the same `GIT_SSH_COMMAND`, under `REMOTE_TIMEOUT_S`. Main equal to the merge
+commit: the push landed, `pushed` is journalled with `readback: true` and `refs/merger/base` moves as on success, no halt. Main equal to
+the old main and the failure a TRANSPORT one (timeout, connection reset or refused, "Could not read from remote repository", ssh
+connect and kex errors, broken pipe): `kind: push_unlanded`, no halt, `refs/merger/base` unmoved, the next tick may retry (the key is not
+merged; B19's pending-merge retry must read a `merged` row followed by `push_unlanded` as not merged). Main equal to the old main and an
+explicit rejection (`! [remote rejected]`, non-fast-forward, protected branch, permission denied) or any unclassified text: halt, as
+before; a rejection marker beats a transport marker in the same text. A failed read-back, or a main that is neither: halt. A `Stopped`
+still halts, then re-raises. Once the journal holds a `pushed` row `replay_pending` returns None: every later commit on main is phase F's
+own or an operator's recovery push, and neither is GitHub's verdict to compare.
+
+**Rollback order once phase F is armed.** Step 0: `touch <state>/phase_f_halt`, or unset `LOCALCI_MERGER_PHASE_F` and reload the plist;
+then `phase_e_flip.py --rollback`; then re-run `scripts/signal_merge_intent.sh <n>` on the open labelled PRs, so they are armed for the
+restored merge queue. Remove the halt only when phase F is re-armed.
+
 READY precheck: before the full report (about 4 minutes on Pro's journal, hundreds of GitHub reads) the tick asks the journal alone whether READY can be true yet — the first decision (less `READY_SPAN_SLACK_DAYS` = one day: the report's span runs on GitHub's `merged_at`, which can precede its own decision line by up to one tick) to now under `READY_MIN_DAYS`, or fewer than `READY_MIN_MERGES` distinct decided PRs (both constants are the report's own) — and says `READY false: journal window N.N days (+1 of slack) < 14` without running it. Neither runs unless the env half and every local condition hold: a disarmed tick pays for neither (`READY not evaluated`). The precheck only ever short-circuits to false; past it the full report decides.
 
 Arming order (spec §2 phase F): (1) phase D READY; (2) the deploy key generated on Pro at `<state>/deploy_key` (0600) and registered with write, and github.com's host key pinned into `<state>/known_hosts` (verified out of band against GitHub's published fingerprints; the push uses `StrictHostKeyChecking=yes`, so without it the push is refused and halts) — operator[secret]; (3) the phase E flip, `scripts/localci/phase_e_flip.py --apply` (lands in its own PR, not on main yet): `merge-queue-main` restricted with the DeployKey bypass, then `main`'s classic protection (14 required checks, reviews, `enforce_admins`), which no deploy key bypasses, deleted — operator[gui]; (4) the live wrapper re-installed and identical to main's (`cmp -s ~/.nuzantara-cron/localci_merger_tick.sh scripts/localci/localci_merger_tick.sh` from an `origin/main` checkout — until then it force-fetches `refs/merger/base` and a storage divergence rewinds it) and `LOCALCI_MERGER_ARMED` unset (with it set every armed decision is `enqueued` into GitHub's queue and phase F never acts); (5) `LOCALCI_MERGER_PHASE_F=1` in the tick's environment, only after (3) and (4): before them the first push is refused and writes the sticky halt.
