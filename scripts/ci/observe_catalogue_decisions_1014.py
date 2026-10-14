@@ -5,12 +5,13 @@
 # test file it names are literal strings in this file, so nothing an invoker types
 # can name a program to run, a file to write, or a database to reach.
 
-The consumers are the public price surfaces: the mouth price mirror (generic Retirement
-rows left out), the printable price list, the anonymous /api/pricing/service lookup and the
-client brochure, plus the /book retirement card. The observation runs
-tests/scripts/test_catalogue_decisions_1014.py, which proves the three generic Retirement rows
-are kept in the backend catalogue but hidden from the mirror, the price list and the brochure,
-and that every E33F row names the sponsor. Exit 0 only on a full pass of at least 16 tests.
+The observation runs tests/scripts/test_catalogue_decisions_1014.py, which proves: the mouth
+price mirror omits the three generic Retirement rows, the backend catalogue keeps them (and its
+consumers keep resolving them), the /book retirement card points to the E33F Offshore row at the
+same price, every E33F row names the sponsor once at the end, and the sync script skips internal
+rows. It does NOT assert the printable price list, the brochure template or the route 404; those
+are covered by scripts/pricelist_2026/tests and test_public_pricing_lookup.py respectively.
+Exit 0 only on a full pass of at least 16 tests.
 """
 
 # bites-observable — no arguments; one literal program, one literal test file.

@@ -34,9 +34,10 @@ lanes:
 pii_scan: clean
 bites:
   consumer: >-
-    The public price surfaces: apps/mouth/data/bali-zero-prices.json (mirror read by balizero.com/services
-    and the /book cards), the anonymous GET /api/pricing/service route, the printable price list and the
-    client brochure. The /book retirement card reads the E33F Offshore row.
+    apps/mouth/data/bali-zero-prices.json (mirror read by balizero.com/services and the /book cards)
+    and the /book retirement card, which reads the E33F Offshore row. The observer proves the mirror,
+    /book, backend retention, the sponsor sentence and the sync script; the anonymous route 404, the
+    price list and the brochure template are proven by other suites, not by this observer.
   where: ci
   observe: python3 scripts/ci/observe_catalogue_decisions_1014.py
   expect: "contains:catalogue decisions of 2026-10-14 hold"
