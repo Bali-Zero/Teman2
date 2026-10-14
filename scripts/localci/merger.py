@@ -75,6 +75,8 @@ _FULL_SHA = re.compile(r"[0-9a-f]{40}")
 # A compared merge (spec §2 phase D, ruled 2026-10-08): >= 12 contexts compared on both sides, >= 11 of them full and at most one
 # partial, named on the line. The arithmetic the real matrix allows: 14 required - 1 E2E (partial: no repository secrets) = 13 full
 # (11 while the 2 CodeQL contexts were hosted-only, which is the floor the ruling states). An unrecorded coverage counts toward none of the three.
+LIVENESS_WINDOW_S, LIVENESS_MIN_ROWS, LIVENESS_MIN_COVERAGE = 48 * 3600, 10, 0.8   # B24: the shadow would merge, measured apart from READY
+LIVENESS_EXCLUDED = ("label_privileged", "not_in_queue", "first_enqueue")   # B24 L1: false before the flip by construction (`armed_env` is journalled apart)
 READY_MIN_MERGES, READY_MIN_DAYS = 50, 5   # phase D's READY (spec §2): the report and the tick's precheck both read these; days was 14 until the owner's ruling of 2026-10-13 (arm phase F earlier), merges and FALSE_GREEN 0 unchanged
 READY_SPAN_SLACK_DAYS = 1   # the report's span runs on GitHub's merged_at, which can precede its own decision line by up to one tick: the precheck's window starts a day earlier so it never says false while READY is true
 READY_CACHE_FILE, READY_REFRESH_S, READY_RETRY_S, READY_MAX_AGE_S = "ready_cache.json", 3600, 900, 7200   # B20: the tick computes READY apart, phase F only reads it
@@ -240,6 +242,10 @@ def head_of(pr: dict) -> str:
     return sha if is_sha(sha) else ""
 
 
+def has_arm_label(pr: dict) -> bool:
+    return ARM_LABEL in {lb.get("name") for lb in pr.get("labels") or [] if isinstance(lb, dict)}
+
+
 def wants_merge(pr: dict) -> bool:
     return bool(pr.get("auto_merge")) or bool({LABEL, ARM_LABEL} & {lb.get("name") for lb in pr.get("labels") or [] if isinstance(lb, dict)})
 
@@ -305,7 +311,7 @@ def gate_ready(repo: str, head: str, names: list) -> bool:
 
 
 def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_ready=None, capped: list | None = None,
-           evict_capped: list | None = None, now_s: float | None = None) -> tuple[list[dict], list[dict]]:
+           evict_capped: list | None = None, now_s: float | None = None, deferred: list | None = None) -> tuple[list[dict], list[dict]]:
     """(same-repo PRs to decide, in order; fork PRs to journal). Drafts and PRs that ask for no merge are not the merger's.
 
     Order: a head never decided at any base first, then the head whose last decision is oldest, then created_at —
@@ -319,7 +325,11 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
     B15: an ``evicted`` record is an attempt for ORDER (it goes into ``last`` with its ts, so the head rotates behind the others) and
     never a decision (the key is still undecided). After EVICT_CAP evictions of one (pr, head, base) the key is appended to
     ``evict_capped`` and skipped until the base or the head moves. An eviction counts toward the cap only within EVICT_WINDOW_S of
-    ``now_s``: an older one is history for ORDER, never a cap, and an unreadable ts counts (it fails closed toward the cap)."""
+    ``now_s``: an older one is history for ORDER, never a cap, and an unreadable ts counts (it fails closed toward the cap).
+
+    B23: PRs carrying ARM_LABEL are ordered before the unlabelled ones, and with LOCALCI_MERGER_PHASE_F=1 an unlabelled PR is not selected
+    at all. A (pr, head) whose NEWEST non-replay decision, at any base, was gate_pending is not decided at a NEW base until
+    ``gate_ready`` says its verdict is posted (a failed read, or no callable, defers it); it is appended to ``deferred``."""
     now = time.time() if now_s is None else now_s
     decided = {(r.get("pr"), r.get("head_sha"), r.get("base_sha")) for r in recs if (r.get("kind") == "decision" and not r.get("replay"))
                or r.get("why") == "head_in_base"}
@@ -341,10 +351,19 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
             ts = r.get("ts")
             if not is_ts(ts) or now - _epoch(ts) <= EVICT_WINDOW_S:
                 evictions[(r.get("pr"), r.get("head_sha"), r.get("base_sha"))] += 1
+    newest: dict = {}   # B23: (pr, head) -> the newest non-replay decision's pending contexts, None when it was not gate_pending
+    for r in recs:
+        if r.get("kind") == "decision" and not r.get("replay"):
+            names = r.get("gate_pending_contexts")
+            newest[(r.get("pr"), r.get("head_sha"))] = names if (r.get("gate_pending") is True and r.get("overall") == "BLOCKED" and isinstance(names, list)
+                                                              and names and all(isinstance(x, str) for x in names)) else None
+    shadow_only = os.environ.get(PHASE_F_ENV) == "1"
     todo, forks = [], []
     for pr in prs:
         n, head = pr.get("number"), head_of(pr)
         if pr.get("draft") is not False or not wants_merge(pr) or not isinstance(n, int) or not head:
+            continue
+        if shadow_only and not has_arm_label(pr) and repo_of(pr.get("head")) == repo.lower() and repo_of(pr.get("base")) == repo.lower():
             continue
         if repo_of(pr.get("head")) != repo.lower() or repo_of(pr.get("base")) != repo.lower():
             if (n, head) not in refused:
@@ -354,6 +373,16 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
                 if evict_capped is not None:
                     evict_capped.append(pr)
                 continue
+            if newest.get((n, head)):
+                try:
+                    ready = gate_ready is not None and bool(gate_ready(n, head, newest[(n, head)]))
+                except (hc.CompareError, OSError) as exc:
+                    ready = False
+                    print(f"merger: #{n} gate status or hosted re-run not read — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
+                if not ready:
+                    if deferred is not None:
+                        deferred.append(pr)
+                    continue
             todo.append(pr)
         elif (count := pending.get((n, head, base_sha), [0, None]))[1]:
             if count[0] >= GATE_PENDING_CAP:
@@ -365,7 +394,7 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
                     todo.append(pr)
             except (hc.CompareError, OSError) as exc:
                 print(f"merger: #{n} gate status or hosted re-run not read — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
-    todo.sort(key=lambda p: ((p["number"], head_of(p)) in last, last.get((p["number"], head_of(p)), ""), str(p.get("created_at")), p["number"]))
+    todo.sort(key=lambda p: (not has_arm_label(p), (p["number"], head_of(p)) in last, last.get((p["number"], head_of(p)), ""), str(p.get("created_at")), p["number"]))
     return todo, forks
 
 
@@ -1666,16 +1695,22 @@ def tick(a, state: Path, lease_id: str) -> int:
     base_sha = git(repo_dir, "rev-parse", "refs/merger/base^{commit}").stdout.strip()
     capped: list = []
     evict_capped: list = []
+    deferred: list = []
     prs = open_prs(a.repo, a.base)
     if retry_pending_merges(a, state, repo_dir, lease_id, recs, base_sha, prs):
         return 0
     check_watchdog()
-    todo, forks = triage(prs, a.repo, recs, base_sha, lambda n, head, names: gate_ready(a.repo, head, names), capped, evict_capped)
+    todo, forks = triage(prs, a.repo, recs, base_sha, lambda n, head, names: gate_ready(a.repo, head, names), capped, evict_capped,
+                         deferred=deferred)
     for why, prs in (("gate_pending_cap", capped), ("evicted_cap", evict_capped)):   # B12, B15: journalled once per key, however many ticks pass
         for pr in prs:
             key = {"pr": pr["number"], "head_sha": head_of(pr), "base_sha": base_sha}
             if not any(r.get("kind") == "skipped" and r.get("why") == why and all(r.get(k) == v for k, v in key.items()) for r in recs):
                 journal(state, {"kind": "skipped", "why": why, **key, "lease_id": lease_id})
+    for pr in deferred:   # B23: once per (pr, head), whatever the base
+        key = {"pr": pr["number"], "head_sha": head_of(pr)}
+        if not any(r.get("kind") == "skipped" and r.get("why") == "gate_pending_deferred" and all(r.get(k) == v for k, v in key.items()) for r in recs):
+            journal(state, {"kind": "skipped", "why": "gate_pending_deferred", **key, "base_sha": base_sha, "lease_id": lease_id})
     for pr in forks:
         journal(state, {"kind": "refused", "why": "fork", "pr": pr["number"], "head_sha": head_of(pr), "base_sha": base_sha, "lease_id": lease_id})
     last = [r for r in recs if r.get("kind") == "decision"][-1:]
@@ -2083,6 +2118,7 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
     compared_days = _days(merges[0], merges[-1]) if merges else 0.0
     fg = counts["FALSE_GREEN"] + ctx_counts["FALSE_GREEN"] + recorded_fg
     ready = fg == 0 and compared_merges >= READY_MIN_MERGES and compared_days >= READY_MIN_DAYS   # lead's ruling 2026-10-07: both, never either
+    live_block = liveness(window, decisions, prs, merged_listing(a) if emit else None, clock)   # B24: apart from `ready`, which it never feeds
     skipped = dict(sorted(Counter(str(r.get("why")) for r in window if r.get("kind") == "skipped").items()))
     errors = sum(1 for r in window if r.get("kind") == "error")
     evicted = sum(1 for r in window if r.get("kind") == "evicted")
@@ -2115,7 +2151,7 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
                       "decisions_without_code_sha": without_code_sha, "enqueue": enqueue, "would_merge": would_merge, "pending_retry": pending_retry,
                       "code_shas": sorted({r["code_sha"] for r in rows if is_sha(r["code_sha"])}), "ticks": ticks},
            "counts": counts, "hosted_red_merged": hosted_red_merged, "merged_without_merge_commit_sha": merged_without_sha, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "recorded_false_green_as_journalled": recorded_raw,
-           "recorded_reclassified_hosted_stale": reclassified, "recorded_kept_false_green": kept_fg, "phase_e_ready": ready, "phase_f": phase_f, "phase_f_halted": os.path.lexists(state / HALT_FILE), "rows": rows,
+           "recorded_reclassified_hosted_stale": reclassified, "recorded_kept_false_green": kept_fg, "phase_e_ready": ready, "liveness": live_block, "phase_f": phase_f, "phase_f_halted": os.path.lexists(state / HALT_FILE), "rows": rows,
            "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
     if not emit:
         return (1 if fg else 0), out
@@ -2157,7 +2193,10 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
                                                             + (f" (gate: {x['gate']})" if x.get("gate") else "") for x in kept_fg) + "])")
     for h in hosted_red_merged:
         print(f"hosted_red_merged: #{h['pr']} merged at {h['merge_commit_sha'][:12]} with required red: {', '.join(h['red'])}")
-    print(f"phase E {'READY' if ready else 'NOT READY'}: needs 0 FALSE_GREEN and >= {READY_MIN_MERGES} compared merges and >= {READY_MIN_DAYS} days between the first "
+    lv = live_block
+    print(f"liveness (B24, last {lv['window_h']} h): mergeable_rows={lv['mergeable_rows']} (needs >= {LIVENESS_MIN_ROWS}), coverage_decided={lv['coverage_decided']} "
+          f"of {lv['merged_decided']} merged-and-decided PR(s) (needs >= {LIVENESS_MIN_COVERAGE}), label_ok_rows={lv['label_ok_rows']}, coverage_all_approx={lv['coverage_all_approx']} of {lv['merged_all_approx']} merged PR(s) (one page of 100 closed PRs; reported only)")
+    print(f"phase E READY: {str(ready).lower()} liveness_ok: {str(lv['liveness_ok']).lower()}: needs 0 FALSE_GREEN and >= {READY_MIN_MERGES} compared merges and >= {READY_MIN_DAYS} days between the first "
           f"and last compared merge (a merge counts when GitHub merged the decided candidate and >= {MIN_COMPARED_CONTEXTS} contexts were "
           f"compared, >= {MIN_COMPARED_FULL} of them full and at most {MAX_COMPARED_PARTIAL} partial); now false_green={fg} {stale_note}, "
           f"compared_merges={compared_merges} (full_only={compared_merges - len(with_partial)}, with_partial={len(with_partial)}: "
@@ -2169,6 +2208,44 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
           f"blocks READY, a local false green on it does); enqueued={enqueue['enqueued']} would_enqueue={enqueue['would_enqueue']} "
           f"enqueue_refused={enqueue['enqueue_refused']} enqueue_error={enqueue['enqueue_error']}")
     return (1 if fg else 0), out
+
+
+def mergeable_row(r: dict) -> bool:
+    """B24 L1: a ``would_enqueue`` row (original or retry) whose criterion has every term true but the ones that cannot be true before the flip."""
+    c = r.get("criterion")
+    return r.get("kind") == "would_enqueue" and isinstance(c, dict) and all(c.get(k) is True for k in CRITERION if k not in LIVENESS_EXCLUDED)
+
+
+def in_liveness_window(ts, clock: float) -> bool:
+    return is_ts(ts) and clock - _epoch(ts) <= LIVENESS_WINDOW_S
+
+
+def liveness(window: list, decisions: list, merged_prs: dict, listing: list | None, clock: float) -> dict:
+    """B24: ``mergeable_rows`` over the trailing 48 h; ``coverage_decided`` over the PRs GitHub merged in it that LocalCI decided at their
+    merged head (replay decisions do not count as decided); ``label_ok_rows`` of the mergeable rows also had ``label_privileged`` true;
+    ``coverage_all_approx`` (reported only, one page of 100 closed PRs) over every PR GitHub merged in it, ``None`` when ``listing`` is.
+    ``liveness_ok`` needs rows and ``coverage_decided``."""
+    mergeable = [r for r in window if mergeable_row(r) and in_liveness_window(r.get("ts"), clock)]
+    heads = {(r.get("pr"), r.get("head_sha")) for r in mergeable}
+    decided_heads = {(d.get("pr"), d.get("head_sha")) for d in decisions if d.get("replay") is not True}   # a replay never journals a would_enqueue
+    decided = [(n, head_of(p)) for n, p in merged_prs.items() if p.get("merged") is True and in_liveness_window(p.get("merged_at"), clock)
+               and (n, head_of(p)) in decided_heads]
+    cov_decided = sum(1 for k in decided if k in heads) / len(decided) if decided else None
+    everyone = [(p.get("number"), head_of(p)) for p in listing or [] if isinstance(p, dict) and in_liveness_window(p.get("merged_at"), clock)]
+    cov_all = sum(1 for k in everyone if k in heads) / len(everyone) if listing is not None and everyone else None
+    return {"window_h": LIVENESS_WINDOW_S // 3600, "mergeable_rows": len(mergeable), "merged_decided": len(decided), "coverage_decided": cov_decided,
+            "label_ok_rows": sum(1 for r in mergeable if r["criterion"].get("label_privileged") is True),
+            "merged_all_approx": len(everyone) if listing is not None else None, "coverage_all_approx": cov_all,
+            "liveness_ok": len(mergeable) >= LIVENESS_MIN_ROWS and cov_decided is not None and cov_decided >= LIVENESS_MIN_COVERAGE}
+
+
+def merged_listing(a) -> list | None:
+    """B24 L2: the closed PRs of the base, newest update first, one read-only page; an unreadable listing is ``None`` (reported only, never a refusal)."""
+    try:
+        got = hc.gh_get(f"repos/{a.repo}/pulls?state=closed&base={quote(a.base)}&sort=updated&direction=desc&per_page=100")
+    except Exception:  # noqa: BLE001 — coverage_all is the capacity view, reported only
+        return None
+    return got if isinstance(got, list) else None
 
 
 def compared_enough(full: int, partial: int) -> bool:

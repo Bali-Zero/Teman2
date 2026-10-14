@@ -305,8 +305,10 @@ def test_a_decision_that_was_not_pending_is_never_asked_about():
     assert run_triage([dec(False)], True) == ([], [])
 
 
-def test_a_new_base_is_a_new_key_and_needs_no_status_read():
-    assert run_triage([dec(True)], False, base=B2) == ([1], [])
+def test_a_new_base_is_a_new_key_but_a_gate_pending_head_waits_for_its_gate_first():   # B23 T2
+    assert run_triage([dec(True)], False, base=B2) == ([], [(1, H)])
+    assert run_triage([dec(True)], True, base=B2) == ([1], [(1, H)])
+    assert run_triage([dec(False)], False, base=B2) == ([1], [])   # T4: a head that was not gate_pending is a new key as before
 
 
 def test_the_newest_decision_of_the_key_decides_pending_or_settled():

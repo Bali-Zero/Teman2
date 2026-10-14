@@ -711,7 +711,7 @@ def test_the_report_prints_the_executor_line_and_the_halt(fw, capsys):
     mg.journal(fw.state, {"kind": "push_refused", "pr": 3})
     assert mg.main(["report", "--repo", REPO, "--state-dir", str(fw.state)]) == 0
     out = capsys.readouterr().out
-    assert "phase F executor: armed (0 merged, 1 refused) — HALTED" in out and "phase E READY" in out
+    assert "phase F executor: armed (0 merged, 1 refused) — HALTED" in out and "phase E READY: " in out
 
 
 def test_the_quiet_report_writes_no_file_and_prints_nothing(fw, capsys):

@@ -655,6 +655,13 @@ set at the BASE) and `pr_side`, copies the local terms from the original `would_
 journalled once as `skipped: pending_expired`. Retry rows are counted in `window.pending_retry` (`would_enqueue`, `would_merge`, `would_merge_ok`),
 never as decisions. Before the flip it runs as shadow and changes nothing on GitHub.
 
+**B23: the lane goes to PRs that can merge** (spec B23). `triage()` orders PRs labelled `localci:merge-shadow-ok` before the unlabelled
+ones (the old order inside each group), and with `LOCALCI_MERGER_PHASE_F=1` selects no unlabelled PR at all (the label's actor and
+timing are still checked at merge time). A `(pr, head)` whose newest decision, at any base, was BLOCKED with `gate_pending` is not decided
+again at a new base until `gate_ready` says its gate verdict is posted and its pending hosted runs completed after it; a failed read
+defers. Each deferred `(pr, head)` is journalled once as `skipped: gate_pending_deferred`.
+Before the flip, labelled-first shrinks the share of unlabelled PRs in the compared-merge evidence (2026-10-14: 5 of 56 open PRs armed but unlabelled, 23 labelled).
+
 ### Report (phase D's instrument)
 
     python scripts/localci/merger.py report [--repo Bali-Zero/Teman2] [--base main] [--state-dir ...] [--since 2026-10-07]
@@ -956,6 +963,8 @@ silence is a `warning`, recovery `launchctl kickstart`. Arming (operator of Pro,
     python scripts/localci/phase_e_flip.py [--repo Bali-Zero/Teman2] [--branch main] [--report <report.json>] [--state-dir <dir>] [--key-pub <deploy_key.pub>]
     python scripts/localci/phase_e_flip.py --apply --confirm <digest> --quiescent   # operator[gui], after READY and the key
     python scripts/localci/phase_e_flip.py --rollback <pre-flip-*.json> [--apply --confirm <digest> --quiescent]
+
+Before step 1 the report must also read `liveness_ok: true` (B24): READY proves the merger is safe, `liveness_ok` that it would merge — at least 10 mergeable `would_enqueue` rows in the last 48 h and at least 80 % of the GitHub-merged PRs it decided carrying one at their merged head. Phase F arming does not require it.
 
 Step 1 recomputes `report.json`, which nothing regenerates on a schedule (since F2 the tick judges READY in memory and writes
 no report). `hand_report.sh` runs the merger's own `merger.py report` the way the tick runs it: the code read from the mirror's

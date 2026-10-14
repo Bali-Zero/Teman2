@@ -36,6 +36,7 @@ B6_WRAP = tuple(f"{MERGER_T}::{t}" for t in ("test_the_tick_decides_first_then_p
                                              "test_under_the_floor_the_tick_journals_its_skip_the_prune_still_runs_and_the_organ_says_warning",
                                              "test_a_failed_prune_is_a_warning_and_a_failed_tick_is_an_error_after_which_the_prune_still_runs"))
 HF = ("scripts/localci/tests/test_host_floor.py",)   # B15
+LV = ("scripts/localci/tests/test_liveness.py",)   # B24
 B15_PRUNE = tuple(f"{PRUNE_T}::{t}" for t in ("test_b15_under_host_pressure_the_second_slot_of_every_recipe_goes_and_the_newest_never",
                                               "test_b15_host_pressure_never_removes_the_image_of_the_run_in_progress_or_the_never_list"))
 HEADROOM = tuple(f"{PRUNE_T}::{t}" for t in ("test_headroom_at_105_over_a_start_floor_of_100_the_second_slots_are_shed_in_shed_order", "test_headroom_at_120_nothing_is_shed", "test_headroom_leaves_the_start_floor_where_it_was", "test_headroom_a_non_default_flag_moves_the_line"))
@@ -52,6 +53,7 @@ GP = ("scripts/localci/tests/test_gate_pending.py",)   # B12
 GS = ("scripts/localci/tests/test_gate_stale.py",)   # B12b
 ROOT = Path(__file__).resolve().parents[4]
 REPORT = "scripts/localci/tests/test_merger_report.py"
+SHIPPABLE = ("scripts/localci/tests/test_triage_shippable.py",)   # B23
 PENDING = ("scripts/localci/tests/test_merger_pending.py",)   # B19
 TICK = "scripts/localci/tests/test_merger.py"
 PY, SH = "scripts/localci/merger.py", "scripts/localci/localci_merger_tick.sh"
@@ -367,6 +369,18 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "evict-window-inverted": (PY, "if not is_ts(ts) or now - _epoch(ts) <= EVICT_WINDOW_S:", "if not is_ts(ts) or now - _epoch(ts) > EVICT_WINDOW_S:", HF),
     "evict-unreadable-ts-not-counted": (PY, "if not is_ts(ts) or now - _epoch(ts) <= EVICT_WINDOW_S:", "if is_ts(ts) and now - _epoch(ts) <= EVICT_WINDOW_S:", HF),
     "evict-now-zero": (PY, "now = time.time() if now_s is None else now_s", "now = 0.0 if now_s is None else now_s", HF),
+    # B24 (liveness is measured before the flip)
+    "liveness-label-not-excluded": (PY, 'LIVENESS_EXCLUDED = ("label_privileged", "not_in_queue", "first_enqueue")', 'LIVENESS_EXCLUDED = ("not_in_queue", "first_enqueue")', LV),
+    "liveness-extra-term-excluded": (PY, 'LIVENESS_EXCLUDED = ("label_privileged", "not_in_queue", "first_enqueue")',
+                                     'LIVENESS_EXCLUDED = ("label_privileged", "not_in_queue", "first_enqueue", "hosted_required_green")', LV),
+    "liveness-coverage-over-all-merged": (PY, '\n               and (n, head_of(p)) in decided_heads]', ']', LV),
+    "liveness-window-ignored": (PY, "    return is_ts(ts) and clock - _epoch(ts) <= LIVENESS_WINDOW_S", "    return is_ts(ts)", LV),
+    "liveness-feeds-ready": (PY, '"phase_e_ready": ready, "liveness": live_block', '"phase_e_ready": ready and live_block["liveness_ok"], "liveness": live_block', LV),
+    "liveness-replays-are-decided": (PY, ' for d in decisions if d.get("replay") is not True}', ' for d in decisions}', LV),
+    "liveness-tick-reads-listing": (PY, "merged_listing(a) if emit else None", "merged_listing(a)", LV),
+    "liveness-label-ok-uncounted": (PY, '"label_ok_rows": sum(1 for r in mergeable if r["criterion"].get("label_privileged") is True)', '"label_ok_rows": 0', LV),
+    "liveness-rows-off-by-one": (PY, "len(mergeable) >= LIVENESS_MIN_ROWS", "len(mergeable) > LIVENESS_MIN_ROWS", LV),
+    "liveness-coverage-off-by-one": (PY, "cov_decided >= LIVENESS_MIN_COVERAGE", "cov_decided > LIVENESS_MIN_COVERAGE", LV),
     "parent-pid-not-handed": (PY, '"LOCALCI_PARENT_PID": str(os.getpid())}', '"LOCALCI_PARENT_PID": "0"}', HF),
     "parent-watch-unwired": (RUN_PY, '    if a.cmd in ("plan", "run"):\n        watch_parent()', '    if False:\n        watch_parent()', HF),
     "parent-watch-pid-1": (RUN_PY, 'if not raw.isdigit() or int(raw) <= 1:', 'if not raw.isdigit():', HF),
@@ -924,6 +938,14 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "pending-watchdog-flag-never-checked-after-retry": (PY, "        check_watchdog()\n        if sum(1", "        if sum(1", PENDING),
     "pending-watchdog-flag-reset-mid-tick": (PY, "    check_watchdog()   # B19-W4", "    _WATCHDOG[\"fired\"] = False\n    check_watchdog()   # B19-W4", PENDING),
     "pending-push-unlanded-beats-pushed": (PY, '        elif kind == "push_unlanded" and k not in pushed:', '        elif kind == "push_unlanded":', PENDING),
+    # B23: the lane goes to PRs that can merge
+    "ship-deferred-stops-the-scan": (PY, "                        deferred.append(pr)\n                    continue\n", "                        deferred.append(pr)\n                    break\n", SHIPPABLE),
+    "ship-labels-ignored-in-ordering": (PY, "todo.sort(key=lambda p: (not has_arm_label(p), ", "todo.sort(key=lambda p: (False, ", SHIPPABLE),
+    "ship-unlabelled-picked-under-phase-f": (PY, "if shadow_only and not has_arm_label(pr) and", "if False and", SHIPPABLE),
+    "ship-gate-pending-defer-ignored": (PY, "            if newest.get((n, head)):\n", "            if False:\n", SHIPPABLE + ("scripts/localci/tests/test_gate_pending.py",)),
+    "ship-failed-read-means-ready": (PY, "                except (hc.CompareError, OSError) as exc:\n                    ready = False\n", "                except (hc.CompareError, OSError) as exc:\n                    ready = True\n", SHIPPABLE),
+    "ship-skip-journalled-every-tick": (PY, '        if not any(r.get("kind") == "skipped" and r.get("why") == "gate_pending_deferred" and all(r.get(k) == v for k, v in key.items()) for r in recs):\n', "        if True:\n", SHIPPABLE),
+    "ship-defers-on-any-old-decision": (PY, "for x in names)) else None\n    shadow_only", "for x in names)) else newest.get((r.get(\"pr\"), r.get(\"head_sha\")))\n    shadow_only", SHIPPABLE),
 }
 
 
