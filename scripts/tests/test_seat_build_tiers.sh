@@ -326,12 +326,12 @@ case_agy_tier_argon_alias_and_topology_membership() {
     local out
     out="$(seat_env "$SEAT_BUILD" --seat agy --tier argon --effort high \
         --worktree "$LINKED_WT" --task-file "$TASK_FILE" --dry-run 2>/dev/null)" || return 1
-    python3 - "$REPO_ROOT/FLEET_TOPOLOGY.json" <<< "$out" <<'PY'
+    python3 - "$REPO_ROOT/FLEET_TOPOLOGY.json" "$out" <<'PY'
 import json
 import sys
 
-topo_path = sys.argv[1]
-d = json.load(sys.stdin)
+topo_path, raw_out = sys.argv[1:3]
+d = json.loads(raw_out)
 assert d["tier"] == "pro" and d["tier_downgraded_from"] is None, d
 argv = d["argv"]
 assert argv[argv.index("--model") + 1] == "gemini-4-argon-high", argv

@@ -2973,6 +2973,7 @@ COUNCIL_REVIEW_SEATS_TITOLARI: tuple[str, ...] = (
 COUNCIL_REVIEW_SEATS_FALLBACK: tuple[str, ...] = (
     "tp1-deepseek-v4-pro",
     "tp1-glm-5.2",
+    "agy-gemini-4-argon",
     "agy-gemini-3.1-pro",
 )
 
