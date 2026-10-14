@@ -4583,3 +4583,60 @@ describe("V05 product-aware next steps: free A1 and onshore-only BRIDGING", () =
     }
   });
 });
+
+// V06: exclusion reasons stop stacking and name the official visa-free list.
+describe("V06: overstay de-stacking and the BVK list copy", () => {
+  function noPathMessages(codes: readonly string[]) {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons = codes.map((code) => ({
+      code,
+      rule_ids: ["hf.test"],
+      source_refs: [TEST_SOURCE_ID],
+    }));
+    const outcome = buildEngineOutcome(response);
+    if (outcome.state !== "NO_SUPPORTED_PATH")
+      throw new Error("unexpected state");
+    return outcome.noPathReasons;
+  }
+  const isOverstay = (code: string) => /OVERSTAY/.test(code);
+
+  it("overstay 61 (both codes fire) renders exactly one overstay reason, naming 60 days, EN and ID", () => {
+    const reasons = noPathMessages([
+      "ACTIVE_OVERSTAY_SETTLE_FIRST",
+      "OVERSTAY_EXCEEDS_60_DAYS",
+      "BVK_NATIONALITY_ONLY",
+    ]);
+    const overstay = reasons.filter((r) => isOverstay(r.code));
+    expect(overstay).toHaveLength(1);
+    expect(overstay[0].code).toBe("OVERSTAY_EXCEEDS_60_DAYS");
+    expect(overstay[0].message.en).toContain("60 days");
+    expect(overstay[0].message.id).toContain("60 hari");
+    expect(reasons.map((r) => r.code)).toContain("BVK_NATIONALITY_ONLY");
+  });
+
+  it("innocence: the any-overstay reason alone (overstay 1-60) is kept", () => {
+    const reasons = noPathMessages(["ACTIVE_OVERSTAY_SETTLE_FIRST"]);
+    expect(reasons.map((r) => r.code)).toEqual([
+      "ACTIVE_OVERSTAY_SETTLE_FIRST",
+    ]);
+  });
+
+  it("innocence: the 60-day reason alone is kept", () => {
+    const reasons = noPathMessages(["OVERSTAY_EXCEEDS_60_DAYS"]);
+    expect(reasons.map((r) => r.code)).toEqual(["OVERSTAY_EXCEEDS_60_DAYS"]);
+  });
+
+  it("BVK copy is plural, links the official list, carries no count, EN and ID", () => {
+    const url =
+      "https://www.imigrasi.go.id/wna/daftar-negara-voa-bvk-calling-visa/daftar-negara-bebas-visa-kunjungan";
+    const { en, id } = SUPPORT_REASON_COPY.BVK_NATIONALITY_ONLY;
+    expect(en).toContain(url);
+    expect(id).toContain(url);
+    expect(en).toContain("passports");
+    expect(en).toContain("Bebas Visa Kunjungan");
+    expect(id).toContain("Bebas Visa Kunjungan");
+    expect(id).toContain("paspor");
+    expect(en.replace(url, "")).not.toMatch(/\d/);
+    expect(id.replace(url, "")).not.toMatch(/\d/);
+  });
+});
