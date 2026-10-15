@@ -14,7 +14,7 @@ Also covers polish batches, and replies specifically to Subhi.
 - Subhi is the external Indonesian-language collaborator for `.id.mdx` articles,
   including `seoTitle`, `seoDescription`, and native-language polish.
 - Zero is the owner and relays operational updates.
-- Angel is the content approver.
+- Angel was the content approver; since 2026-10-15 Subhi's own PRs need no review (see workflow 6).
 - Write replies to Subhi in Indonesian, with a warm but technical tone.
 - Keep code, commits, PR bodies, and repository documentation in English.
 
@@ -27,9 +27,12 @@ Also covers polish batches, and replies specifically to Subhi.
 4. Run the reasoning-leak lint and all path-aware repository hooks.
 5. Never bypass hooks with `--no-verify`. Route heavy verification from Air-M5
    to Pro when necessary.
-6. Subhi prepares content; Angel reviews it; an independent owner-side session
-   merges it.
-7. Never arm auto-merge and never publish client-facing content from an agent.
+6. Subhi's own PRs need no review (RULED 2026-10-15, `docs/rules/RULINGS.md`):
+   he arms and merges them himself once the required checks are green. Never
+   tell him to wait for a session review, and never gate, re-review or arm his
+   PRs for him. Production DB writes and credentials stay owner-side.
+7. An agent never arms or merges Subhi's PRs on his behalf and never publishes
+   client-facing content on its own.
 
 ## Content quality checks
 
