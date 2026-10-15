@@ -59,7 +59,12 @@ def test_each_verdict_kind_chains(tmp_path, rows):
     [row("decision", error=None, seal=SEAL + "0")],
     [row("decision", error=None, seal=SEAL + "\n")],
     [row("decision", error=None)],
+    [row("decision", error=None, seal=SEAL, host_no_verdict=["host_disk_full"])],
     [row("evicted", why="host_below_floor_during_run")],
+    [SEALED, row("merge_error", error="x")],
+    [SEALED, row("merged"), row("push_refused")],
+    [SEALED, row("merged"), row("push_unlanded")],
+    [SEALED, row("storage_diverged")],
     [row("merge_error", error="x")],
     [row("push_unlanded")],
     [row("push_refused")],
@@ -70,7 +75,7 @@ def test_each_verdict_kind_chains(tmp_path, rows):
     [row("skipped", why="lease")],
     [row("skipped", why="host_below_floor"), row("refused", why="fork")],
     [],
-], ids=["error-set", "seal-null", "seal-63-hex", "seal-uppercase", "seal-65-hex", "seal-trailing-newline", "seal-absent", "evicted", "merge_error", "push_unlanded", "push_refused",
+], ids=["error-set", "seal-null", "seal-63-hex", "seal-uppercase", "seal-65-hex", "seal-trailing-newline", "host-no-verdict", "stop-merge_error-beside-sealed", "stop-push_refused-beside-sealed", "stop-push_unlanded-beside-sealed", "stop-storage_diverged-beside-sealed", "seal-absent", "evicted", "merge_error", "push_unlanded", "push_refused",
         "storage_diverged", "error-row", "evicted-beside-sealed", "stop-beside-pushed", "skip-lease", "only-skips", "nothing-appended"])
 def test_each_non_verdict_does_not_chain(tmp_path, rows):
     ok, why = run_predicate(tmp_path, [], rows)

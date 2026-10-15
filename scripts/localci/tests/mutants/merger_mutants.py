@@ -1055,6 +1055,11 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b28-skip-age-bound-86400": (PY, "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 43200", "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 86400", (PF,)),
     # B33 S1: a tick that bore a verdict starts the next at once — the predicate and the wrapper's chain
     "b33-drop-error-row-check": (TCH, "        if kind in STOP_KINDS:\n", "        if False:\n", B33),
+    "b33-host-no-verdict-chains": (TCH, '            if row.get("host_no_verdict"):\n', "            if False:\n", B33),
+    "b33-stop-kind-dropped-merge_error": (TCH, '"merge_error", ', "", B33),
+    "b33-stop-kind-dropped-push_unlanded": (TCH, '"push_unlanded", ', "", B33),
+    "b33-stop-kind-dropped-push_refused": (TCH, '"push_refused", ', "", B33),
+    "b33-stop-kind-dropped-storage_diverged": (TCH, ', "storage_diverged")', ")", B33),
     "b33-decision-error-ignored": (TCH, '            if row.get("error") is not None:\n', "            if False:\n", B33),
     "b33-seal-not-required": (TCH, '            if not (isinstance(row.get("seal"), str) and SEAL.fullmatch(row["seal"])):\n', "            if False:\n", B33),
     "b33-seal-prefix-match": (TCH, 'SEAL.fullmatch(row["seal"])', 'SEAL.match(row["seal"])', B33),

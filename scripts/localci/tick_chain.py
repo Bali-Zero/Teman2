@@ -50,6 +50,8 @@ def verdict(journal: Path, offset: int, rc: int) -> tuple[bool, str]:
         if kind == "decision":
             if row.get("error") is not None:
                 return False, "decision with an error"
+            if row.get("host_no_verdict"):
+                return False, "decision with a host no-verdict"
             if not (isinstance(row.get("seal"), str) and SEAL.fullmatch(row["seal"])):
                 return False, "decision without a seal"
             kinds.append("decision")
