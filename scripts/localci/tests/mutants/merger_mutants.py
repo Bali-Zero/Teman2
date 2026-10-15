@@ -37,6 +37,7 @@ B6_WRAP = tuple(f"{MERGER_T}::{t}" for t in ("test_the_tick_decides_first_then_p
                                              "test_a_failed_prune_is_a_warning_and_a_failed_tick_is_an_error_after_which_the_prune_still_runs"))
 HF = ("scripts/localci/tests/test_host_floor.py",)   # B15
 LV = ("scripts/localci/tests/test_liveness.py",)   # B24
+HA = ("scripts/localci/tests/test_hosted_aborted.py",)   # B27
 B15_PRUNE = tuple(f"{PRUNE_T}::{t}" for t in ("test_b15_under_host_pressure_the_second_slot_of_every_recipe_goes_and_the_newest_never",
                                               "test_b15_host_pressure_never_removes_the_image_of_the_run_in_progress_or_the_never_list"))
 HEADROOM = tuple(f"{PRUNE_T}::{t}" for t in ("test_headroom_at_105_over_a_start_floor_of_100_the_second_slots_are_shed_in_shed_order", "test_headroom_at_120_nothing_is_shed", "test_headroom_leaves_the_start_floor_where_it_was", "test_headroom_a_non_default_flag_moves_the_line"))
@@ -387,6 +388,60 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "liveness-label-ok-uncounted": (PY, '"label_ok_rows": sum(1 for r in mergeable if r["criterion"].get("label_privileged") is True)', '"label_ok_rows": 0', LV),
     "liveness-rows-off-by-one": (PY, "len(mergeable) >= LIVENESS_MIN_ROWS", "len(mergeable) > LIVENESS_MIN_ROWS", LV),
     "liveness-coverage-off-by-one": (PY, "cov_decided >= LIVENESS_MIN_COVERAGE", "cov_decided > LIVENESS_MIN_COVERAGE", LV),
+    # B27 (a hosted job that died in setup is no verdict)
+    "b27-annotation-unchecked": (PY, 'if not any(ABORT_TIMEOUT in m for m in fails) or any(ABORT_TIMEOUT not in m and m != ABORT_CANCELED for m in fails):', "if False:", HA),
+    "b27-extra-failure-annotation-allowed": (PY, "or any(ABORT_TIMEOUT not in m and m != ABORT_CANCELED for m in fails):", "or False:", HA),
+    "b27-conclusion-unchecked": (PY, 'if any(type(e.get("id")) is not int or e.get("conclusion") != "cancelled" for e in red):', 'if any(type(e.get("id")) is not int for e in red):', HA),
+    "b27-setup-by-name-substring": (PY, '        if not isinstance(uses, str) or uses.startswith(("./", "docker://")):\n            return False\n        return "/".join(uses.split("@")[0].split("/")[:2]).lower() in SETUP_ACTIONS',
+                                    '        return any(k in str(step.get("name")).lower() for k in ("checkout", "setup", "cache", "artifact"))', HA),
+    "b27-after-steps-unchecked": (PY, 'if main[k].get("conclusion") != "skipped" and not (main[k].get("conclusion") == "success" and self.always(wf[k])):', "if False:", HA),
+    "b27-any-after-step-may-have-run": (PY, 'if main[k].get("conclusion") != "skipped" and not (main[k].get("conclusion") == "success" and self.always(wf[k])):',
+                                        'if main[k].get("conclusion") not in ("skipped", "success"):', HA),
+    "b27-status-function-by-substring": (PY, 'return cls.STATUS_FUNCTION.search(re.sub(r"\'(?:[^\']|\'\')*\'", "\'\'", str(step.get("if")))) is not None', 'return "always()" in str(step.get("if"))', HA),
+    "b27-after-step-need-not-be-gated": (PY, 'and self.always(wf[k])):', 'and True):', HA),
+    "b27-after-step-need-not-succeed": (PY, 'if main[k].get("conclusion") != "skipped" and not (main[k].get("conclusion") == "success" and self.always(wf[k])):', 'if main[k].get("conclusion") not in ("skipped", "success", "failure", "cancelled") or (main[k].get("conclusion") != "skipped" and not self.always(wf[k])):', HA),
+    "b27-before-steps-unchecked": (PY, 'if any(x.get("conclusion") not in ("success", "skipped") for x in main[:i]):', "if False:", HA),
+    "b27-run-steps-allowed-after-the-checkout": (PY, 'elif checked_out or "run" not in w or "uses" in w or main[k].get("conclusion") != "success":', 'elif "run" not in w or "uses" in w or main[k].get("conclusion") != "success":', HA),
+    "b27-any-action-allowed-before-the-checkout": (PY, 'elif checked_out or "run" not in w or "uses" in w or main[k].get("conclusion") != "success":', "elif checked_out or main[k].get(\"conclusion\") != \"success\":", HA),
+    "b27-pre-checkout-run-need-not-succeed": (PY, 'or "uses" in w or main[k].get("conclusion") != "success":', 'or "uses" in w:', HA),
+    "b27-aborted-leaks-into-hosted-side": (PY, 'not_green = {k: v for k, v in required_verdicts(live).items() if v != "GREEN"}', 'not_green = {k: v for k, v in required_verdicts(live).items() if v not in ("GREEN", "RED")}', HA),
+    "b27-memo-projection-drops-the-run-id": (PY, 'return {"id": r.get("id"), "name": r.get("name"), "status": r.get("status"),', 'return {"name": r.get("name"), "status": r.get("status"),', HA),
+    "b27-skipped-checkout-counts-as-checked-out": (PY, 'and main[k].get("conclusion") == "success")', ")", HA),
+    "b27-earlier-steps-unrestricted": (PY, "            elif checked_out or", "            elif False and", HA),
+    "b27-step-names-unmatched": (PY, 'if js.get("number") not in (None, i + 2) or (want is not None and js.get("name") != want):', "if False:", HA),
+    "b27-two-jobs-allowed": (PY, "if len(found) != 1:", "if len(found) < 1:", HA),
+    "b27-matrix-allowed": (PY, 'if "uses" in d or "strategy" in d or', 'if "uses" in d or', HA),
+    "b27-aborted-counts-as-agree": (HC, 'reading["class_before"], klass = klass, "HOSTED_ABORTED"', 'reading["class_before"], klass = klass, "AGREE"', HA),
+    "b27-aborted-is-compared": (HC, 'COMPARED = ("AGREE", "FALSE_GREEN", "FALSE_RED")', 'COMPARED = ("AGREE", "FALSE_GREEN", "FALSE_RED", "HOSTED_ABORTED")', HA),
+    "b27-judge-asked-on-green": (HC, 'and h["verdict"] == "RED" and reading.get("stale") is not True:', 'and reading.get("stale") is not True:', HA),
+    "b27-live-rows-unjudged": (PY, "abort_judge=abort, cancel_timeout=", "abort_judge=None, cancel_timeout=", HA),
+    "b27-pr-level-stays-red": (PY, 'github = "PENDING"   # B27', 'github = "RED"   # B27', HA),
+    "b27-pr-level-one-aborted-is-enough": (PY, "red_ctx <= {x[", "red_ctx & {x[", HA),
+    # B17b (the context's full history; a timeout is no concurrency cancel)
+    # H (the context's whole attempt history decides in every path that clears a red)
+    "h1-history-read-latest": (PY, '&filter=all", "check_runs")\n            self._cache[("history"', '&filter=latest", "check_runs")\n            self._cache[("history"', (CS, *HA)),
+    "h4-timeout-cancel-droppable-by-b17": (PY, "if any(ABORT_TIMEOUT in m for m in reads.failures(rid)):", "if False:", (CS, *HA)),
+    "h5-reread-on-rows-with-entries": (PY, "and not recorded_has_entries(d) and (flipped :=", "and (flipped :=", HA),
+    "h5-reread-counts-only-the-flipped": (PY, "return flipped if not stuck and len(flipped) == raw else []", "return flipped if len(flipped) == raw else []", (CS, *HA)),
+    "h-replay-reads-the-live-listing-only": (PY, "runs = (lambda r=r: reads.attempts(sha, r[\"context\"])) if is_sha(sha) else", "runs = (lambda r=r: [x for x in live[\"check_runs\"] if x.get(\"name\") == r[\"context\"]]) if is_sha(sha) else", (CS,)),
+    # R (one predicate in hosted_compare decides every clearing of a red)
+    "r1-statuses-dropped": (PY, "entries = hc.hosted_entries(runs, statuses).get(name, [])", "entries = hc.hosted_entries(runs, []).get(name, [])", (CS, *HA)),
+    "r1-app-pin-dropped": (HC, 'and g["verdict"] == "GREEN" and same_app(g)]', 'and g["verdict"] == "GREEN"]', (CS, *HA)),
+    "r1-pending-ignored": (HC, 'if any(e["verdict"] == "PENDING" for e in entries):', "if False:", (CS, *HA)),
+    "r1-remainder-red-ignored": (HC, 'if any(e["verdict"] == "RED" for e in entries if not is_q(e)):', "if False:", (CS, *HA)),
+    "r2-live-judge-statuses-dropped": (PY, "self.attempts(sha, name), list(statuses), name, app_id,", "self.attempts(sha, name), [], name, app_id,", HA),
+    "r4-all-for-any-per-entry": (PY, 'return any(isinstance(r.get("hosted_red"), list) and bool(r["hosted_red"]) for r in rows)', 'return bool(rows) and all(isinstance(r.get("hosted_red"), list) and bool(r["hosted_red"]) for r in rows)', HA),
+    # R3 (the comparison class treats a job timeout as red; mergeability stays GitHub's)
+    "r3-comparison-ignores-the-timeout": (HC, "        if timeout:\n            restored.append(e)", "        if False:\n            restored.append(e)", HA),
+    "r3-missing-reader-clears-the-cancel": (HC, "timeout = True if cancel_timeout is None else bool(cancel_timeout(e[\"id\"]))", "timeout = False if cancel_timeout is None else bool(cancel_timeout(e[\"id\"]))", HA),
+    "r3-failing-reader-clears-the-cancel": (HC, "        except Exception:  # noqa: BLE001 — an unreadable annotation list keeps the cancel red\n            timeout = True", "        except Exception:  # noqa: BLE001 — an unreadable annotation list keeps the cancel red\n            timeout = False", HA),
+    "r3-tick-reads-no-annotations": (PY, "cancel_timeout=lambda rid: any(ABORT_TIMEOUT in m for m in reads.failures(rid)))", "cancel_timeout=lambda rid: False)", HA),
+    "r3-report-reads-no-annotations": (PY, "cancel_timeout=lambda rid: any(ABORT_TIMEOUT in m for m in abort.failures(rid)))", "cancel_timeout=lambda rid: False)", HA),
+    "r3-mergeability-loses-the-supersede": (HC, 'decided = any(run(o) and o["conclusion"] != "cancelled" and same_app(o) for o in entries)', "decided = False", HA),
+    "r3-hosted-side-reads-the-comparison": (PY, 'return {c["context"]: hc.hosted_verdict(by.get(c["context"], []), c.get("app_id"))["verdict"] for c in live["required_checks"]}', 'return {c["context"]: hc.comparison_view(hc.hosted_verdict(by.get(c["context"], []), c.get("app_id")), by.get(c["context"], []), None)["verdict"] for c in live["required_checks"]}', HA),
+    "r5-b17-requires-a-later-green": (HC, "            and bool(greens)}", "            and any((g.get(\"completed_at\") or \"\") > (e.get(\"completed_at\") or \"\") for g in greens)}", (*HA, CS)),
+    "r5-reread-lists-nothing-it-dropped": (PY, "            superseded.append(rid)", "            pass", (CS,)),
+    "r5-cli-overwrites-a-run-dirs-evidence": (HC, 'if (out_dir / "state" / "plan.json").exists():', "if False:", ("scripts/localci/tests/test_hosted_compare.py",)),
     "parent-pid-not-handed": (PY, '"LOCALCI_PARENT_PID": str(os.getpid())}', '"LOCALCI_PARENT_PID": "0"}', HF),
     "parent-watch-unwired": (RUN_PY, '    if a.cmd in ("plan", "run"):\n        watch_parent()', '    if False:\n        watch_parent()', HF),
     "parent-watch-pid-1": (RUN_PY, 'if not raw.isdigit() or int(raw) <= 1:', 'if not raw.isdigit():', HF),

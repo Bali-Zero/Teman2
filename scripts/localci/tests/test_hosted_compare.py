@@ -47,7 +47,7 @@ def _klass(report, name):
 
 
 def _one(local, runs, statuses=(), app_id=ACTIONS):
-    return _klass(hc.compare(_status({"a": _local(local)}), _req("a", app_id=app_id), list(runs), list(statuses)), "a")
+    return _klass(hc.compare(_status({"a": _local(local)}), _req("a", app_id=app_id), list(runs), list(statuses), cancel_timeout=lambda rid: False), "a")
 
 
 def test_both_green_and_both_red_agree():
@@ -119,7 +119,7 @@ def test_b17_a_cancelled_run_is_dropped_in_either_order_when_a_completed_run_dec
 def test_b17_the_8231_shape_success_first_then_a_rerun_cancelled_by_concurrency():
     runs = [{**_run("catE-sovereignty-lint", "success", at="2026-10-10T15:18:52Z"), "id": 114244599437},
             {**_run("catE-sovereignty-lint", "cancelled", at="2026-10-10T15:29:12Z"), "id": 114246937884}]
-    rep = hc.compare(_status({"catE-sovereignty-lint": _local("OK")}), _req("catE-sovereignty-lint"), runs, [])
+    rep = hc.compare(_status({"catE-sovereignty-lint": _local("OK")}), _req("catE-sovereignty-lint"), runs, [], cancel_timeout=lambda rid: False)
     row = rep["rows"][0]
     assert row["class"] == "AGREE" and row["superseded_cancelled"] == [114246937884] and hc.exit_code(rep) == 0
 
@@ -227,6 +227,18 @@ def test_main_replays_a_bound_fixture_offline_and_writes_the_report(tmp_path, ca
     out = json.loads((tmp_path / "hosted_compare.json").read_text())
     assert rc == 0 and out["counts"]["LOCAL_BLIND"] == 1 and out["agreement"] == "0/1" and out["source"] == "fixtures"
     assert "LOCAL_BLIND" in capsys.readouterr().out
+
+
+def test_main_never_writes_over_a_merger_run_dirs_evidence(tmp_path, capsys):
+    argv = _fixture(tmp_path, {"a": _local("OK")})
+    (tmp_path / "state").mkdir()
+    (tmp_path / "state" / "plan.json").write_text("{}")
+    (tmp_path / "hosted_compare.json").write_text("tick evidence")
+    assert hc.main(argv) == 2 and (tmp_path / "hosted_compare.json").read_text() == "tick evidence"
+    assert hc.main([*argv, "--out", str(tmp_path)]) == 2 and (tmp_path / "hosted_compare.json").read_text() == "tick evidence"
+    elsewhere = tmp_path / "elsewhere"
+    assert hc.main([*argv, "--out", str(elsewhere)]) == 0 and (elsewhere / "hosted_compare.json").exists()
+    assert "tick evidence" == (tmp_path / "hosted_compare.json").read_text()
 
 
 @pytest.mark.parametrize("over", [{"sha": OTHER}, {"repo": "o/other"}, {"branch": "dev"}, {"sha": None},

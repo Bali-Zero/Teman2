@@ -15,6 +15,9 @@ commit statuses of the run's candidate sha) with the local per-context verdict a
                     module has no git); without one, or when the judge cannot read its evidence, the row keeps its class and says so.
                     (B12b) Also when the hosted RED of a gate-reading context was its reader's PENDING read, given before the gate
                     verdict the local run read (``stale_why: gate_posted_after_hosted``), decided by a caller-supplied ``gate_judge``
+    HOSTED_ABORTED  (B27) the hosted RED was a check run cancelled by the job timeout in a SETUP step with no logic step run: no hosted
+                    verdict at all, so the pair is never compared. Decided by a caller-supplied ``abort_judge``; without one, or when it
+                    cannot read its evidence, the row keeps its class.
 
 The hosted verdict of a context is order-free and RED-DOMINANT: red if ANY entry GitHub lists
 under that name for the commit is red (the latest attempt of each check; a red that a re-run
@@ -48,7 +51,7 @@ from pathlib import Path
 
 DEFAULT_REPO = "Bali-Zero/Teman2"
 DEFAULT_BRANCH = "main"
-CLASSES = ("AGREE", "FALSE_GREEN", "FALSE_RED", "LOCAL_BLIND", "HOSTED_PENDING", "HOSTED_STALE")
+CLASSES = ("AGREE", "FALSE_GREEN", "FALSE_RED", "LOCAL_BLIND", "HOSTED_PENDING", "HOSTED_STALE", "HOSTED_ABORTED")
 COMPARED = ("AGREE", "FALSE_GREEN", "FALSE_RED")   # a local verdict set beside a hosted one
 COVERAGES = ("full", "partial")   # anything else a status.json says (or omits) is "unrecorded", which is never full
 # skipped/neutral satisfy a required check on GitHub, so they are green FOR THE GATE; the raw conclusions stay in the row.
@@ -107,6 +110,38 @@ def superseded_cancelled(entries: list, app_id) -> list:
 
     decided = any(run(o) and o["conclusion"] != "cancelled" and same_app(o) for o in entries)
     return [e for e in entries if decided and run(e) and e["conclusion"] == "cancelled" and same_app(e)]
+
+
+def b17_answered(entries: list, app_id) -> set:
+    """B27 R1: the ids of the cancelled CHECK-RUN entries (of the pinned app, as ``superseded_cancelled`` reads the pin) that ANY
+    non-cancelled GREEN check run of the same app answers, in EITHER order (B17: the real #8231 has the green first). The job-timeout test is the caller's."""
+    def run(e):
+        return e["source"] != "commit-status" and e["conclusion"] is not None
+
+    def same_app(e):
+        return e["app_id"] == app_id if is_pinned(app_id) else True
+
+    greens = [g for g in entries if run(g) and g["verdict"] == "GREEN" and same_app(g)]
+    return {e["id"] for e in entries if run(e) and e["conclusion"] == "cancelled" and same_app(e) and type(e.get("id")) is int
+            and bool(greens)}
+
+
+def history_cleared(entries: list, app_id, qualified: set, red_ids) -> tuple[bool, str]:
+    """B27 R1, the one predicate every path that clears a hosted red goes through. ``entries``: ``hosted_entries(every attempt of the name on the sha,
+    plus the sha's commit statuses)[name]`` (all sources, all apps); ``qualified``: the ids of the cancelled check runs that qualify on their own
+    (B17 ``b17_answered`` without a timeout, or a B27 setup abort); ``red_ids``: the reds being cleared. Cleared iff ``qualified`` is not empty, every
+    red id is in it, no entry is PENDING or in progress, and the entries outside it hold no red of any source or app."""
+    ids = set(red_ids)
+    is_q = lambda e: e["source"] != "commit-status" and e.get("id") in qualified   # noqa: E731
+    if not qualified or not ids or not ids <= qualified:
+        return False, "a red is not among the cancelled attempts that qualify"
+    if not ids <= {e["id"] for e in entries if e["source"] != "commit-status"}:
+        return False, "a red the row stood on is not in the context's history"
+    if any(e["verdict"] == "PENDING" for e in entries):
+        return False, "an attempt or status of the context is pending or in progress"
+    if any(e["verdict"] == "RED" for e in entries if not is_q(e)):
+        return False, "the context holds a red outside the qualified cancels (a failed attempt, an unqualified cancel, or a red status)"
+    return True, ""
 
 
 def hosted_verdict(entries: list, app_id) -> dict:
@@ -225,6 +260,26 @@ def gate_reading(judge, name: str, h: dict, statuses: list) -> dict:
             "hosted_completed_at": h["completed_at"], "gate_posted_at": got.get("gate_posted_at"), "plan_at": got.get("plan_at")}
 
 
+def abort_reading(judge, name: str, h: dict, statuses: list, app_id) -> dict:
+    """B27: what ``judge(name, hosted, statuses, app_id)`` makes of one compared row whose hosted verdict is RED: did every red run die in a setup step with no
+    logic step run? The judge answers None when the ground does not apply (nothing is added). Total like ``gate_reading``: a judge that raises
+    or answers in any other shape gives ``abort_check: unknown (<why>)`` and the row keeps its class."""
+    try:
+        got = judge(name, h, statuses, app_id)
+        if got is None:
+            return {}
+        aborted = got.get("aborted")
+        if aborted not in (True, False):
+            raise CompareError(f"the abort judge answered aborted={aborted!r}")
+        if aborted and not (isinstance(got.get("runs"), list) and got["runs"]):
+            raise CompareError("the abort judge named no run")
+    except Exception as exc:  # noqa: BLE001 — see the docstring
+        return {"abort_check": f"unknown ({type(exc).__name__}: {str(exc)[-200:]})"}
+    if not aborted:
+        return {"abort_check": f"fresh ({str(got.get('why'))[-300:]})"}
+    return {"aborted": True, "abort_check": "aborted", "aborted_runs": got["runs"]}
+
+
 def with_gate(reading: dict, gate: dict) -> dict:
     """B10's reading and B12b's on one row: stale when either ground is, else unknown when either is, else fresh; with no B10 reading
     (no ``stale_judge``), what the gate judge said and nothing it did not."""
@@ -237,7 +292,28 @@ def with_gate(reading: dict, gate: dict) -> dict:
             "stale_check": gate["gate_check"] if gate["gate_check"].startswith("unknown") and not prior.startswith("unknown") else prior}
 
 
-def compare(status: dict, required_checks, check_runs, statuses, stale_judge=None, gate_judge=None) -> dict:
+def comparison_view(h: dict, entries: list, cancel_timeout) -> dict:
+    """B27 R3: the hosted verdict as the COMPARISON reads it (the class and counts READY rests on), where a superseded cancel that carries the job-timeout
+    annotation is red again, like a failure: ``hosted_verdict`` itself, which feeds mergeability, is left as GitHub's required-check semantics have it.
+    ``cancel_timeout(id) -> bool`` reads the annotations; with none, or a read that raises, the cancel stays red (fail closed)."""
+    dropped = [e for e in entries if e.get("id") in h["superseded_cancelled"] and e["source"] != "commit-status"]
+    restored = []
+    for e in dropped:
+        try:
+            timeout = True if cancel_timeout is None else bool(cancel_timeout(e["id"]))
+        except Exception:  # noqa: BLE001 — an unreadable annotation list keeps the cancel red
+            timeout = True
+        if timeout:
+            restored.append(e)
+    if not restored:
+        return h
+    red = h["red"] + [{"id": e.get("id"), "conclusion": e.get("conclusion"), "completed_at": e.get("completed_at")} for e in restored]
+    stamps = [r["completed_at"] for r in red]
+    return {**h, "verdict": "RED", "red": red, "superseded_cancelled": [i for i in h["superseded_cancelled"] if i not in {e["id"] for e in restored}],
+            "completed_at": max(stamps) if all(isinstance(t, str) and _TS_RE.match(t) for t in stamps) else None}
+
+
+def compare(status: dict, required_checks, check_runs, statuses, stale_judge=None, gate_judge=None, abort_judge=None, cancel_timeout=None) -> dict:
     names = required_names(required_checks)
     if not isinstance(check_runs, list) or not isinstance(statuses, list) or any(not isinstance(x, dict) for x in check_runs + statuses):
         raise CompareError("check_runs / statuses are not lists of objects")
@@ -245,7 +321,7 @@ def compare(status: dict, required_checks, check_runs, statuses, stale_judge=Non
     rows = []
     for chk in required_checks:
         name, app_id = chk["context"], chk.get("app_id")
-        h = hosted_verdict(hosted.get(name, []), app_id)
+        h = comparison_view(hosted_verdict(hosted.get(name, []), app_id), hosted.get(name, []), cancel_timeout)   # B27 R3
         lo = local.get(name, {"verdict": "BLIND", "detail": "unmapped", "coverage": "unrecorded", "coverage_note": None})
         klass = classify(lo["verdict"], h["verdict"])
         reading = stale_reading(stale_judge, name, h["completed_at"]) if stale_judge is not None and klass in COMPARED else {}
@@ -253,7 +329,12 @@ def compare(status: dict, required_checks, check_runs, statuses, stale_judge=Non
             reading = with_gate(reading, gate_reading(gate_judge, name, h, statuses))
         if reading.get("stale") is True:
             reading["class_before"], klass = klass, "HOSTED_STALE"   # every compared class: a stale GREEN beside a local GREEN is no AGREE either
+        if abort_judge is not None and klass in COMPARED and h["verdict"] == "RED" and reading.get("stale") is not True:
+            reading = {**reading, **abort_reading(abort_judge, name, h, statuses, app_id)}
+            if reading.get("aborted") is True:   # B27: no hosted verdict ran, so no compared class either
+                reading["class_before"], klass = klass, "HOSTED_ABORTED"
         reading.pop("stale", None)
+        reading.pop("aborted", None)
         rows.append({**reading, "context": name, "class": klass, "hosted": h["verdict"], "hosted_entries": h["entries"],
                      "hosted_counted": h["counted"], "hosted_sources": h["sources"], "hosted_conclusions": h["conclusions"],
                      "local": lo["verdict"], "local_detail": lo["detail"], "coverage": lo["coverage"], "coverage_note": lo["coverage_note"],
@@ -454,6 +535,10 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
+    out_dir = args.out if args.out is not None else args.status.parent
+    if (out_dir / "state" / "plan.json").exists():   # B27 R4: this CLI has no annotation reader; a merger run dir's hosted_compare.json is the tick's evidence
+        print(f"hosted_compare: refusing — {out_dir} is a merger run dir (state/plan.json); pass --out elsewhere", file=sys.stderr)
+        return EXIT_BAD_INPUT
     try:
         status = json.loads(args.status.read_text())
         if not isinstance(status, dict):
@@ -470,7 +555,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"hosted_compare: refusing — {exc}", file=sys.stderr)
         return EXIT_BAD_INPUT
     report.update(source="fixtures" if args.fixtures else "live", repo=args.repo, branch=args.branch)
-    out_dir = args.out if args.out is not None else args.status.parent
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "hosted_compare.json").write_text(json.dumps(report, indent=2) + "\n")
     print(render(report))

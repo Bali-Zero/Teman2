@@ -1,0 +1,52 @@
+task_id: infra-localci-hosted-aborted-1015
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  READY went false at 21:08Z with false_green=2, one context counted twice (the live context-level FALSE_GREEN and
+  the recorded one kept): PR #8514, Backend Tests (Python), LocalCI OK/executed/full against a hosted check run
+  cancelled because actions/checkout hung 15 min in setup. No hosted test logic produced a red. Phase F would not have
+  merged (hosted_required_green is in GATE), so it was a READY-liveness hole. B27 adds a hosted reading HOSTED_ABORTED
+  ("no hosted verdict"): not compared, not AGREE, not FALSE_GREEN, counted and listed apart (pr, head, context,
+  check_run_id, step). It applies only when the context's FULL attempt history on the sha has no non-cancelled red and
+  every cancelled attempt qualifies: B17 (no timeout annotation, answered by any non-cancelled green run of the same app, in either order, as the real #8231 has it) or B27 (job timeout
+  annotation alone, the job maps step for step onto ONE workflow job read at the job's head_sha, the cancelled step is a
+  setup action by its uses repository, every earlier step succeeded and is a setup action or a run step that came
+  before the first successful checkout, every later step is skipped or ran to success under an if that calls a
+  status function). Rule H (history) is implemented once and shared by the live judge, the recorded path, the replay
+  path and the re-read: the latest attempt never decides alone. Anything unreadable or ambiguous keeps the class.
+  GATE, hosted_required_green, hosted_side, the live B17 and the tick's merge criterion are untouched; the PR-level
+  PENDING (spec A6) lives only in the report path. The gear-2 verdict is not asserted here; a fresh Opus gate reads the diff.
+residuals:
+  - >-
+    The B17 answer is order-free (gate G1): the real #8231 has the green first (15:18:52Z) and the concurrency cancel after (15:29:12Z),
+    so a "later green" requirement left its recorded FALSE_GREEN permanent. Order adds no safety: a failed re-run stays red outside the
+    qualified set, a hung one is a timeout only B27 clears, a pending one blocks. The hosted_compare CLI refuses an --out that is a
+    merger run dir (state/plan.json), since it has no annotation reader and its classes are not the tick's evidence.
+  - >-
+    compare() now restores a job-timeout cancel that a later green superseded as red for the comparison class (spec R3), through an
+    injected annotation reader (one GET per superseded cancel at tick and report time; none or a failing read keeps it red).
+    hosted_verdict, required_verdicts, hosted_side, GATE and phase_f_arming are untouched, so mergeability still follows GitHub's
+    required-check semantics. The standalone hosted_compare CLI has no reader and so fails closed on superseded cancels.
+  - >-
+    A post-hang step that ran is not content-checked: the guarantee is that no step produced a red, not that no logic
+    ran. It must have concluded success under an if that calls always(), cancelled() or failure() (parsed as a call,
+    not by substring).
+  - >-
+    Rule 4 as first written (every earlier step a setup step, every later step skipped) would not have classified
+    #8514: its job ran a run step before the hung checkout and if-always reporting steps after it. The pre-checkout
+    run step is allowed only when it succeeded (an empty workspace judged no repository code).
+  - >-
+    Rule H costs reads: one filter=all listing per (sha, context) and one annotation read per cancelled attempt,
+    shared in one cache per report; reclassify_by_reread (rows without per-entry data only) reads the history of each
+    green context. B20's memo projection holds every field B27 reads (a test reports once live and once from the saved
+    memo with identical results); the extra reads are not memoised.
+  - >-
+    The workflow file is read at the check run's head_sha, not the pull_request merge ref the hosted run executed;
+    a base that changed the workflow after the branch point reads another file and fails closed on any step mismatch.
+  - >-
+    An aborted context is no longer a compared context, so a decision with one aborted context among 12 can fall
+    below the compared-merge threshold and not count toward READY until the job is re-run.
+  - >-
+    HOSTED_ABORTED is wired at report time only; the tick's journalled hosted_compare still shows such a row as
+    FALSE_GREEN and the report's recorded re-read clears it, which needs the cancelled attempt to stay listed.
