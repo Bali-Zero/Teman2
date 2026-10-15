@@ -1,0 +1,15 @@
+gear: 2
+gear_reason: >-
+  Public client UI on the Visa Oracle result page; touches no rule, no pack, no pricing and no backend.
+mission: >-
+  A reason message that names an official https page shows it as a clickable link on the Visa Oracle result, EN and ID.
+objective: >-
+  Visit plan V06F, the follow-up queued by the V06 gate. The BVK reason carries the official visa-free list URL as plain
+  text because OutcomeSheet.tsx rendered reason messages as text nodes.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.reason-links.test.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/no-path-doors.test.tsx
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
