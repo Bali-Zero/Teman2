@@ -28,7 +28,7 @@ lanes:
 pii_scan: clean
 bites:
   consumer: the welcome email, which fetches https://kita.balizero.com/static/brochure_balizero_en.pdf, and the observer scripts/ci/observe_brochure_price_parity.py
-  where: m5
+  where: ci
   observe: python3 scripts/ci/observe_brochure_price_parity.py
   expect: contains:brochure prices match the canonical catalogue
 receipts:
