@@ -265,7 +265,21 @@ REDECIDE_WINDOW_S = 6 * 3600   # B30: a transient decision older than this stops
 REDECIDE_OVERALL = ("BLOCKED", "ERROR")
 REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED")   # a context the host did not name
 REDECIDE_HOST_CTX = ("ERROR", "BLOCKED")       # a context named in host_no_verdict (the pair local_side maps it from)
-REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED")   # plus ERROR when a host no-verdict is on the row
+REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED")   # plus ERROR when the row's host_checks names that check
+# B30 D1: the host classes the runner MEASURES before a leg starts; host_disk_full is read from the sandbox's own output (a red test that
+# quotes or raises ENOSPC becomes it), so it is not a host attribution to re-decide on
+REDECIDE_HOST_CLASS = ("host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid")
+
+
+def host_measured(reason) -> bool:
+    return isinstance(reason, str) and reason.split(" ")[0].split(":")[0] in REDECIDE_HOST_CLASS
+
+
+def host_checks(status: dict) -> list:
+    """B30 D1 term 5: the checks of the runner's vouched ``status`` the host no-verdict pre-empted (ERROR or BLOCKED with a measured host reason), from
+    trusted runner state only. A check that ran candidate code and crashed carries a candidate reason here, never a measured host one."""
+    checks = status.get("checks") if isinstance(status.get("checks"), dict) else {}
+    return sorted(k for k, v in checks.items() if isinstance(v, dict) and v.get("status") in ("ERROR", "BLOCKED") and host_measured(v.get("reason")))
 
 
 # B30: the texts of the merger's OWN driver failing (gate_run); the seal/binding mismatch (tamper evidence) and a TickTimeout also write overall ERROR and are not here
@@ -283,10 +297,12 @@ def transient_reasons(r: dict) -> list:
         return []
     err = r.get("error")
     driver = isinstance(err, str) and err.startswith(DRIVER_ERRORS)
+    named = r.get("host_checks") if isinstance(r.get("host_checks"), list) else []   # per-check attribution; absent on older rows: no ERROR admitted
     if (r.get("replay") or r.get("gate_pending") is True or r.get("non_executed") or r.get("overall") not in REDECIDE_OVERALL
             or (r.get("overall") == "ERROR" and not driver)
             or any(v not in (REDECIDE_HOST_CTX if k in host else REDECIDE_CTX) for k, v in ctx.items())
-            or any(v not in (REDECIDE_CHECK + (("ERROR",) if host else ())) for v in checks.values())):
+            or not all(host_measured(v) for v in host.values())
+            or any(v not in REDECIDE_CHECK and not (v == "ERROR" and host and k in named) for k, v in checks.items())):
         return []
     return [why for why, hit in (("host_disk", bool(host)), ("error", r.get("overall") == "ERROR")) if hit]
 
@@ -1778,6 +1794,7 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
                                "seal": gate["seal"], "runner_rc": {k: v for k, v in gate.items() if k.endswith("_rc")},
                                "hosted_compare": hosted, "run_dir": str(run_dir), "executed_required": loc["executed_required"],
                                "non_executed": loc["non_executed"], "partial": loc["partial"], "host_no_verdict": loc["host_no_verdict"],
+                               "host_checks": [] if gate.get("error") else host_checks(status),
                                "elapsed_s": round(time.monotonic() - t0, 1)})
         print(f"merger: #{n} {line['overall']} candidate={cand_sha[:12]} base={base_sha[:12]} hosted(head)={line['hosted_compare'].get('agreement', 'n/a')} "
               f"run_dir={run_dir}")

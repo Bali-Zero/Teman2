@@ -12,8 +12,10 @@ objective: >-
   decision is transient, i.e. every term in an enumerated set (overall BLOCKED
   or ERROR, an ERROR only with the merger driver's own plan, no-seal, status or
   unreadable-status text; contexts the host did not name OK, UNCOVERED or
-  QUEUED; host-named contexts ERROR or BLOCKED; checks PASS, NOT_APPLICABLE,
-  BLOCKED, QUEUED, plus ERROR beside a host no-verdict; no gate_pending, no
+  QUEUED; host-named contexts ERROR or BLOCKED with a MEASURED host reason
+  (below_floor, unmeasured, floor_invalid; never host_disk_full); checks PASS,
+  NOT_APPLICABLE, BLOCKED, QUEUED, plus ERROR only for a check the row's
+  host_checks names; no gate_pending, no
   non_executed) and the class is host_no_verdict or the driver text, is decided
   again at the same base, at most REDECIDE_CAP (3) transient decisions within
   REDECIDE_WINDOW_S (6 h), REDECIDE_BACKOFF_S (600) times the count apart

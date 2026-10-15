@@ -126,6 +126,7 @@ def test_the_tick_decides_the_key_again_with_the_redecide_row_and_journals_the_c
     assert world.tick() == 0
     rows = [r for r in world.journal() if r["kind"] == "decision"]
     assert len(rows) == 2 and rows[-1]["redecide"] == {"reason": "error", "attempt": 2} and "redecide" not in rows[0]
+    assert rows[-1]["host_checks"] == []   # D1 term 5: a decision that ran the gate journals the attribution
     for _ in range(2):
         mg.journal(world.state, dec(head=world.head1, base=world.base, overall="ERROR", ts=fresh(mg.REDECIDE_BACKOFF_S)))
     assert world.tick() == 0 and world.tick() == 0

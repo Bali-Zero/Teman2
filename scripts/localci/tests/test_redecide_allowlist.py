@@ -11,7 +11,7 @@ HOSTCTX = {"ctx.e2e-tests": "host_disk_below_floor 80GB<100GB"}
 
 def host_row(**kw):
     base = {"overall": "BLOCKED", "error": None, "host_no_verdict": dict(HOSTCTX),
-            "contexts": {"ctx.e2e-tests": "ERROR", "ctx.a": "OK"}, "checks": {"e2e": "ERROR", "a": "PASS"}}
+            "contexts": {"ctx.e2e-tests": "ERROR", "ctx.a": "OK"}, "checks": {"e2e": "ERROR", "a": "PASS"}, "host_checks": ["e2e"]}
     for k, v in kw.items():
         base[k] = {**base[k], **v} if isinstance(v, dict) and isinstance(base.get(k), dict) else v
     return dec(**base)
@@ -114,10 +114,42 @@ def test_a_listed_check_status_keeps_the_row_re_decidable(status):
     assert mg.transient_reasons(driver_row(checks={"x": status})) == ["error"]
 
 
-def test_a_check_error_is_admitted_only_beside_a_host_no_verdict():
-    assert mg.transient_reasons(host_row(checks={"x": "ERROR"})) == ["host_disk"]
-    assert mg.transient_reasons(driver_row(checks={"x": "ERROR"})) == []
-    assert mg.transient_reasons(dec(overall="BLOCKED", error=None, checks={"x": "ERROR"})) == []
+def test_a_check_error_is_admitted_only_when_host_checks_names_it():
+    assert mg.transient_reasons(host_row(checks={"x": "ERROR"}, host_checks=["e2e", "x"])) == ["host_disk"]
+    assert mg.transient_reasons(host_row(checks={"x": "ERROR"})) == []   # named: e2e only
+    assert mg.transient_reasons(host_row(checks={"x": "ERROR"}, host_checks=[])) == []
+    assert mg.transient_reasons(driver_row(checks={"x": "ERROR"}, host_checks=["x"])) == []   # no host no-verdict on the row
+    assert mg.transient_reasons(dec(overall="BLOCKED", error=None, checks={"x": "ERROR"}, host_checks=["x"])) == []
+
+
+def test_a_row_without_host_checks_admits_no_check_error():
+    row = host_row()
+    del row["host_checks"]
+    assert mg.transient_reasons(row) == []
+    row["checks"], row["host_checks"] = {"a": "PASS"}, None   # no check ERROR to name: the class alone still holds
+    assert mg.transient_reasons(row) == ["host_disk"]
+
+
+@pytest.mark.parametrize("shape", ["e2e", 7, {"e2e": 1}, True, None])
+def test_a_malformed_host_checks_names_nothing(shape):
+    assert mg.transient_reasons(host_row(host_checks=shape)) == []
+
+
+@pytest.mark.parametrize("reason", ["host_disk_full", "host_disk_full: tests.x: 'No space left'", "host_disk", "host_other 1GB", "", "x"])
+def test_only_the_measured_host_classes_are_re_decidable(reason):
+    assert not mg.host_measured(reason)
+    assert mg.transient_reasons(host_row(host_no_verdict={"ctx.e2e-tests": reason})) == []
+
+
+@pytest.mark.parametrize("reason", ["host_disk_below_floor 3GB<12GB: x", "host_disk_unmeasured: docker df failed", "host_disk_floor_invalid: x", "host_disk_below_floor"])
+def test_each_measured_host_class_is_re_decidable(reason):
+    assert mg.host_measured(reason)
+    assert mg.transient_reasons(host_row(host_no_verdict={"ctx.e2e-tests": reason})) == ["host_disk"]
+
+
+def test_one_unmeasured_host_reason_among_measured_ones_spoils_the_row():
+    row = host_row(host_no_verdict={"ctx.b": "host_disk_full"}, contexts={"ctx.b": "ERROR"})
+    assert mg.transient_reasons(row) == []
 
 
 @pytest.mark.parametrize("overall", ["PASS", "FAIL", "INTERRUPTED", "RUNNING", "STALE", "QUEUED", "SOMETHING_NEW", None])
@@ -133,7 +165,7 @@ def test_an_overall_error_needs_a_driver_text_even_beside_a_host_no_verdict():
 
 
 @pytest.mark.parametrize("field", ["contexts", "checks", "host_no_verdict"])
-@pytest.mark.parametrize("shape", [["x"], "x", 7, True])
+@pytest.mark.parametrize("shape", [["x"], "x", 7, True, [], "", 0, False])
 def test_a_malformed_section_is_never_re_decidable(field, shape):
     row = host_row()
     row[field] = shape

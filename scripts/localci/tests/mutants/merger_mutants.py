@@ -49,7 +49,7 @@ B22 = K("main_is_recomputed_and_kept_under_pressure_the_prs_newer_images_go", "t
         "a_context_whose_workflow_is_absent_at_base_raises_and_only_that_recipe_is_unknown", "the_python_prefix_of_the_job_is_part_of_the_recomputed_tag")
 # B30: a transient local no-verdict is decided again at the same base
 RD = ("scripts/localci/tests/test_redecide.py",)
-RA = ("scripts/localci/tests/test_redecide_allowlist.py",)   # B30 D1 allow-list, D2 window
+RA = ("scripts/localci/tests/test_redecide_allowlist.py", "scripts/localci/tests/test_redecide_attribution.py", "scripts/localci/tests/test_redecide_window.py")   # B30 D1 allow-list, D2 window
 RDA = RD + RA
 START_DEFAULT = 'default=HOST_FLOOR_GB + START_MARGIN_GB,\n                   help="the start floor'
 B6_FLOOR = (f"{MERGER_T}::test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why",)
@@ -281,6 +281,25 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b30-driver-unreadable-text-dropped": (PY, ', "status.json unreadable")', ", )", RDA),
     "b30-driver-seal-mismatch-admitted": (PY, '"status.json unreadable")', '"status.json unreadable", "status.json is bound")', RDA),
     "b30-driver-ticktimeout-admitted": (PY, '"status.json unreadable")', '"status.json unreadable", "tick exceeded")', RDA),
+    "b30-host-class-full-admitted": (PY, 'REDECIDE_HOST_CLASS = ("host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid")', 'REDECIDE_HOST_CLASS = ("host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid", "host_disk_full")', RDA),
+    "b30-host-class-below-floor-dropped": (PY, 'REDECIDE_HOST_CLASS = ("host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid")', 'REDECIDE_HOST_CLASS = ("host_disk_unmeasured", "host_disk_floor_invalid")', RDA),
+    "b30-host-class-unmeasured-dropped": (PY, 'REDECIDE_HOST_CLASS = ("host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid")', 'REDECIDE_HOST_CLASS = ("host_disk_below_floor", "host_disk_floor_invalid")', RDA),
+    "b30-host-class-floor-invalid-dropped": (PY, 'REDECIDE_HOST_CLASS = ("host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid")', 'REDECIDE_HOST_CLASS = ("host_disk_below_floor", "host_disk_unmeasured")', RDA),
+    "b30-host-measured-not-all": (PY, '            or not all(host_measured(v) for v in host.values())\n', '            or not any(host_measured(v) for v in host.values())\n', RDA),
+    "b30-host-measured-unchecked": (PY, '            or not all(host_measured(v) for v in host.values())\n', '', RDA),
+    "b30-check-error-unnamed-admitted": (PY, '(v == "ERROR" and host and k in named)', '(v == "ERROR" and host)', RDA),
+    "b30-check-error-named-without-host": (PY, '(v == "ERROR" and host and k in named)', '(v == "ERROR" and k in named)', RDA),
+    "b30-check-error-always-admitted": (PY, 'not (v == "ERROR" and host and k in named)', 'not (v == "ERROR")', RDA),
+    "b30-host-checks-shape-unguarded": (PY, 'named = r.get("host_checks") if isinstance(r.get("host_checks"), list) else []', 'named = r.get("host_checks") or []', RDA),
+    "b30-host-checks-not-journalled": (PY, '"host_checks": [] if gate.get("error") else host_checks(status),', '"host_checks": [],', RDA),
+    "b30-host-checks-status-unchecked": (PY, 'v.get("status") in ("ERROR", "BLOCKED") and host_measured(v.get("reason")))', 'host_measured(v.get("reason")))', RDA),
+    "b30-host-checks-reason-unchecked": (PY, 'v.get("status") in ("ERROR", "BLOCKED") and host_measured(v.get("reason")))', 'v.get("status") in ("ERROR", "BLOCKED"))', RDA),
+    "b30-host-checks-blocked-dropped": (PY, 'v.get("status") in ("ERROR", "BLOCKED") and host_measured', 'v.get("status") in ("ERROR",) and host_measured', RDA),
+    "b30-host-checks-error-dropped": (PY, 'v.get("status") in ("ERROR", "BLOCKED") and host_measured', 'v.get("status") in ("BLOCKED",) and host_measured', RDA),
+    "b30-host-measured-str-unchecked": (PY, 'return isinstance(reason, str) and reason.split(" ")[0].split(":")[0] in REDECIDE_HOST_CLASS', 'return reason.split(" ")[0].split(":")[0] in REDECIDE_HOST_CLASS', RDA),
+    "b30-host-measured-colon-unsplit": (PY, 'reason.split(" ")[0].split(":")[0] in', 'reason.split(" ")[0] in', RDA),
+    "b30-host-measured-space-unsplit": (PY, 'reason.split(" ")[0].split(":")[0] in', 'reason.split(":")[0] in', RDA),
+    "b30-host-measured-prefix": (PY, 'reason.split(" ")[0].split(":")[0] in REDECIDE_HOST_CLASS', 'reason.startswith(REDECIDE_HOST_CLASS)', RDA),
     "b30-host-not-passed-to-triage": (PY, "host_free_gb=a.host_free_gb, start_floor_gb=a.min_host_free_gb)", "host_free_gb=None, start_floor_gb=a.min_host_free_gb)", RDA),
     "b30-ctx-fail-admitted": (PY, 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED")', 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED", "FAIL")', RDA),
     "b30-ctx-blocked-admitted": (PY, 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED")', 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED", "BLOCKED")', RDA),
@@ -298,8 +317,6 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b30-check-interrupted-admitted": (PY, 'REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED")', 'REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED", "INTERRUPTED")', RDA),
     "b30-check-running-admitted": (PY, 'REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED")', 'REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED", "RUNNING")', RDA),
     "b30-check-stale-admitted": (PY, 'REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED")', 'REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED", "STALE")', RDA),
-    "b30-check-error-without-host": (PY, '(("ERROR",) if host else ())', '("ERROR",)', RDA),
-    "b30-check-error-never": (PY, '(("ERROR",) if host else ())', '()', RDA),
     "b30-overall-fail-admitted": (PY, 'REDECIDE_OVERALL = ("BLOCKED", "ERROR")', 'REDECIDE_OVERALL = ("BLOCKED", "ERROR", "FAIL")', RDA),
     "b30-overall-interrupted-admitted": (PY, 'REDECIDE_OVERALL = ("BLOCKED", "ERROR")', 'REDECIDE_OVERALL = ("BLOCKED", "ERROR", "INTERRUPTED")', RDA),
     "b30-overall-pass-admitted": (PY, 'REDECIDE_OVERALL = ("BLOCKED", "ERROR")', 'REDECIDE_OVERALL = ("BLOCKED", "ERROR", "PASS")', RDA),
