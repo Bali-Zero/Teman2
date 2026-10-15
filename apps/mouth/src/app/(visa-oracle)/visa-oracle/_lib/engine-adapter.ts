@@ -2239,6 +2239,8 @@ const PER_CODE_REFERENCE_CODES: ReadonlySet<string> = new Set([
   "C6",
 ]);
 
+const CATALOGUE_SOURCE_ID_PREFIX = "6f5135f2-";
+
 /**
  * The Kepmen visa catalogue record (6f5135f2) is cited by canonical URL
  * `.../wna/daftar-visa-indonesia` and carries one PAGE locator per code
@@ -2252,6 +2254,8 @@ function perCodeReferenceUrl(
   url: string,
   candidateCodes: readonly string[],
 ): string {
+  if (!source.source_record_id.startsWith(CATALOGUE_SOURCE_ID_PREFIX))
+    return url;
   const codes = new Set(
     candidateCodes.filter((code) => PER_CODE_REFERENCE_CODES.has(code)),
   );

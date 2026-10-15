@@ -307,6 +307,13 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     );
 
     it("leaves other codes, other sources, and missing locators unchanged", () => {
+      const foreignId = catalogueResponse("C1");
+      foreignId.sources[0].source_record_id =
+        "99999999-0000-4000-8000-000000000000";
+      foreignId.decision.candidates[0].source_refs = [
+        foreignId.sources[0].source_record_id,
+      ];
+      expect(buildEngineOutcome(foreignId).sources[0].url).toBe(CATALOGUE);
       expect(buildEngineOutcome(catalogueResponse("E33")).sources[0].url).toBe(
         CATALOGUE,
       );
