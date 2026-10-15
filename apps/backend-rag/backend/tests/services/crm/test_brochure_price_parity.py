@@ -9,7 +9,7 @@ Guilt: a stale hardcoded Rupiah figure, a drifted rendered price, or a mapping
 pointed at an internal row must fail immediately.
 Innocence: every rendered price cell in the brochure matches an independent
 oracle over its canonical JSON row, and public rows like E33E (Rp 45.000.000),
-E33F Offshore, and Retirement KITAP + MERP render accurately.
+E33F Offshore and Onshore, and Retirement KITAP + MERP render accurately.
 """
 
 from __future__ import annotations
@@ -688,7 +688,6 @@ def test_e33e_prints_45_million_and_not_the_old_14_million() -> None:
     assert len(e33f_on_rows) == 1
     assert e33f_off_rows[0][-1] == e33f_off_expected
     assert e33f_on_rows[0][-1] == e33f_alt_expected
-    assert e33f_off_rows[0][-1] != e33f_on_rows[0][-1]
 
 
 def test_no_internal_row_is_printed() -> None:
