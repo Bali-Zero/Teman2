@@ -133,6 +133,7 @@ CQ_MIXED = cq("test_a_leg_that_mixes_the_gate_skip_with_any_other_skip_is_not_a_
 CQ_SEAM = cq("test_a_base_job_env_that_sets_a_leg_seam_blocks_the_plan", "test_a_base_step_env_or_a_matrix_step_env_that_sets_a_leg_seam_blocks_the_plan")
 CQ_REPO = cq("test_the_reader_refuses_a_repo_that_climbs_the_api_path")
 CQ_CONFIG = cq("test_a_queries_block_the_rewriter_cannot_read_as_text_is_no_verdict_and_writes_nothing")
+RC = "scripts/localci/tests/test_ready_cache.py"   # B20
 RS = ("scripts/localci/tests/test_required_set.py",)   # the required set after the phase F flip
 CQ_CORPUS = ("scripts/localci/tests/test_runner.py::test_the_corpus_check_also_runs_the_gate_flags_corpus_from_base",)
 
@@ -496,7 +497,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "f2-precheck-days-ignored": (PY, "if days + READY_SPAN_SLACK_DAYS < READY_MIN_DAYS:", "if False:", (PHASEF,)),
     "f2-precheck-count-ignored": (PY, "if decided < READY_MIN_MERGES:", "if False:", (PHASEF,)),
     "f2-precheck-own-threshold": (PY, "if days + READY_SPAN_SLACK_DAYS < READY_MIN_DAYS:", "if days + READY_SPAN_SLACK_DAYS < 10:", (PHASEF,)),
-    "f2-ready-always": (PY, "report(argparse.Namespace(repo=a.repo, base=a.base, state_dir=str(state), since=None), emit=False)",
+    "f2-ready-always": (PY, "report(argparse.Namespace(repo=a.repo, base=a.base, state_dir=str(state), since=None), emit=False, memo=memo)",
                         "(0, {'phase_e_ready': True})", (PHASEF,)),
     "f2-env-dropped": (PY, 'if os.environ.get(PHASE_F_ENV) != "1":', "if False:", (PHASEF,)),
     "f2-key-mode-dropped": (PY, "if stat.S_IMODE(st.st_mode) != 0o600:", "if False:", (PHASEF,)),
@@ -885,6 +886,38 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "rs-source-not-recorded": (HC, '"required_checks": required, "required_source": source,', '"required_checks": required,', RS),
     "rs-protection-ignored": (HC, '_CACHE[key] = ("protection", protection.get("checks") if isinstance(protection, dict) else None)',
                               '_CACHE[key] = ("matrix_after_flip", None)', RS),
+    # B20: READY is computed apart by the tick and only read by the merge
+    "b20-arming-runs-the-report-inline": (PY, "reason, ready_info = read_ready(state)\n            if reason:",
+                                          "_, rep = report(argparse.Namespace(repo=a.repo, base=a.base, state_dir=str(state), since=None), emit=False)\n            reason, ready_info = (None if rep.get('phase_e_ready') else 'READY false'), {}\n            if reason:", (RC, PHASEF)),
+    "b20-max-age-ignored": (PY, "if not 0 <= age < READY_MAX_AGE_S:", "if False:", (RC,)),
+    "b20-false-cache-read-true": (PY, 'if doc.get("phase_e_ready") is not True:', "if False:", (RC, PHASEF)),
+    "b20-refused-cache-read-true": (PY, 'if doc.get("refused"):', "if False:", (RC, PHASEF)),
+    "b20-failed-refresh-overwrites": (PY, "    if err:\n        journal(state, {\"kind\": \"ready_refresh_failed\"",
+                                      "    if err:\n        atomic_write(state / READY_CACHE_FILE, json.dumps({\"computed_at\": time.time(), \"phase_e_ready\": False, \"refused\": err}))\n        journal(state, {\"kind\": \"ready_refresh_failed\"", (RC,)),
+    "b20-refresh-every-tick": (PY, "if done is not None and 0 <= time.time() - done < READY_REFRESH_S:", "if False:", (RC,)),
+    "b20-refresh-never": (PY, "    return not (failed and 0 <= time.time() - max(failed) < READY_RETRY_S)", "    return False", (RC,)),
+    "b20-failed-refresh-retried-every-tick": (PY, "    return not (failed and 0 <= time.time() - max(failed) < READY_RETRY_S)", "    return True", (RC,)),
+    "b20-watchdog-swallowed": (PY, "        except (MergerError, Stopped):\n            raise\n        except Exception as exc:  # noqa: BLE001 — a READY that cannot", "        except Exception as exc:  # noqa: BLE001 — a READY that cannot", (RC,)),
+    "b20-refresh-then-decides": (PY, "        return 0   # a refresh is its own tick", "        pass   # a refresh is its own tick", (RC,)),
+    "b20-due-measured-from-start": (PY, 'done = doc.get("completed_at") if doc is not None and is_num(doc.get("completed_at")) else doc["computed_at"] if doc is not None else None',
+                                    'done = doc["computed_at"] if doc is not None else None', (RC,)),
+    "b20-two-refreshes-in-a-row": (PY, "    if mark.exists():   # B20 C1", "    if False:   # B20 C1", (RC,)),
+    "b20-memo-keeps-a-pending-live": (PY, "if settled(n) and live_is_final(lives[lkey]):", "if settled(n):", (RC,)),
+    "b20-memo-keeps-an-open-pr": (PY, '                    if settled(n):\n                        mem.put("pulls"', '                    if True:\n                        mem.put("pulls"', (RC,)),
+    "b20-memo-ignores-final-age": (PY, '"hosted_memo.json", 172800', '"hosted_memo.json", 0', (RC,)),
+    "b20-precheck-skipped": (PY, "err, early = None, ready_precheck(state)", "err, early = None, None", (RC,)),
+    "b20-torn-journal-arms": (PY, "            strict_journal(state)   # C5", "            pass   # C5", (RC,)),
+    "b20-memo-serves-an-open-pr": (PY, 'pr.get("state") == "closed" and isinstance(newest', "isinstance(newest", (RC,)),
+    "b20-memo-serves-a-pending-live": (PY, "if isinstance(got, dict) and live_is_final(got):", "if isinstance(got, dict):", (RC,)),
+    "b20-memo-serves-a-young-row": (PY, "time.time() - newest >= FINAL_AFTER_S", "True", (RC,)),
+    "b20-memo-boundary-strict": (PY, "time.time() - newest >= FINAL_AFTER_S", "time.time() - newest > FINAL_AFTER_S", (RC,)),
+    "b20-memo-key-without-base": (PY, "mkey = f\"{a.repo}@{a.base}:{sha}:{d.get('base_sha')}\"", "mkey = f\"{a.repo}@{a.base}:{sha}\"", (RC,)),
+    "b20-memo-key-without-repo": (PY, "mkey = f\"{a.repo}@{a.base}:{sha}:{d.get('base_sha')}\"", "mkey = f\"{a.base}:{sha}:{d.get('base_sha')}\"", (RC,)),
+    "b20-memo-stores-the-raw-live": (PY, 'mem.put("lives", mkey, project_live(lives[lkey]))', 'mem.put("lives", mkey, lives[lkey])', (RC,)),
+    "b20-memo-stores-the-raw-pull": (PY, 'mem.put("pulls", f"{a.repo}#{n}", project_pull(prs[n]))', 'mem.put("pulls", f"{a.repo}#{n}", prs[n])', (RC,)),
+    "b20-lives-guard-always": (PY, "lives[lkey] = mem_live(mem, mkey) if settled(n) else None", "lives[lkey] = mem_live(mem, mkey) if True else None", (RC,)),
+    "b20-projection-drops-status-updated-at": (PY, '"state": x.get("state"), "updated_at": x.get("updated_at")}', '"state": x.get("state")}', (RC,)),
+    "b20-newest-ignores-replays": (PY, "        for d in decisions:\n            newest[d.get(\"pr\")]", "        for d in [x for x in decisions if not x.get(\"replay\")]:\n            newest[d.get(\"pr\")]", (RC,)),
     # B21: a push of unknown outcome is read back before it halts; after phase F's first push, nothing is replayed
     "b21-unknown-error-is-transport": (PY, "or bool(PUSH_TRANSPORT.search(err))", "or True", (PHASEF,)),
     "b21-readback-skipped": (PY, "first = push_read_back(state, repo_dir, base)", "first = None", (PHASEF,)),

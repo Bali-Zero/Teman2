@@ -161,6 +161,7 @@ def world(tmp_path, monkeypatch):
     monkeypatch.setattr(mg, "gh_graphql", gql)
     monkeypatch.setattr(mg, "runner_exec", runner)
     monkeypatch.delenv(mg.ARM_ENV, raising=False)
+    monkeypatch.setattr(mg, "ready_refresh_due", lambda state, recs: False)   # B20: a refresh is a tick of its own; test_ready_cache.py drives it
     w = type("World", (), {})()
     w.state, w.origin, w.gh, w.gql, w.runner = tmp_path / "state", origin, gh, gql, runner
     w.base, w.head1, w.head2, w.src = base, head1, head2, src
