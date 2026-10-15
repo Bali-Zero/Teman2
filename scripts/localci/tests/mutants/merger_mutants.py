@@ -899,6 +899,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b20-memo-stores-the-raw-pull": (PY, 'mem.put("pulls", f"{a.repo}#{n}", project_pull(prs[n]))', 'mem.put("pulls", f"{a.repo}#{n}", prs[n])', (RC,)),
     "b20-lives-guard-always": (PY, "lives[lkey] = mem_live(mem, mkey) if settled(n) else None", "lives[lkey] = mem_live(mem, mkey) if True else None", (RC,)),
     "b20-projection-drops-status-updated-at": (PY, '"state": x.get("state"), "updated_at": x.get("updated_at")}', '"state": x.get("state")}', (RC,)),
+    "b20-newest-ignores-replays": (PY, "        for d in decisions:\n            newest[d.get(\"pr\")]", "        for d in [x for x in decisions if not x.get(\"replay\")]:\n            newest[d.get(\"pr\")]", (RC,)),
     # B21: a push of unknown outcome is read back before it halts; after phase F's first push, nothing is replayed
     "b21-unknown-error-is-transport": (PY, "or bool(PUSH_TRANSPORT.search(err))", "or True", (PHASEF,)),
     "b21-readback-skipped": (PY, "first = push_read_back(state, repo_dir, base)", "first = None", (PHASEF,)),

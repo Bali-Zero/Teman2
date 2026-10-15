@@ -477,3 +477,26 @@ def test_the_projection_keeps_the_status_updated_at_and_the_entries_built_from_i
     assert before == after and after["st-ctx"][0]["completed_at"] == "2026-10-01T00:00:00Z"   # the completed_at the reclassifications read
     assert mg.hc.hosted_verdict(before["st-ctx"], None) == mg.hc.hosted_verdict(after["st-ctx"], None)
     assert mg.hc.hosted_verdict(after["st-ctx"], None)["completed_at"] == "2026-10-01T00:00:00Z"
+
+
+def test_a_young_replay_of_a_merged_pr_reads_the_shared_hosted_document_live_though_the_original_row_is_old(fw, monkeypatch):
+    """B11: a replay row shares its key (merge commit, first parent) with the PR's original compared row. The PR's age counts its replays,
+    so the stored final document of the old row is not served to the young one."""
+    from .test_merger_phase_f import OLD_BASE, time_at
+    head, m2 = "4" * 40, "2" * 40
+    fw.hub.pulls[4001] = {"merged": True, "state": "closed", "head": {"sha": head}, "merge_commit_sha": m2, "merged_at": time_at(0, 19)}
+    original = {"kind": "decision", "ts": time_at(0, 19), "pr": 4001, "head_sha": head, "base_sha": OLD_BASE, "overall": "BLOCKED"}
+    replay = {"kind": "decision", "ts": mg.time.strftime("%Y-%m-%dT%H:%M:%SZ", mg.time.gmtime(time.time() - 3600)), "pr": 4001, "head_sha": head,
+              "base_sha": OLD_BASE, "overall": "BLOCKED", "replay": True, "merge_commit": m2}
+
+    def add(row):
+        with (fw.state / "decisions.jsonl").open("a") as f:
+            f.write(json.dumps(row, sort_keys=True) + "\n")
+    add(original)
+    fill_memo(fw, monkeypatch)   # the old row alone: (m2, OLD_BASE) is stored as final
+    key = f"{REPO}@main:{m2}:{OLD_BASE}"
+    assert key in json.loads((fw.state / mg.MEMO_FILE).read_text())["lives"]
+    add(replay)
+    _, reads = run_report(fw, monkeypatch, mg.ReadMemo(fw.state / mg.MEMO_FILE))
+    assert any(r.startswith(f"repos/{REPO}/commits/{m2}/check-runs") for r in reads)
+    assert f"repos/{REPO}/pulls/4001" in reads
