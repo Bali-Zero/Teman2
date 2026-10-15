@@ -1237,12 +1237,20 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b31-lc-verify-invalid-exits-zero": ("scripts/localci/label_census.py", 'if a.quiet else sys.stdout)\n                return 1', 'if a.quiet else sys.stdout)\n                return 0', ("scripts/localci/tests/test_label_census.py",)),
     "b31-lc-unreadable-exits-zero": ("scripts/localci/label_census.py", 'file=sys.stderr)\n        return 2', 'file=sys.stderr)\n        return 0', ("scripts/localci/tests/test_label_census.py",)),
     "b31-lc-census-first-page-only": ("scripts/localci/label_census.py", 'if not info.get("hasNextPage"):', "if True:", ("scripts/localci/tests/test_label_census.py",)),
-    "b31-sh-valid-label-rewritten": ("scripts/signal_merge_intent.sh", 'if ! verify_label >/dev/null; then', 'if true; then', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-sh-valid-label-rewritten": ("scripts/signal_merge_intent.sh", '  0) ;;\n', '  0) apply_label || label=failed ;;\n', ("scripts/localci/tests/test_label_census.py",)),
     "b31-sh-no-readback-after-write": ("scripts/signal_merge_intent.sh", '    out="$(verify_label)" && return 0\n', '    return 0\n', ("scripts/localci/tests/test_label_census.py",)),
     "b31-sh-no-retry": ("scripts/signal_merge_intent.sh", 'for ((i = 1; i <= TRIES; i++)); do\n    rc=0', 'for ((i = 1; i <= 1; i++)); do\n    rc=0', ("scripts/localci/tests/test_label_census.py",)),
     "b31-sh-failed-label-exit-0-queue-absent": ("scripts/signal_merge_intent.sh", '  [ "$label" = applied ] && exit 0\n  exit 2', '  exit 0', ("scripts/localci/tests/test_label_census.py",)),
     "b31-sh-failed-label-exit-0-queue-present": ("scripts/signal_merge_intent.sh", 'arm=armed"\n[ "$label" = applied ] && exit 0\nexit 2', 'arm=armed"\nexit 0', ("scripts/localci/tests/test_label_census.py",)),
     "b31-docs-guardian-swallows-helper": ("scripts/docs_guardian.sh", 'if ! INTENT_OUT=$(scripts/signal_merge_intent.sh "$PR_NUM" 2>&1); then', 'scripts/signal_merge_intent.sh "$PR_NUM" || true\n    if false; then', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-lc-census-drops-queue": ("scripts/localci/label_census.py", 'not (p.get("autoMergeRequest") or p.get("isInMergeQueue") or has_label)', 'not (p.get("autoMergeRequest") or has_label)', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-sh-readback-single-try": ("scripts/signal_merge_intent.sh", 'for ((i = 1; i <= TRIES; i++)); do\n    out="$(verify_label)"', 'for ((i = 1; i <= 1; i++)); do\n    out="$(verify_label)"', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-sh-readback-unbounded": ("scripts/signal_merge_intent.sh", 'for ((i = 1; i <= TRIES; i++)); do\n    out="$(verify_label)"', 'for ((i = 1; i <= TRIES * 25; i++)); do\n    out="$(verify_label)"', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-sh-backoff-not-reset": ("scripts/signal_merge_intent.sh", '  BACKOFF="${SIGNAL_INTENT_BACKOFF_S:-2}"\n  for ((i = 1; i <= TRIES; i++)); do\n    out="$(verify_label)"', '  for ((i = 1; i <= TRIES; i++)); do\n    out="$(verify_label)"', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-sh-unreadable-is-invalid": ("scripts/signal_merge_intent.sh", '  *) label=failed; why="the label could not be read', '  *) apply_label || label=failed; why="the label could not be read', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-dg-exit-dropped": ("scripts/docs_guardian.sh", 'if [[ "${INTENT_FAILED:-0}" == "1" ]]; then exit 1; fi', ':', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-dg-status-discarded": ("scripts/docs_guardian.sh", '    if ! INTENT_OUT=$(scripts/signal_merge_intent.sh "$PR_NUM" 2>&1); then', '    INTENT_OUT=$(scripts/signal_merge_intent.sh "$PR_NUM" 2>&1)\n    if false; then', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-dg-notify-dropped": ("scripts/docs_guardian.sh", '[[ "${INTENT_FAILED:-0}" == "1" ]] && SUMMARY+=', '[[ "${INTENT_FAILED:-0}" == "X" ]] && SUMMARY+=', ("scripts/localci/tests/test_label_census.py",)),
 }
 
 

@@ -82,6 +82,11 @@ def test_a_read_failure_inside_the_census_is_exit_2_not_a_clean_list(monkeypatch
     assert lc.main(["census", "--repo", "o/r"]) == 2 and "LABEL_UNREADABLE" in capsys.readouterr().err
 
 
+def test_census_lists_a_queue_only_armed_pr_without_a_valid_label():
+    rows = lc.census("o/r", [pr(5, label=False, auto=False, queue=True)])
+    assert [(r["pr"], r["armed_by"]) for r in rows] == [(5, "queue")]
+
+
 def test_census_exit_code_and_json(monkeypatch, capsys):
     _graphql(monkeypatch, pr(9, label=False))
     assert lc.main(["census", "--repo", "o/r", "--json"]) == 1
@@ -91,7 +96,7 @@ def test_census_exit_code_and_json(monkeypatch, capsys):
 
 
 def test_no_caller_swallows_the_helpers_exit():
-    """B31 L2: `signal_merge_intent.sh ... || true` (or a discarded status) is how 31 of 49 PRs lost their label unseen."""
+    """B31 L2: `signal_merge_intent.sh ... || true` is how 31 of 49 PRs lost their label unseen (a discarded status is pinned by the docs_guardian behaviour tests)."""
     root = Path(__file__).resolve().parents[3]
     swallowed = []
     for path in [*(root / "scripts").glob("*.sh"), *(root / "scripts" / "ci").glob("*.sh"), *(root / "scripts").glob("*.py"), *(root / "apps" / "bali-intel-scraper" / "scripts").glob("*.py")]:
@@ -99,6 +104,41 @@ def test_no_caller_swallows_the_helpers_exit():
             if "signal_merge_intent.sh" in line and not line.lstrip().startswith("#") and re.search(r"\|\|\s*(true|:)\b", line):
                 swallowed.append(f"{path.relative_to(root)}:{i}")
     assert not swallowed, swallowed
+
+
+def _run_docs_guardian_tail(tmp_path, helper_rc, script=None):
+    """Run docs_guardian.sh from its auto-merge block to the end with a fake helper, a fake git and a recording notify."""
+    root = Path(__file__).resolve().parents[3]
+    text = (script or root / "scripts/docs_guardian.sh").read_text()
+    tail = text[text.index("# Enable auto-merge only if"):]
+    (tmp_path / "scripts").mkdir()
+    helper = tmp_path / "scripts/signal_merge_intent.sh"
+    helper.write_text(f"#!/bin/sh\necho 'SIGNAL_INTENT_FAIL fake' >&2\nexit {helper_rc}\n")
+    helper.chmod(0o755)
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin/git").write_text("#!/bin/sh\nexit 0\n")
+    (tmp_path / "bin/git").chmod(0o755)
+    harness = tmp_path / "h.sh"
+    harness.write_text("set -euo pipefail\nBROKEN=0; PR_URL=https://github.com/o/r/pull/12; L1_COMMITTED=0; L25_COMMITTED=0; L25_SUMMARY=''; ORPHANS=0; PR_BODY_FILE=''\n"
+                       "notify() { printf '%s|%s\\n' \"$1\" \"$2\" >> notified; }\n" + tail)
+    env = {"PATH": f"{tmp_path / 'bin'}:/usr/bin:/bin", "HOME": str(tmp_path)}
+    run = subprocess.run(["bash", str(harness)], cwd=tmp_path, env=env, capture_output=True, text=True, timeout=60)
+    notified = (tmp_path / "notified").read_text() if (tmp_path / "notified").exists() else ""
+    return run, notified
+
+
+def test_docs_guardian_fails_loud_when_the_helper_fails(tmp_path):
+    """B31 L2: a failed intent is stderr ERROR, a notification naming the PR, and exit 1 — each one pinned."""
+    run, notified = _run_docs_guardian_tail(tmp_path, 2)
+    assert run.returncode == 1
+    assert "ERROR: signal_merge_intent failed on PR #12" in run.stderr
+    assert "MERGE INTENT FAILED on PR #12" in notified
+
+
+def test_docs_guardian_is_quiet_when_the_helper_succeeds(tmp_path):
+    run, notified = _run_docs_guardian_tail(tmp_path, 0)
+    assert run.returncode == 0
+    assert "MERGE INTENT FAILED" not in notified and "ERROR" not in run.stderr
 
 
 def test_the_signal_merge_intent_shell_suite_passes():

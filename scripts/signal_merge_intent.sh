@@ -8,10 +8,12 @@
 #
 # B31 — the label is never silently missing:
 #   1. read it back first (scripts/localci/label_census.py verify = the merger's own check);
-#      valid => nothing is written, no remove, no new event;
+#      valid => nothing is written, no remove, no new event; UNREADABLE (rc other than 0/1) is
+#      unknown, not invalid: the read is retried with the same bound and nothing is ever removed on unknown;
 #   2. absent => add; present but not valid (its event predates the head) => remove, then add
 #      (an add of a present label makes no event);
-#   3. the add is retried with bounded backoff, then READ BACK again with the same bound;
+#   3. the add is retried with bounded backoff, then READ BACK again with the same bound (each phase
+#      starts its backoff afresh: worst case 3 phases x (2+4+8)s = 42s, under the poller's 60s helper timeout);
 #   4. a label that is not shown valid at the end is FATAL: exit 2, SIGNAL_INTENT_FAIL on stderr,
 #      whatever the queue state (while the queue rule exists the arm is still attempted first —
 #      it is what merges until the flip — and the exit stays 2).
@@ -50,6 +52,7 @@ pause() { sleep "$BACKOFF"; BACKOFF=$((BACKOFF * 2)); }
 
 apply_label() {   # sets $why on failure
   local has=0 i out rc
+  BACKOFF="${SIGNAL_INTENT_BACKOFF_S:-2}"
   if gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name' 2>/dev/null | grep -qxF "$LABEL"; then has=1; fi
   for ((i = 1; i <= TRIES; i++)); do
     rc=0; out=""
@@ -67,6 +70,7 @@ apply_label() {   # sets $why on failure
     why="the label write failed $TRIES time(s) (rc=$rc): $(printf '%s' "$out" | tail -3 | tr '\n' ' ')"
     return 1
   fi
+  BACKOFF="${SIGNAL_INTENT_BACKOFF_S:-2}"
   for ((i = 1; i <= TRIES; i++)); do
     out="$(verify_label)" && return 0
     [ "$i" -lt "$TRIES" ] && pause
@@ -77,9 +81,17 @@ apply_label() {   # sets $why on failure
 
 label=applied
 why=""
-if ! verify_label >/dev/null; then
-  apply_label || label=failed
-fi
+vrc=1
+for ((i = 1; i <= TRIES; i++)); do
+  verify_label >/dev/null; vrc=$?
+  [ "$vrc" -eq 0 ] || [ "$vrc" -eq 1 ] && break
+  [ "$i" -lt "$TRIES" ] && pause
+done
+case "$vrc" in
+  0) ;;
+  1) apply_label || label=failed ;;
+  *) label=failed; why="the label could not be read $TRIES time(s) (rc=$vrc): nothing was changed" ;;
+esac
 if [ "$label" = failed ]; then
   echo "SIGNAL_INTENT_FAIL pr=$PR label=failed queue=$queue: $why" >&2
 fi

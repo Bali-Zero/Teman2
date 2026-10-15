@@ -44,18 +44,23 @@ FAKEGH
 cat > "$SANDBOX/bin/verify" <<'FAKEVERIFY'
 #!/usr/bin/env bash
 printf 'VERIFY %s\n' "$*" >> "$FAKE_GH_LOG"
+# FAKE_VERIFY_UNREADABLE=N: the first N reads are unreadable (rc 2), then the FAKE_VERIFY mode applies
+u="$(cat "$FAKE_COUNT.v" 2>/dev/null || echo 0)"
+if [ "$u" -lt "${FAKE_VERIFY_UNREADABLE:-0}" ]; then echo $((u + 1)) > "$FAKE_COUNT.v"; echo "LABEL_UNREADABLE: 502" >&2; exit 2; fi
 case "${FAKE_VERIFY:-after-write}" in
   valid) exit 0 ;;
   never) echo "LABEL_INVALID pr=$2: label predates head"; exit 1 ;;
   *) grep -q -e '--add-label' "$FAKE_GH_LOG" && exit 0; echo "LABEL_INVALID pr=$2: label absent"; exit 1 ;;
 esac
 FAKEVERIFY
-chmod +x "$SANDBOX/bin/gh" "$SANDBOX/bin/verify"
+printf '#!/usr/bin/env bash\necho "$1" >> "$FAKE_SLEEP_LOG"\n' > "$SANDBOX/bin/sleep"
+chmod +x "$SANDBOX/bin/gh" "$SANDBOX/bin/verify" "$SANDBOX/bin/sleep"
 
 run() {  # run <PR> [ENV=VAL...]
   local pr="$1"; shift
-  LOG="$SANDBOX/log"; : > "$LOG"; rm -f "$SANDBOX/count"
-  OUT="$(env FAKE_GH_LOG="$LOG" FAKE_COUNT="$SANDBOX/count" SIGNAL_INTENT_VERIFY="$SANDBOX/bin/verify" SIGNAL_INTENT_BACKOFF_S=0 PATH="$SANDBOX/bin:$PATH" "$@" bash "$HELPER" "$pr" 2>"$SANDBOX/err")"
+  LOG="$SANDBOX/log"; : > "$LOG"; rm -f "$SANDBOX/count" "$SANDBOX/count.v"
+  SLEEPLOG="$SANDBOX/sleeps"; : > "$SLEEPLOG"
+  OUT="$(env FAKE_SLEEP_LOG="$SLEEPLOG" FAKE_GH_LOG="$LOG" FAKE_COUNT="$SANDBOX/count" SIGNAL_INTENT_VERIFY="$SANDBOX/bin/verify" SIGNAL_INTENT_BACKOFF_S=0 PATH="$SANDBOX/bin:$PATH" "$@" bash "$HELPER" "$pr" 2>"$SANDBOX/err")"
   RC=$?
   CALLS="$(cat "$LOG")"
   ERR="$(cat "$SANDBOX/err")"
@@ -111,7 +116,7 @@ HELPER="$HELPER_REAL"
 
 # Mutant: always remove before add (never trust a valid label). The valid-label scenario must go red.
 sed 's/^  if gh pr view .*$/  if true; then has=1; fi/' "$HELPER" > "$SANDBOX/mut/signal_merge_intent.sh"
-sed -i.bak 's/^if ! verify_label >\/dev\/null; then$/if true; then/' "$SANDBOX/mut/signal_merge_intent.sh"
+sed -i.bak 's/^  0) ;;$/  0) apply_label || label=failed ;;/' "$SANDBOX/mut/signal_merge_intent.sh"
 HELPER="$SANDBOX/mut/signal_merge_intent.sh"
 run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY=valid
 check "mutant (valid label still removed) is caught" "$([ "$(has '--remove-label' "$CALLS")" = 1 ] && echo 1 || echo 0)"
@@ -122,6 +127,47 @@ sed 's/^    out="\$(verify_label)" \&\& return 0$/    return 0/' "$HELPER" > "$S
 HELPER="$SANDBOX/mut/signal_merge_intent.sh"
 run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=never
 check "mutant (no read-back after the write) is caught" "$([ $RC = 0 ] && echo 1 || echo 0)"
+HELPER="$HELPER_REAL"
+
+# C2: the read-back is bounded — one initial read plus TRIES read-backs, never one, never unbounded
+run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=never
+check "read-back bound: VERIFY calls == 1 + TRIES (5)" "$([ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" = 5 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=never SIGNAL_INTENT_TRIES=2
+check "read-back bound follows SIGNAL_INTENT_TRIES (3 calls with 2)" "$([ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" = 3 ] && echo 1 || echo 0)"
+
+# L1: the backoff restarts for the read-back — worst case stays under the poller's 60 s helper timeout
+run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=3 FAKE_VERIFY=never SIGNAL_INTENT_BACKOFF_S=2
+total="$(paste -sd+ "$SLEEPLOG" | bc)"
+check "backoff restarts per phase: write 14s + read-back 14s = 28s, under 60 (got ${total}s)" "$([ "$total" = 28 ] && [ "$total" -lt 60 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY_UNREADABLE=3 FAKE_ADD_FAILS=3 FAKE_VERIFY=never SIGNAL_INTENT_BACKOFF_S=2
+total="$(paste -sd+ "$SLEEPLOG" | bc)"
+check "worst case across all three phases is 42s, under 60 (got ${total}s)" "$([ "$total" -lt 60 ] && echo 1 || echo 0)"
+
+# L4: an unreadable verify is unknown, never a reason to remove the label
+run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=1 FAKE_VERIFY=valid
+check "unreadable once on a valid label: re-read, exit 0, no remove, no add" "$([ $RC = 0 ] && [ "$(has '--remove-label' "$CALLS")" = 0 ] && [ "$(has '--add-label' "$CALLS")" = 0 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=99
+check "never readable: exit 2, loud, nothing removed or added, reads bounded by TRIES" "$([ $RC = 2 ] && [ "$(has 'SIGNAL_INTENT_FAIL' "$ERR")" = 1 ] && [ "$(has '--remove-label' "$CALLS")" = 0 ] && [ "$(has '--add-label' "$CALLS")" = 0 ] && [ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" = 4 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=1 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=99
+check "never readable, queue present: arm attempted, exit still 2" "$([ $RC = 2 ] && [ "$(has 'pr merge 7' "$CALLS")" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=1
+check "unreadable once then invalid: refresh (remove, then add) as for any stale label" "$([ $RC = 0 ] && [ "$(has '--remove-label' "$CALLS")" = 1 ] && [ "$(has '--add-label' "$CALLS")" = 1 ] && echo 1 || echo 0)"
+
+# Mutants for the three above
+mutate() { sed "$1" "$HELPER_REAL" > "$SANDBOX/mut/signal_merge_intent.sh"; HELPER="$SANDBOX/mut/signal_merge_intent.sh"; }
+mutate 's/^    out="\$(verify_label)" \&\& return 0$/    out="$(verify_label)" \&\& return 0; break/'
+run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=never
+check "mutant (single read-back try) is caught" "$([ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" != 5 ] && echo 1 || echo 0)"
+mutate 's/^    out="\$(verify_label)" \&\& return 0$/    out="$(verify_label)" \&\& return 0; [ "$i" -ge "$TRIES" ] \&\& [ "$i" -lt 25 ] \&\& TRIES=$((TRIES + 1))/'
+run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=never
+check "mutant (unbounded read-back) is caught" "$([ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" != 5 ] && echo 1 || echo 0)"
+mutate '/^  BACKOFF="\${SIGNAL_INTENT_BACKOFF_S:-2}"$/d'
+run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=3 FAKE_VERIFY=never SIGNAL_INTENT_BACKOFF_S=2
+total="$(paste -sd+ "$SLEEPLOG" | bc)"
+check "mutant (backoff not reset) is caught" "$([ "$total" -ge 60 ] && echo 1 || echo 0)"
+mutate 's/^  \*) label=failed; why=.*$/  *) apply_label || label=failed ;;/'
+run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=99
+check "mutant (unreadable treated as invalid) is caught" "$([ "$(has '--remove-label' "$CALLS")" = 1 ] && echo 1 || echo 0)"
 HELPER="$HELPER_REAL"
 
 run 7 FAKE_RULES_COUNT=1 FAKE_MERGE_RC=1
